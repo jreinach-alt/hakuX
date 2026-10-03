@@ -1,33 +1,41 @@
-# vcpuwait433: a guest read of the PFIFO USER registers no longer waits out a GPU batch (Tron 2.0's slow-frame vCPU sleep)
-State: draft
+# vcpuwait433: a guest read of the PFIFO USER registers no longer waits out a GPU batch (Tron 2.0's intro vCPU sleep)
+State: ready
 
 Lane: vcpuwait433       Issue: #433
-Base: master @ 5661db4f2b (merged into the branch at ef511dbd19; first base 9550493846)
-Files: hw/xbox/nv2a/user.c, hw/xbox/nv2a/pfifo.c, docs/testing/predictions/vcpuwait433-pixels.json, docs/testing/predictions/vcpuwait433-tron.json, docs/lanes/vcpuwait433/PR.md, docs/lanes/vcpuwait433/NOTES.md, docs/lanes/vcpuwait433/OUTBOX.md, docs/lanes/vcpuwait433/capture_offcpu.sh, docs/lanes/vcpuwait433/waitsite.py, docs/lanes/vcpuwait433/decompose.py, docs/lanes/vcpuwait433/tron-newgame.route, docs/lanes/vcpuwait433/tron-newgame-returning.route, docs/lanes/vcpuwait433/levelcheck.py, docs/lanes/vcpuwait433/userread-lockless.diff, docs/lanes/vcpuwait433/selftest_userread.sh
-Prediction: docs/testing/predictions/vcpuwait433-pixels.json @ 51885311070260918a53796ec4038db00d1a3a6173d5c3867df6ca9ca62045a9; docs/testing/predictions/vcpuwait433-tron.json @ 020b10df7f6e66dee2854093439e952d76b833a59b65f676926452534ead8d77
-Needs device: yes (Thor: 2 pixel arms; Nova: 3rd of 3 runs, Tron)    Needs NDK: yes
+Base: master @ cfa37a359e (merged into the branch at 4148fd3831; first base 9550493846)
+Files: hw/xbox/nv2a/user.c, hw/xbox/nv2a/pfifo.c, docs/testing/predictions/vcpuwait433-pixels.json, docs/testing/predictions/vcpuwait433-tron.json, docs/testing/predictions/vcpuwait433-tron-firstrun.json, docs/lanes/vcpuwait433/PR.md, docs/lanes/vcpuwait433/NOTES.md, docs/lanes/vcpuwait433/OUTBOX.md, docs/lanes/vcpuwait433/capture_offcpu.sh, docs/lanes/vcpuwait433/waitsite.py, docs/lanes/vcpuwait433/decompose.py, docs/lanes/vcpuwait433/tron-newgame.route, docs/lanes/vcpuwait433/tron-newgame-returning.route, docs/lanes/vcpuwait433/tron-newgame-firstrun.route, docs/lanes/vcpuwait433/levelcheck.py, docs/lanes/vcpuwait433/userread-lockless.diff, docs/lanes/vcpuwait433/selftest_userread.sh
+Prediction: docs/testing/predictions/vcpuwait433-pixels.json @ 51885311070260918a53796ec4038db00d1a3a6173d5c3867df6ca9ca62045a9 (PASS); docs/testing/predictions/vcpuwait433-tron-firstrun.json @ 7c92e808e99436d2d5320c5d05aa093aab66ead111349362cfad85c135fa0b9b (VOID on leg V); docs/testing/predictions/vcpuwait433-tron.json @ 020b10df7f6e66dee2854093439e952d76b833a59b65f676926452534ead8d77 (superseded, never queued)
+Needs device: yes (Thor: 2 pixel arms + the head run; Nova: 3 of 3 runs used)    Needs NDK: yes
 
-[lane.vcpuwait433] waiting: on savestate433's fold (not on master at 07:05 PDT). Only after that fold is the Tron arm's `# state: returning` enforced. Tron's disk now holds the first-run state, in which the arm's route would void. Once savestate433 is on master: merge master, queue the Tron B run (prediction vcpuwait433-tron.json), read it, and finish with a run at the final head for the fold.
+**What it changes.** In Tron 2.0's slow intro window (tron2, 60 s at 27.9 fps), 65.2% of the vCPU's attributed off-CPU time is `pfifo.lock` in USER MMIO, and 95.5% of that is `user_read`, a guest load of DMA_GET, DMA_PUT or REF. The holder is the PFIFO thread, asleep in the `pgraph_vk_finish(STALLED)` that `pgraph_process_pending_reports` runs with pfifo.lock held when DMA_GET == DMA_PUT. During that time the word the guest is waiting to read does not change. The fix (012fa08a94, user.c 25+/14-, pfifo.c 1 line): `user_read` takes no lock and uses acquire loads. `user_write` keeps the lock and stores with release. `pfifo_run_pusher` publishes DMA_GET with a release store. This is #474's pattern.
 
-**Pixel leg: PASS.** Thor, B `1-1791035760-vcpuwait433-4105238` (012fa08a94), A `1-1791035764-vcpuwait433-4105418` (ef511dbd19). ab_compare against the pre-registered `vcpuwait433-pixels.json`: all 45 captures in DMA corruption around surfaces, Texture render target and Texture render update in place are byte-identical (better 0, worse 0, exact 5 -> 5). B's run is also the fix's NDK build.
+**What is measured.**
 
-**The site.** In Tron 2.0's slow window (the New Game intro; tron2, 60 s at 27.9 fps), 65.2% of the vCPU's attributed off-CPU time is `pfifo.lock` in USER MMIO, and 95.5% of that is `user_read`, a guest load of DMA_GET, DMA_PUT or REF. In a 60-fps menu the same site is under 3%. The holder is the PFIFO thread. It calls `pgraph_process_pending_reports` with pfifo.lock held, and when DMA_GET == DMA_PUT that call does `pgraph_vk_finish(STALLED)`, which sleeps until the render thread submits. The per-tid pass puts the PFIFO thread asleep for >= 86% of the vCPU's waits. The word the guest is waiting to read does not change in that time.
+| leg | run(s) | result |
+|---|---|---|
+| pixels (Thor, 3 surface-coherence suites) | B 1-1791035760-vcpuwait433-4105238 / A 1-1791035764-vcpuwait433-4105418 | **PASS**: 45/45 captures byte-identical |
+| Tron intro A/B (Nova) | B 1-1791039792-vcpuwait433-947718 against A 990012 | **VOID on leg V.** Tron's disk held a profile (d2aff0a53543, Auto Load enabled). The first-run route's A took Auto Load into the level, not the intro. I chose that route by misreading `titlestate.py show`; the returning route's DOWN would have landed on New Game |
+| Tron in-level (same run, unregistered) | 947718 against 2186958 (older build, no ubershader) | 12 min of gameplay, no BugCheck or hang. Share 0.91 (2186958: 0.90). v_blk 6.93 ms/frame (5.70): no drop in the in-level sleep is visible. The in-level site was never measured |
 
-**The fix** (012fa08a94, user.c 25+/14-, pfifo.c 1 line). `user_read` takes no lock and uses acquire loads of DMA_PUT/GET/REF. `user_write` keeps the lock and stores with release, and `pfifo_run_pusher` publishes DMA_GET with a release store. Each word has one writer on the other side, so acquire/release gives the read the ordering the lock did. This is #474's pattern: MMIO no longer waits behind a GPU-paced hold.
+So the fix is correct and pixel-inert, and it removes a measured intro wait. **No frame-rate gain is shown.** In-level Tron already clears the 0.90 bar.
 
-**A/B design.** The A for Tron is already on disk. uberdefault569's Tron B rerun (990012) is master's emulator code with the ubershader on, run on the golden profile. With that profile, its route's DOWN lands on New Game and the run plays the intro. Its numbers: share 0.82; slow rows F 42.2, v_blk 9.80 ms/frame (tron2 9.93, near30 ~10). B repeats the request at 012fa08a94 on the same route text, which declares `# state: returning`. Legs: M (mechanism) slow-row v_blk <= 7.0, P 0.85; O1 share >= 0.87 and fps +5%, P 0.45; O2 share >= 0.90, P 0.3.
+**Harness defects found (OUTBOX 08:04):**
+1. The dispatcher workers run a 10-02 snapshot, re-made only from `/home/justin/hakuX` (66bce0c222, 108 commits behind master). savestate433's state step is not live on dispatched runs.
+2. Tron 2.0 has no `targets.toml` row. Under savestate433, its returning route is refused, and its first-run route boots all goldens.
 
 Local checks (no CI offline):
-- `bash docs/lanes/vcpuwait433/selftest_userread.sh`: PASS. It compiles the real user.c with `-Wall -Werror` (real atomic.h, nv2a_regs.h, stub nv2a_int.h). With the fix, the three reads return in 0 ms while pfifo.lock is held for 400 ms; a write still waits 402 ms; the PUT store is visible to the next read; the pfifo.c GET store is a release store. The pre-fix user.c blocks 400-405 ms on each read, which is the harness's falsifier.
-- `docs/testing/preflight.sh --allow-tracker` at ab8b4646be: passed (territory ok, board files ok, nv2a index ok). The coverage gate did not run: gh is suspended.
-- NDK build: 012fa08a94 built and ran in pixel arm B (apk b43d7cbb8930).
+- `bash docs/lanes/vcpuwait433/selftest_userread.sh`: PASS at this head. It compiles the real user.c with `-Wall -Werror`. With the fix, reads return in 0 ms while pfifo.lock is held for 400 ms, and a write still waits. The pre-fix user.c blocks 400 ms on each read.
+- `docs/testing/preflight.sh --allow-tracker` at this head: passed (psh_differ, aci_vmstate, nv2a index, territory and board files ok). The coverage gate did not run: gh is suspended.
+- NDK build: 012fa08a94 built and ran in pixel arm B and in 947718 (apk b43d7cbb8930).
+- The fold's run at this head: a Thor run of the 3 pixel suites, requester vcpuwait433, queued after this commit with `--ref` = this head.
 
 | Next | P | win | cost |
 |---|---|---|---|
-| **A. Tron arm (Nova), after savestate433 folds** | M 0.85; O1 0.45; O2 0.3. For: the read no longer waits (selftest), and tron2 put 65% of the window's sleep there. Against: the guest may then wait on GPU output in RAM, which turns freed sleep into spin | up to ~4 ms of a 42 ms slow frame; share 0.82 -> 0.87-0.90 | 1 Nova run |
-| B. Release pfifo.lock across the STALLED finish | 0.3: also covers the DMA_PUT store (4.5%), but exposes renderer state to the display thread | <= A + 4.5% | grant (vk/reports.c), build, goldens, arm |
-| C. If M passes and O1 fails: capture B | 0.8 that it names where the freed time goes | picks between B and a report-path fix | 1 run beyond the brief's 3 |
+| **B. In-level off-CPU capture** (capture_offcpu.sh, returning golden, HUD gate) | 0.85 that it names the in-level owner; tron2's method named the intro's | knowledge toward gameplay's ~7 ms of a 34 ms frame, the kind of sleep BF2 shows (21 of 64) | 1 host-run capture |
+| A. The intro A/B again, on the returning route (with the DOWN) | M 0.75, O1 0.4. Down from 0.85: 947718 shows no in-level drop | up to ~4 ms of the intro's 42 ms slow frame, in a cutscene | 1 Nova run (the lane's 4th) and a new registration |
 
-Release note (performance): in Tron 2.0's in-engine scenes, and in any game whose CPU polls the GPU's command-queue position, the CPU no longer stalls while the GPU finishes a frame (measured gain pending the Tron arm).
+B ranks first: its win is in gameplay, and A's is in a cutscene.
+
+Release note (other): a game's CPU no longer waits for the GPU to finish a frame before it can read the GPU's command-queue position. No frame-rate change is measured yet: Tron 2.0 gameplay is unchanged, and the intro scene it targets is not yet measured.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

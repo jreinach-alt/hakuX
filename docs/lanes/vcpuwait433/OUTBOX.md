@@ -110,3 +110,23 @@ Why the first-run route is valid now: `tron-newgame-firstrun.route` is A's route
 **Request to lane.local:** if `/home/justin/hakuX` is refreshed before 947718 is claimed, withdraw 947718. Under savestate433 with Tron unidentified it would boot all goldens, take Auto Load into the level, and void on leg V. The fix for defect 2 is a `targets.toml` row for 42560001 with its iso name (board territory, not mine).
 
 [lane.vcpuwait433] waiting: on `1-1791039792-vcpuwait433-947718` (Nova, behind pathfind's Black Stone hold). I read it with decompose.py against 990012, then queue the final-head run for the fold.
+
+## #433 -- 2026-10-03 08:40 PDT
+
+[lane.vcpuwait433] **Tron B `1-1791039792-vcpuwait433-947718` is VOID on leg V: it played the level, not the intro.** The route switch was my error. The menu-cursor frame shows Auto Load enabled and highlighted. Tron's disk save d2aff0a53543 is a real profile: savestate433's first-run proof harvested it after Tron wrote one. Attempt 4 read `titlestate.py show` as "first-run leftover, Auto Load greyed", and I reused that reading without checking a frame. With Auto Load enabled, the returning route's DOWN lands on New Game, so the route I replaced would have reached the intro even on the stale dispatcher. Guard, now in NOTES "Do not repeat": read a title's menu state from its last run's menu frame on that device, not from the store.
+
+What the run does show (unregistered, descriptive):
+- 12 min of Tron gameplay on the fix (012fa08a94 + ubershader): no BugCheck, no hang. Share 0.91, 29.5 fps, v_blk 6.93 ms/frame. The older in-level run 2186958 (no fix, no ubershader) read share 0.90, v_blk 5.70.
+- So **in-level the vCPU still sleeps ~7 ms of a 34 ms frame with the fix**, with no visible drop. tron2 measured the site in the intro only, and the in-level sleep's site has never been measured.
+- In-level Tron already clears the PM's 0.90 bar. The brief's 10-of-43 ms window is the in-engine intro, a cutscene.
+
+The PR is ready (PR.md). The fix is correct (selftest with falsifier), pixel-inert (45/45 on the Thor), and ran gameplay clean. It removes a measured intro wait. No frame-rate gain is shown, and the release note says so. The fold's run at the final head is a Thor run of the 3 pixel suites, queued after the last commit.
+
+Next, by P x win (all 3 Nova runs are used, so each needs lane.local's word):
+- **B. In-level off-CPU capture** (`capture_offcpu.sh`, returning golden, HUD gate). P 0.85 that it names the in-level owner; tron2's method named the intro's. Win: points at gameplay's ~7 ms of 34, the kind of sleep BF2 has (21 of 64). Cost: 1 host-run capture.
+- A. The intro A/B again on `tron-newgame-returning.route` (the DOWN). M 0.75 (down from 0.85, since 947718 shows no in-level drop), O1 0.4. Win: up to ~4 ms of the intro's 42 ms slow frame, in a cutscene. Cost: 1 Nova run and a new registration (the old V leg names 5489ae7f9b58).
+B ranks first: its win is in gameplay.
+
+Still open from 08:04: the dispatcher workers lack savestate433 (host tree 66bce0c222), and Tron has no `targets.toml` row.
+
+[lane.vcpuwait433] waiting: on the fold's head run (Thor, 3 pixel suites, requester vcpuwait433, ref = the branch head), then on lane.local's fold. Nothing else is queued.

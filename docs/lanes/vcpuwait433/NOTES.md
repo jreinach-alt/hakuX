@@ -9,6 +9,72 @@ below 28.5 fps (median F ~43 ms) the vCPU thread is asleep, neither running
 nor runnable, ~10 ms per frame. That sleep tracks GPU ms per frame (r 0.64),
 not the renderer's CPU draw work (0.08). BF2: 21 ms of a 64 ms frame.
 
+## Attempt 5 (2026-10-03 07:57-08:40 PDT): the Tron run went in-level, not the intro
+
+### Why attempt 4 did not finish
+
+It ended in the waiting state on purpose: the Tron arm needed savestate433's
+`# state:` enforcement, which was not on master. Addendum 5 resumed the lane
+when savestate433 folded (cfa37a359e, 07:57).
+
+### What happened
+
+| step | what | result |
+|---|---|---|
+| merge | origin/master cfa37a359e (savestate433, memfast) into the branch: 4148fd3831 | clean |
+| dispatcher check | do the workers run savestate433? | **no.** Workers 1275679/1275687 started 10-02 20:40 from `dispatch/bin/dispatcher.sh`, a snapshot dated 10-02 07:55 with neither `title_state` nor `hdd.refused`. They re-exec only when `/home/justin/hakuX/docs/testing` changes, and that tree sits at 66bce0c222 (10-02 08:45), 108 commits behind master. So no dispatched run gets a composed golden or an enforced `# state:` line |
+| title id | `titlestate.py tid-for-iso "Tron 2.0 - Killer App (USA, Europe).iso"` | **nothing**: Tron has no `targets.toml` row. With savestate433 live, request.sh would refuse Tron's returning route ("title not identified"), and a first-run route would get `compose` with no title, which loads all goldens, Tron's included |
+| route switch | `tron-newgame-firstrun.route` (v5, no DOWN, `# state: first-run`); prediction `vcpuwait433-tron-firstrun.json` (sha256 7c92e808...), same refs and legs M/O1/O2, superseding the never-queued `vcpuwait433-tron.json` | registered and pushed before the run (281bfb73e5) |
+| Tron B | `1-1791039792-vcpuwait433-947718`, Nova, 012fa08a94 (apk b43d7cbb8930), 720 s, 08:15-08:28 | ran clean: no BugCheck, `[gpl569] mode=3`, 260 rows. **VOID on leg V:** the menu-cursor frame (081739) shows **Auto Load enabled and highlighted**, so A took Auto Load into the level. The run measured gameplay, not the intro |
+
+**The void's cause, and it is mine.** Attempt 4 read `titlestate.py show`'s
+"42560001 profile found save d2aff0a53543" as the first-run leftover with
+Auto Load greyed. It is not. savestate433's first-run proof harvested
+d2aff0a53543 *after* Tron wrote a profile (proof/first-run/release.json), and
+the `profile` column means a save directory exists. With Auto Load enabled,
+the returning route's DOWN lands on New Game, A's path. **The route I
+replaced would have reached the intro on the stale dispatcher; the
+replacement could not.** The guard: before queuing a route that depends on
+the title's menu state, read the menu frame of the title's last run on that
+device. A store record says which save was harvested, not what the menu
+shows. (savestate433's first-run proof frame shows New Game because that
+run booted without a profile. The save it harvested afterwards is the
+profile.)
+
+### What the in-level run shows (unregistered, descriptive only)
+
+decompose.py, bar 28.5:
+
+| run | build | window | n | share | fps | F ms | v_run | v_blk all | v_blk slow rows |
+|---|---|---|---|---|---|---|---|---|---|
+| **947718 (B)** | 012fa08a94: lock-free read, ubershader on, frames every 30 s | Auto Load, in-level | 260 | **0.91** | 29.52 | 33.88 | 26.75 | **6.93** | 7.83 (24 rows) |
+| 2186958 | 16f09aa346: no fix, no ubershader | Auto Load, in-level | 210 | 0.90 | 33.71 | 29.66 | 23.89 | 5.70 | 7.02 (20 rows) |
+| 990012 (A) | d4a02e2060: no fix, ubershader on | New Game, intro | 254 | 0.82 | 35.58 | 28.10 | 22.38 | 5.59 | 9.80 (45 rows) |
+
+- **In-level, the vCPU still sleeps ~7 ms of a 34 ms frame with the fix.**
+  2186958 slept 5.7. Builds, route and frame capture differ, so this is no A/B,
+  but no ~3 ms drop is visible. tron2 measured the site in the intro only. The
+  in-level sleep's site has never been measured, and this run says it is
+  probably not the pfifo.lock read, or the read is not where the vCPU waits
+  in-level.
+- **In-level Tron already clears the PM's bar** (share 0.91 here, 0.90 in
+  2186958). The slow window the brief named, 10 ms of 43, is the in-engine
+  intro, a cutscene.
+- The fix ran 12 min of gameplay without a BugCheck, a hang or a route death.
+
+### Next (P x win, re-scored after 947718)
+
+| candidate | P | evidence for P | win if it works | cost |
+|---|---|---|---|---|
+| **A. The registered intro A/B, on the returning route (with the DOWN), on whatever dispatcher runs** | M 0.75 (was 0.85), O1 0.4 | for: the intro site was measured (65% pfifo.lock reads), and the disk's d2aff0a53543 has Auto Load enabled, so the DOWN lands on New Game (A's path). Against: 947718 shows no sleep drop in-level, so the read may matter less than tron2 said. V needs a new registration (the hdd clause names 5489ae7f9b58) | up to ~4 ms of the intro's 42 ms slow frame: share 0.82 -> 0.87-0.90, **in a cutscene** | 1 Nova run, the lane's 4th: lane.local's call |
+| **B. In-level off-CPU capture** (capture_offcpu.sh, returning golden, HUD-gated) | 0.85 that it names the in-level owner | the script's gate opened on 2186958 at mark+28 s in replay, and tron2's method named the intro's site | knowledge toward gameplay's ~7 ms of 34 (20%); Tron gameplay is already at share 0.90, so the payoff is for titles whose gameplay sleeps like this (BF2: 21 of 64) | 1 host-run capture |
+| C. Fold as is | - | the fix is correct (selftest + falsifier), pixel-inert (45/45), ran in-level clean | removes a measured intro wait; no gameplay gain shown | the head run (Thor, short) |
+
+C is what this resume is for, and it does not block A or B. Of A and B, **B
+ranks first by P x win for players**. A's win is in a cutscene. B points at
+the gameplay sleep, and that is the one BF2 shares. BF2 itself needs its own
+capture: no site is measured there.
+
 ## Attempt 4 (2026-10-03 06:47-07:10 PDT): the fix is on the branch; arms registered
 
 ### Why attempt 3 did not finish
@@ -432,10 +498,22 @@ the in-level case together. C is not worth a run unless A's arm is blocked.
 |---|---|---|---|
 | 1 | off-CPU capture tron1 (host-run, d8d36c9161) | 18:46-18:54 PDT | void: the route ended in Options > Display (no save, so the DOWN went to Light Cycles). Usable as a fast-window control: off-CPU 0.53 ms/frame, 69% BQL <- cpu_exec_loop |
 | 2 | off-CPU capture tron2 (v5 route + slow gate) | 19:54-20:01 PDT | recorded the New Game intro cinematic (not the level) at 27 fps: **the brief's slow window** (section 4). pfifo.lock in `user_read` 65.2%, which OWNS the wait |
-| 3 | Tron arm B (012fa08a94, returning golden, A = 990012) | not queued yet | waits for savestate433 to fold (attempt 4) |
+| 3 | Tron arm B (012fa08a94, first-run route, A = 990012) | 1-1791039792-vcpuwait433-947718 | VOID on leg V: Auto Load was enabled, so the run went in-level, not to the intro. In-level read: share 0.91, v_blk 6.93 ms/frame (attempt 5) |
 | Thor | pixel arms B / A (3 suites) | 1-1791035760-vcpuwait433-4105238 / 1-1791035764-vcpuwait433-4105418 | PASS: 45/45 byte-identical |
 
 ## Do not repeat
+
+- Do not infer a title's menu state from `titlestate.py show`. "profile ...
+  save X" names the save harvested, and on Tron d2aff0a53543 is a real
+  profile (Auto Load enabled), not a first-run leftover. Read the menu frame
+  of the title's last run on that device (947718's void).
+- Do not assume a fold reached the dispatcher. The workers run
+  `dispatch/bin/`, re-snapshotted only from `/home/justin/hakuX`, which can lag
+  master by a day. Check the snapshot for the fold's code (`title_state` for
+  savestate433) before relying on it.
+- Tron 2.0 has no `targets.toml` row, so `tid-for-iso` returns nothing for it.
+  Under savestate433, Tron's returning route is refused, and its first-run
+  route boots all goldens.
 
 - Do not read `[tlb68] rdus`/`rdous` as surface-download wait time. It is
   `tlb_reset_dirty` time.
@@ -465,7 +543,8 @@ the in-level case together. C is not worth a run unless A's arm is blocked.
 
 `userread-lockless.diff` (the fix, applied in 012fa08a94),
 `selftest_userread.sh` (the fix's host selftest, with its falsifier),
-`tron-newgame-returning.route` (A's route + `# state: returning`, for the Tron arm),
+`tron-newgame-returning.route` (A's route + `# state: returning`, for the Tron arm; the one to use for the intro A/B),
+`tron-newgame-firstrun.route` (v5 + `# state: first-run`: 947718's route; it reaches the intro only when Tron has NO profile),
 `levelcheck.py` (the capture gate's in-level check),
 `capture_offcpu.sh` (the host's capture), `waitsite.py` (the reader; `--detail`
 splits a site and names holders),
