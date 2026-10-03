@@ -2068,7 +2068,8 @@ static void pfifo_run_pusher(NV2AState *d)
             }
         }
 
-        *dma_get = dma_get_v;
+        /* release: user_read() returns GET without pfifo.lock (#433) */
+        qatomic_store_release(dma_get, dma_get_v);
         cbl_note_advance(cbl_before, dma_get_v, cbl_jumped);
 
         if (GET_MASK(*dma_state, NV_PFIFO_CACHE1_DMA_STATE_ERROR)) {
