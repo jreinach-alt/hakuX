@@ -1,0 +1,34 @@
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 5c in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+queued 1790918407-lane.ibcache-81732
+  soak: 54540082-Grand_Theft_Auto_San_Andreas.xiso.iso, 360s, env HAKUX_IBC=0, route ibcache-gta-sa-shots, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 5c in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+queued 1790918407-lane.ibcache-81794
+  soak: 54540082-Grand_Theft_Auto_San_Andreas.xiso.iso, 360s, route ibcache-gta-sa-shots, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 5c in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+pilot gate: lane.ibcache would hold ~31 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (1.2 h old) admits it
+queued 1790918407-lane.ibcache-81858
+  soak: 54540082-Grand_Theft_Auto_San_Andreas.xiso.iso, 360s, route ibcache-gta-sa-shots, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 5c in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+pilot gate: lane.ibcache would hold ~38 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (1.2 h old) admits it
+queued 1790918408-lane.ibcache-81928
+  soak: 54540082-Grand_Theft_Auto_San_Andreas.xiso.iso, 360s, env HAKUX_IBC=0, route ibcache-gta-sa-shots, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 5c in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+pilot gate: lane.ibcache would hold ~46 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (1.2 h old) admits it
+queued 1790918408-lane.ibcache-81985
+  soak: 54540082-Grand_Theft_Auto_San_Andreas.xiso.iso, 360s, route ibcache-gta-sa-shots, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 5c in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+pilot gate: lane.ibcache would hold ~54 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (1.2 h old) admits it
+queued 1790918409-lane.ibcache-82042
+  soak: 54540082-Grand_Theft_Auto_San_Andreas.xiso.iso, 360s, env HAKUX_IBC=0, route ibcache-gta-sa-shots, pinned to nova

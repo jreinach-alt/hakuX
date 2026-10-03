@@ -1,0 +1,394 @@
+{
+ "factors": {
+  "s1_max": 0.5,
+  "s2_slack": 1,
+  "f_band": 0.1
+ },
+ "readings": {
+  "Kabuki": {
+   "A": {
+    "shader_cache": "kept: same apk as this device's previous run",
+    "gpl": {
+     "ext": "1",
+     "lib": "1",
+     "fast": "1",
+     "interp": "1",
+     "requested": "0",
+     "mode": "0"
+    },
+    "cold": true,
+    "uber": null,
+    "dpc_ms": 141252.7,
+    "stalls": 47,
+    "wipe": "removed",
+    "pb_start": {
+     "title": "43560001",
+     "records": "942",
+     "jobs": "0",
+     "unresolved": "0",
+     "modules": "0",
+     "workers": "3",
+     "pb_workers": "3",
+     "enabled": "0",
+     "setup_ms": "6.6"
+    },
+    "h120": 9,
+    "h120_shader": 9,
+    "h120_worst_ms": 4681.1,
+    "hang": true,
+    "crash": false,
+    "reached_gameplay": true,
+    "fps_ok_share": 0.7232,
+    "fps_window_median": 59.94,
+    "dir": "1-1790994318-uberdefault569-990124"
+   },
+   "B": {
+    "shader_cache": "cleared: apk 6ee8cbaf0499 -> 1462fe387009 on this device",
+    "gpl": {
+     "ext": "1",
+     "lib": "1",
+     "fast": "1",
+     "interp": "1",
+     "requested": "3",
+     "mode": "3"
+    },
+    "cold": true,
+    "uber": {
+     "mode": "3",
+     "links": "769",
+     "cold": "94",
+     "libs": "4",
+     "lib_fail": "0",
+     "lib_ms": "12342.6",
+     "next": "734/0/643",
+     "next_ms": "239596.8",
+     "uncovered": "0",
+     "queued": "0"
+    },
+    "dpc_ms": 2823.5,
+    "stalls": 3,
+    "wipe": "absent",
+    "pb_start": {
+     "title": "43560001",
+     "records": "942",
+     "jobs": "0",
+     "unresolved": "0",
+     "modules": "0",
+     "workers": "3",
+     "pb_workers": "3",
+     "enabled": "0",
+     "setup_ms": "3.7"
+    },
+    "h120": 12,
+    "h120_shader": 9,
+    "h120_worst_ms": 733.9,
+    "hang": false,
+    "crash": false,
+    "reached_gameplay": true,
+    "fps_ok_share": 0.933,
+    "fps_window_median": 59.94,
+    "dir": "1-1790990144-uberdefault569-532413"
+   }
+  },
+  "DOA3": {
+   "A": {
+    "shader_cache": "kept: same apk as this device's previous run",
+    "gpl": {
+     "ext": "1",
+     "lib": "1",
+     "fast": "1",
+     "interp": "1",
+     "requested": "0",
+     "mode": "0"
+    },
+    "cold": true,
+    "uber": null,
+    "dpc_ms": 122673.4,
+    "stalls": 35,
+    "wipe": "removed",
+    "pb_start": {
+     "title": "54430001",
+     "records": "1468",
+     "jobs": "0",
+     "unresolved": "0",
+     "modules": "0",
+     "workers": "3",
+     "pb_workers": "3",
+     "enabled": "0",
+     "setup_ms": "2.9"
+    },
+    "h120": 14,
+    "h120_shader": 11,
+    "h120_worst_ms": 7265.4,
+    "hang": true,
+    "crash": false,
+    "reached_gameplay": true,
+    "fps_ok_share": 0.6306,
+    "fps_window_median": 47.32,
+    "dir": "1-1790994322-uberdefault569-990282"
+   },
+   "B": {
+    "shader_cache": "kept: same apk as this device's previous run",
+    "gpl": {
+     "ext": "1",
+     "lib": "1",
+     "fast": "1",
+     "interp": "1",
+     "requested": "3",
+     "mode": "3"
+    },
+    "cold": true,
+    "uber": {
+     "mode": "3",
+     "links": "609",
+     "cold": "17",
+     "libs": "4",
+     "lib_fail": "0",
+     "lib_ms": "13402.7",
+     "next": "608/0/301",
+     "next_ms": "185180.6",
+     "uncovered": "0",
+     "queued": "0"
+    },
+    "dpc_ms": 2891.2,
+    "stalls": 4,
+    "wipe": "removed",
+    "pb_start": {
+     "title": "54430001",
+     "records": "1468",
+     "jobs": "0",
+     "unresolved": "0",
+     "modules": "0",
+     "workers": "3",
+     "pb_workers": "3",
+     "enabled": "0",
+     "setup_ms": "7.5"
+    },
+    "h120": 6,
+    "h120_shader": 3,
+    "h120_worst_ms": 271.0,
+    "hang": false,
+    "crash": false,
+    "reached_gameplay": true,
+    "fps_ok_share": 0.8202,
+    "fps_window_median": 45.87,
+    "dir": "1-1790994320-uberdefault569-990204"
+   }
+  },
+  "ToeJam": {
+   "A": {
+    "shader_cache": "cleared: apk e88a2be70ae4 -> 32ddfff8b0bc on this device",
+    "gpl": {
+     "ext": "1",
+     "lib": "1",
+     "fast": "1",
+     "interp": "1",
+     "requested": "0",
+     "mode": "0"
+    },
+    "cold": true,
+    "uber": null,
+    "dpc_ms": 15632.2,
+    "stalls": 13,
+    "wipe": null,
+    "pb_start": {
+     "title": "5345000F",
+     "records": "119",
+     "jobs": "0",
+     "unresolved": "119",
+     "modules": "0",
+     "workers": "3",
+     "pb_workers": "3",
+     "enabled": "1",
+     "setup_ms": "3.6"
+    },
+    "h120": 9,
+    "h120_shader": 8,
+    "h120_worst_ms": 435.3,
+    "hang": false,
+    "crash": false,
+    "reached_gameplay": true,
+    "fps_ok_share": 0.9919,
+    "fps_window_median": 59.94,
+    "dir": "1790970734-lanelocal-1022425"
+   },
+   "B": {
+    "shader_cache": "kept: same apk as this device's previous run",
+    "gpl": {
+     "ext": "1",
+     "lib": "1",
+     "fast": "1",
+     "interp": "1",
+     "requested": "3",
+     "mode": "3"
+    },
+    "cold": true,
+    "uber": {
+     "mode": "3",
+     "links": "97",
+     "cold": "12",
+     "libs": "4",
+     "lib_fail": "0",
+     "lib_ms": "6059.8",
+     "next": "96/0/95",
+     "next_ms": "21643.1",
+     "uncovered": "0",
+     "queued": "0"
+    },
+    "dpc_ms": 3101.2,
+    "stalls": 2,
+    "wipe": "removed",
+    "pb_start": {
+     "title": "5345000F",
+     "records": "119",
+     "jobs": "0",
+     "unresolved": "0",
+     "modules": "0",
+     "workers": "3",
+     "pb_workers": "3",
+     "enabled": "0",
+     "setup_ms": "5.4"
+    },
+    "h120": 0,
+    "h120_shader": 0,
+    "h120_worst_ms": 0.0,
+    "hang": false,
+    "crash": false,
+    "reached_gameplay": true,
+    "fps_ok_share": 0.8814,
+    "fps_window_median": 53.86,
+    "dir": "1-1790994325-uberdefault569-990361"
+   }
+  },
+  "Tron 2.0": {
+   "A": {
+    "shader_cache": "cleared: apk e88a2be70ae4 -> 6524af2f45e2 on this device",
+    "gpl": {
+     "ext": "1",
+     "lib": "1",
+     "fast": "1",
+     "interp": "1",
+     "requested": "0",
+     "mode": "0"
+    },
+    "cold": true,
+    "uber": null,
+    "dpc_ms": 49775.8,
+    "stalls": 21,
+    "wipe": "absent",
+    "pb_start": {
+     "title": "42560001",
+     "records": "327",
+     "jobs": "0",
+     "unresolved": "0",
+     "modules": "0",
+     "workers": "3",
+     "pb_workers": "3",
+     "enabled": "0",
+     "setup_ms": "0.3"
+    },
+    "h120": 3,
+    "h120_shader": 3,
+    "h120_worst_ms": 3816.1,
+    "hang": true,
+    "crash": false,
+    "reached_gameplay": true,
+    "fps_ok_share": 0.4777,
+    "fps_window_median": 47.28,
+    "dir": "0-1790978946-tronhang672-3184149"
+   },
+   "B": {
+    "shader_cache": "cleared: apk unrecorded -> 1462fe387009 on this device",
+    "gpl": {
+     "ext": "1",
+     "lib": "1",
+     "fast": "1",
+     "interp": "1",
+     "requested": "3",
+     "mode": "3"
+    },
+    "cold": true,
+    "uber": {
+     "mode": "3",
+     "links": "289",
+     "cold": "12",
+     "libs": "3",
+     "lib_fail": "0",
+     "lib_ms": "9004.3",
+     "next": "287/0/222",
+     "next_ms": "87902.2",
+     "uncovered": "0",
+     "queued": "0"
+    },
+    "dpc_ms": 3218.4,
+    "stalls": 4,
+    "wipe": "absent",
+    "pb_start": {
+     "title": "42560001",
+     "records": "356",
+     "jobs": "0",
+     "unresolved": "0",
+     "modules": "0",
+     "workers": "3",
+     "pb_workers": "3",
+     "enabled": "0",
+     "setup_ms": "2.6"
+    },
+    "h120": 0,
+    "h120_shader": 0,
+    "h120_worst_ms": 0.0,
+    "hang": false,
+    "crash": false,
+    "reached_gameplay": true,
+    "fps_ok_share": 0.8177,
+    "fps_window_median": 36.86,
+    "dir": "1-1790994313-uberdefault569-990012"
+   }
+  }
+ },
+ "legs": {
+  "pairs": {
+   "Kabuki": {
+    "V": true,
+    "H": true,
+    "S1_ratio": 0.02,
+    "S1": true,
+    "S2_pair": true,
+    "F": true
+   },
+   "DOA3": {
+    "V": true,
+    "H": true,
+    "S1_ratio": 0.0236,
+    "S1": true,
+    "S2_pair": true,
+    "F": true
+   },
+   "ToeJam": {
+    "V": true,
+    "H": true,
+    "S1_ratio": 0.1984,
+    "S1": true,
+    "S2_pair": true,
+    "F": false
+   },
+   "Tron 2.0": {
+    "V": true,
+    "H": true,
+    "S1_ratio": 0.0647,
+    "S1": true,
+    "S2_pair": true,
+    "F": null
+   }
+  },
+  "H": true,
+  "S1": true,
+  "F": false,
+  "valid_pairs": 4,
+  "S2_sum": {
+   "A": 31,
+   "B": 12
+  },
+  "S2": true
+ }
+}

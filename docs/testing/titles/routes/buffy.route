@@ -1,0 +1,77 @@
+# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
+# Buffy the Vampire Slayer (45410012), Nova. Built from the generic survey
+# 1790928774-titleroutes-2773088 (lane.titleroutes session 65, 2026-10-02),
+# which reached live play. Read from its route-frames (copied to
+# scratch/judge/), not guessed:
+#   booted (012801): the intro FMV (Buffy in fog).
+#   cycle 1 (012807 START / 012813 A): START skips to the Buffy title; A
+#     opens the main menu (Start Game / Load Game / Options / Extras).
+#   cycle 2 (012819 START / 012825 A): START picks Start Game ("Launch a New
+#     Game on your Xbox Hard Disk called Buffy 1"); A confirms -> DIFFICULTY
+#     (Normal lit).
+#   cycle 3 (012830 START / 012836 A): START confirms Normal -> "Summoning"
+#     (loading), then the mission card "Spanish Mission, Outskirts of
+#     Sunnydale, Sunday 11:53PM" (FPS 7 while it loads).
+#   cycle 4 (012843 START / 012849 A): live play in the canyon, HUD at top
+#     left, "TIP: Move the R thumbstick..." banner.
+#   cycles 5-14: START pauses (PAUSE: Resume / Options / Quit, Resume lit)
+#     and A resumes, so every later cycle toggles pause and back.
+# A START/A pair in play is therefore a no-op (pause, Resume), which makes
+# one extra cycle a cheap guard against a slower load. Then a play loop with
+# NO START: walk forward with the left stick, turn now and then, attack. The
+# survey's loop swung the camera stick (RX) and its play frames show mostly
+# sky; this one leaves the camera alone.
+# Disk state: Start Game writes a new save ("Buffy 1"). A second run on a
+# disk that already holds one may name it Buffy 2 or ask to overwrite; this
+# route has only been read from a run on a disk with no Buffy save.
+# DRAFT until a dispatch run replays it and its frames from the mark on are
+# reviewed.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+repeat 5 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+wait 3
+shot pre-mark
+mark gameplay               # CHECK: the canyon with the HUD, no PAUSE panel
+# Replay 1790931264-titleroutes-3615749 (session 65) moved for ~1 min, then
+# sat 4 min on one frame (sky and a tree) under the tip "Run and press B to
+# jump between ledges": the canyon has gaps that need a running jump, and the
+# first loop never pressed B. So: run forward and jump (B) twice per cycle,
+# and turn for longer (1.5 s) so a wall does not hold her for the window.
+repeat forever {
+    axis LY min
+    wait 2
+    press B
+    wait 1.5
+    press B
+    wait 2
+    press A
+    wait 0.6
+    press X
+    wait 1
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 2
+    press B
+    wait 2
+    press A
+    wait 0.6
+    press A
+    wait 1
+    axis LX min
+    wait 1.5
+    axis LX mid
+    wait 1
+    shot play
+}

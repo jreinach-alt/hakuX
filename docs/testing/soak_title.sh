@@ -927,6 +927,24 @@ while [ "$s" -lt "$SECONDS_TO_HOLD" ]; do
         SOAK_RC=5
         break
     fi
+    # THE ROUTE DIED, THE SOAK MUST NOT RUN ON (lane.savestate433; lane.
+    # routerca433 CAPA T16/C5). route.sh exits 0 when it is TERMed and when a
+    # route without `repeat forever` ends; non-zero is a parse error (2) or a
+    # failed step (1: `waitfor` on a missing crop, ROUTE FAIL drive). Until
+    # 10-02 the hold ran its whole window after either: 1790905334 held 904 s
+    # past `unknown step 'waitfor'`, 1790918365 661 s past a missing crop. A
+    # finished route is a zombie until reaped (as fg_watch reads it).
+    if [ -n "$ROUTE_PID" ] && [ "$(awk '{print $3}' "/proc/$ROUTE_PID/stat" 2>/dev/null || echo Z)" = Z ]; then
+        wait "$ROUTE_PID" 2>/dev/null; rrc=$?
+        ROUTE_PID=""
+        if [ "$rrc" != 0 ]; then
+            echo "route-died: route.sh exited $rrc after ${s}s of ${SECONDS_TO_HOLD}s; no input follows, so the soak stops"
+            echo "soak aborted: route-died after ${s}s of ${SECONDS_TO_HOLD}s"
+            SOAK_RC=6
+            break
+        fi
+        echo "ROUTE finished (rc 0) after ${s}s; holding without input"
+    fi
     alive; r=$?
     if [ "$r" = 0 ]; then
         appeared=1

@@ -1,0 +1,371 @@
+{
+ "profile": "buffy",
+ "title": "Buffy the Vampire Slayer",
+ "mode": "find",
+ "result": "window-done",
+ "seconds": 420.4,
+ "time_to_title_s": 15.0,
+ "time_to_play_s": null,
+ "states_seen": [
+  "unknown",
+  "black",
+  "intro_video",
+  "title",
+  "main_menu",
+  "cutscene",
+  "stalled",
+  "paused"
+ ],
+ "skips": [
+  {
+   "state": "intro_video",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "black",
+   "presses": 1
+  },
+  {
+   "state": "intro_video",
+   "button": "START",
+   "after_s": 1.9,
+   "landed": "black",
+   "presses": 2
+  },
+  {
+   "state": "cutscene",
+   "button": "START",
+   "after_s": 1.8,
+   "landed": "black",
+   "presses": 2
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "unknown",
+   "presses": 1
+  },
+  {
+   "state": "cutscene",
+   "button": "X",
+   "after_s": 6.3,
+   "landed": "stalled",
+   "presses": 4
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "unknown",
+   "presses": 1
+  }
+ ],
+ "inputs": [
+  {
+   "t": 3.9,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 7.4,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 9.3,
+   "state": "intro_video",
+   "input": "START",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 15.1,
+   "state": "title",
+   "input": "START",
+   "why": "title 1"
+  },
+  {
+   "t": 17.2,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 19.2,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 21.0,
+   "state": "cutscene",
+   "input": "START",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 29.6,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 32.3,
+   "state": "unknown",
+   "input": "hold LY min LX min",
+   "why": "play"
+  },
+  {
+   "t": 34.5,
+   "state": "cutscene",
+   "input": "release axes",
+   "why": "left play"
+  },
+  {
+   "t": 34.5,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 36.7,
+   "state": "cutscene",
+   "input": "START",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 38.5,
+   "state": "cutscene",
+   "input": "B",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 40.5,
+   "state": "cutscene",
+   "input": "X",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 42.7,
+   "state": "stalled",
+   "why": "stall escape 1 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 43.6,
+   "state": "stalled",
+   "why": "stall escape 1 phase 2",
+   "input": "LY max"
+  },
+  {
+   "t": 44.9,
+   "state": "stalled",
+   "why": "stall escape 1 phase 3",
+   "input": "LX max"
+  },
+  {
+   "t": 46.7,
+   "state": "stalled",
+   "why": "stall escape 1 phase 4",
+   "input": "LY min + B"
+  },
+  {
+   "t": 49.6,
+   "state": "stalled",
+   "why": "stall escape 1 phase 5",
+   "input": ""
+  },
+  {
+   "t": 52.0,
+   "state": "stalled",
+   "why": "stall escape 2 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 53.0,
+   "state": "stalled",
+   "why": "stall escape 2 phase 2",
+   "input": "LY max"
+  },
+  {
+   "t": 54.3,
+   "state": "stalled",
+   "why": "stall escape 2 phase 3",
+   "input": "LX min"
+  },
+  {
+   "t": 56.1,
+   "state": "stalled",
+   "why": "stall escape 2 phase 4",
+   "input": "LY min + B"
+  },
+  {
+   "t": 58.9,
+   "state": "stalled",
+   "why": "stall escape 2 phase 5",
+   "input": ""
+  },
+  {
+   "t": 61.4,
+   "state": "stalled",
+   "why": "stall escape 3 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 62.4,
+   "state": "stalled",
+   "why": "stall escape 3 phase 2",
+   "input": "LY min + B,B"
+  },
+  {
+   "t": 65.7,
+   "state": "stalled",
+   "why": "stall escape 3 phase 3",
+   "input": ""
+  },
+  {
+   "t": 68.3,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 70.4,
+   "state": "cutscene",
+   "input": "START",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 72.2,
+   "state": "cutscene",
+   "input": "B",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 74.3,
+   "state": "cutscene",
+   "input": "X",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 76.4,
+   "state": "cutscene",
+   "input": "START+A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 78.6,
+   "state": "paused",
+   "input": "A",
+   "why": "resume 1"
+  },
+  {
+   "t": 80.7,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 82.9,
+   "state": "cutscene",
+   "input": "START",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 86.4,
+   "state": "paused",
+   "input": "A",
+   "why": "resume 1"
+  },
+  {
+   "t": 88.7,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 90.8,
+   "state": "cutscene",
+   "input": "START",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 94.2,
+   "state": "paused",
+   "input": "A",
+   "why": "resume 1"
+  },
+  {
+   "t": 96.4,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 98.5,
+   "state": "cutscene",
+   "input": "START",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 102.0,
+   "state": "paused",
+   "input": "A",
+   "why": "resume 1"
+  },
+  {
+   "t": 104.1,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 106.4,
+   "state": "unknown",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 108.2,
+   "state": "stalled",
+   "why": "stall escape 4 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 109.3,
+   "state": "stalled",
+   "why": "stall escape 4 phase 2",
+   "input": "LY max"
+  },
+  {
+   "t": 110.6,
+   "state": "stalled",
+   "why": "stall escape 4 phase 3",
+   "input": "LX max"
+  },
+  {
+   "t": 112.5,
+   "state": "stalled",
+   "why": "stall escape 4 phase 4",
+   "input": "LY min + B"
+  },
+  {
+   "t": 115.3,
+   "state": "stalled",
+   "why": "stall escape 4 phase 5",
+   "input": ""
+  }
+ ],
+ "anomalies": [],
+ "classifier_sources": {
+  "no-prev": 1,
+  "black": 216,
+  "moving": 22,
+  "crop": 9,
+  "hud": 4,
+  "static+hud-recent": 2
+ },
+ "model_calls": 0,
+ "play_stretch_frames": [],
+ "written_utc": "2026-10-02T10:28:35Z"
+}

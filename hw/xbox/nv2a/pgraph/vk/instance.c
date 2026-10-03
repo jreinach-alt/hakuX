@@ -476,19 +476,26 @@ static StringArray *get_required_device_extension_names(void)
  * #569 P5: build draw pipelines from graphics pipeline libraries.
  * HAKUX_GPL=0 off (the monolithic path), 1 fast link, 2 fast link and a
  * link-time-optimised rebuild on the compile worker, swapped in when ready.
+ * 3 and 4 are #569's uber ladder (vk/compile_worker.c): a miss links a
+ * prebuilt uber vertex stage and draws this frame; 3 swaps the specialised
+ * pipeline in once the worker has built it, 4 keeps the uber link (for the
+ * exactness and GPU-cost arms only).
  * The environment reaches the Android app through request.sh --env.
- * Off by default: on its own, a pre-rasterization library costs more than a
- * whole monolithic pipeline on T30 (docs/lanes/gpl569/NOTES.md, "Runs").
+ * 3 by default (#569, docs/lanes/uberdefault569): on a cold cache the ladder
+ * takes the compile off the draw path (Kabuki's fight 133 s -> 27 ms of
+ * creates, uberspike569 BUILD.md 12) and Tron 2.0's first play no longer
+ * hangs (#672). The Android app sets HAKUX_GPL from its "Ubershader" setting
+ * (MainActivity.kt), so this default is for builds that set nothing.
  */
 #ifndef HAKUX_GPL_DEFAULT
-#define HAKUX_GPL_DEFAULT 0
+#define HAKUX_GPL_DEFAULT 3
 #endif
 
 static int gpl_requested_mode(void)
 {
     const char *e = getenv("HAKUX_GPL");
     int mode = HAKUX_GPL_DEFAULT;
-    if (e && e[0] >= '0' && e[0] <= '2' && !e[1]) {
+    if (e && e[0] >= '0' && e[0] <= '4' && !e[1]) {
         mode = e[0] - '0';
     }
     return mode;

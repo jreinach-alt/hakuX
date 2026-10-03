@@ -1,0 +1,151 @@
+{
+ "L1": {
+  "shader_cache": "cleared: apk 920ebfc1aa6c -> 1a4ee11d52e7 on this device",
+  "lines": 463,
+  "init": {
+   "ext": "1",
+   "lib": "1",
+   "fast": "1",
+   "interp": "1",
+   "requested": "0",
+   "mode": "0"
+  },
+  "last_gpl": null,
+  "cleared": true,
+  "pc_ms": 134717.4,
+  "pm": 813.0,
+  "ms_per_miss": 165.7040590405904,
+  "play_mark": false,
+  "kept": false,
+  "boot_t": 71152.308,
+  "stalls": 41,
+  "wipe": "absent",
+  "start": {
+   "title": "43560001",
+   "records": "0",
+   "jobs": "0",
+   "unresolved": "0",
+   "modules": "0",
+   "workers": "3",
+   "pb_workers": "3",
+   "enabled": "1",
+   "setup_ms": "2.2"
+  },
+  "done": null,
+  "done_t": null,
+  "saves": {
+   "quiet": 16,
+   "timer": 7
+  },
+  "recs": 810,
+  "known_after_boot": 0,
+  "known_after_boot_ms": 0.0,
+  "known_after_boot_mean_us": null,
+  "new_after_boot": 669,
+  "new_after_boot_ms": 116272.88,
+  "new_after_boot_mean_us": 173801.01644245142,
+  "pre_gfps": 59.0,
+  "pre_gfps_n": 202
+ },
+ "L2": {
+  "shader_cache": "kept: same apk as this device's previous run",
+  "lines": 580,
+  "init": {
+   "ext": "1",
+   "lib": "1",
+   "fast": "1",
+   "interp": "1",
+   "requested": "0",
+   "mode": "0"
+  },
+  "last_gpl": null,
+  "cleared": false,
+  "pc_ms": 14416.1,
+  "pm": 845.0,
+  "ms_per_miss": 17.060473372781065,
+  "play_mark": false,
+  "kept": true,
+  "boot_t": 72125.525,
+  "stalls": 19,
+  "wipe": "removed",
+  "start": {
+   "title": "43560001",
+   "records": "810",
+   "jobs": "810",
+   "unresolved": "0",
+   "modules": "578",
+   "workers": "3",
+   "pb_workers": "3",
+   "enabled": "1",
+   "setup_ms": "26.5"
+  },
+  "done": {
+   "title": "43560001",
+   "jobs": "810",
+   "ok": "810",
+   "fail": "0",
+   "met": "0",
+   "create_ms": "218488.1",
+   "wall_ms": "73010.5"
+  },
+  "done_t": 71969.574,
+  "saves": {
+   "quiet": 20,
+   "prebuild": 1,
+   "timer": 2
+  },
+  "recs": 842,
+  "known_after_boot": 394,
+  "known_after_boot_ms": 10.077,
+  "known_after_boot_mean_us": 25.576142131979694,
+  "new_after_boot": 83,
+  "new_after_boot_ms": 14393.076,
+  "new_after_boot_mean_us": 173410.55421686746,
+  "pre_gfps": 59,
+  "pre_gfps_n": 223
+ },
+ "factors": {
+  "min_lines": 20,
+  "min_records": 20,
+  "max_unresolved": 0.1,
+  "min_known": 20,
+  "w4_max": 0.1,
+  "w1_max": 0.25,
+  "w3_min": 0.9
+ },
+ "verdicts": {
+  "V": true,
+  "W4_ratio": 0.00014715760963600813,
+  "W4": true,
+  "W1_ratio": 0.10700993338648164,
+  "W1": true,
+  "W2_done_minus_boot_s": -155.95100000000093,
+  "W2": true,
+  "W3_ratio": 1.0,
+  "W3": true,
+  "X": {
+   "done": {
+    "title": "43560001",
+    "jobs": "810",
+    "ok": "810",
+    "fail": "0",
+    "met": "0",
+    "create_ms": "218488.1",
+    "wall_ms": "73010.5"
+   },
+   "new_after_boot": 83,
+   "new_after_boot_ms": 14393.076,
+   "saves_l1": {
+    "quiet": 16,
+    "timer": 7
+   },
+   "saves_l2": {
+    "quiet": 20,
+    "prebuild": 1,
+    "timer": 2
+   },
+   "stalls_l1": 41,
+   "stalls_l2": 19
+  }
+ }
+}

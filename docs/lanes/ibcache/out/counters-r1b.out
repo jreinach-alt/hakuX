@@ -1,0 +1,12 @@
+[jc425] helper caller, 40 lines, 80 s, 0.39M lookups/s
+  ih    0.00%
+  ie    1.50%
+  ip   97.88%
+  is    0.00%
+  ik    0.61%
+  after a miss: QHT found 30962068, none 1197
+[rr425] hc per 2 s window: mean 774082, median 794815 (0.39M/s)
+[ibc507] 1 lines
+  [ibc507] on=1 layout=ok count=0 HAKUX_IBC=(unset)
+  [ibc507] on=1 layout=ok count=0 HAKUX_IBC=(unset)
+pw: 13 samples, battery out 3.83 W (median), USB in 2.11 W (median)

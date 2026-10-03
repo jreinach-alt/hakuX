@@ -1,0 +1,59 @@
+t	state	source	changed	luma	cap_s	action	frame
+0.8	unknown	no-prev		40.0	0.47	wait (unknown)	224927-001-unknown.png
+2.5	intro_video	moving	0.9556	142.8	0.22	press A (skip intro_video)	224928-002-intro_video.png
+4.0	intro_video	moving	0.995	237.7	0.22	press START (skip intro_video)	
+5.5	intro_video	moving	0.995	23.5	0.22	press B (skip intro_video)	
+7.2	title	crop:title		34.1	0.47	settle	224933-005-title.png
+8.9	title	crop:title		34.4	0.42	press A (title 1)	
+10.7	intro_video	moving	0.5781	17.1	0.32	press A (skip intro_video)	224937-007-intro_video.png
+12.3	loading	crop:save-busy		41.7	0.48	wait	224939-008-loading.png
+14.3	profile	crop:save-slots		52.5	0.57	press A (profile 1)	224941-009-profile.png
+16.0	profile	crop:save-slots		52.3	0.57	settle	
+17.9	profile	crop:save-slots		52.2	0.57	press A (profile 2)	
+19.2	black	black		1.4	0.22	wait	224946-012-black.png
+20.5	black	black		1.3	0.27	wait	
+21.7	black	black		0.0	0.22	wait	
+23.0	black	black		3.1	0.22	wait	
+24.7	cutscene	moving	0.7826	82.3	0.27	press A (skip cutscene)	224952-016-cutscene.png
+26.1	black	black		0.0	0.22	wait	224953-017-black.png
+27.9	cutscene	moving	0.6157	17.0	0.42	press A (skip cutscene)	224955-018-cutscene.png
+29.3	black	black		1.6	0.22	wait	224956-019-black.png
+31.1	unknown	hud:hud+after-black	0.9851	48.9	0.67	wait (unknown)	224958-020-unknown.png
+32.9	unknown	hud:hud+between	0.0319	50.2	0.67	wait (unknown)	
+34.7	unknown	hud:hud+between	0.0295	49.0	0.67	wait (unknown)	
+36.8	main_menu	static	0.0168	48.3	0.62	press A (main_menu 1)	225004-023-main_menu.png
+38.5	main_menu	static	0.0202	48.2	0.62	settle	
+40.5	main_menu	static	0.0186	48.3	0.62	press A (main_menu 2)	
+42.5	main_menu	static	0.0183	48.2	0.67	press A (main_menu 3)	
+44.6	main_menu	static	0.0006	48.2	0.67	press A (main_menu 4)	
+46.3	main_menu	static	0.0038	48.1	0.62	settle	
+48.3	main_menu	static	0.0186	48.2	0.62	press A (main_menu 5)	
+50.3	main_menu	static	0.019	48.2	0.67	press A (main_menu 6)	
+52.0	main_menu	static	0.0008	48.1	0.62	settle	
+54.1	main_menu	static	0.0208	48.5	0.67	press A (main_menu 7)	
+56.2	main_menu	static	0.02	48.8	0.67	press A (main_menu 8)	
+58.2	main_menu	static	0.0045	48.3	0.62	press A (main_menu 9)	
+59.9	main_menu	static	0.0083	48.3	0.62	settle	
+61.9	main_menu	static	0.0192	48.7	0.67	press A (main_menu 10)	
+64.0	main_menu	static	0.0198	48.4	0.67	press A (main_menu 11)	
+66.0	main_menu	static	0.0015	48.4	0.67	press A (main_menu 12)	
+68.1	main_menu	static	0.0043	48.3	0.67	press A (main_menu 13)	
+70.2	main_menu	static	0.0008	48.5	0.67	press A (main_menu 14)	
+72.2	main_menu	static	0.0079	48.2	0.67	press A (main_menu 15)	
+74.4	main_menu	static	0.0047	48.2	0.67	press A (main_menu 16)	
+76.4	main_menu	static	0.001	48.2	0.67	press A (main_menu 17)	
+78.5	main_menu	static	0.0037	48.2	0.67	press A (main_menu 18)	
+80.6	main_menu	static	0.0086	48.1	0.67	press A (main_menu 19)	
+82.7	main_menu	static	0.0106	48.2	0.67	press A (main_menu 20)	
+84.4	main_menu	static	0.0088	48.3	0.62	settle	
+86.4	main_menu	static	0.0193	48.2	0.67	press A (main_menu 21)	
+88.5	main_menu	static	0.0189	48.2	0.67	press A (main_menu 22)	
+90.5	main_menu	static	0.0089	48.2	0.67	press A (main_menu 23)	
+92.3	main_menu	static	0.0119	48.4	0.62	settle	
+94.3	main_menu	static	0.0205	48.2	0.67	press A (main_menu 24)	
+96.0	main_menu	static	0.0194	48.3	0.62	settle	
+98.1	main_menu	static	0.0187	48.2	0.67	press A (main_menu 25)	
+99.8	main_menu	static	0.019	48.2	0.67	ROUTE FAIL	225109-055-fail-main_menu.png
+# time_to_title_s=7.0
+# time_to_play_s=
+# result=ROUTE FAIL drive castlevania-cod: main_menu: stuck on main_menu (static) after 25 presses

@@ -1,0 +1,170 @@
+{
+ "profile": "sonic-heroes",
+ "title": "Sonic Heroes",
+ "mode": "find",
+ "result": "reached-play",
+ "seconds": 63.1,
+ "time_to_title_s": 9.2,
+ "time_to_play_s": 41.7,
+ "states_seen": [
+  "logo",
+  "intro_video",
+  "black",
+  "title",
+  "profile",
+  "main_menu",
+  "cutscene",
+  "loading",
+  "unknown",
+  "play"
+ ],
+ "skips": [
+  {
+   "state": "logo",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "intro_video",
+   "presses": 1
+  },
+  {
+   "state": "intro_video",
+   "button": "START",
+   "after_s": 1.7,
+   "landed": "logo",
+   "presses": 2
+  },
+  {
+   "state": "logo",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "black",
+   "presses": 1
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "loading",
+   "presses": 1
+  }
+ ],
+ "inputs": [
+  {
+   "t": 0.6,
+   "state": "logo",
+   "input": "A",
+   "why": "skip logo"
+  },
+  {
+   "t": 2.4,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 4.0,
+   "state": "intro_video",
+   "input": "START",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 5.8,
+   "state": "logo",
+   "input": "A",
+   "why": "skip logo"
+  },
+  {
+   "t": 9.3,
+   "state": "title",
+   "input": "START",
+   "why": "title 1"
+  },
+  {
+   "t": 12.4,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 15.5,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 2"
+  },
+  {
+   "t": 18.7,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 21.8,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 2"
+  },
+  {
+   "t": 24.8,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 3"
+  },
+  {
+   "t": 27.9,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 4"
+  },
+  {
+   "t": 31.2,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 5"
+  },
+  {
+   "t": 33.3,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 39.8,
+   "state": "unknown",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 63.1,
+   "state": "play",
+   "input": "release axes",
+   "why": "left play"
+  }
+ ],
+ "anomalies": [
+  {
+   "t": 5.6,
+   "state": "logo",
+   "after": "intro_video"
+  }
+ ],
+ "classifier_sources": {
+  "crop": 20,
+  "moving": 3,
+  "black": 1,
+  "hud": 11
+ },
+ "model_calls": 0,
+ "play_stretch_frames": [
+  "234342-026-play.png",
+  "234344-027-play.png",
+  "234347-028-play.png",
+  "234349-029-play.png",
+  "234351-030-play.png",
+  "234353-031-play.png",
+  "234356-032-play.png",
+  "234358-033-play.png",
+  "234401-034-play.png",
+  "234403-035-play.png"
+ ],
+ "written_utc": "2026-10-02T06:44:03Z"
+}

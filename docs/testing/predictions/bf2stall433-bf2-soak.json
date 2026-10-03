@@ -1,0 +1,36 @@
+{
+  "registered_utc": "2026-10-02T13:40:00Z",
+  "who": "lane.bf2stall433",
+  "issue": "433",
+  "title": "45410062-Battlefield_2_Modern_Combat.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "bf2mc",
+  "frames_every": 20,
+  "perflog": true,
+  "env": ["PERF_REGIMEN=default"],
+  "runs_per_arm": 3,
+  "a_ref": "b71f92a12a24c118616f568b9ccab05fc7d88588",
+  "b_ref": "57fe561924ffba54efea2780ebbd369405ffa4b8",
+  "queue_order": "Pilot: A1 (a_ref) and B1 (b_ref) first; both read for mark gameplay, rows and the B [vtxmirror] line before the rest is queued. Then A2 A3 B2. B3 is queued on the lane's FINAL head (for the offline fold's head-run check); `git diff b_ref <final head>` must be empty outside docs/, and is checked before it is queued. Each a separate `request.sh --title 45410062-Battlefield_2_Modern_Combat.xiso.iso --route bf2mc --seconds 420 --frames-every 20 --perflog --device nova --hard-pin --env PERF_REGIMEN=default --expect this file` -- collapse433's soak request exactly.",
+  "judge": "python3 docs/lanes/bf2stall433/armread.py --a <A1> <A2> <A3> --b <B1> <B2> <B3> (rows from 45 s before mark gameplay to the end, as collapse433's tables; the script is committed with this file and is not edited after a run lands)",
+  "prediction": "#433 lane.bf2stall433. Battlefield 2's heavy views (BE >= 1800 draws a frame) spend 35-40 ms of GPU time a frame at ~12-14 us per draw, a slope that did not shrink at 1.53x the GPU clock or in sysmem (docs/lanes/collapse433/NOTES.md section 7). Reading the renderer (docs/lanes/bf2stall433/NOTES.md sections 1-2): there is no per-draw barrier, event or render-pass split on master, but every draw's vertex fetch reads the per-frame FRAMEn_VERTEX_RAM buffers, which vk/buffer.c creates HOST_ACCESS_RANDOM. VMA then prefers HOST_CACHED, and on Turnip/KGSL the only cached type on ARM is IO-coherent, so every vertex fetch snoops the CPU caches. That latency belongs to the memory system, not the GPU core clock. B (57fe561924) copies only what was uploaded since the last finish into one device-local buffer, in the aux command buffer, and binds that buffer. If the snoop path is the per-draw cost, heavy-view GPU ms falls by a fifth or more and the per-draw slope with it. If GPU ms does not move, V is refuted as the cause and the per-draw constant reload (U, NOTES section 3) is next. Size if it holds: heavy views 35-40 ms -> under 30, so those windows reach 30 fps (currently 0 of 24 heavy windows at >= 29.5).",
+  "legs": {
+    "M0 (instrument)": "Every run reaches 'mark gameplay' and has >= 15 rows (60-flip windows with hakuX-pace, hakuX-phase GPU and xemu-work BE) from 45 s before the mark to the end. A run without them is VOID, not zero (armread.py prints VOID), and is rerun once within the lane's 6-run budget, or the leg is reported on the runs that exist.",
+    "P0 (premise, the counter in the binary)": "Every B run logs '[vtxmirror] on: ... host type N flags 0x.. cached=1 coherent=1 ...; mirror type M ... host_visible=0'. FAILS if the host copies are not cached-coherent: then there was no snoop to remove, and P1 is read as INERT, not as a refutation of V. A runs log no [vtxmirror] line (master).",
+    "P1 (the per-draw cost, the number that counts)": "Median GPU ms per frame over rows with BE >= 1800, pooled per arm: B/A <= 0.80 PASS; 0.80-0.95 PARTIAL (some of the cost, not most); > 0.95 FAIL: the IO-coherent vertex fetch is not the per-draw cost. For scale, two master runs with different views (collapse433's GMEM and sysmem soaks) read 0.946 on this ratio.",
+    "P2 (slope)": "Least-squares GPU ms = a*BE + c over all rows per arm: a_B <= 0.75 * a_A (A is expected near collapse433's 0.0119).",
+    "P3 (frame rate)": "Heavy-view median window fps B >= A + 2.0, or B's share of heavy windows at >= 29.5 fps exceeds A's by > 0.15. And over all rows (P3b) B's >= 29.5 share is not below A's by more than 0.05 (no regression).",
+    "P4 (cost of the copy)": "Light views (BE < 1200): median GPU ms B <= A*1.05 + 0.5. Transfer GPU ms (phase X) median B <= A + 0.5. [vtxmirror] kb per 120 flips after the first two lines is read and reported; a full-range copy after startup (full= > 0 in mid-run lines) is reported as a finding.",
+    "P5 (resolution)": "Each arm needs >= 8 rows with BE >= 1800. Fewer: P1-P3 are BELOW RESOLUTION, not failed.",
+    "M1 (movement)": "frames_every 20: the frames of each run are read across the whole window and the report says whether the player moved (view changes, ammo/score moving). A run parked against a wall is reported as such; its rows still count, because the bins are by BE, but the report names it."
+  },
+  "must_not_move": [
+    "pixels: docs/testing/predictions/bf2stall433-pixels.json (full golden sweep less the two flip-band suites, one run per arm) and docs/testing/predictions/bf2stall433-band.json (Stencil and Vertex_shader_rounding_tests, three runs per arm), same refs",
+    "no crash, no tombstone in logcat -b crash on any B run; hakuX-pace lines still printed at the end of the window"
+  ],
+  "related": "docs/testing/predictions/bf2stall433-gta-soak.json (the second draw-heavy title; needs Nova runs beyond this lane's 6-run budget)",
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures, so there is no golden key for ab_compare to judge. The legs are read by armread.py off the perflog lines; the content hash recorded at queue time is what makes a widened leg detectable."
+}

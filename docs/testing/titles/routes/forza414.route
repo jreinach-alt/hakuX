@@ -1,3 +1,4 @@
+# state: any   (the survey route's text; lane.savestate433)
 # lane.forza414 (#414): the survey route text exactly as run 0-0-y-1790433159-titleplay-p1-forza
 # played it (its request.json), so a perflog soak reproduces the same race step.
 # The first pass over a title with no route of its own (lane.titleplay).

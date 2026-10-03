@@ -1,0 +1,123 @@
+# state: first-run   (recorded creating the profile; lane.savestate433)
+# Midnight Club 3: DUB Edition (54540079), FIRST RUN: no profile on the
+# Nova. PLAYED by nav.py on the Nova, 2026-09-29 16:33 PDT (lane.titleroutes
+# HELD session midnight-club-3.first-run-20260929T163330).
+#
+#   sponsor splash (A) -> Rockstar/legal text (A) -> a night-city flythrough
+#   FMV, no player control (A) -> the MC3 logo, "Checking saved games" ->
+#   four empty profile slots, CREATE PROFILE highlighted (A) -> "Enter
+#   Profile Name" keyboard with the default "Player 1" and ACCEPT
+#   highlighted (A) -> "Saving progress and settings" -> the main menu
+#   (Career/Arcade/Networking/Race Editor/Options), Career highlighted.
+#
+# The list only moves in fixed-size jumps: a `press DOWN`/`press UP` (the
+# digital d-pad codes 544/545) did NOTHING across several tries; only the
+# left stick moves it, and one `axis LY max` (or `min`) then `mid`, with a
+# gap of >= 0.3 s between them, reliably moves the highlight exactly THREE
+# rows in that direction (wrapping past the ends of the 5-row list) --
+# reproduced with the gap at 0.3 s, 1 s and 3 s. A gap of 0 s (axis max then
+# mid with no wait) moved it only two rows, so this route always leaves a
+# wait. Two down-pulses from Career (row 0) land on Arcade (row 1): 0 -> 3
+# -> 1 mod 5.
+#
+# Arcade -> "San Diego / Cruise / Players: 1 / P1 Stock: Eclipse" (A) ->
+# a settings screen, Time of Day/Weather/Pedestrians/Traffic all Default
+# (A) -> "Start" (A) -> LOADING -> player control: a red coupe parked
+# outside "SIX-ONE-NINE CUSTOMS", minimap, tach and speedo up.
+#
+# Player control: RT accelerates -- the speedo read ~50 mph and the camera
+# showed motion blur and passing buildings within 1.5 s of RT max. The play
+# pattern holds the gas and lets off briefly so a wall or a car can be seen
+# to react, since MC3's roads are not straight.
+#
+# DRAFT, NOT YET REPLAYED CLEAN (2026-09-29). The unattended replay (fresh
+# launch, same session) reached a DIFFERENT frame at `mark gameplay`: a
+# static garage/showcase view of the same car (tire stacks, no HUD), not
+# the street-with-HUD frame the nav session saw. It never left that frame:
+# a probe `press A`, `press START` and over two minutes of the play
+# pattern's `axis RT max` all left it pixel-identical, while
+# `hakuX-stall` logcat kept incrementing (`flip`, `pres`), so the emulator
+# was still rendering, not hung. The nav session waited 13.9 s from the
+# Start press to its street-with-HUD frame (031-loaded2.png); this route
+# marks gameplay after only 9.0 s, which is probably too early and may
+# land the mark mid-transition or feed an input into a state that does not
+# take it. NEXT SESSION: lengthen the wait before `mark gameplay` well
+# past 13.9 s and re-replay before trusting this route or queuing its
+# benchmark. Do not link it in targets.toml until it replays to the
+# street-with-HUD frame.
+wait 2.5
+shot boot
+wait 2.0
+press A
+wait 2.0
+shot legal
+wait 2.0
+press A
+wait 2.0
+shot cinematic
+wait 2.0
+press A
+wait 1.3
+press A
+wait 1.3
+press A
+wait 2.0
+shot logo
+wait 2.0
+press A
+wait 2.0
+shot checking
+wait 3.0
+shot profile-select
+wait 1.0
+mark profile-select
+press A
+wait 2.0
+shot keyboard
+wait 1.0
+mark profile-name
+press A
+wait 2.0
+shot saving
+wait 1.0
+mark profile-saved
+wait 3.0
+shot main-menu
+wait 1.0
+mark main-menu
+axis LY max
+wait 0.5
+axis LY mid
+wait 1.5
+axis LY max
+wait 0.5
+axis LY mid
+wait 1.5
+shot menu-arcade
+wait 1.0
+mark menu-arcade
+press A
+wait 2.0
+shot arcade-ready
+wait 1.0
+mark arcade-ready
+press A
+wait 2.0
+shot settings
+wait 1.0
+press A
+wait 2.0
+shot start-ready
+wait 1.0
+mark start-selected
+press A
+wait 4.0
+shot loading
+wait 5.0
+mark gameplay
+repeat forever {
+    axis RT max
+    wait 2
+    axis RT mid
+    wait 1
+}

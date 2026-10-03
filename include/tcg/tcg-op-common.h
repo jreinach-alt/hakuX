@@ -79,6 +79,16 @@ void tcg_gen_goto_tb(unsigned idx);
  */
 void tcg_gen_lookup_and_goto_ptr(void);
 
+/**
+ * tcg_gen_goto_ptr() - jump to the host code of a TB the front end found
+ * @ptr: host address of a live TB's code (tb->tc.ptr)
+ *
+ * The jump tcg_gen_lookup_and_goto_ptr() ends in, for a front end that did
+ * the lookup itself (#507: an inline jump-cache probe). The caller must not
+ * emit it in a TB with CF_NO_GOTO_PTR.
+ */
+void tcg_gen_goto_ptr(TCGv_ptr ptr);
+
 void tcg_gen_plugin_cb(unsigned from);
 void tcg_gen_plugin_mem_cb(TCGv_i64 addr, unsigned meminfo);
 

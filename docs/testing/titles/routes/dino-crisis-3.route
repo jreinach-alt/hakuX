@@ -1,0 +1,74 @@
+# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
+# Dino Crisis 3 (43430003), Nova. Built from the generic survey
+# 1790928772-titleroutes-2771139 (lane.titleroutes session 65, 2026-10-02),
+# which reached live play and then left it. Read from its route-frames
+# (copied to scratch/judge/), not guessed:
+#   booted (012209): the intro FMV (space station).
+#   cycle 1 (012215 START / 012221 A): START skips the FMV to "PRESS START
+#     BUTTON"; A does nothing there.
+#   cycle 2 (012227 START / 012234 A): START opens NEW GAME / OPTIONS (New
+#     Game highlighted); A picks it -> EASY / NORMAL / HARD (Normal lit).
+#   cycle 3 (012240 START / 012245 A): START confirms Normal (black), then
+#     NOW LOADING.
+#   cycle 4 (012251 START / 012256 A): a starfield FMV (FPS 37).
+#   cycle 5 (012302 START / 012309 A): black, then the first corridor with
+#     the HUD (health/weapon bars) and Patrick standing in it: live play.
+#   cycle 6 (012314 START / 012320 A): the "Game Controls" tutorial pops up
+#     (page 1 BACK=B / NEXT=A, page 2 BACK=B / CLOSE=A).
+#   cycle 7 (012326 START / 012332 A): back in the corridor.
+#   cycle 8 (012337 START): START in play opens OPTIONS, and the survey's
+#     START/A presses never leave it again: the whole scored window was the
+#     Options screen at a steady 29 fps. That is the trap this route avoids.
+# So: the survey's first 7 cycles, then two B presses (B is Cancel in the
+# Options screen and in the tutorial, and Jump in play, so it is harmless
+# wherever it lands), then a play loop with NO START and no BACK. Its A
+# presses (Inspect in play) also step through the tutorial if it is still
+# up. Load times vary between runs; an overshoot lands on Options, which
+# the B presses close.
+# DRAFT until a dispatch run replays it and its frames from the mark on are
+# reviewed.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+repeat 7 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+press A
+wait 2
+press A
+wait 2
+press B
+wait 2
+press B
+wait 3
+shot pre-mark
+mark gameplay               # CHECK: the corridor with the HUD, no tutorial or Options over it
+repeat forever {
+    axis LY min
+    wait 3
+    press X
+    wait 1
+    press A
+    wait 2
+    axis LX max
+    wait 0.8
+    axis LX mid
+    wait 3
+    press X
+    wait 1
+    axis LX min
+    wait 0.8
+    axis LX mid
+    wait 2
+    press B
+    wait 2
+    shot play
+}

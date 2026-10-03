@@ -1,0 +1,149 @@
+{
+ "profile": "buffy",
+ "title": "Buffy the Vampire Slayer",
+ "mode": "find",
+ "result": "reached-play",
+ "seconds": 60.9,
+ "time_to_title_s": 14.3,
+ "time_to_play_s": 39.1,
+ "states_seen": [
+  "unknown",
+  "intro_video",
+  "black",
+  "title",
+  "main_menu",
+  "profile",
+  "cutscene",
+  "play"
+ ],
+ "skips": [
+  {
+   "state": "intro_video",
+   "button": "START",
+   "after_s": 1.9,
+   "landed": "black",
+   "presses": 2
+  },
+  {
+   "state": "intro_video",
+   "button": "START",
+   "after_s": 1.9,
+   "landed": "black",
+   "presses": 2
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "unknown",
+   "presses": 1
+  }
+ ],
+ "inputs": [
+  {
+   "t": 2.0,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 3.9,
+   "state": "intro_video",
+   "input": "START",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 6.9,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 8.8,
+   "state": "intro_video",
+   "input": "START",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 14.4,
+   "state": "title",
+   "input": "START",
+   "why": "title 1"
+  },
+  {
+   "t": 17.9,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 20.1,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 2"
+  },
+  {
+   "t": 23.5,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 26.8,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 2"
+  },
+  {
+   "t": 35.2,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 37.5,
+   "state": "unknown",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 39.4,
+   "state": "play",
+   "input": "hold LY min LX max",
+   "why": "play"
+  },
+  {
+   "t": 46.9,
+   "state": "play",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 54.1,
+   "state": "play",
+   "input": "hold LY min LX min",
+   "why": "play"
+  },
+  {
+   "t": 60.9,
+   "state": "play",
+   "input": "release axes",
+   "why": "left play"
+  }
+ ],
+ "anomalies": [],
+ "classifier_sources": {
+  "no-prev": 1,
+  "moving": 5,
+  "black": 9,
+  "crop": 8,
+  "hud": 4
+ },
+ "model_calls": 0,
+ "play_stretch_frames": [
+  "062946-025-play.png",
+  "062953-026-play.png",
+  "063003-027-play.png"
+ ],
+ "written_utc": "2026-10-02T13:30:03Z"
+}

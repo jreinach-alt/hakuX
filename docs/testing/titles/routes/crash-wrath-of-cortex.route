@@ -1,0 +1,61 @@
+# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
+# Crash Bandicoot: The Wrath of Cortex (56550003). No profile step: NEW GAME
+# is always the first item and asks only for a name. PLAYED by nav.py on the
+# Nova, 2026-09-29 19:43 PDT (lane.titleroutes session 37, HELD; nav session
+# crash-wrath-of-cortex.first-run-20260929T194316).
+#
+# Boot with no input (scratch/replay/bootwatch-194127): copyright and
+# publisher logos 6-19 s, NEW GAME / LOAD GAME from ~26 s to ~52 s after
+# launch, then a "DEMO" level that plays itself (NOT gameplay).
+#
+# A on NEW GAME opens a name entry with "CRASH" filled in and DONE
+# highlighted; A accepts it. Then a load, the intro cutscene (START skips
+# it, ~22 s after the name), a load into the warp room, and a second
+# cutscene on the warp room's monitor (still running 21 s after the first
+# skip; START skips it). A START after that cutscene would open the pause
+# menu, so the second START keeps the nav session's spacing.
+#
+# Gameplay is the warp room hub, not a level: the stick walked Crash across
+# the floor and turned him (frames 015-017). The hub is lighter to render
+# than a level, so its fps is an upper bound on the title's.
+wait 5.0
+shot boot
+wait 27.0
+shot title
+mark title
+press A 150
+wait 4.0
+shot name
+mark name
+press A
+wait 22.0
+shot intro
+press START 150
+wait 28.0
+shot hub-cutscene
+press START 150
+wait 5.0
+shot hub
+mark gameplay
+#
+# The play loop walks toward the camera and side to side, and presses no
+# button: Crash starts in front of the LOAD/SAVE monitor, and the first
+# version of this loop (stick up plus A) walked him back into it and opened
+# the Load/Save menu (scratch/replay/crash-wrath-of-cortex-194543/zz-end.png).
+axis LY max
+wait 1.5
+axis LY mid
+repeat forever {
+    axis LX max
+    wait 1.5
+    axis LX mid
+    axis LY max
+    wait 0.5
+    axis LY mid
+    axis LX min
+    wait 1.5
+    axis LX mid
+    axis LY min
+    wait 0.4
+    axis LY mid
+}

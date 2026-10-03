@@ -20,7 +20,8 @@ costs GPU and CPU and perturbs the frame rate the window measures, so the
 measured window runs blind, and a reviewer judges it from the frames taken
 before the mark and from the verdict.
 
-    nav.py start <name> [--variant first-run|returning]   begin a session
+    nav.py start <name> [--variant first-run|returning]
+                 (--title-id T | --iso NAME | --hdd-img)   begin a session
     nav.py shot [label]            frame -> <session>/<n>-<label>.png
     nav.py press <BTN> [ms] | hold <BTN> | release <BTN> | axis <AX> <val>
     nav.py wait <s>                a deliberate pause, recorded as one
@@ -31,6 +32,14 @@ before the mark and from the verdict.
     nav.py end                     close the session
 
 SERIAL is required, as for pad.sh; NAV_DRY=1 touches no device (selftest).
+
+THE DISK (lane.savestate433). `start` boots the title's composed titles disk
+through titlestate.py prepare -- its golden profile for `returning`, none for
+`first-run` -- exactly as a dispatched run of the route will, so the route
+recorded here meets the same menus there. `end` harvests what the session
+wrote (to the title's `latest`, never its golden) and puts hddPath back.
+`--hdd-img` is hand play on hdd.img, said out loud; then `titlestate.py
+take-hdd` keeps the save.
 Inputs go through perf/pad.sh only: never `input keyevent`, which the app
 takes as an exit (AGENTS.md).
 """
@@ -42,6 +51,7 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 PAD = os.path.join(HERE, "..", "perf", "pad.sh")
 ROOT = os.environ.get("NAV_DIR", os.path.join(
     os.environ.get("HAKUX_WORK", "/home/justin/hakux-work"), "nav"))
@@ -160,6 +170,45 @@ def emit_route(sdir):
     return "\n".join(out) + "\n"
 
 
+def device_label():
+    import titlestate
+    serial = os.environ.get("SERIAL", "")
+    return {v: k for k, v in titlestate.SERIALS.items()}.get(serial)
+
+
+def prepare_disk(variant, tid, iso, hdd_img):
+    """The session's disk: the title's golden for `returning`, none for
+    `first-run` (titlestate.py prepare). None in NAV_DRY or on --hdd-img."""
+    if dry():
+        return None
+    if hdd_img:
+        print("nav.py: hand play on hdd.img (--hdd-img): the route recorded here assumes whatever "
+              "hdd.img holds; afterwards `titlestate.py take-hdd` keeps the save", file=sys.stderr)
+        return {"path": "hdd.img", "split": "off: --hdd-img"}
+    import titlestate
+    tid = tid or (titlestate.tid_for_iso(iso) if iso else None)
+    if not tid:
+        die("start needs --title-id T (or an --iso targets.toml knows) so the session boots the title's "
+            "composed disk, or --hdd-img for hand play on hdd.img")
+    dev = device_label()
+    if not dev:
+        die(f"SERIAL {os.environ.get('SERIAL')!r} is not a handheld titlestate knows")
+    state = variant if variant in ("first-run", "returning") else "any"
+    return titlestate.prepare(dev, titlestate.tid_norm(tid), state,
+                              log=lambda m: print(m, file=sys.stderr))
+
+
+def release_disk(sdir):
+    try:
+        hdd = json.load(open(os.path.join(sdir, "session.json"))).get("hdd") or {}
+    except (OSError, ValueError):
+        return
+    if dry() or hdd.get("split") != "on":
+        return
+    import titlestate
+    titlestate.release(device_label(), hdd.get("run"), log=lambda m: print(m, file=sys.stderr))
+
+
 def main(argv):
     if not argv:
         die(__doc__)
@@ -172,11 +221,21 @@ def main(argv):
             i = args.index("--variant")
             variant = args[i + 1]
             args = args[:i] + args[i + 2:]
+        opt = {}
+        for k in ("--title-id", "--iso"):
+            if k in args:
+                i = args.index(k)
+                opt[k] = args[i + 1]
+                args = args[:i] + args[i + 2:]
+        hdd_img = "--hdd-img" in args
+        args = [a for a in args if a != "--hdd-img"]
         name = args[0]
+        hdd = prepare_disk(variant, opt.get("--title-id"), opt.get("--iso"), hdd_img)
         sid = f"{name}.{variant}-{time.strftime('%Y%m%dT%H%M%S')}"
         sdir = os.path.join(ROOT, sid)
         os.makedirs(sdir)
         json.dump({"name": name, "variant": variant, "device": os.environ.get("SERIAL"),
+                   "hdd": hdd,
                    "started": time.strftime("%Y-%m-%d %H:%M:%S %Z"), "t0": time.time()},
                   open(os.path.join(sdir, "session.json"), "w"), indent=1)
         open(os.path.join(sdir, "nav.tsv"), "w").close()
@@ -227,6 +286,7 @@ def main(argv):
         sys.stdout.write(emit_route(sdir))
         return 0
     if verb == "end":
+        release_disk(sdir)
         os.remove(CURRENT)
         print(sdir)
         return 0

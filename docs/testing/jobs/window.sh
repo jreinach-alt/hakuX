@@ -146,10 +146,22 @@ window_note_limit() {   # <who> <log>
 # THE WEEK'S START IS A DECLARATION, NOT A MEASUREMENT. The account's weekly
 # window resets on its own anchor, which is not visible from this host, and a
 # wrong anchor makes the reserve either permanent or useless. WEEK_ANCHOR (a
-# three-letter day, default Mon) and WEEK_ANCHOR_HOUR (UTC, default 0) are in
-# $WORK/limits.env, the status page prints the start it used, and the rule is
-# built so that being wrong by a day or two costs at most a shifted reserve
-# window rather than a stopped fleet.
+# three-letter day, default Thu) and WEEK_ANCHOR_HOUR (default 21) name a
+# clock time IN WEEK_ANCHOR_TZ (default America/Los_Angeles, NOT UTC -- the
+# owner's 2026-10-02 10:10 PDT decision: the account's week resets Thursday
+# 21:00 Pacific). All three are in $WORK/limits.env, the status page prints
+# the start it used, and the rule is built so that being wrong by a day or
+# two costs at most a shifted reserve window rather than a stopped fleet.
+#
+# WHY A NAMED ZONE AND NOT A UTC HOUR. A fixed UTC hour drifts by one real
+# hour, relative to the owner's wall clock, every time Los Angeles crosses a
+# DST boundary -- the anchor would land at 20:00 or 22:00 Pacific for several
+# months of the year instead of 21:00. zoneinfo converts the wall-clock
+# anchor to UTC fresh each time this runs, so it tracks the clock the owner
+# actually reads rather than the offset that happened to be in effect when
+# the dial was set. Same reasoning as jobs/localtime.sh's display zone; a
+# host with no tzdata (or an unresolvable name) falls back to UTC rather than
+# silently mislabelling the anchor.
 window_check() {
     WINDOW_DEFER=0; WINDOW_WHY=""; WINDOW_UNTIL=""; WINDOW_FACTS=""; WINDOW_ZONE=0
     local out
@@ -157,13 +169,18 @@ window_check() {
         HAKUX_WORK="$WORK" \
         HAKUX_NOW="${HAKUX_NOW:-}" \
         WINDOW_COOLDOWN_MIN="${WINDOW_COOLDOWN_MIN:-30}" \
-        WEEK_ANCHOR="${WEEK_ANCHOR:-Mon}" \
-        WEEK_ANCHOR_HOUR="${WEEK_ANCHOR_HOUR:-0}" \
+        WEEK_ANCHOR="${WEEK_ANCHOR:-Thu}" \
+        WEEK_ANCHOR_HOUR="${WEEK_ANCHOR_HOUR:-21}" \
+        WEEK_ANCHOR_TZ="${WEEK_ANCHOR_TZ:-America/Los_Angeles}" \
         WEEK_RESERVE="${WEEK_RESERVE:-0.2}" \
         WEEK_SPEND_BUDGET="${WEEK_SPEND_BUDGET:-}" \
         WEEK_LIMIT_HITS="${WEEK_LIMIT_HITS:-2}" \
         python3 - <<'PY' 2>/dev/null
 import datetime, glob, os, sys
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None
 
 W = os.environ["HAKUX_WORK"]
 def num(name, dflt):
@@ -187,14 +204,22 @@ def epoch(s):
 # ---- the week this control is reasoning about
 DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 try:
-    anchor = DAYS.index(os.environ.get("WEEK_ANCHOR", "Mon")[:3].title())
+    anchor = DAYS.index(os.environ.get("WEEK_ANCHOR", "Thu")[:3].title())
 except ValueError:
-    anchor = 0
-d = datetime.datetime.fromtimestamp(now, UTC).replace(
-    hour=int(num("WEEK_ANCHOR_HOUR", 0)), minute=0, second=0, microsecond=0)
-start = int((d - datetime.timedelta(days=(d.weekday() - anchor) % 7)).timestamp())
-if start > now:
-    start -= 7 * 86400
+    anchor = 3
+tzname = os.environ.get("WEEK_ANCHOR_TZ", "America/Los_Angeles")
+zone = UTC
+if ZoneInfo is not None:
+    try:
+        zone = ZoneInfo(tzname)
+    except Exception:
+        zone = UTC
+now_local = datetime.datetime.fromtimestamp(now, zone)
+d = now_local.replace(hour=int(num("WEEK_ANCHOR_HOUR", 21)), minute=0, second=0, microsecond=0)
+start_local = d - datetime.timedelta(days=(d.weekday() - anchor) % 7)
+if start_local > now_local:
+    start_local -= datetime.timedelta(days=7)
+start = int(start_local.timestamp())
 week_end = start + 7 * 86400
 elapsed = (now - start) / (7.0 * 86400)
 

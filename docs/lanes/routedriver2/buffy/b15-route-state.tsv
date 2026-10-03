@@ -1,0 +1,59 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.4	unknown	no-prev		8.6	0.37	wait (unknown)	063602-001-unknown.png	
+1.9	intro_video	moving	0.3015	3.8	0.27	press A (skip intro_video)	063603-002-intro_video.png	
+3.6	black	black		2.2	0.22	wait	063605-003-black.png	
+5.0	intro_video	moving	0.1807	9.7	0.27	press A (skip intro_video)	063606-004-intro_video.png	
+6.9	intro_video	moving	0.6265	37.6	0.47	press START (skip intro_video)	063608-005-intro_video.png	
+8.5	black	black		0.1	0.22	wait	063610-006-black.png	
+9.8	black	black		0.8	0.22	wait	063612-007-black.png	
+11.1	black	black		1.5	0.22	wait	063613-008-black.png	
+12.4	title	crop:title		11.8	0.34	press START (title 1)	063615-009-title.png	
+14.3	main_menu	crop:main-menu		30.2	0.47	settle	063617-010-main_menu.png	
+15.9	main_menu	crop:main-menu		30.3	0.47	press LY:max (main_menu 1)	063619-011-main_menu.png	
+18.1	main_menu	crop:main-menu		32.3	0.47	press LY:max (main_menu 2)	063621-012-main_menu.png	
+20.2	main_menu	crop:main-menu		33.1	0.47	press A (main_menu 3)	063623-013-main_menu.png	
+22.0	cutscene	moving	0.5054	26.6	0.42	press A (skip cutscene)	063625-014-cutscene.png	
+23.6	black	black		0.0	0.17	wait	063626-015-black.png	
+24.9	black	black		1.3	0.22	wait	063627-016-black.png	
+26.2	black	black		0.3	0.22	wait	063628-017-black.png	
+27.4	black	black		0.0	0.22	wait	063630-018-black.png	
+28.7	black	black		0.0	0.27	wait	063631-019-black.png	
+29.9	cutscene	moving	0.1971	5.3	0.22	press A (skip cutscene)	063633-020-cutscene.png	
+31.7	black	black		0.0	0.27	wait	063634-021-black.png	
+33.1	cutscene	moving	0.2249	9.6	0.32	press A (skip cutscene)	063636-022-cutscene.png	
+34.8	black	black		0.0	0.22	wait	063637-023-black.png	
+36.1	black	black		2.5	0.22	wait	063638-024-black.png	
+37.4	black	black		0.0	0.22	wait	063640-025-black.png	
+38.7	black	flat		3.1	0.22	wait	063641-026-black.png	
+39.9	main_menu	static	0.021	4.5	0.22	press LY:max (main_menu 1)	063643-027-main_menu.png	
+42.1	cutscene	moving	0.4618	15.1	0.32	press A (skip cutscene)	063646-028-cutscene.png	
+43.8	black	black		0.0	0.27	wait	063648-029-black.png	
+45.2	cutscene	moving	0.2215	9.6	0.32	press A (skip cutscene)	063649-030-cutscene.png	
+46.8	black	black		0.0	0.22	wait	063651-031-black.png	
+48.1	black	black		2.3	0.22	wait	063652-032-black.png	
+49.4	black	black		0.3	0.22	wait	063653-033-black.png	
+50.6	black	black		0.0	0.22	wait	063654-034-black.png	
+51.9	cutscene	moving	0.1573	4.2	0.27	press A (skip cutscene)	063656-035-cutscene.png	
+53.6	black	black		0.0	0.22	wait	063657-036-black.png	
+55.1	cutscene	moving	0.6409	12.6	0.32	press A (skip cutscene)	063659-037-cutscene.png	
+56.8	black	black		0.0	0.22	wait	063701-038-black.png	
+58.1	black	black		2.2	0.22	wait	063702-039-black.png	
+59.3	black	black		0.3	0.22	wait	063703-040-black.png	
+60.6	black	black		0.0	0.22	wait	063704-041-black.png	
+61.8	cutscene	moving	0.0892	3.4	0.22	press A (skip cutscene)	063706-042-cutscene.png	
+63.5	black	black		0.0	0.22	wait	063707-043-black.png	
+64.9	cutscene	moving	0.0886	6.9	0.27	press A (skip cutscene)	063709-044-cutscene.png	
+66.5	black	black		0.0	0.17	wait	063710-045-black.png	
+67.8	black	black		2.0	0.22	wait	063711-046-black.png	
+69.0	black	black		0.2	0.22	wait	063713-047-black.png	
+70.2	black	black		0.0	0.22	wait	063714-048-black.png	
+71.5	cutscene	moving	0.1516	4.1	0.23	press A (skip cutscene)	063716-049-cutscene.png	
+73.2	black	black		0.0	0.22	wait	063717-050-black.png	
+74.6	cutscene	moving	0.4595	11.4	0.27	press A (skip cutscene)	063720-051-cutscene.png	
+76.2	black	black		0.0	0.22	wait	063721-052-black.png	
+77.6	black	black		2.3	0.22	wait	063723-053-black.png	
+78.8	black	black		0.3	0.22	wait	063724-054-black.png	
+80.1	black	black		0.0	0.22	wait	063725-055-black.png	
+# time_to_title_s=12.5
+# time_to_play_s=
+# result=window-done
