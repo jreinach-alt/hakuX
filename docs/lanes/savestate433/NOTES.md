@@ -163,9 +163,27 @@ The ten in flight (`inflight.py`, 20:20 PDT):
 | 007 Nightfire | 45410026 | faf449621348 proposed (settings only) | nightfire | first-run | OK |
 | Castlevania | 4B4E002D | 20235e93867b proposed (slot-1 save) | castlevania-cod -> .returning | returning | OK after the save-directory rule (was the 10-01 void) |
 
-## Device proof
+## Device proof (Nova, held 20:25-20:30 PDT, 2 boots of the 4 allowed)
 
-(filled in below when it completes)
+`proof_tron.sh`: Tron 2.0 (42560001) on the Nova, with `hold.sh` and the
+held-session path (`titlestate.py prepare` / `release`). The route is
+`tron-menu.route`: vcpuwait433's tron-newgame v5, cut at the Single Player menu.
+
+| state | loaded (hdd.json) | disk | Single Player menu (`menu-cursor`) |
+|---|---|---|---|
+| returning | golden `5489ae7f9b58` (2 autosaves) | build, keep; 18.1 MB | cursor on **Auto Load**; Load Game enabled (`proof-tron-returning-menu.png`) |
+| first-run | none | build, keep; 17.2 MB | Auto Load and Load Game **greyed**, cursor on **New Game** (`proof-tron-first-run-menu.png`) |
+
+Those are the two states of the 18:46 void (tron1: "Auto Load and Load Game
+are greyed and the cursor starts on New Game"). Now the request picks the
+state, not the last run. Both releases harvested with no errors.
+
+- The first-run's leftover (`d2aff0a53543`, title data only) went to Tron's
+  `latest`, and the golden is unchanged.
+- hddPath went back to hdd.img, and the marker was removed.
+- Battery 80% at the start.
+
+The composed disk (every title's golden) is 17-18 MB, so the push takes seconds.
 
 ## Checks run
 
