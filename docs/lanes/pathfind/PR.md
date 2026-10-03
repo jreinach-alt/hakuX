@@ -1,12 +1,20 @@
 # pathfind: a screen-reading agent that drives a title from boot into gameplay
 
-State: ready
+State: draft
 
 Lane: pathfind            Issue: #433
-Base: master @ 66bce0c222
-Files: docs/lanes/pathfind/NOTES.md, docs/lanes/pathfind/OUTBOX.md, docs/lanes/pathfind/PR.md, docs/lanes/pathfind/batch.sh, docs/lanes/pathfind/runs/, docs/lanes/pathfind/scoreboard.py, docs/lanes/pathfind/sigcmp.py, docs/testing/titles/pathfind.py, docs/testing/titles/pathfind_selftest.py, docs/testing/titles/pathknow/hints/learned-pub-4947.md, docs/testing/titles/pathknow/hints/learned-pub-4C41.md, docs/testing/titles/pathknow/hints/learned-pub-4D53.md, docs/testing/titles/pathknow/hints/learned-pub-5345.md, docs/testing/titles/pathknow/hints/learned-pub-5443.md, docs/testing/titles/pathknow/hints/learned-pub-5454.md, docs/testing/titles/pathknow/hints/learned-pub-5655.md, docs/testing/titles/pathknow/hints/learned-pub-5849.md, docs/testing/titles/pathknow/hints/learned-series-blinx.md, docs/testing/titles/pathknow/hints/learned-series-espn-2k5.md, docs/testing/titles/pathknow/hints/learned-series-midnight-club.md, docs/testing/titles/pathknow/hints/learned-series-ninja-gaiden.md, docs/testing/titles/pathknow/paths/
+Base: master @ 5661db4f2b (merged 10-03; attempt 2)
+Files: docs/lanes/pathfind/NOTES.md, docs/lanes/pathfind/OUTBOX.md, docs/lanes/pathfind/PR.md, docs/lanes/pathfind/runs/conker/calls.jsonl, docs/lanes/pathfind/runs/conker/last_frame.jpg, docs/lanes/pathfind/runs/conker/result.json, docs/lanes/pathfind/runs/conker/steps.jsonl, docs/lanes/pathfind/runs/conker/strip.jpg, docs/lanes/pathfind/runs/ghoulies/calls.jsonl, docs/lanes/pathfind/runs/ghoulies/gameplay_frame.jpg, docs/lanes/pathfind/runs/ghoulies/last_frame.jpg, docs/lanes/pathfind/runs/ghoulies/result.json, docs/lanes/pathfind/runs/ghoulies/steps.jsonl, docs/lanes/pathfind/runs/ghoulies/strip.jpg, docs/lanes/pathfind/runs/tiger-woods-pga-tour-2004.baseline/calls.jsonl, docs/lanes/pathfind/runs/tiger-woods-pga-tour-2004.baseline/gameplay_frame.jpg, docs/lanes/pathfind/runs/tiger-woods-pga-tour-2004.baseline/last_frame.jpg, docs/lanes/pathfind/runs/tiger-woods-pga-tour-2004.baseline/result.json, docs/lanes/pathfind/runs/tiger-woods-pga-tour-2004.baseline/steps.jsonl, docs/lanes/pathfind/runs/tiger-woods-pga-tour-2004.baseline/strip.jpg, docs/lanes/pathfind/runs/tiger-woods-pga-tour-2005.guided/calls.jsonl, docs/lanes/pathfind/runs/tiger-woods-pga-tour-2005.guided/result.json, docs/lanes/pathfind/runs/tiger-woods-pga-tour-2005.guided/steps.jsonl, docs/lanes/pathfind/runs/tiger-woods-pga-tour-2005.guided/strip.jpg, docs/lanes/pathfind/runs/tork/calls.jsonl, docs/lanes/pathfind/runs/tork/gameplay_frame.jpg, docs/lanes/pathfind/runs/tork/last_frame.jpg, docs/lanes/pathfind/runs/tork/result.json, docs/lanes/pathfind/runs/tork/steps.jsonl, docs/lanes/pathfind/runs/tork/strip.jpg, docs/testing/titles/pathfind.py, docs/testing/titles/pathfind_selftest.py, docs/testing/titles/pathknow/hints/learned-pub-4541.md, docs/testing/titles/pathknow/hints/learned-pub-4D53.md, docs/testing/titles/pathknow/hints/learned-pub-5553.md, docs/testing/titles/pathknow/hints/learned-series-tiger-woods.md, docs/testing/titles/pathknow/paths/4541003A.json, docs/testing/titles/pathknow/paths/45410054.json, docs/testing/titles/pathknow/paths/4D530051.json, docs/testing/titles/pathknow/paths/4D530053.json, docs/testing/titles/pathknow/paths/55530040.json
 Prediction: none: no arm (tooling; no emulator code)
 Needs device: yes (held, direct driving; no dispatcher requests)    Needs NDK: no
+
+Attempt 2 (10-03): hold-play (`pathfind.py --hold-s 600`, Nova only). After the claim, a model-free genre loop keeps
+play going (drive, attack, rally, on-rails, other; the model names the genre once). The model reads the screen only
+when play may have ended (black, or a frame identical to the last), every 90 s, and after each step while off play,
+where its own inputs steer back, up to 12 steps. Frames every 30 s. The right stick is a new token, RSTICK. Opus is
+off today: STRONG defaults to Sonnet 5. Selftest: all ok, including two hold cases on a fake clock. On saved real
+frames: the in-play check 3/3, the genre 4/4. Held device runs wait for savestate433's fold (titlestate prepare);
+nothing is queued yet. Also recorded: the 10-02 late runs (Ghoulies, Tork gameplay; Conker gave up). See NOTES.md.
 
 `docs/testing/titles/pathfind.py <title> [--device nova|thor] [--budget-min 15] --out <dir>` launches a
 title cold and loops screencap -> model -> pad input -> wait. The model is called through `claude -p` with

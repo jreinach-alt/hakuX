@@ -91,3 +91,18 @@ ESPN run is cut by the 70 C stop about 4 min in.
 character never moves under any stick, d-pad or button input (2 runs, 30+ probes each, idle animation only).
 Frames: scratch run dirs, summary in docs/lanes/pathfind/runs/blinx-2.*. Next: the rest of the lot on the
 Nova (Conker, Ghoulies, Tork, DOAX, JSRF, Halo 2, ...), Tiger Woods 2004 on the Thor.
+
+## #433 -- 2026-10-03 06:58 PDT
+
+[lane.pathfind] waiting: hold-play is built and selftested (`pathfind.py --hold-s 600`, Nova only: after the claim, a
+model-free genre loop keeps the player in play, with frames every 30 s). On saved real frames the in-play check read
+3 of 3 right (play, title splash, pause) and the genre read 4 of 4 right (Midnight Club 3 drive, Top Spin rally,
+Panzer Dragoon Orta on-rails, Counter-Strike attack). Model: Sonnet only today; Opus is off.
+
+No held run yet. Every held run starts from its golden profile (`titlestate.py prepare`), which arrives with the
+savestate433 fold, and that is not on master at 06:58. Nothing is queued on the Nova. When it folds, I merge master and
+run the pool in P order, Black Stone first, each for 600 s held: Black Stone, Panzer Dragoon Orta, Midnight Club 3, Top
+Spin, Spikeout, Amped 2, Counter-Strike.
+
+Also recorded from the 10-02 late session, which never reached this file: Ghoulies gameplay in 2.35 min (11 calls),
+Tork gameplay in 4.41 min (19 calls), Conker gave up at 15 min (23 calls, black after a level load). See NOTES.md.

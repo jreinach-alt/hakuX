@@ -18,6 +18,11 @@ menu cursor, not a cutscene or attract demo running by itself). A 60-fps
 menu is not gameplay: that was the old pipeline's main false pass (CAPA T6,
 T14). Then 30 s more frames (20 s on the Thor, whose fan is dead), stop.
 
+--hold-s N (Nova only) keeps going after the claim: a model-free genre loop of inputs (drive, attack, rally,
+on-rails, other, named once by the model) runs while the screen is play, the model reads the screen only when
+play may have ended or every 90 s, and it steers back to play with its own inputs. Frames every 30 s, and the
+run is held when N seconds of play are judged (hold.jsonl, hold_strip.jpg, result.json "hold").
+
 Cheap checks avoid a model call: a black frame waits; a static frame after
 a `wait` on a loading screen waits again; a recorded path's step whose frame
 signature matches the screen replays its action. Never the same input on
@@ -67,7 +72,9 @@ ACT = PKG + "/com.rfandango.haku_x.LauncherActivity"
 # answered in 3.5-3.9 s (70-80 output tokens), Haiku 4.5 in 6.4-9.1 s (430-500, most of it thinking),
 # and Haiku had looped 8 times on a Yes/No dialog in Midnight Club 3. Opus 5.5 when stuck.
 FAST = os.environ.get("PATHFIND_FAST", "claude-sonnet-5")
-STRONG = os.environ.get("PATHFIND_STRONG", "claude-opus-5-5")
+# Opus 5.5 is the stronger step model, but the owner held Opus for token burn on 10-02 and navigation resumed on
+# Sonnet only for 10-03 (lane.local addendum 2: Sonnet only, <= $25). Restore Opus when that hold lifts.
+STRONG = os.environ.get("PATHFIND_STRONG", "claude-sonnet-5")
 STATES = ("intro_video", "publisher_logo", "title_screen", "main_menu", "submenu", "profile_creation",
           "name_entry", "save_load_prompt", "controller_prompt", "loading", "cutscene", "pause",
           "gameplay", "results", "game_over", "black", "fatal_error", "unknown")
@@ -75,6 +82,8 @@ BUTTONS = ("A", "B", "X", "Y", "START", "BACK", "UP", "DOWN", "LEFT", "RIGHT", "
 STICK = {"up": (("LY", "min"),), "down": (("LY", "max"),), "left": (("LX", "min"),),
          "right": (("LX", "max"),), "upleft": (("LY", "min"), ("LX", "min")),
          "upright": (("LY", "min"), ("LX", "max"))}
+# The right stick, at FULL deflection: Blinx 2 (10-02) did not yaw the camera below about a third.
+RSTICK = {"up": (("RY", "min"),), "down": (("RY", "max"),), "left": (("RX", "min"),), "right": (("RX", "max"),)}
 # The d-pad BUTTONS (544-547) do nothing in hakuX: the pad's d-pad is the hat, and a back-to-back
 # `axis HATY max` / `axis HATY mid` moves a menu ONE row (routes/midnight-club-3.returning.route).
 HAT = {"UP": ("HATY", "min"), "DOWN": ("HATY", "max"), "LEFT": ("HATX", "min"), "RIGHT": ("HATX", "max")}
@@ -88,6 +97,18 @@ BLACK_MODEL_S = 40                   # seconds of black before the model is aske
 BLACK_HANG_S = float(os.environ.get("PATHFIND_BLACK_HANG_S", 180))                  # continuous black this long ends the run (Conker, 10-02: 8+ min black
                                      # after a level load, inputs every 5 s changing nothing)
 THOR_START_C, THOR_STOP_C = 55.0, 70.0
+# Hold-play (10-03): after the claim, keep the player in play. The inputs are a model-free loop per genre;
+# the model reads the screen only when play may have ended, every HOLD_CHECK_S, and once for the genre.
+HOLD_FRAME_S = 30                    # a kept frame every this many seconds of hold
+HOLD_CHECK_S = 90                    # the model reads the screen at least this often while holding
+HOLD_NAV_MAX = 12                    # model-steered steps back to play in one episode before the hold gives up
+HOLD_GENRES = {
+    "drive": ["RT:2", "STICK:left:0.8", "STICK:right:0.8"],
+    "attack": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"],
+    "rally": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"],
+    "onrails": [],                   # the scene moves on its own: send nothing, watch it
+    "other": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"],
+}
 
 
 def now():
@@ -630,10 +651,11 @@ def clean_action(a):
         up = tok.upper()
         if up in BUTTONS or up in ("SELECT", "BACK"):
             out.append("BACK" if up == "SELECT" else up)
-        elif re.fullmatch(r"(STICK:(up|down|left|right|upleft|upright)|RT|LT|HOLD:[A-Z0-9]+):[0-9.]+", tok, re.I):
+        elif re.fullmatch(r"(STICK:(up|down|left|right|upleft|upright)|RSTICK:(up|down|left|right)|RT|LT"
+                          r"|HOLD:[A-Z0-9]+):[0-9.]+", tok, re.I):
             parts = tok.split(":")
             parts[0] = parts[0].upper()
-            if parts[0] == "STICK":
+            if parts[0] in ("STICK", "RSTICK"):
                 parts[1] = parts[1].lower()
             if parts[0] == "HOLD":
                 parts[1] = parts[1].upper()
@@ -660,6 +682,7 @@ class Agent:
         self.hints = knowledge(tid, name)
         self.probes = 0
         self.black_since = None
+        self.hold_s = 0              # hold-play: seconds of play to hold after the claim (0: off)
         self.result = {"title_id": tid, "name": name, "device": dev.label, "iso": iso, "result": "running",
                        "tool": subprocess.run(["git", "hash-object", os.path.abspath(__file__)], capture_output=True,
                                               text=True).stdout.strip()[:10],
@@ -701,8 +724,8 @@ class Agent:
                 continue
             parts = tok.split(":")
             secs = float(parts[-1])
-            if parts[0] == "STICK":
-                axes = STICK[parts[1]]
+            if parts[0] in ("STICK", "RSTICK"):
+                axes = (STICK if parts[0] == "STICK" else RSTICK)[parts[1]]
                 for ax, v in axes:
                     self.dev.pad("axis", ax, v)
                 time.sleep(secs)
@@ -1113,7 +1136,122 @@ class Agent:
         if self.record:
             self.result["learned"] = [os.path.relpath(f, KNOW) for f in
                                       learn(self.tid, self.name, self.dev.label, self.steps, mins)]
+        if self.hold_s:
+            return self.hold_play(jpg)
         return self.finish(last=jpg, post=post)
+
+    # -- hold-play: keep the player in play, then judge the frames
+    def hold_look(self, jpg, genre):
+        """The model reads the screen: is the player in live play, and if not, what gets back to it?"""
+        return self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game. The 'FPS: NN' text at the top-left is the emulator's "
+            f"overlay, not the game's HUD. An agent is keeping the player playing (genre: {genre}). Read the "
+            "screen. Is the player in live play right now (the player's character, vehicle or ball in the game "
+            "world, the game running)? A menu cursor, a pause screen, a cutscene, a loading screen, a results or "
+            "game-over screen, or a black screen is NOT play. If it is not play, which input gets back to it? "
+            'Answer JSON only: {"state": "gameplay|pause|game_over|results|menu|cutscene|loading|black|other", '
+            '"in_play": true|false, "why": "<one line>", "action": [inputs, e.g. "START", "A", '
+            '"STICK:down:0.5"], "wait_s": <number>}'), "hold-check", [jpg]) or {}
+
+    def hold_genre(self, jpg):
+        """One model look, once per hold: which genre loop fits this play."""
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game, in gameplay. The 'FPS: NN' text at the top-left is the "
+            "emulator's overlay, not the game's HUD. What kind of play is this? Answer JSON only: "
+            '{"genre": "drive|attack|rally|onrails|other", "why": "<one line>"}. drive: a car, bike, boat or '
+            "plane moving through a world; attack: a character fighting or shooting; rally: a ball, puck, "
+            "racket or shuttle played back and forth; onrails: the scene moves on its own and the player only "
+            "aims; other: anything else."), "genre", [jpg]) or {}
+        return ans.get("genre") if ans.get("genre") in HOLD_GENRES else "other", str(ans.get("why", ""))[:160]
+
+    def hold_play(self, jpg):
+        """Keep play going for self.hold_s seconds of play, judged from the frames.
+
+        A model-free genre loop of inputs runs while the screen is play. The model reads the screen only
+        when play may have ended (black, or static on two looks in a row), every HOLD_CHECK_S, and once to
+        name the genre. Off play, the model's own inputs steer back, one model look per step, until it reads
+        play again. A frame is kept every HOLD_FRAME_S; the rest are deleted."""
+        genre, genre_why = self.hold_genre(jpg)
+        tokens = HOLD_GENRES[genre]
+        log = os.path.join(self.out, "hold.jsonl")
+        held = {"genre": genre, "why": genre_why}
+        print(f"hold-play: genre {genre}, need {self.hold_s:.0f} s of play", flush=True)
+        kept, play_s, navs, nav = [], 0.0, 0, 0
+        still, off, reason = 0, False, ""
+        last_png, last_check, last_kept, drop = None, now(), None, []
+        t_hold = now()
+        t_prev = t_hold
+        while play_s < self.hold_s and self.el() < self.budget_s:
+            self.n += 1
+            png, jp = self.frame("hold")
+            if not png:
+                time.sleep(2)
+                continue
+            if not self.dev.foreground():
+                reason = "hakuX left the foreground during the hold"
+                break
+            t = now()
+            hold_el = t - t_hold
+            dt, t_prev = t - t_prev, t
+            ch = changed(last_png, png) if last_png else None
+            still = still + 1 if ch is not None and ch <= UNCHANGED else 0
+            suspect = is_black(png) or still >= 2
+            look = {"n": self.n, "hold_s": round(hold_el, 1), "play_s": round(play_s, 1),
+                    "changed": None if ch is None else round(ch, 4), "off": off}
+            if off or suspect or t - last_check >= HOLD_CHECK_S:
+                last_check = t
+                a = self.hold_look(jp, genre)
+                off = a.get("in_play") is not True
+                look.update(src="check", state=a.get("state"), why=str(a.get("why", ""))[:160])
+                if off:
+                    nav += 1
+                    navs += 1
+                    if nav > HOLD_NAV_MAX:
+                        reason = f"off play for {nav} steps: {a.get('state')} ({a.get('why', '')})"[:240]
+                        self.hold_note(log, dict(look, action=[]))
+                        break
+                    action = clean_action(a.get("action"))
+                    try:
+                        wait_s = min(max(float(a.get("wait_s") or 2), 0.5), 8)
+                    except (TypeError, ValueError):
+                        wait_s = 2.0
+                    look["action"] = action
+                    self.send(action)
+                    time.sleep(wait_s)
+                else:
+                    nav = 0
+            if not off and look.get("action") is None:
+                # play: the genre loop (a check look that said play sends it too)
+                look.update(src=look.get("src", "genre"), action=tokens)
+                self.send(tokens)
+                play_s += dt
+            keep = last_kept is None or hold_el - last_kept >= HOLD_FRAME_S
+            if keep:
+                last_kept = hold_el
+                kept.append(jp)
+            # the previous look's frame is spent now: this look has been measured against it
+            for p in drop:
+                os.remove(p)
+            drop = [] if keep else [png, jp]
+            look.update(play_s=round(play_s, 1), kept=keep)
+            self.hold_note(log, look)
+            last_png = png
+        for p in drop:
+            os.remove(p)
+        ok = play_s >= self.hold_s
+        if not ok and not reason:
+            reason = f"budget {self.budget_s / 60:.0f} min with {play_s:.0f} s of play"
+        held.update(ok=ok, play_s=round(play_s, 1), need_s=self.hold_s, hold_s=round(now() - t_hold, 1),
+                    model_navs=navs, frames=len(kept), reason=reason)
+        self.result["hold"] = held
+        print(f"hold-play: {'HELD' if ok else 'not held'} {play_s:.0f}/{self.hold_s:.0f} s of play; {reason}",
+              flush=True)
+        strip(kept, os.path.join(self.out, "hold_strip.jpg"), cols=5, width=256)
+        return self.finish(last=kept[-1] if kept else jpg, post=kept)
+
+    def hold_note(self, log, look):
+        with open(log, "a") as f:
+            f.write(json.dumps(look) + "\n")
 
     def write_path(self, complete=True):
         """pathknow/paths/<TITLEID>.json. A run that did not reach gameplay
@@ -1188,6 +1326,8 @@ def main(argv=None):
     ap.add_argument("--no-replay", action="store_true", help="ignore this title's own recorded path")
     ap.add_argument("--no-guide", action="store_true",
                     help="use no recorded path at all, own or sibling (a cross-title baseline)")
+    ap.add_argument("--hold-s", type=float, default=0,
+                    help="after the claim, hold play for this many seconds of play (Nova only: the Thor's fan is dead)")
     ap.add_argument("--sim", help="PATHFIND_DRY: frames dir to play back")
     ap.add_argument("--sim-answers", help="PATHFIND_DRY: JSON list of canned model answers")
     a = ap.parse_args(argv)
@@ -1203,8 +1343,11 @@ def main(argv=None):
     why = blocked(tid, name)
     if why:
         sys.exit(f"pathfind: {name} is owner-blocked: {why}")
+    if a.hold_s and dev.label == "thor":
+        sys.exit("pathfind: --hold-s is Nova only: the Thor's fan is dead and it stops within 30 s of a claim")
     print(f"pathfind: {name} ({tid}) on {dev.label}: {iso}", flush=True)
     agent = Agent(dev, model, tid, name, iso, a.out, a.budget_min * 60, record=not a.no_record)
+    agent.hold_s = a.hold_s
     if a.no_replay or a.no_guide:
         agent.own = None
     if a.no_guide:

@@ -1,6 +1,73 @@
 # lane.pathfind -- NOTES
 
-## Scoreboard (10-02)
+## Scoreboard (10-03, hold-play)
+
+Today's bar (addendum 2): hold-play for >= 600 s of judged play, on the Nova, from the lot's routed pool in P order.
+Sonnet only, <= $25. Model reads are counted per title.
+
+| title | device | genre | play held (s) | model reads | frames | result | frame strip |
+|---|---|---|---|---|---|---|---|
+| (none yet: waiting on the savestate433 fold, see "Attempt 2") | | | | | | | |
+
+Offline checks, run on saved frames with the real prompts (Sonnet 5, scratch/holdcheck):
+
+| check | frames | answers | verdict |
+|---|---|---|---|
+| hold_look (in play?) | Black Stone play | in_play true | right |
+| hold_look | Dead or Alive 3 title splash | in_play false, action A | right |
+| hold_look | Blinx 2 GAME PAUSED | in_play false, action A | right |
+| hold_genre | Midnight Club 3 | drive | right |
+| hold_genre | Top Spin | rally | right |
+| hold_genre | Panzer Dragoon Orta | onrails | right |
+| hold_genre | Counter-Strike | attack | right |
+
+## Attempt 2 (10-03): why attempt 1 did not finish
+
+- **Attempt 1 finished its acceptance, not today's bar.** The 10-02 lot acceptance (9 of 10, Bruce Lee rerun) was
+  met and folded to master (6b0c4a131f). Its last work stopped at the owner's 11:55 hold on navigation (token burn),
+  before hold-play existed. No title was ever held for 600 s, which is the bar for today.
+- **Its last commits were not written up.** At 11:50 it reached gameplay on Ghoulies (2.35 min, 11 calls) and Tork
+  (4.41 min, 19 calls, four probes refused) and gave up on Conker (15 min, 23 calls, black after a level load). Their
+  results are in `runs/<title>/result.json` and `pathknow/paths/`, but the scoreboard above and OUTBOX did not get them.
+  They are recorded here, not re-run. Conker's black-after-level-load is still open.
+- **Attempt 2 (10-03 06:47 PDT):** merged origin/master (63 commits: the pathfind fold, uberdefault569, buildstamp).
+  Before the merge, 39 untracked pathknow hint files were removed; each was byte-identical to its master copy.
+- **Not done in attempt 2 yet:** the held device runs. Addendum 2 says every held run starts from its golden profile
+  (`titlestate.py prepare`), and that lands with savestate433's fold. savestate433 is PR-ready on
+  `origin/lane/savestate433` and is not on master at 07:00 PDT, so `titlestate.py` on master has no `prepare`.
+  The Nova stays unheld and no run is queued until it folds.
+
+## Hold-play (10-03)
+
+After the confirmed claim, `pathfind.py --hold-s 600` keeps the player in play. Design, as built:
+
+- **A genre loop of inputs, model-free.** The genre (drive, attack, rally, onrails, other) is named once by Sonnet from
+  the confirm frame. Each genre is a fixed list of inputs sent every cycle (`HOLD_GENRES`). The right stick is a new
+  token, `RSTICK:<dir>:<s>`, at full deflection.
+- **The model reads the screen only when play may have ended:** a black frame, a frame identical to the previous one
+  (one static look; the previous draft waited for two), every 90 s, and after each step while off play.
+- **Off play, the model steers back**, one look per step, with its own action, up to 12 steps in one episode. Past
+  that the hold gives up, and the claim still stands (`hold.ok` false, the reason says so).
+- **Frames every 30 s**, kept; the rest are deleted after the next look has been measured. `hold_strip.jpg` is the
+  kept frames. `hold.jsonl` has a line per look (play seconds, change, whether the model was asked and what it said).
+- **Nova only.** `--hold-s` is refused on the Thor, whose fan is dead and whose rule is to stop within 30 s of a claim.
+- **Opus is off today.** `STRONG` defaults to Sonnet 5 (addendum 2). Restore `claude-opus-5-5` when Opus returns.
+
+Selftest: `hold` (200 s of play on a fake clock: a pause read and cleared by START, 3 model reads, 7 frames kept, the
+others deleted) and `holdstuck` (the pause never clears: the hold gives up at the nav cap). `actions` also covers
+`RSTICK`. Full selftest: all ok.
+
+## What the next lane should not repeat (10-03)
+
+- **A frame the next look measures against cannot be deleted at the end of its own look.** The first version deleted
+  every non-kept frame at once; the next look then failed to open it. The fix deletes the previous look's frame after
+  the current one is measured.
+- **Escalation is by model name, not by a source label.** With Sonnet as both tiers, the escalation case in the selftest
+  stopped meaning anything. The selftest now pins Opus, so those cases still test escalation.
+- **The fake clock.** The hold selftest patches `pathfind.now` and `time.sleep`, so 200 s of play takes no real time.
+  The selftest must restore both (it does, before `actions`).
+
+## Scoreboard (10-02, attempt 1)
 
 Lot: the brief's 35 never-routed Nova titles, shuffled with
 `random.Random('pathfind-2026-10-02')`; the first 10 in that order are the acceptance set, run in order,

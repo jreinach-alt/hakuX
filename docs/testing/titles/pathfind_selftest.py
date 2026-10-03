@@ -30,7 +30,12 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
             planned input that leaves the screen unchanged drops the rest.
   blackhang a screen black for longer than BLACK_HANG_S ends the run as
             black-hang (Conker, 10-02: 8+ min of black after a level load).
-  actions   clean_action keeps valid tokens and drops the rest.
+  hold      --hold-s 200 after the claim, on a fake clock: 200 s of play judged
+            from moving frames, a pause read by the model (START back to
+            play), 3-6 model reads in all, a kept frame every 30 s.
+  holdstuck the pause never clears: the hold gives up at the nav cap, and the
+            claim itself still stands.
+  actions   clean_action keeps valid tokens and drops the rest (RSTICK too).
 """
 
 import json
@@ -50,6 +55,8 @@ os.makedirs(os.path.join(TMP, "know", "hints"))
 sys.path.insert(0, HERE)
 import pathfind  # noqa: E402
 
+# the escalation cases need a stronger model than FAST; the default is Sonnet for both today (10-03), so pin Opus
+pathfind.STRONG = "claude-opus-5-5"
 pathfind.time.sleep = lambda s: None
 fails = []
 
@@ -225,10 +232,51 @@ rc, res, steps, calls = run("blackhang", [("black", 0)] * 3, [], ["--no-record",
 pathfind.BLACK_HANG_S = 180.0
 check("blackhang", res["result"] == "black-hang", f"a long black screen ends as black-hang ({res['result']})")
 
+# hold: confirmed, then play on a fake clock (200 s of play). Moving frames are play, two identical frames are a
+# pause the model reads (START back to play), and the model reads the screen every 90 s. Kept frames every 30 s.
+CLOCK = [1000.0]
+real_now, real_sleep = pathfind.now, pathfind.time.sleep
+pathfind.now = lambda: CLOCK[0]
+pathfind.time.sleep = lambda s: CLOCK.__setitem__(0, CLOCK[0] + s)
+PREFIX = [("game", 0), ("game", 0), ("game", 0), ("game", 80)]          # the decide look, then the probe a/b/c
+PLAY = [("game", (i * 40) % 160) for i in range(40)]
+PLAY2 = [("game", (i * 40 + 20) % 160) for i in range(120)]
+PAUSE = [("menu", 0), ("menu", 0)]
+GENRE = {"genre": "drive", "why": "a car on a road"}
+PAUSED = {"state": "pause", "in_play": False, "why": "pause menu", "action": ["START"], "wait_s": 1}
+PLAYING = {"state": "gameplay", "in_play": True, "why": "back in play", "action": [], "wait_s": 1}
+rc, res, steps, calls = run("hold", PREFIX + PLAY + PAUSE + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE, PAUSED]
+                            + [PLAYING] * 6, ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
+hold = res.get("hold", {})
+look = [json.loads(l) for l in open(os.path.join(TMP, "hold", "out", "hold.jsonl"))]
+nchk = sum(1 for c in calls if c["purpose"] == "hold-check")
+check("hold", rc == 0 and res["result"] == "gameplay" and hold.get("ok") is True and hold.get("genre") == "drive",
+      f"200 s of play held: {hold.get('play_s')} s, genre {hold.get('genre')}, rc {rc}")
+check("hold", any(l.get("action") == ["START"] for l in look), "the pause was read and START sent back to play")
+check("hold", 3 <= nchk <= 6, f"model read the screen a few times, not every step: {nchk} hold checks")
+check("hold", 6 <= hold.get("frames", 0) <= 9 and os.path.exists(os.path.join(TMP, "hold", "out", "hold_strip.jpg")),
+      f"a kept frame every 30 s: {hold.get('frames')} kept")
+kept_left = [f for f in os.listdir(os.path.join(TMP, "hold", "out", "frames")) if "hold" in f and f.endswith(".jpg")]
+check("hold", len(kept_left) == hold.get("frames"), f"the other hold frames were deleted ({len(kept_left)} left)")
+
+# hold stuck: the screen stays a pause and START never gets back to play: the hold gives up after the nav cap
+rc, res, steps, calls = run("holdstuck", PREFIX + [("menu", 0)] * 30,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE]
+                            + [PAUSED] * 16, ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
+hold = res.get("hold", {})
+check("holdstuck", res["result"] == "gameplay" and hold.get("ok") is False and "off play" in hold.get("reason", ""),
+      f"the claim stands but the hold gives up: {hold.get('reason', '')[:80]}")
+check("holdstuck", sum(1 for c in calls if c["purpose"] == "hold-check") <= pathfind.HOLD_NAV_MAX + 1,
+      "no more than the nav cap of model steps")
+pathfind.now, pathfind.time.sleep = real_now, real_sleep
+
 # actions
 ca = pathfind.clean_action(["a", "START", "STICK:Up:9", "RT:1.5", "HOLD:A:1", "HOLD:Q:1", "JUMP", "select"])
 check("actions", ca == ["A", "START", "STICK:up:4", "RT:1.5", "HOLD:A:1", "BACK"], f"{ca}")
 check("actions", pathfind.clean_action("wait") == [], "'wait' is no input")
+check("actions", pathfind.clean_action(["RSTICK:Right:0.6", "RSTICK:diag:1", "RSTICK:up:0.5"])
+      == ["RSTICK:right:0.6", "RSTICK:up:0.5"], "the right stick takes four directions at full deflection")
 
 shutil.rmtree(TMP)
 print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))
