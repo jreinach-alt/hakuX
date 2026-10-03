@@ -26,3 +26,29 @@ plain build vs `--perflog` build, 600 s each, same env.
 2. Inventory every counter the perflog build emits and every one the plain build emits; classify cost
    source; mark which ones `decompose.py` and `title_verdict.py` read.
 3. Design the always-on tier and the deep tier; name files and functions; state expected cost.
+
+## Queued (10:40 PDT)
+
+Two rows appended to `~/hakux-work/pm/overnight-queue.tsv` (python3), keys `alwaystelemetry-toejam-plain`
+and `alwaystelemetry-toejam-perflog`: ref `6c828f9860`, 600 s, the same env as the ToeJam perflog row
+(`PERF_REGIMEN=default HAKUX_PREBUILD=0 HAKUX_PLC_WIPE=1 HAKUX_GPL=3`), the second with `--perflog`.
+Not yet run: no request ids exist yet. Result: pending.
+
+## Revision to the mechanism (read after the prediction was committed; the prediction is unchanged)
+
+I cited a clock read per method as the cost. On aarch64 `nv2a_clock_ns()` is `mrs cntvct_el0` plus a
+multiply (`hw/xbox/nv2a/debug.h` ~462-478), a few ns with no syscall. So the clock reads are probably
+NOT the cost. The perflog cost candidates, from reading the code, are:
+
+| Source | Where | Per | Expected cost |
+|---|---|---|---|
+| Per-method histogram and slow-path counts | `pgraph/pgraph.c:242-293, 2406` | method | small, but per method |
+| Per-draw phase timers (35 sites) | `pgraph/vk/draw.c`, 2 clock reads each | draw | a few ns each |
+| GPU timestamps per render pass (vkCmdWriteTimestamp, readback) | `pgraph/vk/renderer.c:273` (early return unless NV2A_PERF_LOG), `draw.c:3659,3673,4094,4512` | render pass | unknown: a command in the CB plus a readback |
+| `[lock474]` MMIO wait accounting | `pgraph/pgraph.c:900-` | MMIO wait | unknown, Android-only |
+| Per-draw ubosz counters | `pgraph/vk/draw.c` `pgraph_vk_ubosz_note_*` | upload/bind | counted, not timed |
+| Extra counters in texture/surface paths | `texture.c`, `surface.c` `#if NV2A_PERF_LOG` | event | small |
+
+So the prediction P1 (0.7) rests on the GPU timestamps and the per-draw bookkeeping, not on the
+clock reads. The A/B result decides it. If perflog is within noise, the prediction is refuted and the
+measurement points at the bookkeeping, not at per-method cost.
