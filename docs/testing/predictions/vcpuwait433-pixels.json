@@ -1,0 +1,26 @@
+{
+  "registered_utc": "2026-10-03T13:54:39Z",
+  "who": "lane.vcpuwait433",
+  "issue": "433",
+  "prediction": "#433 lock-free user_read, pixel leg. A is ef511dbd19 (master 5661db4f2b merged, no fix; emulator code identical to master), B is 012fa08a94 (A + user_read without pfifo.lock: acquire loads of DMA_PUT/GET/REF; user_write keeps the lock and stores with release; pfifo_run_pusher publishes DMA_GET with release). The change alters only WHEN a guest load of a USER register returns, never WHICH value: each of the three words has one writer on the other side, and acquire/release keeps the order the lock gave. What is new: a guest that sees DMA_GET == DMA_PUT may now run while the PFIFO thread is still inside the STALLED pgraph_vk_finish that follows (staged downloads into guest RAM). These three suites are where the guest or the GPU consumes GPU-written memory right after the pushbuffer drains (CPU access around surfaces, render-to-texture, a render target updated in place), so a coherence dependence on that hold would show there. Surface coherence belongs to the surface_access_callback / download path, which this change does not touch. Predicted: every capture in the three suites is the same between arms or inside the run-to-run band. A moved capture means the guest read GPU output in RAM that the old hold had made complete, a dependence the code does not state. That refutes 'no golden can need the wait' and blocks the fix.",
+  "a_ref": "ef511dbd19",
+  "b_ref": "012fa08a94",
+  "must_not_move": [
+    "DMA_corruption_around_surfaces/*",
+    "Texture_render_target/*",
+    "Texture_render_update_in_place/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "DMA corruption around surfaces",
+      "Texture render target",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
