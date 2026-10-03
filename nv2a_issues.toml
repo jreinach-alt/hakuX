@@ -5030,3 +5030,35 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "The fix is on lane/pathfind (logcat -v time, request.json carries the ISO, run.log gets the held line) and waits for its fold. Refuted if the fold lands and a re-run of the Panzer hold reads the title id and a non-'guest never appeared' verdict."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.709]
+title = "ops stranded-lane remedy would resume routefix1002 into its suspended Gunvalkyrie device replay"
+component = "ops"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 12:52 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.710]
+title = "lanewaker reads near30 and savestate433 as stranded though both PRs are finished (State: ready)"
+component = "ops"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 12:52 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.711]
+title = "board-coverage and territory reds have no ops detector"
+component = "ops"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 12:52 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.712]
+title = "Forza Motorsport: guest kernel BugCheck 0x7f (double fault) in the menus on the Nova's golden-profile titles disk"
+component = "forza"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 12:52 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
