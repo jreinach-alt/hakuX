@@ -30,7 +30,7 @@ code, because the forge copies it (option (b) in NOTES.md section 2).
    (the script's `hakux-ci-throttle` check).
 4. **Lane branches** with open PR.md work, in batches of **at most 5 per hour**, each push
    followed by a 10-minute wait. A push starts CI on GitHub only if a workflow still has a
-   `push` or `pull_request` trigger, which section 2a rules out before the first push.
+   `push` or `pull_request` trigger. Section 2a's check rules that out before the first push.
 5. **Issues**: the local-only issues in numeric order (section 3), then the summaries.
 6. **Draft PRs** for pushed lane branches, then ready for each PR that the fold admits.
 7. Record a journal line per batch. Stop on the first error.
@@ -42,17 +42,28 @@ The owner's direction (2026-10-03): GitHub receives a curated share of the work,
 CI does not resume as it was. It ran, failed, queued runs and never fixed a problem. It may
 come back in a diminished role, as a manual dispatch or a release gate only.
 
-Before the first push of any batch, every file in `.github/workflows/` must be trigger-less
-or `workflow_dispatch`-only. Check it with:
+Before the first push of any batch, every file in `.github/workflows/` must start only by
+`workflow_dispatch`, or be a `workflow_call` that another workflow invokes. Check the `on:`
+key itself:
 
-    grep -l -E '^\s*(push|pull_request|pull_request_target|schedule|workflow_run):' .github/workflows/*.yml
+    python3 -c 'import glob, yaml
+    for f in sorted(glob.glob(".github/workflows/*.yml")):
+        on = yaml.safe_load(open(f)); on = on.get(True, on.get("on"))
+        keys = set(on) if isinstance(on, (dict, list)) else {on}
+        bad = keys - {"workflow_dispatch", "workflow_call"}
+        if bad: print(f, sorted(map(str, bad)))'
 
 The check must print nothing. A workflow that prints is edited first, on master, in its own
 commit. A returning push then cannot restart the old CI, because nothing it contains fires.
 
-Not done in this lane: the `.github/workflows/` files are on master, outside this lane's
-territory, so the edit is a lane.local decision. Until it is made, the check above is the
-gate, and the batch does not run.
+Do not use a text grep for `push:`. `build-xemu-win64-toolchain.yml` has a `push:` input
+under a docker step's `with:` (line 58), which a grep reports as a trigger. YAML reads
+`on: push` as the boolean key `True`, which is why the check reads both.
+
+**Done in this lane (2026-10-03, addendum 8).** The five workflows that started themselves
+(android, desktop, nv2a-index, jobs-selftest, build-xemu-win64-toolchain) are
+`workflow_dispatch`-only. android.yml keeps its `hakux-ci-throttle` comment, which
+`recover_github.py` step 2 looks for. The check above prints nothing at this branch's head.
 
 ## 3. Local-only issues: number map
 
