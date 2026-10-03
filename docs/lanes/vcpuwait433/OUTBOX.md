@@ -72,3 +72,20 @@ Capture fixes for whoever runs one next: it now prepares Tron's golden profile (
 [lane.vcpuwait433] D (the offline per-tid holder pass) is done. During the vCPU's pfifo.lock waits, the PFIFO thread (one tid) is asleep in the stalled finish (`wait_frame_submitted`) 40% of the time, asleep with an unsampled chain 47%, and on-CPU 6%, mostly the same finish's staged-download copies. So for at least 86% of the wait the pusher is not advancing DMA_GET, and the word the guest waits to read never changes during the wait. The display thread holds the lock for a minor 11% (`pgraph_vk_get_framebuffer_surface`). A's P goes from 0.4 to 0.45 (0.9 that the site's sleep goes). The remaining risk is that the guest then waits on GPU results in RAM, which would turn the freed sleep into spin.
 
 [lane.vcpuwait433] waiting: on the grant for `hw/xbox/nv2a/user.c` and `hw/xbox/nv2a/pfifo.c` (entry above). Nothing is queued on a device.
+
+## #433 -- 2026-10-03 06:57 PDT
+
+[lane.vcpuwait433] **The lock-free `user_read` is on the branch (012fa08a94). The pixel arms are queued. The Tron arm waits for savestate433 to fold.**
+
+- **Fix:** `userread-lockless.diff`, applied unchanged on top of master 5661db4f2b. `user_read` takes no pfifo.lock and uses acquire loads of DMA_PUT/GET/REF. `user_write` keeps the lock and stores with release. The pusher publishes DMA_GET with release.
+- **Selftest** (`docs/lanes/vcpuwait433/selftest_userread.sh`): PASS. It compiles the real user.c with `-Wall -Werror` against a stub header. With the fix, a read returns in 0 ms while another thread holds pfifo.lock for 400 ms, and a write still waits (402 ms). The pre-fix user.c blocks 400 ms on every read, so the test can tell the two apart.
+- **Pixel arms (Thor, pinned, release tier):** B `1-1791035760-vcpuwait433-4105238`, A `1-1791035764-vcpuwait433-4105418`. The suites are DMA corruption around surfaces, Texture render target and Texture render update in place, where the guest consumes GPU-written memory right after the FIFO drains. Prediction `vcpuwait433-pixels.json`: nothing moves.
+- **Tron A/B:** A is already on disk. uberdefault569's Tron B rerun `990012` is master's code with the ubershader on, run on the golden profile. With that profile its route's DOWN lands on **New Game**, so it played the intro, the brief's slow window: share 0.82, slow rows v_blk 9.80 ms/frame. B is the same request at 012fa08a94 on the same route text with `# state: returning` (`tron-newgame-returning.route`). Prediction `vcpuwait433-tron.json`: M slow-row v_blk <= 7.0 (P 0.85); O1 share >= 0.87 and fps +5% (P 0.45); O2 share >= 0.90 (P 0.3).
+- **Why the Tron run is not queued:** `titlestate.py show --device nova` (06:52) has Tron at **d2aff0a53543, the first-run state**. There the DOWN goes to Light Cycles, the same void as tron1. Until savestate433 folds, the dispatcher keeps whatever the disk holds and nothing enforces `# state:`. Queuing now would void for a known cause.
+
+Next, by P x win:
+- **A. Tron arm on the Nova once savestate433 folds** (M 0.85, O1 0.45, O2 0.3). Win: up to ~4 ms of a 42 ms slow frame, share 0.82 -> 0.87-0.90. Cost: 1 Nova run, the lane's 3rd.
+- B. Release pfifo.lock across the stalled finish. P 0.3. It also frees the DMA_PUT store (4.5% of the site) but exposes renderer state. It needs a vk/reports.c grant.
+- C. If M passes and O1 fails, capture B to see where the freed time goes. P 0.8 that it names it. 1 run beyond the brief's 3.
+
+[lane.vcpuwait433] waiting: on the Thor pixel arms 4105238/4105418, and on savestate433's fold. lane.local, please resume me when savestate433 is on master: I merge master, queue the Tron B run, and read all three.

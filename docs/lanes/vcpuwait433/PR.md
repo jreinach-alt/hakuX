@@ -1,34 +1,31 @@
-# vcpuwait433: Tron 2.0's slow-frame vCPU sleep is pfifo.lock in user_read; a lock-free read is the fix
+# vcpuwait433: a guest read of the PFIFO USER registers no longer waits out a GPU batch (Tron 2.0's slow-frame vCPU sleep)
 State: draft
 
 Lane: vcpuwait433       Issue: #433
-Base: master @ 9550493846
-Files: docs/lanes/vcpuwait433/PR.md, docs/lanes/vcpuwait433/NOTES.md, docs/lanes/vcpuwait433/OUTBOX.md, docs/lanes/vcpuwait433/capture_offcpu.sh, docs/lanes/vcpuwait433/waitsite.py, docs/lanes/vcpuwait433/decompose.py, docs/lanes/vcpuwait433/tron-newgame.route, docs/lanes/vcpuwait433/levelcheck.py, docs/lanes/vcpuwait433/userread-lockless.diff
-Prediction: none yet: drafted in NOTES.md section 4. It is registered on concrete refs once the fix is on this branch, which needs the grant below.
-Needs device: yes (Nova; 2 of 3 runs used: tron1 void (menu), tron2 = the brief's slow window)    Needs NDK: yes, for the fix's arm
+Base: master @ 5661db4f2b (merged into the branch at ef511dbd19; first base 9550493846)
+Files: hw/xbox/nv2a/user.c, hw/xbox/nv2a/pfifo.c, docs/testing/predictions/vcpuwait433-pixels.json, docs/testing/predictions/vcpuwait433-tron.json, docs/lanes/vcpuwait433/PR.md, docs/lanes/vcpuwait433/NOTES.md, docs/lanes/vcpuwait433/OUTBOX.md, docs/lanes/vcpuwait433/capture_offcpu.sh, docs/lanes/vcpuwait433/waitsite.py, docs/lanes/vcpuwait433/decompose.py, docs/lanes/vcpuwait433/tron-newgame.route, docs/lanes/vcpuwait433/tron-newgame-returning.route, docs/lanes/vcpuwait433/levelcheck.py, docs/lanes/vcpuwait433/userread-lockless.diff, docs/lanes/vcpuwait433/selftest_userread.sh
+Prediction: docs/testing/predictions/vcpuwait433-pixels.json @ 51885311070260918a53796ec4038db00d1a3a6173d5c3867df6ca9ca62045a9; docs/testing/predictions/vcpuwait433-tron.json @ 020b10df7f6e66dee2854093439e952d76b833a59b65f676926452534ead8d77
+Needs device: yes (Thor: 2 pixel arms; Nova: 3rd of 3 runs, Tron)    Needs NDK: yes
 
-[lane.vcpuwait433] waiting: on a grant for `hw/xbox/nv2a/user.c` and `hw/xbox/nv2a/pfifo.c` (requested from lane.local in OUTBOX.md, 2026-10-02 21:10 PDT). With it, the next session applies `userread-lockless.diff`, builds, registers the Tron + BF2 prediction and queues the arm.
+[lane.vcpuwait433] waiting: on (1) the Thor pixel arms 1-1791035760-vcpuwait433-4105238 (B) and 1-1791035764-vcpuwait433-4105418 (A), and (2) savestate433's fold. Only after that fold is the Tron arm's `# state: returning` enforced. Tron's disk now holds the first-run state, in which the arm's route would void. Once savestate433 is on master: merge master, queue the Tron B run (prediction vcpuwait433-tron.json), then read all three.
 
-**The site.** In Tron 2.0's slow window (tron2, 60 s at 27.9 fps), the vCPU is off-CPU 18.1% of the time, 6.5 ms/frame. **65.2%** of the attributed off-CPU time is `pfifo.lock` in USER MMIO, and 95.5% of that is `user_read`, a guest load of DMA_GET/PUT/REF. In tron1's 60-fps menu the same site was under 3%.
+**The site.** In Tron 2.0's slow window (the New Game intro; tron2, 60 s at 27.9 fps), 65.2% of the vCPU's attributed off-CPU time is `pfifo.lock` in USER MMIO, and 95.5% of that is `user_read`, a guest load of DMA_GET, DMA_PUT or REF. In a 60-fps menu the same site is under 3%. The holder is the PFIFO thread. It calls `pgraph_process_pending_reports` with pfifo.lock held, and when DMA_GET == DMA_PUT that call does `pgraph_vk_finish(STALLED)`, which sleeps until the render thread submits. The per-tid pass puts the PFIFO thread asleep for >= 86% of the vCPU's waits. The word the guest is waiting to read does not change in that time.
 
-**Why the vCPU waits there.** `pfifo_thread` calls `pgraph_process_pending_reports` with pfifo.lock held. When DMA_GET == DMA_PUT and a command buffer is open, that function does `pgraph_vk_finish(STALLED)`, which waits for the render thread to submit (`wait_frame_submitted`). That is the largest named holder, 40% of the wait time. The guest's read takes the same lock to return one word, and the word is already final: GET == PUT, and only the guest writes REF. **No golden can need the wait.** An acquire load against a release store gives the read the same ordering the lock did.
+**The fix** (012fa08a94, user.c 25+/14-, pfifo.c 1 line). `user_read` takes no lock and uses acquire loads of DMA_PUT/GET/REF. `user_write` keeps the lock and stores with release, and `pfifo_run_pusher` publishes DMA_GET with a release store. Each word has one writer on the other side, so acquire/release gives the read the ordering the lock did. This is #474's pattern: MMIO no longer waits behind a GPU-paced hold.
 
-**The fix** (`userread-lockless.diff`, 25+/14-, applies to master; not compiled here, because there is no build tree): `user_read` takes no lock and uses acquire loads; the stores to DMA_PUT/GET/REF and the pusher's DMA_GET advance become release stores. This is #474's pattern: stop MMIO waiting behind a GPU-paced hold.
+**A/B design.** The A for Tron is already on disk. uberdefault569's Tron B rerun (990012) is master's emulator code with the ubershader on, run on the golden profile. With that profile, its route's DOWN lands on New Game and the run plays the intro. Its numbers: share 0.82; slow rows F 42.2, v_blk 9.80 ms/frame (tron2 9.93, near30 ~10). B repeats the request at 012fa08a94 on the same route text, which declares `# state: returning`. Legs: M (mechanism) slow-row v_blk <= 7.0, P 0.85; O1 share >= 0.87 and fps +5%, P 0.45; O2 share >= 0.90, P 0.3.
 
-**Premise corrections** (NOTES.md "Result"):
-- The capture gate of runs 1-2 read fps as the f difference of two `hakuX-pace` lines. Lines come every 60 frames, so it always read 60.
-- Near30's slow window on the New Game route is the in-engine intro, which is what tron2 recorded. The in-level (Auto Load) sleep is about 6.5 of 33 ms.
-- The capture now prepares Tron's golden profile and fails closed on a frame-confirmed level (`levelcheck.py`, validated: in-level 87/89 frames, menu and credits 0/66).
+Local checks (no CI offline):
+- `bash docs/lanes/vcpuwait433/selftest_userread.sh`: PASS. It compiles the real user.c with `-Wall -Werror` (real atomic.h, nv2a_regs.h, stub nv2a_int.h). With the fix, the three reads return in 0 ms while pfifo.lock is held for 400 ms; a write still waits 402 ms; the PUT store is visible to the next read; the pfifo.c GET store is a release store. The pre-fix user.c blocks 400-405 ms on each read, which is the harness's falsifier.
+- `docs/testing/preflight.sh --allow-tracker` at ab8b4646be: passed (territory ok, board files ok, nv2a index ok). The coverage gate did not run: gh is suspended.
+- NDK build: none yet. The arms build 012fa08a94.
 
 | Next | P | win | cost |
 |---|---|---|---|
-| **A. lock-free `user_read` arm** | 0.45 (fps +5% in the slow window): the per-tid pass puts the PFIFO thread asleep for >= 86% of the vCPU's waits, so the value read never changes during a wait; the renderer is idle 18 of 45 ms, so it waits on the guest. Against: the guest may then wait on GPU results in RAM, turning freed sleep into spin | up to 4.0 ms of a 36 ms frame (27.9 -> at most 31.4 fps); BF2 unknown | grant, 1 build, 2 Nova runs |
-| B. release pfifo.lock across the stalled finish | 0.3: wider, but exposes renderer state to the display thread | <= A + the 4.5% DMA_PUT share | grant, build, goldens, arm |
-| C. in-level capture (run 3) | 0.85 it names the owner | knowledge only; A's arm answers it too | 1 run |
-| D. per-tid holder pass (offline) | done | PFIFO thread 92% of the hold (40% named finish, 47% unsampled sleep, 6% on-CPU) | done |
+| **A. Tron arm (Nova), after savestate433 folds** | M 0.85; O1 0.45; O2 0.3. For: the read no longer waits (selftest), and tron2 put 65% of the window's sleep there. Against: the guest may then wait on GPU output in RAM, which turns freed sleep into spin | up to ~4 ms of a 42 ms slow frame; share 0.82 -> 0.87-0.90 | 1 Nova run |
+| B. Release pfifo.lock across the STALLED finish | 0.3: also covers the DMA_PUT store (4.5%), but exposes renderer state to the display thread | <= A + 4.5% | grant (vk/reports.c), build, goldens, arm |
+| C. If M passes and O1 fails: capture B | 0.8 that it names where the freed time goes | picks between B and a report-path fix | 1 run beyond the brief's 3 |
 
-Local checks: `docs/testing/preflight.sh --allow-tracker` passed at this head (territory ok, board files ok; the coverage gate did not run: gh suspended). `bash -n capture_offcpu.sh` OK. The gate's fps parse reads 33 fps on 2186958's pace lines and is empty-safe. `.scratch/replay_gate.py` replays the gate: OPEN on 2186958 at mark+28 s, ABORT on tron1 and tron2. `git apply --check userread-lockless.diff` OK on master 9550493846. `waitsite.py`'s `--detail` code runs only under its flag. Its site table on tron2 is byte-identical before and after the edit. The doa3 validation was not re-run.
-
-Release note (none): no emulator code changes on this branch yet; the fix is a patch file pending a grant.
+Release note (performance): in Tron 2.0's in-engine scenes, and in any game whose CPU polls the GPU's command-queue position, the CPU no longer stalls while the GPU finishes a frame (measured gain pending the Tron arm).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

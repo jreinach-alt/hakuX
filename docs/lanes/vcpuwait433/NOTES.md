@@ -9,6 +9,88 @@ below 28.5 fps (median F ~43 ms) the vCPU thread is asleep, neither running
 nor runnable, ~10 ms per frame. That sleep tracks GPU ms per frame (r 0.64),
 not the renderer's CPU draw work (0.08). BF2: 21 ms of a 64 ms frame.
 
+## Attempt 4 (2026-10-03 06:47-07:10 PDT): the fix is on the branch; arms registered
+
+### Why attempt 3 did not finish
+
+It finished in the waiting state. The fix needed `hw/xbox/nv2a/user.c` and
+`pfifo.c`, which were outside this lane's territory. Attempt 3 asked
+lane.local for the grant (OUTBOX 21:10 PDT), ran the offline per-tid pass
+while it waited (21:25), and parked. Addendum 4 (06:47) granted both files.
+
+### What attempt 4 did
+
+| step | what | result |
+|---|---|---|
+| merge | origin/master 5661db4f2b (uberdefault569: the ubershader is on by default; buildstamp) into the branch: ef511dbd19 | clean |
+| fix | `userread-lockless.diff` applied unchanged: 012fa08a94 (user.c 25+/14-, pfifo.c 1 line) | `git apply --check` clean |
+| selftest | `selftest_userread.sh`: compiles the real `user.c` with `-Wall -Werror` against a stub `nv2a_int.h`, using the real `qemu/atomic.h` and `nv2a_regs.h` | **PASS**. With the fix, reads of DMA_GET, DMA_PUT and REF return in 0 ms while another thread holds pfifo.lock for 400 ms. `user_write` still waits (402 ms). The PUT store is visible to the next read. pfifo.c's GET store is a release store. **Falsifier:** the pre-fix `user.c` (5661db4f2b) blocks 400-405 ms on all three reads, so the harness sees the lock |
+| pixel prediction | `predictions/vcpuwait433-pixels.json` (sha256 51885311...): A ef511dbd19, B 012fa08a94; must not move: DMA_corruption_around_surfaces (3 goldens), Texture_render_target (41), Texture_render_update_in_place (1) | registered and pushed before any run |
+| Tron prediction | `predictions/vcpuwait433-tron.json` (sha256 020b10df...): legs V, M, O1, O2, below | registered and pushed before any run |
+| pixel arms | Thor, pinned, release tier: B `1-1791035760-vcpuwait433-4105238`, A `1-1791035764-vcpuwait433-4105418` | queued 06:56 PDT |
+| Tron arm | Nova, one run | **not queued: waits for savestate433 to fold** (below) |
+| compile | the NDK build happens when the arm builds 012fa08a94 | the host stub compile above is the only compile so far |
+
+Suite choice: these three are where the guest or the GPU consumes
+GPU-written memory right after the pushbuffer drains. One behaviour is new:
+a guest that sees GET == PUT can now run while the PFIFO thread is still in
+the STALLED finish, which copies staged downloads into guest RAM. If any
+golden depended on that hold, it would show in these suites.
+`Surface_as_vertex_array` was the first pick, but it has no goldens, and
+request.sh refuses a key that matches none.
+
+### The Tron A/B: a like-for-like A was already on disk
+
+uberdefault569's Tron B rerun, **`1-1790994313-uberdefault569-990012`**, is
+master's emulator code with the ubershader on (ref d4a02e2060). It used
+`PERF_REGIMEN=default HAKUX_PREBUILD=0 HAKUX_PLC_WIPE=1`, 720 s, and
+uberdefault569's `tron-newgame` route, the one with the DOWN. Tron's disk
+held the golden 5489ae7f9b58: hdd.after harvested it, and the Single Player
+frame (200443-menu-down) shows Auto Load enabled with New Game highlighted.
+So with the golden profile, **the DOWN lands on New Game and the run plays
+the in-engine intro**: tron2's window, and the brief's.
+
+decompose.py on 990012:
+
+| rows | n | fps | F ms | v_run | v_blk ms/frame |
+|---|---|---|---|---|---|
+| all | 254 | 35.58 | 28.10 | 22.38 | 5.59 |
+| below 28.5 | 45 | 23.70 | 42.19 | 31.30 | **9.80** |
+
+share at the bar 0.82. The slow-row sleep matches tron2 (9.93, GPL 0) and
+near30 (~10).
+
+B is the same request at 012fa08a94, on `tron-newgame-returning.route`. That
+route is A's route text byte for byte (apart from the trailing newline), plus a
+`# state: returning` header. Registered legs:
+
+- **V**: route-frame menu-down shows New Game, `mark gameplay` is logged, the hdd plan prepared 5489ae7f9b58, `[gpl569] mode=3`, shader cache cleared, no BugCheck, >= 200 rows. Otherwise VOID.
+- **M** (mechanism; separates inert from refuted): slow-row v_blk <= 7.0 (A 9.80), or all-row v_blk <= 4.6 (A 5.59) if B has fewer than 10 slow rows. P 0.85.
+- **O1**: share >= 0.87 (A 0.82) and mean fps >= 37.4 (+5%). P 0.45.
+- **O2**: share >= 0.90 (the PM's bar). P 0.3.
+- noise: one run per arm, and near30's New Game shares spread from 0.50 to 0.73. O alone is weak evidence; M is the low-noise leg.
+
+**Why the Tron run is not queued yet.** `titlestate.py show --device nova`
+(06:52 PDT) puts Tron's titles-disk profile at **d2aff0a53543**, the
+first-run leftover (title data only). In that state Auto Load is greyed, and
+A's DOWN goes to Light Cycles: tron1's void. On master the dispatcher keeps
+whatever the disk holds, and the `# state:` line is enforced only by
+savestate433 (State: ready, not folded at 06:55). Queuing now would void for
+a known cause, which the owner's 10-02 order forbids. The v5 route (no DOWN)
+does not help: it reaches the intro only from first-run state, and from the
+golden it reaches Auto Load and the level, a different window from A.
+
+### Next (P x win, attempt 4)
+
+| candidate | P | evidence for P | win if it works | cost |
+|---|---|---|---|---|
+| **A. Tron arm on the Nova, after savestate433 folds** | M 0.85, O1 0.45, O2 0.3 | M: the read now returns while the lock is held (selftest), and tron2 put 65% of this window's sleep there. O: the PFIFO thread is asleep for >= 86% of the waits, so the guest gains whatever it would have done in that time, unless it then waits on GPU output in RAM | up to ~4 ms of A's 42 ms slow frame; share 0.82 to 0.87-0.90 | 1 Nova run (~14 min); the lane's 3rd |
+| B. Release pfifo.lock across the STALLED finish | 0.3 | covers the DMA_PUT store (4.5%) and the pusher-side waiters too, but exposes renderer state to the display thread | <= A + 4.5% of the site | grant (vk/reports.c), build, goldens, arm |
+| C. If M passes and O1 fails: off-CPU + on-CPU capture of B | 0.8 that it names where the freed time goes (spin on a RAM report vs another sleep) | tron2's method worked | knowledge; picks between B and a report-path fix | 1 run, needs a 4th from lane.local |
+
+The pixel arms gate the fold regardless of A's outcome. A moved capture
+blocks the fix.
+
 ## Result (attempt 3, 2026-10-02 21:05 PDT): pfifo.lock in `user_read` owns the wait
 
 **The site:** in Tron's slow window the vCPU sleeps on **`pfifo.lock` in
@@ -345,7 +427,8 @@ the in-level case together. C is not worth a run unless A's arm is blocked.
 |---|---|---|---|
 | 1 | off-CPU capture tron1 (host-run, d8d36c9161) | 18:46-18:54 PDT | void: the route ended in Options > Display (no save, so the DOWN went to Light Cycles). Usable as a fast-window control: off-CPU 0.53 ms/frame, 69% BQL <- cpu_exec_loop |
 | 2 | off-CPU capture tron2 (v5 route + slow gate) | 19:54-20:01 PDT | recorded the New Game intro cinematic (not the level) at 27 fps: **the brief's slow window** (section 4). pfifo.lock in `user_read` 65.2%, which OWNS the wait |
-| 3 | (cleared by addendum 3) | not used | the capture's question is answered by run 2; see Next |
+| 3 | Tron arm B (012fa08a94, returning golden, A = 990012) | not queued yet | waits for savestate433 to fold (attempt 4) |
+| Thor | pixel arms B / A (3 suites) | 1-1791035760-vcpuwait433-4105238 / 1-1791035764-vcpuwait433-4105418 | queued 06:56 PDT |
 
 ## Do not repeat
 
@@ -375,7 +458,9 @@ the in-level case together. C is not worth a run unless A's arm is blocked.
 
 ## Files
 
-`userread-lockless.diff` (the proposed fix, for after the grant),
+`userread-lockless.diff` (the fix, applied in 012fa08a94),
+`selftest_userread.sh` (the fix's host selftest, with its falsifier),
+`tron-newgame-returning.route` (A's route + `# state: returning`, for the Tron arm),
 `levelcheck.py` (the capture gate's in-level check),
 `capture_offcpu.sh` (the host's capture), `waitsite.py` (the reader; `--detail`
 splits a site and names holders),
