@@ -106,3 +106,16 @@ Spin, Spikeout, Amped 2, Counter-Strike.
 
 Also recorded from the 10-02 late session, which never reached this file: Ghoulies gameplay in 2.35 min (11 calls),
 Tork gameplay in 4.41 min (19 calls), Conker gave up at 15 min (23 calls, black after a level load). See NOTES.md.
+
+## #433 -- 2026-10-03 08:40 PDT
+
+[lane.pathfind] Hold-play, first held run (Black Stone Magic Steel, Nova): **not held**. The run claimed gameplay at
+step 97 after 13.3 min and 66 Sonnet calls. The hold ran 65 s of 600 s before the 15-min budget ended, and the hold
+strip (frames 106 and 110, 30 s apart) shows a near-static corridor, so those 65 s are not counted as Playable.
+Frames: docs/lanes/pathfind/runs/black-stone-hold/ (hold_strip.jpg, frames/096-gameplay.jpg). Nova released; titlestate
+golden released.
+
+Why it failed, in order of weight: the claim read gameplay on a HUD playfield from step 3 to step 95, while every stick,
+D-pad and A probe measured control 0.000-0.005. That is a claim-rule failure or an input-path failure on this title, and
+it is open. Next: a pad-to-game input check on Black Stone before any more device time on it, then the next pool title
+(Panzer Dragoon Orta) with a budget that covers claim and hold together.

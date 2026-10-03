@@ -7,7 +7,13 @@ Sonnet only, <= $25. Model reads are counted per title.
 
 | title | device | genre | play held (s) | model reads | frames | result | frame strip |
 |---|---|---|---|---|---|---|---|
-| (none yet: waiting on the savestate433 fold, see "Attempt 2") | | | | | | | |
+| Black Stone Magic Steel | nova | other (genre loop) | 65 of 600 (budget ran out) | 66 calls over 97 steps, 13.3 min | runs/black-stone-hold/frames | **not held**; claimed at step 97 by one probe, the first with a visible stick response in 13 min | runs/black-stone-hold/hold_strip.jpg |
+
+Attempt 3 result, Black Stone (10-03 08:00-08:14 PDT): the lane's claim rule did not hold up. Probes at steps 2-95 showed
+control near 0.000 for stick, D-pad, A and RT, and the model read "gameplay" on the same HUD for ~90 steps. The first
+probe with a real under-input change came at step 97 (under input 0.321). The hold then ran 65 s on a genre loop
+that the strip (106 vs 110, 30 s apart) shows as a near-static corridor. Frame changes were 0.06-0.23. Not a
+Playable confirmation. See "Attempt 3 findings" below.
 
 Offline checks, run on saved frames with the real prompts (Sonnet 5, scratch/holdcheck):
 
@@ -31,6 +37,19 @@ Offline checks, run on saved frames with the real prompts (Sonnet 5, scratch/hol
   `--hold-s` and `--state`/`--hdd-img` are both kept. Selftest all ok after the merge.
 - **Nothing else from attempt 2 carries over as a result.** Its hold-play work is selftested only; no held run has
   been made on a device yet. Today's bar stays addendum 2: 600 s held on a Nova title from the pool, judged.
+
+## Attempt 3 findings (10-03)
+
+- **The claim accepted gameplay that did not respond to input for 13 minutes.** The model read gameplay on a
+  full-HUD playfield from step 3 onward, and every stick, D-pad and A probe showed control 0.000-0.005. The claim
+  requires an input that visibly changes the playfield (rule 5). Something is wrong with either the input path for
+  Black Stone or the probe's measure. Next: check whether the pad input reaches Black Stone at all (a menu or
+  pause-free control check with frames), before any more Black Stone device time.
+- **The budget was spent on probing, not on play.** A title whose claim comes at 13 min cannot hold 600 s in a
+  15-min budget. For hold runs the budget must cover the claim plus the hold, or the hold should not be queued.
+- **The hold's genre loop did not visibly move the character.** The strip at 30-s spacing is near-static. Hold-play
+  judged by frame change alone (the in-play check) can call a stationary screen "play". Hold-play needs a
+  position-change test on the playfield before it counts a second of play.
 
 ## Attempt 2 (10-03): why attempt 1 did not finish
 
