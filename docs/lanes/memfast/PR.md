@@ -3,7 +3,7 @@ State: draft
 
 Lane: memfast            Issue: #507
 Base: master @ 9d1155f919 (phase 1, the XBOX fast-path removal, folded as ddbc5f0173)
-Files: accel/tcg/cputlb.c, system/physmem.c, docs/lanes/memfast/NOTES.md, docs/lanes/memfast/PR.md, docs/lanes/memfast/OUTBOX.md, docs/lanes/memfast/w1_read.py, docs/testing/predictions/memfast-w1-pixels.json, docs/testing/predictions/memfast-w1-soak.json
+Files: accel/tcg/cputlb.c, system/physmem.c, docs/lanes/memfast/NOTES.md, docs/lanes/memfast/PR.md, docs/lanes/memfast/OUTBOX.md, docs/lanes/memfast/w1_read.py, docs/lanes/memfast/WAITING, docs/testing/predictions/memfast-w1-pixels.json, docs/testing/predictions/memfast-w1-soak.json
 Prediction: docs/testing/predictions/memfast-w1-pixels.json @ 8ec879bd71192076e3b0df62a560c7f2f774cfa77278aa5e8db13dbcc8180d02 ; docs/testing/predictions/memfast-w1-soak.json @ 65bb616e110c75807522e2ac39d8698c4be47c1f80f1cea3122901e3eb3a7bcc (a_ref 5e249bbfe0, b_ref 1b0f73a8bd)
 Needs device: yes    Needs NDK: yes
 

@@ -755,6 +755,22 @@ file); a rate here sizes a design, it does not compare builds.
   - G: **PASS**;
   - the census has a fourth title, Crimson, with the same shape.
 
+  This attempt then started phase 2 with W1 (section "W1" below):
+  - code `1b0f73a8bd` (b_ref), reviewed with no bug found;
+  - predictions registered on 5e249bbfe0 -> 1b0f73a8bd;
+  - **queued 08:45 PDT on the Nova:** the pilot, Conker B1
+    `1-1791042386-lane.memfast-1541269` and A1 `-1541403`, and the pixel arm
+    pair `1791042389-arms-memfast-w1-base-1541588` /
+    `1791042391-arms-memfast-w1-fix-1542161`;
+  - **waiting** on those four (`WAITING`). Then:
+    - read the pilot with `w1_read.py` (legs M, X, P, C) and
+      `title_verdict.py` on copies;
+    - judge the arm with `ab_compare.py --expect memfast-w1-pixels.json`,
+      plus the CPU-write leg;
+    - if M and X hold, queue Blinx 2 B/A, Forza B/A (`forza.drive`, state
+      any) and Crimson B, all 300 s `--perflog` on the Nova. If `wx` > 0,
+      stop and explain it first.
+
 ## Phase 1 on the Nova: J/frame, reach, pixels (read 2026-10-03)
 
 The tool is `title_verdict.py`, run on copies in `.scratch/nf/`, and the

@@ -54,3 +54,23 @@ My exclusion rule missed ZPass because its reader counted `ok` rows only, and ZP
 1. **W1, the per-page watch flush.** P 0.7, from the measured mechanism: one full TLB and jump-cache flush per watch insert and per remove. Win: 287 full flushes/s gone on Conker, 58/s on Blinx 2 and 38/s on Forza; a guessed 5-15% of Conker's vCPU time. Legs: `[tlb68] fo` and a profile. Conker has no gameplay route, so its fps cannot be scored. Cost: small, softmmu only.
 2. **F0a's device half, alongside W1.** A probe that decides between F1 and Dolphin's lazy view swap.
 3. **F1, fastmem for loads.** P 0.4. Win: about 11% of GTA's vCPU time; on Tron, 6.5-8 ms of a 43 ms frame, which is +15-19% fps if the frame stays vCPU-bound. Built only after F0a prices it under the kill line.
+
+## #507 -- 2026-10-03 08:46 PDT
+
+[lane.memfast] Phase 2 has started with W1, the per-page watch flush, on `lane/memfast` (PR.md: draft).
+
+**The change.** Every NV2A surface-watch insert and remove used to queue a full TLB and jump-cache flush: 287 a second on Conker, 58 on Blinx 2 and 38 on Forza. Now the exclusive work item that changes the watch list drops only the TLB entries whose RAM address overlaps the watched range. `HAKUX_W1=0` restores the full flush.
+
+**Why it is safe, and the check that would show otherwise.** The watch flag is decided at refill from the entry's RAM address, and the walk recovers that address the same way the watch check does. The walk also tests each entry's host pointer, an independent recovery of the same fact. An entry only that second test catches is dropped anyway and counted as `wx`. The prediction says `wx` stays 0 on every line.
+
+**Queued on the Nova (pilot):** Conker B1 `1-1791042386-lane.memfast-1541269`, A1 `-1541403`; pixel arm pair `1791042389-arms-memfast-w1-base-1541588` / `1791042391-arms-memfast-w1-fix-1542161` (`memfast-w1-pixels.json`). Blinx 2, Forza and Crimson follow once the pilot is read.
+
+**Legs:**
+- M: B's full flushes ("other") at most 10% of A's;
+- X: `wx` = 0;
+- C, a labelled guess: Conker's vCPU ms per wall second down at least 3%;
+- G: reach on Forza and Crimson, with no crash or hang;
+- pixels: identical outside the 325 noisy captures;
+- P, an observation: an independent code review found no correctness bug and one performance risk. With the watch flushes gone, a mode's recorded 4 MB large-page region is no longer reset, so an INVLPG inside it can flush the whole mode. `pfl` is read against A.
+
+The stale "insert and a TLB flush" wording in `hw/xbox/nv2a/pgraph/vk/surface.c` (lines 2192-2196 and 2242-2243) is outside this lane's territory. What it relies on still holds.
