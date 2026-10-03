@@ -4998,3 +4998,35 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 09:51 PDT, 10-03 coverage gate): filed on the forge with no tracker row; ubershader-on stalls 1-3 min into play; no lane owns the stall measurement. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.705]
+title = "status.sh's Pages branch calls `gh issue lock`, which the shim does not implement; the failure is silent in the job's log"
+component = "ops"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 11:09 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The Pages branch runs only if the roll-up moves to Pages, which it never does on the forge, so nothing is broken today; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.706]
+title = "harness_health.py's gh-auth probe reads the forge as GitHub"
+component = "ops"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 11:09 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The probe passes whenever the forge answers and names the GitHub support page; harness_health.py is retired under the 10-03 OVERRIDE, so the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.707]
+title = "pathfind's held run on Panzer Dragoon Orta dies three times in 10 min and loses ~140 s to game over and episode-card cutscenes (play 81%, below the 90% bar)"
+component = "pathfind"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 11:09 PDT, 10-03 coverage gate): filed on the forge with no tracker row. Evidence is runs/panzer-dragoon-hold. It blocks the 600 s Panzer confirmation and the NBA Live family pass; the PM (lane-local session) to name the owner (lane.pathfind is attempt-capped if it is the same lane)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.708]
+title = "hold verdict was silently wrong: pathfind's hold wrote logcat in threadtime format and request.json without the ISO, so title_verdict reported 'guest never appeared'"
+component = "pathfind"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "The fix is on lane/pathfind (logcat -v time, request.json carries the ISO, run.log gets the held line) and waits for its fold. Refuted if the fold lands and a re-run of the Panzer hold reads the title id and a non-'guest never appeared' verdict."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
