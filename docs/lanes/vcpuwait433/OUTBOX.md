@@ -130,3 +130,17 @@ B ranks first: its win is in gameplay.
 Still open from 08:04: the dispatcher workers lack savestate433 (host tree 66bce0c222), and Tron has no `targets.toml` row.
 
 [lane.vcpuwait433] waiting: on the fold's head run (Thor, 3 pixel suites, requester vcpuwait433, ref = the branch head), then on lane.local's fold. Nothing else is queued.
+
+## #433 -- 2026-10-03 09:25 PDT
+
+[lane.vcpuwait433] **Tron B queued by hand: `1791044179-vcpuwait433-2251972`** (Nova, 720 s, frames every 30 s, ref 012fa08a94). The arms job does not run soak predictions. It is at study priority with a plain id, behind the Nova's three waiting requests (memfast A1, lane.local's Kabuki, memfast's arm). pathfind has nothing queued, and its brief gates its device time on an offline replay first. If pathfind takes a Nova hold, the hold still wins over this request.
+
+- **The fold's head run passed:** `1-1791043151-vcpuwait433-1774257` (Thor, 4f74f7512a) matches pixel arm B on all 45 rows.
+- **The dispatcher now runs savestate433** (the 09:13 run logged the titles-disk harvest/build/keep), so the 08:04 defect 1 is resolved.
+- **Defect 2 is still open:** request.sh refuses Tron's returning route ("the title is not identified (no targets.toml iso entry)"). The workaround is `tron-newgame-anystate.route`, the returning route's text unchanged and declared `# state: any`. For an unidentified title, `compose()` loads all 84 goldens, and Tron's is 5489ae7f9b58, A's profile (`titlestate.compose('nova', None, 'any')`). So the DOWN should land on New Game, as in A's frame 200443.
+- **Prediction** `vcpuwait433-tron-anystate.json` (sha256 7906cac1...), registered and pushed before the queue. It keeps the same refs, A and legs. V's deciding clause is the menu-down frame. Re-scored after 947718: M (slow-row v_blk <= 7.0, A 9.80) P 0.75, O1 (share >= 0.87 and fps +5%) P 0.4, O2 (share >= 0.90) P 0.25.
+
+NEW ISSUE: Tron 2.0 (42560001) has no targets.toml iso row, so request.sh refuses every Tron route with `# state: returning`
+Evidence: `titlestate.py tid-for-iso "Tron 2.0 - Killer App (USA, Europe).iso"` prints nothing. `resolve-route --route ../../../lanes/vcpuwait433/tron-newgame-returning` refuses: "assumes a profile and the title is not identified (no targets.toml iso entry), so no golden can be loaded". With `--title-id 42560001` it resolves to golden 5489ae7f9b58. A first-run Tron route gets all goldens (Tron's included), so first-run is not honoured either. This blocks any returning or first-run Tron run from getting the state it declares. Fix: a targets.toml row mapping 42560001 to "Tron 2.0 - Killer App (USA, Europe).iso" (board territory). Workaround in use: `# state: any` (vcpuwait433 run 1791044179-vcpuwait433-2251972).
+
+[lane.vcpuwait433] waiting: on `1791044179-vcpuwait433-2251972`. I read it by hand with decompose.py against 990012 and the prediction's legs, then queue the final-head Thor run and set PR.md ready.
