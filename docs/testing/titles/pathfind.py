@@ -117,8 +117,11 @@ HOLD_REPEAT_STATES = ("cutscene", "game_over")
 # move in that window. 10-03, scratch/posprobe.py on the held runs: Black Stone standing on its octagon for 600 s
 # (sword swinging, verdict PASS) 0.002-0.013 per 30-s pair; Panzer Dragoon Orta flying 0.31-0.92.
 HOLD_STILL = 0.03
+# a still window in the drive genre: a car against a wall (Forza, 10-03). Reverse while turning, then drive out the
+# other way, alternating sides per still window, before the generic unlock rotation.
+HOLD_UNSTICK = {"drive": (["LT+left:3", "RT+right:3"], ["LT+right:3", "RT+left:3"])}
 HOLD_GENRES = {
-    "drive": ["RT:2", "STICK:left:0.8", "STICK:right:0.8"],
+    "drive": ["RT:2", "RT+left:0.8", "RT+right:0.8"],
     "attack": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"],
     "rally": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"],
     "onrails": [],                   # the scene moves on its own: send nothing, watch it
@@ -576,6 +579,9 @@ How to act:
 - A profile or save marked damaged/corrupt ("cannot be used", "Press X to delete") never loads: A on it only
   loops back (Forza, 10-03: 25 presses). Move to NEW PROFILE / Create New and make a fresh one; if there is no
   create option, delete the damaged one (X) first.
+- Racing: hold the throttle 3 s or more (RT:3); 1.5-s taps only creep. A car at 0 MPH nosed into a wall or
+  facing the wrong way does not move on RT: reverse while turning (LT+left:3 or LT+right:3), then RT+<the
+  other way>:3 (Forza, 10-03: 40 RT/stick inputs against the pit wall, none reversed).
 - "Continue" may replay a cutscene; prefer New Game/Start for a cold boot.
 - Controller/"press start to begin" prompts: START or A.
 - Loading screens: wait (wait_s 3-8). Cutscenes: try START, then A, then B/BACK to skip.
@@ -593,6 +599,8 @@ Inputs (the "action" list, up to 8 tokens, sent in order ~0.4 s apart):
   A B X Y START BACK UP DOWN LEFT RIGHT L1 R1 L3 R3   one press (UP/DOWN/LEFT/RIGHT are the d-pad)
   STICK:<up|down|left|right|upleft|upright>:<seconds>  hold the left stick
   RT:<seconds>  LT:<seconds>                           hold a trigger (accelerate/brake in racing games)
+  RT+<left|right|up|down>:<seconds>  LT+<...>:<seconds>  a trigger and the left stick together (steer on the
+                                                       gas; LT+left reverses while turning off a wall)
   HOLD:<button>:<seconds>                              hold a button
 An empty list [] means wait and look again.
 
@@ -712,11 +720,14 @@ def clean_action(a):
         if up in BUTTONS or up in ("SELECT", "BACK"):
             out.append("BACK" if up == "SELECT" else up)
         elif re.fullmatch(r"(STICK:(up|down|left|right|upleft|upright)|RSTICK:(up|down|left|right)|RT|LT"
-                          r"|HOLD:[A-Z0-9]+):[0-9.]+", tok, re.I):
+                          r"|(RT|LT)\+(up|down|left|right)|HOLD:[A-Z0-9]+):[0-9.]+", tok, re.I):
             parts = tok.split(":")
             parts[0] = parts[0].upper()
             if parts[0] in ("STICK", "RSTICK"):
                 parts[1] = parts[1].lower()
+            if "+" in parts[0]:
+                trig, d = parts[0].split("+")
+                parts[0] = f"{trig}+{d.lower()}"
             if parts[0] == "HOLD":
                 parts[1] = parts[1].upper()
                 if parts[1] not in BUTTONS:
@@ -797,6 +808,16 @@ class Agent:
                 self.dev.pad("axis", parts[0], "max")
                 time.sleep(secs)
                 self.dev.pad("axis", parts[0], "min")
+            elif "+" in parts[0]:
+                # a trigger and the left stick together: steer on the gas, or reverse while turning off a wall
+                trig, d = parts[0].split("+")
+                self.dev.pad("axis", trig, "max")
+                for ax, v in STICK[d]:
+                    self.dev.pad("axis", ax, v)
+                time.sleep(secs)
+                for ax, _ in STICK[d]:
+                    self.dev.pad("axis", ax, "mid")
+                self.dev.pad("axis", trig, "min")
             elif parts[0] == "HOLD":
                 self.dev.pad("hold", parts[1])
                 time.sleep(secs)
@@ -974,6 +995,13 @@ class Agent:
         elif parts[0] in ("RT", "LT"):
             self.dev.pad("axis", parts[0], "max")
             held.append((parts[0], "min"))
+        elif "+" in parts[0]:
+            trig, d = parts[0].split("+")
+            self.dev.pad("axis", trig, "max")
+            held.append((trig, "min"))
+            for ax, v in STICK[d]:
+                self.dev.pad("axis", ax, v)
+                held.append((ax, "mid"))
         elif parts[0] == "HOLD" or parts[0] in BUTTONS:
             btn = parts[1] if parts[0] == "HOLD" else parts[0]
             self.dev.pad("hold", btn)
@@ -1333,7 +1361,12 @@ class Agent:
                     if mv < HOLD_STILL:
                         still_windows += 1
                         rot += 1
-                        tokens = [UNLOCK_LADDER[(rot - 1) % len(UNLOCK_LADDER)]] + HOLD_GENRES[order[rot % len(order)]]
+                        unstick = HOLD_UNSTICK.get(genre)
+                        if unstick and rot <= 2 * len(unstick):
+                            tokens = unstick[(rot - 1) % len(unstick)] + HOLD_GENRES[genre]
+                        else:
+                            tokens = [UNLOCK_LADDER[(rot - 1) % len(UNLOCK_LADDER)]] + \
+                                HOLD_GENRES[order[rot % len(order)]]
                         parked = True
                     elif parked:
                         parked = False

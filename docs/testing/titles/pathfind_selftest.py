@@ -344,8 +344,10 @@ look = [json.loads(l) for l in open(os.path.join(TMP, "holdstill", "out", "hold.
 states = [m.split()[0] for m in ROUTE_LOG if m.startswith("state=")]
 check("holdstill", hold.get("still_windows", 0) >= 1 and "state=still" in states and states[-1] == "state=play",
       f"a still window is marked and play resumes once the scene moves: {states}, {hold.get('still_windows')} still")
-check("holdstill", any(l.get("action", [None])[:1] == ["X"] for l in look),
-      "after a still window the loop is led by the first unlock button (X)")
+firsts = [l.get("action", [None])[0] for l in look if l.get("action")]
+check("holdstill", "LT+left:3" in firsts and firsts.index("LT+left:3") < firsts.index("X") if "X" in firsts else False,
+      f"a still drive window first reverses while turning (HOLD_UNSTICK), then the unlock buttons (X): "
+      f"{sorted(set(firsts))}")
 still_s = max((l["hold_s"] for l in look if l.get("window") is not None and l["window"] < pathfind.HOLD_STILL),
               default=0)
 check("holdstill", hold.get("ok") is True and hold.get("hold_s", 0) >= still_s + 50,
@@ -359,6 +361,14 @@ check("actions", ca == ["A", "START", "STICK:up:4", "RT:1.5", "HOLD:A:1", "BACK"
 check("actions", pathfind.clean_action("wait") == [], "'wait' is no input")
 check("actions", pathfind.clean_action(["RSTICK:Right:0.6", "RSTICK:diag:1", "RSTICK:up:0.5"])
       == ["RSTICK:right:0.6", "RSTICK:up:0.5"], "the right stick takes four directions at full deflection")
+check("actions", pathfind.clean_action(["rt+Left:3", "LT+right:9", "RT+upleft:1", "LT+:1"])
+      == ["RT+left:3", "LT+right:4"], "a trigger with the stick: RT+<dir> / LT+<dir>, four directions")
+SENT = []
+pathfind.Agent.send(type("A", (), {"dev": type("D", (), {"pad": lambda self, *a: SENT.append(a)})()})(),
+                    ["LT+left:0.2"])
+check("actions", SENT[0] == ("axis", "LT", "max") and ("axis", "LX", "min") in SENT
+      and SENT[-1] == ("axis", "LT", "min") and ("axis", "LX", "mid") in SENT,
+      f"LT+left holds the trigger and the stick together, then releases both: {SENT}")
 
 shutil.rmtree(TMP)
 print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))
