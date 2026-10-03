@@ -64,6 +64,7 @@ Caller decisions for every remaining `gh` call on master are in NOTES.md section
   directory): **83 passed, 0 failed**.
 - `bash ~/hakux-work/host-tools/local_jobs_selftest.sh`: **14 checks passed**.
 - `docs/testing/jobs/selftest.sh` (all shards, run locally at ab37133): **3000 passed, 0 failed, all 123 fragments.** Log: `~/hakux-work/logs/forge/selftest-localforge-ab37133.log`.
+- Re-run at this head (attempt 3, after the merge with origin/master at a143aa5db8 and the addenda 4-7 changes): `selftest.sh` in the four CI shards, `SELFTEST_SHARD=k/4` for k = 0..3: **284 + 865 + 967 + 884 = 3000 passed, 0 failed, all 123 fragments.** `smoke_live.py`: 88 passed, 0 failed. `route_test.py`: 83 passed, 0 failed.
 - `python3 docs/lanes/localforge/import_smoke.py` (importer): all passed, unchanged this attempt.
 
 ## Not done in this PR

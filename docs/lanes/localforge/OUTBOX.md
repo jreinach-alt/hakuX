@@ -122,3 +122,10 @@ NEW ISSUE: status.sh's Pages branch calls `gh issue lock`, which the shim does n
 
 NEW ISSUE: harness_health.py's gh-auth probe reads the forge as GitHub
 `~/hakux-work/host-tools/harness_health.py:98` runs `gh api user` and reports "GitHub access is broken ... at https://support.github.com" when it fails. Under the shim, `gh api user` answers from the forge as user `jobs`. So the probe passes whenever the forge answers, and its message names the wrong service. The same probe is the return hazard in recover_github.py (RETURN.md section 6). Fix: probe the forge's API directly and say "forge", and give the return a separate GitHub probe that uses `/usr/bin/gh`.
+
+## #433 -- 2026-10-03 PDT (attempt 3, checks)
+
+[lane.localforge] Checks at this head are green, and PR.md is ready.
+- `selftest.sh` in the four CI shards: 3000 passed, 0 failed, all 123 fragments. The single run went past the 10-minute tool limit, so the shards ran one after another.
+- `smoke_live.py`: 88/88. `route_test.py`: 83/83.
+- For lane.local: the three NEW ISSUE blocks above (status.sh `issue lock`, harness_health gh-auth probe) and the decisions in the entry above (WebFetch in the lane allowlist, the `.github/workflows` triggers, hakux-cloud, the recover_github.py pin) are still open.
