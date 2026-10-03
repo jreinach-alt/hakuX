@@ -4950,3 +4950,11 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "Forge issue, open; hostops 2026-10-03 (jam duty) added the row to clear the coverage gate. Nothing blocks it, so it waits for capacity. Its fix lives in the status page's save lookup (status.sh / status_html.py), which no active lane owns. Title is the gate's truncated form; full text on the forge."
+
+[issue.698]
+title = "ops cutover: the PM's DO items in hostops-inbox.md lose their executor when hostops is replaced"
+component = "ops"
+status = "open"
+dispatch_state = ""
+blocked_on = ""
+status_note = "Forge issue, open. Owned by lane.opsrebuild (running, #433), which replaces hostops's model tick with the model-free ops layer. Row added 2026-10-03 (jam duty) so the coverage gate reads it. What moves: the executor of the PM's DO items. What is measured: a DO item written to the inbox is executed, or reported as not executed, within one tick. Title is the gate's truncated form; full text on the forge."
