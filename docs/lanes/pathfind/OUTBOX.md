@@ -167,3 +167,29 @@ NEW ISSUE: hold verdict was silently wrong: pathfind's hold wrote logcat in thre
 the ISO, so title_verdict reported "guest never appeared" for a run that played 740 s and resolved no title id.
 Evidence: runs/panzer-dragoon-hold, first verdict "booted: the guest never appeared". Fixed on lane/pathfind (logcat
 `-v time`, request.json carries the ISO, run.log gets the held line); pending the fold.
+
+## #433 -- 2026-10-03 11:24 PDT
+
+Panzer Dragoon Orta, held run 2 (repeat change in; 601 s of play held, 717 s scored). Verdict still FAILS the 90% play
+share: **83.6%** (play 600, cutscene 74, menu 21, black 14). Up from 80.8% in run 1. The cutscene repeats worked (three
+A/START presses per episode card, no model read); each death now costs about 23-30 s off play, down from 33-38 s. The bigger
+cost in this run is at the start of the hold: a black screen at 82 s, then the game returned to the title screen and
+the model steered NEW GAME and the difficulty menu, about 65 s of off play. Frames: runs/panzer-dragoon-hold2/hold_strip.jpg
+and hold.jsonl. Panzer is not a Playable confirmation. Next, Black Stone (58490004), the title the probe fix was built for,
+held run in progress.
+
+## #433 -- 2026-10-03 11:55 PDT
+
+Black Stone Magic Steel (58490004, Nova), held run. Claimed at 2.4 min (probe: idle 0.002, under input 0.088). Held 602 s.
+Verdict line: `Black Stone Magic Steel ? PASS gameplay=601.9s fps_ok=1.0 hitches=0 play_share=0.9996`.
+**My frame review does not confirm it as Playable.** The strip (runs/black-stone-hold2/hold_strip.jpg, 16 frames, 30 s apart)
+shows the red-armoured player in the same spot of the same octagon for the whole 600 s, sword swinging, camera fixed. The
+hold log has 46 model checks, all "in play", and 47 steps; per-frame change is 0.003-0.010, and it is the swing effects,
+not travel. The genre loop (attack: STICK up, X, A, ...) was sent every cycle and did not move him. This is the same stance
+the 10-03 attempt-4 notes describe (the sword raised on the spawn octagon, released by X). The verdict PASS comes from the
+play-share and fps rules, which do not check position. Not counted. The owner should judge the strip.
+Next: the hold needs a position-change test on the playfield before it can count a second of play (NOTES, attempt 3
+findings, was the same request). Not started here.
+
+Status for today (the owner's 0.5 bar, 600-s Playable confirmations): none accepted yet.
+Panzer Dragoon Orta: 80.8% and 83.6% play share, FAIL. Black Stone: PASS by the verdict, not confirmed on the frames.

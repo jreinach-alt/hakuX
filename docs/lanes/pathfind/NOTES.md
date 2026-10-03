@@ -32,6 +32,44 @@
   `HOLD_REPEAT` (3) times with no model read, then looks again. The selftest case fails without it (three extra looks).
 - **Next:** run 2 with the repeat change, same title, `runs/panzer-dragoon-hold2`. The verdict is judged the same way.
 
+### Panzer run 2 (10-03 11:00-11:18 PDT): still FAIL, 83.6% play
+
+| run | held (s) | play (s) | play share | off-play cost | deaths / returns | frames |
+|---|---|---|---|---|---|---|
+| hold 1 | 740 | 598 | 80.8% | 142 s: cutscene 109, game over 33 | 3 game overs, each then an episode card (33-38 s each) | runs/panzer-dragoon-hold |
+| hold 2 | 717 scored / 601 play | 600 | 83.6% | 117 s: cutscene 74, menu 21, black 14 | black at 82 s, a return to the title screen (NEW GAME, difficulty) ~65 s; 2 deaths, each ~23-30 s | runs/panzer-dragoon-hold2 |
+
+- **What the repeat change did:** the episode card's three presses now go unlooked (rows 48-50, 82-84, 106-108 in
+  hold2). Each death drops from ~35 s to ~23-30 s. It does not touch the title-screen return.
+- **Named costs, in order:** (1) the return to the title screen after the first death (~65 s, six model reads through
+  NEW GAME and the difficulty menu, each ~9 s); (2) each death's episode card, now ~3 unlooked presses plus one read;
+  (3) the deaths themselves: 2-3 per 10 min on this path.
+- **Not done, and the ranked options (P x win):**
+  1. Replay the recorded title-to-play menu path (the golden's `paths/4947002B.json` steps, screen-checked against the step
+     frame) after a return to the title. Removes most of cost (1), about 50 s per return. P high (the path reached play
+     in both runs). Medium effort. This is the next change if Panzer is to pass.
+  2. Survive: a dodge or aim pattern on the on-rails dragon. Removes cost (3), the biggest win if it works, but P is
+     unknown and it needs its own measurement first. Not started.
+  3. Shorter model steps while off play (the model call is ~9 s; a Haiku first look is ~6 s per the 10-02 measurement).
+     Small win, cheap to try, lower P of a large change.
+- Panzer is not a Playable confirmation. The verdict is the 90% play-share rule, applied as written.
+
+## Black Stone held run (10-03 11:34-11:47 PDT): verdict PASS, frames do not show play
+
+| run | device | claim | held (s) | verdict | frame review | frames |
+|---|---|---|---|---|---|---|
+| black-stone-hold2 | nova | 2.4 min (probe idle 0.002, under input 0.088) | 602 | PASS, play share 0.9996, fps_ok 1.0, hitches 0 | **not counted**: the player stands in one place in one octagon for 600 s, sword swinging, camera fixed | runs/black-stone-hold2/hold_strip.jpg |
+
+- The genre loop was sent every cycle (attack: STICK up, X, A, ...). The model read "in play" on all 46 checks. The
+  frames show no travel: per-frame change 0.003-0.010 is the swing effects.
+- This is the 10-03 attempt-4 stance (the sword raised on the spawn octagon) and the gap in the attempt-3 findings:
+  the verdict's play-share and fps rules do not test position, so a standing player passes. A hold-play count needs a
+  position-change test on the playfield (the attempt-3 request, still open).
+- The run wrote a path and a learned hint for 58490004 from that claim. They are **reverted** (not a confirmed guide).
+  The Panzer path and learned hint from run 2 are kept: that claim led to play that moved (the dragon flies).
+- Not done: the position test. The next Black Stone attempt would repeat the same stance until the stick is shown to
+  move him (the 10-02 run ran him with the same stick).
+
 ## Resume (10-03 09:45 PDT, attempt 5): why the previous attempt did not finish
 
 - The previous session ended on its WAITING file (`run 1791040252-lanelocal-978819`), after it had taken the Nova,
