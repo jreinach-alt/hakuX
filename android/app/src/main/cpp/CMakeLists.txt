@@ -15,6 +15,27 @@ add_compile_options(${XEMU_ARCH_FLAGS})
 include(FetchContent)
 include(ExternalProject)
 
+# Build inputs come from a local mirror, not github.com (#433). Git sources
+# need nothing here: url.<mirror>.insteadOf in the user's git config rewrites
+# their URLs. Archives are named by file: when the mirror holds the file the
+# build uses it, otherwise the upstream URL, so a host without a mirror still
+# builds. Mirror: docs/lanes/selfdeps/mirror_sources.py (default
+# ~/hakux-work/mirrors, or $HAKUX_MIRRORS).
+if(DEFINED ENV{HAKUX_MIRRORS})
+  set(XEMU_MIRROR_DIR "$ENV{HAKUX_MIRRORS}")
+else()
+  set(XEMU_MIRROR_DIR "$ENV{HOME}/hakux-work/mirrors")
+endif()
+set(XEMU_MIRROR_ARCHIVES "${XEMU_MIRROR_DIR}/archives" CACHE PATH
+    "Local mirror of archives fetched by this build")
+function(xemu_archive_url out filename upstream)
+  if(EXISTS "${XEMU_MIRROR_ARCHIVES}/${filename}")
+    set(${out} "${XEMU_MIRROR_ARCHIVES}/${filename}" PARENT_SCOPE)
+  else()
+    set(${out} "${upstream}" PARENT_SCOPE)
+  endif()
+endfunction()
+
 get_filename_component(REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../../../.." ABSOLUTE)
 find_program(PYTHON_EXECUTABLE NAMES python python3)
 if(NOT PYTHON_EXECUTABLE)
@@ -64,9 +85,11 @@ elseif(XEMU_FETCH_SDL2)
   set(SDL_VIDEO_VULKAN ON CACHE BOOL "" FORCE)
   set(SDL_VIDEO_OPENGL_ES ON CACHE BOOL "" FORCE)
   set(SDL_VIDEO_OPENGL_ES2 ON CACHE BOOL "" FORCE)
+  xemu_archive_url(SDL2_URL "SDL-release-${SDL2_VERSION}.zip"
+    "https://github.com/libsdl-org/SDL/archive/refs/tags/release-${SDL2_VERSION}.zip")
   FetchContent_Declare(
     SDL2
-    URL "https://github.com/libsdl-org/SDL/archive/refs/tags/release-${SDL2_VERSION}.zip"
+    URL "${SDL2_URL}"
   )
   FetchContent_MakeAvailable(SDL2)
 endif()
@@ -384,8 +407,10 @@ file(WRITE "${GLIB_CROSS_FILE}"
 "cpp_link_args = ['--target=${ANDROID_TRIPLE}', '-L${ICONV_STUB_DIR}', '-liconv']\n"
 )
 
+xemu_archive_url(GLIB_URL "glib-${GLIB_VERSION}.tar.xz"
+  "https://download.gnome.org/sources/glib/2.66/glib-${GLIB_VERSION}.tar.xz")
 ExternalProject_Add(glib_ep
-  URL "https://download.gnome.org/sources/glib/2.66/glib-${GLIB_VERSION}.tar.xz"
+  URL "${GLIB_URL}"
   URL_HASH "SHA256=97BC87DD91365589AF5CBBFEA2574833AEA7A1B71840FD365ECD2852C76B9C8B"
   DOWNLOAD_DIR "${CMAKE_BINARY_DIR}/downloads"
   SOURCE_DIR "${GLIB_SOURCE_DIR}"
