@@ -573,6 +573,9 @@ How to act:
   jumps to Done/Accept; then A on Done/OK. Accept defaults.
 - Save/load prompts: "no storage device / continue without saving": choose continue. Prompts that create a
   save: Yes is fine. Beware prompts whose default is No when Yes is needed to proceed.
+- A profile or save marked damaged/corrupt ("cannot be used", "Press X to delete") never loads: A on it only
+  loops back (Forza, 10-03: 25 presses). Move to NEW PROFILE / Create New and make a fresh one; if there is no
+  create option, delete the damaged one (X) first.
 - "Continue" may replay a cutscene; prefer New Game/Start for a cold boot.
 - Controller/"press start to begin" prompts: START or A.
 - Loading screens: wait (wait_s 3-8). Cutscenes: try START, then A, then B/BACK to skip.
