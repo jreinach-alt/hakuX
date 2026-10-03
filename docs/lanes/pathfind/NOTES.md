@@ -9,6 +9,18 @@
   Castlevania (4B4E002D, profile-creation) first, then Forza, then the file in order. This resume merged
   origin/master (clean).
 
+## Where attempt 7 stopped (10-03 14:55 PDT)
+
+- PR.md `State: ready`. Selftest all ok, preflight passed, origin/master merged. The Nova is released, and none of
+  my runs is in flight. No WAITING file: nothing is awaited.
+- Spend today is about $29.5 of $35 (Sonnet), so device work stopped there.
+- **Next, in P x win order:** (1) NBA Live (addendum 3) when lane.xbox's push lands on the Nova (none in
+  listing-nova.txt at 14:45). (2) The `rounds` probe needs its first device measurement on a fight title: Spikeout's
+  opening fight, or DOA3, which gave up on probes on 10-02. (3) The eeprom decision (the NEW ISSUE) is a device call
+  for lane.local or the PM, not this lane's.
+- **Do not repeat:** holding Top Spin, Counter-Strike or Midnight Club 3 for a Playable count. Their gameplay frames
+  read 20, 13 and 22 fps. Forza runs at 0.59x speed. Those are performance cases.
+
 ## Golden saves made on the Thor are read as damaged on the Nova (10-03, offline, no device time)
 
 **Forza (4D53006E), memfast run `1-1791047880-lane.memfast-3557511`:** the route pressed A 25 times between
