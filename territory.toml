@@ -1931,3 +1931,8 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/routefix1002/**", "docs/testing/titles/routes/gunvalkyrie.route", "docs/testing/titles/routes/halo-ce.route"]
 note = "ROW ADDED (hostops 2026-10-02 22:25 PDT, lane.local inbox item 22:20 PDT): owner wants 4-5 titles confirmed tomorrow; bounded offline Sonnet lane (briefs/routefix1002.md, ends 23:45 PDT, no device). Files granted per the brief's Territory line. The three route files were held by [lane.titleroutes2] (stopped by the owner, its routes/** claim released above) and [lane.savestate433]'s header-only wildcard docs/testing/titles/routes/*.route (granted 20:10 PDT for the `# state:` header line). OVERLAP FLAG: savestate433 may still edit the `# state:` header of these three files; routefix1002 edits their bodies. lane.local to confirm the split if both touch one file."
+
+[lane.selfdeps]
+issues = ["433"]
+files = ["docs/lanes/selfdeps/**", "android/app/src/main/cpp/CMakeLists.txt", "android/app/build.gradle.kts", "docs/testing/jobs/selftest.d/84-selfdeps.sh", "subprojects/VulkanMemoryAllocator.wrap", "subprojects/genconfig.wrap", "subprojects/json.wrap", "subprojects/SPIRV-Reflect.wrap", "subprojects/glslang.wrap", "subprojects/imgui.wrap", "subprojects/implot.wrap", "subprojects/nv2a_vsh_cpu.wrap", "subprojects/tomlplusplus.wrap", "subprojects/xxhash.wrap", "subprojects/curl.wrap", "subprojects/volk.wrap"]
+note = "STARTED (hostops 08:52 PDT, 10-03 jam duty): lane.local's 08:41 PDT territory item (owner: nothing may point at GitHub). The 12 wrap files are the ones whose URL names github.com; meson.build has no fetch URL, so it is not claimed. Files outside docs/lanes/selfdeps/** are its own build-mirror changes only."
