@@ -1,0 +1,10 @@
+[Unit]
+Description=hakuX ops tick -- model-free jam detection and scripted remedies (#433)
+Documentation=file:///home/justin/hakuX/docs/testing/jobs/ops/ops_tick.py
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env python3 /home/justin/hakuX/docs/testing/jobs/ops/ops_tick.py
+TimeoutStartSec=90
+StandardOutput=append:/home/justin/hakux-work/logs/ops/systemd.log
+StandardError=append:/home/justin/hakux-work/logs/ops/systemd.log
