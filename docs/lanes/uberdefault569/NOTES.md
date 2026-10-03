@@ -51,12 +51,14 @@ Arms, all ref d4a02e2060 on the Nova, cold (`HAKUX_PREBUILD=0 HAKUX_PLC_WIPE=1`)
 |---|---|---|---|---|
 | 1 | Kabuki B | 1-1790990144-uberdefault569-532413 | queued 18:16 PDT | creates near zero in the fight, no hang |
 | 2 | Tron B | 1-1790990144-uberdefault569-532476 | queued 18:16 PDT | past the second card, no hang |
-| 3 | Kabuki A | after the pilot | | creates tens of seconds (K1/uberspike A: 133 s) |
-| 4 | DOA3 B | after the pilot | | creates <= half of A's |
-| 5 | DOA3 A | after the pilot | | |
-| 6 | ToeJam B | after the pilot | | creates <= half of A's 15.6 s; fps share within 0.10 of A's 0.99 |
-| 7-8 | pixels B, A | after the pilot | | every capture same or in band |
-| 9 | banner | after the pilot | | the banner visible in the first frames, gone by ~7 s |
+| 2b | Tron B rerun | 1-1790994313-uberdefault569-990012 | queued 19:32 | as 2 |
+| 3 | Kabuki A | 1-1790994318-uberdefault569-990124 | queued 19:32 | creates tens of seconds (uberspike A: 133 s) |
+| 4 | DOA3 B | 1-1790994320-uberdefault569-990204 | queued 19:32 | creates <= half of A's |
+| 5 | DOA3 A | 1-1790994322-uberdefault569-990282 | queued 19:32 | |
+| 6 | ToeJam B | 1-1790994325-uberdefault569-990361 | queued 19:32 | creates <= half of A's 15.6 s; fps share within 0.10 of A's 0.99 |
+| 7 | pixels B | 1-1790994329-uberdefault569-990475 | queued 19:32 | every capture same as A or in band |
+| 8 | pixels A | 1-1790994333-uberdefault569-990621 | queued 19:32 | |
+| 9 | banner | 1-1790994336-uberdefault569-990675 | queued 19:32 | the banner in the frames at 1-6 s, gone by ~7 s |
 | 10 | head smoke | after the last commit | | finishes, not void |
 
 Two A arms come from runs already on disk, to keep the Nova budget at 10 (it is shared with
@@ -71,3 +73,24 @@ The pilot was first queued plain (`1790990082-...-525888`, `1790990086-...-52616
 request.sh reads #569's release label with `gh`, which fails offline. Both were moved to
 `queue/withdrawn/` with a `.why` and re-queued with `HAKUX_RELEASE_PRIO=1`, the tier
 uberspike569's #569 arms ran at.
+
+## 4. The pilot (read 19:30 PDT)
+
+- **Kabuki B** (`...-532413`): `ubershader: ON (#569)`, `[gpl569] requested=3 mode=3` with no
+  HAKUX_GPL in the env, so the compiled default is what ran. Cold (cache cleared, PLC absent,
+  `[pb569] enabled=0`). Reached gameplay, no hang, fps_ok 0.933 (median 59.94). Draw-path creates
+  2.8 s over the whole run, 3 stall windows; `[uber569]` links 769, cold 94, uncovered 0.
+  12 hitches in the first 120 s of the fight, 9 classed shader, worst 734 ms. Each of those has
+  dpc_ms <= 22.5 ms: hitch_report classes a window shader when it shows any cache miss
+  (`dsm > 0`), and under the ladder a miss is a ~5 ms link, so the class does not say these
+  were compile stalls. What they are is read against A.
+- **Tron B** (`...-532476`): **guest kernel BugCheck 0xA, 13 s into boot**, before the first
+  flip: a NULL write at kernel EIP 0x80019e0e called from title code (ret 0x162b15), then the
+  halt loop at 0x800151ed. 3 uber links and 0 ms of creates by then. A search of 524 result
+  logcats from the last five days finds one other BugCheck 0xA, `1790933948-titleroutes-171701`
+  (Conker, Nova, GPL 0, the same halt EIP). Tron's own GPL 3 run 7 booted. Read as a boot flake
+  and re-run once (2b); if 2b crashes the same way, the flake reading is wrong.
+- `judge.py` now computes verdict.json in memory (the harness's `title_verdict.judge`, writing
+  nothing) when a soak path did not write one: Kabuki B had none. Legs and factors unchanged.
+- Pilot verdict written to `pilots/uberdefault569.ok`; the remaining eight requests queued.
+- Budget: the Tron rerun makes this 11 Nova runs with the head smoke, one over the brief's 10.

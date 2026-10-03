@@ -113,7 +113,12 @@ def load(rdir, name):
 
 def read_dir(rdir):
     lines, _gaps, _open = tv.parse_logcat(os.path.join(rdir, "logcat.txt"))
-    r = read_lines(lines, load(rdir, "verdict.json"),
+    verdict = load(rdir, "verdict.json")
+    if verdict is None:
+        # Not every soak path writes verdict.json; the harness's own judge,
+        # in memory, writes nothing into the result dir.
+        verdict = tv.judge(rdir, write_contact_sheet=False)
+    r = read_lines(lines, verdict,
                    (load(rdir, "result.json") or {}).get("shader_cache"))
     r["dir"] = os.path.basename(rdir.rstrip("/"))
     return r
