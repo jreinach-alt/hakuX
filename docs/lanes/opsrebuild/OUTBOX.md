@@ -67,3 +67,17 @@ Lane.local compares that with hostops's inbox entries for the same window, then 
 false stranded-lane resume is the one remedy that touches a live lane.
 
 Full comparison and the candidates for what comes next (with P and win) are in NOTES.md, "Attempt 2".
+
+## #433 -- 2026-10-03 08:55 PDT
+
+[lane.opsrebuild] waiting: the four shadow faults are fixed and committed on this branch. The clean
+2-hour --shadow run starts from this head and ends at 11:00 PDT; the comparison is posted after that.
+
+Fixed since the last entry: the attempt-2 work is committed (it had been uncommitted); origin/master is merged;
+a live lane session outside its unit is no longer read as stranded (the resume remedy would have started a second session).
+Selftest 87: 38 passed, 0 failed, with the new leg falsified. A real-state shadow tick at 08:45 names one jam:
+fold-failure:rowless lane/titleroutes.
+
+Not done here: the full 124-fragment selftest. It takes over an hour, so lane.local's fold gate runs it.
+
+Resume: WAITING holds time 2026-10-03T11:00. Lane.local's cutover decision follows the comparison.

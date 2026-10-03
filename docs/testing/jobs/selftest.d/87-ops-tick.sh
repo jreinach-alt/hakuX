@@ -181,6 +181,30 @@ ot_tick   # a second tick: lane.sh's fake still reports inactive (no real unit s
 check "(b) a second tick does not resume stranded1 again" \
     bash -c '[ "$(grep -c "^resume stranded1$" "'"$OT_LANE_LOG"'")" = 1 ]'
 
+# ------------------------------------------- (k) a live session is not stranded
+# A lane session run outside its unit has no hakux-lane-<name> active. Its worktree is
+# the only local sign of it, so a process whose cwd sits in wt/<name> keeps the lane out of
+# the stranded set. Falsified: the same stranded set WITHOUT the fake /proc entry must name it.
+LIVE_PY=$(cat <<'PY'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("ops_tick", sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+print("\n".join(sorted(j.subject for j in m.det_stranded_lanes())))
+PY
+)
+ot_stranded() { # (proc root) -> the stranded lane names ops_tick would act on, one per line
+    env OPS_PROC="$1" OPS_SYSTEMCTL="$OT/bin/systemctl" HAKUX_WORK="$OT/work" \
+        HAKUX_REPO_DIR="$OT/repo" OPS_BRIEFS="$OT/work/briefs" python3 -c "$LIVE_PY" "$OT_PY"
+}
+mkdir -p "$OT/proc-empty" "$OT/proc-live/4242"
+ln -sfn "$OT/work/wt/stranded1" "$OT/proc-live/4242/cwd"
+ot_stranded "$OT/proc-empty" > "$OT/k-empty.txt"
+ot_stranded "$OT/proc-live" > "$OT/k-live.txt"
+check "(k) a stranded lane with no live session is named" grep -qx stranded1 "$OT/k-empty.txt"
+check "(k) a lane whose session cwd is its worktree is not stranded" \
+    bash -c '! grep -qx stranded1 "'"$OT/k-live.txt"'"'
+check "(k) the other lane (no session) is still named" grep -qx terrgap "$OT/k-live.txt"
+
 # ------------------------------------------------------- (c) fold failures
 FF="$OT/work/offline-git/fold-failures.log"
 cat > "$FF" <<EOF

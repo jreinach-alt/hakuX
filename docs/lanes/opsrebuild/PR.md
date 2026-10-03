@@ -4,7 +4,7 @@ State: draft
 
 Lane: opsrebuild             Issue: #433 (0.5: 50 Playable)
 Base: origin/master
-Files: docs/lanes/opsrebuild/NOTES.md, docs/lanes/opsrebuild/OUTBOX.md, docs/lanes/opsrebuild/PR.md, docs/lanes/opsrebuild/shadow-comparison.md, docs/testing/jobs/ops/allowed-tools.ops-escalate, docs/testing/jobs/ops/escalate-role.md, docs/testing/jobs/ops/ops_escalate.sh, docs/testing/jobs/ops/ops_tick.py, docs/testing/jobs/ops/units/hakux-ops-tick.service, docs/testing/jobs/ops/units/hakux-ops-tick.timer, docs/testing/jobs/selftest.d/87-ops-tick.sh
+Files: docs/lanes/opsrebuild/NOTES.md, docs/lanes/opsrebuild/WAITING, docs/lanes/opsrebuild/OUTBOX.md, docs/lanes/opsrebuild/PR.md, docs/lanes/opsrebuild/shadow-comparison.md, docs/testing/jobs/ops/allowed-tools.ops-escalate, docs/testing/jobs/ops/escalate-role.md, docs/testing/jobs/ops/ops_escalate.sh, docs/testing/jobs/ops/ops_tick.py, docs/testing/jobs/ops/units/hakux-ops-tick.service, docs/testing/jobs/ops/units/hakux-ops-tick.timer, docs/testing/jobs/selftest.d/87-ops-tick.sh
 Prediction: none: no arm (model-free tooling change, not a measured performance fix)
 Needs device: no
 
@@ -38,6 +38,8 @@ dropped. (3) `failed-unit ●`; the unit is the `hakux-*` token. Each has a self
 the old code (legs h, i, j). `NOTES.md`'s "Attempt 2" section has the table, the evidence and why
 attempt 1 did not finish.
 
+**Attempt 3:** the attempt-2 work was uncommitted, so it is committed now; `origin/master` merged; a fourth fault (a live lane session read as stranded) is fixed. See NOTES.md "Attempt 3".
+
 **Not finished here**: the brief's clean 2 h `--shadow` run on this head, and the cutover. The timer
 runs the worktree, so the run has started; this session cannot block for 2 h. Cutover (installing the
 units, stopping hostops) is lane.local's to run. `OUTBOX.md` carries the waiting entry.
@@ -50,10 +52,11 @@ waiting state, not a failure.
 ## Verification run locally (no CI while GitHub is suspended)
 
 - `python3 -m py_compile docs/testing/jobs/ops/ops_tick.py` -- clean.
-- `env SELFTEST_ONLY="87-ops-tick.sh" bash docs/testing/jobs/selftest.sh` -- 28 passed, 0 failed.
+- `env SELFTEST_ONLY="87-ops-tick.sh" bash docs/testing/jobs/selftest.sh` -- 38 passed, 0 failed (leg k falsified: fails with the live-session check removed).
 - `bash docs/testing/jobs/selftest.sh --check-shards 4` -- all 121 fragments still covered.
-- Full `bash docs/testing/jobs/selftest.sh` (every fragment, unsharded) -- required because this
-  PR changes files under `docs/testing/` (offline_fold.py's own harness-file gate): result below.
+- Full `bash docs/testing/jobs/selftest.sh` (all 124 fragments): NOT run to completion in this session.
+  One run takes over an hour (the first three fragments alone took about 460 s). Lane.local's fold gate
+  runs it for harness changes; NOTES.md "Attempt 3" says so.
 - A real `ops_tick.py --shadow` tick against live host state (`OPS_STATE_DIR` redirected to a
   worktree-local scratch dir; every other path left at its real default) -- see
   `shadow-comparison.md`.

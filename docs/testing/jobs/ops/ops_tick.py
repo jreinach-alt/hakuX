@@ -58,6 +58,7 @@ ESCALATE_SH = os.environ.get("OPS_ESCALATE_SH", os.path.join(JOBS, "ops_escalate
 # without touching selftest.sh's shared $T/bin/systemctl (which only knows
 # `is-active` -> active; this script also needs list-timers/list-units shapes).
 SYSTEMCTL = os.environ.get("OPS_SYSTEMCTL", "systemctl --user")
+OPS_PROC = os.environ.get("OPS_PROC", "/proc")  # a live session's cwd, read from here
 
 DEVICES = os.environ.get("OPS_DEVICES", "thor,nova").split(",")
 NOW = time.time()
@@ -144,6 +145,23 @@ def _stopped_marker(name):
     return bool(glob.glob(os.path.join(BRIEFS, name + ".md.STOPPED-by-owner-*")))
 
 
+def _lane_session_live(name):
+    """A live session sitting in the lane's worktree. A lane session run outside its unit has
+    no hakux-lane-<name> unit active, so without this it reads as stranded and the resume
+    remedy would start a second session in a worktree that is already in use."""
+    want = os.path.join(W, "wt", name)
+    for pid in os.listdir(OPS_PROC) if os.path.isdir(OPS_PROC) else []:
+        if not pid.isdigit():
+            continue
+        try:
+            cwd = os.readlink(os.path.join(OPS_PROC, pid, "cwd"))
+        except OSError:
+            continue  # gone, or another user's process
+        if cwd == want or cwd.startswith(want + os.sep):
+            return True
+    return False
+
+
 def _resume_lane(name, addendum):
     """Append `addendum` to the lane's brief and resume it once. Returns a status string."""
     brief = os.path.join(BRIEFS, name + ".md")
@@ -164,7 +182,7 @@ def det_stranded_lanes():
     out, _ = sh("git -C %s for-each-ref --format='%%(refname:short)' refs/remotes/origin/lane" % REPO)
     for ref in out.split():
         name = ref.split("/", 2)[-1]
-        if _lane_unit_active(name) or _stopped_marker(name):
+        if _lane_unit_active(name) or _stopped_marker(name) or _lane_session_live(name):
             continue
         pr_text, rc = sh("git -C %s show %s:docs/lanes/%s/PR.md" % (REPO, ref, name))
         if rc != 0:

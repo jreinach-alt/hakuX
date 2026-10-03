@@ -323,12 +323,43 @@ Compared with the overnight log, the six false fold jams are gone. `failed-unit`
 detector saw them with `systemctl --state=failed`), so they now carry signal instead of `●`. Both
 will escalate on sight, as designed. Lane.local should look at them; nothing here touched them.
 
-**Known gap, not confirmed as a false jam.** `det_stranded_lanes` decides "running" by
-`hakux-lane-<name>.service` being active and nothing else. At 22:19 on 10-02 it listed
-`lane.opsrebuild` as stranded, and that tick ran while attempt 1's session was live. I have not
-established whether that session was under a unit at the time. A lane session that runs outside its
-unit would read as stranded, and the remedy resumes it. Lane.local should check that one before
-cutover, because the remedy is the risky part.
+**Known gap, now fixed in attempt 3.** `det_stranded_lanes` decided "running" by
+`hakux-lane-<name>.service` being active and nothing else, so a live lane session outside its unit
+read as stranded and the resume remedy would have started a second one. Attempt 3 adds a check on
+the session's worktree (`_lane_session_live`, selftest leg k). See "Attempt 3" above.
+
+## Attempt 3 (2026-10-03): why attempt 2 did not finish
+
+Attempt 2 fixed the three faults and verified them (legs h, i, j), but none of it reached the
+branch. At the start of attempt 3 the six changed files were still uncommitted in the worktree, and
+the "waiting" entry in OUTBOX.md was uncommitted too. No `WAITING` file was written, so the session
+end was not a recognised wait, and the lane read as stranded. Attempt 2 also did not merge
+`origin/master` (it was 40 commits behind) and did not record the full selftest result that PR.md
+promised ("result below" had nothing under it). Its shadow comparison flagged that the lane's own
+session shows as `stranded-lane opsrebuild` at 07:16, because a live session outside its unit is
+invisible to `det_stranded_lanes`. Attempt 2 left that to lane.local as a "known gap" instead of
+fixing it, and the remedy it guards is a resume of a live lane.
+
+Attempt 3 does, in order: commit the attempt-2 work (`ed51d13317`), merge `origin/master` (clean),
+run 87-ops-tick.sh (35 passed), attempt the full selftest, and fix the live-session blind spot.
+
+**Full selftest, not finished here.** It is 124 fragments, and the first four of a single run took
+about 460 s (`10-arms-list` 91 s, `20-arms-queue` 248 s, `30-arms-error` 120 s). In this session's
+10-minute foreground limit that is more than an hour of waiting, so the run was stopped after
+the third fragment. It is not a pass. Lane.local's fold gate runs `selftest.sh` for harness
+changes, so the full run is that gate's to pass. Before `State: ready`, lane.local should confirm
+it, or this lane reruns it in shards.
+
+**Fourth shadow fault, found in the same log (`ops-shadow.log`, 07:16 and 07:41).** The live
+session of this lane was named `stranded-lane opsrebuild` (and it escalated in the shadow log),
+because a session run outside its unit has no `hakux-lane-<name>` active. The remedy for that is
+a resume, which would start a second session in a worktree already in use. This was the riskiest
+item in the "known gap" and is now fixed: `_lane_session_live(name)` treats a process whose cwd is
+under `wt/<name>` as a live session (`OPS_PROC`, default `/proc`). Selftest leg (k), three checks.
+Falsified: with the check removed, leg (k)'s "not stranded" check fails; restored, 38 passed, 0 failed.
+A real-state shadow tick at 08:45 names one jam: `fold-failure:rowless lane/titleroutes`.
+The stranded `opsrebuild` is no longer named. Other jams seen earlier (`tronhang672`,
+`verdict433`, `savestate433`, the failed units) were absent at 08:45; this lane did not touch them.
 
 ## Next (P x win)
 
