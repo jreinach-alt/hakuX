@@ -4,7 +4,7 @@ State: draft
 
 Lane: selfdeps               Issue: #433 (0.5: 50 Playable)
 Base: master @ 4630e4bf95 (merged into the lane branch)
-Files: android/app/src/main/cpp/CMakeLists.txt, docs/lanes/selfdeps/NOTES.md, docs/lanes/selfdeps/PR.md, docs/lanes/selfdeps/OUTBOX.md, docs/lanes/selfdeps/mirror_sources.py, docs/lanes/selfdeps/logs/, scripts/gen-license.py, .github/scripts/gen-changelog.py
+Files: android/app/src/main/cpp/CMakeLists.txt, docs/lanes/selfdeps/NOTES.md, docs/lanes/selfdeps/PR.md, docs/lanes/selfdeps/OUTBOX.md, docs/lanes/selfdeps/mirror_sources.py, scripts/gen-license.py, .github/scripts/gen-changelog.py
 Prediction: none: build and release plumbing, no pixel change
 Needs device: yes (one short Thor pgraph run, done: run 1-1791043414-selfdeps-1888089, not void)    Needs NDK: yes
 
@@ -37,7 +37,7 @@ needs upstream by design).
 
 ## Proof
 
-Full commands and logs in NOTES.md ("Proof") and `docs/lanes/selfdeps/logs/`.
+Full commands in NOTES.md ("Proof"). The logs are local (`*.log` is gitignored) under `docs/lanes/selfdeps/logs/` on the host, and NOTES quotes their result lines.
 
 | step | result |
 |---|---|
