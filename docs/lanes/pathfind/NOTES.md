@@ -99,6 +99,24 @@ says it was harvested from `pull/thor-hdd.img` (09-30). The run was on the Nova.
   failure gate keeps holding it until that route or the golden changes. pathfind's path is
   `pathknow/paths/5345000F.json`.
 
+### Spikeout: Battle Street (14:20-14:39 PDT): verdict PASS, a candidate for the owner's frame review
+
+The pool file was done (every row resolved or identified as performance). For the rest of the brief's pool I checked
+the 10-02 gameplay frames' FPS overlay first: Top Spin 20, Counter-Strike 13, Midnight Club 3 22. All three would fail
+the 30-fps bar, so a hold would only re-measure a known performance miss. Spikeout read 32, so it got the run.
+
+| run | state | claim | held | verdict | model calls | cost | frames |
+|---|---|---|---|---|---|---|---|
+| runs/spikeout-hold | any (Thor-made golden `c714fbc41e16`, loaded fine) | 8.2 min, step 53 (four probes refused in the fight; control 0.000 vs 0.570 under the stick at the last) | 607 s of play in 607 s, 0 off-play | **PASS**: `gameplay=607.3s fps_ok=1.0 hitches=0 play_share=0.9996` | 50 | $3.46 | runs/spikeout-hold/hold_strip.jpg |
+
+- **Frame review:** Spike Jr. moves in every kept frame. The camera and his position change across all 18 frames
+  (wall, dock, harbour), and all 17 windows moved (0.40-0.74, none still). He stays in the starting dock area, though,
+  circling: no progress through the level, K.O. counter 0. That is movement, not progression. The owner decides
+  whether it counts.
+- **The claim cost 8 minutes in a fight.** The enemies move as much as the player, so idle change matched or beat the
+  change under input (0.08-0.24 vs 0.00-0.15) until the fight ended. This is the case addendum 4 item 2 (alternating
+  idle/input windows, 2 of 3) is for. It is still not built, and it is the next probe change.
+
 ## Hold position test (10-03)
 
 A hold counted any second the model read as play. Black Stone stood on one octagon for 600 s, swinging its sword, and

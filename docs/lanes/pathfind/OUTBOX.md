@@ -266,3 +266,17 @@ Today's spend: about $26 of the $35 (Sonnet). Pool status: Castlevania resolved 
 profile fixed (golden promoted; the title is at 0.59x speed), ToeJam's route fixed (fps miss), and 3 rows identified as
 fps misses. No Playable confirmation accepted from this lane today: every title that held play failed on fps or
 travel.
+
+## #433 -- 2026-10-03 14:45 PDT
+
+**Playable confirmation candidate (owner's frame review): Spikeout: Battle Street (53450029), Nova, held run.**
+Verdict line: `Spikeout: Battle Street ? PASS gameplay=607.3s fps_ok=1.0 crash=False hang=False hitches=0/0.0pm play_share=0.9996`
+Frame strip: docs/lanes/pathfind/runs/spikeout-hold/hold_strip.jpg (18 frames, 30 s apart). Claimed at 8.2 min (50 model
+calls in all, $3.46; four probes were refused while enemies moved in the opening fight). Then 607 s of play with no
+off-play step. My review: the player moves in every frame. The camera and position change across all 18 (wall, dock,
+harbour), and the position test saw motion in all 17 windows. He circles in the starting dock area, though, with no
+progress through the level and K.O. 0. That is movement, not progression. The owner decides whether it counts.
+Golden: c714fbc41e16, Thor-made. It loads on the Nova, so Spikeout is another title whose save crosses devices.
+Why not Top Spin, Counter-Strike or Midnight Club 3: their 10-02 gameplay frames read 20, 13 and 22 fps, so a 600-s hold would
+fail the fps bar. Those are performance cases.
+Spend today: about $29.5 of $35. The Nova is released. No NBA Live title is on the Nova yet (listing-nova.txt).
