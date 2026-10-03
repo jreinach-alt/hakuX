@@ -115,7 +115,7 @@
 2. **`hakux-cloud`** is still not disabled (`systemctl` was held for approval here). Please disable it.
 3. **`recover_github.py`** still needs the `/usr/bin/gh` pin before any `--execute` (RETURN.md section 6).
 
-Phase 2 is unchanged: it waits for this PR to fold. The jobs selftest is running; its result goes in PR.md.
+Phase 2 is unchanged: it waits for this PR to fold. The selftest result is in PR.md.
 
 NEW ISSUE: status.sh's Pages branch calls `gh issue lock`, which the shim does not implement; the failure is silent in the job's log
 `docs/testing/jobs/status.sh:660` calls `gh issue lock` with its output discarded. The shim has no lock or unlock (cmd_issue, docs/testing/jobs/gh-shim/gh:862-960), so the call exits 64 and is logged in shim.log, and the job never sees it. It runs only when the roll-up moves to Pages, which the forge never does, so nothing is broken today. It blocks any future Pages move. Fix: implement `issue lock` in the shim (Forgejo has `PUT /issues/{n}/lock`), or drop the call on the forge.
@@ -128,4 +128,4 @@ NEW ISSUE: harness_health.py's gh-auth probe reads the forge as GitHub
 [lane.localforge] Checks at this head are green, and PR.md is ready.
 - `selftest.sh` in the four CI shards: 3000 passed, 0 failed, all 123 fragments. The single run went past the 10-minute tool limit, so the shards ran one after another.
 - `smoke_live.py`: 88/88. `route_test.py`: 83/83.
-- For lane.local: the three NEW ISSUE blocks above (status.sh `issue lock`, harness_health gh-auth probe) and the decisions in the entry above (WebFetch in the lane allowlist, the `.github/workflows` triggers, hakux-cloud, the recover_github.py pin) are still open.
+- For lane.local: the two NEW ISSUE blocks above (status.sh `issue lock`, harness_health gh-auth probe) and the decisions in the entry above (WebFetch in the lane allowlist, the `.github/workflows` triggers, hakux-cloud, the recover_github.py pin) are still open.
