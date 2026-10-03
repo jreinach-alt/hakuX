@@ -41,6 +41,7 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
             then the screen is read again and play resumes.
   holdstill the model reads play, but two kept frames 30 s apart barely differ: the window is state=still (not
             play), the loop is led by an unlock button, and play is credited again once the scene moves.
+  holdshed  play drops into a menu right after a loop cycle: the loop sheds B (HOLD_SHED) for the rest of the hold.
   unlock    two probes in a row move nothing at all; the third is led by X
             (UNLOCK_LADDER; Black Stone, 10-03: a stance only X released).
   actions   clean_action keeps valid tokens and drops the rest (RSTICK too).
@@ -362,6 +363,21 @@ still_s = max((l["hold_s"] for l in look if l.get("window") is not None and l["w
 check("holdstill", hold.get("ok") is True and hold.get("hold_s", 0) >= still_s + 50,
       f"play was not credited while still: held {hold.get('play_s')} s of play over {hold.get('hold_s')} s, "
       f"last still window at {still_s} s")
+
+# holdshed: play drops into a menu right after a loop cycle (ToeJam & Earl III, 10-03: a loop button opened the Presents
+# inventory over and over): the loop sheds its first HOLD_SHED button (B) for the rest of the hold
+MENUOPEN = {"state": "menu", "in_play": False, "why": "a dialog box is open", "action": ["A"], "wait_s": 1}
+rc, res, steps, calls = run("holdshed", PREFIX + PLAY[:6] + [("menu", 0)] * 2 + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"},
+                             {"genre": "attack", "why": "a fighter"}, MENUOPEN] + [PLAYING] * 6,
+                            ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
+hold = res.get("hold", {})
+look = [json.loads(l) for l in open(os.path.join(TMP, "holdshed", "out", "hold.jsonl"))]
+i = next((k for k, l in enumerate(look) if l.get("shed")), None)
+after = [l["action"] for l in look[i + 1:] if l.get("src") == "genre"] if i is not None else []
+check("holdshed", hold.get("shed") == ["B"] and after and all("B" not in a and "X" in a for a in after),
+      f"the menu-opening drop shed B from the loop and kept X: shed {hold.get('shed')}, "
+      f"{after[:1]}")
 pathfind.now, pathfind.time.sleep = real_now, real_sleep
 
 # actions

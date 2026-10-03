@@ -120,6 +120,10 @@ HOLD_STILL = 0.03
 # a still window in the drive genre: a car against a wall (Forza, 10-03). Reverse while turning, then drive out the
 # other way, alternating sides per still window, before the generic unlock rotation.
 HOLD_UNSTICK = {"drive": (["LT+left:3", "RT+right:3"], ["LT+right:3", "RT+left:3"])}
+# play that drops into a menu right after a loop cycle: a loop button opened it (ToeJam & Earl III, 10-03: the
+# "Presents" inventory in 13 of 19 kept frames). Each such drop sheds the next of these from the loop.
+HOLD_SHED = ("B", "X", "Y", "BACK", "R1", "L1")
+HOLD_SHED_STATES = ("menu", "pause", "other")
 HOLD_GENRES = {
     "drive": ["RT:2", "RT+left:0.8", "RT+right:0.8"],
     "attack": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"],
@@ -1283,6 +1287,7 @@ class Agent:
         # looks (Black Stone stood 600 s on one octagon and passed the verdict). Then rotate the inputs: an unlock
         # button and the next genre's loop, until the scene moves again.
         parked, rot, still_windows = False, 0, 0
+        shed_set = set()                 # loop buttons that opened a menu (HOLD_SHED): never sent again this hold
         order = [genre] + [g for g in HOLD_GENRES if g not in (genre, "onrails")]
         rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
         last_png, last_check, last_kept, drop = None, now(), None, []
@@ -1324,9 +1329,15 @@ class Agent:
             elif off or suspect or t - last_check >= HOLD_CHECK_S:
                 last_check = t
                 a = self.hold_look(jp, genre)
+                was_play = not off
                 off = a.get("in_play") is not True
                 st = ("still" if parked else "play") if not off else \
                     re.sub(r"[^a-z_]", "", str(a.get("state") or "other").lower()) or "other"
+                if off and was_play and st in HOLD_SHED_STATES:
+                    shed = next((b for b in HOLD_SHED if b in tokens and b not in shed_set), None)
+                    if shed:
+                        shed_set.add(shed)
+                        look["shed"] = shed
                 if st != logged:
                     self.dev.route_log(f"state={st} t={int(hold_el)}")
                     logged = st
@@ -1354,8 +1365,9 @@ class Agent:
             if not off and look.get("action") is None:
                 # play: the genre loop (a check look that said play sends it too). The time credited is this
                 # cycle's own, from its frame to its inputs: the look before may have been off play.
-                look.update(src=look.get("src", "genre"), action=tokens)
-                self.send(tokens)
+                loop = [t for t in tokens if t not in shed_set]
+                look.update(src=look.get("src", "genre"), action=loop)
+                self.send(loop)
                 if not parked:
                     play_s += now() - t_cycle
             keep = last_kept is None or hold_el - last_kept >= HOLD_FRAME_S
@@ -1394,7 +1406,8 @@ class Agent:
         if not ok and not reason:
             reason = f"budget {self.budget_s / 60:.0f} min with {play_s:.0f} s of play"
         held.update(ok=ok, play_s=round(play_s, 1), need_s=self.hold_s, hold_s=round(now() - t_hold, 1),
-                    model_navs=navs, frames=len(kept), still_windows=still_windows, reason=reason)
+                    model_navs=navs, frames=len(kept), still_windows=still_windows, shed=sorted(shed_set),
+                    reason=reason)
         self.result["hold"] = held
         print(f"hold-play: {'HELD' if ok else 'not held'} {play_s:.0f}/{self.hold_s:.0f} s of play; {reason}",
               flush=True)

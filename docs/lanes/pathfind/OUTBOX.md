@@ -249,3 +249,20 @@ rows, not routing. A longer window (seconds >= route time + 600 + margin) fixes 
 ToeJam & Earl III (1791003320, class menu): the route's play loop opened the Vinyl Albums jukebox after Player Stats
 and stayed in it all window. A pathfind held run (returning, hold 600 s) is next on the Nova, after lane.xbox's
 title push.
+
+## #433 -- 2026-10-03 14:20 PDT
+
+ToeJam & Earl III (5345000F), held run on the Nova (golden 71a91de8b905 as-is): pathfind reached confirmed gameplay in
+1.7 min (11 steps, 23 model calls in all, $1.29) and held 605 s of play.
+Verdict line: `ToeJam & Earl III: Mission to Earth ? FAIL(fps: 72.8% of gameplay at >= 30 fps (bar 90%)) gameplay=641.4s
+fps_ok=0.7278 crash=False hang=False hitches=0/0.0pm play_share=0.9486`.
+Frame strip: docs/lanes/pathfind/runs/toejam-earl-3-hold/hold_strip.jpg. The player travels: 19 frames in different
+places, all 17 30-s windows moved. But 13 of the 19 frames show a "PRESENTS: You don't have any presents!" dialog that a
+button in the generic input loop kept opening. Fixed in the tool: a loop button that opens a menu is dropped for the rest
+of the hold. The pool row's cause (the old route stuck in the Vinyl Albums jukebox) does not occur on pathfind's path. The
+title fails on **performance** (72.8% at >= 30 fps), so it is a telemetry case, not a retest. The dispatched route
+still has the jukebox defect.
+Today's spend: about $26 of the $35 (Sonnet). Pool status: Castlevania resolved (lane.local's run on the golden), Forza's
+profile fixed (golden promoted; the title is at 0.59x speed), ToeJam's route fixed (fps miss), and 3 rows identified as
+fps misses. No Playable confirmation accepted from this lane today: every title that held play failed on fps or
+travel.

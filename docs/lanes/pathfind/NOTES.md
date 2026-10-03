@@ -79,6 +79,26 @@ says it was harvested from `pull/thor-hdd.img` (09-30). The run was on the Nova.
 - **Forza is not a Playable candidate today**, whatever the driving: 16-21 fps against the 30-fps bar. Per the owner's
   10-03 rule that is telemetry, not a pathfind retest. No run 3.
 
+### ToeJam & Earl III (14:00-14:14 PDT): the route problem is fixed; the title fails on fps
+
+| run | state | claim | held play | play share | verdict | model calls | cost | frames |
+|---|---|---|---|---|---|---|---|---|
+| runs/toejam-earl-3-hold | any (golden `71a91de8b905` is title data only; `returning` is refused) | 1.7 min, 11 steps, probe control 0.096 vs 0.596 under the stick | 605 s of 641 | 0.949 | **FAIL: fps 72.8% of play at >= 30 fps** (bar 90%); hitches 0, no crash or hang | 23 | $1.29 | runs/toejam-earl-3-hold/hold_strip.jpg |
+
+- The pool row was `menu`: lane.local's route `1791003320` sat in the Vinyl Albums jukebox for the whole window.
+  pathfind's path (ONE PLAYER GAME, STORY MODE, character select, two cutscenes) reached the open world in 1.7 min and
+  stayed in play.
+- **Frame review:** the player travels. The 19 kept frames show different places (pond, cliff path, house, field). All
+  17 30-s windows moved (0.42-0.87), none still. But **13 of the 19 kept frames carry a "PRESENTS: You don't have any
+  presents! OK" dialog.** A button in the generic `other` loop opens the inventory, and A closes it a few presses
+  later. The model caught it 5 times; the rest were credited as play. Play share 0.949 is therefore generous.
+- **Change (`holdshed`):** when the model reads a menu, pause or other right after play, the loop drops the first
+  of `HOLD_SHED` (B, X, Y, BACK, R1, L1) still in it, for the rest of the hold. Selftest `holdshed`.
+- **Not a Playable:** the verdict fails on fps whatever the dialog does. Per the owner's rule, that is telemetry, not a
+  retest. The dispatched route `../../../lanes/uberdefault569/routes/toejam-earl-3` still has the jukebox defect. The
+  failure gate keeps holding it until that route or the golden changes. pathfind's path is
+  `pathknow/paths/5345000F.json`.
+
 ## Hold position test (10-03)
 
 A hold counted any second the model read as play. Black Stone stood on one octagon for 600 s, swinging its sword, and
