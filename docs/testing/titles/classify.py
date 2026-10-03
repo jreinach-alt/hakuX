@@ -292,6 +292,24 @@ def line_reading(path, band, hue, min_sat=0.45, min_val=0.35):
     return int(len(xs) * sx * sx), float((xs.mean() + l) * sx)
 
 
+def cursor_row(path, rows, min_margin):
+    """Which row of a menu is lit: the row region (1280x960 space) whose
+    99th-percentile grey is highest, if it beats the next by `min_margin`.
+    Returns (row name or None, margin). A reference crop per lit row cannot
+    do this where the highlight pulses: Buffy's Extras lit scored up to 33
+    against its own reference and unlit rows from 21 (lane.routedriver2 run
+    b17). The brightest row was right on all 25 labelled frames, by 89-126
+    grey levels."""
+    im = open_grey(path)
+    lum = []
+    for row in rows:
+        a = np.asarray(im.crop(scale_box(row["region"], im.size)), dtype=np.float64)
+        lum.append((float(np.percentile(a, 99)), row["name"]))
+    lum.sort(reverse=True)
+    margin = lum[0][0] - (lum[1][0] if len(lum) > 1 else 0.0)
+    return (lum[0][1] if margin >= min_margin else None), round(margin, 1)
+
+
 def region_rgb(path, box):
     """Mean RGB of a region (1280x960 space): a HUD badge's colour."""
     im = open_rgb(path)

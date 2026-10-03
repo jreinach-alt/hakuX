@@ -70,7 +70,8 @@ for a cursor the d-pad does not move (Castlevania's save prompt).
                          capture), or play_cycle's phases in turn ([[axes],
                          seconds]: an on-foot title walks a square, since one
                          held direction ends against the first wall),
-                         play_tap buttons every N s. NEVER START: the profile
+                         play_tap buttons every N s ([btn, N, n, gap]: a burst
+                         of n presses). NEVER START: the profile
                          is refused if a play input is START. The play input
                          is also held, as a probe, on any frame where the
                          play HUD is up but the motion has not said `play`
@@ -320,8 +321,8 @@ class Driver:
         self.cfg = dict(DEFAULTS)
         self.cfg.update({k: v for k, v in profile.get("drive", {}).items() if k in DEFAULTS})
         self.inp = profile.get("input", {})
-        self.check_profile()
         self.crops = {c["name"]: c for c in profile.get("crop", [])}
+        self.check_profile()
         self.order = profile.get("order", [])
         self.has_pause_crop = any(c["state"] == "paused" for c in profile.get("crop", []))
         os.makedirs(out, exist_ok=True)
@@ -383,12 +384,14 @@ class Driver:
 
     # -- bookkeeping -------------------------------------------------------
     def check_profile(self):
-        for b, _ in self.inp.get("play_tap", []):
+        for b, *_ in self.inp.get("play_tap", []):
+            b = b.split("/")[0]
             if b in ("START", "SELECT", "BACK"):
                 raise SystemExit("drive.py: profile play_tap sends %s: START in live play pauses it" % b)
         for mode in [None] + [m["name"] for m in self.p.get("mode", [])]:
             self.mode = mode
-            for b, _ in self.inp_for("play_tap", []):
+            for b, *_ in self.inp_for("play_tap", []):
+                b = b.split("/")[0]
                 if b in ("START", "SELECT", "BACK"):
                     raise SystemExit("drive.py: profile play_tap (mode %s) sends %s: START in live play pauses it"
                                      % (mode, b))
@@ -404,6 +407,15 @@ class Driver:
             for b in v:
                 if b in NEVER:
                     raise SystemExit("drive.py: profile input.%s sends %s, which can exit to the dashboard" % (k, b))
+        for cur in self.p.get("cursor", []):
+            if cur.get("crop") not in self.crops:
+                raise SystemExit("drive.py: profile [[cursor]] names crop %r, which the profile does not have"
+                                 % cur.get("crop"))
+            for row in cur.get("rows", []):
+                for b in row.get("press", []):
+                    if b in NEVER:
+                        raise SystemExit("drive.py: profile [[cursor]] row %s sends %s, which can exit to the "
+                                         "dashboard" % (row.get("name"), b))
 
     def t(self):
         return self.clock_sim if self.sim else now() - self.t0
@@ -791,14 +803,41 @@ class Driver:
             else:
                 self.stall_streak, self.recover_since = False, None
 
+    def cursor_press(self, r, frame):
+        """[[cursor]]: on a screen named by `crop`, the lit row (the brightest
+        of `rows`, classify.cursor_row) picks the press. Returns (row, press
+        list) or None. Buffy's main menu: one stick or hat pulse moves its
+        cursor one row or two (runs b15-b17), so a fixed `down, A` lands on
+        Options or Extras by chance; reading the lit row does not."""
+        for cur in self.p.get("cursor", []):
+            if r.get("crop") != cur["crop"]:
+                continue
+            name, margin = classify.cursor_row(frame, cur["rows"], float(cur.get("min_margin", 40)))
+            r["source"] = (r.get("source") or "") + "+row:%s" % name
+            for row in cur["rows"]:
+                if row["name"] == name:
+                    return name, row["press"]
+        return None
+
     def play_taps(self, t):
+        """play_tap entries are [button, every] (one press, at most once per
+        capture) or [button, every, n, gap]: n presses `gap` s apart, for a
+        jump that has to go off near an edge the driver cannot see (Buffy's
+        ledge gap: one B per ~2 s capture landed her in the stream bed)."""
         act = ""
-        for b, every in self.inp_for("play_tap", []):
-            last = getattr(self, "_tap_" + b, -1e9)
+        for tap in self.inp_for("play_tap", []):
+            b, every = tap[0], float(tap[1])
+            n = int(tap[2]) if len(tap) > 2 else 1
+            gap = float(tap[3]) if len(tap) > 3 else 0.0
+            btn, _, ms = b.partition("/")   # `B/150`: held 150 ms (a game at 15 fps polls every 67)
+            last = getattr(self, "_tap_" + btn, -1e9)
             if t - last >= every:
-                setattr(self, "_tap_" + b, t)
-                self.dev.pad("press", b)
-                act += " tap %s" % b
+                setattr(self, "_tap_" + btn, t)
+                for k in range(n):
+                    if k:
+                        self.sleep(gap)
+                    self.dev.pad("press", btn, *([ms] if ms else []))
+                act += " tap %s" % b + ("x%d" % n if n > 1 else "")
         return act
 
     def enter(self, state, r, frame):
@@ -902,6 +941,13 @@ class Driver:
                 raise Fail("stuck on %s (%s) after %d presses" % (state, r.get("source"), n))
             crop = self.crops.get(r.get("crop") or "")
             seq = (crop or {}).get("press") or self.inp.get(state) or (["START"] if state == "title" else ["A"])
+            row = self.cursor_press(r, frame)
+            if row:
+                key = (state, r.get("source"), row[0])
+                n = self.screen_presses.get(key, 0)
+                if n >= cfg["menu_max_presses"]:
+                    raise Fail("stuck on %s (%s, row %s) after %d presses" % (state, r.get("source"), row[0], n))
+                seq = row[1]
             if r.get("source") == "model" and r.get("model_button") in ("A", "B", "X", "Y", "START"):
                 seq = [r["model_button"]]
             self.screen_presses = {key: n + 1}

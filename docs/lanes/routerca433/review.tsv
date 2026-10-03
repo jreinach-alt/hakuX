@@ -1,0 +1,21 @@
+# Frame-reviewed runs (routerca433, 2026-10-02).  id <TAB> class <TAB> what was looked at and what it showed.
+# Class u = live play in the mark frame, nothing after it to judge the window by.
+1-1790775886-lane.verdict433-3086875	f	route-frames/122018-gameplay.png: 187 PLAYER PROFILE keyboard ("Define the profile name") at the mark; verdict PASS 1286 s at 59.94 fps, withdrawn by the owner 09-30 (verdict.json.withdrawn-owner-20260930)
+1790903439-titleroutes-1317193	f	route-frames/182126-gameplay.png: Castlevania Name Entry, field "AAIIIIII", at the mark; NOTE-stopped.txt (owner stop 10-01 18:29)
+1790897326-autoverdict-3745925	f	contact.png: Castlevania (returning route) on Name Entry from 163049 to the mark 163403; verdict PASS 613.5 s
+1790900520-autoverdict-566484	f	contact.png: Super Monkey Ball one rolling frame (172712), then Stage Select menu in every frame 172723..173759 (about 10.6 min); verdict PASS 653.8 s
+1790866838-autoverdict-1937886	u	contact.png: THPS2x live skate at the mark (080319, timer 1:43 of a 2-min session); no frame after the mark
+1-1790804473-lane.verdict433-1767161	d	contact.png: Crimson Skies in flight from the mark 165201 to 170248 (+647 s), seven frames, plane, HUD and sky change
+1790860858-autoverdict-1510236	u	route-frames/062254-gameplay.png: 187 race in progress (POS 6/6, lap -/4); no frame after the mark
+1790944628-titleroutes2-2686999	b	contact.png: Gunvalkyrie in play from 060321, then the same canyon-wall view in every frame 060508..060705; 420 s request
+1790932722-titleroutes-3976729	b	contact.png: Buffy in play from 030510, then the same tree/sky view 030531..030859; 420 s request
+1-1790745234-lane.verdict433-366094	b	contact.png: 007 Agent Under Fire (generic survey route) in level from 092457, the same vault-door view for 20 min to 094452
+1-1790826491-lane.verdict433-3477568	u	contact.png: Kabuki Warriors fight round at the mark 205954; no frame after the mark
+1790876348-autoverdict-2155592	u	contact.png + OWNER_ACCEPTED.txt: Blood Wake boat on open water at the mark 104239; "No later frame from this run exists"; docs/lanes/collapse433/NOTES.md section 3: counters flat from mark+136 s to +667 s (renderer idle 15.6/16.7 ms, texture-dirty 1200 -> 32), very probably a static screen
+1790918365-titleroutes-76920	a	run.log:9 route.sh died at route.txt:73 waitfor 'name-entry-header': no reference crop in the result dir refs/; WITHDRAWN.txt: intro video for the rest of the window
+1790823803-titleroutes-2951964	e:heat	route-frames/211026-menu-a.png: generic survey's START/A cycle has PAUSED Sonic Heroes in play (Pause: Continue/Restart/Quit); then the Thor HEAT STOP (logs/thor-coldconfirm.log)
+1-1790519286-titleroutes-2112912	e:heat	route-frames/091137-gameplay.png: Azurik player control in the hub at the mark; thermal pause in the window
+1790902215-autoverdict-1078702	f	route-frames 180609..181557: Sonic Heroes PAUSE menu (Continue/Restart/Quit) through the window, timer frozen 00:21:29; WITHDRAWN.txt: queued on the stale dispatch checkout, ran the old START/A route
+1-1790826491-lane.verdict433-3477700	b	route-frames/215609-play.png: Forza in race, 0 MPH, PLACE 8/8, lap 1/2 at race time 18:11, damaged car stopped; generic survey route
+1790902028-titleroutes-1005086	f	route-frames/175130-gameplay.png: Castlevania Name Entry (empty field, cursor on L) at the mark; verdict PASS 672.8 s
+1-1790725091-lane.verdict433-1456797	u	route-frames/210409-gameplay.png: KOF MI mark frame is a LOST round (CPU WINNER, PERFECT, player down); no frame after it; doubtful that 1282 s of play followed

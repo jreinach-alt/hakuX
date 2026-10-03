@@ -1,0 +1,65 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.5	unknown	no-prev		41.1	0.42	wait (unknown)	055656-001-unknown.png	
+1.9	black	black		0.0	0.22	wait	055658-002-black.png	
+3.6	intro_video	moving	0.902	86.5	0.57	press A (skip intro_video)	055701-003-intro_video.png	
+5.6	black	black		2.5	0.32	wait	055703-004-black.png	
+7.1	intro_video	moving	0.1876	10.7	0.37	press A (skip intro_video)	055705-005-intro_video.png	
+9.2	intro_video	moving	0.6262	37.6	0.47	press START (skip intro_video)	055706-006-intro_video.png	
+10.7	black	black		0.1	0.27	wait	055708-007-black.png	
+12.1	black	black		0.8	0.27	wait	055709-008-black.png	
+13.4	black	black		1.6	0.27	wait	055710-009-black.png	
+14.9	title	crop:title		13.4	0.42	press START (title 1)	055712-010-title.png	
+17.0	main_menu	crop:main-menu		30.6	0.52	press A (main_menu 1)	055714-011-main_menu.png	
+18.9	cutscene	moving	0.6565	16.7	0.47	press A (skip cutscene)	055717-012-cutscene.png	
+21.1	main_menu	crop:main-menu		32.7	0.52	press A (main_menu 2)	055719-013-main_menu.png	
+23.0	cutscene	moving	0.6443	18.0	0.47	press A (skip cutscene)	055721-014-cutscene.png	
+25.2	main_menu	crop:main-menu		33.7	0.57	press A (main_menu 3)	055723-015-main_menu.png	
+27.2	cutscene	moving	0.6639	18.7	0.47	press A (skip cutscene)	055725-016-cutscene.png	
+29.4	main_menu	crop:main-menu		33.4	0.57	press A (main_menu 4)	055727-017-main_menu.png	
+31.3	cutscene	moving	0.7175	17.7	0.47	press A (skip cutscene)	055729-018-cutscene.png	
+33.6	main_menu	crop:main-menu		32.0	0.58	press A (main_menu 5)	055731-019-main_menu.png	
+35.6	cutscene	moving	0.6709	17.5	0.47	press A (skip cutscene)	055735-020-cutscene.png	
+37.8	main_menu	crop:main-menu		38.1	0.57	press A (main_menu 6)	055737-021-main_menu.png	
+39.8	cutscene	moving	0.6264	22.8	0.52	press A (skip cutscene)	055739-022-cutscene.png	
+42.1	main_menu	crop:main-menu		38.9	0.62	press A (main_menu 7)	055741-023-main_menu.png	
+44.1	cutscene	moving	0.7469	18.6	0.47	press A (skip cutscene)	055743-024-cutscene.png	
+46.3	main_menu	crop:main-menu		30.5	0.52	press A (main_menu 8)	055745-025-main_menu.png	
+48.2	cutscene	moving	0.6297	16.6	0.47	press A (skip cutscene)	055747-026-cutscene.png	
+50.4	main_menu	crop:main-menu		29.7	0.52	press A (main_menu 9)	055749-027-main_menu.png	
+52.4	cutscene	moving	0.4316	19.8	0.47	press A (skip cutscene)	055751-028-cutscene.png	
+54.7	main_menu	crop:main-menu		43.8	0.62	press A (main_menu 10)	055753-029-main_menu.png	
+56.7	cutscene	moving	0.6736	22.1	0.52	press A (skip cutscene)	055756-030-cutscene.png	
+58.9	main_menu	crop:main-menu		35.1	0.57	press A (main_menu 11)	055758-031-main_menu.png	
+60.8	cutscene	moving	0.7333	18.0	0.47	press A (skip cutscene)	055800-032-cutscene.png	
+63.0	main_menu	crop:main-menu		49.3	0.57	press A (main_menu 12)	055802-033-main_menu.png	
+65.0	cutscene	moving	0.7151	20.1	0.47	press A (skip cutscene)	055804-034-cutscene.png	
+67.1	main_menu	crop:main-menu		37.1	0.52	press A (main_menu 13)	055807-035-main_menu.png	
+69.1	cutscene	moving	0.7546	17.7	0.47	press A (skip cutscene)	055809-036-cutscene.png	
+71.2	main_menu	crop:main-menu		33.1	0.52	press A (main_menu 14)	055811-037-main_menu.png	
+73.1	cutscene	moving	0.6869	17.0	0.42	press A (skip cutscene)	055813-038-cutscene.png	
+75.3	main_menu	crop:main-menu		44.7	0.52	press A (main_menu 15)	055815-039-main_menu.png	
+77.2	cutscene	moving	0.7094	17.7	0.47	press A (skip cutscene)	055818-040-cutscene.png	
+79.5	main_menu	crop:main-menu		35.6	0.57	press A (main_menu 16)	055820-041-main_menu.png	
+81.4	cutscene	moving	0.6666	19.2	0.47	press A (skip cutscene)	055822-042-cutscene.png	
+83.7	main_menu	crop:main-menu		38.7	0.62	press A (main_menu 17)	055824-043-main_menu.png	
+85.7	cutscene	moving	0.7292	20.8	0.47	press A (skip cutscene)	055826-044-cutscene.png	
+87.9	main_menu	crop:main-menu		37.7	0.57	press A (main_menu 18)	055828-045-main_menu.png	
+89.8	cutscene	moving	0.7629	17.7	0.47	press A (skip cutscene)	055830-046-cutscene.png	
+92.0	main_menu	crop:main-menu		32.6	0.52	press A (main_menu 19)	055832-047-main_menu.png	
+93.9	cutscene	moving	0.651	17.9	0.42	press A (skip cutscene)	055834-048-cutscene.png	
+96.2	main_menu	crop:main-menu		35.7	0.57	press A (main_menu 20)	055836-049-main_menu.png	
+98.1	cutscene	moving	0.6758	20.5	0.47	press A (skip cutscene)	055838-050-cutscene.png	
+100.4	main_menu	crop:main-menu		39.1	0.57	press A (main_menu 21)	055842-051-main_menu.png	
+102.3	cutscene	moving	0.7664	19.8	0.47	press A (skip cutscene)	055844-052-cutscene.png	
+104.5	main_menu	crop:main-menu		36.9	0.57	press A (main_menu 22)	055846-053-main_menu.png	
+106.4	cutscene	moving	0.7732	17.0	0.47	press A (skip cutscene)	055848-054-cutscene.png	
+108.6	main_menu	crop:main-menu		30.6	0.52	press A (main_menu 23)	055850-055-main_menu.png	
+110.5	cutscene	moving	0.693	16.0	0.42	press A (skip cutscene)	055852-056-cutscene.png	
+112.7	main_menu	crop:main-menu		31.3	0.52	press A (main_menu 24)	055854-057-main_menu.png	
+114.6	cutscene	moving	0.734	16.3	0.47	press A (skip cutscene)	055856-058-cutscene.png	
+116.8	main_menu	crop:main-menu		30.5	0.52	press A (main_menu 25)	055858-059-main_menu.png	
+118.7	cutscene	moving	0.6761	16.2	0.47	press A (skip cutscene)	055900-060-cutscene.png	
+120.9	main_menu	crop:main-menu		43.0	0.52	ROUTE FAIL	055902-061-fail-main_menu.png	
+# time_to_title_s=14.9
+# time_to_play_s=
+# result=ROUTE FAIL drive buffy: main_menu: stuck on main_menu (crop:main-menu) after 25 presses

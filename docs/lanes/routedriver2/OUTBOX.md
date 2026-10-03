@@ -49,3 +49,20 @@ title Playable.
   dispatcher.sh (outside this lane); the exact list is in NOTES.md item 4.
   The gate's reader does check out on a held Forza run's full logcat
   (play_share 0.51, which matches the frames).
+
+## #433 -- 2026-10-02 06:05 PDT
+
+lane.routedriver2, session 2 (Buffy). Held `drive` runs on the Nova, 05:35-05:59 PDT. No confirmations queued.
+
+- **Buffy's save limit now blocks every Start Game on the Nova, dispatched runs included.** Each Start Game makes a
+  save ("BUFFY n"), and the game keeps at most 10. The Nova's disk is kept between runs: hdd.plan "keep", "the disk
+  carries the store's saves". The held runs (this lane's b1-b12) and titleroutes' Buffy replays have filled it. Start
+  Game now shows "only allows 10 saved games on your Xbox Hard Disk. Please delete one to start a new game. Press A to
+  continue", and A returns to the main menu. A blind START/A route (`routes/buffy.route`) will loop there. The drive
+  profile now takes Load Game (every save was made at the canyon's start). A blind route needs the same: down once on
+  the main menu, then A. Nothing on the disk was deleted.
+- **Buffy's "ledge gap" is a pit.** Below the gap is a stream bed with no exit any input found (8 escapes, four
+  directions, filmed at 0.5 s). Falling in ends the run. The earlier "frozen sky" stall is the camera, and LT (the
+  camera reset) clears it. B pressed while running never produced a jump frame at any density tried, and standing B
+  is a kick. In one probe, Y moved her off a ledge with no stick input. Whether Y is the jump is the open question;
+  the next run tests it.

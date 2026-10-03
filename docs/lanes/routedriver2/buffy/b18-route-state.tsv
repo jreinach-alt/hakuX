@@ -1,0 +1,67 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.5	unknown	no-prev		8.9	0.37	wait (unknown)	065232-001-unknown.png	
+1.9	intro_video	moving	0.226	3.8	0.27	press A (skip intro_video)	065234-002-intro_video.png	
+3.6	black	black		2.2	0.22	wait	065235-003-black.png	
+5.0	intro_video	moving	0.1807	9.7	0.32	press A (skip intro_video)	065237-004-intro_video.png	
+6.9	intro_video	moving	0.623	37.6	0.42	press START (skip intro_video)	065239-005-intro_video.png	
+8.5	black	black		0.1	0.22	wait	065240-006-black.png	
+9.8	black	black		0.8	0.22	wait	065242-007-black.png	
+11.0	black	black		1.5	0.22	wait	065243-008-black.png	
+12.4	title	crop:title		11.8	0.32	press START (title 1)	065245-009-title.png	
+14.3	main_menu	crop:main-menu		33.1	0.47	settle	065246-010-main_menu.png	
+16.0	main_menu	crop:main-menu+row:start		33.0	0.47	press LY:max (main_menu 1)	065249-011-main_menu.png	
+18.2	main_menu	crop:main-menu+row:options		32.0	0.47	press LY:min (main_menu 1)	065251-012-main_menu.png	
+20.4	main_menu	crop:main-menu+row:start		33.5	0.47	press LY:max (main_menu 1)	065253-013-main_menu.png	
+22.6	main_menu	crop:main-menu+row:load		33.3	0.47	press A (main_menu 1)	065255-014-main_menu.png	
+24.4	profile	crop:start-game		30.0	0.42	settle	065256-015-profile.png	
+25.9	profile	crop:start-game		30.3	0.42	press A (profile 1)	065258-016-profile.png	
+27.7	profile	crop:start-game		26.1	0.42	settle	065300-017-profile.png	
+29.1	profile	crop:start-game		26.1	0.37	press A (profile 2)	065303-018-profile.png	
+30.7	black	black		0.0	0.22	wait	065304-019-black.png	
+32.0	black	black		1.4	0.22	wait	065305-020-black.png	
+33.2	black	black		0.0	0.22	wait	065306-021-black.png	
+34.5	black	black		0.9	0.22	wait	065308-022-black.png	
+35.7	black	black		0.0	0.22	wait	065309-023-black.png	
+37.2	cutscene	moving	0.3865	9.5	0.47	press A (skip cutscene)	065311-024-cutscene.png	
+39.4	unknown	hud:hud+after-cutscene	0.6075	15.2	0.62	hold (hud up, motion not yet play)	065313-025-unknown.png	
+41.3	play	hud:hud+motion	0.1686	14.9	0.57	hold tap B tap A	065315-026-play.png	
+43.9	play	hud:hud+motion	0.2938	12.4	0.62	hold	065317-027-play.png	
+45.7	play	hud:hud+motion	0.2752	14.0	0.62	hold tap B	065320-028-play.png	
+47.9	play	hud:hud+motion	0.4116	14.4	0.57	hold	065321-029-play.png	
+49.8	play	hud:hud+motion p=0.128	0.5812	20.2	0.62	hold tap B tap A	065324-030-play.png	
+52.2	stalled	hud+no-progress p=0.051	0.5703	8.8	0.47	stall escape 1	065331-031-stalled.png	
+59.2	stalled	hud:hud+motion+recovering p=0.089	0.1619	6.0	0.42	hold (recovering, stalled 0 s) tap B tap A	065333-032-stalled.png	
+61.4	stalled	hud:hud+static p=0.161	0.0176	6.2	0.42	stall escape 2	065343-033-stalled.png	
+69.3	stalled	hud:hud+static p=0.0	0.0285	5.7	0.37	stall escape 3	065350-034-stalled.png	
+77.1	stalled	hud:hud+static p=0.0	0.0307	6.0	0.38	stall escape 4	065358-035-stalled.png	
+84.7	stalled	hud:hud+static p=0.0	0.0159	6.2	0.37	stall escape 5	065405-036-stalled.png	
+91.3	stalled	hud:hud+static p=0.0	0.0192	6.1	0.37	stall escape 6	065414-037-stalled.png	
+99.0	stalled	hud:hud+static p=0.0	0.0003	6.1	0.32	hold (stalled 0 s)	065415-038-stalled.png	
+100.6	stalled	hud:hud+static p=0.0	0.0057	6.2	0.37	hold (stalled 2 s)	065417-039-stalled.png	
+102.2	stalled	hud:hud+static p=0.0	0.0022	6.1	0.37	hold (stalled 3 s)	065418-040-stalled.png	
+103.8	stalled	hud:hud+static p=0.0	0.0028	6.1	0.37	hold (stalled 5 s)	065420-041-stalled.png	
+105.3	stalled	hud:hud+static p=0.0	0.004	6.0	0.37	hold (stalled 6 s)	065422-042-stalled.png	
+107.0	stalled	hud:hud+static p=0.0	0.0358	6.4	0.37	hold (stalled 8 s)	065423-043-stalled.png	
+108.8	stalled	hud:hud+static	0.0733	6.9	0.42	hold (stalled 10 s)	065425-044-stalled.png	
+110.5	stalled	hud:hud+static p=0.0	0.0628	6.2	0.37	hold (stalled 11 s)	065427-045-stalled.png	
+112.2	stalled	hud:hud+static p=0.0	0.0163	6.0	0.37	hold (stalled 13 s)	065428-046-stalled.png	
+113.8	stalled	hud:hud+static p=0.0	0.0011	6.1	0.37	hold (stalled 15 s)	065430-047-stalled.png	
+115.4	stalled	hud:hud+static p=0.0	0.0028	6.1	0.37	hold (stalled 16 s)	065432-048-stalled.png	
+117.1	stalled	hud:hud+static p=0.0	0.0361	6.3	0.37	hold (stalled 18 s)	065433-049-stalled.png	
+118.7	stalled	hud:hud+static p=0.0	0.0247	6.1	0.37	hold (stalled 20 s)	065435-050-stalled.png	
+120.3	stalled	hud:hud+static p=0.0	0.0234	6.2	0.37	hold (stalled 21 s)	065437-051-stalled.png	
+122.0	stalled	hud:hud+static p=0.0	0.0327	6.2	0.37	hold (stalled 23 s)	065438-052-stalled.png	
+123.7	stalled	hud:hud+static p=0.0	0.0279	6.2	0.37	hold (stalled 25 s)	065440-053-stalled.png	
+125.3	stalled	hud:hud+static p=0.0	0.0054	6.1	0.37	hold (stalled 26 s)	065443-054-stalled.png	
+126.9	stalled	hud:hud+static p=0.0	0.0025	6.1	0.37	hold (stalled 28 s)	065445-055-stalled.png	
+128.6	stalled	hud:hud+static p=0.0	0.0343	6.1	0.37	hold (stalled 30 s)	065446-056-stalled.png	
+130.3	stalled	hud:hud+static p=0.0	0.0227	6.2	0.37	hold (stalled 31 s)	065448-057-stalled.png	
+131.9	stalled	hud:hud+static p=0.0	0.0234	6.1	0.37	hold (stalled 33 s)	065450-058-stalled.png	
+133.6	stalled	hud:hud+static p=0.0	0.0316	6.2	0.37	hold (stalled 35 s)	065451-059-stalled.png	
+135.3	stalled	hud:hud+static p=0.0	0.0328	6.2	0.37	hold (stalled 36 s)	065453-060-stalled.png	
+136.9	stalled	hud:hud+static p=0.0	0.0088	6.0	0.37	hold (stalled 38 s)	065455-061-stalled.png	
+138.5	stalled	hud:hud+static p=0.0	0.0021	6.1	0.37	hold (stalled 39 s)	065456-062-stalled.png	
+140.1	stalled	hud:hud+static p=0.0	0.0028	6.1	0.37	ROUTE FAIL	065458-063-fail-stalled.png	
+# time_to_title_s=12.4
+# time_to_play_s=41.4
+# result=ROUTE FAIL drive buffy: stalled: stalled 41 s: the play HUD is up and nothing moves -- the play input is not reaching the game, or a pause the profile cannot see
