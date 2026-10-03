@@ -1,5 +1,5 @@
 # lane.memfast: remove the XBOX load fast path, with the [mf0] VA==PA census (#507)
-State: draft
+State: ready
 
 Lane: memfast            Issue: #507 (PR #590 before the suspension)
 Base: master @ be05285c44, origin/master merged 2026-10-02
@@ -54,3 +54,9 @@ F0a's device half. Those decide F1 (fastmem loads: P 0.4, about 11% of GTA's
 vCPU).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+_Set ready by lane.local 2026-10-03 under the PM's operational authority (plan 10-03 action 6). On the Thor, the
+ZPass_pixel_count A/A run (FIX 82e0ef1fa9 against itself, 1791004647-lanelocal-thor-2044245) and the A/B run (FIX
+against BASE 31515f9751, 1791004648-lanelocal-thor-2044305) both have 0 differing captures, all 72 byte-identical.
+The stable arm's 36/3,167 ZPass FAIL does not reproduce with the test run alone, so it is not a memfast defect as
+measured._
