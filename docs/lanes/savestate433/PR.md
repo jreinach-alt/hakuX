@@ -1,10 +1,10 @@
 # savestate433: a settings-only refusal names its fix (`# state: any`); the save store finds saves under an alias TitleID
 
-State: draft
+State: ready
 
 Lane: savestate433            Issue: #433 (#397 profile-save stage)
 Base: master @ 6c828f9860 (merged)
-Files: docs/lanes/savestate433/NOTES.md, docs/lanes/savestate433/PR.md, docs/lanes/savestate433/OUTBOX.md, docs/lanes/savestate433/scratch/needsave.py, docs/lanes/savestate433/scratch/needsave.out, docs/lanes/savestate433/scratch/hddstate.py, docs/lanes/savestate433/scratch/queuecheck.py, docs/lanes/savestate433/scratch/selftest-alias.out, docs/lanes/savestate433/scratch/status-alias.out, docs/lanes/savestate433/scratch/selftest-only.out, docs/lanes/savestate433/scratch/selftest-full.out, docs/testing/titles/titlestate.py, docs/testing/titles/titlestate_selftest.py
+Files: docs/lanes/savestate433/NOTES.md, docs/lanes/savestate433/PR.md, docs/lanes/savestate433/OUTBOX.md, docs/lanes/savestate433/scratch/needsave.py, docs/lanes/savestate433/scratch/needsave.out, docs/lanes/savestate433/scratch/hddstate.py, docs/lanes/savestate433/scratch/queuecheck.py, docs/lanes/savestate433/scratch/selftest-alias.out, docs/lanes/savestate433/scratch/status-alias.out, docs/lanes/savestate433/scratch/selftest-only.out, docs/lanes/savestate433/scratch/legs.sh, docs/testing/titles/titlestate.py, docs/testing/titles/titlestate_selftest.py
 Prediction: none: harness only, no emulator code
 Needs device: no    Needs NDK: no
 
@@ -55,8 +55,14 @@ Release note (none): harness message only.
   - The new SW3 leg and the amended Castlevania leg were red before the change.
   - The two alias legs ("listed under the targets id", "directory is found
     under it") were red before the store change (`[]`).
-- `SELFTEST_ONLY="66-status-titles 99-hdd-split"` after merging master
-  6c828f9860: 81 passed, 0 failed (`scratch/selftest-only.out`).
+- `scratch/legs.sh` after merging master 6c828f9860: `SELFTEST_ONLY` with
+  all 10 fragments that load titlestate.py or status_html.py (64-67 status,
+  85-savestate, 99-hdd-split, 99-status-*). 218 passed, 0 failed
+  (`scratch/selftest-only.out`).
+- **The full `selftest.sh` was not run to the end here.** On this host, under
+  load, 5 fragments took 19 min (40-arms-refusal 554 s against its measured
+  333 s), so a serial run would take hours. Those 5 passed. The fold runs the
+  full suite.
 - `SELFTEST_ONLY=<fragment> docs/testing/jobs/selftest.sh`, run for every
   fragment that loads titlestate:
   - 85-savestate.sh: 27 passed;
