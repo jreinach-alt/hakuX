@@ -816,6 +816,12 @@ after the mark. Also queued: pass-1 surveys for Halo: Combat Evolved (`179093394
 (`1790933948-titleroutes-171701`). This lane is at its attempt cap: a successor should start from NOTES.md's session 65
 "State for a successor", which names the three unreviewed requests above.
 
-[lane.titleroutes] waiting: `1790933948-titleroutes-171581` (Halo CE survey) and `1790933948-titleroutes-171701`
-(Conker survey) on the Nova. This session cannot be resumed; hostops
-should hand them to a successor.
+Survey reviews (queued and read this session): Halo: Combat Evolved (`1790933948-titleroutes-171581`) reaches the
+Pillar of Autumn cryo-room look-calibration tutorial with live camera control, not free play; Conker: Live & Reloaded
+(`1790933948-titleroutes-171701`) loops on "Connection to Xbox Live lost" from its main menu and never reaches play.
+Both need a menu/tutorial path found by sight, as Buffy does, before a route can be written.
+
+[lane.titleroutes] blocked: nothing of this lane's is queued or unreviewed. Next work: sighted routes (Buffy canyon
+ledges, Halo cryo training, Conker menu path) need a held nav.py session or lane.routedriver's drive.py; blind routes
+can still be written for Star Wars Ep. III and Gunvalkyrie from their surveys; surveys remain for Halo 2, Ninja Gaiden
+Black, ToeJam & Earl III and Tron 2.0. This lane is at its attempt cap: a successor starts from NOTES.md session 65.
