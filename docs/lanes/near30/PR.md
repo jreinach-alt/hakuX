@@ -25,7 +25,7 @@ The sea adds draw calls (+70%) and GPU ms per draw falls, so the count is the co
 
 Levers ranked by probability x win, the successor brief for the top one (the ocean's draws, by a per-draw frame dump), and the per-title budget tables are in NOTES.md.
 
-Local checks: `docs/testing/jobs/hold.sh` take/wait-idle/release run on the Nova; `perflog` APK built locally (`build-perflog.sh`, GRADLE_EXIT=0, stamp `0.4.1-1003-9169b18587-perflog`); `ocean433.py` reproduces the windows from `blinx2-perflog-extract.tsv`. No emulator code changed, so selftest does not apply.
+Local checks: `docs/testing/jobs/hold.sh` take/wait-idle/release run on the Nova; `perflog` APK built locally (`build-perflog.sh`, GRADLE_EXIT=0, stamp `0.4.1-1003-9169b18587-perflog`); `ocean433.py` reproduces the windows from `blinx2-perflog-extract.tsv`. `preflight.sh` passed: aci_vmstate, nv2a index, territory, board files ok. Its coverage gate DID NOT RUN (GitHub suspended, HTTP 403), so coverage is not checked; the script exits 0 by design there. No emulator code changed, so selftest does not apply.
 
 Release note (none): analysis only, no emulator code.
 
