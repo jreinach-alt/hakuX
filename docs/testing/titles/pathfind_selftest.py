@@ -32,7 +32,9 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
             black-hang (Conker, 10-02: 8+ min of black after a level load).
   hold      --hold-s 200 after the claim, on a fake clock: 200 s of play judged
             from moving frames, a pause read by the model (START back to
-            play), 3-6 model reads in all, a kept frame every 30 s.
+            play), 3-6 model reads in all, a kept frame every 30 s, and the
+            logcat marks title_verdict reads (mark gameplay, soak start, a
+            state line per change of play, soak end).
   holdstuck the pause never clears: the hold gives up at the nav cap, and the
             claim itself still stands.
   unlock    two probes in a row move nothing at all; the third is led by X
@@ -144,7 +146,7 @@ check("menu60", not any(c["purpose"] == "confirm" for c in calls), "no confirm c
 # unlock: two probes move nothing at all; the third is led by X, the first of UNLOCK_LADDER (Black Stone, 10-03)
 rc, res, steps, calls = run("unlock", [("game", 0)] * 8 + [("game", 0)] * 3 + [("game", 80)] * 3,
                             [GAME, GAME, GAME, {"gameplay": True, "responded": True, "why": "he ran"}],
-                            ["--no-record", "--no-replay"])
+                            ["--no-record", "--no-replay", "--budget-min", "1"])
 pacts = [s.get("action") for s in steps if s.get("src") == "probe"]
 check("unlock", len(pacts) == 3 and pacts[0][0] != "X" and pacts[1][0] != "X" and pacts[2][0] == "X",
       f"the third probe, after two dead ones, is led by X: {pacts}")
@@ -256,6 +258,8 @@ PAUSE = [("menu", 0), ("menu", 0)]
 GENRE = {"genre": "drive", "why": "a car on a road"}
 PAUSED = {"state": "pause", "in_play": False, "why": "pause menu", "action": ["START"], "wait_s": 1}
 PLAYING = {"state": "gameplay", "in_play": True, "why": "back in play", "action": [], "wait_s": 1}
+ROUTE_LOG = []
+pathfind.SimDevice.route_log = lambda self, msg: ROUTE_LOG.append(msg)
 rc, res, steps, calls = run("hold", PREFIX + PLAY + PAUSE + PLAY2,
                             [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE, PAUSED]
                             + [PLAYING] * 6, ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
@@ -268,6 +272,10 @@ check("hold", any(l.get("action") == ["START"] for l in look), "the pause was re
 check("hold", 3 <= nchk <= 6, f"model read the screen a few times, not every step: {nchk} hold checks")
 check("hold", 6 <= hold.get("frames", 0) <= 9 and os.path.exists(os.path.join(TMP, "hold", "out", "hold_strip.jpg")),
       f"a kept frame every 30 s: {hold.get('frames')} kept")
+states = [m for m in ROUTE_LOG if m.startswith("state=")]
+check("hold", ROUTE_LOG[:2] == ["mark gameplay", "soak start"] and ROUTE_LOG[-1] == "soak end"
+      and [m.split()[0] for m in states] == ["state=play", "state=pause", "state=play"],
+      f"the perflog marks: mark gameplay, soak start, play/pause/play, soak end: {ROUTE_LOG}")
 kept_left = [f for f in os.listdir(os.path.join(TMP, "hold", "out", "frames")) if "hold" in f and f.endswith(".jpg")]
 check("hold", len(kept_left) == hold.get("frames"), f"the other hold frames were deleted ({len(kept_left)} left)")
 

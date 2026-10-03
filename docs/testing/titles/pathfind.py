@@ -68,6 +68,10 @@ DEVICES = {
 }
 PKG = os.environ.get("PKG", "com.jreinach.hakux.debug")
 ACT = PKG + "/com.rfandango.haku_x.LauncherActivity"
+# soak_title.sh's tags plus the route's marks and state lines: what title_verdict.py judges a hold from
+LOGCAT_SPEC = ("hakuX-crash:V hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:W "
+               "hakuX-route:I hakuX-pace:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W libc:F DEBUG:F *:S")
+VERDICT = os.path.join(HERE, "..", "title_verdict.py")
 # Sonnet 5 per step, not Haiku: measured 10-02 on the same ESPN frame with the image inline, Sonnet 5
 # answered in 3.5-3.9 s (70-80 output tokens), Haiku 4.5 in 6.4-9.1 s (430-500, most of it thinking),
 # and Haiku had looped 8 times on a Yes/No dialog in Midnight Club 3. Opus 5.5 when stuck.
@@ -194,6 +198,16 @@ class Device:
         if screen_off:
             self.sh("input keyevent 223")
 
+    def route_log(self, msg):
+        """A `hakuX-route: <msg>` line in logcat (route.sh's marks, soak_title.sh's soak start/end)."""
+        self.sh(f"log -t hakuX-route '{msg}'")
+
+    def logcat_start(self, path):
+        """Follow logcat from now into `path` with the soak's tags: title_verdict.py reads it."""
+        f = open(path, "w")
+        return subprocess.Popen(["adb", "-s", self.serial, "logcat", "-v", "threadtime", "-T", "1"]
+                                + LOGCAT_SPEC.split(), stdout=f, stderr=subprocess.DEVNULL)
+
     def xo_c(self):
         """The Thor's xo-therm in C (None when unread)."""
         out = self.sh("for z in /sys/class/thermal/thermal_zone*; do "
@@ -239,6 +253,12 @@ class SimDevice:
 
     def stop(self, screen_off=True):
         self.sent.append("stop")
+
+    def route_log(self, msg):
+        self.sent.append("log " + msg)
+
+    def logcat_start(self, path):
+        return None
 
     def xo_c(self):
         return None
@@ -1187,6 +1207,13 @@ class Agent:
         kept, play_s, navs, nav = [], 0.0, 0, 0
         still, off, reason = 0, False, ""
         last_png, last_check, last_kept, drop = None, now(), None, []
+        # the perflog: logcat from the mark to `soak end`, with a state line at every change of play, so
+        # title_verdict.py judges fps over play seconds only (its TIMELINE)
+        cat = self.dev.logcat_start(os.path.join(self.out, "logcat.txt"))
+        time.sleep(1)
+        for m in ("mark gameplay", "soak start", "state=play t=0"):
+            self.dev.route_log(m)
+        logged = "play"
         t_hold = now()
         while play_s < self.hold_s and self.el() < self.budget_s:
             self.n += 1
@@ -1209,6 +1236,10 @@ class Agent:
                 last_check = t
                 a = self.hold_look(jp, genre)
                 off = a.get("in_play") is not True
+                st = "play" if not off else re.sub(r"[^a-z_]", "", str(a.get("state") or "other").lower()) or "other"
+                if st != logged:
+                    self.dev.route_log(f"state={st} t={int(hold_el)}")
+                    logged = st
                 look.update(src="check", state=a.get("state"), why=str(a.get("why", ""))[:160])
                 if off:
                     nav += 1
@@ -1255,7 +1286,32 @@ class Agent:
         print(f"hold-play: {'HELD' if ok else 'not held'} {play_s:.0f}/{self.hold_s:.0f} s of play; {reason}",
               flush=True)
         strip(kept, os.path.join(self.out, "hold_strip.jpg"), cols=5, width=256)
+        self.dev.route_log("soak end")
+        if cat is not None:
+            time.sleep(2)
+            cat.terminate()
+            held["verdict"] = self.hold_verdict(now() - t_hold)
         return self.finish(last=kept[-1] if kept else jpg, post=kept)
+
+    def hold_verdict(self, secs):
+        """title_verdict.py on the hold's logcat: its one VERDICT line (verdict.json beside it)."""
+        with open(os.path.join(self.out, "request.json"), "w") as f:
+            json.dump({"title": self.name, "title_id": self.tid, "device": self.dev.label}, f)
+        # title_verdict reads `held <title> for <n>s` from run.log; a run's stdout is usually redirected there
+        rl = os.path.join(self.out, "run.log")
+        if os.path.exists(rl):
+            print(f"held {self.name} for {int(secs)}s", flush=True)
+        else:
+            with open(rl, "w") as f:
+                f.write(f"held {self.name} for {int(secs)}s\n")
+        try:
+            r = subprocess.run([sys.executable, VERDICT, self.out, "--require", "confirmation"],
+                               capture_output=True, text=True, timeout=120)
+            line = (r.stdout.strip().splitlines() or [r.stderr.strip()[-200:]])[-1]
+        except (subprocess.TimeoutExpired, OSError) as e:
+            line = f"title_verdict failed: {e}"
+        print(line, flush=True)
+        return line
 
     def hold_note(self, log, look):
         with open(log, "a") as f:
