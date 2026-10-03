@@ -9,6 +9,15 @@
 - This resume merged origin/master (6 commits, clean), kept selftest green, and did ADDENDUM 4's probe gate first,
   as the brief requires before any more device time.
 
+## Where this resume stopped (10-03 09:40 PDT)
+
+- Probe gate done and pushed (`ca3151cdc6`, PR.md `35d31433fe`). No held run yet.
+- Took the Nova for Panzer Dragoon Orta (4947002B), but the device was busy with lanelocal run
+  `1791040252-lanelocal-978819`, so the hold was released before any run and nothing was launched. No golden profile
+  was prepared (`titlestate.py prepare --title-id 4947002B --state first-run` is still to do before the held run).
+- WAITING: `run 1791040252-lanelocal-978819`. When it finishes, the next step is: take the Nova, wait idle, prepare
+  the golden profile, run `pathfind.py 4947002B --device nova --budget-min 15 --hold-s 600`, release, judge the frames.
+
 ## Probe gate (ADDENDUM 4, 10-03): the fix and its gate
 
 **Cause, measured.** The probe's change test was a fixed 16-grey-level step against a 0.03 floor. In Black
