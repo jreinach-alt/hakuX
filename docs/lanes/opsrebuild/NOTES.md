@@ -421,3 +421,49 @@ files. It runs after the cutover, not before.
 on `4ab2956d8a`, the first head with faults 5-9 fixed, pushed 09:44 PDT: ticks 09:48 to 11:48. PR.md
 stays `State: draft` until this lane posts the comparison for that window. See WAITING and
 OUTBOX.md.
+
+## Attempt 5 (2026-10-03 11:50 PDT): why attempt 4 did not finish
+
+Attempt 4 did not fail. It ended on purpose at about 10:40 with `WAITING: time 2026-10-03T11:50`,
+because the clean 2-h shadow window (09:48 to 11:48 on `4ab2956d8a`) could not be read from inside
+its own session. It resumed at 11:50, the window closed, and the comparison was the one thing left.
+Attempt 4 did not finish only because the comparison needed the window to close first.
+
+What attempt 5 did:
+1. Merged `origin/master` (45 commits; clean merge at `96dc9a7bfd`).
+2. Compared `logs/ops-shadow.log` (lines 3251-3281) with hostops's `host-tools/hostops-inbox.md` for
+   09:15 to 11:14. The table and verdict are in `shadow-comparison.md`, "The 09:48-11:48 window".
+3. **Verdict: not clean.** No repeats, no crash. Two shadow-only jams and two hostops-only classes.
+4. Tried, then **reverted**, one change: idle time as commit age only (the owner's literal "no commit
+   for 90 min"). It would resume a lane about 10 min after its session ended, if its last commit was
+   old. That races handback's ~40-min resume. The shipped rule (resume only when the last commit and the
+   unit's stop are both 90 min old) gives handback its window. Selftest 87 is 51 of 51 on the reverted,
+   merged tree.
+
+### The window's findings, with the fix each one needs
+
+| # | Finding | Evidence | Fix or decision | Status |
+|---|---|---|---|---|
+| 10 | `stranded-lane routefix1002` would resume a lane whose next step is a suspended device run | `briefs/routefix1002.*` has no STOPPED marker; its `queue.tsv` line is a Gunvalkyrie v5 device run (840 s); the owner's 10-02 order suspends replays; hostops parked it at 09:15, then resumed it at 10:12 | Decision for lane.local: mark it `STOPPED-by-owner` (the detector already honours that), or the owner says resume. A detector change is candidate B below | open, NEW ISSUE in OUTBOX |
+| 11 | `queue-stale` on memfast's request at 11:18 | nova free, 60 min queued; cleared 11:23 with no action | none needed; the nudge is harmless. Hostops had no entry | cleared |
+| 12 | lanewaker named near30 and savestate433 stranded | both PR.md `State: ready` (finished at 09:40); ops_tick skips ready PRs by design | hostops's lanewaker should read PR state. Not an ops change | NEW ISSUE in OUTBOX |
+| 13 | Board-gate reds (4 in the window) and a device collision had no ops detector | hostops's entries at 09:15, 09:33, 09:51, 10:14, 11:10 | a board-coverage detector can see them but cannot fix them (no session may edit the board) | candidate C below |
+
+### Next (P x win)
+
+Two candidates decide the cutover, and a clean window is still needed after either. Ranked by P x win
+(the brief's rule), with the cheap decision first only because it unblocks the window:
+
+| candidate | P (works) and evidence | win if it works | cost | decides |
+|---|---|---|---|---|
+| A. Lane.local marks `routefix1002` `STOPPED-by-owner` (or the owner says resume) | P 0.9. The marker check already exists (`_stopped_marker`, selftest leg (b)). It is a one-file decision | removes the one unsafe resume on the cutover path. Does not fix the class | one brief file by lane.local; no device | whether the 11:48 jam is a remedy problem or a parked-lane problem. Cheap, so it goes first, because it decides whether candidate B is urgent |
+| B. A stranded lane whose last PR/OUTBOX "Next" names a device run is escalated (Sonnet, the role file) instead of resumed | P 0.6: a model reading the owner's 10-02 order is the only check that sees the device step, and the escalation budget bounds it (2 sessions a jam). Evidence: row 10 is the first case, and the detector cannot tell a device step from a code step | covers the class, not one lane. Without it, every lane with a device next step is resumed into device work at cutover | a fixture leg, one role-file line, ~$1 per escalation | not decided by A; it removes the hazard in general |
+| C. A board-coverage and territory detector (SCRIPT), remedy = inbox note only | P 0.8: the four reds in the window are the same class; a detector sees them. Win is a detector only: no session may edit the board, so the fix stays with hostops or lane.local | four hostops fixes per 2 h move to a visible jam | a detector + fixture; reads `origin/board` | not decided by A or B. Lower P x win than B until B lands |
+
+**Not recommended now:** cutover. A clean window is required, and row 10 is not closed. The window
+restarts when a decision (A) or a code change (B) lands. A recommends the owner's or lane.local's call
+first, so nothing here waits on code.
+
+Waiting: `WAITING` holds `time 2026-10-03T14:00`. At that time this lane reads
+`logs/ops-shadow.log` for 11:48 to 14:00 and posts a second comparison. That comparison is the
+one that can say "clean" or name the next fault.

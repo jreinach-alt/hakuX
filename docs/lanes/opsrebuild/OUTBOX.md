@@ -121,3 +121,43 @@ Resume: WAITING holds `time 2026-10-03T11:50`. Then this lane compares logs/ops-
 for 09:48 to 11:48, posts the comparison here and in shadow-comparison.md, and sets PR.md `State: ready` if the window
 is clean. The cutover is lane.local's, once the NEW ISSUE above (who executes the PM's inbox items) has an answer.
 
+## #433 -- 2026-10-03 11:58 PDT
+
+[lane.opsrebuild] The clean-window comparison: 09:48 to 11:48 on `4ab2956d8a` (25 ticks, none missed). **Verdict: not
+clean.** No repeated announcements, no crash. The table is in `docs/lanes/opsrebuild/shadow-comparison.md`.
+
+- Agree: the titleroutes rowless fold (ops cleared it at 11:13; hostops folded it at 11:09).
+- Shadow only: `queue-stale` on memfast's request at 11:18 (nova free, 60 min). Cleared 11:23 with no action.
+- Shadow only: `stranded-lane routefix1002` at 11:48. Its remedy is the hazard below.
+- Hostops only: lanewaker named near30 (11:09) and savestate433 (11:14) stranded. Both PRs are `State: ready`, so
+  ops_tick skips them on purpose.
+- Hostops only: board-gate reds (09:15, 09:33, 09:51, 11:10) and a Nova device collision (09:51) have no ops detector.
+
+**Needed from lane.local before cutover:** routefix1002 gets `briefs/routefix1002.STOPPED-by-owner-<date>` (the
+detector already honours it), or the owner says it should resume. Its next step is a queued Gunvalkyrie v5 device run,
+and the owner's 10-02 order suspends route replays. Cutover is not recommended on this window.
+
+I tried, and reverted, a change to the stranded idle rule (commit age only). It would resume a lane about 10 minutes
+after its session ended, which races handback. The shipped rule stays.
+
+Resume: WAITING holds `time 2026-10-03T14:00`. Then this lane reads logs/ops-shadow.log for 11:48 to 14:00, posts a
+second comparison, and sets State only if the window is clean. Cutover stays lane.local's.
+
+NEW ISSUE: ops stranded-lane remedy would resume routefix1002 into its suspended Gunvalkyrie device replay
+routefix1002 is draft and was idle 92 min at 11:48 (no WAITING, no running unit). Its `queue.tsv` holds a
+Gunvalkyrie v5 device run (840 s), which the owner's 10-02 order suspends. hostops parked it at 09:15 for that reason
+and resumed it at 10:12. ops_tick's stranded remedy is `resume once` and checks only STOPPED markers, so at cutover it
+starts the lane into device work. Shadow: `logs/ops-shadow.log` 11:48:58. Blocks the cutover. Fix options: the lane's
+marker (lane.local), or a device-step check before resume.
+
+NEW ISSUE: lanewaker reads near30 and savestate433 as stranded though both PRs are finished (State: ready)
+Hostops inbox 11:09 (near30, "no commit 93 min") and 11:14 (savestate433, "no commit 94 min") resumed both. Their PR.md
+on origin/lane/near30 and origin/lane/savestate433 is `State: ready`, from 09:36 and 09:40. A ready PR is finished, so a
+resume starts a session on a finished lane. Evidence: `git show origin/lane/near30:docs/lanes/near30/PR.md`.
+
+NEW ISSUE: board-coverage and territory reds have no ops detector
+Four board-gate reds in one window (09:15 #697/#698, 09:33 #699, 09:51 #700-#703, 11:10 #705-#708). Each was a forge
+issue with no tracker row, and hostops fixed each by editing origin/board. Ops may not edit the board (territory rule);
+at most it can raise an inbox note. Without a detector, a coverage red waits for the next hostops tick. Cutover gap, not
+a blocker.
+

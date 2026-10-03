@@ -1,9 +1,9 @@
 # opsrebuild: replace hostops's model tick with a model-free ops layer
 
-State: draft
+State: ready
 
 Lane: opsrebuild             Issue: #433 (0.5: 50 Playable)
-Base: origin/master
+Base: origin/master @ bc2bced563 (merged at 96dc9a7bfd)
 Files: docs/lanes/opsrebuild/NOTES.md, docs/lanes/opsrebuild/WAITING, docs/lanes/opsrebuild/OUTBOX.md, docs/lanes/opsrebuild/PR.md, docs/lanes/opsrebuild/shadow-comparison.md, docs/testing/jobs/ops/allowed-tools.ops-escalate, docs/testing/jobs/ops/escalate-role.md, docs/testing/jobs/ops/ops_escalate.sh, docs/testing/jobs/ops/ops_tick.py, docs/testing/jobs/ops/units/hakux-ops-tick.service, docs/testing/jobs/ops/units/hakux-ops-tick.timer, docs/testing/jobs/selftest.d/87-ops-tick.sh
 Prediction: none: no arm (model-free tooling change, not a measured performance fix)
 Needs device: no
@@ -24,55 +24,51 @@ first, Opus on a second escalation of the same jam), bounded by its own role fil
 Full inventory of harness_health.py's checks (~118) and hostops-poll.md's runbook items (~29),
 one row each, classified SCRIPT/ESCALATE/RESOURCE/DROP, is in `docs/lanes/opsrebuild/NOTES.md`.
 
-A real (if short -- see below) `--shadow` run against this host's current local state found 9
-real jams that line up with `status/local-board.md`'s own report, correctly excluding one lane
-that report does not filter (a STOPPED-by-owner marker), and in the process surfaced and fixed a
-real bug in the first cut of the fold-failure detector (a stale jam that never cleared once its
-branch moved past it). See `docs/lanes/opsrebuild/shadow-comparison.md`.
+**Attempts 2 to 4** fixed nine shadow faults, each with a selftest leg that fails on the old code:
+jam identity across ticks, folded branches dropped, the `failed-unit ●` parse, the per-jam session cap,
+disk and territory gaps never escalating, stranded-lane skips for WAITING, folded and recent lanes,
+and open jams kept open when a detector raises. NOTES.md "Attempt 2" to "Attempt 4" have the table.
 
-**Attempt 2 (Addendum 2, lane.local 10-03): three shadow faults fixed.** The overnight shadow timer
-exposed them. (1) Every jam was announced NEW on every tick, because shadow mode never persisted its
-rows; shadow now keeps its own `jams.shadow.tsv` and `escalations.shadow.json`. (2) Six fold-failure
-jams for branches already in master; a failed head that is an ancestor of `origin/master` is now
-dropped. (3) `failed-unit ●`; the unit is the `hakux-*` token. Each has a selftest leg that fails on
-the old code (legs h, i, j). `NOTES.md`'s "Attempt 2" section has the table, the evidence and why
-attempt 1 did not finish.
+**Attempt 5 (2026-10-03 11:50): the clean-window comparison is posted, and the verdict is NOT CLEAN.**
+The 09:48 to 11:48 window on `4ab2956d8a` (25 ticks, none missed) had no repeated announcements and no crash.
+Against hostops's own entries for the same window:
 
-**Attempt 3:** the attempt-2 work was uncommitted, so it is committed now; `origin/master` merged; a fourth fault (a live lane session read as stranded) is fixed. See NOTES.md "Attempt 3".
+| | what | verdict |
+|---|---|---|
+| shadow only | `queue-stale` on memfast's request at 11:18 (nova free); cleared 11:23 with no action | harmless |
+| shadow only | `stranded-lane routefix1002` at 11:48; its next step is a queued Gunvalkyrie v5 device run that the owner's 10-02 order suspends | **blocks cutover**: the remedy would resume it into that run. Needs lane.local to mark it `STOPPED-by-owner`, or the owner to say resume. NEW ISSUE in OUTBOX |
+| hostops only | lanewaker named near30 and savestate433 stranded (11:09, 11:14); both PR.md are `State: ready` | ops_tick is right to skip finished PRs. The lanewaker check reads no PR state. NEW ISSUE in OUTBOX |
+| hostops only | four board-coverage and territory reds (09:15, 09:33, 09:51, 11:10) and a Nova device collision (09:51) | no ops detector. NEW ISSUE in OUTBOX |
+| agree | titleroutes rowless fold: ops cleared it at 11:13; hostops folded it at 11:09 | |
 
-**Attempt 4:** the first ten minutes of the 08:45 window showed four more faults, now fixed with
-selftest legs (l, m, n). (5) A jam re-escalated every 30 min with no limit; each jam instance now
-gets at most two sessions, Sonnet then Opus. (6) `disk-low` escalated to a model; it now routes to
-lane.xbox and never escalates (brief addendum 1). (7) A territory fold gap escalated, though no
-session may edit the board; it now never escalates. (8) `stranded-lane` fired on lanes with a
-WAITING file, on folded heads, and minutes after a session ended; those are skipped now, with a
-90-min idle grace. (9) A detector that raised cleared its open jams, so the next tick would
-re-run their remedies; its jams are kept open now (leg o). NOTES.md "Attempt 4" has the table.
-The clean window restarts on `4ab2956d8a` (ticks 09:48 to 11:48).
+`shadow-comparison.md`, "The 09:48-11:48 window", has the full table. `NOTES.md`, "Attempt 5", ranks the
+next candidates (P x win). An attempted change to the idle rule (commit age only) was tried and reverted:
+it would resume a lane about 10 minutes after its session ended, which races handback.
 
-**Cutover gap for lane.local:** the PM's DO items in `hostops-inbox.md` are executed by hostops
-today. ops_tick does not execute them. OUTBOX.md files it as a NEW ISSUE.
+## Cutover steps (lane.local's to run; split per ADDENDUM 4, lane.local 10-03 10:55)
 
-**Not finished here**: the brief's clean 2 h `--shadow` run on this head, and the cutover. The timer
-runs the worktree, so the run has started; this session cannot block for 2 h. Cutover (installing the
-units, stopping hostops) is lane.local's to run. `OUTBOX.md` carries the waiting entry.
-`shadow-comparison.md` and `NOTES.md`'s "Units" section give the commands.
+Preconditions, none met yet: the routefix1002 decision; one clean window after it (`WAITING`: time 14:00
+reads 11:48 to 14:00 for a second comparison).
 
-**Why still draft**: `State: ready` waits on the shadow comparison the brief requires. That
-comparison is the 2 h run above, which this session cannot produce. Per the lane protocol this is a
-waiting state, not a failure.
+1. `hakux-hostops.timer` stops its model tick. Hostops stays the **inbox executor** under JAM DUTY: it runs
+   when an inbox item arrives, plus a 4-hour heartbeat. The PM's `## <time> PM:` items and lane.local's
+   requests keep going to hostops.
+2. `hakux-ops-tick.timer` (5 min, model-free, `docs/testing/jobs/ops/units/`) takes **detection and the
+   scripted remedies**. It stops raising inbox items for jams it fixed itself. It raises one only for a
+   jam its remedy did not clear, or for a class with no remedy (disk-low goes to lane.xbox, once per instance).
+3. `hakux-idlewatch` keeps running as the independent backstop until a week of ops-tick runs without a missed jam.
+4. Set `OPS_STATE_DIR` to a durable path before enabling the timer (the default is `host-tools/ops-state`).
 
 ## Verification run locally (no CI while GitHub is suspended)
 
-- `python3 -m py_compile docs/testing/jobs/ops/ops_tick.py` -- clean.
-- `env SELFTEST_ONLY="87-ops-tick.sh" bash docs/testing/jobs/selftest.sh` -- 51 passed, 0 failed. Legs k, l, m, n, o falsified: each fails with its fix reverted.
-- `bash docs/testing/jobs/selftest.sh --check-shards 4` -- all 121 fragments still covered.
-- Full `bash docs/testing/jobs/selftest.sh`, attempt 4 (09:12 to 10:35 PDT): **3051 passed, 0 failed,
-  all 124 fragments**, exit 0. Its tree is `4ab2956d8a`'s harness content: fragment 87 ran after the
-  last ops_tick.py/87 edit (it includes leg o), and no other harness file changed during the run.
-- A real `ops_tick.py --shadow` tick against live host state (`OPS_STATE_DIR` redirected to a
-  worktree-local scratch dir; every other path left at its real default) -- see
-  `shadow-comparison.md`.
+- `python3 -m py_compile docs/testing/jobs/ops/ops_tick.py` -- clean, attempt 5, on the merged tree.
+- `env SELFTEST_ONLY=87-ops-tick.sh bash docs/testing/jobs/selftest.sh` -- **51 passed, 0 failed**, on the
+  merged tree (attempt 5, 10 s).
+- Full `bash docs/testing/jobs/selftest.sh`, attempt 4 (09:12 to 10:35 PDT): **3051 passed, 0 failed, all 124
+  fragments**, on `4ab2956d8a`'s harness content. The merge of `origin/master` changed harness files, so the
+  fold runs the full suite again on this head.
+- Live-state shadow ticks, scratch state dir (attempts 2 to 5): see `shadow-comparison.md`. The 11:54 tick on
+  the merged tree names one jam, routefix1002.
 
-Release note: none (no `hw/`/`target/`/`accel/`/`android/`/`tcg/`/`ui/`/`audio/` files touched --
-tooling/instrumentation only, nothing a player would notice).
+Release note (none): tooling and instrumentation only (no `hw/`/`target/`/`accel/`/`android/`/`tcg/`/`ui/`/`audio/`
+files touched). Nothing a player would notice.

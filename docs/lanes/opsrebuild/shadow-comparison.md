@@ -143,3 +143,45 @@ titleroutes, and nothing new.
 
 The clean window for the cutover is 09:48 to 11:48 on `4ab2956d8a`. This lane compares it with
 hostops's entries for the same window after 11:48 and posts that here.
+
+## The 09:48-11:48 window on `4ab2956d8a`, compared with hostops (posted 11:58 PDT)
+
+Source: `logs/ops-shadow.log` lines 3251-3281 (25 ticks, 09:48:08 to 11:48:58, no tick missed);
+hostops's entries in `host-tools/hostops-inbox.md` from 09:15 to 11:14 dated 10-03.
+
+Repeats: **none.** Every jam was announced once and cleared once. The one jam open from 09:48 to 11:13
+was `fold-failure:rowless lane/titleroutes`.
+
+| time | shadow (`ops-shadow.log`) | hostops (`hostops-inbox.md`) | verdict |
+|---|---|---|---|
+| 09:48-11:13 | 1 jam open (titleroutes rowless), no remedy repeated | 09:33 restored the board row and removed the stale line from `foldqueue.tried` | agree |
+| 11:13 | `CLEARED fold-failure:rowless lane/titleroutes` | 11:10 `FOLDED as 4e690bbceb`; row retired on board `7558c664c1` | agree (the fold landed) |
+| 11:18 | `NEW queue-stale 1-1791047884-lane.memfast-3559222.req`: queued 60 min, nova free, would nudge the dispatcher | no entry | **shadow only.** Cleared 11:23 with no action taken |
+| 11:48 | `NEW stranded-lane routefix1002` (draft, no WAITING, idle 92 min), would `resume once` | 09:15: "NOT resumed ... its next step is a device route replay, which the owner's 10-02 order suspends. Left parked as a draft." Resumed at 10:12. No entry in the window | **shadow only, and the remedy is the hazard.** See below |
+| 11:09 | not named | lanewaker: `stranded near30` ("no commit for 93 min"), resumed | **hostops only.** near30's PR.md is `State: ready` (finished at 09:40), so ops_tick skips it on purpose. The lanewaker check does not read PR state |
+| 11:14 | not named | lanewaker: `stranded savestate433` ("no commit for 94 min"), resumed | **hostops only.** savestate433's PR.md is `State: ready` (09:40). Same cause |
+| 09:15, 09:33, 09:51, 11:10 | no detector | four board-coverage and territory fixes (`#697`-`#708` rows, retired rows) | **hostops only.** Board-gate reds are not in ops_tick's detector set |
+| 09:51-10:14 | no detector | a Nova collision (memfast W1 arms run vs lane.pathfind's hold), resolved by hostops at 10:14 | **hostops only.** Device-queue collisions have no detector |
+
+**The routefix1002 remedy is the one that matters.** Its branch's next step is a queued Gunvalkyrie v5
+device run (840 s, `docs/lanes/routefix1002/queue.tsv`). The owner's 10-02 order suspends route replays.
+`det_stranded_lanes` looks only for a `STOPPED-by-owner` marker, and routefix1002 has none
+(`briefs/routefix1002.*` lists `.md`, `.issue`, `.model`). So at cutover the remedy would resume a lane
+that then starts device work the owner suspended. Its jam is real under the owner's 10-03 rule. The
+remedy is wrong for it. This is the one fault the window found that the fixtures did not. The fix is a
+decision, not a detector change: lane.local marks routefix1002 `STOPPED-by-owner` (the detector already
+honours that), or the owner says the lane should resume.
+
+**A rule I tried and reverted.** I changed the idle time to commit age only, to match the owner's
+literal words, then reverted it. The shipped rule uses the later of the last commit and the unit's last
+stop, so a lane resumes only when both are over 90 min. The commit-only version resumed a lane about 10
+min after its session ended with an old commit, which races handback's ~40-min resume. Selftest 87 is
+51 of 51 on the reverted, merged tree.
+
+**Shadow tick on the merged tree, 11:54 PDT (scratch state dir, read-only):** one jam, `stranded-lane
+routefix1002` (97 min). near30 and savestate433 are not named (ready PRs).
+
+**Verdict for this window: not clean** by the brief's criterion, which is no jam hostops did not also see.
+Two shadow-only jams (queue-stale, which cleared itself; routefix1002's remedy, which is the hazard above).
+Hostops-only: the board-gate and device-collision classes, which ops_tick does not cover. No duplicate
+announcements and no crash.
