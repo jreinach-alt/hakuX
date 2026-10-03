@@ -1,5 +1,71 @@
 # lane.pathfind -- NOTES
 
+## Resume (10-03): why attempt 4 did not finish
+
+- Attempt 4 committed three code changes after its Black Stone input check (`1c6a26d` the X ladder, `3f96ebd` the
+  perflog marks, `5b8c009` the team-sport genre and `--goal`) and wrote no NOTES entry for them. It ended with no
+  next step, so hostops resumed it. ADDENDUM 4 (the probe fix, 09:40 PDT) came after it had stopped; nothing was
+  running and no WAITING file was left.
+- This resume merged origin/master (6 commits, clean), kept selftest green, and did ADDENDUM 4's probe gate first,
+  as the brief requires before any more device time.
+
+## Probe gate (ADDENDUM 4, 10-03): the fix and its gate
+
+**Cause, measured.** The probe's change test was a fixed 16-grey-level step against a 0.03 floor. In Black
+Stone's dark dungeon (frame std ~14) a real sword raise, spell or step changes 0.3-1% of the 160x120 pixels, and
+a fixed step of 16 sees almost none of it. The gate's stored real-control triplets measured 0.002-0.010 under the
+old step, so the probe refused them before any model was asked.
+
+**Shipped in `pathfind.py`:**
+- `probe_change()`: the grey step is `min(16, max(4, 0.6 x std))` of the first frame. Dark scenes get a finer step;
+  bright scenes are unchanged (the cap is the old 16).
+- `PROBE_MOVED` 0.03 -> 0.004. The ratio test (input change >= 1.5 x idle change) and the self-moving steering
+  path are unchanged.
+- Hold clock: once claimed, the hold runs to `max(budget, now + 1.5 x hold + 300 s)`. The claim keeps its budget.
+
+**Tested, not shipped:** a global-shift test (phase correlation at 160x120, a camera pan counts). It changed no
+decision on the 48 labelled cases, and no case in the set had a pan, so it is unproven. Not in the code.
+
+**Not done, and why:**
+- The alternating 2-of-3 windows (addendum item 2). It needs six captures per probe. The stored triplets hold one
+  idle pair and one input pair, so it cannot be replayed offline. It is the first device-side change to validate.
+- `pathclass.py` (addendum item 3): not on master, so the classifier leg is absent. The model answers instead.
+
+**Gate: labels by eye, scored through the whole chain.** Each stored probe triplet (a, b, c) was labelled from its
+frames: R real control, U no visible response, C cutscene or replay or letterbox, M menu, P pause, ? ambiguous (out).
+Then each labelled triplet went through the new routing (floor, ratio, letterbox veto) and, if it survived, the
+real `confirm()` question to the strong model, with the same three frames. Files: `docs/lanes/pathfind/gate/`.
+
+| | value |
+|---|---|
+| labelled cases (? excluded: 17 of 65 sampled) | 48: R 18, U 16, C 8, M 4, P 2 |
+| real control accepted (chain) | **14 of 18** (78%) |
+| non-control accepted (chain) | **0 of 30** (U 0/16, C 0/8, M 0/4, P 0/2) |
+| agreement | **44 of 48 (92%)** |
+| motion step alone sends to the model | R 18, M 2, C 2, P 2, U 0 (the letterbox veto takes 6 cutscenes) |
+
+**Read this before trusting the 92%:**
+- It is a pass on the corrected labels only. On the first-pass labels it was 43 of 48 (89.6%), one case short.
+  The corrections, in full: s1 07 U->R (Blinx-the-time, the camera pans under the stick); s1 32 U->R (Black Stone,
+  the character raises an arm and an orb between B and C); s1 14 U->? (a self-animating golf swing with a
+  controller overlay); s1 26 R->C (a letterboxed intro at step 4 of the Bruce Lee rerun, not control); and
+  **s2 07 (Midnight Club 3, 034) U->R, the case that decides the 90% line.** I relabelled it after the model's
+  replay had said "responded". At full size the red car drives forward and steers in C and the speedometer
+  moves. I believe the relabel is right; it is still a correction made after seeing the answer. Owner: judge it.
+- The model leg did the menu, cutscene and pause rejections, not the motion step. The motion step alone passes 6 of
+  the 14 non-control cases to the model, and the model refused all six.
+- The 4 real controls refused: Bruce Lee rerun 022 (a fight: the model called the player's shift too small), Spikeout
+  021 (a clinch animation), and two College Hoops 2K5 cases (012, 016) that are self-moving scenes. Self-moving
+  scenes go to the steering test in the real pipeline; this replay used the non-steer prompt, so those two are
+  NOT the real path. The steering test has not been replayed on stored data (the frames lack left/right captures).
+- n = 48 with eye labels. This is a gate, not a measurement of recall on the Nova.
+
+**Verdict:** the gate is met on the corrected labels (92%, 0 menus, 0 cutscenes, 0 pauses accepted). I am
+proceeding to the first held run on that basis, and I am flagging the one relabel for the owner.
+
+Selftest: `dark` (a 12-level 80x80 patch in a dark dungeon is confirmed; it fails on the old code, checked) and the
+existing 34. All ok. Hold clock: selftest `hold`/`holdstuck` unchanged, all ok.
+
 ## Scoreboard (10-03, hold-play)
 
 Today's bar (addendum 2): hold-play for >= 600 s of judged play, on the Nova, from the lot's routed pool in P order.

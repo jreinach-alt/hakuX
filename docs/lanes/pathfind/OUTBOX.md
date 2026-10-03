@@ -119,3 +119,28 @@ Why it failed, in order of weight: the claim read gameplay on a HUD playfield fr
 D-pad and A probe measured control 0.000-0.005. That is a claim-rule failure or an input-path failure on this title, and
 it is open. Next: a pad-to-game input check on Black Stone before any more device time on it, then the next pool title
 (Panzer Dragoon Orta) with a budget that covers claim and hold together.
+
+## #433 -- 2026-10-03 09:32 PDT
+
+[lane.pathfind] Probe gate (ADDENDUM 4), before any more device time. **Cause:** the probe's change test was a fixed
+16-level grey step. In Black Stone's dark dungeon a real sword, spell or step changes 0.3-1% of the pixels, so the probe
+refused real control before the model was asked (stored triplets: 0.002-0.010 under the old step). **Fix shipped:**
+the step scales with the frame's contrast (floor 4, cap 16), the floor 0.03 -> 0.004, and a claimed hold gets its own
+clock (the claim keeps the budget). Selftest: all ok, including a new dark-scene case that fails on the old code.
+
+**Gate (48 labelled stored probes, scored through the whole chain: the new motion rule, then the real confirm question
+to the strong model):**
+
+| | result |
+|---|---|
+| real control accepted | 14 of 18 |
+| non-control accepted | 0 of 30 (menus 0/4, cutscenes 0/8, pauses 0/2, no-response 0/16) |
+| agreement | 44 of 48 (92%) |
+
+Caveats, in NOTES.md "Probe gate": it passes on the corrected labels only (43 of 48 = 89.6% before one relabel). That
+relabel (Midnight Club 3, 034: real control, the car drives and steers) was made after the model's answer on the same
+frames; the owner should judge it. Four real controls are refused, two of them self-moving College Hoops cases that the
+real pipeline sends to the steering test (not replayed). The alternating 2-of-3 windows and the classifier are not in.
+Table, labels and scripts: docs/lanes/pathfind/gate/.
+
+Next: the first held run, Panzer Dragoon Orta on the Nova, 600 s of play, with the golden profile.

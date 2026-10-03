@@ -83,6 +83,15 @@ def frame(path, kind, shift=0):
         for x in range(0, 1280, 160):
             d.rectangle((x + shift, 400, x + shift + 60, 960), fill=(120, 80, 40))
         d.rectangle((560, 600, 720, 900), fill=(220, 30, 30))
+    elif kind in ("dark", "darkpatch"):
+        # a dark dungeon: a 10-40 grey gradient (std ~9), and for "darkpatch" an 80x80 patch 12 levels brighter
+        for x in range(1280):
+            v = 10 + int(30 * x / 1280)
+            d.line((x, 0, x, 960), fill=(v, v + 6, v))
+        if kind == "darkpatch":
+            for x in range(400, 480):
+                v = 10 + int(30 * x / 1280) + 12
+                d.line((x, 400, x, 480), fill=(v, v + 6, v))
     if kind == "cine":
         return frame(path, "game", shift) or _bars(path)
     im.save(path)
@@ -136,6 +145,20 @@ check("happy", os.path.exists(path), "the path was recorded")
 lp = os.path.join(TMP, "know", "hints", "learned-pub-0000.md")
 check("happy", os.path.exists(lp) and "(00000000," in open(lp).read() and "main_menu A" in open(lp).read(),
       "one learned line was appended to learned-pub-0000.md")
+
+# dark: a dark dungeon scene, the probe moves an 80x80 patch by 12 grey levels (under the old fixed 16-level step,
+# 0.5% of the frame: refused before any confirm call). Black Stone's sword and spell in the 10-03 gate.
+rc, res, steps, calls = run("dark", [("black", 0), ("black", 0), ("dark", 0), ("dark", 0), ("dark", 0),
+                                     ("darkpatch", 0), ("darkpatch", 0), ("darkpatch", 0), ("darkpatch", 0)],
+                            [GAME, {"gameplay": True, "responded": True, "why": "the character moved in the dungeon"}],
+                            ["--no-record"])
+check("dark", res["result"] == "gameplay", f"a dark scene's change under input is confirmed ({res['result']})")
+check("dark", any(c["purpose"] == "confirm" for c in calls), "the confirm call was made")
+ctrl, moved = pathfind.probe_change(os.path.join(TMP, "dark", "in", "003.png"),
+                                    os.path.join(TMP, "dark", "in", "004.png"),
+                                    os.path.join(TMP, "dark", "in", "005.png"))
+check("dark", ctrl < pathfind.PROBE_MOVED and moved >= pathfind.PROBE_MOVED,
+      f"the idle pair is still and the input pair clears the floor (control {ctrl:.4f}, under input {moved:.4f})")
 
 # menu60: gameplay claimed on a static menu; the probe frame does not change
 rc, res, steps, calls = run("menu60", [("menu", 0)] * 12,

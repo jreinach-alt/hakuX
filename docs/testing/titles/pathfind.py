@@ -99,7 +99,8 @@ UNLOCK_LADDER = ("X", "B", "Y", "R1", "L1", "BACK")
 SIG = (16, 12)                       # a frame's signature: grey, box-averaged
 SIG_MATCH = 9.0                      # mean grey-level distance under which two screens are the same
 UNCHANGED = 0.01                     # classify.motion changed fraction at or under this: no change
-PROBE_MOVED = 0.03                   # the probe frame must change at least this much
+PROBE_MOVED = 0.004                  # the probe frame must change at least this much (10-03 gate: 0.03 refused dark scenes)
+PROBE_DARK = 0.6                     # probe grey step = this x the frame's std (floor 4, cap MOTION_PIXEL) -- see probe_change
 SELF_MOVING = 0.15                   # no-input change over this: the scene moves by itself; steer L/R
 BLACK_MODEL_S = 40                   # seconds of black before the model is asked anyway
 BLACK_HANG_S = float(os.environ.get("PATHFIND_BLACK_HANG_S", 180))                  # continuous black this long ends the run (Conker, 10-02: 8+ min black
@@ -296,6 +297,18 @@ def sig_dist(a, b):
 def changed(a, b):
     """Changed fraction between two frame files (classify.motion's 160x120 rule)."""
     return classify.motion(grey(a), grey(b))[0]
+
+
+def probe_change(a, b, c):
+    """(idle change, input change) for a probe's three frames. Same 160x120 rule as `changed`, but the grey step
+    scales with the first frame's contrast: a dark scene (Black Stone's dungeon, std ~14) moves its character by
+    well under 16 levels. Gate 10-03 (scratch/probegate, labelled stored triplets): the fixed 16-level step refused
+    every real control in that scene; this step accepts them and accepts no labelled cutscene or menu on its own."""
+    ga = grey(a)
+    std = float(np.asarray(ga.resize(classify.MOTION_SIZE, Image.BILINEAR), dtype=np.float64).std())
+    step = min(classify.MOTION_PIXEL, max(4.0, PROBE_DARK * std))
+    gb, gc = grey(b), grey(c)
+    return classify.motion(ga, gb, pixel=step)[0], classify.motion(gb, gc, pixel=step)[0]
 
 
 def letterboxed(path):
@@ -885,7 +898,7 @@ class Agent:
         c_png, c_jpg = self.hold_capture(probe, "probe-c")
         if not c_png:
             return False, "screencap failed"
-        ctrl, moved = changed(a_png, b_png), changed(b_png, c_png)
+        ctrl, moved = probe_change(a_png, b_png, c_png)
         rec = {"state": "probe", "action": pre + [probe], "why": f"control {ctrl:.3f}, under input {moved:.3f}",
                "src": "probe", "changed": moved}
         selfmove = ctrl > SELF_MOVING
@@ -1222,6 +1235,9 @@ class Agent:
             self.dev.route_log(m)
         logged = "play"
         t_hold = now()
+        # claim and hold get separate clocks (addendum 4, 10-03): the claim used the budget, the hold is owed its
+        # seconds of play. A claim at 13 min used to leave the 600-s hold 2 min of budget (Black Stone, 10-03).
+        self.budget_s = max(self.budget_s, self.el() + self.hold_s * 1.5 + 300)
         while play_s < self.hold_s and self.el() < self.budget_s:
             self.n += 1
             t_cycle = now()
