@@ -1,5 +1,40 @@
 # lane.pathfind -- NOTES
 
+## Resume (10-03 12:40 PDT, attempt 7): why the last attempt did not finish
+
+- The last session ended at 11:48 after writing up Black Stone (verdict PASS, frames show no travel: not counted).
+  Its write-up named the next need (a position test) but left no WAITING file and no run going, so it stopped with
+  nothing in flight. Nothing was lost.
+- Since then the 12:50 addendum replaced the pool order: `~/hakux-work/pm/pathfind-pool.tsv` is the work list.
+  Castlevania (4B4E002D, profile-creation) first, then Forza, then the file in order. This resume merged
+  origin/master (clean).
+
+## Golden saves made on the Thor are read as damaged on the Nova (10-03, offline, no device time)
+
+**Forza (4D53006E), memfast run `1-1791047880-lane.memfast-3557511`:** the route pressed A 25 times between
+"Player profile 'Default' is damaged and cannot be used. Press A to continue." and PROFILE SELECT (with "This
+profile is damaged ... Press X to delete"). The run's disk carried golden `a1baf745d557`. That save's store record
+says it was harvested from `pull/thor-hdd.img` (09-30). The run was on the Nova.
+
+- The two handhelds have different `eeprom.bin` (Thor `f52cf53a...`, Nova `7eb04a87...`; lane.titlestate NOTES,
+  09-27). A save signed with the console's HDD key, which comes from the EEPROM, reads as damaged on the other
+  device. `saves.py`'s docstring predicts this exact failure.
+- **55 of the 84 goldens were harvested on the Thor** (`scratch/goldsrc.py` reads each golden's `save.json`
+  source). With the Thor's fan dead, the Nova runs every soak. Each of those 55 is at risk on the Nova if its title
+  signs its save with the HDD key. Which titles do that has to be learned per title. Forza is the first one confirmed
+  from frames.
+- Castlevania's golden `20235e93867b` is Thor-made too. lane.local's queued Nova run `1-1791056447-lanelocal-2267406`
+  (returning, on that golden) is the direct test for Castlevania. It is next in the Nova queue, and I let it run
+  before taking the hold.
+- Fix options, ranked by P x win: (1) give both handhelds the same `eeprom.bin`, so every save made from then on
+  works on both. P high (the mechanism is the signing key), and the win covers every title. The cost: saves already
+  made on the device whose EEPROM is replaced stop loading there. That trade is a device decision, not this lane's.
+  (2) Per-device goldens: compose only a save made on the target device, and fall back to first-run otherwise. P high,
+  but it needs a Nova-made profile for every title. (3) Re-sign saves at compose time. Every title's format differs,
+  so P is low. Filed in OUTBOX as a new issue.
+- For Forza, this lane's part: a first-run pathfind run on the Nova makes a Nova profile ("NEW PROFILE"). Then
+  harvest it and promote it.
+
 ## Resume (10-03 10:13 PDT, attempt 6): why attempt 5 did not finish
 
 - Attempt 5 ended on a WAITING file for arms run `1791042391`, but the held Panzer run had already timed out

@@ -193,3 +193,22 @@ findings, was the same request). Not started here.
 
 Status for today (the owner's 0.5 bar, 600-s Playable confirmations): none accepted yet.
 Panzer Dragoon Orta: 80.8% and 83.6% play share, FAIL. Black Stone: PASS by the verdict, not confirmed on the frames.
+
+## #433 -- 2026-10-03 12:50 PDT
+
+NEW ISSUE: golden saves harvested on the Thor are read as "damaged" on the Nova (different eeprom.bin); 55 of 84 goldens are Thor-made
+Forza (4D53006E), memfast run 1-1791047880-lane.memfast-3557511 (Nova, 12:11): the route pressed A 25 times between "Player
+profile 'Default' is damaged and cannot be used" and PROFILE SELECT ("This profile is damaged ... Press X to delete"); frames
+route-frames/121040-043-cutscene.png and 121129-071-fail-profile.png. The disk carried golden a1baf745d557. That save's store
+record (titlestate/saves/4D53006E/a1baf745d557/save.json) names its source as pull/thor-hdd.img (09-30). The two handhelds'
+eeprom.bin differ (Thor f52cf53a..., Nova 7eb04a87..., lane.titlestate NOTES 09-27). A save signed with the console HDD key
+(which comes from the EEPROM) does not load on the other device. saves.py's docstring predicts exactly this. 55 of the 84 goldens
+come from a Thor image (list: lane/pathfind scratch/goldsrc.py), and the Nova now runs every soak. Each is at risk on the Nova if
+its title signs with the HDD key. That is per title, and Forza is the first confirmed from frames. Castlevania's golden
+20235e93867b is also Thor-made: lane.local's queued 1-1791056447-lanelocal-2267406 tests it directly.
+Options (P x win): (1) one eeprom.bin on both handhelds. Every future save then moves both ways, but saves already signed by the
+replaced EEPROM stop loading on that device. That is a device decision. (2) Per-device goldens: compose only a save made on the
+target device, otherwise first-run. (3) Re-sign at compose time: per-title formats, low P.
+Blocks: Forza (pool), and possibly any Nova run on a Thor-made golden that dies on a profile/"damaged" screen.
+This lane's part: a first-run pathfind on the Nova for Forza makes a Nova profile; harvest and promote it.
+
