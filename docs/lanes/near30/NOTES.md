@@ -3,6 +3,16 @@
 Brief: owner 2026-10-02 ~16:25 PDT, "We're close but not quite there yet."
 Bar: >= 28.5 fps for >= 90% of the scored window (title_verdict.py, targets.toml).
 
+## Attempt 3 (resumed 2026-10-03 08:14 PDT): why attempts 1-2 did not finish
+
+Attempt 1 (10-02, to 16:50 PDT) finished the offline Tron/ToeJam decomposition and one Tron
+perflog run, then stopped at Step 2b: "WAITING" for lane.local's addendum that the owner's save
+existed. Attempt 2 (resumed after that wait) found no addendum on the session it had, so it
+wrote OUTBOX and stopped again. The addenda came later: "save exists" at 10-02 17:57 PDT and
+"GO" with the golden (savestate433, Blinx 2 golden = save 377a8488c7c5) at 10-03 08:20 PDT. Both
+arrived after the sessions had ended, so **no Blinx 2 run was ever made, and the Blinx 2 row,
+the ocean repro and the scored window were never written.** This attempt does those.
+
 ## Method
 
 `decompose.py <result dir>...` reads only lines every build prints (plus the
@@ -227,9 +237,129 @@ on evidence (origin/lane/memfast NOTES). Neither alone clears Tron's slowest
 - Older Blinx 2 Nova runs (idlehaltdefault, retreason425, slowdown462) have
   no `mark gameplay`; they cannot be decomposed.
 
+## Step 2c: Blinx 2 on the Nova, the owner's save "Jaguars" (attempt 3, 10-03 08:14-09:20 PDT)
+
+Setup. `titlestate.py prepare --device nova --title-id 4D530065 --state returning` under a held
+session (`hold.sh wait`, then `wait-idle` after pathfind's Black Stone hold). It loaded golden
+377a8488c7c5 (plan `keep`). The Nova's installed build at 08:15 was vcpuwait433's arm (012fa08a94,
+which changes the vCPU sleep this lane measures), so it was NOT used. I built the perflog APK of this
+branch (= master 9d1155f919 emulator code + docs) in the worktree with `build-perflog.sh`, installed it
+under the hold (`adb install -r`, stamp `0.4.1-1003-9169b18587-perflog`), and ran the session with
+`b2.py` (pad, shot, mark) and `scored433.py`. Logcat ran to a file. Nothing was reset or deleted:
+Load Game -> slot 1 "Jaguars" -> 1P -> cutscene -> Story mission cards. The save is untouched; the
+release wrote the run's writes to `latest` only. `hddPath` was restored.
+
+Build notes for the next lane (cost me two failed builds): `build-perflog.sh` must put
+`~/.local/bin` (meson) AND `~/Android/Sdk/cmake/3.30.3/bin` (ninja) on PATH, or CMake fails with
+"meson not found" and then "Could not detect Ninja". The build takes about 6 min warm.
+
+Device runs: 1 held session (this is the owner's 2 remaining runs, used as: the ocean repro, then
+the scored window). The scored window needed a retry (see below).
+
+### What happened in the session (device clock; marks in `blinx2-perflog-extract.tsv`)
+
+- Post-tutorial zone is the "Arch" timed challenge, not the tutorial's open area. The save loads
+  into a cutscene, a mission card, then free roam with a challenge timer.
+- **Yaw.** RX +22000 yaws; RX -22000 also yaws in the other direction; RX 11000 does not (as the
+  blinx2input notes say). Ocean-in frames: `p6` and `oin1-4`. Ocean-out: cliff faces `p1-p5`, `oout1-3`.
+- **Checkpoint retry.** At ~08:52:47 a "RETRY CHECKPOINT? Yes / No" prompt sat on screen for the
+  rest of batches 2 and 3 (08:55-09:00). Those batches are NOT gameplay: the 29.97 fps and GPU 0.1 ms
+  rows in them are the prompt, so they are excluded from every number below. Choosing Yes at 09:04
+  (a button press, not a new run) restored the challenge.
+- **Operator dialogue.** Batch 4 ends in a scripted "This is the Operator." dialogue at ~09:08 (the
+  last frame). The valid span ends at 09:07:50.
+
+### Ocean in vs out (the owner's dip), perflog, 2-s rows (`ocean433.py`)
+
+| window | s | fps | renderer Tot ms | Draw | Fin (fence) | GPU ms | draws/frame (BE) | guest busy | vCPU on-CPU |
+|---|---|---|---|---|---|---|---|---|---|
+| ocean OUT (oout 1-3) | 18 | **25.0** | 33.2 | 10.4 | 20.0 | 35.3 | **26** | 0.50 | 0.88 |
+| ocean IN (oin 1-4) | 24 | **19.0** | 44.4 | 14.0 | 27.5 | 49.6 | **44** | 0.43 | 0.88 |
+| sweep, cliff/sea mixed (s1-s8) | 28 | 21.1 | 39.2 | 12.4 | 23.6 | 42.4 | 31 | 0.45 | 0.88 |
+
+draws/frame = BE per 2-s row / (fps x 2). GPU ms per draw: out 1.36, in 1.13. So the ocean does not
+make each draw dearer; it adds draws (+70%), and GPU time follows the count (+40%). TexU is 0 in every
+window: no texture uploads in steady-state ocean frames. The "first-appearance" texture dips the owner
+saw are NOT measured here (no first-appearance event in these windows).
+
+Owner's read: CPU or GPU? The vCPU is on-CPU 0.88 in both windows (no change). The guest is idle
+about half the time (guest busy 0.43-0.56), so the guest is not the long pole. The renderer waits on
+the GPU (Fin) and the GPU's time grows with draw count. **Ocean dip: GPU-side, draw-count-driven**
+(water/reflection draws, per the owner's candidates). Not CPU-side.
+
+### Scored window (the Playable input), valid spans only
+
+| span | s | rows | share >= 28.5 | median fps | Tot ms | GPU ms | Fin ms | guest busy | vCPU on-CPU |
+|---|---|---|---|---|---|---|---|---|---|
+| A: batch 1, first pass | 98 | 39 | **0.44** | 28.0 | 33.7 | 34.4 | 19.1 | 0.56 | 0.85 |
+| B: retry to Operator | 216 | 74 | **0.03** | 21.2 | 40.8 | 44.2 | 24.4 | 0.45 | 0.89 |
+| all valid | 314 | 182 | **0.115** | 22.2 | | | | | |
+
+The 600-s bar is NOT met: 314 s of valid play (about 5 minutes) out of about 20 minutes of scored
+batches, with the retry prompt and the dialogue in the rest. The batch-4 frames' FPS overlay reads
+17-28 on free roam; the
+earlier OCR'd Test 1 median (27) is a different area. The post-tutorial Arch area is far below 30.
+
+Caveats, stated: (1) a screenshot every 6 cycles; a screencap may stall the emulator, so some
+low rows may be the shot. Not measured. (2) pace rows arrive ~every 2-3 s, so windows of 18-24 s
+hold 7-8 pace rows. (3) GPU ms is the phase line's `GPU:`; GPU >= Tot in B, so it is not a
+disjoint slice of the frame; read it as relative cost, not as ms that add up. (4) no simpleperf on
+this session.
+
+### Blinx 2 frame-time budget (per frame; out vs in, and the valid-A/B spans)
+
+| ms per frame | ocean OUT (median ~ 40 ms frame) | ocean IN (~ 53 ms) | valid span B (~ 49 ms) | gap to 33.3 |
+|---|---|---|---|---|
+| vCPU on-CPU | 0.88 x F | 0.88 x F | 0.89 x F | not the gap: the guest idles 45-55% |
+| guest idle | ~50% of F | ~57% of F | ~55% of F | guest is not the long pole |
+| renderer GPU (Fin + Draw) | 30 | 42 | 37 | the gap lives here |
+| draws / frame | 26 | 44 | ~37 | the count, not per-draw cost |
+
+Honest about the table: the per-frame values are from the 2-s rows and are relative, so the gap
+column is a ratio read, not an exact ms sum. The ocean-in frame is ~1.3x the ocean-out frame.
+
+### Levers, ranked by P x win (the rule: effort is a tiebreaker)
+
+| # | lever | P | evidence for P | win if it works | cost |
+|---|---|---|---|---|---|
+| 1 | **Cut the water/ocean draw count on the GPU path** (batch or instance the water and reflection draws; push constants per the bf2push656 pattern to cut binds) | 0.35 | draws +70% with GPU ms +40% and per-draw cost down: the count is the cost. bf2push656 halved binds on BF2 but BF2's GPU time did NOT move (judged), so the bind count alone is not the lever; the draws themselves are | ocean dip 19 -> ~24 fps if the ocean half of the draws goes; sweeps ~21 -> ~25 | 1 measurement (frame dump at in vs out to name the draws) + a renderer change |
+| 2 | **Memfast / fastmem for the vCPU** | 0.15 here | the vCPU is busy 0.88 but the guest is idle half the time, so faster JIT buys little on this title. P is low for Blinx 2, high for Tron (near30 NOTES step 3) | ~1-2 fps on Blinx 2; the broad win is on CPU-bound titles | board grants (stranded) |
+| 3 | Ubershader / shader-compile stalls | 0.05 | TexU 0 and no compile events in the steady windows; the ubershader is already the default (folded 10-02) | first-appearance hitches only | none |
+| 4 | Texture upload / readback (first-appearance dips) | 0.2 | the owner's dips at first appearance; NOT measured here (no event in these windows) | hitches; steady fps not affected | 1 run with a first-appearance trigger |
+| 5 | GPU clock regimen | 0.2 | GPU-side verdict, but GPU MHz not read in this session | up to ~20% of the GPU ms if it is clock-limited | the regimen, not code |
+
+Ranking note: #1 is first on P x win: it explains the ocean dip with a measured count (+70%), and it
+has a cheap decider. It is not the cheap option: naming the draws is one frame dump at in and out, and
+the fix is a renderer change. #2 is the approach that fits this hardware, but on Blinx 2 the guest
+is not the long pole, so its P is low here.
+
+### Successor brief (lever 1)
+
+    Lane: oceandraw433   Issue: #433   Device: Nova, 1 held session (frame dump, no scored window)
+    # Name the draws the ocean adds to Blinx 2's frame, and decide: batch them, or make each one cheaper
+
+    lane.near30 (docs/lanes/near30/NOTES.md, step 2c): Blinx 2 (golden "Jaguars", post-tutorial Arch area)
+    drops from 25 fps to 19 when the sea is in view. Draw calls per frame rise 26 -> 44; GPU ms per draw
+    fall 1.36 -> 1.13; the vCPU is on-CPU 0.88 in both; TexU is 0.
+
+    1. ONE held session, perflog build of master, the same Load Game path (`b2.py`, `oin`/`oout` marks,
+       `ocean433.py`). Take the per-draw frame dump (`frame_dump.on`) at ocean-in and ocean-out.
+    2. Classify the extra ~18 draws per frame in the in-frame by shader, texture and render target, and by
+       coverage (screen area). Expected if the count is the cost: many small draws with the same state
+       (batch them). If a few large draws dominate: fragment cost (the water shader or a render-to-texture
+       pass), then lever 1 is the wrong fix.
+    3. Decide by the split: small same-state draws -> lever 1 (batch/instance, P 0.5); a few large -> fragment
+       (a different lever, the reflection pass). Write the prediction before any arm.
+    4. Do not touch the JIT (memfast owns it) or the ubershader path (folded).
+
 ## Files
 
 `decompose.py` (the reader), `decompose.out` / `windows.tsv` (the 8 plain
 runs), `tron-perflog.out` / `tron-perflog.tsv` (run 1), `tron-newgame.route`
 (copied from origin/lane/tronhang672), `peek_runs.py`, `peek_rdc.py` (scratch
 readers).
+
+Attempt 3 (Blinx 2): `ocean433.py` (decomposer, marks on the device clock), `blinx2-perflog-extract.tsv`
+(the perflog lines it reads, 1 MB, from the held run's logcat), `b2.py` (the held-session hands),
+`scored433.py` (the walk-and-look batches), `build-perflog.sh` (the perflog APK with meson/ninja on
+PATH). The frames (92 MB, `b2run/`) and the raw logcat (12 MB) stay untracked on the worktree.

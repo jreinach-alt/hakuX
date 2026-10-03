@@ -1,26 +1,31 @@
-# near30: why near-30 titles cannot hold 28.5 fps -- frame decomposition and the lever
-State: draft
+# near30: why near-30 titles cannot hold 28.5 fps -- frame decomposition, Blinx 2 ocean dip, and the levers
+State: ready
 
 Lane: near30            Issue: #433
-Base: master @ 7e1b471ef1
-Files: docs/lanes/near30/PR.md, docs/lanes/near30/NOTES.md, docs/lanes/near30/OUTBOX.md, docs/lanes/near30/decompose.py, docs/lanes/near30/decompose.out, docs/lanes/near30/windows.tsv, docs/lanes/near30/tron-perflog.out, docs/lanes/near30/tron-perflog.tsv, docs/lanes/near30/tron-newgame.route, docs/lanes/near30/peek_runs.py, docs/lanes/near30/peek_rdc.py
-Prediction: none: analysis-only (one survey capture, expected result written in its request)
-Needs device: yes (Nova; 1 of 3 runs used: 1790983969-lane.near30-3991603)    Needs NDK: no
+Base: master @ 9d1155f919
+Files: docs/lanes/near30/PR.md, docs/lanes/near30/NOTES.md, docs/lanes/near30/OUTBOX.md, docs/lanes/near30/decompose.py, docs/lanes/near30/decompose.out, docs/lanes/near30/windows.tsv, docs/lanes/near30/tron-perflog.out, docs/lanes/near30/tron-perflog.tsv, docs/lanes/near30/tron-newgame.route, docs/lanes/near30/peek_runs.py, docs/lanes/near30/peek_rdc.py, docs/lanes/near30/b2.py, docs/lanes/near30/ocean433.py, docs/lanes/near30/scored433.py, docs/lanes/near30/build-perflog.sh, docs/lanes/near30/blinx2-perflog-extract.tsv
+Prediction: none: analysis-only (no emulator change; no arm)
+Needs device: yes (Nova, one held session; the device is released and `titlestate release` has run)    Needs NDK: no
 
-Tron 2.0 on the Nova is CPU-bound on the vCPU thread. In below-bar windows (median frame ~43 ms):
-- the vCPU runs guest code for 32.7 ms;
-- it sleeps 10.3 ms, and that sleep tracks GPU ms per frame (r = 0.64);
-- the guest never idles;
-- the renderer idles 17.6 ms;
-- the GPU sits at its 401 MHz floor.
+Attempt 3 finished the two things attempts 1-2 left waiting: the Blinx 2 perflog capture on the owner's
+"Jaguars" save, and the lever ranking that includes Blinx 2.
 
-Measured out as the cause of the sleep: pgraph.lock (#474), the fifo skew bound, read-downloads. ToeJam & Earl III, the control, holds with 11 ms of guest work per 16.7 ms frame.
+**Blinx 2, the ocean dip (GPU-side, from draw count).** Steady frames on the post-tutorial "Arch" area:
 
-Levers ranked by probability x size, with a successor brief for the top one (name the vCPU's GPU-side wait), are in NOTES.md.
+| window | fps | draws/frame | GPU ms | vCPU on-CPU |
+|---|---|---|---|---|
+| sea out | 25.0 | 26 | 35 | 0.88 |
+| sea in | 19.0 | 44 | 50 | 0.88 |
 
-WAITING: the Blinx 2 capture needs lane.local's addendum that the owner's save past Test 1 exists on the Nova. Not received by 16:50 PDT.
+The sea adds draw calls (+70%) and GPU ms per draw falls, so the count is the cost. The vCPU is unchanged and the guest is idle about half the time. Texture uploads are zero in both windows.
 
-Local checks: no harness or emulator files changed, so selftest does not apply; decompose.py runs on all 9 result dirs named in NOTES.md.
+**Scored window: partial.** A checkpoint retry prompt and a scripted dialogue interrupted the walk. Valid gameplay is 314 s; the share of per-second rows at or above 28.5 fps is 0.115 (median 22.2). The 600-s bar is not met, and the first 98 s alone were 0.44.
+
+**Tron 2.0 and ToeJam (from attempt 1, unchanged):** Tron is CPU-bound on the vCPU thread with its GPU at the floor clock; ToeJam holds with 11 ms of guest work per 16.7 ms frame.
+
+Levers ranked by probability x win, the successor brief for the top one (the ocean's draws, by a per-draw frame dump), and the per-title budget tables are in NOTES.md.
+
+Local checks: `docs/testing/jobs/hold.sh` take/wait-idle/release run on the Nova; `perflog` APK built locally (`build-perflog.sh`, GRADLE_EXIT=0, stamp `0.4.1-1003-9169b18587-perflog`); `ocean433.py` reproduces the windows from `blinx2-perflog-extract.tsv`. No emulator code changed, so selftest does not apply.
 
 Release note (none): analysis only, no emulator code.
 
