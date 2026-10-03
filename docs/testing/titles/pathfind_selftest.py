@@ -226,6 +226,15 @@ check("ownmotion", res["result"] != "gameplay" and conf and conf[0]["images"] ==
       f"self-moving scene gets the steering test and its refusal holds ({res['result']}, "
       f"{[c['images'] for c in conf]})")
 
+# ownmotion with a throttle probe: the steering legs keep the throttle on (Forza, 10-03: gas-off steering legs put a
+# slow car into the pit wall in both runs)
+rc, res, steps, calls = run("ownrt", [("game", 0), ("game", 0), ("game", 80), ("game", 160)] + [("game", 0)] * 4,
+                            [dict(GAME, probe="RT:1.5"), {"gameplay": True, "responded": False, "why": "no"}],
+                            ["--no-record", "--no-replay"])
+pr = [s for s in steps if s.get("src") == "probe"]
+check("ownmotion", pr and pr[0]["action"][-2:] == ["RT+left:1.2", "RT+right:1.2"],
+      f"a throttle probe steers on the throttle: {pr[0]['action'] if pr else None}")
+
 # retract: confirmed, then the recheck 30 s on says it is a title screen
 os.environ["PATHFIND_AFTER_S"] = "0.05"
 rc, res, steps, calls = run("retract", [("game", 0), ("game", 0), ("game", 0), ("game", 80), ("logo", 0)] + [("logo", 0)] * 4,

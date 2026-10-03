@@ -960,11 +960,16 @@ class Agent:
         if selfmove:
             # The scene moves by itself (downhill, on rails, a cinematic): pixels cannot say who moved it, so
             # steer LEFT then RIGHT and ask whether the player followed both (Amped 2 and Panzer Dragoon, 10-02).
-            l_png, l_jpg = self.hold_capture("STICK:left:1.2", "probe-left")
-            r_png, r_jpg = self.hold_capture("STICK:right:1.2", "probe-right")
+            # A throttle probe steers ON the throttle: steering a slow car with the gas off turned Forza into the
+            # pit wall in both 10-03 runs, and it never got off it.
+            trig = probe.split(":")[0].split("+")[0]
+            left, right = ((f"{trig}+left:1.2", f"{trig}+right:1.2") if trig in ("RT", "LT")
+                           else ("STICK:left:1.2", "STICK:right:1.2"))
+            l_png, l_jpg = self.hold_capture(left, "probe-left")
+            r_png, r_jpg = self.hold_capture(right, "probe-right")
             if not (l_png and r_png):
                 return False, "screencap failed"
-            rec["action"] = rec["action"] + ["STICK:left:1.2", "STICK:right:1.2"]
+            rec["action"] = rec["action"] + [left, right]
             q = head + ("A, then B (1 s after A, no input): the scene moves on its own. Then C taken while holding "
                         "the stick LEFT, then D taken while holding it RIGHT. Is this real player-controlled "
                         "gameplay (not a menu, cutscene, attract/demo or replay), AND did the player's character, "
