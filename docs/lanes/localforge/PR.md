@@ -3,8 +3,8 @@
 State: ready
 
 Lane: localforge            Issue: #433
-Base: master @ 9d1155f919 (merged to origin/master @ a143aa5db8 on 2026-10-03)
-Files: .forgejo/workflows/forge-android.yml, .forgejo/workflows/forge-selftest.yml, AGENTS.md, docs/lanes/localforge/NOTES.md, docs/lanes/localforge/OUTBOX.md, docs/lanes/localforge/PR.md, docs/lanes/localforge/RETURN.md, docs/lanes/localforge/forge_import.py, docs/lanes/localforge/import_smoke.py, docs/testing/comment_sweep.sh, docs/testing/desktop-gate-warnings.md, docs/testing/jobs/board.sh, docs/testing/jobs/fold.sh, docs/testing/jobs/gh-shim/forge_prsync.py, docs/testing/jobs/gh-shim/gh, docs/testing/jobs/gh-shim/install.sh, docs/testing/jobs/gh-shim/route.sh, docs/testing/jobs/gh-shim/route_test.py, docs/testing/jobs/gh-shim/smoke_live.py, docs/testing/jobs/handback.sh, docs/testing/jobs/status.sh, docs/testing/systemd/README.md
+Base: master @ 9d1155f919 (merged to origin/master @ bc2bced563 on 2026-10-03)
+Files: .forgejo/workflows/forge-android.yml, .forgejo/workflows/forge-selftest.yml, .github/workflows/android.yml, .github/workflows/build-xemu-win64-toolchain.yml, .github/workflows/desktop.yml, .github/workflows/jobs-selftest.yml, .github/workflows/nv2a-index.yml, AGENTS.md, docs/lanes/localforge/NOTES.md, docs/lanes/localforge/OUTBOX.md, docs/lanes/localforge/PR.md, docs/lanes/localforge/RETURN.md, docs/lanes/localforge/forge_import.py, docs/lanes/localforge/import_smoke.py, docs/testing/comment_sweep.sh, docs/testing/desktop-gate-warnings.md, docs/testing/jobs/board.sh, docs/testing/jobs/fold.sh, docs/testing/jobs/gh-shim/forge_prsync.py, docs/testing/jobs/gh-shim/gh, docs/testing/jobs/gh-shim/install.sh, docs/testing/jobs/gh-shim/route.sh, docs/testing/jobs/gh-shim/route_test.py, docs/testing/jobs/gh-shim/smoke_live.py, docs/testing/jobs/handback.sh, docs/testing/jobs/status.sh, docs/testing/systemd/README.md
 Prediction: none: no arm. Harness infrastructure only (a local forge, a gh shim, job gates, unit routing); no emulator pixels or speed.
 Needs device: no    Needs NDK: no
 
@@ -51,6 +51,14 @@ onto it.
    `~/hakux-work/lane-protocol/forge.md`, outside the repo. `RETURN.md` designs the
    return to GitHub, and records a hazard in `offline-git/recover_github.py`, which probes
    GitHub with the `gh` on PATH. Under the shim that probe answers from the forge.
+10. **No GitHub workflow starts itself.** android, desktop, nv2a-index, jobs-selftest and
+    build-xemu-win64-toolchain are `workflow_dispatch`-only. A push to GitHub on the return
+    cannot restart the old CI. On the forge, a branch without `.forgejo/workflows` no longer
+    queues runs that wait for an `ubuntu-latest` runner that does not exist. The other 13
+    workflows were already `workflow_dispatch` or `workflow_call`.
+11. **`gh pr list --search`** takes qualifiers (`head:`, `base:`, `author:`, `label:`, `is:`).
+    It used to exit 64, which `hardware/xbox_check.sh` hid with `2>/dev/null`, so that
+    check read "no open PR" on every run.
 
 Caller decisions for every remaining `gh` call on master are in NOTES.md section 7.1.
 
@@ -66,9 +74,13 @@ Caller decisions for every remaining `gh` call on master are in NOTES.md section
 - `docs/testing/jobs/selftest.sh` (all shards, run locally at ab37133): **3000 passed, 0 failed, all 123 fragments.** Log: `~/hakux-work/logs/forge/selftest-localforge-ab37133.log`.
 - Re-run at this head (attempt 3, after the merge with origin/master at a143aa5db8 and the addenda 4-7 changes): `selftest.sh` in the four CI shards, `SELFTEST_SHARD=k/4` for k = 0..3: **284 + 865 + 967 + 884 = 3000 passed, 0 failed, all 123 fragments.** `smoke_live.py`: 88 passed, 0 failed. `route_test.py`: 83 passed, 0 failed.
 - `python3 docs/lanes/localforge/import_smoke.py` (importer): all passed, unchanged this attempt.
+- Attempt 4 (after the merge with origin/master at bc2bced563, the workflow edit and the shim's
+  `--search`): `smoke_live.py` **92 passed, 0 failed** (adds three `--search` checks and the
+  `issue comment N --body` form). `route_test.py` **83 passed, 0 failed**. `selftest.sh
+  --check-shards 4`: passes. RETURN.md 2a's workflow check prints nothing at this head and
+  prints the five files on origin/master. The territory check `offline_fold.py` runs, applied to
+  this head: 27 files, none outside `[lane.localforge]`. Selftest shards: SELFTEST_RESULT.
 
 ## Not done in this PR
 
 - Phase 2 routing (after this PR folds). `route.sh status` says what is missing.
-- `hakux-cloud` disable (lane.local's `systemctl`).
-- The `recover_github.py` pin of `/usr/bin/gh` before any return execute.

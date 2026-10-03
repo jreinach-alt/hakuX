@@ -403,6 +403,50 @@ does not implement are `issue lock`/`unlock`, `release download` and `release
 delete`, `workflow run`, `repo` and `workflow` browsing. The callers of the release
 ones are in the retired files above.
 
+## 9. Attempt 4 (2026-10-03, resumed for addendum 8)
+
+**Why attempt 3 did not finish.** It did finish the brief as it stood: PR.md ready, checks
+recorded, OUTBOX entries posted, ending about 10:30 PDT. Addendum 8 was written at 11:00,
+after that session ended. It answered attempt 3's open decisions and granted the five
+`.github/workflows` files, so this attempt exists to do that edit. One item from addendum 5
+was also missed by attempt 3 and is done here: lane.xbox's two scripts through the shim.
+
+**Changes**
+
+| file | change | test |
+|---|---|---|
+| `.github/workflows/{android,desktop,nv2a-index,jobs-selftest,build-xemu-win64-toolchain}.yml` | `on:` is `workflow_dispatch` only. android.yml keeps the `hakux-ci-throttle` comment (`recover_github.py` `THROTTLE_MARKER` is a substring check) | RETURN.md 2a check: prints nothing at this head, prints these five on origin/master. `selftest.sh --check-shards 4` passes (it reads jobs-selftest.yml's matrix, which is unchanged) |
+| `docs/lanes/localforge/RETURN.md` | 2a's check parses each workflow's `on:` key instead of grepping | see below |
+| `docs/testing/jobs/gh-shim/gh` | `pr list --search` takes qualifiers only: `head:`, `base:`, `author:`, `label:`, `is:open/closed/merged/draft`. Free text still exits 64; a qualifier that contradicts a flag exits 2 | `smoke_live.py` 92/92 (3 new search checks, 1 new `issue comment` check) |
+
+**The 2a grep was wrong.** It printed `build-xemu-win64-toolchain.yml` after the edit, because
+line 58 has `push: ${{ ... }}`, an input of a docker step under `with:`, not a trigger. The new
+check reads the YAML `on:` key (and `True`, which is how YAML reads a bare `on:`), and lists
+any key other than `workflow_dispatch` or `workflow_call`. The other 13 workflows were already
+`workflow_dispatch` or `workflow_call`.
+
+**lane.xbox through the shim (addendum 5).** Both scripts live in `~/hakux-work/hardware/`,
+not in the repo.
+
+| call | through the shim, before | after |
+|---|---|---|
+| `xbox_check.sh:26` `gh pr list --search 'head:lane/xbox' --json number --jq` | **exit 64**, and the script discards stderr, so it read "no open PR" every run: the silent-empty pattern | rc 0; empty today, which is correct (no `lane/xbox` branch exists on origin) |
+| `xbox_check.sh:27` `gh api -X GET repos/.../issues/comments -f since= -f per_page=100 --paginate` | rc 0 | unchanged |
+| `title_push_xbox.sh:433` `gh issue comment N --body` (no `--repo`; default repo) | implemented, not in the smoke test | smoke check added, passes |
+
+The installed shim (`~/hakux-work/forge/shim/bin/gh`) was byte-identical to the committed one
+before `install.sh` replaced it with this version.
+
+**Addendum 8's other items**, recorded as lane.local reported them (not re-checked here
+except where noted): WebFetch to GitHub hosts is denied host-wide in `~/.claude/settings.json`;
+hakux-cloud is disabled; `recover_github.py` is pinned to `/usr/bin/gh` and refuses a
+forge-shim `--version`; harness_health.py is retired from hostops; lane sessions get the shim
+(`systemd-run ... command -v gh`). This session's own `gh --version` prints the shim.
+
+**Not changed (outside territory):** `docs/testing/jobs/selftest.sh:14,47` still say the
+selftest "is in CI (.github/workflows/jobs-selftest.yml)", and `fold.sh:898,1034` and
+`ROADMAP.md:89-94` describe the old triggers. They are prose; nothing reads them.
+
 ## Host files this lane added (outside the repo)
 
 | path | what |
@@ -431,3 +475,8 @@ Undo everything:
 - `git merge-tree --quiet` does not exist in git 2.43, the host's version.
 - Forgejo ignores `per_page`, sort/direction on repo comments, and unknown
   label names, all silently. Each looked like success until checked.
+- Don't check workflow triggers with a text grep for `push:`: a step input
+  can be named `push`. Parse the `on:` key (RETURN.md 2a).
+- A caller with `2>/dev/null` turns the shim's exit 64 back into silent
+  empty. Run each named caller's exact command line through the shim, not
+  just the operation name (xbox_check.sh's `--search`).

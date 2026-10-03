@@ -134,6 +134,9 @@ check("issue list unknown label: [] + warning", rc == 0 and json.loads(out) == [
 rc, out, err = gh("issue", "list", "--repo", R, "--state", "open", "--limit", "300", "--json", "number,labels",
                   "--jq", '.[] | ([.labels[].name | select(startswith("blocked:"))] | join(",")) as $l | "\\(.number)\\t\\($l)"')
 check("issue list blocked: jq (handback.sh:490)", rc == 0 and out == f"{inum}\t\n", repr(out))
+rc, out, err = gh("issue", "comment", str(inum), "--body", "[lane.xbox] title on the Thor for #%d" % inum)
+check("issue comment N --body, repo from GH_REPO (title_push_xbox.sh:433)",
+      rc == 0 and re.search(r"/issues/%d#issuecomment-\d+$" % inum, out.strip()), (rc, out, err))
 rc, out, err = gh("issue", "view", str(inum), "--repo", R, "--json", "state")
 check("issue view --json state", rc == 0 and json.loads(out)["state"] == "OPEN", out)
 

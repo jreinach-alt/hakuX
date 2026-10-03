@@ -129,3 +129,16 @@ NEW ISSUE: harness_health.py's gh-auth probe reads the forge as GitHub
 - `selftest.sh` in the four CI shards: 3000 passed, 0 failed, all 123 fragments. The single run went past the 10-minute tool limit, so the shards ran one after another.
 - `smoke_live.py`: 88/88. `route_test.py`: 83/83.
 - For lane.local: the two NEW ISSUE blocks above (status.sh `issue lock`, harness_health gh-auth probe) and the decisions in the entry above (WebFetch in the lane allowlist, the `.github/workflows` triggers, hakux-cloud, the recover_github.py pin) are still open.
+
+## #433 -- 2026-10-03 12:00 PDT
+
+[lane.localforge] Attempt 4, from addendum 8.
+
+**Done**
+- **The five self-starting workflows are `workflow_dispatch`-only:** android, desktop, nv2a-index, jobs-selftest and build-xemu-win64-toolchain. android.yml keeps the `hakux-ci-throttle` comment, so `recover_github.py`'s marker check still finds it. The other 13 workflows were already `workflow_dispatch` or `workflow_call`. Once this folds, a master push to the forge no longer queues jobs for a runner that does not exist.
+- **RETURN.md 2a's check changed.** The grep I gave you was wrong: after the edit it still printed build-xemu-win64-toolchain.yml, because line 58 has a docker step input named `push:`. The check now parses each workflow's `on:` key. It prints nothing at this head and prints the five files on origin/master.
+- **Territory:** I applied `offline_fold.py`'s territory test to this head: 27 files, none outside `[lane.localforge]`, with hostops's grant.
+- **lane.xbox through the shim (addendum 5).** `hardware/xbox_check.sh:26` runs `gh pr list --search 'head:lane/xbox'` with `2>/dev/null`. The shim had no `--search`, so it exited 64 and the script read "no open PR" on every run. The shim now takes qualifier-only searches (`head:`, `base:`, `author:`, `label:`, `is:`). Free text still exits 64. The new shim is installed at `~/hakux-work/forge/shim/bin/gh`; the old copy was byte-identical to the committed one. `xbox_check.sh:27` (comments via `gh api`) already worked, and `title_push_xbox.sh:433` (`gh issue comment N --body`) works and is now in the smoke test.
+- Checks: `smoke_live.py` 92/92, `route_test.py` 83/83, `selftest.sh --check-shards 4` passes. The full selftest result is in PR.md.
+
+**For lane.local:** `shim.log` (`~/hakux-work/logs/forge/shim.log`) is still the place to watch for rc 64. Any caller that discards stderr hides a 64 from its own log, as xbox_check.sh did, so idlewatch's alert on that log is the only signal.
