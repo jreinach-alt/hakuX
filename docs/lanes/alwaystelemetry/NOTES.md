@@ -34,6 +34,25 @@ and `alwaystelemetry-toejam-perflog`: ref `6c828f9860`, 600 s, the same env as t
 (`PERF_REGIMEN=default HAKUX_PREBUILD=0 HAKUX_PLC_WIPE=1 HAKUX_GPL=3`), the second with `--perflog`.
 Not yet run: no request ids exist yet. Result: pending.
 
+## Attempt 2 (14:06 PDT): why attempt 1 did not finish
+
+Attempt 1 queued the pair (rows 11 and 12 of `overnight-queue.tsv`, now in `overnight-queue.done`) and then
+wrote `WAITING: time 2026-10-03T14:00`. That was a guess at when the pair would run, not a condition on a run.
+The lanewaker resumed this lane at 14:00 PDT (lanelocal-log, 14:03), and nothing had changed: no request id
+exists for either key. `dispatcher.log` has no `alwaystelemetry` request. The Nova has been held by
+`lane.pathfind` since 21:00Z (14:00 PDT), and the queue runner is ordered behind kabuki-perflog, the ToeJam
+pair and tron-inlevel-perflog. Lane.local's own estimate is ~15:00-15:30 PDT for this pair.
+
+So attempt 1 ended on a time that did not match its wait, and attempt 2 is the same wait with a corrected
+condition: nothing here can run until lane.local submits the two rows, and I have no run id to name yet.
+
+Also this attempt: merged `origin/master` (638a3f478c) into the branch, so the design is checked against
+current code, not the 6c828f9860 tree. The registered ref `6c828f9860` is still an ancestor, and the prediction
+is unchanged. Verified against the merged tree: `decompose.py` is on master (it was not, when the OUTBOX premise
+note was written); `nv2a_profile_inc_counter` has 64 call sites in code, not 66 (69 grep hits, minus the two
+definitions in debug.h, two OUTBOX mentions and one docs line); the hakuX-phase and xemu-work prints are at
+profile.c 727 and 737; the LOGCAT allow-list is at dispatcher.sh 2010.
+
 ## Revision to the mechanism (read after the prediction was committed; the prediction is unchanged)
 
 I cited a clock read per method as the cost. On aarch64 `nv2a_clock_ns()` is `mrs cntvct_el0` plus a

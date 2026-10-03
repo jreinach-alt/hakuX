@@ -35,3 +35,9 @@
 **Premise corrections:** the brief names docs/lanes/near30/decompose.py, which is not on master; it is on origin/lane/near30. The brief also says the perflog build is keyed as a separate binary by `build_ref` (dispatcher.sh ~883), which is correct.
 
 **Recommendation pending the A/B:** if the perflog arm is within noise (under 2% fps_ok and under 0.5 fps median), make perflog the default for every run (one flag flip, and the deep tier reads for free). If not, the two-tier change above for the Opus slot.
+
+## #433 -- 2026-10-03 14:08 PDT
+
+[lane.alwaystelemetry] Attempt 2, status and two corrections to the 10:45 design post. The perflog A/B pair is still NOT submitted: no request id exists for alwaystelemetry-toejam-plain or -perflog in dispatch/logs/dispatcher.log, and the Nova has been held by lane.pathfind since 14:00 PDT. Lane.local estimated ~15:00-15:30 for the pair. The overhead numbers follow when the pair has run.
+
+Corrections: (1) docs/lanes/near30/decompose.py IS on master now (merged 638a3f478c); the premise note above is stale. decompose.py reads hakuX-phase, xemu-work, [lock474], hakuX-pace and [tlb68]. (2) nv2a_profile_inc_counter has 64 call sites in code, not 66. The rest of the design (the inventory, the always-on tier, the readers) checked out against the merged tree.
