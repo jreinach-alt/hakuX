@@ -1,0 +1,55 @@
+{
+  "a": {
+    "dir": "1-1790994333-uberdefault569-990621",
+    "ref": "d4a02e2060",
+    "apk": "1462fe387009",
+    "disc": "36-suites:52f2b53d:3D primitive,Attrib float,Attrib setter,",
+    "runs": 1
+  },
+  "b": {
+    "dir": "1-1790994329-uberdefault569-990475",
+    "ref": "d4a02e2060",
+    "apk": "1462fe387009",
+    "disc": "36-suites:52f2b53d:3D primitive,Attrib float,Attrib setter,",
+    "runs": 1
+  },
+  "counts": {
+    "better": 0,
+    "worse": 0,
+    "same": 1317,
+    "noise": 0
+  },
+  "exact_a": 516,
+  "exact_b": 516,
+  "regressed_from_exact": [],
+  "repaired_to_exact": [],
+  "totals": {
+    "differing_a": 13005684,
+    "differing_b": 13005684,
+    "structural_a": 1317834,
+    "structural_b": 1317834
+  },
+  "void": [],
+  "warnings": [
+    "SAME BINARY, DIFFERENT ENVIRONMENT, which is what an --env A/B is: one build, one disc, and the environment as the independent variable.\n    A env: HAKUX_GPL=0\n    B env: (none)\n  apk_sha is identical by design here and is NOT evidence that the arms are the same experiment. What this pair cannot show is anything the environment does not reach: if the variable is read once at startup, a delta is attributable; if nothing in the build reads that name at all, BOTH ARMS ARE THE CONTROL and will agree perfectly. Check the `env: KEY=VALUE` line the app logs at startup under tag `hakuX` in each arm's logcat before reading the numbers below.",
+    "both arms name ref d4a02e2060 and the ENVIRONMENT is what differs; see the same-binary note above.",
+    "A: Depth_buffer scored 144 of 784 goldens -- that suite's numbers are a FLOOR, not a score.",
+    "A: Front_face scored 24 of 36 goldens -- that suite's numbers are a FLOOR, not a score.",
+    "B: Depth_buffer scored 144 of 784 goldens -- that suite's numbers are a FLOOR, not a score.",
+    "B: Front_face scored 24 of 36 goldens -- that suite's numbers are a FLOOR, not a score."
+  ],
+  "post_hoc": [
+    "PRE-REGISTERED: arm B was queued at 2026-10-03T02:25:29Z naming /home/justin/hakux-work/wt/uberdefault569/docs/testing/predictions/uberdefault569-pixels.json, and its content still hashes to the sha recorded then. The prediction existed before the device ran and has not been edited since.\n  bound sha256 9d906694e235f7bfb65c2c16f817e590b2b63220548f2cda5144cf95db2c271a\n  verify with: sha256sum docs/testing/predictions/uberdefault569-pixels.json"
+  ],
+  "verdict": 0,
+  "byte_check": {
+    "available": true,
+    "checked": 1317,
+    "unchecked": 0,
+    "moved": 0,
+    "quiet": [],
+    "attributable": [],
+    "flat_but_moved": false
+  },
+  "movers": []
+}

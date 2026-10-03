@@ -1,3 +1,4 @@
+# state: first-run   (recorded creating the profile; lane.savestate433)
 # GoldenEye: Rogue Agent (4541005D), SAVE. The first-run route up to player
 # control, then `flush`, so the PLAYER1 profile it creates reaches the disk.
 #

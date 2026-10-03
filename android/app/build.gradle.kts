@@ -19,6 +19,29 @@ val hasReleaseKeystore = hasKeystoreProperties &&
     !keystoreProperties.getProperty(it).isNullOrBlank()
   }
 
+// <base>-<MMDD>-<shortsha>[-perflog][-dirty] of the commit actually being
+// built, computed by docs/testing/version_stamp.sh so the dispatcher's build
+// (in its own detached worktree), owner_build.sh and this Gradle build all
+// agree on one definition. Run against rootProject's parent, the repo root:
+// in a dispatcher or owner_build.sh build that is the private worktree
+// checked out at the requested ref, never the host's own checkout, so the
+// stamp names the commit being built rather than whatever the host last had
+// open (#433).
+fun stampedVersionName(): String {
+  val repoRoot = rootProject.projectDir.parentFile
+  val script = repoRoot.resolve("docs/testing/version_stamp.sh")
+  val variant = if (project.hasProperty("perflog")) "perflog" else ""
+  return try {
+    val proc = ProcessBuilder(listOf("bash", script.absolutePath, repoRoot.absolutePath, variant))
+      .redirectErrorStream(true)
+      .start()
+    val out = proc.inputStream.bufferedReader().readText().trim()
+    if (proc.waitFor() == 0 && out.isNotEmpty()) out else "0.4.1-unknown"
+  } catch (e: Exception) {
+    "0.4.1-unknown"
+  }
+}
+
 android {
   namespace = "com.rfandango.haku_x"
   compileSdk = 36
@@ -34,7 +57,7 @@ android {
     targetSdk = 36
 
     versionCode = 8
-    versionName = "0.4.1-j1"
+    versionName = stampedVersionName()
 
     ndk {
       abiFilters += listOf("arm64-v8a")
@@ -77,7 +100,7 @@ android {
       // name and icon are indistinguishable in the launcher, and settings
       // changed in one silently do not apply to the other.
       applicationIdSuffix = ".debug"
-      resValue("string", "app_name", "hakuX (debug)")
+      resValue("string", "app_name", "hakuX (test builds)")
       ndk {
         debugSymbolLevel = "NONE"
       }
