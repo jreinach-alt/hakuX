@@ -443,7 +443,7 @@ def test_goldens(tmp):
         check("VOID REPRODUCED + GUARD: a returning disk from a settings-only golden is refused", False)
     except ts.NoGolden as e:
         check("VOID REPRODUCED + GUARD: a returning disk from a settings-only golden is refused",
-              "no save directory" in str(e), str(e))
+              "no save directory" in str(e) and "# state: any" in str(e), str(e))
     ts.promote(TRON, "owner", save=gold["save_id"])
     check("  ... promoting the save with a save directory back clears it",
           ts.compose("nova", TRON, "returning")[1]["save"] == gold["save_id"])
@@ -505,6 +505,19 @@ def test_goldens(tmp):
     r = ts.resolve_route("fam", "4D53AAAA", "nova", rd)
     check("  ... and to .first-run when its golden is title data only (Black, GoldenEye, 10-02)",
           r["route_name"] == "fam.first-run" and not r["refuse"], str(r))
+    # Star Wars Ep. III, 10-03 08:12: its route was confirmed twice on a disk
+    # carrying its settings-only golden, was headed `returning`, and was
+    # refused; the reason named no way forward, so the queue dropped it.
+    open(os.path.join(rd, "sw3.route"), "w").write("# state: returning\npress A\n")
+    open(os.path.join(rd, "sw3-any.route"), "w").write("# state: any\npress A\n")
+    r = ts.resolve_route("sw3", "4D53AAAA", "nova", rd)
+    check("a returning route on a settings-only golden is refused, and the reason names `# state: any`",
+          bool(r["refuse"]) and "no save directory" in r["refuse"] and "# state: any" in r["refuse"], str(r))
+    r = ts.resolve_route("sw3-any", "4D53AAAA", "nova", rd)
+    check("  ... the same route headed `any` queues",
+          not r["refuse"] and r["state"] == "any", str(r))
+    check("  ... and its disk carries that golden unchanged",
+          ts.compose("nova", "4D53AAAA", "any")[1]["save"] == cv2["save_id"])
     r = ts.resolve_route("ret-only.returning", "4D53BBBB", "nova", rd)
     check("VOID REPRODUCED + GUARD: a returning route on a title with no golden is refused",
           bool(r["refuse"]) and "golden" in r["refuse"], str(r))
