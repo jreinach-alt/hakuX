@@ -115,6 +115,9 @@ HOLD_GENRES = {
     "attack": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"],
     "rally": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"],
     "onrails": [],                   # the scene moves on its own: send nothing, watch it
+    # basketball, football, hockey, soccer: run with the ball (RT is turbo in the EA and 2K5 families), pass,
+    # shoot; on defence the same buttons switch player and steal (NBA Live family, addendum 3, 10-03)
+    "team": ["RT:1", "STICK:up:1", "A", "STICK:right:1", "X", "STICK:left:1", "B", "STICK:down:1", "Y"],
     "other": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"],
 }
 
@@ -708,6 +711,7 @@ class Agent:
         self.dead_probes = 0         # probes in a row whose input moved nothing at all (UNLOCK_LADDER)
         self.black_since = None
         self.hold_s = 0              # hold-play: seconds of play to hold after the claim (0: off)
+        self.goal = ""               # --goal: a settings goal on the way in (a sports family's longest quarter)
         self.result = {"title_id": tid, "name": name, "device": dev.label, "iso": iso, "result": "running",
                        "tool": subprocess.run(["git", "hash-object", os.path.abspath(__file__)], capture_output=True,
                                               text=True).stdout.strip()[:10],
@@ -788,6 +792,8 @@ class Agent:
                      "alike):\n" + "\n\n".join(path_text(d) for d in self.sibs[:2]) + "\n\n")
         if guide:
             guide += PLAN_RULE
+        if self.goal:
+            guide += f"THIS RUN'S GOAL, on the way into play (it comes before 'fastest with defaults'): {self.goal}\n\n"
         return (f"{RULES}\n\nKnowledge from other titles (hints):\n{self.hints or '(none yet)'}\n\n{guide}"
                 f"Title: {self.name} (id {self.tid or '?'}), device {self.dev.label}. "
                 f"{self.el() / 60:.1f} min since cold boot.\n\nLast steps:\n{self.history()}\n\n{extra}"
@@ -1186,10 +1192,11 @@ class Agent:
         ans = self.model.ask(FAST, (
             f"Screenshot of {self.name}, an Xbox game, in gameplay. The 'FPS: NN' text at the top-left is the "
             "emulator's overlay, not the game's HUD. What kind of play is this? Answer JSON only: "
-            '{"genre": "drive|attack|rally|onrails|other", "why": "<one line>"}. drive: a car, bike, boat or '
-            "plane moving through a world; attack: a character fighting or shooting; rally: a ball, puck, "
-            "racket or shuttle played back and forth; onrails: the scene moves on its own and the player only "
-            "aims; other: anything else."), "genre", [jpg]) or {}
+            '{"genre": "drive|attack|rally|team|onrails|other", "why": "<one line>"}. drive: a car, bike, boat '
+            "or plane moving through a world; attack: a character fighting or shooting; rally: a ball or "
+            "shuttle played back and forth over a net (tennis, volleyball); team: a team sport on a court, "
+            "field or rink (basketball, football, hockey, soccer); onrails: the scene moves on its own and the "
+            "player only aims; other: anything else."), "genre", [jpg]) or {}
         return ans.get("genre") if ans.get("genre") in HOLD_GENRES else "other", str(ans.get("why", ""))[:160]
 
     def hold_play(self, jpg):
@@ -1397,6 +1404,9 @@ def main(argv=None):
                          "(returning), none (first-run), or its golden if it has one (any)")
     ap.add_argument("--hdd-img", action="store_true",
                     help="boot whatever hdd.img holds (hand play); the path found then assumes it")
+    ap.add_argument("--goal", default="",
+                    help="a settings goal on the way into play, given to the model each step "
+                         "(e.g. the longest quarter length, so one quarter covers the hold)")
     ap.add_argument("--sim", help="PATHFIND_DRY: frames dir to play back")
     ap.add_argument("--sim-answers", help="PATHFIND_DRY: JSON list of canned model answers")
     a = ap.parse_args(argv)
@@ -1417,6 +1427,7 @@ def main(argv=None):
     print(f"pathfind: {name} ({tid}) on {dev.label}: {iso}", flush=True)
     agent = Agent(dev, model, tid, name, iso, a.out, a.budget_min * 60, record=not a.no_record)
     agent.hold_s = a.hold_s
+    agent.goal = a.goal
     if a.no_replay or a.no_guide:
         agent.own = None
     if a.no_guide:
