@@ -102,6 +102,7 @@ UNCHANGED = 0.01                     # classify.motion changed fraction at or un
 PROBE_MOVED = 0.004                  # the probe frame must change at least this much (10-03 gate: 0.03 refused dark scenes)
 PROBE_DARK = 0.6                     # probe grey step = this x the frame's std (floor 4, cap MOTION_PIXEL) -- see probe_change
 SELF_MOVING = 0.15                   # no-input change over this: the scene moves by itself; steer L/R
+WINDOW_WIN = 1.3                     # an ambiguous probe's extra rounds: input change > this x idle (and + 0.02) wins
 BLACK_MODEL_S = 40                   # seconds of black before the model is asked anyway
 BLACK_HANG_S = float(os.environ.get("PATHFIND_BLACK_HANG_S", 180))                  # continuous black this long ends the run (Conker, 10-02: 8+ min black
                                      # after a level load, inputs every 5 s changing nothing)
@@ -948,7 +949,28 @@ class Agent:
                "src": "probe", "changed": moved}
         selfmove = ctrl > SELF_MOVING
         self.dead_probes = self.dead_probes + 1 if moved < PROBE_MOVED and ctrl < PROBE_MOVED else 0
-        if moved < PROBE_MOVED or (moved < 1.5 * ctrl and not selfmove):
+        won = False
+        if not selfmove and ctrl >= PROBE_MOVED and moved < 1.5 * ctrl:
+            # ambiguous: the scene moves on its own (a fight's enemies, an AI camera) about as much as under the
+            # input. Two more idle/input rounds; the input must beat the idle change in 2 of 3 (addendum 4 item 2;
+            # Spikeout, 10-03: 8 min of refused probes in the opening fight). The model sees the clearest round.
+            rounds = [(ctrl, moved, a_png, a_jpg, b_png, b_jpg, c_png, c_jpg)]
+            for k in (2, 3):
+                x0 = self.frame(f"probe-a{k}")
+                time.sleep(1.0)
+                x1 = self.frame(f"probe-b{k}")
+                x2 = self.hold_capture(probe, f"probe-c{k}")
+                if not (x0[0] and x1[0] and x2[0]):
+                    break
+                rounds.append(probe_change(x0[0], x1[0], x2[0]) + x0 + x1 + x2)
+            wins = [r for r in rounds if r[1] >= PROBE_MOVED and r[1] > max(WINDOW_WIN * r[0], r[0] + 0.02)]
+            rec["rounds"] = [[round(r[0], 3), round(r[1], 3)] for r in rounds]
+            rec["action"] = rec["action"] + [probe] * (len(rounds) - 1)
+            if len(wins) >= 2:
+                ctrl, moved, a_png, a_jpg, b_png, b_jpg, c_png, c_jpg = max(wins, key=lambda r: r[1] - r[0])
+                rec["why"] += f"; {len(wins)} of {len(rounds)} idle/input rounds won"
+                won = True
+        if moved < PROBE_MOVED or (moved < 1.5 * ctrl and not selfmove and not won):
             rec["verdict"] = "no change under the input beyond what changes on its own"
             self.write_step(rec)
             return False, (f"the screen did not change while {probe} was held beyond its own motion "

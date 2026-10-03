@@ -41,6 +41,8 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
             then the screen is read again and play resumes.
   holdstill the model reads play, but two kept frames 30 s apart barely differ: the window is state=still (not
             play), the loop is led by an unlock button, and play is credited again once the scene moves.
+  rounds    an ambiguous probe (the scene moves on its own, under SELF_MOVING) takes two more idle/input rounds;
+            2 of 3 won goes to the model, none won is refused before it.
   holdshed  play drops into a menu right after a loop cycle: the loop sheds B (HOLD_SHED) for the rest of the hold.
   unlock    two probes in a row move nothing at all; the third is led by X
             (UNLOCK_LADDER; Black Stone, 10-03: a stance only X released).
@@ -226,6 +228,29 @@ conf = [c for c in calls if c["purpose"] == "confirm"]
 check("ownmotion", res["result"] != "gameplay" and conf and conf[0]["images"] == 4,
       f"self-moving scene gets the steering test and its refusal holds ({res['result']}, "
       f"{[c['images'] for c in conf]})")
+
+# rounds: the first probe is ambiguous (the scene moved 5 px on its own, nothing more under the input), then two more
+# idle/input rounds where the input clearly wins: 2 of 3 won, the model is asked with the clearest round, gameplay.
+ROUNDS = [("game", 0), ("game", 0), ("game", 5), ("game", 5),          # decide; a b c: idle 5 px, input none
+          ("game", 5), ("game", 5), ("game", 85),                        # round 2: idle none, input 80 px
+          ("game", 85), ("game", 85), ("game", 5)] + [("game", 5)] * 4    # round 3: idle none, input 80 px
+rc, res, steps, calls = run("rounds", ROUNDS, [GAME, {"gameplay": True, "responded": True, "why": "moved"}],
+                            ["--no-record", "--no-replay"])
+pr = [s for s in steps if s.get("src") == "probe"]
+check("rounds", bool(res["result"] == "gameplay" and pr and len(pr[0].get("rounds", [])) == 3
+                     and ("2 of 3" in pr[0]["why"] or "3 of 3" in pr[0]["why"])),
+      f"an ambiguous probe takes two more rounds and 2 of 3 wins: {res['result']}, "
+      f"{pr[0].get('rounds') if pr else None}, {pr[0]['why'] if pr else None}")
+# rounds refused: the scene moves on its own as much under the input in every round: no model call, refused
+NOWIN = [("game", 0), ("game", 0), ("game", 5), ("game", 5), ("game", 10), ("game", 15), ("game", 15),
+         ("game", 20), ("game", 25), ("game", 25)] + [("game", 25)] * 2
+rc, res, steps, calls = run("roundsno", NOWIN, [GAME, {"gameplay": True, "responded": True, "why": "moved"}],
+                            ["--no-record", "--no-replay", "--budget-min", "0.05"])
+pr = [s for s in steps if s.get("src") == "probe"]
+check("rounds", pr and len(pr[0].get("rounds", [])) == 3 and pr[0].get("verdict", "").startswith("no change")
+      and not any(c["purpose"] == "confirm" for c in calls),
+      f"rounds that never beat the idle change are refused before the model: "
+      f"{pr[0].get('rounds') if pr else None}, {pr[0].get('verdict') if pr else None}")
 
 # ownmotion with a throttle probe: the steering legs keep the throttle on (Forza, 10-03: gas-off steering legs put a
 # slow car into the pit wall in both runs)
