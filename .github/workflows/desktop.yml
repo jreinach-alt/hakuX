@@ -17,14 +17,9 @@ name: Desktop build
 # stock runner, so this can grow into running the pgraph suite here. Today it
 # proves the build and a headless start.
 
+# Manual dispatch only (2026-10-03): see android.yml and
+# docs/lanes/localforge/RETURN.md, section 2a.
 on:
-  # hakux-ci-throttle (2026-09-29): build only when code changes, and only non-draft PRs
-  push:
-    branches: [master]
-    paths-ignore: ['docs/**', '**/*.md']
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths-ignore: ['docs/**', '**/*.md']
   workflow_dispatch:
 
 concurrency:
