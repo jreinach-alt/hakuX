@@ -1,6 +1,6 @@
 # routefix1002: three route checks for the overnight Nova queue (#433)
 
-State: ready
+State: draft
 
 Lane: routefix1002           Issue: #433
 Base: origin/lane/titleroutes2 (merged with origin/master)
