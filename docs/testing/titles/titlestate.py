@@ -767,22 +767,47 @@ def latest_harvest(tid):
     return out
 
 
-def propose_all(by):
-    """For every title in the store with no golden: its most recent harvest
-    that verifies, as a `proposed` golden. Returns [(tid, save, note)]."""
+def save_dirs(tid, save):
+    """The save directories (E:\\UDATA\\<TID>\\<12 hex>) a stored save carries.
+    [] is title data and settings only: no profile to load."""
+    try:
+        with open(os.path.join(store_dir(tid, save), "save.json")) as fh:
+            m = json.load(fh)
+    except (OSError, ValueError):
+        return []
+    pre = f"UDATA/{tid}/".upper()
+    return sorted({e["path"][len(pre):].split("/")[0] for e in m.get("entries", [])
+                   if e["path"].upper().startswith(pre) and "/" in e["path"][len(pre):]})
+
+
+def propose_all(by, refresh=False):
+    """For every title in the store with no golden: the newest harvest that
+    verifies AND carries a save directory, else the newest that verifies, as
+    a `proposed` golden. A harvest of title data alone is not a profile:
+    Castlevania's newest (53f0a40fe626) has none, while 20235e93867b holds
+    the slot-1 save its returning route continues from. REFRESH re-picks
+    titles whose golden is still `proposed` (never a confirmed one).
+    Returns [(tid, save, note)]."""
     out = []
     sd = os.path.join(root(), "saves")
     for tid in sorted(os.listdir(sd)) if os.path.isdir(sd) else []:
-        if tid.startswith(".") or golden(tid):
+        if tid.startswith("."):
             continue
-        for s in latest_harvest(tid):
-            if not verify_store_save(tid, s):
-                set_golden(tid, s, by=by, how="propose", status="proposed",
-                           note="the most recent verified harvest; confirm with `promote` or replace")
-                out.append((tid, s, "proposed"))
-                break
-        else:
+        g = golden(tid)
+        if g and not (refresh and g["status"] == "proposed"):
+            continue
+        ok = [s for s in latest_harvest(tid) if not verify_store_save(tid, s)]
+        pick = next((s for s in ok if save_dirs(tid, s)), ok[0] if ok else None)
+        if not pick:
             out.append((tid, None, "no save verifies"))
+            continue
+        if g and g["save"] == pick:
+            continue
+        set_golden(tid, pick, by=by, how="propose", status="proposed", replace=bool(g),
+                   note="the newest verified harvest " + ("with a save directory" if save_dirs(tid, pick)
+                                                         else "(title data only: no save directory)")
+                        + "; confirm with `promote` or replace")
+        out.append((tid, pick, "re-proposed" if g else "proposed"))
     return out
 
 
@@ -829,6 +854,9 @@ def compose(device, title_id=None, state="any"):
     g = golden(title_id)
     if state == "first-run":
         want.pop(dt, None)
+    elif state == "returning" and dt in want and not save_dirs(dt, want[dt]):
+        raise NoGolden(f"{title_id}'s golden {want[dt]} is title data only, no save directory; a "
+                       f"returning route would meet no profile (`promote` a save that has one)")
     elif state == "returning" and dt not in want:
         if g:
             raise NoGolden(f"{title_id}'s golden {g['save']} was rejected on {device}; a returning "
@@ -896,13 +924,16 @@ def resolve_route(name, title_id=None, device=None, routes_dir=None):
         if not any(os.path.exists(p) for p in fam.values()):
             out["refuse"] = f"no route '{name}' ({single})"
             return out
-        v = "returning" if g else "first-run"
+        # A golden of title data alone is no profile: such a title takes the
+        # first-run route (Black's and GoldenEye's harvests, 10-02).
+        prof = bool(g and save_dirs(disk_tid(title_id), g["save"]))
+        v = "returning" if prof else "first-run"
         if not title_id:
             out["refuse"] = (f"'{name}' has first-run/returning variants and the title is not identified; "
                              f"name the variant (--route {name}.first-run)")
             return out
         if not os.path.exists(fam[v]):
-            out["refuse"] = (f"{title_id} {'has a golden' if g else 'has no golden'}, so it needs "
+            out["refuse"] = (f"{title_id} {'has a golden profile' if prof else 'has no golden profile'}, so it needs "
                              f"{name}.{v}.route, which does not exist")
             return out
         out["path"], out["route_name"] = fam[v], f"{name}.{v}"
@@ -921,6 +952,9 @@ def resolve_route(name, title_id=None, device=None, routes_dir=None):
             why = "was rejected on " + device if golden(title_id) else "does not exist"
             out["refuse"] = (f"{os.path.basename(out['path'])} assumes a profile, and {title_id}'s golden "
                              f"{why}: the disk would carry none")
+        elif not save_dirs(disk_tid(title_id), g["save"]):
+            out["refuse"] = (f"{os.path.basename(out['path'])} assumes a profile, and {title_id}'s golden "
+                             f"{g['save']} is title data only, no save directory")
     return out
 
 
@@ -1193,6 +1227,7 @@ def main(argv=None):
     s.add_argument("--save"); s.add_argument("--latest", action="store_true")
     s.add_argument("--by", required=True); s.add_argument("--note")
     s = sub.add_parser("propose-all"); s.add_argument("--by", required=True)
+    s.add_argument("--refresh", action="store_true", help="re-pick titles whose golden is still proposed")
     s = sub.add_parser("import-save"); s.add_argument("--dir", required=True)
     s = sub.add_parser("first-run-saved")
     for f in ("--title-id", "--save", "--run"):
@@ -1279,7 +1314,7 @@ def main(argv=None):
     elif a.cmd == "promote":
         print(json.dumps(promote(tid_norm(a.title_id), a.by, a.save, a.latest, a.note), sort_keys=True))
     elif a.cmd == "propose-all":
-        for t, s, why in propose_all(a.by):
+        for t, s, why in propose_all(a.by, a.refresh):
             print(f"{t} {s or '-'} {why}")
     elif a.cmd == "import-save":
         print("%s %s" % import_save(a.dir))

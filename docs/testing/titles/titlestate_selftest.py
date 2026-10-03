@@ -436,6 +436,32 @@ def test_goldens(tmp):
           and rec["history"][-1]["save"] == gold["save_id"], str(rec))
     check("  ... both saves are still in the store",
           all(os.path.isdir(ts.store_dir(TRON, s)) for s in (gold["save_id"], bare["save_id"])))
+    # Castlevania, 10-01 17:01: the golden it would have had (its newest
+    # harvest) is title data only, and the returning route took New Game.
+    try:
+        ts.compose("nova", TRON, "returning")
+        check("VOID REPRODUCED + GUARD: a returning disk from a settings-only golden is refused", False)
+    except ts.NoGolden as e:
+        check("VOID REPRODUCED + GUARD: a returning disk from a settings-only golden is refused",
+              "no save directory" in str(e), str(e))
+    ts.promote(TRON, "owner", save=gold["save_id"])
+    check("  ... promoting the save with a save directory back clears it",
+          ts.compose("nova", TRON, "returning")[1]["save"] == gold["save_id"])
+    # propose-all prefers a harvest with a save directory over a newer one
+    # without, and a refresh moves only a proposed golden.
+    cv1_d, cv1 = make_save(os.path.join(fix, "cv1"), "4D53AAAA", {
+        "UDATA/4D53AAAA/TitleMeta.xbx": b"CV", "UDATA/4D53AAAA/33682ED35D55/SaveMeta.xbx": b"save data"})
+    cv2_d, cv2 = make_save(os.path.join(fix, "cv2"), "4D53AAAA", {"UDATA/4D53AAAA/TitleMeta.xbx": b"CV2"})
+    ts.import_save(cv1_d)
+    ts.import_save(cv2_d)
+    ts.set_golden("4D53AAAA", cv2["save_id"], by="old propose", how="propose", status="proposed")
+    ts.note_latest("4D53AAAA", cv2["save_id"], "run-c", "nova")
+    ts.propose_all("selftest", refresh=True)
+    check("propose-all --refresh moves a proposed golden to the harvest with a save directory",
+          ts.golden("4D53AAAA")["save"] == cv1["save_id"], str(ts.golden("4D53AAAA")))
+    ts.promote("4D53AAAA", "owner", save=cv2["save_id"])
+    ts.propose_all("selftest", refresh=True)
+    check("  ... and never moves a confirmed one", ts.golden("4D53AAAA")["save"] == cv2["save_id"])
     new_d, new = make_save(os.path.join(fix, "n"), "4D53EEEE", {"UDATA/4D53EEEE/TitleMeta.xbx": b"new"})
     tid, sid = ts.import_save(new_d)
     r = ts.first_run_saved(tid, sid, "run-3", route="x.first-run")
@@ -476,6 +502,9 @@ def test_goldens(tmp):
           r["route_name"] == "fam.returning" and not r["refuse"], str(r))
     r = ts.resolve_route("fam", "4D53BBBB", "nova", rd)
     check("  ... and to .first-run when it has none", r["route_name"] == "fam.first-run" and not r["refuse"], str(r))
+    r = ts.resolve_route("fam", "4D53AAAA", "nova", rd)
+    check("  ... and to .first-run when its golden is title data only (Black, GoldenEye, 10-02)",
+          r["route_name"] == "fam.first-run" and not r["refuse"], str(r))
     r = ts.resolve_route("ret-only.returning", "4D53BBBB", "nova", rd)
     check("VOID REPRODUCED + GUARD: a returning route on a title with no golden is refused",
           bool(r["refuse"]) and "golden" in r["refuse"], str(r))
@@ -487,7 +516,7 @@ def test_goldens(tmp):
     check("  ... refused when the title cannot be identified", bool(r["refuse"]))
     check("an `any` route needs no golden", not ts.resolve_route("survey", "4D53BBBB", "nova", rd)["refuse"])
     with ts.Registry("thor") as st2:
-        st2["rejected"][TRON] = [bare["save_id"]]
+        st2["rejected"][TRON] = [gold["save_id"]]
     r = ts.resolve_route("tron-newgame", TRON, "thor", rd)
     check("a golden the pinned device rejected does not count", bool(r["refuse"]) and "rejected" in r["refuse"], str(r))
 
@@ -509,18 +538,18 @@ def test_goldens(tmp):
     rec = ts.prepare("nova", TRON, "returning", "held-1", adb, quiet)
     check("prepare points hddPath at titles.qcow2", f"{x}/titles.qcow2" in adb.prefs_xml)
     check("  ... with Tron's golden loaded, recorded",
-          rec["loaded"] == "golden" and rec["save"] == bare["save_id"] and rec["state"] == "returning", str(rec))
+          rec["loaded"] == "golden" and rec["save"] == gold["save_id"] and rec["state"] == "returning", str(rec))
     check("  ... the disk is mode 660, not the 0644 a push leaves",
           adb.mode(f"{x}/titles.qcow2") == "660")
     check("  ... and the marker holds hdd.img, the dispatcher's own",
           open(ts.marker("nova")).read() == f"{x}/hdd.img")
     check("  ... the golden verifies on the device's disk",
-          not saves.verify(os.path.join(fs, "titles.qcow2"), ts.store_dir(TRON, bare["save_id"])))
-    saves.build(os.path.join(fs, "titles.qcow2"), [gold_d, gta_d])     # the session saved
+          not saves.verify(os.path.join(fs, "titles.qcow2"), ts.store_dir(TRON, gold["save_id"])))
+    saves.build(os.path.join(fs, "titles.qcow2"), [bare_d, gta_d])     # the session saved
     out = ts.release("nova", "held-1", adb, quiet)
     check("release harvests what the session wrote, to latest",
-          out["harvested"] and ts.load_goldens()["titles"][TRON]["latest"]["save"] == gold["save_id"], str(out))
-    check("  ... leaves the golden alone", ts.golden(TRON)["save"] == bare["save_id"])
+          out["harvested"] and ts.load_goldens()["titles"][TRON]["latest"]["save"] == bare["save_id"], str(out))
+    check("  ... leaves the golden alone", ts.golden(TRON)["save"] == gold["save_id"])
     check("  ... and puts hddPath back on hdd.img, marker gone",
           f"{x}/hdd.img" in adb.prefs_xml and not os.path.exists(ts.marker("nova")))
     adb.nochmod = True
