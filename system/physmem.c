@@ -928,11 +928,33 @@ uint64_t hakux_mf0_cb0_ns(int64_t now)
 }
 #endif
 
+/*
+ * lane.memfast W1 (#507), accel/tcg/cputlb.c: drop only the TLB entries that
+ * map [start, start + len) of RAM. Called in the exclusive work item that
+ * changes the callback list, so the next access refills against the new list.
+ * Off (HAKUX_W1=0), the callers fall back to a full flush.
+ */
+extern bool hakux_w1_on(void);
+extern void hakux_tlb_flush_ram_range(CPUState *cpu, ram_addr_t start,
+                                      ram_addr_t len, uintptr_t host);
+
+static void hakux_w1_flush(CPUState *cpu, MemAccessCallback *cb)
+{
+    /* The host pointer feeds the walk's independent cross-check (wx). */
+    uintptr_t host = (uintptr_t)memory_region_get_ram_ptr(cb->mr) +
+                     (cb->addr - memory_region_get_ram_addr(cb->mr));
+
+    hakux_tlb_flush_ram_range(cpu, cb->addr, cb->len, host);
+}
+
 static void do_mem_access_callback_insert(CPUState *cpu, run_on_cpu_data data)
 
 {
     MemAccessCallback *cb = (MemAccessCallback *)data.host_ptr;
     QTAILQ_INSERT_TAIL(&cpu->mem_access_callbacks, cb, entry);
+    if (hakux_w1_on()) {
+        hakux_w1_flush(cpu, cb);
+    }
 }
 
 MemAccessCallback *mem_access_callback_insert(CPUState *cpu, MemoryRegion *mr,
@@ -956,8 +978,9 @@ MemAccessCallback *mem_access_callback_insert(CPUState *cpu, MemoryRegion *mr,
     async_safe_run_on_cpu(cpu, do_mem_access_callback_insert,
                           RUN_ON_CPU_HOST_PTR(cb));
 
-    // FIXME: flush only applicable pages
-    tlb_flush_all_cpus_synced(cpu);
+    if (!hakux_w1_on()) {
+        tlb_flush_all_cpus_synced(cpu);
+    }
 
     return cb;
 }
@@ -967,6 +990,14 @@ static void do_mem_access_callback_remove_by_ref(CPUState *cpu,
 {
     MemAccessCallback *cb = (MemAccessCallback *)data.host_ptr;
     QTAILQ_REMOVE(&cpu->mem_access_callbacks, cb, entry);
+    /*
+     * Not needed for correctness (a TLB_WATCHPOINT entry with no callback
+     * left only takes the slow path), but without it the page stays slow
+     * until a full flush, which W1 makes rare.
+     */
+    if (hakux_w1_on()) {
+        hakux_w1_flush(cpu, cb);
+    }
     g_free(cb);
 }
 
@@ -983,8 +1014,9 @@ void mem_access_callback_remove_by_ref(CPUState *cpu, MemAccessCallback *cb)
     async_safe_run_on_cpu(cpu, do_mem_access_callback_remove_by_ref,
                           RUN_ON_CPU_HOST_PTR(cb));
 
-    // FIXME: flush only applicable pages
-    tlb_flush_all_cpus_synced(cpu);
+    if (!hakux_w1_on()) {
+        tlb_flush_all_cpus_synced(cpu);
+    }
 }
 
 void mem_check_access_callback_vaddr(CPUState *cpu,
