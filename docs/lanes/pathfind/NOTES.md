@@ -1,5 +1,32 @@
 # lane.pathfind -- NOTES
 
+## Resume (10-03 16:30 PDT, attempt 1 of this resume): why the last session did not finish
+
+- The 14:55 session stopped at its $29.5 spend stop with the Nova released and no run in flight. Its 14:45 OUTBOX
+  said no NBA Live title was on the Nova. That was a stale listing: lane.local's 16:2x addendum says all four were
+  copied and verified 13:51-13:59, and `listing-nova.txt` lists them now (45410038, 45410050, 4541007A, 454100A1).
+- The NBA Live 2005 run (45410050) was the owner's priority today and was never started, so the session ended
+  before the first item of the 16:2x addendum. Its 16:28 hostops resume names the same task.
+- This session: NBA Live 2005 first (held 600 s, position test on, goal = longest quarter), then 2004, 06, 07 while
+  the budget lasts. Budget left is about $5.5 of $35.
+
+## NBA Live 2005 held run (10-03 16:29-16:47 PDT, Nova, golden none: first-run)
+
+| run | title | result | claim min | hold | model calls | cost | verdict |
+|---|---|---|---|---|---|---|---|
+| runs/nba-live-2005-hold | NBA Live 2005 (45410050) | **gameplay claimed**, 609 s of play, team loop | 6.8 | 609.7 s, play_share 0.9996, 0 still windows, travel in every frame | 43 (sonnet 43) | $2.92 | **FAIL (fps)**: median 19.97 fps, 0.0% of windows at >= 30 fps (bar 90%) |
+
+- Route: the EA logo was skipped with A; the goal string set the quarter to the longest length (the clock runs
+  11:41 -> 5:44 in the frames, so the quarter covered the hold). Four probes were refused during the claim. The
+  claimed play frame is `frames/034-gameplay.jpg`; the hold strip is `hold_strip.jpg`.
+- This is a **performance** miss by the owner's rule: the same run should not be queued again. Telemetry: the frame
+  rate sits at about 20 fps (min 17.8), the same class as Top Spin, Counter-Strike and Midnight Club 3 (10-02). The
+  cost to name is the Nova's frame rate in this title, not the route. Recorded path `pathknow/paths/45410050.json` and
+  the learned pub-4541 hint are committed. They are a guide for the sibling runs.
+- **Not run:** NBA Live 2004, 06 and 07. Today's cap is $35: spend is about $32.4 after this run (the $29.5 at
+  14:45 plus $2.92). A sibling needs about $3 and would be the same engine at the same fps, so the next lane should
+  start from the fps cause, not another route.
+
 ## Resume (10-03 12:40 PDT, attempt 7): why the last attempt did not finish
 
 - The last session ended at 11:48 after writing up Black Stone (verdict PASS, frames show no travel: not counted).

@@ -1,2 +1,3 @@
 # Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
 - Tiger Woods PGA Tour 2004 (4541003A, thor, pathfind 2026-10-02): gameplay in 3.1 min via publisher_logo START A -> intro_video START A -> cutscene START A -> cutscene B -> cutscene A
+- NBA Live 2005 (45410050, nova, pathfind 2026-10-03): gameplay in 6.8 min via publisher_logo A -> unknown A -> title_screen START -> main_menu DOWN A -> submenu B -> main_menu B UP A -> submenu LEFT A -> submenu A -> submenu DOWN RIGHT RIGHT -> submenu RIGHT RIGHT RIGHT -> submenu RIGHT RIGHT -> submenu A -> cutscene START -> cutscene A

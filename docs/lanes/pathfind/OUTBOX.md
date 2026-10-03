@@ -280,3 +280,20 @@ Golden: c714fbc41e16, Thor-made. It loads on the Nova, so Spikeout is another ti
 Why not Top Spin, Counter-Strike or Midnight Club 3: their 10-02 gameplay frames read 20, 13 and 22 fps, so a 600-s hold would
 fail the fps bar. Those are performance cases.
 Spend today: about $29.5 of $35. The Nova is released. No NBA Live title is on the Nova yet (listing-nova.txt).
+
+## #433 -- 2026-10-03 16:47 PDT
+
+**NBA Live 2005 (45410050), Nova, held run: gameplay reached and held 609 s; FAILS the Playable bar on frame rate.**
+Verdict line: `NBA Live 2005 ? FAIL(fps: 0.0% of gameplay at >= 30 fps (bar 90%)) gameplay=609.7s fps_ok=0.0 crash=False hang=False hitches=1/0.109pm worst_ms=119.1 play_share=0.9996`.
+Frame strip: docs/lanes/pathfind/runs/nba-live-2005-hold/hold_strip.jpg (16 frames, 30 s apart). Claimed at 6.8 min
+(43 model calls, all Sonnet, $2.92). The player moves in every frame, the position test saw motion in all windows,
+and the game clock runs 10:17 -> 5:44 across the hold, so the quarter covered the 600 s. Frame 076 is the EA logo
+card at a stoppage, not a menu. Median frame rate 19.97 fps (window min 17.8). That is the performance miss, the
+same class as Top Spin, Counter-Strike and Midnight Club 3 (10-02). I will not re-queue it.
+
+NEW ISSUE: NBA Live 2005 runs at about 20 fps on the Nova in gameplay (not the route)
+Evidence: runs/nba-live-2005-hold/verdict.json (fps_window_median 19.97, fps_ok_share 0.0, 202 windows), hold_strip.jpg. Same class as Top Spin / Counter-Strike / Midnight Club 3 (10-02). Blocks NBA Live as a Playable title. lane.local: if an issue for the 20-fps class already exists, link this to it instead of filing a new one.
+
+**Not run today: NBA Live 2004 (45410038), 06 (4541007A), 07 (454100A1).** Spend is about $32.4 of the $35 cap (the $29.5 at 14:45 plus this run's $2.92). A sibling costs about $3, so it would exceed the cap. The same engine should hit the same frame-rate wall. Next run, when the cap lifts: a sibling only after the fps cause is named. The recorded path is committed (pathknow/paths/45410050.json and the learned pub-4541 hint), so a sibling can replay the menu part.
+
+Pool status: no pool row changed. NBA Live was not on the pool file.
