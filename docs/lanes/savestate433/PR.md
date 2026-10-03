@@ -1,6 +1,6 @@
 # savestate433: every title run starts from a golden profile, and a route's state is checked before device time
 
-State: draft
+State: ready
 
 Lane: savestate433            Issue: #433
 Base: master @ 9550493846 (+ lane/buildstamp 568ec87e95, merged: fold buildstamp first)
@@ -49,7 +49,10 @@ Release note (stability): title runs no longer void because a game showed a diff
   fail on master's soak.
 - `SELFTEST_ONLY=99-hdd-split.sh`: 63 passed.
 - `docs/testing/titles/pathfind_selftest.py`: all ok.
-- Full `docs/testing/jobs/selftest.sh`: see below.
+- Full `docs/testing/jobs/selftest.sh`, as CI's four shards (`SELFTEST_SHARD=k/4`), on 96444205f9 + docs:
+  123 of 123 fragments, 284 + 865 + 967 + 884 = 3000 passed, 0 failed.
+- `git diff --stat origin/master...HEAD` also lists lane/buildstamp's files (merged as a
+  fast-forward); they are buildstamp's PR, which folds first.
 
 ## Territory
 
