@@ -227,6 +227,11 @@ def write_insteadof(repos, mirror_root, gitconfig):
     """url.<mirror>.insteadOf <upstream> for every key. Longest prefix wins in git,
     so the .git and no-.git spellings both get their own rule."""
     scope = ["--file", gitconfig] if gitconfig else ["--global"]
+    # Mirror rules rewrite to local paths. Git 2.38+ refuses the file transport
+    # for submodule clones unless allowed, and libadrenotools has one
+    # (lib/linkernsbypass), so the Android FetchContent fails without this.
+    # Allowing file here is safe: every rewrite target is a local mirror.
+    run(["git", "config"] + scope + ["protocol.file.allow", "always"])
     for (host, path), repo in sorted(repos.items()):
         base = os.path.join(mirror_root, "git", host, path)
         if not os.path.isdir(base):

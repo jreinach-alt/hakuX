@@ -94,8 +94,50 @@ and xxhash) are never reached: the primary archive is in the mirror.
 
 ## Proof
 
-See "Proof log" below. Each step names the command and the log file.
+Test environment (`/tmp/selfdeps-gitconfig`, `/tmp/selfdeps-test/*.sh`, test only):
+
+- `GIT_CONFIG_GLOBAL` = the mirror rules plus a catch-all rewrite of
+  `https://github.com/`, `https://gitlab.com/` and `https://gitlab.freedesktop.org/`
+  to a dead local port. Longest prefix wins, so only the mirrored repos resolve.
+- `HTTPS_PROXY`/`HTTP_PROXY`/`ALL_PROXY` = `http://127.0.0.1:9` (dead).
+- `MESON_PACKAGE_CACHE_DIR` = the archive mirror (desktop only).
+- Verified: `git ls-remote https://github.com/zeux/volk` answers through the mirror;
+  `https://github.com/torvalds/linux` does not (timeout, exit 124).
+
+### Findings
+
+1. **Git refuses file transport for submodules** (git 2.43). The rewrite targets are
+   local paths, so `libadrenotools`'s submodule `lib/linkernsbypass` failed:
+   `fatal: transport 'file' not allowed` (first clean run, `GRADLE_EXIT=1`; that log was
+   overwritten by the rerun). Fixed: `protocol.file.allow=always` in the user's git config,
+   written by `mirror_sources.py --insteadof`. Safe here because every rewrite target
+   is a local mirror.
+2. **Desktop configure cannot finish on this host, regardless of mirrors.** meson
+   always builds curl as a subproject when no system libcurl is found
+   (`meson.build:1453`, `required: false` does not stop the fallback), and curl
+   needs OpenSSL headers. This host has none (`/usr/include/openssl/ssl.h` absent).
+   The curl archive and its patch came from the mirror cache; the failure is the
+   missing `libssl-dev`. The configure with `--disable-curl` reached the same error,
+   so the curl subproject is unconditional. Logs: `logs/desktop-configure.log`,
+   `logs/desktop-configure-nocurl.log`.
+3. **`meson subprojects download` with the network dead:** all 37 wraps resolved. The
+   git wraps cloned at their pinned SHAs from the mirror (`logs/meson-subprojects-download.log`).
+   Five wraps (SPIRV-Reflect, nv2a_vsh_cpu, VulkanMemoryAllocator, volk, glslang) are
+   cmake-method subprojects; meson's download step prints "Subproject exists but has
+   no meson.build file" and a `WARNING` for them. That is meson's check for a
+   meson-style subproject, not a fetch failure: the clones succeeded at the pins.
+   The 16 crates and the wrapdb patches came from the archive mirror.
+
+### Runs
+
+| step | command | result | log |
+|---|---|---|---|
+| mirror | `python3 docs/lanes/selfdeps/mirror_sources.py` | 19 git, 24 archives, 0 problems | `logs/mirror-run2.log` |
+| insteadOf | `mirror_sources.py --insteadof` | rules written to `~/.gitconfig` and test config | (stdout) |
+| Android clean | `android-clean.sh` (`gradlew --offline assembleDebug`, cleared `.cxx`/`build`) | see below | `android-clean.log` |
+| desktop | `desktop-clean.sh` | configure stops at openssl (finding 2) | `logs/desktop-configure*.log` |
+| desktop fetch | `meson subprojects download` | all wraps resolved (finding 3) | `logs/meson-subprojects-download.log` |
 
 ## Next
 
-_Filled in after the proof._
+_Filled in after the Android result and the Thor run._
