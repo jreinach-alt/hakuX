@@ -1,0 +1,8 @@
+# Halo (Microsoft)
+Seen: Halo: Combat Evolved (4D530004), Halo 2 (4D530064). Halo 2 Multiplayer Map Pack (4D5380CD) is an add-on disc: no evidence.
+- Halo CE: main menu with CAMPAIGN lit (START took it); ENTER NAME with "New001" filled (A); on later boots SELECT PROFILE (New001) and LOAD LEVEL (The Pillar of Autumn); CHOOSE DIFFICULTY, Normal lit (A); LOADING; the "Reveille" cutscene.
+- Halo CE's cryo bay has live camera control but is a training sequence, not free play: "Use RIGHT [thumbstick] to look around" wants look up and down (the right stick, not in the action list: try STICK:up), "Use X to exit the cryo-tube" (X, not A), "Use LEFT to move", stand on the red square, aim the crosshair at each of five flashing lights (twice), then "Press B to try it the other way / A to leave it" (A).
+- Halo CE: a GAMEPLAY HELP panel there closes with START, not A. Pause panel RESUME GAME / REVERT TO SAVED / RESTART LEVEL / SAVE AND QUIT: A on RESUME.
+- Halo 2: CHOOSE PROFILE (Create New Profile stays lit even with a profile saved), PROFILE NAME keyboard "Halo000n": START = Done. Main menu CAMPAIGN, New Campaign, SELECT LEVEL The Heretic, Normal; a load; the Heretic prologue (A shortens it).
+- Halo 2's Armory opens on a look test: "Use [RIGHT] to look up", then "look down"; a light goes dark when the crosshair crosses it. Afterwards the look may be saved INVERTED (an up push looks down). "Updating profile... done" marks the end.
+- Halo 2 after the test: free roam under "Follow the Gunnery Sergeant's instructions"; doors read locked and no trigger was found in ~3 min. GAME PAUSED (Continue lit): A.

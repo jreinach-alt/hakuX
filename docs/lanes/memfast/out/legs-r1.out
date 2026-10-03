@@ -1,0 +1,19 @@
+tid 19768: 21168 samples, 10773 JIT (50.9% of the thread), 10754 mapped, 10217 in 3829 disassembled TBs
+TBs holding the sequence: preamble 3829, xboxchk 3292, entry check 3829 of 3829
+instructions naming x26/x27, by role: {'preamble': 15316, 'xboxchk': 54844}
+
+role        samples  % of JIT  % of thread  insns/TB
+preamble        488       4.8          2.4       7.0
+xboxchk         150       1.5          0.7      89.2
+tlb            3518      34.4         17.5     114.1
+body           6061      59.3         30.2       0.0
+entry          1720      16.8          8.6      11.0
+all           10217     100.0         50.9     462.6
+(entry overlaps preamble and body; it is not part of the 100%)
+
+softmmu compares by access (what a loads-only fastmem would replace):
+  tlb_load     7.44 per executed TB,   2378 samples,  11.8% of the thread
+  tlb_store    5.30 per executed TB,   1140 samples,   5.7% of the thread
+  tlb_other    0.00 per executed TB,      0 samples,   0.0% of the thread
+
+the TB's first instruction alone: 973 samples, 9.5% of JIT, 4.8% of the thread; it is `hint #0x24` 973

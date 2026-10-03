@@ -1,0 +1,95 @@
+==============================================================================
+A/B comparison, per capture
+==============================================================================
+A (baseline)  1-1790994333-uberdefault569-990621
+    ref d4a02e2060   apk 1462fe387009   classifier 37a5cc7ff3
+    1 run(s), 1317 captures, progress-log proof yes
+B (candidate)  1-1790994329-uberdefault569-990475
+    ref d4a02e2060   apk 1462fe387009   classifier 37a5cc7ff3
+    1 run(s), 1317 captures, progress-log proof yes
+disc  36-suites:52f2b53d:3D primitive,Attrib float,Attrib setter,
+      identical in both arms, so the arms are comparable
+
+WARNING: SAME BINARY, DIFFERENT ENVIRONMENT, which is what an --env A/B is: one build, one disc, and the environment as the independent variable.
+    A env: HAKUX_GPL=0
+    B env: (none)
+  apk_sha is identical by design here and is NOT evidence that the arms are the same experiment. What this pair cannot show is anything the environment does not reach: if the variable is read once at startup, a delta is attributable; if nothing in the build reads that name at all, BOTH ARMS ARE THE CONTROL and will agree perfectly. Check the `env: KEY=VALUE` line the app logs at startup under tag `hakuX` in each arm's logcat before reading the numbers below.
+WARNING: both arms name ref d4a02e2060 and the ENVIRONMENT is what differs; see the same-binary note above.
+WARNING: A: Depth_buffer scored 144 of 784 goldens -- that suite's numbers are a FLOOR, not a score.
+WARNING: A: Front_face scored 24 of 36 goldens -- that suite's numbers are a FLOOR, not a score.
+WARNING: B: Depth_buffer scored 144 of 784 goldens -- that suite's numbers are a FLOOR, not a score.
+WARNING: B: Front_face scored 24 of 36 goldens -- that suite's numbers are a FLOOR, not a score.
+
+------------------------------------------------------------------------------
+movers
+------------------------------------------------------------------------------
+  none: no capture moved outside its measured band.
+
+------------------------------------------------------------------------------
+counts, per capture -- the only valid unit
+------------------------------------------------------------------------------
+  better 0     worse 0     same 1317  noise 0       (1317 compared)
+  exact  516   ->    516    (+0)
+  regressed from exact 0        repaired to exact 0  
+
+------------------------------------------------------------------------------
+byte-level check -- what a score count cannot see
+------------------------------------------------------------------------------
+  hashed 1317 of 1317 shared captures (1 run-dir(s) A, 1 B)
+  every checked capture is byte-identical between the arms.
+
+------------------------------------------------------------------------------
+per suite
+------------------------------------------------------------------------------
+  suite                       caps better worse  same noise  differing A  differing B
+  3D_primitive                 160      0     0   160     0    3,271,912    3,271,912
+  Attrib_float                  12      0     0    12     0      186,745      186,745
+  Attrib_setter                  2      0     0     2     0       35,195       35,195
+  Clear                         32      0     0    32     0            0            0
+  Depth_buffer                 144      0     0   144     0    1,325,892    1,325,892
+  Fog                            6      0     0     6     0       56,688       56,688
+  Fog_coord_vec4                41      0     0    41     0          123          123
+  Fog_gen                       60      0     0    60     0    1,247,216    1,247,216
+  Fog_vsh                        6      0     0     6     0       56,754       56,754
+  Front_face                    24      0     0    24     0      361,504      361,504
+  Lighting_Two_Sided             1      0     0     1     0            0            0
+  Lighting_accumulation         10      0     0    10     0       20,102       20,102
+  Lighting_control              32      0     0    32     0       28,960       28,960
+  Lighting_normals              28      0     0    28     0      127,440      127,440
+  Lighting_range                 3      0     0     3     0        7,592        7,592
+  Lighting_spotlight            24      0     0    24     0       97,090       97,090
+  Material_alpha                24      0     0    24     0      711,032      711,032
+  Material_color                 6      0     0     6     0            0            0
+  Material_color_source         28      0     0    28     0            0            0
+  Point_params                  25      0     0    25     0       13,128       13,128
+  Point_size                    21      0     0    21     0       20,579       20,579
+  Shade_model                  168      0     0   168     0    2,258,928    2,258,928
+  Specular                      22      0     0    22     0      198,870      198,870
+  Specular_back                 17      0     0    17     0      116,257      116,257
+  Texgen                         5      0     0     5     0            0            0
+  Texgen_with_texture_matrix    66      0     0    66     0        5,094        5,094
+  Texture_Matrix                11      0     0    11     0          326          326
+  Texture_format                40      0     0    40     0      134,902      134,902
+  Vertex_shader_independence_tests     2      0     0     2     0            0            0
+  Vertex_shader_rounding_tests    51      0     0    51     0          498          498
+  Vertex_shader_swizzle_tests    29      0     0    29     0            0            0
+  Viewport                      12      0     0    12     0        1,396        1,396
+  W_param                      110      0     0   110     0    2,721,461    2,721,461
+  Weight_setter                  1      0     0     1     0            0            0
+  Window_clip                   92      0     0    92     0            0            0
+  Zero_stride                    2      0     0     2     0            0            0
+
+------------------------------------------------------------------------------
+totals -- ADVISORY ONLY: a total can hide a regression
+------------------------------------------------------------------------------
+  differing      13,005,684 ->     13,005,684  (+0)
+  structural      1,317,834 ->      1,317,834  (+0)
+  structural is differing minus off-by-one; the two never overlap, so the subtraction is safe.
+
+==============================================================================
+PRE-REGISTERED: arm B was queued at 2026-10-03T02:25:29Z naming /home/justin/hakux-work/wt/uberdefault569/docs/testing/predictions/uberdefault569-pixels.json, and its content still hashes to the sha recorded then. The prediction existed before the device ran and has not been edited since.
+  bound sha256 9d906694e235f7bfb65c2c16f817e590b2b63220548f2cda5144cf95db2c271a
+  verify with: sha256sum docs/testing/predictions/uberdefault569-pixels.json
+prediction (registered 2026-10-03T01:14:33Z): #569 ubershader on by default, pixel leg. One build, d4a02e2060, two environments: B is the build's default (HAKUX_GPL=3, the ladder: a miss draws this frame through the uber vertex stage linked with the specialised fragment library, and the specialised pipeline swaps in at a later bind); A is --env HAKUX_GPL=0 (monolithic pipelines, master's old default). The uber stage is the vertex stage only; the fragment stage, including every register-combiner path, is the specialised library in both modes. uberspike569 leg E held the uber stage on every covered draw (mode 4) on these 36 suites and found 1317/1317 captures byte-identical (4 inside the flicker band); glsl/ has not changed since (git diff 6bec23c3f4..d4a02e2060 -- hw/xbox/nv2a/pgraph/glsl is empty). Predicted: every capture in must_not_move is the same between arms or inside the run-to-run band; Vertex_shader_rounding_tests/GeometrySuperscreen_* may flicker as in E. B's logcat must show [gpl569] requested=3 mode=3 and a [uber569] line with links > 0, A's [gpl569] mode=0; otherwise VOID. A moved capture means what E's prediction lists: (a) 1-2 ulp on vertex-shader edges, the missing NoContraction; (b) a whole fixed-function suite, a uniform packed wrongly; (c) attribute suites, the binding-16 zero buffer; (d) edges across suites, the fast-linked fragment library rounding differently; and new here, (e) a capture that differs in B only on the first draw of a state, the swap path.
+VERDICT: PASS -- all 1317 registered checks hold.
+==============================================================================

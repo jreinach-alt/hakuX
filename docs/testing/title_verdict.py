@@ -186,7 +186,7 @@ import hitch_report  # noqa: E402
 DEFAULT_TARGETS = os.path.join(HERE, "titles", "targets.toml")
 
 # `logcat -v time`: "09-25 13:31:41.662 I/hakuX-perf( 1234): gfps=30 G:..."
-LINE = re.compile(r"^(\d\d-\d\d \d\d:\d\d:\d\d\.\d{3})\s+([VDIWEF])/([^(\s]+)\s*\(\s*\d+\):\s?(.*)$")
+LINE = re.compile(r"^(\d\d-\d\d \d\d:\d\d:\d\d\.\d{3})\s+([VDIWEF])/([^(\s]+)\s*\(\s*(\d+)\):\s?(.*)$")
 PERF = re.compile(r"gfps=(\d+)\s+G:([\d.]+)\(([\d.]+)-([\d.]+)\)")
 STARVE = re.compile(r"starve: (\d+)/(\d+) callbacks short \((\d+) empty\)")
 SCALE = re.compile(r"surface_scale=(\d+)")
@@ -244,10 +244,11 @@ def find_title(targets, iso):
     return None, {}
 
 
-def parse_logcat(path):
+def parse_logcat(path, pids=None):
     """(lines, capture gaps, open break). See CAPTURE GAPS above. The open
     break is the device time of the last line before a break that no line
-    follows, else None."""
+    follows, else None. A list passed as `pids` gets each kept line's
+    logging pid, one per line, in step with the lines."""
     out, gaps, seen = [], [], set()
     last_t = pending = None
     overlap = False
@@ -272,11 +273,74 @@ def parse_logcat(path):
                     if not overlap and t > pending:
                         gaps.append((pending, t))
                     pending = None
-                out.append((t, m.group(2), m.group(3), m.group(4)))
+                out.append((t, m.group(2), m.group(3), m.group(5)))
+                if pids is not None:
+                    pids.append(m.group(4))
                 last_t = t
     except OSError:
         pass
     return out, gaps, pending
+
+
+# WHOSE CRASH. `libc` and `DEBUG` at F are the whole device's: crash_dump logs
+# a tombstone under DEBUG for any native crash, and three Nova runs on
+# 2026-10-02 (1790951866-titleroutes2-46925, 1790951914-titleroutes2-68595,
+# 1790953776-titleroutes2-447685) failed as crashes for Android's own
+# media.extractor aborting while hakuX played on; 0-0-x-1790465684-lane.remote-
+# 2069760 did the same for surfaceflinger. Such a line is hakuX's only when it
+# names hakuX's process or comes from it:
+#  - a tombstone, from its `*** ***` line to the next, by its `Cmdline:` (or,
+#    without one, its `>>> name <<<`). crash_dump logs it under its own pid.
+#  - a libc line by its pid. hakuX's handler (android_crash_handler.cpp)
+#    re-raises under SIG_DFL, so a hakuX crash leaves no tombstone and only
+#    "FORTIFY: ..." or "exiting due to SIG_DFL handler ..." under libc, from
+#    the crashing pid: every one in results/ through 2026-10-02 (the 09-29
+#    memfast, ibcache and verdict433 runs) came from a pid that also logs
+#    hakuX's tags. hakuX-route is not one of them: route.sh and soak_title.sh
+#    write it from an adb shell.
+#  - a libc "Fatal signal ... pid N (name)" also by that name, which is
+#    /proc/<pid>/comm: the last 15 characters of a longer process name.
+# A tombstone that names no process (a capture that starts mid-block) is not
+# hakuX's: a missed crash costs a reviewer a look, a false one fails a title.
+HAKUX_PROCS = tuple(p + s for p in ("com.jreinach.hakux", "com.jreinach.hakux.debug",
+                                    "com.jreinach.hakux.debug2")
+                    for s in ("", ":xemu"))   # build.gradle.kts; AndroidManifest.xml
+TOMBSTONE_START = "*** *** ***"
+TOMBSTONE_NAME = re.compile(r"^Cmdline:\s*(\S+)|>>> (\S+) <<<")
+FATAL_PROC = re.compile(r"\bpid \d+ \(([^)]*)\)")
+
+
+def is_hakux_proc(name):
+    return any(name == p or (len(name) == 15 and p.endswith(name)) for p in HAKUX_PROCS)
+
+
+def crash_lines_of(lc, pids):
+    """The crash lines that are hakuX's, in log order. See WHOSE CRASH."""
+    own = {p for (t, lv, tag, msg), p in zip(lc, pids)
+           if tag.startswith(("hakuX", "xemu")) and tag != "hakuX-route"}
+    block, names = [], {}     # tombstone number of each DEBUG/F line; its process
+    for t, lv, tag, msg in lc:
+        if tag == "DEBUG" and lv == "F":
+            n = len(names) if msg.startswith(TOMBSTONE_START) else len(names) - 1
+            if n == len(names):
+                names[n] = None
+            block.append(n)
+            m = TOMBSTONE_NAME.search(msg)
+            if m and n >= 0 and names[n] is None:
+                names[n] = m.group(1) or m.group(2)
+    out, k = [], 0
+    for (t, lv, tag, msg), pid in zip(lc, pids):
+        if tag == "hakuX-crash" and lv in "EF":
+            out.append(msg)
+        elif tag == "libc" and lv == "F":
+            m = FATAL_PROC.search(msg)
+            if pid in own or (m and is_hakux_proc(m.group(1))):
+                out.append(msg)
+        elif tag == "DEBUG" and lv == "F":
+            n, k = block[k], k + 1
+            if n >= 0 and names[n] and is_hakux_proc(names[n]):
+                out.append(msg)
+    return out
 
 
 def lost_in(a, b, gaps):
@@ -411,15 +475,14 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
         void = "display-black: all %d route frames under %d B" % (len(rframes), BLACK_FRAME_B)
 
     held = re.search(r"^(?:held \S.* for|guest exited after) (\d+)s", runlog, re.M)
-    lc, cap_gaps, open_break = parse_logcat(os.path.join(rdir, "logcat.txt"))
+    pids = []
+    lc, cap_gaps, open_break = parse_logcat(os.path.join(rdir, "logcat.txt"), pids)
     perf = [(t, PERF.search(msg)) for t, lv, tag, msg in lc if tag == "hakuX-perf"]
     perf = [(t, p) for t, p in perf if p]
     marks = [(t, msg[5:].strip()) for t, lv, tag, msg in lc
              if tag == "hakuX-route" and msg.startswith("mark ")]
     soak_end = [t for t, lv, tag, msg in lc if tag == "hakuX-route" and msg.strip() == "soak end"]
-    crash_lines = [msg for t, lv, tag, msg in lc
-                   if (tag == "hakuX-crash" and lv in "EF")
-                   or (tag in ("libc", "DEBUG") and lv == "F")]
+    crash_lines = crash_lines_of(lc, pids)
     crash_warn = sum(1 for t, lv, tag, msg in lc if tag == "hakuX-crash" and lv not in "EF")
     scale = None
     for t, lv, tag, msg in lc:

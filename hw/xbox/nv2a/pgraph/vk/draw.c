@@ -38,6 +38,14 @@ static int g_xemu_submit_frames = 3;
 
 struct OptBisectStats g_opt_stats;
 
+#if NV2A_PERF_LOG
+/* #433 uniform-block churn counter, in vk/shaders.c. Declared here because
+ * renderer.h is outside lane.bf2ubosize433's files. */
+void pgraph_vk_ubosz_note_upload(PGRAPHState *pg, int site);
+void pgraph_vk_ubosz_note_bind(VkDescriptorSet set, const uint32_t off[2]);
+void pgraph_vk_ubosz_log_and_reset(void);
+#endif
+
 /*
  * BEHIND A FLAG, DEFAULT OFF. AGENTS.md: "Instrumentation is not free ...
  * Profile-grade tracing belongs behind a flag." This probe is the expensive
@@ -1076,6 +1084,8 @@ static void opt_stats_log_and_reset(void)
                 g_opt_stats.pipe_evict_recording,
                 plc->num_used, plc->num_used + plc->num_free);
         }
+        /* #433: uniform-block churn per upload; see vk/shaders.c. */
+        pgraph_vk_ubosz_log_and_reset();
         {
             /*
              * #461: what a texture bind spends its time on, counted in
@@ -3391,6 +3401,10 @@ static void bind_descriptor_sets(PGRAPHState *pg)
         r->pipeline_binding->layout, 1, 1,
         &r->push_ubo_sets[r->push_ubo_set_index - 1],
         2, dynamic_offsets);
+#if NV2A_PERF_LOG
+    pgraph_vk_ubosz_note_bind(r->push_ubo_sets[r->push_ubo_set_index - 1],
+                              dynamic_offsets);
+#endif
 
     if (r->push_descriptors_supported) {
         /*
@@ -5643,6 +5657,9 @@ static bool upload_draw_uniforms(PGRAPHState *pg, size_t offsets_out[2])
             pg, BUFFER_UNIFORM_STAGING, &data, &size, 1,
             r->device_props.limits.minUniformBufferOffsetAlignment);
     }
+#if NV2A_PERF_LOG
+    pgraph_vk_ubosz_note_upload(pg, 1);
+#endif
 
     return true;
 }
@@ -5909,6 +5926,10 @@ static void rebind_ubo_dynamic_offsets(PGRAPHState *pg, uint32_t off0,
         r->pipeline_binding->layout, 1, 1,
         &r->push_ubo_sets[r->push_ubo_set_index - 1],
         2, dyn_off);
+#if NV2A_PERF_LOG
+    pgraph_vk_ubosz_note_bind(r->push_ubo_sets[r->push_ubo_set_index - 1],
+                              dyn_off);
+#endif
 }
 
 /*
@@ -7000,6 +7021,9 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 e->layout, 1, 1, &e->descriptor_set,
                                 2, e->dynamic_offsets);
+#if NV2A_PERF_LOG
+        pgraph_vk_ubosz_note_bind(e->descriptor_set, e->dynamic_offsets);
+#endif
     }
 
     /* Bind texture set (set 0) */
