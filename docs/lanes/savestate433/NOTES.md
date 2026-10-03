@@ -221,23 +221,87 @@ pathfind.py, `85-savestate.sh`, and the `# state:` line of every route.
 - The Bash tool here rejects heredocs with quoted braces and `$VAR`; patch
   files through a script under `scratch/`.
 
+## Session 2 (2026-10-03 08:31-08:4x PDT): the profile-save stage
+
+**Why attempt 1 "did not finish":** it did. PR.md went `ready` at
+`0c8ab805e0` (10-02 ~20:45). It then sat unfolded for 11 h on the board's
+side, not the lane's: foldqueue read the first PR.md in the branch's diff
+(buildstamp's draft) until 22:55, then refused the branch at 23:25 on
+territory (`dispatcher.sh`, `pathfind.py` were not on the row). The grant
+and the fold landed at 07:57 (`cfa37a359e`). This session is the 08:30
+addendum's continuation: the #397 profile-save stage.
+
+**The stage's work list, read from the status page's own logic**
+(`status_html._registry`, `scratch/needsave.py`, 08:35):
+
+- Every title on master with a route (inputs) already has a stored save.
+  None is waiting on "extract the profile save".
+- 30 titles have no route on master. Their save comes with their route: any
+  title run harvests to the store, and a first-run that reaches `mark
+  profile-saved` with no golden makes its save the golden. They need
+  navigation (lane.pathfind), not this stage.
+- So **no title with a working route lacks a save**. The stage has nothing
+  to extract today.
+
+**What the queue hit instead (hostops 08:12, "runner refused sw3, no save
+dir"):** my own guard, working as built, with a reason that named no way
+forward.
+
+- lane.local headed `star-wars-ep3.route` `# state: returning` ("its PASS-like
+  runs played on the profile that is now its golden").
+- That golden, `cb663b62ffcf`, holds title data only. `returning` means "needs
+  a save directory", so the guard refused.
+- The record (`scratch/hddstate.py`):
+  - replay 1 (`1790939919`) and run 2 (`1790944635`) both booted a disk
+    carrying `cb663b62ffcf`;
+  - the survey (`1790921690`) booted with no 4C410017 save at all and took
+    the same path to play (cycle 13).
+- So the honest header is `any`. `any` loads the golden unchanged, which is
+  exactly the disk the confirmation ran on.
+- **Guard change:** both settings-only refusals (`resolve_route`, `compose`)
+  now end with the fix: head it `# state: any` if the route was confirmed on
+  this golden, else `promote` a save with a save directory.
+- **Selftest:** `titlestate_selftest.py`'s SW3 leg was red before the change.
+  It asserts the reason names `# state: any`, the `any` header queues, and
+  its disk carries the golden unchanged.
+
+**The rest of lane.local's queue (`scratch/queuecheck.py`, resolved as
+request.sh will, from each line's worktree, 08:36):**
+
+| key | golden (save dirs) | route state | result |
+|---|---|---|---|
+| sw3 | cb663b62ffcf (0) | returning | REFUSE: settings-only; fix is `# state: any` |
+| kabuki | bbb88f4302f6 (0) | first-run | OK |
+| gunvalkyrie | 4e2a12123171 (1) | first-run | OK |
+| halo2 | 0a4742f1e45d (2) | returning | OK |
+| toejam-off/on-perflog | 71a91de8b905 (0) | - | REFUSE: `toejam-earl-3.route` is not in the uberdefault569 worktree. It exists only on lane/titleroutes2 (`3efd923411`) and has no `# state:` line. Its two PASS runs (13:07, 21:02) played on settings-only `71a91de8b905`, so it should be headed `any` too |
+
+**Status page, not mine:** `status_html._registry` calls
+`titlestate.store_saves(tid)` with targets.toml's id. Gunvalkyrie's saves are
+stored under its disk id `5345000B`, so its row reads "no save" when it has
+one. The fix is one line: `titlestate.store_saves(titlestate.disk_tid(tid))`.
+DOA3 and JSRF hide the same miss behind their single routes ("n/a").
+
 ## Next (P x win)
 
-1. **Confirm or replace the 83 proposed goldens** (lane.local/owner, no device).
-   P 0.9 that confirming changes nothing for first-run titles; the win is the
-   returning titles (Crimson Skies, Castlevania, KOF MI, Midtown, RalliSport,
-   Spikeout, MC3, PGR, Burnout 3/Revenge): about 10 titles whose route
-   correctness rests on the proposal. Cost: one look per title at its save
-   names (`titlestate.py golden`).
-2. **Record routes from the goldens for Blinx 2 and ToeJam & Earl III**
-   (navigation, a held nav.py session with `--title-id ... --variant
-   returning`). P 0.6 (Blinx 2's owner profile reaches a level menu from a
-   Continue; ToeJam unknown). Win: 2 titles from no route to a route. Cost:
-   ~30 min held Nova each.
-3. **Nova post-restart hold** (dispatcher: hold requests N min after a device
+1. **lane.local: head SW3 and ToeJam `# state: any`, and put ToeJam's route
+   where the runner reads it.** P 0.95: the guard accepts `any` on these
+   goldens (selftest leg), and both routes reached play on exactly these
+   disks. Win: 2 of the 4-5 titles the owner wants today stop being refused
+   (SW3 is the plan's top P, 0.55). Cost: two header lines and a copy, no
+   device time.
+2. **Confirm or replace the proposed goldens.** Done by lane.local overnight:
+   all are `golden` now.
+3. **Record routes from the goldens for Blinx 2 and ToeJam & Earl III.**
+   Re-scored:
+   - ToeJam has a working route on its golden, so it needs none.
+   - Blinx 2 is lane.near30's held session today, and navigation is
+     lane.pathfind's.
+   - Dropped from this lane.
+4. **Nova post-restart hold** (dispatcher: hold requests N min after a device
    reconnect). P 0.3: 6 of 7 burst voids are unexplained, and the one
    explained was the disk mode. Win: up to 6 voids per 6 days. A cheap
    measurement decides it first: correlate the 6 with `devwatch` reconnect
    times. If they follow a reconnect within 5 min, do the hold. If not, drop it.
-4. **Foreground pre-admission**: P 0.1. A launcher in front BEFORE the app
+5. **Foreground pre-admission**: P 0.1. A launcher in front BEFORE the app
    starts is normal, and the 17 losses happened mid-run. Not recommended.
