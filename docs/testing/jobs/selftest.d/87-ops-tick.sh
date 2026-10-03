@@ -33,6 +33,12 @@
 #   (g) jams.tsv is tab-separated, but `remedy_tried` carries a command's raw stdout
 #       (truncated, not scrubbed) -- a leg directly on save_jams/load_jams proves an
 #       embedded tab or newline does not misalign the row's later columns.
+#   (h) a fold-failure whose recorded head is already an ancestor of origin/master
+#       (the branch was folded) raises no jam and writes no inbox note.
+#   (i) systemctl's failed list prefixes a bullet glyph; the unit name is the
+#       hakux-* token, never the glyph.
+#   (j) --shadow keeps its own jam identity across ticks: a jam the first shadow
+#       tick announced is not announced as NEW again by the second.
 
 echo "== ops_tick.py: model-free jam detection and scripted remedies (#433)"
 
@@ -219,6 +225,23 @@ ot_tick
 check "(c) a fold-failure jam whose branch has since moved on is dropped, not kept open" \
     bash -c '[ "$(awk -F"\t" -v c=fold-failure:territory -v s=lane/terrgap "\$2==c && \$3==s {print (\$5==\"\")?\"open\":\"cleared\"}" "'"$OT"'/state/jams.tsv" | tail -1)" = cleared ]'
 
+# (h) A branch already folded into master is not a fold-failure jam. The FOLDED line may sit
+# outside the cursor window or never have been written; the recorded head being an ancestor of
+# origin/master is the evidence that matters. Live example: snapdrive, usagemode, ibcache.
+git -C "$OT/repo" checkout -q -b lane/folded1 master
+git -C "$OT/repo" -c user.email=t@t -c user.name=t commit -q --allow-empty -m "lane.folded1 work"
+git -C "$OT/repo" push -q origin lane/folded1
+OT_SHA_FOLDED1=$(git -C "$OT/repo" rev-parse --short=10 lane/folded1)
+git -C "$OT/repo" checkout -q master
+git -C "$OT/repo" merge -q --ff-only lane/folded1
+git -C "$OT/repo" push -q origin master
+echo "2026-10-02 09:20:00 PDT FAILED lane/folded1 @ $OT_SHA_FOLDED1: outside [lane.folded1]'s files ['docs/lanes/folded1/**']: ['hw/x.c']" >> "$FF"
+ot_tick
+check "(h) a fold-failure whose head is already in origin/master raises no jam" \
+    bash -c '[ -z "$(awk -F"\t" "\$3==\"lane/folded1\"" "'"$OT"'/state/jams.tsv" 2>/dev/null)" ]'
+check "(h) ...and writes no inbox note for it" \
+    bash -c '! grep -q "lane/folded1" "'"$OT_WORK"'/host-tools/hostops-inbox.md" 2>/dev/null'
+
 # --------------------------------------------------------- (d) failed unit
 echo "hakux-fold.service loaded failed failed hakuX fold job" > "$OT/bin/failed-units.txt"
 : > "$OT_ESCALATE_LOG"
@@ -235,6 +258,18 @@ check "(d) the same still-open failed-unit does not escalate again inside ESCALA
 ot_tick
 check "(d) once the unit is no longer failed, its jam row clears" \
     bash -c '[ "$(awk -F"\t" -v c=failed-unit -v s=hakux-fold.service "\$2==c && \$3==s {print (\$5==\"\")?\"open\":\"cleared\"}" "'"$OT"'/state/jams.tsv" | tail -1)" = cleared ]'
+
+# (i) systemctl prints a bullet glyph (●) as the first column of a failed unit's row. The old
+# parse took the first token as the unit name, so the jam was "failed-unit ●" for every failure.
+echo "● hakux-bullet.service loaded failed failed hakuX bullet job" > "$OT/bin/failed-units.txt"
+: > "$OT_ESCALATE_LOG"
+ot_tick
+check "(i) a bulleted failed unit is named by its hakux-* token" \
+    grep -q "failed-unit hakux-bullet.service" "$OT_ESCALATE_LOG"
+check "(i) the bullet glyph is never a jam subject" \
+    bash -c '! grep -q "failed-unit ●" "'"$OT_ESCALATE_LOG"'" && ! grep -q "failed-unit ●" "'"$OT/state/jams.tsv"'" 2>/dev/null'
+: > "$OT/bin/failed-units.txt"
+ot_tick
 
 # --------------------------------------------------------- (e) battery floor
 mkdir -p "$OT/work/host-tools"
@@ -262,6 +297,14 @@ ot_env --shadow > "$OT/shadow.out" 2>&1
 check "(f) --shadow logs what it would do" grep -q "would run remedy" "$OT/state/shadow.log"
 check "(f) --shadow writes no jams.tsv" bash -c '[ ! -s "'"$OT"'/state/jams.tsv" ]'
 check "(f) --shadow does not actually release the hold" grep -qxF lane.deadlane "$OT/work/dispatch/hold/thor"
+# (j) Shadow must remember what it announced, or the overnight log re-announces every jam on
+# every tick. Its state lives beside the real jams.tsv, never in it.
+ot_env --shadow > "$OT/shadow2.out" 2>&1
+check "(j) the first --shadow tick announces the hold-overbound jam as NEW" grep -q "NEW JAM hold-overbound thor" "$OT/shadow.out"
+check "(j) a second --shadow tick does not re-announce it" \
+    bash -c '! grep -q "NEW JAM hold-overbound thor" "'"$OT/shadow2.out"'"'
+check "(j) the shadow tick's identity lives in jams.shadow.tsv, not jams.tsv" \
+    bash -c '[ -s "'"$OT"'/state/jams.shadow.tsv" ] && [ ! -e "'"$OT"'/state/jams.tsv" ]'
 
 # ----------------------------------------------------- (g) jams.tsv is tab-safe
 cat > "$OT/tsv_safe.py" <<'EOF'

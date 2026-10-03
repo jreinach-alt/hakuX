@@ -35,8 +35,9 @@ Nothing from `hold-overbound`, `queue-stale`, `timer-unanchored`, `failed-unit`,
 
 ## Tick 2 -- 2026-10-02 10:56 PDT (independent run, five minutes later)
 
-Identical 9 jams, same classes and subjects, nothing added or dropped -- the detection is stable
-against a live, slowly-changing system, not flapping tick to tick.
+Identical 9 jams, same classes and subjects, nothing added or dropped. **This was not evidence of
+stability.** Shadow mode did not persist its jam rows, so both ticks announced every jam as NEW. The
+two runs agreed only because they shared the same bug. See "Overnight run" below.
 
 ## Cross-check against `status/local-board.md` (hakux-local-board.timer, lane.local's own
 model-free script, last written 2026-10-02T17:20:18Z -- 30 min before this tick)
@@ -99,3 +100,31 @@ was touched. **For lane.local, before cutover:** run
 `ops-shadow/shadow.log` against what hostops did over the same window (`hostops-inbox.md`'s new
 entries, any lane it resumed), and only then flip `hakux-ops-tick.timer` on and whatever currently
 fires hostops off.
+
+## Overnight run (lane.local's timer, 10-02 22:19 onward) and what it found
+
+`hakux-ops-shadow.timer` ran `ops_tick.py --shadow` from this worktree every 5 minutes into
+`host-tools/ops-shadow` (101 ticks logged in `logs/ops-shadow.log`). It showed three faults, fixed in
+attempt 2 (see NOTES.md, "Attempt 2"):
+
+- Every jam was announced `NEW JAM` on every tick: 594 announcements for the six fold jams, 99 for the
+  stranded lane. Cause: shadow never persisted its rows.
+- Six fold-failure jams for branches already in master (snapdrive, usagemode, ibcache, routedriver,
+  stopmarker, uberspike569-gpl). Cause: no ancestry check against `origin/master`.
+- `failed-unit ●`. Cause: the bullet glyph was taken as the unit name.
+
+## Attempt 2 check, scratch state dir, same host state
+
+| tick | jams open | NEW announced |
+|---|---|---|
+| 1 | 6 | 6 |
+| 2 | 6 | 0 |
+
+The six jams on tick 1: `stranded-lane tronhang672`, `stranded-lane verdict433`,
+`fold-failure:rowless lane/titleroutes`, `fold-failure:territory lane/savestate433`,
+`failed-unit hakux-local-issue-audit.service`, `failed-unit hakux-nightly.service`.
+
+The two failed units are real. The old parse could not have shown them.
+
+The clean 2-hour run on this head is still to come. It is lane.local's to compare against hostops, per
+OUTBOX.md's waiting entry.

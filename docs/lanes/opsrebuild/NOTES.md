@@ -281,3 +281,69 @@ systemctl --user enable --now hakux-ops-tick.timer`, THEN `systemctl --user disa
 hakux-hostops.timer` (if a tracked unit exists for it; if hostops runs from an ad hoc host-side
 script rather than a committed unit, stop whatever currently fires it). Point `OPS_STATE_DIR`
 somewhere durable (default `$HAKUX_WORK/host-tools/ops-state`) before the first non-shadow tick.
+
+## Attempt 2 (2026-10-03): why attempt 1 did not finish
+
+Attempt 1 built the layer and opened PR.md, but did not finish. Two of the brief's gates stayed
+open. (1) The >= 2 h side-by-side shadow run. A session cannot block that long, so attempt 1
+handed it to lane.local with a command, which is correct, but the run was never clean. (2) The
+shadow comparison was posted from a run that could not show the faults it had. Its "tick 2 was
+identical to tick 1, so detection is stable" claim was wrong: shadow mode never persisted its jam
+rows, so every tick saw every jam as new, and two identical ticks were two copies of the same
+bug, not evidence of stability. The overnight timer lane.local started (`hakux-ops-shadow.timer`,
+from 10-02 22:19, 101 ticks logged) then ran attempt 1's code and exposed three faults, which
+lane.local posted as Addendum 2. Attempt 1 did not finish because it verified detection by
+looking at one tick and never checked identity across ticks, and because it never compared its
+fold-failure list against master.
+
+## Attempt 2: the three shadow faults (Addendum 2, lane.local 10-03)
+
+Overnight log `logs/ops-shadow.log`: the same six fold-failure jams and two stranded lanes were
+announced `NEW JAM` on every one of the 101 ticks (594 announcements for the six fold jams alone,
+99 for the stranded lane), and the failed-unit subject was the bullet glyph `●`.
+
+| # | Fault | Cause in `ops_tick.py` | Fix | Test (`87-ops-tick.sh`) |
+|---|---|---|---|---|
+| 1 | Every jam re-announced as NEW every tick | `run()` returned before `save_jams` in shadow mode, so `jams.tsv` never existed and every jam opened fresh. Shadow escalation count never advanced either. | Shadow keeps `jams.shadow.tsv` and `escalations.shadow.json` in its own state dir. It never touches the real `jams.tsv`, and it writes no `summary.txt`. A would-be escalation advances the same count and clock a real one would, so the Opus switch and the cadence show in shadow. | (j): a second `--shadow` tick does not re-announce; identity lives in `jams.shadow.tsv` |
+| 2 | Fold-failure jams for branches already folded (snapdrive, usagemode, ibcache, routedriver, stopmarker, uberspike569-gpl) | `det_fold_failures` dropped a branch only when its head moved on. A FAILED line for an abandoned or folded head stayed open forever. | A recorded head that is an ancestor of `origin/master` is dropped. Checked by hand before the fix: all six heads are ancestors of master. The fold head is also now hex-only, because it is interpolated into a shell command. | (h): a fold failure whose head is in master raises no jam and no inbox note |
+| 3 | `failed-unit ●` | `line.split()[0]` took systemctl's bullet glyph as the unit name. | Matches the `hakux-*` unit token anywhere on the line (`UNIT_TOKEN_RE`). | (i): a bulleted failed unit is named by its token; the glyph is never a subject |
+
+**Falsification.** Before the fix, the three new legs failed on the unfixed code (6 FAIL, 29 passed).
+After the fix, 35 passed, 0 failed.
+
+**Real-state check (scratch state dir `/tmp/ops-verify`, `--shadow`, same host state as the timer):**
+
+| tick | jams open | NEW announced | remarks |
+|---|---|---|---|
+| 1 | 6 | 6 | the six real jams: 2 stranded lanes (`tronhang672`, `verdict433`), `fold-failure:rowless lane/titleroutes`, `fold-failure:territory lane/savestate433`, two failed units |
+| 2 | 6 | 0 | identity persists; no re-announcement, no re-remedy |
+
+Compared with the overnight log, the six false fold jams are gone. `failed-unit` now names
+`hakux-local-issue-audit.service` and `hakux-nightly.service`. Those are real failed units (the
+detector saw them with `systemctl --state=failed`), so they now carry signal instead of `●`. Both
+will escalate on sight, as designed. Lane.local should look at them; nothing here touched them.
+
+**Known gap, not confirmed as a false jam.** `det_stranded_lanes` decides "running" by
+`hakux-lane-<name>.service` being active and nothing else. At 22:19 on 10-02 it listed
+`lane.opsrebuild` as stranded, and that tick ran while attempt 1's session was live. I have not
+established whether that session was under a unit at the time. A lane session that runs outside its
+unit would read as stranded, and the remedy resumes it. Lane.local should check that one before
+cutover, because the remedy is the risky part.
+
+## Next (P x win)
+
+The brief's gate is one clean 2-hour `--shadow` run on this head. The shadow timer already runs the
+working tree, so the window has started. This session cannot block for 2 h. Candidates, scored as the
+brief's RULE asks:
+
+| candidate | P (works) and evidence | win if it works | cost | decides |
+|---|---|---|---|---|
+| A. Let the shadow timer run 2 h on this head; compare `ops-shadow.log` against hostops's inbox entries for the same window; cut over if clean | P ~0.9: all three faults are fixed and each has a leg that fails on the old code; two real-state ticks show identity and folded-branch removal; the remaining risk is a false jam the fixture tree does not produce | removes ~$110/day of model ticks (42 ticks/day at ~$1.70 each) | 2 h wall-clock; no device | itself: a clean window cuts over; a false jam in the window picks B's detector fix first |
+| B. Wire the RESOURCE rows (~44) to a machine-readable `offline_status.py` output, so the checks harness_health.py has been blind to since 09-29 come back | P ~0.5: the output is prose today, so the parse is the risk; the coverage win is real, but the sources are in lane.localforge's and lane.issuerecon's territory | restores coverage of the GitHub-bound checks; the size of that win is unmeasured | a lane on another lane's files; not this session | nothing needed before A's window ends |
+
+A decides first because it is the only gate between this layer and the $110/day it replaces, and
+it costs nothing but wall time. B is the larger win but at lower P, and it lives in other lanes'
+files. It runs after the cutover, not before.
+
+**Status:** code and docs done for the three faults. The clean 2-h shadow run is waiting; PR.md
+stays `State: draft` until lane.local posts that comparison. See OUTBOX.md's waiting entry.

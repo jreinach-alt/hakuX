@@ -30,10 +30,22 @@ that report does not filter (a STOPPED-by-owner marker), and in the process surf
 real bug in the first cut of the fold-failure detector (a stale jam that never cleared once its
 branch moved past it). See `docs/lanes/opsrebuild/shadow-comparison.md`.
 
-**Not finished here**: the brief's full >= 2 h shadow run alongside hostops, and the actual
-cutover (installing the units, stopping hostops). Both are lane.local's to run -- this session
-cannot block 2+ hours, and this lane was told not to touch host-tools/ or live units.
-`shadow-comparison.md` and `NOTES.md`'s "Units" section give the exact commands.
+**Attempt 2 (Addendum 2, lane.local 10-03): three shadow faults fixed.** The overnight shadow timer
+exposed them. (1) Every jam was announced NEW on every tick, because shadow mode never persisted its
+rows; shadow now keeps its own `jams.shadow.tsv` and `escalations.shadow.json`. (2) Six fold-failure
+jams for branches already in master; a failed head that is an ancestor of `origin/master` is now
+dropped. (3) `failed-unit ●`; the unit is the `hakux-*` token. Each has a selftest leg that fails on
+the old code (legs h, i, j). `NOTES.md`'s "Attempt 2" section has the table, the evidence and why
+attempt 1 did not finish.
+
+**Not finished here**: the brief's clean 2 h `--shadow` run on this head, and the cutover. The timer
+runs the worktree, so the run has started; this session cannot block for 2 h. Cutover (installing the
+units, stopping hostops) is lane.local's to run. `OUTBOX.md` carries the waiting entry.
+`shadow-comparison.md` and `NOTES.md`'s "Units" section give the commands.
+
+**Why still draft**: `State: ready` waits on the shadow comparison the brief requires. That
+comparison is the 2 h run above, which this session cannot produce. Per the lane protocol this is a
+waiting state, not a failure.
 
 ## Verification run locally (no CI while GitHub is suspended)
 

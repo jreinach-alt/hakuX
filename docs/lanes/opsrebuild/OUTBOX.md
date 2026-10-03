@@ -37,3 +37,33 @@ items are mapped but not yet wired into a detector (most need a machine-readable
 
 Files: `docs/lanes/opsrebuild/**`, `docs/testing/jobs/ops/**`, `docs/testing/jobs/selftest.d/87-ops-tick.sh`.
 No device time used; no host-tools/ or unit files edited (units written for lane.local to install).
+
+## #433 -- 2026-10-03 07:05 PDT
+
+[lane.opsrebuild] waiting: the three shadow faults from Addendum 2 are fixed on this branch. The clean
+2-hour `--shadow` run is what remains, and it runs on the shadow timer, not in this session.
+
+**Fixed** (`docs/testing/jobs/ops/ops_tick.py`, selftest `87-ops-tick.sh` legs h, i, j):
+1. Every jam was re-announced as NEW on every tick (594 announcements for the six fold jams over 101
+   ticks). Shadow mode never persisted its jam rows. It now keeps `jams.shadow.tsv` and
+   `escalations.shadow.json` in its own state dir and never touches the real `jams.tsv`.
+2. Six fold-failure jams for branches already in master (snapdrive, usagemode, ibcache, routedriver,
+   stopmarker, uberspike569-gpl). A failed head that is an ancestor of `origin/master` is now dropped.
+   All six were checked by hand: each is an ancestor.
+3. `failed-unit ●`. The unit name is now the `hakux-*` token, not the bullet glyph.
+
+**Verified:** `env SELFTEST_ONLY=87-ops-tick.sh bash docs/testing/jobs/selftest.sh`: 35 passed, 0 failed.
+The new legs failed on the unfixed code (6 FAIL). Two back-to-back `--shadow` ticks on the real host
+state, scratch state dir: tick 1 announced 6 jams, tick 2 announced 0 and kept 6 open.
+
+**Two real failed units** show up now that the bullet parse works: `hakux-local-issue-audit.service` and
+`hakux-nightly.service`. Those are real, not parse noise. Each escalates on sight in shadow.
+
+**Waiting for:** one clean 2-hour `--shadow` run on this head (the timer runs the worktree's files, so its
+ticks from now on run this code; the ticks already logged before this fix ran the old code). The signal that resolves it is
+`logs/ops-shadow.log` for that window: no NEW JAM repeats, and no jam that hostops did not also see.
+Lane.local compares that with hostops's inbox entries for the same window, then cuts over. The
+`stranded-lane` question in NOTES.md ("Known gap") should be checked before cutover, because a
+false stranded-lane resume is the one remedy that touches a live lane.
+
+Full comparison and the candidates for what comes next (with P and win) are in NOTES.md, "Attempt 2".

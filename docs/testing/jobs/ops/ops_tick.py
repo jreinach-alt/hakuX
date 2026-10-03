@@ -199,6 +199,8 @@ def _classify_fold_line(line):
     if not m_branch:
         return None
     branch, head = m_branch.group(1), m_branch.group(2)
+    if not re.fullmatch(r"[0-9a-f]{4,40}", head):
+        return None  # the head is interpolated into a shell command below: hex only
     reason = line[m_branch.end():]
     for pat, cls in FOLD_CLASSIFIERS:
         mm = pat.search(reason)
@@ -268,6 +270,13 @@ def det_fold_failures():
         for branch in list(open_branches):
             cur_head, rc = sh("git -C %s rev-parse origin/%s" % (REPO, branch))
             if rc != 0 or not cur_head.strip().startswith(open_branches[branch]["head"][:10]):
+                del open_branches[branch]
+                continue
+            # Already folded, not stuck: the failed head is an ancestor of master, so the content
+            # it was refused for has landed. The FOLDED line may sit outside the cursor window or
+            # never have been written (snapdrive, usagemode, ibcache all came up this way).
+            _, anc_rc = sh("git -C %s merge-base --is-ancestor %s origin/master" % (REPO, open_branches[branch]["head"]))
+            if anc_rc == 0:
                 del open_branches[branch]
         _save_json(open_p, open_branches)
 
@@ -375,14 +384,20 @@ def det_timer_unanchored():
     return jams
 
 
+UNIT_TOKEN_RE = re.compile(r"\b(hakux-\S+?\.(?:service|timer|socket|path|target|mount))\b")
+
+
 def det_failed_unit():
     """A failed hakux unit: no safe scripted fix, so no remedy -- escalates on sight."""
     jams = []
     out, _ = sh("%s list-units 'hakux-*' --state=failed --no-legend" % SYSTEMCTL)
     for line in out.splitlines():
-        unit = line.split()[0] if line.split() else None
-        if not unit:
+        # systemctl prefixes a failed unit's row with a bullet glyph (●), so the first token is
+        # not the unit name. Match the hakux-* unit token wherever it sits on the line.
+        m = UNIT_TOKEN_RE.search(line)
+        if not m:
             continue
+        unit = m.group(1)
         jams.append(Jam("failed-unit", unit, "%s has failed" % unit, None, ""))
     return jams
 
@@ -545,8 +560,13 @@ def write_summary(jams_path, summary_path, escalations):
 
 def run(shadow):
     os.makedirs(STATE_DIR, exist_ok=True)
-    jams_path = os.path.join(STATE_DIR, "jams.tsv")
-    esc_path = os.path.join(STATE_DIR, "escalations.json")
+    # Shadow keeps its OWN jams and escalations files beside the real ones. Without them every
+    # shadow tick saw every jam as new and re-announced it (the 10-02 overnight log: 90x each), and
+    # a would-be escalation never advanced its count. It never touches the real jams.tsv, which a
+    # cutover tick would have to reconcile, and it writes no summary.txt.
+    sfx = ".shadow" if shadow else ""
+    jams_path = os.path.join(STATE_DIR, "jams%s.tsv" % sfx)
+    esc_path = os.path.join(STATE_DIR, "escalations%s.json" % sfx)
     summary_path = os.path.join(STATE_DIR, "summary.txt")
     shadow_log = os.path.join(STATE_DIR, "shadow.log")
 
@@ -580,6 +600,7 @@ def run(shadow):
                 row["remedy_tried"] = result[:300]
                 say("  remedy: %s" % result)
             elif jam.remedy:
+                row["remedy_tried"] = ("[shadow] would: %s" % jam.remedy_label)[:300]
                 actions.append("[shadow] would run remedy for %s %s: %s" % (jam.cls, jam.subject, jam.remedy_label))
             # A remedy-bearing jam gets its remedy applied before anything decides whether to
             # escalate it (below) -- a no-remedy jam falls straight through to that same check
@@ -601,17 +622,20 @@ def run(shadow):
             # per 5-minute tick. A no-remedy jam re-escalates on the same cadence.
             last_ts = esc.get("last_epoch", 0)
             if NOW - last_ts >= ESCALATE_AFTER_MIN * 60:
+                model = "claude-opus-5-5" if esc["count"] >= 1 else "claude-sonnet-5"
                 if shadow:
-                    actions.append("[shadow] would escalate %s %s (count would become %d)" % (jam.cls, jam.subject, esc["count"] + 1))
+                    cost = 0.0
+                    actions.append("[shadow] would escalate %s %s on %s (count would become %d)" % (jam.cls, jam.subject, model, esc["count"] + 1))
                 else:
-                    model = "claude-opus-5-5" if esc["count"] >= 1 else "claude-sonnet-5"
                     cost = run_escalation(jam, row, model, esc["count"] + 1)
-                    esc["count"] += 1
-                    esc["last_epoch"] = NOW
-                    esc["last_ts"] = now_iso
-                    esc["cost_usd_total"] = float(esc.get("cost_usd_total", 0)) + cost
-                    escalations[esc_key] = esc
                     say("ESCALATED %s %s on %s ($%.2f)" % (jam.cls, jam.subject, model, cost))
+                # Shadow advances the same count and clock a real escalation would, so the
+                # model switch and the re-escalation cadence show what the cutover would do.
+                esc["count"] += 1
+                esc["last_epoch"] = NOW
+                esc["last_ts"] = now_iso
+                esc["cost_usd_total"] = float(esc.get("cost_usd_total", 0)) + cost
+                escalations[esc_key] = esc
 
     # anything in rows no longer detected is cleared
     for k, row in list(rows.items()):
@@ -624,18 +648,15 @@ def run(shadow):
                 row["time_to_clear_s"] = ""
             say("CLEARED %s %s" % (row["class"], row["subject"]))
 
+    save_jams(jams_path, rows)
+    save_escalations(esc_path, escalations)
     if shadow:
         with open(shadow_log, "a") as f:
             f.write("%s tick: %d jam(s) detected\n" % (now_iso, len(by_key)))
             for a in actions:
                 f.write("  " + a + "\n")
-        # Shadow mode never writes jams.tsv/escalations.json: it must leave no trace that a
-        # real cutover tick would need to reconcile.
-        return len(by_key), actions
-
-    save_jams(jams_path, rows)
-    save_escalations(esc_path, escalations)
-    write_summary(jams_path, summary_path, escalations)
+    else:
+        write_summary(jams_path, summary_path, escalations)
     return len(by_key), actions
 
 
