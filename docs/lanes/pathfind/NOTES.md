@@ -35,6 +35,50 @@ says it was harvested from `pull/thor-hdd.img` (09-30). The run was on the Nova.
 - For Forza, this lane's part: a first-run pathfind run on the Nova makes a Nova profile ("NEW PROFILE"). Then
   harvest it and promote it.
 
+## Pool work (10-03 13:00-13:20 PDT)
+
+| title | run | state | result | min | model calls | cost | what decided it |
+|---|---|---|---|---|---|---|---|
+| Castlevania: CoD (4B4E002D) | lane.local `1-1791056447-lanelocal-2267406` (not mine) | returning, Thor-made golden `20235e93867b` | **reached play on the Nova**: "Abandoned Castle", HP bar; f00020 shows the player in another part of the courtyard | - | 0 | - | the Thor-made save loads on the Nova: this title does not sign with the HDD key (Forza does) |
+| Forza (4D53006E) | `runs/forza-firstrun` (held) | first-run | gave up at 15 min; a live Arcade race at 2.6 min (step 18); then stuck nosed into the pit wall | 15 | 76 | $6.01 | RT works (2 x 1.5 s took it to 12 mph at the start); the steering probe turned it into the wall; the agent never reversed |
+
+- **Castlevania needs no first-run work from this lane.** The golden carries a real save, and the save loads on the
+  Nova. The first-run Name Entry recipe is already in `hints/series-castlevania.md`, and it is not needed while the
+  golden works. The pool row is for lane.local to close on its own run's verdict.
+- **Forza's profile:** the first-run made `NEW PROFILE -> Done` in two steps. The release harvested it as
+  `5725499d3c7f` (source `pull/nova-held.qcow2`). Its Garage.bin, Garage.dat and **CarIcons.sig** are byte-identical
+  to the 09-30 Nova save `67767fc7fb61`, and all three differ from the Thor-made `a1baf745d557`. Fresh-profile
+  content is deterministic, so the signed files differ by device. That confirms the EEPROM mechanism. **Promoted
+  `5725499d3c7f` as Forza's golden** (by lane.pathfind, 13:18, note in the registry). It will read as damaged on the
+  Thor, which is out of service.
+- **Forza driving, the fix (13:20):** pathfind's tokens were sequential, so it could not steer on the gas or reverse
+  while turning. New tokens `RT+<dir>:<s>` and `LT+<dir>:<s>` hold the trigger and the left stick together. The drive
+  loop is now `RT:2, RT+left:0.8, RT+right:0.8`. A still drive window (the position test) first tries
+  `LT+left:3, RT+right:3`, then the mirror, then the unlock rotation. There is a rule in the prompt (hold RT 3 s;
+  reverse while turning off a wall). Selftest `holdstill` and `actions` cover them.
+- **Position test (`c4f94ea2cd`):** see "Hold position test" below.
+
+## Hold position test (10-03)
+
+A hold counted any second the model read as play. Black Stone stood on one octagon for 600 s, swinging its sword, and
+passed the verdict. Now each kept frame (every 30 s) is compared with the previous kept frame at the probe's
+contrast-scaled step (`window_change`). Under `HOLD_STILL` = 0.03 the window is still. The perflog gets `state=still`
+(title_verdict counts only `play`), play stops being credited, and the inputs rotate until a later window moves.
+
+| stored hold strip (30-s pairs) | min | median | max |
+|---|---|---|---|
+| Black Stone hold2 (standing, verdict PASS) | 0.002 | 0.009 | 0.013 |
+| Panzer Dragoon Orta hold (flying) | 0.310 | 0.544 | 0.896 |
+| Panzer Dragoon Orta hold2 | 0.365 | 0.564 | 0.924 |
+
+- Under the new rule, Black Stone hold2 is credited about 30 s of play, not 600. No Panzer window is still.
+- n = 2 titles with hold strips. The threshold sits 2.3x above Black Stone's maximum and 10x below Panzer's minimum.
+  It is not tested on a fixed-camera title where the player moves in a small part of the frame. That is the case
+  to watch (`still_windows` in result.json, `window` in hold.jsonl).
+- The 'after' frames of the 10-02 runs (taken with no input) do not separate standing from moving. Midnight Club 3's
+  car sat at 0.001 because nothing pressed the throttle. They are not evidence either way.
+- The first window is still credited before the test can see it (30 s), so a standing hold is not credited zero.
+
 ## Resume (10-03 10:13 PDT, attempt 6): why attempt 5 did not finish
 
 - Attempt 5 ended on a WAITING file for arms run `1791042391`, but the held Panzer run had already timed out

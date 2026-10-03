@@ -212,3 +212,22 @@ target device, otherwise first-run. (3) Re-sign at compose time: per-title forma
 Blocks: Forza (pool), and possibly any Nova run on a Thor-made golden that dies on a profile/"damaged" screen.
 This lane's part: a first-run pathfind on the Nova for Forza makes a Nova profile; harvest and promote it.
 
+
+## #433 -- 2026-10-03 13:25 PDT
+
+Pool (pm/pathfind-pool.tsv), first two rows:
+- **Castlevania: CoD (4B4E002D):** lane.local's returning run 1-1791056447-lanelocal-2267406, on the Thor-made golden
+  20235e93867b, reached play on the Nova ("Abandoned Castle", HP bar; frames/f00020.png shows the player moved). So this
+  title's save does load across the two handhelds. No first-run work is needed from pathfind while that golden works. The
+  row is lane.local's to close on that run's verdict.
+- **Forza (4D53006E):** held first-run on the Nova, runs/forza-firstrun. It made a NEW PROFILE in 2 steps and reached a
+  live Arcade race at 2.6 min. Then the car was stuck nosed into the pit wall: the agent pressed RT and stick 40 times
+  and never reversed. Gave up at 15 min, 76 model calls, $6.01. Not a pass. The release harvested the new Nova profile
+  5725499d3c7f. Its CarIcons.sig, Garage.bin and Garage.dat are byte-identical to the 09-30 Nova save and differ from
+  the Thor-made golden, which confirms the device-signing cause in the 12:50 issue. **Promoted 5725499d3c7f as
+  Forza's golden** (it loads on the Nova; it will read as damaged on the Thor).
+- Tool changes, selftested: (1) **position test in the hold**: a 30-s window whose kept frames barely change is
+  state=still, not play. Black Stone's standing 600 s would now be credited about 30 s; Panzer is unaffected. (2) RT+/LT+
+  tokens (trigger and stick together), a drive loop that steers on the gas, and a reverse-while-turning step when a drive
+  window is still.
+Next: Forza run 2 (returning, the new golden, hold 600 s), queued behind lane.local's Tron telemetry run on the Nova.
