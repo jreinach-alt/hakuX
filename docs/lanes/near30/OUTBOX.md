@@ -54,3 +54,31 @@ Successor brief for lever 1 is in docs/lanes/near30/NOTES.md.
 5. GPU clock regimen. P 0.2, GPU MHz not read.
 
 Full table, budget, and the successor brief are in docs/lanes/near30/NOTES.md, step 2c.
+
+## #433 -- 2026-10-03 09:35 PDT
+
+[lane.near30] Blinx 2's first-appearance hitches are not texture loading. They come with a new pipeline, but the compile time we measure is too small to explain them. No device run was used; this is read from the 09:10 session's logcat (ubershader on).
+
+Out of 258 gameplay seconds, 9 had a worst frame of 100 ms or more:
+
+| what the hitch second carries | hitch seconds | other seconds |
+|---|---|---|
+| a new pipeline (cache miss) | 8 of 9 | 3 of 249 |
+| new textures | at most 17 textures, 106 KB | -- |
+| surface readbacks | 0 | 1 row in all of gameplay |
+
+- The 3.7-s stall at the first load into gameplay is a compile: 55 pipelines and 2.96 s of draw-path create. It happens before the ubershader can cover anything, during a load screen.
+- In 5 of the other 8 hitches, the ubershader covers the miss. Draw-path create is at most 0.3 ms and there is no library compile, yet the worst frame is 100-200 ms.
+- Remaining candidates, none measured yet: the driver's lazy first use of a linked pipeline, the GPU frame itself (35-87 ms in those seconds), or the swap from the uber pipeline to the specialised one. Per-frame timing at a hitch would tell them apart.
+- These hitches are about 3% of gameplay seconds. The sea's extra draws (25 -> 19 fps whenever the sea is in view) remain Blinx 2's top lever.
+
+Tron's top lever (the vCPU's GPU-side sleep) is now owned by lane.vcpuwait433. Memfast phase 1 has folded. The re-scored lever table is in NOTES.md, "Lever table, re-scored at attempt 4". Blinx 2 is not retested: the cost is named, and the fix is a successor lane's.
+
+NEW ISSUE: Blinx 2 (4D530065): the sea in view adds draws (26 -> 44 per frame) and drops fps 25 -> 19 in the post-tutorial Arch area
+Nova, held session 10-03 08:43-09:08 PDT, perflog build 0.4.1-1003-9169b18587-perflog, golden 377a8488c7c5 ("Jaguars"). Over 2-s rows, sea out: 25.0 fps, 26 draws/frame, GPU 35 ms. Sea in: 19.0 fps, 44 draws/frame, GPU 50 ms. GPU ms per draw falls (1.36 -> 1.13), so the draw count is the cost. vCPU on-CPU stays at 0.88 and texture uploads are 0. Scored share at 28.5 fps: 0.115 over 314 s of valid play. This blocks Blinx 2 Playable (#433). Evidence: docs/lanes/near30/NOTES.md step 2c, ocean433.py, blinx2-perflog-extract.tsv. Next step: a per-draw frame dump at sea in and sea out (successor brief oceandraw433 in NOTES).
+
+NEW ISSUE: Blinx 2 (4D530065): 100-380 ms hitches at a new pipeline even with the ubershader on; measured compile < 1 ms
+Same session, ubershader default ([gpl569] mode=3, [uber569] uncovered=0). 9 of 258 gameplay seconds have a worst frame of 100 ms or more, and 8 of those 9 carry pipeline cache misses (3 of the other 249 do). In 5 of the 8, draw-path create (dpc_ms) is at most 0.3 ms and there is no GPL library compile. Not texture upload: at most 17 new textures and 106 KB per hitch second. Not readback: 0. A separate 3.7-s stall at the first gameplay load is a real compile: 55 pipelines, 2960 ms of draw-path create. Unmeasured candidates: Turnip's lazy first use of a fast-linked GPL pipeline, the GPU frame, or the uber-to-specialised swap. Evidence: docs/lanes/near30/NOTES.md step 2d and dips433.py. Owner observation: "FPS dips when a new texture is added".
+
+NEW ISSUE: Blinx 2's golden "Jaguars" starts a timed challenge, so a 600-s scored walk runs into RETRY CHECKPOINT and a scripted dialogue
+The golden (377a8488c7c5) loads into the post-tutorial "Arch" timed challenge. lane.near30's walk-and-look batches (scored433.py) let the timer run out at ~08:52:47: a "RETRY CHECKPOINT? Yes / No" prompt sat on screen for two batches, and batch 4 ended in an "Operator" dialogue. Only 314 s of the ~20-min session was valid gameplay, so the 600-s Playable window cannot be scored from this golden with a walk that does not finish the challenge. Blinx 2's Playable verdict needs either a route that completes the challenge or a golden in a free-roam area. Evidence: docs/lanes/near30/NOTES.md step 2c, "What happened in the session".

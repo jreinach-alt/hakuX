@@ -3,6 +3,19 @@
 Brief: owner 2026-10-02 ~16:25 PDT, "We're close but not quite there yet."
 Bar: >= 28.5 fps for >= 90% of the scored window (title_verdict.py, targets.toml).
 
+## Attempt 4 (resumed 2026-10-03 09:31 PDT): why attempt 3 did not finish
+
+Attempt 3 did its work: the Blinx 2 session, the ocean decomposition, the levers, PR.md at
+`State: ready`, pushed at 262eac35ad. What it missed was written after its session had started:
+the 10-03 rule that every finding outliving the session goes to OUTBOX.md as a `NEW ISSUE:` line,
+and the rule that a missed bar is not retested. Its OUTBOX had no NEW ISSUE lines. It also left one
+question from Addendum 1 open: whether the first-appearance dips are texture uploads, compiles or
+readbacks ("not measured here"). That question could be answered from the raw logcat it had
+already captured. This attempt adds no device runs. It merges master (memfast phase 1, 6c828f9860),
+answers the hitch question offline (step 2d), notes that lane.vcpuwait433 has taken Tron's lever 1,
+and writes the NEW ISSUE lines. Blinx 2 is not retested: its cost is named (2c, 2d), and the fix is
+the successor lane's.
+
 ## Attempt 3 (resumed 2026-10-03 08:14 PDT): why attempts 1-2 did not finish
 
 Attempt 1 (10-02, to 16:50 PDT) finished the offline Tron/ToeJam decomposition and one Tron
@@ -352,7 +365,67 @@ is not the long pole, so its P is low here.
        (a different lever, the reflection pass). Write the prediction before any arm.
     4. Do not touch the JIT (memfast owns it) or the ubershader path (folded).
 
+## Step 2d: Blinx 2's first-appearance hitches, from attempt 3's logcat (attempt 4, offline, no run)
+
+`dips433.py <logcat>` builds one row per `hakuX-pace` second from lines that every build prints:
+fps, worst frame (`max`), draws per frame (BE), GPU ms, texture uploads (`txu[` n/KB, `new`, `rb`),
+surface downloads (`sd[... dl`), pipeline and shader cache misses and draw-path pipeline create
+ms (`[shd413]` dpm, dsm, dpc_ms). Input: attempt 3's raw logcat (`b2run/r1/logcat.txt`, untracked),
+which runs the ubershader default (`[gpl569] mode=3`, `[uber569] uncovered=0`). Gameplay rows run
+from 08:44:05 to 09:07:50 with >= 5 draws per frame (n = 258).
+
+| second | worst frame ms | GPU ms/frame | new textures (KB) | pipeline misses | draw-path create ms | GPL lib compile ms in the row |
+|---|---|---|---|---|---|---|
+| 08:44:08 (first gameplay load) | **3685** | 28 | 7 (37) | 55 | **2960** | 161 |
+| 08:44:14 | 203 | 87 | 13 (94) | 13 | 0.3 | 0 |
+| 08:44:18 | 107 | 47 | 5 (98) | 2 | 0.1 | 0 |
+| 08:44:21 | 102 | 38 | 0 | 5 | 0.2 | 0 |
+| 08:44:23 | 116 | 35 | 3 (14) | 0 | 0 | 0 |
+| 08:46:04 | 184 | 29 | 17 (106) | 2 | 0.1 | 0 |
+| 08:46:56 | 131 | 27 | 1 (64) | 5 | 0.2 | 0 |
+| 08:52:19 (challenge reset) | 379 | 63 | 0 | 29 | 78 | 77 |
+| 09:06:12 | 161 | 34 | 0 | 1 | 16 | 16 |
+
+Over all 258 gameplay rows, surface downloads appear in 1 row and texture readbacks in none.
+Pipeline misses appear in 8 of the 9 hitch rows and in 3 of the 249 other rows.
+
+Read:
+- **Not texture upload or convert.** A hitch second carries at most 17 new textures and 106 KB.
+  The steady 1-s rows upload 30 MB/s of dirty-texture refresh (`cvt30720K`) at 60 fps in menus
+  without a hitch.
+- **Not surface readback.** There are 0 readbacks in hitch rows.
+- **It is a new pipeline: 8 of 9 hitches, against 3 of 249 other rows. But the CPU-side compile we
+  measure is not the time.** In 5 of the 8, the draw-path create time is at most 0.3 ms and the GPL
+  library compile is 0, because the ubershader covers the miss. In 2 more (08:52:19 and 09:06:12),
+  the compile is 78 and 16 ms, against worst frames of 379 and 161 ms. The one exception is the cold first
+  load at 08:44:08, which is a loading screen: 55 misses and 2.96 s of draw-path create. In that row
+  the ubershader cannot cover the miss yet.
+- So the 100-380 ms frames at a new pipeline are spent somewhere these counters do not see. Two
+  candidates, neither measured: Turnip's first use of a fast-linked GPL pipeline (lazy driver
+  work at bind or first submit), and the GPU frame itself (GPU ms rises to 35-87 in those rows).
+  Per-frame (not per-second) timing at a hitch would separate them. The `[uber569]` swap from the
+  uber pipeline to the specialised one is a third candidate.
+
+What a hit would look like for each: (a) driver first use: the render thread's Draw or Pipe phase
+rises in the hitch frame while GPU ms does not; (b) GPU frame: GPU ms for that frame rises; (c) the
+swap: the hitch lines up with an `[uber569] next=` increment.
+
+## Lever table, re-scored at attempt 4 (all three titles)
+
+| # | lever | title | P | evidence for P | win | cost | owner |
+|---|---|---|---|---|---|---|---|
+| 1 | **Blinx 2: the sea's extra draws** (name them with a per-draw dump, then batch them or cut fragment cost) | Blinx 2 | 0.35 | draws 26 -> 44 per frame, GPU 35 -> 50 ms, fps 25 -> 19; per-draw cost falls, so the count is the cost | sea-in 19 -> ~24 fps; Blinx 2 is the title furthest below the bar (0.115) | 1 held session + a renderer change | unowned: successor `oceandraw433` (step 2c) |
+| 2 | Tron: the vCPU's GPU-side sleep | Tron, BF2 | 0.3 (unchanged) | vcpuwait433 removed the intro's pfifo.lock wait (pixels PASS 45/45). In-level v_blk did not drop (6.93 against 5.70 ms), and the in-level site is unmeasured | ~3 ms/frame on Tron, ~6 on BF2 | its lane's in-level off-CPU capture | lane.vcpuwait433 |
+| 3 | vCPU JIT (memfast phase 2, fastmem) | Tron, every CPU-bound title | 0.5 on Tron, 0.15 on Blinx 2 | phase 1 folded at 6c828f9860 (pixels PASS, J not shown at the 30 fps cap) | ~3.5 ms/frame on Tron | board grants | lane.memfast |
+| 4 | Blinx 2 new-pipeline hitches (step 2d) | Blinx 2 | 0.25 that per-frame timing names one of (a)-(c) and that it has a fix | 8 of 9 hitches sit on a new pipeline. In 5 of those 8, the measured compile is at most 0.3 ms | 100-380 ms hitches. Not the scored share: they are 9 of 258 seconds | 1 perflog session with per-frame logging at hitches | unowned |
+| 5 | GPU clock regimen | Blinx 2 | 0.2 | GPU-side verdict, but no GPU MHz in the held session | up to ~20% of GPU ms | regimen | -- |
+
+Lever 4 ranks below lever 1 because the hitches are about 3% of gameplay seconds, while the sea
+costs about 6 fps on every view of the sea. Lever 1 is still the top lever for Blinx 2.
+
 ## Files
+
+`dips433.py` (attempt 4: the per-second hitch classifier, step 2d).
 
 `decompose.py` (the reader), `decompose.out` / `windows.tsv` (the 8 plain
 runs), `tron-perflog.out` / `tron-perflog.tsv` (run 1), `tron-newgame.route`
