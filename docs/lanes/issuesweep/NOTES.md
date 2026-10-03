@@ -29,5 +29,10 @@
 - Per-title route and perf failures are grouped by class (#728, #729, #747, #748). Look at the title ids in each issue body before acting.
 - Preflight exits 0 when the coverage gate cannot reach GitHub (#720). Do not trust a preflight pass from a branch that has not run the gate.
 
+## Preflight status (head 16aeb13793)
+- `docs/testing/preflight.sh` FAILS on the coverage gate only: 68 open issues with neither a lane nor a blocker (#715-#781 from this pass, plus #782 from another source). Every other gate passes.
+- `--allow-tracker` does not clear this gate. It is a board gate: each row needs a territory or blocker entry on origin/board, which lanes may not edit.
+- Board request written: `dispatch/board-requests/lane.issuesweep.md`. Preflight passes once the board classifies these issues.
+
 ## Not repeated
 - Nothing here changes the code. No device work and no requests were queued.
