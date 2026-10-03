@@ -9,6 +9,22 @@ below 28.5 fps (median F ~43 ms) the vCPU thread is asleep, neither running
 nor runnable, ~10 ms per frame. That sleep tracks GPU ms per frame (r 0.64),
 not the renderer's CPU draw work (0.08). BF2: 21 ms of a 64 ms frame.
 
+## Resume (2026-10-03 09:13 PDT): the Tron B arm, queued by hand on an all-goldens disk
+
+**Why the 09:00 resume did not finish.** It finished its work: it re-made
+the fold's head run. Then it ended waiting on that run with no `WAITING`
+file. The hostops addendum at 09:13 asks for the Tron B arm: the arms job
+skips soak predictions, so nothing else will queue it.
+
+| step | result |
+|---|---|
+| head run `1-1791043151-vcpuwait433-1774257` (Thor, 4f74f7512a) | DONE, apk ccbe76c6ba1b: **45/45 rows match pixel arm B 4105238** (status through off_by_one) |
+| dispatcher | savestate433 is live: the 09:13 Conker run logged `titles disk: harvest/build/keep`, and its harvest reads 42560001 = 5489ae7f9b58 |
+| Tron returning route | still **refused** by request.sh: "the title is not identified (no targets.toml iso entry)". Defect 2 from 08:04 is still open |
+| workaround | `tron-newgame-anystate.route`: the returning route's text, unchanged, declared `# state: any`. For an unidentified title, `compose()` loads all goldens. `titlestate.compose('nova', None, 'any')` gives 84 goldens, with 42560001 -> 5489ae7f9b58, A's profile. So the DOWN lands on New Game, as in A's frame 200443 |
+| prediction | `vcpuwait433-tron-anystate.json` (sha256 7906cac1...): same refs, A and legs. V names the all-goldens disk, and the menu-down frame decides it. M 0.75, O1 0.4, O2 0.25 (re-scored down after 947718) |
+| pathfind | nothing queued; its brief gates device time on an offline replay first. Queued at study priority with a plain id, behind the Nova's three waiting requests, so it does not jump anyone. A hold that pathfind takes still wins over the queue |
+
 ## Resume (2026-10-03 09:00 PDT): the fold's head run, re-made at a merged head
 
 **Why attempt 5 did not finish.** It did finish its work. PR.md was ready,
