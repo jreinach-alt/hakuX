@@ -58,6 +58,27 @@ says it was harvested from `pull/thor-hdd.img` (09-30). The run was on the Nova.
   reverse while turning off a wall). Selftest `holdstill` and `actions` cover them.
 - **Position test (`c4f94ea2cd`):** see "Hold position test" below.
 
+### Forza run 2 (13:33-13:49 PDT, returning on the new golden): gave up; the profile fix is proven
+
+| run | state | live race at | result | model calls | cost |
+|---|---|---|---|---|---|
+| runs/forza-run2 | returning, golden `5725499d3c7f` | 2.6 min (step 19) | gave up at 15 min, stuck on walls and grass; moving at 8-12 MPH at the end | 60 | $4.56 |
+
+- **The golden loads on the Nova.** Step 9: PROFILE SELECT with "Default" lit and no damaged message. A took it to the
+  main menu. The memfast route's 25-press loop is gone. Forza's pool row is released by the golden change: the
+  admission gate compares the golden.
+- **Why it hit the wall again: the probe, not the throttle.** The confirm probe's self-moving steering legs were
+  `STICK:left:1.2` / `STICK:right:1.2` with the gas off. At race start the car was moving at 9 MPH under RT
+  (022-probe-b), and the gas-off steer put it into the pit-entry pillar by 023. Run 1 did the same. Fixed in
+  `7c2d0da871`: a throttle probe steers with `RT+left` / `RT+right`. Selftest `ownmotion` (ownrt).
+  The new reverse tokens did get it off the wall several times (steps 48, 64: 10-12 MPH after).
+- **The car is slow because the game is slow, not because RT is weak.** The race clock went from 3.4 s (step 19,
+  t = 155.6 s) to 27.9 s (step 23, t = 196.8 s), so 24.5 s of game time in 41.2 s of wall time: **0.59x speed** at
+  16-21 fps. A 3-s RT hold is about 1.8 s of game time, and ~12 MPH fits that. I checked the pad path too: the
+  Nova's cached ABS_GAS range is 0..32767, and "max" sends 32767. No input defect.
+- **Forza is not a Playable candidate today**, whatever the driving: 16-21 fps against the 30-fps bar. Per the owner's
+  10-03 rule that is telemetry, not a pathfind retest. No run 3.
+
 ## Hold position test (10-03)
 
 A hold counted any second the model read as play. Black Stone stood on one octagon for 600 s, swinging its sword, and

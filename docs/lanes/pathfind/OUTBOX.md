@@ -231,3 +231,21 @@ Pool (pm/pathfind-pool.tsv), first two rows:
   tokens (trigger and stick together), a drive loop that steers on the gas, and a reverse-while-turning step when a drive
   window is still.
 Next: Forza run 2 (returning, the new golden, hold 600 s), queued behind lane.local's Tron telemetry run on the Nova.
+
+## #433 -- 2026-10-03 13:55 PDT
+
+Forza (4D53006E), held run 2 on the Nova, returning on the new Nova-made golden 5725499d3c7f: **the profile loads**
+(PROFILE SELECT, "Default" lit, no damaged message, A to the main menu). The pool's profile failure is fixed. The
+admission gate releases it on the golden change. It reached a live race again at 2.6 min and gave up at 15 min (60
+calls, $4.56), stuck on walls. Cause, found in the frames: the confirm probe's steering legs steered with the gas off
+and turned the slow car into the pit pillar (both runs). Fixed in the tool (a throttle probe steers on the throttle).
+The car is slow because the game runs at **0.59x speed** (race clock 24.5 s in 41.2 s of wall time, 16-21 fps). It is
+not an input fault: the trigger sends its full range. Forza is a performance miss for the Playable bar, not a route
+miss. No further pathfind runs on it today.
+Other pool rows, identification (no rerun): Burnout Revenge (1790873999), D&D Heroes (1790878175) and BF2:MC
+(1790877270) are classed did-not-reach-play, but all three reached play. Their routes took 4.7-6 min to the mark in an
+840-s window, so play was 484-557 s, and the real miss is fps (72%, 46%, 66% at >= 30 fps). They are performance
+rows, not routing. A longer window (seconds >= route time + 600 + margin) fixes the duration part only.
+ToeJam & Earl III (1791003320, class menu): the route's play loop opened the Vinyl Albums jukebox after Player Stats
+and stayed in it all window. A pathfind held run (returning, hold 600 s) is next on the Nova, after lane.xbox's
+title push.
