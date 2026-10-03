@@ -4972,7 +4972,7 @@ title = "Blinx 2 (4D530065): the sea in view adds draws (26 -> 44 per frame)"
 component = "triage"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 09:55 PDT, 10-03 coverage gate): filed on the forge with no tracker row; sea-in-view draw count rises 26 -> 44 per frame; the same ocean scene as #677. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
+blocked_on = "UNTRIAGED (hostops 09:51 PDT, 10-03 coverage gate): filed on the forge with no tracker row; sea-in-view draw count rises 26 -> 44 per frame; the same ocean scene as #677. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
 
 [issue.701]
@@ -4980,7 +4980,7 @@ title = "Blinx 2 (4D530065): 100-380 ms hitches at a new pipeline even with the 
 component = "triage"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 09:55 PDT, 10-03 coverage gate): filed on the forge with no tracker row; first-use pipeline hitches with the ubershader on; no lane owns the stall measurement. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
+blocked_on = "UNTRIAGED (hostops 09:51 PDT, 10-03 coverage gate): filed on the forge with no tracker row; first-use pipeline hitches with the ubershader on; no lane owns the stall measurement. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
 
 [issue.702]
@@ -4988,7 +4988,7 @@ title = "Blinx 2's golden 'Jaguars' starts a timed challenge, so a 600-s scored 
 component = "triage"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 09:55 PDT, 10-03 coverage gate): filed on the forge with no tracker row; a timed challenge inside the golden scene makes a 600-s scored window invalid as a measurement. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
+blocked_on = "UNTRIAGED (hostops 09:51 PDT, 10-03 coverage gate): filed on the forge with no tracker row; a timed challenge inside the golden scene makes a 600-s scored window invalid as a measurement. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
 
 [issue.703]
@@ -4996,5 +4996,5 @@ title = "Kabuki Warriors with the ubershader on: 400-750 ms stalls 1-3 min into 
 component = "triage"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 09:55 PDT, 10-03 coverage gate): filed on the forge with no tracker row; ubershader-on stalls 1-3 min into play; no lane owns the stall measurement. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
+blocked_on = "UNTRIAGED (hostops 09:51 PDT, 10-03 coverage gate): filed on the forge with no tracker row; ubershader-on stalls 1-3 min into play; no lane owns the stall measurement. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
