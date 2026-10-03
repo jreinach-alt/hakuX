@@ -622,7 +622,35 @@ def find_pr(fg, ref, op):
     return prs[0]
 
 
+def search_quals(a):
+    """`--search` holding only qualifiers -> the matching flags in `a`. Free text raises NotImpl.
+
+    The forge has no PR search; xbox_check.sh's `--search 'head:lane/xbox'` is the form in use.
+    """
+    s = a.get("--search")
+    if s is None:
+        return
+    flag = {"head": "--head", "base": "--base", "author": "--author", "label": "--label"}
+    for tok in s.split():
+        k, _, v = tok.partition(":")
+        if not v:
+            raise NotImpl()
+        if k == "is" and v in ("open", "closed", "merged"):
+            k = "state"
+            flag["state"] = "--state"
+        if k == "label":
+            a.vals.setdefault("--label", []).append(v)
+        elif k in flag:
+            if a.vals.setdefault(flag[k], v) != v:
+                raise Fail(2, f"--search {tok} conflicts with {flag[k]} {a.vals[flag[k]]}")
+        elif k == "is" and v == "draft" or k == "draft" and v == "true":
+            a.vals["--draft"] = True
+        else:
+            raise NotImpl()
+
+
 def list_prs(fg, a, op):
+    search_quals(a)
     state = (a.get("--state") or "open").lower()
     if state not in ("open", "closed", "merged", "all"):
         raise Fail(2, f"{op}: invalid --state {state}")
@@ -659,7 +687,7 @@ def cmd_pr(argv):
         a = Args(rest, spec(JSONFLAGS, **{"--state": (("-s",), "val"), "--limit": (("-L",), "val"),
                                           "--label": (("-l",), "multi"), "--head": (("-H",), "val"),
                                           "--base": (("-B",), "val"), "--author": (("-A",), "val"),
-                                          "--draft": (("-d",), "bool")}))
+                                          "--draft": (("-d",), "bool"), "--search": (("-S",), "val")}))
         fg = Forge(repo_of(a), op)
         fields = fields_of(a, PR_FIELDS, op)
         rows = list_prs(fg, a, op)
