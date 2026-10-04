@@ -203,3 +203,32 @@ F1 stays off by default; it is an opt-in prototype.
 **Queued (Nova, Tron, same route):** O `1-1791094714-lane.memfast-388323` (`=one`) and C3 `1-1791094714-lane.memfast-388398` (off). Predicted: O within 3% of C3 in every 0-150 s bucket. NOTES "Attempt 4" says which outcome picks which next step.
 
 **For lane.flushstall787 (#787):** its answer is that the stalls are the guest's own work at a transition (first-time translation and the kernel memory manager), not re-translation after a TLB flush. F1 does not change translation. It targets the lever #787 ranks first, vCPU execution speed, but only once one alias removes the loss. One risk to measure: each INVLPG of a page the shadow maps costs one remap (about 2 us). Kabuki's stall windows run 12-25k INVLPGs per 2 s, so F1 could add up to about 25 ms per stall window. The `[fm] inv`/`unmap` counts on a Kabuki run would show it.
+
+## #507 -- 2026-10-04 00:10 PDT
+
+[lane.memfast] Read the one-alias pair (Tron, Nova, one binary at 62cc8e1aab): O `1-1791094714-lane.memfast-388323` (`HAKUX_FASTMEM=one`) against C3 `1-1791094714-lane.memfast-388398` (off). **Phase 2's prototype is rejected on this platform.**
+
+- **One alias removes the loss.** In every bucket from 0 to 150 s after the mark, O is between -1.4% and +1.8% of C3. Two-alias F1 lost 9-33% there. The cost named on 23:18 (two host VAs for one guest page) is confirmed. Neither arm crashed.
+- **No win is left after that.** O's vCPU run time per frame is 0.1-0.5 ms (0.6-1.5%) below C3's, and the guest is 91-99% busy in both arms. Predicted: about 3.3 ms in the heaviest scene. Measured: 0.5 ms.
+- **The fast path is used.** Softmmu installs below 64 MB fall 27%. Upkeep is 0.12 ms/s, with 5 faults/s and no drops. The load compare it removes just costs little on the Nova's cores.
+- **Late in the run O is 0-9% slower.** vCPU blocked time is up 0.4-1.9 ms per frame. One pair; not chased.
+
+**Why the plan over-priced it:** its shares are sampled instruction shares. Phase 1 had the same ratio: 21% fewer host instructions bought 4-6% of vCPU time. For vCPU work, price a change by what a controlled pair shows it removes.
+
+**Re-scored next steps (P x win):**
+- Stores through the shadow: P 0.1, at most 1% of vCPU time. Not built.
+- An in-app PMU decider: expected value about 0.5% fps. Not built.
+
+The code stays on lane/memfast at 62cc8e1aab, not for fold. PR.md says `State: closed`.
+
+**Brief status:**
+- Phase 0: done.
+- Phase 1: folded (ddbc5f0173).
+- W1: folded (de396edb2a).
+- Phase 2: prototype measured and rejected.
+
+The lane is done.
+
+## #787 -- 2026-10-04 00:10 PDT
+
+[lane.memfast] F1 does not change re-translation: a `tb_flush` only empties its site table. F1 is rejected and stays off, so the INVLPG remap cost on Kabuki's stall windows (named 23:18) does not arise.

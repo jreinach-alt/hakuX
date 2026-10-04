@@ -1,9 +1,9 @@
-# lane.memfast F1: guest loads through the host MMU ("fastmem"), behind HAKUX_FASTMEM, default off (#507)
-State: draft
+# lane.memfast F1: guest loads through the host MMU ("fastmem"), behind HAKUX_FASTMEM, default off (#507) -- REJECTED, not for fold
+State: closed
 
 Lane: memfast            Issue: #507
 Base: master @ 51305b71dd (merged; W1 folded as de396edb2a)
-Files: accel/tcg/fastmem.c, accel/tcg/fastmem.h, accel/tcg/cputlb.c, tcg/aarch64/tcg-target.c.inc, hw/xbox/xbox.c, target/i386/tcg/system/excp_helper.c, docs/lanes/memfast/NOTES.md, docs/lanes/memfast/PR.md, docs/lanes/memfast/OUTBOX.md, docs/lanes/memfast/f1_read.py, docs/lanes/memfast/WAITING
+Files: accel/tcg/fastmem.c, accel/tcg/fastmem.h, accel/tcg/cputlb.c, tcg/aarch64/tcg-target.c.inc, hw/xbox/xbox.c, target/i386/tcg/system/excp_helper.c, docs/lanes/memfast/NOTES.md, docs/lanes/memfast/PR.md, docs/lanes/memfast/OUTBOX.md, docs/lanes/memfast/f1_read.py
 Prediction: none: an env pilot on one binary. The predicted values and the kill line are written in NOTES ("Attempt 3") before the runs. A registered arm follows if the pilot is not killed.
 Needs device: yes    Needs NDK: yes
 
@@ -31,7 +31,8 @@ The design and the choices against it are in NOTES ("Phase 2 design" and "Attemp
 | F1 reaches play, no crash or hang; `[fm]` faults, upkeep, patched sites | **pass**: 750 s, 5.3 faults/s, 0.12 ms/s upkeep, 732 sites patched |
 | Tron sustained fps, F against C: +5-15% predicted; kill below -3% | **killed**: -9 to -33% fps for 0-150 s after the mark, repeated in batch 2 (F2). The pilot's late gain was route divergence: B, with no shadow, reaches the same 60 cap state |
 | Batch 2: what costs the early scenes | **named**: THP is `never` on the Nova (master's RAM has no huge pages either), and memfd RAM alone (B) is level with the control. The cost is the shadow's second host alias for each page: loads use one VA and stores another. F1's counted work is under 0.1 ms/s there (NOTES, "Attempt 4") |
-| One alias (`=one`) against the control, Tron, 0-150 s | **queued** at `62cc8e1aab`: O `1-1791094714-lane.memfast-388323`, C3 `1-1791094714-lane.memfast-388398`. Predicted: O within 3% of C3 in every early bucket |
+| One alias (`=one`) against the control, Tron, 0-150 s | **pass**: O `1-1791094714-lane.memfast-388323` is -1.4 to +1.8% of C3 `1-1791094714-lane.memfast-388398` in every early bucket. The aliasing loss is gone; no crash in either arm |
+| F1's load win: `v_run` per frame, O against C3 | **refuted**: 0.1-0.5 ms (0.6-1.5%) less in five of six early buckets, 0.2 ms more in the sixth, with the guest 91-99% busy. Predicted about 3.3 ms at 120 s. Softmmu installs fall 27%, so the fast path is used; the compare it removes costs little on these cores (NOTES, "Attempt 5") |
 
 ## Local checks (no CI while GitHub is suspended)
 
@@ -41,13 +42,19 @@ The design and the choices against it are in NOTES ("Phase 2 design" and "Attemp
   preprocessed output confirms the F1 code is built.
 - No harness files changed, so `selftest.sh` does not apply.
 
-## Next
+## Verdict and next
 
-The O/C3 pair decides whether one alias recovers the early scenes. NOTES
-("Attempt 4") has the outcome table, and "Next" item 8 has each candidate
-with P, win and cost. The leading candidate is one alias: P 0.55, it
-recovers a 9-33% loss, and it is the precondition for F1's +5-15% on Tron.
-F1 stays draft and default-off until a pair shows it no slower than the
-control.
+**Rejected, not for fold.** With one alias, F1 costs nothing, but removing
+the inline load compare saves at most 1.5% of the vCPU's time on Tron, a
+vCPU-bound title below its cap. The code stays on `lane/memfast` at
+`62cc8e1aab` for reference. Off by default it is inert, but it reserves X26
+and patches four files for about 1%.
+
+NOTES ("Next", 2026-10-04) re-scores the remaining candidates with P and
+win: an in-app PMU decider (expected value about 0.5% fps) and stores
+through the shadow (P 0.1, at most 1% of vCPU time). Neither is worth a
+device pair now. The lesson for vCPU work: price a change by what a
+controlled pair shows it removes, not by the sample share of the
+instructions it deletes.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

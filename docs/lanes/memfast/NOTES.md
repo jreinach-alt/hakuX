@@ -1801,3 +1801,97 @@ runs). On resume:
 - read `[fm]` with `f1_read.py` and `.scratch/fm_buckets.py`, and check
   O's logcat for a vCPU-thread SIGSEGV with `si_addr` in the shadow;
 - apply the outcome table in "Attempt 4".
+
+## Attempt 5 (2026-10-04 00:07 PDT): the one-alias pair read; F1 rejected on this platform
+
+**Why attempt 4 did not finish:** it did, as a wait. It ended at 23:20 PDT
+with `WAITING` naming the O/C3 pair. Both runs finished (DONE), and the
+lanewaker resumed the lane. No code changed in this attempt.
+
+### O against C3 (Tron, Nova, one binary at `62cc8e1aab`, the same route)
+
+Runs: O `1-1791094714-lane.memfast-388323` (`HAKUX_FASTMEM=one`), C3
+`1-1791094714-lane.memfast-388398` (off). Copies are in `.scratch/f1/{O,C3}`
+(`.scratch/copy_oc3.py`). Readers: `.scratch/buckets.py` (O and C3 added),
+`f1_read.py`, `mf0_read.py`. Neither run crashed: no SIGSEGV or fatal signal
+in either logcat, and both held Tron for 751 s. O armed
+(`[fm] on ... one=1`).
+
+| s after mark | C3 fps | O fps | O vs C3 | C3 v_run ms | O v_run ms | F2 fps (batch 2) |
+|---|---|---|---|---|---|---|
+| 0 | 46.3 | 46.3 | 0.0% | 17.8 | 17.6 | 42.0 |
+| 30 | 50.0 | 50.9 | +1.8% | 17.5 | 17.4 | 37.5 |
+| 60 | 54.8 | 55.7 | +1.6% | 17.1 | 17.0 | 49.8 |
+| 90 | 44.4 | 45.2 | +1.8% | 19.7 | 19.4 | 29.5 |
+| 120 | 36.4 | 36.8 | +1.1% | 33.5 | 33.0 | 30.2 |
+| 150 | 58.9 | 58.1 | -1.4% | 16.6 | 16.8 | 46.2 |
+| 270-420 | 43.0-50.9 | 42.0-48.5 | -0.2 to -9.1% | 17.0-18.5 | 17.6-18.6 | 45.6-48.7 |
+
+- **The deciding leg passes: one alias removes the loss.** O is within 3%
+  of C3 in every 0-150 s bucket (-1.4 to +1.8%), where F/F2 lost 9-33%.
+  The two-alias cost named in attempt 4 is confirmed.
+- **But F1 has no load win to give.** O's `v_run` per frame is 0.1-0.5 ms
+  (0.6-1.5%) below C3's in five of the six early buckets and 0.2 ms above
+  in the sixth. The guest is not idle there (`[rr425w]` busy 91-99% of
+  each window in both arms), so this is real guest work done at almost
+  the same speed. Predicted: 9-11% of vCPU time, about 3.3 ms at 120 s
+  (near30: 6.5-8 ms of a 43-ms frame for all translation). Measured: 0.5 ms.
+- **The fast path is used.** O's softmmu installs below 64 MB fall 27%
+  (20.8 M against 28.3 M in about 770 s, `mf0_read.py`). What is left is
+  stores and code fetch. `[fm]` in play: 5.2 faults/s, 0.12 ms/s upkeep,
+  754 patched sites of 229k, no drops, no cap hits; the same as F2.
+  Coverage by construction: only loads with an alignment check, 128-bit
+  loads and the RCpc mode keep the compare (`hakux_fm_emit_ld`).
+- **Late in the run O is 0-9% slower** in the shared 41-51 fps state, with
+  `v_run` level and `v_blk` 0.4-1.9 ms higher per frame. O's idx-5 TLB
+  resized to 2,048 entries (C3: 1,024), which doubles `tlb_reset_dirty`'s
+  scan (`rdus` 3.0 against 1.6 ms per 2 s): too small to explain it. One
+  pair; not chased, since F1 is rejected on the early leg.
+
+**Verdict: F1 (loads only) is rejected on the Nova.** Its mechanism works,
+it is cheap to keep coherent, and with one alias it costs nothing. But
+removing the inline load compare saves at most 1.5% of the vCPU's time on
+the title chosen because it is vCPU-bound below its cap. Leg F1's
+"+5-15% fps on Tron" is refuted.
+
+**Why the plan over-priced it.** The plan's shares are sampled instruction
+shares in the JIT code (`jitmix.py`). On the Nova's out-of-order cores the
+compare's loads hit L1, its branch predicts, and it overlaps the work
+around it, so removing it saves far less time than its sample share.
+Phase 1 showed the same ratio: 21% fewer host instructions per TB bought
+4.3-6.2% of vCPU time. Here about 9% of sampled time bought 1%. **Price a
+vCPU change by a measured removal, not by the sample share of the
+instructions it removes.**
+
+The code stays on this branch at `62cc8e1aab` (F1, `=one`, F0a, F0b), and
+is not for fold: off by default it is inert, but it reserves X26 and
+patches four files for a 1% gain.
+
+### For lane.flushstall787 (#787)
+
+F1 does not change re-translation: a `tb_flush` empties the site table and
+nothing else. F1 will not be on by default, so the INVLPG remap risk named
+on 23:18 does not arise.
+
+## Next (2026-10-04 00:07 PDT, after the one-alias pair; re-scored)
+
+| candidate | P, and its evidence | win | cost | order |
+|---|---|---|---|---|
+| Park F1 (loads) and do not build stores (design F2) | - | - | none | **recommended** |
+| In-app PMU decider: instructions and cycles on the vCPU thread, O against C3 | a decider. Instructions per frame down 8% or more with cycles flat says the compare was hidden latency: park for good. Instructions not down says a coverage gap: find it, and F1 is back at its prediction. P(gap) 0.15: the code excludes only aligned, 128-bit and RCpc loads, installs fell 27%, and `v_run` moved the right way by 1%. P(counters readable from the app) about 0.5 | none by itself; then +5-10% fps at P 0.15 | in-app `perf_event_open` code, 2 Nova runs | not now: expected value about 0.5 x 0.15 x 7% = 0.5% fps |
+| Stores through the shadow (design F2) | 0.1. The load result prices the compare at about 1.5% of vCPU time when removed; GTA's store compare sampled at 5.7%, so at most about 1% | 1% of vCPU time or less | large: write faults for dirty tracking and SMC | no |
+
+**Where the vCPU's time is, then:** not in the softmmu compare on this
+core class. The vCPU JIT direction (owner, 09-28) and lane.ibcache's
+indirect-branch work are the larger levers. Before ranking any further
+JIT-memory change, measure what it removes with a controlled pair (this
+lane's O/C3 shape), not with a sample share.
+
+**Do not repeat:** F1 on another vCPU-bound title in the hope of a gain
+(Tron's `v_run` resolves 1%; BF2 MC would cost a pair to show the same);
+THP for guest RAM on the Nova (`never`, attempt 4); two host aliases for
+one guest page (attempt 4).
+
+**Session ended 00:10 PDT, not waiting.** Phases 0 and 1 are folded, W1 is
+folded, and phase 2's prototype is measured and rejected. The lane's brief
+is done; `WAITING` is removed.
