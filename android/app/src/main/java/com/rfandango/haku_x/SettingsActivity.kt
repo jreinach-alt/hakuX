@@ -320,6 +320,7 @@ class SettingsActivity : AppCompatActivity() {
   private lateinit var flashPathText: TextView
   private lateinit var hddPathText: TextView
   private lateinit var gamesFolderPathText: TextView
+  private lateinit var gamesFolderList: LinearLayout
 
   private val romExts = setOf("bin", "rom", "img")
   private val hddExts = setOf("qcow2", "img")
@@ -379,7 +380,7 @@ class SettingsActivity : AppCompatActivity() {
             android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
             android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         } catch (_: SecurityException) {}
-        prefs.edit().putString("gamesFolderUri", uri.toString()).apply()
+        GamesFolders.add(prefs, uri)
         updateGamesFolderPath()
       }
     }
@@ -484,6 +485,7 @@ class SettingsActivity : AppCompatActivity() {
     flashPathText = findViewById(R.id.settings_flash_path)
     hddPathText = findViewById(R.id.settings_hdd_path)
     gamesFolderPathText = findViewById(R.id.settings_games_folder_path)
+    gamesFolderList = findViewById(R.id.settings_games_folder_list)
     updateMcpxPath()
     updateFlashPath()
     updateHddPath()
@@ -498,8 +500,7 @@ class SettingsActivity : AppCompatActivity() {
       pickHdd.launch(arrayOf("application/x-qcow2", "application/octet-stream"))
     }
     findViewById<MaterialButton>(R.id.btn_pick_games_folder).setOnClickListener {
-      val currentUri = prefs.getString("gamesFolderUri", null)?.let(Uri::parse)
-      pickGamesFolder.launch(currentUri)
+      pickGamesFolder.launch(GamesFolders.read(prefs).lastOrNull())
     }
 
     findViewById<View>(R.id.btn_settings_back).setOnClickListener { finish() }
@@ -1139,14 +1140,55 @@ class SettingsActivity : AppCompatActivity() {
   }
 
   private fun updateGamesFolderPath() {
-    val uriStr = prefs.getString("gamesFolderUri", null)
-    val label = if (uriStr != null) {
-      val uri = Uri.parse(uriStr)
-      DocumentFile.fromTreeUri(this, uri)?.name ?: uri.toString()
-    } else {
-      getString(R.string.settings_file_not_set)
+    val folders = GamesFolders.read(prefs)
+    gamesFolderPathText.text = getString(
+      R.string.settings_games_folder_label, getString(R.string.settings_file_not_set))
+    gamesFolderPathText.visibility = if (folders.isEmpty()) View.VISIBLE else View.GONE
+    gamesFolderList.removeAllViews()
+    for (uri in folders) {
+      val label = DocumentFile.fromTreeUri(this, uri)?.name ?: uri.toString()
+      val row = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = android.view.Gravity.CENTER_VERTICAL
+        setBackgroundResource(R.drawable.setup_wizard_path_background)
+      }
+      row.addView(
+        TextView(this).apply {
+          text = getString(R.string.settings_games_folder_label, label)
+          maxLines = 2
+          ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
+          setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+          setTextColor(getColor(R.color.xemu_text_muted))
+        },
+        LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+      )
+      row.addView(
+        MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+          text = getString(R.string.settings_remove_games_folder)
+          setOnClickListener { confirmRemoveGamesFolder(uri, label) }
+        },
+        LinearLayout.LayoutParams(
+          LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+      )
+      gamesFolderList.addView(
+        row,
+        LinearLayout.LayoutParams(
+          LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        ).apply { topMargin = (8 * resources.displayMetrics.density).toInt() }
+      )
     }
-    gamesFolderPathText.text = getString(R.string.settings_games_folder_label, label)
+  }
+
+  private fun confirmRemoveGamesFolder(uri: Uri, label: String) {
+    MaterialAlertDialogBuilder(this)
+      .setTitle(R.string.settings_remove_games_folder_title)
+      .setMessage(getString(R.string.settings_remove_games_folder_message, label))
+      .setPositiveButton(R.string.settings_remove_games_folder) { _, _ ->
+        GamesFolders.remove(prefs, uri)
+        updateGamesFolderPath()
+      }
+      .setNegativeButton(android.R.string.cancel, null)
+      .show()
   }
 
   private fun updateTextureDumpPath() {
