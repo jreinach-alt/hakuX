@@ -114,6 +114,8 @@ HOLD_CHECK_S = 90                    # the model reads the screen at least this 
 HOLD_NAV_MAX = 12                    # model-steered steps back to play in one episode before the hold gives up
 HOLD_REPEAT = 3                      # a cutscene or game over that asked for one button: that press, unlooked, this often
 HOLD_REPEAT_STATES = ("cutscene", "game_over")
+CLAIM_REPEAT = 3                     # the claim's unlooked repeats of a single press that advanced a cutscene
+CLAIM_REPEAT_STATES = ("cutscene", "intro_video", "publisher_logo")
 # Two kept frames (HOLD_FRAME_S apart) that change less than this at the probe's contrast step: the player did not
 # move in that window. 10-03, scratch/posprobe.py on the held runs: Black Stone standing on its octagon for 600 s
 # (sword swinging, verdict PASS) 0.002-0.013 per 30-s pair; Panzer Dragoon Orta flying 0.31-0.92.
@@ -945,9 +947,11 @@ class Agent:
         """Inputs sent on screens matching `sig` in the last k steps, whether or
         not the screen changed: a 2-screen cycle (Midnight Club 3, 10-02: Yes/No
         dialog -> UP A -> garage menu -> A -> the same dialog, 8 times) changes the
-        screen every step and is invisible to tried_here."""
+        screen every step and is invisible to tried_here. An unlooked repeat (4b) is
+        not counted: it is the look's own press, and a dialogue's lines all match."""
         return [" ".join(s["action"]) for s in self.steps[-k:]
-                if s.get("action") and s.get("sig") is not None and sig_dist(s["sig"], sig) <= SIG_MATCH]
+                if s.get("action") and s.get("src") != "repeat" and s.get("sig") is not None
+                and sig_dist(s["sig"], sig) <= SIG_MATCH]
 
     MENU_STATES = ("title_screen", "main_menu", "submenu", "save_load_prompt", "controller_prompt",
                    "name_entry", "profile_creation", "publisher_logo")
@@ -970,6 +974,14 @@ class Agent:
         n = 0
         for st in reversed(self.steps):
             if st.get("src") != "static":
+                break
+            n += 1
+        return n
+
+    def repeat_run(self):
+        n = 0
+        for st in reversed(self.steps):
+            if st.get("src") != "repeat":
                 break
             n += 1
         return n
@@ -1252,8 +1264,19 @@ class Agent:
                 nxt = self.plan.pop(0)
                 return dict(base, state=nxt["expect"], why=f"plan: {nxt['expect']} (from the guide)",
                             action=nxt["action"], wait_s=nxt["wait_s"], src="plan")
+        # 4b. a cutscene or dialogue the model answered with ONE button, and that press changed the screen: the same
+        # press again, unlooked, up to CLAIM_REPEAT times in a row, then the model looks. Phantom Crash, 10-04: 62 of
+        # 92 calls ($6.7 of the claim) were one look per line of a ClubWired dialogue that A advanced every time.
+        # Only on the SAME screen (its signature still matches: the box stayed, its text moved on). A press that
+        # led somewhere new (a logo's START to a menu) gets a look: a repeat there would choose a menu item.
+        if prev and prev.get("state") in CLAIM_REPEAT_STATES and len(prev.get("action") or []) == 1 \
+                and prev.get("src") in ("fast", "strong", "repeat") and (prev.get("changed") or 0) > UNCHANGED \
+                and prev.get("sig") is not None and sig_dist(prev["sig"], sig) <= SIG_MATCH \
+                and not tried and self.repeat_run() < CLAIM_REPEAT:
+            return dict(base, state=prev["state"], why=f"repeat {prev['action'][0]}: it advanced the {prev['state']}",
+                        action=list(prev["action"]), wait_s=prev.get("wait_s", 2), src="repeat")
         # 5. the model; the stronger one when stuck or unsure
-        cycle = max((seen.count(a) for a in seen), default=0) >= 2
+        cycle =max((seen.count(a) for a in seen), default=0) >= 2
         stuck = len(tried) >= 2 or cycle
         extra = ""
         if tried:

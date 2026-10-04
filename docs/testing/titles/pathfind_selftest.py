@@ -153,6 +153,18 @@ lp = os.path.join(TMP, "know", "hints", "learned-pub-0000.md")
 check("happy", os.path.exists(lp) and "(00000000," in open(lp).read() and "main_menu A" in open(lp).read(),
       "one learned line was appended to learned-pub-0000.md")
 
+# repeat: a dialogue the model answered with one A that advanced it: A again unlooked, CLAIM_REPEAT times, then a look
+# (Phantom Crash, 10-04: 62 model calls on a ClubWired dialogue)
+rc, res, steps, calls = run("dialogue", [("cine", 0), ("cine", 40), ("cine", 80), ("cine", 120), ("cine", 160),
+                                         ("cine", 200), ("menu", 0), ("menu", 0)],
+                            [{"state": "cutscene", "why": "dialogue box", "action": ["A"], "wait_s": 2},
+                             {"state": "cutscene", "why": "dialogue box", "action": ["A"], "wait_s": 2},
+                             {"state": "main_menu", "why": "menu", "action": ["A"], "wait_s": 2}], ["--no-record"])
+src = [s.get("src") for s in steps]
+check("dialogue", src[:5] == ["fast", "repeat", "repeat", "repeat", "fast"],
+      f"one look, three unlooked repeats, then a look (not the stronger model): {src}")
+check("dialogue", all(s.get("action") == ["A"] for s in steps[:5]), "the repeats send the look's own press")
+
 # dark: a dark dungeon scene, the probe moves an 80x80 patch by 12 grey levels (under the old fixed 16-level step,
 # 0.5% of the frame: refused before any confirm call). Black Stone's sword and spell in the 10-03 gate.
 rc, res, steps, calls = run("dark", [("black", 0), ("black", 0), ("dark", 0), ("dark", 0), ("dark", 0),
