@@ -1964,7 +1964,7 @@ note = "STARTED (hostops 08:52 PDT, 10-03 jam duty): lane.local's 08:41 PDT terr
 [lane.flushstall787]
 issues = ["787"]
 standing = false
-files = ["docs/lanes/flushstall787/**", "docs/testing/predictions/flushstall787-kabuki.json", "docs/testing/predictions/flushstall787-tron.json"]
+files = ["docs/lanes/flushstall787/**", "docs/testing/predictions/flushstall787-kabuki.json", "docs/testing/predictions/flushstall787-tron.json", "accel/tcg/translate-all.c"]
 note = "ROW ADDED (hostops 2026-10-04T00:11Z): lane.flushstall787 started 16:55 PDT (owner-activated, lane.local 16:5x item) and had NO territory row (the SessionStart fleet check flagged it). Files: docs/lanes/flushstall787/** now. accel/tcg/** and the perf-log print sites are granted only when its counter lands; lane.local decides that grant from the lane's OUTBOX."
 
 [lane.fps20786]
