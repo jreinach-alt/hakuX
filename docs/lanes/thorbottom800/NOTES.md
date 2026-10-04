@@ -81,11 +81,19 @@ behaviour where `disp_mode.w < 1280 || disp_mode.h < 720` held, and a 1920x1080 
 queued dispatcher soak (the Nova is held by lane.pathfind): request `1791128091-thorbottom800-3215528`,
 Castlevania 90 s, a frame every 30 s.
 
-## Waiting (2026-10-04 08:50 PDT)
+## Nova regression (2026-10-04 10:54 PDT)
 
-On the Nova regression screenshot: dispatcher request `1791128091-thorbottom800-3215528` (ref ddc61cb847,
-Castlevania, 90 s, a frame every 30 s, pinned to the Nova), queued behind lane.pathfind's hold. When its result
-lands, read a frame, add it to `shots/`, and mark the PR ready if the game fills the Nova's panel.
+Dispatcher request `1791128091-thorbottom800-3215528` (ref ddc61cb847, Castlevania, 90 s, Nova `ee317437`) ran
+after lane.pathfind's hold. All four frames are 1280x960 full-panel screencaps. Frames 2-4 show the title menu
+filling the whole panel with the FPS overlay in the corner (`shots/nova-ddc61cb847.png` = frame 2). The Nova's
+panel is 4:3 and at least 1280x720, so it never met the shrink condition. It takes the same path as before, and
+the frames show that.
+
+## Why attempt 1 did not finish
+
+It did not fail. Session 1 ended waiting on the Nova run, with `WAITING` naming request
+`1791128091-thorbottom800-3215528`. The Nova was held by lane.pathfind until about 10:53 PDT, and the lanewaker
+resumed this lane when the run reached DONE. Attempt 2 read the frame, removed `WAITING` and marked the PR ready.
 
 ## Build notes
 

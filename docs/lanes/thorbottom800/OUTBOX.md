@@ -1,5 +1,11 @@
 # thorbottom800 OUTBOX (#800)
 
+## 2026-10-04 10:58 PDT: Nova regression passed; PR #803 ready
+
+The Nova ran the fix ref ddc61cb847 (`1791128091-thorbottom800-3215528`, Castlevania, 90 s). The title menu fills
+the Nova's whole 1280x960 panel, as before: `shots/nova-ddc61cb847.png`. Nothing else changed: the owner's build
+is still **0.4.1-1004-153d7ad370**, already installed on the Thor.
+
 ## 2026-10-04 08:50 PDT: fixed; the fix build is installed on the Thor
 
 **For the owner: the fix build is already on the Thor.** `com.jreinach.hakux.debug` version

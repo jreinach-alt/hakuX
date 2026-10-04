@@ -1,10 +1,10 @@
 # thorbottom800: full-screen game on the Thor's bottom screen (#800)
 
-State: draft
+State: ready
 
 Lane: thorbottom800            Issue: #800
 Base: master @ 5e4196fefd
-Files: android/app/src/main/cpp/xemu_settings_android.cc, docs/lanes/thorbottom800/.gitignore, docs/lanes/thorbottom800/NOTES.md, docs/lanes/thorbottom800/OUTBOX.md, docs/lanes/thorbottom800/PR.md, docs/lanes/thorbottom800/build.sh, docs/lanes/thorbottom800/refscan.sh, docs/lanes/thorbottom800/repro.sh, docs/lanes/thorbottom800/shots/after-153d7ad370-d4.activities.txt, docs/lanes/thorbottom800/shots/after-153d7ad370-d4.logcat.txt, docs/lanes/thorbottom800/shots/after-153d7ad370-d4.png, docs/lanes/thorbottom800/shots/after-153d7ad370-d4.windows.txt, docs/lanes/thorbottom800/shots/after-ddc61cb847-d0.activities.txt, docs/lanes/thorbottom800/shots/after-ddc61cb847-d0.logcat.txt, docs/lanes/thorbottom800/shots/after-ddc61cb847-d0.png, docs/lanes/thorbottom800/shots/after-ddc61cb847-d0.windows.txt, docs/lanes/thorbottom800/shots/after-ddc61cb847-d4.activities.txt, docs/lanes/thorbottom800/shots/after-ddc61cb847-d4.logcat.txt, docs/lanes/thorbottom800/shots/after-ddc61cb847-d4.png, docs/lanes/thorbottom800/shots/after-ddc61cb847-d4.windows.txt, docs/lanes/thorbottom800/shots/before-installed-d4.activities.txt, docs/lanes/thorbottom800/shots/before-installed-d4.logcat.txt, docs/lanes/thorbottom800/shots/before-installed-d4.png, docs/lanes/thorbottom800/shots/before-installed-d4.windows.txt, docs/lanes/thorbottom800/shots/d0-launcher-only.png, docs/lanes/thorbottom800/shots/falsifier-640startup-d4.activities.txt, docs/lanes/thorbottom800/shots/falsifier-640startup-d4.logcat.txt, docs/lanes/thorbottom800/shots/falsifier-640startup-d4.png, docs/lanes/thorbottom800/shots/falsifier-640startup-d4.windows.txt
+Files: android/app/src/main/cpp/xemu_settings_android.cc, docs/lanes/thorbottom800/.gitignore, docs/lanes/thorbottom800/NOTES.md, docs/lanes/thorbottom800/OUTBOX.md, docs/lanes/thorbottom800/PR.md, docs/lanes/thorbottom800/build.sh, docs/lanes/thorbottom800/refscan.sh, docs/lanes/thorbottom800/repro.sh, docs/lanes/thorbottom800/shots/after-153d7ad370-d4.activities.txt, docs/lanes/thorbottom800/shots/after-153d7ad370-d4.logcat.txt, docs/lanes/thorbottom800/shots/after-153d7ad370-d4.png, docs/lanes/thorbottom800/shots/after-153d7ad370-d4.windows.txt, docs/lanes/thorbottom800/shots/after-ddc61cb847-d0.activities.txt, docs/lanes/thorbottom800/shots/after-ddc61cb847-d0.logcat.txt, docs/lanes/thorbottom800/shots/after-ddc61cb847-d0.png, docs/lanes/thorbottom800/shots/after-ddc61cb847-d0.windows.txt, docs/lanes/thorbottom800/shots/after-ddc61cb847-d4.activities.txt, docs/lanes/thorbottom800/shots/after-ddc61cb847-d4.logcat.txt, docs/lanes/thorbottom800/shots/after-ddc61cb847-d4.png, docs/lanes/thorbottom800/shots/after-ddc61cb847-d4.windows.txt, docs/lanes/thorbottom800/shots/before-installed-d4.activities.txt, docs/lanes/thorbottom800/shots/before-installed-d4.logcat.txt, docs/lanes/thorbottom800/shots/before-installed-d4.png, docs/lanes/thorbottom800/shots/before-installed-d4.windows.txt, docs/lanes/thorbottom800/shots/d0-launcher-only.png, docs/lanes/thorbottom800/shots/falsifier-640startup-d4.activities.txt, docs/lanes/thorbottom800/shots/falsifier-640startup-d4.logcat.txt, docs/lanes/thorbottom800/shots/falsifier-640startup-d4.png, docs/lanes/thorbottom800/shots/falsifier-640startup-d4.windows.txt, docs/lanes/thorbottom800/shots/nova-ddc61cb847.png
 Prediction: none: no arm (window sizing on a secondary display; no golden or capture covers a 1240x1080 panel)
 Needs device: yes    Needs NDK: yes
 
@@ -26,7 +26,13 @@ same path as before.
 | after (153d7ad370) | 1240x930, 4:3, `shots/after-153d7ad370-d4.png` |
 
 The display 0 screencap is black on this Thor whatever is shown, because the panel is dead; logcat shows the game
-at 1920x1080 there. The Nova regression screenshot is queued (`1791128091-thorbottom800-3215528`). Preflight:
+at 1920x1080 there.
+
+| Nova (1280x960, one display) | result |
+|---|---|
+| ddc61cb847, `1791128091-thorbottom800-3215528` | full panel, same as before, `shots/nova-ddc61cb847.png` |
+
+Preflight:
 every code gate ok. `coverage` fails on six open issues with no tracker row on origin/board (#794-#801, #800
 included); that is board bookkeeping, which this lane may not edit.
 
