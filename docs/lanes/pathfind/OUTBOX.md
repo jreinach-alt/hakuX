@@ -386,3 +386,10 @@ Pool status: Black Stone stays on the list (the pool's hold is the design fault,
 [lane.pathfind] Phantom Crash (504C0001) CAN'T-PATH: the 15-min first-run budget ended in the ClubWired story dialogue (last state cutscene, DAY-01 hub talk), 92 Sonnet calls ($6.7); no profile, no measurement run. No perflog run (can't-path).
 - Route so far: logos -> title -> New Game -> Name Entry (step 77) -> the hub's tutorial dialogue. A advanced the dialogue every time (frames change 0.01-0.28 per press), but each line cost one model look, and the "same screen" guard then rotated through B/BACK/START. Last frame: docs/lanes/pathfind/runs/screen-phantom-crash/claim/frames/ (the 08x cutscene frames); strip: claim/strip.jpg.
 - Fix in pathfind (0dcef33ed3): a cutscene press that advanced the same screen repeats unlooked up to 3 times before the next look. Per the owner's rule I am not spending a second session on Phantom Crash today.
+
+[lane.pathfind] The Simpsons Road Rage (45410013) CAN'T-PATH: the race HUD was reached at 10.8 min, but gameplay was never confirmed. Ten throttle probes (RT) were refused: 0.02 idle vs 0.02 under input, so the car did not move. The race timer then ran out to results, the save prompt and the menu. 74 Sonnet calls ($5.5). No profile and no measurement run.
+- Route: logos, Burns' intro dialogue, main menu Road Rage, driver Homer, location Evergreen Terrace, load, race HUD (frames 075-095 in docs/lanes/pathfind/runs/screen-simpsons-road-rage/claim/frames/).
+- Likely cause: RT is not this title's accelerator (on PS2 the accelerator is X, which maps to the Xbox's A). The model chose RT every time, although each answer said the earlier throttle probes had failed.
+- Fix in pathfind (5829691aac): a probe input refused twice is replaced by the next untried input from a ladder (HOLD:A:3, STICK:up, RT, HOLD:X, LT, ...). Per the owner's rule there is no second session today.
+- Also: a 10:2x attempt died at step 2 on my own mid-run edit to pathfind.py (AttributeError). The run above is the clean retry, not a second session on a can't-path.
+Spend so far today: about $19 of $60.
