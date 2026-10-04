@@ -96,6 +96,11 @@ SKIP_LADDER = ("START", "A", "B", "BACK", "X", "Y", "DOWN", "UP", "RIGHT", "LEFT
 # (10-03): the player stood in a sword-raised stance for 12 min while 40 stick, d-pad, A and RT probes moved
 # nothing; one X lowered the sword and the next stick ran. The pad was never the problem.
 UNLOCK_LADDER = ("X", "B", "Y", "R1", "L1", "BACK")
+# A probe input refused twice is not tried a third time: the next untried input of this ladder replaces it. The
+# Simpsons Road Rage, 10-04: ten RT probes on a live race HUD, each 0.02 idle vs 0.02 under input, until the timer ran
+# out; the model was told the earlier throttle probes failed and still chose RT.
+PROBE_LADDER = ("HOLD:A:3", "STICK:up:2", "RT:3", "HOLD:X:3", "LT:2", "STICK:left:1.5", "HOLD:B:3")
+PROBE_REFUSED_MAX = 2
 SIG = (16, 12)                       # a frame's signature: grey, box-averaged
 SIG_MATCH = 9.0                      # mean grey-level distance under which two screens are the same
 UNCHANGED = 0.01                     # classify.motion changed fraction at or under this: no change
@@ -114,10 +119,19 @@ HOLD_CHECK_S = 90                    # the model reads the screen at least this 
 HOLD_NAV_MAX = 12                    # model-steered steps back to play in one episode before the hold gives up
 HOLD_REPEAT = 3                      # a cutscene or game over that asked for one button: that press, unlooked, this often
 HOLD_REPEAT_STATES = ("cutscene", "game_over")
+CLAIM_REPEAT = 3                     # the claim's unlooked repeats of a single press that advanced a cutscene
+CLAIM_REPEAT_STATES = ("cutscene", "intro_video", "publisher_logo")
 # Two kept frames (HOLD_FRAME_S apart) that change less than this at the probe's contrast step: the player did not
 # move in that window. 10-03, scratch/posprobe.py on the held runs: Black Stone standing on its octagon for 600 s
 # (sword swinging, verdict PASS) 0.002-0.013 per 30-s pair; Panzer Dragoon Orta flying 0.31-0.92.
 HOLD_STILL = 0.03
+# "should we continue?" (owner 10-04 ~08:10): at 3 and 5 min of a hold longer than 5 min, read the gfps lines the
+# hold's logcat has so far. A title on course for clear/close has >= 60% of seconds at >= 30 fps or a median >= 27;
+# median < 22 at 3 min, or < 27 at 5 min (and the share under 60%), will not get there: stop the hold, so the
+# 3-min telemetry run that follows is the evidence, not 600 s of a known miss.
+FPS_GATES = ((180, 22.0), (300, 27.0))
+FPS_BAR, FPS_SHARE_OK = 30, 0.60
+FPS_TOL = 0.95   # title_verdict's fps_tolerance (targets.toml): a locked-30 title's 29s are on the bar (AvP, 10-04)
 # a still window in the drive genre: a car against a wall (Forza, 10-03). Reverse while turning, then drive out the
 # other way, alternating sides per still window, before the generic unlock rotation.
 HOLD_UNSTICK = {
@@ -359,6 +373,46 @@ def window_change(a, b):
     """Change between two kept hold frames at the probe's contrast step: did the player or camera move?"""
     ga = grey(a)
     return classify.motion(ga, grey(b), pixel=probe_step(ga))[0]
+
+
+def probe_key(tok):
+    """A probe input without its seconds: RT:1.5 and RT:3 are one input (RT), HOLD:A:3 is HOLD:A."""
+    head, _, tail = tok.rpartition(":")
+    return head if head and re.fullmatch(r"[\d.]+", tail) else tok
+
+
+def route_frame(out, png):
+    """A kept hold frame, linked as route-frames/HHMMSS-hold.png (its capture time): the name title_verdict.py's
+    liveness and position tests read the scored window from (hitch_report.FRAME_NAME). Without them the window is
+    `unmeasured` and fails (failgate, 10-04: RalliSport's 671-s hold at fps_ok 1.0 scored FAIL that way)."""
+    d = os.path.join(out, "route-frames")
+    os.makedirs(d, exist_ok=True)
+    dest = os.path.join(d, time.strftime("%H%M%S", time.localtime(os.path.getmtime(png))) + "-hold.png")
+    if not os.path.exists(dest):
+        try:
+            os.link(png, dest)
+        except OSError:
+            import shutil
+            shutil.copyfile(png, dest)
+    return dest
+
+
+def fps_course(logcat):
+    """The hold so far from its logcat's hakuX-perf `gfps=` lines (one per 1-2 s): {n samples, median, share at
+    >= FPS_BAR * FPS_TOL}."""
+    try:
+        vals = [int(m.group(1)) for m in re.finditer(r"gfps=(\d+)", open(logcat, errors="replace").read())]
+    except OSError:
+        vals = []
+    if not vals:
+        return {"n": 0, "median": None, "share": None}
+    return {"n": len(vals), "median": float(np.median(vals)),
+            "share": round(sum(v >= FPS_BAR * FPS_TOL for v in vals) / len(vals), 3)}
+
+
+def fps_gate_fails(course, floor):
+    """True when the hold is not on course for the 30-fps bar: median below `floor` and the share under 60%."""
+    return course["n"] >= 30 and course["median"] < floor and course["share"] < FPS_SHARE_OK
 
 
 def letterboxed(path):
@@ -785,6 +839,7 @@ class Agent:
         self.hints = knowledge(tid, name)
         self.probes = 0
         self.dead_probes = 0         # probes in a row whose input moved nothing at all (UNLOCK_LADDER)
+        self.probe_tries = {}        # probe_key -> confirms that used it (PROBE_LADDER past PROBE_REFUSED_MAX)
         self.black_since = None
         self.hold_s = 0              # hold-play: seconds of play to hold after the claim (0: off)
         self.goal = ""               # --goal: a settings goal on the way in (a sports family's longest quarter)
@@ -904,9 +959,11 @@ class Agent:
         """Inputs sent on screens matching `sig` in the last k steps, whether or
         not the screen changed: a 2-screen cycle (Midnight Club 3, 10-02: Yes/No
         dialog -> UP A -> garage menu -> A -> the same dialog, 8 times) changes the
-        screen every step and is invisible to tried_here."""
+        screen every step and is invisible to tried_here. An unlooked repeat (4b) is
+        not counted: it is the look's own press, and a dialogue's lines all match."""
         return [" ".join(s["action"]) for s in self.steps[-k:]
-                if s.get("action") and s.get("sig") is not None and sig_dist(s["sig"], sig) <= SIG_MATCH]
+                if s.get("action") and s.get("src") != "repeat" and s.get("sig") is not None
+                and sig_dist(s["sig"], sig) <= SIG_MATCH]
 
     MENU_STATES = ("title_screen", "main_menu", "submenu", "save_load_prompt", "controller_prompt",
                    "name_entry", "profile_creation", "publisher_logo")
@@ -929,6 +986,14 @@ class Agent:
         n = 0
         for st in reversed(self.steps):
             if st.get("src") != "static":
+                break
+            n += 1
+        return n
+
+    def repeat_run(self):
+        n = 0
+        for st in reversed(self.steps):
+            if st.get("src") != "repeat":
                 break
             n += 1
         return n
@@ -958,6 +1023,11 @@ class Agent:
         elif probe in HAT:
             probe = {"UP": "STICK:up:1.5", "DOWN": "STICK:down:1.5", "LEFT": "STICK:left:1.5",
                      "RIGHT": "STICK:right:1.5"}[probe]
+        if self.probe_tries.get(probe_key(probe), 0) >= PROBE_REFUSED_MAX:
+            fresh = [p for p in PROBE_LADDER if self.probe_tries.get(probe_key(p), 0) < PROBE_REFUSED_MAX]
+            if fresh:
+                probe = fresh[0]
+        self.probe_tries[probe_key(probe)] = self.probe_tries.get(probe_key(probe), 0) + 1
         if pre:
             # inputs that START play first (a kickoff's A, a serve): then the control pair
             self.send(pre)
@@ -1211,8 +1281,19 @@ class Agent:
                 nxt = self.plan.pop(0)
                 return dict(base, state=nxt["expect"], why=f"plan: {nxt['expect']} (from the guide)",
                             action=nxt["action"], wait_s=nxt["wait_s"], src="plan")
+        # 4b. a cutscene or dialogue the model answered with ONE button, and that press changed the screen: the same
+        # press again, unlooked, up to CLAIM_REPEAT times in a row, then the model looks. Phantom Crash, 10-04: 62 of
+        # 92 calls ($6.7 of the claim) were one look per line of a ClubWired dialogue that A advanced every time.
+        # Only on the SAME screen (its signature still matches: the box stayed, its text moved on). A press that
+        # led somewhere new (a logo's START to a menu) gets a look: a repeat there would choose a menu item.
+        if prev and prev.get("state") in CLAIM_REPEAT_STATES and len(prev.get("action") or []) == 1 \
+                and prev.get("src") in ("fast", "strong", "repeat") and (prev.get("changed") or 0) > UNCHANGED \
+                and prev.get("sig") is not None and sig_dist(prev["sig"], sig) <= SIG_MATCH \
+                and not tried and self.repeat_run() < CLAIM_REPEAT:
+            return dict(base, state=prev["state"], why=f"repeat {prev['action'][0]}: it advanced the {prev['state']}",
+                        action=list(prev["action"]), wait_s=prev.get("wait_s", 2), src="repeat")
         # 5. the model; the stronger one when stuck or unsure
-        cycle = max((seen.count(a) for a in seen), default=0) >= 2
+        cycle =max((seen.count(a) for a in seen), default=0) >= 2
         stuck = len(tried) >= 2 or cycle
         extra = ""
         if tried:
@@ -1347,6 +1428,7 @@ class Agent:
         order = [genre] + [g for g in HOLD_GENRES if g not in (genre, "onrails")]
         rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
         last_png, last_check, last_kept, drop = None, now(), None, []
+        fps_seen, fps_checks = set(), []  # the FPS_GATES passed so far, and what each read
         # the perflog: logcat from the mark to `soak end`, with a state line at every change of play, so
         # title_verdict.py judges fps over play seconds only (its TIMELINE)
         cat = self.dev.logcat_start(os.path.join(self.out, "logcat.txt"))
@@ -1370,6 +1452,19 @@ class Agent:
                 break
             t = now()
             hold_el = t - t_hold
+            gate = next((g for g in FPS_GATES if g[0] <= hold_el and g[0] not in fps_seen), None)
+            if gate and self.hold_s > FPS_GATES[-1][0] and cat is not None:
+                fps_seen.add(gate[0])
+                course = fps_course(os.path.join(self.out, "logcat.txt"))
+                course.update(at_s=round(hold_el, 1), floor=gate[1], stop=fps_gate_fails(course, gate[1]))
+                fps_checks.append(course)
+                print(f"hold-play: fps at {hold_el:.0f} s: median {course['median']}, share>={FPS_BAR} "
+                      f"{course['share']} over {course['n']} samples{' -> STOP (not on course)' if course['stop'] else ''}",
+                      flush=True)
+                if course["stop"]:
+                    reason = (f"fps gate at {int(hold_el) // 60}:{int(hold_el) % 60:02d}: median {course['median']:.0f} "
+                              f"< {gate[1]:.0f}, {course['share']:.0%} of {course['n']} samples at >= {FPS_BAR * FPS_TOL:g}")
+                    break
             ch = changed(last_png, png) if last_png else None
             still = still + 1 if ch is not None and ch <= UNCHANGED else 0
             suspect = is_black(png) or still >= 1
@@ -1469,6 +1564,7 @@ class Agent:
                         logged = want
                 last_kept = hold_el
                 kept.append(jp)
+                route_frame(self.out, png)
             # the previous look's frame is spent now: this look has been measured against it
             for p in drop:
                 os.remove(p)
@@ -1483,7 +1579,7 @@ class Agent:
             reason = f"budget {self.budget_s / 60:.0f} min with {play_s:.0f} s of play"
         held.update(ok=ok, play_s=round(play_s, 1), need_s=self.hold_s, hold_s=round(now() - t_hold, 1),
                     model_navs=navs, frames=len(kept), still_windows=still_windows, shed=sorted(shed_set),
-                    reason=reason, title_hold=bool(th))
+                    reason=reason, title_hold=bool(th), fps_checks=fps_checks)
         self.result["hold"] = held
         print(f"hold-play: {'HELD' if ok else 'not held'} {play_s:.0f}/{self.hold_s:.0f} s of play; {reason}",
               flush=True)

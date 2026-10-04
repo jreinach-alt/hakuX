@@ -1,0 +1,28 @@
+{
+ "method": "rec",
+ "rc": 0,
+ "stderr": "",
+ "pull_rc": 0,
+ "start": 1791130996.6619115,
+ "wall_s": 4.12,
+ "bytes": 759452,
+ "device": "nova",
+ "serial": "ee317437",
+ "seconds": 4,
+ "note": "4D53000F hold-play burst 2",
+ "flicker": {
+  "frames": 242,
+  "unique": 53,
+  "dup_share": 0.784,
+  "triples": 51,
+  "hits": 0,
+  "rate": 0.0,
+  "p90": 0.052,
+  "max": 0.13,
+  "verdict": "clear",
+  "unique_fps": 13.3,
+  "dt_median_ms": 82.8,
+  "dt_max_ms": 117.4,
+  "worst": "f00140@2.316|f00146@2.417|f00150@2.484"
+ }
+}
