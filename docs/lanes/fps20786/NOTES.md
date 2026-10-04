@@ -97,8 +97,9 @@ the perflog medians.
 |---|---|---|---|
 | 1-1791080537-lane.fps20786-2538884 | Top Spin | fps786-topspin | pilot; reached the match, 307 rows |
 | 1-1791081646-lane.fps20786-2876934 | NBA Live 2005 | fps786-nba2005 | reached play (12-min quarters, 11:45 1st), 310 rows |
-| 1-1791081646-lane.fps20786-2876984 | Counter-Strike | fps786-cs | queued |
+| 1-1791081646-lane.fps20786-2876984 | Counter-Strike | fps786-cs | reached play at 21:00:17; from ~21:00:57 stood on a "Press A to continue" card the loop had no A for (route defect, mine) |
 | 1-1791081681-lane.fps20786-2878057 | Midnight Club 3 | midnight-club-3.returning | queued |
+| 1-1791086565-lane.fps20786-3338415 | Counter-Strike | fps786-cs2 (loop leads with A) | queued (run 5 of 5) |
 
 ### Top Spin (2538884): not a 20-fps title on this build; vCPU-side lock wait behind surface downloads
 
@@ -174,3 +175,31 @@ clock: the GPU idles while the CPU records, so the governor lowers its clock,
 and every GPU millisecond is on the critical path. near30 saw the same 401-MHz
 floor on Tron's plain runs. Same bound either way; the regimen moves where in
 (33.3, 50] the frame lands.
+
+Row by row (310 rows): renderer cost F - Ri rises from 32.1 to 38.6 ms
+across the frame-time bands. Render CPU (22.6 to 27.0) and GPU time (17.5
+to 19.5) both rise with it. Their sum, 42.8 ms (median), exceeds the renderer
+cost of 35.3 by only ~7.5 ms, so only about 7.5 ms of GPU time overlaps the
+render thread's work. Guest busy falls as frames slow (r = -0.42 with F): the
+guest waits, it does not work.
+
+### Counter-Strike (2876984): the serial renderer again, heavier on both sides
+
+The route reached the Airstrip map at 21:00:17 (frame s13). About 40 s later
+a tutorial card came up and stayed for the rest of the run, because the hold
+loop had no A. That is a route defect, fixed in fps786-cs2 for the retry. The
+3D scene behind the card kept rendering at the same cost as the 40 s of play
+before it: rows t = 1.5-39 s match the rest.
+
+| rows | fps | F | gbusy | gidle | Ri | rcpu | rblk | v_blk | lockw | ph_GPU | ph_Draw | ph_Fin | draws/frame |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| all 342 (play + card) | 25.8 | 38.8 | 20.6 | 18.2 | 1.6 | 22.8 | 14.3 | 9.2 | 0.3 | 24.6 | 13.3 | 13.8 | 1957 |
+
+- Not vCPU (guest 20.6 of 38.8 ms), not lock (0.3 ms).
+- The renderer never parks (Ri 1.6). Its cost is 37 ms: 22.8 on-CPU, 13.3 of
+  that building 1957 draws, and 14.3 blocked, almost all of it the finish
+  wait (13.8).
+- The GPU takes 24.6 ms per frame: under 33.3 alone, but in series with the
+  render CPU it is not.
+- 10-02's "13 fps" was one overlay reading on device defaults. This run used
+  the "max" regimen.
