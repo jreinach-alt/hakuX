@@ -191,3 +191,38 @@ fps, so race clock 8 s is in the window for any race clock 0 from ~+134 to ~+150
 Queued 10-04 PDT as `1791147878-lane.accuracy804-1639330` (perflog, `--pull 'framedump_*'`, pinned to the Nova),
 behind lane.pathfind's hold and 6 earlier requests. The lane is WAITING on it (`WAITING`). Reading it: section 6's
 table, with `alt_draws.py` (its full key no longer includes the colour target) and the shots r1-r7.
+
+## 10. Attempt 3 (10-04 PDT): the second capture, read; a third queued
+
+Why attempt 2 stopped: it ended as designed, WAITING on capture 2 (`1791147878-lane.accuracy804-1639330`). That
+ran 14:32:11-14:35:31 PDT on the Nova, clean (xo 40.6 C at start), and handback resumed the lane on it.
+
+What capture 2 shows: **it never reached a race.** The route reached the GAME MENU on time (shot `mainmenu`,
++88.4 s, Career lit, Career the leftmost item). The hat RIGHT was held 0.35 s (`axis HATX max`, `wait 0.35`,
+`axis HATX mid`) and the menu auto-repeated past Single Race to OPTIONS; the A presses then went OPTIONS ->
+Controller Settings -> the controller diagram -> back to Controller Settings, where every race shot (r1-r7) and
+the dump's 600 frames sit. pathfind sends max and mid back to back and sleeps 0.35 s after the release
+(`pathfind.py send()`), so its hold is one adb call, ~0.14 s.
+
+Two more things capture 2 measured, which the third capture uses:
+
+- The dump is capped at 600 frames (`FDUMP_MAX_FRAMES`, vk/renderer.c:1794): `1000,after141` dumped 600. At the
+  race's 60 flips/s (capture 1) that is a 10 s window.
+- The route ran slower than section 9 planned: start-race A at +140.3 s (planned ~+134), spare A at +148.6. The
+  dump began at 14:34:34.4, +142.7 s after `SDL_main: start` (N + 1.7 s). With the right menu, race clock 0 would
+  have been ~+147.3 and the dump would have closed at race clock ~5, before the rival (~7.5). So capture 2 would
+  have missed even on the right path.
+
+**Third capture, and why the first two could not give it:** neither had a rival on screen (capture 1: Career has
+none; capture 2: never left the menus). `rallisport-804c.route` is 804b with the hat released at once (`axis HATX
+max`, `axis HATX mid`, `wait 2.35`, so every later press keeps 804b's measured time). Same ref (`5e4196fefd`,
+cached perflog APK) as both earlier captures.
+
+Choosing N: the dump starts at route + N + ~1.8 s. With race clock 0 at ~+147.3 (start-race A +140.3, plus the
+7.0 s capture 1 and pathfind's replay both measured), `after149` starts at ~+150.8 = race clock ~3.5 and ends
+~10 s later at race clock ~13.5. Race clock 8 is inside the window for any race clock 0 from +142.8 to +152.8,
+i.e. the start-race A may land 2.5 s early or 5.5 s late. Shots r1-r7 at ~+152..+169 (race clock ~5-22) show
+whether the rival is on screen.
+
+Queued 14:41 PDT as `1791150087-lane.accuracy804-2199171` (perflog, `--pull 'framedump_*'`, pinned to the Nova);
+it was claimed at once (queue empty but for fmv303c).
