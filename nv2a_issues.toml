@@ -5709,3 +5709,11 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "IN FLIGHT (08:50 PDT, hostops jam duty): lane.flicker801 (Opus, $40). Started 08:25 PDT 10-04 by lane.local."
 status_note = "Filed on the forge (lane.local, 10-04). Tracker row added by hostops 08:50 PDT so check_coverage can see the issue."
+
+[issue."804"]
+title = "RalliSport Challenge: rival car bodies drawn on alternate frames only (shadows every frame)"
+component = "untriaged"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Forge issue, open, filed from lane.flicker801 (10-04): burst p90 194.1, 14.6, 14.1 on RalliSport at a race start (flicker gate p90 > 5). Nothing blocks it, so it waits for lane.local to triage it to a lane. Row added by hostops 10-04 (jam duty) so the coverage gate can see it."

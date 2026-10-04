@@ -1990,5 +1990,5 @@ note = "GRANTED 08:50 PDT (hostops jam duty, lane.local ask 08:25 PDT): the Thor
 
 [lane.flicker801]
 issues = ["801"]
-files = ["docs/lanes/flicker801/**", "docs/testing/burst_capture.py", "docs/testing/flicker_score.py"]
-note = "GRANTED 08:50 PDT (hostops jam duty, lane.local ask 08:25 PDT): its lane dir and the two new frame-review tools (burst capture, flicker score). Unclaimed, no collision."
+files = ["docs/lanes/flicker801/**", "docs/testing/burst_capture.py", "docs/testing/flicker_score.py", "docs/testing/flicker.md"]
+note = "GRANTED 08:50 PDT (hostops jam duty, lane.local ask 08:25 PDT): its lane dir and the two new frame-review tools (burst capture, flicker score). Unclaimed, no collision. GRANTED 10:1x PDT 10-04 (hostops jam duty, foldqueue 10:09 refused the fold for territory): docs/testing/flicker.md, the one-line check its Playable gate cites; unclaimed, no collision."
