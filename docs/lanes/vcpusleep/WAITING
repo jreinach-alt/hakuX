@@ -1,1 +1,0 @@
-owner host capture for lane.vcpusleep (#507 R1): lane.local, please run docs/lanes/vcpusleep/capture_simpsons_offcpu.sh simp1 (PATHFIND_TREE=<lane/pathfind checkout>; Nova; ~15 min; command and expectations in docs/lanes/vcpusleep/OUTBOX.md 12:40 PDT) and resume lane.vcpusleep when perf/2026-10-04-vcpusleep/simp1/simp1.data or its ABORT exists
