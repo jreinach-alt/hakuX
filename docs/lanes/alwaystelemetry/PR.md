@@ -4,7 +4,7 @@ State: ready
 
 Lane: alwaystelemetry        Issue: #433
 Base: master @ b9e33845bd (origin/master merged into the branch at 18:18 PDT)
-Files: docs/lanes/alwaystelemetry/NOTES.md, docs/lanes/alwaystelemetry/PR.md, docs/lanes/alwaystelemetry/OUTBOX.md, docs/lanes/alwaystelemetry/WAITING, docs/lanes/alwaystelemetry/abread.py, docs/lanes/alwaystelemetry/ab_castlevania.md
+Files: docs/lanes/alwaystelemetry/NOTES.md, docs/lanes/alwaystelemetry/PR.md, docs/lanes/alwaystelemetry/OUTBOX.md, docs/lanes/alwaystelemetry/abread.py, docs/lanes/alwaystelemetry/ab_castlevania.md
 Prediction: none: a rate measurement, not a pixel change. The rate prediction P1 was registered in NOTES.md before the run. Judged: not met as worded (fps), cost confirmed in headroom.
 Needs device: yes (done: 1-1791070366-lanelocal-968308, 1-1791072308-lanelocal-1173788)
 Needs NDK: no
