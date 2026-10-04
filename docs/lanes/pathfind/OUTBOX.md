@@ -326,3 +326,22 @@ NEW ISSUE: Black Stone hold: the attack walk does not move the fighter, and the 
 Evidence: runs/black-stone-walk/verdict.json, hold.jsonl (window 0.005-0.015 for 175 s), hold_strip.jpg (menu panel in 059-089). Blocks Black Stone as a Playable title. Hold-play design issue, not performance.
 
 Pool row: Black Stone stays on the list. Spend: this run $2.40. By the NOTES figures (about $33 at the start of this resume, plus about $9 for the two Halo runs) the day is about $44 of the $70 cap; the cost sheet is the authority.
+
+## #433 -- 2026-10-03 21:45 PDT
+
+**Dino Crisis 3 (43430003), Nova, held run: FAIL (menu time). Not Playable.**
+Verdict line: `Dino Crisis 3 ? FAIL(menu time: 79.1% of the scored window in play (bar 90%; play 608 s, still 154 s, menu 6 s)) gameplay=769.4s fps_ok=0.3793 crash=False hang=False hitches=18/1.522pm worst_ms=481.7 play_share=0.7906`.
+Frame strip: docs/lanes/pathfind/runs/dino-crisis-3-hold/hold_strip.jpg. Claimed at 3.55 min, 35 model calls (Sonnet), 24 steps. Held 607 s of play.
+Claim: the Game Controls overlay was closed with A, then the first corridor at step 23 was confirmed. The probe read control 0.000 idle and 0.547 under STICK:up.
+
+What the frames show:
+- Frames 023-082: the player stays in the same corridor and the camera barely moves. Per-window change is 0.16-0.28 early and 0.0007 at the claim check. The player walks in place.
+- Frames 085 and 089: the genre loop's L1 and X presses opened the Map ("Map review screen") and the Item/equipment screen. The verdict's menu share is right.
+- fps share: 0.38 of gameplay windows at >= 30 fps (bar 90%). That is a frame-rate cost, the same class as NBA Live 2005 (10-03). I will not re-queue this run.
+
+Verdict on the change: the shooter loop does not travel in this corridor, and its L1/X presses open menus after the first minute. Same design fault as Black Stone's walk run: a hold that does not move the player, plus an unlock button that opens menus.
+
+NEW ISSUE: Dino Crisis 3 hold: the shooter loop does not move the player; L1/X open the Map and Item screens
+Evidence: runs/dino-crisis-3-hold/verdict.json, hold.jsonl (changed 0.16-0.28 early, 0.55 once in menus), hold_strip.jpg (menu at 085/089). Blocks Dino Crisis 3 as a Playable title. Hold-play design issue, not performance. Also fps_ok 0.38: a separate frame-rate cost; link it to the 20-fps class if an issue exists.
+
+Pool status: Dino Crisis 3 stays on the list. Model spend about 35 Sonnet calls (about $2; the cost sheet is the authority). Next: 007 Agent Under Fire only if the cap allows, and only after the hold moves the player.

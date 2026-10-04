@@ -1,5 +1,13 @@
 # lane.pathfind -- NOTES
 
+## Dino Crisis 3 held run (10-03 21:27-21:45 PDT, Nova, first-run)
+
+- Claim at 3.55 min, 35 Sonnet calls. Hold 607 s of play, FAIL on menu time (79.1%). fps_ok 0.38.
+- Frames 023-082: the player stays in one corridor (the shooter loop does not travel). Frames 085 and 089: L1/X open the
+  Map and Item screens. Same fault as the Black Stone walk run: the hold does not move the player, and its unlock
+  buttons open menus. Not re-queued (fps and design are named in OUTBOX).
+- Verdict and strip: runs/dino-crisis-3-hold/. OUTBOX has the NEW ISSUE.
+
 ## Resume (10-03 21:16 PDT, attempt 4 of this resume): why the last attempt did not finish
 
 - The 20:40 session ended after the Black Stone walk run FAILED (menu time 63.8%, `runs/black-stone-walk`), posted its
