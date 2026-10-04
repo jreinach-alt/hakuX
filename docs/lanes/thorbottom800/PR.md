@@ -32,8 +32,6 @@ at 1920x1080 there.
 |---|---|
 | ddc61cb847, `1791128091-thorbottom800-3215528` | full panel, same as before, `shots/nova-ddc61cb847.png` |
 
-Preflight:
-every code gate ok. `coverage` fails on six open issues with no tracker row on origin/board (#794-#801, #800
-included); that is board bookkeeping, which this lane may not edit.
+Preflight passes on ffda65e30c, every gate including `coverage`.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
