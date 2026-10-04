@@ -301,6 +301,85 @@ static int f0a_fastest_cpu(void)
     return cpu;
 }
 
+static void f0a_sysline(const char *path, char *out, size_t n)
+{
+    FILE *f = fopen(path, "r");
+
+    out[0] = 0;
+    if (f) {
+        if (fgets(out, n, f)) {
+            out[strcspn(out, "\n")] = 0;
+        }
+        fclose(f);
+    }
+}
+
+/*
+ * Is guest RAM on huge pages, and is the shadow? The pilot pair (NOTES,
+ * "F1 pilot") found F1 slower than its control in the memory-heavy scenes,
+ * and the suspect is host TLB reach: anonymous RAM can sit on 2 MiB THP, a
+ * memfd only if shmem THP is on, and the shadow's 4 KiB pieces never. Sums
+ * /proc/self/smaps over the RAM block's range and over the shadow's.
+ */
+static void f0a_thp(void)
+{
+    uintptr_t ram = hakux_fm_ram_host ? hakux_fm_ram_host
+                                      : xbox_ram_fp.host_base;
+    uintptr_t rend = ram + (hakux_fm_ram_size ? hakux_fm_ram_size
+                                              : (64u << 20));
+    static const char *keys[] = { "Rss:", "AnonHugePages:", "ShmemPmdMapped:",
+                                  "FilePmdMapped:", "ShmemHugePages:" };
+    long sum[2][5] = { { 0 } };
+    char en[96], sh[96], line[256];
+    int which = -1, nvma[2] = { 0, 0 };
+    FILE *f;
+
+    f0a_sysline("/sys/kernel/mm/transparent_hugepage/enabled", en, sizeof(en));
+    f0a_sysline("/sys/kernel/mm/transparent_hugepage/shmem_enabled", sh,
+                sizeof(sh));
+    f = fopen("/proc/self/smaps", "r");
+    while (f && fgets(line, sizeof(line), f)) {
+        unsigned long lo, hi;
+        long v;
+
+        /* A header starts with a lowercase hex address, a field with "Key:". */
+        if (((line[0] >= '0' && line[0] <= '9') ||
+             (line[0] >= 'a' && line[0] <= 'f')) &&
+            sscanf(line, "%lx-%lx ", &lo, &hi) == 2) {
+            which = -1;
+            if (lo < rend && hi > ram) {
+                which = 0;
+            } else if (hakux_fm_base && lo >= hakux_fm_base &&
+                       hi <= hakux_fm_base + FM_SPAN + FM_GUARD) {
+                which = 1;
+            }
+            if (which >= 0) {
+                nvma[which]++;
+            }
+            continue;
+        }
+        if (which < 0) {
+            continue;
+        }
+        for (int k = 0; k < 5; k++) {
+            size_t kl = strlen(keys[k]);
+            if (strncmp(line, keys[k], kl) == 0 &&
+                sscanf(line + kl, "%ld", &v) == 1) {
+                sum[which][k] += v;
+            }
+        }
+    }
+    if (f) {
+        fclose(f);
+    }
+    FM_LOG("[f0a] thp enabled=[%s] shmem=[%s] fm=%d", en, sh, fm_mode);
+    FM_LOG("[f0a] thp ram=0x%" PRIxPTR " vmas=%d rss_kb=%ld anonhuge_kb=%ld "
+           "shmempmd_kb=%ld filepmd_kb=%ld shmemhuge_kb=%ld | shadow vmas=%d "
+           "rss_kb=%ld shmempmd_kb=%ld filepmd_kb=%ld",
+           ram, nvma[0], sum[0][0], sum[0][1], sum[0][2], sum[0][3],
+           sum[0][4], nvma[1], sum[1][0], sum[1][2], sum[1][3]);
+}
+
 #define F0A_N 8192
 
 static void f0a_pass(const char *tag, uint64_t *s, uint32_t *slot,
@@ -474,6 +553,7 @@ static void *f0a_thread(void *arg)
     unsigned i;
 
     sleep(delay);
+    f0a_thp();
     fd = syscall(__NR_memfd_create, "f0a", 1u /* MFD_CLOEXEC */);
     if (fd < 0 || ftruncate(fd, 64u << 20) != 0) {
         FM_LOG("[f0a] memfd FAILED errno=%d", errno);
