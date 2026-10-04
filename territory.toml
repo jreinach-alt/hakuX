@@ -1964,5 +1964,17 @@ note = "STARTED (hostops 08:52 PDT, 10-03 jam duty): lane.local's 08:41 PDT terr
 [lane.flushstall787]
 issues = ["787"]
 standing = false
-files = ["docs/lanes/flushstall787/**"]
+files = ["docs/lanes/flushstall787/**", "docs/testing/predictions/flushstall787-kabuki.json", "docs/testing/predictions/flushstall787-tron.json"]
 note = "ROW ADDED (hostops 2026-10-04T00:11Z): lane.flushstall787 started 16:55 PDT (owner-activated, lane.local 16:5x item) and had NO territory row (the SessionStart fleet check flagged it). Files: docs/lanes/flushstall787/** now. accel/tcg/** and the perf-log print sites are granted only when its counter lands; lane.local decides that grant from the lane's OUTBOX."
+
+[lane.fps20786]
+issues = ["786", "747"]
+standing = false
+files = ["docs/lanes/fps20786/**"]
+note = "ROW ADDED (hostops 2026-10-04 jam duty): lane.fps20786 (#786/#747, Opus $35) was RUNNING with no territory row (the fleet check flagged it). Files docs/lanes/fps20786/** per lane.local's 18:4x item. Any further path is a grant from lane.local."
+
+[lane.goldens782]
+issues = ["782"]
+standing = false
+files = ["docs/lanes/goldens782/**"]
+note = "ROW ADDED (hostops 2026-10-04 jam duty): lane.goldens782 (#782, Sonnet $20) per lane.local's 18:4x item. Files docs/lanes/goldens782/** now. saves.py and titlestate.py are granted later by lane.local."
