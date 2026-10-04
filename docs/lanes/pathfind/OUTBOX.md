@@ -345,3 +345,24 @@ NEW ISSUE: Dino Crisis 3 hold: the shooter loop does not move the player; L1/X o
 Evidence: runs/dino-crisis-3-hold/verdict.json, hold.jsonl (changed 0.16-0.28 early, 0.55 once in menus), hold_strip.jpg (menu at 085/089). Blocks Dino Crisis 3 as a Playable title. Hold-play design issue, not performance. Also fps_ok 0.38: a separate frame-rate cost; link it to the 20-fps class if an issue exists.
 
 Pool status: Dino Crisis 3 stays on the list. Model spend about 35 Sonnet calls (about $2; the cost sheet is the authority). Next: 007 Agent Under Fire only if the cap allows, and only after the hold moves the player.
+
+## #433 -- 2026-10-03 22:25 PDT
+
+**Black Stone: Magic & Steel (58490004), Nova, held run with the title hold (X alone, left-stick walk): FAIL. Not Playable.**
+Verdict line: `Black Stone Magic Steel ? FAIL(menu time: 9.5% of the scored window in play (bar 90%; still 1104 s, play 116 s)) gameplay=1219.2s fps_ok=1.0 crash=False hang=False hitches=0/0.0pm play_share=0.0948`.
+The verdict's "menu time" wording is its name for the non-play share. Here it is still time: the strip shows no menu.
+Frame strip: docs/lanes/pathfind/runs/black-stone-hold3/hold_strip.jpg (40 kept frames over 1219 s). Claimed at 4.9 min, 67 model calls (Sonnet), about $3.4 by the call estimate.
+
+What the frames show:
+- The fighter stands on the same spot of the octagon in every kept frame, from 037 to 102, with the camera fixed. No menu, no cutscene.
+- The hold did what the title hold says: X at 1.8 s, then the four-stroke left-stick walk. Two still windows later, X again. Y, R1, BACK, START and B were never sent in the walk.
+- Per cycle, the walk changed 0.82 of the frame once after each X, then 0.0002-0.002 for the rest. The fighter did not travel.
+
+Verdict on the change: the title hold does not move Black Stone's fighter. The stance rule from 10-03 ("one X lowers the sword, then the stick walks") is not confirmed by this run. The 10-02 probe moved him only after a mixed sequence. I am not queuing another 600-s Black Stone run until a stick-response probe shows what moves him.
+
+**Note on the profile:** the run was started as first-run, not returning. Black Stone has a golden (86c8f6eada06), and the first-run route composes the disk without it, so the claim got through Name Entry on its own (about 4 min) and saved a new profile to the latest slot. That was a state mistake on my side; the next run uses returning.
+
+NEW ISSUE: Black Stone: the left stick does not move the fighter in the hold (stance rule unconfirmed; 1104 s still in the run)
+Evidence: runs/black-stone-hold3/verdict.json, hold.jsonl (the walk windows at 0.0002-0.002 for 1100 s), hold_strip.jpg (one spot in all 40 frames). Blocks Black Stone as a Playable title. A control question for the stick path first, then the hold design. Also: the 10-02 run (runs/black-stone-hold, steps 94-97) moved the fighter after a mixed X/stick/LEFT sequence, so the trigger is unknown.
+
+Pool status: Black Stone stays on the list (the pool's hold is the design fault, not the fps). Dino Crisis 3 stays on the list. 007 Agent Under Fire is not started: our rule is that a hold must move the player first, and it does not yet on Black Stone. Today's spend by the call estimate: about $50 of the $70 cap. The Nova is released (hold.sh who: free). Nothing is in flight and no WAITING file is written.

@@ -11,6 +11,27 @@
   face buttons in the walk; Y, R1, BACK, START and B are never sent in the hold. A menu that a look finds open gets one B,
   then X, then the walk. The genre model is not asked for a title hold. Selftest `titlehold` covers it (all ok).
 - Spend at the start of this resume: about $46 of the $70 cap (the 21:16 NOTES figure of $44 plus the Dino Crisis 3 run).
+- **Result (black-stone-hold3, 22:0x-22:25 PDT, Nova, first-run; `runs/black-stone-hold3`): FAIL, play share 9.5%.** Claimed
+  at 4.9 min (67 model calls, 28 steps, $3.4 est.). The title hold ran 1219 s of gameplay HUD with the fighter on one spot:
+  116 s of play credited (the first 116 s, before the first still window), then 1104 s still. The strip (hold_strip.jpg)
+  shows the same octagon position and camera in all 40 kept frames, and no menu in any of them. The verdict's
+  "menu time" label is its name for the non-play share; here it is still time, not menus.
+- **What the hold did, from hold.jsonl:** X at 1.8 s (press 1), then the 4-s left-stick walk. The first walk cycle changed
+  0.82 of the frame and the next cycles 0.0002-0.002, so the camera moved and the fighter did not travel. Two still windows
+  later, X again (press 2, cycle n=55); its cycle changed 0.82 once, then the walk did not travel either. Never a Y, R1,
+  BACK, START or B in the walk.
+- **Cause, not yet named:** the left stick did not move the fighter after either X. The 10-02 probe (steps 94-97 of
+  `runs/black-stone-hold`) moved him only after a mixed sequence (X with a stick, then LEFT), so the stance rule "one X lowers
+  the sword, then the stick walks" is not confirmed. The next step is a stick-response probe on this title with frames per
+  input (a probe, not a hold), before any more 600-s runs.
+- **Not run:** 007 AUF (addendum 1 of 21:2x: only after the hold moves the player; it does not yet). Spend stops here, near
+  $50 of $70.
+- **The run used `first-run` by mistake.** Black Stone has a golden (`titlestate.py golden --title-id 58490004`:
+  86c8f6eada06, promoted by lane.local), and a `first-run` route composes the disk WITHOUT the run's own title's golden
+  (titlestate.py header). So the run was offered Name Entry again: it sat there for about 4 min (every D-pad, A, START and
+  stick input logged as a no-op), then got through on HOLD:A and claimed. The profile it made went to the latest slot, not
+  the golden. The next run of a title with a golden uses its `returning` variant. (heldrun.sh defaults to first-run; pass
+  `returning` as its fourth argument.)
 
 ## Dino Crisis 3 held run (10-03 21:27-21:45 PDT, Nova, first-run)
 
