@@ -366,3 +366,13 @@ NEW ISSUE: Black Stone: the left stick does not move the fighter in the hold (st
 Evidence: runs/black-stone-hold3/verdict.json, hold.jsonl (the walk windows at 0.0002-0.002 for 1100 s), hold_strip.jpg (one spot in all 40 frames). Blocks Black Stone as a Playable title. A control question for the stick path first, then the hold design. Also: the 10-02 run (runs/black-stone-hold, steps 94-97) moved the fighter after a mixed X/stick/LEFT sequence, so the trigger is unknown.
 
 Pool status: Black Stone stays on the list (the pool's hold is the design fault, not the fps). Dino Crisis 3 stays on the list. 007 Agent Under Fire is not started: our rule is that a hold must move the player first, and it does not yet on Black Stone. Today's spend by the call estimate: about $50 of the $70 cap. The Nova is released (hold.sh who: free). Nothing is in flight and no WAITING file is written.
+
+## #433 -- 2026-10-04 08:50 PDT
+
+[lane.pathfind] RalliSport Challenge (4D53000F) CLEAR: 98.9% of 649 s at >= 30 fps, median 59, full window; profile golden cc9b4ced4a0f (titlestate), path docs/testing/titles/pathknow/paths/4D53000F.json
+- Verdict line (rescored): `VERDICT RalliSport Challenge ? PASS None gameplay=671.2s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=2/0.196pm worst_ms=151.4 static_frac=0.0125 play_share=0.9026 fps_excluded=66.1s`
+- Frame strip: docs/lanes/pathfind/runs/screen-ralli-challenge/hold-0816/hold_strip.jpg (20 kept frames, 08:19-08:30 PDT, the car driving the stage).
+- Path: the first-run claim at 3.2 min (19 Sonnet calls); the measurement run replayed it to play in 2.05 min (18 calls, 8 steps replayed). 3/5-min checks: median 59, 100% at >= 30 at both. No native target in targets.toml for RalliSport 1 (RalliSport 2 is 60).
+- The run first scored FAIL "window unmeasured": master's failgate (de4b991a6c) reads the scored window from HHMMSS-named route-frames, and the hold kept NNN-hold frames. pathfind now writes its kept hold frames to route-frames/ (b81b9086de); this run was rescored from its kept JPGs, same capture times.
+- The 08:04 attempt (234 s, ended with the session) read 230 of 236 s at >= 30 and is not used.
+- Spend so far today: about $4.3 (screening, Sonnet).
