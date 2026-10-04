@@ -404,3 +404,9 @@ Spend so far today: about $21 of $60.
 - Why the window is short: the CPU won the first match. The hold's steering pressed A four times on the CONTINUE countdown (A did not continue), then went to GAME OVER, the ranking and the title. At character select its START presses did not start a match before the 12-step limit. This is a hold-recovery miss for fighting games, not a performance miss: 59 fps the whole time.
 - Claim: first-run, 1.9 min, 13 Sonnet calls. Strip: docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/hold_strip.jpg. No native target in targets.toml.
 Spend so far today: about $25 of $60.
+
+[lane.pathfind] LEGO Star Wars: The Video Game (4553001D) CLEAR on fps: fps_ok 1.0 over 733 s of gameplay (100.0% of 734 gfps samples at >= 28.5), median 59, full window; profile golden 5251f98730d1, path docs/testing/titles/pathknow/paths/4553001D.json
+- Verdict line: `VERDICT LEGO Star Wars The Video Game ? FAIL(menu time: 68.5% of the scored window in `play` (bar 90%; play 502 s, cutscene 117 s, still 78 s, pause 17 s)) gameplay=732.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=100.0 static_frac=0.0008 play_share=0.6845 fps_excluded=232.9s`
+- Not Playable as held: the verdict fails it on play share 68.5% (cutscenes 117 s, still 78 s, pause 17 s). The claim landed in the Dexter's Diner hub (the strip shows the Episode I/II doors), and the hold's loop stayed in the hub. From frame 081 the pause menu (Resume / Options / Extras / Quit) is open over it in 4 of the last 5 kept frames. The strip does not show what the verdict's 117 s of "cutscene" were. This is a hold miss, not a performance miss: 59 fps at both the 3- and 5-min checks, worst frame 100 ms.
+- Claim: first-run, 1.21 min, 9 Sonnet calls. Frame strip: docs/lanes/pathfind/runs/screen-lego-star-wars/hold/hold_strip.jpg. No native target in targets.toml.
+Spend so far today: about $27 of $60.

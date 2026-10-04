@@ -10,6 +10,7 @@
 | 4 | Simpsons Road Rage | 45410013 | can't-path | - | - | - | race HUD at 10.8 min; 10 RT probes refused; 74 calls ($5.5) | none | runs/screen-simpsons-road-rage/claim |
 | 5 | Simpsons Hit & Run | 56550015 | clear | 100% (98.2% of samples) | 38 | full (606 s, PASS) | 2.7, 18 | golden bcc71e970cff (title data only: hold on state any) | runs/screen-simpsons-hit-run/hold |
 | 6 | Guilty Gear XX #Reload | 53410002 | clear (fps), partial | 100% of 193 s | 59 | partial: hold lost at a CONTINUE screen after 97 s of play | 1.9, 13 | golden 6f0d8fc26eb7 | runs/screen-guilty-gear-xx/hold |
+| 7 | LEGO Star Wars: The Video Game | 4553001D | CLEAR on fps | 1.0 of 733 s | 59 | full window; play_share 0.6845 | 1.21, 9 | golden 5251f98730d1 | runs/screen-lego-star-wars/hold |
 
 Share columns use title_verdict's bar, 30 x `fps_tolerance` 0.95 = 28.5, unless stated.
 
