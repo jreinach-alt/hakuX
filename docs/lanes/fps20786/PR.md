@@ -14,6 +14,7 @@ Needs device: yes (Nova, 5 --perflog soaks via request.sh)    Needs NDK: no
 | NBA Live 2005 | 1-1791081646-lane.fps20786-2876934 | 24.2 | 0.07 | 24.7 + 11.0 | 18.5 | 13.9 | serial renderer (1 sync download per frame) |
 | NBA Live 2005, plain build, device defaults | pathfind nba-live-2005-hold | 19.96 | 0.00 | 26.4 + 15.5 | -- | -- | same, without perflog |
 | Counter-Strike | 1-1791081646-lane.fps20786-2876984 | 25.8 | 0.00 | 22.8 + 14.3 | 24.6 | 13.8 | serial renderer (2 per frame) |
+| Counter-Strike (retry) | 1-1791086565-lane.fps20786-3338415 | 25.9 | 0.00 | 22.5 + 14.2 | 24.4 | 13.7 | same |
 | Midnight Club 3 | 1-1791081681-lane.fps20786-2878057 | 25.4 | 0.01 | 22.5 + 9.8 | 14.2 | 11.2 | serial renderer, on the 33.3 edge (perflog-sensitive) |
 | Top Spin | 1-1791080537-lane.fps20786-2538884 | 32.5 | 0.89 | 16.0 + 14.4 | 10.6 | 15.5 | lock behind ~30 sync downloads per frame (#474) |
 | NBA Live 2004 / 06 / 07 | -- | -- | -- | -- | -- | -- | not measured: no path or route; held runs asked of lane.pathfind (#785) |

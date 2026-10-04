@@ -99,7 +99,7 @@ the perflog medians.
 | 1-1791081646-lane.fps20786-2876934 | NBA Live 2005 | fps786-nba2005 | reached play (12-min quarters, 11:45 1st), 310 rows |
 | 1-1791081646-lane.fps20786-2876984 | Counter-Strike | fps786-cs | reached play at 21:00:17; from ~21:00:57 stood on a "Press A to continue" card the loop had no A for (route defect, mine) |
 | 1-1791081681-lane.fps20786-2878057 | Midnight Club 3 | midnight-club-3.returning | reached the Arcade street race on schedule, 322 rows |
-| 1-1791086565-lane.fps20786-3338415 | Counter-Strike | fps786-cs2 (loop leads with A) | queued (run 5 of 5) |
+| 1-1791086565-lane.fps20786-3338415 | Counter-Strike | fps786-cs2 (loop leads with A) | live rounds (a cobblestone map, the clock running 7:00 -> 6:24, rounds restarting) with the weapon wheel open: pathfind closed it with B, which the loop does not press. 330 rows |
 
 ### Top Spin (2538884): not a 20-fps title on this build; vCPU-side lock wait behind surface downloads
 
@@ -208,6 +208,16 @@ before it: rows t = 1.5-39 s match the rest.
   render CPU it is not.
 - 10-02's "13 fps" was one overlay reading on device defaults. This run used
   the "max" regimen.
+
+The retry (3338415) played live rounds on a different map, with the weapon
+wheel up over a near-static view. B closes it, and the loop has no B. Its
+numbers repeat the first run's to the tenth: 330 rows, 25.9 fps, F 38.7,
+gbusy 20.7, Ri 2.0, rcpu 22.5, rblk 14.2, GPU 24.4, Draw 13.3, Fin 13.7,
+lockw 0.3. VBLANKs per flip: v2 0.68, v3 0.32. Two download-if-dirty finishes
+per flip (sd118 dirtyIf118 per 2 s). Both runs are a standing view of a 3D
+map with a HUD overlay, not moving play. Moving play would change the draw
+count and the GPU time. It would not change the finish waits, which are per
+flip.
 
 ### Midnight Club 3 (2878057): on the 33.3-ms edge; the shared signature, tipped by perflog
 
