@@ -4964,7 +4964,7 @@ title = "Tron 2.0 (42560001) has no targets.toml iso row, so request.sh refuses 
 component = "harness"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "request.sh refuses 42560001: docs/testing/titles/targets.toml has no iso row for it. Refuted when request.sh accepts a Tron 2.0 request on origin/master. No lane owns the fix: lane.tronhang672 is stopped (#672, draft #673); lane.local to name a lane for the row."
+blocked_on = "request.sh refuses 42560001: docs/testing/titles/targets.toml has no iso row for it. Refuted when request.sh accepts a Tron 2.0 request on origin/master. No lane owns the fix: lane.tronhang672 is retired (hostops 2026-10-03: stopped by the owner, its row released); lane.local to name a lane for the row."
 status_note = "Forge issue, open; hostops 2026-10-03 (jam duty) added the row to clear the coverage gate, which refused origin/board with #699 unclassified. The row says what blocks it, so it does not read as available."
 
 [issue.700]
