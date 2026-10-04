@@ -425,9 +425,6 @@ typedef struct DeferredSurfaceDownload {
     bool partial; /* Covered only a row range, not the whole surface */
     SurfaceBinding *surface; /* Source surface for flag cleanup at completion */
     uint32_t draw_generation; /* what the copy captured; see completion */
-    int frame; /* Frame slot whose submission carries the copy, or -1 while
-                * it is still in the recording command buffer (async794) */
-    uint64_t seq; /* Record order, for the flip's pre-download */
 } DeferredSurfaceDownload;
 
 typedef struct ShaderModuleInfo {
@@ -1450,16 +1447,15 @@ typedef struct PGRAPHVkState {
     QemuEvent dirty_surfaces_download_complete; // common
 
     DeferredSurfaceDownload deferred_downloads[MAX_DEFERRED_DOWNLOADS];
-    int num_deferred_downloads; /* In record order, which is submission
-                                 * order: submitted entries (frame >= 0)
-                                 * first, then unsubmitted ones (async794) */
+    int num_deferred_downloads;
     VkDeviceSize staging_dst_offset;
-    uint64_t deferred_downloads_seq;
+    int deferred_downloads_frame; /* Frame index whose CB contains the
+                                   * deferred downloads, or -1 if not yet
+                                   * submitted. */
 
     bool display_predownload_pending;
     int display_predownload_frame_index;
     SurfaceBinding *display_predownload_surface;
-    uint64_t display_predownload_seq; /* Last entry the flip recorded */
 
     Lru texture_cache;
     TextureBinding *texture_cache_entries;
@@ -1780,10 +1776,6 @@ void pgraph_vk_surface_image_pool_init(PGRAPHVkState *r);
 void pgraph_vk_surface_image_pool_drain(PGRAPHVkState *r);
 void pgraph_vk_process_pending_downloads(NV2AState *d);
 void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r);
-void pgraph_vk_complete_staged_downloads_for_frame(NV2AState *d,
-                                                   PGRAPHVkState *r,
-                                                   int frame);
-void pgraph_vk_tag_submitted_downloads(PGRAPHVkState *r, int frame);
 void pgraph_vk_download_surface_complete_deferred(NV2AState *d);
 void pgraph_vk_surface_download_if_dirty(NV2AState *d, SurfaceBinding *surface);
 SurfaceBinding *pgraph_vk_surface_get_within(NV2AState *d, hwaddr addr);

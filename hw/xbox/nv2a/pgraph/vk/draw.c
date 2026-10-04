@@ -3793,10 +3793,6 @@ void pgraph_vk_flush_all_frames(PGRAPHState *pg)
             }
             r->deferred_framebuffer_count[i] = 0;
         }
-        /* Every submitted slot has completed, and the rotation that would
-         * have completed its staged downloads skips a slot no longer marked
-         * submitted: complete them here (async794). */
-        pgraph_vk_complete_staged_downloads_for_frame(r->nv2a, r, i);
         if (i != r->current_frame) {
             /* The current slot's command buffer may still be recording
              * draws that reference what was retired into it. */
@@ -4165,11 +4161,13 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
             r->gpu_ts_rp_counts[r->current_frame] = r->gpu_ts_rp_index;
         }
 
-        /* Deferred surface downloads recorded into this command buffer are
-         * submitted with this frame's fence, so later callers wait on the
-         * fence instead of issuing a separate pgraph_vk_finish(SURFACE_DOWN).
-         * Earlier submissions' downloads keep their own slots (async794). */
-        pgraph_vk_tag_submitted_downloads(r, r->current_frame);
+        /* If deferred surface downloads are pending (recorded into the aux
+         * CB), mark them as submitted with this frame's fence so that
+         * later callers can wait on the fence instead of issuing a
+         * separate pgraph_vk_finish(SURFACE_DOWN). */
+        if (r->num_deferred_downloads > 0 && r->deferred_downloads_frame < 0) {
+            r->deferred_downloads_frame = r->current_frame;
+        }
 
         nv2a_profile_inc_counter(NV2A_PROF_QUEUE_SUBMIT);
         NV2A_PHASE_TIMER_BEGIN(finish_submit);
@@ -4233,10 +4231,9 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
 
                 /* GPU done — complete any deferred downloads that were
                  * submitted with this frame's aux CB. */
-                {
+                if (r->deferred_downloads_frame == r->current_frame) {
                     NV2AState *d = container_of(pg, NV2AState, pgraph);
-                    pgraph_vk_complete_staged_downloads_for_frame(
-                        d, r, r->current_frame);
+                    pgraph_vk_complete_staged_downloads(d, r);
                 }
 
                 /* Immediate submit: GPU done, descriptor sets safe to
@@ -4298,7 +4295,7 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                  * with pgraph.lock released, as wait_frame_fence (vk/surface.c)
                  * already does for the fence waits of the same downloads.
                  * Top Spin takes ~26 of these a frame from its texture binds,
-                 * and its vCPU waited 13.6 ms a frame for the lock behind
+                 * and its vCPU waited 10-13.6 ms a frame for the lock behind
                  * them, on reads of PGRAPH 0xb10 (PATT_COLOR0).
                  *
                  * Held: on the PFIFO thread a finish runs inside a method or
@@ -4327,8 +4324,10 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                 gpu_ts_readback(r, r->current_frame);
 
                 /* GPU done — complete any deferred downloads. */
-                pgraph_vk_complete_staged_downloads_for_frame(
-                    fd, r, r->current_frame);
+                if (r->deferred_downloads_frame == r->current_frame) {
+                    NV2AState *d = container_of(pg, NV2AState, pgraph);
+                    pgraph_vk_complete_staged_downloads(d, r);
+                }
 
                 /* Non-deferred: GPU done, descriptor sets safe to reuse */
                 r->descriptor_set_index = 0;
@@ -4391,13 +4390,10 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                 qatomic_set(&r->frame_submitted[next_frame], false);
 
                 /* Complete deferred downloads that were submitted with
-                 * this frame slot's aux CB, and any submitted before them.
-                 * They must not outlive the slot: its next submit resets
-                 * the fence they would wait on. */
-                {
+                 * this frame slot's aux CB. */
+                if (r->deferred_downloads_frame == next_frame) {
                     NV2AState *d = container_of(pg, NV2AState, pgraph);
-                    pgraph_vk_complete_staged_downloads_for_frame(
-                        d, r, next_frame);
+                    pgraph_vk_complete_staged_downloads(d, r);
                 }
                 for (int i = 0; i < r->deferred_framebuffer_count[next_frame]; i++) {
                     vkDestroyFramebuffer(r->device,
