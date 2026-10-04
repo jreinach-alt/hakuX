@@ -113,3 +113,129 @@ NOT the cost. The perflog cost candidates, from reading the code, are:
 So the prediction P1 (0.7) rests on the GPU timestamps and the per-draw bookkeeping, not on the
 clock reads. The A/B result decides it. If perflog is within noise, the prediction is refuted and the
 measurement points at the bookkeeping, not at per-method cost.
+
+## Attempt 4 (18:16 PDT): why attempt 3 did not finish, and the result
+
+**Why attempt 3 did not finish:** it ended correctly, on an `owner` wait. The ToeJam golden had no save
+directory, and the choice of golden belongs to lane.local. Lane.local picked option (c) at 16:3x: the same A/B on
+Castlevania: Curse of Darkness, returning route, golden 20235e93867b, 960 s, ref a971c31220 for both arms. It queued
+the rows itself (keys `alwaystelemetry-cv-plain` / `-cv-perflog`). Both runs finished before this attempt:
+
+| arm | request | ran (PDT) | verdict |
+|---|---|---|---|
+| plain | 1-1791070366-lanelocal-968308 | 16:32-17:05 | PASS Playable, fps_ok 1.0 |
+| perflog | 1-1791072308-lanelocal-1173788 | 17:05-17:22 | FAIL: one 1426 ms stall at mark+187 s |
+
+This attempt reads that pair. It also merged origin/master (b9e33845bd). No emulator file changed since
+a971c31220, so the line references in the design still hold.
+
+### How it was read
+
+`abread.py` (this directory) reads both result dirs. Its output, and a plain-against-plain noise control, are in
+`ab_castlevania.md`. Castlevania runs at the 60 fps vsync cap, so an fps tie only bounds the cost. The cost shows
+in headroom, and two headroom readers exist in BOTH builds:
+- `[rdc] tcpu=`: the render thread's own CPU time per window;
+- `Ri:` on the gfps line: renderer idle ms per flip.
+
+After the mark the route runs a `repeat forever` walk loop timed on the wall clock, so the two arms' paths
+diverge. The primary window is therefore +30..+180 s after the mark: both arms on the same walk, no compiles in
+either. The steady window is every second of the run with no pipeline compile within 3 s.
+
+### Measured
+
+| | plain | perflog | delta | noise (plain vs plain, 1-1791063303) |
+|---|---|---|---|---|
+| fps_ok (verdict) | 1.0 | 0.9965 | -0.35 pt | -- |
+| gfps window median (verdict) | 59.94 | 59.94 | 0 | -- |
+| gfps mean (verdict) | 59.87 | 59.86 | -0.01 | -- |
+| pace max ms, median, +30..+180 | 19.7 | 18.4 | -1.3 | +-1.4 |
+| **render-thread CPU ms/s, +30..+180** | **248.2** | **321.7** | **+73.5 (+30%)** | 14 |
+| render-thread CPU ms/s, steady | 247.5 | 326.2 | +78.7 | 12 |
+| **renderer idle ms/flip (Ri), +30..+180** | **8.02** | **6.90** | **-1.12** | 0.18 |
+| Ri, steady | 8.12 | 6.52 | -1.60 | 0.17 |
+| vCPU run % ([idlehalt]) | 98.4 | 98.6 | +0.2 | 0.2 |
+| net W (verdict) | 6.832 | 6.968 | +2.0% | plain runs 6.43-6.86 |
+| J/frame (verdict) | 0.1141 | 0.1167 | +2.3% | plain runs 0.1073-0.1146 |
+
+**Perflog costs about 1.2 ms of render-thread time per frame on this title.** The CPU figure (+73.5 ms/s over
+59 frames/s = 1.25 ms/frame) and the idle figure (Ri -1.1 to -1.6 ms/flip) are two independent readers, and they
+agree. Both are 5-9x the plain-against-plain spread. The control spans a ref change (34e6e8dcba to a971c31220),
+so it overstates the noise, if anything.
+- The render thread's busy time per frame goes from about 8.7 to 9.8 ms (+13%) in the same-scene window, and
+  from about 8.6 to 10.2 ms (+19%) in the steady window.
+- Castlevania hides this under the vsync cap, with 8 ms of renderer idle to spare. A title whose render thread
+  is the bound would lose up to that share of its frame rate.
+- The vCPU side does not move: run % stays at 98.4-98.6. The cost sits on the puller/render thread, where the
+  per-method and per-draw timers run.
+
+**The FAIL is a confound, not perflog's cost.**
+- At mark+186..+224 s the perflog arm compiled 26 first-time pipelines: pm went from 50 to 76, and one window
+  had dpm=15 and dpc_ms=1349.7.
+- The plain arm compiled nothing after +28 s and ended at pm=50.
+- Frames f00018 show why. The perflog arm's player had walked to the castle gate (new content), while the plain
+  arm's player was still in the courtyard. The wall-clock walk loop took the two arms to different places.
+- Compile cost per pipeline was the same in both arms: 90 ms (1349.7/15) against 94-103 ms in plain's own
+  compile windows. So perflog did not slow the compile; the arm reached content the other never did.
+- That stall is the known #569 first-compile problem (ubershader off), and the -0.35 pt fps_ok is that one stall.
+
+**Prediction P1 (registered before the run): as worded, not met.** fps_ok fell 0.35 pt (bar 2 pt), and the gfps
+median tied (bar 0.5 fps). On a vsync-capped title the fps metric cannot see a render-thread cost that fits inside
+the idle; the lane.local addendum said this in advance. The mechanism P1 named is confirmed in headroom:
+per-draw and per-method bookkeeping on the render thread, about 1.2 ms/frame. The refined mechanism (bookkeeping,
+not clock reads) is only partly supported, as the estimate below shows.
+
+### Per-section cost: not separable from one pair (estimate only)
+
+Event rates in the perflog arm (medians over the run):
+- 201 draws per frame (xemu-work BE), so about 12k draws/s;
+- 3925 puller method calls per frame (hakuX-cpu M), so about 235k/s, of which 3160/frame on the fast path;
+- about 5060 UBO uploads/s (ubosz n);
+- about 5300 texture binds/s (txr bt);
+- 13 render passes per frame.
+
+The clock reads, taken one family at a time:
+- per method: 2-4 reads, about 0.7M/s;
+- per draw: 35 phase-timer sites, 2 reads each, about 0.85M/s;
+- per texture bind: about 10 reads, 0.05M/s.
+
+That makes about 1.6M `cntvct_el0` reads per second. At 5-25 ns each (not measured on the Nova), that is 8-40 ms/s,
+or 10-55% of the measured 74 ms/s. The rest is the bookkeeping these reads feed, plus three per-upload or per-bind
+attributions:
+- the read-modify-write of `g_nv2a_stats` fields;
+- the slow-method histogram;
+- `pgraph_vk_ubosz_note_upload`'s per-upload diff (shaders.c 590-, 895);
+- the #461 texture-hash reason tracking (texture.c 1925-2366);
+- the #474 bind_textures wall timers (texture.c 52-).
+
+A per-section split would take one arm per section. It does not change the decision below, so it is not queued.
+
+**Paid but unread:** three perflog tags are printed and then dropped by the dispatcher's logcat filter
+(`docs/testing/dispatcher.sh:2010`): `xemu-vsync`, `xemu-pace` (`profile.c` 730-735) and `hakuX-mhist`
+(`pgraph.c` 270). None of the three appears in the perflog logcat.
+
+### Decision
+
+The overhead is above the noise in the units that matter for a render-bound title: +30% render-thread CPU and
+1.1-1.6 ms per frame. So **do not make perflog the default.** Do the two-tier change: the design is in OUTBOX.md,
+updated 18:xx with these numbers.
+- The always-on tier's budget is < 1% of a 60 fps frame: 0.17 ms/frame, about 10 ms/s of render-thread CPU.
+- That is below the 12-14 ms/s plain-against-plain spread. So its own A/B can only show "within noise", and the
+  tier must also time itself, the way `[shd413] dins_us` and `[rdc] ovh=` already do.
+
+### Next (P x win)
+
+1. **Two-tier change, Opus slot (recommended).**
+   - P about 0.8 that the tier fits under 10 ms/s. Evidence: the always-on tier keeps counters (adds, no clock
+     reads), per-frame phase timers (hundreds of reads/s, against 1.6M in perflog), and a 1-in-16 sampled draw
+     timer. `[shd413]` already runs an instrument of this shape at 2-55 us/s (dins_us).
+   - Win: every miss carries its cause, so no second run per miss. Under the owner's 10-03 rule each perf miss
+     currently costs one more device run of about 20-30 min.
+   - Cost: one Opus session, then one Nova pair (2 x ~20 min) on the same Castlevania route, judged on `tcpu`,
+     `Ri` and the tier's self-time.
+2. **Perflog as default.** P about 0.1 that it is acceptable. Measured: +30% render-thread CPU, which would make
+   every verdict on a render-bound title up to 13-19% pessimistic. The win is the same telemetry with zero code.
+   Rejected on the measurement.
+3. **An uncapped render-bound A/B to put an fps number on perflog.** It decides nothing: the headroom already
+   decides between 1 and 2. Not queued.
+4. **Per-section split of perflog (one arm per section).** Only useful for promoting a deep item into the always-on
+   tier. P about 0.5 that it promotes something, small win. Defer until the tier 1 arm reports its self-time.
