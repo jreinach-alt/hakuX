@@ -367,6 +367,22 @@ def window_change(a, b):
     return classify.motion(ga, grey(b), pixel=probe_step(ga))[0]
 
 
+def route_frame(out, png):
+    """A kept hold frame, linked as route-frames/HHMMSS-hold.png (its capture time): the name title_verdict.py's
+    liveness and position tests read the scored window from (hitch_report.FRAME_NAME). Without them the window is
+    `unmeasured` and fails (failgate, 10-04: RalliSport's 671-s hold at fps_ok 1.0 scored FAIL that way)."""
+    d = os.path.join(out, "route-frames")
+    os.makedirs(d, exist_ok=True)
+    dest = os.path.join(d, time.strftime("%H%M%S", time.localtime(os.path.getmtime(png))) + "-hold.png")
+    if not os.path.exists(dest):
+        try:
+            os.link(png, dest)
+        except OSError:
+            import shutil
+            shutil.copyfile(png, dest)
+    return dest
+
+
 def fps_course(logcat):
     """The hold so far from its logcat's hakuX-perf `gfps=` lines (one per second): {n, median, share >= FPS_BAR}."""
     try:
@@ -1506,6 +1522,7 @@ class Agent:
                         logged = want
                 last_kept = hold_el
                 kept.append(jp)
+                route_frame(self.out, png)
             # the previous look's frame is spent now: this look has been measured against it
             for p in drop:
                 os.remove(p)
