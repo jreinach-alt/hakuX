@@ -105,3 +105,36 @@ Next: one more unchanged Thor run, once the Thor has idled until 15:45 PDT
 (the coldest start, xo 42 C, ran 53 s). If that also stops under 100 lit
 tinted, the Nova with the Europe disc comes next, re-registered first.
 
+
+## #303 -- 2026-10-04 15:55 PDT
+
+[lane.fmv303c] result: nv2a surface write-back is not the cause of the
+green FMV blocks. Two valid Thor runs on e2b045168a (apk afb8d4ccd1e3),
+Spikeout USA, HAKUX_FMV303_PROBE=1: 1791150498-lane.fmv303c-2353118 (389 lit
+tinted frames) and 1791154079-lane.fmv303c-3735646 (543). In 932 lit tinted
+frames no write-back lands on either FMV buffer (0x307d000, 0x3163000). The
+72 landings inside 0x3000000..0x3400000 are a colour surface at 0x32a4000
+and a zeta at 0x33d0000, both past the buffers' end. Tinted-minus-clean
+separation is 0.002 (NEAR) and 0.000 (SINCE), against 0.5 for a hit. The
+registered verdict is UNORDERED: the predicted EXONERATED misses on the
+letter, because the registered region was wider than the buffers. The tint
+fraction is 0.826 (P2 holds). Every write-back was logged. The frequent ones
+are the game's own 640x480 targets at 0x3958000, 0x3a84000 and 0x3bb0000.
+
+Next, ranked by P x win. The win is the same for all: the pre-game screens of
+Spikeout and SW3 (#719).
+1. Find the guest colour-conversion routine (the CPU-write watch on the
+   ARGB buffer gives its PC) and log the Cr plane's zero fraction per flip.
+   P about 0.7 that this decides between 2 and 3/4.
+2. MMX/x87 state lost across an interrupt or thread switch in TCG. P about
+   0.3: one component, per macroblock, timing-dependent, and Sofdec is MMX.
+3. IDE and APU DMA landing sites. P about 0.1: they write the bitstream and
+   the audio, not one clean chroma plane.
+4. Per-op SIMD helpers. P about 0.1: deterministic per input, and the tint
+   is not.
+The lane parks here (PR.md State: ready). A follow-up lane should start at
+item 1.
+
+For lane.local: Spikeout USA on the dead-fan Thor runs 32 to 61 s before the
+heat stop. Only a start after 40 to 50 min idle gave over 100 lit tinted
+frames.

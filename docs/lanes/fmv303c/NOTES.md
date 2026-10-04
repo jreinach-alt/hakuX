@@ -62,6 +62,14 @@ lane.local set the system key to 0. Attempt 6 (14:38 PDT) deleted WAITING
 and queued the same two runs unchanged: ref cf328d86f7, prediction sha
 6b933f61..., USA disc.
 
+Attempt 6 did not finish because it got one valid replicate of the two that
+the registration needs. The second run (L2, then L2b) was heat-stopped under
+100 lit tinted frames, and the session parked on `WAITING: time
+2026-10-04T15:45` so the Thor could cool (rows and Next below). Nothing
+failed. Attempt 7 (15:47 PDT) found the Thor idle since 14:57. It queued L2c
+unchanged (same ref e2b045168a, prediction sha 3ca87cf9...):
+1791154079-lane.fmv303c-3735646.
+
 ## What the branch carries
 
 1. `hw/xbox/nv2a/pgraph/vk/surface.c`, probe hunk only (b86f91641b), gated on
@@ -133,6 +141,94 @@ performance miss.
 | 1791150498-lane.fmv303c-2353118 (L1, e2b045168a) | afb8d4ccd1e3 | 389 (36) | 2496 | 5 | 0.000 / 0.000 | 0.000 / 0.000 | OK |
 | 1791150499-lane.fmv303c-2353251 (L2, e2b045168a) | afb8d4ccd1e3 | 19 (3) | 1883 | 59 | 0.053 / 0.000 | 0.000 / 0.000 | VOID: 19 < 100 |
 | 1791150948-lane.fmv303c-2457692 (L2b, replaces L2) | afb8d4ccd1e3 | 96 (9) | 2028 | 65 | 0.010 / 0.000 | 0.000 / 0.000 | VOID: 96 < 100 |
+| 1791154079-lane.fmv303c-3735646 (L2c, replaces L2b) | afb8d4ccd1e3 | 543 (52) | 2823 | 67 | 0.004 / 0.000 | 0.000 / 0.000 | OK |
+
+## Verdict (L1 + L2c, 2026-10-04 15:50 PDT): UNORDERED; write-back does not reach the FMV buffers
+
+L2c ran 61 s before the guest exited. That was the Thor's dead-fan stop, and
+it was the longest run yet, after 50 min idle. It is valid, so L1 and L2c are
+the registered pair. `wb_judge.py` on both logcats:
+
+| | L1 | L2c | pooled |
+|---|---|---|---|
+| lit tinted / clean / middle | 389 / 36 / 46 | 543 / 52 / 63 | 932 / 88 / 109 |
+| tinted / lit (P2, registered [0.3, 0.9]) | 0.826 | 0.825 | **0.826, holds** |
+| last `wbc` n (write-backs seen) | 2496 | 2823 | |
+| in-region landings | 5 | 67 | 72 |
+| NEAR tinted / clean | 0.000 / 0.000 | 0.004 / 0.000 | 0.002 / 0.000 |
+| SINCE tinted / clean | 0.000 / 0.000 | 0.000 / 0.000 | 0.000 / 0.000 |
+
+**Registered verdict: UNORDERED.** The prediction was EXONERATED, and it
+misses on the letter of the rule. EXONERATED meant "no landing anywhere in
+0x3000000..0x3400000", and 72 landings fall inside that range. They are all
+two surfaces past the FMV buffers' end (0x3249000): a 640x480 colour surface
+at 0x32a4000 (ends at 0x33d0000) and a 1280x480 zeta at 0x33d0000. The
+registered region was a coarse bound, wider than the buffers. The HIT side
+of the falsifier is refuted outright. It needed a tinted-minus-clean
+separation of at least 0.5. The measured separation is 0.002 (NEAR) and
+0.000 (SINCE). In 932 lit tinted frames, no write-back lands on the
+displayed buffer, or on either FMV buffer.
+
+Below 0x3400000 the probe logs every landing. Outside the region it logs up
+to a cap of 20000, and the totals (2496, 2823) are under that cap, so every
+write-back in both runs is logged. The writers that run every flip are the
+game's own 640x480 targets: colour at 0x3a84000 and 0x3bb0000, zeta at
+0x3958000, about 900 each per run. They land on tinted and clean frames
+alike, nowhere near the FMV buffers. The rest happen once or twice per run.
+So the measurement does not depend on where Sofdec keeps its Y/Cb/Cr planes.
+The tint is 0.83 of lit frames and switches within shots. A writer that
+lands in the region 72 times in about 1100 lit frames, and never within 2
+flips of 99.8% of tinted frames, cannot produce that. **Surface write-back is
+not the cause of #303.** The second surface.c hunk (the HIT branch) is not
+written.
+
+**Branch selected:** the brief's EXONERATED branch, re-ranked below,
+because the outcome that matters (nothing lands on the FMV working set) is
+the one EXONERATED was meant to detect.
+
+### Next, ranked by P x win
+
+The win is the same for every candidate: the green blocks gone from the
+pre-game screens (logos, title card, story FMV, loading screen) of two titles,
+Spikeout (Playable) and Star Wars III (#719). Gameplay does not change.
+Candidates are ranked by P that each finds the cause.
+
+1. **Find the colour-conversion routine and read its input (decides 2 vs
+   3/4).** The existing CPU-write watch on 0x3163000 gives the guest PC of
+   the writer of the ARGB buffer. Its source registers then give the Cr plane
+   address. Log the zero fraction of the Cr plane per flip next to the
+   `tint` line. If the Cr plane is already zero on tinted frames, the cause
+   is upstream: the decoder or a writer (3, then 4). If it is intact, the
+   conversion itself drops Cr (2). P that this decides: about 0.7. The risk
+   is that the conversion routine is hard to pin from one PC. It needs no
+   new territory beyond the probe's file set. Cost: one env-gated hunk, two
+   Thor runs (each under a minute on this title). It goes first because it
+   decides between the candidates, not because it is cheap.
+2. **MMX/x87 register state lost across an interrupt or thread switch**
+   (`target/i386`: FXSAVE/FXRSTOR, CR0.TS lazy-FPU, MMX/x87 aliasing in TCG).
+   P about 0.3. The evidence is mechanism only. Sofdec's conversion is MMX.
+   The fault takes out one component (Cr) and leaves Y and Cb. It switches
+   per macroblock within a shot and differs between runs of one binary. That
+   is the signature of register state that is correct unless an interrupt
+   lands inside the loop. Fix size: one TCG path, and it may also clear other
+   MMX titles.
+3. **IDE/DVD and APU DMA landing sites** (fmv303b s5 items 2 and 3, the
+   brief's literal next step). P about 0.1. IDE DMA writes the compressed
+   bitstream, so a clobber corrupts the decode, not one clean chroma plane.
+   APU DMA writes audio. Either writer would also have to land on most
+   frames to give a 0.83 tint that switches within shots. Cost: hunks in
+   `hw/ide` and `hw/xbox/mcpx`, which are outside this lane's row.
+4. **Per-op SIMD helper falsifier** (fmv303b step 2b: packuswb, paddsw,
+   pmulhw in `ops_sse.h`). P about 0.1. A wrong helper is a function of its
+   inputs, so it is deterministic per clip, and the tint is not.
+
+Do not repeat: the write-back probe on this title (two valid runs, the
+verdict above); the Tier1 on/off A/B.
+
+Device note for the next lane: on the dead-fan Thor, Spikeout USA runs 32
+to 61 s before the heat stop. Only a start after 40 to 50 min idle gave more
+than 100 lit tinted frames (389 and 543). Size every Thor arm on this title
+for a single minute.
 
 All three runs booted and were force-stopped early by lane.local's
 `thor-suite-runner`: `HEAT STOP: xo 50/51/49 C cpu-1-9 93/93/92 C; app
@@ -153,7 +249,7 @@ two surfaces past the buffers' end (0x3249000): a 640x480 colour surface at
 the surfaces it joins are not the FMV buffers. The USA build uses the same
 FMV buffers (tex0 addr=3163000, 640x368).
 
-### Next: the second valid replicate, ranked by P x win
+### Next: the second valid replicate, ranked by P x win (done: A was L2c, valid)
 
 The win is the same for both candidates: the registered verdict. EXONERATED
 sends #303 to the APU and IDE DMA landing sites. HIT sends it to a second
@@ -206,7 +302,7 @@ Both runs: ref cf328d86f7, Thor (hard pin), Spikeout, 150 s, frames every 2 s,
 write-back lands whole surfaces, all four bytes; the green is one zeroed
 chroma component).
 
-## Next, after 0.5 ships
+## Next, after 0.5 ships (done 2026-10-04; superseded by the Verdict section)
 
 1. Merge master (and `origin/lane/blinx372d` if #396 has not folded; it also
    touches surface.c). Register `docs/testing/predictions/fmv303c-wb-probe.json`
