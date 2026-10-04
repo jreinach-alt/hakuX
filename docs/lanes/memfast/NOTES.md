@@ -1383,6 +1383,95 @@ gameplay, power was measured on battery, and neither had a thermal pause.
   churn) turns into `mprotect`s, so it is a live term on GTA too, not only on
   the NV2A-heavy titles.
 
+## Attempt 3 (2026-10-03 19:14 PDT): F0a's device half and F1, built
+
+**Why attempt 2 did not finish:** it did, as a wait. It set W1 ready at
+12:30 PDT and ended with `WAITING: fold memfast`. W1 folded as
+`de396edb2a`, and the lanewaker resumed the lane with the owner's 18:4x
+release (F0a, then F1). The branch fast-forwarded to master `4a3308a21e`.
+
+### What was built (one commit; everything off unless an env var asks)
+
+| piece | where | what |
+|---|---|---|
+| F0a | `accel/tcg/fastmem.c` | `HAKUX_F0A=<s>`: a thread <s> seconds after TCG init runs the benchmark in the app, under libsigchain, with the emulator running. It measures a SIGSEGV round trip; and over 8,192 scattered 4 KiB slots of a 4 GiB reservation: map one memfd page, first and second touch, `mprotect` away and back, unmap, map with `MAP_POPULATE`, drop everything with one remap, the cold path (fault, map, retouch), and a two-level walk (warm, cache-cold, batch). It runs one pass unpinned and one pinned to the fastest CPU. Lines `[f0a]` |
+| F1 runtime | `accel/tcg/fastmem.c`, `.h` | `HAKUX_FASTMEM=1`: the shadow (4 GiB + 64 KiB, `PROT_NONE`), the fill map, coherence, the SIGSEGV/SIGBUS handler, the site table and the `[fm]` line. `HAKUX_FASTMEM=ram` is F0b: RAM on a memfd, no shadow |
+| emission | `tcg/aarch64/tcg-target.c.inc` | a load on idx 5 (`MMU_KNOSMAP32_IDX`; `[tlb68] dm=0x60` on Tron) of 64 bits or fewer, with no alignment check and RCpc off, is `ldr wD, [x26, wA, uxtw]`. Its ordinary slow path is still emitted, with no branch to it; `label_ptr[1]` marks the site and `hakux_fm_site_add` records load -> slow path. X26 is reserved and set by the prologue only when the env asks |
+| hooks | `accel/tcg/cputlb.c` | fill (after the lock), full flush (on `asked`, H2), page flush, range flush (drop all), W1's RAM-range walk, and a slow-path load that hits the TLB but finds its shadow page unmapped (M2) |
+| RAM | `hw/xbox/xbox.c` | `memory_region_init_ram_from_fd(RAM_SHARED)` on a memfd, same name and vmstate id; on failure anonymous RAM and fastmem stays off |
+| walk | `target/i386/tcg/system/excp_helper.c` | `hakux_fm_walk32`: 32-bit, no PAE, PSE; reads the tables through xbox.ram's host pointer; no side effects, no lock (H1) |
+
+**Build.** Android's `CMakeLists.txt` globs every `.c` under `accel/`, so
+`fastmem.c` needs no list entry. meson does not list it, and every non-Android
+build gets the header's inline stubs and an unchanged code path. **The meson
+grant the design asked for is not needed.**
+
+### F1's choices, against the design
+
+- **Loads only, every page `PROT_READ`** (section 8). Dirty clears, notdirty
+  and SMC never touch the shadow.
+- **A full flush revalidates only a same-value CR3 reload** (`cr3s`, 100% of
+  Tron's and 94-99% of GTA's). It keeps a page only if the walk gives the same
+  physical page and size with A set; past 512 drops it drops everything. Every
+  other cause drops the whole shadow with one remap: a new CR3, CR0, CR4, A20,
+  a memory-map commit, or a watch flush with W1 off. PT-page write tracking
+  (H4) is not built; section 8 priced revalidation without it.
+- **INVLPG** unmaps the page, or the whole 4 MiB if any large-page piece is
+  mapped there (M1). The shadow keeps its own large-page map, since softmmu's
+  resets at every flush.
+- **Watches**: W1's walk also unmaps every shadow page whose RAM offset is in
+  the watched range. A watched page is never mapped (its read flags carry
+  `TLB_WATCHPOINT`).
+- **Faults go to the site's existing slow path.** The handler looks the PC up
+  in an open-addressed table (rx address -> slow path), sets the PC there and
+  counts the fault against the site. A map of the faulting page clears the
+  count (a cold fault). At 8 uncured faults (MMIO or a watched page), the
+  handler rewrites the load as `b <slow path>` for good. **There is no decay
+  back** (M2's last clause); the `[fm] pat=` count says whether that matters.
+  A `tb_flush` empties the table.
+- **Capacity:** at most 24,576 listed pages; over that, the shadow drops
+  everything (`cap=`). Tron's census saw 11,254 distinct pages below 64 MB.
+- **Threads:** every shadow change runs on the vCPU thread or in exclusive
+  work; no syscall runs under `tlb_c.lock` (M4).
+- **Off:** with neither variable set, emission, RAM and register allocation are
+  as on master; the hooks cost one load of a false global.
+
+### Local checks
+
+`-fsyntax-only -Wall` with the NDK compile database's flags
+(`.scratch/fmcheck.py`) on `cputlb.c`, `xbox.c`, `excp_helper.c`, `tcg.c`
+(which includes the backend) and `fastmem.c` (with `cputlb.c`'s flags): rc 0.
+The only warnings are master's own (`tcg_out_mb`'s table). The preprocessed
+output confirms the F1 code is compiled in (`HAKUX_FM_BUILD` is 1). No link
+was run locally; the dispatcher's build of the ref is the first.
+
+### Predicted, before any run (Tron 2.0, Nova, `tron-newgame-anystate`, 750 s, one binary)
+
+Two runs on the same build, the env as the only difference:
+
+- **C (control, F1 off, `HAKUX_F0A=730`).** F0a runs in the last 20 s of play.
+  Predicted constants:
+  - SIGSEGV round trip 1.5-5 us;
+  - one 4 KiB map 1.5-5 us, and its first touch 0.5-2 us;
+  - the cold path (fault, map, retouch) 3-10 us;
+  - a walk 2-10 ns warm (batch) and under 150 ns cold;
+  - dropping everything with 8,192 pages mapped: under 5 ms.
+- **F (`HAKUX_FASTMEM=1`).**
+  - `[fm] on` at boot, and the route reaches its mark with no crash or hang.
+  - In play: shadow upkeep (drops + revalidations) under 5 ms per wall
+    second, at about 2.3 revalidations a second, keeping over 90% of walked
+    pages.
+  - Faults under 2,000 a second after the first minute, so at most about
+    10 ms per wall second of cold paths.
+  - Under 500 patched sites, and `cap` 0.
+- **The leg that decides F1:** Tron's sustained fps in play (`title_verdict.py`
+  on copies) is 5-15% higher on F than on C, from about 9-11% of the vCPU's
+  time no longer spent on load compares and capacity refills (26k
+  installs/s). **Kill:** F is more than 3% slower than C, or faults x the
+  cold cost exceed the kill line (51 ms per wall second on Tron, section 8's
+  rule). One pair is a pilot, not a verdict. A second pair, and BF2 MC, follow
+  only if this one is not killed.
+
 ## Next, for whoever resumes this lane
 
 0. DONE: leg S is read and passes (section "Leg S"). Do not re-run the

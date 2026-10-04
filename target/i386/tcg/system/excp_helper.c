@@ -26,6 +26,7 @@
 #include "exec/target_page.h"
 #include "exec/tlb-flags.h"
 #include "tcg/helper-tcg.h"
+#include "accel/tcg/fastmem.h"
 
 typedef struct TranslateParams {
     target_ulong addr;
@@ -609,6 +610,63 @@ static bool get_physical_address(CPUX86State *env, vaddr addr,
     out->page_size = TARGET_PAGE_SIZE;
     return true;
 }
+
+#if HAKUX_FM_BUILD
+/*
+ * lane.memfast F1 (#507): the fastmem shadow's revalidation walk. It answers
+ * "would a load fill on MMU_KNOSMAP32_IDX install this physical page now?"
+ * for the Xbox's paging mode (32-bit, no PAE, PSE), reading the tables
+ * through xbox.ram's host pointer. It has no side effects: it sets no A bit
+ * and takes no lock, so it can run in the flush (design section 7, H1). It
+ * says no, and the shadow drops the page, for anything else: A clear (a
+ * refill would set it), paging off, PAE, A20 masked, PSE-36 bits, or a
+ * table outside RAM. Called only for a CR3 reload, which writes CR3 before
+ * it flushes.
+ */
+static int hakux_fm_walk32(CPUState *cs, uint32_t va, uint64_t *pa)
+{
+    CPUX86State *env = cpu_env(cs);
+    uint64_t pde_pa, pte_pa;
+    uint32_t pde, pte;
+
+    if (!(env->cr[0] & CR0_PG_MASK) || (env->cr[4] & CR4_PAE_MASK) ||
+        (env->hflags & HF_LMA_MASK) || x86_get_a20_mask(env) != -1) {
+        return -1;
+    }
+    pde_pa = (env->cr[3] & 0xfffff000u) + ((va >> 22) << 2);
+    if (pde_pa + 4 > hakux_fm_ram_size) {
+        return -1;
+    }
+    pde = ldl_le_p((void *)(hakux_fm_ram_host + pde_pa));
+    if ((pde & (PG_PRESENT_MASK | PG_ACCESSED_MASK)) !=
+        (PG_PRESENT_MASK | PG_ACCESSED_MASK)) {
+        return -1;
+    }
+    if ((pde & PG_PSE_MASK) && (env->cr[4] & CR4_PSE_MASK)) {
+        if (pde & 0x3fe000u) {      /* PSE-36 bits 20:13, reserved 21 */
+            return -1;
+        }
+        *pa = (pde & 0xffc00000u) | (va & 0x3ff000u);
+        return 1;
+    }
+    pte_pa = (pde & 0xfffff000u) + (((va >> 12) & 0x3ff) << 2);
+    if (pte_pa + 4 > hakux_fm_ram_size) {
+        return -1;
+    }
+    pte = ldl_le_p((void *)(hakux_fm_ram_host + pte_pa));
+    if ((pte & (PG_PRESENT_MASK | PG_ACCESSED_MASK)) !=
+        (PG_PRESENT_MASK | PG_ACCESSED_MASK)) {
+        return -1;
+    }
+    *pa = pte & 0xfffff000u;
+    return 0;
+}
+
+static void __attribute__((constructor)) hakux_fm_walk_register(void)
+{
+    hakux_fm_walk = hakux_fm_walk32;
+}
+#endif
 
 bool x86_cpu_tlb_fill(CPUState *cs, vaddr addr, int size,
                       MMUAccessType access_type, int mmu_idx,

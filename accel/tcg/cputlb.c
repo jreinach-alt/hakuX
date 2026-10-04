@@ -53,6 +53,7 @@
 #include "tcg/tcg-ldst.h"
 #include "backend-ldst.h"
 #include "accel/tcg/hakux-tlb68.h"
+#include "fastmem.h"
 
 
 /* DEBUG defines, enable DEBUG_TLB_LOG to log to the CPU_LOG_MMU target */
@@ -423,6 +424,9 @@ void hakux_tlb68_tick(CPUState *cpu)
               hakux_w1_on(), hakux_w1_n - p_wn, hakux_w1_hit - p_wh,
               hakux_w1_extra - p_wx, (hakux_w1_ns - p_wns) / 1000);
     hakux_mf0_tick(now, window - 1, (now - prev_ns) / 1000000);
+#if HAKUX_FM_BUILD
+    hakux_fm_tick((now - prev_ns) / 1000000);
+#endif
 
     for (int i = 0; i < HAKUX_TLB68_NCAUSE; i++) {
         p_cause[i] = c[i];
@@ -758,6 +762,17 @@ static void tlb_flush_by_mmuidx_async_work(CPUState *cpu, run_on_cpu_data data)
 
     qemu_spin_unlock(&cpu->neg.tlb.c.lock);
 
+#if HAKUX_FM_BUILD
+    /*
+     * On `asked`, not `to_clean`: a shadow hit never fills, so the index can
+     * read clean while the shadow still maps pages (design section 7, H2).
+     */
+    if (unlikely(hakux_fm_on) && (asked & (1 << HAKUX_FM_IDX))) {
+        hakux_fm_full_flush(cpu,
+                            hakux_tlb68_cause == HAKUX_TLB68_CR3_SAME ? 2 :
+                            hakux_tlb68_cause == HAKUX_TLB68_CR3_NEW);
+    }
+#endif
 #ifdef XBOX
     hakux_tlb68_ff++;
     if (!to_clean) {
@@ -927,6 +942,11 @@ static void tlb_flush_page_by_mmuidx_async_0(CPUState *cpu,
         }
     }
     qemu_spin_unlock(&cpu->neg.tlb.c.lock);
+#if HAKUX_FM_BUILD
+    if (unlikely(hakux_fm_on) && (idxmap & (1 << HAKUX_FM_IDX))) {
+        hakux_fm_page_flush(addr, false);
+    }
+#endif
 
     /*
      * Discard jump cache entries for any tb which might potentially
@@ -1117,6 +1137,12 @@ static void tlb_flush_range_by_mmuidx_async_0(CPUState *cpu,
         }
     }
     qemu_spin_unlock(&cpu->neg.tlb.c.lock);
+#if HAKUX_FM_BUILD
+    /* No i386 path uses a range flush; follow one exactly by dropping all. */
+    if (unlikely(hakux_fm_on) && (d.idxmap & (1 << HAKUX_FM_IDX))) {
+        hakux_fm_full_flush(cpu, 0);
+    }
+#endif
 
     /*
      * If the length is larger than the jump cache size, then it will take
@@ -1555,6 +1581,11 @@ void hakux_tlb_flush_ram_range(CPUState *cpu, ram_addr_t start, ram_addr_t len,
         }
     }
     qemu_spin_unlock(&cpu->neg.tlb.c.lock);
+#if HAKUX_FM_BUILD
+    if (unlikely(hakux_fm_on)) {
+        hakux_fm_ram_range(host, len);
+    }
+#endif
 
     hakux_w1_n++;
     hakux_w1_hit += hits;
@@ -1793,6 +1824,13 @@ void tlb_set_page_full(CPUState *cpu, int mmu_idx,
 #endif
     tlb_n_used_entries_inc(cpu, mmu_idx);
     qemu_spin_unlock(&tlb->c.lock);
+#if HAKUX_FM_BUILD
+    if (unlikely(hakux_fm_on)) {
+        hakux_fm_fill(mmu_idx, addr_page, paddr_page, addend,
+                      (prot & PAGE_READ) ? read_flags : ~0u, prot,
+                      full->lg_page_size > TARGET_PAGE_BITS);
+    }
+#endif
 }
 
 void tlb_set_page_with_attrs(CPUState *cpu, vaddr addr,
@@ -2350,6 +2388,18 @@ static bool mmu_lookup1(CPUState *cpu, MMULookupPageData *data, MemOp memop,
     data->flags = flags;
     /* Compute haddr speculatively; depending on flags it might be invalid. */
     data->haddr = (void *)((uintptr_t)addr + entry->addend);
+#if HAKUX_FM_BUILD
+    /*
+     * A load that faulted out of the shadow and then hit here, with no fill:
+     * the page is mapped from this entry, or the next fault finds it unmapped
+     * again (design section 7, M2).
+     */
+    if (unlikely(hakux_fm_on) && !maybe_resized &&
+        mmu_idx == HAKUX_FM_IDX && access_type == MMU_DATA_LOAD) {
+        hakux_fm_slow_hit(addr, (uintptr_t)data->haddr, full->phys_addr,
+                          flags, full->lg_page_size > TARGET_PAGE_BITS);
+    }
+#endif
 
     return maybe_resized;
 }

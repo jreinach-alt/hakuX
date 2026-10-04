@@ -58,6 +58,8 @@
 #include "hw/xbox/xbox.h"
 #include "smbus.h"
 #include "tcg/tcg.h"
+#include "migration/vmstate.h"
+#include "accel/tcg/fastmem.h"
 
 #define MAX_IDE_BUS 2
 
@@ -192,6 +194,34 @@ static void xbox_memory_init(PCMachineState *pcms,
      * with older qemus that used qemu_ram_alloc().
      */
     ram = g_malloc(sizeof(*ram));
+#if HAKUX_FM_BUILD
+    /*
+     * HAKUX_FASTMEM (lane.memfast, #507): RAM on a memfd, so the fastmem
+     * shadow can map its pages a second time. Every other user still sees
+     * one host mapping. Same name and vmstate id as below, so a savestate
+     * loads either way. If the memfd fails, RAM is anonymous and fastmem
+     * stays off.
+     */
+    if (hakux_fm_ram_wanted()) {
+        int fd = hakux_fm_ram_fd(machine->ram_size);
+
+        if (fd >= 0 &&
+            memory_region_init_ram_from_fd(ram, NULL, "xbox.ram",
+                                           machine->ram_size, RAM_SHARED,
+                                           fd, 0, NULL)) {
+            vmstate_register_ram(ram, NULL);
+        } else {
+            if (fd >= 0) {
+                close(fd);
+            }
+            fd = -1;
+            memory_region_init_ram(ram, NULL, "xbox.ram",
+                                   machine->ram_size, &error_fatal);
+        }
+        hakux_fm_set_ram(memory_region_get_ram_ptr(ram), machine->ram_size,
+                         fd);
+    } else
+#endif
     memory_region_init_ram(ram, NULL, "xbox.ram",
                            machine->ram_size, &error_fatal);
 

@@ -24,6 +24,9 @@ static void hakux_tso_count(uint64_t *c);
 
 /* HAKUX_HOSTBENCH / HAKUX_TOPO, run from tcg_target_init; off by default. */
 #include "../../tools/bench/hostbench.c.inc"
+
+/* HAKUX_FASTMEM / HAKUX_F0A (lane.memfast, #507); off by default. */
+#include "accel/tcg/fastmem.h"
 #endif
 
 /* Used for function call generation. */
@@ -1693,6 +1696,13 @@ static bool tcg_out_qemu_ld_slow_path(TCGContext *s, TCGLabelQemuLdst *lb)
 {
     MemOp opc = get_memop(lb->oi);
 
+#if HAKUX_FM_BUILD
+    if (lb->label_ptr[1]) {
+        /* A fastmem load: no branch here, its fault comes here instead. */
+        hakux_fm_site_add(tcg_splitwx_to_rx(lb->label_ptr[1]),
+                          tcg_splitwx_to_rx(s->code_ptr));
+    } else
+#endif
     if (!reloc_pc19(lb->label_ptr[0], tcg_splitwx_to_rx(s->code_ptr))) {
         return false;
     }
@@ -2000,12 +2010,60 @@ static void tcg_out_qemu_st_direct(TCGContext *s, MemOp memop,
     }
 }
 
+#if HAKUX_FM_BUILD
+/*
+ * F1 (accel/tcg/fastmem.h): a load on the shadow's index is one instruction,
+ * `ldr wD, [x26, wA, uxtw]`. Anything the shadow does not map faults, and
+ * the handler resumes at this load's ordinary slow path, which returns to the
+ * next instruction. At the fault no register has changed, so the slow path
+ * sees what a TLB miss would have shown it. Loads that need an alignment
+ * check, 128-bit loads and the RCpc mode keep the compare.
+ */
+static bool hakux_fm_emit_ld(TCGContext *s, TCGType data_type,
+                             TCGReg data_reg, TCGReg addr_reg, MemOpIdx oi)
+{
+    MemOp opc = get_memop(oi);
+    TCGLabelQemuLdst *ldst;
+    HostAddress h;
+
+    if (!hakux_fm_on || !tcg_use_softmmu || hakux_tso_rcpc ||
+        s->addr_type != TCG_TYPE_I32 || get_mmuidx(oi) != HAKUX_FM_IDX ||
+        (opc & MO_SIZE) > MO_64) {
+        return false;
+    }
+    h.aa = atom_and_align_for_opc(s, opc,
+                                  have_lse2 ? MO_ATOM_WITHIN16
+                                            : MO_ATOM_IFALIGN, false);
+    if (h.aa.align) {
+        return false;
+    }
+    ldst = new_ldst_label(s);
+    ldst->is_ld = true;
+    ldst->oi = oi;
+    ldst->addr_reg = addr_reg;
+    ldst->type = data_type;
+    ldst->datalo_reg = data_reg;
+    ldst->label_ptr[1] = s->code_ptr;
+    h.base = TCG_REG_X26;
+    h.index = addr_reg;
+    h.index_ext = TCG_TYPE_I32;
+    tcg_out_qemu_ld_direct(s, opc, data_type, data_reg, h);
+    ldst->raddr = tcg_splitwx_to_rx(s->code_ptr);
+    return true;
+}
+#endif
+
 static void tgen_qemu_ld(TCGContext *s, TCGType data_type, TCGReg data_reg,
                          TCGReg addr_reg, MemOpIdx oi)
 {
     TCGLabelQemuLdst *ldst;
     HostAddress h;
 
+#if HAKUX_FM_BUILD
+    if (hakux_fm_emit_ld(s, data_type, data_reg, addr_reg, oi)) {
+        return;
+    }
+#endif
     ldst = prepare_host_addr(s, &h, addr_reg, oi, true);
     tcg_out_qemu_ld_direct(s, get_memop(oi), data_type, data_reg, h);
 
@@ -4303,6 +4361,11 @@ static void tcg_target_init(TCGContext *s)
         }
     }
     hakux_hostbench_maybe_run();
+    hakux_fm_init();
+    if (hakux_fm_want) {
+        /* The shadow's base, loaded by the prologue; callee-saved. */
+        tcg_regset_set_reg(s->reserved_regs, TCG_REG_X26);
+    }
 #endif
 }
 
@@ -4359,6 +4422,11 @@ static void tcg_target_qemu_prologue(TCGContext *s)
         tcg_out_movi(s, TCG_TYPE_PTR, TCG_REG_GUEST_BASE, guest_base);
         tcg_regset_set_reg(s->reserved_regs, TCG_REG_GUEST_BASE);
     }
+#if HAKUX_FM_BUILD
+    if (hakux_fm_want) {
+        tcg_out_movi(s, TCG_TYPE_PTR, TCG_REG_X26, hakux_fm_base);
+    }
+#endif
 
     tcg_out_mov(s, TCG_TYPE_PTR, TCG_AREG0, tcg_target_call_iarg_regs[0]);
     tcg_out_insn(s, 3207, BR, tcg_target_call_iarg_regs[1]);
