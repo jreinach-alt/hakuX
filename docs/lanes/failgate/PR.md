@@ -3,8 +3,8 @@
 State: ready
 
 Lane: failgate            Issue: #433
-Base: master @ 34e6e8dcba6d5d0558056148c9ad2db0e43f5cf0
-Files: docs/lanes/failgate/NOTES.md, docs/lanes/failgate/item5-wall.diff, docs/lanes/failgate/PR.md, docs/testing/hitch_report.py, docs/testing/jobs/selftest.d/89-title-verdict.sh, docs/testing/jobs/selftest.d/96-failgate.sh, docs/testing/request.sh, docs/testing/title_verdict.py
+Base: master @ 4a3308a21e (merged into the branch)
+Files: docs/lanes/failgate/NOTES.md, docs/lanes/failgate/item5-wall.diff, docs/lanes/failgate/PR.md, docs/testing/hitch_report.py, docs/testing/jobs/selftest.d/89-title-verdict.sh, docs/testing/jobs/selftest.d/96-failgate.sh, docs/testing/jobs/selftest.d/99-play-share.sh, docs/testing/jobs/selftest.d/99-verdict-10min.sh, docs/testing/request.sh, docs/testing/title_verdict.py
 Prediction: none: harness only (no pixels move)
 Needs device: no    Needs NDK: no
 
@@ -32,4 +32,6 @@ stored results and the open question about menus with frames.
 
 ## Checks
 
-- `SELFTEST_ONLY="89-title-verdict.sh 96-failgate.sh"`: 126 passed, 0 failed.
+- `SELFTEST_ONLY="89-title-verdict.sh 96-failgate.sh 99-play-share.sh 99-verdict-10min.sh"`: 139 passed, 0 failed (with PIL); 138 passed, 0 failed with PIL and numpy blocked.
+- The other fragments that read a verdict or go through `request.sh`: 392 passed, 0 failed (18 fragments), and the arms and handback fragments: 0 failed.
+- The fixtures in 99-play-share and 99-verdict-10min carry post-mark frames when PIL is present. Without PIL a leg's only allowed failure is `window unmeasured`.

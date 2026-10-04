@@ -187,3 +187,45 @@ fragments it touched. Results on this branch, `SELFTEST_ONLY` set to
 
 Item 5 is still not in this PR. The 8 unmeasured passes in the table above
 stay counted Playable on the wall until a follow-up applies the diff.
+
+## Attempt 3: why attempt 2 did not finish
+
+Attempt 2 ran only the two fragments it had touched (89 and 96). Two more
+fragments read the verdict too, `99-play-share.sh` and `99-verdict-10min.sh`,
+and attempt 2 never ran them. Their fixtures write no post-mark frames, so
+under the new rule every leg that expects a pass saw `window unmeasured`. The
+fold's full selftest (foldqueue 19:33, on `667762b7a7`) failed on five of
+those checks: 'none', 'allplay', 'excluded', 'flat' and 'full'. The log is
+`offline-git/fold-logs/lane_failgate-20261003T1838-selftest.log`.
+
+Lesson for the next lane: run every fragment that reads `verdict.json` or goes
+through `request.sh`, not only the ones it edited. Those are the fragments a
+verdict rule can break.
+
+### Decision: the fixtures, not the rule
+
+The rule is right. A window the verdict cannot read is not Playable. The five
+legs test the play timeline and the confirmation duration, and the verdict
+computes both without reading a frame. So the fixtures now write
+`route-frames/` (noise, every 30 s, as 89 does), and each leg judges the
+timeline and duration fields.
+
+The fold runner has no PIL and no numpy (CI has none, per 89 and 96), so the
+fixtures cannot carry frames there. On a runner with no PIL, a leg's only
+allowed failure is `window unmeasured`, and the leg reads as the verdict's pass.
+A menu, a duration or a heating failure still fails the leg, because those are
+named before the window in `failures`.
+
+### Results after the fix
+
+Merged `origin/master` (`4a3308a21e`, merge `572aaf443d`) before the runs.
+
+| Run | Fragments | Result |
+|---|---|---|
+| PIL present, the four fragments | 89, 96, 99-play-share, 99-verdict-10min | 139 passed, 0 failed |
+| PIL and numpy blocked (`sitecustomize`) | the same four | 138 passed, 0 failed (96's check 4 skipped, as it says) |
+| The verdict and request-path fragments, PIL present | 99-pilot-gate, 99-power-per-frame, 99-status-degraded, 99-status-fullwindow, 99-thermal-pause, 99-default-regimen, 99-display-covered, 99-hitch-report, 67-status-measured, 66-status-titles, 64-status-html, 84-perf-regimen, 85-savestate, 98-lane-shape, 97-dispatch-snapshot-drive, 99-request-priority-flag, 99-request-release-prio, 97-release-prio | 392 passed, 0 failed |
+| Arms and request-path fragments | 40-arms-refusal, 55-affinity-offpool, 57-vsh-disc, 92-arms-skip-told, 94-arms-disc-narrow, 94-arms-label-state, 99-arms-confounded-pair, 99-arms-refused-requeue, 99-handback-draft with 99-handback-runs | 0 failed (the handback pair must run together: the second copies the first's shims) |
+
+Not re-run here: 51-dispatch-hardening (long, and it does not read a verdict).
+The fold runs the whole selftest on the pushed head.
