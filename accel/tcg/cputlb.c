@@ -53,6 +53,9 @@
 #include "tcg/tcg-ldst.h"
 #include "backend-ldst.h"
 #include "accel/tcg/hakux-tlb68.h"
+#ifdef XBOX
+#include "tb-context.h"
+#endif
 
 
 /* DEBUG defines, enable DEBUG_TLB_LOG to log to the CPU_LOG_MMU target */
@@ -154,6 +157,47 @@ __thread uint64_t hakux_rdc_last_hits;
 /* #424, defined in tb-maint.c: bitmap-answered stores, builds */
 extern uint64_t hakux_tcg424_cb;
 extern uint64_t hakux_tcg424_cbb;
+
+/*
+ * #787: WHAT A FLUSH BURST COSTS THE vCPU AFTER IT. One [tcg787] line per
+ * [tlb68] window, same w, so the two join on it.
+ *
+ * A full TLB flush discards no translated block here: TBs are found by
+ * physical address, and tlb_flush_by_mmuidx_async_work() clears the TLB and
+ * the jump cache only. Its fallout is (1) the flush's own work, (2) the TLB
+ * refills every page touched afterwards pays, inside TB execution where
+ * [rr425]'s tbus cannot tell them from guest code, and (3) any translation
+ * that follows for an unrelated reason. Each is timed:
+ *
+ *   gc gus cgus gmax  tb_gen_code calls that returned, their total us, the
+ *                     us of those that generated code (the rest recycled),
+ *                     the longest single call (translate-all.c);
+ *   cg                generations (hakux_tb_codegen): cg <= gc;
+ *   disc              blocks discarded by code-page writes (tb-maint.c's
+ *                     hakux_tb_discarded), the #68 whole-page invalidation;
+ *   tbf               tb_flush()es, each of which discards EVERY block
+ *                     (its own hakuX-tb line is outside every LOGCAT_SPEC);
+ *   ffus pfus         the full-flush and INVLPG page-flush workers' us;
+ *   tf tfx tfus       tlb_fill_align() calls, those that raised a guest fault
+ *                     instead of returning (tf minus returns), and the us of
+ *                     the returned ones. A code fetch's refill inside
+ *                     tb_gen_code is in both gus and tfus.
+ *
+ * tfus is timed only in a perflog build (pl=1 on the line): fills are the one
+ * event here whose rate is not bounded by the flush rate. pl=0 prints tfus=-1.
+ * vCPU thread only.
+ */
+#if defined(NV2A_PERF_LOG) && NV2A_PERF_LOG
+#define HAKUX_TCG787_TIME_FILLS 1
+#else
+#define HAKUX_TCG787_TIME_FILLS 0
+#endif
+extern uint64_t hakux_tcg787_gc, hakux_tcg787_gc_ns, hakux_tcg787_cg_ns,
+                hakux_tcg787_max_ns;          /* translate-all.c */
+extern uint64_t hakux_tb_codegen;             /* translate-all.c */
+extern uint64_t hakux_tb_discarded;           /* tb-maint.c */
+static uint64_t hakux_tcg787_ff_ns, hakux_tcg787_pf_ns;
+static uint64_t hakux_tcg787_tf, hakux_tcg787_tfr, hakux_tcg787_tf_ns;
 
 /*
  * Fix switches, read once from the environment so one binary carries both
@@ -320,6 +364,45 @@ static void hakux_mf0_tick(int64_t now, unsigned window, int64_t dt_ms)
     p_dn = dn;
 }
 
+/* The [tcg787] line; see its counters above. */
+static void hakux_tcg787_tick(unsigned window, int64_t dt_ms)
+{
+    static uint64_t p_gc, p_gcns, p_cgns, p_cg, p_disc, p_ffns, p_pfns,
+                    p_tf, p_tfr, p_tfns;
+    static unsigned p_tbf;
+    unsigned tbf = qatomic_read(&tb_ctx.tb_flush_count);
+    uint64_t tf = hakux_tcg787_tf - p_tf, tfr = hakux_tcg787_tfr - p_tfr;
+
+    TLB68_LOG("[tcg787] w=%u dt=%" PRId64 " gc=%" PRIu64 " cg=%" PRIu64
+              " gus=%" PRIu64 " cgus=%" PRIu64 " gmax=%" PRIu64
+              " disc=%" PRIu64 " tbf=%u ffus=%" PRIu64 " pfus=%" PRIu64
+              " tf=%" PRIu64 " tfx=%" PRIu64 " tfus=%" PRId64 " pl=%d",
+              window, dt_ms, hakux_tcg787_gc - p_gc,
+              hakux_tb_codegen - p_cg,
+              (hakux_tcg787_gc_ns - p_gcns) / 1000,
+              (hakux_tcg787_cg_ns - p_cgns) / 1000,
+              hakux_tcg787_max_ns / 1000,
+              hakux_tb_discarded - p_disc, tbf - p_tbf,
+              (hakux_tcg787_ff_ns - p_ffns) / 1000,
+              (hakux_tcg787_pf_ns - p_pfns) / 1000,
+              tf, tf - tfr,
+              HAKUX_TCG787_TIME_FILLS ?
+                  (int64_t)(hakux_tcg787_tf_ns - p_tfns) / 1000 : -1,
+              HAKUX_TCG787_TIME_FILLS);
+    p_gc = hakux_tcg787_gc;
+    p_gcns = hakux_tcg787_gc_ns;
+    p_cgns = hakux_tcg787_cg_ns;
+    hakux_tcg787_max_ns = 0;
+    p_cg = hakux_tb_codegen;
+    p_disc = hakux_tb_discarded;
+    p_tbf = tbf;
+    p_ffns = hakux_tcg787_ff_ns;
+    p_pfns = hakux_tcg787_pf_ns;
+    p_tf = hakux_tcg787_tf;
+    p_tfr = hakux_tcg787_tfr;
+    p_tfns = hakux_tcg787_tf_ns;
+}
+
 /*
  * Called from cpu_exec_loop() on the vCPU thread, gated there to one call in
  * 1024 loop iterations; the clock decides whether a line is due.
@@ -423,6 +506,7 @@ void hakux_tlb68_tick(CPUState *cpu)
               hakux_w1_on(), hakux_w1_n - p_wn, hakux_w1_hit - p_wh,
               hakux_w1_extra - p_wx, (hakux_w1_ns - p_wns) / 1000);
     hakux_mf0_tick(now, window - 1, (now - prev_ns) / 1000000);
+    hakux_tcg787_tick(window - 1, (now - prev_ns) / 1000000);
 
     for (int i = 0; i < HAKUX_TLB68_NCAUSE; i++) {
         p_cause[i] = c[i];
@@ -739,6 +823,9 @@ static void tlb_flush_by_mmuidx_async_work(CPUState *cpu, run_on_cpu_data data)
     MMUIdxMap asked = data.host_int;
     MMUIdxMap all_dirty, work, to_clean;
     int64_t now = get_clock_realtime();
+#ifdef XBOX
+    int64_t t787 = get_clock();
+#endif
 
     assert_cpu_is_self(cpu);
 
@@ -768,6 +855,9 @@ static void tlb_flush_by_mmuidx_async_work(CPUState *cpu, run_on_cpu_data data)
     hakux_tlb68_jct++;
 #endif
     tcg_flush_jmp_cache(cpu);
+#ifdef XBOX
+    hakux_tcg787_ff_ns += get_clock() - t787;
+#endif
 
     if (to_clean == ALL_MMUIDX_BITS) {
         qatomic_set(&cpu->neg.tlb.c.full_flush_count,
@@ -912,6 +1002,9 @@ static void tlb_flush_page_by_mmuidx_async_0(CPUState *cpu,
                                              MMUIdxMap idxmap)
 {
     int mmu_idx;
+#ifdef XBOX
+    int64_t t787 = get_clock();
+#endif
 
     assert_cpu_is_self(cpu);
 
@@ -934,6 +1027,9 @@ static void tlb_flush_page_by_mmuidx_async_0(CPUState *cpu,
      */
     tb_jmp_cache_clear_page(cpu, addr - TARGET_PAGE_SIZE);
     tb_jmp_cache_clear_page(cpu, addr);
+#ifdef XBOX
+    hakux_tcg787_pf_ns += get_clock() - t787;
+#endif
 }
 
 /**
@@ -1847,9 +1943,40 @@ static inline bool tlb_hit(uint64_t tlb_addr, vaddr addr)
  * (e.g. CPUTLBEntry pointers) must be discarded and looked up again
  * (e.g. via tlb_entry()).
  */
+#ifdef XBOX
+static bool tlb_fill_align_body(CPUState *cpu, vaddr addr,
+                                MMUAccessType type, int mmu_idx, MemOp memop,
+                                int size, bool probe, uintptr_t ra);
+
+/* #787: counted, and timed in a perflog build; see [tcg787] above. */
 static bool tlb_fill_align(CPUState *cpu, vaddr addr, MMUAccessType type,
                            int mmu_idx, MemOp memop, int size,
                            bool probe, uintptr_t ra)
+{
+    bool ok;
+#if HAKUX_TCG787_TIME_FILLS
+    int64_t t0 = get_clock();
+#endif
+
+    hakux_tcg787_tf++;
+    /* A guest fault longjmps out of this call and is never booked below. */
+    ok = tlb_fill_align_body(cpu, addr, type, mmu_idx, memop, size, probe,
+                             ra);
+    hakux_tcg787_tfr++;
+#if HAKUX_TCG787_TIME_FILLS
+    hakux_tcg787_tf_ns += get_clock() - t0;
+#endif
+    return ok;
+}
+
+static bool tlb_fill_align_body(CPUState *cpu, vaddr addr,
+                                MMUAccessType type, int mmu_idx, MemOp memop,
+                                int size, bool probe, uintptr_t ra)
+#else
+static bool tlb_fill_align(CPUState *cpu, vaddr addr, MMUAccessType type,
+                           int mmu_idx, MemOp memop, int size,
+                           bool probe, uintptr_t ra)
+#endif
 {
     const TCGCPUOps *ops = cpu->cc->tcg_ops;
     CPUTLBEntryFull full;

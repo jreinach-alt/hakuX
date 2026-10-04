@@ -461,7 +461,51 @@ uint64_t hakux_gen_bytes;
  */
 uint64_t hakux_tb_codegen;
 
+#ifdef XBOX
+/*
+ * #787: tb_gen_code's own wall time, so a window can say how much of the
+ * vCPU's time went to translation. Booked by the wrapper below around every
+ * call that RETURNS: a call that longjmps out (a code fetch that faults) is
+ * in hakux_tb_gen_calls and not here, so gc <= the calls on hakuX-pages and
+ * the gap between them is those. Two clock reads per call; at the 1,100 to
+ * 10,000 calls per 2 s seen on Kabuki that is well under 1 ms per window.
+ *
+ *   gc_ns   all returned calls      cg_ns   ... those that generated code
+ *   max_ns  the longest one call since the last [tcg787] line (reset there)
+ *
+ * gc_ns - cg_ns is the recycle path (inv_htable hit: insert and link, no
+ * codegen). vCPU thread only, like the rest of these. Printed by
+ * hakux_tlb68_tick() in cputlb.c.
+ */
+uint64_t hakux_tcg787_gc;
+uint64_t hakux_tcg787_gc_ns;
+uint64_t hakux_tcg787_cg_ns;
+uint64_t hakux_tcg787_max_ns;
+
+static TranslationBlock *tb_gen_code_body(CPUState *cpu, TCGTBCPUState s);
+
 TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
+{
+    uint64_t cg0 = hakux_tb_codegen;
+    int64_t t0 = get_clock();
+    TranslationBlock *tb = tb_gen_code_body(cpu, s);
+    uint64_t dt = get_clock() - t0;
+
+    hakux_tcg787_gc++;
+    hakux_tcg787_gc_ns += dt;
+    if (hakux_tb_codegen != cg0) {
+        hakux_tcg787_cg_ns += dt;
+    }
+    if (dt > hakux_tcg787_max_ns) {
+        hakux_tcg787_max_ns = dt;
+    }
+    return tb;
+}
+
+static TranslationBlock *tb_gen_code_body(CPUState *cpu, TCGTBCPUState s)
+#else
+TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
+#endif
 {
     /* CALLS. hakux_tb_codegen counts generations; see above. */
     hakux_tb_gen_calls++;
