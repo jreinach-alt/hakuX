@@ -5772,3 +5772,13 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 14:33 PDT, 10-04 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to rank it: dispatch with a row, close, or name the blocker."
 status_note = "Forge issue, open, local-only; the tracker had no row for it when the coverage gate was run (hostops jam duty 10-04)."
+
+[issue."818"]
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 14:50 PDT, 10-04 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to rank it: dispatch with a row, close, or name the blocker."
+status_note = "Forge issue, open, local-only; the tracker had no row when the coverage gate was run (hostops jam duty 10-04)."
+
+[issue."819"]
+dispatch_state = "blocked"
+blocked_on = "IN FLIGHT (hostops 14:50 PDT): lane.hitchcause (row [lane.hitchcause], issue 433) separates the MTV and Orta 200-350 ms hitches' IDE storage latency from per-word PIO cost, from the perflog line and one MTV Nova hold. The fix (read-ahead or batching) is priced by its result."
+status_note = "Forge issue (filed from lane.hitchcause's NEW ISSUE block), open, local-only. Analysis: docs/lanes/hitchcause on lane/hitchcause, bf388e2eea."
