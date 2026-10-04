@@ -1,7 +1,9 @@
+State: ready
+
 Lane: async794            Issue: #794 #796
 Base: master @ 425ffe1ad1 (merged; branched from 5e4196fefd)
 Files: docs/lanes/async794/NOTES.md, docs/lanes/async794/OUTBOX.md, docs/lanes/async794/PR.md, docs/lanes/async794/cc_check.py, docs/lanes/async794/make-predictions.py, docs/lanes/async794/make-routes.py, docs/lanes/async794/routes/async794-cs.route, docs/lanes/async794/routes/async794-topspin.route, docs/lanes/async794/sdcallers.py, docs/lanes/async794/shim/android/log.h, docs/testing/predictions/async794-burnoutrev-soak.json, docs/testing/predictions/async794-cs-soak.json, docs/testing/predictions/async794-download-paths-must-not-move.json, docs/testing/predictions/async794-fix2-must-not-move.json, docs/testing/predictions/async794-mc3-soak.json, docs/testing/predictions/async794-nba2005-soak.json, docs/testing/predictions/async794-topspin-soak.json, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c
-Prediction: docs/testing/predictions/async794-fix2-must-not-move.json @ 9715a5a775b7a57e (golden arm on the fold form, a 425ffe1ad1 / b 2344ae1ee2); earlier: async794-download-paths-must-not-move.json @ 5a9978ab62adf5f9 (PASS), soaks -nba2005-, -topspin- (hand-read below)
+Prediction: docs/testing/predictions/async794-fix2-must-not-move.json @ 9715a5a775b7a57e (golden arm on the fold form, a 425ffe1ad1 / b 2344ae1ee2: judged PASS 2026-10-04 14:45 PDT, 266 same / 0 movers, 1791146467-arms-async794-base-1273188 vs -fix-1273227); earlier: async794-download-paths-must-not-move.json @ 5a9978ab62adf5f9 (PASS), soaks -nba2005-, -topspin- (hand-read below)
 Needs device: yes    Needs NDK: yes
 
 Release note (none): no player-visible change measured; the CPU no longer waits on the graphics lock while the GPU finishes a surface download.
@@ -49,6 +51,8 @@ Release note (none): no player-visible change measured; the CPU no longer waits 
 Compiles with the desktop flags, plain and perflog+`__ANDROID__`. The first
 form (c825e4b24f, fix 1 included) passed its golden arm byte-identical over
 all 266 captures (`1791129309-arms-async794-fix-3307191`). The fold form is a
-subset of that code, and its own golden arm is registered for the arms job.
+subset of that code, and its own golden arm (`async794-fix2-must-not-move.json`) passed: 266 of 266
+captures same, no movers (`1791146467-arms-async794-fix-1273227` against
+`1791146467-arms-async794-base-1273188`).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

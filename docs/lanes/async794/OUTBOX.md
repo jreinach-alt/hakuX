@@ -30,3 +30,11 @@ Fold form 2344ae1ee2: fix 1 stripped, fix 2 and the txdl instrument kept.
 The golden arm on the first form passed byte-identical (266/266,
 1791129309-arms-async794-fix-3307191). `async794-fix2-must-not-move.json` is
 registered for the stripped ref.
+
+Fold-form golden arm judged PASS (2026-10-04 14:45 PDT): 266 of 266 captures
+same, no movers (1791146467-arms-async794-base-1273188 vs
+1791146467-arms-async794-fix-1273227). PR.md is `State: ready`. No follow-up
+device runs for fix 2: it claims no fps change, and the Counter-Strike, MC3 and
+Burnout Revenge pairs only tested fix 1. The follow-ups that could move fps
+need their own briefs: a GPU-side converting copy for the texture-bind `cvt`
+class, and a GPU-side path for NBA's image -> VRAM -> image rebinding.

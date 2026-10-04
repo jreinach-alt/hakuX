@@ -292,3 +292,15 @@ Release note: none. No player-visible change was measured.
   went to the guest's timer idle. Check gidle/timer_ms with lockw.
 - Re-run a title's control on a fixed route before you build a fix for its
   premise. Top Spin's "near-30" was a paused match.
+
+## Session 4 (2026-10-04, attempt 4): why attempt 3 did not finish
+
+Attempt 3 pushed the fold form and registered its golden arm, then ended
+without a `State:` line in PR.md, so the fold queue never saw the PR as ready
+once the arm passed. The arm was judged at 14:45 PDT: PASS, 266 of 266
+captures same, no movers (`1791146467-arms-async794-base-1273188` against
+`1791146467-arms-async794-fix-1273227`). This session adds `State: ready` and
+does no device work. It does not queue Counter-Strike, MC3 or Burnout Revenge:
+their pairs tested fix 1, which is refuted, and fix 2 claims no fps change.
+The branch merges `origin/master` (10f14d301d) without conflicts, so the fold
+can do that merge itself.
