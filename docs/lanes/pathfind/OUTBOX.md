@@ -410,3 +410,9 @@ Spend so far today: about $25 of $60.
 - Not Playable as held: the verdict fails it on play share 68.5% (cutscenes 117 s, still 78 s, pause 17 s). The claim landed in the Dexter's Diner hub (the strip shows the Episode I/II doors), and the hold's loop stayed in the hub. From frame 081 the pause menu (Resume / Options / Extras / Quit) is open over it in 4 of the last 5 kept frames. The strip does not show what the verdict's 117 s of "cutscene" were. This is a hold miss, not a performance miss: 59 fps at both the 3- and 5-min checks, worst frame 100 ms.
 - Claim: first-run, 1.21 min, 9 Sonnet calls. Frame strip: docs/lanes/pathfind/runs/screen-lego-star-wars/hold/hold_strip.jpg. No native target in targets.toml.
 Spend so far today: about $27 of $60.
+
+[lane.pathfind] Mashed: Drive to Survive (454D000A) CAN'T-PATH: the 15-min first-run budget ended with gameplay never confirmed (last state results), 83 Sonnet calls ($5.6); no profile, no measurement run. No perflog run (can't-path).
+- The claim reached live races (a HUD with start lights and boost/damage meters) from about 2 min on. All 19 probes were refused. The camera and the cars move on their own (idle change 0.3-0.86 in most probes), so the frame-change test cannot separate input from the scene. The confirm model saw winner banners, race results and camera cuts between the probe frames: in this elimination racer an undriven car is knocked out within seconds, so each round ended almost at once.
+- One probe did respond: HOLD:A:3 at 170 s (0.017 idle, 0.814 under input), the first input from the new probe ladder after two RT probes. The confirm model refused it on a results screen. A is probably the accelerator here, as in Road Rage; that is unverified.
+- Evidence: docs/lanes/pathfind/runs/screen-mashed/claim/ (strip.jpg, steps.jsonl, calls.jsonl).
+Spend so far today: about $33 of $60.
