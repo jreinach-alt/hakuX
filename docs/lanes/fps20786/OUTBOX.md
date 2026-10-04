@@ -27,7 +27,7 @@ A caveat on every perflog row: perflog costs the render thread >= ~1.2 ms per fr
 2. #474 extension: release pgraph.lock across the SURFACE_DOWN finish's wait, as `wait_frame_fence` already does for the completion-deferred one. P 0.6. Top Spin only: ~13 ms per frame of vCPU back, likely taking it from 0.89 to over 0.90.
 3. #426 (capture/translation split): 5.5 ms of NBA's render thread off the critical path. P 0.3 alone; it compounds with 1.
 
-NEW ISSUE: Synchronous surface-download finishes (VK_FINISH_REASON_SURFACE_DOWN, 1-30 per frame) serialize the render thread with the GPU: 13.8 ms/frame on NBA Live 2005 and Counter-Strike, 8-26 ms on 10 of 31 perflog titles (docs/lanes/fps20786/NOTES.md "Step 3").
+(Filed as #794 at 2026-10-03 ~22:00 PDT from this OUTBOX.) NEW ISSUE: Synchronous surface-download finishes (VK_FINISH_REASON_SURFACE_DOWN, 1-30 per frame) serialize the render thread with the GPU: 13.8 ms/frame on NBA Live 2005 and Counter-Strike, 8-26 ms on 10 of 31 perflog titles (docs/lanes/fps20786/NOTES.md "Step 3").
 NEW ISSUE: Top Spin's ~30 download-if-dirty surface finishes per frame hold pgraph.lock; the vCPU waits 13.6 ms/frame on PGRAPH 0xb10 (extend #474's fence lock release to pgraph_vk_finish SURFACE_DOWN).
 NEW ISSUE: A lane's pathfind hold runs on device defaults, while dispatcher soaks run the "max" regimen. NBA Live 2005 read 19.97 vs 24.2 fps, so a title's verdict depends on which tool measured it.
 

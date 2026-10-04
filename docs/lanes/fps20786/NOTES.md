@@ -269,7 +269,7 @@ ToeJam 25.9, BloodRayne 14.7, Counter-Strike 13.8, Blinx 2 13.7, NBA Live
 Nightfire 9.9; then Azurik 7.8, Halo 7.1. The medians cover whole logcats,
 menus included, so they rank titles; they judge none of them.
 
-### The answer for the class
+### The answer for the class (filed as #794)
 
 **One bound, new: synchronous surface-download finishes put the GPU's frame
 in series with the render thread.** Component: the Vulkan renderer's surface
