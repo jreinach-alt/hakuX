@@ -396,33 +396,58 @@ def heating_rate(samples, zone, lo, hi):
     return (pts[-1][1] - pts[0][1]) / dt_min if dt_min > 0 else None
 
 
+SHEET_GROUPS = (("route-frames", "--- route frames ---"),
+                ("frames", "--- boot samples (30 s from boot) ---"))
+
+
 def contact_sheet(rdir, out_png):
     """Grid of the run's frames for a reviewer. None + reason when there is
-    nothing to draw or no PIL (the jobs-selftest runner has none)."""
-    frames = sorted(glob.glob(os.path.join(rdir, "route-frames", "*.png")))
-    frames += sorted(glob.glob(os.path.join(rdir, "frames", "*.png")))
-    if not frames:
+    nothing to draw or no PIL (the jobs-selftest runner has none).
+
+    The two sources are drawn as separate groups under their own header, so a
+    boot title screen in `frames/` is never read as a second game start. Each
+    tile is labelled with its own clock time (HH:MM:SS from the file name)."""
+    groups = []
+    for sub, header in SHEET_GROUPS:
+        fs = sorted(glob.glob(os.path.join(rdir, sub, "*.png")))
+        if fs:
+            groups.append((header, fs))
+    if not groups:
         return None, "no frames: the route took none and --frames-every was 0"
     try:
         from PIL import Image, ImageDraw
     except ImportError:
-        return None, "PIL unavailable; %d frames on disk" % len(frames)
-    if len(frames) > 36:          # evenly spaced, first and last kept
-        step = (len(frames) - 1) / 35.0
-        frames = [frames[round(i * step)] for i in range(36)]
-    tw, th, cols = 320, 180, 6
-    rows = (len(frames) + cols - 1) // cols
-    sheet = Image.new("RGB", (cols * tw, rows * (th + 16)), "black")
+        return None, "PIL unavailable; %d frames on disk" % sum(len(fs) for _, fs in groups)
+    items = [(h, f) for h, fs in groups for f in fs]
+    if len(items) > 36:           # evenly spaced over both groups, first and last kept
+        step = (len(items) - 1) / 35.0
+        picked = [items[round(i * step)] for i in range(36)]
+        groups = []
+        for h, f in picked:
+            if groups and groups[-1][0] == h:
+                groups[-1][1].append(f)
+            else:
+                groups.append((h, [f]))
+    tw, th, cols, head = 320, 180, 6, 22
+    height = sum(head + ((len(fs) + cols - 1) // cols) * (th + 16) for _, fs in groups)
+    sheet = Image.new("RGB", (cols * tw, height), "black")
     draw = ImageDraw.Draw(sheet)
-    for i, f in enumerate(frames):
-        try:
-            im = Image.open(f).convert("RGB")
-            im.thumbnail((tw, th))
-        except Exception:
-            continue
-        x, y = (i % cols) * tw, (i // cols) * (th + 16)
-        sheet.paste(im, (x, y + 16))
-        draw.text((x + 2, y + 2), os.path.basename(f)[:48], fill="white")
+    y0 = 0
+    for header, fs in groups:
+        draw.text((4, y0 + 6), header, fill="yellow")
+        y0 += head
+        for i, f in enumerate(fs):
+            x, y = (i % cols) * tw, y0 + (i // cols) * (th + 16)
+            m = hitch_report.FRAME_NAME.match(os.path.basename(f))
+            when = ("%s:%s:%s" % m.groups()) if m else os.path.basename(f)[:20]
+            draw.text((x + 2, y + 2), when, fill="white")
+            try:
+                im = Image.open(f).convert("RGB")
+                im.thumbnail((tw, th))
+            except Exception:
+                continue
+            sheet.paste(im, (x, y + 16))
+        y0 += ((len(fs) + cols - 1) // cols) * (th + 16)
     sheet.save(out_png)
     return os.path.basename(out_png), None
 
@@ -713,6 +738,10 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
     # `reached_gameplay` only reads the mark frame and cannot see this).
     static = hitch_report.static_window(rdir, mark_t, end_t)
     v["static_window"] = static
+    # POSITION (#433, 2026-10-03): the scene must change across the window and
+    # between its samples. Same samples as the liveness test above.
+    position = hitch_report.position_change(rdir, mark_t, end_t)
+    v["position"] = position
 
     # THE CRITERIA, IN ORDER. The first that fails is named; all are listed.
     if require is None:
@@ -791,6 +820,12 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
         sfail, swhy = hitch_report.static_window_fail(static)
         if sfail:
             fails.append(swhy)
+        ufail, uwhy = hitch_report.static_window_unmeasured(static)
+        if ufail:
+            fails.append(uwhy)
+        pfail, pwhy = hitch_report.position_fail(position)
+        if pfail:
+            fails.append(pwhy)
     v["pass"] = not fails
     v["failing"] = fails[0] if fails else None
     v["failures"] = fails

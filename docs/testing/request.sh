@@ -111,6 +111,7 @@ ENV_VARS=()
 FRAMES_EVERY=0
 ROUTE=""; ROUTE_TEXT=""
 ISSUE=""
+IDENTIFIED=""
 PIN=""
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -175,6 +176,7 @@ while [ $# -gt 0 ]; do
         # The issue(s) this request serves, for its release priority only
         # (below, at the id). Without it, the first #N in --purpose.
         --issue) ISSUE="${ISSUE:+$ISSUE,}$2"; shift 2;;
+        --identified) IDENTIFIED="$2"; shift 2;;
         --priority) PRIORITY="$2"; shift 2;;
         *) echo "unknown option $1" >&2; exit 2;;
     esac
@@ -1192,11 +1194,40 @@ MSG
     ROUTE_TEXT=$(cat "$ROUTE_PATH")
 fi
 
+# THE FAILURE GATE (lane.failgate, #433, 2026-10-03). A failed or unproven run
+# goes for identification before its title is queued again: host-tools/
+# failure_intake.py writes an IDENTIFIED record for each scored failure, and
+# `gate <title-id> <route-file>` exits 1 with a HELD line while one is open for
+# this title and its route and golden are unchanged since it failed. Castlevania
+# was queued three times after failures nobody had identified. The tool is on
+# the lane host only; CI and a fresh checkout have none and queue as before.
+#
+# --identified <result-dir-or-id> admits a held title, and is written into the
+# request as "identified". The host adds that id to pm/failure-resolved.txt,
+# which the gate reads. This script never writes outside the repo.
+FI_PY="${HAKUX_FAILURE_INTAKE:-$HOME/hakux-work/host-tools/failure_intake.py}"
+if [ -n "$TITLE_ID" ] && [ -f "$FI_PY" ]; then
+    FI_OUT=$(python3 "$FI_PY" gate "$TITLE_ID" "${ROUTE_PATH:-}" 2>&1) && FI_RC=0 || FI_RC=$?
+    case "$FI_RC:$FI_OUT" in
+        0:*) ;;
+        1:HELD*)
+            if [ -z "$IDENTIFIED" ]; then
+                echo "refusing to queue: $FI_OUT" >&2
+                echo "  identify the failure first, then pass --identified <result-dir-or-id>" >&2
+                exit 3
+            fi
+            echo "admitted: $TITLE_ID is held, identified by $IDENTIFIED: $FI_OUT" >&2 ;;
+        *)
+            echo "refusing to queue: failure_intake gate failed (exit $FI_RC): $FI_OUT" >&2
+            exit 3 ;;
+    esac
+fi
+
 # `env` goes LAST and as the remaining argv, because it is the only repeatable
 # option here and packing it into one comma-joined string -- the shape every
 # other list option uses -- would make a value containing a comma unqueueable.
 ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" PRIORITY="$PRIORITY" PIN="$PIN" \
-TITLE_ID="$TITLE_ID" TITLE_STATE="$TITLE_STATE" \
+TITLE_ID="$TITLE_ID" TITLE_STATE="$TITLE_STATE" IDENTIFIED="$IDENTIFIED" \
 python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" "$PROGRAM" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
@@ -1232,6 +1263,9 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            # declares: the dispatcher composes the titles disk to match.
            "title_id": __import__("os").environ.get("TITLE_ID", ""),
            "title_state": __import__("os").environ.get("TITLE_STATE", "any") or "any",
+           # The failure identified before a held title was queued again
+           # (--identified; see the failure gate above). Empty when none.
+           "identified": __import__("os").environ.get("IDENTIFIED", ""),
            "expect": expect, "expect_sha": expect_sha,
            "no_expect": no_expect,
            # The tier asked for (--priority); the id's prefix is its effect.

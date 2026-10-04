@@ -73,16 +73,34 @@ json.dump({"id": "fx-" + os.path.basename(d), "title": "playshare-nomatch.iso", 
            "route": "drive x 600 mark\n"}, open(os.path.join(d, "request.json"), "w"))
 json.dump({"kind": "soak", "device_label": "nova", "apk_sha": "0" * 12, "ref": "abc"},
           open(os.path.join(d, "result.json"), "w"))
+# Post-mark route-frames, as the window's liveness and position tests read
+# them (every 30 s, noise: the scene changes every sample, as live play does).
+# Only with PIL: the verdict reads pixels, and a window it cannot read fails.
+import importlib.util
+if all(importlib.util.find_spec(m) is not None for m in ("PIL", "numpy")):
+    from PIL import Image
+    rf = os.path.join(d, "route-frames"); os.makedirs(rf)
+    for i, t in enumerate(range(130, int(end) - 30, 30)):
+        h, m, s = (T0 + t) // 3600, ((T0 + t) % 3600) // 60, (T0 + t) % 60
+        Image.effect_noise((640, 480), 80).convert("RGB").save(
+            os.path.join(rf, "%02d%02d%02d-r%02d.png" % (h, m, s, i)))
 PY
 }
 
+# Judged on the timeline, not the window. On a runner with no PIL the window
+# cannot be read, so `window unmeasured` is the one failure a leg may carry
+# there, and the leg reads as the verdict's pass. With PIL the frames exist
+# and the verdict must pass on its own.
 ps_verdict() {   # <verdict.py> <rdir> -> "pass|failing|play_share|excluded_s|min_fps"
     python3 "$1" "$2" --require confirmation --targets "$TESTING/titles/targets.toml" >/dev/null 2>&1 \
         || { echo "exit $?"; return; }
     python3 -c '
-import json, sys
+import importlib.util, json, sys
 v = json.load(open(sys.argv[1] + "/verdict.json"))
 tl = v.get("timeline")
+no_pil = not all(importlib.util.find_spec(m) is not None for m in ("PIL", "numpy"))
+if no_pil and v.get("failures") and all(f.startswith("window unmeasured") for f in v["failures"]):
+    v["pass"], v["failing"] = True, None
 if tl == "none":
     print("%s|%s|none|-|%s" % (v["pass"], v["failing"], v.get("fps_window_min")))
 else:
