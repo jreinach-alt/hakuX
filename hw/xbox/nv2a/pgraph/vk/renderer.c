@@ -428,7 +428,6 @@ static void pgraph_vk_init(NV2AState *d, Error **errp)
     pg->vk_renderer_state = (PGRAPHVkState *)g_malloc0(sizeof(PGRAPHVkState));
     pg->vk_renderer_state->nv2a = d;
     pg->vk_renderer_state->need_descriptor_rebind = true;
-    pg->vk_renderer_state->deferred_downloads_frame = -1;
 
     pgraph_vk_debug_init();
 
@@ -2429,11 +2428,12 @@ static void fdump_end_frame(NV2AState *d)
 
     if (fdump.images) {
         if (r->num_deferred_downloads > 0) {
-            /* Which fence the completion below will wait on, read before the
-             * call clears it. The same two cases the callee distinguishes. */
+            /* Which fence the completion below will wait on last, read
+             * before the call clears it: the flip's pre-download, or the
+             * newest entry's slot (-1, a finish of its own, if unsubmitted). */
             img_sync = r->display_predownload_pending
-                           ? r->display_predownload_frame_index
-                           : r->deferred_downloads_frame;
+                ? r->display_predownload_frame_index
+                : r->deferred_downloads[r->num_deferred_downloads - 1].frame;
         }
         pgraph_vk_download_surface_complete_deferred(d);
 

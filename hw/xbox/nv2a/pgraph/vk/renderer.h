@@ -64,6 +64,15 @@ enum { TXH_NEW, TXH_RB, TXH_SRF, TXH_MK, TXH_MEMO, TXH_BIT, TXH_BOV, TXH_OTH,
        TXH__N };
 /* Why upload_texture_image() ran. */
 enum { TXU_NEW, TXU_RB, TXU_CHG, TXU_OTH, TXU__N };
+/*
+ * async794: why a bind downloaded the surface at its address (txr_dl) instead
+ * of sampling or copying it on the GPU -- the first test of
+ * check_surface_to_texture_compatiblity() that refused it, or an upload the
+ * surface still owed. Counter-Strike, Top Spin, ToeJam, BloodRayne, Burnout,
+ * Nightfire and Midtown Madness 3 wait 1-26 times a frame in that download.
+ */
+enum { TXDL_LEVELS, TXDL_DIM, TXDL_CUBE, TXDL_PITCH, TXDL_SWZ, TXDL_CVT,
+       TXDL_BPP, TXDL_UPL, TXDL_OTH, TXDL__N };
 /* The path get_texture_layout() decoded a level through. */
 enum { TXK_LIN, TXK_BC, TXK_S3TC, TXK_PAL, TXK_CVT, TXK_SWZ, TXK__N };
 #endif
@@ -215,6 +224,7 @@ struct OptBisectStats {
     int txr_s2tc;               /* surface-to-texture copies */
     int txr_s2td;               /* direct binds made: the view changed; a
                                  * reused view is not counted */
+    int txr_why[TXDL__N];       /* txr_dl, by reason (async794) */
 #endif
 };
 extern struct OptBisectStats g_opt_stats;
@@ -415,6 +425,9 @@ typedef struct DeferredSurfaceDownload {
     bool partial; /* Covered only a row range, not the whole surface */
     SurfaceBinding *surface; /* Source surface for flag cleanup at completion */
     uint32_t draw_generation; /* what the copy captured; see completion */
+    int frame; /* Frame slot whose submission carries the copy, or -1 while
+                * it is still in the recording command buffer (async794) */
+    uint64_t seq; /* Record order, for the flip's pre-download */
 } DeferredSurfaceDownload;
 
 typedef struct ShaderModuleInfo {
@@ -1437,15 +1450,16 @@ typedef struct PGRAPHVkState {
     QemuEvent dirty_surfaces_download_complete; // common
 
     DeferredSurfaceDownload deferred_downloads[MAX_DEFERRED_DOWNLOADS];
-    int num_deferred_downloads;
+    int num_deferred_downloads; /* In record order, which is submission
+                                 * order: submitted entries (frame >= 0)
+                                 * first, then unsubmitted ones (async794) */
     VkDeviceSize staging_dst_offset;
-    int deferred_downloads_frame; /* Frame index whose CB contains the
-                                   * deferred downloads, or -1 if not yet
-                                   * submitted. */
+    uint64_t deferred_downloads_seq;
 
     bool display_predownload_pending;
     int display_predownload_frame_index;
     SurfaceBinding *display_predownload_surface;
+    uint64_t display_predownload_seq; /* Last entry the flip recorded */
 
     Lru texture_cache;
     TextureBinding *texture_cache_entries;
@@ -1766,6 +1780,10 @@ void pgraph_vk_surface_image_pool_init(PGRAPHVkState *r);
 void pgraph_vk_surface_image_pool_drain(PGRAPHVkState *r);
 void pgraph_vk_process_pending_downloads(NV2AState *d);
 void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r);
+void pgraph_vk_complete_staged_downloads_for_frame(NV2AState *d,
+                                                   PGRAPHVkState *r,
+                                                   int frame);
+void pgraph_vk_tag_submitted_downloads(PGRAPHVkState *r, int frame);
 void pgraph_vk_download_surface_complete_deferred(NV2AState *d);
 void pgraph_vk_surface_download_if_dirty(NV2AState *d, SurfaceBinding *surface);
 SurfaceBinding *pgraph_vk_surface_get_within(NV2AState *d, hwaddr addr);
