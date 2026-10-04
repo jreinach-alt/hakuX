@@ -8,3 +8,7 @@
   queries are in flight), grant for `hw/xbox/nv2a/pgraph/vk/reports.c` requested in
   `board-requests/accuracy804.md`. Whether RalliSport runs visibility tests is the open question. Nova capture
   `1791136124-lane.accuracy804-3752333` (frame dump + perflog `qry`) answers it; queued behind pathfind's hold.
+- 2026-10-04 PDT: first capture read. RalliSport runs visibility tests every race frame (5 box draws per tested
+  frame; `qry` 400-594 per 60 flips in the race, 0 in menus). It could not show the car body, because no rival was
+  in view: the route went through Career, and the positive bursts all came from pathfind's Single Race. Second
+  capture `1791147878-lane.accuracy804-1639330` replays the Single Race path (`rallisport-804b.route`), queued.

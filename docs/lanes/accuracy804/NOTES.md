@@ -187,3 +187,7 @@ start-race A falls at ~+134 s and race clock 0 at ~+141 s. In flicker801 the riv
 starts at ~+141.5 s. 1000 frames last 16.7 s at 60 flips/s and longer if the rival drops the game toward 35
 fps, so race clock 8 s is in the window for any race clock 0 from ~+134 to ~+150 s. Shots r1-r7 at race clock
 ~4-17 s show whether the rival is on screen.
+
+Queued 10-04 PDT as `1791147878-lane.accuracy804-1639330` (perflog, `--pull 'framedump_*'`, pinned to the Nova),
+behind lane.pathfind's hold and 6 earlier requests. The lane is WAITING on it (`WAITING`). Reading it: section 6's
+table, with `alt_draws.py` (its full key no longer includes the colour target) and the shots r1-r7.
