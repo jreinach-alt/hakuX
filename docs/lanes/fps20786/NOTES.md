@@ -139,10 +139,11 @@ What binds its slow windows is **lock/sync**:
 Owner: #474 (pgraph.lock). The surface-download count (30 per frame) is the
 lever on the render side. On the vCPU side the lever is
 `pgraph_lock_release_for_fence()` (pgraph.h 422). Its one call site is
-`wait_frame_fence` (vk/surface.c 1188), which releases the lock only on
-`surface_update`'s completion-deferred wait (surface.c 5083). Top Spin's
-download-if-dirty finishes go through `pgraph_vk_finish(SURFACE_DOWN)` and
-keep the lock. rd_unl = 0 in every line, so no read was ever served across a
+`wait_frame_fence` (vk/surface.c 1188), reached only from the predownload
+and coalesced branches of `download_surface_complete_deferred_at`
+(surface.c 1218-1231). Top Spin's download-if-dirty finishes
+(surface.c 2133) go through `pgraph_vk_finish(SURFACE_DOWN)` and keep the
+lock. rd_unl = 0 in every line, so no read was ever served across a
 released fence.
 
 ### NBA Live 2005 (2876934): the serial renderer, as registered
@@ -214,8 +215,8 @@ before it: rows t = 1.5-39 s match the rest.
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | all 322 | 0.01 | 25.4 | 39.4 | 21.3 | 18.1 | 7.2 | 22.5 | 9.8 | 1.0 | 14.2 | 10.6 | 11.2 | 758 |
 
-VBLANKs per flip: v2 0.62, v3 0.36. One completion-deferred surface download
-per flip (`hakuX-stall` sd60 cDef60 per 2 s), the same kind as NBA's. Renderer
+VBLANKs per flip: v2 0.62, v3 0.36. One staged surface download per flip,
+completed by a synchronous finish (`hakuX-stall` sd60 cDef60 per 2 s), the same kind as NBA's. Renderer
 cost F - Ri = 32.2 ms, right at the 33.3 edge, so a third of the frames take
 three VBLANKs.
 
@@ -240,24 +241,24 @@ All three measured titles make **surface-download finishes every frame**
 
 | title | sd per flip | source | ph_Fin ms | GPU ms | what waits |
 |---|---|---|---|---|---|
-| NBA Live 2005 | 1 | completion-deferred (cDef) | 13.8 | 18.5 | render thread |
-| Counter-Strike | 2 | download-if-dirty | 13.8 | 24.6 | render thread |
-| Top Spin | ~26-30 | download-if-dirty | 15.5 | 10.6 | render thread, and the vCPU behind pgraph.lock |
-| Midnight Club 3 | 1 | completion-deferred (cDef) | 11.2 | 14.2 | render thread (on the edge) |
+| NBA Live 2005 | 1 | `sd_complete_def` (cDef): staged downloads not yet submitted, surface.c 1232 | 13.8 | 18.5 | render thread |
+| Counter-Strike | 2 | download-if-dirty (`sd_dirty_dl`), surface.c 2133 | 13.8 | 24.6 | render thread |
+| Top Spin | ~26-30 | download-if-dirty, surface.c 2133 | 15.5 | 10.6 | render thread, and the vCPU behind pgraph.lock |
+| Midnight Club 3 | 1 | cDef, surface.c 1232 | 11.2 | 14.2 | render thread (on the edge) |
 
-`VK_FINISH_REASON_SURFACE_DOWN` is not in the deferred set (draw.c 4169-4177).
-So each one ends the command buffer, submits everything recorded so far, and
-blocks the PFIFO thread on `qemu_event_wait` until the GPU has finished it
-(draw.c 4239-4301). The completion-deferred kind (NBA's) waits on the same
-frame fence a little later (`download_surface_complete_deferred_at` ->
-`wait_frame_fence`, vk/surface.c 1183). Either way the GPU's work for the
-frame so far runs while the render thread waits, not while it records the
-rest. That is the serial renderer of NBA and Counter-Strike. Top Spin takes it
-~30 times a frame with pgraph.lock held, and the vCPU's PGRAPH reads queue
-behind it (#474's mechanism). `wait_frame_fence`'s lock release covers the
-completion-deferred wait in `surface_update`, NBA's kind, which is why NBA's
-lock wait is only 2.3 ms. It does not cover the download-if-dirty finishes
-that Top Spin makes.
+Both sources end in the same call, `pgraph_vk_finish(pg,
+VK_FINISH_REASON_SURFACE_DOWN)`. That reason is not in the deferred set
+(draw.c 4169-4177). So each call ends the command buffer, submits everything
+recorded so far, and blocks the PFIFO thread on `qemu_event_wait` until the
+GPU has finished it (draw.c 4239-4301), with pgraph.lock held. The GPU's work
+for the frame so far then runs while the render thread waits, not while it
+records the rest. That is the serial renderer of NBA, Counter-Strike and MC3.
+Top Spin takes it ~30 times a frame, and its vCPU's PGRAPH reads (0xb10, ~20
+per flip) queue behind the lock (#474's mechanism). NBA's guest reads 0xb10
+about once per flip, which is why NBA's lock wait is only 2.3 ms on the same
+held lock. The lock-releasing `wait_frame_fence` serves only the predownload
+and coalesced branches (surface.c 1218-1231), and none of these four titles
+takes either.
 
 **The natural experiment across titles** (`sdsurvey.py`, every perflog soak
 of the last 10 days, 31 titles; `sdsurvey-by-title.tsv`). Every title with
@@ -284,8 +285,8 @@ wait).
 
 | # | fix | P (evidence) | win | titles |
 |---|---|---|---|---|
-| 1 | **Asynchronous surface downloads**: record the copy into the frame's command buffer (the aux-CB path already does this for cDef) and wait for it only where the guest can observe the memory, i.e. at its next sync point (notifier / semaphore release / the flip / a PGRAPH idle poll), not at the download. On the NV2A a render target's memory is coherent for the CPU only after such a sync, so this is the hardware's own contract | 0.4 (the mechanism removes exactly the measured 13.8-ms wait; the risk is a title that reads a surface without syncing, and a wait that moves to frame-slot reuse rather than vanishing) | NBA: renderer 35.4 -> ~24-26 ms, under 33.3, so two VBLANKs (30 fps). CS: 37 -> ~25 vs GPU 24.6, so 30 | NBA 2005 (+ 04/06/07 if they share it), Counter-Strike; plus 8-14 ms per frame on the near-30 set: Blinx 2, Forza, Burnout, MM3, Nightfire, BloodRayne, ToeJam, Top Spin |
-| 2 | **#474 extension**: release pgraph.lock across the SURFACE_DOWN finish's wait too, as `wait_frame_fence` already does for the completion-deferred one | 0.6 (lock wait 13.6 ms/frame measured on 0xb10, rd_unl 0 today) | Top Spin: frees ~13 ms of vCPU per frame; 0.89 -> above 0.90 likely | Top Spin; any title that polls PGRAPH during downloads |
+| 1 | **Asynchronous surface downloads**: record the copy into the frame's command buffer (staged downloads are already recorded into the aux CB; their completion is the synchronous part) and wait for it only where the guest can observe the memory, i.e. at its next sync point (notifier / semaphore release / the flip / a PGRAPH idle poll), not at the download. On the NV2A a render target's memory is coherent for the CPU only after such a sync, so this is the hardware's own contract | 0.4 (the mechanism removes exactly the measured 13.8-ms wait; the risk is a title that reads a surface without syncing, and a wait that moves to frame-slot reuse rather than vanishing) | NBA: renderer 35.4 -> ~24-26 ms, under 33.3, so two VBLANKs (30 fps). CS: 37 -> ~25 vs GPU 24.6, so 30 | NBA 2005 (+ 04/06/07 if they share it), Counter-Strike; plus 8-14 ms per frame on the near-30 set: Blinx 2, Forza, Burnout, MM3, Nightfire, BloodRayne, ToeJam, Top Spin |
+| 2 | **#474 extension**: release pgraph.lock across the SURFACE_DOWN finish's wait too, as `wait_frame_fence` already does for the predownload and coalesced waits | 0.6 (lock wait 13.6 ms/frame measured on 0xb10, rd_unl 0 today) | Top Spin: frees ~13 ms of vCPU per frame; 0.89 -> above 0.90 likely | Top Spin; any title that polls PGRAPH during downloads |
 | 3 | #426 split capture from translation (lane.remote): Pipe+Desc+Setup+Cmd = 5.5 ms of NBA's render thread off the PFIFO thread | 0.3 alone (35.4 - 5.5 = 29.9, under 33.3 only if nothing else moves) | NBA to ~30 on its own at best; compounds with 1 | the renderer-bound set |
 
 Fix 1 is the one that fits the measured cause, and it ranks first on both
