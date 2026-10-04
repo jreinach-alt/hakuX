@@ -120,7 +120,81 @@ loop's A, to close the weapon wheel) and `routes/async794-topspin.route`
 - preflight: every gate passes but `coverage` (six board issues with neither
   lane nor blocker), which is the board's.
 
+## Session 2 (2026-10-04, attempt 2): why session 1 did not finish
+
+Session 1 ended correctly in a wait: the two pilot runs were queued behind
+lane.pathfind's Nova hold and had not run. It left no `[lane.async794]
+waiting:` comment, so lane.local wrote `WAITING` (fdc305f805). Both runs
+finished afterwards (DONE 0), and attempt 2 is the resume that reads them.
+
+## The pilot: fix 1 is refuted (the wait moved), fix 2 acts
+
+NBA Live 2005, 800 s, Nova, perflog, the same route on both legs. Both reached
+gameplay (frames by eye: a live game, no stale or torn surfaces in B). Neither
+logcat has a validation, device-lost, assert or crash line.
+A `1791128020-lane.async794-3209876` (master 5e4196fefd, apk 63f4c763dc9a),
+B `1791128026-lane.async794-3210567` (c825e4b24f, apk dd99b818c691).
+
+decompose.py, all 2-s rows after the mark (286 / 283):
+
+| | fps | F ms | ph_Fin | ph_Tot | Ri | rblk | lockw | v_blk | share >= 28.5 |
+|---|---|---|---|---|---|---|---|---|---|
+| A master | 25.89 | 38.63 | 13.40 | 27.40 | 4.15 | 10.48 | 3.38 | 3.86 | 0.20 |
+| B fix | 25.34 | 39.46 | 13.80 | 28.10 | 4.50 | 10.85 | 0.27 | 0.88 | 0.19 |
+
+sdcallers.py:
+
+| | caller | fin/frame | wait ms/frame |
+|---|---|---|---|
+| A | `reuse` | 1.00 | 11.18 |
+| B | `surfupd` | 1.00 | 11.48 |
+
+**X1 fires on both counts.** ph_Fin stays at 13.8 ms (> 8). The one finish a
+frame did not go away. It moved from `reuse` to `surfupd`, the same size.
+By the brief this is not a win, and no second theory is stacked on it here.
+
+Why it moved (read from the code, not measured separately): the unshelved
+struct is rebound with `upload_pending`, because its image is not trusted
+while a download from its previous life is pending.
+`surface_update_may_defer_downloads` refuses to defer when a binding is about
+to upload from VRAM, so `pgraph_vk_surface_update` completes the detached
+download with a finish, then uploads those same bytes back into an image. So
+NBA's download *does* have a consumer before the guest's next sync point: the
+emulator's own round trip, image -> VRAM -> image. Deferral cannot remove
+that. What could is not doing the round trip: keep the shelved image as the
+rebinding's contents when the CPU-access watch saw no guest write in between.
+That is a new theory, so it needs its own brief and prediction; it is not
+attempted here.
+
+Fix 2's mechanism acts on NBA: the vCPU's lock wait falls 3.38 -> 0.27
+ms/frame and v_blk 3.86 -> 0.88. NBA's fps is unchanged, which is expected:
+NBA's frame is the renderer's, not the lock's. Top Spin's premise is 13.6 ms of
+lock wait, so its pair is the test of fix 2.
+
+## Queued after the pilot review (pilots/lane.async794.ok written)
+
+Only the fix-2 test, `async794-topspin-soak.json`, 990 s each, Nova, behind the
+pathfind hold:
+A `1791135713-lane.async794-3678571` (master 5e4196fefd),
+B `1791135717-lane.async794-3678947` (c825e4b24f).
+The CS / MC3 / Burnout Revenge pairs are not queued. Their predictions were
+for fix 1 (CS's was INERT, kept only for txdl reasons, and MC3's and
+Burnout's were regression checks), and fix 1 is refuted. The golden arm
+(`arms-async794-base/fix`) is still in the queue; it is the arms job's.
+
+Next session: read the Top Spin pair against the prediction's legs (P0 in A,
+F1/P1/P2/X1 in B), post the numbers in OUTBOX.md and on #796, then decide
+the PR. If fix 2 passes, the fix-1 half is dead code that costs nothing on
+NBA, but it is unproven elsewhere: strip it to fix 2 alone or keep it.
+Decide that on the golden arm's verdict.
+
 ## Do not repeat
+
+- Do not detach or defer a pending download whose surface is about to be
+  rebound with `upload_pending`: `surfupd` completes it on the spot (pilot
+  above). Deferral removes a wait only when no emulator-side reader exists
+  before the guest's sync point; check `surface_update_may_defer_downloads`
+  and the upload path, not just the call site you moved.
 
 - Do not read fps20786's "sd" column as one mechanism. `[sdcall]` names the
   caller; `txr dl` names the texture bind's own sync download, which
