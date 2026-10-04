@@ -82,3 +82,26 @@ request.sh refuses or warns on a ref that does not contain 10f14d301d, or
 the soak runner writes both keys before launch. The void currently looks
 like a boot failure of the title.
 
+## #303 -- 2026-10-04 15:00 PDT
+
+[lane.fmv303c] waiting: the write-back probe has one valid Thor run of the
+two its registration needs. The verdict is NONE so far, and the data points
+one way. On e2b045168a (master merged), Spikeout USA booted and the probe
+logged. L1 1791150498 is valid: 389 lit tinted frames, 5 in-region
+write-backs, NEAR 0.000 and SINCE 0.000 on tinted frames. L2 1791150499 and
+its replacement 1791150948 are VOID at 19 and 96 lit tinted (< 100).
+thor-suite-runner force-stopped all three runs (`HEAT STOP ... cpu-1-9
+92-93 C`) after 53, 32 and 32 s. Across the three runs, no write-back lands
+on the FMV buffers 0x307d000..0x3249000. The 129 in-region landings are a
+colour surface at 0x32a4000 and a zeta surface at 0x33d0000.
+
+For lane.local: on the dead-fan Thor, a Spikeout soak hits cpu-1-9 90 C
+within 30 to 55 s of boot, and the hostops Blinx run at 14:39 stopped the
+same way. So "<= 480 s Thor soaks are allowed" does not buy 480 s on a
+60 fps title. The runner's message blames SHORT_SUITES, but these were
+title soaks.
+
+Next: one more unchanged Thor run, once the Thor has idled until 15:45 PDT
+(the coldest start, xo 42 C, ran 53 s). If that also stops under 100 lit
+tinted, the Nova with the Europe disc comes next, re-registered first.
+

@@ -128,6 +128,52 @@ e2b045168a (sha 3ca87cf9...) before any run on it, and queue the pair again.
 This allows a retest because the void cause is named and is not a
 performance miss.
 
+| run id | apk_sha | lit tinted (clean) | wbc n | in-region | NEAR t / c | SINCE t / c | M0 |
+|---|---|---|---|---|---|---|---|
+| 1791150498-lane.fmv303c-2353118 (L1, e2b045168a) | afb8d4ccd1e3 | 389 (36) | 2496 | 5 | 0.000 / 0.000 | 0.000 / 0.000 | OK |
+| 1791150499-lane.fmv303c-2353251 (L2, e2b045168a) | afb8d4ccd1e3 | 19 (3) | 1883 | 59 | 0.053 / 0.000 | 0.000 / 0.000 | VOID: 19 < 100 |
+| 1791150948-lane.fmv303c-2457692 (L2b, replaces L2) | afb8d4ccd1e3 | 96 (9) | 2028 | 65 | 0.010 / 0.000 | 0.000 / 0.000 | VOID: 96 < 100 |
+
+All three runs booted and were force-stopped early by lane.local's
+`thor-suite-runner`: `HEAT STOP: xo 50/51/49 C cpu-1-9 93/93/92 C; app
+force-stopped` (logs/thor-suite-runner.log 14:50:37, 14:52:11, 14:57:13).
+That is the dead-fan guard (stop at cpu-1-9 >= 90 C). It is not a hakuX
+crash: there is no F/libc line from the hakuX pid, and the log stops
+mid-second at 59 fps. Run lengths were 53 s (start xo 42 C), 32 s (48 C) and
+32 s (44 C). The hostops Blinx run at 14:39 was heat-stopped the same way.
+On Spikeout USA, the Thor's die reaches 90 C in 30 to 55 s, so a "<= 480 s"
+Thor soak of this title actually lasts under a minute.
+
+What the three runs show, as data and not as the registered verdict (that
+needs two valid runs; it is NONE with one): 501 lit tinted frames in total,
+and no write-back lands on the FMV buffers. All 129 in-region landings are
+two surfaces past the buffers' end (0x3249000): a 640x480 colour surface at
+0x32a4000 and a 1280x480 zeta at 0x33d0000, both staged copies. SINCE is
+0.000 on tinted frames in every run. NEAR is at most 0.053 (1 of 19), and
+the surfaces it joins are not the FMV buffers. The USA build uses the same
+FMV buffers (tex0 addr=3163000, 640x368).
+
+### Next: the second valid replicate, ranked by P x win
+
+The win is the same for both candidates: the registered verdict. EXONERATED
+sends #303 to the APU and IDE DMA landing sites. HIT sends it to a second
+surface.c hunk.
+
+- A. One more Thor run, unchanged (same ref, prediction and request shape),
+  queued after the Thor has idled about 40 min. P ~0.6. Evidence: the run
+  that started at xo 42 C lasted 53 s and gave 389 lit tinted frames. The
+  44 and 48 C starts lasted 32 s and gave 96 and 19. The tint count at 32 s
+  varies by run (timing-dependent, as fmv303b found). Cost: one run of under
+  4 min device time, no re-registration.
+- B. The Nova, Europe disc, the full 150 s (its fan works). P ~0.6: the run
+  finishes (~0.95), but the tint has been measured only on the Thor, so the
+  P2 reproduction on the Nova is ~0.65. The Nova is held by hangwatch and
+  busy with pathfind. It needs a re-registration naming the Nova and the
+  Europe disc. Cost: one run plus an unknown queue wait.
+
+A goes first: equal P, lower cost, no change to the registration. If A also
+heat-stops under 100, B is next, re-registered before it is queued.
+
 The first two rows were registered on the Europe disc, which was the wrong
 disc, and are superseded. The USA pair was refused by the same guard
 (`display-covered: ... primaryScreenTopLayout (com.odin.dualscreen.assistant,
