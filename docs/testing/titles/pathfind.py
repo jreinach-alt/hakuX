@@ -118,6 +118,12 @@ HOLD_REPEAT_STATES = ("cutscene", "game_over")
 # move in that window. 10-03, scratch/posprobe.py on the held runs: Black Stone standing on its octagon for 600 s
 # (sword swinging, verdict PASS) 0.002-0.013 per 30-s pair; Panzer Dragoon Orta flying 0.31-0.92.
 HOLD_STILL = 0.03
+# "should we continue?" (owner 10-04 ~08:10): at 3 and 5 min of a hold longer than 5 min, read the gfps lines the
+# hold's logcat has so far. A title on course for clear/close has >= 60% of seconds at >= 30 fps or a median >= 27;
+# median < 22 at 3 min, or < 27 at 5 min (and the share under 60%), will not get there: stop the hold, so the
+# 3-min telemetry run that follows is the evidence, not 600 s of a known miss.
+FPS_GATES = ((180, 22.0), (300, 27.0))
+FPS_BAR, FPS_SHARE_OK = 30, 0.60
 # a still window in the drive genre: a car against a wall (Forza, 10-03). Reverse while turning, then drive out the
 # other way, alternating sides per still window, before the generic unlock rotation.
 HOLD_UNSTICK = {
@@ -359,6 +365,23 @@ def window_change(a, b):
     """Change between two kept hold frames at the probe's contrast step: did the player or camera move?"""
     ga = grey(a)
     return classify.motion(ga, grey(b), pixel=probe_step(ga))[0]
+
+
+def fps_course(logcat):
+    """The hold so far from its logcat's hakuX-perf `gfps=` lines (one per second): {n, median, share >= FPS_BAR}."""
+    try:
+        vals = [int(m.group(1)) for m in re.finditer(r"gfps=(\d+)", open(logcat, errors="replace").read())]
+    except OSError:
+        vals = []
+    if not vals:
+        return {"n": 0, "median": None, "share": None}
+    return {"n": len(vals), "median": float(np.median(vals)),
+            "share": round(sum(v >= FPS_BAR for v in vals) / len(vals), 3)}
+
+
+def fps_gate_fails(course, floor):
+    """True when the hold is not on course for the 30-fps bar: median below `floor` and the share under 60%."""
+    return course["n"] >= 30 and course["median"] < floor and course["share"] < FPS_SHARE_OK
 
 
 def letterboxed(path):
@@ -1347,6 +1370,7 @@ class Agent:
         order = [genre] + [g for g in HOLD_GENRES if g not in (genre, "onrails")]
         rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
         last_png, last_check, last_kept, drop = None, now(), None, []
+        fps_seen, fps_checks = set(), []  # the FPS_GATES passed so far, and what each read
         # the perflog: logcat from the mark to `soak end`, with a state line at every change of play, so
         # title_verdict.py judges fps over play seconds only (its TIMELINE)
         cat = self.dev.logcat_start(os.path.join(self.out, "logcat.txt"))
@@ -1370,6 +1394,19 @@ class Agent:
                 break
             t = now()
             hold_el = t - t_hold
+            gate = next((g for g in FPS_GATES if g[0] <= hold_el and g[0] not in fps_seen), None)
+            if gate and self.hold_s > FPS_GATES[-1][0] and cat is not None:
+                fps_seen.add(gate[0])
+                course = fps_course(os.path.join(self.out, "logcat.txt"))
+                course.update(at_s=round(hold_el, 1), floor=gate[1], stop=fps_gate_fails(course, gate[1]))
+                fps_checks.append(course)
+                print(f"hold-play: fps at {hold_el:.0f} s: median {course['median']}, share>={FPS_BAR} "
+                      f"{course['share']} over {course['n']} s{' -> STOP (not on course)' if course['stop'] else ''}",
+                      flush=True)
+                if course["stop"]:
+                    reason = (f"fps gate at {int(hold_el) // 60}:{int(hold_el) % 60:02d}: median {course['median']:.0f} "
+                              f"< {gate[1]:.0f}, {course['share']:.0%} of {course['n']} s at >= {FPS_BAR}")
+                    break
             ch = changed(last_png, png) if last_png else None
             still = still + 1 if ch is not None and ch <= UNCHANGED else 0
             suspect = is_black(png) or still >= 1
@@ -1483,7 +1520,7 @@ class Agent:
             reason = f"budget {self.budget_s / 60:.0f} min with {play_s:.0f} s of play"
         held.update(ok=ok, play_s=round(play_s, 1), need_s=self.hold_s, hold_s=round(now() - t_hold, 1),
                     model_navs=navs, frames=len(kept), still_windows=still_windows, shed=sorted(shed_set),
-                    reason=reason, title_hold=bool(th))
+                    reason=reason, title_hold=bool(th), fps_checks=fps_checks)
         self.result["hold"] = held
         print(f"hold-play: {'HELD' if ok else 'not held'} {play_s:.0f}/{self.hold_s:.0f} s of play; {reason}",
               flush=True)
