@@ -610,6 +610,8 @@ How to act:
 Inputs (the "action" list, up to 8 tokens, sent in order ~0.4 s apart):
   A B X Y START BACK UP DOWN LEFT RIGHT L1 R1 L3 R3   one press (UP/DOWN/LEFT/RIGHT are the d-pad)
   STICK:<up|down|left|right|upleft|upright>:<seconds>  hold the left stick
+  RSTICK:<up|down|left|right>:<seconds>                 hold the right stick (the camera or look; Halo's Armory
+                                                       look test and tutorials need it: Halo 2, 10-03)
   RT:<seconds>  LT:<seconds>                           hold a trigger (accelerate/brake in racing games)
   RT+<left|right|up|down>:<seconds>  LT+<...>:<seconds>  a trigger and the left stick together (steer on the
                                                        gas; LT+left reverses while turning off a wall)
