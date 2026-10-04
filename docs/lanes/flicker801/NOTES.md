@@ -82,3 +82,55 @@ change.
 Stated blind spot: a far car (24x12 at 320x240, 0.4% of the frame) blinking on alternate frames has p90 3.75, under
 the gate (selftest leg). The gate sees an object of about 0.5% of the frame or more, blinking in 10% or more of
 triples.
+
+## 6. Session 3, the test of the fixed metric (Nova, 09:21-09:49 PDT)
+
+Captured the same way for every title (claim mode: bursts from pathfind's first gameplay step, 8 s then 4 s, 4 s),
+scored with p90 and the gate of 5, with no change after. Every burst of all three sessions, re-scored by the shipped
+scorer, is in `TABLE.md`; per-burst `capture.json` and `flicker.tsv` are under `runs/`, worst triples as `worst.jpg`
+for the positives and the notable negatives.
+
+| | bursts | p90 |
+|---|---|---|
+| RalliSport race start, rival cars in view (s2 b1, s3 boot A b1, s3 boot B b1) | 3 | **194.1, 14.6, 14.1: all FLICKER** |
+| Panzer Dragoon Orta (s1 hold-play, s3 claim) | 6 | 0.0-1.47: all clear (explosions, a white flash: max up to 869, p90 low) |
+| Halo CE (s1 hold-play) | 3 | 0.77-1.20: clear |
+| Halo CE (s3 claim) | 3 | unmeasured: the look tutorial's camera stood still, 1 distinct frame per burst |
+| Spikeout (s3 claim, 60 fps) | 3 | 0.0-0.117: clear; capture held 59.3-60.1 unique fps |
+| RalliSport with no rival in view (s1 hold-play, later claim bursts) | 7 measured | 0.0-1.69: clear, correctly: the frames show the player alone (checked by eye on s3 boot A b2/b3) |
+
+Session 3 alone (out of sample): RalliSport 14.6 and 14.1 against a negative maximum of 0.443, about 32x.
+
+**Against the criterion I stated before capture** ("RalliSport's lowest burst >= 3x the highest negative and >= 10
+above it"): it is met when the positive is a burst with rival cars in view, lowest 14.1 against 1.47, 9.6x and 12.6
+above. Read literally over every RalliSport burst, it is not met: bursts with no car in view read about 0, as they
+should. I am shipping on the first reading, and saying so. The selection is by what is on screen (the race start, the
+same mode for every title, fixed before session 3), not by score.
+
+Margin to the gate is thin on the replicates: 14.1 is 2.8x the gate. A flicker of a smaller or farther object reads
+lower (selftest: a 0.4%-of-frame car blinking on alternate frames, p90 3.75, under). The gate is set for what the
+negatives allow (3x their highest); a lower gate needs more negatives first.
+
+## 7. Step 4: does the capture keep up?
+
+Yes, on the Nova. screenrecord gave dt median 16.7 ms and 59.3-60.4 distinct frames/s whenever the game ran at 59-60
+(RalliSport hold-play, Spikeout), and every Xbox title's frame rate is at most 60. So no xemu-side frame dump is needed
+for DETECTION here. Back-to-back screencap gets 0.7-1.3 s per frame and cannot be used.
+
+For ATTRIBUTION of RalliSport's defect, the next step is the frame dump in `noimages` mode at the race start
+(`XEMU_FRAME_DUMP="300,after<N>,noimages"`, zero Vulkan cost). Does the guest issue the car body's draws on every frame
+(so our renderer drops them on alternate frames), or only on alternate frames (so the game expects the previous frame's
+copy to persist, a surface or feedback path we do not reproduce)? The shadow being drawn on every frame while the body
+alternates says the car is not simply culled. That is a renderer issue, filed in OUTBOX as a NEW ISSUE, not this
+lane's.
+
+## 8. What the next lane should not repeat
+
+- Do not burst during pathfind's drive hold-play to look for car flicker: it drives off alone in bumper view.
+- Do not read a still screen as clear: `verdict=unmeasured` exists because Halo's look tutorial gave 483 identical
+  frames.
+- Do not gate on `rate`: legitimate one-frame effects (Orta) put it as high as no-car RalliSport bursts.
+- Do not edit a script bash is running (it reads the rest by byte offset after the loop); session2/3 are copies for
+  that reason.
+- Device time: session 1 (22 min) was the pilot; sessions 2 (6 min) and 3 (28 min) followed a frame review of what
+  the pilot showed. Total about 56 min of Nova hold, 08:53-09:49 PDT.

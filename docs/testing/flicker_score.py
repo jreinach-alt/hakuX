@@ -81,6 +81,7 @@ PIXEL_T = 40.0               # grey levels (0-255) of blink to count a pixel
 HIT_PERMILLE = 1.0           # eroded hit pixels per 1000 to count a triple
 DUP_EPS = 0.6                # mean |diff| below this is a repeated frame
 GATE_P90 = 5.0               # burst p90 (per mille) above this is flicker
+MIN_TRIPLES = 20             # fewer distinct-frame triples than this: unmeasured (a still screen)
 FPS_CORNER = (0, 0, 130, 50)  # x, y, w, h in 1280x960 space (classify.py)
 REF_W, REF_H = 1280, 960
 EXTS = (".png", ".jpg", ".jpeg", ".ppm")
@@ -204,6 +205,10 @@ def score(frames, labels, pts=None):
         "p90": round(float(ss[int(0.9 * (n - 1))]), 3) if n else None,
         "max": round(float(ss[-1]), 3) if n else None,
     }
+    # A still screen (Halo's look tutorial, 10-04: 483 frames, 1 distinct) is not a clear result: nothing moved, so
+    # nothing could blink. It is unmeasured, and --gate does not pass it.
+    res["verdict"] = ("unmeasured" if n < MIN_TRIPLES else
+                      "FLICKER" if res["p90"] > GATE_P90 else "clear")
     if pts and len(pts) > 2:
         kp = [pts[i] for i in keep]
         dt = np.diff(kp)
@@ -251,7 +256,7 @@ def run(path, out=None):
 
 
 def fmt(res):
-    keys = ["p90", "rate", "max", "hits", "triples", "frames", "unique", "dup_share",
+    keys = ["verdict", "p90", "rate", "max", "hits", "triples", "frames", "unique", "dup_share",
             "unique_fps", "dt_median_ms", "dt_max_ms", "worst"]
     return "flicker: " + " ".join("%s=%s" % (k, res[k]) for k in keys if k in res)
 
@@ -332,8 +337,11 @@ def main():
         res = run(b, a.out if len(a.burst) == 1 else (a.out and os.path.join(a.out, os.path.basename(b.rstrip("/")))))
         res["burst"] = b
         print(json.dumps(res) if a.json else fmt(res) + " burst=" + b)
-        if a.gate is not None and res["p90"] is not None and res["p90"] > a.gate:
-            worst = 1
+        if a.gate is not None:
+            if res["triples"] < MIN_TRIPLES:
+                worst = max(worst, 2)
+            elif res["p90"] > a.gate:
+                worst = max(worst, 1)
     return worst
 
 

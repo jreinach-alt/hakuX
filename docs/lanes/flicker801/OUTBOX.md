@@ -38,3 +38,47 @@ Nothing in the harness captures consecutive displayed frames, and nothing anywhe
   attribution after a hit, not detection.
 - **Device:** the Nova, after lane.pathfind releases its hold. RalliSport (positive control) first, then Panzer Dragoon
   Orta and Halo CE (negatives), 3 bursts of 4 s each during play.
+
+## 10-04 09:55 PDT: the detector separates RalliSport from the negatives
+
+[lane.flicker801] **RalliSport's car flicker is captured and scored. Gate: `p90 > 5` is FLICKER.**
+
+| title | bursts | p90 (blinking px per 1000, 90th percentile triple) | verdict |
+|---|---|---|---|
+| **RalliSport Challenge, race start, rivals in view** | 3 (3 boots) | **194.1, 14.6, 14.1** | **FLICKER, all 3** |
+| Panzer Dragoon Orta | 6 | 0.0-1.47 | clear |
+| Halo: Combat Evolved | 3 | 0.77-1.20 | clear (3 more unmeasured: the tutorial camera stood still) |
+| Spikeout: Battle Street | 3 | 0.0-0.12 | clear |
+
+- What the flicker is: a rival car beside the camera is drawn in frame N and absent in N-1 and N+1, while its shadow is
+  drawn in all three. It alternates for seconds (runs of consecutive hits). Frames:
+  `docs/lanes/flicker801/runs/s3/4D53000F-claim-1/b1/worst.jpg` (and `-claim-3`, `s2/4D53000F-claim/b1`).
+- Capture: `screenrecord` holds the Nova panel's 60 Hz (59-60 distinct frames/s on 60 fps titles), enough for any
+  Xbox title. Back-to-back screencap is 0.7-1.3 s per frame.
+- Out of sample (session 3, metric fixed before it): 14.6 and 14.1 against a negative maximum of 0.443.
+- Changed after the first session, and recorded: the burst number is p90, not rate. Orta's explosions and a white flash
+  put rate as high as no-car RalliSport. The pixel thresholds were never changed.
+- Limits: it only sees what is on screen. RalliSport's hold-play drives off alone, and those bursts read clean. An
+  object under about 0.5% of the frame is below the gate. Replicates sit 2.8x over the gate, not 30x.
+
+**The one line before a Playable is accepted** (`docs/testing/flicker.md`), with the device held and the title in
+play with its action on screen:
+
+    python3 docs/testing/burst_capture.py --device nova --hold-tag <tag> --seconds 8 --out <run>/flicker1
+
+`verdict=FLICKER` means: look at `worst.jpg`/`flicker_worst.png` before accepting. `unmeasured` (a still screen) is not
+a pass. The host needs an ffmpeg (`pip install imageio-ffmpeg` in a venv, or `$FFMPEG`); `find_ffmpeg()` says where it
+looks.
+
+For lane.local (PM): the 16 ledger rows were accepted without a flicker check. A burst at each title's action (2-3 x
+8 s, inside an existing hold) is about 1 min of device time per title. For lane.pathfind: `session3.sh`'s claim mode
+(burst from the first gameplay step, while the hold continues) is the recipe; adding it to `pathfind.py` is a change
+in your files, not mine.
+
+NEW ISSUE: RalliSport Challenge: rival car bodies drawn on alternate frames only (shadows every frame)
+Evidence: docs/lanes/flicker801/runs/s3/4D53000F-claim-1/b1/worst.jpg, -claim-3/b1, s2/4D53000F-claim/b1 (p90 14.1-194,
+runs of consecutive hits in flicker.tsv), Nova, Safari stage start, 30-36 fps. Owner-observed 10-04. Blocks RalliSport
+(4D53000F) as a Playable title. First measurement for the fixing lane: the frame dump in `noimages` mode at the race
+start (`XEMU_FRAME_DUMP="300,after<N>,noimages"`). Does the guest issue the body draws every frame (we drop them), or
+only on alternate frames (the game expects a persisting previous-frame copy we do not reproduce)? Recheck with
+`flicker_score.py --gate` on a race-start burst.
