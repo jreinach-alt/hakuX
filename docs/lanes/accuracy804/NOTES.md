@@ -308,3 +308,28 @@ OUTBOX for the PM.
 Capture 4 therefore runs on master: `1791151872-lane.accuracy804-2787512` (ref `10f14d301d`, perflog, same env and
 route). It is self-contained: its own dump says whether the body is recorded every frame on master, and its own
 screencaps say whether that run blinked.
+
+## 13. Capture 4 (master): the dump run does not blink
+
+`1791151872-lane.accuracy804-2787512`, ref `10f14d301d` (master, APK `1ebf4fde7ede`, perflog), 15:25-15:29 PDT. **It
+booted** (9,692 logcat lines, dump opened), the falsifier section 12 named for the libfolders cause. `hw/` is
+identical between `5e4196fefd` and `10f14d301d` (empty `git diff --stat -- hw/`), so this is capture 3's draw path.
+
+Route shots, back to back, ~0.7 s apart (~21 game frames, so consecutive shots fall on alternating frame
+parities): race clock 5.71, 6.50, 7.21, 7.96, 8.57, 9.26 and 10.00 show the Nissan (approaching, airborne beside
+the camera at 7.21, alongside at 7.96, ahead after that, small by 10.00); 10.78-16.92 show the empty road. **The
+body is drawn in 7 of 7 shots of the pass.** If it were missing on alternate frames, as in flicker801's frames,
+seven drawn shots in a row would come up about once in 128. The dump (`framedump_1791152888.jsonl`, 600 frames,
+490,351 draws) again has no key alternating for more than 7 frames (the visibility box).
+
+So the run with the dump does not blink, and section 11's reading ("recorded every frame, lost after recording")
+was made on a run that probably did not show the defect. It does not stand as the answer. Which builds blinked:
+flicker801's bursts (08:53-09:23 PDT) ran on the Nova's installed debug app, APK `74a9f3ab781a`, ref `4a3308a21e`,
+**not** perflog. `4a3308a21e` is an ancestor of `5e4196fefd` with no `hw/xbox/nv2a` change between them. Same nv2a
+code, then. What differs from the blinking runs: (a) the frame dump was running (one `fprintf` record per draw,
+~850 KB per frame on the thread that records draws); (b) the perflog flavour; (c) the route (pathfind's replay vs
+fixed waits; both reach the same race start with the player standing).
+
+Capture 5 changes only (a): `1791153088-lane.accuracy804-3337927`, the same master perflog APK, same route and
+16 shots, no `XEMU_FRAME_DUMP`. If it blinks, the dump suppresses the defect: the cause is timing-sensitive, and
+the frame dump cannot attribute it. If it does not, (b) is next.
