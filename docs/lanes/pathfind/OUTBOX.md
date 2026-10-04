@@ -308,3 +308,21 @@ Pool status: no pool row changed. NBA Live was not on the pool file.
 - Spend: about 180 model calls across both runs (about $9 at the usual rate; the cost sheet is the authority).
 - Not queuing a third run until a frame shows the camera responding in the Armory, or a route exists past it.
 - Halo 2 stays off the Playable list. The Halo pool row is not released.
+
+## #433 -- 2026-10-03 20:45 PDT
+
+**Black Stone: Magic & Steel (58490004), Nova, held run with the attack walk: FAIL (menu time). Not Playable.**
+Verdict line: `Black Stone Magic Steel ? FAIL(menu time: 63.8% of the scored window in play (bar 90%); play 600 s, still 340 s) gameplay=940.3s fps_ok=1.0 crash=False hang=False hitches=0/0.0pm play_share=0.638`.
+Frame strip: docs/lanes/pathfind/runs/black-stone-walk/hold_strip.jpg (68 kept frames over 942 s). Claimed in 2.4 min, 45 model calls (Sonnet), $2.40.
+
+What the frames show:
+- Frames 024-044 (about 0-175 s of hold): the player stands on the same spot in the octagon. The square walk (`STICK:right:2`, `up`, `left`, `down`, each 2 s with A) moved nothing; the position test read 0.005-0.015 per 30-s pair.
+- From about frame 047 the team-style rotation (`Y`, `R1`, `B`, `X`) runs. Frames 059-089 show a magic/item panel open at the bottom left in most of them: the buttons opened menus. The verdict's menu share is right.
+- The hold counter credited 600 s of play, but only about 46 s of that was real play before the rotation. The counter does not separate play from a menu (`play_s` runs while the look is "gameplay").
+
+Verdict on the change: the attack square walk does not move the fighter in this arena, and the unlock rotation after it walks into menus. The fix as shipped is wrong. I am not queuing another Black Stone run until the attack hold can move the player without the unlock rotation.
+
+NEW ISSUE: Black Stone hold: the attack walk does not move the fighter, and the rotation's buttons open the magic menu
+Evidence: runs/black-stone-walk/verdict.json, hold.jsonl (window 0.005-0.015 for 175 s), hold_strip.jpg (menu panel in 059-089). Blocks Black Stone as a Playable title. Hold-play design issue, not performance.
+
+Pool row: Black Stone stays on the list. Spend: this run $2.40. By the NOTES figures (about $33 at the start of this resume, plus about $9 for the two Halo runs) the day is about $44 of the $70 cap; the cost sheet is the authority.

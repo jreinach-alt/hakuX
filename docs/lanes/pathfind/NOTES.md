@@ -1,5 +1,24 @@
 # lane.pathfind -- NOTES
 
+## Resume (10-03 20:17 PDT, attempt 3 of this resume): why the last attempt did not finish
+
+- The 17:15 session ended after Halo 2 run 2 (17:58, blocked: the Armory camera does not respond, `runs/halo-2-hold2`),
+  with its OUTBOX posted and nothing in flight. It had no WAITING file and no run going, so it stopped there.
+- It never reached the 18:3x and 20:2x addenda: the Black Stone, Dino Crisis 3 and 007 list with cap $70. The
+  Black Stone hold2 run (11:34, `runs/black-stone-hold2`) had already shown the cause of its miss: the attack loop's
+  `STICK:up:1` and `STICK:down:1` cancel, so the player stood on one spot for 600 s (frames 024-069 are the same
+  octagon with the player in the same place).
+### Black Stone walk run (20:21-20:40 PDT, `runs/black-stone-walk`): FAIL, menu time 63.8%
+
+- The square walk moved nothing: frames 024-044 show the fighter on one spot (window change 0.005-0.015).
+- The still-window rotation then sent Y/R1/B/X, which opened the magic/item panel in most frames from 059 on.
+  The hold counter credited play through those menus; the verdict's position and menu test caught it.
+- Not Playable. The attack walk design is wrong for this arena; a fix must move the player without the unlock
+  rotation. See OUTBOX NEW ISSUE. Spend $2.40 for this run.
+
+- This session: the attack genre gets a walk on each still window (`HOLD_UNSTICK["attack"]`, a square walk of 30-s
+  legs), then the Black Stone held run. Merged origin/master first (17 commits).
+
 ## Resume (10-03 17:15 PDT, attempt 2 of this resume): why the last session did not finish
 
 - The 16:30 session ran NBA Live 2005 to its end (609 s held, FAIL on fps, committed `964c1a239c`) and stopped there.
