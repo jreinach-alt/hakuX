@@ -103,6 +103,12 @@
             android:textAppearance="@style/TextAppearance.Material3.BodySmall"
             android:textColor="@color/xemu_text_muted" />
 
+          <LinearLayout
+            android:id="@+id/settings_games_folder_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
           <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_pick_games_folder"
             style="?attr/materialButtonOutlinedStyle"

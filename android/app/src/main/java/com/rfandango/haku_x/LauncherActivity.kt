@@ -34,7 +34,7 @@ class LauncherActivity : Activity() {
     val flashUriStr = prefs.getString("flashUri", null)
     val hddUriStr = prefs.getString("hddUri", null)
     val dvdUriStr = prefs.getString("dvdUri", null)
-    val gamesFolderUriStr = prefs.getString("gamesFolderUri", null)
+    val hadGamesFolders = GamesFolders.read(prefs).isNotEmpty()
     val mcpxPath = prefs.getString("mcpxPath", null)
     val flashPath = prefs.getString("flashPath", null)
     val hddPath = prefs.getString("hddPath", null)
@@ -44,12 +44,11 @@ class LauncherActivity : Activity() {
     val flashUri = flashUriStr?.let(Uri::parse)
     val hddUri = hddUriStr?.let(Uri::parse)
     val dvdUri = dvdUriStr?.let(Uri::parse)
-    val gamesFolderUri = gamesFolderUriStr?.let(Uri::parse)
 
     val hasMcpx = hasLocalFile(mcpxPath) || (mcpxUri != null && hasPersistedReadPermission(mcpxUri))
     val hasFlash = hasLocalFile(flashPath) || (flashUri != null && hasPersistedReadPermission(flashUri))
     val hasHdd = hasLocalFile(hddPath) || (hddUri != null && hasPersistedReadPermission(hddUri))
-    val hasGamesFolder = gamesFolderUri != null && hasPersistedReadPermission(gamesFolderUri)
+    val hasGamesFolder = GamesFolders.pruneDead(this, prefs).isNotEmpty()
     val hasDvd = hasLocalFile(dvdPath) || (dvdUri != null &&
       (hasPersistedReadPermission(dvdUri) || hasGamesFolder))
 
@@ -88,8 +87,7 @@ class LauncherActivity : Activity() {
       editor.remove("dvdPath")
       clearedOptional = true
     }
-    if (!hasGamesFolder && gamesFolderUriStr != null) {
-      editor.remove("gamesFolderUri")
+    if (!hasGamesFolder && hadGamesFolders) {
       clearedCore = true
     }
     if (clearedCore) {
