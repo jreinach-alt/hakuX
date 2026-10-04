@@ -14,6 +14,7 @@
 | 8 | Mashed: Drive to Survive | 454D000A | can't-path | - | - | - | races from 2 min; 19 probes refused (self-moving camera, rounds end at once); 83 calls ($5.6) | none | runs/screen-mashed/claim |
 | 9 | Amped: Freestyle Snowboarding | 4D530005 | fail | 0.35 of 305 s | 23 | aborted at 5:04 (gate); perflog run fps_ok 0.086: guest busy 31.6 ms/frame (vCPU), Ri 12.3 ms | 3.75, 24 | golden a7d274372a00 | runs/screen-amped/hold, perf |
 | 10 | Dark Summit | 54510004 | CLEAR | 0.9318 of 606 s | 46 | full window; play_share 0.9998 | 9.08, 40 | golden 430384745827 | runs/screen-dark-summit/hold |
+| 11 | Whiteout | 4B4E0001 | can't-path | - | - | - | load card 'Trojan Park' 12.5 min, never ended; 35 calls ($2.4); NEW ISSUE in OUTBOX | none | runs/screen-whiteout/claim |
 
 Share columns use title_verdict's bar, 30 x `fps_tolerance` 0.95 = 28.5, unless stated.
 

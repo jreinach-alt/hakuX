@@ -429,3 +429,11 @@ Spend so far today: about $39 of $60.
 - A verdict PASS: 606 s of play, fps_ok 0.93, play share 0.9998, 2 hitches (worst 128 ms). The 3- and 5-minute checks read median 31 and 35. The claim took 9.1 min: four probes were refused before the hold (a snowboarder on a self-moving slope). The measurement run replayed it to play in 4.0 min.
 - Claim: first-run, 9.08 min, 40 Sonnet calls. Frame strip: docs/lanes/pathfind/runs/screen-dark-summit/hold/hold_strip.jpg. No native target in targets.toml.
 Spend so far today: about $44 of $60.
+
+[lane.pathfind] Whiteout (4B4E0001) CAN'T-PATH: the 15-min first-run budget ended on one loading screen. Quick Race, the default driver and the default track were selected, and "LOADING / COMING UP NEXT ... TROJAN PARK" stayed up from 145 s to the end of the budget, about 12.5 min. 35 Sonnet calls ($2.4); no profile, no measurement run. No perflog run (can't-path).
+- During the load the fps counter read 29 and only the scrolling ticker changed. pathfind sent no input there: the model answered `wait` each time, and the cheap static-load rule waited between its looks. So the frames cannot tell a hung load from a load that wants a press. Frames: docs/lanes/pathfind/runs/screen-whiteout/claim/frames/015-loading.jpg through 138-loading.jpg.
+
+NEW ISSUE: Whiteout (4B4E0001): the first race's loading screen never finishes (12+ min on the Nova)
+Evidence: docs/lanes/pathfind/runs/screen-whiteout/claim (steps.jsonl steps 15-138 are all `loading`; frames 015-138 show the same "LOADING ... TROJAN PARK" card at 29 fps), pathfind screening 2026-10-04 13:30-13:46 PDT on the Nova, first-run disk. Quick Race, default driver, default track. No input was sent during the load, so a hung load and a wait-for-press are not yet told apart. One A/START press on the card, plus a logcat of the load (disc reads, xemu-work), separates them. Blocks Whiteout from the screening.
+
+Spend so far today: about $47 of $60.
