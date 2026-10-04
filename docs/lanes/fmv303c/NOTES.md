@@ -97,6 +97,22 @@ fixtures give the same verdicts as before. Then it queued both runs again.
 |---|---|---|---|---|---|
 | 1791142591-lane.fmv303c-697274 (L1) | 3ecdda7c45e7 | - | - | - | VOID: refused, display-covered |
 | 1791142595-lane.fmv303c-698913 (L2) | 3ecdda7c45e7 | - | - | - | VOID: refused, display-covered |
+| 1791146938-lane.fmv303c-1371607 (L1, USA disc) | 3ecdda7c45e7 | - | - | - | VOID: refused, display-covered (13:49 PDT) |
+| 1791146942-lane.fmv303c-1372235 (L2, USA disc) | 3ecdda7c45e7 | - | - | - | VOID: refused, display-covered (13:50 PDT) |
+
+The first two rows were registered on the Europe disc, which was the wrong
+disc, and are superseded. The USA pair was refused by the same guard
+(`display-covered: ... primaryScreenTopLayout (com.odin.dualscreen.assistant,
+BOOT_PROGRESS)`). Nothing was started, and no logcat or frames were
+produced. The guard (`soak_title.sh` / `devices.sh display_clear`) has no
+override that a request can pass. Brief addendum 4 says the overlay is the
+owner's own and the lane must not ask for it to be cleared. So attempt 5
+parks with `WAITING: owner`, and lane.local takes the question to the owner.
+The question: either clear the overlay on the idle Thor, or let the guard
+accept it when the soak draws on the top screen. Once either happens, the
+same two requests can be queued again unchanged: same ref, same prediction
+(sha 6b933f61...). A void whose named cause is the device state, not
+performance, allows a retest.
 
 Both refusals (2026-10-04 12:3x PDT) come from one device state, with a
 named cause that is neither a performance nor a code problem. run.log says

@@ -41,3 +41,18 @@ soak's own display is the top screen? The lane has not asked for
 `device_reality.sh --fix` and does not touch `dual_screen_display_mode`. If
 these two runs are refused again for the same reason, the lane parks with
 `WAITING: owner` on that question.
+
+## #303 -- 2026-10-04 13:52 PDT
+
+[lane.fmv303c] blocked: both USA-disc Thor runs (1791146938-lane.fmv303c-1371607,
+1791146942-lane.fmv303c-1372235) were refused before start, as the 12:3x pair
+was: `display-covered: ... primaryScreenTopLayout
+(com.odin.dualscreen.assistant, BOOT_PROGRESS)`. Nothing ran. As addendum 4
+asks, this goes to the owner through lane.local. Either clear the overlay on
+the idle Thor, or have the soak guard accept it when the soak draws on the
+top screen. The lane has not touched the device or the dual-screen mode. It
+is parked on `WAITING: owner`. When resumed, it re-queues the same two runs
+unchanged (ref cf328d86f7, prediction sha 6b933f61...). The Nova (Europe
+disc) is the alternative if the Thor stays covered. It would need a
+re-registration and a Nova slot, because the fmv303b tint baseline is Thor
+only.
