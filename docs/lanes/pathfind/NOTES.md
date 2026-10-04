@@ -13,6 +13,7 @@
 | 7 | LEGO Star Wars: The Video Game | 4553001D | CLEAR on fps | 1.0 of 733 s | 59 | full window; play_share 0.6845 | 1.21, 9 | golden 5251f98730d1 | runs/screen-lego-star-wars/hold |
 | 8 | Mashed: Drive to Survive | 454D000A | can't-path | - | - | - | races from 2 min; 19 probes refused (self-moving camera, rounds end at once); 83 calls ($5.6) | none | runs/screen-mashed/claim |
 | 9 | Amped: Freestyle Snowboarding | 4D530005 | fail | 0.35 of 305 s | 23 | aborted at 5:04 (gate); perflog run fps_ok 0.086: guest busy 31.6 ms/frame (vCPU), Ri 12.3 ms | 3.75, 24 | golden a7d274372a00 | runs/screen-amped/hold, perf |
+| 10 | Dark Summit | 54510004 | CLEAR | 0.9318 of 606 s | 46 | full window; play_share 0.9998 | 9.08, 40 | golden 430384745827 | runs/screen-dark-summit/hold |
 
 Share columns use title_verdict's bar, 30 x `fps_tolerance` 0.95 = 28.5, unless stated.
 
