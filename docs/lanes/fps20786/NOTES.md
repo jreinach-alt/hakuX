@@ -98,7 +98,7 @@ the perflog medians.
 | 1-1791080537-lane.fps20786-2538884 | Top Spin | fps786-topspin | pilot; reached the match, 307 rows |
 | 1-1791081646-lane.fps20786-2876934 | NBA Live 2005 | fps786-nba2005 | reached play (12-min quarters, 11:45 1st), 310 rows |
 | 1-1791081646-lane.fps20786-2876984 | Counter-Strike | fps786-cs | reached play at 21:00:17; from ~21:00:57 stood on a "Press A to continue" card the loop had no A for (route defect, mine) |
-| 1-1791081681-lane.fps20786-2878057 | Midnight Club 3 | midnight-club-3.returning | queued |
+| 1-1791081681-lane.fps20786-2878057 | Midnight Club 3 | midnight-club-3.returning | reached the Arcade street race on schedule, 322 rows |
 | 1-1791086565-lane.fps20786-3338415 | Counter-Strike | fps786-cs2 (loop leads with A) | queued (run 5 of 5) |
 
 ### Top Spin (2538884): not a 20-fps title on this build; vCPU-side lock wait behind surface downloads
@@ -208,6 +208,31 @@ before it: rows t = 1.5-39 s match the rest.
 - 10-02's "13 fps" was one overlay reading on device defaults. This run used
   the "max" regimen.
 
+### Midnight Club 3 (2878057): on the 33.3-ms edge; the shared signature, tipped by perflog
+
+| rows | share >= 28.5 | fps | F | gbusy | gidle | Ri | rcpu | rblk | lockw | ph_GPU | ph_Draw | ph_Fin | draws/frame |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| all 322 | 0.01 | 25.4 | 39.4 | 21.3 | 18.1 | 7.2 | 22.5 | 9.8 | 1.0 | 14.2 | 10.6 | 11.2 | 758 |
+
+VBLANKs per flip: v2 0.62, v3 0.36. One completion-deferred surface download
+per flip (`hakuX-stall` sd60 cDef60 per 2 s), the same kind as NBA's. Renderer
+cost F - Ri = 32.2 ms, right at the 33.3 edge, so a third of the frames take
+three VBLANKs.
+
+This disagrees with the 09-30 plain soak (Step 1: 0.86 share, 29.7 fps, slow
+rows guest-busy, rcpu 14.5). Two things moved between them. Perflog costs
+the render thread ~1.25 ms per frame at Castlevania's method count, +30% CPU
+(lane.alwaystelemetry), and that cost scales with methods per frame; MC3 has
+758 draws per frame. The build also moved three days. Which one tipped MC3 is
+not measured here; a plain soak on today's build is the test (not run: the
+5-run cap). Read MC3 as a borderline member: it makes the synchronous
+download every frame and sits within a few ms of the edge.
+
+The same caveat applies to every perflog row in this lane: the render CPU it
+reports is high by at least ~1.2 ms. It does not change NBA Live 2005's
+verdict. Pathfind's plain-build hold of NBA (Step 1) has the renderer
+critical at 20 fps with no perflog in the build.
+
 ## Step 3: the shared bound -- synchronous surface-download finishes
 
 All three measured titles make **surface-download finishes every frame**
@@ -218,6 +243,7 @@ All three measured titles make **surface-download finishes every frame**
 | NBA Live 2005 | 1 | completion-deferred (cDef) | 13.8 | 18.5 | render thread |
 | Counter-Strike | 2 | download-if-dirty | 13.8 | 24.6 | render thread |
 | Top Spin | ~26-30 | download-if-dirty | 15.5 | 10.6 | render thread, and the vCPU behind pgraph.lock |
+| Midnight Club 3 | 1 | completion-deferred (cDef) | 11.2 | 14.2 | render thread (on the edge) |
 
 `VK_FINISH_REASON_SURFACE_DOWN` is not in the deferred set (draw.c 4169-4177).
 So each one ends the command buffer, submits everything recorded so far, and
