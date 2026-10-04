@@ -10,6 +10,75 @@ Simpsons vCPU thread is on-CPU 17.2 ms and **asleep 9.4 ms** of a 26.7 ms
 frame (v_blk, r 0.96 with frame time). The guest itself never idles (gidle
 0.65 ms).
 
+## Session 2 (2026-10-04, attempt 2): R1 read. `user_write` owns the sleep: go
+
+**Why attempt 1 did not finish.** It ended on purpose, waiting on the host
+capture R1 (lane.local runs device captures; a lane does not). The WAITING
+file named `perf/2026-10-04-vcpusleep/simp1/simp1.data`; lane.local captured
+it at 13:28 PDT and resumed this lane with an addendum. WAITING is removed.
+
+### Validity (fail closed), checked before any verdict
+
+| check | result |
+|---|---|
+| frames in the record window (13:28:46-13:29:46 PDT) | `route-frames/132842-hold.png` (4 s before) and `132919-hold.png` (in window): Homer on foot in Evergreen Terrace, Marge portrait top left, minimap bottom right, no dialog box. **Free roam** |
+| cap log | attempt 2 recorded 59.96 s, 1,083,515 samples, 0 lost; `void=no` (pathfind state play throughout) |
+| decompose.py over the window (29 rows, mark+148..207 s) | fps 39.6, F 25.7 ms, v_run 16.7, **v_blk 8.88 ms/frame** (premise 9.4 +- 3: in), gidle 0.98, Ri 9.4. Whole hold (123 rows): fps 40.0, v_blk 8.79 |
+| simpleperf's own view of the vCPU | off-CPU 19,987 ms of 60,019 (33.3%) = 8.4 ms per 39.6-fps frame, agreeing with v_blk |
+
+decompose.py needs `ROUTE <time> mark gameplay` in `run.log`; pathfind's
+run.log has none, so the stub line was added from logcat's `hakuX-route: mark
+gameplay` at 13:26:19.466.
+
+### R1: what the vCPU sleeps on
+
+`waitsite.py` (vcpuwait433's, unchanged) on `report-sample` text of simp1.data:
+
+| site | ms | % of off-CPU | % of attributed | n |
+|---|---|---|---|---|
+| **pfifo.lock in USER MMIO** | **11,225** | 56.2 | **79.3** | 5,852 |
+| (unsampled switch-out) | 5,823 | 29.1 | - | 7,228 |
+| BQL <- cpu_exec_loop | 1,556 | 7.8 | 11.0 | 22,043 |
+| pgraph.lock in PGRAPH MMIO | 566 | 2.8 | 4.0 | 3,198 |
+| BQL <- mttcg_cpu_thread_fn | 496 | 2.5 | 3.5 | 5,778 |
+| BQL <- MMIO (ld, st, stb) | 205 | 1.0 | 1.4 | 6,841 |
+
+`--detail`: **100.0% of the site is `user_write <- memory_region_dispatch_write
+<- do_st_mmio_leN`**, the guest's DMA_PUT store (the read has been lock-free
+since bc2bced563). 11,224 ms of 11,225. By length: 946 waits of 5-10 ms carry
+6.8 s and 192 waits over 10 ms another 2.3 s; the short waits are noise.
+
+Holder pass: the PFIFO thread (tid 26130) was **off-CPU for 10.9 s of the
+11.2 s** of these waits (97%). So it holds pfifo.lock asleep. Its sampled
+switch-out chains during the waits: `wait_frame_submitted <- pgraph_vk_finish
+<- pgraph_vk_process_pending_reports <- pfifo_thread` 3,366 ms,
+`wait_timestamp_safe` 351 ms, the rest unsampled (7,126 ms). The render thread
+(`render_thread_func`) was idle for 99.3% of them, waiting for work.
+
+As a share of the 9.4 ms: 79.3% of the attributed sleep, about **6.7 ms per
+frame** if the unsampled switch-outs split like the sampled ones (4.7 ms per
+frame counting the attributed waits alone).
+
+So this is vcpuwait433's predicted "second layer" (its NOTES, 10:25 resume):
+after its lock-free read, the guest's next pfifo.lock acquire, the DMA_PUT
+store, waits out the same STALLED finish.
+
+### Go/no-go: go
+
+The table written before the run says `user_write >= 50%, holder the PFIFO
+thread -> go`. The row "pfifo.lock >= 50% but holder in pgraph_vk_finish ->
+stop" was for a wait the vCPU cannot leave without the lock (a read or a
+PFIFO MMIO access). The DMA_PUT store is not that: on the hardware it is a
+posted write, the vCPU needs nothing back from the pusher, and DMA_PUT has one
+writer (the guest). Removing the vCPU's acquire removes the wait whatever the
+holder is doing; the finish stays on the PFIFO thread.
+
+What can still make it inert (assume it, as the brief says): the guest's next
+step after the kick may need the finish's result (a report, a semaphore, ring
+space). If so the sleep turns into guest spin (v_run up, v_blk down, fps flat)
+or into a third site. The renderer is idle 9.4 ms a frame (Ri), so the GPU
+side has room for the vCPU to run ahead.
+
 ## Session 1 (2026-10-04 12:00-12:40 PDT): R1 set up, waiting on the host
 
 ### Why R1 is a host run
@@ -110,7 +179,7 @@ It is not a measurement of the wait.
 
 | # | what | id | result |
 |---|---|---|---|
-| R1 | host capture `simp1` (lane.local) | requested 2026-10-04 12:40 PDT | waiting |
+| R1 | host capture `simp1` (lane.local) | `perf/2026-10-04-vcpusleep/simp1/` (13:28 PDT) | valid (free roam, v_blk 8.88). `user_write` (DMA_PUT) 79.3% of attributed off-CPU |
 
 ## Do not repeat
 
