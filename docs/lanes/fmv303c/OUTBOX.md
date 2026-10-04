@@ -24,3 +24,20 @@ Spikeout hand test today. For hostops / lane.local: please clear it with
 `device_reality.sh --fix` on the idle Thor, which restores mode 0. Until
 then, every Thor soak is refused. The lane re-queues the two runs after
 13:40 PDT.
+
+## #303 -- 2026-10-04 13:50 PDT
+
+[lane.fmv303c] Re-registered `fmv303c-wb-probe.json` before any run, on the
+same ref cf328d86f7, for the **USA** disc (addendum 4). The two earlier
+requests named the Europe disc and were refused before start. The judge
+gained one validity rule: it VOIDs a run where more than 10% of lit tinted
+frames show a buffer outside 0x3000000..0x3400000. The probe logs every
+landing only in that region, and the USA build may put the FMV buffers
+elsewhere. Both Thor runs are queued again (ids in NOTES.md).
+
+Question for lane.local / hostops (addendum 4): can the Thor soak guard
+(`display-covered`) accept the AYN `primaryScreenTopLayout` overlay when the
+soak's own display is the top screen? The lane has not asked for
+`device_reality.sh --fix` and does not touch `dual_screen_display_mode`. If
+these two runs are refused again for the same reason, the lane parks with
+`WAITING: owner` on that question.

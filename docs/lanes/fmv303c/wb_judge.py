@@ -22,7 +22,10 @@ clean when mb == 0, as guest_tint.py counts them. Two joins:
 
 M0 per run, else VOID: the probe is on, wbc lines exist, the last wbc shows
 write-backs (n > 0), >= 100 lit tinted frames, and no fewer in-region wb
-lines were received than the last wbc `in` count (none dropped by logd).
+lines were received than the last wbc `in` count (none dropped by logd), and
+at least 90% of lit tinted frames show a buffer inside the region (the probe
+logs every landing only there; a disc build that put the FMV buffers
+elsewhere would otherwise read as a false EXONERATED).
 
 Verdict over the valid runs (two needed), pooled:
   EXONERATED  no write-back landed in the region at all.
@@ -43,6 +46,7 @@ WB = re.compile(r'\[fmv303\] wb addr=([0-9a-f]+) len=([0-9a-f]+) color=(\d) '
                 r'surf=([0-9a-f]+) (\d+)x(\d+)')
 TEX0 = re.compile(r'\[fmv303\] f=(\d+) tex0 color=\w+ lin (\d+)x(\d+) '
                   r'pitch=(\d+) addr=([0-9a-f]+) len=(\d+)')
+REGION = (0x3000000, 0x3400000)
 TINT = re.compile(r'\[fmv303\] f=(\d+) tex0 tint mb=(\d+) lit=(\d+) of=(\d+)')
 
 
@@ -52,7 +56,8 @@ def overlaps(a, ln, buf):
 
 def read(path):
     run = dict(path=path, probe_on=False, wbc=0, last_n=0, last_in=0,
-               in_lines=0, wb_lines=0, frames=[], surfs=Counter())
+               in_lines=0, wb_lines=0, frames=[], surfs=Counter(),
+               outside=Counter())
     ft_at = None
     buf = None
     landings = []  # (ft, addr, len) in the region
@@ -104,6 +109,9 @@ def read(path):
                             for f, a, ln in landings)
             last_disp[buf[0]] = ft_at
             last_since[buf[0]] = since
+        if state == 'tinted' and (not buf or buf[0] < REGION[0]
+                                  or buf[0] + buf[1] > REGION[1]):
+            run['outside'][buf[0] if buf else -1] += 1
         if state:
             run['frames'].append((state, near, since))
     tinted = sum(s == 'tinted' for s, _, _ in run['frames'])
@@ -119,6 +127,11 @@ def read(path):
     if run['in_lines'] < run['last_in']:
         why.append(f"in-region wb lines {run['in_lines']} < wbc in "
                    f"{run['last_in']} (dropped)")
+    if sum(run['outside'].values()) > 0.1 * max(tinted, 1):
+        bufs = ', '.join('%x' % a if a >= 0 else 'none'
+                         for a in sorted(run['outside']))
+        why.append(f"{sum(run['outside'].values())} lit tinted frames show "
+                   f"a buffer outside the probe region ({bufs})")
     run['void'] = why
     return run
 

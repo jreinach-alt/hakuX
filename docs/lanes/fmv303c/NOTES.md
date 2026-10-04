@@ -35,6 +35,25 @@ other copy into VRAM exists in `vk/`. Attempt 4 re-ran the judge's fixtures
 `docs/testing/predictions/fmv303c-wb-probe.json` on cf328d86f7 (86f8cace9d),
 and queued both Thor runs.
 
+Attempt 4 did not finish because both Thor runs were refused before start.
+A foreign overlay covered the Thor's display (below). The session ended
+waiting on `time 2026-10-04T13:40` to re-queue. Brief addendum 4 then said
+two things. First, the owner left the overlay there from their own
+bottom-screen test, and the lane must not ask for it to be cleared. Second,
+the green was seen on the **USA** disc. The Europe disc named in the first
+registration was wrong.
+
+Attempt 5 (13:45 PDT, 2026-10-04) re-registered the prediction before any
+run, on the same ref cf328d86f7, with the USA disc. It also added one M0
+rule to `wb_judge.py`. The probe logs every landing only inside
+0x3000000..0x3400000, and the USA build may place the FMV buffers
+elsewhere. That case would read as a false EXONERATED, so the judge now
+VOIDs a run where more than 10% of lit tinted frames show a buffer outside
+the region. In the fmv303b control, 1 of 3100 lit tinted frames does
+(0x3628000). That is why the rule is not "any". New fixture `outside` (the
+control with its buffers moved to 0x1xxxxxx) gives VOID; the other four
+fixtures give the same verdicts as before. Then it queued both runs again.
+
 ## What the branch carries
 
 1. `hw/xbox/nv2a/pgraph/vk/surface.c`, probe hunk only (b86f91641b), gated on

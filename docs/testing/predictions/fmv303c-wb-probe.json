@@ -1,8 +1,8 @@
 {
-  "registered_utc": "2026-10-04T20:05:00Z",
+  "registered_utc": "2026-10-04T20:48:27Z",
   "who": "lane.fmv303c",
   "issue": "303",
-  "title": "Spikeout - Battle Street (Europe).iso",
+  "title": "Spikeout - Battle Street (USA) (En,Ja,Fr,De,Es,It).xiso.iso",
   "device": "thor",
   "seconds": 150,
   "frames_every": 2,
@@ -10,10 +10,12 @@
   "ref": "cf328d86f7",
   "a_ref": "cf328d86f7",
   "b_ref": "cf328d86f7",
-  "a_env": ["HAKUX_FMV303_PROBE=1"],
-  "order": "L1 then L2, both ref cf328d86f7 (lane/fmv303c after merging origin/master, #396 folded), both queued with request.sh --title 'Spikeout - Battle Street (Europe).iso' --seconds 150 --frames-every 2 --device thor --hard-pin --env HAKUX_FMV303_PROBE=1, hands-off. Same shape as the fmv303b control of record 1790389079-fmv303-1248256 (150 s), so the boot FMV sequence is inside the window.",
-  "judge": "python3 docs/lanes/fmv303c/wb_judge.py <L1 logcat> <L2 logcat>. Its docstring fixes every rule. Its fixtures (none / onbuf / otherbuf / all, injected into the fmv303b soak logcat) give EXONERATED / HIT / UNORDERED / UNORDERED; re-run on the merged tree before this registration.",
-  "prediction": "ONE BINARY, TWO REPLICATES, Thor, Spikeout, HAKUX_FMV303_PROBE=1. Registered before any run on this ref. The probe logs every nv2a surface write-back into guest RAM (the sync copy in download_surface_to_buffer, and every staged copy in pgraph_vk_complete_staged_downloads, which master's deferred-download path also completes through) with the guest flip count, plus one cumulative wbc line per flip stall. The judge joins them to the fmv303b tex0 tint lines by flip. M0 per run, else VOID: probe on, wbc lines present, last wbc n > 0 (write-backs seen somewhere), >= 100 lit tinted frames, no in-region wb line dropped; fewer than two valid runs is no reading. The falsifier, both sides named: H0 'no write-back lands in 0x3000000..0x3400000 on tinted frames' (EXONERATED) versus H1 'a write-back lands in the region within 2 flips before a tinted frame (NEAR) or on the displayed buffer since it was last shown (SINCE), and not before clean ones' (HIT: P(join|tinted) - P(join|clean) >= 0.5). UNORDERED = landings in the region that do not separate the states. PREDICTED: EXONERATED, P about 0.65. Evidence: the green is Cr=0 with Y and Cb intact in a CPU-written linear buffer, and a surface write-back lands a whole surface, all four bytes of each pixel, not one chroma component. It fails in the world where a colour or zeta binding left over the decoder's heap (a render target the game once drew at 0x30xxxxx) downloads over the Cr plane or the ARGB buffer when the CPU touches it; then HIT. EXONERATED sends the lane to the APU and IDE DMA landing sites, then fmv303b NOTES s5 step 2b; HIT sends it to a second surface.c hunk, registered before measuring. P2 (instrument): the probe-on tint fraction reproduces the fmv303b control, pooled tinted/lit in [0.3, 0.9]; it fails if the merged master moved the tint (a finding, reported separately) or if the probe's logging perturbs timing enough to suppress it (then M0 voids on lit tinted < 100). Must-not-move, held by reading and stated as such: with HAKUX_FMV303_PROBE unset the hunk executes one cached getenv test per copy and per flip and changes no state, so no pgraph suite or Surface_* row can move; no capture arm is queued for it (the Thor is under the fan hold, soaks of <= 480 s only).",
+  "a_env": [
+    "HAKUX_FMV303_PROBE=1"
+  ],
+  "order": "L1 then L2, both ref cf328d86f7 (lane/fmv303c after merging origin/master, #396 folded), both queued with request.sh --title 'Spikeout - Battle Street (USA) (En,Ja,Fr,De,Es,It).xiso.iso' --seconds 150 --frames-every 2 --device thor --hard-pin --env HAKUX_FMV303_PROBE=1, hands-off. Re-registered 2026-10-04 before any run: the first registration named the Europe disc, but the owner saw the green on the USA disc on the Thor (brief addendum 4), and targets.toml points the Thor there. The two Europe requests were refused before start (display-covered) and produced no data. Same shape as the fmv303b control of record 1790389079-fmv303-1248256 (150 s, Europe disc, Thor), so the boot FMV sequence is inside the window.",
+  "judge": "python3 docs/lanes/fmv303c/wb_judge.py <L1 logcat> <L2 logcat>. Its docstring fixes every rule. Added at re-registration: M0 also VOIDs a run where more than 10% of lit tinted frames show a buffer outside 0x3000000..0x3400000, because the probe logs every landing only inside that region and the USA build may place the FMV buffers elsewhere (a false EXONERATED otherwise). Fixtures (none / onbuf / otherbuf / all / outside, injected into the fmv303b soak logcat) give EXONERATED / HIT / UNORDERED / UNORDERED / VOID on the merged tree; the fmv303b control has 1 of 3100 lit tinted frames on another buffer (0x3628000).",
+  "prediction": "ONE BINARY, TWO REPLICATES, Thor, Spikeout USA disc, HAKUX_FMV303_PROBE=1. Registered before any run on this ref. The probe logs every nv2a surface write-back into guest RAM (the sync copy in download_surface_to_buffer, and every staged copy in pgraph_vk_complete_staged_downloads, which master's deferred-download path also completes through) with the guest flip count, plus one cumulative wbc line per flip stall. The judge joins them to the fmv303b tex0 tint lines by flip. M0 per run, else VOID: probe on, wbc lines present, last wbc n > 0 (write-backs seen somewhere), >= 100 lit tinted frames, no in-region wb line dropped; fewer than two valid runs is no reading. The falsifier, both sides named: H0 'no write-back lands in 0x3000000..0x3400000 on tinted frames' (EXONERATED) versus H1 'a write-back lands in the region within 2 flips before a tinted frame (NEAR) or on the displayed buffer since it was last shown (SINCE), and not before clean ones' (HIT: P(join|tinted) - P(join|clean) >= 0.5). UNORDERED = landings in the region that do not separate the states. PREDICTED: EXONERATED, P about 0.65. Evidence: the green is Cr=0 with Y and Cb intact in a CPU-written linear buffer, and a surface write-back lands a whole surface, all four bytes of each pixel, not one chroma component. It fails in the world where a colour or zeta binding left over the decoder's heap (a render target the game once drew at 0x30xxxxx) downloads over the Cr plane or the ARGB buffer when the CPU touches it; then HIT. EXONERATED sends the lane to the APU and IDE DMA landing sites, then fmv303b NOTES s5 step 2b; HIT sends it to a second surface.c hunk, registered before measuring. P2 (instrument): the probe-on tint fraction reproduces the fmv303b control, pooled tinted/lit in [0.3, 0.9]; it fails if the merged master moved the tint (a finding, reported separately) or if the probe's logging perturbs timing enough to suppress it (then M0 voids on lit tinted < 100). Must-not-move, held by reading and stated as such: with HAKUX_FMV303_PROBE unset the hunk executes one cached getenv test per copy and per flip and changes no state, so no pgraph suite or Surface_* row can move; no capture arm is queued for it (the Thor is under the fan hold, soaks of <= 480 s only). Disc note: the tint baseline (P2) was measured on the Europe disc; the USA disc shows the same green to the owner's eye, so P2 is expected to hold, and a P2 miss on this disc alone is a disc finding, not a probe failure. M0 voids the run if the USA build puts the buffers outside the region.",
   "expect": {
     "M0/probe_on_is": true,
     "M0/wbc_last_n_min": 1,
@@ -21,7 +23,11 @@
     "M0/in_region_lines_dropped_max": 0,
     "M0/valid_runs_min": 2,
     "V/verdict_is": "EXONERATED",
-    "P2/tinted_over_lit_range": [0.3, 0.9]
+    "P2/tinted_over_lit_range": [
+      0.3,
+      0.9
+    ],
+    "M0/tinted_outside_region_frac_max": 0.1
   },
   "expect_counts": {},
   "expect_note": "Named rules read by docs/lanes/fmv303c/wb_judge.py, not golden keys: a soak writes no captures and ab_compare never judges it."
