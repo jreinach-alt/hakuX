@@ -1,1 +1,1 @@
-grant docs/testing/titles/pathfind.py
+owner choose how the supervised Whiteout HANG confirmation runs: (1) hold.sh take nova + direct pathfind.py run, as lane.pathfind did, or (2) a pathfind mode in request.sh (toolsmith). See docs/lanes/hangwatch/NOTES.md.

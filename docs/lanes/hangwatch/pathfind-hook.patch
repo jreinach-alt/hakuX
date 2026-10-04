@@ -1,5 +1,5 @@
 diff --git a/docs/testing/titles/pathfind.py b/docs/testing/titles/pathfind.py
-index a000d76e78..586f3068ca 100644
+index ede3ec6df5..e9336e3857 100644
 --- a/docs/testing/titles/pathfind.py
 +++ b/docs/testing/titles/pathfind.py
 @@ -56,6 +56,8 @@
@@ -11,7 +11,7 @@ index a000d76e78..586f3068ca 100644
  
  PAD = os.path.join(HERE, "..", "perf", "pad.sh")
  KNOW = os.environ.get("PATHFIND_KNOW") or os.path.join(HERE, "pathknow")
-@@ -793,6 +795,7 @@ def __init__(self, dev, model, tid, name, iso, out, budget_s, record=True):
+@@ -848,6 +850,7 @@ def __init__(self, dev, model, tid, name, iso, out, budget_s, record=True):
                                                text=True).stdout.strip()[:10],
                         "started": time.strftime("%Y-%m-%d %H:%M:%S %Z")}
          self.thermal = []
@@ -19,7 +19,7 @@ index a000d76e78..586f3068ca 100644
  
      # -- bookkeeping
      def el(self):
-@@ -1090,6 +1093,7 @@ def run(self):
+@@ -1160,6 +1163,7 @@ def run(self):
              return self.finish()
          self.dev.launch(self.iso)
          self.launched_at = now()
@@ -27,7 +27,7 @@ index a000d76e78..586f3068ca 100644
          relaunches = 0
          last_png = None
          last_therm = now()
-@@ -1104,8 +1108,13 @@ def run(self):
+@@ -1174,8 +1178,13 @@ def run(self):
              if not png:
                  time.sleep(2)
                  continue
@@ -42,19 +42,20 @@ index a000d76e78..586f3068ca 100644
              sig = signature(png)
              if not self.dev.foreground():
                  alive = self.dev.alive()
-@@ -1372,6 +1381,11 @@ def hold_play(self, jpg):
-             hold_el = t - t_hold
+@@ -1467,6 +1476,12 @@ def hold_play(self, jpg):
+                     break
              ch = changed(last_png, png) if last_png else None
              still = still + 1 if ch is not None and ch <= UNCHANGED else 0
 +            hang = hangwatch.look(self.watch, self.dev, self.out, ch, changed, (self.tid, self.name))
 +            if hang:
-+                cat.terminate()
++                if cat is not None:
++                    cat.terminate()
 +                self.result.update(result="hang", reason=hang["reason"])
 +                return self.finish(last=jp)
              suspect = is_black(png) or still >= 1
              look = {"n": self.n, "hold_s": round(hold_el, 1), "play_s": round(play_s, 1),
                      "changed": None if ch is None else round(ch, 4), "off": off}
-@@ -1557,6 +1571,7 @@ def write_path(self, complete=True):
+@@ -1653,6 +1668,7 @@ def write_path(self, complete=True):
              f.write("\n")
  
      def finish(self, last=None, post=()):

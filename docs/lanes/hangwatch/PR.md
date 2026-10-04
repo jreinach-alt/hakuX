@@ -3,9 +3,9 @@ State: draft
 
 Lane: hangwatch            Issue: none (harness defect, dispatched directly)
 Base: master @ 425ffe1ad1
-Files: docs/testing/hangwatch.py, docs/testing/jobs/selftest.d/59-hangwatch.sh, docs/investigations/2026-10-04-hangwatch-lockup-detector.md, docs/lanes/hangwatch/NOTES.md, docs/lanes/hangwatch/PR.md, docs/lanes/hangwatch/OUTBOX.md, docs/lanes/hangwatch/WAITING, docs/lanes/hangwatch/calibrate.py, docs/lanes/hangwatch/calibration.md, docs/lanes/hangwatch/pathfind-hook.patch
+Files: docs/testing/hangwatch.py, docs/testing/jobs/selftest.d/59-hangwatch.sh, docs/testing/titles/pathfind.py, docs/investigations/2026-10-04-hangwatch-lockup-detector.md, docs/lanes/hangwatch/NOTES.md, docs/lanes/hangwatch/PR.md, docs/lanes/hangwatch/OUTBOX.md, docs/lanes/hangwatch/WAITING, docs/lanes/hangwatch/calibrate.py, docs/lanes/hangwatch/calibration.md, docs/lanes/hangwatch/pathfind-hook.patch
 Prediction: none: no arm
-Needs device: no (the supervised Whiteout confirmation waits on the grant below)
+Needs device: no for this PR; the supervised Whiteout confirmation is open (see Not done here)
 Needs NDK: no
 
 ## What this does
@@ -21,8 +21,9 @@ into a pass; no threshold, the 600-s rule and the perf verdict are unchanged.
 - On a trip: ONE A press, logged as a probe, then the screen and the telemetry are checked again for 20 s. Only then
   the verdict: the logcat tail, the crash buffer, `dumpsys cpuinfo`, `verdict.json`, and
   `failure_intake.py one --force` (class `hang`). Result `hang`, distinct from `gave-up`.
-- `pathfind-hook.patch` wires it into pathfind's screening loop and its hold loop (about 25 lines). It is NOT applied:
-  there is no grant on `docs/testing/titles/pathfind.py`. It applies cleanly to master (`git apply --check`).
+- `docs/testing/titles/pathfind.py` (grant on origin/board, row `[lane.hangwatch]`): the hook is applied to the screening
+  loop (`run()`) and the hold loop (`hold_play()`), about 25 lines. `pathfind-hook.patch` is the same change, regenerated
+  from the applied tree (the attempt-1 patch no longer applied after pathfind's fold).
 
 ## Evidence
 
@@ -39,7 +40,9 @@ into a pass; no threshold, the 600-s rule and the perf verdict are unchanged.
 
 ## Not done here
 
-- The supervised Whiteout confirmation (Nova, <= 5 min, expecting HANG near 90 s) is not queued: it needs the hook.
+- The supervised Whiteout confirmation (Nova, <= 5 min, expecting HANG near 90 s) is not run. request.sh cannot run a
+  pathfind claim, and a direct pathfind.py run is outside this lane's device rules. Owner decision in WAITING. The hook
+  is not folded until it returns HANG.
 - The dispatch soak has no stop condition. `dispatcher.sh` is lane.toolsmith's; not touched.
 - The ESPN NHL 2K5, Simpsons and GTA SA loads have no telemetry in reach, so the legitimately static loads are not scored.
 
@@ -49,7 +52,9 @@ into a pass; no threshold, the 600-s rule and the perf verdict are unchanged.
 - `env SELFTEST_ONLY=59-hangwatch bash docs/testing/jobs/selftest.sh`: 1 passed, 0 failed.
 - `python3 docs/testing/titles/pathfind_selftest.py` on the patched copy (staged in a temp dir): 52 ok.
 - `python3 -m py_compile` on the patched pathfind: compiles.
-- `git apply --check docs/lanes/hangwatch/pathfind-hook.patch`: applies.
+- `git apply --check -R docs/lanes/hangwatch/pathfind-hook.patch`: matches the applied tree.
+- `python3 docs/testing/titles/pathfind_selftest.py` on the applied tree (attempt 2): all ok.
+- `env SELFTEST_ONLY=96-failgate bash docs/testing/jobs/selftest.sh`: 12 passed, 0 failed.
 - `docs/testing/preflight.sh` (also with `--allow-tracker`): every gate passes except `coverage`. #811 (the Whiteout
   issue) has neither a lane nor a blocker on origin/board. That row is the board's and this lane may not write it;
   `--allow-tracker` does not clear this gate. Needs lane.local to classify #811 (see OUTBOX.md).
@@ -57,11 +62,10 @@ into a pass; no threshold, the 600-s rule and the perf verdict are unchanged.
 
 ## Next
 
-The hook lands on a grant. Then: queue the supervised Whiteout run through `request.sh` (Nova, `--seconds` <= 300,
-expecting `hang` near t=236 s on the screen half alone; the telemetry halves decide), and read the result's
-`hang/` directory. The guest-progress candidate in NOTES.md goes first after that: it decides whether #672's Tron
-hang can be caught at all.
+Owner picks how the supervised Whiteout run is taken (NOTES.md "Supervised confirmation"): (1) a hold.sh-taken direct
+pathfind run, P about 0.9, about 6 min of Nova; or (2) a pathfind mode in request.sh (toolsmith), same P once built.
+The hook is folded only if that run returns HANG. The guest-progress candidate (NOTES.md) comes after that.
 
-Lane gate: pathfind.py is pathfind's territory. This PR does not edit it.
+Lane gate: pathfind.py is `[lane.hangwatch]` territory on origin/board (granted 10-04 14:18; pathfind retired).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

@@ -35,3 +35,9 @@ soak is lane.toolsmith's territory; the hook is pathfind-side only so far.
 NEW ISSUE: the hang gate in failure_intake.py cannot hold a screening claim
 Evidence: gate(tid, route_file) matches on the route file's sha. A pathfind screening claim has no route file, so
 rsha is '?' and no row is ever held by it. Found by reading host-tools/failure_intake.py; not tested on a live row.
+
+## #811 -- 2026-10-04 14:48 PDT
+hangwatch (lane.hangwatch), attempt 2. The hook is applied to pathfind.py (screening loop and hold loop), selftests green
+(hangwatch 15/15, pathfind dry selftest all ok, fragment 96-failgate 12/0). NOT yet confirmed on a live device: request.sh
+cannot run a pathfind claim, and a direct run is outside lane rules, so the supervised Whiteout run waits on an owner
+decision (docs/lanes/hangwatch/WAITING). Until it returns HANG, the hook is not folded.

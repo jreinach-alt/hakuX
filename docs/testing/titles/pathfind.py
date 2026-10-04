@@ -56,6 +56,8 @@ from PIL import Image, ImageDraw
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import classify  # noqa: E402  (content(), motion(), FPS_CORNER: the cheap checks)
+sys.path.insert(0, os.path.join(HERE, ".."))
+import hangwatch  # noqa: E402  (a HANG: frames, audio and the vCPU all still for HANG_S; stopped with telemetry)
 
 PAD = os.path.join(HERE, "..", "perf", "pad.sh")
 KNOW = os.environ.get("PATHFIND_KNOW") or os.path.join(HERE, "pathknow")
@@ -848,6 +850,7 @@ class Agent:
                                               text=True).stdout.strip()[:10],
                        "started": time.strftime("%Y-%m-%d %H:%M:%S %Z")}
         self.thermal = []
+        self.watch = None            # hangwatch: the live logcat judge of the claim and the hold (None: no logcat)
 
     # -- bookkeeping
     def el(self):
@@ -1160,6 +1163,7 @@ class Agent:
             return self.finish()
         self.dev.launch(self.iso)
         self.launched_at = now()
+        self.watch = hangwatch.start(self.dev, self.out)
         relaunches = 0
         last_png = None
         last_therm = now()
@@ -1174,8 +1178,13 @@ class Agent:
             if not png:
                 time.sleep(2)
                 continue
+            ch = None
             if self.steps and last_png:
-                self.steps[-1]["changed"] = round(changed(last_png, png), 4)
+                ch = self.steps[-1]["changed"] = round(changed(last_png, png), 4)
+            hang = hangwatch.look(self.watch, self.dev, self.out, ch, changed, (self.tid, self.name))
+            if hang:
+                self.result.update(result="hang", reason=hang["reason"])
+                return self.finish(last=jpg)
             sig = signature(png)
             if not self.dev.foreground():
                 alive = self.dev.alive()
@@ -1467,6 +1476,12 @@ class Agent:
                     break
             ch = changed(last_png, png) if last_png else None
             still = still + 1 if ch is not None and ch <= UNCHANGED else 0
+            hang = hangwatch.look(self.watch, self.dev, self.out, ch, changed, (self.tid, self.name))
+            if hang:
+                if cat is not None:
+                    cat.terminate()
+                self.result.update(result="hang", reason=hang["reason"])
+                return self.finish(last=jp)
             suspect = is_black(png) or still >= 1
             look = {"n": self.n, "hold_s": round(hold_el, 1), "play_s": round(play_s, 1),
                     "changed": None if ch is None else round(ch, 4), "off": off}
@@ -1653,6 +1668,7 @@ class Agent:
             f.write("\n")
 
     def finish(self, last=None, post=()):
+        hangwatch.close(self.watch)
         self.dev.stop(screen_off=not os.environ.get("PATHFIND_LEAVE_ON"))
         if self.result.get("result") != "gameplay" and self.steps:
             self.write_path(complete=False)

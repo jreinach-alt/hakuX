@@ -32,7 +32,36 @@ The record is `docs/investigations/2026-10-04-hangwatch-lockup-detector.md`. Thi
 3. Score the screen half on the loading cards (a supervised Whiteout run with logcat kept). P unknown; it is the case
    that started the rule and it is untested.
 
+## Attempt 2: why attempt 1 did not finish, and what this one did
+
+- Attempt 1 ended on `WAITING: grant docs/testing/titles/pathfind.py`. It never applied the hook and never queued the
+  supervised run, so the one thing the rule needs (a HANG confirmed on the live Whiteout) is still open.
+- The grant landed on origin/board (row `[lane.hangwatch]`, `territory.toml` line 789; `[lane.pathfind]` retired).
+  WAITING is deleted.
+- `pathfind-hook.patch` no longer applied: pathfind's fold (3fe51047d8) moved `pathfind.py`. The import, `__init__`,
+  `run()` and `finish()` hunks landed; the `hold_play()` hunk was rejected and placed by hand after the `still` line.
+  The patch was regenerated from the applied change (`git apply --check -R` passes). One change from attempt 1: the
+  hold's hang exit guards `cat` (it is None on the dry device).
+- Selftests on the applied tree: `hangwatch.py selftest` ok; `pathfind_selftest.py` ok (all checks); fragment 59 1/0;
+  fragment 96-failgate 12/0. The full `selftest.sh` (126 fragments) runs longer than one tool call (it passed 5 of 126
+  in 580 s when timed out), so it is not run here.
+
+## Supervised confirmation: not queued (blocker)
+
+`request.sh` cannot run a pathfind claim: it has no pathfind mode, and `pathfind.py` drives the Nova over adb from its
+own `Device` class. Nothing in the tree names the Whiteout ISO, so a plain `--title` soak is not possible either. A
+direct `pathfind.py 4B4E0001 --device nova` would touch the device outside request.sh, which this lane may not do. So
+the Nova is untouched and the HANG confirmation is open. Candidates for the next step, P x win:
+
+1. Owner decides: a supervised `hold.sh take nova lane.hangwatch` plus one `pathfind.py 4B4E0001 --device nova
+   --budget-min 5 --out ...` run (the way lane.pathfind ran its claims). P about 0.9: the same device path ran 138 looks
+   on this title, and the signals are already selftested on the Whiteout-shaped windows. Win: the hook's first live
+   result, and the rule is confirmed or refuted on the case that started it. Cost: one run, about 6 min of Nova time.
+2. Toolsmith adds a pathfind mode to request.sh. P about 0.9 once it exists, same win, but it is a harness change in
+   lane.toolsmith's territory and takes a session of its own. Do after (1) if the rule proves itself.
+
+The hook is not folded until (1) or (2) returns HANG, per the brief.
+
 ## Waiting
 
-`docs/lanes/hangwatch/WAITING` names `grant docs/testing/titles/pathfind.py`. The hook (`pathfind-hook.patch`) and the
-supervised confirmation both wait on it. Nothing else here needs a device.
+`docs/lanes/hangwatch/WAITING` names the owner's decision in candidate 1 above. Nothing else here needs a device.
