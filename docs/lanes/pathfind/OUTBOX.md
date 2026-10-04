@@ -423,3 +423,30 @@ Spend so far today: about $33 of $60.
 - Telemetry (docs/lanes/near30/decompose.py on the perflog run, 93 two-second rows): 20.4 fps, a 49.0 ms frame. Guest busy (vCPU running guest code) is 31.6 ms, and guest idle is 16.4 ms, 12.9 ms of it timer-woken. Renderer idle (Ri) is 12.3 ms, so the renderer waits on the guest. The slowest 10% of rows: busy 35.1 ms, 18.6 fps. Reading: the guest's CPU work is about 32 ms per frame, just over the 33.3 ms budget for 30 fps, and the frame then waits for the next 60 Hz slot (50 ms = 20 fps). The vCPU is the cost, not the GPU. The hakuX-phase columns (ph_Fin, render) were not in this logcat, so the GPU side is shown only by Ri.
 - Claim: first-run, 3.75 min, 24 Sonnet calls. Strip: docs/lanes/pathfind/runs/screen-amped/hold/hold_strip.jpg. No native target in targets.toml.
 Spend so far today: about $39 of $60.
+
+[lane.pathfind] Dark Summit (54510004) CLEAR: fps_ok 0.9318 over 606 s of gameplay (92.2% of 434 gfps samples at >= 28.5), median 46, full window; profile golden 430384745827, path docs/testing/titles/pathknow/paths/54510004.json
+- Verdict line: `VERDICT Dark Summit ? PASS None gameplay=606.4s fps_ok=0.9318 crash=False hang=False audio_short=0.0 hitches=2/0.22pm worst_ms=127.7 static_frac=0.0 play_share=0.9998 fps_excluded=1.9s`
+- A verdict PASS: 606 s of play, fps_ok 0.93, play share 0.9998, 2 hitches (worst 128 ms). The 3- and 5-minute checks read median 31 and 35. The claim took 9.1 min: four probes were refused before the hold (a snowboarder on a self-moving slope). The measurement run replayed it to play in 4.0 min.
+- Claim: first-run, 9.08 min, 40 Sonnet calls. Frame strip: docs/lanes/pathfind/runs/screen-dark-summit/hold/hold_strip.jpg. No native target in targets.toml.
+Spend so far today: about $44 of $60.
+
+[lane.pathfind] Whiteout (4B4E0001) CAN'T-PATH: the 15-min first-run budget ended on one loading screen. Quick Race, the default driver and the default track were selected, and "LOADING / COMING UP NEXT ... TROJAN PARK" stayed up from 145 s to the end of the budget, about 12.5 min. 35 Sonnet calls ($2.4); no profile, no measurement run. No perflog run (can't-path).
+- During the load the fps counter read 29 and only the scrolling ticker changed. pathfind sent no input there: the model answered `wait` each time, and the cheap static-load rule waited between its looks. So the frames cannot tell a hung load from a load that wants a press. Frames: docs/lanes/pathfind/runs/screen-whiteout/claim/frames/015-loading.jpg through 138-loading.jpg.
+
+NEW ISSUE: Whiteout (4B4E0001): the first race's loading screen never finishes (12+ min on the Nova)
+Evidence: docs/lanes/pathfind/runs/screen-whiteout/claim (steps.jsonl steps 15-138 are all `loading`; frames 015-138 show the same "LOADING ... TROJAN PARK" card at 29 fps), pathfind screening 2026-10-04 13:30-13:46 PDT on the Nova, first-run disk. Quick Race, default driver, default track. No input was sent during the load, so a hung load and a wait-for-press are not yet told apart. One A/START press on the card, plus a logcat of the load (disc reads, xemu-work), separates them. Blocks Whiteout from the screening.
+
+Spend so far today: about $47 of $60.
+
+[lane.pathfind] MTV Celebrity Deathmatch (5454000B) CLEAR on fps: fps_ok 0.9876 over 687 s of gameplay (98.5% of 604 gfps samples at >= 28.5), median 59, full window; profile golden b206649c8fff, path docs/testing/titles/pathknow/paths/5454000B.json
+- Verdict line: `VERDICT MTV Celebrity Deathmatch ? FAIL(menu time: 87.8% of the scored window in `play` (bar 90%; play 603 s, cutscene 37 s, menu 34 s, other 8 s)) gameplay=686.8s fps_ok=0.9876 crash=False hang=False audio_short=0.0 hitches=12/1.149pm worst_ms=348.6 static_frac=0.0 play_share=0.8781 fps_excluded=85.4s`
+- The verdict fails it on play share: 87.8% against the 90% bar (cutscene 37 s and menu 34 s between rounds; the hold held 601 s of play). fps: median 59 at both the 3- and 5-min checks. Hitches: 12 (1.15 per min, worst 349 ms). The verdict did not fail on them, but they are the one performance cost to look at here. The claim took 4.9 min: five probes were refused, then HOLD:A:3 confirmed the fight. The probe ladder had first put that input in at probe 19, after two refused STICK:left probes.
+- Claim: first-run, 4.93 min, 29 Sonnet calls. Frame strip: docs/lanes/pathfind/runs/screen-mtv-celebrity-deathmatch/hold/hold_strip.jpg. No native target in targets.toml.
+Spend so far today: about $53 of $60.
+
+SCREENING DONE 12/12, clear 7, close 0, fail 1, can't-path 4
+- clear (fps share >= 90% on the verdict's bar): RalliSport Challenge (PASS), The Simpsons Hit & Run (PASS), Dark Summit (PASS), AvP: Extinction (fps_ok 1.0, locked 30; play share 70.7%), LEGO Star Wars (fps_ok 1.0; play share 68.5%), MTV Celebrity Deathmatch (fps_ok 0.99; play share 87.8%), Guilty Gear XX #Reload (fps_ok 1.0 over a partial 193-s window).
+- fail: Amped (fps_ok 0.35, aborted at 5:04; perflog run: guest busy 31.6 ms/frame, vCPU-bound).
+- can't-path: Phantom Crash (story dialogue), The Simpsons Road Rage (the car never moved under RT), Mashed (self-moving race, rounds ended at once), Whiteout (load card never finished: NEW ISSUE above).
+- The owner's target of 8 clear-or-close was not reached: 7 of 12. Three PASS verdicts are Playable candidates for lane.local's frame review (RalliSport, Hit & Run, Dark Summit). Four more cleared fps but missed on hold design (play share or the hold's recovery), not on performance: AvP (RTS camera), LEGO (Diner hub and pause menu), MTV (between-round screens), Guilty Gear (CONTINUE screen).
+- Spend: about $53 of the $60 cap (Sonnet). The Nova is released.
