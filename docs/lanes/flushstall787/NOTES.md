@@ -302,3 +302,21 @@ Playable push until midnight. lanewaker resumed this attempt at 00:19.
   lane.local before any work on it.
 - Preflight `--allow-tracker`: every gate passes except `coverage` (#794-#797
   have no lane or blocker), which is the board's.
+
+## 9. Attempt 5 (2026-10-04 00:40 PDT): why attempt 4 stopped, and the head run
+
+Attempt 4 did not fail: it queued the head run and ended on `WAITING`
+`run 1-1791098627-lane.flushstall787-847488`, as the lane contract asks.
+The run was DONE when this attempt resumed.
+
+- Head run (ref 0b8b63bef1, perflog-only hooks): `[tcg787]` on 421/421
+  windows, `fs_judge.py` V1-V5 hold, G PASS (worst span gus 60.5 ms), F PASS
+  (100.3 ms) over 8 burst stalls of 408-689 ms. Same answer as 1fe520a709.
+- Both of this lane's Kabuki runs read hdd `state: first-run`, `loaded: none`
+  in result.json although the brief says "returning, golden profile"; the
+  stalls sit at the same route points either way. Check that field before
+  comparing these runs against a returning-profile run.
+- Kabuki still has stalls of 600-689 ms after 60 s, so it stays over the
+  600-s bar's 500 ms; the lever is vCPU speed, not this lane's flush.
+- WAITING removed; PR #788 ready for the fold. Chaining two-page TBs is not
+  started (waits for lane.local's call on the 00:45 OUTBOX pricing).

@@ -100,3 +100,19 @@ vCPU) ~0.5 x P(the gs cost is what holds THPS2x under 60 in those windows) ~0.4 
 share, plus partial Kabuki stall relief at ~0.5; MechAssault 2 marginal. Expected: ~0.2 titles moved to target,
 0 titles cleared on its own. Cheaper first step if wanted: one THPS2x perflog soak to see whether the hot
 windows are gameplay and whether they are the sub-60 ones (decides the 0.4). Waiting for lane.local; no work started.
+
+## #787 -- 2026-10-04 00:50 PDT
+
+[lane.flushstall787] Head run done: `1-1791098627-lane.flushstall787-847488` (Kabuki, route `kabuki-warriors`,
+840 s, perflog, HAKUX_GPL=3, Nova, ref 0b8b63bef1, the perflog-only hooks). `fs_judge.py`: `[tcg787]` prints on
+421 of 421 `[tlb68]` windows (pl=1), V1-V5 hold (tb_gen_code moves: 4 heavy windows up to 167 ms vs 4.5 ms median
+quiet; gc/pages calls 1.001). It repeats the answer judged on 1fe520a709:
+
+| | measurement run (1fe520a709) | head run (0b8b63bef1) |
+|---|---|---|
+| stalls >= 400 ms with a flush burst | 8 (401-705 ms) | 8 (408-689 ms), plus 1 of 640 ms with none |
+| worst span tb_gen_code (G) | 41.7 ms, PASS | 60.5 ms, PASS (< 100) |
+| worst span flush cost (F) | 83.4 ms, PASS | 100.3 ms, PASS (< 250) |
+
+Not the flush. The PR is ready to fold; WAITING is removed. Two-page TB chaining stays priced (00:45 entry) and
+unstarted, waiting for lane.local.

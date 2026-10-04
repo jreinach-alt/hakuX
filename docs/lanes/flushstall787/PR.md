@@ -4,7 +4,7 @@ State: ready
 
 Lane: flushstall787     Issue: #787
 Base: master @ 5d5d2c51a5 (origin/master 4a3308a21e merged in after the runs)
-Files: accel/tcg/translate-all.c, accel/tcg/cputlb.c, accel/tcg/cpu-exec.c, docs/testing/predictions/flushstall787-kabuki.json, docs/testing/predictions/flushstall787-tron.json, docs/lanes/flushstall787/PR.md, docs/lanes/flushstall787/NOTES.md, docs/lanes/flushstall787/OUTBOX.md, docs/lanes/flushstall787/fs_windows.py, docs/lanes/flushstall787/fs_pages.py, docs/lanes/flushstall787/fs_jcx.py, docs/lanes/flushstall787/fs_judge.py, docs/lanes/flushstall787/ndk_check.py, docs/lanes/flushstall787/build.sh, docs/lanes/flushstall787/fs_guest.py, docs/lanes/flushstall787/watch.py, docs/lanes/flushstall787/waitfor.py, docs/lanes/flushstall787/fs_gs_scan.py, docs/lanes/flushstall787/WAITING
+Files: accel/tcg/translate-all.c, accel/tcg/cputlb.c, accel/tcg/cpu-exec.c, docs/testing/predictions/flushstall787-kabuki.json, docs/testing/predictions/flushstall787-tron.json, docs/lanes/flushstall787/PR.md, docs/lanes/flushstall787/NOTES.md, docs/lanes/flushstall787/OUTBOX.md, docs/lanes/flushstall787/fs_windows.py, docs/lanes/flushstall787/fs_pages.py, docs/lanes/flushstall787/fs_jcx.py, docs/lanes/flushstall787/fs_judge.py, docs/lanes/flushstall787/ndk_check.py, docs/lanes/flushstall787/build.sh, docs/lanes/flushstall787/fs_guest.py, docs/lanes/flushstall787/watch.py, docs/lanes/flushstall787/waitfor.py, docs/lanes/flushstall787/fs_gs_scan.py
 Prediction: docs/testing/predictions/flushstall787-kabuki.json @ 08f17e8e7ec965bb8d5660f60d0f58c36bd09c665b4f0e949a6362b76d5e6070, docs/testing/predictions/flushstall787-tron.json @ fc9d4b5e88525111873ef247084f456f2cd1153126b577eaaaa26d200d236d41 (single-run measurements, queued by the lane)
 Needs device: yes (Nova, two perflog soaks)    Needs NDK: yes
 
@@ -37,7 +37,9 @@ guest-side branch. Details and ranked next steps: docs/lanes/flushstall787/NOTES
 Every hook compiles only when XBOX && NV2A_PERF_LOG (HAKUX_TCG787), so the plain build is the pre-#787 code path:
 `ndk_check.py` compiles the three files plain and perflog with the dispatcher build tree's NDK command and counts
 #787 symbols per object, plain 0/0/0, perflog 4/20/4. Head run for the fold: `1-1791098627-lane.flushstall787-847488`
-(Kabuki, perflog, Nova, ref 0b8b63bef1). No desktop build on this host (AGENTS.md's known gap); the counter's own checks are the
+(Kabuki, perflog, Nova, ref 0b8b63bef1): `[tcg787]` on 421 of 421 `[tlb68]` windows, validity V1-V5 hold, and it
+repeats the answer: 9 stalls of 408-689 ms (8 with a flush burst), worst span tb_gen_code 60.5 ms (G PASS < 100),
+worst span flush cost 100.3 ms (F PASS < 250). No desktop build on this host (AGENTS.md's known gap); the counter's own checks are the
 predictions' validity legs, read off the run.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
