@@ -789,6 +789,12 @@ standing = false
 files = ["docs/testing/titles/pathfind.py", "docs/testing/hangwatch.py", "docs/testing/jobs/selftest.d/59-hangwatch.sh", "docs/lanes/hangwatch/**", "docs/investigations/2026-10-04-hangwatch-lockup-detector.md"]
 note = "STARTED (hostops 2026-10-04 14:32 PDT, lane.local grant 14:18), briefs/hangwatch.md, Issue: none (harness defect: a static screen with flat audio is a failure caught in about 2 min, owner 10-04 13:55). pathfind.py moved here from the folded [lane.pathfind] row (folded 3fe51047d8, unit gone); the one hook is docs/lanes/hangwatch/pathfind-hook.patch, NOT folded until one supervised Whiteout run on the Nova confirms HANG."
 
+[lane.hitchcause]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/hitchcause/**", "hw/ide/core.c", "hw/ide/mmio.c"]
+note = "STARTED (hostops 2026-10-04 14:49 PDT, lane.local grant 14:50): briefs/hitchcause.md, Issue 433. Analysis first; the only code change is telemetry (one perflog line in hw/ide), no behaviour change. Lane analysis is pushed at bf388e2eea (its first run, ended 14:45)."
+
 [retired.pathknow]
 issues = ["433"]
 retired_utc = "2026-10-03T16:11:41Z"
