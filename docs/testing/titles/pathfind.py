@@ -18,6 +18,11 @@ menu cursor, not a cutscene or attract demo running by itself). A 60-fps
 menu is not gameplay: that was the old pipeline's main false pass (CAPA T6,
 T14). Then 30 s more frames (20 s on the Thor, whose fan is dead), stop.
 
+--hold-s N (Nova only) keeps going after the claim: a model-free genre loop of inputs (drive, attack, rally,
+on-rails, other, named once by the model) runs while the screen is play, the model reads the screen only when
+play may have ended or every 90 s, and it steers back to play with its own inputs. Frames every 30 s, and the
+run is held when N seconds of play are judged (hold.jsonl, hold_strip.jpg, result.json "hold").
+
 Cheap checks avoid a model call: a black frame waits; a static frame after
 a `wait` on a loading screen waits again; a recorded path's step whose frame
 signature matches the screen replays its action. Never the same input on
@@ -63,11 +68,17 @@ DEVICES = {
 }
 PKG = os.environ.get("PKG", "com.jreinach.hakux.debug")
 ACT = PKG + "/com.rfandango.haku_x.LauncherActivity"
+# soak_title.sh's tags plus the route's marks and state lines: what title_verdict.py judges a hold from
+LOGCAT_SPEC = ("hakuX-crash:V hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:W "
+               "hakuX-route:I hakuX-pace:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W libc:F DEBUG:F *:S")
+VERDICT = os.path.join(HERE, "..", "title_verdict.py")
 # Sonnet 5 per step, not Haiku: measured 10-02 on the same ESPN frame with the image inline, Sonnet 5
 # answered in 3.5-3.9 s (70-80 output tokens), Haiku 4.5 in 6.4-9.1 s (430-500, most of it thinking),
 # and Haiku had looped 8 times on a Yes/No dialog in Midnight Club 3. Opus 5.5 when stuck.
 FAST = os.environ.get("PATHFIND_FAST", "claude-sonnet-5")
-STRONG = os.environ.get("PATHFIND_STRONG", "claude-opus-5-5")
+# Opus 5.5 is the stronger step model, but the owner held Opus for token burn on 10-02 and navigation resumed on
+# Sonnet only for 10-03 (lane.local addendum 2: Sonnet only, <= $25). Restore Opus when that hold lifts.
+STRONG = os.environ.get("PATHFIND_STRONG", "claude-sonnet-5")
 STATES = ("intro_video", "publisher_logo", "title_screen", "main_menu", "submenu", "profile_creation",
           "name_entry", "save_load_prompt", "controller_prompt", "loading", "cutscene", "pause",
           "gameplay", "results", "game_over", "black", "fatal_error", "unknown")
@@ -75,17 +86,55 @@ BUTTONS = ("A", "B", "X", "Y", "START", "BACK", "UP", "DOWN", "LEFT", "RIGHT", "
 STICK = {"up": (("LY", "min"),), "down": (("LY", "max"),), "left": (("LX", "min"),),
          "right": (("LX", "max"),), "upleft": (("LY", "min"), ("LX", "min")),
          "upright": (("LY", "min"), ("LX", "max"))}
+# The right stick, at FULL deflection: Blinx 2 (10-02) did not yaw the camera below about a third.
+RSTICK = {"up": (("RY", "min"),), "down": (("RY", "max"),), "left": (("RX", "min"),), "right": (("RX", "max"),)}
 # The d-pad BUTTONS (544-547) do nothing in hakuX: the pad's d-pad is the hat, and a back-to-back
 # `axis HATY max` / `axis HATY mid` moves a menu ONE row (routes/midnight-club-3.returning.route).
 HAT = {"UP": ("HATY", "min"), "DOWN": ("HATY", "max"), "LEFT": ("HATX", "min"), "RIGHT": ("HATX", "max")}
 SKIP_LADDER = ("START", "A", "B", "BACK", "X", "Y", "DOWN", "UP", "RIGHT", "LEFT")
+# After 2 probes in a row that move nothing at all, the next probe is led by one of these in turn. Black Stone
+# (10-03): the player stood in a sword-raised stance for 12 min while 40 stick, d-pad, A and RT probes moved
+# nothing; one X lowered the sword and the next stick ran. The pad was never the problem.
+UNLOCK_LADDER = ("X", "B", "Y", "R1", "L1", "BACK")
 SIG = (16, 12)                       # a frame's signature: grey, box-averaged
 SIG_MATCH = 9.0                      # mean grey-level distance under which two screens are the same
 UNCHANGED = 0.01                     # classify.motion changed fraction at or under this: no change
-PROBE_MOVED = 0.03                   # the probe frame must change at least this much
+PROBE_MOVED = 0.004                  # the probe frame must change at least this much (10-03 gate: 0.03 refused dark scenes)
+PROBE_DARK = 0.6                     # probe grey step = this x the frame's std (floor 4, cap MOTION_PIXEL) -- see probe_change
 SELF_MOVING = 0.15                   # no-input change over this: the scene moves by itself; steer L/R
+WINDOW_WIN = 1.3                     # an ambiguous probe's extra rounds: input change > this x idle (and + 0.02) wins
 BLACK_MODEL_S = 40                   # seconds of black before the model is asked anyway
+BLACK_HANG_S = float(os.environ.get("PATHFIND_BLACK_HANG_S", 180))                  # continuous black this long ends the run (Conker, 10-02: 8+ min black
+                                     # after a level load, inputs every 5 s changing nothing)
 THOR_START_C, THOR_STOP_C = 55.0, 70.0
+# Hold-play (10-03): after the claim, keep the player in play. The inputs are a model-free loop per genre;
+# the model reads the screen only when play may have ended, every HOLD_CHECK_S, and once for the genre.
+HOLD_FRAME_S = 30                    # a kept frame every this many seconds of hold
+HOLD_CHECK_S = 90                    # the model reads the screen at least this often while holding
+HOLD_NAV_MAX = 12                    # model-steered steps back to play in one episode before the hold gives up
+HOLD_REPEAT = 3                      # a cutscene or game over that asked for one button: that press, unlooked, this often
+HOLD_REPEAT_STATES = ("cutscene", "game_over")
+# Two kept frames (HOLD_FRAME_S apart) that change less than this at the probe's contrast step: the player did not
+# move in that window. 10-03, scratch/posprobe.py on the held runs: Black Stone standing on its octagon for 600 s
+# (sword swinging, verdict PASS) 0.002-0.013 per 30-s pair; Panzer Dragoon Orta flying 0.31-0.92.
+HOLD_STILL = 0.03
+# a still window in the drive genre: a car against a wall (Forza, 10-03). Reverse while turning, then drive out the
+# other way, alternating sides per still window, before the generic unlock rotation.
+HOLD_UNSTICK = {"drive": (["LT+left:3", "RT+right:3"], ["LT+right:3", "RT+left:3"])}
+# play that drops into a menu right after a loop cycle: a loop button opened it (ToeJam & Earl III, 10-03: the
+# "Presents" inventory in 13 of 19 kept frames). Each such drop sheds the next of these from the loop.
+HOLD_SHED = ("B", "X", "Y", "BACK", "R1", "L1")
+HOLD_SHED_STATES = ("menu", "pause", "other")
+HOLD_GENRES = {
+    "drive": ["RT:2", "RT+left:0.8", "RT+right:0.8"],
+    "attack": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"],
+    "rally": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"],
+    "onrails": [],                   # the scene moves on its own: send nothing, watch it
+    # basketball, football, hockey, soccer: run with the ball (RT is turbo in the EA and 2K5 families), pass,
+    # shoot; on defence the same buttons switch player and steal (NBA Live family, addendum 3, 10-03)
+    "team": ["RT:1", "STICK:up:1", "A", "STICK:right:1", "X", "STICK:left:1", "B", "STICK:down:1", "Y"],
+    "other": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"],
+}
 
 
 def now():
@@ -167,6 +216,17 @@ class Device:
         if screen_off:
             self.sh("input keyevent 223")
 
+    def route_log(self, msg):
+        """A `hakuX-route: <msg>` line in logcat (route.sh's marks, soak_title.sh's soak start/end)."""
+        self.sh(f"log -t hakuX-route '{msg}'")
+
+    def logcat_start(self, path):
+        """Follow logcat from now into `path` with the soak's tags: title_verdict.py reads it."""
+        f = open(path, "w")
+        # `-v time` (MM-DD HH:MM:SS.mmm V/tag(pid): msg), the format title_verdict.py's LINE parses and soak_title.sh writes
+        return subprocess.Popen(["adb", "-s", self.serial, "logcat", "-v", "time", "-T", "1"]
+                                + LOGCAT_SPEC.split(), stdout=f, stderr=subprocess.DEVNULL)
+
     def xo_c(self):
         """The Thor's xo-therm in C (None when unread)."""
         out = self.sh("for z in /sys/class/thermal/thermal_zone*; do "
@@ -213,6 +273,12 @@ class SimDevice:
     def stop(self, screen_off=True):
         self.sent.append("stop")
 
+    def route_log(self, msg):
+        self.sent.append("log " + msg)
+
+    def logcat_start(self, path):
+        return None
+
     def xo_c(self):
         return None
 
@@ -246,6 +312,28 @@ def sig_dist(a, b):
 def changed(a, b):
     """Changed fraction between two frame files (classify.motion's 160x120 rule)."""
     return classify.motion(grey(a), grey(b))[0]
+
+
+def probe_change(a, b, c):
+    """(idle change, input change) for a probe's three frames. Same 160x120 rule as `changed`, but the grey step
+    scales with the first frame's contrast: a dark scene (Black Stone's dungeon, std ~14) moves its character by
+    well under 16 levels. Gate 10-03 (scratch/probegate, labelled stored triplets): the fixed 16-level step refused
+    every real control in that scene; this step accepts them and accepts no labelled cutscene or menu on its own."""
+    ga = grey(a)
+    step = probe_step(ga)
+    gb, gc = grey(b), grey(c)
+    return classify.motion(ga, gb, pixel=step)[0], classify.motion(gb, gc, pixel=step)[0]
+
+
+def probe_step(g):
+    std = float(np.asarray(g.resize(classify.MOTION_SIZE, Image.BILINEAR), dtype=np.float64).std())
+    return min(classify.MOTION_PIXEL, max(4.0, PROBE_DARK * std))
+
+
+def window_change(a, b):
+    """Change between two kept hold frames at the probe's contrast step: did the player or camera move?"""
+    ga = grey(a)
+    return classify.motion(ga, grey(b), pixel=probe_step(ga))[0]
 
 
 def letterboxed(path):
@@ -493,6 +581,12 @@ How to act:
   jumps to Done/Accept; then A on Done/OK. Accept defaults.
 - Save/load prompts: "no storage device / continue without saving": choose continue. Prompts that create a
   save: Yes is fine. Beware prompts whose default is No when Yes is needed to proceed.
+- A profile or save marked damaged/corrupt ("cannot be used", "Press X to delete") never loads: A on it only
+  loops back (Forza, 10-03: 25 presses). Move to NEW PROFILE / Create New and make a fresh one; if there is no
+  create option, delete the damaged one (X) first.
+- Racing: hold the throttle 3 s or more (RT:3); 1.5-s taps only creep. A car at 0 MPH nosed into a wall or
+  facing the wrong way does not move on RT: reverse while turning (LT+left:3 or LT+right:3), then RT+<the
+  other way>:3 (Forza, 10-03: 40 RT/stick inputs against the pit wall, none reversed).
 - "Continue" may replay a cutscene; prefer New Game/Start for a cold boot.
 - Controller/"press start to begin" prompts: START or A.
 - Loading screens: wait (wait_s 3-8). Cutscenes: try START, then A, then B/BACK to skip.
@@ -510,6 +604,8 @@ Inputs (the "action" list, up to 8 tokens, sent in order ~0.4 s apart):
   A B X Y START BACK UP DOWN LEFT RIGHT L1 R1 L3 R3   one press (UP/DOWN/LEFT/RIGHT are the d-pad)
   STICK:<up|down|left|right|upleft|upright>:<seconds>  hold the left stick
   RT:<seconds>  LT:<seconds>                           hold a trigger (accelerate/brake in racing games)
+  RT+<left|right|up|down>:<seconds>  LT+<...>:<seconds>  a trigger and the left stick together (steer on the
+                                                       gas; LT+left reverses while turning off a wall)
   HOLD:<button>:<seconds>                              hold a button
 An empty list [] means wait and look again.
 
@@ -527,7 +623,8 @@ the player or camera for ~1.5 s (racing: ["RT:1.5"]; on foot: ["STICK:up:1.5"]);
 start the play first (a kickoff or serve: ["A", "STICK:up:1.5"]).
 
 Answer exactly:
-{"state": "<state>", "why": "<one line: what you see, where the cursor is>",
+{"see": "<a literal description of the image: its text, logos, HUD, highlighted item>",
+ "state": "<state>", "why": "<one line: why this state and action, where the cursor is>",
  "action": ["<token>", ...], "wait_s": <seconds to wait after the inputs, 1-10>, "probe": [<tokens>] or []}"""
 
 
@@ -578,7 +675,10 @@ class Model:
             content = [{"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
                                                      "data": base64.b64encode(open(i, "rb").read()).decode()}}
                        for i in images]
-            msg = {"type": "user", "message": {"role": "user", "content": content + [{"type": "text", "text": prompt}]}}
+            # text FIRST, images after it: with the image first and a long prompt, Sonnet 5 read Tiger Woods
+            # 2005's bright logo as "black frame with only the FPS overlay" 12 times running, anchored on the
+            # history (10-02; 2/2 wrong image-first, 4/4 right image-last, scratch blacktest2)
+            msg = {"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": prompt}] + content}}
             try:
                 r = subprocess.run(cmd, input=json.dumps(msg) + "\n", capture_output=True, text=True, timeout=240,
                                    cwd=self.out)
@@ -624,11 +724,15 @@ def clean_action(a):
         up = tok.upper()
         if up in BUTTONS or up in ("SELECT", "BACK"):
             out.append("BACK" if up == "SELECT" else up)
-        elif re.fullmatch(r"(STICK:(up|down|left|right|upleft|upright)|RT|LT|HOLD:[A-Z0-9]+):[0-9.]+", tok, re.I):
+        elif re.fullmatch(r"(STICK:(up|down|left|right|upleft|upright)|RSTICK:(up|down|left|right)|RT|LT"
+                          r"|(RT|LT)\+(up|down|left|right)|HOLD:[A-Z0-9]+):[0-9.]+", tok, re.I):
             parts = tok.split(":")
             parts[0] = parts[0].upper()
-            if parts[0] == "STICK":
+            if parts[0] in ("STICK", "RSTICK"):
                 parts[1] = parts[1].lower()
+            if "+" in parts[0]:
+                trig, d = parts[0].split("+")
+                parts[0] = f"{trig}+{d.lower()}"
             if parts[0] == "HOLD":
                 parts[1] = parts[1].upper()
                 if parts[1] not in BUTTONS:
@@ -653,7 +757,10 @@ class Agent:
         self.plan = []               # the model's planned next screens (from a guide), sent without a call
         self.hints = knowledge(tid, name)
         self.probes = 0
+        self.dead_probes = 0         # probes in a row whose input moved nothing at all (UNLOCK_LADDER)
         self.black_since = None
+        self.hold_s = 0              # hold-play: seconds of play to hold after the claim (0: off)
+        self.goal = ""               # --goal: a settings goal on the way in (a sports family's longest quarter)
         self.result = {"title_id": tid, "name": name, "device": dev.label, "iso": iso, "result": "running",
                        "tool": subprocess.run(["git", "hash-object", os.path.abspath(__file__)], capture_output=True,
                                               text=True).stdout.strip()[:10],
@@ -695,8 +802,8 @@ class Agent:
                 continue
             parts = tok.split(":")
             secs = float(parts[-1])
-            if parts[0] == "STICK":
-                axes = STICK[parts[1]]
+            if parts[0] in ("STICK", "RSTICK"):
+                axes = (STICK if parts[0] == "STICK" else RSTICK)[parts[1]]
                 for ax, v in axes:
                     self.dev.pad("axis", ax, v)
                 time.sleep(secs)
@@ -706,6 +813,16 @@ class Agent:
                 self.dev.pad("axis", parts[0], "max")
                 time.sleep(secs)
                 self.dev.pad("axis", parts[0], "min")
+            elif "+" in parts[0]:
+                # a trigger and the left stick together: steer on the gas, or reverse while turning off a wall
+                trig, d = parts[0].split("+")
+                self.dev.pad("axis", trig, "max")
+                for ax, v in STICK[d]:
+                    self.dev.pad("axis", ax, v)
+                time.sleep(secs)
+                for ax, _ in STICK[d]:
+                    self.dev.pad("axis", ax, "mid")
+                self.dev.pad("axis", trig, "min")
             elif parts[0] == "HOLD":
                 self.dev.pad("hold", parts[1])
                 time.sleep(secs)
@@ -734,10 +851,13 @@ class Agent:
                      "alike):\n" + "\n\n".join(path_text(d) for d in self.sibs[:2]) + "\n\n")
         if guide:
             guide += PLAN_RULE
+        if self.goal:
+            guide += f"THIS RUN'S GOAL, on the way into play (it comes before 'fastest with defaults'): {self.goal}\n\n"
         return (f"{RULES}\n\nKnowledge from other titles (hints):\n{self.hints or '(none yet)'}\n\n{guide}"
                 f"Title: {self.name} (id {self.tid or '?'}), device {self.dev.label}. "
                 f"{self.el() / 60:.1f} min since cold boot.\n\nLast steps:\n{self.history()}\n\n{extra}"
-                "The attached image is the screen NOW. Answer with the JSON object only.")
+                "The image below is the screen NOW. The history above may be stale: judge the screen only from "
+                "the image. Answer with the JSON object only, starting with \"see\".")
 
     # -- repeats: the same input on the same unchanged screen
     def tried_here(self, sig):
@@ -804,6 +924,8 @@ class Agent:
         self.probes += 1
         toks = clean_action(probe if isinstance(probe, list) else [probe]) or ["STICK:up:1.5"]
         pre, probe = toks[:-1], toks[-1]
+        if self.dead_probes >= 2:
+            pre = [UNLOCK_LADDER[(self.dead_probes - 2) % len(UNLOCK_LADDER)]] + pre
         if probe in BUTTONS and probe not in HAT:
             probe = f"HOLD:{probe}:1.5"
         elif probe in HAT:
@@ -822,11 +944,33 @@ class Agent:
         c_png, c_jpg = self.hold_capture(probe, "probe-c")
         if not c_png:
             return False, "screencap failed"
-        ctrl, moved = changed(a_png, b_png), changed(b_png, c_png)
+        ctrl, moved = probe_change(a_png, b_png, c_png)
         rec = {"state": "probe", "action": pre + [probe], "why": f"control {ctrl:.3f}, under input {moved:.3f}",
                "src": "probe", "changed": moved}
         selfmove = ctrl > SELF_MOVING
-        if moved < PROBE_MOVED or (moved < 1.5 * ctrl and not selfmove):
+        self.dead_probes = self.dead_probes + 1 if moved < PROBE_MOVED and ctrl < PROBE_MOVED else 0
+        won = False
+        if not selfmove and ctrl >= PROBE_MOVED and moved < 1.5 * ctrl:
+            # ambiguous: the scene moves on its own (a fight's enemies, an AI camera) about as much as under the
+            # input. Two more idle/input rounds; the input must beat the idle change in 2 of 3 (addendum 4 item 2;
+            # Spikeout, 10-03: 8 min of refused probes in the opening fight). The model sees the clearest round.
+            rounds = [(ctrl, moved, a_png, a_jpg, b_png, b_jpg, c_png, c_jpg)]
+            for k in (2, 3):
+                x0 = self.frame(f"probe-a{k}")
+                time.sleep(1.0)
+                x1 = self.frame(f"probe-b{k}")
+                x2 = self.hold_capture(probe, f"probe-c{k}")
+                if not (x0[0] and x1[0] and x2[0]):
+                    break
+                rounds.append(probe_change(x0[0], x1[0], x2[0]) + x0 + x1 + x2)
+            wins = [r for r in rounds if r[1] >= PROBE_MOVED and r[1] > max(WINDOW_WIN * r[0], r[0] + 0.02)]
+            rec["rounds"] = [[round(r[0], 3), round(r[1], 3)] for r in rounds]
+            rec["action"] = rec["action"] + [probe] * (len(rounds) - 1)
+            if len(wins) >= 2:
+                ctrl, moved, a_png, a_jpg, b_png, b_jpg, c_png, c_jpg = max(wins, key=lambda r: r[1] - r[0])
+                rec["why"] += f"; {len(wins)} of {len(rounds)} idle/input rounds won"
+                won = True
+        if moved < PROBE_MOVED or (moved < 1.5 * ctrl and not selfmove and not won):
             rec["verdict"] = "no change under the input beyond what changes on its own"
             self.write_step(rec)
             return False, (f"the screen did not change while {probe} was held beyond its own motion "
@@ -835,18 +979,23 @@ class Agent:
             rec["verdict"] = "letterboxed: a cutscene"
             self.write_step(rec)
             return False, "black bars top and bottom: this is a cutscene, not gameplay"
-        head = (f"Screenshots of {self.name}, an Xbox game, attached in order. The 'FPS: NN' text at the top-left "
+        head = (f"Screenshots of {self.name}, an Xbox game, below in order. The 'FPS: NN' text at the top-left "
                 f"is the emulator's overlay, not a game HUD. The previous step judged this gameplay: \"{why}\".\n")
         tail = ("A menu cursor moving is NOT a response. Answer JSON only: "
                 '{"gameplay": true|false, "responded": true|false, "why": "<one line>"}')
         if selfmove:
             # The scene moves by itself (downhill, on rails, a cinematic): pixels cannot say who moved it, so
             # steer LEFT then RIGHT and ask whether the player followed both (Amped 2 and Panzer Dragoon, 10-02).
-            l_png, l_jpg = self.hold_capture("STICK:left:1.2", "probe-left")
-            r_png, r_jpg = self.hold_capture("STICK:right:1.2", "probe-right")
+            # A throttle probe steers ON the throttle: steering a slow car with the gas off turned Forza into the
+            # pit wall in both 10-03 runs, and it never got off it.
+            trig = probe.split(":")[0].split("+")[0]
+            left, right = ((f"{trig}+left:1.2", f"{trig}+right:1.2") if trig in ("RT", "LT")
+                           else ("STICK:left:1.2", "STICK:right:1.2"))
+            l_png, l_jpg = self.hold_capture(left, "probe-left")
+            r_png, r_jpg = self.hold_capture(right, "probe-right")
             if not (l_png and r_png):
                 return False, "screencap failed"
-            rec["action"] = rec["action"] + ["STICK:left:1.2", "STICK:right:1.2"]
+            rec["action"] = rec["action"] + [left, right]
             q = head + ("A, then B (1 s after A, no input): the scene moves on its own. Then C taken while holding "
                         "the stick LEFT, then D taken while holding it RIGHT. Is this real player-controlled "
                         "gameplay (not a menu, cutscene, attract/demo or replay), AND did the player's character, "
@@ -877,6 +1026,13 @@ class Agent:
         elif parts[0] in ("RT", "LT"):
             self.dev.pad("axis", parts[0], "max")
             held.append((parts[0], "min"))
+        elif "+" in parts[0]:
+            trig, d = parts[0].split("+")
+            self.dev.pad("axis", trig, "max")
+            held.append((trig, "min"))
+            for ax, v in STICK[d]:
+                self.dev.pad("axis", ax, v)
+                held.append((ax, "mid"))
         elif parts[0] == "HOLD" or parts[0] in BUTTONS:
             btn = parts[1] if parts[0] == "HOLD" else parts[0]
             self.dev.pad("hold", btn)
@@ -937,6 +1093,13 @@ class Agent:
                 time.sleep(5)
                 continue
             dec = self.decide(png, jpg, sig)
+            if self.black_since and now() - self.black_since > BLACK_HANG_S:
+                alive = self.dev.alive()
+                self.write_step(dict(dec or {}, state="black", src="check", action=[],
+                                     why=f"black for {now() - self.black_since:.0f} s (xemu alive: {alive})"))
+                self.result.update(result="black-hang", reason=f"black for over {BLACK_HANG_S} s, xemu alive: {alive}")
+                prev = [st for st in self.steps if st.get("state") != "black" and st.get("frame")]
+                return self.finish(last=os.path.join(self.out, prev[-1]["frame"]) if prev else jpg)
             if dec is None:
                 last_png = png
                 continue
@@ -1059,6 +1222,7 @@ class Agent:
             except (TypeError, ValueError):
                 w = 2.0
             self.plan.append({"expect": st["expect"], "action": act, "wait_s": w})
+        base["see"] = str(ans.get("see", ""))[:240]
         return dict(base, state=state, why=str(ans.get("why", ""))[:240], action=action, wait_s=wait_s,
                     probe=ans.get("probe") or "", src=("fast" if model == FAST else "strong"))
 
@@ -1098,7 +1262,207 @@ class Agent:
         if self.record:
             self.result["learned"] = [os.path.relpath(f, KNOW) for f in
                                       learn(self.tid, self.name, self.dev.label, self.steps, mins)]
+        if self.hold_s:
+            return self.hold_play(jpg)
         return self.finish(last=jpg, post=post)
+
+    # -- hold-play: keep the player in play, then judge the frames
+    def hold_look(self, jpg, genre):
+        """The model reads the screen: is the player in live play, and if not, what gets back to it?"""
+        return self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game. The 'FPS: NN' text at the top-left is the emulator's "
+            f"overlay, not the game's HUD. An agent is keeping the player playing (genre: {genre}). Read the "
+            "screen. Is the player in live play right now (the player's character, vehicle or ball in the game "
+            "world, the game running)? A menu cursor, a pause screen, a cutscene, a loading screen, a results or "
+            "game-over screen, or a black screen is NOT play. If it is not play, which input gets back to it? "
+            'Answer JSON only: {"state": "gameplay|pause|game_over|results|menu|cutscene|loading|black|other", '
+            '"in_play": true|false, "why": "<one line>", "action": [inputs, e.g. "START", "A", '
+            '"STICK:down:0.5"], "wait_s": <number>}'), "hold-check", [jpg]) or {}
+
+    def hold_genre(self, jpg):
+        """One model look, once per hold: which genre loop fits this play."""
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game, in gameplay. The 'FPS: NN' text at the top-left is the "
+            "emulator's overlay, not the game's HUD. What kind of play is this? Answer JSON only: "
+            '{"genre": "drive|attack|rally|team|onrails|other", "why": "<one line>"}. drive: a car, bike, boat '
+            "or plane moving through a world; attack: a character fighting or shooting; rally: a ball or "
+            "shuttle played back and forth over a net (tennis, volleyball); team: a team sport on a court, "
+            "field or rink (basketball, football, hockey, soccer); onrails: the scene moves on its own and the "
+            "player only aims; other: anything else."), "genre", [jpg]) or {}
+        return ans.get("genre") if ans.get("genre") in HOLD_GENRES else "other", str(ans.get("why", ""))[:160]
+
+    def hold_play(self, jpg):
+        """Keep play going for self.hold_s seconds of play, judged from the frames.
+
+        A model-free genre loop of inputs runs while the screen is play. The model reads the screen only
+        when play may have ended (black, or static on two looks in a row), every HOLD_CHECK_S, and once to
+        name the genre. Off play, the model's own inputs steer back, one model look per step, until it reads
+        play again. A frame is kept every HOLD_FRAME_S; the rest are deleted."""
+        genre, genre_why = self.hold_genre(jpg)
+        tokens = HOLD_GENRES[genre]
+        log = os.path.join(self.out, "hold.jsonl")
+        held = {"genre": genre, "why": genre_why}
+        print(f"hold-play: genre {genre}, need {self.hold_s:.0f} s of play", flush=True)
+        kept, play_s, navs, nav = [], 0.0, 0, 0
+        still, off, reason = 0, False, ""
+        # position test (10-03): a 30-s window whose kept frames barely differ is not play, however live the HUD
+        # looks (Black Stone stood 600 s on one octagon and passed the verdict). Then rotate the inputs: an unlock
+        # button and the next genre's loop, until the scene moves again.
+        parked, rot, still_windows = False, 0, 0
+        shed_set = set()                 # loop buttons that opened a menu (HOLD_SHED): never sent again this hold
+        order = [genre] + [g for g in HOLD_GENRES if g not in (genre, "onrails")]
+        rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
+        last_png, last_check, last_kept, drop = None, now(), None, []
+        # the perflog: logcat from the mark to `soak end`, with a state line at every change of play, so
+        # title_verdict.py judges fps over play seconds only (its TIMELINE)
+        cat = self.dev.logcat_start(os.path.join(self.out, "logcat.txt"))
+        time.sleep(1)
+        for m in ("mark gameplay", "soak start", "state=play t=0"):
+            self.dev.route_log(m)
+        logged = "play"
+        t_hold = now()
+        # claim and hold get separate clocks (addendum 4, 10-03): the claim used the budget, the hold is owed its
+        # seconds of play. A claim at 13 min used to leave the 600-s hold 2 min of budget (Black Stone, 10-03).
+        self.budget_s = max(self.budget_s, self.el() + self.hold_s * 1.5 + 300)
+        while play_s < self.hold_s and self.el() < self.budget_s:
+            self.n += 1
+            t_cycle = now()
+            png, jp = self.frame("hold")
+            if not png:
+                time.sleep(2)
+                continue
+            if not self.dev.foreground():
+                reason = "hakuX left the foreground during the hold"
+                break
+            t = now()
+            hold_el = t - t_hold
+            ch = changed(last_png, png) if last_png else None
+            still = still + 1 if ch is not None and ch <= UNCHANGED else 0
+            suspect = is_black(png) or still >= 1
+            look = {"n": self.n, "hold_s": round(hold_el, 1), "play_s": round(play_s, 1),
+                    "changed": None if ch is None else round(ch, 4), "off": off}
+            if rep_left and off:
+                # model-free recovery (Panzer, 10-03: each death cost 4 model looks at ~9 s, one per A of an episode
+                # card): repeat the last look's single press, unlooked, then look again
+                rep_left -= 1
+                look.update(src="repeat", state=rep[2], action=rep[0])
+                self.send(rep[0])
+                time.sleep(rep[1])
+            elif off or suspect or t - last_check >= HOLD_CHECK_S:
+                last_check = t
+                a = self.hold_look(jp, genre)
+                was_play = not off
+                off = a.get("in_play") is not True
+                st = ("still" if parked else "play") if not off else \
+                    re.sub(r"[^a-z_]", "", str(a.get("state") or "other").lower()) or "other"
+                if off and was_play and st in HOLD_SHED_STATES:
+                    shed = next((b for b in HOLD_SHED if b in tokens and b not in shed_set), None)
+                    if shed:
+                        shed_set.add(shed)
+                        look["shed"] = shed
+                if st != logged:
+                    self.dev.route_log(f"state={st} t={int(hold_el)}")
+                    logged = st
+                look.update(src="check", state=a.get("state"), why=str(a.get("why", ""))[:160])
+                if off:
+                    nav += 1
+                    navs += 1
+                    if nav > HOLD_NAV_MAX:
+                        reason = f"off play for {nav} steps: {a.get('state')} ({a.get('why', '')})"[:240]
+                        self.hold_note(log, dict(look, action=[]))
+                        break
+                    action = clean_action(a.get("action"))
+                    try:
+                        wait_s = min(max(float(a.get("wait_s") or 2), 0.5), 8)
+                    except (TypeError, ValueError):
+                        wait_s = 2.0
+                    look["action"] = action
+                    self.send(action)
+                    time.sleep(wait_s)
+                    single = len(action) == 1 and st in HOLD_REPEAT_STATES
+                    rep, rep_left = (action, wait_s, st), (HOLD_REPEAT if single else 0)
+                else:
+                    nav = 0
+                    rep_left = 0
+            if not off and look.get("action") is None:
+                # play: the genre loop (a check look that said play sends it too). The time credited is this
+                # cycle's own, from its frame to its inputs: the look before may have been off play.
+                loop = [t for t in tokens if t not in shed_set]
+                look.update(src=look.get("src", "genre"), action=loop)
+                self.send(loop)
+                if not parked:
+                    play_s += now() - t_cycle
+            keep = last_kept is None or hold_el - last_kept >= HOLD_FRAME_S
+            if keep:
+                if kept and not off:
+                    mv = window_change(kept[-1], jp)
+                    look["window"] = round(mv, 4)
+                    if mv < HOLD_STILL:
+                        still_windows += 1
+                        rot += 1
+                        unstick = HOLD_UNSTICK.get(genre)
+                        if unstick and rot <= 2 * len(unstick):
+                            tokens = unstick[(rot - 1) % len(unstick)] + HOLD_GENRES[genre]
+                        else:
+                            tokens = [UNLOCK_LADDER[(rot - 1) % len(UNLOCK_LADDER)]] + \
+                                HOLD_GENRES[order[rot % len(order)]]
+                        parked = True
+                    elif parked:
+                        parked = False
+                    want = "still" if parked else "play"
+                    if logged in ("play", "still") and want != logged:
+                        self.dev.route_log(f"state={want} t={int(hold_el)}")
+                        logged = want
+                last_kept = hold_el
+                kept.append(jp)
+            # the previous look's frame is spent now: this look has been measured against it
+            for p in drop:
+                os.remove(p)
+            drop = [] if keep else [png, jp]
+            look.update(play_s=round(play_s, 1), kept=keep)
+            self.hold_note(log, look)
+            last_png = png
+        for p in drop:
+            os.remove(p)
+        ok = play_s >= self.hold_s
+        if not ok and not reason:
+            reason = f"budget {self.budget_s / 60:.0f} min with {play_s:.0f} s of play"
+        held.update(ok=ok, play_s=round(play_s, 1), need_s=self.hold_s, hold_s=round(now() - t_hold, 1),
+                    model_navs=navs, frames=len(kept), still_windows=still_windows, shed=sorted(shed_set),
+                    reason=reason)
+        self.result["hold"] = held
+        print(f"hold-play: {'HELD' if ok else 'not held'} {play_s:.0f}/{self.hold_s:.0f} s of play; {reason}",
+              flush=True)
+        strip(kept, os.path.join(self.out, "hold_strip.jpg"), cols=5, width=256)
+        self.dev.route_log("soak end")
+        if cat is not None:
+            time.sleep(2)
+            cat.terminate()
+            held["verdict"] = self.hold_verdict(now() - t_hold)
+        return self.finish(last=kept[-1] if kept else jpg, post=kept)
+
+    def hold_verdict(self, secs):
+        """title_verdict.py on the hold's logcat: its one VERDICT line (verdict.json beside it)."""
+        # title_verdict resolves the title by the ISO's basename (targets.toml `iso` map), not by the display name
+        with open(os.path.join(self.out, "request.json"), "w") as f:
+            json.dump({"title": self.name, "title_id": self.tid, "device": self.dev.label,
+                       "iso": os.path.basename(self.iso or "")}, f)
+        # title_verdict reads `held <title> for <n>s` from run.log; append it there (stdout is not run.log)
+        with open(os.path.join(self.out, "run.log"), "a") as f:
+            f.write(f"held {self.name} for {int(secs)}s\n")
+        print(f"held {self.name} for {int(secs)}s", flush=True)
+        try:
+            r = subprocess.run([sys.executable, VERDICT, self.out, "--require", "confirmation"],
+                               capture_output=True, text=True, timeout=120)
+            line = (r.stdout.strip().splitlines() or [r.stderr.strip()[-200:]])[-1]
+        except (subprocess.TimeoutExpired, OSError) as e:
+            line = f"title_verdict failed: {e}"
+        print(line, flush=True)
+        return line
+
+    def hold_note(self, log, look):
+        with open(log, "a") as f:
+            f.write(json.dumps(look) + "\n")
 
     def write_path(self, complete=True):
         """pathknow/paths/<TITLEID>.json. A run that did not reach gameplay
@@ -1173,11 +1537,16 @@ def main(argv=None):
     ap.add_argument("--no-replay", action="store_true", help="ignore this title's own recorded path")
     ap.add_argument("--no-guide", action="store_true",
                     help="use no recorded path at all, own or sibling (a cross-title baseline)")
+    ap.add_argument("--hold-s", type=float, default=0,
+                    help="after the claim, hold play for this many seconds of play (Nova only: the Thor's fan is dead)")
     ap.add_argument("--state", default="any", choices=("returning", "first-run", "any"),
                     help="the titles disk to boot (titlestate.py compose): the title's golden profile "
                          "(returning), none (first-run), or its golden if it has one (any)")
     ap.add_argument("--hdd-img", action="store_true",
                     help="boot whatever hdd.img holds (hand play); the path found then assumes it")
+    ap.add_argument("--goal", default="",
+                    help="a settings goal on the way into play, given to the model each step "
+                         "(e.g. the longest quarter length, so one quarter covers the hold)")
     ap.add_argument("--sim", help="PATHFIND_DRY: frames dir to play back")
     ap.add_argument("--sim-answers", help="PATHFIND_DRY: JSON list of canned model answers")
     a = ap.parse_args(argv)
@@ -1193,8 +1562,12 @@ def main(argv=None):
     why = blocked(tid, name)
     if why:
         sys.exit(f"pathfind: {name} is owner-blocked: {why}")
+    if a.hold_s and dev.label == "thor":
+        sys.exit("pathfind: --hold-s is Nova only: the Thor's fan is dead and it stops within 30 s of a claim")
     print(f"pathfind: {name} ({tid}) on {dev.label}: {iso}", flush=True)
     agent = Agent(dev, model, tid, name, iso, a.out, a.budget_min * 60, record=not a.no_record)
+    agent.hold_s = a.hold_s
+    agent.goal = a.goal
     if a.no_replay or a.no_guide:
         agent.own = None
     if a.no_guide:

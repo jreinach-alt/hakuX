@@ -1,0 +1,666 @@
+{
+ "blinx-2.unguided/014": {
+  "label": "U",
+  "run": "blinx-2.unguided",
+  "pre": "014",
+  "set": "s1",
+  "n": 2,
+  "ctrl": 0.0126,
+  "moved": 0.013,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "black-stone-hold/084": {
+  "label": "U",
+  "run": "black-stone-hold",
+  "pre": "084",
+  "set": "s1",
+  "n": 3,
+  "ctrl": 0.0031,
+  "moved": 0.0031,
+  "route": "measure: no change",
+  "accepted": false
+ },
+ "black-stone-hold/034": {
+  "label": "R",
+  "run": "black-stone-hold",
+  "pre": "034",
+  "set": "s1",
+  "n": 5,
+  "ctrl": 0.0021,
+  "moved": 0.0064,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "Playfield with HUD and a player-character in an arena; A to B shows only minor drift, but C shows the character turned, repositioned, and drawn into a sword stance while the input was held."
+  },
+  "accepted": true
+ },
+ "black-stone-hold/018": {
+  "label": "U",
+  "run": "black-stone-hold",
+  "pre": "018",
+  "set": "s1",
+  "n": 6,
+  "ctrl": 0.0024,
+  "moved": 0.0026,
+  "route": "measure: no change",
+  "accepted": false
+ },
+ "blinx-the-time.baseline/023": {
+  "label": "U",
+  "run": "blinx-the-time.baseline",
+  "pre": "023",
+  "set": "s1",
+  "n": 7,
+  "ctrl": 0.0135,
+  "moved": 0.4437,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "The HUD, hearts, timer and playfield show real Blinx gameplay, and in C the camera has panned and the character has turned relative to A and B, which B did not show; the orbs moving between A and B happened on their own."
+  },
+  "accepted": true
+ },
+ "tork/021": {
+  "label": "C",
+  "run": "tork",
+  "pre": "021",
+  "set": "s1",
+  "n": 8,
+  "ctrl": 0.4319,
+  "moved": 0.2402,
+  "route": "letterbox veto",
+  "accepted": false
+ },
+ "black-stone-hold/036": {
+  "label": "U",
+  "run": "black-stone-hold",
+  "pre": "036",
+  "set": "s1",
+  "n": 9,
+  "ctrl": 0.0042,
+  "moved": 0.0027,
+  "route": "measure: no change",
+  "accepted": false
+ },
+ "blinx-2.guided/031": {
+  "label": "U",
+  "run": "blinx-2.guided",
+  "pre": "031",
+  "set": "s1",
+  "n": 10,
+  "ctrl": 0.0171,
+  "moved": 0.013,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "black-stone-hold/064": {
+  "label": "R",
+  "run": "black-stone-hold",
+  "pre": "064",
+  "set": "s1",
+  "n": 11,
+  "ctrl": 0.0027,
+  "moved": 0.0104,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "The HUD sits over a live arena with the player character, and in C the character's pose and sword angle change clearly beyond the small A-to-B drift, consistent with the held input driving an action or movement."
+  },
+  "accepted": true
+ },
+ "black-stone-hold/097": {
+  "label": "R",
+  "run": "black-stone-hold",
+  "pre": "097",
+  "set": "s1",
+  "n": 12,
+  "ctrl": 0.0083,
+  "moved": 0.5414,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "The HUD and third-person camera show a playable character; between A and B only the pose changed (arm raised), while in C the character has moved relative to the platform and the camera has shifted, which B\u2192C doesn't explain by itself."
+  },
+  "accepted": true
+ },
+ "tiger-woods-pga-tour-2004.baseline/013": {
+  "label": "U",
+  "run": "tiger-woods-pga-tour-2004.baseline",
+  "pre": "013",
+  "set": "s1",
+  "n": 14,
+  "ctrl": 0.0093,
+  "moved": 0.0791,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "Live golf shot in Lesson 1 with the ball on the fairway; A and B match, while C shows the golfer moved into the backswing and the camera angle shifted, which the held input drove."
+  },
+  "accepted": true
+ },
+ "counter-strike/014": {
+  "label": "R",
+  "run": "counter-strike",
+  "pre": "014",
+  "set": "s1",
+  "n": 16,
+  "ctrl": 0.0499,
+  "moved": 0.3642,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "Timer and ammo HUD count down with a first-person pistol view, and C shows the hangar and palms much closer than in B, so the camera moved forward while the input was held, beyond the near-static A-to-B change."
+  },
+  "accepted": true
+ },
+ "black-stone-hold/070": {
+  "label": "U",
+  "run": "black-stone-hold",
+  "pre": "070",
+  "set": "s1",
+  "n": 18,
+  "ctrl": 0.003,
+  "moved": 0.0024,
+  "route": "measure: no change",
+  "accepted": false
+ },
+ "amped-2/039": {
+  "label": "M",
+  "run": "amped-2",
+  "pre": "039",
+  "set": "s1",
+  "n": 21,
+  "ctrl": 0.6779,
+  "moved": 0.5055,
+  "route": "model (self-moving, no steer frames: non-steer prompt)",
+  "answer": {
+   "gameplay": false,
+   "responded": false,
+   "why": "The frames show a RESULTS overlay with an 'A=Continue' prompt, so this is a results screen, not player-controlled play. The background scene changes between frames, but nothing shows the rider or camera responding to the held input, and the only visible change is the overlay's backdrop."
+  },
+  "accepted": false
+ },
+ "blinx-2.guided/074": {
+  "label": "U",
+  "run": "blinx-2.guided",
+  "pre": "074",
+  "set": "s1",
+  "n": 24,
+  "ctrl": 0.0154,
+  "moved": 0.0139,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "blinx-2.unguided/022": {
+  "label": "U",
+  "run": "blinx-2.unguided",
+  "pre": "022",
+  "set": "s1",
+  "n": 25,
+  "ctrl": 0.0147,
+  "moved": 0.0173,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "bruce-lee.rerun/004": {
+  "label": "R",
+  "run": "bruce-lee.rerun",
+  "pre": "004",
+  "set": "s1",
+  "n": 26,
+  "ctrl": 0.3484,
+  "moved": 0.3063,
+  "route": "letterbox veto",
+  "accepted": false
+ },
+ "blinx-2.guided/043": {
+  "label": "U",
+  "run": "blinx-2.guided",
+  "pre": "043",
+  "set": "s1",
+  "n": 27,
+  "ctrl": 0.0166,
+  "moved": 0.0147,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "blinx-2.guided/078": {
+  "label": "U",
+  "run": "blinx-2.guided",
+  "pre": "078",
+  "set": "s1",
+  "n": 28,
+  "ctrl": 0.0181,
+  "moved": 0.0183,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "blinx-2.unguided/034": {
+  "label": "U",
+  "run": "blinx-2.unguided",
+  "pre": "034",
+  "set": "s1",
+  "n": 29,
+  "ctrl": 0.0146,
+  "moved": 0.0152,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "blinx-2.unguided/028": {
+  "label": "U",
+  "run": "blinx-2.unguided",
+  "pre": "028",
+  "set": "s1",
+  "n": 30,
+  "ctrl": 0.0147,
+  "moved": 0.0147,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "blinx-2.unguided/040": {
+  "label": "U",
+  "run": "blinx-2.unguided",
+  "pre": "040",
+  "set": "s1",
+  "n": 31,
+  "ctrl": 0.0132,
+  "moved": 0.0182,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "black-stone-hold/032": {
+  "label": "U",
+  "run": "black-stone-hold",
+  "pre": "032",
+  "set": "s1",
+  "n": 32,
+  "ctrl": 0.0031,
+  "moved": 0.0079,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "The HUD and third-person character on a playfield are present; C shows the character in a different pose and position (bent lower, sword arm raised) than the A-to-B drift, which only swung the sword."
+  },
+  "accepted": true
+ },
+ "blinx-2.unguided/048": {
+  "label": "U",
+  "run": "blinx-2.unguided",
+  "pre": "048",
+  "set": "s1",
+  "n": 33,
+  "ctrl": 0.0123,
+  "moved": 0.0071,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "blinx-2.unguided/018": {
+  "label": "U",
+  "run": "blinx-2.unguided",
+  "pre": "018",
+  "set": "s1",
+  "n": 34,
+  "ctrl": 0.0101,
+  "moved": 0.0082,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "blinx-2.unguided/050": {
+  "label": "U",
+  "run": "blinx-2.unguided",
+  "pre": "050",
+  "set": "s1",
+  "n": 35,
+  "ctrl": 0.0173,
+  "moved": 0.0172,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "amped-2/048": {
+  "label": "R",
+  "run": "amped-2",
+  "pre": "048",
+  "set": "s2",
+  "n": 1,
+  "ctrl": 0.4853,
+  "moved": 0.7606,
+  "route": "model (self-moving, no steer frames: non-steer prompt)",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "A and B show the same standing rider with only ambient drift, while C shows the rider crouched into a new pose with the board now visible and the camera angle changed, consistent with the held input."
+  },
+  "accepted": true
+ },
+ "black-stone/012": {
+  "label": "R",
+  "run": "black-stone",
+  "pre": "012",
+  "set": "s2",
+  "n": 2,
+  "ctrl": 0.003,
+  "moved": 0.5674,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "A and B are nearly identical with the character standing on the octagonal platform, so nothing changed on its own. In C the character has moved to the far side of the room with a dust puff at its feet, and the camera has shifted, consistent with walking under held input."
+  },
+  "accepted": true
+ },
+ "bruce-lee.falsepass/004": {
+  "label": "C",
+  "run": "bruce-lee.falsepass",
+  "pre": "004",
+  "set": "s2",
+  "n": 3,
+  "ctrl": 0.2483,
+  "moved": 0.297,
+  "route": "letterbox veto",
+  "accepted": false
+ },
+ "bruce-lee.rerun/022": {
+  "label": "R",
+  "run": "bruce-lee.rerun",
+  "pre": "022",
+  "set": "s2",
+  "n": 4,
+  "ctrl": 0.1474,
+  "moved": 0.3197,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": false,
+   "why": "Live fight with HUD and no menu or cutscene, but between B and C the visible changes are mostly the enemies moving, and the player's shift is too small to attribute to the held input."
+  },
+  "accepted": false
+ },
+ "espn-college-hoops-2k5.replay/011": {
+  "label": "R",
+  "run": "espn-college-hoops-2k5.replay",
+  "pre": "011",
+  "set": "s2",
+  "n": 5,
+  "ctrl": 0.1043,
+  "moved": 0.2683,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "Live possession with the scoreboard clock running and a controlled-player marker; C shows a camera and controlled-player position shift beyond the B-to-A drift, though the offense also moves on its own, so this is a low-confidence call."
+  },
+  "accepted": true
+ },
+ "ghoulies/011": {
+  "label": "R",
+  "run": "ghoulies",
+  "pre": "011",
+  "set": "s2",
+  "n": 6,
+  "ctrl": 0.206,
+  "moved": 0.2894,
+  "route": "model (self-moving, no steer frames: non-steer prompt)",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "A and B show the same standing pose with the player facing away, but C shows him mid-stride, turned and shifted left while the health counter ticks down, so the change goes beyond the drift seen between A and B."
+  },
+  "accepted": true
+ },
+ "midnight-club-3/034": {
+  "label": "U",
+  "run": "midnight-club-3",
+  "pre": "034",
+  "set": "s2",
+  "n": 7,
+  "ctrl": 0.0053,
+  "moved": 0.1927,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "HUD (minimap, speedometer) on a live city street; between A and B the scene is static, but in C the red car is smaller and shifted left relative to the buildings and traffic lights, consistent with a steering or camera response to the held input."
+  },
+  "accepted": true
+ },
+ "panzer-dragoon/025": {
+  "label": "R",
+  "run": "panzer-dragoon",
+  "pre": "025",
+  "set": "s2",
+  "n": 8,
+  "ctrl": 0.5051,
+  "moved": 0.7852,
+  "route": "model (self-moving, no steer frames: non-steer prompt)",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "HUD (lock-on reticle, gauges) is on a live flying playfield, and C's viewpoint shifts far more than the A-to-B drift (new cave backdrop, different framing), though the input itself isn't visible, so attribution is uncertain."
+  },
+  "accepted": true
+ },
+ "spikeout/021": {
+  "label": "R",
+  "run": "spikeout",
+  "pre": "021",
+  "set": "s2",
+  "n": 9,
+  "ctrl": 0.0383,
+  "moved": 0.2088,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": false,
+   "why": "Live 1v1 fight with HUD and health bars, but the A\u2192C changes look like the clinch animation playing out; no clear player/vehicle/camera movement attributable to the held input."
+  },
+  "accepted": false
+ },
+ "top-spin/026": {
+  "label": "R",
+  "run": "top-spin",
+  "pre": "026",
+  "set": "s2",
+  "n": 11,
+  "ctrl": 0.0354,
+  "moved": 0.0555,
+  "route": "model",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "Live Top Spin match with the player's score and speed HUD; between B and C the player went from an idle serve-toss pose to a mid-swing racket follow-through, a change the idle ball-toss animation from A to B does not account for."
+  },
+  "accepted": true
+ },
+ "tork/010": {
+  "label": "C",
+  "run": "tork",
+  "pre": "010",
+  "set": "s2",
+  "n": 13,
+  "ctrl": 0.2611,
+  "moved": 0.0689,
+  "route": "letterbox veto",
+  "accepted": false
+ },
+ "tork/012": {
+  "label": "C",
+  "run": "tork",
+  "pre": "012",
+  "set": "s2",
+  "n": 14,
+  "ctrl": 0.3832,
+  "moved": 0.1511,
+  "route": "letterbox veto",
+  "accepted": false
+ },
+ "tork/017": {
+  "label": "C",
+  "run": "tork",
+  "pre": "017",
+  "set": "s2",
+  "n": 15,
+  "ctrl": 0.0017,
+  "moved": 0.235,
+  "route": "letterbox veto",
+  "accepted": false
+ },
+ "espn-nhl-2k5.baseline-try1/018": {
+  "label": "C",
+  "run": "espn-nhl-2k5.baseline-try1",
+  "pre": "018",
+  "set": "s2",
+  "n": 16,
+  "ctrl": 0.7345,
+  "moved": 0.2869,
+  "route": "model (self-moving, no steer frames: non-steer prompt)",
+  "answer": {
+   "gameplay": false,
+   "responded": false,
+   "why": "B and C show a goal replay with crowd close-ups and a goal caption, not live play, so C cannot show the player responding to input."
+  },
+  "accepted": false
+ },
+ "amped-2/021": {
+  "label": "R",
+  "run": "amped-2",
+  "pre": "021",
+  "set": "s2",
+  "n": 17,
+  "ctrl": 0.2551,
+  "moved": 0.4288,
+  "route": "model (self-moving, no steer frames: non-steer prompt)",
+  "answer": {
+   "gameplay": true,
+   "responded": true,
+   "why": "Snowboarding with HUD and no menu or cutscene; A to B barely shifts the scene, but B to C shifts the mountain, tent and trees noticeably while the rider's pose changes, beyond the self-motion seen between A and B."
+  },
+  "accepted": true
+ },
+ "espn-nfl-2k5.try1/016": {
+  "label": "M",
+  "run": "espn-nfl-2k5.try1",
+  "pre": "016",
+  "set": "s2",
+  "n": 19,
+  "ctrl": 0.1344,
+  "moved": 0.196,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "tiger-woods-pga-tour-2005.guided/021": {
+  "label": "P",
+  "run": "tiger-woods-pga-tour-2005.guided",
+  "pre": "021",
+  "set": "s2",
+  "n": 21,
+  "ctrl": 0.4305,
+  "moved": 0.5108,
+  "route": "model (self-moving, no steer frames: non-steer prompt)",
+  "answer": {
+   "gameplay": false,
+   "responded": false,
+   "why": "C is a GAME PAUSED menu overlay (Play Basic Lessons / Advanced / New for 2005) over the course, so it is not player-controlled gameplay and shows no playfield response to input."
+  },
+  "accepted": false
+ },
+ "espn-college-hoops-2k5.guided/012": {
+  "label": "R",
+  "run": "espn-college-hoops-2k5.guided",
+  "pre": "012",
+  "set": "s2",
+  "n": 23,
+  "ctrl": 0.3022,
+  "moved": 0.4814,
+  "route": "model (self-moving, no steer frames: non-steer prompt)",
+  "answer": {
+   "gameplay": true,
+   "responded": false,
+   "why": "Live game clock and shot clock are running and players are on the court, but C's changes (a new camera angle and a ball at the rim) are indistinguishable from the automatic play and camera cuts seen between A and B, so no input response is attributable."
+  },
+  "accepted": false
+ },
+ "blinx-2.guided/084": {
+  "label": "P",
+  "run": "blinx-2.guided",
+  "pre": "084",
+  "set": "s2",
+  "n": 24,
+  "ctrl": 0.0546,
+  "moved": 0.0917,
+  "route": "model",
+  "answer": {
+   "gameplay": false,
+   "responded": false,
+   "why": "All three frames show the 'GAME PAUSED' menu overlay with Resume/Restart/Return options, so this is not player-controlled gameplay, and the only change in C is the MONEY label switching to TOTAL."
+  },
+  "accepted": false
+ },
+ "espn-nfl-2k5.try2/020": {
+  "label": "M",
+  "run": "espn-nfl-2k5.try2",
+  "pre": "020",
+  "set": "s2",
+  "n": 26,
+  "ctrl": 0.0907,
+  "moved": 0.1337,
+  "route": "measure: change within idle change",
+  "accepted": false
+ },
+ "espn-nfl-2k5/018": {
+  "label": "M",
+  "run": "espn-nfl-2k5",
+  "pre": "018",
+  "set": "s2",
+  "n": 28,
+  "ctrl": 0.0421,
+  "moved": 0.0784,
+  "route": "model",
+  "answer": {
+   "gameplay": false,
+   "responded": false,
+   "why": "All three frames are the pre-snap play-selection menu (Field Goal/Punt, Page 11 to 10, with formation diagrams and Coach's Pick), not live play; the change in C is a menu page change, not a playfield response."
+  },
+  "accepted": false
+ },
+ "tork/019": {
+  "label": "C",
+  "run": "tork",
+  "pre": "019",
+  "set": "s2",
+  "n": 29,
+  "ctrl": 0.0,
+  "moved": 0.773,
+  "route": "model",
+  "answer": {
+   "gameplay": false,
+   "responded": false,
+   "why": "A and B are black screens, and C shows a rotated close-up of a character's face in a letterboxed frame, which looks like a cutscene or character render rather than a playfield responding to input."
+  },
+  "accepted": false
+ },
+ "espn-college-hoops-2k5.guided/016": {
+  "label": "R",
+  "run": "espn-college-hoops-2k5.guided",
+  "pre": "016",
+  "set": "s2",
+  "n": 30,
+  "ctrl": 0.3801,
+  "moved": 0.3755,
+  "route": "model (self-moving, no steer frames: non-steer prompt)",
+  "answer": {
+   "gameplay": true,
+   "responded": false,
+   "why": "Live basketball play with HUD and a running clock, but C's camera and marker changes fit automatic play and camera cuts, and the player-marker change is not clearly a response to the held input."
+  },
+  "accepted": false
+ }
+}

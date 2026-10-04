@@ -1,0 +1,57 @@
+{
+ "title_id": "58490004",
+ "name": "Black Stone Magic Steel",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/58490004-Black_Stone_Magic_Steel.xiso.iso",
+ "result": "gameplay",
+ "tool": "1b2cbaf512",
+ "started": "2026-10-03 08:00:04 PDT",
+ "reason": "four probes refused",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/097-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/097-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/097-probe-c.jpg"
+ ],
+ "minutes": 13.32,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/096-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/098-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/099-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/100-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/101-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/102-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/103-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/104-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/105-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5849.md"
+ ],
+ "hold": {
+  "genre": "other",
+  "why": "A red-clad character stands in a green stone corridor with no vehicle, no enemy fight, no ball, and no rail-driven scene; it reads as exploration or adventure m",
+  "ok": false,
+  "play_s": 65.1,
+  "need_s": 600.0,
+  "hold_s": 65.1,
+  "model_navs": 0,
+  "frames": 2,
+  "reason": "budget 15 min with 65 s of play"
+ },
+ "model_calls": 66,
+ "calls_by_model": {
+  "claude-sonnet-5": 66
+ },
+ "steps": 97,
+ "seconds": 900.7,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/frames/110-hold.jpg",
+ "last_state": "probe",
+ "replayed": 2,
+ "sib_replayed": 0,
+ "guide": [
+  "58490004"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold/strip.jpg"
+}
