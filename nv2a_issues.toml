@@ -5614,3 +5614,19 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue."787"]
+title = "Guest-late stalls with a TLB-flush burst in Kabuki, SW3 and Tron: no compile, texture or lock cost"
+component = "tcg"
+disposition = "defect"
+suites = []
+no_suites = "A GUEST-LATE STALL: the stall is a TLB-flush burst in the guest, not a compile, texture or lock; no pgraph capture sees it. The perflog counters (#68 [tlb68]) and the route soaks measure it."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-10-04T00:11Z: [lane.flushstall787] lists #787 on this board push."
+blocked_on = "IN FLIGHT (hostops 2026-10-04T00:11Z): lane.flushstall787 (attempt 1, started 16:55 PDT) is measuring the flush-burst signature; the lane owns it until its counter lands."
+status_note = "FILED by lane.local 2026-10-03 on the owner's order: one shared stall signature across Kabuki, SW3 and Tron. Tracker row added by hostops on the lane's start (the coverage gate needs a row)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "unmeasured: every 600-s miss in Kabuki, SW3 and Tron shares this guest-late stall; the size is what flushstall787 measures."
