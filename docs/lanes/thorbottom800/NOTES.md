@@ -68,6 +68,10 @@ picture, letterboxed top and bottom, correct aspect.
 | display 4, installed 0.4.1-1003-e0b22e69ad | `shots/before-installed-d4.png` | 640x480 in the bottom-left corner |
 | display 4, ddc61cb847 | `shots/after-ddc61cb847-d4.png` | full width, 1240x930 with 75 px bars top and bottom (4:3) |
 | display 0, ddc61cb847 | `shots/after-ddc61cb847-d0.png` | black; unreadable, see below |
+| display 4, 153d7ad370 (clean rebuild, the build left installed for the owner) | `shots/after-153d7ad370-d4.png` | same as ddc61cb847 |
+
+ddc61cb847's APK carries `-dirty` in its version name only because lane docs were uncommitted when it was built;
+153d7ad370 adds docs only. The Thor was left on 0.4.1-1004-153d7ad370 (`install -r`, data kept), asleep.
 
 Display 0 cannot be read by screencap on this Thor: it is black with only the Daijishou launcher on it too
 (`shots/d0-launcher-only.png`), powerMode On. The top panel is dead. On display 0 the game did run (MainActivity
@@ -76,6 +80,12 @@ behaviour where `disp_mode.w < 1280 || disp_mode.h < 720` held, and a 1920x1080 
 0 and any panel of at least 1280x720 take exactly the path they took before. The Nova regression screenshot is a
 queued dispatcher soak (the Nova is held by lane.pathfind): request `1791128091-thorbottom800-3215528`,
 Castlevania 90 s, a frame every 30 s.
+
+## Waiting (2026-10-04 08:50 PDT)
+
+On the Nova regression screenshot: dispatcher request `1791128091-thorbottom800-3215528` (ref ddc61cb847,
+Castlevania, 90 s, a frame every 30 s, pinned to the Nova), queued behind lane.pathfind's hold. When its result
+lands, read a frame, add it to `shots/`, and mark the PR ready if the game fills the Nova's panel.
 
 ## Build notes
 
