@@ -393,3 +393,8 @@ Pool status: Black Stone stays on the list (the pool's hold is the design fault,
 - Fix in pathfind (5829691aac): a probe input refused twice is replaced by the next untried input from a ladder (HOLD:A:3, STICK:up, RT, HOLD:X, LT, ...). Per the owner's rule there is no second session today.
 - Also: a 10:2x attempt died at step 2 on my own mid-run edit to pathfind.py (AttributeError). The run above is the clean retry, not a second session on a can't-path.
 Spend so far today: about $19 of $60.
+
+[lane.pathfind] The Simpsons Hit & Run (56550015) CLEAR: 100% of 606 s at the verdict's bar (98.2% of 388 gfps samples at >= 28.5), median 38, full window. Profile: golden bcc71e970cff (title data only; the game had saved no profile by gameplay, so the hold boots `--state any`). Path: docs/testing/titles/pathknow/paths/56550015.json
+- Verdict line: `VERDICT The Simpsons Hit Run ? PASS None gameplay=605.7s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0251 play_share=0.9998 fps_excluded=1.4s`
+- Frame strip: docs/lanes/pathfind/runs/screen-simpsons-hit-run/hold/hold_strip.jpg. Claim: first-run, 2.7 min, 18 Sonnet calls. Measurement run: replayed to play in 2.7 min (7 steps replayed). 3/5-min checks were on course. No native target in targets.toml.
+Spend so far today: about $21 of $60.
