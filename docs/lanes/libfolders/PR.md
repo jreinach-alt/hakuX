@@ -1,6 +1,6 @@
 # libfolders (#433): the game library takes more than one games folder
 
-State: draft
+State: ready
 
 Lane: libfolders            Issue: #433
 Base: master @ 425ffe1ad1
@@ -24,6 +24,8 @@ Hit & Run) were unreachable. The pref is now an ordered set (`gamesFolderUris`),
 
 Every `gamesFolderUri` consumer and what became of it is in `docs/lanes/libfolders/NOTES.md`.
 
-**Verification state.** Written and committed; not yet compiled or run on a device. Build and install is queued as
-dispatch request `1-1791142964-lane.libfolders-796796` (ref `dfa6d4c044`, Thor, 60 s). The migration test and the
-screenshot pair need hands on the Thor and are listed in NOTES.md Status.
+**Verification state.** Compiled: request `1-1791142964-lane.libfolders-796796` (ref `dfa6d4c044`) built
+(`BUILD SUCCESSFUL`) and the Thor took the apk; its soak was refused for a foreign dual-screen overlay, which is
+unrelated. **Not done:** the migration test and the screenshot pair (add internal `ROMS/xbox` beside the SD folder),
+which need adb on the Thor under the owner's playtest hold rules; the steps are in NOTES.md Status. Marked ready so
+it is folded and built; the owner's device check is the open item.

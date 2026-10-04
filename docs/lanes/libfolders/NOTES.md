@@ -54,18 +54,39 @@ stays unique.
 
 Native code, the runner's own storage reader, the harness, the system-files / HDD / MCPX pickers.
 
+## Attempt 2 (2026-10-04): why attempt 1 did not finish
+
+Attempt 1 committed the code, queued the build request and stopped on a `run` WAITING line, because a lane cannot
+touch a device and the build had not landed. This attempt read the result and re-read the diff.
+
+* **Build**: request `1-1791142964-lane.libfolders-796796` (ref `dfa6d4c044`) built: `dispatch/logs/build-dfa6d4c044.log`
+  ends `BUILD SUCCESSFUL`, no warnings in `GamesFolders` or `GameLibraryActivity`, and `builds/dfa6d4c044.apk` exists.
+  The dispatcher recorded the new apk (`bba1e72819e2`) on the Thor and cleared its shader cache for the change.
+  The compile-error worry in Status below is closed.
+* **The soak itself was refused**, not run: `display-covered: a foreign full-screen overlay covers display 0 on
+  bdc158a5: primaryScreenTopLayout (com.odin.dualscreen.assistant, BOOT_PROGRESS)`. That is the Thor's dual-screen
+  assistant, not this change; the soak was incidental (the request was only a vehicle for the install).
+* **Re-read the diff** for the four things that go wrong with this shape of change: a dedupe that hides two files in
+  one folder (no: `seenNames` is extended after a folder is done, so same-named files inside one folder both show, as
+  before); a dead URI dropping the whole set (no: `pruneDead` writes only the survivors); a stale library after
+  Settings (covered by `onResume`); a `GameEntry` built without `folderUri` (it is a required constructor parameter, so
+  the compiler would have refused it, and it compiled).
+* **Still not done, and not a lane's to do**: the migration test and the Thor screenshot pair need adb on the Thor
+  under the owner's playtest hold rules, and no request kind drives the library screen. Nothing was run on the device
+  by this lane. The steps are under Status below; the WAITING file now carries an `owner` line for them.
+
 ## Verification
 
-* **Compiles / installs**: dispatch request `1-1791142964-lane.libfolders-796796` (ref `dfa6d4c044`, Thor, 60 s)
-  builds and installs the debug app; result in Status below.
+* **Compiles / installs**: dispatch request `1-1791142964-lane.libfolders-796796` (ref `dfa6d4c044`) built
+  (`BUILD SUCCESSFUL`) and the Thor took the apk; the soak was refused for a foreign overlay (see Attempt 2).
 * **Migration test**: not yet run (needs the device, see Status).
 * **Screenshot pair on the Thor** (add internal `ROMS/xbox` beside the SD folder; a title in one folder appears, a
   title in both appears once): not yet taken (needs the device, see Status).
 
 ## Status
 
-2026-10-04: code committed (`dfa6d4c044`) and pushed; the request above is queued behind the Thor's fan hold
-(requests of 480 s or less are allowed). Nothing has been compiled yet, so a compile error is possible.
+2026-10-04: code committed (`dfa6d4c044`), pushed, and compiled (attempt 2). **Missing from the definition of
+done: the migration test and the screenshot pair**, both needing hands on the Thor.
 
 Still to do once the build lands (hands on the Thor, under the owner's playtest hold rules, not a lane's):
 
