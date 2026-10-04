@@ -301,3 +301,30 @@ wait).
 
 Fix 1 is the one that fits the measured cause, and it ranks first on both
 P and win. Fix 2 is smaller and surer, but it covers one title.
+
+## For the next lane: what not to repeat, and what is still open
+
+- **Do not re-measure the class to find its bound.** It is named above. The
+  next step is fix 1 (#794), with an arm on NBA Live 2005 and
+  Counter-Strike. Its falsifier is that ph_Fin stays above ~8 ms per frame,
+  or that the wait reappears in Sub/Fen at the flip or at frame-slot reuse.
+- **Read a renderer-bound title's render CPU under perflog as high.** Perflog
+  costs the render thread >= ~1.2 ms per frame (lane.alwaystelemetry). For a
+  title on the 33.3-ms edge (MC3), that decides the verdict. The always-on
+  lines (decompose.py columns Ri, rcpu, rblk, gbusy, v_blk, lockw) give the
+  bound without perflog; only ph_GPU and ph_Fin need it.
+- **Route loops built from pathfind steps** (`steps2route.py`): a hold loop
+  needs the buttons that dismiss the title's cards. Counter-Strike needs A
+  ("Press A to continue") and B (the weapon wheel at round start); both CS
+  runs here stood on one of them. Top Spin's step-24 START pauses the match
+  when the match loads a step early; the loop's A resumes it.
+- **Open, not measured here:**
+  - NBA Live 2004 / 06 / 07: no path or route. Held runs were asked of
+    lane.pathfind on #785. Their always-on lines are enough: a renderer-bound
+    title shows Ri < 0.2 F with gbusy well under F.
+  - MC3 on today's build without perflog: is it under the edge? One plain
+    soak on midnight-club-3.returning, read with decompose.py.
+  - Top Spin at the bar with the #474 extension (fix 2).
+  - Pathfind holds run on device defaults while dispatcher soaks run the
+    "max" regimen. The same title then reads 20 or 24 fps depending on which
+    tool measured it (NEW ISSUE line in OUTBOX).

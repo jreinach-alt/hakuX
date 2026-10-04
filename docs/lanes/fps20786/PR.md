@@ -1,11 +1,11 @@
 # fps20786: the bound behind the ~20-fps class on the Nova (#786, #747)
-State: draft
+State: ready
 
 Lane: fps20786            Issue: #786 #747
 Base: master @ 4a3308a21e
 Files: docs/lanes/fps20786/NOTES.md, docs/lanes/fps20786/OUTBOX.md, docs/lanes/fps20786/PR.md, docs/lanes/fps20786/decompose.py, docs/lanes/fps20786/extras.py, docs/lanes/fps20786/make-routes.sh, docs/lanes/fps20786/nba-live-2005-hold.steps.jsonl, docs/lanes/fps20786/routes/fps786-cs.route, docs/lanes/fps20786/routes/fps786-nba2005.route, docs/lanes/fps20786/routes/fps786-topspin.route, docs/lanes/fps20786/sdsurvey-by-title.tsv, docs/lanes/fps20786/sdsurvey.py, docs/lanes/fps20786/steps2route.py
 Prediction: none: analysis-only (telemetry soaks; the bound signatures were registered in NOTES.md at e95ca394c1 before any run)
-Needs device: yes (Nova, 5 --perflog soaks via request.sh)    Needs NDK: no
+Needs device: yes (Nova, 5 --perflog soaks via request.sh; all done, none pending)    Needs NDK: no
 
 **The class shares one bound, and it is new: synchronous surface-download finishes (#794).** Every frame, NBA Live 2005, Counter-Strike and Midnight Club 3 make 1-2 `pgraph_vk_finish(VK_FINISH_REASON_SURFACE_DOWN)` calls. That reason is not in the deferred set, so each call submits everything recorded so far and blocks the PFIFO thread until the GPU is done, a 11-14 ms wait. The render thread's CPU work and the GPU then run in series, putting renderer cost at 32-37 ms per frame. That is just over two VBLANKs, so frames take three. The vCPU is not the bound (guest busy ~21 ms of a ~40-ms frame), nor the lock (0.3-2.3 ms), nor the GPU alone (14-25 ms). Top Spin takes the same finish ~30 times a frame with pgraph.lock held, and its vCPU waits 13-18 ms per frame behind it (#474). On today's build Top Spin is a near-30 title (0.89).
 
