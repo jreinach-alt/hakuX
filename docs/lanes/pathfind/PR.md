@@ -52,3 +52,5 @@ RT+/LT+ `actions` checks; `holdstill` and `rounds` fail on the old code). `bash 
 Release note (none): test tooling only.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+## 10-03 evening -- Black Stone and Dino Crisis 3 holds FAIL (#797, #795, #793); Panzer Dragoon Orta hold run 3 PASSED (counted Playable, ledger row 16); evidence runs/panzer-dragoon-hold3

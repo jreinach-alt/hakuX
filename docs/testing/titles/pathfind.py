@@ -120,7 +120,14 @@ HOLD_REPEAT_STATES = ("cutscene", "game_over")
 HOLD_STILL = 0.03
 # a still window in the drive genre: a car against a wall (Forza, 10-03). Reverse while turning, then drive out the
 # other way, alternating sides per still window, before the generic unlock rotation.
-HOLD_UNSTICK = {"drive": (["LT+left:3", "RT+right:3"], ["LT+right:3", "RT+left:3"])}
+HOLD_UNSTICK = {
+    "drive": (["LT+left:3", "RT+right:3"], ["LT+right:3", "RT+left:3"]),
+    # a gun game that stands still at a wall (Halo 2, 10-03: 31% static in one room): strafe out, firing, the other way
+    "shooter": (["STICK:left:2", "RT:1"], ["STICK:right:2", "RT:1"]),
+    # a fighter that stands on its arena (Black Stone, 10-03: the attack loop's up and down cancel, 600 s on one spot,
+    # window change 0.002-0.013). Each still window walks a square: the four legs are not undone by the next one.
+    "attack": (["STICK:right:2", "A"], ["STICK:up:2", "A"], ["STICK:left:2", "A"], ["STICK:down:2", "A"]),
+}
 # play that drops into a menu right after a loop cycle: a loop button opened it (ToeJam & Earl III, 10-03: the
 # "Presents" inventory in 13 of 19 kept frames). Each such drop sheds the next of these from the loop.
 HOLD_SHED = ("B", "X", "Y", "BACK", "R1", "L1")
@@ -128,6 +135,9 @@ HOLD_SHED_STATES = ("menu", "pause", "other")
 HOLD_GENRES = {
     "drive": ["RT:2", "RT+left:0.8", "RT+right:0.8"],
     "attack": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"],
+    # first- and third-person gun play: walk through the level, fire, sweep the look, so the player moves on
+    # (Halo 2, 10-03: the attack loop stood at one wall). Fire is the right trigger; a strafe pass changes the spot.
+    "shooter": ["STICK:up:1", "RT:1", "RSTICK:right:0.6", "STICK:left:1", "RT:1", "RSTICK:left:0.6", "STICK:down:0.6", "A"],
     "rally": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"],
     "onrails": [],                   # the scene moves on its own: send nothing, watch it
     # basketball, football, hockey, soccer: run with the ball (RT is turbo in the EA and 2K5 families), pass,
@@ -135,6 +145,21 @@ HOLD_GENRES = {
     "team": ["RT:1", "STICK:up:1", "A", "STICK:right:1", "X", "STICK:left:1", "B", "STICK:down:1", "Y"],
     "other": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"],
 }
+# Title-specific hold loops (10-03 addendum, the owner's Black Stone design). They replace the genre's loop and its
+# unlock rotation for these title ids. The walk moves the player with the left stick only, in long strokes that
+# change direction. X is pressed once, alone: at the start of the hold and after two still windows in a row. Y, R1,
+# BACK and START are never sent in the hold, and B only to close a menu that a look found open (then X, then walk).
+TITLE_HOLD = {
+    "58490004": {"walk": ["STICK:up:4", "STICK:right:4", "STICK:down:4", "STICK:left:4"]},   # Black Stone: Magic & Steel
+    # Panzer Dragoon Orta (10-03 run 3): the dragon flies on its own; the hold keeps it moving (a stick stroke that
+    # changes direction each cycle) and firing (RT held 1 s), and taps the lock-on button (A held 0.4 s, then released,
+    # so the homing shots fire). No X: this title's X is not in the loop. A title return after a game over gets one
+    # unlooked press of "continue" (DOWN to CONTINUE, A), up to twice per hold; the model reads the screen after it.
+    "4947002B": {"walk": ["STICK:up:2", "RT:1", "HOLD:A:0.4", "STICK:right:2", "RT:1", "HOLD:A:0.4",
+                          "STICK:down:2", "RT:1", "HOLD:A:0.4", "STICK:left:2"],
+                 "x": False, "continue": ["DOWN", "A"]},
+}
+TITLE_HOLD_FORBID = ("Y", "R1", "BACK", "START", "B")
 
 
 def now():
@@ -603,6 +628,8 @@ How to act:
 Inputs (the "action" list, up to 8 tokens, sent in order ~0.4 s apart):
   A B X Y START BACK UP DOWN LEFT RIGHT L1 R1 L3 R3   one press (UP/DOWN/LEFT/RIGHT are the d-pad)
   STICK:<up|down|left|right|upleft|upright>:<seconds>  hold the left stick
+  RSTICK:<up|down|left|right>:<seconds>                 hold the right stick (the camera or look; Halo's Armory
+                                                       look test and tutorials need it: Halo 2, 10-03)
   RT:<seconds>  LT:<seconds>                           hold a trigger (accelerate/brake in racing games)
   RT+<left|right|up|down>:<seconds>  LT+<...>:<seconds>  a trigger and the left stick together (steer on the
                                                        gas; LT+left reverses while turning off a wall)
@@ -1284,8 +1311,9 @@ class Agent:
         ans = self.model.ask(FAST, (
             f"Screenshot of {self.name}, an Xbox game, in gameplay. The 'FPS: NN' text at the top-left is the "
             "emulator's overlay, not the game's HUD. What kind of play is this? Answer JSON only: "
-            '{"genre": "drive|attack|rally|team|onrails|other", "why": "<one line>"}. drive: a car, bike, boat '
-            "or plane moving through a world; attack: a character fighting or shooting; rally: a ball or "
+            '{"genre": "drive|attack|shooter|rally|team|onrails|other", "why": "<one line>"}. drive: a car, bike, '
+            "boat or plane moving through a world; attack: a character fighting in melee or with magic; shooter: "
+            "a gun game, first or third person, walking through a level and firing a weapon; rally: a ball or "
             "shuttle played back and forth over a net (tennis, volleyball); team: a team sport on a court, "
             "field or rink (basketball, football, hockey, soccer); onrails: the scene moves on its own and the "
             "player only aims; other: anything else."), "genre", [jpg]) or {}
@@ -1298,8 +1326,12 @@ class Agent:
         when play may have ended (black, or static on two looks in a row), every HOLD_CHECK_S, and once to
         name the genre. Off play, the model's own inputs steer back, one model look per step, until it reads
         play again. A frame is kept every HOLD_FRAME_S; the rest are deleted."""
-        genre, genre_why = self.hold_genre(jpg)
-        tokens = HOLD_GENRES[genre]
+        th = TITLE_HOLD.get((self.tid or "").upper())
+        if th:
+            genre, genre_why = "attack", "title hold (TITLE_HOLD): left-stick walk"
+        else:
+            genre, genre_why = self.hold_genre(jpg)
+        tokens = th["walk"] if th else HOLD_GENRES[genre]
         log = os.path.join(self.out, "hold.jsonl")
         held = {"genre": genre, "why": genre_why}
         print(f"hold-play: genre {genre}, need {self.hold_s:.0f} s of play", flush=True)
@@ -1309,6 +1341,8 @@ class Agent:
         # looks (Black Stone stood 600 s on one octagon and passed the verdict). Then rotate the inputs: an unlock
         # button and the next genre's loop, until the scene moves again.
         parked, rot, still_windows = False, 0, 0
+        th_x = bool(th) and th.get("x", True)  # a title hold presses X alone first, unless the title says otherwise
+        press_x, still_row, cont_left = th_x, 0, 2   # and again after a menu or two still windows; continue: 2 returns
         shed_set = set()                 # loop buttons that opened a menu (HOLD_SHED): never sent again this hold
         order = [genre] + [g for g in HOLD_GENRES if g not in (genre, "onrails")]
         rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
@@ -1376,6 +1410,18 @@ class Agent:
                         wait_s = min(max(float(a.get("wait_s") or 2), 0.5), 8)
                     except (TypeError, ValueError):
                         wait_s = 2.0
+                    if th:
+                        # title hold: a menu is closed with one B and X follows; anything else keeps the model's press
+                        # minus the forbidden buttons (a cutscene's A)
+                        if st == "title_screen" and th.get("continue") and cont_left:
+                            # a game over returned to the title: one unlooked CONTINUE, not the NEW GAME walk
+                            cont_left -= 1
+                            action, wait_s = list(th["continue"]), 4.0
+                            look["continue"] = True
+                        elif st in HOLD_SHED_STATES:
+                            action, wait_s, press_x = ["B"], 1.5, th_x
+                        else:
+                            action = [t for t in action if t.upper() not in TITLE_HOLD_FORBID] or ["A"]
                     look["action"] = action
                     self.send(action)
                     time.sleep(wait_s)
@@ -1388,6 +1434,8 @@ class Agent:
                 # play: the genre loop (a check look that said play sends it too). The time credited is this
                 # cycle's own, from its frame to its inputs: the look before may have been off play.
                 loop = [t for t in tokens if t not in shed_set]
+                if th and press_x:
+                    loop, press_x = ["X"], False
                 look.update(src=look.get("src", "genre"), action=loop)
                 self.send(loop)
                 if not parked:
@@ -1399,16 +1447,22 @@ class Agent:
                     look["window"] = round(mv, 4)
                     if mv < HOLD_STILL:
                         still_windows += 1
-                        rot += 1
-                        unstick = HOLD_UNSTICK.get(genre)
-                        if unstick and rot <= 2 * len(unstick):
-                            tokens = unstick[(rot - 1) % len(unstick)] + HOLD_GENRES[genre]
+                        if th:
+                            # two still windows in a row: X once, then the walk goes on (no unlock rotation)
+                            still_row += 1
+                            if still_row >= 2:
+                                press_x, still_row = th_x, 0
                         else:
-                            tokens = [UNLOCK_LADDER[(rot - 1) % len(UNLOCK_LADDER)]] + \
-                                HOLD_GENRES[order[rot % len(order)]]
+                            rot += 1
+                            unstick = HOLD_UNSTICK.get(genre)
+                            if unstick and rot <= 2 * len(unstick):
+                                tokens = unstick[(rot - 1) % len(unstick)] + HOLD_GENRES[genre]
+                            else:
+                                tokens = [UNLOCK_LADDER[(rot - 1) % len(UNLOCK_LADDER)]] + \
+                                    HOLD_GENRES[order[rot % len(order)]]
                         parked = True
-                    elif parked:
-                        parked = False
+                    else:
+                        still_row, parked = 0, False
                     want = "still" if parked else "play"
                     if logged in ("play", "still") and want != logged:
                         self.dev.route_log(f"state={want} t={int(hold_el)}")
@@ -1429,7 +1483,7 @@ class Agent:
             reason = f"budget {self.budget_s / 60:.0f} min with {play_s:.0f} s of play"
         held.update(ok=ok, play_s=round(play_s, 1), need_s=self.hold_s, hold_s=round(now() - t_hold, 1),
                     model_navs=navs, frames=len(kept), still_windows=still_windows, shed=sorted(shed_set),
-                    reason=reason)
+                    reason=reason, title_hold=bool(th))
         self.result["hold"] = held
         print(f"hold-play: {'HELD' if ok else 'not held'} {play_s:.0f}/{self.hold_s:.0f} s of play; {reason}",
               flush=True)

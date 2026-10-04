@@ -1,5 +1,155 @@
 # lane.pathfind -- NOTES
 
+## Resume (10-03 22:37 PDT, attempt 2 of this resume): why the last attempt did not finish
+
+- The 21:5x session ended at 22:27 (commit `9b7b90c7de`) right after its Black Stone hold3 write-up (FAIL, play share 9.5%,
+  OUTBOX 22:25). The 22:4x addendum (Panzer Dragoon Orta, held run 3 before 23:30 PDT) arrived after that write-up and was
+  not started. Nothing was in flight and no WAITING file was written, so the session stopped with the Panzer run undone.
+- Spend at the start of this resume: about $50 of the $70 cap. The Nova was free at 22:38.
+- This resume: Panzer run 3, returning state (golden `7cf4eb6181f1`), 600-s hold with the position test. Three changes,
+  each one the addendum's ask, and the cost each one targets:
+  1. **Difficulty (the claim):** `paths/4947002B.json` step 6 (the difficulty select, NORMAL highlighted) now sends
+     `UP, A`. It assumes EASY is listed above NORMAL: unverified until the claim's frame shows the menu.
+  2. **Keep firing and moving (the hold):** `TITLE_HOLD["4947002B"]` replaces the empty onrails loop. A stick stroke that
+     changes direction each cycle, RT held 1 s (fire), and a lock-on tap (`HOLD:A:0.4`, held then released). No X.
+  3. **Title return (the cost of 65 s in run 2):** after a game over returns the title, one unlooked `DOWN, A` (CONTINUE),
+     up to twice per hold, then the model looks. `DOWN` to CONTINUE is also a guess: unverified.
+- Selftest `pathfind_selftest: all ok` before the run.
+
+## Resume (10-03 21:5x PDT, attempt 1 of this resume): why the last attempt did not finish
+
+- The 21:16 session (attempt 4) finished Dino Crisis 3 (FAIL, menu time 79.1%, below). Its OUTBOX was posted at 21:45 and it
+  stopped with nothing in flight and no WAITING file.
+- The 21:5x addendum (Black Stone moves up, next on the Nova; its title-specific hold design) arrived after that and was
+  not started. Nothing was lost on the device.
+- This session: the Black Stone hold as the owner specified it. `TITLE_HOLD["58490004"]` in `pathfind.py`: X once alone at
+  the hold's start and again after two still windows in a row; a left-stick walk in 4-s strokes that change direction; no
+  face buttons in the walk; Y, R1, BACK, START and B are never sent in the hold. A menu that a look finds open gets one B,
+  then X, then the walk. The genre model is not asked for a title hold. Selftest `titlehold` covers it (all ok).
+- Spend at the start of this resume: about $46 of the $70 cap (the 21:16 NOTES figure of $44 plus the Dino Crisis 3 run).
+- **Result (black-stone-hold3, 22:0x-22:25 PDT, Nova, first-run; `runs/black-stone-hold3`): FAIL, play share 9.5%.** Claimed
+  at 4.9 min (67 model calls, 28 steps, $3.4 est.). The title hold ran 1219 s of gameplay HUD with the fighter on one spot:
+  116 s of play credited (the first 116 s, before the first still window), then 1104 s still. The strip (hold_strip.jpg)
+  shows the same octagon position and camera in all 40 kept frames, and no menu in any of them. The verdict's
+  "menu time" label is its name for the non-play share; here it is still time, not menus.
+- **What the hold did, from hold.jsonl:** X at 1.8 s (press 1), then the 4-s left-stick walk. The first walk cycle changed
+  0.82 of the frame and the next cycles 0.0002-0.002, so the camera moved and the fighter did not travel. Two still windows
+  later, X again (press 2, cycle n=55); its cycle changed 0.82 once, then the walk did not travel either. Never a Y, R1,
+  BACK, START or B in the walk.
+- **Cause, not yet named:** the left stick did not move the fighter after either X. The 10-02 probe (steps 94-97 of
+  `runs/black-stone-hold`) moved him only after a mixed sequence (X with a stick, then LEFT), so the stance rule "one X lowers
+  the sword, then the stick walks" is not confirmed. The next step is a stick-response probe on this title with frames per
+  input (a probe, not a hold), before any more 600-s runs.
+- **Not run:** 007 AUF (addendum 1 of 21:2x: only after the hold moves the player; it does not yet). Spend stops here, near
+  $50 of $70.
+- **The run used `first-run` by mistake.** Black Stone has a golden (`titlestate.py golden --title-id 58490004`:
+  86c8f6eada06, promoted by lane.local), and a `first-run` route composes the disk WITHOUT the run's own title's golden
+  (titlestate.py header). So the run was offered Name Entry again: it sat there for about 4 min (every D-pad, A, START and
+  stick input logged as a no-op), then got through on HOLD:A and claimed. The profile it made went to the latest slot, not
+  the golden. The next run of a title with a golden uses its `returning` variant. (heldrun.sh defaults to first-run; pass
+  `returning` as its fourth argument.)
+
+## Dino Crisis 3 held run (10-03 21:27-21:45 PDT, Nova, first-run)
+
+- Claim at 3.55 min, 35 Sonnet calls. Hold 607 s of play, FAIL on menu time (79.1%). fps_ok 0.38.
+- Frames 023-082: the player stays in one corridor (the shooter loop does not travel). Frames 085 and 089: L1/X open the
+  Map and Item screens. Same fault as the Black Stone walk run: the hold does not move the player, and its unlock
+  buttons open menus. Not re-queued (fps and design are named in OUTBOX).
+- Verdict and strip: runs/dino-crisis-3-hold/. OUTBOX has the NEW ISSUE.
+
+## Resume (10-03 21:16 PDT, attempt 4 of this resume): why the last attempt did not finish
+
+- The 20:40 session ended after the Black Stone walk run FAILED (menu time 63.8%, `runs/black-stone-walk`), posted its
+  OUTBOX entry and its NEW ISSUE, and stopped with nothing in flight. Its last commit is `1a46714a21` (the pathknow
+  route guide). It wrote no WAITING file and no next step, so the 21:2x addendum (Dino Crisis 3, title 5 of today's
+  Playable push) was not started.
+- Not committed by that session: the untracked `runs/halo-2-hold/`, `runs/halo-2-hold2/` and `runs/black-stone-walk/`
+  record directories and `scratch/`. They are kept as evidence and committed with this resume.
+- This session: Dino Crisis 3 (43430003, Nova, "Dino Crisis 3.iso"; targets.toml row 550). Reach confirmed play, then a
+  600-s held run with the position test, through `scratch/heldrun.sh` (take, wait-idle, release on every exit path).
+  Stop early if play reads < 28 fps for the first 60 s. Spend at the start of this resume: about $44 of the $70 cap.
+
+## Resume (10-03 20:17 PDT, attempt 3 of this resume): why the last attempt did not finish
+
+- The 17:15 session ended after Halo 2 run 2 (17:58, blocked: the Armory camera does not respond, `runs/halo-2-hold2`),
+  with its OUTBOX posted and nothing in flight. It had no WAITING file and no run going, so it stopped there.
+- It never reached the 18:3x and 20:2x addenda: the Black Stone, Dino Crisis 3 and 007 list with cap $70. The
+  Black Stone hold2 run (11:34, `runs/black-stone-hold2`) had already shown the cause of its miss: the attack loop's
+  `STICK:up:1` and `STICK:down:1` cancel, so the player stood on one spot for 600 s (frames 024-069 are the same
+  octagon with the player in the same place).
+### Black Stone walk run (20:21-20:40 PDT, `runs/black-stone-walk`): FAIL, menu time 63.8%
+
+- The square walk moved nothing: frames 024-044 show the fighter on one spot (window change 0.005-0.015).
+- The still-window rotation then sent Y/R1/B/X, which opened the magic/item panel in most frames from 059 on.
+  The hold counter credited play through those menus; the verdict's position and menu test caught it.
+- Not Playable. The attack walk design is wrong for this arena; a fix must move the player without the unlock
+  rotation. See OUTBOX NEW ISSUE. Spend $2.40 for this run.
+
+- This session: the attack genre gets a walk on each still window (`HOLD_UNSTICK["attack"]`, a square walk of 30-s
+  legs), then the Black Stone held run. Merged origin/master first (17 commits).
+
+## Resume (10-03 17:15 PDT, attempt 2 of this resume): why the last session did not finish
+
+- The 16:30 session ran NBA Live 2005 to its end (609 s held, FAIL on fps, committed `964c1a239c`) and stopped there.
+  Its brief's last instruction, the 17:1x addendum ("Halo 2 next; NBA siblings wait"), arrived after that run and was
+  not started. Nothing was in flight and no WAITING file was written, so the session ended with the Halo run undone.
+- Spend at the start of this session: about $33 of the $50 cap (the 17:1x addendum says about $17 left).
+- This session: the Halo 2 held run (golden `0a4742f1e45d`, GPL 3 is the build default; the Nova logcat will show
+  `[gpl569] mode=3`), with a moving hold: the pool's 31% static window came from a loop that stood still in one room.
+
+### Halo 2 run 1 (17:20-17:36 PDT, `runs/halo-2-hold`): gave up at the 15-min budget, 85 model calls
+
+- Intro: 31 steps of letterboxed cutscenes (START, A, B, BACK, X, Y, R1 all tried) before the Halo HUD at 5.3 min.
+- Claim failed twice: the motion-sensor HUD sat over the **Armory look test**, a tutorial that needs the right stick.
+  Probes under the left stick read control 0.000-0.021.
+- **Cause (non-performance, named and fixed):** the navigation prompt's action grammar (`pathfind.py`, the list of
+  tokens) never mentioned `RSTICK`. The parser has accepted it since 10-02, and the hold loops use it, but the model was
+  never told it exists. Its notes say so at steps 39-66 ("the action list cannot send right-stick input").
+- Fix: `92cf166279` adds `RSTICK:<dir>:<s>` to the prompt grammar. Selftest all ok.
+- The run loaded the old module and cannot pass as it stands. Re-run 2 (`runs/halo-2-hold2`) uses the fix.
+
+### Halo 2 run 2 (17:40-17:58 PDT, `runs/halo-2-hold2`): gave up at the 15-min budget, 95 model calls, claim never confirmed
+
+- The RSTICK fix worked: the model used the right stick from step 32 on and wrote "RSTICK:left changed the view" at
+  step 52. Those reads were not confirmed by the claim probe.
+- The scene is Halo 2's Armory: a sealed octagonal room with the HUD up and the camera pinned on the floor. Repeated
+  stick, right-stick, trigger, A, X, R1, B and LT inputs did not move the view.
+- **The measure is not the cause.** Probe frames `073-probe-a` and `073-probe-b` are identical (mean grey difference
+  0.0), and `073-probe-c` differs by 0.11 of 255. The game is not responding to the sticks in this room.
+- **Not settled:** whether the Armory tutorial locks the camera until a step the model has not found, or the run starts
+  too early. Halo 2's cold boot ran about 5 min of cutscenes before the HUD (steps 13-31), so a route that skips the
+  cutscenes is the lead to check, not a retry of this run.
+- **Status: blocked on a game-side input.** Halo 2 is not Playable today. Two runs and about 180 model calls (about $9
+  at the usual $0.05/call; the cost sheet is the authority) are spent on it. Do not queue a third run until a frame
+  shows the camera responding in the Armory, or a route past it exists.
+
+## Resume (10-03 16:30 PDT, attempt 1 of this resume): why the last session did not finish
+
+- The 14:55 session stopped at its $29.5 spend stop with the Nova released and no run in flight. Its 14:45 OUTBOX
+  said no NBA Live title was on the Nova. That was a stale listing: lane.local's 16:2x addendum says all four were
+  copied and verified 13:51-13:59, and `listing-nova.txt` lists them now (45410038, 45410050, 4541007A, 454100A1).
+- The NBA Live 2005 run (45410050) was the owner's priority today and was never started, so the session ended
+  before the first item of the 16:2x addendum. Its 16:28 hostops resume names the same task.
+- This session: NBA Live 2005 first (held 600 s, position test on, goal = longest quarter), then 2004, 06, 07 while
+  the budget lasts. Budget left is about $5.5 of $35.
+
+## NBA Live 2005 held run (10-03 16:29-16:47 PDT, Nova, golden none: first-run)
+
+| run | title | result | claim min | hold | model calls | cost | verdict |
+|---|---|---|---|---|---|---|---|
+| runs/nba-live-2005-hold | NBA Live 2005 (45410050) | **gameplay claimed**, 609 s of play, team loop | 6.8 | 609.7 s, play_share 0.9996, 0 still windows, travel in every frame | 43 (sonnet 43) | $2.92 | **FAIL (fps)**: median 19.97 fps, 0.0% of windows at >= 30 fps (bar 90%) |
+
+- Route: the EA logo was skipped with A; the goal string set the quarter to the longest length (the clock runs
+  11:41 -> 5:44 in the frames, so the quarter covered the hold). Four probes were refused during the claim. The
+  claimed play frame is `frames/034-gameplay.jpg`; the hold strip is `hold_strip.jpg`.
+- This is a **performance** miss by the owner's rule: the same run should not be queued again. Telemetry: the frame
+  rate sits at about 20 fps (min 17.8), the same class as Top Spin, Counter-Strike and Midnight Club 3 (10-02). The
+  cost to name is the Nova's frame rate in this title, not the route. Recorded path `pathknow/paths/45410050.json` and
+  the learned pub-4541 hint are committed. They are a guide for the sibling runs.
+- **Not run:** NBA Live 2004, 06 and 07. Today's cap is $35: spend is about $32.4 after this run (the $29.5 at
+  14:45 plus $2.92). A sibling needs about $3 and would be the same engine at the same fps, so the next lane should
+  start from the fps cause, not another route.
+
 ## Resume (10-03 12:40 PDT, attempt 7): why the last attempt did not finish
 
 - The last session ended at 11:48 after writing up Black Stone (verdict PASS, frames show no travel: not counted).
