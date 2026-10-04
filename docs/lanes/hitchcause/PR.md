@@ -1,59 +1,39 @@
-# hitchcause: the MTV hitch bursts are not IDE PIO reads; the IRQ14 wakes have another source (#433)
+# hitchcause: attempt 3 adds the IRQ14 PIC-input counters; the MTV hold is still to run (#433)
 
-State: ready
+State: draft
 
 Lane: hitchcause            Issue: #433 (0.5: 50 Playable); #819 (the tracker row)
 Base: origin/master @ 10f14d301d
-Files: docs/lanes/hitchcause/NOTES.md, docs/lanes/hitchcause/OUTBOX.md, docs/lanes/hitchcause/PR.md, docs/lanes/hitchcause/hitchwin.py, docs/lanes/hitchcause/blockread.py, docs/lanes/hitchcause/ide_wake.py, docs/lanes/hitchcause/rr_split.py, docs/lanes/hitchcause/pc_exits.py, docs/lanes/hitchcause/g_conc.py, docs/lanes/hitchcause/ide425_windows.py, docs/lanes/hitchcause/capture_mtv_ide425.sh, hw/ide/core.c
+Files: docs/lanes/hitchcause/NOTES.md, docs/lanes/hitchcause/OUTBOX.md, docs/lanes/hitchcause/PR.md, docs/lanes/hitchcause/hitchwin.py, docs/lanes/hitchcause/blockread.py, docs/lanes/hitchcause/ide_wake.py, docs/lanes/hitchcause/rr_split.py, docs/lanes/hitchcause/pc_exits.py, docs/lanes/hitchcause/g_conc.py, docs/lanes/hitchcause/ide425_windows.py, docs/lanes/hitchcause/capture_mtv_ide425.sh, hw/ide/core.c, hw/intc/i8259.c
 Prediction: none: telemetry only (no pixels move)
-Needs device: yes (done: one build, two smoke runs, one MTV hold)    Needs NDK: no
+Needs device: yes (queued: smoke 1-1791153154-lane.hitchcause-3372110 builds d4b0169ab2; then one MTV hold, pending the smoke's [pic14] lines)    Needs NDK: no
 
-Release note (none): instrumentation only; the `[ide425]` window line changes no behaviour.
+Release note (none): instrumentation only; the `[ide425]` and `[pic14]` window lines change no behaviour.
 
 ## What I found
 
-Attempt 1 said the MTV hitches sit on IDE PIO sector-read bursts. This run
-withdraws that. A 166 s MTV hold with a `[ide425]` window line in `hw/ide/core.c`
-(branch build `b559c094eb`) recorded **zero PIO sector reads and zero data-port
-words** in all 23 windows. Its one hitch of 100 ms or more (210 ms at 15:22:26)
-has 200 wakes on vector 0x3e in its span, while the IDE model raised 7
-interrupts in its 7 s window. So the wakes are not the IDE device's
-per-sector interrupts. The 330 ms hitches of the 10-04 hold did not recur in
-166 s of play, so their cause is not separable yet.
+Attempt 1 said the MTV hitches sit on IDE PIO sector-read bursts. Attempt 2
+withdrew that: a 166 s MTV hold recorded zero PIO sector reads and zero
+data-port words. Its one hitch (210 ms) had 200 vector-0x3e wakes against 7
+IDE raises. Attempt 3 (NOTES section 11) adds the counter that can name the
+source of those raises: a `[pic14]` line at the slave PIC input (commit
+`d4b0169ab2`). It is telemetry only.
 
-The hold ended early: pathfind's play went to the main menu for 13 steps and
-stopped at 166 s. That is the only held run this lane made; the brief's second
-hold is not queued (see the next step).
-
-## Table (full in NOTES.md section 10)
-
-| run | what | result |
-|---|---|---|
-| 1-1791150826 | smoke, 805cb8054f, per-command line, 120 s | no `[ide425]` line: no PIO command began |
-| 1-1791151242 | smoke, b559c094eb, window line, 150 s | 24 windows; boot bursts of 552 IDE raises per 2 s with no PIO |
-| hold (capture_mtv_ide425.sh) | pathfind 5454000B, `--state any` | FAIL: 166 s of play; 23 windows; one 210 ms hitch with 200 vector-0x3e wakes and 7 IDE raises |
+Attempt 2 did not finish because its hold stopped at 166 s, and the PIC
+counters were not yet granted. Attempt 3 does not claim the 330 ms cause.
 
 ## Checks run
 
-- The build is the dispatcher's `b559c094eb-perflog.apk`, checked to contain
-  the `[ide425] win_us` string; smoke 2 and the hold ran that APK. Smoke 1 ran
-  the earlier per-command build `805cb8054f-perflog.apk`.
-- `ide425_windows.py` on the hold's logcat: 23 windows, 160 pace lines.
-- No selftest (no harness file changed). No CI run (offline; GitHub suspended).
-  No emulator behaviour changed; the only code change is the logging in
-  `hw/ide/core.c` (one IRQ-path counter, the word-time wrapper, one write
-  counter).
+- `d4b0169ab2` is pushed; the smoke was queued on that sha.
+- No selftest (the only code change is `hw/intc/i8259.c` telemetry; no
+  harness file changed). No CI run (offline; GitHub suspended).
+- Desktop build: not run. AGENTS.md's desktop build needs `libcurl`, not
+  installed on this host. The Android build is the dispatcher's, on the smoke.
 
 ## Next
 
-1. **A grant for `hw/intc/i8259.c`**: count the raises on IRQ14 at the PIC
-   input, tagged by caller, per 2 s next to `[rr425w]`. P 0.7 that it names the
-   source (the 200 wakes vs 7 raises says the source is not the IDE model).
-   Win: the 330 ms class, if that source is what the hitch waits on (14 hitches
-   in 689 s on 10-04). Cost: one build (with the `hw/ide` counters of
-   NOTES section 10, candidate B, which is already in this lane's grant), one
-   2-minute smoke.
-2. **The owner's decision on a second MTV hold** of 700 s, on that build. P 0.5
-   that it reproduces the class. Only way to test item 1 against the hitches.
-3. Withdrawn: read-ahead of PIO sectors (P 0.05 with no PIO reads seen) and
-   batching the PIO data port (P 0.02).
+1. The smoke's `[pic14]` lines on the build (the window prints, the counts
+   are non-zero in the hitch windows).
+2. One 700 s MTV hold on the same build, via `capture_mtv_ide425.sh` with
+   `REF=d4b0169ab2`, if the smoke shows the lines. Then compare `[pic14] edge`
+   with `[ide425] irq` in the hitch windows (NOTES section 11 has the decision).

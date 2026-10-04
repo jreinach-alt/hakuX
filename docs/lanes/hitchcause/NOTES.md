@@ -320,3 +320,63 @@ way to test A's result against the hitch class.
 - `w` times the data-port handler only; the TCG MMIO dispatch in front of it is
   not timed, as the line says.
 - Vector 0x3e = IRQ14 is still an inference, and this section lowers its weight.
+
+## 11. Attempt 3: why attempt 2 did not finish, and what this attempt adds
+
+**Why attempt 2 did not finish.** It did the build and the one MTV hold it
+was granted, but the hold stopped at 166 s of play (section 10), so the
+330 ms class never recurred and section 10 could not place any of the five
+330 ms hitches. It also named the next step, a count of what raises IRQ14
+at the PIC input, without the grant for `hw/intc/i8259.c` that makes that
+count possible. The grant reached the board afterwards (`cfefd28651`). Its
+PR.md stayed `State: ready` with a Next that depended on that grant, so
+a fold could have landed a claim whose own next step was still open. This
+attempt picks up that step and does not change the fold state until it is
+closed.
+
+**What this attempt adds.** A `[pic14]` window line in `hw/intc/i8259.c`
+(commit `d4b0169ab2`, telemetry only): per 2 s, the slave PIC's raises of
+pin 14 (`raise`), the raises that find `last_irr` clear (`edge`), the
+deassertions (`lower`), the CPU's acks (`ack`) and the EOIs (`eoi`), with
+the slave's ISR and IMR at the window's close. The line prints on any PIC
+event after the 2 s elapse, so an idle window is not silent.
+
+**The test.** `ide_bus_set_irq` in `hw/ide/core.c` raises the line through
+`qemu_irq_raise`, and the `[ide425] irq=` field counts those raises. So the
+two lines in the same window are comparable:
+
+- If `[pic14] edge` tracks `[ide425] irq` in the hitch windows, the IDE model
+  is the source, and the 200 vector-0x3e wakes of section 10 were a
+  mis-keyed count, not a second device.
+- If `[pic14] edge` is far above `[ide425] irq` (about 200 against 7) in the
+  hitch windows, something other than `ide_bus_set_irq` asserts pin 14, and
+  the next step is to tag its caller (a wrapper at the `qemu_irq` source,
+  outside this lane's grant unless the board says otherwise).
+- If `[pic14] ack` is near zero while `raise` is high, the line is asserted
+  but masked or not serviced; `isr`/`imr` at the close says which.
+
+**Priors, scored.** Each is the probability the test picks it, with its
+evidence:
+
+| candidate | P | evidence | win if it is the source |
+|---|---:|---|---|
+| the non-IDE source asserts pin 14 (outside `ide_bus_set_irq`) | 0.6 | section 10: 200 wakes on vector 0x3e against 7 IDE raises at the one hitch | the 330 ms class (14 hitches in 689 s on MTV), if the vCPU waits on that source |
+| the IDE model raises, and section 10's 200-wake count was keyed wrongly | 0.3 | the vector key is an inference (section 9); the window line was added after the one hitch | none; it closes the IDE question |
+| the line is masked or unserviced (`ack` low, `imr` set) | 0.1 | no measurement yet | depends on what it blocks |
+
+**Decision rule, fixed before the run.** Queue ONE 700 s MTV hold only if the
+smoke's `[pic14]` lines print on the build. The hold's result is read
+against the table above; the 330 ms class recurring in the hold is what
+makes the windows usable. If the class does not recur in 700 s, park with the
+table and report it on #433; the brief allows no third hold.
+
+**Build and run.** Commit `d4b0169ab2` (the `[pic14]` counters, pushed).
+Smoke `1-1791153154-lane.hitchcause-3372110`: 150 s MTV, `--perflog`,
+`--ref d4b0169ab2`. The smoke builds the APK (the dispatcher builds on a
+claim); the hold uses `builds/d4b0169ab2-perflog.apk`.
+
+**Checks.** The change is inside `hw/intc/i8259.c`, and every counter update
+is a plain increment with no change to the IRQ, IRR, ISR or EOI logic.
+The Android build is the only compile check the dispatcher gives. A desktop
+build is not run here: AGENTS.md's desktop build needs `libcurl`, which is
+not installed on this host, so this lane cannot claim a desktop build.
