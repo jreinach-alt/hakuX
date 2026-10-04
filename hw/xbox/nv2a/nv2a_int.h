@@ -144,31 +144,15 @@ typedef struct NV2AState {
          * spin window to every submission the guest makes.
          */
         QemuCond fifo_drained_cond;
-        /* Set without pfifo.lock by a posted DMA_PUT store (#507), so every
-         * access is atomic; see pfifo_park() in pfifo.c. */
         bool fifo_kick;
         bool halt;
-        /*
-         * The PFIFO thread is in (or about to enter) its wait on `fifo_cond`,
-         * where it does not hold pfifo.lock. A posted DMA_PUT store reads
-         * this to decide whether it must take the lock to wake it.
-         */
-        bool parked;
-        /*
-         * When the oldest posted DMA_PUT store not yet seen by the PFIFO
-         * thread was made (nv2a_clock_ns), or 0. Read and cleared by the
-         * PFIFO thread under pfifo.lock, which then records the submission
-         * for the `fifoskew` line as the locked store would have.
-         */
-        int64_t posted_ts;
         /*
          * The last DMA_PUT the guest was seen to publish. pfifo_kick() is
          * called from several places on several threads; this is how the one
          * call that is a SUBMISSION -- the guest advancing DMA_PUT -- is told
          * apart from a kick that merely re-wakes the thread. Only the guest
-         * CPU writes DMA_PUT. This is read and written only with pfifo.lock
-         * held: by the guest's locked store, and by the PFIFO thread when it
-         * takes up a posted one.
+         * CPU writes DMA_PUT, and it does so with pfifo.lock held, so this
+         * needs no atomics of its own.
          */
         uint32_t skew_last_put;
     } pfifo;
@@ -265,8 +249,6 @@ DEFINE_PROTO(pmc)
 void pmc_reset(NV2AState *d);
 DEFINE_PROTO(pbus)
 DEFINE_PROTO(pfifo)
-bool pfifo_dma_put_may_post(NV2AState *d, unsigned int channel_id);
-void pfifo_post_dma_put(NV2AState *d, uint32_t val);
 DEFINE_PROTO(prma)
 DEFINE_PROTO(pvideo)
 DEFINE_PROTO(ptimer)
