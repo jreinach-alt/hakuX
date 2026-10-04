@@ -419,3 +419,21 @@ of record for flicker.
   `SDL_main` + N + ~1.4 s.
 - A whole-car dropout frame in the dump (all car keys absent for 1-6 frames) is a frame the game did not
   present (capture 6, f92), not the blink.
+
+## 17. Attempt 5 (addendum 10-04 16:00 PDT): does a plain master build blink?
+
+Why attempt 4 stopped: it finished the brief as written. Section 15's result (no instrumented run blinked, so the
+dump cannot identify the cause) went into PR.md as ready, and the next capture (video of a plain run) was outside
+the brief. lane.local's addendum now allows it: one supervised flicker801-style check of a plain master build.
+
+Build: master `63f4827758` (no `hw/` or `android/` change from `10f14d301d`, captures 4-6), **not perflog**, the
+dispatcher's build (`builds/63f4827758.apk`), the same flavour as flicker801's blinking app. The dispatcher built
+and installed it with a 60 s boot on the Nova, `1791154233-lane.accuracy804-3802159` (no route, no env), so the
+held session runs the installed app and installs nothing by hand.
+
+Session: `session804e.sh` takes the Nova (`hold.sh take` + `wait-idle 900`, release on every exit), checks the
+installed APK's sha256 against the cached APK and that `env_vars` is empty (no frame dump), composes the titles
+disk as the dispatcher does (`titlestate.prepare`), launches as pathfind does, plays `rallisport-804e.route`
+(804d's path with no screencap in the race; it ends at race clock ~4) and takes one 6 s screenrecord burst
+(`burst_capture.py`, scored by `flicker_score.py`) over race clock ~4.5-10.5, which holds the close pass
+(7.3-8.6). A second run only if the first scores clean (p90 <= 5). Frames are then read by eye.
