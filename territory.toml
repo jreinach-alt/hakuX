@@ -1998,3 +1998,8 @@ issues = ["804"]
 files = ["docs/lanes/accuracy804/**", "docs/testing/predictions/accuracy804-*.json", "hw/xbox/nv2a/pgraph/vk/reports.c"]
 note = "GRANTED 10:5x PDT 10-04 (hostops jam duty, lane.local ask 10:55): #804 RalliSport alternate-frame car draw. reports.c is in no row on origin/board. PR #535 (lane/cloud-527) also edits reports.c in pgraph_vk_process_pending_reports(); the accuracy804 hunk is in pgraph_vk_process_pending_reports_internal(), no overlap. If #535 folds first the lane rebases."
 
+
+[lane.vcpu60]
+issues = ["507"]
+files = ["docs/lanes/vcpu60/**"]
+note = "GRANTED 11:50 PDT 10-04 (hostops jam duty, lane.local ask 11:50): planning lane, docs only (#507 guest-CPU-bound titles plan). No code files. The lane's brief was amended to forbid GitHub fetches after a GitHub contact (ghwatch)."
