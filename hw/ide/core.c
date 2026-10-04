@@ -43,6 +43,14 @@
 #include "system/runstate.h"
 #include "ide-internal.h"
 #include "trace.h"
+#ifdef __ANDROID__
+#include <android/log.h>
+#define IDE425_LOG(...) \
+    __android_log_print(ANDROID_LOG_WARN, "hakuX", __VA_ARGS__)
+#else
+#define IDE425_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
 
 /* These values were based on a Seagate ST3500418AS but have been modified
    to make more sense in QEMU */
@@ -767,6 +775,56 @@ void ide_cancel_dma_sync(IDEState *s)
     }
 }
 
+/*
+ * [ide425] (tag hakuX): one line per PIO read command, when it ends. The
+ * command is a run of sectors, read one host request at a time, so the next
+ * sector waits for the last one. Fields, all per command:
+ *   sec, dur_us     sectors submitted and the wall time from the command
+ *                   write to the last sector's end (one channel assumed)
+ *   lat_n, lat_us_sum, lat_us_max
+ *                   host read latency per sector: ide_buffered_readv submit
+ *                   to ide_sector_read_cb
+ *   w, w_us_sum, w_us_max
+ *                   data-port word reads, and the time in ide_data_readw per
+ *                   word (the TCG MMIO dispatch in front of it is not in it)
+ *   rest_us         dur_us - lat_us_sum - w_us_sum: guest work between words
+ *                   and the MMIO dispatch
+ * Times are QEMU_CLOCK_HOST (ns) internally. A command aborted by an error or
+ * a reset is ended by the error path, or left open and replaced by the next
+ * command's begin.
+ */
+static struct {
+    bool open;
+    int64_t t0, t_submit;
+    uint32_t sectors, lat_n, words;
+    int64_t lat_sum, lat_max, w_sum, w_max;
+} ide425;
+
+static void ide425_begin(void)
+{
+    memset(&ide425, 0, sizeof(ide425));
+    ide425.open = true;
+    ide425.t0 = qemu_clock_get_ns(QEMU_CLOCK_HOST);
+}
+
+static void ide425_end(void)
+{
+    int64_t dur, rest;
+
+    if (!ide425.open) {
+        return;
+    }
+    ide425.open = false;
+    dur = qemu_clock_get_ns(QEMU_CLOCK_HOST) - ide425.t0;
+    rest = dur - ide425.lat_sum - ide425.w_sum;
+    IDE425_LOG("[ide425] sec=%u dur_us=%" PRId64 " lat_n=%u lat_us_sum=%"
+               PRId64 " lat_us_max=%" PRId64 " w=%u w_us_sum=%" PRId64
+               " w_us_max=%" PRId64 " rest_us=%" PRId64,
+               ide425.sectors, dur / 1000, ide425.lat_n, ide425.lat_sum / 1000,
+               ide425.lat_max / 1000, ide425.words, ide425.w_sum / 1000,
+               ide425.w_max / 1000, rest / 1000);
+}
+
 static void ide_sector_read(IDEState *s);
 
 static void ide_sector_read_cb(void *opaque, int ret)
@@ -776,6 +834,14 @@ static void ide_sector_read_cb(void *opaque, int ret)
 
     s->pio_aiocb = NULL;
     s->status &= ~BUSY_STAT;
+
+    if (ide425.open) {
+        int64_t lat = qemu_clock_get_ns(QEMU_CLOCK_HOST) - ide425.t_submit;
+
+        ide425.lat_n++;
+        ide425.lat_sum += lat;
+        ide425.lat_max = MAX(ide425.lat_max, lat);
+    }
 
     if (ret != 0) {
         if (ide_handle_rw_error(s, -ret, IDE_RETRY_PIO |
@@ -810,6 +876,7 @@ static void ide_sector_read(IDEState *s)
 
     if (n == 0) {
         ide_transfer_stop(s);
+        ide425_end();
         return;
     }
 
@@ -824,6 +891,7 @@ static void ide_sector_read(IDEState *s)
     if (!ide_sect_range_ok(s, sector_num, n)) {
         ide_rw_error(s);
         block_acct_invalid(blk_get_stats(s->blk), BLOCK_ACCT_READ);
+        ide425_end();
         return;
     }
 
@@ -831,6 +899,10 @@ static void ide_sector_read(IDEState *s)
 
     block_acct_start(blk_get_stats(s->blk), &s->acct,
                      n * BDRV_SECTOR_SIZE, BLOCK_ACCT_READ);
+    if (ide425.open) {
+        ide425.sectors += n;
+        ide425.t_submit = qemu_clock_get_ns(QEMU_CLOCK_HOST);
+    }
     s->pio_aiocb = ide_buffered_readv(s, sector_num, &s->qiov, n,
                                       ide_sector_read_cb, s);
 }
@@ -1510,6 +1582,7 @@ static bool cmd_read_multiple(IDEState *s, uint8_t cmd)
 
     ide_cmd_lba48_transform(s, lba48);
     s->req_nb_sectors = s->mult_sectors;
+    ide425_begin();
     ide_sector_read(s);
     return false;
 }
@@ -1554,6 +1627,7 @@ static bool cmd_read_pio(IDEState *s, uint8_t cmd)
 
     ide_cmd_lba48_transform(s, lba48);
     s->req_nb_sectors = 1;
+    ide425_begin();
     ide_sector_read(s);
 
     return false;
@@ -2448,7 +2522,7 @@ void ide_data_writew(void *opaque, uint32_t addr, uint32_t val)
     }
 }
 
-uint32_t ide_data_readw(void *opaque, uint32_t addr)
+static uint32_t ide_data_readw_body(void *opaque, uint32_t addr)
 {
     IDEBus *bus = opaque;
     IDEState *s = ide_bus_active_if(bus);
@@ -2483,6 +2557,24 @@ uint32_t ide_data_readw(void *opaque, uint32_t addr)
     }
 
     trace_ide_data_readw(addr, ret, bus, s);
+    return ret;
+}
+
+uint32_t ide_data_readw(void *opaque, uint32_t addr)
+{
+    int64_t t0;
+    uint32_t ret;
+    int64_t w;
+
+    if (!ide425.open) {
+        return ide_data_readw_body(opaque, addr);
+    }
+    t0 = qemu_clock_get_ns(QEMU_CLOCK_HOST);
+    ret = ide_data_readw_body(opaque, addr);
+    w = qemu_clock_get_ns(QEMU_CLOCK_HOST) - t0;
+    ide425.words++;
+    ide425.w_sum += w;
+    ide425.w_max = MAX(ide425.w_max, w);
     return ret;
 }
 

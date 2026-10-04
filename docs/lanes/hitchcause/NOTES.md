@@ -6,6 +6,21 @@ Brief: the offline part of the 10-04 MTV hitch brief. Evidence: the 689 s hold
 (`dispatch/results/0-1791086203-lanelocal-3321881`) logs. No device run was
 made; see section 5 for why.
 
+## 0. Attempt 2: why attempt 1 did not finish, and what this attempt adds
+
+Attempt 1 ended at section 5. Its one Nova capture needed a perflog line in
+`hw/ide/`, which was outside its Files line, so it wrote a grant request, set
+the PR ready, and stopped with the device step undone. Nothing was measured
+that section 3 could not already see. The grant arrived in the hostops
+addendum of 2026-10-04 14:50 PDT (board row `lane.hitchcause`: this directory,
+`hw/ide/core.c`, `hw/ide/mmio.c`).
+
+Attempt 2 does what the addendum asks, in order: a perflog line in the IDE PIO
+read path (`[ide425]`, documented at `ide425` in `hw/ide/core.c`; telemetry
+only, no behaviour change), one build, one MTV hold of about 700 s on the
+Nova, and the 2-vs-3 diagnosis from that run's perflog against the candidates
+in section 6. Section 10 is that diagnosis.
+
 Scripts (stdlib python, all in this directory):
 
 - `hitchwin.py`: aligns every perflog tag to each `hakuX-pace` window (the

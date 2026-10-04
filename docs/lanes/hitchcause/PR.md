@@ -1,14 +1,14 @@
 # hitchcause: the unexplained 330 ms hitches in MTV sit on IDE sector-read bursts; cause not yet separated
 
-State: ready
+State: draft
 
 Lane: hitchcause            Issue: #433 (0.5: 50 Playable)
 Base: origin/master @ 10f14d301d
-Files: docs/lanes/hitchcause/NOTES.md, docs/lanes/hitchcause/OUTBOX.md, docs/lanes/hitchcause/PR.md, docs/lanes/hitchcause/hitchwin.py, docs/lanes/hitchcause/blockread.py, docs/lanes/hitchcause/ide_wake.py, docs/lanes/hitchcause/rr_split.py, docs/lanes/hitchcause/pc_exits.py, docs/lanes/hitchcause/g_conc.py
-Prediction: none: analysis-only
-Needs device: no    Needs NDK: no
+Files: docs/lanes/hitchcause/NOTES.md, docs/lanes/hitchcause/OUTBOX.md, docs/lanes/hitchcause/PR.md, docs/lanes/hitchcause/hitchwin.py, docs/lanes/hitchcause/blockread.py, docs/lanes/hitchcause/ide_wake.py, docs/lanes/hitchcause/rr_split.py, docs/lanes/hitchcause/pc_exits.py, docs/lanes/hitchcause/g_conc.py, hw/ide/core.c
+Prediction: none: telemetry only (no pixels move)
+Needs device: yes    Needs NDK: no
 
-Release note (none): analysis only; no emulator code changed.
+Release note (none): instrumentation only; the `[ide425]` perflog line changes no behaviour.
 
 ## What I found
 
