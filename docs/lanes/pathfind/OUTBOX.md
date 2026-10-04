@@ -416,3 +416,10 @@ Spend so far today: about $27 of $60.
 - One probe did respond: HOLD:A:3 at 170 s (0.017 idle, 0.814 under input), the first input from the new probe ladder after two RT probes. The confirm model refused it on a results screen. A is probably the accelerator here, as in Road Rage; that is unverified.
 - Evidence: docs/lanes/pathfind/runs/screen-mashed/claim/ (strip.jpg, steps.jsonl, calls.jsonl).
 Spend so far today: about $33 of $60.
+
+[lane.pathfind] Amped: Freestyle Snowboarding (4D530005) FAIL: fps_ok 0.35 over 305 s of gameplay, median 23, aborted at 5:04 (the 3-min check read median 27 and 45% on the bar, so the run went on; the 5-min check read median 23 and 30%). Perflog run: docs/lanes/pathfind/runs/screen-amped/perf (180 s, fps_ok 0.086, median 21). Profile golden a7d274372a00, path docs/testing/titles/pathknow/paths/4D530005.json
+- Verdict (measurement, partial): `VERDICT Amped: Freestyle Snowboarding ? FAIL(duration: 305 s of gameplay < 600 s confirmation) gameplay=304.5s fps_ok=0.3504 crash=False hang=False audio_short=0.0 hitches=3/0.736pm worst_ms=588.5 static_frac=0.0013 play_share=0.7863`
+- Verdict (perflog run): `VERDICT Amped: Freestyle Snowboarding ? FAIL(duration: 188 s of gameplay < 600 s confirmation) gameplay=187.6s fps_ok=0.0861 crash=False hang=False hitches=0/0.0pm worst_ms=101.3 play_share=0.9992`
+- Telemetry (docs/lanes/near30/decompose.py on the perflog run, 93 two-second rows): 20.4 fps, a 49.0 ms frame. Guest busy (vCPU running guest code) is 31.6 ms, and guest idle is 16.4 ms, 12.9 ms of it timer-woken. Renderer idle (Ri) is 12.3 ms, so the renderer waits on the guest. The slowest 10% of rows: busy 35.1 ms, 18.6 fps. Reading: the guest's CPU work is about 32 ms per frame, just over the 33.3 ms budget for 30 fps, and the frame then waits for the next 60 Hz slot (50 ms = 20 fps). The vCPU is the cost, not the GPU. The hakuX-phase columns (ph_Fin, render) were not in this logcat, so the GPU side is shown only by Ri.
+- Claim: first-run, 3.75 min, 24 Sonnet calls. Strip: docs/lanes/pathfind/runs/screen-amped/hold/hold_strip.jpg. No native target in targets.toml.
+Spend so far today: about $39 of $60.

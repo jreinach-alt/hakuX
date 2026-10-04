@@ -5,3 +5,4 @@
 - Blinx: The Time Sweeper (4D530013, nova, pathfind 2026-10-02): gameplay in 4.3 min via black START A -> submenu B -> main_menu UP A -> submenu A -> submenu UP A -> cutscene START -> cutscene A
 - Grabbed by the Ghoulies (4D530053, nova, pathfind 2026-10-02): gameplay in 2.4 min via title_screen START -> title_screen A -> title_screen START A -> submenu A -> cutscene START A
 - RalliSport Challenge (4D53000F, nova, pathfind 2026-10-04): gameplay in 2.0 min via publisher_logo A -> title_screen A -> submenu A -> main_menu RIGHT A -> submenu A -> main_menu A -> submenu A
+- Amped: Freestyle Snowboarding (4D530005, nova, pathfind 2026-10-04): gameplay in 4.8 min via publisher_logo A -> title_screen START -> main_menu A -> submenu A -> name_entry A -> save_load_prompt LEFT A -> submenu DOWN RIGHT RIGHT RIGHT -> submenu UP RIGHT -> submenu A -> submenu DOWN DOWN RIGHT -> submenu DOWN DOWN RIGHT A -> submenu A
