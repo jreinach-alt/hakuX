@@ -120,7 +120,11 @@ HOLD_REPEAT_STATES = ("cutscene", "game_over")
 HOLD_STILL = 0.03
 # a still window in the drive genre: a car against a wall (Forza, 10-03). Reverse while turning, then drive out the
 # other way, alternating sides per still window, before the generic unlock rotation.
-HOLD_UNSTICK = {"drive": (["LT+left:3", "RT+right:3"], ["LT+right:3", "RT+left:3"])}
+HOLD_UNSTICK = {
+    "drive": (["LT+left:3", "RT+right:3"], ["LT+right:3", "RT+left:3"]),
+    # a gun game that stands still at a wall (Halo 2, 10-03: 31% static in one room): strafe out, firing, the other way
+    "shooter": (["STICK:left:2", "RT:1"], ["STICK:right:2", "RT:1"]),
+}
 # play that drops into a menu right after a loop cycle: a loop button opened it (ToeJam & Earl III, 10-03: the
 # "Presents" inventory in 13 of 19 kept frames). Each such drop sheds the next of these from the loop.
 HOLD_SHED = ("B", "X", "Y", "BACK", "R1", "L1")
@@ -128,6 +132,9 @@ HOLD_SHED_STATES = ("menu", "pause", "other")
 HOLD_GENRES = {
     "drive": ["RT:2", "RT+left:0.8", "RT+right:0.8"],
     "attack": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"],
+    # first- and third-person gun play: walk through the level, fire, sweep the look, so the player moves on
+    # (Halo 2, 10-03: the attack loop stood at one wall). Fire is the right trigger; a strafe pass changes the spot.
+    "shooter": ["STICK:up:1", "RT:1", "RSTICK:right:0.6", "STICK:left:1", "RT:1", "RSTICK:left:0.6", "STICK:down:0.6", "A"],
     "rally": ["A", "STICK:left:0.6", "A", "STICK:right:0.6"],
     "onrails": [],                   # the scene moves on its own: send nothing, watch it
     # basketball, football, hockey, soccer: run with the ball (RT is turbo in the EA and 2K5 families), pass,
@@ -1284,8 +1291,9 @@ class Agent:
         ans = self.model.ask(FAST, (
             f"Screenshot of {self.name}, an Xbox game, in gameplay. The 'FPS: NN' text at the top-left is the "
             "emulator's overlay, not the game's HUD. What kind of play is this? Answer JSON only: "
-            '{"genre": "drive|attack|rally|team|onrails|other", "why": "<one line>"}. drive: a car, bike, boat '
-            "or plane moving through a world; attack: a character fighting or shooting; rally: a ball or "
+            '{"genre": "drive|attack|shooter|rally|team|onrails|other", "why": "<one line>"}. drive: a car, bike, '
+            "boat or plane moving through a world; attack: a character fighting in melee or with magic; shooter: "
+            "a gun game, first or third person, walking through a level and firing a weapon; rally: a ball or "
             "shuttle played back and forth over a net (tennis, volleyball); team: a team sport on a court, "
             "field or rink (basketball, football, hockey, soccer); onrails: the scene moves on its own and the "
             "player only aims; other: anything else."), "genre", [jpg]) or {}

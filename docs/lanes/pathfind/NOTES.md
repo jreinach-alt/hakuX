@@ -1,5 +1,14 @@
 # lane.pathfind -- NOTES
 
+## Resume (10-03 17:15 PDT, attempt 2 of this resume): why the last session did not finish
+
+- The 16:30 session ran NBA Live 2005 to its end (609 s held, FAIL on fps, committed `964c1a239c`) and stopped there.
+  Its brief's last instruction, the 17:1x addendum ("Halo 2 next; NBA siblings wait"), arrived after that run and was
+  not started. Nothing was in flight and no WAITING file was written, so the session ended with the Halo run undone.
+- Spend at the start of this session: about $33 of the $50 cap (the 17:1x addendum says about $17 left).
+- This session: the Halo 2 held run (golden `0a4742f1e45d`, GPL 3 is the build default; the Nova logcat will show
+  `[gpl569] mode=3`), with a moving hold: the pool's 31% static window came from a loop that stood still in one room.
+
 ## Resume (10-03 16:30 PDT, attempt 1 of this resume): why the last session did not finish
 
 - The 14:55 session stopped at its $29.5 spend stop with the Nova released and no run in flight. Its 14:45 OUTBOX
