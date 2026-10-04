@@ -20,6 +20,21 @@
 - Fix: `92cf166279` adds `RSTICK:<dir>:<s>` to the prompt grammar. Selftest all ok.
 - The run loaded the old module and cannot pass as it stands. Re-run 2 (`runs/halo-2-hold2`) uses the fix.
 
+### Halo 2 run 2 (17:40-17:58 PDT, `runs/halo-2-hold2`): gave up at the 15-min budget, 95 model calls, claim never confirmed
+
+- The RSTICK fix worked: the model used the right stick from step 32 on and wrote "RSTICK:left changed the view" at
+  step 52. Those reads were not confirmed by the claim probe.
+- The scene is Halo 2's Armory: a sealed octagonal room with the HUD up and the camera pinned on the floor. Repeated
+  stick, right-stick, trigger, A, X, R1, B and LT inputs did not move the view.
+- **The measure is not the cause.** Probe frames `073-probe-a` and `073-probe-b` are identical (mean grey difference
+  0.0), and `073-probe-c` differs by 0.11 of 255. The game is not responding to the sticks in this room.
+- **Not settled:** whether the Armory tutorial locks the camera until a step the model has not found, or the run starts
+  too early. Halo 2's cold boot ran about 5 min of cutscenes before the HUD (steps 13-31), so a route that skips the
+  cutscenes is the lead to check, not a retry of this run.
+- **Status: blocked on a game-side input.** Halo 2 is not Playable today. Two runs and about 180 model calls (about $9
+  at the usual $0.05/call; the cost sheet is the authority) are spent on it. Do not queue a third run until a frame
+  shows the camera responding in the Armory, or a route past it exists.
+
 ## Resume (10-03 16:30 PDT, attempt 1 of this resume): why the last session did not finish
 
 - The 14:55 session stopped at its $29.5 spend stop with the Nova released and no run in flight. Its 14:45 OUTBOX

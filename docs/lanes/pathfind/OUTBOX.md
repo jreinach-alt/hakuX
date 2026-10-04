@@ -297,3 +297,14 @@ Evidence: runs/nba-live-2005-hold/verdict.json (fps_window_median 19.97, fps_ok_
 **Not run today: NBA Live 2004 (45410038), 06 (4541007A), 07 (454100A1).** Spend is about $32.4 of the $35 cap (the $29.5 at 14:45 plus this run's $2.92). A sibling costs about $3, so it would exceed the cap. The same engine should hit the same frame-rate wall. Next run, when the cap lifts: a sibling only after the fps cause is named. The recorded path is committed (pathknow/paths/45410050.json and the learned pub-4541 hint), so a sibling can replay the menu part.
 
 Pool status: no pool row changed. NBA Live was not on the pool file.
+
+## #433 -- 2026-10-03 17:58 PDT
+
+**Halo 2 (4D530064), Nova, two held runs: neither confirmed gameplay. Blocked, not Playable.**
+
+- Run 1 (`runs/halo-2-hold`): gave up at the 15-min budget, 85 calls. Cause found in the prompt: the navigation action list did not name `RSTICK`, so the model could not steer the Armory look test. Fixed in `92cf166279`.
+- Run 2 (`runs/halo-2-hold2`, with the fix): gave up at the 15-min budget, 95 calls, claim never confirmed. The model used the right stick from step 32 on. The camera stayed pinned on the floor of a sealed octagonal room (the Armory), and the probe frames are identical under input (mean grey difference 0.0 between probes a and b), so the game is not responding in that room. The change measure is not the cause.
+- Unsettled: whether the Armory tutorial locks the camera until a step the model has not found. The cold boot spent about 5 min in cutscenes before the HUD. A route past the cutscenes and the Armory is the next thing to check.
+- Spend: about 180 model calls across both runs (about $9 at the usual rate; the cost sheet is the authority).
+- Not queuing a third run until a frame shows the camera responding in the Armory, or a route exists past it.
+- Halo 2 stays off the Playable list. The Halo pool row is not released.
