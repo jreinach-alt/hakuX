@@ -21,6 +21,20 @@ still open and the `blocked:after-0.5` label still on #439; master (110
 commits ahead, #396 folded) merges clean against this branch, so the merge is
 left to the arm step, where it has to precede registration anyway.
 
+Attempt 3 did not finish for the same reason: it ended parked, by policy,
+with nothing registered. Nothing failed. On 2026-10-04 the owner lifted the
+park (brief addendum 3): the green is on a Playable title's pre-game screens
+(Spikeout) and also on Star Wars III (#719). Attempt 4 merged origin/master
+(1964 commits; one conflict in `pgraph_vk_prerecord_display_download`, where
+master removed the early `display_predownload_pending` return; resolved by
+keeping the `wbc` counter call first and master's body unchanged:
+cf328d86f7). Master's new deferred-download batch completes through
+`pgraph_vk_complete_staged_downloads()`, which the probe already covers. No
+other copy into VRAM exists in `vk/`. Attempt 4 re-ran the judge's fixtures
+(same four verdicts), registered
+`docs/testing/predictions/fmv303c-wb-probe.json` on cf328d86f7 (86f8cace9d),
+and queued both Thor runs.
+
 ## What the branch carries
 
 1. `hw/xbox/nv2a/pgraph/vk/surface.c`, probe hunk only (b86f91641b), gated on
@@ -62,7 +76,13 @@ left to the arm step, where it has to precede registration anyway.
 
 | run id | apk_sha | lit tinted | wbc n | in-region | verdict |
 |---|---|---|---|---|---|
-| (not run: parked under the 0.5 policy) | | | | | |
+| 1791142591-lane.fmv303c-697274 (L1, queued 2026-10-04) | | | | | |
+| 1791142595-lane.fmv303c-698913 (L2, queued 2026-10-04) | | | | | |
+
+Both runs: ref cf328d86f7, Thor (hard pin), Spikeout, 150 s, frames every 2 s,
+`HAKUX_FMV303_PROBE=1`, hands-off. Prediction: EXONERATED, P about 0.65 (a
+write-back lands whole surfaces, all four bytes; the green is one zeroed
+chroma component).
 
 ## Next, after 0.5 ships
 
