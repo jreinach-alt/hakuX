@@ -166,3 +166,24 @@ on the wall until the patch lands.
   three samples to say anything.
 - Do not assume the stored verdict is the verdict. `verdict.json` can be
   withdrawn; replay with `judge()` on the stored dir before quoting a result.
+
+## Attempt 2: why attempt 1 did not finish
+
+Attempt 1 finished items 1 to 4 on this branch (commits `fa0ce5ab44`,
+`de4b991a6c`) but stopped before writing `docs/lanes/failgate/PR.md`. With no
+PR.md, `foldqueue` never tried the branch, so the lane looked idle. Item 5 was
+deferred for territory: `status_html.py` and `64-status-html.sh` were not
+granted, so its diff is parked in `item5-wall.diff`.
+
+Attempt 2 wrote PR.md (`State: ready`, Prediction none) and checked the two
+fragments it touched. Results on this branch, `SELFTEST_ONLY` set to
+`89-title-verdict.sh 96-failgate.sh`:
+
+| Fragment | Result |
+|---|---|
+| 89-title-verdict.sh | all fixture and mutant checks ok (117 s) |
+| 96-failgate.sh | 12 of 12 checks ok (2 s) |
+| total | 126 passed, 0 failed |
+
+Item 5 is still not in this PR. The 8 unmeasured passes in the table above
+stay counted Playable on the wall until a follow-up applies the diff.
