@@ -67,7 +67,7 @@ def read(d):
         print('   per s: ' + '  '.join(f'{k}={rates[k]:.1f}' for k in keys))
         last = fm[-1]
         print('   last: ' + '  '.join(f'{k}={last.get(k)}' for k in
-                                      ('on', 'mapped', 'listed', 'sites', 'patched', 'vmas')))
+                                      ('on', 'mapped', 'listed', 'capn', 'sites', 'patched', 'vmas')))
         vm = [int(f['vmas']) for f in fm if f.get('vmas', '0') != '0']
         if vm:
             print(f'   vmas: min {min(vm)} max {max(vm)} over {len(vm)} reads')

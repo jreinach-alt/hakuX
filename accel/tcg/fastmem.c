@@ -41,7 +41,7 @@
 #define FM_SPAN   ((uintptr_t)1 << 32)
 #define FM_GUARD  ((uintptr_t)64 << 10)
 #define FM_PAGES  (1u << 20)
-#define FM_CAP    24576     /* listed pages; vm.max_map_count is 65530 */
+#define FM_CAP    24576     /* most listed pages; see fm_cap */
 #define FM_K      8         /* uncured faults before a site is patched */
 
 #define FM_ST_MAPPED 1
@@ -62,6 +62,7 @@ static uint32_t *fm_pa;         /* ... its physical page */
 static uint32_t *fm_off;        /* ... its page in the RAM memfd */
 static uint32_t *fm_list;       /* listed VA pages, FM_CAP at most */
 static uint32_t fm_nlist, fm_nmapped;
+static uint32_t fm_cap = FM_CAP; /* set from the VMA headroom at init */
 static uint8_t fm_lp4m[1024];   /* a 4 MiB region holds a large-page piece */
 
 /* The site table: inline load (rx) -> its slow path, and uncured faults. */
@@ -132,15 +133,28 @@ static inline uint32_t fm_hash(uint64_t key)
 static void fm_handler(int sig, siginfo_t *si, void *ctx)
 {
     ucontext_t *uc = ctx;
-    uintptr_t a = (uintptr_t)si->si_addr;
-    uint64_t pc = uc->uc_mcontext.pc;
+    uintptr_t a;
+    uint64_t pc;
 
+    if (!uc || !si) {
+        /* QEMU's signalfd path calls the SIGBUS action with no context. */
+        fm_chain(sig, si, ctx);
+        return;
+    }
+    a = (uintptr_t)si->si_addr;
+    pc = uc->uc_mcontext.pc;
     if (f0a_pg && a - f0a_pg < 4096) {
         uc->uc_mcontext.pc = pc + 4;
         f0a_nflt++;
         return;
     }
-    if (hakux_fm_on && a - hakux_fm_base < FM_SPAN + FM_GUARD && fm_skey) {
+    /*
+     * Only generated code, which only the vCPU thread runs, may probe the
+     * table: another thread's wild pointer into the shadow must not read it
+     * while a translation grows it.
+     */
+    if (hakux_fm_on && a - hakux_fm_base < FM_SPAN + FM_GUARD && fm_skey &&
+        in_code_gen_buffer(tcg_splitwx_to_rw((void *)(uintptr_t)pc))) {
         uint32_t h = fm_hash(pc) & fm_smask;
 
         while (fm_skey[h]) {
@@ -568,6 +582,26 @@ void hakux_fm_init(void)
     fm_pa = g_new0(uint32_t, FM_PAGES);
     fm_off = g_new0(uint32_t, FM_PAGES);
     fm_list = g_new(uint32_t, FM_CAP);
+    {
+        /*
+         * An isolated page costs two VMAs (F0a: 8,192 scattered pages added
+         * 16,317 maps lines), and the whole process shares
+         * vm.max_map_count. Keep 16,384 for everyone else.
+         */
+        long maxmap = 65530, now = f0a_maps_lines(), room;
+        FILE *f = fopen("/proc/sys/vm/max_map_count", "r");
+
+        if (f) {
+            if (fscanf(f, "%ld", &maxmap) != 1) {
+                maxmap = 65530;
+            }
+            fclose(f);
+        }
+        room = (maxmap - now - 16384) / 2;
+        fm_cap = room < 1024 ? 1024 : room > FM_CAP ? FM_CAP : (uint32_t)room;
+        FM_LOG("[fm] cap=%u pages (max_map_count %ld, maps now %ld)",
+               fm_cap, maxmap, now);
+    }
     fm_smask = (1u << 16) - 1;
     fm_skey = g_new0(uint64_t, fm_smask + 1);
     fm_sdelta = g_new0(int32_t, fm_smask + 1);
@@ -608,22 +642,31 @@ void hakux_fm_set_ram(void *host, uint64_t size, int fd)
     fm_arm();
 }
 
-static void fm_unmap_raw(uint32_t vpn, uint32_t n)
+/*
+ * Returns false if the remap failed: splitting a VMA can fail at
+ * vm.max_map_count, and then the old page is still mapped. Every caller
+ * answers a failure with fm_drop_all(), which replaces the whole reservation
+ * and so never needs a new VMA.
+ */
+static bool fm_unmap_raw(uint32_t vpn, uint32_t n)
 {
-    mmap((void *)(hakux_fm_base + ((uintptr_t)vpn << 12)),
-         (size_t)n << 12, PROT_NONE,
-         MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | MAP_NORESERVE, -1, 0);
+    void *want = (void *)(hakux_fm_base + ((uintptr_t)vpn << 12));
+
+    return mmap(want, (size_t)n << 12, PROT_NONE,
+                MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED | MAP_NORESERVE,
+                -1, 0) == want;
 }
 
-static void fm_drop_all(void)
+/* Replace the whole reservation, even if nothing is listed. */
+static void fm_drop_all_force(void)
 {
-    uint64_t t0;
+    uint64_t t0 = get_clock();
 
-    if (!fm_nlist) {
-        return;
+    if (!fm_unmap_raw(0, FM_PAGES + (FM_GUARD >> 12))) {
+        /* Nothing left that keeps the shadow coherent: stop here. */
+        FM_LOG("[fm] FATAL: drop-all remap failed errno=%d", errno);
+        abort();
     }
-    t0 = get_clock();
-    fm_unmap_raw(0, FM_PAGES + (FM_GUARD >> 12));
     for (uint32_t i = 0; i < fm_nlist; i++) {
         fm_st[fm_list[i]] = 0;
     }
@@ -634,10 +677,21 @@ static void fm_drop_all(void)
     c_dropns += get_clock() - t0;
 }
 
+static void fm_drop_all(void)
+{
+    if (fm_nlist) {
+        fm_drop_all_force();
+    }
+}
+
 static void fm_unmap(uint32_t vpn)
 {
     if (fm_st[vpn] & FM_ST_MAPPED) {
-        fm_unmap_raw(vpn, 1);
+        if (!fm_unmap_raw(vpn, 1)) {
+            c_mapf++;
+            fm_drop_all();
+            return;
+        }
         fm_st[vpn] &= FM_ST_LISTED;
         fm_nmapped--;
         c_unmap++;
@@ -668,9 +722,9 @@ static void fm_map(uint32_t vpn, uint32_t offpn, uint32_t papn, bool large)
         goto done;
     }
     if (!(s & FM_ST_LISTED)) {
-        if (fm_nlist == FM_CAP) {
+        if (fm_nlist >= fm_cap) {
             fm_compact();
-            if (fm_nlist == FM_CAP) {
+            if (fm_nlist >= fm_cap) {
                 fm_drop_all();
                 c_cap++;
             }
@@ -681,15 +735,18 @@ static void fm_map(uint32_t vpn, uint32_t offpn, uint32_t papn, bool large)
             s |= FM_ST_LISTED;
         }
     }
-    if (mmap(want, 4096, PROT_READ, MAP_SHARED | MAP_FIXED, fm_fd,
-             (off_t)offpn << 12) != want) {
+    /* MAP_POPULATE: F0a priced map + first touch at 3.6 us, this at 2.4. */
+    if (mmap(want, 4096, PROT_READ, MAP_SHARED | MAP_FIXED | MAP_POPULATE,
+             fm_fd, (off_t)offpn << 12) != want) {
         /* A failed MAP_FIXED may have unmapped the old page already. */
         c_mapf++;
         if (s & FM_ST_MAPPED) {
             fm_nmapped--;
         }
-        fm_unmap_raw(vpn, 1);
         fm_st[vpn] = s & FM_ST_LISTED;
+        if (!fm_unmap_raw(vpn, 1)) {
+            fm_drop_all();
+        }
         return;
     }
     if (!(s & FM_ST_MAPPED)) {
@@ -703,7 +760,8 @@ done:
     if (large) {
         fm_lp4m[vpn >> 10] = 1;
     }
-    if (fm_fault_h >= 0 && fm_fault_vpn == vpn) {
+    if (fm_fault_h >= 0 &&
+        (fm_fault_vpn == vpn || fm_fault_vpn + 1 == vpn)) {
         /* The fault this stub serves was a cold one: it does not count. */
         fm_scnt[fm_fault_h] = 0;
         fm_fault_h = -1;
@@ -784,17 +842,18 @@ void hakux_fm_full_flush(CPUState *cpu, int cause_is_cr3)
         r = hakux_fm_walk(cpu, vpn << 12, &pa);
         if (r < 0 || (pa >> 12) != fm_pa[vpn] ||
             (r == 1) != !!(s & FM_ST_LARGE)) {
-            fm_unmap_raw(vpn, 1);
+            bool ok = fm_unmap_raw(vpn, 1);
+
             fm_st[vpn] = 0;
             fm_nmapped--;
             c_unmap++;
-            if (++dropped > 512) {
+            if (!ok || ++dropped > 512) {
                 /* Most of it moved: one remap is cheaper than the rest. */
                 for (uint32_t k = i + 1; k < fm_nlist; k++) {
                     fm_list[j++] = fm_list[k];
                 }
                 fm_nlist = j;
-                fm_drop_all();
+                fm_drop_all_force();
                 c_rvns += get_clock() - t0;
                 return;
             }
@@ -822,7 +881,11 @@ void hakux_fm_page_flush(uint64_t va, bool unused)
     c_inv++;
     if (fm_lp4m[vpn >> 10]) {
         uint32_t b = vpn & ~1023u;
-        fm_unmap_raw(b, 1024);
+        if (!fm_unmap_raw(b, 1024)) {
+            c_mapf++;
+            fm_drop_all();
+            return;
+        }
         for (uint32_t k = b; k < b + 1024; k++) {
             if (fm_st[k] & FM_ST_MAPPED) {
                 fm_st[k] &= FM_ST_LISTED;
@@ -932,25 +995,21 @@ void hakux_fm_tick(int64_t dt_ms)
     uint64_t v[16] = { c_map, c_mapf, c_unmap, c_drop, c_dropns, c_rv, c_rvw,
                        c_rvk, c_rvns, c_flt, c_pat, c_shit, c_cap, c_inv,
                        c_ram, c_sadd };
-    unsigned vmas = 0;
-
     if (fm_mode != 1) {
         return;
     }
-    if ((n++ % 15) == 0) {
-        vmas = f0a_maps_lines();
-    }
+    n++;
     FM_LOG("[fm] dt=%" PRId64 " on=%d map=%" PRIu64 " mapf=%" PRIu64
            " unmap=%" PRIu64 " drop=%" PRIu64 " dropus=%" PRIu64
            " rv=%" PRIu64 " rvw=%" PRIu64 " rvk=%" PRIu64 " rvus=%" PRIu64
            " flt=%" PRIu64 " pat=%" PRIu64 " shit=%" PRIu64 " cap=%" PRIu64
            " inv=%" PRIu64 " ram=%" PRIu64 " sadd=%" PRIu64
-           " mapped=%u listed=%u sites=%u patched=%" PRIu64 " vmas=%u",
+           " mapped=%u listed=%u capn=%u sites=%u patched=%" PRIu64 " n=%u",
            dt_ms, hakux_fm_on, v[0] - p[0], v[1] - p[1], v[2] - p[2],
            v[3] - p[3], (v[4] - p[4]) / 1000, v[5] - p[5], v[6] - p[6],
            v[7] - p[7], (v[8] - p[8]) / 1000, v[9] - p[9], v[10] - p[10],
            v[11] - p[11], v[12] - p[12], v[13] - p[13], v[14] - p[14],
-           v[15] - p[15], fm_nmapped, fm_nlist, fm_sn, c_pat, vmas);
+           v[15] - p[15], fm_nmapped, fm_nlist, fm_cap, fm_sn, c_pat, n);
     memcpy(p, v, sizeof(p));
 }
 
