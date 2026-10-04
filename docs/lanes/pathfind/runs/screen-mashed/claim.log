@@ -1,0 +1,96 @@
+pathfind: Mashed Drive to Survive (454D000A) on nova: /storage/E6C6-D7AA/Games/XBox/454D000A-Mashed_Drive_to_Survive.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 454D000A first-run, loaded none
+[  10.7s] #  1 publisher_logo    fast    A                        Non-game 3D object on blank white field with no menu or prompt; looks like a publisher log
+[  21.1s] #  2 unknown           fast    wait                     Looks like a 3D logo or intro animation over clouds, not a menu or gameplay HUD; the previ
+[  28.6s] #  3 publisher_logo    fast    A                        RenderWare middleware logo, not a menu or gameplay. Skip with A per hints; it will pass on
+[  36.7s] #  4 cutscene          fast    START                    This looks like a non-interactive establishing camera shot, likely an intro cinematic afte
+[  46.0s] #  5 title_screen      fast    START                    Title screen with 'Press START button' prompt; hint says START on Press START titles. No m
+[  53.0s] #  6 save_load_prompt  fast    B                        Save prompt; hint says 'continue without saving' reaches play and leaves the disk alone. P
+[  61.7s] #  7 main_menu         fast    A                        Main menu; Single Player is highlighted and is the fastest route to play, so A accepts it.
+[  69.5s] #  8 main_menu         fast    A                        Single Player submenu; Challenge Cup is already highlighted and is the default story route
+[  80.1s] #  9 submenu           fast    A                        Player color select is a setup submenu before play; accept the default color with A. Contr
+[  87.6s] # 10 main_menu         fast    A                        Challenge Select menu with Angel Peak already highlighted as the first available Bronze Cu
+[  91.7s] # 11 black             black   wait                     black frame
+[ 101.7s] # 12 cutscene          fast    A                        This looks like a pre-race flyover or intro camera with a caption box at the bottom right,
+[ 113.8s] # 13 gameplay          fast    wait                     Race HUD and the player's red car are on the playfield, not a menu, cutscene or letterbox.
+[ 126.3s] # 14 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.128, under input 0.023
+[ 130.4s] # 15 results           fast    A                        Current Standings interstitial between events with 'A Continue' prompt; not playable contr
+[ 140.7s] # 16 gameplay          fast    RT:3                     Race HUD with both driver meters and the player's red car on the playfield. Previous probe
+[ 151.4s] # 17 probe             probe   RT:3 RT:3                control 0.003, under input 0.037
+[ 154.9s] # 18 results           fast    A                        Current Standings interstitial between events with an 'A Continue' prompt, not playable co
+[ 166.1s] # 19 gameplay          fast    wait                     Race HUD with both meters and the player's red car on the playfield, no letterbox or resul
+[ 170.6s] # 20 probe             probe   HOLD:A:3                 control 0.017, under input 0.814
+[ 178.4s] # 21 gameplay          fast    wait                     Race HUD and the player's red car are on the playfield with green lights lit, and there ar
+[ 192.6s] # 22 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.822, under input 0.877
+[ 196.7s] # 23 results           fast    A                        Post-race results interstitial with an A Continue prompt; no player control. Pressing A to
+[ 205.8s] # 24 submenu           fast    A                        Challenge Select menu; Angel Peak is highlighted and unlocked (the lock icons are on other
+[ 218.9s] # 25 cutscene          fast    A                        Follows the Challenge Select press at step 24. No HUD or player control is visible, so thi
+[ 227.4s] # 26 gameplay          fast    wait                     Race HUD with the player's red car on the playfield, no letterbox bars, no results or menu
+[ 232.3s] # 27 probe             probe   STICK:left:1.5           control 0.370, under input 0.868
+[ 235.9s] # 28 results           fast    A                        Post-race standings interstitial with an A Continue prompt and no player control; pressing
+[ 248.0s] # 29 gameplay          fast    wait                     Live race with HUD (health/boost bars) and no letterbox, so this looks like player-control
+[ 252.9s] # 30 probe             probe   STICK:up:2               control 0.691, under input 0.791
+[ 256.6s] # 31 results           fast    A                        Post-race standings interstitial with an A Continue prompt and no player control. Pressing
+[ 266.5s] # 32 gameplay          fast    wait                     Race HUD is up and the player's red car is on the playfield with no letterbox or results t
+[ 271.1s] # 33 probe             probe   STICK:up:2               control 0.855, under input 0.196
+[ 275.0s] # 34 results           fast    A                        Post-race standings interstitial with an A Continue prompt and no player control; same as 
+[ 284.6s] # 35 gameplay          fast    wait                     Live race with HUD and player's red car on the playfield; no cutscene bars or results text
+[ 304.8s] # 36 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.850, under input 0.740
+[ 316.4s] # 37 gameplay          fast    wait                     Live race view with the player's blue car on the playfield and no cutscene bars or results
+[ 337.5s] # 38 probe             probe   RT:1.5 RT+left:1.5 RT+left:1.2 RT+right:1.2 control 0.626, under input 0.708
+[ 342.1s] # 39 gameplay          fast    wait                     Player's blue car is on the playfield with no cutscene bars or results text; the car is at
+[ 361.3s] # 40 probe             probe   HOLD:X:3 STICK:left:1.2 STICK:right:1.2 control 0.605, under input 0.787
+[ 367.4s] # 41 cutscene          fast    RT:3                     Race camera with no HUD and no visible control response in recent probes, so it is not con
+[ 385.2s] # 42 gameplay          fast    wait                     A player-controlled blue car sits on a chase-cam playfield with no cutscene bars or result
+[ 402.2s] # 43 probe             probe   LT:2 LT+left:1.2 LT+right:1.2 control 0.800, under input 0.673
+[ 409.7s] # 44 gameplay          fast    RT:3                     Player car with a HUD is on the playfield, but it is stationary and earlier LT/stick probe
+[ 433.6s] # 45 probe             probe   RT:3 LT:2 LT+left:1.2 LT+right:1.2 control 0.685, under input 0.778
+[ 438.0s] # 46 gameplay          fast    RT:3                     Player-owned blue car on a playfield with a chase/bumper camera and no cutscene or results
+[ 461.4s] # 47 probe             probe   RT:3 STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.652, under input 0.647
+[ 467.6s] # 48 cutscene          fast    A                        Earlier probes were refused because the camera cut and the scene changed on its own, so th
+[ 475.5s] # 49 results           fast    A                        Post-race results screen, not gameplay. A continues past it, as the history shows the earl
+[ 486.0s] # 50 submenu           fast    A                        Challenge select menu with Angel Peak already highlighted and a Battle Game challenge avai
+[ 494.4s] # 51 gameplay          fast    wait                     Chase camera behind a car on a playfield with no results or menu overlay; the previous pro
+[ 511.3s] # 52 probe             probe   HOLD:B:3 STICK:left:1.2 STICK:right:1.2 control 0.561, under input 0.501
+[ 519.6s] # 53 gameplay          fast    wait                     A live race with the player's car on track and a standings HUD. The last probe was refused
+[ 531.9s] # 54 probe             probe   HOLD:B:3 HOLD:B:3 HOLD:B:3 control 0.020, under input 0.020
+[ 536.3s] # 55 results           fast    A                        Standings overlay with a Continue prompt is an in-between screen, not live control; the hi
+[ 548.9s] # 56 gameplay          fast    wait                     Live race with a race HUD (position emblems and bars) and no menu, results or Continue pro
+[ 553.4s] # 57 probe             probe   RT:3                     control 0.793, under input 0.521
+[ 557.2s] # 58 results           fast    A                        Standings overlay with a Continue prompt is an in-between screen, not live control. The hi
+[ 565.4s] # 59 gameplay          fast    wait                     Player-controlled car on track with race HUD (position/health bars) and no menu, results o
+[ 570.4s] # 60 probe             probe   RT:1.5                   control 0.298, under input 0.830
+[ 574.9s] # 61 results           fast    A                        Standings overlay with a Continue prompt is an in-between screen, not live control. The A 
+[ 586.9s] # 62 results           fast    A                        The 'Winner' tag means the race has finished and the end-of-race sequence is running, not 
+[ 594.9s] # 63 results           fast    A                        Post-race results overlay with a Continue prompt, not live control. Pressing A takes Conti
+[ 603.9s] # 64 submenu           fast    A                        Challenge select menu; the Angel Peak Bronze Cup is the available (unlocked) first challen
+[ 614.4s] # 65 gameplay          fast    wait                     Player-viewed car racing on track in the game world with a chase camera and no menu, resul
+[ 632.1s] # 66 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.551, under input 0.492
+[ 636.2s] # 67 results           fast    A                        Standings overlay with an A Continue prompt is an in-between screen, not live control. Pre
+[ 648.1s] # 68 gameplay          fast    wait                     Live race with a HUD (two meters at top), a track in the game world, and no menu, results 
+[ 653.1s] # 69 probe             probe   RT:1.5                   control 0.673, under input 0.780
+[ 657.3s] # 70 results           fast    A                        Standings overlay with an A Continue prompt is an in-between screen, not live control. Pre
+[ 665.8s] # 71 gameplay          fast    wait                     Live race with HUD and player car on track; no menu, results, or cutscene bars visible. Pr
+[ 678.1s] # 72 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.031, under input 0.015
+[ 683.7s] # 73 results           fast    A                        Standings overlay with an A Continue prompt is an in-between screen, not live control. Pre
+[ 693.0s] # 74 gameplay          fast    wait                     Live race with HUD meters and the player's red car on the track, no menu, results or cutsc
+[ 710.3s] # 75 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.669, under input 0.872
+[ 716.3s] # 76 gameplay          fast    wait                     Player's car is on track with no menu or results overlay; previous probes at step 75 were 
+[ 733.7s] # 77 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.592, under input 0.610
+[ 740.8s] # 78 gameplay          fast    RT:2                     The player's car is on the track in a live race camera with no menu or results overlay. Th
+[ 763.0s] # 79 probe             probe   RT:2 RT:1.5 RT+left:1.2 RT+right:1.2 control 0.734, under input 0.628
+[ 773.6s] # 80 unknown           fast    wait                     The car is shown in a fixed, close-up camera with no HUD, so it is not clearly player-cont
+[ 787.9s] # 81 gameplay          fast    wait                     Player's car is on a track in a live camera with no menu, results or pause overlay; prior 
+[ 804.2s] # 82 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.711, under input 0.741
+[ 808.7s] # 83 gameplay          fast    wait                     Player's blue car is on a live track with a chase camera and no menu, results or pause ove
+[ 828.4s] # 84 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.843, under input 0.652
+[ 837.9s] # 85 gameplay          fast    wait                     A player-selectable car sits on a live dirt track with the camera behind it, but the car i
+[ 855.5s] # 86 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.682, under input 0.691
+[ 859.8s] # 87 gameplay          fast    wait                     Player-selectable blue car on a live track with a camera behind it and no menu, results or
+[ 879.7s] # 88 probe             probe   RT:1.5 RT+left:1.2 RT+left:1.2 RT+right:1.2 control 0.668, under input 0.865
+[ 888.8s] # 89 cutscene          fast    wait                     Live-looking track, but no HUD, and the camera cut between angles on the last probes with 
+[ 898.5s] # 90 cutscene          fast    wait                     A car wheel fills the foreground, but there is no HUD, and earlier probes saw the camera c
+{"name": "Mashed Drive to Survive", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 83, "steps": 90, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
