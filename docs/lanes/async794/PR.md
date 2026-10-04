@@ -1,60 +1,54 @@
 Lane: async794            Issue: #794 #796
-Base: master @ 5e4196fefd
-Files: docs/lanes/async794/NOTES.md, docs/lanes/async794/OUTBOX.md, docs/lanes/async794/PR.md, docs/lanes/async794/WAITING, docs/lanes/async794/cc_check.py, docs/lanes/async794/make-predictions.py, docs/lanes/async794/make-routes.py, docs/lanes/async794/routes/async794-cs.route, docs/lanes/async794/routes/async794-topspin.route, docs/lanes/async794/sdcallers.py, docs/lanes/async794/shim/android/log.h, docs/testing/predictions/async794-burnoutrev-soak.json, docs/testing/predictions/async794-cs-soak.json, docs/testing/predictions/async794-download-paths-must-not-move.json, docs/testing/predictions/async794-mc3-soak.json, docs/testing/predictions/async794-nba2005-soak.json, docs/testing/predictions/async794-topspin-soak.json, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c
-Prediction: docs/testing/predictions/async794-download-paths-must-not-move.json @ 5a9978ab62adf5f9 (golden arm); soaks docs/testing/predictions/async794-nba2005-soak.json @ 9e8fa53fa86938fa, -topspin-, -cs-, -mc3-, -burnoutrev-soak.json (hand-read)
+Base: master @ 425ffe1ad1 (merged; branched from 5e4196fefd)
+Files: docs/lanes/async794/NOTES.md, docs/lanes/async794/OUTBOX.md, docs/lanes/async794/PR.md, docs/lanes/async794/cc_check.py, docs/lanes/async794/make-predictions.py, docs/lanes/async794/make-routes.py, docs/lanes/async794/routes/async794-cs.route, docs/lanes/async794/routes/async794-topspin.route, docs/lanes/async794/sdcallers.py, docs/lanes/async794/shim/android/log.h, docs/testing/predictions/async794-burnoutrev-soak.json, docs/testing/predictions/async794-cs-soak.json, docs/testing/predictions/async794-download-paths-must-not-move.json, docs/testing/predictions/async794-fix2-must-not-move.json, docs/testing/predictions/async794-mc3-soak.json, docs/testing/predictions/async794-nba2005-soak.json, docs/testing/predictions/async794-topspin-soak.json, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c
+Prediction: docs/testing/predictions/async794-fix2-must-not-move.json @ 9715a5a775b7a57e (golden arm on the fold form, a 425ffe1ad1 / b 2344ae1ee2); earlier: async794-download-paths-must-not-move.json @ 5a9978ab62adf5f9 (PASS), soaks -nba2005-, -topspin- (hand-read below)
 Needs device: yes    Needs NDK: yes
 
-Release note (performance): Top Spin's CPU no longer waits on the graphics lock behind texture-bind downloads.
+Release note (none): no player-visible change measured; the CPU no longer waits on the graphics lock while the GPU finishes a surface download.
 
-## What the logs say first: three callers, not one
+## Result
 
-fps20786 filed every SURFACE_DOWN wait under one name. Split by caller
-(`docs/lanes/async794/sdcallers.py` over the existing runs):
+| title | arm | run id | fps median | share >= 28.5 | ph_Fin ms | lockw ms | download wait |
+|---|---|---|---|---|---|---|---|
+| NBA Live 2005 | A master | 1791128020-lane.async794-3209876 | 25.89 (mean) | 0.20 | 13.40 | 3.38 | `reuse` 1/frame, 11.18 ms |
+| NBA Live 2005 | B c825e4b24f | 1791128026-lane.async794-3210567 | 25.34 (mean) | 0.19 | 13.80 | 0.27 | `surfupd` 1/frame, 11.48 ms |
+| Top Spin | A master | 1791135713-lane.async794-3678571 | 36.50 | 0.963 | 12.30 | 10.50 | txr dl 27/frame, all `cvt` |
+| Top Spin | B c825e4b24f | 1791135717-lane.async794-3678947 | 35.82 | 0.963 | 12.60 | 0.40 | txr dl 27/frame, all `cvt` |
 
-| title | caller | per frame | wait | consumer of the bytes |
-|---|---|---|---|---|
-| NBA Live 2005 | `reuse` (unshelve of a struct a pending download names) | 1 | 11.4 ms | none yet: bookkeeping |
-| Counter-Strike, Top Spin, ToeJam, BloodRayne, Burnout, Nightfire, MM3 | texture bind, surface refused by the compatibility check (`txr dl`) | 1-26 | 13.7 / 16.4 ms (CS / Top Spin) | the texture upload, on the CPU, at once |
-| Midnight Club 3, Nightfire | `range` reader over a dirty surface | 1 | 6.9 / 6.3 ms | the reader, at once |
+- **Fix 1 (defer the download to the guest's sync point) is refuted on NBA.**
+  The wait moved. The one finish a frame went from `reuse` to `surfupd` at the
+  same size: the rebound surface uploads from VRAM, so the download has an
+  emulator-side consumer (image -> VRAM -> image) before any guest sync point.
+  It is stripped from the fold form.
+- **Fix 2 (release pgraph.lock across the SURFACE_DOWN wait) acts and moves no
+  fps.** On Top Spin the vCPU's PGRAPH read wait falls 10.14 -> 0.41 ms/frame
+  (0xb10, rd_unl 0 -> 308k). The freed time goes to the guest's timer idle
+  (gidle 0.56 -> 15.67 ms), so the frame was not lock-bound. Every leg of
+  `async794-topspin-soak.json` holds and its falsifier does not fire, but P2
+  holds only because the control already passed.
+- **Top Spin clears the bar on master** with the fixed route (no step-24
+  START): 36.5 fps median, 0.963 share over 640 s of live play. The earlier
+  0.89 came from a paused match. It is a Playable candidate pending the held
+  run, the frame review and the flicker check.
+- **The texture-bind download class is a format conversion.** `txdl[]` says
+  Top Spin's 27 downloads a frame are all refused for `cvt`: a 64x128
+  swizzled colour surface sampled as texture format 0x5. A GPU-side converting
+  copy is what would remove that class's wait in other titles. That needs its
+  own brief.
 
-Deferring a wait to the guest's next sync point removes it only where nobody
-consumes the bytes first: NBA's `reuse` (and Azurik's). The texture-bind class
-needs a GPU-side surface-to-texture path; which conversion depends on why the
-bind refuses the surface, which this PR instruments.
+## Changes (fold form 2344ae1ee2, 118 lines against master)
 
-## Changes (c825e4b24f)
+- **#796**: on the PFIFO thread, `pgraph_vk_finish(SURFACE_DOWN)` and the
+  deferred-download fence waits wait for the GPU with pgraph.lock released.
+  This extends the #474 mechanism (`wait_frame_fence`), and the staged copies
+  still land in VRAM after the lock is retaken.
+- **Instrument**: `txdl[...]` on the hakuX-stall `txr` line and `[txdl794]`
+  shape lines name the compatibility test that refused each texture-bind
+  download.
 
-- **#796**: SURFACE_DOWN finishes and the deferred-download fence waits release
-  pgraph.lock on the PFIFO thread (the #474 mechanism, extended).
-- **#794 at NBA's site**: staged downloads carry their own submission's frame
-  slot and complete as a prefix in record order, so recording a download no
-  longer completes the previous submitted batch (which would have moved NBA's
-  wait to the next frame's first eviction); the `reuse` site detaches instead
-  of finishing; staging is a ring.
-- **Instrument**: `txdl[...]` on the `txr` line and `[txdl794]` shape lines name
-  the refusing test for each texture-bind download.
-
-Compiles with the desktop flags, plain and perflog+`__ANDROID__`.
-
-## Device (Nova)
-
-Pilot, NBA Live 2005 (A `1791128020-lane.async794-3209876`, B `1791128026-lane.async794-3210567`):
-
-| | fps | ph_Fin ms | ph_Tot ms | lockw ms | share >= 28.5 | download wait |
-|---|---|---|---|---|---|---|
-| A master | 25.89 | 13.40 | 27.40 | 3.38 | 0.20 | `reuse` 1/frame, 11.18 ms |
-| B fix | 25.34 | 13.80 | 28.10 | 0.27 | 0.19 | `surfupd` 1/frame, 11.48 ms |
-
-**Fix 1 is refuted: the wait moved.** Its falsifier fires: ph_Fin stays above
-8 ms, and the one finish a frame moved from `reuse` to `surfupd`. The rebound
-struct uploads from VRAM, so `surface_update_may_defer_downloads` completes
-the detached download on the spot. The bytes go image -> VRAM -> image within
-the frame. The Counter-Strike, Midnight Club 3 and Burnout Revenge pairs were
-fix-1 tests and are not run.
-
-Fix 2 acts: the vCPU's lock wait falls by 3.1 ms/frame on NBA. Its test is
-Top Spin (`async794-topspin-soak.json`), queued: A
-`1791135713-lane.async794-3678571`, B `1791135717-lane.async794-3678947`.
-The golden arm runs from the arms job.
+Compiles with the desktop flags, plain and perflog+`__ANDROID__`. The first
+form (c825e4b24f, fix 1 included) passed its golden arm byte-identical over
+all 266 captures (`1791129309-arms-async794-fix-3307191`). The fold form is a
+subset of that code, and its own golden arm is registered for the arms job.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

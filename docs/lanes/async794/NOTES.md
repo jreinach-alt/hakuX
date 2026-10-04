@@ -203,3 +203,92 @@ Decide that on the golden arm's verdict.
 - Removing a completion is not removing a wait when a later record must
   complete the same batch: check `complete_submitted_downloads`-style forced
   completions downstream before claiming a wait is gone.
+
+## Session 3 (2026-10-04, attempt 3): why attempt 2 did not finish
+
+Attempt 2 ended correctly in a wait: the Top Spin pair was queued behind
+lane.pathfind's Nova hold, and `WAITING` named both run ids. Both finished
+(DONE 0); attempt 3 is the resume that reads them. Nothing was lost.
+
+## Top Spin: fix 2 removes the lock wait, and the fps does not move
+
+990 s, Nova, perflog, route `async794-topspin` (no step-24 START) on both legs.
+A `1791135713-lane.async794-3678571` (master 5e4196fefd, apk 63f4c763dc9a),
+B `1791135717-lane.async794-3678947` (c825e4b24f, apk dd99b818c691).
+Both play a live exhibition match (shots by eye, early and late; B shows no
+stale, torn or black surfaces). Neither logcat has a validation, device-lost,
+assert or crash line.
+
+decompose.py, all 320 2-s rows; `[lock474]` over the last 300 windows (600 s):
+
+| | fps mean | fps median | share >= 28.5 | F ms | lockw | v_blk | gidle | timer_ms | read wait/frame | 0xb10 wait/frame | rd_unl |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A master | 36.58 | 36.50 | 0.963 | 27.34 | 10.50 | 10.67 | 0.56 | 0.49 | 10.14 | 10.12 | 0 |
+| B fix | 35.85 | 35.82 | 0.963 | 27.89 | 0.40 | 0.75 | 15.67 | 12.55 | 0.41 | 0.40 | 308342 |
+
+Legs of `async794-topspin-soak.json`:
+- M0 holds (495/496 `[lock474]`, 660/667 `[sdcall]` lines, play in the shots).
+- F2 holds (shots, logcat).
+- P0 holds: A's read wait 10.14 ms/frame, 0xb10 leading, rd_unl 0.
+- F1 holds: B's rd_unl 308k.
+- P1 holds: B's read wait 0.41 ms/frame (<= 3); v_blk falls 9.9 ms (>= 8).
+- P2 holds, but only because A already passes: share 0.963 in both.
+- X1 does not fire: the read wait is 0.41, and the median fell 0.68 (< 1.0).
+
+What it means. The mechanism acts exactly as predicted, and buys no frame
+rate: the ~10 ms the vCPU used to wait for the lock it now spends idle in
+the guest's timer wait (gidle 0.56 -> 15.67, timer_ms 0.49 -> 12.55). The
+guest was never late because of the lock; its frame is paced elsewhere. So
+fix 2's P x titles on Top Spin is 0, not 0.6.
+
+The real Top Spin finding is the route. On master, with the step-24 START
+removed, Top Spin plays at 36.5 fps median with 0.963 of its rows above the
+bar. fps20786's 0.89 (2538884) was a match that the route had paused. Top
+Spin is a Playable candidate on master today, pending the 600-s held run,
+the frame review and the owner's flicker check. That is the PM's to queue.
+
+The `txdl[]` instrument answers the texture-bind question for Top Spin: all
+27 downloads a frame are refused for `cvt` (surface 64x128 swizzled colour,
+2 bytes per pixel; texture format 0x5, a converted format, same size). A
+GPU-side path for Top Spin's class is a format conversion on the GPU, not a
+pitch or swizzle copy. Top Spin no longer needs that path for the bar.
+
+## The fold form: fix 1 stripped (2344ae1ee2)
+
+The golden arm on c825e4b24f passed byte-identical (all 266 captures,
+`1791129309-arms-async794-fix-3307191`), so fix 1 is safe as far as the
+suites can tell. It still goes out: on NBA it only moved the wait, it buys
+nothing measured anywhere, and its per-submission slots and staging ring are
+350 lines of completion-order logic nobody needs. The branch merges master
+(425ffe1ad1) and keeps only:
+- fix 2: the SURFACE_DOWN finish and the deferred-download fence waits release
+  pgraph.lock on the PFIFO thread. These are the same lines that ran in B.
+- the `txdl[]` / `[txdl794]` instrument.
+
+118 lines against master. They compile, plain and perflog+`__ANDROID__`
+(`cc_check.py`), with no new warnings. The folded form is a subset of what
+ran, but it was not run as itself. `async794-fix2-must-not-move.json`
+(a = 425ffe1ad1, b = 2344ae1ee2) is registered for the arms job. Top Spin is
+not re-run on it: the lock-release lines are the ones measured, and the
+result the run would confirm is a lock wait that buys no fps.
+
+Release note: none. No player-visible change was measured.
+
+## P x titles, restated after the evidence
+
+- Fix 1: refuted on NBA (the wait moved). 0.
+- Fix 2: acts, and moves no fps on Top Spin or NBA. 0 in fps; it frees vCPU
+  time in any title whose vCPU polls PGRAPH during a download.
+- Top Spin: about 0.8 to Playable on master with the fixed route, from the
+  0.963 share and the clean shots. The rest of the gate is still to run.
+- NBA Live 2005, Counter-Strike, MC3, the texture-bind set: the wait is the
+  emulator's own consumer (NBA: image -> VRAM -> image on rebinding; the
+  texture-bind class: a CPU format conversion). Both need GPU-side work, and
+  each needs its own brief. Not started here, per the brief's stop rule.
+
+## Do not repeat (session 3)
+
+- Do not read a lock-wait fall as a frame-time fall. Top Spin's vCPU wait
+  went to the guest's timer idle. Check gidle/timer_ms with lockw.
+- Re-run a title's control on a fixed route before you build a fix for its
+  premise. Top Spin's "near-30" was a paused match.
