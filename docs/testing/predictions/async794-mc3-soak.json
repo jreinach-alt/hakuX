@@ -1,0 +1,25 @@
+{
+  "registered_utc": "2026-10-04T15:32:28Z",
+  "who": "lane.async794",
+  "issue": "794",
+  "title": "54540079-Midnight_Club_3_DUB_Edition.xiso.iso",
+  "device": "nova",
+  "seconds": 820,
+  "route": "midnight-club-3.returning",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "5e4196fefd",
+  "b_ref": "c825e4b24f",
+  "judge": "python3 docs/lanes/fps20786/decompose.py <dir> (the mark is the route's `mark gameplay`) for F, Ri, rcpu, rblk, ph_Fin, ph_GPU, lockw, v_blk and the 2-s fps rows; python3 docs/lanes/async794/sdcallers.py <results> <id> for the per-caller waits; play shots by eye; the same on both arms",
+  "prediction": "Midnight Club 3, Arcade street race. Premise (2878057): one staged-download completion a frame by a range reader ([sdcall] range=fin1.00, 6.9 ms/frame, dif oth1/flip): a texture, vertex or blit range that overlaps a dirty surface needs the bytes in VRAM now. B does not remove that: the reader consumes the bytes on the CPU at once. B may still shorten it where the completion used to also wait for an older submitted batch. Prediction: range fin unchanged; ph_Fin within 2 ms/frame of A; fps rows median within 1.0. The arm is a regression check on a borderline title.",
+  "legs": {
+    "M0 (instrument)": ">= 100 hakuX-phase lines and >= 100 [sdcall] lines after the gameplay mark in each arm, all parse, and the play shots show play. Otherwise that arm is VOID, not a zero.",
+    "F2 (no corruption)": "B's play shots show no stale, torn, black or one-frame-behind surfaces that A's do not (render targets, reflections, HUD), and B's logcat has no Vulkan validation error, device-lost, assert or crash. FAILS in the world where a completion wrote VRAM out of record order or a reader read around a detached entry; then the change is wrong, not slow.",
+    "P0 (premise, re-measured in A)": "A's [sdcall] range fin >= 0.8 per frame.",
+    "P1 (inert)": "B's range fin within 20% of A's, B's ph_Fin within 2 ms/frame of A's, B's fps median >= A's - 1.0."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off hakuX-phase, [sdcall], [lock474] and txr lines, and the shots by eye."
+}
