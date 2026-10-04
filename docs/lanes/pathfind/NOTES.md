@@ -1,5 +1,17 @@
 # lane.pathfind -- NOTES
 
+## Resume (10-03 21:16 PDT, attempt 4 of this resume): why the last attempt did not finish
+
+- The 20:40 session ended after the Black Stone walk run FAILED (menu time 63.8%, `runs/black-stone-walk`), posted its
+  OUTBOX entry and its NEW ISSUE, and stopped with nothing in flight. Its last commit is `1a46714a21` (the pathknow
+  route guide). It wrote no WAITING file and no next step, so the 21:2x addendum (Dino Crisis 3, title 5 of today's
+  Playable push) was not started.
+- Not committed by that session: the untracked `runs/halo-2-hold/`, `runs/halo-2-hold2/` and `runs/black-stone-walk/`
+  record directories and `scratch/`. They are kept as evidence and committed with this resume.
+- This session: Dino Crisis 3 (43430003, Nova, "Dino Crisis 3.iso"; targets.toml row 550). Reach confirmed play, then a
+  600-s held run with the position test, through `scratch/heldrun.sh` (take, wait-idle, release on every exit path).
+  Stop early if play reads < 28 fps for the first 60 s. Spend at the start of this resume: about $44 of the $70 cap.
+
 ## Resume (10-03 20:17 PDT, attempt 3 of this resume): why the last attempt did not finish
 
 - The 17:15 session ended after Halo 2 run 2 (17:58, blocked: the Armory camera does not respond, `runs/halo-2-hold2`),
