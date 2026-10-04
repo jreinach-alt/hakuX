@@ -53,7 +53,7 @@
 #include "tcg/tcg-ldst.h"
 #include "backend-ldst.h"
 #include "accel/tcg/hakux-tlb68.h"
-#ifdef XBOX
+#if defined(XBOX) && defined(NV2A_PERF_LOG) && NV2A_PERF_LOG
 #include "tb-context.h"
 #endif
 
@@ -183,21 +183,24 @@ extern uint64_t hakux_tcg424_cbb;
  *                     the returned ones. A code fetch's refill inside
  *                     tb_gen_code is in both gus and tfus.
  *
- * tfus is timed only in a perflog build (pl=1 on the line): fills are the one
- * event here whose rate is not bounded by the flush rate. pl=0 prints tfus=-1.
+ * Every hook here, in translate-all.c and in cpu-exec.c ([tpc787]) is
+ * compiled in a perflog build only (HAKUX_TCG787), so a plain build pays
+ * nothing and prints no [tcg787] line. pl=1 stays on the line for its readers.
  * vCPU thread only.
  */
-#if defined(NV2A_PERF_LOG) && NV2A_PERF_LOG
-#define HAKUX_TCG787_TIME_FILLS 1
+#if defined(XBOX) && defined(NV2A_PERF_LOG) && NV2A_PERF_LOG
+#define HAKUX_TCG787 1
 #else
-#define HAKUX_TCG787_TIME_FILLS 0
+#define HAKUX_TCG787 0
 #endif
+#if HAKUX_TCG787
 extern uint64_t hakux_tcg787_gc, hakux_tcg787_gc_ns, hakux_tcg787_cg_ns,
                 hakux_tcg787_max_ns;          /* translate-all.c */
 extern uint64_t hakux_tb_codegen;             /* translate-all.c */
 extern uint64_t hakux_tb_discarded;           /* tb-maint.c */
 static uint64_t hakux_tcg787_ff_ns, hakux_tcg787_pf_ns;
 static uint64_t hakux_tcg787_tf, hakux_tcg787_tfr, hakux_tcg787_tf_ns;
+#endif
 
 /*
  * Fix switches, read once from the environment so one binary carries both
@@ -364,6 +367,7 @@ static void hakux_mf0_tick(int64_t now, unsigned window, int64_t dt_ms)
     p_dn = dn;
 }
 
+#if HAKUX_TCG787
 /* The [tcg787] line; see its counters above. */
 static void hakux_tcg787_tick(unsigned window, int64_t dt_ms)
 {
@@ -386,9 +390,7 @@ static void hakux_tcg787_tick(unsigned window, int64_t dt_ms)
               (hakux_tcg787_ff_ns - p_ffns) / 1000,
               (hakux_tcg787_pf_ns - p_pfns) / 1000,
               tf, tf - tfr,
-              HAKUX_TCG787_TIME_FILLS ?
-                  (int64_t)(hakux_tcg787_tf_ns - p_tfns) / 1000 : -1,
-              HAKUX_TCG787_TIME_FILLS);
+              (int64_t)(hakux_tcg787_tf_ns - p_tfns) / 1000, 1);
     p_gc = hakux_tcg787_gc;
     p_gcns = hakux_tcg787_gc_ns;
     p_cgns = hakux_tcg787_cg_ns;
@@ -402,6 +404,7 @@ static void hakux_tcg787_tick(unsigned window, int64_t dt_ms)
     p_tfr = hakux_tcg787_tfr;
     p_tfns = hakux_tcg787_tf_ns;
 }
+#endif
 
 /*
  * Called from cpu_exec_loop() on the vCPU thread, gated there to one call in
@@ -506,7 +509,9 @@ void hakux_tlb68_tick(CPUState *cpu)
               hakux_w1_on(), hakux_w1_n - p_wn, hakux_w1_hit - p_wh,
               hakux_w1_extra - p_wx, (hakux_w1_ns - p_wns) / 1000);
     hakux_mf0_tick(now, window - 1, (now - prev_ns) / 1000000);
+#if HAKUX_TCG787
     hakux_tcg787_tick(window - 1, (now - prev_ns) / 1000000);
+#endif
 
     for (int i = 0; i < HAKUX_TLB68_NCAUSE; i++) {
         p_cause[i] = c[i];
@@ -823,7 +828,7 @@ static void tlb_flush_by_mmuidx_async_work(CPUState *cpu, run_on_cpu_data data)
     MMUIdxMap asked = data.host_int;
     MMUIdxMap all_dirty, work, to_clean;
     int64_t now = get_clock_realtime();
-#ifdef XBOX
+#if HAKUX_TCG787
     int64_t t787 = get_clock();
 #endif
 
@@ -855,7 +860,7 @@ static void tlb_flush_by_mmuidx_async_work(CPUState *cpu, run_on_cpu_data data)
     hakux_tlb68_jct++;
 #endif
     tcg_flush_jmp_cache(cpu);
-#ifdef XBOX
+#if HAKUX_TCG787
     hakux_tcg787_ff_ns += get_clock() - t787;
 #endif
 
@@ -1002,7 +1007,7 @@ static void tlb_flush_page_by_mmuidx_async_0(CPUState *cpu,
                                              MMUIdxMap idxmap)
 {
     int mmu_idx;
-#ifdef XBOX
+#if HAKUX_TCG787
     int64_t t787 = get_clock();
 #endif
 
@@ -1027,7 +1032,7 @@ static void tlb_flush_page_by_mmuidx_async_0(CPUState *cpu,
      */
     tb_jmp_cache_clear_page(cpu, addr - TARGET_PAGE_SIZE);
     tb_jmp_cache_clear_page(cpu, addr);
-#ifdef XBOX
+#if HAKUX_TCG787
     hakux_tcg787_pf_ns += get_clock() - t787;
 #endif
 }
@@ -1943,29 +1948,25 @@ static inline bool tlb_hit(uint64_t tlb_addr, vaddr addr)
  * (e.g. CPUTLBEntry pointers) must be discarded and looked up again
  * (e.g. via tlb_entry()).
  */
-#ifdef XBOX
+#if HAKUX_TCG787
 static bool tlb_fill_align_body(CPUState *cpu, vaddr addr,
                                 MMUAccessType type, int mmu_idx, MemOp memop,
                                 int size, bool probe, uintptr_t ra);
 
-/* #787: counted, and timed in a perflog build; see [tcg787] above. */
+/* #787: counted and timed (perflog builds only); see [tcg787] above. */
 static bool tlb_fill_align(CPUState *cpu, vaddr addr, MMUAccessType type,
                            int mmu_idx, MemOp memop, int size,
                            bool probe, uintptr_t ra)
 {
     bool ok;
-#if HAKUX_TCG787_TIME_FILLS
     int64_t t0 = get_clock();
-#endif
 
     hakux_tcg787_tf++;
     /* A guest fault longjmps out of this call and is never booked below. */
     ok = tlb_fill_align_body(cpu, addr, type, mmu_idx, memop, size, probe,
                              ra);
     hakux_tcg787_tfr++;
-#if HAKUX_TCG787_TIME_FILLS
     hakux_tcg787_tf_ns += get_clock() - t0;
-#endif
     return ok;
 }
 

@@ -1394,7 +1394,16 @@ static int rr425_pc_cmp(const void *a, const void *b)
  * One line at [rr425]'s cadence and w: sn the timed dispatches, us their
  * total, then the top 12 entry pcs as pc:bytes:us:n (first three guest
  * bytes at pc, as in [rr425pc]). drop is us that found no free slot.
+ *
+ * Perflog builds only (HAKUX_TCG787, as [tcg787] in cputlb.c): a plain build
+ * books nothing on the execution path and prints no [tpc787] line.
  */
+#if defined(NV2A_PERF_LOG) && NV2A_PERF_LOG
+#define HAKUX_TCG787 1
+#else
+#define HAKUX_TCG787 0
+#endif
+#if HAKUX_TCG787
 #define TPC787_BITS 10
 typedef struct {
     uint32_t pc, n;     /* n == 0: empty */
@@ -1465,6 +1474,7 @@ static void tpc787_tick(CPUState *cpu, unsigned window)
     memset(tpc787, 0, sizeof(tpc787));
     tpc787_drop_ns = 0;
 }
+#endif
 
 static void rr425_tick(CPUState *cpu)
 {
@@ -1533,14 +1543,18 @@ static void rr425_tick(CPUState *cpu)
                         top[i].n);
     }
     JC425_LOG("[rr425pc] w=%u%s", window, buf);
+#if HAKUX_TCG787
     tpc787_tick(cpu, window);
+#endif
     rrw_tick(window++, now);
 
 reset:
     memcpy(prev, rr425_n, sizeof(prev));
     memset(rr425_pc, 0, sizeof(rr425_pc));
+#if HAKUX_TCG787
     memset(tpc787, 0, sizeof(tpc787));
     tpc787_drop_ns = 0;
+#endif
     rr425_pc_drop = 0;
     prev_ns = now;
 }
@@ -2342,7 +2356,9 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
         rr425_n[RR_SN]++;
         rr425_t = t;
         rr425_phase = 2;
+#if HAKUX_TCG787
         tpc787_pc = (uint32_t)pc;
+#endif
     }
 #endif
     tb = cpu_tb_exec(cpu, tb, tb_exit);
@@ -2352,7 +2368,9 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
         rr425_n[RR_TBNS] += run;
         rr425_n[RR_TBN]++;
         rr425_phase = 0;
+#if HAKUX_TCG787
         tpc787_book(tpc787_pc, run);
+#endif
     }
     rr425_book(cpu, tb, *tb_exit);
     if (unlikely(++rr425_samp >= 64)) {
