@@ -185,3 +185,21 @@ Both runs of `forza.drive` on disk crash the guest kernel the same way, on maste
 NOTES ("F1 pilot") has the outcome table and the next step for each outcome, with P and win.
 
 F1 stays off by default; it is an opt-in prototype.
+
+## #507 -- 2026-10-03 23:18 PDT
+
+[lane.memfast] F1 batch 2 is read (Tron, Nova, one binary at e9617a9cb4: F2 = `HAKUX_FASTMEM=1`, B = memfd RAM with no shadow, C2 = off).
+
+- **THP is not the cost.** On the Nova, `transparent_hugepage/enabled` and `shmem_enabled` are both `never`, and master's own RAM shows 0 huge pages.
+- **The memfd is not the cost.** B is within 2% of C2 in every early bucket.
+- **The shadow's loss repeats.** F2 is -24% fps at 30 s and -33% at 90 s after the mark, as in the pilot. The vCPU's run time per frame rises by 4-8 ms.
+- **F1's own counted work in those windows is under 0.1 ms per wall second**: 5 maps/s, under 1 fault/s, no drops.
+- **The pilot's "faster late" was the route.** B, with no shadow, reaches the same 60-fps state. F1 as built gains nothing on Tron.
+
+**Cost, named:** two host aliases for one guest page. Fast loads read through the shadow, while stores, slow paths and helpers use xbox.ram. 98.7% of pages have VA != PA, so a store and the load after it hit one physical line through two VAs. That defeats store-to-load forwarding and the VIPT L1's alias handling, and it doubles dTLB entries, which matters more with no THP. x86 stack traffic crosses the two aliases on every push/pop.
+
+**Fix, built at 62cc8e1aab:** `HAKUX_FASTMEM=one`. The TLB entries of shadow-mapped pages take the shadow as their addend, so the vCPU uses one VA per page. The shadow is mapped read-write, and only softmmu stores write through it, after their usual flag checks. `tlb_reset_dirty` and the code-fetch lookup translate shadow pointers back to RAM, so SMC and dirty tracking are unchanged. Every unmap softmmu did not ask for flushes the entries it would leave stale. Local syntax check with the NDK flags: clean.
+
+**Queued (Nova, Tron, same route):** O `1-1791094714-lane.memfast-388323` (`=one`) and C3 `1-1791094714-lane.memfast-388398` (off). Predicted: O within 3% of C3 in every 0-150 s bucket. NOTES "Attempt 4" says which outcome picks which next step.
+
+**For lane.flushstall787 (#787):** its answer is that the stalls are the guest's own work at a transition (first-time translation and the kernel memory manager), not re-translation after a TLB flush. F1 does not change translation. It targets the lever #787 ranks first, vCPU execution speed, but only once one alias removes the loss. One risk to measure: each INVLPG of a page the shadow maps costs one remap (about 2 us). Kabuki's stall windows run 12-25k INVLPGs per 2 s, so F1 could add up to about 25 ms per stall window. The `[fm] inv`/`unmap` counts on a Kabuki run would show it.

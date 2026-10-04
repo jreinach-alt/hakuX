@@ -1593,7 +1593,7 @@ with `WAITING` naming batch 2's three runs. All three finished, and the
 lanewaker resumed the lane. The branch merged master `51305b71dd` (failgate)
 before any new ref.
 
-### Batch 2, read 23:15 PDT (Tron, Nova, one binary at `e9617a9cb4`)
+### Batch 2, read 23:12 PDT (Tron, Nova, one binary at `e9617a9cb4`)
 
 The copies are in `.scratch/f1/{F2,B,C2}`. The readers: `f1_read.py`,
 `decompose.py`, `.scratch/buckets.py`, and `.scratch/fm_buckets.py` (the
@@ -1779,7 +1779,7 @@ tron-newgame v5).
 | RAM on huge shmem (if THP loss is the cost) | 0.3. Mechanism: THP restores TLB reach for RAM. Risk: `shmem_enabled` may be `never` on a retail Android kernel, and an app cannot change it | recover the early-scene loss (up to 35% fps) and keep the late-scene gain (about 25% guest busy per frame) | small code (madvise on the memfd mapping), 1 pair | if B shows the loss |
 | Stores through the shadow (design F2), so one alias carries all guest accesses | 0.3. Mechanism: halves the TLB footprint. Evidence for the store-side risk: section 8's `sd` rates, priced with F0a's constants (about 3-6 us per protection fault) | the same as above, plus the 5.7% of GTA's vCPU in store compares | large: late write permission, dirty tracking | if B is within 3% of C2 |
 | Park F1 on this platform | n/a | none | none | if neither fix is open. W1 and phase 1 stand on their own |
-8. **2026-10-03 23:40 PDT, after batch 2. Re-scored with what it showed:**
+8. **2026-10-03 23:18 PDT, after batch 2. Re-scored with what it showed:**
    - THP is `never` on the Nova, so the THP candidate is gone.
    - The memfd costs nothing: B is level with C2.
    - The shadow's loss repeats: F2 is -24% and -33% at the worst buckets.
@@ -1791,3 +1791,13 @@ tron-newgame v5).
 | Stores through the shadow as fast stores (design F2) | 0.3. Needs write faults for dirty and SMC, priced in section 8 at 3-6 us a fault | the 5.7% of GTA's vCPU in store compares, on top of F1 | large | only after one alias shows F1's load win |
 | F1 with emission off (a decider) | n/a | none | 2 runs | only if O is no better than F2 |
 | Park F1 on this platform | n/a | none | none | if O and the emission-off decider both fail. W1 and phase 1 stand on their own |
+
+**Session ended 23:20 PDT, waiting on the O/C3 pair** (`WAITING` names both
+runs). On resume:
+- copy them into `.scratch/f1/` as O and C3 (`.scratch/copy_b2.py`, with the
+  run ids changed);
+- add O and C3 to `.scratch/buckets.py`'s arm list, and read fps, v_run and
+  gbusy per bucket;
+- read `[fm]` with `f1_read.py` and `.scratch/fm_buckets.py`, and check
+  O's logcat for a vCPU-thread SIGSEGV with `si_addr` in the shadow;
+- apply the outcome table in "Attempt 4".
