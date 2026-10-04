@@ -118,7 +118,20 @@ Predictions, registered before queueing, on ref 1fe520a709:
 `flushstall787-tron.json` (added: the on-disk data predicts the opposite
 answer for Tron, and one run of the same build settles it).
 
-(Request ids and results below as they land.)
+Queued 2026-10-03 17:05 PDT at release tier, pinned to the Nova, ref
+1fe520a709 (perflog; the same commit builds locally, GRADLE_EXIT=0, 8m21s):
+
+- Kabuki `1-1791072687-lane.flushstall787-1209260`, 840 s, HAKUX_GPL=3,
+  route `kabuki-warriors`. request.sh resolved it to the route's own
+  `first-run` state; Kabuki has no returning route, and both runs on disk ran
+  this state, so they compare directly.
+- Tron `1-1791072697-lane.flushstall787-1209966`, 750 s, route
+  `vcpuwait433/tron-newgame-anystate` (the route of the on-disk Tron run).
+
+**Waiting (17:45 PDT):** both requests are first in the queue, behind
+pathfind's Halo 2 holds on the Nova (`hold/nova`, renewed 00:38Z). The session
+stops here; handback resumes it when the runs finish. Then:
+`fs_judge.py <dir>` (Kabuki) and `fs_judge.py <dir> --all` (Tron).
 
 ## 5. For the next lane
 
