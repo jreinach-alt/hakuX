@@ -9,6 +9,17 @@
 - This session: the Halo 2 held run (golden `0a4742f1e45d`, GPL 3 is the build default; the Nova logcat will show
   `[gpl569] mode=3`), with a moving hold: the pool's 31% static window came from a loop that stood still in one room.
 
+### Halo 2 run 1 (17:20-17:36 PDT, `runs/halo-2-hold`): gave up at the 15-min budget, 85 model calls
+
+- Intro: 31 steps of letterboxed cutscenes (START, A, B, BACK, X, Y, R1 all tried) before the Halo HUD at 5.3 min.
+- Claim failed twice: the motion-sensor HUD sat over the **Armory look test**, a tutorial that needs the right stick.
+  Probes under the left stick read control 0.000-0.021.
+- **Cause (non-performance, named and fixed):** the navigation prompt's action grammar (`pathfind.py`, the list of
+  tokens) never mentioned `RSTICK`. The parser has accepted it since 10-02, and the hold loops use it, but the model was
+  never told it exists. Its notes say so at steps 39-66 ("the action list cannot send right-stick input").
+- Fix: `92cf166279` adds `RSTICK:<dir>:<s>` to the prompt grammar. Selftest all ok.
+- The run loaded the old module and cannot pass as it stands. Re-run 2 (`runs/halo-2-hold2`) uses the fix.
+
 ## Resume (10-03 16:30 PDT, attempt 1 of this resume): why the last session did not finish
 
 - The 14:55 session stopped at its $29.5 spend stop with the Nova released and no run in flight. Its 14:45 OUTBOX
