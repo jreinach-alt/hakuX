@@ -96,7 +96,7 @@ the perflog medians.
 | run | title | route | result |
 |---|---|---|---|
 | 1-1791080537-lane.fps20786-2538884 | Top Spin | fps786-topspin | pilot; reached the match, 307 rows |
-| 1-1791081646-lane.fps20786-2876934 | NBA Live 2005 | fps786-nba2005 | queued |
+| 1-1791081646-lane.fps20786-2876934 | NBA Live 2005 | fps786-nba2005 | reached play (12-min quarters, 11:45 1st), 310 rows |
 | 1-1791081646-lane.fps20786-2876984 | Counter-Strike | fps786-cs | queued |
 | 1-1791081681-lane.fps20786-2878057 | Midnight Club 3 | midnight-club-3.returning | queued |
 
@@ -139,3 +139,38 @@ Owner: #474 (pgraph.lock). The surface-download count (30 per frame) is the
 lever on the render side; `pgraph_lock_release_for_fence()` (pgraph.h 422),
 which is called today only at vk/surface.c 1188, is the lever on the vCPU side.
 rd_unl = 0 in every line, so no read was ever served across a released fence.
+
+### NBA Live 2005 (2876934): the serial renderer, as registered
+
+The route replayed pathfind's path exactly: Exhibition, 12-minute quarters,
+the Palace of Auburn Hills, live play at 11:45 in the 1st (frames s13, hold).
+
+| rows | share >= 28.5 | fps | F | gbusy | gidle | Ri | rcpu | rblk | v_blk | lockw | ph_GPU | ph_Draw | ph_Fin (Sub+Fen) | ph_Idle |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| all 310 | 0.07 | 24.2 | 41.3 | 21.1 | 19.9 | 5.7 | 24.5 | 10.8 | 2.8 | 2.4 | 18.5 | 8.9 | 13.8 (9.9+3.9) | 5.5 |
+| below 28.5 (288) | -- | 24.1 | 41.5 | 21.1 | 20.2 | 6.1 | 24.7 | 11.0 | 2.7 | 2.3 | 18.5 | 9.0 | 13.9 | 6.1 |
+| slowest quarter (73) | -- | 20.4 | 49.0 | 19.8 | 29.1 | 10.7 | 26.9 | 11.3 | 1.7 | 1.0 | 19.5 | 10.1 | 14.4 | 10.7 |
+
+VBLANKs per flip: v2 0.44, v3 0.49. 645 draws per frame, 13 render passes,
+two finishes per frame (`hakuX-stall` Finish: sd59 + flip59 per 2 s; every
+flip deferred, stlDef59). Read on the slow rows:
+
+- **Not vCPU**: the guest runs 21 ms of a 41.5-ms frame and idles 20.
+- **Not lock**: 2.3 ms per frame (0xb10 2.1, 0x71c 0.3).
+- **Not GPU alone**: 18.5 ms per frame.
+- **Not render CPU alone**: 24.7 ms on-CPU, perflog's ~1.2 ms included.
+- **The two in series**: the render thread spends 13.9 ms of every frame in
+  finish, waiting on the GPU (Sub 9.9 + Fen 3.9), and is idle only 6.1. Its
+  non-idle cost per frame is F - Ri = 35.4 ms: 24.7 on-CPU and 11.0 blocked.
+  That is just over the 33.3 ms of two VBLANKs, so half the frames take three.
+  If the GPU ran under the render thread's next frame instead of after it,
+  the renderer's cost would be ~max(24.7, 18.5) + slack, under 33.3.
+
+This run reads 24.2 fps, where pathfind's hold read 19.97. Both soaks ran
+the dispatcher's "max" regimen (perf_mode 2, fan 5), and the GPU sat at
+615 MHz the whole run ("gpu 615-615 of 680"). The hold ran on the device's
+defaults with no thermal record. A serial renderer pays twice for a slow GPU
+clock: the GPU idles while the CPU records, so the governor lowers its clock,
+and every GPU millisecond is on the critical path. near30 saw the same 401-MHz
+floor on Tron's plain runs. Same bound either way; the regimen moves where in
+(33.3, 50] the frame lands.
