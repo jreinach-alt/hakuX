@@ -9,11 +9,20 @@ N that is gone (or somewhere else) in N+1 and back in N+2.
 file (screenrecord's mp4; decoded with ffmpeg, see find_ffmpeg). Prints one
 line:
 
-    flicker: rate=<hits per 100 triples> p90=<..> max=<..> worst=<a|b|c> ...
+    flicker: p90=<per mille> rate=<hits per 100 triples> max=<..> worst=<a|b|c> ...
 
 and, with --out, flicker.tsv (one row per frame) and flicker_worst.png (the
 worst triple side by side, then the middle frame with the blinking pixels in
-red). --gate RATE exits 1 when rate > RATE, so a Playable check is one line.
+red). --gate P90 exits 1 when p90 > P90 (GATE_P90 = 5 by default with --gate
+alone), so a Playable check is one line.
+
+THE BURST NUMBER IS p90, not rate (changed 10-04 after the first session,
+recorded in docs/lanes/flicker801/NOTES.md). A defect recurs: RalliSport's
+cars drop out on alternate frames for seconds, so most triples score, and
+p90 was 194. A legitimate effect is an event: Orta's explosions and a
+full-screen white flash put rate at 15.8/100 while p90 stayed at 1.5. rate
+counts events; p90 asks whether blinking is the normal state of the burst.
+The gate, 5, is about 3x the highest negative p90 of the first session.
 
 WHY A TRIPLE AND NOT A PAIR. Frame-to-frame difference alone is motion: a
 rally car at speed changes half the screen every frame and is not a defect.
@@ -71,6 +80,7 @@ W = 320                      # analysis width; height follows the aspect
 PIXEL_T = 40.0               # grey levels (0-255) of blink to count a pixel
 HIT_PERMILLE = 1.0           # eroded hit pixels per 1000 to count a triple
 DUP_EPS = 0.6                # mean |diff| below this is a repeated frame
+GATE_P90 = 5.0               # burst p90 (per mille) above this is flicker
 FPS_CORNER = (0, 0, 130, 50)  # x, y, w, h in 1280x960 space (classify.py)
 REF_W, REF_H = 1280, 960
 EXTS = (".png", ".jpg", ".jpeg", ".ppm")
@@ -241,14 +251,14 @@ def run(path, out=None):
 
 
 def fmt(res):
-    keys = ["rate", "p90", "max", "hits", "triples", "frames", "unique", "dup_share",
+    keys = ["p90", "rate", "max", "hits", "triples", "frames", "unique", "dup_share",
             "unique_fps", "dt_median_ms", "dt_max_ms", "worst"]
     return "flicker: " + " ".join("%s=%s" % (k, res[k]) for k in keys if k in res)
 
 
 # ---------------------------------------------------------------- selftest
 
-def _synthetic(gone=lambda i: False, seed=1, n=60, cut_at=30, flash_at=None):
+def _synthetic(gone=lambda i: False, seed=1, n=60, cut_at=30, flash_at=None, car=(24, 12)):
     """A textured background panning 3 px/frame, a 'car' (24x12 at 320x240)
     driving across it, sensor noise, one scene cut. The car is not drawn on
     frames where gone(i)."""
@@ -263,7 +273,7 @@ def _synthetic(gone=lambda i: False, seed=1, n=60, cut_at=30, flash_at=None):
         f = src[8:248, 8 + 3 * i:8 + 3 * i + 320].copy()
         x = 40 + 2 * i
         if not gone(i):
-            f[150:162, x:x + 24] = [200, 30, 30]
+            f[150:150 + car[1], x:x + car[0]] = [200, 30, 30]
         if flash_at is not None and i == flash_at:
             f[100:110, 150:170] = 255
         f += rng.normal(0, 3, f.shape)
@@ -295,6 +305,12 @@ def selftest():
     check("one flash is one hit (a real effect reads like a defect)", one["hits"] == 1, one)
     check("a 30-on-60 repeat is de-duplicated, same rate", dup["dup_share"] >= 0.45 and
           abs(dup["rate"] - pos["rate"]) < 5, dup)
+    alt, _, _, _ = score(_synthetic(lambda i: i % 2 == 1, car=(48, 24)), lab)
+    check("a near car on alternate frames (RalliSport's shape) is over the gate",
+          alt["p90"] > GATE_P90, alt)
+    check("one flash is under the gate", one["p90"] <= GATE_P90, one)
+    check("a far car on alternate frames is under the gate (the stated blind spot)",
+          score(_synthetic(lambda i: i % 2 == 1), lab)[0]["p90"] <= GATE_P90, "24x12 of 320x240")
     return 1 if bad else 0
 
 
@@ -302,7 +318,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("burst", nargs="*")
     ap.add_argument("--out")
-    ap.add_argument("--gate", type=float)
+    ap.add_argument("--gate", type=float, nargs="?", const=GATE_P90,
+                    help="exit 1 when a burst's p90 exceeds this (default %s)" % GATE_P90)
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--selftest", action="store_true")
     a = ap.parse_args()
@@ -315,7 +332,7 @@ def main():
         res = run(b, a.out if len(a.burst) == 1 else (a.out and os.path.join(a.out, os.path.basename(b.rstrip("/")))))
         res["burst"] = b
         print(json.dumps(res) if a.json else fmt(res) + " burst=" + b)
-        if a.gate is not None and res["rate"] is not None and res["rate"] > a.gate:
+        if a.gate is not None and res["p90"] is not None and res["p90"] > a.gate:
             worst = 1
     return worst
 

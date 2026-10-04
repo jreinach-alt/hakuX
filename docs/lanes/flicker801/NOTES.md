@@ -42,3 +42,43 @@ approval in a lane session, so the session runs as this session's background tas
 
 The host has no ffmpeg. `pip install imageio-ffmpeg` into a venv (here `.flkvenv` in the worktree, not committed) gives a
 static binary, and `flicker_score.find_ffmpeg()` looks there, in `$FFMPEG` and on PATH.
+
+## 5. Sessions 1-2 (Nova, 08:53-09:20 PDT, debug app as installed; exploratory, not validation)
+
+Capture: screenrecord sustains the panel's 60 Hz (dt median 16.7 ms; 59.8-60.4 unique fps when the game ran at 59).
+Back-to-back screencap: 3 captures in 4 s in session 1, 6 in 4 s in session 2 (0.7-1.3 s each). It cannot see flicker.
+
+| burst | title, when | p90 | rate/100 | max | unique fps | what the worst triple shows |
+|---|---|---|---|---|---|---|
+| s1 b1 | RalliSport, hold-play | 0.339 | 2.75 | 1.5 | 45.7 | bumper view, empty field: a tree trunk |
+| s1 b2 | RalliSport, hold-play | 0.0 | 0.42 | 1.2 | 59.8 | - |
+| s1 b3 | RalliSport, hold-play | 1.562 | 15.97 | 12.5 | 60.4 | stuck on a tree: dust puff, trunk edge jitter |
+| s1 b1 | Orta, hold-play | 0.417 | 4.91 | 2.4 | 56.6 | - |
+| s1 b2 | Orta, hold-play | 1.471 | 15.84 | 7.1 | 51.1 | an explosion flash |
+| s1 b3 | Orta, hold-play | 0.247 | 3.80 | 868.8 | 40.0 | a full-screen white frame, then black |
+| s1 b1 | Halo, hold-play | 0.768 | 6.78 | 1.1 | 15.1 | dark cryo bay, mostly still |
+| s1 b2 | Halo, hold-play | 1.198 | 27.78 | 1.9 | 14.7 | " |
+| s1 b3 | Halo, hold-play | 0.768 | 5.26 | 1.4 | 9.8 | " |
+| **s2 b1** | **RalliSport, race start (claim)** | **194.1** | **65.62** | **327.4** | 32.7 | **a Nissan beside the camera drawn in N, absent in N-1 and N+1, its shadow drawn in all three** |
+| s2 b2 | RalliSport, claim probe (car standing) | 0.013 | 0.0 | 0.0 | 5.9 | nothing moving |
+| s2 b3 | RalliSport, claim probe (car standing) | 0.0 | 0.0 | 0.0 | 2.5 | nothing moving |
+
+What it showed:
+- **The owner's flicker is real and the capture sees it.** s2 b1's hit pattern is runs of consecutive hits
+  (`XXXXXXXXXXXXXXXXXXXXX....XXXXXX...`): the car body is drawn on alternate game frames (race clock 08.01, 08.04,
+  08.07 at 30 fps), and its shadow is drawn every frame.
+- **RalliSport's hold-play has no cars in view:** pathfind's drive loop goes off alone in bumper view (POS 4 OF 4), so
+  the 3 hold bursts measure an empty savanna. Bursts must come from the race start, while the field is together.
+- **rate does not separate; p90 does.** Orta's legitimate one-frame events (explosions, a white flash) put rate at
+  15.8/100, as high as anything RalliSport did without cars. p90 asks whether blinking is the burst's NORMAL state:
+  194 on the positive against at most 1.56 on all 11 other bursts.
+
+**Change after seeing data (recorded, not silent):** the burst number and `--gate` are now p90, not rate, with a gate
+at 5 per mille: about 3x the highest negative p90 (1.56) and about 39x below the positive (194). The pixel and triple
+thresholds are unchanged. Because this choice follows the data, session 3 is the test: fresh RalliSport race starts
+(two boots) and fresh negatives (Orta, Spikeout, Halo), all captured the same way (claim mode), scored with no further
+change.
+
+Stated blind spot: a far car (24x12 at 320x240, 0.4% of the frame) blinking on alternate frames has p90 3.75, under
+the gate (selftest leg). The gate sees an object of about 0.5% of the frame or more, blinking in 10% or more of
+triples.
