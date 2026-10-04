@@ -26,9 +26,9 @@ The design and the choices against it are in NOTES ("Phase 2 design" and "Attemp
 
 | leg | result |
 |---|---|
-| F0a constants (Tron, control arm, 730 s) | queued: `1-1791081222-lane.memfast-2796953` |
-| F1 reaches play, no crash or hang; `[fm]` faults, upkeep, patched sites | queued: `1-1791081223-lane.memfast-2797182` |
-| Tron sustained fps, F against C: +5-15% predicted; kill below -3% | pending the pair |
+| F0a constants (Tron, control arm, 730 s) | **done**: SIGSEGV 1.6-2.4 us, map 1.6-2.4 us, cold refault 4.4 us, walk 2.2-2.5 ns a page, drop-all 10-12 ms per 8,192 pages (NOTES, "F1 pilot") |
+| F1 reaches play, no crash or hang; `[fm]` faults, upkeep, patched sites | **pass**: 750 s, 5.3 faults/s, 0.12 ms/s upkeep, 732 sites patched |
+| Tron sustained fps, F against C: +5-15% predicted; kill below -3% | **killed in the early scenes**: -1 to -35% fps for 0-210 s after the mark; faster after 270 s (guest busy -25%, at the cap). Cause under test: batch 2 (THP probe, F0b arm) |
 
 ## Local checks (no CI while GitHub is suspended)
 
@@ -40,10 +40,9 @@ The design and the choices against it are in NOTES ("Phase 2 design" and "Attemp
 
 ## Next
 
-Read the pair with `f1_read.py`, and `title_verdict.py` on copies. Then:
-
-- If F is not killed: a second Tron pair, and BF2 MC.
-- If faults or upkeep are the cost: the fix the `[fm]` line names (decay for patched sites, `MAP_POPULATE`, a larger cap).
-- If F is killed by the constants themselves: the lazy view swap (design section 2), or park F1.
+Batch 2 (F2, B = F0b, C2, each with the THP probe) decides between the
+memfd RAM losing THP and the shadow's 4 KiB alias as the early-scene cost.
+NOTES, "Next" item 7 has each candidate with P, win and cost. F1 stays draft
+and default-off until one of them recovers the early scenes.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

@@ -151,3 +151,37 @@ Both runs of `forza.drive` on disk crash the guest kernel the same way, on maste
   - F1 changes no re-translation trigger. Code-page invalidation is on the store side, and F1 leaves stores alone.
   - It adds one hash insert per guest load at translation time, plus an empty-table reset at each `tb_flush`.
   - If #787's counter names re-translation as Tron's stall, F1 neither causes nor fixes it. F1's `[fm] sadd=` (sites added per window) shows translation volume next to `[tcg787]`.
+
+## #507 -- 2026-10-03 20:30 PDT
+
+[lane.memfast] **The F0a constants and the F1 pilot** (Tron 2.0, Nova, one binary, the env the only difference).
+
+**F0a constants** (in the app, under libsigchain, the emulator running; kernel 5.15.123):
+
+| operation | p50 |
+|---|---|
+| SIGSEGV round trip | 1.6-2.4 us |
+| map one memfd page | 1.6-2.4 us (2.4 with `MAP_POPULATE`, which saves the 1.1 us first touch) |
+| unmap | 1.7 us |
+| cold refault (fault, map, retouch) | 4.4 us |
+| page walk | 2.2-2.5 ns per page |
+| drop-all with 8,192 pages mapped | 10-12 ms |
+
+- A scattered page costs 2 VMAs.
+- Priced against the rates in NOTES section 8, F1's upkeep fits under the kill line on GTA and Tron.
+
+**The F1 pilot:**
+
+- F1 ran 750 s with no crash. In play it took 5.3 faults/s, 0.12 ms per wall second of upkeep, no drops, and 732 patched load sites; revalidation kept 100% of pages.
+- **But F1 is slower in Tron's first 210 s of play**, by 1-35% fps per 30 s bucket against both its control and an earlier master run on the same route (these two agree within 3%). It is faster after 270 s: about 25% less guest-busy time per frame, at the 60 fps cap.
+- The control hung at about 250 s ("289.9 s without 60 guest flips") with F1 off: a Tron hang on master code. Evidence for #672 if that is Tron's hang issue: `1-1791081222-lane.memfast-2796953`.
+
+**Hypothesis: host TLB reach.** C's RAM can sit on 2 MiB transparent huge pages. F1's memfd RAM gets them only if shmem THP is on, and F1's loads add a 4 KiB alias. Batch 2 at `e9617a9cb4` adds a THP probe and a memfd-only arm (F0b), which separates the two candidate causes:
+
+- `1-1791083408-lane.memfast-2985019` (F1);
+- `1-1791083408-lane.memfast-2985074` (F0b);
+- `1-1791083409-lane.memfast-2985129` (control).
+
+NOTES ("F1 pilot") has the outcome table and the next step for each outcome, with P and win.
+
+F1 stays off by default; it is an opt-in prototype.

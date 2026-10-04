@@ -1472,6 +1472,112 @@ Two runs on the same build, the env as the only difference:
   rule). One pair is a pilot, not a verdict. A second pair, and BF2 MC, follow
   only if this one is not killed.
 
+## F1 pilot, read 2026-10-03 20:25 PDT (Tron, Nova, one binary at 6162792993)
+
+Runs: C `1-1791081222-lane.memfast-2796953` (F1 off, F0a at 730 s) and
+F `1-1791081223-lane.memfast-2797182` (`HAKUX_FASTMEM=1`). Copies are in
+`.scratch/f1/`. Readers: `f1_read.py`, `docs/lanes/near30/decompose.py`, and
+`.scratch/buckets.py` (fps per 30 s since the mark, against master runs M1
+`1-1791072697-lane.flushstall787-1209966` on the same route, plus M2 and M3).
+
+**F0a's constants** (Nova, kernel 5.15.123, no per-VMA locks; p50, first the
+unpinned pass, then the pass pinned to cpu7):
+
+| operation | p50 | predicted |
+|---|---|---|
+| SIGSEGV round trip (libsigchain) | 2.4 / 1.6 us | 1.5-5 us: in range |
+| map one memfd page | 2.4 / 1.6 us | 1.5-5 us: in range |
+| first touch | 1.1 us | 0.5-2 us: in range |
+| map with `MAP_POPULATE` (touch then free) | 2.3-2.5 us | n/a |
+| `mprotect` away and back (two calls) | 1.4-1.5 us | n/a |
+| unmap (remap `PROT_NONE`) | 1.7 us | n/a |
+| cold path (fault, map, retouch) | 4.4 us | 3-10 us: in range |
+| walk, batch | 2.2-2.5 ns/page | 2-10 ns: in range |
+| drop-all with 8,192 pages mapped | **9.7-12 ms** | under 5 ms: **WRONG**, about 1.3 us a page |
+| VMAs added by 8,192 scattered pages | 16,317 (2 a page) | about 2 a page |
+
+Priced with section 8's rates, the constants let F1 pay:
+
+- revalidating GTA's 59 same-value CR3 reloads a second costs about
+  1 ms/s;
+- Tron's 51 ms/s kill line allows about 11,000 cold faults a second.
+
+Drop-all is the expensive operation and must stay rare. `MAP_POPULATE` is
+now used for fills (`1632920915`).
+
+**F1's mechanics on Tron worked and were cheap:**
+
+- F armed (`[fm] on`), reached play and ran 750 s with no crash.
+- In play:
+  - faults 5.3/s;
+  - 13.9 maps/s and 15.8 unmaps/s (INVLPG 24.9/s);
+  - 2.3 revalidations a second keeping 100% of 28,428 pages walked, at 0.12 ms per wall second;
+  - no drops and no cap hits;
+  - 12,955 pages mapped, 226,572 sites, 732 patched;
+  - 6,175-6,328 maps lines in the process. Contiguous pages merge, so the shadow costs far fewer VMAs than the scattered F0a case.
+- `shit` (slow-path loads on unmappable pages) is 8,900/s. These are loads that called the helper on master too.
+
+**The fps leg: F1 is slower in Tron's first 210 s of play and faster
+after.** The route is deterministic enough to compare by time since the
+mark: C and M1 agree within about 3% in every 30 s bucket from 0 to 210 s.
+
+| s after mark | C fps | M1 fps | F fps | C gbusy ms | F gbusy ms |
+|---|---|---|---|---|---|
+| 0 | 45.7 | 46.2 | 42.2 | 20.5 | 24.2 |
+| 30 | 49.9 | 50.2 | 35.7 | 19.1 | 28.5 |
+| 60 | 55.1 | 53.3 | 48.4 | 15.3 | 20.0 |
+| 90 | 43.4 | 44.3 | 28.8 | 23.2 | 36.6 |
+| 120 | 35.3 | 35.2 | 28.0 | 43.4 | 44.4 |
+| 150 | 56.7 | 57.7 | 50.0 | 17.2 | 22.2 |
+| 180 | 59.8 | 59.9 | 59.2 | 16.0 | 16.9 |
+| 210 | 58.5 | 52.7 | 56.5 | 16.2 | 17.7 |
+| 270-510 | (hung) | 45.9-52.4 | 58.3-59.9 (cap) | - | 14.1-15.9 against M1's 18.8-21.4 |
+
+- **C hung** at about 250 s: "289.9 s without 60 guest flips". F1 was off
+  and F0a had not run yet (730 s), so this is a Tron hang on master code.
+- **The verdict on one pair: F1 as built does not pay on Tron.** It loses
+  1-35% fps in the early scenes, where the vCPU is also blocked more
+  (`v_blk` 3-8 ms against 1.3-4.5 per frame). It gains about 25% guest busy
+  per frame later, where it sits at the 60 fps cap.
+- **The loss is not F1's own upkeep.** Faults, maps, revalidation and drops
+  together are under 1 ms per wall second.
+
+**The cost, named as a hypothesis.** Host TLB reach:
+
+- C's RAM is anonymous with `MADV_HUGEPAGE` (`physmem.c` `ram_block_add`),
+  so it can sit on 2 MiB THP.
+- F's RAM is a memfd, which gets huge pages only if shmem THP is on.
+- F's loads also go through a second, 4 KiB-mapped alias. Stores and NV2A
+  still use the first, so the TLB footprint at least doubles.
+- That costs most where the working set is largest, which fits "slower
+  early, faster late". It is not measured yet.
+
+### Batch 2: what separates the candidates (queued 20:26 PDT, ref `e9617a9cb4`)
+
+F0a now opens with a THP probe: the sysfs modes, and the RAM block's and the
+shadow's `AnonHugePages`/`ShmemPmdMapped`/`FilePmdMapped` from smaps. Three
+arms run on one binary, F0a at 730 s in each, the control last (warmest
+shader cache):
+
+- F2 `1-1791083408-lane.memfast-2985019`: `HAKUX_FASTMEM=1`;
+- B `1-1791083408-lane.memfast-2985074`: `HAKUX_FASTMEM=ram` (F0b, memfd RAM, no shadow);
+- C2 `1-1791083409-lane.memfast-2985129`: off.
+
+**Predicted before the runs:**
+
+- C2's RAM shows `AnonHugePages` over half of 64 MiB.
+- B's and F2's RAM show `ShmemPmdMapped` 0, unless `shmem_enabled` is
+  `always` or `advise`.
+
+**What each outcome picks** (fps per 30 s bucket from 0 to 210 s against
+C2, as above):
+
+| outcome | names the cost as | next |
+|---|---|---|
+| B's early deficit is at least half of F2's | memfd RAM losing THP | if shmem THP can be on (`advise`), RAM on huge shmem, then re-measure F2. If the device says `never` and no app can change it, F1's load win must outrun the loss; park F1 on this platform and move to the lazy-swap or a store-side design only if a profile shows the win is bigger than the TLB cost |
+| B within 3% of C2 and F2 still slow early | the shadow's own 4 KiB alias | route stores through the shadow too (F2 of the design), so one alias serves both and the RAM mapping goes cold. Or cut the alias to the hot set (cap tuning) |
+| F2 not slower than C2 early | the pilot's early loss was not reproducible | a second pair at this ref, then BF2 MC |
+
 ## Next, for whoever resumes this lane
 
 0. DONE: leg S is read and passes (section "Leg S"). Do not re-run the
@@ -1521,3 +1627,11 @@ tron-newgame v5).
    GeometrySuperscreen_0.4999/_0.5626 as exact; a Forza soak on the
    golden-profile disk before the BugCheck 0x7f issue is fixed (both arms
    crash at about 110-120 s).
+7. **2026-10-03 20:30 PDT, after the F1 pilot. Re-scored with what it showed:** F1's own costs are small, and an unexplained per-frame cost appears in memory-heavy scenes.
+
+| candidate | P, and its evidence | win | cost | order |
+|---|---|---|---|---|
+| Batch 2 (F2, B, C2 with the THP probe) | a probe, not a fix. It decides between the two hypotheses below; the table in "F1 pilot" says which outcome picks which | none by itself | 3 Nova runs (42 min), queued | first: it decides |
+| RAM on huge shmem (if THP loss is the cost) | 0.3. Mechanism: THP restores TLB reach for RAM. Risk: `shmem_enabled` may be `never` on a retail Android kernel, and an app cannot change it | recover the early-scene loss (up to 35% fps) and keep the late-scene gain (about 25% guest busy per frame) | small code (madvise on the memfd mapping), 1 pair | if B shows the loss |
+| Stores through the shadow (design F2), so one alias carries all guest accesses | 0.3. Mechanism: halves the TLB footprint. Evidence for the store-side risk: section 8's `sd` rates, priced with F0a's constants (about 3-6 us per protection fault) | the same as above, plus the 5.7% of GTA's vCPU in store compares | large: late write permission, dirty tracking | if B is within 3% of C2 |
+| Park F1 on this platform | n/a | none | none | if neither fix is open. W1 and phase 1 stand on their own |
