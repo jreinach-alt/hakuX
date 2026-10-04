@@ -62,7 +62,14 @@ model's answer on the same frames; NOTES.md "Probe gate" gives the full history 
 Attempt 2-4 (earlier 10-03): hold-play (`pathfind.py --hold-s 600`, Nova only), the team-sport genre and `--goal`, the
 X unlock ladder and the hold perflog marks. See NOTES.md.
 
-Local checks (no CI), at the head after merging origin/master 10-03 14:55 PDT:
+Local checks (no CI), 10-04 14:25 PDT, at the head after merging origin/master:
+`python3 docs/testing/titles/pathfind_selftest.py` -> all ok, 63 checks (adds `fpsgate`, `dialogue`, `proberot`).
+`bash docs/testing/preflight.sh --allow-tracker` -> every gate ok except `coverage`. That gate fails on five issues
+filed in the last hour (#811-#815) that have no lane or blocker row on origin/board yet. #811 is this lane's Whiteout
+finding. Board rows are not a lane's to write; lane.local or the board owner classifies them. No harness file under
+docs/testing/jobs is changed.
+
+Earlier local checks, at the head after merging origin/master 10-03 14:55 PDT:
 `python3 docs/testing/titles/pathfind_selftest.py` -> all ok (adds `holdstill`, `holdshed`, `rounds`, `ownrt` and the
 RT+/LT+ `actions` checks; `holdstill` and `rounds` fail on the old code). `bash docs/testing/preflight.sh --allow-tracker`
 -> "preflight passed - safe to push". No harness file under docs/testing/jobs is changed.
