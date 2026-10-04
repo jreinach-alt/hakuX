@@ -165,6 +165,15 @@ check("dialogue", src[:5] == ["fast", "repeat", "repeat", "repeat", "fast"],
       f"one look, three unlooked repeats, then a look (not the stronger model): {src}")
 check("dialogue", all(s.get("action") == ["A"] for s in steps[:5]), "the repeats send the look's own press")
 
+# proberot: a live HUD whose probe input never moves anything (Road Rage's RT, 10-04): the third probe is not RT
+check("proberot", [pathfind.probe_key(t) for t in ("RT:1.5", "RT:3", "HOLD:A:3", "STICK:up:2", "RT+left:1.2", "A")]
+      == ["RT", "RT", "HOLD:A", "STICK:up", "RT+left", "A"], "probe_key drops the seconds only")
+G_RT = dict(GAME, probe="RT:3")
+rc, res, steps, calls = run("proberot", [("game", 0)] * 30, [G_RT] * 8, ["--no-record"])
+probes = [s["action"][-1] for s in steps if s.get("src") == "probe"]
+check("proberot", len(probes) >= 3 and [pathfind.probe_key(p) for p in probes[:2]] == ["RT", "RT"]
+      and pathfind.probe_key(probes[2]) == "HOLD:A", f"two RT probes, then the ladder's HOLD:A: {probes}")
+
 # dark: a dark dungeon scene, the probe moves an 80x80 patch by 12 grey levels (under the old fixed 16-level step,
 # 0.5% of the frame: refused before any confirm call). Black Stone's sword and spell in the 10-03 gate.
 rc, res, steps, calls = run("dark", [("black", 0), ("black", 0), ("dark", 0), ("dark", 0), ("dark", 0),

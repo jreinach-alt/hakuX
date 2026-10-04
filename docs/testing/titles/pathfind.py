@@ -96,6 +96,11 @@ SKIP_LADDER = ("START", "A", "B", "BACK", "X", "Y", "DOWN", "UP", "RIGHT", "LEFT
 # (10-03): the player stood in a sword-raised stance for 12 min while 40 stick, d-pad, A and RT probes moved
 # nothing; one X lowered the sword and the next stick ran. The pad was never the problem.
 UNLOCK_LADDER = ("X", "B", "Y", "R1", "L1", "BACK")
+# A probe input refused twice is not tried a third time: the next untried input of this ladder replaces it. The
+# Simpsons Road Rage, 10-04: ten RT probes on a live race HUD, each 0.02 idle vs 0.02 under input, until the timer ran
+# out; the model was told the earlier throttle probes failed and still chose RT.
+PROBE_LADDER = ("HOLD:A:3", "STICK:up:2", "RT:3", "HOLD:X:3", "LT:2", "STICK:left:1.5", "HOLD:B:3")
+PROBE_REFUSED_MAX = 2
 SIG = (16, 12)                       # a frame's signature: grey, box-averaged
 SIG_MATCH = 9.0                      # mean grey-level distance under which two screens are the same
 UNCHANGED = 0.01                     # classify.motion changed fraction at or under this: no change
@@ -368,6 +373,12 @@ def window_change(a, b):
     """Change between two kept hold frames at the probe's contrast step: did the player or camera move?"""
     ga = grey(a)
     return classify.motion(ga, grey(b), pixel=probe_step(ga))[0]
+
+
+def probe_key(tok):
+    """A probe input without its seconds: RT:1.5 and RT:3 are one input (RT), HOLD:A:3 is HOLD:A."""
+    head, _, tail = tok.rpartition(":")
+    return head if head and re.fullmatch(r"[\d.]+", tail) else tok
 
 
 def route_frame(out, png):
@@ -828,6 +839,7 @@ class Agent:
         self.hints = knowledge(tid, name)
         self.probes = 0
         self.dead_probes = 0         # probes in a row whose input moved nothing at all (UNLOCK_LADDER)
+        self.probe_tries = {}        # probe_key -> confirms that used it (PROBE_LADDER past PROBE_REFUSED_MAX)
         self.black_since = None
         self.hold_s = 0              # hold-play: seconds of play to hold after the claim (0: off)
         self.goal = ""               # --goal: a settings goal on the way in (a sports family's longest quarter)
@@ -1011,6 +1023,11 @@ class Agent:
         elif probe in HAT:
             probe = {"UP": "STICK:up:1.5", "DOWN": "STICK:down:1.5", "LEFT": "STICK:left:1.5",
                      "RIGHT": "STICK:right:1.5"}[probe]
+        if self.probe_tries.get(probe_key(probe), 0) >= PROBE_REFUSED_MAX:
+            fresh = [p for p in PROBE_LADDER if self.probe_tries.get(probe_key(p), 0) < PROBE_REFUSED_MAX]
+            if fresh:
+                probe = fresh[0]
+        self.probe_tries[probe_key(probe)] = self.probe_tries.get(probe_key(probe), 0) + 1
         if pre:
             # inputs that START play first (a kickoff's A, a serve): then the control pair
             self.send(pre)
