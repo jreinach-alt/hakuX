@@ -151,6 +151,13 @@ HOLD_GENRES = {
 # BACK and START are never sent in the hold, and B only to close a menu that a look found open (then X, then walk).
 TITLE_HOLD = {
     "58490004": {"walk": ["STICK:up:4", "STICK:right:4", "STICK:down:4", "STICK:left:4"]},   # Black Stone: Magic & Steel
+    # Panzer Dragoon Orta (10-03 run 3): the dragon flies on its own; the hold keeps it moving (a stick stroke that
+    # changes direction each cycle) and firing (RT held 1 s), and taps the lock-on button (A held 0.4 s, then released,
+    # so the homing shots fire). No X: this title's X is not in the loop. A title return after a game over gets one
+    # unlooked press of "continue" (DOWN to CONTINUE, A), up to twice per hold; the model reads the screen after it.
+    "4947002B": {"walk": ["STICK:up:2", "RT:1", "HOLD:A:0.4", "STICK:right:2", "RT:1", "HOLD:A:0.4",
+                          "STICK:down:2", "RT:1", "HOLD:A:0.4", "STICK:left:2"],
+                 "x": False, "continue": ["DOWN", "A"]},
 }
 TITLE_HOLD_FORBID = ("Y", "R1", "BACK", "START", "B")
 
@@ -1334,7 +1341,8 @@ class Agent:
         # looks (Black Stone stood 600 s on one octagon and passed the verdict). Then rotate the inputs: an unlock
         # button and the next genre's loop, until the scene moves again.
         parked, rot, still_windows = False, 0, 0
-        press_x, still_row = bool(th), 0  # a title hold presses X alone first, and again after a menu or two still windows
+        th_x = bool(th) and th.get("x", True)  # a title hold presses X alone first, unless the title says otherwise
+        press_x, still_row, cont_left = th_x, 0, 2   # and again after a menu or two still windows; continue: 2 returns
         shed_set = set()                 # loop buttons that opened a menu (HOLD_SHED): never sent again this hold
         order = [genre] + [g for g in HOLD_GENRES if g not in (genre, "onrails")]
         rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
@@ -1405,8 +1413,13 @@ class Agent:
                     if th:
                         # title hold: a menu is closed with one B and X follows; anything else keeps the model's press
                         # minus the forbidden buttons (a cutscene's A)
-                        if st in HOLD_SHED_STATES:
-                            action, wait_s, press_x = ["B"], 1.5, True
+                        if st == "title_screen" and th.get("continue") and cont_left:
+                            # a game over returned to the title: one unlooked CONTINUE, not the NEW GAME walk
+                            cont_left -= 1
+                            action, wait_s = list(th["continue"]), 4.0
+                            look["continue"] = True
+                        elif st in HOLD_SHED_STATES:
+                            action, wait_s, press_x = ["B"], 1.5, th_x
                         else:
                             action = [t for t in action if t.upper() not in TITLE_HOLD_FORBID] or ["A"]
                     look["action"] = action
@@ -1438,7 +1451,7 @@ class Agent:
                             # two still windows in a row: X once, then the walk goes on (no unlock rotation)
                             still_row += 1
                             if still_row >= 2:
-                                press_x, still_row = True, 0
+                                press_x, still_row = th_x, 0
                         else:
                             rot += 1
                             unstick = HOLD_UNSTICK.get(genre)

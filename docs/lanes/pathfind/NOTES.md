@@ -1,5 +1,21 @@
 # lane.pathfind -- NOTES
 
+## Resume (10-03 22:37 PDT, attempt 2 of this resume): why the last attempt did not finish
+
+- The 21:5x session ended at 22:27 (commit `9b7b90c7de`) right after its Black Stone hold3 write-up (FAIL, play share 9.5%,
+  OUTBOX 22:25). The 22:4x addendum (Panzer Dragoon Orta, held run 3 before 23:30 PDT) arrived after that write-up and was
+  not started. Nothing was in flight and no WAITING file was written, so the session stopped with the Panzer run undone.
+- Spend at the start of this resume: about $50 of the $70 cap. The Nova was free at 22:38.
+- This resume: Panzer run 3, returning state (golden `7cf4eb6181f1`), 600-s hold with the position test. Three changes,
+  each one the addendum's ask, and the cost each one targets:
+  1. **Difficulty (the claim):** `paths/4947002B.json` step 6 (the difficulty select, NORMAL highlighted) now sends
+     `UP, A`. It assumes EASY is listed above NORMAL: unverified until the claim's frame shows the menu.
+  2. **Keep firing and moving (the hold):** `TITLE_HOLD["4947002B"]` replaces the empty onrails loop. A stick stroke that
+     changes direction each cycle, RT held 1 s (fire), and a lock-on tap (`HOLD:A:0.4`, held then released). No X.
+  3. **Title return (the cost of 65 s in run 2):** after a game over returns the title, one unlooked `DOWN, A` (CONTINUE),
+     up to twice per hold, then the model looks. `DOWN` to CONTINUE is also a guess: unverified.
+- Selftest `pathfind_selftest: all ok` before the run.
+
 ## Resume (10-03 21:5x PDT, attempt 1 of this resume): why the last attempt did not finish
 
 - The 21:16 session (attempt 4) finished Dino Crisis 3 (FAIL, menu time 79.1%, below). Its OUTBOX was posted at 21:45 and it

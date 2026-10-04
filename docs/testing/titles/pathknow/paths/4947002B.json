@@ -1373,8 +1373,9 @@
 },
 {
 "state": "submenu",
-"why": "replay step 5: replay step 4: Difficulty select screen with NORMAL highlighted (default), description box below explains it",
+"why": "replay step 5: replay step 4: Difficulty select screen with NORMAL highlighted (default), description box below explains it. Run 3 (10-03): UP then A picks the easiest setting if EASY is listed above NORMAL",
 "action": [
+"UP",
 "A"
 ],
 "wait_s": 3.0,
