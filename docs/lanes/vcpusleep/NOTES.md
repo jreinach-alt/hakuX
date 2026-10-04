@@ -10,6 +10,140 @@ Simpsons vCPU thread is on-CPU 17.2 ms and **asleep 9.4 ms** of a 26.7 ms
 frame (v_blk, r 0.96 with frame time). The guest itself never idles (gidle
 0.65 ms).
 
+## Session 3 (2026-10-04, attempt 3): simp2 read. The sleep is gone and the frames did not come back
+
+**Why attempt 2 did not finish.** It ended on purpose, waiting on things
+outside the session: the host capture simp2 (lane.local runs device captures)
+and the two pixel arms. Both arrived (addendum 14:28 PDT). WAITING is removed.
+
+**Result: M and S pass, O1 and O2 fail. The posted store removes the vCPU's
+sleep, and the frame is then paced by the GPU side. The code is reverted on
+the branch (f6ac723228). c2dfca18a1 stays in history for re-arming.**
+`selftest_postput.sh` went with the revert, because it compiles the
+reverted block. It is at c2dfca18a1 with the code it tests.
+
+### Validity of simp2 (B, c2dfca18a1), checked first
+
+| check | result |
+|---|---|
+| cap log | `--trace-offcpu` attempt 1 recorded 59.98 s, 1,071,700 samples, 0 lost; `profile=1 void=no`; battery 80 |
+| record window | 14:24:05-14:25:05 PDT, mark gameplay 14:21:52.404, so mark+133..193 s (simp1: mark+148..208) |
+| frames in the window | `142421-hold.png`, `142455-hold.png`: Homer on foot in Evergreen Terrace, Marge portrait top left, minimap bottom right, no dialog box. **Free roam** |
+| build proof | every `fifoskew` line carries `posted=` (1,433-2,901 a window); only c2dfca18a1 prints it |
+| rows | decompose.py: 124 over the hold (>= 60), 30 in the window (>= 20). No BugCheck; pathfind held play |
+
+Leg V passes.
+
+### A against B
+
+decompose.py, whole hold (`all` row), with the same stub `ROUTE` line from
+logcat's mark gameplay:
+
+| | A simp1 (master) | B simp2 (posted store) |
+|---|---|---|
+| fps (decompose `all`; mean of rows) | 40.05; 40.03 | **36.22; 37.88** |
+| frame F ms | 24.97 | 27.61 |
+| guest busy ms/frame | 24.45 | 12.62 |
+| guest idle ms/frame (timer-woken) | 0.62 (0.35) | **14.93 (12.41)** |
+| Ri, PFIFO parked ms/frame | 9.50 | **0.20** |
+| v_run ms/frame | 16.13 | **26.67** |
+| v_blk ms/frame | 8.85 | **0.80** |
+| record window: fps / v_blk (row means, 30 rows each) | 39.81 / 8.84 | 37.40 / 1.14 |
+
+waitsite.py on simp2: vCPU off-CPU **2,543 ms of 60,017 (4.2%)**, against
+19,987 (33.3%) in simp1. `pfifo.lock in USER MMIO` is 75 ms, **3.3%** of
+attributed. Top site: `BQL <- cpu_exec_loop` 1,198 ms (53%), about 0.5 ms a
+frame.
+
+| leg | bar | B | verdict |
+|---|---|---|---|
+| M | USER MMIO <= 10% of attributed, posted > 0 | 3.3%, posted 1,433+ a window | **PASS** |
+| S | whole-hold and window v_blk <= 6.0 ms/frame | 0.80 / 1.14 | **PASS** |
+| O1 | whole-hold fps >= 44.0 | 36.22 (37.88 row mean) | **FAIL** |
+| O2 | whole-hold fps >= 48.0 | same | **FAIL** |
+
+Pixel arms (`ab_compare.py` against `vcpusleep-pixels.json`): **PASS**, 45 of
+45 captures byte-identical, 5 exact in each arm.
+
+### Where the sleep went
+
+The prediction's row "M and S pass, O1 fails" says the freed time went to
+guest spin or the renderer became the limit. **Both happened:**
+
+1. **Guest spin.** v_run rose 10.5 ms/frame as v_blk fell 8.05. The guest
+   now finishes its frame's work in 12.6 ms. It then idles 14.9 ms, woken
+   by the timer, and the vCPU spins through that idle on the CPU: it was
+   on-CPU 57.5 s of 60. It also took the X3 (cpu7) for 53.7 s, against
+   18.3 s in A (`cpu_switches.py`, from `simpleperf dump`'s per-record
+   CPU).
+2. **The PFIFO thread is paced by the GPU.** It is never parked (Ri 0.2)
+   and never preempted (6 ms of 47.6 s off-CPU), yet it is off-CPU 79% of
+   the time. Paired exactly (`exact_offcpu.py`, below), it takes **one
+   long sleep per frame: n = 2,058, median 21.3 ms, 43.4 s in total. In A
+   the same sleep is n = 2,054 with median 8.0 ms.** The render thread
+   does not run during it (1 of 2,058). Each sleep comes right after a
+   short wake out of `wait_frame_submitted`, with no on-CPU sample between
+   (`lastrun.py`). In that code path (`pgraph_vk_finish`'s frame rotation)
+   the only call that blocks without the render thread is
+   `vkWaitForFences` on the frame slot (draw.c:4351). So **the sleep is the
+   GPU fence of an earlier frame**. This is inference: none of these
+   switch-outs carries a sample. `wait_timestamp_safe`, the other GPU
+   wait, is sampled at 1.8 s.
+3. **Same work per frame.** `[shd413]`: 316 against 311 pipeline binds a
+   frame, and 100 against 99 shader binds. The PFIFO thread's CPU per frame
+   fell, from 6.56 to 5.46 ms. Also, the guest's 1,700 kicks a second
+   became about 80 posted batches (`fifoskew` kicks 144-179 a window, drain
+   mean 13 ms against 1.5).
+
+So B's frame is 27 ms of GPU-side time for the same draws as A. A's
+frame-slot fence wait was already 8 ms a frame, so the GPU side was near the
+limit in A as well. The lock was making the vCPU wait out the GPU. Removing
+the lock moves that wait into guest idle; it does not shorten the GPU's
+frame.
+
+**Why B's GPU frame is longer than A's is not measured.** One run each, and
+Simpsons free roam varies with the route: vcpu60's hold read 37, simp1 40,
+simp2 37.9. The candidate mechanisms:
+
+- power: the vCPU now spins at 96% of the X3 against 67%;
+- placement: the PFIFO thread lost the X3, 4,584 ms on cpu7 down to 251;
+- submission shape: 80 large batches a second instead of 1,700 small ones.
+
+Separating them needs the GPU clock and per-frame GPU time on both builds.
+That is the telemetry for the next lane (below), not a rerun.
+
+### waitsite.py's pairing hands a bounce's sample to the long sleep after it
+
+waitsite.py (vcpuwait433) charges each off-CPU interval to a sched_switch
+sample within +-200 us of its switch-out. A thread that wakes, runs under
+50 us and sleeps again unsampled gets its long sleep charged to the short
+one's sample. `exact_offcpu.py` pairs a switch-out only with a sample taken
+after the thread's previous switch event.
+
+| reading | +-200 us (waitsite) | exact |
+|---|---|---|
+| simp1 vCPU, `user_write` | 11,225 ms | **11,224 ms**: R1 stands |
+| simp1 PFIFO, `wait_frame_submitted` | 12,656 ms | **561 ms**, all under 5 ms; the long sleeps are unsampled |
+| simp2 PFIFO, `wait_frame_submitted` | 12,732 ms (8.8 s in waits >= 20 ms) | **170 ms** |
+
+So session 2's holder line ("PFIFO asleep in `wait_frame_submitted`,
+3,366 ms") is wrong about the site. During the vCPU's waits the PFIFO
+thread was asleep in the frame-slot fence wait that follows it. The holder
+was asleep on the GPU, not on the render thread. The go decision does not
+change, because the store needs nothing from either. The recommendation
+does: see the ranking.
+
+### Next, ranked by P x win
+
+| # | what | P | win | evidence |
+|---|---|---|---|---|
+| 1 | **Name the GPU-side frame time on Simpsons.** Per-frame GPU time from `gpu_ts_readback` plus the GPU clock (perfarch's `HAKUX_TOPO` sampler), on master and on c2dfca18a1, in free roam (`capture_simpsons_offcpu.sh` drives it). Then cut what the GPU spends 25-27 ms on. This is GPU-side work (async794's or a Simpsons GPU lane), not this row | 0.7 that it names the GPU's frame; 0.35 that the cut is reachable | it gates every Simpsons gain. The vCPU's own work is 12.6 ms a frame (CPU-side ceiling about 79 fps) and the PFIFO thread's is 5.5 ms | A's fence wait is already 8 ms a frame and B's is 21; same draws |
+| 2 | **Re-arm the posted store on top of #1's cut** (`git revert f6ac723228`) | 0.5 | once the GPU stops pacing the frame, the 8.85 ms/frame lock wait returns as the vCPU's limit. The posted store then turns it into frames: vcpu60's 45-58 band | M and S pass, and pixels are byte-identical, so it is ready |
+| 3 | Guest idle without the spin on Simpsons (idlehalt): the vCPU spins through 12.4 ms a frame | 0.2 that it recovers B's 2-4 fps, if power is the cause | small in fps; real on battery | B's vCPU is on-CPU 96%, on the X3 |
+
+Do not rerun simp2 hoping for 44: the outcome leg is decided by the GPU
+side, not by noise.
+
 ## Session 2 (2026-10-04, attempt 2): R1 read. `user_write` owns the sleep: go
 
 **Why attempt 1 did not finish.** It ended on purpose, waiting on the host
@@ -226,11 +360,26 @@ It is not a measurement of the wait.
 | # | what | id | result |
 |---|---|---|---|
 | R1 | host capture `simp1` (lane.local) | `perf/2026-10-04-vcpusleep/simp1/` (13:28 PDT) | valid (free roam, v_blk 8.88). `user_write` (DMA_PUT) 79.3% of attributed off-CPU |
-| P-A | pixel arm A, 3 suites, Nova pinned, 3ff55c9ac2 | `1-1791146994-vcpusleep-base-1384096` | queued 13:50 PDT behind pathfind's hold |
-| P-B | pixel arm B, 3 suites, Nova pinned, c2dfca18a1 | `1-1791146995-vcpusleep-fix-1400786` | queued 13:50 PDT; its build makes `dispatch/builds/c2dfca18a1.apk` for simp2 |
-| B | host capture `simp2` on c2dfca18a1 (lane.local) | requested in OUTBOX 13:55 PDT | waiting |
+| P-A | pixel arm A, 3 suites, Nova pinned, 3ff55c9ac2 | `1-1791146994-vcpusleep-base-1384096` | 45 captures, 5 exact |
+| P-B | pixel arm B, 3 suites, Nova pinned, c2dfca18a1 | `1-1791146995-vcpusleep-fix-1400786` | 45 of 45 byte-identical to A: PASS |
+| B | host capture `simp2` on c2dfca18a1 (lane.local) | `perf/2026-10-04-vcpusleep/simp2/` (14:24 PDT) | valid. M, S pass; O1, O2 fail (36.2-37.9 fps against 40.0) |
+
+Budget: one capture (simp1) plus the arm (simp2) plus two short pixel arms.
+Nothing else was queued.
 
 ## Do not repeat
+
+- Do not read a lock or wait site's holder from waitsite.py's +-200 us
+  pairing when the holder wakes and re-sleeps. Use `exact_offcpu.py` (run
+  from the repo root; it imports waitsite.py's parser). Preemption and CPU
+  placement need `cpu_switches.py`; report-sample has no CPU field.
+- Do not take "the vCPU sleeps on a lock" as "the vCPU's sleep is the
+  frame's limit". Here the lock carried a GPU wait, and removing it gave
+  the same frames with the vCPU spinning instead. Read the holder's own
+  long sleeps before pricing the win.
+- The simp1/simp2 report-sample dumps are 3 GB each. Make them with
+  `simpleperf report-sample --show-callchain` called from python3. The Bash
+  tool refuses the NDK path outside the worktree.
 
 - Do not re-run `simpleperf report-sample` to re-read simp1: the 3 GB text
   dump takes a minute to make and waitsite reads it with `--from-text` in

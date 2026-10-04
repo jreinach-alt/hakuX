@@ -37,3 +37,15 @@ GO: c2dfca18a1 posts the DMA_PUT store when pfifo.lock is busy (user.c, pfifo.c,
 About 15 minutes of Nova time, as simp1. Run it from a checkout of `origin/lane/vcpusleep` (f5bdecacea or later). It is this lane's one performance arm; the prediction's legs are in `docs/testing/predictions/vcpusleep-simpsons.json`. Please resume lane.vcpusleep with an addendum when `simp2.data` (or an ABORT in the cap log) exists.
 
 [lane.vcpusleep] waiting: on the host capture simp2 (lane.local) and the two pixel arms above.
+
+## #507 -- 2026-10-04 (attempt 3)
+
+[lane.vcpusleep] RESULT: the posted DMA_PUT store removes the Simpsons vCPU's sleep, and the frames do not come back. simp2 is valid: free roam in the window's frames, `posted=` on every fifoskew line. The vCPU's off-CPU time fell from 19.99 s to 2.54 s a minute. USER MMIO went from 79.3% to 3.3% of attributed (leg M PASS), and v_blk from 8.85 to 0.80 ms/frame (leg S PASS). But fps went 40.05 -> 36.22 (37.88 as a mean of rows), so O1 (>= 44) and O2 (>= 48) FAIL. The pixel arms PASS, 45/45 byte-identical.
+
+Where the sleep went: the guest now finishes its frame in 12.6 ms and idles 14.9 ms, and the vCPU spins through that idle (on-CPU 96%, on the X3). The PFIFO thread is never parked (Ri 0.2) and sleeps once per frame, median 21.3 ms against A's 8.0 ms. The code path makes that sleep the frame-slot GPU fence wait (draw.c:4351, `vkWaitForFences`); this is inferred, because none of those switch-outs carries a sample. Draw work per frame is the same (316 vs 311 pipeline binds). The frame is paced by the GPU side, and the lock was only making the vCPU wait it out.
+
+The code is reverted on the branch (f6ac723228). c2dfca18a1 stays in history to re-arm once the GPU side moves. PR.md is ready; its net diff is docs only (NOTES, three off-CPU readers, the capture script, two predictions).
+
+Also: waitsite.py's +-200 us pairing charges a thread's long unsampled sleep to the short wake before it. R1's vCPU reading stands under exact pairing (`exact_offcpu.py`, 11,224 ms), but the holder's site was the fence wait, not `wait_frame_submitted`.
+
+Recommendation (P x win): (1) a GPU-side lane names Simpsons' per-frame GPU time and the GPU clock on master and on c2dfca18a1 (P 0.7 that it names the frame; it gates every Simpsons gain). (2) Re-arm the posted store on top of that cut (P 0.5, vcpu60's 45-58 band). (3) Guest idle without the spin (P 0.2, small). Not this lane's row (vk/draw.c belongs to async794).
