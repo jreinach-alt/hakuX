@@ -1,0 +1,3 @@
+# waiting on the one Nova capture (frame dump + perflog qry), queued 10-04 behind lane.pathfind's hold; read it with
+# alt_draws.py --min-run 10 --logcat <result>/logcat.txt <result>/pulled/framedump_*.jsonl (NOTES section 6)
+run 1791136124-lane.accuracy804-3752333
