@@ -5020,7 +5020,7 @@ title = "pathfind's held run on Panzer Dragoon Orta dies three times in 10 min a
 component = "pathfind"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 11:09 PDT, 10-03 coverage gate): filed on the forge with no tracker row. Evidence is runs/panzer-dragoon-hold. It blocks the 600 s Panzer confirmation and the NBA Live family pass; the PM (lane-local session) to name the owner (lane.pathfind is attempt-capped if it is the same lane)."
+blocked_on = "UNTRIAGED (hostops 11:09 PDT, 10-03 coverage gate): filed on the forge with no tracker row. Evidence is runs/panzer-dragoon-hold. It blocks the 600 s Panzer confirmation and the NBA Live family pass; the PM (lane-local session) to name the owner (lane.pathfind is RETIRED, folded 3fe51047d8 on 10-04, so its attempt cap no longer applies)."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
 
 [issue.708]
@@ -5659,7 +5659,7 @@ title = "Black Stone hold: the attack walk does not move the fighter, and the ro
 component = "triage"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 20:5x PDT, 10-03 coverage gate): filed by issue_sync from lane.pathfind's OUTBOX with no tracker row; lane.local to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
+blocked_on = "UNTRIAGED (hostops 20:5x PDT, 10-03 coverage gate): filed by issue_sync from lane.pathfind's OUTBOX (lane.pathfind is RETIRED, folded 3fe51047d8) with no tracker row; lane.local to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run. Evidence on the issue: runs/black-stone-walk/verdict.json, hold.jsonl, hold_strip.jpg."
 
 [issue."794"]
