@@ -474,3 +474,49 @@ submit_worker.c:61) to the rotation wait that clears it (draw.c:4350-4355).
 |---|---|
 | no blink in 2 runs (p90 <= 5, frames read by eye, a car near the camera in the window) | H1 is the cause; the fix is this patch |
 | blinks | H1 refuted; the per-frame fence wait suppresses something else, and the patch comes back out |
+
+### 17.3 Result: the patched build does not blink. H1 is the cause; the fix is in reports.c
+
+Held session 16:05-16:11 PDT, installed APK `acc497b4f822` (= `builds/510ebb25f2.apk`, master + reports-804,
+non-perflog, checked on the device), env_vars empty, the same route and a 10 s screenrecord burst per run.
+
+| run | race clock in the burst | flicker_score | the worst triple, read by eye |
+|---|---|---|---|
+| patched-run1 | 5.15-14.68 (the close pass, 7.0-9.0) | **clear** p90 0.83, 13 of 139 hits in one stretch | race clock 07.36 / 07.39 / 07.44: the Nissan's rear fills the frame in **all three** frames; the hits are the car moving at a car length (spoiler and decal edges), not a blink |
+| patched-run2 | the same pass | **clear** p90 1.02, 15 of 137 | race clock 07.39 / 07.40 / 07.42: body in all three, edge motion only |
+
+Against the same scene: unpatched master blinked in every run that filmed it (plain1 countdown and race clock 0-3,
+perflog1 race clock 7.92-8.89 with p90 22.1, flicker801's 3 of 3 boots on pathfind's path, which reaches the same
+start). The patch removes it in 2 of 2. Both outcomes were laid out in 17.2 before the runs. The other knob that
+removed it, capture 6's per-frame fence wait, works by the same mechanism.
+
+**Cause.** RalliSport tests each car's visibility with occlusion queries and draws the body only when the last
+report it read says the car was visible. A deferred finish (FLIP_STALL, PRESENTING, STALLED, SURFACE_DOWN_FLUSH)
+returns to the guest after `vkQueueSubmit`, without the fence wait. `pgraph_vk_process_pending_reports_internal()`
+then reads the query pool with WAIT_BIT. On Turnip the slot's reset is a GPU command, so a slot the GPU has not
+reset yet reads as available, holding the count from the previous command buffer's query at that index. The
+report for frame k therefore holds frame k-1's count, which gives the period-2 recurrence of section 3. The
+shadow is not gated by the query, so it is drawn every frame.
+
+**Fix** (`hw/xbox/nv2a/pgraph/vk/reports.c`, `pgraph_vk_process_pending_reports_internal()`, granted file): when
+queries are in flight, wait the fence of every submitted frame before reading the results. Upstream xemu always
+waits before reading. Only a finish that recorded a query pays for it, but RalliSport records ~30 per flip in a
+race, so its race frames now serialise CPU and GPU at those finishes. **The fps cost is not measured here.** The
+screenrecord rate (14.2-14.4 unique fps patched against 14.8 for perflog1 in the same pass) runs straight after an
+APK switch with a cold shader cache (dt max 0.5-0.6 s) and is no fps number. RalliSport's Playable confirmation
+(600 s, fps verdict plus the owner's flicker check) measures it.
+
+Nova hold time used: 3.2 + 3.0 + 5.9 = ~12 min (three sessions), plus three 60 s dispatched install boots.
+
+## 18. Do not repeat (additions)
+
+- Do not read "the dump shows the body every frame" as refuting a visibility-test gate when that run did not
+  blink: section 11's refutation of H1 was read on a non-blinking run, and H1 was the cause.
+- An instrument that waits on the GPU every frame (`XEMU_FRAME_DUMP ...,images`) removes a CPU/GPU ordering
+  defect. Check whether a defect survives the instrument before reading anything from it: one plain-build video
+  first would have saved captures 3-6.
+- A dispatched 60 s boot at a ref is the clean way to get a build installed for a held session: the dispatcher
+  builds the right flavour, clears the shader cache and writes `env_vars`, and `session804e.sh` checks the APK's
+  sha256 against `builds/<ref>.apk` before touching anything.
+- `rallisport-804e.route`'s first start-race A is sometimes lost (plain1). The spare A then starts the race ~8 s
+  later, and a 6 s burst lands on the countdown, which blinks too. A 10 s burst covers either case.

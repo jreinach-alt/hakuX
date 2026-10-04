@@ -31,3 +31,14 @@
   through `docs/lanes/accuracy804/rallisport-804d.route`. It needs a `record` step in route.sh or one
   flicker801-style claim burst; this lane can do neither. If it does not blink, go straight to the RalliSport
   Playable confirmation with the owner's flicker check. NOTES sections 13-16.
+- 2026-10-04 16:15 PDT, **#804 identified and fixed (addendum).** The plain master build blinks: held screenrecord
+  bursts on the Nova, non-perflog `63f4827758` (p90 29.4, countdown cars vanish with their shadows kept: the
+  owner's "no cars during a countdown") and perflog `10f14d301d` (p90 22.1, the Nissan at race clock 7.9). The
+  knob that hid it in my captures was the `images` frame dump's per-frame fence wait, not perflog. Cause: occlusion
+  query results read after a deferred finish without waiting, so on Turnip a not-yet-reset slot returns the previous
+  frame's count and the game's visibility-gated car bodies alternate (NOTES section 3, H1). Fix in
+  `vk/reports.c` (granted): wait the submitted frames' fences before reading the results. Master + fix: clear in 2
+  of 2 runs over the same close pass (p90 0.83, 1.02; body in every frame by eye). **For the PM:** the fps cost of
+  the wait is unmeasured; RalliSport's Playable confirmation with the owner's flicker check measures both, on this
+  branch's build or after the fold. Other titles that gate draws on visibility tests (lens flares, LOD) get the
+  same fix. NOTES section 17.
