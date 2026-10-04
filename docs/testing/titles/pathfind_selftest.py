@@ -464,6 +464,9 @@ check("fpsgate", not pathfind.fps_gate_fails(low, 22) and pathfind.fps_gate_fail
       f"median 25: on course at 3 min, stops at 5 min: {low}")
 mixed = _course([20] * 100 + [40] * 200)
 check("fpsgate", not pathfind.fps_gate_fails(mixed, 27), f"a slow start then 40 fps (share 67%) goes on: {mixed}")
+locked = _course([29] * 230 + [31] * 190 + [30] * 19 + [28] * 2)
+check("fpsgate", locked["share"] > 0.99 and not pathfind.fps_gate_fails(locked, 27),
+      f"a locked-30 title reading 29/31 (AvP) is on the verdict's bar (30 x 0.95): {locked}")
 check("fpsgate", not pathfind.fps_gate_fails(_course([10] * 10), 22) and _course([])["n"] == 0,
       "under 30 s of gfps lines is no evidence either way")
 

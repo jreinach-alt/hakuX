@@ -1,5 +1,26 @@
 # lane.pathfind -- NOTES
 
+## Screening 10-04 (owner order): scoreboard
+
+| # | title | id | class | share >= 30 | median | window | claim (min, calls) | profile | run |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | RalliSport Challenge | 4D53000F | clear | 98.9% of 649 s | 59 | full (671 s, PASS) | 3.2, 19 | golden cc9b4ced4a0f | runs/screen-ralli-challenge/hold-0816 |
+
+## Resume (10-04 08:13 PDT, attempt 4): why the last attempt did not finish
+
+- The 07:56 session claimed RalliSport (3.2 min, 19 calls), promoted its golden and started the 600-s hold as a
+  background task. The session then ended, the task died with it at 234 s, and the hold was released with the car
+  unattended. Rule kept since then: a held run is waited on in the foreground of the session that started it.
+- That partial window read 230 of 236 s at >= 30 fps (min 34). It showed no miss, so the 600 s was run again.
+- Two tool changes this session:
+  1. The owner's 3/5-min "should we continue?" check is in the hold (`FPS_GATES`, `fps_course`): median < 22 at
+     3 min, or < 27 at 5 min, with < 60% of seconds at >= 30, stops the hold. scratch/screen.sh then runs one
+     180-s telemetry hold on the same path. Its logcat carries the perflog and the [rr425w] lines that decompose.py
+     reads. Selftest `fpsgate`.
+  2. Master's failgate (`de4b991a6c`) fails a scored window with fewer than 3 `HHMMSS-*.png` frames as
+     "window unmeasured". The hold kept only `NNN-hold` frames. It now links each kept frame to
+     `route-frames/HHMMSS-hold.png`. RalliSport was rescored from its kept JPGs: PASS.
+
 ## Resume (10-04 07:56 PDT, attempt 3): why the last attempt did not finish
 
 - The 22:4x session finished the list it had been given. Panzer Dragoon Orta run 3 PASSED at 00:48 (603.7 s, play 0.9997,

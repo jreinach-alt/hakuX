@@ -124,6 +124,7 @@ HOLD_STILL = 0.03
 # 3-min telemetry run that follows is the evidence, not 600 s of a known miss.
 FPS_GATES = ((180, 22.0), (300, 27.0))
 FPS_BAR, FPS_SHARE_OK = 30, 0.60
+FPS_TOL = 0.95   # title_verdict's fps_tolerance (targets.toml): a locked-30 title's 29s are on the bar (AvP, 10-04)
 # a still window in the drive genre: a car against a wall (Forza, 10-03). Reverse while turning, then drive out the
 # other way, alternating sides per still window, before the generic unlock rotation.
 HOLD_UNSTICK = {
@@ -384,7 +385,8 @@ def route_frame(out, png):
 
 
 def fps_course(logcat):
-    """The hold so far from its logcat's hakuX-perf `gfps=` lines (one per second): {n, median, share >= FPS_BAR}."""
+    """The hold so far from its logcat's hakuX-perf `gfps=` lines (one per 1-2 s): {n samples, median, share at
+    >= FPS_BAR * FPS_TOL}."""
     try:
         vals = [int(m.group(1)) for m in re.finditer(r"gfps=(\d+)", open(logcat, errors="replace").read())]
     except OSError:
@@ -392,7 +394,7 @@ def fps_course(logcat):
     if not vals:
         return {"n": 0, "median": None, "share": None}
     return {"n": len(vals), "median": float(np.median(vals)),
-            "share": round(sum(v >= FPS_BAR for v in vals) / len(vals), 3)}
+            "share": round(sum(v >= FPS_BAR * FPS_TOL for v in vals) / len(vals), 3)}
 
 
 def fps_gate_fails(course, floor):
@@ -1417,11 +1419,11 @@ class Agent:
                 course.update(at_s=round(hold_el, 1), floor=gate[1], stop=fps_gate_fails(course, gate[1]))
                 fps_checks.append(course)
                 print(f"hold-play: fps at {hold_el:.0f} s: median {course['median']}, share>={FPS_BAR} "
-                      f"{course['share']} over {course['n']} s{' -> STOP (not on course)' if course['stop'] else ''}",
+                      f"{course['share']} over {course['n']} samples{' -> STOP (not on course)' if course['stop'] else ''}",
                       flush=True)
                 if course["stop"]:
                     reason = (f"fps gate at {int(hold_el) // 60}:{int(hold_el) % 60:02d}: median {course['median']:.0f} "
-                              f"< {gate[1]:.0f}, {course['share']:.0%} of {course['n']} s at >= {FPS_BAR}")
+                              f"< {gate[1]:.0f}, {course['share']:.0%} of {course['n']} samples at >= {FPS_BAR * FPS_TOL:g}")
                     break
             ch = changed(last_png, png) if last_png else None
             still = still + 1 if ch is not None and ch <= UNCHANGED else 0
