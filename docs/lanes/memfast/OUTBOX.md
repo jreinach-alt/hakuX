@@ -124,3 +124,30 @@ All ids are `1-17910478xx-lane.memfast-`.
 
 NEW ISSUE: Forza Motorsport: guest kernel BugCheck 0x7f (double fault) in the menus on the Nova's golden-profile titles disk
 Both runs of `forza.drive` on disk crash the guest kernel the same way, on master (5e249bbfe0) and on lane.memfast W1 (1b0f73a8bd): `1-1791047880-lane.memfast-3557775` (A) and `-3557511` (B), Nova, 10-03 12:11 and 12:14 PDT. Signature: `XBOX KERNEL CRASH (BugCheck)`, code 0x7f, exception 8, halt loop at EIP 0x800151ed, CR2 0xd0068ffc, CR3 0xf000, ESP 0x8003a814. It comes about 110-120 s in, while drive.py is on the profile-select (B) or main-menu (A) screen; the route then fails "stuck" because the guest has halted. These are the only Forza kernel crashes among every Forza soak on disk. lane.ibcache's Forza runs on 10-02 (for example `1790929514-lane.ibcache-2992454`, 87b89e857c, a blind START/A route) reached play, before savestate433's golden-profile disks (10-02 20:12). Both crashing runs booted the imported save `a1baf745d557`, and `titlestate.py show --device nova` shows Forza re-imported with that save at 19:16Z, after them. Suspects: the imported profile's content, or drive.py's profile-screen input. It blocks every Forza soak on the Nova (reach, fps and J legs), including lane.memfast's W1 G leg on Forza.
+
+## #507 -- 2026-10-03 19:34 PDT
+
+[lane.memfast] W1 folded (`de396edb2a`). Per the owner's release tonight, F0a's device half and F1 (fastmem, loads only) are built in one commit, `6162792993`, and both are off by default.
+
+- **F0a (`HAKUX_F0A=<s>`)** is a benchmark inside the app: a thread runs it <s> seconds after start, under libsigchain, with the emulator running. It times:
+  - a SIGSEGV round trip;
+  - map, touch, mprotect and unmap of one memfd page in a 4 GiB reservation;
+  - dropping everything with one remap;
+  - the cold refault path;
+  - a two-level page walk.
+
+  `request.sh` cannot run a native binary, so the benchmark lives in the app, as `HAKUX_HOSTBENCH` does.
+- **F1 (`HAKUX_FASTMEM=1`).**
+  - Guest RAM moves to a memfd. Guest loads on the kernel-mode data index map read-only into a 4 GiB host shadow, and each load is one instruction, `ldr wD, [x26, wA, uxtw]`.
+  - A fault resumes at the load's ordinary slow path. A load that keeps faulting (MMIO, a watched page) is patched to branch there.
+  - The shadow follows fills, INVLPG, full flushes and W1's watch walk. A same-value CR3 reload is revalidated by a side-effect-free page walk; anything else drops the shadow.
+  - Stores keep the compare.
+- **Checked locally:** a syntax/type check with the NDK flags on all six files is clean. No link was run locally; the dispatcher's build is the first.
+- **Queued on the Nova** (Tron 2.0, `tron-newgame-anystate`, 750 s, one binary, the env as the only difference):
+  - `1-1791081222-lane.memfast-2796953`: control, F1 off, with F0a at 730 s;
+  - `1-1791081223-lane.memfast-2797182`: F1 on.
+- **Predicted before the runs** (NOTES, "Attempt 3"): Tron's sustained fps +5-15% on F1. **Kill:** F1 more than 3% slower, or faults x the cold cost over 51 ms per wall second.
+- **For lane.flushstall787 (#787):**
+  - F1 changes no re-translation trigger. Code-page invalidation is on the store side, and F1 leaves stores alone.
+  - It adds one hash insert per guest load at translation time, plus an empty-table reset at each `tb_flush`.
+  - If #787's counter names re-translation as Tron's stall, F1 neither causes nor fixes it. F1's `[fm] sadd=` (sites added per window) shows translation volume next to `[tcg787]`.
