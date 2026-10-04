@@ -1,0 +1,61 @@
+{
+ "title_id": "4D530005",
+ "name": "Amped: Freestyle Snowboarding",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D530005-Amped_Freestyle_Snowboarding.xiso.iso",
+ "result": "gameplay",
+ "tool": "ede3ec6df5",
+ "started": "2026-10-04 12:32:17 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/028-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/028-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/028-probe-c.jpg"
+ ],
+ "minutes": 4.78,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/027-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/031-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/032-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/033-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/034-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/035-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/036-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4D53.md"
+ ],
+ "hold": {
+  "genre": "other",
+  "why": "This is a snowboarding game, which fits none of the listed categories: the player rides a snowboard down a slope on their own, with no car, melee fighting, gun,",
+  "ok": true,
+  "play_s": 186.3,
+  "need_s": 180.0,
+  "hold_s": 186.4,
+  "model_navs": 0,
+  "frames": 6,
+  "still_windows": 0,
+  "shed": [],
+  "reason": "",
+  "title_hold": false,
+  "fps_checks": [],
+  "verdict": "VERDICT Amped: Freestyle Snowboarding ? FAIL(duration: 188 s of gameplay < 600 s confirmation) gameplay=187.6s fps_ok=0.0861 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=101.3 static_frac=0.0192 play_share=0.9992 fps_excluded=2.4s"
+ },
+ "model_calls": 30,
+ "calls_by_model": {
+  "claude-sonnet-5": 30
+ },
+ "steps": 28,
+ "seconds": 518.5,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/056-hold.jpg",
+ "last_state": "probe",
+ "replayed": 1,
+ "sib_replayed": 0,
+ "guide": [
+  "4D530005"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/strip.jpg"
+}
