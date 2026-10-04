@@ -333,3 +333,37 @@ fixed waits; both reach the same race start with the player standing).
 Capture 5 changes only (a): `1791153088-lane.accuracy804-3337927`, the same master perflog APK, same route and
 16 shots, no `XEMU_FRAME_DUMP`. If it blinks, the dump suppresses the defect: the cause is timing-sensitive, and
 the frame dump cannot attribute it. If it does not, (b) is next.
+
+## 14. Capture 5, and a correction to section 13: the screencaps were too sparse to see a blink
+
+Capture 5 (`1791153088-lane.accuracy804-3337927`, master perflog, no dump): the body is drawn in all seven shots of
+the pass (race clock 5.74-10.14), including 7.95 with the Nissan beside the camera.
+
+**Correction.** Sections 13 and 14 counted "7 of 7 shots" as ~1/128 odds against a blink. That is wrong.
+flicker801's per-triple scores (`runs/s2/4D53000F-claim/b1/flicker.tsv`) show the large blinks (100-330 permille
+of the frame) only from 0.40 to 1.07 s into the burst: **a ~0.65 s window, while the rival is within a car length of
+the camera**. In flicker801's worst triple the body fills the left half in N, and in N-1 and N+1 only its shadow
+is drawn, right under the camera. After that window the scores are small (a distant car). My shots are ~0.7 s
+apart, so each run put one or two shots in the window (capture 4: 7.21, 7.96; capture 5: 7.24, 7.95). Two drawn
+shots happen 1 time in 4 under a 50% blink. **Captures 4 and 5 cannot say whether those runs blinked**, and
+section 13's "the dump suppresses it / master lost it" question is open, not answered.
+
+What stands from the dumps (captures 3 and 4): through the close pass (capture 3 frames ~140-180, race clock
+~7.3-8.5) the near rival's body draws are recorded in every frame except whole-car dropouts that the guest
+makes, and no recorded field of them changes frame to frame. Whether those frames' pixels had the body is the
+open point.
+
+Capture 6, the instrument that reads both in one frame: `1791153455-lane.accuracy804-3495243`, master perflog,
+`XEMU_FRAME_DUMP=120,after152,images,cap400`. The images mode writes each frame's display PPM after a fence wait,
+so the picture belongs to the records it is filed under (`fdump_end_frame`). Timing from capture 4: the dump
+opened at `SDL_main` + N + 1.37 s and race clock 0 was at ~+147.2 s, so it starts at race clock ~6.2. 120 frames
+at <= 30/s last >= 4 s and cover the 7.4-8.1 close pass with ~1 s of slack on either side. It decides:
+
+| in the close pass | reading |
+|---|---|
+| a frame's records hold the body draws and its image has no body (shadow drawn) | lost after recording (H4): the cause is in what the draw consumes that the dump does not record (vertex data, constants, clip/depth state); next is per-draw vertex-attribute and constant capture for those frames |
+| frames whose image lacks the body also lack its records | the guest skips it: back to a guest-side gate (H1-type), which captures 3-4 did not show |
+| every image has the body | no blink in a dump run with a fence wait per frame; the wait itself may hide a timing race, and the next capture is a video of a run with no dump |
+
+The images mode costs a fence wait per frame, which could itself suppress a timing-dependent defect. That is
+the third row, and the reason it is not read as "fixed".
