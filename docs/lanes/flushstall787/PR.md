@@ -1,10 +1,10 @@
 flushstall787: time translation, TLB refill and flush work per window, to answer "is the guest-late stall the flush?" (#787)
 
-State: draft
+State: ready
 
 Lane: flushstall787     Issue: #787
-Base: master @ 5d5d2c51a5
-Files: accel/tcg/translate-all.c, accel/tcg/cputlb.c, accel/tcg/cpu-exec.c, docs/testing/predictions/flushstall787-kabuki.json, docs/testing/predictions/flushstall787-tron.json, docs/lanes/flushstall787/PR.md, docs/lanes/flushstall787/NOTES.md, docs/lanes/flushstall787/OUTBOX.md, docs/lanes/flushstall787/fs_windows.py, docs/lanes/flushstall787/fs_pages.py, docs/lanes/flushstall787/fs_jcx.py, docs/lanes/flushstall787/fs_judge.py, docs/lanes/flushstall787/ndk_check.py, docs/lanes/flushstall787/build.sh
+Base: master @ 5d5d2c51a5 (origin/master 4a3308a21e merged in after the runs)
+Files: accel/tcg/translate-all.c, accel/tcg/cputlb.c, accel/tcg/cpu-exec.c, docs/testing/predictions/flushstall787-kabuki.json, docs/testing/predictions/flushstall787-tron.json, docs/lanes/flushstall787/PR.md, docs/lanes/flushstall787/NOTES.md, docs/lanes/flushstall787/OUTBOX.md, docs/lanes/flushstall787/fs_windows.py, docs/lanes/flushstall787/fs_pages.py, docs/lanes/flushstall787/fs_jcx.py, docs/lanes/flushstall787/fs_judge.py, docs/lanes/flushstall787/ndk_check.py, docs/lanes/flushstall787/build.sh, docs/lanes/flushstall787/fs_guest.py, docs/lanes/flushstall787/watch.py, docs/lanes/flushstall787/waitfor.py
 Prediction: docs/testing/predictions/flushstall787-kabuki.json @ 08f17e8e7ec965bb8d5660f60d0f58c36bd09c665b4f0e949a6362b76d5e6070, docs/testing/predictions/flushstall787-tron.json @ fc9d4b5e88525111873ef247084f456f2cd1153126b577eaaaa26d200d236d41 (single-run measurements, queued by the lane)
 Needs device: yes (Nova, two perflog soaks)    Needs NDK: yes
 
@@ -24,7 +24,15 @@ duration-weighted profile of TB time by entry pc.
 | tf tfx tfus pl | tlb_fill_align calls, faults, us (timed in perflog builds only, pl=1) |
 
 Measurement runs (Nova, ref 1fe520a709, perflog): Kabuki `1-1791072687-lane.flushstall787-1209260`,
-Tron `1-1791072697-lane.flushstall787-1209966`. Results and the answer go here and in NOTES.md.
+Tron `1-1791072697-lane.flushstall787-1209966`. Validity holds in both.
+
+**Answer: the late stall is not the TLB flush.** Kabuki (G PASS, F PASS): per stall, tb_gen_code takes
+5.7-41.7 ms and everything a flush can cost takes 17.5-83.4 ms, against stalls of 401-705 ms. The stall windows
+spend 0.4-1.3 s in the title's own x87 routines and kernel memory management, where a quiet window spends
+0.07-0.27 s. Tron: tb_gen_code peaks at 189 ms per 2-s window, mostly first-time code with no tb_flush; the
+flush fallout is <= 117 ms; the stall windows run guest kernel code after a code load. Side finding: unchained
+two-page TBs (`[rr425]` gs) cost 175-372 ms of loop time in 2-3 Kabuki stalls. No fix, per the brief's
+guest-side branch. Details and ranked next steps: docs/lanes/flushstall787/NOTES.md section 5.
 
 Checks so far: the three files compile with the dispatcher build tree's NDK command, plain and NV2A_PERF_LOG=1
 (`ndk_check.py`). No desktop build on this host (AGENTS.md's known gap); the counter's own checks are the
