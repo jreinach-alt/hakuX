@@ -72,10 +72,12 @@ shot s13-gameplay
 # step 13 [gameplay] Weapon wheel closed; player view of warehouse map with HUD (health 100, ammo 12/24, $6000, crosshair
 wait 3
 mark gameplay
-# genre loop: 6.0 s, 5 per frame, 21 frames
-repeat 21 {
+# genre loop: 6.7 s, 4 per frame, 23 frames
+repeat 23 {
 shot hold
-repeat 5 {
+repeat 4 {
+press A 120
+wait 0.6
 axis LY min
 wait 1.5
 axis LY mid
@@ -102,4 +104,4 @@ axis RX mid
 wait 0.25
 }
 }
-# route ends ~811 s after launch
+# route ends ~799 s after launch
