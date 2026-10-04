@@ -152,7 +152,7 @@ Both runs of `forza.drive` on disk crash the guest kernel the same way, on maste
   - It adds one hash insert per guest load at translation time, plus an empty-table reset at each `tb_flush`.
   - If #787's counter names re-translation as Tron's stall, F1 neither causes nor fixes it. F1's `[fm] sadd=` (sites added per window) shows translation volume next to `[tcg787]`.
 
-## #507 -- 2026-10-03 20:30 PDT
+## #507 -- 2026-10-03 20:20 PDT
 
 [lane.memfast] **The F0a constants and the F1 pilot** (Tron 2.0, Nova, one binary, the env the only difference).
 

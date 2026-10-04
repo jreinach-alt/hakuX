@@ -1472,7 +1472,7 @@ Two runs on the same build, the env as the only difference:
   rule). One pair is a pilot, not a verdict. A second pair, and BF2 MC, follow
   only if this one is not killed.
 
-## F1 pilot, read 2026-10-03 20:25 PDT (Tron, Nova, one binary at 6162792993)
+## F1 pilot, read 2026-10-03 20:15 PDT (Tron, Nova, one binary at 6162792993)
 
 Runs: C `1-1791081222-lane.memfast-2796953` (F1 off, F0a at 730 s) and
 F `1-1791081223-lane.memfast-2797182` (`HAKUX_FASTMEM=1`). Copies are in
@@ -1552,7 +1552,7 @@ mark: C and M1 agree within about 3% in every 30 s bucket from 0 to 210 s.
 - That costs most where the working set is largest, which fits "slower
   early, faster late". It is not measured yet.
 
-### Batch 2: what separates the candidates (queued 20:26 PDT, ref `e9617a9cb4`)
+### Batch 2: what separates the candidates (queued 20:12 PDT, ref `e9617a9cb4`)
 
 F0a now opens with a THP probe: the sysfs modes, and the RAM block's and the
 shadow's `AnonHugePages`/`ShmemPmdMapped`/`FilePmdMapped` from smaps. Three
@@ -1577,6 +1577,14 @@ C2, as above):
 | B's early deficit is at least half of F2's | memfd RAM losing THP | if shmem THP can be on (`advise`), RAM on huge shmem, then re-measure F2. If the device says `never` and no app can change it, F1's load win must outrun the loss; park F1 on this platform and move to the lazy-swap or a store-side design only if a profile shows the win is bigger than the TLB cost |
 | B within 3% of C2 and F2 still slow early | the shadow's own 4 KiB alias | route stores through the shadow too (F2 of the design), so one alias serves both and the RAM mapping goes cold. Or cut the alias to the hot set (cap tuning) |
 | F2 not slower than C2 early | the pilot's early loss was not reproducible | a second pair at this ref, then BF2 MC |
+
+**Session ended 20:20 PDT, waiting on batch 2.** Four Nova runs were ahead
+of it, and lane.pathfind held the Nova from 20:19 PDT. `WAITING` names the
+three runs. On resume:
+- run `f1_read.py` on each run, which prints the `[f0a] thp` lines too;
+- copy the three runs into `.scratch/f1/` as F2, B and C2;
+- add them to `.scratch/buckets.py`'s arm list and read fps and gbusy per bucket;
+- apply the outcome table above.
 
 ## Next, for whoever resumes this lane
 
@@ -1627,7 +1635,7 @@ tron-newgame v5).
    GeometrySuperscreen_0.4999/_0.5626 as exact; a Forza soak on the
    golden-profile disk before the BugCheck 0x7f issue is fixed (both arms
    crash at about 110-120 s).
-7. **2026-10-03 20:30 PDT, after the F1 pilot. Re-scored with what it showed:** F1's own costs are small, and an unexplained per-frame cost appears in memory-heavy scenes.
+7. **2026-10-03 20:20 PDT, after the F1 pilot. Re-scored with what it showed:** F1's own costs are small, and an unexplained per-frame cost appears in memory-heavy scenes.
 
 | candidate | P, and its evidence | win | cost | order |
 |---|---|---|---|---|
