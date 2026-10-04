@@ -57,7 +57,7 @@ def pred(name, title, route, seconds, prediction, legs, issue='794'):
     print(path)
 
 
-pred('nba2005-soak', '45410050-NBA_Live_2005.xiso.iso', 'fps786-nba2005', 880,
+pred('nba2005-soak', '45410050-NBA_Live_2005.xiso.iso', 'fps786-nba2005', 800,
      'NBA Live 2005, exhibition at the Palace, 12-minute quarters. Premise '
      '(lane.fps20786, run 1-1791081646-lane.fps20786-2876934): the unshelve of a '
      'ping-ponged render target completes the staged downloads with a finish of '
