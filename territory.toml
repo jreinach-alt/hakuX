@@ -778,7 +778,7 @@ note = "RETIRED (job.board 2026-09-30T03:xxZ): issue-sweep flagged this row as o
 
 [lane.hddperm]
 issues = ["397"]
-files = ["docs/testing/dispatcher.sh", "docs/lanes/hddperm/**"]
+files = ["docs/testing/dispatcher.sh", "docs/lanes/hddperm/**", "docs/audits/2026-09-29-hddperm-pass1.md", "docs/audits/2026-09-29-hddperm-pass2.md", "docs/testing/jobs/selftest.d/99-hdd-split.sh"]
 released = ["docs/testing/dispatcher.sh", "docs/lanes/hddperm/**"]
 released_at_ready = 627
 note = "RELEASED AT READY (job.board 2026-09-30T02:12Z): PR #627 is out of draft, CI green, unit gone -- both held files released per roles/board.md so the next lane can start; kept in files since the fold still reads what the PR touched. The next lane names PR #627 and merges master (or lane/hddperm if it has not folded) before marking its own PR ready. || PRIOR: STARTED (hostops 2026-09-29 18:44 PDT), briefs/hddperm.md, harness defect (attached to #397, the title pipeline's issue): dev_push() in dispatcher.sh (~line 572) pushes a file via `adb push` + `shell mv -f` and never sets its mode, so the pushed file lands rw-r--r-- (adb push's default via the shell user) instead of rw-rw---- like its siblings (hdd.img, flash.bin) -- the app runs as u0_a145, gets only the file's group bits, and a read-only group has no write access. Found live on the Nova 2026-09-29 18:40 PDT: every queued title soak (lane.memfast, then lane.ibcache) aborted `not-foreground`; the real cause was `com.jreinach.hakux.debug:xemu` dying 0.2s after launch, signal 6, logcat showing `Could not open '.../titles.qcow2': Permission denied`. `titles_disk_prepare()`'s `build` action (dev_push's first production caller since PR #622/lane.hddsplit folded, 1c0c23fabb) pushed titles.qcow2 at 644; `hdd_img_guard`'s reset path (~line 726) calls the same dev_push and has the identical latent bug, untriggered so far. docs/testing/jobs/selftest.d/99-hdd-split.sh exercises the plan/pref logic against a fixture, not a real adb push, so it cannot see an Android group-permission failure. Interim host mitigation applied 2026-09-29 18:41 PDT (not a code fix): `adb -s ee317437 shell chmod 660` on the Nova's titles.qcow2 -- unblocks runs already queued there; does nothing for the Thor's still-pending first titles.qcow2 build or any future hdd.img guard-reset push. docs/testing/dispatcher.sh taken from [free] (unclaimed since [lane.hddsplit]'s retirement above); docs/lanes/hddperm/** is new."
@@ -1742,7 +1742,7 @@ note = "RETIRED (hostops 2026-09-26 23:40 PDT): PR #440 folded (merged 04:45Z): 
 
 [lane.fmv303c]
 issues = ["303"]
-files = ["docs/lanes/fmv303c/**", "docs/testing/predictions/fmv303c-*.json"]
+files = ["docs/lanes/fmv303c/**", "docs/testing/predictions/fmv303c-*.json", "hw/xbox/nv2a/pgraph/vk/surface.c"]
 standing = false
 note = "WRITTEN (job.board 2026-09-26T21:58Z): lane was RUNNING with no row -- jobs/handback.sh resumed it at 21:52Z from a draft PR #439 (its unit had been stopped by hostops under the 0.5-first policy, label blocked:after-0.5) and the lane answered `blocked:` at 21:53Z, which handback honours, so it does not resume again. It holds NO code file: its probe hunk is in hw/xbox/nv2a/pgraph/vk/surface.c, which lane.doa413b holds (PR #440) after lane.blinx372d released it at ready (PR #396), and a third unreleased holder is not allowed. When 0.5 ships and #303 is lifted, re-grant surface.c on this row and merge master before ready."
 
