@@ -1,0 +1,5 @@
+    topResumedActivity=ActivityRecord{ac92a7f u0 com.jreinach.hakux.debug/com.rfandango.haku_x.MainActivity} t2128}
+      topResumedActivity=ActivityRecord{8b0373 u0 com.android.launcher3/.secondarydisplay.SecondaryDisplayLauncher} t2122}
+  ResumedActivity: ActivityRecord{ac92a7f u0 com.jreinach.hakux.debug/com.rfandango.haku_x.MainActivity} t2128}
+  displayId=0
+  displayId=4
