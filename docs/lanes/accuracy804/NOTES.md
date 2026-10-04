@@ -15,6 +15,9 @@ pathfind replay logs and burst mp4s).
 - s2 b1's hits come in runs (`XXXXXXXXXXXXXXXXXXXXX....XXXXXX...`): the blink is the burst's normal state while the
   rival is in view, not a one-off.
 - Pacing is flat across it (pathfind 08:16: gfps 59, G 16.7 ms, 1.0 vblank per flip). Nothing slow coincides.
+- Correction (attempt 2, section 9): every positive burst came from pathfind's replay, which takes main menu RIGHT
+  -> SINGLE RACE -> Rally -> Safari SS1. Career's Safari SS-1 (the same stage) has no rival in view at all, and the
+  positive bursts ran at 35 unique fps (s3 claim-1 b1 `capture.json`) where the empty Career start runs at 59.
 
 What each worst triple shows (frame N-1 | N | N+1 | diff):
 
@@ -147,3 +150,40 @@ cheaper form exists only if a report may be late, and a late report is this bug.
 - Do not read a missing draw in a frame dump as "the guest did not issue it": the dump records after the
   async-compile skip.
 - Do not use `waitfor` in a route meant for a dispatched soak: the reference crops do not travel.
+- Do not reach RalliSport's race through CAREER: no rival is ever in view there. Take pathfind's SINGLE RACE path.
+- Do not write `press RIGHT` for a menu that pathfind navigated: pathfind sends the hat (`HATX max` then `mid`),
+  route.sh's `press RIGHT` sends the BTN_DPAD_RIGHT key, and a title may ignore the key (goldeneye-ra).
+- Do not key a frame-dump draw on its colour target: RalliSport triple-buffers (0x3bd8000, 0x3d04000, 0x3e30000),
+  so every draw's full key changes every frame and nothing reads as present in >= 95% of frames.
+
+## 9. Attempt 2 (10-04 PDT): the first capture, read
+
+Why attempt 1 stopped: it ended as designed, WAITING on the capture `1791136124-lane.accuracy804-3752333` behind
+lane.pathfind's hold. The capture ran 13:46:24-13:49:38 PDT on the Nova, clean (adb_failures 0, xo 39 C at start,
+no thermal pause), and handback resumed the lane on it.
+
+What it shows (dump `framedump_1791146922.jsonl`: 600 frames, 417,408 draws, 13:48:42.7-13:48:52.8 PDT):
+
+| question | reading |
+|---|---|
+| where the dump sits | race clock 0 at 13:48:38.6 (r1 read 00:07.37 at 13:48:45.97), so frames 0-599 are race clock ~4.1-14.2 s. The first start-race A started it, 7.0 s before race clock 0. The dump began 138.56 s after `armed by env`. |
+| was a rival in view | **no**. Shots at race clock 7.37, 11.31, 15.21, 19.05, 23.96, 46.30 show an empty road at POS 4 OF 4, and the dump agrees: 129 of its 133 draw keys (kind, primitive, count, shader, textures) have the SAME count in all 600 frames, so nothing entered or left the view. The route took CAREER (section 1's correction). |
+| visibility tests | **yes, every race frame.** `qry` (render-pass breaks from query begin/end, per 60 flips) is 0 in every menu and 400-594 from the race start on. The dump has the geometry: an untextured `inline_array` of 24-vertex quads (a 6-faced box), shader `8f6c865e558bb778`, 5 per frame at draw n 136-140, in 390 of 600 frames, irregularly (`5055505055505050550550...`). 5 boxes x 2 breaks x 0.65 = 6.5 per flip, the `qry` rate (~7). |
+| what else varies | two untextured quad keys at the frame's end (n 675-685) strictly alternate 1/2 and 2/4 per frame (draws 690/698): overlay draws into the swap-chain buffer, the same in every frame pair. A textured quad (tex `0x03901800`, 3 per frame) comes and goes in even-length blocks. |
+| render-to-texture | none in the window: every draw targets one of the three 640x480 swap-chain buffers, and no sampled texture offset equals a colour target. |
+
+So the brief's question, does the guest issue the car-body draws every frame or on alternate frames, is
+**unanswered by this capture**: there was no rival to draw. What it did settle is H1's open precondition in
+part: RalliSport runs 5 visibility tests per tested frame all through the race. What they gate is still open.
+
+**Second capture, and why the first could not give it:** the first had no rival on screen. The second replays
+pathfind's own menu path (`rallisport-804b.route`: main menu hat-RIGHT -> SINGLE RACE -> Rally -> SAFARI SS1 ->
+default car -> start race), the mode all three positive bursts came from. Same ref (`5e4196fefd`, cached perflog
+APK), so the two dumps compare draw for draw.
+
+Choosing N: the route adds 2.35 s of hat input and one more 6 s menu step (race type before track), so the
+start-race A falls at ~+134 s and race clock 0 at ~+141 s. In flicker801 the rival is in view from race clock
+~7.5 s for most of an 8 s burst (s3 claim-1 b1: 130 hits in 282 triples). `XEMU_FRAME_DUMP=1000,after141`
+starts at ~+141.5 s. 1000 frames last 16.7 s at 60 flips/s and longer if the rival drops the game toward 35
+fps, so race clock 8 s is in the window for any race clock 0 from ~+134 to ~+150 s. Shots r1-r7 at race clock
+~4-17 s show whether the rival is on screen.

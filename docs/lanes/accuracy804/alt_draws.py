@@ -9,8 +9,9 @@ buffer (vk/draw.c, nv2a_diag_log_draw_call after vkCmdDraw*), so a draw the
 async-compile skip drops is NOT in the dump; a draw that is in the dump was
 recorded. Each draw is keyed two ways:
 
-    full   kind, primitive, vertex/index count, shader-state hash, colour
-           target address, and every enabled texture stage's offset
+    full   kind, primitive, vertex/index count, shader-state hash, and every
+           enabled texture stage's offset. Not the colour target: RalliSport
+           triple-buffers, so the target changes every frame for every draw
     tex    shader hash and the enabled stages' texture offsets only, which
            survives a level-of-detail change in the count as an object nears
 
@@ -61,8 +62,7 @@ def tex_key(d):
 
 
 def keys_of(d):
-    col = (d.get("color") or {}).get("addr")
-    full = (d.get("kind"), d.get("prim"), d.get("count"), d.get("shader"), col, tex_key(d))
+    full = (d.get("kind"), d.get("prim"), d.get("count"), d.get("shader"), tex_key(d))
     tex = (d.get("shader"), tex_key(d))
     return full, tex
 
@@ -147,6 +147,10 @@ def report(path, logcat, min_run):
             print(f"  ALT f{s}-f{s+n-1} ({n}) {k}\n      {bits_str(v)}")
         for k, k2 in anti[:25]:
             print(f"  ANTIPHASE {k2}\n      against {k}\n      {bits_str(pres[k2])}")
+        varying = [(k, v) for k, v in pres.items() if len(set(v)) > 1]
+        print(f"  keys whose per-frame count varies: {len(varying)}")
+        for k, v in varying[:25]:
+            print(f"    {k} counts {sorted(set(v))}\n      {''.join(str(min(x, 9)) for x in v)}")
     if logcat:
         rows, marks = read_rpbrk(logcat)
         print(f"\nhakuX-rpbrk lines: {len(rows)} (each covers 60 flips)")
@@ -161,7 +165,7 @@ def selftest():
     import tempfile, os
     lines = [json.dumps({"t": "session", "schema": 3, "spec": "selftest"})]
     car = {"kind": "inline_elements", "prim": 5, "count": 900, "shader": "c0",
-           "color": {"addr": "0x100"}, "tex": [{"s": 0, "en": 1, "off": "0xCAR"}]}
+           "color": {"addr": "0x200"}, "tex": [{"s": 0, "en": 1, "off": "0xCAR"}]}
     shadow = {"kind": "draw_arrays", "prim": 5, "count": 4, "shader": "s0",
               "color": {"addr": "0x100"}, "tex": [{"s": 0, "en": 1, "off": "0xSHD"}]}
     box = {"kind": "draw_arrays", "prim": 7, "count": 24, "shader": "b0",
