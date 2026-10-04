@@ -79,6 +79,52 @@ space). If so the sleep turns into guest spin (v_run up, v_blk down, fps flat)
 or into a third site. The renderer is idle 9.4 ms a frame (Ri), so the GPU
 side has room for the vCPU to run ahead.
 
+### The fix (c2dfca18a1): post the DMA_PUT store when pfifo.lock is busy
+
+| file | change |
+|---|---|
+| `user.c` | `user_write` of DMA_PUT, when `pfifo_dma_put_may_post()` (skew bound off, channel in DMA mode and current): `qemu_mutex_trylock`. Free: the locked store, unchanged. Busy: `pfifo_post_dma_put()` and return. Every other store and the bound-on case take the lock as before |
+| `pfifo.c` | the `posted-put` block: release store of DMA_PUT, kick set atomically, lock taken only to wake a PFIFO thread that is `parked` (Dekker pair: kick then parked on the poster, parked then kick on the PFIFO thread, `smp_mb` between). `pfifo_park()` replaces the three `fifo_cond` waits. The loop clears the kick with `qatomic_xchg`; the pusher loads DMA_PUT with acquire. `pfifo_take_posted()` records a posted store for `fifoskew` (one submission at the oldest post's time) at the loop top and at catch-up; the line gains `posted=`. `XEMU_OPT_POSTED_DMA_PUT 0` restores the locked store |
+| `nv2a_int.h` | `parked`, `posted_ts`; the two prototypes; `skew_last_put`'s comment (it is now also written by the PFIFO thread, still under the lock) |
+
+Checked before any device time:
+
+| check | result |
+|---|---|
+| NDK clang type-check of user.c, pfifo.c, nv2a.c (the Release compile line from compile_commands.json, re-pointed at this worktree), plain, `-DNV2A_PERF_LOG=1` (the cbl path), and `-U__ANDROID__` (the desktop path) | clean (one pre-existing unused `t0` warning in the bound's scan, desktop only) |
+| `selftest_postput.sh` (compiles user.c and pfifo.c's posted-put block verbatim, -Wall -Werror) | **PASS**: posted in 0 ms under a 400 ms hold; locked path when the lock is free; locked under the bound (399 ms); 100,000 stores (69,706 posted, 30,294 locked) all consumed, no lost wakeup, with a 20 us window widened between the PFIFO stand-in's kick check and its sleep |
+| falsifier F1: the block with the parked wakeup removed | loses a wakeup on the 2nd store: check 4 sees the race |
+| falsifier F2: user.c at 425ffe1ad1 | blocks 399 ms under the hold: check 1 sees the lock |
+| `check_android_guards.py`, `preflight.sh` | ok, passed |
+| desktop build | not run: this host cannot build desktop (AGENTS.md, the libcurl gap) |
+
+What the selftest does not show: that the `smp_mb` pair is needed. Removing
+one barrier would be caught only by a store-load reorder, which an x86 host
+rarely produces; the argument for it is the Dekker pattern, not a run. One
+narrow cost is left: a poster that reads `parked` true in the nanoseconds
+before the PFIFO thread reads the kick (and so does not wait) blocks on the
+lock for that thread's next critical section. That window is one barrier
+wide per park.
+
+### Predictions, registered and pushed before any device run (f5bdecacea)
+
+| file | sha256 | what |
+|---|---|---|
+| `predictions/vcpusleep-pixels.json` | a4174c60... | A 3ff55c9ac2, B c2dfca18a1; must not move: DMA corruption around surfaces, Texture render target, Texture render update in place (vcpuwait433's three suites: where the guest or GPU reads GPU-written memory right after a submission drains) |
+| `predictions/vcpusleep-simpsons.json` | 92394bb4... | A simp1 (on disk), B a host capture `simp2` on c2dfca18a1. Legs V (free roam, `posted=` present, rows), **M** (USER MMIO <= 10% of attributed, posted > 0; P 0.85; separates inert from refuted), S (v_blk <= 6.0; P 0.5), O1 (fps >= 44; P 0.4), O2 (fps >= 48; P 0.2) |
+
+Tron cross-check and GTA: not armed. The budget is at most two arm runs; the
+pixel A/B are short suite runs on the Nova and Simpsons B is the decider.
+
+### Next, by P x win, after the arm
+
+| B shows | then |
+|---|---|
+| M pass, S pass, O1 pass | fold (pixel arms PASS required). Simpsons +10% or more; GTA's sub-30 windows are the next title to read |
+| M pass, S fail | inert: B's capture names the next site (waitsite top site, --detail, holders). Rank that site against the render-side options in vcpu60's plan; do not rerun |
+| M pass, S pass, O1 fail | the freed time went to guest spin (v_run) or the renderer is now the limit (Ri ~0): the next lever is GPU side (async794's row), not the vCPU |
+| M fail | refuted: the posted path did not act. Read --detail for which store still waits |
+
 ## Session 1 (2026-10-04 12:00-12:40 PDT): R1 set up, waiting on the host
 
 ### Why R1 is a host run
@@ -180,8 +226,20 @@ It is not a measurement of the wait.
 | # | what | id | result |
 |---|---|---|---|
 | R1 | host capture `simp1` (lane.local) | `perf/2026-10-04-vcpusleep/simp1/` (13:28 PDT) | valid (free roam, v_blk 8.88). `user_write` (DMA_PUT) 79.3% of attributed off-CPU |
+| P-A | pixel arm A, 3 suites, Nova pinned, 3ff55c9ac2 | `1-1791146994-vcpusleep-base-1384096` | queued 13:50 PDT behind pathfind's hold |
+| P-B | pixel arm B, 3 suites, Nova pinned, c2dfca18a1 | `1-1791146995-vcpusleep-fix-1400786` | queued 13:50 PDT; its build makes `dispatch/builds/c2dfca18a1.apk` for simp2 |
+| B | host capture `simp2` on c2dfca18a1 (lane.local) | requested in OUTBOX 13:55 PDT | waiting |
 
 ## Do not repeat
+
+- Do not re-run `simpleperf report-sample` to re-read simp1: the 3 GB text
+  dump takes a minute to make and waitsite reads it with `--from-text` in
+  75 s. pathfind's `run.log` has no `ROUTE ... mark gameplay` line, so
+  decompose.py needs one appended from logcat's `hakuX-route: mark gameplay`.
+- Do not take a pfifo.lock wait in `user_write` as a reason to move the
+  STALLED finish out from under the lock (vk/reports.c, accuracy804's row).
+  The store needs nothing from the holder; posting it removes the wait
+  without touching the finish.
 
 - Do not look for `Lw:` (`lock_wait_ns`) in a plain build's logcat. It is
   printed only on `hakuX-cpu`, which only perflog builds emit.

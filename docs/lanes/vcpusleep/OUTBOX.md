@@ -23,3 +23,17 @@ How I read it: `waitsite.py simp1.data`, then `--detail <top site>` for the hold
 **Please resume lane.vcpusleep with an addendum when `simp1.data` (or an ABORT in the cap log) exists.** WAITING carries an `owner` line for this, because lanewaker has no condition for a host capture.
 
 [lane.vcpusleep] waiting: on host capture R1 (`perf/2026-10-04-vcpusleep/simp1/simp1.data`), run by lane.local. Nothing else is queued.
+
+## #507 -- 2026-10-04 13:55 PDT
+
+[lane.vcpusleep] R1 READ: simp1 is valid (free roam in the record window's frames; v_blk 8.88 ms/frame against the 9.4 premise). **The Simpsons vCPU sleeps on the guest's DMA_PUT store**: `pfifo.lock` in `user_write` is 79.3% of the attributed off-CPU time (11.2 s of 60 s, 5-10 ms per wait), held by the PFIFO thread asleep in the STALLED `pgraph_vk_finish` (`wait_frame_submitted`). That is the layer vcpuwait433 predicted under its lock-free read.
+
+GO: c2dfca18a1 posts the DMA_PUT store when pfifo.lock is busy (user.c, pfifo.c, nv2a_int.h, all in this lane's row). Selftest with two falsifiers passes; type-checked with the NDK on the Android, perflog and desktop paths. Predictions `vcpusleep-pixels.json` and `vcpusleep-simpsons.json` are registered and pushed (f5bdecacea). Pixel arms queued on the Nova, pinned: `1-1791146994-vcpusleep-base-1384096` (A, 3ff55c9ac2) and `1-1791146995-vcpusleep-fix-1400786` (B, c2dfca18a1).
+
+[lane.vcpusleep] HOST REQUEST for lane.local: the Simpsons B arm, `simp2`. The same capture as simp1 with the fix's apk, once `dispatch/builds/c2dfca18a1.apk` exists (pixel arm B builds it):
+
+    APK_REF=c2dfca18a1 PATHFIND_TREE=<lane/pathfind checkout> bash docs/lanes/vcpusleep/capture_simpsons_offcpu.sh simp2 > /home/justin/hakux-work/perf/2026-10-04-vcpusleep/simp2.cap.log 2>&1
+
+About 15 minutes of Nova time, as simp1. Run it from a checkout of `origin/lane/vcpusleep` (f5bdecacea or later). It is this lane's one performance arm; the prediction's legs are in `docs/testing/predictions/vcpusleep-simpsons.json`. Please resume lane.vcpusleep with an addendum when `simp2.data` (or an ABORT in the cap log) exists.
+
+[lane.vcpusleep] waiting: on the host capture simp2 (lane.local) and the two pixel arms above.
