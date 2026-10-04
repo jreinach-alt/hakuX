@@ -5732,3 +5732,43 @@ impact_px = "0"
 impact_onestep_px = "0"
 game_visible = "True"
 impact_basis = "harness-level vCPU stall on Simpsons and GTA SA (hostops 10-04): blocks 45 fps on Simpsons and a held 30 on GTA."
+
+[issue.811]
+title = "Whiteout (4B4E0001): the first race's loading screen never finishes (12+ min on the Nova)"
+component = "triage"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 14:33 PDT, 10-04 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to rank it: dispatch with a row, close, or name the blocker."
+status_note = "Forge issue, open, local-only; the tracker had no row for it when the coverage gate was run (hostops jam duty 10-04)."
+
+[issue.812]
+title = "pathfind's screening loop keeps no logcat, so a screening run has no emulator telemetry on disk"
+component = "pathfind"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 14:33 PDT, 10-04 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to rank it: dispatch with a row, close, or name the blocker."
+status_note = "Forge issue, open, local-only; the tracker had no row for it when the coverage gate was run (hostops jam duty 10-04)."
+
+[issue.813]
+title = "steps.jsonl never records `changed`"
+component = "pathfind"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 14:33 PDT, 10-04 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to rank it: dispatch with a row, close, or name the blocker."
+status_note = "Forge issue, open, local-only; the tracker had no row for it when the coverage gate was run (hostops jam duty 10-04)."
+
+[issue.814]
+title = "the dispatch soak has no stop condition on a locked-up title"
+component = "triage"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 14:33 PDT, 10-04 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to rank it: dispatch with a row, close, or name the blocker."
+status_note = "Forge issue, open, local-only; the tracker had no row for it when the coverage gate was run (hostops jam duty 10-04)."
+
+[issue.815]
+title = "the hang gate in failure_intake.py cannot hold a screening claim"
+component = "triage"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 14:33 PDT, 10-04 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to rank it: dispatch with a row, close, or name the blocker."
+status_note = "Forge issue, open, local-only; the tracker had no row for it when the coverage gate was run (hostops jam duty 10-04)."
