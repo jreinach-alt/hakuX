@@ -437,3 +437,16 @@ NEW ISSUE: Whiteout (4B4E0001): the first race's loading screen never finishes (
 Evidence: docs/lanes/pathfind/runs/screen-whiteout/claim (steps.jsonl steps 15-138 are all `loading`; frames 015-138 show the same "LOADING ... TROJAN PARK" card at 29 fps), pathfind screening 2026-10-04 13:30-13:46 PDT on the Nova, first-run disk. Quick Race, default driver, default track. No input was sent during the load, so a hung load and a wait-for-press are not yet told apart. One A/START press on the card, plus a logcat of the load (disc reads, xemu-work), separates them. Blocks Whiteout from the screening.
 
 Spend so far today: about $47 of $60.
+
+[lane.pathfind] MTV Celebrity Deathmatch (5454000B) CLEAR on fps: fps_ok 0.9876 over 687 s of gameplay (98.5% of 604 gfps samples at >= 28.5), median 59, full window; profile golden b206649c8fff, path docs/testing/titles/pathknow/paths/5454000B.json
+- Verdict line: `VERDICT MTV Celebrity Deathmatch ? FAIL(menu time: 87.8% of the scored window in `play` (bar 90%; play 603 s, cutscene 37 s, menu 34 s, other 8 s)) gameplay=686.8s fps_ok=0.9876 crash=False hang=False audio_short=0.0 hitches=12/1.149pm worst_ms=348.6 static_frac=0.0 play_share=0.8781 fps_excluded=85.4s`
+- The verdict fails it on play share: 87.8% against the 90% bar (cutscene 37 s and menu 34 s between rounds; the hold held 601 s of play). fps: median 59 at both the 3- and 5-min checks. Hitches: 12 (1.15 per min, worst 349 ms). The verdict did not fail on them, but they are the one performance cost to look at here. The claim took 4.9 min: five probes were refused, then HOLD:A:3 confirmed the fight. The probe ladder had first put that input in at probe 19, after two refused STICK:left probes.
+- Claim: first-run, 4.93 min, 29 Sonnet calls. Frame strip: docs/lanes/pathfind/runs/screen-mtv-celebrity-deathmatch/hold/hold_strip.jpg. No native target in targets.toml.
+Spend so far today: about $53 of $60.
+
+SCREENING DONE 12/12, clear 7, close 0, fail 1, can't-path 4
+- clear (fps share >= 90% on the verdict's bar): RalliSport Challenge (PASS), The Simpsons Hit & Run (PASS), Dark Summit (PASS), AvP: Extinction (fps_ok 1.0, locked 30; play share 70.7%), LEGO Star Wars (fps_ok 1.0; play share 68.5%), MTV Celebrity Deathmatch (fps_ok 0.99; play share 87.8%), Guilty Gear XX #Reload (fps_ok 1.0 over a partial 193-s window).
+- fail: Amped (fps_ok 0.35, aborted at 5:04; perflog run: guest busy 31.6 ms/frame, vCPU-bound).
+- can't-path: Phantom Crash (story dialogue), The Simpsons Road Rage (the car never moved under RT), Mashed (self-moving race, rounds ended at once), Whiteout (load card never finished: NEW ISSUE above).
+- The owner's target of 8 clear-or-close was not reached: 7 of 12. Three PASS verdicts are Playable candidates for lane.local's frame review (RalliSport, Hit & Run, Dark Summit). Four more cleared fps but missed on hold design (play share or the hold's recovery), not on performance: AvP (RTS camera), LEGO (Diner hub and pause menu), MTV (between-round screens), Guilty Gear (CONTINUE screen).
+- Spend: about $53 of the $60 cap (Sonnet). The Nova is released.

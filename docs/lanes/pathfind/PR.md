@@ -10,6 +10,10 @@ Needs device: yes (held, direct driving; no dispatcher requests)    Needs NDK: n
 
 10-04, the owner's screening (`pm/screen-1004.tsv`): each title is pathed first-run, its profile promoted, then a 600-s
 held measurement against the 30 fps bar. Per-title lines are in OUTBOX.md and the scoreboard is at the top of NOTES.md.
+Result: 12 of 12 screened. 7 clear (3 verdict PASS: RalliSport Challenge, The Simpsons Hit & Run, Dark Summit; 4 with
+fps_ok >= 0.99 that miss Playable on hold design), 1 fail (Amped, aborted at 5:04, vCPU-bound at 31.6 ms/frame),
+4 can't-path (Phantom Crash, Simpsons Road Rage, Mashed, Whiteout; Whiteout's load card never finished, filed as
+NEW ISSUE). Spend about $53 of $60.
 Tool changes in `pathfind.py`, each with a selftest case:
 - **The 3/5-min fps gate** (`FPS_GATES`, owner 10-04 ~08:10). At 3 min and 5 min of a hold, the hold's own gfps
   lines are read. Median < 22 at 3 min, or < 27 at 5 min, with under 60% at 30 x 0.95, stops the hold. One 180-s

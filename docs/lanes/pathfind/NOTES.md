@@ -15,8 +15,25 @@
 | 9 | Amped: Freestyle Snowboarding | 4D530005 | fail | 0.35 of 305 s | 23 | aborted at 5:04 (gate); perflog run fps_ok 0.086: guest busy 31.6 ms/frame (vCPU), Ri 12.3 ms | 3.75, 24 | golden a7d274372a00 | runs/screen-amped/hold, perf |
 | 10 | Dark Summit | 54510004 | CLEAR | 0.9318 of 606 s | 46 | full window; play_share 0.9998 | 9.08, 40 | golden 430384745827 | runs/screen-dark-summit/hold |
 | 11 | Whiteout | 4B4E0001 | can't-path | - | - | - | load card 'Trojan Park' 12.5 min, never ended; 35 calls ($2.4); NEW ISSUE in OUTBOX | none | runs/screen-whiteout/claim |
+| 12 | MTV Celebrity Deathmatch | 5454000B | CLEAR on fps | 0.9876 of 687 s | 59 | full window; play_share 0.8781 | 4.93, 29 | golden b206649c8fff | runs/screen-mtv-celebrity-deathmatch/hold |
 
 Share columns use title_verdict's bar, 30 x `fps_tolerance` 0.95 = 28.5, unless stated.
+
+SCREENING DONE 12/12 (14:20 PDT): clear 7, close 0, fail 1, can't-path 4; about $53 of $60 (Sonnet). The owner's
+target of 8 clear-or-close was not reached. Three verdict PASSes (RalliSport, Hit & Run, Dark Summit) go to frame review.
+
+What the next lane should not repeat:
+- **Do not edit pathfind.py while a run is queued.** A queued run imports the file when its hold is granted. The 10:2x
+  Road Rage run imported a half-edited file and died at step 2 (AttributeError).
+- **`promote --latest` after a first-run claim can make a title-data-only golden** (Hit & Run: no profile saved by
+  gameplay). titlestate then refuses `--state returning`. The hold uses `--state any`, which loads the golden unchanged.
+- **Four of the 7 clears miss Playable on hold design, not fps.** An RTS camera reads still (AvP). A hub start walks
+  into the pause menu (LEGO). Fighters lose and stall at CONTINUE (Guilty Gear: A does not continue). Between-round
+  screens cost 13% (MTV). These are the next hold fixes, ranked by titles each clears.
+- **A load that never ends gets no input.** The model says `wait` and the static-load rule waits (Whiteout, 12.5 min).
+  One A/START after ~90 s of a static load card would separate a hang from a wait-for-press. Not built today.
+- **Self-moving races cannot be confirmed by frame change** (Mashed: the idle change was 0.3-0.86). The probe ladder's
+  HOLD:A:3 did move the scene once (0.017 -> 0.814), but the confirm model refused it on a results card.
 
 ## Resume (10-04 08:13 PDT, attempt 4): why the last attempt did not finish
 
