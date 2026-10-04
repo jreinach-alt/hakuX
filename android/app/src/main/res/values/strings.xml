@@ -242,7 +242,10 @@
   <string name="settings_flash_label">Flash ROM: %1$s</string>
   <string name="settings_hdd_label">HDD Image: %1$s</string>
   <string name="settings_games_folder_title">Games Folder</string>
-  <string name="settings_pick_games_folder">Change Games Folder</string>
+  <string name="settings_pick_games_folder">Add Games Folder</string>
+  <string name="settings_remove_games_folder">Remove</string>
+  <string name="settings_remove_games_folder_title">Remove this games folder?</string>
+  <string name="settings_remove_games_folder_message">%1$s will no longer be scanned. No files are deleted.</string>
   <string name="settings_games_folder_label">Games folder: %1$s</string>
   <string name="settings_file_not_set">Not set</string>
   <string name="settings_file_copying">Copying file…</string>

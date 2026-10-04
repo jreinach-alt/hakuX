@@ -1,0 +1,82 @@
+  Window #0 Window{8464c3f u0 NavigationBar4}:
+    mDisplayId=4 rootTaskId=2121 mSession=Session{e06dfbd 2662:u0a10089} mClient=android.os.BinderProxy@8bce599
+    Requested w=1240 h=111 mLayoutSeq=174
+    Frames: parent=[0,0][1240,1080] display=[0,0][1240,1080] frame=[0,969][1240,1080] last=[0,969][1240,1080] insetsChanged=false
+      mSurface=Surface(name=NavigationBar4)/@0xda399c7
+  Window #1 Window{2cb0d46 u0 InputMethod}:
+    mDisplayId=4 rootTaskId=2121 mSession=Session{bcfa69b 3509:u0a10079} mClient=android.os.BinderProxy@7592521
+    Requested w=738 h=0 mLayoutSeq=28
+    Frames: parent=[0,0][1240,1080] display=[0,0][1240,1080] frame=[251,1080][989,1080] last=[251,969][989,1080] insetsChanged=false
+  Window #2 Window{e009021 u0 com.jreinach.hakux.debug/com.rfandango.haku_x.MainActivity}:
+    mDisplayId=4 rootTaskId=2125 mSession=Session{7792ce9 8095:u0a10145} mClient=android.os.BinderProxy@cd7ce88
+    Requested w=1240 h=1080 mLayoutSeq=174
+    Frames: parent=[0,0][1240,1080] display=[0,0][1240,1080] frame=[0,0][1240,1080] last=[0,0][1240,1080] insetsChanged=false
+      mSurface=Surface(name=com.jreinach.hakux.debug/com.rfandango.haku_x.MainActivity)/@0x4360b63
+  Window #3 Window{27149a7 u0 com.android.launcher3/com.android.launcher3.secondarydisplay.SecondaryDisplayLauncher}:
+    mDisplayId=4 rootTaskId=2121 mSession=Session{9bc4b7 3141:u0a10086} mClient=android.os.BinderProxy@4d4bbcb
+    Requested w=1240 h=1080 mLayoutSeq=153
+    Frames: parent=[0,0][1240,1080] display=[0,0][1240,1080] frame=[0,0][1240,1080] last=[0,0][1240,1080] insetsChanged=false
+  Window #4 Window{a4df24 u0 com.android.systemui.wallpapers.ImageWallpaper}:
+    mDisplayId=4 rootTaskId=2121 mSession=Session{e06dfbd 2662:u0a10089} mClient=android.os.BinderProxy@f5dbbb7
+    Requested w=1240 h=1080 mLayoutSeq=164
+    Frames: parent=[0,0][1240,1080] display=[-100000,-100000][100000,100000] frame=[0,0][1240,1080] last=[0,0][1240,1080] insetsChanged=false
+      mSurface=Surface(name=com.android.systemui.wallpapers.ImageWallpaper)/@0xede8de
+  Window #5 Window{ed9ccf1 u0 ScreenDecorOverlayBottom}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{e06dfbd 2662:u0a10089} mClient=android.os.BinderProxy@8c4967b
+    Requested w=46 h=1080 mLayoutSeq=16
+    Frames: parent=[0,0][1920,1080] display=[0,0][1920,1080] frame=[1874,0][1920,1080] last=[0,0][1920,1080] insetsChanged=false
+  Window #6 Window{6ce4a05 u0 ScreenDecorOverlay}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{e06dfbd 2662:u0a10089} mClient=android.os.BinderProxy@d23d249
+    Requested w=46 h=1080 mLayoutSeq=14
+    Frames: parent=[0,0][1920,1080] display=[0,0][1920,1080] frame=[0,0][46,1080] last=[0,0][1920,1080] insetsChanged=false
+  Window #7 Window{9785516 u0 primaryScreenTopLayout}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{d06a5fd 2894:1000} mClient=android.os.BinderProxy@9ff86d8
+    Requested w=1920 h=1080 mLayoutSeq=145
+    Frames: parent=[0,0][1920,1080] display=[-100000,-100000][100000,100000] frame=[0,0][1920,1080] last=[0,0][1920,1080] insetsChanged=false
+      mSurface=Surface(name=primaryScreenTopLayout)/@0x5ebb4ea
+  Window #8 Window{f5a5a7c u0 com.odin.gameassistant}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{ab594b4 2784:1000} mClient=android.os.BinderProxy@2c2784e
+    Requested w=-1 h=-1 mLayoutSeq=41
+    Frames: parent=[0,0][1920,1080] display=[0,0][1920,1080] frame=[0,0][1920,1080] last=[0,0][1920,1080] insetsChanged=false
+  Window #9 Window{4192e4 u0 com.odin.gameassistant}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{ab594b4 2784:1000} mClient=android.os.BinderProxy@675d076
+    Requested w=1920 h=1080 mLayoutSeq=145
+    Frames: parent=[0,0][1920,1080] display=[-100000,-100000][100000,100000] frame=[0,0][1920,1080] last=[0,0][1920,1080] insetsChanged=false
+      mSurface=Surface(name=)/@0x5c8e951
+  Window #10 Window{672c64c u0 com.odin.gameassistant}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{ab594b4 2784:1000} mClient=android.os.BinderProxy@8f5eb9e
+    Requested w=29 h=276 mLayoutSeq=45
+    Frames: parent=[0,0][1920,1080] display=[-100000,-100000][100000,100000] frame=[1891,402][1920,678] last=[1891,402][1920,678] insetsChanged=false
+  Window #11 Window{7ae2bd6 u0 NavigationBar0}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{e06dfbd 2662:u0a10089} mClient=android.os.BinderProxy@4a04f98
+    Requested w=1920 h=111 mLayoutSeq=145
+    Frames: parent=[0,0][1920,1080] display=[0,0][1920,1080] frame=[0,969][1920,1080] last=[0,969][1920,1080] insetsChanged=false
+      mSurface=Surface(name=NavigationBar0)/@0xa61c98d
+  Window #12 Window{445ee41 u0 NotificationShade}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{e06dfbd 2662:u0a10089} mClient=android.os.BinderProxy@e90634b
+    Requested w=1920 h=1080 mLayoutSeq=99
+    Frames: parent=[0,0][1920,1080] display=[0,0][1920,1080] frame=[0,0][1920,1080] last=[0,0][1920,1080] insetsChanged=false
+  Window #13 Window{a5795be u0 StatusBar}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{e06dfbd 2662:u0a10089} mClient=android.os.BinderProxy@ebf1d40
+    Requested w=1920 h=55 mLayoutSeq=145
+    Frames: parent=[0,0][1920,1080] display=[0,0][1920,1080] frame=[0,0][1920,55] last=[0,0][1920,55] insetsChanged=false
+      mSurface=Surface(name=StatusBar)/@0x92e7189
+  Window #14 Window{be9cf88 u0 com.odin.settings}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{b182270 2881:1000} mClient=android.os.BinderProxy@88cab7a
+    Requested w=1248 h=545 mLayoutSeq=145
+    Frames: parent=[0,55][1920,969] display=[0,55][1920,969] frame=[336,239][1584,784] last=[336,239][1584,784] insetsChanged=false
+       mAnimationIsEntrance=true      mSurface=Surface(name=)/@0x2e711af
+  Window #15 Window{a40f848 u0 ShellDropTarget}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{e06dfbd 2662:u0a10089} mClient=android.os.BinderProxy@80bb2eb
+    Requested w=1920 h=1080 mLayoutSeq=26
+    Frames: parent=[0,0][1920,1080] display=[0,0][1920,1080] frame=[0,0][1920,1080] last=[0,0][1920,1080] insetsChanged=false
+  Window #16 Window{86480a3 u0 com.magneticchen.daijishou/com.magneticchen.daijishou.ui.activities.MainActivity}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{224d6ba 3765:u0a10119} mClient=android.os.BinderProxy@dff07d2
+    Requested w=1920 h=1080 mLayoutSeq=145
+    Frames: parent=[0,0][1920,1080] display=[0,0][1920,1080] frame=[0,0][1920,1080] last=[0,0][1920,1080] insetsChanged=false
+      mSurface=Surface(name=com.magneticchen.daijishou/com.magneticchen.daijishou.ui.activities.MainActivity)/@0x7d32c9a
+  Window #17 Window{ee2c990 u0 com.android.systemui.wallpapers.ImageWallpaper}:
+    mDisplayId=0 rootTaskId=1 mSession=Session{e06dfbd 2662:u0a10089} mClient=android.os.BinderProxy@4085c53
+    Requested w=1920 h=1080 mLayoutSeq=75
+    Frames: parent=[0,0][1920,1080] display=[-100000,-100000][100000,100000] frame=[0,0][1920,1080] last=[0,0][1920,1080] insetsChanged=false
+      mSurface=Surface(name=com.android.systemui.wallpapers.ImageWallpaper)/@0xfc205a8
