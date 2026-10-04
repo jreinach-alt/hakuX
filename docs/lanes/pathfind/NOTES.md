@@ -5,6 +5,9 @@
 | # | title | id | class | share >= 30 | median | window | claim (min, calls) | profile | run |
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | RalliSport Challenge | 4D53000F | clear | 98.9% of 649 s | 59 | full (671 s, PASS) | 3.2, 19 | golden cc9b4ced4a0f | runs/screen-ralli-challenge/hold-0816 |
+| 2 | AvP: Extinction | 56550022 | clear (fps) | 100% at 28.5 (47% at 30) | 29 (locked 30) | full (856 s; FAIL play share 70.7%: RTS camera still) | 3.1, 17 | golden 50a35dcd33ed | runs/screen-avp-extinction/hold |
+
+Share columns use title_verdict's bar, 30 x `fps_tolerance` 0.95 = 28.5, unless stated.
 
 ## Resume (10-04 08:13 PDT, attempt 4): why the last attempt did not finish
 
