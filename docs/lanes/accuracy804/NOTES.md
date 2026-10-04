@@ -283,3 +283,28 @@ lane's run had installed its APK on the Nova between my two runs. The pulled `fr
 (14:52) is that other run's file: my dump never opened, so `fdump_clear_previous` never ran. Re-queued once as
 `1791151399-lane.accuracy804-2607611`. It follows lane.hitchcause's run at ref `b559c094eb`, so it starts after
 another APK switch: the same condition, which makes it a test of that cause as well.
+
+The rerun `1791151399-lane.accuracy804-2607611` (15:05-15:09) **voided the same way** (3 logcat lines, no dump,
+`guest never appeared in 200s`), again right after a lane.hitchcause run on a newer build (`c53ade8dd620`, ref
+`b559c094eb`). Re-queuing at `5e4196fefd` again would void again, for this reason:
+
+**Cause of both voids (likely, with one falsifier): the libfolders pref migration.** `GamesFolders.read()` and
+`write()` (android/.../GamesFolders.kt:24, :29), folded at `10f14d301d`, move the games folder from
+`gamesFolderUri` to the JSON list `gamesFolderUris` and **remove the legacy key**. A build older than that fold
+(my `5e4196fefd` APK) reads only `gamesFolderUri` in `LauncherActivity`. Once a newer build has started on the
+device, the old build finds no games folder, its `hasGamesFolder`/`hasDvd` checks fail, and the launcher goes to
+setup instead of the emulator: no `SDL_main`, no focused window, a void. The Nova's run list fits it exactly. Every
+run boots except my two, and those are the only runs where a pre-libfolders build followed a post-libfolders one
+(hitchcause `805cb8054f` -> mine, hitchcause `b559c094eb` -> mine). Capture 3 at the same APK and env followed my
+own APK and booted; captures 1-2 followed older builds and booted. I cannot read the device (a lane never touches
+one), so the launcher's screen and the crash buffer are unread. The falsifier is the next run: the same route and
+dump on master `10f14d301d`, which carries the migration, must boot.
+
+It affects every request pinned to a ref older than `10f14d301d`, on any device where a newer build has run (A/B
+base arms included). The guard is not in this lane's territory: keep writing `gamesFolderUri` (the first folder)
+alongside `gamesFolderUris` instead of removing it, or have the dispatcher restore the pref per APK. Reported in
+OUTBOX for the PM.
+
+Capture 4 therefore runs on master: `1791151872-lane.accuracy804-2787512` (ref `10f14d301d`, perflog, same env and
+route). It is self-contained: its own dump says whether the body is recorded every frame on master, and its own
+screencaps say whether that run blinked.
