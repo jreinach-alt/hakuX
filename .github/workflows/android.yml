@@ -5,10 +5,12 @@ name: Android
 # subproject pinned to a nonexistent revision, a JDK path belonging to one
 # developer's machine, and an unvalidated frontend integration all shipped.
 
+# Manual dispatch only (2026-10-03): no push or pull request starts this
+# workflow. The forge runs its own CI from .forgejo/workflows, and on the
+# return to GitHub CI comes back only as a manual or release gate
+# (docs/lanes/localforge/RETURN.md, section 2a).
 on:
-  push:
-    branches: [master]
-  pull_request:
+  # hakux-ci-throttle (2026-09-29; manual dispatch only since 2026-10-03)
   workflow_dispatch:
 
 concurrency:
@@ -17,6 +19,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 90
 

@@ -1,0 +1,60 @@
+# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
+# Super Monkey Ball Deluxe (53450038), single route. lane.titleroutes
+# session 46, 2026-09-30, from the Thor survey
+# 0-0-s-1790823793-titleroutes-2949342 (route-frames, booted at 20:28:20
+# PDT). CONFIRMED on the Thor (sessions 47/48, two Thor soaks, both reached
+# live in-level play; both heat-stopped, see targets.toml's note) and now
+# also CONFIRMED on the Nova by a full unattended `route.sh` replay (session
+# 57, 2026-10-01, scratch/judge/super-monkey-ball-deluxe-165430): all 26
+# scripted frames captured through `mark gameplay` (191.5s after route.sh's
+# own start, 198.4s after the launch intent) and the `play` shot 11s later,
+# both showing live, evolving play (score/timer/speed changing between
+# them) in stage 1-1 SIMPLE, not a static menu.
+#
+# What the survey's START/A cycles reached (one press every ~5.5 s):
+#   202826  "There is no Game Data on your Xbox console. Please press A."
+#   202846  "Do you want to save Game Data?" YES highlighted (A takes it)
+#   202912  Mode Select, Main Game highlighted
+#   202944  Data Select, slot 1 "Start the game from the beginning"
+#   203030  stage 1-1 SIMPLE, timer 57:50: the 10th cycle's A started it
+#   203050  START in play opens Continue game / Retry / ...; A continues
+# The survey never tilted the stage, so the ball sat at 0 mph; the FPS
+# overlay read 59 throughout the stage.
+#
+# So: ten cycles, then tilt with the left stick and no START (it pauses).
+# A in play does nothing; after a goal it advances the result screen.
+# If the disk ever carries this title's game data, the first prompt is
+# gone and the cycles overshoot into the stage, where START pauses and the
+# following A continues: the route still ends in play.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+repeat 10 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+axis LY min
+wait 3
+shot rolling
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 4
+    axis LX max
+    wait 0.5
+    axis LX min
+    wait 0.5
+    axis LX mid
+    press A
+    wait 2
+    axis LY mid
+    wait 1
+    shot play
+}

@@ -1,0 +1,10 @@
+[jc425] helper caller, 40 lines, 81 s, 5.19M lookups/s
+  ih   92.48%
+  ie    1.11%
+  ip    6.37%
+  is    0.00%
+  ik    0.04%
+  after a miss: QHT found 31728390, none 2136
+[rr425] hc per 2 s window: mean 10543704, median 11162706 (5.27M/s)
+[ibc507] 0 lines
+pw: 13 samples, battery out 3.49 W (median), USB in 2.13 W (median)

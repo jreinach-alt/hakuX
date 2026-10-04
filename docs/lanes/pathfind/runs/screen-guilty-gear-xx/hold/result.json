@@ -1,0 +1,73 @@
+{
+ "title_id": "53410002",
+ "name": "Guilty Gear XX Reload The Midnight Carnival",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/53410002-Guilty_Gear_XX_Reload_The_Midnight_Carnival.xiso.iso",
+ "result": "gameplay",
+ "tool": "ede3ec6df5",
+ "started": "2026-10-04 11:19:33 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/036-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/036-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/036-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/036-probe-right.jpg"
+ ],
+ "reason": "four probes refused",
+ "minutes": 5.92,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/035-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/037-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/038-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/039-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/040-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/041-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/042-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/043-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/044-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/045-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5341.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Two characters trade melee and magic-style attacks in a 2D versus fighting game, with life bars, tension gauges and a round timer, which is an attack-genre figh",
+  "ok": false,
+  "play_s": 96.5,
+  "need_s": 600.0,
+  "hold_s": 191.3,
+  "model_navs": 13,
+  "frames": 6,
+  "still_windows": 0,
+  "shed": [],
+  "reason": "off play for 13 steps: menu (Shows 'PLAYER 1P 0 / PRESS START' over a character portrait with no fighters in the arena, so it is a menu or select prompt, not live fighting.)",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 183,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 181.8,
+    "floor": 22.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Guilty Gear XX Reload The Midnight Carnival ? FAIL(duration: 193 s of gameplay < 600 s confirmation) gameplay=192.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.5187 fps_excluded=94.1s"
+ },
+ "model_calls": 46,
+ "calls_by_model": {
+  "claude-sonnet-5": 46
+ },
+ "steps": 36,
+ "seconds": 593.5,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/069-hold.jpg",
+ "last_state": "probe",
+ "replayed": 6,
+ "sib_replayed": 0,
+ "guide": [
+  "53410002"
+ ],
+ "cheap": 2,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/strip.jpg"
+}

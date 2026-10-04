@@ -16,6 +16,12 @@
 # written pref and the pushed disk's sha, not on a missing file. The
 # harvest-error leg is the impossible row for plan(): a disk whose saves did
 # not all come off must be kept, however stale the store says it is.
+#
+# THE MODE (lane.hddcrash). The fake push leaves 0644 as adb does; against the
+# #622 dispatcher the "mode 660" legs go red on that push, and the kept-0644
+# leg is the case that crashed nine Nova runs: a disk plan() keeps is never
+# pushed again, so only the prepare can repair it. The fake adb cannot boot a
+# disk, so this checks the one property of the pushed file the crash needed.
 
 echo "== hdd split: a title run boots the titles disk; hdd.img stays the discs'"
 HS="$T/hddsplit"; rm -rf "$HS"; mkdir -p "$HS/bin" "$HS/dev/fs" "$HS/dispatch" "$HS/fix"
@@ -27,12 +33,13 @@ echo "$*" >> "$HS_DEV/calls"
 X=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box
 map() { printf '%s' "${1//$X/$HS_DEV/fs}"; }
 case "$1" in
-    push) cp "$2" "$(map "$3")" && chmod 644 "$(map "$3")" ;;   # adb push: the shell's umask
+    # A real push leaves 0644, which the app cannot open read-write (lane.hddcrash).
+    push) cp "$2" "$(map "$3")" && chmod 644 "$(map "$3")" ;;
     pull) cp "$(map "$2")" "$3" ;;
     shell) shift; c="$*"
         case "$c" in
             "am force-stop"*) ;;
-            "chmod "*)   # nochmod: the device refuses the mode change; chmodnoop: it says yes and ignores it
+            "chmod "*)   # nochmod: a device that refuses the chmod; chmodnoop: it says yes and ignores it
                 [ -f "$HS_DEV/nochmod" ] && exit 1
                 [ -f "$HS_DEV/chmodnoop" ] && exit 0
                 sh -c "$(map "$c")" ;;
@@ -81,7 +88,7 @@ for tid, p in (("4D530021", b"crimson" * 300), ("4541005B", b"burnout" * 900), (
 saves.build(os.path.join(out, "hdd.img"), [os.path.join(out, t) for t in ("4D530021", "4541005B")])
 saves.build(os.path.join(out, "played.qcow2"), [os.path.join(out, t) for t in ("4D530021", "4541005B", "4D530053")])
 PY
-cp "$HS/fix/hdd.img" "$HS/dev/fs/hdd.img"; chmod 660 "$HS/dev/fs/hdd.img"   # as the app made it
+cp "$HS/fix/hdd.img" "$HS/dev/fs/hdd.img"
 check "fixtures: a device hdd.img with two titles' saves" test -s "$HS/dev/fs/hdd.img"
 
 # Run a shell snippet inside a sourced dispatcher.sh against the fake device.
@@ -118,13 +125,11 @@ check "  ... the device's titles.qcow2 is the pushed image (registry sha256)" \
       [ -n "$dsha" ] && [ "$dsha" = "$(reg "st['image']['sha256']")" ]
 check "  ... result's sha256_at_start is the device file's" \
       grep -q "\"sha256_at_start\": \"$dsha\"" "$HS/r1/hdd.json"
+check "  ... and it is mode 660, not the 0644 a push leaves (got: $(stat -c %a "$HS/dev/fs/titles.qcow2" 2>/dev/null))" \
+      [ "$(stat -c %a "$HS/dev/fs/titles.qcow2" 2>/dev/null)" = 660 ]
+check "  ... no titles.qcow2.new is left behind" test ! -e "$HS/dev/fs/titles.qcow2.new"
 check "  ... the seed carried both of hdd.img's saves onto it" verify_on "$HS/dev/fs/titles.qcow2" 4D530021 4541005B
 check "  ... hdd.img itself was not changed" cmp -s "$HS/fix/hdd.img" "$HS/dev/fs/hdd.img"
-# (lane.hddperm.) adb push leaves 644; the app writes through its group, so
-# a 644 titles.qcow2 aborts xemu with Permission denied before focus.
-mode_of() { stat -c %a "$1" 2>/dev/null; }
-check "  ... the pushed titles.qcow2 is 660, as hdd.img is (got: $(mode_of "$HS/dev/fs/titles.qcow2"))" \
-      eval '[ "$(mode_of "$HS/dev/fs/titles.qcow2")" = 660 ] && [ "$(mode_of "$HS/dev/fs/hdd.img")" = 660 ]'
 check "  ... the marker holds the hddPath it replaced" \
       [ "$(cat "$HS/dispatch/.hdd_pref.nova" 2>/dev/null)" = "$X/hdd.img" ]
 
@@ -149,12 +154,40 @@ mkdir -p "$HS/r2"
 hs_env 'titles_disk_prepare req2 "$HS/r2"' > "$HS/r2.log" 2>&1
 plans=$(python3 -c 'import json,sys; print(" ".join(p["action"] for p in json.load(open(sys.argv[1]))["plans"]))' "$HS/r2/hdd.json" 2>/dev/null)
 check "the second run rebuilds from the store: build, keep (got: $plans)" [ "$plans" = "build keep" ]
-check "  ... its disk carries all three saves" verify_on "$HS/dev/fs/titles.qcow2" 4D530021 4541005B 4D530053
+# Its disk is the GOLDENS (lane.savestate433), not what the last run left:
+# until 10-02 it carried the run's new Ghoulies save too, and a title's menus
+# changed from run to run. The seed proposed hdd.img's two as goldens; the
+# run's harvest went to Ghoulies' `latest`, which nobody promoted.
+check "  ... its disk carries the two seeded goldens" verify_on "$HS/dev/fs/titles.qcow2" 4D530021 4541005B
+check "  ... and not the save the last run made" \
+      eval '! python3 "$TESTING/titles/saves.py" list "$HS/dev/fs/titles.qcow2" 2>/dev/null | grep -q 4D530053'
+check "  ... which is in the store as Ghoulies' latest, not its golden" \
+      python3 -c 'import json,sys; g=json.load(open(sys.argv[1]))["titles"]["4D530053"]; sys.exit(0 if g.get("latest") and not g.get("golden") else 1)' \
+      "$HS/dispatch/titlestate/golden.json"
 check "  ... and is the image the registry says was pushed" \
       [ "$(sha256sum "$HS/dev/fs/titles.qcow2" | cut -d' ' -f1)" = "$(reg "st['image']['sha256']")" ]
-check "  ... and is 660 (got: $(mode_of "$HS/dev/fs/titles.qcow2"))" [ "$(mode_of "$HS/dev/fs/titles.qcow2")" = 660 ]
+check "  ... mode 660 (got: $(stat -c %a "$HS/dev/fs/titles.qcow2"))" [ "$(stat -c %a "$HS/dev/fs/titles.qcow2")" = 660 ]
 hs_env 'titles_disk_after req2 "$HS/r2"' >/dev/null 2>&1
 check "  ... an untouched disk is not pulled after the run" grep -q unchanged_or_blocked "$HS/r2/hdd.after.json"
+
+# ------------------------------------- a kept disk pushed 0644 (#622's disks)
+# The disks #622 pushed stayed 0644 and every run on them died in qemu_init:
+# plan() keeps them, so no push repairs them; the prepare must.
+echo "== hdd split: a kept 0644 titles disk is made 660 before the run"
+chmod 644 "$HS/dev/fs/titles.qcow2"; ksha=$(sha256sum "$HS/dev/fs/titles.qcow2" | cut -d' ' -f1)
+mkdir -p "$HS/r7"
+hs_env 'titles_disk_prepare req7 "$HS/r7"' > "$HS/r7.log" 2>&1; rc=$?
+plans=$(python3 -c 'import json,sys; print(" ".join(p["action"] for p in json.load(open(sys.argv[1]))["plans"]))' "$HS/r7/hdd.json" 2>/dev/null)
+check "a 0644 disk the store still matches is kept (rc=$rc, plans: $plans)" [ "$rc" = 0 ] && [ "$plans" = keep ]
+check "  ... and made 660 (got: $(stat -c %a "$HS/dev/fs/titles.qcow2"))" [ "$(stat -c %a "$HS/dev/fs/titles.qcow2")" = 660 ]
+check "  ... its bytes untouched" [ "$(sha256sum "$HS/dev/fs/titles.qcow2" | cut -d' ' -f1)" = "$ksha" ]
+check "  ... hdd.json records the mode it found" grep -q '"mode_found": "644"' "$HS/r7/hdd.json"
+hs_env 'titles_disk_after req7 "$HS/r7"' >/dev/null 2>&1
+chmod 644 "$HS/dev/fs/titles.qcow2"; touch "$HS/dev/nochmod"; mkdir -p "$HS/r8"
+hs_env 'titles_disk_prepare req8 "$HS/r8"' > "$HS/r8.log" 2>&1; rc=$?
+rm -f "$HS/dev/nochmod"
+check "a disk that cannot be made 660 fails the prepare, not the run (rc=$rc)" [ "$rc" != 0 ]
+check "  ... before hddPath is pointed at it (got: $(pref))" [ "$(pref)" = "$X/hdd.img" ]
 
 # ------------------------------- the pref write lands, its read-back is lost
 # (pass-1 M1.) The marker must already hold hdd.img, or the next disc run
@@ -195,10 +228,12 @@ plan_on() {   # <registry json> <bytes> <sha> -> action
 IMG='"image": {"sha256": "aa", "device_sha256": "aa", "built_from": {}'
 check "a changed disk is harvested before anything else" \
       [ "$(plan_on "{\"titles\": {}, $IMG}}" 10 bb)" = harvest ]
-check "a disk whose last harvest failed is kept, stale or not" \
-      [ "$(plan_on "{\"titles\": {\"4D530021\": {\"profile\": true, \"save\": \"x\"}}, $IMG, \"last_pull\": {\"sha256\": \"bb\", \"errors\": {\"4D530021\": \"short\"}}}}" 4000 bb)" = keep ]
-check "  ... unless it is past the ceiling" \
-      [ "$(plan_on "{\"titles\": {}, $IMG, \"last_pull\": {\"sha256\": \"bb\", \"errors\": {\"4D530021\": \"short\"}}}}" 6000 bb)" = build ]
+# Until 10-02 such a disk was KEPT and booted: the next run met the last
+# run's writes (lane.savestate433). Now it is pulled whole, then rebuilt.
+check "a disk whose last harvest failed is preserved whole, not kept and booted" \
+      [ "$(plan_on "{\"titles\": {\"4D530021\": {\"profile\": true, \"save\": \"x\"}}, $IMG, \"last_pull\": {\"sha256\": \"bb\", \"errors\": {\"4D530021\": \"short\"}}}}" 4000 bb)" = preserve ]
+check "  ... at any size" \
+      [ "$(plan_on "{\"titles\": {}, $IMG, \"last_pull\": {\"sha256\": \"bb\", \"errors\": {\"4D530021\": \"short\"}}}}" 6000 bb)" = preserve ]
 check "a clean disk past the cap is rebuilt" [ "$(plan_on "{\"titles\": {}, $IMG}}" 2000 aa)" = build ]
 check "a clean disk under the cap is kept" [ "$(plan_on "{\"titles\": {}, $IMG}}" 900 aa)" = keep ]
 check "a disk missing from the device is rebuilt" [ "$(plan_on "{\"titles\": {}, $IMG}}" -1 "")" = build ]
@@ -208,6 +243,21 @@ mkdir -p "$HS/r3"; : > "$HS/dev/calls"
 hs_env 'HAKUX_TITLES_DISK=0 titles_disk_prepare req3 "$HS/r3"' >/dev/null 2>&1
 check "HAKUX_TITLES_DISK=0: the split is off, recorded, and no adb call is made" \
       eval 'grep -q "HAKUX_TITLES_DISK=0" "$HS/r3/hdd.json" && [ ! -s "$HS/dev/calls" ] && [ "$(pref)" = "$X/hdd.img" ]'
+# The worker's kill switch stays on for everyone; a request turns the split on
+# for itself (lane.hddcrash's device proof).
+mkdir -p "$HS/r9"
+hs_env 'HAKUX_TITLES_DISK=0 titles_disk_prepare req9 "$HS/r9" "[\"HAKUX_IBC=0\", \"HAKUX_TITLES_DISK=1\"]"' > "$HS/r9.log" 2>&1
+check "a request's env HAKUX_TITLES_DISK=1 beats the worker's 0" \
+      eval 'grep -q "\"split\": \"on\"" "$HS/r9/hdd.json" && grep -q "\"split_from\": \"request\"" "$HS/r9/hdd.json" && [ "$(pref)" = "$X/titles.qcow2" ]'
+hs_env 'titles_disk_after req9 "$HS/r9"' >/dev/null 2>&1
+mkdir -p "$HS/r10"; : > "$HS/dev/calls"
+hs_env 'HAKUX_TITLES_DISK=0 titles_disk_prepare req10 "$HS/r10" "[\"HAKUX_IBC=0\"]"' >/dev/null 2>&1
+check "  ... and a request that names none stays off" \
+      eval 'grep -q "HAKUX_TITLES_DISK=0" "$HS/r10/hdd.json" && [ ! -s "$HS/dev/calls" ]'
+mkdir -p "$HS/r11"; : > "$HS/dev/calls"
+hs_env 'titles_disk_prepare req11 "$HS/r11" "[\"HAKUX_TITLES_DISK=0\"]"' >/dev/null 2>&1
+check "  ... a request's 0 beats a worker with the split on" \
+      eval 'grep -q "\"split_from\": \"request\"" "$HS/r11/hdd.json" && [ ! -s "$HS/dev/calls" ] && [ "$(pref)" = "$X/hdd.img" ]'
 
 # ------------------------------------------------------- the hdd.img guard
 echo "== hdd split: hdd.img past its limit is reset through saves.py reset"
@@ -219,36 +269,31 @@ hs_env 'HAKUX_HDD_RESET_BYTES=1000 hdd_img_guard "$HS/r4"' > "$HS/r4.log" 2>&1
 check "over the limit hdd.img is reset" grep -q '"action": "reset"' "$HS/r4/hdd_guard.json"
 check "  ... the original is kept on the device as hdd.img.bak-auto" \
       [ "$(sha256sum "$HS/dev/fs/hdd.img.bak-auto" 2>/dev/null | cut -d' ' -f1)" = "$osha" ]
+check "  ... the new hdd.img is mode 660, or the disc runs die as #622's title runs did" \
+      [ "$(stat -c %a "$HS/dev/fs/hdd.img")" = 660 ]
 check "  ... the new hdd.img is not the old one" \
       [ "$(sha256sum "$HS/dev/fs/hdd.img" | cut -d' ' -f1)" != "$osha" ]
-check "  ... and is 660, not adb push's 644 (got: $(mode_of "$HS/dev/fs/hdd.img"))" [ "$(mode_of "$HS/dev/fs/hdd.img")" = 660 ]
 check "  ... and every save on it survived" \
       eval 'for t in 4D530021 4541005B; do python3 "$TESTING/titles/saves.py" verify "$HS/dev/fs/hdd.img" "$HS/fix/$t" >/dev/null || exit 1; done'
 
-# A device that refuses the chmod: the push fails, and the disk it would have
-# replaced is still the one it was.
+# (lane.hddperm.) A push whose mode cannot be set fails before the rename: the
+# disk in place is the one it was, mode and all, and <path>.new is gone.
 echo "== hdd split: a push whose mode cannot be set fails and replaces nothing"
-# -p: a plain cp masks 660 by the runner's umask (022 on CI -> 640), and the
-# restores below would hand the next leg a 640 hdd.img that dev_push never touched.
-cp -p "$HS/dev/fs/hdd.img" "$HS/hdd.before"; head -c 4096 /dev/urandom > "$HS/other.img"
-touch "$HS/dev/nochmod"
-hs_env 'dev_push "$HS/other.img" "$X/hdd.img"' > "$HS/nochmod.log" 2>&1; rc=$?
-rm -f "$HS/dev/nochmod"
-check "a refused chmod fails dev_push (rc=$rc)" [ "$rc" != 0 ]
-check "  ... and hdd.img is the disk it was" cmp -s "$HS/hdd.before" "$HS/dev/fs/hdd.img"
-check "  ... and hdd.img.new is removed" test ! -e "$HS/dev/fs/hdd.img.new"
-rm -f "$HS/dev/fs/hdd.img.new"; cp -p "$HS/hdd.before" "$HS/dev/fs/hdd.img"   # so a red leg here does not redden the next
-# (pass-1 M1.) A chmod that exits 0 and leaves 644: caught on hdd.img.new,
-# before the rename, so hdd.img is never replaced by a read-only disk.
-touch "$HS/dev/chmodnoop"
-hs_env 'dev_push "$HS/other.img" "$X/hdd.img"' > "$HS/chmodnoop.log" 2>&1; rc=$?
-rm -f "$HS/dev/chmodnoop"
-check "a chmod that does not take fails dev_push (rc=$rc)" [ "$rc" != 0 ]
-check "  ... and hdd.img is the disk it was" cmp -s "$HS/hdd.before" "$HS/dev/fs/hdd.img"
-check "  ... still 660 (got: $(mode_of "$HS/dev/fs/hdd.img"))" [ "$(mode_of "$HS/dev/fs/hdd.img")" = 660 ]
-check "  ... and hdd.img.new is removed" test ! -e "$HS/dev/fs/hdd.img.new"
-check "  ... and the log names the mode" grep -q "mode is '644'" "$HS/chmodnoop.log"
-rm -f "$HS/dev/fs/hdd.img.new"; cp -p "$HS/hdd.before" "$HS/dev/fs/hdd.img"
+# -p: a plain cp masks the mode by the runner's umask (022 on CI).
+cp -p "$HS/dev/fs/hdd.img" "$HS/hdd.before"; bmode=$(stat -c %a "$HS/hdd.before")
+head -c 4096 /dev/urandom > "$HS/other.img"
+for how in nochmod chmodnoop; do
+    touch "$HS/dev/$how"
+    hs_env 'dev_push "$HS/other.img" "$X/hdd.img"' > "$HS/$how.log" 2>&1; rc=$?
+    rm -f "$HS/dev/$how"
+    check "$how: dev_push fails (rc=$rc)" [ "$rc" != 0 ]
+    check "  ... hdd.img is the disk it was" cmp -s "$HS/hdd.before" "$HS/dev/fs/hdd.img"
+    check "  ... and its mode is unchanged (got: $(stat -c %a "$HS/dev/fs/hdd.img"), was $bmode)" \
+          [ "$(stat -c %a "$HS/dev/fs/hdd.img")" = "$bmode" ]
+    check "  ... hdd.img.new is removed" test ! -e "$HS/dev/fs/hdd.img.new"
+    rm -f "$HS/dev/fs/hdd.img.new"; cp -p "$HS/hdd.before" "$HS/dev/fs/hdd.img"   # so a red leg does not redden the next
+done
+check "  ... the log names the mode the chmod left" grep -q 'mode 644 after chmod 660' "$HS/chmodnoop.log"
 
 # (pass-1 M2.) A reset that cannot succeed on this disk is paid for once.
 echo "== hdd split: a failed reset is not retried on the same disk"

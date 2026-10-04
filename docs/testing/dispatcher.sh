@@ -89,7 +89,28 @@ SRC="${DISPATCH_SRC:-$TREE/docs/testing}"
 SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
 make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
-battery_admit.py titles/titlestate.py titles/saves.py"
+battery_admit.py titles/titlestate.py titles/saves.py titles/drive.py \
+titles/classify.py titles/waitfor_match.py"
+# DATA A SHIPPED SCRIPT PICKS AT RUN TIME, shipped by glob, never by name.
+#
+# route.sh's `drive <profile>` step runs drive.py on
+# $HERE/drive-profiles/<profile>.toml, and classify.py reads that profile's
+# reference crops from drive-profiles/<profile>/*.png. None of it was in the
+# snapshot, so `route.sh --check` on any .drive.route failed in a worker with
+# "no profile" and no dispatched run could play one (#433, routedriver2
+# NOTES section 4). A profile is added per title, so naming them here would
+# go stale with the next title; the globs pick up a new one at the next
+# re-exec, and src_hash covers what they match, so adding one IS a re-exec.
+# drive-profiles/selftest/ is classify's fixtures, not data a run reads.
+SNAPSHOT_GLOBS="titles/drive-profiles/*.toml titles/drive-profiles/*/*.png"
+snapshot_globbed() {   # every file SNAPSHOT_GLOBS matches in $SRC, relative to it
+    ( cd "$SRC" 2>/dev/null || exit 0
+      local f
+      for f in $SNAPSHOT_GLOBS; do
+          case "$f" in */selftest/*) continue ;; esac
+          [ -f "$f" ] && printf '%s\n' "$f"
+      done )
+}
 # WHERE BUILDS HAPPEN, AND IT IS NEVER $TREE.
 #
 # Until 2026-09-19 a build detached the SHARED checkout onto the requested
@@ -113,43 +134,54 @@ REPO="${DISPATCH_REPO:-$TREE}"
 BUILD_TREE="${DISPATCH_BUILD_TREE:-$D/build-tree}"
 snapshot_scripts() {
     mkdir -p "$SNAP"
-    local f SRC0="$SRC" SNAP0="$SNAP"
+    local f g
+    # `for f in` stays one loop over literal names: 97-dispatch-deploy parses
+    # this list and compares it with SCRIPT_DEPS.
     for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
              affinity.py captures.py make_test_iso.py extract_results.py \
              sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
              titles/route.sh perf/pad.sh battery_admit.py titles/titlestate.py \
-             titles/saves.py; do
-        # Two of these live in subdirectories. Each file is resolved against
-        # its own directory, so the write-beside-and-rename below stays in one
-        # directory, and cp gets a directory that exists. (Reassigning $f
-        # does not disturb the loop; `for f in` stays, as 97-dispatch-deploy
-        # parses this list.)
-        local SRC="$SRC0" SNAP="$SNAP0"
-        if [ "${f%/*}" != "$f" ]; then
-            SRC="$SRC0/${f%/*}"; SNAP="$SNAP0/${f%/*}"; f="${f##*/}"
-        fi
-        [ -f "$SRC/$f" ] || continue
-        mkdir -p "$SNAP" 2>/dev/null
-        cmp -s "$SRC/$f" "$SNAP/$f" 2>/dev/null && continue
-        # NEVER REWRITE A SNAPSHOT FILE IN PLACE. $SNAP is shared by every
-        # worker, and bash reads a running script lazily, by byte offset: a
-        # `cp -f` over run_disc.sh while the other device's worker was inside
-        # it made that bash read the new file at the old offset (`line 137:
-        # cess: command not found`), and a real run was voided as "the
-        # emulator never started" (2026-09-25, dispatch-hardening defect 13).
-        # Write beside it and rename: the rename swaps the inode, and a
-        # process already reading the old file keeps the old one.
-        cp -f "$SRC/$f" "$SNAP/.$f.tmp.$$" 2>/dev/null \
-            && mv -f "$SNAP/.$f.tmp.$$" "$SNAP/$f" 2>/dev/null \
-            || rm -f "$SNAP/.$f.tmp.$$"
+             titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py; do
+        snapshot_one "$f"
     done
+    for g in $(snapshot_globbed); do
+        snapshot_one "$g"
+    done
+}
+snapshot_one() {   # snapshot_one <path relative to $SRC>
+    local f="$1" SRC="$SRC" SNAP="$SNAP"
+    # Some live in subdirectories. Each file is resolved against its own
+    # directory, so the write-beside-and-rename below stays in one directory,
+    # and cp gets a directory that exists.
+    if [ "${f%/*}" != "$f" ]; then
+        SRC="$SRC/${f%/*}"; SNAP="$SNAP/${f%/*}"; f="${f##*/}"
+    fi
+    [ -f "$SRC/$f" ] || return 0
+    mkdir -p "$SNAP" 2>/dev/null
+    cmp -s "$SRC/$f" "$SNAP/$f" 2>/dev/null && return 0
+    # NEVER REWRITE A SNAPSHOT FILE IN PLACE. $SNAP is shared by every
+    # worker, and bash reads a running script lazily, by byte offset: a
+    # `cp -f` over run_disc.sh while the other device's worker was inside
+    # it made that bash read the new file at the old offset (`line 137:
+    # cess: command not found`), and a real run was voided as "the
+    # emulator never started" (2026-09-25, dispatch-hardening defect 13).
+    # Write beside it and rename: the rename swaps the inode, and a
+    # process already reading the old file keeps the old one.
+    cp -f "$SRC/$f" "$SNAP/.$f.tmp.$$" 2>/dev/null \
+        && mv -f "$SNAP/.$f.tmp.$$" "$SNAP/$f" 2>/dev/null \
+        || rm -f "$SNAP/.$f.tmp.$$"
 }
 # Hash of the scripts as they are IN THE TREE. This used to return empty
 # while $TREE was detached for a build, because mid-build the tree held some
 # other commit's scripts. Builds no longer touch $TREE (see BUILD_TREE), so
 # the tree's scripts are always the tree's scripts and the hash is honest.
+# The globbed files go in by name AND content, so adding, renaming or editing a
+# profile or one of its crops moves the hash.
 src_hash() {
-    ( cd "$SRC" && cat $SCRIPT_DEPS 2>/dev/null | md5sum | cut -c1-12 )
+    local globbed; globbed=$(snapshot_globbed)
+    ( cd "$SRC" && { cat $SCRIPT_DEPS
+                     for f in $globbed; do echo "$f"; cat "$f"; done
+                   } 2>/dev/null | md5sum | cut -c1-12 )
 }
 # Logs go to the file and to STDERR, never stdout. build_ref's stdout is
 # captured as the APK path, so a log line on stdout becomes the path: adding
@@ -459,7 +491,23 @@ PYENV
 # mid-run). No marker: not one adb call.
 #
 # HAKUX_TITLES_DISK=0 on the worker turns the split off: title runs boot
-# hdd.img as they did before.
+# hdd.img as they did before. A request's own env HAKUX_TITLES_DISK (request.sh
+# --env) beats the worker's, either way: the switch lives in the worker's
+# environment, which a request cannot reach, and a proof run of the split must
+# be able to turn it on for itself alone while it stays off for everyone else.
+#
+# THE DISK MUST BE MODE 660. The app reaches files in its x1box directory
+# through a group, and `adb push` leaves them 0644: the app can read the disk
+# but not open it read-write. xemu's own check (xemu_check_file, system/vl.c)
+# only opens it "rb", so the -drive is added, qemu's configure_blockdev then
+# fails "Could not open ...: Permission denied" and exit()s on the qemu thread
+# while the render thread holds GL, and the process dies in the GPU driver:
+# SIGSEGV in libGLESv2_adreno.so or "pthread_mutex_lock called on a destroyed
+# mutex", 2-7 ms after sdl2_display_early_init, before stderr reaches logcat.
+# Every title run on #622's first pushed disks died that way (lane.hddcrash,
+# docs/lanes/hddcrash/NOTES.md). dev_push sets the mode before the rename, and
+# titles_disk_prepare checks it before every title run, so a disk pushed
+# before this fix is repaired rather than booted.
 TITLESTATE="$HERE/titles/titlestate.py"
 SAVES_PY="$HERE/titles/saves.py"
 # saves.py loads tools/make_xbox_hdd.py, which is not under docs/testing and so
@@ -570,57 +618,71 @@ dev_pull() {
 }
 # dev_mode <device path> -> octal mode (e.g. 660), or "" when the file is absent
 dev_mode() {
+    adb_call "$ADB_QUICK_TIMEOUT" "stat mode $1" shell "stat -c %a '$1' 2>/dev/null" 2>/dev/null \
+        | tr -d '\r' | awk 'NR==1 && $1 ~ /^[0-7]+$/ {print $1}'
+}
+# dev_make_660 <device path>: mode 660, read back (see THE DISK MUST BE MODE
+# 660 above), or 1.
+dev_make_660() {
     local m
-    m=$(adb_call "$ADB_QUICK_TIMEOUT" "stat mode $1" shell "stat -c %a '$1' 2>/dev/null" 2>/dev/null | tr -d '\r' | head -1)
-    [[ "$m" =~ ^[0-7]{3,4}$ ]] && echo "$m"
+    m=$(dev_mode "$1")
+    [ "$m" = 660 ] && return 0
+    adb_call "$ADB_QUICK_TIMEOUT" "chmod 660 $1" shell "chmod 660 '$1'" >/dev/null 2>&1
+    m=$(dev_mode "$1")
+    [ "$m" = 660 ] || { log "  $1: mode ${m:-unreadable} after chmod 660; the app could not open it read-write"; return 1; }
 }
 # dev_push <host path> <device path>: through <path>.new and a rename, checked.
-# adb push creates the file as shell with the shell's umask, 644; the app
-# reaches files/x1box through its ext_data_rw group, so a 644 disk is
-# read-only to it, xemu's writable -drive open fails (Permission denied) and
-# the app aborts before it takes focus. Every disk the app writes is 660, as
-# the files the app itself created are. The mode is set on <path>.new and
-# read back there, before the rename (which keeps it), so a chmod that exits 0
-# without taking fails the push with the old disk still in place. Every
-# failure before the rename removes <path>.new.
-dev_push_fail() {   # <device path> <why>
+# Mode 660 before the rename, so the file is never in place unopenable. A
+# failure before the rename leaves <path> as it was and removes <path>.new.
+dev_push_drop() {
     adb_call "$ADB_QUICK_TIMEOUT" "rm $1.new" shell "rm -f '$1.new'" >/dev/null 2>&1
-    log "  push $1: $2"; return 1
 }
 dev_push() {
-    local src="$1" dst="$2" want mode
+    local src="$1" dst="$2" want
     want=$(sha256sum "$src" | cut -d' ' -f1)
-    adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || { dev_push_fail "$dst" "adb push failed"; return 1; }
-    [ "$(dev_sha256 "$dst.new")" = "$want" ] || { dev_push_fail "$dst" "the device's copy does not match"; return 1; }
-    adb_call "$ADB_QUICK_TIMEOUT" "chmod $dst" shell "chmod 660 '$dst.new'" >/dev/null 2>&1 \
-        || { dev_push_fail "$dst" "chmod 660 failed"; return 1; }
-    mode=$(dev_mode "$dst.new")
-    # xemu opens the disk read-write: the group needs read and write.
-    [[ "$mode" =~ [67].$ ]] || { dev_push_fail "$dst" "mode is '${mode:-unreadable}', not group read-write; $dst left as it was"; return 1; }
-    adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || { dev_push_fail "$dst" "rename failed"; return 1; }
-    [ "$(dev_sha256 "$dst")" = "$want" ] || { log "  push $dst: after the rename the device's copy does not match"; return 1; }
-    log "  pushed $dst (sha256 ${want:0:12}, mode $mode)"
+    adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
+    [ "$(dev_sha256 "$dst.new")" = "$want" ] || { log "  push $dst: the device's copy does not match"; dev_push_drop "$dst"; return 1; }
+    dev_make_660 "$dst.new" || { dev_push_drop "$dst"; return 1; }
+    adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
+    [ "$(dev_sha256 "$dst")" = "$want" ] && [ "$(dev_mode "$dst")" = 660 ]
 }
 
-# titles_disk_prepare <id> <rdir>: make the device's titles disk current and
-# point hddPath at it. Writes <rdir>/hdd.json. Non-zero fails the request.
+# titles_disk_prepare <id> <rdir> [<request env json>] [<title id>] [<state>]:
+# make the device's titles disk the composed goldens for this title and state
+# (titlestate.py, GOLDENS: every title's golden profile, minus this title's on
+# a first-run) and point hddPath at it. Writes <rdir>/hdd.json, which records
+# what was loaded: title, save, golden or none. Non-zero fails the request;
+# 3 is a refusal (a returning state with no golden), written to
+# <rdir>/hdd.refused, before any disk is touched.
 titles_disk_prepare() {
-    local id="$1" rdir="$2" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
+    local id="$1" rdir="$2" renv="${3:-[]}" tid="${4:-}" tstate="${5:-any}" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
+    local split="${HAKUX_TITLES_DISK:-1}" from=worker rsplit mode0 targs=()
+    [ -n "$tid" ] && targs=(--title-id "$tid")
+    targs+=(--state "$tstate")
+    [ -n "${HAKUX_TITLES_DISK:-}" ] || from=default
+    # The request's own HAKUX_TITLES_DISK, when it names one, wins.
+    rsplit=$(python3 -c '
+import json, sys
+v = json.loads(sys.argv[1] or "[]")
+v = ["%s=%s" % kv for kv in v.items()] if isinstance(v, dict) else v
+print(([str(e).split("=", 1)[1] for e in v if str(e).startswith("HAKUX_TITLES_DISK=")] or [""])[-1])' "$renv" 2>/dev/null)
+    [ -n "$rsplit" ] && { split="$rsplit"; from=request; }
     x="$(x1box_dir)"; dpath="$x/titles.qcow2"
     case "$dev" in nova|thor) ;; *)
         printf '{"path": null, "split": "off: no titles registry for device %s"}\n' "$dev" > "$rdir/hdd.json"
         return 0 ;; esac
-    if [ "${HAKUX_TITLES_DISK:-1}" = 0 ]; then
-        printf '{"path": null, "split": "off: HAKUX_TITLES_DISK=0"}\n' > "$rdir/hdd.json"
+    if [ "$split" = 0 ]; then
+        printf '{"path": null, "split": "off: HAKUX_TITLES_DISK=0", "split_from": "%s"}\n' "$from" > "$rdir/hdd.json"
         return 0
     fi
+    [ "$from" = request ] && log "  titles disk: on for this request (its env HAKUX_TITLES_DISK=$split beats the worker's ${HAKUX_TITLES_DISK:-unset})"
     # Nothing may hold the disk while it is read or replaced.
     adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (titles disk)" shell am force-stop "${PKG:-com.jreinach.hakux.debug}" >/dev/null 2>&1
     : > "$rdir/hdd.plan"
     for i in 1 2 3 4 5; do
         bytes=$(dev_bytes "$dpath"); sha=""
         [ "$bytes" -ge 0 ] && sha=$(dev_sha256 "$dpath")
-        pj=$(python3 "$TITLESTATE" plan --device "$dev" --device-bytes "$bytes" --device-sha "$sha") || {
+        pj=$(python3 "$TITLESTATE" plan --device "$dev" --device-bytes "$bytes" --device-sha "$sha" "${targs[@]}") || {
             log "  TITLES DISK: plan failed"; return 1; }
         printf '%s\n' "$pj" >> "$rdir/hdd.plan"
         action=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["action"])' "$pj")
@@ -628,6 +690,15 @@ titles_disk_prepare() {
         log "  titles disk: $action ($reason)"
         case "$action" in
             keep) break ;;
+            refuse)
+                printf '%s\n' "$reason" > "$rdir/hdd.refused"
+                log "  TITLES DISK: REFUSED: $reason"; return 3 ;;
+            preserve)
+                # The harvest of this disk failed: keep all of it on the host,
+                # then rebuild. A disk a run wrote to is never booted again.
+                local keep; keep="$TITLESTATE_DIR/unharvested/$dev-${sha:0:12}.qcow2"
+                dev_pull "$dpath" "$keep" "$sha" || { log "  TITLES DISK: cannot pull the disk to preserve it"; return 1; }
+                python3 "$TITLESTATE" preserved --device "$dev" --sha "$sha" --path "$keep" || return 1 ;;
             seed)
                 local h hs; h="$TITLESTATE_DIR/pull/$dev-hdd.img"
                 hs=$(dev_sha256 "$x/hdd.img")
@@ -639,7 +710,7 @@ titles_disk_prepare() {
                 titles_disk_harvest "$id:before" "$dpath" "$sha" "$rdir/hdd.harvest-before.json" || return 1 ;;
             build)
                 local bj img isha built
-                bj=$(python3 "$TITLESTATE" rebuild --device "$dev") || { log "  TITLES DISK: rebuild failed"; return 1; }
+                bj=$(python3 "$TITLESTATE" rebuild --device "$dev" "${targs[@]}") || { log "  TITLES DISK: rebuild failed"; return 1; }
                 printf '%s\n' "$bj" > "$rdir/hdd.build.json"
                 img=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["path"])' "$bj")
                 built=$(python3 -c 'import json,sys;print(json.dumps(json.loads(sys.argv[1])["built_from"]))' "$bj")
@@ -650,19 +721,29 @@ titles_disk_prepare() {
         esac
     done
     [ "$action" = keep ] || { log "  TITLES DISK: no stable plan after $i rounds"; return 1; }
+    # A kept disk may predate dev_push's chmod (THE DISK MUST BE MODE 660).
+    mode0=$(dev_mode "$dpath")
+    dev_make_660 "$dpath" || { log "  TITLES DISK: cannot make $dpath mode 660"; return 1; }
+    [ "$mode0" = 660 ] || log "  titles disk: mode ${mode0:-unreadable} -> 660"
     # The FIRST value found is the one to put back: a marker already there
     # (a worker that died mid-run) holds it, and hddPath now reads ours.
     # set_hdd_pref writes the marker before the pref, so a failure here still
     # leaves serve_one's restore_hdd_pref the value to put back.
     set_hdd_pref "$dpath" "$(hdd_pref_marker)" >/dev/null || return 1
-    python3 - "$rdir" "$dpath" "$sha" "$bytes" <<'PYHDD'
+    local cj; cj=$(python3 "$TITLESTATE" compose --device "$dev" "${targs[@]}") || cj='{}'
+    python3 - "$rdir" "$dpath" "$sha" "$bytes" "$mode0" "$from" "$cj" <<'PYHDD'
 import json, os, sys
-rdir, path, sha, n = sys.argv[1:5]
+rdir, path, sha, n, mode0, frm, cj = sys.argv[1:8]
 plans = [json.loads(l) for l in open(os.path.join(rdir, "hdd.plan")) if l.strip()]
-json.dump({"path": path, "sha256_at_start": sha, "bytes_at_start": int(n), "plans": plans,
-           "split": "on"}, open(os.path.join(rdir, "hdd.json"), "w"), indent=1)
+c = json.loads(cj)
+c.pop("built_from", None)
+# title_id, disk_title_id, state, save, loaded (golden|none), golden_status:
+# what this run's title found on the disk (titlestate.py compose).
+json.dump(dict(c, path=path, sha256_at_start=sha, bytes_at_start=int(n), plans=plans,
+               mode_found=mode0 or None, mode="660",
+               split="on", split_from=frm), open(os.path.join(rdir, "hdd.json"), "w"), indent=1)
 PYHDD
-    log "  hddPath -> $dpath (sha256 ${sha:0:12}, $bytes B)"
+    log "  hddPath -> $dpath (sha256 ${sha:0:12}, $bytes B; ${tid:-title unknown} $tstate: $(python3 -c 'import json,sys;c=json.loads(sys.argv[1]);print(c.get("loaded"), c.get("save") or "")' "$cj" 2>/dev/null))"
 }
 
 # titles_disk_harvest <run> <device path> <sha> <out.json>: pull, harvest.
@@ -693,7 +774,26 @@ titles_disk_after() {
                 || printf '{"error": "pull or harvest failed; see dispatcher.log"}\n' > "$rdir/hdd.after.json" ;;
         *) printf '{"unchanged_or_blocked": %s, "sha256": "%s"}\n' "$pj" "$sha" > "$rdir/hdd.after.json" ;;
     esac
+    titles_first_run_golden "$id" "$rdir"
     restore_hdd_pref || log "  WARNING: hddPath not restored; the next request retries"
+}
+
+# titles_first_run_golden <id> <rdir>: a first-run whose route reached `mark
+# profile-saved` made the title's profile; when the title has no golden, the
+# harvested save becomes it (titlestate.py first-run-saved never replaces one).
+titles_first_run_golden() {
+    local id="$1" rdir="$2" dt save
+    grep -q '"state": "first-run"' "$rdir/hdd.json" 2>/dev/null || return 0
+    grep -q 'mark profile-saved' "$rdir/run.log" 2>/dev/null || return 0
+    dt=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("disk_title_id") or "")' "$rdir/hdd.json" 2>/dev/null)
+    save=$(python3 -c 'import json,sys;print((json.load(open(sys.argv[1])).get("harvested") or {}).get(sys.argv[2]) or "")' \
+           "$rdir/hdd.after.json" "$dt" 2>/dev/null)
+    if [ -z "$dt" ] || [ -z "$save" ]; then
+        log "  first-run reached profile-saved, but no save of ${dt:-the title} was harvested; no golden made"
+        return 0
+    fi
+    python3 "$TITLESTATE" first-run-saved --title-id "$dt" --save "$save" --run "$id" \
+        > "$rdir/hdd.golden.json" 2>&1 && log "  golden: $(cat "$rdir/hdd.golden.json")"
 }
 
 # hdd_img_guard <rdir>: disc runs keep hdd.img, and it still grows (E:\nxdk_*
@@ -885,6 +985,43 @@ _build_ref_locked() {
     [ "$rc" -eq 0 ] || return 4
     cp "$BUILD_TREE/android/app/build/outputs/apk/debug/app-debug.apk" "$apk"
     echo "$apk"
+}
+
+# THE DISPATCHER MUST NEVER INSTALL THE RELEASE PACKAGE (com.jreinach.hakux,
+# no suffix): that is the owner's stable playtest channel (owner_build.sh,
+# the nightly), and a lane's run reinstalling over it would make "which
+# build is this" unanswerable the same way the debug app already was (#433).
+#
+# _build_ref_locked only ever runs `assembleDebug` and copies the `debug`
+# variant's output, so there is today no path from here to a release apk --
+# but that is an invariant of this file's code, not of the apk on disk, and
+# it is cheap to check the thing that is actually installed rather than trust
+# that nothing upstream changed. A release apk's compiled manifest carries
+# its applicationId as a plain string in AndroidManifest.xml's string pool
+# (usually UTF-16LE); this looks for the bare id with no following "." --
+# which is what a debug or debug2 suffix would add -- so `com.jreinach.hakux`
+# alone refuses and `com.jreinach.hakux.debug` does not.
+#
+# A file zipfile cannot open (including the empty placeholder selftest.d's
+# fakes use in place of a real build) is NOT refused: there is nothing to
+# read the applicationId from, and failing closed here would block every
+# test that fakes build_ref. The real guarantee is structural (above); this
+# is defense in depth against a future change to build_ref, not the only
+# thing standing between a lane and the release package.
+guard_not_release_apk() {   # <apk path> ; 0 = fine to install, 1 = refuse
+    local apk="$1"
+    [ -s "$apk" ] || return 0
+    python3 - "$apk" <<'PY' 2>/dev/null
+import re, sys, zipfile
+try:
+    with zipfile.ZipFile(sys.argv[1]) as z:
+        manifest = z.read("AndroidManifest.xml")
+except Exception:
+    sys.exit(0)
+needle = "com.jreinach.hakux"
+text = manifest.decode("utf-16-le", "ignore") + "\n" + manifest.decode("utf-8", "ignore")
+sys.exit(1 if re.search(re.escape(needle) + r'(?![.\w])', text) else 0)
+PY
 }
 
 # ------------------------------------------------------------ the lane file
@@ -1135,6 +1272,12 @@ serve_one() {
     local sha; sha=$(sha256sum "$apk" | cut -c1-12)
     log "  binary $sha"
 
+    if ! guard_not_release_apk "$apk"; then
+        echo "refusing to install $apk: it reports applicationId com.jreinach.hakux (the release package); the dispatcher may only install a debug-suffixed build" > "$rdir/ERROR"
+        log "  REFUSING RELEASE INSTALL"
+        mv "$req" "$rdir/request.json"; return 0
+    fi
+
     if ! device_present; then
         log "  device absent; requeueing"
         mv "$req" "$D/queue/$id.req"; sleep 30; return 0
@@ -1188,7 +1331,20 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
-        if ! titles_disk_prepare "$id" "$rdir"; then
+        # Which title, and the state its route was written for (request.sh
+        # --route, titlestate.py resolve-route). A request queued before that
+        # carries neither: its title from the ISO name, state `any`.
+        local ttid tstate trc
+        ttid=$(jq_get "$req" title_id "")
+        [ -n "$ttid" ] || ttid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
+        tstate=$(jq_get "$req" title_state any)
+        titles_disk_prepare "$id" "$rdir" "$req_env" "$ttid" "$tstate"; trc=$?
+        if [ "$trc" = 3 ]; then
+            echo "refused before the soak: the titles disk cannot carry what the route assumes: $(cat "$rdir/hdd.refused" 2>/dev/null)" > "$rdir/ERROR"
+            log "  TITLES DISK REFUSED"
+            restore_hdd_pref
+            mv "$req" "$rdir/request.json"; return 0
+        elif [ "$trc" != 0 ]; then
             adb_error "could not prepare the titles disk; see dispatcher.log" > "$rdir/ERROR"
             log "  TITLES DISK SETUP FAILED"
             restore_hdd_pref
@@ -1962,6 +2118,16 @@ case "${1:-status}" in
     # exec between requests is free. Hash the scripts it actually depends on.
     DISPATCH_SRC_HASH="$(src_hash)"
     export DISPATCH_SRC_HASH
+    # And snapshot with THIS file's lists, after the hash. The re-exec that
+    # started this worker was carried out by the previous version's
+    # snapshot_scripts, which copies the previous version's list: a file a
+    # fold ADDS to the lists was never copied, and nothing re-snapshots until
+    # some later fold moves the hash (vsh_score.py, 2026-09-25: missing from
+    # bin/ after #229 folded, and request.sh refused vsh work waiting on a
+    # re-exec that was not coming). Hash first: a tree edit landing between
+    # the two leaves the snapshot NEWER than the hash, so the next tick
+    # re-execs; the other order would leave it older with nothing to notice.
+    snapshot_scripts
     # Anything left in running/ belongs to a loop that is gone -- killed,
     # crashed, or restarted to pick up a change. Its request was accepted and
     # never answered, so put it back rather than leaving it to be found by

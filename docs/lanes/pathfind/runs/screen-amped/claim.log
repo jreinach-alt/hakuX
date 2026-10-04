@@ -1,0 +1,28 @@
+pathfind: Amped: Freestyle Snowboarding (4D530005) on nova: /storage/E6C6-D7AA/Games/XBox/4D530005-Amped_Freestyle_Snowboarding.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D530005 first-run, loaded none
+[  10.8s] #  1 loading           fast    wait                     Blank white frame with a rendering of a 3D model, likely a loading or logo transition; not
+[  18.3s] #  2 publisher_logo    fast    START                    Microsoft publisher logo before the title; per hints, START then A skips intro/logos. Logo
+[  25.9s] #  3 title_screen      fast    START                    Title screen with a 'Press START' prompt; per hints, START advances it. Nothing highlighte
+[  34.2s] #  4 main_menu         fast    A                        Main menu with CAREER highlighted at top; per the recorded Amped path, A on the highlighte
+[  43.2s] #  5 submenu           fast    A                        Prefer New Career over Load for a cold boot; New Career is already highlighted, so A confi
+[  50.7s] #  6 submenu           fast    A                        Save-slot picker for a new career; the highlighted Empty Slot is the default, so A continu
+[  59.6s] #  7 name_entry        fast    A                        Default name is filled and the highlight is on DONE, so A accepts it and moves on to the m
+[  67.8s] #  8 submenu           fast    A                        Skill point allocation screen blocks entry to riding; the default allocation is accepted w
+[  79.9s] #  9 submenu           fast    RIGHT RIGHT              Still on the skill allocation screen with points left to spend; the game requires all poin
+[  88.8s] # 10 submenu           fast    RIGHT RIGHT RIGHT RIGHT  Skill points are still unspent and the game blocks entry to riding until all are used. Spi
+[ 100.7s] # 11 submenu           fast    A                        The Points available bar looks empty, so the points should be spent. Previous RIGHT presse
+[ 110.5s] # 12 submenu           fast    A                        Setup screen with defaults shown; Continue is the lit row, so A accepts the defaults and m
+[ 118.8s] # 13 submenu           fast    A                        Gear setup screen with defaults shown; CONTINUE is the lit row, so A accepts and moves tow
+[ 128.3s] # 14 submenu           fast    A                        Level Select is the lit row and leads straight to riding a run; A selects it.
+[ 137.0s] # 15 submenu           fast    A                        Level select with Brighton 1 already lit; A continues to start riding, matching the record
+[ 156.1s] # 16 unknown           fast    wait                     Level select was just confirmed, so this is probably a camera fly-in or pre-run area, but 
+[ 163.6s] # 17 submenu           fast    A                        Drop-point selection before a run. The lit row MAJESTIC is the default and A Select is the
+[ 171.1s] # 18 submenu           fast    A                        Tutorial/challenge info popup before the run starts; A (Continue) advances into riding, sa
+[ 181.9s] # 19 gameplay          fast    wait                     Player-controlled rider on the slope with the race HUD (scores and targets) visible. Not a
+[ 199.1s] # 20 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.760, under input 0.788
+[ 207.3s] # 21 gameplay          fast    wait                     The race HUD (score and target panels) is up over a live slope with no menu, popup or lett
+[ 225.2s] # 22 probe             probe   STICK:down:1.5 STICK:left:1.2 STICK:right:1.2 control 0.440, under input 0.516
+{"name": "Amped: Freestyle Snowboarding", "device": "nova", "result": "gameplay", "minutes": 3.75, "model_calls": 24, "steps": 22, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/021-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,0 +1,44 @@
+# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
+# Gauntlet: Dark Legacy (4D57000E), Thor. Authored by lane.titleroutes session
+# 49, from the generic `--route survey` soak 0-0-s-1790823800-titleroutes-
+# 2951589 (session 46, heat-stopped at 256/300s). That soak ran 14 blind
+# START/A cycles (survey.route's default) and overshot: by the 8th cycle's
+# A press (205704-menu-a.png) the wizard was already exploring the dungeon
+# at live 14 fps, but cycles 9-14 kept pressing START during that live play,
+# and the soak's own `mark play` frame landed on the in-game pause menu's
+# Audio page (205824-play.png) -- the same START-during-gameplay trap found
+# in sonic-heroes.route, this time caught in the survey's own frames before
+# any route was committed.
+#
+# Fix: stop at 8 cycles (where the survey's own evidence shows gameplay
+# already running under the intro scroll "I have summoned to my tower...")
+# and never press START again after the mark, matching castlevania-cod.route.
+# DRAFT until its own replay is checked.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+repeat 8 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+wait 2
+shot running
+mark gameplay
+repeat forever {
+    axis LY min
+    press A
+    wait 3
+    axis RX max
+    wait 0.5
+    axis RX mid
+    axis LY mid
+    wait 1
+    shot play
+}

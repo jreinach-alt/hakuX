@@ -1,0 +1,2312 @@
+[
+ {
+  "set": "s1",
+  "n": 1,
+  "run": "ninja-gaiden",
+  "pre": "040",
+  "label": "?",
+  "old_verdict": null,
+  "shift": [
+   0,
+   -1,
+   0.25,
+   true
+  ],
+  "std_a": 59.1,
+  "old": {
+   "ctrl": 0.094,
+   "moved": 0.186,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.094,
+   "moved": 0.186,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.094,
+   "moved": 0.186,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.1085,
+   "moved": 0.2239,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 2,
+  "run": "blinx-2.unguided",
+  "pre": "014",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.898,
+   false
+  ],
+  "std_a": 72.9,
+  "old": {
+   "ctrl": 0.0126,
+   "moved": 0.013,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0126,
+   "moved": 0.013,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0126,
+   "moved": 0.013,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0117,
+   "moved": 0.012,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 3,
+  "run": "black-stone-hold",
+  "pre": "084",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.956,
+   false
+  ],
+  "std_a": 14.7,
+  "old": {
+   "ctrl": 0.0021,
+   "moved": 0.0025,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0031,
+   "moved": 0.0031,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0031,
+   "moved": 0.0031,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0063,
+   "moved": 0.007,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 4,
+  "run": "amped-2",
+  "pre": "017",
+  "label": "?",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.115,
+   false
+  ],
+  "std_a": 47.6,
+  "old": {
+   "ctrl": 0.7149,
+   "moved": 0.7492,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.7149,
+   "moved": 0.7492,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.7149,
+   "moved": 0.7492,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.8715,
+   "moved": 0.7901,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 5,
+  "run": "black-stone-hold",
+  "pre": "034",
+  "label": "R",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.935,
+   false
+  ],
+  "std_a": 14.8,
+  "old": {
+   "ctrl": 0.0005,
+   "moved": 0.0029,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0021,
+   "moved": 0.0064,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0021,
+   "moved": 0.0064,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0054,
+   "moved": 0.0109,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 6,
+  "run": "black-stone-hold",
+  "pre": "018",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.972,
+   false
+  ],
+  "std_a": 14.4,
+  "old": {
+   "ctrl": 0.0018,
+   "moved": 0.0016,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0024,
+   "moved": 0.0026,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0024,
+   "moved": 0.0026,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0031,
+   "moved": 0.0051,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 7,
+  "run": "blinx-the-time.baseline",
+  "pre": "023",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.153,
+   false
+  ],
+  "std_a": 34.2,
+  "old": {
+   "ctrl": 0.0135,
+   "moved": 0.4437,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0135,
+   "moved": 0.4437,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0135,
+   "moved": 0.4437,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.0183,
+   "moved": 0.594,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 8,
+  "run": "tork",
+  "pre": "021",
+  "label": "C",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.449,
+   false
+  ],
+  "std_a": 43.3,
+  "old": {
+   "ctrl": 0.4319,
+   "moved": 0.2402,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.4319,
+   "moved": 0.2402,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.4319,
+   "moved": 0.2402,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.5377,
+   "moved": 0.2795,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 9,
+  "run": "black-stone-hold",
+  "pre": "036",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.969,
+   false
+  ],
+  "std_a": 14.8,
+  "old": {
+   "ctrl": 0.0028,
+   "moved": 0.0022,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0042,
+   "moved": 0.0027,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0042,
+   "moved": 0.0027,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0059,
+   "moved": 0.0036,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 10,
+  "run": "blinx-2.guided",
+  "pre": "031",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.865,
+   false
+  ],
+  "std_a": 35.6,
+  "old": {
+   "ctrl": 0.0171,
+   "moved": 0.013,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0171,
+   "moved": 0.013,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0171,
+   "moved": 0.013,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0264,
+   "moved": 0.0256,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 11,
+  "run": "black-stone-hold",
+  "pre": "064",
+  "label": "R",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.925,
+   false
+  ],
+  "std_a": 14.7,
+  "old": {
+   "ctrl": 0.0014,
+   "moved": 0.0062,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0027,
+   "moved": 0.0104,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0027,
+   "moved": 0.0104,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0052,
+   "moved": 0.0143,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 12,
+  "run": "black-stone-hold",
+  "pre": "097",
+  "label": "R",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.254,
+   false
+  ],
+  "std_a": 16.1,
+  "old": {
+   "ctrl": 0.0049,
+   "moved": 0.319,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0083,
+   "moved": 0.5414,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0083,
+   "moved": 0.5414,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.0122,
+   "moved": 0.7858,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 13,
+  "run": "dead-or-alive-3.baseline",
+  "pre": "058",
+  "label": "?",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.058,
+   false
+  ],
+  "std_a": 51.5,
+  "old": {
+   "ctrl": 0.724,
+   "moved": 0.719,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.724,
+   "moved": 0.719,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.724,
+   "moved": 0.719,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.7994,
+   "moved": 0.7954,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 14,
+  "run": "tiger-woods-pga-tour-2004.baseline",
+  "pre": "013",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.706,
+   false
+  ],
+  "std_a": 38.3,
+  "old": {
+   "ctrl": 0.0093,
+   "moved": 0.0791,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0093,
+   "moved": 0.0791,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0093,
+   "moved": 0.0791,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.0185,
+   "moved": 0.1023,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 15,
+  "run": "amped-2",
+  "pre": "015",
+  "label": "?",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.198,
+   false
+  ],
+  "std_a": 60.3,
+  "old": {
+   "ctrl": 0.6492,
+   "moved": 0.8209,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.6492,
+   "moved": 0.8209,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.6492,
+   "moved": 0.8209,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.8768,
+   "moved": 0.8648,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 16,
+  "run": "counter-strike",
+  "pre": "014",
+  "label": "R",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.106,
+   false
+  ],
+  "std_a": 25.4,
+  "old": {
+   "ctrl": 0.0434,
+   "moved": 0.3469,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0499,
+   "moved": 0.3642,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0499,
+   "moved": 0.3642,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.1553,
+   "moved": 0.609,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 17,
+  "run": "dead-or-alive-3.baseline",
+  "pre": "043",
+  "label": "?",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.098,
+   false
+  ],
+  "std_a": 48.2,
+  "old": {
+   "ctrl": 0.6795,
+   "moved": 0.5031,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.6795,
+   "moved": 0.5031,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.6795,
+   "moved": 0.5031,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.7474,
+   "moved": 0.5962,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 18,
+  "run": "black-stone-hold",
+  "pre": "070",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.969,
+   false
+  ],
+  "std_a": 14.8,
+  "old": {
+   "ctrl": 0.0019,
+   "moved": 0.0022,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.003,
+   "moved": 0.0024,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.003,
+   "moved": 0.0024,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0044,
+   "moved": 0.0039,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 19,
+  "run": "espn-nhl-2k5.sibguided2",
+  "pre": "012",
+  "label": "?",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.147,
+   false
+  ],
+  "std_a": 78.5,
+  "old": {
+   "ctrl": 0.5478,
+   "moved": 0.5015,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.5478,
+   "moved": 0.5015,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.5478,
+   "moved": 0.5015,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.5205,
+   "moved": 0.4918,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 20,
+  "run": "dead-or-alive-3.baseline",
+  "pre": "037",
+  "label": "?",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.098,
+   false
+  ],
+  "std_a": 48.9,
+  "old": {
+   "ctrl": 0.5907,
+   "moved": 0.5115,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.5907,
+   "moved": 0.5115,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.5907,
+   "moved": 0.5115,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.6779,
+   "moved": 0.6096,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 21,
+  "run": "amped-2",
+  "pre": "039",
+  "label": "M",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.506,
+   false
+  ],
+  "std_a": 63.0,
+  "old": {
+   "ctrl": 0.6779,
+   "moved": 0.5055,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.6779,
+   "moved": 0.5055,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.6779,
+   "moved": 0.5055,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.8968,
+   "moved": 0.6982,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 22,
+  "run": "panzer-dragoon",
+  "pre": "023",
+  "label": "?",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.164,
+   false
+  ],
+  "std_a": 36.7,
+  "old": {
+   "ctrl": 0.705,
+   "moved": 0.8974,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.705,
+   "moved": 0.8974,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.705,
+   "moved": 0.8974,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.5389,
+   "moved": 0.5689,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 23,
+  "run": "panzer-dragoon",
+  "pre": "017",
+  "label": "?",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.04,
+   false
+  ],
+  "std_a": 25.2,
+  "old": {
+   "ctrl": 0.3218,
+   "moved": 0.316,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.3418,
+   "moved": 0.3333,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.3418,
+   "moved": 0.3333,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.6321,
+   "moved": 0.6048,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 24,
+  "run": "blinx-2.guided",
+  "pre": "074",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.859,
+   false
+  ],
+  "std_a": 35.6,
+  "old": {
+   "ctrl": 0.0154,
+   "moved": 0.0139,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0154,
+   "moved": 0.0139,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0154,
+   "moved": 0.0139,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0277,
+   "moved": 0.0236,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 25,
+  "run": "blinx-2.unguided",
+  "pre": "022",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.863,
+   false
+  ],
+  "std_a": 35.6,
+  "old": {
+   "ctrl": 0.0147,
+   "moved": 0.0173,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0147,
+   "moved": 0.0173,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0147,
+   "moved": 0.0173,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0276,
+   "moved": 0.0294,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 26,
+  "run": "bruce-lee.rerun",
+  "pre": "004",
+  "label": "R",
+  "old_verdict": null,
+  "shift": [
+   14,
+   0,
+   0.061,
+   false
+  ],
+  "std_a": 94.8,
+  "old": {
+   "ctrl": 0.3484,
+   "moved": 0.3063,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.3484,
+   "moved": 0.3063,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.3484,
+   "moved": 0.3063,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.2901,
+   "moved": 0.2557,
+   "accept": true
+  }
+ },
+ {
+  "set": "s1",
+  "n": 27,
+  "run": "blinx-2.guided",
+  "pre": "043",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.843,
+   false
+  ],
+  "std_a": 35.6,
+  "old": {
+   "ctrl": 0.0166,
+   "moved": 0.0147,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0166,
+   "moved": 0.0147,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0166,
+   "moved": 0.0147,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0246,
+   "moved": 0.0273,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 28,
+  "run": "blinx-2.guided",
+  "pre": "078",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.849,
+   false
+  ],
+  "std_a": 35.2,
+  "old": {
+   "ctrl": 0.0181,
+   "moved": 0.0183,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0181,
+   "moved": 0.0183,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0181,
+   "moved": 0.0183,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0282,
+   "moved": 0.0286,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 29,
+  "run": "blinx-2.unguided",
+  "pre": "034",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.894,
+   false
+  ],
+  "std_a": 35.4,
+  "old": {
+   "ctrl": 0.0146,
+   "moved": 0.0152,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0146,
+   "moved": 0.0152,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0146,
+   "moved": 0.0152,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0238,
+   "moved": 0.0253,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 30,
+  "run": "blinx-2.unguided",
+  "pre": "028",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.855,
+   false
+  ],
+  "std_a": 35.7,
+  "old": {
+   "ctrl": 0.0147,
+   "moved": 0.0147,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0147,
+   "moved": 0.0147,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0147,
+   "moved": 0.0147,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0252,
+   "moved": 0.0257,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 31,
+  "run": "blinx-2.unguided",
+  "pre": "040",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.87,
+   false
+  ],
+  "std_a": 35.2,
+  "old": {
+   "ctrl": 0.0132,
+   "moved": 0.0182,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0132,
+   "moved": 0.0182,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0132,
+   "moved": 0.0182,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0238,
+   "moved": 0.0259,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 32,
+  "run": "black-stone-hold",
+  "pre": "032",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.941,
+   false
+  ],
+  "std_a": 14.6,
+  "old": {
+   "ctrl": 0.0021,
+   "moved": 0.0043,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0031,
+   "moved": 0.0079,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0031,
+   "moved": 0.0079,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0053,
+   "moved": 0.0127,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 33,
+  "run": "blinx-2.unguided",
+  "pre": "048",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.952,
+   false
+  ],
+  "std_a": 35.3,
+  "old": {
+   "ctrl": 0.0123,
+   "moved": 0.0071,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0123,
+   "moved": 0.0071,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0123,
+   "moved": 0.0071,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0248,
+   "moved": 0.0166,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 34,
+  "run": "blinx-2.unguided",
+  "pre": "018",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.954,
+   false
+  ],
+  "std_a": 72.9,
+  "old": {
+   "ctrl": 0.0101,
+   "moved": 0.0082,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0101,
+   "moved": 0.0082,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0101,
+   "moved": 0.0082,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0091,
+   "moved": 0.0069,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 35,
+  "run": "blinx-2.unguided",
+  "pre": "050",
+  "label": "U",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.87,
+   false
+  ],
+  "std_a": 35.6,
+  "old": {
+   "ctrl": 0.0173,
+   "moved": 0.0172,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0173,
+   "moved": 0.0172,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0173,
+   "moved": 0.0172,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.0293,
+   "moved": 0.0283,
+   "accept": false
+  }
+ },
+ {
+  "set": "s1",
+  "n": 36,
+  "run": "dead-or-alive-3.baseline",
+  "pre": "064",
+  "label": "?",
+  "old_verdict": null,
+  "shift": [
+   0,
+   0,
+   0.078,
+   false
+  ],
+  "std_a": 51.5,
+  "old": {
+   "ctrl": 0.7903,
+   "moved": 0.7278,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.7903,
+   "moved": 0.7278,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.7903,
+   "moved": 0.7278,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.8116,
+   "moved": 0.8159,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 1,
+  "run": "amped-2",
+  "pre": "048",
+  "label": "R",
+  "old_verdict": "CONFIRMED: Between A and B the rider only drifted slowly downhill. In C, after holding up,",
+  "shift": [
+   0,
+   0,
+   0.071,
+   false
+  ],
+  "std_a": 44.4,
+  "old": {
+   "ctrl": 0.4853,
+   "moved": 0.7606,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.4853,
+   "moved": 0.7606,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.4853,
+   "moved": 0.7606,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.7451,
+   "moved": 0.8013,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 2,
+  "run": "black-stone",
+  "pre": "012",
+  "label": "R",
+  "old_verdict": "CONFIRMED: In-game HUD (health 410, KILL/Gold/KEY) with a player-controlled character; A a",
+  "shift": [
+   0,
+   0,
+   0.251,
+   false
+  ],
+  "std_a": 14.4,
+  "old": {
+   "ctrl": 0.0018,
+   "moved": 0.2838,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.003,
+   "moved": 0.5674,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.003,
+   "moved": 0.5674,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.0045,
+   "moved": 0.7986,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 3,
+  "run": "bruce-lee.falsepass",
+  "pre": "004",
+  "label": "C",
+  "old_verdict": "CONFIRMED: In A and B the character only shifts his fighting stance. In C he is mid-stride",
+  "shift": [
+   3,
+   0,
+   0.061,
+   false
+  ],
+  "std_a": 100.1,
+  "old": {
+   "ctrl": 0.2483,
+   "moved": 0.297,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.2483,
+   "moved": 0.297,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.2483,
+   "moved": 0.297,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.2001,
+   "moved": 0.253,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 4,
+  "run": "bruce-lee.rerun",
+  "pre": "022",
+  "label": "R",
+  "old_verdict": "CONFIRMED: Live fight with HUD bars and ninjas; between A and B only the enemies moved, bu",
+  "shift": [
+   0,
+   0,
+   0.279,
+   false
+  ],
+  "std_a": 54.9,
+  "old": {
+   "ctrl": 0.1474,
+   "moved": 0.3197,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.1474,
+   "moved": 0.3197,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.1474,
+   "moved": 0.3197,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.1645,
+   "moved": 0.3655,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 5,
+  "run": "espn-college-hoops-2k5.replay",
+  "pre": "011",
+  "label": "R",
+  "old_verdict": "CONFIRMED: Live game (GT 0, CONN 0, clock running 9:51 to 9:47). The marked ball handler d",
+  "shift": [
+   0,
+   0,
+   0.161,
+   false
+  ],
+  "std_a": 73.5,
+  "old": {
+   "ctrl": 0.1043,
+   "moved": 0.2683,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.1043,
+   "moved": 0.2683,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.1043,
+   "moved": 0.2683,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.0992,
+   "moved": 0.2487,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 6,
+  "run": "ghoulies",
+  "pre": "011",
+  "label": "R",
+  "old_verdict": "CONFIRMED: Free third-person castle-hall play with the heart health counter dropping 47\u219242",
+  "shift": [
+   0,
+   0,
+   0.142,
+   false
+  ],
+  "std_a": 24.6,
+  "old": {
+   "ctrl": 0.1785,
+   "moved": 0.2489,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.206,
+   "moved": 0.2894,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.206,
+   "moved": 0.2894,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.4373,
+   "moved": 0.5632,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 7,
+  "run": "midnight-club-3",
+  "pre": "034",
+  "label": "U",
+  "old_verdict": "CONFIRMED: A and B are nearly identical: the car sits still with its brake lights on. In C",
+  "shift": [
+   0,
+   0,
+   0.282,
+   false
+  ],
+  "std_a": 26.5,
+  "old": {
+   "ctrl": 0.0052,
+   "moved": 0.1784,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0053,
+   "moved": 0.1927,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0053,
+   "moved": 0.1927,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.009,
+   "moved": 0.445,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 8,
+  "run": "panzer-dragoon",
+  "pre": "025",
+  "label": "R",
+  "old_verdict": "CONFIRMED: Live on-rails flight with the HUD and radar showing. In A and B the green retic",
+  "shift": [
+   0,
+   0,
+   0.085,
+   false
+  ],
+  "std_a": 26.1,
+  "old": {
+   "ctrl": 0.4867,
+   "moved": 0.7758,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.5051,
+   "moved": 0.7852,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.5051,
+   "moved": 0.7852,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.6014,
+   "moved": 0.7107,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 9,
+  "run": "spikeout",
+  "pre": "021",
+  "label": "R",
+  "old_verdict": "CONFIRMED: Live fight with the HUD showing; A and B are almost identical in a clinch, then",
+  "shift": [
+   0,
+   0,
+   0.326,
+   false
+  ],
+  "std_a": 24.0,
+  "old": {
+   "ctrl": 0.0348,
+   "moved": 0.174,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0383,
+   "moved": 0.2088,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0383,
+   "moved": 0.2088,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.0672,
+   "moved": 0.5117,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 10,
+  "run": "sw3",
+  "pre": "018",
+  "label": "?",
+  "old_verdict": "CONFIRMED: Character's lightsaber vanished/lowered and pose changed from A/B to C, a visib",
+  "shift": [
+   0,
+   0,
+   0.731,
+   false
+  ],
+  "std_a": 37.7,
+  "old": {
+   "ctrl": 0.0297,
+   "moved": 0.0549,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0297,
+   "moved": 0.0549,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0297,
+   "moved": 0.0549,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.0587,
+   "moved": 0.0959,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 11,
+  "run": "top-spin",
+  "pre": "026",
+  "label": "R",
+  "old_verdict": "CONFIRMED: This is a live match with the player serving at the baseline. A and B show only",
+  "shift": [
+   0,
+   0,
+   0.732,
+   false
+  ],
+  "std_a": 36.5,
+  "old": {
+   "ctrl": 0.0354,
+   "moved": 0.0555,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0354,
+   "moved": 0.0555,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0354,
+   "moved": 0.0555,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.092,
+   "moved": 0.0676,
+   "accept": false
+  }
+ },
+ {
+  "set": "s2",
+  "n": 12,
+  "run": "tork",
+  "pre": "025",
+  "label": "?",
+  "old_verdict": "CONFIRMED: A and B are almost the same (idle character, HUD with 5 and hearts). In C the c",
+  "shift": [
+   0,
+   0,
+   0.179,
+   false
+  ],
+  "std_a": 23.3,
+  "old": {
+   "ctrl": 0.0549,
+   "moved": 0.2095,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0778,
+   "moved": 0.2745,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0778,
+   "moved": 0.2745,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.2468,
+   "moved": 0.5518,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 13,
+  "run": "tork",
+  "pre": "010",
+  "label": "C",
+  "old_verdict": "letterboxed: a cutscene",
+  "shift": [
+   1,
+   2,
+   0.257,
+   true
+  ],
+  "std_a": 29.1,
+  "old": {
+   "ctrl": 0.2611,
+   "moved": 0.0689,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.2611,
+   "moved": 0.0689,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.2611,
+   "moved": 0.0689,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.4881,
+   "moved": 0.2447,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 14,
+  "run": "tork",
+  "pre": "012",
+  "label": "C",
+  "old_verdict": "letterboxed: a cutscene",
+  "shift": [
+   3,
+   1,
+   0.132,
+   false
+  ],
+  "std_a": 26.8,
+  "old": {
+   "ctrl": 0.3832,
+   "moved": 0.1511,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.3832,
+   "moved": 0.1511,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.3832,
+   "moved": 0.1511,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.8013,
+   "moved": 0.3133,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 15,
+  "run": "tork",
+  "pre": "017",
+  "label": "C",
+  "old_verdict": "letterboxed: a cutscene",
+  "shift": [
+   0,
+   4,
+   0.163,
+   true
+  ],
+  "std_a": 36.1,
+  "old": {
+   "ctrl": 0.0017,
+   "moved": 0.235,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0017,
+   "moved": 0.235,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0017,
+   "moved": 0.235,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.004,
+   "moved": 0.356,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 16,
+  "run": "espn-nhl-2k5.baseline-try1",
+  "pre": "018",
+  "label": "C",
+  "old_verdict": "refused: B shows a goal overlay (St. Louis's 1st goal, assists), and C and D have no score",
+  "shift": [
+   0,
+   0,
+   0.553,
+   false
+  ],
+  "std_a": 72.2,
+  "old": {
+   "ctrl": 0.7345,
+   "moved": 0.2869,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.7345,
+   "moved": 0.2869,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.7345,
+   "moved": 0.2869,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.6713,
+   "moved": 0.4119,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 17,
+  "run": "amped-2",
+  "pre": "021",
+  "label": "R",
+  "old_verdict": "refused: The rider is live on the slope with the HUD up, and the 'Press and hold A to acce",
+  "shift": [
+   0,
+   0,
+   0.13,
+   false
+  ],
+  "std_a": 45.3,
+  "old": {
+   "ctrl": 0.2551,
+   "moved": 0.4288,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.2551,
+   "moved": 0.4288,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.2551,
+   "moved": 0.4288,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.3265,
+   "moved": 0.5379,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 18,
+  "run": "espn-nhl-2k5.sibguided",
+  "pre": "018",
+  "label": "?",
+  "old_verdict": "refused: A real match seems to be running (clock went 19:06 to 18:22, and C shows a player",
+  "shift": [
+   0,
+   0,
+   0.156,
+   false
+  ],
+  "std_a": 69.0,
+  "old": {
+   "ctrl": 0.5951,
+   "moved": 0.4755,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.5951,
+   "moved": 0.4755,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.5951,
+   "moved": 0.4755,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.5746,
+   "moved": 0.4575,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 19,
+  "run": "espn-nfl-2k5.try1",
+  "pre": "016",
+  "label": "M",
+  "old_verdict": "refused: This is the Coin Toss menu (Kick/Receive selection), not gameplay; the stick inpu",
+  "shift": [
+   0,
+   0,
+   0.387,
+   false
+  ],
+  "std_a": 94.7,
+  "old": {
+   "ctrl": 0.1344,
+   "moved": 0.196,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.1344,
+   "moved": 0.196,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.1344,
+   "moved": 0.196,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.1091,
+   "moved": 0.1641,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 20,
+  "run": "espn-nhl-2k5.sibguided2",
+  "pre": "016",
+  "label": "?",
+  "old_verdict": "refused: This is a live TB vs ANA game (0-0, 1st period, clock running down to 13:56). But",
+  "shift": [
+   0,
+   0,
+   0.12,
+   false
+  ],
+  "std_a": 81.1,
+  "old": {
+   "ctrl": 0.4477,
+   "moved": 0.5783,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.4477,
+   "moved": 0.5783,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.4477,
+   "moved": 0.5783,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.3991,
+   "moved": 0.5464,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 21,
+  "run": "tiger-woods-pga-tour-2005.guided",
+  "pre": "021",
+  "label": "P",
+  "old_verdict": "refused: A and B show the hole flyover moving with no input, and C and D both have the GAM",
+  "shift": [
+   0,
+   0,
+   0.076,
+   false
+  ],
+  "std_a": 51.2,
+  "old": {
+   "ctrl": 0.4305,
+   "moved": 0.5108,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.4305,
+   "moved": 0.5108,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.4305,
+   "moved": 0.5108,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.491,
+   "moved": 0.697,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 22,
+  "run": "dead-or-alive-3.baseline",
+  "pre": "045",
+  "label": "?",
+  "old_verdict": "refused: C and D both show the REPLAY banner with cinematic camera angles after Kasumi's K",
+  "shift": [
+   71,
+   -19,
+   0.028,
+   false
+  ],
+  "std_a": 60.9,
+  "old": {
+   "ctrl": 0.727,
+   "moved": 0.7568,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.727,
+   "moved": 0.7568,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.727,
+   "moved": 0.7568,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.8015,
+   "moved": 0.8349,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 23,
+  "run": "espn-college-hoops-2k5.guided",
+  "pre": "012",
+  "label": "R",
+  "old_verdict": "refused: This is live player-controlled gameplay: the GT 0 - CONN 0 HUD and game clock are",
+  "shift": [
+   0,
+   0,
+   0.113,
+   false
+  ],
+  "std_a": 72.6,
+  "old": {
+   "ctrl": 0.3022,
+   "moved": 0.4814,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.3022,
+   "moved": 0.4814,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.3022,
+   "moved": 0.4814,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.2803,
+   "moved": 0.5006,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 24,
+  "run": "blinx-2.guided",
+  "pre": "084",
+  "label": "P",
+  "old_verdict": "refused: All three frames show the 'GAME PAUSED' menu (Resume, Restart mini game, Return t",
+  "shift": [
+   0,
+   0,
+   0.952,
+   false
+  ],
+  "std_a": 42.6,
+  "old": {
+   "ctrl": 0.0546,
+   "moved": 0.0917,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0546,
+   "moved": 0.0917,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0546,
+   "moved": 0.0917,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.0601,
+   "moved": 0.1204,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 25,
+  "run": "dead-or-alive-3.baseline",
+  "pre": "062",
+  "label": "?",
+  "old_verdict": "refused: This looks like a live DOA3 fight (Kasumi vs Leon HUD, no menu or demo text), but",
+  "shift": [
+   0,
+   0,
+   0.105,
+   false
+  ],
+  "std_a": 43.5,
+  "old": {
+   "ctrl": 0.6803,
+   "moved": 0.6328,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.6803,
+   "moved": 0.6328,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.6803,
+   "moved": 0.6328,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.7741,
+   "moved": 0.733,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 26,
+  "run": "espn-nfl-2k5.try2",
+  "pre": "020",
+  "label": "M",
+  "old_verdict": "refused: A live match is on the kickoff play-call screen. Holding up only flipped the play",
+  "shift": [
+   0,
+   0,
+   0.524,
+   false
+  ],
+  "std_a": 44.8,
+  "old": {
+   "ctrl": 0.0907,
+   "moved": 0.1337,
+   "accept": false
+  },
+  "n1": {
+   "ctrl": 0.0907,
+   "moved": 0.1337,
+   "accept": false
+  },
+  "n2": {
+   "ctrl": 0.0907,
+   "moved": 0.1337,
+   "accept": false
+  },
+  "n3": {
+   "ctrl": 0.1316,
+   "moved": 0.1839,
+   "accept": false
+  }
+ },
+ {
+  "set": "s2",
+  "n": 27,
+  "run": "espn-nhl-2k5.sibguided",
+  "pre": "016",
+  "label": "?",
+  "old_verdict": "refused: A and B use a close camera on a scramble at the net and C and D use a fixed camer",
+  "shift": [
+   0,
+   -2,
+   0.05,
+   false
+  ],
+  "std_a": 71.1,
+  "old": {
+   "ctrl": 0.4165,
+   "moved": 0.3673,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.4165,
+   "moved": 0.3673,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.4165,
+   "moved": 0.3673,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.4057,
+   "moved": 0.4899,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 28,
+  "run": "espn-nfl-2k5",
+  "pre": "018",
+  "label": "M",
+  "old_verdict": "refused: This is the pre-snap play-calling menu (LAST PLAY panel, playbook PAGE 11/10, FIE",
+  "shift": [
+   0,
+   0,
+   0.602,
+   false
+  ],
+  "std_a": 46.3,
+  "old": {
+   "ctrl": 0.0421,
+   "moved": 0.0784,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0421,
+   "moved": 0.0784,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0421,
+   "moved": 0.0784,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.0593,
+   "moved": 0.1015,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 29,
+  "run": "tork",
+  "pre": "019",
+  "label": "C",
+  "old_verdict": "refused: A and B are fully black (a transition or load), and C shows a dark, cinematic clo",
+  "shift": [
+   0,
+   0,
+   0.0,
+   false
+  ],
+  "std_a": 0.0,
+  "old": {
+   "ctrl": 0.0,
+   "moved": 0.277,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.0,
+   "moved": 0.773,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.0,
+   "moved": 0.773,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.0,
+   "moved": 0.9048,
+   "accept": true
+  }
+ },
+ {
+  "set": "s2",
+  "n": 30,
+  "run": "espn-college-hoops-2k5.guided",
+  "pre": "016",
+  "label": "R",
+  "old_verdict": "refused: A\u2192B is live play: the clock ran 9:27\u21929:25 and players moved with the HUD up. In C",
+  "shift": [
+   0,
+   0,
+   0.097,
+   false
+  ],
+  "std_a": 73.1,
+  "old": {
+   "ctrl": 0.3801,
+   "moved": 0.3755,
+   "accept": true
+  },
+  "n1": {
+   "ctrl": 0.3801,
+   "moved": 0.3755,
+   "accept": true
+  },
+  "n2": {
+   "ctrl": 0.3801,
+   "moved": 0.3755,
+   "accept": true
+  },
+  "n3": {
+   "ctrl": 0.363,
+   "moved": 0.3585,
+   "accept": true
+  }
+ }
+]

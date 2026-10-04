@@ -100,6 +100,43 @@ not take" leg. Reproduced here with
 line. With the save done as `cp -p`: 59 passed, 0 failed under umask 022.
 No assertion changed.
 
+## Attempt 3 (2026-10-04 PDT): superseded on master; merged down to the increment
+
+Why attempt 2 did not finish: its CI fix (7f98648c69) was pushed after
+GitHub suspended the account (09-29 ~21:00 PDT), and the offline protocol's
+`docs/lanes/hddperm/PR.md` was never written, so foldqueue never saw a
+`State: ready` and the branch sat unfolded holding dispatcher.sh. Meanwhile
+lane.hddcrash folded the same fix to master (9b274b6be3, 09-29 20:27 PDT):
+`dev_make_660` on `<path>.new` before the rename, read back, and a prepare
+that repairs a *kept* 0644 titles disk (#622's disks planned `keep` and were
+never pushed again, so a push-only fix could not reach them). The branch was
+714 commits behind and conflicted on both code files.
+
+Resolution: merge origin/master, take master's `dev_push`/`dev_make_660` and
+master's fragment whole, and keep only what this lane had that master lacks:
+
+- `dev_push` removes `<path>.new` on every failure before the rename (pass-1
+  L1). Master's left a stale `.new` (a full disk image) on the device.
+- the fake adb's `chmodnoop` (chmod exits 0 and does nothing), and a
+  push-level leg for each of `nochmod` / `chmodnoop`: dev_push fails,
+  hdd.img's bytes and mode are unchanged, hdd.img.new is removed, the log
+  names the mode the chmod left. Master tests a refused chmod only through
+  the prepare's kept-disk path.
+
+Dropped as duplicated by master: this lane's `dev_mode`, its group-digit
+`[67]` check (master requires exactly 660; I kept master's), and its 660
+legs on the pushed/rebuilt/reset disks (master has the same legs).
+
+| run (SELFTEST_ONLY=99-hdd-split) | result |
+|---|---|
+| this branch, umask 022 | 72 passed, 0 failed |
+| this branch, umask 002 | 72 passed, 0 failed |
+| falsifier: master's dispatcher.sh + this fragment, umask 022 | 70 passed, 2 failed: the two `hdd.img.new is removed` legs |
+
+Real-device proof (brief step 4): master's fix has been live since its fold.
+This branch's increment touches only the failure path, which no healthy
+device takes, so it gets no device run.
+
 ## For the next lane
 
 - Run a mode-asserting selftest under `umask 022` before pushing: the host is

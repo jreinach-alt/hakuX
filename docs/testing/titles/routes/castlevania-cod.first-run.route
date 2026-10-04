@@ -1,0 +1,138 @@
+# state: first-run   (recorded creating the profile; lane.savestate433)
+# Castlevania: Curse of Darkness (4B4E002D), FIRST RUN: no save on the disk.
+# PLAYED by nav.py on the Nova, 2026-10-01 14:18 PDT (lane.titleroutes HELD
+# session castlevania-cod.first-run-20261001T141851, the owner-approved
+# one-time Nova path-finding session, #397).
+#
+# Replaces the two earlier drafts, neither ever played past a menu:
+# lane.routeprep's all-[guess] draft (adopted session 42, never replayed) and
+# the generic `--route survey`-derived castlevania-cod.route (session 48,
+# Thor, heat-stopped at 284/300s, never confirmed by a real replay). The
+# trap both missed: NEW GAME's Name Entry keyboard needs an explicit jump to
+# "Accept" (press START, which jumps the cursor there on this keyboard; A
+# alone leaves the cursor on the letter grid), and the save-data prompt
+# right after defaults its cursor to "No" (axis LX min moves it onto "Yes"
+# before A, or the route declines its own save and loops back to Name
+# Entry).
+#
+#   intro FMV (A) -> title, New Game (A) -> Name Entry: A types the
+#   highlighted "A", START jumps the cursor to Accept, A accepts -> "Is this
+#   correct?" (A, Yes already selected) -> "There is no save data... Create
+#   new save data?" (LX min moves the cursor from the default No onto Yes,
+#   then A) -> "Creating new save data..." -> save slot list, slot 1
+#   highlighted (A) -> "Saving..." -> the opening cutscene (1476, Valachia;
+#   A three times, 5.4s apart, clears the castle-exterior shots) -> player
+#   control in a gothic courtyard facing a gargoyle fountain.
+#
+# Player control confirmed by eye: LY min visibly closed the distance to the
+# fountain between two shots taken 1.5s apart (014-moved.png), then the play
+# pattern (LY min/press A/RX sweep) walked him along the fountain's edge and
+# into an attack animation (016-postplay.png). HP bar steady at 100/100
+# throughout -- no combat pressure this early.
+#
+# REPLAYED UNATTENDED, FAILED TWICE on the newgame->Name-Entry transition,
+# not a step-ordering bug: the load time between selecting NEW GAME and the
+# Name Entry keyboard becoming interactive varies by 10+ seconds between
+# runs (confirmed by the owner from a THIRD run, see below).
+#
+#   - session 59 (#397, dispatch 1790902028-titleroutes-1005086, Nova): a
+#     single "press A, wait 1.1, shot name-a" step landed on a still-black
+#     screen (174838-name-a.png empty) that the interactive authoring
+#     session's identical timing had landed on a loaded one
+#     (003-name-a.png, field shows "A"). Session 59's fix -- a second blind
+#     press 4s later -- assumed the SCREEN was up and only the PRESS had
+#     been dropped.
+#   - That fix was wrong in exactly the way the owner called out (ADDENDUM
+#     11, 2026-10-01 ~18:30 PDT, request 1790903439-titleroutes-1317193,
+#     stopped mid-run): both `name-a` (181831) and `name-a2` (181838) are
+#     STILL BLACK -- the screen had not loaded by either press, so both
+#     presses went nowhere, and the route's later blind presses (meant for
+#     slot selection etc.) typed into the keyboard once it finally came up,
+#     leaving the name field reading "AAIIIIII" with no Accept
+#     (182106-a5.png) for the rest of the 900s. A second blind press "a
+#     timing error of that size" cannot fix, in the owner's words.
+#
+# FIXED FOR REAL this time: `waitfor` blocks until the Name Entry screen's
+# own banner is actually on screen (so a 10s-plus load never gets typed
+# into), then `press-until` presses A and checks the name field itself,
+# retrying rather than guessing a fixed number of blind presses. See
+# route.sh's grammar comment for how these compare screencaps.
+# Reference crops: routes/refs/castlevania-cod.first-run/name-entry-header.png
+# (the "Name Entry" banner, scratch/nav/castlevania-cod.first-run-20261001T141851/002-newgame.png)
+# and .../name-field-empty.png (the empty name field, same frame). Selftest:
+# `python3 docs/testing/titles/waitfor_selftest.py` (checked against fixture
+# crops of this exact screen, including the still-black frame above, under
+# `routes/refs/castlevania-cod.first-run/selftest/`).
+wait 10.9
+shot boot
+wait 13.4
+press A
+wait 5.8
+shot a1
+wait 10.3
+press A
+waitfor name-entry-header 30 50,65,490,85 15
+shot newgame
+press-until A name-field-empty 5 1.5 350,180,120,70 8
+shot name-a
+wait 1
+press START
+wait 1.1
+shot name-start
+wait 7.6
+press A
+wait 2.1
+shot accepted
+wait 6.7
+press A
+wait 3.1
+shot yes
+wait 11.2
+axis LX min
+wait 0.5
+axis LX mid
+wait 1.1
+shot left1
+wait 8.5
+press A
+wait 4.1
+shot createdsave
+wait 12.1
+shot wait5
+wait 8.3
+press A
+wait 4.1
+shot slot1
+wait 13.4
+shot saved1
+wait 18.7
+press A
+wait 5.1
+shot a2
+wait 7.5
+press A
+wait 5.4
+press A
+wait 5.4
+press A
+wait 5.7
+shot a5
+wait 9.0
+axis LY min
+wait 1.7
+axis LY mid
+shot moved
+wait 7.2
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 2
+    press A
+    axis RX max
+    wait 0.5
+    axis RX mid
+    axis LY mid
+    wait 1
+    press A
+    wait 2
+}

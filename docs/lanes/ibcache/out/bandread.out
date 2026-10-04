@@ -1,0 +1,10 @@
+runs A=3 B=3 captures=67
+  Stencil::Stencil_ZERO.png: A=['039483ed66', '47444e49f3', '039483ed66'] B=['47444e49f3', '47444e49f3', '47444e49f3']
+  Stencil::Stencil_ZERO_DT.png: A=['127778d74f', '3cbab659fc', '3cbab659fc'] B=['3cbab659fc', 'd686c77bcd', '3cbab659fc']
+  Vertex_shader_rounding_tests::GeometrySuperscreen_0.0010.png: A=['e10ae12229', '8359afe471', '8359afe471'] B=['8359afe471', '8359afe471', '8359afe471']
+  Vertex_shader_rounding_tests::GeometrySuperscreen_0.4999.png: A=['4e64875fd0', '8dd59c7d8e', '4e64875fd0'] B=['4e64875fd0', '4e64875fd0', '4e64875fd0']
+missing in some run: 0 []
+flip inside A: 5
+flip inside B: 2
+image sets differ A vs B: 4
+KILL (self-identical in each arm, different between): 0 []

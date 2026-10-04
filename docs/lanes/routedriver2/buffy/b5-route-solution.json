@@ -1,0 +1,393 @@
+{
+ "profile": "buffy",
+ "title": "Buffy the Vampire Slayer",
+ "mode": "find",
+ "result": "ROUTE FAIL drive buffy: stalled: stalled 40 s: the play HUD is up and nothing moves -- the play input is not reaching the game, or a pause the profile cannot see",
+ "seconds": 144.5,
+ "time_to_title_s": 15.0,
+ "time_to_play_s": 37.1,
+ "states_seen": [
+  "unknown",
+  "black",
+  "intro_video",
+  "title",
+  "main_menu",
+  "profile",
+  "cutscene",
+  "play",
+  "stalled"
+ ],
+ "skips": [
+  {
+   "state": "intro_video",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "black",
+   "presses": 1
+  },
+  {
+   "state": "intro_video",
+   "button": "START",
+   "after_s": 2.1,
+   "landed": "black",
+   "presses": 2
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "unknown",
+   "presses": 1
+  }
+ ],
+ "inputs": [
+  {
+   "t": 3.7,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 7.2,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 9.3,
+   "state": "intro_video",
+   "input": "START",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 15.2,
+   "state": "title",
+   "input": "START",
+   "why": "title 1"
+  },
+  {
+   "t": 17.3,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 20.7,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 24.0,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 32.8,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 35.3,
+   "state": "unknown",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 44.7,
+   "state": "play",
+   "input": "hold LY min LT max",
+   "why": "play"
+  },
+  {
+   "t": 47.2,
+   "state": "play",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 49.5,
+   "state": "stalled",
+   "why": "stall escape 1 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 50.6,
+   "state": "stalled",
+   "why": "stall escape 1 phase 2",
+   "input": "LY max"
+  },
+  {
+   "t": 51.9,
+   "state": "stalled",
+   "why": "stall escape 1 phase 3",
+   "input": "LX max"
+  },
+  {
+   "t": 53.7,
+   "state": "stalled",
+   "why": "stall escape 1 phase 4",
+   "input": "LY min + B"
+  },
+  {
+   "t": 56.6,
+   "state": "stalled",
+   "why": "stall escape 1 phase 5",
+   "input": ""
+  },
+  {
+   "t": 58.9,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 61.3,
+   "state": "stalled",
+   "why": "stall escape 2 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 62.4,
+   "state": "stalled",
+   "why": "stall escape 2 phase 2",
+   "input": "LY max"
+  },
+  {
+   "t": 63.7,
+   "state": "stalled",
+   "why": "stall escape 2 phase 3",
+   "input": "LX min"
+  },
+  {
+   "t": 65.6,
+   "state": "stalled",
+   "why": "stall escape 2 phase 4",
+   "input": "LY min + B"
+  },
+  {
+   "t": 68.3,
+   "state": "stalled",
+   "why": "stall escape 2 phase 5",
+   "input": ""
+  },
+  {
+   "t": 70.7,
+   "state": "unknown",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 72.4,
+   "state": "stalled",
+   "why": "stall escape 3 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 73.5,
+   "state": "stalled",
+   "why": "stall escape 3 phase 2",
+   "input": "LY min + B,B"
+  },
+  {
+   "t": 76.9,
+   "state": "stalled",
+   "why": "stall escape 3 phase 3",
+   "input": ""
+  },
+  {
+   "t": 79.1,
+   "state": "stalled",
+   "why": "stall escape 4 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 80.0,
+   "state": "stalled",
+   "why": "stall escape 4 phase 2",
+   "input": "LY max"
+  },
+  {
+   "t": 81.3,
+   "state": "stalled",
+   "why": "stall escape 4 phase 3",
+   "input": "LX max"
+  },
+  {
+   "t": 83.1,
+   "state": "stalled",
+   "why": "stall escape 4 phase 4",
+   "input": "LY min + B"
+  },
+  {
+   "t": 86.0,
+   "state": "stalled",
+   "why": "stall escape 4 phase 5",
+   "input": ""
+  },
+  {
+   "t": 88.2,
+   "state": "stalled",
+   "why": "stall escape 5 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 89.1,
+   "state": "stalled",
+   "why": "stall escape 5 phase 2",
+   "input": "LY max"
+  },
+  {
+   "t": 90.5,
+   "state": "stalled",
+   "why": "stall escape 5 phase 3",
+   "input": "LX min"
+  },
+  {
+   "t": 92.3,
+   "state": "stalled",
+   "why": "stall escape 5 phase 4",
+   "input": "LY min + B"
+  },
+  {
+   "t": 95.1,
+   "state": "stalled",
+   "why": "stall escape 5 phase 5",
+   "input": ""
+  },
+  {
+   "t": 97.4,
+   "state": "stalled",
+   "why": "stall escape 6 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 98.3,
+   "state": "stalled",
+   "why": "stall escape 6 phase 2",
+   "input": "LY min + B,B"
+  },
+  {
+   "t": 101.6,
+   "state": "stalled",
+   "why": "stall escape 6 phase 3",
+   "input": ""
+  },
+  {
+   "t": 104.0,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 105.8,
+   "state": "stalled",
+   "input": "hold LY min LX max",
+   "why": "play"
+  },
+  {
+   "t": 107.7,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 109.6,
+   "state": "stalled",
+   "input": "hold LY min LX min",
+   "why": "play"
+  },
+  {
+   "t": 111.6,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 120.2,
+   "state": "stalled",
+   "input": "hold LY min LX min",
+   "why": "play"
+  },
+  {
+   "t": 122.3,
+   "state": "stalled",
+   "input": "hold LY min LT max",
+   "why": "play"
+  },
+  {
+   "t": 124.1,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 127.6,
+   "state": "stalled",
+   "input": "hold LY min LX max",
+   "why": "play"
+  },
+  {
+   "t": 129.6,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 131.5,
+   "state": "stalled",
+   "input": "hold LY min LX min",
+   "why": "play"
+  },
+  {
+   "t": 133.4,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 138.6,
+   "state": "stalled",
+   "input": "hold LY min LX max",
+   "why": "play"
+  },
+  {
+   "t": 140.5,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 142.4,
+   "state": "stalled",
+   "input": "hold LY min LX min",
+   "why": "play"
+  },
+  {
+   "t": 144.3,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 144.5,
+   "state": "stalled",
+   "input": "release axes",
+   "why": "left play"
+  }
+ ],
+ "anomalies": [],
+ "classifier_sources": {
+  "no-prev": 1,
+  "black": 10,
+  "moving": 4,
+  "crop": 6,
+  "hud": 36,
+  "hud+no-progress": 1
+ },
+ "model_calls": 0,
+ "play_stretch_frames": [],
+ "written_utc": "2026-10-02T10:44:42Z"
+}

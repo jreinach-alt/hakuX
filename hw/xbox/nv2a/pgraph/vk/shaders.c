@@ -23,6 +23,12 @@
 #include "renderer.h"
 #include "ui/xemu-settings.h"
 #include "hw/xbox/nv2a/pgraph/glsl/psh-uber.h"
+#include "hw/xbox/nv2a/pgraph/glsl/vsh-uber.h"
+
+/* #569: the uber flag lives in GenVshGlslOptions' padding (glsl/vsh.h), so
+ * the persisted module key keeps its record size */
+QEMU_BUILD_BUG_ON(offsetof(GenVshGlslOptions, uber) != 2 ||
+                  offsetof(GenVshGlslOptions, gles_version) != 4);
 
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -581,6 +587,264 @@ static void make_room_in_ubo_ring(PGRAPHState *pg)
     r->push_ubo_set_index = 0;
 }
 
+#if NV2A_PERF_LOG
+/*
+ * #433 (lane.bf2ubosize433): how much of the uniform block changes from one
+ * upload to the next. Every upload is a new dynamic offset, so a new UBO bind
+ * on the draws that use it, which on Turnip is a new descriptor set and a
+ * bindless-cache invalidation. The question this answers is whether what a
+ * game changes between uploads would fit in push constants (8-16 vec4)
+ * instead. Printed on hakuX-stall with the other 60-flip counters, by
+ * pgraph_vk_ubosz_log_and_reset() from draw.c; only on the drawing thread,
+ * as the hashes in pgraph_vk_update_shader_uniforms are.
+ *
+ *   n     uploads, from update_descriptor_sets (d) and the draw queue (q)
+ *   sw    uploads whose shader binding is not the previous upload's: their
+ *         layouts are not compared (lay, pk), only the guest constants (c)
+ *   lay   16-byte chunks of the VS+PS layouts that differ from the previous
+ *         upload, same binding only, as a histogram over the bins below
+ *   c     rows of pg->vsh_constants that differ from the previous upload,
+ *         every upload, same bins; span is max - min + 1 of those rows
+ *   pk8, pk16
+ *         a push-constant policy replayed on the same-binding uploads: push
+ *         every chunk changed since the policy last uploaded while there are
+ *         at most 8 (16) of them, else upload and rebind. The count is the
+ *         uploads the policy still rebinds.
+ *   bind  UBO set binds, and those repeating the previous bind's set and
+ *         offsets
+ */
+/* Also declared in draw.c: renderer.h is outside lane.bf2ubosize433's files. */
+void pgraph_vk_ubosz_note_upload(PGRAPHState *pg, int site);
+void pgraph_vk_ubosz_note_bind(VkDescriptorSet set, const uint32_t off[2]);
+void pgraph_vk_ubosz_log_and_reset(void);
+
+#define UBOSZ_BINS 10
+static const unsigned ubosz_bin_lo[UBOSZ_BINS] = {
+    0, 1, 2, 3, 5, 9, 17, 33, 65, 129,
+};
+#define UBOSZ_NAMES 24
+
+static struct {
+    unsigned n, sw, site[2];
+    unsigned lay[UBOSZ_BINS], c[UBOSZ_BINS], span[UBOSZ_BINS];
+    unsigned long long lay_sum, c_sum;
+    unsigned pk8, pk16;
+    unsigned row[NV2A_VERTEXSHADER_CONSTANTS];
+    struct { char name[23]; char stage; unsigned n; } name[UBOSZ_NAMES];
+    unsigned binds, binds_same;
+} ubosz;
+
+static uint32_t ubosz_c[NV2A_VERTEXSHADER_CONSTANTS][4];
+static bool ubosz_c_valid;
+static const ShaderBinding *ubosz_binding;
+static uint8_t *ubosz_shadow[2];
+static size_t ubosz_size[2];
+static uint8_t *ubosz_since[2]; /* pk8, pk16: chunk changed since upload */
+static unsigned ubosz_since_n[2];
+static size_t ubosz_chunks;
+static VkDescriptorSet ubosz_bind_set;
+static uint32_t ubosz_bind_off[2];
+
+static int ubosz_bin(unsigned v)
+{
+    int b = UBOSZ_BINS - 1;
+    while (b > 0 && v < ubosz_bin_lo[b]) {
+        b--;
+    }
+    return b;
+}
+
+static void ubosz_name_add(char stage, const char *name, unsigned n)
+{
+    for (int i = 0; i < UBOSZ_NAMES; i++) {
+        if (!ubosz.name[i].stage) {
+            ubosz.name[i].stage = stage;
+            g_strlcpy(ubosz.name[i].name, name, sizeof(ubosz.name[i].name));
+        }
+        if (ubosz.name[i].stage == stage &&
+            !strncmp(ubosz.name[i].name, name, sizeof(ubosz.name[i].name) - 1)) {
+            ubosz.name[i].n += n;
+            return;
+        }
+    }
+}
+
+void pgraph_vk_ubosz_note_upload(PGRAPHState *pg, int site)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    ShaderBinding *binding = r->shader_binding;
+    ShaderUniformLayout *layouts[2] = { &binding->vsh.upload_info->uniforms,
+                                        &binding->psh.module_info->uniforms };
+
+    ubosz.n++;
+    ubosz.site[site ? 1 : 0]++;
+
+    /* The first upload has nothing to be compared with, so c leaves it out. */
+    unsigned c_changed = 0, c_lo = 0, c_hi = 0;
+    for (unsigned i = 0; ubosz_c_valid && i < NV2A_VERTEXSHADER_CONSTANTS;
+         i++) {
+        if (!memcmp(ubosz_c[i], pg->vsh_constants[i], sizeof(ubosz_c[i]))) {
+            continue;
+        }
+        if (!c_changed++) {
+            c_lo = i;
+        }
+        c_hi = i;
+        ubosz.row[i]++;
+    }
+    if (ubosz_c_valid) {
+        ubosz.c[ubosz_bin(c_changed)]++;
+        ubosz.c_sum += c_changed;
+        if (c_changed) {
+            ubosz.span[ubosz_bin(c_hi - c_lo + 1)]++;
+        }
+    }
+    memcpy(ubosz_c, pg->vsh_constants, sizeof(ubosz_c));
+    ubosz_c_valid = true;
+
+    bool same = binding == ubosz_binding &&
+                layouts[0]->total_size == ubosz_size[0] &&
+                layouts[1]->total_size == ubosz_size[1];
+    if (!same) {
+        ubosz.sw++;
+        ubosz_binding = binding;
+        ubosz_chunks = 0;
+        for (int s = 0; s < 2; s++) {
+            ubosz_size[s] = layouts[s]->total_size;
+            ubosz_shadow[s] = g_realloc(ubosz_shadow[s], ubosz_size[s]);
+            memcpy(ubosz_shadow[s], layouts[s]->allocation, ubosz_size[s]);
+            ubosz_chunks += DIV_ROUND_UP(ubosz_size[s], 16);
+        }
+        for (int p = 0; p < 2; p++) {
+            ubosz_since[p] = g_realloc(ubosz_since[p], ubosz_chunks);
+            memset(ubosz_since[p], 0, ubosz_chunks);
+            ubosz_since_n[p] = 0;
+        }
+        return;
+    }
+
+    unsigned changed = 0;
+    size_t base = 0;
+    for (int s = 0; s < 2; s++) {
+        const uint8_t *cur = layouts[s]->allocation;
+        size_t size = ubosz_size[s];
+        size_t nchunks = DIV_ROUND_UP(size, 16);
+        ShaderUniform *u = layouts[s]->uniforms;
+        size_t nu = layouts[s]->num_uniforms, ui = 0;
+        for (size_t k = 0; k < nchunks; k++) {
+            size_t off = k * 16, len = MIN(16, size - off);
+            if (!memcmp(cur + off, ubosz_shadow[s] + off, len)) {
+                continue;
+            }
+            changed++;
+            for (int p = 0; p < 2; p++) {
+                if (!ubosz_since[p][base + k]) {
+                    ubosz_since[p][base + k] = 1;
+                    ubosz_since_n[p]++;
+                }
+            }
+            /* The uniform the chunk starts in; offsets increase. */
+            while (ui + 1 < nu && u[ui + 1].offset <= off) {
+                ui++;
+            }
+            if (nu) {
+                ubosz_name_add(s ? 'p' : 'v', u[ui].name, 1);
+            }
+        }
+        memcpy(ubosz_shadow[s], cur, size);
+        base += nchunks;
+    }
+    ubosz.lay[ubosz_bin(changed)]++;
+    ubosz.lay_sum += changed;
+
+    static const unsigned budget[2] = { 8, 16 };
+    for (int p = 0; p < 2; p++) {
+        if (ubosz_since_n[p] > budget[p]) {
+            if (p) {
+                ubosz.pk16++;
+            } else {
+                ubosz.pk8++;
+            }
+            memset(ubosz_since[p], 0, ubosz_chunks);
+            ubosz_since_n[p] = 0;
+        }
+    }
+}
+
+void pgraph_vk_ubosz_note_bind(VkDescriptorSet set, const uint32_t off[2])
+{
+    ubosz.binds++;
+    if (set == ubosz_bind_set && off[0] == ubosz_bind_off[0] &&
+        off[1] == ubosz_bind_off[1]) {
+        ubosz.binds_same++;
+    }
+    ubosz_bind_set = set;
+    ubosz_bind_off[0] = off[0];
+    ubosz_bind_off[1] = off[1];
+}
+
+void pgraph_vk_ubosz_log_and_reset(void)
+{
+#ifdef __ANDROID__
+    char h[3][UBOSZ_BINS * 11 + 1];
+    const unsigned *src[3] = { ubosz.lay, ubosz.c, ubosz.span };
+    for (int j = 0; j < 3; j++) {
+        int o = 0;
+        for (int b = 0; b < UBOSZ_BINS; b++) {
+            o += snprintf(h[j] + o, sizeof(h[j]) - o, "%s%u", b ? "/" : "",
+                          src[j][b]);
+        }
+    }
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+        "ubosz[n%u d%u q%u sw%u lay %s sum%llu c %s sum%llu span %s "
+        "pk8 %u pk16 %u bind%u/%u]",
+        ubosz.n, ubosz.site[0], ubosz.site[1], ubosz.sw, h[0], ubosz.lay_sum,
+        h[1], ubosz.c_sum, h[2], ubosz.pk8, ubosz.pk16, ubosz.binds,
+        ubosz.binds_same);
+
+    /* Which: the 8 rows and the 6 uniforms that changed most often. */
+    char top[320];
+    int o = snprintf(top, sizeof(top), "ubosz-top[c");
+    bool taken[NV2A_VERTEXSHADER_CONSTANTS] = { 0 };
+    for (int t = 0; t < 8; t++) {
+        int best = -1;
+        for (int i = 0; i < NV2A_VERTEXSHADER_CONSTANTS; i++) {
+            if (!taken[i] && ubosz.row[i] &&
+                (best < 0 || ubosz.row[i] > ubosz.row[best])) {
+                best = i;
+            }
+        }
+        if (best < 0) {
+            break;
+        }
+        taken[best] = true;
+        o += snprintf(top + o, sizeof(top) - o, " %d:%u", best,
+                      ubosz.row[best]);
+    }
+    o += snprintf(top + o, sizeof(top) - o, " | u");
+    bool used[UBOSZ_NAMES] = { 0 };
+    for (int t = 0; t < 6; t++) {
+        int best = -1;
+        for (int i = 0; i < UBOSZ_NAMES && ubosz.name[i].stage; i++) {
+            if (!used[i] && (best < 0 || ubosz.name[i].n > ubosz.name[best].n)) {
+                best = i;
+            }
+        }
+        if (best < 0) {
+            break;
+        }
+        used[best] = true;
+        o += snprintf(top + o, sizeof(top) - o, " %c.%s:%u",
+                      ubosz.name[best].stage, ubosz.name[best].name,
+                      ubosz.name[best].n);
+    }
+    snprintf(top + o, sizeof(top) - o, "]");
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall", "%s", top);
+#endif
+    memset(&ubosz, 0, sizeof(ubosz));
+}
+#endif
+
 void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -593,7 +857,7 @@ void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
     }
 #endif
 
-    ShaderUniformLayout *layouts[] = { &binding->vsh.module_info->uniforms,
+    ShaderUniformLayout *layouts[] = { &binding->vsh.upload_info->uniforms,
                                        &binding->psh.module_info->uniforms };
 
     VkDeviceSize ubo_buffer_total_size = 0;
@@ -628,6 +892,9 @@ void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
                 pg, BUFFER_UNIFORM_STAGING, &data, &size, 1,
                 r->device_props.limits.minUniformBufferOffsetAlignment);
         }
+#if NV2A_PERF_LOG
+        pgraph_vk_ubosz_note_upload(pg, 0);
+#endif
 
         r->uniforms_changed = false;
     }
@@ -813,10 +1080,19 @@ void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
 
 static void update_shader_uniform_locs(ShaderBinding *binding)
 {
+    /* #569: with an uber vertex stage the draw uploads into its layout, of
+     * which the specialised module's is a prefix */
+    binding->vsh.upload_info = binding->vsh.uber_module_info ?
+                                   binding->vsh.uber_module_info :
+                                   binding->vsh.module_info;
     for (int i = 0; i < ARRAY_SIZE(binding->vsh.uniform_locs); i++) {
         binding->vsh.uniform_locs[i] = uniform_index(
-            &binding->vsh.module_info->uniforms, VshUniformInfo[i].name);
+            &binding->vsh.upload_info->uniforms, VshUniformInfo[i].name);
     }
+    binding->vsh.uber_loc =
+        binding->vsh.uber_module_info ?
+            uniform_index(&binding->vsh.upload_info->uniforms, VSH_UBER_NAME) :
+            -1;
 
     for (int i = 0; i < ARRAY_SIZE(binding->psh.uniform_locs); i++) {
         binding->psh.uniform_locs[i] = uniform_index(
@@ -965,6 +1241,29 @@ static void shader_binding_build_module_keys(
 }
 
 #if OPT_ASYNC_COMPILE
+/*
+ * #569, HAKUX_GPL=3|4: the family uber vertex stage a covered binding
+ * carries beside its own (glsl/vsh-uber.h). Created on the draw thread at
+ * the binding's first sight, once per family; its pipelines are built on the
+ * compile worker (vk/compile_worker.c).
+ */
+static ShaderModuleInfo *get_uber_vsh_module(PGRAPHVkState *r,
+                                             ShaderBinding *binding,
+                                             const ShaderModuleCacheKey *vsh_key)
+{
+    if (r->gpl.mode < 3) {
+        return NULL;
+    }
+    if (!pgraph_glsl_vsh_uber_covers(&binding->state.vsh)) {
+        qatomic_inc(&r->gpl.stats.uber_uncovered);
+        return NULL;
+    }
+    ShaderModuleCacheKey key = *vsh_key;
+    pgraph_glsl_vsh_uber_family(&binding->state.vsh, &key.vsh.state);
+    key.vsh.glsl_opts.uber = true;
+    return get_and_ref_shader_module_for_key(r, &key);
+}
+
 static bool try_finalize_shader_binding(PGRAPHVkState *r,
                                         ShaderBinding *binding)
 {
@@ -1020,6 +1319,7 @@ static void shader_cache_entry_init(Lru *lru, LruNode *node, const void *state)
     bool need_geom;
     shader_binding_build_module_keys(r, binding, &vsh_key, &geom_key,
                                      &psh_key, &need_geom);
+    binding->vsh.uber_module_info = NULL;
 
 #if OPT_ASYNC_COMPILE
     if (xemu_get_async_compile()) {
@@ -1071,6 +1371,11 @@ static void shader_cache_entry_init(Lru *lru, LruNode *node, const void *state)
     }
     binding->vsh.module_info = get_and_ref_shader_module_for_key(r, &vsh_key);
     binding->psh.module_info = get_and_ref_shader_module_for_key(r, &psh_key);
+#if OPT_ASYNC_COMPILE
+    binding->vsh.uber_module_info =
+        binding->vsh.module_info ? get_uber_vsh_module(r, binding, &vsh_key)
+                                 : NULL;
+#endif
 
     if (!binding->vsh.module_info || !binding->psh.module_info ||
         (need_geom && !binding->geom.module_info)) {
@@ -1092,6 +1397,7 @@ static void shader_cache_entry_post_evict(Lru *lru, LruNode *node)
         snode->vsh.module_info,
         snode->geom.module_info,
         snode->psh.module_info,
+        snode->vsh.uber_module_info,
     };
     for (int i = 0; i < ARRAY_SIZE(modules); i++) {
         if (modules[i]) {
@@ -1108,6 +1414,9 @@ static bool shader_cache_entry_compare(Lru *lru, LruNode *node, const void *key)
 
 static bool shader_module_warmup_in_progress;
 static void (*shader_warmup_progress_cb)(int current, int total);
+/* #569 P3: the compile workers are a pool, and one key is larger than
+ * stdio's buffer, so two appends at once could interleave their writes */
+static QemuMutex shader_module_key_lock;
 
 void shader_module_key_persist(const ShaderModuleCacheKey *key)
 {
@@ -1118,16 +1427,69 @@ void shader_module_key_persist(const ShaderModuleCacheKey *key)
     if (key->kind == VK_SHADER_STAGE_FRAGMENT_BIT && key->psh.uber) {
         return;
     }
+    if (key->kind == VK_SHADER_STAGE_VERTEX_BIT && key->vsh.glsl_opts.uber) {
+        return;
+    }
 
     const char *base = xemu_settings_get_base_path();
     char *path = g_strdup_printf("%sshader_module_keys.bin", base);
 
+    qemu_mutex_lock(&shader_module_key_lock);
     FILE *f = fopen(path, "ab");
     if (f) {
         fwrite(key, sizeof(ShaderModuleCacheKey), 1, f);
         fclose(f);
     }
+    qemu_mutex_unlock(&shader_module_key_lock);
     g_free(path);
+}
+
+/*
+ * #569 P3 (vk/compile_worker.c). The hashes of the module keys a binding's
+ * pipeline is built from, as shader_module_keys.bin's keys hash; 0 for no
+ * geometry stage. PFIFO thread.
+ */
+void pgraph_vk_shader_binding_module_hashes(PGRAPHVkState *r,
+                                            ShaderBinding *binding,
+                                            uint64_t hashes[3])
+{
+    ShaderModuleCacheKey *keys = g_new0(ShaderModuleCacheKey, 3);
+    bool need_geom;
+    shader_binding_build_module_keys(r, binding, &keys[0], &keys[1], &keys[2],
+                                     &need_geom);
+    hashes[0] = hash_shader_module_key(&keys[0]);
+    hashes[1] = need_geom ? hash_shader_module_key(&keys[1]) : 0;
+    hashes[2] = hash_shader_module_key(&keys[2]);
+    g_free(keys);
+}
+
+uint64_t pgraph_vk_hash_shader_module_key(const ShaderModuleCacheKey *key)
+{
+    return hash_shader_module_key(key);
+}
+
+/*
+ * #569 P3: a copy of the SPIR-V for key, from the module cache the startup
+ * warm-up filled (compiled now if it is not there, without persisting the
+ * key again). NULL if the module is not ready (async compile) or failed.
+ * Renderer init only, before the PFIFO thread draws.
+ */
+GBytes *pgraph_vk_prebuild_module_spirv(PGRAPHVkState *r,
+                                        const ShaderModuleCacheKey *key)
+{
+    shader_module_warmup_in_progress = true;
+    ShaderModuleCacheEntry *entry = get_shader_module_entry_for_key(r, key);
+    shader_module_warmup_in_progress = false;
+#if OPT_ASYNC_COMPILE
+    if (!qatomic_read(&entry->ready)) {
+        return NULL;
+    }
+#endif
+    ShaderModuleInfo *info = entry->module_info;
+    if (!info || !info->spirv) {
+        return NULL;
+    }
+    return g_bytes_new(info->spirv->data, info->spirv->len);
 }
 
 static void shader_module_compile_sync(PGRAPHVkState *r,
@@ -1137,8 +1499,11 @@ static void shader_module_compile_sync(PGRAPHVkState *r,
 
     switch (module->key.kind) {
     case VK_SHADER_STAGE_VERTEX_BIT:
-        code = pgraph_glsl_gen_vsh(&module->key.vsh.state,
-                                   module->key.vsh.glsl_opts);
+        code = module->key.vsh.glsl_opts.uber ?
+                   pgraph_glsl_gen_vsh_uber(&module->key.vsh.state,
+                                            module->key.vsh.glsl_opts) :
+                   pgraph_glsl_gen_vsh(&module->key.vsh.state,
+                                       module->key.vsh.glsl_opts);
         break;
     case VK_SHADER_STAGE_GEOMETRY_BIT:
         code = pgraph_glsl_gen_geom(&module->key.geom.state,
@@ -1165,18 +1530,28 @@ static void shader_module_compile_sync(PGRAPHVkState *r,
         code = NULL;
     }
 
-    int64_t uber_t0 = module->key.kind == VK_SHADER_STAGE_FRAGMENT_BIT &&
-                      module->key.psh.uber ? g_get_monotonic_time() : 0;
+    bool vsh_uber = module->key.kind == VK_SHADER_STAGE_VERTEX_BIT &&
+                    module->key.vsh.glsl_opts.uber;
+    int64_t uber_t0 = (module->key.kind == VK_SHADER_STAGE_FRAGMENT_BIT &&
+                       module->key.psh.uber) || vsh_uber ?
+                          g_get_monotonic_time() : 0;
     module->module_info = pgraph_vk_create_shader_module_from_glsl(
         r, module->key.kind, mstring_get_str(code));
     if (uber_t0) {
         /* C leg, device side: glslang plus vkCreateShaderModule for one
          * family. The pipeline's Turnip compile is timed where pipelines are
          * created, not here. */
-        static int uber_modules;
-        UBER_LOG("psh-uber: family module %d: %zu bytes GLSL, %.1f ms",
+        static int uber_modules, vsh_uber_modules;
+        if (vsh_uber) {
+            UBER_LOG("vsh-uber: family module %d: %zu bytes GLSL, %.1f ms%s",
+                     ++vsh_uber_modules, mstring_get_length(code),
+                     (g_get_monotonic_time() - uber_t0) / 1000.0,
+                     module->module_info ? "" : ", FAILED");
+        } else {
+            UBER_LOG("psh-uber: family module %d: %zu bytes GLSL, %.1f ms",
                      ++uber_modules, mstring_get_length(code),
                      (g_get_monotonic_time() - uber_t0) / 1000.0);
+        }
     }
     mstring_unref(code);
 
@@ -1460,7 +1835,7 @@ void pgraph_vk_update_shader_uniforms(PGRAPHState *pg)
     }
 #endif
 
-    ShaderUniformLayout *vsh_layout = &binding->vsh.module_info->uniforms;
+    ShaderUniformLayout *vsh_layout = &binding->vsh.upload_info->uniforms;
     ShaderUniformLayout *psh_layout = &binding->psh.module_info->uniforms;
 
     /* Check if any constant/light arrays were modified since last update.
@@ -1477,6 +1852,14 @@ void pgraph_vk_update_shader_uniforms(PGRAPHState *pg)
     apply_uniform_updates(vsh_layout, VshUniformInfo,
                           binding->vsh.uniform_locs, &vsh_values,
                           VshUniform__COUNT);
+    if (binding->vsh.uber_loc != -1) {
+        /* #569: the vertex state the uber stage interprets. The binding's
+         * state is the live one; only the module is the family's. */
+        uint32_t ub[VSH_UBER_VEC4S * 4];
+        pgraph_glsl_vsh_uber_values(&binding->state.vsh, true, ub);
+        uniform_copy(vsh_layout, binding->vsh.uber_loc, ub, sizeof(uint32_t),
+                     ARRAY_SIZE(ub));
+    }
 
     PshUniformValues psh_values;
     pgraph_glsl_set_psh_uniform_values(pg, binding->psh.uniform_locs,
@@ -1630,6 +2013,7 @@ void pgraph_vk_init_shaders(PGRAPHState *pg)
     r->descriptor_overflow_pools =
         g_array_new(FALSE, FALSE, sizeof(VkDescriptorPool));
     pgraph_vk_init_glsl_compiler();
+    qemu_mutex_init(&shader_module_key_lock);
 
     /*
      * The geometry stage's wide-line vec4 is unconditional and sits below the

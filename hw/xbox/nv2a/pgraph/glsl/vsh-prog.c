@@ -821,6 +821,11 @@ static const char* vsh_header =
     "  return _PosNaN(t);\n"
     "}\n";
 
+const char *pgraph_glsl_vsh_prog_helpers(void)
+{
+    return vsh_header;
+}
+
 int pgraph_glsl_vsh_token_constant_write(const uint32_t *token)
 {
     if (vsh_get_field(token, FLD_OUT_O_MASK) == 0) {

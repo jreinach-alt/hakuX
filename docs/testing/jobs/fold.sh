@@ -91,6 +91,17 @@ LOG="$WORK/logs/fold/tick.log"
 # The tick log is read by hand when something jams, so it is display: local.
 say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 mode="${1:-run}"
+# THE LOCAL FORGE (lane.localforge, 2026-10-02). While GitHub is suspended,
+# merges go through offline-git/foldqueue.sh (offline_fold.py), not this job.
+# Under HAKUX_FORGE=1, set by the unit's forge drop-in, a `run` is a `list`:
+# it reads the forge's PRs and labels and says what it would fold, and it
+# merges, pushes, labels and comments nothing. That holds until lane.local
+# sets FOLD_DRY_RUN=0, at the point where the forge becomes the merge path.
+FOLD_DRY_RUN="${FOLD_DRY_RUN:-${HAKUX_FORGE:-0}}"
+if [ "$mode" = run ] && [ "$FOLD_DRY_RUN" = 1 ]; then
+    say "DRY RUN (FOLD_DRY_RUN=1, local forge): this run is a list; merges stay with offline-git/foldqueue.sh"
+    mode=list
+fi
 
 find_repo() { for d in "$HOME/$1" /home/justin/"$1" /home/user/"$1"; do [ -d "$d/.git" ] && { echo "$d"; return; }; done; }
 TESTS="${TESTS:-$(find_repo nxdk_pgraph_tests)}"; SUPPORT="${SUPPORT:-$(find_repo pbkitplusplus)}"

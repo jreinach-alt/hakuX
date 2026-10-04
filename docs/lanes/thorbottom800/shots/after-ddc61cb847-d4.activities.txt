@@ -1,0 +1,5 @@
+    topResumedActivity=ActivityRecord{266264f u0 com.jreinach.hakux.debug/com.rfandango.haku_x.MainActivity} t2127}
+      topResumedActivity=ActivityRecord{cae3858 u0 com.magneticchen.daijishou/.ui.activities.MainActivity} t2123}
+  ResumedActivity: ActivityRecord{266264f u0 com.jreinach.hakux.debug/com.rfandango.haku_x.MainActivity} t2127}
+  displayId=4
+  displayId=0

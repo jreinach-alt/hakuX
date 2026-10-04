@@ -45,9 +45,9 @@ python3 - "$TESTING/dispatcher.sh" "$md/dispatcher.sh" <<'PY'
 import re, sys
 src, dst = sys.argv[1:]
 s = open(src).read()
-old = re.search(r'        cp -f "\$SRC/\$f" "\$SNAP/\.\$f\.tmp\.\$\$" 2>/dev/null \\\n.*?\n.*?rm -f "\$SNAP/\.\$f\.tmp\.\$\$"\n', s, re.S)
+old = re.search(r'( +)cp -f "\$SRC/\$f" "\$SNAP/\.\$f\.tmp\.\$\$" 2>/dev/null \\\n.*?\n.*?rm -f "\$SNAP/\.\$f\.tmp\.\$\$"\n', s, re.S)
 assert old, "mutant anchor no longer matches dispatcher.sh"
-open(dst, "w").write(s[:old.start()] + '        cp -f "$SRC/$f" "$SNAP/$f" 2>/dev/null\n' + s[old.end():])
+open(dst, "w").write(s[:old.start()] + old.group(1) + 'cp -f "$SRC/$f" "$SNAP/$f" 2>/dev/null\n' + s[old.end():])
 PY
 if [ -f "$md/dispatcher.sh" ]; then
     mg=$(snap_race "$md/dispatcher.sh")

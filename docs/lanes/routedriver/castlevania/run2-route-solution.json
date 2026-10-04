@@ -1,0 +1,270 @@
+{
+ "profile": "castlevania-cod",
+ "title": "Castlevania: Curse of Darkness",
+ "mode": "find",
+ "result": "ROUTE FAIL drive castlevania-cod: profile: stuck on profile (crop:save-slots) after 25 presses",
+ "seconds": 114.9,
+ "time_to_title_s": 7.0,
+ "time_to_play_s": null,
+ "states_seen": [
+  "unknown",
+  "intro_video",
+  "logo",
+  "black",
+  "title",
+  "profile",
+  "cutscene",
+  "loading"
+ ],
+ "skips": [
+  {
+   "state": "intro_video",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "logo",
+   "presses": 1
+  },
+  {
+   "state": "logo",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "black",
+   "presses": 1
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "loading",
+   "presses": 1
+  }
+ ],
+ "inputs": [
+  {
+   "t": 2.2,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 3.8,
+   "state": "logo",
+   "input": "A",
+   "why": "skip logo"
+  },
+  {
+   "t": 7.2,
+   "state": "title",
+   "input": "LY:min",
+   "why": "title 1"
+  },
+  {
+   "t": 9.3,
+   "state": "title",
+   "input": "A",
+   "why": "title 1"
+  },
+  {
+   "t": 11.3,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 14.8,
+   "state": "profile",
+   "input": "START",
+   "why": "profile 2"
+  },
+  {
+   "t": 18.2,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 3"
+  },
+  {
+   "t": 21.7,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 23.6,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 27.2,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 30.7,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 2"
+  },
+  {
+   "t": 34.2,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 3"
+  },
+  {
+   "t": 37.7,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 4"
+  },
+  {
+   "t": 41.3,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 5"
+  },
+  {
+   "t": 44.8,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 6"
+  },
+  {
+   "t": 48.3,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 7"
+  },
+  {
+   "t": 51.9,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 8"
+  },
+  {
+   "t": 55.4,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 9"
+  },
+  {
+   "t": 58.9,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 10"
+  },
+  {
+   "t": 62.4,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 11"
+  },
+  {
+   "t": 66.0,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 12"
+  },
+  {
+   "t": 69.5,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 13"
+  },
+  {
+   "t": 72.9,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 14"
+  },
+  {
+   "t": 76.5,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 15"
+  },
+  {
+   "t": 79.9,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 16"
+  },
+  {
+   "t": 83.4,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 17"
+  },
+  {
+   "t": 86.9,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 18"
+  },
+  {
+   "t": 90.4,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 19"
+  },
+  {
+   "t": 93.9,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 20"
+  },
+  {
+   "t": 97.4,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 21"
+  },
+  {
+   "t": 100.8,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 22"
+  },
+  {
+   "t": 104.3,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 23"
+  },
+  {
+   "t": 107.8,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 24"
+  },
+  {
+   "t": 111.3,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 25"
+  }
+ ],
+ "anomalies": [
+  {
+   "t": 3.7,
+   "state": "logo",
+   "after": "intro_video"
+  },
+  {
+   "t": 27.1,
+   "state": "profile",
+   "after": "cutscene"
+  }
+ ],
+ "classifier_sources": {
+  "no-prev": 1,
+  "moving": 2,
+  "static": 1,
+  "black": 1,
+  "crop": 61
+ },
+ "model_calls": 0,
+ "play_stretch_frames": [],
+ "written_utc": "2026-10-02T05:55:22Z"
+}

@@ -1,0 +1,76 @@
+diff --git a/docs/testing/jobs/selftest.d/64-status-html.sh b/docs/testing/jobs/selftest.d/64-status-html.sh
+index e04dbe0f79..ae39b41243 100644
+--- a/docs/testing/jobs/selftest.d/64-status-html.sh
++++ b/docs/testing/jobs/selftest.d/64-status-html.sh
+@@ -204,7 +204,7 @@ PY
+ sp_soak g-old thor "Grabbed by the Ghoulies (USA).xiso.iso" yes "2 hours ago"
+ sp_soak g-new thor "Grabbed by the Ghoulies (USA).xiso.iso" no "1 hour ago"
+ sp_soak x     thor "Blinx (USA).xiso.iso" flat "10 minutes ago"
+-sp_verdict() { mkdir -p "$SP/res/$1"; printf '{"name": "%s", "device": "%s", "pass": %s, "rating_candidate": "Playable", "judged_utc": "2026-09-26T10:00:00Z"}\n' "$2" "$3" "$4" > "$SP/res/$1/verdict.json"; }
++sp_verdict() { mkdir -p "$SP/res/$1"; printf '{"name": "%s", "device": "%s", "pass": %s, "rating_candidate": "Playable", "static_window": {"measured": true, "frozen_frac": 0.01, "n": 12, "source": "route-frames"}, "judged_utc": "2026-09-26T10:00:00Z"}\n' "$2" "$3" "$4" > "$SP/res/$1/verdict.json"; }
+ sp_verdict v1 A thor true; sp_verdict v2 A nova true; sp_verdict v3 B thor true; sp_verdict v4 B nova false
+ python3 "$SH_PY" release05 --titles "$SP/titles" --results "$SP/res" --xiso "$SP/no-xiso" > "$SP/facts.tsv"
+ sp_has() { grep -qxF -- "$(printf "$1")" "$SP/facts.tsv"; }
+diff --git a/docs/testing/jobs/status_html.py b/docs/testing/jobs/status_html.py
+index f468bc31b8..7cb5eabdf8 100644
+--- a/docs/testing/jobs/status_html.py
++++ b/docs/testing/jobs/status_html.py
+@@ -233,11 +233,12 @@ def release05(titles, results, xiso, devices=("thor", "nova")):
+         key = (v.get("name") or v.get("title") or "?", v.get("device") or "?")
+         order = (v.get("judged_utc") or "", v.get("request_id") or "")
+         if key not in latest or order > latest[key][0]:
+-            latest[key] = (order, v)
++            latest[key] = (order, v, p)
+     by_title = {}
+-    for (title, dev), (_, v) in latest.items():
++    for (title, dev), (_, v, vp) in latest.items():
+         by_title.setdefault(title, {})[dev] = bool(v.get("pass")) and \
+-            str(v.get("rating_candidate") or "").startswith("Playable")
++            str(v.get("rating_candidate") or "").startswith("Playable") and \
++            unproven(v, os.path.dirname(vp)) is None
+     if not os.path.isdir(results):
+         out.append(("r05", "tested", "no source: dispatch results/*/verdict.json"))
+         out.append(("r05", "playable", "no source: dispatch results/*/verdict.json"))
+@@ -1295,6 +1296,23 @@ def _devwatch(F, now):
+     return {"found": True, "updated": up, "stale": up is None or now - up > 300, "devices": devs}
+ 
+ 
++def unproven(v, rdir=""):
++    """Why a PASS does not count toward Playable, or None (#433, lane.failgate,
++    2026-10-03). A pass whose scored window the verdict could not read (no
++    `static_window`, or measured False) is unproven, as is a pass whose result
++    dir holds an IDENTIFIED.json of class pass-unproven. Older verdicts carry
++    no static_window at all, so they read unproven until re-judged."""
++    if not v.get("pass"):
++        return None
++    sw = v.get("static_window")
++    if not isinstance(sw, dict) or not sw.get("measured"):
++        return "window unmeasured"
++    ident = _jload(os.path.join(rdir, "IDENTIFIED.json")) if rdir else None
++    if isinstance(ident, dict) and ident.get("class") == "pass-unproven":
++        return "pass-unproven"
++    return None
++
++
+ def _meas_from_verdict(v, d, mode_dir, at, src):
+     """A `measured` row's dict, from a title_verdict.py-shaped result -- a
+     stored verdict.json, or a live judge() that wrote none -- in the shape
+@@ -1311,7 +1329,8 @@ def _meas_from_verdict(v, d, mode_dir, at, src):
+         "blocker": (v.get("failing") or "") if (rg is False or v.get("crash") or v.get("hang")) else "",
+         "crash": bool(v.get("crash")), "hang": bool(v.get("hang")),
+         "audio": any(f.startswith("audio:") for f in fails),
+-        "verdict": "Playable" if v.get("pass") else ("fails: " + (v.get("failing") or "not Playable")),
++        "verdict": ("unproven: " + unproven(v, mode_dir)) if unproven(v, mode_dir) else
++                   ("Playable" if v.get("pass") else ("fails: " + (v.get("failing") or "not Playable"))),
+         "fails": fails, "at": at, "ref": str(v.get("ref") or "")[:10], "mode": _perf_mode(mode_dir),
+         "src": src, "hand": False, "url": "", "id": str(v.get("request_id") or ""),
+         "kind": v.get("pass_kind") or "", "route": v.get("route") or ""}
+@@ -1446,7 +1465,7 @@ def seen(n, fps, at):
+         if at > now:
+             continue
+         seen(n, v.get("fps_window_median"), at)
+-        if v.get("pass") and v.get("pass_kind") == "confirmation":
++        if v.get("pass") and v.get("pass_kind") == "confirmation" and unproven(v, os.path.dirname(p)) is None:
+             soaked.setdefault(n, []).append((at, d, v.get("request_id") or ""))
+         if (n, d) not in latest or at > latest[(n, d)][0]:
+             latest[(n, d)] = (at, v, p, tid)

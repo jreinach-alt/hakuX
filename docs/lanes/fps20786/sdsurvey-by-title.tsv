@@ -1,0 +1,35 @@
+# sdsurvey.py over /home/justin/hakux-work/dispatch/results, perflog soaks of the last 10 days (2026-10-03 21:15 PDT).
+# Per title: medians over its runs of the per-run medians. Whole logcat, menus included: ranks titles, judges none.
+# sd/fl = surface-download finishes per flip; dirty = of those, download-if-dirty; cDef = completion deferred; Fin, GPU = ms/frame (hakuX-phase); gfps = guest fps.
+title                                              n  sd/fl  dirty   cDef    Fin    GPU  gfps  one run
+ToeJam & Earl III - Mission to Earth (US           1   1.00   1.00   0.00   25.9   52.2    23  1791003320-lanelocal-1965119
+4D4A0001-BloodRayne.xiso.iso                       2   1.22   1.22   0.00   14.7    9.9    27  0-0-s-1-1790609667-lane.slowtier2-bloodrayne201189
+4D530036-Counter_Strike.xiso.iso                   1   2.00   2.00   0.00   13.8   24.5    26  1-1791081646-lane.fps20786-2876984
+4D530065-Blinx_2_Battle_of_Time_Space_Bl          11   2.00   1.00   1.00   13.7   22.9    29  0-0-x-1-1790634703-lane.idlehaltdefault-3053911
+45410050-NBA_Live_2005.xiso.iso                    1   1.00   0.00   1.00   13.6   17.8    27  1-1791081646-lane.fps20786-2876934
+4D530035-Top_Spin.xiso.iso                         1  26.38  26.38   0.00   13.5   10.1    35  1-1791080537-lane.fps20786-2538884
+41430006-Burnout.xiso.iso                          2   2.00   1.00   1.00   12.9   22.9    32  0-0-s-1-1790609663-lane.slowtier2-burnout968727
+4D53006E-Forza_Motorsport.xiso.iso                43   3.00   0.00   3.00   11.2   18.2    29  0-0-x-1-1790634702-lane.idlehaltdefault-3052521
+4D53002A-Midtown_Madness_3.xiso.iso                2   8.00   2.00   6.00   10.1   11.2    29  0-0-s-1-1790609661-lane.slowtier2-mm3184014
+45410026-007_Nightfire.xiso.iso                    5   2.00   1.00   1.00    9.9    8.8    31  1-1790676918-lane.memfast-1478575
+4D530007-Azurik_Rise_of_Perathia.xiso.is           2   1.00   0.00   1.00    7.8    9.1    29  0-0-s-1-1790696366-lane.verdict433-2378176
+Halo 2.iso                                         1   2.00   0.50   1.50    7.1   14.2    29  1-1791064684-lanelocal-4097992
+4B4E002D-Castlevania_Curse_of_Darkness.x           1   1.00   1.00   0.00    4.9    7.4    59  1-1791072308-lanelocal-1173788
+54540082-Grand_Theft_Auto_San_Andreas.xi          20   0.00   0.00   0.00    2.5    6.7    29  0-0-x-1790517499-slowdown462-1484367
+Fuzion Frenzy (USA).xiso.iso                       6   0.00   0.00   0.00    1.5    9.0    46  0-0-x-1-1790634702-lane.idlehaltdefault-3051928
+Crimson Skies - High Road to Revenge (US          34   0.00   0.00   0.00    1.1    5.3    29  0-0-s-1-1790614390-remote461-p22a-r2
+46530002-Otogi_Myth_of_Demons.xiso.iso             6   0.00   0.00   0.00    1.0   13.5    29  0-0-s-1-1790609660-lane.slowtier2-otogi762702
+45410083-Black.xiso.iso                            4   0.00   0.00   0.00    0.9    5.6    27  0-0-s-1-1790609662-lane.slowtier2-black167924
+54430006-Dead_or_Alive_1_Ultimate.xiso.i          67   0.00   0.00   0.00    0.8   12.7    34  0-0-x-0-1790657057-litcompile569-206765
+56550042-50_Cent_Bulletproof.xiso.iso              3   0.50   0.00   0.00    0.8    0.2    59  1790424430-surfwatch382-428526
+56550036-Crash_Twinsanity.xiso.iso                 2   0.00   0.00   0.00    0.6   11.8    58  0-0-s-1-1790609666-lane.slowtier2-crash627374
+4541000D-007_Agent_Under_Fire.xiso.iso            41   0.00   0.00   0.00    0.5   17.1    26  0-0-x-1790453714-aufire412-rerunA
+41430016-Alias.xiso.iso                            2   0.00   0.00   0.00    0.4    8.0    19  0-0-s-1-1790609664-lane.slowtier2-alias942359
+45410062-Battlefield_2_Modern_Combat.xis          10   0.00   0.00   0.00    0.3    1.2    29  1-1790919561-lane.collapse433-390126
+4D530003-Project_Gotham_Racing.xiso.iso            2   0.00   0.00   0.00    0.3    3.5    59  0-0-s-1-1790609665-lane.slowtier2-pgr365442
+Grabbed by the Ghoulies (USA) (En,Fr,De,           3   0.00   0.00   0.00    0.3    8.9    29  0-0-x-1-1790634704-lane.idlehaltdefault-3054732
+Tron 2.0 - Killer App (USA, Europe).iso            5   0.00   0.00   0.00    0.3    7.8    59  1-1791057797-lanelocal-2547673
+43560001-Kabuki_Warriors.xiso.iso                 19   0.00   0.00   0.00    0.2    0.6    59  0-0-x-1-1790650269-hostops-energymap507-p1
+4D530013-Blinx_The_Time_Sweeper.xiso.iso          38   0.00   0.00   0.00    0.2    0.3    59  0-0-x-1-1790651075-lane.energymap507-1227971
+5A440004-Alien_Hominid.xiso.iso                    4   0.00   0.00   0.00    0.2    0.9    59  1-1790724692-lane.ibcache-1390521
+Conker Live & Reloaded.iso                         2   0.00   0.00   0.00    0.2    0.6    59  1-1791042386-lane.memfast-1541269

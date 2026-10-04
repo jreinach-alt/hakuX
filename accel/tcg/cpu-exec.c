@@ -50,6 +50,7 @@
 #include "internal-common.h"
 #include "tb-cache-hints.h"
 #include "accel/tcg/hakux-tlb68.h"
+#include "accel/tcg/hakux-ibc.h"
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
@@ -1023,6 +1024,7 @@ static void jc425_tick(void)
 {
     static const char cname[JC425_NCALLER] = { 'i', 'l', 'a' };
     static uint64_t prev[JC425_NCALLER][JC425_NOUT];
+    static uint64_t prev_ibc;
     static int64_t prev_ns;
     static unsigned window;
     int64_t now = get_clock();
@@ -1049,9 +1051,16 @@ static void jc425_tick(void)
                             cname[c], d[JC425_KEY], cname[c],
                             d[JC425_QHT_FOUND], cname[c], d[JC425_QHT_NONE]);
         }
-        JC425_LOG("[jc425] w=%u dt=%" PRId64 " jc=%d%s", window++,
+        JC425_LOG("[jc425] w=%u dt=%" PRId64 " jc=%d%s", window,
                   (now - prev_ns) / 1000000, hakux_tlb68_jc_on(), buf);
+        /* #507, HAKUX_IBC=2 only: inline probe hits, beside the ih above */
+        if (hakux_ibc_hits != prev_ibc) {
+            JC425_LOG("[ibc507] w=%u dt=%" PRId64 " hits=%" PRIu64, window,
+                      (now - prev_ns) / 1000000, hakux_ibc_hits - prev_ibc);
+        }
+        window++;
     }
+    prev_ibc = hakux_ibc_hits;
     memcpy(prev, jc425_n, sizeof(prev));
     prev_ns = now;
 }
@@ -1373,6 +1382,100 @@ static int rr425_pc_cmp(const void *a, const void *b)
     return x->n < y->n ? 1 : x->n > y->n ? -1 : 0;
 }
 
+/*
+ * #787 [tpc787]: WHERE THE TIME INSIDE TBs GOES, by guest pc. [rr425pc]
+ * counts returns, which says nothing about a chained loop that runs for
+ * milliseconds without one -- and a guest-late window is ~2 s in TBs on
+ * ~50k returns. This charges each of [rr425]'s timed dispatches (1 in 64) its
+ * measured run time, keyed by the pc it entered at: a chained run is charged
+ * to the block it entered through. Duration-weighted, so a share of `us`
+ * here is a share of tbus.
+ *
+ * One line at [rr425]'s cadence and w: sn the timed dispatches, us their
+ * total, then the top 12 entry pcs as pc:bytes:us:n (first three guest
+ * bytes at pc, as in [rr425pc]). drop is us that found no free slot.
+ *
+ * Perflog builds only (HAKUX_TCG787, as [tcg787] in cputlb.c): a plain build
+ * books nothing on the execution path and prints no [tpc787] line.
+ */
+#if defined(NV2A_PERF_LOG) && NV2A_PERF_LOG
+#define HAKUX_TCG787 1
+#else
+#define HAKUX_TCG787 0
+#endif
+#if HAKUX_TCG787
+#define TPC787_BITS 10
+typedef struct {
+    uint32_t pc, n;     /* n == 0: empty */
+    uint64_t ns;
+} TPC787;
+static TPC787 tpc787[1 << TPC787_BITS];
+static uint64_t tpc787_drop_ns;
+static uint32_t tpc787_pc;
+
+static void tpc787_book(uint32_t pc, uint64_t ns)
+{
+    uint32_t h = (pc * 0x9e3779b1u) >> (32 - TPC787_BITS);
+
+    for (int i = 0; i < 16; i++) {
+        TPC787 *p = &tpc787[(h + i) & ((1 << TPC787_BITS) - 1)];
+        if (p->n && p->pc != pc) {
+            continue;
+        }
+        p->pc = pc;
+        p->n++;
+        p->ns += ns;
+        return;
+    }
+    tpc787_drop_ns += ns;
+}
+
+static int tpc787_cmp(const void *a, const void *b)
+{
+    const TPC787 *x = a, *y = b;
+    return x->ns < y->ns ? 1 : x->ns > y->ns ? -1 : 0;
+}
+
+static void tpc787_tick(CPUState *cpu, unsigned window)
+{
+    TPC787 top[12];
+    int ntop = 0;
+    uint64_t sn = 0, ns = 0;
+    char buf[640];
+    int off = 0;
+
+    for (int i = 0; i < (1 << TPC787_BITS); i++) {
+        TPC787 *p = &tpc787[i];
+        if (!p->n) {
+            continue;
+        }
+        sn += p->n;
+        ns += p->ns;
+        if (ntop < 12) {
+            top[ntop++] = *p;
+        } else if (p->ns > top[11].ns) {
+            top[11] = *p;
+        } else {
+            continue;
+        }
+        qsort(top, ntop, sizeof(top[0]), tpc787_cmp);
+    }
+    buf[0] = 0;
+    for (int i = 0; i < ntop && off < (int)sizeof(buf) - 48; i++) {
+        uint8_t b[3] = { 0, 0, 0 };
+
+        cpu_memory_rw_debug(cpu, top[i].pc, b, sizeof(b), false);
+        off += snprintf(buf + off, sizeof(buf) - off,
+                        " %08x:%02x%02x%02x:%" PRIu64 ":%u", top[i].pc,
+                        b[0], b[1], b[2], top[i].ns / 1000, top[i].n);
+    }
+    JC425_LOG("[tpc787] w=%u sn=%" PRIu64 " us=%" PRIu64 " drop=%" PRIu64
+              "%s", window, sn, ns / 1000, tpc787_drop_ns / 1000, buf);
+    memset(tpc787, 0, sizeof(tpc787));
+    tpc787_drop_ns = 0;
+}
+#endif
+
 static void rr425_tick(CPUState *cpu)
 {
     static uint64_t prev[RR_N];
@@ -1440,11 +1543,18 @@ static void rr425_tick(CPUState *cpu)
                         top[i].n);
     }
     JC425_LOG("[rr425pc] w=%u%s", window, buf);
+#if HAKUX_TCG787
+    tpc787_tick(cpu, window);
+#endif
     rrw_tick(window++, now);
 
 reset:
     memcpy(prev, rr425_n, sizeof(prev));
     memset(rr425_pc, 0, sizeof(rr425_pc));
+#if HAKUX_TCG787
+    memset(tpc787, 0, sizeof(tpc787));
+    tpc787_drop_ns = 0;
+#endif
     rr425_pc_drop = 0;
     prev_ns = now;
 }
@@ -1670,6 +1780,60 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 
     return tb->tc.ptr;
 }
+
+#ifdef XBOX
+/*
+ * #507: the layout the front end's inline jump-cache probe reads
+ * (hakux-ibc.h). The probe skips the helper's hit path above: the call,
+ * get_tb_cpu_state, curr_cflags and the key compares in tb_lookup (18.4% of
+ * the vCPU on GTA, docs/lanes/vcpuplan/NOTES.md). A miss still calls the
+ * helper, so the qht, breakpoints and translation stay here.
+ *
+ * Off unless HAKUX_IBC=1 or 2. With the idle halt off, the vCPU time it
+ * saves on the Nova became guest spin, not fps: J/frame x1.02 on GTA and
+ * x1.10 on Forza, fps unchanged (docs/lanes/ibcache/NOTES.md, 5c and 5d).
+ */
+uint64_t hakux_ibc_hits;
+
+bool hakux_ibc_enabled(HakuxIbcLayout *l)
+{
+    static const vaddr probe[] = {
+        0, 0x3f, 0x40, 0xfff, 0x1000, 0x10abc, 0x80012345, 0xfffff000,
+        0xffffffff, 0x7ffe0,
+    };
+    const char *e = getenv("HAKUX_IBC");
+    bool on = e && (e[0] == '1' || e[0] == '2');
+    bool ok = true;
+
+    l->array_ofs = offsetof(CPUJumpCache, array);
+    l->entry_shift = ctz32(sizeof(((CPUJumpCache *)0)->array[0]));
+    l->tb_ofs = offsetof(CPUJumpCache, array[0].tb)
+                - offsetof(CPUJumpCache, array[0]);
+    l->pc_ofs = offsetof(CPUJumpCache, array[0].pc)
+                - offsetof(CPUJumpCache, array[0]);
+    l->hash_shift = TARGET_PAGE_BITS - TB_JMP_PAGE_BITS;
+    l->page_mask = TB_JMP_PAGE_MASK;
+    l->addr_mask = TB_JMP_ADDR_MASK;
+    l->count = e && e[0] == '2';
+
+    /* The probe computes this formula; it must be the jump cache's hash. */
+    if (sizeof(((CPUJumpCache *)0)->array[0]) != 1u << l->entry_shift) {
+        ok = false;
+    }
+    for (size_t i = 0; i < ARRAY_SIZE(probe); i++) {
+        vaddr pc = probe[i];
+        vaddr t = pc ^ (pc >> l->hash_shift);
+        uint32_t h = ((t >> l->hash_shift) & l->page_mask)
+                     | (t & l->addr_mask);
+        if (h != tb_jmp_cache_hash_func(pc)) {
+            ok = false;
+        }
+    }
+    JC425_LOG("[ibc507] on=%d layout=%s count=%d HAKUX_IBC=%s",
+              on && ok, ok ? "ok" : "MISMATCH", l->count, e ? e : "(unset)");
+    return on && ok;
+}
+#endif
 
 /* Return the current PC from CPU, which may be cached in TB. */
 static vaddr log_pc(CPUState *cpu, const TranslationBlock *tb)
@@ -2192,14 +2356,21 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
         rr425_n[RR_SN]++;
         rr425_t = t;
         rr425_phase = 2;
+#if HAKUX_TCG787
+        tpc787_pc = (uint32_t)pc;
+#endif
     }
 #endif
     tb = cpu_tb_exec(cpu, tb, tb_exit);
 #ifdef XBOX
     if (rr425_phase == 2) {
-        rr425_n[RR_TBNS] += get_clock() - rr425_t;
+        uint64_t run = get_clock() - rr425_t;
+        rr425_n[RR_TBNS] += run;
         rr425_n[RR_TBN]++;
         rr425_phase = 0;
+#if HAKUX_TCG787
+        tpc787_book(tpc787_pc, run);
+#endif
     }
     rr425_book(cpu, tb, *tb_exit);
     if (unlikely(++rr425_samp >= 64)) {

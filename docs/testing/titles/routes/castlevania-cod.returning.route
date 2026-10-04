@@ -1,0 +1,114 @@
+# state: returning   (recorded loading the profile; lane.savestate433)
+# Castlevania: Curse of Darkness (4B4E002D), RETURNING: a save already exists
+# in slot 1 (written by this session's first-run route, above). PLAYED by
+# nav.py on the Nova, 2026-10-01 14:23 PDT (lane.titleroutes HELD session
+# castlevania-cod.returning-20261001T142355, same owner-approved session).
+#
+#   title, Continue already highlighted (A) -> the SAME opening cutscene as
+#   first-run plays again in full (1476, Valachia through the castle
+#   exterior and the courtyard fight recap; A three times, 5.4s apart, same
+#   as first-run) -> title again, Continue highlighted -> A again -> LOAD
+#   HARD DISK, slot 1 ("A", Abandoned Castle 1F, Level 1, HP 100, 0:00:00,
+#   0.00%) already highlighted (A) -> "Is this save data correct?" (A, Yes
+#   already selected) -> the opening cutscene plays a THIRD time (1476,
+#   Valachia -> castle exterior; A three times, 5.4s apart) -> player control
+#   in the same gothic courtyard, facing the same gargoyle fountain.
+#
+# So one A on Continue does not load the save: it replays the recap
+# cutscene and drops back to the title with Continue still highlighted. A
+# second A is what reaches LOAD HARD DISK. This save was taken a few seconds
+# into play (Level 1, 0:00:00, Abandoned Castle 1F), which is likely why the
+# full opening recap plays before AND after the load confirm rather than
+# resuming silently -- not yet checked against a save taken later in the
+# game.
+#
+# Player control confirmed by eye: the HUD (Player HP 100/100) appeared only
+# after LY min was sent once already overlapping the mark; a second LY
+# min/mid pair moved him visibly closer to the fountain edge
+# (movetest2.png), and the play pattern's A then landed as an attack with
+# both arms raised (019-postplay2.png). Camera and position are identical to
+# the first-run mark (same fountain, same facing), consistent with this
+# save being taken at the very start of the level.
+#
+# CONFIRMED by a full unattended replay (session 56, 2026-10-01, same
+# owner-approved Nova grant, ADDENDUM 4): scratch/replay/castlevania-cod.returning-145541
+# (copied to scratch/judge/), route.sh end to end from a cold launch of this
+# disk, all 19 scripted frames captured, mark gameplay reached at 15:00:34.692
+# (150034-gameplay.png), then ~28s of the repeat-forever play pattern before
+# the run's own timeout ended it. No longer a draft.
+wait 18.4
+shot boot
+wait 8.1
+press A
+wait 3.1
+shot continue1
+wait 12.4
+shot continue2
+wait 15.4
+shot continue3
+wait 13.8
+shot continue4
+wait 14.3
+press A
+wait 2.7
+shot c1
+wait 10.7
+press A
+wait 2.1
+shot c2
+wait 12.1
+press A
+wait 18.1
+shot seq1
+wait 5.7
+shot seq2
+wait 5.6
+shot seq3
+wait 5.7
+shot seq4
+wait 11.3
+press A
+wait 4.1
+shot loading1
+wait 7.7
+press A
+wait 5.1
+shot loading2
+wait 11.1
+press A
+wait 5.1
+shot loading3
+wait 12.2
+press A
+wait 5.4
+press A
+wait 5.4
+press A
+wait 5.8
+shot loading6
+wait 11.4
+shot check1
+wait 9.6
+axis LY min
+wait 1.7
+axis LY mid
+shot movetest
+wait 11.8
+axis LY min
+wait 2.2
+axis LY mid
+shot movetest2
+wait 9.6
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 2
+    press A
+    axis RX max
+    wait 0.5
+    axis RX mid
+    axis LY mid
+    wait 1
+    press A
+    wait 2
+}

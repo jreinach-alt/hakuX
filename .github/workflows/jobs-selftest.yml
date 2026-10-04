@@ -5,27 +5,16 @@
 # three defects of 2026-09-19 before they reached the host.
 name: jobs selftest
 
+# Manual dispatch only (2026-10-03): the forge runs this gate from
+# .forgejo/workflows/forge-selftest.yml. See android.yml and
+# docs/lanes/localforge/RETURN.md, section 2a.
 on:
-  push:
-    branches: [master]
-    paths:
-      - 'docs/testing/jobs/**'
-      # jobs/** already covers the fragments; named anyway, because a gate
-      # that silently stops running is worse than the collision the split
-      # removed, and the next person to narrow jobs/** should trip over this.
-      - 'docs/testing/jobs/selftest.d/**'
-      - 'docs/testing/request.sh'
-      - 'docs/testing/lane.sh'
-      - 'docs/testing/nv2a_index.py'
-      - '.github/workflows/jobs-selftest.yml'
-  pull_request:
-    paths:
-      - 'docs/testing/jobs/**'
-      - 'docs/testing/jobs/selftest.d/**'
-      - 'docs/testing/request.sh'
-      - 'docs/testing/lane.sh'
-      - 'docs/testing/nv2a_index.py'
-      - '.github/workflows/jobs-selftest.yml'
+  workflow_dispatch:
+
+# hakux-ci-throttle (2026-09-29): a newer push cancels the older run
+concurrency:
+  group: jobs-selftest-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # One job per shard (selftest.sh, "the shards"): run whole it took 18-25 min
@@ -35,6 +24,7 @@ jobs:
   # Changing the shard count: the list and the /N below together, or
   # selftest.sh's guard refuses every shard.
   selftest:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:

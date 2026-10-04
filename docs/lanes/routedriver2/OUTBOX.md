@@ -1,0 +1,68 @@
+## #433 -- 2026-10-02 04:10 PDT
+
+lane.routedriver2, session 1. All runs were held `drive` replays on the Nova
+(02:21-04:02 PDT). No confirmations were queued, and nothing here makes a
+title Playable.
+
+- **Sonic Heroes: past the Seaside Hill block (brief item 1, done).** The
+  escape that works is Fly's own move. The formation gate before the block
+  puts the team in Fly. Climbing in place (stick released, 12 A taps), then
+  1.2 s of forward, lands them on top of the block (0:12 → 0:17), with 30 s
+  of play after it. The driver now reads the formation from the HUD's leader
+  circle and picks that formation's escape. In 4 trials it also cleared the
+  POWER block (2:03). Trial 4 played 450 s with no ROUTE FAIL, through three
+  obstacles, a fall into the sea, and a Game Over that it menued back from.
+  Not solved: Seaside Hill end to end. A scored Sonic window would still be
+  about half `stalled`/recovering. Frames: `docs/lanes/routedriver2/sonic/`.
+- **False `play`, found and fixed.** A team struggling in a corner, or a
+  camera swaying at the sky, changes the screen enough to read `play` (40-45%
+  of 100 s stretches in Sonic trials 1-2). The fixes:
+  - a 10 s scene-layout progress check (opt-in per title);
+  - a rule that play must hold 10 s after a stall.
+
+  Also found: a selftest fixture had been passing on that false play (the
+  team wedged at the POWER block). It now expects a stall.
+- **Forza steering (item 2): tried, not solved, switched off.** The Arcade
+  suggested line (green chevrons) is easy to find in the frame. But a
+  steering loop driven by screencaps runs at ~1 Hz on the Nova. In both runs
+  it put the car into a wall within 12 s, where RT alone reaches play. The
+  precondition for any steering is a faster screen signal. `--find` with
+  steering off still reaches play. The frames are weak, though: the car
+  scrapes the pit wall at 0-22 MPH on the Nova, against 73 MPH on the Thor.
+- **Buffy (item 3): the driver reaches real play ~35 s after boot**,
+  through title, menus, difficulty and the load, each recognised. This
+  needed per-title dark-scene settings: the canyon's motion and luma sit
+  under the defaults. It stops at a ledge gap ~12 s into play. So `--find`
+  gets 10-12 s of play, not its 20, and I did not lower the bar.
+- **Emulator abort, for a tracker row.** Buffy, Nova, 03:40:27 PDT, about
+  10 s into the intro FMV: `pgraph.c:2163 pgraph_method: assertion
+  "channel_valid" failed` (pfifo_thread, SIGABRT). It is intermittent: five
+  other Buffy boots passed the same intro. Excerpt:
+  `docs/lanes/routedriver2/buffy/b4-emulator-abort.txt`.
+- **Driver safety fix.** After that abort, the driver's next A went into the
+  launcher and opened Calendar. drive.py now sends no press unless hakuX is
+  the focused app.
+- **Blocker for the play_share spot check (item 4), and for every
+  dispatched `drive` route.** The dispatcher's script snapshot does not carry
+  drive.py, classify.py, waitfor_match.py or drive-profiles/:
+  `route.sh --check` on the snapshot fails with "no profile". The fix is in
+  dispatcher.sh (outside this lane); the exact list is in NOTES.md item 4.
+  The gate's reader does check out on a held Forza run's full logcat
+  (play_share 0.51, which matches the frames).
+
+## #433 -- 2026-10-02 06:05 PDT
+
+lane.routedriver2, session 2 (Buffy). Held `drive` runs on the Nova, 05:35-05:59 PDT. No confirmations queued.
+
+- **Buffy's save limit now blocks every Start Game on the Nova, dispatched runs included.** Each Start Game makes a
+  save ("BUFFY n"), and the game keeps at most 10. The Nova's disk is kept between runs: hdd.plan "keep", "the disk
+  carries the store's saves". The held runs (this lane's b1-b12) and titleroutes' Buffy replays have filled it. Start
+  Game now shows "only allows 10 saved games on your Xbox Hard Disk. Please delete one to start a new game. Press A to
+  continue", and A returns to the main menu. A blind START/A route (`routes/buffy.route`) will loop there. The drive
+  profile now takes Load Game (every save was made at the canyon's start). A blind route needs the same: down once on
+  the main menu, then A. Nothing on the disk was deleted.
+- **Buffy's "ledge gap" is a pit.** Below the gap is a stream bed with no exit any input found (8 escapes, four
+  directions, filmed at 0.5 s). Falling in ends the run. The earlier "frozen sky" stall is the camera, and LT (the
+  camera reset) clears it. B pressed while running never produced a jump frame at any density tried, and standing B
+  is a kick. In one probe, Y moved her off a ledge with no stick input. Whether Y is the jump is the open question;
+  the next run tests it.

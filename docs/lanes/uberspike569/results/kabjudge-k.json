@@ -1,0 +1,57 @@
+{
+ "A": {
+  "cleared": true,
+  "shader_cache": "cleared: apk 3c9abf7aa24a -> 2d3f4dca0d1c on this device",
+  "mark": true,
+  "gp_dpc_ms": 133417.69999999995,
+  "gp_dpm": 780,
+  "gmax_ms": 4990.0,
+  "gaps5": 0,
+  "stalls": 35,
+  "wins": 261,
+  "uber_init": null,
+  "last_uber": null
+ },
+ "B": {
+  "cleared": true,
+  "shader_cache": "cleared: apk 2d3f4dca0d1c -> df1c92a61592 on this device",
+  "mark": true,
+  "gp_dpc_ms": 26.9,
+  "gp_dpm": 425,
+  "gmax_ms": 696.6,
+  "gaps5": 0,
+  "stalls": 0,
+  "wins": 342,
+  "uber_init": "09-30 08:18:12.910 I/hakuX-perf( 5380): vsh-uber: family module 1: 44646 bytes GLSL, 19.5 ms",
+  "last_uber": {
+   "mode": "3",
+   "links": "706",
+   "cold": "79",
+   "libs": "4",
+   "lib_fail": "0",
+   "lib_ms": "7179.6",
+   "next": "706/0/512",
+   "next_ms": "141954.4",
+   "uncovered": "0",
+   "queued": "0"
+  }
+ },
+ "factors": {
+  "min_dpm": 100,
+  "gap_ms": 5000.0,
+  "k2_max": 0.25,
+  "k3_max": 0.5
+ },
+ "verdicts": {
+  "K0": true,
+  "K1": true,
+  "K2_ratio": 0.00020162242341158638,
+  "K2": true,
+  "K3_ratio": 0.13959919839679358,
+  "K3": true,
+  "X_cold": "79",
+  "X_uncovered": "0",
+  "X_next": "706/0/512",
+  "X_stalls_B": 0
+ }
+}

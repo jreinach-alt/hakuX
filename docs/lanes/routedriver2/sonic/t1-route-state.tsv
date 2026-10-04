@@ -1,0 +1,104 @@
+t	state	source	changed	luma	cap_s	action	frame
+0.4	logo	crop:logo-sonicteam		18.9	0.32	press A (skip logo)	022614-001-logo.png
+2.2	black	black		0.0	0.27	wait	022615-002-black.png
+3.6	intro_video	moving	0.1355	15.8	0.27	press A (skip intro_video)	022617-003-intro_video.png
+5.3	black	black		5.7	0.27	wait	022619-004-black.png
+6.7	logo	crop:logo-dolby		8.9	0.27	press A (skip logo)	022620-005-logo.png
+8.9	intro_video	moving	0.9817	96.0	0.67	press A (skip intro_video)	022622-006-intro_video.png
+11.0	title	crop:title-logo		135.4	0.62	press START (title 1)	022625-007-title.png
+12.7	profile	crop:profile-slots		119.7	0.27	settle	022626-008-profile.png
+14.2	profile	crop:profile-slots		135.6	0.32	press A (profile 1)	
+15.8	profile	crop:profile-slots		134.8	0.27	settle	
+17.1	profile	crop:profile-slots		134.7	0.27	press A (profile 2)	
+18.8	main_menu	crop:menu-banner		111.6	0.37	settle	022632-012-main_menu.png
+20.3	main_menu	crop:menu-banner		110.1	0.32	press A (main_menu 1)	
+21.9	main_menu	crop:menu-banner		116.5	0.32	settle	
+23.3	main_menu	crop:menu-banner		115.2	0.32	press A (main_menu 2)	
+25.0	main_menu	crop:menu-banner		103.3	0.32	settle	
+26.3	main_menu	crop:menu-banner		101.6	0.32	press A (main_menu 3)	
+28.0	main_menu	crop:menu-banner		101.6	0.32	settle	
+29.4	main_menu	crop:menu-banner		109.7	0.37	press A (main_menu 4)	
+31.2	main_menu	crop:menu-banner		109.3	0.37	settle	
+32.6	main_menu	crop:menu-banner		109.1	0.37	press A (main_menu 5)	
+34.6	cutscene	moving	0.8326	114.5	0.67	press A (skip cutscene)	022649-022-cutscene.png
+36.4	loading	crop:loading-stage		39.6	0.27	wait	022651-023-loading.png
+37.9	loading	crop:loading-stage		43.3	0.32	wait	
+39.2	loading	crop:loading-stage		43.3	0.32	wait	
+40.7	unknown	hud:hud+after-loading	0.1709	63.2	0.37	hold (hud up, motion not yet play)	022655-026-unknown.png
+42.8	play	hud:hud+motion	0.9083	157.7	0.77	hold tap A	022658-027-play.png
+45.3	play	hud:hud+motion	0.7828	135.0	0.82	hold	022700-028-play.png
+47.5	play	hud:hud+motion	0.7769	128.4	0.92	hold	022702-029-play.png
+49.7	play	hud:hud+motion	0.7058	99.5	0.92	hold	022704-030-play.png
+51.9	play	hud:hud+motion	0.7585	101.9	0.82	hold tap A	022707-031-play.png
+54.3	play	hud:hud+motion	0.7642	117.0	0.82	hold	022710-032-play.png
+56.4	play	hud:hud+motion	0.728	111.4	0.82	hold	022712-033-play.png
+58.6	play	hud:hud+motion	0.7696	126.7	0.87	hold	022714-034-play.png
+60.7	play	hud:hud+motion	0.7779	113.0	0.82	hold tap A	022717-035-play.png
+63.1	play	hud:hud+motion	0.7859	130.2	0.77	hold	022719-036-play.png
+65.2	play	hud:hud+motion	0.7779	92.8	0.82	hold	022721-037-play.png
+67.3	play	hud:hud+motion	0.7602	135.2	0.87	hold	022723-038-play.png
+69.4	play	hud:hud+motion	0.7658	139.8	0.82	hold tap A	022725-039-play.png
+71.8	play	hud:hud+motion	0.828	88.2	0.77	hold	022727-040-play.png
+73.8	stalled	hud:hud+static	0.1684	89.3	0.72	stall escape 1	022743-041-stalled.png
+88.4	play	hud:hud+motion	0.6458	82.6	0.77	hold tap A	022746-042-play.png
+90.9	play	hud:hud+motion	0.628	80.0	0.72	hold	022748-043-play.png
+92.9	play	hud:hud+motion	0.5503	78.6	0.77	hold	022750-044-play.png
+95.0	play	hud:hud+motion	0.6088	76.2	0.77	hold	022752-045-play.png
+97.0	play	hud:hud+motion	0.6723	104.6	0.72	hold tap A	022754-046-play.png
+99.2	play	hud:hud+motion	0.5885	99.8	0.67	hold	022756-047-play.png
+101.2	play	hud:hud+motion	0.5816	103.6	0.72	hold	022758-048-play.png
+103.2	stalled	hud:hud+static	0.187	100.9	0.67	stall escape 2	022812-049-stalled.png
+117.4	unknown	hud:hud+between	0.3293	102.0	0.72	hold (hud up, motion not yet play)	022815-050-unknown.png
+119.5	unknown	hud:hud+between	0.3147	101.7	0.72	hold (hud up, motion not yet play)	
+121.5	stalled	hud:hud+static	0.1216	103.5	0.73	stall escape 3	022826-052-stalled.png
+129.9	play	hud:hud+motion	0.7511	79.0	0.67	hold tap A	022828-053-play.png
+132.4	play	hud:hud+motion	0.6438	79.0	0.72	hold	022830-054-play.png
+134.4	play	hud:hud+motion	0.7158	92.5	0.67	hold	022832-055-play.png
+136.4	play	hud:hud+motion	0.6616	102.0	0.67	hold	022834-056-play.png
+138.4	play	hud:hud+motion	0.4433	107.9	0.72	hold tap A	022837-057-play.png
+140.7	stalled	hud:hud+static	0.1482	107.2	0.72	hold (stalled 0 s)	022839-058-stalled.png
+142.9	stalled	hud:hud+static	0.0949	107.3	0.72	hold (stalled 2 s)	
+144.9	stalled	hud:hud+static	0.1861	109.4	0.72	hold (stalled 4 s)	
+146.9	stalled	hud:hud+static	0.2553	107.7	0.72	hold (stalled 6 s)	
+148.8	play	hud:hud+motion	0.536	114.4	0.67	hold tap A	022848-062-play.png
+151.2	play	hud:hud+motion	0.6518	63.3	0.72	hold	022850-063-play.png
+153.1	play	hud:hud+motion	0.476	64.4	0.62	hold	022852-064-play.png
+155.0	stalled	hud:hud+static	0.2791	61.7	0.67	hold (stalled 0 s)	022854-065-stalled.png
+157.0	stalled	hud:hud+static	0.264	63.7	0.62	hold (stalled 2 s)	
+158.9	stalled	hud:hud+static	0.2271	64.2	0.62	hold (stalled 4 s)	
+160.7	stalled	hud:hud+static	0.1703	63.4	0.62	hold (stalled 6 s)	
+162.6	stalled	hud:hud+static	0.1292	62.5	0.62	hold (stalled 7 s)	
+164.4	play	hud:hud+motion	0.4021	68.4	0.57	hold tap A	022904-070-play.png
+166.8	play	hud:hud+motion	0.4981	61.1	0.62	hold	022906-071-play.png
+168.6	play	hud:hud+motion	0.3757	62.2	0.62	hold	022908-072-play.png
+170.5	stalled	hud:hud+static	0.1572	64.2	0.62	hold (stalled 0 s)	022910-073-stalled.png
+172.5	play	hud:hud+motion	0.3893	64.3	0.57	hold tap A	022912-074-play.png
+174.8	play	hud:hud+motion	0.352	62.9	0.62	hold	022914-075-play.png
+176.7	stalled	hud:hud+static	0.1888	63.2	0.62	hold (stalled 0 s)	022916-076-stalled.png
+178.7	stalled	hud:hud+static	0.0932	62.8	0.57	hold (stalled 2 s)	
+180.5	unknown	hud:hud+between	0.3186	62.1	0.62	hold (hud up, motion not yet play)	022920-078-unknown.png
+182.5	stalled	hud:hud+static	0.188	64.0	0.62	hold (stalled 6 s)	022923-079-stalled.png
+184.6	stalled	hud:hud+static	0.1859	63.7	0.62	hold (stalled 8 s)	
+186.4	unknown	hud:hud+between	0.3005	62.1	0.62	hold (hud up, motion not yet play)	022927-081-unknown.png
+188.4	stalled	hud:hud+static	0.1068	61.9	0.62	hold (stalled 12 s)	022929-082-stalled.png
+190.3	stalled	hud:hud+static	0.1456	62.1	0.57	hold (stalled 14 s)	
+192.2	stalled	hud:hud+static	0.1929	61.5	0.62	hold (stalled 15 s)	
+194.1	stalled	hud:hud+static	0.1848	62.1	0.62	hold (stalled 17 s)	
+196.0	stalled	hud:hud+static	0.0656	63.4	0.62	hold (stalled 19 s)	
+197.8	stalled	hud:hud+static	0.0774	62.4	0.57	hold (stalled 21 s)	
+199.7	play	hud:hud+motion	0.4052	65.3	0.57	hold tap A	022940-088-play.png
+202.1	play	hud:hud+motion	0.3801	62.9	0.62	hold	022942-089-play.png
+204.0	stalled	hud:hud+static	0.1165	63.6	0.62	hold (stalled 0 s)	022944-090-stalled.png
+206.0	stalled	hud:hud+static	0.1833	60.5	0.62	hold (stalled 2 s)	
+207.9	stalled	hud:hud+static	0.2844	63.5	0.62	hold (stalled 4 s)	
+209.8	stalled	hud:hud+static	0.0765	62.5	0.62	hold (stalled 6 s)	
+211.7	stalled	hud:hud+static	0.2905	62.1	0.62	hold (stalled 8 s)	
+213.6	stalled	hud:hud+static	0.0883	61.0	0.62	hold (stalled 9 s)	
+215.5	stalled	hud:hud+static	0.1462	62.7	0.62	hold (stalled 11 s)	
+217.4	stalled	hud:hud+static	0.0925	60.6	0.62	hold (stalled 13 s)	
+219.2	stalled	hud:hud+static	0.2632	63.2	0.57	hold (stalled 15 s)	
+221.2	stalled	hud:hud+static	0.2327	62.0	0.64	hold (stalled 17 s)	
+232.6	-	screencap-failed			10.12		
+# time_to_title_s=11.0
+# time_to_play_s=42.9
+# result=terminated
