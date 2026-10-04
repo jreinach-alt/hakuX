@@ -367,3 +367,55 @@ at <= 30/s last >= 4 s and cover the 7.4-8.1 close pass with ~1 s of slack on ei
 
 The images mode costs a fence wait per frame, which could itself suppress a timing-dependent defect. That is
 the third row, and the reason it is not read as "fixed".
+
+## 15. Capture 6: the close pass, every frame imaged: no blink
+
+`1791153455-lane.accuracy804-3495243` (master `10f14d301d`, perflog, `XEMU_FRAME_DUMP=120,after152,images,cap400`),
+15:38-15:42 PDT. The dump ran 15:40:35.05-15:40:39.26: 120 frames, 102,490 draws, 118 images (f0 and f38 stale,
+not written). The images' race clocks run **05.49 to 09.58**, so the timing landed as planned.
+
+The rival comes from behind on the left, lands beside the camera at ~7.0, and from **f53 to f91 (race clock 7.34-8.55)
+its rear fills the left half of the frame**. That is the scene of flicker801's frame N, close enough to read the
+same Havoline and NISSAN decals. **The body is in the image of every one of the 118 frames.** No frame shows the
+shadow without the body. The near-LOD body draws (`9d4f17a01cee3e05`, >= 1800 indices) are in the records of every
+frame of the pass (2-4 per frame) except f92, a whole-car guest dropout. f92's image still shows the body at 08.64,
+the same clock as f93. So a dropout frame's records are not the frame that was displayed: the game drew no cars
+in a frame it did not present. That is not the blink.
+
+What the six captures settle and what they do not:
+
+| | reading |
+|---|---|
+| the blink's scene | reproduced in captures 3-6 by `rallisport-804c/d.route` (Single Race, Safari SS1, Ford Escort, player standing): the Nissan passes within a car length of the camera at race clock ~7.3-8.6 |
+| H1, the guest leaving the body out on alternate frames | not seen: in every dump the body's draws are issued every frame of the pass |
+| the blink itself | **not reproduced in any run where it could be seen.** Capture 6 imaged every frame: none. Captures 4 and 5 (screencaps 0.7 s apart) put 1-2 shots in the window: both drawn, which says nothing (section 14) |
+| what differs from flicker801's 3/3 blinking runs | the build flavour (flicker801: debug app `74a9f3ab781a`, ref `4a3308a21e`, **not perflog**; mine: perflog), the frame dump (in 3 of my 4 race runs; capture 6's fence wait per frame), and the capture (flicker801: `screenrecord` at the display rate; mine: screencaps or dump images). The nv2a code is the same (no `hw/xbox/nv2a` change from `4a3308a21e` to `10f14d301d`) |
+
+**The brief's question, does the guest issue the car-body draws every frame, is answered "yes" for every run I
+could instrument, and none of those runs blinked.** So the dump has not identified the cause. Per the brief I stop
+here, without guessing a fix. The defect may need the non-perflog build, or timing that both dump modes disturb.
+Neither is shown.
+
+What the next capture needs, and why it is not mine to run: a **video of a run with no frame dump on the
+non-perflog build**, the conditions flicker801 had, on master, through this route. If that blinks, the defect
+lives, and the instrument must leave timing alone. The next step is then a perflog-only run, still with video, to
+learn whether the flavour matters. A dispatched soak cannot record video (`route.sh` has `shot` and no `record`
+step), and the burst tooling that can (`burst_capture.py`, a held session) is off limits to this lane by the
+brief. So it goes to the PM: either a `record` step in `route.sh` (screenrecord on the device, pulled with the
+run), or one flicker801-style claim burst on master's non-perflog build through `rallisport-804d.route`'s path. If
+master does not blink either, RalliSport's Playable confirmation run (600 s, owner flicker check by eye) is the
+cheaper next step. A fixed defect and an intermittent one look the same there, but the owner's eye is the judge
+of record for flicker.
+
+## 16. Do not repeat (additions)
+
+- Do not read a screencap series as "no blink" when its spacing is longer than the blink window: the close pass
+  lasts ~1.3 s and flicker801's large blinks ~0.65 s; screencaps run ~0.7 s apart.
+- Do not queue a ref older than `10f14d301d` on a device where a newer build has run: libfolders' pref
+  migration voids it (section 12).
+- `XEMU_FRAME_DUMP` caps at 600 frames whatever the spec asks; at the race's 30-36 flips/s that is 16-20 s.
+- The route that reaches the rival pass is `rallisport-804d.route` (or 804c). Hat RIGHT must be released at once
+  (804b's 0.35 s hold auto-repeats to OPTIONS). Race clock 0 falls at `SDL_main` + ~147 s, and an env dump opens at
+  `SDL_main` + N + ~1.4 s.
+- A whole-car dropout frame in the dump (all car keys absent for 1-6 frames) is a frame the game did not
+  present (capture 6, f92), not the blink.

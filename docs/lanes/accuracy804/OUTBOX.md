@@ -22,3 +22,12 @@
   `SDL_main` (3 logcat lines, "guest never appeared"). My `5e4196fefd` runs `1791150751` and `1791151399` voided this
   way on the Nova, each right after a hitchcause build. A/B base arms on old refs will void the same way. Fix
   (android/, not my territory): keep writing the legacy key alongside the list. NOTES section 12.
+- 2026-10-04 PDT, **#804 result: the frame dump cannot identify the cause, because no instrumented run blinked.**
+  Six Nova captures. From the third on, the route reproduces flicker801's scene (the Nissan's rear filling the left
+  half at race clock 7.3-8.6). Capture 6 imaged every frame of that pass (118 frames, race clock 5.49-9.58): the body
+  is drawn in all of them, and its draws are issued every frame in every dump. flicker801's 3/3 blinking runs
+  differ in build flavour (non-perflog debug app; mine perflog), in having no frame dump, and in being recorded
+  with screenrecord. The nv2a code is identical. Next, for the PM: a video of a no-dump, non-perflog master run
+  through `docs/lanes/accuracy804/rallisport-804d.route`. It needs a `record` step in route.sh or one
+  flicker801-style claim burst; this lane can do neither. If it does not blink, go straight to the RalliSport
+  Playable confirmation with the owner's flicker check. NOTES sections 13-16.

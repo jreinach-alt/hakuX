@@ -1,6 +1,0 @@
-# waiting on the SECOND Nova capture (frame dump over the rival pass, via pathfind's Single Race path), queued
-# 10-04 behind lane.pathfind's hold and 6 earlier requests. Capture 1 (1791136124-lane.accuracy804-3752333) is read
-# (NOTES section 9): visibility tests every race frame, but no rival in view (its route took Career).
-# Read it with: alt_draws.py --min-run 10 --logcat <result>/logcat.txt <result>/pulled/framedump_*.jsonl,
-# and the route shots r1-r7 for whether a rival is on screen (NOTES sections 6 and 9).
-run 1791147878-lane.accuracy804-1639330
