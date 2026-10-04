@@ -100,6 +100,26 @@ which conversion. About 1.0 now, with the larger share behind the txdl reading.
 loop's A, to close the weapon wheel) and `routes/async794-topspin.route`
 (fps786-topspin without the step-24 START that paused the match).
 
+## State at the end of session 1 (2026-10-04 ~15:40Z): waiting
+
+- Pilot queued on the Nova, behind lane.pathfind's hold:
+  A `1791128020-lane.async794-3209876` (master 5e4196fefd), B
+  `1791128026-lane.async794-3210567` (c825e4b24f), NBA Live 2005, 800 s each
+  (trimmed from 880 so the pair fits the 30-minute pilot gate). lane.local
+  asked for a window on #794 (comment 14793).
+- The golden arm (`async794-download-paths-must-not-move.json`) is the arms
+  job's to queue.
+- Next session: read the pilot with decompose.py and sdcallers.py against the
+  NBA legs; if X1 fires (the wait moved), stop and report. Otherwise write
+  `pilots/lane.async794.ok` (python3) and queue the other eight: Top Spin,
+  Counter-Strike, MC3, Burnout Revenge, A and B each. Routes are resolved only
+  from `docs/testing/titles/routes/`: copy `routes/async794-*.route` (and
+  fps20786's `fps786-nba2005.route`) there untracked, queue, delete them.
+  Then post per-title numbers in OUTBOX.md and read CS's txdl[] reasons for
+  the GPU-side texture path.
+- preflight: every gate passes but `coverage` (six board issues with neither
+  lane nor blocker), which is the board's.
+
 ## Do not repeat
 
 - Do not read fps20786's "sd" column as one mechanism. `[sdcall]` names the
