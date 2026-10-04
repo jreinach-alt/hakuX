@@ -259,3 +259,13 @@ Options for whoever takes it next, ranked by P x win:
 - A stall's judged span covers every window its 60 flips touch, so a sum over
   it can pass a per-stall threshold while no window is dominated by it. Read
   per window too.
+
+## 7. Attempt 3 (2026-10-03 20:52 PDT): why attempt 2 did not finish
+
+Attempt 2 ended after the OUTBOX and PR body (0e0aab6a5e) without a
+`WAITING` file, so nothing would resume the lane for the head device run the
+fold needs. This session only writes `WAITING` (`time 2026-10-04T00:15`), per
+hostops' 20:5x addendum: the Nova is on the Playable push until midnight.
+Still to do at 00:15: gate every `[tcg787]`/`[tpc787]` hook under
+NV2A_PERF_LOG (lane.local's 20:2x item 1), queue the Kabuki `--perflog` head
+run from that head, then write `WAITING` with `run <request-id>`.
