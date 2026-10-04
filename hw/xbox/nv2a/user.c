@@ -35,7 +35,12 @@
  * thread to submit the open command buffer (wait_frame_submitted). That runs
  * exactly when DMA_GET == DMA_PUT, so a guest polling GET waited out the GPU
  * batch to read a value that was already final. In Tron 2.0's slow window
- * that was 65% of the vCPU's sleep (docs/lanes/vcpuwait433/NOTES.md). */
+ * that was 65% of the vCPU's sleep (docs/lanes/vcpuwait433/NOTES.md).
+ *
+ * The DMA_PUT store then waited out the same finish: 79% of the vCPU's sleep
+ * in Simpsons free roam, 5-10 ms at a time (docs/lanes/vcpusleep/NOTES.md).
+ * On the hardware that store is a posted write, so when pfifo.lock is busy
+ * user_write posts it (pfifo_post_dma_put) instead of waiting for the lock. */
 uint64_t user_read(void *opaque, hwaddr addr, unsigned int size)
 {
     NV2AState *d = (NV2AState *)opaque;
@@ -89,10 +94,20 @@ void user_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
     unsigned int channel_id = addr >> 16;
     assert(channel_id < NV2A_NUM_CHANNELS);
 
-    int64_t lock_t0 = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
-    qemu_mutex_lock(&d->pfifo.lock);
-    g_nv2a_stats.cpu_working.lock_wait_ns +=
-        qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - lock_t0;
+    if ((addr & 0xFFFF) == NV_USER_DMA_PUT &&
+        pfifo_dma_put_may_post(d, channel_id)) {
+        /* Free lock: the locked store below, unchanged. Busy: post it. */
+        if (qemu_mutex_trylock(&d->pfifo.lock) != 0) {
+            pfifo_post_dma_put(d, val);
+            g_nv2a_stats.cpu_working.kick_count++;
+            return;
+        }
+    } else {
+        int64_t lock_t0 = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+        qemu_mutex_lock(&d->pfifo.lock);
+        g_nv2a_stats.cpu_working.lock_wait_ns +=
+            qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - lock_t0;
+    }
 
     uint32_t channel_modes = d->pfifo.regs[NV_PFIFO_MODE];
     if (channel_modes & (1 << channel_id)) {

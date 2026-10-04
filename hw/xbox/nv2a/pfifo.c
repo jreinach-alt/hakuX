@@ -45,6 +45,12 @@
 #define XEMU_OPT_FIFO_SPIN 1
 #endif
 
+/* Post the guest's DMA_PUT store when pfifo.lock is busy (#507); see
+ * pfifo_park(). 0 restores the locked store everywhere. */
+#ifndef XEMU_OPT_POSTED_DMA_PUT
+#define XEMU_OPT_POSTED_DMA_PUT 1
+#endif
+
 
 #if XEMU_OPT_FIFO_SPIN
 #define FIFO_SPIN_ACTIVE_NS 100000 /* 100µs active spin window */
@@ -500,6 +506,11 @@ static struct {
     uint32_t pend_head;
     uint32_t pend_tail;
     uint32_t pend_lost;      /* submissions dropped from the ring, untimed */
+
+    /* DMA_PUT stores posted without pfifo.lock (#507). Incremented on the
+     * vCPU without the lock, so atomic. Several posts the PFIFO thread takes
+     * up at once count once in `kicks`, and every one here. */
+    uint32_t posted;
 } s_fsk;
 
 static void fsk_note_ring(hwaddr dma_len)
@@ -546,7 +557,7 @@ static void fsk_dump_and_reset(int64_t now)
         "bound=%d held(n=%u mean=%lld max=%lld spun=%u slept=%u gave=%u) "
         "scan(n=%u words=%llu wmax=%u ns=%llu draw=%u nodraw=%u wrap=%u big=%u) "
         "gaveby(flip=%u nop=%u ctxsw=%u noaccess=%u other=%u) "
-        "lost=%u",
+        "lost=%u posted=%u",
         (long long)(span / 1000000), s_fsk.kicks, s_fsk.kicks_behind,
         s_fsk.wrap, s_fsk.ring_len,
         (long long)backlog_mean, s_fsk.backlog_max,
@@ -560,7 +571,7 @@ static void fsk_dump_and_reset(int64_t now)
         s_fsk.scan_draw, s_fsk.scan_nodraw, s_fsk.scan_wrap, s_fsk.scan_big,
         s_fsk.gave_flip, s_fsk.gave_nop, s_fsk.gave_ctxsw,
         s_fsk.gave_noaccess, s_fsk.gave_other,
-        s_fsk.pend_lost);
+        s_fsk.pend_lost, qatomic_xchg(&s_fsk.posted, 0));
 
     memset(s_fsk.drain_bucket, 0, sizeof(s_fsk.drain_bucket));
     s_fsk.kicks = 0;
@@ -626,6 +637,15 @@ static void fsk_note_submit(NV2AState *d, uint32_t put, int64_t now)
     if (!s_fsk.window_start_ns) {
         s_fsk.window_start_ns = now;
     }
+}
+
+/* A posted DMA_PUT store, on the vCPU WITHOUT pfifo.lock (#507). It keeps
+ * only the count and the time of the oldest post not yet taken up; the PFIFO
+ * thread records the submission itself, under the lock (pfifo_take_posted). */
+static void fsk_note_post(NV2AState *d)
+{
+    qatomic_inc(&s_fsk.posted);
+    qatomic_cmpxchg(&d->pfifo.posted_ts, 0, nv2a_clock_ns());
 }
 
 /* Called with pfifo.lock held, at the one moment every outstanding
@@ -718,6 +738,7 @@ static void fsk_maybe_dump(int64_t now)
  */
 #define fsk_note_ring(len)                    ((void)0)
 #define fsk_note_submit(d, put, now)          ((void)0)
+#define fsk_note_post(d)                      ((void)0)
 #define fsk_note_caught_up(now)               ((void)0)
 #define fsk_note_held(ns, spun, gave)         ((void)(spun), (void)(gave))
 #define fsk_note_scan(v, words, ns)           ((void)(v), (void)(words))
@@ -1529,10 +1550,105 @@ static void pfifo_bound_skew(NV2AState *d, uint32_t put)
     fsk_note_held(nv2a_clock_ns() - t0, spun, !caught);
 }
 
+/* BEGIN posted-put (docs/lanes/vcpusleep/selftest_postput.sh compiles this
+ * block verbatim; keep it free of anything but d->pfifo, the qemu atomics and
+ * the mutex and condition calls) */
+/*
+ * The guest's DMA_PUT store without pfifo.lock (#507).
+ *
+ * The PFIFO thread holds pfifo.lock across the pusher and across
+ * pgraph_process_pending_reports(), whose STALLED finish sleeps until the
+ * render thread has submitted. A DMA_PUT store that took the lock waited out
+ * that finish: in Simpsons free roam that was 79% of the vCPU's off-CPU time,
+ * 5-10 ms at a time (docs/lanes/vcpusleep/NOTES.md). On the hardware the
+ * store is a posted write and the CPU never waits for the pusher.
+ *
+ * So user_write tries the lock, and when it is busy posts the store: DMA_PUT
+ * is stored with release (the pusher loads it with acquire, so it sees the
+ * pushbuffer words the guest wrote before it), `fifo_kick` is set, and the
+ * lock is taken only to wake a PFIFO thread that is parked in its condition
+ * wait, where it does not hold the lock.
+ *
+ * No wakeup is lost. The poster stores `fifo_kick` and then reads `parked`;
+ * the PFIFO thread stores `parked` and then reads `fifo_kick`; each pair has a
+ * full barrier between, so at least one side sees the other's store. If the
+ * PFIFO thread sees the kick it does not wait. If the poster sees `parked` it
+ * broadcasts under the lock, which it can only take once the PFIFO thread is
+ * inside the wait (or has left it).
+ *
+ * Only while the skew bound is off: pfifo_bound_skew() parks the guest at its
+ * submission under the lock, and a posted store would skip it.
+ */
+static void pfifo_park(NV2AState *d)
+{
+    qatomic_set(&d->pfifo.parked, true);
+    smp_mb();
+    if (!qatomic_read(&d->pfifo.fifo_kick)) {
+        qemu_cond_wait(&d->pfifo.fifo_cond, &d->pfifo.lock);
+    }
+    qatomic_set(&d->pfifo.parked, false);
+}
+
+static void pfifo_post_kick(NV2AState *d)
+{
+    qatomic_set(&d->pfifo.fifo_kick, true);
+    smp_mb();
+    if (qatomic_read(&d->pfifo.parked)) {
+        qemu_mutex_lock(&d->pfifo.lock);
+        qemu_cond_broadcast(&d->pfifo.fifo_cond);
+        qemu_mutex_unlock(&d->pfifo.lock);
+    }
+}
+
+/* May the guest's DMA_PUT store to `channel_id` be posted? The channel checks
+ * are user_write's own, made with the lock-free reads user_read makes; when
+ * they fail the locked path runs and asserts as before. */
+bool pfifo_dma_put_may_post(NV2AState *d, unsigned int channel_id)
+{
+    if (!XEMU_OPT_POSTED_DMA_PUT ||
+        fifo_skew_bound_mode() != FIFO_SKEW_OFF) {
+        return false;
+    }
+    uint32_t modes = qatomic_read(&d->pfifo.regs[NV_PFIFO_MODE]);
+    uint32_t push1 = qatomic_read(&d->pfifo.regs[NV_PFIFO_CACHE1_PUSH1]);
+    return (modes & (1 << channel_id)) &&
+           GET_MASK(push1, NV_PFIFO_CACHE1_PUSH1_CHID) == channel_id;
+}
+
+/* The posted store. Called on the vCPU without pfifo.lock. */
+void pfifo_post_dma_put(NV2AState *d, uint32_t val)
+{
+    qatomic_store_release(&d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT], val);
+    fsk_note_post(d);
+    pfifo_post_kick(d);
+}
+/* END posted-put */
+
+/*
+ * Take up posted DMA_PUT stores for the instruments, under pfifo.lock, as
+ * pfifo_kick() would have recorded them: one submission at the oldest post's
+ * time. A post that lands while the pusher runs is taken up at its catch-up,
+ * just before the pending ring is retired.
+ */
+static void pfifo_take_posted(NV2AState *d)
+{
+    int64_t ts = qatomic_xchg(&d->pfifo.posted_ts, 0);
+    if (!ts) {
+        return;
+    }
+    uint32_t put = qatomic_load_acquire(&d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT]);
+    if (put == d->pfifo.skew_last_put) {
+        return;
+    }
+    d->pfifo.skew_last_put = put;
+    fsk_note_submit(d, put, ts);
+    cbl_note_kick(put);
+}
+
 void pfifo_kick(NV2AState *d)
 {
-    if (!d->pfifo.fifo_kick) {
-        d->pfifo.fifo_kick = true;
+    if (!qatomic_read(&d->pfifo.fifo_kick)) {
+        qatomic_set(&d->pfifo.fifo_kick, true);
         qemu_cond_broadcast(&d->pfifo.fifo_cond);
     }
 
@@ -1569,7 +1685,7 @@ void pfifo_kick(NV2AState *d)
         return;
     }
 
-    uint32_t put = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT];
+    uint32_t put = qatomic_read(&d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT]);
 
     if (put == d->pfifo.skew_last_put) {
         return;
@@ -1898,7 +2014,8 @@ static void pfifo_run_pusher(NV2AState *d)
 
     while (!pfifo_pusher_should_stall(d)) {
         uint32_t dma_get_v = *dma_get;
-        uint32_t dma_put_v = *dma_put;
+        /* acquire: a posted store (#507) publishes DMA_PUT without the lock */
+        uint32_t dma_put_v = qatomic_load_acquire(dma_put);
         if (dma_get_v == dma_put_v) {
             /*
              * Caught up. This is the moment every published segment has
@@ -1913,6 +2030,7 @@ static void pfifo_run_pusher(NV2AState *d)
              * to wake it, and a 250 ms timeout in place of a signal reads as
              * a hang. One broadcast at the call site covers all of them.
              */
+            pfifo_take_posted(d);
             fsk_note_caught_up(nv2a_clock_ns());
             cbl_note_caught_up();
             break;
@@ -2119,8 +2237,10 @@ void *pfifo_thread(void *arg)
     qemu_mutex_lock(&d->pfifo.lock);
     bool was_active = true;
     while (true) {
-        was_active = d->pfifo.fifo_kick;
-        d->pfifo.fifo_kick = false;
+        /* xchg: a posted DMA_PUT store sets the kick without the lock, and
+         * the pusher's acquire load of DMA_PUT must follow this clear */
+        was_active = qatomic_xchg(&d->pfifo.fifo_kick, false);
+        pfifo_take_posted(d);
 
         pgraph_process_pending(d);
 
@@ -2174,7 +2294,7 @@ void *pfifo_thread(void *arg)
          * AFTER command processing so the game's own FLIP_STALL gets
          * first chance to handle the capture with proper draw data. */
         if ((nv2a_dbg_diag_frame_pending() || nv2a_dbg_diag_frame_active())
-            && !d->pfifo.fifo_kick) {
+            && !qatomic_read(&d->pfifo.fifo_kick)) {
             qemu_mutex_unlock(&d->pfifo.lock);
             qemu_mutex_lock(&d->pgraph.lock);
             d->pgraph.renderer->ops.surface_update(d, false, true, true);
@@ -2183,7 +2303,7 @@ void *pfifo_thread(void *arg)
             qemu_mutex_lock(&d->pfifo.lock);
         }
 
-        if (!d->pfifo.fifo_kick) {
+        if (!qatomic_read(&d->pfifo.fifo_kick)) {
             int64_t idle_t0 = nv2a_clock_ns();
             cbl_enter(cbl_park_cat(d));
 
@@ -2212,18 +2332,18 @@ void *pfifo_thread(void *arg)
 
                 qemu_mutex_lock(&d->pfifo.lock);
 
-                if (!spun_awake && !d->pfifo.fifo_kick) {
+                if (!spun_awake && !qatomic_read(&d->pfifo.fifo_kick)) {
                     qemu_cond_signal(&d->pfifo.fifo_idle_cond);
-                    qemu_cond_wait(&d->pfifo.fifo_cond, &d->pfifo.lock);
+                    pfifo_park(d);
                 }
             } else {
                 g_nv2a_stats.cpu_working.kick_count_idle++;
                 qemu_cond_signal(&d->pfifo.fifo_idle_cond);
-                qemu_cond_wait(&d->pfifo.fifo_cond, &d->pfifo.lock);
+                pfifo_park(d);
             }
 #else
             qemu_cond_signal(&d->pfifo.fifo_idle_cond);
-            qemu_cond_wait(&d->pfifo.fifo_cond, &d->pfifo.lock);
+            pfifo_park(d);
 #endif
 
             cbl_leave();
