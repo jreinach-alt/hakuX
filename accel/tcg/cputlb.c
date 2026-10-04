@@ -913,6 +913,33 @@ static void tlb_flush_page_locked(CPUState *cpu, int midx, vaddr page)
     }
 }
 
+#if HAKUX_FM_BUILD
+/*
+ * Fastmem's one alias (fastmem.h): the shadow dropped pages softmmu did not
+ * flush, so idx 5 may hold entries whose addend points at them. Flush the
+ * index; its hook (hakux_fm_full_flush) clears hakux_fm_stale.
+ */
+static void hakux_fm_sync(CPUState *cpu)
+{
+    if (unlikely(hakux_fm_stale)) {
+        tlb_flush_by_mmuidx(cpu, 1 << HAKUX_FM_IDX);
+    }
+}
+
+/* One shadow page went away inside a one-page flush of another: its entry. */
+void hakux_fm_tlb_drop_page(uint64_t va)
+{
+    CPUState *cpu = current_cpu ? current_cpu : first_cpu;
+
+    qemu_spin_lock(&cpu->neg.tlb.c.lock);
+    if (tlb_flush_entry_locked(tlb_entry(cpu, HAKUX_FM_IDX, va), va)) {
+        tlb_n_used_entries_dec(cpu, HAKUX_FM_IDX);
+    }
+    tlb_flush_vtlb_page_locked(cpu, HAKUX_FM_IDX, va);
+    qemu_spin_unlock(&cpu->neg.tlb.c.lock);
+}
+#endif
+
 /**
  * tlb_flush_page_by_mmuidx_async_0:
  * @cpu: cpu on which to flush
@@ -945,6 +972,7 @@ static void tlb_flush_page_by_mmuidx_async_0(CPUState *cpu,
 #if HAKUX_FM_BUILD
     if (unlikely(hakux_fm_on) && (idxmap & (1 << HAKUX_FM_IDX))) {
         hakux_fm_page_flush(addr, false);
+        hakux_fm_sync(cpu);
     }
 #endif
 
@@ -1140,7 +1168,12 @@ static void tlb_flush_range_by_mmuidx_async_0(CPUState *cpu,
 #if HAKUX_FM_BUILD
     /* No i386 path uses a range flush; follow one exactly by dropping all. */
     if (unlikely(hakux_fm_on) && (d.idxmap & (1 << HAKUX_FM_IDX))) {
-        hakux_fm_full_flush(cpu, 0);
+        if (hakux_fm_one) {
+            /* Entries outside the range may alias the shadow: flush them. */
+            tlb_flush_by_mmuidx(cpu, 1 << HAKUX_FM_IDX);
+        } else {
+            hakux_fm_full_flush(cpu, 0);
+        }
     }
 #endif
 
@@ -1308,7 +1341,8 @@ static bool tlb_reset_dirty_range_locked(CPUTLBEntryFull *full, CPUTLBEntry *ent
 
     flags &= TLB_INVALID_MASK | TLB_MMIO | TLB_DISCARD_WRITE | TLB_NOTDIRTY;
     if (flags == 0) {
-        uintptr_t host = (addr & TARGET_PAGE_MASK) + ent->addend;
+        uintptr_t host = hakux_fm_unshadow((addr & TARGET_PAGE_MASK) +
+                                           ent->addend);
         if ((host - start) < length) {
             qatomic_set(&ent->addr_write, addr | TLB_NOTDIRTY);
             return true;
@@ -1531,7 +1565,7 @@ static int hakux_w1_drop_locked(CPUTLBEntryFull *full, CPUTLBEntry *te,
     }
     page &= TARGET_PAGE_MASK;
     ra = (full->xlat_section & TARGET_PAGE_MASK) + page;
-    hp = page + te->addend;
+    hp = hakux_fm_unshadow(page + te->addend);
     if (ra < start + len && ra + TARGET_PAGE_SIZE > start) {
         why = 1;
     } else if (host && hp < host + len && hp + TARGET_PAGE_SIZE > host) {
@@ -1584,6 +1618,7 @@ void hakux_tlb_flush_ram_range(CPUState *cpu, ram_addr_t start, ram_addr_t len,
 #if HAKUX_FM_BUILD
     if (unlikely(hakux_fm_on)) {
         hakux_fm_ram_range(host, len);
+        hakux_fm_sync(cpu);
     }
 #endif
 
@@ -1652,6 +1687,9 @@ void tlb_set_page_full(CPUState *cpu, int mmu_idx,
     MemoryRegionSection *section;
     unsigned int index, read_flags, write_flags;
     uintptr_t addend;
+#if HAKUX_FM_BUILD
+    uintptr_t fm_shadow = 0;
+#endif
     CPUTLBEntry *te, tn;
     hwaddr iotlb, xlat, sz, paddr_page;
     vaddr addr_page;
@@ -1735,6 +1773,32 @@ void tlb_set_page_full(CPUState *cpu, int mmu_idx,
                                                     TARGET_PAGE_SIZE);
 #endif
 
+#if HAKUX_FM_BUILD
+    /*
+     * Fastmem maps the page before the entry exists, and with one alias the
+     * entry takes the shadow as its addend. A shadow drop in here (its cap)
+     * leaves idx 5 stale: flush it, which may resize the table, so this runs
+     * before the index is computed, then map again into the empty shadow.
+     */
+    if (unlikely(hakux_fm_on)) {
+        unsigned fm_rf = (prot & PAGE_READ) ?
+            read_flags | ((wp_flags & BP_MEM_READ) ? TLB_WATCHPOINT : 0) : ~0u;
+        bool fm_large = full->lg_page_size > TARGET_PAGE_BITS;
+
+        fm_shadow = hakux_fm_fill(mmu_idx, addr_page, paddr_page, addend,
+                                  fm_rf, prot, fm_large);
+        if (unlikely(hakux_fm_stale)) {
+            hakux_fm_sync(cpu);
+            fm_shadow = hakux_fm_fill(mmu_idx, addr_page, paddr_page, addend,
+                                      fm_rf, prot, fm_large);
+            if (unlikely(hakux_fm_stale)) {
+                hakux_fm_sync(cpu);
+                fm_shadow = 0;
+            }
+        }
+    }
+#endif
+
     index = tlb_index(cpu, mmu_idx, addr_page);
     te = tlb_entry(cpu, mmu_idx, addr_page);
 
@@ -1799,6 +1863,11 @@ void tlb_set_page_full(CPUState *cpu, int mmu_idx,
 
     /* Now calculate the new entry */
     tn.addend = addend - addr_page;
+#if HAKUX_FM_BUILD
+    if (fm_shadow) {
+        tn.addend = fm_shadow - addr_page;
+    }
+#endif
 
     tlb_set_compare(full, &tn, addr_page, read_flags,
                     MMU_INST_FETCH, prot & PAGE_EXEC);
@@ -1824,13 +1893,6 @@ void tlb_set_page_full(CPUState *cpu, int mmu_idx,
 #endif
     tlb_n_used_entries_inc(cpu, mmu_idx);
     qemu_spin_unlock(&tlb->c.lock);
-#if HAKUX_FM_BUILD
-    if (unlikely(hakux_fm_on)) {
-        hakux_fm_fill(mmu_idx, addr_page, paddr_page, addend,
-                      (prot & PAGE_READ) ? read_flags : ~0u, prot,
-                      full->lg_page_size > TARGET_PAGE_BITS);
-    }
-#endif
 }
 
 void tlb_set_page_with_attrs(CPUState *cpu, vaddr addr,
@@ -2263,6 +2325,10 @@ tb_page_addr_t get_page_addr_code_hostp(CPUArchState *env, vaddr addr,
         return -1;
     }
 
+#if HAKUX_FM_BUILD
+    /* One alias: code is read and indexed by its xbox.ram address. */
+    p = (void *)hakux_fm_unshadow((uintptr_t)p);
+#endif
     if (hostp) {
         *hostp = p;
     }

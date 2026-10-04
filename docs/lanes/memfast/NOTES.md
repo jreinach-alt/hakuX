@@ -1586,6 +1586,142 @@ three runs. On resume:
 - add them to `.scratch/buckets.py`'s arm list and read fps and gbusy per bucket;
 - apply the outcome table above.
 
+## Attempt 4 (2026-10-03 23:08 PDT): batch 2 read, the cost named, one alias built
+
+**Why attempt 3 did not finish:** it did, as a wait. It ended at 20:20 PDT
+with `WAITING` naming batch 2's three runs. All three finished, and the
+lanewaker resumed the lane. The branch merged master `51305b71dd` (failgate)
+before any new ref.
+
+### Batch 2, read 23:15 PDT (Tron, Nova, one binary at `e9617a9cb4`)
+
+The copies are in `.scratch/f1/{F2,B,C2}`. The readers: `f1_read.py`,
+`decompose.py`, `.scratch/buckets.py`, and `.scratch/fm_buckets.py` (the
+`[fm]` counters per 30 s since the mark).
+
+**The THP probe refutes the THP hypothesis outright.** On this kernel
+`transparent_hugepage/enabled` and `shmem_enabled` are both `[never]`. C2's
+anonymous RAM shows `anonhuge_kb=0`, so master's RAM is on 4 KiB pages too,
+and there is no huge-page reach for the memfd to lose. The prediction "C2
+over half of 64 MiB in AnonHugePages" was wrong.
+
+**fps per 30 s after the mark** (the shared early span; C and F are the pilot pair at `6162792993`):
+
+| s | C2 | B (memfd, no shadow) | F2 (`=1`) | F (pilot) | C (pilot) |
+|---|---|---|---|---|---|
+| 0 | 45.8 | 46.7 | 42.0 | 42.2 | 45.7 |
+| 30 | 49.1 | 50.0 | 37.5 | 35.7 | 49.9 |
+| 60 | 55.5 | 55.0 | 49.8 | 48.4 | 55.1 |
+| 90 | 43.9 | 44.0 | 29.5 | 28.8 | 43.4 |
+| 120 | 36.6 | 36.9 | 30.2 | 28.0 | 35.3 |
+| 150 | 57.6 | 57.5 | 46.2 | 50.0 | 56.7 |
+
+- **B is within 2% of C2 in every early bucket.** The memfd itself costs
+  nothing.
+- **F2 reproduces F's loss** to within a few percent: -24% at 30 s and -33%
+  at 90 s. The loss is the shadow's, and it repeats.
+- **The pilot's "faster late" was the route, not F1.** After 270 s the runs
+  split into two states: B and F sit at the 60 cap with gbusy 14-15 ms, and
+  C2 and F2 at 41-49 fps with gbusy 21-24 ms. B has no shadow, so the cap
+  state is not F1's doing. Within each state F1 is level with its
+  counterpart. **F1 as built gains nothing anywhere on Tron and loses up to a
+  third of the frame rate early.**
+- **Where the time goes** (decompose, per frame, F2 against C2): `v_run`
+  17.3 -> 21.1 ms at 30 s and 19.7 -> 27.4 at 90 s. `v_blk` also doubles
+  (3.2 -> 6.1, 3.8 -> 8.0). The vCPU thread itself runs longer.
+- **F1's own counted work is negligible in those windows**:
+  - 4-6 maps and unmaps a second;
+  - under 1 fault a second;
+  - no drops or cap hits;
+  - revalidation 0.2-0.5 a second;
+  - `shit` about 10,000 a second, as on the late windows where F2 is level.
+
+  Priced with F0a's constants, that is under 0.1 ms per wall second. The
+  heavy-churn windows (120-150 s and 240 s, about 100 maps/s and 190k pages
+  revalidated a second) are not the worst ones.
+
+**The cost, named: two host aliases for one guest page.** F1's loads read
+a page through the shadow (VA `base + guest VA`). Its stores, the slow
+paths, the page walker and every helper reach the same page through xbox.ram
+(VA `ram + PA`). The phase 0 census says 98.7% of low-window pages have
+VA != PA, so the two host VAs differ in their low bits as well. A store and
+then a load of the same line therefore use two VAs for one physical line,
+which defeats three things:
+- **store-to-load forwarding** (the load cannot match the store's VA);
+- **the VIPT L1D's alias handling**: the line moves between index colours on
+  each switch (bits 12-13 on a 64 KiB 4-way L1);
+- **dTLB reach**: two entries per page, with no THP to absorb it.
+
+x86 code is stack-heavy: push then pop, spill then reload. Each such pair
+crosses the aliases. That fits a cost that is per access, scales with the
+vCPU's work, and appears with no counted event. It is the batch 2 outcome
+"B within 3% of C2 and F2 still slow early", and the table said: one alias.
+
+**What does not fix it:** aligning the shadow and RAM to one cache colour.
+VA and PA differ per page (the census), so no base alignment matches them.
+
+### One alias (`HAKUX_FASTMEM=one`), built at this commit
+
+An idx-5 TLB entry for a page the shadow maps takes the **shadow** as its
+addend. The shadow page is mapped read-write.
+- The vCPU's softmmu stores (whose write flags still decide fast or slow),
+  its slow-path loads and stores, and its probe pointers all reach the page
+  at `base + VA`, the address the fast loads use.
+- xbox.ram's mapping is left to NV2A and the other threads.
+- Fast loads only read, and only softmmu stores write through the shadow,
+  so dirty tracking and SMC still run on the write flags.
+
+**The invariant:** an entry with a shadow addend exists only while its
+shadow page is mapped. Each path that unmaps shadow pages, against what
+keeps the invariant:
+
+| unmap | covered by |
+|---|---|
+| a full flush of idx 5 (revalidation or drop) | the softmmu flush that precedes the hook |
+| INVLPG of the page | softmmu's flush of that page |
+| INVLPG in a 4 MiB region with a large piece (fm unmaps 1,024 pages) | `hakux_fm_tlb_drop_page` per other mapped page |
+| W1's watch walk | W1 drops the entries by RAM address (`ra`), the same pages |
+| any drop-all softmmu did not ask for (cap, failed remap, a watch outside RAM, a range flush) | `hakux_fm_stale`. The calling hook flushes idx 5 before the guest runs. In a fill, the flush comes first and the page is mapped again into the empty shadow |
+| the page being filled | the fill replaces that VA's entry, and the victim TLB is flushed for it |
+
+**Two consumers turn an entry's host pointer back into a RAM address.**
+Both now go through `hakux_fm_unshadow`:
+- `tlb_reset_dirty_range_locked`. Without it, `tlb_protect_code` would not
+  set NOTDIRTY on a shadow entry, so a store to code would skip SMC.
+- `get_page_addr_code_hostp`. Without it, `qemu_ram_addr_from_host_nofail`
+  aborts.
+
+W1's host compare is translated the same way. A grep for `addend` in
+accel/, target/i386/, system/ and hw/xbox/ finds no other consumer.
+
+**A crash is the visible failure.** If the invariant breaks, an inline
+softmmu store faults in the shadow at a PC that is not a load site, and the
+handler chains to the default: a SIGSEGV on the vCPU thread, with
+`si_addr` inside `[fm] on base=`.
+
+**Local checks:** `.scratch/fmcheck.py`, `-fsyntax-only -Wall` with the NDK
+flags, on cputlb.c, xbox.c, excp_helper.c, tcg.c and fastmem.c: rc 0. The
+only warnings are master's own four (`tcg_out_mb`). Off Android,
+`hakux_fm_unshadow` is the identity macro, and the other new code is inside
+`HAKUX_FM_BUILD`.
+
+### Predicted before the pair (Tron, Nova, the same route, 750 s, one binary)
+
+The arms: **O** (`HAKUX_FASTMEM=one`) and **C3** (off). No F0a.
+- **O arms** (`[fm] on ... one=1`) and runs 750 s with no crash or hang.
+  Any SIGSEGV on the vCPU thread with `si_addr` in the shadow kills one
+  alias as built.
+- **The deciding leg:** in the 0-150 s buckets O's fps is within 3% of C3's
+  in every bucket, or above it. F/F2's deficit there was 9-33%. `v_run` per
+  frame is within 1 ms of C3's.
+- **What each outcome picks:**
+
+| outcome | names | next |
+|---|---|---|
+| O within 3% of C3 early, or faster | aliasing was the cost | a second O/C pair, and BF2 MC, to look for F1's predicted +5-15% where the frame is vCPU-bound. Then the pixel sweep at the ref |
+| O recovers at least half of F2's deficit, not all | aliasing is most of it; the rest is NV2A-side or page-walker traffic on xbox.ram | the same, plus a simpleperf profile (held window) on O against C3 to find the remainder |
+| O no better than F2 | aliasing is not the cost; the remaining suspects are X26's removal from the allocator and the site table's cache footprint (237k sites) | re-score; the cheapest decider is F1 with emission off (shadow kept, no fast loads) |
+
 ## Next, for whoever resumes this lane
 
 0. DONE: leg S is read and passes (section "Leg S"). Do not re-run the
@@ -1643,3 +1779,15 @@ tron-newgame v5).
 | RAM on huge shmem (if THP loss is the cost) | 0.3. Mechanism: THP restores TLB reach for RAM. Risk: `shmem_enabled` may be `never` on a retail Android kernel, and an app cannot change it | recover the early-scene loss (up to 35% fps) and keep the late-scene gain (about 25% guest busy per frame) | small code (madvise on the memfd mapping), 1 pair | if B shows the loss |
 | Stores through the shadow (design F2), so one alias carries all guest accesses | 0.3. Mechanism: halves the TLB footprint. Evidence for the store-side risk: section 8's `sd` rates, priced with F0a's constants (about 3-6 us per protection fault) | the same as above, plus the 5.7% of GTA's vCPU in store compares | large: late write permission, dirty tracking | if B is within 3% of C2 |
 | Park F1 on this platform | n/a | none | none | if neither fix is open. W1 and phase 1 stand on their own |
+8. **2026-10-03 23:40 PDT, after batch 2. Re-scored with what it showed:**
+   - THP is `never` on the Nova, so the THP candidate is gone.
+   - The memfd costs nothing: B is level with C2.
+   - The shadow's loss repeats: F2 is -24% and -33% at the worst buckets.
+   - F1 shows no gain in any state.
+
+| candidate | P, and its evidence | win | cost | order |
+|---|---|---|---|---|
+| One alias (`HAKUX_FASTMEM=one`, built) | 0.55. Mechanism: the loss is per access, with under 0.1 ms/s of counted F1 work in the worst windows, and B rules out the memfd. The two-VA store-to-load path is the only per-access difference left besides X26 and the site table. Precedent: Dolphin's fastmem uses one view for loads and stores | recovers the 9-33% early-scene loss, and is the precondition for F1's +5-15% on Tron (and 11% of GTA's vCPU time) | built; one O/C3 pair, 2 Nova runs (about 28 min) | first: it is the fix and the decider at once (the outcome table in "Attempt 4" says which result picks what) |
+| Stores through the shadow as fast stores (design F2) | 0.3. Needs write faults for dirty and SMC, priced in section 8 at 3-6 us a fault | the 5.7% of GTA's vCPU in store compares, on top of F1 | large | only after one alias shows F1's load win |
+| F1 with emission off (a decider) | n/a | none | 2 runs | only if O is no better than F2 |
+| Park F1 on this platform | n/a | none | none | if O and the emission-off decider both fail. W1 and phase 1 stand on their own |

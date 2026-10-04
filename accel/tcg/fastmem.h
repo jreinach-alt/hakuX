@@ -13,6 +13,10 @@
  * compare (F1 is loads only).
  *
  * HAKUX_FASTMEM=1  F1 as above.
+ * HAKUX_FASTMEM=one  F1 with one alias: shadow pages are mapped read-write,
+ *                 and an idx-5 TLB entry for a mapped page takes the shadow as
+ *                 its addend, so the vCPU's stores, slow paths and fast loads
+ *                 all reach a page through the same host VA (NOTES, "Batch 2").
  * HAKUX_FASTMEM=ram  RAM on a memfd only, no shadow (step F0b).
  * HAKUX_F0A=<s>   the F0a microbenchmark, <s> seconds after TCG init.
  * Unset: one getenv() at init and nothing else.
@@ -53,9 +57,13 @@ void hakux_fm_site_add(const void *rx_load, const void *rx_stub);
 
 /* cputlb.c hooks, all on the vCPU thread, none under tlb_c.lock. */
 struct CPUState;
-void hakux_fm_fill(unsigned mmu_idx, uint64_t va_page, uint64_t pa_page,
-                   uintptr_t host, unsigned read_flags, int prot,
-                   bool large);
+/*
+ * Before the entry is installed. Returns the shadow's host page for the
+ * entry's addend (one alias), or 0 to keep xbox.ram's.
+ */
+uintptr_t hakux_fm_fill(unsigned mmu_idx, uint64_t va_page, uint64_t pa_page,
+                        uintptr_t host, unsigned read_flags, int prot,
+                        bool large);
 void hakux_fm_full_flush(struct CPUState *cpu, int cause_is_cr3);
 void hakux_fm_page_flush(uint64_t va, bool softmmu_large_flush);
 void hakux_fm_ram_range(uintptr_t host, uint64_t len);
@@ -75,9 +83,34 @@ extern hakux_fm_walk_fn hakux_fm_walk;
 extern uintptr_t hakux_fm_ram_host;
 extern uint64_t hakux_fm_ram_size;
 
+/*
+ * One alias. The invariant: an idx-5 entry whose addend points into the
+ * shadow exists only while its shadow page is mapped. Every shadow unmap
+ * that softmmu did not ask for either drops the entries for that page
+ * (hakux_fm_tlb_drop_page, in cputlb.c) or sets hakux_fm_stale, and the
+ * cputlb hook that called in then flushes idx 5 before the guest runs.
+ */
+extern bool hakux_fm_one;
+extern bool hakux_fm_stale;
+extern uint32_t *hakux_fm_off;  /* per shadow page: its page in xbox.ram */
+void hakux_fm_tlb_drop_page(uint64_t va);
+
+/* A host pointer from a TLB entry, as the xbox.ram pointer it aliases. */
+static inline uintptr_t hakux_fm_unshadow(uintptr_t h)
+{
+    uintptr_t d = h - hakux_fm_base;
+
+    if (hakux_fm_one && d < ((uintptr_t)1 << 32)) {
+        return hakux_fm_ram_host + ((uintptr_t)hakux_fm_off[d >> 12] << 12) +
+               (h & 0xfff);
+    }
+    return h;
+}
+
 #else
 #define hakux_fm_want false
 #define hakux_fm_on false
+#define hakux_fm_unshadow(h) (h)
 static inline void hakux_fm_init(void) { }
 static inline bool hakux_fm_ram_wanted(void) { return false; }
 static inline int hakux_fm_ram_fd(unsigned long long size) { return -1; }

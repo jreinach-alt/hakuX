@@ -54,6 +54,9 @@ uintptr_t hakux_fm_base;
 hakux_fm_walk_fn hakux_fm_walk;
 uintptr_t hakux_fm_ram_host;
 uint64_t hakux_fm_ram_size;
+bool hakux_fm_one;
+bool hakux_fm_stale;
+uint32_t *hakux_fm_off;
 
 static int fm_mode = -1;        /* 0 off, 1 F1, 2 RAM on a memfd only */
 static int fm_fd = -1;
@@ -98,6 +101,9 @@ static void fm_env(void)
         fm_mode = 0;
     } else if (strcmp(e, "ram") == 0) {
         fm_mode = 2;
+    } else if (strcmp(e, "one") == 0) {
+        fm_mode = 1;
+        hakux_fm_one = true;
     } else {
         fm_mode = 1;
     }
@@ -629,8 +635,8 @@ static void fm_arm(void)
     if (hakux_fm_want && fm_fd >= 0 && hakux_fm_ram_host && !hakux_fm_on) {
         hakux_fm_on = true;
         FM_LOG("[fm] on base=0x%" PRIxPTR " ram=0x%" PRIxPTR " size=%" PRIu64
-               " fd=%d idx=%d", hakux_fm_base, hakux_fm_ram_host,
-               hakux_fm_ram_size, fm_fd, HAKUX_FM_IDX);
+               " fd=%d idx=%d one=%d", hakux_fm_base, hakux_fm_ram_host,
+               hakux_fm_ram_size, fm_fd, HAKUX_FM_IDX, hakux_fm_one);
     }
 }
 
@@ -661,6 +667,7 @@ void hakux_fm_init(void)
     fm_st = g_new0(uint8_t, FM_PAGES);
     fm_pa = g_new0(uint32_t, FM_PAGES);
     fm_off = g_new0(uint32_t, FM_PAGES);
+    hakux_fm_off = fm_off;
     fm_list = g_new(uint32_t, FM_CAP);
     {
         /*
@@ -753,6 +760,8 @@ static void fm_drop_all_force(void)
     fm_nlist = 0;
     fm_nmapped = 0;
     memset(fm_lp4m, 0, sizeof(fm_lp4m));
+    /* One alias: idx-5 entries may point at what just went away. */
+    hakux_fm_stale = hakux_fm_one;
     c_drop++;
     c_dropns += get_clock() - t0;
 }
@@ -816,7 +825,12 @@ static void fm_map(uint32_t vpn, uint32_t offpn, uint32_t papn, bool large)
         }
     }
     /* MAP_POPULATE: F0a priced map + first touch at 3.6 us, this at 2.4. */
-    if (mmap(want, 4096, PROT_READ, MAP_SHARED | MAP_FIXED | MAP_POPULATE,
+    /*
+     * One alias maps it writable: only softmmu stores, which still check
+     * the entry's write flags, write through it; fast loads only read.
+     */
+    if (mmap(want, 4096, hakux_fm_one ? PROT_READ | PROT_WRITE : PROT_READ,
+             MAP_SHARED | MAP_FIXED | MAP_POPULATE,
              fm_fd, (off_t)offpn << 12) != want) {
         /* A failed MAP_FIXED may have unmapped the old page already. */
         c_mapf++;
@@ -866,13 +880,22 @@ static void fm_maybe_map(uint64_t va_page, uint64_t pa_page, uintptr_t host,
            (uint32_t)(pa_page >> 12), large);
 }
 
-void hakux_fm_fill(unsigned mmu_idx, uint64_t va_page, uint64_t pa_page,
-                   uintptr_t host, unsigned read_flags, int prot, bool large)
+uintptr_t hakux_fm_fill(unsigned mmu_idx, uint64_t va_page,
+                        uint64_t pa_page, uintptr_t host,
+                        unsigned read_flags, int prot, bool large)
 {
-    if (mmu_idx == HAKUX_FM_IDX) {
-        fm_maybe_map(va_page, pa_page, host & ~(uintptr_t)0xfff, read_flags,
-                     prot, large);
+    uint32_t vpn = (uint32_t)(va_page >> 12);
+
+    if (mmu_idx != HAKUX_FM_IDX) {
+        return 0;
     }
+    host &= ~(uintptr_t)0xfff;
+    fm_maybe_map(va_page, pa_page, host, read_flags, prot, large);
+    if (hakux_fm_one && va_page < FM_SPAN && (fm_st[vpn] & FM_ST_MAPPED) &&
+        hakux_fm_ram_host + ((uintptr_t)fm_off[vpn] << 12) == host) {
+        return hakux_fm_base + (uintptr_t)va_page;
+    }
+    return 0;
 }
 
 void hakux_fm_slow_hit(uint64_t va, uintptr_t host, uint64_t pa,
@@ -894,14 +917,22 @@ void hakux_fm_slow_hit(uint64_t va, uintptr_t host, uint64_t pa,
  * Anything else (a new CR3, CR0, CR4, A20, a memory-map commit, a watch
  * flush with W1 off) drops the whole shadow.
  */
+static void fm_full_flush(CPUState *cpu, int cause_is_cr3);
+
+/* After softmmu has flushed idx 5, so whatever is dropped here is covered. */
 void hakux_fm_full_flush(CPUState *cpu, int cause_is_cr3)
+{
+    if (hakux_fm_on) {
+        fm_full_flush(cpu, cause_is_cr3);
+    }
+    hakux_fm_stale = false;
+}
+
+static void fm_full_flush(CPUState *cpu, int cause_is_cr3)
 {
     uint64_t t0;
     uint32_t j = 0, dropped = 0;
 
-    if (!hakux_fm_on) {
-        return;
-    }
     if (cause_is_cr3 != 2 || !hakux_fm_walk) {
         fm_drop_all();
         return;
@@ -971,6 +1002,10 @@ void hakux_fm_page_flush(uint64_t va, bool unused)
                 fm_st[k] &= FM_ST_LISTED;
                 fm_nmapped--;
                 c_unmap++;
+                if (hakux_fm_one && k != vpn) {
+                    /* softmmu flushed only @va: drop the others' entries. */
+                    hakux_fm_tlb_drop_page((uint64_t)k << 12);
+                }
             }
         }
         fm_lp4m[vpn >> 10] = 0;
