@@ -226,3 +226,41 @@ whether the rival is on screen.
 
 Queued 14:41 PDT as `1791150087-lane.accuracy804-2199171` (perflog, `--pull 'framedump_*'`, pinned to the Nova);
 it was claimed at once (queue empty but for fmv303c).
+
+## 11. The third capture, read: the guest issues the rival's body every frame
+
+`1791150087-lane.accuracy804-2199171` ran 14:41:54-14:45:30 PDT on the Nova (xo 31.9 C at start, clean). The route
+went MAIN MENU -> SINGLE RACE -> Rally -> SAFARI SS1 -> Ford Escort -> start race (every shot as planned). The
+start-race A came at +140.6 s and race clock 0 at ~14:44:22.0 (r2 read 08.28 at 14:44:30.27). The dump
+(`framedump_1791150264.jsonl`: 600 frames, 489,406 draws, 510 MB) covers 14:44:24.7-14:44:41.2 = **race clock
+~2.7-19.2**, at 30-36 flips/s (gfps 28-31; the race runs at 30 game fps, as flicker801's 35 unique fps
+implied). r1 (05.42) shows a rival ahead on the left, **r2 (08.28) shows the Nissan beside the camera, body
+drawn**, r3 (11.11) and later show the empty road. Dump frames are consecutive guest flips (`nv2a_frame` steps by
+1 in every record).
+
+| question | reading |
+|---|---|
+| does any draw key alternate | **no.** `alt_draws.py --min-run 10`: 0 of 496 full keys and 0 of 255 tex keys. Over the rival pass (frames 130-300, race clock ~7-12) the longest strict period-2 stretch of any key is 9 frames, on the untextured 24-vertex box (`19054f81558bb778`, the visibility-test geometry); no car key exceeds 4. |
+| the near rival's body | shader `9d4f17a01cee3e05`, livery `0x02ded000`, 2673 indices (the highest of that car's LODs: 339, 1341, 1896, 2673 come and go in multi-frame blocks as it nears). It is recorded **in every frame from race clock ~8 to ~10** (frames ~168-235) except the dropouts below, together with that car's other parts (`ece9f59044a636fd`/`0x02dea000`, `9d4f17a01cee3e05`/`0x02e03000`). |
+| dropouts | 1-6 frame runs where **every** car's draws are absent together (frames 175-176, 182-183, 205, 209, 217, 240-244, 252-253, ...), with ~60-80 fewer draws in that frame. Not period 2, and not ours: the perflog shows `ASkip:0 FSkip:0 NoP:0 NullP:0` (no async-compile skip, no null pipeline) in every 2 s window. The guest leaves the cars out of those frames. |
+| per-draw state | every car draw targets that frame's own colour buffer (0 off-target in 600 frames), is inside a render pass, in the frame's single command buffer, at draw n ~84-205, before the visibility boxes (n 215+). Each car key's pipeline (the fixed-function state) changes only in multi-frame blocks, never per frame. |
+| visibility tests | still every race frame: `qry` 1747-1788 render-pass breaks per 60 flips (~30 per flip) in the race. |
+
+What the dump decides, in the brief's table: **the guest issues the car-body draws every frame, and we record
+them every frame**. The game does not leave the body out on alternate frames, so the body is lost after
+recording. That **refutes H1** (section 3, the stale occlusion read) as the cause of this flicker: H1 needs the
+guest to decide per frame whether to issue the body, and it does not. The reports defect in section 3 is still a
+defect in code (a read that does not wait), but this capture removes it as the explanation for #804. H2 (our
+skip) is ruled out by `ASkip:0 NullP:0`, and H3 (the game relying on a buffer kept from the previous frame) has
+nothing to support it: no render-to-texture, every draw to the swap-chain buffer. **H4 stands**: recorded every
+frame, invisible on alternate frames.
+
+What the dump cannot see, and which H4 turns on: the vertex attribute data and its upload, the vertex-shader
+constants (the body's transform), the depth surface and its contents, and dynamic state (viewport, scissor, depth
+bias). Every recorded field of the body draw is the same frame to frame: shader, pipeline, textures, colour target,
+render pass. So the difference between a drawn and an undrawn frame is in one of those unrecorded inputs.
+
+**The one thing this capture cannot say**: whether this run flickered. The dump had no images, and only one route
+shot (r2) fell in the rival pass; it shows the body. flicker801 caught the blink at exactly this race clock on
+this path in 3 of 3 boots, on the Nova, but never with a dump running. If the dump suppressed it, the reading
+above would be about a run without the defect.
