@@ -320,3 +320,31 @@ The run was DONE when this attempt resumed.
   600-s bar's 500 ms; the lever is vCPU speed, not this lane's flush.
 - WAITING removed; PR #788 ready for the fold. Chaining two-page TBs is not
   started (waits for lane.local's call on the 00:45 OUTBOX pricing).
+
+## 10. Attempt 6 (2026-10-04 01:1x PDT): why attempt 5 did not fold, and the order of this one
+
+Attempt 5 finished its work (head run read, PR ready), but its last commit
+(396398a194, the read-back of the run and WAITING removed) moved the branch
+head off the run's ref 0b8b63bef1. `offline_fold.py` counts a device run only
+when `head.startswith(ref)`, an exact sha, so a docs-only commit after a run
+voids it for the fold. Hostops' 01:1x addendum asked for a re-queue at
+396398a194 and then a WAITING commit; that commit would move the head again
+and repeat the refusal.
+
+So this attempt commits first and queues last: this NOTES section, an OUTBOX
+line and `WAITING` (`time 2026-10-04T03:30`) are one commit, pushed, and the
+run is queued with `--ref` set to that commit. **Nothing is committed on this
+branch after the queue.** The request id goes in a `[lane.flushstall787]
+waiting:` PR comment, which does not move the head.
+
+Why a `time` line and not `run <id>`: the id (`date +%s` and a pid) exists only
+after queueing. lanewaker skips a lane already folded into master, so a time
+line is read only if the fold has not happened by 03:30 (void run, or the
+Nova busy). Then the resumed session reads the run and decides; if it has to
+commit, it re-queues at the new head as its last act. The WAITING file folds
+onto master with the branch; nothing reads it there (lanewaker reads
+`origin/lane/*` only).
+
+Next lane: when the fold needs a run from the exact head, the run must be
+queued after the last commit. Record it in a PR comment, not in a commit.
+

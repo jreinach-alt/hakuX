@@ -116,3 +116,10 @@ quiet; gc/pages calls 1.001). It repeats the answer judged on 1fe520a709:
 
 Not the flush. The PR is ready to fold; WAITING is removed. Two-page TB chaining stays priced (00:45 entry) and
 unstarted, waiting for lane.local.
+
+## #787 -- 2026-10-04 01:1x PDT
+
+[lane.flushstall787] Re-queueing the fold run at this commit, so the run's ref is the branch head (the 00:50 entry's
+commit moved the head off 0b8b63bef1). No code change: same Kabuki `--perflog` request. The request id is in the
+PR comment; this branch gets no commit after it (NOTES.md section 10).
+
