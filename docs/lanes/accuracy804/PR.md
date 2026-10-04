@@ -1,36 +1,34 @@
-# accuracy804: why RalliSport's rival cars are drawn on alternate frames (#804)
+# accuracy804: RalliSport's cars blink on alternate frames (#804): identified and fixed
 
 State: ready
 
 Lane: accuracy804          Issue: #804
-Base: master @ 10f14d301d
-Files: docs/lanes/accuracy804/NOTES.md, docs/lanes/accuracy804/OUTBOX.md, docs/lanes/accuracy804/PR.md, docs/lanes/accuracy804/alt_draws.py, docs/lanes/accuracy804/rallisport-804.route, docs/lanes/accuracy804/rallisport-804b.route, docs/lanes/accuracy804/rallisport-804c.route, docs/lanes/accuracy804/rallisport-804d.route, docs/lanes/accuracy804/reports-804.diff
-Prediction: none: attribution captures (frame dumps), not an A/B arm
-Needs device: yes (six Nova soaks, all run)    Needs NDK: no
-Release note (none): analysis only; no emulator code changes.
+Base: master @ 63f4827758
+Files: docs/lanes/accuracy804/NOTES.md, docs/lanes/accuracy804/OUTBOX.md, docs/lanes/accuracy804/PR.md, docs/lanes/accuracy804/alt_draws.py, docs/lanes/accuracy804/rallisport-804.route, docs/lanes/accuracy804/rallisport-804b.route, docs/lanes/accuracy804/rallisport-804c.route, docs/lanes/accuracy804/rallisport-804d.route, docs/lanes/accuracy804/rallisport-804e.route, docs/lanes/accuracy804/reports-804.diff, docs/lanes/accuracy804/runs/patched-run1/capture.json, docs/lanes/accuracy804/runs/patched-run1/flicker.tsv, docs/lanes/accuracy804/runs/patched-run1/sheet.jpg, docs/lanes/accuracy804/runs/patched-run1/worst.jpg, docs/lanes/accuracy804/runs/patched-run2/capture.json, docs/lanes/accuracy804/runs/patched-run2/flicker.tsv, docs/lanes/accuracy804/runs/patched-run2/sheet.jpg, docs/lanes/accuracy804/runs/patched-run2/worst.jpg, docs/lanes/accuracy804/runs/perflog1/capture.json, docs/lanes/accuracy804/runs/perflog1/flicker.tsv, docs/lanes/accuracy804/runs/perflog1/sheet.jpg, docs/lanes/accuracy804/runs/perflog1/worst.jpg, docs/lanes/accuracy804/runs/plain1/capture.json, docs/lanes/accuracy804/runs/plain1/flicker.tsv, docs/lanes/accuracy804/runs/plain1/sheet.jpg, docs/lanes/accuracy804/runs/plain1/worst.jpg, docs/lanes/accuracy804/session804e.sh, hw/xbox/nv2a/pgraph/vk/reports.c
+Prediction: none: the measurement is held screenrecord bursts on RalliSport, read by eye (the owner's flicker check); no pgraph golden is claimed to move
+Needs device: yes (Nova: three held sessions, ~12 min, and three 60 s dispatched install boots, all run)    Needs NDK: no
+Release note (rendering): RalliSport's rival cars no longer vanish on alternate frames (the countdown and close passes); titles that gate draws on occlusion queries read this frame's result.
 
-**Result: the frame dump cannot identify the cause, because no instrumented run blinked.** The route
-(`rallisport-804d.route`: Single Race, Safari SS1, player standing) reproduces the scene flicker801 caught, with
-the Nissan passing within a car length of the camera at race clock ~7.3-8.6. In every dump the guest issues
-the rival's body draws every frame of the pass. The last capture imaged every frame of the pass (118 frames,
-race clock 5.49-9.58), and the body is drawn in all of them.
+**Cause.** RalliSport draws each car's body only when its last occlusion-query report says the car was visible.
+After a deferred finish (FLIP_STALL, PRESENTING, STALLED, SURFACE_DOWN_FLUSH), hakuX returns to the guest once
+`vkQueueSubmit` is done, and `pgraph_vk_process_pending_reports_internal()` reads the query pool at once. On Turnip
+the query reset is a GPU command, so a slot the GPU has not reset yet reads as available, holding the previous
+command buffer's count. The report for frame k then carries frame k-1's visibility, and the body alternates while
+its (ungated) shadow is drawn every frame.
 
-| capture | ref | what it showed |
-|---|---|---|
-| 1 `1791136124` | 5e4196fefd | Career route: no rival in view; visibility tests run every race frame (`qry` ~400-1800 per 60 flips) |
-| 2 `1791147878` | 5e4196fefd | hat held 0.35 s auto-repeated to OPTIONS; never raced |
-| 3 `1791150087` | 5e4196fefd | rival pass in the dump: body draws recorded every frame, no recorded field alternates, no async skip |
-| (2 voids) | 5e4196fefd | the libfolders pref migration (`GamesFolders` removes `gamesFolderUri`) makes any pre-`10f14d301d` build fail to launch after a newer one; reported in OUTBOX |
-| 4 `1791151872` | 10f14d301d | dump + screencaps: body drawn in the 1-2 shots inside the window (too sparse to rule out a blink) |
-| 5 `1791153088` | 10f14d301d | no dump, screencaps: the same, equally inconclusive |
-| 6 `1791153455` | 10f14d301d | dump with images, every frame of the close pass: **body drawn in all 118 frames** |
+**Fix.** `hw/xbox/nv2a/pgraph/vk/reports.c` (granted to this lane): when queries are in flight, wait the fence of
+every submitted frame before reading the results, as upstream xemu does. Only a finish that recorded a query pays.
 
-flicker801's three blinking runs used the non-perflog debug app (`4a3308a21e`), no frame dump, and screenrecord.
-The nv2a code is identical to master. The next step needs video of a no-dump, non-perflog master run, which a
-dispatched route cannot record. It is handed to the PM in OUTBOX, together with the cheaper option of RalliSport's
-Playable confirmation run with the owner's flicker check.
+| held screenrecord burst, Nova, `rallisport-804e.route` | build | flicker_score | by eye |
+|---|---|---|---|
+| plain1 | master `63f4827758`, non-perflog | FLICKER p90 29.4 | countdown: the cars in front vanish on alternate frames, shadows kept |
+| perflog1 | master `10f14d301d`, perflog | FLICKER p90 22.1 | race clock 7.92-7.97: the Nissan beside the camera in N only |
+| patched-run1 | master + fix `510ebb25f2`, non-perflog | clear p90 0.83 | race clock 7.36-7.44: body in every frame |
+| patched-run2 | the same | clear p90 1.02 | race clock 7.39-7.42: body in every frame |
 
-The stale occlusion-read defect in `reports-804.diff` (NOTES section 3) is a real read-without-wait in
-`vk/reports.c`. It is not shown to be #804's cause, so the patch is left unapplied.
+The earlier frame-dump captures (NOTES sections 9-15) never blinked. The `images` dump waits on a fence every
+frame, which is the same remedy as the fix. **Not measured:** the fps cost of the wait in titles that run many
+queries per flip (RalliSport ~30). RalliSport's Playable confirmation (600 s fps verdict plus the owner's flicker
+check) measures it.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
