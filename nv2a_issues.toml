@@ -5661,3 +5661,51 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 20:5x PDT, 10-03 coverage gate): filed by issue_sync from lane.pathfind's OUTBOX with no tracker row; lane.local to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run. Evidence on the issue: runs/black-stone-walk/verdict.json, hold.jsonl, hold_strip.jpg."
+
+[issue."794"]
+title = "Synchronous surface-download finishes (VK_FINISH_REASON_SURFACE_DOWN, 1-30 per frame) serialize the render thread with the GPU: 13.8 ms/frame on NBA Live 2005 and Counter-Strike"
+component = "renderer"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "IN FLIGHT (08:50 PDT, hostops jam duty): lane.async794 (Opus, $80 cap; with #796). Started 08:10 PDT 10-04 by lane.local."
+status_note = "Filed on the forge (lane.local, 10-04). Tracker row added by hostops 08:50 PDT so check_coverage can see the issue."
+
+[issue."796"]
+title = "Top Spin's ~30 download-if-dirty surface finishes per frame hold pgraph.lock; the vCPU waits 13.6 ms/frame on PGRAPH 0xb10"
+component = "renderer"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "IN FLIGHT (08:50 PDT, hostops jam duty): lane.async794 (Opus, $80 cap; with #794). Started 08:10 PDT 10-04 by lane.local."
+status_note = "Filed on the forge (lane.local, 10-04). Tracker row added by hostops 08:50 PDT so check_coverage can see the issue."
+
+[issue."795"]
+title = "Dino Crisis 3 hold: the shooter loop does not move the player; L1/X open the Map and Item screens"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "NO LANE YET: a hold-control defect filed 10-04; unowned until a lane is started."
+status_note = "Filed on the forge (lane.local, 10-04). Tracker row added by hostops 08:50 PDT so check_coverage can see the issue."
+
+[issue."797"]
+title = "Black Stone: the left stick does not move the fighter in the hold (stance rule unconfirmed; 1104 s still in the run)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "NO LANE YET: a hold-control defect filed 10-04; unowned until a lane is started."
+status_note = "Filed on the forge (lane.local, 10-04). Tracker row added by hostops 08:50 PDT so check_coverage can see the issue."
+
+[issue."800"]
+title = "Thor bottom screen: the game renders as a thumbnail in the corner when launched on Screen-2 (display 4); regression vs 0.3.x unknown"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "IN FLIGHT (08:50 PDT, hostops jam duty): lane.thorbottom800 (Opus, $30). Started 08:25 PDT 10-04 by lane.local."
+status_note = "Filed on the forge (lane.local, 10-04). Tracker row added by hostops 08:50 PDT so check_coverage can see the issue."
+
+[issue."801"]
+title = "Frame-rate clearing misses visual defects: no flicker/geometry-instability detector (RalliSport cars flicker; fps passes)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "IN FLIGHT (08:50 PDT, hostops jam duty): lane.flicker801 (Opus, $40). Started 08:25 PDT 10-04 by lane.local."
+status_note = "Filed on the forge (lane.local, 10-04). Tracker row added by hostops 08:50 PDT so check_coverage can see the issue."
