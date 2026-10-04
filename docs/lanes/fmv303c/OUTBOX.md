@@ -56,3 +56,29 @@ unchanged (ref cf328d86f7, prediction sha 6b933f61...). The Nova (Europe
 disc) is the alternative if the Thor stays covered. It would need a
 re-registration and a Nova slot, because the fmv303b tint baseline is Thor
 only.
+
+## #303 -- 2026-10-04 14:50 PDT
+
+The display cover was cleared, and both USA-disc Thor runs on cf328d86f7
+(1791149862-lane.fmv303c-2094485, 1791149866-lane.fmv303c-2096647) started.
+Neither booted the guest. Every frame shows hakuX's setup wizard with "Games
+Folder: Not set", under Android's "Use USB for" dialog. The cause is the
+libfolders pref migration (below). The lane merged origin/master
+(e2b045168a), re-registered the prediction on that ref before any run on it,
+and queued the pair again. Run ids are in NOTES.md.
+
+NEW ISSUE: a request whose ref predates libfolders (10f14d301d) cannot boot a title on a device where a libfolders build has run
+libfolders' `GamesFolders.read()` migrates the app pref `gamesFolderUri`
+into `gamesFolderUris` and deletes the old key. Older builds read only
+`gamesFolderUri`, so after any libfolders build runs, an older build opens
+the setup wizard and the soak reports "guest never appeared ... title did
+not boot". Evidence: hostops 1-1791149836 (5f6c0268e7, Thor, 14:3x PDT,
+Blinx booted), then lane.fmv303c 1791149862 and 1791149866 (cf328d86f7,
+Thor, 14:40 and 14:43). Each has 3 logcat lines, and all 142 frames show the
+wizard. This blocks every arm or soak queued on a pre-10f14d301d ref, on the
+Thor now and on the Nova once a libfolders build runs there. It also blocks
+any base arm of an A/B that names an older master sha. Possible guards:
+request.sh refuses or warns on a ref that does not contain 10f14d301d, or
+the soak runner writes both keys before launch. The void currently looks
+like a boot failure of the title.
+

@@ -2,9 +2,9 @@
 State: draft
 
 Lane: fmv303c            Issue: #303
-Base: master @ 7e6a4ac88a (origin/master merged at cf328d86f7)
+Base: master @ 7e6a4ac88a (origin/master 10f14d301d merged at e2b045168a)
 Files: hw/xbox/nv2a/pgraph/vk/surface.c, docs/lanes/fmv303c/NOTES.md, docs/lanes/fmv303c/wb_judge.py, docs/lanes/fmv303c/PR.md, docs/lanes/fmv303c/OUTBOX.md, docs/testing/predictions/fmv303c-wb-probe.json
-Prediction: docs/testing/predictions/fmv303c-wb-probe.json @ 6b933f6193d59eb8770b1478c64deeefa84bde70d663aa2d05dfa6fbdc318cd6
+Prediction: docs/testing/predictions/fmv303c-wb-probe.json @ 3ca87cf99e64fd394861d7873a1ab198985f3caefade06c74c604d052a8e67d3
 Needs device: yes (Thor)    Needs NDK: yes
 
 This is step 2a of docs/lanes/fmv303b/NOTES.md s5. A probe that is off by
@@ -17,9 +17,11 @@ counter line per flip stall, so a zero count is an observed zero.
 from the guest buffer. The question: does a write-back land in
 0x3000000..0x3400000 before tinted frames and not before clean ones?
 
-Arm: two Thor soaks on cf328d86f7, Spikeout USA disc (re-registered
-2026-10-04 before any run: the first two requests named the Europe disc and
-were refused before start, display-covered). Run ids and results are in
+Arm: two Thor soaks on e2b045168a, Spikeout USA disc. The prediction was
+re-registered before any run on that ref. Earlier pairs produced no data:
+the Europe disc by mistake, two pairs refused by the display cover, and one
+pair on cf328d86f7 that never booted because its launcher predates the
+libfolders pref migration. Run ids and results are in
 docs/lanes/fmv303c/NOTES.md.
 
 Territory: `hw/xbox/nv2a/pgraph/vk/surface.c` is held by lane.async794. This

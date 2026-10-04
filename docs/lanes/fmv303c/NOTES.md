@@ -107,8 +107,26 @@ and queued the same two runs unchanged: ref cf328d86f7, prediction sha
 | 1791142595-lane.fmv303c-698913 (L2) | 3ecdda7c45e7 | - | - | - | VOID: refused, display-covered |
 | 1791146938-lane.fmv303c-1371607 (L1, USA disc) | 3ecdda7c45e7 | - | - | - | VOID: refused, display-covered (13:49 PDT) |
 | 1791146942-lane.fmv303c-1372235 (L2, USA disc) | 3ecdda7c45e7 | - | - | - | VOID: refused, display-covered (13:50 PDT) |
-| 1791149862-lane.fmv303c-2094485 (L1, USA disc) | | | | | queued 14:38 PDT, cover cleared |
-| 1791149866-lane.fmv303c-2096647 (L2, USA disc) | | | | | queued 14:38 PDT, cover cleared |
+| 1791149862-lane.fmv303c-2094485 (L1, USA disc) | 3ecdda7c45e7 | - | - | - | VOID: guest never booted (setup wizard, games folder not set) |
+| 1791149866-lane.fmv303c-2096647 (L2, USA disc) | 3ecdda7c45e7 | - | - | - | VOID: guest never booted (setup wizard, games folder not set) |
+
+The cover was gone in both runs (`display-clear ... no foreign overlay`).
+Both runs started, and the guest never appeared in 150 s. Each logcat has 3
+lines (soak start, soak end). All 72 and 70 frames show hakuX's first-run
+"Welcome to hakuX / Games Folder: Not set" page with Android's "Use USB for"
+dialog on top. The cause is the libfolders fold (#433, 10f14d301d).
+`GamesFolders.read()` migrates the pref `gamesFolderUri` into
+`gamesFolderUris` and deletes the old key. hostops ran a libfolders build
+(5f6c0268e7, run 1-1791149836, Blinx booted) on the Thor two minutes before
+L1, and that run did the migration. cf328d86f7 predates libfolders, so its
+launcher reads only `gamesFolderUri`, finds nothing, and opens the setup
+wizard. The same thing will happen to any request whose ref predates
+10f14d301d, on any device where a libfolders build has run (OUTBOX `NEW
+ISSUE`). The fix: merge origin/master (e2b045168a, clean, surface.c diff still
+adds lines only, fixtures unchanged), re-register the prediction on
+e2b045168a (sha 3ca87cf9...) before any run on it, and queue the pair again.
+This allows a retest because the void cause is named and is not a
+performance miss.
 
 The first two rows were registered on the Europe disc, which was the wrong
 disc, and are superseded. The USA pair was refused by the same guard
