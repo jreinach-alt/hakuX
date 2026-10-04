@@ -2011,5 +2011,5 @@ note = "GRANTED 11:50 PDT 10-04 (hostops jam duty, lane.local ask 11:50): planni
 
 [lane.libfolders]
 issues = ["433"]
-files = ["android/app/src/main/java/com/rfandango/haku_x/GameLibraryActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/SetupWizardActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/LauncherActivity.kt", "android/app/src/main/res/layout/activity_settings.xml", "android/app/src/main/res/values/strings.xml", "docs/lanes/libfolders/**"]
+files = ["android/app/src/main/java/com/rfandango/haku_x/GamesFolders.kt", "android/app/src/main/java/com/rfandango/haku_x/GameLibraryActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/SetupWizardActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/LauncherActivity.kt", "android/app/src/main/res/layout/activity_settings.xml", "android/app/src/main/res/values/strings.xml", "docs/lanes/libfolders/**"]
 note = "GRANTED 12:5x PDT 10-04 (hostops jam duty, lane.local ask 12:5x): owner request, several games folders (the Thor library is split across SD and internal). The five Android UI files and strings.xml were in [free] (released by earlier retirements); SetupWizardActivity.kt was in no row. No other row holds them."
