@@ -264,3 +264,22 @@ render pass. So the difference between a drawn and an undrawn frame is in one of
 shot (r2) fell in the rival pass; it shows the body. flicker801 caught the blink at exactly this race clock on
 this path in 3 of 3 boots, on the Nova, but never with a dump running. If the dump suppressed it, the reading
 above would be about a run without the defect.
+
+## 12. The fourth capture: does the blink happen while the dump runs?
+
+Section 11's one open point is whether capture 3's run flickered at all. The reason for one more run, which the
+third capture could not give: it had no images. `rallisport-804d.route` is 804c with the seven race shots
+replaced by sixteen back-to-back screencaps from race clock ~5.6 (0.7-2.4 s each on 804c's log, so they cover
+race clock ~6-20). The emulator is untouched: same ref, same `noimages` dump, same N. If the body is absent on
+alternate frames while its draws are recorded, several shots show the rival's shadow without its body, and
+section 11's reading (lost after recording, H4) holds for a flickering run. If every shot in the pass shows the
+body, the dump run did not flicker, and the next step is a capture without the dump.
+
+`1791150751-lane.accuracy804-2407540` (14:58-15:02 PDT) **voided**: the app never reached `SDL_main`. The logcat
+has 3 lines, both `hakuX-route` soak markers and no hakuX line at all, against 9,728 for capture 3. Focus was lost
+at +30 s ("no focused window on display 0", twice), the route stopped, and the display read OFF at the end. The
+one recorded difference from capture 3 is `shader_cache: cleared: apk 9c2b2969be27 -> 63f4c763dc9a`: another
+lane's run had installed its APK on the Nova between my two runs. The pulled `framedump_1791150736.jsonl`
+(14:52) is that other run's file: my dump never opened, so `fdump_clear_previous` never ran. Re-queued once as
+`1791151399-lane.accuracy804-2607611`. It follows lane.hitchcause's run at ref `b559c094eb`, so it starts after
+another APK switch: the same condition, which makes it a test of that cause as well.
