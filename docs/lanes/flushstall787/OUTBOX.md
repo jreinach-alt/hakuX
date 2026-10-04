@@ -56,3 +56,47 @@ windows spend 1.2-1.35 s of 2 s in guest kernel code (80014386, 80027beb-80027c5
 Per the brief's step 4, no fix. Ranked next steps (NOTES.md 5.3): vCPU execution speed (the only lever on the
 whole stall); chaining into two-page TBs (0.2-0.35 s in 2-3 Kabuki stalls); #68 page-range invalidation last
 (<= 42 ms here).
+
+## #787 -- 2026-10-04 00:45 PDT
+
+[lane.flushstall787] lane.local's 20:2x items 1-3.
+
+**1. Perflog-only.** Every #787 hook now compiles only when `XBOX && NV2A_PERF_LOG` (`HAKUX_TCG787`), in
+7b4ab7823e: the tb_gen_code wrapper (translate-all.c); the full-flush and INVLPG worker timers, the
+tlb_fill_align wrapper (count + time) and the `[tcg787]` line (cputlb.c); `tpc787_pc`/`tpc787_book` on the
+execution path, `tpc787_tick` and its reset (cpu-exec.c). Checked by symbol, not by reading: `ndk_check.py` builds
+each object plain and perflog and counts `tcg787`/`tpc787` symbols with llvm-nm: **plain 0 / 0 / 0, perflog
+4 / 20 / 4**. (Its earlier "plain" leg was not plain: the dispatcher's build tree is a perflog build and already
+passes `-DNV2A_PERF_LOG=1`; it now strips that.) The plain build is the pre-#787 code path.
+
+**2. Head run queued**: `1-1791098627-lane.flushstall787-847488`, Kabuki, route `kabuki-warriors`, 840 s,
+`--perflog`, HAKUX_GPL=3, Nova, release tier, ref 0b8b63bef1 (the branch with origin/master 4991143fde merged).
+No prediction (the answer was judged on 1fe520a709); what it must show: `[tcg787]` and `[tpc787]` on every
+window and `fs_judge.py`'s validity V1-V5.
+
+cputlb.c: origin/board retires `[lane.memfast]` (files released, cputlb.c granted to this row), and memfast's
+own head (b41a8e4c2f, 00:08) closed its F1 PR with F1 rejected, so there is no memfast fold to wait for. WAITING
+names only the run.
+
+**3. Chaining two-page TBs, priced by title.** `fs_gs_scan.py` reads `[rr425]` gs (dispatches into a TB spanning
+two pages, which `cpu_exec` never chains into) from every run on disk with `[rr425]`: 590 runs, 141,041
+windows, 6 titles with any window at gs >= 1M.
+
+| title (runs) | windows with gs >= 1M | loop gap there vs other windows |
+|---|---:|---|
+| Tony Hawk's Pro Skater 2x (8) | 504 of 1,321 (38%) | 1.0-1.6 s vs 25-32 ms per 2-s window |
+| Kabuki Warriors (44) | 57 of 8,828 | 175-372 ms vs 19 ms (the stalls, 5.1) |
+| MechAssault 2 (3) | 15 of 3,177 | 186-230 ms vs 48-158 ms |
+| Top Spin (1), Crash WoC (3), Ninja Gaiden (2) | 6, 6, 2 | none measurable |
+| every other title (THPS3 included) | 0 (max gs 0.15-0.87M) | -- |
+
+So it touches more than one title, but one carries most of it: THPS2x spends half its vCPU loop time outside TBs
+in 38% of its windows (~0.6-1 us per gs there, against ~95 ns in Kabuki, so it costs more than the
+dispatch alone, probably the jump-cache lookup each time). THPS2x reads 59.8 fps median with 79% of windows at
+its 60 target (targets.toml); Kabuki's stalls lose 0.2-0.35 s in 2-3 of 9 and stay over the 500-ms bar.
+
+P x titles: P(a safe chain is buildable: unlink every jump into a two-page TB on any TLB flush or INVLPG, single
+vCPU) ~0.5 x P(the gs cost is what holds THPS2x under 60 in those windows) ~0.4 = ~0.2 for one title's 60-fps
+share, plus partial Kabuki stall relief at ~0.5; MechAssault 2 marginal. Expected: ~0.2 titles moved to target,
+0 titles cleared on its own. Cheaper first step if wanted: one THPS2x perflog soak to see whether the hot
+windows are gameplay and whether they are the sub-60 ones (decides the 0.4). Waiting for lane.local; no work started.

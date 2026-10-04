@@ -269,3 +269,36 @@ hostops' 20:5x addendum: the Nova is on the Playable push until midnight.
 Still to do at 00:15: gate every `[tcg787]`/`[tpc787]` hook under
 NV2A_PERF_LOG (lane.local's 20:2x item 1), queue the Kabuki `--perflog` head
 run from that head, then write `WAITING` with `run <request-id>`.
+
+## 8. Attempt 4 (2026-10-04 00:19 PDT): why attempt 3 stopped, and what this one did
+
+Attempt 3 did not fail: it did only what hostops' 20:5x addendum ordered
+(write `WAITING` `time 2026-10-04T00:15` and end), because the Nova was on the
+Playable push until midnight. lanewaker resumed this attempt at 00:19.
+
+- **Hooks perflog-only** (lane.local 20:2x item 1), 7b4ab7823e. `HAKUX_TCG787`
+  (`XBOX && NV2A_PERF_LOG`) gates: translate-all.c's tb_gen_code wrapper;
+  cputlb.c's full-flush and INVLPG worker timers, the tlb_fill_align wrapper
+  and the `[tcg787]` line (always `pl=1` now, kept for fs_judge); cpu-exec.c's
+  `tpc787_pc`/`tpc787_book` on the execution path, `tpc787_tick` and the reset.
+  `ndk_check.py` counts #787 symbols per object: plain 0/0/0, perflog 4/20/4.
+  **Its old "plain" leg was a second perflog compile**: the dispatcher build
+  tree's command already carries `-DNV2A_PERF_LOG=1`. It strips it now. Do not
+  trust a plain/perflog compile check without looking at the define list.
+- **Head run** queued after merging origin/master (4991143fde) into the
+  branch: `1-1791098627-lane.flushstall787-847488`, ref 0b8b63bef1, Kabuki,
+  840 s, perflog, GPL=3, Nova, release tier, no prediction. To read it:
+  `fs_judge.py <dir>` validity V1-V5, `[tcg787]` and `[tpc787]` on every window.
+- **cputlb.c and memfast**: lane.local's 21:2x addendum held cputlb.c until
+  memfast folded. Since then origin/board retired `[lane.memfast]` and granted
+  cputlb.c to this row, and memfast's head b41a8e4c2f (00:08) closed its F1 PR
+  (F1 rejected). No memfast fold is coming, so WAITING does not name one.
+- **Two-page TB chaining priced** (item 3), `fs_gs_scan.py`: 590 runs on disk;
+  6 titles have any window at gs >= 1M. THPS2x carries most of it (504 of 1,321
+  windows, loop gap 1.0-1.6 s per 2-s window there vs 25-32 ms), then Kabuki's
+  stalls and MechAssault 2. Per-gs cost is not constant: ~95 ns in Kabuki,
+  ~0.6-1 us in THPS2x. Estimate ~0.2 titles moved to their fps target; it
+  clears no title alone. OUTBOX has the table and the P x titles; waiting for
+  lane.local before any work on it.
+- Preflight `--allow-tracker`: every gate passes except `coverage` (#794-#797
+  have no lane or blocker), which is the board's.

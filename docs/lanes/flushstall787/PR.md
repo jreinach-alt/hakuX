@@ -4,11 +4,11 @@ State: ready
 
 Lane: flushstall787     Issue: #787
 Base: master @ 5d5d2c51a5 (origin/master 4a3308a21e merged in after the runs)
-Files: accel/tcg/translate-all.c, accel/tcg/cputlb.c, accel/tcg/cpu-exec.c, docs/testing/predictions/flushstall787-kabuki.json, docs/testing/predictions/flushstall787-tron.json, docs/lanes/flushstall787/PR.md, docs/lanes/flushstall787/NOTES.md, docs/lanes/flushstall787/OUTBOX.md, docs/lanes/flushstall787/fs_windows.py, docs/lanes/flushstall787/fs_pages.py, docs/lanes/flushstall787/fs_jcx.py, docs/lanes/flushstall787/fs_judge.py, docs/lanes/flushstall787/ndk_check.py, docs/lanes/flushstall787/build.sh, docs/lanes/flushstall787/fs_guest.py, docs/lanes/flushstall787/watch.py, docs/lanes/flushstall787/waitfor.py
+Files: accel/tcg/translate-all.c, accel/tcg/cputlb.c, accel/tcg/cpu-exec.c, docs/testing/predictions/flushstall787-kabuki.json, docs/testing/predictions/flushstall787-tron.json, docs/lanes/flushstall787/PR.md, docs/lanes/flushstall787/NOTES.md, docs/lanes/flushstall787/OUTBOX.md, docs/lanes/flushstall787/fs_windows.py, docs/lanes/flushstall787/fs_pages.py, docs/lanes/flushstall787/fs_jcx.py, docs/lanes/flushstall787/fs_judge.py, docs/lanes/flushstall787/ndk_check.py, docs/lanes/flushstall787/build.sh, docs/lanes/flushstall787/fs_guest.py, docs/lanes/flushstall787/watch.py, docs/lanes/flushstall787/waitfor.py, docs/lanes/flushstall787/fs_gs_scan.py, docs/lanes/flushstall787/WAITING
 Prediction: docs/testing/predictions/flushstall787-kabuki.json @ 08f17e8e7ec965bb8d5660f60d0f58c36bd09c665b4f0e949a6362b76d5e6070, docs/testing/predictions/flushstall787-tron.json @ fc9d4b5e88525111873ef247084f456f2cd1153126b577eaaaa26d200d236d41 (single-run measurements, queued by the lane)
 Needs device: yes (Nova, two perflog soaks)    Needs NDK: yes
 
-Release note (none): instrumentation only; two log lines ([tcg787], [tpc787]) and a timer around tb_gen_code.
+Release note (none): instrumentation only, compiled in perflog builds only; two log lines ([tcg787], [tpc787]) and a timer around tb_gen_code.
 
 A TLB flush discards no translated block in this tree: tlb_flush_by_mmuidx_async_work() clears the TLB and the
 jump cache, and blocks are found by physical address. So the flush's fallout is its own work, the TLB refills
@@ -34,8 +34,10 @@ flush fallout is <= 117 ms; the stall windows run guest kernel code after a code
 two-page TBs (`[rr425]` gs) cost 175-372 ms of loop time in 2-3 Kabuki stalls. No fix, per the brief's
 guest-side branch. Details and ranked next steps: docs/lanes/flushstall787/NOTES.md section 5.
 
-Checks so far: the three files compile with the dispatcher build tree's NDK command, plain and NV2A_PERF_LOG=1
-(`ndk_check.py`). No desktop build on this host (AGENTS.md's known gap); the counter's own checks are the
+Every hook compiles only when XBOX && NV2A_PERF_LOG (HAKUX_TCG787), so the plain build is the pre-#787 code path:
+`ndk_check.py` compiles the three files plain and perflog with the dispatcher build tree's NDK command and counts
+#787 symbols per object, plain 0/0/0, perflog 4/20/4. Head run for the fold: `1-1791098627-lane.flushstall787-847488`
+(Kabuki, perflog, Nova, ref 0b8b63bef1). No desktop build on this host (AGENTS.md's known gap); the counter's own checks are the
 predictions' validity legs, read off the run.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
