@@ -1,0 +1,32 @@
+{
+  "registered_utc": "2026-09-26T22:47:00Z",
+  "who": "lane.perfregimen",
+  "issue": "none (harness; PR #444)",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "device": "nova",
+  "seconds": 250,
+  "frames_every": 0,
+  "perflog": true,
+  "runs_per_arm": 1,
+  "arms": [
+    "max(2/5)"
+  ],
+  "ref": "1d828b45e4",
+  "a_ref": "1d828b45e4",
+  "prediction": "A FOURTH ARM, registered after the idle probe and before any arm's result has been read. The probe (session 15:43 PDT) failed perfregimen-pilot-nova.json P2 in the world that leg names: at idle, fan_mode 3 (PERFORMANCE) holds PWM duty 12000, the same as 1/2/4, while 5 (SPORT) drives 25000 duty / 8100 rpm. So FAN_MAX becomes 5 in devices.sh. This arm runs MAX at 2/5 through soak_title.sh (ARMS=max SKIP_IDLE=1 held_session.sh nova, at 1d828b45e4), same title, same 250 s, same APK, in the same hold if the 30 min budget allows, else in the next one. It is judged against the REST arms of the first session: judge.py <session1> plus this arm's dir, with this file's expect. Legs: M0 as before (>= 15 gfps lines, read-back 2/5, restored). P3 its median fan duty under the title exceeds each REST arm's, and so does its GPU floor. It fails if SPORT is itself temperature-curved and the title never heats the device past the curve's knee. P5 non-inferiority, >= 0.97 x the mean REST fps. P6 the GUESS as before, >= 1.05 x REST.",
+  "expect": {
+    "rest_perf": 0,
+    "rest_fan": 4,
+    "max_perf": 2,
+    "max_fan": 5,
+    "M0/gfps_lines_min": 15,
+    "P1/idle_gpu_floor_max_gt_rest_is": true,
+    "P2/idle_fan_duty_max_mode_ge_all_is": true,
+    "P3/load_floor_and_duty_max_gt_rest_is": true,
+    "P4/rest_spread_max": 0.08,
+    "P5/max_over_rest_min": 0.97,
+    "P6/max_over_rest_guess": 1.05
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by docs/lanes/perfregimen/judge.py, not golden keys: a soak writes no captures and arms.sh skips soaks."
+}

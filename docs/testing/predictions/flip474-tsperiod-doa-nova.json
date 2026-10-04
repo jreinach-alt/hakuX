@@ -1,0 +1,33 @@
+{
+  "registered_utc": "2026-09-27T20:23:27Z",
+  "who": "lane.flip474",
+  "issue": "474",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "795ea6b3afcedac3d4fbc5ee7a94158d61b8acba",
+  "b_ref": "902cf1ab53869dea1a11891b0f0fbf78cd785d22",
+  "queue_order": "A1 B1, each request.sh --title, --device nova, --route survey, --seconds 300, --perflog, --expect this file",
+  "judge": "grep 'GPU timestamp' logcat.txt in each result; python3 docs/lanes/flip474/phaseread.py --from 151 --to 288 <A1> <B1>; the route's shots in the window, by eye; logcat -b crash in each result",
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/flip474-tsperiod-pgraph-inert.json (12 suites, identical captures, same refs)"
+  ],
+  "prediction": "#474: the GPU timestamp period measured at start-up. On the Nova, o4clock.py fitted 52.083 ns per tick (19.200 MHz) against the CPU clock, and limits.timestampPeriod says 33.11 ns (30.2 MHz). B measures it at init and uses the measured value. DOA's fight is the scene where the error was found: A's phase GPU reads ~40 ms a frame and the true span is ~64.",
+  "legs": {
+    "M0 (instrument)": ">= 30 hakuX-phase lines with GPU > 0 in the window in each run, and the route's shots show gameplay. Otherwise VOID, rerun once.",
+    "K0 (the line)": "B's logcat has exactly one 'init: GPU timestamp period reported=' line, with an uncertainty (+-) under 1%. A has the old 'GPU timestamps enabled (period=' line. KILL: B has no such line, or it says 'not measured'.",
+    "K1 (the value)": "B's measured= is 52.08 ns +-1% (51.56 to 52.60), reported= is 33.11 +-0.05, and using= is the measured value. KILL: measured outside 49.5 to 54.7 ns.",
+    "K2 (the choice)": "B's using= equals measured= when they differ by more than 2%, else reported=. A mismatch is a code bug: KILL.",
+    "G1 (the stats follow)": "B's phase GPU median / A's phase GPU median is within 15% of (B's using= / A's period=). Same route and window, so the GPU work is the same to within the day's variation, and the ratio is the period's.",
+    "G2 (physically possible)": "B's phase GPU median <= 1.05 x B's Tot median. A frame's GPU span cannot exceed the frame by more than the pipelining slack; a period set too long breaks this first.",
+    "P1 (no regression)": "B gfps median >= A - 1. The change adds about 100 ms once, at start-up.",
+    "H0 (no hang)": "B: longest gap between hakuX-perf lines in the window <= 3 s, lines to the end, no tombstone in logcat -b crash."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off the start-up 'GPU timestamp period' line and hakuX-phase lines (docs/lanes/flip474/phaseread.py), and the shots by eye."
+}

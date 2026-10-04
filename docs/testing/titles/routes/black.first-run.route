@@ -1,0 +1,46 @@
+# state: first-run   (recorded creating the profile; lane.savestate433)
+# Black (45410083), FIRST RUN: no Black profile on the disk. DRAFT, not yet
+# played: written from pass 1's frames (0-0-y-1790433159-titleplay-p1-black,
+# Thor, 2026-09-26), which show:
+#
+#   ~50 s "PRESS START"; START -> an opening-credits FMV of about 2.5 min
+#   that neither START nor A skipped; then a profile-name keyboard with the
+#   name KELLAR J. filled in and the cursor on DONE.
+#
+# Pass 1's play pattern pushed the stick and pressed A there, which typed
+# letters (KELLAR J. 1K UAA1AK...). The right input is A once, on DONE,
+# without touching the stick. What follows DONE was never seen, so from
+# `mark profile-saved` on this route surveys and never marks gameplay.
+wait 20
+shot boot20
+wait 30
+mark booted
+press START
+wait 5
+shot credits
+wait 60
+shot credits60
+wait 60
+shot credits120
+wait 40
+shot keyboard
+press A
+wait 6
+shot after-done
+mark profile-saved
+repeat 8 {
+    press A
+    wait 6
+    shot after-save
+}
+mark play
+repeat forever {
+    repeat 2 {
+        axis LY min
+        press A
+        wait 3
+        axis LY mid
+        wait 3
+    }
+    shot play
+}

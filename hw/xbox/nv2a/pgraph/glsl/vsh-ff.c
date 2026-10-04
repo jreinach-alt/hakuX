@@ -163,7 +163,175 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
         "  0x48u, 0x48u, 0x47u, 0x46u, 0x46u, 0x45u, 0x45u, 0x44u,\n"
         "  0x43u, 0x43u, 0x42u, 0x42u, 0x41u, 0x41u, 0x40u, 0x40u);\n"
         "const uint LT_NAN = 0x7FFFFC00u;\n"
-        "const uint LT_INF = 0x7F800000u;\n"
+        "const uint LT_INF = 0x7F800000u;\n");
+
+    /* The same arithmetic written for the compiler (#569). The forms below
+     * this block are loops, early returns and nested ?: that glslang turns
+     * into branches; a lit vertex shader inlines them some forty times, and
+     * Turnip's NIR loop spends most of a lit pipeline's compile (0.9-1.4 s
+     * on the host, 4.5-5.8x an unlit one) reshaping that control flow
+     * (docs/lanes/turnipcost569/NOTES.md). Here every helper is straight
+     * line: each case is computed and the special ones (NaN, infinity,
+     * zero, overflow) are picked last with mix(), which glslang always
+     * emits as OpSelect, so the result is the same word for every input
+     * (docs/lanes/litcompile569/lt_check.c checks each helper against the
+     * forms below). The three-component helpers work on all three lanes at
+     * once. mix() on uint and bool, and findMSB, need GLSL 4.50, so GLSL
+     * ES and desktop GL 4.00 keep the forms below. */
+    mstring_append(header,
+        "#if __VERSION__ >= 450\n"
+        "uint ltMkU(uint s, int e, uint m) {\n"
+        "  uint r = s << 31 | uint(e) << 23 | (m & 0x1FFFu) << 10;\n"
+        "  r = mix(r, s << 31 | 0x7F7FFFFFu, e >= 255);\n"
+        "  bool z = m == 0u || e <= 0;\n"
+        "  return mix(r, s << 31, z);\n"
+        "}\n"
+        "uvec3 ltMkU(uvec3 s, ivec3 e, uvec3 m) {\n"
+        "  uvec3 r = s << 31 | uvec3(e) << 23 | (m & 0x1FFFu) << 10;\n"
+        "  r = mix(r, s << 31 | 0x7F7FFFFFu, greaterThanEqual(e, ivec3(255)));\n"
+        "  r = mix(r, s << 31, equal(m, uvec3(0u)));\n"
+        "  return mix(r, s << 31, lessThanEqual(e, ivec3(0)));\n"
+        "}\n"
+        "vec3 ltMulV(vec3 fa, vec3 fb, bool signedInf) {\n"
+        "  uvec3 a = floatBitsToUint(fa), b = floatBitsToUint(fb);\n"
+        "  uvec3 s = (a ^ b) >> 31;\n"
+        "  ivec3 ea = ivec3(a >> 23 & 0xFFu), eb = ivec3(b >> 23 & 0xFFu);\n"
+        "  uvec3 ma = (a >> 10 & 0x1FFFu) | 0x2000u, mb = (b >> 10 & 0x1FFFu) | 0x2000u;\n"
+        "  ivec3 e = ea + eb - 127;\n"
+        "  uvec3 m = (ma * mb) >> 13;\n"
+        "  uvec3 c = m >> 14;\n"
+        "  ivec3 ec = e + ivec3(c);\n"
+        "  uvec3 r = s << 31 | uvec3(ec) << 23 | (m >> c & 0x1FFFu) << 10;\n"
+        "  r = mix(r, s << 31 | 0x7F7FFC00u, greaterThanEqual(ec, ivec3(255)));\n"
+        "  r = mix(r, s << 31, lessThanEqual(ec, ivec3(0)));\n"
+        "  uvec3 si = uvec3(signedInf);\n"
+        "  uvec3 inf = mix(uvec3(LT_INF), s << 31 | LT_INF, bvec3(si));\n"
+        "  r = mix(r, inf, bvec3(si & uvec3(greaterThanEqual(e, ivec3(255)))));\n"
+        "  uvec3 ta = uvec3(equal(ea, ivec3(255))), tb = uvec3(equal(eb, ivec3(255)));\n"
+        "  r = mix(r, inf, bvec3(ta | tb));\n"
+        "  r = mix(r, uvec3(0u), bvec3(uvec3(equal(ea, ivec3(0))) | uvec3(equal(eb, ivec3(0)))));\n"
+        "  uvec3 nan = ta & uvec3(greaterThan(ma, uvec3(0x2000u))) |\n"
+        "              tb & uvec3(greaterThan(mb, uvec3(0x2000u)));\n"
+        "  return uintBitsToFloat(mix(r, uvec3(LT_NAN), bvec3(nan)));\n"
+        "}\n"
+        "float ltM(float a, float b) { return ltMulV(vec3(a), vec3(b), false).x; }\n"
+        "float ltsM(float a, float b) { return ltMulV(vec3(a), vec3(b), true).x; }\n"
+        "vec3 ltVM(vec3 a, vec3 b) { return ltMulV(a, b, false); }\n"
+        "float ltA3(float x0, float x1, float x2) {\n"
+        "  uvec3 v = floatBitsToUint(vec3(x0, x1, x2));\n"
+        "  uvec3 mn = v & 0x7FFFFFu;\n"
+        "  uvec3 top = uvec3(equal(v & 0x7F800000u, uvec3(0x7F800000u)));\n"
+        "  uvec3 hasm = uvec3(notEqual(mn, uvec3(0u)));\n"
+        "  uvec3 sgn = v >> 31;\n"
+        "  bool anyNan = (top & hasm) != uvec3(0u);\n"
+        "  uvec3 infv = top & (1u - hasm);\n"
+        "  bool pinf = (infv & (1u - sgn)) != uvec3(0u);\n"
+        "  bool ninf = (infv & sgn) != uvec3(0u);\n"
+        "  ivec3 e = ivec3(v >> 23 & 0xFFu);\n"
+        "  uvec3 m = (mn | (uvec3(notEqual(e, ivec3(0))) << 23)) >> 10;\n"
+        "  int er = max(max(e.x, e.y), e.z) + 2;\n"
+        "  ivec3 sh = ivec3(er) - e - 7;\n"
+        "  uvec3 f = mix(m << uvec3(clamp(-sh, 0, 31)), m >> uvec3(clamp(sh, 0, 31)),\n"
+        "                greaterThanEqual(sh, ivec3(0)));\n"
+        "  f = mix(f, uvec3(0u), greaterThanEqual(sh, ivec3(32)));\n"
+        "  ivec3 fi = ivec3(f);\n"
+        "  fi = mix(fi, -fi, notEqual(sgn, uvec3(0u)));\n"
+        "  int r = fi.x + fi.y + fi.z;\n"
+        "  uint u = uint(abs(r));\n"
+        "  int sh2 = 20 - findMSB(u);\n"
+        "  u = u << uint(sh2) >> 7u;\n"
+        "  er -= sh2;\n"
+        "  bool big = er >= 255;\n"
+        "  uint res = ltMkU(uint(r < 0), mix(er, 254, big), mix(u, 0x3FFFu, big));\n"
+        "  res = mix(res, 0u, r == 0);\n"
+        "  bool inf = pinf || ninf;\n"
+        "  res = mix(res, LT_INF, inf);\n"
+        "  bool both = pinf && ninf;\n"
+        "  res = mix(res, LT_NAN, both);\n"
+        "  return uintBitsToFloat(mix(res, LT_NAN, anyNan));\n"
+        "}\n"
+        /* ltA3(a, b, 0.0) in each lane */
+        "vec3 ltVA(vec3 x0, vec3 x1) {\n"
+        "  uvec3 a = floatBitsToUint(x0), b = floatBitsToUint(x1);\n"
+        "  uvec3 mna = a & 0x7FFFFFu, mnb = b & 0x7FFFFFu;\n"
+        "  uvec3 ta = uvec3(equal(a & 0x7F800000u, uvec3(0x7F800000u)));\n"
+        "  uvec3 tb = uvec3(equal(b & 0x7F800000u, uvec3(0x7F800000u)));\n"
+        "  uvec3 za = uvec3(equal(mna, uvec3(0u))), zb = uvec3(equal(mnb, uvec3(0u)));\n"
+        "  uvec3 sa = a >> 31, sb = b >> 31;\n"
+        "  uvec3 nan = ta & (1u - za) | tb & (1u - zb);\n"
+        "  uvec3 ia = ta & za, ib = tb & zb;\n"
+        "  uvec3 pinf = ia & (1u - sa) | ib & (1u - sb);\n"
+        "  uvec3 ninf = ia & sa | ib & sb;\n"
+        "  ivec3 ea = ivec3(a >> 23 & 0xFFu), eb = ivec3(b >> 23 & 0xFFu);\n"
+        "  uvec3 ma = (mna | uvec3(notEqual(ea, ivec3(0))) << 23) >> 10;\n"
+        "  uvec3 mb = (mnb | uvec3(notEqual(eb, ivec3(0))) << 23) >> 10;\n"
+        "  ivec3 er = max(ea, eb) + 2;\n"
+        "  ivec3 sha = er - ea - 7, shb = er - eb - 7;\n"
+        "  ivec3 fa = ivec3(mix(ma << uvec3(clamp(-sha, 0, 31)), ma >> uvec3(clamp(sha, 0, 31)),\n"
+        "                       greaterThanEqual(sha, ivec3(0))));\n"
+        "  ivec3 fb = ivec3(mix(mb << uvec3(clamp(-shb, 0, 31)), mb >> uvec3(clamp(shb, 0, 31)),\n"
+        "                       greaterThanEqual(shb, ivec3(0))));\n"
+        "  ivec3 r = mix(fa, -fa, bvec3(sa)) + mix(fb, -fb, bvec3(sb));\n"
+        "  uvec3 u = uvec3(abs(r));\n"
+        "  ivec3 sh = 20 - findMSB(u);\n"
+        "  u = u << uvec3(sh) >> 7u;\n"
+        "  er -= sh;\n"
+        "  bvec3 big = greaterThanEqual(er, ivec3(255));\n"
+        "  uvec3 res = ltMkU(uvec3(lessThan(r, ivec3(0))), mix(er, ivec3(254), big),\n"
+        "                    mix(u, uvec3(0x3FFFu), big));\n"
+        "  res = mix(res, uvec3(0u), equal(r, ivec3(0)));\n"
+        "  res = mix(res, uvec3(LT_INF), bvec3(pinf | ninf));\n"
+        "  res = mix(res, uvec3(LT_NAN), bvec3(pinf & ninf));\n"
+        "  return uintBitsToFloat(mix(res, uvec3(LT_NAN), bvec3(nan)));\n"
+        "}\n"
+        "float ltDp(vec3 a, vec3 b) { vec3 p = ltVM(a, b); return ltA3(p.x, p.y, p.z); }\n"
+        "float ltsA(float fa, float fb) {\n"
+        "  uint a = floatBitsToUint(fa), b = floatBitsToUint(fb);\n"
+        "  bool ta = (a & 0x7F800000u) == 0x7F800000u, tb = (b & 0x7F800000u) == 0x7F800000u;\n"
+        "  bool za = (a & 0x7FFFFFu) == 0u, zb = (b & 0x7FFFFFu) == 0u;\n"
+        "  bool nan = ta && !za;\n"
+        "  bool nanb = tb && !zb;\n"
+        "  nan = nan || nanb;\n"
+        "  bool ia = ta && za;\n"
+        "  bool ib = tb && zb;\n"
+        "  bool inf = ia || ib;\n"
+        "  bool opp = ((a ^ b) >> 31) != 0u;\n"
+        "  bool both = ia && ib;\n"
+        "  both = both && opp;\n"
+        "  int ea = int(a >> 23 & 0xFFu), eb = int(b >> 23 & 0xFFu);\n"
+        "  uint ma = mix(0u, ((a & 0x7FFFFFu) >> 10) | 0x2000u, ea != 0);\n"
+        "  uint mb = mix(0u, ((b & 0x7FFFFFu) >> 10) | 0x2000u, eb != 0);\n"
+        "  int er = max(ea, eb) + 1;\n"
+        "  int fa2 = int(ma >> uint(min(er - ea - 1, 31)));\n"
+        "  int fb2 = int(mb >> uint(min(er - eb - 1, 31)));\n"
+        "  int r = mix(fa2, -fa2, (a >> 31) != 0u) + mix(fb2, -fb2, (b >> 31) != 0u);\n"
+        "  uint u = uint(abs(r));\n"
+        "  int sh = 14 - findMSB(u);\n"
+        "  uint res = ltMkU(uint(r < 0), er - sh, u << uint(sh) >> 1u);\n"
+        "  res = mix(res, 0u, r == 0);\n"
+        "  res = mix(res, mix(LT_INF, LT_NAN, both), inf);\n"
+        "  return uintBitsToFloat(mix(res, LT_NAN, nan));\n"
+        "}\n"
+        "float ltR(float fx) {\n"
+        "  uint x = floatBitsToUint(fx);\n"
+        "  uint sx = x >> 31;\n"
+        "  int ex = int(x >> 23 & 0xFFu);\n"
+        "  int er = 0xFD - ex;\n"
+        "  uint f = ((x & 0x7FFFFFu) + 0x800000u) >> 10;\n"
+        "  uint s0 = ltRcpLut[f >> 7 & 0x3Fu];\n"
+        "  uint s1 = (((1u << 21) - s0 * f) * s0 >> 14) << 11;\n"
+        "  uint fr = s1 - 0x800000u;\n"
+        "  uint res = mix(sx << 31 | uint(er) << 23 | (fr & 0x7FFFFFu), sx << 31, er <= 0);\n"
+        "  bool top = ex == 255;\n"
+        "  bool mz = (x & 0x7FFFFFu) == 0u;\n"
+        "  res = mix(res, 0u, top);\n"
+        "  res = mix(res, LT_INF, ex == 0);\n"
+        "  bool nan = top && !mz;\n"
+        "  return uintBitsToFloat(mix(res, LT_NAN, nan));\n"
+        "}\n"
+        "#else\n");
+
+    mstring_append(header,
         /* Index of the highest set bit of a nonzero value (no findMSB in
          * GLSL ES 3.00). */
         "int ltMsb(uint u) {\n"
@@ -280,7 +448,8 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
         "  uint fr = s1 - 0x800000u;\n"
         "  if (er <= 0) return uintBitsToFloat(sx << 31);\n"
         "  return uintBitsToFloat(sx << 31 | uint(er) << 23 | (fr & 0x7FFFFFu));\n"
-        "}\n");
+        "}\n"
+        "#endif\n");
 }
 
 struct LightingSide {
@@ -592,9 +761,35 @@ void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
 {
     append_lighting_header(header);
 
+    /*
+     * #53: which vertex the lighting unit lights. Not the program's own:
+     * vertex i of a lit program draw takes the inputs in ring slot
+     * (ringPhase + i) % 6, which still holds a fixed-function lit vertex
+     * from before (PGRAPHState.ff_lit_ring). The ring's phase is the
+     * command stream's, not the draw's (pgraph.c, pgraph_ring_weigh), so
+     * the four corners of one quad can land on any window of the last six
+     * fixed-function vertices -- the three-and-one corner codes described
+     * above. ringPhase is -1 for a draw whose vertex index is not its
+     * position in the draw (glsl/vsh.c), which keeps its own inputs.
+     *
+     * Only the lighting unit's inputs come from the ring: its outputs are
+     * recomputed here under this draw's registers, and the mux below still
+     * runs on this draw's LIGHT_CONTROL. Specular ControlFlags_VS's row 3
+     * shows the unfolded output of vertices whose own draw folded it.
+     */
+    mstring_append(body,
+        "  vec4 rV0 = v0, rV2 = v2, rV3 = v3, rV4 = v4;\n"
+        "  if (ringPhase >= 0.0) {\n"
+        "    int ringSlot = 6 * ((int(ringPhase) + ringVertexIndex) % 6);\n"
+        "    rV0 = ringInput[ringSlot + 0];\n"
+        "    rV2 = ringInput[ringSlot + 1];\n"
+        "    rV3 = ringInput[ringSlot + 2];\n"
+        "    rV4 = ringInput[ringSlot + 3];\n"
+        "  }\n");
+
     mstring_append(body, "  {\n"
-                         "  vec4 ltDiffuse = lt(v3);\n"
-                         "  vec4 ltSpecular = lt(v4);\n");
+                         "  vec4 ltDiffuse = lt(rV3);\n"
+                         "  vec4 ltSpecular = lt(rV4);\n");
 
     /* The eye-space geometry the lighting unit works in, built from the
      * fixed function transform registers with no skinning: a vertex program
@@ -602,8 +797,8 @@ void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
      * unit to follow. This is what the fixed function stage emits for
      * SKINNING_OFF. */
     mstring_append(
-        body, "  vec4 tPosition = v0 * modelViewMat0;\n"
-              "  vec3 tNormal = (vec4(v2.xyz, 0.0) * invModelViewMat0).xyz;\n");
+        body, "  vec4 tPosition = rV0 * modelViewMat0;\n"
+              "  vec3 tNormal = (vec4(rV2.xyz, 0.0) * invModelViewMat0).xyz;\n");
     if (state->normalization) {
         mstring_append(body, "  tNormal = normalize(tNormal);\n");
     }
@@ -717,11 +912,8 @@ void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
     }
 }
 
-void pgraph_glsl_gen_vsh_ff(const VshState *state, MString *header,
-                            MString *body)
+void pgraph_glsl_append_vsh_ff_header(MString *header)
 {
-    int i, j;
-
     mstring_append(header,
 "#define position      v0\n"
 "#define weight        v1\n"
@@ -845,6 +1037,14 @@ GLSL_DEFINE(texPlaneQ3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 3))
 "\n");
 
     append_lighting_header(header);
+}
+
+void pgraph_glsl_gen_vsh_ff(const VshState *state, MString *header,
+                            MString *body)
+{
+    int i, j;
+
+    pgraph_glsl_append_vsh_ff_header(header);
 
     unsigned int count;
     bool mix;

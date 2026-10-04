@@ -495,41 +495,36 @@ uint8_t *pgraph_convert_texture_data(const TextureShape s, const uint8_t *data,
          * to find out, and an abort produces none.
          */
         /*
-         * MEASURED 2026-09-12, because issue #10 keeps being pointed here.
-         * This is the ONLY YUV decode in the tree -- there is no separate
-         * path for a bump consumer -- and convert_ycbcr_to_rgb() already
-         * rounds each term separately (52defa5b). It is bit-exact against
-         * hardware as a colour lookup: Texture_format's TexFmt_YUY2_L and
-         * TexFmt_UYVY_L are 0 differing px of 307,200 each.
+         * Uploaded RAW, measured on the console 2026-09-26
+         * (docs/testing/xbox-csc-2026-09-26.md, #10): the fetch returns
+         * (R, G, B, A) = (the texel's own Y, the pair's Cb, the pair's Cr,
+         * 255), and with SET_CONTROL0's colour-space field off that is what
+         * the stage outputs. The conversion to RGB is the field's, applied
+         * in the pixel shader after the texture shader (glsl/psh.c), so a
+         * bump or luminance stage reading this texture sees Y, Cb and Cr.
          *
-         * So the 445,984 px that #10 attributes to "YUV bump source" is NOT a
-         * rounding or precision gap in this function, and re-deriving the
-         * decode will not move it. The four bump captures' goldens hold
-         * (16,84,16) and (72,255,18) -- greens -- where TEX1, the only thing
-         * the final combiner selects, is an explicit A8R8G8B8 checkerboard of
-         * (255,0,0) and (127,32,33). Hardware is not returning a TEX1 cell at
-         * all for a YUV bump source, so no displacement and no channel
-         * assignment reachable from here can produce it. One raw-byte
-         * implementation was already built and measured: 111,496 px before,
-         * 111,496 after. See docs/investigations/bump-yuv-source.md.
+         * This retires the earlier reading (docs/investigations/
+         * bump-yuv-source.md) that hardware returns no TEX1 cell for a YUV
+         * bump source: it returns the cell, converted, because the field
+         * converts every stage and not only the YUV one. Texture_format's
+         * TexFmt_YUY2_L and TexFmt_UYVY_L set the field (pbkitplusplus
+         * nv2astate.cpp sets it whenever stage 0 is YUV), so they are the
+         * shader converter's control.
          */
-        // FIXME: only valid if control0 register allows for colorspace
-        // conversion
         size = width * height * depth * 4;
         converted_data = g_malloc(size);
         uint8_t *pixel = converted_data;
+        bool yuy2 = s.color_format ==
+                    NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8;
         for (int z = 0; z < depth; z++) {
             for (int y = 0; y < height; y++) {
                 const uint8_t *line = data + z * slice_pitch + y * row_pitch;
                 for (int x = 0; x < width; x++, pixel += 4) {
-                    if (s.color_format ==
-                        NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8) {
-                        convert_yuy2_to_rgb(line, x, &pixel[0], &pixel[1],
-                                            &pixel[2]);
-                    } else {
-                        convert_uyvy_to_rgb(line, x, &pixel[0], &pixel[1],
-                                            &pixel[2]);
-                    }
+                    /* YUY2 bytes are Y0 Cb Y1 Cr; UYVY's are Cb Y0 Cr Y1. */
+                    const uint8_t *pair = line + (x & ~1) * 2;
+                    pixel[0] = yuy2 ? pair[(x & 1) * 2] : pair[(x & 1) * 2 + 1];
+                    pixel[1] = yuy2 ? pair[1] : pair[0];
+                    pixel[2] = yuy2 ? pair[3] : pair[2];
                     pixel[3] = 255;
                 }
             }

@@ -1,0 +1,21 @@
+{
+  "registered_utc": "2026-09-27T13:32:12Z",
+  "who": "lane.retreason425",
+  "issue": "425",
+  "prediction": "#425 idle halt: d259abab29 adds HAKUX_IDLE_HLT (default off) to accel/tcg/cpu-exec.c on top of the [rr425] counters already judged inert (PASS, 593 checks). With the variable unset the new code only reads getenv once and returns, so every capture in these 8 suites scores identically between master f131dd11c6 and d259abab29. A moved capture means the counters or the unset flag changed guest-visible behaviour.",
+  "a_ref": "f131dd11c6",
+  "b_ref": "d259abab29",
+  "must_not_move": [
+    "Blend_tests/*",
+    "Depth_buffer/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Surface_clip/*",
+    "3D_primitive/*",
+    "Fog_gen/*",
+    "Specular/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": []
+}

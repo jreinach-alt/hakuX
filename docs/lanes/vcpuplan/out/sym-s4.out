@@ -1,0 +1,37 @@
+tid 16027: 23492 samples
+  jit        12662   53.9%
+  lookup      5353   22.8%
+  softmmu     1847    7.9%
+  fp          1094    4.7%
+  mmio         143    0.6%
+  translate     97    0.4%
+  loop         248    1.1%
+  kernel       479    2.0%
+  other       1569    6.7%
+
+top symbols outside the JIT
+   9.54%  lookup    tb_lookup  [libxemu.so]
+   6.16%  lookup    helper_lookup_tb_ptr  [libxemu.so]
+   4.37%  lookup    qht_lookup_custom  [libxemu.so]
+   1.93%  softmmu   tlb_set_page_full  [libxemu.so]
+   1.80%  lookup    tb_lookup_cmp  [libxemu.so]
+   1.76%  fp        helper_mulss  [libxemu.so]
+   1.21%  softmmu   tlb_reset_dirty  [libxemu.so]
+   1.18%  softmmu   probe_access_internal  [libxemu.so]
+   1.16%  other     voice_lock  [libxemu.so]
+   1.09%  kernel    *[kernel.kallsyms][+ffffffef40e45d8c]  [[kernel.kallsyms]]
+   0.79%  fp        helper_subss  [libxemu.so]
+   0.74%  fp        helper_addss  [libxemu.so]
+   0.68%  lookup    x86_get_tb_cpu_state  [libxemu.so]
+   0.61%  fp        helper_comiss  [libxemu.so]
+   0.60%  softmmu   mmu_translate  [libxemu.so]
+   0.59%  other     [linker]tlsdesc_resolver_dynamic  [linker64]
+   0.59%  softmmu   do_ld4_mmu  [libxemu.so]
+   0.56%  loop      cpu_exec_loop  [libxemu.so]
+   0.53%  other     curr_cflags  [libxemu.so]
+   0.38%  softmmu   qemu_ram_block_from_host  [libxemu.so]
+   0.36%  other     find_next_bit  [libxemu.so]
+   0.34%  softmmu   get_page_addr_code_hostp  [libxemu.so]
+   0.34%  other     q_tree_lookup  [libxemu.so]
+   0.33%  softmmu   mmu_lookup1  [libxemu.so]
+   0.33%  other     tb_tc_cmp  [libxemu.so]

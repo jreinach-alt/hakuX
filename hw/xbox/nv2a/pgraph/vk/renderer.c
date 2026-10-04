@@ -113,46 +113,281 @@ static void check_driver_identity_and_wipe_caches(PGRAPHVkState *r)
                                   (uint32_t)sizeof(VshState) * 3266489917u +
                                   SHADER_STATE_LAYOUT_VERSION;
 
-    bool match = false;
+    /*
+     * #569 P3 item 4: only the pipeline cache depends on the driver. SPIR-V
+     * and the persisted module and pipeline keys depend on the key layout
+     * alone, so a driver update keeps them, and the pre-build
+     * (vk/compile_worker.c) rebuilds the driver's binaries from them.
+     */
+    bool match = false, layout_match = false;
     gchar *data = NULL;
     gsize len = 0;
     if (g_file_get_contents(id_path, &data, &len, NULL) &&
         len == sizeof(GpuDriverIdentity)) {
         match = memcmp(data, &current, sizeof(GpuDriverIdentity)) == 0;
+        layout_match = ((GpuDriverIdentity *)data)->shader_state_layout ==
+                       current.shader_state_layout;
     }
     g_free(data);
 
+    char *plc_path = g_strdup_printf("%svk_pipeline_cache.bin", base);
     if (!match) {
-        char *spv_dir = g_strdup_printf("%sspv_cache", base);
-        char *plc_path = g_strdup_printf("%svk_pipeline_cache.bin", base);
-
         VK_LOG("Driver or shader-state layout changed -- wiping caches");
 #ifdef __ANDROID__
         __android_log_print(ANDROID_LOG_INFO, "hakuX-vk",
-            "Cache identity mismatch: wiping spv_cache and pipeline cache "
+            "Cache identity mismatch: wiping %s "
             "(vendor=%04x device=%04x driverVer=%08x layout=%08x)",
+            layout_match ? "the pipeline cache (driver only)" :
+                           "spv_cache, keys and pipeline cache",
             current.vendor_id, current.device_id, current.driver_version,
             current.shader_state_layout);
 #else
-        fprintf(stderr, "xemu-vk: Cache identity mismatch: wiping caches "
+        fprintf(stderr, "xemu-vk: Cache identity mismatch: wiping %s "
                 "(vendor=%04x device=%04x driverVer=%08x layout=%08x)\n",
+                layout_match ? "the pipeline cache (driver only)" :
+                               "spv_cache, keys and pipeline cache",
                 current.vendor_id, current.device_id, current.driver_version,
                 current.shader_state_layout);
 #endif
 
-        char *smk_path = g_strdup_printf("%sshader_module_keys.bin", base);
-        remove_directory_recursive(spv_dir);
         unlink(plc_path);
-        unlink(smk_path);
-        g_free(spv_dir);
-        g_free(plc_path);
-        g_free(smk_path);
+        if (!layout_match) {
+            char *spv_dir = g_strdup_printf("%sspv_cache", base);
+            char *smk_path = g_strdup_printf("%sshader_module_keys.bin", base);
+            char *pk_dir = g_strdup_printf("%spipeline_keys", base);
+            remove_directory_recursive(spv_dir);
+            unlink(smk_path);
+            remove_directory_recursive(pk_dir);
+            g_free(spv_dir);
+            g_free(smk_path);
+            g_free(pk_dir);
+        }
 
         g_file_set_contents(id_path, (const gchar *)&current,
                             sizeof(GpuDriverIdentity), NULL);
     }
 
+    /* #569 P3's falsifier arm: start with no pipeline cache file, keys kept */
+    const char *wipe = getenv("HAKUX_PLC_WIPE");
+    if (wipe && !strcmp(wipe, "1")) {
+        int rc = unlink(plc_path);
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+                            "[pb569] HAKUX_PLC_WIPE=1: vk_pipeline_cache.bin %s",
+                            rc == 0 ? "removed" : "absent");
+#else
+        fprintf(stderr, "[pb569] HAKUX_PLC_WIPE=1: vk_pipeline_cache.bin %s\n",
+                rc == 0 ? "removed" : "absent");
+#endif
+    }
+    g_free(plc_path);
+
     g_free(id_path);
+}
+
+/*
+ * limits.timestampPeriod is not trusted. The Nova's Adreno reports 33.11 ns
+ * (30.2 MHz) while its timestamps tick every 52.08 ns (19.2 MHz), so every GPU
+ * phase figure read 0.636 of the true value (#474). In perflog builds, the
+ * only ones that print the figures it scales, the period is measured against
+ * the CPU clock instead.
+ *
+ * Each sample submits a command buffer that writes one timestamp and waits
+ * for it: the tick was written between the submit and the fence, so the
+ * sample's CPU time is that window's middle, uncertain by half its width.
+ * Samples with a window over four times the narrowest are dropped.
+ *
+ * The counter does not run through an idle GPU. The first cut of this slept
+ * 100 ms between two groups of samples, and on the Thor the counter advanced
+ * 1.2 ms over that 110 ms, for a "period" of 4636 ns. So the samples are taken
+ * back to back, and the measurement tests the one thing it depends on: the
+ * second half of the span leaves the GPU idle for GPU_TS_CAL_GAP_US after
+ * every sample, and the first half does not. A counter that stops in a short
+ * idle gap gives the two halves different slopes.
+ *
+ * The period is the slope of a line through all the kept samples. It is used
+ * only when the ticks only rise, the two halves agree within 2%, no sample is
+ * further from the line than 2% of the span, and it differs from the reported
+ * period by more than 2% and by more than that scatter. Anything else keeps
+ * the reported period and logs why, so a driver that reports correctly keeps
+ * its value. The period feeds only the GPU phase stats (gpu_ts_readback); no
+ * rendering reads it.
+ */
+#define GPU_TS_CAL_SPAN_NS 120000000LL
+#define GPU_TS_CAL_GAP_US 300
+#define GPU_TS_CAL_MAX_SAMPLES 1024
+#define GPU_TS_CAL_MIN_SAMPLES 8
+
+typedef struct GpuTsSample {
+    uint64_t tick;
+    int64_t mid_ns;
+    int64_t width_ns;
+} GpuTsSample;
+
+/* Least-squares slope of CPU ns over ticks, both taken from the first sample
+ * so the sums stay small. Returns 0 when the ticks do not spread. */
+static double gpu_ts_slope(const GpuTsSample *s, int n)
+{
+    double mx = 0.0, my = 0.0, sxx = 0.0, sxy = 0.0;
+
+    for (int i = 0; i < n; i++) {
+        mx += (double)(s[i].tick - s[0].tick);
+        my += (double)(s[i].mid_ns - s[0].mid_ns);
+    }
+    mx /= n;
+    my /= n;
+    for (int i = 0; i < n; i++) {
+        double dx = (double)(s[i].tick - s[0].tick) - mx;
+        double dy = (double)(s[i].mid_ns - s[0].mid_ns) - my;
+        sxx += dx * dx;
+        sxy += dx * dy;
+    }
+    return sxx > 0.0 ? sxy / sxx : 0.0;
+}
+
+/* The largest distance of a sample from the line of that slope, in ns. */
+static double gpu_ts_scatter(const GpuTsSample *s, int n, double slope)
+{
+    double off = 0.0, worst = 0.0;
+
+    for (int i = 0; i < n; i++) {
+        off += (double)(s[i].mid_ns - s[0].mid_ns) -
+               slope * (double)(s[i].tick - s[0].tick);
+    }
+    off /= n;
+    for (int i = 0; i < n; i++) {
+        double d = (double)(s[i].mid_ns - s[0].mid_ns) -
+                   slope * (double)(s[i].tick - s[0].tick) - off;
+        worst = MAX(worst, d < 0.0 ? -d : d);
+    }
+    return worst;
+}
+
+static void gpu_ts_calibrate(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    float reported = r->device_props.limits.timestampPeriod;
+
+    r->gpu_ts_period_ns = reported;
+
+    if (!NV2A_PERF_LOG) {
+        VK_LOG_ERROR("init: GPU timestamps enabled (period=%.2f ns)",
+                     reported);
+        return;
+    }
+
+    VkQueryPoolCreateInfo ci = {
+        .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+        .queryType = VK_QUERY_TYPE_TIMESTAMP,
+        .queryCount = 1,
+    };
+    VkQueryPool pool;
+    if (vkCreateQueryPool(r->device, &ci, NULL, &pool) != VK_SUCCESS) {
+        VK_LOG_ERROR("init: GPU timestamp period %.3f ns (reported; "
+                     "not measured: no query pool)", reported);
+        return;
+    }
+
+    GpuTsSample *s = g_new(GpuTsSample, GPU_TS_CAL_MAX_SAMPLES);
+    int n = 0, split = -1;
+    bool rising = true;
+    int64_t narrowest = INT64_MAX;
+    int64_t start = get_clock();
+
+    while (n < GPU_TS_CAL_MAX_SAMPLES) {
+        int64_t elapsed = get_clock() - start;
+        if (elapsed >= GPU_TS_CAL_SPAN_NS) {
+            break;
+        }
+        bool gapped = elapsed >= GPU_TS_CAL_SPAN_NS / 2;
+        if (gapped && split < 0) {
+            split = n;
+        }
+
+        VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
+        vkCmdResetQueryPool(cmd, pool, 0, 1);
+        vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, pool, 0);
+        int64_t t0 = get_clock();
+        pgraph_vk_end_single_time_commands(pg, cmd);
+        int64_t t1 = get_clock();
+
+        uint64_t tick;
+        if (vkGetQueryPoolResults(r->device, pool, 0, 1, sizeof(tick), &tick,
+                                  sizeof(tick), VK_QUERY_RESULT_64_BIT) ==
+            VK_SUCCESS) {
+            if (n > 0 && tick <= s[n - 1].tick) {
+                rising = false;
+            }
+            s[n].tick = tick;
+            s[n].mid_ns = t0 + (t1 - t0) / 2;
+            s[n].width_ns = t1 - t0;
+            narrowest = MIN(narrowest, s[n].width_ns);
+            n++;
+        }
+        if (gapped) {
+            g_usleep(GPU_TS_CAL_GAP_US);
+        }
+    }
+    vkDestroyQueryPool(r->device, pool, NULL);
+
+    /* Keep the narrow windows, and keep count of where the halves meet. */
+    int taken = n, kept = 0, kept_split = 0;
+    for (int i = 0; i < n; i++) {
+        if (s[i].width_ns <= 4 * narrowest) {
+            if (split >= 0 && i < split) {
+                kept_split++;
+            }
+            s[kept++] = s[i];
+        }
+    }
+    if (split < 0) {
+        kept_split = kept;
+    }
+
+    const char *why = NULL;
+    double measured = 0.0, err = 0.0, halves = 0.0, span_ns = 0.0;
+
+    if (!rising) {
+        why = "the counter went back or stood still";
+    } else if (kept_split < GPU_TS_CAL_MIN_SAMPLES ||
+               kept - kept_split < GPU_TS_CAL_MIN_SAMPLES) {
+        why = "too few samples";
+    } else {
+        double first = gpu_ts_slope(s, kept_split);
+        double second = gpu_ts_slope(s + kept_split, kept - kept_split);
+
+        measured = gpu_ts_slope(s, kept);
+        span_ns = (double)(s[kept - 1].mid_ns - s[0].mid_ns);
+        if (measured <= 0.0 || first <= 0.0 || second <= 0.0 ||
+            span_ns <= 0.0) {
+            why = "no slope";
+        } else {
+            err = gpu_ts_scatter(s, kept, measured) / span_ns;
+            halves = first > second ? first / second - 1.0
+                                    : second / first - 1.0;
+            if (halves > 0.02) {
+                why = "the counter's rate changes with the GPU's idle gaps";
+            } else if (err > 0.02) {
+                why = "the samples do not lie on a line";
+            }
+        }
+    }
+    g_free(s);
+
+    double ratio = measured > 0.0 ? measured / reported : 1.0;
+    double dev = ratio > 1.0 ? ratio - 1.0 : 1.0 - ratio;
+    bool use = !why && dev > MAX(0.02, err);
+
+    if (use) {
+        r->gpu_ts_period_ns = measured;
+    }
+    VK_LOG_ERROR("init: GPU timestamp period reported=%.3f ns measured=%.3f ns "
+                 "(+-%.2f%%, span %.1f ms, samples %d of %d, halves differ "
+                 "%.2f%%) using=%.3f ns (%s%s%s)",
+                 reported, measured, err * 100.0, span_ns / 1e6, kept, taken,
+                 halves * 100.0, r->gpu_ts_period_ns,
+                 use ? "measured" : "reported",
+                 why ? "; not measured: " : "", why ? why : "");
 }
 
 #if HAVE_EXTERNAL_MEMORY
@@ -242,6 +477,9 @@ static void pgraph_vk_init(NV2AState *d, Error **errp)
     pgraph_vk_init_shaders(pg);
     VK_LOG_ERROR("init: pipelines");
     pgraph_vk_init_pipelines(pg);
+#if OPT_ASYNC_COMPILE
+    pgraph_vk_prebuild_start(pg);
+#endif
     VK_LOG_ERROR("init: textures");
     pgraph_vk_init_textures(pg);
     pgraph_vk_texture_dump_init();
@@ -260,9 +498,7 @@ static void pgraph_vk_init(NV2AState *d, Error **errp)
             VK_CHECK(vkCreateQueryPool(r->device, &ts_ci, NULL,
                                        &r->gpu_ts_pool));
             r->gpu_ts_supported = true;
-            r->gpu_ts_period_ns = r->device_props.limits.timestampPeriod;
-            VK_LOG_ERROR("init: GPU timestamps enabled (period=%.2f ns)",
-                         r->gpu_ts_period_ns);
+            gpu_ts_calibrate(pg);
         } else {
             r->gpu_ts_supported = false;
             VK_LOG_ERROR("init: GPU timestamps not supported");
@@ -305,6 +541,9 @@ static void pgraph_vk_finalize(NV2AState *d)
     pgraph_vk_texture_replace_shutdown();
     pgraph_vk_texture_dump_shutdown();
     pgraph_vk_finalize_textures(pg);
+#if OPT_ASYNC_COMPILE
+    pgraph_vk_prebuild_stop(pg->vk_renderer_state);
+#endif
     pgraph_vk_finalize_pipelines(pg);
     pgraph_vk_finalize_shaders(pg);
     pgraph_vk_finalize_surfaces(pg);
@@ -382,6 +621,13 @@ static void diag_download_surface(NV2AState *d, PGRAPHState *pg,
 
     /* Only handle simple color surfaces (4bpp, no swizzle, no depth/stencil) */
     if (!surface->color || surface->swizzle) return;
+
+    /* The copy below writes BUFFER_STAGING_DST at offset 0. A submitted
+     * download batch (the flip's pre-download stays pending across draws
+     * since #474) still has its copies there, and the caller's finish does
+     * not complete a batch from an earlier frame slot. Retire it first, or
+     * it later writes this surface's pixels into its own surfaces' VRAM. */
+    pgraph_vk_download_surface_complete_deferred(d);
 
     VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
 

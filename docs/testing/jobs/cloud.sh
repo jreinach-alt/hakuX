@@ -378,24 +378,116 @@ if [ "$active" -ge "$LANE_MAX" ] && [ "$mode" != list ]; then
 fi
 
 # ------------------------------------------------------------- what to claim
-pr_by_label() {   # <label> -> "num<TAB>head<TAB>title" of the oldest claimable match
+# THE LIST IS A CANDIDATE LIST, NOT A CLAIM LIST (measured 2026-09-26 15:03
+# PDT). `gh pr list --label` is served from GitHub's search index, which lags a
+# label added seconds earlier. The tick after the one that claimed audit2 #420
+# listed #420 as unclaimed, "claimed" it again, re-added its row, and then --
+# systemd-run refusing the unit that already existed -- ran the no-session
+# rollback below, which removed the RUNNING session's row and claimed:cloud.
+# fleet.py failed "RUNNING with no territory row" until the host put it back.
+# So every candidate is checked again, by number, against the two things that
+# cannot lag: the units systemd is running, and the labels the REST endpoint
+# returns (the one label_rm already trusts; a PR is an issue for labels).
+unit_busy() {   # <num> -> the hakux-lane-cloud-*-<num> unit(s) running, stopping or starting
+    # ANY kind, not just the one being claimed: a remediation of #N and an
+    # audit of #N are two sessions on one branch, and PR and issue numbers
+    # share one sequence. list-units, not is-active: it answers for a glob,
+    # and "deactivating" is the tail (`cloud.sh finish`) still releasing it.
+    systemctl --user list-units "hakux-lane-cloud-*-$1.service" --all --plain --no-legend \
+        --state=active,activating,deactivating,reloading 2>/dev/null | awk '{print $1}'
+}
+# A PR'S OWN LANE IS A SESSION ON ITS BRANCH TOO (measured 2026-09-27).
+# unit_busy only sees hakux-lane-cloud-*. PR #523 (lane/thermal507-power) was
+# claimed for audit1 at 01:24Z and for remediate at 01:34Z while
+# hakux-lane-thermal507 was still running in $WORK/wt/thermal507 on that
+# branch; the remediation (fe5940a6e2) and the lane's master merge
+# (20502ec594) landed minutes apart, with a rejected push the only thing
+# between them and a clobber -- and the audit had graded a moving target.
+# A lane's unit is hakux-lane-<x> and its worktree $WORK/wt/<x> (lane.sh), so
+# the branch that worktree has checked out is the branch that session writes.
+lane_on_branch() {   # <branch> -> each non-cloud hakux-lane-<x> unit running in a worktree on it
+    local u x b
+    systemctl --user list-units 'hakux-lane-*.service' --all --plain --no-legend \
+        --state=active,activating,deactivating,reloading 2>/dev/null | awk '{print $1}' |
+    while read -r u; do
+        x=${u#hakux-lane-}; x=${x%.service}
+        case "$x" in ''|cloud-*) continue ;; esac
+        b=$(git -C "$WORK/wt/$x" symbolic-ref -q --short HEAD 2>/dev/null) || continue
+        [ "$b" = "$1" ] && echo "hakux-lane-$x"
+    done
+}
+held_why() {    # <num> <kind> [<head from the list>] -> prints why it may not be claimed; exit 0 when held
+    local busy have head lane
+    busy=$(unit_busy "$1")
+    [ -n "$busy" ] && { echo "unit $(echo $busy) is running"; return 0; }
+    if [ "$2" != issue ]; then
+        # FAIL CLOSED, as the label read below: a head that could not be read
+        # is not a head no lane is on. An empty answer falls back to the list's
+        # row (a PR's head branch never changes), and to held if that is empty.
+        head=$(gh api "repos/$GH_REPO/pulls/$1" --jq '.head.ref' 2>/dev/null </dev/null) \
+            || { echo "its head branch could not be read by number"; return 0; }
+        head=${head:-${3:-}}
+        [ -n "$head" ] || { echo "its head branch could not be read by number"; return 0; }
+        lane=$(lane_on_branch "$head")
+        [ -n "$lane" ] && { echo "its lane $(echo $lane) is still running on $head"; return 0; }
+    fi
+    # FAIL CLOSED: labels that could not be read are not labels that are absent.
+    have=$(gh api "repos/$GH_REPO/issues/$1/labels" --jq '.[].name' 2>/dev/null </dev/null) \
+        || { echo "its labels could not be read by number"; return 0; }
+    grep -qFx claimed:cloud <<< "$have" && { echo "it carries claimed:cloud (read by number; the list lagged)"; return 0; }
+    grep -qFx blocked:needs-owner <<< "$have" && { echo "it carries blocked:needs-owner (read by number)"; return 0; }
+    [ "$2" = issue ] && grep -q '^lane:' <<< "$have" && { echo "it carries a lane: label (read by number)"; return 0; }
+    return 1
+}
+first_free() {  # <kind>, candidates on stdin -> the first row nothing holds
+    local n h t why
+    while IFS=$'\t' read -r n h t <&3; do
+        [ -n "$n" ] || continue
+        why=$(held_why "$n" "$1" "$h") || { printf '%s\t%s\t%s\n' "$n" "$h" "$t"; return 0; }
+        if [ "$mode" = list ]; then echo "skip $1 #$n: $why" >&2; else say "skip $1 #$n: $why" >&2; fi
+    done 3<&0
+    return 0
+}
+pr_by_label() {   # <label> -> every "num<TAB>head<TAB>title" match, oldest first
     # NO HEAD-BRANCH FILTER. Every PR the harness opens is a lane's, and the
     # lane/cloud- prefix that used to be here made every one of them invisible.
     # Skipped: one a session already holds, and one the owner has been asked
     # to decide (blocked:needs-owner), which is what stops a failing unit from
-    # being claimed forever.
+    # being claimed forever. first_free re-checks both by number.
     gh pr list --repo "$GH_REPO" --state open --label "$1" --json number,headRefName,title,labels \
-        --jq 'sort_by(.number)[] | select((.labels | map(.name) | map(select(. == "claimed:cloud" or . == "blocked:needs-owner")) | length) == 0) | "\(.number)\t\(.headRefName)\t\(.title)"' 2>/dev/null | head -1
+        --jq 'sort_by(.number)[] | select((.labels | map(.name) | map(select(. == "claimed:cloud" or . == "blocked:needs-owner")) | length) == 0) | "\(.number)\t\(.headRefName)\t\(.title)"' 2>/dev/null
 }
+# THE BOARD'S FOCUS (2026-09-27): with BOARD_FOCUS_LABEL set in limits.env,
+# board.sh offers only the issues that carry it, and this outlet offered #527
+# (accuracy,needs-triage,cloud) anyway -- a way around the focus. Read it the
+# way board.sh does (limits.env, sourced above, or the environment), and drop
+# a non-focus issue here, before first_free. PR audits and remediations are
+# not issues and are not filtered.
+FOCUS=$(printf '%s' "${BOARD_FOCUS_LABEL:-}" | tr -d '[:space:]')
 issue_cloud() {
-    gh issue list --repo "$GH_REPO" --state open --label cloud --json number,title,labels \
-        --jq 'sort_by(.number)[] | select((.labels | map(.name) | map(select(startswith("lane:") or . == "claimed:cloud" or . == "blocked:needs-owner")) | length) == 0) | "\(.number)\t\t\(.title)"' 2>/dev/null | head -1
+    local row l dropped="" us=$'\x1f'
+    # A row is "num<TAB><TAB>title<US>labels": the labels ride after a unit
+    # separator so the row first_free reads is the one it always read.
+    while IFS= read -r row; do
+        [ -n "$row" ] || continue
+        l=""; [[ "$row" == *"$us"* ]] && l=${row##*"$us"}
+        row=${row%"$us"*}
+        if [ -n "$FOCUS" ] && ! tr ',' '\n' <<< "$l" | grep -qFx -- "$FOCUS"; then
+            dropped="$dropped #${row%%$'\t'*}"; continue
+        fi
+        printf '%s\n' "$row"
+    done < <(gh issue list --repo "$GH_REPO" --state open --label cloud --json number,title,labels \
+        --jq 'sort_by(.number)[] | select((.labels | map(.name) | map(select(startswith("lane:") or . == "claimed:cloud" or . == "blocked:needs-owner")) | length) == 0) | "\(.number)\t\t\(.title)\u001f\(.labels | map(.name) | join(","))"' 2>/dev/null)
+    # One line on stderr; the rows go down the pipe to first_free.
+    [ -n "$dropped" ] || return 0
+    local msg="skip issue$dropped: not in the $FOCUS focus (BOARD_FOCUS_LABEL=$FOCUS)"
+    if [ "$mode" = list ]; then echo "$msg" >&2; else say "$msg" >&2; fi
 }
 kind=""; row=""
-row=$(pr_by_label needs-remediation); [ -n "$row" ] && kind=remediate
-[ -z "$row" ] && { row=$(pr_by_label needs-audit-2); [ -n "$row" ] && kind=audit2; }
-[ -z "$row" ] && { row=$(pr_by_label needs-audit-1); [ -n "$row" ] && kind=audit1; }
-[ -z "$row" ] && { row=$(issue_cloud); [ -n "$row" ] && kind=issue; }
+row=$(pr_by_label needs-remediation | first_free remediate); [ -n "$row" ] && kind=remediate
+[ -z "$row" ] && { row=$(pr_by_label needs-audit-2 | first_free audit2); [ -n "$row" ] && kind=audit2; }
+[ -z "$row" ] && { row=$(pr_by_label needs-audit-1 | first_free audit1); [ -n "$row" ] && kind=audit1; }
+[ -z "$row" ] && { row=$(issue_cloud | first_free issue); [ -n "$row" ] && kind=issue; }
 [ -n "$row" ] || { [ "$mode" = list ] && echo "nothing to claim"; exit 0; }
 IFS=$'\t' read -r num head title <<< "$row"
 name="cloud-$kind-$num"; unit="hakux-lane-$name"; wt="$WORK/wt/$name"
@@ -561,6 +653,22 @@ case "$kind" in
         # from the same name, so it removes its own predecessor first.
         git -C "$REPO" worktree add --quiet --detach "$wt" "origin/$branch" \
             || { say "cannot create $wt for #$num on $branch; not claiming"; exit 5; }
+        # AUDITS SIZED TO THE DIFF. Pass 1 reads emulator code and stays on
+        # MODEL_AUDIT; pass 2 only verifies pass 1's own scenarios, which is a
+        # small task exactly when pass 1 found nothing worth fixing. The
+        # pass-1 file this audit2 task is itself told to read (below) is the
+        # source of truth: a `## HIGH` or `## MEDIUM` finding heading in any
+        # docs/audits/*-<lane>-pass1*.md on this branch means pass 1 (or a
+        # remediation since) had something to verify away, so pass 2 stays on
+        # MODEL_AUDIT; none present means pass 1 found no HIGH or MEDIUM and
+        # pass 2 runs on MODEL_BOOKKEEPING. HAKUX_MODEL and the attempt
+        # escalation both still win -- checked the same way the attempt loop
+        # above set MODEL, not by comparing values that could coincide.
+        if [ "$kind" = audit2 ] && [ -z "${HAKUX_MODEL:-}" ] && [ "$n" -le "$LANE_ESCALATE_AFTER" ]; then
+            if ! grep -lE '^#{2,4} *(HIGH|MEDIUM)[^a-zA-Z]' "$wt"/docs/audits/*-"${head#lane/}"-pass1*.md >/dev/null 2>&1; then
+                MODEL="$MODEL_BOOKKEEPING"
+            fi
+        fi
         case "$kind" in
             remediate) succ_human="needs-audit-2 or fold-ready" ;;
             *)         succ_human="needs-audit-2, needs-remediation or fold-ready" ;;
@@ -697,6 +805,21 @@ systemd-run --user --unit "$unit" --collect \
         # what it was claimed for, and the next tick should pick it up. The
         # attempt is given back for the same reason, by the EXIT trap, which
         # only a started unit clears.
+        #
+        # UNLESS A UNIT IS RUNNING. systemd-run also fails when the unit
+        # already exists, and then the claim below is not this tick's to drop:
+        # it is the running session's, and its own ExecStopPost releases it.
+        # That is the #420 incident (15:04 PDT 2026-09-26): this branch removed
+        # a live session's row and label. first_free refuses such a number up
+        # front; this is the check for whatever still gets past it (two ticks
+        # racing). The attempt is still given back by the trap -- this tick
+        # started nothing -- and the snapshot is left, because it is the one
+        # the running unit's tail executes from.
+        busy=$(unit_busy "$num")
+        if [ -n "$busy" ]; then
+            say "$unit was not started, and $(echo $busy) is running: this is a collision, not a failed start; the claim, row and snapshot are the running session's, so nothing is undone"
+            exit 0
+        fi
         say "systemd-run failed for $unit; dropping the claim so the next tick can pick #$num up again"
         territory_row rm "$name" '[]' '[]' ''
         # if/else, not `A && x || y`: label_rm returning 1 on the issue path

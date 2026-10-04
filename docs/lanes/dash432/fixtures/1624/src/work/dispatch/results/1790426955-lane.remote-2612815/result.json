@@ -1,0 +1,7 @@
+{
+ "requester": "lane.remote",
+ "purpose": "#274 SFP guard perf leg ghoulies arm a (nova)",
+ "ref": "6c25a829ef",
+ "device_label": "nova",
+ "apk_sha": "f9cd09cd324b"
+}

@@ -88,48 +88,127 @@ echo "== dispatch deploy: the snapshot is closed under what its scripts run"
 # and a Python import, which resolves against the script's own directory.
 # Only names of files that exist beside the scripts count; a comment naming
 # one counts too, which errs towards shipping more.
+#
+# A REFERENCE RESOLVES AGAINST THE DIRECTORY OF THE FILE THAT MAKES IT, and x
+# may be a path (titles/route.sh, ../perf/pad.sh). This used to read every
+# reference against docs/testing/ and only as a bare name, so titles/route.sh
+# running $HERE/drive.py and titles/classify.py importing waitfor_match
+# looked for docs/testing/drive.py and docs/testing/waitfor_match.py, found
+# nothing, and passed -- while no worker could run a `drive` step (#433,
+# lane.snapdrive).
+#
+# And a DIRECTORY a script picks a file from by a variable --
+# "$HERE/drive-profiles/${w[1]}.toml" -- ships whole, because which file is
+# read is decided by a route nobody has written yet. A selftest/ directory
+# under it is fixtures and does not ship.
+SHIPPED_ALL="$SNAPPED $(dep_env 'snapshot_globbed' | tr '\n' ' ')"
 unshipped() {   # <dir> <shipped...> -> "<ref> <- <file>" for each sibling left out
     python3 - "$@" <<'PY'
 import os, re, sys
 d, shipped = sys.argv[1], set(sys.argv[2:])
-ref = re.compile(r'''(?:\$\{?(?:HERE|SNAP)\}?"?/|pwd\)"?/|os\.path\.join\(\s*HERE\s*,\s*["'])([A-Za-z0-9_.-]+\.(?:sh|py))''')
+name = r'((?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+\.(?:sh|py))'
+ref = re.compile(r'''(?:\$\{?(?:HERE|SNAP)\}?"?/|pwd\)"?/|os\.path\.join\(\s*HERE\s*,\s*["'])''' + name)
+dref = re.compile(r'''\$\{?(?:HERE|SNAP)\}?"?/((?:[A-Za-z0-9_-][A-Za-z0-9_.-]*/)+)\$''')
 imp = re.compile(r'^\s*(?:import|from)\s+([A-Za-z_]\w*)', re.M)
 for f in sorted(shipped):
+    if not f.endswith((".sh", ".py")):
+        continue
+    base = os.path.dirname(f)
     try:
         text = open(os.path.join(d, f), errors="replace").read()
     except OSError:
         continue
-    found = {m.group(1) for m in ref.finditer(text)} | \
-            {m.group(1) + ".py" for m in imp.finditer(text)}
+    found = {os.path.normpath(os.path.join(base, m.group(1))) for m in ref.finditer(text)} | \
+            {os.path.normpath(os.path.join(base, m.group(1) + ".py")) for m in imp.finditer(text)}
     for r in sorted(found - shipped - {f}):
         if os.path.isfile(os.path.join(d, r)):
             print("%s <- %s" % (r, f))
+    for sub in sorted({os.path.normpath(os.path.join(base, m.group(1))) for m in dref.finditer(text)}):
+        for root, dirs, files in os.walk(os.path.join(d, sub)):
+            dirs[:] = sorted(x for x in dirs if x not in ("selftest", "__pycache__"))
+            for fn in sorted(files):
+                r = os.path.relpath(os.path.join(root, fn), d)
+                if r not in shipped:
+                    print("%s <- %s (directory %s/)" % (r, f, sub))
 PY
 }
-gap=$(unshipped "$TESTING" $SNAPPED)
+gap=$(unshipped "$TESTING" $SHIPPED_ALL)
 if [ -z "$gap" ]; then
-    ok "every sibling a shipped script runs is shipped ($(printf '%s' "$SNAPPED" | wc -w) files)"
+    ok "every sibling a shipped script runs is shipped ($(printf '%s' "$SHIPPED_ALL" | wc -w) files)"
 else
     bad "a shipped script runs a sibling the snapshot does not carry -- in a worker it does not exist:"
     printf '%s\n' "$gap" | sed 's/^/       /'
 fi
+# The profiles are in that set, so the check above is looking at them.
+case " $SHIPPED_ALL " in
+    *" titles/drive-profiles/sonic-heroes.toml "*" titles/drive-profiles/sonic-heroes/hud.png "*)
+        ok "the shipped set holds the drive profiles and their crops" ;;
+    *) bad "the shipped set holds no drive profile -- snapshot_globbed gave: $(dep_env 'snapshot_globbed' | head -3 | tr '\n' ' ')" ;;
+esac
+case " $SHIPPED_ALL " in
+    *"/selftest/"*) bad "the shipped set carries drive-profiles/selftest/ fixtures" ;;
+    *) ok "  and nothing under drive-profiles/selftest/ (fixtures)" ;;
+esac
 # The check must be able to fail, once per form it claims to read. Each
-# mutant is a copy of the shipped files with one reference appended to its
-# dispatcher.sh, pointing at an EMPTY placeholder: the copies are only read,
-# never run, and there is nothing in the placeholder to run if they were.
+# mutant is a copy of the shipped files with one reference appended to one of
+# them, pointing at an EMPTY placeholder: the copies are only read, never
+# run, and there is nothing in the placeholder to run if they were.
 DM="$T/deploy-mutant"
+mut_copy() {
+    local f
+    rm -rf "$DM"; mkdir -p "$DM"
+    for f in $SHIPPED_ALL; do mkdir -p "$DM/$(dirname "$f")"; cp "$TESTING/$f" "$DM/$f" 2>/dev/null; done
+}
 for form in '$HERE/probe_only.sh' \
             '$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/probe_only.sh' \
             'os.path.join(HERE, "probe_only.py")' \
             'import probe_only'; do
-    rm -rf "$DM"; mkdir -p "$DM"
-    for f in $SNAPPED; do cp "$TESTING/$f" "$DM/$f" 2>/dev/null; done
+    mut_copy
     : > "$DM/probe_only.sh"; : > "$DM/probe_only.py"
     printf '\n%s\n' "$form" >> "$DM/dispatcher.sh"
-    case "$(unshipped "$DM" $SNAPPED)" in
+    case "$(unshipped "$DM" $SHIPPED_ALL)" in
         *"probe_only."*" <- dispatcher.sh"*) ok "the closure check sees a sibling run as: $form" ;;
         *) bad "the closure check is BLIND to a sibling run as: $form" ;;
     esac
 done
+# In a subdirectory, against that subdirectory: the two forms the drive step
+# uses (route.sh's $HERE/drive.py, classify.py's import of waitfor_match).
+for form in '$HERE/probe_only.sh' 'from probe_only import X'; do
+    mut_copy
+    : > "$DM/titles/probe_only.sh"; : > "$DM/titles/probe_only.py"
+    printf '\n%s\n' "$form" >> "$DM/titles/classify.py"
+    case "$(unshipped "$DM" $SHIPPED_ALL)" in
+        *"titles/probe_only."*" <- titles/classify.py"*) ok "the closure check sees a subdirectory sibling run as: $form" ;;
+        *) bad "the closure check is BLIND to a subdirectory sibling run as: $form" ;;
+    esac
+done
+# A file in the directory route.sh picks profiles from that is not shipped
+# (what a profile outside the globs would be), and one under selftest/, which
+# must not be asked for.
+mut_copy
+mkdir -p "$DM/titles/drive-profiles/probe" "$DM/titles/drive-profiles/selftest"
+: > "$DM/titles/drive-profiles/probe/crop.png"; : > "$DM/titles/drive-profiles/selftest/fixture.jpg"
+got=$(unshipped "$DM" $SHIPPED_ALL)
+case "$got" in
+    *"titles/drive-profiles/probe/crop.png <- titles/route.sh"*)
+        ok "the closure check sees an unshipped file in the directory route.sh picks profiles from" ;;
+    *) bad "the closure check is BLIND to an unshipped file in drive-profiles/: $got" ;;
+esac
+case "$got" in
+    *fixture.jpg*) bad "the closure check asks for drive-profiles/selftest/ fixtures to ship" ;;
+    *) ok "  and leaves drive-profiles/selftest/ fixtures out" ;;
+esac
+# And on the real tree, the two members the drive step was missing: drop one
+# from the shipped set and the check must name it and who needs it.
+got=$(unshipped "$TESTING" $(printf '%s\n' $SHIPPED_ALL | grep -vx 'titles/waitfor_match.py'))
+case "$got" in
+    *"titles/waitfor_match.py <- titles/classify.py"*) ok "unshipped waitfor_match.py is caught as classify.py's import" ;;
+    *) bad "unshipped waitfor_match.py was not caught as classify.py's import: $got" ;;
+esac
+got=$(unshipped "$TESTING" $(printf '%s\n' $SHIPPED_ALL | grep -vx 'titles/drive-profiles/sonic-heroes.toml'))
+case "$got" in
+    *"titles/drive-profiles/sonic-heroes.toml <- titles/route.sh"*) ok "an unshipped profile is caught as route.sh's" ;;
+    *) bad "an unshipped profile was not caught: $got" ;;
+esac
 rm -rf "$DM"
-unset DD DM gap
+unset DD DM gap got SHIPPED_ALL

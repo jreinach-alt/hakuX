@@ -4,8 +4,15 @@
 #
 #   request.sh --who bump-agent --purpose "bump map baseline" \
 #              --suites "Bump map,Bump env lum" [--ref HEAD] [--runs 1] [--wait] \
-#              [--skip-tests "Suite::Test,..."] [--device nova|thor|desktop] \
-#              (--expect predictions/x.json | --no-expect "why not")
+#              [--skip-tests "Suite::Test,..."] [--device nova|thor|desktop [--hard-pin]] \
+#              (--expect predictions/x.json | --no-expect "why not") \
+#              [--issue 474[,525]]    # else the first #N in --purpose
+#              [--priority blocker|arm|study|sweep]   # default study
+#
+# An issue labelled for the release (HAKUX_RELEASE_LABEL, default 0.5) queues
+# the request as 1-<epoch>-..., ahead of plain requests; see "release
+# priority" at the id below. --priority blocker queues 0-<epoch>-... ahead of
+# both, and --priority sweep queues z-<epoch>-... in the idle tier.
 #
 #   request.sh --who audio --purpose "baseline" --title "Galleon (USA).xiso.iso" \
 #              --seconds 90 --pull 'apu_monitor.s16le48k2ch.pcm*' \
@@ -103,6 +110,9 @@ AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""; ONLY_TESTS=""; PROGRAM="pgraph"
 ENV_VARS=()
 FRAMES_EVERY=0
 ROUTE=""; ROUTE_TEXT=""
+ISSUE=""
+IDENTIFIED=""
+PIN=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -145,6 +155,11 @@ while [ $# -gt 0 ]; do
         --arm) ARM="$2"; shift 2;;
         --runs) RUNS="$2"; shift 2;;
         --device) DEVICE="$2"; shift 2;;
+        # --hard-pin makes --device absolute for an `arms-*` requester, whose
+        # --device is otherwise a load pin affinity.py lets fall through when
+        # the device is not serving. The arms job's same-device re-run of a
+        # confounded pair uses it: falling through there re-creates the split.
+        --hard-pin) PIN=hard; shift;;
         --title) TITLE="$2"; shift 2;;
         --seconds) SECONDS_HOLD="$2"; shift 2;;
         --pull) PULL_GLOB="$2"; shift 2;;
@@ -158,6 +173,11 @@ while [ $# -gt 0 ]; do
         --expect) EXPECT="$2"; shift 2;;
         --no-expect) NO_EXPECT="$2"; shift 2;;
         --wait) WAIT=1; shift;;
+        # The issue(s) this request serves, for its release priority only
+        # (below, at the id). Without it, the first #N in --purpose.
+        --issue) ISSUE="${ISSUE:+$ISSUE,}$2"; shift 2;;
+        --identified) IDENTIFIED="$2"; shift 2;;
+        --priority) PRIORITY="$2"; shift 2;;
         *) echo "unknown option $1" >&2; exit 2;;
     esac
 done
@@ -165,6 +185,11 @@ done
 # keeps the log, for questions with no golden framebuffer (the test discs are
 # silent, so nothing about audio can be asked of them).
 [ -n "$WHO" ] || { echo "need --who" >&2; exit 2; }
+PRIORITY="${PRIORITY:-study}"
+case "$PRIORITY" in
+    blocker|arm|study|sweep) ;;
+    *) echo "unknown --priority '$PRIORITY': blocker, arm, study or sweep" >&2; exit 2;;
+esac
 [ -n "$SUITES" ] || [ -n "$TITLE" ] || { echo "need --suites, or --title for a soak" >&2; exit 2; }
 # --runs is honoured only on the disc path; the soak path runs once and always
 # has. Accepting it there and ignoring it hands the requester a one-sample
@@ -195,6 +220,7 @@ fi
 # mentions the variable. It also could not see `desktop`, which is an
 # execution target with NO SERIAL and so has no row in the serial-keyed table
 # for any such regex to find. `devices.sh labels` enumerates both kinds.
+[ -z "$PIN" ] || [ -n "$DEVICE" ] || { echo "--hard-pin needs --device" >&2; exit 2; }
 if [ -n "$DEVICE" ]; then
     KNOWN=$(bash "$(dirname "$0")/devices.sh" labels)
     printf '%s\n' "$KNOWN" | grep -qx "$DEVICE" || {
@@ -698,7 +724,79 @@ else
     echo "cannot resolve --ref $REF to a commit" >&2; exit 2
 fi
 
-ID="$(date +%s)-$WHO-$$"
+# The id is the request's only priority: the dispatcher serves queue/*.req in
+# glob (ASCII) order. HAKUX_RELEASE_PRIO=1 (set by ab_run.sh and arms.sh for an
+# issue labelled for the current release, #432) names it 1-<epoch>-..., which
+# sorts after every 0-* probe and host-promoted 0-0-x-* head, and ahead of
+# every plain <epoch>-... request ('-' is 0x2d, below any digit) and every
+# z-* sweep. Readers of an id that want the epoch strip a leading tier prefix
+# ("0-", "1-" or "z-", from --priority below) first.
+#
+# A LANE QUEUING DIRECTLY GETS IT TOO (2026-09-27). Only ab_run.sh and arms.sh
+# read the label, so a pilot or soak queued straight through here got a plain
+# id even for an issue labelled for the release: at 19:46 PDT eleven such
+# requests (#474, #525, #526, all 0.5 + fps-focus) sat 60-73 min on the Nova
+# behind arms queued up to 45 min later, until the host renamed them by hand.
+# So this reads the label itself, the way arms.sh's release_prio() does: the
+# issue is --issue (a list, "88,91"), else the first #N in --purpose; one
+# `gh api` read per issue; any one labelled is enough; a failed read is said
+# and the request queues at normal priority -- a label never refuses.
+#   HAKUX_RELEASE_PRIO=1        release priority, no read
+#   HAKUX_RELEASE_PRIO=0        plain id, no read
+#   HAKUX_RELEASE_PRIO= (set, empty)  plain id, no read: ab_run.sh and arms.sh
+#                               pass their own reader's answer this way
+#   unset                       read the label
+#
+# --priority (defect 22) NAMES THE TIER INSTEAD OF RENAMING THE FILE. Until it
+# existed, the only lever above the release tier was the host renaming a queued
+# request to a 0-0- id by hand. On 2026-09-25, #311's reproduction, a 0.5
+# blocker, waited 163 min on the Nova until it was renamed. The tiers, in the
+# dispatcher's ASCII order:
+#   blocker   0-<epoch>-...   behind the host's own 0-0-* heads, ahead of all
+#                             else. It must name the issue it unblocks
+#                             (--issue, or #N in --purpose). No label is read.
+#   arm       as study. The two are recorded apart in the request's
+#   study     `priority` field but share a tier: the release label (below)
+#             already lifts a release arm, and putting every arm ahead of
+#             release studies is a decision this flag does not take.
+#   sweep     z-<epoch>-...   the idle tier, beside queue_full_sweep.sh's z-*.
+#                             arms.sh and status.sh count it apart. No read.
+RELEASE_LABEL="${HAKUX_RELEASE_LABEL:-0.5}"
+PRIO=""
+if [ "$PRIORITY" = blocker ]; then
+    BLOCKS="$ISSUE"
+    [ -n "$BLOCKS" ] || BLOCKS=$(printf '%s' "$PURPOSE" | grep -o '#[0-9][0-9]*' | head -1)
+    if [ -z "$BLOCKS" ]; then
+        echo "refusing to queue: --priority blocker names no issue; give --issue N (or #N in --purpose) for what it unblocks" >&2
+        exit 2
+    fi
+    PRIO=0; PRIO_WHY="blocker: --priority blocker for ${BLOCKS#\#}"
+elif [ "$PRIORITY" = sweep ]; then
+    PRIO=z; PRIO_WHY="idle: --priority sweep"
+elif [ "${HAKUX_RELEASE_PRIO+set}" = set ]; then
+    case "$HAKUX_RELEASE_PRIO" in
+        ""|0) PRIO_WHY="plain: HAKUX_RELEASE_PRIO='$HAKUX_RELEASE_PRIO' set by the caller" ;;
+        *) PRIO=1; PRIO_WHY="release: HAKUX_RELEASE_PRIO=$HAKUX_RELEASE_PRIO set by the caller" ;;
+    esac
+else
+    PRIO_ISSUES="$ISSUE"
+    [ -n "$PRIO_ISSUES" ] || PRIO_ISSUES=$(printf '%s' "$PURPOSE" | grep -o '#[0-9][0-9]*' | head -1)
+    if [ -z "$PRIO_ISSUES" ]; then
+        PRIO_WHY="plain: no --issue and no #N in --purpose"
+    else
+        PRIO_WHY="plain: '$RELEASE_LABEL' not on $PRIO_ISSUES"
+        for n in $(printf '%s' "$PRIO_ISSUES" | tr ',#' '  '); do
+            [[ "$n" =~ ^[0-9]+$ ]] || continue
+            if ! labels=$(gh api "repos/${GH_REPO:-jreinach-alt/hakuX}/issues/$n" --jq '.labels[].name' 2>/dev/null); then
+                echo "release priority: could not read #$n's labels; queueing at normal priority" >&2
+                PRIO_WHY="plain: #$n's labels unreadable"; continue
+            fi
+            grep -qxF -- "$RELEASE_LABEL" <<<"$labels" && { PRIO=1; PRIO_WHY="release: '$RELEASE_LABEL' on #$n"; break; }
+        done
+    fi
+fi
+echo "priority $PRIO_WHY" >&2
+ID="${PRIO:+$PRIO-}$(date +%s)-$WHO-$$"
 mkdir -p "$D/queue"
 # Written to a dotfile and renamed into place, because the dispatcher globs
 # `queue/*.req` and a claim is an atomic rename of whatever it finds. Writing
@@ -1022,18 +1120,114 @@ fi
 # was played -- an edit to the route after queueing cannot change a run that
 # is already waiting. It is parsed here too (route.sh --check), so a typo is
 # refused at the prompt rather than twenty minutes into a soak.
+#
+# THE ROUTE'S STATE (lane.savestate433). A route is written on a disk that
+# either carries the title's profile or does not, and declares which in its
+# `# state: returning|first-run|any` line. The dispatcher builds the title's
+# disk to match (titlestate.py compose: the title's GOLDEN profile, or none on
+# a first-run). `--route <base>` of a first-run/returning family resolves to
+# `.returning` when the title has a golden and `.first-run` when it has none;
+# a variant named outright is taken as named. A route whose state the disk
+# cannot match -- `returning` with no golden, or no `# state:` line at all --
+# is refused HERE, before any device time: that mismatch was the void (Tron
+# 2.0 in Options > Display, 187 and Castlevania on Name Entry, 10-01/02).
+TITLE_ID=""; TITLE_STATE="any"
+TS_PY="$(dirname "$0")/titles/titlestate.py"
+export TITLESTATE_DIR="${TITLESTATE_DIR:-$D/titlestate}"
+[ -z "$TITLE" ] || TITLE_ID=$(python3 "$TS_PY" tid-for-iso "$TITLE" 2>/dev/null)
 if [ -n "$ROUTE" ]; then
     [ -n "$TITLE" ] || { echo "--route only means anything on a soak (--title)" >&2; exit 2; }
-    ROUTE_PATH="$(dirname "$0")/titles/routes/$ROUTE.route"
+    RES=$(python3 "$TS_PY" resolve-route --route "$ROUTE" ${TITLE_ID:+--title-id "$TITLE_ID"} \
+          ${DEVICE:+--device "$DEVICE"} 2>&1)
+    RREFUSE=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or "")' "$RES" 2>/dev/null) \
+        || RREFUSE="titlestate.py resolve-route failed: $RES"
+    if [ -n "$RREFUSE" ]; then
+        echo "refusing to queue: $RREFUSE" >&2; exit 2
+    fi
+    ROUTE_PATH=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["path"])' "$RES")
+    TITLE_STATE=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["state"])' "$RES")
+    RNAME=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["route_name"])' "$RES")
+    [ "$RNAME" = "$ROUTE" ] || echo "route: $ROUTE -> $RNAME (${TITLE_ID:-?} $([ "$TITLE_STATE" = returning ] && echo has || echo 'has no') golden profile)" >&2
+    ROUTE="$RNAME"
     [ -f "$ROUTE_PATH" ] || { echo "refusing to queue: no route '$ROUTE' ($ROUTE_PATH)" >&2; exit 2; }
     bash "$(dirname "$0")/titles/route.sh" --check "$ROUTE_PATH" >/dev/null || exit 2
+    # AND AS THE RUN WILL SEE IT. The run does not play this file: the
+    # dispatcher writes the text to <result dir>/route.txt and the worker
+    # plays it with the SNAPSHOT's route.sh. A `drive` profile resolves
+    # against the snapshot's titles/drive-profiles/, and a `waitfor` or
+    # `press-until` crop against <result dir>/refs/route.txt/, which nothing
+    # writes. A route that fails there exits at its first line and the soak
+    # runs on with no input (lane.routedriver), so the check above passing on
+    # this tree said nothing about the run. Check the copy the run gets, with
+    # the serving snapshot's route.sh; failing that, with the serving tree's,
+    # which a worker re-snapshots from before it claims anything (src_hash
+    # covers the profiles, and a worker snapshots at startup).
+    SNAPBIN="${DISPATCH_DIR:-$D}/bin"
+    SERVER="${DISPATCH_TREE:-/home/justin/hakuX}/docs/testing"
+    RCHK=$(mktemp -d); cp "$ROUTE_PATH" "$RCHK/route.txt"
+    rmsg=""; rok=""; rsh=""
+    for rsh in "$SNAPBIN/titles/route.sh" "$SERVER/titles/route.sh"; do
+        [ -f "$rsh" ] || continue
+        # The serving tree only stands in for a snapshot it will refresh.
+        [ "$rsh" = "$SERVER/titles/route.sh" ] && ! grep -q '^snapshot_globbed()' "$SERVER/dispatcher.sh" 2>/dev/null && continue
+        if out=$(bash "$rsh" --check "$RCHK/route.txt" 2>&1); then rok=1; break; fi
+        rmsg="$rmsg$(printf '\n  %s: %s' "$rsh" "$out")"
+    done
+    # Neither exists (a private DISPATCH_DIR, a host with no serving tree):
+    # this tree's route.sh on the copy still sees the crops that do not travel.
+    if [ -z "$rok" ] && [ -z "$rmsg" ]; then
+        out=$(bash "$(dirname "$0")/titles/route.sh" --check "$RCHK/route.txt" 2>&1) && rok=1 \
+            || rmsg=$(printf '\n  %s' "$out")
+    fi
+    rm -rf "$RCHK"
+    if [ -z "$rok" ]; then
+        cat >&2 <<MSG
+refusing to queue: route '$ROUTE' parses here but would not run in the dispatched soak:$rmsg
+
+A 'waitfor' or 'press-until' crop does not travel with the request: the run
+plays <result dir>/route.txt, and nothing writes its refs/. A 'drive' profile
+must be in the serving snapshot ($SNAPBIN/titles/drive-profiles/) or on the
+serving tree's master. The soak would run with no input after the first line.
+MSG
+        exit 2
+    fi
     ROUTE_TEXT=$(cat "$ROUTE_PATH")
+fi
+
+# THE FAILURE GATE (lane.failgate, #433, 2026-10-03). A failed or unproven run
+# goes for identification before its title is queued again: host-tools/
+# failure_intake.py writes an IDENTIFIED record for each scored failure, and
+# `gate <title-id> <route-file>` exits 1 with a HELD line while one is open for
+# this title and its route and golden are unchanged since it failed. Castlevania
+# was queued three times after failures nobody had identified. The tool is on
+# the lane host only; CI and a fresh checkout have none and queue as before.
+#
+# --identified <result-dir-or-id> admits a held title, and is written into the
+# request as "identified". The host adds that id to pm/failure-resolved.txt,
+# which the gate reads. This script never writes outside the repo.
+FI_PY="${HAKUX_FAILURE_INTAKE:-$HOME/hakux-work/host-tools/failure_intake.py}"
+if [ -n "$TITLE_ID" ] && [ -f "$FI_PY" ]; then
+    FI_OUT=$(python3 "$FI_PY" gate "$TITLE_ID" "${ROUTE_PATH:-}" 2>&1) && FI_RC=0 || FI_RC=$?
+    case "$FI_RC:$FI_OUT" in
+        0:*) ;;
+        1:HELD*)
+            if [ -z "$IDENTIFIED" ]; then
+                echo "refusing to queue: $FI_OUT" >&2
+                echo "  identify the failure first, then pass --identified <result-dir-or-id>" >&2
+                exit 3
+            fi
+            echo "admitted: $TITLE_ID is held, identified by $IDENTIFIED: $FI_OUT" >&2 ;;
+        *)
+            echo "refusing to queue: failure_intake gate failed (exit $FI_RC): $FI_OUT" >&2
+            exit 3 ;;
+    esac
 fi
 
 # `env` goes LAST and as the remaining argv, because it is the only repeatable
 # option here and packing it into one comma-joined string -- the shape every
 # other list option uses -- would make a value containing a comma unqueueable.
-ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" \
+ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" PRIORITY="$PRIORITY" PIN="$PIN" \
+TITLE_ID="$TITLE_ID" TITLE_STATE="$TITLE_STATE" IDENTIFIED="$IDENTIFIED" \
 python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" "$PROGRAM" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
@@ -1048,6 +1242,8 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            "ref": ref, "arm": arm, "runs": int(runs),
            "title": title, "seconds": int(seconds),
            "device": device,
+           # "hard" or absent: see --hard-pin and affinity.py _is_load_pin.
+           **({"pin": "hard"} if __import__("os").environ.get("PIN") == "hard" else {}),
            "pull_glob": pull_glob,
            "audio_capture": arm_audio,
            "base_iso": base_iso,
@@ -1063,8 +1259,17 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            # The route's name and its full text as queued; see --route.
            "route_name": __import__("os").environ.get("ROUTE", ""),
            "route": __import__("os").environ.get("ROUTE_TEXT", ""),
+           # The title (its targets.toml id) and the disk state its route
+           # declares: the dispatcher composes the titles disk to match.
+           "title_id": __import__("os").environ.get("TITLE_ID", ""),
+           "title_state": __import__("os").environ.get("TITLE_STATE", "any") or "any",
+           # The failure identified before a held title was queued again
+           # (--identified; see the failure gate above). Empty when none.
+           "identified": __import__("os").environ.get("IDENTIFIED", ""),
            "expect": expect, "expect_sha": expect_sha,
            "no_expect": no_expect,
+           # The tier asked for (--priority); the id's prefix is its effect.
+           "priority": __import__("os").environ.get("PRIORITY", "study"),
            "queued_utc": __import__("datetime").datetime.now(
                __import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")},
           open(p, "w"), indent=2)
@@ -1100,7 +1305,8 @@ except Exception as e:
 if r.get("title"):
     print("soak: %s, %ss%s%s" % (r["title"], r["seconds"],
                                ", env " + " ".join(r["env"]) if r.get("env") else "",
-                               ", route " + r["route_name"] if r.get("route") else ""))
+                               ", route " + r["route_name"] if r.get("route") else "")
+          + " [%s %s]" % (r.get("title_id") or "title ?", r.get("title_state") or "any"))
 else:
     print("%sdisc: %d suite(s) [%s], only_tests %d, skip_tests %d, runs %d"
           % ("vsh " if r.get("program") == "vsh" else "",
@@ -1115,6 +1321,100 @@ case "$SUMMARY" in
         rm -f "$D/queue/.$ID.req.tmp"
         exit 2 ;;
 esac
+# THE PILOT GATE (owner, 2026-09-26): no requester holds a device for more than
+# 30 minutes without a reviewed pilot. "If something is going to hold the
+# device for more than, say, 30 minutes, we need to test the first few minutes
+# to confirm our approach is valid before dispatching the remainder of the
+# work." titleplay's pass 1 queued 29 soaks of 420 s at once; they held the only
+# live handheld for hours, and the route reached clean gameplay in 7 of 15
+# titles -- which the first two runs' frames would have shown.
+#
+# The estimate is read off the record just written, the one the dispatcher
+# will read, and summed with every queue/*.req and running/*.req carrying the
+# same requester: `seconds` + 90 s of setup, times `runs`; a request with no
+# `seconds` counts 180 s. It is the SAME estimate as the host's after-the-fact
+# check, `[device-budget]` in host-tools/harness_health.py; change both or
+# neither. Note that this script writes `seconds` 60 on every suite run too
+# (the --seconds default), so a suite request counts (60+90) x runs here and
+# there; the 180 s branch is reached only by records written elsewhere
+# (queue_full_sweep.sh's `full-sweep` requests).
+#
+# The first 30 min always goes through; that IS the pilot. Past it, the
+# enqueue needs $D/pilots/<requester>.ok, less than 24 h old, recording the
+# pilot's result ids, what they showed and the date. The 30 min is the owner's;
+# 24 h, 90 s and 180 s are the host's.
+#
+# Writers of queue/ that do not come through here, and why they are exempt:
+# dispatcher.sh and desktop_channel.sh requeue a request that was already
+# admitted (net zero), queue_full_sweep.sh writes the idle `z-` tier that any
+# epoch request pre-empts, and host-tools/park_requests.sh --restore is the
+# host putting back a batch it parked.
+#
+# Callers of this script that the gate does not judge:
+# - arms.sh (`arms-<name>-base` / `-fix`). An arm is one registered prediction,
+#   admitted per prediction and already paired; `<name>` pools unrelated lanes
+#   (every remote lane's arms are `arms-remote-*`), and arms.sh records any
+#   refusal as permanent against the prediction. A queue-state refusal there
+#   would skip an arm forever and tell the lane to fix a prediction that is fine.
+# Callers that stage the record in a private DISPATCH_DIR and move it into the
+# real queue themselves (docs/lanes/titleplay/tools/queue.py) set
+# PILOT_DISPATCH_DIR to the real dispatch dir: the gate sums and looks for the
+# pilot THERE, not in the staging dir, so neither a split plan nor a fresh
+# tempdir starts the count at zero.
+PILOT_D=${PILOT_DISPATCH_DIR:-$D}
+if ! python3 - "$PILOT_D" "$WHO" "$D/queue/.$ID.req.tmp" <<'PYPILOT'
+import glob, json, os, sys, time
+d, who, new = sys.argv[1:4]
+LIMIT, VALID = 30 * 60, 24 * 3600
+if who.startswith("arms-"):
+    raise SystemExit(0)
+
+def est(rq):
+    try:
+        sec = int(rq.get("seconds") or 0)
+        return (sec + 90) * int(rq.get("runs") or 1) if sec > 0 else 180
+    except (TypeError, ValueError):
+        return 180  # a record not written here; counted like one with no `seconds`
+
+mine = []
+for rf in glob.glob(d + "/queue/*.req") + glob.glob(d + "/running/*.req"):
+    try:
+        rq = json.load(open(rf))
+    except Exception:
+        continue
+    if isinstance(rq, dict) and (rq.get("requester") or "?") == who:
+        mine.append(est(rq))
+this = est(json.load(open(new)))
+total = sum(mine) + this
+if total <= LIMIT:
+    raise SystemExit(0)
+ok = "%s/pilots/%s.ok" % (d, who)
+if os.path.exists(ok):
+    age = time.time() - os.path.getmtime(ok)
+    if age < VALID:
+        print("pilot gate: %s would hold ~%.0f min of device time; reviewed pilot %s (%.1f h old) admits it"
+              % (who, total / 60, ok, age / 3600), file=sys.stderr)
+        raise SystemExit(0)
+    why = "%s is %.1f h old; a pilot verdict is valid 24 h" % (ok, age / 3600)
+else:
+    why = "there is no %s" % ok
+print("""refusing to queue: the pilot gate (owner rule, 2026-09-26: no requester holds a
+device for more than 30 min without a reviewed pilot).
+  %s has %d request(s) queued or running, ~%.0f min, and this one adds ~%.0f min:
+  ~%.0f min in all, over 30 min; and %s.
+  Estimate: `seconds` + 90 s setup, times `runs` (180 s with no `seconds`) --
+  the same as [device-budget] in host-tools/harness_health.py.
+The way out: queue a pilot of at most two requests (the first 30 min always goes
+through), review what it produced against the batch's purpose, record the verdict
+in %s -- the pilot's result ids, what the output showed, and the date -- then
+queue the rest.""" % (who, len(mine), sum(mine) / 60, this / 60, total / 60, why, ok),
+      file=sys.stderr)
+raise SystemExit(3)
+PYPILOT
+then
+    rm -f "$D/queue/.$ID.req.tmp"
+    exit 2
+fi
 mv "$D/queue/.$ID.req.tmp" "$D/queue/$ID.req"
 echo "queued $ID"
 echo "  $SUMMARY${DEVICE:+, pinned to $DEVICE}" >&2

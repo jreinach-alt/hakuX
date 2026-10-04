@@ -1,0 +1,58 @@
+# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
+# Alien Hominid (5A440004): one route for the first run and later runs.
+# PLAYED by nav.py on the Thor, 2026-09-27 03:30 PDT (lane.titleroutes HELD
+# session alien-hominid.first-run-20260927T033039).
+#
+#   The Behemoth logo (START) -> on the first run only, "No Alien Hominid
+#   save games found ... Press A to continue" (A; the save is written) ->
+#   main menu, cursor on GAME (A) -> NEW GAME / LOAD LEVEL, cursor on NEW
+#   GAME (A) -> a controls picture, "A SKIP" (A) -> the intro cutscene (the
+#   ship crash; A does not skip it, it ends by itself in ~24 s) -> level 1,
+#   the FBI street, "PLEASE WAIT" -> player control.
+#
+# The menu presses are an A train 5 s apart: with a save on the disk there
+# is no save prompt, the train reaches the cutscene one press early, and
+# the spare A presses land in the cutscene, which ignores them.
+#
+# Player control: LX min walked the alien from the right edge of the street
+# to the "WE KILL ALIENS" sign (nav frames 009-moved -> 010-left). The
+# play pattern runs both ways, fires (X) and jumps (A). The FBI agents kill
+# a blind player in about 20 s a life; after the last life and the
+# continue countdown the game returns to the NEW GAME menu, and the
+# pattern's A presses start a new game from there (A: NEW GAME, A: skip the
+# controls picture, the cutscene plays out), so the soak stays in play.
+#
+wait 33.0
+press START
+wait 5.0
+press A
+wait 5.0
+press A
+wait 5.0
+press A
+wait 5.0
+press A
+wait 5.0
+press A
+wait 5.0
+press A
+wait 38.0
+mark gameplay
+repeat forever {
+    axis LX max
+    press X 150
+    wait 0.3
+    press X 150
+    wait 0.3
+    axis LX mid
+    press A 200
+    wait 0.5
+    axis LX min
+    press X 150
+    wait 0.3
+    press X 150
+    wait 0.3
+    axis LX mid
+    press A 200
+    wait 0.5
+}

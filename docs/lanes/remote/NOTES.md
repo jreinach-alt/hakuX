@@ -2224,3 +2224,1329 @@ that says 0.
 
 **Not covered.** Titles. A game could take any of the three routes, and the
 desktop suite cannot show that.
+
+## #426 items 1, 2 and 4: the phase instrument, pipeline eviction, texture hash (2026-09-26)
+
+**The ask.** lane.local's queue on #426 (5850280192):
+- Items 1 and 2 are one instrument PR.
+- Item 4's pricing rides on it (files granted by hostops, 5850492952).
+- Item 5 is parked below.
+
+For 0.5, every perf lever (#424-#429) and every per-title lane reads
+`hakuX-phase`, so a span counted twice or lost points them at the wrong cost.
+A pipeline destroyed while the GPU still uses it can fault or hang Turnip,
+and one crash fails a title's 20-minute Playable soak.
+
+**What the PR changes.** Everything is under `NV2A_PERF_LOG`.
+- `af13ae28`:
+  - `pipe_lookup` no longer ENDs twice on the async-compile miss.
+  - `shader_compile` now ENDs on the early return taken when the shader
+    binding has no modules.
+  - Pipeline-eviction counters print on the `hakuX-stall` line as
+    `pipe[ev pend rec used]`.
+- `aa208a29`: the fast paths get spans.
+  - `Sfp` and `Mfp` time the super-fast and medium-fast paths, hit or miss.
+  - `FTx` is their texture binds, and `Sfp` and `Mfp` exclude it.
+  - `TxH` times the texture content hash.
+  - The `NV2A_PERF_LOG` default moves above the structs that test it.
+  - The reader and the checker learn the new fields.
+- `4f09c8c9`: a nested finish counts once, and a clear's children fall inside
+  `Draw`.
+  - Every child of `Draw` and of `Pipe` is now exclusive of finish.
+  - The fall-through clear is timed as `Draw`.
+  - I1 becomes an inequality, and the reader counts `Pipe`'s remainder as
+    post-read.
+- `12a25c14`: I4 becomes an inequality too.
+
+**The eviction counters.**
+- `ev` counts every pipeline-cache eviction.
+- `pend` counts those whose last command buffer to bind the pipeline had not
+  completed: it is still recording, or it is submitted with its fence
+  unsignalled.
+- `rec` is the recording subset. `pipeline_cache_pre_evict()` should keep it
+  at 0.
+- `used` is the cache's occupancy, out of 2,048 entries.
+- **How it decides.** Each `pgraph_vk_begin_command_buffer()` numbers the
+  command buffer against its frame slot, and each bind records that number on
+  the pipeline.
+  - If the slot has since begun a newer command buffer, the old one completed,
+    since Vulkan forbids re-beginning a pending one.
+  - Otherwise the pipeline is still in use if it was bound in the buffer
+    being recorded, or if the slot is submitted and `vkGetFenceStatus` is not
+    `VK_SUCCESS`.
+  - A signalled fence also covers everything submitted earlier on the queue.
+- **Why `hakuX-stall` and not a tag of its own.** The dispatcher's logcat spec
+  is an allow-list ending `*:S`, so a new tag would come back with zero lines.
+  The format also avoids `evict[`, which `phase_table.py` reads as the
+  surface-eviction line on the same tag.
+
+**Inertness.**
+- **Default build.** All 70 objects that include `debug.h` or
+  `vk/renderer.h` are byte-identical to master. They were compiled at master
+  and at each commit, without debug info and with `__LINE__` pinned to 0.
+- **Correction to 5850345102.** That comment promised a `-DNDEBUG` build, but
+  QEMU refuses `NDEBUG` (`osdep.h:311`, an `#error`). Pinning `__LINE__`
+  neutralises the same `assert()` line numbers. So an unpinned build differs
+  only in `__LINE__` values.
+- **Perf build.** The same 70 objects compile with the same 133 warning lines
+  as master.
+- **Android.** The Android-only line (`__android_log_print`) was
+  syntax-checked on desktop against a stub `<android/log.h>` declared with
+  `format(printf, 3, 4)`. It gives no format warning. This container has no
+  NDK, so the first real compile of the perf APK is the soak's.
+
+**The controls.** All were local, never committed. Each was registered before
+its build: the log is `i47/predictions.txt` in this lane's scratch, and the
+scores below are quoted from it. Every run used desktop Vulkan on llvmpipe.
+The discs were AA+DMA, Clear, disc109 and surf1.
+
+| control | what | result |
+|---|---|---|
+| C, cache shrunk to 8 | `ev` > 0, `rec` = 0, `pend` > 0 somewhere | `ev` 135 / 126 / 151 / 227, `rec` 0: PASS. **`pend` 0 on all four: C3 FAIL** |
+| N, stock cache | `ev` = 0 | PASS: 32-89 keys used of 2,048 |
+| S, cache 8, GPU slowed (`surface_scale` 4, one llvmpipe thread) | `pend` > 0 | **FAIL**: 4,651 evictions, `pend` 0. Stopped at 737 s |
+| V, cache 8, validation layer on | count of `VUID-vkDestroyPipeline-pipeline-00765` == `pend` | PASS, but 0 = 0 |
+| P2, stock cache, up to 2 pipelines of the just-submitted CB evicted after each flip | `pend` > 0, and the layer agrees | **PASS on AA+DMA: `pend` 45, layer 45, exact.** The other 57 had already signalled |
+| Q, the instrument's perf build | lines parse; checker clean; `Sfp`+`Mfp` > 0 | parse PASS. **Checker FAIL** (below). **`Sfp`/`Mfp`/`FTx` 0.0 on every line: FAIL** |
+| Q', after `4f09c8c9` | checker clean; the reader's identity exact; no child above its parent; all four discs run | identity residual 0.00, no I3, all four exit 0: PASS. **One I4 violation: FAIL** (I4 is now an inequality, `12a25c14`) |
+
+**Why `pend` is 0 on desktop without forcing.**
+- An eviction lands at the first draw after a finish, because
+  `create_pipeline()` runs before `ensure_command_buffer()`. The evicted
+  pipeline was last used in the slot just recycled, and the slot's rotation
+  has just waited on its fence.
+- The discs also finish synchronously between flips, and a signalled fence
+  covers everything submitted before it.
+- So slowing the GPU does not open the window (S).
+- A title flips with fewer synchronous finishes. Whether its 2,048 entries
+  fill at all is what the device soak measures.
+
+**What Q's checker FAIL found**, which `4f09c8c9` fixes:
+- **Finish counted twice.** `Draw` was exclusive of finish, but its children
+  were plain. A finish nested in a child counted there and again in `Fin`.
+  On disc109, `Pipe` read 34.2 against a `Draw` of 32.5, and UNCLASSIFIED
+  went negative (-0.25 ms pooled).
+- **Clears outside `Draw`.** `pgraph_vk_clear_surface()` ran
+  `begin_pre_draw()` outside any `draw_dispatch` span. So a clear's pipeline
+  and setup time were counted as `Draw`'s children but fell outside `Draw`.
+- **Remainders the checker called faults.** `Pipe` also holds
+  `create_clear_pipeline()` and the pipeline-cache save, and finish does work
+  outside `Sub` and `Fen`. The checker treated I1 and I4 as identities.
+
+After the fix, pooled UNCLASSIFIED is +0.42 ms. The reader's identity
+closes exactly, and the checker still flags the old build's two double counts.
+
+**FINDING: a pipeline destroyed while its command buffer is in flight crashes
+the process on llvmpipe.**
+- P2 on Clear and on surf1 died with SIGSEGV in 7-10 s. Under gdb the fault is
+  in lavapipe's queue thread, executing a submitted command buffer:
+  `lvp_execute_cmds` > `handle_draw_indexed` > `draw_llvm_generate` >
+  `tgsi_parse_init(tokens=NULL)`. A draw in flight compiled a vertex-shader
+  variant from a destroyed pipeline.
+- The same build without forced evictions ran all four discs clean (Q).
+- So the hazard item 2 counts is fatal on at least one driver, not
+  theoretical. Whether titles reach it is the soak's question: `pend` on
+  Crimson and the #397 titles.
+
+**Texture binds on desktop** (item 4). `Tx` + `FTx` is every
+`pgraph_vk_bind_textures()` call and the only route to an upload or a content
+hash. Pooled over Q' it is 0.45 ms/frame:
+
+| part | ms/frame | share |
+|---|---:|---:|
+| content hash, `TxH` | 0.02 | 3.7% |
+| upload, `Tex` | 0.08 | 18.5% |
+| the rest | 0.35 | 77.8% |
+
+The rest is lookups and descriptors. A test disc is not a title, so this
+prices nothing for 0.5. The Crimson soak on this build does.
+
+### #426 item 3: stage 1 is not worth landing for 0.5
+
+The Thor soak `0-0-x-1790459535-remote-46835` ran master `9f34d60036`, a
+perflog build, on Crimson. lane.local read it (5850579748).
+- **The ceiling.** `Setup`+`Cmd`, stage 1's ceiling by this lane's own
+  definition (5850134041), is about 1 ms/frame in every gfps bucket: 0.8 when
+  fast, 1.1-1.2 when slow.
+- **Where the time is.** `Tx` is the largest span: 6.5 ms median, 4.1 in fast
+  windows and 8.1-11.8 in slow ones. `Syn` doubles in slow windows too.
+- **The fast paths.** The SFP took 0 of 17,955 draws per line.
+- **The verdict.** By the criterion registered in 5850134041, the deferred
+  command stream moves about 1 ms of a 30 ms frame. It is not worth landing
+  for 0.5. The prototype stays on the local branch.
+- **The lever is inside `Tx`.** This PR's `TxH`, `Tex` and rest split prices
+  it on the next Crimson soak. If the hash dominates, the lever is to stop
+  re-hashing texture memory the guest has not written. If the rest dominates,
+  descriptor work could move off the PFIFO thread, since it reads no guest
+  memory.
+
+### Parked until after 0.5 (item 5): the reorder path's vertex push constants
+
+- `emit_reorder_entry()` pushes a draw's uniform vertex attributes at
+  `vtx_offset = 0`.
+- `push_vertex_attr_values()` pushes them at `GEOM_PUSH_CONSTANT_SIZE` (16
+  bytes), where the layout and the vertex shader expect them.
+- So with `use_push_constants_for_uniform_attrs` on, a reordered draw
+  overwrites the geometry stage's line parameters in `[0,16)` and hands the
+  vertex shader values 16 bytes early.
+- The reorder path is gated on `g_xemu_draw_reorder`, which is false by
+  default in `draw.c` and in the Android settings.
+- No PR, by lane.local's decision.
+
+**Not covered.**
+- `Sfp`, `Mfp` and `FTx` never exceed 0.0 on the desktop discs, so only a
+  title exercises them.
+- The draw-merge and reorder paths (both off by default) still run
+  `begin_pre_draw()` outside `Draw`. With either on, I3 can fail by design;
+  the checker says so.
+- The inline clear stays untimed, as it was.
+- Comparing with older soaks (audit pass 1, LOW-2). On a line from before
+  this fix, the children of `Draw` and `Pipe` read higher, by the nested
+  finish they counted twice. `Draw`, and so `BUSY`, reads lower on a title
+  that clears through the fall-through path, whose pre-draw and recording
+  were outside `Draw`. Neither difference is the title's.
+
+### #426 item 2, closed on the soaks: no title evicted a pipeline (2026-09-27)
+
+The host ran three perflog soaks of #449's head (`932ab47186`) on the Thor,
+240 s each, and counted the `pipe[...]` lines in the pulled logcats
+(5851064863):
+
+| title | `pipe[]` lines | with `ev` > 0 | with `pend` > 0 | peak `used` of 2,048 |
+|---|---:|---:|---:|---:|
+| Crimson Skies | 118 | 0 | 0 | 77 |
+| Blinx | 131 | 0 | 0 | 88 |
+| Grabbed by the Ghoulies | 67 | 0 | 0 | 153 |
+
+- **Recorded and stopped**, by lane.local's rule (5850280192). There is no
+  fix PR and no issue.
+- **The hazard is latent, not gone.** A title that fills the cache would reach
+  it, and the forced control above shows it is fatal on llvmpipe when reached.
+  The `pipe[...]` line stays in every perflog soak, so `ev` > 0 is the first
+  sign.
+- **Item 4's split** (`TxH`, `Tex` and the rest of `Tx` + `FTx`) is in the
+  same runs' `hakuX-phase` lines. It was asked for on #426 in 5851189295.
+
+## #461: what a texture bind spends its time on (2026-09-27)
+
+Item 4 of #426, filed as #461 by the host (5852307495) once the Thor numbers
+were in. Scope, in order: a perf-only count, one Crimson Skies and one Blinx
+soak at its head, then one registered fix per confirmed cause.
+
+### The numbers that opened it
+
+The host's readers over the three soaks of #449's head, 90 to 240 s
+(5851245674), in ms per frame:
+
+| title | binds (`Tx`+`FTx`) | `TxH` hash | `Tex` upload | rest |
+|---|---:|---:|---:|---:|
+| Crimson Skies | 8.90 | 6.49 (73%) | 0.17 (2%) | 2.24 (25%) |
+| Blinx | 3.76 | 0.06 (2%) | 3.38 (90%) | 0.31 (8%) |
+| Grabbed by the Ghoulies | 0.32 | 0.08 | 0.06 | 0.18 |
+
+Crimson's hash alone is 19.9% of its PFIFO thread's busy time (32.69 ms).
+
+**What they already say, read with the source.** Every `upload_texture_image()`
+is preceded by a content hash of the same bytes: a new node is always hashed,
+and a found one uploads only when its hash changes (a replacement upload is the
+exception, and the feature is off in soaks). So:
+- **Crimson hashes textures that have not changed.** It spends 6.49 ms hashing
+  and 0.17 ms uploading, and an upload costs at least as much per byte as a
+  hash, so almost none of its hashed bytes led to an upload.
+- **Blinx's uploads cost about 56 times a hash per byte** for the same bytes.
+  The cost is decoding or per-upload overhead, not copying.
+
+### R4 failed on all three counts
+
+R4, registered at 02:28Z, predicted `TxH` under 25% of binds and under
+1.0 ms/frame on all three titles, and the rest largest on two of three.
+Crimson broke all three (73%, 6.49 ms, `TxH` largest); Ghoulies' `TxH` was
+25.2%. The priors came from the desktop test discs, where `TxH` is 2 to 4% of
+binds; they do not carry over to titles.
+
+**R4 is not a clean blind registration.** The host had posted the numbers at
+00:24Z. This lane missed that delivery for three hours: its checks read the
+thread up to 00:15Z and then from 00:44Z, so the comment fell between two query
+windows. The transcript first shows the comment's id at 03:21Z, so R4 was
+written without it, but the thread cannot show that. Each check now queries
+from the previous query's start time, not from the last comment seen.
+
+My 02:29Z correction (5851970680) was half right. The rest of `Tx` does hold
+no descriptor work. But "the hash already skips unwritten memory" was wrong in
+effect: the gate exists, and on Crimson these hashes get through it.
+
+### Three ways an unchanged texture gets through the gate
+
+`create_texture()` hashes a binding only while it is possibly dirty. Read from
+the source, three routes let an unchanged texture through, and each needs a
+different fix:
+
+- **M1, the per-frame memo.** Once a texture's pages read dirty within a flip,
+  `dirty_check_result` stays true until the next flip. Nothing clears it after
+  a hash finds the content unchanged, so every later bind of that texture in
+  the flip hashes it again. Fix: clear the verdict once a hash has resolved it.
+- **M2, page-granular dirt.** The dirty bitmap works per 4 KiB page. A guest
+  write to a page the texture shares with other data, or a rewrite of the same
+  bytes, marks the whole texture. Fix: hash only the pages written.
+- **M3, surface write-backs.** Five download-completion paths in
+  `vk/surface.c` set the texture-dirty bits over a surface's whole range. Fix:
+  narrower marking.
+
+A flush (`RCMD_FLUSH`) marks every texture in VRAM possibly dirty, but flushes
+come only from a surface-scale change, a renderer switch, a reset or a snapshot
+load, so it is not a per-frame route.
+
+### The count (this PR)
+
+Three lines on `hakuX-stall` every 60 frames, all under `NV2A_PERF_LOG`. They
+go on `hakuX-stall` because the dispatcher's logcat spec is an allow-list, and
+`hakuX-tex`, the texture cache's own line, is not on it.
+
+- **`txh[]`:** content hashes and KiB by the first reason that applies: a new
+  node, a rebuild, a draw-dirty surface downloaded, a mark (the per-draw poll
+  or an aliasing write), the memo (M1), or a fresh bitmap hit without (`bit`)
+  or with (`bov`) a surface over the texture's range. `oth` is none of them and
+  must be 0. Also `eq`, found bindings whose hash compared equal, and `rep`,
+  nodes already hashed in the same flip.
+  - The reason is taken at the hash, not where it is raised: the
+    confirmed-clean check can cancel a raised reason before any hash runs.
+- **`txu[]`:** uploads by cause (new, rebuilt, changed, other), their guest
+  KiB, and the KiB each decode path in `get_texture_layout()` read: linear
+  copy, native BC copy, CPU S3TC decompress, palette, other conversion, and
+  unswizzle only.
+- **`txr[]`:** `create_texture()` and bind calls, surface downloads a bind
+  started directly or through its range scan, images made (pool hits), and
+  surface-to-texture copies and direct binds.
+  - A scan's downloads are counted in `vk/surface.c`, which this lane does not
+    hold. The bind's share is the difference across the call, so that file is
+    unchanged.
+
+`docs/lanes/remote/tex461_read.py` reads the lines, checks four identities on
+every 60-frame group, and prints the shares R5 is scored on. The identities
+hold because a hash and its upload happen in one `create_texture()` call, and
+the counters reset only at a flip:
+- **I1:** `oth` is 0.
+- **I2:** `txh` new and rebuilt equal `txu` new and rebuilt.
+- **I3:** found-binding hashes equal `eq` plus the changed uploads.
+- **I4:** the uploads equal the sum of their causes.
+
+### Inertness
+
+- **Default build.** All 18 objects that depend on the changed files are
+  byte-identical to master's with `__LINE__` pinned. Both builds keep master's
+  warning set (43 = 43).
+- **The Android print.** It sits under `__ANDROID__` and this container has no
+  NDK. So `vk/draw.c` was compiled syntax-only with `__ANDROID__`, the perf
+  switch, and a stub `android/log.h` that carries printf's format attribute:
+  no format warning.
+  - The positive control: the same compile with one specifier deliberately
+    wrong (`%d` for a 64-bit KiB value) warns.
+
+### The desktop controls: one FAIL, then a pass
+
+Both controls ran the count's commit plus a local patch, never committed: the
+perf switch on for desktop and a `stderr` copy of the lines. They used Vulkan
+on lavapipe over seven texture discs. Every run exited 0 with its captures
+(3, 3, 16, 41, 3, 42 and 20). Predictions were registered before each binary
+existed.
+
+**C61: the identities held, but the tests were not seen.**
+- **Passed.** I1 to I4 held on all 13 printed groups. Texture CPU Update's
+  rewrite showed as a fresh bitmap hit uploaded as changed content.
+- **Failed.** The palette disc read `pal` 0, and the format disc read `cvt` 0.
+  C5 failed too: no `memo` or `rep` on any disc.
+- **The cause**, from the discs' progress logs: each suite's tests run in its
+  last frames. Lines print only on every 60th frame, and a run is about 160
+  frames, so the tests fell in the unprinted tail. Every printed group was the
+  test program's own start-up.
+- On a 240 s soak, about 120 groups, the unprinted tail is under 1%. An Android
+  soak is killed, not exited, so the committed instrument keeps the 60-frame
+  cadence. The FAIL is recorded as a FAIL.
+
+**C61b: the same, plus one print of the partial window at exit.** All five
+predictions passed:
+
+| disc | what the tests' groups showed |
+|---|---|
+| Texture CPU Update | 7 changed uploads from 6 marks and 1 fresh bit |
+| Texture palette | `pal` 192 KiB |
+| Texture format | `cvt` 1,152 KiB, `pal` 256 KiB, `swz` and `s3tc` |
+| Texture DXT | native BC 52 KiB, CPU S3TC 13 KiB |
+| Texture render target | `srf` 2, with 3 surface downloads started by binds |
+| Texture signed component | `memo` 5, `rep` 36, `eq` 18: 52 found-binding hashes = 18 equal + 34 changed |
+
+- **The identities held on all 21 groups**, the exit groups included.
+- **The memo route is reachable.** The signed-component disc rewrites one
+  texture several times in a flip. It re-hashed nodes already hashed in that
+  flip 36 times, and 18 of its found-binding hashes bought nothing. That is M1's
+  shape on a test. Whether it carries Crimson's 6.49 ms is R5.2's question.
+
+### What the soaks decide
+
+R5 was registered at 03:27Z, before any of this existed:
+- **R5.1:** 90% or more of Crimson's found-binding hashes compare equal.
+- **R5.2:** the memo (M1) forces at least half of Crimson's hashed KiB.
+- **R5.3:** at least half of Blinx's uploaded KiB goes through a CPU decode
+  other than a plain copy.
+- **R5.4:** Crimson's surface downloads from binds plus new images come to
+  fewer than 1 per 10 `create_texture()` calls.
+
+The fix follows the dominant cause, and each fix is registered before it is
+built:
+- **Crimson's hash:** `memo` or `rep` large means M1; `bit` large means M2;
+  `bov` or `srf` large means M3.
+- **Blinx's upload:** a decode path (`s3tc`, `pal`, `cvt`) large means the
+  decode; `new` large with images made and pool misses means cache churn.
+
+## #461, second: the soaks, and the memo fix (2026-09-27)
+
+### The soaks: R5 passed on all four counts
+
+The host ran both soaks at #473's head (47a3ce8e85, apk 8841eaf0a665) on the
+Thor: perflog, 240 s, read from 90 to 240 s. I1 to I4 held on all 172 groups.
+- **Blinx:** 5853163772, 84 groups, no route.
+- **Crimson Skies:** 5853252841, 88 groups, on the `crimson-skies` route, gfps
+  median 26.
+
+R5 was registered at 03:27:42Z, before the count existed, so it is a clean
+registration.
+
+| | bar | read | |
+|---|---|---|---|
+| **R5.1:** Crimson's found-binding hashes that compare equal | 90% or more | 99.7% by count, 99.9% by KiB | PASS |
+| **R5.2:** the memo's share of Crimson's hashed KiB | 50% or more | 69.1% (`mk` 29.8%, `bit` 1.1%) | PASS |
+| **R5.3:** Blinx's uploaded KiB that goes through a CPU decode | 50% or more | 100.0% (`cvt` 99.9%) | PASS |
+| **R5.4:** Crimson's downloads plus new images, per `create_texture()` call | under 0.1 | 0.000 | PASS |
+
+**Crimson, per frame.** It made 338 `create_texture()` calls and 262 content
+hashes, 59,399 KiB in all. It uploaded 0.94 textures. 91.4% of the hashes
+repeated a hash already taken on the same node in the same flip. Binds cost
+8.78 ms of the PFIFO thread's 23.29 ms busy time, and the hash (`TxH`) is 6.71
+ms of that.
+
+**Blinx is parked.** Its binds cost 0.55 ms/frame on this run (71% upload),
+against 3.76 ms in #449's. Neither run followed a route, so the 90 to 240 s
+window covered a different part of the game each time. Of what it did
+upload, 99.9% of the KiB went through a CPU conversion (`cvt`). That is the
+fix to price once the title has a gameplay route; it is recorded here for
+lane.local.
+
+### The fix: retire the memo once a hash has used it (M1)
+
+**The route.** A bind that finds a texture's pages dirty stamps the node's memo
+"dirty in this flip", and the content hash follows in the same call. Nothing
+cleared that stamp afterwards. So every later bind of the node in the flip took
+the memo's word and hashed the texture again, without asking the bitmap. That
+is what `memo` and `rep` counted on Crimson.
+
+**The change**, in `create_texture()` (`vk/texture.c`). Once a hash has
+settled the node's verdict, the memo is set to the previous flip, meaning "no
+verdict yet this flip":
+- on the found path, after the compare and any upload, when a hash ran;
+- on the miss path, for a node that was hashed (not a surface-to-texture bind).
+
+A later bind in the same flip then tests the bitmap, as the first bind of a
+flip always does. If nothing wrote the pages since, the bitmap reads clean and
+nothing is hashed. That verdict also re-arms the bind loop's fast path, which
+needs a clean memo.
+
+**Why nothing is missed.** Only `check_texture_dirty()` consumes the
+texture-dirty bits (`DIRTY_MEMORY_NV2A_TEX`):
+- `vk/draw.c`'s reader is compiled only with `HAKUX_VRAM_RACE_PROBE`, which is
+  off.
+- The generic clear in `system/physmem.c` runs only on a RAM resize, which then
+  marks everything dirty.
+
+`check_texture_dirty()` marks every cached binding over the range it tests.
+So a write after the hash is either still in the bitmap, or it has already
+marked this node, and that mark forces the next hash. The super-fast path's
+memo read in `vk/draw.c` only touches bindings still marked possibly dirty,
+and a hash clears that mark.
+
+**Registered as F461** at 06:15:46Z on #461 (5853293806), before any code:
+- **F1:** Crimson B: `memo` under 5% of hashed KiB (high).
+- **F2:** Crimson B: `TxH` at most 0.5 times A's (moderate-low).
+- **F3:** Crimson B: hashed KiB per frame at most 0.5 times A's (moderate-low).
+- **F4:** Crimson B: gfps median at least A's minus 1 (high). A gain is not
+  predicted: PFIFO has 11.6 ms/frame idle, so a saving on the render thread
+  may not reach the frame rate.
+- **Correctness:** every capture of the 21 texture suites is bit-identical, A
+  against B, on desktop Vulkan (high).
+- **KILL:** `TxH`(B) above 0.8 times A's refutes M1 as the lever. The memo was
+  then covering real rewrites (M2), and the next step is page attribution of
+  the bitmap hits.
+
+### Desktop: the correctness leg FAILED, on one capture that flickers
+
+A is master 55a82867 and B is the fix. Both ran on desktop Vulkan
+(lavapipe), one run each, over every texture disc: the 21 registered suites,
+plus Texgen, Texgen with texture matrix and Volume texture as extras. Every
+run exited 0 with its captures, and the captures were compared byte for byte.
+
+- **20 of the 21 registered suites are bit-identical on every capture**:
+  560 of the 561 captures in all. So are the three extras (94 captures).
+  The identical suites include Texture CPU Update, Texture cubemap (73),
+  Texture 3D as 2D, Texture border (19) and Texture shadow comparator (289).
+- **Texture signed component tests: 19 of 20.**
+  `txt_A8R8G8B8_ADD` differs in 76,740 pixels. **The prediction said every
+  capture, so this FAILS as registered.**
+
+**Why it differed**, measured after the FAIL. The capture is
+nondeterministic on both binaries: four more runs of each on that disc gave
+
+| | runs | distinct images | vs the hardware golden (px) |
+|---|---:|---:|---|
+| A (master) | 5 | 5 | 153,420 to 168,960 |
+| B (the fix) | 5 | 4 | 131,616 to 168,960 |
+
+- Run 2 of A and run 2 of B produced the same image.
+- The other 19 captures on the disc were identical in all ten runs.
+- The goldens are `abaire/nxdk_pgraph_tests_golden_results` at 053605a.
+- Earlier runs on this container show the same thing. C61 and C61b have the
+  same `hw/` and differ only by an exit print, yet they gave different images
+  of this capture.
+
+So a one-run A/B cannot see the fix on this capture either way. The FAIL
+stands as recorded. The device arm registers three runs per arm, so this
+capture's band is measured there rather than assumed.
+
+The capture is not on `ab_compare.py`'s KNOWN_UNSTABLE list. Whether it
+flickers on the handhelds too is for the arm to show; on desktop, it does.
+
+### C62: the memo goes to zero, and nothing else moves
+
+This is the count control, registered at 06:33:19Z before either binary
+existed. It is the C61b instrument (never committed) on master (C62A) and on
+the fix (C62B), over C61b's seven discs. All 14 runs exited 0 with their
+captures.
+
+- **C62.1 PASS:** B's `memo` is 0 in every group on all seven discs.
+- **C62.2 PASS:** A's `memo` is 5 (1,280 KiB) on the signed-component disc,
+  as C61b read. This is the positive control: the instrument sees the memo
+  there on master.
+- **C62.3 PASS:** B hashes no more than A on every disc. Six discs are
+  equal, and signed component is 77 against 82.
+- **C62.4 PASS:** I1 to I4 hold on every group of both binaries.
+
+On the signed-component disc, A to B: `memo` 5 to 0, `eq` 13 to 8, `rep` 31
+to 26. Every other count is equal (`new` 35, `mk` 41, `bit` 1). So the five
+hashes the fix removed were exactly the memo's forced repeats, and all five
+had compared equal.
+
+### The LOWs from #473's audit
+
+- **LOW-1: `s2td` says what it counts.** It counts direct binds made, where
+  the view changed. A bind that reuses the view already bound goes through one
+  assignment and is not counted, so `s2td` near 0 does not mean a title rarely
+  samples a surface. The wording is fixed in `renderer.h`, `vk/draw.c`'s
+  comment and the reader's label. No count changed.
+- **LOW-2 and LOW-3: the reader's stamps.** Logcat stamps carry no year.
+  - **Before:** the reader parsed them in 1900. So 29 February did not parse
+    (LOW-3), and a window across New Year dropped every line after midnight
+    (LOW-2).
+  - **The fix I described on #473 was wrong in one case.** It said to parse
+    in a leap year. Then a common year's 28 February to 1 March reads as two
+    days, and a window across that midnight drops its lines. It does so
+    silently, which is worse than the crash it replaces.
+  - **What landed:** stamps are read in a leap year only when a 29 February
+    stamp is in the input, and in a common year otherwise. A stamp more than
+    half a year from the window's first line is read in the neighbouring
+    year.
+  - **The positive control.** The new selftest cases were run against the
+    old reader and a fixed-leap-year variant: each fails its case, and the
+    new reader passes all three.
+
+| window across midnight | old reader (1900) | fixed leap year | as landed |
+|---|---|---|---|
+| 29 February to 1 March, leap year | crashes | right | right |
+| 28 February to 1 March, common year | right | drops the group | right |
+| 31 December to 1 January | drops the group | right | right |
+
+### What the device A/B decides
+
+Both arms are on file: `remote-461-memo-texture.json` and
+`remote-461-memo-perf-crimson.json`. They name A = f131dd11 and B = 8f9c74f0,
+the fix. f131dd11 was master when the PR opened; it moved docs-only from the
+desktop legs' 55a82867, so A is the same code.
+- **The correctness arm:** the 21 suites on the handhelds, three runs per
+  arm, judged by `ab_compare.py`. The arms job queues it.
+- **The Crimson A/B:** the Thor, both arms perflog, on the `crimson-skies`
+  route, 240 s. Hostops queues it by hand, as with every soak.
+
+It is scored against F1 to F4 and the kill, using A's own run for every
+ratio:
+- **F1:** `memo` under 5%.
+- **F2 and F3:** `TxH` and hashed KiB each at most half of A's.
+- **F4:** gfps no lower than A's minus 1.
+- **The kill:** `TxH` above 0.8 times A's means the memo was covering real
+  rewrites. The next step would then be page attribution of the bitmap hits
+  (M2), not a re-reading of this run.
+
+## #461, third: the device verdicts, and F4's FAIL (2026-09-28)
+
+### The correctness arm passed on the handhelds
+
+`remote-461-memo-texture.json`, judged by the arms job at 16:44Z on 09-27
+(5857785184): **PASS, all 542 registered checks.**
+- **The runs:** A f131dd11 and B 8f9c74f0, three runs per arm, 540 captures
+  each over the 21 suites.
+- **The counts:** better 0, worse 0, same 539, noise 1. The noise is
+  `Texture_border/2D_BorderTex_SZ`, which is on the KNOWN_UNSTABLE list: it
+  went from 16,268 to 4,933 px, inside its measured band of 21,577.
+- **Byte for byte:** the verdict's byte-level check reports every checked
+  capture byte-identical between the arms (540 of 540 hashed, three run
+  directories each).
+- **The desktop FAIL's suite:** Texture signed component tests reads `same`
+  on all 19 of its device captures. It is 168,960 px from the goldens,
+  summed over the suite, in both arms. The verdict does not say whether its
+  captures varied between the runs of one arm, as they did on lavapipe.
+
+### The Thor A/B: F1 to F3 pass, F4 FAILS
+
+Hostops read the pair by hand (5866342003): the `crimson-skies` route, 240 s,
+perflog, read from 90 to 240 s after the first `hakuX-perf` line. Both runs
+reached gameplay, and neither logcat has a thermal-pause line.
+
+| | A f131dd11 | B 8f9c74f0 (the fix) |
+|---|---|---|
+| gfps median (n) | 26 (58) | 22 (47) |
+| TxH, ms/frame (window mean) | 6.93 | 3.23 |
+| hashed KiB/frame | 59,676 | 25,227 |
+| memo share of hashed KiB | 66.9% | 0.0% |
+
+| leg | bar | read | |
+|---|---|---|---|
+| F1: B's memo share | under 5% | 0.0% | PASS |
+| F2: B's TxH over A's | 0.5 or less | 0.47 | PASS, marginal: the window median reads 0.55, whole-run 0.43 |
+| F3: B's hashed KiB over A's | 0.5 or less | 0.42 | PASS |
+| F4: B's gfps median minus A's | −1 or more | −4 | **FAIL** |
+| KILL: B's TxH over A's | above 0.8 | 0.47 | not triggered |
+
+- **M1 was the lever.** The memo went to zero, hashed KiB fell by 58% and
+  TxH by 3.7 ms/frame.
+- **A reproduced #473's soak on a later master:** 26 gfps both times, TxH
+  6.93 against 6.71, 59,676 against 59,399 KiB, memo 66.9% against 69.1%.
+- **The drop covers the window.** n is the count of `gfps` lines the median
+  is taken over, and the line prints every 60 flips. So 58 lines against 47
+  in the same 150 s is about 3,480 flips against 2,820: B drew 19% fewer
+  frames, not just a lower median.
+
+**F4 was registered high and it failed.** The registration said a gain was
+not predicted, because PFIFO had 11.6 ms/frame idle. It did not foresee a
+loss.
+
+### What the code says, and what the pair did not control
+
+A reading of both refs finds one narrow route by which B could cost more:
+- **The poll is the same on both.** Before every draw,
+  `pgraph_vk_poll_bound_textures()` tests every bound texture that is not
+  marked.
+- **On A**, a memo hash at a rebind tested nothing, so a write made while the
+  texture was unbound stayed in the bitmap. The next draw's poll cleared it
+  and marked the node. The super-fast path missed on the mark, and the node's
+  next bind hashed it again (`mk`).
+- **On B**, the rebind's own test clears those bits, and one hash replaces
+  two.
+- **The exception** is when the guest writes the pages again between the
+  rebind and the next poll.
+  - A's poll then clears both writes at once, and B clears twice.
+  - A clear that finds a bit set calls `tlb_reset_dirty_range_all()`, which
+    re-arms the guest's not-dirty write trap on those pages. The guest's next
+    store to each such page then takes the slow path.
+  - So the cost needs pages the guest keeps writing while their textures hash
+    equal.
+
+That predicts less render-thread work on B, and a guest-side cost only on
+continuously written pages. It is a reading, not a measurement.
+
+**The pair's order was not controlled.** A ran first. B started about four
+minutes later, straight after A's 240 s at MAX.
+- On the Thor, the kernel pauses cpu3-7 at xo-therm's 78 °C trip (#507).
+  Other cooling devices may act before that.
+- **Pair 1 carries no thermal record.** I wrote on #461 that each run's
+  `thermal.jsonl` would show whether B ran throttled. Hostops corrected it
+  (5867529398): both runs predate the thermal logging, and neither has a
+  `thermal.jsonl` or a `COOLDOWN:` line. `perf_regimen.json` shows only that
+  both ran at MAX and were restored to REST. So K1 is unread on pair 1, not
+  failed, and pair 2 is the first pair it can judge.
+
+### F4b and its controls, registered before any of it was read
+
+Registered on #461 at 09:41:38Z (5867400666), and filed with the text
+unchanged as `remote-461-memo-perf-crimson-2.json`. At registration, pair 2
+did not exist, and I had read none of pair 1's figures below.
+- **F4b (moderate-low):** a second pair, **B run first**, then A. Same refs,
+  route and window. B's gfps median is at least A's minus 1.
+- **K1, thermal parity** (a control): every cooling device's highest
+  `cur_state` over the samples inside the window is the same in both arms. A
+  pair that fails it is thermally confounded, and its F4 is not attributed
+  to the fix.
+- **K2, same scene** (a control): the window medians of hakuX-cpu's `M`
+  (PGRAPH methods per frame) are within 10% of each other.
+- **P1 (high, given K2):** B's `Tq` (bitmap tests per frame) is at least A's,
+  because the fix trades memo hashes for bitmap tests.
+- **P2 (moderate), on pair 1's lines:** B's `mk` KiB per frame is below A's,
+  and its `bit`+`bov` KiB per frame above A's.
+- **R, where the frame went,** read when F4 fails with K1 and K2 holding.
+  Take BUSY − TxH per frame, with BUSY = Surf + Draw + Fin. If B's is more
+  than 2 ms/frame above A's, the time is on the render thread. Otherwise it
+  is not, and what is left is the guest (the route above) or the display.
+- **V, how it shows:** the share of flips that took 3 or more VBLANKs. The
+  route file notes that the title paces itself to 30.
+
+**G, the guest-side route,** was registered on #461 at 10:05:43Z (5867795299).
+At that point no `[tlb68]` line of either pair had been read, and pair 2 did
+not exist.
+- The route needs B to clear more texture-dirty bits than A. Each clear made
+  off the vCPU thread is one `tlb_reset_dirty()` call, counted as `rdo` on the
+  `[tlb68]` line.
+  - The line is on tag `hakuX`, about every 2 s, from
+    `accel/tcg/cputlb.c`'s `hakux_tlb68_tick`.
+  - It is in every build, and the soak's logcat spec keeps it. So pair 1
+    carries it too.
+- **Read per flip:** B's `rdo` above A's leaves the route possible. Then `sd`,
+  the slow-path stores that re-enabled a page, says how many slow stores it
+  cost. B's `rdo` at or below A's refutes the route as the cause of a drop.
+- **It is a discriminator, not a prediction.**
+
+**What follows:**
+- **F4b passes, with K1 and K2 holding:** the fix stays, and F4 stays FAIL as
+  recorded. Pair 1 has no thermal record, so its drop stays unexplained.
+- **F4b fails, with K1 and K2 holding:** the fix costs frame rate on Crimson,
+  in the order that favours B. Its `create_texture()` hunks are reverted from
+  master, or a replacement is registered first, if R and V point to one.
+
+### The reader for the pairs, and the window it shares
+
+- **`pair461_read.py`** reads one run, or a pair with `--pair A_RUN B_RUN`,
+  from a soak's result directory: `logcat.txt`, `thermal.jsonl` and
+  `run.log`. It prints every figure above over the window, then the legs.
+  - A leg whose inputs are missing reads UNREAD, never PASS.
+  - Its selftest builds pairs from the emitters' own formats, `[tlb68]`
+    included. It has positive controls for:
+    - K1: a cpufreq cap inside B's window fails it, and one after the window
+      does not;
+    - K2: 15% more methods;
+    - P1 and P2;
+    - both of R's outcomes, and both of G's;
+    - G reading UNREAD when there are no `[tlb68]` lines.
+- **One window for every reader.** `phase_read_split.py` now takes
+  `--window A,B`, so F2's statistic comes from the registered tool, not by
+  hand. Its window code is the one `tex461_read.py` and `pair461_read.py`
+  import.
+- **#480's audit LOW-2** is fixed in that shared code.
+  - **The bug:** a 29 February stamp re-read in a common neighbouring year
+    raised `ValueError`.
+  - **The fix:** such a stamp is now outside every window. It is more than
+    half a year from the origin in the year it parses in, so it cannot fall
+    inside a window a few minutes long.
+  - **The positive control:** the reader before the fix raises on the new
+    selftest case, and gives the same answer as the new one on the three
+    midnight crossings.
+
+## #461, fourth: pair 1 through the reader, and the render thread's TLB walks (2026-09-28)
+
+### Pair 1, scored as registered
+
+Hostops ran `pair461_read.py` on pair 1 (5868152015); I scored it on #461
+(5868935481). A is f131dd11, which ran first; B is 8f9c74f0, the fix.
+
+| leg | read | |
+|---|---|---|
+| F4 | B 22 − A 26 = −4 | **FAIL**, as recorded |
+| K1, thermal parity | no `thermal.jsonl` on pair 1 | UNREAD |
+| K2, same scene | `M` A 10,812 / B 12,301, +13.8%, bar 10% | **FAIL** |
+| P1 | `Tq` A 1,051 / B 1,186 | PASS, the scene's: tests per method are flat, 0.097 and 0.096 |
+| P2 | `mk` KiB per flip A 28,031 / B 31,839 (+14%); `bit`+`bov` A 908 / B 3,046 | **FAIL** |
+| R | BUSY − TxH A 17.05 / B 23.54 ms/frame | not read: K1 unread, K2 failed |
+| G | `rdo` per flip A 175.2 / B 221.1 (+26%) | route possible |
+| V | 3+ VBLANK flips A 43.8% / B 50.2%; 4+ VBLANK flips 112 → 441 | |
+
+- **K2 fails, so pair 1 drew different scenes.** F4's FAIL stands as recorded,
+  but it is not attributed to the fix.
+- **P2 fails, and it corrects my model.** I expected the rebind test to find,
+  earlier, the bits A's next poll would have found. Instead B made more
+  discoveries in total: `bit`+`bov` ×3.4 and `mk` +14% per flip. The guest keeps
+  writing pages that textures sit on, so the route my code reading called the
+  exception is the common case.
+- **G: the guest-side route is possible.** Per flip, B's `rdo` is +26%, its
+  walk time `rdous` +2.45 ms and `sd` +17%. Per method they are +11%, +34% and
+  +3%, but K2's scene difference is inside every one of them.
+
+### The render thread's TLB walks, on master's own path
+
+Unregistered, read off `[tlb68]` in pair 1's A arm.
+- **The cost.** Each dirty-bit clear made off the vCPU thread calls
+  `tlb_reset_dirty()`, which walks the vCPU's TLB under its lock.
+  - A: 175 walks per flip at 26.7 µs, **4.7 ms per flip**, about 11% of the
+    window's 43 ms mean frame.
+  - B: 221 walks at 32.2 µs, 7.1 ms.
+- **The texture path is not most of it** (per-reason counts, 5868986208).
+  - Nearly every texture discovery shows up as at least one `mk` or `bit`
+    hash. A discovery that marks aliases shows up as several, and one whose
+    node is evicted as none. So `mk` + `bit` roughly bounds the discoveries
+    from above.
+  - A: 72.2 per flip against 175 walks, **at most 41%**. B: 98.1 against 221,
+    at most 44%.
+  - So at least about 103 walks and 2.7 ms per flip on A come from other
+    callers: the NV2A client's per-draw tests, most likely the vertex RAM sync
+    and the surface checks.
+  - Raised on #461 for lane.local (5869799922). A per-caller count at
+    `tlb_reset_dirty_range_all()` in `system/physmem.c` would name the callers,
+    and that is TCG territory, not this lane's.
+- **Not built:** a per-caller count in `vk/texture.c`. It would size only the
+  smaller share.
+
+### W1 and W2, registered for pair 2 before it runs
+
+Registered on #461 at 11:27:22Z (5868935481). They are per-work legs, so a
+scene difference cannot hide a cost again.
+- **W1 (moderate):** (BUSY − TxH) per method, B over A.
+  - Above 1.10: the fix costs the render thread per unit of work.
+  - At or below 1.05: it does not.
+  - Pair 1 reads 1.21.
+- **W2 (moderate):** `rdous` per method, B over A.
+  - Above 1.15: the fix adds TLB-walk time per unit of work.
+  - At or below 1.05: it does not.
+  - Pair 1 reads 1.34.
+- **If K2 fails on pair 2 as well:**
+  - both show a cost: a replacement is registered;
+  - both show none: the fix stays;
+  - otherwise: one more pair.
+
+### A unit correction: `tex461_read.py`'s "per frame" was per finish
+
+- **What the lines count.** The txh/txu/txr lines tick once per 60 finishes at
+  a flip stall or a present (`opt_stats_log_and_reset()` in `vk/draw.c`), not
+  once per 60 guest flips.
+  - Pair 1 ran 85 × 60 = 5,100 finishes against 3,480 flips on A, 1.47 per
+    flip.
+  - B ran 3,900 against 2,820, 1.38 per flip.
+- **What was affected.**
+  - The rates in "#461: what a texture bind spends its time on" and "#461,
+    second" were per finish: for example 338 `create_texture()` calls and 262
+    hashes "per frame". Their shares and ratios within one run are unchanged.
+  - F3 reads 0.40 per flip, against 0.42 per finish: still PASS.
+  - P2 is FAIL in either unit.
+- **What changed in the readers.**
+  - `tex461_read.py` now says "per finish". When the input carries hakuX-pace
+    lines, it adds a per-flip block from the flips they count.
+  - `pair461_read.py` reads the hash figures per flip, the unit the registered
+    legs name.
+
+## #557: the thermal governor core (2026-09-28)
+
+> **Stopped the same day, and the core reverted.** See "#557 stopped" below.
+> Nothing in this section is to be hooked in. It stays as the record of the
+> replay.
+
+Delivered 15:00Z (5872612441, owner-approved, board wave 277). An opt-in
+governor that steps quality down before the Thor's thermal pause, instead of
+letting the kernel park cpu3-7. This change is the core only: nothing calls
+it yet, and it does nothing unless `HAKUX_THERMAL_ADAPT=1`.
+
+### What was built
+
+- **`android/app/src/main/cpp/thermal_governor.c` and `.h`**, added to the
+  `xemu` shared library in `CMakeLists.txt`. Plain C on libc, plus
+  `<android/log.h>` on Android. No QEMU headers, so the desktop harness
+  builds it as it is.
+- **The policy**, as #557 states it:
+  - **Prediction:** `T_eq = T + tau * dT/dt`, where dT/dt is the least-squares
+    slope over the last 60 s. tau = 210 s by default (below).
+  - **Down one rung:** `T_eq` > 72 C for 60 s unbroken.
+  - **Up one rung:** `T_eq` < 64 C for 300 s unbroken.
+  - **Rate:** at most one change per 120 s.
+  - **Rungs, in order:** `cap30`, `no-occl`, `scale1x`, `rp-mode`. They are
+    released last engaged first.
+- **Where the design was silent, these choices:**
+  - **A set pause device counts as hot.** The pause makes xo-therm fall, and
+    the slope would otherwise read that fall as cooling.
+  - **No step up while a pause device is set, or while its state is unread.**
+  - **A rung nobody registered is skipped.** Stepping to a rung that does
+    nothing would spend a 2-minute change slot on nothing.
+  - **The prediction waits** until the window spans 45 s.
+  - **A change restarts both dwells**, so the next one is earned from the
+    change's own effect.
+  - **A silence longer than 10 s restarts the window and both dwells:** the
+    app paused, or the reads failing. The dwell times measure an unbroken
+    stretch.
+- **tau = 210 s** comes from the GTA pilot (#507, thermal507-3751184).
+  - Its xo-therm climbed 54.3 → 78.03 C in 538 s.
+  - The climb rate between samples falls linearly with temperature (3.3 C/min
+    at 68 C, 0.6 at 77.5 C), as a first-order approach does.
+  - A least-squares line through those rates, without the launch interval
+    (40-138 s), gives tau = 210 s toward 80.25 C. With the launch interval it
+    gives 250 s toward 81.3 C.
+  - The registration comment quoted my hand fit, 214 s toward 79.7 C. That was
+    rough, and it does not touch the registered legs, which fix tau = 210 s.
+  - `HAKUX_THERMAL_TAU_S` overrides tau.
+- **The sensors:**
+  - **The zone:** the lowest-numbered zone whose `type` is `xo-therm`, read
+    in milli-C. `HAKUX_THERMAL_ZONE` overrides the type.
+  - **The cooling devices:** every one. Pause-class devices are those that
+    match `thermal_state.py`'s prefixes, `thermal-pause` and `pause-cpu`.
+    They feed the policy, and they get their own slots, so a device with
+    many cooling devices cannot crowd them out.
+  - **How they are read:** the files are opened once and re-read with
+    `pread()`.
+  - **What counts as unread:** a temperature outside -20 to 130 C, text that
+    will not parse, or a failed read.
+  - **Never Android's thermal API,** which reads 0 during a pause on these
+    ROMs.
+- **The lines,** all on `hakuX-perf`, because the dispatcher's LOGCAT_SPEC
+  ends in `*:S`:
+  - `[thermal557] config zone= tz= pause_dev= cdev= skipped= tau= window= span= down= up= gap= wired=`
+  - `[thermal557] state rung=L/W t= xo= dTdt= teq= pause= cdev= hot_s= cool_s= rd_us= n= bad= down= up=`,
+    every 30 s. `rd_us` is what the sysfs read cost on the display thread.
+  - `[thermal557] down|up rung=L/W NAME t= xo= dTdt= teq= pause= cdev= why=`,
+    on every change. It is logged before the callback runs.
+  - `[thermal557] floor ...`, once, when it would step down but no wired rung
+    is left.
+  - `[thermal557] off: no readable zone of type T under R (errno text)`, once.
+  - **Timing:** the config line and the first state line wait one status
+    interval (30 s). They therefore come after the first `gfps=` line, and a
+    reader that starts its clock at the first `hakuX-perf` line
+    (`phase_read_split.py`) keeps its origin. Off, it logs nothing at all.
+- **Turning it on, on a device:** add `HAKUX_THERMAL_ADAPT=1` to the app's
+  `env_vars` setting. `SyncSetupFiles()` in `xemu_android.cpp` `setenv()`s
+  each line before the core starts.
+
+### The hook, for the file's owner (not granted: `ui/xemu.c` is lane.pacing's)
+
+The call goes in `xemu_android_display_loop()`, right after
+`sdl2_gl_refresh()` (ui/xemu.c:1591 at 0f4002eb), inside the
+`#ifdef __ANDROID__` block that is already there:
+
+```c
+        sdl2_gl_refresh(&sdl2_console[0].dcl);
+#ifdef __ANDROID__
+        thermal_governor_tick(); /* #557: returns at once unless HAKUX_THERMAL_ADAPT=1 */
+```
+
+Its declaration goes in the `#ifdef __ANDROID__` include block at line 71.
+`xemu_core`'s include path already has `android/app/src/main/cpp`:
+
+```c
+#include <android/log.h>
+#include "thermal_governor.h"
+```
+
+- **Why here, and not `xemu_android.cpp`:** that file's loop is the bootstrap
+  window ("core not wired yet"). `xemu_android_display_loop()` is the loop
+  that presents.
+- **Paused and hidden:** the loop `continue`s before the refresh when the app
+  is paused or hidden. The governor then does not sample, and on resume its
+  10 s silence rule restarts the window. Engaged rungs stay engaged.
+- **Each rung's owner** registers once with
+  `thermal_governor_register_rung(rung, fn, opaque)`. It is safe from any
+  thread, before or after the first tick. The callback runs on the display
+  thread and should only set a flag that the owner reads at a safe point:
+  - `cap30`: the present cap (the frame limiter);
+  - `no-occl`: occlusion queries;
+  - `scale1x`: the surface scale;
+  - `rp-mode`: the render-pass mode.
+
+  With no rung registered, the hook is a prediction-only run: the state lines
+  record `T_eq` against the pause, and nothing changes.
+
+### The proof on the desktop
+
+`docs/lanes/remote/thermal557_replay.py --selftest` builds
+`thermal557_harness.c`, which includes the core whole, with the host's cc.
+All 17 checks pass. The harness's sysfs group has 18 checks of its own.
+- **sysfs:**
+  - **The reader,** against a fake `/sys/class/thermal`:
+    - it finds the zone by type, taking the lowest number (a decoy of the same
+      type sits at 91, and `thermal_zonex` is not a zone);
+    - it tells pause devices from the others;
+    - it re-reads files changed in place;
+    - it treats unparsable and out-of-range values as unread;
+    - it reports a missing zone, and a missing root with its errno.
+  - **The tick:**
+    - without `HAKUX_THERMAL_ADAPT=1`, it opens and logs nothing;
+    - `=0` is off;
+    - `=1` takes tau from the environment;
+    - a rung registered before the first tick is kept, and one registered
+      after is wired too;
+    - it samples at most once a second;
+    - it logs nothing before 30 s, and then the config line comes first;
+    - a missing zone gives one `off:` line.
+- **Scenarios**, with the times the design fixes:
+  - **S1, a first-order climb 60 → 80 C:** steps at 105/225/345/465 s. The
+    window is valid at 45 s, then the dwell runs 60 s and the gap 120 s. 78 C
+    is reached at 484 s. The floor is logged once, at 585 s.
+  - **S2, a climb to 68 C:** nothing (max `T_eq` 70.11 C).
+  - **S3, plateaus at 70 and 74 C with ±0.3 C of noise:** nothing at 70 C, and
+    the S1 schedule at 74 C.
+  - **S4, the cool-down:** a rung back every 301 s, the last engaged first.
+  - **S5, the dead band:** four rungs down, then nothing for 30 min.
+  - **S6, a pause:** rungs down on the pause alone at 60/180/300/420 s, and none
+    back while it holds, although `T_eq` < 64.
+  - **S7, a 30 s silence:** it restarts the window (first step at 215 s, not 105).
+  - **S8, rungs 0 and 2 wired:** those two, then the floor.
+  - **S9, every fifth sample unread:** the same schedule.
+  - **S10, a steady 0.5 C/min:** checks tau's scale at 210 and 60 s.
+- **Math:** the C `T_eq` matches an independent least-squares fit on 9,000
+  jittered samples, to 5e-10 C.
+- **Model:** the C core and an independent Python model of the policy agree
+  event for event, and on `T_eq`, on 60 seeded random traces. The traces have
+  hot and cool regimes, pauses, unread samples, silences and random wiring:
+  197 steps down, 51 up and 407 floor lines.
+- **Mutants:** twelve mutations of the core, run in a scratch copy and not
+  committed. All twelve turn the selftest red:
+  - the dwell compared with `>`;
+  - an unread pause allowing a step up;
+  - no gap reset;
+  - the floor flag never cleared;
+  - the dwells not restarted on a change;
+  - the pause not counted as hot;
+  - the first-engaged rung released first;
+  - the span check 15 s short;
+  - the window one sample long;
+  - unwired rungs not skipped;
+  - the temperature read in C/100;
+  - the gate accepting any value.
+- **A property worth knowing: the 60 s window lags, so `T_eq` reads early.**
+  - On a first-order climb whose time constant equals tau, `T_eq` reads high
+    by about 15% of the remaining gap, +2.34 C at most on S1. It never reads
+    low.
+  - The prediction errs toward stepping down early: safe for the trip, and a
+    cost in quality.
+  - S2's 68 C plateau peaks at 70.11 C. A plateau near 70 C can therefore brush
+    72 during its climb, but the 60 s dwell absorbs that.
+
+### The replay on #507's traces: L1-L3 hold, L4a is KILLED
+
+- **The registration:** on #557 at 15:35:33Z (5873316950), before any Part A
+  series was read. It is filed unchanged as
+  `docs/testing/predictions/remote-557-replay.json`.
+- **The data:** hostops sent the series of all ten runs at 15:51Z
+  (5873610104).
+  - My extract command's `ls` would have missed eight of them: they sit under
+    `1-...`, not `0-0-x-...`. hostops fixed that.
+  - **4130875 (Crimson, default) could not be replayed.** Its `start` sample
+    is unread (`- start - -`), so the extract has no time base for it, though
+    its xo series is intact. As registered, it drops and L3 scales to 5 of 7.
+    I asked for it again, keyed on the host clock `t`.
+- **The run:** `thermal557_replay.py EXTRACT --score --history`, at the
+  registered defaults. The feed is causal, so each sample arrives about 30 s
+  late.
+
+| run | title, regimen | xo at start | t78 | T_eq > 72 first | first step | lead | steps before t78 |
+|---|---|---|---|---|---|---|---|
+| 4130828 | Crimson, max | 63.7 | 365 s | 61 s | 121 s | +244 s | 3 |
+| 4130912 | GTA, default | 61.9 | 355 s | 63 s | 123 s | +232 s | 2 |
+| 4130959 | GTA, max | 63.5 | 288 s | 60 s | 120 s | +168 s | 2 |
+| 4130999 | MechAssault 2, max | 64.7 | 287 s | 59 s | 119 s | +168 s | 2 |
+| 4131051 | MechAssault 2, default | 58.3 | 386 s | 65 s | 125 s | +261 s | 3 |
+| 4131088 | Blinx r3 A | 60.5 | 443 s | 62 s | 122 s | +321 s | 3 |
+| 4131123 | Blinx r3 B | 63.1 | 411 s | 59 s | 119 s | +292 s | 3 |
+| 1257857, pilot | GTA, default | 57.3 | never (max 74.4) | 72 s | 132 s | | 3 steps in 460 s |
+| hostops-810152 | MechAssault 2, max | 47.1 | never (plateau 74.2) | 76 s | 136 s | | 4 steps by 496 s |
+
+- **L1 HOLDS** (high): the first step-down comes before t78 on all seven.
+- **L2 HOLDS** (moderate): every lead is at least 60 s. The smallest is 168 s.
+- **L3 HOLDS** (low): all seven have two or more steps before t78.
+- **L4a is KILLED** (moderate). On hostops-810152, `T_eq` peaks at 93.76 C,
+  19.6 C above the plateau the run actually reached.
+  - It overshoots in the first minutes of a cool start. In the history,
+    `T_eq` is 84.3 C at 136 s, then 75.6, 73.6 and 74.1 C at 256, 376 and
+    496 s.
+  - It comes within 1.5 C of the plateau only after about 4 minutes.
+- **L4b HOLDS** (high): that run steps down at 136 s, and all four rungs are
+  down by 496 s, on a run that never paused.
+- **The rung history on the paused runs:**
+  - the rungs step down at about 120, 240, 360 and 480 s;
+  - the fourth usually comes during the pause, and the pause counts as hot;
+  - then one `floor` line.
+  - Open-loop, everything after the first step is the recorded device, not
+    what the governor would have made of it.
+
+**What the pass does not show.** L1-L3 do not show the predictor foreseeing
+the pause:
+- Every run, paused or not, first crosses 72 C at 59-76 s and steps at
+  119-136 s, the pilot and the plateau run included.
+- The cause is the launch. Between the first two samples (about 38 s),
+  xo-therm climbs 5.3-7.2 C/min on the paused runs and 8.9 C/min from
+  hostops-810152's 47 C start. By 4-5 min the rate is down to 0.6-2.0 C/min.
+- The climb is not first-order with one time constant. It has a fast early
+  part, and a slow later one that the GTA pilot's 210 s describes.
+
+**tau, unregistered and in-sample** (the same traces; `--tau`):
+
+| tau | leads, paused runs | smallest | max T_eq, hostops-810152 | its first step | pilot's first step |
+|---|---|---|---|---|---|
+| 60 s | 151-302 s | 151 s | **74.28 C** | 580 s | 296 s |
+| 120 s | 160-314 s | 160 s | 78.42 C | 148 s | 229 s |
+| 210 s (default) | 168-321 s | 168 s | 93.76 C | 136 s | 132 s |
+| 300 s | 173-327 s | 173 s | 109.12 C | 131 s | 126 s |
+
+- **At tau = 60 s,** L1-L3 still hold and L4a would too: the plateau run's
+  `T_eq` stays at its plateau.
+- **The threshold still makes that run step,** at 580 s instead of 136 s,
+  because its plateau of 74.2 C is above 72.
+- **Why tau barely moves the leads:** the paused runs climb steeply right up
+  to the pause.
+
+**What follows, as registered.** L4a's overshoot goes to the hook PR's device
+run as a known risk.
+- **The default stays 210 s here.** Changing it to the value these same
+  traces picked would be fitting, not testing.
+- **If tau = 60 s is wanted before the hook,** it is registered first. It
+  would be tested against traces not read here, which have `thermal.jsonl`
+  and paused:
+  - flip474's four Thor soaks (1818830, 1819047, 1819312, 1819530);
+  - thermal507's GTA pilot (3751184).
+- **What the threshold does to specificity** is the design's own choice, and
+  it matters more than tau. A title whose equilibrium sits between 72 and
+  78 C steps down to the floor although it would never pause.
+
+### Device prerequisites and open risks
+
+- **SELinux.** The app, as `untrusted_app`, must be allowed to read
+  `sysfs_thermal`. The handhelds run permissive: perfregimen's NOTES record
+  sysfs reads logging `avc: denied` in permissive mode. An enforcing ROM gives
+  `off: ... (Permission denied)`, and the governor stays off.
+- **The display-thread cost is unmeasured on a device.** Per second, the read
+  is one temperature file plus one `pread()` per cooling device. The Thor's
+  count is in the config line's `pause_dev` and `cdev`, and each read's cost
+  is in `rd_us`. If `rd_us` is large, the non-pause devices can be dropped:
+  they only feed the logs.
+- **What each rung saves in heat is unknown.** #557's "done when" device run
+  is what measures it. Open-loop, the replay can only show when the governor
+  would act.
+
+## #557 stopped (2026-09-28)
+
+The owner stopped #557 at 18:20Z (5875955590).
+- **Why:** the predictive governor steps down on every run, paused or not
+  (L4a), so it would throttle play that never needed it.
+- **What handles heat instead:** measured temperatures, by scripts: #519's
+  cool-down gate, the cold-start slot tool and the device watchdog.
+
+**Done for the stop:**
+- **The core is reverted** in one PR that closes #557:
+  `android/app/src/main/cpp/thermal_governor.c` and `.h` are removed, and
+  `CMakeLists.txt` is back byte for byte to its state before #560
+  (0f4002eb). No inert governor code stays in the build.
+- **PR #568, the audit's five LOW fixes, is closed unmerged** (5875976002).
+  Its commits stay reachable in that PR's history:
+  - 387ae0a2: the fixes, each with a check that goes red when it is
+    reverted;
+  - 318ee209: 4130875's NOTES rows.
+- **No hook PR, no further replay, and no device runs.**
+
+**Kept, as the record:**
+- **This file, `thermal557_harness.c` and `thermal557_replay.py`.**
+  - The replay script now takes the core from git history at the fold
+    that carried it (3a5d79e3, PR #560), and writes it beside its build.
+  - `--selftest` still passes all 17 checks.
+  - A shallow clone without that commit says so and stops.
+- **`docs/testing/predictions/remote-557-replay.json`,** the registration.
+
+**The final scoring.** hostops re-extracted 4130875 on the host clock
+(5874270083). Its start sample is unread, so it replays from its first
+reading, at 75 s: first step at 189 s, lead +253 s, three steps before t78.
+With all eight paused runs:
+- L1, L2 and L3 hold 8/8 (leads 168-321 s);
+- **L4a is KILLED** (93.76 C against a 74.2 C plateau), and that kill is
+  the finding the stop rests on;
+- L4b holds.
+
+This was posted on #557 (5875291526).
+
+**For whoever picks this up again.** Start from L4a and the specificity
+note above, not from the core:
+- a single time constant cannot follow the launch climb;
+- the 72 C threshold sits at the bottom of the 72-78 C band, where a title
+  can plateau without ever pausing (hostops-810152 at 74.2 C).
+
+The tau = 60 s result in "tau, unregistered and in-sample" is not
+evidence. It was fitted on these same traces.
+
+## Suffixed branches, and the board's remote-lane rule (2026-09-29)
+
+**The decision.** Both #578 audits (LOW-2, in pass 1 and pass 2) advised
+that this lane's next PR go on a suffixed branch:
+- audit files are named by branch;
+- `claude/docs-tooling-agentic-coding-u152m1` already has #560's and #578's
+  audits on master, and #578's had to carry `-pr578` to avoid overwriting
+  #560's.
+
+The owner approved it in this lane's session on 2026-09-29. From now on each
+PR goes on its own `claude/docs-tooling-agentic-coding-u152m1-<suffix>`,
+started from master. The unsuffixed branch stays where it is (6d2b2e49).
+
+**The gap.** Every reader of `[lane.remote] remote` in `territory.toml`
+compared the head with the row's value exactly (#461, 5883036238):
+- **`fleet.py`,** in `lane_prs()`: a head that was neither a `remote` value
+  nor `lane/*` was skipped. So a suffixed PR was in no lane section, and the
+  READY-with-no-label FAIL could not name it.
+- **`jobs/remote-lane.sh`,** in `remote_lane_of()`, which `is_remote_branch()`,
+  `handback.sh`'s `lane_name()` and both of `fold.sh`'s guards call:
+  - handback could not tell a suffixed head was this lane's;
+  - `fold.sh`'s index-conflict repair would have pushed a merge onto a
+    branch this session pushes to.
+
+**The rule** (granted by hostops, board a64e53e5, #461 5883107753): a head is
+a remote lane's when it equals the row's value or, failing that, starts with
+`<value>-`, and the longest match wins, as in `branch_lane()`.
+- **The longest match is taken over every row's branch, local rows included**
+  (`lane/<row name>`). A `remote = true` row `foo` must not take
+  `lane/foo-bar`, which is a local lane `foo-bar`'s own branch, or that lane's
+  suffixed ones.
+- **Remote rows come first,** so a branch that a remote and a local row both
+  name goes to the remote lane, the direction in which every caller refuses
+  to act.
+- **Both readers implement it:** `fleet.py`'s new `remote_lane_of()` and the
+  shell's. `remote_map` now also reads the local rows for the longest match,
+  but still prints only remote rows, so its callers see no change.
+- **Out of scope, per the grant:** pruning folded suffixed branches.
+  `fold.sh` prunes only `lane/*` refs, so `claude/*` ones were never pruned.
+  A remote lane's suffixed `lane/*` branch is now kept like its own.
+
+**Tests** (`98-lane-shape.sh`, 28 new checks, 90 in the file):
+- **One table of 13 heads** is run through both readers:
+  - exact values;
+  - suffixed branches;
+  - the longest match between two remote rows;
+  - `remote = true` and its suffixes;
+  - a local row whose name extends the remote row's;
+  - prefix-only near misses;
+  - an unrelated branch.
+
+  `fleet.py` gives the shell's answer on all 13, and the batch form
+  `remote_lanes_of` gives the table's six owned answers in one call.
+- **End-to-end legs:**
+  - `fleet.py` counts a ready PR on a suffixed branch as the lane's, lists it
+    under READY, NOT FOLDED, and names it in the no-label FAIL;
+  - handback tells a suffixed head that the lane's own routine picks it up;
+  - `fold.sh` keeps a remote lane's suffixed `lane/*` branch.
+
+  Each leg has a pair that must not move: a head that only shares the prefix,
+  or a local lane's suffixed branch, which is still pruned.
+- **Against master bf1ecde346's two readers,** 11 of the 28 fail and 17 pass.
+  The 11 are what a suffix changes:
+  - the 3 suffix rows of the table;
+  - the batch form, and the agreement check;
+  - 3 fleet legs, 1 handback leg and 2 fold legs.
+
+  All 62 of the file's existing checks pass on both versions.
+
+**Two more readers matched exactly, and joined the PR** (#461, 5883624572;
+granted at board 8bd1dc46, 5883704276):
+- **`jobs/issue-sweep.sh`, `lane_absence()`.** It counted a remote lane as
+  live only if an open PR's head equalled its branch, or that exact branch's
+  tip moved within 3 days.
+  - The unsuffixed branch's tip is 6d2b2e49, 09-28 20:20Z.
+  - So from about 10-01 20:20Z, the sweep would have reported this lane as
+    absent even with suffixed PRs open, and handed its claims to the board.
+  - Now an open PR on a suffixed branch counts. The tip is the newest of the
+    branch and the suffixed branches the rule gives this lane; a longer row's
+    `-*` branch is that row's, not this lane's.
+- **`jobs/pr-sweep.sh`, the classifier.** `REMOTE.get(branch, "")` put a
+  suffixed draft in no class at all. It now gets `remote-draft`.
+- **One copy of the rule.** `remote-lane.sh` gains `remote_lanes_of`, which
+  applies it to every head on stdin on one board read, and both sweeps call
+  it. The rule is now one awk program, shared by `remote_lane_of` and
+  `remote_lanes_of`. `fleet.py` is the only other copy, and the table checks
+  that it gives the same answers.
+
+**Their tests** (`78-sweep-remote.sh`, 13 new checks, 78 in the file):
+- **`issue-sweep.sh`:**
+  - a suffixed open PR keeps the claim;
+  - a head that only shares the prefix does not;
+  - a month-old branch with a fresh suffixed branch is live;
+  - a fresh branch that belongs to a longer row keeps only that row alive;
+  - the finding names the suffixed glob it looked at.
+- **`pr-sweep.sh`:** a suffixed draft is `remote-draft`, by lane name, and
+  never reaches `handback.sh`. A draft that only shares the prefix is not.
+- **Against master bf1ecde346,** 6 of the 13 fail and 7 pass. The result is
+  the same against this branch with only `remote-lane.sh` changed, so the
+  sweeps' own edits carry the 6. All 65 of the file's existing checks pass
+  on every version.
+
+**Seen and left alone.** `issue-sweep.sh` has the same gap for local lanes:
+it counts a local lane as having an open PR only on `lane/<name>`. So a local
+lane whose unit is gone and whose PR is open on `lane/<name>-<suffix>`
+(lane.sustain507's #547 shape) still reads as having no open PR. The grant
+covers remote lanes, so this is reported rather than fixed.
+
+## #461, fifth: pair 2 passes, and the fix stays (2026-09-29)
+
+### Pair 2, scored as registered
+
+hostops ran `pair461_read.py --pair` at origin/master over 90-240 s
+(5884516710, with `rdous` in 5884957631), and I scored it on #461 (5884870841,
+5885643241).
+- **The runs.** A is `0-0-s-1-1790614390-remote461-p22a-r2` (f131dd11), the
+  re-run. B is `1-1790588957-remote461-p21b` (8f9c74f0, the fix). B ran first,
+  as registered.
+- **Valid and cold.** A reached the route this time. It started at xo-therm
+  49.6 C and B at 49.4 C. Neither run paused: only the two backlights are
+  above `cur_state` 0.
+
+| leg | read | |
+|---|---|---|
+| F4b | gfps B 29 − A 29 = 0, bar −1 | **PASS** |
+| K1, thermal parity | 39 cooling devices, every highest `cur_state` equal | holds |
+| K2, same scene | `M` A 11,930 / B 12,013, 1.007, bar 1.10 | holds |
+| P1 | `Tq` A 1,116 / B 1,156 | **PASS** |
+| P2 | `mk` KiB per flip A 25,330 / B 21,733 (−14%); `bit`+`bov` A 1,056 / B 2,342 (×2.2) | **PASS** |
+| R | BUSY − TxH A 18.22 / B 13.00 ms/frame | not read: F4b passed |
+| V | flips taking 3+ VBLANKs A 12.6% / B 3.4%; 4+ VBLANKs A 23 / B 36 flips | |
+| G | per flip: `rdo` A 165.84 / B 165.95 (+0.07%); `sd` A 468.43 / B 470.28 | route possible by the letter, with no drop to explain |
+| W1 | (BUSY − TxH) per method A 1.53 / B 1.08 µs; B over A 0.71 | **none** |
+| W2 | `rdous` per flip A 3,242.0 / B 3,270.1 µs; per method, B over A 1.002 | **none** |
+
+**What follows, as registered.**
+- F4b passes with K1 and K2 holding, so the M1 memo fix (#480) stays.
+- Pair 1's F4 stays FAIL as recorded. Pair 1 has no thermal record and its K2
+  failed, so its drop stays unexplained.
+
+**What the fix does on a matched pair.**
+- **Texture hashing:** TxH 5.51 → 1.45 ms/frame. B takes 4.06 ms/frame of it
+  off the render thread.
+- **Render-thread busy time:** 23.73 → 14.46 ms/frame, 9.27 less. W1 at 0.71
+  says the rest of the render thread's work fell per method too.
+- **Bytes hashed:** 89,007 → 24,078 KiB per flip. A's memo share, 62,618, is
+  gone on B.
+- **Pacing:** flips taking 3 or more VBLANKs fall from 12.6% to 3.4% (516 →
+  147 of about 4,100). Flips taking 4 or more rise from 23 to 36 (0.56% →
+  0.83%), which is recorded, not scored. gfps is 29 on both arms, so on this
+  route the fix shows up as frame-time headroom and pacing, not as rate.
+- **TLB walks:** W2 at 1.002 says the fix adds no walk time per unit of work.
+  Pair 1's 1.34 was read across different scenes (K2 +13.8%).
+
+**P2, read again.**
+- Pair 1's P2 FAIL stays a FAIL.
+- But pair 1's scenes differed (K2 +13.8%), and on this matched pair P2
+  passes.
+- So "#461, fourth"'s correction to my model was read off different scenes,
+  and it does not hold on a matched one. That correction said the rebind test
+  makes more discoveries in total.
+
+### lane.dirtytlb's per-caller count, against ask 3's bounds
+
+lane.dirtytlb counted `tlb_reset_dirty()`'s callers on Crimson on the Thor
+(#461, 5876294933 and 5877554895). Ask 3 (5872024863) had priced them offline
+from pair 1.
+
+| caller | ask 3's bound, per flip | counted, per flip | |
+|---|---|---|---|
+| vertex RAM sync | about 98 to 165 walks | 126.3 of 176.4 (72%) | inside |
+| `check_texture_dirty()` | at most 41% of the walks | 50.1 (28%) | under |
+| VGA display update | up to about 5 | 0 | none |
+| anything else | | 0 | |
+
+- **The span lever saves nothing** (`vr` 0). That lever is one walk per draw
+  over all its dirty ranges.
+- **PR #575 walks only the live MMU modes.** It stays a draft until its pixel
+  arms are judged.
+  - µs per walk ×0.22 on the render thread and ×0.16 on the vCPU.
+  - Walk time 7.25 → 1.36 ms per flip, and render CPU −3.35 ms per flip.
+  - gfps is unchanged (29/29), and J per frame ×0.991.
+- **For G and W2.** They price the fix's extra texture walks. Under #575 each
+  walk costs about 0.2×, so a W2 cost would shrink by that factor. W2 is not
+  re-registered for it.

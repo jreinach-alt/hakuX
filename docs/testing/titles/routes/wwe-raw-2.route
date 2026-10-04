@@ -1,0 +1,91 @@
+# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
+# WWE Raw 2 (5451000D): one route for every run (Quick Start saves
+# nothing). PLAYED by nav.py on the Nova, 2026-09-27 06:16 PDT
+# (lane.titleroutes HELD session wwe-raw-2.first-run-20260927T061604).
+#
+#   logos (A) -> the intro FMV (START skips it) -> the title, "Press START"
+#   (START) -> "Now checking free blocks." -> MAIN MENU, cursor on QUICK
+#   START (A) -> Player Settings, 1P vs CPU (A, A) -> Superstar Select, The
+#   Rock for 1P (A), The Undertaker for the CPU (A) -> "Are you sure you want
+#   to start the next match?" (A: Yes) -> The Rock vs The Undertaker, Normal
+#   -> two entrances, "PRESS A TO SKIP" (A, A, A) -> the match, clock
+#   running, both health bars shown.
+#
+# All choices are the defaults. The mark is at 00:14 on the match clock.
+#
+# Player control: a singles match, 1P as The Rock. The play pattern walks
+# right, strikes (X, A, Y) and walks back; nav frames 014-gameplay (00:14)
+# -> 015-moved (00:31, The Rock across the ring on the ropes).
+wait 27.1
+shot boot
+wait 4.6
+press A
+wait 5.4
+press A
+wait 5.4
+press A
+wait 7.0
+shot a3
+wait 5.4
+press START
+wait 5.1
+shot st1
+wait 5.3
+press START
+wait 6.1
+shot st2
+wait 15.2
+shot blocks
+wait 5.4
+press A
+wait 8.1
+shot quick
+wait 5.4
+press A
+wait 12.1
+shot players
+wait 6.1
+press A
+wait 8.1
+shot players2
+wait 5.5
+press A
+wait 8.1
+shot sel
+wait 7.6
+press A
+wait 10.1
+shot sel2
+wait 5.0
+press A
+wait 15.2
+shot yes
+wait 24.1
+shot load
+wait 5.4
+press A
+wait 10.1
+shot skip1
+wait 5.3
+press A
+wait 8.4
+press A
+wait 8.1
+shot skip2
+wait 11.0
+mark gameplay
+repeat forever {
+    axis LX max
+    wait 1
+    press X
+    wait 0.5
+    press A
+    wait 0.5
+    press Y
+    axis LX mid
+    wait 1
+    axis LX min
+    wait 1
+    axis LX mid
+    wait 1
+}

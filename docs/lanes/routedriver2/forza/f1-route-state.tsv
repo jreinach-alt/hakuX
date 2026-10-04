@@ -1,0 +1,72 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.5	unknown	no-prev		26.6	0.42	wait (unknown)	034923-001-unknown.png	
+2.1	logo	static	0.0003	26.6	0.42	press A (skip logo)	034926-002-logo.png	
+4.2	logo	static	0.0006	26.6	0.42	press A (skip logo)	034927-003-logo.png	
+6.1	intro_video	moving	0.0871	30.2	0.47	press A (skip intro_video)	034929-004-intro_video.png	
+8.2	logo	static	0.0	30.2	0.47	press A (skip logo)	034931-005-logo.png	
+10.2	logo	static	0.0006	30.2	0.47	press A (skip logo)	034933-006-logo.png	
+12.0	intro_video	moving	0.4198	28.6	0.32	press A (skip intro_video)	034935-007-intro_video.png	
+14.0	title	crop:title-logo		133.9	0.47	settle	034937-008-title.png	
+15.6	title	crop:title-logo		133.9	0.52	press A (title 1)	034939-009-title.png	
+17.6	profile	crop:profile-select		166.2	0.47	press A (profile 1)	034941-010-profile.png	
+19.5	main_menu	crop:menu-footer		177.1	0.42	settle	034942-011-main_menu.png	
+21.2	main_menu	crop:menu-footer		142.2	0.52	press A (main_menu 1)	034944-012-main_menu.png	
+23.0	cutscene	moving	0.4748	159.5	0.32	press A (skip cutscene)	034946-013-cutscene.png	
+24.9	main_menu	crop:menu-footer		137.6	0.37	settle	034948-014-main_menu.png	
+26.5	main_menu	crop:menu-footer		119.5	0.47	press A (main_menu 2)	034951-015-main_menu.png	
+28.4	main_menu	crop:menu-footer		156.1	0.37	settle	034952-016-main_menu.png	
+29.8	main_menu	crop:menu-footer		121.9	0.42	press A (main_menu 3)	034954-017-main_menu.png	
+31.7	main_menu	crop:menu-footer		121.9	0.42	settle	034956-018-main_menu.png	
+33.2	main_menu	crop:menu-footer		121.9	0.42	press A (main_menu 4)	034958-019-main_menu.png	
+35.0	cutscene	moving	0.7686	48.8	0.32	press A (skip cutscene)	035000-020-cutscene.png	
+36.8	cutscene	moving	0.995	243.3	0.27	press A (skip cutscene)	035001-021-cutscene.png	
+38.8	cutscene	moving	0.7377	134.5	0.47	press A (skip cutscene)	035003-022-cutscene.png	
+40.7	main_menu	static	0.0167	133.4	0.52	press A (main_menu 1)	035005-023-main_menu.png	
+42.9	main_menu	static	0.0109	133.8	0.52	press A (main_menu 2)	035007-024-main_menu.png	
+44.6	black	black		0.0	0.27	wait	035009-025-black.png	
+46.0	black	black		0.3	0.27	wait	035010-026-black.png	
+47.3	black	black		0.3	0.27	wait	035011-027-black.png	
+48.5	black	black		0.3	0.27	wait	035013-028-black.png	
+49.8	black	black		0.3	0.27	wait	035014-029-black.png	
+51.1	black	black		0.3	0.27	wait	035015-030-black.png	
+52.5	black	black		0.3	0.32	wait	035016-031-black.png	
+53.7	black	black		0.3	0.27	wait	035018-032-black.png	
+55.0	black	black		0.3	0.27	wait	035019-033-black.png	
+56.3	black	black		0.3	0.27	wait	035020-034-black.png	
+57.6	black	black		0.3	0.27	wait	035023-035-black.png	
+58.9	black	black		0.0	0.27	wait	035024-036-black.png	
+60.3	cutscene	moving	0.288	23.5	0.37	press A (skip cutscene)	035026-037-cutscene.png	
+62.6	cutscene	moving	0.7667	59.0	0.72	press A (skip cutscene)	035028-038-cutscene.png	
+64.7	cutscene	moving	0.5598	72.2	0.72	press A (skip cutscene)	035030-039-cutscene.png	
+66.9	cutscene	moving	0.7167	41.1	0.62	skip=none after 3 passes	035032-040-cutscene.png	
+68.7	unknown	hud:hud-lap+after-cutscene	0.6824	62.3	0.67	hold (hud up, motion not yet play)	035034-041-unknown.png	
+70.6	stalled	hud:hud-lap+static	0.0185	62.5	0.72	hold (stalled 0 s)	035036-042-stalled.png	
+72.6	unknown	hud:hud-lap+between	0.031	62.7	0.77	hold (hud up, motion not yet play)	035038-043-unknown.png	
+74.5	play	hud:hud-lap+motion	0.1548	65.0	0.72	hold	035040-044-play.png	
+76.4	play	hud:hud-lap+motion	0.2515	57.4	0.67	hold	035042-045-play.png	
+78.2	play	hud:hud-lap+motion	0.4876	45.4	0.62	hold	035043-046-play.png	
+79.9	play	hud:hud-lap+motion	0.3477	41.0	0.62	hold	035045-047-play.png	
+81.7	play	hud:hud-lap+motion	0.3947	46.2	0.67	hold	035047-048-play.png	
+83.5	play	hud:hud-lap+motion	0.2607	48.4	0.72	hold	035049-049-play.png	
+85.3	play	hud:hud-lap+motion	0.106	49.3	0.72	hold	035051-050-play.png	
+87.1	stalled	hud:hud-lap+static	0.0086	49.2	0.72	hold (stalled 0 s)	035052-051-stalled.png	
+89.0	stalled	hud:hud-lap+static	0.0009	49.2	0.72	hold (stalled 2 s)	035054-052-stalled.png	
+90.8	stalled	hud:hud-lap+static	0.0016	49.2	0.72	hold (stalled 4 s)	035057-053-stalled.png	
+92.7	stalled	hud:hud-lap+static	0.0011	49.2	0.72	hold (stalled 5 s)	035059-054-stalled.png	
+94.5	stalled	hud:hud-lap+static	0.0006	49.2	0.72	hold (stalled 7 s)	035101-055-stalled.png	
+96.4	stalled	hud:hud-lap+static	0.0022	49.1	0.77	hold (stalled 9 s)	035103-056-stalled.png	
+98.2	stalled	hud:hud-lap+static	0.0014	49.1	0.77	hold (stalled 11 s)	035105-057-stalled.png	
+100.1	stalled	hud:hud-lap+static	0.0019	49.1	0.77	hold (stalled 13 s)	035107-058-stalled.png	
+101.9	stalled	hud:hud-lap+static	0.0013	49.1	0.72	hold (stalled 15 s)	035108-059-stalled.png	
+103.8	stalled	hud:hud-lap+static	0.0022	49.1	0.72	hold (stalled 17 s)	035110-060-stalled.png	
+105.6	stalled	hud:hud-lap+static	0.0023	49.1	0.72	hold (stalled 18 s)	035112-061-stalled.png	
+107.4	stalled	hud:hud-lap+static	0.0019	49.0	0.72	hold (stalled 20 s)	035114-062-stalled.png	
+109.2	stalled	hud:hud-lap+static	0.0019	49.0	0.72	hold (stalled 22 s)	035116-063-stalled.png	
+111.0	stalled	hud:hud-lap+static	0.0009	49.0	0.72	hold (stalled 24 s)	035118-064-stalled.png	
+112.8	stalled	hud:hud-lap+static	0.0009	49.0	0.72	hold (stalled 26 s)	035119-065-stalled.png	
+114.7	stalled	hud:hud-lap+static	0.0008	49.0	0.77	hold (stalled 28 s)	035121-066-stalled.png	
+116.5	stalled	hud:hud-lap+static	0.0014	49.0	0.72	hold (stalled 29 s)	035123-067-stalled.png	
+118.3	stalled	hud:hud-lap+static	0.0014	49.0	0.72	ROUTE FAIL	035125-068-fail-stalled.png	
+# time_to_title_s=14.0
+# time_to_play_s=74.7
+# result=ROUTE FAIL drive forza: stalled: stalled 31 s: the play HUD is up and nothing moves -- the play input is not reaching the game, or a pause the profile cannot see

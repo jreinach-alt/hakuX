@@ -1,0 +1,154 @@
+# Otogi: Myth of Demons (46530002): docs/testing/titles/routes/otogi.route
+# with a timing-tolerant title. lane.slowtier2, 2026-09-28, for #462 phase
+# 2b's re-pilot (NOTES.md, "Attempt 3").
+#
+# Why: the master route presses START once, at +48 s. Its one good run
+# (titleroutes-1129571, 9e7f8418dc) logged its first hakuX-perf frame at
+# +12 s and the title's transition at +22.5 s, so START came ~28 s into the
+# title. The perflog pilot (0-0-s-1-1790609660-lane.slowtier2-otogi762702,
+# 97a6fa2b51) logged its first frame at +4 s and the transition at +14 s, so
+# START came ~37 s into the title. Its intro and gameplay frames both show
+# "PRESS START BUTTON". Most likely (inferred, no frame between) the title
+# had given way to its attract loop by then, and START only returned to the
+# title. A never leaves the title.
+#
+# The fix: four STARTs, 6 s apart, from +22 s. For a title at +14..+22 s at
+# least one lands on the title, and none lands later than ~26 s into it. A
+# START that lands in the main menu or the save prompts is taken as a
+# forward step (inferred: the A presses that follow cover either case).
+# From the menu on, this is the master route: A every 5 s through the menus,
+# A every 4 s through the intro (four more than master, as margin for the
+# earlier start), and one B. Two extra shots (title, menu) show where the
+# START presses landed.
+#
+wait 20.0
+shot title
+wait 2.0
+press START
+wait 6.0
+press START
+wait 6.0
+press START
+wait 6.0
+press START
+wait 10.0
+shot menu
+wait 15.0
+press A
+wait 5.0
+press A
+wait 5.0
+press A
+wait 5.0
+press A
+wait 5.0
+press A
+wait 5.0
+press A
+wait 5.0
+shot intro
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press B
+wait 3.0
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 1.5
+    press X 150
+    wait 0.3
+    press X 150
+    wait 0.3
+    axis LY mid
+    axis LX max
+    wait 1
+    axis LX mid
+    press A 150
+    wait 0.5
+    press X 150
+    wait 0.3
+    axis LY max
+    wait 1.5
+    axis LY mid
+    axis LX min
+    wait 1
+    axis LX mid
+    press X 150
+    wait 0.5
+}

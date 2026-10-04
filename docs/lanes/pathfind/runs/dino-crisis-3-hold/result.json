@@ -1,0 +1,59 @@
+{
+ "title_id": "43430003",
+ "name": "Dino Crisis 3",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Dino Crisis 3.iso",
+ "result": "gameplay",
+ "tool": "080f738f82",
+ "started": "2026-10-03 21:27:48 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/024-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/024-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/024-probe-c.jpg"
+ ],
+ "minutes": 3.55,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/023-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/031-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/032-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4343.md"
+ ],
+ "hold": {
+  "genre": "shooter",
+  "why": "Two characters walk through a corridor in third person, with a health/energy bar and a weapon-style gauge at the top, which fits a gun-based level-walking game.",
+  "ok": true,
+  "play_s": 607.1,
+  "need_s": 600.0,
+  "hold_s": 768.8,
+  "model_navs": 1,
+  "frames": 23,
+  "still_windows": 5,
+  "shed": [
+   "B"
+  ],
+  "reason": "",
+  "verdict": "VERDICT Dino Crisis 3 ? FAIL(menu time: 79.1% of the scored window in `play` (bar 90%; play 608 s, still 154 s, menu 6 s, no-timeline 0 s)) gameplay=769.4s fps_ok=0.3793 crash=False hang=False audio_short=0.0 hitches=18/1.522pm worst_ms=481.7 static_frac=unmeasured play_share=0.7906 fps_excluded=163.0s"
+ },
+ "model_calls": 35,
+ "calls_by_model": {
+  "claude-sonnet-5": 35
+ },
+ "steps": 24,
+ "seconds": 1024.7,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/frames/089-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 2,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/dino-crisis-3-hold/strip.jpg"
+}

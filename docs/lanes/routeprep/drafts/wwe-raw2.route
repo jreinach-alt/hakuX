@@ -1,0 +1,70 @@
+# WWE Raw 2 (5451000D), Nova. DRAFT by lane.routeprep, 2026-09-26, not
+# played. One file: whether Raw 2 asks to create save data on first boot is
+# not known; the step that would answer it has a frame, and a YES/NO there
+# is answered with A.
+#
+# Evidence: titlebench hands-off 240 s (0-0-y-1790410659-titlebench-11,
+# Nova), one frame per ~10 s in frames/: f03-f05 Anchor and Jakks logos,
+# f06-f10 the intro FMV, f11-f12 "RAW 2 / Press START" (~110-120 s), f13-f15
+# an FMV again, f16-f24 attract matches marked DEMONSTRATION. Nothing past
+# the title is on disk: the menus below are [guess].
+wait 60
+shot boot60
+press START                 # [guess] try to skip the intro FMV
+wait 20
+shot boot80
+wait 25
+shot boot105                # expect "Press START" [seen f11]; it gives way to an FMV by ~130 s
+mark booted
+press START
+wait 8
+shot after-title            # OPEN: a save-data prompt (YES/NO) or the main menu
+press A                     # [guess] YES to a prompt, or the highlighted main-menu item
+wait 8
+shot menu1
+press A                     # [guess] Exhibition / a single match
+wait 6
+shot menu2
+press A                     # [guess] match type: one-on-one
+wait 6
+shot menu3
+press A                     # [guess] wrestler (P1)
+wait 5
+shot select1
+press A                     # [guess] opponent (CPU)
+wait 5
+shot select2
+press A                     # [guess] arena / rules confirm
+wait 5
+shot select3
+press START                 # [guess] "start match" on a confirm screen
+wait 20
+shot entrance
+repeat 4 {
+    press A                 # [guess] skip the entrances
+    wait 8
+    shot entrance-skip
+}
+mark gameplay               # [guess] placeholder: move to the first frame of the match with both in the ring
+# Walk at the opponent and mash the face buttons: strikes, grapples and
+# reversals are among A/B/X/Y in this series.
+repeat forever {
+    axis LX max
+    wait 0.8
+    press X
+    wait 0.3
+    press A
+    wait 0.3
+    axis LX mid
+    press B
+    wait 0.3
+    press Y
+    wait 0.3
+    axis LX min
+    wait 0.8
+    press X
+    wait 0.3
+    axis LX mid
+    press A
+    wait 0.5
+}

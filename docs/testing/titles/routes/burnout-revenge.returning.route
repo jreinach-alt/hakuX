@@ -1,0 +1,133 @@
+# state: returning   (recorded loading the profile; lane.savestate433)
+# Burnout Revenge (45410076), Nova. PLAYED by nav.py on the Nova, 2026-09-30
+# 13:38 PDT (lane.titleroutes session 41, HELD; nav session
+# burnout-revenge.returning-20260930T133805).
+#
+# Named "returning" because `titlestate.py show --device nova` reports a
+# Burnout Revenge profile "found" on this disk (since 2026-09-30T01:36:36Z)
+# -- but Load Profile on the SAVE/LOAD prompt answers "There are no profiles
+# to load" (shot 003-profile-list.png), the same trap lane.routeprep's pass-1
+# evidence showed. So titlestate's record does not mean the profile is
+# loadable in-game on this disk; the route below falls through to Create
+# Profile every time, same as a true first run would. Until that is
+# resolved (nav.py/titlestate.py/saves.py are not this lane's files; see
+# dispatch/board-requests/titleroutes.md), this one route covers both
+# variants -- there is no working "returning" path to record separately.
+#
+# Flow, corrected against lane.routeprep's Burnout-3-derived guesses (several
+# differ):
+#   attract FMV -> title "Press START to continue" (START) -> SAVE/LOAD:
+#   "Would you like to create or load a profile?", Load Profile highlighted
+#   (A) -> "There are no profiles to load" (A dismisses) -> back to the same
+#   prompt, flick DOWN to Create Profile (A) -> an Autosave consent prompt
+#   (NOT a name keyboard as guessed), Yes highlighted (A) -> name keyboard,
+#   "Burnout_" prefilled, DONE highlighted (A) -> a profile-SLOT picker
+#   (NOT a storage/saving notice as guessed), "Profile 1" (empty) highlighted
+#   (A) -> main menu, WORLD TOUR highlighted (A) -> rank select, "1" NEW
+#   highlighted (A) -> location select, Sunshine Keys highlighted (A) ->
+#   event-type select, a NEW event icon highlighted (A) -> car select,
+#   default car (A) -> a long loading/tips montage (~100 s, several distinct
+#   screens: city skyline thumbnails, grayscale flyover crash reel, the
+#   Burnout Revenge logo card) -> an event brief ("TRAFFIC ATTACK: check
+#   traffic to beat the Score Targets", gold/silver/bronze cash targets),
+#   car already stopped in the world, "Continue" (A) -> gameplay starts
+#   immediately with no separate grid/start-light wait: the car is already
+#   moving at 70 mph the instant control returns.
+#
+# Player control confirmed two ways: LX max for 1.1s changed the car's lane
+# and road section entirely (021-steer-right.png, a boost-lane shortcut);
+# the play pattern below then registered live "TRAFFIC CHECK" / "NEAR MISS"
+# scores and raised the money counter from $0 to $14,550
+# (023-after-play.png).
+wait 58.5
+shot boot55
+wait 6.0
+press START
+wait 6.1
+shot title
+wait 3.5
+press START
+wait 6.1
+shot saveload
+wait 3.7
+press A
+wait 6.1
+shot profile-list
+wait 9.6
+press A
+wait 3.1
+shot back-to-prompt
+wait 4.8
+axis LY max
+wait 0.4
+axis LY mid
+wait 0.7
+shot on-create
+wait 3.7
+press A
+wait 6.1
+shot keyboard
+wait 4.6
+press A
+wait 9.9
+shot after-autosave
+wait 4.4
+press A
+wait 6.1
+shot after-done
+wait 5.2
+press A
+wait 8.1
+shot after-profile1
+wait 4.3
+press A
+wait 7.7
+shot tour
+wait 4.5
+press A
+wait 6.1
+shot event
+wait 4.4
+press A
+wait 6.1
+shot car
+wait 4.7
+press A
+wait 9.8
+shot loading
+wait 4.2
+press A
+wait 15.1
+shot after-car
+wait 21.1
+shot grid1
+wait 14.1
+shot grid2
+wait 15.5
+shot grid3
+wait 24.6
+shot grid4
+wait 25.7
+shot grid5
+wait 4.5
+press A
+wait 6.8
+shot start1
+wait 6.1
+axis LX max
+wait 1.1
+shot steer-right
+wait 0.8
+axis LX mid
+wait 5.6
+mark gameplay
+repeat forever {
+    axis RT max
+    wait 1.5
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 1.5
+}

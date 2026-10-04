@@ -42,6 +42,9 @@ AUDIO_MARKER="$GUEST_FILES/audio_capture.on"
 AUDIO_PCM="$GUEST_FILES/apu_monitor.s16le48k2ch.pcm"
 ROUTE_FILE="${ROUTE_FILE:-}"
 ROUTE_PID=""
+FG_WATCH_PID=""
+# Written by the foreground watcher (fg_watch below) when it aborts the route.
+FG_FLAG="${TMPDIR:-/tmp}/soak-fg.$$"; rm -f "$FG_FLAG"
 
 a() { timeout "${ADB_TIMEOUT:-120}" adb -s "$SERIAL" "$@"; }
 
@@ -84,6 +87,341 @@ disarm_audio() {
     a shell "rm -f '$AUDIO_MARKER'" >/dev/null 2>&1
 }
 
+# THE GAMEPLAY REGIMEN. A title soak runs at the device's MAX performance and
+# fan modes and puts it back to REST on the way out (the modes and their
+# values are in devices.sh, device_perf_*). pgraph discs never come through
+# here: run_disc.sh does not call this, and they do not need it.
+#
+#   PERF_REGIMEN=max   (the default) MAX before `am start`, REST after
+#   PERF_REGIMEN=rest  REST before `am start`, REST after: the pilot's
+#                      control arm, at a known mode rather than whatever
+#                      the device was left at
+#   PERF_REGIMEN=off   touch nothing; record what the device reads
+#   PERF_REGIMEN=default  the device's own defaults before `am start`, REST
+#                      after: performance_mode 0 (NORMAL) and fan_mode 4
+#                      (SMART), the settings library's defaults on both
+#                      handhelds (devices.sh). Not REST by another name:
+#                      REST is what a handheld is left at and may change;
+#                      this is the mode a player who never opens the OEM
+#                      menu plays in, the one sustained play is judged at
+#                      (#507, 2026-09-27). A thermal pause in a `default`
+#                      run FAILS it (title_verdict.py); at MAX it voids.
+#
+# REST IS RESTORED FROM THE EXIT TRAP, never from the end of the happy path.
+# The owner's words (2026-09-26): "the very last thing I want is to drain the
+# battery because a run crashed and the device was left sitting at a desktop
+# on high performance". So every exit this script has -- the hold running
+# out, the guest exiting, an adb failure, a TERM from a timeout or a
+# preemption, an INT -- passes through release(), and release() restores.
+# The one exit it cannot see is SIGKILL; host-tools' device_reality.sh
+# restores REST on an idle handheld every 10 minutes for that one.
+#
+# What was set and what was restored goes to $PERF_RESULT (JSON, beside the
+# capture by default) and to run.log as `PERF:` lines: perf_mode and
+# fan_mode are the modes the title ran at, as read back from the device, and
+# perf_restored is whether the read-back after restoring equals REST.
+# `display` holds what else sets a handheld's draw, read at `start` (after the
+# modes are set) and at `end` (the hold over, the title still running):
+# min_refresh_rate, peak_refresh_rate, screen_brightness and its mode, the
+# Thor's dual_screen_display_mode, and each logical display's power state
+# (`displays`, from dumpsys display: the Thor's second screen is one). A
+# setting adb could not read is null; a device without it reads "null".
+#
+# A QUEUED SOAK picks its regimen with `request.sh --env PERF_REGIMEN=rest`.
+# The dispatcher does not pass a request's env to this script (it goes to the
+# app's env_vars pref, where an unknown name is harmless), so it is read here
+# from the request the dispatcher is serving: CAPTURE_LOG is
+# $D/results/<id>/logcat.txt and the request is $D/running/<id>.req while it
+# runs. PERF_REQUEST names it directly. The shell's PERF_REGIMEN wins over
+# both, and anything but max|rest|off|default is max.
+PERF_REQUEST="${PERF_REQUEST:-${CAPTURE_LOG:+$(dirname "$(dirname "$(dirname "$CAPTURE_LOG")")")/running/$(basename "$(dirname "$CAPTURE_LOG")").req}}"
+if [ -z "${PERF_REGIMEN:-}" ]; then
+    [ -n "$PERF_REQUEST" ] && [ -f "$PERF_REQUEST" ] &&
+        PERF_REGIMEN=$(python3 -c 'import json,sys
+for e in json.load(open(sys.argv[1])).get("env") or []:
+    if e.startswith("PERF_REGIMEN="): print(e.split("=", 1)[1])' "$PERF_REQUEST" 2>/dev/null | tail -1)
+fi
+case "${PERF_REGIMEN:-}" in max|rest|off|default) ;; *) PERF_REGIMEN=max ;; esac
+
+# THE FAN MODE (#507 D.3). FAN_MODE=<name> runs the title at one of the fan
+# settings the handheld's own menu offers (devices.sh DEVICE_FAN_OPTIONS:
+# off, quiet, smart, sport, and customize:<0-100>, the slider), over
+# whatever fan mode the regimen picked. Only an option the menu SHOWS at the
+# performance mode the title runs at (the regimen's; the device's own under
+# PERF_REGIMEN=off): at HIGH, the MAX regimen's, the menu shows smart, sport
+# and customize, and hides quiet and off. The owner (2026-09-28) will not
+# have a soak measure a fan a player cannot select, so anything else REFUSES
+# the soak before anything is set or started (`fan-mode-refused:` in
+# run.log, exit 6). A run at another fan than the one asked for would
+# measure the wrong arm and look like the right one.
+#
+# Set after the cool-down gate and the regimen, before `am start`, so an arm
+# at another fan starts from the same gate-admitted temperature, and read
+# back again FAN_SETTLE_S later: SystemUI's fan tile rewrites fan_mode when
+# performance_mode changes, and that must not land after the write. Only the
+# settings the menu writes are written (`fan_mode`, and `fan_speed` for the
+# slider); the OEM service drives the fan from them, and nothing here writes
+# the fan's PWM node. thermal.jsonl reads the node and fan_mode at every
+# sample, and a hold sample whose fan_mode is not the one asked for is named
+# in run.log (`FAN: fan_mode read [x] at <s>s`) and counted `moved`: the
+# OEM app puts Smart on when a charger's plug type changes. On every exit,
+# from release(), fan_mode and fan_speed go back to what the device read
+# before the soak touched them (`prior`), and then the regimen's restore, if
+# it set anything, leaves fan_mode at REST as before. perf_regimen.json
+# `fan_request` holds what was asked, the options shown, and the settings it
+# ran at and was left at.
+#
+# From the shell's FAN_MODE, else the running request's top-level `fan_mode`
+# (a name), else a `FAN_MODE=<name>` in its env (`request.sh --env
+# FAN_MODE=sport`, read as PERF_REGIMEN is; the app ignores the name).
+if [ -z "${FAN_MODE:-}" ] && [ -n "$PERF_REQUEST" ] && [ -f "$PERF_REQUEST" ]; then
+    FAN_MODE=$(python3 -c 'import json,sys
+r = json.load(open(sys.argv[1]))
+v = r.get("fan_mode")
+if v is None:
+    for e in r.get("env") or []:
+        if str(e).startswith("FAN_MODE="): v = str(e).split("=", 1)[1]
+print("" if v is None else v)' "$PERF_REQUEST" 2>/dev/null | tail -1)
+fi
+FAN_MODE="${FAN_MODE:-}"
+FAN_OPTIONS=$(device_fan_options "$SERIAL" 2>/dev/null)
+FAN_WANT=""; FAN_PERF=""; FAN_OFFERED=""; FAN_SET=0; FAN_PRIOR=""; FAN_RAN=""
+FAN_AFTER=""; FAN_RESTORED=""; FAN_REFUSED=""; FAN_MOVED=0
+PERF_DEFAULT=0; FAN_DEFAULT=4
+PERF_DISPLAY_START=""; PERF_DISPLAY_END=""
+PERF_RESULT="${PERF_RESULT:-${CAPTURE_LOG:+$(dirname "$CAPTURE_LOG")/perf_regimen.json}}"
+PERF_BEFORE=""; PERF_RAN=""; PERF_AFTER=""; PERF_RESTORED=""; PERF_SET=0
+read -r PERF_MAX FAN_MAX PERF_REST FAN_REST <<<"$(device_perf_values "$SERIAL" 2>/dev/null)"
+
+perf_write_result() {
+    [ -n "$PERF_RESULT" ] || return 0
+    python3 - "$PERF_RESULT" "$PERF_REGIMEN" "$PERF_BEFORE" "$PERF_RAN" \
+        "$PERF_AFTER" "$PERF_RESTORED" "${PERF_MAX:-} ${FAN_MAX:-}" \
+        "${PERF_REST:-} ${FAN_REST:-}" "$PERF_DEFAULT $FAN_DEFAULT" \
+        "$PERF_DISPLAY_START" "$PERF_DISPLAY_END" \
+        "$FAN_MODE" "$FAN_WANT" "$FAN_PERF" "$FAN_OFFERED" "$FAN_PRIOR" \
+        "$FAN_RAN" "$FAN_AFTER" "$FAN_RESTORED" "$FAN_REFUSED" \
+        "$FAN_MOVED" <<'PY' 2>/dev/null
+import json, sys
+path, regimen, before, ran, after, restored, want_max, want_rest, want_default = sys.argv[1:10]
+(f_name, f_want, f_perf, f_offered, f_prior, f_ran, f_after, f_restored,
+ f_refused, f_moved) = sys.argv[12:22]
+def num(w):
+    return int(w) if w.lstrip("-").isdigit() else None
+def fan2(s):
+    # "6 100" -> fan_mode, fan_speed as read back; fan_speed "null" is a
+    # setting never written, and anything adb could not answer is null too.
+    w = (s.split() + ["", ""])[:2]
+    return dict(fan_mode=num(w[0]), fan_speed=num(w[1])) if s else None
+def disp(s):
+    try:
+        return json.loads(s) if s else None
+    except ValueError:
+        return None
+def pair(s):
+    # "2 3" -> [2, 3]; anything adb could not answer is null, not a guess.
+    out = []
+    for w in (s.split() + ["", ""])[:2]:
+        out.append(int(w) if w.lstrip("-").isdigit() else None)
+    return out
+b, r, a = pair(before), pair(ran), pair(after)
+json.dump(dict(regimen=regimen,
+               perf_mode=r[0], fan_mode=r[1],
+               perf_restored={"1": True, "0": False}.get(restored),
+               before=dict(perf_mode=b[0], fan_mode=b[1]),
+               restored=dict(perf_mode=a[0], fan_mode=a[1]),
+               max=dict(zip(("perf_mode", "fan_mode"), pair(want_max))),
+               rest=dict(zip(("perf_mode", "fan_mode"), pair(want_rest))),
+               default=dict(zip(("perf_mode", "fan_mode"), pair(want_default))),
+               display=dict(start=disp(sys.argv[10]), end=disp(sys.argv[11])),
+               # null when the request named no fan mode: the fan ran at the regimen's.
+               fan_request=None if not f_name else dict(
+                   requested=f_name, want=fan2(f_want), refused=f_refused or None,
+                   perf_mode=num(f_perf), offered=f_offered.split(", ") if f_offered else [],
+                   prior=fan2(f_prior), ran=fan2(f_ran), restored=fan2(f_after),
+                   fan_restored={"1": True, "0": False}.get(f_restored),
+                   moved=num(f_moved))),
+          open(path, "w"), indent=2)
+PY
+}
+
+perf_enter() {
+    PERF_BEFORE=$(device_perf_get)
+    if [ -z "$PERF_MAX" ] || [ -z "$FAN_REST" ]; then
+        echo "PERF: no regimen values for $SERIAL in devices.sh -- running at the device's own modes"
+        PERF_REGIMEN="off(no values)"
+    fi
+    case "$PERF_REGIMEN" in
+        max)  PERF_SET=1; PERF_RAN=$(device_perf_set "$PERF_MAX" "$FAN_MAX") ;;
+        rest) PERF_SET=1; PERF_RAN=$(device_perf_set "$PERF_REST" "$FAN_REST") ;;
+        default) PERF_SET=1; PERF_RAN=$(device_perf_set "$PERF_DEFAULT" "$FAN_DEFAULT") ;;
+        *)    PERF_RAN="$PERF_BEFORE" ;;
+    esac
+    echo "PERF: regimen=$PERF_REGIMEN before=[$PERF_BEFORE] running=[$PERF_RAN]"
+    PERF_DISPLAY_START=$(perf_display)
+    echo "PERF: display at start $PERF_DISPLAY_START"
+    perf_write_result
+}
+
+# perf_display  ->  one JSON object of the display settings (see `display`
+# above), from ONE adb call. {} when adb said nothing.
+perf_display() {
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "display settings read" shell \
+        'for k in min_refresh_rate peak_refresh_rate screen_brightness screen_brightness_mode dual_screen_display_mode; do echo "set $k=$(settings get system $k)"; done; dumpsys display | grep "mBaseDisplayInfo="' \
+        2>/dev/null | tr -d '\r' | python3 -c '
+import json, re, sys
+out, disp = {}, {}
+for line in sys.stdin:
+    m = re.match(r"set (\w+)=(.*)$", line.strip())
+    if m:
+        v = m.group(2).strip()
+        out[m.group(1)] = None if v == "" else (int(v) if re.fullmatch(r"-?\d+", v) else float(v) if re.fullmatch(r"-?\d+\.\d+", v) else v)
+        continue
+    i, st = re.search(r"displayId (\d+)", line), re.search(r", state (\w+)", line)
+    if i:
+        disp[i.group(1)] = st.group(1) if st else None
+# {} when adb answered but no display line matched: this firmware prints another shape.
+if disp or out:
+    out["displays"] = disp
+print(json.dumps(out, sort_keys=True, separators=(",", ":")))'
+}
+
+# Idempotent, and cheap when there is nothing to do, because release() runs
+# on every exit, including one before perf_enter ever ran.
+perf_leave() {
+    [ "$PERF_SET" = 1 ] || return 0
+    PERF_SET=0
+    if [ -z "$PERF_REST" ] || [ -z "$FAN_REST" ]; then
+        echo "PERF: NOT RESTORED -- no REST values for $SERIAL in devices.sh"
+        PERF_RESTORED=0
+    elif PERF_AFTER=$(device_perf_set "$PERF_REST" "$FAN_REST"); then
+        PERF_RESTORED=1
+    else
+        # One more try: a single vsock drop is the common failure, and a
+        # device left at MAX is the one outcome this exists to prevent.
+        sleep "${SOAK_RETRY_S:-2}"
+        if PERF_AFTER=$(device_perf_set "$PERF_REST" "$FAN_REST"); then
+            PERF_RESTORED=1
+        else
+            PERF_RESTORED=0
+        fi
+    fi
+    echo "PERF: restored=[$PERF_AFTER] perf_restored=$([ "$PERF_RESTORED" = 1 ] && echo true || echo false)"
+    perf_write_result
+}
+
+# fan_check: FAN_REFUSED says why the requested fan mode cannot be run; empty
+# when it can, or none was asked for. Reads the prior fan settings (one adb
+# call), and the device's performance mode when the regimen sets none.
+fan_check() {
+    [ -n "$FAN_MODE" ] || return 0
+    local rc
+    if [ -z "$FAN_OPTIONS" ]; then
+        FAN_REFUSED="no fan options for $SERIAL in devices.sh"; return 1
+    fi
+    # The performance mode the title will run at decides what the menu shows.
+    if [ -z "$PERF_MAX" ] || [ -z "$FAN_REST" ]; then
+        FAN_PERF=""
+    else
+        case "$PERF_REGIMEN" in
+            max) FAN_PERF="$PERF_MAX" ;;
+            rest) FAN_PERF="$PERF_REST" ;;
+            default) FAN_PERF="$PERF_DEFAULT" ;;
+            *) FAN_PERF="" ;;
+        esac
+    fi
+    if [ -z "$FAN_PERF" ]; then
+        FAN_PERF=$(device_perf_get); FAN_PERF="${FAN_PERF%% *}"
+        case "$FAN_PERF" in ''|*[!0-9]*)
+            FAN_REFUSED="performance_mode did not read [$FAN_PERF], so which fan settings the menu shows is unknown"
+            FAN_PERF=""; return 1 ;;
+        esac
+    fi
+    FAN_OFFERED=$(device_fan_names "$SERIAL" "$FAN_PERF")
+    FAN_WANT=$(device_fan_mode_of "$SERIAL" "$FAN_MODE" "$FAN_PERF"); rc=$?
+    case "$rc" in
+        0) ;;
+        2) FAN_REFUSED="fan_mode '$FAN_MODE' is not shown at performance_mode $FAN_PERF (shown: $FAN_OFFERED)" ;;
+        3) FAN_REFUSED="fan_mode '$FAN_MODE' is not a position the menu's control can take (shown: $FAN_OFFERED)" ;;
+        *) FAN_REFUSED="fan_mode '$FAN_MODE' is not a fan setting this device offers (shown at performance_mode $FAN_PERF: $FAN_OFFERED)" ;;
+    esac
+    [ "$rc" = 0 ] || { FAN_WANT=""; return 1; }
+    # Before the soak touches anything: what fan_leave puts back.
+    FAN_PRIOR=$(device_fan_get)
+    return 0
+}
+
+# fan_matches <"MODE SPEED" read back>  ->  0 when it is FAN_WANT: the mode,
+# and the slider's position when one was asked for.
+fan_matches() {
+    [ "${1%% *}" = "${FAN_WANT%% *}" ] || return 1
+    [ "$FAN_WANT" = "${FAN_WANT%% *}" ] || [ "${1#* }" = "${FAN_WANT#* }" ]
+}
+
+# After perf_enter: the regimen's fan is replaced by the one asked for, and
+# read back again FAN_SETTLE_S later (see THE FAN MODE); a setting that moved
+# in between is written once more, and says so.
+fan_enter() {
+    [ -n "$FAN_WANT" ] || return 0
+    FAN_SET=1
+    # shellcheck disable=SC2086  # "MODE [SPEED]": one or two arguments
+    FAN_RAN=$(device_fan_mode_set $FAN_WANT)
+    sleep "${FAN_SETTLE_S:-2}"
+    FAN_RAN=$(device_fan_get)
+    if ! fan_matches "$FAN_RAN"; then
+        echo "FAN: read [$FAN_RAN] ${FAN_SETTLE_S:-2}s after the write, not [$FAN_WANT]; written again"
+        # shellcheck disable=SC2086
+        FAN_RAN=$(device_fan_mode_set $FAN_WANT)
+    fi
+    if fan_matches "$FAN_RAN"; then
+        echo "FAN: mode=$FAN_MODE want=[$FAN_WANT] at performance_mode $FAN_PERF running=[$FAN_RAN] prior=[$FAN_PRIOR]"
+    else
+        echo "FAN: mode=$FAN_MODE want=[$FAN_WANT] did NOT read back: running=[$FAN_RAN] prior=[$FAN_PRIOR]"
+    fi
+    PERF_RAN=$(device_perf_get)
+    perf_write_result
+}
+
+# After each hold-loop thermal sample: the fan_mode the sample read (no adb
+# call of its own). A mode other than the one asked for is named and counted,
+# not written back: the run is then not the arm it was asked to be, and the
+# record says so.
+fan_hold() {
+    [ "$FAN_SET" = 1 ] && [ -n "$THERMAL_OUT" ] && [ -f "$THERMAL_OUT" ] || return 0
+    local got
+    got=$(tail -1 "$THERMAL_OUT" | python3 -c 'import json,sys
+print((json.loads(sys.stdin.read()).get("fan") or {}).get("mode"))' 2>/dev/null)
+    if [ "$got" != "${FAN_WANT%% *}" ]; then
+        FAN_MOVED=$((FAN_MOVED + 1))
+        echo "FAN: fan_mode read [$got] at ${s:-?}s, not ${FAN_WANT%% *}"
+    fi
+}
+
+# Idempotent, like perf_leave; from release(), so every exit restores. Back
+# to the prior fan_mode (and fan_speed, when the slider was moved), or to
+# REST when the prior read was not a mode.
+fan_leave() {
+    [ "$FAN_SET" = 1 ] || return 0
+    FAN_SET=0
+    local to="${FAN_PRIOR%% *}" speed=""
+    case "$to" in ''|*[!0-9]*) to="$FAN_REST" ;; esac
+    if [ "$FAN_WANT" != "${FAN_WANT%% *}" ]; then
+        speed="${FAN_PRIOR#* }"
+        case "$speed" in null|[0-9]*) ;; *) speed="" ;; esac
+    fi
+    if [ -z "$to" ]; then
+        echo "FAN: NOT RESTORED -- no prior fan mode read and no REST for $SERIAL in devices.sh"
+        FAN_RESTORED=0
+    elif FAN_AFTER=$(device_fan_mode_set "$to" "$speed"); then
+        FAN_RESTORED=1
+    else
+        sleep "${SOAK_RETRY_S:-2}"
+        if FAN_AFTER=$(device_fan_mode_set "$to" "$speed"); then FAN_RESTORED=1; else FAN_RESTORED=0; fi
+    fi
+    echo "FAN: restored=[$FAN_AFTER] to=[$to${speed:+ $speed}] fan_restored=$([ "$FAN_RESTORED" = 1 ] && echo true || echo false) moved=$FAN_MOVED"
+    perf_write_result
+}
+
 # Always force-stop on the way out. The handheld does not charge over the adb
 # cable, so a title left running flattens it -- and a game, unlike a test disc,
 # never exits on its own.
@@ -91,19 +429,157 @@ disarm_audio() {
 # Disarming belongs here and not at the end of the happy path: a marker left
 # behind by a run that crashed or was interrupted is exactly how the device
 # came to be capturing audio for seven experiments that never asked for it.
+#
+# REST comes after the force-stop, so the title is never running at REST
+# while the log still counts it, and before the sleep, so the screen goes off
+# with the device already at REST.
 release() {
     stop_route
     [ -n "$LOGCAT_PID" ] && kill "$LOGCAT_PID" 2>/dev/null
     a shell am force-stop "$PKG" >/dev/null 2>&1
     disarm_audio
+    fan_leave
+    perf_leave
     a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
-    rm -f "$LEASE"
+    rm -f "$LEASE" "$FG_FLAG"
 }
-trap release EXIT INT TERM
+# A signal EXITS, and the exit runs release() once. This was
+# `trap release EXIT INT TERM`, under which a TERM ran release() and then
+# returned into the hold loop: the soak went on polling a force-stopped title
+# until its deadline, and ran release() a second time at the end.
+trap release EXIT
+trap 'exit 143' TERM
+trap 'exit 130' INT
 
 a shell am force-stop "$PKG" >/dev/null 2>&1
 a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
+
+# THE DISPLAY MUST BE OURS. A foreign overlay on display 0 renders every
+# hakuX frame black and stalls its flips while the device reads Awake
+# (display_clear in devices.sh has the 2026-09-27 case). Checked after the
+# wake and before anything is armed or started, so a refused run leaves no
+# marker, no MAX mode and no title behind, and writes no frame to be scored.
+# The `display-covered:` line lands in run.log at the start of a line, where
+# title_verdict.py reads it and voids the run; the dispatcher writes its
+# result either way, so the request ends as a void result, not a requeue.
+# Unknown (adb could not say) is recorded and the run goes on: the
+# black-frame guard below is the backstop for that case.
+#
+# The refusal skips release(): nothing it undoes has happened yet, and its
+# KEYCODE_SLEEP would put the screen out under the owner's app, which is
+# whatever raised the overlay. That is their session, not ours to put away.
+#
+# Checked twice: here, before the screen is put out for the cool-down gate
+# (so a covered display is never slept over), and again after the gate's
+# KEYCODE_WAKEUP, immediately before anything is armed.
+display_gate() {
+    DISPLAY_STATE=$(display_clear "$SERIAL"); display_rc=$?
+    echo "$DISPLAY_STATE"
+    if [ "$display_rc" = 1 ]; then
+        trap - EXIT
+        rm -f "$LEASE"
+        echo "soak refused: display 0 is not hakuX's to draw on; nothing was started"
+        exit 4
+    fi
+}
+display_gate
+
+# Dark through the cool-down gate, and woken after it (below). The gate can
+# wait minutes, and a wake sent only before it outlived a 60 s screen timeout
+# on the Thor on 2026-09-28: the display was OFF at `am start`, hakuX had no
+# focused window, and the route aborted "not foreground (unknown)"
+# (1-1790606269-lane.dirtytlb-479803, 1-1790613195-forza414-3088504). A dark
+# device also cools faster, and an idle handheld's screen is to be dark.
+a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
+
+# THE THERMAL RECORD (#507). Under MAX the Thor's kernel pauses cpu3-7 a few
+# minutes in (`thermal-pause-F8`, bound to xo-therm's 78 C trip) and fps falls
+# 5-7x; no other readout shows it. thermal_state.py reads every cooling device
+# and zone in one adb call and appends one JSON line to thermal.jsonl beside
+# the capture: once just before `am start`, once every THERMAL_EVERY_S (30 s)
+# from the hold loop below (no second poller), and once at the end.
+# title_verdict.py voids a scored window a pause may overlap; the `THERMAL:`
+# line in run.log is for a reader.
+THERMAL_OUT="${THERMAL_OUT:-${CAPTURE_LOG:+$(dirname "$CAPTURE_LOG")/thermal.jsonl}}"
+thermal_sample() {   # <label>
+    [ -n "$THERMAL_OUT" ] || return 0
+    if [ ! -f "$HERE/thermal_state.py" ]; then
+        # An older snapshot (see ROUTE NOT PLAYED below): say so once; no
+        # thermal.jsonl then reads as `unread`, never as `no pause`.
+        echo "THERMAL: not recorded: $HERE/thermal_state.py is missing from this snapshot"
+        THERMAL_OUT=""
+        return 0
+    fi
+    # stderr to run.log: a sampler traceback writes no line, and a reader
+    # should see why a gap is there (the verdict voids it either way).
+    python3 "$HERE/thermal_state.py" "$SERIAL" --label "$1" >>"$THERMAL_OUT"
+    return 0
+}
+[ -n "$THERMAL_OUT" ] && rm -f "$THERMAL_OUT"
+
+# See THE FAN MODE. Before the cool-down, so a refused run costs no wait.
+if ! fan_check; then
+    echo "fan-mode-refused: $FAN_REFUSED; nothing was set or started"
+    perf_write_result
+    exit 6
+fi
+
+# THE COOL-DOWN GATE (#507; thermal_state.py has why). Before MAX is set, and
+# with the title stopped, wait while THERMAL_COOL_ZONE reads at or above
+# THERMAL_COOL_C or a pause device is set. The wait is capped at
+# THERMAL_COOL_MAX_S (a run then starts hot, and says so) because
+# harness_health.py calls a soak overrunning at `seconds` + 10 min. The
+# samples are `cool` lines in thermal.jsonl. THERMAL_COOL_C=off turns it off.
+# run.log gets one `COOLDOWN:` line, at the start of a line: `waited <s> s,
+# xo <start> -> <end> C` (0 s when the first read was cool), `gave up at <C>
+# C`, or `not gated`. The bracket holds --cool's own words for the last read.
+#
+# The wait is wall time ($SECONDS): each pass also costs an adb call and two
+# python3 starts, and the overrun line counts those too. `--cool` reads the
+# file's last line, so a sampler that wrote none (a traceback) would have the
+# gate re-read the previous, hot sample: no new line is unread, not hot.
+if [ "${THERMAL_COOL_C:-65}" != off ]; then
+    cool_lines() { if [ -f "$THERMAL_OUT" ]; then wc -l < "$THERMAL_OUT"; else echo 0; fi; }
+    cool_t0=$SECONDS; cool_from=""
+    while :; do
+        # Taken before the read, so a device that is cool at once waited 0 s.
+        cool_waited=$((SECONDS - cool_t0))
+        cool_n=$(cool_lines)
+        thermal_sample cool
+        [ -n "$THERMAL_OUT" ] || break
+        if [ "$(cool_lines)" -le "$cool_n" ]; then
+            echo "COOLDOWN: not gated after ${cool_waited} s: the sampler wrote no line"
+            break
+        fi
+        cool_is=$(python3 "$HERE/thermal_state.py" --cool "$THERMAL_OUT" \
+            "${THERMAL_COOL_ZONE:-xo-therm}" "${THERMAL_COOL_C:-65}" 2>&1); cool_rc=$?
+        if [ "$cool_rc" = 2 ]; then
+            echo "COOLDOWN: not gated after ${cool_waited} s: $cool_is"
+            break
+        fi
+        # --cool's phrase opens `<zone> <C> C`.
+        cool_c=$(printf '%s\n' "$cool_is" | sed -n 's/^[^ ]* \(-\{0,1\}[0-9.]*\) C.*/\1/p')
+        [ -n "$cool_from" ] || cool_from="$cool_c"
+        if [ "$cool_rc" = 0 ]; then
+            echo "COOLDOWN: waited ${cool_waited} s, xo $cool_from -> $cool_c C [$cool_is]"
+            break
+        fi
+        if [ "$cool_waited" -ge "${THERMAL_COOL_MAX_S:-360}" ]; then
+            echo "COOLDOWN: gave up at $cool_c C after ${cool_waited} s, xo $cool_from -> $cool_c C [$cool_is]; starting hot"
+            break
+        fi
+        sleep "${THERMAL_COOL_EVERY_S:-20}"
+    done
+fi
+
+# Woken after the gate, so the screen timeout runs from here, and the display
+# checked again before anything is armed.
+a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
+display_gate
+
 arm_audio
+perf_enter
+fan_enter
 
 if [ -n "$CAPTURE_LOG" ]; then
     a logcat -c >/dev/null 2>&1
@@ -157,7 +633,11 @@ if [ -n "$CAPTURE_LOG" ]; then
     LOGCAT_PID=$!
 fi
 
-a shell "am start -a android.intent.action.VIEW -n $ACT --es rom_path '$ISO'" >/dev/null 2>&1
+thermal_sample start
+
+# Quoted for the device's sh by devices.sh: a bare '...' broke on a title
+# with an apostrophe ("Tom Clancy's ...").
+a shell "am start -a android.intent.action.VIEW -n $ACT --es rom_path $(_dev_sq "$ISO")" >/dev/null 2>&1
 # In logcat, not only here: the verdict works in device time, and this line
 # and the `soak end` below bound the run in that clock.
 a shell log -t hakuX-route "'soak start'" >/dev/null 2>&1
@@ -178,19 +658,218 @@ start_route() {
         echo "ROUTE NOT PLAYED: $ROUTE_FILE is missing or empty"
         return 0
     fi
+    fg_wait || return 1
     SERIAL="$SERIAL" bash "$HERE/titles/route.sh" "$ROUTE_FILE" &
     ROUTE_PID=$!
     echo "ROUTE started pid $ROUTE_PID from $ROUTE_FILE"
+    [ -n "${ROUTE_DRY:-}" ] && return 0
+    fg_watch &
+    FG_WATCH_PID=$!
 }
 # By PID, never by pattern (CLAUDE.md). route.sh traps TERM, releases any
 # held button, recentres any moved stick, and logs `end`.
 stop_route() {
+    [ -n "$FG_WATCH_PID" ] && kill "$FG_WATCH_PID" 2>/dev/null && wait "$FG_WATCH_PID" 2>/dev/null
+    FG_WATCH_PID=""
     [ -n "$ROUTE_PID" ] || return 0
     kill "$ROUTE_PID" 2>/dev/null
     wait "$ROUTE_PID" 2>/dev/null
     ROUTE_PID=""
 }
-start_route
+
+# THE ROUTE DRIVES hakuX AND NOTHING ELSE. Its input is evdev events on the
+# pad node, delivered to whichever window holds input focus. On 2026-09-27 a
+# route pressed buttons into the Thor's launcher and started Lime3DS, and
+# a route launched Lime3DS again at 12:12 (devices.sh hakux_in_front has
+# both). So before the first input, and every FG_POLL_S (2 s) while the route
+# runs, the input system's focused display must be 0 and its focused window
+# hakuX's (read from `dumpsys input`, not from a first-match mCurrentFocus).
+#
+# Before the first input: wait up to FG_WAIT_S for hakuX to come up, then
+# try ONE remedy that sends no input -- `am start` of hakuX on display 0 --
+# and wait FG_REMEDY_S more. Never a tap or a key to move focus: that first
+# input is exactly what drives the wrong app (one exception, the USB dialog,
+# is under FG_POLL_S). Then abort.
+#
+# While the route runs: one `not-foreground` answer, two unknowns in a row,
+# or FG_UNREADABLE_MAX unreadable reads in a row, TERMs route.sh at once,
+# logs `ROUTE ABORTED: not foreground (<pkg>)` and a `not-foreground:` line,
+# and ends the hold. It aborts; it never pauses and resumes. title_verdict.py
+# voids a run on that line, and the soak exits 5.
+#
+# UNKNOWN AND UNREADABLE ARE COUNTED APART (#592). Unknown (hakux_in_front
+# exit 2) is a device that answered without a focused window: two in a row
+# abort. Unreadable (exit 3) is an adb that hung or failed, so nothing was
+# read. On a hot Nova (95 C, 09-28) the read hung twice in a row, 10 s each,
+# while hakuX was drawing, and seven runs were aborted in front. So
+# unreadable gets its own, longer bound: FG_UNREADABLE_MAX (5) reads in a
+# row, about 60 s when each one hangs for its 10 s timeout plus the 2 s
+# poll. An unreadable read is never taken as in front, and it neither adds
+# to nor clears the unknown count. Any answer that was read (in front,
+# unknown, not in front) clears the unreadable count; only in front clears
+# the unknown count. Before the first input, fg_wait treats unreadable like
+# unknown: it waits, re-issues am start, and aborts with no input sent.
+#
+# route.sh by PID, not its process group: a `press` is pad.sh sending
+# key-down, sleeping 60 ms, then key-up, and a group kill in that gap leaves
+# the button held down on the app in front. route.sh's TERM trap runs as soon
+# as the press in flight returns (its `wait` on a sleep returns at once),
+# stops the route there, and sends only releases for held buttons.
+FG_POLL_S="${FG_POLL_S:-2}"
+FG_UNREADABLE_MAX="${FG_UNREADABLE_MAX:-5}"
+# ONE EXCEPTION to "never a key": a replugged handheld raises Android's "Use
+# USB for" dialog, a bare system-alert window of the vendor settings package
+# (com.rp.settings on the Nova, com.odin.settings on the Thor) that holds
+# input focus on display 0 over hakuX. `am start` cannot close it, so on
+# 2026-09-27 22:30 PDT every soak on both handhelds aborted until someone
+# pressed BACK. One KEYCODE_BACK closes it and focus returns to hakuX. So the
+# foreground wait, and only the wait (no route input has been sent), sends
+# ONE BACK when display 0's focused window is exactly `<hash> <pkg>` for one
+# of these packages: no `/`, so not an activity. An activity of any app, and
+# a bare window of any other package, get nothing.
+USB_DIALOG_PKGS="com.rp.settings com.odin.settings"
+usb_dialog() {   # <hakux_in_front line> -> the package, if its window is the dialog
+    local pkg="${1#not-foreground: }" p name
+    case "$1" in "not-foreground: "*" (holds input focus on display 0 of "*) ;; *) return 1 ;; esac
+    pkg="${pkg%% *}"
+    for p in $USB_DIALOG_PKGS; do [ "$p" = "$pkg" ] && break; p=""; done
+    [ -n "$p" ] || return 1
+    # hakux_in_front keeps only the owner; re-read the raw name to see the `/`.
+    # The live block only, as there: stop at the last ANR's snapshot.
+    name=$(ADB_RETRIES=1 adb_call "${ADB_QUICK_TIMEOUT:-10}" "usb dialog read" shell "dumpsys input" \
+            2>/dev/null | tr -d '\r' | awk '
+        stop { next }
+        /^  ANR:/ || (seen && /FocusedDisplayId:/) { stop = 1; next }
+        /FocusedDisplayId:/ { seen = 1 }
+        /^  [A-Za-z]+:/ { sec = $1; sub(/:.*/, "", sec) }
+        sec == "FocusedWindows" && /displayId=0, name=\047/ {
+            e = $0; sub(/.*displayId=0, name=\047/, "", e); sub(/\047.*/, "", e); print e; exit
+        }')
+    [[ "$name" =~ ^[0-9a-f]+\ ([^/\ ]+)$ ]] && [ "${BASH_REMATCH[1]}" = "$pkg" ] || return 1
+    echo "$pkg"
+}
+# The BACK is read-then-act across two adb calls, and Android delivers a key
+# to whatever holds focus when it is dispatched. If anything else closes the
+# dialog in that gap (a person, or the host's interim dismisser timer), our
+# BACK reaches hakuX, whose BACK toggles its pause menu: emulation paused, and
+# the overlay is a view in hakuX's own window, so hakux_in_front still reads
+# in-front and the route would play into the menu. The same holds for the
+# other dismisser's BACK after ours. So after a BACK, before the route starts,
+# read the overlay's visibility from `dumpsys activity top` (the view
+# hierarchy: `PauseMenuOverlay{<hash> V...` shown, `G`/`I` not). Shown: one
+# BACK, now to hakuX, resumes it; still shown, or no overlay line at all,
+# aborts rather than play a route whose pause state is not known.
+hakux_paused() {   # -> 0 paused, 1 not paused, 2 unknown
+    local v
+    v=$(ADB_RETRIES=1 adb_call "${ADB_QUICK_TIMEOUT:-10}" "pause menu read" shell \
+            "dumpsys activity top | grep -F 'PauseMenuOverlay{'; true" 2>/dev/null \
+        | tr -d '\r' | sed -n 's/.*PauseMenuOverlay{[0-9a-f]* \(.\).*/\1/p' | tr -d '\n')
+    case "$v" in *V*) return 0 ;; ?*) return 1 ;; *) return 2 ;; esac
+}
+fg_unpaused() {   # after the dialog BACK, hakuX in front: 0 when it is not paused
+    hakux_paused; case $? in
+        1) return 0 ;;
+        2) echo "FOREGROUND: hakuX's pause menu state is unreadable after the BACK"; return 1 ;;
+    esac
+    echo "FOREGROUND: hakuX is paused (a BACK reached it after the dialog closed); one BACK resumes it"
+    a shell input keyevent KEYCODE_BACK >/dev/null 2>&1
+    sleep "$FG_POLL_S"
+    hakux_paused; case $? in
+        1) echo "FOREGROUND: hakuX resumed"; return 0 ;;
+        0) echo "FOREGROUND: hakuX is still paused after one BACK" ;;
+        *) echo "FOREGROUND: hakuX's pause menu state is unreadable after the resume BACK" ;;
+    esac
+    return 1
+}
+fg_abort() {   # <hakux_in_front line>
+    local pkg="${1#not-foreground: }"; pkg="${pkg%% *}"
+    echo "ROUTE ABORTED: not foreground ($pkg)"
+    echo "$1"
+    : > "$FG_FLAG"
+}
+fg_wait() {
+    local st rc last="" deadline remedy=0 back=0 pkg
+    if [ -n "${ROUTE_DRY:-}" ]; then
+        echo "FOREGROUND: not checked: ROUTE_DRY, the route sends no input"
+        return 0
+    fi
+    deadline=$(( $(date +%s) + ${FG_WAIT_S:-30} ))
+    while :; do
+        st=$(hakux_in_front "$SERIAL"); rc=$?
+        if [ "$rc" = 0 ]; then
+            echo "$st"
+            [ "$back" = 0 ] && return 0
+            fg_unpaused && return 0
+            fg_abort "not-foreground: hakuX-paused (its pause menu may hold input after the USB dialog BACK)"
+            echo "ROUTE NOT PLAYED: hakuX's pause state after the USB dialog BACK is not known clear; no route input was sent"
+            return 1
+        fi
+        [ "$st" = "$last" ] || echo "FOREGROUND: waiting: $st"; last="$st"
+        if [ "$rc" = 1 ] && [ "$back" = 0 ] && pkg=$(usb_dialog "$st"); then
+            back=1
+            a shell input keyevent KEYCODE_BACK >/dev/null 2>&1
+            echo "FOREGROUND: dismissed $pkg dialog (KEYCODE_BACK)"
+            sleep "$FG_POLL_S"
+            continue
+        fi
+        if [ "$(date +%s)" -ge "$deadline" ]; then
+            [ "$remedy" = 1 ] && break
+            remedy=1
+            echo "FOREGROUND: re-issuing am start on display 0 (no input is sent)"
+            a shell "am start --display 0 -a android.intent.action.VIEW -n $ACT --es rom_path $(_dev_sq "$ISO")" >/dev/null 2>&1
+            deadline=$(( $(date +%s) + ${FG_REMEDY_S:-15} ))
+        fi
+        sleep "$FG_POLL_S"
+    done
+    case "$rc" in
+        2) st="not-foreground: unknown (${st#foreground-unknown: })" ;;
+        3) st="not-foreground: unreadable (${st#foreground-unreadable: })" ;;
+    esac
+    fg_abort "$st"
+    echo "ROUTE NOT PLAYED: hakuX did not hold display 0 and input focus; no input was sent"
+    return 1
+}
+fg_watch() {
+    local st rc unk=0 unr=0 state ps_out
+    trap 'exit 0' TERM
+    while :; do
+        sleep "$FG_POLL_S"
+        # A finished route is a zombie until stop_route reaps it: stop there.
+        state=$(awk '{print $3}' "/proc/$ROUTE_PID/stat" 2>/dev/null)
+        [ -n "$state" ] && [ "$state" != Z ] || return 0
+        st=$(hakux_in_front "$SERIAL"); rc=$?
+        if [ "$rc" = 3 ]; then
+            unr=$((unr+1)); echo "FOREGROUND: $st ($unr/$FG_UNREADABLE_MAX)"
+            [ "$unr" -ge "$FG_UNREADABLE_MAX" ] || continue
+            st="not-foreground: unreadable (${st#foreground-unreadable: })"
+        elif [ "$rc" = 2 ]; then
+            unr=0; unk=$((unk+1)); echo "FOREGROUND: $st ($unk/2)"
+            [ "$unk" -ge 2 ] || continue
+            st="not-foreground: unknown (${st#foreground-unknown: })"
+        elif [ "$rc" = 0 ]; then
+            unr=0; unk=0; continue
+        fi
+        kill "$ROUTE_PID" 2>/dev/null
+        # A guest that died closes hakuX to whatever is behind it, which then
+        # reads as not in front. That run is an exit, not a void: stop the
+        # route (its input must not reach the launcher either), raise no
+        # flag, and let the hold loop's alive() report `guest exited`.
+        # probe() is defined after this subshell forked, so ps is read here.
+        ps_out=$(a shell 'ps -A -o NAME' 2>/dev/null | tr -d '\r' | sed 's/[[:space:]]*$//')
+        if printf '%s\n' "$ps_out" | grep -qx NAME && ! printf '%s\n' "$ps_out" | grep -qx "$PKG:xemu"; then
+            echo "ROUTE STOPPED: $PKG:xemu is gone, so the guest exited ($st)"
+            return 0
+        fi
+        fg_abort "$st"
+        return 0
+    done
+}
+
+if ! start_route; then
+    a shell log -t hakuX-route "'soak end'" >/dev/null 2>&1
+    echo "soak aborted: not-foreground before the route's first input"
+    exit 5
+fi
 
 # Hold, but stop early if the guest dies -- a title that fails to boot should
 # not burn the whole window, and "it exited" is itself a result worth having.
@@ -231,12 +910,41 @@ alive() {   # 0 running, 1 not running, 2 unknown after three adb failures
 # 20-minute confirmation run should be 20 minutes whatever adb is doing.
 s=0
 appeared=0
+SOAK_RC=0
 t0=$(date +%s)
+thermal_s=0
 while [ "$s" -lt "$SECONDS_TO_HOLD" ]; do
     # SOAK_POLL_S / SOAK_RETRY_S exist for selftest.d/89, which drives this
     # loop against a fake adb in seconds rather than minutes.
     sleep "${SOAK_POLL_S:-5}"; s=$(( $(date +%s) - t0 ))
     touch "$LEASE"
+    if [ $((s - thermal_s)) -ge "${THERMAL_EVERY_S:-30}" ]; then
+        thermal_sample hold; thermal_s=$s
+        fan_hold
+    fi
+    if [ -f "$FG_FLAG" ]; then
+        echo "soak aborted: not-foreground after ${s}s of ${SECONDS_TO_HOLD}s"
+        SOAK_RC=5
+        break
+    fi
+    # THE ROUTE DIED, THE SOAK MUST NOT RUN ON (lane.savestate433; lane.
+    # routerca433 CAPA T16/C5). route.sh exits 0 when it is TERMed and when a
+    # route without `repeat forever` ends; non-zero is a parse error (2) or a
+    # failed step (1: `waitfor` on a missing crop, ROUTE FAIL drive). Until
+    # 10-02 the hold ran its whole window after either: 1790905334 held 904 s
+    # past `unknown step 'waitfor'`, 1790918365 661 s past a missing crop. A
+    # finished route is a zombie until reaped (as fg_watch reads it).
+    if [ -n "$ROUTE_PID" ] && [ "$(awk '{print $3}' "/proc/$ROUTE_PID/stat" 2>/dev/null || echo Z)" = Z ]; then
+        wait "$ROUTE_PID" 2>/dev/null; rrc=$?
+        ROUTE_PID=""
+        if [ "$rrc" != 0 ]; then
+            echo "route-died: route.sh exited $rrc after ${s}s of ${SECONDS_TO_HOLD}s; no input follows, so the soak stops"
+            echo "soak aborted: route-died after ${s}s of ${SECONDS_TO_HOLD}s"
+            SOAK_RC=6
+            break
+        fi
+        echo "ROUTE finished (rc 0) after ${s}s; holding without input"
+    fi
     alive; r=$?
     if [ "$r" = 0 ]; then
         appeared=1
@@ -248,6 +956,45 @@ done
 stop_route
 a shell log -t hakuX-route "'soak end'" >/dev/null 2>&1
 echo "adb_failures=$ADB_FAILURES"
+thermal_sample end
+PERF_DISPLAY_END=$(perf_display)
+echo "PERF: display at end $PERF_DISPLAY_END"
+perf_write_result
+[ -n "$THERMAL_OUT" ] && python3 "$HERE/thermal_state.py" --summary "$THERMAL_OUT"
+
+# THE BLACK-FRAME GUARD. A 1920x1080 all-black PNG is 10,899 B; every route
+# frame of the 2026-09-27 covered-display runs was exactly that. When every
+# frame the route took is under DISPLAY_BLACK_B, nothing the route did was
+# seen. Black frames have two causes, and they are not the same answer:
+#   display-black:  something else covered display 0 or held focus -- a
+#                   harness failure; title_verdict.py voids the run.
+#   render-black:   display 0 is clear and hakuX holds focus, and hakuX drew
+#                   black -- the title's failure, judged, not re-queued.
+# The check that separates them is the one the soak starts with, run again
+# now, while hakuX is still up: display_clear AND hakux_in_front. Both clear
+# is render-black; anything else, unknown included, is display-black.
+# title_verdict.py also voids a run on the frames themselves when run.log
+# has no render-black line (a run.log from before this guard).
+if [ -n "$ROUTE_FILE" ]; then
+    rf="${ROUTE_FRAMES:-$(dirname "$ROUTE_FILE")/route-frames}"
+    nf=0; nsmall=0; big=0
+    for f in "$rf"/*.png; do
+        [ -f "$f" ] || continue
+        sz=$(stat -c%s "$f"); nf=$((nf+1))
+        [ "$sz" -lt "${DISPLAY_BLACK_B:-12288}" ] && nsmall=$((nsmall+1))
+        [ "$sz" -gt "$big" ] && big=$sz
+    done
+    if [ "$nf" -gt 0 ] && [ "$nsmall" = "$nf" ]; then
+        black="all $nf route frames under ${DISPLAY_BLACK_B:-12288} B (largest $big B)"
+        end_disp=$(display_clear "$SERIAL"); end_disp_rc=$?
+        end_fg=$(hakux_in_front "$SERIAL"); end_fg_rc=$?
+        if [ "$end_disp_rc" = 0 ] && [ "$end_fg_rc" = 0 ]; then
+            echo "render-black: $black -- display 0 is clear and hakuX holds focus, so hakuX drew black ($end_disp; $end_fg)"
+        else
+            echo "display-black: $black -- display 0 was not hakuX's at the end of the hold ($end_disp; $end_fg)"
+        fi
+    fi
+fi
 
 if [ "$appeared" = 0 ]; then
     echo "guest never appeared in ${SECONDS_TO_HOLD}s -- title did not boot"
@@ -285,3 +1032,4 @@ if [ -n "${PULL_GLOB:-}" ] && [ -n "${PULL_DEST:-}" ]; then
         done
     fi
 fi
+exit "$SOAK_RC"

@@ -1,0 +1,79 @@
+# state: returning   (recorded loading the profile; lane.savestate433)
+# Spikeout: Battle Street (53450029, USA disc): returning route (the player "A" is on the Thor's disk).
+# PLAYED by nav.py on the Thor, 2026-09-27 20:39 PDT (first run, lane.titleroutes HELD session
+# spikeout.first-run-20260927T203923: Create a new player, START types "A" over the default SPIKE001, two hat
+# taps up to Done, A), flushed with HOME, then played again as this returning session
+# (spikeout.returning-20260927T204333).
+#
+#   "PRESENTED BY SEGA" FMV (START skips) -> "Please press START to begin." (START) -> Player Selection, "A"
+#   highlighted (A) -> Main Menu, Story (A) -> Story, "1. Reunion" (A) -> Loading, then the story FMV
+#   (A skips) -> SPIKER'S CAMP 11:00 AM card (A skips) -> Spike Jr. on the dock, health bar and K.O. counter,
+#   Grasshopper's gang ahead.
+#
+# The story FMVs decode as green blocks on this build (the FMV defect, #303); A still skips them.
+#
+# Player control: LY min walked Spike Jr. up the dock and he turned (nav frames s-012-skip2 -> s-013-walk);
+# X combos scored 50 points (s-015-fought, and s-008-fought in the returning session). The play pattern walks,
+# punches and turns. A lost fight may end on a continue screen within 300 s; the frames will show it.
+wait 35.1
+press START
+wait 6.2
+shot s1
+wait 2.2
+press START
+wait 7.5
+shot s2
+wait 7.8
+press A
+wait 5.2
+shot psel
+wait 2.0
+press A
+wait 5.2
+shot story
+wait 11.7
+press A
+wait 18.2
+shot ch1
+wait 2.3
+press A
+wait 8.3
+shot skip
+wait 2.0
+press A
+wait 10.5
+shot skip2
+wait 8.9
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 1
+    axis LY mid
+    press X
+    wait 0.3
+    press X
+    wait 0.3
+    press X
+    wait 0.5
+    axis LX max
+    wait 1
+    axis LX mid
+    press X
+    wait 0.3
+    press X
+    wait 0.5
+    axis LY max
+    wait 1
+    axis LY mid
+    press X
+    wait 0.3
+    press A
+    wait 0.5
+    axis LX min
+    wait 1
+    axis LX mid
+    press X
+    wait 0.3
+    press X
+    wait 0.5
+}

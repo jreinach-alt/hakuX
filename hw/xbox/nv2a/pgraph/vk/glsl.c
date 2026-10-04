@@ -442,6 +442,9 @@ static void spv_cache_store(uint64_t hash, GByteArray *spv)
 ShaderModuleInfo *pgraph_vk_create_shader_module_from_glsl(
     PGRAPHVkState *r, VkShaderStageFlagBits stage, const char *glsl)
 {
+    /* #569 P1: glslang's share and the whole module's; both run on a shader
+     * module miss only, on the PFIFO thread or the async worker */
+    int64_t t_module = nv2a_clock_ns(), t_glslang;
     ShaderModuleInfo *info = g_malloc0(sizeof(*info));
     info->refcnt = 0;
     info->glsl = strdup(glsl);
@@ -453,16 +456,22 @@ ShaderModuleInfo *pgraph_vk_create_shader_module_from_glsl(
             info->spirv = cached;
             g_nv2a_stats.shader_stats.spv_cache_hits++;
         } else {
+            t_glslang = nv2a_clock_ns();
             info->spirv = pgraph_vk_compile_glsl_to_spv(
                 vk_shader_stage_to_glslang_stage(stage), glsl);
+            g_nv2a_stats.shader_stats.glslang_us +=
+                (nv2a_clock_ns() - t_glslang) / 1000;
             if (info->spirv) {
                 spv_cache_store(hash, info->spirv);
             }
             g_nv2a_stats.shader_stats.spv_cache_misses++;
         }
     } else {
+        t_glslang = nv2a_clock_ns();
         info->spirv = pgraph_vk_compile_glsl_to_spv(
             vk_shader_stage_to_glslang_stage(stage), glsl);
+        g_nv2a_stats.shader_stats.glslang_us +=
+            (nv2a_clock_ns() - t_glslang) / 1000;
     }
 
     if (!info->spirv) {
@@ -473,6 +482,8 @@ ShaderModuleInfo *pgraph_vk_create_shader_module_from_glsl(
 
     info->module = pgraph_vk_create_shader_module_from_spv(r, info->spirv);
     init_layout_from_spv(info);
+    g_nv2a_stats.shader_stats.shader_module_us +=
+        (nv2a_clock_ns() - t_module) / 1000;
     return info;
 }
 

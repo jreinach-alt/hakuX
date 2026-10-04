@@ -1,0 +1,31 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.4	unknown	no-prev		15.7	0.37	wait (unknown)	062900-001-unknown.png	
+1.9	intro_video	moving	0.2675	3.8	0.27	press A (skip intro_video)	062902-002-intro_video.png	
+3.8	intro_video	moving	0.8853	83.6	0.47	press START (skip intro_video)	062904-003-intro_video.png	
+5.4	black	black		2.7	0.22	wait	062905-004-black.png	
+6.8	intro_video	moving	0.182	10.2	0.27	press A (skip intro_video)	062907-005-intro_video.png	
+8.7	intro_video	moving	0.6345	37.9	0.47	press START (skip intro_video)	062908-006-intro_video.png	
+10.2	black	black		0.1	0.23	wait	062910-007-black.png	
+11.6	black	black		0.7	0.22	wait	062911-008-black.png	
+12.9	black	black		1.5	0.27	wait	062912-009-black.png	
+14.2	title	crop:title		12.2	0.32	press START (title 1)	062914-010-title.png	
+16.2	main_menu	crop:main-menu		30.3	0.47	settle	062916-011-main_menu.png	
+17.8	main_menu	crop:main-menu		32.7	0.47	press LY:max (main_menu 1)	062918-012-main_menu.png	
+20.1	main_menu	crop:main-menu		32.4	0.47	press A (main_menu 2)	062920-013-main_menu.png	
+21.8	profile	crop:start-game		26.9	0.47	settle	062921-014-profile.png	
+23.4	profile	crop:start-game		27.8	0.47	press A (profile 1)	062923-015-profile.png	
+25.2	profile	crop:start-game		27.8	0.42	settle	062925-016-profile.png	
+26.7	profile	crop:start-game		30.4	0.47	press A (profile 2)	062926-017-profile.png	
+28.3	black	black		0.0	0.22	wait	062929-018-black.png	
+29.7	black	black		1.7	0.32	wait	062930-019-black.png	
+31.0	black	black		0.0	0.22	wait	062932-020-black.png	
+32.2	black	black		0.8	0.23	wait	062933-021-black.png	
+33.5	black	black		0.0	0.22	wait	062934-022-black.png	
+35.0	cutscene	moving	0.4168	11.0	0.52	press A (skip cutscene)	062936-023-cutscene.png	
+37.1	unknown	hud:hud+after-cutscene	0.6193	14.8	0.57	hold (hud up, motion not yet play)	062938-024-unknown.png	
+38.9	play	hud:hud+motion	0.6576	27.1	0.47	hold tap Y/150x8 tap A	062946-025-play.png	
+46.4	play	hud:hud+motion	0.5848	30.2	0.52	hold tap Y/150x8 tap A	062953-026-play.png	
+53.6	play	hud:hud+motion p=0.125	0.5506	31.3	0.57	hold tap Y/150x8 tap A	063003-027-play.png	
+# time_to_title_s=14.3
+# time_to_play_s=39.1
+# result=reached-play

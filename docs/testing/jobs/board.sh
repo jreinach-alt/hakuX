@@ -27,6 +27,16 @@ mkdir -p "$WORK/logs/board" "$WORK/briefs" "$WORK/board"
 LOG="$WORK/logs/board/tick.log"
 # The tick log is read by hand when something jams, so it is display: local.
 say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
+# THE LOCAL FORGE (lane.localforge, 2026-10-02). While GitHub is suspended,
+# `gh` is the forge shim, and the unit's forge drop-in sets HAKUX_FORGE=1.
+# Under it, this tick reads the forge and writes the brief, but it STARTS
+# NOTHING:
+#   - no board session;
+#   - no cloud.sh claim.
+# It logs what it would have started, and keeps the brief under
+# logs/board/dry-run/. That holds until lane.local sets BOARD_DRY_RUN=0 in
+# the drop-in; the owner is still deciding the operating modes.
+BOARD_DRY_RUN="${BOARD_DRY_RUN:-${HAKUX_FORGE:-0}}"
 # The account's five-hour and weekly windows: window_check / window_defer_line.
 # Sourced from beside THIS file, which is the fetched trunk's copy after the
 # re-exec below, so the reserve is the trunk's rule and not the owner's
@@ -106,6 +116,23 @@ GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 #      an unestimated row, which may be large)
 #   5. an issue with no tracker row at all, oldest first [no tracker row]
 #
+# ABOVE ALL FIVE, THE RELEASE. An issue labelled `0.5` (#432, tracking #433)
+# sorts ahead of every issue that is not, and the five tiers order each group
+# on their own; such a line's key starts `[0.5]`. The labels are the ones gh
+# already listed for the SKIP filter. A row whose label list cannot be read as
+# a list of names is still printed, ranked with the non-release group and
+# tagged `[labels unreadable]`: one malformed row must neither empty the list
+# nor jump the release queue.
+#
+# AND A FOCUS THAT EXCLUDES. Sorting still offered #303 on 2026-09-26 and a
+# lane was started on it against the owner's 0.5-first policy (#433: no new
+# lane on a non-0.5 issue). BOARD_FOCUS_LABEL in $WORK/limits.env (unset =
+# no focus) drops every startable issue without that label from the list,
+# and board_filter says how many it dropped in one `FOCUS:` line, which the
+# gate splits off: the count is news, not work, and must not wake a tick on
+# its own when every focus issue is taken. A row whose labels cannot be read
+# cannot be shown to carry the focus label, so it is dropped with the rest.
+#
 # Ties inside a tier go to the oldest issue. The tracker is read through
 # board_files.load, as every other board tool reads it, so this sees
 # origin/board and not a fold-lagged copy. If it cannot be read the list is
@@ -113,8 +140,8 @@ GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 # the defect this gate exists to end -- every line says so, and the order is
 # oldest first.
 board_filter() {   # <issues|prs> <the JSON array gh printed>
-    python3 - "$1" "$2" "$SELF/.." <<'PY'
-import json, math, sys
+    BOARD_FOCUS_LABEL="${BOARD_FOCUS_LABEL:-}" python3 - "$1" "$2" "$SELF/.." <<'PY'
+import json, math, os, sys
 mode = sys.argv[1]
 # An issue no lane may be started on. Everything else open is startable.
 SKIP = {"claimed:cloud", "decision-needed", "upstream", "unmodellable",
@@ -125,15 +152,36 @@ SKIP_PREFIX = ("lane:", "blocked:")
 # with no audit label still needs needs-audit-1.
 STATE = {"needs-audit-1", "needs-audit-2", "needs-remediation",
          "fold-ready", "folded", "needs-rebase"}
+# The release in flight (#433). Its issues dispatch ahead of every other.
+RELEASE_LABEL = "0.5"
+# The focus, if the host set one: only its issues are offered at all.
+FOCUS = os.environ.get("BOARD_FOCUS_LABEL", "").strip()
+dropped = 0
 try:
     rows = json.loads(sys.argv[2] or "[]") or []
 except Exception:
     sys.exit(0)
+def label_names(r):
+    """The row's label names, or None when gh's list cannot be read as one."""
+    ls = r.get("labels")
+    if not isinstance(ls, list) or not all(
+            isinstance(l, dict) and isinstance(l.get("name", ""), str)
+            for l in ls):
+        return None
+    return [l.get("name", "") for l in ls]
+
 out = []
 for r in rows:
-    names = [l.get("name", "") for l in (r.get("labels") or [])]
+    if not isinstance(r, dict):
+        continue
+    names = label_names(r)
+    r["_labels_read"] = names is not None
+    names = names or []
     if mode == "issues":
         if any(n in SKIP or n.startswith(SKIP_PREFIX) for n in names):
+            continue
+        if FOCUS and FOCUS not in names:
+            dropped += 1
             continue
     else:
         if r.get("isDraft"):
@@ -146,6 +194,9 @@ if mode != "issues":
     for r, text in out:
         print("#%s %s" % (r.get("number"), text))
     sys.exit(0)
+if dropped:
+    print("FOCUS: %d startable issue(s) outside the %s focus are not offered "
+          "(BOARD_FOCUS_LABEL=%s in limits.env)" % (dropped, FOCUS, FOCUS))
 
 tracker = None
 try:
@@ -204,7 +255,19 @@ def rank(r):
         return (1, -score, n), "[%s]" % size
     return (2, 0, n), "[no impact estimate]"
 
-ranked = sorted((rank(r) + (r, text) for r, text in out), key=lambda t: t[0])
+def release(r):
+    """0 for an issue labelled 0.5, 1 otherwise; and the tag that says so."""
+    if not r["_labels_read"]:
+        return 1, "[labels unreadable] "
+    names = [l.get("name") for l in r["labels"]]
+    return (0, "[0.5] ") if RELEASE_LABEL in names else (1, "")
+
+def key(r):
+    group, tag = release(r)
+    (tier, size, n), k = rank(r)
+    return (group, tier, size, n), tag + k
+
+ranked = sorted((key(r) + (r, text) for r, text in out), key=lambda t: t[0])
 for _, key, r, text in ranked:
     print("#%s %s %s" % (r.get("number"), key, text))
 PY
@@ -280,7 +343,7 @@ sweep_gate() {
     SWEEP_HASH="$h"
 }
 
-capacity=""; unlabelled=""; lanes=0
+capacity=""; unlabelled=""; lanes=0; focus_note=""
 positive_gate() {
     # The cap, read and never raised. lane.sh's default is 2 and
     # $WORK/limits.env overrides it without a commit (it is 4 on the host).
@@ -314,11 +377,29 @@ positive_gate() {
         return
     fi
     if [ "$lanes" -lt "${LANE_MAX:-2}" ] && [ "${WINDOW_DEFER:-0}" != 1 ]; then
-        capacity=$(board_filter issues "$(timeout 60 gh issue list --repo "$GH_REPO" \
-            --state open --limit 200 --json number,title,labels 2>/dev/null)")
+        capacity=$(board_filter issues "$(gh_or_say "issue list" issue list --repo "$GH_REPO" \
+            --state open --limit 200 --json number,title,labels)")
+        # The focus count is a note, not a startable issue (see board_filter).
+        focus_note=$(printf '%s\n' "$capacity" | sed -n 's/^FOCUS: //p')
+        capacity=$(printf '%s\n' "$capacity" | grep -v '^FOCUS: ')
+        [ -n "$focus_note" ] && say "$focus_note"
     fi
-    unlabelled=$(board_filter prs "$(timeout 60 gh pr list --repo "$GH_REPO" \
-        --state open --limit 100 --json number,title,isDraft,labels 2>/dev/null)")
+    unlabelled=$(board_filter prs "$(gh_or_say "pr list" pr list --repo "$GH_REPO" \
+        --state open --limit 100 --json number,title,isDraft,labels)")
+}
+
+# A FAILED READ IS SAID, THEN READ AS EMPTY. The trigger stays quiet, as
+# designed above, but the tick log now shows that gh failed. Before this, a
+# failure printed exactly what "no work" prints. That is how 2026-09-29's
+# suspension went unseen for days: every gh call returned 403 and the board
+# logged "nothing actionable" (lane.localforge).
+gh_or_say() {  # gh_or_say <what> <gh args...>
+    local out rc errf
+    errf=$(mktemp)
+    out=$(timeout 60 gh "${@:2}" 2>"$errf"); rc=$?
+    [ "$rc" -ne 0 ] && say "gh $1 FAILED (rc=$rc): $(head -c 300 "$errf" | tr '\n' ' ')"
+    rm -f "$errf"
+    printf '%s' "$out"
 }
 
 # ONE PREDICATE, SHARED. The tick below and `board.sh gate` must agree about
@@ -401,12 +482,83 @@ if [ "${1:-}" = "install-hook" ]; then
     echo "cannot install the board pre-push hook in ${2:-}"; exit 1
 fi
 
+# LAND $WT ON THE TRUNK, OR STOP THE TICK. This was one line,
+# `fetch && checkout --detach FETCH_HEAD`, and a dirty tree makes that checkout
+# refuse. Nothing read the refusal: from 2026-09-28 to 09-29 $WT held 39
+# uncommitted paths (the tree of an old WIP commit, fc7bb08d2a, written in by
+# something that never committed it), every tick ran that stale fleet.py, and
+# its pre-#611 queue_stall() reported nova's battery-gated runs as a FAIL.
+#
+# $WT is a disposable mirror of origin/$TIP and nothing may write to it
+# uncommitted, so dirt here is a defect elsewhere: SAY it, then STASH it (not
+# reset/clean -- the stash keeps what was there for whoever traces the writer)
+# and land anyway. .boardtree is the session's board worktree, nested inside
+# $WT and untracked in it by design; it is not dirt. If the tree still is not
+# at FETCH_HEAD after that, the tick stops: every tool below reads $WT.
+refresh_wt() {   # <worktree> -> 0 at FETCH_HEAD of origin/$TIP, else 1 (said)
+    local wt="$1" dirt tag
+    git -C "$wt" fetch -q origin "$TIP" \
+        || { say "ABORT: cannot fetch origin/$TIP into $wt; not running a tick on a stale trunk"; return 1; }
+    dirt=$(git -C "$wt" status --porcelain -- . ':(exclude).boardtree') \
+        || { say "ABORT: git status failed in $wt"; return 1; }
+    if [ -n "$dirt" ]; then
+        tag="board.sh: auto-cleared dirty $wt at $(date -u +%FT%TZ)"
+        say "NOTE: $wt had $(printf '%s\n' "$dirt" | wc -l) uncommitted path(s), which this private mirror of origin/$TIP must never hold; something wrote to it without committing. First: $(printf '%s\n' "$dirt" | head -3 | tr '\n' ';' | sed 's/;$//'). Stashing as \"$tag\" (git stash list) and checking out the trunk."
+        git -C "$wt" stash push -q -u -m "$tag" -- . ':(exclude).boardtree' \
+            || { say "ABORT: could not stash the dirt in $wt; not running a tick on it"; return 1; }
+    fi
+    git -C "$wt" checkout -q --detach FETCH_HEAD \
+        || { say "ABORT: checkout of origin/$TIP failed in $wt${dirt:+ even after the stash}; not running a tick on a wrong base"; return 1; }
+    [ "$(git -C "$wt" rev-parse HEAD)" = "$(git -C "$wt" rev-parse FETCH_HEAD)" ] \
+        || { say "ABORT: $wt is at $(git -C "$wt" rev-parse --short HEAD), not origin/$TIP"; return 1; }
+}
+
+# `board.sh refresh-wt <worktree>` -- the refresh alone, for the selftest.
+if [ "${1:-}" = "refresh-wt" ]; then refresh_wt "${2:?worktree}"; exit $?; fi
+
+# THE SESSION'S BOARD TREE LANDS ON origin/board, OR THE TICK STOPS. $BT
+# (below, "$WT/.boardtree") was created once and never touched again: no
+# fetch, no dirty check, no fast-forward. A tick could start on a $BT that
+# was stale or still held a previous tick's uncommitted edits, and nothing
+# caught it -- on 2026-09-29 $BT was five commits behind origin/board,
+# carrying a staged diff duplicating part of PR #619's own patch plus an
+# unstaged diff reverting 47 files to an older state, and `git stash list`
+# already held four prior auto-stashes of the same shape going back to
+# 2026-09-21. This is the same defect refresh_wt fixed for $WT in PR #619,
+# extended to $BT: fetch origin/board, stash any dirt reversibly (never
+# reset/clean), then fast-forward the tree's own `board` branch onto
+# origin/board. $BT stays ON branch `board` (it is not detached like $WT),
+# so the fast-forward is `merge --ff-only`, not a checkout: a $BT holding a
+# local commit origin/board does not have (which should not happen in
+# normal operation, since the session pushes every tick) cannot be
+# fast-forwarded, and the tick stops rather than guess how to reconcile it.
+refresh_bt() {   # <worktree> -> 0 at origin/board's tip, else 1 (said)
+    local wt="$1" dirt tag
+    git -C "$wt" fetch -q origin board \
+        || { say "ABORT: cannot fetch origin/board into $wt; not running a tick on a stale board tree"; return 1; }
+    dirt=$(git -C "$wt" status --porcelain) \
+        || { say "ABORT: git status failed in $wt"; return 1; }
+    if [ -n "$dirt" ]; then
+        tag="board.sh: auto-cleared dirty $wt at $(date -u +%FT%TZ)"
+        say "NOTE: $wt had $(printf '%s\n' "$dirt" | wc -l) uncommitted path(s), which this session's board tree must never carry across a tick boundary. First: $(printf '%s\n' "$dirt" | head -3 | tr '\n' ';' | sed 's/;$//'). Stashing as \"$tag\" (git stash list) and fast-forwarding to origin/board."
+        git -C "$wt" stash push -q -u -m "$tag" \
+            || { say "ABORT: could not stash the dirt in $wt; not running a tick on it"; return 1; }
+    fi
+    git -C "$wt" merge -q --ff-only FETCH_HEAD \
+        || { say "ABORT: $wt's board branch has a commit origin/board does not (not fast-forwardable); not force-landing over session work"; return 1; }
+    [ "$(git -C "$wt" rev-parse HEAD)" = "$(git -C "$wt" rev-parse FETCH_HEAD)" ] \
+        || { say "ABORT: $wt is at $(git -C "$wt" rev-parse --short HEAD), not origin/board"; return 1; }
+}
+
+# `board.sh refresh-bt <worktree>` -- the refresh alone, for the selftest.
+if [ "${1:-}" = "refresh-bt" ]; then refresh_bt "${2:?worktree}"; exit $?; fi
+
 # A private worktree of the trunk, so this job never reads the owner's checkout.
 if [ ! -e "$WT/.git" ]; then
     git -C "$REPO" fetch -q origin "$TIP" && git -C "$REPO" worktree add --quiet --detach "$WT" FETCH_HEAD \
         || { say "cannot create $WT"; exit 1; }
 fi
-git -C "$WT" fetch -q origin "$TIP" && git -C "$WT" checkout -q --detach FETCH_HEAD
+refresh_wt "$WT" || exit 1
 git -C "$WT" fetch -q origin board 2>/dev/null || true
 
 # RUN THE TRUNK'S COPY OF THIS JOB, NOT THE OWNER'S CHECKOUT'S. The unit's
@@ -437,6 +589,7 @@ if [ ! -e "$BT/.git" ]; then
         || git -C "$WT" worktree add -q -B board "$BT" origin/board 2>/dev/null \
         || say "cannot create $BT; the session will make its own, unguarded by the push gate"
 fi
+[ -e "$BT/.git" ] && { refresh_bt "$BT" || exit 1; }
 for t in "$BT" "$WT"; do
     [ -e "$t/.git" ] || continue
     install_board_hook "$t" "$JOBS/board-push-gate.sh" \
@@ -479,6 +632,8 @@ board_recheck() {
 window_check
 if [ "${WINDOW_DEFER:-0}" = 1 ]; then
     say "$(window_defer_line "the audit outlet's next claim")"
+elif [ "$BOARD_DRY_RUN" = 1 ]; then
+    say "DRY RUN (BOARD_DRY_RUN=1, local forge): the audit outlet was not run; cloud.sh list says: $(timeout 120 bash "$JOBS/cloud.sh" list 2>&1 | tr '\n' ' ' | cut -c1-400)"
 else
     bash "$JOBS/cloud.sh" >/dev/null 2>&1 || say "audit outlet (cloud.sh) exited $?"
 fi
@@ -551,6 +706,7 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
     [ "${WINDOW_DEFER:-0}" = 1 ] && { echo "**START NO LANE AND CLAIM NO AUDIT THIS TICK.** $WINDOW_WHY. Dispatch resumes at $WINDOW_UNTIL and the list below is deliberately empty; do not go looking for startable issues yourself. Everything else in this brief is still yours: labels, the coverage gate, comments, briefs. This is a budget decision, not a failure -- do not open a decision-needed issue about it. ($WINDOW_FACTS)"; echo; }
     echo "$lanes of ${LANE_MAX:-2} lanes are running. Every issue below is open, carries no \`lane:\` label, no \`claimed:cloud\`, and none of \`blocked:*\`, \`decision-needed\`, \`upstream\`, \`unmodellable\`, \`xbox-hardware\`, \`harness-status\` -- so a lane could be started on it. They are NOT all \`dispatchable\`; deciding that is your job (files free, no blocker), and only you may apply the label. Dispatch UP TO THREE this tick (roles/board.md), in the order listed (it is sorted by expected improvement: game-visible, then recoverable px, and each line shows its key), each on files that are free with no blocker, and label \`cloud\` the ones that need no device so the hourly cloud session takes the overflow. If \`lane.sh\` prints REFUSED you are at the cap: stop, do not retry."
     echo
+    [ -n "$focus_note" ] && { echo "$focus_note. The release focus is the owner's: start no lane on an issue outside it, and do not go looking for one yourself."; echo; }
     printf '%s\n' "${capacity:-none}"
     echo
     echo "### files released at ready -- free for the rule above"
@@ -574,6 +730,16 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
     echo
     echo "Clear fleet items by the rules in your role file, in this order: fold-ready, blocked-on-a-free-file, reported-not-folded, dispatchable-not-dispatched, then the rest. Anything you cannot decide by rule becomes a decision-needed issue. Do not author code. End when every list above is empty or every item on it has a label, a comment, an issue, or (for up to three capacity items) a running lane."
 } > "$brief"
+if [ "$BOARD_DRY_RUN" = 1 ]; then
+    # Nothing is marked read, so the same findings are offered again once
+    # lane.local turns the gate on.
+    mkdir -p "$WORK/logs/board/dry-run"
+    kept="$WORK/logs/board/dry-run/brief.$(date -u +%Y%m%dT%H%M%SZ).md"
+    cp "$brief" "$kept"
+    say "DRY RUN (BOARD_DRY_RUN=1, local forge): would start the board session now. Brief kept at $kept. Nothing started; nothing marked read."
+    bash "$JOBS/status.sh" >/dev/null 2>&1
+    exit 0
+fi
 bash "$JOBS/run-claude-job.sh" board "$WT" "$brief" "${BOARD_TURNS:-70}"; rc=$?
 # MARKED SEEN ONLY NOW, AND ONLY ON A TICK THAT RAN. The sweep rewrites the
 # same findings for as long as they hold, so without this key one untriaged

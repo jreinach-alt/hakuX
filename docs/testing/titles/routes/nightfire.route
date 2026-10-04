@@ -1,0 +1,48 @@
+# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
+# 007: Nightfire (45410026): one route; no profile or menu was met from boot.
+# PLAYED by nav.py on the Nova, 2026-09-26 19:05 PDT (HELD session
+# nightfire.first-run-20260926T190505).
+#
+#   title "Press START" (START) -> gun-barrel intro (A) -> the Paris
+#   prologue starts at once: "Tutorial: Limited weapon control", an on-rails
+#   sniper section with auto-aim on. START here opened PAUSED (CONTINUE /
+#   RESTART / QUIT TO MAIN MENU), START again resumes. One RT pull shot the
+#   car's tyre (crash cutscene), then the next scoped target.
+#
+# Player control: RT fires and the shot moves the game on (nav frames 006 ->
+# 007). The first play pattern swept the right stick while firing and the
+# mission failed within 20 s ("Mission Failed: REPLAY TUTORIAL", most likely
+# the ally's red car hit); firing only, with auto-aim, went 64 pulls without
+# sections of the prologue; they are part of the level, not a menu.
+#
+# Replay 1 (19:10) failed: the prologue ran ahead of the nav session's
+# timing, and the 16 s idle before the old mark let a target go (Mission
+# Failed before the mark). So the mark is now right after the unpause and
+# the route fires from there on; firing through a cutscene does nothing.
+# sections of the prologue; they are part of the level, not a menu.
+wait 27.0
+shot boot
+wait 8.2
+press START
+wait 4.1
+shot start1
+wait 8.8
+press A
+wait 5.1
+shot a1
+wait 7.0
+press START
+wait 5.1
+shot start2
+wait 10.6
+press START
+wait 2.1
+shot unpaused
+wait 0.5
+mark gameplay
+repeat forever {
+    axis RT max
+    wait 0.25
+    axis RT min
+    wait 0.55
+}

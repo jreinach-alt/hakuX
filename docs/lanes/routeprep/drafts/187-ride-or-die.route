@@ -1,0 +1,49 @@
+# 187 Ride or Die (55530036), Nova. DRAFT by lane.routeprep, 2026-09-26,
+# not played. NO FRAMES ON DISK for this title (no pass-1 or titlebench run):
+# every step is [guess], and the draft is a survey with a frame after each
+# press. One file: whether a profile is asked for is not known; A accepts a
+# create/save prompt if one shows.
+#
+# Aim [guess, recalled]: Story mode, the first mission, which is a driving
+# combat level (gas on RT, fire on a face button or the left trigger).
+wait 30
+shot boot30
+press START                 # [guess] skip logos/FMV
+wait 15
+shot boot45
+press START
+wait 15
+shot boot60
+press START                 # [guess] title prompt
+wait 8
+shot after-title
+mark booted
+press A                     # [guess] a save/profile prompt, or the highlighted menu item (Story)
+wait 8
+shot menu1
+press A
+wait 8
+shot menu2
+press A
+wait 8
+shot menu3
+press A
+wait 10
+shot menu4
+repeat 6 {
+    press A                 # [guess] briefing / cutscene
+    wait 8
+    shot story-a
+}
+mark gameplay               # [guess] placeholder: move to the first frame driving with the HUD
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    press X
+    axis LX max
+    wait 1.5
+    press B
+    axis LX mid
+    wait 3
+}

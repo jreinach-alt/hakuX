@@ -1,0 +1,408 @@
+#!/usr/bin/env python3
+"""Per-run battery admission for a handheld (#507, owner rule 2026-09-28).
+
+    battery_admit.py check <dispatch dir> <label> <request.json> <level> [<head id>]
+    battery_admit.py learn <dispatch dir> <label> <soak|pgraph>
+
+THE RULE. A request is admitted on device D only if D's battery level covers
+the run with the owner's margin:
+
+    need = FLOOR + MARGIN + rate(D, kind) x runs x (seconds + overhead_s) / 3600
+
+FLOOR is 15 (hostops's battery hold places itself below it), or the device's
+own floor where it fails above that (the Nova's USB link: 30, FLOOR_BY_LABEL),
+and MARGIN is 5 ("about 5% wiggle room"). kind is `soak` for a request with a title and
+`pgraph` for a test-disc run.
+
+`rate` and `overhead_s` are LEARNED from D's own last 10 results of that kind,
+at the 75th percentile, because the number that matters is a bad run, not a
+typical one:
+
+  rate        the fall in pw.battery.capacity from the first thermal.jsonl
+              sample to the last, over the time between them, in %/h. A run
+              shorter than MIN_SPAN_S is not used: capacity is an integer, so
+              one percent over two minutes reads as 30 %/h. Nor is a run that
+              started above LEARN_BELOW (60): plugged in near its charge
+              limit the Thor holds its level through a soak (ten of its last
+              ten soaks on 09-28, all at 77-85 %, read 0 %/h), while the same
+              Thor from 18 % fell to 5 % in 36 minutes. Admission only binds
+              at low charge, so only low-charge runs teach it.
+  overhead_s  the device time a run takes beyond its `seconds`, per run:
+              (end - start) / runs - seconds, where end is DONE's mtime and
+              start is, in order of preference, the `t_device` the dispatcher
+              records in battery.json when it starts the install, the first
+              thermal sample (a soak before battery.json existed), or the
+              earliest file the run wrote (a disc run before it existed).
+
+With fewer than MIN_HISTORY usable results the FALLBACK table answers
+(devwatch's measured soak rates; a test disc at half), and the output says
+which. A test disc writes no thermal.jsonl, so its rate is the fallback until
+one does; its overhead is learned.
+
+THE HEAD, AND WHY A LONG RUN IS NOT STARVED. The dispatcher walks the queue in
+priority order and passes the id of the first request that did not fit this
+tick (the device's head) when it asks about the requests behind it. Those may
+be claimed instead -- a backfill -- but only for HEAD_WAIT_S after the head
+was first refused. After that the head reserves the device: nothing behind it
+is admitted, the device charges, and the head is claimed on the first check
+at which it fits. Without that bound, a stream of short runs would each take
+the charge the head is waiting for, and the level would hover at the short
+runs' need forever. The reservation is a file, .battery_head.<label>, naming
+the head and when it was first refused; a different head starts a new clock.
+
+A NEED IS CAPPED AT CEILING (75). Uncapped, a long enough run needs more than
+the device ever reaches: a nova soak over about 2.5 h at the learned rate
+needs over 100, and the Thor stops charging at 77-85 %. Such a request would
+never fit, and once it became the head it would reserve the handheld forever.
+At the cap it is admitted at a level the device does reach -- what the
+dispatcher did before admission, when a handheld came back at 80 % and served
+anything -- and the line says the need was capped.
+
+Exit: 0 admit, 1 does not fit, 3 fits but the head holds the device, 2 the
+helper itself failed (usage, a malformed request, an exception): the
+dispatcher admits unchecked and logs line one. Line one of stdout is the
+dispatcher's log text; line two is the JSON it records.
+"""
+import glob
+import json
+import os
+import sys
+import time
+
+FLOOR = float(os.environ.get("BATTERY_FLOOR", "15"))
+# A per-handheld floor replaces FLOOR where the device fails above 15 %. The
+# Nova's USB link on the PC's 500 mA port drops at low charge (Windows adb.log
+# `write terminated: Input/output error` on ee317437): of its runs 09-27/28,
+# 8 of 17 that went below 30 % lost the link, against 2 of 38 that stayed in
+# 30-59 % (docs/lanes/battadmit/NOTES.md, "The Nova's link floor"). So a Nova
+# run must end at 30 + MARGIN. BATTERY_FLOOR_<label> in the environment wins.
+FLOOR_BY_LABEL = {"nova": 30.0}
+MARGIN = float(os.environ.get("BATTERY_MARGIN", "5"))
+CEILING = float(os.environ.get("BATTERY_CEILING", "75"))
+HEAD_WAIT_S = float(os.environ.get("BATTERY_HEAD_WAIT_S", "1800"))
+RATES_TTL_S = float(os.environ.get("BATTERY_RATES_TTL_S", "300"))
+HISTORY = 10
+MIN_HISTORY = 3
+MIN_SPAN_S = 180
+# Past HISTORY overheads, stop after this many results of the device and kind
+# even if rates are short: a test disc writes no thermal.jsonl, so without it
+# the pgraph lookup reads every finished result for a rate it cannot find.
+SCAN_MAX = 5 * HISTORY
+LEARN_BELOW = float(os.environ.get("BATTERY_LEARN_BELOW", "60"))
+PCTL = 0.75
+# %/h. devwatch's measured soak drains; a test disc at half.
+FALLBACK_RATE = {("nova", "soak"): 21.0, ("thor", "soak"): 10.0,
+                 ("nova", "pgraph"): 10.5, ("thor", "pgraph"): 5.0}
+FALLBACK_RATE_OTHER = 21.0           # an unknown handheld: the worst we know
+FALLBACK_OVERHEAD_S = {"soak": 120.0, "pgraph": 300.0}
+
+
+def pctl(xs, q=PCTL):
+    """Linear-interpolated percentile of a non-empty list."""
+    xs = sorted(xs)
+    if len(xs) == 1:
+        return xs[0]
+    k = (len(xs) - 1) * q
+    lo = int(k)
+    hi = min(lo + 1, len(xs) - 1)
+    return xs[lo] + (xs[hi] - xs[lo]) * (k - lo)
+
+
+def load(path):
+    try:
+        with open(path) as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return None
+
+
+def floor_for(label):
+    v = os.environ.get("BATTERY_FLOOR_%s" % label)
+    return float(v) if v else FLOOR_BY_LABEL.get(label, FLOOR)
+
+
+def kind_of(req):
+    return "soak" if (req or {}).get("title") else "pgraph"
+
+
+def thermal_caps(path):
+    """[(t, capacity)] from a thermal.jsonl, samples without a capacity dropped."""
+    out = []
+    try:
+        fh = open(path)
+    except OSError:
+        return out
+    with fh:
+        for line in fh:
+            try:
+                r = json.loads(line)
+                c = ((r.get("pw") or {}).get("battery") or {}).get("capacity")
+                if c is not None:
+                    out.append((float(r["t"]), float(c)))
+            except (ValueError, KeyError, TypeError, AttributeError):
+                continue
+    return out
+
+
+def run_record(rdir):
+    """What one finished result says about drain and overhead, or None."""
+    done = os.path.join(rdir, "DONE")
+    req = load(os.path.join(rdir, "request.json"))
+    res = load(os.path.join(rdir, "result.json"))
+    if req is None or res is None or not os.path.exists(done):
+        return None
+    end = os.path.getmtime(done)
+    runs = max(1, int(req.get("runs") or 1))
+    seconds = float(req.get("seconds") or 0)
+    caps = thermal_caps(os.path.join(rdir, "thermal.jsonl"))
+    rate = None
+    if (len(caps) >= 2 and caps[-1][0] - caps[0][0] >= MIN_SPAN_S
+            and caps[0][1] <= LEARN_BELOW):
+        rate = (caps[0][1] - caps[-1][1]) * 3600.0 / (caps[-1][0] - caps[0][0])
+    batt = load(os.path.join(rdir, "battery.json")) or {}
+    start = batt.get("t_device")
+    if start is None and caps:
+        start = caps[0][0]
+    if start is None:
+        ts = [os.path.getmtime(os.path.join(rdir, f)) for f in os.listdir(rdir)
+              if f not in ("request.json", "DONE")]
+        start = min(ts) if ts else None
+    overhead = None
+    if start is not None and end > start:
+        overhead = max(0.0, (end - start) / runs - seconds)
+    return dict(id=os.path.basename(rdir), label=res.get("device_label", ""),
+                kind=kind_of(req), end=end, rate=rate, overhead=overhead)
+
+
+def history(d, label, kind, n=HISTORY):
+    """The last n finished results of this device and kind, newest first.
+    A result directory reached through two names (a renamed id is a symlink)
+    counts once."""
+    seen, dirs = set(), []
+    for p in glob.glob(os.path.join(d, "results", "*", "DONE")):
+        real = os.path.realpath(os.path.dirname(p))
+        if real in seen:
+            continue
+        seen.add(real)
+        try:
+            dirs.append((os.path.getmtime(p), real))
+        except OSError:
+            continue
+    dirs.sort(reverse=True)
+    rates, overheads, matched = [], [], 0
+    for _, rdir in dirs:
+        if len(overheads) >= n and (len(rates) >= n or matched >= SCAN_MAX):
+            break
+        # One result that cannot be read (a dangling file, a malformed
+        # request) is one result not learned from, not a device refused.
+        try:
+            rec = run_record(rdir)
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue
+        if rec is None or rec["label"] != label or rec["kind"] != kind:
+            continue
+        matched += 1
+        if rec["rate"] is not None and len(rates) < n:
+            rates.append((rec["id"], rec["rate"]))
+        if rec["overhead"] is not None and len(overheads) < n:
+            overheads.append((rec["id"], rec["overhead"]))
+    return rates, overheads
+
+
+def learn(d, label, kind):
+    rates, overheads = history(d, label, kind)
+    if len(rates) >= MIN_HISTORY:
+        rate, rsrc = max(0.0, pctl([r for _, r in rates])), "learned"
+    else:
+        rate = FALLBACK_RATE.get((label, kind), FALLBACK_RATE_OTHER)
+        rsrc = "fallback"
+    if len(overheads) >= MIN_HISTORY:
+        ovh, osrc = pctl([o for _, o in overheads]), "learned"
+    else:
+        ovh, osrc = FALLBACK_OVERHEAD_S[kind], "fallback"
+    return dict(rate=round(rate, 2), rate_src=rsrc, rate_n=len(rates),
+                rate_from=rates, overhead_s=round(ovh, 1), overhead_src=osrc,
+                overhead_n=len(overheads), overhead_from=overheads)
+
+
+def learn_cached(d, label, kind):
+    path = os.path.join(d, ".battery_rates.%s.%s.json" % (label, kind))
+    c = load(path)
+    if c and time.time() - c.get("t", 0) < RATES_TTL_S:
+        return c["v"]
+    v = learn(d, label, kind)
+    tmp = path + ".%d" % os.getpid()
+    try:
+        with open(tmp, "w") as fh:
+            json.dump(dict(t=time.time(), v=v), fh)
+        os.replace(tmp, path)
+    except OSError:
+        pass
+    return v
+
+
+def need_for(d, label, req):
+    """(need, uncapped need, learned inputs) for `req` on `label`. No side
+    effects beyond the rates cache, so affinity.py can ask it about a device
+    that has never been offered the request."""
+    runs = max(1, int(req.get("runs") or 1))
+    seconds = float(req.get("seconds") or 0)
+    lv = learn_cached(d, label, kind_of(req))
+    dev_s = runs * (seconds + lv["overhead_s"])
+    need = floor_for(label) + MARGIN + lv["rate"] * dev_s / 3600.0
+    need = round(need + 0.049, 1)          # rounded up: never admit on a rounding
+    uncapped = need
+    need = min(need, CEILING)
+    return need, uncapped, lv
+
+
+# THE REFUSAL RECORD, AND WHY AFFINITY READS IT (lane.affinitybatt, 09-29).
+# The dispatcher asks this file only about requests affinity.py already sent
+# to this device, so a refusal here is invisible to the other handheld: it
+# never checks the request at all. Three arm pairs hashed to the Nova on
+# 09-28 and were refused there for 8-14 h (level 35 < need 49.6) while the
+# Thor sat at 80-83 % and would have admitted them at need 29.9. So each
+# refusal is written to .battery_refused.<label>: {id: {since, t, need,
+# level}}, `since` the first refusal of an unbroken run of them. An admission
+# removes the id; ids no longer in queue/ or running/ are pruned. One writer
+# per file (the device's own worker), replaced atomically. affinity.py reads
+# it through `refusals` and `level_now` below.
+def _refused_path(d, label):
+    return os.path.join(d, ".battery_refused.%s" % label)
+
+
+def refusals(d, label):
+    r = load(_refused_path(d, label))
+    return r if isinstance(r, dict) else {}
+
+
+def _write_refusals(d, label, recs):
+    live = set()
+    for sub in ("queue", "running"):
+        try:
+            live.update(n[:-4] for n in os.listdir(os.path.join(d, sub)) if n.endswith(".req"))
+        except OSError:
+            pass
+    recs = {k: v for k, v in recs.items() if k in live}
+    path = _refused_path(d, label)
+    tmp = path + ".%d" % os.getpid()
+    try:
+        with open(tmp, "w") as fh:
+            json.dump(recs, fh, sort_keys=True)
+        os.replace(tmp, path)
+    except OSError:
+        pass                               # never fail an admission over a note
+
+
+def note_refusal(d, label, rid, need, level, now):
+    recs = refusals(d, label)
+    old = recs.get(rid) or {}
+    # Rewritten when the need or level moves, or once a minute: the queue walk
+    # asks every few seconds and `t` is only a freshness mark.
+    if old.get("need") == need and old.get("level") == level and now - old.get("t", 0) < 60:
+        return
+    recs[rid] = dict(since=old.get("since", now), t=now, need=need, level=level)
+    _write_refusals(d, label, recs)
+
+
+def note_admission(d, label, rid):
+    recs = refusals(d, label)
+    if rid in recs:
+        del recs[rid]
+        _write_refusals(d, label, recs)
+
+
+def level_now(d, label, fresh_s=900):
+    """The level the dispatcher last read on `label` (.battery_level.<label>,
+    "<epoch> <level>"), or None if absent or older than fresh_s."""
+    try:
+        with open(os.path.join(d, ".battery_level.%s" % label)) as fh:
+            t, lvl = fh.read().split()[:2]
+        if time.time() - float(t) <= fresh_s:
+            return float(lvl)
+    except (OSError, ValueError):
+        pass
+    return None
+
+
+def check(d, label, req_path, level, head):
+    req = load(req_path) or {}
+    rid = os.path.basename(req_path)[:-4] if req_path.endswith(".req") else os.path.basename(req_path)
+    kind = kind_of(req)
+    runs = max(1, int(req.get("runs") or 1))
+    seconds = float(req.get("seconds") or 0)
+    need, uncapped, lv = need_for(d, label, req)
+    floor = floor_for(label)
+    now = time.time()
+    state_path = os.path.join(d, ".battery_head.%s" % label)
+    state = load(state_path) or {}
+    inputs = "floor %.0f + margin %.0f + rate %.1f %%/h %s n=%d, %s x (%ds + overhead %ds %s n=%d)" % (
+        floor, MARGIN, lv["rate"], lv["rate_src"], lv["rate_n"], runs, seconds,
+        lv["overhead_s"], lv["overhead_src"], lv["overhead_n"])
+    if uncapped > need:
+        inputs += "; need %.1f capped at ceiling %.0f" % (uncapped, CEILING)
+    rec = dict(battery_start=level, need=need, rate=lv["rate"],
+               rate_src=lv["rate_src"], rate_n=lv["rate_n"],
+               overhead_s=lv["overhead_s"], overhead_src=lv["overhead_src"],
+               overhead_n=lv["overhead_n"], kind=kind, runs=runs,
+               seconds=seconds, floor=floor, margin=MARGIN, t_admit=now,
+               device=label)
+    if uncapped > need:
+        rec["need_uncapped"] = uncapped
+    if level < need:
+        waited = 0
+        if not head:
+            # This is the device's head. Start its clock, or keep it running.
+            if state.get("id") != rid:
+                state = dict(id=rid, since=now)
+                with open(state_path, "w") as fh:
+                    json.dump(state, fh)
+            waited = now - state["since"]
+        note_refusal(d, label, rid, need, level, now)
+        print("BATTERY: skip %s on %s: level %d < need %.1f (%s)%s" % (
+            rid, label, level, need, inputs,
+            "" if head else "; head, refused for %ds" % waited))
+        print(json.dumps(rec))
+        return 1
+    note_admission(d, label, rid)
+    if head:
+        waited = now - state["since"] if state.get("id") == head else 0
+        if waited >= HEAD_WAIT_S:
+            print("BATTERY: hold for head %s on %s (refused for %ds >= %ds): not backfilling %s, level %d >= need %.1f" % (
+                head, label, waited, HEAD_WAIT_S, rid, level, need))
+            print(json.dumps(rec))
+            return 3
+        rec["backfill_for"] = head
+        print("BATTERY: admit %s on %s as backfill for %s (refused %ds of %ds): level %d >= need %.1f (%s)" % (
+            rid, label, head, waited, HEAD_WAIT_S, level, need, inputs))
+    else:
+        try:
+            os.remove(state_path)
+        except OSError:
+            pass
+        print("BATTERY: admit %s on %s: level %d >= need %.1f (%s)" % (rid, label, level, need, inputs))
+    print(json.dumps(rec))
+    return 0
+
+
+def main(argv):
+    if len(argv) >= 6 and argv[1] == "check":
+        return check(argv[2], argv[3], argv[4], int(argv[5]),
+                     argv[6] if len(argv) > 6 else "")
+    if len(argv) == 5 and argv[1] == "learn":
+        print(json.dumps(learn(argv[2], argv[3], argv[4]), indent=1))
+        return 0
+    sys.stderr.write(__doc__)
+    return 2
+
+
+if __name__ == "__main__":
+    # An uncaught exception exits 1, which is "does not fit": a request with
+    # "seconds": "90s" would be refused on every tick, silently, and become
+    # the head. Exit 2 instead, with the reason as the log line.
+    try:
+        rc = main(sys.argv)
+    except Exception as e:           # noqa: BLE001 -- any failure is exit 2
+        print("battery_admit.py failed: %s: %s" % (type(e).__name__, e))
+        rc = 2
+    sys.exit(rc)

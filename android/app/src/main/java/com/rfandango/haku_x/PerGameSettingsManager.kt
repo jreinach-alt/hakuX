@@ -27,12 +27,17 @@ object PerGameSettingsManager {
         "draw_reorder",
         "draw_merge",
         "async_compile",
+        // #569: on by default; MainActivity sets HAKUX_GPL=0 when it is off.
+        "ubershader",
         "submit_frames",
         "tier1_threshold",
         "simple_vblank",
         "use_dsp",
         "texture_dump_enabled",
         "texture_replace_enabled",
+        // "auto", "sysmem" or "gmem". Unset falls back to the title table in
+        // xemu_android.cpp (ApplyRenderMode), which reads the disc's title ID.
+        "render_mode",
     )
 
     fun hasOverrides(context: Context, relativePath: String): Boolean {

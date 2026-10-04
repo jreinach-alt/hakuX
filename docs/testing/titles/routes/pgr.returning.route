@@ -1,0 +1,71 @@
+# state: returning   (recorded loading the profile; lane.savestate433)
+# Project Gotham Racing (4D530003), RETURNING: driver "Player" is on the disk.
+# PLAYED by nav.py on the Thor, 2026-09-26 21:23 PDT (lane.titleroutes HELD
+# session pgr.returning-20260926T212324), to gameplay.
+#
+#   intro FMV, Kudos card, Bizarre Creations logo (START each) -> "load or
+#   create new", cursor on load existing driver (A) -> load from hard disk
+#   (A) -> select driver, Player (A) -> main menu on arcade race; one
+#   left-stick flick up to quick race (A) -> easy (A) -> San Francisco (A)
+#   -> MINI Cooper S (A) -> AUTO (A) -> flyby (A) -> grid countdown.
+#
+# Player control: RT held from the countdown; 37 mph in 2nd 5 s after the
+# mark, 51 mph and 4th place on lap 1 at +80 s (nav frames 009, 011). The
+# race clock ran at about a third of real time at 12-14 fps. What the soak
+# window holds when the 50 s race clock or the 2 laps run out is not seen.
+#
+wait 27.1
+shot boot
+wait 6.6
+press START
+wait 12.4
+press START
+wait 14.5
+press START
+wait 11.6
+shot loadcreate
+wait 7.2
+press A
+wait 4.4
+press A
+wait 5.1
+shot hdd
+wait 9.1
+press A
+wait 5.1
+shot sel
+wait 9.0
+mark profile-loaded
+wait 1.2
+axis LY min
+wait 0.4
+axis LY mid
+wait 0.6
+shot up
+wait 1.3
+press A
+wait 5.6
+press A
+wait 5.4
+press A
+wait 8.0
+press A
+wait 5.1
+shot trans
+wait 1.1
+press A
+wait 12.4
+press A
+wait 11.6
+shot grid
+wait 8.4
+mark gameplay
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}

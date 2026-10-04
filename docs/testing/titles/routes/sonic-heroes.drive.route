@@ -1,0 +1,13 @@
+# state: any   (screen-driven (drive.py reads each screen); lane.savestate433)
+# Sonic Heroes (5345002B), boot to Seaside Hill, screen-driven (#433,
+# lane.routedriver, brief item 6: the on-foot proof).
+#
+# Replaces sonic-heroes.route's fixed waits (boot 20 s, a 100 s wait for the
+# story cutscene, START/A at fixed times) with drive.py: each press waits for
+# the screen it is meant for, logos/intro/cutscene are skipped with the
+# ladder, and in play only LY:min (run forward) and an occasional A (jump)
+# are sent -- never START, which pauses (run 1790902215). The step ends at
+# 20 s of confirmed play (`find`). Path and crops:
+# drive-profiles/sonic-heroes.toml; the runs that found it:
+# docs/lanes/routedriver/NOTES.md.
+drive sonic-heroes 400 find

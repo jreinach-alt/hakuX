@@ -1,0 +1,29 @@
+{
+ "registered_utc": "2026-09-30T19:40:00Z",
+ "who": "lane.shaderprebuild569",
+ "issue": "569",
+ "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+ "device": "nova",
+ "route": "survey",
+ "seconds": 440,
+ "perflog": true,
+ "frames_every": 0,
+ "runs_per_arm": 1,
+ "a_ref": "54865a3521",
+ "b_ref": "54865a3521",
+ "order": "L1 then L2, both ref 54865a3521, both queued with request.sh --title 54430006-Dead_or_Alive_1_Ultimate.xiso.iso --route survey --seconds 440 --perflog --device nova --hard-pin --env HAKUX_PLC_WIPE=1, back to back. L1 is the apk's first run on the Nova, so the dispatcher clears every shader cache (result.json shader_cache 'cleared'); L2 is the same apk's next run, so it keeps spv_cache/ and the key files ('kept') and the app removes vk_pipeline_cache.bin at init. Another apk running on the Nova between them makes L2 'cleared' (keys gone, records unresolved) and the pair VOID.",
+ "judge": "python3 docs/lanes/shaderprebuild569/pbjudge.py --l1 <L1 dir> --l2 <L2 dir> --boot-mark booted --load-mark play (--selftest passes). Every reading, leg and factor is in its docstring and FACTORS, fixed before any run.",
+ "prediction": "#569 P3 on Dead or Alive 1 Ultimate. L1 is cold and records every monolithic draw pipeline it creates in pipeline_keys/54430006.bin (lane.uberspike569's cold arm A on this route: 148 creates, 26.2 s, mark booted at 64.7 s). L2 starts with the records and module keys but no pipeline cache file; at renderer init it rebuilds the recorded pipelines on three compile workers into the VkPipelineCache, which at ~177 ms each is about 9 s, so a draw that meets a recorded pipeline after the boot mark finds the driver's binaries there. Registered: W4, L2's mean known create after mark booted <= 0.10 x L1's mean new create after it; W1, L2's whole-run draw-path create ms <= 0.25 x L1's; W1b, L2's first load after mark play <= 0.25 x L1's; W2, L2's [pb569] done before its mark booted; W3, L2's median gfps before mark booted >= 0.90 x L1's.",
+ "legs": {
+  "V (validity)": "L1's [pb569] HAKUX_PLC_WIPE=1 line (removed or absent) and its [pb569] start records=0: it began with no records for the title and no cache file; L2 kept (result.json shader_cache) with '[pb569] HAKUX_PLC_WIPE=1: vk_pipeline_cache.bin removed'; L2's records >= 20 with unresolved <= 10%; >= 20 [shd413] windows each; mark booted in both; >= 20 known creates (L2) and new creates (L1) after it. Otherwise VOID.",
+  "W4": "L2 known-after-boot mean us <= 0.10 x L1 new-after-boot mean us. The falsifier: FAILS in the world where the pre-build builds under a different Turnip cache key than the draw path (pipeline layout, render pass, module or create state differ in something the driver hashes), or has not reached the pipelines by then; either way the gain the plan attributes to a pre-build would have come from the old cache file.",
+  "W1": "L2 pc_ms <= 0.25 x L1 pc_ms. FAILS in W4's world, or where L2's route meets many pipelines L1 never did (read L2's new creates after the boot mark).",
+  "W1b": "L2's first load after mark play: dpc_ms <= 0.25 x L1's (L1-like cold: 2.9 s over 15 misses). FAILS in the same worlds, inside the fight load.",
+  "W2": "L2's [pb569] done line comes before its mark booted. FAILS if the pre-build is slower than the boot (the per-pipeline cost on idle cores is higher than on the draw thread, or the workers are starved).",
+  "W3": "L2's median gfps before mark booted >= 0.90 x L1's. FAILS in the world where the three workers take the vCPU's or PFIFO's cores during the intro.",
+  "X (reading)": "L2's done fields (ok, fail, met, create_ms, wall_ms), new creates after the boot mark and their ms, both launches' [plc569] saves by reason, stall windows."
+ },
+ "expect": {},
+ "expect_counts": {},
+ "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [pb569], [plc569], [shd413], gfps and hakuX-route lines by pbjudge.py."
+}

@@ -1,0 +1,117 @@
+# state: first-run   (recorded creating the profile; lane.savestate433)
+# GoldenEye: Rogue Agent (4541005D), SAVE. The first-run route up to player
+# control, then `flush`, so the PLAYER1 profile it creates reaches the disk.
+#
+# Why a separate route: every first-run so far (nav session 09-26 19:25, its
+# replay 19:32, titlebench 23:30, all on the Nova) ended in a force-stop with
+# no flush, and the next boot showed CREATE NEW PROFILE again. This route
+# exists to leave the save on the disk for titlestate.py to extract. It has
+# no `mark gameplay`: the title is paused by the flush, so the run makes a
+# save and is not a measurement.
+#
+# The steps are goldeneye-ra.first-run.route's, lines 22-121, unchanged.
+wait 27.0
+shot boot
+wait 7.9
+press A
+wait 5.1
+shot a1
+wait 0.6
+press START
+wait 5.1
+shot start1
+wait 9.6
+press START
+wait 6.1
+shot start2
+wait 9.4
+press START
+wait 3.1
+shot kb-start
+wait 8.2
+press LEFT
+wait 1.6
+shot kb-left
+wait 11.3
+axis LX max
+wait 0.4
+axis LX mid
+wait 1.1
+shot kb-lx
+wait 11.5
+axis LX max
+wait 0.3
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.4
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.3
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.4
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.4
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.3
+axis LX mid
+wait 0.8
+axis LX max
+wait 0.4
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.4
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.3
+axis LX mid
+wait 0.6
+shot kb-ok
+wait 9.7
+press A
+wait 5.1
+shot ok
+wait 8.5
+mark profile-created
+wait 0.8
+press A
+wait 5.1
+shot campaign
+wait 9.8
+press A
+wait 12.1
+shot play
+wait 22.3
+shot load2
+wait 0.6
+press START
+wait 5.1
+shot skip
+wait 9.3
+press A
+wait 4.1
+shot skipA
+wait 22.0
+shot fmv3
+wait 40.6
+shot fmv4
+wait 9.4
+axis RX max
+wait 1.2
+axis RX mid
+wait 0.6
+shot look-right
+wait 10
+shot control
+flush 20
+wait 5
+shot flushed

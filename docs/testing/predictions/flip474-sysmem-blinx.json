@@ -1,0 +1,40 @@
+{
+  "registered_utc": "2026-09-27T22:43:21Z",
+  "who": "lane.flip474",
+  "issue": "474",
+  "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "09fdca3ba176b03a5822aca8cd92628f4a99da77",
+  "b_ref": "09fdca3ba176b03a5822aca8cd92628f4a99da77",
+  "window_s": [
+    255,
+    411
+  ],
+  "arms": {
+    "base": "no env",
+    "sysmem": "--env TU_DEBUG=sysmem"
+  },
+  "queue_order": "base, then sysmem; each request.sh --title, --device nova, --route survey, --seconds 420, --perflog, --expect this file",
+  "judge": "python3 docs/lanes/flip474/phaseread.py --from 255 --to 411 <base> <sysmem>; lockread.py and gfpsseries.py on each over the same window; grep 'env: TU_DEBUG' in each logcat; crashcheck.py and tailcheck.py on each; the shots in the window, by eye",
+  "units": "GPU, R and X as printed use limits.timestampPeriod; every leg is a ratio of two arms of one binary, or a CPU-clock time, so the period cancels.",
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/flip474-sysmem-pgraph.json"
+  ],
+  "prediction": "DOA's fight on the Nova (NOTES.md section 16): GMEM executes the draw stream of its one heavy pass twice (X/R 0.99) and sysmem once (X/R 0.02); GPU 34.4 -> 19.6 printed, Tot 64 -> 41 ms, gfps 14 -> 21. X/R from runs on disk: AUF 1.01, Blinx 0.13, Forza 0.25. Blinx's X is small (X/R 0.13), so a replay is not most of its GPU time: its passes have many tiles and binning, or its X is loads and stores. Sysmem saves at most X and may cost fill bandwidth. The guess: GPU and gfps about equal. This is the title that can show sysmem losing.",
+  "legs": {
+    "M0 (instrument)": ">= 15 hakuX-phase lines with GPU > 0 in the window in each arm, and the shots show play. Otherwise VOID for that arm, rerun once.",
+    "E0 (the env reached the app)": "the sysmem arm's logcat has 'env: TU_DEBUG=sysmem' and the base has no TU_DEBUG line. Otherwise VOID.",
+    "T0 (steady)": "the smallest gfps line in the window is >= 0.6 x the median, unless the shots show a scene change there. Otherwise VOID for that arm (thermal pause, section 15 of NOTES.md).",
+    "H0 (no hang)": "each arm: longest gap between hakuX-perf lines in the window <= 3 s, lines to the end, no crash marker.",
+    "S2 (GPU about equal)": "sysmem's phase GPU median is 0.80 to 1.15 x the base's. Confidence 65%.",
+    "L1 (no loss)": "sysmem's gfps median >= the base's - 1. Confidence 75%. KILL of a global sysmem policy: gfps median falls by 2 or more in a like scene, or GPU >= 1.25 x the base's."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off hakuX-phase, hakuX-perf and the app's 'env:' lines."
+}

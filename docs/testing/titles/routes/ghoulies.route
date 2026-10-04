@@ -1,0 +1,212 @@
+# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
+# Grabbed by the Ghoulies (4D530053): one route for the first run and later
+# runs. PLAYED by nav.py on the Thor, 2026-09-27 01:33 PDT (lane.titleroutes
+# HELD session ghoulies.first-run-20260927T013324).
+#
+#   Microsoft Game Studios book -> the title page (START) -> an intro
+#   picture -> "Choose A Game" slots 1 / 2 / 3, cursor on 1, "Empty" (A) ->
+#   name keyboard, "My Game" prefilled, cursor on DONE (A) -> slot 1 now "My
+#   Game" (A) -> "Play: Chapter 1, Scene 1: Grand Hallway" (A) -> the
+#   storybook intro, pages and dialogue cards that wait on A (A every 2-4 s)
+#   -> loading -> the Grand Hallway: Cooper, three Ghoulies, heart 50 ->
+#   a tutorial card ("HOLDS the Right Thumbstick in the direction he wishes
+#   to attack", A).
+#
+# On a later run slot 1 already holds "My Game": its first A opens the Play
+# screen, the keyboard's A starts Chapter 1, and the extra A lands in the
+# storybook, which takes A anyway. The game saves in slot 1 at its own
+# points.
+#
+# Player control: LX min for 1.5 s walked Cooper across the hall (nav frames
+# 015-pre -> 016-moved2). The play pattern walks with the left stick, holds
+# the right stick to attack in four directions, and presses A to dismiss
+# tutorial cards.
+#
+# The nav session pressed START once in the storybook (the A on its
+# screens had not skipped it yet). This route presses A there instead: on a
+# later run the storybook is shorter, and a START that lands in the hallway
+# opens the pause menu (scratch/replay/ghoulies-014106).
+#
+wait 20.1
+shot t20
+wait 19.2
+shot t30
+wait 1.6
+press START 300
+wait 6.1
+shot s1
+wait 25.4
+shot s2
+wait 9.0
+press A 300
+wait 6.2
+shot slot1
+wait 8.1
+press A 300
+wait 9.9
+shot done
+wait 12.9
+press A 300
+wait 8.1
+shot sel
+wait 10.2
+press A 300
+wait 10.1
+shot play
+wait 9.2
+press A 300
+wait 4.7
+press A 300
+wait 4.7
+press A 300
+wait 6.5
+press A 300
+wait 4.7
+press A 300
+wait 4.7
+press A 300
+wait 4.7
+press A 300
+wait 4.8
+press A 300
+wait 4.1
+shot i1
+wait 11.0
+press A 300
+wait 5.1
+shot skS
+wait 9.5
+press A 300
+wait 3.7
+press A 300
+wait 3.8
+press A 300
+wait 3.7
+press A 300
+wait 3.7
+press A 300
+wait 5.5
+press A 300
+wait 3.7
+press A 300
+wait 3.7
+press A 300
+wait 3.7
+press A 300
+wait 3.7
+press A 300
+wait 3.1
+shot i2
+wait 9.2
+press A 300
+wait 4.5
+press A 300
+wait 2.6
+press A 300
+wait 2.7
+press A 300
+wait 2.6
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.8
+press A 300
+wait 4.5
+press A 300
+wait 2.7
+press A 300
+wait 2.1
+shot i3
+wait 8.7
+press A 300
+wait 2.8
+press A 300
+wait 2.7
+press A 300
+wait 2.8
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.6
+press A 300
+wait 4.5
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.7
+press A 300
+wait 2.1
+shot i4
+wait 19.2
+shot lvl
+wait 9.3
+axis LX min
+wait 1.7
+axis LX mid
+wait 0.2
+axis RX min
+wait 0.7
+axis RX mid
+shot moved
+wait 9.2
+press A 300
+wait 5.5
+press A 300
+wait 3.1
+shot pre
+wait 1.3
+axis LX min
+wait 1.8
+axis LX mid
+shot moved2
+wait 16.4
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 1.5
+    axis LY mid
+    axis RX max
+    wait 1
+    axis RX mid
+    axis LX max
+    wait 1.5
+    axis LX mid
+    axis RY min
+    wait 1
+    axis RY mid
+    axis LY max
+    wait 1.5
+    axis LY mid
+    axis RX min
+    wait 1
+    axis RX mid
+    axis LX min
+    wait 1.5
+    axis LX mid
+    press A 200
+    wait 0.5
+}

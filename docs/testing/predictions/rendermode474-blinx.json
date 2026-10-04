@@ -1,0 +1,29 @@
+{
+  "registered_utc": "2026-09-28T01:45:00Z",
+  "who": "lane.rendermode474",
+  "issue": "474",
+  "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+  "device": "thor",
+  "seconds": 180,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "b_ref": "61e0edf87c6a95f555c6a000dfcfae2eec4b805e",
+  "arms": {
+    "B": "this branch 61e0edf87c, no env. B only: the leg is a start-up line, and master has no line to compare. Blinx is on the Thor only."
+  },
+  "queue_order": "request.sh --who rendermode474 --title <this title> --device thor --route survey --seconds 180 --perflog --ref <b_ref> --expect this file",
+  "judge": "grep 'render_mode:' and 'env: TU_DEBUG' in the logcat; crash marker; hakuX-perf lines to the end",
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/rendermode474-pgraph.json"
+  ],
+  "prediction": "#474: a title outside the table keeps the driver's render mode. B reads Blinx's title ID from the disc, does not find it, and leaves TU_DEBUG unset. Blinx is the reason there is no global default: it ends render passes for occlusion queries in every line of flip474's window.",
+  "legs": {
+    "U0 (untouched)": "exactly one hakuX-build line 'render_mode: auto (default) title=4D530013 TU_DEBUG=(unset)', and no 'env: TU_DEBUG' line. KILL: 'sysmem' anywhere on the line (the table matched a title outside it), or no line. A title other than 4D530013 (00000000 included) refutes the disc reader, not the table, and is reported as that.",
+    "H0 (no hang)": "hakuX-perf lines to the end of the run and no crash marker."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures."
+}

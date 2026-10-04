@@ -171,6 +171,17 @@ typedef struct PGRAPHState {
     QemuMutex lock;
     QemuMutex renderer_lock;
 
+    /*
+     * #474: true while the PFIFO thread waits on a GPU fence inside a method
+     * with `lock` released (pgraph_lock_release_for_fence). Written only by
+     * the PFIFO thread and only under `lock`. The guest's PGRAPH MMIO for
+     * interrupt and register state may run in that window; every other
+     * taker of `lock` waits it out with pgraph_lock_settled(), so it sees
+     * the method either not started or finished, as before.
+     */
+    bool lock_released_for_fence;
+    QemuCond lock_settled_cond;
+
     uint32_t pending_interrupts;
     uint32_t enabled_interrupts;
 
@@ -356,6 +367,34 @@ typedef struct PGRAPHState {
      */
     float last_ff_radial_fog_coord;
 
+    /*
+     * #53: the lighting unit's six-entry ring of vertex inputs. A lit vertex
+     * program does not light its own vertex: silicon runs the fixed-function
+     * light loop on a slot of this ring, which still holds the inputs of the
+     * last fixed-function lit vertices written to it (PR #355, PR #351).
+     *
+     * ff_lit_ring[slot][k] holds attribute RING_ATTRS[k] (glsl/vsh.c) of the
+     * vertex written to that slot. ring_pos is the slot the next vertex
+     * takes, kept in 0..5 (a free-running 32-bit count would shift the phase
+     * when it wrapped, 2^32 not being a multiple of 6). Every vertex advances it by one, and so does most of the
+     * command stream between draws; the per-method weights were measured on
+     * the console (docs/testing/xbox-ringw-2026-09-26.md) and are applied in
+     * pgraph.c's pgraph_ring_weigh.
+     */
+    float ff_lit_ring[6][6][4];
+    uint32_t ring_pos;
+    /*
+     * ring_gen moves whenever ff_lit_ring is written. ring_upload_phase and
+     * ring_upload_gen are the ringPhase and ring_gen the last lit-program
+     * uniform block was built from (glsl/vsh.c): the ring moves no register
+     * generation or dirty flag, so a renderer that reuses a uniform block
+     * across draws compares these to know the block is stale
+     * (pgraph_glsl_ring_uniforms_stale).
+     */
+    uint32_t ring_gen;
+    float ring_upload_phase;
+    uint32_t ring_upload_gen;
+
     const PGRAPHRenderer *renderer;
     union {
         PGRAPHNullState *null_renderer_state;
@@ -363,6 +402,35 @@ typedef struct PGRAPHState {
         PGRAPHVkState *vk_renderer_state;
     };
 } PGRAPHState;
+
+/*
+ * #474: take `lock` as every taker but the guest's interrupt/register MMIO
+ * must: not inside a method's lock-released fence wait. Waiters sleep on the
+ * cond with `lock` free and wake once the PFIFO thread has retaken it, so
+ * they run where they ran before -- after that method.
+ */
+static inline void pgraph_lock_settled(PGRAPHState *pg)
+{
+    qemu_mutex_lock(&pg->lock);
+    while (pg->lock_released_for_fence) {
+        qemu_cond_wait(&pg->lock_settled_cond, &pg->lock);
+    }
+}
+
+/* PFIFO thread only, with `lock` held, around a GPU fence wait that touches
+ * no PGRAPH or renderer state. */
+static inline void pgraph_lock_release_for_fence(PGRAPHState *pg)
+{
+    pg->lock_released_for_fence = true;
+    qemu_mutex_unlock(&pg->lock);
+}
+
+static inline void pgraph_lock_retake_after_fence(PGRAPHState *pg)
+{
+    qemu_mutex_lock(&pg->lock);
+    pg->lock_released_for_fence = false;
+    qemu_cond_broadcast(&pg->lock_settled_cond);
+}
 
 void pgraph_init(NV2AState *d);
 void pgraph_init_thread(NV2AState *d);

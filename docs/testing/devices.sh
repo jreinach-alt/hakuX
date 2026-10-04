@@ -65,16 +65,43 @@ device_env() {
     ee317437)   # Retroid Pocket Nova
         export SERIAL=ee317437
         export DEVICE_LABEL="nova"
-        export DEVICE_ISO_ROOT="/storage/E6C6-D7AA/Games/XBox"
+        export DEVICE_ISO_ROOTS="/storage/E6C6-D7AA/Games/XBox"
+        # Fan MAX 5 (SPORT), not 3 (PERFORMANCE): measured 2026-09-26, 3
+        # holds SMART's idle duty (12000) and 5 drives 25000 / 8100 rpm.
+        export DEVICE_PERF_MAX=2 DEVICE_FAN_MAX=5 DEVICE_PERF_REST=0 DEVICE_FAN_REST=4
+        # The fan settings a player can select: DEVICE_FAN_OPTIONS below.
+        export DEVICE_FAN_OPTIONS="off=0@0 quiet=1@0,1 smart=4@0,1,2 sport=5@0,1,2 customize=6:0-100@2"
         ;;
     bdc158a5)   # AYN Thor
         export SERIAL=bdc158a5
         export DEVICE_LABEL="thor"
-        export DEVICE_ISO_ROOT="/storage/388C-68F7/ROMS/xbox"
+        # SD card first, then internal storage: the card was 94% full on
+        # 2026-09-26 and the owner said to "swap over into internal storage
+        # as needed". The app's UID reads an adb-pushed file there (verified
+        # 09-26), and a soak launches by rom_path, not the in-app library.
+        export DEVICE_ISO_ROOTS="/storage/388C-68F7/ROMS/xbox:/storage/emulated/0/ROMS/xbox"
+        # Fan MAX 4 (SMART), the same as REST, not 5 (SPORT): SPORT is a
+        # fixed 25000 duty, and on a hot Thor (66-74 C, 2026-09-26) SMART's
+        # curve ran 25000-29000, so SPORT would cool LESS than REST under
+        # gameplay (NOTES 5d). Revisit once CUSTOM (6) and the PWM period
+        # are read.
+        export DEVICE_PERF_MAX=2 DEVICE_FAN_MAX=4 DEVICE_PERF_REST=0 DEVICE_FAN_REST=4
+        # The fan settings a player can select: DEVICE_FAN_OPTIONS below.
+        export DEVICE_FAN_OPTIONS="off=0@0 quiet=1@0,1 smart=4@0,1,2 sport=5@0,1,2 customize=6:0-100@2"
         ;;
     *)  echo "unknown device $1 -- add it to devices.sh rather than guessing" >&2
         return 2 ;;
     esac
+    # DEVICE_ISO_ROOTS: every directory a title may sit in, colon-separated,
+    # searched in order (device_title_path). DEVICE_ISO_ROOT stays the first
+    # one, which is where run_disc.sh pushes its test disc and what
+    # `devices.sh <serial>` prints.
+    export DEVICE_ISO_ROOT="${DEVICE_ISO_ROOTS%%:*}"
+    # THE GAMEPLAY REGIMEN (DEVICE_PERF_*/DEVICE_FAN_*, set per row above):
+    # the OEM performance and fan modes a title soak runs at (MAX) and leaves
+    # the device at (REST). See device_perf below. Both handhelds run the
+    # same Moorechip settings library, so the mode numbers mean the same
+    # thing on each, but the fan curves differ, so the fan MAX does too.
     export PKG="${PKG:-com.jreinach.hakux.debug}"
     # Per-device lease. One lease file for two devices would have each
     # dispatcher think the other's run was its own.
@@ -125,6 +152,384 @@ adb_call() {
     done
     cat "$out"; rm -f "$out"
     return "$rc"
+}
+
+# ------------------------------------------------------------ title roots
+#
+# device_iso_roots  ->  one root per line, in search order. From
+# DEVICE_ISO_ROOTS, or DEVICE_ISO_ROOT alone when a caller set only that.
+device_iso_roots() {
+    local roots="${DEVICE_ISO_ROOTS:-${DEVICE_ISO_ROOT:?device_env first}}"
+    printf '%s\n' "$roots" | tr ':' '\n' | sed '/^$/d'
+}
+
+# device_title_path <title>  ->  the first <root>/<title> that is a file on
+# $SERIAL, on stdout; non-zero when no root has it (or adb failed -- the
+# caller's adb_error names a hung call). ONE adb call: the loop runs in the
+# device's shell. Every path is single-quoted for that shell, because titles
+# carry spaces, parentheses, ampersands and apostrophes ("Tom Clancy's ...").
+# A found path is echoed behind a `=` so nothing else adb prints can pass for
+# one.
+device_title_path() {
+    local title="${1:?device_title_path needs a title}" r loop="" out
+    while IFS= read -r r; do
+        loop+=" $(_dev_sq "$r/$title")"
+    done < <(device_iso_roots)
+    out=$(adb_call "${ADB_QUICK_TIMEOUT:-30}" "title check" shell \
+        "for p in$loop; do if [ -f \"\$p\" ]; then echo \"=\$p\"; break; fi; done" \
+        2>/dev/null | tr -d '\r' | sed -n 's/^=//p' | head -1)
+    [ -n "$out" ] || return 1
+    printf '%s\n' "$out"
+}
+
+# device_title_miss <title>  ->  the ERROR text for a title no root has: the
+# name and every root searched, so a miss says where it looked.
+device_title_miss() {
+    printf 'title not on device: %s -- searched %s\n' "$1" \
+        "$(device_iso_roots | paste -sd, - | sed 's/,/, /g')"
+}
+
+_dev_sq() {   # <word> -> the word single-quoted for the device's sh
+    local q="'\\''"
+    printf "'%s'" "${1//\'/$q}"
+}
+
+# ------------------------------------------------ performance and fan modes
+#
+# Two `settings system` integers, owned by the OEM settings library in
+# SystemUI (com.android.settingslib.MoorechipSettingsLib, read out of the
+# Thor's SystemUI.apk on 2026-09-26; the Nova's is the same library):
+#
+#   performance_mode   PerformanceState  0 NORMAL (the default)  1 STANDARD
+#                                        2 HIGH
+#   fan_mode           FanState          0 DISABLED  1 QUIET  2 BALANCE
+#                                        3 PERFORMANCE  4 SMART (the default)
+#                                        5 SPORT  6 CUSTOM
+#
+# Before 2026-09-26 nothing set or recorded them, and the two handhelds sat
+# in different modes (Thor 0/4, Nova 1/4), so every title soak's frame rate
+# carried an unrecorded device-mode variable. docs/lanes/perfregimen/NOTES.md
+# has the measurement that `settings put` moves the hardware, not only the
+# setting.
+#
+# device_perf_values <serial>  ->  "PERF_MAX FAN_MAX PERF_REST FAN_REST"
+# In a subshell: device_env exports SERIAL and the lease path, and a caller
+# asking for four numbers must not have its lease moved as a side effect.
+device_perf_values() {
+    ( device_env "$1" >/dev/null || exit 2
+      printf '%s %s %s %s\n' "$DEVICE_PERF_MAX" "$DEVICE_FAN_MAX" \
+          "$DEVICE_PERF_REST" "$DEVICE_FAN_REST" )
+}
+
+# device_perf_get  ->  "PERF FAN" as the device reads them back, or a word
+# that is not a number ("null", empty) when adb could not say.
+device_perf_get() {
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "perf mode read" shell \
+        'echo "$(settings get system performance_mode) $(settings get system fan_mode)"' \
+        2>/dev/null | tr -d '\r' | tail -1
+}
+
+# device_perf_set <perf> <fan>  ->  0 when the read-back matches, else 1.
+# Echoes the read-back, so a caller records what the device says rather than
+# what was asked for.
+device_perf_set() {
+    local got
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "perf mode write $1/$2" shell \
+        "settings put system performance_mode $1; settings put system fan_mode $2" \
+        >/dev/null 2>&1
+    got=$(device_perf_get)
+    printf '%s\n' "$got"
+    [ "$got" = "$1 $2" ]
+}
+
+# ------------------------------------------------------------ fan options
+#
+# DEVICE_FAN_OPTIONS (per row above): the fan settings a player can select
+# on this handheld. Only these may be requested (soak_title.sh FAN_MODE;
+# owner, 2026-09-28: "only use available modes. I don't want to test on a
+# fan speed that's user inaccessible"). One word per option:
+#
+#   <name>=<fan_mode>[:<lo>-<hi>]@<performance_modes>
+#
+# <performance_modes> are the performance_mode values at which the menu
+# shows the option; `:<lo>-<hi>` is a slider whose position goes to
+# `settings system fan_speed`. Read out of each handheld's SystemUI.apk
+# (the Quick Settings fan tile, the only fan-mode selector either has; the
+# OEM settings apps hold only the Smart curve editor) and checked on the
+# Thor by measurement: docs/lanes/fanduty507/NOTES.md. Both handhelds ship
+# the same tile, so the rows carry the same list:
+#
+#   off        0     the tile's switch, shown at NORMAL (0) only
+#   quiet      1     NORMAL and STANDARD; hidden at HIGH
+#   smart      4     all three; the OEM app's temperature curve
+#   sport      5     all three
+#   customize  6     HIGH only; the slider 0-100 is `fan_speed`, and the
+#                    duty is 25000 + 250 x it on the Thor (25000-50000),
+#                    25000 + 100 x it on the Nova (25000-35000)
+#
+# device_fan_options <serial>  ->  the option words, one line.
+# In a subshell, for the reason device_perf_values is.
+device_fan_options() {
+    ( device_env "$1" >/dev/null || exit 2
+      printf '%s\n' "${DEVICE_FAN_OPTIONS:-}" )
+}
+
+# device_fan_names <serial> <performance_mode>  ->  the options the menu
+# shows at that performance mode, as a request spells them
+# ("smart, sport, customize:<0-100>").
+device_fan_names() {
+    local w name at out=""
+    for w in $(device_fan_options "$1"); do
+        name="${w%%=*}"; at="${w##*@}"
+        case ",$at," in *",$2,"*) ;; *) continue ;; esac
+        case "${w%@*}" in *:*) name="$name:<${w#*:}"; name="${name%@*}>" ;; esac
+        out="${out:+$out, }$name"
+    done
+    printf '%s\n' "$out"
+}
+
+# device_fan_mode_of <serial> <request> <performance_mode>  ->  "MODE" or
+# "MODE SPEED" for a request of `<name>` or `<name>:<position>`, matched
+# without regard to case. Non-zero, and nothing on stdout, when the device
+# has no option of that name (1), does not show it at that performance mode
+# (2), or the slider position is missing, not a whole number, or outside the
+# slider's range (3), or a position was given to an option with no slider (3).
+device_fan_mode_of() {
+    local want pos="" colon=0 w name spec mode range lo hi
+    want=$(printf '%s' "${2:-}" | tr '[:upper:]' '[:lower:]')
+    case "$want" in *:*) colon=1; pos="${want#*:}"; want="${want%%:*}" ;; esac
+    [ -n "$want" ] || return 1
+    for w in $(device_fan_options "$1"); do
+        name="${w%%=*}"
+        [ "$name" = "$want" ] || continue
+        case ",${w##*@}," in *",${3:-},"*) ;; *) return 2 ;; esac
+        spec="${w#*=}"; spec="${spec%@*}"; mode="${spec%%:*}"
+        if [ "$spec" = "$mode" ]; then
+            [ "$colon" = 0 ] || return 3
+            printf '%s\n' "$mode"; return 0
+        fi
+        range="${spec#*:}"; lo="${range%-*}"; hi="${range#*-}"
+        case "$pos" in ''|*[!0-9]*) return 3 ;; esac
+        [ "${#pos}" -le 3 ] || return 3
+        pos=$((10#$pos))
+        [ "$pos" -ge "$lo" ] && [ "$pos" -le "$hi" ] || return 3
+        printf '%s %s\n' "$mode" "$pos"; return 0
+    done
+    return 1
+}
+
+# device_fan_get  ->  "MODE SPEED": fan_mode and fan_speed as the device
+# reads them ("null" for a setting never written), ONE adb call.
+device_fan_get() {
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "fan mode read" shell \
+        'echo "fan $(settings get system fan_mode) $(settings get system fan_speed)"' \
+        2>/dev/null | tr -d '\r' | sed -n 's/^fan //p' | tail -1
+}
+
+# device_fan_mode_set <fan_mode> [<fan_speed>|null]  ->  0 when both read
+# back as asked. Echoes the read-back "MODE SPEED". In the menu's order: the
+# mode, then the slider's position (the tile sets fan_mode 6, then writes
+# fan_speed). `null` deletes fan_speed, which is how a device that never had
+# the slider moved reads, so a restore can put that back too. Writes the
+# settings only: the OEM service drives the fan from them, and nothing here
+# writes the fan's PWM node.
+device_fan_mode_set() {
+    local got cmd="settings put system fan_mode $1"
+    case "${2:-}" in
+        '') ;;
+        null) cmd="$cmd; settings delete system fan_speed" ;;
+        *) cmd="$cmd; settings put system fan_speed $2" ;;
+    esac
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "fan mode write $1 ${2:-}" shell "$cmd" >/dev/null 2>&1
+    got=$(device_fan_get)
+    printf '%s\n' "$got"
+    [ "${got%% *}" = "$1" ] || return 1
+    [ -z "${2:-}" ] || [ "${got#* }" = "$2" ]
+}
+
+# ------------------------------------------------------------ display 0
+#
+# display_clear <serial>  ->  one line on stdout, and
+#   0  `display-clear: ...`    awake, and nothing foreign covers display 0
+#   1  `display-covered: ...`  not Awake after the wake, or a foreign
+#                              full-screen overlay sits on display 0
+#   2  `display-unknown: ...`  adb could not say (no mWakefulness line, or a
+#                              window dump with no `Window #` in it)
+#
+# WHY. On 2026-09-27 the owner started Lime3DS on the Thor at 11:06 PDT, and
+# AYN's dual-screen assistant (com.odin.dualscreen.assistant) raised a
+# full-screen `primaryScreenTopLayout` window of type BOOT_PROGRESS on display
+# 0, above hakuX. It stayed there for at least 45 minutes. The device read
+# Awake with no keyguard; every hakuX frame came out as a 10,899 B all-black
+# PNG, GTA stopped flipping, and the soaks in that window still looked like
+# measurements. A wakefulness check alone cannot see this; the window list can.
+#
+# The rule is host-tools/harness_health.py's `covered:` check, restated here:
+# a window block (from one `  Window #N ` header to the next) covers display 0
+# when it is on mDisplayId=0, laid out fillxfill, has a surface, is visible
+# (mViewVisibility=0x0), is of an overlay type, and its package is neither
+# hakuX nor systemui. An app window of the owner's own game is NOT an overlay
+# type and does not count; that case is hakuX simply not being in front, and
+# the soak's `am start` brings it forward.
+display_clear() {
+    local SERIAL="$1" wake="" try out covers n
+    for try in 1 2 3; do
+        wake=$(adb_call "${ADB_QUICK_TIMEOUT:-20}" "power state read" shell \
+            'dumpsys power | grep mWakefulness=' 2>/dev/null | tr -d '\r' \
+            | sed -n 's/.*mWakefulness=\([A-Za-z]*\).*/\1/p' | head -1)
+        # Unreadable is not a transition: no point waiting for it to settle.
+        [ -z "$wake" ] || [ "$wake" = Awake ] && break
+        [ "$try" = 3 ] || sleep "${DISPLAY_WAKE_S:-1}"
+    done
+    if [ -z "$wake" ]; then
+        echo "display-unknown: no mWakefulness line from dumpsys power on $SERIAL"
+        return 2
+    fi
+    if [ "$wake" != Awake ]; then
+        echo "display-covered: $SERIAL reads mWakefulness=$wake after KEYCODE_WAKEUP, not Awake"
+        return 1
+    fi
+    out=$(adb_call "${ADB_QUICK_TIMEOUT:-20}" "window list read" shell \
+        'dumpsys window windows' 2>/dev/null | tr -d '\r')
+    n=$(printf '%s\n' "$out" | grep -c '^  Window #[0-9]')
+    if [ "$n" = 0 ]; then
+        echo "display-unknown: dumpsys window windows on $SERIAL listed no window"
+        return 2
+    fi
+    covers=$(printf '%s\n' "$out" | awk '
+        function flush() {
+            if (inw && name != "" && pkg != "" && d0 && fill && surf && vis && ty \
+                    && tolower(pkg) !~ /hakux|haku_x|systemui/)
+                printf "%s%s (%s, %s)", (nc++ ? ", " : ""), name, pkg, tyname
+        }
+        /^  Window #[0-9]+ / {
+            flush(); inw = 1; name = ""; pkg = ""; tyname = ""
+            d0 = fill = surf = vis = ty = 0
+            s = $0; i = index(s, "Window{")
+            if (i) {
+                s = substr(s, i + 7); s = substr(s, 1, index(s, "}") - 1)
+                if (sub(/^[^ ]+ [^ ]+ /, "", s)) name = s
+            }
+        }
+        !inw { next }
+        /mDisplayId=0([^0-9]|$)/ { d0 = 1 }
+        index($0, "fillxfill") { fill = 1 }
+        /mHasSurface=true/ { surf = 1 }
+        /mViewVisibility=0x0([^0-9A-Za-z_]|$)/ { vis = 1 }
+        match($0, /ty=(BOOT_PROGRESS|SYSTEM_OVERLAY|APPLICATION_OVERLAY|SYSTEM_ALERT)([^A-Za-z0-9_]|$)/) {
+            ty = 1; tyname = substr($0, RSTART + 3, RLENGTH - 3); sub(/[^A-Za-z_]$/, "", tyname)
+        }
+        pkg == "" && match($0, /package=[^ ]+/) { pkg = substr($0, RSTART + 8, RLENGTH - 8) }
+        END { flush() }')
+    if [ -n "$covers" ]; then
+        echo "display-covered: a foreign full-screen overlay covers display 0 on $SERIAL: $covers"
+        return 1
+    fi
+    echo "display-clear: $SERIAL Awake, no foreign overlay on display 0 ($n windows read)"
+    return 0
+}
+
+# hakux_in_front <serial>  ->  one line on stdout, and
+#   0  `in-front: ...`                input focus is on display 0, and display
+#                                     0's focused window is hakuX's
+#   1  `not-foreground: <pkg> (...)`  focus is on another display, or display
+#                                     0's focused application or window is not
+#                                     hakuX's
+#   2  `foreground-unknown: ...`      the device answered without a
+#                                     FocusedDisplayId, or display 0 has no
+#                                     focused window to read
+#   3  `foreground-unreadable: ...`   adb hung or failed, or answered nothing:
+#                                     nothing was read at all
+#
+# 2 and 3 are both "not known in front", and no caller may play on either.
+# They are split because they are different evidence (#592): 2 is a device
+# that answered, 3 is an adb that did not. A hot Nova's adb hung twice in a
+# row (two 10 s timeouts) while hakuX was drawing, and when both read as 2
+# the soak's two-unknowns rule aborted seven runs that were in front.
+#
+# WHY. Route input is evdev events on the pad node, and Android delivers them
+# to the FOCUSED window, whatever app that is. On 2026-09-27 the Thor came
+# back at ~11:05 PDT with its launcher in front; a soak's route pressed
+# buttons into it and started Lime3DS (Animal Crossing), then drove it to a
+# name prompt. At 12:12 a route launched Lime3DS again. So the question is
+# not which activity is on top but which window key and gamepad events reach.
+#
+# Read it from the input system: `dumpsys input` prints `FocusedDisplayId: N`,
+# then `FocusedApplications:` and `FocusedWindows:`, one
+# `displayId=D, name='...'` entry per display. Events go to display N's entry.
+# NOT `dumpsys window | grep -m1 mCurrentFocus`, and not the first
+# `topResumedActivity`: `dumpsys window` prints one mCurrentFocus per display,
+# and on the Thor display 4 (the bottom screen, whose SecondaryDisplayLauncher
+# always holds a focused window) is listed before display 0, so a first-match
+# read names the launcher even when hakuX has focus (hostops, 12:43 PDT: a
+# cold `am start --display 0` of hakuX read FocusedDisplayId 0 with hakuX in
+# FocusedWindows while grep -m1 mCurrentFocus named the launcher). The
+# fixtures in 99-display-covered.sh list display 4 first for that reason.
+#
+# One adb call, with one retry (about 2 s) on an adb failure: soak_title.sh
+# runs this every 2 s while a route plays and counts unknowns itself.
+hakux_in_front() {
+    local SERIAL="$1" out rc
+    out=$(ADB_RETRIES=1 adb_call "${ADB_QUICK_TIMEOUT:-10}" "foreground read" shell \
+        "dumpsys input | grep -E '^  [A-Za-z][A-Za-z]*:|displayId=[0-9]+, name='; true" \
+        2>/dev/null); rc=$?
+    out=$(printf '%s' "$out" | tr -d '\r')
+    if [ "$rc" = 124 ]; then
+        echo "foreground-unreadable: $SERIAL adb hung (no answer in ${ADB_QUICK_TIMEOUT:-10}s)"; return 3
+    elif [ "$rc" != 0 ]; then
+        echo "foreground-unreadable: $SERIAL adb failed (exit $rc)"; return 3
+    elif [ -z "${out//[[:space:]]/}" ]; then
+        echo "foreground-unreadable: $SERIAL adb answered nothing"; return 3
+    fi
+    printf '%s\n' "$out" | awk -v serial="$SERIAL" '
+        function owner(s) {  # "ActivityRecord{h u0 pkg/cls t4}" or "h pkg/cls" -> pkg
+            if (index(s, "{")) { s = substr(s, index(s, "{") + 1); sub(/}.*/, "", s) }
+            sub(/\/.*/, "", s); sub(/.* /, "", s)
+            return s
+        }
+        function ours(p) { return p ~ /^com\.jreinach\.hakux/ }
+        # Only the live block. `dumpsys input` then prints a second dispatcher
+        # block, "Input Dispatcher State at time of last ANR:", with its own
+        # FocusedDisplayId, FocusedApplications and FocusedWindows: a stale
+        # snapshot that a last-value read would take as the state now (#513:
+        # the Thor read its 11:06 ANR, Daijishou on display 0, for hours).
+        # That header is at column 0 and the grep above drops it, so stop at
+        # the first line of its body, `  ANR:`, or at a second FocusedDisplayId.
+        stop { next }
+        /^  ANR:/ || (fd != "" && /FocusedDisplayId:/) { stop = 1; next }
+        # Section headers sit at two spaces; entries are indented deeper.
+        /^  [A-Za-z]+:/ { sec = $1; sub(/:.*/, "", sec) }
+        /FocusedDisplayId: *-?[0-9]/ { fd = $0; sub(/.*FocusedDisplayId: */, "", fd); sub(/[^-0-9].*/, "", fd) }
+        (sec == "FocusedApplications" || sec == "FocusedWindows") && /displayId=[0-9]+, name=\047/ {
+            e = $0; sub(/.*displayId=/, "", e); d = e; sub(/,.*/, "", d)
+            sub(/^[0-9]+, name=\047/, "", e); sub(/\047.*/, "", e)
+            if (sec == "FocusedApplications") app[d] = owner(e); else win[d] = owner(e)
+        }
+        END {
+            if (fd == "") {
+                printf "foreground-unknown: %s answered no FocusedDisplayId\n", serial; exit 2
+            }
+            if (fd != "0") {
+                w = (fd in win) ? win[fd] : ((fd in app) ? app[fd] : "unknown")
+                printf "not-foreground: %s (input focus is on display %s of %s, not display 0)\n", w, fd, serial
+                exit 1
+            }
+            if (("0" in app) && !ours(app["0"])) {
+                printf "not-foreground: %s (the focused application on display 0 of %s, not hakuX)\n", app["0"], serial
+                exit 1
+            }
+            if (!("0" in win)) {
+                printf "foreground-unknown: %s has no focused window on display 0 (app=%s)\n", serial, \
+                    (("0" in app) ? app["0"] : "(none)")
+                exit 2
+            }
+            if (!ours(win["0"])) {
+                printf "not-foreground: %s (holds input focus on display 0 of %s, not hakuX)\n", win["0"], serial
+                exit 1
+            }
+            printf "in-front: %s app=%s focus=%s display=0\n", serial, \
+                (("0" in app) ? app["0"] : "(none)"), win["0"]
+        }'
 }
 
 device_default() {
@@ -231,8 +636,8 @@ device_titles() {
     # List the ISOs on one device, or on every attached device.
     #
     # WHY THIS IS HERE. A soak names a title by its EXACT filename --
-    # dispatcher.sh does `[ -f "$DEVICE_ISO_ROOT/$title" ]` and writes ERROR if
-    # it misses -- and nothing in this repository could tell you one. The two
+    # dispatcher.sh looks it up under every root (device_title_path) and writes
+    # ERROR if all of them miss -- and nothing in this repository could tell you one. The two
     # libraries are the owner's, laid out however the owner chose, and the
     # naming does not follow from anything checked in: the Nova's root is
     # `Games/XBox` while the Thor's is `ROMS/xbox`, and the one filename any
@@ -256,13 +661,17 @@ device_titles() {
     adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}' | while read -r s; do
         ( device_env "$s" 2>/dev/null || exit 0
           [ -z "$want" ] || [ "$want" = "$DEVICE_LABEL" ] || [ "$want" = "$s" ] || exit 0
-          echo "=== $DEVICE_LABEL ($s)  $DEVICE_ISO_ROOT"
-          # -1 so one name is one line even when a name contains spaces, which
-          # every one of them does. The names are printed verbatim: they are
-          # what --title wants, and quoting them here would mean the caller had
-          # to un-quote them again.
-          adb -s "$s" shell "ls -1 '$DEVICE_ISO_ROOT'" 2>/dev/null \
-              | tr -d '\r' | sed 's/^/  /'
+          # Every root, in search order: a name under two roots plays from
+          # the first one listed (device_title_path).
+          device_iso_roots | while IFS= read -r root; do
+            echo "=== $DEVICE_LABEL ($s)  $root"
+            # -1 so one name is one line even when a name contains spaces,
+            # which every one of them does. The names are printed verbatim:
+            # they are what --title wants, and quoting them here would mean
+            # the caller had to un-quote them again.
+            adb -s "$s" shell "ls -1 $(_dev_sq "$root")" 2>/dev/null </dev/null \
+                | tr -d '\r' | sed 's/^/  /'
+          done
         )
     done
 }

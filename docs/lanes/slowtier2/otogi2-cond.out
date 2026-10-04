@@ -1,0 +1,25 @@
+== 0-0-s-1-1790615781-lane.slowtier2-otogi2870269: 46530002-Otogi_Myth_of_Demons.xiso.iso | thor ref 97a6fa2b51 apk f2626e7ecd88 | lane.slowtier2 | 550s | env ['PERF_REGIMEN=max'] | shader_cache cleared: apk 09e48a17d60f -> f2626e7ecd88 on this device
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: display at start {"displays":{"0":"ON","4":"ON"},"dual_screen_display_mode":0,"min_refresh_rate":60.0,"peak_refresh_rate":60.0,"screen_brightness":158,"screen_brightness_mode":0} / PERF: display at end {"displays":{"0":"ON","4":"ON"},"dual_screen_display_mode":0,"min_refresh_rate":60.0,"peak_refresh_rate":60.0,"screen_brightness":158,"screen_brightness_mode":0} / THERMAL: no thermal-pause device above 0; 19 samples, 0 unread, hottest zone 95.0 C; battery +3.06 W (+ is discharging), usb in 2.13 W, net 5.20 W; clock MHz cpu0 2016-2016 of 2016, cpu3 1651-2803 of 2803, cpu7 1843-3187 of 3187, gpu 401-615 of 680, gpu throttle-switch 0; fan duty 13000-36000 of 50000 at fan_mode 4 / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 297, soak end 554; window 297-392 s (given)
+thermal: start xo-therm 46.6 C, at the mark 72.0 C, max 74.0 C, 19 samples; no pause device above 0
+bins (30s from soak start, median fps): 0:30.0 30:30.0 60:30.0 90:28.8 120:30.0 150:30.0 180:30.0 210:30.0 240:30.0 270:30.0 300:30.0 330:30.0 360:30.0 390:29.8 420:30.0 450:30.0 480:30.0 510:30.0 540:30.0
+#507 shape: no
+  window 297-392 s: fps median 29.97 (title_verdict's element; n=46, min 24.6, p10/25/75/90 29.9/29.9/30.0/30.0) = 33.4 ms/frame | G 33.4 Ri 22.5 busy 10.9 Vpf 2.00
+    vcpu 98.5% (32.8 ms/frame on-CPU) | TLB resets vCPU 0.58 ms/frame, other threads 0.00 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 108 backlog mean 680780 B
+    #424 churn: 972 invalidations/s, 972 TBs discarded/s
+    audio zero-filled 0.0%
+    idlehalt 47 lines, last: [idlehalt] w=194 on=0 span_us=2000043 run_us=1968636 rq_us=449 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0
+---- the verdict's own window (mark to end)
+== 0-0-s-1-1790615781-lane.slowtier2-otogi2870269: 46530002-Otogi_Myth_of_Demons.xiso.iso | thor ref 97a6fa2b51 apk f2626e7ecd88 | lane.slowtier2 | 550s | env ['PERF_REGIMEN=max'] | shader_cache cleared: apk 09e48a17d60f -> f2626e7ecd88 on this device
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: display at start {"displays":{"0":"ON","4":"ON"},"dual_screen_display_mode":0,"min_refresh_rate":60.0,"peak_refresh_rate":60.0,"screen_brightness":158,"screen_brightness_mode":0} / PERF: display at end {"displays":{"0":"ON","4":"ON"},"dual_screen_display_mode":0,"min_refresh_rate":60.0,"peak_refresh_rate":60.0,"screen_brightness":158,"screen_brightness_mode":0} / THERMAL: no thermal-pause device above 0; 19 samples, 0 unread, hottest zone 95.0 C; battery +3.06 W (+ is discharging), usb in 2.13 W, net 5.20 W; clock MHz cpu0 2016-2016 of 2016, cpu3 1651-2803 of 2803, cpu7 1843-3187 of 3187, gpu 401-615 of 680, gpu throttle-switch 0; fan duty 13000-36000 of 50000 at fan_mode 4 / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 297, soak end 554; window 297-554 s (verdict (mark gameplay -> soak end))
+thermal: start xo-therm 46.6 C, at the mark 72.0 C, max 74.0 C, 19 samples; no pause device above 0
+bins (30s from soak start, median fps): 0:30.0 30:30.0 60:30.0 90:28.8 120:30.0 150:30.0 180:30.0 210:30.0 240:30.0 270:30.0 300:30.0 330:30.0 360:30.0 390:29.8 420:30.0 450:30.0 480:30.0 510:30.0 540:30.0
+#507 shape: no
+  window 297-554 s: fps median 29.97 (title_verdict's element; n=125, min 23.4, p10/25/75/90 29.3/30.0/30.0/30.0) = 33.4 ms/frame | G 33.4 Ri 29.2 busy 4.2 Vpf 2.00
+    vcpu 98.5% (32.8 ms/frame on-CPU) | TLB resets vCPU 0.30 ms/frame, other threads 0.04 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 32 backlog mean 102695 B
+    #424 churn: 625 invalidations/s, 628 TBs discarded/s
+    audio zero-filled 0.0%
+    idlehalt 128 lines, last: [idlehalt] w=275 on=0 span_us=2000112 run_us=1959326 rq_us=79 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 

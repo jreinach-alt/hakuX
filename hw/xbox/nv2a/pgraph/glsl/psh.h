@@ -41,6 +41,10 @@ typedef struct PshState {
     uint32_t other_stage_input;
     uint32_t final_inputs_0;
     uint32_t final_inputs_1;
+    /* NV_PGRAPH_CONTROL_0_CSCONVERT, SET_CONTROL0's colour-space field. A
+     * uint32_t rather than a bool so the struct's size changes and the
+     * persisted shader cache is wiped (vk/renderer.c). */
+    uint32_t color_space_convert;
 
     uint32_t rgb_inputs[8], rgb_outputs[8];
     uint32_t alpha_inputs[8], alpha_outputs[8];

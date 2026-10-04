@@ -1,0 +1,144 @@
+# state: first-run   (recorded creating the profile; lane.savestate433)
+# GoldenEye: Rogue Agent (4541005D), FIRST-RUN. PLAYED by nav.py on the Nova,
+# 2026-09-26 19:25 PDT (HELD session goldeneye-ra.first-run-20260926T192505),
+# replayed unattended 19:32 PDT to the same screens.
+#
+#   MGM / EA logos (A, START) -> "PRESS ANY BUTTON" (START) -> CREATE NEW
+#   PROFILE keyboard, name pre-filled PLAYER1, cursor on A. START does
+#   nothing there and neither does the D-pad (pad.sh's LEFT/RIGHT do not
+#   move this cursor, nor Kabuki's map); each LX flick moves one key, and
+#   ten flicks right land on OK (it clamps) -> A = OK -> MAIN MENU PLAYER1
+#   (Campaign) -> A -> CAMPAIGN: Fort Knox, Normal, PLAY -> A -> briefing
+#   and intro FMV (~65 s; neither START nor A skipped it) -> first person,
+#   inside the helicopter.
+#
+# Player control before the mark: RX max turned the view right (frames
+# fmv4 -> look-right). The play pattern walks forward, looks and fires.
+#
+# The profile does NOT survive this run as launched in the nav session (a
+# force-stop with no flush): the second boot showed the keyboard again, and
+# the same inputs led to the same screens. A soak that flushes before its
+# force-stop (board request titlestate item 3) will leave PLAYER1 on the
+# disk; the next boot then needs a returning route, not yet recorded.
+wait 27.0
+shot boot
+wait 7.9
+press A
+wait 5.1
+shot a1
+wait 0.6
+press START
+wait 5.1
+shot start1
+wait 9.6
+press START
+wait 6.1
+shot start2
+wait 9.4
+press START
+wait 3.1
+shot kb-start
+wait 8.2
+press LEFT
+wait 1.6
+shot kb-left
+wait 11.3
+axis LX max
+wait 0.4
+axis LX mid
+wait 1.1
+shot kb-lx
+wait 11.5
+axis LX max
+wait 0.3
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.4
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.3
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.4
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.4
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.3
+axis LX mid
+wait 0.8
+axis LX max
+wait 0.4
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.4
+axis LX mid
+wait 0.7
+axis LX max
+wait 0.3
+axis LX mid
+wait 0.6
+shot kb-ok
+wait 9.7
+press A
+wait 5.1
+shot ok
+wait 8.5
+mark profile-created
+wait 0.8
+press A
+wait 5.1
+shot campaign
+wait 9.8
+press A
+wait 12.1
+shot play
+wait 22.3
+shot load2
+wait 0.6
+press START
+wait 5.1
+shot skip
+wait 9.3
+press A
+wait 4.1
+shot skipA
+wait 22.0
+shot fmv3
+wait 40.6
+shot fmv4
+wait 9.4
+axis RX max
+wait 1.2
+axis RX mid
+wait 0.6
+shot look-right
+wait 15.1
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX max
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX min
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+}

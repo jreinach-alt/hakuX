@@ -34,6 +34,9 @@
 #include "decode-new.h"
 
 #include "exec/log.h"
+#ifdef XBOX
+#include "accel/tcg/hakux-ibc.h"
+#endif
 
 static int g_use_fp_jit;
 
@@ -248,6 +251,9 @@ typedef struct DisasContext {
     sigjmp_buf jmpbuf;
     TCGOp *prev_insn_start;
     TCGOp *prev_insn_end;
+#ifdef XBOX
+    target_ulong hakux_insn_pc; /* #425: start of the insn being translated */
+#endif
 
     /* Floating point */
     bool flcr_set;
@@ -2875,6 +2881,157 @@ static void gen_bnd_jmp(DisasContext *s)
     }
 }
 
+#ifdef XBOX
+/*
+ * #425: mark a plain exit_tb(NULL, 0) so cpu_exec_loop can tell it from a
+ * helper_lookup_tb_ptr miss, which returns the same way. One constant store
+ * just before the exit; the loop reads and clears it (cpu-exec.c, [rr425]).
+ * Tag: bit 63 set, bit 40 the TB began in an interrupt shadow, bits 32-34 the
+ * mode (1 EOB_NEXT, 2 EOB_INHIBIT_IRQ, 3 EOB_ONLY, 4 RECHECK_TF, 5 DISAS_JUMP,
+ * 6 other), bits 0-31 the pc of the TB's last instruction.
+ */
+extern uint64_t hakux_rr425_eob;
+
+static void gen_rr425_eob_tag(DisasContext *s, int mode, bool shadow)
+{
+    uint64_t why = mode == DISAS_EOB_NEXT ? 1
+                 : mode == DISAS_EOB_INHIBIT_IRQ ? 2
+                 : mode == DISAS_EOB_ONLY ? 3
+                 : mode == DISAS_EOB_RECHECK_TF ? 4
+                 : mode == DISAS_JUMP ? 5 : 6;
+    uint64_t tag = 1ull << 63 | (uint64_t)shadow << 40 | why << 32
+                 | (uint32_t)s->hakux_insn_pc;
+    TCGv_ptr p = tcg_temp_new_ptr();
+
+    tcg_gen_movi_ptr(p, (uintptr_t)&hakux_rr425_eob);
+    tcg_gen_st_i64(tcg_constant_i64(tag), p, 0);
+}
+
+/*
+ * #507: the inline jump-cache probe (include/accel/tcg/hakux-ibc.h), emitted
+ * just before tcg_gen_lookup_and_goto_ptr(). It is tb_lookup()'s hit test:
+ *
+ *   key  = pc (uint32_t)(cs_base + eip), cs_base, flags as
+ *          x86_get_tb_cpu_state() builds them, cflags = cpu->tcg_cflags
+ *   slot = &cpu->tb_jmp_cache->array[tb_jmp_cache_hash_func(pc)]
+ *   hit  = slot->tb && slot->pc == pc && tb->cs_base == cs_base
+ *          && tb->flags == flags && tb->cflags == cflags
+ *
+ * Every part of the key is read at run time, none is assumed from this TB.
+ * A hit branches to tb->tc.ptr; anything else falls through to the helper,
+ * which is the unchanged path. Left to the helper, by construction:
+ *   - breakpoints and gdb single-step (either set: always the helper);
+ *   - 64-bit code (pc is not cs_base + eip there);
+ *   - a TB made while curr_cflags() differed from tcg_cflags (a count,
+ *     one-insn-per-tb, -d nochain, single-step), decided at translate time;
+ *   - -d exec/cpu logging, which the helper does on a hit.
+ * The slot and CF_INVALID tests are the helper's, so every invalidation that
+ * reaches tb_lookup (a wiped slot, a discarded TB) reaches the probe.
+ * cflags comes from tcg_cflags, not from this TB, whose own cflags may carry
+ * CF_TIER1/CF_SUPERBLOCK while it is translated.
+ */
+static int hakux_ibc_state = -1;
+static HakuxIbcLayout hakux_ibc;
+
+static bool hakux_ibc_use(DisasContext *s)
+{
+    if (unlikely(hakux_ibc_state < 0)) {
+        hakux_ibc_state = hakux_ibc_enabled(&hakux_ibc);
+    }
+    return hakux_ibc_state
+        && !CODE64(s)
+        && !(tb_cflags(s->base.tb) & (CF_COUNT_MASK | CF_NO_GOTO_TB |
+                                      CF_NO_GOTO_PTR | CF_SINGLE_STEP))
+        && !qemu_loglevel_mask(CPU_LOG_TB_CPU | CPU_LOG_EXEC |
+                               CPU_LOG_TB_NOCHAIN);
+}
+
+#define IBC_CPU_OFS(f) (offsetof(X86CPU, parent_obj.f) - offsetof(X86CPU, env))
+
+static void gen_ibc_probe(DisasContext *s)
+{
+    const HakuxIbcLayout *l = &hakux_ibc;
+    TCGLabel *miss = gen_new_label();
+    TCGv_ptr p = tcg_temp_new_ptr();
+    TCGv_ptr tb = tcg_temp_new_ptr();
+    TCGv_i32 f = tcg_temp_new_i32();
+    TCGv_i32 t32 = tcg_temp_new_i32();
+    TCGv_i64 pc = tcg_temp_new_i64();
+    TCGv_i64 csb = tcg_temp_new_i64();
+    TCGv_i64 key = tcg_temp_new_i64();
+    TCGv_i64 h = tcg_temp_new_i64();
+    TCGv_i64 t = tcg_temp_new_i64();
+    TCGv tl = tcg_temp_new();
+
+    QEMU_BUILD_BUG_ON(offsetof(TranslationBlock, cflags)
+                      != offsetof(TranslationBlock, flags) + 4);
+
+    /* check_for_breakpoints() and gdb single-step: the helper's */
+    tcg_gen_ld_ptr(p, tcg_env, IBC_CPU_OFS(breakpoints.tqh_first));
+    tcg_gen_brcondi_ptr(TCG_COND_NE, p, 0, miss);
+    tcg_gen_ld_i32(t32, tcg_env, IBC_CPU_OFS(singlestep_enabled));
+    tcg_gen_brcondi_i32(TCG_COND_NE, t32, 0, miss);
+
+    /* flags, as x86_get_tb_cpu_state(); 64-bit code goes to the helper */
+    tcg_gen_ld_i32(f, tcg_env, offsetof(CPUX86State, hflags));
+    tcg_gen_andi_i32(t32, f, HF_CS64_MASK);
+    tcg_gen_brcondi_i32(TCG_COND_NE, t32, 0, miss);
+    tcg_gen_ld_tl(tl, tcg_env, offsetof(CPUX86State, eflags));
+    tcg_gen_trunc_tl_i32(t32, tl);
+    tcg_gen_andi_i32(t32, t32,
+                     IOPL_MASK | TF_MASK | RF_MASK | VM_MASK | AC_MASK);
+    tcg_gen_or_i32(f, f, t32);
+    tcg_gen_ld_i32(t32, tcg_env, IBC_CPU_OFS(tcg_cflags));
+#if HOST_BIG_ENDIAN
+    tcg_gen_concat_i32_i64(key, t32, f);
+#else
+    tcg_gen_concat_i32_i64(key, f, t32);
+#endif
+
+    /* pc and cs_base */
+    tcg_gen_ext32u_tl(tl, cpu_seg_base[R_CS]);
+    tcg_gen_extu_tl_i64(csb, tl);
+    tcg_gen_add_tl(tl, cpu_eip, cpu_seg_base[R_CS]);
+    tcg_gen_ext32u_tl(tl, tl);
+    tcg_gen_extu_tl_i64(pc, tl);
+
+    /* the slot: tb_jmp_cache_hash_func(pc) */
+    tcg_gen_shri_i64(t, pc, l->hash_shift);
+    tcg_gen_xor_i64(t, t, pc);
+    tcg_gen_shri_i64(h, t, l->hash_shift);
+    tcg_gen_andi_i64(h, h, l->page_mask);
+    tcg_gen_andi_i64(t, t, l->addr_mask);
+    tcg_gen_or_i64(h, h, t);
+    tcg_gen_shli_i64(h, h, l->entry_shift);
+    tcg_gen_ld_ptr(p, tcg_env, IBC_CPU_OFS(tb_jmp_cache));
+    tcg_gen_trunc_i64_ptr(tb, h);
+    tcg_gen_add_ptr(p, p, tb);
+    tcg_gen_ld_ptr(tb, p, l->array_ofs + l->tb_ofs);
+    tcg_gen_brcondi_ptr(TCG_COND_EQ, tb, 0, miss);
+    tcg_gen_ld_i64(t, p, l->array_ofs + l->pc_ofs);
+    tcg_gen_brcond_i64(TCG_COND_NE, t, pc, miss);
+
+    /* the key */
+    tcg_gen_ld_i64(t, tb, offsetof(TranslationBlock, cs_base));
+    tcg_gen_brcond_i64(TCG_COND_NE, t, csb, miss);
+    tcg_gen_ld_i64(t, tb, offsetof(TranslationBlock, flags));
+    tcg_gen_brcond_i64(TCG_COND_NE, t, key, miss);
+
+    if (l->count) {
+        TCGv_ptr c = tcg_temp_new_ptr();
+
+        tcg_gen_movi_ptr(c, (uintptr_t)&hakux_ibc_hits);
+        tcg_gen_ld_i64(t, c, 0);
+        tcg_gen_addi_i64(t, t, 1);
+        tcg_gen_st_i64(t, c, 0);
+    }
+    tcg_gen_ld_ptr(p, tb, offsetof(TranslationBlock, tc.ptr));
+    tcg_gen_goto_ptr(p);
+
+    gen_set_label(miss);
+}
+#endif
+
 /*
  * Generate an end of block, including common tasks such as generating
  * single step traps, resetting the RF flag, and handling the interrupt
@@ -2901,14 +3058,25 @@ gen_eob(DisasContext *s, int mode)
     }
     if (mode == DISAS_EOB_RECHECK_TF) {
         gen_helper_rechecking_single_step(tcg_env);
+#ifdef XBOX
+        gen_rr425_eob_tag(s, mode, inhibit_reset);
+#endif
         tcg_gen_exit_tb(NULL, 0);
     } else if (s->flags & HF_TF_MASK) {
         gen_helper_single_step(tcg_env);
     } else if (mode == DISAS_JUMP &&
                /* give irqs a chance to happen */
                !inhibit_reset) {
+#ifdef XBOX
+        if (hakux_ibc_use(s)) {
+            gen_ibc_probe(s);
+        }
+#endif
         tcg_gen_lookup_and_goto_ptr();
     } else {
+#ifdef XBOX
+        gen_rr425_eob_tag(s, mode, inhibit_reset);
+#endif
         tcg_gen_exit_tb(NULL, 0);
     }
 
@@ -4470,11 +4638,41 @@ static void i386_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
 
     dc->prev_insn_start = dc->base.insn_start;
     dc->prev_insn_end = tcg_last_op();
+#ifdef XBOX
+    dc->hakux_insn_pc = dc->base.pc_next;
+#endif
     if (tb_cflags(dcbase->tb) & CF_PCREL) {
         pc_arg &= ~TARGET_PAGE_MASK;
     }
     tcg_gen_insn_start(pc_arg, dc->cc_op);
 }
+
+#if defined(XBOX) && !defined(CONFIG_USER_ONLY)
+/*
+ * #525 HAKUX_IDLE_HALT: is this TB the shadow of the kernel's idle idiom?
+ * The kernel idles in sti; nop; nop; cli (fb 90 90 fa; 0x8001b02e on the
+ * retail kernel the #425 split read). The sti ends its TB, so the TB after
+ * it starts at the first nop, in the interrupt shadow. Matched by bytes, not
+ * address: ring 0, 32-bit protected mode, the shadow flag, no single step,
+ * and all four bytes on the TB's first page, read from its host page.
+ */
+static bool hakux_idle_idiom(DisasContext *dc)
+{
+    const uint8_t *h = dc->base.host_addr[0];
+    vaddr off = dc->base.pc_first & (TARGET_PAGE_SIZE - 1);
+
+    if (dc->base.pc_next != dc->base.pc_first || !h
+        || dc->base.max_insns < 2
+        || !(dc->flags & HF_INHIBIT_IRQ_MASK)
+        || (dc->flags & (HF_TF_MASK | HF_RF_MASK))
+        || CPL(dc) != 0 || !PE(dc) || VM86(dc) || !CODE32(dc) || CODE64(dc)
+        || off < 1 || off + 3 > TARGET_PAGE_SIZE) {
+        return false;
+    }
+    return h[-1] == 0xfb && h[0] == 0x90 && h[1] == 0x90 && h[2] == 0xfa
+           && hakux_idle_halt_enabled();
+}
+#endif
 
 static void i386_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 {
@@ -4490,6 +4688,23 @@ static void i386_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     if ((dc->base.pc_next & TARGET_PAGE_MASK) == TARGET_VSYSCALL_PAGE) {
         gen_exception(dc, EXCP_VSYSCALL);
         dc->base.pc_next = dc->pc + 1;
+        return;
+    }
+#endif
+
+#if defined(XBOX) && !defined(CONFIG_USER_ONLY)
+    if (hakux_idle_idiom(dc)) {
+        /*
+         * #525: the TB in the shadow of the idiom's sti holds both nops.
+         * The first ends the shadow; the second is a hlt (the helper may
+         * return, and then it is a nop). EIP is past both, at the cli.
+         */
+        dc->pc = dc->base.pc_next + 2;
+        gen_update_cc_op(dc);
+        gen_update_eip_next(dc);
+        gen_helper_hakux_idle_hlt(tcg_env);
+        dc->base.pc_next = dc->pc;
+        gen_eob(dc, DISAS_EOB_ONLY);
         return;
     }
 #endif

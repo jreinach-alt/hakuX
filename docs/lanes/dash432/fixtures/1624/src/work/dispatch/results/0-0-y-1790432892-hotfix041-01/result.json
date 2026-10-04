@@ -1,0 +1,7 @@
+{
+ "requester": "host-hotfix041",
+ "purpose": "0.4.1-j1 hotfix validation (v0.4.0-j1 + the #311 fix only): Ghoulies gate on the candidate",
+ "ref": "a046da3cc8",
+ "device_label": "thor",
+ "apk_sha": "97df2962e3a4"
+}

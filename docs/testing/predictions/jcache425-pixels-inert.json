@@ -1,0 +1,21 @@
+{
+  "registered_utc": "2026-09-26T22:08:47Z",
+  "who": "lane.jcache425",
+  "issue": "425",
+  "prediction": "#425 counters: 1b43be6b3a adds only the [jc425] counters to tb_lookup() and a 2 s log line (accel/tcg/cpu-exec.c); no control flow changes and the HAKUX_TCG68_JC switch stays at its default (off). TCG bookkeeping cannot change what the guest sends the GPU, so every capture in these 8 suites scores identically between master 9f34d60036 and 1b43be6b3a. A moved capture means the counters changed guest-visible behaviour.",
+  "a_ref": "9f34d60036",
+  "b_ref": "1b43be6b3a",
+  "must_not_move": [
+    "Blend_tests/*",
+    "Depth_buffer/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Surface_clip/*",
+    "3D_primitive/*",
+    "Fog_gen/*",
+    "Specular/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": []
+}

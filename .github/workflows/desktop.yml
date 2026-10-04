@@ -17,10 +17,9 @@ name: Desktop build
 # stock runner, so this can grow into running the pgraph suite here. Today it
 # proves the build and a headless start.
 
+# Manual dispatch only (2026-10-03): see android.yml and
+# docs/lanes/localforge/RETURN.md, section 2a.
 on:
-  push:
-    branches: [master]
-  pull_request:
   workflow_dispatch:
 
 concurrency:
@@ -29,6 +28,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 60
 

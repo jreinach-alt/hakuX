@@ -1,0 +1,33 @@
+{
+  "registered_utc": "2026-09-27T13:40:00Z",
+  "who": "lane.flip474",
+  "issue": "474",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "16b7e14ec9d4d787a1d29ca5d5e03f03caf94f56",
+  "b_ref": "ef66174066448dd4d0a9cf7d4a1734f937439276",
+  "queue_order": "A1 B1 A2 B2, each request.sh --title, --device nova, --route survey, --seconds 300, --perflog, --expect this file",
+  "judge": "python3 docs/lanes/flip474/lockread.py --from 151 --to 288 <A1> <B1> <A2> <B2>; the route's shots in the window, by eye; logcat -b crash in each result",
+  "prediction": "#474 on DOA Ultimate's fight. The pilot (1790491858-flip474-658414) refuted the brief's location and kept its premise: the vCPU's PGRAPH read lock wait is 0.70 of wall, one ~54 ms wait a frame, but only 0.18 of it began in FLIP_STALL (flip_stall op 1.8 ms/flip). The lock hold is surf413's cdef, 56.6 ms/frame: the first surface_update after each flip waits in download_surface_complete_deferred for the flip's pre-recorded display download, i.e. for the GPU to finish the previous frame, inside a method. A (16b7e14ec9) is master plus the [lock474] counter (v2: registers ranked by wait, rd_unl) plus inert settle plumbing (the flag is never set). B (ef66174066) releases pgraph.lock across the two frame-fence waits there, on the PFIFO thread only; the guest's interrupt/register MMIO runs in the window, everything else waits it out. The PFIFO thread's wait is unchanged, so this frees the vCPU, not the frame: the PFIFO thread is behind (fifoskew backlog ~210 KB, Tot ~70 ms of which cdef 56), so the frame rate is expected to rise little.",
+  "legs": {
+    "M0 (instrument)": ">= 30 [lock474] lines and >= 20 gfps lines in 151-288 s in every run, and the route's shots in that window show the fight (STAGE, two fighters). A run without them is VOID, not zero, and is rerun once.",
+    "F0 (the mechanism ran)": "A: rd_unl == 0 in every run (no call releases the lock on that ref). B: rd_unl >= 500 in the window in every run (the pilot's ~13 slow reads/s x 137 s is ~1,800 reads that would now land in the window). FAILS in the world where DOA's wait is behind another completion call (download_surface_to_buffer, a texture-bind download, the SURFACE_DOWN finish branch) that B does not release: then the lock-wait leg cannot move and the fix is at the wrong call.",
+    "L1 (the brief's leg: lock wait falls by at least half)": "pooled over each arm's runs, B's read lock wait share of wall <= 0.5 x A's (pilot, A-shaped: 0.70). KILL: B / A > 0.8 -- refuted.",
+    "Q (the pilot's hidden register)": "A's registers, now ranked by wait, name the register that carried the 64% of read wait the pilot's count-ranked top four did not show. Expected: an interrupt-service register (CTX_* or TRAPPED_*), read once per NOP interrupt (~50 per 2 s, not a poll). If it is 0x700 (STATUS) with >= 0.3 of A's wait, STATUS settles by design and L1 is expected to miss by that share; that is reported as the cause, and relaxing STATUS is a separate, argued change.",
+    "P1 (fps, no regression)": "median over runs of each run's gfps median in the window: B >= A - 1.",
+    "P2 (fps, a guess labelled as one)": "B - A < 2 fps (about 70% confident): the frame is bounded by the PFIFO thread's own GPU wait, which B keeps. A rise >= 2 fps falsifies the PFIFO-bound reading and means the vCPU was the frame's bottleneck after all.",
+    "P3 (the PFIFO wait is untouched)": "B's surf413 cdef median >= 0.75 x A's. FAILS if the change shortened the PFIFO thread's wait; it is not meant to, and that would mean something besides the lock moved.",
+    "H0 (no new hang)": "in every B run: longest gap between hakuX-perf lines in the window <= 3 s (pilot 1.5 s), [lock474] lines continue to the end of the soak, and no tombstone in logcat -b crash. A deadlock between the settle cond and the lock would show as the lines stopping."
+  },
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/flip474-pgraph-inert.json (12 suites, identical captures, c5e7460372 vs ef66174066)"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [lock474], [surf413] and gfps lines by lockread.py, and the shots by eye."
+}

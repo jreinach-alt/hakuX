@@ -1,124 +1,135 @@
-# Audit pass 1: PR #380 -- vk/draw.c: refresh the uniform block on create_pipeline()'s early return (#274 GPUAA)
+# Audit pass 1: PR #473 (lane.remote, #461 texture-bind count)
 
-Head audited: `fb5879944b` (branch `claude/docs-tooling-agentic-coding-u152m1`).
-Auditor: job.cloud, 2026-09-26.
+Head audited: `47a3ce8e85`. Diff read: `hw/xbox/nv2a/pgraph/vk/{texture.c,draw.c,renderer.h}`,
+`docs/lanes/remote/tex461_read.py`, `docs/lanes/remote/NOTES.md`; `docs/testing/nv2a_index.json`
+is regenerated output and was checked with `nv2a_index.py check` only.
 
-**Result: clean. 0 HIGH, 0 MEDIUM, 2 LOW, none asking for a change. Nothing to verify in pass 2, so the PR goes to `fold-ready`.**
-
-## What the diff does
-
-The only code change is six lines in `hw/xbox/nv2a/pgraph/vk/draw.c`, inside `create_pipeline()`'s early-return branch (`pipeline_early_hits`): a comment, then `pgraph_vk_update_shader_uniforms(pg)` before `NV2A_VK_DGROUP_END(); return;`. The other files are the four prediction registrations, the regenerated `nv2a_index.json`, and 92 appended lines in `docs/lanes/remote/NOTES.md`.
+**Verdict: no HIGH, no MEDIUM. Two LOWs.** Next state: `needs-audit-2`.
 
 ## What was checked
 
-1. **The call is safe to make at that point.**
-   - `pgraph_vk_update_shader_uniforms()` returns early on a NULL `r->shader_binding`. The early-return condition already dereferences `r->shader_binding->state.geom.primitive_mode`, so the binding cannot be NULL there.
-   - Under `OPT_ASYNC_COMPILE`, an unready binding returns early with nothing written. `pgraph_vk_draw_begin` then skips the draw at `draw.c:4179-4186`, as it did before.
-   - The `assert(r->texture_bindings[i] != NULL)` in the texScale loop cannot fire. The early return needs `r->pipeline_binding` and an unchanged texture generation, so the full path has already bound textures. The only NULLing of `texture_bindings[]` is in finalize (`texture.c:3273`). The MFP fast path (`draw.c:4148`) already makes the same call under weaker preconditions.
-2. **The refreshed block reaches the GPU.** The function sets `r->uniforms_changed` when either block's hash moves. `pgraph_vk_update_descriptor_sets()` (`draw.c:4229`, after `create_pipeline()`) reads that flag at `shaders.c:513` and stages both blocks.
-3. **The comment's claim "every other path through here refreshes the block" holds.** The non-early path either calls `pgraph_vk_bind_shaders()`, which ends in `pgraph_vk_update_shader_uniforms()` (`shaders.c:1443`), or calls `pgraph_vk_update_shader_uniforms()` directly (`draw.c:2123`).
-4. **Blast radius.** No draw that already refreshed is touched. The SFP does not reach `create_pipeline()`. `create_clear_pipeline()` is a separate function. The only new work is a recompute plus hash on early hits, which the probe counted on 2 of 99 discs. The two device soaks show gfps equal between the arms (29 = 29 on both devices).
-5. **Registrations.** The desktop registrations carry the hand-queue `title`, which the PR body discloses. The `aadma` leg has a numeric `expect`, an `expect_counts` and a `must_not_move` list, and it names its nondeterminism before measuring. The body's `Files:` line lists all seven changed files.
-6. **CI** is green on this head: build ×2 and check.
+1. **Default-build inertness.** Every added statement is either inside `#if NV2A_PERF_LOG`
+   or inside `TEX_PERF(...)`, which expands to `do { } while (0)` without it. The new
+   enums (`renderer.h:57`), the `OptBisectStats` fields (inside the existing
+   `#if NV2A_PERF_LOG` at `renderer.h:189`), the `TextureBinding` fields, `txk_converted()`,
+   and `tx_dl0` are all under the guard. `tx_dl0` is referenced only inside `TEX_PERF`, so
+   a default build neither declares nor reads it. No path found by which a default build
+   changes.
+2. **I2 (new/rb hashes == new/rb uploads) is exact.** On a miss, `possibly_dirty` is forced
+   true, so a hash runs whenever `!surface_to_texture`. Between the hash and the miss-path
+   upload (`texture.c:2687`) the only `return` is the final one at `:2693`, and the upload
+   is in the `else` of `if (surface_to_texture)`, which is the hash's own condition.
+   `tx_rb` feeds both the `why` and the `TXU_RB/TXU_NEW` choice.
+3. **I3 (found hashes == eq + chg) is exact.** On the found path with `!surface_to_texture`,
+   a hash runs iff `possibly_dirty`. Then `eq` counts `possibly_dirty && !vram_changed`
+   and `TXU_CHG` counts `vram_changed` (which implies `possibly_dirty`), and every
+   `vram_changed` reaches `upload_texture_image`. The two are disjoint and cover the hash.
+4. **I1 (`oth` == 0).** With `binding_found`, `possibly_dirty` can be raised only by the
+   direct surface download (`tx_srf`), `snode->possibly_dirty` (`pending_mark`), the memo
+   (`tx_memo`) or a fresh bitmap hit (`tx_bit`). A rebuild clears `binding_found`, and
+   `possibly_dirty_checked` is never set true. So every `why` falls in a named reason.
+   The confirmed-clean cancel runs before the hash, so counting at the hash is correct.
+5. **I4.** `upload_texture_image` has two callers (`:2274`, `:2687`), and each is followed
+   by exactly one `txu_n[]` increment. `get_texture_layout` has one caller (`:683`), so
+   `txk_b` is not inflated by other paths.
+6. **The range-scan difference.** `dif_other` and `sd_shelved_lazy_dl` are raised in
+   `surface.c` at `:404`, `:415` and `:427` inside the scan. The direct
+   `pgraph_vk_surface_download_if_dirty` call runs before `tx_dl0` is read, so it cannot
+   leak into `scdl`. `g_opt_stats` is reset only from `opt_stats_log_and_reset`
+   (`draw.c:3488`, at a flip or presenting finish), never inside a scan, so the difference
+   cannot go negative.
+7. **The print.** It sits inside `#if NV2A_PERF_LOG` / `#ifdef __ANDROID__` in
+   `opt_stats_log_and_reset`. Each `%d` is an `int` field and each `%llu` goes through
+   `TX_KIB`, which casts to `unsigned long long`. `tex_cache_uploads`, `tex_pool_hits` and
+   `tex_pool_misses` are `int`. The reader's regexes match the format strings field for
+   field.
+8. **Reader.** `tex461_read.py --selftest` prints PASS here. Grouping resets on an
+   out-of-order line and counts it as dropped, so a lost line cannot splice two groups.
+   A truncated `txr` line is dropped without zeroing its group's earlier lines, and the
+   next `txh` starts a new group.
+9. **Gates.** CI: `build` ×2 and `check` SUCCESS; the PR is MERGEABLE.
+   `nv2a_index.py check` passes on the symbol and site halves.
 
 ## Findings
 
-**LOW-1: the PR is `CONFLICTING` against current master, but only in `docs/testing/nv2a_index.json`.**
-- `git merge-tree origin/master fb5879944b` conflicts on the index alone.
-- `fold.sh` regenerates the index and never merges it (`fold.sh:66-68`), so fold should resolve this itself. Nothing for the lane to do.
-- Failure scenario: none in the code. At worst the fold job hands the PR back for a merge.
+### LOW-1: a reused direct view is not counted in `s2td`
+`txr_s2td` is incremented in `bind_surface_as_texture` and `bind_zeta_surface_as_texture`
+only. The found path's "same draw_time" branch (`texture.c:~2244`) also sets
+`tex_surface_direct[texture_idx] = true` and binds the surface's view directly, but it
+counts nothing. **Scenario:** a title that samples an unchanged render target every frame
+shows `s2td` near 0 in the reader's "direct binds per frame". The binds are still
+happening, so a reader could conclude surface-as-texture is rare when it is the common
+case. The cost is small, because that branch does no work beyond the assignment. The fix
+is to rename the field "direct binds made (view changed)" in the comment and the reader,
+or to count the reuse separately.
 
-**LOW-2: the change is hardening only on current master, as the PR says.**
-- #366 bumps `shader_state_gen` on an AA-mode change, so GPUAA's triangle no longer takes the early return. The fix is measured to move 0 captures on the stock suite at this head.
-- This is not a defect. It does mean no golden now exercises the new line, and a later regression that removed it would show on no suite.
-- Failure scenario: a future edit drops the call and CI stays green. A regression test would need a draw that changes only an inline attribute while every generation holds. Not asked for in this PR.
+### LOW-2: `--window` timestamps are parsed with no year
+`stamp()` uses `%m-%d ...`, so every timestamp lands in 1900. **Scenario:** a capture that
+spans New Year (12-31 → 01-01) gives a negative `t - t0`, and the lines after midnight fall
+outside any window. This is harmless for 240 s soaks at any other time. The fix is to add
+a year rollover, or to document the limit.
 
-No failure scenario was found in which the new line gives wrong output, a crash, or unsafety.
+## For pass 2
+Neither LOW blocks folding. Pass 2 only needs to confirm that neither scenario has become
+worse, or that each is fixed or explicitly accepted. No device run is needed.
 
 ---
 
-# Audit pass 1: PR #389 (claude/docs-tooling-agentic-coding-u152m1), #274 SFP guard
+# Earlier audit at this path: PR #449 pass 1 (kept verbatim)
 
-Head audited: `a6a47f4e70`, compared with `origin/master` (which is in its
-ancestry). Against master, `hw/` differs by one 7-line hunk in
-`hw/xbox/nv2a/pgraph/vk/draw.c` `begin_pre_draw_inner()`. The rest of the
-diff is six prediction files and the regenerated `nv2a_index.json`.
+This lane branch carried PR #449 before PR #473, so both pass-1 audits share this path.
 
-**Verdict: no HIGH, no MEDIUM, three LOW.** Next state: `needs-audit-2`.
+## Audit pass 1: PR #449, lane `claude/docs-tooling-agentic-coding-u152m1` (#426 items 1, 2, 4)
+
+Head audited: `932ab471`, diffed against `origin/master` (merge base `c9331a68`). The fold job then merged master in (`45f62ce0`, `699c0e87`). That merge touches none of this PR's files except the regenerated index, so the audit holds for `699c0e87`.
+
+**Verdict: no HIGH, no MEDIUM, two LOW.** Both LOWs are documentation. Nothing in the code needs changing.
 
 ## What was checked
 
-1. **Every writer of the four flags only sets them on a real change.**
-   The writers are `pgraph.c`, the fixed-function setters at 3212-4058,
-   `SET_TRANSFORM_CONSTANT` at 3554, the state-program constant writes at
-   4487, and `rdi.c:62`. Each one is either `|= (parameter != old)` or sits
-   behind an inequality. The one unconditional set is
-   `pgraph.c:5037`, after a vertex-state program runs, and a `v0` hash that
-   has not changed returns before it. So no path raises a flag on every
-   draw, and the guard cannot turn the SFP off for good. The soaks agree:
-   all three legs PASS on both titles and both handhelds (lane.remote,
-   17:19Z).
-2. **A missed draw clears the flags.** A draw that misses the SFP goes to the
-   MFP or to the full path. The MFP (`draw.c:4155`) calls
-   `pgraph_vk_update_shader_uniforms()` without a condition. The full path
-   reaches it through `create_pipeline()`: from the early hit (`draw.c:2093`),
-   from the `else` branch at 2123, or from `pgraph_vk_bind_shaders()`
-   (`shaders.c:1443`). When the refresh runs, `shaders.c:1363-1374` sets
-   `uniforms_changed` and clears all four flags. So after one missed draw
-   the SFP is open again, as the PR says.
-3. **Where the test sits.** It comes after `r->uniforms_changed` and before
-   the descriptor, generation and prim-mode tests. Every test in that chain
-   only sets `sfp_ok = false`, so adding one more cannot let a draw through
-   that the old chain refused.
-4. **The render thread.** `render_thread.c:77-87` copies the flags into a
-   snapshot. Nothing outside that file reads the snapshot back, so the
-   guard reads the live `pg`, which is also the struct the refresh clears.
-5. **Prediction files.** All six parse. `a_ref` `6c25a829ef` and `b_ref`
-   `1d9c3e4c0f` are both ancestors of the head. The four desktop files have
-   empty `expect` and `must_not_move: ["*"]`, and they are hand-queued;
-   `[job.arms]` SKIPPED them as designed. The PR body reports all four PASS
-   on the registered refs and on both merged trees.
+**Default build.** Every new field, counter and bind note is inside `#if NV2A_PERF_LOG`. The two new `_EXCL_CHILD` macros have `do { } while (0)` stubs.
+- The `NV2A_PERF_LOG` default moved above the structs in `debug.h`.
+- Both CMake targets that include it (`xemu_core` at CMakeLists.txt:940, `xemu` at :1060) get the same `-D`, so no two TUs can disagree about the struct layout.
+- The `pipe[...]` line is inside `opt_stats_log_and_reset()`'s `#if NV2A_PERF_LOG` / `#ifdef __ANDROID__`. `Lru::num_used` and `num_free` exist (`include/qemu/lru.h:47-48`).
+
+**Timer pairing.** Every BEGIN has an END on every exit.
+- `begin_pre_draw_inner()`: `Sfp` ends at both the hit `return` (draw.c:4160) and the miss fall-through (:4168). `Mfp` ends at the hit `return` (:4249) and at `mfp_miss` (:4253). The only `goto mfp_miss` (:4203) is after `Mfp`'s BEGIN, so the END never reads an uninitialised `_phase_t0_draw_mfp`.
+- `create_pipeline()`: `pipe_lookup` now ENDs exactly once on each of its six exits. The async-compile miss (:2256) no longer ENDs a second time. `shader_compile` ENDs at all three exits in :2267-2794, including the new one at :2290.
+- `pgraph_vk_clear_surface()`: its four `return`s (:7174, :7193, :7234, :7338) all come before the new `draw_dispatch` BEGIN (:7346). No path from there to the END (:7436) can return.
+
+**Nesting.**
+- `EXCL_CHILD` subtracts the finish in its whole window once, through `END_EXCL`. It then subtracts the child's delta, and the child is itself `_EXCL`, so a finish inside `FTx` is not taken off twice.
+- The clear's new `Draw` span calls nothing that reaches `flush_draw_one_pass()`, whose `Draw` would nest in it. `surface_update` runs at :7185, before the span, so `Surf` does not land inside `Draw`.
+- `pgraph_vk_bind_textures()` has exactly three callers: :2166 (`Tx`), and :4030 and :4221 (`FTx`). `upload_texture_image()` (`Tex`) and the hash (`TxH`) are reached only from `create_texture()`, so I5 holds by construction.
+- `TxH` is a plain timer. That is correct, because `fast_hash()` cannot reach a finish.
+
+**Eviction counter.**
+- **Bind notes.** Every `vkCmdBindPipeline` of a `PipelineBinding` records the bind: `begin_draw` at :4590 and `emit_reorder_entry` at :6200. A new command buffer always begins a new render pass, and `begin_draw` then rebinds (:4575-4577). So the last command buffer to use a pipeline is always recorded.
+- **Initial state.** `PGRAPHVkState` comes from `g_malloc0` (renderer.c:193). `cb_serial` starts at 0 and the first serial is 1, so `last_use_cb == 0` safely means "never bound".
+- **Slot reuse.** A slot begins a newer command buffer only after `vkWaitForFences` on it (:3728-3733). So a serial mismatch does mean the old command buffer completed.
+- **Unsubmitted command buffers.** A command buffer that is ended but not yet submitted could be missed. That state is never visible from the pgraph thread: the deferred path spins until `frame_submitted` is set (:3656), and the non-deferred path waits on `finish_event`. `pgraph_vk_submit_worker_enqueue()` has no callers.
+- **Teardown.** `finalize_pipeline_cache()` flushes the LRU (:1465) before the frame fences are destroyed (:1575). So `vkGetFenceStatus` never sees a destroyed fence.
+
+**Reader identity.** Expanding `rc + p + u` with the new `DRAW_SUB`, `POST` and `pipe_rest` gives exactly `Surf + Draw + Fin`.
+- The old reader was off by `Pipe - (Tx+Sh+Lu+Shd)`, which `pipe_rest` now absorbs.
+- The checker's I1, I4 and I5 are now one-sided and keep the rounding bounds. I2 stays an identity.
 
 ## Findings
 
-### LOW 1: the new miss is counted in `sfp_miss_uniforms`, which it shares with `r->uniforms_changed`
+### LOW-1: `phase_read_split.py` docstring says `Tx` is not exclusive of finish, but this PR makes it exclusive
 
-`draw.c:3905`. **Scenario:** someone prices the guard from an `OPT_STAT`
-dump on a title, for example to see whether it is what keeps a scene off the
-SFP. The count mixes the old cause, where a refresh detected a change, with
-the new one, where a setter ran and nothing has refreshed yet. The two
-cannot be separated without a rebuild. This is observability only, with no
-behaviour at stake. A separate counter such as `sfp_miss_ff_dirty` would
-split them.
+- **Where.** `docs/testing/phase_read_split.py:41` says the binds' `rest` "also carries any finish nested in a Tx bind, since Tx is not exclusive of finish and Tex and FTx are". The same PR changes `pipe_bind_tex` to `NV2A_PHASE_TIMER_BEGIN_EXCL` (draw.c:2163).
+- **Scenario.** On a new-format Crimson line with a high `rest` share, a reader who trusts the docstring attributes part of `rest` to nested finishes. The instrument has already removed those. The next lever for `Tx` (item 3) is then priced against a cause that is not in the number.
+- **Fix.** Delete the clause, or say that `rest` holds no finish on new lines.
 
-### LOW 2: the comment says a missed draw's path "refreshes the block", but the refresh can return early
+### LOW-2: the "compare with older soaks" caveat omits `Draw` and `BUSY`
 
-`draw.c:3899-3903` against `shaders.c:1313-1322`. **Scenario:** with async
-compile on, the bound shader is not `ready` yet. `pgraph_vk_update_shader_uniforms()`
-returns before it clears anything, and the full path then skips the draw
-(`draws_skipped_pending`). The flags stay set, so later draws keep missing
-the SFP until the shader is ready. That is the safe direction, and the
-behaviour is correct. But the comment's promise that a miss clears the
-flags does not hold on this path, and a reader who relies on it when
-reasoning about SFP hit rates will be misled. One clause naming the
-async-pending case would fix it.
+- **Where.** The PR body's "Not covered" warns about `Pipe`, `Setup` and `Tx`. This PR also moves the fall-through clear's `begin_pre_draw()`, `begin_draw()` and clear commands into `Draw` (draw.c:7346-7436). That work was previously outside `Draw` and so outside `BUSY = Surf + Draw + Fin`.
+- **Scenario.** On a clear-heavy title, `Draw` and `BUSY` read higher on a post-#449 soak than on an older one, and the rise is instrumentation. Someone comparing the two soaks reads it as a regression.
+- **Fix.** Add `Draw` and `BUSY` to the caveat, in the PR body or in the `phase_read_split.py` docstring beside the existing old-line note.
 
-### LOW 3: no scored capture can detect the guard being reverted
+## Not audited
 
-**Scenario:** a later change drops or reorders this test. The desktop
-goldens stay byte-identical, because the PR's own probe shows that no test
-draw takes the SFP on these discs: with `skip_boot_anim` there are zero SFP
-hits, and every hit falls in the boot animation. The soaks measure frame
-rate only. So the defect #274 names could return without any golden or arm
-moving. The PR says this under "Not covered". I record it here so that the
-gap has a home: a coverage gap, not a defect in this diff.
-
-## Not findings
-
-- `GPUAAWriteAfterCPUWrite`'s white 2×2 block, seen on B only, in 2 of 29
-  runs. The PR's third probe build puts every B SFP hit in frames 1-7, and
-  no hit in either arm falls after frame 40. So during the tests B runs A's
-  code, and the guard cannot be what draws the block. This is a timing race
-  for `KNOWN_UNSTABLE`, as the PR says, not a finding against the diff.
-- The index regeneration is tool output (`nv2a index: regenerate after
-  folding #389`). I did not hand-review it.
+- `docs/testing/nv2a_index.json` was regenerated by the tool, and CI gates it.
+- `docs/lanes/remote/NOTES.md` is lane notes.
+- The Android compile of the `pipe[...]` line was not checked. The PR says so itself: the perflog APK is its first real compile. A format or field error there fails that build loudly; it cannot mis-measure silently.

@@ -1,0 +1,24 @@
+{
+  "registered_utc": "2026-09-27T14:23:25Z",
+  "who": "lane.forza414",
+  "issue": "414",
+  "title": "4D53006E-Forza_Motorsport.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "runs_per_arm": 1,
+  "a_ref": "4b22f2526b",
+  "b_ref": "94f002d309",
+  "prediction": "SAME-SESSION NOVA SOAK A/B of #414's coalescing cut, hand-read (arms.sh skips title soaks). A is 4b22f2526b (master f131dd11c6 plus the [sdcall] per-caller probe). B is 94f002d309 (A plus the cut: pgraph_vk_surface_update leaves the downloads its evictions record to the next finish unless a binding is about to upload from VRAM; readers of guest memory complete an overlapping pending download first). Both arms are perflog, with the survey route at 420 s. The RACE WINDOW is t = 243-414 s after soak start, the window lane.slowdown462 used for 1-1790492278 (23.0 fps, Sub 19.9 ms, sd_cDef 371 per 60 flips). Per-arm figures are medians over the window's 2 s / 60-flip lines. Legs, and the world each fails in: M0 both arms reach the race (hakuX-stall lines with sd > 0 in the window), print [sdcall] in the window, and B prints su_deferred > 0 while A prints su_deferred = 0; else VOID (the cut never ran, or the route did not reach the race). P1 the named resource: B's uncoalesced finishes (stall line cDef) per 60 flips <= 50% of A's. It fails in the world where the finish only moves to another caller (range, pend, expire), and B's [sdcall] line names which. P2 B's Fin (hakuX-phase, Sub) ms/frame <= 60% of A's. It fails if the finishes drop but the wait moves into a fence wait of the same length (fence ms in [sdcall] grows). P3 the mover: B's race-window median fps >= 1.15 x A's. It fails if the frame is set by something else once the waits are gone (the vCPU's 30.5 ms on-CPU, lane.slowdown462's bound <= 33 fps, <= 30 at 2-VBLANK pacing). P4 the brief's clock leg: the race timer on the HUD is not read here. lane.forzaclock showed the clock is min(fps,30)/30, so P3 carries it. B/brief falsifier: the brief's mover (fps at t = 150-174 s of the Thor race window toward the t = 60 s value) was written for the Thor step, which did not recur (NOTES section 6). It is not judged here. The Nova does not show the step.",
+  "expect": {
+    "M0/both_reach_race_is": true,
+    "M0/b_su_deferred_min": 1,
+    "M0/a_su_deferred_max": 0,
+    "P1/b_over_a_cdef_per60_max": 0.5,
+    "P2/b_over_a_sub_ms_max": 0.6,
+    "P3/b_over_a_fps_min": 1.15
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by hand from the two logcats (hakuX-stall cDef, hakuX-phase Sub, gfps, [sdcall]); a soak writes no captures and ab_compare never judges it."
+}

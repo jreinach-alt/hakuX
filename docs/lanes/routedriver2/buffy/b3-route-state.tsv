@@ -1,0 +1,56 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.4	unknown	no-prev		4.5	0.32	wait (unknown)	033602-001-unknown.png	
+2.0	intro_video	moving	0.8127	57.3	0.42	press A (skip intro_video)	033604-002-intro_video.png	
+3.9	black	black		2.7	0.32	wait	033606-003-black.png	
+5.4	intro_video	moving	0.1624	10.9	0.37	press A (skip intro_video)	033608-004-intro_video.png	
+7.5	intro_video	moving	0.5333	37.8	0.52	press START (skip intro_video)	033610-005-intro_video.png	
+9.2	black	black		0.1	0.27	wait	033611-006-black.png	
+10.6	black	black		0.8	0.27	wait	033612-007-black.png	
+11.9	black	black		1.7	0.32	wait	033614-008-black.png	
+13.4	title	crop:title		15.0	0.42	press START (title 1)	033616-009-title.png	
+15.5	main_menu	crop:main-menu		30.6	0.52	press A (main_menu 1)	033618-010-main_menu.png	
+17.5	profile	crop:start-game		23.4	0.42	settle	033619-011-profile.png	
+19.1	profile	crop:start-game		25.0	0.47	press A (profile 1)	033621-012-profile.png	
+20.9	profile	crop:difficulty		25.1	0.47	settle	033623-013-profile.png	
+22.4	profile	crop:difficulty		26.2	0.47	press A (profile 1)	033625-014-profile.png	
+24.0	black	black		0.0	0.27	wait	033627-015-black.png	
+25.5	black	black		1.7	0.27	wait	033629-016-black.png	
+26.7	black	black		0.0	0.27	wait	033630-017-black.png	
+28.0	black	black		0.7	0.27	wait	033631-018-black.png	
+29.3	black	black		0.0	0.27	wait	033632-019-black.png	
+30.9	cutscene	moving	0.3084	12.5	0.57	press A (skip cutscene)	033634-020-cutscene.png	
+33.1	unknown	hud:hud+after-cutscene	0.3637	15.3	0.67	hold (hud up, motion not yet play)	033637-021-unknown.png	
+35.4	stalled	hud:hud+static	0.0583	14.0	0.67	stall escape 1	033647-022-stalled.png	
+45.6	stalled	hud:hud+static p=0.013	0.1191	13.7	0.62	stall escape 2	033656-023-stalled.png	
+55.1	stalled	hud:hud+static	0.1616	14.5	0.67	stall escape 3	033705-024-stalled.png	
+62.5	stalled	hud:hud+motion+recovering	0.2901	21.7	0.72	hold (recovering, stalled 0 s) tap B tap A	033708-025-stalled.png	
+65.1	stalled	hud+no-progress p=0.069	0.2562	20.0	0.67	stall escape 4	033718-026-stalled.png	
+74.9	stalled	hud:hud+motion+recovering p=0.185	0.3411	6.4	0.52	hold (recovering, stalled 0 s) tap B tap A	033720-027-stalled.png	
+77.4	stalled	hud:hud+static p=0.133	0.0145	7.0	0.52	stall escape 5	033730-028-stalled.png	
+87.3	stalled	hud:hud+static p=0.003	0.0285	7.8	0.57	stall escape 6	033738-029-stalled.png	
+94.3	stalled	hud:hud+static	0.0205	6.1	0.47	hold (stalled 0 s)	033740-030-stalled.png	
+96.2	stalled	hud:hud+static	0.0058	6.0	0.47	hold (stalled 2 s)	033742-031-stalled.png	
+98.1	stalled	hud:hud+static p=0.0	0.0058	5.4	0.47	hold (stalled 4 s)	033744-032-stalled.png	
+100.0	stalled	hud:hud+static p=0.0	0.0349	6.9	0.47	hold (stalled 6 s)	033746-033-stalled.png	
+101.9	stalled	hud:hud+static p=0.0	0.0155	6.8	0.42	hold (stalled 8 s)	033748-034-stalled.png	
+103.6	stalled	hud:hud+static	0.0269	6.1	0.47	hold (stalled 9 s)	033749-035-stalled.png	
+105.3	stalled	hud:hud+static p=0.0	0.0005	6.2	0.42	hold (stalled 11 s)	033751-036-stalled.png	
+107.2	stalled	hud:hud+static p=0.0	0.0053	6.2	0.47	hold (stalled 13 s)	033753-037-stalled.png	
+109.1	stalled	hud:hud+static p=0.0	0.0061	5.8	0.47	hold (stalled 15 s)	033755-038-stalled.png	
+111.0	stalled	hud:hud+static p=0.0	0.0081	6.3	0.47	hold (stalled 17 s)	033757-039-stalled.png	
+112.9	stalled	hud:hud+static p=0.0	0.0082	6.0	0.42	hold (stalled 19 s)	033759-040-stalled.png	
+114.6	stalled	hud:hud+static p=0.0	0.0008	6.1	0.42	hold (stalled 20 s)	033800-041-stalled.png	
+116.3	stalled	hud:hud+static p=0.0	0.001	6.1	0.42	hold (stalled 22 s)	033802-042-stalled.png	
+118.2	stalled	hud:hud+static p=0.0	0.0053	6.3	0.47	hold (stalled 24 s)	033804-043-stalled.png	
+120.1	stalled	hud:hud+static p=0.0	0.0061	5.9	0.47	hold (stalled 26 s)	033807-044-stalled.png	
+122.0	stalled	hud:hud+static p=0.0	0.0327	7.0	0.47	hold (stalled 28 s)	033809-045-stalled.png	
+123.9	stalled	hud:hud+static p=0.0	0.0321	6.0	0.42	hold (stalled 30 s)	033811-046-stalled.png	
+125.6	stalled	hud:hud+static p=0.0	0.0007	6.1	0.42	hold (stalled 31 s)	033813-047-stalled.png	
+127.3	stalled	hud:hud+static p=0.0	0.001	6.1	0.42	hold (stalled 33 s)	033814-048-stalled.png	
+129.1	stalled	hud:hud+static p=0.0	0.0341	7.1	0.42	hold (stalled 35 s)	033816-049-stalled.png	
+131.0	stalled	hud:hud+static p=0.0	0.0349	5.9	0.47	hold (stalled 37 s)	033818-050-stalled.png	
+132.9	stalled	hud:hud+static p=0.0	0.0096	6.4	0.47	hold (stalled 39 s)	033820-051-stalled.png	
+134.9	stalled	hud:hud+static p=0.0	0.0093	6.1	0.47	ROUTE FAIL	033822-052-fail-stalled.png	
+# time_to_title_s=13.4
+# time_to_play_s=
+# result=ROUTE FAIL drive buffy: stalled: stalled 41 s: the play HUD is up and nothing moves -- the play input is not reaching the game, or a pause the profile cannot see

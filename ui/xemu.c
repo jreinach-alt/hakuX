@@ -1488,7 +1488,23 @@ void xemu_android_display_loop(void)
         }
     }
 #ifdef __ANDROID__
-    SDL_GL_SetSwapInterval(g_config.display.window.vsync ? 1 : 0);
+    {
+        /*
+         * HAKUX_VSYNC=0|1 overrides the vsync pref for one run (#526). A
+         * dispatch request can write the env_vars pref and no other, so this
+         * is how an A/B selects vsync. The pref and its default are untouched.
+         */
+        const char *ev = getenv("HAKUX_VSYNC");
+        int interval = g_config.display.window.vsync ? 1 : 0;
+        if (ev && (!strcmp(ev, "0") || !strcmp(ev, "1"))) {
+            interval = ev[0] - '0';
+        }
+        int rc = SDL_GL_SetSwapInterval(interval);
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
+                            "[pace526] swap interval=%d pref=%d env=%s rc=%d",
+                            interval, g_config.display.window.vsync ? 1 : 0,
+                            ev ? ev : "(unset)", rc);
+    }
     if (false /* HUD disabled on Android */) {
         xemu_hud_init(m_window, m_context);
     }
@@ -1835,6 +1851,173 @@ static void update_fps(void)
     }
 }
 
+#ifdef __ANDROID__
+/*
+ * Frame limiter wait (#526). The limiter used to sleep to about 1 ms short of
+ * the deadline and busy-spin on the clock for the rest, 1-2 ms of a core per
+ * 60 Hz frame spent doing nothing, which also raises the scheduler's
+ * utilization estimate and so the CPU clock. The default now sleeps to the
+ * deadline itself: clock_nanosleep with TIMER_ABSTIME on CLOCK_MONOTONIC,
+ * the clock QEMU_CLOCK_REALTIME reads when use_rt_clock is set
+ * (include/qemu/timer.h, get_clock). HAKUX_LIMITER=spin selects the old
+ * wait for an A/B on one binary.
+ *
+ * The [pace526] line (tag hakuX-lane, every 10 s) carries what judges the
+ * change: lateness of the frames the limiter held (how far past the deadline
+ * the render thread got going again), the render thread's CPU time and the
+ * part of it spent inside the wait, the guest flips in the window, and the
+ * present-to-present intervals that land within 1 ms of 16.67 ms.
+ */
+enum { LIMITER_SLEEP, LIMITER_SPIN };
+
+static int android_limiter_mode(void)
+{
+    static int mode = -1;
+    if (mode < 0) {
+        const char *env = getenv("HAKUX_LIMITER");
+        mode = (env && !strcmp(env, "spin")) || !use_rt_clock ? LIMITER_SPIN
+                                                              : LIMITER_SLEEP;
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
+                            "[pace526] limiter mode=%s env=%s rt_clock=%d",
+                            mode == LIMITER_SPIN ? "spin" : "sleep",
+                            env ? env : "(unset)", use_rt_clock);
+    }
+    return mode;
+}
+
+#define PACE526_BIN_NS 50000   /* lateness histogram: 50 us bins */
+#define PACE526_BINS 100       /* 0-5 ms; one more bin holds the rest */
+#define PACE526_WINDOW_NS (10 * NANOSECONDS_PER_SECOND)
+
+static struct {
+    int64_t t0_ns, thr_cpu0_ns, proc_cpu0_ns;
+    unsigned int flips0;
+    unsigned int released, waited, late_gt1ms;
+    int64_t late_max_ns, wait_cpu_ns;
+    unsigned int late_hist[PACE526_BINS + 1];
+    bool pending_wait;
+    int64_t prev_present_ns;
+    unsigned int presents, present_in1ms;
+} pace526;
+
+static int64_t pace526_cpu_ns(clockid_t id)
+{
+    struct timespec ts;
+    if (clock_gettime(id, &ts) != 0) {
+        return 0;
+    }
+    return ts.tv_sec * NANOSECONDS_PER_SECOND + ts.tv_nsec;
+}
+
+static double pace526_late_pct_us(unsigned int n, double q)
+{
+    unsigned int want = (unsigned int)(q * n + 0.999999), acc = 0;
+    for (int i = 0; i <= PACE526_BINS && n; i++) {
+        acc += pace526.late_hist[i];
+        if (acc >= want) {
+            /* the bin's upper edge: a bound on the percentile, not a value */
+            return (double)(i + 1) * PACE526_BIN_NS / 1000.0;
+        }
+    }
+    return -1.0;
+}
+
+static void pace526_report(int64_t now)
+{
+    int64_t thr = pace526_cpu_ns(CLOCK_THREAD_CPUTIME_ID);
+    int64_t proc = pace526_cpu_ns(CLOCK_PROCESS_CPUTIME_ID);
+    unsigned int flips = g_nv2a_stats.frame_count;
+
+    if (pace526.t0_ns) {
+        unsigned int w = pace526.waited;
+        __android_log_print(
+            ANDROID_LOG_INFO, "hakuX-lane",
+            "[pace526] mode=%s s=%.2f rel=%u waited=%u late_p50_us=%.0f "
+            "late_p99_us=%.0f late_max_us=%.0f late_gt1ms=%u thr_cpu_ms=%.1f "
+            "wait_cpu_ms=%.1f proc_cpu_ms=%.1f flips=%u pres=%u pres_1ms=%u",
+            android_limiter_mode() == LIMITER_SPIN ? "spin" : "sleep",
+            (now - pace526.t0_ns) / 1e9, pace526.released, w,
+            pace526_late_pct_us(w, 0.50), pace526_late_pct_us(w, 0.99),
+            pace526.late_max_ns / 1e3, pace526.late_gt1ms,
+            (thr - pace526.thr_cpu0_ns) / 1e6, pace526.wait_cpu_ns / 1e6,
+            (proc - pace526.proc_cpu0_ns) / 1e6, flips - pace526.flips0,
+            pace526.presents, pace526.present_in1ms);
+    }
+    pace526.t0_ns = now;
+    pace526.thr_cpu0_ns = thr;
+    pace526.proc_cpu0_ns = proc;
+    pace526.flips0 = flips;
+    pace526.released = pace526.waited = pace526.late_gt1ms = 0;
+    pace526.late_max_ns = pace526.wait_cpu_ns = 0;
+    memset(pace526.late_hist, 0, sizeof(pace526.late_hist));
+    pace526.presents = pace526.present_in1ms = 0;
+}
+
+/* The limiter let a frame through at `now` against `deadline`. */
+static void pace526_release(int64_t now, int64_t deadline)
+{
+    if (!pace526.t0_ns || now - pace526.t0_ns >= PACE526_WINDOW_NS) {
+        pace526_report(now);
+    }
+    pace526.released++;
+    if (pace526.pending_wait && deadline) {
+        int64_t late = MAX(now - deadline, 0);
+        pace526.waited++;
+        pace526.late_hist[MIN(late / PACE526_BIN_NS, PACE526_BINS)]++;
+        pace526.late_max_ns = MAX(pace526.late_max_ns, late);
+        pace526.late_gt1ms += late > 1000000;
+    }
+    pace526.pending_wait = false;
+}
+
+static void pace526_present(int64_t now)
+{
+    if (pace526.prev_present_ns) {
+        int64_t dt = now - pace526.prev_present_ns;
+        pace526.presents++;
+        pace526.present_in1ms += dt >= 15666667 && dt <= 17666667;
+    }
+    pace526.prev_present_ns = now;
+}
+
+/* Wait out the limiter's interval up to `deadline`; `now` is already past
+ * the event poll. */
+static void android_limiter_wait(int64_t deadline, int64_t now)
+{
+    int64_t cpu0 = pace526_cpu_ns(CLOCK_THREAD_CPUTIME_ID);
+
+    if (android_limiter_mode() == LIMITER_SLEEP) {
+        struct timespec ts = {
+            .tv_sec = deadline / NANOSECONDS_PER_SECOND,
+            .tv_nsec = deadline % NANOSECONDS_PER_SECOND,
+        };
+        while (clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &ts, NULL) ==
+               EINTR) {
+        }
+    } else {
+#if XEMU_OPT_FRAME_LIMITER_SPIN
+        int64_t remaining_ns = deadline - now;
+        if (remaining_ns > 2000000) {
+            SDL_Delay((int)(remaining_ns / 1000000 - 1));
+        }
+        /* Busy-spin for the last ~1ms for sub-ms precision */
+        while (qemu_clock_get_ns(QEMU_CLOCK_REALTIME) < deadline) {
+            /* spin */
+        }
+#else
+        int64_t remaining_ms = (deadline - now) / 1000000;
+        if (remaining_ms > 2) {
+            SDL_Delay((int)(remaining_ms - 1));
+        } else {
+            SDL_Delay(0);
+        }
+#endif
+    }
+    pace526.wait_cpu_ns += pace526_cpu_ns(CLOCK_THREAD_CPUTIME_ID) - cpu0;
+    pace526.pending_wait = true;
+}
+#endif
+
 void sdl2_gl_refresh(DisplayChangeListener *dcl)
 {
     struct sdl2_console *scon = container_of(dcl, struct sdl2_console, dcl);
@@ -1887,30 +2070,17 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
             bql_unlock();
             qemu_mutex_unlock_main_loop();
 #endif
-#if defined(__ANDROID__) && XEMU_OPT_FRAME_LIMITER_SPIN
-            {
-                int64_t remaining_ns = next_render_ns - now;
-                if (remaining_ns > 2000000) {
-                    SDL_Delay((int)(remaining_ns / 1000000 - 1));
-                }
-                /* Busy-spin for the last ~1ms for sub-ms precision */
-                while (qemu_clock_get_ns(QEMU_CLOCK_REALTIME) < next_render_ns) {
-                    /* spin */
-                }
-            }
-#elif defined(__ANDROID__)
-            int64_t remaining_ms = (next_render_ns - now) / 1000000;
-            if (remaining_ms > 2) {
-                SDL_Delay((int)(remaining_ms - 1));
-            } else {
-                SDL_Delay(0);
-            }
+#if defined(__ANDROID__)
+            android_limiter_wait(next_render_ns, now);
 #else
             SDL_Delay(1);
 #endif
             return;
         }
         now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+#ifdef __ANDROID__
+        pace526_release(now, next_render_ns);
+#endif
         if (!next_render_ns || now > next_render_ns + min_frame_ns) {
             next_render_ns = now + min_frame_ns;
         } else {
@@ -2204,6 +2374,9 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
             (float)(qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - swap_t0) / 1e6f;
         g_nv2a_stats.pacing.swap_ms =
             g_nv2a_stats.pacing.swap_ms * 0.8f + swap_ms * 0.2f;
+#ifdef __ANDROID__
+        pace526_present(qemu_clock_get_ns(QEMU_CLOCK_REALTIME));
+#endif
     }
 #ifdef __ANDROID__
     android_log_gl_error("refresh-swap");

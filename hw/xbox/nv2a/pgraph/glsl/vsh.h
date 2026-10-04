@@ -106,6 +106,8 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *state);
     DECL(S, material_alpha, float, 1)                        \
     DECL(S, material_alpha_back, float, 1)                   \
     DECL(S, pointParams, float, 8)                           \
+    DECL(S, ringInput, vec4, 36)                             \
+    DECL(S, ringPhase, float, 1)                             \
     DECL(S, specularParams, vec3, 4)                         \
     DECL(S, surfaceSize, vec2, 1)
 
@@ -114,6 +116,11 @@ DECL_UNIFORM_TYPES(VshUniform, VSH_UNIFORM_DECL_X)
 typedef struct GenVshGlslOptions {
     bool vulkan;
     bool gles;
+    /* #569: generate the family's uber vertex stage (glsl/vsh-uber.h), not
+     * the state's own shader. Only ever set under HAKUX_GPL=3|4, and never
+     * persisted. It sits in the padding before gles_version, so the struct,
+     * and the persisted module key file's record, keep their size. */
+    bool uber;
     int gles_version;
     bool prefix_outputs;
     bool use_push_constants_for_uniform_attrs;
@@ -124,6 +131,10 @@ typedef struct GenVshGlslOptions {
 
 MString *pgraph_glsl_gen_vsh(const VshState *state,
                              GenVshGlslOptions glsl_opts);
+
+/* The text pgraph_glsl_gen_vsh() puts ahead of every body (#569's uber
+ * vertex stage, glsl/vsh-uber.c, carries it too). */
+const char *pgraph_glsl_vsh_common_header(void);
 
 /*
  * How a vertex program writes the fog output register, for #42: hardware
@@ -163,6 +174,23 @@ VshFogWrite pgraph_glsl_vsh_fog_write(const VshState *state);
  * the fog output register above, one register along.
  */
 bool pgraph_glsl_vsh_carries_ff_radial_fog(const VshState *state);
+
+/*
+ * #53: called at the end of every draw, before the renderer draws it. A
+ * fixed-function lit draw writes its last six vertices into the ring slots
+ * they occupy; every draw then advances pg->ring_pos by its vertex count,
+ * which the caller does once the renderer is done with the pre-draw phase.
+ * Returns the vertex count.
+ */
+unsigned int pgraph_glsl_ring_fill(PGRAPHState *pg);
+
+/*
+ * #53: true when state reads the ring and the ring's phase or contents moved
+ * since the last uniform block was built. Nothing else marks that block
+ * stale: the ring moves no register generation and raises no dirty flag, and
+ * a same-value register rewrite that weighs on the ring bumps nothing.
+ */
+bool pgraph_glsl_ring_uniforms_stale(PGRAPHState *pg, const VshState *state);
 
 void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
                                         const VshUniformLocs locs,

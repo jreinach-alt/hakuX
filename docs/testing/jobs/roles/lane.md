@@ -40,11 +40,65 @@ A path you edit that is not on that line is a collision nothing can see.
 - A prediction whose keys match no golden is refused at queue time. Keys are
   `Suite_dir/TestName`, underscores in the suite, one slash.
 
+## Pilot first: nothing over 30 minutes of device time unreviewed
+
+`request.sh` refuses an enqueue that would take your requester (`--who`) past
+30 min of queued plus running device time, estimated as `seconds` + 90 s of
+setup, times `runs`, unless `$DISPATCH_DIR/pilots/<requester>.ok` is under
+24 h old. The first 30 min always goes through; that is the pilot. For a
+bigger batch, queue at most two requests first, look at what they produced
+against the batch's purpose, write the verdict to `pilots/<requester>.ok` (the
+pilot's result ids, what the output showed, the date; write it with `python3`,
+which reaches the dispatch dir where Write and `cp` are blocked), then queue
+the rest. titleplay's pass 1 (#397) queued 29 soaks of 420 s at once and held the only
+live handheld for hours on a route that reached clean gameplay in 7 of 15
+titles, which the first two runs' frames would have shown. Arms (`arms-*`
+requesters) are not judged: a registered prediction is its own review. A tool
+that stages records in a private `DISPATCH_DIR` must set `PILOT_DISPATCH_DIR`
+to the real one, or the gate counts an empty tempdir. Rule text and the
+estimate's other home: AGENTS.md, "Working with a device".
+
+## Ranking options: probability times the size of the win, not cheapness
+
+When you rank options (a research lane's plan, or your own next step), sort
+by **expected impact**: the probability it works times the size of the win
+at full scale. State both, and the evidence for the probability. Effort is a
+constraint and a tiebreaker, not the sort key.
+
+- **Name the approach that fits the hardware**, and the one proven in
+  comparable emulators, and start it no later than any quick option. #569's
+  plan (`docs/lanes/shaderplan569/NOTES.md` section 7) ranked by gain per
+  unit of work and put the ubershader last, though it is the only option
+  that removes a first-time compile stall with no dropped draw.
+- **A cheap step goes first only when it decides something**: a measurement
+  that separates hypotheses, or a check that a proposed fix's mechanism
+  touches the measured cause. A hoped-for fix is not a reason to spend
+  device time. #413's async setting still waited on pipeline creation, the
+  96% it was meant to remove, and the code said so before any run.
+
+The source is the owner, as project manager, on 2026-09-28:
+
+> I've noticed a recurring theme with this project, where we tend to favor
+> cheap quick fixes that rarely pan out. We waste cycles attempting those
+> first before realizing we actually need to do the hard work that fits the
+> tech we're working on. This ubershader is a perfect example, and I wish we
+> had opened with that. I'm not saying everything needs to go right after
+> the hardest alternative in every scenario, but, a more balanced approach
+> would serve this project well. If you're evaluating options and you have
+> low effort, low probability options, they should not be the first thing
+> you reach for.
+
 ## Definition of done (all of these, or say which is missing)
 
 1. Your branch is pushed and `preflight.sh` passes on it (the tracker gate
    is the board's; `--allow-tracker` is fine when only that fails).
 2. The PR body's `Files:` matches `git diff --stat origin/master...HEAD`.
+   A PR that changes emulator code (hw/ target/ accel/ android/ tcg/ ui/
+   audio/) carries one line in its body:
+   `Release note (performance|stability|rendering|other|none): <what a player notices>`.
+   Use `none` for instrumentation and for opt-in switches that are off by
+   default. The nightly notes read it (`body_line()` in nightly_build.sh);
+   without it a speed fix is filed by keyword guess.
 3. `docs/lanes/<your lane name>/NOTES.md` records what you tried, what you
    measured, and what the next lane should not repeat. **Not the branch
    root**: every lane writing root `NOTES.md` means the first fold lands one
@@ -113,4 +167,9 @@ A path you edit that is not on that line is a collision nothing can see.
 - Push to `master` or to any branch but your own.
 - Run git in a tree that is not your worktree.
 - Touch a device directly. `request.sh` and `ab_run.sh` are the only way in.
+- Write or remove `$DISPATCH_DIR/hold/<dev>` by hand. Take and release a
+  device hold ONLY with `jobs/hold.sh take|release <dev> lane.<name>`; it
+  refuses (exit 3) a device someone else holds, and never removes a hold you
+  did not take. On 2026-09-26 a lane removed the host update window's hold on
+  the Thor and the Thor claimed a request inside the window.
 - Rewrite published history on your branch after a prediction names it.

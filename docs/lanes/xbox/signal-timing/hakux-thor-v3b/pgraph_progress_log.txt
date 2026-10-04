@@ -1,0 +1,11 @@
+Starting [1/1] Alpha func::AlphaFuncAlways_Disabled
+  Completed [1/1] 'AlphaFuncAlways_Disabled' in 442ms
+Starting [1/4] Signal timing::ST_CB_1_Empty
+  Completed [1/4] 'ST_CB_1_Empty' in 476ms
+Starting [2/4] Signal timing::ST_CB_2_DOA
+  Completed [2/4] 'ST_CB_2_DOA' in 4526ms
+Starting [3/4] Signal timing::ST_CB_3_DOA15
+  Completed [3/4] 'ST_CB_3_DOA15' in -19744ms
+Starting [4/4] Signal timing::ST_Calibrate
+  Completed [4/4] 'ST_Calibrate' in 2186ms
+Testing completed normally, closing log.

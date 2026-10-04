@@ -2,6 +2,7 @@ package com.rfandango.haku_x
 
 object XisoConverterNative {
   private val isLibraryLoaded: Boolean = try {
+    CpuSupport.requireSupported()
     System.loadLibrary("xiso_converter")
     true
   } catch (_: UnsatisfiedLinkError) {

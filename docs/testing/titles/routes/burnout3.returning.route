@@ -1,0 +1,82 @@
+# state: returning   (recorded loading the profile; lane.savestate433)
+# Burnout 3: Takedown (4541005B), RETURNING: a Burnout 3 profile is on the
+# disk. PLAYED by nav.py on the Thor, 2026-09-26 16:26 PDT (HELD pilot,
+# session burnout3.returning-20260926T162604); the same path was replayed
+# twice in that hold and reached the same screens. What it saw:
+#
+#   Crash Nav FMV (A skips it) -> "Press START to continue" -> Select
+#   Language (A = English) -> "requires a Profile": LOAD PROFILE above NEW
+#   PROFILE, cursor on LOAD (A) -> PROFILE 1 "BURNOUT" (A) -> "Load
+#   successful" (A) -> SELECT OPTION: WORLD TOUR (A) -> USA (A) -> Silver
+#   Lake (A) -> RACE (A) -> Compact Type 1 (A) -> RACE TRAINING video,
+#   about 110 s, which neither A nor START skipped -> rolling start.
+#
+# Player control was confirmed before the mark: RT held raised the speed
+# 41 -> 50 mph, and LX min / LX max yawed the car opposite ways. The
+# diagnostic frames (gas, steer-left, steer-right) are before the mark; the
+# measured window after it runs blind.
+#
+# The RACE TRAINING video is probably shown only until this profile finishes
+# a race; if a later run on the same profile lands in the race sooner, the
+# play pattern simply starts earlier.
+wait 23.5
+press A
+wait 8.4
+press START
+wait 6.4
+press A
+wait 5.1
+shot select-option
+wait 1.2
+press A
+wait 5.5
+press A
+wait 6.2
+shot load-successful
+wait 0.8
+mark profile-loaded
+wait 1.3
+press A
+wait 6.5
+press A
+wait 7.4
+press A
+wait 6.4
+press A
+wait 6.4
+press A
+wait 8.5
+press A
+wait 31.1
+shot race-training
+wait 84.0
+shot race-start
+wait 29.1
+shot nav
+wait 8.8
+axis RT max
+wait 4.1
+shot gas
+wait 1.4
+axis LX min
+wait 2.1
+shot steer-left
+wait 1.4
+axis LX mid
+wait 10.4
+axis LX max
+wait 2.1
+shot steer-right
+wait 2.5
+axis LX mid
+wait 20.7
+mark gameplay
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}

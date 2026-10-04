@@ -1,0 +1,54 @@
+# Burnout Revenge (45410076), Nova, RETURNING: a Burnout Revenge profile is
+# on the disk (the first-run route saved one). DRAFT by lane.routeprep,
+# 2026-09-26, not played.
+#
+# Evidence: pass 1 (0-0-y-1790433159-titleplay-p1-burnout-rev) for the way to
+# the SAVE/LOAD prompt, where Load Profile is already highlighted [seen
+# 075232]. Burnout 3's played returning route (routes/burnout3.returning.route)
+# for the rest: Load -> PROFILE 1 (A) -> "Load successful" (A) -> main menu.
+wait 55
+shot boot55
+wait 8
+mark booted
+press START                 # [seen] attract -> title
+wait 6
+shot title
+press START                 # [seen] title -> SAVE/LOAD prompt
+wait 6
+shot saveload               # expect Load Profile highlighted [seen 075232]
+press A                     # [seen] Load Profile
+wait 6
+shot profile-list           # [guess, Burnout 3] profile 1 highlighted
+press A
+wait 6
+shot load-ok                # [guess, Burnout 3] "Load successful"
+press A
+wait 6
+mark profile-loaded
+shot main-menu
+press A                     # [guess] World Tour
+wait 6
+shot tour
+press A                     # [guess] first event
+wait 6
+shot event
+press A
+wait 6
+shot car
+press A
+wait 30
+shot loading
+wait 30                     # the race-training video, if any, may be shown only until a race is finished
+shot pre-race
+wait 20
+shot grid
+mark gameplay               # [guess] placeholder: move to the first frame of the race with the HUD
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}

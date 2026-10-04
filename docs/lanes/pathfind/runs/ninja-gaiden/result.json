@@ -1,0 +1,41 @@
+{
+ "title_id": "5443000D",
+ "name": "Ninja Gaiden Black",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Ninja Gaiden Black.iso",
+ "result": "gameplay",
+ "tool": "ac2f20848a",
+ "started": "2026-10-02 10:17:27 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/040-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/040-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/040-probe-c.jpg"
+ ],
+ "minutes": 6.99,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/039-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/041-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/042-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/043-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/044-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/045-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/046-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/047-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/048-after.jpg"
+ ],
+ "model_calls": 33,
+ "calls_by_model": {
+  "claude-sonnet-5": 30,
+  "claude-opus-5-5": 3
+ },
+ "steps": 40,
+ "seconds": 458.9,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/frames/039-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 8,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/ninja-gaiden/strip.jpg"
+}

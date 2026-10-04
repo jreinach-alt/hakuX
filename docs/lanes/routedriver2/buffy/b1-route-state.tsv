@@ -1,0 +1,258 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.6	unknown	no-prev		41.1	0.47	wait (unknown)	032123-001-unknown.png	
+2.0	black	black		0.0	0.27	wait	032124-002-black.png	
+3.7	intro_video	moving	0.8866	86.2	0.57	press A (skip intro_video)	032128-003-intro_video.png	
+5.6	black	black		2.5	0.32	wait	032129-004-black.png	
+7.3	intro_video	moving	0.1664	11.0	0.42	press A (skip intro_video)	032131-005-intro_video.png	
+9.2	intro_video	moving	0.5301	37.6	0.47	press START (skip intro_video)		
+10.9	black	black		0.1	0.27	wait	032134-007-black.png	
+12.3	black	black		0.8	0.27	wait		
+13.6	black	black		1.8	0.27	wait		
+15.0	title	crop:title		14.9	0.37	press START (title 1)	032139-010-title.png	
+17.0	main_menu	crop:main-menu		32.5	0.57	press A (main_menu 1)	032141-011-main_menu.png	
+19.0	cutscene	moving	0.3554	23.4	0.42	press A (skip cutscene)	032143-012-cutscene.png	
+20.9	cutscene	moving	0.0852	23.9	0.42	press START (skip cutscene)		
+22.6	black	black		0.0	0.27	wait	032146-014-black.png	
+24.0	black	black		1.9	0.27	wait		
+25.3	black	black		0.1	0.27	wait		
+26.5	black	black		0.6	0.27	wait		
+27.8	black	black		0.0	0.27	wait		
+29.4	cutscene	moving	0.3114	12.6	0.57	press A (skip cutscene)	032153-019-cutscene.png	
+31.6	unknown	hud:hud+after-cutscene	0.3626	15.3	0.67	hold (hud up, motion not yet play)	032156-020-unknown.png	
+33.9	cutscene	moving	0.1174	13.3	0.67	press A (skip cutscene)	032158-021-cutscene.png	
+36.6	cutscene	moving	0.0991	11.9	0.67	press START (skip cutscene)		
+38.4	cutscene	moving	0.1463	12.5	0.37	press B (skip cutscene)		
+40.4	cutscene	moving	0.1467	12.0	0.57	press X (skip cutscene)		
+42.4	stalled	static+hud-recent	0.0	11.9	0.62	stall escape 1	032215-025-stalled.png	
+51.8	stalled	hud:hud+static	0.1168	12.9	0.62	stall escape 2		
+61.3	stalled	hud:hud+static	0.1468	15.3	0.67	stall escape 3		
+68.1	cutscene	moving	0.2995	21.7	0.72	press A (skip cutscene)	032234-028-cutscene.png	
+70.3	cutscene	moving	0.2294	22.9	0.67	press START (skip cutscene)		
+72.1	cutscene	moving	0.3103	14.5	0.37	press B (skip cutscene)		
+74.2	cutscene	moving	0.3112	23.2	0.72	press X (skip cutscene)		
+76.3	cutscene	moving	0.1739	22.2	0.67	press START+A (skip cutscene)		
+78.4	paused	crop:pause		21.5	0.42	press A (resume 1)	032244-033-paused.png	
+80.5	cutscene	moving	0.3501	23.6	0.67	press A (skip cutscene)	032247-034-cutscene.png	
+82.8	cutscene	moving	0.1961	18.4	0.67	press START (skip cutscene)		
+84.7	paused	crop:pause		22.2	0.47	settle	032250-036-paused.png	
+86.4	paused	crop:pause		25.9	0.52	press A (resume 1)		
+88.5	cutscene	moving	0.3562	18.4	0.67	press A (skip cutscene)	032255-038-cutscene.png	
+90.7	cutscene	moving	0.1059	17.8	0.67	press START (skip cutscene)		
+92.6	paused	crop:pause		22.7	0.42	settle	032258-040-paused.png	
+94.2	paused	crop:pause		24.0	0.47	press A (resume 1)		
+96.2	cutscene	moving	0.2929	17.8	0.67	press A (skip cutscene)	032302-042-cutscene.png	
+98.4	cutscene	moving	0.1004	17.5	0.67	press START (skip cutscene)		
+100.3	paused	crop:pause		21.8	0.47	settle	032307-044-paused.png	
+101.9	paused	crop:pause		23.2	0.47	press A (resume 1)		
+103.9	cutscene	moving	0.2671	17.5	0.67	press A (skip cutscene)	032311-046-cutscene.png	
+106.0	unknown	hud:hud+after-cutscene	0.2501	9.1	0.52	hold (hud up, motion not yet play)	032313-047-unknown.png	
+108.0	stalled	static+hud-recent	0.0446	8.3	0.52	stall escape 4	032323-048-stalled.png	
+117.4	black	black		5.8	0.42	wait	032324-049-black.png	
+119.0	black	black		5.9	0.47	wait		
+120.5	black	black		5.9	0.42	wait		
+122.0	black	black		5.9	0.47	wait		
+123.5	black	black		5.8	0.47	wait		
+124.9	black	black		5.9	0.42	wait		
+126.4	black	black		5.8	0.42	wait		
+127.9	black	black		5.9	0.47	wait		
+129.4	black	black		5.9	0.48	wait		
+130.9	black	black		7.0	0.47	wait		
+132.5	black	black		5.9	0.47	wait		
+134.0	black	black		5.9	0.47	wait		
+135.5	black	black		5.8	0.47	wait		
+137.0	black	black		5.9	0.47	wait		
+138.5	black	black		5.9	0.47	wait		
+139.9	black	black		5.8	0.37	wait		
+141.3	black	black		5.9	0.42	wait		
+142.8	black	black		5.9	0.42	wait		
+144.2	black	black		5.9	0.37	wait		
+145.7	black	black		5.9	0.47	wait		
+147.2	black	black		5.8	0.47	wait		
+148.7	black	black		5.8	0.47	wait		
+150.2	black	black		5.9	0.47	wait		
+151.7	black	black		5.9	0.43	wait		
+153.2	black	black		5.8	0.43	wait		
+154.6	black	black		5.9	0.43	wait		
+156.1	black	black		5.8	0.42	wait		
+157.6	black	black		5.8	0.42	wait		
+159.1	black	black		5.9	0.47	wait		
+160.5	black	black		5.9	0.42	wait		
+162.0	black	black		5.9	0.42	wait		
+163.4	black	black		5.9	0.42	wait		
+164.9	black	black		5.8	0.47	wait		
+166.4	black	black		5.8	0.42	wait		
+167.8	black	black		5.9	0.42	wait		
+169.3	black	black		5.8	0.42	wait		
+170.7	black	black		5.8	0.42	wait		
+172.2	black	black		5.9	0.42	wait		
+173.6	black	black		5.8	0.42	wait		
+175.1	black	black		5.9	0.42	wait		
+176.5	black	black		5.9	0.42	wait		
+178.0	black	black		5.9	0.42	wait		
+179.4	black	black		5.9	0.42	wait		
+180.9	black	black		5.9	0.42	wait		
+182.4	black	black		5.8	0.42	wait		
+183.9	black	black		5.9	0.47	wait		
+185.3	black	black		5.8	0.42	wait		
+186.8	black	black		5.9	0.47	wait		
+188.3	black	black		5.8	0.47	wait		
+189.8	black	black		5.8	0.42	wait		
+191.2	black	black		7.0	0.42	wait		
+192.7	black	black		5.9	0.42	wait		
+194.2	black	black		5.9	0.47	wait		
+195.8	black	black		5.8	0.52	wait		
+197.3	black	black		5.9	0.47	wait		
+198.8	black	black		5.8	0.42	wait		
+200.2	black	black		5.9	0.42	wait		
+201.8	black	black		5.8	0.52	wait		
+203.2	black	black		5.9	0.42	wait		
+204.7	black	black		5.9	0.47	wait		
+206.2	black	black		5.9	0.47	wait		
+207.7	black	black		5.9	0.42	wait		
+209.2	black	black		5.8	0.43	wait		
+210.6	black	black		5.9	0.42	wait		
+212.1	black	black		5.9	0.47	wait		
+213.6	black	black		5.8	0.42	wait		
+215.0	black	black		5.9	0.42	wait		
+216.5	black	black		5.8	0.42	wait		
+217.9	black	black		5.9	0.37	wait		
+219.4	black	black		5.9	0.47	wait		
+220.8	black	black		5.9	0.42	wait		
+222.3	black	black		5.9	0.42	wait		
+223.7	black	black		5.8	0.42	wait		
+225.2	black	black		5.9	0.42	wait		
+226.6	black	black		5.9	0.42	wait		
+228.1	black	black		5.9	0.42	wait		
+229.6	black	black		5.8	0.42	wait		
+231.0	black	black		5.9	0.42	wait		
+232.5	black	black		5.9	0.42	wait		
+233.9	black	black		5.9	0.42	wait		
+235.4	black	black		5.9	0.47	wait		
+236.9	black	black		5.9	0.47	wait		
+238.4	black	black		5.9	0.42	wait		
+239.9	black	black		5.9	0.47	wait		
+241.3	black	black		5.8	0.42	wait		
+242.8	black	black		5.8	0.42	wait		
+244.3	black	black		5.9	0.47	wait		
+245.8	black	black		5.9	0.47	wait		
+247.2	black	black		5.9	0.42	wait		
+248.7	black	black		5.9	0.42	wait		
+250.1	black	black		5.8	0.42	wait		
+251.6	black	black		5.9	0.42	wait		
+253.1	black	black		5.9	0.47	wait		
+254.5	black	black		5.9	0.42	wait		
+256.0	black	black		5.9	0.42	wait		
+257.5	black	black		5.8	0.47	wait		
+259.0	black	black		5.9	0.42	wait		
+260.5	black	black		5.9	0.47	wait		
+261.9	black	black		5.8	0.42	wait		
+263.4	black	black		5.9	0.42	wait		
+264.8	black	black		5.8	0.42	wait		
+266.3	black	black		5.9	0.42	wait		
+267.8	black	black		5.9	0.47	wait		
+269.3	black	black		5.8	0.47	wait		
+270.7	black	black		5.9	0.42	wait		
+272.2	black	black		5.8	0.42	wait		
+273.7	black	black		5.9	0.42	wait		
+275.1	black	black		5.9	0.42	wait		
+276.6	black	black		5.8	0.43	wait		
+278.0	black	black		5.9	0.42	wait		
+279.5	black	black		5.8	0.42	wait		
+280.9	black	black		5.9	0.42	wait		
+282.4	black	black		5.8	0.42	wait		
+283.8	black	black		5.8	0.42	wait		
+285.3	black	black		5.9	0.47	wait		
+286.9	black	black		5.8	0.47	wait		
+288.3	black	black		5.9	0.42	wait		
+289.8	black	black		5.9	0.47	wait		
+291.4	black	black		5.8	0.52	wait		
+292.9	black	black		5.9	0.47	wait		
+294.4	black	black		5.8	0.42	wait		
+295.8	black	black		5.9	0.42	wait		
+297.3	black	black		5.9	0.42	wait		
+298.7	black	black		5.8	0.42	wait		
+300.2	black	black		5.9	0.42	wait		
+301.7	black	black		5.8	0.42	wait		
+303.1	black	black		5.9	0.42	wait		
+304.6	black	black		5.9	0.47	wait		
+306.1	black	black		5.8	0.42	wait		
+307.6	black	black		5.9	0.47	wait		
+309.1	black	black		5.8	0.42	wait		
+310.5	black	black		5.9	0.42	wait		
+312.0	black	black		5.8	0.47	wait		
+313.5	black	black		5.9	0.47	wait		
+315.0	black	black		5.8	0.47	wait		
+316.5	black	black		5.9	0.42	wait		
+317.9	black	black		5.9	0.42	wait		
+319.4	black	black		5.8	0.42	wait		
+320.8	black	black		5.9	0.42	wait		
+322.3	black	black		7.0	0.47	wait		
+323.8	black	black		5.9	0.47	wait		
+325.3	black	black		5.8	0.47	wait		
+326.8	black	black		7.1	0.42	wait		
+328.3	black	black		5.9	0.42	wait		
+329.7	black	black		5.9	0.42	wait		
+331.2	black	black		5.9	0.42	wait		
+332.6	black	black		5.9	0.42	wait		
+334.1	black	black		5.9	0.42	wait		
+335.5	black	black		5.8	0.42	wait		
+337.0	black	black		5.9	0.42	wait		
+338.4	black	black		5.8	0.42	wait		
+339.9	black	black		5.9	0.42	wait		
+341.3	black	black		5.9	0.42	wait		
+342.8	black	black		5.9	0.42	wait		
+344.3	black	black		5.9	0.43	wait		
+345.7	black	black		7.1	0.42	wait		
+347.2	black	black		5.9	0.42	wait		
+348.6	black	black		5.9	0.42	wait		
+350.1	black	black		5.9	0.47	wait		
+351.6	black	black		7.1	0.47	wait		
+353.1	black	black		5.9	0.42	wait		
+354.5	black	black		5.8	0.42	wait		
+356.0	black	black		5.9	0.47	wait		
+357.5	black	black		7.1	0.47	wait		
+359.1	black	black		5.9	0.47	wait		
+360.6	black	black		5.8	0.47	wait		
+362.0	black	black		5.9	0.42	wait		
+363.5	black	black		5.9	0.42	wait		
+364.9	black	black		5.9	0.37	wait		
+366.3	black	black		5.9	0.42	wait		
+367.8	black	black		5.9	0.42	wait		
+369.3	black	black		5.9	0.47	wait		
+370.7	black	black		5.9	0.42	wait		
+372.2	black	black		5.9	0.42	wait		
+373.6	black	black		5.8	0.42	wait		
+375.1	black	black		5.9	0.42	wait		
+376.6	black	black		5.9	0.47	wait		
+378.0	black	black		5.8	0.42	wait		
+379.5	black	black		5.9	0.42	wait		
+380.9	black	black		5.9	0.42	wait		
+382.4	black	black		5.9	0.42	wait		
+383.8	black	black		5.9	0.42	wait		
+385.3	black	black		5.9	0.47	wait		
+386.8	black	black		5.8	0.47	wait		
+388.4	black	black		5.9	0.47	wait		
+389.8	black	black		5.9	0.42	wait		
+391.3	black	black		5.9	0.47	wait		
+392.8	black	black		5.9	0.42	wait		
+394.2	black	black		5.8	0.42	wait		
+395.7	black	black		5.9	0.47	wait		
+397.2	black	black		5.8	0.42	wait		
+398.6	black	black		5.9	0.42	wait		
+400.1	black	black		5.9	0.42	wait		
+401.6	black	black		5.8	0.42	wait		
+403.1	black	black		5.8	0.47	wait		
+404.5	black	black		5.8	0.42	wait		
+406.0	black	black		5.9	0.42	wait		
+407.4	black	black		5.8	0.42	wait		
+408.9	black	black		5.8	0.42	wait		
+410.4	black	black		5.9	0.47	wait		
+411.9	black	black		5.8	0.47	wait		
+413.3	black	black		5.9	0.42	wait		
+414.9	black	black		5.9	0.48	wait		
+416.4	black	black		5.9	0.47	wait		
+417.9	black	black		5.9	0.48	wait		
+419.4	black	black		5.9	0.42	wait		
+# time_to_title_s=15.0
+# time_to_play_s=
+# result=window-done

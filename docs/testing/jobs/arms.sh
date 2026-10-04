@@ -65,7 +65,7 @@ A="$WORK/arms"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
 . "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
-mkdir -p "$A"/{expect,pairs,judged,skipped,log,incomplete} "$WORK/logs/arms"
+mkdir -p "$A"/{expect,pairs,judged,skipped,log,incomplete,refused} "$WORK/logs/arms"
 LOG="$WORK/logs/arms/tick.log"
 # The tick log is read by hand when something jams, so it is display: local.
 say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
@@ -325,7 +325,7 @@ for rj in glob.glob(os.path.join(sys.argv[1], "results", "*", "request.json")):
     if os.path.exists(os.path.join(os.path.dirname(rj), "ERROR")):
         continue                       # an ERRORed result is not a run
     if os.path.exists(os.path.join(os.path.dirname(rj), "VOIDED")):
-        continue                       # nor is one an INCOMPLETE verdict voided
+        continue                       # nor is one an INCOMPLETE or REFUSED pair voided
     try:
         r = json.load(open(rj))
     except Exception:
@@ -420,6 +420,26 @@ post() {   # <pr> <issue> <body-file>
     if [ -n "$1" ]; then gh pr comment "$1" --repo "$GH_REPO" --body-file "$3" >/dev/null 2>&1 && return 0; fi
     if [ -n "$2" ]; then gh issue comment "$2" --repo "$GH_REPO" --body-file "$3" >/dev/null 2>&1 && return 0; fi
     return 1
+}
+# RELEASE PRIORITY (#432). A prediction whose issue carries the release label
+# is queued with HAKUX_RELEASE_PRIO=1, which request.sh turns into a `1-` id
+# prefix: served after probes and host-promoted heads, ahead of every other
+# request. One label read per prediction; the issue field may list several
+# ("88,91"), and any one labelled is enough. A failed read is logged and the
+# arm queues at normal priority -- a label is never a reason to refuse an arm.
+# ab_run.sh carries the same reader; change both.
+RELEASE_LABEL="${HAKUX_RELEASE_LABEL:-0.5}"
+release_prio() {   # <issue field> -> "1" or nothing; always exits 0
+    local n labels
+    [ -z "${HAKUX_RELEASE_PRIO:-}" ] || { echo 1; return 0; }
+    for n in $(printf '%s' "$1" | tr ',#' '  '); do
+        [[ "$n" =~ ^[0-9]+$ ]] || continue
+        if ! labels=$(gh api "repos/$GH_REPO/issues/$n" --jq '.labels[].name' 2>/dev/null); then
+            say "  release priority: could not read #$n's labels; queued at normal priority" >&2; continue
+        fi
+        grep -qxF -- "$RELEASE_LABEL" <<<"$labels" && { echo 1; return 0; }
+    done
+    return 0
 }
 # A REFUSAL FROM request.sh IS TOLD TO THE LANE, ONCE. request.sh's gates
 # (every key must name a golden, the composition rules, the ref must resolve)
@@ -550,10 +570,15 @@ skip() {   # <sha> <expect-path> <source> <reason>
 # predictions -- bc7ccef95d took two quadratics out of this file and the tick
 # is 11s.
 LABEL_INDEX="$A/log/label-index.tsv"
-build_label_index() {   # sha, branch, issue, prediction, registered, queued, a_ref, b_ref
-    python3 - "$A" > "$LABEL_INDEX" <<'PY'
+build_label_index() {   # sha, branch, issue, prediction, registered, queued, a_ref, b_ref, device A, device B
+    python3 - "$A" "$D" > "$LABEL_INDEX" <<'PY'
 import glob, json, os, sys
-A = sys.argv[1]
+A, D = sys.argv[1:3]
+def dev(rid):                              # the device an arm ran on, "" when no result.json says
+    try:
+        return str(json.load(open(os.path.join(D, "results", rid, "result.json"))).get("device_label") or "").strip()
+    except Exception:
+        return ""
 for pj in sorted(glob.glob(os.path.join(A, "pairs", "*.json"))):
     if pj.endswith(".verdict.json"):
         continue                          # ab_compare's own output, not a pair
@@ -577,7 +602,8 @@ for pj in sorted(glob.glob(os.path.join(A, "pairs", "*.json"))):
     q = str(p.get("queued_utc") or "")
     print("\t".join([sha, branch, str(p.get("issue") or "").strip(),
                      pred or src, reg or q, q,
-                     str(p.get("a_ref") or ""), str(p.get("b_ref") or "")]))
+                     str(p.get("a_ref") or ""), str(p.get("b_ref") or ""),
+                     dev(str(p.get("id_a") or "")), dev(str(p.get("id_b") or ""))]))
 PY
 }
 # ------------------------------------------- a FAIL whose code is gone
@@ -672,9 +698,9 @@ except Exception:
     lines = []
 for line in lines:
     f = line.split("\t")
-    if len(f) != 8:
+    if len(f) != 10:
         continue
-    sha, br, issue, pred, when, queued, a_ref, b_ref = f
+    sha, br, issue, pred, when, queued, a_ref, b_ref, dev_a, dev_b = f
     if br != branch:
         continue
     if sha == ovr_sha:
@@ -695,7 +721,8 @@ for line in lines:
     if cls is None:
         continue
     rows.append({"sha": sha, "issue": issue, "pred": pred, "when": when,
-                 "queued": queued, "cls": cls, "a": a_ref, "b": b_ref})
+                 "queued": queued, "cls": cls, "a": a_ref, "b": b_ref,
+                 "dev_a": dev_a, "dev_b": dev_b})
 
 # A VERDICT IS THE PR'S, NOT THE BRANCH NAME'S. The index keys a pair on the
 # branch it was collected from, and a branch name outlives its PR: lane.remote
@@ -726,6 +753,18 @@ for r in rows:
         gone.append(r)
 rows = [r for r in rows if not r["gone"]]
 
+# A CONFOUNDED FAIL leaves the decision too. Its two arms ran on two devices,
+# and ab_compare says so in the verdict: "A leg that FAILS is NOT attributable
+# -- a device difference has the same signature as the defect". Counting it
+# labelled #583 `regressed` on 2026-09-28 from a Stencil capture that differs
+# by device. It neither counts nor supersedes; the judge loop queues ONE
+# same-device re-run, and that verdict is the one that counts. A PASS across
+# two devices still counts: a hold across a device change is the stronger
+# claim. An arm with no device_label on record is not called confounded --
+# that is "unknown", and unknown keeps the FAIL, as everything here does.
+conf = [r for r in rows if r["cls"] == "FAIL" and r["dev_a"] and r["dev_b"] and r["dev_a"] != r["dev_b"]]
+rows = [r for r in rows if r not in conf]
+
 groups = {}
 for r in rows:
     r["key"] = ("#" + r["issue"]) if r["issue"] else r["pred"]
@@ -751,15 +790,21 @@ def name(r):
 # grep it; then the same in prose inside the markdown below.
 for r in sorted(gone, key=lambda r: (r["when"], r["sha"])):
     print("withdrawn %s" % name(r))
+for r in sorted(conf, key=lambda r: (r["when"], r["sha"])):
+    print("confounded %s (A %s, B %s)" % (name(r), r["dev_a"], r["dev_b"]))
 wd = ["- `%s` FAILED, and is **withdrawn**: `%s` no longer changes %s against `%s`, the code "
       "its b_ref `%s` changed against its a_ref `%s`. The code the arm refuted is gone from the "
       "branch, so the FAIL is about nothing on it. The verdict comment stands as measured."
       % (name(r), branch, ", ".join("`%s`" % f for f in r["gone"]), base.split("/")[-1] or "the trunk",
          r["b"], r["a"]) for r in sorted(gone, key=lambda r: (r["when"], r["sha"]))]
+cf = ["- `%s` FAILED with its arms on two devices (A %s, B %s), and is **confounded**: a device "
+      "difference has the same signature as a defect, so the FAIL is not attributable and does not "
+      "count. The arms job queues one same-device re-run of the pair; its verdict is the one that counts."
+      % (name(r), r["dev_a"], r["dev_b"]) for r in sorted(conf, key=lambda r: (r["when"], r["sha"]))]
 if state == "none":
-    if wd:
-        print("\n".join(["**PR label: no verdict counts** -- every judged verdict on `%s` is withdrawn." % branch, ""]
-                        + wd + ["", "Recompute from the verdicts on disk with `arms.sh state %s`." % branch]))
+    if wd or cf:
+        print("\n".join(["**PR label: no verdict counts** -- every judged verdict on `%s` is withdrawn or confounded." % branch, ""]
+                        + wd + cf + ["", "Recompute from the verdicts on disk with `arms.sh state %s`." % branch]))
     sys.exit(0)                            # nothing judged on this branch that still counts
 
 out = []
@@ -787,6 +832,8 @@ if cleared:
                                               "issue (%s)" % r["key"] if r["issue"] else "prediction"))
 if wd:
     out += [""] + wd
+if cf:
+    out += [""] + cf
 out += ["", "Recompute from the verdicts on disk with `arms.sh state %s`." % branch]
 print("\n".join(out))
 PY
@@ -843,11 +890,35 @@ while read -r sha path src; do
     # --runs "" and its JSON writer died on int(""): the very first arm the
     # job ever queued (#89, 02:56Z) was refused for that and nothing else.
     runs=$(field "$path" runs_per_arm); [[ "$runs" =~ ^[0-9]+$ ]] && [ "$runs" -ge 1 ] || runs=1
-    say "queue $src: $name #$issue a=$a b=$b suites=[$suites]$comp runs=$runs"
-    qa=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --runs "$runs" \
+    prio=$(release_prio "$issue")
+    # THE PAIR'S DEVICE IS CHOSEN HERE, ONCE, FROM THE WORK AHEAD OF IT.
+    # Left unpinned, affinity.py rule 3 hashes the prediction's name over the
+    # handhelds without looking at the queue: on 2026-09-27 forza414's pair
+    # hashed to the nova behind nine nova-pinned soaks (~2 h) while the thor
+    # served idle-tier sweep legs, and waited 94 min for a hand re-pin.
+    # `--choose` prices what sorts ahead of this pair's id prefix on each
+    # pooled device and names the lighter one; both arms carry it, so no
+    # worker ever has to agree with another. Empty (one device or none
+    # serving) leaves the pair to affinity.py as before.
+    #
+    # ONE SERVING DEVICE IS DELIBERATELY NOT PINNED (lane.affinitybatt,
+    # 09-29). The ibcache/gpl569/tcg424flip pairs of 09-28 were queued this
+    # way and then hashed to a nova that refused them on battery for 8-14 h.
+    # A pin to the lone device would buy nothing now -- with one pooled
+    # device rule 3 leaves the pair free and that device takes it -- and
+    # would cost the balance later: when the other handheld comes back, a
+    # pin keeps the pair behind whatever queued on the first (#502's
+    # stall), while the unpinned pair is decided at claim time by rule 3,
+    # which now also passes over a device refusing it on battery. The stall
+    # was the hash's blindness to the battery gate, and that is fixed in
+    # affinity.py, where every free request gets it, not only the arms'.
+    pin=$(python3 "$T/affinity.py" "$D" --choose "$(basename "$path")" "${prio:+1-}$(date +%s)" 2>/dev/null)
+    pinarg=(); [ -z "$pin" ] || pinarg=(--device "$pin")
+    say "queue $src: $name #$issue a=$a b=$b suites=[$suites]$comp runs=$runs${prio:+ release-prio}${pin:+ device=$pin}"
+    qa=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" ${narrow[@]+"${narrow[@]}"} ${pinarg[@]+"${pinarg[@]}"} --runs "$runs" \
             --expect "$path" --purpose "BASE arm ${issue:+#$issue }$who at $a, queued by the arms job from $src" 2>"$A/log/$sha.base.err") \
         || { refused "$sha" "$src" "$issue" base "$A/log/$sha.base.err"; continue; }
-    qb=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --runs "$runs" \
+    qb=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" ${narrow[@]+"${narrow[@]}"} ${pinarg[@]+"${pinarg[@]}"} --runs "$runs" \
             --expect "$path" --purpose "FIX arm ${issue:+#$issue }$who at $b, queued by the arms job from $src" 2>"$A/log/$sha.fix.err") \
         || { refused "$sha" "$src" "$issue" "fix (the base arm ${qa##* } is queued and will run unpaired)" "$A/log/$sha.fix.err"; continue; }
     ida="${qa##* }"; idb="${qb##* }"
@@ -868,8 +939,157 @@ PY
 done < <(collect)
 [ "$mode" = list ] && { echo "--- $history prediction(s) older than the watermark $SINCE were not considered (edit $A/since to move it)"; echo "--- skipped (delete $A/skipped/<sha> to reconsider):"; for f in "$A"/skipped/*; do [ -e "$f" ] && echo "  $(basename "$f") $(tr '\n' ' ' < "$f")"; done; exit 0; }
 
+# ------------------------------------------- a FAIL across two devices
+#
+# A FAIL WHOSE ARMS RAN ON TWO DEVICES IS CONFOUNDED, NOT A REGRESSION.
+# ab_compare prints "DEVICES DIFFER ... A leg that FAILS is NOT attributable"
+# and this job used to label the PR `regressed` anyway: #583 (the #414 Forza
+# fix, critical path) sat `regressed` from 2026-09-28 22:54 PDT on a Stencil
+# capture that is bimodal by device, base on the thor and fix on the nova,
+# and nothing queued the same-device pair the verdict itself asked for.
+#
+# So label_decide drops it (it neither counts nor supersedes), and this queues
+# ONE re-run of the whole pair with a HARD pin (request.sh --hard-pin, which
+# affinity.py honours absolutely) to the device the base arm ran on -- or, if
+# that device is gone (neither serving nor held), to CHOOSE's pick. The pair
+# record keeps the confounded ids under "confounded" and the re-run under
+# "rerun"; "rerun" present means it has been tried and is never tried again,
+# refused or not. The re-run's verdict is judged like any other.
+arm_dev() {   # <result dir> -> its device_label, or nothing
+    python3 -c 'import json,sys
+try: print(str(json.load(open(sys.argv[1]+"/result.json")).get("device_label") or "").strip())
+except Exception: pass' "$1"
+}
+has_rerun() { python3 -c 'import json,sys; sys.exit(0 if "rerun" in json.load(open(sys.argv[1])) else 1)' "$1" 2>/dev/null; }
+samedev_rerun() {   # <pair.json> <verdict> <device A> <device B> -> "<ida> <idb> <device>"; 1 if not queued
+    local pair=$1 verdict=$2 da=$3 db=$4 sha path src who issue a b suites skips onlys runs prio name dev qa qb err
+    sha=$(field "$pair" sha); path=$(field "$pair" expect); src=$(field "$pair" source)
+    who=$(field "$pair" who); issue=$(field "$pair" issue); a=$(field "$pair" a_ref); b=$(field "$pair" b_ref)
+    suites=$(field "$pair" suites)
+    dev=$da; err="$A/log/$sha.samedev.err"; : > "$err"
+    python3 "$T/affinity.py" "$D" --available "$dev" 2>/dev/null \
+        || dev=$(python3 "$T/affinity.py" "$D" --choose "$(basename "$path")" "$(date +%s)" 2>/dev/null)
+    local rnarrow=() ida="" idb="" newer
+    # A later registration on the same issue (or prediction) on this branch
+    # supersedes this verdict whatever the re-run would say, so the re-run
+    # would spend two arms on a verdict that cannot count. #583 is that case:
+    # forzadecay414-fix-pixels2.json was registered after the confounded one.
+    newer=$(python3 - "$LABEL_INDEX" "$sha" <<'PY'
+import sys
+rows = [l.split("\t") for l in open(sys.argv[1]).read().splitlines()]
+rows = [f for f in rows if len(f) >= 8]
+me = [f for f in rows if f[0] == sys.argv[2]]
+if me:
+    m = me[0]
+    key = lambda f: ("#" + f[2]) if f[2] else f[3]
+    later = [f for f in rows if f[1] == m[1] and key(f) == key(m) and (f[4], f[5], f[0]) > (m[4], m[5], m[0])]
+    if later:
+        print(max(later, key=lambda f: (f[4], f[5], f[0]))[3].rsplit("/", 1)[-1])
+PY
+)
+    if [ -n "$newer" ]; then
+        echo "not needed: $newer was registered later against the same issue and supersedes this verdict" > "$err"
+    elif [ -z "$dev" ]; then
+        echo "no device to pin to: $da is gone and CHOOSE named none" > "$err"
+    elif [ ! -f "$path" ] || [ -z "$a" ] || [ -z "$b" ] || [ -z "$suites" ]; then
+        echo "the pair record lacks its prediction, refs or suites" > "$err"
+    else
+        skips=$(disc_list "$path" skip_tests); onlys=$(disc_list "$path" only_tests)
+        [ -z "$skips" ] || rnarrow+=(--skip-tests "$skips")
+        [ -z "$onlys" ] || rnarrow+=(--only-tests "$onlys")
+        runs=$(field "$path" runs_per_arm); [[ "$runs" =~ ^[0-9]+$ ]] && [ "$runs" -ge 1 ] || runs=1
+        prio=$(release_prio "$issue")
+        name=$(echo "${who:-arm}" | sed 's/^lane\.//; s/[^A-Za-z0-9_-]/_/g' | cut -c1-24)
+        qa=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" ${rnarrow[@]+"${rnarrow[@]}"} --device "$dev" --hard-pin --runs "$runs" \
+                --expect "$path" --purpose "BASE arm ${issue:+#$issue }$who at $a, same-device re-run on $dev of a pair confounded across $da/$db, queued by the arms job from $src" 2>>"$err") && ida="${qa##* }"
+        if [ -n "$ida" ]; then
+            qb=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" ${rnarrow[@]+"${rnarrow[@]}"} --device "$dev" --hard-pin --runs "$runs" \
+                    --expect "$path" --purpose "FIX arm ${issue:+#$issue }$who at $b, same-device re-run on $dev of a pair confounded across $da/$db, queued by the arms job from $src" 2>>"$err") && idb="${qb##* }"
+        fi
+    fi
+    python3 - "$pair" "$verdict" "$da" "$db" "$dev" "$ida" "$idb" "$(tail -3 "$err" | tr '\n' ' ')" <<'PY'
+import json, sys, datetime
+p, verdict, da, db, dev, ida, idb, err = sys.argv[1:]
+j = json.load(open(p))
+j.setdefault("confounded", []).append({"id_a": j.get("id_a"), "id_b": j.get("id_b"), "device_a": da,
+                                       "device_b": db, "verdict": verdict})
+now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+if ida and idb:
+    j["rerun"] = {"device": dev, "id_a": ida, "id_b": idb, "queued_utc": now}
+    j["id_a"], j["id_b"] = ida, idb
+else:
+    j["rerun"] = {"not_queued": err or "not queued", "id_a": ida, "tried_utc": now}
+json.dump(j, open(p, "w"), indent=2)
+PY
+    [ -n "$ida" ] && [ -n "$idb" ] || return 1
+    # The confounded pair's verdict files stay readable under their old ids.
+    local old; old=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["confounded"][-1]["id_a"])' "$pair")
+    for x in verdict.txt verdict.json; do
+        [ -f "$A/pairs/$sha.$x" ] && mv -f "$A/pairs/$sha.$x" "$A/pairs/$sha.confounded-$old.$x"
+    done
+    echo "$ida $idb $dev"
+}
+# The comment and the label for a confounded FAIL, from either caller.
+tell_confounded() {   # <pair> <verdict> <da> <db> <rerun "ida idb dev" or ""> <verdict text file>
+    local pair=$1 verdict=$2 da=$3 db=$4 rr=$5 vtxt=$6 sha src who issue pr dec state body
+    sha=$(field "$pair" sha); src=$(field "$pair" source); who=$(field "$pair" who); issue=$(field "$pair" issue)
+    pr=$(pr_for "$src"); dec="$A/pairs/$sha.label.md"; body="$A/pairs/$sha.comment.md"
+    label_decide "${src%%:*}" > "$dec"
+    state=$(sed -n '1s/^STATE=//p' "$dec")
+    {
+        if [ -n "$rr" ]; then
+            set -- $rr
+            echo "[job.arms] CONFOUNDED FAIL (A $da, B $db): not attributable; same-device pair queued as $1 $2 (hard-pinned to $3)"
+        else
+            echo "[job.arms] CONFOUNDED FAIL (A $da, B $db): not attributable; no same-device pair queued: $(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("rerun",{}).get("not_queued","already re-run once"))' "$pair")"
+        fi
+        echo
+        echo "The two arms of \`${src#*:}\` (sha256 \`${sha:0:12}\`) ran on two devices, so this FAIL cannot tell the change from the device. It does not count toward the PR label and supersedes nothing. The same-device pair's verdict is the one that counts."
+        echo
+        echo "| | |"; echo "|---|---|"
+        echo "| who / issue | $who ${issue:+/ #$issue} |"
+        echo "| verdict | $verdict |"
+        if [ -n "$pr" ] && [ "${state:-none}" != none ]; then echo; sed '1d; /^withdrawn /d; /^confounded /d' "$dec"; fi
+        if [ -f "$vtxt" ]; then
+            echo; echo "<details><summary>ab_compare output (first 80 lines)</summary>"
+            echo; echo '```'; head -80 "$vtxt"; echo '```'; echo "</details>"
+        fi
+    } > "$body"
+    post "$pr" "$issue" "$body" || say "  could not post the confounded verdict for $sha anywhere"
+    if [ -n "$pr" ]; then
+        case "$state" in
+            verified)  label_add "$pr" verified  && label_rm "$pr" regressed || say "  WARNING: #$pr could not be labelled verified" ;;
+            regressed) label_add "$pr" regressed && label_rm "$pr" verified  || say "  WARNING: #$pr could not be labelled regressed" ;;
+            *)         label_rm "$pr" regressed || say "  WARNING: #$pr's only FAIL is confounded but regressed could not be removed" ;;
+        esac
+    fi
+    say "confounded $sha: $verdict (A $da, B $db)${rr:+; same-device pair $rr}${pr:+, PR #$pr -> ${state:-no label}}"
+}
+
 # ------------------------------------------------------------------- judge
 build_label_index          # once, here: every decision below reads this file
+# A confounded FAIL judged BEFORE this rule existed (or by a tick that could
+# not queue) is found here, once: judged FAIL, arms on two devices, no "rerun"
+# in its pair record. Its judged marker goes when the re-run is queued, so the
+# judge loop below picks the new pair up like any other.
+for pair in "$A"/pairs/*.json; do
+    case "$pair" in *.verdict.json|*.confounded-*) continue ;; esac
+    [ -f "$pair" ] || continue
+    sha=$(field "$pair" sha); [ -f "$A/judged/$sha" ] || continue
+    grep -q FAIL "$A/judged/$sha" || continue
+    has_rerun "$pair" && continue
+    da=$(arm_dev "$D/results/$(field "$pair" id_a)"); db=$(arm_dev "$D/results/$(field "$pair" id_b)")
+    [ -n "$da" ] && [ -n "$db" ] && [ "$da" != "$db" ] || continue
+    verdict=$(head -1 "$A/judged/$sha")
+    vtxt="$A/pairs/$sha.verdict.txt"
+    if rr=$(samedev_rerun "$pair" "$verdict" "$da" "$db"); then
+        vtxt="$A/pairs/$sha.confounded-$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["confounded"][-1]["id_a"])' "$pair").verdict.txt"
+        rm -f "$A/judged/$sha"
+    else
+        rr=""
+    fi
+    tell_confounded "$pair" "$verdict" "$da" "$db" "$rr" "$vtxt"
+done
 for pair in "$A"/pairs/*.json; do
     [ -f "$pair" ] || continue
     sha=$(field "$pair" sha); [ -f "$A/judged/$sha" ] && continue
@@ -894,6 +1114,65 @@ for pair in "$A"/pairs/*.json; do
     out="$A/pairs/$sha.verdict.txt"
     (cd "$REPO" && DISPATCH_DIR="$D" python3 "$T/ab_compare.py" --a "$RA" --b "$RB" --expect "$exp" --json "$A/pairs/$sha.verdict.json") > "$out" 2>&1
     verdict=$(grep -m1 '^VERDICT:' "$out" || echo "VERDICT: (none printed; see the full output)")
+    # A REFUSED PAIR WAS NEVER COMPARED, SO IT IS AN ARM ERROR, NOT A VERDICT.
+    # ab_compare's die() prints `REFUSED:` and no VERDICT line when an arm
+    # cannot be scored at all -- a run without progress_log_proof above all,
+    # whose own text says "Requeue the arm". This fell through to the
+    # "(none printed)" string and was judged forever, with both results still
+    # clean in the RAN walk, so not even the ARM ERROR comment's manual
+    # recovery could queue it: #583's fix arm timed out twice on 09-29 and
+    # waited on a person to touch VOIDED by hand. Both halves are voided; the
+    # first REFUSED drops its pair record so the next tick queues it again,
+    # once, like INCOMPLETE; a second is final (a title that always drops the
+    # device would otherwise spend a device run every tick). No label moves.
+    refused=$(grep -q '^VERDICT:' "$out" || grep -m1 '^REFUSED:' "$out")
+    if [ -n "$refused" ]; then
+        if [ -f "$A/refused/$sha" ]; then
+            note="This is this prediction's second REFUSED, so it is not queued again. Fix what the refusal names, then register the prediction again (any edit changes its sha), or delete \`\$WORK/arms/judged/$sha\` and \`\$WORK/arms/pairs/$sha.json\` to have the job queue it once more."
+        else
+            note="Not a verdict, and no label moves on it. Both results are marked VOIDED and the pair is queued again on the next tick, once; a second REFUSED is final."
+        fi
+        {
+            echo "[job.arms] ${refused:0:300}"
+            echo
+            echo "| | |"; echo "|---|---|"
+            echo "| prediction | \`$src\` (sha256 \`${sha:0:12}\`) |"
+            echo "| who / issue | $who ${issue:+/ #$issue} |"
+            echo "| a_ref (base) | \`$(field "$pair" a_ref)\` result \`$ida\` |"
+            echo "| b_ref (fix) | \`$(field "$pair" b_ref)\` result \`$idb\` |"
+            echo "| refused | $(say_time_s) by ab_compare.py on the host; full text in \`\$WORK/arms/pairs/$sha.verdict.txt\` |"
+            echo; echo "$note"
+            echo
+            echo "<details><summary>ab_compare output (first 80 lines)</summary>"
+            echo; echo '```'; head -80 "$out"; echo '```'; echo "</details>"
+        } > "$body"
+        post "$(pr_for "$src")" "$issue" "$body" || say "  could not post the REFUSED for $sha anywhere"
+        : > "$RA/VOIDED"; : > "$RB/VOIDED"
+        if [ -f "$A/refused/$sha" ]; then
+            echo "REFUSED" > "$A/judged/$sha"; say "judged $sha: REFUSED again, final ($src)"
+        else
+            echo "$refused" > "$A/refused/$sha"; rm -f "$pair"
+            say "judged $sha: REFUSED, results voided, the pair re-queued once ($src)"
+        fi
+        continue
+    fi
+    case "$verdict" in
+        *FAIL*)
+            da=$(arm_dev "$RA"); db=$(arm_dev "$RB")
+            if [ -n "$da" ] && [ -n "$db" ] && [ "$da" != "$db" ]; then
+                if ! has_rerun "$pair" && rr=$(samedev_rerun "$pair" "$verdict" "$da" "$db"); then
+                    tell_confounded "$pair" "$verdict" "$da" "$db" "$rr" \
+                        "$A/pairs/$sha.confounded-$ida.verdict.txt"
+                    continue            # no judged marker: the re-run is this pair now
+                fi
+                # Already re-run once (a hard pin should not split, but if it
+                # did, it is not re-run again), or the re-run was refused: the
+                # verdict is final, and label_decide keeps it out of the label.
+                echo "$verdict" > "$A/judged/$sha"
+                tell_confounded "$pair" "$verdict" "$da" "$db" "" "$out"
+                continue
+            fi ;;
+    esac
     pr=$(pr_for "$src")
     # The PR's state, from every verdict on its branch and not just this one.
     # Computed BEFORE the comment is built so the comment carries its own

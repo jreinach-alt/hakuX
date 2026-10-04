@@ -73,7 +73,7 @@ deletes them; leaving them costs only disk.
   lane, unit, branch, worktree, brief, asked, issues[], attempt, model,
   started_utc   (and ended_utc/rc for the moment between exit and unlink)
 """
-import datetime, json, os, subprocess, sys, time, tomllib
+import datetime, json, os, re, subprocess, sys, time, tomllib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 D = os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch")
@@ -260,14 +260,139 @@ def _req(path):
     return req, s(req.get("device")), os.path.basename(s(req.get("expect")))
 
 
+# How long `adb devices` may take. Windows adb.exe through WSL interop can
+# hang (devices.sh's adb_call), and fleet.py runs on the board's tick.
+ADB_TIMEOUT_S = int(os.environ.get("FLEET_ADB_TIMEOUT_S", "20"))
+
+
+def attached_labels():
+    """({label: adb state}, None), or (None, why adb could not be read).
+
+    Every serial `adb devices` lists, mapped to its label by devices.sh's own
+    device_env table, not a second copy of it: a serial the table does not
+    know is left out. The state is adb's word ("device", "offline",
+    "unauthorized"); only "device" is a handheld a worker can drive.
+    """
+    try:
+        p = subprocess.run(["adb", "devices"], capture_output=True, text=True,
+                           timeout=ADB_TIMEOUT_S)
+    except FileNotFoundError:
+        return None, "adb is not on PATH"
+    except subprocess.TimeoutExpired:
+        return None, "`adb devices` gave no answer in %ds" % ADB_TIMEOUT_S
+    except OSError as e:
+        return None, "`adb devices` did not run (%s)" % e
+    lines = p.stdout.replace("\r", "").splitlines()
+    if p.returncode != 0 or not any(l.startswith("List of devices") for l in lines):
+        return None, "`adb devices` exited %d without its device list" % p.returncode
+    state = {}
+    for l in lines:
+        f = l.split()
+        if len(f) >= 2 and not l.startswith("List of devices") and not l.startswith("*"):
+            state[f[0]] = f[1]
+    if not state:
+        return {}, None
+    devices_sh = os.path.join(os.path.dirname(os.path.abspath(__file__)), "devices.sh")
+    if not os.path.exists(devices_sh):
+        return None, "devices.sh is not beside fleet.py, so serials have no labels"
+    try:
+        m = subprocess.run(
+            ["bash", "-c", '. "$0" || exit 2; for s; do device_env "$s" '
+             '>/dev/null 2>&1 && echo "$s $DEVICE_LABEL"; done; exit 0',
+             devices_sh] + sorted(state),
+            capture_output=True, text=True, timeout=ADB_TIMEOUT_S)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return None, "devices.sh could not map the serials (%s)" % e
+    if m.returncode != 0:
+        return None, "devices.sh could not map the serials (exit %d)" % m.returncode
+    labels = {}
+    for l in m.stdout.splitlines():
+        f = l.split()
+        if len(f) == 2 and f[0] in state:
+            labels[f[1]] = state[f[0]]
+    return labels, None
+
+
+# battery_admit.py's refusals as dispatcher.sh logs them (#507). Only lines
+# that name their device: before the label was in the line a refusal could not
+# be told from the other handheld's, and a guess here would hide a real stall.
+_BATT_LINE = re.compile(
+    r"^(\d\d-\d\d \d\d:\d\d:\d\d) BATTERY: (?:"
+    r"skip (?P<skip>\S+) on (?P<slab>[^\s:]+): level (?P<slev>\d+) < need (?P<sneed>[\d.]+)"
+    r"|hold for head (?P<head>\S+) on (?P<hlab>[^\s:]+) \([^)]*\): not backfilling "
+    r"(?P<hold>\S+), level (?P<hlev>\d+) >= need (?P<hneed>[\d.]+)"
+    r"|admit (?P<admit>\S+) on (?P<alab>[^\s:]+)[: ])")
+
+
+def battery_refusals(now):
+    """{(id, label): (t, head, level, need)} -- each request's newest battery
+    line per device in $DISPATCH_DIR/logs/dispatcher.log, if that line refused
+    it. `head` is None for a skip, else the head a hold waits on.
+
+    THE WHOLE FILE, NOT A TAIL. dispatcher.sh logs a refusal once, and again
+    only when its words change (BATT_SAID), so a request refused at the same
+    level for six hours has one line, six hours old. An admit clears the
+    entry. The stamps are `date '+%m-%d %H:%M:%S'` in local time, the year
+    taken from `now` (a stamp in the future is last year's).
+    """
+    out = {}
+    try:
+        fh = open(os.path.join(D, "logs", "dispatcher.log"), errors="replace")
+    except OSError:
+        return out
+    year = time.localtime(now).tm_year
+    with fh:
+        for line in fh:
+            if "BATTERY: " not in line:
+                continue
+            m = _BATT_LINE.match(line)
+            if not m:
+                continue
+            try:
+                t = time.mktime(time.strptime("%d-%s" % (year, m.group(1)),
+                                              "%Y-%m-%d %H:%M:%S"))
+            except (ValueError, OverflowError):
+                continue
+            if t > now + 86400:
+                t = time.mktime(time.strptime("%d-%s" % (year - 1, m.group(1)),
+                                              "%Y-%m-%d %H:%M:%S"))
+            if m.group("skip"):
+                out[(m.group("skip"), m.group("slab"))] = (
+                    t, None, int(m.group("slev")), m.group("sneed"))
+            elif m.group("hold"):
+                out[(m.group("hold"), m.group("hlab"))] = (
+                    t, m.group("head"), int(m.group("hlev")), m.group("hneed"))
+            else:
+                out.pop((m.group("admit"), m.group("alab")), None)
+    return out
+
+
+def _battery_level(label):
+    """The level dispatcher.sh last read on `label` (.battery_level.<label>),
+    or None."""
+    try:
+        with open(os.path.join(D, ".battery_level.%s" % label)) as fh:
+            return int(fh.read().split()[1])
+    except (OSError, IndexError, ValueError):
+        return None
+
+
 def queue_stall(now=None, settle_s=None):
     """Queued requests that every live claimer has walked past.
 
-    Returns (stalled, on_hold, blind):
+    Returns (stalled, on_hold, absent, battery_gated, blind):
       stalled  [(id, age_s, evidence)] -- nothing is going to claim these;
       on_hold  [(id, age_s, labels)]   -- only a held device can take these;
+      absent   [(id, age_s, label, adb_state)] -- pinned to a handheld with
+               no live worker that adb does not list as attached ("absent"
+               when adb lists it not at all): hands or a re-pin, not a
+               claimer fix;
+      battery_gated [(id, age_s, reason)] -- every live claimer passed it
+               over and at least one of them refused it on its battery level
+               (battery_admit.py): that one claims it when the level covers
+               the run;
       blind    None, or why the queue could not be judged at all.
-    Both lists oldest first. Never raises: this file also runs from scratch
+    All lists oldest first. Never raises: this file also runs from scratch
     copies (selftest.d/93, /55) whose $DISPATCH_DIR has no queue at all.
     """
     now = time.time() if now is None else now
@@ -276,9 +401,9 @@ def queue_stall(now=None, settle_s=None):
     try:
         queued = sorted(n for n in os.listdir(qdir) if n.endswith(".req"))
     except OSError:
-        return [], [], None
+        return [], [], [], [], None
     if not queued:
-        return [], [], None
+        return [], [], [], [], None
     # Liveness is affinity.py's own kill -0 test, not a second copy of it: the
     # scheduler decides who is serving, and this has to agree with it.
     # Imported here and not at the top because the scratch copies above carry
@@ -286,8 +411,9 @@ def queue_stall(now=None, settle_s=None):
     try:
         import affinity
     except ImportError as e:
-        return [], [], ("affinity.py is not beside fleet.py (%s), so liveness "
-                        "cannot be read the way the scheduler reads it" % e)
+        return [], [], [], [], ("affinity.py is not beside fleet.py (%s), so "
+                            "liveness cannot be read the way the scheduler "
+                            "reads it" % e)
     live = set(affinity.serving(D))
     try:
         held = {h for h in os.listdir(os.path.join(D, "hold"))
@@ -354,7 +480,24 @@ def queue_stall(now=None, settle_s=None):
     epoch = max([_mtime(os.path.join(D, "lanes")), _mtime(os.path.join(D, "hold"))]
                 + [_mtime(os.path.join(D, "lanes", l)) for l in live])
 
-    stalled, on_hold = [], []
+    # A HANDHELD OFF USB IS NOT A STALL. On 2026-09-28 17:40 PDT the owner
+    # unplugged both handhelds to charge; the Thor's worker exited with its
+    # device, and 17 Thor-pinned requests read as "nothing will claim it"
+    # (#598). Nothing was broken, and harness_health.py `[devices]` already
+    # says a device is gone. So a pin to a label with no live worker whose
+    # serial adb does not list as `device` is `absent`. adb is read at most
+    # once per call, and only when some pin has no live claimer. When adb
+    # cannot be read, the request stays a stall and the FAIL says so:
+    # "cannot tell" is never "fine".
+    adb = []                           # [labels-or-None, why] once read
+    def adb_state(label):
+        if not adb:
+            adb.extend(attached_labels())
+        labels, why = adb
+        return (None, why) if labels is None else (labels.get(label, "absent"), None)
+
+    stalled, on_hold, absent, gated = [], [], [], []
+    refused = None                     # battery_refusals(), read once if asked
     for name in queued:
         path = os.path.join(qdir, name)
         written = _mtime(path)
@@ -375,14 +518,23 @@ def queue_stall(now=None, settle_s=None):
             claimers = set(live)
         if not claimers:
             if now - epoch > settle_s:
+                why = ""
+                if pin and pin not in affinity.OFFPOOL:   # desktop has no serial
+                    st, blind_adb = adb_state(pin)
+                    if st is not None and st != "device":
+                        absent.append((rid, age, pin, st))
+                        continue
+                    why = (" (and adb could not be read to tell whether %s "
+                           "is on USB: %s)" % (pin, blind_adb) if blind_adb
+                           else " (%s is on adb as `device`)" % pin)
                 stalled.append((rid, age, (
                     "pinned to %s, which no live worker serves and nobody "
-                    "has held" % pin) if pin else
+                    "has held%s" % (pin, why)) if pin else
                     "no dispatch worker is alive and no device is held"))
             continue
         changed = max(epoch, sib.get(key, 0.0))
         quiet_since = max(written, last, epoch)
-        evidence = []
+        evidence, gates = [], []
         for lane in sorted(claimers):
             ev = None
             if lane in busy:
@@ -396,12 +548,39 @@ def queue_stall(now=None, settle_s=None):
                      % (lane, age_s(now - quiet_since))
             if ev is None:
                 break                  # this one may yet take it
+            # A BATTERY REFUSAL IS AN ANSWER (#507). battery_admit.py lets a
+            # live, healthy worker decline every queued request until its
+            # charge covers the run; on 2026-09-29 the nova at 36 % refused 42
+            # of them and this read all 42 as a stall. A refusal counts while
+            # it still holds: a skip while the level the worker last read is
+            # under the line's need, a hold while its head is still queued.
+            if refused is None:
+                refused = battery_refusals(now)
+            r = refused.get((rid, lane))
+            if r and r[0] + 1 >= written:          # stamps are whole seconds
+                t, head, level, need = r
+                cur = _battery_level(lane)
+                if head is None and (cur is None or cur < float(need)):
+                    gates.append("%s: level %d < need %s%s" % (
+                        lane, level, need, "" if cur in (None, level)
+                        else " (reads %d now)" % cur))
+                    continue
+                if head is not None and os.path.exists(
+                        os.path.join(qdir, head + ".req")):
+                    gates.append("%s: held for its head %s (level %d >= "
+                                 "need %s)" % (lane, head, level, need))
+                    continue
             evidence.append(ev)
         else:
-            stalled.append((rid, age, "; ".join(evidence)))
+            if gates:
+                gated.append((rid, age, "; ".join(gates + evidence)))
+            else:
+                stalled.append((rid, age, "; ".join(evidence)))
     stalled.sort(key=lambda r: -r[1])
     on_hold.sort(key=lambda r: -r[1])
-    return stalled, on_hold, None
+    absent.sort(key=lambda r: -r[1])
+    gated.sort(key=lambda r: -r[1])
+    return stalled, on_hold, absent, gated, None
 
 
 # A PR the machine has already picked up is not the board's to act on. These
@@ -438,10 +617,86 @@ def remote_lanes(terr):
     return out
 
 
-def lane_prs(remote=None):
+def remote_lane_of(ref, remote, rows=None):
+    """The remote lane whose branch `ref` is, or None. `remote` is remote_lanes().
+
+    A REMOTE LANE OPENS EACH PR ON A SUFFIXED BRANCH, `<remote>-<suffix>`, as a
+    local lane's second PR goes on `lane/<name>-<suffix>`: audit files are
+    named by branch, and #578 collided with #560's audits by reusing one. Only
+    the exact value used to count, so such a PR was in no section at all and
+    the READY-with-no-label check could not see it.
+
+    So: the row's own branch, or else the LONGEST branch `ref` starts with
+    followed by `-` -- branch_lane()'s rule. The longest is taken over every
+    row's branch, local ones included (`lane/<row name>`), so a `remote = true`
+    row `foo` cannot claim `lane/foo-bar`, a local lane's own branch, or that
+    lane's suffixed ones. Remote rows come first, so a branch that a remote
+    and a local row both name goes to the remote lane.
+
+    jobs/remote-lane.sh's remote_lane_of() is the same rule for the shell jobs,
+    and 98-lane-shape.sh runs one table of heads through both. Unlike
+    branch_lane(), it does not consult units or worktrees: the shell cannot
+    see them, and the two readers must give one answer.
+    """
+    bases = [(b, lane, True) for b, lane in remote.items()]
+    bases += [("lane/" + lane, lane, False)
+              for lane, meta in sorted((rows or {}).items()) if not meta.get("remote")]
+    for b, lane, is_remote in bases:
+        if ref == b:
+            return lane if is_remote else None
+    pre = [t for t in bases if ref.startswith(t[0] + "-")]
+    if not pre:
+        return None
+    _, lane, is_remote = max(pre, key=lambda t: len(t[0]))
+    return lane if is_remote else None
+
+
+def branch_lane(ref, rows, units=None, work=None):
+    """The lane a `lane/<rest>` head belongs to. `rows` is territory's [lane].
+
+    A LANE'S SECOND PR IS ON A SUFFIXED BRANCH, `lane/<name>-<suffix>`
+    (AGENTS.md), and stripping the prefix filed it under a lane called
+    `<name>-<suffix>` that has no row and no unit. On 2026-09-28 job.board
+    retired lane.sustain507 as having "no open PR" while #547
+    (`lane/sustain507-levers`) was open with four device runs parked, and a
+    hostops delivery to the lane then had no reader. handback.sh's lane_name()
+    got the worktree half of this for #504 (`lane/flip474-ts`); this is the
+    same question asked of the rows first, because the board reads rows.
+
+    In order: `<rest>` when it is a row or a live unit; else the LONGEST row
+    `x` with `<rest>` starting `x-` (so rows `foo` and `foo-bar` send
+    `lane/foo-bar-2` to `foo-bar`); else the one `$WORK/wt/<x>` worktree with
+    this head checked out; else `<rest>`, as before.
+    """
+    rest = ref[len("lane/"):]
+    # A cloud session's branch names itself; it has no row or worktree here.
+    if rest.startswith("cloud-") or rest in rows or rest in (units or {}):
+        return rest
+    pre = [x for x in rows if rest.startswith(x + "-")]
+    if pre:
+        return max(pre, key=len)
+    work = work or os.environ.get("HAKUX_WORK", "/home/justin/hakux-work")
+    wt = os.path.join(work, "wt")
+    hits = []
+    try:
+        names = sorted(os.listdir(wt))
+    except OSError:
+        names = []
+    for x in names:
+        r = subprocess.run(["git", "-C", os.path.join(wt, x), "symbolic-ref",
+                            "--short", "HEAD"], capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip() == ref:
+            hits.append(x)
+    # Two worktrees on one branch is a question this report cannot settle.
+    return hits[0] if len(hits) == 1 else rest
+
+
+def lane_prs(remote=None, lane_rows=None, units=None):
     """Open PRs a lane owns, or None if gh could not answer.
 
-    A `lane/*` head, or a head some territory row names as its remote lane's.
+    A `lane/*` head, or a head that is a remote lane's branch or one of its
+    suffixed branches (remote_lane_of(), asked first). Other `lane/*` heads are
+    filed under branch_lane(), not the stripped name.
     One LIST, not a call per lane: everything the READY-NOT-FOLDED and BLOCKED
     sections need comes out of it. (One HTTP call per hundred PRs, since REST
     pages -- see gh_rest.)
@@ -469,11 +724,12 @@ def lane_prs(remote=None):
     out = []
     for p in rows:
         ref = p.get("headRefName") or ""
-        if ref in remote:
-            p["lane"] = remote[ref]
+        rl = remote_lane_of(ref, remote, lane_rows)
+        if rl:
+            p["lane"] = rl
             p["remote"] = True
         elif ref.startswith("lane/"):
-            p["lane"] = ref[len("lane/"):]
+            p["lane"] = branch_lane(ref, lane_rows or {}, units)
             p["remote"] = False
         else:
             continue
@@ -577,7 +833,12 @@ def fold_watch(prs, terr, units, now=None):
         # A remote lane's liveness is not a local unit, so "its unit is gone"
         # is never known of it; its files are released by hand, if at all.
         # And units=None (FLEET-BLIND) means no lane is known to have stopped.
+        # A standing row (standing = true) has no unit to be gone: its
+        # interactive session outlives each PR, and it releases files by its
+        # own board request. On 2026-09-28 lane.xbox's #561, which touched no
+        # file in its row, asked the board to release all 16 it was working in.
         cand = (todo and not p.get("remote") and units is not None
+                and not meta.get("standing")
                 and p["lane"] not in units)
         if not (folding or cand):
             continue
@@ -744,7 +1005,7 @@ def main():
               "until it answers.", file=sys.stderr)
 
     remote = remote_lanes(terr)
-    prs = lane_prs(remote)
+    prs = lane_prs(remote, terr.get("lane") or {}, units)
     pr_blind = prs is None
     if pr_blind:
         prs = []
@@ -945,24 +1206,31 @@ def main():
         elif not b and st != "blocked":
             unclassified.append((n, lane, titles.get(n, "")[:52]))
 
-    pr_of = {}
+    # EVERY open PR per lane, not the first: a lane with a merged PR and an
+    # open suffixed one, or two open, must show both wherever it is named.
+    prs_of = {}
     for p in prs:
-        pr_of.setdefault(p["lane"], p)
+        prs_of.setdefault(p["lane"], []).append(p)
+
+    def pr_words(lane, none):
+        ps = prs_of.get(lane)
+        if not ps:
+            return none
+        return ", ".join("PR #%d%s" % (p["number"], " draft" if p.get("isDraft")
+                                       else " READY") for p in ps)
 
     print("=== RUNNING (%d)%s" % (len(running),
                                   "  -- NOT COMPUTED, see FLEET-BLIND above"
                                   if fleet_blind else ""))
     for lane in running:
         f = fleet.get(lane, {})
-        p = pr_of.get(lane)
         print("  %-12s %-18s #%-10s %-7s %s"
               % (lane,
                  ("attempt %s/%s" % (f.get("attempt", "?"),
                                      (f.get("model") or "?").replace("claude-", "")))[:18],
                  ",".join(str(i) for i in (f.get("issues") or [])) or "-",
                  age_s(units.get(lane)),
-                 ("PR #%d%s" % (p["number"], " draft" if p.get("isDraft") else " READY"))
-                 if p else "no PR yet"))
+                 pr_words(lane, "no PR yet")))
         print("      asked: %s" % ((f.get("asked") or
                                     "(no registry entry -- started before "
                                     "lane.sh wrote one, or not by lane.sh)")[:96]))
@@ -985,11 +1253,8 @@ def main():
         print("\n=== REMOTE LANES (%d) -- no local unit, and that is not a fault"
               % len(remote))
         for branch, lane in sorted(remote.items(), key=lambda kv: kv[1]):
-            p = pr_of.get(lane)
             print("  %-12s %-44s %s"
-                  % (lane, branch,
-                     ("PR #%d%s" % (p["number"], " draft" if p.get("isDraft") else " READY"))
-                     if p else "no open PR"))
+                  % (lane, branch, pr_words(lane, "no open PR")))
         print("  Its routine wakes it; `lane.sh resume` refuses these by name "
               "(two agents, one branch, no lock). fold.sh never prunes their "
               "branches.")
@@ -1039,10 +1304,13 @@ def main():
     print("\n=== LANE CLAIMED WITH NO RUNNING AGENT (%d)%s"
           % (len(ghost),
              "  -- NOT COMPUTED, see FLEET-BLIND above" if fleet_blind else ""))
+    # WITH ITS OPEN PRS. This list is what a reader retires rows from, and a
+    # row whose lane still has an open PR (sustain507, #547) is not abandoned.
     for lane in ghost:
-        print("  %-12s holds %d file(s), issues %s"
+        print("  %-12s holds %d file(s), issues %s, %s"
               % (lane, len((terr["lane"][lane].get("files") or [])),
-                 ",".join(str(i) for i in (terr["lane"][lane].get("issues") or []))))
+                 ",".join(str(i) for i in (terr["lane"][lane].get("issues") or [])),
+                 pr_words(lane, "no open PR")))
     print("\n=== RUNNING WITH NO TERRITORY ROW (%d)" % len(unclaimed))
     if unclaimed:
         print("  Invisible to every guard: check_territory.py cannot see a "
@@ -1174,8 +1442,10 @@ def main():
     # the first thing anyone clearing it needs; the next is the snapshot, since
     # a stale $DISPATCH_DIR/bin is how 2026-09-20 happened. A request waiting
     # on a hold is said on stdout and costs nothing: a hold is somebody's
-    # decision, and waking the board for it every tick would be noise.
-    stalled, on_hold, qblind = queue_stall()
+    # decision, and waking the board for it every tick would be noise. So is
+    # a request pinned to a handheld that is off USB (#598): that needs hands
+    # or a re-pin, and harness_health.py `[devices]` already reports it.
+    stalled, on_hold, absent, gated, qblind = queue_stall()
     if qblind:
         print("FAIL: QUEUE-BLIND -- %s. The dispatch queue was not judged."
               % qblind, file=sys.stderr)
@@ -1197,6 +1467,21 @@ def main():
               "%s, queued %s ago, held: %s. Deliberate, not a stall; `rm "
               "$DISPATCH_DIR/hold/<label>` returns a device to service."
               % (len(on_hold), rid, age_s(age_secs), labels))
+    if gated:
+        rid, age_secs, why = gated[0]
+        print("\nqueue: %d request(s) a live claimer refused on its battery "
+              "level, and no live claimer will take sooner -- oldest %s, queued %s ago: %s. "
+              "Deliberate, not a stall; battery_admit.py claims each one when "
+              "the level covers its run."
+              % (len(gated), rid, age_s(age_secs), why))
+    for label in sorted({r[2] for r in absent}):
+        rows = [r for r in absent if r[2] == label]
+        rid, age_secs, _, st = rows[0]
+        print("\nqueue: %d request(s) can only run on %s, which is not on adb%s "
+              "-- oldest %s, queued %s ago. Needs hands or a re-pin, not a "
+              "claimer fix."
+              % (len(rows), label, "" if st == "absent" else
+                 " as a device (adb says `%s`)" % st, rid, age_s(age_secs)))
     return rc
 
 

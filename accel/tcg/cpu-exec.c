@@ -50,6 +50,7 @@
 #include "internal-common.h"
 #include "tb-cache-hints.h"
 #include "accel/tcg/hakux-tlb68.h"
+#include "accel/tcg/hakux-ibc.h"
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
@@ -974,6 +975,598 @@ TranslationBlock *inv_tb_htable_lookup(CPUState *cpu, TCGTBCPUState s)
     return tb;
 }
 
+/*
+ * #425: WHY A JUMP-CACHE PROBE MISSES, split by who probed. One [jc425] line
+ * every 2 s, next to [tlb68]; tag hakuX at WARN, which every runner keeps.
+ *
+ * Callers (the first index):
+ *   i  helper_lookup_tb_ptr: an indirect branch (RET, JMP/CALL r/m) or any
+ *      goto_ptr exit. 10.3% of the guest thread on the Crimson route
+ *      (docs/lanes/jcache425/NOTES.md).
+ *   l  cpu_exec_loop: an exit that was not chained (first run of a block,
+ *      interrupts, cross-page blocks, a chain unlinked by a discard).
+ *   a  cpu_exec_step_atomic.
+ *
+ * Outcomes (the second), exactly one per probe, in this order:
+ *   h  hit: the slot's TB matches.
+ *   e  empty slot: never filled, or wiped (tcg_flush_jmp_cache, the page
+ *      clears in cputlb.c).
+ *   p  the slot holds another virtual pc: a hash collision.
+ *   s  same pc, TB carries CF_INVALID: a discarded block left in place, which
+ *      is what HAKUX_TCG68_JC=1 produces instead of a wipe.
+ *   k  same pc, live TB, other flags/cs_base/cflags.
+ * and for every miss, what the qht said: f found, n not found (translate).
+ *
+ * The prediction reads these: with the wipe off, `e` must fall and `s`
+ * appear, and f / (probes) is the share the qht still carries.
+ *
+ * vCPU thread only (an Xbox has one vCPU), so plain increments.
+ */
+enum { JC425_HELPER, JC425_LOOP, JC425_ATOMIC, JC425_NCALLER };
+enum {
+    JC425_HIT, JC425_EMPTY, JC425_PC, JC425_STALE, JC425_KEY,
+    JC425_QHT_FOUND, JC425_QHT_NONE, JC425_NOUT
+};
+#ifdef XBOX
+static uint64_t jc425_n[JC425_NCALLER][JC425_NOUT];
+#define JC425_COUNT(c, o) (jc425_n[(c)][(o)]++)
+
+#ifdef __ANDROID__
+#define JC425_LOG(...) \
+    __android_log_print(ANDROID_LOG_WARN, "hakuX", __VA_ARGS__)
+#else
+#define JC425_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+/* Called at [tlb68]'s gate (1 in 1024 loop iterations); prints every 2 s. */
+static void jc425_tick(void)
+{
+    static const char cname[JC425_NCALLER] = { 'i', 'l', 'a' };
+    static uint64_t prev[JC425_NCALLER][JC425_NOUT];
+    static uint64_t prev_ibc;
+    static int64_t prev_ns;
+    static unsigned window;
+    int64_t now = get_clock();
+    char buf[512];
+    int off = 0;
+
+    if (prev_ns && now - prev_ns < 2 * NANOSECONDS_PER_SECOND) {
+        return;
+    }
+    if (prev_ns) {
+        for (int c = 0; c < JC425_NCALLER && off < (int)sizeof(buf) - 160;
+             c++) {
+            uint64_t d[JC425_NOUT];
+
+            for (int o = 0; o < JC425_NOUT; o++) {
+                d[o] = jc425_n[c][o] - prev[c][o];
+            }
+            off += snprintf(buf + off, sizeof(buf) - off,
+                            " %ch=%" PRIu64 " %ce=%" PRIu64 " %cp=%" PRIu64
+                            " %cs=%" PRIu64 " %ck=%" PRIu64
+                            " %cf=%" PRIu64 " %cn=%" PRIu64,
+                            cname[c], d[JC425_HIT], cname[c], d[JC425_EMPTY],
+                            cname[c], d[JC425_PC], cname[c], d[JC425_STALE],
+                            cname[c], d[JC425_KEY], cname[c],
+                            d[JC425_QHT_FOUND], cname[c], d[JC425_QHT_NONE]);
+        }
+        JC425_LOG("[jc425] w=%u dt=%" PRId64 " jc=%d%s", window,
+                  (now - prev_ns) / 1000000, hakux_tlb68_jc_on(), buf);
+        /* #507, HAKUX_IBC=2 only: inline probe hits, beside the ih above */
+        if (hakux_ibc_hits != prev_ibc) {
+            JC425_LOG("[ibc507] w=%u dt=%" PRId64 " hits=%" PRIu64, window,
+                      (now - prev_ns) / 1000000, hakux_ibc_hits - prev_ibc);
+        }
+        window++;
+    }
+    prev_ibc = hakux_ibc_hits;
+    memcpy(prev, jc425_n, sizeof(prev));
+    prev_ns = now;
+}
+#else
+#define JC425_COUNT(c, o) do { } while (0)
+#endif
+
+/*
+ * #425 / #412: WHY A TB RETURNS TO cpu_exec_loop. One [rr425] line and one
+ * [rr425pc] line every 2 s at [jc425]'s gate, tag hakuX at WARN.
+ *
+ * A return with tb_exit 0 and a NULL TB has two sources that look identical
+ * from the loop: gen_eob()'s plain exit_tb(NULL, 0) (STI, POPF, IRET, segment
+ * and CR writes, a jump out of an interrupt shadow) and a
+ * helper_lookup_tb_ptr() miss that returns the epilogue. Each marks itself:
+ * the translator stores a tag into hakux_rr425_eob just before its exit_tb,
+ * and the helper sets rr425_miss just before returning the epilogue. The loop
+ * reads and clears both after every return, so each return is booked once:
+ *
+ *   it  TBs the loop dispatched (cpu_loop_exec_tb calls)
+ *   e   gen_eob plain exits; by the mode that ended the TB:
+ *       en EOB_NEXT (POPF, MOV Sreg, CR/MSR writes, CLTS ...)
+ *       es EOB_INHIBIT_IRQ (STI, MOV/POP SS)   eo EOB_ONLY (IRET, far jumps)
+ *       et RECHECK_TF   ej DISAS_JUMP inside an interrupt shadow
+ *       esh of all e, the TB started inside an interrupt shadow
+ *   m   helper_lookup_tb_ptr returned the epilogue (no TB for the target)
+ *   o   tb_exit 0, NULL TB, neither mark: any other exit_tb(NULL, 0)
+ *       (a superblock's rewritten exit, VMRUN)
+ *   r   TB_EXIT_REQUESTED (a kick: icount_decr.high went negative)
+ *   g   a goto_tb exit that was not patched yet; at the next dispatch it is
+ *       gs target spans two pages (never chained), gi a block was CF_INVALID,
+ *       ga tb_add_jump called; the rest were dropped by a taken interrupt
+ *       or a loop exit
+ *   x   longjmps into cpu_exec_setjmp (cpu_loop_exit: exceptions, HLT,
+ *       PAUSE, MMIO recompiles); a longjmp out of a TB is a return that none
+ *       of the above books, so d = it - (e+m+o+r+g) must stay <= x
+ *   hc/hm  helper_lookup_tb_ptr calls / misses, counted in the helper: m
+ *       must equal hm up to the returns in flight at a window edge
+ *   ip  dispatches with interrupt_request non-zero; iq of those, an
+ *       interrupt was taken; xr loop left on exit_request
+ *   gapus / tbus / sn / tbn  1 in 64 dispatches is timed: the time from a
+ *       TB's return to the next TB's entry (the loop: interrupt check and
+ *       its barrier, state, lookup, chaining, the [tlb68] gate) and that
+ *       TB's own run (guest code, its helpers, chained successors). Each is
+ *       the sampled mean times `it`, in us per window; sn / tbn are the
+ *       sample counts. A longjmp drops the sample it lands in.
+ *
+ * [rr425pc] is the top 16 of (cause, pc) over the window: for e the pc of
+ * the TB's last guest instruction as translated (CF_PCREL: its virtual
+ * address at translation time), for the others the pc the loop resumes at.
+ * Each carries the first three guest bytes at that pc and its count.
+ *
+ * vCPU thread only (an Xbox has one vCPU), so plain variables.
+ */
+#ifdef XBOX
+uint64_t hakux_rr425_eob;
+static bool rr425_miss;
+enum {
+    RR_IT, RR_E, RR_EN, RR_ES, RR_EO, RR_ET, RR_EJ, RR_ESH, RR_M, RR_O, RR_R,
+    RR_G, RR_GS, RR_GI, RR_GA, RR_X, RR_HC, RR_HM, RR_IP, RR_IQ, RR_XR,
+    RR_GAPNS, RR_TBNS, RR_SN, RR_TBN, RR_N
+};
+static uint64_t rr425_n[RR_N];
+#define RR425_COUNT(i) (rr425_n[(i)]++)
+
+#define RR425_PC_BITS 11
+typedef struct {
+    uint64_t key;       /* cause << 32 | pc; 0 is empty */
+    uint32_t n;
+} RR425Pc;
+static RR425Pc rr425_pc[1 << RR425_PC_BITS];
+static uint64_t rr425_pc_drop;
+
+static void rr425_pc_note(char cause, uint32_t pc)
+{
+    uint64_t key = (uint64_t)(uint8_t)cause << 32 | pc;
+    uint32_t h = (uint32_t)((key * 0x9e3779b97f4a7c15ull)
+                            >> (64 - RR425_PC_BITS));
+
+    for (int i = 0; i < 8; i++) {
+        RR425Pc *p = &rr425_pc[(h + i) & ((1 << RR425_PC_BITS) - 1)];
+        if (p->key == key) {
+            p->n++;
+            return;
+        }
+        if (!p->key) {
+            p->key = key;
+            p->n = 1;
+            return;
+        }
+    }
+    rr425_pc_drop++;
+}
+
+/*
+ * [rr425w]: what wakes the idle guest. The [rr425] split of Agent Under Fire
+ * mission play put 99.9% of the returns on the kernel's idle loop at
+ * 0x8001b02e (sti; nop; nop; cli; ... and back). Time there is the vCPU
+ * waiting, so the frame is set by what it waits for. This books each idle
+ * stretch against the interrupt that ends it.
+ *
+ * An idle stretch starts at an STI return (EOB_INHIBIT_IRQ) from the window,
+ * recognised by its bytes fb 90 90 fa (checked again in each 2 s window,
+ * since the code at a pc can change across a reboot into a title; a failed
+ * read is not cached), and ends when cpu_handle_interrupt takes an
+ * interrupt. The wake key is the vector (hakux_rr425_vec, set by the i386
+ * hook; ff when it was not a PIC interrupt) and, from hakux_nv2a_irq_units(),
+ * which NV2A units had an enabled interrupt pending at that moment. The busy
+ * period after a wake, up to the next idle entry, is charged to the same
+ * key: an ISR that goes straight back to idle is short, a wake that readies
+ * a thread is long. Interrupts taken while not idle are counted as nb.
+ *
+ * Per key and window: n wakes, idle and busy us, and 4-bucket histograms of
+ * the idle length (<100us <1ms <4ms >=4ms) and of the busy length (<20us
+ * <200us <2ms >=2ms). An idle stretch is booked, whole, in the window it
+ * ends in; a busy period open at a window edge is split there (its time on
+ * both sides, its whole length in the histogram of the window it ends in). So idle + busy
+ * over a span of windows comes to the wall clock of that span.
+ */
+int hakux_rr425_vec = -1;
+uint32_t hakux_nv2a_irq_units(void);
+
+#define RRW_N 64
+typedef struct {
+    uint32_t key;       /* vec | units << 8 | 1 << 31; 0 is empty */
+    uint32_t n, nb;
+    uint32_t ih[4], bh[4];
+    uint64_t idle_ns, busy_ns;
+} RR425Wake;
+static RR425Wake rrw[RRW_N];
+static uint64_t rrw_drop;
+static uint32_t rrw_idle_pc;            /* the window's STI pc, 0 none */
+static bool rrw_idle_ok;                /* its bytes checked this window */
+static uint32_t rrw_not[16];            /* STI pcs that are not the window */
+static bool rrw_idle;                   /* in an idle stretch */
+static int64_t rrw_t;                   /* its start, or the open wake's */
+static int64_t rrw_busy0;               /* the open busy period's start */
+static RR425Wake *rrw_open;             /* wake whose busy period is open */
+
+static RR425Wake *rrw_slot(uint32_t key)
+{
+    for (int i = 0; i < RRW_N; i++) {
+        if (rrw[i].key == key) {
+            return &rrw[i];
+        }
+        if (!rrw[i].key) {
+            rrw[i].key = key;
+            return &rrw[i];
+        }
+    }
+    rrw_drop++;
+    return NULL;
+}
+
+static int rrw_bucket(int64_t ns, int64_t b0, int64_t b1, int64_t b2)
+{
+    return ns < b0 ? 0 : ns < b1 ? 1 : ns < b2 ? 2 : 3;
+}
+
+/* An STI return at @pc: if it is the idle window, a stretch starts. */
+static void rrw_sti(CPUState *cpu, uint32_t pc)
+{
+    uint32_t *slot = &rrw_not[(pc >> 2) & 15];
+    uint8_t b[4];
+    int64_t now;
+
+    if (rrw_idle) {
+        return;
+    }
+    if (pc != rrw_idle_pc || !rrw_idle_ok) {
+        if (*slot == pc) {
+            return;
+        }
+        if (cpu_memory_rw_debug(cpu, pc, b, sizeof(b), false) != 0) {
+            return;
+        }
+        if (b[0] != 0xfb || b[1] != 0x90 || b[2] != 0x90 || b[3] != 0xfa) {
+            *slot = pc;
+            if (pc == rrw_idle_pc) {
+                rrw_idle_pc = 0;
+            }
+            return;
+        }
+        rrw_idle_pc = pc;
+        rrw_idle_ok = true;
+    }
+    now = get_clock();
+    if (rrw_open) {
+        rrw_open->busy_ns += now - rrw_t;
+        rrw_open->bh[rrw_bucket(now - rrw_busy0, 20000, 200000, 2000000)]++;
+        rrw_open = NULL;
+    }
+    rrw_idle = true;
+    rrw_t = now;
+}
+
+/* cpu_handle_interrupt took an interrupt. */
+static void rrw_wake(void)
+{
+    uint32_t key = (uint8_t)hakux_rr425_vec
+                   | (hakux_nv2a_irq_units() & 0xff) << 8 | 1u << 31;
+    RR425Wake *w = rrw_slot(key);
+    int64_t now;
+
+    if (!rrw_idle) {
+        if (w) {
+            w->nb++;
+        }
+        return;
+    }
+    now = get_clock();
+    rrw_idle = false;
+    if (w) {
+        int64_t idle = now - rrw_t;
+        w->n++;
+        w->idle_ns += idle;
+        w->ih[rrw_bucket(idle, 100000, 1000000, 4000000)]++;
+    }
+    rrw_open = w;
+    rrw_t = rrw_busy0 = now;
+}
+
+static int rrw_cmp(const void *a, const void *b)
+{
+    const RR425Wake *x = a, *y = b;
+    uint64_t xs = x->idle_ns + x->busy_ns, ys = y->idle_ns + y->busy_ns;
+    return xs < ys ? 1 : xs > ys ? -1 : 0;
+}
+
+static void rrw_tick(unsigned window, int64_t now)
+{
+    uint32_t open_key = 0;
+    RR425Wake w[RRW_N];
+    uint64_t idle = 0, busy = 0, n = 0, nb = 0;
+    char buf[2048];
+    int off = 0;
+
+    if (rrw_open) {
+        rrw_open->busy_ns += now - rrw_t;
+        rrw_t = now;
+        open_key = rrw_open->key;
+        rrw_open = NULL;
+    }
+    memcpy(w, rrw, sizeof(w));
+    qsort(w, RRW_N, sizeof(w[0]), rrw_cmp);
+    buf[0] = 0;
+    for (int i = 0; i < RRW_N && w[i].key; i++) {
+        idle += w[i].idle_ns;
+        busy += w[i].busy_ns;
+        n += w[i].n;
+        nb += w[i].nb;
+        if (off < (int)sizeof(buf) - 96) {
+            off += snprintf(buf + off, sizeof(buf) - off,
+                            " %02x.%02x:%u:%" PRIu64 ":%" PRIu64
+                            ":%u/%u/%u/%u:%u/%u/%u/%u:%u",
+                            w[i].key & 0xff, (w[i].key >> 8) & 0xff,
+                            w[i].n, w[i].idle_ns / 1000,
+                            w[i].busy_ns / 1000, w[i].ih[0], w[i].ih[1],
+                            w[i].ih[2], w[i].ih[3], w[i].bh[0], w[i].bh[1],
+                            w[i].bh[2], w[i].bh[3], w[i].nb);
+        }
+    }
+    JC425_LOG("[rr425w] w=%u idlepc=%08x idle_us=%" PRIu64
+              " busy_us=%" PRIu64 " n=%" PRIu64 " nb=%" PRIu64
+              " drop=%" PRIu64 "%s", window, rrw_idle_pc, idle / 1000,
+              busy / 1000, n, nb, rrw_drop, buf);
+    memset(rrw, 0, sizeof(rrw));
+    rrw_drop = 0;
+    if (open_key) {
+        rrw_open = rrw_slot(open_key);
+    }
+    rrw_idle_ok = false;
+}
+
+/* Book one return from cpu_loop_exec_tb. @tb is what cpu_tb_exec returned. */
+static inline void rr425_book(CPUState *cpu, TranslationBlock *tb,
+                              int tb_exit)
+{
+    uint64_t tag = hakux_rr425_eob;
+    bool miss = rr425_miss;
+
+    hakux_rr425_eob = 0;
+    rr425_miss = false;
+    if (tb_exit == TB_EXIT_REQUESTED) {
+        RR425_COUNT(RR_R);
+        rr425_pc_note('r', cpu->cc->get_pc(cpu));
+    } else if (tb) {
+        RR425_COUNT(RR_G);
+        rr425_pc_note('g', cpu->cc->get_pc(cpu));
+    } else if (tag) {
+        static const uint8_t mode_ix[8] = {
+            RR_E, RR_EN, RR_ES, RR_EO, RR_ET, RR_EJ, RR_E, RR_E
+        };
+        unsigned mode = (tag >> 32) & 7;
+
+        RR425_COUNT(RR_E);
+        if (mode_ix[mode] != RR_E) {
+            RR425_COUNT(mode_ix[mode]);
+        }
+        if (tag & (1ull << 40)) {
+            RR425_COUNT(RR_ESH);
+        }
+        rr425_pc_note('e', (uint32_t)tag);
+        if (mode == 2) {
+            rrw_sti(cpu, (uint32_t)tag);
+        }
+    } else if (miss) {
+        RR425_COUNT(RR_M);
+        rr425_pc_note('m', cpu->cc->get_pc(cpu));
+    } else {
+        RR425_COUNT(RR_O);
+        rr425_pc_note('o', cpu->cc->get_pc(cpu));
+    }
+}
+
+static int rr425_pc_cmp(const void *a, const void *b)
+{
+    const RR425Pc *x = a, *y = b;
+    return x->n < y->n ? 1 : x->n > y->n ? -1 : 0;
+}
+
+/*
+ * #787 [tpc787]: WHERE THE TIME INSIDE TBs GOES, by guest pc. [rr425pc]
+ * counts returns, which says nothing about a chained loop that runs for
+ * milliseconds without one -- and a guest-late window is ~2 s in TBs on
+ * ~50k returns. This charges each of [rr425]'s timed dispatches (1 in 64) its
+ * measured run time, keyed by the pc it entered at: a chained run is charged
+ * to the block it entered through. Duration-weighted, so a share of `us`
+ * here is a share of tbus.
+ *
+ * One line at [rr425]'s cadence and w: sn the timed dispatches, us their
+ * total, then the top 12 entry pcs as pc:bytes:us:n (first three guest
+ * bytes at pc, as in [rr425pc]). drop is us that found no free slot.
+ *
+ * Perflog builds only (HAKUX_TCG787, as [tcg787] in cputlb.c): a plain build
+ * books nothing on the execution path and prints no [tpc787] line.
+ */
+#if defined(NV2A_PERF_LOG) && NV2A_PERF_LOG
+#define HAKUX_TCG787 1
+#else
+#define HAKUX_TCG787 0
+#endif
+#if HAKUX_TCG787
+#define TPC787_BITS 10
+typedef struct {
+    uint32_t pc, n;     /* n == 0: empty */
+    uint64_t ns;
+} TPC787;
+static TPC787 tpc787[1 << TPC787_BITS];
+static uint64_t tpc787_drop_ns;
+static uint32_t tpc787_pc;
+
+static void tpc787_book(uint32_t pc, uint64_t ns)
+{
+    uint32_t h = (pc * 0x9e3779b1u) >> (32 - TPC787_BITS);
+
+    for (int i = 0; i < 16; i++) {
+        TPC787 *p = &tpc787[(h + i) & ((1 << TPC787_BITS) - 1)];
+        if (p->n && p->pc != pc) {
+            continue;
+        }
+        p->pc = pc;
+        p->n++;
+        p->ns += ns;
+        return;
+    }
+    tpc787_drop_ns += ns;
+}
+
+static int tpc787_cmp(const void *a, const void *b)
+{
+    const TPC787 *x = a, *y = b;
+    return x->ns < y->ns ? 1 : x->ns > y->ns ? -1 : 0;
+}
+
+static void tpc787_tick(CPUState *cpu, unsigned window)
+{
+    TPC787 top[12];
+    int ntop = 0;
+    uint64_t sn = 0, ns = 0;
+    char buf[640];
+    int off = 0;
+
+    for (int i = 0; i < (1 << TPC787_BITS); i++) {
+        TPC787 *p = &tpc787[i];
+        if (!p->n) {
+            continue;
+        }
+        sn += p->n;
+        ns += p->ns;
+        if (ntop < 12) {
+            top[ntop++] = *p;
+        } else if (p->ns > top[11].ns) {
+            top[11] = *p;
+        } else {
+            continue;
+        }
+        qsort(top, ntop, sizeof(top[0]), tpc787_cmp);
+    }
+    buf[0] = 0;
+    for (int i = 0; i < ntop && off < (int)sizeof(buf) - 48; i++) {
+        uint8_t b[3] = { 0, 0, 0 };
+
+        cpu_memory_rw_debug(cpu, top[i].pc, b, sizeof(b), false);
+        off += snprintf(buf + off, sizeof(buf) - off,
+                        " %08x:%02x%02x%02x:%" PRIu64 ":%u", top[i].pc,
+                        b[0], b[1], b[2], top[i].ns / 1000, top[i].n);
+    }
+    JC425_LOG("[tpc787] w=%u sn=%" PRIu64 " us=%" PRIu64 " drop=%" PRIu64
+              "%s", window, sn, ns / 1000, tpc787_drop_ns / 1000, buf);
+    memset(tpc787, 0, sizeof(tpc787));
+    tpc787_drop_ns = 0;
+}
+#endif
+
+static void rr425_tick(CPUState *cpu)
+{
+    static uint64_t prev[RR_N];
+    static int64_t prev_ns;
+    static unsigned window;
+    int64_t now = get_clock();
+    uint64_t d[RR_N];
+    RR425Pc top[16];
+    int ntop = 0;
+    char buf[1024];
+    int off = 0;
+
+    if (prev_ns && now - prev_ns < 2 * NANOSECONDS_PER_SECOND) {
+        return;
+    }
+    if (!prev_ns) {
+        goto reset;
+    }
+    for (int i = 0; i < RR_N; i++) {
+        d[i] = rr425_n[i] - prev[i];
+    }
+    JC425_LOG("[rr425] w=%u dt=%" PRId64 " it=%" PRIu64 " e=%" PRIu64
+              " en=%" PRIu64 " es=%" PRIu64 " eo=%" PRIu64 " et=%" PRIu64
+              " ej=%" PRIu64 " esh=%" PRIu64 " m=%" PRIu64 " o=%" PRIu64
+              " r=%" PRIu64 " g=%" PRIu64 " gs=%" PRIu64 " gi=%" PRIu64
+              " ga=%" PRIu64 " x=%" PRIu64 " d=%" PRId64
+              " hc=%" PRIu64 " hm=%" PRIu64
+              " ip=%" PRIu64 " iq=%" PRIu64 " xr=%" PRIu64
+              " gapus=%" PRIu64 " tbus=%" PRIu64 " sn=%" PRIu64
+              " tbn=%" PRIu64 " pcdrop=%" PRIu64,
+              window, (now - prev_ns) / 1000000, d[RR_IT], d[RR_E],
+              d[RR_EN], d[RR_ES], d[RR_EO], d[RR_ET], d[RR_EJ], d[RR_ESH],
+              d[RR_M], d[RR_O], d[RR_R], d[RR_G], d[RR_GS], d[RR_GI],
+              d[RR_GA], d[RR_X],
+              (int64_t)(d[RR_IT] - d[RR_E] - d[RR_M] - d[RR_O] - d[RR_R]
+                        - d[RR_G]),
+              d[RR_HC], d[RR_HM], d[RR_IP], d[RR_IQ], d[RR_XR],
+              d[RR_SN] ? d[RR_GAPNS] / d[RR_SN] * d[RR_IT] / 1000 : 0,
+              d[RR_TBN] ? d[RR_TBNS] / d[RR_TBN] * d[RR_IT] / 1000 : 0,
+              d[RR_SN], d[RR_TBN], rr425_pc_drop);
+
+    /* Top 16 by count: one partial selection pass per slot. */
+    for (int i = 0; i < (1 << RR425_PC_BITS); i++) {
+        RR425Pc *p = &rr425_pc[i];
+        if (!p->key) {
+            continue;
+        }
+        if (ntop < 16) {
+            top[ntop++] = *p;
+        } else if (p->n > top[15].n) {
+            top[15] = *p;
+        } else {
+            continue;
+        }
+        qsort(top, ntop, sizeof(top[0]), rr425_pc_cmp);
+    }
+    for (int i = 0; i < ntop && off < (int)sizeof(buf) - 48; i++) {
+        uint32_t pc = (uint32_t)top[i].key;
+        uint8_t b[3] = { 0, 0, 0 };
+
+        cpu_memory_rw_debug(cpu, pc, b, sizeof(b), false);
+        off += snprintf(buf + off, sizeof(buf) - off,
+                        " %c:%08x:%02x%02x%02x:%u",
+                        (char)(top[i].key >> 32), pc, b[0], b[1], b[2],
+                        top[i].n);
+    }
+    JC425_LOG("[rr425pc] w=%u%s", window, buf);
+#if HAKUX_TCG787
+    tpc787_tick(cpu, window);
+#endif
+    rrw_tick(window++, now);
+
+reset:
+    memcpy(prev, rr425_n, sizeof(prev));
+    memset(rr425_pc, 0, sizeof(rr425_pc));
+#if HAKUX_TCG787
+    memset(tpc787, 0, sizeof(tpc787));
+    tpc787_drop_ns = 0;
+#endif
+    rr425_pc_drop = 0;
+    prev_ns = now;
+}
+
+/* 1 in 64 dispatches is timed; see gapus / tbus above. */
+static unsigned rr425_samp;
+static int rr425_phase;         /* 0 idle, 1 gap running, 2 TB running */
+static int64_t rr425_t;
+#else
+#define RR425_COUNT(i) do { } while (0)
+#endif
+
 /**
  * tb_lookup:
  * @cpu: CPU that will execute the returned translation block
@@ -988,7 +1581,8 @@ TranslationBlock *inv_tb_htable_lookup(CPUState *cpu, TCGTBCPUState s)
  *
  * Returns: an existing translation block or NULL.
  */
-static inline TranslationBlock *tb_lookup(CPUState *cpu, TCGTBCPUState s)
+static inline TranslationBlock *tb_lookup(CPUState *cpu, TCGTBCPUState s,
+                                          int caller)
 {
     TranslationBlock *tb;
     CPUJumpCache *jc;
@@ -1006,13 +1600,27 @@ static inline TranslationBlock *tb_lookup(CPUState *cpu, TCGTBCPUState s)
                tb->cs_base == s.cs_base &&
                tb->flags == s.flags &&
                tb_cflags(tb) == s.cflags)) {
+        JC425_COUNT(caller, JC425_HIT);
         goto hit;
     }
+#ifdef XBOX
+    if (!tb) {
+        JC425_COUNT(caller, JC425_EMPTY);
+    } else if (jc->array[hash].pc != s.pc) {
+        JC425_COUNT(caller, JC425_PC);
+    } else if (tb_cflags(tb) & CF_INVALID) {
+        JC425_COUNT(caller, JC425_STALE);
+    } else {
+        JC425_COUNT(caller, JC425_KEY);
+    }
+#endif
 
     tb = tb_htable_lookup(cpu, s);
     if (tb == NULL) {
+        JC425_COUNT(caller, JC425_QHT_NONE);
         return NULL;
     }
+    JC425_COUNT(caller, JC425_QHT_FOUND);
 
     jc->array[hash].pc = s.pc;
     qatomic_set(&jc->array[hash].tb, tb);
@@ -1156,8 +1764,13 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
         cpu_loop_exit(cpu);
     }
 
-    tb = tb_lookup(cpu, s);
+    RR425_COUNT(RR_HC);
+    tb = tb_lookup(cpu, s, JC425_HELPER);
     if (tb == NULL) {
+#ifdef XBOX
+        RR425_COUNT(RR_HM);
+        rr425_miss = true;
+#endif
         return tcg_code_gen_epilogue;
     }
 
@@ -1167,6 +1780,60 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 
     return tb->tc.ptr;
 }
+
+#ifdef XBOX
+/*
+ * #507: the layout the front end's inline jump-cache probe reads
+ * (hakux-ibc.h). The probe skips the helper's hit path above: the call,
+ * get_tb_cpu_state, curr_cflags and the key compares in tb_lookup (18.4% of
+ * the vCPU on GTA, docs/lanes/vcpuplan/NOTES.md). A miss still calls the
+ * helper, so the qht, breakpoints and translation stay here.
+ *
+ * Off unless HAKUX_IBC=1 or 2. With the idle halt off, the vCPU time it
+ * saves on the Nova became guest spin, not fps: J/frame x1.02 on GTA and
+ * x1.10 on Forza, fps unchanged (docs/lanes/ibcache/NOTES.md, 5c and 5d).
+ */
+uint64_t hakux_ibc_hits;
+
+bool hakux_ibc_enabled(HakuxIbcLayout *l)
+{
+    static const vaddr probe[] = {
+        0, 0x3f, 0x40, 0xfff, 0x1000, 0x10abc, 0x80012345, 0xfffff000,
+        0xffffffff, 0x7ffe0,
+    };
+    const char *e = getenv("HAKUX_IBC");
+    bool on = e && (e[0] == '1' || e[0] == '2');
+    bool ok = true;
+
+    l->array_ofs = offsetof(CPUJumpCache, array);
+    l->entry_shift = ctz32(sizeof(((CPUJumpCache *)0)->array[0]));
+    l->tb_ofs = offsetof(CPUJumpCache, array[0].tb)
+                - offsetof(CPUJumpCache, array[0]);
+    l->pc_ofs = offsetof(CPUJumpCache, array[0].pc)
+                - offsetof(CPUJumpCache, array[0]);
+    l->hash_shift = TARGET_PAGE_BITS - TB_JMP_PAGE_BITS;
+    l->page_mask = TB_JMP_PAGE_MASK;
+    l->addr_mask = TB_JMP_ADDR_MASK;
+    l->count = e && e[0] == '2';
+
+    /* The probe computes this formula; it must be the jump cache's hash. */
+    if (sizeof(((CPUJumpCache *)0)->array[0]) != 1u << l->entry_shift) {
+        ok = false;
+    }
+    for (size_t i = 0; i < ARRAY_SIZE(probe); i++) {
+        vaddr pc = probe[i];
+        vaddr t = pc ^ (pc >> l->hash_shift);
+        uint32_t h = ((t >> l->hash_shift) & l->page_mask)
+                     | (t & l->addr_mask);
+        if (h != tb_jmp_cache_hash_func(pc)) {
+            ok = false;
+        }
+    }
+    JC425_LOG("[ibc507] on=%d layout=%s count=%d HAKUX_IBC=%s",
+              on && ok, ok ? "ok" : "MISMATCH", l->count, e ? e : "(unset)");
+    return on && ok;
+}
+#endif
 
 /* Return the current PC from CPU, which may be cached in TB. */
 static vaddr log_pc(CPUState *cpu, const TranslationBlock *tb)
@@ -1308,6 +1975,12 @@ static void cpu_exec_longjmp_cleanup(CPUState *cpu)
         bql_unlock();
     }
     assert_no_pages_locked();
+#ifdef XBOX
+    RR425_COUNT(RR_X);
+    hakux_rr425_eob = 0;
+    rr425_miss = false;
+    rr425_phase = 0;
+#endif
 }
 
 void cpu_exec_step_atomic(CPUState *cpu)
@@ -1335,7 +2008,7 @@ void cpu_exec_step_atomic(CPUState *cpu)
          * Any breakpoint for this insn will have been recognized earlier.
          */
 
-        tb = tb_lookup(cpu, s);
+        tb = tb_lookup(cpu, s, JC425_ATOMIC);
         if (tb == NULL) {
             mmap_lock();
             tb = tb_gen_code(cpu, s);
@@ -1346,6 +2019,11 @@ void cpu_exec_step_atomic(CPUState *cpu)
         /* execute the generated code */
         trace_exec_tb(tb, s.pc);
         cpu_tb_exec(cpu, tb, &tb_exit);
+#ifdef XBOX
+        /* Not a loop return: drop its marks so the next one is booked right. */
+        hakux_rr425_eob = 0;
+        rr425_miss = false;
+#endif
         cpu_exec_exit(cpu);
     } else {
         cpu_exec_longjmp_cleanup(cpu);
@@ -1573,6 +2251,7 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
     assert(!cpu_test_interrupt(cpu, ~0));
 #else
     if (unlikely(cpu_test_interrupt(cpu, ~0))) {
+        RR425_COUNT(RR_IP);
         bql_lock();
         if (cpu_test_interrupt(cpu, CPU_INTERRUPT_DEBUG)) {
             cpu_reset_interrupt(cpu, CPU_INTERRUPT_DEBUG);
@@ -1611,7 +2290,14 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
              * True when it is, and we should restart on a new TB,
              * and via longjmp via cpu_loop_exit.
              */
+#ifdef XBOX
+            hakux_rr425_vec = -1;
+#endif
             if (tcg_ops->cpu_exec_interrupt(cpu, interrupt_request)) {
+                RR425_COUNT(RR_IQ);
+#ifdef XBOX
+                rrw_wake();
+#endif
                 if (!tcg_ops->need_replay_interrupt ||
                     tcg_ops->need_replay_interrupt(interrupt_request)) {
                     replay_interrupt();
@@ -1650,6 +2336,7 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
         if (cpu->exception_index == -1) {
             cpu->exception_index = EXCP_INTERRUPT;
         }
+        RR425_COUNT(RR_XR);
         return true;
     }
 
@@ -1661,7 +2348,37 @@ static inline void cpu_loop_exec_tb(CPUState *cpu, TranslationBlock *tb,
                                     int *tb_exit)
 {
     trace_exec_tb(tb, pc);
+#ifdef XBOX
+    RR425_COUNT(RR_IT);
+    if (rr425_phase == 1) {
+        int64_t t = get_clock();
+        rr425_n[RR_GAPNS] += t - rr425_t;
+        rr425_n[RR_SN]++;
+        rr425_t = t;
+        rr425_phase = 2;
+#if HAKUX_TCG787
+        tpc787_pc = (uint32_t)pc;
+#endif
+    }
+#endif
     tb = cpu_tb_exec(cpu, tb, tb_exit);
+#ifdef XBOX
+    if (rr425_phase == 2) {
+        uint64_t run = get_clock() - rr425_t;
+        rr425_n[RR_TBNS] += run;
+        rr425_n[RR_TBN]++;
+        rr425_phase = 0;
+#if HAKUX_TCG787
+        tpc787_book(tpc787_pc, run);
+#endif
+    }
+    rr425_book(cpu, tb, *tb_exit);
+    if (unlikely(++rr425_samp >= 64)) {
+        rr425_samp = 0;
+        rr425_t = get_clock();
+        rr425_phase = 1;
+    }
+#endif
     if (*tb_exit != TB_EXIT_REQUESTED) {
         *last_tb = tb;
         return;
@@ -1709,6 +2426,10 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
 {
     int ret;
 
+#ifdef XBOX
+    /* A timed gap must not span time spent outside cpu_exec. */
+    rr425_phase = 0;
+#endif
     /* if an exception is pending, we execute it here */
     while (!cpu_handle_exception(cpu, &ret)) {
         TranslationBlock *last_tb = NULL;
@@ -1736,7 +2457,7 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
                 break;
             }
 
-            tb = tb_lookup(cpu, s);
+            tb = tb_lookup(cpu, s, JC425_LOOP);
             if (tb == NULL) {
                 CPUJumpCache *jc;
                 uint32_t h;
@@ -1768,11 +2489,17 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
              * for the second page can change.
              */
             if (tb_page_addr1(tb) != -1) {
+#ifdef XBOX
+                if (last_tb) {
+                    RR425_COUNT(RR_GS);
+                }
+#endif
                 last_tb = NULL;
             }
 #endif
             /* See if we can patch the calling TB. */
             if (last_tb) {
+                RR425_COUNT(RR_GA);
                 tb_add_jump(last_tb, tb_exit, tb);
             }
 
@@ -1803,6 +2530,9 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
                 tier1_maybe_reset_budget();
 
                 if (tb->cflags & CF_INVALID) {
+                    if (last_tb) {
+                        RR425_COUNT(RR_GI);
+                    }
                     last_tb = NULL;
                 }
 
@@ -1811,6 +2541,8 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
                 if (unlikely(++tlb68_gate >= 1024)) {
                     tlb68_gate = 0;
                     hakux_tlb68_tick(cpu);
+                    jc425_tick();
+                    rr425_tick(cpu);
                 }
             }
 #endif

@@ -60,7 +60,7 @@ void pgraph_vk_set_surface_scale_factor(NV2AState *d, unsigned int scale)
     qemu_mutex_unlock(&d->pfifo.lock);
 
     // FIXME: It's just flush
-    qemu_mutex_lock(&d->pgraph.lock);
+    pgraph_lock_settled(&d->pgraph);
     qemu_event_reset(&d->pgraph.vk_renderer_state->dirty_surfaces_download_complete);
     qatomic_set(&d->pgraph.vk_renderer_state->download_dirty_surfaces_pending, true);
     qemu_mutex_unlock(&d->pgraph.lock);
@@ -69,7 +69,7 @@ void pgraph_vk_set_surface_scale_factor(NV2AState *d, unsigned int scale)
     qemu_mutex_unlock(&d->pfifo.lock);
     qemu_event_wait(&d->pgraph.vk_renderer_state->dirty_surfaces_download_complete);
 
-    qemu_mutex_lock(&d->pgraph.lock);
+    pgraph_lock_settled(&d->pgraph);
     qemu_event_reset(&d->pgraph.flush_complete);
     qatomic_set(&d->pgraph.flush_pending, true);
     qemu_mutex_unlock(&d->pgraph.lock);
@@ -195,6 +195,32 @@ static bool framebuffer_dirty(PGRAPHState const *pg)
 #define SURF92_LOG(...) do { \
         fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
 #endif
+
+/*
+ * [sdcall] Which caller of the deferred-download completion pays for it
+ * (#414). Forza Motorsport's race spends 20-37 ms of each frame in ~6
+ * completions that submit a finish of their own (the stall line's cDef), and
+ * that line cannot say whose they are. Callers outside this file share
+ * SDC_EXTERNAL. Counted in download_surface_complete_deferred().
+ */
+enum {
+    SDC_RANGE,          /* pgraph_vk_download_surfaces_in_range_if_dirty */
+    SDC_TO_BUFFER,      /* download_surface_to_buffer                    */
+    SDC_DEFER_FULL,     /* download_surface_deferred, staging full       */
+    SDC_PENDING,        /* pgraph_vk_process_pending_downloads, entry    */
+    SDC_PENDING_FB,     /*   and its synchronous fallback                */
+    SDC_DIRTY,          /* pgraph_vk_download_dirty_surfaces, entry      */
+    SDC_DIRTY_FB,       /*   and its synchronous fallback                */
+    SDC_EXPIRE,         /* expire_old_surfaces                           */
+    SDC_SURF_UPDATE,    /* pgraph_vk_surface_update                      */
+    SDC_REUSE,          /* update_surface_part, unshelving a pending one */
+    SDC_RECORD,         /* a new download, after a submitted batch       */
+    SDC_PREREC,         /* the next flip's pre-record                    */
+    SDC_EXTERNAL,
+    SDC__COUNT
+};
+
+static void download_surface_complete_deferred(NV2AState *d, int caller);
 
 static struct {
     unsigned long updates;      /* upload-side update_surface_part() calls   */
@@ -377,6 +403,33 @@ static bool check_surface_overlaps_range(const SurfaceBinding *surface,
     return !(surface->vram_addr >= range_end || range_start >= surface_end);
 }
 
+/*
+ * Whether a recorded download that has not reached VRAM yet will write into
+ * [start, start + size). pgraph_vk_surface_update() leaves the downloads an
+ * eviction records to the next finish when nothing in that update reads VRAM
+ * (see surface_update_may_defer_downloads), so every other reader of guest
+ * memory that a download could be writing asks this first: the range lookup
+ * behind textures, vertices and blits, and the CPU-access watch.
+ */
+static bool deferred_downloads_overlap_range(NV2AState *d, hwaddr start,
+                                             hwaddr size)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+    hwaddr end = start + size;
+
+    for (int i = 0; i < r->num_deferred_downloads; i++) {
+        DeferredSurfaceDownload *dl = &r->deferred_downloads[i];
+        hwaddr dl_start = dl->dest_ptr - d->vram_ptr;
+        hwaddr dl_len = dl->swizzle ?
+            (hwaddr)dl->width * dl->height * dl->bytes_per_pixel :
+            (hwaddr)dl->pitch * dl->height;
+        if (dl_start < end && start < dl_start + dl_len) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
                                                    hwaddr start, hwaddr size)
 {
@@ -385,18 +438,9 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
     SurfaceBinding *surface;
     bool found_overlap = false;
 
-    /* If prior downloads were already submitted by a previous finish,
-     * complete them now before recording new ones. This ensures the
-     * deferred_downloads[] array only contains entries from the current
-     * (unsubmitted) aux CB. */
-    if (r->num_deferred_downloads > 0 && r->deferred_downloads_frame >= 0) {
-        OPT_STAT_INC(sd_complete_def_coalesced);
-        VK_CHECK(vkWaitForFences(r->device, 1,
-                                 &r->frame_fences[r->deferred_downloads_frame],
-                                 VK_TRUE, UINT64_MAX));
-        pgraph_vk_complete_staged_downloads(d, r);
-    }
-
+    /* A batch a previous finish submitted completes only if a new download
+     * is recorded below (complete_submitted_downloads) or if it overlaps the
+     * range (the test at the end), not on every lookup. */
     QTAILQ_FOREACH(surface, &r->surfaces, entry) {
         if (check_surface_overlaps_range(surface, start, size)) {
             found_overlap = true;
@@ -430,15 +474,38 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
         }
     }
 
-    if (found_overlap && r->num_deferred_downloads > 0) {
+    if (r->num_deferred_downloads > 0 &&
+        (found_overlap || deferred_downloads_overlap_range(d, start, size))) {
         /* Downloads just recorded but not yet submitted — must complete
-         * now since the caller needs the data in VRAM. */
-        pgraph_vk_download_surface_complete_deferred(d);
+         * now since the caller needs the data in VRAM. That includes ones
+         * an earlier surface_update left pending for a surface it evicted,
+         * which is shelved clean and so is not found above. */
+        download_surface_complete_deferred(d, SDC_RANGE);
     }
 
     return found_overlap;
 }
 
+
+static void download_surface_complete_deferred(NV2AState *d, int caller);
+
+/*
+ * #474: the recorded downloads are one batch, and every completion waits on
+ * one fence for all of them. Once a finish has submitted the batch (the
+ * flip's pre-download included), a download recorded now goes into the next,
+ * unsubmitted command buffer, and a wait on the batch's fence would copy its
+ * staging before the GPU wrote it. So the submitted batch completes first.
+ * Its fence is usually long signalled by then: the batch is left pending
+ * across draws until something needs it (surface_update_may_defer_downloads).
+ */
+static void complete_submitted_downloads(NV2AState *d)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+
+    if (r->num_deferred_downloads > 0 && r->deferred_downloads_frame >= 0) {
+        download_surface_complete_deferred(d, SDC_RECORD);
+    }
+}
 
 static bool download_surface_record_deferred(NV2AState *d,
                                              SurfaceBinding *surface,
@@ -450,6 +517,8 @@ static bool download_surface_record_deferred(NV2AState *d,
     if (!surface->width || !surface->height) {
         return true;
     }
+
+    complete_submitted_downloads(d);
 
     bool is_ds =
         surface->host_fmt.vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
@@ -830,6 +899,30 @@ static void deferred_downloads_clear_surface(PGRAPHVkState *r,
             r->deferred_downloads[i].surface = NULL;
         }
     }
+    if (r->display_predownload_surface == surface) {
+        r->display_predownload_surface = NULL;
+    }
+}
+
+/*
+ * Does a pending download still name this struct? Since #414 a download can
+ * stay pending across methods, until the next finish, so a struct that is
+ * shelved or invalid can still be the one its completion will retire. Reusing
+ * it (`*surface = target`) hands the new binding that completion: it credits
+ * the old binding's draw_generation to the new one, which restarts at 0, and
+ * with the same draw count it marks the new binding clean over VRAM that holds
+ * the old one's pixels. Freeing it drops the watch on the range the download
+ * is about to write.
+ */
+static bool deferred_downloads_reference(PGRAPHVkState *r,
+                                         SurfaceBinding *surface)
+{
+    for (int i = 0; i < r->num_deferred_downloads; i++) {
+        if (r->deferred_downloads[i].surface == surface) {
+            return true;
+        }
+    }
+    return false;
 }
 
 /*
@@ -960,6 +1053,23 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
                   dl->surface, dl->color, dl->partial ? "staged-part"
                                                       : "staged");
 
+        /*
+         * A download whose surface was freed while it was pending still
+         * wrote guest memory, and a texture cached from that range must hear
+         * about it. Take the range from what was written, since there is no
+         * binding to take it from.
+         */
+        if (!dl->surface) {
+            hwaddr dl_start = dl->dest_ptr - d->vram_ptr;
+            hwaddr dl_len = dl->swizzle ?
+                (hwaddr)dl->width * dl->height * dl->bytes_per_pixel :
+                (hwaddr)dl->pitch * dl->height;
+            memory_region_set_client_dirty(d->vram, dl_start, dl_len,
+                                           DIRTY_MEMORY_VGA);
+            memory_region_set_client_dirty(d->vram, dl_start, dl_len,
+                                           DIRTY_MEMORY_NV2A_TEX);
+        }
+
         /* Clean up surface flags now that data is in VRAM */
         if (dl->surface) {
             SurfaceBinding *s = dl->surface;
@@ -997,9 +1107,171 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
     r->num_deferred_downloads = 0;
     r->staging_dst_offset = 0;
     r->deferred_downloads_frame = -1;
+    /* The flip's pre-recorded batch is one of these, wherever it completes:
+     * here from a finish or the frame-slot rotation (vk/draw.c) as much as
+     * from download_surface_complete_deferred. Its entries retired the
+     * display surface above, at the generation the copy captured. */
+    r->display_predownload_pending = false;
+    r->display_predownload_surface = NULL;
 }
 
-void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
+/*
+ * [sdcall] counters, summed over 60 guest frames and printed by
+ * sdcall_log(): per caller, the completions that submitted a finish of
+ * their own (fin), waited an earlier finish's fence (fence) or the flip's
+ * pre-download (pre), the downloads they retired (dl), and the wall time of
+ * the wait. su_upl splits pgraph_vk_surface_update's own fin: the calls
+ * where an upload that reads VRAM followed in the same surface_update;
+ * su_deferred counts the updates that left their downloads to the next
+ * finish (surface_update_may_defer_downloads). why= splits su_upl's bindings
+ * by the site that last set their upload_pending (#414): a new or reused
+ * invalid slot, a shelf hit stale by vram_newer or by a handoff fallback, the
+ * CPU-write watch or its gap check, and "oth" for a setter this file does not
+ * tag (blit.c). clrskip counts the uploads a covering clear dropped
+ * (surface_drop_covered_upload). NV2A_PERF_LOG builds only.
+ */
+enum {
+    UPW_NONE, UPW_NEW, UPW_INVALID, UPW_STALE, UPW_HANDOFF, UPW_CPUW, UPW_GAP,
+    UPW__COUNT
+};
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+static struct {
+    int frame0;
+    unsigned long fin[SDC__COUNT], fence[SDC__COUNT], pre[SDC__COUNT];
+    unsigned long dl[SDC__COUNT];
+    int64_t wait_ns[SDC__COUNT];
+    unsigned long su_upl, su_deferred;
+    unsigned long why[UPW__COUNT];
+    unsigned long clr, clrfull, clrskip;
+} g_sdcall;
+
+/* The bindings a clearing update counted in why=, until the next update
+ * reads whether the clear marked them cleared (mark_clear_full, vk/draw.c). */
+static SurfaceBinding *g_upw_clr[2];
+
+/* Binding -> the UPW_ that last set its upload_pending; cleared by the
+ * upload. Touched only under pgraph.lock. */
+static GHashTable *g_upw_map;
+
+static void upw_set(SurfaceBinding *s, int why)
+{
+    if (!g_upw_map) {
+        g_upw_map = g_hash_table_new(NULL, NULL);
+    }
+    if (why == UPW_NONE) {
+        g_hash_table_remove(g_upw_map, s);
+    } else {
+        g_hash_table_insert(g_upw_map, s, GINT_TO_POINTER(why));
+    }
+}
+
+static void upw_count(PGRAPHState *pg, SurfaceBinding *s, int slot)
+{
+    if (s && s->upload_pending) {
+        g_sdcall.why[g_upw_map ? GPOINTER_TO_INT(
+                         g_hash_table_lookup(g_upw_map, s)) : UPW_NONE]++;
+        if (pg->clearing) {
+            g_sdcall.clr++;
+            g_upw_clr[slot] = s;
+        }
+    }
+}
+
+/* At the next update: did the clear that followed cover the binding whole? */
+static void upw_clear_read(PGRAPHVkState *r)
+{
+    for (int i = 0; i < 2; i++) {
+        SurfaceBinding *s = g_upw_clr[i];
+        if (s && (s == r->color_binding || s == r->zeta_binding) &&
+            s->cleared) {
+            g_sdcall.clrfull++;
+        }
+        g_upw_clr[i] = NULL;
+    }
+}
+#define UPW_SET(s, why) upw_set((s), (why))
+#else
+#define UPW_SET(s, why) ((void)(s), (void)(why))
+#endif
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+
+static void sdcall_log(PGRAPHState *pg)
+{
+    static const char *const names[SDC__COUNT] = {
+        "range", "tobuf", "deffull", "pend", "pendfb", "dirty", "dirtyfb",
+        "expire", "surfupd", "reuse", "record", "prerec", "ext",
+    };
+    int frames = pg->frame_time - g_sdcall.frame0;
+    if (frames < 60) {
+        return;
+    }
+    char buf[800];
+    int n = snprintf(buf, sizeof(buf), "[sdcall] frames=%d", frames);
+    for (int i = 0; i < SDC__COUNT && n < (int)sizeof(buf); i++) {
+        if (!g_sdcall.fin[i] && !g_sdcall.fence[i] && !g_sdcall.pre[i]) {
+            continue;
+        }
+        n += snprintf(buf + n, sizeof(buf) - n,
+                      " %s=fin%lu/fence%lu/pre%lu/dl%lu/%.1fms", names[i],
+                      g_sdcall.fin[i], g_sdcall.fence[i], g_sdcall.pre[i],
+                      g_sdcall.dl[i], (double)g_sdcall.wait_ns[i] / 1e6);
+    }
+    if (n < (int)sizeof(buf)) {
+        snprintf(buf + n, sizeof(buf) - n,
+                 " su_upl=%lu su_deferred=%lu why=new%lu/inv%lu/stale%lu/"
+                 "hoff%lu/cpuw%lu/gap%lu/oth%lu clr=%lu clrfull=%lu "
+                 "clrskip=%lu",
+                 g_sdcall.su_upl, g_sdcall.su_deferred,
+                 g_sdcall.why[UPW_NEW], g_sdcall.why[UPW_INVALID],
+                 g_sdcall.why[UPW_STALE], g_sdcall.why[UPW_HANDOFF],
+                 g_sdcall.why[UPW_CPUW], g_sdcall.why[UPW_GAP],
+                 g_sdcall.why[UPW_NONE], g_sdcall.clr, g_sdcall.clrfull,
+                 g_sdcall.clrskip);
+    }
+    SURF92_LOG("%s", buf);
+    memset(&g_sdcall, 0, sizeof(g_sdcall));
+    g_sdcall.frame0 = pg->frame_time;
+}
+#define SDCALL_DO(stmt) do { stmt; } while (0)
+#else
+#define SDCALL_DO(stmt) ((void)0)
+#endif
+
+/*
+ * #474: wait on a submitted frame's fence, with pgraph.lock released across
+ * the wait when the caller allows it.
+ *
+ * DOA Ultimate's fight spends ~56 ms a frame here (surf413 `cdef`), at the
+ * first surface_update after each flip, waiting for the flip's pre-recorded
+ * display download -- i.e. for the GPU to finish the previous frame -- with
+ * the lock held for the whole method. The guest's interrupt handler reads
+ * PGRAPH_INTR in that window and its vCPU blocked ~50 ms a frame on the lock.
+ *
+ * The wait itself reads nothing the lock protects: the fence and its slot
+ * belong to this (PFIFO) thread, and the staged downloads are copied into
+ * VRAM only after the lock is retaken. In the window the guest's PGRAPH
+ * interrupt and register MMIO may run (pgraph_read/pgraph_write name which);
+ * every other taker -- notably the VRAM access callback, which must not let
+ * a guest write land before the staged copy -- waits in pgraph_lock_settled()
+ * until the method ends, as it waited on the lock before. The GPU work and
+ * the frame pacing are unchanged: the PFIFO thread waits exactly as long.
+ */
+static void wait_frame_fence(NV2AState *d, int fi, bool release_lock)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+
+    if (release_lock) {
+        pgraph_lock_release_for_fence(&d->pgraph);
+    }
+    VK_CHECK(vkWaitForFences(r->device, 1, &r->frame_fences[fi], VK_TRUE,
+                             UINT64_MAX));
+    if (release_lock) {
+        pgraph_lock_retake_after_fence(&d->pgraph);
+    }
+}
+
+static void download_surface_complete_deferred_at(NV2AState *d, int caller,
+                                                  bool release_lock)
 {
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -1010,6 +1282,14 @@ void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
 
     int64_t _t0 = 0, _t1 = 0;
     if (NV2A_PERF_LOG) _t0 = nv2a_clock_ns();
+    SDCALL_DO(g_sdcall.dl[caller] += r->num_deferred_downloads;
+              if (r->display_predownload_pending) {
+                  g_sdcall.pre[caller]++;
+              } else if (r->deferred_downloads_frame >= 0) {
+                  g_sdcall.fence[caller]++;
+              } else {
+                  g_sdcall.fin[caller]++;
+              });
 
     if (r->display_predownload_pending) {
         /*
@@ -1018,53 +1298,45 @@ void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
          */
         int fi = r->display_predownload_frame_index;
         if (qatomic_read(&r->frame_submitted[fi])) {
-            VK_CHECK(vkWaitForFences(r->device, 1, &r->frame_fences[fi],
-                                     VK_TRUE, UINT64_MAX));
+            wait_frame_fence(d, fi, release_lock);
         }
     } else if (r->deferred_downloads_frame >= 0) {
         /* Downloads were already submitted as part of a prior finish.
          * Wait for that frame's fence — no new submit needed. */
         OPT_STAT_INC(sd_complete_def_coalesced);
-        VK_CHECK(vkWaitForFences(r->device, 1,
-                                 &r->frame_fences[r->deferred_downloads_frame],
-                                 VK_TRUE, UINT64_MAX));
+        wait_frame_fence(d, r->deferred_downloads_frame, release_lock);
     } else {
         OPT_STAT_INC(sd_complete_def);
         pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
     }
 
     if (NV2A_PERF_LOG) _t1 = nv2a_clock_ns();
+    SDCALL_DO(g_sdcall.wait_ns[caller] += _t1 - _t0);
 
+    /*
+     * This also retires the flip's pre-download. The display surface is one
+     * of the entries, so it is marked clean at the generation the flip's copy
+     * captured. It used to be marked clean here again at its current
+     * generation, which dropped any draw since the flip from the next
+     * download. With the batch left pending across draws (#474), that is the
+     * normal case, not a corner.
+     */
     pgraph_vk_complete_staged_downloads(d, r);
-
-    if (r->display_predownload_pending) {
-        SurfaceBinding *s = r->display_predownload_surface;
-        if (s) {
-            memory_region_set_client_dirty(d->vram, s->vram_addr,
-                                           s->pitch * s->height,
-                                           DIRTY_MEMORY_VGA);
-            memory_region_set_client_dirty(d->vram, s->vram_addr,
-                                           s->pitch * s->height,
-                                           DIRTY_MEMORY_NV2A_TEX);
-            /* See download_surface: a partial download leaves the rows it
-             * did not copy stale, so it must not retire the generation. */
-            bool was_partial = s->download_row_count > 0 &&
-                               s->download_row_count < s->height;
-            s->download_pending = false;
-            s->download_row_count = 0;
-            if (!was_partial) {
-                s->draw_dirty = false;
-                s->download_generation = s->draw_generation;
-            }
-        }
-        r->display_predownload_pending = false;
-        r->display_predownload_surface = NULL;
-    }
 
     if (NV2A_PERF_LOG) {
         g_nv2a_stats.surf_working.df_flush_ns += _t1 - _t0;
         g_nv2a_stats.surf_working.df_read_ns += nv2a_clock_ns() - _t1;
     }
+}
+
+static void download_surface_complete_deferred(NV2AState *d, int caller)
+{
+    download_surface_complete_deferred_at(d, caller, false);
+}
+
+void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
+{
+    download_surface_complete_deferred(d, SDC_EXTERNAL);
 }
 
 static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
@@ -1073,7 +1345,7 @@ static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
 
-    pgraph_vk_download_surface_complete_deferred(d);
+    download_surface_complete_deferred(d, SDC_TO_BUFFER);
 
     VK_LOG("download_surface: %s addr=0x%x %ux%u pitch=%d bpp=%d swizzle=%d",
            surface->color ? "COLOR" : "ZETA", surface->vram_addr,
@@ -1678,6 +1950,14 @@ static void download_surface_deferred(NV2AState *d, SurfaceBinding *surface)
         return;
     }
 
+    /* The submitted batch may hold this surface's copy of this very
+     * generation: complete it before asking again. */
+    complete_submitted_downloads(d);
+    if (!surface->draw_dirty ||
+        surface->download_generation == surface->draw_generation) {
+        return;
+    }
+
     /* Try deferred path — records download into nondraw CB without
      * finishing. Multiple deferred downloads are batched into a single
      * finish call when pgraph_vk_download_surface_complete_deferred() runs. */
@@ -1688,7 +1968,7 @@ static void download_surface_deferred(NV2AState *d, SurfaceBinding *surface)
 
     /* Deferred path failed (buffer full or limit reached). Complete pending
      * deferred downloads first, then retry. */
-    pgraph_vk_download_surface_complete_deferred(d);
+    download_surface_complete_deferred(d, SDC_DEFER_FULL);
     if (download_surface_record_deferred(
             d, surface, d->vram_ptr + surface->vram_addr)) {
         return;
@@ -1706,15 +1986,23 @@ bool pgraph_vk_prerecord_display_download(NV2AState *d)
 
     fmv303_wb_frame(d);
 
-    if (r->display_predownload_pending) {
-        return false;
-    }
-
     if (!r->in_command_buffer) {
         return false;
     }
 
-    if (r->num_deferred_downloads != 0) {
+    /* The last flip's batch, left pending across the frame (#474): complete
+     * it here at the latest. Its fence is a frame old. */
+    if (r->display_predownload_pending) {
+        download_surface_complete_deferred(d, SDC_PREREC);
+    }
+    if (r->display_predownload_pending) {
+        return false;
+    }
+
+    /* Downloads a surface_update left pending (#414) are in this same
+     * command buffer, so the flip's fence covers them and they can share
+     * its batch. A batch an earlier finish already submitted cannot. */
+    if (r->num_deferred_downloads != 0 && r->deferred_downloads_frame >= 0) {
         return false;
     }
 
@@ -1792,7 +2080,7 @@ void pgraph_vk_process_pending_downloads(NV2AState *d)
     PGRAPHVkState *r = pg->vk_renderer_state;
     SurfaceBinding *surface;
 
-    pgraph_vk_download_surface_complete_deferred(d);
+    download_surface_complete_deferred(d, SDC_PENDING);
 
     bool can_defer = true;
     int pending_count = 0;
@@ -1828,7 +2116,7 @@ void pgraph_vk_process_pending_downloads(NV2AState *d)
     }
 
     if (!can_defer || r->num_deferred_downloads == 0) {
-        pgraph_vk_download_surface_complete_deferred(d);
+        download_surface_complete_deferred(d, SDC_PENDING_FB);
         QTAILQ_FOREACH(surface, &r->surfaces, entry) {
             OPT_STAT_INC(dl_from_ppd_fb);
             download_surface(d, surface, false);
@@ -1875,7 +2163,7 @@ void pgraph_vk_download_dirty_surfaces(NV2AState *d)
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
 
-    pgraph_vk_download_surface_complete_deferred(d);
+    download_surface_complete_deferred(d, SDC_DIRTY);
 
     bool can_defer = true;
     int pending_count = 0;
@@ -1912,7 +2200,7 @@ void pgraph_vk_download_dirty_surfaces(NV2AState *d)
     }
 
     if (!can_defer || r->num_deferred_downloads == 0) {
-        pgraph_vk_download_surface_complete_deferred(d);
+        download_surface_complete_deferred(d, SDC_DIRTY_FB);
         QTAILQ_FOREACH(surface, &r->surfaces, entry) {
             OPT_STAT_INC(dif_dds_fb);
             pgraph_vk_surface_download_if_dirty(d, surface);
@@ -2048,7 +2336,7 @@ static void surface_watch_rearmed(CPUState *cpu, run_on_cpu_data data)
     SurfaceWatchRearm *w = data.host_ptr;
     NV2AState *d = w->d;
 
-    qemu_mutex_lock(&d->pgraph.lock);
+    pgraph_lock_settled(&d->pgraph);
     qemu_rec_mutex_lock(&surface_watch_lock);
     PGRAPHVkState *r = d->pgraph.vk_renderer_state;
     SurfaceBinding *s = r ? g_hash_table_lookup(r->surface_addr_map,
@@ -2059,6 +2347,7 @@ static void surface_watch_rearmed(CPUState *cpu, run_on_cpu_data data)
             surface_watch_lost_writes++;
         } else {
             s->upload_pending = true;
+            UPW_SET(s, UPW_GAP);
             surface_watch_gap_writes++;
         }
     }
@@ -2075,6 +2364,14 @@ static void register_cpu_access_callback(NV2AState *d,
  * suspended, re-arm it and queue the gap check. Returns with upload_pending
  * cleared, as the upload always did; the caller holds surface_watch_lock.
  */
+/* Whole-surface hashes taken by surface_watch_resume(); see [surf413]. */
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+static unsigned long surf413_resume_hashes, surf413_resume_kb;
+#define SURF413_HASHED(kb) (surf413_resume_hashes++, surf413_resume_kb += (kb))
+#else
+#define SURF413_HASHED(kb) ((void)0)
+#endif
+
 static void surface_watch_resume(NV2AState *d, SurfaceBinding *surface)
 {
     if (!surface_watch_suspended ||
@@ -2083,6 +2380,7 @@ static void surface_watch_resume(NV2AState *d, SurfaceBinding *surface)
     }
     uint64_t hash = surface_watch_hash(d->vram_ptr + surface->vram_addr,
                                        surface->size);
+    SURF413_HASHED(surface->size / 1024);
     register_cpu_access_callback(d, surface);
     if (surface->access_cb) {
         SurfaceWatchRearm *w = g_new(SurfaceWatchRearm, 1);
@@ -2118,10 +2416,23 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
                                     hwaddr len, bool write)
 {
     NV2AState *d = (NV2AState *)opaque;
-    qemu_mutex_lock(&d->pgraph.lock);
+    /* Settled (#474): inside the lock-released fence wait of
+     * download_surface_complete_deferred the staged downloads have not been
+     * copied into VRAM yet, and a write here that let the guest store first
+     * would be overwritten by that copy. */
+    pgraph_lock_settled(&d->pgraph);
 
     PGRAPHVkState *r = d->pgraph.vk_renderer_state;
-    bool wait_for_downloads = false;
+    /*
+     * A download an eviction left pending would land after this access: a
+     * read would see the memory from before it, and a write would be put
+     * under it. The evicted binding's watch outlives its eviction (it still
+     * owes the download), which is how the access got here. The download
+     * thread completes it before it looks for anything else to do.
+     */
+    bool wait_for_downloads =
+        r->num_deferred_downloads > 0 &&
+        deferred_downloads_overlap_range(d, addr, len);
 
     SurfaceBinding *surface;
     QTAILQ_FOREACH(surface, &r->surfaces, entry) {
@@ -2191,6 +2502,7 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
         if (write) {
             qemu_rec_mutex_lock(&surface_watch_lock);
             surface->upload_pending = true;
+            UPW_SET(surface, UPW_CPUW);
             /* Owes no download: the rest of this generation's traps would
              * only repeat the line above. See surface_watch_resume. */
             if (!surface->draw_dirty && surface->access_cb) {
@@ -2254,6 +2566,137 @@ extern volatile int32_t *xbox_ram_fp_cb_count_ptr;   /* tcg/tcg.c */
 static long surface_live_watches;
 static unsigned long surface_watch_inserts;
 
+/*
+ * #372: which part of the compatibility test an incompatible eviction in
+ * update_surface_part() failed. The eviction of a draw-dirty binding is a
+ * deferred download completed by a synchronous finish in the same
+ * surface_update, and the partner unshelved stale re-uploads it. Whether a
+ * GPU-side copy can replace that round trip depends on the failing field:
+ * a pitch or size mismatch between one host format is a copy, a role or
+ * format change is a conversion. Each bit is tested on its own, so a mask
+ * with several bits set means several fields differ, not a first failure.
+ */
+enum {
+    EVICT_WHY_ROLE = 1 << 0,     /* colour vs zeta                       */
+    EVICT_WHY_FORMAT = 1 << 1,   /* host vk_format                       */
+    EVICT_WHY_PITCH = 1 << 2,
+    EVICT_WHY_SMALL = 1 << 3,    /* held binding narrower or shorter     */
+    EVICT_WHY_SWIZZLE = 1 << 4,  /* swizzle differs, no clear rescued it */
+    EVICT_WHY_OVERLAP = 1 << 5,  /* colour would overlap the zeta range  */
+    EVICT_WHY_ZDIM = 1 << 6,     /* zeta dims differ from colour's       */
+    EVICT_WHY_BINS = 1 << 7,
+};
+
+typedef struct EvictSide {
+    bool color, swizzle;
+    int vk_format;
+    unsigned int pitch, width, height, bpp;
+} EvictSide;
+
+#define EVICT_PAIRS 8
+
+static struct {
+    unsigned long dirty[EVICT_WHY_BINS];  /* draw-dirty: took the download */
+    unsigned long clean[EVICT_WHY_BINS];
+    struct {
+        EvictSide from, to;
+        unsigned int why;
+        unsigned long n;
+    } pair[EVICT_PAIRS];
+    unsigned long pair_overflow;
+} g_evict372;
+
+/* Evictions handed to the shelved partner on the GPU (#372, see
+ * surface_handoff_partner), and ones that fell back to the download. */
+static unsigned long surface_handoffs, surface_handoff_fallbacks;
+
+static void evict372_side(EvictSide *e, SurfaceBinding const *s)
+{
+    /* Compared with memcmp, so the padding is zeroed first. */
+    memset(e, 0, sizeof(*e));
+    e->color = s->color;
+    e->swizzle = s->swizzle;
+    e->vk_format = s->host_fmt.vk_format;
+    e->pitch = s->pitch;
+    e->width = s->width;
+    e->height = s->height;
+    e->bpp = s->fmt.bytes_per_pixel;
+}
+
+static void evict372_record(SurfaceBinding const *held,
+                            SurfaceBinding const *target, unsigned int why)
+{
+    why &= EVICT_WHY_BINS - 1;
+    if (!held->draw_dirty) {
+        g_evict372.clean[why]++;
+        return;
+    }
+    g_evict372.dirty[why]++;
+
+    EvictSide from, to;
+    evict372_side(&from, held);
+    evict372_side(&to, target);
+    /*
+     * A full table replaces its least-counted pair, so pairs from the boot
+     * movies give way to the ones a later scene repeats every frame. n then
+     * counts from the replacement, and overflow counts replacements.
+     */
+    int victim = 0;
+    for (int i = 0; i < EVICT_PAIRS; i++) {
+        if (g_evict372.pair[i].n == 0) {
+            victim = i;
+            break;
+        }
+        if (!memcmp(&g_evict372.pair[i].from, &from, sizeof(from)) &&
+            !memcmp(&g_evict372.pair[i].to, &to, sizeof(to)) &&
+            g_evict372.pair[i].why == why) {
+            g_evict372.pair[i].n++;
+            return;
+        }
+        if (g_evict372.pair[i].n < g_evict372.pair[victim].n) {
+            victim = i;
+        }
+    }
+    if (g_evict372.pair[victim].n) {
+        g_evict372.pair_overflow++;
+    }
+    g_evict372.pair[victim].from = from;
+    g_evict372.pair[victim].to = to;
+    g_evict372.pair[victim].why = why;
+    g_evict372.pair[victim].n = 1;
+}
+
+static void evict372_log(void)
+{
+    char masks[512];
+    int len = 0;
+    masks[0] = '\0';
+    for (int m = 0; m < EVICT_WHY_BINS && len < (int)sizeof(masks) - 48; m++) {
+        if (g_evict372.dirty[m] || g_evict372.clean[m]) {
+            len += snprintf(masks + len, sizeof(masks) - len,
+                            " m%02x:%lu/%lu", m, g_evict372.dirty[m],
+                            g_evict372.clean[m]);
+        }
+    }
+    SURF92_LOG("[evict372] dirty/clean by mask (1role 2fmt 4pitch 8small "
+               "10swz 20ovl 40zdim):%s overflow=%lu handoffs=%lu "
+               "fallbacks=%lu",
+               masks, g_evict372.pair_overflow, surface_handoffs,
+               surface_handoff_fallbacks);
+    for (int i = 0; i < EVICT_PAIRS && g_evict372.pair[i].n; i++) {
+        EvictSide const *f = &g_evict372.pair[i].from;
+        EvictSide const *t = &g_evict372.pair[i].to;
+        SURF92_LOG("[evict372] pair%d n=%lu m%02x %c f%d %s p%u %ux%u b%u -> "
+                   "%c f%d %s p%u %ux%u b%u",
+                   i, g_evict372.pair[i].n, g_evict372.pair[i].why,
+                   f->color ? 'C' : 'Z', f->vk_format,
+                   f->swizzle ? "sz" : "ln", f->pitch, f->width, f->height,
+                   f->bpp, t->color ? 'C' : 'Z', t->vk_format,
+                   t->swizzle ? "sz" : "ln", t->pitch, t->width, t->height,
+                   t->bpp);
+    }
+}
+
 static void surface_watch_log_periodic(PGRAPHVkState *r)
 {
     static int64_t next_ns;
@@ -2287,6 +2730,7 @@ static void surface_watch_log_periodic(PGRAPHVkState *r)
                surface_watch_suspends, surface_watch_rearms,
                surface_watch_gap_writes, surface_watch_lost_writes);
     qemu_rec_mutex_unlock(&surface_watch_lock);
+    evict372_log();
 }
 
 static void unregister_cpu_access_callback(SurfaceBinding *surface)
@@ -2896,6 +3340,24 @@ void pgraph_vk_drain_deferred_surface_releases(PGRAPHVkState *r, int frame)
     if (!retired) {
         return;
     }
+
+    /*
+     * The same fence ends the in-flight window of every surface invalidated
+     * while this slot was recording. invalidation_frame is a slot index, and
+     * surface_in_flight() reads a slot that is current or submitted as busy;
+     * in steady state every slot is one or the other, so a stamp that is
+     * never cleared keeps its surface unprunable for good. The one flush
+     * that used to reset every slot at once ran on each surface-to-texture
+     * bind until #517 moved it to the copy branch, and on Forza's race
+     * invalid_surfaces then grew to ~4000 entries, each walked on every
+     * texture bind: 29 fps fell to 3 over a race (#414).
+     */
+    SurfaceBinding *surface;
+    QTAILQ_FOREACH(surface, &r->invalid_surfaces, entry) {
+        if (surface->invalidation_frame == frame) {
+            surface->invalidation_frame = -1;
+        }
+    }
     for (guint i = 0; i < retired->len; i++) {
         DeferredSurfaceRelease *s =
             &g_array_index(retired, DeferredSurfaceRelease, i);
@@ -2950,7 +3412,10 @@ get_any_compatible_invalid_surface(PGRAPHVkState *r, SurfaceBinding *target)
 {
     SurfaceBinding *surface, *next;
     QTAILQ_FOREACH_SAFE(surface, &r->invalid_surfaces, entry, next) {
-        if (surface_in_flight(r, surface)) {
+        /* A pending download is in flight too: see
+         * deferred_downloads_reference. */
+        if (surface_in_flight(r, surface) ||
+            deferred_downloads_reference(r, surface)) {
             continue;
         }
         if (check_invalid_surface_is_compatibile(surface, target)) {
@@ -2970,7 +3435,8 @@ static void prune_invalid_surfaces(PGRAPHVkState *r, int keep)
     QTAILQ_FOREACH_SAFE(surface, &r->invalid_surfaces, entry, next) {
         num_surfaces += 1;
         if (num_surfaces > keep) {
-            if (surface_in_flight(r, surface)) {
+            if (surface_in_flight(r, surface) ||
+                deferred_downloads_reference(r, surface)) {
                 continue;
             }
             QTAILQ_REMOVE(&r->invalid_surfaces, surface, entry);
@@ -2993,9 +3459,11 @@ static void expire_old_surfaces(NV2AState *d)
      * preserves the VkImage, so deferred GPU copies remain valid.
      */
     SurfaceBinding *s, *next;
+    bool expired = false;
     QTAILQ_FOREACH_SAFE(s, &r->surfaces, entry, next) {
         int last_used = d->pgraph.frame_time - s->frame_time;
         if (last_used >= max_surface_frame_time_delta) {
+            expired = true;
             trace_nv2a_pgraph_surface_evict_reason("old", s->vram_addr);
             OPT_STAT_INC(dif_expire);
             if (s->draw_dirty) {
@@ -3009,8 +3477,13 @@ static void expire_old_surfaces(NV2AState *d)
     }
 
     /* Complete batched active-surface downloads before processing shelved
-     * surfaces, which destroy their VkImages on free. */
-    pgraph_vk_download_surface_complete_deferred(d);
+     * surfaces, which destroy their VkImages on free. Only when something
+     * expires: this runs at the end of every surface_update, and completing
+     * unconditionally here would submit the finish that
+     * surface_update_may_defer_downloads just declined (#414). */
+    if (expired) {
+        download_surface_complete_deferred(d, SDC_EXPIRE);
+    }
 
     /* Shelved surfaces: use inline path since images are destroyed here. */
     int shelved_count = 0;
@@ -3018,6 +3491,10 @@ static void expire_old_surfaces(NV2AState *d)
         int last_used = d->pgraph.frame_time - s->frame_time;
         if (last_used >= max_surface_frame_time_delta ||
             shelved_count >= max_shelved_surfaces) {
+            if (!expired) {
+                expired = true;
+                download_surface_complete_deferred(d, SDC_EXPIRE);
+            }
             OPT_STAT_INC(dif_expire_sh);
             if (s->shelved_dirty) {
                 OPT_STAT_INC(sd_shelved_lazy_dl);
@@ -3096,6 +3573,7 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
     qemu_rec_mutex_lock(&surface_watch_lock);
     surface_watch_resume(d, surface);
     surface->upload_pending = false;
+    UPW_SET(surface, UPW_NONE);
     qemu_rec_mutex_unlock(&surface_watch_lock);
     surface->draw_time = pg->draw_time;
 
@@ -3724,6 +4202,259 @@ static void populate_surface_binding_target(NV2AState *d, bool color,
     populate_surface_binding_target_sized(d, color, width, height, target);
 }
 
+/*
+ * #372: hand an evicted binding's pixels to its shelved partner on the GPU.
+ *
+ * Two bindings of one guest surface can share an address under host formats
+ * that do not match (a colour and a zeta binding, D24S8 and D32FS8, R5G6B5 and
+ * D16). Each time the guest switches between them the draw-dirty one was
+ * downloaded to VRAM with a synchronous finish, and the partner came off the
+ * shelf stale and re-uploaded those bytes. Blinx's attract demo does this
+ * twice a frame, and the two finishes were half its frame time.
+ *
+ * When the two bindings have the same width, height, pitch, swizzle and
+ * bytes per pixel, the download's staging bytes are exactly the bytes the
+ * upload would stage: VRAM only adds the pitch padding (never read back) and
+ * the swizzle (undone by the upload). So the round trip is recorded as one
+ * GPU sequence instead: image -> buffer (packed by the same compute pass the
+ * download uses, for a depth-stencil source) -> buffer unpacked by the same
+ * pass the upload uses (for a depth-stencil destination) -> image. The pixels
+ * are the ones the old path produced; only VRAM is not written.
+ *
+ * VRAM then owes the partner's pixels, and the partner, now the active
+ * binding, owes the download: it is marked draw-dirty with a new generation,
+ * through pgraph_vk_surface_watch_mark_dirty, so its CPU-access watch is live
+ * (see surface_watch_resume). A guest access to the memory downloads it --
+ * the same bytes the old path would have put there -- as it would any drawn
+ * surface. The evicted binding is shelved clean and stale (vram_newer): it
+ * owes nothing, and the next time it is wanted it is either handed the
+ * partner's pixels the same way or re-uploaded from VRAM after the partner's
+ * download.
+ *
+ * The obligation goes to the active binding, not to the shelved one, because
+ * surface_access_callback downloads only active surfaces. A shelved
+ * draw-dirty binding is written back on a texture or overlap lookup
+ * (pgraph_vk_download_surfaces_in_range_if_dirty), but a CPU read of it goes
+ * unanswered and reads stale VRAM.
+ *
+ * Declined, falling back to the download, when anything else could write the
+ * range between the old download and the partner's upload (another active
+ * binding over it, or a dirty shelved binding elsewhere that surface_put
+ * would write back), when the guest's CPU asked for the download
+ * (download_pending) or wrote the range (upload_pending, mem_dirty), and at
+ * any surface scale but 1, where the round trip down- and up-scales. Also
+ * without TCG, where no watch exists and VRAM has to be current.
+ */
+
+static bool surface_is_ds(SurfaceBinding const *s)
+{
+    return s->host_fmt.vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
+           s->host_fmt.vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT;
+}
+
+/* The staging bytes a download produces equal the ones an upload reads. */
+static bool surface_stages_guest_bytes(SurfaceBinding const *s)
+{
+    return surface_is_ds(s) ?
+               s->fmt.bytes_per_pixel == 4 :
+               s->host_fmt.host_bytes_per_pixel == s->fmt.bytes_per_pixel;
+}
+
+/* get_shelved_surface()'s predicate, without taking the surface. */
+static bool surface_shelf_matches(SurfaceBinding const *s,
+                                  SurfaceBinding const *target)
+{
+    return s->vram_addr == target->vram_addr &&
+           s->host_fmt.vk_format == target->host_fmt.vk_format &&
+           s->color == target->color &&
+           s->width == target->width &&
+           s->height == target->height &&
+           s->pitch == target->pitch;
+}
+
+static SurfaceBinding *surface_handoff_partner(NV2AState *d,
+                                               SurfaceBinding *held,
+                                               SurfaceBinding const *target,
+                                               bool mem_dirty)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    /* Without TCG no watch sees a CPU read, and VRAM must be current. */
+    if (!tcg_enabled() || pg->surface_scale_factor != 1 || mem_dirty ||
+        !held->draw_dirty || held->upload_pending || held->download_pending ||
+        !held->width || !held->height) {
+        return NULL;
+    }
+    if (held->width != target->width || held->height != target->height ||
+        held->pitch != target->pitch || held->swizzle != target->swizzle ||
+        held->fmt.bytes_per_pixel != target->fmt.bytes_per_pixel ||
+        held->size != target->size ||
+        !surface_stages_guest_bytes(held) ||
+        !surface_stages_guest_bytes(target)) {
+        return NULL;
+    }
+    if (r->display_predownload_pending &&
+        r->display_predownload_surface == held) {
+        return NULL;
+    }
+    /* The held binding goes to the head of the shelf; if it matched, it
+     * would be the one taken back. */
+    if (surface_shelf_matches(held, target)) {
+        return NULL;
+    }
+
+    SurfaceBinding *s, *partner = NULL;
+    QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
+        if (!partner && surface_shelf_matches(s, target)) {
+            partner = s;
+        } else if (s->vram_addr != target->vram_addr && s->draw_dirty &&
+                   check_surface_overlaps_range(s, target->vram_addr,
+                                                target->size)) {
+            return NULL;
+        }
+    }
+    if (!partner) {
+        return NULL;
+    }
+    QTAILQ_FOREACH(s, &r->surfaces, entry) {
+        if (s != held &&
+            check_surface_overlaps_range(s, target->vram_addr, target->size)) {
+            return NULL;
+        }
+    }
+    return partner;
+}
+
+static void surface_handoff_barrier(VkCommandBuffer cmd)
+{
+    VkMemoryBarrier barrier = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT |
+                         VK_ACCESS_TRANSFER_WRITE_BIT |
+                         VK_ACCESS_SHADER_READ_BIT |
+                         VK_ACCESS_SHADER_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT |
+                         VK_ACCESS_TRANSFER_WRITE_BIT |
+                         VK_ACCESS_SHADER_READ_BIT |
+                         VK_ACCESS_SHADER_WRITE_BIT,
+    };
+    VkPipelineStageFlags stages = VK_PIPELINE_STAGE_TRANSFER_BIT |
+                                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    vkCmdPipelineBarrier(cmd, stages, stages, 0, 1, &barrier, 0, NULL, 0,
+                         NULL);
+}
+
+/* The buffer regions of one image, packed as the download and upload do. */
+static int surface_handoff_regions(PGRAPHVkState *r, SurfaceBinding const *s,
+                                   VkBufferImageCopy regions[2])
+{
+    VkExtent3D extent = { s->width, s->height, 1 };
+    regions[0] = (VkBufferImageCopy){
+        .imageSubresource.aspectMask =
+            s->color ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT,
+        .imageSubresource.layerCount = 1,
+        .imageExtent = extent,
+    };
+    if (!(s->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        return 1;
+    }
+    regions[1] = (VkBufferImageCopy){
+        .bufferOffset = ROUND_UP(
+            (VkDeviceSize)s->width * s->height * 4,
+            r->device_props.limits.minStorageBufferOffsetAlignment),
+        .imageSubresource.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT,
+        .imageSubresource.layerCount = 1,
+        .imageExtent = extent,
+    };
+    return 2;
+}
+
+static void surface_handoff_record(NV2AState *d, SurfaceBinding *src,
+                                   SurfaceBinding *dst)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    /* As download_surface_record_deferred: queued draws to src first. */
+    if (r->reorder_window.count > 0) {
+        pgraph_vk_flush_reorder_window(d);
+    }
+    if (r->draw_queue.count > 0) {
+        pgraph_vk_flush_draw_queue(d);
+    }
+
+    VkBuffer compute_dst = r->storage_buffers[BUFFER_COMPUTE_DST].buffer;
+    VkBuffer compute_src = r->storage_buffers[BUFFER_COMPUTE_SRC].buffer;
+    VkBufferImageCopy regions[2];
+    int num_regions;
+
+    VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+    pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED, __func__);
+
+    /* src image -> compute_dst, laid out as the download lays it out. */
+    VkImageLayout src_layout = src->image_layout;
+    pgraph_vk_transition_image_layout(pg, cmd, src->image,
+                                      src->host_fmt.vk_format, src_layout,
+                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    surface_handoff_barrier(cmd);
+    num_regions = surface_handoff_regions(r, src, regions);
+    vkCmdCopyImageToBuffer(cmd, src->image,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, compute_dst,
+                           num_regions, regions);
+    pgraph_vk_transition_image_layout(pg, cmd, src->image,
+                                      src->host_fmt.vk_format,
+                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                      src_layout);
+    surface_handoff_barrier(cmd);
+
+    /* The guest's bytes: packed from depth and stencil, or the copy itself. */
+    VkBuffer guest = compute_dst;
+    if (surface_is_ds(src)) {
+        pgraph_vk_pack_depth_stencil(pg, src, cmd, compute_dst, compute_src,
+                                     false);
+        surface_handoff_barrier(cmd);
+        guest = compute_src;
+    }
+
+    /* The upload's side: unpack for a depth-stencil destination. */
+    VkBuffer staged = guest;
+    if (surface_is_ds(dst)) {
+        if (guest != compute_dst) {
+            VkBufferCopy copy = {
+                .size = (VkDeviceSize)dst->width * dst->height * 4,
+            };
+            vkCmdCopyBuffer(cmd, guest, compute_dst, 1, &copy);
+            surface_handoff_barrier(cmd);
+        }
+        pgraph_vk_unpack_depth_stencil(pg, dst, cmd, compute_dst, compute_src);
+        surface_handoff_barrier(cmd);
+        staged = compute_src;
+    }
+
+    VkImageLayout dst_layout = dst->color ?
+        VK_IMAGE_LAYOUT_GENERAL :
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    pgraph_vk_transition_image_layout(pg, cmd, dst->image,
+                                      dst->host_fmt.vk_format,
+                                      dst->image_layout,
+                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    num_regions = surface_handoff_regions(r, dst, regions);
+    vkCmdCopyBufferToImage(cmd, staged, dst->image,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, num_regions,
+                           regions);
+    pgraph_vk_transition_image_layout(pg, cmd, dst->image,
+                                      dst->host_fmt.vk_format,
+                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                      dst_layout);
+    dst->image_layout = dst_layout;
+    surface_handoff_barrier(cmd);
+
+    pgraph_vk_end_debug_marker(r, cmd);
+    pgraph_vk_end_nondraw_commands(pg, cmd);
+    surface_handoffs++;
+}
+
 static void update_surface_part(NV2AState *d, bool upload, bool color)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -3853,10 +4584,19 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
             pg->surface_shape.clip_height);
 
         bool should_create = true;
+        SurfaceBinding *handoff_src = NULL, *handoff_dst = NULL;
 
         if (surface != NULL) {
             bool is_compatible =
                 check_surface_compatibility(surface, &target, false);
+            unsigned int evict_why =
+                (surface->color != target.color ? EVICT_WHY_ROLE : 0) |
+                (surface->host_fmt.vk_format != target.host_fmt.vk_format ?
+                     EVICT_WHY_FORMAT : 0) |
+                (surface->pitch != target.pitch ? EVICT_WHY_PITCH : 0) |
+                (surface->width < target.width ||
+                         surface->height < target.height ?
+                     EVICT_WHY_SMALL : 0);
 
             void (*trace_fn)(uint32_t addr, uint32_t width, uint32_t height,
                              const char *layout, uint32_t anti_aliasing,
@@ -3881,8 +4621,10 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 // destined to be cleared and (2) a fully cleared linear surface
                 // to be marked swizzled. Strictly match size to avoid
                 // pathological cases.
-                is_compatible &= (pg->clearing || surface->cleared) &&
+                bool rescued = (pg->clearing || surface->cleared) &&
                     check_surface_compatibility(surface, &target, true);
+                is_compatible &= rescued;
+                evict_why |= rescued ? 0 : EVICT_WHY_SWIZZLE;
                 if (is_compatible) {
                     trace_nv2a_pgraph_surface_migrate_type(
                         target.swizzle ? "swizzled" : "linear");
@@ -3898,11 +4640,13 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 hwaddr zeta_end = zeta_entry.vram_addr + zeta_entry.size;
                 is_compatible &= surface->vram_addr >= zeta_end ||
                                  zeta_entry.vram_addr >= color_end;
+                evict_why |= is_compatible ? 0 : EVICT_WHY_OVERLAP;
             }
 
             if (is_compatible && !color && r->color_binding) {
                 is_compatible &= (surface->width == r->color_binding->width) &&
                                  (surface->height == r->color_binding->height);
+                evict_why |= is_compatible ? 0 : EVICT_WHY_ZDIM;
             }
 
             if (is_compatible) {
@@ -3966,6 +4710,7 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 trace_nv2a_pgraph_surface_evict_reason(
                     "incompatible", surface->vram_addr);
                 compare_surfaces(surface, &target);
+                evict372_record(surface, &target, evict_why);
                 /*
                  * Same contract as invalidate_overlapping_surfaces(): the
                  * binding that replaces this one uploads from VRAM in this
@@ -3982,7 +4727,12 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                  * binary.
                  */
                 surface->shelved_dirty = surface->draw_dirty;
-                if (surface->draw_dirty) {
+                handoff_dst = surface_handoff_partner(d, surface, &target,
+                                                      mem_dirty);
+                if (handoff_dst) {
+                    /* Recorded once the partner is off the shelf, below. */
+                    handoff_src = surface;
+                } else if (surface->draw_dirty) {
                     OPT_STAT_INC(sd_eviction_dl);
                     download_surface_deferred(d, surface);
                     surface->shelved_dirty = false;
@@ -3999,15 +4749,18 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
             SURF_TIMER_INIT(_gt2);
             bool unshelved = false;
             bool shelf_stale = false;
+            int upw = UPW_NEW;
             surface = get_shelved_surface(r, target.vram_addr, &target);
             if (surface) {
                 shelf_stale = surface->vram_newer;
                 migrate_surface_image(&target, surface);
                 unshelved = true;
+                upw = UPW_STALE;
             } else {
                 surface = get_any_compatible_invalid_surface(r, &target);
                 if (surface) {
                     migrate_surface_image(&target, surface);
+                    upw = UPW_INVALID;
                 } else {
                     surface = g_malloc0(sizeof(SurfaceBinding));
                     create_surface_image(pg, &target);
@@ -4028,11 +4781,50 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
              * which this slot has just left; the assignment replaces its
              * address and draw_dirty, so the old writeback is gone anyway.
              */
+            /*
+             * A shelved struct can still be named by a download pending from
+             * its previous life (the ping-pong #414 defers: F1 evicted, F2
+             * bound, F1 back before a finish). Retire that download against
+             * the binding it was recorded for before the struct becomes a
+             * new one; see deferred_downloads_reference. The invalid list
+             * skips such structs instead, so only the shelf pays this.
+             */
+            if (deferred_downloads_reference(r, surface)) {
+                download_surface_complete_deferred(d, SDC_REUSE);
+            }
             unregister_cpu_access_callback(surface);
             *surface = target;
             set_surface_label(pg, surface);
 
-            if (unshelved) {
+            bool handed_off = false;
+            if (handoff_src && surface == handoff_dst) {
+                /* See surface_handoff_partner. The evicted binding owes
+                 * nothing now, and its image is older than the memory. */
+                surface_handoff_record(d, handoff_src, surface);
+                handoff_src->draw_dirty = false;
+                handoff_src->shelved_dirty = false;
+                handoff_src->download_generation =
+                    handoff_src->draw_generation;
+                handoff_src->vram_newer = true;
+                unregister_cpu_access_callback(handoff_src);
+                surface->upload_pending = false;
+                surface->initialized = true;
+                handed_off = true;
+            } else if (handoff_src) {
+                /* Not the partner the eviction found: take the download it
+                 * skipped. It completes in pgraph_vk_surface_update before
+                 * any upload, and whatever came off the shelf re-uploads. */
+                surface_handoff_fallbacks++;
+                OPT_STAT_INC(sd_eviction_dl);
+                download_surface_deferred(d, handoff_src);
+                handoff_src->shelved_dirty = false;
+                if (unshelved && !shelf_stale) {
+                    upw = UPW_HANDOFF;
+                }
+                shelf_stale = true;
+            }
+
+            if (unshelved && !handed_off) {
                 /*
                  * The VkImage still holds what this binding drew, so the
                  * VRAM upload can be skipped -- unless the memory under it
@@ -4051,10 +4843,18 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                     OPT_STAT_INC(sd_shelved_unshelved);
                 }
             }
+            UPW_SET(surface, surface->upload_pending ? upw : UPW_NONE);
 
             SURF_TIMER_INIT(_gt3);
             surface_put(d, surface);
             SURF_TIMER_ACC(put_ns, _gt3);
+
+            if (handed_off) {
+                /* The handed-off pixels are not in VRAM: this binding owes
+                 * the download now, with its watch live. */
+                surface->draw_generation++;
+                pgraph_vk_surface_watch_mark_dirty(d, surface);
+            }
 
             // FIXME: Refactor
             pg->surface_binding_dim.width = target.width;
@@ -4116,6 +4916,164 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
     }
 }
 
+/*
+ * #413 PROBE: WHERE pgraph_vk_surface_update()'S TIME GOES, PER SEGMENT.
+ *
+ * DOA2U's 15 fps fight spends 33-52 ms per frame in `Surf` (the exclusive
+ * phase timer around this function), about 64 us a call against 2.5 us in
+ * light play. profile.c already splits it under `xemu-surf`, but that tag is
+ * not in the dispatcher's logcat spec, and the xemu-surf split leaves out
+ * the parts of this function that are not inside update_surface_part():
+ * the flushes on the download side, the deferred-download completion, the
+ * real uploads (as distinct from calls that return on !upload_pending) and
+ * expire/prune. This prints all of them raw, summed over 60 guest frames,
+ * under "hakuX" with a [surf413] prefix, beside profile.c's own xemu-surf
+ * string. Every segment is wall time and includes any pgraph_vk_finish()
+ * inside it; `fin` is that nested finish time, so sum(segments) - fin is
+ * what `Surf` reports. NV2A_PERF_LOG builds only.
+ */
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+static struct {
+    int frame0;
+    unsigned long calls_up, calls_dn;
+    unsigned long real_uploads, upload_kb;
+    int64_t pre_ns, flush_ns, part_ns, cdef_ns, upl_ns, exp_ns, prn_ns,
+            tail_ns, fin_ns;
+} g_surf413;
+
+static void surf413_log(PGRAPHState *pg, PGRAPHVkState *r)
+{
+    int frames = pg->frame_time - g_surf413.frame0;
+    if (frames < 60) {
+        return;
+    }
+    int active = 0, shelved = 0, invalid = 0;
+    SurfaceBinding *s;
+    QTAILQ_FOREACH(s, &r->surfaces, entry) {
+        active++;
+    }
+    QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
+        shelved++;
+    }
+    QTAILQ_FOREACH(s, &r->invalid_surfaces, entry) {
+        invalid++;
+    }
+#define SURF413_MS(ns) ((double)(ns) / 1e6 / frames)
+    SURF92_LOG("[surf413] frames=%d up=%lu dn=%lu | ms/frame pre=%.2f "
+               "flush=%.2f part=%.2f cdef=%.2f upl=%.2f exp=%.2f prn=%.2f "
+               "tail=%.2f fin=%.2f | realupl=%lu uplKB=%lu hash=%lu "
+               "hashKB=%lu | active=%d shelved=%d invalid=%d",
+               frames, g_surf413.calls_up, g_surf413.calls_dn,
+               SURF413_MS(g_surf413.pre_ns), SURF413_MS(g_surf413.flush_ns),
+               SURF413_MS(g_surf413.part_ns), SURF413_MS(g_surf413.cdef_ns),
+               SURF413_MS(g_surf413.upl_ns), SURF413_MS(g_surf413.exp_ns),
+               SURF413_MS(g_surf413.prn_ns), SURF413_MS(g_surf413.tail_ns),
+               SURF413_MS(g_surf413.fin_ns),
+               g_surf413.real_uploads, g_surf413.upload_kb,
+               surf413_resume_hashes, surf413_resume_kb,
+               active, shelved, invalid);
+#undef SURF413_MS
+    char buf[512];
+    nv2a_profile_get_surf_timing_str(buf, sizeof(buf));
+    SURF92_LOG("[surf413] xemu-surf %s", buf);
+    memset(&g_surf413, 0, sizeof(g_surf413));
+    surf413_resume_hashes = surf413_resume_kb = 0;
+    g_surf413.frame0 = pg->frame_time;
+}
+#define SURF413_T(name) int64_t name = nv2a_clock_ns()
+#define SURF413_ACC(field, since) do { \
+        int64_t _now = nv2a_clock_ns(); \
+        g_surf413.field += _now - (since); \
+        (since) = _now; \
+    } while (0)
+#define SURF413_FIN(name) \
+    int64_t name = g_nv2a_stats.phase_working.finish_ns
+#define SURF413_DO(stmt) do { stmt; } while (0)
+#else
+#define SURF413_FIN(name) ((void)0)
+#define SURF413_T(name) ((void)0)
+#define SURF413_ACC(field, since) ((void)0)
+#define SURF413_DO(stmt) ((void)0)
+#endif
+
+/*
+ * #414: whether pgraph_vk_surface_update() can leave the downloads recorded
+ * so far to the next finish instead of submitting one of its own to complete
+ * them. Forza Motorsport's race moves its render targets several times a
+ * frame; each move evicts the outgoing binding and records its download, and
+ * this update used to submit a finish and wait for the GPU to complete it:
+ * 6.2 finishes per frame on the Nova, 18-20 ms of a 35-42 ms frame, the PFIFO
+ * thread idle in pgraph_vk_finish (lane.slowdown462 on #414).
+ *
+ * Nothing in this update needs those bytes unless one of the bindings is
+ * about to upload from VRAM, so that is when it still completes. Everything
+ * else that reads guest memory completes an overlapping pending download
+ * first (deferred_downloads_overlap_range), and every finish, the flip's
+ * included, carries the recorded copies and retires them once its fence
+ * signals. Downloads an earlier finish submitted cost a fence wait, not a
+ * finish, so they complete here as before.
+ *
+ * #474: except the flip's pre-download. DOA Ultimate's fight waited ~51 ms a
+ * frame here, at the first update after each flip, for the GPU to finish the
+ * frame it had just been given (lane.flip474, surf413 `cdef`). That batch now
+ * stays pending across draws until something reads what it holds: a trapped
+ * CPU access or an overlapping texture, vertex or blit range (both test
+ * deferred_downloads_overlap_range), the scanout's download request, a new
+ * download recorded behind it (complete_submitted_downloads), the rotation
+ * into its frame slot (vk/draw.c), or the next flip's pre-record at the
+ * latest. No download this update records can join it, so the update has
+ * nothing of its own to complete unless a binding uploads.
+ *
+ * Without TCG there is no CPU-access watch, and VRAM has to be current when
+ * the update returns.
+ */
+static bool surface_update_may_defer_downloads(NV2AState *d, bool upload)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+
+    if (!tcg_enabled() || r->num_deferred_downloads == 0 ||
+        (r->deferred_downloads_frame >= 0 &&
+         !r->display_predownload_pending)) {
+        return false;
+    }
+    if (upload &&
+        ((r->color_binding && r->color_binding->upload_pending) ||
+         (r->zeta_binding && r->zeta_binding->upload_pending))) {
+        return false;
+    }
+    return true;
+}
+
+/*
+ * #414: a clearing update whose clear will overwrite a binding whole does not
+ * need that binding's VRAM, so its upload is dropped, and with it the
+ * completion surface_update_may_defer_downloads forces for an uploading
+ * binding. On the Thor that was 0.96 of Forza's 2.86 forced surfupd finishes
+ * per frame (lane.forza414 NOTES 33). The rule is draw.c's, shared with
+ * mark_clear_full. What the upload does besides the copy still happens: the
+ * CPU-write watch is re-armed under the lock that sets upload_pending, and
+ * the binding counts as initialized (begin_draw asserts it; the render pass
+ * may load undefined texels, which the clear then covers).
+ */
+static void surface_drop_covered_upload(NV2AState *d, SurfaceBinding *s)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (!s || !s->upload_pending ||
+        !pgraph_vk_clear_covers_binding(pg, s, r->clear_parameter)) {
+        return;
+    }
+    qemu_rec_mutex_lock(&surface_watch_lock);
+    surface_watch_resume(d, s);
+    s->upload_pending = false;
+    UPW_SET(s, UPW_NONE);
+    qemu_rec_mutex_unlock(&surface_watch_lock);
+    s->draw_time = pg->draw_time;
+    s->initialized = true;
+    SDCALL_DO(g_sdcall.clrskip++);
+}
+
 // FIXME: Move to common?
 void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                               bool zeta_write)
@@ -4123,6 +5081,11 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     NV2A_PHASE_TIMER_BEGIN_EXCL(surface_update);
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
+    SURF413_T(_s413);
+    SURF413_FIN(_s413_fin);
+    SDCALL_DO(upw_clear_read(r));
+    SURF413_DO(if (upload) { g_surf413.calls_up++; }
+               else { g_surf413.calls_dn++; });
 
     VK_LOG("surface_update: upload=%d color_w=%d zeta_w=%d clearing=%d",
            upload, color_write, zeta_write, pg->clearing);
@@ -4134,6 +5097,8 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     color_write = color_write &&
             (pg->clearing || pgraph_color_write_enabled(pg));
     zeta_write = zeta_write && (pg->clearing || pgraph_zeta_write_enabled(pg));
+
+    SURF413_ACC(pre_ns, _s413);
 
     if (upload) {
         bool fb_dirty = framebuffer_dirty(pg);
@@ -4164,6 +5129,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     } else {
         pgraph_vk_flush_reorder_window(d);
         pgraph_vk_flush_draw_queue(d);
+        SURF413_ACC(flush_ns, _s413);
         if ((color_write || pg->surface_color.write_enabled_cache)
             && pg->surface_color.draw_dirty) {
             update_surface_part(d, false, true);
@@ -4174,7 +5140,30 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         }
     }
 
-    pgraph_vk_download_surface_complete_deferred(d);
+    SURF413_ACC(part_ns, _s413);
+    if (upload && pg->clearing) {
+        surface_drop_covered_upload(d, r->color_binding);
+        surface_drop_covered_upload(d, r->zeta_binding);
+    }
+    SDCALL_DO(if (r->num_deferred_downloads > 0 &&
+                  !r->display_predownload_pending &&
+                  r->deferred_downloads_frame < 0 && upload &&
+                  ((r->color_binding && r->color_binding->upload_pending) ||
+                   (r->zeta_binding && r->zeta_binding->upload_pending))) {
+                  g_sdcall.su_upl++;
+                  upw_count(pg, r->color_binding, 0);
+                  upw_count(pg, r->zeta_binding, 1);
+              });
+    if (surface_update_may_defer_downloads(d, upload)) {
+        SDCALL_DO(g_sdcall.su_deferred++);
+    } else {
+        /* Every caller of surface_update is a method or the flip-stall path
+         * on the PFIFO thread, holding pgraph.lock; the thread test keeps any
+         * other caller on the locked wait. See wait_frame_fence (#474). */
+        download_surface_complete_deferred_at(
+            d, SDC_SURF_UPDATE, qemu_thread_is_self(&d->pfifo.thread));
+    }
+    SURF413_ACC(cdef_ns, _s413);
 
     if (upload) {
         pg->draw_time++;
@@ -4187,6 +5176,10 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         if (r->color_binding) {
             r->color_binding->frame_time = pg->frame_time;
             if (upload) {
+                SURF413_DO(if (r->color_binding->upload_pending) {
+                    g_surf413.real_uploads++;
+                    g_surf413.upload_kb += r->color_binding->size / 1024;
+                });
                 pgraph_vk_upload_surface_data(d, r->color_binding, false);
                 r->color_binding->draw_time = pg->draw_time;
                 r->color_binding->swizzle = swizzle;
@@ -4197,6 +5190,10 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         if (r->zeta_binding) {
             r->zeta_binding->frame_time = pg->frame_time;
             if (upload) {
+                SURF413_DO(if (r->zeta_binding->upload_pending) {
+                    g_surf413.real_uploads++;
+                    g_surf413.upload_kb += r->zeta_binding->size / 1024;
+                });
                 pgraph_vk_upload_surface_data(d, r->zeta_binding, false);
                 r->zeta_binding->draw_time = pg->draw_time;
                 r->zeta_binding->swizzle = swizzle;
@@ -4205,6 +5202,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         }
         SURF_TIMER_ACC(upload_ns, _su0);
     }
+    SURF413_ACC(upl_ns, _s413);
 
     // Sanity check color and zeta dimensions match
     if (r->color_binding && r->zeta_binding) {
@@ -4215,10 +5213,17 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     {
         SURF_TIMER_INIT(_se0);
         expire_old_surfaces(d);
+        SURF413_ACC(exp_ns, _s413);
         prune_invalid_surfaces(r, num_invalid_surfaces_to_keep);
+        SURF413_ACC(prn_ns, _s413);
         SURF_TIMER_ACC(expire_ns, _se0);
     }
     surface_watch_log_periodic(r);
+    SURF413_ACC(tail_ns, _s413);
+    SURF413_DO(g_surf413.fin_ns +=
+                   g_nv2a_stats.phase_working.finish_ns - _s413_fin;
+               surf413_log(pg, r));
+    SDCALL_DO(sdcall_log(pg));
 
     NV2A_PHASE_TIMER_END_EXCL(surface_update);
 }

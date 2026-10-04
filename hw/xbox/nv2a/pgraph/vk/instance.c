@@ -471,6 +471,37 @@ static StringArray *get_required_device_extension_names(void)
     return extensions;
 }
 
+#if OPT_ASYNC_COMPILE
+/*
+ * #569 P5: build draw pipelines from graphics pipeline libraries.
+ * HAKUX_GPL=0 off (the monolithic path), 1 fast link, 2 fast link and a
+ * link-time-optimised rebuild on the compile worker, swapped in when ready.
+ * 3 and 4 are #569's uber ladder (vk/compile_worker.c): a miss links a
+ * prebuilt uber vertex stage and draws this frame; 3 swaps the specialised
+ * pipeline in once the worker has built it, 4 keeps the uber link (for the
+ * exactness and GPU-cost arms only).
+ * The environment reaches the Android app through request.sh --env.
+ * 3 by default (#569, docs/lanes/uberdefault569): on a cold cache the ladder
+ * takes the compile off the draw path (Kabuki's fight 133 s -> 27 ms of
+ * creates, uberspike569 BUILD.md 12) and Tron 2.0's first play no longer
+ * hangs (#672). The Android app sets HAKUX_GPL from its "Ubershader" setting
+ * (MainActivity.kt), so this default is for builds that set nothing.
+ */
+#ifndef HAKUX_GPL_DEFAULT
+#define HAKUX_GPL_DEFAULT 3
+#endif
+
+static int gpl_requested_mode(void)
+{
+    const char *e = getenv("HAKUX_GPL");
+    int mode = HAKUX_GPL_DEFAULT;
+    if (e && e[0] >= '0' && e[0] <= '4' && !e[1]) {
+        mode = e[0] - '0';
+    }
+    return mode;
+}
+#endif
+
 static void add_optional_device_extension_names(
     PGRAPHState *pg, VkExtensionPropertiesArray *available_extensions,
     StringArray *enabled_extension_names)
@@ -502,6 +533,24 @@ static void add_optional_device_extension_names(
     r->push_descriptors_supported = add_extension_if_available(
         available_extensions, enabled_extension_names,
         VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+
+#if OPT_ASYNC_COMPILE
+    /* #569 P5: asked for only when the switch is on, so the off path creates
+     * the same device as before. create_logical_device() reports the device's
+     * answer either way and turns the mode off if the feature is missing. */
+    r->gpl.mode = gpl_requested_mode();
+    if (r->gpl.mode &&
+        is_extension_available(available_extensions,
+                               VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME) &&
+        is_extension_available(available_extensions,
+                               VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME)) {
+        add_extension_if_available(available_extensions, enabled_extension_names,
+                                   VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
+        r->gpl.supported = add_extension_if_available(
+            available_extensions, enabled_extension_names,
+            VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME);
+    }
+#endif
 
 #ifdef __ANDROID__
     /* Both are in the required list on Android, so the device would not have
@@ -1190,6 +1239,74 @@ static bool create_logical_device(PGRAPHState *pg, Error **errp)
                 (int)r->enabled_physical_device_features.wideLines,
                 (int)lim->strictLines);
     }
+
+#if OPT_ASYNC_COMPILE
+    /*
+     * #569 P5: the device's answer, printed whether or not the switch is on,
+     * so one run of any build shows what the driver offers. ext= is whether
+     * the driver lists the extension; lib/fast/interp are the feature and the
+     * two properties.
+     */
+    VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT gpl_features;
+    {
+        bool have_ext =
+            is_extension_available(available_extensions,
+                                   VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME) &&
+            is_extension_available(
+                available_extensions,
+                VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME);
+        VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT f = {
+            .sType =
+                VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT,
+        };
+        VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT p = {
+            .sType =
+                VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_PROPERTIES_EXT,
+        };
+        if (have_ext) {
+            VkPhysicalDeviceFeatures2 f2 = {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+                .pNext = &f,
+            };
+            vkGetPhysicalDeviceFeatures2(r->physical_device, &f2);
+            VkPhysicalDeviceProperties2 p2 = {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+                .pNext = &p,
+            };
+            vkGetPhysicalDeviceProperties2(r->physical_device, &p2);
+        }
+        int requested = r->gpl.mode;
+        r->gpl.supported = r->gpl.supported && f.graphicsPipelineLibrary;
+        r->gpl.fast_linking = p.graphicsPipelineLibraryFastLinking;
+        if (!r->gpl.supported) {
+            r->gpl.mode = 0;
+        }
+        if (r->gpl.mode) {
+            gpl_features = (VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT){
+                .sType =
+                    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT,
+                .graphicsPipelineLibrary = VK_TRUE,
+                .pNext = next_struct,
+            };
+            next_struct = &gpl_features;
+        }
+        fprintf(stderr,
+                "[gpl569] ext=%d lib=%d fast=%d interp=%d requested=%d mode=%d\n",
+                (int)have_ext, (int)f.graphicsPipelineLibrary,
+                (int)p.graphicsPipelineLibraryFastLinking,
+                (int)p.graphicsPipelineLibraryIndependentInterpolationDecoration,
+                requested, r->gpl.mode);
+#ifdef __ANDROID__
+        __android_log_print(
+            ANDROID_LOG_INFO, "hakuX-build",
+            "[gpl569] ext=%d lib=%d fast=%d interp=%d requested=%d mode=%d",
+            (int)have_ext, (int)f.graphicsPipelineLibrary,
+            (int)p.graphicsPipelineLibraryFastLinking,
+            (int)p.graphicsPipelineLibraryIndependentInterpolationDecoration,
+            requested, r->gpl.mode);
+#endif
+    }
+#endif
 
     VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_features;
     if (r->custom_border_color_extension_enabled) {

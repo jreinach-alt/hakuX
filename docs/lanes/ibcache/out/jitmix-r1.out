@@ -1,0 +1,29 @@
+tid 19768: 21168 samples, 10773 JIT, 10754 mapped to a TB
+disassembled 3829 TBs holding 10217 samples (95.0% of mapped JIT samples)
+sample-weighted host insns per TB 462.6, guest insns per TB 17.7, host/guest 26.12
+
+class       static %  at-ip %
+env_ld           3.3      5.1
+env_st           6.1     17.3
+irq_chk          2.0      1.4
+tlb              5.5     18.8
+xbox_fp          4.9      3.2
+guest_mem        4.4      6.5
+fp               0.4      1.4
+simd             0.2      2.1
+call             2.8      0.3
+branch          18.6      6.1
+alu             51.9     37.9
+
+per executed TB (sample-weighted): softmmu TLB compares 12.74, XBOX load fast paths 7.44, helper calls 15.97, scalar FP ops 1.86
+
+XBOX preamble outcome (samples): armed 0, off 43; samples inside load fast-path blocks 0
+
+at-ip by role (share of disassembled JIT samples):
+  preamble   14.3%
+  exitchk     2.9%
+  xboxchk     1.5%
+  tlb        34.4%
+  tbexit      1.4%
+  body       45.5%
+samples in TBs with any scalar FP op: 10.5%

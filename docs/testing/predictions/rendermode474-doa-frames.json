@@ -1,0 +1,30 @@
+{
+  "registered_utc": "2026-09-28T01:45:00Z",
+  "who": "lane.rendermode474",
+  "issue": "474",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 5,
+  "runs_per_arm": 1,
+  "a_ref": "59d478911ec90f379efe789377b90963aef82a59",
+  "b_ref": "61e0edf87c6a95f555c6a000dfcfae2eec4b805e",
+  "window_s": [151, 288],
+  "arms": {
+    "A": "master 59d478911e, no env, frames every 5 s (GMEM)",
+    "B": "this branch 61e0edf87c, no env, frames every 5 s (sysmem by the table)"
+  },
+  "queue_order": "A then B; each request.sh --who rendermode474 --title <this title> --device nova --route survey --seconds 300 --perflog --frames-every 5 --ref <arm ref> --expect this file. These arms price nothing: frame capture costs GPU, so no fps leg is read from them.",
+  "judge": "hakuX-rpbrk lines with qry > 0 in each arm's window (flip474 saw 3 of 56 under sysmem); the frames nearest each such line in B against A's frames of the same scene (fight, same stage and camera), by eye and by region; render_mode lines as in rendermode474-doa.json",
+  "prediction": "#474 / #527: sysmem changes the ZPASS value a guest reads (40960 -> 65536 on the pgraph disc). DOA ends a render pass for an occlusion query in only a few lines of its window. Guess: no visible difference between the arms in those lines (confidence 60%); whatever DOA uses the query for (a lens flare or visibility test is typical) is where a difference would show, so those frames are examined first.",
+  "legs": {
+    "E0 (modes)": "B's logcat has 'render_mode: sysmem (table) title=54430006'; A has no render_mode line. Otherwise VOID.",
+    "Q0 (instrument)": "B has >= 1 hakuX-rpbrk line with qry > 0 in the window. If none: VOID for this leg (the query lines did not occur this run), stated as such, not read as 'no difference'.",
+    "V0 (visuals)": "for each B line with qry > 0, the B frames within 5 s against the A frames of the same scene: report any element that is present in one and absent or different in the other (flare, glow, shadow, a missing sprite). KILL of 'no visible difference': such an element in a scene both arms show. A region check passing does not satisfy this leg; it is read by eye."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures; the frames are read by eye."
+}

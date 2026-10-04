@@ -1,0 +1,29 @@
+{
+  "registered_utc": "2026-09-26T17:10:00Z",
+  "who": "lane.vcpuprime428",
+  "issue": "428",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "route": "crimson-skies",
+  "device": "thor",
+  "seconds": 480,
+  "a_ref": "15d9406b81bd0b11d33f66d6b71bcba3c87566ea",
+  "b_ref": "15d9406b81bd0b11d33f66d6b71bcba3c87566ea",
+  "a_env": ["HAKUX_TOPO=200,10"],
+  "b_env": ["HAKUX_TOPO=200,10", "HAKUX_PLACE_VCPU=prime"],
+  "runs_per_arm": 3,
+  "queue_order": "A1 B1 A2 B2 A3 B3, each a separate request.sh --title soak --route crimson-skies --seconds 480 --device thor --ref 15d9406b81, one binary",
+  "judge": "docs/lanes/vcpuprime428/vcpu_judge.py --expect docs/testing/predictions/vcpuprime428-soak.json --a A1 A2 A3 --b B1 B2 B3",
+  "prediction": "PUT THE vCPU THREAD ON THE X3, MEASURED ON A GAME. perfarch's arm of this lever (perfarch-vcpu-prime.json) was refused on validity: harness exits cut 3 of 4 runs short, and Galleon at 1x sits on its 30 fps cap, so it could not show a faster vCPU. This arm runs Crimson Skies' routed gameplay window (route crimson-skies: 75 s boot, A x12, then level flight with an A every 20 s) on the Thor, where that window is NOT capped: 0-0-y-1790433159-titleplay-p1-crimson (Thor, apk 25abcaccbf45) ran it at 14.5 fps (flips/time), gfps p50 22, G median 43.8 ms, with the renderer idle, i.e. guest-bound; the Nova's 780 s route run sat at 30 (capped), so the Nova cannot show this lever either. Only the gameplay window is judged: route mark `gameplay` to `soak end`. Both arms run the HAKUX_TOPO sampler (200 ms, 10 s windows), which names the vCPU tid in both arms and reports its per-core residency, core changes/s, busy %, runqueue wait, the X3 policy clock (p7 mean and cap) and the hottest CPU zone every 10 s. B adds HAKUX_PLACE_VCPU=prime (pin the code-generating thread to the CPUs with the highest cpuinfo_max_freq). THE LEVER'S SHARE IS A BOUND, NOT A MEASUREMENT: pinning saves s*(1-1/r) of the vCPU's busy time, where s is A's off-X3 share of vCPU time (measured by this arm's A runs) and r is the X3's per-core speed over an A715/A710 on this code, 1.1-1.5 from the 8.1 survey (Nova). s was 0.85 on the 09-11 Crimson capture (Nova) and 0.28 on Galleon at perfarch's apk; with s=0.28 the bound is 3-9% of vCPU time (perf-architecture.md 4, lever 3), with s=0.85 it is 8-28%. POINT PREDICTION: gameplay-window fps +8% (s~0.5, r~1.25, ~80% of vCPU time on the frame's critical path). LEGS. V (validity, refuse not fail): every run holds its 480 s to within 15 s, has >= 300 s of gameplay window and >= 20 vCPU sampler windows in it; one device, one apk. P0 (did it execute): every B run logs `place vcpu ... -> PINNED` and its vCPU is >= 90% on the X3 over the window; every A run logs NOT PINNED. P1 (THE COUNTER THAT MUST MOVE): the vCPU's X3 share, B mean minus A mean, >= 15 points. If P1 fails, A already runs the vCPU on the X3 and the lever is INERT on this scene: report that and do not tune. P2: gameplay-window fps (flips / wall time from hakuX-pace), B mean over A mean, changes by a value in [+2%, +30%]. Below +2% with P1 passing REFUTES the model (the X3 is not faster on this code at its sustained clock, or the X3 runqueue wait eats it: the judge prints rqwait and p7 per run to say which). Above +30% also fails: something other than core speed moved. P3: |B-A| fps exceeds the within-arm fps spread of either arm. P4 (sustained clock, section 4.3): in every B run the X3 policy clock in the last sampler window of the gameplay window is >= 0.90 of the first; the judge also prints the hottest CPU zone first and last per run for both arms. 480 s is not thermal equilibrium on a handheld: a P4 pass is necessary, not sufficient. MUST-NOT-MOVE (pgraph): this soak cannot test it (no captures). If this arm passes and the default changes in xemu_android.cpp, a separate disc arm (vcpuprime428-pgraph-must-not-move.json) registers every pgraph suite as must_not_move against the one-line commit; if it does not pass, nothing ships and there is no code change to gate. Known hazard on this window: 1790433159-titleplay-p1-crimson collapsed from ~25 to 2-7 gfps from ~150 s into the window (Tq 2 -> 1297), post-fix311; if that recurs it is in both arms, and P3 is what says whether the arm can still separate them.",
+  "must_not_move": [],
+  "expect": {
+    "V_held_slack_s": 15,
+    "V_min_gameplay_s": 300,
+    "V_min_topo_windows": 20,
+    "P0_b_min_on_prime_pct": 90,
+    "P1_min_prime_shift_pts": 15,
+    "P2_fps_change_min": 0.02,
+    "P2_fps_change_max": 0.30,
+    "P4_p7_last_over_first_min": 0.90
+  },
+  "expect_counts": {}
+}

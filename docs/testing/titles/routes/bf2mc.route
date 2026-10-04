@@ -1,0 +1,132 @@
+# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
+# Battlefield 2: Modern Combat (45410062): one route for every run (the
+# campaign is not saved). PLAYED by nav.py on the Thor, 2026-09-27 06:46 PDT
+# (lane.titleroutes HELD session bf2mc.first-run-20260927T064649).
+#
+#   RenderWare and publisher logos (A) -> PRESS START (START) -> PLAY
+#   CAMPAIGN (A) -> CREATE CAMPAIGN (A) -> the CAMPAIGN NAME keyboard, cursor
+#   on A: A types "A"; START does not submit. The stick does not move this
+#   cursor and the hat does: HATX left once reaches BACKSPACE (the row wraps),
+#   and HATY down twice reaches ENTER (A) -> "Do you want to save?", cursor on
+#   Yes: HATY down to No (A) -> the campaign menu, PLAY FIRST MISSION (A) ->
+#   a long load with a tank still, the briefing FMV (A) and the briefing map
+#   -> the mission, a Help box: "Press A to continue, Press B to disable
+#   help" (B) -> first person in a snowy square at night, "Fight Through To
+#   The Rendezvous", mission clock 00:11.
+#
+# Saying No to the save keeps the disk as it was, so later runs take the
+# same path. B turns help off for the mission, so no more help boxes stop
+# play during the window.
+#
+# Player control: LY min walked forward, RX turned, RT fired (ammo 23 -> 15;
+# nav frames 019-gameplay -> 020-moved, clock 00:28).
+wait 27.0
+shot boot
+wait 5.6
+press A
+wait 5.4
+press A
+wait 5.4
+press A
+wait 5.1
+shot a3
+wait 7.0
+press START
+wait 6.1
+shot st
+wait 5.9
+press A
+wait 6.1
+shot camp
+wait 6.3
+press A
+wait 6.1
+shot create
+wait 8.7
+press A
+wait 2.1
+shot typed
+wait 1.3
+press START
+wait 5.1
+shot enter
+wait 8.2
+axis LX min
+wait 0.4
+axis LX mid
+wait 0.7
+axis LX min
+wait 0.3
+axis LX mid
+wait 0.6
+shot left2
+wait 8.6
+axis HATX min
+wait 0.2
+axis HATX mid
+wait 0.7
+shot hat1
+wait 8.1
+axis HATY max
+wait 0.2
+axis HATY mid
+wait 0.8
+axis HATY max
+wait 0.2
+axis HATY mid
+wait 0.7
+shot hat2
+wait 7.0
+press A
+wait 6.1
+shot entered
+wait 8.0
+axis HATY max
+wait 0.2
+axis HATY mid
+wait 0.7
+shot no
+wait 6.7
+press A
+wait 8.1
+shot nosave
+wait 7.2
+press A
+wait 15.1
+shot first
+wait 33.4
+shot load
+wait 38.3
+shot load2
+wait 6.8
+press A
+wait 8.1
+shot skip
+wait 39.7
+shot load3
+wait 7.8
+press B
+wait 3.1
+shot nohelp
+wait 8.0
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX max
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX min
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+}

@@ -23,8 +23,8 @@ is being folded into it; every lane is a branch `lane/<name>` from master with
 one draft PR whose body lists its files; the board (`territory.toml`,
 `nv2a_issues.toml`, briefs) is moving to the orphan `board` branch and is
 written by the board job only; the long-lived orchestrator session is
-replaced by scheduled jobs; CI runs on every PR because it is free on this
-public repository, so `[skip ci]` is no longer required. Where a rule below
+replaced by scheduled jobs. GitHub is suspended (since 2026-09-29), so the
+harness runs on a self-hosted forge; see "The forge" below. Where a rule below
 names the campaign branch, read `master`. Where it says "ask the
 orchestrator", write a board request and carry on. The measurement
 discipline below -- predictions registered before the run, per-capture
@@ -34,13 +34,40 @@ queues its arms** (the arms job on the host runs every prediction whose refs
 are live and posts the verdict on your PR), and the live state of the whole
 harness is one comment on the issue labelled `harness-status`.
 
+## The forge (GitHub suspended since 2026-09-29)
+
+The harness's issue tracker, pull requests, labels, releases and CI are a local
+Forgejo at **http://127.0.0.1:3330** (loopback only), repo `jreinach-alt/hakuX`.
+Nothing in the harness may reach github.com.
+
+- **`gh` is a shim** (`~/hakux-work/forge/shim/bin/gh`, source
+  `docs/testing/jobs/gh-shim/gh`). It is first on PATH for every harness unit
+  and for lane sessions. It implements the `gh` operations the scripts use and
+  fails loudly otherwise: an operation it does not implement exits 64 with
+  `gh-shim: not implemented: <args>`, and every call is logged to
+  `~/hakux-work/logs/forge/shim.log`. Merges are refused; they stay with
+  `foldqueue.sh`.
+- **A lane's PR is `docs/lanes/<lane>/PR.md`** on its branch. Line 1 is the
+  title, `State: draft` or `State: ready`, and the rest is the body.
+  `hakux-forge-prsync` mirrors it to a forge PR every 5 minutes.
+- **Issues #1-#640 keep their GitHub numbers**; forge-native issues start at
+  #641. `local-only` issues created during the suspension are listed in
+  `~/hakux-work/forge-import/local-number-map.tsv`.
+- **Local CI** runs `.forgejo/workflows/forge-selftest.yml` and
+  `forge-android.yml` on a host runner (capacity 1), on ready PRs only.
+
+**After the return.** When GitHub is restored, completed work transfers in
+throttled batches; the procedure, and what changes for CI, is in
+[`docs/lanes/localforge/RETURN.md`](docs/lanes/localforge/RETURN.md). Until
+that runs, do not reintroduce `gh` calls that target github.com.
+
 ## Start here
 
 ```bash
 # 1. What the project is trying to be, and in what order
 cat ROADMAP.md
 
-# 2. What is actually broken, with measured evidence
+# 2. What is actually broken, with measured evidence (the forge, through the gh shim)
 gh issue list --repo jreinach-alt/hakuX --limit 30
 
 # 3. How correctness is measured at all
@@ -424,7 +451,7 @@ running set in both directions -- which is how the third was found, and found
 
 **Public-facing** means anything written for people who don't run the harness:
 
-- GitHub release notes and the releases page;
+- release notes and the releases page (the forge's until the return);
 - `README.md`, `CHANGELOG.md` and `ROADMAP.md`;
 - user docs outside `docs/testing/`, `docs/lanes/`, `docs/audits/` and
   `docs/investigations/`.
@@ -449,14 +476,14 @@ rule doesn't apply to them.
 
 ## Non-negotiables
 
-**Never trigger CI to check your own work.** GitHub Actions minutes here are a
-finite monthly budget, and exhausting them means no CI when a release actually
-needs it. CI is for full build releases, run on demand when the user asks.
-Concretely: `android.yml`, `desktop.yml` and `nv2a-index.yml` fire on
-`push: branches: [master]` and on `pull_request:`, so a push costs runs only if
-the branch has an open PR. `claude/es-de-launcher-disc-error-ojnl14` has no PR
--- **do not open one for it**. Put `[skip ci]` in the commit subject for
-anything that may reach a PR-backed branch, and never use `gh workflow run`.
+**CI is the forge's, and it is not a self-check.** The only CI until the return
+is `.forgejo/workflows/forge-selftest.yml` and `forge-android.yml` on the local
+runner, which has capacity 1. They run on a ready PR (`State: ready` in PR.md),
+never on a draft and never on every push. Run the jobs selftest and the Android
+build yourself first, and name their results in PR.md. Never use `gh workflow
+run`. Do not put the retired skip-CI marker in a commit message, not even to
+explain this rule: GitHub matches it anywhere in the message, and the return
+will read it the same way.
 
 The obligation that replaces it is local: **build both Android and desktop.**
 
@@ -750,6 +777,23 @@ alongside a release install. They keep separate settings, HDD images and save
 data.
 
 ## Working with a device
+
+**Nothing holds a device for more than 30 minutes without a reviewed pilot**
+(owner, 2026-09-26). `request.sh` refuses an enqueue that would take its
+requester's queued plus running device time past 30 min, unless
+`$DISPATCH_DIR/pilots/<requester>.ok` exists and is under 24 h old. The
+estimate per request is `seconds` + 90 s of setup, times `runs` (180 s with no
+`seconds`), the same one `[device-budget]` in `host-tools/harness_health.py`
+uses after the fact. The first 30 min always goes through; that is the pilot.
+To go past it: queue a pilot of at most two requests, review what it produced
+against the batch's purpose, write the verdict to `pilots/<requester>.ok` (the
+pilot's result ids, what the output showed, the date), then queue the rest.
+titleplay's pass 1 (#397) queued 29 soaks of 420 s at once and held the only
+live handheld for hours on a route that reached clean gameplay in 7 of 15
+titles, which the first two runs' frames would have shown. `arms-*` requesters
+are exempt (arms.sh records a refusal as permanent and pools lanes under one
+name); a caller staging records in a private `DISPATCH_DIR` sets
+`PILOT_DISPATCH_DIR` to the real one so the gate counts the real queue.
 
 > **LIFTED 2026-09-18. Both devices are online.** The Nova `ee317437` and the
 > Ayn Thor `bdc158a5` are available; both hold files were moved to
@@ -2192,7 +2236,7 @@ recorded, arriving through a checker that said ok.
 
 **A CHECKER THAT READS LIVE STATE AND DISK STATE TOGETHER TURNS YOUR
 STALENESS INTO SOMEBODY ELSE'S FAULT.** `check_coverage.py` reads the open-issue
-list from GitHub, live, and the tracker from the working tree. So a lane four
+list from the forge, live (through the gh shim), and the tracker from the working tree. So a lane four
 commits behind sees a real issue with no tracker entry and reports, correctly
 from where it stands, that the board is broken and its push is blocked by
 shared infrastructure.
@@ -2536,8 +2580,9 @@ compare the region the test is about.
 
 ## Conventions
 
-- Defects live in GitHub issues, grouped by likely shared cause, each carrying
-  measured evidence.
+- Defects live in the forge's issues (GitHub's numbering, #1-#640; forge-native
+  from #641), grouped by likely shared cause, each carrying measured evidence.
+  A new defect found by a lane is a `NEW ISSUE:` block in its OUTBOX.
 - `docs/investigations/` holds long-form records of bugs chased in depth.
   Read the relevant one before re-deriving it.
 - `docs/archive/` is superseded material. Nothing there should inform decisions.

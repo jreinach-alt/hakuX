@@ -1184,6 +1184,16 @@ static inline bool cpu_breakpoint_test(CPUState *cpu, vaddr pc, int mask)
 }
 
 #ifdef XBOX
+/*
+ * #525 HAKUX_IDLE_HALT: a bounded halt in the guest kernel's idle idiom.
+ * See system/cpus.c.
+ */
+bool hakux_idle_halt_enabled(void);
+bool hakux_idle_halt_enter(CPUState *cpu, int last_vec, uint32_t pc);
+void hakux_idle_halt_kick(CPUState *cpu, int mask);
+bool hakux_idle_halt_wait(CPUState *cpu, QemuCond *cond);
+void hakux_idle_halt_after_wait(CPUState *cpu, bool slept);
+
 /**
  * Access callbacks to facilitate lazy syncronization, specifically when
  * emulating GPUs in an UMA system (e.g. Xbox).

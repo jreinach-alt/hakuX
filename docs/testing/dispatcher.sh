@@ -88,7 +88,29 @@ SRC="${DISPATCH_SRC:-$TREE/docs/testing}"
 # pass 1 on #206, M2). selftest.d/97 checks the closure, not only equality.
 SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
-make_isolation_discs.py vsh_score.py titles/route.sh perf/pad.sh"
+make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
+battery_admit.py titles/titlestate.py titles/saves.py titles/drive.py \
+titles/classify.py titles/waitfor_match.py"
+# DATA A SHIPPED SCRIPT PICKS AT RUN TIME, shipped by glob, never by name.
+#
+# route.sh's `drive <profile>` step runs drive.py on
+# $HERE/drive-profiles/<profile>.toml, and classify.py reads that profile's
+# reference crops from drive-profiles/<profile>/*.png. None of it was in the
+# snapshot, so `route.sh --check` on any .drive.route failed in a worker with
+# "no profile" and no dispatched run could play one (#433, routedriver2
+# NOTES section 4). A profile is added per title, so naming them here would
+# go stale with the next title; the globs pick up a new one at the next
+# re-exec, and src_hash covers what they match, so adding one IS a re-exec.
+# drive-profiles/selftest/ is classify's fixtures, not data a run reads.
+SNAPSHOT_GLOBS="titles/drive-profiles/*.toml titles/drive-profiles/*/*.png"
+snapshot_globbed() {   # every file SNAPSHOT_GLOBS matches in $SRC, relative to it
+    ( cd "$SRC" 2>/dev/null || exit 0
+      local f
+      for f in $SNAPSHOT_GLOBS; do
+          case "$f" in */selftest/*) continue ;; esac
+          [ -f "$f" ] && printf '%s\n' "$f"
+      done )
+}
 # WHERE BUILDS HAPPEN, AND IT IS NEVER $TREE.
 #
 # Until 2026-09-19 a build detached the SHARED checkout onto the requested
@@ -112,42 +134,54 @@ REPO="${DISPATCH_REPO:-$TREE}"
 BUILD_TREE="${DISPATCH_BUILD_TREE:-$D/build-tree}"
 snapshot_scripts() {
     mkdir -p "$SNAP"
-    local f SRC0="$SRC" SNAP0="$SNAP"
+    local f g
+    # `for f in` stays one loop over literal names: 97-dispatch-deploy parses
+    # this list and compares it with SCRIPT_DEPS.
     for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
              affinity.py captures.py make_test_iso.py extract_results.py \
-             sweep_queue.sh make_isolation_discs.py vsh_score.py \
-             titles/route.sh perf/pad.sh; do
-        # Two of these live in subdirectories. Each file is resolved against
-        # its own directory, so the write-beside-and-rename below stays in one
-        # directory, and cp gets a directory that exists. (Reassigning $f
-        # does not disturb the loop; `for f in` stays, as 97-dispatch-deploy
-        # parses this list.)
-        local SRC="$SRC0" SNAP="$SNAP0"
-        if [ "${f%/*}" != "$f" ]; then
-            SRC="$SRC0/${f%/*}"; SNAP="$SNAP0/${f%/*}"; f="${f##*/}"
-        fi
-        [ -f "$SRC/$f" ] || continue
-        mkdir -p "$SNAP" 2>/dev/null
-        cmp -s "$SRC/$f" "$SNAP/$f" 2>/dev/null && continue
-        # NEVER REWRITE A SNAPSHOT FILE IN PLACE. $SNAP is shared by every
-        # worker, and bash reads a running script lazily, by byte offset: a
-        # `cp -f` over run_disc.sh while the other device's worker was inside
-        # it made that bash read the new file at the old offset (`line 137:
-        # cess: command not found`), and a real run was voided as "the
-        # emulator never started" (2026-09-25, dispatch-hardening defect 13).
-        # Write beside it and rename: the rename swaps the inode, and a
-        # process already reading the old file keeps the old one.
-        cp -f "$SRC/$f" "$SNAP/.$f.tmp.$$" 2>/dev/null \
-            && mv -f "$SNAP/.$f.tmp.$$" "$SNAP/$f" 2>/dev/null \
-            || rm -f "$SNAP/.$f.tmp.$$"
+             sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
+             titles/route.sh perf/pad.sh battery_admit.py titles/titlestate.py \
+             titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py; do
+        snapshot_one "$f"
     done
+    for g in $(snapshot_globbed); do
+        snapshot_one "$g"
+    done
+}
+snapshot_one() {   # snapshot_one <path relative to $SRC>
+    local f="$1" SRC="$SRC" SNAP="$SNAP"
+    # Some live in subdirectories. Each file is resolved against its own
+    # directory, so the write-beside-and-rename below stays in one directory,
+    # and cp gets a directory that exists.
+    if [ "${f%/*}" != "$f" ]; then
+        SRC="$SRC/${f%/*}"; SNAP="$SNAP/${f%/*}"; f="${f##*/}"
+    fi
+    [ -f "$SRC/$f" ] || return 0
+    mkdir -p "$SNAP" 2>/dev/null
+    cmp -s "$SRC/$f" "$SNAP/$f" 2>/dev/null && return 0
+    # NEVER REWRITE A SNAPSHOT FILE IN PLACE. $SNAP is shared by every
+    # worker, and bash reads a running script lazily, by byte offset: a
+    # `cp -f` over run_disc.sh while the other device's worker was inside
+    # it made that bash read the new file at the old offset (`line 137:
+    # cess: command not found`), and a real run was voided as "the
+    # emulator never started" (2026-09-25, dispatch-hardening defect 13).
+    # Write beside it and rename: the rename swaps the inode, and a
+    # process already reading the old file keeps the old one.
+    cp -f "$SRC/$f" "$SNAP/.$f.tmp.$$" 2>/dev/null \
+        && mv -f "$SNAP/.$f.tmp.$$" "$SNAP/$f" 2>/dev/null \
+        || rm -f "$SNAP/.$f.tmp.$$"
 }
 # Hash of the scripts as they are IN THE TREE. This used to return empty
 # while $TREE was detached for a build, because mid-build the tree held some
 # other commit's scripts. Builds no longer touch $TREE (see BUILD_TREE), so
 # the tree's scripts are always the tree's scripts and the hash is honest.
+# The globbed files go in by name AND content, so adding, renaming or editing a
+# profile or one of its crops moves the hash.
 src_hash() {
-    ( cd "$SRC" && cat $SCRIPT_DEPS 2>/dev/null | md5sum | cut -c1-12 )
+    local globbed; globbed=$(snapshot_globbed)
+    ( cd "$SRC" && { cat $SCRIPT_DEPS
+                     for f in $globbed; do echo "$f"; cat "$f"; done
+                   } 2>/dev/null | md5sum | cut -c1-12 )
 }
 # Logs go to the file and to STDERR, never stdout. build_ref's stdout is
 # captured as the APK path, so a log line on stdout becomes the path: adding
@@ -435,6 +469,393 @@ PYENV
     return 0
 }
 
+# TITLE RUNS BOOT A TITLES DISK; DISC RUNS KEEP hdd.img.
+#
+# Until 2026-09-29 every soak and every nxdk disc run shared the one
+# files/x1box/hdd.img on each handheld. Title saves, the titles' X:/Y:/Z:
+# utility caches and the discs' E:\nxdk_* output all piled onto it and nothing
+# ever took anything off: the Thor's reached 6.9 GB of its 8 GiB, and a
+# Crimson Skies soak's "gameplay" frames were the title's "not enough free
+# blocks to save games" dialog (#474). The real saves on it were a few MB.
+#
+# So a title run points `hddPath` at files/x1box/titles.qcow2, a disk the
+# host builds from its save store (titles/titlestate.py, docs/lanes/
+# titlestate/NOTES.md), and every other run leaves `hddPath` on hdd.img.
+# titlestate.py `plan` decides what happens to the titles disk before a run
+# (seed / harvest / build / keep); after the run the disk is pulled and its
+# saves harvested, so the store stays the truth and a rebuild loses nothing.
+#
+# The pref follows the env_vars rule: we undo only what we did. A marker
+# holds the hddPath we found; it is put back after the title run, and at the
+# start of any request that finds the marker still there (a worker that died
+# mid-run). No marker: not one adb call.
+#
+# HAKUX_TITLES_DISK=0 on the worker turns the split off: title runs boot
+# hdd.img as they did before. A request's own env HAKUX_TITLES_DISK (request.sh
+# --env) beats the worker's, either way: the switch lives in the worker's
+# environment, which a request cannot reach, and a proof run of the split must
+# be able to turn it on for itself alone while it stays off for everyone else.
+#
+# THE DISK MUST BE MODE 660. The app reaches files in its x1box directory
+# through a group, and `adb push` leaves them 0644: the app can read the disk
+# but not open it read-write. xemu's own check (xemu_check_file, system/vl.c)
+# only opens it "rb", so the -drive is added, qemu's configure_blockdev then
+# fails "Could not open ...: Permission denied" and exit()s on the qemu thread
+# while the render thread holds GL, and the process dies in the GPU driver:
+# SIGSEGV in libGLESv2_adreno.so or "pthread_mutex_lock called on a destroyed
+# mutex", 2-7 ms after sdl2_display_early_init, before stderr reaches logcat.
+# Every title run on #622's first pushed disks died that way (lane.hddcrash,
+# docs/lanes/hddcrash/NOTES.md). dev_push sets the mode before the rename, and
+# titles_disk_prepare checks it before every title run, so a disk pushed
+# before this fix is repaired rather than booted.
+TITLESTATE="$HERE/titles/titlestate.py"
+SAVES_PY="$HERE/titles/saves.py"
+# saves.py loads tools/make_xbox_hdd.py, which is not under docs/testing and so
+# not in the snapshot: name the tree's copy.
+export MAKE_XBOX_HDD="${MAKE_XBOX_HDD:-$TREE/tools/make_xbox_hdd.py}"
+export TITLESTATE_DIR="${TITLESTATE_DIR:-$D/titlestate}"
+x1box_dir() { echo "/storage/emulated/0/Android/data/${PKG:-com.jreinach.hakux.debug}/files/x1box"; }
+hdd_pref_marker() { echo "$D/.hdd_pref.${DEVICE_LABEL:-$SERIAL}"; }
+
+# hdd_pref_edit get|set <file> [value]: the one key, every other byte kept.
+# An empty value removes the key.
+hdd_pref_edit() {
+    python3 - "$@" <<'PYHDD'
+import re, sys
+mode, path = sys.argv[1], sys.argv[2]
+s = open(path, errors="replace").read()
+pat = r'\n?[ \t]*<string name="hddPath">(.*?)</string>'
+if mode == "get":
+    m = re.search(pat, s, re.S)
+    v = m.group(1) if m else ""
+    sys.stdout.write(v.replace("&gt;", ">").replace("&lt;", "<").replace("&amp;", "&"))
+    sys.exit(0)
+want = sys.argv[3]
+if "</map>" not in s:
+    sys.exit("prefs file has no </map>; refusing to write")
+esc = want.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+key = r'(<string name="hddPath">)(.*?)(</string>)'
+if want and re.search(key, s, re.S):
+    # In place, so a restore puts the file back byte for byte.
+    s = re.sub(key, lambda m: m.group(1) + esc + m.group(3), s, count=1, flags=re.S)
+else:
+    s = re.sub(pat, "", s, flags=re.S)
+    if want:
+        s = s.replace("</map>", '    <string name="hddPath">%s</string>\n</map>' % esc)
+open(path, "w").write(s)
+PYHDD
+}
+
+# set_hdd_pref <path> [marker] ; echoes the hddPath it replaced. Verified by
+# reading back. With a marker, the value to put back is recorded there BEFORE
+# the write (unless a marker is already there): a write that lands and a
+# read-back that hangs, or a worker that dies between them, must still leave
+# restore_hdd_pref something to restore. Never records the titles disk as the
+# original -- that would make it permanent -- but hdd.img in its place.
+set_hdd_pref() {
+    local want="$1" marker="${2:-}" pkg tmp was back
+    pkg="${PKG:-com.jreinach.hakux.debug}"
+    tmp="$D/.prefs.${DEVICE_LABEL:-$SERIAL}.hdd.xml"
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (hdd pref)" shell am force-stop "$pkg" >/dev/null 2>&1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as cat x1box_prefs.xml (hdd)" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" 2>/dev/null | tr -d '\r' > "$tmp"
+    if [ -s "${ADB_HUNG_FILE:-}" ] || [ ! -s "$tmp" ]; then
+        log "  HDD PREF: cannot read x1box_prefs.xml"; return 1
+    fi
+    was=$(hdd_pref_edit get "$tmp")
+    if [ -n "$marker" ] && [ ! -f "$marker" ]; then
+        [ "$was" = "$(x1box_dir)/titles.qcow2" ] && was="$(x1box_dir)/hdd.img"
+        printf '%s' "$was" > "$marker" || { log "  HDD PREF: cannot write $marker"; return 1; }
+    fi
+    hdd_pref_edit set "$tmp" "$want" || return 1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as write x1box_prefs.xml (hdd)" --in "$tmp" \
+        shell "run-as $pkg sh -c 'cat > shared_prefs/x1box_prefs.xml'" >/dev/null 2>&1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as read back x1box_prefs.xml (hdd)" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" 2>/dev/null | tr -d '\r' > "$tmp.back"
+    back=$(hdd_pref_edit get "$tmp.back")
+    if [ "$back" != "$want" ]; then
+        log "  HDD PREF: wrote hddPath=$want but read back '$back'"; return 1
+    fi
+    printf '%s' "$was"
+}
+
+# restore_hdd_pref: put back the hddPath a title run replaced, if one did.
+restore_hdd_pref() {
+    local marker; marker="$(hdd_pref_marker)"
+    [ -f "$marker" ] || return 0
+    local orig; orig=$(cat "$marker")
+    # A marker written before set_hdd_pref refused this value names the titles
+    # disk; put the discs' disk back instead.
+    [ "$orig" = "$(x1box_dir)/titles.qcow2" ] && orig="$(x1box_dir)/hdd.img"
+    set_hdd_pref "$orig" >/dev/null || return 1
+    rm -f "$marker"
+    log "  hddPath restored to ${orig:-(unset)}"
+}
+
+# dev_sha256 <device path> -> sha256, or "" when the file is absent
+dev_sha256() {
+    adb_call 300 "sha256sum $1" shell "sha256sum '$1' 2>/dev/null || true" 2>/dev/null \
+        | tr -d '\r' | awk 'NR==1 && $1 ~ /^[0-9a-f]{64}$/ {print $1}'
+}
+# dev_bytes <device path> -> size, or -1 when the file is absent
+dev_bytes() {
+    local n
+    n=$(adb_call "$ADB_QUICK_TIMEOUT" "stat $1" shell "stat -c %s '$1' 2>/dev/null || echo -1" 2>/dev/null | tr -d '\r' | head -1)
+    [[ "$n" =~ ^[0-9]+$ ]] && echo "$n" || echo -1
+}
+# dev_pull <device path> <host path> <sha256>: pulled and matching, or 1.
+# Never `request.sh --pull`: soak_title.sh deletes what that pulls.
+dev_pull() {
+    local src="$1" dst="$2" want="$3" try
+    mkdir -p "$(dirname "$dst")"
+    for try in 1 2 3; do
+        rm -f "$dst"
+        adb_call 600 "pull $src" pull "$src" "$dst" >/dev/null 2>&1
+        [ -s "$dst" ] && [ "$(sha256sum "$dst" | cut -d' ' -f1)" = "$want" ] && return 0
+        log "  pull $try of $src: missing or not the device's file"
+    done
+    rm -f "$dst"; return 1
+}
+# dev_mode <device path> -> octal mode (e.g. 660), or "" when the file is absent
+dev_mode() {
+    adb_call "$ADB_QUICK_TIMEOUT" "stat mode $1" shell "stat -c %a '$1' 2>/dev/null" 2>/dev/null \
+        | tr -d '\r' | awk 'NR==1 && $1 ~ /^[0-7]+$/ {print $1}'
+}
+# dev_make_660 <device path>: mode 660, read back (see THE DISK MUST BE MODE
+# 660 above), or 1.
+dev_make_660() {
+    local m
+    m=$(dev_mode "$1")
+    [ "$m" = 660 ] && return 0
+    adb_call "$ADB_QUICK_TIMEOUT" "chmod 660 $1" shell "chmod 660 '$1'" >/dev/null 2>&1
+    m=$(dev_mode "$1")
+    [ "$m" = 660 ] || { log "  $1: mode ${m:-unreadable} after chmod 660; the app could not open it read-write"; return 1; }
+}
+# dev_push <host path> <device path>: through <path>.new and a rename, checked.
+# Mode 660 before the rename, so the file is never in place unopenable.
+dev_push() {
+    local src="$1" dst="$2" want
+    want=$(sha256sum "$src" | cut -d' ' -f1)
+    adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || return 1
+    [ "$(dev_sha256 "$dst.new")" = "$want" ] || { log "  push $dst: the device's copy does not match"; return 1; }
+    dev_make_660 "$dst.new" || return 1
+    adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || return 1
+    [ "$(dev_sha256 "$dst")" = "$want" ] && [ "$(dev_mode "$dst")" = 660 ]
+}
+
+# titles_disk_prepare <id> <rdir> [<request env json>] [<title id>] [<state>]:
+# make the device's titles disk the composed goldens for this title and state
+# (titlestate.py, GOLDENS: every title's golden profile, minus this title's on
+# a first-run) and point hddPath at it. Writes <rdir>/hdd.json, which records
+# what was loaded: title, save, golden or none. Non-zero fails the request;
+# 3 is a refusal (a returning state with no golden), written to
+# <rdir>/hdd.refused, before any disk is touched.
+titles_disk_prepare() {
+    local id="$1" rdir="$2" renv="${3:-[]}" tid="${4:-}" tstate="${5:-any}" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
+    local split="${HAKUX_TITLES_DISK:-1}" from=worker rsplit mode0 targs=()
+    [ -n "$tid" ] && targs=(--title-id "$tid")
+    targs+=(--state "$tstate")
+    [ -n "${HAKUX_TITLES_DISK:-}" ] || from=default
+    # The request's own HAKUX_TITLES_DISK, when it names one, wins.
+    rsplit=$(python3 -c '
+import json, sys
+v = json.loads(sys.argv[1] or "[]")
+v = ["%s=%s" % kv for kv in v.items()] if isinstance(v, dict) else v
+print(([str(e).split("=", 1)[1] for e in v if str(e).startswith("HAKUX_TITLES_DISK=")] or [""])[-1])' "$renv" 2>/dev/null)
+    [ -n "$rsplit" ] && { split="$rsplit"; from=request; }
+    x="$(x1box_dir)"; dpath="$x/titles.qcow2"
+    case "$dev" in nova|thor) ;; *)
+        printf '{"path": null, "split": "off: no titles registry for device %s"}\n' "$dev" > "$rdir/hdd.json"
+        return 0 ;; esac
+    if [ "$split" = 0 ]; then
+        printf '{"path": null, "split": "off: HAKUX_TITLES_DISK=0", "split_from": "%s"}\n' "$from" > "$rdir/hdd.json"
+        return 0
+    fi
+    [ "$from" = request ] && log "  titles disk: on for this request (its env HAKUX_TITLES_DISK=$split beats the worker's ${HAKUX_TITLES_DISK:-unset})"
+    # Nothing may hold the disk while it is read or replaced.
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (titles disk)" shell am force-stop "${PKG:-com.jreinach.hakux.debug}" >/dev/null 2>&1
+    : > "$rdir/hdd.plan"
+    for i in 1 2 3 4 5; do
+        bytes=$(dev_bytes "$dpath"); sha=""
+        [ "$bytes" -ge 0 ] && sha=$(dev_sha256 "$dpath")
+        pj=$(python3 "$TITLESTATE" plan --device "$dev" --device-bytes "$bytes" --device-sha "$sha" "${targs[@]}") || {
+            log "  TITLES DISK: plan failed"; return 1; }
+        printf '%s\n' "$pj" >> "$rdir/hdd.plan"
+        action=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["action"])' "$pj")
+        reason=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["reason"])' "$pj")
+        log "  titles disk: $action ($reason)"
+        case "$action" in
+            keep) break ;;
+            refuse)
+                printf '%s\n' "$reason" > "$rdir/hdd.refused"
+                log "  TITLES DISK: REFUSED: $reason"; return 3 ;;
+            preserve)
+                # The harvest of this disk failed: keep all of it on the host,
+                # then rebuild. A disk a run wrote to is never booted again.
+                local keep; keep="$TITLESTATE_DIR/unharvested/$dev-${sha:0:12}.qcow2"
+                dev_pull "$dpath" "$keep" "$sha" || { log "  TITLES DISK: cannot pull the disk to preserve it"; return 1; }
+                python3 "$TITLESTATE" preserved --device "$dev" --sha "$sha" --path "$keep" || return 1 ;;
+            seed)
+                local h hs; h="$TITLESTATE_DIR/pull/$dev-hdd.img"
+                hs=$(dev_sha256 "$x/hdd.img")
+                [ -n "$hs" ] && dev_pull "$x/hdd.img" "$h" "$hs" || { log "  TITLES DISK: cannot pull hdd.img to seed"; return 1; }
+                python3 "$TITLESTATE" seed --device "$dev" --image "$h" --run "$id" > "$rdir/hdd.seed.json" \
+                    || { rm -f "$h"; log "  TITLES DISK: seed failed"; return 1; }
+                rm -f "$h" ;;
+            harvest)
+                titles_disk_harvest "$id:before" "$dpath" "$sha" "$rdir/hdd.harvest-before.json" || return 1 ;;
+            build)
+                local bj img isha built
+                bj=$(python3 "$TITLESTATE" rebuild --device "$dev" "${targs[@]}") || { log "  TITLES DISK: rebuild failed"; return 1; }
+                printf '%s\n' "$bj" > "$rdir/hdd.build.json"
+                img=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["path"])' "$bj")
+                built=$(python3 -c 'import json,sys;print(json.dumps(json.loads(sys.argv[1])["built_from"]))' "$bj")
+                dev_push "$img" "$dpath" || { log "  TITLES DISK: push failed"; return 1; }
+                python3 "$TITLESTATE" pushed --device "$dev" --image "$img" --device-path "$dpath" \
+                    --built-from "$built" || return 1 ;;
+            *) log "  TITLES DISK: unknown plan '$action'"; return 1 ;;
+        esac
+    done
+    [ "$action" = keep ] || { log "  TITLES DISK: no stable plan after $i rounds"; return 1; }
+    # A kept disk may predate dev_push's chmod (THE DISK MUST BE MODE 660).
+    mode0=$(dev_mode "$dpath")
+    dev_make_660 "$dpath" || { log "  TITLES DISK: cannot make $dpath mode 660"; return 1; }
+    [ "$mode0" = 660 ] || log "  titles disk: mode ${mode0:-unreadable} -> 660"
+    # The FIRST value found is the one to put back: a marker already there
+    # (a worker that died mid-run) holds it, and hddPath now reads ours.
+    # set_hdd_pref writes the marker before the pref, so a failure here still
+    # leaves serve_one's restore_hdd_pref the value to put back.
+    set_hdd_pref "$dpath" "$(hdd_pref_marker)" >/dev/null || return 1
+    local cj; cj=$(python3 "$TITLESTATE" compose --device "$dev" "${targs[@]}") || cj='{}'
+    python3 - "$rdir" "$dpath" "$sha" "$bytes" "$mode0" "$from" "$cj" <<'PYHDD'
+import json, os, sys
+rdir, path, sha, n, mode0, frm, cj = sys.argv[1:8]
+plans = [json.loads(l) for l in open(os.path.join(rdir, "hdd.plan")) if l.strip()]
+c = json.loads(cj)
+c.pop("built_from", None)
+# title_id, disk_title_id, state, save, loaded (golden|none), golden_status:
+# what this run's title found on the disk (titlestate.py compose).
+json.dump(dict(c, path=path, sha256_at_start=sha, bytes_at_start=int(n), plans=plans,
+               mode_found=mode0 or None, mode="660",
+               split="on", split_from=frm), open(os.path.join(rdir, "hdd.json"), "w"), indent=1)
+PYHDD
+    log "  hddPath -> $dpath (sha256 ${sha:0:12}, $bytes B; ${tid:-title unknown} $tstate: $(python3 -c 'import json,sys;c=json.loads(sys.argv[1]);print(c.get("loaded"), c.get("save") or "")' "$cj" 2>/dev/null))"
+}
+
+# titles_disk_harvest <run> <device path> <sha> <out.json>: pull, harvest.
+titles_disk_harvest() {
+    local run="$1" dpath="$2" sha="$3" out="$4" h
+    h="$TITLESTATE_DIR/pull/${DEVICE_LABEL}-titles.qcow2"
+    dev_pull "$dpath" "$h" "$sha" || { log "  TITLES DISK: pull for harvest failed"; return 1; }
+    python3 "$TITLESTATE" after-run --device "$DEVICE_LABEL" --image "$h" --run "$run" \
+        --device-sha "$sha" > "$out" || { rm -f "$h"; return 1; }
+    rm -f "$h"
+    log "  titles disk harvested: $(cat "$out")"
+}
+
+# titles_disk_after <id> <rdir>: after the soak (the app is force-stopped):
+# harvest whatever the run wrote, then put hddPath back. Never fails the
+# request: the run already happened; what did not harvest, plan() refuses to
+# rebuild over next time.
+titles_disk_after() {
+    local id="$1" rdir="$2" dpath bytes sha pj
+    grep -q '"split": "on"' "$rdir/hdd.json" 2>/dev/null || { restore_hdd_pref; return 0; }
+    dpath="$(x1box_dir)/titles.qcow2"
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (titles disk after)" shell am force-stop "${PKG:-com.jreinach.hakux.debug}" >/dev/null 2>&1
+    bytes=$(dev_bytes "$dpath"); sha=$(dev_sha256 "$dpath")
+    pj=$(python3 "$TITLESTATE" plan --device "$DEVICE_LABEL" --device-bytes "$bytes" --device-sha "$sha")
+    case "$pj" in
+        *'"action": "harvest"'*)
+            titles_disk_harvest "$id" "$dpath" "$sha" "$rdir/hdd.after.json" \
+                || printf '{"error": "pull or harvest failed; see dispatcher.log"}\n' > "$rdir/hdd.after.json" ;;
+        *) printf '{"unchanged_or_blocked": %s, "sha256": "%s"}\n' "$pj" "$sha" > "$rdir/hdd.after.json" ;;
+    esac
+    titles_first_run_golden "$id" "$rdir"
+    restore_hdd_pref || log "  WARNING: hddPath not restored; the next request retries"
+}
+
+# titles_first_run_golden <id> <rdir>: a first-run whose route reached `mark
+# profile-saved` made the title's profile; when the title has no golden, the
+# harvested save becomes it (titlestate.py first-run-saved never replaces one).
+titles_first_run_golden() {
+    local id="$1" rdir="$2" dt save
+    grep -q '"state": "first-run"' "$rdir/hdd.json" 2>/dev/null || return 0
+    grep -q 'mark profile-saved' "$rdir/run.log" 2>/dev/null || return 0
+    dt=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("disk_title_id") or "")' "$rdir/hdd.json" 2>/dev/null)
+    save=$(python3 -c 'import json,sys;print((json.load(open(sys.argv[1])).get("harvested") or {}).get(sys.argv[2]) or "")' \
+           "$rdir/hdd.after.json" "$dt" 2>/dev/null)
+    if [ -z "$dt" ] || [ -z "$save" ]; then
+        log "  first-run reached profile-saved, but no save of ${dt:-the title} was harvested; no golden made"
+        return 0
+    fi
+    python3 "$TITLESTATE" first-run-saved --title-id "$dt" --save "$save" --run "$id" \
+        > "$rdir/hdd.golden.json" 2>&1 && log "  golden: $(cat "$rdir/hdd.golden.json")"
+}
+
+# hdd_img_guard <rdir>: disc runs keep hdd.img, and it still grows (E:\nxdk_*
+# output, a few MB a run, plus whatever the pre-split title runs left). Past
+# HAKUX_HDD_RESET_BYTES (1 GiB) it is reset through saves.py reset -- every
+# title's save pulled, a fresh disk built from them, each verified -- and the
+# old one kept on the device as hdd.img.bak-auto. A failed reset changes
+# nothing and says so. Writes <rdir>/hdd_guard.json when it acts.
+#
+# A reset that fails for a reason that will not change (saves.py refuses the
+# disk, or the device has no room for the backup) is recorded against the
+# disk's size and mtime in $D/.hdd_guard_failed.<device>; while hdd.img still
+# has that size and mtime, later requests write the alert without paying for
+# the sha256, the pull and the reset again. Any write to hdd.img, or removing
+# the file, re-arms the guard.
+hdd_img_guard() {
+    local rdir="$1" x dpath bytes limit="${HAKUX_HDD_RESET_BYTES:-1073741824}" sha h sdir stamp fp failed
+    x="$(x1box_dir)"; dpath="$x/hdd.img"
+    bytes=$(dev_bytes "$dpath")
+    [ "$bytes" -gt "$limit" ] || return 0
+    failed="$D/.hdd_guard_failed.${DEVICE_LABEL:-$SERIAL}"
+    fp=$(adb_call "$ADB_QUICK_TIMEOUT" "stat $dpath (guard)" shell "stat -c '%s %Y' '$dpath' 2>/dev/null" 2>/dev/null | tr -d '\r' | head -1)
+    [[ "$fp" =~ ^[0-9]+\ [0-9]+$ ]] || fp=""
+    if [ -n "$fp" ] && [ -f "$failed" ] && [ "$(head -1 "$failed")" = "$fp" ]; then
+        log "  HDD GUARD: hdd.img ($bytes B) is the disk whose reset already failed; not retried"
+        printf '{"action": "alert", "bytes": %s, "limit": %s, "repeat": true, "why": "%s"}\n' \
+            "$bytes" "$limit" "$(sed -n 2p "$failed" | tr -d '"')" > "$rdir/hdd_guard.json"
+        return 0
+    fi
+    log "  HDD GUARD: hdd.img is $bytes B > $limit B; resetting it (saves.py reset)"
+    stamp=$(date -u +%Y%m%dT%H%M%SZ); sdir="$D/hdd-reset/${DEVICE_LABEL:-$SERIAL}-$stamp"
+    h="$sdir/pulled.img"; mkdir -p "$sdir"
+    guard_fail() {
+        log "  HDD GUARD ALERT: $1; hdd.img left as it was ($bytes B)"
+        printf '{"action": "alert", "bytes": %s, "limit": %s, "why": "%s"}\n' "$bytes" "$limit" "$1" > "$rdir/hdd_guard.json"
+        rm -f "$h" "$sdir/hdd.img"
+    }
+    # guard_fail_final: the same disk would fail the same way next time.
+    guard_fail_final() {
+        guard_fail "$1"
+        [ -n "$fp" ] && printf '%s\n%s\n' "$fp" "$1" > "$failed"
+    }
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (hdd guard)" shell am force-stop "${PKG:-com.jreinach.hakux.debug}" >/dev/null 2>&1
+    sha=$(dev_sha256 "$dpath")
+    [ -n "$sha" ] && dev_pull "$dpath" "$h" "$sha" || { guard_fail "pull failed"; return 0; }
+    python3 "$SAVES_PY" reset "$h" "$sdir/hdd.img" "$sdir/saves" > "$sdir/reset.json" 2>>"$sdir/reset.err" \
+        || { guard_fail_final "saves.py reset refused: $(tail -1 "$sdir/reset.err" | tr -d '"')"; return 0; }
+    rm -f "$h"
+    # A partial backup holds the space the next attempt needs: removed.
+    adb_call 600 "back up hdd.img" shell "cp -f '$dpath' '$dpath.bak-auto'" >/dev/null 2>&1 \
+        && [ "$(dev_sha256 "$dpath.bak-auto")" = "$sha" ] || {
+            adb_call "$ADB_QUICK_TIMEOUT" "rm partial hdd.img.bak-auto" shell "rm -f '$dpath.bak-auto'" >/dev/null 2>&1
+            guard_fail_final "could not back up hdd.img on the device"; return 0; }
+    dev_push "$sdir/hdd.img" "$dpath" || { guard_fail "push of the rebuilt disk failed (hdd.img.bak-auto is the original)"; return 0; }
+    python3 - "$rdir/hdd_guard.json" "$sdir/reset.json" "$bytes" "$limit" "$sdir" <<'PYHDD'
+import json, sys
+out, rj, n, lim, sdir = sys.argv[1:6]
+r = json.load(open(rj))
+json.dump({"action": "reset", "bytes": int(n), "limit": int(lim), "after_bytes": r["bytes"],
+           "titles": r["titles"], "saves": sdir + "/saves", "backup": "hdd.img.bak-auto"},
+          open(out, "w"), indent=1)
+PYHDD
+    rm -f "$sdir/hdd.img" "$failed"
+    log "  HDD GUARD: hdd.img reset, $bytes B -> $(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["bytes"])' "$sdir/reset.json") B, saves in $sdir/saves"
+}
+
 # THERE IS NO SWEEP PREEMPTION HERE, and there was one until 2026-09-25.
 # preempt_sweep/resume_sweep drove sweep_queue.sh pause/resume around every
 # install. It never ran: sweep_queue.sh demanded four build inputs before its
@@ -562,6 +983,43 @@ _build_ref_locked() {
     echo "$apk"
 }
 
+# THE DISPATCHER MUST NEVER INSTALL THE RELEASE PACKAGE (com.jreinach.hakux,
+# no suffix): that is the owner's stable playtest channel (owner_build.sh,
+# the nightly), and a lane's run reinstalling over it would make "which
+# build is this" unanswerable the same way the debug app already was (#433).
+#
+# _build_ref_locked only ever runs `assembleDebug` and copies the `debug`
+# variant's output, so there is today no path from here to a release apk --
+# but that is an invariant of this file's code, not of the apk on disk, and
+# it is cheap to check the thing that is actually installed rather than trust
+# that nothing upstream changed. A release apk's compiled manifest carries
+# its applicationId as a plain string in AndroidManifest.xml's string pool
+# (usually UTF-16LE); this looks for the bare id with no following "." --
+# which is what a debug or debug2 suffix would add -- so `com.jreinach.hakux`
+# alone refuses and `com.jreinach.hakux.debug` does not.
+#
+# A file zipfile cannot open (including the empty placeholder selftest.d's
+# fakes use in place of a real build) is NOT refused: there is nothing to
+# read the applicationId from, and failing closed here would block every
+# test that fakes build_ref. The real guarantee is structural (above); this
+# is defense in depth against a future change to build_ref, not the only
+# thing standing between a lane and the release package.
+guard_not_release_apk() {   # <apk path> ; 0 = fine to install, 1 = refuse
+    local apk="$1"
+    [ -s "$apk" ] || return 0
+    python3 - "$apk" <<'PY' 2>/dev/null
+import re, sys, zipfile
+try:
+    with zipfile.ZipFile(sys.argv[1]) as z:
+        manifest = z.read("AndroidManifest.xml")
+except Exception:
+    sys.exit(0)
+needle = "com.jreinach.hakux"
+text = manifest.decode("utf-16-le", "ignore") + "\n" + manifest.decode("utf-8", "ignore")
+sys.exit(1 if re.search(re.escape(needle) + r'(?![.\w])', text) else 0)
+PY
+}
+
 # ------------------------------------------------------------ the lane file
 #
 # `lanes/<label>` holds a live worker's pid and is the ONLY input to
@@ -640,6 +1098,94 @@ lane_blind_check() {
     fi
 }
 
+# PER-RUN BATTERY ADMISSION (#507, owner 2026-09-28). A handheld on its 500 mA
+# port was taken out of service below 15 % and put back only at 80 %, about
+# eleven hours, while a queue of 6-8 minute runs it could have served at 24 %
+# waited. So each request is admitted on its own: only when the level covers
+# 15 % + 5 % + the learned drain over the run. battery_admit.py has the rule,
+# the learning, and why a long head is not starved by the short runs behind it.
+#
+# battery_level: dumpsys's `level:`, read at most once a minute (the queue walk
+# asks once per request per tick). Empty when it cannot be read; the caller
+# then claims nothing (battery_unreadable).
+battery_level() {
+    local f="$D/.battery_level.$DEVICE_LABEL" now t l
+    now=$(date +%s)
+    if read -r t l < "$f" 2>/dev/null && [ -n "$l" ] \
+       && [ $((now - t)) -lt "${BATTERY_CACHE_S:-60}" ]; then
+        printf '%s\n' "$l"; return 0
+    fi
+    l=$(ADB_RETRIES=0 adb_call "${ADB_QUICK_TIMEOUT:-30}" "battery level" shell dumpsys battery 2>/dev/null \
+        | tr -d '\r' | sed -n 's/^ *level: *\([0-9][0-9]*\) *$/\1/p' | head -1)
+    [ -n "$l" ] || return 0
+    printf '%s %s\n' "$now" "$l" > "$f"
+    printf '%s\n' "$l"
+}
+
+# battery_admit <req> <id> -> 0 to claim it, 1 not now. Sets BATT_JSON (what
+# result.json records) on 0, and BATT_HEAD -- the first request this tick
+# refused, the device's head -- on the first refusal. Each distinct line is
+# logged once per request, not every five seconds.
+declare -A BATT_SAID=()
+BATT_UNREAD_SINCE=""
+# battery_unreadable <id>: FAIL CLOSED. The first live hours admitted a run
+# unchecked on an unreadable level (16:41:17 on 09-28) while the Nova's USB
+# link was failing, and the run voided. An unreadable level almost always IS
+# that link, so nothing is claimed; the next walk reads again. One read per
+# walk (BATT_WALK_UNREAD), one line per episode, and one when it recovers.
+battery_unreadable() {
+    BATT_WALK_UNREAD=1
+    if [ -z "$BATT_UNREAD_SINCE" ]; then
+        BATT_UNREAD_SINCE=$(date +%s)
+        log "BATTERY: level unreadable on $DEVICE_LABEL; not claiming $1, reading again at the next walk"
+    fi
+}
+battery_admit() {
+    local req="$1" id="$2" level out rc line
+    BATT_JSON=""
+    [ "${BATTERY_ADMIT:-on}" = off ] && return 0
+    [ -z "${BATT_WALK_UNREAD:-}" ] || return 1
+    level=$(battery_level)
+    [ -n "$level" ] || { battery_unreadable "$id"; return 1; }
+    if [ -n "$BATT_UNREAD_SINCE" ]; then
+        log "BATTERY: level readable again on $DEVICE_LABEL ($level) after $(( $(date +%s) - BATT_UNREAD_SINCE ))s unreadable"
+        BATT_UNREAD_SINCE=""
+    fi
+    out=$(python3 "$HERE/battery_admit.py" check "$D" "$DEVICE_LABEL" "$req" "$level" "${BATT_HEAD:-}")
+    rc=$?
+    line=$(printf '%s\n' "$out" | sed -n 1p)
+    case "$rc" in
+        0) BATT_JSON=$(printf '%s\n' "$out" | sed -n 2p); log "$line"; unset "BATT_SAID[$id]"; return 0 ;;
+        1) [ -n "${BATT_HEAD:-}" ] || BATT_HEAD="$id" ;;
+        3) ;;
+        *) # The helper itself failed: admit, as for an unreadable level.
+           log "BATTERY: battery_admit.py exited $rc on $id; admitting unchecked: $line"
+           BATT_JSON='{"battery_start": '"$level"', "unchecked": "battery_admit.py failed"}'
+           return 0 ;;
+    esac
+    # Level and need change slowly; say it again only when the words change.
+    # The head's refusal line and the hold line each carry a running clock,
+    # so compare without it.
+    local key
+    key=$(printf '%s\n' "$line" | sed 's/; head, refused for [0-9]*s$//; s/ (refused for [0-9]*s >= [0-9]*s)//')
+    if [ "${BATT_SAID[$id]:-}" != "$key" ]; then
+        BATT_SAID[$id]="$key"
+        log "$line"
+    fi
+    return 1
+}
+
+# serve_queue <req>... -> 0 once one is served. The queue walk, in priority
+# order; BATT_HEAD is per walk, so a head is the first refusal of THIS tick.
+serve_queue() {
+    BATT_HEAD="" BATT_WALK_UNREAD=""
+    local r
+    for r in "$@"; do
+        serve_one "$r" && return 0
+    done
+    return 1
+}
+
 serve_one() {
     local req="$1" id
     id=$(basename "$req" .req)
@@ -654,6 +1200,10 @@ serve_one() {
         # concluding it served something and sleeping.
         return 1
     fi
+    # Battery after affinity (a request pinned elsewhere costs no adb read) and
+    # before the claim, so a refusal leaves it in the queue for the next tick,
+    # or for the other handheld.
+    battery_admit "$req" "$id" || return 1
     # Losing this rename means the other worker claimed it first, which is the
     # mutex working. Also non-zero: try the next one.
     mv "$req" "$D/running/$id.req" 2>/dev/null || return 1
@@ -684,6 +1234,10 @@ serve_one() {
     log "request $id from $requester: $purpose (ref=$ref arm=$arm runs=$runs)"
 
     local rdir="$D/results/$id"; mkdir -p "$rdir"
+    # What admitted it: level, need, rate. Both result.json writers carry it as
+    # `battery`, so a later check can ask whether a low-charge run measured
+    # differently. battery_admit.py learns overhead from its `t_device`.
+    [ -z "$BATT_JSON" ] || printf '%s\n' "$BATT_JSON" > "$rdir/battery.json"
     local apk rc
     # `a || b && c || d` is a precedence trap in shell and this value decides
     # which binary runs, so spell it out.
@@ -714,10 +1268,20 @@ serve_one() {
     local sha; sha=$(sha256sum "$apk" | cut -c1-12)
     log "  binary $sha"
 
+    if ! guard_not_release_apk "$apk"; then
+        echo "refusing to install $apk: it reports applicationId com.jreinach.hakux (the release package); the dispatcher may only install a debug-suffixed build" > "$rdir/ERROR"
+        log "  REFUSING RELEASE INSTALL"
+        mv "$req" "$rdir/request.json"; return 0
+    fi
+
     if ! device_present; then
         log "  device absent; requeueing"
         mv "$req" "$D/queue/$id.req"; sleep 30; return 0
     fi
+    # The device's part of this request starts here, not at the claim: the
+    # build before it drains nothing.
+    [ ! -f "$rdir/battery.json" ] || python3 -c 'import json,sys,time
+p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open(p,"w"))' "$rdir/battery.json" 2>/dev/null
     adb_call "$ADB_INSTALL_TIMEOUT" "adb install -r" install -r "$apk" 2>&1 | grep -q Success || {
         adb_error "install failed" > "$rdir/ERROR"; log "  INSTALL FAILED: $(cat "$rdir/ERROR")"
         mv "$req" "$rdir/request.json"; return 0
@@ -739,6 +1303,13 @@ serve_one() {
         mv "$req" "$rdir/request.json"; return 0
     fi
     req_env=$(python3 -c "import json,sys;print(json.dumps(json.load(open(sys.argv[1])).get('env') or []))" "$req" 2>/dev/null || echo "[]")
+    # A title run that never reached titles_disk_after left hddPath on the
+    # titles disk; no run may start on the wrong one. No marker, no adb call.
+    if ! restore_hdd_pref; then
+        adb_error "could not restore hddPath after an earlier title run; see dispatcher.log" > "$rdir/ERROR"
+        log "  HDD PREF RESTORE FAILED"
+        mv "$req" "$rdir/request.json"; return 0
+    fi
 
     # A soak request runs a real title and keeps its log, instead of running a
     # test disc and scoring captures. It exists because some questions have no
@@ -749,12 +1320,32 @@ serve_one() {
     # it -- and no human has to hold the handheld.
     if [ -n "$title" ]; then
         log "  soak: $title for ${seconds}s"
-        local tpath="$DEVICE_ISO_ROOT/$title"
-        if ! adb_call "$ADB_QUICK_TIMEOUT" "title check" shell "[ -f '$tpath' ] && echo yes" 2>/dev/null | tr -d '\r' | grep -q yes; then
-            adb_error "title not on device: $tpath" > "$rdir/ERROR"
+        # Under the first of the device's roots that has it (devices.sh).
+        local tpath
+        if ! tpath=$(device_title_path "$title"); then
+            adb_error "$(device_title_miss "$title")" > "$rdir/ERROR"
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
+        # Which title, and the state its route was written for (request.sh
+        # --route, titlestate.py resolve-route). A request queued before that
+        # carries neither: its title from the ISO name, state `any`.
+        local ttid tstate trc
+        ttid=$(jq_get "$req" title_id "")
+        [ -n "$ttid" ] || ttid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
+        tstate=$(jq_get "$req" title_state any)
+        titles_disk_prepare "$id" "$rdir" "$req_env" "$ttid" "$tstate"; trc=$?
+        if [ "$trc" = 3 ]; then
+            echo "refused before the soak: the titles disk cannot carry what the route assumes: $(cat "$rdir/hdd.refused" 2>/dev/null)" > "$rdir/ERROR"
+            log "  TITLES DISK REFUSED"
+            restore_hdd_pref
+            mv "$req" "$rdir/request.json"; return 0
+        elif [ "$trc" != 0 ]; then
+            adb_error "could not prepare the titles disk; see dispatcher.log" > "$rdir/ERROR"
+            log "  TITLES DISK SETUP FAILED"
+            restore_hdd_pref
+            mv "$req" "$rdir/request.json"; return 0
+        fi
         # The route's text travels in the request (request.sh --route); the
         # file soak_title.sh plays is written from it here, beside the result.
         python3 -c 'import json,sys; r=json.load(open(sys.argv[1])).get("route") or ""; r and open(sys.argv[2],"w").write(r.rstrip("\n")+"\n")' "$req" "$rdir/route.txt"
@@ -768,6 +1359,7 @@ serve_one() {
         # and unconditionally, so an early guest exit does not leave a
         # screencap loop running against the next request's title.
         stop_frame_capture
+        titles_disk_after "$id" "$rdir"
         local lines; lines=$(wc -l < "$rdir/logcat.txt" 2>/dev/null || echo 0)
         python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" "$req_env" "$frames_every" <<'PYEOF'
 import json, os, sys
@@ -794,7 +1386,26 @@ if os.path.isdir(pdir):
 # cost a phase survey exactly this way. No fallback literal: if LOGCAT_SPEC is
 # unset, say so rather than inventing the string it probably was.
 _spec = os.environ.get("LOGCAT_SPEC", "(LOGCAT_SPEC UNSET -- spec unknown)")
+def _battery(rdir):
+    try:
+        return json.load(open(os.path.join(rdir, "battery.json")))
+    except (OSError, ValueError):
+        return None
+# WHICH DISK THE TITLE BOOTED (titles_disk_prepare): its device path, sha256
+# at the start, the plans that made it current, and what the post-run
+# harvest found. None before the split existed.
+def _hdd(rdir):
+    try:
+        h = json.load(open(os.path.join(rdir, "hdd.json")))
+    except (OSError, ValueError):
+        return None
+    try:
+        h["after"] = json.load(open(os.path.join(rdir, "hdd.after.json")))
+    except (OSError, ValueError):
+        pass
+    return h
 json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
+               hdd=_hdd(rdir),
                requester=who, purpose=purpose, ref=ref,
                logcat=dict(spec=_spec, lines=int(lines)),
                device_serial=os.environ.get("SERIAL", ""),
@@ -819,7 +1430,10 @@ json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                            count=len(_frames),
                            bytes=sum(os.path.getsize(os.path.join(_fdir, f))
                                      for f in _frames),
-                           dir="frames" if _frames else None)),
+                           dir="frames" if _frames else None),
+               # What admitted it (battery_admit.py): battery_start, need,
+               # rate. None when the run predates admission or it was off.
+               battery=_battery(rdir)),
           open(os.path.join(rdir, "result.json"), "w"), indent=2)
 print("soak done:", title, lines, "log lines")
 PYEOF
@@ -1014,6 +1628,7 @@ else:
 PYEOF
 )
 
+    hdd_img_guard "$rdir"
     local r
     for r in $(seq 1 "$runs"); do
         local args=() gdir="d$(echo "$id$r" | md5sum | cut -c1-6)"
@@ -1092,6 +1707,11 @@ meta["env"] = json.loads(os.environ.get("REQ_ENV_JSON") or "[]")
 # Whether this run started on a cleared shader cache (clear_shader_caches_on_
 # apk_change): "cleared: apk X -> Y", "kept: ...", or "" before the field.
 meta["shader_cache"] = os.environ.get("SHADER_CACHE_STATE", "")
+# hdd_img_guard: present only when hdd.img was past its limit before this run.
+try:
+    meta["hdd_guard"] = json.load(open(os.path.join(rdir, "hdd_guard.json")))
+except (OSError, ValueError):
+    pass
 # TWO revisions, because `classifier_rev` has been recording the WRONG FILE.
 #
 # The `status` column every consumer reads -- ok / label-differs /
@@ -1184,6 +1804,11 @@ for j in sorted(glob.glob(os.path.join(rdir, "vsh*.json"))):
 meta["device_serial"] = os.environ.get("SERIAL", "")
 meta["device_label"] = os.environ.get("DEVICE_LABEL", "")
 meta["runs"] = runs
+# What admitted it (battery_admit.py): battery_start, need, rate.
+try:
+    meta["battery"] = json.load(open(os.path.join(rdir, "battery.json")))
+except (OSError, ValueError):
+    meta["battery"] = None
 
 # Name the log explicitly, so "we captured nothing" and "the suite dropped
 # nothing" are different answers. They looked identical before, which is the
@@ -1376,7 +2001,13 @@ PYEOF
 # measured `Sd2` finishes per frame on `xemu-work` but could not say which
 # surface-download site fired: that split is on `hakuX-stall` (sd[...],
 # dlSrc[...], dif[...]), and GPU time per frame is on `xemu-gpu`.
-LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+#
+# xemu-surf ADDED 2026-09-26 for #413, same shape (NV2A_PERF_LOG, one line per
+# 60 guest frames, profile.c). It is the sub-split of `Surf` -- populate,
+# dirty, lookup hit/evict/nosurf, create, put, bind, upload, download,
+# expire -- and DOA2U's perflog soak (1790450181-doa413-1721403) spent 33-52
+# ms per frame in `Surf` without it, so the soak could not say which part.
+LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I xemu-surf:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 export LOGCAT_SPEC
 
 case "${1:-status}" in
@@ -1400,21 +2031,52 @@ case "${1:-status}" in
     snapshot_scripts
     workers=()
     serials=()
-    for s in $(adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}'); do
-        if ! ( device_env "$s" ) 2>/dev/null; then
-            log "skipping unknown device $s; add it to devices.sh"
-            continue
-        fi
-        log "starting worker for $s"
-        SERIAL="$s" bash "$SNAP/dispatcher.sh" worker "$s" &
-        workers+=($!)
-        serials+=("$s")
-    done
+    unknown=" "
+    # Start a worker for every attached, known serial that has none yet.
+    # Called at start AND from the supervise loop below: a handheld that is
+    # off adb when serve starts -- unplugged to charge on its 500 mA port --
+    # was otherwise never served until the next restart. 2026-09-26: the
+    # update window restarted serve at 20:12 PDT with the Thor off adb, the
+    # owner plugged it back at 20:35, and no worker ever started for it; the
+    # only remedy was a drain-restart holding both devices for 30 min.
+    #
+    # adb is Windows adb.exe through interop and can hang or fail with the
+    # UtilAcceptVsock transient, so the listing has a deadline and a failed
+    # listing changes nothing. A serial with a worker is never started twice:
+    # a dead worker is the restart loop's to bring back, not this one's.
+    attach_workers() {   # <suffix for the log line>
+        local listing s i have
+        listing=$(timeout -k 5 30 adb devices 2>/dev/null) || return 0
+        for s in $(printf '%s\n' "$listing" | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}'); do
+            have=0
+            for i in "${!serials[@]}"; do [ "${serials[$i]}" = "$s" ] && have=1; done
+            [ "$have" = 1 ] && continue
+            if ! ( device_env "$s" ) >/dev/null 2>&1; then
+                # Once per serial, not once a minute for as long as it is plugged in.
+                case "$unknown" in *" $s "*) ;; *)
+                    log "skipping unknown device $s; add it to devices.sh"
+                    unknown="$unknown$s " ;; esac
+                continue
+            fi
+            log "starting worker for $s${1:-}"
+            SERIAL="$s" bash "$SNAP/dispatcher.sh" worker "$s" &
+            workers+=($!)
+            serials+=("$s")
+        done
+    }
+    attach_workers
     if [ "${#workers[@]}" -eq 0 ]; then
-        echo "no known device attached" >&2; exit 2
+        # NOT an exit. Exiting 2 here made the unit crash-loop, or sit dead,
+        # while every handheld was off charging; supervising an empty set lets
+        # the first one to come back be served by the late-attach path.
+        log "no known device attached; supervising none until one attaches"
     fi
     log "=== supervising ${#workers[@]} device worker(s) ==="
     trap 'kill ${workers[@]} 2>/dev/null; exit 0' INT TERM
+    # Both overridable for the selftest only (98-dispatch-late-device.sh).
+    SUPERVISE_SLEEP="${DISPATCH_SUPERVISE_SLEEP:-20}"
+    RESCAN_SECS="${DISPATCH_RESCAN_SECS:-60}"
+    last_scan=$SECONDS
     # Supervise, rather than merely start and wait. A worker that dies takes
     # its device out of service silently: the queue keeps accepting requests
     # pinned to it and nothing serves them. That happened within the hour --
@@ -1425,7 +2087,11 @@ case "${1:-status}" in
     # safe because all state lives in the queue and results directories, and
     # a worker's own orphan sweep requeues only what it owns.
     while :; do
-        sleep 20
+        sleep "$SUPERVISE_SLEEP"
+        if [ $((SECONDS - last_scan)) -ge "$RESCAN_SECS" ]; then
+            last_scan=$SECONDS
+            attach_workers " (attached late)"
+        fi
         for i in "${!workers[@]}"; do
             if ! kill -0 "${workers[$i]}" 2>/dev/null; then
                 log "worker for ${serials[$i]} (pid ${workers[$i]}) is gone; restarting"
@@ -1448,6 +2114,16 @@ case "${1:-status}" in
     # exec between requests is free. Hash the scripts it actually depends on.
     DISPATCH_SRC_HASH="$(src_hash)"
     export DISPATCH_SRC_HASH
+    # And snapshot with THIS file's lists, after the hash. The re-exec that
+    # started this worker was carried out by the previous version's
+    # snapshot_scripts, which copies the previous version's list: a file a
+    # fold ADDS to the lists was never copied, and nothing re-snapshots until
+    # some later fold moves the hash (vsh_score.py, 2026-09-25: missing from
+    # bin/ after #229 folded, and request.sh refused vsh work waiting on a
+    # re-exec that was not coming). Hash first: a tree edit landing between
+    # the two leaves the snapshot NEWER than the hash, so the next tick
+    # re-execs; the other order would leave it older with nothing to notice.
+    snapshot_scripts
     # Anything left in running/ belongs to a loop that is gone -- killed,
     # crashed, or restarted to pick up a change. Its request was accepted and
     # never answered, so put it back rather than leaving it to be found by
@@ -1592,10 +2268,9 @@ case "${1:-status}" in
         # Walk the queue in priority order rather than taking [0] blindly:
         # the first request may be pinned to the other handheld, and stopping
         # there would idle this one behind work it is not allowed to do.
+        # serve_queue, so the battery head (battery_admit) is per walk.
         served=0
-        for r in "${reqs[@]}"; do
-            if serve_one "$r"; then served=1; break; fi
-        done
+        serve_queue "${reqs[@]}" && served=1
         [ "$served" = 1 ] || sleep 5
 
         # Drop my own owner files whose request has left running/. serve_one

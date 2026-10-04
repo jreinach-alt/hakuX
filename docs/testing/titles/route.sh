@@ -19,6 +19,76 @@
 #   shot <label>                take a frame only
 #   repeat <n|forever> {        a block; blocks nest; `}` on its own line
 #   }
+#   flush [timeout_s]           send the app to the background so it writes
+#                               its disk, and wait (default 10 s) for
+#                               `deferred bdrv_flush_all completed`. LAST
+#                               STEP ONLY: the title is paused after it.
+#   waitfor <name> <timeout_s> <x,y,w,h> <threshold>
+#                               poll the region once a second against the
+#                               reference crop routes/refs/<route>/<name>.png
+#                               (mean abs diff, grayscale, downscaled to
+#                               64x48) until it MATCHES (score <= threshold)
+#                               or the timeout passes. A timeout ABORTS the
+#                               route (`ROUTE FAIL waitfor <name>`): a route
+#                               that cannot see the screen it needs must
+#                               stop, not carry on pressing into whatever is
+#                               actually up.
+#   press-until <BTN> <name> <max_n> <gap_s> <x,y,w,h> <threshold>
+#                               press BTN, wait gap_s, compare the region to
+#                               the reference crop; repeat up to max_n times
+#                               until it NO LONGER matches (score >
+#                               threshold) -- the reference is the state
+#                               BEFORE the press is expected to work (e.g.
+#                               an empty name field), so success is a
+#                               mismatch. Exhausting max_n ABORTS the route
+#                               (`ROUTE FAIL press-until <BTN> <name>`).
+#   drive <profile> <seconds> [find|mark]
+#                               screen-aware play (#433): drive.py captures,
+#                               names the screen (classify.py, against
+#                               drive-profiles/<profile>.toml), and sends the
+#                               input the profile maps that state to, for up
+#                               to <seconds>. It never presses START in live
+#                               play, skips logos/intros/cutscenes with a
+#                               button ladder, resumes a pause it can see,
+#                               and stops the route (`ROUTE FAIL drive ...`)
+#                               on a pause it cannot leave, a stall (HUD up,
+#                               nothing moving) or a screen it cannot name.
+#                               `find`: end the step at 20 s of confirmed
+#                               play (path-finding: only what the route puts
+#                               after it runs). `mark`: drive.py writes
+#                               `mark gameplay` itself once play is
+#                               confirmed, so the scored window starts on
+#                               seen play; a route using it has no `mark
+#                               gameplay` of its own. Each state change goes
+#                               to logcat as `hakuX-route: state=<s> t=<s>`
+#                               (title_verdict.py's play_share), every
+#                               capture to route-state.tsv, and the path to
+#                               play to route-solution.json, both in the
+#                               result dir (ROUTE_FRAMES' parent). See
+#                               drive.py's module doc.
+#
+# WHY waitfor/press-until exist at all: a route otherwise plays fixed `wait`
+# timers against a screen it never looks at. castlevania-cod.first-run's
+# newgame -> Name Entry transition varied by 10+ seconds between runs; a
+# `wait 14` that covered it once left every press of an unattended replay
+# landing on a screen that had not loaded yet, typing nothing for 900s
+# (docs/lanes/titleroutes/NOTES.md, session 60). `shot`/`mark` take a frame
+# but never read it back, so that failure was invisible until someone
+# opened the frames by hand. Reference crops are part of the route: commit
+# them next to the route file under `routes/refs/<route-stem>/`, and note
+# in the route's own comments which screen each one came from.
+#
+# WHY `flush`. A soak ends with `am force-stop` (SIGKILL), and the app
+# flushes its qcow2 disk only when it is backgrounded or terminated
+# (ui/xemu.c, SDL_APP_WILLENTERBACKGROUND). A profile a first-run creates
+# is written into clusters whose allocation is still in memory, so the
+# force-stop loses it and the next boot asks for the profile again
+# (GoldenEye: Rogue Agent, 09-26, three times). A route that exists to
+# leave a save on the disk ends with `flush`. The background is a HOME
+# intent (`am start -c android.intent.category.HOME`), never
+# `input keyevent`. The title stops rendering, so a flush after
+# `mark gameplay` reads as a hang to title_verdict.py: a flushing run
+# makes a save, not a measurement.
 #
 # `mark gameplay` STARTS THE SCORED WINDOW: title_verdict.py judges frame
 # rate, hangs and audio only after the logcat line this writes
@@ -48,6 +118,11 @@ ROUTE_FRAMES="${ROUTE_FRAMES:-$(dirname "$ROUTE")/route-frames}"
 
 BUTTONS=" A B X Y START SELECT BACK L1 R1 L2 R2 L3 R3 UP DOWN LEFT RIGHT "
 AXES=" LX LY RX RY LT RT HATX HATY ABS_X ABS_Y ABS_Z ABS_RX ABS_RY ABS_RZ ABS_GAS ABS_BRAKE ABS_HAT0X ABS_HAT0Y "
+
+# routes/refs/<route-stem>/<name>.png: the reference crop a `waitfor` or
+# `press-until` step with this name compares against.
+ref_path() { echo "$(dirname "$ROUTE")/refs/$(basename "$ROUTE" .route)/$1.png"; }
+isregion() { [[ "$1" =~ ^[0-9]+,[0-9]+,[0-9]+,[0-9]+$ ]]; }
 
 mapfile -t L < <(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$ROUTE")
 N=${#L[@]}
@@ -94,12 +169,47 @@ validate() {
                     [ "${w[2]:-}" = '{' ] || err "$i" "repeat wants '{' on the same line"
                     depth=$((depth+1)) ;;
             '}') [ "$depth" -gt 0 ] || err "$i" "unmatched '}'"; depth=$((depth-1)) ;;
+            flush) # whole seconds: flush_disk counts its polls with an integer test
+                   [ -z "${w[1]:-}" ] || [[ "${w[1]}" =~ ^[0-9]+$ ]] || err "$i" "flush wants a timeout in whole seconds"
+                   [ "$depth" = 0 ] || err "$i" "flush inside a repeat block"
+                   # the FIRST flush: everything after it is checked, a second flush included
+                   [ -n "$FLUSH_AT" ] || FLUSH_AT=$i ;;
+            waitfor) [ -n "${w[1]:-}" ] || err "$i" "waitfor wants a name"
+                   [[ "${w[1]}" =~ ^[A-Za-z0-9_.-]+$ ]] || err "$i" "waitfor name '${w[1]}' must be [A-Za-z0-9_.-]"
+                   isnum "${w[2]:-}" || err "$i" "waitfor wants a timeout in seconds"
+                   isregion "${w[3]:-}" || err "$i" "waitfor wants a region x,y,w,h"
+                   isnum "${w[4]:-}" || err "$i" "waitfor wants a threshold"
+                   [ -f "$(ref_path "${w[1]}")" ] || err "$i" "waitfor '${w[1]}': no reference crop $(ref_path "${w[1]}")" ;;
+            press-until) isbtn "${w[1]:-}" || err "$i" "unknown button '${w[1]:-}'"
+                   [ -n "${w[2]:-}" ] || err "$i" "press-until wants a name"
+                   [[ "${w[2]}" =~ ^[A-Za-z0-9_.-]+$ ]] || err "$i" "press-until name '${w[2]}' must be [A-Za-z0-9_.-]"
+                   [[ "${w[3]:-}" =~ ^[0-9]+$ ]] || err "$i" "press-until wants a max press count"
+                   isnum "${w[4]:-}" || err "$i" "press-until wants a gap in seconds"
+                   isregion "${w[5]:-}" || err "$i" "press-until wants a region x,y,w,h"
+                   isnum "${w[6]:-}" || err "$i" "press-until wants a threshold"
+                   [ -f "$(ref_path "${w[2]}")" ] || err "$i" "press-until '${w[2]}': no reference crop $(ref_path "${w[2]}")" ;;
+            drive) [ -n "${w[1]:-}" ] || err "$i" "drive wants a profile name"
+                   [[ "${w[1]}" =~ ^[A-Za-z0-9_.-]+$ ]] || err "$i" "drive profile '${w[1]}' must be [A-Za-z0-9_.-]"
+                   isnum "${w[2]:-}" || err "$i" "drive wants seconds"
+                   [ -z "${w[3]:-}" ] || [[ "${w[3]}" =~ ^(find|mark)$ ]] || err "$i" "drive's third word is find or mark"
+                   [ -f "$HERE/drive-profiles/${w[1]}.toml" ] || err "$i" "drive '${w[1]}': no profile $HERE/drive-profiles/${w[1]}.toml" ;;
             *) err "$i" "unknown step '${w[0]}'" ;;
         esac
         i=$((i+1))
     done
     [ "$depth" = 0 ] || err "$((N-1))" "unclosed repeat block"
+    # Nothing but waits, shots and comments may follow a flush: the title is
+    # in the background, and input sent to it goes nowhere.
+    if [ -n "$FLUSH_AT" ]; then
+        i=$((FLUSH_AT + 1))
+        while [ "$i" -lt "$N" ]; do
+            read -r -a w <<< "${L[$i]}"
+            case "${w[0]:-}" in ''|wait|shot) ;; *) err "$i" "'${w[0]}' after flush: flush is the last step" ;; esac
+            i=$((i+1))
+        done
+    fi
 }
+FLUSH_AT=""
 validate
 if [ -n "$CHECK" ]; then echo "route ok: $ROUTE ($N lines)"; exit 0; fi
 
@@ -121,6 +231,7 @@ cleanup() {
     [ -z "$CLEANED" ] || return 0
     CLEANED=1
     [ -n "$SLEEP_PID" ] && kill "$SLEEP_PID" 2>/dev/null
+    [ -n "$DRIVE_PID" ] && kill -TERM "$DRIVE_PID" 2>/dev/null && wait 2>/dev/null
     for b in $HELD; do bash "$PAD" release "$b" >/dev/null 2>&1; done
     for x in $MOVED; do bash "$PAD" axis "$x" mid >/dev/null 2>&1; done
     log "end"
@@ -154,6 +265,138 @@ mark_logcat() {
     return 1
 }
 
+# The flush is judged by the app's own line, stamped after the request on the
+# DEVICE clock (the host and device clocks differ): a line from an earlier
+# background in the same logcat buffer must not count.
+flush_disk() {   # flush_disk <timeout_s>
+    local t0 out waited=0
+    t0=$(timeout 20 adb -s "$SERIAL" shell date +%s 2>/dev/null | tr -dc 0-9)
+    [ -n "$t0" ] || { log "flush: no device clock; flush NOT confirmed"; return 1; }
+    out=$(timeout 20 adb -s "$SERIAL" shell am start -a android.intent.action.MAIN \
+          -c android.intent.category.HOME 2>&1) || { log "flush: HOME intent failed: $(printf '%s' "$out" | head -1)"; return 1; }
+    while :; do
+        if timeout 20 adb -s "$SERIAL" shell logcat -d -v epoch -s hakuX:I 2>/dev/null \
+            | awk -v t0="$t0" '$1 + 0 >= t0 && /deferred bdrv_flush_all completed/ { f = 1 } END { exit !f }'; then
+            log "flush: bdrv_flush_all completed after ${waited}s"
+            return 0
+        fi
+        [ "$waited" -lt "$1" ] || break
+        nap 1; waited=$((waited + 1))
+    done
+    log "flush: no 'deferred bdrv_flush_all completed' within ${1}s; flush NOT confirmed"
+    return 1
+}
+
+# Screencap to a scratch file for comparison only: no log line, no frame
+# kept in ROUTE_FRAMES. waitfor/press-until poll up to once a second and
+# must not fill the frames dir with one entry per poll.
+capture_tmp() {   # capture_tmp <dest file>
+    [ -n "${ROUTE_DRY:-}" ] && return 1
+    timeout 30 adb -s "$SERIAL" exec-out screencap -p > "$1" 2>/dev/null
+    [ -s "$1" ]
+}
+
+# waitfor <name> <timeout_s> <region> <threshold>: see the grammar comment
+# at the top of this file for why this exists at all.
+waitfor_step() {
+    local name="$1" timeout="$2" region="$3" threshold="$4" ref tmp waited=0 out rc
+    ref="$(ref_path "$name")"
+    if [ -n "${ROUTE_DRY:-}" ]; then
+        log "waitfor $name (dry, assumed matched)"
+        return 0
+    fi
+    mkdir -p "$ROUTE_FRAMES"
+    tmp="$(mktemp)"
+    while :; do
+        if capture_tmp "$tmp"; then
+            out="$(python3 "$HERE/waitfor_match.py" "$tmp" "$ref" "$region" "$threshold" 2>&1)"; rc=$?
+        else
+            out="(screencap failed)"; rc=2
+        fi
+        if [ "$rc" = 0 ]; then
+            log "waitfor $name: matched after ${waited}s ($out)"
+            cp "$tmp" "$ROUTE_FRAMES/$(date '+%H%M%S')-$name.png" 2>/dev/null
+            rm -f "$tmp"
+            return 0
+        fi
+        [ "$waited" -lt "$timeout" ] || break
+        nap 1; waited=$((waited + 1))
+    done
+    log "ROUTE FAIL waitfor $name: timed out after ${timeout}s ($out)"
+    cp "$tmp" "$ROUTE_FRAMES/$(date '+%H%M%S')-$name-timeout.png" 2>/dev/null
+    rm -f "$tmp"
+    return 1
+}
+
+# press-until <BTN> <name> <max_n> <gap_s> <region> <threshold>: see the
+# grammar comment at the top of this file. <name>'s reference crop is the
+# state BEFORE the press is expected to work, so success is a MISMATCH.
+press_until_step() {
+    local btn="$1" name="$2" max_n="$3" gap="$4" region="$5" threshold="$6" ref tmp n out rc
+    ref="$(ref_path "$name")"
+    if [ -n "${ROUTE_DRY:-}" ]; then
+        log "press-until $btn $name (dry, assumed changed after 1 press)"
+        pad press "$btn"
+        return 0
+    fi
+    mkdir -p "$ROUTE_FRAMES"
+    tmp="$(mktemp)"
+    for ((n = 1; n <= max_n; n++)); do
+        log "press-until $btn $name: press $n/$max_n"
+        pad press "$btn"
+        nap "$gap"
+        if capture_tmp "$tmp"; then
+            out="$(python3 "$HERE/waitfor_match.py" "$tmp" "$ref" "$region" "$threshold" 2>&1)"; rc=$?
+        else
+            out="(screencap failed)"; rc=0
+        fi
+        if [ "$rc" = 1 ]; then
+            log "press-until $btn $name: changed after $n press(es) ($out)"
+            cp "$tmp" "$ROUTE_FRAMES/$(date '+%H%M%S')-$name.png" 2>/dev/null
+            rm -f "$tmp"
+            return 0
+        fi
+    done
+    log "ROUTE FAIL press-until $btn $name: no change after $max_n presses ($out)"
+    cp "$tmp" "$ROUTE_FRAMES/$(date '+%H%M%S')-$name-stuck.png" 2>/dev/null
+    rm -f "$tmp"
+    return 1
+}
+
+# drive <profile> <seconds> [find|mark]: see the grammar comment at the top
+# of this file and drive.py's module doc; the loop, the policy and the
+# capture rate all live there. drive.py runs in the background so a TERM
+# from soak_title.sh (the hold ended) reaches it through cleanup(), which
+# TERMs it: it then releases what it holds and writes its summary. Its exit
+# status comes back through a file, not the pipe into `log`.
+DRIVE_PID=""
+drive_step() {   # drive_step <profile> <seconds> [find|mark]
+    local rcf rc mode=""
+    if [ -n "${ROUTE_DRY:-}" ]; then
+        log "drive $1 ${2}s $3 (dry)"
+        return 0
+    fi
+    [ -z "$3" ] || mode="--$3"
+    mkdir -p "$ROUTE_FRAMES"
+    rcf="$(mktemp)"
+    ( python3 -u "$HERE/drive.py" --profile "$HERE/drive-profiles/$1.toml" --seconds "$2" $mode \
+          --out "$(dirname "$ROUTE_FRAMES")" --frames "$ROUTE_FRAMES" > "$rcf.out" 2>&1 &
+      echo $! > "$rcf.pid"; wait $!; echo $? > "$rcf" ) &
+    nap_on "$!"
+    DRIVE_PID=""
+    while IFS= read -r line; do log "drive $1: $line"; done < "$rcf.out"
+    rc=$(cat "$rcf" 2>/dev/null); rm -f "$rcf" "$rcf.out" "$rcf.pid"
+    return "${rc:-1}"
+}
+# Wait on a child the way nap() waits on its sleep, and remember the
+# drive.py pid so cleanup() can TERM it.
+nap_on() {
+    local i
+    for i in 1 2 3 4 5 6 7 8 9 10; do [ -s "$rcf.pid" ] && break; command sleep 0.1; done
+    DRIVE_PID=$(cat "$rcf.pid" 2>/dev/null)
+    wait "$1"
+}
+
 run() {   # run <first line> <end line, exclusive>
     local i=$1 end=$2 w j k n
     while [ "$i" -lt "$end" ]; do
@@ -172,6 +415,14 @@ run() {   # run <first line> <end line, exclusive>
                    [ -n "${ROUTE_DRY:-}" ] || mark_logcat "${w[1]}"
                    shot "${w[1]}" ;;
             shot)  shot "${w[1]}" ;;
+            flush) log "flush ${w[1]:-10}"
+                   [ -n "${ROUTE_DRY:-}" ] || flush_disk "${w[1]:-10}" ;;
+            waitfor) log "waitfor ${w[1]} (timeout ${w[2]}s)"
+                   waitfor_step "${w[1]}" "${w[2]}" "${w[3]}" "${w[4]}" || exit 1 ;;
+            press-until) log "press-until ${w[1]} ${w[2]} (max ${w[3]} presses, ${w[4]}s apart)"
+                   press_until_step "${w[1]}" "${w[2]}" "${w[3]}" "${w[4]}" "${w[5]}" "${w[6]}" || exit 1 ;;
+            drive) log "drive ${w[1]} (${w[2]}s${w[3]:+, ${w[3]}})"
+                   drive_step "${w[1]}" "${w[2]}" "${w[3]:-}" || { log "ROUTE FAIL drive ${w[1]}"; exit 1; } ;;
             repeat) j=$(close_of "$i")
                     n=${w[1]}; [ "$n" = forever ] && n=-1
                     k=0

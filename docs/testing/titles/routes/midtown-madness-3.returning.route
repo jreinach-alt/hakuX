@@ -1,0 +1,100 @@
+# state: returning   (recorded loading the profile; lane.savestate433)
+# Midtown Madness 3 (4D53002A): returning route (profile "Player1" was on
+# the Thor's disk before the first session). PLAYED by nav.py on the Thor,
+# 2026-09-27 03:37 PDT (lane.titleroutes HELD session
+# midtown-madness-3.first-run-20260927T033740).
+#
+#   intro FMV (START) -> logo, LOADING -> the driving-safety warning (A) ->
+#   SELECT A PROFILE, Player1 (A) -> main menu, cursor on WORK UNDERCOVER
+#   (A) -> city select, Washington D.C. lit (A) -> the job's intro FMV (A
+#   skips) -> job list, cursor on PIZZA DELIVERER (A) -> the boss's text
+#   (A) -> STANDARD DELIVERY / ANGIE'S MESS / ... (A) -> car, 1959 Cadillac
+#   Eldorado (A) -> the mission card, map and hot hints, LOADING then
+#   "PRESS START" (START) -> the delivery mission in Washington, timer
+#   running, Angelina and Player1 at 0 of 14 pizzas.
+#
+# Player control: RT held for 3 s took the Cadillac from 0 to ~35 mph in
+# second gear (nav frames 015-e1 -> 016-drive). The play pattern holds RT
+# and weaves the left stick. A that lands on a loading card does nothing,
+# so one extra or missing screen in the A presses costs nothing. On a warm
+# launch the race can already be running when START comes, which pauses it;
+# the A 4 s later picks RESUME RACE (the default), and on a cold launch it
+# lands in the race instead.
+#
+wait 32.5
+shot boot30
+wait 6.4
+press START
+wait 5.1
+shot s1
+wait 18.0
+shot load2
+wait 8.0
+press A
+wait 5.1
+shot a1
+wait 6.8
+press A
+wait 6.1
+shot a2
+wait 6.9
+press A
+wait 7.9
+shot a3
+wait 7.1
+press A
+wait 8.1
+shot a4
+wait 6.5
+press A
+wait 9.8
+shot a5
+wait 6.5
+press A
+wait 8.0
+shot a6
+wait 7.9
+press A
+wait 4.1
+shot b1
+wait 0.9
+press A
+wait 6.0
+shot b2
+wait 1.1
+press A
+wait 15.0
+shot b3
+wait 7.6
+press A
+wait 16.9
+shot c1
+wait 10.8
+shot c2
+wait 6.5
+press A
+wait 8.1
+shot d1
+wait 8.8
+press START
+wait 4.0
+press A
+wait 4.1
+shot e1
+wait 10.7
+axis RT max
+wait 3.1
+shot drive
+wait 1.3
+axis RT min
+wait 11.5
+mark gameplay
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}

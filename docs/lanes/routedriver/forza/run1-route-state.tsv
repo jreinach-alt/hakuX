@@ -1,0 +1,54 @@
+t	state	source	changed	luma	cap_s	action	frame
+0.9	unknown	no-prev		26.5	0.52	wait (unknown)	233949-001-unknown.png
+3.2	logo	static	0.0003	26.5	0.57	press A (skip logo)	233952-002-logo.png
+5.3	logo	static	0.0007	26.5	0.57	press A (skip logo)	
+7.4	intro_video	moving	0.0868	30.1	0.57	press A (skip intro_video)	233956-004-intro_video.png
+9.5	logo	static	0.0007	30.1	0.57	press A (skip logo)	233958-005-logo.png
+11.8	intro_video	moving	0.9806	195.3	0.62	press A (skip intro_video)	234000-006-intro_video.png
+13.8	intro_video	moving	0.9589	28.1	0.47	press A (skip intro_video)	
+15.9	title	crop:title-logo		133.9	0.67	press A (title 1)	234004-008-title.png
+18.1	profile	crop:profile-select		166.4	0.57	press A (profile 1)	234007-009-profile.png
+20.1	main_menu	crop:menu-footer		178.1	0.52	press A (main_menu 1)	234009-010-main_menu.png
+22.2	main_menu	crop:menu-footer		142.4	0.67	press A (main_menu 2)	
+24.2	cutscene	moving	0.4558	154.6	0.42	press A (skip cutscene)	234013-012-cutscene.png
+25.7	main_menu	crop:menu-footer		146.3	0.42	settle	234014-013-main_menu.png
+27.7	main_menu	crop:menu-footer		119.6	0.62	press A (main_menu 3)	
+29.6	cutscene	moving	0.5751	174.1	0.37	press A (skip cutscene)	234018-015-cutscene.png
+31.4	cutscene	moving	0.7688	49.4	0.42	press A (skip cutscene)	
+33.6	main_menu	static	0.0	49.4	0.52	press A (main_menu 1)	234023-017-main_menu.png
+35.1	main_menu	static	0.0222	48.7	0.42	settle	
+37.1	main_menu	static	0.0105	48.9	0.47	press A (main_menu 2)	
+39.0	cutscene	moving	0.9951	243.3	0.42	press A (skip cutscene)	234029-020-cutscene.png
+41.1	cutscene	moving	0.7377	134.4	0.62	press A (skip cutscene)	
+43.4	main_menu	static	0.0166	133.3	0.62	press A (main_menu 3)	234033-022-main_menu.png
+45.5	main_menu	static	0.0104	133.7	0.62	press A (main_menu 4)	
+47.0	black	black		0.2	0.32	wait	234037-024-black.png
+48.4	black	black		0.2	0.37	wait	
+49.8	black	black		0.2	0.37	wait	
+51.2	black	black		0.2	0.37	wait	
+52.6	black	black		0.2	0.37	wait	
+54.0	black	black		0.2	0.37	wait	
+55.4	black	black		0.2	0.37	wait	
+56.8	black	black		0.2	0.37	wait	
+58.2	black	black		0.2	0.37	wait	
+59.6	black	black		0.0	0.37	wait	
+61.6	cutscene	moving	0.2533	20.0	0.37	press A (skip cutscene)	234051-034-cutscene.png
+63.9	cutscene	moving	0.7945	52.3	0.92	press A (skip cutscene)	
+66.4	cutscene	moving	0.5758	70.1	0.92	press A (skip cutscene)	
+68.3	cutscene	moving	0.7146	34.5	0.77	skip=none after 3 passes	
+70.6	unknown	hud:hud-lap+after-cutscene	0.6527	53.4	0.87	hold (hud up, motion not yet play)	234101-038-unknown.png
+72.8	unknown	hud:hud-lap+between	0.0273	53.7	0.87	hold (hud up, motion not yet play)	
+75.1	play	hud:hud-lap+motion	0.1704	52.2	0.82	hold	234106-040-play.png
+77.2	play	hud:hud-lap+motion	0.3794	50.9	0.82	hold	234108-041-play.png
+79.4	play	hud:hud-lap+motion	0.3892	64.2	0.97	hold	234110-042-play.png
+81.6	play	hud:hud-lap+motion	0.1548	65.7	0.87	hold	234112-043-play.png
+83.7	play	hud:hud-lap+motion	0.1462	65.3	0.82	hold	234114-044-play.png
+85.9	play	hud:hud-lap+motion	0.1807	60.2	0.82	hold	234117-045-play.png
+88.0	play	hud:hud-lap+motion	0.2426	61.4	0.87	hold	234119-046-play.png
+90.3	play	hud:hud-lap+motion	0.3321	65.6	0.92	hold	234121-047-play.png
+92.4	play	hud:hud-lap+motion	0.3718	60.6	0.87	hold	234123-048-play.png
+94.6	play	hud:hud-lap+motion	0.3702	51.4	0.82	hold	234126-049-play.png
+96.8	play	hud:hud-lap+motion	0.4234	51.4	0.92	hold	234129-050-play.png
+# time_to_title_s=15.5
+# time_to_play_s=74.7
+# result=reached-play

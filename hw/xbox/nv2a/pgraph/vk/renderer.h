@@ -54,6 +54,20 @@
 #define REORDER_WINDOW_MAX       64
 #define OPT_ASYNC_COMPILE        1
 
+#if NV2A_PERF_LOG
+/*
+ * #461's texture-bind attribution. Why create_texture() hashed a binding's
+ * content: the first of these that applies, in this order. TXH_OTH is none of
+ * them and must stay 0.
+ */
+enum { TXH_NEW, TXH_RB, TXH_SRF, TXH_MK, TXH_MEMO, TXH_BIT, TXH_BOV, TXH_OTH,
+       TXH__N };
+/* Why upload_texture_image() ran. */
+enum { TXU_NEW, TXU_RB, TXU_CHG, TXU_OTH, TXU__N };
+/* The path get_texture_layout() decoded a level through. */
+enum { TXK_LIN, TXK_BC, TXK_S3TC, TXK_PAL, TXK_CVT, TXK_SWZ, TXK__N };
+#endif
+
 struct OptBisectStats {
     int super_fast_hits;
     int super_fast_misses;
@@ -172,6 +186,36 @@ struct OptBisectStats {
     int stall_deferred;
     int stall_batched;
     int predownload_hits;
+#if NV2A_PERF_LOG
+    /* Pipeline-cache evictions; see pipeline_cache_count_evict() */
+    int pipe_evict;
+    int pipe_evict_pending;
+    int pipe_evict_recording;
+    /*
+     * #461: what a texture bind spends its time on (vk/texture.c), printed
+     * as the txh[], txu[] and txr[] lines. Bytes are 64-bit: Crimson Skies
+     * hashes gigabytes in 60 frames.
+     */
+    int txh_n[TXH__N];          /* content hashes, by reason */
+    uint64_t txh_b[TXH__N];     /* ...and the bytes hashed */
+    int txh_eq;                 /* hashes of a found binding that compared equal */
+    uint64_t txh_eq_b;
+    int txh_rep;                /* hashes of a node already hashed this flip */
+    uint64_t txh_rep_b;
+    int txu_n[TXU__N];          /* uploads, by cause */
+    uint64_t txu_b;             /* ...and their guest bytes */
+    uint64_t txk_b[TXK__N];     /* guest bytes each decode path read */
+    int txr_ct;                 /* create_texture() calls */
+    int txr_bt;                 /* pgraph_vk_bind_textures() calls */
+    int txr_btl;                /* ...that ran the per-slot loop */
+    int txr_dl;                 /* surface downloads a bind started directly */
+    uint64_t txr_dl_b;
+    int txr_sc;                 /* surface-range scans run */
+    int txr_scdl;               /* surface downloads those scans started */
+    int txr_s2tc;               /* surface-to-texture copies */
+    int txr_s2td;               /* direct binds made: the view changed; a
+                                 * reused view is not counted */
+#endif
 };
 extern struct OptBisectStats g_opt_stats;
 #if NV2A_PERF_LOG
@@ -231,6 +275,20 @@ typedef struct PipelineBinding {
     bool has_dynamic_line_width;
 #if OPT_ASYNC_COMPILE
     bool pending;
+    /* #569 P5, HAKUX_GPL=2: the link-time-optimised pipeline built on the
+     * compile worker, swapped in by create_pipeline() when ready; the
+     * fast-linked one it replaces is kept until eviction, since a command
+     * buffer in flight may still use it. HAKUX_GPL=3 uses the same slot for
+     * the specialised pipeline that replaces an uber-linked one. */
+    bool gpl_uber;              /* pipeline links the uber vertex stage */
+    bool gpl_lto_pending;
+    VkPipeline gpl_lto_pipeline;
+    VkPipeline gpl_retired_pipeline;
+#endif
+#if NV2A_PERF_LOG
+    /* The last command buffer to bind it: its serial and frame slot */
+    uint64_t last_use_cb;
+    int last_use_frame;
 #endif
 } PipelineBinding;
 
@@ -368,6 +426,9 @@ typedef struct ShaderModuleInfo {
     SpvReflectDescriptorSet **descriptor_sets;
     ShaderUniformLayout uniforms;
     ShaderUniformLayout push_constants;
+    /* #569 P5: hash of spirv, the module's identity in the graphics
+     * pipeline library keys; 0 until first computed (vk/draw.c) */
+    uint64_t gpl_id;
 } ShaderModuleInfo;
 
 typedef struct ShaderModuleCacheKey {
@@ -384,6 +445,13 @@ typedef struct ShaderModuleCacheKey {
         struct {
             PshState state;
             GenPshGlslOptions glsl_opts;
+            /* #569 P6: generate the family's combiner ubershader
+             * (glsl/psh-uber.h) instead of psh.c's shader. Only ever set
+             * under HAKUX_PSH_UBER; zero in every key a default build makes
+             * or has persisted. It sits inside the union's vsh-sized
+             * footprint, so the key's size, and the persisted key file's
+             * record size, do not change. */
+            bool uber;
         } psh;
     };
 } ShaderModuleCacheKey;
@@ -409,6 +477,14 @@ typedef struct ShaderBinding {
     struct {
         ShaderModuleInfo *module_info;
         VshUniformLocs uniform_locs;
+        /* #569, HAKUX_GPL=3|4: the family's uber vertex stage, NULL when
+         * the switch is off or the state is not covered. Its uniform block
+         * is module_info's with ubVsh appended, so a draw uploads into
+         * upload_info's layout (the uber one when there is one) and either
+         * pipeline reads it (docs/lanes/uberspike569/BUILD.md 2.1). */
+        ShaderModuleInfo *uber_module_info;
+        ShaderModuleInfo *upload_info;
+        int uber_loc;
     } vsh;
     struct {
         ShaderModuleInfo *module_info;
@@ -416,6 +492,8 @@ typedef struct ShaderBinding {
     struct {
         ShaderModuleInfo *module_info;
         PshUniformLocs uniform_locs;
+        /* The ubershader's combiner uniform; -1 on a specialised module. */
+        int uber_comb_loc;
     } psh;
 } ShaderBinding;
 
@@ -450,12 +528,38 @@ typedef struct PipelineCreateParams {
 
     VkPipelineLayout layout;
     VkRenderPass render_pass;
+
+    /* #569 P5: build from graphics pipeline libraries (vk/compile_worker.c).
+     * The module ids are ShaderModuleInfo::gpl_id, 0 for no geometry stage;
+     * lib_render_pass is the render pass the libraries are built against,
+     * one per attachment-format pair (all of ours with one pair are
+     * identically defined: create_render_pass() ignores the load ops). */
+    bool gpl;
+    uint64_t gpl_vs_id, gpl_gs_id, gpl_fs_id;
+    VkFormat gpl_color_format, gpl_zeta_format;
+    VkRenderPass gpl_lib_render_pass;
 } PipelineCreateParams;
+
+typedef struct GplLib GplLib;
 
 typedef enum {
     COMPILE_JOB_SHADER_MODULE,
     COMPILE_JOB_PIPELINE,
+    COMPILE_JOB_GPL_LTO,
+    COMPILE_JOB_GPL_UBER_LIB,
+    COMPILE_JOB_GPL_UBER_NEXT,
 } CompileJobType;
+
+/* #569, HAKUX_GPL=3|4 (vk/compile_worker.c): a job's own copy of each
+ * stage's SPIR-V, so it never depends on a render-thread module's life */
+/* The vertex binding the uber link's zero attributes read (gpl.uber_zero_buf);
+ * the draws' own bindings are 0..15 */
+#define UBER_ZERO_BINDING NV2A_VERTEXSHADER_ATTRIBUTES
+
+typedef struct GplStageCode {
+    VkShaderStageFlagBits stage;
+    GBytes *spirv;
+} GplStageCode;
 
 typedef struct CompileJob {
     CompileJobType type;
@@ -469,6 +573,24 @@ typedef struct CompileJob {
             PipelineBinding *target;
             PipelineCreateParams params;
         } pipeline;
+        struct {
+            PipelineBinding *target;
+            GplLib *libs[4];            /* one reference each */
+            VkPipelineLayout layout;
+            VkRenderPass render_pass;
+        } gpl_lto;
+        /* an uber pre-raster library, built once and pinned */
+        struct {
+            GBytes *key;
+            GplStageCode code[2];       /* vs, and gs if any */
+            PipelineCreateParams params;
+        } gpl_uber_lib;
+        /* the specialised pipeline that replaces an uber-linked one */
+        struct {
+            PipelineBinding *target;
+            GplStageCode code[3];
+            PipelineCreateParams params;
+        } gpl_uber_next;
     };
 } CompileJob;
 
@@ -803,6 +925,11 @@ typedef struct TextureBinding {
     uint32_t submit_time;
     unsigned int dirty_check_frame;
     bool dirty_check_result;
+#if NV2A_PERF_LOG
+    /* #461: the flip this node's content was last hashed in */
+    bool pf_hashed;
+    unsigned int pf_hash_frame;
+#endif
 } TextureBinding;
 
 /*
@@ -1138,6 +1265,11 @@ typedef struct PGRAPHVkState {
     VkFence frame_fences[NUM_SUBMIT_FRAMES];
     bool frame_submitted[NUM_SUBMIT_FRAMES];
     bool frame_enqueued[NUM_SUBMIT_FRAMES];
+#if NV2A_PERF_LOG
+    /* Serial of every command_buffer begun, and the last one per slot */
+    uint64_t cb_serial;
+    uint64_t frame_cb_serial[NUM_SUBMIT_FRAMES];
+#endif
     VkSemaphore stall_chain_semaphore;
     bool stall_chain_pending;
     int current_frame;
@@ -1450,7 +1582,57 @@ typedef struct PGRAPHVkState {
         QSIMPLEQ_HEAD(, CompileJob) queue;
         bool shutdown;
         int queue_depth;
+        /* #569 P3: the worker pool, pipeline pre-build and cache saving
+         * (vk/compile_worker.c); thread above is unused */
+        struct CompilePool *pool;
     } compile_worker;
+
+    /*
+     * #569 P5: VK_EXT_graphics_pipeline_library. A draw pipeline is linked
+     * from four libraries -- vertex input, pre-rasterization (vs + gs),
+     * fragment shader, fragment output -- each cached by what its own stage
+     * reads, so a vs that a new blend state or fragment shader pairs with is
+     * not compiled again. vk/compile_worker.c owns all of it.
+     */
+    struct {
+        bool supported;         /* extension and feature, on this device */
+        bool fast_linking;      /* graphicsPipelineLibraryFastLinking */
+        /* 0 off, 1 fast link, 2 + LTO swap; #569's uber ladder: 3 a miss
+         * fast-links the uber vertex stage and the specialised pipeline is
+         * swapped in when the worker has built it, 4 the same held on the
+         * uber stage (exactness and GPU-cost measurement only) */
+        int mode;
+        VkPipelineLayout layout;    /* the one layout every draw uses */
+        QemuMutex lock;         /* libs, stats */
+        GHashTable *libs[4];    /* GBytes key -> GplLib */
+        GHashTable *uber_queued; /* uber PR keys queued for the worker */
+        /* The uber vertex stage declares all sixteen attribute inputs; its
+         * link's vertex-input library feeds the ones this draw sends as
+         * uniforms from this zero buffer at UBER_ZERO_BINDING, so every
+         * input it consumes has an attribute. The stage selects the uniform
+         * value, so what it reads there is never used. */
+        VkBuffer uber_zero_buf;
+        VmaAllocation uber_zero_alloc;
+        int lto_inflight;       /* LTO and uber jobs queued or running */
+        struct {
+            unsigned int lib_new[4], lib_hit[4], lib_fail[4];
+            uint64_t lib_us[4];
+            unsigned int links, link_fail, fallbacks;
+            uint64_t link_us;
+            unsigned int lto_done, lto_fail, lto_swapped;
+            uint64_t lto_us;
+            unsigned int flushes;
+            /* uber: rung-0 links, misses with no uber library yet
+             * (monolithic inline), libraries built and their worker time,
+             * specialised pipelines built behind and swapped in, states
+             * the uber stage does not cover */
+            unsigned int uber_links, uber_cold, uber_libs, uber_lib_fail;
+            uint64_t uber_lib_us;
+            unsigned int uber_next_done, uber_next_fail, uber_swapped;
+            uint64_t uber_next_us;
+            unsigned int uber_uncovered;
+        } stats;
+    } gpl;
 #endif
 
     SubmitWorker submit_worker;
@@ -1711,7 +1893,50 @@ void pgraph_vk_compile_worker_wait_idle(PGRAPHVkState *r,
                                         int total_jobs,
                                         void (*progress_cb)(int current,
                                                             int total));
+/* #569 P5 */
+VkPipelineLayout pgraph_vk_gpl_layout(PGRAPHVkState *r);
+VkResult pgraph_vk_gpl_create_pipeline(PGRAPHVkState *r,
+                                       PipelineBinding *target,
+                                       const PipelineCreateParams *p,
+                                       VkPipeline *pipeline);
+/*
+ * #569, HAKUX_GPL=3|4: a pipeline for a miss whose vertex state the uber
+ * stage covers. spec is the specialised pipeline's parameters (gpl fields
+ * filled), uber the same with the vertex stage and gpl_vs_id replaced by the
+ * uber module's; spec_mods and uber_vs are the modules behind them, whose
+ * SPIR-V the worker copies. Sets *uber when the pipeline links the uber
+ * stage.
+ */
+VkResult pgraph_vk_gpl_uber_create_pipeline(
+    PGRAPHVkState *r, PipelineBinding *target,
+    const PipelineCreateParams *spec, const PipelineCreateParams *uber,
+    ShaderModuleInfo *const spec_mods[3], ShaderModuleInfo *uber_vs,
+    VkPipeline *pipeline, bool *is_uber);
+void pgraph_vk_gpl_uber_log(PGRAPHVkState *r);
+void pgraph_vk_gpl_wait_lto_idle(PGRAPHVkState *r);
+void pgraph_vk_gpl_finalize(PGRAPHVkState *r);
+/* #569 P3: pipeline pre-build and pipeline cache saving */
+void pgraph_vk_prebuild_start(PGRAPHState *pg);
+void pgraph_vk_prebuild_stop(PGRAPHVkState *r);
+void pgraph_vk_prebuild_note(PGRAPHVkState *r, const RenderPassState *rp,
+                             const PipelineCreateParams *p,
+                             const VkPushConstantRange *push_ranges,
+                             int num_push_ranges);
+void pgraph_vk_compile_worker_note_dirty(PGRAPHVkState *r);
+void pgraph_vk_compile_worker_wait_pipeline(PGRAPHVkState *r,
+                                            PipelineBinding *binding);
 #endif
+
+/* #569 P3: vk/shaders.c and vk/draw.c, for vk/compile_worker.c */
+void pgraph_vk_shader_binding_module_hashes(PGRAPHVkState *r,
+                                            ShaderBinding *binding,
+                                            uint64_t hashes[3]);
+uint64_t pgraph_vk_hash_shader_module_key(const ShaderModuleCacheKey *key);
+GBytes *pgraph_vk_prebuild_module_spirv(PGRAPHVkState *r,
+                                        const ShaderModuleCacheKey *key);
+VkRenderPass pgraph_vk_prebuild_render_pass(PGRAPHVkState *r,
+                                            RenderPassState *state);
+void pgraph_vk_save_pipeline_cache(PGRAPHVkState *r);
 
 // submit_worker.c
 void pgraph_vk_submit_worker_init(PGRAPHVkState *r);
@@ -1746,6 +1971,8 @@ void pgraph_vk_process_pending_reports_internal(NV2AState *d);
 void pgraph_vk_init_pipelines(PGRAPHState *pg);
 void pgraph_vk_finalize_pipelines(PGRAPHState *pg);
 void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter);
+bool pgraph_vk_clear_covers_binding(PGRAPHState *pg, SurfaceBinding *b,
+                                    uint32_t parameter);
 void pgraph_vk_draw_begin(NV2AState *d);
 void pgraph_vk_draw_end(NV2AState *d);
 void pgraph_vk_finish(PGRAPHState *pg, FinishReason why);

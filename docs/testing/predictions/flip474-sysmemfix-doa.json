@@ -1,0 +1,30 @@
+{
+  "registered_utc": "2026-09-27T22:45:00Z",
+  "who": "lane.flip474",
+  "issue": "474",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "09fdca3ba176b03a5822aca8cd92628f4a99da77",
+  "b_ref": "1a8f16ef16d3b647f62be7c8118248b6c1178c1c",
+  "arms": "B only, no env. Compared with NOTES.md section 16's arms on 795ea6b3af: sysmem by env (X/R 0.02) and gmem (X/R 1.02).",
+  "judge": "grep 'init: TU_DEBUG' and 'env: TU_DEBUG' in the logcat; python3 docs/lanes/flip474/phaseread.py --from 151 --to 288 <B>; lockread.py and gfpsseries.py on the same window; crashcheck.py, tailcheck.py; the shots, by eye",
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/flip474-sysmemfix-pgraph.json"
+  ],
+  "prediction": "#474: the default reaches the driver with no env_vars pref. DOA's heavy pass then runs its draw stream once.",
+  "legs": {
+    "M0 (instrument)": ">= 15 hakuX-phase lines with GPU > 0 in 151-288 s, and the shots show the fight. Otherwise VOID, rerun once.",
+    "D0 (the line)": "exactly one 'init: TU_DEBUG=sysmem (default' line, and no 'env: TU_DEBUG' line. KILL: none, or a line saying the value came from the environment.",
+    "D1 (the mode)": "X/R median <= 0.25 (GMEM reads 0.98 to 1.02 on DOA). Confidence 90%. KILL of 'the default reaches the driver': X/R >= 0.8.",
+    "F1 (the frame)": "gfps median >= 18 in the fight (sysmem by env read 21, the GMEM arms 14 to 16). Confidence 70%; the opponent is drawn per run.",
+    "H0 (no hang)": "longest gap between hakuX-perf lines <= 3 s, lines to the end, no crash marker."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures."
+}

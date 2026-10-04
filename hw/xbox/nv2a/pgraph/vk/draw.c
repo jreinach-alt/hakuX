@@ -20,6 +20,8 @@
 #include "qemu/osdep.h"
 #include "qemu/fast-hash.h"
 #include "qemu/error-report.h"
+#include "qemu/processor.h"
+#include "qemu/timer.h"
 #include "renderer.h"
 #include "system/physmem.h"
 #include "ui/xemu-settings.h"
@@ -35,6 +37,14 @@ static bool g_xemu_frame_skip = false;
 static int g_xemu_submit_frames = 3;
 
 struct OptBisectStats g_opt_stats;
+
+#if NV2A_PERF_LOG
+/* #433 uniform-block churn counter, in vk/shaders.c. Declared here because
+ * renderer.h is outside lane.bf2ubosize433's files. */
+void pgraph_vk_ubosz_note_upload(PGRAPHState *pg, int site);
+void pgraph_vk_ubosz_note_bind(VkDescriptorSet set, const uint32_t off[2]);
+void pgraph_vk_ubosz_log_and_reset(void);
+#endif
 
 /*
  * BEHIND A FLAG, DEFAULT OFF. AGENTS.md: "Instrumentation is not free ...
@@ -1060,6 +1070,80 @@ static void opt_stats_log_and_reset(void)
                 g_opt_stats.tex_zero_reupload);
         }
         {
+            /*
+             * On hakuX-stall rather than a tag of its own, because the
+             * dispatcher's logcat spec is an allow-list that silences every
+             * tag it does not name. Keep "evict[" out of the format: readers
+             * of this tag take that for the surface-eviction line above.
+             */
+            Lru *plc = &g_nv2a->pgraph.vk_renderer_state->pipeline_cache;
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                "pipe[ev%d pend%d rec%d used%d/%d]",
+                g_opt_stats.pipe_evict,
+                g_opt_stats.pipe_evict_pending,
+                g_opt_stats.pipe_evict_recording,
+                plc->num_used, plc->num_used + plc->num_free);
+        }
+        /* #433: uniform-block churn per upload; see vk/shaders.c. */
+        pgraph_vk_ubosz_log_and_reset();
+        {
+            /*
+             * #461: what a texture bind spends its time on, counted in
+             * vk/texture.c; on hakuX-stall for the reason pipe[] is. Counts
+             * and KiB over the 60 frames:
+             *   txh  content hashes by the first reason that applies: a new
+             *        node, a rebuild, a draw-dirty surface downloaded, a mark
+             *        (per-draw poll, aliasing write), this flip's earlier
+             *        dirty verdict (memo), a fresh bitmap hit with no surface
+             *        over the texture (bit) or with one (bov); oth is none of
+             *        them and must be 0. eq: found bindings whose hash came
+             *        out equal. rep: nodes already hashed this flip.
+             *   txu  uploads (n = tex_cache_uploads) by cause, their guest
+             *        KiB, and the KiB each decode path read: linear copy,
+             *        native BC copy, CPU S3TC decompress, palette, other
+             *        conversion, unswizzle only.
+             *   txr  create_texture calls, bind calls and those that ran the
+             *        loop, direct surface downloads, range scans and the
+             *        downloads they started, images made (pool hits),
+             *        surface-to-texture copies, and direct binds made:
+             *        the view changed (a reused view is not counted).
+             */
+            const struct OptBisectStats *s = &g_opt_stats;
+#define TX_KIB(b) ((unsigned long long)((b) >> 10))
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                "txh[new%d/%lluK rb%d/%lluK srf%d/%lluK mk%d/%lluK "
+                "memo%d/%lluK bit%d/%lluK bov%d/%lluK oth%d/%lluK "
+                "eq%d/%lluK rep%d/%lluK]",
+                s->txh_n[TXH_NEW], TX_KIB(s->txh_b[TXH_NEW]),
+                s->txh_n[TXH_RB], TX_KIB(s->txh_b[TXH_RB]),
+                s->txh_n[TXH_SRF], TX_KIB(s->txh_b[TXH_SRF]),
+                s->txh_n[TXH_MK], TX_KIB(s->txh_b[TXH_MK]),
+                s->txh_n[TXH_MEMO], TX_KIB(s->txh_b[TXH_MEMO]),
+                s->txh_n[TXH_BIT], TX_KIB(s->txh_b[TXH_BIT]),
+                s->txh_n[TXH_BOV], TX_KIB(s->txh_b[TXH_BOV]),
+                s->txh_n[TXH_OTH], TX_KIB(s->txh_b[TXH_OTH]),
+                s->txh_eq, TX_KIB(s->txh_eq_b),
+                s->txh_rep, TX_KIB(s->txh_rep_b));
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                "txu[n%d/%lluK new%d rb%d chg%d oth%d lin%lluK bc%lluK "
+                "s3tc%lluK pal%lluK cvt%lluK swz%lluK]",
+                s->tex_cache_uploads, TX_KIB(s->txu_b),
+                s->txu_n[TXU_NEW], s->txu_n[TXU_RB],
+                s->txu_n[TXU_CHG], s->txu_n[TXU_OTH],
+                TX_KIB(s->txk_b[TXK_LIN]), TX_KIB(s->txk_b[TXK_BC]),
+                TX_KIB(s->txk_b[TXK_S3TC]), TX_KIB(s->txk_b[TXK_PAL]),
+                TX_KIB(s->txk_b[TXK_CVT]), TX_KIB(s->txk_b[TXK_SWZ]));
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                "txr[ct%d bt%d/%d dl%d/%lluK sc%d scdl%d img%d pool%d "
+                "s2tc%d s2td%d]",
+                s->txr_ct, s->txr_bt, s->txr_btl,
+                s->txr_dl, TX_KIB(s->txr_dl_b),
+                s->txr_sc, s->txr_scdl,
+                s->tex_pool_hits + s->tex_pool_misses, s->tex_pool_hits,
+                s->txr_s2tc, s->txr_s2td);
+#undef TX_KIB
+        }
+        {
             extern struct FPUProfileCounters {
                 int x87_arith, x87_load_store, x87_transcendental, x87_stack;
                 int sse_arith_packed, sse_arith_scalar, sse_cmp, sse_cvt, sse_other;
@@ -1253,6 +1337,48 @@ static VkPrimitiveTopology get_primitive_topology(PGRAPHState *pg)
     }
 }
 
+#if NV2A_PERF_LOG
+/*
+ * Count evictions of a pipeline the GPU may still be executing, before
+ * fixing anything (#426). vkDestroyPipeline requires every submitted command
+ * buffer that uses the pipeline to have completed. pipeline_cache_pre_evict()
+ * protects only the command buffer being recorded, and a flip or a present is
+ * submitted without waiting for its fence, so up to NUM_SUBMIT_FRAMES - 1
+ * earlier command buffers can still be in flight.
+ */
+#define PIPELINE_NOTE_BIND(r, b) do { \
+        (b)->last_use_cb = (r)->cb_serial; \
+        (b)->last_use_frame = (r)->current_frame; \
+    } while (0)
+
+static void pipeline_cache_count_evict(PGRAPHVkState *r,
+                                       PipelineBinding *snode)
+{
+    int f = snode->last_use_frame;
+
+    OPT_STAT_INC(pipe_evict);
+
+    /*
+     * Never bound, or its slot has begun a newer command buffer since, which
+     * Vulkan allows only once the older one has completed.
+     */
+    if (!snode->last_use_cb || r->frame_cb_serial[f] != snode->last_use_cb) {
+        return;
+    }
+
+    if (r->in_command_buffer && snode->last_use_cb == r->cb_serial) {
+        /* pre_evict should refuse these: a count is a hole in its test */
+        OPT_STAT_INC(pipe_evict_recording);
+        OPT_STAT_INC(pipe_evict_pending);
+    } else if (qatomic_read(&r->frame_submitted[f]) &&
+               vkGetFenceStatus(r->device, r->frame_fences[f]) != VK_SUCCESS) {
+        OPT_STAT_INC(pipe_evict_pending);
+    }
+}
+#else
+#define PIPELINE_NOTE_BIND(r, b) do { } while (0)
+#endif
+
 static void pipeline_cache_entry_init(Lru *lru, LruNode *node,
                                       const void *state)
 {
@@ -1260,6 +1386,15 @@ static void pipeline_cache_entry_init(Lru *lru, LruNode *node,
     snode->layout = VK_NULL_HANDLE;
     snode->pipeline = VK_NULL_HANDLE;
     snode->draw_time = 0;
+#if OPT_ASYNC_COMPILE
+    snode->gpl_uber = false;
+    snode->gpl_lto_pending = false;
+    snode->gpl_lto_pipeline = VK_NULL_HANDLE;
+    snode->gpl_retired_pipeline = VK_NULL_HANDLE;
+#endif
+#if NV2A_PERF_LOG
+    snode->last_use_cb = 0;
+#endif
 }
 
 static bool pipeline_cache_pre_evict(Lru *lru, LruNode *node)
@@ -1268,7 +1403,7 @@ static bool pipeline_cache_pre_evict(Lru *lru, LruNode *node)
     PipelineBinding *snode = container_of(node, PipelineBinding, node);
 
 #if OPT_ASYNC_COMPILE
-    if (snode->pending) {
+    if (snode->pending || qatomic_read(&snode->gpl_lto_pending)) {
         return false;  /* Still being compiled */
     }
 #endif
@@ -1291,10 +1426,29 @@ static void pipeline_cache_entry_post_evict(Lru *lru, LruNode *node)
             snode->draw_time < r->command_buffer_start_time) &&
            "Pipeline evicted while in use!");
 
+#if NV2A_PERF_LOG
+    pipeline_cache_count_evict(r, snode);
+#endif
+
     if (snode->pipeline != VK_NULL_HANDLE) {
         vkDestroyPipeline(r->device, snode->pipeline, NULL);
         snode->pipeline = VK_NULL_HANDLE;
     }
+
+#if OPT_ASYNC_COMPILE
+    if (snode->gpl_lto_pipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(r->device, snode->gpl_lto_pipeline, NULL);
+        snode->gpl_lto_pipeline = VK_NULL_HANDLE;
+    }
+    if (snode->gpl_retired_pipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(r->device, snode->gpl_retired_pipeline, NULL);
+        snode->gpl_retired_pipeline = VK_NULL_HANDLE;
+    }
+    /* #569 P5's one layout is shared and outlives every entry */
+    if (snode->layout == r->gpl.layout) {
+        snode->layout = VK_NULL_HANDLE;
+    }
+#endif
 
     if (snode->layout != VK_NULL_HANDLE) {
         vkDestroyPipelineLayout(r->device, snode->layout, NULL);
@@ -1353,8 +1507,18 @@ static void init_pipeline_cache(PGRAPHState *pg)
     r->pipeline_cache.pre_node_evict = pipeline_cache_pre_evict;
 }
 
-static void save_pipeline_cache_to_disk(PGRAPHVkState *r)
+/* #569 P1: vk/compile_worker.c and pgraph/profile.c */
+VkResult pgraph_vk_create_graphics_pipeline_fb(
+    PGRAPHVkState *r, const VkGraphicsPipelineCreateInfo *info, bool draw,
+    VkPipeline *pipeline);
+void nv2a_profile_shader_keydiff(const ShaderState *prev,
+                                 const ShaderState *cur);
+
+/* #569 P3: called by a compile worker during play (vk/compile_worker.c) and
+ * at teardown; vkGetPipelineCacheData needs no external synchronisation */
+void pgraph_vk_save_pipeline_cache(PGRAPHVkState *r)
 {
+    int64_t t0 = nv2a_clock_ns();
     size_t size = 0;
     VkResult res = vkGetPipelineCacheData(r->device, r->vk_pipeline_cache,
                                           &size, NULL);
@@ -1372,30 +1536,34 @@ static void save_pipeline_cache_to_disk(PGRAPHVkState *r)
         }
         g_free(data);
     }
+    g_nv2a_stats.shader_stats.plc_save_us += (nv2a_clock_ns() - t0) / 1000;
 }
 
-#define PIPELINE_CACHE_SAVE_INTERVAL_US (30 * 1000000LL)
-
+/* #569 P3: a compile worker saves it, at most every 30 s, and when the VM
+ * pauses; the draw thread only says there is something new to save */
 static void maybe_save_pipeline_cache(PGRAPHVkState *r)
 {
     if (!g_config.perf.cache_shaders) {
         return;
     }
-    static int64_t last_save_us;
-    int64_t now = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
-    if (last_save_us && (now - last_save_us) < PIPELINE_CACHE_SAVE_INTERVAL_US) {
-        return;
-    }
-    last_save_us = now;
-    save_pipeline_cache_to_disk(r);
+#if OPT_ASYNC_COMPILE
+    pgraph_vk_compile_worker_note_dirty(r);
+#else
+    pgraph_vk_save_pipeline_cache(r);
+#endif
 }
 
 static void finalize_pipeline_cache(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
 
+#if OPT_ASYNC_COMPILE
+    /* An LTO job writes to its entry and uses the pipeline cache */
+    pgraph_vk_gpl_wait_lto_idle(r);
+#endif
+
     if (g_config.perf.cache_shaders) {
-        save_pipeline_cache_to_disk(r);
+        pgraph_vk_save_pipeline_cache(r);
     }
 
     lru_flush(&r->pipeline_cache);
@@ -1455,11 +1623,60 @@ static void finalize_render_passes(PGRAPHVkState *r)
     r->render_passes = NULL;
 }
 
+#if OPT_ASYNC_COMPILE
+/* #569's uber ladder: see gpl.uber_zero_buf in renderer.h */
+static void init_uber_zero_buffer(PGRAPHVkState *r)
+{
+    if (r->gpl.mode < 3) {
+        return;
+    }
+    if (r->device_props.limits.maxVertexInputBindings <= UBER_ZERO_BINDING) {
+        VK_LOG_ERROR("[uber569] maxVertexInputBindings %u leaves no binding "
+                     "for the uber stage's zero attributes: HAKUX_GPL=%d "
+                     "runs as 1", r->device_props.limits.maxVertexInputBindings,
+                     r->gpl.mode);
+        r->gpl.mode = 1;
+        return;
+    }
+    VkBufferCreateInfo bi = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = 64,
+        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    VmaAllocationCreateInfo ai = {
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST,
+        .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                 VMA_ALLOCATION_CREATE_MAPPED_BIT,
+    };
+    VmaAllocationInfo info;
+    VK_CHECK(vmaCreateBuffer(r->allocator, &bi, &ai, &r->gpl.uber_zero_buf,
+                             &r->gpl.uber_zero_alloc, &info));
+    memset(info.pMappedData, 0, 64);
+    vmaFlushAllocation(r->allocator, r->gpl.uber_zero_alloc, 0, VK_WHOLE_SIZE);
+}
+
+/* Every draw binds it beside its pipeline under the uber modes: harmless for
+ * a pipeline that reads no such binding. */
+static void bind_uber_zero_buffer(PGRAPHVkState *r)
+{
+    if (r->gpl.uber_zero_buf != VK_NULL_HANDLE) {
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(r->command_buffer, UBER_ZERO_BINDING, 1,
+                               &r->gpl.uber_zero_buf, &offset);
+    }
+}
+#else
+#define init_uber_zero_buffer(r) do { } while (0)
+#define bind_uber_zero_buffer(r) do { } while (0)
+#endif
+
 void pgraph_vk_init_pipelines(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
 
     init_pipeline_cache(pg);
+    init_uber_zero_buffer(r);
     init_clear_shaders(pg);
     init_render_passes(r);
 
@@ -1493,6 +1710,13 @@ void pgraph_vk_finalize_pipelines(PGRAPHState *pg)
     finalize_clear_shaders(pg);
     finalize_pipeline_cache(pg);
     finalize_render_passes(r);
+#if OPT_ASYNC_COMPILE
+    if (r->gpl.uber_zero_buf != VK_NULL_HANDLE) {
+        vmaDestroyBuffer(r->allocator, r->gpl.uber_zero_buf,
+                         r->gpl.uber_zero_alloc);
+        r->gpl.uber_zero_buf = VK_NULL_HANDLE;
+    }
+#endif
 
     pgraph_vk_render_thread_wait_idle(r);
     for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
@@ -1641,6 +1865,13 @@ static VkRenderPass get_render_pass(PGRAPHVkState *r, RenderPassState *state)
         }
     }
     return add_new_render_pass(r, state);
+}
+
+/* #569 P3: renderer init only, before the PFIFO thread draws */
+VkRenderPass pgraph_vk_prebuild_render_pass(PGRAPHVkState *r,
+                                            RenderPassState *state)
+{
+    return get_render_pass(r, state);
 }
 
 static void create_frame_buffer(PGRAPHState *pg)
@@ -1908,8 +2139,8 @@ static void create_clear_pipeline(PGRAPHState *pg)
     };
 
     VkPipeline pipeline;
-    VK_CHECK(vkCreateGraphicsPipelines(r->device, r->vk_pipeline_cache, 1,
-                                       &pipeline_info, NULL, &pipeline));
+    VK_CHECK(pgraph_vk_create_graphics_pipeline_fb(r, &pipeline_info, false,
+                                                   &pipeline));
 
     snode->pipeline = pipeline;
     snode->layout = layout;
@@ -2068,6 +2299,122 @@ static void init_pipeline_key(PGRAPHState *pg, PipelineKey *key)
 #endif
 }
 
+#if OPT_ASYNC_COMPILE
+/* What a pipeline create needs, for the compile worker or the #569 P5
+ * library path (vk/compile_worker.c) */
+static void fill_pipeline_create_params(
+    PGRAPHVkState *r, PipelineCreateParams *p,
+    const VkPipelineShaderStageCreateInfo *shader_stages,
+    int num_shader_stages, VkPrimitiveTopology topology,
+    const VkPipelineRasterizationStateCreateInfo *rasterizer,
+    const VkPipelineDepthStencilStateCreateInfo *depth_stencil,
+    const VkPipelineColorBlendAttachmentState *color_blend_attachment,
+    const float *blend_constants, const VkDynamicState *dynamic_states,
+    int num_dynamic_states, bool has_dynamic_line_width,
+    VkPipelineLayout layout, VkRenderPass render_pass)
+{
+    p->device = r->device;
+    p->vk_pipeline_cache = r->vk_pipeline_cache;
+    memcpy(p->shader_stages, shader_stages,
+           num_shader_stages * sizeof(shader_stages[0]));
+    p->num_shader_stages = num_shader_stages;
+    memcpy(p->binding_descs, r->vertex_binding_descriptions,
+           r->num_active_vertex_binding_descriptions *
+               sizeof(VkVertexInputBindingDescription));
+    memcpy(p->attr_descs, r->vertex_attribute_descriptions,
+           r->num_active_vertex_attribute_descriptions *
+               sizeof(VkVertexInputAttributeDescription));
+    p->num_binding_descs = r->num_active_vertex_binding_descriptions;
+    p->num_attr_descs = r->num_active_vertex_attribute_descriptions;
+    p->topology = topology;
+    p->rasterizer = *rasterizer;
+    p->depth_stencil = *depth_stencil;
+    p->has_zeta = r->zeta_binding != NULL;
+    p->color_blend_attachment = *color_blend_attachment;
+    p->has_color = r->color_binding != NULL;
+    memcpy(p->blend_constants, blend_constants, sizeof(p->blend_constants));
+    memcpy(p->dynamic_states, dynamic_states,
+           num_dynamic_states * sizeof(VkDynamicState));
+    p->num_dynamic_states = num_dynamic_states;
+    p->has_dynamic_line_width = has_dynamic_line_width;
+    p->layout = layout;
+    p->render_pass = render_pass;
+}
+
+/* #569 P5: a module's identity in the library keys, its SPIR-V's hash */
+static uint64_t gpl_module_id(ShaderModuleInfo *info)
+{
+    if (!info) {
+        return 0;
+    }
+    /* Only the thread that creates pipelines reads or writes it */
+    if (!info->gpl_id) {
+        info->gpl_id = (fast_hash(info->spirv->data, info->spirv->len) ^
+                        ((uint64_t)info->spirv->len << 40)) | 1;
+    }
+    return info->gpl_id;
+}
+
+/* #569 P5: the rest of PipelineCreateParams for the library path. The
+ * libraries are built against one render pass per attachment-format pair;
+ * every render pass here with that pair is identically defined, because
+ * create_render_pass() reads only the formats. */
+static void fill_pipeline_create_params_gpl(PGRAPHVkState *r,
+                                            PipelineCreateParams *p,
+                                            const PipelineKey *key)
+{
+    p->gpl = true;
+    p->gpl_vs_id = gpl_module_id(r->shader_binding->vsh.module_info);
+    p->gpl_gs_id = gpl_module_id(r->shader_binding->geom.module_info);
+    p->gpl_fs_id = gpl_module_id(r->shader_binding->psh.module_info);
+    p->gpl_color_format = key->render_pass_state.color_format;
+    p->gpl_zeta_format = key->render_pass_state.zeta_format;
+    RenderPassState lib_rp;
+    memset(&lib_rp, 0, sizeof(lib_rp));
+    lib_rp.color_format = key->render_pass_state.color_format;
+    lib_rp.zeta_format = key->render_pass_state.zeta_format;
+    p->gpl_lib_render_pass = get_render_pass(r, &lib_rp);
+}
+#endif
+
+#if OPT_ASYNC_COMPILE
+/*
+ * #569 P5 and the uber ladder: the pipeline the worker built behind this
+ * entry's (an LTO link under HAKUX_GPL=2, the specialised pipeline under 3)
+ * is ready: take it. The one it replaces is kept until eviction, since a
+ * command buffer in flight may still use it. Called wherever create_pipeline
+ * settles on an entry, so a pipeline that stays bound is swapped too.
+ */
+static void gpl_take_next_pipeline(PGRAPHVkState *r, PipelineBinding *snode)
+{
+    if (!snode || qatomic_read(&snode->gpl_lto_pending) ||
+        snode->gpl_retired_pipeline != VK_NULL_HANDLE) {
+        return;
+    }
+    smp_rmb();
+    if (snode->gpl_lto_pipeline == VK_NULL_HANDLE) {
+        return;
+    }
+    snode->gpl_retired_pipeline = snode->pipeline;
+    snode->pipeline = snode->gpl_lto_pipeline;
+    snode->gpl_lto_pipeline = VK_NULL_HANDLE;
+    if (snode->gpl_uber) {
+        snode->gpl_uber = false;
+        unsigned int n = qatomic_fetch_inc(&r->gpl.stats.uber_swapped) + 1;
+        if ((n & (n - 1)) == 0) {
+            pgraph_vk_gpl_uber_log(r);
+        }
+    } else {
+        qatomic_inc(&r->gpl.stats.lto_swapped);
+    }
+    if (r->pipeline_binding == snode) {
+        r->pipeline_binding_changed = true;
+    }
+}
+#else
+#define gpl_take_next_pipeline(r, snode) do { } while (0)
+#endif
+
 static void create_pipeline(PGRAPHState *pg)
 {
     NV2A_VK_DGROUP_BEGIN("Creating pipeline");
@@ -2085,6 +2432,7 @@ static void create_pipeline(PGRAPHState *pg)
         pg->pipeline_state_gen == r->last_pipeline_state_gen &&
         pg->primitive_mode == r->shader_binding->state.geom.primitive_mode) {
         OPT_STAT_INC(pipeline_early_hits);
+        gpl_take_next_pipeline(r, r->pipeline_binding);
         /* No generation above moved, but a uniform value can change without
          * one: an attribute set once before the first vertex (GPUAA's
          * diffuse) is passed as a uniform. Every other path through here
@@ -2096,16 +2444,16 @@ static void create_pipeline(PGRAPHState *pg)
     }
     OPT_STAT_INC(pipeline_early_misses);
 
-    NV2A_PHASE_TIMER_BEGIN(pipe_bind_tex);
+    NV2A_PHASE_TIMER_BEGIN_EXCL(pipe_bind_tex);
     if (pg->texture_state_gen != r->last_texture_state_gen ||
         r->texture_vram_gen != r->last_texture_vram_gen) {
         pgraph_vk_bind_textures(d);
         r->last_texture_state_gen = pg->texture_state_gen;
         r->last_texture_vram_gen = r->texture_vram_gen;
     }
-    NV2A_PHASE_TIMER_END(pipe_bind_tex);
+    NV2A_PHASE_TIMER_END_EXCL(pipe_bind_tex);
 
-    NV2A_PHASE_TIMER_BEGIN(pipe_bind_shd);
+    NV2A_PHASE_TIMER_BEGIN_EXCL(pipe_bind_shd);
 #if OPT_VALIDATE_GEN_COUNTERS
     if (!pg->program_data_dirty && r->shader_binding &&
         pg->shader_state_gen == r->last_shader_state_gen &&
@@ -2122,9 +2470,9 @@ static void create_pipeline(PGRAPHState *pg)
     } else {
         pgraph_vk_update_shader_uniforms(pg);
     }
-    NV2A_PHASE_TIMER_END(pipe_bind_shd);
+    NV2A_PHASE_TIMER_END_EXCL(pipe_bind_shd);
 
-    NV2A_PHASE_TIMER_BEGIN(pipe_lookup);
+    NV2A_PHASE_TIMER_BEGIN_EXCL(pipe_lookup);
     // FIXME: If nothing was dirty, don't even try creating the key or hashing.
     //        Just use the same pipeline.
     bool pipeline_dirty = check_pipeline_dirty(pg);
@@ -2138,7 +2486,8 @@ static void create_pipeline(PGRAPHState *pg)
 
     if (r->pipeline_binding && !pipeline_dirty) {
         NV2A_VK_DPRINTF("Cache hit");
-        NV2A_PHASE_TIMER_END(pipe_lookup);
+        gpl_take_next_pipeline(r, r->pipeline_binding);
+        NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2149,8 +2498,9 @@ static void create_pipeline(PGRAPHState *pg)
     if (r->pipeline_binding &&
         memcmp(&key, &r->pipeline_binding->key, sizeof(key)) == 0) {
         NV2A_VK_DPRINTF("Cache hit (same binding)");
+        gpl_take_next_pipeline(r, r->pipeline_binding);
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
-        NV2A_PHASE_TIMER_END(pipe_lookup);
+        NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2160,7 +2510,7 @@ static void create_pipeline(PGRAPHState *pg)
     LruNode *node = lru_lookup(&r->pipeline_cache, hash, &key);
     if (!node) {
         /* Cache full — all entries in use by current command buffer */
-        NV2A_PHASE_TIMER_END(pipe_lookup);
+        NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2170,7 +2520,7 @@ static void create_pipeline(PGRAPHState *pg)
     if (snode->pending) {
         r->pipeline_binding = snode;
         r->pipeline_binding_changed = true;
-        NV2A_PHASE_TIMER_END(pipe_lookup);
+        NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2181,11 +2531,12 @@ static void create_pipeline(PGRAPHState *pg)
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
         r->pipeline_binding_changed = r->pipeline_binding != snode;
         r->pipeline_binding = snode;
-        NV2A_PHASE_TIMER_END(pipe_lookup);
+        gpl_take_next_pipeline(r, snode);
+        NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
     }
-    NV2A_PHASE_TIMER_END(pipe_lookup);
+    NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
 
     NV2A_VK_DPRINTF("Cache miss");
 
@@ -2193,7 +2544,6 @@ static void create_pipeline(PGRAPHState *pg)
     if (xemu_get_async_compile() && !qatomic_read(&r->shader_binding->ready)) {
         r->pipeline_binding = snode;
         r->pipeline_binding_changed = true;
-        NV2A_PHASE_TIMER_END(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2201,7 +2551,7 @@ static void create_pipeline(PGRAPHState *pg)
 
     nv2a_profile_inc_counter(NV2A_PROF_PIPELINE_GEN);
     g_nv2a_stats.shader_stats.pipeline_cache_misses++;
-    NV2A_PHASE_TIMER_BEGIN(shader_compile);
+    NV2A_PHASE_TIMER_BEGIN_EXCL(shader_compile);
 
     memcpy(&snode->key, &key, sizeof(key));
 
@@ -2224,6 +2574,7 @@ static void create_pipeline(PGRAPHState *pg)
     if (!r->shader_binding ||
         !r->shader_binding->vsh.module_info ||
         !r->shader_binding->psh.module_info) {
+        NV2A_PHASE_TIMER_END_EXCL(shader_compile);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2602,6 +2953,116 @@ static void create_pipeline(PGRAPHState *pg)
      * bits clear, and a further 0.6% is the triangle-fan/strip interior seam.
      */
 
+#if OPT_ASYNC_COMPILE
+    /*
+     * #569 P5: link from graphics pipeline libraries (vk/compile_worker.c),
+     * under the one fixed layout rather than one created per miss. With
+     * async compile on, the worker builds it; otherwise it is built here,
+     * and a stage this pipeline shares with an earlier one is not compiled
+     * again.
+     */
+    if (r->gpl.mode) {
+        VkPipelineLayout gpl_layout = pgraph_vk_gpl_layout(r);
+        VkRenderPass gpl_render_pass =
+            get_render_pass(r, &key.render_pass_state);
+        CompileJob *job = NULL;
+        PipelineCreateParams sync_params;
+        PipelineCreateParams *p = &sync_params;
+        if (xemu_get_async_compile()) {
+            job = g_malloc0(sizeof(CompileJob));
+            job->type = COMPILE_JOB_PIPELINE;
+            job->pipeline.target = snode;
+            p = &job->pipeline.params;
+        } else {
+            memset(p, 0, sizeof(*p));
+        }
+        fill_pipeline_create_params(
+            r, p, shader_stages, num_active_shader_stages,
+            input_assembly.topology, &rasterizer, &depth_stencil,
+            &color_blend_attachment, color_blending.blendConstants,
+            dynamic_states, num_dynamic_states,
+            snode->has_dynamic_line_width, gpl_layout, gpl_render_pass);
+        fill_pipeline_create_params_gpl(r, p, &key);
+
+        snode->draw_time = pg->draw_time;
+
+        if (job) {
+            snode->pending = true;
+            r->pipeline_binding = snode;
+            r->pipeline_binding_changed = true;
+            pgraph_vk_compile_worker_enqueue(r, job);
+            NV2A_PHASE_TIMER_END_EXCL(shader_compile);
+            NV2A_VK_DGROUP_END();
+            return;
+        }
+
+        nv2a_profile_shader_keydiff(
+            r->pipeline_binding && r->pipeline_binding != snode &&
+                    !r->pipeline_binding->key.clear
+                ? &r->pipeline_binding->key.shader_state
+                : NULL,
+            &key.shader_state);
+        VkPipeline pipeline;
+        ShaderBinding *sb = r->shader_binding;
+        if (r->gpl.mode >= 3 && sb->vsh.uber_module_info) {
+            /* #569's uber ladder (vk/compile_worker.c): the same pipeline
+             * with the family's uber vertex stage in place of its own */
+            PipelineCreateParams uber = *p;
+            for (int i = 0; i < uber.num_shader_stages; i++) {
+                if (uber.shader_stages[i].stage == VK_SHADER_STAGE_VERTEX_BIT) {
+                    uber.shader_stages[i].module =
+                        sb->vsh.uber_module_info->module;
+                }
+            }
+            uber.gpl_vs_id = gpl_module_id(sb->vsh.uber_module_info);
+            uint32_t present = 0;
+            for (uint32_t i = 0; i < uber.num_attr_descs; i++) {
+                present |= 1u << uber.attr_descs[i].location;
+            }
+            if (present != 0xFFFF) {
+                assert(uber.num_binding_descs < NV2A_VERTEXSHADER_ATTRIBUTES);
+                uber.binding_descs[uber.num_binding_descs++] =
+                    (VkVertexInputBindingDescription){
+                        .binding = UBER_ZERO_BINDING,
+                        .stride = 0,
+                        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+                    };
+                for (uint32_t loc = 0; loc < NV2A_VERTEXSHADER_ATTRIBUTES;
+                     loc++) {
+                    if (!(present & (1u << loc))) {
+                        uber.attr_descs[uber.num_attr_descs++] =
+                            (VkVertexInputAttributeDescription){
+                                .location = loc,
+                                .binding = UBER_ZERO_BINDING,
+                                .format = VK_FORMAT_R32G32B32A32_SFLOAT,
+                                .offset = 0,
+                            };
+                    }
+                }
+            }
+            ShaderModuleInfo *const spec_mods[3] = {
+                sb->vsh.module_info, sb->geom.module_info, sb->psh.module_info,
+            };
+            bool is_uber;
+            VK_CHECK(pgraph_vk_gpl_uber_create_pipeline(
+                r, snode, p, &uber, spec_mods, sb->vsh.uber_module_info,
+                &pipeline, &is_uber));
+            snode->gpl_uber = is_uber;
+        } else {
+            VK_CHECK(pgraph_vk_gpl_create_pipeline(r, snode, p, &pipeline));
+        }
+        snode->pipeline = pipeline;
+        snode->layout = gpl_layout;
+        snode->render_pass = gpl_render_pass;
+        r->pipeline_binding = snode;
+        r->pipeline_binding_changed = true;
+
+        maybe_save_pipeline_cache(r);
+        NV2A_PHASE_TIMER_END_EXCL(shader_compile);
+        NV2A_VK_DGROUP_END();
+        return;
+    }
+#endif
 
     VkPushConstantRange push_constant_ranges[2];
     int num_push_ranges = 0;
@@ -2681,6 +3142,8 @@ static void create_pipeline(PGRAPHState *pg)
         p->has_dynamic_line_width = snode->has_dynamic_line_width;
         p->layout = layout;
         p->render_pass = render_pass;
+        pgraph_vk_prebuild_note(r, &key.render_pass_state, p,
+                                push_constant_ranges, num_push_ranges);
 
         snode->draw_time = pg->draw_time;
         snode->pending = true;
@@ -2689,7 +3152,7 @@ static void create_pipeline(PGRAPHState *pg)
 
         pgraph_vk_compile_worker_enqueue(r, job);
 
-        NV2A_PHASE_TIMER_END(shader_compile);
+        NV2A_PHASE_TIMER_END_EXCL(shader_compile);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2712,9 +3175,15 @@ static void create_pipeline(PGRAPHState *pg)
         .subpass = 0,
         .basePipelineHandle = VK_NULL_HANDLE,
     };
+    nv2a_profile_shader_keydiff(
+        r->pipeline_binding && r->pipeline_binding != snode &&
+                !r->pipeline_binding->key.clear
+            ? &r->pipeline_binding->key.shader_state
+            : NULL,
+        &key.shader_state);
     VkPipeline pipeline;
-    VK_CHECK(vkCreateGraphicsPipelines(r->device, r->vk_pipeline_cache, 1,
-                                       &pipeline_create_info, NULL, &pipeline));
+    VK_CHECK(pgraph_vk_create_graphics_pipeline_fb(r, &pipeline_create_info,
+                                                   true, &pipeline));
 
     snode->pipeline = pipeline;
     snode->layout = layout;
@@ -2724,8 +3193,24 @@ static void create_pipeline(PGRAPHState *pg)
     r->pipeline_binding = snode;
     r->pipeline_binding_changed = true;
 
+#if OPT_ASYNC_COMPILE
+    {
+        /* #569 P3: what a later launch pre-builds */
+        PipelineCreateParams *p = g_new0(PipelineCreateParams, 1);
+        fill_pipeline_create_params(
+            r, p, shader_stages, num_active_shader_stages,
+            input_assembly.topology, &rasterizer, &depth_stencil,
+            &color_blend_attachment, color_blending.blendConstants,
+            dynamic_states, num_dynamic_states,
+            snode->has_dynamic_line_width, layout, render_pass);
+        pgraph_vk_prebuild_note(r, &key.render_pass_state, p,
+                                push_constant_ranges, num_push_ranges);
+        g_free(p);
+    }
+#endif
+
     maybe_save_pipeline_cache(r);
-    NV2A_PHASE_TIMER_END(shader_compile);
+    NV2A_PHASE_TIMER_END_EXCL(shader_compile);
     NV2A_VK_DGROUP_END();
 }
 
@@ -2876,6 +3361,14 @@ static void push_geom_line_params(PGRAPHState *pg)
 static int push_template_index(PGRAPHVkState *r, bool use_push_constants,
                                uint32_t uniform_attrs)
 {
+#if OPT_ASYNC_COMPILE
+    /* #569 P5's one layout declares every inline attribute */
+    if (use_push_constants && r->pipeline_binding &&
+        r->gpl.layout != VK_NULL_HANDLE &&
+        r->pipeline_binding->layout == r->gpl.layout) {
+        return NV2A_VERTEXSHADER_ATTRIBUTES;
+    }
+#endif
     return use_push_constants ? __builtin_popcount(uniform_attrs) : 0;
 }
 
@@ -2908,6 +3401,10 @@ static void bind_descriptor_sets(PGRAPHState *pg)
         r->pipeline_binding->layout, 1, 1,
         &r->push_ubo_sets[r->push_ubo_set_index - 1],
         2, dynamic_offsets);
+#if NV2A_PERF_LOG
+    pgraph_vk_ubosz_note_bind(r->push_ubo_sets[r->push_ubo_set_index - 1],
+                              dynamic_offsets);
+#endif
 
     if (r->push_descriptors_supported) {
         /*
@@ -3328,6 +3825,202 @@ void pgraph_vk_flush_all_frames(PGRAPHState *pg)
     }
 }
 
+/*
+ * Waiting for the render thread to submit a frame slot (#526). Two places in
+ * pgraph_vk_finish wait until the render thread has run vkQueueSubmit for a
+ * slot this thread queued: the deferred finish, and the frame rotation when
+ * the next slot is still queued. Both used to loop on sched_yield(), which
+ * returns at once on a core with nothing else to run, so the wait was a spin
+ * at full clock for as long as the render thread's backlog took to drain.
+ *
+ * Now the wait polls for up to RWAIT_SPIN_NS with cpu_relax(), which covers
+ * the waits that end quickly, then blocks on the render thread's idle_event.
+ * The render thread sets that event after every command it completes
+ * (render_thread.c), so the waiter wakes once per drained command and checks
+ * again; the finish it waits for is still queued, so a set always follows.
+ * Resetting the event here can swallow a set that
+ * pgraph_vk_render_thread_wait_idle() on another thread has not observed yet,
+ * so the event is set again on the way out. An extra set costs that caller
+ * one more look at its queue. HAKUX_RENDER_WAIT=yield selects the old loop
+ * for an A/B on one binary.
+ *
+ * The [rwait526] line (tag hakuX-lane, every 10 s) carries what judges it:
+ * per site, how many waits found the slot already submitted, ended inside the
+ * poll, or blocked; the wall time of the waits (10 us bins); and this
+ * thread's CPU time, in total and inside the waits.
+ */
+#define RWAIT_SPIN_NS 30000
+#define RWAIT_BIN_NS 10000
+#define RWAIT_BINS 200          /* 0-2 ms; one more bin holds the rest */
+#define RWAIT_WINDOW_NS (10 * NANOSECONDS_PER_SECOND)
+
+enum { RWAIT_BLOCK, RWAIT_YIELD };
+enum { RWAIT_DEFERRED, RWAIT_ROTATE, RWAIT_SITES };
+
+static struct {
+    int mode;
+    int64_t t0_ns, wait_cpu_ns;
+    unsigned int flips0;
+    unsigned int calls[RWAIT_SITES], waits[RWAIT_SITES];
+    unsigned int spun[RWAIT_SITES], blocked[RWAIT_SITES], wakes[RWAIT_SITES];
+    int64_t wait_ns[RWAIT_SITES], wait_max_ns[RWAIT_SITES];
+    unsigned int hist[RWAIT_SITES][RWAIT_BINS + 1];
+} rwait526 = { .mode = -1 };
+
+/*
+ * The waits are reached from more than one thread (the PFIFO thread, the
+ * display's present, surface downloads), and the window is closed by
+ * whichever of them crosses it. A thread's CPU clock is only comparable
+ * with itself, so each thread keeps its own span and reports it when it
+ * closes a window: tid, seconds, guest flips and CPU since its own last
+ * report.
+ */
+static __thread int64_t rwait_tl_t0_ns, rwait_tl_cpu0_ns;
+static __thread unsigned int rwait_tl_flips0;
+
+static int rwait_mode(void)
+{
+    if (rwait526.mode < 0) {
+        const char *env = getenv("HAKUX_RENDER_WAIT");
+        rwait526.mode = env && !strcmp(env, "yield") ? RWAIT_YIELD
+                                                     : RWAIT_BLOCK;
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
+                            "[rwait526] render wait mode=%s env=%s spin_us=%d",
+                            rwait526.mode == RWAIT_YIELD ? "yield" : "block",
+                            env ? env : "(unset)", RWAIT_SPIN_NS / 1000);
+#endif
+    }
+    return rwait526.mode;
+}
+
+static int64_t rwait_thread_cpu_ns(void)
+{
+    struct timespec ts;
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) != 0) {
+        return 0;
+    }
+    return ts.tv_sec * NANOSECONDS_PER_SECOND + ts.tv_nsec;
+}
+
+#ifdef __ANDROID__
+static double rwait_pct_us(int site, double q)
+{
+    unsigned int n = rwait526.waits[site];
+    unsigned int want = (unsigned int)(q * n + 0.999999), acc = 0;
+    for (int i = 0; i <= RWAIT_BINS && n; i++) {
+        acc += rwait526.hist[site][i];
+        if (acc >= want) {
+            /* the bin's upper edge: a bound on the percentile, not a value */
+            return (double)(i + 1) * RWAIT_BIN_NS / 1000.0;
+        }
+    }
+    return -1.0;
+}
+#endif
+
+static void rwait_report(int64_t now)
+{
+    int64_t thr = rwait_thread_cpu_ns();
+    unsigned int flips = g_nv2a_stats.frame_count;
+
+#ifdef __ANDROID__
+    if (rwait526.t0_ns) {
+        char site_txt[RWAIT_SITES][192];
+        for (int s = 0; s < RWAIT_SITES; s++) {
+            snprintf(site_txt[s], sizeof(site_txt[s]),
+                     "calls=%u waits=%u spun=%u blocked=%u wakes=%u "
+                     "wait_ms=%.2f p50_us=%.0f p99_us=%.0f max_us=%.0f",
+                     rwait526.calls[s], rwait526.waits[s], rwait526.spun[s],
+                     rwait526.blocked[s], rwait526.wakes[s],
+                     rwait526.wait_ns[s] / 1e6, rwait_pct_us(s, 0.50),
+                     rwait_pct_us(s, 0.99), rwait526.wait_max_ns[s] / 1e3);
+        }
+        /* thr_*: this thread's own span; -1 on its first report */
+        __android_log_print(
+            ANDROID_LOG_INFO, "hakuX-lane",
+            "[rwait526] mode=%s s=%.2f flips=%u tid=%d thr_s=%.2f "
+            "thr_flips=%d thr_cpu_ms=%.1f wait_cpu_ms=%.2f "
+            "| deferred %s | rotate %s",
+            rwait_mode() == RWAIT_YIELD ? "yield" : "block",
+            (now - rwait526.t0_ns) / 1e9, flips - rwait526.flips0,
+            qemu_get_thread_id(),
+            rwait_tl_t0_ns ? (now - rwait_tl_t0_ns) / 1e9 : -1.0,
+            rwait_tl_t0_ns ? (int)(flips - rwait_tl_flips0) : -1,
+            rwait_tl_t0_ns ? (thr - rwait_tl_cpu0_ns) / 1e6 : -1.0,
+            rwait526.wait_cpu_ns / 1e6,
+            site_txt[RWAIT_DEFERRED], site_txt[RWAIT_ROTATE]);
+    }
+#endif
+    rwait526.t0_ns = now;
+    rwait526.flips0 = flips;
+    rwait_tl_t0_ns = now;
+    rwait_tl_cpu0_ns = thr;
+    rwait_tl_flips0 = flips;
+    rwait526.wait_cpu_ns = 0;
+    memset(rwait526.calls, 0, sizeof(rwait526.calls));
+    memset(rwait526.waits, 0, sizeof(rwait526.waits));
+    memset(rwait526.spun, 0, sizeof(rwait526.spun));
+    memset(rwait526.blocked, 0, sizeof(rwait526.blocked));
+    memset(rwait526.wakes, 0, sizeof(rwait526.wakes));
+    memset(rwait526.wait_ns, 0, sizeof(rwait526.wait_ns));
+    memset(rwait526.wait_max_ns, 0, sizeof(rwait526.wait_max_ns));
+    memset(rwait526.hist, 0, sizeof(rwait526.hist));
+}
+
+/* Return once the render thread has submitted `frame`. */
+static void wait_frame_submitted(PGRAPHVkState *r, int frame, int site)
+{
+    int64_t t0 = get_clock();
+
+    if (!rwait526.t0_ns || t0 - rwait526.t0_ns >= RWAIT_WINDOW_NS) {
+        rwait_report(t0);
+    }
+    rwait526.calls[site]++;
+    if (qatomic_read(&r->frame_submitted[frame])) {
+        return;
+    }
+
+    int64_t cpu0 = rwait_thread_cpu_ns();
+
+    if (rwait_mode() == RWAIT_YIELD || r->is_render_thread_context) {
+        while (!qatomic_read(&r->frame_submitted[frame])) {
+            sched_yield();
+        }
+    } else {
+        bool done = false;
+        while (get_clock() - t0 < RWAIT_SPIN_NS) {
+            if (qatomic_read(&r->frame_submitted[frame])) {
+                done = true;
+                break;
+            }
+            cpu_relax();
+        }
+        if (done) {
+            rwait526.spun[site]++;
+        } else {
+            QemuEvent *ev = &r->render_thread.idle_event;
+            rwait526.blocked[site]++;
+            while (true) {
+                qemu_event_reset(ev);
+                if (qatomic_read(&r->frame_submitted[frame])) {
+                    break;
+                }
+                qemu_event_wait(ev);
+                rwait526.wakes[site]++;
+            }
+            qemu_event_set(ev);
+        }
+    }
+
+    int64_t dt = get_clock() - t0;
+    rwait526.wait_cpu_ns += rwait_thread_cpu_ns() - cpu0;
+    rwait526.waits[site]++;
+    rwait526.wait_ns[site] += dt;
+    rwait526.wait_max_ns[site] = MAX(rwait526.wait_max_ns[site], dt);
+    rwait526.hist[site][MIN(dt / RWAIT_BIN_NS, RWAIT_BINS)]++;
+}
+
 static void flush_reorder_window_internal(NV2AState *d);
 static void flush_draw_queue_internal(NV2AState *d);
 
@@ -3586,12 +4279,8 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
             pgraph_vk_render_thread_enqueue(r, cmd);
 
             if (deferred) {
-                /* Spin-wait for render thread to complete vkQueueSubmit.
-                 * Faster than QemuEvent (no futex/eventfd syscall overhead).
-                 * Typically completes in <100μs. */
-                while (!qatomic_read(&r->frame_submitted[deferred_frame])) {
-                    sched_yield();
-                }
+                /* Wait for the render thread to complete vkQueueSubmit. */
+                wait_frame_submitted(r, deferred_frame, RWAIT_DEFERRED);
             }
 
             if (!deferred) {
@@ -3651,13 +4340,10 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
 
             /* If the next frame slot was enqueued for deferred submission
              * but the render thread hasn't completed vkQueueSubmit yet,
-             * spin-wait until it does. With 3 frame slots this rarely
+             * wait until it does. With 3 frame slots this rarely
              * triggers since there's 2 frames of pipeline headroom. */
-            if (r->frame_enqueued[next_frame] &&
-                !qatomic_read(&r->frame_submitted[next_frame])) {
-                while (!qatomic_read(&r->frame_submitted[next_frame])) {
-                    sched_yield();
-                }
+            if (r->frame_enqueued[next_frame]) {
+                wait_frame_submitted(r, next_frame, RWAIT_ROTATE);
             }
             r->frame_enqueued[next_frame] = false;
 
@@ -3814,6 +4500,9 @@ void pgraph_vk_begin_command_buffer(PGRAPHState *pg)
                                   &command_buffer_begin_info));
     r->command_buffer_start_time = pg->draw_time;
     r->in_command_buffer = true;
+#if NV2A_PERF_LOG
+    r->frame_cb_serial[r->current_frame] = ++r->cb_serial;
+#endif
     r->draws_in_cb = 0;
 
     if (r->gpu_ts_supported) {
@@ -3882,6 +4571,11 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
      * every fast path below already treats as a reason to rebind. */
     pgraph_vk_poll_bound_textures(container_of(pg, NV2AState, pgraph));
 
+    /*
+     * Sfp and Mfp time each fast path, hit or miss, less its texture bind
+     * (FTx): all three are children of Draw beside the full path's.
+     */
+    NV2A_PHASE_TIMER_BEGIN_EXCL_CHILD(draw_sfp, draw_ftx);
     {
         bool sfp_ok = true;
         if (pg->clearing)                { OPT_STAT_INC(sfp_miss_clearing); sfp_ok = false; }
@@ -3914,6 +4608,11 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
         else if (pg->non_dynamic_reg_gen != r->last_non_dynamic_reg_gen) { OPT_STAT_INC(sfp_miss_reg_gen); sfp_ok = false; }
         else if (pg->primitive_mode != r->shader_binding->state.geom.primitive_mode) { OPT_STAT_INC(sfp_miss_prim_mode); sfp_ok = false; }
         else if (pg->program_data_dirty) { OPT_STAT_INC(sfp_miss_prog_dirty); sfp_ok = false; }
+        /* #53: a lit program's ringPhase and ringInput move with the command
+         * stream, not with any flag or generation tested above, so two lit
+         * program inline draws with nothing between them would otherwise
+         * share the first one's phase. */
+        else if (pgraph_glsl_ring_uniforms_stale(pg, &r->shader_binding->state.vsh)) { OPT_STAT_INC(sfp_miss_uniforms); sfp_ok = false; }
 
         if (sfp_ok) {
             bool tex_vram_clean = (r->texture_vram_gen == r->last_texture_vram_gen);
@@ -3949,7 +4648,9 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
                     pg->texture_state_gen != r->last_texture_state_gen) {
                     uint32_t saved_shader_gen = pg->shader_state_gen;
                     NV2AState *d_push = container_of(pg, NV2AState, pgraph);
+                    NV2A_PHASE_TIMER_BEGIN_EXCL(draw_ftx);
                     pgraph_vk_bind_textures(d_push);
+                    NV2A_PHASE_TIMER_END_EXCL(draw_ftx);
                     r->last_texture_state_gen = pg->texture_state_gen;
                     r->last_texture_vram_gen = r->texture_vram_gen;
 
@@ -4078,6 +4779,7 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
                     r->last_non_dynamic_reg_gen = pg->non_dynamic_reg_gen;
                     OPT_STAT_INC(super_fast_hits);
                     r->pre_draw_skipped = true;
+                    NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_sfp, draw_ftx);
                     return;
                 }
             }
@@ -4085,6 +4787,9 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
         }
     }
     OPT_STAT_INC(super_fast_misses);
+    NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_sfp, draw_ftx);
+
+    NV2A_PHASE_TIMER_BEGIN_EXCL_CHILD(draw_mfp, draw_ftx);
 
     if (!pg->clearing &&
         r->pipeline_binding &&
@@ -4134,7 +4839,9 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
             (pg->texture_state_gen != r->last_texture_state_gen ||
              r->texture_vram_gen != r->last_texture_vram_gen)) {
             NV2AState *d_mfp_push = container_of(pg, NV2AState, pgraph);
+            NV2A_PHASE_TIMER_BEGIN_EXCL(draw_ftx);
             pgraph_vk_bind_textures(d_mfp_push);
+            NV2A_PHASE_TIMER_END_EXCL(draw_ftx);
             r->last_texture_state_gen = pg->texture_state_gen;
             r->last_texture_vram_gen = r->texture_vram_gen;
             if (r->texture_bindings_changed) {
@@ -4161,9 +4868,11 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
             create_frame_buffer(pg);
         }
         pgraph_vk_ensure_command_buffer(pg);
+        NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_mfp, draw_ftx);
         return;
     }
 mfp_miss: (void)0;
+    NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_mfp, draw_ftx);
 
     r->pre_draw_skipped = false;
 
@@ -4173,7 +4882,7 @@ mfp_miss: (void)0;
         g_vaf_stats.full_path_vag_same++;
     }
 
-    NV2A_PHASE_TIMER_BEGIN(draw_pipeline);
+    NV2A_PHASE_TIMER_BEGIN_EXCL(draw_pipeline);
     if (pg->clearing) {
         create_clear_pipeline(pg);
     } else {
@@ -4182,7 +4891,7 @@ mfp_miss: (void)0;
     r->pipeline_vertex_attr_gen = pg->vertex_attr_gen;
     r->pipeline_num_active_attr_descs = r->num_active_vertex_attribute_descriptions;
     r->pipeline_num_active_bind_descs = r->num_active_vertex_binding_descriptions;
-    NV2A_PHASE_TIMER_END(draw_pipeline);
+    NV2A_PHASE_TIMER_END_EXCL(draw_pipeline);
 
 #if OPT_ASYNC_COMPILE
     r->async_draw_skip = false;
@@ -4202,9 +4911,7 @@ mfp_miss: (void)0;
              * (especially with VK driver cache warm) and skipping causes
              * permanently missing textures on screens that only draw once.
              */
-            while (qatomic_read(&r->pipeline_binding->pending)) {
-                g_usleep(100);
-            }
+            pgraph_vk_compile_worker_wait_pipeline(r, r->pipeline_binding);
         }
         if (r->pipeline_binding->pipeline == VK_NULL_HANDLE) {
             /* Pipeline creation failed */
@@ -4217,7 +4924,7 @@ mfp_miss: (void)0;
 #endif
 
     {
-        NV2A_PHASE_TIMER_BEGIN(draw_setup);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         bool render_pass_dirty = r->pipeline_binding->render_pass != r->render_pass;
 
         if (r->framebuffer_dirty || render_pass_dirty) {
@@ -4231,23 +4938,23 @@ mfp_miss: (void)0;
             create_frame_buffer(pg);
             r->framebuffer_dirty = false;
         }
-        NV2A_PHASE_TIMER_END(draw_setup);
+        NV2A_PHASE_TIMER_END_EXCL(draw_setup);
     }
 
-    NV2A_PHASE_TIMER_BEGIN(draw_desc_set);
+    NV2A_PHASE_TIMER_BEGIN_EXCL(draw_desc_set);
     if (!pg->clearing) {
         pgraph_vk_update_descriptor_sets(pg);
     }
-    NV2A_PHASE_TIMER_END(draw_desc_set);
+    NV2A_PHASE_TIMER_END_EXCL(draw_desc_set);
 
     {
-        NV2A_PHASE_TIMER_BEGIN(draw_setup);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         if (r->framebuffer_index == 0) {
             create_frame_buffer(pg);
         }
 
         pgraph_vk_ensure_command_buffer(pg);
-        NV2A_PHASE_TIMER_END(draw_setup);
+        NV2A_PHASE_TIMER_END_EXCL(draw_setup);
     }
 }
 
@@ -4499,8 +5206,10 @@ static void begin_draw(PGRAPHState *pg)
         nv2a_profile_inc_counter(NV2A_PROF_PIPELINE_BIND);
         vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           r->pipeline_binding->pipeline);
+        bind_uber_zero_buffer(r);
         r->pipeline_binding_changed = false;
         r->pipeline_binding->draw_time = pg->draw_time;
+        PIPELINE_NOTE_BIND(r, r->pipeline_binding);
 #if OPT_DYNAMIC_STATES
         r->dyn_state.valid = false;
 #endif
@@ -4926,7 +5635,7 @@ static bool upload_draw_uniforms(PGRAPHState *pg, size_t offsets_out[2])
     pgraph_vk_update_shader_uniforms(pg);
 
     ShaderUniformLayout *layouts[] = {
-        &binding->vsh.module_info->uniforms,
+        &binding->vsh.upload_info->uniforms,
         &binding->psh.module_info->uniforms,
     };
 
@@ -4948,6 +5657,9 @@ static bool upload_draw_uniforms(PGRAPHState *pg, size_t offsets_out[2])
             pg, BUFFER_UNIFORM_STAGING, &data, &size, 1,
             r->device_props.limits.minUniformBufferOffsetAlignment);
     }
+#if NV2A_PERF_LOG
+    pgraph_vk_ubosz_note_upload(pg, 1);
+#endif
 
     return true;
 }
@@ -5214,6 +5926,10 @@ static void rebind_ubo_dynamic_offsets(PGRAPHState *pg, uint32_t off0,
         r->pipeline_binding->layout, 1, 1,
         &r->push_ubo_sets[r->push_ubo_set_index - 1],
         2, dyn_off);
+#if NV2A_PERF_LOG
+    pgraph_vk_ubosz_note_bind(r->push_ubo_sets[r->push_ubo_set_index - 1],
+                              dyn_off);
+#endif
 }
 
 /*
@@ -6108,7 +6824,9 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
         nv2a_profile_inc_counter(NV2A_PROF_PIPELINE_BIND);
         vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           e->pipeline_binding->pipeline);
+        bind_uber_zero_buffer(r);
         e->pipeline_binding->draw_time = pg->draw_time;
+        PIPELINE_NOTE_BIND(r, e->pipeline_binding);
         vkCmdSetViewport(r->command_buffer, 0, 1, &e->viewport);
         vkCmdSetScissor(r->command_buffer, 0, 1, &e->scissor);
     }
@@ -6303,6 +7021,9 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 e->layout, 1, 1, &e->descriptor_set,
                                 2, e->dynamic_offsets);
+#if NV2A_PERF_LOG
+        pgraph_vk_ubosz_note_bind(e->descriptor_set, e->dynamic_offsets);
+#endif
     }
 
     /* Bind texture set (set 0) */
@@ -7064,6 +7785,111 @@ static void clr91_probe(PGRAPHState *pg, bool write_color, bool write_zeta)
               r->zeta_binding ? r->zeta_binding->vram_addr : (hwaddr)0);
 }
 
+/*
+ * The clear rect from CLEARRECTX/Y, bounded by the surface clip rectangle.
+ * The surface clip rectangle bounds a clear as it bounds a draw: the memory
+ * outside it is left alone whatever the clear rect says. The surface image
+ * here spans the clip offset plus its size, so a clear rect reaching above or
+ * left of the clip would otherwise land in it. pbkit paints its debug text
+ * with clears, and Surface clip's DebugTextShouldClip expects the lines above
+ * a half-height clip to stay invisible; its rt_ tests fill the memory around
+ * the clip from the CPU and expect a full-surface clear to leave that fill
+ * alone. A zero clip size is not a hardware case that has been measured (the
+ * suite sends the surface size instead), so it bounds nothing here. Returns
+ * false when the clear lies entirely outside the clip and writes nothing.
+ */
+static bool clear_rect_clipped(PGRAPHState *pg, unsigned int *xmin,
+                               unsigned int *ymin, unsigned int *xmax,
+                               unsigned int *ymax)
+{
+    uint32_t clearrectx = pgraph_vk_reg_r(pg, NV_PGRAPH_CLEARRECTX);
+    uint32_t clearrecty = pgraph_vk_reg_r(pg, NV_PGRAPH_CLEARRECTY);
+
+    unsigned int x0 = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMIN);
+    unsigned int x1 = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMAX);
+    unsigned int y0 = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMIN);
+    unsigned int y1 = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMAX);
+
+    unsigned int cx = pg->surface_shape.clip_x;
+    unsigned int cy = pg->surface_shape.clip_y;
+    unsigned int cw = pg->surface_shape.clip_width;
+    unsigned int ch = pg->surface_shape.clip_height;
+    if (cw) {
+        x0 = MAX(x0, cx);
+        x1 = MIN(x1, cx + cw - 1);
+    }
+    if (ch) {
+        y0 = MAX(y0, cy);
+        y1 = MIN(y1, cy + ch - 1);
+    }
+    *xmin = x0;
+    *ymin = y0;
+    *xmax = x1;
+    *ymax = y1;
+    return x0 <= x1 && y0 <= y1;
+}
+
+/*
+ * #414: whether a clear with this parameter leaves binding b uniform, over
+ * every texel. The rect is the clip-bounded clear rect, before the binding
+ * clamp and the scale factor, compared in anti-aliased units as the binding's
+ * size is. Stricter than GL's rule, because both users rely on the content
+ * being uniform: colour counts only when all four channels are cleared, zeta
+ * only when Z is, and stencil too if the format has one.
+ *
+ * Two users, one rule: mark_clear_full after the clear, and surface.c's
+ * clearing update before it, which drops the upload of a binding the clear is
+ * about to overwrite whole (and so the completion that upload forces).
+ */
+bool pgraph_vk_clear_covers_binding(PGRAPHState *pg, SurfaceBinding *b,
+                                    uint32_t parameter)
+{
+    unsigned int xmin, ymin, xmax, ymax;
+    if (!b || !clear_rect_clipped(pg, &xmin, &ymin, &xmax, &ymax)) {
+        return false;
+    }
+
+    unsigned int x = xmin, y = ymin;
+    unsigned int w = xmax - xmin + 1, h = ymax - ymin + 1;
+    pgraph_apply_anti_aliasing_factor(pg, &x, &y);
+    pgraph_apply_anti_aliasing_factor(pg, &w, &h);
+
+    bool all;
+    if (b->color) {
+        all = (parameter & NV097_CLEAR_SURFACE_COLOR) ==
+              (NV097_CLEAR_SURFACE_R | NV097_CLEAR_SURFACE_G |
+               NV097_CLEAR_SURFACE_B | NV097_CLEAR_SURFACE_A);
+    } else {
+        bool has_stencil = b->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT;
+        all = (parameter & NV097_CLEAR_SURFACE_Z) &&
+              (!has_stencil || (parameter & NV097_CLEAR_SURFACE_STENCIL));
+    }
+    return all && !x && !y && w >= b->width && h >= b->height;
+}
+
+/*
+ * #414: mark a binding the clear left uniform, as gl/draw.c does, so that
+ * update_surface_part's second rescue ("a fully cleared linear surface to be
+ * marked swizzled") can fire in this renderer too. Without it a title that
+ * clears a small target as linear and then draws it as swizzled (Forza, ~3.75
+ * times a frame) evicts both bindings, downloads the cleared pixels and
+ * uploads them straight back, with a finish in between. Must run after
+ * pgraph_vk_set_surface_dirty, which resets cleared.
+ */
+static void mark_clear_full(PGRAPHState *pg, uint32_t parameter)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (r->color_binding) {
+        r->color_binding->cleared =
+            pgraph_vk_clear_covers_binding(pg, r->color_binding, parameter);
+    }
+    if (r->zeta_binding) {
+        r->zeta_binding->cleared =
+            pgraph_vk_clear_covers_binding(pg, r->zeta_binding, parameter);
+    }
+}
+
 void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -7091,8 +7917,9 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
 
     pg->clearing = true;
 
-    // FIXME: If doing a full surface clear, mark the surface for full clear
-    // and we can just do the clear as part of the surface load.
+    /* Before the update: it drops the upload of a binding this clear covers
+     * whole (pgraph_vk_clear_covers_binding, #414). */
+    r->clear_parameter = parameter;
     pgraph_vk_surface_update(d, true, write_color, write_zeta);
 
     clr91_probe(pg, write_color, write_zeta);
@@ -7104,46 +7931,11 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
         return;
     }
 
-    r->clear_parameter = parameter;
-
-    uint32_t clearrectx = pgraph_vk_reg_r(pg, NV_PGRAPH_CLEARRECTX);
-    uint32_t clearrecty = pgraph_vk_reg_r(pg, NV_PGRAPH_CLEARRECTY);
-
-    unsigned int xmin = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMIN);
-    unsigned int xmax = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMAX);
-    unsigned int ymin = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMIN);
-    unsigned int ymax = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMAX);
-
-    /*
-     * The surface clip rectangle bounds a clear as it bounds a draw: the
-     * memory outside it is left alone whatever the clear rect says. The
-     * surface image here spans the clip offset plus its size, so a clear
-     * rect reaching above or left of the clip would otherwise land in it.
-     * pbkit paints its debug text with clears, and Surface clip's
-     * DebugTextShouldClip expects the lines above a half-height clip to
-     * stay invisible; its rt_ tests fill the memory around the clip from
-     * the CPU and expect a full-surface clear to leave that fill alone.
-     * A zero clip size is not a hardware case that has been measured (the
-     * suite sends the surface size instead), so it bounds nothing here.
-     */
-    {
-        unsigned int cx = pg->surface_shape.clip_x;
-        unsigned int cy = pg->surface_shape.clip_y;
-        unsigned int cw = pg->surface_shape.clip_width;
-        unsigned int ch = pg->surface_shape.clip_height;
-        if (cw) {
-            xmin = MAX(xmin, cx);
-            xmax = MIN(xmax, cx + cw - 1);
-        }
-        if (ch) {
-            ymin = MAX(ymin, cy);
-            ymax = MIN(ymax, cy + ch - 1);
-        }
-        if (xmin > xmax || ymin > ymax) {
-            /* Entirely outside the clip: nothing is written. */
-            pg->clearing = false;
-            return;
-        }
+    unsigned int xmin, ymin, xmax, ymax;
+    if (!clear_rect_clipped(pg, &xmin, &ymin, &xmax, &ymax)) {
+        /* Entirely outside the clip: nothing is written. */
+        pg->clearing = false;
+        return;
     }
 
     NV2A_VK_DGROUP_BEGIN("CLEAR min=(%d,%d) max=(%d,%d)%s%s", xmin, ymin, xmax,
@@ -7244,6 +8036,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
 
             pg->clearing = false;
             pgraph_vk_set_surface_dirty(pg, write_color, write_zeta);
+            mark_clear_full(pg, parameter);
             mark_clear_drawn(pg, write_color, write_zeta);
             NV2A_VK_DGROUP_END();
             return;
@@ -7253,6 +8046,8 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
     /* Fall through: partial color clear or not in a suitable render pass.
      * Uses the full pipeline-based clear with render pass breaks. */
     OPT_STAT_INC(inline_clear_misses);
+    /* Timed as Draw, whose children begin_pre_draw() adds to */
+    NV2A_PHASE_TIMER_BEGIN_EXCL(draw_dispatch);
     begin_pre_draw(pg);
     pgraph_vk_begin_debug_marker(r, r->command_buffer,
         RGBA_BLUE, "Clear %08" HWADDR_PRIx,
@@ -7341,7 +8136,9 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
     pg->clearing = false;
 
     pgraph_vk_set_surface_dirty(pg, write_color, write_zeta);
+    mark_clear_full(pg, parameter);
     mark_clear_drawn(pg, write_color, write_zeta);
+    NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
 
     NV2A_VK_DGROUP_END();
 }
@@ -7633,8 +8430,17 @@ static void flush_draw_one_pass(NV2AState *d)
     r->num_vertex_ram_buffer_syncs = 0;
 
 #ifndef NDEBUG
-    RenderCommandSnapshot snap;
-    pgraph_vk_snapshot_state(pg, &snap);
+    /*
+     * Only the four fields asserted at the end. A full RenderCommandSnapshot
+     * copies the 32 KB register file and the program data on every draw pass,
+     * and Android release builds keep NDEBUG blocks (-UNDEBUG): 2.2-2.5
+     * ms/frame on AUF and Blinx (#474, #414).
+     */
+    const uint32_t snap_primitive_mode = pg->primitive_mode;
+    const bool snap_clearing = pg->clearing;
+    const uint32_t snap_control_0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);
+    const uint32_t snap_setupraster =
+        pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER);
 #endif
 
     PrimAssemblyState assembly = {
@@ -7658,7 +8464,7 @@ static void flush_draw_one_pass(NV2AState *d)
         assert(pg->inline_buffer_length == 0);
         assert(pg->inline_array_length == 0);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vtx_attr);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vtx_attr);
         pgraph_vk_bind_vertex_attributes(d, pg->draw_arrays_min_start,
                                          pg->draw_arrays_max_count - 1, false,
                                          0, pg->draw_arrays_max_count - 1);
@@ -7668,9 +8474,9 @@ static void flush_draw_one_pass(NV2AState *d)
             min_element = MIN(pg->draw_arrays_start[i], min_element);
             max_element = MAX(max_element, pg->draw_arrays_start[i] + pg->draw_arrays_count[i]);
         }
-        NV2A_PHASE_TIMER_END(draw_vtx_attr);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vtx_attr);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vtx_sync);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vtx_sync);
 #if OPT_SYNC_RANGE_SKIP
         if (sync_range_covers(r, pg->vertex_attr_gen, min_element, max_element) &&
             !has_dirty_vertex_pages(r)) {
@@ -7684,9 +8490,9 @@ static void flush_draw_one_pass(NV2AState *d)
         sync_vertex_ram_buffer(pg);
 #endif
         VertexBufferRemap remap = remap_unaligned_attributes(pg, max_element);
-        NV2A_PHASE_TIMER_END(draw_vtx_sync);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vtx_sync);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_prim_rw);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_prim_rw);
         PrimRewrite prim_rw = pgraph_prim_rewrite_ranges(
             &r->prim_rewrite_buf, assembly,
             pg->draw_arrays_start, pg->draw_arrays_count,
@@ -7701,21 +8507,21 @@ static void flush_draw_one_pass(NV2AState *d)
                 pg->draw_arrays_length * sizeof(VkDrawIndirectCommand);
             ensure_buffer_space(pg, BUFFER_INDEX_STAGING, indirect_size);
         }
-        NV2A_PHASE_TIMER_END(draw_prim_rw);
+        NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto draw_arrays_done;
 #endif
-        NV2A_PHASE_TIMER_BEGIN(draw_setup);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         copy_remapped_attributes_to_inline_buffer(pg, remap, 0, max_element);
         pgraph_vk_begin_debug_marker(r, r->command_buffer, RGBA_BLUE,
                                      "Draw Arrays");
         begin_draw(pg);
         bind_vertex_buffer(pg, remap.attributes, 0);
-        NV2A_PHASE_TIMER_END(draw_setup);
+        NV2A_PHASE_TIMER_END_EXCL(draw_setup);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vk_cmd);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vk_cmd);
         if (prim_rw.num_indices > 0) {
             size_t rewrite_size = prim_rw.num_indices * sizeof(uint32_t);
             VkDeviceSize buffer_offset = pgraph_vk_update_index_buffer(
@@ -7756,7 +8562,7 @@ static void flush_draw_one_pass(NV2AState *d)
 
         end_draw(pg);
         pgraph_vk_end_debug_marker(r, r->command_buffer);
-        NV2A_PHASE_TIMER_END(draw_vk_cmd);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vk_cmd);
 
         nv2a_diag_log_draw_call(d, pg, "draw_arrays", max_element);
 draw_arrays_done:
@@ -7769,7 +8575,7 @@ draw_arrays_done:
 
         nv2a_profile_inc_counter(NV2A_PROF_INLINE_ELEMENTS);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_prim_rw);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_prim_rw);
         uint32_t *draw_indices = pg->inline_elements;
         unsigned int draw_index_count = pg->inline_elements_length;
         PrimRewrite prim_rw = pgraph_prim_rewrite_indexed(
@@ -7782,9 +8588,9 @@ draw_arrays_done:
 
         size_t index_data_size = draw_index_count * sizeof(uint32_t);
         ensure_buffer_space(pg, BUFFER_INDEX_STAGING, index_data_size);
-        NV2A_PHASE_TIMER_END(draw_prim_rw);
+        NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vtx_attr);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vtx_attr);
         uint32_t min_element = (uint32_t)-1;
         uint32_t max_element = 0;
         for (unsigned int i = 0; i < draw_index_count; i++) {
@@ -7794,9 +8600,9 @@ draw_arrays_done:
         pgraph_vk_bind_vertex_attributes(
             d, min_element, max_element, false, 0,
             draw_indices[draw_index_count - 1]);
-        NV2A_PHASE_TIMER_END(draw_vtx_attr);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vtx_attr);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vtx_sync);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vtx_sync);
 #if OPT_SYNC_RANGE_SKIP
         if (sync_range_covers(r, pg->vertex_attr_gen, min_element, max_element) &&
             !has_dirty_vertex_pages(r)) {
@@ -7810,13 +8616,13 @@ draw_arrays_done:
         sync_vertex_ram_buffer(pg);
 #endif
         VertexBufferRemap remap = remap_unaligned_attributes(pg, max_element + 1);
-        NV2A_PHASE_TIMER_END(draw_vtx_sync);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vtx_sync);
 
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto inline_elements_done;
 #endif
-        NV2A_PHASE_TIMER_BEGIN(draw_setup);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         copy_remapped_attributes_to_inline_buffer(pg, remap, 0, max_element + 1);
         VkDeviceSize buffer_offset = pgraph_vk_update_index_buffer(
             pg, draw_indices, index_data_size);
@@ -7824,16 +8630,16 @@ draw_arrays_done:
                                      "Inline Elements");
         begin_draw(pg);
         bind_vertex_buffer(pg, remap.attributes, 0);
-        NV2A_PHASE_TIMER_END(draw_setup);
+        NV2A_PHASE_TIMER_END_EXCL(draw_setup);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vk_cmd);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vk_cmd);
         vkCmdBindIndexBuffer(r->command_buffer,
                              r->storage_buffers[BUFFER_INDEX].buffer,
                              buffer_offset, VK_INDEX_TYPE_UINT32);
         vkCmdDrawIndexed(r->command_buffer, draw_index_count, 1, 0, 0, 0);
         end_draw(pg);
         pgraph_vk_end_debug_marker(r, r->command_buffer);
-        NV2A_PHASE_TIMER_END(draw_vk_cmd);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vk_cmd);
 
         nv2a_diag_log_draw_call(d, pg, "inline_elements", draw_index_count);
 inline_elements_done:
@@ -7844,7 +8650,7 @@ inline_elements_done:
         nv2a_profile_inc_counter(NV2A_PROF_INLINE_BUFFERS);
         assert(pg->inline_array_length == 0);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vtx_attr);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vtx_attr);
         size_t vertex_data_size = pg->inline_buffer_length * sizeof(float) * 4;
         void *data[NV2A_VERTEXSHADER_ATTRIBUTES];
         size_t sizes[NV2A_VERTEXSHADER_ATTRIBUTES];
@@ -7863,9 +8669,9 @@ inline_elements_done:
             attr->inline_buffer_populated = false;
             offset += vertex_data_size;
         }
-        NV2A_PHASE_TIMER_END(draw_vtx_attr);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vtx_attr);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_prim_rw);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_prim_rw);
         PrimRewrite prim_rw = pgraph_prim_rewrite_sequential(
             &r->prim_rewrite_buf, assembly, 0, pg->inline_buffer_length);
 
@@ -7874,22 +8680,22 @@ inline_elements_done:
             size_t rewrite_size = prim_rw.num_indices * sizeof(uint32_t);
             ensure_buffer_space(pg, BUFFER_INDEX_STAGING, rewrite_size);
         }
-        NV2A_PHASE_TIMER_END(draw_prim_rw);
+        NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto inline_buffer_done;
 #endif
-        NV2A_PHASE_TIMER_BEGIN(draw_setup);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         VkDeviceSize buffer_offset = pgraph_vk_update_vertex_inline_buffer(
             pg, data, sizes, r->num_active_vertex_attribute_descriptions);
         pgraph_vk_begin_debug_marker(r, r->command_buffer, RGBA_BLUE,
                                      "Inline Buffer");
         begin_draw(pg);
         bind_inline_vertex_buffer(pg, buffer_offset);
-        NV2A_PHASE_TIMER_END(draw_setup);
+        NV2A_PHASE_TIMER_END_EXCL(draw_setup);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vk_cmd);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vk_cmd);
         if (prim_rw.num_indices > 0) {
             size_t rewrite_size = prim_rw.num_indices * sizeof(uint32_t);
             VkDeviceSize idx_offset = pgraph_vk_update_index_buffer(
@@ -7905,7 +8711,7 @@ inline_elements_done:
 
         end_draw(pg);
         pgraph_vk_end_debug_marker(r, r->command_buffer);
-        NV2A_PHASE_TIMER_END(draw_vk_cmd);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vk_cmd);
 
         nv2a_diag_log_draw_call(d, pg, "inline_buffer",
                                 pg->inline_buffer_length);
@@ -7916,7 +8722,7 @@ inline_buffer_done:
         NV2A_VK_DGROUP_BEGIN("Inline Array");
         nv2a_profile_inc_counter(NV2A_PROF_INLINE_ARRAYS);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vtx_attr);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vtx_attr);
         VkDeviceSize inline_array_data_size = pg->inline_array_length * 4;
         ensure_buffer_space(pg, BUFFER_VERTEX_INLINE_STAGING,
                                inline_array_data_size);
@@ -7943,9 +8749,9 @@ inline_buffer_done:
         NV2A_DPRINTF("draw inline array %d, %d\n", vertex_size, index_count);
         pgraph_vk_bind_vertex_attributes(d, 0, index_count - 1, true,
                                          vertex_size, index_count - 1);
-        NV2A_PHASE_TIMER_END(draw_vtx_attr);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vtx_attr);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_prim_rw);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_prim_rw);
         PrimRewrite prim_rw = pgraph_prim_rewrite_sequential(
             &r->prim_rewrite_buf, assembly, 0, index_count);
 
@@ -7953,13 +8759,13 @@ inline_buffer_done:
             size_t rewrite_size = prim_rw.num_indices * sizeof(uint32_t);
             ensure_buffer_space(pg, BUFFER_INDEX_STAGING, rewrite_size);
         }
-        NV2A_PHASE_TIMER_END(draw_prim_rw);
+        NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto inline_array_done;
 #endif
-        NV2A_PHASE_TIMER_BEGIN(draw_setup);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         void *inline_array_data = pg->inline_array;
         VkDeviceSize buffer_offset = pgraph_vk_update_vertex_inline_buffer(
             pg, &inline_array_data, &inline_array_data_size, 1);
@@ -7967,9 +8773,9 @@ inline_buffer_done:
                                      "Inline Array");
         begin_draw(pg);
         bind_inline_vertex_buffer(pg, buffer_offset);
-        NV2A_PHASE_TIMER_END(draw_setup);
+        NV2A_PHASE_TIMER_END_EXCL(draw_setup);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vk_cmd);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vk_cmd);
         if (prim_rw.num_indices > 0) {
             size_t rewrite_size = prim_rw.num_indices * sizeof(uint32_t);
             VkDeviceSize idx_offset = pgraph_vk_update_index_buffer(
@@ -7985,7 +8791,7 @@ inline_buffer_done:
 
         end_draw(pg);
         pgraph_vk_end_debug_marker(r, r->command_buffer);
-        NV2A_PHASE_TIMER_END(draw_vk_cmd);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vk_cmd);
 
         nv2a_diag_log_draw_call(d, pg, "inline_array", index_count);
 inline_array_done:
@@ -7997,12 +8803,10 @@ inline_array_done:
     }
 
 #ifndef NDEBUG
-    assert(snap.primitive_mode == pg->primitive_mode);
-    assert(snap.clearing == pg->clearing);
-    assert(snapshot_reg_r(&snap, NV_PGRAPH_CONTROL_0) ==
-           pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0));
-    assert(snapshot_reg_r(&snap, NV_PGRAPH_SETUPRASTER) ==
-           pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER));
+    assert(snap_primitive_mode == pg->primitive_mode);
+    assert(snap_clearing == pg->clearing);
+    assert(snap_control_0 == pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0));
+    assert(snap_setupraster == pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER));
 #endif
 
     NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);

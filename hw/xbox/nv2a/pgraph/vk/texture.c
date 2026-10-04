@@ -37,6 +37,89 @@ static bool image_pool_acquire(PGRAPHVkState *r, const TextureImageConfig *confi
                                VkImage *out_image, VmaAllocation *out_allocation);
 static void image_pool_drain(PGRAPHVkState *r);
 
+/*
+ * #461's attribution counters (g_opt_stats.txh_*, txu_*, txk_*, txr_*):
+ * statements that exist only in an NV2A_PERF_LOG build, so a default build
+ * compiles to the same object code with or without them.
+ */
+#if NV2A_PERF_LOG
+#define TEX_PERF(...) do { __VA_ARGS__; } while (0)
+#else
+#define TEX_PERF(...) do { } while (0)
+#endif
+
+/*
+ * #474: wall time of each step of pgraph_vk_bind_textures(), NV2A_PERF_LOG
+ * only. The phase line's Pipe.Tx is ~9 ms/frame of wall on AUF and Blinx
+ * against ~0.1 ms on-CPU, with no uploads or hashes in the window, so the
+ * call is waiting somewhere; these name where. Wall, not CPU, and nested:
+ * bt holds res and ct; ct holds sdl, scan, faf, bs, cp and up; bs holds
+ * flq (the draw and reorder queue flush) and nd (the command-buffer begin).
+ * Printed per window of 60 guest flips as ms/flip and calls/flip.
+ */
+#if NV2A_PERF_LOG
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+enum {
+    TXW_BT, TXW_RES, TXW_CT, TXW_SDL, TXW_SCAN, TXW_FAF,
+    TXW_BS, TXW_FLQ, TXW_ND, TXW_CP, TXW_UP, TXW__N
+};
+static struct {
+    int64_t ns[TXW__N];
+    int n[TXW__N];
+    unsigned int frame0;
+    int64_t t0;
+} txw;
+#define TXW_BEGIN(k) int64_t _txw_t0_##k = nv2a_clock_ns()
+#define TXW_END(k) do { \
+    txw.ns[TXW_##k] += nv2a_clock_ns() - _txw_t0_##k; \
+    txw.n[TXW_##k]++; \
+} while (0)
+
+static void txw_log_window(PGRAPHState *pg)
+{
+    int64_t now = nv2a_clock_ns();
+    unsigned int frames = pg->frame_time - txw.frame0;
+
+    if (txw.t0 == 0 || frames > 100000) {   /* first call, or a reset */
+        memset(&txw, 0, sizeof(txw));
+        txw.frame0 = pg->frame_time;
+        txw.t0 = now;
+        return;
+    }
+    if (frames < 60) {
+        return;
+    }
+#define TXW_MS(k) (txw.ns[TXW_##k] / 1e6 / frames)
+#define TXW_N(k) ((double)txw.n[TXW_##k] / frames)
+#define TXW_FMT "txw[f%u %.1fs bt%.2f/%.0f res%.2f ct%.2f/%.1f sdl%.2f/%.2f " \
+    "scan%.2f/%.1f faf%.2f/%.2f bs%.2f/%.2f flq%.2f nd%.2f cp%.2f/%.2f " \
+    "up%.2f/%.2f]"
+#define TXW_ARGS frames, (now - txw.t0) / 1e9, \
+    TXW_MS(BT), TXW_N(BT), TXW_MS(RES), TXW_MS(CT), TXW_N(CT), \
+    TXW_MS(SDL), TXW_N(SDL), TXW_MS(SCAN), TXW_N(SCAN), \
+    TXW_MS(FAF), TXW_N(FAF), TXW_MS(BS), TXW_N(BS), \
+    TXW_MS(FLQ), TXW_MS(ND), TXW_MS(CP), TXW_N(CP), TXW_MS(UP), TXW_N(UP)
+#ifdef __ANDROID__
+    /* hakuX-stall: the dispatcher's logcat allow-list names it */
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall", TXW_FMT, TXW_ARGS);
+#else
+    fprintf(stderr, "[hakuX-stall] " TXW_FMT "\n", TXW_ARGS);
+#endif
+#undef TXW_ARGS
+#undef TXW_FMT
+#undef TXW_N
+#undef TXW_MS
+    memset(&txw, 0, sizeof(txw));
+    txw.frame0 = pg->frame_time;
+    txw.t0 = now;
+}
+#else
+#define TXW_BEGIN(k) do { } while (0)
+#define TXW_END(k) do { } while (0)
+#endif
+
 
 static const VkImageType dimensionality_to_vk_image_type[] = {
     0,
@@ -218,6 +301,15 @@ static size_t get_cubemap_layer_size(PGRAPHState *pg, TextureShape s)
 // FIXME: More refactoring
 // FIXME: Possible parallelization of decoding
 // FIXME: Bounds checking
+#if NV2A_PERF_LOG
+/* #461: the decode path of a level pgraph_convert_texture_data() converted */
+static int txk_converted(const TextureShape *s)
+{
+    return s->color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8 ?
+        TXK_PAL : TXK_CVT;
+}
+#endif
+
 static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
 {
     NV2AState *d = container_of(pg, NV2AState, pgraph);
@@ -278,6 +370,8 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
         uint8_t *converted = pgraph_convert_texture_data(
             s, texture_data_ptr, palette_data_ptr, adjusted_width,
             adjusted_height, 1, adjusted_pitch, 0, &converted_size);
+        TEX_PERF(g_opt_stats.txk_b[converted ? txk_converted(&s) : TXK_LIN] +=
+                 (uint64_t)adjusted_pitch * adjusted_height);
 
         if (!converted) {
             int dst_stride = adjusted_width * f.bytes_per_pixel;
@@ -338,6 +432,7 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
                          * No decompression needed. */
                         uint8_t *raw_copy = g_malloc(compressed_size);
                         memcpy(raw_copy, texture_data_ptr, compressed_size);
+                        TEX_PERF(g_opt_stats.txk_b[TXK_BC] += compressed_size);
 
                         layout->layers[layer].levels[level] = (TextureLevel){
                             .width = tex_width,
@@ -352,6 +447,7 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
                             kelvin_format_to_s3tc_format(s.color_format),
                             texture_data_ptr, width, height);
                         assert(converted);
+                        TEX_PERF(g_opt_stats.txk_b[TXK_S3TC] += compressed_size);
 
 
                         layout->layers[layer].levels[level] = (TextureLevel){
@@ -376,6 +472,9 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
                     uint8_t *converted = pgraph_convert_texture_data(
                         s, unswizzled, palette_data_ptr, width, height, 1,
                         pitch, 0, &converted_size);
+                    TEX_PERF(g_opt_stats.txk_b[converted ? txk_converted(&s) :
+                                               TXK_SWZ] +=
+                             (uint64_t)height * pitch);
 
                     if (converted) {
                         g_free(unswizzled);
@@ -429,6 +528,7 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
                         kelvin_format_to_s3tc_format(s.color_format),
                         texture_data_ptr, width, height, depth);
                     assert(converted);
+                    TEX_PERF(g_opt_stats.txk_b[TXK_S3TC] += compressed_size);
 
                     layout->layers[0].levels[level] = (TextureLevel){
                         .width = width,
@@ -458,6 +558,8 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
                 uint8_t *converted = pgraph_convert_texture_data(
                     s, unswizzled, palette_data_ptr, width, height, depth,
                     row_pitch, slice_pitch, &converted_size);
+                TEX_PERF(g_opt_stats.txk_b[converted ? txk_converted(&s) :
+                                           TXK_SWZ] += unswizzled_size);
 
                 if (converted) {
                     g_free(unswizzled);
@@ -622,6 +724,8 @@ static void upload_texture_image(PGRAPHState *pg, int texture_idx,
                                  TextureBinding *binding)
 {
     OPT_STAT_INC(tex_cache_uploads);
+    TEX_PERF(g_opt_stats.txu_b += binding->key.texture_length +
+                                  binding->key.palette_length);
     NV2A_PHASE_TIMER_BEGIN_EXCL(texture_upload);
     PGRAPHVkState *r = pg->vk_renderer_state;
     TextureShape *state = &binding->key.state;
@@ -1022,7 +1126,9 @@ static void bind_surface_as_texture(PGRAPHState *pg, SurfaceBinding *surface,
                                     TextureBinding *texture)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
+    TEX_PERF(g_opt_stats.txr_s2td++);
 
+    TXW_BEGIN(FLQ);
     if (r->reorder_window.count > 0) {
         NV2AState *d = container_of(pg, NV2AState, pgraph);
         pgraph_vk_flush_reorder_window(d);
@@ -1031,11 +1137,14 @@ static void bind_surface_as_texture(PGRAPHState *pg, SurfaceBinding *surface,
         NV2AState *d = container_of(pg, NV2AState, pgraph);
         pgraph_vk_flush_draw_queue(d);
     }
+    TXW_END(FLQ);
 
     nv2a_profile_inc_counter(NV2A_PROF_SURF_TO_TEX);
 
     // End render pass to flush tile writes, then barrier for shader reads
+    TXW_BEGIN(ND);
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+    TXW_END(ND);
 
     VkImageMemoryBarrier barrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -1073,10 +1182,12 @@ static void bind_zeta_surface_as_texture(PGRAPHState *pg,
                                          TextureBinding *texture)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
+    TEX_PERF(g_opt_stats.txr_s2td++);
 
     assert(!surface->color);
     assert(!(surface->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT));
 
+    TXW_BEGIN(FLQ);
     if (r->reorder_window.count > 0) {
         NV2AState *d = container_of(pg, NV2AState, pgraph);
         pgraph_vk_flush_reorder_window(d);
@@ -1085,10 +1196,13 @@ static void bind_zeta_surface_as_texture(PGRAPHState *pg,
         NV2AState *d = container_of(pg, NV2AState, pgraph);
         pgraph_vk_flush_draw_queue(d);
     }
+    TXW_END(FLQ);
 
     nv2a_profile_inc_counter(NV2A_PROF_SURF_TO_TEX);
 
+    TXW_BEGIN(ND);
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+    TXW_END(ND);
 
     VkImageMemoryBarrier barrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -1122,6 +1236,7 @@ static void bind_zeta_surface_as_texture(PGRAPHState *pg,
 static void copy_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surface,
                                     TextureBinding *texture)
 {
+    TEX_PERF(g_opt_stats.txr_s2tc++);
     if (!surface->color) {
         copy_zeta_surface_to_texture(pg, surface, texture);
         return;
@@ -1693,6 +1808,7 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
 {
     VK_LOG("create_texture: idx=%d", texture_idx);
     NV2A_VK_DGROUP_BEGIN("Creating texture %d", texture_idx);
+    TEX_PERF(g_opt_stats.txr_ct++);
 
     NV2AState *d = container_of(pg, NV2AState, pgraph);
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -1806,6 +1922,11 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     bool possibly_dirty_checked = false;
     bool surface_to_texture = false;
     r->tex_surface_direct[texture_idx] = false;
+#if NV2A_PERF_LOG
+    /* #461: the reasons that raised possibly_dirty (TXH_*), and the hash's size */
+    bool tx_srf = false, tx_rb = false, tx_memo = false, tx_bit = false;
+    uint64_t tx_hb = 0;
+#endif
 
     SurfaceBinding *surface = pgraph_vk_surface_get(d, texture_vram_offset);
     if (surface && state.levels == 1) {
@@ -1846,7 +1967,12 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
      * texture upload reads fresh data instead of stale VRAM.
      */
     if (!surface_to_texture && surface && surface->draw_dirty) {
+        TEX_PERF(g_opt_stats.txr_dl++;
+                 g_opt_stats.txr_dl_b += (uint64_t)surface->pitch * surface->height;
+                 tx_srf = true);
+        TXW_BEGIN(SDL);
         pgraph_vk_surface_download_if_dirty(d, surface);
+        TXW_END(SDL);
         possibly_dirty = true;
     }
 
@@ -1886,8 +2012,19 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
         }
 
         if (!skip_surf_scan) {
+#if NV2A_PERF_LOG
+            /* the scan's downloads are counted where they happen, in
+             * vk/surface.c; this call's share is the difference */
+            int tx_dl0 = g_opt_stats.dif_other + g_opt_stats.sd_shelved_lazy_dl;
+#endif
+            TXW_BEGIN(SCAN);
             bool had_overlap = pgraph_vk_download_surfaces_in_range_if_dirty(
                 pg, texture_vram_offset, texture_length);
+            TXW_END(SCAN);
+            TEX_PERF(g_opt_stats.txr_sc++;
+                     g_opt_stats.txr_scdl += g_opt_stats.dif_other +
+                                             g_opt_stats.sd_shelved_lazy_dl -
+                                             tx_dl0);
             r->tex_surf_range_cache[texture_idx].vram_addr = texture_vram_offset;
             r->tex_surf_range_cache[texture_idx].length = texture_length;
             r->tex_surf_range_cache[texture_idx].had_overlap = had_overlap;
@@ -2053,6 +2190,7 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
         snode->image_view = VK_NULL_HANDLE;
         binding_found = false;
         possibly_dirty = true;
+        TEX_PERF(tx_rb = true);
     }
 
     /*
@@ -2085,6 +2223,7 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
             snode->dirty_check_frame == pg->frame_time;
         if (skip_dirty_check && snode->dirty_check_result) {
             possibly_dirty = true;
+            TEX_PERF(tx_memo = true);
         }
         if (!skip_dirty_check) {
             bool vram_dirty = check_texture_dirty(
@@ -2095,6 +2234,7 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
             }
             if (vram_dirty) {
                 possibly_dirty = true;
+                TEX_PERF(tx_bit = true);
             }
             if (binding_found) {
                 snode->dirty_check_frame = pg->frame_time;
@@ -2119,10 +2259,37 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
 
     uint64_t content_hash = 0;
     if (!surface_to_texture && possibly_dirty) {
+        NV2A_PHASE_TIMER_BEGIN(tex_hash);
         content_hash = fast_hash(texture_data, texture_length);
         if (is_indexed) {
             content_hash ^= fast_hash(palette_data, texture_palette_data_size);
         }
+        NV2A_PHASE_TIMER_END(tex_hash);
+#if NV2A_PERF_LOG
+        /*
+         * #461: why this hash ran, counted here rather than where a reason
+         * is raised, because the confirmed-clean check above can still
+         * cancel a raised reason before any hash runs. A fresh bitmap hit
+         * is split by whether a surface overlaps the texture's range, since
+         * a surface download also sets the texture-dirty bits over it.
+         */
+        int why = !binding_found ? (tx_rb ? TXH_RB : TXH_NEW) :
+                  tx_srf ? TXH_SRF :
+                  pending_mark ? TXH_MK :
+                  tx_memo ? TXH_MEMO :
+                  tx_bit ? (r->tex_surf_range_cache[texture_idx].had_overlap ?
+                            TXH_BOV : TXH_BIT) :
+                  TXH_OTH;
+        tx_hb = texture_length + (is_indexed ? texture_palette_data_size : 0);
+        g_opt_stats.txh_n[why]++;
+        g_opt_stats.txh_b[why] += tx_hb;
+        if (snode->pf_hashed && snode->pf_hash_frame == pg->frame_time) {
+            g_opt_stats.txh_rep++;
+            g_opt_stats.txh_rep_b += tx_hb;
+        }
+        snode->pf_hashed = true;
+        snode->pf_hash_frame = pg->frame_time;
+#endif
     }
 
     if (binding_found) {
@@ -2130,9 +2297,6 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
         bool did_upload = false;
         if (surface_to_texture) {
             if (surface->draw_time != snode->draw_time) {
-                if (snode->submit_time + r->num_active_frames > r->submit_count) {
-                    pgraph_vk_flush_all_frames(pg);
-                }
                 bool can_direct_bind =
                     (surface->color ||
                      !(surface->host_fmt.aspect &
@@ -2141,6 +2305,7 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
 
                 if (can_direct_bind) {
                     VkImageLayout direct_layout;
+                    TXW_BEGIN(BS);
                     if (surface->color) {
                         bind_surface_as_texture(pg, surface, snode);
                         direct_layout = VK_IMAGE_LAYOUT_GENERAL;
@@ -2149,13 +2314,36 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                         direct_layout =
                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
                     }
+                    TXW_END(BS);
                     r->tex_surface_direct[texture_idx] = true;
                     r->tex_surface_direct_views[texture_idx] =
                         surface->image_view;
                     r->tex_surface_direct_layout[texture_idx] = direct_layout;
                     r->texture_bindings_changed = true;
                 } else {
+                    /*
+                     * #474: only the copy writes the node's image, so only
+                     * the copy waits for the frames that may still sample it.
+                     * A direct bind writes nothing into the node: it barriers
+                     * the surface's own image in queue order and points the
+                     * slot at the surface's view. In-flight frames keep the
+                     * descriptors they were recorded with (pushed, or a set
+                     * from a ring that is only reused after its own drain),
+                     * and the node's view and layout are untouched. The
+                     * cache-miss bind and the same-draw_time rebind already
+                     * bind directly without this drain. On AUF (Nova) it ran
+                     * 0.27 times a flip at 16.6 ms each, every one of them
+                     * ahead of a direct bind.
+                     */
+                    if (snode->submit_time + r->num_active_frames >
+                        r->submit_count) {
+                        TXW_BEGIN(FAF);
+                        pgraph_vk_flush_all_frames(pg);
+                        TXW_END(FAF);
+                    }
+                    TXW_BEGIN(CP);
                     copy_surface_to_texture(pg, surface, snode);
+                    TXW_END(CP);
                 }
                 did_s2t_copy = true;
             } else if ((surface->color ||
@@ -2172,6 +2360,12 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
             bool vram_changed = possibly_dirty && content_hash != snode->hash;
             bool needs_replace =
                 pgraph_vk_texture_replace_needs_upload(snode->hash);
+#if NV2A_PERF_LOG
+            if (possibly_dirty && !vram_changed) {   /* hashed, and unchanged */
+                g_opt_stats.txh_eq++;
+                g_opt_stats.txh_eq_b += tx_hb;
+            }
+#endif
 
             if (vram_changed || needs_replace) {
                 OPT_STAT_INC(tex_cache_hash_misses);
@@ -2180,9 +2374,14 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                     OPT_STAT_INC(tex_zero_reupload);
                 }
                 if (snode->submit_time + r->num_active_frames > r->submit_count) {
+                    TXW_BEGIN(FAF);
                     pgraph_vk_flush_all_frames(pg);
+                    TXW_END(FAF);
                 }
+                TXW_BEGIN(UP);
                 upload_texture_image(pg, texture_idx, snode);
+                TXW_END(UP);
+                TEX_PERF(g_opt_stats.txu_n[vram_changed ? TXU_CHG : TXU_OTH]++);
                 /* Only update hash when VRAM actually changed,
                  * not when replacement triggered the re-upload */
                 if (vram_changed) {
@@ -2191,6 +2390,21 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                 did_upload = true;
             }
             snode->possibly_dirty = false;
+            if (possibly_dirty) {
+                /*
+                 * #461: the hash has just settled this flip's verdict, so the
+                 * memo must stop saying "dirty". Left standing, it forced a
+                 * hash on every later bind of this binding until the flip:
+                 * on the Crimson Skies soak, nine hashes in ten repeated one
+                 * taken earlier in the same flip, and nearly all compared
+                 * equal. A later bind now asks the bitmap again, as the first
+                 * bind of a flip does. No write is lost: the bits are
+                 * consumed only by check_texture_dirty(), which marks every
+                 * binding over the range, so a write after this hash is
+                 * either still in the bitmap or has marked this node.
+                 */
+                snode->dirty_check_frame = pg->frame_time - 1;
+            }
         }
 
         NV2A_VK_DGROUP_END();
@@ -2217,6 +2431,10 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     snode->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
     snode->possibly_dirty = false;
     snode->hash = content_hash;
+    if (!surface_to_texture) {
+        /* the hash above settled this flip's verdict: see the found path */
+        snode->dirty_check_frame = pg->frame_time - 1;
+    }
 
     VkColorFormatInfo vkf = kelvin_color_format_vk_map[state.color_format];
 
@@ -2579,6 +2797,7 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
 
         if (can_direct_bind) {
             VkImageLayout direct_layout;
+            TXW_BEGIN(BS);
             if (surface->color) {
                 bind_surface_as_texture(pg, surface, snode);
                 direct_layout = VK_IMAGE_LAYOUT_GENERAL;
@@ -2587,14 +2806,20 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                 direct_layout =
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
             }
+            TXW_END(BS);
             r->tex_surface_direct[texture_idx] = true;
             r->tex_surface_direct_views[texture_idx] = surface->image_view;
             r->tex_surface_direct_layout[texture_idx] = direct_layout;
         } else {
+            TXW_BEGIN(CP);
             copy_surface_to_texture(pg, surface, snode);
+            TXW_END(CP);
         }
     } else {
+        TXW_BEGIN(UP);
         upload_texture_image(pg, texture_idx, snode);
+        TXW_END(UP);
+        TEX_PERF(g_opt_stats.txu_n[tx_rb ? TXU_RB : TXU_NEW]++);
         snode->draw_time = 0;
     }
 
@@ -2693,17 +2918,25 @@ void pgraph_vk_bind_textures(NV2AState *d)
     PGRAPHVkState *r = pg->vk_renderer_state;
 
 
+    TEX_PERF(txw_log_window(pg));
+    TXW_BEGIN(BT);
+
     r->texture_bindings_changed = retired_view_rebuild_pending;
     retired_view_rebuild_pending = false;
+    TEX_PERF(g_opt_stats.txr_bt++);
 
     if (!check_textures_dirty(pg)) {
         NV2A_VK_DPRINTF("Not dirty");
         NV2A_VK_DGROUP_END();
         update_timestamps(r);
+        TXW_END(BT);
         return;
     }
+    TEX_PERF(g_opt_stats.txr_btl++);
 
+    TXW_BEGIN(RES);
     resolve_possibly_dirty_textures(d);
+    TXW_END(RES);
 
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
         if (!pgraph_is_texture_enabled(pg, i) ||
@@ -2769,7 +3002,9 @@ void pgraph_vk_bind_textures(NV2AState *d)
          */
         TextureBinding *prev_binding = r->texture_bindings[i];
         SlotView prev_view = slot_view(r, i);
+        TXW_BEGIN(CT);
         bool bound = create_texture(pg, i);
+        TXW_END(CT);
 
         /*
          * create_texture binds nothing when the texture LRU can serve no
@@ -2855,6 +3090,7 @@ void pgraph_vk_bind_textures(NV2AState *d)
         r->pipeline_state_dirty = true;
     }
     update_timestamps(r);
+    TXW_END(BT);
     NV2A_VK_DGROUP_END();
 }
 
@@ -2870,6 +3106,7 @@ static void texture_cache_entry_init(Lru *lru, LruNode *node, const void *state)
     snode->submit_time = 0;
     snode->dirty_check_frame = 0;
     snode->dirty_check_result = false;
+    TEX_PERF(snode->pf_hashed = false);
 
     if (!snode->in_active_list) {
         QTAILQ_INSERT_HEAD(&r->texture_active_list, snode, active_entry);

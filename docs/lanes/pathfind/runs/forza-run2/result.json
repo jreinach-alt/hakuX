@@ -1,0 +1,32 @@
+{
+ "title_id": "4D53006E",
+ "name": "Forza Motorsport",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D53006E-Forza_Motorsport.xiso.iso",
+ "result": "gave-up",
+ "tool": "f40fddbc45",
+ "started": "2026-10-03 13:33:39 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/forza-run2/frames/076-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/forza-run2/frames/076-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/forza-run2/frames/076-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/forza-run2/frames/076-probe-right.jpg"
+ ],
+ "reason": "budget 15 min",
+ "last_state": "probe",
+ "model_calls": 60,
+ "calls_by_model": {
+  "claude-sonnet-5": 60
+ },
+ "steps": 84,
+ "seconds": 900.2,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/forza-run2/frames/083-gameplay.jpg",
+ "replayed": 2,
+ "sib_replayed": 0,
+ "guide": [
+  "4D53006E"
+ ],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/forza-run2/strip.jpg"
+}

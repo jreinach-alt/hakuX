@@ -89,6 +89,18 @@ LOG="$WORK/logs/handback/tick.log"
 # The tick log is read by hand when something jams, so it is display: local.
 say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 mode="${1:-run}"
+# THE LOCAL FORGE (lane.localforge, 2026-10-02). While GitHub is suspended,
+# `gh` is the forge shim and the unit's forge drop-in sets HAKUX_FORGE=1.
+# Under it, a `run` is a `list`: it says what it would resume, and resumes,
+# labels and comments nothing. That holds until lane.local sets
+# HANDBACK_DRY_RUN=0. Offline, lanes are resumed by
+# host-tools/lanewatch_offline.sh, and two resumers on one lane is the race
+# this file guards against everywhere else.
+HANDBACK_DRY_RUN="${HANDBACK_DRY_RUN:-${HAKUX_FORGE:-0}}"
+if [ "$mode" = run ] && [ "$HANDBACK_DRY_RUN" = 1 ]; then
+    say "DRY RUN (HANDBACK_DRY_RUN=1, local forge): this run is a list; nothing is resumed, labelled or commented"
+    mode=list
+fi
 # A no-PR row (the idle cause, PR `none`) has nowhere to comment: the tick log is its record.
 comment() { [ "$1" != none ] || return 0; printf '%s\n' "$2" > "$H/comment.md"; gh pr comment "$1" --repo "$GH_REPO" --body-file "$H/comment.md" >/dev/null 2>&1; }
 
@@ -401,6 +413,17 @@ idle_now() {
 # resting state -- and so are remote lanes, which this host does not drive,
 # and a lane whose issue carries `decision-needed`, which is the owner's.
 # Emits the same eight fields as the other pickups, with PR `none`.
+#
+# MERGED IS DONE ONLY IF NOTHING CAME BACK AFTER IT. A multi-batch lane folds
+# one PR per batch and keeps its territory row: lane.titleroutes (#397) merged
+# batch 5 as #476, queued three Thor soaks for batch 6, and ended its session
+# at 07:31 PDT 2026-09-27 with no open PR. No draft pickup could see it and
+# this one skipped it as merged, so the soaks finished and woke nobody. A lane
+# with a live row, a MERGED PR on its branch and no OPEN one is therefore
+# emitted too, marked `merged=1`, and the `merged-runs` cause below resumes it
+# only when `lane_requests_of` says nothing of its is in flight AND a run has
+# finished since its last session ended. A merged lane with no such run is
+# done, and is left for the board to retire.
 idle_lanes() {
     local prs dn
     prs=$(gh pr list --repo "$GH_REPO" --state all --limit 300 --json number,state,headRefName \
@@ -430,9 +453,12 @@ for name, row in sorted((t.get("lane") or {}).items()):
         continue
     if not (os.path.isdir(os.path.join(W, "wt", name)) and os.path.isfile(os.path.join(W, "briefs", name + ".md"))):
         continue
-    if states.get("lane/" + name, set()) & {"OPEN", "MERGED"}:
-        continue
     if {str(i) for i in row.get("issues", [])} & dn:
+        continue
+    st = states.get("lane/" + name, set())
+    if "MERGED" in st and "OPEN" not in st:
+        print("none\tlane/%s\tnone\tisDraft=none ci=NONE quiet=0 merged=1\t" % name)
+    if states.get("lane/" + name, set()) & {"OPEN", "MERGED"}:
         continue
     print("none\tlane/%s\tnone\tisDraft=none ci=NONE quiet=0\t" % name)
 PY
@@ -443,6 +469,150 @@ PY
 # A draft carrying one of them is not unowned, which is the only thing this
 # cause is about.
 STRAND_STALE="folded fold-ready needs-rebase needs-audit-1 needs-audit-2 needs-remediation blocked:needs-owner"
+# AND EVERY `blocked:*` LABEL, BY PREFIX, FOR EVERY CAUSE. A label that says
+# blocked already names its actor -- a person, or a release gate such as
+# `blocked:after-0.5` -- so a PR carrying one is parked, not stranded. The list
+# above named only `blocked:needs-owner`, and on 2026-09-26 the host's parked
+# drafts #436 and #439 (`blocked:after-0.5`, #433's policy) were strand-resumed
+# twice each to re-post "blocked: parked until after 0.5". A prefix, not one
+# more literal, so the next `blocked:<x>` does not reopen it. The same holds for
+# the lane's ISSUE: a lane whose territory issue carries `blocked:*` is parked
+# whatever its PR says, and a lane with no PR is not idle while it is.
+#
+# EXCEPT `blocked:in-flight` ON THE ISSUE. The board and hostops set it on an
+# issue to say "lanes are already working this; do not dispatch another one"
+# -- it blocks a NEW lane, and it describes exactly the lanes it would park.
+# #569 carried it from 2026-09-28T18:41Z, and every lane on #569 that ended
+# waiting on its device runs (shaderfb569, litcompile569, uberspike569,
+# gpl569, ibcache, memfast) was never resumed when they finished; each needed a
+# hand-made hostops waiter unit, and harness_health.py's `parked-nowaker` fired
+# for it. Only the ISSUE half takes the exception: a PR that itself carries
+# `blocked:in-flight` (#504's interim) is still parked by parked_label.
+ISSUE_NOT_PARKING="blocked:in-flight"
+parked_label() {   # <labels,comma,separated> -> the first blocked:* label, or nothing
+    local l
+    local IFS=,
+    for l in $1; do case "$l" in blocked:*) printf '%s\n' "$l"; return 0 ;; esac; done
+    return 0
+}
+parked_lanes() {   # -> "name<TAB>#<issue> <label>" for every lane with an open issue labelled blocked:* (less ISSUE_NOT_PARKING)
+    local bi
+    # Every blocked:* label, comma-joined: the exception is applied below, so
+    # an issue carrying `blocked:in-flight` AND `blocked:after-0.5` still parks.
+    bi=$(gh issue list --repo "$GH_REPO" --state open --limit 300 --json number,labels \
+        --jq '.[] | ([.labels[].name | select(startswith("blocked:"))] | join(",")) as $l | "\(.number)\t\($l)"' 2>/dev/null)
+    [ -n "$bi" ] || return 0
+    BI="$bi" NOT_PARKING="$ISSUE_NOT_PARKING" python3 - "$T" <<'PY' 2>/dev/null
+import os, sys, tomllib
+testing = sys.argv[1]
+path = os.environ.get("HAKUX_TERRITORY")
+try:
+    if path:
+        t = tomllib.load(open(path, "rb"))
+    else:
+        sys.path.insert(0, testing)
+        import board_files
+        t = board_files.load("territory.toml")
+except Exception:
+    sys.exit(0)
+parked = {}
+not_parking = set(os.environ.get("NOT_PARKING", "").split())
+for l in os.environ.get("BI", "").splitlines():
+    n, _, labs = l.partition("\t")
+    for lab in (x.strip() for x in labs.split(",")):
+        # a line with no label is not an answer to this question
+        if lab.startswith("blocked:") and lab not in not_parking:
+            parked.setdefault(n.strip(), lab)
+            break
+for name, row in sorted((t.get("lane") or {}).items()):
+    for i in row.get("issues", []):
+        if str(i) in parked:
+            print("%s\t#%s %s" % (name, i, parked[str(i)]))
+            break
+PY
+}
+
+# ------------------------------------------- a parked lane still has runs out
+# PARKED IS NOT FINISHED. The skip below is right -- nothing here resumes a
+# parked lane -- but a lane parked with device requests still queued or running
+# ended its session waiting on them, and once they finish nothing in the
+# harness resumes it: every cause above is skipped for it, forever. That
+# stranded shaderfb569 and litcompile569 (2026-09-28), memfast, ibcache,
+# gpl569 (#594) and verdict433 (#610) (2026-09-29); each needed hostops to
+# notice harness_health's `parked-nowaker` and start the same unit by hand.
+# This job starts it instead: `hakux-waiter-<lane>`, the host's
+# resume_when_runs_finish.sh, which polls the dispatch dir for the lane's tag
+# and calls `lane.sh resume` once nothing matches (or gives up after
+# PARK_WAITER_HOURS with a hostops-inbox line).
+#
+# Armed only when all of these hold, each checked every tick, so the tick is
+# idempotent: something of the lane's is in flight (lane_requests_of, the
+# resume path's own reader); the lane's session is not running (it is still
+# deciding what it waits for); no waiter is active; the waiter's OWN pattern
+# (`[-.]<lane>-` over queue/ and running/ names) sees a request too -- when it
+# does not, the waiter would resume the lane at once, runs still out; and the
+# lane is under LANE_MAX_ATTEMPTS, because `lane.sh resume` past the cap is a
+# guaranteed REFUSED (harness_health's `capped-waiter`). The last two are said
+# once per lane and state, on the PR and in the tick log.
+PARK_WAITER="${HAKUX_PARK_WAITER:-$WORK/host-tools/resume_when_runs_finish.sh}"
+PARK_WAITER_HOURS="${PARK_WAITER_HOURS:-14}"
+# lane.sh's own reading: models.env, then the host's limits.env over it.
+PARK_MAX_ATTEMPTS=$( . "$(dirname "${BASH_SOURCE[0]}")/models.env" 2>/dev/null
+                     [ -f "$WORK/limits.env" ] && . "$WORK/limits.env" 2>/dev/null
+                     echo "${LANE_MAX_ATTEMPTS:-4}" )
+park_waiter() {   # <pr> <branch> <park> -> arms hakux-waiter-<lane>, or says why not (list: says what it would do)
+    local pr="$1" branch="$2" park="$3" name unit n m
+    lane_name "$branch" "$pr" || return 0
+    name="$NAME"; unit="hakux-waiter-$name"
+    INFLIGHT=""; INFLIGHT_KIND=""; RKEY=""; RSET=""; RLIST=""
+    lane_requests_of "$branch" "$name"
+    [ -n "$INFLIGHT" ] || return 0
+    if systemctl --user is-active --quiet "hakux-lane-$name" 2>/dev/null; then
+        [ "$mode" = list ] && echo "#$pr $branch: parked with $INFLIGHT in flight; lane $name is running, no waiter yet"
+        return 0
+    fi
+    if systemctl --user is-active --quiet "$unit.service" 2>/dev/null; then
+        [ "$mode" = list ] && echo "#$pr $branch: parked with $INFLIGHT in flight; waiter $unit already armed"
+        return 0
+    fi
+    if ! ls "$DISPATCH_DIR/queue" "$DISPATCH_DIR/running" 2>/dev/null | grep -q -- "[-.]$name-"; then
+        [ "$mode" = list ] && { echo "#$pr $branch: parked with $INFLIGHT in flight, but no queued or running id matches [-.]$name-; NOT ARMING $unit (it would resume at once)"; return 0; }
+        m="$H/done/waiter-unseen-$name-${INFLIGHT#*/}"
+        [ -f "$m" ] && return 0
+        echo "$INFLIGHT" > "$m"
+        say "#$pr: lane $name parked by $park with $INFLIGHT in flight, but its id does not match the waiter's [-.]$name- pattern; not arming $unit"
+        comment "$pr" "[job.handback] \`lane.$name\` is parked by \`$park\` with \`$INFLIGHT\` still in flight, and **no waiter was armed**: that request's id does not match \`[-.]$name-\`, the pattern \`resume_when_runs_finish.sh\` polls, so the waiter would resume the lane at once with the run still out. Resume it by hand when \`$INFLIGHT\` finishes."
+        return 0
+    fi
+    n=$(cat "$WORK/attempts/$name" 2>/dev/null || echo 0)
+    case "$n" in ''|*[!0-9]*) n=0 ;; esac
+    if [ "$n" -ge "$PARK_MAX_ATTEMPTS" ]; then
+        [ "$mode" = list ] && { echo "#$pr $branch: parked with $INFLIGHT in flight, but lane $name is at $n of LANE_MAX_ATTEMPTS=$PARK_MAX_ATTEMPTS; NOT ARMING $unit (lane.sh resume would refuse)"; return 0; }
+        m="$H/done/waiter-capped-$name-a$n"
+        [ -f "$m" ] && return 0
+        echo "$INFLIGHT" > "$m"
+        say "#$pr: lane $name parked by $park with $INFLIGHT in flight, at $n of LANE_MAX_ATTEMPTS=$PARK_MAX_ATTEMPTS; not arming $unit"
+        comment "$pr" "[job.handback] \`lane.$name\` is parked by \`$park\` with \`$INFLIGHT\` still in flight, and **no waiter was armed**: the lane has had $n attempts, which is \`LANE_MAX_ATTEMPTS=$PARK_MAX_ATTEMPTS\`, so the \`lane.sh resume\` a waiter would call when the run finishes is refused. This needs a decision: \`lane.sh reset $name\` if the brief was the problem, or a \`decision-needed\` issue."
+        return 0
+    fi
+    if [ "$mode" = list ]; then
+        echo "#$pr $branch: parked with $INFLIGHT in flight and no waiter; WOULD ARM $unit ($PARK_WAITER $name $name $PARK_WAITER_HOURS)"
+        return 0
+    fi
+    if [ ! -f "$PARK_WAITER" ]; then
+        say "#$pr: lane $name parked with $INFLIGHT in flight, but $PARK_WAITER is missing; no waiter armed"
+        return 0
+    fi
+    # A waiter that timed out exited 1 and stays loaded as `failed`, which
+    # holds the unit name; clear it or systemd-run refuses the name.
+    systemctl --user reset-failed "$unit.service" >/dev/null 2>&1
+    if systemd-run --user --unit="$unit" bash "$PARK_WAITER" "$name" "$name" "$PARK_WAITER_HOURS" >/dev/null 2>&1; then
+        say "#$pr: lane $name parked by $park with $INFLIGHT in flight; armed $unit"
+        comment "$pr" "[job.handback] \`lane.$name\` is parked by \`$park\`, so this job does not resume it, but \`$INFLIGHT\` is still in flight. Armed \`$unit\`: it runs \`lane.sh resume $name\` once nothing matching \`[-.]$name-\` is queued or running, or gives up after $PARK_WAITER_HOURS h with a hostops-inbox line."
+    else
+        say "#$pr: lane $name parked with $INFLIGHT in flight; starting $unit FAILED"
+    fi
+}
 # Four fold ticks: long enough to outlast a ~90-minute device arm, so a lane
 # that ended while its arm was in flight is not resumed to be told nothing.
 DRAFT_STRAND_SECS="${DRAFT_STRAND_SECS:-7200}"
@@ -607,23 +777,7 @@ EOF
     # THE RUNS CAUSE NAMES ITS RESULT DIRS, because they are the whole of the
     # news: a lane told "your runs finished" without where to read them goes
     # looking in the queue it left, and the requests are not there any more.
-    [ -z "${RUNS_BRIEF:-}" ] || {
-        cat <<EOF
-
-**Your device requests have all finished** since your last session ended, and
-none of yours is still queued or running. Read these before anything else:
-
-| request | state | result dir |
-|---|---|---|
-EOF
-        while IFS=$'\t' read -r rid st dir; do
-            [ -n "$rid" ] && printf '| `%s` | %s | `%s` |\n' "$rid" "$st" "$dir"
-        done <<< "$RUNS_BRIEF"
-        cat <<EOF
-
-An \`ERROR\` is a result too: read its \`run.log\`/\`run1.log\` before re-queueing.
-EOF
-    }
+    [ -z "${RUNS_BRIEF:-}" ] || runs_text
     [ -z "${IDLE_BRIEF:-}" ] || idle_text "$4"
     [ "$arm" = none ] || cat <<EOF
 
@@ -650,6 +804,44 @@ Anything else, it finds you again on the quiet clock.
 EOF
 }
 
+# The runs table, shared by the draft brief above and the merged brief below.
+runs_text() {
+    cat <<EOF
+
+**Your device requests have all finished** since your last session ended, and
+none of yours is still queued or running. Read these before anything else:
+
+| request | state | result dir |
+|---|---|---|
+EOF
+    while IFS=$'\t' read -r rid st dir; do
+        [ -n "$rid" ] && printf '| `%s` | %s | `%s` |\n' "$rid" "$st" "$dir"
+    done <<< "$RUNS_BRIEF"
+    cat <<EOF
+
+An \`ERROR\` is a result too: read its \`run.log\`/\`run1.log\` before re-queueing.
+EOF
+}
+resume_merged() {
+    cat <<EOF
+
+---
+
+## Resumed $(date -u '+%FT%TZ'): your last PR merged and your next runs are back
+
+Your last PR on \`$2\` has merged and you have no open one, but your territory
+row is still live and device requests you queued after it have finished.
+EOF
+    runs_text
+    cat <<EOF
+
+Bring \`origin/$TIP\` into your branch with \`git merge\` (your merged work is
+there), open the next batch's draft PR (\`gh pr create --draft --base $TIP\`
+with the lane template) before anything else, then carry on with the brief.
+If the brief is finished, say so in \`NOTES.md\` and stop. **This is not
+counted as a failed attempt.**
+EOF
+}
 # The idle cause's own paragraph, shared by the draft brief above and the
 # no-PR brief below. $1 is the lane name. It says what the lane most likely
 # did, because the lane that did it will read its own last words and believe
@@ -732,9 +924,27 @@ EOF
 # `99-handback-draft.sh` counts that exact string to prove there is ONE call
 # site, and a comment quoting it makes the count read 2. A grep anchored on a
 # call matches the prose too.)
-NAME=""; REASON=""
-lane_name() {   # <head branch> -> 0 with $NAME set, or 1 with $REASON set
-    NAME=""; REASON=""
+NAME=""; REASON=""; NAME_VIA=""; BODY_WHY=""
+# <pr> -> 0 with NAME set and NAME_VIA=body, or 1 with BODY_WHY saying why not.
+# The body is read once per PR per tick; the rejected text is never echoed,
+# because it is about to go into a PR comment.
+declare -A PR_BODY=()
+lane_from_body() {
+    local b n
+    if [ -z "${PR_BODY[$1]+x}" ]; then
+        PR_BODY[$1]=$(gh pr view "$1" --repo "$GH_REPO" --json body --jq .body 2>/dev/null)
+    fi
+    b=$(sed -n 's/\r$//; s/^Lane:[[:space:]]*//p' <<< "${PR_BODY[$1]}" | head -1)
+    n="${b%%[[:space:]]*}"; n="${n#lane.}"
+    if [ -z "$b" ]; then BODY_WHY="the PR body has no \`Lane:\` line"; return 1; fi
+    if ! [[ "$n" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then BODY_WHY="the PR body's \`Lane:\` line does not name a lane"; return 1; fi
+    if [ ! -d "$WORK/wt/$n" ] || [ ! -f "$WORK/briefs/$n.md" ]; then
+        BODY_WHY="the PR body's \`Lane: $n\` has no worktree and brief on this host"; return 1
+    fi
+    NAME="$n"; NAME_VIA=body; return 0
+}
+lane_name() {   # <head branch> [<pr>] -> 0 with $NAME set, or 1 with $REASON set
+    NAME=""; REASON=""; NAME_VIA=""; BODY_WHY=""
     local rl; rl=$(remote_lane_of "$1")
     if [ -n "$rl" ]; then
         REASON="\`$1\` is \`lane.$rl\`'s branch, and that lane runs somewhere this host cannot see (\`remote\` in \`territory.toml\`). Nothing local resumes it and nothing local should: its routine picks this up on its next fire. The work is unchanged -- merge \`origin/$TIP\` into the branch, resolve, push, then re-apply \`fold-ready\`."
@@ -748,7 +958,42 @@ lane_name() {   # <head branch> -> 0 with $NAME set, or 1 with $REASON set
             REASON="\`$1\` has a slash inside the lane name; \`lane.sh\` names a worktree \`\$WORK/wt/<name>\` and a unit \`hakux-lane-<name>\`, neither of which can hold one. Not guessing."
             return 1 ;;
         lane/?*)
-            NAME="${1#lane/}"; return 0 ;;
+            NAME="${1#lane/}"
+            [ -d "$WORK/wt/$NAME" ] && return 0
+            # A LANE MAY OPEN ITS PR ON A SECOND BRANCH. lane.flip474 pushed
+            # #504 from `lane/flip474-ts`, checked out in `wt/flip474`; the
+            # strip above named a lane `flip474-ts` with no worktree, and the
+            # PR was labelled `blocked:needs-owner` while its lane sat waiting
+            # on four queued device requests. So when the stripped name has no
+            # worktree, ask the worktrees which one has this branch checked
+            # out -- and has a brief, or `lane.sh resume` could not run it
+            # anyway. One answer is the lane. None keeps the old path. Two is
+            # a question this job cannot settle, and a guess is a resume of
+            # the wrong lane against its attempts budget.
+            local d hits=""
+            for d in "$WORK"/wt/*/; do
+                d="${d%/}"
+                [ "$(git -C "$d" symbolic-ref --short HEAD 2>/dev/null)" = "$1" ] || continue
+                [ -f "$WORK/briefs/${d##*/}.md" ] || continue
+                hits+="${hits:+ }${d##*/}"
+            done
+            case "$hits" in
+                "")
+                    # A LANE MAY ALSO HAVE MOVED ON. lane.flip474 then switched
+                    # wt/flip474 to `lane/flip474-sysmem` (#516), so nothing had
+                    # `lane/flip474-ts` checked out and #504 was labelled
+                    # `blocked:needs-owner` every tick. Every lane PR body opens
+                    # with `Lane: <name>`; that is the third resolver. The body
+                    # is untrusted text about to name a unit, so the name must
+                    # be a plain lane name AND have a worktree and a brief here.
+                    [ -n "${2:-}" ] && [ "$2" != none ] && lane_from_body "$2" && return 0 ;;
+                *" "*)
+                    NAME=""
+                    REASON="\`$1\` has no worktree of its own name, and it is checked out in more than one lane's worktree (\`$hits\`, under \`\$WORK/wt/\`). Not guessing which lane it is; the one that does not own it should switch branch."
+                    return 1 ;;
+                *) NAME="$hits" ;;
+            esac
+            return 0 ;;
         *)
             REASON="\`$1\` is not a \`lane/<name>\` branch, so there is no local lane to resume. Whoever owns this branch merges \`origin/$TIP\` into it by hand."
             return 1 ;;
@@ -876,9 +1121,14 @@ while IFS=$'\t' read -r pr branch head extra labels; do
 done <<< "$(stranded_drafts)"
 while IFS=$'\t' read -r pr branch head extra labels; do
     [ -n "${pr:-}" ] || continue
-    rows+="idle-no-pr"$'\t'"resume_idle"$'\t'"-"$'\t'"$pr"$'\t'"$branch"$'\t'"$head"$'\t'"$extra"$'\t'"$labels"$'\n'
+    case "$extra" in
+        *merged=1*) rows+="merged-runs"$'\t'"resume_merged" ;;
+        *)          rows+="idle-no-pr"$'\t'"resume_idle" ;;
+    esac
+    rows+=$'\t'"-"$'\t'"$pr"$'\t'"$branch"$'\t'"$head"$'\t'"$extra"$'\t'"$labels"$'\n'
 done <<< "$(idle_lanes)"
 
+PARKED_LANES=$(parked_lanes)
 resumed=0; seen=0
 while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         [ -n "${pr:-}" ] || continue
@@ -907,7 +1157,7 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
                 *) say "#${pr:-?} came back from the draft pickup on branch ${branch:-none}, which is not lane/*; the filter did not happen"
                    continue ;;
             esac ;;
-        idle-no-pr)
+        idle-no-pr|merged-runs)
             # A row that names a PR did not come from the no-PR pickup, and a
             # no-PR resume on a lane that has one would skip every PR guard.
             case "$pr/$branch" in
@@ -928,6 +1178,21 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         for s in $stale; do case ",$labels," in *",$s,"*) skip="$s" ;; esac; done
         if [ -n "$skip" ]; then
             [ "$mode" = list ] && echo "#$pr $branch: $label but also $skip; already moved on"
+            continue
+        fi
+        # PARKED: the PR's own `blocked:*` label first, then its lane's issue.
+        # Silent in the tick log: it is a standing state, not news each tick --
+        # except the waiter park_waiter arms for runs still in flight.
+        park=$(parked_label "$labels")
+        if [ -z "$park" ]; then
+            case "$branch" in lane/?*)
+                lane_name "$branch" "$pr" && pn="$NAME" || pn="${branch#lane/}"
+                park=$(awk -F'\t' -v n="$pn" '$1 == n { print "issue " $2; exit }' <<< "$PARKED_LANES") ;;
+            esac
+        fi
+        if [ -n "$park" ]; then
+            [ "$mode" = list ] && echo "#$pr $branch: $label, skipped: parked by $park (a blocked:* label has its own actor)"
+            park_waiter "$pr" "$branch" "$park"
             continue
         fi
 
@@ -999,14 +1264,18 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         # How the cause reads to a person on the PR. A label says itself; the
         # strand causes are not labels and there is nothing on the PR to point
         # at, so they have to be said in words or the comment names a label
-        # that does not exist.
+        # that does not exist. The lane named is the one the branch RESOLVED
+        # to, which is not always the branch minus `lane/`.
+        lane_name "$branch" "$pr"; named=$?
+        ln="${NAME:-${branch#lane/}}"
         case "$label" in
-            draft-strand-*) said="this PR is a draft and lane \`${branch#lane/}\`'s unit is not running" ;;
-            idle-no-pr)     said="lane \`${branch#lane/}\` has no open PR and its unit is not running" ;;
+            draft-strand-*) said="this PR is a draft and lane \`$ln\`'s unit is not running" ;;
+            idle-no-pr)     said="lane \`$ln\` has no open PR and its unit is not running" ;;
+            merged-runs)    said="lane \`$ln\`'s PR merged, its device runs have finished since, and its unit is not running" ;;
             *)              said="\`$label\` is set on this PR" ;;
         esac
 
-        if ! lane_name "$branch"; then
+        if [ "$named" -ne 0 ]; then
             # Say it once per PR, not once per tick: this state does not change
             # by itself, and a comment every 30 minutes is noise on a PR whose
             # owner is a person.
@@ -1019,6 +1288,20 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             continue
         fi
         name="$NAME"
+
+        # A LANE NAMED BY THE BODY HAS MOVED ON, so this PR is not stranded:
+        # the lane is live on its other branch (its worktree cannot be on this
+        # one, or the worktree resolver would have found it). Resuming it here
+        # would hand a session on that branch a cause about this one, and the
+        # dead end below would label a lane that exists. Silent in the tick log:
+        # a standing state, not news. Only `list` says it.
+        if [ "$NAME_VIA" = body ]; then
+            other=$(git -C "$WORK/wt/$name" symbolic-ref --short HEAD 2>/dev/null)
+            other="${other:-a detached HEAD}"
+            systemctl --user is-active --quiet "hakux-lane-$name" 2>/dev/null && other+=" (unit running)"
+            [ "$mode" = list ] && echo "#$pr $branch: $label, lane $name (from the PR body's Lane: line) is live on $other; not stranded"
+            continue
+        fi
 
         # RESUME ONLY ON A NEW CAUSE. Keyed on the head sha the handback was
         # found at, the way fold.sh already keys $F/failed/$pr-$head: a lane
@@ -1076,6 +1359,22 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
                 continue
             fi
             marker="$H/done/$label-$name-s$SESS_STAMP"; keyed="on session $SESS_STAMP" ;;
+        merged-runs)
+            # The draft runs cause's rule, with no PR to hang it on: nothing
+            # in flight, and a finished run newer than the last session end.
+            # Keyed on that SET of runs, so a second tick on it is not news.
+            systemctl --user is-active --quiet "hakux-lane-$name" 2>/dev/null && continue
+            lane_requests_of "$branch" "$name"
+            if [ -n "$INFLIGHT" ]; then
+                [ "$mode" = list ] && echo "$branch: merged, but its device request is in flight ($INFLIGHT); waiting on it"
+                continue
+            fi
+            if [ -z "$RKEY" ]; then
+                [ "$mode" = list ] && echo "$branch: merged, and no run of its has finished since its last session; done"
+                continue
+            fi
+            marker="$H/done/$label-$name-r$RKEY"; keyed="on finished runs $RSET"
+            RUNS_BRIEF="$RLIST" ;;
         esac
         if [ -f "$marker" ]; then
             [ "$mode" = list ] && echo "#$pr $branch: $label already actioned $keyed ($(head -1 "$marker"))"
@@ -1099,6 +1398,8 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             [ -z "$IDLE_BRIEF" ] || cause+=" idle=$SESS_STAMP" ;;
         idle-no-pr)
             cause="no PR, idle=$SESS_STAMP" ;;
+        merged-runs)
+            cause="PR merged, runs=$(grep -c . <<< "$RUNS_BRIEF")" ;;
         *)
             # `files=` is what fold.sh's conflict branch has always written;
             # `detail=` is the general field a newer cause uses. Either is the
@@ -1123,8 +1424,8 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
 
         if [ ! -d "$WORK/wt/$name" ] || [ ! -f "$WORK/briefs/$name.md" ]; then
             [ "$mode" = list ] && { echo "#$pr $branch: $label, lane $name has no worktree or brief on this host"; continue; }
-            echo "no worktree or brief for lane $name" > "$marker"
-            say "#$pr: lane $name has no worktree ($WORK/wt/$name) or brief; cannot resume"
+            echo "no worktree or brief for lane $name (branch $branch)" > "$marker"
+            say "#$pr: branch $branch resolved to lane $name, which has no worktree ($WORK/wt/$name) or brief; cannot resume"
             # AND IT IS LABELLED, NOT ONLY COMMENTED. A PR comment is read by
             # whoever opens the PR; nothing polls it. This is the end of the
             # line for a lane that is not merely exited but GONE -- no session
@@ -1133,7 +1434,7 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             # the attempts-exhausted path sets, and appears in status.sh's
             # roll-up instead of only in a comment nobody is looking at.
             [ "$pr" = none ] || label_add "$pr" blocked:needs-owner || say "  WARNING: could not label #$pr blocked:needs-owner"
-            comment "$pr" "[job.handback] $said and lane \`$name\`'s worktree or brief is gone from this host (\`$WORK/wt/$name\`), so \`lane.sh resume\` cannot run. It needs \`lane.sh start $name <brief>\`, which is the board's call, not this job's. Labelled \`blocked:needs-owner\` so this PR is not waiting in silence: **nothing will act on it until someone does.**"
+            comment "$pr" "[job.handback] $said and lane \`$name\` (resolved from branch \`$branch\`; no worktree under \`$WORK/wt/\` with a brief has that branch checked out; ${BODY_WHY:-the PR body was not read}) has its worktree or brief gone from this host (\`$WORK/wt/$name\`), so \`lane.sh resume\` cannot run. It needs \`lane.sh start $name <brief>\`, which is the board's call, not this job's. Labelled \`blocked:needs-owner\` so this PR is not waiting in silence: **nothing will act on it until someone does.**"
             continue
         fi
 
@@ -1215,8 +1516,9 @@ It wants a person now. Either the lane is waiting on something this job cannot s
                 continue
             fi
             uncounted=1 ;;
-        idle-no-pr)
-            # Its gates ran at the pickup (idle_now); waiting is not failing.
+        idle-no-pr|merged-runs)
+            # Its gates ran at the pickup (idle_now, lane_requests_of);
+            # waiting is not failing.
             uncounted=1 ;;
         esac
 
@@ -1251,7 +1553,7 @@ It wants a person now. Either the lane is waiting on something this job cannot s
         if [ "$rc" -eq 0 ] && [ -n "$uncounted" ]; then
             printf '%s\n' "$attempts_before" > "$WORK/attempts/$name"
             case "$label" in
-                draft-strand-runs) ;;
+                draft-strand-runs|merged-runs) ;;
                 draft-strand-idle|idle-no-pr)
                     printf '%s\n' "$(( $(cat "$H/idle/$name-$head" 2>/dev/null || echo 0) + 1 ))" > "$H/idle/$name-$head" ;;
                 *)  printf '%s\n' "$(( $(cat "$H/strand/$name" 2>/dev/null || echo 0) + 1 ))" > "$H/strand/$name" ;;
@@ -1312,6 +1614,6 @@ done <<< "$rows"
 # in $WORK/logs/handback/tick.log that somebody reads at a distance. It names
 # every cause it looked for, including the two that are not labels -- otherwise
 # a draft pickup that silently stopped working reads exactly like a quiet day.
-CAUSES="${HANDBACK_ROWS[*]%% *} draft-strand-arm draft-strand-runs draft-strand-idle draft-strand-quiet idle-no-pr"
+CAUSES="${HANDBACK_ROWS[*]%% *} draft-strand-arm draft-strand-runs draft-strand-idle draft-strand-quiet idle-no-pr merged-runs"
 [ "$seen" -eq 0 ] && { [ "$mode" = list ] && echo "nothing handed back ($CAUSES)" || say "nothing handed back ($CAUSES)"; }
 exit 0

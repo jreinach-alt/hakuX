@@ -36,6 +36,7 @@
 #include "swizzle.h"
 #include "nv2a_vsh_emulator.h"
 #include "glsl/vsh-prog.h"
+#include "glsl/vsh.h"
 
 #define PG_GET_MASK(reg, mask) GET_MASK(pgraph_reg_r(pg, reg), mask)
 #define PG_SET_MASK(reg, mask, value)        \
@@ -169,6 +170,75 @@ static void pgraph_init_reg_category_table(void)
 #define XEMU_OPT_METHOD_FAST_TABLE 1
 #endif
 
+/*
+ * #53: how far one Kelvin method advances the lighting unit's six-slot ring
+ * (PGRAPHState.ff_lit_ring). Measured on the console, one method per case
+ * between single-quad lit program draws (docs/testing/xbox-ringw-2026-09-26.md,
+ * and the test-boundary methods in xbox-ringw-boundary-2026-09-26.md):
+ *
+ *   method                                       weight   mapped here as
+ *   NOP 0x100                                    0        NV097_NO_OPERATION
+ *   LIGHT_CONTROL, same value                    0        NV097_SET_LIGHT_CONTROL
+ *   empty BEGIN_END pair                         0        NV097_SET_BEGIN_END
+ *   per-vertex attributes, front and back        0        the vertex data ranges
+ *   COMBINER_COLOR_ICW, same value               +1       default
+ *   SPECULAR_ENABLE, same or toggled             +1       default
+ *   SET_TRANSFORM_CONSTANT, one vec4 (4 words)   +1       +1 on the vec4's 4th word
+ *   one pb_fill                                  5        5 words at +1 (see below)
+ *   MATERIAL_ALPHA_BACK + 6 SPECULAR_PARAMS_BACK +1       7 words at +1, 7 = 1 mod 6
+ *   SET_TRANSFORM_CONSTANT_LOAD                  0        listed
+ *   WAIT_FOR_IDLE                                0        listed
+ *   SET_CONTEXT_DMA_COLOR, same value            0        listed
+ *   SET_TRANSFORM_EXECUTION_MODE, same value     0        listed
+ *   SET_TRANSFORM_PROGRAM_CXT_WRITE_EN, _LOAD,
+ *   _START, same value                           0        listed
+ *   FLIP_INCREMENT_WRITE + FLIP_STALL            +2       default, +1 each
+ *
+ * A pb_fill is two headers carrying five words: CLEAR_RECT_HORIZONTAL and
+ * _VERTICAL, then ZSTENCIL_CLEAR_VALUE, COLOR_CLEAR_VALUE and CLEAR_SURFACE
+ * (nxdk pbkit_draw.c). So the ring counts methods, not headers (two headers
+ * would weigh 2) and not words (the vec4 constant would weigh 4): every word
+ * this hook sees weighs +1 unless it is listed. The vertices themselves are
+ * counted at the draw's END, one slot each.
+ *
+ * Unmeasured and carried by the default: every other Kelvin method. The
+ * transform program upload is weighed like the constants it shares the
+ * transform unit's 128-bit write with, one per instruction; that is by
+ * analogy, not measured. Methods on other classes (2D, blit) do not reach
+ * the 3D front end and weigh 0.
+ *
+ * The flip pair is the one row not isolated on silicon: a FLIP_STALL between
+ * draws waits for a flip. Every test boundary issues the pair once and
+ * nothing else issues it, and with every other boundary method measured the
+ * boundary gaps close with the pair at +2 together, which the default gives.
+ * Only the pair's sum is visible, so which of the two carries it is not.
+ */
+static inline void pgraph_ring_weigh(PGRAPHState *pg, uint32_t method)
+{
+    if (method == NV097_NO_OPERATION || method == NV097_SET_LIGHT_CONTROL ||
+        method == NV097_SET_BEGIN_END ||
+        method == NV097_SET_TRANSFORM_CONSTANT_LOAD ||
+        method == NV097_WAIT_FOR_IDLE ||
+        method == NV097_SET_CONTEXT_DMA_COLOR ||
+        (method >= NV097_SET_TRANSFORM_EXECUTION_MODE &&
+         method <= NV097_SET_TRANSFORM_PROGRAM_START)) {
+        return;
+    }
+    if ((method >= NV097_SET_VERTEX3F && method < 0x16D0) ||
+        (method >= NV097_ARRAY_ELEMENT16 && method < NV097_SET_EYE_VECTOR) ||
+        (method >= NV097_SET_VERTEX_DATA2F_M && method < NV097_SET_TEXTURE_OFFSET)) {
+        return;
+    }
+    if (method >= NV097_SET_TRANSFORM_PROGRAM &&
+        method < NV097_SET_TRANSFORM_CONSTANT + 0x80 &&
+        ((method >> 2) & 3) != 3) {
+        return;
+    }
+    if (++pg->ring_pos == 6) {
+        pg->ring_pos = 0;
+    }
+}
+
 #if NV2A_PERF_LOG
 /*
  * Per-method call frequency histogram. Tracks slow-path dispatch counts
@@ -207,6 +277,13 @@ void pgraph_method_histogram_log_and_reset(void)
             top[6].idx << 2, top[6].count, top[7].idx << 2, top[7].count,
             top[8].idx << 2, top[8].count, top[9].idx << 2, top[9].count);
     }
+    /* #488: the two end-of-frame signals, always, so an arm can tell a title
+     * that never sends them from one the change did not help. hakuX-perf,
+     * because the dispatcher's logcat filter drops hakuX-mhist. */
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+        "[notify488] sem_release %u notify %u",
+        method_slow_histogram[NV097_BACK_END_WRITE_SEMAPHORE_RELEASE >> 2],
+        method_slow_histogram[NV097_NOTIFY >> 2]);
 #endif
     memset(method_slow_histogram, 0, sizeof(method_slow_histogram));
     method_slow_histogram_frames = 0;
@@ -765,6 +842,7 @@ int pgraph_method_try_fast(NV2AState *d, unsigned int subchannel,
     if (!fast->reg && !fast->xlat) return 0;
 
     if (!fast_entry_apply_atomic(pg, fast, parameter)) return 0;
+    pgraph_ring_weigh(pg, midx << 2);
 
     size_t consumed = 1;
 
@@ -775,6 +853,7 @@ int pgraph_method_try_fast(NV2AState *d, unsigned int subchannel,
         if (!nf->reg && !nf->xlat) break;
         uint32_t p = ldl_le_p(parameters + consumed);
         if (!fast_entry_apply_atomic(pg, nf, p)) break;
+        pgraph_ring_weigh(pg, next_midx << 2);
         midx = next_midx;
         consumed++;
     }
@@ -806,6 +885,7 @@ int pgraph_method_try_fast(NV2AState *d, unsigned int subchannel,
                 consumed -= (i + 1);
                 goto coalesce_done;
             }
+            pgraph_ring_weigh(pg, (nm + i) << 2);
             consumed++;
         }
     }
@@ -817,12 +897,198 @@ coalesce_done:
 
 NV2AState *g_nv2a;
 
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+#define LOCK474 1
+#else
+#define LOCK474 0
+#endif
+
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+/*
+ * [lock474]: what the vCPU's PGRAPH MMIO waits for, on hakuX-perf every 2 s.
+ *
+ * lane.slowdown462 found DOA Ultimate's vCPU off-CPU 14.6 s of 30 s in
+ * pgraph_read's qemu_mutex_lock (#474). Whether that lock can be dropped
+ * depends on which register the guest reads (NV_PGRAPH_STATUS is never
+ * written, so the lock is the only thing that holds an idle poll off while
+ * the puller is mid-batch) and on what the puller is doing while it holds
+ * the lock. So per 2 s: reads and writes, their lock wait split by the
+ * puller's phase when the wait began (FLIP_STALL's surface_update, its
+ * flip_stall op, anything else), the six registers read with the most
+ * wait (the pilot ranked by count and hid 64% of the wait below its top
+ * four), the FLIP_STALL phases' own time, and rd_unl/wr_unl: accesses served
+ * while the PFIFO thread had released the lock across a fence wait, which is
+ * zero wherever pgraph_lock_release_for_fence() is never called. Uncontended
+ * acquisitions go through trylock and read no clock. The vCPU owns the
+ * read/write fields; the puller owns the flip fields and publishes them with
+ * qatomic ops.
+ */
+enum { LOCK474_OTHER, LOCK474_FLIP_SURF, LOCK474_FLIP_OP, LOCK474_PHASES };
+#define LOCK474_REGS 16
+#define LOCK474_SLOW_NS 1000000
+
+static int lock474_phase;
+static int64_t lock474_flip_ns[LOCK474_PHASES];
+static uint32_t lock474_flips;
+
+static struct {
+    int64_t t0;
+    uint32_t n[2], slow[2], unl[2];
+    int64_t wait_ns[2][LOCK474_PHASES];
+    struct { uint32_t addr, n; int64_t wait_ns; } reg[LOCK474_REGS];
+    uint32_t reg_other_n;
+} lock474;
+
+static void lock474_set_phase(int phase)
+{
+    qatomic_set(&lock474_phase, phase);
+}
+
+static void lock474_flip_done(int64_t surf_ns, int64_t op_ns)
+{
+    qatomic_add(&lock474_flip_ns[LOCK474_FLIP_SURF], surf_ns);
+    qatomic_add(&lock474_flip_ns[LOCK474_FLIP_OP], op_ns);
+    qatomic_inc(&lock474_flips);
+}
+
+static void pgraph_mmio_lock(PGRAPHState *pg, bool write, hwaddr addr,
+                             bool settle)
+{
+    int64_t wait = 0;
+    bool locked = qemu_mutex_trylock(&pg->lock) == 0;
+    if (!locked || (settle && pg->lock_released_for_fence)) {
+        int phase = qatomic_read(&lock474_phase);
+        int64_t t0 = nv2a_clock_ns();
+        if (!locked) {
+            qemu_mutex_lock(&pg->lock);
+        }
+        while (settle && pg->lock_released_for_fence) {
+            qemu_cond_wait(&pg->lock_settled_cond, &pg->lock);
+        }
+        wait = nv2a_clock_ns() - t0;
+        lock474.wait_ns[write][phase] += wait;
+        if (wait >= LOCK474_SLOW_NS) {
+            lock474.slow[write]++;
+        }
+    }
+    lock474.n[write]++;
+    if (pg->lock_released_for_fence) {
+        lock474.unl[write]++;
+    }
+    if (write) {
+        return;
+    }
+    for (int i = 0; i < LOCK474_REGS; i++) {
+        if (lock474.reg[i].n == 0) {
+            lock474.reg[i].addr = addr;
+        }
+        if (lock474.reg[i].addr == addr) {
+            lock474.reg[i].n++;
+            lock474.reg[i].wait_ns += wait;
+            return;
+        }
+    }
+    lock474.reg_other_n++;
+}
+
+static void lock474_log(void)
+{
+    int64_t now = nv2a_clock_ns();
+    if (lock474.t0 == 0) {
+        lock474.t0 = now;
+        return;
+    }
+    if (now - lock474.t0 < 2000000000LL) {
+        return;
+    }
+
+    int top[6] = { -1, -1, -1, -1, -1, -1 };
+    for (int i = 0; i < LOCK474_REGS && lock474.reg[i].n; i++) {
+        for (int t = 0; t < 6; t++) {
+            if (top[t] < 0 ||
+                lock474.reg[i].wait_ns > lock474.reg[top[t]].wait_ns ||
+                (lock474.reg[i].wait_ns == lock474.reg[top[t]].wait_ns &&
+                 lock474.reg[i].n > lock474.reg[top[t]].n)) {
+                for (int s = 5; s > t; s--) {
+                    top[s] = top[s - 1];
+                }
+                top[t] = i;
+                break;
+            }
+        }
+    }
+    char regs[256] = "";
+    size_t len = 0;
+    for (int t = 0; t < 6 && top[t] >= 0; t++) {
+        len += snprintf(regs + len, sizeof(regs) - len, " r%d=0x%x:%u:%.1f", t,
+                        lock474.reg[top[t]].addr, lock474.reg[top[t]].n,
+                        lock474.reg[top[t]].wait_ns / 1e6);
+    }
+
+    int64_t flip[LOCK474_PHASES];
+    for (int p = 0; p < LOCK474_PHASES; p++) {
+        flip[p] = qatomic_xchg(&lock474_flip_ns[p], 0);
+    }
+    uint32_t flips = qatomic_xchg(&lock474_flips, 0);
+
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+        "[lock474] dt_ms=%lld rd=%u rd_slow=%u rd_wait_ms=%.1f rd_fs=%.1f "
+        "rd_fo=%.1f rd_ot=%.1f wr=%u wr_slow=%u wr_wait_ms=%.1f wr_fs=%.1f "
+        "wr_fo=%.1f wr_ot=%.1f flips=%u flip_surf_ms=%.1f flip_op_ms=%.1f "
+        "rd_unl=%u wr_unl=%u regs_other=%u%s",
+        (long long)((now - lock474.t0) / 1000000), lock474.n[0],
+        lock474.slow[0],
+        (lock474.wait_ns[0][0] + lock474.wait_ns[0][1] +
+         lock474.wait_ns[0][2]) / 1e6,
+        lock474.wait_ns[0][LOCK474_FLIP_SURF] / 1e6,
+        lock474.wait_ns[0][LOCK474_FLIP_OP] / 1e6,
+        lock474.wait_ns[0][LOCK474_OTHER] / 1e6,
+        lock474.n[1], lock474.slow[1],
+        (lock474.wait_ns[1][0] + lock474.wait_ns[1][1] +
+         lock474.wait_ns[1][2]) / 1e6,
+        lock474.wait_ns[1][LOCK474_FLIP_SURF] / 1e6,
+        lock474.wait_ns[1][LOCK474_FLIP_OP] / 1e6,
+        lock474.wait_ns[1][LOCK474_OTHER] / 1e6,
+        flips, flip[LOCK474_FLIP_SURF] / 1e6, flip[LOCK474_FLIP_OP] / 1e6,
+        lock474.unl[0], lock474.unl[1], lock474.reg_other_n, regs);
+
+    memset(&lock474, 0, sizeof(lock474));
+    lock474.t0 = now;
+}
+#else
+enum { LOCK474_OTHER, LOCK474_FLIP_SURF, LOCK474_FLIP_OP };
+
+static inline void lock474_set_phase(int phase) {}
+static inline void lock474_flip_done(int64_t surf_ns, int64_t op_ns) {}
+static inline void lock474_log(void) {}
+
+static inline void pgraph_mmio_lock(PGRAPHState *pg, bool write, hwaddr addr,
+                                    bool settle)
+{
+    if (settle) {
+        pgraph_lock_settled(pg);
+    } else {
+        qemu_mutex_lock(&pg->lock);
+    }
+}
+#endif
+
 uint64_t pgraph_read(void *opaque, hwaddr addr, unsigned int size)
 {
     NV2AState *d = (NV2AState *)opaque;
     PGRAPHState *pg = &d->pgraph;
 
-    qemu_mutex_lock(&pg->lock);
+    /*
+     * #474: a read may run while the PFIFO thread waits on a GPU fence with
+     * the lock released (pgraph_lock_release_for_fence): the ISR's INTR,
+     * NSOURCE and TRAPPED_* reads are what DOA Ultimate's vCPU waited ~50 ms
+     * a frame for. Two do not: RDI_DATA advances RDI_INDEX, and STATUS
+     * (0x700, never written here, so it always reads idle) is the register a
+     * guest would poll to learn the engine is done -- held off until the
+     * method ends, as before.
+     */
+    pgraph_mmio_lock(pg, false, addr,
+                     addr == NV_PGRAPH_RDI_DATA || addr == 0x700);
 
     uint64_t r = 0;
     switch (addr) {
@@ -874,6 +1140,7 @@ uint64_t pgraph_read(void *opaque, hwaddr addr, unsigned int size)
     }
 #endif
 
+    lock474_log();
     nv2a_reg_log_read(NV_PGRAPH, addr, size, r);
     return r;
 }
@@ -900,7 +1167,12 @@ void pgraph_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
     if (needs_pfifo_lock) {
         qemu_mutex_lock(&d->pfifo.lock);
     }
-    qemu_mutex_lock(&pg->lock);
+    /* #474: interrupt acknowledge, its enable and the flip read index may
+     * be written inside a lock-released fence wait; any other write waits it
+     * out. See pgraph_read. */
+    pgraph_mmio_lock(pg, true, addr,
+                     addr != NV_PGRAPH_INTR && addr != NV_PGRAPH_INTR_EN &&
+                     addr != NV_PGRAPH_INCREMENT);
 
     switch (addr) {
     case NV_PGRAPH_INTR:
@@ -1034,6 +1306,7 @@ void pgraph_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
     if (needs_pfifo_lock) {
         qemu_mutex_unlock(&d->pfifo.lock);
     }
+    lock474_log();
 }
 
 void pgraph_context_switch(NV2AState *d, unsigned int channel_id)
@@ -1092,6 +1365,8 @@ void pgraph_init(NV2AState *d)
 
     PGRAPHState *pg = &d->pgraph;
     qemu_mutex_init(&pg->lock);
+    qemu_cond_init(&pg->lock_settled_cond);
+    pg->lock_released_for_fence = false;
     qemu_mutex_init(&pg->renderer_lock);
     qemu_event_init(&pg->sync_complete, false);
     qemu_event_init(&pg->flush_complete, false);
@@ -1340,6 +1615,7 @@ void pgraph_destroy(PGRAPHState *pg)
        pg->renderer->ops.finalize(d);
     }
 
+    qemu_cond_destroy(&pg->lock_settled_cond);
     qemu_mutex_destroy(&pg->lock);
 }
 
@@ -1814,6 +2090,7 @@ int pgraph_method(NV2AState *d, unsigned int subchannel,
         const MethodFastPath *fast = &method_fast[midx];
         if (fast->reg || fast->xlat) {
             if (!fast_entry_apply(pg, fast, parameter)) goto slow_path;
+            pgraph_ring_weigh(pg, midx << 2);
             size_t consumed = 1;
             while (consumed < num_words_available) {
                 unsigned int next_midx = midx + 1;
@@ -1822,6 +2099,7 @@ int pgraph_method(NV2AState *d, unsigned int subchannel,
                 if (!nf->reg && !nf->xlat) break;
                 uint32_t p = ldl_le_p(parameters + consumed);
                 if (!fast_entry_apply(pg, nf, p)) break;
+                pgraph_ring_weigh(pg, next_midx << 2);
                 midx = next_midx;
                 consumed++;
             }
@@ -1859,6 +2137,7 @@ int pgraph_method(NV2AState *d, unsigned int subchannel,
                         consumed -= (i + 1);
                         goto coalesce_done;
                     }
+                    pgraph_ring_weigh(pg, (nm + i) << 2);
                     consumed++;
                 }
             }
@@ -2130,6 +2409,9 @@ slow_path:
         size_t num_words_consumed = 1;
         handler(d, pg, subchannel, method, parameter, parameters,
                 num_words_available, &num_words_consumed, inc);
+        for (size_t i = 0; i < num_words_consumed; i++) {
+            pgraph_ring_weigh(pg, inc ? method + 4 * i : method);
+        }
 
         /* Squash repeated BEGIN,DRAW_ARRAYS,END */
         #define LAM(i, mthd) ((parameters[i*2+1] & 0x31fff) == (mthd))
@@ -2267,6 +2549,90 @@ DEF_METHOD(NV097, NO_OPERATION)
     qemu_mutex_lock(&pg->lock);
 }
 
+/*
+ * #488: NOTIFY writes a 16-byte notification at offset 0 of the
+ * SET_CONTEXT_DMA_NOTIFIES object: an 8-byte timestamp, info32, then info16
+ * and status in the last word. The console (lane.xbox's signal-timing suite,
+ * docs/lanes/xbox/signal-timing/console) writes it 4.1 us after the kick,
+ * 1.4 us after a BACK_END_WRITE_SEMAPHORE_RELEASE ahead of it; slot 1
+ * (offset 16) is never touched, and the timestamp is PTIMER's nanosecond
+ * count, TIME_1:TIME_0. Before this handler the method fell through to
+ * "unhandled" and the notifier was never written: a guest polling it waited
+ * for a fallback. Status 0 is "done". WRITE_THEN_AWAKEN also raises the
+ * PGRAPH NOTIFY interrupt; unlike the NO_OPERATION trap it does not stall
+ * the FIFO, because no measurement says silicon does and a stall the guest
+ * never acknowledges would hang it.
+ *
+ * Silicon delivers the notification when the method after NOTIFY completes.
+ * It is written here, when NOTIFY itself is processed: every method before it
+ * has been processed, and the method after it (NO_OPERATION, in every use
+ * seen) does no work a poller could observe.
+ */
+DEF_METHOD(NV097, NOTIFY)
+{
+    if (!pg->dma_notifies) {
+        return;
+    }
+
+    hwaddr notify_dma_len;
+    uint8_t *notify_data = (uint8_t *)nv_dma_map(d, pg->dma_notifies,
+                                                 &notify_dma_len);
+    /* The limit is inclusive: a 16-byte notification needs limit >= 15. */
+    if (notify_dma_len < 15) {
+        return;
+    }
+
+    /* PTIMER's clock (ptimer.c's ptimer_get_clock); TIME_0/TIME_1 read it
+     * shifted left by 5. */
+    uint64_t ptimer_time = 0;
+    if (d->ptimer.numerator) {
+        uint64_t clock = muldiv64(
+            muldiv64(qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL),
+                     d->pramdac.core_clock_freq, NANOSECONDS_PER_SECOND),
+            d->ptimer.denominator, d->ptimer.numerator);
+        ptimer_time = clock << 5;
+    }
+
+    stl_le_p(notify_data + 0, (uint32_t)ptimer_time);
+    stl_le_p(notify_data + 4, (uint32_t)(ptimer_time >> 32) & 0x1fffffff);
+    stl_le_p(notify_data + 8, 0);
+    /* The status word last, so a poller that sees it sees the rest. */
+    smp_wmb();
+    stl_le_p(notify_data + 12, 0);
+
+    if (parameter != NV097_NOTIFY_WRITE_THEN_AWAKEN) {
+        return;
+    }
+
+#ifdef __ANDROID__
+    static bool logged_awaken;
+    if (!logged_awaken) {
+        logged_awaken = true;
+        __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                            "[notify488] NOTIFY write-then-awaken seen, "
+                            "intr_en 0x%08x",
+                            pg->enabled_interrupts);
+    }
+#endif
+
+    unsigned channel_id =
+        PG_GET_MASK(NV_PGRAPH_CTX_USER, NV_PGRAPH_CTX_USER_CHID);
+    PG_SET_MASK(NV_PGRAPH_TRAPPED_ADDR, NV_PGRAPH_TRAPPED_ADDR_CHID,
+             channel_id);
+    PG_SET_MASK(NV_PGRAPH_TRAPPED_ADDR, NV_PGRAPH_TRAPPED_ADDR_SUBCH,
+             subchannel);
+    PG_SET_MASK(NV_PGRAPH_TRAPPED_ADDR, NV_PGRAPH_TRAPPED_ADDR_MTHD,
+             method);
+    pgraph_reg_w(pg, NV_PGRAPH_TRAPPED_DATA_LOW, parameter);
+    pg->pending_interrupts |= NV_PGRAPH_INTR_NOTIFY;
+
+    qemu_mutex_unlock(&pg->lock);
+    bql_lock();
+    nv2a_update_irq(d);
+    bql_unlock();
+    qemu_mutex_lock(&pg->lock);
+}
+
 DEF_METHOD(NV097, WAIT_FOR_IDLE)
 {
     d->pgraph.renderer->ops.surface_update(d, false, true, true);
@@ -2323,8 +2689,16 @@ DEF_METHOD(NV097, FLIP_INCREMENT_WRITE)
 DEF_METHOD(NV097, FLIP_STALL)
 {
     trace_nv2a_pgraph_flip_stall();
+    int64_t t0 = LOCK474 ? nv2a_clock_ns() : 0;
+    lock474_set_phase(LOCK474_FLIP_SURF);
     d->pgraph.renderer->ops.surface_update(d, false, true, true);
+    int64_t t1 = LOCK474 ? nv2a_clock_ns() : 0;
+    lock474_set_phase(LOCK474_FLIP_OP);
     d->pgraph.renderer->ops.flip_stall(d);
+    lock474_set_phase(LOCK474_OTHER);
+    if (LOCK474) {
+        lock474_flip_done(t1 - t0, nv2a_clock_ns() - t1);
+    }
     nv2a_profile_flip_stall();
     pg->waiting_for_flip = true;
     d->flip_active = true;
@@ -2612,6 +2986,16 @@ DEF_METHOD(NV097, SET_CONTROL0)
     PG_SET_MASK(NV_PGRAPH_CONTROL_0,
              NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE,
              texture_perspective);
+
+    /* The colour-space field converts every texture stage's output after
+     * the texture shader (#10, docs/testing/xbox-csc-2026-09-26.md); psh.c
+     * reads it back. CONTROL_0 is a shader register, so the write marks the
+     * shader state dirty. The register field holds two bits; an undefined
+     * method value (above 3) is stored as 3, which psh.c reports as
+     * unimplemented and passes through. */
+    uint32_t csc = GET_MASK(parameter, NV097_SET_CONTROL0_COLOR_SPACE_CONVERT);
+    PG_SET_MASK(NV_PGRAPH_CONTROL_0, NV_PGRAPH_CONTROL_0_CSCONVERT,
+                csc > 3 ? 3 : csc);
 }
 
 DEF_METHOD(NV097, SET_LIGHT_CONTROL)
@@ -4513,7 +4897,11 @@ DEF_METHOD(NV097, SET_BEGIN_END)
             return;
         }
         nv2a_profile_inc_counter(NV2A_PROF_BEGIN_ENDS);
+        /* #53: the fill reads the inline buffer draw_end consumes, and the
+         * draw's uniforms read ring_pos before its own vertices move it. */
+        unsigned int ring_vertices = pgraph_glsl_ring_fill(pg);
         d->pgraph.renderer->ops.draw_end(d);
+        pg->ring_pos = (pg->ring_pos + ring_vertices) % 6;
         pgraph_vsh_writeback_constants(pg);
         pgraph_reset_inline_buffers(pg);
         pg->primitive_mode = PRIM_TYPE_INVALID;

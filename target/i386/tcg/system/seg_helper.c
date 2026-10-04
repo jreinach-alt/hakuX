@@ -27,6 +27,10 @@
 #include "tcg/helper-tcg.h"
 #include "../seg_helper.h"
 
+#ifdef XBOX
+extern int hakux_rr425_vec;   /* accel/tcg/cpu-exec.c */
+#endif
+
 void helper_syscall(CPUX86State *env, int next_eip_addend)
 {
     int selector;
@@ -204,6 +208,9 @@ bool x86_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
         cpu_svm_check_intercept_param(env, SVM_EXIT_INTR, 0, 0);
         cpu_reset_interrupt(cs, CPU_INTERRUPT_HARD | CPU_INTERRUPT_VIRQ);
         intno = cpu_get_pic_interrupt(env);
+#ifdef XBOX
+        hakux_rr425_vec = intno;    /* #425 [rr425w]: the idle wake's key */
+#endif
         qemu_log_mask(CPU_LOG_INT,
                       "Servicing hardware INT=0x%02x\n", intno);
         do_interrupt_x86_hardirq(env, intno, 1);
