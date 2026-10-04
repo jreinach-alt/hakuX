@@ -437,3 +437,40 @@ disk as the dispatcher does (`titlestate.prepare`), launches as pathfind does, p
 (804d's path with no screencap in the race; it ends at race clock ~4) and takes one 6 s screenrecord burst
 (`burst_capture.py`, scored by `flicker_score.py`) over race clock ~4.5-10.5, which holds the close pass
 (7.3-8.6). A second run only if the first scores clean (p90 <= 5). Frames are then read by eye.
+
+### 17.1 Results: both plain and perflog master blink under a screenrecord burst
+
+| run | build (installed APK sha256, checked on the device) | env_vars | burst | flicker_score | what the frames show (read by eye) |
+|---|---|---|---|---|---|
+| plain1 15:52-15:56 | `63f4827758` **non-perflog** (`ed371becc3eb`), ubershader ON | empty | 6 s rec, 27.3 unique fps | **FLICKER** p90 29.4, 108 of 161 triples hit, max 39.8 | the start-race A was lost and the spare A started it, so the burst covers the 3-2-1 countdown and race clock 0-3, not the close pass. During the countdown the Beetle (#2) in front of the camera **vanishes on alternate frames with its shadow drawn** (worst triple f97-f100, race time 00:00.00), and the Corolla (#6) beside it with it. After GO each car blinks on its own (Corolla absent at 0.61, Beetle at 1.42, shadows drawn). Hits run unbroken through the countdown (`XXXX...X`, ~2.6 s), then sporadic. This is the owner's "no cars during a countdown". |
+| perflog1 15:59-16:02 | `10f14d301d` **perflog** (`1ebf4fde7ede`, the APK of captures 4-6) | empty | 10 s rec, 14.8 unique fps (dt max 602 ms) | **FLICKER** p90 22.1, 45 of 145, max 323.7 | race clock 5.39-15.24, the close pass. Worst triple race clock 07.92 / 07.94 / 07.97: the Nissan's rear fills the frame in N; N-1 and N+1 show only its shadow on the road. Again at 08.89 (shadow, no car). flicker801's frame, exactly. |
+
+Evidence: `runs/plain1/`, `runs/perflog1/` (contact sheets, worst triples, flicker.tsv, capture.json, session.log).
+
+**Which knob removed the blink in my captures.** The owner sees the blink by eye, so screenrecord does not
+create it. The perflog flavour does not remove it (perflog1 blinks in the same close pass where capture 6 did
+not). That leaves the frame dump. The only run of mine that could see a blink and showed none was capture 6,
+`XEMU_FRAME_DUMP=...,images`, which **waits on a fence for every frame** before writing the image. (Captures 3-5
+cannot say: noimages dump or 0.7 s screencaps.) So: **a per-frame GPU wait removes the blink**; plain and perflog
+builds without it blink, 2 of 2 today, 3 of 3 for flicker801.
+
+That is what section 3's H1 predicts. The stale occlusion read happens only when the report is read before the
+GPU has run the frame's queries; a fence wait per frame makes the GPU finish first. The other facts H1 needs are
+already measured: the guest runs ~30 visibility-test render-pass breaks per flip in the race (capture 3, `qry`), it
+issues the body draws every frame it presents (captures 3, 6: in a non-blinking run, so the guest's per-frame
+decision is not observed in a blinking one), and what goes missing is whole car bodies with their shadows kept,
+on stationary cars too (the countdown), which a period-2 visibility recurrence produces. Section 11's "H1
+refuted" was read on a run that did not blink (section 13 already flagged that), so it is withdrawn.
+
+### 17.2 The test of H1: master + reports-804.diff, same held burst
+
+`hw/xbox/nv2a/pgraph/vk/reports.c` is granted to this lane (territory row lane.accuracy804, 10:5x PDT 10-04), so
+the patch is now applied on the branch (`510ebb25f2`): `pgraph_vk_process_pending_reports_internal()` waits the
+fence of every submitted frame before `vkGetQueryPoolResults` when queries are in flight. It cannot wait on a fence
+that was never submitted: `frame_submitted[i]` is true only from the submit (render_thread.c:153,
+submit_worker.c:61) to the rotation wait that clears it (draw.c:4350-4355).
+
+| burst on the patched plain build | reading |
+|---|---|
+| no blink in 2 runs (p90 <= 5, frames read by eye, a car near the camera in the window) | H1 is the cause; the fix is this patch |
+| blinks | H1 refuted; the per-frame fence wait suppresses something else, and the patch comes back out |
