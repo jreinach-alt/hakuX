@@ -1,5 +1,19 @@
 # lane.pathfind -- NOTES
 
+## Resume (10-04 07:56 PDT, attempt 3): why the last attempt did not finish
+
+- The 22:4x session finished the list it had been given. Panzer Dragoon Orta run 3 PASSED at 00:48 (603.7 s, play 0.9997,
+  fps_ok 0.9962, `8b2dfede96`), and its PR.md and OUTBOX were written. Nothing was in flight and no WAITING file was
+  written, which is correct for a finished list.
+- It did not get a next order before it ended: the 10-04 screening addendum (owner, ~07:55: identify, pathfind, measure
+  each of 12 untested Xbox titles against the 30 fps bar; stop at 8 clear-or-close) arrived after the session ended.
+  So this is a new order, not an unfinished one. This session replaces the stick-probe plan the 10-04 07:00 note had.
+- Starting state: the Nova is held by `lane.local-sweep` (pushing RalliSport 4D53000F). Of the 12 screening titles, only
+  RalliSport (4D53000F), AvP Extinction (56550022) and Phantom Crash (504C0001) are on the Nova's
+  `/storage/E6C6-D7AA/Games/XBox/` folder at 07:56. The rest of `pm/screen-1004.tsv` is still being staged, so each
+  is checked before its run and the missing ones are taken later.
+- Selftest `pathfind_selftest: all ok` before device time.
+
 ## Resume (10-03 22:37 PDT, attempt 2 of this resume): why the last attempt did not finish
 
 - The 21:5x session ended at 22:27 (commit `9b7b90c7de`) right after its Black Stone hold3 write-up (FAIL, play share 9.5%,
