@@ -793,8 +793,8 @@ note = "STARTED (hostops 2026-10-04 14:32 PDT, lane.local grant 14:18), briefs/h
 [lane.hitchcause]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/hitchcause/**", "hw/ide/core.c", "hw/ide/mmio.c"]
-note = "STARTED (hostops 2026-10-04 14:49 PDT, lane.local grant 14:50): briefs/hitchcause.md, Issue 433. Analysis first; the only code change is telemetry (one perflog line in hw/ide), no behaviour change. Lane analysis is pushed at bf388e2eea (its first run, ended 14:45)."
+files = ["docs/lanes/hitchcause/**", "hw/ide/core.c", "hw/ide/mmio.c", "hw/intc/i8259.c"]
+note = "STARTED (hostops 2026-10-04 14:49 PDT, lane.local grant 14:50): briefs/hitchcause.md, Issue 433. Analysis first; the only code change is telemetry (one perflog line in hw/ide), no behaviour change. Lane analysis is pushed at bf388e2eea (its first run, ended 14:45). hw/intc/i8259.c added 15:55 PDT (lane.local grant): PIC-input source counters, telemetry only."
 
 [retired.pathknow]
 issues = ["433"]
