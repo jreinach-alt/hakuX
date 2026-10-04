@@ -76,8 +76,21 @@ and queued both Thor runs.
 
 | run id | apk_sha | lit tinted | wbc n | in-region | verdict |
 |---|---|---|---|---|---|
-| 1791142591-lane.fmv303c-697274 (L1, queued 2026-10-04) | | | | | |
-| 1791142595-lane.fmv303c-698913 (L2, queued 2026-10-04) | | | | | |
+| 1791142591-lane.fmv303c-697274 (L1) | 3ecdda7c45e7 | - | - | - | VOID: refused, display-covered |
+| 1791142595-lane.fmv303c-698913 (L2) | 3ecdda7c45e7 | - | - | - | VOID: refused, display-covered |
+
+Both refusals (2026-10-04 12:3x PDT) come from one device state, with a
+named cause that is neither a performance nor a code problem. run.log says
+`display-covered: a foreign full-screen overlay covers display 0 on
+bdc158a5: primaryScreenTopLayout (com.odin.dualscreen.assistant,
+BOOT_PROGRESS)` and `soak refused ... nothing was started`. The runs logged
+0 logcat lines and one all-black 10,899 B frame. This is the 09-27 cover:
+`harness_health.py`'s `covered:` check names `dual_screen_display_mode=2` as
+the root cause, and hostops' fix is `device_reality.sh --fix`. The owner
+hand-tested Spikeout on the Thor earlier today, which plausibly left the mode
+set. The lane does not touch the device. It re-queues the same two runs (same
+ref, same prediction) once the cover is cleared. The requeue is allowed
+because the void cause is named and is not a performance miss.
 
 Both runs: ref cf328d86f7, Thor (hard pin), Spikeout, 150 s, frames every 2 s,
 `HAKUX_FMV303_PROBE=1`, hands-off. Prediction: EXONERATED, P about 0.65 (a
