@@ -1,0 +1,23 @@
+pathfind: Aliens Versus Predator Extinction (56550022) on nova: /storage/E6C6-D7AA/Games/XBox/56550022-Aliens_Versus_Predator_Extinction.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 56550022 first-run, loaded none
+[  12.4s] #  1 publisher_logo    fast    A                        Early boot: a logo animation is playing, no title or menu yet. Per the hints, skip with A 
+[  21.1s] #  2 publisher_logo    fast    A                        Title/logo card still on screen; per hints, skip with A first, and wait for the screen to 
+[  30.3s] #  3 publisher_logo    fast    A                        Publisher logo still animating; per hints, skip with A first, then re-read.
+[  39.9s] #  4 publisher_logo    fast    wait                     Early boot logo animation still playing with no title or menu; hints say skip with A first
+[  45.9s] #  5 black             black   wait                     black frame
+[  53.8s] #  6 cutscene          fast    START                    Prior history shows a publisher logo and then black; this is a cinematic close-up of a cre
+[  61.8s] #  7 title_screen      fast    START                    Title screen with a 'Press START' prompt; per hints, START advances it. Cursor/highlight n
+[  70.6s] #  8 main_menu         fast    A                        Profile menu with no profile listed; New Profile is already highlighted and is the path to
+[  83.3s] #  9 main_menu         fast    A                        Profile menu; 'Create Profile' is the highlighted item and the path to play per the hints.
+[  94.2s] # 10 main_menu         fast    A                        A profile was just created; the prompt 'Press A To Continue' is the confirm to advance pas
+[ 104.7s] # 11 main_menu         fast    A                        Main menu with Start Campaign already highlighted, the fastest route to play. Pressing A a
+[ 119.7s] # 12 main_menu         fast    A                        Campaign select; Marine Campaign is the top, already-highlighted item and the fastest path
+[ 132.5s] # 13 submenu           fast    A                        Marine character select; the highlight is on Marine 1, the default. Accept with A.
+[ 143.0s] # 14 cutscene          fast    START                    Mission briefing text screen with 'Press START' prompt, not a menu and not gameplay; START
+[ 154.4s] # 15 cutscene          fast    A                        Intro cinematic with a visible 'Press A to Skip Intro' prompt; not gameplay (no HUD, no pl
+[ 165.6s] # 16 gameplay          fast    wait                     Player-controlled squad on the battlefield with the full in-game HUD (health, ammo, minima
+[ 185.3s] # 17 probe             probe   STICK:up:1.5             control 0.015, under input 0.536
+{"name": "Aliens Versus Predator Extinction", "device": "nova", "result": "gameplay", "minutes": 3.09, "model_calls": 17, "steps": 17, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-avp-extinction/claim/frames/016-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,0 +1,1 @@
+- Mashed: Drive to Survive (454D000A, nova, pathfind 2026-10-04): RT probes did not drive; HOLD:A:3 moved the scene (0.017 -> 0.814) once. Rounds end within seconds when the car is not driven: probe with A held, at once.
