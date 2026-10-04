@@ -9,6 +9,7 @@
 | 3 | Phantom Crash | 504C0001 | can't-path | - | - | - | gave up 15 min, 92 calls ($6.7): ClubWired dialogue | none | runs/screen-phantom-crash/claim |
 | 4 | Simpsons Road Rage | 45410013 | can't-path | - | - | - | race HUD at 10.8 min; 10 RT probes refused; 74 calls ($5.5) | none | runs/screen-simpsons-road-rage/claim |
 | 5 | Simpsons Hit & Run | 56550015 | clear | 100% (98.2% of samples) | 38 | full (606 s, PASS) | 2.7, 18 | golden bcc71e970cff (title data only: hold on state any) | runs/screen-simpsons-hit-run/hold |
+| 6 | Guilty Gear XX #Reload | 53410002 | clear (fps), partial | 100% of 193 s | 59 | partial: hold lost at a CONTINUE screen after 97 s of play | 1.9, 13 | golden 6f0d8fc26eb7 | runs/screen-guilty-gear-xx/hold |
 
 Share columns use title_verdict's bar, 30 x `fps_tolerance` 0.95 = 28.5, unless stated.
 
