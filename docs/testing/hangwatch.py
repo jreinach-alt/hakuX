@@ -258,6 +258,16 @@ def _log(out, rec):
         f.write(json.dumps(dict(rec, at=round(time.time(), 1))) + "\n")
 
 
+def _drain(watch):
+    """Read everything the log has grown by, to its end. -> the last HANG dict seen (None when no line tripped)."""
+    last = None
+    while True:
+        r = watch.poll()
+        if r is None:
+            return last
+        last = r
+
+
 def look(watch, dev, out, changed, diff, title, intake=None):
     """One look. -> the verdict dict when the run is a HANG (telemetry pulled, identification filed), else None.
 
@@ -270,11 +280,15 @@ def look(watch, dev, out, changed, diff, title, intake=None):
     trip = watch.poll()
     if trip is None:
         return None
+    _drain(watch)                       # the log's clock at the press: everything written so far is before it
+    if watch.start is None:
+        return None                     # the streak broke before the press: no HANG to confirm
     hd = os.path.join(out, "hang")
     os.makedirs(hd, exist_ok=True)
     before = os.path.join(hd, "probe-before.png")
     if not dev.capture(before):
         return None                     # no frame to compare against: no press, and the next look asks again
+    pressed = watch.now
     dev.pad("press", "A", 120)
     _log(out, {"event": "probe", "action": ["A"], "since": trip["since"], "tripped": trip["tripped"],
                "window": trip["window"]})
@@ -282,8 +296,10 @@ def look(watch, dev, out, changed, diff, title, intake=None):
     after = os.path.join(hd, "probe-after.png")
     moved = diff(before, after) if dev.capture(after) else None
     watch.frame(moved)
-    again = watch.poll() if moved is not None else None
-    if again is None:
+    again = _drain(watch) if moved is not None else None
+    # the verdict needs the telemetry AFTER the press: the streak still holds at the end of the log, and the log
+    # has run RECHECK_S past the press. A guest that recovers in that window ends the streak: not a HANG.
+    if again is None or watch.start is None or watch.now - pressed < RECHECK_S:
         watch.start = None              # the next trip needs HANG_S of its own
         _log(out, {"event": "probe-cleared", "frame_change": moved})
         return None
@@ -484,8 +500,11 @@ def selftest():
     more = []
     for k in range(10):                 # the guest stays pinned for 20 s after the press
         more += pinned_window(200 + k, 120 + 2.0 * k)
+    # the guest wakes up after the press: the log before the press still shows it pinned (the trip is read first)
+    recover = [level_line(120.5 + 2.0 * k, 3000 + k) for k in range(10)]
     cases = {}
-    for name, diff_v, more_lines in (("confirmed", 0.0, more), ("screen-moved", 0.5, more), ("telemetry-stops", 0.0, [])):
+    for name, diff_v, more_lines in (("confirmed", 0.0, more), ("screen-moved", 0.5, more), ("telemetry-stops", 0.0, []),
+                                     ("telemetry-recovers", 0.0, recover)):
         out = os.path.join(d, name)
         os.makedirs(out)
         cpath = os.path.join(out, "screen-logcat.txt")
@@ -506,6 +525,9 @@ def selftest():
           v is None and watch.start is None and "probe-cleared" in open(os.path.join(out, "hang.jsonl")).read())
     v, dev, out, watch = cases["telemetry-stops"]
     check("a press after which telemetry stops: not a HANG", v is None and watch.start is None)
+    v, dev, out, watch = cases["telemetry-recovers"]
+    check("a press after which the guest recovers (pre-press pinned lines still unread): not a HANG",
+          v is None and watch.start is None)
     RECHECK_S = saved
 
     if fails:

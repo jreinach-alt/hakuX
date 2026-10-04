@@ -1,0 +1,38 @@
+pathfind: Whiteout (4B4E0001) on nova: /storage/E6C6-D7AA/Games/XBox/4B4E0001-Whiteout.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4B4E0001 any, loaded none
+[  12.0s] #  1 publisher_logo    fast    A                        Early boot showing a logo-style splash on white; not a title, menu, or gameplay. Skip with
+[  19.7s] #  2 publisher_logo    fast    A                        Konami legal/publisher text card after the logos; not a title or menu. Previous A press ch
+[  27.7s] #  3 publisher_logo    fast    A                        This is another publisher/studio logo splash (a particle V mark), not a title or menu. Per
+[  36.9s] #  4 gameplay          fast    wait                     Player-style snowmobile race on a track with several racers lined up; motion blur suggests
+[  53.3s] #  5 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.755, under input 0.875
+[  57.9s] #  6 cutscene          fast    wait                     Heavily faded/washed-out frame with motion blur, likely a fade transition between the intr
+[  72.5s] #  7 cutscene          fast    wait                     Washed-out fade with motion blur and no HUD or controls visible; previous probe was refuse
+[  82.8s] #  8 gameplay          fast    wait                     A player-controlled snowmobile on a track with an arena around it; the previous steps were
+[  94.0s] #  9 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.995, under input 0.583
+[  97.9s] # 10 title_screen      fast    START                    Title screen with 'press START button' prompt; START is the required input here.
+[ 106.6s] # 11 save_load_prompt  fast    A                        Storage selection prompt with the Xbox Hard Disk already highlighted as the only usable st
+[ 117.0s] # 12 main_menu         fast    A                        Main menu with QUICK RACE at the top, which is the fastest path to play; the cursor appear
+[ 126.6s] # 13 submenu           fast    A                        Driver select in a quick-race flow; accepting the default driver with A is the fastest pat
+[ 140.2s] # 14 unknown           fast    wait                     Scene is an empty 3D environment with no visible player-controlled vehicle or HUD, so it i
+[ 150.3s] # 15 submenu           fast    A                        Sled select in the quick-race flow; accepting the default sled with A is the fastest path 
+[ 159.6s] # 16 submenu           fast    A                        Track select in the quick-race flow; accepting the default track with A is the fastest pat
+[ 168.9s] # 17 loading           fast    wait                     Game is in a loading screen between menu flow and the race; nothing to press, so wait for 
+[ 174.7s] # 18 loading           static  wait                     load still on screen (barely changed)
+[ 181.1s] # 19 loading           static  wait                     load still on screen (barely changed)
+[ 185.9s] # 20 loading           static  wait                     load still on screen (barely changed)
+[ 190.6s] # 21 loading           static  wait                     load still on screen (barely changed)
+[ 195.4s] # 22 loading           static  wait                     load still on screen (barely changed)
+[ 203.9s] # 23 loading           fast    wait                     Race loading screen with tip/preview panel; nothing to press, wait for the race to load.
+[ 209.6s] # 24 loading           static  wait                     load still on screen (barely changed)
+[ 216.0s] # 25 loading           static  wait                     load still on screen (barely changed)
+[ 220.7s] # 26 loading           static  wait                     load still on screen (barely changed)
+[ 225.4s] # 27 loading           static  wait                     load still on screen (barely changed)
+[ 230.1s] # 28 loading           static  wait                     load still on screen (barely changed)
+[ 238.7s] # 29 loading           fast    wait                     Race loading screen with a tip/preview panel and nothing to press; the same loading screen
+[ 249.1s] # 30 loading           static  wait                     load still on screen (barely changed)
+[ 253.8s] # 31 loading           static  wait                     load still on screen (barely changed)
+[ 258.5s] # 32 loading           static  wait                     load still on screen (barely changed)
+{"name": "Whiteout", "device": "nova", "result": "hang", "minutes": null, "model_calls": 21, "steps": 32, "replayed": 0, "reason": "HANG: frames still, audio quiet and the vCPU pinned for 95 s; one A press changed nothing (frame change 0.000)", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

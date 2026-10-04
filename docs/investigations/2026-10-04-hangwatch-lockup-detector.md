@@ -107,8 +107,10 @@ catches. Evidence is in the rows above.
 
 ## Gaps this lane does not close
 
-- The supervised Whiteout confirmation (Nova, <= 5 min, expecting HANG near 90 s) needs the hook, which is
-  waiting on `grant docs/testing/titles/pathfind.py`. It has not been queued.
+- Confirmed live, 10-04 (14:49 PDT, Nova, `pathfind.py 4B4E0001 --device nova --budget-min 5`, owner-approved): HANG at
+  286.7 s, the three signals held from the first static look (run 174.7 s; telemetry streak from log 146.745) for the
+  whole 95 s, and one A press changed nothing. The hook is cleared to fold. Artifacts and the look count are in
+  `docs/lanes/hangwatch/NOTES.md` ("Supervised Whiteout confirmation") and `docs/lanes/hangwatch/runs/whiteout/`.
 - The ESPN NHL 2K5, Simpsons and GTA SA load logs are not in the corpus with telemetry, so the legitimately static
   loads the brief asks for are not scored. The closest are the Counter-Strike and Sonic Heroes silent stretches.
 - The gate in `failure_intake.py` matches a hang on the route file's sha. A screening claim has no route file, so the

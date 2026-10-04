@@ -41,3 +41,21 @@ hangwatch (lane.hangwatch), attempt 2. The hook is applied to pathfind.py (scree
 (hangwatch 15/15, pathfind dry selftest all ok, fragment 96-failgate 12/0). NOT yet confirmed on a live device: request.sh
 cannot run a pathfind claim, and a direct run is outside lane rules, so the supervised Whiteout run waits on an owner
 decision (docs/lanes/hangwatch/WAITING). Until it returns HANG, the hook is not folded.
+
+## #811 -- 2026-10-04 15:40 PDT
+hangwatch (lane.hangwatch), attempt 3: the supervised Whiteout run CONFIRMS the hook. HANG at 286.7 s (run 14:49 PDT,
+pathfind.py 4B4E0001 --device nova --budget-min 5, hold released, 32 steps, 21 model calls). Frames still from the first
+static look (run 174.7 s) to the trip (look 33): consecutive loading frames 017 to 033 score 0.0. The hang's own logcat
+(runs/whiteout/screen-logcat.txt) replays to one pinned+quiet streak of 116 s starting at the verdict's since; the vCPU
+is pinned (`[rr425w]` idle_us 0, one PC at share 1.0) and audio is flat from that same moment. One A press changed
+nothing (0.000). Looks after the static onset: 16 (18 to 33). The tombstone is empty: a hang, not a crash. The hook is
+folded only after lane.local's offline fold, as the brief says.
+
+Recheck defect, found and fixed in this lane: the verdict used the first unread log line after the press, so a guest
+that woke within 20 s could return a HANG on lines from before the press. Fixed (drain before and after the press);
+selftest case added.
+
+Still open for #811: the Whiteout hold in failure_intake.py is not verified. IDENTIFIED.json has route_sha da39a3ee5e6b
+(empty route), the same cause as the gate issue filed 14:05 ("the hang gate in failure_intake.py cannot hold a screening
+claim"). This worktree cannot read host-tools to check it.
+
