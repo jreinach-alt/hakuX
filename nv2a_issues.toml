@@ -5653,3 +5653,11 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "Forge issue, open, local-only: a judge defect (title_verdict on castlevania-cod.returning, the alwaystelemetry pair). Row added by hostops 2026-10-04 (jam duty) so the coverage gate reads it. Nothing blocks it; it waits for capacity or a lane.local grant."
+
+[issue.793]
+title = "Black Stone hold: the attack walk does not move the fighter, and the rotation's buttons open the magic menu"
+component = "triage"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 20:5x PDT, 10-03 coverage gate): filed by issue_sync from lane.pathfind's OUTBOX with no tracker row; lane.local to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run. Evidence on the issue: runs/black-stone-walk/verdict.json, hold.jsonl, hold_strip.jpg."
