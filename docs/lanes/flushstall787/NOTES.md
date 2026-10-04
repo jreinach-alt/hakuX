@@ -133,7 +133,117 @@ pathfind's Halo 2 holds on the Nova (`hold/nova`, renewed 00:38Z). The session
 stops here; handback resumes it when the runs finish. Then:
 `fs_judge.py <dir>` (Kabuki) and `fs_judge.py <dir> --all` (Tron).
 
-## 5. For the next lane
+## 5. Attempt 2 (2026-10-03 19:20 PDT): why attempt 1 stopped, and the results
+
+Attempt 1 did not fail: it stopped by design on a `waiting:` for its two
+Nova runs, which sat behind pathfind's Halo 2 hold. Both have now finished
+(Kabuki DONE 18:09 PDT, Tron 18:22 PDT, apk 66ded35425cd, `[tcg787]`
+`pl=1` on every window), and this attempt judges them.
+
+### 5.1 Kabuki (the brief's run): **not the flush, and not translation**
+
+`fs_judge.py 1-1791072687-lane.flushstall787-1209260`: validity V1-V5 all
+pass (422 `[tcg787]` = 422 `[tlb68]`; heavy-translation windows read up to
+154 ms gus against a 4.6 ms quiet median; gc / hakuX-pages calls = 1.001).
+**Leg G PASS, leg F PASS.** Per stall >= 400 ms that overlaps a burst, summed
+over its windows:
+
+| stall t (log s) | max ms | windows | ff | pf | gen | gus ms | refill tfus ms | F ms (all flush fallout) | loop gap ms |
+|---|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| 64560.7 | 632 | 23-24 | 378 | 12,724 | 871 | 19.6 | 15.7 | 40.0 | 68 |
+| 64669.3 | 439 | 77-78 | 75 | 11,853 | 418 | 14.3 | 8.5 | 26.8 | 94 |
+| 64698.5 | 507 | 92 | 214 | 22,258 | 2,692 | 41.7 | 15.5 | 66.1 | 372 |
+| 64776.6 | 588 | 130-131 | 74 | 15,899 | 602 | 34.6 | 19.4 | 63.5 | 340 |
+| 64780.2 | 569 | 132-133 | 219 | 19,189 | 134 | 29.9 | 29.1 | 73.8 | 234 |
+| 64783.3 | 705 | 133-134 | 198 | 24,711 | 96 | 29.3 | 34.6 | 83.4 | 452 |
+| 64868.6 | 672 | 176-177 | 377 | 15,862 | 102 | 13.4 | 19.3 | 38.6 | 62 |
+| 64874.0 | 401 | 179 | 77 | 12,463 | 19 | 5.7 | 8.0 | 17.5 | 77 |
+
+One more stall (64704.4, 736 ms, w=95) has no burst (ff=0, pf=0): the guest
+is idle there (`[rr425w]` idle 1.06-1.29 s per window, woken mostly by the
+timer vector 0x30), i.e. waiting, not computing.
+
+**What the guest does instead** (`fs_guest.py`, `[tpc787]` scaled by
+`[rr425]` tbus). In a quiet window the title's wait loop entered at
+`000a8330` holds 91-98% of TB time and everything else is 70-270 ms. In every
+burst-stall window that loop falls to 11-76% and other guest code takes
+**400-1,320 ms**, in the same routines each time:
+
+- title FP routines `000bb4d2` / `000bb8fc` / `000bb9e6` (130-250 ms per
+  window; the blocks ending at FLDCW at 000bb4ce / 000bb8f9 in the on-disk
+  `[rr425pc]`),
+- `000b8fff` (an x87 loop, `d8 07` fadd [edi]) at 275-548 ms in w=92 and
+  w=133-134,
+- the guest kernel: `80014386` (75-145 ms) and the INVLPG site `8001fb35`,
+  with the memory manager's 12-25k INVLPGs and 75-378 same-value CR3 reloads.
+
+So the stall is the title's own CPU work at a scene/memory transition (it
+unmaps and remaps thousands of pages and runs FP-heavy routines), executed at
+TCG speed. The flush is a symptom of that work, not its cost: the flush and
+everything it causes (worker time + refills + all translation) is <= 83 ms of
+a 400-736 ms stall.
+
+**One TCG-side cost that is not the flush** (reported, not fixed, per the
+brief): `000b8fff` starts one byte before a page boundary, so its TB spans two
+pages, and QEMU never chains into a two-page TB (`[rr425]` gs). w=92 made
+3,776,471 such dispatches (median window: 1,806) and its loop gap is 372 ms
+against a 19 ms median; w=133 / 134 made 1.44M / 2.36M and read 175 / 277 ms.
+That is ~96 ns of dispatch per pass, about 350 ms of the 507 ms stall at w=92
+and ~400 ms over the 705 ms stall at w=133-134. It touches 2-3 of the 9
+stalls; the rest are pure guest TB time.
+
+### 5.2 Tron (the added run): translation is real but small, and not from a flush
+
+`fs_judge.py ... --all` on 1-1791072697-lane.flushstall787-1209966: validity
+all pass. Against `flushstall787-tron.json`:
+
+- **G holds as worded** (>= 400 ms in at least one stall: 474 ms over the
+  1,732 ms stall, 428 ms over the 739 ms one), but those sums span 5-6
+  windows (10-12 s). Per 2-s window gus peaks at **189 ms** (w=180).
+- **T refuted on its trigger**: tbf = 0 in every stall (no code-cache flush
+  this run). Generations exceed discards ~5-7x (50,941 gen vs 9,562 disc;
+  47,832 vs 6,691): mostly **first-time translation of newly loaded code**,
+  which no invalidation change can remove.
+- **F holds**: the TLB flush's own fallout (tfus + ffus + pfus) is 11-117 ms
+  per stall, under the 150 ms band in all eight.
+
+And what holds the stall windows: `fs_guest.py --spin none`. Right after a
+translation window (w=68, w=180: 19-23k generations, page-crossing
+`000dafff`), the next windows (w=69-70, 181-182) spend 1.2-1.35 s of 2 s in
+the guest kernel at `80014386` and a loop at `80027beb-80027c5d`, then the
+title resumes at `004ea0f7` / `0045e46b`. The stalls are the guest loading
+code and running kernel routines over it (a loader or a copy/zero pass), not
+the emulator's translation.
+
+### 5.3 Answer to the brief
+
+**Is the guest-late stall the TLB flush? No, in both titles.** A TLB flush
+discards no translated block here; what it costs (its worker time plus the
+refills after it) is at most 83 ms per Kabuki stall and 117 ms per Tron
+stall. Translation is at most 42 ms per Kabuki stall, and in Tron at most
+189 ms per window, mostly first-time code. The stall time is guest
+execution: Kabuki's FP routines and kernel memory management at a transition,
+and Tron's kernel routines after a code load. Per step 4: stop, no fix.
+
+Options for whoever takes it next, ranked by P x win:
+
+1. **vCPU execution speed** (the owner's 09-28 JIT direction). It is the only
+   lever on the whole stall: every stall above is guest TB time.
+   P high that it scales these stalls down, win: all of them in all three
+   titles. Large effort.
+2. **Chain into two-page TBs** (at least a two-page TB looping to itself,
+   which on a single-vCPU guest cannot see its second page remapped
+   mid-chain without leaving through an exit). P medium: the safety argument
+   needs to be made against the code, and it removes only dispatch overhead.
+   Win: ~0.2-0.35 s in 2-3 of Kabuki's 9 stalls, and some of Tron's loop gap
+   (gs up to 62k per window there, so small). Small effort; it is a
+   measurement-backed lever and not a hoped-for one, but it does not fix
+   Kabuki on its own.
+3. Page-range invalidation (#68): removes only re-translation of discarded
+   blocks, here <= 42 ms (Kabuki) and a minority of Tron's 189 ms. Do not
+   start with it for these stalls.
+
+## 6. For the next lane
 
 - Do not read "vCPU 100% busy" in Kabuki as guest work: it spins in every
   window.
@@ -141,3 +251,11 @@ stops here; handback resumes it when the runs finish. Then:
   `disc` per window is the #68 number.
 - A `tb_flush()` is invisible in every run's logcat (hakuX-tb is not in the
   spec); use `[tcg787]` tbf, or jc - jct - jci on older runs.
+- Do not chase the TLB flush or #68's invalidation for Kabuki's, Tron's or
+  (by the same signature) SW3's late stalls: measured, it is <= 83 / 117 ms
+  per stall. A `[tlb68]` burst marks the guest's own memory work.
+- `fs_guest.py <dir> <windows>` reads where the guest's time goes per window;
+  `[rr425]` gs is the count of unchained two-page-TB dispatches.
+- A stall's judged span covers every window its 60 flips touch, so a sum over
+  it can pass a per-stall threshold while no window is dominated by it. Read
+  per window too.
