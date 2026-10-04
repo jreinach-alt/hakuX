@@ -1,0 +1,28 @@
+{
+ "method": "rec",
+ "rc": 0,
+ "stderr": "",
+ "pull_rc": 0,
+ "start": 1791154538.7491868,
+ "wall_s": 5.93,
+ "bytes": 1377149,
+ "device": "nova",
+ "serial": "ee317437",
+ "seconds": 6,
+ "note": "RalliSport rival pass, plain master, run 1",
+ "flicker": {
+  "frames": 366,
+  "unique": 163,
+  "dup_share": 0.556,
+  "triples": 161,
+  "hits": 108,
+  "rate": 67.08,
+  "p90": 29.427,
+  "max": 39.753,
+  "verdict": "FLICKER",
+  "unique_fps": 27.3,
+  "dt_median_ms": 33.1,
+  "dt_max_ms": 184.1,
+  "worst": "f00097@1.583|f00099@1.617|f00100@1.633"
+ }
+}

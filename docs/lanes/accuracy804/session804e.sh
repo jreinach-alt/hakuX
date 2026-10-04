@@ -76,7 +76,7 @@ print(json.dumps(titlestate.prepare("nova", "4D53000F", "any", log=lambda m: pri
     rp=$!
     wait "$rp"; rc=$?; rp=
     log "run$i: route exit $rc"
-    python3 docs/testing/burst_capture.py --device nova --hold-tag "$TAG" --seconds 6 --out "$d/b1" \
+    python3 docs/testing/burst_capture.py --device nova --hold-tag "$TAG" --seconds "${BURST_S:-6}" --out "$d/b1" \
         --note "RalliSport rival pass, plain master, run $i" 2>&1 | tee -a "$OUT/session.log"
     A shell screencap -p /sdcard/Download/a804.png && A pull /sdcard/Download/a804.png "$d/after.png" >/dev/null
     A shell rm -f /sdcard/Download/a804.png
