@@ -5643,5 +5643,13 @@ title = "NBA Live 2005 runs at about 20 fps on the Nova in gameplay (not the rou
 component = "untriaged"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-04T00:12Z, coverage gate): filed on the forge with no tracker row, so the gate refused every board push. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+blocked_on = "IN FLIGHT (hostops 2026-10-04, jam duty): lane.fps20786 (Opus, attempt 1) runs on #786 and #747 with territory docs/lanes/fps20786/**. The lane owns it until its result lands."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue."789"]
+title = "A/B arms on a route with a wall-clock repeat-forever walk loop reach different content after the mark"
+component = "harness"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Forge issue, open, local-only: a judge defect (title_verdict on castlevania-cod.returning, the alwaystelemetry pair). Row added by hostops 2026-10-04 (jam duty) so the coverage gate reads it. Nothing blocks it; it waits for capacity or a lane.local grant."
