@@ -376,3 +376,9 @@ Pool status: Black Stone stays on the list (the pool's hold is the design fault,
 - The run first scored FAIL "window unmeasured": master's failgate (de4b991a6c) reads the scored window from HHMMSS-named route-frames, and the hold kept NNN-hold frames. pathfind now writes its kept hold frames to route-frames/ (b81b9086de); this run was rescored from its kept JPGs, same capture times.
 - The 08:04 attempt (234 s, ended with the session) read 230 of 236 s at >= 30 and is not used.
 - Spend so far today: about $4.3 (screening, Sonnet).
+
+[lane.pathfind] Aliens Versus Predator: Extinction (56550022) CLEAR on fps: 100% of 856 s at the verdict's bar (30 x 0.95), median 29, full window; profile golden 50a35dcd33ed, path docs/testing/titles/pathknow/paths/56550022.json
+- Verdict line: `VERDICT Aliens Versus Predator Extinction ? FAIL(menu time: 70.7% of the scored window in play (bar 90%; play 605 s, still 239 s, other 11 s)) gameplay=855.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0529 play_share=0.7073`
+- fps: gfps reads 29 or 31 in every 2-s sample (29: 230, 31: 190, 30: 19, 28: 2), so the title is locked at 30 and holds it. Raw share at >= 30 is 47%; at the verdict's 28.5 it is 100%. No hitches.
+- Not Playable yet: the verdict fails it on play share. It is an RTS, and the hold's shooter loop leaves the camera still in 7 windows (239 s). This is a hold-design miss for the genre, not a performance miss. A pan-the-camera RTS loop is the fix if it is promoted.
+- Claim: first-run, 3.1 min, 17 Sonnet calls (the morning survey only reached menus). Measurement run: replayed to play in 2.7 min (36 calls in the run, including hold looks). Frame strip: docs/lanes/pathfind/runs/screen-avp-extinction/hold/hold_strip.jpg. No native target in targets.toml.
