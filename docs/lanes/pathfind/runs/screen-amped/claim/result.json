@@ -1,0 +1,46 @@
+{
+ "title_id": "4D530005",
+ "name": "Amped: Freestyle Snowboarding",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D530005-Amped_Freestyle_Snowboarding.xiso.iso",
+ "result": "gameplay",
+ "tool": "ede3ec6df5",
+ "started": "2026-10-04 12:17:44 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/022-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/022-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/022-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/022-probe-right.jpg"
+ ],
+ "minutes": 3.75,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/021-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/030-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4D53.md"
+ ],
+ "model_calls": 24,
+ "calls_by_model": {
+  "claude-sonnet-5": 24
+ },
+ "steps": 22,
+ "seconds": 259.5,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/frames/021-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [
+  "4D530041"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/claim/strip.jpg"
+}

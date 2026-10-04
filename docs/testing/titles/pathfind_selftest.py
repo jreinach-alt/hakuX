@@ -153,6 +153,27 @@ lp = os.path.join(TMP, "know", "hints", "learned-pub-0000.md")
 check("happy", os.path.exists(lp) and "(00000000," in open(lp).read() and "main_menu A" in open(lp).read(),
       "one learned line was appended to learned-pub-0000.md")
 
+# repeat: a dialogue the model answered with one A that advanced it: A again unlooked, CLAIM_REPEAT times, then a look
+# (Phantom Crash, 10-04: 62 model calls on a ClubWired dialogue)
+rc, res, steps, calls = run("dialogue", [("cine", 0), ("cine", 40), ("cine", 80), ("cine", 120), ("cine", 160),
+                                         ("cine", 200), ("menu", 0), ("menu", 0)],
+                            [{"state": "cutscene", "why": "dialogue box", "action": ["A"], "wait_s": 2},
+                             {"state": "cutscene", "why": "dialogue box", "action": ["A"], "wait_s": 2},
+                             {"state": "main_menu", "why": "menu", "action": ["A"], "wait_s": 2}], ["--no-record"])
+src = [s.get("src") for s in steps]
+check("dialogue", src[:5] == ["fast", "repeat", "repeat", "repeat", "fast"],
+      f"one look, three unlooked repeats, then a look (not the stronger model): {src}")
+check("dialogue", all(s.get("action") == ["A"] for s in steps[:5]), "the repeats send the look's own press")
+
+# proberot: a live HUD whose probe input never moves anything (Road Rage's RT, 10-04): the third probe is not RT
+check("proberot", [pathfind.probe_key(t) for t in ("RT:1.5", "RT:3", "HOLD:A:3", "STICK:up:2", "RT+left:1.2", "A")]
+      == ["RT", "RT", "HOLD:A", "STICK:up", "RT+left", "A"], "probe_key drops the seconds only")
+G_RT = dict(GAME, probe="RT:3")
+rc, res, steps, calls = run("proberot", [("game", 0)] * 30, [G_RT] * 8, ["--no-record"])
+probes = [s["action"][-1] for s in steps if s.get("src") == "probe"]
+check("proberot", len(probes) >= 3 and [pathfind.probe_key(p) for p in probes[:2]] == ["RT", "RT"]
+      and pathfind.probe_key(probes[2]) == "HOLD:A", f"two RT probes, then the ladder's HOLD:A: {probes}")
+
 # dark: a dark dungeon scene, the probe moves an 80x80 patch by 12 grey levels (under the old fixed 16-level step,
 # 0.5% of the frame: refused before any confirm call). Black Stone's sword and spell in the 10-03 gate.
 rc, res, steps, calls = run("dark", [("black", 0), ("black", 0), ("dark", 0), ("dark", 0), ("dark", 0),
@@ -442,6 +463,33 @@ pathfind.Agent.send(type("A", (), {"dev": type("D", (), {"pad": lambda self, *a:
 check("actions", SENT[0] == ("axis", "LT", "max") and ("axis", "LX", "min") in SENT
       and SENT[-1] == ("axis", "LT", "min") and ("axis", "LX", "mid") in SENT,
       f"LT+left holds the trigger and the stick together, then releases both: {SENT}")
+
+# fps gate (owner 10-04): the 3- and 5-min "should we continue?" reads of the hold's gfps lines
+def _course(vals):
+    p = os.path.join(TMP, "gate-logcat.txt")
+    with open(p, "w") as f:
+        f.writelines(f"10-04 08:06:{i % 60:02d}.139 I/hakuX-perf(1): gfps={v} G:16.7\n" for i, v in enumerate(vals))
+    return pathfind.fps_course(p)
+
+
+ralli = _course([59] * 222 + [34, 35, 38, 45, 45, 49, 51, 52, 54, 58, 60, 60, 60, 60])
+check("fpsgate", ralli["share"] == 1.0 and not pathfind.fps_gate_fails(ralli, 22),
+      f"RalliSport's 234 s (all >= 30) goes on: {ralli}")
+slow = _course([18, 19, 20, 21, 20] * 36)
+check("fpsgate", pathfind.fps_gate_fails(slow, 22), f"a steady 20 fps stops at 3 min: {slow}")
+near = _course([26, 27, 28, 31, 25] * 60)
+check("fpsgate", pathfind.fps_gate_fails(near, 22) is False and pathfind.fps_gate_fails(near, 27) is False,
+      f"median 27 (close) is on course at both marks: {near}")
+low = _course([24, 25, 26, 31, 25] * 60)
+check("fpsgate", not pathfind.fps_gate_fails(low, 22) and pathfind.fps_gate_fails(low, 27),
+      f"median 25: on course at 3 min, stops at 5 min: {low}")
+mixed = _course([20] * 100 + [40] * 200)
+check("fpsgate", not pathfind.fps_gate_fails(mixed, 27), f"a slow start then 40 fps (share 67%) goes on: {mixed}")
+locked = _course([29] * 230 + [31] * 190 + [30] * 19 + [28] * 2)
+check("fpsgate", locked["share"] > 0.99 and not pathfind.fps_gate_fails(locked, 27),
+      f"a locked-30 title reading 29/31 (AvP) is on the verdict's bar (30 x 0.95): {locked}")
+check("fpsgate", not pathfind.fps_gate_fails(_course([10] * 10), 22) and _course([])["n"] == 0,
+      "under 30 s of gfps lines is no evidence either way")
 
 shutil.rmtree(TMP)
 print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))
