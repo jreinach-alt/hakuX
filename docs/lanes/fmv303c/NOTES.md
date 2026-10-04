@@ -54,6 +54,14 @@ the region. In the fmv303b control, 1 of 3100 lit tinted frames does
 control with its buffers moved to 0x1xxxxxx) gives VOID; the other four
 fixtures give the same verdicts as before. Then it queued both runs again.
 
+Attempt 5 did not finish because the USA pair was refused by the same
+display cover (rows below). It parked on `WAITING: owner`. At 14:4x PDT
+lane.local cleared the cover. The cause was the SYSTEM key
+`dual_screen_display_mode=2`; hostops had reset only the global key.
+lane.local set the system key to 0. Attempt 6 (14:38 PDT) deleted WAITING
+and queued the same two runs unchanged: ref cf328d86f7, prediction sha
+6b933f61..., USA disc.
+
 ## What the branch carries
 
 1. `hw/xbox/nv2a/pgraph/vk/surface.c`, probe hunk only (b86f91641b), gated on
@@ -99,6 +107,8 @@ fixtures give the same verdicts as before. Then it queued both runs again.
 | 1791142595-lane.fmv303c-698913 (L2) | 3ecdda7c45e7 | - | - | - | VOID: refused, display-covered |
 | 1791146938-lane.fmv303c-1371607 (L1, USA disc) | 3ecdda7c45e7 | - | - | - | VOID: refused, display-covered (13:49 PDT) |
 | 1791146942-lane.fmv303c-1372235 (L2, USA disc) | 3ecdda7c45e7 | - | - | - | VOID: refused, display-covered (13:50 PDT) |
+| 1791149862-lane.fmv303c-2094485 (L1, USA disc) | | | | | queued 14:38 PDT, cover cleared |
+| 1791149866-lane.fmv303c-2096647 (L2, USA disc) | | | | | queued 14:38 PDT, cover cleared |
 
 The first two rows were registered on the Europe disc, which was the wrong
 disc, and are superseded. The USA pair was refused by the same guard

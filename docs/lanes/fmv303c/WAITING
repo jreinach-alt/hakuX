@@ -1,1 +1,0 @@
-owner #303 arm: the Thor soak guard refuses every run (display-covered: primaryScreenTopLayout, com.odin.dualscreen.assistant). Clear the AYN overlay on the idle Thor, or let the guard accept it when the soak draws on the top screen; then resume lane.fmv303c to re-queue the two USA-disc runs unchanged.
