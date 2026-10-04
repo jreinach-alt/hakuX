@@ -124,6 +124,9 @@ HOLD_UNSTICK = {
     "drive": (["LT+left:3", "RT+right:3"], ["LT+right:3", "RT+left:3"]),
     # a gun game that stands still at a wall (Halo 2, 10-03: 31% static in one room): strafe out, firing, the other way
     "shooter": (["STICK:left:2", "RT:1"], ["STICK:right:2", "RT:1"]),
+    # a fighter that stands on its arena (Black Stone, 10-03: the attack loop's up and down cancel, 600 s on one spot,
+    # window change 0.002-0.013). Each still window walks a square: the four legs are not undone by the next one.
+    "attack": (["STICK:right:2", "A"], ["STICK:up:2", "A"], ["STICK:left:2", "A"], ["STICK:down:2", "A"]),
 }
 # play that drops into a menu right after a loop cycle: a loop button opened it (ToeJam & Earl III, 10-03: the
 # "Presents" inventory in 13 of 19 kept frames). Each such drop sheds the next of these from the loop.
