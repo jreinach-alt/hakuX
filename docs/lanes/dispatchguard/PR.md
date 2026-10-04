@@ -1,5 +1,5 @@
 # dispatcher: a soak from a pre-libfolders ref still finds its games folder
-State: draft
+State: ready
 
 Lane: dispatchguard (on branch lane/toolsmith)            Issue: none (harness defect, hostops addendum 2026-10-04, lane.local's 14:58 harness item)
 Base: master @ 10f14d301d
@@ -30,7 +30,8 @@ A libfolders build ignores the old key while the array is present.
 - Same fragment against master's dispatcher.sh: 13 of 15 FAIL (the falsifier).
 - `SELFTEST_ONLY="99-folder-pref 99-hdd-split"`: 78 passed, 0 failed. The hdd split edits the same
   prefs file in the same branch.
-- Full `bash docs/testing/jobs/selftest.sh`: see below.
+- Full `bash docs/testing/jobs/selftest.sh`: 3078 passed, 0 failed, all 126 fragments.
+- `docs/testing/preflight.sh --allow-tracker`: passed (territory, coverage, board files ok).
 
 Release note (none): harness only; old-build soaks on a migrated handheld boot again.
 
