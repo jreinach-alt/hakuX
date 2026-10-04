@@ -403,6 +403,29 @@ after = [l["action"] for l in look[i + 1:] if l.get("src") == "genre"] if i is n
 check("holdshed", hold.get("shed") == ["B"] and after and all("B" not in a and "X" in a for a in after),
       f"the menu-opening drop shed B from the loop and kept X: shed {hold.get('shed')}, "
       f"{after[:1]}")
+
+# titlehold: a title's own hold (TITLE_HOLD, Black Stone's design, 10-03 addendum) opens with X alone, walks with the left
+# stick in long strokes, never sends Y, R1, BACK, START or B, and presses X again after two still windows in a row. The
+# genre model is not asked: the title names its loop.
+pathfind.TITLE_HOLD["00000000"] = pathfind.TITLE_HOLD["58490004"]
+ROUTE_LOG.clear()
+rc, res, steps, calls = run("titlehold", PREFIX + [("game", 0)] * 120 + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}] + [PLAYING] * 160,
+                            ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
+pathfind.TITLE_HOLD.pop("00000000")
+hold = res.get("hold", {})
+look = [json.loads(l) for l in open(os.path.join(TMP, "titlehold", "out", "hold.jsonl"))]
+acts = [l["action"] for l in look if l.get("action")]
+flat = [t.upper() for a in acts for t in a]
+check("titlehold", hold.get("title_hold") is True and not any(c["purpose"] == "genre" for c in calls),
+      f"the title's loop is used and the genre is not asked: {[c['purpose'] for c in calls]}")
+check("titlehold", acts[0] == ["X"], f"the hold opens with X alone: {acts[:2]}")
+check("titlehold", not any(t in pathfind.TITLE_HOLD_FORBID for t in flat),
+      f"no forbidden button in the hold: {sorted(set(flat))}")
+check("titlehold", [a for a in acts if "X" in a] == [["X"]] * flat.count("X") and flat.count("X") >= 2,
+      f"X is pressed alone again after still windows: {flat.count('X')} presses")
+walk = pathfind.TITLE_HOLD["58490004"]["walk"]
+check("titlehold", all(a in (walk, ["X"]) for a in acts), f"every other cycle is the walk: {acts[:6]}")
 pathfind.now, pathfind.time.sleep = real_now, real_sleep
 
 # actions

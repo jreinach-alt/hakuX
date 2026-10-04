@@ -145,6 +145,14 @@ HOLD_GENRES = {
     "team": ["RT:1", "STICK:up:1", "A", "STICK:right:1", "X", "STICK:left:1", "B", "STICK:down:1", "Y"],
     "other": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"],
 }
+# Title-specific hold loops (10-03 addendum, the owner's Black Stone design). They replace the genre's loop and its
+# unlock rotation for these title ids. The walk moves the player with the left stick only, in long strokes that
+# change direction. X is pressed once, alone: at the start of the hold and after two still windows in a row. Y, R1,
+# BACK and START are never sent in the hold, and B only to close a menu that a look found open (then X, then walk).
+TITLE_HOLD = {
+    "58490004": {"walk": ["STICK:up:4", "STICK:right:4", "STICK:down:4", "STICK:left:4"]},   # Black Stone: Magic & Steel
+}
+TITLE_HOLD_FORBID = ("Y", "R1", "BACK", "START", "B")
 
 
 def now():
@@ -1311,8 +1319,12 @@ class Agent:
         when play may have ended (black, or static on two looks in a row), every HOLD_CHECK_S, and once to
         name the genre. Off play, the model's own inputs steer back, one model look per step, until it reads
         play again. A frame is kept every HOLD_FRAME_S; the rest are deleted."""
-        genre, genre_why = self.hold_genre(jpg)
-        tokens = HOLD_GENRES[genre]
+        th = TITLE_HOLD.get((self.tid or "").upper())
+        if th:
+            genre, genre_why = "attack", "title hold (TITLE_HOLD): left-stick walk"
+        else:
+            genre, genre_why = self.hold_genre(jpg)
+        tokens = th["walk"] if th else HOLD_GENRES[genre]
         log = os.path.join(self.out, "hold.jsonl")
         held = {"genre": genre, "why": genre_why}
         print(f"hold-play: genre {genre}, need {self.hold_s:.0f} s of play", flush=True)
@@ -1322,6 +1334,7 @@ class Agent:
         # looks (Black Stone stood 600 s on one octagon and passed the verdict). Then rotate the inputs: an unlock
         # button and the next genre's loop, until the scene moves again.
         parked, rot, still_windows = False, 0, 0
+        press_x, still_row = bool(th), 0  # a title hold presses X alone first, and again after a menu or two still windows
         shed_set = set()                 # loop buttons that opened a menu (HOLD_SHED): never sent again this hold
         order = [genre] + [g for g in HOLD_GENRES if g not in (genre, "onrails")]
         rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
@@ -1389,6 +1402,13 @@ class Agent:
                         wait_s = min(max(float(a.get("wait_s") or 2), 0.5), 8)
                     except (TypeError, ValueError):
                         wait_s = 2.0
+                    if th:
+                        # title hold: a menu is closed with one B and X follows; anything else keeps the model's press
+                        # minus the forbidden buttons (a cutscene's A)
+                        if st in HOLD_SHED_STATES:
+                            action, wait_s, press_x = ["B"], 1.5, True
+                        else:
+                            action = [t for t in action if t.upper() not in TITLE_HOLD_FORBID] or ["A"]
                     look["action"] = action
                     self.send(action)
                     time.sleep(wait_s)
@@ -1401,6 +1421,8 @@ class Agent:
                 # play: the genre loop (a check look that said play sends it too). The time credited is this
                 # cycle's own, from its frame to its inputs: the look before may have been off play.
                 loop = [t for t in tokens if t not in shed_set]
+                if th and press_x:
+                    loop, press_x = ["X"], False
                 look.update(src=look.get("src", "genre"), action=loop)
                 self.send(loop)
                 if not parked:
@@ -1412,16 +1434,22 @@ class Agent:
                     look["window"] = round(mv, 4)
                     if mv < HOLD_STILL:
                         still_windows += 1
-                        rot += 1
-                        unstick = HOLD_UNSTICK.get(genre)
-                        if unstick and rot <= 2 * len(unstick):
-                            tokens = unstick[(rot - 1) % len(unstick)] + HOLD_GENRES[genre]
+                        if th:
+                            # two still windows in a row: X once, then the walk goes on (no unlock rotation)
+                            still_row += 1
+                            if still_row >= 2:
+                                press_x, still_row = True, 0
                         else:
-                            tokens = [UNLOCK_LADDER[(rot - 1) % len(UNLOCK_LADDER)]] + \
-                                HOLD_GENRES[order[rot % len(order)]]
+                            rot += 1
+                            unstick = HOLD_UNSTICK.get(genre)
+                            if unstick and rot <= 2 * len(unstick):
+                                tokens = unstick[(rot - 1) % len(unstick)] + HOLD_GENRES[genre]
+                            else:
+                                tokens = [UNLOCK_LADDER[(rot - 1) % len(UNLOCK_LADDER)]] + \
+                                    HOLD_GENRES[order[rot % len(order)]]
                         parked = True
-                    elif parked:
-                        parked = False
+                    else:
+                        still_row, parked = 0, False
                     want = "still" if parked else "play"
                     if logged in ("play", "still") and want != logged:
                         self.dev.route_log(f"state={want} t={int(hold_el)}")
@@ -1442,7 +1470,7 @@ class Agent:
             reason = f"budget {self.budget_s / 60:.0f} min with {play_s:.0f} s of play"
         held.update(ok=ok, play_s=round(play_s, 1), need_s=self.hold_s, hold_s=round(now() - t_hold, 1),
                     model_navs=navs, frames=len(kept), still_windows=still_windows, shed=sorted(shed_set),
-                    reason=reason)
+                    reason=reason, title_hold=bool(th))
         self.result["hold"] = held
         print(f"hold-play: {'HELD' if ok else 'not held'} {play_s:.0f}/{self.hold_s:.0f} s of play; {reason}",
               flush=True)

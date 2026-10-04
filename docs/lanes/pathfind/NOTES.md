@@ -1,5 +1,17 @@
 # lane.pathfind -- NOTES
 
+## Resume (10-03 21:5x PDT, attempt 1 of this resume): why the last attempt did not finish
+
+- The 21:16 session (attempt 4) finished Dino Crisis 3 (FAIL, menu time 79.1%, below). Its OUTBOX was posted at 21:45 and it
+  stopped with nothing in flight and no WAITING file.
+- The 21:5x addendum (Black Stone moves up, next on the Nova; its title-specific hold design) arrived after that and was
+  not started. Nothing was lost on the device.
+- This session: the Black Stone hold as the owner specified it. `TITLE_HOLD["58490004"]` in `pathfind.py`: X once alone at
+  the hold's start and again after two still windows in a row; a left-stick walk in 4-s strokes that change direction; no
+  face buttons in the walk; Y, R1, BACK, START and B are never sent in the hold. A menu that a look finds open gets one B,
+  then X, then the walk. The genre model is not asked for a title hold. Selftest `titlehold` covers it (all ok).
+- Spend at the start of this resume: about $46 of the $70 cap (the 21:16 NOTES figure of $44 plus the Dino Crisis 3 run).
+
 ## Dino Crisis 3 held run (10-03 21:27-21:45 PDT, Nova, first-run)
 
 - Claim at 3.55 min, 35 Sonnet calls. Hold 607 s of play, FAIL on menu time (79.1%). fps_ok 0.38.
