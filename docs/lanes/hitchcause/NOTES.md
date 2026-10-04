@@ -151,7 +151,7 @@ measurement the offline data cannot make:
   the vCPU thread, `simpleperf --app` with host symbols, which the harness
   cannot start today).
 
-## 5. Why no Nova capture in this lane
+## 5. Why no Nova capture in this lane (attempt 1; superseded by section 10)
 
 The brief allowed one capture if the offline data could not decide. It cannot
 decide between (a) and (c), and a capture of the current build would produce the
@@ -221,3 +221,102 @@ for the exact hitch count.
 - Vector 0x3e = IRQ14 is an inference (section 2, finding 2).
 - The `[rr425pc]` profile is capped at its hash-table size (8 to 10 entries per
   span), so no concentration result from it is meaningful.
+
+## 10. Attempt 2: the instrument, the one MTV hold, and what it changes
+
+Build: `b559c094eb` (perflog; the `[ide425]` window line in `hw/ide/core.c`).
+Runs, all on the Nova:
+
+| run | what | result |
+|---|---|---|
+| `1-1791150826-lane.hitchcause-2424636` | smoke, `805cb8054f`, per-command line, 120 s MTV survey | no `[ide425]` line at all |
+| `1-1791151242-lane.hitchcause-2557798` | smoke, `b559c094eb`, window line, 150 s MTV survey | 24 windows; boot bursts (552 IRQs in one 2.0 s window) with no PIO |
+| `docs/lanes/hitchcause/capture_mtv_ide425.sh` (hold `lane.hitchcause`) | pathfind 5454000B, `--hold-s 700 --state any`, 15 min wall | **FAIL**: 166 s of play, then pathfind's hold went to the main menu for 13 steps and stopped. 23 windows, 160 pace lines, one hitch at 100 ms or more (210 ms at 15:22:26) |
+
+The hold ran once (owner's one-hold allowance). It was not the 700 s play the
+brief asked for, so the 330 ms class did not recur in it and cannot be
+diagnosed from it. Logcat: `perf/2026-10-04-hitchcause/mtv-ide425/pf/logcat.txt`.
+Analysis: `ide425_windows.py` (stdlib; in this directory).
+
+**The window line settles the path question.** Across 23 windows of the hold
+and 24 of the smoke run, `rd_sec` (PIO read sectors submitted) is 0 in every
+window, and the data-port word count `w` is 0 in every hold window. No PIO
+sector read happened during 11 minutes of MTV. The per-command line in the
+first smoke printed nothing for the same reason: no PIO read command began.
+
+**The IRQ14 wakes are not the IDE model's interrupts.** In the 15:22:26
+hitch's span, `[rr425w]` shows 200 wakes on vector 0x3e, while the IDE model
+raised 7 interrupts in its 7 s window. So the wakes outnumber the IDE raises by
+about 30 to 1. The boot shows the same shape the other way: 552 IDE raises in
+one 2.0 s window with no sectors and no words. The IDE raises come from
+`ide_bus_set_irq` (about 40 call sites), and none of the sites is a PIO read.
+
+### Corrections to sections 1 to 8
+
+- **Finding 3 (one IRQ per PIO sector, one burst is one stream) is refuted.**
+  No PIO sector was read in the hold.
+- **Section 2 finding 1 (r = 0.74 of IRQ14 busy against the worst frame)** keys
+  on vector 0x3e. The mapping 0x3e = IRQ14 = primary IDE is an inference, and
+  the hold contradicts it: the wakes are not the IDE's interrupts. Read the r as
+  a correlation with a vector key, not with the IDE device.
+- **Sections 3 (c) and 6, candidates 2 and 3** (read-ahead of PIO sectors,
+  batching the data port) assume PIO sector reads. None was observed.
+- **Section 7 (MTV-specific or harness-wide)** rests on the same key. The claim
+  that the bursts are one mechanism across Orta and Blood Wake is unverified;
+  what holds is that vector 0x3e wakes co-occur with hitches in those logs.
+- **Section 5** (no Nova capture) is superseded by this section.
+
+### Diagnosis: the 2-vs-3 question
+
+Neither branch. The data does not show the IRQ14/0x3e stream as PIO sector
+reads, so branch 2 (storage latency, read-ahead) and branch 3 (per-word data
+port cost) have nothing to act on for these hitches. The question becomes what
+raises vector 0x3e at about 100 per second with no PIO traffic, and whether that
+source is what the hitch waits on. One hitch in this hold is not enough to say.
+
+Per hitch, from this run:
+
+| hitch (PDT) | worst ms | route | IDE raises / window | vector 0x3e wakes | PIO sectors | cause |
+|---|---:|---|---:|---:|---:|---|
+| 15:22:26 | 210 | play | 7 (7 s window) | 200 (span) | 0 | not separable: the wakes have no IDE source here |
+
+The five 330 ms hitches of the 10-04 hold are not in this run, so their causes
+are **not separable with this telemetry**.
+
+### P x win for the next step
+
+Ranked by expected impact. The win is the stall the hitch class costs a
+title; the 10-04 hold had 14 hitches in 689 s (1.15 per minute, worst 349 ms).
+
+| candidate | P that it decides or works | win if it works | cost | order |
+|---|---|---|---|---|
+| A. Count what raises IRQ14 at the PIC input: `pic_set_irq` in `hw/intc/i8259.c`, per 2 s, tagged by caller, next to the `[rr425w]` vector | 0.7 that it names the source: the 200 wakes vs 7 raises says the vector has a source the IDE model does not see | the 330 ms class, if that source is what the hitch waits on: 1.15 per minute on MTV, up to 349 ms each | a grant for `hw/intc/i8259.c` (not in this lane's Files); one build; one 2-minute smoke | **first** |
+| B. Count `ide_bus_set_irq` by call site and `ide_bus_exec_cmd` by command byte, and count `ide_dma_cb` completions, per window | 0.5 that the boot's 552 raises are commands or DMA; 0.1 that it explains the hitch's 200 wakes (7 raises at the hitch) | same as A, if it names the source | `hw/ide` only (granted); rides in A's build | with A |
+| C. A second MTV hold, 700 s of play, on A+B's build | 0.5 that it reproduces the class (1 hitch in 166 s here, 14 in 689 s on 10-04) | none by itself; needed to test A | one 700 s hold; **the owner's decision** (the addendum allows one) | after A+B |
+| D. Read-ahead of the next PIO sector (old candidate 2) | 0.05: no PIO sector read was observed in 11 min | 330 ms per burst, if it worked | `hw/ide`; no pixels | no |
+| E. Batch the PIO data port (old candidate 3) | 0.02: no PIO words were observed | as D | `hw/ide` plus MMIO; larger | no |
+| F. Blood Wake's 1.6 to 3.1 s stalls (no IRQ14 wakes at all) | unknown; separate class | large, per title | separate lane | separate |
+
+A first, because it decides whether the 200 wakes have a source outside the IDE
+device; everything else is downstream of that name. B rides in the same build
+for free. C needs the owner's approval for the second hold, and it is the only
+way to test A's result against the hitch class.
+
+### What is needed from the board
+
+1. **A grant for `hw/intc/i8259.c`** (candidate A's counter). Without it, A is
+   not possible in this lane.
+2. **The owner's decision on the second MTV hold** (candidate C).
+3. Nothing else. `hitch_report.py` is unchanged (no change to thresholds, per the
+   brief); its shader and texture classes do not see the vector-0x3e wakes, and
+   a later lane with the grant should add a column for them.
+
+### Caveats
+
+- One hold, 166 s of play. A 23-window sample cannot rank causes, only refute
+  the PIO path.
+- The `[ide425]` window closes from the IDE IRQ path, so a window with no IDE
+  interrupt prints nothing; the 7 s window at the hitch is the only one covering it.
+- `w` times the data-port handler only; the TCG MMIO dispatch in front of it is
+  not timed, as the line says.
+- Vector 0x3e = IRQ14 is still an inference, and this section lowers its weight.

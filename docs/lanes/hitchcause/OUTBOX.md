@@ -1,3 +1,7 @@
+## #433 -- 2026-10-04 15:40 PDT (attempt 2 result)
+
+hitchcause: the IDE PIO path is not what the MTV bursts are. One held MTV run (166 s of play, pathfind stopped at the main menu) with an `[ide425]` window line in `hw/ide/core.c` (lane branch `lane/hitchcause` at b559c094eb): zero PIO sector reads in 23 windows, zero data-port words in the hold. The vector-0x3e wakes at the one 210 ms hitch outnumber the IDE model's raises 200 to 7. So attempt 1's PIO claim is withdrawn. The 330 ms class did not recur in the 166 s, so its cause is not separable yet. Next: count what raises IRQ14 at the PIC input (`hw/intc/i8259.c`, needs a grant); the second MTV hold needs the owner's decision. NOTES section 10 has the table.
+
 ## #433 -- 2026-10-04 14:42 PDT
 
 hitchcause: the MTV 330 ms hitches are on IDE sector-read bursts; the cause is not separated yet.
@@ -6,4 +10,8 @@ The 8 distinct MTV hitches of 200 ms or more each sit in a 2 s span, or the next
 
 NEW ISSUE: MTV and Orta 200-350 ms frame hitches sit on IDE (IRQ14) PIO sector-read bursts; cause not yet separated
 Evidence: `perf/2026-10-04-mtv-hitches/logcat.txt` (Nova, perflog build, held run, 10-04 14:04-14:17 PDT). Hitches at 14:05:57 (349 ms), 14:08:39 (346), 14:10:25 (344), 14:13:15 (331), 14:15:21 (330), 14:05:19 (242), 14:04:41 (209), 14:13:01 (209). IRQ14 (vector 0x3e in the rr425w key) busy per 2 s span against the worst frame: r = 0.74 over 344 spans; spans under 100 ms have 0 IRQ14 busy. The 14:05:57 and 14:13:15 spans show the vCPU thread asleep about 300 ms (idlehalt run 83-85%). Scripts and tables: `docs/lanes/hitchcause/` on lane/hitchcause (ide_wake.py, NOTES.md). Blocks: MTV Playable frame pacing; Orta (ISO on SD card) shows the same link (r = 0.46). Next: hw/ide perflog grant, then one MTV run.
+
+## #819 -- 2026-10-04 15:40 PDT (attempt 2 result)
+
+hitchcause: the separation of the MTV hitch class, one held run. The IDE PIO hypothesis (sector-read bursts) does not hold. In a 166 s hold of MTV (pathfind, `--state any`; the run stopped at the main menu after 166 s of play) the `[ide425]` window line shows zero PIO sector reads and zero data-port words in all 23 windows. The one hitch of 100 ms or more (210 ms at 15:22:26) has 200 vector-0x3e wakes in its span while the IDE model raised 7 interrupts in its 7 s window. Evidence: `perf/2026-10-04-hitchcause/mtv-ide425/pf/logcat.txt`; the analysis is `docs/lanes/hitchcause/ide425_windows.py`. The five 330 ms hitches of the 10-04 hold did not recur in 166 s, so they are not separable. Next: count the sources of IRQ14 at the PIC input (`hw/intc/i8259.c`, needs a grant), then a second hold if the owner approves. NOTES section 10.
 
