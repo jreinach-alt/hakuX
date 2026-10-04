@@ -4,7 +4,7 @@ State: ready
 
 Lane: pathfind            Issue: #433
 Base: master @ 425ffe1ad1 (origin/master merged into lane/pathfind 10-04 08:15 PDT)
-Files: docs/lanes/pathfind/NOTES.md, docs/lanes/pathfind/OUTBOX.md, docs/lanes/pathfind/runs/, docs/testing/titles/pathfind.py, docs/testing/titles/pathfind_selftest.py, docs/testing/titles/pathknow/hints/learned-pub-454D.md, docs/testing/titles/pathknow/hints/learned-pub-4553.md, docs/testing/titles/pathknow/hints/learned-pub-4D53.md, docs/testing/titles/pathknow/hints/learned-pub-5341.md, docs/testing/titles/pathknow/hints/learned-pub-5655.md, docs/testing/titles/pathknow/hints/learned-series-rallisport.md, docs/testing/titles/pathknow/paths/
+Files: docs/lanes/pathfind/NOTES.md, docs/lanes/pathfind/OUTBOX.md, docs/lanes/pathfind/PR.md, docs/lanes/pathfind/runs/, docs/testing/titles/pathfind.py, docs/testing/titles/pathfind_selftest.py, docs/testing/titles/pathknow/hints/learned-pub-454D.md, docs/testing/titles/pathknow/hints/learned-pub-4553.md, docs/testing/titles/pathknow/hints/learned-pub-4D53.md, docs/testing/titles/pathknow/hints/learned-pub-5341.md, docs/testing/titles/pathknow/hints/learned-pub-5655.md, docs/testing/titles/pathknow/hints/learned-series-rallisport.md, docs/testing/titles/pathknow/paths/
 Prediction: none: no arm (tooling and a probe measure; no emulator code)
 Needs device: yes (held, direct driving; no dispatcher requests)    Needs NDK: no
 
