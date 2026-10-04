@@ -5630,3 +5630,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "unmeasured: every 600-s miss in Kabuki, SW3 and Tron shares this guest-late stall; the size is what flushstall787 measures."
+
+[issue."784"]
+title = "the overnight queue marks a route-refused row done and never re-queues it"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-04T00:12Z, coverage gate): filed on the forge with no tracker row, so the gate refused every board push. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue."786"]
+title = "NBA Live 2005 runs at about 20 fps on the Nova in gameplay (not the route)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-04T00:12Z, coverage gate): filed on the forge with no tracker row, so the gate refused every board push. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
