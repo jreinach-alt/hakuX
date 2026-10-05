@@ -380,3 +380,119 @@ is a plain increment with no change to the IRQ, IRR, ISR or EOI logic.
 The Android build is the only compile check the dispatcher gives. A desktop
 build is not run here: AGENTS.md's desktop build needs `libcurl`, which is
 not installed on this host, so this lane cannot claim a desktop build.
+
+## 12. Attempt 4: why attempt 3 did not finish, the smoke's answer, and the hold
+
+**Why attempt 3 did not finish.** It queued its build-and-smoke as
+`1-1791153154`, naming the title by id (`5454000B`). The dispatcher resolves a
+title by the ISO's file name, so the run died at once with `title not on
+device`. lane.local re-queued it as `1-1791159308-lane.hitchcause-1279404`
+(same ref `d4b0169ab2`, full file name) and changed the WAITING file in this
+worktree, but the committed WAITING still named the dead run. The re-queue
+finished at 17:18 PDT 10-04 and nothing resumed the lane until hostops' jam duty
+at 07:3x PDT 10-05. Every request from this lane now uses
+`5454000B-MTV_Celebrity_Deathmatch.xiso.iso`.
+
+### The smoke answers section 11's question: the IDE model is the source
+
+Smoke `1-1791159308-lane.hitchcause-1279404` (apk `e621d7c96716`, ref
+`d4b0169ab2`, Nova, 150 s MTV, perflog): 77 `[pic14]` lines, 24 `[ide425]` lines.
+
+| window (PDT 10-04) | `[pic14]` raise / edge / ack / eoi | `[ide425]` irq (its own window) | `[rr425w]` vector 0x3e wakes |
+|---|---|---|---|
+| 17:15:38 | 61 / 60 / 55 / 55 | 62 (2.26 s) | 0 |
+| 17:15:40 | 537 / 537 / 537 / 537 | 546 (2.02 s) | 244 + 205 |
+| 17:15:42-46 | 152 + 0 + 5 | 143 (5.61 s) | 121 + 0 + 1 |
+| 17:15:48 to 17:16:26, steady | 3 to 14 per 2 s, edge = ack = eoi | 7 to 12 per 2 s | 2 to 9 |
+| 17:16:28 | 261 / 261 / 261 / 261 | 149 + 119 (2.0 + 5.2 s) | (span not printed) |
+
+- `edge` equals `raise` in every window, and `ack` equals `eoi` equals
+  `raise`: the line is never masked or left unserviced (`imr=a6`, IRQ14
+  unmasked; `isr=00` at every close). Section 11's third prior (masked, 0.1) is
+  out.
+- The PIC-input count tracks the IDE model's raises within the windows'
+  misalignment (537 against 546; 152 + 5 against 143). Nothing other than
+  `ide_bus_set_irq` asserts pin 14. Section 11's first prior (a non-IDE
+  source, 0.6) is refuted; the second (IDE, and section 10 mis-keyed, 0.3)
+  is what the test picked.
+- **Section 10's 200-against-7 was the window, not the device.** In the
+  attempt-2 hold, the `[ide425]` window that closed at 15:22:26.033 closed on
+  the first IRQ of the burst, so it held only the 7 quiet raises before it.
+  The burst's raises went into the next window, which closed at 15:22:39.761
+  with `irq=231`, against 200 + 1 vector-0x3e wakes in the 15:22:26
+  `[rr425w]` span. So the correction in section 10 ("the wakes are not the IDE
+  model's interrupts") is itself withdrawn. Vector 0x3e is IRQ14 is the IDE
+  device, and section 2's r = 0.74 is a correlation of the hitches with IDE
+  interrupt bursts.
+- `rd_sec` and `w` stay 0 in every window of both runs: the bursts are IDE
+  commands that move data without the PIO read path, which leaves DMA (HDD
+  READ DMA, or ATAPI DMA reads from the DVD, which is on the same channel as
+  the HDD). Section 10's refutation of the PIO path stands.
+
+### What is still missing, and what was added
+
+The hitch is now "an IDE DMA burst", and the question is the brief's own (a)
+against (b): is the 330 ms the guest's own work between commands, or the
+guest waiting on the host read? Neither `[ide425]` nor `[pic14]` times the DMA
+path, so a hold on `d4b0169ab2` would show the same burst again and not
+separate them (the rule is no retest without the telemetry that decides).
+
+Commit `af37f7a3ea` adds `[ide425d]` (in `hw/ide/core.c`, granted; telemetry
+only, no behaviour change; documented at `ide425_tick`), in the same window as
+`[ide425]`:
+
+- `irq_cd`, `cmd`, `cmd_cd`, `dma`, `dma_cd`, `dma_kb`: which drive (HDD or
+  the DVD) the burst is on, and how many bytes each DMA asks for;
+- `dma_us_*`: `ide_start_dma` to the next IDE interrupt (the host read);
+- `dev_n`, `dev_us_*`: command write to the next interrupt (device time as the
+  guest sees it);
+- `gap_n`, `gap_us_*`: interrupt to the guest's next command (guest time);
+- `drain`, `drain_us_*`: any `blk_drain` in `ide_cancel_dma_sync`, a
+  synchronous host wait in the vCPU thread.
+
+A syntax-only compile of `hw/ide/core.c` with the desktop build's flags
+(`/home/justin/hakuX/build-desktop/compile_commands.json`) passes. The Android
+build is the dispatcher's, on the smoke below.
+
+This spends a second build beyond lane.local's "one build" of 15:55. I chose
+it over running the hold on `d4b0169ab2` because of the scores below. The
+hold count is unchanged: one.
+
+| option | P that the hold decides (a) vs (b) | win | cost |
+|---|---:|---|---|
+| hold on `d4b0169ab2` (the addendum's ref) | 0.05: it times nothing on the DMA path; it can only confirm that the burst is IDE, which the smoke already shows | none | one 15 min Nova hold |
+| hold on `af37f7a3ea` (`[ide425d]`) | 0.6: 0.75 that the 330 ms class recurs in a full 700 s hold (5 in 689 s on 10-04; attempt 2's hold stopped early), times 0.8 that the dev and gap sums split cleanly | names the fix for the 330 ms class (1.15 hitches per minute on MTV; Orta and Blood Wake share the IRQ14 link) | one build, one 150 s smoke, the same one hold |
+
+### Decision rule for the hold, fixed before the run
+
+For each hitch window of 200 ms or more that has an IDE burst:
+
+- **dev dominates** (`dev_us_sum` at least half of the burst's span, and per
+  DMA at least 1 ms): the guest waits on the host read. Picks (b), storage
+  side. Next: the host read path for the drive the burst is on (`irq_cd`):
+  ATAPI read-ahead or an in-memory ISO cache for the DVD, a larger
+  block-layer request for the HDD.
+- **gap dominates** (`gap_us_sum` at least half of the span, `dma_us` per
+  command under 0.5 ms): the guest's own work between commands. Picks (a).
+  The hitch is the title's loader running on the vCPU; the fix sits under the
+  vCPU JIT direction, not in the IDE model.
+- **drain_us_max of 100 ms or more**: a synchronous host stall in the vCPU
+  thread. Picks (b), host side, and names the call.
+- Neither half dominates: not separable at 2 s; the next step is a per-command
+  line triggered on a hitch.
+
+Priors: dev dominates 0.4 (the Nova reads the ISO through the QEMU block layer
+on Android storage, and the 14:05:57 and 14:13:15 spans had the vCPU asleep
+about 300 ms); gap dominates 0.45 (three of the five 330 ms spans ran at 92 to
+94% on CPU); drain 0.05; neither 0.1.
+
+### Runs
+
+| run | what | state |
+|---|---|---|
+| `1-1791210904-lane.hitchcause-2015470` | build of `af37f7a3ea`, 150 s MTV smoke, perflog, Nova | queued 07:4x PDT 10-05; the Nova is held by lane.pathfind |
+| held capture | `capture_mtv_ide425.sh` with `REF=af37f7a3ea`, 700 s, `--state any` | after the smoke shows `[ide425d]` lines |
+
+The hold runs only if the smoke prints `[ide425d]`. If the 330 ms class does
+not recur in the hold, I park with the table and report it on #433; there is no
+third hold.
