@@ -226,7 +226,7 @@ would differ only by those already-signalled waits).
 
 | rows | n | share >= 28.5 | fps | F | GPU (ph_GPU) | render on-CPU | render blocked | render idle | finish | vCPU asleep | lockw |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| all | 112 | 0.80 | 35.1 | 28.5 | 24.2 | 11.2 | 16.5 | 0.3 | 2.7 | 9.8 | 1.4 |
+| all | 112 | 0.79 | 35.1 | 28.5 | 24.2 | 11.2 | 16.5 | 0.3 | 2.7 | 9.8 | 1.4 |
 | below 28.5 | 23 | -- | 25.5 | 39.2 | 32.6 | 15.0 | 23.9 | 0.3 | 2.6 | 15.2 | 6.3 |
 
 - F tracks the GPU time in every 30-s bucket (GPU 21-27 ms, F 25-38): the
