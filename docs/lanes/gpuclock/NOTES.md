@@ -114,7 +114,7 @@ under 10% of samples.
 
 ## 4. Device plan
 
-- Thor: Forza Motorsport (the Thor's copy), `forza.drive.route` with `mark` instead of `find`
+- Thor (superseded 10-05 10:45, see Log): Forza Motorsport (the Thor's copy), `forza.drive.route` with `mark` instead of `find`
   (`drive forza 400 mark`: drives and marks gameplay at 6 s of confirmed play). <= 480 s per run,
   cold slot by lane.local's hakux-thor-coldconfirm.
 - Nova: Nightfire (`nightfire.route`), Tron (near30's `tron-newgame.route`), queued in pathfind's
@@ -189,3 +189,13 @@ step is short, x1.12, so its e carries +-0.1 from 0.3 ms of noise).
   (Tron default first, Forza max first). Reader: J/frame over the window
   (thermal_state.power_over); three-level ladder for the Simpsons blocks. Grant for profile.c
   still unanswered; Simpsons host capture not yet run.
+- 10-05 ~10:45 PDT: **Forza on the Thor is out.** The re-queued pair died like the first:
+  `-2642382` (max) at 7 s ("hakuX is not the focused app", route-died) and `-2642489` (default) at
+  26 s ("xemu is gone ... not-foreground: com.magneticchen.daijishou"), both in the intro video.
+  Every Thor Forza run since 10-05 has ended this way: 6 of 6, refs 521ea8a93e and 606bbf1ee1
+  (lane.frametrace), 7-42 s, no fault line in the hakuX tags; the logcat ends in ordinary
+  telemetry (`[gpuclk433]` at 401/40%, gfps 29). A process exit with no tombstone, Thor only. The
+  hakuX tags cannot show the cause (the logcat spec is a tag list); sent to lane.local for
+  identification (OUTBOX), not re-run. Forza moved to the Nova on ibcache's blind drive route
+  (`forza-nova-gpuclock.route`; drive.py stuck on the Nova's menus on 10-03): `-2660089` (max)
+  then `-2660193` (default), order drawn at random.
