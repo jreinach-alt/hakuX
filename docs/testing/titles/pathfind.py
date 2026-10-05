@@ -128,6 +128,8 @@ CONTINUE_PRESS = ("START", "A")
 CONTINUE_TRIES = 4
 CLAIM_REPEAT = 3                     # the claim's unlooked repeats of a single press that advanced a cutscene
 CLAIM_REPEAT_STATES = ("cutscene", "intro_video", "publisher_logo")
+CLAIM_REPEAT_BOX = 6                 # the same, on a frame the letterbox check says is a cutscene
+INTRO_STATES = ("cutscene", "intro_video", "publisher_logo")
 # Two kept frames (HOLD_FRAME_S apart) that change less than this at the probe's contrast step: the player did not
 # move in that window. 10-03, scratch/posprobe.py on the held runs: Black Stone standing on its octagon for 600 s
 # (sword swinging, verdict PASS) 0.002-0.013 per 30-s pair; Panzer Dragoon Orta flying 0.31-0.92.
@@ -1310,10 +1312,14 @@ class Agent:
         # 92 calls ($6.7 of the claim) were one look per line of a ClubWired dialogue that A advanced every time.
         # Only on the SAME screen (its signature still matches: the box stayed, its text moved on). A press that
         # led somewhere new (a logo's START to a menu) gets a look: a repeat there would choose a menu item.
-        if prev and prev.get("state") in CLAIM_REPEAT_STATES and len(prev.get("action") or []) == 1 \
+        # A letterboxed frame after a letterboxed cutscene step is a cutscene by the local check alone (owner 10-04:
+        # Tork's claim spent 10 looks on START+A over a run of staged close-ups, ~9 s each, Tron 48 looks): the
+        # press that advanced it goes again unlooked, one or two buttons, up to CLAIM_REPEAT_BOX times.
+        boxed = bool(prev and prev.get("state") == "cutscene" and letterboxed(png))
+        if prev and prev.get("state") in CLAIM_REPEAT_STATES and 1 <= len(prev.get("action") or []) <= (2 if boxed else 1) \
                 and prev.get("src") in ("fast", "strong", "repeat") and (prev.get("changed") or 0) > UNCHANGED \
-                and prev.get("sig") is not None and sig_dist(prev["sig"], sig) <= SIG_MATCH \
-                and not tried and self.repeat_run() < CLAIM_REPEAT:
+                and prev.get("sig") is not None and (boxed or sig_dist(prev["sig"], sig) <= SIG_MATCH) \
+                and not tried and self.repeat_run() < (CLAIM_REPEAT_BOX if boxed else CLAIM_REPEAT):
             return dict(base, state=prev["state"], why=f"repeat {prev['action'][0]}: it advanced the {prev['state']}",
                         action=list(prev["action"]), wait_s=prev.get("wait_s", 2), src="repeat")
         # 5. the model; the stronger one when stuck or unsure
@@ -1335,6 +1341,14 @@ class Agent:
             return dict(base, state="unknown", why="model gave no answer", action=[], wait_s=2, src="none")
         state = ans.get("state") if ans.get("state") in STATES else "unknown"
         action = clean_action(ans.get("action"))
+        # an intro, logo or cutscene is never waited out while a skip button is untried here (owner 10-04: Dino Crisis
+        # 3 waited 9 looks on a video its hint says START skips; Halo 2 and DOA3 "did not mash"). A press at a
+        # video nothing skips costs nothing; the wait comes back once START, A and B have each had a go.
+        if not action and state in INTRO_STATES:
+            fresh = [b for b in ("START", "A", "B") if b not in tried]
+            if fresh:
+                action = [fresh[0]]
+                ans["why"] = str(ans.get("why", "")) + f" [override: {state} is skipped, not waited out -> {action[0]}]"
         # never the same input a 4th time on the same unchanged screen
         if action and (tried.count(" ".join(action)) >= 3 or seen.count(" ".join(action)) >= 4):
             fresh = [b for b in SKIP_LADDER if b not in tried]
