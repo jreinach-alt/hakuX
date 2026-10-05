@@ -1582,6 +1582,14 @@ class Agent:
                         self.hold_note(log, dict(look, action=[]))
                         break
                     action = clean_action(a.get("action"))
+                    if genre == "attack" and not th and st == "menu" and action == ["START"]:
+                        # a fighting select screen takes A on the highlighted entry, not START (10-04 rule; the GG rerun
+                        # 6 look still said START on "PRESS START" over an empty slot, 35 s per game over)
+                        why = str(a.get("why", "")).lower()
+                        if (any(w in why for w in ("select", "character", "stage", "arcade", "mode"))
+                                and not any(w in why for w in ("title", "attract"))):
+                            action = ["A"]
+                            look["select"] = True
                     try:
                         wait_s = min(max(float(a.get("wait_s") or 2), 0.5), 8)
                     except (TypeError, ValueError):
