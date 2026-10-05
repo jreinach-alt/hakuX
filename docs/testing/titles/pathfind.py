@@ -126,6 +126,7 @@ HOLD_REPEAT_STATES = ("cutscene", "game_over")
 # episode, then ask the model again. The hold log's `continue` look says which press took.
 CONTINUE_PRESS = ("START", "A")
 CONTINUE_TRIES = 4
+CONFIRM_GRACE_S = 300                # seconds the claim budget is extended once a gameplay read starts its confirm (10-05)
 CLAIM_REPEAT = 3                     # the claim's unlooked repeats of a single press that advanced a cutscene
 CLAIM_REPEAT_STATES = ("cutscene", "intro_video", "publisher_logo")
 CLAIM_REPEAT_BOX = 6                 # the same, on a frame the letterbox check says is a cutscene
@@ -893,6 +894,7 @@ class Agent:
         self.plan = []               # the model's planned next screens (from a guide), sent without a call
         self.hints = knowledge(tid, name)
         self.probes = 0
+        self.grace_used = False          # the claim's one confirm grace (CONFIRM_GRACE_S), see run()
         self.dead_probes = 0         # probes in a row whose input moved nothing at all (UNLOCK_LADDER)
         self.probe_tries = {}        # probe_key -> confirms that used it (PROBE_LADDER past PROBE_REFUSED_MAX)
         self.black_since = None
@@ -1267,6 +1269,11 @@ class Agent:
             dec["frame"] = os.path.relpath(jpg, self.out)
             if dec["state"] == "gameplay" and dec.get("src") != "black":
                 self.write_step(dec)
+                # play is live: the claim budget does not end the confirm (19:40 rule; MTV rerun 10-05 gave up at step 89
+                # on a probe of play it had reached at step 88). Once per claim: refused probes must still end it.
+                if not self.grace_used:
+                    self.grace_used = True
+                    self.budget_s = max(self.budget_s, self.el() + CONFIRM_GRACE_S)
                 probe = dec.get("probe") or ["STICK:up:1.5"]
                 probe = (probe if isinstance(probe, list) else [probe])
                 # the model's own action first (ESPN NFL 2K5, 10-02: "gameplay" on the kickoff play-call

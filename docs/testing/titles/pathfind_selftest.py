@@ -65,6 +65,9 @@ os.environ["PATHFIND_AFTER_S"] = "0"
 os.makedirs(os.path.join(TMP, "know", "hints"))
 sys.path.insert(0, HERE)
 import pathfind  # noqa: E402
+# the selftest's claim budgets are seconds long and run on real time: a 300-s confirm grace would let every
+# budget-ended case wait out its sim. The grace is a production setting; its path is the next real claim's test.
+pathfind.CONFIRM_GRACE_S = 0
 
 # the escalation cases need a stronger model than FAST; the default is Sonnet for both today (10-03), so pin Opus
 pathfind.STRONG = "claude-opus-5-5"
