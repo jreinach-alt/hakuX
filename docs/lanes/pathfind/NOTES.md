@@ -64,6 +64,17 @@ What the next lane should not repeat:
 - Next: rerun NFL Blitz 2002 with the claim goal that opens OPTIONS first (`scratch/blitz.sh`). The OPTIONS location is
   unverified; if the claim finds no period setting in OPTIONS either, the rerun's own frames say where to look.
 
+### NFL Blitz 2002 rerun (hold2, 11:33-11:57): CLEAR (fps), flicker unchecked
+- Claim 76 steps, 93 model calls, 13.2 min: OPTIONS, then PLAY OPTIONS, then QUARTER LENGTH (5 min, the longest offered).
+  Then QUICKPLAY, team select, kickoff; the claim confirmed gameplay on a probe that moved the scene (under input 0.80 vs idle 0.08).
+- Hold 600 s: play_share 0.990 (harness), fps_ok 0.996 at 28.5, window median 45.1, min 25.2, position first-to-last 0.86,
+  no still window, no crash, no hang. One model look read a play-call screen during an extra point (A).
+- Caveat for review: 5 of the 16 kept frames show a play-call overlay between plays, which the loop passed with A and the model
+  read as play. The real play share is below 0.99 by an amount not measured. OUTBOX has the NEW ISSUE.
+- Not done: no `paths/<id>.json` (the ISO has no title id; paths are keyed by id). The route lives in the hint.
+- Sports rule status: the period was set in-claim (goal line) and the sports look read the clock and a human-controlled
+  player before the hold; period_break was not seen as a state (the loop's A passed the play-call overlays).
+
 ## Resume (10-05 09:58 PDT, attempt 2 of the 10:00 sports order): why the last attempt did not finish
 
 - The 07:00 session ended with the MTV Celebrity Deathmatch rerun (`runs/mtv-rerun1`, 09:38-09:53) in flight, and the
