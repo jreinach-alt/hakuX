@@ -684,3 +684,18 @@ Fix committed (selftest all ok, 76 checks, scratch/selftest-attempt4c.log): for 
 
 NEW ISSUE: AMF Xtreme Bowling hangs at boot 1 time in 2 on the Nova: guest vCPU pinned at r:800151ed on the brushed-metal backdrop, FPS 1
 Evidence: docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/hang.jsonl (probe event: share 0.9838, top r:800151ed, idle_us 0), hang-logcat.txt, frames 004-028 (static grey backdrop for 2+ min); the 16:11 run (hold) passed the same screen in 10 s. Also for lane.hangwatch: a probe with frame_change 0.0 was logged probe-cleared, so a pinned, still screen did not end the claim. Blocks a clean first boot of the title.
+
+[lane.pathfind] AMF Xtreme Bowling re-hold FAIL on a CRASH (10-05 16:55, runs/amf-xtreme-bowling/hold2): after the boot hang and one relaunch, the claim went straight to Pin Challenge (the goal line worked: DOWN x4 past Practice, Easy, venue, oil pattern) and confirmed on HOLD:A:3 (change 0.82 under input vs 0.04 idle). The hold then ran 426 s of play at fps 1.0 (median 59.0, 100% at 30) and hakuX died with SIGSEGV at 16:53:46; the hold found the Game Library and stopped. Verdict FAIL (crash), play share 0.747, gameplay 574 s, 7 hitches (worst 211 ms). Aborted at: crash at 7:06 of play. Perflog: the run's logcat carries the perf lines. CLASS: FAIL (crash), fps clear. Spend: Sonnet, about 45 claim calls plus hold looks.
+Crash: Caught signal 11 in tid 5355 (pfifo thread) fault_pc in /data/data/com.jreinach.hakux.debug/files/gpu_driver/vulkan.purple.so+0xa21264, si_addr 0x80; backtrace #00 vulkan.purple.so+0xb0ad74, #01-#03 libxemu.so+0x520cb0/0x51e63c/0x51f1d8, #04 pgraph_vk_draw_end, #06 pgraph_method, #07 pfifo_thread. This is the pushed GPU driver, not the system one.
+
+NEW ISSUE: AMF Xtreme Bowling: SIGSEGV in the pushed GPU driver (vulkan.purple.so+0xa21264, si_addr 0x80) under pgraph_vk_draw_end after 7 min of Pin Challenge on the Nova
+Evidence: docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/logcat.txt lines 5719-5738 (backtrace), verdict.json (crash_detail), hold frames; fps was 1.0 at 59 up to the crash. The 16:11 run of the same title held 606 s with no crash (Practice then Pin Challenge). Blocks AMF Xtreme Bowling's Playable.
+
+[lane.pathfind] PARKED for the perf queue (owner priority, lane.local 16:55): Nova released 16:55:30; no Nova title is claimed until the queued perf requests have run (frametrace 1-1791225335 running; gpuclock 1-1791241711, -436985, -437094, -437210; gpunonrender 1-1791243663, 1-1791243666). WAITING lists them.
+NEXT SCREENING ORDER when the perf queue drains (P x win; fps is already clear on every one):
+1. NBA 2K3 hold3 (scratch/nba2k3c.sh): the team select is fixed and proven on the device (16:2x); only the confirm failed, and the team-sport marked-player confirm is new in b2f6838b03. P about 0.5, and it unblocks the 2K basketball and hockey family.
+2. NHL 2K3 hold2 (scratch/nhl2k3b.sh): same confirm fix; its play ran at FPS 29 on the overlay, so the fps bar is at risk. P about 0.35.
+3. LEGO Star Wars re-hold (scratch/lego2.sh, golden 5251f98730d1): fps 1.0, the join-prompt START cause is fixed in the hold look (2c2ce35a19). P about 0.5.
+4. AvP: Extinction re-hold: fps locked 30, the new title hold (3b1cb99dd3) selects the squad and scrolls the map. P about 0.3 (controls unverified).
+5. Football last, per the 12:35 order (NFL Blitz Pro, NFL 2K2, then the rest).
+Not again today: AMF Xtreme (crash, for identification), Strike Force Bowling (name-entry wheel identified, untested), Guilty Gear XX, Tork.

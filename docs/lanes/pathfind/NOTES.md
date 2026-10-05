@@ -14,6 +14,7 @@
 | AMF Xtreme Bowling | CLOSE | 0.832 (Practice ended) | 1.0 | 59.1 | 2.5 min, 43 calls | runs/amf-xtreme-bowling/hold |
 | Strike Force Bowling | FAIL (name entry) | - | 1.0 (284 s) | 59.0 | ~3.5 min | runs/strike-force-bowling/hold3 |
 | NHL 2K3 | can't-path (probe, self-moving camera) | - | - | ~29 | 70 steps, 84 calls | runs/nhl-2k3/hold |
+| AMF Xtreme Bowling (re-hold) | FAIL (crash: SIGSEGV in vulkan.purple.so under pgraph_vk_draw_end at 426 s) | 0.747 | 1.0 | 59.0 | boot hang once, then 6 min | runs/amf-xtreme-bowling/hold2 |
 | NBA 2K3 | can't-path x2 (team select, then probe) | - | - | - | 15 min each | runs/nba-2k3/hold, hold2 |
 
 Fixes landed today in pathfind.py: the sports period rule, bowl loop, name-entry rule, ESPN team select (one RIGHT,
@@ -976,6 +977,7 @@ What this shows, and what it does not:
 - Attempt 3 wrote the day summary and the resume state at 15:47 and ended its turn with the Nova free, the order not done
   (AMF Xtreme Bowling staged at 15:16 and unrun, then LEGO / AvP / sweep titles, then football) and the cap not reached.
   Cause: the session treated the day summary as a stopping point. The 12:35 order runs to 6 Playables or 22:00.
+- Parked 16:55 on the owner's perf priority (lane.local): WAITING names the 7 perf requests; the next order is in OUTBOX (NBA 2K3 hold3, NHL 2K3 hold2, LEGO, AvP, football).
 - This attempt: AMF Xtreme Bowling first (`scratch/amfxtreme.sh`, log `runs/amf-xtreme-bowling/heldrun.log`, started
   15:55 detached), with AMF Bowling 2004's route in its goal (the xiso has no title id, so no sibling path file exists).
 
