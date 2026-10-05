@@ -664,6 +664,12 @@ How to act:
   (Guilty Gear XX, 10-04); A on the highlighted character did (the claim's steps). START is for title/attract prompts.
 - A CONTINUE countdown after a lost round (fighting games; "continue" with a countdown and credits): one START,
   then A if it stays. Do not wait it out: the countdown ends in GAME OVER, then the title, then the menus again.
+  Guilty Gear XX, 10-04: START on the CONTINUE led to the character select, A on the highlighted fighter then
+  resumed the round; A on the CONTINUE ran the countdown out.
+- A live fighting round: "PRESS START" over an EMPTY player-2 slot in the HUD is a join prompt, not a title or a
+  menu. Do not press START there: it opens the pause menu (Guilty Gear XX, 10-04). A round with the HUD and a
+  counting timer is gameplay: probe with the stick. A "PLEASE WAIT" or a round-start banner (3, 2, 1, FIGHT, the
+  round title) is not yet live: wait 2 s and look again before probing.
 - Sports controller/team-select screens: if controller icons sit in the MIDDLE column between the two teams,
   nobody is assigned and the CPU plays both sides (a match that looks live but ignores the stick: ESPN NHL
   2K5, 10-02). First move controller 1 under a team with LEFT or RIGHT (or STICK:left:0.3), then A.

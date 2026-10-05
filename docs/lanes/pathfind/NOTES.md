@@ -73,6 +73,22 @@ What the next lane should not repeat:
 4. **Selftest `continue`:** three continue looks send START, A, START, and the count is logged per look. `pathfind_selftest:
    all ok` (run before device time).
 
+### Guilty Gear XX re-hold attempts (10-04 19:25-19:55 PDT)
+
+- **Attempt 1 (19:25, `--state returning`):** refused before it started. The golden 6f0d8fc26eb7 is title data only (no
+  save directory), so titlestate refuses `returning`. Nothing ran on the Nova beyond the take and release.
+- **Attempt 2 (19:29-19:40, `--state any`, `hold2/`):** gave up at the 15-min claim budget (81 calls, 76 steps, $ about
+  4), so the 600-s hold never started. Gameplay was claimed many times but never confirmed (the probes were refused, the
+  control read 0.11-0.18 at a round start). The frames identify the fixed inputs:
+  - CONTINUE after the loss (step 21): START, which led to the character select; then A on the highlighted fighter (22-23)
+    resumed the round (24-25). Step 56, A on the CONTINUE: the countdown ran out to GAME OVER (57-58). So START continues
+    and A does not. The model chose START in the claim after the rules change, and the claim worked through it.
+  - The round's "PRESS START" over the empty P2 slot (44-45, 53-54, 64-65): START each time, and START opened the pause
+    menu (46). That is the second cause of the lost minutes.
+  - Probes that land in a round start (the "PLEASE WAIT" and the 3-2-1 banner) read control 0.1-0.2 and were refused.
+- **Change for attempt 3:** the rules now say a PRESS START over an empty P2 slot in a live round is a join prompt (do not
+  press START), and a round-start banner waits 2 s before any probe. Compiled; no other change.
+
 ### LEGO Star Wars: the cause (hold `runs/screen-lego-star-wars/hold`)
 
 - The hold ran clean to 576 s. From then, the hub's "Press START" prompt (the player-2 join prompt over the level) was read
