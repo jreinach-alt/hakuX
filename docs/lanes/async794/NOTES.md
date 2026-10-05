@@ -327,3 +327,9 @@ Do not repeat: the selftest took longer than the Bash tool's 10 minutes here
 this one), and `timeout 590` runs in the foreground kept cutting it off in
 `51-dispatch-hardening` E2, which looked like a hang. It was not. Run it once
 as an in-session background task with no timeout, and wait on that.
+
+Selftest at the merge: 3064 passed, 0 failed, all 126 fragments. The gate
+run's id and result are posted on #798 and are not committed: offline_fold.py
+(line 107) accepts only a run whose ref is a prefix of the exact head, so a
+commit after the run would void it. Do not add a docs commit on this branch
+after the gate run unless you queue another gate run at the new head.

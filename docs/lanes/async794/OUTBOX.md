@@ -38,3 +38,11 @@ device runs for fix 2: it claims no fps change, and the Counter-Strike, MC3 and
 Burnout Revenge pairs only tested fix 1. The follow-ups that could move fps
 need their own briefs: a GPU-side converting copy for the texture-bind `cvt`
 class, and a GPU-side path for NBA's image -> VRAM -> image rebinding.
+
+Fold gate (2026-10-05): the branch merges origin/master f3bd87638e, which
+includes libfolders, so a build from the head boots on a migrated device. One
+120 s Nova hold of 4D53000F is queued at the head commit that carries this
+paragraph, and that run is the gate. Its run id and result (boot ok, no wizard,
+void=no) are on #798 and not in a commit. offline_fold.py accepts only a run
+built from the exact head (`head.startswith(ref)`), so committing the result
+here would move the head and void the run it reports.
