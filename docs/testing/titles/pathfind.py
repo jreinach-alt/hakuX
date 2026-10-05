@@ -202,6 +202,12 @@ TITLE_HOLD = {
     "55530040": {"walk": ["STICK:up:4", "A", "STICK:up:3", "STICK:right:1.5", "STICK:up:4", "A", "STICK:up:3",
                           "STICK:left:1.5"],
                  "unstick": [["STICK:up:2", "HOLD:A:0.6", "STICK:up:2"]]},
+    # AvP: Extinction (10-04 screen hold, play share 70.7%): an RTS. The generic loop's 1-s strokes left the map camera
+    # on one dark patch for 239 s; the scene changed only after L1 (select all) or X then RT. Select the squad, then long
+    # cursor strokes that scroll the map, each ended by A (an order to move there), so the squad and the camera travel.
+    "56550022": {"walk": ["L1", "STICK:up:3", "A", "STICK:right:3", "A", "L1", "STICK:down:3", "A",
+                          "STICK:left:3", "A"],
+                 "x": False},
 }
 TITLE_HOLD_FORBID = ("Y", "R1", "BACK", "START", "B")
 # the stand-still detector for title holds (10-05): a stretch of two still windows gets the next of these moves, then the
