@@ -7,6 +7,10 @@
  *   HAKUX_PMU=1       count, one line per ~1 s slice
  *   HAKUX_PMU_CTL=1   first, run the control kernels below on this thread
  *                     through the same counters, one line each
+ *   HAKUX_PMU=2       sample instead (R2): one raw event per core-type PMU,
+ *                     HAKUX_PMU_EV (hex PMUv3 number, default 0x11 cycles)
+ *                     every HAKUX_PMU_PERIOD events (default 100000), the
+ *                     sampled pc attributed here; see "SAMPLING" below
  *
  * WHY PER PMU. The SD 8 Gen 2 has three or four core types (A510 cpu0-2,
  * A715/A710 cpu3-6, X3 cpu7) and the kernel registers one arm_pmu per type. A generic
@@ -51,6 +55,7 @@
 #include <sched.h>
 #include <dirent.h>
 #include <errno.h>
+#include <dlfcn.h>
 
 #ifndef PMU433_LOG
 #define PMU433_LOG(...) JC425_LOG(__VA_ARGS__)
@@ -59,6 +64,7 @@
 #define PMU433_MAXPMU 6
 #define PMU433_NGRP 3
 #define PMU433_NEV 7
+#define PMU433_RING_PAGES 128
 
 static const uint16_t pmu433_ev[PMU433_NGRP][PMU433_NEV] = {
     { 0x11, 0x08, 0x23, 0x24, 0x21, 0x22, 0x7a },
@@ -70,11 +76,19 @@ typedef struct {
     char name[32];
     int type;
     char cpus[24];
+    int nev[PMU433_NGRP];                 /* events in group g, 0 = none */
+    uint16_t ev[PMU433_NGRP][PMU433_NEV];
+    bool sub[PMU433_NGRP][PMU433_NEV];    /* refused; slot counts ins */
     int fd[PMU433_NGRP][PMU433_NEV];      /* [g][0] is the leader */
     uint64_t prev[PMU433_NGRP][2 + PMU433_NEV];  /* en, run, values */
+    struct perf_event_mmap_page *ring;    /* HAKUX_PMU=2: g0's samples */
+    size_t ring_len;
 } Pmu433Pmu;
 
 static int pmu433_state;        /* 0 unread, 1 counting, -1 off */
+static int pmu433_mode;         /* 1 count, 2 sample */
+static unsigned pmu433_sev = 0x11;
+static uint64_t pmu433_sper = 100000;
 static Pmu433Pmu pmu433_pmu[PMU433_MAXPMU];
 static int pmu433_npmu;
 static int pmu433_sw[3] = { -1, -1, -1 };
@@ -106,6 +120,13 @@ static void pmu433_attr(struct perf_event_attr *a, uint32_t type,
     a->exclude_hv = 1;
     a->read_format = PERF_FORMAT_GROUP | PERF_FORMAT_TOTAL_TIME_ENABLED |
                      PERF_FORMAT_TOTAL_TIME_RUNNING;
+#ifdef PMU433_TEST_SW
+    /* host test of the plumbing only (pmuprobe built with -DPMU433_TEST_SW) */
+    if (type != PERF_TYPE_SOFTWARE) {
+        a->type = PERF_TYPE_SOFTWARE;
+        a->config = PERF_COUNT_SW_TASK_CLOCK;
+    }
+#endif
 }
 
 static bool pmu433_readfile(const char *path, char *buf, size_t n)
@@ -138,18 +159,18 @@ static void pmu433_find(void)
         if (e->d_name[0] == '.') {
             continue;
         }
-        snprintf(path, sizeof(path), "/sys/bus/event_source/devices/%s/cpus",
+        snprintf(path, sizeof(path), "/sys/bus/event_source/devices/%.100s/cpus",
                  e->d_name);
         if (!pmu433_readfile(path, p->cpus, sizeof(p->cpus))) {
             continue;
         }
-        snprintf(path, sizeof(path), "/sys/bus/event_source/devices/%s/type",
+        snprintf(path, sizeof(path), "/sys/bus/event_source/devices/%.100s/type",
                  e->d_name);
         if (!pmu433_readfile(path, buf, sizeof(buf))) {
             continue;
         }
         p->type = atoi(buf);
-        snprintf(p->name, sizeof(p->name), "%s", e->d_name);
+        snprintf(p->name, sizeof(p->name), "%.31s", e->d_name);
         pmu433_npmu++;
     }
     if (d) {
@@ -174,20 +195,52 @@ static void pmu433_start(void)
     pmu433_find();
     for (int i = 0; i < pmu433_npmu; i++) {
         Pmu433Pmu *p = &pmu433_pmu[i];
-        char res[PMU433_NGRP][32];
+        char res[PMU433_NGRP][64];
 
         for (int g = 0; g < PMU433_NGRP; g++) {
-            int err = 0;
+            if (pmu433_mode == 2) {
+                /* the sampled event leads; cycles and instructions follow */
+                p->nev[g] = g ? 0 : 3;
+                p->ev[g][0] = pmu433_sev;
+                p->ev[g][1] = 0x11;
+                p->ev[g][2] = 0x08;
+            } else {
+                p->nev[g] = PMU433_NEV;
+                memcpy(p->ev[g], pmu433_ev[g], sizeof(p->ev[g]));
+            }
+        }
+        for (int g = 0; g < PMU433_NGRP; g++) {
+            int err = 0, off = 0;
             for (int k = 0; k < PMU433_NEV; k++) {
                 p->fd[g][k] = -1;
             }
-            for (int k = 0; k < PMU433_NEV && !err; k++) {
-                pmu433_attr(&a, p->type, pmu433_ev[g][k], k == 0);
+            res[g][0] = 0;
+            if (!p->nev[g]) {
+                snprintf(res[g], sizeof(res[g]), "-");
+                continue;
+            }
+            for (int k = 0; k < p->nev[g] && !err; k++) {
+                pmu433_attr(&a, p->type, p->ev[g][k], k == 0);
+                if (k == 0 && pmu433_mode == 2) {
+                    a.sample_period = pmu433_sper;
+                    a.sample_type = PERF_SAMPLE_IP;
+                }
                 p->fd[g][k] = pmu433_open(&a, k ? p->fd[g][0] : -1);
+                if (p->fd[g][k] < 0 && k > 0) {
+                    /*
+                     * A follower this core does not count: keep the group,
+                     * count instructions in its slot and print it as `x`.
+                     */
+                    off += snprintf(res[g] + off, sizeof(res[g]) - off,
+                                    "ev%02x:errno%d,", p->ev[g][k], errno);
+                    p->sub[g][k] = true;
+                    pmu433_attr(&a, p->type, 0x08, false);
+                    p->fd[g][k] = pmu433_open(&a, p->fd[g][0]);
+                }
                 if (p->fd[g][k] < 0) {
                     err = errno;
-                    snprintf(res[g], sizeof(res[g]), "ev%02x:errno%d",
-                             pmu433_ev[g][k], err);
+                    snprintf(res[g] + off, sizeof(res[g]) - off,
+                             "ev%02x:errno%d", p->ev[g][k], err);
                 }
             }
             if (err) {
@@ -199,14 +252,24 @@ static void pmu433_start(void)
                 }
                 continue;
             }
-            snprintf(res[g], sizeof(res[g]), "ok");
+            if (g == 0 && pmu433_mode == 2) {
+                p->ring_len = (1 + PMU433_RING_PAGES) * getpagesize();
+                p->ring = mmap(NULL, p->ring_len, PROT_READ | PROT_WRITE,
+                               MAP_SHARED, p->fd[0][0], 0);
+                if (p->ring == MAP_FAILED) {
+                    p->ring = NULL;
+                    off += snprintf(res[g] + off, sizeof(res[g]) - off,
+                                    "mmap:errno%d,", errno);
+                }
+            }
+            snprintf(res[g] + off, sizeof(res[g]) - off, "ok");
             ioctl(p->fd[g][0], PERF_EVENT_IOC_RESET, PERF_IOC_FLAG_GROUP);
             ioctl(p->fd[g][0], PERF_EVENT_IOC_ENABLE, PERF_IOC_FLAG_GROUP);
             opened++;
         }
-        PMU433_LOG("[pmu433] open pmu=%s type=%d cpus=%s g0=%s g1=%s g2=%s "
-                   "paranoid=%s tid=%d", p->name, p->type, p->cpus,
-                   res[0], res[1], res[2], buf, (int)gettid());
+        PMU433_LOG("[pmu433] open pmu=%s type=%d cpus=%s mode=%d g0=%s g1=%s "
+                   "g2=%s paranoid=%s tid=%d", p->name, p->type, p->cpus,
+                   pmu433_mode, res[0], res[1], res[2], buf, (int)gettid());
     }
 
     static const uint64_t swc[3] = {
@@ -236,13 +299,13 @@ static void pmu433_read(uint64_t out[PMU433_MAXPMU][PMU433_NGRP][2 + PMU433_NEV]
         for (int g = 0; g < PMU433_NGRP; g++) {
             /* nr, time_enabled, time_running, values[nr] */
             uint64_t r[3 + PMU433_NEV];
+            ssize_t want = (3 + p->nev[g]) * sizeof(uint64_t);
             memset(out[i][g], 0, sizeof(out[i][g]));
-            if (p->fd[g][0] < 0 ||
-                read(p->fd[g][0], r, sizeof(r)) != (ssize_t)sizeof(r) ||
-                r[0] != PMU433_NEV) {
+            if (p->fd[g][0] < 0 || read(p->fd[g][0], r, want) != want ||
+                r[0] != (uint64_t)p->nev[g]) {
                 continue;
             }
-            for (int k = 0; k < 2 + PMU433_NEV; k++) {
+            for (int k = 0; k < 2 + p->nev[g]; k++) {
                 out[i][g][k] = r[1 + k] - p->prev[g][k];
                 p->prev[g][k] = r[1 + k];
             }
@@ -250,16 +313,27 @@ static void pmu433_read(uint64_t out[PMU433_MAXPMU][PMU433_NGRP][2 + PMU433_NEV]
     }
 }
 
-/* One PMU's groups as " p=NAME g0=RUNMS:v,v,... g1=... g2=..." */
+/*
+ * One PMU's groups as " p=NAME g0=RUNMS:v,v,... g1=... g2=...", a refused
+ * follower as `x`. Mode 2 prints its one group as g0=RUNMS:sampled,cyc,ins.
+ */
 static int pmu433_fmt(char *buf, size_t n, int i,
                       uint64_t d[PMU433_NGRP][2 + PMU433_NEV])
 {
-    int off = snprintf(buf, n, " p=%s", pmu433_pmu[i].name);
+    Pmu433Pmu *p = &pmu433_pmu[i];
+    int off = snprintf(buf, n, " p=%s", p->name);
     for (int g = 0; g < PMU433_NGRP && off < (int)n; g++) {
+        if (!p->nev[g]) {
+            continue;
+        }
         off += snprintf(buf + off, n - off, " g%d=%.1f", g, d[g][1] / 1e6);
-        for (int k = 0; k < PMU433_NEV && off < (int)n; k++) {
-            off += snprintf(buf + off, n - off, "%c%" PRIu64, k ? ',' : ':',
-                            d[g][2 + k]);
+        for (int k = 0; k < p->nev[g] && off < (int)n; k++) {
+            if (p->sub[g][k]) {
+                off += snprintf(buf + off, n - off, "%cx", k ? ',' : ':');
+            } else {
+                off += snprintf(buf + off, n - off, "%c%" PRIu64,
+                                k ? ',' : ':', d[g][2 + k]);
+            }
         }
     }
     return off;
@@ -488,6 +562,189 @@ static void pmu433_controls(void)
     }
 }
 
+/*
+ * ---- SAMPLING (HAKUX_PMU=2, R2) ----
+ *
+ * Every PMU's g0 leader samples its event (PERF_SAMPLE_IP, user mode) into a
+ * ring this thread drains at each slice. Each sample is attributed here, while
+ * the TB still exists:
+ *   jit   the pc is inside a TB (tcg_tb_lookup): keyed by the guest pc and
+ *         the guest physical address of the block (CF_PCREL TBs carry only
+ *         the latter), with its icount, host code size and tier;
+ *   stub  inside the code buffer but no TB: the prologue/epilogue and the
+ *         goto_ptr return path, i.e. the dispatch stub;
+ *   host  anywhere else: keyed by 64-byte bucket of the pc; at report time
+ *         dladdr names the library and the offset from its base, so the
+ *         APK's unstripped .so symbolizes it offline (dladdr's own symbol is
+ *         only the nearest exported one and is printed as a hint).
+ * Every 10 slices: one [pmu433] smp line with the totals, then the top 20 of
+ * each table as smpj / smph lines, and the tables reset.
+ *
+ * Skid: an ARM PMU overflow interrupt is taken some instructions after the
+ * event, so the pc is near, not at, the instruction that caused it. At TB
+ * granularity that blurs only the TB's last instructions into its successor.
+ */
+#define PMU433_HBITS 12
+typedef struct {
+    uint64_t key;       /* 0 empty; bit 63 set on every live key */
+    uint32_t n;
+    uint16_t icount, tier;
+    uint32_t tcsize;
+} Pmu433Slot;
+static Pmu433Slot pmu433_jit[1 << PMU433_HBITS];
+static Pmu433Slot pmu433_host[1 << PMU433_HBITS];
+enum { SN_ALL, SN_LOST, SN_JIT, SN_STUB, SN_HOST, SN_DROP, SN_N };
+static uint64_t pmu433_sn[SN_N];
+
+static Pmu433Slot *pmu433_slot(Pmu433Slot *t, uint64_t key)
+{
+    uint32_t h = (uint32_t)((key * 0x9e3779b97f4a7c15ull)
+                            >> (64 - PMU433_HBITS));
+    for (int i = 0; i < 16; i++) {
+        Pmu433Slot *s = &t[(h + i) & ((1 << PMU433_HBITS) - 1)];
+        if (s->key == key) {
+            return s;
+        }
+        if (!s->key) {
+            s->key = key;
+            return s;
+        }
+    }
+    return NULL;
+}
+
+static void pmu433_attribute(uint64_t ip)
+{
+    TranslationBlock *tb;
+    Pmu433Slot *s;
+
+    pmu433_sn[SN_ALL]++;
+    tb = tcg_tb_lookup((uintptr_t)ip);
+    if (tb) {
+        uint64_t phys = (uint32_t)tb->page_addr[0] & 0x7fffffff;
+        s = pmu433_slot(pmu433_jit,
+                        1ull << 63 | phys << 32 | (uint32_t)tb->pc);
+        pmu433_sn[SN_JIT]++;
+        if (s) {
+            s->n++;
+            s->icount = tb->icount;
+            s->tcsize = (uint32_t)tb->tc.size;
+            s->tier = tb->tier;
+        } else {
+            pmu433_sn[SN_DROP]++;
+        }
+        return;
+    }
+    if (in_code_gen_buffer((void *)(uintptr_t)ip) ||
+        in_code_gen_buffer((void *)(uintptr_t)(ip - tcg_splitwx_diff))) {
+        pmu433_sn[SN_STUB]++;
+        return;
+    }
+    pmu433_sn[SN_HOST]++;
+    s = pmu433_slot(pmu433_host, 1ull << 63 | ip >> 6);
+    if (s) {
+        s->n++;
+    } else {
+        pmu433_sn[SN_DROP]++;
+    }
+}
+
+/* Drain one PMU's ring: PERF_RECORD_SAMPLE (ip) and PERF_RECORD_LOST. */
+static void pmu433_drain(Pmu433Pmu *p)
+{
+    struct perf_event_mmap_page *mp = p->ring;
+    size_t psz = getpagesize(), dsz = PMU433_RING_PAGES * psz;
+    const uint8_t *data;
+    uint64_t head, tail;
+
+    if (!mp) {
+        return;
+    }
+    data = (const uint8_t *)mp + psz;
+    head = __atomic_load_n(&mp->data_head, __ATOMIC_ACQUIRE);
+    tail = mp->data_tail;
+    while (tail + sizeof(struct perf_event_header) <= head) {
+        struct perf_event_header h;
+        uint64_t rec[4];
+        size_t len;
+
+        for (size_t k = 0; k < sizeof(h); k++) {
+            ((uint8_t *)&h)[k] = data[(tail + k) % dsz];
+        }
+        if (h.size < sizeof(h) || tail + h.size > head) {
+            break;
+        }
+        len = h.size - sizeof(h);
+        len = len < sizeof(rec) ? len : sizeof(rec);
+        for (size_t k = 0; k < len; k++) {
+            ((uint8_t *)rec)[k] = data[(tail + sizeof(h) + k) % dsz];
+        }
+        if (h.type == PERF_RECORD_SAMPLE && len >= 8) {
+            pmu433_attribute(rec[0]);
+        } else if (h.type == PERF_RECORD_LOST && len >= 16) {
+            pmu433_sn[SN_LOST] += rec[1];
+        }
+        tail += h.size;
+    }
+    __atomic_store_n(&mp->data_tail, tail, __ATOMIC_RELEASE);
+}
+
+/* Index of the largest n in t (reported entries are zeroed), or -1. */
+static int pmu433_top(Pmu433Slot *t)
+{
+    int best = -1;
+    for (int i = 0; i < 1 << PMU433_HBITS; i++) {
+        if (t[i].n && (best < 0 || t[i].n > t[best].n)) {
+            best = i;
+        }
+    }
+    return best;
+}
+
+static void pmu433_report(unsigned w)
+{
+    PMU433_LOG("[pmu433] smp w=%u ev=0x%x per=%" PRIu64 " n=%" PRIu64
+               " lost=%" PRIu64 " jit=%" PRIu64 " stub=%" PRIu64
+               " host=%" PRIu64 " drop=%" PRIu64, w, pmu433_sev, pmu433_sper,
+               pmu433_sn[SN_ALL], pmu433_sn[SN_LOST], pmu433_sn[SN_JIT],
+               pmu433_sn[SN_STUB], pmu433_sn[SN_HOST], pmu433_sn[SN_DROP]);
+    for (int r = 0; r < 20; r++) {
+        int i = pmu433_top(pmu433_jit);
+        if (i < 0) {
+            break;
+        }
+        Pmu433Slot *s = &pmu433_jit[i];
+        PMU433_LOG("[pmu433] smpj w=%u r=%d n=%u pc=%08x phys=%08x ic=%u "
+                   "sz=%u tier=%u", w, r, s->n, (uint32_t)s->key,
+                   (uint32_t)(s->key >> 32) & 0x7fffffff, s->icount,
+                   s->tcsize, s->tier);
+        s->n = 0;
+    }
+    for (int r = 0; r < 20; r++) {
+        int i = pmu433_top(pmu433_host);
+        Dl_info di;
+        if (i < 0) {
+            break;
+        }
+        Pmu433Slot *s = &pmu433_host[i];
+        uintptr_t ip = (uintptr_t)(s->key & ~(1ull << 63)) << 6;
+        const char *lib = "?", *sym = "?";
+        uintptr_t base = 0;
+        if (dladdr((void *)ip, &di)) {
+            lib = di.dli_fname ? di.dli_fname : "?";
+            lib = strrchr(lib, '/') ? strrchr(lib, '/') + 1 : lib;
+            sym = di.dli_sname ? di.dli_sname : "?";
+            base = (uintptr_t)di.dli_fbase;
+        }
+        PMU433_LOG("[pmu433] smph w=%u r=%d n=%u lib=%s off=%" PRIxPTR
+                   " hint=%s", w, r, s->n, lib, ip - base, sym);
+        s->n = 0;
+    }
+    memset(pmu433_jit, 0, sizeof(pmu433_jit));
+    memset(pmu433_host, 0, sizeof(pmu433_host));
+    memset(pmu433_sn, 0, sizeof(pmu433_sn));
+}
+
 /* ---- the slice line ---- */
 
 static void pmu433_tick(void)
@@ -509,12 +766,23 @@ static void pmu433_tick(void)
             pmu433_state = -1;
             return;
         }
+        pmu433_mode = strcmp(e, "2") ? 1 : 2;
+        if (pmu433_mode == 2) {
+            const char *ev = getenv("HAKUX_PMU_EV");
+            const char *per = getenv("HAKUX_PMU_PERIOD");
+            if (ev && *ev) {
+                pmu433_sev = (unsigned)strtoul(ev, NULL, 16);
+            }
+            if (per && *per) {
+                pmu433_sper = strtoull(per, NULL, 10);
+            }
+        }
         pmu433_start();
         if (pmu433_state < 0) {
             return;
         }
         e = getenv("HAKUX_PMU_CTL");
-        if (e && !strcmp(e, "1")) {
+        if (e && !strcmp(e, "1") && pmu433_mode == 1) {
             pmu433_controls();
         }
         pmu433_read(d);
@@ -523,9 +791,13 @@ static void pmu433_tick(void)
         prev_fc = g_nv2a_stats.frame_count;
         return;
     }
-    int cpu = pmu433_getcpu();
-    if (cpu >= 0 && cpu < 64) {
-        cpus_seen |= 1ull << cpu;
+    /* a syscall on arm64 (no vDSO getcpu): 1 gate call in 16 is plenty */
+    static unsigned cpu_gate;
+    if (!(cpu_gate++ & 15)) {
+        int cpu = pmu433_getcpu();
+        if (cpu >= 0 && cpu < 64) {
+            cpus_seen |= 1ull << cpu;
+        }
     }
     now = get_clock();
     if (now - prev_ns < NANOSECONDS_PER_SECOND) {
@@ -556,6 +828,14 @@ static void pmu433_tick(void)
         off += pmu433_fmt(buf + off, sizeof(buf) - off, i, d[i]);
     }
     PMU433_LOG("%s", buf);
+    if (pmu433_mode == 2) {
+        for (int i = 0; i < pmu433_npmu; i++) {
+            pmu433_drain(&pmu433_pmu[i]);
+        }
+        if (slice % 10 == 9) {
+            pmu433_report(slice / 10);
+        }
+    }
     slice++;
     prev_ns = now;
     prev_fc = fc;

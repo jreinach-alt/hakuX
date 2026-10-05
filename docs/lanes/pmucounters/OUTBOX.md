@@ -40,3 +40,11 @@ Asks (three, independent):
    R0 (a) and (c) by simpleperf's path, lists which events each core exposes,
    and runs the controls pinned to the X3, an A715 and an A510. The Nova run
    (`DEV=nova`) is the same and can wait for a pathfind gap.
+
+Addendum 09:00 PDT: the hook now also has R2's mode (`HAKUX_PMU=2`, a
+sampled raw event attributed in-process to TB / dispatch stub / host
+function), so the one grant above covers R1 and R2. It was tested on this
+host with software events: 80,669 samples, 0 lost, attributed. It
+compile-checks inside `cpu-exec.c` with the Android build's flags (and a
+planted error fails that check). The R0 probe now also exercises the sampling
+path on the device, so it takes about 2 minutes instead of 90 s.

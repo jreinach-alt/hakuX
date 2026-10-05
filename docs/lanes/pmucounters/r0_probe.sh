@@ -1,7 +1,7 @@
 #!/bin/bash
 # lane.pmucounters (#433) R0: can the hardware counters be read on this
 # handheld at all, from which context, and do the control kernels read as
-# expected? About 90 s of device time. It launches NO title and touches no
+# expected? About 2 minutes of device time. It launches NO title and touches no
 # pref, setting or file outside /data/local/tmp/pmu433 and the debug app's
 # files/pmu433 dir.
 #
@@ -30,6 +30,8 @@
 #      same counts by simpleperf's path, for agreement with step 3.
 #   6. simpleperf record -e cpu-cycles and -e raw-l1d-cache-refill on
 #      pmuprobe (5 s): can hardware events be SAMPLED (R2's attribution)?
+#   7. the same question by the hook's own path: pmuprobe in sampling mode
+#      (12 s each, cycles and L1D refills, pinned to the X3).
 set -u
 DEV=${DEV:-thor}
 case $DEV in nova) S=ee317437 ;; thor) S=bdc158a5 ;; *) echo "DEV nova|thor"; exit 2 ;; esac
@@ -88,5 +90,9 @@ run stat_basic_cpu7 "taskset 80 simpleperf stat -e cpu-cycles,instructions $T/pm
 run stat_cpu7 "taskset 80 simpleperf stat -e cpu-cycles,instructions,branch-misses,raw-stall-frontend,raw-stall-backend,raw-l1i-cache-refill,raw-l1d-cache-refill,raw-l2d-cache-refill $T/pmuprobe 1"
 run record_cycles "cd $T && taskset 80 simpleperf record -e cpu-cycles -c 100000 -o $T/rec-cyc.data $T/pmuprobe 2 > /dev/null; simpleperf report -i $T/rec-cyc.data --sort symbol 2>&1 | head -25"
 run record_l1d "cd $T && taskset 80 simpleperf record -e raw-l1d-cache-refill -c 1000 -o $T/rec-l1d.data $T/pmuprobe 2 > /dev/null; simpleperf report -i $T/rec-l1d.data --sort symbol 2>&1 | head -25"
+# 7. the hook's own sampling path (HAKUX_PMU=2), X3: cycles and L1D refills.
+#    smph lines must name pmuprobe's main loop (elfsyms.py on $OUT/pmuprobe).
+run sample_cyc_cpu7 "taskset 80 $T/pmuprobe 12 11 100000"
+run sample_l1d_cpu7 "taskset 80 $T/pmuprobe 12 03 1000"
 run cleanup "run-as $PKG rm -rf files/pmu433; rm -rf $T"
 say "done: $OUT (read with docs/lanes/pmucounters/pmuread.py --controls $OUT/probe_*.txt)"

@@ -56,6 +56,37 @@ load and a branch per 1024 loop returns and opens nothing.
   deltas).
 - `HAKUX_PMU_CTL=1` runs eight control kernels on the vCPU thread first,
   through the same file descriptors.
+- `HAKUX_PMU=2` is R2's mode, in the same file so that one grant and one
+  build serve both. Per PMU, the leader samples one raw event
+  (`HAKUX_PMU_EV`, hex; `HAKUX_PMU_PERIOD`), with cycles and instructions
+  as followers so the event's rate comes from the same run. The vCPU thread
+  drains the ring at each slice and attributes every sample while the TB
+  still exists: `jit` = in a TB (`tcg_tb_lookup`: guest pc, guest physical
+  address, icount, host bytes, tier); `stub` = in the code buffer but in no
+  TB (prologue/epilogue, the goto_ptr return: the dispatch stub); `host` =
+  anywhere else, in 64-byte buckets keyed by library and offset. Every 10
+  slices: totals, then the top 20 TBs and the top 20 host buckets. ARM
+  overflow interrupts skid, so a sample is near its instruction, not on it.
+  At TB granularity that blurs a block's last instructions into its
+  successor.
+- `elfsyms.py` names a host offset from the APK's own `libxemu.so`. Its
+  `.symtab` is kept (`jniLibs.keepDebugSymbols`): 23,577 functions in
+  521ea8a93e.apk, statics included (`cpu_exec_loop`, `do_ld4_mmu`).
+  dladdr's hint names exported symbols only. `pmuread.py --samples LOG
+  --apk APK` sums the windows and sorts host functions into dispatch /
+  softmmu / translation / helper / other. The code-buffer stub and TB code
+  get their own rows.
+- A refused follower event (a core that lacks, say, 0x7a) no longer loses its
+  group: the slot counts instructions instead, prints as `x`, and the reader
+  treats it as missing. The open line names the refused event and errno.
+- Host test of the plumbing (x86, `-DPMU433_TEST_SW` forces software
+  task-clock events; no ARM counter is involved). Groups open and read; the
+  controls and slices print. In sampling mode, 80,669 samples over 10 s,
+  0 lost, all attributed `host`; `elfsyms.py` puts the top bucket at
+  `main+0x110`, the probe's busy loop. The same run showed the per-gate
+  `getcpu` syscall at 35% of a tight loop's samples, so it now runs on 1 gate
+  call in 16. The emulator's gate is 1 in 1024 TB returns, and jc425 already
+  reads the clock there.
 - `pmuprobe.c` builds the same file standalone (NDK, `-Wall -Wextra
   -Werror`, `build_probe.sh`), so R0 can run on a device with no emulator
   build (`r0_probe.sh`, host-run, ~90 s, no title).
@@ -132,3 +163,29 @@ guest polling), not a JIT stall.
     controls on each core type, without a build.
 - Asked in OUTBOX.md: the grant, `security.perf_harden 0` on both handhelds
   (until reboot; hostops's leave), and one r0_probe.sh run.
+
+## 4. Plan once granted (the resume starts here)
+
+1. `syntax_check.py --write` (applies the two hunks and copies the .inc to
+   `accel/tcg/`), re-run `syntax_check.py`, commit, push.
+2. **R0 in-process + controls, one Thor run** (<= 480 s, cold slot): GTA SA
+   (`54540082-Grand_Theft_Auto_San_Andreas.xiso.iso`, Thor, `gta-sa.route`),
+   `--env HAKUX_PMU=1 --env HAKUX_PMU_CTL=1 --device thor`, `--no-expect`
+   (a measurement, no arm). Read `[pmu433] open` (paranoid, errno, PMUs),
+   then `pmuread.py --controls` on its logcat, then the slices after the
+   gameplay mark. A control that misses its row removes that counter for
+   that core type (section 2).
+3. **Overhead pair**: the same title, the same ref, no env. Counting must not
+   move gfps by more than the run-to-run spread; if it does, say so and
+   price it into R1.
+4. **R1**: 60 s or more of confirmed play per title, `HAKUX_PMU=1`:
+   Forza (race), Tron 2.0 (`vcpuwait433/tron-newgame*.route`, Nova),
+   Nightfire (`nightfire.route`, Nova), GTA (from 2). Simpsons needs a
+   pathfind hold, so it goes to the owner as an `owner` line with
+   `HAKUX_PMU=1` in the hold's env. Check where each title lives first (one
+   copy per title).
+5. **R2**: `HAKUX_PMU=2 HAKUX_PMU_EV=<R1's dominant event>` on the two titles
+   where that counter is largest; period set for ~5k samples/s on the X3.
+   Read with `pmuread.py --samples LOG --apk dispatch/builds/<ref>.apk`.
+6. **R3**: price the top candidate per `briefs/_next-step-rule.md` with the
+   discount (section 0). Recommend it; do not build it.
