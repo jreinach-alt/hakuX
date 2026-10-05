@@ -5782,3 +5782,11 @@ status_note = "Forge issue, open, local-only; the tracker had no row when the co
 dispatch_state = "blocked"
 blocked_on = "IN FLIGHT (hostops 14:50 PDT): lane.hitchcause (row [lane.hitchcause], issue 433) separates the MTV and Orta 200-350 ms hitches' IDE storage latency from per-word PIO cost, from the perflog line and one MTV Nova hold. The fix (read-ahead or batching) is priced by its result."
 status_note = "Forge issue (filed from lane.hitchcause's NEW ISSUE block), open, local-only. Analysis: docs/lanes/hitchcause on lane/hitchcause, bf388e2eea."
+
+[issue.823]
+title = "titlestate release cannot read x1box_prefs.xml after a held run, so pathfind exits rc=1"
+component = "titlestate"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Forge issue, open; hostops 2026-10-05 (08:10 PDT, jam duty) added the row to clear the coverage gate: the fleet and coverage check both report #823 with no row. Nothing blocks it: titlestate.py set_hdd's </map> check (line 1059) raises on a held run; the fix is a harness code change for lane.local to start."
