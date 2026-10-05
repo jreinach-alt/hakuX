@@ -158,12 +158,23 @@ guest-visible change. Say if you want a trailing env-clearing request.
 ### Still outstanding
 
 - The Simpsons host capture (`capture_simpsons_frametrace.sh simpft1`,
-  above). Without it the lane reports three titles, not four.
+  above). Without it the lane reports three titles, not four. Its APK now
+  defaults to 65bd51712b (built when the duty run is dispatched);
+  `APK_REF=0bb89cd1f5` runs it today on the build that is already there.
 - The Thor's foreground fault (launcher takes focus; 6 of 6 Forza runs
   today across two lanes).
 
 ### Spend (session 2)
 
 Opus: reading two captures, the duty switch + selftest, archive and reader
-changes, NOTES. Device: 0 new so far; queued ~17 min of Nova time (both
-requests together, 90 s setup each included).
+changes, the G9 in-row half and patch, NOTES. Device: 0 new so far; queued
+~17 min of Nova time (both requests together, 90 s setup each included).
+
+### [lane.frametrace] waiting: (12:25 PDT)
+
+On the two Nova runs in `WAITING` (the duty overhead test and Forza),
+queued behind five lane.gpuclock requests and pathfind's NFL Blitz hold.
+Not in WAITING because nothing resolves them on its own: the G1-G9 grant,
+the Simpsons host capture, the Thor's focus fault. Preflight: every gate on
+this branch passes; `coverage` fails on #829 (an open board issue with no
+lane row), which is the board's to classify.

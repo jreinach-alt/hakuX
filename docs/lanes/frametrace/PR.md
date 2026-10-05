@@ -3,7 +3,7 @@ State: draft
 
 Lane: frametrace            Issue: #433
 Base: master @ d32c35d3ce
-Files: docs/lanes/frametrace/PR.md, docs/lanes/frametrace/NOTES.md, docs/lanes/frametrace/OUTBOX.md, docs/lanes/frametrace/WAITING, docs/lanes/frametrace/archive.py, docs/lanes/frametrace/capture_simpsons_frametrace.sh, docs/lanes/frametrace/captures/1-1791216614-lane.frametrace-2373212/frames.csv.gz, docs/lanes/frametrace/captures/1-1791216614-lane.frametrace-2373212/ft.log.gz, docs/lanes/frametrace/captures/1-1791216614-lane.frametrace-2373212/meta.md, docs/lanes/frametrace/captures/1-1791216620-lane.frametrace-2374008/frames.csv.gz, docs/lanes/frametrace/captures/1-1791216620-lane.frametrace-2374008/ft.log.gz, docs/lanes/frametrace/captures/1-1791216620-lane.frametrace-2374008/meta.md, docs/lanes/frametrace/csvinfo.py, docs/lanes/frametrace/forza-frametrace.route, docs/lanes/frametrace/forza-nova-frametrace.route, docs/lanes/frametrace/ft_selftest.c, docs/lanes/frametrace/ftread.py, docs/lanes/frametrace/hooks.diff, docs/lanes/frametrace/overhead.py, docs/lanes/frametrace/scan_runs.py, docs/lanes/frametrace/selftest-fragment.sh, docs/lanes/frametrace/selftest.py, hw/xbox/nv2a/pgraph/profile.c, hw/xbox/nv2a/pgraph/profile.h, system/cpus.c
+Files: docs/lanes/frametrace/PR.md, docs/lanes/frametrace/NOTES.md, docs/lanes/frametrace/OUTBOX.md, docs/lanes/frametrace/WAITING, docs/lanes/frametrace/archive.py, docs/lanes/frametrace/capture_simpsons_frametrace.sh, docs/lanes/frametrace/captures/1-1791216614-lane.frametrace-2373212/frames.csv.gz, docs/lanes/frametrace/captures/1-1791216614-lane.frametrace-2373212/ft.log.gz, docs/lanes/frametrace/captures/1-1791216614-lane.frametrace-2373212/meta.md, docs/lanes/frametrace/captures/1-1791216620-lane.frametrace-2374008/frames.csv.gz, docs/lanes/frametrace/captures/1-1791216620-lane.frametrace-2374008/ft.log.gz, docs/lanes/frametrace/captures/1-1791216620-lane.frametrace-2374008/meta.md, docs/lanes/frametrace/csvinfo.py, docs/lanes/frametrace/forza-frametrace.route, docs/lanes/frametrace/forza-nova-frametrace.route, docs/lanes/frametrace/ft_selftest.c, docs/lanes/frametrace/ftread.py, docs/lanes/frametrace/hooks.diff, docs/lanes/frametrace/hooks-g9.diff, docs/lanes/frametrace/make_hooks_g9.py, docs/lanes/frametrace/overhead.py, docs/lanes/frametrace/scan_runs.py, docs/lanes/frametrace/selftest-fragment.sh, docs/lanes/frametrace/selftest.py, hw/xbox/nv2a/pgraph/profile.c, hw/xbox/nv2a/pgraph/profile.h, system/cpus.c
 Prediction: none: telemetry, off by default; judged by the overhead pair (NOTES section 2) and the selftest
 Needs device: yes (Nova captures queued; Simpsons is a host capture)    Needs NDK: yes
 
@@ -20,7 +20,7 @@ branch.
 | attribution rule | `hakux_ft_attribute()` in `profile.h`; written out in NOTES section 1 |
 | output | `[hakuX-ft1]` 1 Hz summary and `[hakuX-ft]` hitch blocks on `hakuX-lane`; `frametrace_<date>.csv` per frame (`--pull 'frametrace_*'`) |
 | reader | `docs/lanes/frametrace/ftread.py` (gameplay window from the route's mark; VOID without one) |
-| selftest | `selftest.py`: 36 checks on the host, 12 header mutants each caught |
+| selftest | `selftest.py`: 38 checks on the host, 15 header mutants each caught |
 | in-process cost on the device | 71 us/frame on the Nova (builder 25 + writer 46); 17-19 us builder on the Thor |
 | overhead on the pace | one-run test `HAKUX_FRAMETRACE_DUTY` (instrument off/on every s seconds); judged by NOTES section 5 |
 | hooks outside the row | `hooks.diff` (G1-G8) and G9 (MMIO split), requested in OUTBOX; not applied |

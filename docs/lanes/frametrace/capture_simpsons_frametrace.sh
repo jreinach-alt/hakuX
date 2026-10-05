@@ -30,7 +30,9 @@ DEV=nova S=ee317437 MIN_BATT=${MIN_BATT:-20}
 PKG=com.jreinach.hakux.debug
 D=/home/justin/hakux-work/dispatch
 OUT=/home/justin/hakux-work/perf/2026-10-05-frametrace/$SHORT
-APK_REF=${APK_REF:-0bb89cd1f5}
+# 65bd51712b: holder thread and per-frame wait counts (built by the queued
+# Nightfire duty run); 0bb89cd1f5, the first Nova build, also works.
+APK_REF=${APK_REF:-65bd51712b}
 APK=$D/builds/$APK_REF.apk
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../testing" && pwd)"
 HOLDSH="$HERE/jobs/hold.sh"

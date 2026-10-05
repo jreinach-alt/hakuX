@@ -381,6 +381,13 @@ is the resume. The grant and the host capture are still not answered.
   runs die in their first 42 s, 6 of 6 today; gpuclock's blind Nova route,
   copied as `forza-nova-frametrace.route`).
 
+- 10-05 ~12:20 PDT: G9's in-row half (MMIO time per frame and by region;
+  38 checks, 15 mutants) and `hooks-g9.diff` (type-checked, applies clean)
+  at 537607f767; not in the queued runs (their ref is 65bd51712b), and
+  inert until the grant. Preflight: all gates pass but `coverage` (#829,
+  board). **Waiting** (WAITING): the duty run and Forza, behind five
+  gpuclock requests and pathfind's hold.
+
 ### Next session, in order
 
 1. Duty run `1-1791225231-lane.frametrace-2914369`: judge O2/O3 by the
