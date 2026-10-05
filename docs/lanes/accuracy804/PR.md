@@ -1,34 +1,48 @@
-# accuracy804: RalliSport's cars blink on alternate frames (#804): identified and fixed
+# accuracy804 (re-open): the #804 fix keeps the rival cars; the owner's "no cars" is Career on any build (#804)
 
-State: ready
+State: ready (the folding code is reports.c instrumentation, off unless HAKUX_OCCL_LOG / HAKUX_OCCL_WAIT are set; the rest is lane docs and analysis scripts)
 
 Lane: accuracy804          Issue: #804
-Base: master @ 63f4827758
-Files: docs/lanes/accuracy804/NOTES.md, docs/lanes/accuracy804/OUTBOX.md, docs/lanes/accuracy804/PR.md, docs/lanes/accuracy804/alt_draws.py, docs/lanes/accuracy804/rallisport-804.route, docs/lanes/accuracy804/rallisport-804b.route, docs/lanes/accuracy804/rallisport-804c.route, docs/lanes/accuracy804/rallisport-804d.route, docs/lanes/accuracy804/rallisport-804e.route, docs/lanes/accuracy804/reports-804.diff, docs/lanes/accuracy804/runs/patched-run1/capture.json, docs/lanes/accuracy804/runs/patched-run1/flicker.tsv, docs/lanes/accuracy804/runs/patched-run1/sheet.jpg, docs/lanes/accuracy804/runs/patched-run1/worst.jpg, docs/lanes/accuracy804/runs/patched-run2/capture.json, docs/lanes/accuracy804/runs/patched-run2/flicker.tsv, docs/lanes/accuracy804/runs/patched-run2/sheet.jpg, docs/lanes/accuracy804/runs/patched-run2/worst.jpg, docs/lanes/accuracy804/runs/perflog1/capture.json, docs/lanes/accuracy804/runs/perflog1/flicker.tsv, docs/lanes/accuracy804/runs/perflog1/sheet.jpg, docs/lanes/accuracy804/runs/perflog1/worst.jpg, docs/lanes/accuracy804/runs/plain1/capture.json, docs/lanes/accuracy804/runs/plain1/flicker.tsv, docs/lanes/accuracy804/runs/plain1/sheet.jpg, docs/lanes/accuracy804/runs/plain1/worst.jpg, docs/lanes/accuracy804/session804e.sh, hw/xbox/nv2a/pgraph/vk/reports.c
-Prediction: none: the measurement is held screenrecord bursts on RalliSport, read by eye (the owner's flicker check); no pgraph golden is claimed to move
-Needs device: yes (Nova: three held sessions, ~12 min, and three 60 s dispatched install boots, all run)    Needs NDK: no
-Release note (rendering): RalliSport's rival cars no longer vanish on alternate frames (the countdown and close passes); titles that gate draws on occlusion queries read this frame's result.
+Base: master @ 6f463a0ae2
+Files: docs/lanes/accuracy804/NOTES.md, docs/lanes/accuracy804/OUTBOX.md, docs/lanes/accuracy804/PR.md, docs/lanes/accuracy804/carpix.py, docs/lanes/accuracy804/carshare.py, docs/lanes/accuracy804/occl_read.py, docs/lanes/accuracy804/rallisport-804f.route, docs/lanes/accuracy804/rallisport-804g.route, docs/lanes/accuracy804/runs/cap1-career-sheet.jpg, docs/lanes/accuracy804/runs/career-fix/occl804.tsv, docs/lanes/accuracy804/runs/career-fix/sheet.jpg, docs/lanes/accuracy804/runs/career-nofix/occl804.tsv, docs/lanes/accuracy804/runs/career-nofix/sheet.jpg, docs/lanes/accuracy804/runs/occl-fix/occl804.tsv, docs/lanes/accuracy804/runs/occl-fix/sheet.jpg, docs/lanes/accuracy804/runs/occl-nofix/occl804.tsv, docs/lanes/accuracy804/runs/occl-nofix/sheet.jpg, docs/lanes/accuracy804/runs/presence/patched1-pass.jpg, docs/lanes/accuracy804/runs/presence/patched1.tsv, docs/lanes/accuracy804/runs/presence/patched2-pass.jpg, docs/lanes/accuracy804/runs/presence/patched2.tsv, docs/lanes/accuracy804/runs/presence/perflog1-pass.jpg, docs/lanes/accuracy804/runs/presence/perflog1.tsv, hw/xbox/nv2a/pgraph/vk/reports.c
+Prediction: none: a survey of car presence (video frames, screencaps) and visibility-test values (logcat); no pgraph golden is claimed to move
+Needs device: no (this attempt used none)    Needs NDK: no
+Release note (none): instrumentation only, off unless HAKUX_OCCL_LOG / HAKUX_OCCL_WAIT are set.
 
-**Cause.** RalliSport draws each car's body only when its last occlusion-query report says the car was visible.
-After a deferred finish (FLIP_STALL, PRESENTING, STALLED, SURFACE_DOWN_FLUSH), hakuX returns to the guest once
-`vkQueueSubmit` is done, and `pgraph_vk_process_pending_reports_internal()` reads the query pool at once. On Turnip
-the query reset is a GPU command, so a slot the GPU has not reset yet reads as available, holding the previous
-command buffer's count. The report for frame k then carries frame k-1's visibility, and the body alternates while
-its (ungated) shadow is drawn every frame.
+**What the owner saw.** Debug 0.4.1-1004-064ca7aa43 on the Nova: no flicker, and no NPC cars or shadows at all.
+`git diff 510ebb25f2 064ca7aa43 -- . ':!docs'` is empty, so every capture below at `510ebb25f2` or `5e16698c99`
+(plus env-gated logging) runs the owner's code.
 
-**Fix.** `hw/xbox/nv2a/pgraph/vk/reports.c` (granted to this lane): when queries are in flight, wait the fence of
-every submitted frame before reading the results, as upstream xemu does. Only a finish that recorded a query pays.
+**Car-present capture (fix build).** The rival pass in Single Race, Safari SS1, filmed with screenrecord
+(10 s held bursts, section 17). `carpix.py` counts the Nissan's red livery pixels in each unique video frame,
+and the sheets show the race clock on every frame:
 
-| held screenrecord burst, Nova, `rallisport-804e.route` | build | flicker_score | by eye |
+| burst | build | unique frames in the pass (race clock ~7.2-8.8) | Nissan body drawn |
 |---|---|---|---|
-| plain1 | master `63f4827758`, non-perflog | FLICKER p90 29.4 | countdown: the cars in front vanish on alternate frames, shadows kept |
-| perflog1 | master `10f14d301d`, perflog | FLICKER p90 22.1 | race clock 7.92-7.97: the Nissan beside the camera in N only |
-| patched-run1 | master + fix `510ebb25f2`, non-perflog | clear p90 0.83 | race clock 7.36-7.44: body in every frame |
-| patched-run2 | the same | clear p90 1.02 | race clock 7.39-7.42: body in every frame |
+| perflog1 | unpatched `10f14d301d` | 50 | 43 (86%); 7 shadow-only frames (9 by eye) |
+| patched-run1 | the fix `510ebb25f2` | 48 | **48 (100%)** |
+| patched-run2 | the fix | 51 | **51 (100%)** |
 
-The earlier frame-dump captures (NOTES sections 9-15) never blinked. The `images` dump waits on a fence every
-frame, which is the same remedy as the fix. **Not measured:** the fps cost of the wait in titles that run many
-queries per flip (RalliSport ~30). RalliSport's Playable confirmation (600 s fps verdict plus the owner's flicker
-check) measures it.
+Sheets: `runs/presence/{perflog1,patched1,patched2}-pass.jpg`.
+
+**The fix does not remove the cars or zero the visibility reads.** One binary, with the fence wait switched by
+env:
+
+| mode | fence wait off (pre-fix) | fence wait on (the fix) |
+|---|---|---|
+| Single Race, Safari SS1 (`runs/occl-*`) | grid cars and the pass drawn; 30.9% of reads nonzero | the same; 30.0% |
+| Career, Safari SS-1, throttle held for 60 s (`runs/career-*`) | **no rival or shadow in any shot**; 2.4% nonzero | **no rival or shadow**; 2.9% nonzero |
+
+Capture 1 (`5e4196fefd`, before reports.c changed) shows Career the same way. So the owner's "no NPC cars,
+ever" is what Career's Safari SS-1 shows on this emulator with or without the fix. The owner's mode is not
+confirmed, and Career is the menu default. Whether a real Xbox shows a rival there in the first minute is not
+checked.
+
+**fps on the fix build.** lane.local's 600 s hold: 534 windows, 100% at or above the 30 fps bar, median 56.5,
+min 29.63. In that hold the rivals were mostly out of view.
+
+**Not covered.** A filmed 30 s window that includes the countdown on the fix build. The grid cars are drawn in
+single shots on the fix build (occl-fix c4-c6, lane.local frame 015). Those runs did not have the GPU behind the
+read (`pend` = 0), so they could not have blinked either way. **For the owner's eye check, use Single Race.**
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

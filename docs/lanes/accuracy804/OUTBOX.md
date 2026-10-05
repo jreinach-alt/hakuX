@@ -42,3 +42,35 @@
   the wait is unmeasured; RalliSport's Playable confirmation with the owner's flicker check measures both, on this
   branch's build or after the fold. Other titles that gate draws on visibility tests (lens flares, LOD) get the
   same fix. NOTES section 17.
+
+- 2026-10-04 ~19:45 PDT [lane.accuracy804] #804 re-open, attempt 2: **the owner's build (064ca7aa43) is byte-for-byte the code
+  of three captures that show rival cars**: my patched-run1/2 (Nissan beside the camera, body every frame) and
+  lane.local's own 600 s hold (`perf/2026-10-04-ralli804-fps/run/frames/015-gameplay.jpg`: Beetle and Corolla on the
+  grid at 00:00.00; `016-probe-a.jpg`: the Nissan at 06.67). The hold's strip has no rival because the player is last
+  and stuck, not because cars are missing. So "the fix zeroes every visibility count" is not what the captures show.
+  What the captures never ran is the owner's session: dispatched runs swap the HDD to the golden `titles.qcow2`, the
+  owner plays on `hdd.img` (own profile/options), and mode, track and driving are unknown. **For the PM / owner:**
+  which mode, track and car, and was it the grid/countdown or later? A phone photo of a moment with no cars would
+  settle it. Meanwhile two Nova runs are queued (fence wait on/off in one binary, per-frame visibility values in
+  logcat, grid + pass shots); they run when the owner hold lifts. NOTES section 19. **Recommend no revert yet**: a
+  revert brings the blink back, and no capture shows the fix removing cars.
+- 2026-10-04 19:50 PDT, **#804 re-open: no capture on the owner's exact code removes the cars; Career is the lead.**
+  Fence wait on/off in one binary (`5e16698c99`, Single Race Safari SS1): both arms draw the grid cars (Beetle,
+  Corolla) and the passing Nissan, and the visibility reads are the same (30.0% vs 30.9% nonzero, no zeroed
+  frames). Capture 1 at 13:48, on code from **before** the fix, took CAREER -> Safari SS-1 (Career is lit by
+  default) and shows exactly the owner's report: POS 4 OF 4, no rival or shadow from race clock 4 to 46, and 0 rival
+  body draws in 600 dumped frames. **For the PM / owner:** was it Career? Two Career runs with the throttle held
+  are queued (fence wait off, then on: 1791167617, 1791167624) and say whether a rival ever comes into view on
+  either build. **Recommend no revert.** Also: my no-fix arm left `HAKUX_OCCL_WAIT=0` (the pre-fix read) in the
+  Nova's `env_vars`. The dispatcher clears it only at the next request, so lane.pathfind's 19:25 held run has it,
+  and so would an owner session before the queued runs (they end on the fix setting). NOTES section 20.
+- 2026-10-04 ~21:00 PDT, **#804 re-open closed out: the fix does not remove the cars, and it draws the passing car
+  on every frame.** Career, Safari SS-1, throttle held for 60 s: **no rival or shadow in any shot with the fence
+  wait off (pre-fix) or on**. Visibility reads were 2.4% vs 2.9% nonzero, and capture 1 on a pre-fix build looked
+  the same. So the owner's "no NPC cars, ever" matches Career on any build, not a regression. Single Race shows
+  the rivals on the grid and in the pass on the fix build. Per-frame pixel count over the rival pass (race clock
+  ~7.2-8.8), from the section 17 screenrecords: unpatched **43 of 50** unique frames with the Nissan's body (86%,
+  7 shadow-only), fix build **48 of 48 and 51 of 51** (100%). Sheets: `docs/lanes/accuracy804/runs/presence/`.
+  fps on the fix build: lane.local's 600 s hold had 100% of windows at the 30 fps bar (median 56.5). **Not
+  covered:** a filmed 30 s window with the countdown on the fix build. **For the owner's check, use Single Race,
+  not Career.** Recommend keeping the fix. NOTES section 22.
