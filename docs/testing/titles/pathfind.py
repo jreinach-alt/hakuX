@@ -181,6 +181,10 @@ TITLE_HOLD = {
     "4947002B": {"walk": ["STICK:up:2", "RT:1", "HOLD:A:0.4", "STICK:right:2", "RT:1", "HOLD:A:0.4",
                           "STICK:down:2", "RT:1", "HOLD:A:0.4", "STICK:left:2"],
                  "x": False, "continue": ["DOWN", "A"]},
+    # Tork: Prehistoric Punk (10-04 retro-tork): the "other" loop's up and down cancel; 600 s on one spot, the attack
+    # effect firing in place. A long climb forward with a hop, bending right and left so the path's turns are taken.
+    "55530040": {"walk": ["STICK:up:4", "A", "STICK:up:3", "STICK:right:1.5", "STICK:up:4", "A", "STICK:up:3",
+                          "STICK:left:1.5"]},
 }
 TITLE_HOLD_FORBID = ("Y", "R1", "BACK", "START", "B")
 
