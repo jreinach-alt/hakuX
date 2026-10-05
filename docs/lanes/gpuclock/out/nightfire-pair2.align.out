@@ -1,0 +1,14 @@
+## nightfire-pair2
+lag +4 s (high arm later by this), log-gms correlation 0.88 over 123 matched 2 s bins
+MHz ratio 1.534; gms ratio median 0.722 (e 0.76, IQR of per-bin e 0.64..1.27); high arm gms lower in 92% of bins
+F ratio median 0.904 (fps x1.106); median per-bin dF 2.69 ms against dGPU 3.20 ms (dF/dG 0.84)
+ segment  bins |  gms lo  gms hi      e |    F lo    F hi | busyL busyH
+   0-30     10 |   15.37    8.01   1.52 |    29.5    23.1 |    46    36
+  30-60     14 |   14.32   10.50   0.73 |    32.5    28.9 |    42    31
+  60-90     13 |   14.34    6.44   1.87 |    33.9    32.4 |    45    30
+  90-120    13 |    0.64    0.47   0.72 |    34.2    37.9 |     5     3
+ 120-150    12 |    0.65    0.47   0.74 |    33.7    40.3 |     5     3
+ 150-180    15 |   11.99    7.92   0.97 |    27.4    23.5 |    43    35
+ 180-210    15 |   11.66    7.07   1.17 |    27.6    23.9 |    43    35
+ 210-240    15 |   11.60    7.66   0.97 |    28.4    23.6 |    43    36
+ 240-270    15 |   11.46    7.82   0.89 |    27.8    23.8 |    42    36

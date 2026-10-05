@@ -184,14 +184,14 @@ samples: 13/14 and 15/15).
   Charging in the default arm (net draw 7.4 W exceeds the USB input, so the battery discharged
   anyway: +0.91 W and +1.67 W).
 
-### Pairs 2-4 (Nova, ref 521ea8a93e; `out/*.txt` is each reader output as printed)
+### Pairs 2-4 (Nova, ref 521ea8a93e; `out/*.out` is each reader output as printed)
 
-`gpuclock.py --pair LOW HIGH` medians (out/<pair>.txt), and `align.py` (new): both arms' windows in
+`gpuclock.py --pair LOW HIGH` medians (out/<pair>.out), and `align.py` (new): both arms' windows in
 2 s bins from the mark, the high arm shifted by the lag that best correlates the two log-gms series,
 then per-bin ratios. Scripted content (a cutscene, a blind route) replays at the same pace in both
 arms, so once the lag is found equal time is the same scene; a correlation under 0.5 means the arms
 did not replay the same content. `align_decomp.py` puts near30's `decompose.py` vCPU split through
-the same lag (out/<pair>.adecomp.txt).
+the same lag (out/<pair>.adecomp.out).
 
 | title (content) | pair, order | clock (100 ms samples) | gms low -> high | e (medians / scene-matched, corr) | F low -> high | dF / dGPU | validity | J/frame |
 |---|---|---|---|---|---|---|---|---|
@@ -214,7 +214,7 @@ GPU shortens the wait. That is the serialized frame, measured: F = guest CPU wor
 Nightfire's segment 90-150 s (GPU 0.6 ms/frame, busy 5%: a scene with almost no GPU work) is the
 built-in check: there the clock should not help and does not (F 34 -> 38-40 ms, guest busy = F).
 
-**The knob is not GPU-only, and in Tron that decides it.** `cpu7share.py` (new; out/cpu7share.txt),
+**The knob is not GPU-only, and in Tron that decides it.** `cpu7share.py` (new; out/cpu7share.out),
 from thermal.jsonl's 30 s samples:
 
 | arm | cpu7 (prime core) at 3187 | cpu3 (mid cluster) at 2803 |

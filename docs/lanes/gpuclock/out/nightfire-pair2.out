@@ -1,0 +1,22 @@
+== 1-1791220912-lane.gpuclock-2642033  nova ref 521ea8a93e  regimen=default perf_mode=0 fan=4  env=PERF_REGIMEN=default,FAN_MODE=smart
+   init: init period_us=100000 floor=401 ceil=680 gov=msm-adreno-tz err=none
+   windows 153 (skip 10 s)  fps 34.5  F 29.0 ms  gms 11.24  grn 9.59  MHz 401  busy 42  floor [401.0] ceil 680.0
+   clock time-at-step (2723 samples): 401:100.0%
+   busy>=90 0.0% of samples; busy>=90 under the ceiling (hot) 0.0%; step response after hot: median None samples (n=0, censored 0)
+   thermal: hottest 94.3 -> 95.5 C (0.28 C/min), xo 54.5 -> 56.3, pause False, lowest ceiling 680 MHz, cpu7 (3187, 3187) MHz, battery ['Charging', 'Discharging'], thermal.jsonl gpuclk [401, 401, 401, 401, 401, 401, 401, 401]
+   power over the window (8 samples): battery +1.00 W, usb 6.41 W, net 7.40 W; fps (frames/time) 33.7 -> 0.220 J/frame
+== 1-1791220908-lane.gpuclock-2641880  nova ref 521ea8a93e  regimen=max perf_mode=2 fan=4  env=PERF_REGIMEN=max,FAN_MODE=smart
+   init: init period_us=100000 floor=615 ceil=680 gov=msm-adreno-tz err=none
+   windows 158 (skip 10 s)  fps 40.0  F 25.0 ms  gms 7.38  grn 6.42  MHz 615  busy 34  floor [615.0] ceil 680.0
+   clock time-at-step (2633 samples): 615:100.0%
+   busy>=90 0.0% of samples; busy>=90 under the ceiling (hot) 0.0%; step response after hot: median None samples (n=0, censored 0)
+   thermal: hottest 95.1 -> 94.3 C (-0.19 C/min), xo 55.2 -> 57.0, pause False, lowest ceiling 680 MHz, cpu7 (3187, 3187) MHz, battery ['Charging'], thermal.jsonl gpuclk [615, 615, 615, 615, 615, 615, 615, 615]
+   power over the window (8 samples): battery +1.05 W, usb 6.53 W, net 7.59 W; fps (frames/time) 35.8 -> 0.212 J/frame
+
+## pair 1-1791220912-lane.gpuclock-2642033 (low) / 1-1791220908-lane.gpuclock-2641880 (high)
+   control: low 401 MHz, high 615 MHz -> the clock moved
+   a. gms 11.24 -> 7.38 ms (x0.657) for MHz x1.534: e = 0.98 -> CLOCK-LIMITED
+   b. F 29.0 -> 25.0 ms (fps 34.5 -> 40.0): dF 4.0 against dGPU 3.9 -> fps FOLLOWS the GPU
+   validity: ok
+   cost: net 7.40 -> 7.59 W, 0.220 -> 0.212 J/frame (x0.96)
+   fit gms = c + k/MHz over 311 windows: c 1.40 ms, k 3508 ms*MHz, RMS residual 4.84 ms, R^2 0.09; clock-scaled share at 401 MHz 86%

@@ -1,0 +1,22 @@
+== 1-1791220914-lane.gpuclock-2642143  nova ref 521ea8a93e  regimen=default perf_mode=0 fan=4  env=PERF_REGIMEN=default,FAN_MODE=smart
+   init: init period_us=100000 floor=401 ceil=680 gov=msm-adreno-tz err=none
+   windows 162 (skip 10 s)  fps 47.4  F 21.1 ms  gms 5.50  grn 4.09  MHz 401  busy 43  floor [401.0] ceil 680.0
+   clock time-at-step (2619 samples): 401:99.4% 475:0.6%
+   busy>=90 0.0% of samples; busy>=90 under the ceiling (hot) 0.0%; step response after hot: median None samples (n=0, censored 0)
+   thermal: hottest 68.5 -> 76.1 C (1.97 C/min), xo 49.5 -> 52.2, pause False, lowest ceiling 680 MHz, cpu7 (1843, 3187) MHz, battery ['Charging', 'Discharging'], thermal.jsonl gpuclk [401, 401, 401, 401, 401, 401, 401, 401]
+   power over the window (8 samples): battery -0.67 W, usb 5.68 W, net 5.02 W; fps (frames/time) 36.7 -> 0.137 J/frame
+== 1-1791220916-lane.gpuclock-2642242  nova ref 521ea8a93e  regimen=max perf_mode=2 fan=4  env=PERF_REGIMEN=max,FAN_MODE=smart
+   init: init period_us=100000 floor=615 ceil=680 gov=msm-adreno-tz err=none
+   windows 204 (skip 10 s)  fps 57.7  F 17.3 ms  gms 4.02  grn 3.05  MHz 615  busy 39  floor [615.0] ceil 680.0
+   clock time-at-step (2668 samples): 615:100.0%
+   busy>=90 0.0% of samples; busy>=90 under the ceiling (hot) 0.0%; step response after hot: median None samples (n=0, censored 0)
+   thermal: hottest 73.3 -> 94.7 C (5.37 C/min), xo 51.8 -> 54.2, pause False, lowest ceiling 680 MHz, cpu7 (3187, 3187) MHz, battery ['Charging', 'Discharging'], thermal.jsonl gpuclk [615, 615, 615, 615, 615, 615, 615, 615, 615]
+   power over the window (9 samples): battery +0.53 W, usb 6.38 W, net 6.91 W; fps (frames/time) 45.7 -> 0.151 J/frame
+
+## pair 1-1791220914-lane.gpuclock-2642143 (low) / 1-1791220916-lane.gpuclock-2642242 (high)
+   control: low 401 MHz, high 615 MHz -> the clock moved
+   a. gms 5.50 -> 4.02 ms (x0.731) for MHz x1.534: e = 0.73 -> CLOCK-LIMITED
+   b. F 21.1 -> 17.3 ms (fps 47.4 -> 57.7): dF 3.8 against dGPU 1.5 -> fps FOLLOWS the GPU
+   validity: heating 1.97 vs 5.37 C/min -> fps VOID
+   cost: net 5.02 -> 6.91 W, 0.137 -> 0.151 J/frame (x1.11)
+   fit gms = c + k/MHz over 366 windows: c 0.46 ms, k 2491 ms*MHz, RMS residual 2.87 ms, R^2 0.12; clock-scaled share at 401 MHz 93%

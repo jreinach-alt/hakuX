@@ -1,0 +1,17 @@
+## tron-pair1 (low 1-1791220914-lane.gpuclock-2642143, high 1-1791220916-lane.gpuclock-2642242)
+== 1-1791220914-lane.gpuclock-2642143  rows=136 (2 s each)
+   THERMAL: no thermal-pause device above 0; 17 samples, 0 unread, hottest zone 89.2 C; battery -1.10 W (+ is discharging), usb in 6.11 W, net 5.01 W; clock MHz cpu0 902-2016 of 2016, cpu3 1651-2803 of 2803, cpu7 1843-3187 of 3187, gpu 401-401 of 680, gpu throttle-switch 0; fan duty 12000-18349 of 5000
+   at/above bar 160 s, below 112 s -> share 0.59
+   group             n      fps        F    gbusy    gidle vblank_ms pgraph_ms timer_ms  disc_ms other_ms       Ri    v_run     v_rq    v_blk     vcpu     rthr    rwait    lockw   ph_GPU  ph_Draw   ph_Fin  ph_Idle   ph_Tot       BE
+   all             136    30.76    32.51    32.19     0.00     0.00     0.00     0.00     0.00     0.00    13.90    24.59     0.06     7.07     0.78    31.07     3.13      nan      nan      nan      nan      nan      nan      nan
+   >=bar            80    50.39    19.85    18.95     0.00     0.00     0.00     0.00     0.00     0.00    13.60    17.43     0.03     2.53     0.88    28.29     2.62      nan      nan      nan      nan      nan      nan      nan
+   <bar             56    23.62    42.33    41.94     0.00     0.00     0.00     0.00     0.00     0.00    14.80    30.51     0.10    10.88     0.73    32.51     3.30      nan      nan      nan      nan      nan      nan      nan
+   <bar p10         15    19.04    52.51    52.41     0.30     0.00     0.00     0.10     0.00     0.03    24.05    39.24     0.08    10.36     0.79    31.07     2.58      nan      nan      nan      nan      nan      nan      nan
+== 1-1791220916-lane.gpuclock-2642242  rows=139 (2 s each)
+   THERMAL: no thermal-pause device above 0; 18 samples, 0 unread, hottest zone 95.5 C; battery +0.41 W (+ is discharging), usb in 5.89 W, net 6.31 W; clock MHz cpu0 1670-2016 of 2016, cpu3 1651-2803 of 2803, cpu7 1843-3187 of 3187, gpu 401-615 of 680, gpu throttle-switch 0; fan duty 0-19014 of 50000 a
+   at/above bar 256 s, below 22 s -> share 0.92
+   group             n      fps        F    gbusy    gidle vblank_ms pgraph_ms timer_ms  disc_ms other_ms       Ri    v_run     v_rq    v_blk     vcpu     rthr    rwait    lockw   ph_GPU  ph_Draw   ph_Fin  ph_Idle   ph_Tot       BE
+   all             139    47.31    21.14    20.77     0.00     0.00     0.00     0.00     0.00     0.00    12.10    17.79     0.03     2.77     0.85    35.72     2.10      nan      nan      nan      nan      nan      nan      nan
+   >=bar           128    49.95    20.02    19.65     0.00     0.00     0.00     0.00     0.00     0.00    12.00    17.17     0.02     2.84     0.85    35.72     2.19      nan      nan      nan      nan      nan      nan      nan
+   <bar             11    20.44    48.92    44.45     0.49     0.00     0.00     0.06     0.28     0.01    16.10    47.64     0.04     2.58     0.96    26.04     1.80      nan      nan      nan      nan      nan      nan      nan
+   <bar p10          3     9.92   100.83   100.35     0.49     0.00     0.00     0.06     0.44     0.02     8.70    81.70     0.04     2.58     0.98    21.04     1.00      nan      nan      nan      nan      nan      nan      nan
