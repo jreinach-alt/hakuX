@@ -22,6 +22,10 @@
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
+/* #433: the frametrace core lives in the header so the selftest can compile
+ * it without QEMU; this is its one implementation. */
+#define HAKUX_FT_IMPLEMENTATION
+#include "hw/xbox/nv2a/pgraph/profile.h"
 
 #ifdef XBOX
 extern uint64_t tb_cache_stats_lookup_hits;
@@ -35,6 +39,11 @@ void nv2a_profile_increment(void)
     int64_t now = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
     const int64_t fps_update_interval = 250000;
     g_nv2a_stats.last_flip_time = now;
+
+    /* The guest's INCREMENT of READ_3D: the present, from its VBLANK ISR. */
+    if (hakux_ft_enabled()) {
+        hakux_ft_present();
+    }
 
     static int64_t frame_count = 0;
     frame_count++;
@@ -234,6 +243,19 @@ void nv2a_profile_flip_stall(void)
 {
     int64_t now = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
     int64_t render_time = (now-g_nv2a_stats.last_flip_time)/1000;
+
+    /* #433 frametrace: first, while the per-frame accumulators it reads
+     * still hold this frame (the snapshots below reset them). */
+    if (hakux_ft_enabled()) {
+        HakuxFtExt x = {
+            .lockw_ns = g_nv2a_stats.cpu_working.lock_wait_ns,
+            .pidle_ns = g_nv2a_stats.pacing.renderer_idle_acc_ns,
+            .gpu_ns = g_nv2a_stats.phase_working.gpu_total_ns,
+            .rp = g_nv2a_stats.phase_working.gpu_rp_count,
+            .vblank_fired = g_nv2a_stats.pacing.vblank_fired,
+        };
+        hakux_ft_flip(&x);
+    }
 
     g_nv2a_stats.frame_working.mspf = render_time;
     g_nv2a_stats.frame_history[g_nv2a_stats.frame_ptr] =
