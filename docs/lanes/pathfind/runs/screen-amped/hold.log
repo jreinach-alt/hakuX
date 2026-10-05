@@ -1,0 +1,39 @@
+pathfind: Amped: Freestyle Snowboarding (4D530005) on nova: /storage/E6C6-D7AA/Games/XBox/4D530005-Amped_Freestyle_Snowboarding.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D530005 any, loaded golden a7d274372a00
+[  11.2s] #  1 black             fast    wait                     Pure white/blank frame with a stray 3D model and no readable UI; not a menu or gameplay. N
+[  15.6s] #  2 publisher_logo    replay  START                    replay step 1: Microsoft publisher logo before the title; per hints, START then A skips in
+[  19.6s] #  3 black             black   wait                     black frame
+[  26.3s] #  4 publisher_logo    fast    START                    Microsoft publisher logo still on screen; per hints, START then A skips logos. Previous ST
+[  34.7s] #  5 main_menu         fast    A                        Career is already the lit row and is the route to riding. A accepts it. Options, Multiplay
+[  43.7s] #  6 submenu           fast    A                        Career submenu; the recorded path says New Career is the lit row and A confirms it. Cold b
+[  48.2s] #  7 submenu           replay  A                        replay step 5: Save-slot picker for a new career; the highlighted Empty Slot is the defaul
+[  57.0s] #  8 name_entry        fast    A                        Default name is filled and the highlight is on Done, so A accepts it, matching the recorde
+[  67.8s] #  9 save_load_prompt  fast    LEFT A                   Overwrite prompt for a profile named '1aku' that the harness most likely created on an ear
+[  73.0s] # 10 submenu           replay  A                        replay step 7: Skill point allocation screen blocks entry to riding; the default allocatio
+[  79.2s] # 11 submenu           replay  RIGHT RIGHT              replay step 8: Still on the skill allocation screen with points left to spend; the game re
+[  87.9s] # 12 submenu           fast    DOWN RIGHT RIGHT RIGHT   Skill allocation still has unspent points, and the game blocks continuing until all are us
+[  97.1s] # 13 submenu           fast    A                        Points available reads empty, so all skill points are spent and the screen should accept. 
+[ 105.4s] # 14 submenu           fast    A                        Character setup is the last step before riding. Continue is the lit row, so A accepts the 
+[ 115.1s] # 15 submenu           fast    A                        Gear setup with defaults; Continue is highlighted, so A accepts the defaults and moves tow
+[ 124.5s] # 16 submenu           fast    A                        Not gameplay yet. Level Select is the highlighted row and leads to choosing a run, which t
+[ 133.0s] # 17 submenu           fast    A                        Level select is the lit row on Brighton 1, and A (Continue) is the recorded path's next st
+[ 143.5s] # 18 submenu           fast    A                        Drop-point selection before a run; the lit row MAJESTIC is the default and A Select is the
+[ 151.2s] # 19 submenu           fast    A                        Tutorial/challenge info popup before the run; A (Continue) advances into riding, same as t
+[ 159.9s] # 20 gameplay          fast    wait                     Player-controlled rider on a live slope with the race HUD visible, no menu, popup or lette
+[ 179.3s] # 21 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.756, under input 0.698
+[ 185.1s] # 22 gameplay          fast    wait                     Live slope with the rider in the world and the race/trick HUD (scores, targets) up, no men
+[ 200.9s] # 23 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.200, under input 0.450
+[ 207.2s] # 24 gameplay          fast    wait                     The race/trick HUD is up and the player's rider is in the world on a live slope with no me
+[ 223.6s] # 25 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.551, under input 0.775
+[ 228.9s] # 26 gameplay          fast    wait                     Live snowboard run with the rider in the world and the score/target HUD up, no menu, popup
+[ 247.4s] # 27 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.639, under input 0.397
+hold-play: genre other, need 600 s of play
+hold-play: fps at 183 s: median 27.0, share>=30 0.447 over 85 samples
+hold-play: fps at 304 s: median 23.0, share>=30 0.304 over 125 samples -> STOP (not on course)
+hold-play: not held 236/600 s of play; fps gate at 5:04: median 23 < 27, 30% of 125 samples at >= 28.5
+held Amped: Freestyle Snowboarding for 306s
+VERDICT Amped: Freestyle Snowboarding ? FAIL(duration: 305 s of gameplay < 600 s confirmation) gameplay=304.5s fps_ok=0.3504 crash=False hang=False audio_short=0.0 hitches=3/0.736pm worst_ms=588.5 static_frac=0.0013 play_share=0.7863 fps_excluded=62.7s
+{"name": "Amped: Freestyle Snowboarding", "device": "nova", "result": "gameplay", "minutes": 4.12, "model_calls": 36, "steps": 27, "replayed": 4, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/hold/frames/026-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

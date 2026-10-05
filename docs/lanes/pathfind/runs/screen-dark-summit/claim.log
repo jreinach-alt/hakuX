@@ -1,0 +1,45 @@
+pathfind: Dark Summit (54510004) on nova: /storage/E6C6-D7AA/Games/XBox/54510004-Dark_Summit.xiso.iso
+titlestate: titles disk: build (the titles disk is not on the device)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 54510004 first-run, loaded none
+[  38.1s] #  1 black             fast    wait                     Blank grey frame with no content and no FPS reading yet, so it is probably still booting o
+[  49.0s] #  2 publisher_logo    fast    wait                     Animated publisher logo mid-transition on black; not skippable by input yet, so wait and r
+[  60.1s] #  3 publisher_logo    fast    wait                     Radical Entertainment publisher logo; not yet skippable and logos often fade, so wait and 
+[  70.1s] #  4 cutscene          fast    START                    In-engine cinematic with a character close-up and no HUD or player control; not gameplay. 
+[  80.6s] #  5 cutscene          fast    A                        This is a mission briefing/report screen after a load, not player-controlled play; the hig
+[  92.4s] #  6 title_screen      fast    START                    Title screen with a 'Please press START to begin' prompt, so START is the correct input to
+[ 102.8s] #  7 main_menu         fast    A                        Main menu with the cursor already on 'Play Dark Summit', the fastest route to play; A acce
+[ 113.8s] #  8 main_menu         fast    A                        Menu, not gameplay. New Game is already highlighted and is the fastest route to play; A ac
+[ 126.2s] #  9 submenu           fast    A                        Rider select menu; the default rider Naya is already chosen, so A accepts and moves on tow
+[ 159.5s] # 10 submenu           fast    A                        Level/location select submenu; First Cut is already highlighted and is the first available
+[ 181.5s] # 11 submenu           fast    A                        Level/location confirmation after a load; the only action is Accept, so A confirms the loc
+[ 196.0s] # 12 cutscene          fast    A                        A posed character close-up with no HUD and no visible player control reads as a cutscene o
+[ 206.9s] # 13 submenu           fast    A                        A story briefing text panel is up, not gameplay; the only action offered is Done on A, so 
+[ 217.1s] # 14 gameplay          fast    wait                     Player-controlled rider on a board with a HUD (counters top-right) in the game world; no m
+[ 237.6s] # 15 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.620, under input 0.665
+[ 245.3s] # 16 gameplay          fast    wait                     Player-controlled rider in the game world with a HUD, and no menu, cutscene bars, or story
+[ 268.5s] # 17 probe             probe   STICK:left:1.2 STICK:right:1.2 STICK:left:1.2 STICK:right:1.2 control 0.550, under input 0.736
+[ 277.7s] # 18 gameplay          fast    wait                     Player-controlled rider in the game world with a HUD (counters and minimap) and no menu, l
+[ 300.6s] # 19 probe             probe   STICK:upleft:1.5 STICK:left:1.2 STICK:right:1.2 control 0.556, under input 0.826
+[ 310.3s] # 20 gameplay          fast    wait                     Player-controlled rider on a board with HUD counters and minimap in the game world, no men
+[ 328.1s] # 21 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.676, under input 0.828
+[ 337.3s] # 22 gameplay          fast    wait                     Player-controlled rider in the world with HUD counters and no menu, letterbox, or story pa
+[ 352.7s] # 23 probe             probe   STICK:upright:1.5 STICK:left:1.2 STICK:right:1.2 control 0.365, under input 0.440
+[ 361.7s] # 24 gameplay          fast    wait                     Player-controlled rider with HUD counters and minimap in the world, no menu or cutscene ba
+[ 381.5s] # 25 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.575, under input 0.922
+[ 387.0s] # 26 gameplay          fast    wait                     Player-controlled rider with HUD counters, minimap and portrait in the playfield, no menu 
+[ 402.9s] # 27 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.643, under input 0.751
+[ 411.4s] # 28 gameplay          fast    wait                     Player-controlled snowboarder in the world with HUD counters, minimap and portrait, and no
+[ 427.2s] # 29 probe             probe   STICK:down:1.5 STICK:left:1.2 STICK:right:1.2 control 0.768, under input 0.783
+[ 434.7s] # 30 gameplay          fast    wait                     Player-controlled snowboarder in the world with HUD counters, minimap and no menu or cutsc
+[ 450.6s] # 31 probe             probe   STICK:down:1.5 STICK:left:1.2 STICK:right:1.2 control 0.366, under input 0.508
+[ 459.9s] # 32 gameplay          fast    wait                     The HUD counters, minimap and a rider in the playfield with no menu or cutscene make this 
+[ 475.7s] # 33 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.623, under input 0.853
+[ 481.9s] # 34 gameplay          fast    wait                     Player-controlled snowboarder in the world with HUD counters and minimap, no menu or lette
+[ 496.8s] # 35 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.673, under input 0.694
+[ 504.0s] # 36 gameplay          fast    wait                     Player-controlled snowboarder in the world with HUD counters and minimap. Earlier probes w
+[ 521.8s] # 37 probe             probe   RT:3 RT+left:1.2 RT+right:1.2 control 0.699, under input 0.650
+[ 531.4s] # 38 gameplay          fast    LT:1                     Player-controlled snowboarder in the world with HUD counters and minimap, matching gamepla
+[ 544.7s] # 39 probe             probe   LT:1 RT:3                control 0.106, under input 0.555
+{"name": "Dark Summit", "device": "nova", "result": "gameplay", "minutes": 9.08, "model_calls": 40, "steps": 39, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/claim/frames/038-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

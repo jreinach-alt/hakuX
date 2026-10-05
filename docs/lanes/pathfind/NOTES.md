@@ -1,5 +1,69 @@
 # lane.pathfind -- NOTES
 
+## Screening 10-04 (owner order): scoreboard
+
+| # | title | id | class | share >= 30 | median | window | claim (min, calls) | profile | run |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | RalliSport Challenge | 4D53000F | clear | 98.9% of 649 s | 59 | full (671 s, PASS) | 3.2, 19 | golden cc9b4ced4a0f | runs/screen-ralli-challenge/hold-0816 |
+| 2 | AvP: Extinction | 56550022 | clear (fps) | 100% at 28.5 (47% at 30) | 29 (locked 30) | full (856 s; FAIL play share 70.7%: RTS camera still) | 3.1, 17 | golden 50a35dcd33ed | runs/screen-avp-extinction/hold |
+| 3 | Phantom Crash | 504C0001 | can't-path | - | - | - | gave up 15 min, 92 calls ($6.7): ClubWired dialogue | none | runs/screen-phantom-crash/claim |
+| 4 | Simpsons Road Rage | 45410013 | can't-path | - | - | - | race HUD at 10.8 min; 10 RT probes refused; 74 calls ($5.5) | none | runs/screen-simpsons-road-rage/claim |
+| 5 | Simpsons Hit & Run | 56550015 | clear | 100% (98.2% of samples) | 38 | full (606 s, PASS) | 2.7, 18 | golden bcc71e970cff (title data only: hold on state any) | runs/screen-simpsons-hit-run/hold |
+| 6 | Guilty Gear XX #Reload | 53410002 | clear (fps), partial | 100% of 193 s | 59 | partial: hold lost at a CONTINUE screen after 97 s of play | 1.9, 13 | golden 6f0d8fc26eb7 | runs/screen-guilty-gear-xx/hold |
+| 7 | LEGO Star Wars: The Video Game | 4553001D | CLEAR on fps | 1.0 of 733 s | 59 | full window; play_share 0.6845 | 1.21, 9 | golden 5251f98730d1 | runs/screen-lego-star-wars/hold |
+| 8 | Mashed: Drive to Survive | 454D000A | can't-path | - | - | - | races from 2 min; 19 probes refused (self-moving camera, rounds end at once); 83 calls ($5.6) | none | runs/screen-mashed/claim |
+| 9 | Amped: Freestyle Snowboarding | 4D530005 | fail | 0.35 of 305 s | 23 | aborted at 5:04 (gate); perflog run fps_ok 0.086: guest busy 31.6 ms/frame (vCPU), Ri 12.3 ms | 3.75, 24 | golden a7d274372a00 | runs/screen-amped/hold, perf |
+| 10 | Dark Summit | 54510004 | CLEAR | 0.9318 of 606 s | 46 | full window; play_share 0.9998 | 9.08, 40 | golden 430384745827 | runs/screen-dark-summit/hold |
+| 11 | Whiteout | 4B4E0001 | can't-path | - | - | - | load card 'Trojan Park' 12.5 min, never ended; 35 calls ($2.4); NEW ISSUE in OUTBOX | none | runs/screen-whiteout/claim |
+| 12 | MTV Celebrity Deathmatch | 5454000B | CLEAR on fps | 0.9876 of 687 s | 59 | full window; play_share 0.8781 | 4.93, 29 | golden b206649c8fff | runs/screen-mtv-celebrity-deathmatch/hold |
+
+Share columns use title_verdict's bar, 30 x `fps_tolerance` 0.95 = 28.5, unless stated.
+
+SCREENING DONE 12/12 (14:20 PDT): clear 7, close 0, fail 1, can't-path 4; about $53 of $60 (Sonnet). The owner's
+target of 8 clear-or-close was not reached. Three verdict PASSes (RalliSport, Hit & Run, Dark Summit) go to frame review.
+
+What the next lane should not repeat:
+- **Do not edit pathfind.py while a run is queued.** A queued run imports the file when its hold is granted. The 10:2x
+  Road Rage run imported a half-edited file and died at step 2 (AttributeError).
+- **`promote --latest` after a first-run claim can make a title-data-only golden** (Hit & Run: no profile saved by
+  gameplay). titlestate then refuses `--state returning`. The hold uses `--state any`, which loads the golden unchanged.
+- **Four of the 7 clears miss Playable on hold design, not fps.** An RTS camera reads still (AvP). A hub start walks
+  into the pause menu (LEGO). Fighters lose and stall at CONTINUE (Guilty Gear: A does not continue). Between-round
+  screens cost 13% (MTV). These are the next hold fixes, ranked by titles each clears.
+- **A load that never ends gets no input.** The model says `wait` and the static-load rule waits (Whiteout, 12.5 min).
+  One A/START after ~90 s of a static load card would separate a hang from a wait-for-press. Not built today.
+- **Self-moving races cannot be confirmed by frame change** (Mashed: the idle change was 0.3-0.86). The probe ladder's
+  HOLD:A:3 did move the scene once (0.017 -> 0.814), but the confirm model refused it on a results card.
+
+## Resume (10-04 08:13 PDT, attempt 4): why the last attempt did not finish
+
+- The 07:56 session claimed RalliSport (3.2 min, 19 calls), promoted its golden and started the 600-s hold as a
+  background task. The session then ended, the task died with it at 234 s, and the hold was released with the car
+  unattended. Rule kept since then: a held run is waited on in the foreground of the session that started it.
+- That partial window read 230 of 236 s at >= 30 fps (min 34). It showed no miss, so the 600 s was run again.
+- Two tool changes this session:
+  1. The owner's 3/5-min "should we continue?" check is in the hold (`FPS_GATES`, `fps_course`): median < 22 at
+     3 min, or < 27 at 5 min, with < 60% of seconds at >= 30, stops the hold. scratch/screen.sh then runs one
+     180-s telemetry hold on the same path. Its logcat carries the perflog and the [rr425w] lines that decompose.py
+     reads. Selftest `fpsgate`.
+  2. Master's failgate (`de4b991a6c`) fails a scored window with fewer than 3 `HHMMSS-*.png` frames as
+     "window unmeasured". The hold kept only `NNN-hold` frames. It now links each kept frame to
+     `route-frames/HHMMSS-hold.png`. RalliSport was rescored from its kept JPGs: PASS.
+
+## Resume (10-04 07:56 PDT, attempt 3): why the last attempt did not finish
+
+- The 22:4x session finished the list it had been given. Panzer Dragoon Orta run 3 PASSED at 00:48 (603.7 s, play 0.9997,
+  fps_ok 0.9962, `8b2dfede96`), and its PR.md and OUTBOX were written. Nothing was in flight and no WAITING file was
+  written, which is correct for a finished list.
+- It did not get a next order before it ended: the 10-04 screening addendum (owner, ~07:55: identify, pathfind, measure
+  each of 12 untested Xbox titles against the 30 fps bar; stop at 8 clear-or-close) arrived after the session ended.
+  So this is a new order, not an unfinished one. This session replaces the stick-probe plan the 10-04 07:00 note had.
+- Starting state: the Nova is held by `lane.local-sweep` (pushing RalliSport 4D53000F). Of the 12 screening titles, only
+  RalliSport (4D53000F), AvP Extinction (56550022) and Phantom Crash (504C0001) are on the Nova's
+  `/storage/E6C6-D7AA/Games/XBox/` folder at 07:56. The rest of `pm/screen-1004.tsv` is still being staged, so each
+  is checked before its run and the missing ones are taken later.
+- Selftest `pathfind_selftest: all ok` before device time.
+
 ## Resume (10-03 22:37 PDT, attempt 2 of this resume): why the last attempt did not finish
 
 - The 21:5x session ended at 22:27 (commit `9b7b90c7de`) right after its Black Stone hold3 write-up (FAIL, play share 9.5%,

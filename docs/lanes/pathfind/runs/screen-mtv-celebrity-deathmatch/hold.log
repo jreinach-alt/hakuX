@@ -1,0 +1,57 @@
+pathfind: MTV Celebrity Deathmatch (5454000B) on nova: /storage/E6C6-D7AA/Games/XBox/5454000B-MTV_Celebrity_Deathmatch.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5454000B any, loaded golden b206649c8fff
+[   8.2s] #  1 publisher_logo    replay  A                        replay step 0: A logo or splash on a white background before any title or menu; skip with 
+[  12.5s] #  2 publisher_logo    replay  A                        replay step 1: Legal/copyright splash before any title screen; skip with A per the publish
+[  20.0s] #  3 cutscene          fast    A                        Non-interactive sepia city view with no HUD or menu; not confirmed player control. Recorde
+[  24.3s] #  4 cutscene          replay  A                        replay step 2: A close-up cinematic shot with no menu, HUD, or playable character; this is
+[  28.5s] #  5 publisher_logo    replay  A                        replay step 3: A legal/disclaimer splash before any title or menu is a skippable pre-title
+[  37.5s] #  6 title_screen      fast    START                    Title screen with 'Press START' prompt; hint says Rockstar/this title takes START at Press
+[  41.9s] #  7 main_menu         replay  DOWN A                   replay step 4: Main menu with the cursor on EPISODE. DEATHMATCH is the quick single match,
+[  50.8s] #  8 submenu           fast    A                        Deathmatch is open with the submenu showing 1P vs CPU, the fastest single-player option. A
+[  55.3s] #  9 submenu           replay  A                        replay step 6: Character select with defaults already filled in (1P Mr. T vs CPU). Per the
+[  65.2s] # 10 submenu           fast    RIGHT LEFT A             Character select with defaults filled in. A on this same screen changed almost nothing las
+[  77.5s] # 11 submenu           fast    START                    Defaults are set and A has not advanced this screen, and RIGHT LEFT A was already tried. C
+[  87.8s] # 12 submenu           fast    HOLD:A:1.5               A, START and RIGHT LEFT A were all tried with no change, so I'm changing the input: a held
+[  93.5s] # 13 submenu           replay  A                        replay step 10: Arena select with a default already chosen (Deathmatch Arena). Accepting t
+[  99.0s] # 14 cutscene          replay  START                    replay step 11: This is a presentation scene with announcers, not player-controlled play; 
+[ 105.2s] # 15 cutscene          replay  A                        replay step 12: A posed character in a ring with a crowd and no HUD looks like a pre-fight
+[ 113.1s] # 16 gameplay          fast    wait                     Live fight HUD with both health bars and names over an active arena, no menu or results ba
+[ 128.4s] # 17 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.298, under input 0.488
+[ 135.9s] # 18 cutscene          fast    A                        HUD is up, but Manson is on his back in a scripted-looking pose and the stick probes were 
+[ 154.5s] # 19 unknown           fast    A                        A fight HUD is up, but the stick probes on this same screen were refused and the last step
+[ 169.9s] # 20 unknown           fast    X                        A fight HUD is up, but earlier stick probes on this screen were refused and the pose looks
+[ 186.5s] # 21 unknown           fast    B                        A fight HUD is up, but stick probes and A/X were already refused on this screen and the cl
+[ 200.6s] # 22 unknown           fast    Y                        Fight HUD is up, but earlier stick probes were refused and A, X and B changed nothing; Man
+[ 210.5s] # 23 cutscene          fast    wait                     A 'KILL!' finisher banner over a scripted-looking pose with the HUD up. Earlier stick prob
+[ 226.0s] # 24 cutscene          fast    wait                     Fight HUD is up, but the pose looks like a scripted finisher and earlier stick and button 
+[ 243.2s] # 25 unknown           fast    wait                     A fight HUD is up, but Mr. T is down and Manson is posed as if in a scripted finisher. Ear
+[ 251.4s] # 26 cutscene          fast    wait                     A KILL! finisher banner over a scripted-looking pose with Mr. T down; this is a presentati
+[ 260.5s] # 27 cutscene          fast    A                        No HUD is visible on this frame and the pose looks like a scripted finisher. Earlier stick
+[ 269.7s] # 28 cutscene          fast    A                        Posed presentation with no HUD or health bars, so not confirmed gameplay. The recorded pat
+[ 280.2s] # 29 results           fast    RIGHT A                  Results screen, not live play. Retry is the fastest route back into a fight; RIGHT moves t
+[ 297.4s] # 30 gameplay          fast    wait                     Fight HUD with both health bars and names is up over a live arena with no menu, banner or 
+[ 313.9s] # 31 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.305, under input 0.310
+[ 321.1s] # 32 gameplay          fast    X                        Live fight HUD with both health bars and names over an active arena. Earlier stick probes 
+[ 343.1s] # 33 probe             probe   X X STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.493, under input 0.497
+[ 349.8s] # 34 gameplay          fast    wait                     Live match HUD with both health bars and names over an active ring, no menu or results ban
+[ 361.1s] # 35 probe             probe   STICK:left:1.5           control 0.068, under input 0.284
+[ 368.9s] # 36 gameplay          fast    wait                     Fight HUD is up over a live arena with no menu, results or banner. Earlier stick probes on
+[ 385.9s] # 37 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.245, under input 0.386
+[ 390.4s] # 38 cutscene          fast    A                        Close-up camera shot with no HUD and no visible control, so this is a presentation moment 
+[ 398.6s] # 39 results           fast    RIGHT A                  Post-fight results screen, not live play. Retry is the fastest route back into a fight, so
+[ 412.4s] # 40 gameplay          fast    wait                     Live match HUD with both health bars and names over an active ring, no menu or results tex
+[ 425.7s] # 41 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.483, under input 0.402
+[ 432.6s] # 42 gameplay          fast    wait                     Live fight HUD with both health bars and names over an active arena, no menu, results or c
+[ 449.8s] # 43 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.403, under input 0.373
+[ 455.7s] # 44 gameplay          fast    wait                     Fight HUD with both health bars and names over a live ring, so this is player-controlled p
+[ 468.3s] # 45 probe             probe   A HOLD:A:3               control 0.111, under input 0.589
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 184 s: median 59.0, share>=30 1.0 over 169 samples
+hold-play: fps at 307 s: median 59.0, share>=30 1.0 over 272 samples
+hold-play: HELD 601/600 s of play; 
+held MTV Celebrity Deathmatch for 689s
+VERDICT MTV Celebrity Deathmatch ? FAIL(menu time: 87.8% of the scored window in `play` (bar 90%; play 603 s, cutscene 37 s, menu 34 s, other 8 s)) gameplay=686.8s fps_ok=0.9876 crash=False hang=False audio_short=0.0 hitches=12/1.149pm worst_ms=348.6 static_frac=0.0 play_share=0.8781 fps_excluded=85.4s
+{"name": "MTV Celebrity Deathmatch", "device": "nova", "result": "gameplay", "minutes": 7.81, "model_calls": 60, "steps": 45, "replayed": 9, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-mtv-celebrity-deathmatch/hold/frames/044-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

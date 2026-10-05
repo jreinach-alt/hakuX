@@ -1,0 +1,144 @@
+pathfind: Whiteout (4B4E0001) on nova: /storage/E6C6-D7AA/Games/XBox/4B4E0001-Whiteout.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4B4E0001 first-run, loaded none
+[   9.4s] #  1 publisher_logo    fast    A                        Blank white screen with a 3D green shape, most likely an early publisher or intro logo ani
+[  16.7s] #  2 publisher_logo    fast    A                        Copyright/credits text card after the logos, not a title or menu; per hints, A skips these
+[  23.9s] #  3 publisher_logo    fast    A                        Publisher logo before the title screen; per hints, A skips logos. Nothing highlighted, no 
+[  33.3s] #  4 cutscene          fast    wait                     Race grid before the start with no HUD and no player control confirmed; it could be a pre-
+[  42.6s] #  5 cutscene          fast    wait                     Race is running with motion and riders moving, but no HUD, no confirmed player control, an
+[  51.4s] #  6 cutscene          fast    wait                     Race is running with motion but no HUD and no confirmed player control; prior step judged 
+[  61.2s] #  7 cutscene          fast    wait                     Still the same rendered scene with motion but no HUD and no confirmed player control; the 
+[  73.1s] #  8 cutscene          fast    A                        Same no-HUD race footage for several steps with no confirmed player control, so it is like
+[  92.6s] #  9 title_screen      fast    START                    Title screen with 'press START button' prompt; per hints, START selects the title. Cursor 
+[ 101.2s] # 10 save_load_prompt  fast    A                        Storage device chooser; the default Xbox Hard Disk is already selected, so A accepts it an
+[ 109.1s] # 11 main_menu         fast    A                        Main menu with no cursor visible beyond the top item; Quick Race is the fastest route to p
+[ 117.8s] # 12 submenu           fast    A                        Driver select in a racing title; per the team/character-select rule, accept the default dr
+[ 127.3s] # 13 cutscene          fast    A                        Static camera view of the Konami arena with no HUD and no confirmed player control, so it 
+[ 137.1s] # 14 submenu           fast    A                        Track select screen with a track already highlighted and laps set to 3; accepting the defa
+[ 145.5s] # 15 loading           fast    wait                     Game is in a loading screen with a tip panel; no input needed, just wait for the next scre
+[ 151.2s] # 16 loading           static  wait                     load still on screen (barely changed)
+[ 155.8s] # 17 loading           static  wait                     load still on screen (barely changed)
+[ 160.5s] # 18 loading           static  wait                     load still on screen (barely changed)
+[ 166.4s] # 19 loading           static  wait                     load still on screen (barely changed)
+[ 171.0s] # 20 loading           static  wait                     load still on screen (barely changed)
+[ 178.9s] # 21 loading           fast    wait                     Still a loading screen with a tip panel; no input needed, the next screen should arrive on
+[ 187.6s] # 22 loading           static  wait                     load still on screen (barely changed)
+[ 192.2s] # 23 loading           static  wait                     load still on screen (barely changed)
+[ 197.0s] # 24 loading           static  wait                     load still on screen (barely changed)
+[ 212.8s] # 25 loading           static  wait                     load still on screen (barely changed)
+[ 219.4s] # 26 loading           static  wait                     load still on screen (barely changed)
+[ 227.6s] # 27 loading           fast    wait                     Still a loading screen with a tip panel and no input needed; the next screen should arrive
+[ 236.3s] # 28 loading           static  wait                     load still on screen (barely changed)
+[ 240.9s] # 29 loading           static  wait                     load still on screen (barely changed)
+[ 245.7s] # 30 loading           static  wait                     load still on screen (barely changed)
+[ 251.5s] # 31 loading           static  wait                     load still on screen (barely changed)
+[ 256.2s] # 32 loading           static  wait                     load still on screen (barely changed)
+[ 264.0s] # 33 loading           fast    wait                     Still a loading screen with a tip/preview panel and no prompt; the game advances on its ow
+[ 269.6s] # 34 loading           static  wait                     load still on screen (barely changed)
+[ 274.3s] # 35 loading           static  wait                     load still on screen (barely changed)
+[ 279.0s] # 36 loading           static  wait                     load still on screen (barely changed)
+[ 285.0s] # 37 loading           static  wait                     load still on screen (barely changed)
+[ 289.7s] # 38 loading           static  wait                     load still on screen (barely changed)
+[ 297.5s] # 39 loading           fast    wait                     Still a loading screen with a tip panel and no prompt; the game advances on its own, so wa
+[ 306.2s] # 40 loading           static  wait                     load still on screen (barely changed)
+[ 310.9s] # 41 loading           static  wait                     load still on screen (barely changed)
+[ 316.9s] # 42 loading           static  wait                     load still on screen (barely changed)
+[ 321.6s] # 43 loading           static  wait                     load still on screen (barely changed)
+[ 326.3s] # 44 loading           static  wait                     load still on screen (barely changed)
+[ 334.2s] # 45 loading           fast    wait                     Still a loading screen with a tip/preview panel and no prompt; the game advances on its ow
+[ 339.8s] # 46 loading           static  wait                     load still on screen (barely changed)
+[ 344.4s] # 47 loading           static  wait                     load still on screen (barely changed)
+[ 350.6s] # 48 loading           static  wait                     load still on screen (barely changed)
+[ 355.2s] # 49 loading           static  wait                     load still on screen (barely changed)
+[ 359.8s] # 50 loading           static  wait                     load still on screen (barely changed)
+[ 367.3s] # 51 loading           fast    wait                     Game is in a loading screen with a tip panel and no prompt; the game advances on its own, 
+[ 376.1s] # 52 loading           static  wait                     load still on screen (barely changed)
+[ 380.8s] # 53 loading           static  wait                     load still on screen (barely changed)
+[ 387.0s] # 54 loading           static  wait                     load still on screen (barely changed)
+[ 391.6s] # 55 loading           static  wait                     load still on screen (barely changed)
+[ 396.2s] # 56 loading           static  wait                     load still on screen (barely changed)
+[ 403.9s] # 57 loading           fast    wait                     Tip/loading panel with no prompt; the game advances on its own, so wait.
+[ 412.6s] # 58 loading           static  wait                     load still on screen (barely changed)
+[ 418.8s] # 59 loading           static  wait                     load still on screen (barely changed)
+[ 423.5s] # 60 loading           static  wait                     load still on screen (barely changed)
+[ 428.1s] # 61 loading           static  wait                     load still on screen (barely changed)
+[ 432.7s] # 62 loading           static  wait                     load still on screen (barely changed)
+[ 440.6s] # 63 loading           fast    wait                     Loading screen with a tip panel and no prompt; the game advances on its own, so wait witho
+[ 449.2s] # 64 loading           static  wait                     load still on screen (barely changed)
+[ 455.4s] # 65 loading           static  wait                     load still on screen (barely changed)
+[ 460.0s] # 66 loading           static  wait                     load still on screen (barely changed)
+[ 464.6s] # 67 loading           static  wait                     load still on screen (barely changed)
+[ 469.3s] # 68 loading           static  wait                     load still on screen (barely changed)
+[ 477.1s] # 69 loading           fast    wait                     Still a loading screen with a tip panel and no prompt; the game advances on its own, so ke
+[ 487.2s] # 70 loading           static  wait                     load still on screen (barely changed)
+[ 491.9s] # 71 loading           static  wait                     load still on screen (barely changed)
+[ 496.5s] # 72 loading           static  wait                     load still on screen (barely changed)
+[ 501.1s] # 73 loading           static  wait                     load still on screen (barely changed)
+[ 505.8s] # 74 loading           static  wait                     load still on screen (barely changed)
+[ 513.6s] # 75 loading           fast    wait                     Still a loading screen with a tip/promo panel and no prompt; the game advances on its own,
+[ 523.8s] # 76 loading           static  wait                     load still on screen (barely changed)
+[ 528.5s] # 77 loading           static  wait                     load still on screen (barely changed)
+[ 533.1s] # 78 loading           static  wait                     load still on screen (barely changed)
+[ 537.8s] # 79 loading           static  wait                     load still on screen (barely changed)
+[ 542.4s] # 80 loading           static  wait                     load still on screen (barely changed)
+[ 549.8s] # 81 loading           fast    wait                     Game loading screen with tip panel and no prompt; the game advances on its own, so wait an
+[ 559.7s] # 82 loading           static  wait                     load still on screen (barely changed)
+[ 564.3s] # 83 loading           static  wait                     load still on screen (barely changed)
+[ 569.0s] # 84 loading           static  wait                     load still on screen (barely changed)
+[ 573.6s] # 85 loading           static  wait                     load still on screen (barely changed)
+[ 578.3s] # 86 loading           static  wait                     load still on screen (barely changed)
+[ 587.5s] # 87 loading           fast    wait                     Game loading screen with tip panel and no prompt; the game advances on its own, so wait an
+[ 596.1s] # 88 loading           static  wait                     load still on screen (barely changed)
+[ 600.7s] # 89 loading           static  wait                     load still on screen (barely changed)
+[ 605.3s] # 90 loading           static  wait                     load still on screen (barely changed)
+[ 610.0s] # 91 loading           static  wait                     load still on screen (barely changed)
+[ 614.7s] # 92 loading           static  wait                     load still on screen (barely changed)
+[ 623.9s] # 93 loading           fast    wait                     Game load screen with tip panel and no prompt; the game advances on its own, so wait and r
+[ 632.5s] # 94 loading           static  wait                     load still on screen (barely changed)
+[ 637.3s] # 95 loading           static  wait                     load still on screen (barely changed)
+[ 642.0s] # 96 loading           static  wait                     load still on screen (barely changed)
+[ 646.6s] # 97 loading           static  wait                     load still on screen (barely changed)
+[ 651.3s] # 98 loading           static  wait                     load still on screen (barely changed)
+[ 660.7s] # 99 loading           fast    wait                     Game load screen with tip panel and no prompt; it advances on its own, and the screen has 
+[ 669.4s] #100 loading           static  wait                     load still on screen (barely changed)
+[ 674.0s] #101 loading           static  wait                     load still on screen (barely changed)
+[ 678.7s] #102 loading           static  wait                     load still on screen (barely changed)
+[ 683.4s] #103 loading           static  wait                     load still on screen (barely changed)
+[ 689.5s] #104 loading           static  wait                     load still on screen (barely changed)
+[ 697.7s] #105 loading           fast    wait                     Game load screen with tip text and no prompt; it advances on its own, and it has only been
+[ 706.3s] #106 loading           static  wait                     load still on screen (barely changed)
+[ 711.0s] #107 loading           static  wait                     load still on screen (barely changed)
+[ 715.7s] #108 loading           static  wait                     load still on screen (barely changed)
+[ 721.7s] #109 loading           static  wait                     load still on screen (barely changed)
+[ 726.4s] #110 loading           static  wait                     load still on screen (barely changed)
+[ 734.0s] #111 loading           fast    wait                     Game loading screen with tip text and no prompt; it advances on its own, so wait without p
+[ 742.7s] #112 loading           static  wait                     load still on screen (barely changed)
+[ 747.4s] #113 loading           static  wait                     load still on screen (barely changed)
+[ 752.1s] #114 loading           static  wait                     load still on screen (barely changed)
+[ 758.2s] #115 loading           static  wait                     load still on screen (barely changed)
+[ 762.8s] #116 loading           static  wait                     load still on screen (barely changed)
+[ 770.7s] #117 loading           fast    wait                     Game loading screen with a tip panel and no prompt; it advances on its own, so wait withou
+[ 779.3s] #118 loading           static  wait                     load still on screen (barely changed)
+[ 784.0s] #119 loading           static  wait                     load still on screen (barely changed)
+[ 790.0s] #120 loading           static  wait                     load still on screen (barely changed)
+[ 794.7s] #121 loading           static  wait                     load still on screen (barely changed)
+[ 799.3s] #122 loading           static  wait                     load still on screen (barely changed)
+[ 807.2s] #123 loading           fast    wait                     Game loading screen with a tip/preview panel and no prompt; it advances on its own, so wai
+[ 812.9s] #124 loading           static  wait                     load still on screen (barely changed)
+[ 817.5s] #125 loading           static  wait                     load still on screen (barely changed)
+[ 823.6s] #126 loading           static  wait                     load still on screen (barely changed)
+[ 828.2s] #127 loading           static  wait                     load still on screen (barely changed)
+[ 832.9s] #128 loading           static  wait                     load still on screen (barely changed)
+[ 841.3s] #129 loading           fast    wait                     Game loading screen with a tip panel and no prompt; it advances on its own, so wait withou
+[ 850.0s] #130 loading           static  wait                     load still on screen (barely changed)
+[ 856.1s] #131 loading           static  wait                     load still on screen (barely changed)
+[ 860.7s] #132 loading           static  wait                     load still on screen (barely changed)
+[ 865.5s] #133 loading           static  wait                     load still on screen (barely changed)
+[ 870.2s] #134 loading           static  wait                     load still on screen (barely changed)
+[ 878.2s] #135 loading           fast    wait                     Game loading screen with a tip panel and no prompt; it advances on its own, so wait withou
+[ 888.4s] #136 loading           static  wait                     load still on screen (barely changed)
+[ 893.2s] #137 loading           static  wait                     load still on screen (barely changed)
+[ 898.1s] #138 loading           static  wait                     load still on screen (barely changed)
+{"name": "Whiteout", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 35, "steps": 138, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256
