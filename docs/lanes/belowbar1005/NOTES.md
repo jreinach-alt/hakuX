@@ -280,7 +280,64 @@ Bass fight, route frame 204919). There the GPU alone needs ~58 ms per frame:
 33 ms in render passes (the lacquered floor's reflection draws the scene
 twice) and 25 ms outside them (9.4 surface uploads per frame, `#upl:562`
 per 60). On top of that one download-if-dirty per flip ends in a synchronous
-`SURFACE_DOWN` finish (#794's class, the dirtyIf branch, which async794 did
-not change), so the render thread waits 30 ms per frame in Fin (Sub 30.0).
+`SURFACE_DOWN` finish (#794's class, the dirtyIf branch; async794's folded
+form, 2344ae1ee2, releases pgraph.lock across the deferred-download wait and
+leaves the download synchronous), so the render thread waits 30 ms per frame in Fin (Sub 30.0).
 Even with the download asynchronous the GPU's 58 ms is past 50 ms (three
 VBLANKs): DOA3 on that stage is GPU-bound first.
+
+## Cross-title: GPU time outside render passes (`xfrsurvey.py`, offline)
+
+NG Black's and DOA3's GPU frames are half non-render time, so every perflog
+soak of the last 14 days was ranked by it (`xfrsurvey.txt`; medians of the
+`xemu-gpu` lines with Tot >= 8 ms, so menus drop out; whole logcats, a
+ranking, not a verdict). Xfr is `gpu_nonrender_ms`: the command buffer's
+GPU span (`cb_end - cb_start` timestamps) minus the timestamped spans of its
+render passes (vk/draw.c 3689-3726). So it is copies, uploads, blits,
+conversions, clears and barriers between passes, plus any pass beyond
+`GPU_TS_MAX_RENDER_PASSES`.
+
+| title | Tot | Rnd | **Xfr** | Xfr/Tot | RP per frame |
+|---|---|---|---|---|---|
+| ToeJam & Earl III | 52.3 | 34.4 | **17.9** | 0.34 | 17 |
+| 007 Agent Under Fire | 28.8 | 18.1 | **14.5** | 0.50 | 4 |
+| DOA Ultimate | 31.6 | 19.1 | **13.2** | 0.42 | 9 |
+| NG Black | 23.9 | 12.2 | **11.7** | 0.49 | 12 |
+| Otogi | 22.4 | 11.0 | **11.4** | 0.51 | 2 |
+| DOA3 (whole run; the dojo alone 25.5) | 18.4 | 10.2 | **10.3** | 0.56 | 3 |
+| Crash Twinsanity | 18.3 | 10.3 | 7.1 | 0.39 | 15 |
+| Halo 2 | 14.3 | 8.2 | 6.3 | 0.44 | 25 |
+| Black | 11.2 | 5.8 | 5.5 | 0.49 | 19 |
+| ... Blinx, Burnout, PGR, BF2, Counter-Strike, NBA 2005 | 18-42 | | 0.2-1.3 | 0.00-0.07 | |
+
+It does not track the render-pass count (Otogi 2 passes and 11.4 ms; Top Spin
+149 passes and 4.5 ms), so it is not the per-pass tile load/store. What it is
+inside is not measured anywhere yet: no timestamp brackets the uploads,
+copies or conversions. In the NGB and DOA3 windows the co-measured counters
+are ~8-9 `pgraph_vk_upload_surface_data` calls per frame (`xemu-surf #upl`;
+a call can be a no-op, `[surf413]` counts the real ones) and 9
+surface-to-texture binds (`S2T:9`, NGB).
+
+## Answer
+
+**The #804 fence wait is not the cost, for any of the three.**
+
+| title | below-bar run had the wait? | reads occlusion queries? | does the wait block? |
+|---|---|---|---|
+| Buffy | no (39fc5d0a57) | **no** (0 lines, both arms, 210+ s of play) | never runs |
+| NG Black | no (39fc5d0a57) | yes, in ~4% of frames (q 1-3) | **no**: pend = 0 on all 190 reads |
+| DOA3 | yes (5e16698c99) | **no** (0 lines, 360 s) | never runs |
+
+The registered share rule fired on Buffy (0.83 vs 0.67) with the code under
+test not executing in either arm; that gap is the walk (see "Arm W"). No fix
+proposal for the wait is warranted by these titles. The one place it can
+cost is a title whose queries are read while a submitted frame is still on
+the GPU (`pend > 0`), which is RalliSport's case, the one it was written for.
+
+Per title, the bound and the next step by P x win:
+
+| title | bound (evidence) | next step | P | win |
+|---|---|---|---|---|
+| **NG Black** | **GPU**: F = GPU + ~4 ms in every bucket; GPU at 680 MHz (max) in 7 of 8 play samples; Ri < 1.5; no sd finishes; half the GPU time non-render (11.7 of 23.9) | Measure what the non-render GPU time is: timestamps around surface uploads, texture uploads, surface-to-texture copies and conversions in the perflog build (a decide-first measurement), then cut the largest | 0.4 that one category holds most of it and is avoidable (redundant uploads/conversions), on the evidence that the titles at the top share engines and the bottom half of the table has ~0 | NG Black: slow rows 32.6 ms GPU -> ~22-27, so 28.5+ in most windows; the same fix reaches AUF, DOA Ultimate, Otogi, DOA3, ToeJam (5-18 ms each) |
+| **DOA3** | **GPU** on the dojo stage: 58.7 ms (render 33.2, non-render 25.5), plus one synchronous download-if-dirty per flip (Fin 30 ms). Other stages 15-26 ms GPU, 35-50 fps | Same non-render measurement (shared). Then #794's dirtyIf download made asynchronous | 0.2 that the dojo reaches 28.5 even with both: its render passes alone are 33 ms | One stage of DOA3; the rest already passes |
+| **Buffy** | **vCPU**: guest busy 27-31 ms of 37-38 in slow rows, renderer idle 15-24 ms, GPU clock mostly 401-550 MHz (not GPU-bound); vCPU asleep 6-12 ms per frame in the slow rows | Perflog split of that sleep (queued: 1-1791217580); if it is pgraph.lock, the #474 extension; otherwise the vCPU JIT direction (owner 09-28) | see below | Buffy misses 33.3 ms by 4-8 ms on the forest path |
