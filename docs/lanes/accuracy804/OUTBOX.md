@@ -54,3 +54,13 @@
   settle it. Meanwhile two Nova runs are queued (fence wait on/off in one binary, per-frame visibility values in
   logcat, grid + pass shots); they run when the owner hold lifts. NOTES section 19. **Recommend no revert yet**: a
   revert brings the blink back, and no capture shows the fix removing cars.
+- 2026-10-04 19:50 PDT, **#804 re-open: no capture on the owner's exact code removes the cars; Career is the lead.**
+  Fence wait on/off in one binary (`5e16698c99`, Single Race Safari SS1): both arms draw the grid cars (Beetle,
+  Corolla) and the passing Nissan, and the visibility reads are the same (30.0% vs 30.9% nonzero, no zeroed
+  frames). Capture 1 at 13:48, on code from **before** the fix, took CAREER -> Safari SS-1 (Career is lit by
+  default) and shows exactly the owner's report: POS 4 OF 4, no rival or shadow from race clock 4 to 46, and 0 rival
+  body draws in 600 dumped frames. **For the PM / owner:** was it Career? Two Career runs with the throttle held
+  are queued (fence wait off, then on: 1791167617, 1791167624) and say whether a rival ever comes into view on
+  either build. **Recommend no revert.** Also: my no-fix arm left `HAKUX_OCCL_WAIT=0` (the pre-fix read) in the
+  Nova's `env_vars`. The dispatcher clears it only at the next request, so lane.pathfind's 19:25 held run has it,
+  and so would an owner session before the queued runs (they end on the fix setting). NOTES section 20.
