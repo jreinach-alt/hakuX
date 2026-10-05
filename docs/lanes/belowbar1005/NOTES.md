@@ -130,3 +130,45 @@ at 28.5, window median) over the scored window from the mark.
 Prediction before the run: no difference beyond noise (P 0.85). Buffy's slow
 rows are vCPU-bound with the renderer idle ~19 ms per frame, so a render
 thread wait has room to hide; and its below-bar run did not have the wait.
+
+### Arm N (1-1791212323-lane.belowbar1005-2091227, 07:59-08:06 PDT 10-05)
+
+apk ce2ac5751374 (d32c35d3ce), shader cache cleared, regimen default. The env
+took: `[occl804] config log=1 after_s=150 wait=0` at 07:59:42. The route
+reached live play at the Spanish Mission at the mark (route-frames
+080153-gameplay through 080543-hold, overlay FPS 29). Verdict (title_verdict.py
+on a copy): 234 s of play, **fps_ok_share 0.83**, window median 29.96, no
+hang, no hitch.
+
+**Buffy reads no occlusion queries.** From 08:02:12 (150 s after the first
+finish) to the end at 08:05:47, the log printed no `[occl804] f=` line. A line
+is printed for every guest frame in which `pgraph_vk_process_pending_reports_internal`
+found a query in flight or a report queued (reports.c 227-233, 180-187), so
+none was, for 215 s of play. The fence wait sits behind
+`num_queries_in_flight > 0` (reports.c 243), so on Buffy it never runs, on
+either arm. The A/B cannot move Buffy's frame rate: **inert by construction**.
+That answers the brief's question for Buffy (the fix is not its cost) but
+says nothing about titles that do read queries; DOA3 and NG Black are checked
+below with the same log.
+
+Decomposed (rows from the mark):
+
+| run | rows | share >= 28.5 | fps | F | gbusy | gidle | Ri | rcpu | rblk | v_run | v_blk |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| arm N, all | 121 | 0.81 | 29.9 | 33.5 | 15.1 | 18.7 | 25.8 | 7.8 | 0.2 | 32.0 | 1.6 |
+| arm N, below 28.5 | 23 | -- | 27.2 | 36.7 | 26.7 | 10.4 | 23.7 | 10.0 | 6.1 | 30.1 | 6.5 |
+| retro-buffy, all | 302 | 0.49 | 28.5 | 35.1 | 25.9 | 9.1 | 22.3 | 10.3 | 3.5 | 30.5 | 4.7 |
+
+The share differs (0.81 vs 0.49) because the scene differs: the route's
+loop stays around the mission courtyard, while pathfind's hold walked on to
+the forest path, where the guest works 26 ms per frame against 15 here. In
+both, the slow rows are the guest's (gbusy 27-31 of 37-38 ms, renderer idle
+19-24 ms). Buffy is a 30-fps title that misses 33.3 ms by a few ms when
+the guest's own work grows.
+
+Side effect, flagged: lane.pathfind took the Nova (gg5, hold at 07:59:34)
+while arm N ran, so its held run started on this apk with arm N's env still
+in the pref (`HAKUX_OCCL_WAIT=0`, `HAKUX_OCCL_LOG=150`, `PERF_REGIMEN=default`;
+the dispatcher clears env only at the next request). For a title that reads
+occlusion queries that is the pre-#804 behaviour. Arm W, queued behind it,
+restores the shipped env when it runs.
