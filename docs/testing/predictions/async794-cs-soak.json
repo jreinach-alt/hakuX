@@ -1,0 +1,27 @@
+{
+  "registered_utc": "2026-10-04T15:33:09Z",
+  "who": "lane.async794",
+  "issue": "794",
+  "title": "4D530036-Counter_Strike.xiso.iso",
+  "device": "nova",
+  "seconds": 850,
+  "route": "async794-cs",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "5e4196fefd",
+  "b_ref": "c825e4b24f",
+  "judge": "python3 docs/lanes/fps20786/decompose.py <dir> (the mark is the route's `mark gameplay`) for F, Ri, rcpu, rblk, ph_Fin, ph_GPU, lockw, v_blk and the 2-s fps rows; python3 docs/lanes/async794/sdcallers.py <results> <id> for the per-caller waits; play shots by eye; the same on both arms",
+  "prediction": "Counter-Strike, live rounds (route fixed: A for the card, B for the weapon wheel). Premise (2876984, 3338415): two texture binds a frame find a dirty surface at the texture address that check_surface_to_texture_compatiblity refuses, and download it synchronously (txr dl 2/frame, txw sdl 13.7 ms/frame, ph_Fin 13.8). Neither fix in B removes that wait: fix 1 moves staged downloads, and this one is download_surface_to_buffer's own finish, whose bytes the texture upload reads at once; fix 2 frees the vCPU, which waits 0.3 ms/frame here. So the honest prediction is INERT on the render thread, and the arm is run for B's txdl[] reasons, which decide the GPU-side path for the seven titles of this class.",
+  "legs": {
+    "M0 (instrument)": ">= 100 hakuX-phase lines and >= 100 [sdcall] lines after the gameplay mark in each arm, all parse, and the play shots show play. Otherwise that arm is VOID, not a zero.",
+    "F2 (no corruption)": "B's play shots show no stale, torn, black or one-frame-behind surfaces that A's do not (render targets, reflections, HUD), and B's logcat has no Vulkan validation error, device-lost, assert or crash. FAILS in the world where a completion wrote VRAM out of record order or a reader read around a detached entry; then the change is wrong, not slow.",
+    "P0 (premise, re-measured in A)": "A's txr dl >= 1.5 per flip and A's ph_Fin >= 10 ms/frame.",
+    "P1 (inert)": "B's ph_Fin within 2 ms/frame of A's, and B's fps rows median within 1.0 of A's.",
+    "R1 (the reading)": "B's txdl[] counts sum to within 5% of B's txr dl, and the [txdl794] lines name the refusing test and both shapes. FAILS (instrument void) if they do not add up.",
+    "X1 (falsifier of inert)": "B's ph_Fin falls by more than 4 ms/frame: then something in B reaches this path that the reading above says cannot, and it is found before anything is claimed."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off hakuX-phase, [sdcall], [lock474] and txr lines, and the shots by eye."
+}

@@ -1,0 +1,42 @@
+{
+  "registered_utc": "2026-10-04T20:08:17Z",
+  "who": "lane.async794",
+  "issue": "796",
+  "prediction": "Inert-in-goldens arm for async794's folded form (b_ref 2344ae1ee2 vs master 425ffe1ad1): fix 2 only. SURFACE_DOWN finishes and deferred-download fence waits on the PFIFO thread wait for the GPU with pgraph.lock released (the #474 mechanism); the staged copies are written into VRAM after the lock is retaken, in the same order as master. The txdl instrument only counts. Nothing changes what a download copies or when a reader sees it, so every capture in the ten suites that read surfaces back must stay put. What would move one: a guest register write landing inside the released window that a method in flight relied on (any suite, most likely Surface_clip / Surface_format, whose methods set surface state). The first form of this change (c825e4b24f, with fix 1) ran byte-identical in all 266 captures (1791129309-arms-async794-fix-3307191). A move inside the measured run-to-run band is NOISE, not a failure.",
+  "a_ref": "425ffe1ad1",
+  "b_ref": "2344ae1ee2",
+  "must_not_move": [
+    "Surface_clip/*",
+    "Surface_format/*",
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/*",
+    "Texture_render_target/*",
+    "Texture_render_update_in_place/*",
+    "Texture_Framebuffer_Blit/*",
+    "Image_blit/*",
+    "Texture_CPU_Update/*",
+    "Clear/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Color zeta overlap",
+      "Depth buffer fixed function",
+      "Image blit",
+      "Surface clip",
+      "Surface format",
+      "Texture CPU Update",
+      "Texture Framebuffer Blit",
+      "Texture render target",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

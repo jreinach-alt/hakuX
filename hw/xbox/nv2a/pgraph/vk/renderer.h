@@ -64,6 +64,15 @@ enum { TXH_NEW, TXH_RB, TXH_SRF, TXH_MK, TXH_MEMO, TXH_BIT, TXH_BOV, TXH_OTH,
        TXH__N };
 /* Why upload_texture_image() ran. */
 enum { TXU_NEW, TXU_RB, TXU_CHG, TXU_OTH, TXU__N };
+/*
+ * async794: why a bind downloaded the surface at its address (txr_dl) instead
+ * of sampling or copying it on the GPU -- the first test of
+ * check_surface_to_texture_compatiblity() that refused it, or an upload the
+ * surface still owed. Counter-Strike, Top Spin, ToeJam, BloodRayne, Burnout,
+ * Nightfire and Midtown Madness 3 wait 1-26 times a frame in that download.
+ */
+enum { TXDL_LEVELS, TXDL_DIM, TXDL_CUBE, TXDL_PITCH, TXDL_SWZ, TXDL_CVT,
+       TXDL_BPP, TXDL_UPL, TXDL_OTH, TXDL__N };
 /* The path get_texture_layout() decoded a level through. */
 enum { TXK_LIN, TXK_BC, TXK_S3TC, TXK_PAL, TXK_CVT, TXK_SWZ, TXK__N };
 #endif
@@ -215,6 +224,7 @@ struct OptBisectStats {
     int txr_s2tc;               /* surface-to-texture copies */
     int txr_s2td;               /* direct binds made: the view changed; a
                                  * reused view is not counted */
+    int txr_why[TXDL__N];       /* txr_dl, by reason (async794) */
 #endif
 };
 extern struct OptBisectStats g_opt_stats;

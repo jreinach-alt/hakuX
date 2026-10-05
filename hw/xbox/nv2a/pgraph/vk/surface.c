@@ -1329,9 +1329,15 @@ static void download_surface_complete_deferred_at(NV2AState *d, int caller,
     }
 }
 
+/*
+ * Every caller on the PFIFO thread is a method or the flip-stall path, holding
+ * pgraph.lock (see pgraph_vk_surface_update's call and wait_frame_fence); the
+ * thread test keeps the render thread's callers on the locked wait (#796).
+ */
 static void download_surface_complete_deferred(NV2AState *d, int caller)
 {
-    download_surface_complete_deferred_at(d, caller, false);
+    download_surface_complete_deferred_at(
+        d, caller, qemu_thread_is_self(&d->pfifo.thread));
 }
 
 void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
