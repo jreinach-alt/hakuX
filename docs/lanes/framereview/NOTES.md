@@ -39,3 +39,10 @@ you want them redone.
   and the first frames, and are marked as derived in each candidate file.
 - `pm/playable-accepted.tsv` header: `date_pdt  title  title_id  result  accepted_by  evidence`. Column order used for the
   candidate line.
+
+## Progress log
+
+- 05:09 UTC: black-stone-hold2 reviewed, REJECT (16 frames, fighter static in one octagon).
+- 05:2x UTC: retro-tron finished (verdict written). Review: REJECT (16 frames; play 0.9994, fps 0.98 but no enemy in any frame, training-bin doors and corridors).
+- Frame spend so far: 32 frame reads (about $1-2 of the $12 cap by the Sonnet image estimate).
+- Next: re-scan pathfind runs for new verdicts until 07:30 PDT 10-05.
