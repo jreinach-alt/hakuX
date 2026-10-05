@@ -56,3 +56,7 @@ Please resume lane.gpuclock with an addendum when `simpclk1.cap.log` ends.
 [lane.gpuclock] Nightfire pair on the Nova (pilot, 2 x 300 s), random order: `1-1791215562-lane.gpuclock-2286132`
 (default, floor 401) then `1-1791215567-lane.gpuclock-2286266` (max, floor 615), both FAN_MODE=smart, ref 521ea8a93e,
 read back pinned to nova. The pilot also says whether the app may read kgsl sysfs (the init line).
+
+[lane.gpuclock] waiting: on the Nova pilot runs `1-1791215562-lane.gpuclock-2286132` and `1-1791215567-lane.gpuclock-2286266`
+(WAITING lists both; lanewaker resumes on DONE), the grant for profile.c (board-requests/gpuclock.md), the Thor freed of
+Lime3DS, and the Simpsons host capture (lane.local). Spend so far: one Opus session, no device time used beyond 2 x 10 s.
