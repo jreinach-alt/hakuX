@@ -1626,6 +1626,9 @@ class Agent:
                     self.dev.route_log(f"state={st} t={int(hold_el)}")
                     logged = st
                 look.update(src="check", state=a.get("state"), why=str(a.get("why", ""))[:160])
+                if off and st in ("menu", "other") and re.search(r"name entry|high.score", str(a.get("why", "")).lower()):
+                    # the model calls a name entry "menu" or "other" as often as "name_entry" (Strike Force, 10-05): its reason decides
+                    st = "name_entry"
                 if off:
                     nav += 1
                     navs += 1
