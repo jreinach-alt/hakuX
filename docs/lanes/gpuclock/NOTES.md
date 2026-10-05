@@ -124,3 +124,12 @@ under 10% of samples.
 
 - 10-05: knobs from the record (section 1); natural experiment on disk (`survey.py`,
   `clockdist.py`); instrument written and type-checked; grant asked for profile.c.
+- 10-05 ~08:51: Thor Forza pair (`1-1791215407-...-2263904` max, `1-1791215412-...-2264219` default)
+  both ABORTED at 10 s: `not-foreground: io.github.lime3ds.android` (input focus on display 4, the
+  Thor's second screen). Non-performance cause, named; not re-queued until the Thor is free.
+- 10-05 ~09:05: Nova Nightfire pilot pair queued, order drawn at random (default then max), both
+  FAN_MODE=smart, 300 s (mark at ~85 s: ~215 s of play). Simpsons: host request to lane.local
+  (`capture_simpsons_gpuclock.sh`, in-session 60 s blocks A B B A A B B A). Tron route ready
+  (`tron-gpuclock.route`, memfast's text). Reader `gpuclock.py` passes its known-answer fixture
+  (`fixture.py`: e 0.76 vs 0.75 planted; fit c 3.8 / k 6100 vs 4 / 6000; the blocks leg drops a
+  planted menu stretch, residual 0.29 = the planted noise).

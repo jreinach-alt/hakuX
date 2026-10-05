@@ -5,7 +5,12 @@ result dirs and answer NOTES section 3's questions.
     gpuclock.py RUN [RUN ...]                     one block per run
     gpuclock.py --pair LOW_RUN HIGH_RUN [...]     + the registered verdicts,
                                                   LOW/HIGH pairs in order
-    [--skip S]  ignore the first S seconds after `mark gameplay` (default 10)
+    gpuclock.py --blocks PF_DIR [...]             one held session switched by
+                                                  capture_simpsons_gpuclock.sh: the
+                                                  windows split by `gpuclock pm=`,
+                                                  pm 0 as LOW and pm 2 as HIGH
+    [--skip S]  ignore the first S seconds after `mark gameplay`, and after
+                each block switch (default 10)
     [--tsv F]   one row per window
 
 Per window (one [gpuclk433] line, 60 guest frames): fps = frames / the wall
@@ -32,6 +37,7 @@ import argparse, ast, json, math, os, re, statistics
 ap = argparse.ArgumentParser()
 ap.add_argument('runs', nargs='+')
 ap.add_argument('--pair', action='store_true')
+ap.add_argument('--blocks', action='store_true')
 ap.add_argument('--skip', type=float, default=10.0)
 ap.add_argument('--tsv')
 a = ap.parse_args()
@@ -61,9 +67,18 @@ def f(x, p=1):
     return '-' if x is None else ('%.' + str(p) + 'f') % x
 
 
-def read_run(d):
-    runlog = open(os.path.join(d, 'run.log'), errors='replace').read()
+def read_run(d, block=None):
+    try:
+        runlog = open(os.path.join(d, 'run.log'), errors='replace').read()
+    except OSError:
+        runlog = ''
     mk = re.search(r'ROUTE (\d+):(\d+):([\d.]+) mark gameplay', runlog)
+    if not mk:
+        # a pathfind hold writes its mark to logcat (hakuX-route)
+        for line in open(os.path.join(d, 'logcat.txt'), errors='replace'):
+            if 'hakuX-route' in line and 'mark gameplay' in line:
+                mk = TS.match(line)
+                break
     end = None
     info = {'dir': d, 'name': os.path.basename(d.rstrip('/')), 'init': None, 'mark': bool(mk)}
     try:
@@ -76,7 +91,19 @@ def read_run(d):
         info['result'] = {}
     mark = secs(*mk.groups()) if mk else None
     wins, prev_t = [], None
+    pm, pm_t, state, state_t = None, None, None, None
     for line in open(os.path.join(d, 'logcat.txt'), errors='replace'):
+        if 'hakuX-route' in line:
+            m = TS.match(line)
+            g = re.search(r'gpuclock pm=(\d+)', line)
+            if m and g:
+                pm, pm_t = int(g.group(1)), secs(*m.groups())
+            elif m and ('gpuclock MISMATCH' in line or 'gpuclock end' in line or 'gpuclock blocks done' in line):
+                pm, pm_t = None, secs(*m.groups())
+            g = re.search(r'state=([a-z_]+)', line)
+            if g and m:
+                state, state_t = g.group(1), secs(*m.groups())
+            continue
         if '[gpuclk433]' not in line:
             continue
         m = TS.match(line)
@@ -87,7 +114,9 @@ def read_run(d):
             info['init'] = line.split('[gpuclk433]', 1)[1].strip()
             continue
         g = dict(re.findall(r' (\w+)=(\S+)', line))
-        w = {'t': t - mark if mark is not None else None, 'dt': t - prev_t if prev_t else None}
+        w = {'t': t - mark if mark is not None else None, 'dt': t - prev_t if prev_t else None,
+             'pm': pm, 'since_pm': t - pm_t if pm_t is not None else None, 'state': state,
+             'since_state': t - state_t if state_t is not None else None}
         prev_t = t
         for k in ('frames', 'fr', 'ns', 'dr'):
             w[k] = int(g.get(k, 0))
@@ -106,6 +135,12 @@ def read_run(d):
         wins.append(w)
     info['all'] = wins
     info['win'] = [w for w in wins if w['t'] is not None and w['t'] >= a.skip and w['fps']]
+    if block is not None:
+        # this condition's windows only, a full window after the switch, in play
+        info['name'] += ' pm=%d' % block
+        info['win'] = [w for w in info['win'] if w['pm'] == block and w['since_pm'] is not None
+                       and w['since_pm'] - (w['dt'] or 0) >= a.skip / 2 and w['state'] in (None, 'play', 'still')
+                       and (w['since_state'] is None or w['since_state'] >= (w['dt'] or 0))]
     # thermal over the same window
     th = []
     try:
@@ -229,7 +264,11 @@ def fit(ws):
             'clock_share_at_401': (k / 401.0) / (c + k / 401.0) if c + k / 401.0 else None}
 
 
-runs = [read_run(d) for d in a.runs]
+if a.blocks:
+    runs = [r for d in a.runs for r in (read_run(d, 0), read_run(d, 2))]
+    a.pair = True
+else:
+    runs = [read_run(d) for d in a.runs]
 sums = [summarize(r) for r in runs]
 for r, s in zip(runs, sums):
     show(r, s)
