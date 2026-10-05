@@ -1,0 +1,3 @@
+grant accel/tcg/hakux-pmu.c.inc
+grant accel/tcg/cpu-exec.c
+owner lane.pmucounters R0: setprop security.perf_harden 0 on thor and nova (until reboot), then on an idle Thor under your hold: DEV=thor HARDEN0=1 bash docs/lanes/pmucounters/r0_probe.sh (90 s, no title; output ~/hakux-work/perf/<date>-pmucounters/r0-thor/). See docs/lanes/pmucounters/OUTBOX.md.
