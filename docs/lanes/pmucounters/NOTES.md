@@ -65,6 +65,17 @@ load and a branch per 1024 loop returns and opens nothing.
   (ind8 at 0.40 mispredicts/branch) and a good/slow slice pair with
   hand-computed ratios. PASS on 2026-10-05.
 
+`syntax_check.py` compiles a copy of `accel/tcg/cpu-exec.c` with the
+granted patch applied (`apply_hook()`: the include block after the [jc425]
+`#endif`, and `PMU433_TICK()` after `rr425_tick(cpu)` at the gate), using the
+Android build's own compile command from its `compile_commands.json`. The
+new code produces no diagnostic (PASS, 10-05). `--falsify` plants an
+undeclared name in the hook and FAILS, so the include is really compiled
+(XBOX and `__linux__` are set in that build). The first run caught a real
+defect: `sched_getcpu()` is undeclared there, since `<sched.h>` was included
+before `_GNU_SOURCE`. The hook now uses the `getcpu` syscall.
+`syntax_check.py --write` applies the same patch to the tree once granted.
+
 The disassembly of the standalone build was checked: `alu1` is 64 dependent
 `add x8, x8, #1` per iteration, `mul1` 64 dependent `mul`, `ind*` one `br`
 through an 8-entry table per iteration plus one `b` and one `b.ne`.

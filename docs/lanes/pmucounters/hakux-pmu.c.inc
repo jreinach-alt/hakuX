@@ -38,7 +38,7 @@
  * Per slice, from g_nv2a_stats (written by the pgraph thread, read racily;
  * telemetry): fr frames flipped in the slice and fmax the longest of them in
  * ms, so a slow window (> 33 ms) is read apart from a good one on the same
- * line. cpus is the set of CPUs sched_getcpu() saw at the gate.
+ * line. cpus is the set of CPUs getcpu saw at the gate.
  *
  * A failed open is a result, not an error: the line names errno and
  * perf_event_paranoid (3 after a reboot until `setprop security.perf_harden
@@ -79,6 +79,14 @@ static Pmu433Pmu pmu433_pmu[PMU433_MAXPMU];
 static int pmu433_npmu;
 static int pmu433_sw[3] = { -1, -1, -1 };
 static uint64_t pmu433_swprev[3];
+
+/* sched_getcpu() needs _GNU_SOURCE before the first <sched.h>; the syscall
+ * does not. */
+static int pmu433_getcpu(void)
+{
+    unsigned cpu = 0;
+    return syscall(__NR_getcpu, &cpu, NULL, NULL) ? -1 : (int)cpu;
+}
 
 static int pmu433_open(struct perf_event_attr *a, int group)
 {
@@ -434,7 +442,7 @@ static void pmu433_ctl_one(const char *name, int which)
     char buf[1024];
 
     pmu433_read(d);
-    c0 = sched_getcpu();
+    c0 = pmu433_getcpu();
     t0 = get_clock();
     /*
      * Each kernel runs ~0.3-0.8 s on an X3 so all three groups get time.
@@ -456,7 +464,7 @@ static void pmu433_ctl_one(const char *name, int which)
     case 6: units = pmu433_k_code(400000, 256); break;
     case 7: units = pmu433_k_code(8000, 8192); break;
     }
-    c1 = sched_getcpu();
+    c1 = pmu433_getcpu();
     pmu433_read(d);
     for (int i = 0; i < pmu433_npmu; i++) {
         if (!d[i][0][1] && !d[i][1][1] && !d[i][2][1]) {
@@ -515,7 +523,7 @@ static void pmu433_tick(void)
         prev_fc = g_nv2a_stats.frame_count;
         return;
     }
-    int cpu = sched_getcpu();
+    int cpu = pmu433_getcpu();
     if (cpu >= 0 && cpu < 64) {
         cpus_seen |= 1ull << cpu;
     }

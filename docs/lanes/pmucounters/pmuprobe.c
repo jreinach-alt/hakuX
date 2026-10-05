@@ -49,7 +49,7 @@ int main(int argc, char **argv)
     int secs = argc > 1 ? atoi(argv[1]) : 3;
     setenv("HAKUX_PMU", "1", 0);
     setenv("HAKUX_PMU_CTL", "1", 0);
-    PMU433_LOG("[pmu433] probe pid=%d cpu=%d", (int)getpid(), sched_getcpu());
+    PMU433_LOG("[pmu433] probe pid=%d cpu=%d", (int)getpid(), pmu433_getcpu());
     pmu433_tick();                      /* opens, runs the controls */
     if (pmu433_state < 0) {
         return 2;
