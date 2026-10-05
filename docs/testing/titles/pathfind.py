@@ -83,7 +83,7 @@ FAST = os.environ.get("PATHFIND_FAST", "claude-sonnet-5")
 STRONG = os.environ.get("PATHFIND_STRONG", "claude-sonnet-5")
 STATES = ("intro_video", "publisher_logo", "title_screen", "main_menu", "submenu", "profile_creation",
           "name_entry", "save_load_prompt", "controller_prompt", "loading", "cutscene", "pause",
-          "gameplay", "results", "game_over", "black", "fatal_error", "unknown")
+          "gameplay", "results", "game_over", "continue", "black", "fatal_error", "unknown")
 BUTTONS = ("A", "B", "X", "Y", "START", "BACK", "UP", "DOWN", "LEFT", "RIGHT", "L1", "R1", "L3", "R3")
 STICK = {"up": (("LY", "min"),), "down": (("LY", "max"),), "left": (("LX", "min"),),
          "right": (("LX", "max"),), "upleft": (("LY", "min"), ("LX", "min")),
@@ -121,6 +121,11 @@ HOLD_CHECK_S = 90                    # the model reads the screen at least this 
 HOLD_NAV_MAX = 12                    # model-steered steps back to play in one episode before the hold gives up
 HOLD_REPEAT = 3                      # a cutscene or game over that asked for one button: that press, unlooked, this often
 HOLD_REPEAT_STATES = ("cutscene", "game_over")
+# A CONTINUE countdown after a lost round (fighting games, 10-04): Guilty Gear XX's A did not continue (three presses,
+# the countdown ran out to GAME OVER). Non-title holds try START, then A, unlooked, up to CONTINUE_TRIES presses per
+# episode, then ask the model again. The hold log's `continue` look says which press took.
+CONTINUE_PRESS = ("START", "A")
+CONTINUE_TRIES = 4
 CLAIM_REPEAT = 3                     # the claim's unlooked repeats of a single press that advanced a cutscene
 CLAIM_REPEAT_STATES = ("cutscene", "intro_video", "publisher_logo")
 # Two kept frames (HOLD_FRAME_S apart) that change less than this at the probe's contrast step: the player did not
@@ -654,7 +659,11 @@ How to act:
   Exhibition, Quick Race, Arcade, New Game, Start Game, Play Now, Story/Campaign start. Avoid Options,
   Online/Xbox Live, Extras, Load. Read where the cursor/highlight IS before moving it; send the moves and the
   confirm together, e.g. ["DOWN","DOWN","A"].
-- Team/character/car/course select: accept the default with A (or START), repeatedly if several confirms.
+- Team/character/car/course select: accept the default with A, repeatedly if several confirms. Never START on a
+  select screen: a "PRESS START" over an empty player slot on a fighting character select did not start the match
+  (Guilty Gear XX, 10-04); A on the highlighted character did (the claim's steps). START is for title/attract prompts.
+- A CONTINUE countdown after a lost round (fighting games; "continue" with a countdown and credits): one START,
+  then A if it stays. Do not wait it out: the countdown ends in GAME OVER, then the title, then the menus again.
 - Sports controller/team-select screens: if controller icons sit in the MIDDLE column between the two teams,
   nobody is assigned and the CPU plays both sides (a match that looks live but ignores the stick: ESPN NHL
   2K5, 10-02). First move controller 1 under a team with LEFT or RIGHT (or STICK:left:0.3), then A.
@@ -694,7 +703,7 @@ An empty list [] means wait and look again.
 
 States (pick exactly one): intro_video, publisher_logo, title_screen, main_menu, submenu, profile_creation,
 name_entry, save_load_prompt, controller_prompt, loading, cutscene, pause, gameplay, results, game_over,
-black, fatal_error, unknown. fatal_error is a screen no input can clear: "there is a problem with the disc /
+continue, black, fatal_error, unknown. fatal_error is a screen no input can clear: "there is a problem with the disc /
 dirty or damaged", "an error has occurred", a crash or dashboard error screen.
 
 Say "gameplay" only when you see player-controlled play (a HUD, a playfield with the player's character or
@@ -1436,6 +1445,7 @@ class Agent:
         shed_set = set()                 # loop buttons that opened a menu (HOLD_SHED): never sent again this hold
         order = [genre] + [g for g in HOLD_GENRES if g not in (genre, "onrails")]
         rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
+        cont_tries = 0                   # CONTINUE presses in this off-play episode (CONTINUE_PRESS, CONTINUE_TRIES)
         last_png, last_check, last_kept, drop = None, now(), None, []
         fps_seen, fps_checks = set(), []  # the FPS_GATES passed so far, and what each read
         # the perflog: logcat from the mark to `soak end`, with a state line at every change of play, so
@@ -1520,7 +1530,12 @@ class Agent:
                         wait_s = min(max(float(a.get("wait_s") or 2), 0.5), 8)
                     except (TypeError, ValueError):
                         wait_s = 2.0
-                    if th:
+                    if st == "continue" and not th and cont_tries < CONTINUE_TRIES:
+                        # a CONTINUE countdown (fighting games): START, then A, unlooked; the look after each says which took
+                        action, wait_s = [CONTINUE_PRESS[cont_tries % len(CONTINUE_PRESS)]], 1.5
+                        cont_tries += 1
+                        look["continue"] = cont_tries
+                    elif th:
                         # title hold: a menu is closed with one B and X follows; anything else keeps the model's press
                         # minus the forbidden buttons (a cutscene's A)
                         if st == "title_screen" and th.get("continue") and cont_left:
@@ -1540,6 +1555,7 @@ class Agent:
                 else:
                     nav = 0
                     rep_left = 0
+                    cont_tries = 0
             if not off and look.get("action") is None:
                 # play: the genre loop (a check look that said play sends it too). The time credited is this
                 # cycle's own, from its frame to its inputs: the look before may have been off play.

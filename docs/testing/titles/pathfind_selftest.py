@@ -447,6 +447,21 @@ check("titlehold", [a for a in acts if "X" in a] == [["X"]] * flat.count("X") an
       f"X is pressed alone again after still windows: {flat.count('X')} presses")
 walk = pathfind.TITLE_HOLD["58490004"]["walk"]
 check("titlehold", all(a in (walk, ["X"]) for a in acts), f"every other cycle is the walk: {acts[:6]}")
+
+# continue: a CONTINUE countdown in a non-title hold gets START, then A, unlooked (Guilty Gear XX, 10-04: three A presses
+# did not continue, and the countdown ran out to GAME OVER). The count restarts once play is back.
+CONT = {"state": "continue", "in_play": False, "why": "CONTINUE countdown after a lost round", "action": ["A"], "wait_s": 1}
+ROUTE_LOG.clear()
+rc, res, steps, calls = run("continue", PREFIX + [("game", 0)] * 120 + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, {"genre": "attack"}]
+                            + [CONT] * 3 + [PLAYING] * 160,
+                            ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
+look = [json.loads(l) for l in open(os.path.join(TMP, "continue", "out", "hold.jsonl"))]
+cont = [l for l in look if l.get("continue")]
+check("continue", [l["action"] for l in cont[:3]] == [["START"], ["A"], ["START"]],
+      f"the continue looks press START, A, START: {[l.get('action') for l in cont[:3]]}")
+check("continue", all(l.get("state") == "continue" for l in cont[:3]) and cont and cont[0]["continue"] == 1,
+      f"the continue count is recorded per look: {[l.get('continue') for l in cont[:3]]}")
 pathfind.now, pathfind.time.sleep = real_now, real_sleep
 
 # actions

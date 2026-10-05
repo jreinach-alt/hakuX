@@ -35,6 +35,52 @@ What the next lane should not repeat:
 - **Self-moving races cannot be confirmed by frame change** (Mashed: the idle change was 0.3-0.86). The probe ladder's
   HOLD:A:3 did move the scene once (0.017 -> 0.814), but the confirm model refused it on a results card.
 
+## Resume (10-04 19:13 PDT, attempt 1): why the last attempt did not finish
+
+- The last session ended at 14:20 PDT with SCREENING DONE 12/12 and the Nova released. Its 11:3x addendum (Guilty Gear XX:
+  fix the fighting-game hold recovery, then ONE 600-s re-hold) was not carried out: the 14:20 session stopped at the
+  screening list's end, and the fix was never written. The 19:20 addendum (this session's order) restates it first.
+- Nothing was in flight and no WAITING file was written. The branch was 68 commits behind master; merged at the start
+  (fast-forward: this lane's earlier commits were already folded).
+- Tonight's order (19:20 addendum): Guilty Gear XX fix + one re-hold, then LEGO Star Wars (pause menu), then AvP only after
+  those. Cap $70 for the day; stop at 23:30 PDT.
+
+### Guilty Gear XX: what the frames show (hold `runs/screen-guilty-gear-xx/hold`, claim `claim`)
+
+| step | screen (frame) | what the hold sent | outcome |
+|---|---|---|---|
+| CONTINUE after a lost round | "CONTINUE" with a countdown and credits (hold 058-060) | A, A, A (the look called it `continue`, a state the hold's rules did not list) | the countdown ran out to GAME OVER (061) |
+| GAME OVER / ranking | "RANK IN AA" over black (063-065) | START (repeat x3) | the title, then Arcade (066-068) |
+| Character select | "PRESS START" over the empty 1P slot, Sol highlighted (069, 071-072) | START, START, START | nothing: the match never started; the 12-step limit ended the run |
+
+- **The character-select input is A, not START.** The claim's recorded path accepts the default with A on this same screen
+  (steps 9, 11, 25, 26: A, then the round is live). The rules text said `accept the default with A (or START)`, and the
+  model took START from the "PRESS START" over the empty slot.
+- **The continue input is not settled.** A did not continue in the hold (three presses, the count ran down). In the claim
+  its A on the continue led to a black frame and then the title, so A is not a continue either way. START was never tried
+  on a continue screen. The fix tries START first, then A, and the hold log says which one took.
+
+### What changed (`docs/testing/titles/pathfind.py`, `pathfind_selftest.py`)
+
+1. **RULES:** a select screen gets A on the highlighted entry, never START; START is for title and attract prompts only.
+   A CONTINUE countdown gets one START, then A, and is not waited out. This applies to fighting titles generally.
+2. **`continue` is a state** (added to `STATES`, which the claim's answer check uses to map a state to `unknown`, and to
+   the model's state list). The model answered `continue` in the hold, and without it in `STATES` the claim would have
+   read that answer as `unknown`.
+3. **The hold's continue press** (`CONTINUE_PRESS = (START, A)`, `CONTINUE_TRIES = 4`): in a non-title hold, a `continue`
+   look sends the next press unlooked, 1.5 s apart. The count restarts when play comes back. Title holds are unchanged
+   (their continue is `DOWN, A` at the title screen).
+4. **Selftest `continue`:** three continue looks send START, A, START, and the count is logged per look. `pathfind_selftest:
+   all ok` (run before device time).
+
+### LEGO Star Wars: the cause (hold `runs/screen-lego-star-wars/hold`)
+
+- The hold ran clean to 576 s. From then, the hub's "Press START" prompt (the player-2 join prompt over the level) was read
+  as a cutscene, and the cutscene repeat sent START three times at a time. START opened the pause menu (600 s, 682 s) and
+  the menu's START/A kept it going. Most of steps 74-104 (about 20 of 31 looks) were `cutscene` with START; the rest
+  were menu, pause, and one A.
+- Not fixed yet: this is the second item, after the Guilty Gear re-hold.
+
 ## Resume (10-04 08:13 PDT, attempt 4): why the last attempt did not finish
 
 - The 07:56 session claimed RalliSport (3.2 min, 19 calls), promoted its golden and started the 600-s hold as a
