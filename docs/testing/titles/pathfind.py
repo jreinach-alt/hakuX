@@ -1445,13 +1445,19 @@ class Agent:
     # -- hold-play: keep the player in play, then judge the frames
     def hold_look(self, jpg, genre):
         """The model reads the screen: is the player in live play, and if not, what gets back to it?"""
+        # fighting games (10-05, Guilty Gear XX): a CONTINUE countdown is its own state (the hold's CONTINUE_PRESS
+        # runs on it; the model had called it cutscene and the count ran out), and a select screen takes A, not START
+        fight = (
+            " A fighting game: a CONTINUE countdown is state continue, and its input is START, then A. A character, "
+            "stage or mode select takes A on the highlighted entry (the default is fine); START is for the title or "
+            "attract screen's PRESS START only. In a live round do not press START." if genre == "attack" else "")
         return self.model.ask(FAST, (
             f"Screenshot of {self.name}, an Xbox game. The 'FPS: NN' text at the top-left is the emulator's "
             f"overlay, not the game's HUD. An agent is keeping the player playing (genre: {genre}). Read the "
             "screen. Is the player in live play right now (the player's character, vehicle or ball in the game "
             "world, the game running)? A menu cursor, a pause screen, a cutscene, a loading screen, a results or "
-            "game-over screen, or a black screen is NOT play. If it is not play, which input gets back to it? "
-            'Answer JSON only: {"state": "gameplay|pause|game_over|results|menu|cutscene|loading|black|other", '
+            "game-over screen, or a black screen is NOT play. If it is not play, which input gets back to it?" + fight +
+            ' Answer JSON only: {"state": "gameplay|pause|game_over|results|menu|continue|cutscene|loading|black|other", '
             '"in_play": true|false, "why": "<one line>", "action": [inputs, e.g. "START", "A", '
             '"STICK:down:0.5"], "wait_s": <number>}'), "hold-check", [jpg]) or {}
 
