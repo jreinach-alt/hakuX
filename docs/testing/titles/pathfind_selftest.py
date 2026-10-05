@@ -446,7 +446,11 @@ check("titlehold", not any(t in pathfind.TITLE_HOLD_FORBID for t in flat),
 check("titlehold", [a for a in acts if "X" in a] == [["X"]] * flat.count("X") and flat.count("X") >= 2,
       f"X is pressed alone again after still windows: {flat.count('X')} presses")
 walk = pathfind.TITLE_HOLD["58490004"]["walk"]
-check("titlehold", all(a in (walk, ["X"]) for a in acts), f"every other cycle is the walk: {acts[:6]}")
+moves = [m + walk for m in pathfind.TITLE_UNSTICK]
+check("titlehold", all(a in (walk, ["X"]) or a in moves for a in acts),
+      f"every other cycle is the walk or a stand-still move before it: {acts[:6]}")
+check("titlehold", any(l.get("unstick") for l in look),
+      "two still windows in a row send a stand-still move (the detector fires on a still scene)")
 
 # continue: a CONTINUE countdown in a non-title hold gets START, then A, unlooked (Guilty Gear XX, 10-04: three A presses
 # did not continue, and the countdown ran out to GAME OVER). The count restarts once play is back.

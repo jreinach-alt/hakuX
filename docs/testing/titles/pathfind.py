@@ -183,10 +183,16 @@ TITLE_HOLD = {
                  "x": False, "continue": ["DOWN", "A"]},
     # Tork: Prehistoric Punk (10-04 retro-tork): the "other" loop's up and down cancel; 600 s on one spot, the attack
     # effect firing in place. A long climb forward with a hop, bending right and left so the path's turns are taken.
+    # the stand-still move for Tork is a hop up the stair: the stick forward, A held through the climb (10-05)
     "55530040": {"walk": ["STICK:up:4", "A", "STICK:up:3", "STICK:right:1.5", "STICK:up:4", "A", "STICK:up:3",
-                          "STICK:left:1.5"]},
+                          "STICK:left:1.5"],
+                 "unstick": [["STICK:up:2", "HOLD:A:0.6", "STICK:up:2"]]},
 }
 TITLE_HOLD_FORBID = ("Y", "R1", "BACK", "START", "B")
+# the stand-still detector for title holds (10-05): a stretch of two still windows gets the next of these moves, then the
+# walk again. Generic: a hop forward, a turn of the camera, a back-out and a sidestep. A title's own list comes first.
+TITLE_UNSTICK = [["STICK:up:1.5", "HOLD:A:0.6"], ["RSTICK:left:1", "STICK:up:2"],
+                 ["STICK:down:1.5", "STICK:left:1.5"], ["RSTICK:right:1", "STICK:up:2"]]
 
 
 def now():
@@ -1598,10 +1604,17 @@ class Agent:
                     if mv < HOLD_STILL:
                         still_windows += 1
                         if th:
-                            # two still windows in a row: X once, then the walk goes on (no unlock rotation)
+                            # two still windows in a row (60 s): X once, then a different move for the next 30 s
+                            # (10-05, Tork: 500 s on one stair with the same walk; the stair needs a hop). Each
+                            # still stretch gets the next move in the list; a moving window puts the walk back.
                             still_row += 1
                             if still_row >= 2:
                                 press_x, still_row = th_x, 0
+                                rot += 1
+                                moves = th.get("unstick", []) + TITLE_UNSTICK
+                                move = moves[(rot - 1) % len(moves)]
+                                tokens = move + th["walk"]
+                                look["unstick"] = " ".join(move)
                         else:
                             rot += 1
                             unstick = HOLD_UNSTICK.get(genre)
@@ -1613,6 +1626,8 @@ class Agent:
                         parked = True
                     else:
                         still_row, parked = 0, False
+                        if th:
+                            tokens = th["walk"]
                     want = "still" if parked else "play"
                     if logged in ("play", "still") and want != logged:
                         self.dev.route_log(f"state={want} t={int(hold_el)}")

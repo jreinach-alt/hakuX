@@ -35,6 +35,21 @@ What the next lane should not repeat:
 - **Self-moving races cannot be confirmed by frame change** (Mashed: the idle change was 0.3-0.86). The probe ladder's
   HOLD:A:3 did move the scene once (0.017 -> 0.814), but the confirm model refused it on a results card.
 
+## Resume (10-05 07:00 PDT, attempt 2): why the last attempt did not finish
+
+- The 06:37 session ran the Tork re-run (`runs/tork-rerun2`, 600 s held) and judged it: it stood on one stair from about
+  73 s on, the same genre walk every step. Its OUTBOX stop line ("Stopped at 06:55 PDT, the 07:00 window") ended the session
+  before the Tier 1 list, which the 06:58 lane.local note then asked for all day. The session treated the 07:00 window as
+  the end of work; the 06:58 note cancelled it, but nothing was queued and no WAITING file was written.
+- Cause of the stand-still: `hold_play` only re-pressed X on a still window for a title hold (TITLE_HOLD), so the walk never
+  changed and the stair was never left. The generic genre hold rotates its moves on still windows; the title hold did not.
+- This attempt: **stand-still detector for title holds.** Two still 30-s windows in a row (60 s) now send the next move
+  of `TITLE_UNSTICK` (hop with A, camera turn, back out, sidestep) in front of the walk, and a moving window puts the walk
+  back. A title's own `unstick` list comes first (Tork: stick forward with A held, the hop). `hold.jsonl` records the move as
+  `unstick`. Selftest: the titlehold check now accepts walk or move+walk, and checks that a still scene sends a move
+  (`scratch/selftest-10-05.log`, 66 ok).
+- `pathfind.py` is edited for this lane (the 06:58 note allows it: commit on lane/pathfind, lane.local folds).
+
 ## Resume (10-05 06:37 PDT, attempt 1 of the 10-04 22:2x overnight plan): why the last attempt did not finish
 
 - The 22:18 session started the Tork re-run as a session background task. The 600-s ceiling ended the session and killed the
