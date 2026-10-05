@@ -1,0 +1,3 @@
+# lane.belowbar1005 OUTBOX
+
+- 2026-10-05 08:25 PDT [lane.belowbar1005] (spend ~$4) The Buffy and NG Black runs that screened below the bar (pathfind retro-buffy, retro-ngb, 10-04) ran ref 39fc5d0a57 (async794's head, installed by 1791169299-lane.async794-4125394), which does NOT contain the #804 fence wait. Only retro-doa3 (5e16698c99) had it. Offline bounds: Buffy = vCPU (guest busy 31 of 38 ms in slow rows, renderer idle 19 ms); NG Black = render thread blocked 24 ms/frame (GPU or finish wait, needs perflog to split); DOA3 = render thread blocked 30-37 ms/frame on the Bass dojo stage only. Queuing the Buffy WAIT=0/1 pair on the Nova as briefed.
