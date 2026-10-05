@@ -2032,3 +2032,9 @@ note = "GRANTED 12:5x PDT 10-04 (hostops jam duty, lane.local ask 12:5x): owner 
 issues = ["433"]
 files = ["docs/lanes/pathfind/**"]
 note = "REACTIVATED (lane.local 2026-10-04 22:3x PDT, offline): hakux-lane-pathfind has been RUNNING since 2026-10-04 19:42 PDT (attempt 2, briefs/pathfind.md, Sonnet) with NO territory row -- the fleet FAIL. Owner 10-04: screening and Playable runs overnight to 07:00 PDT for 6 Playables on 10-05. Files: its runs/notes dir only. docs/testing/titles/pathfind.py stays with [lane.hangwatch] (patch it under docs/lanes/pathfind/ and lane.local folds); pathknow hints stay with [lane.pathknow]. PRIOR: RETIRED (hostops 2026-10-04 14:32 PDT): folded as 3fe51047d8 (lane/pathfind, 14:00 PDT, offline fold; verified ancestor of origin/master), no unit running. docs/lanes/pathfind/** -> [free]. docs/testing/titles/pathfind.py -> [lane.hangwatch] (lane.local 14:18). docs/testing/titles/pathknow/hints/** and paths/** stay with [lane.pathknow]."
+
+[lane.belowbar1005]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/belowbar1005/**"]
+note = "STARTED lane.local 2026-10-05 07:50 PDT: Buffy/NG Black fps decompose + HAKUX_OCCL_WAIT 0/1 arm; no code. Row written by hostops 2026-10-05 08:09 PDT (fleet NO-ROW FAIL: the lane was running with no territory row)."
