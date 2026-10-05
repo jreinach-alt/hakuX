@@ -668,3 +668,88 @@ runs before it (15:52-17:20) all had empty env.
   screenrecord. A run that is to show the stale read needs the GPU behind the read; check `pend` before reading a
   no-fix arm as "the blink's condition".
 - A request's env stays on the device until the next request: queue an A/B so the shipped-behaviour arm runs last.
+
+## 22. Attempt 4 of the re-open: the Career drive runs, read; car presence counted per frame
+
+**Why the previous attempt did not finish.** It ended as designed, WAITING on the two Career runs of section 20.3,
+queued behind lane.pathfind's hold. Both ran (20:02 and 20:36 PDT, ref `5e16698c99`, APK `2c335088e76b`, the
+golden HDD) and handback resumed the lane. Nothing was left half-done.
+
+### 22.1 Career, Safari SS-1, throttle held, fence wait off and on
+
+Evidence: `runs/career-nofix/`, `runs/career-fix/` (sheets of c1-c3 and d1-d20 plus the gameplay shot; the
+`[occl804]` lines from c2 to the gameplay shot).
+
+| | no-fix arm `1791167617` (`HAKUX_OCCL_WAIT=0`) | fix arm `1791167624` (shipped fix) |
+|---|---|---|
+| shots | start banner, race clock 0.00 and 1.4, then 6.9 to 60.7 (POS 4 OF 4 in every shot) | start banner, 0.00 and 1.7, then 7.1 to 61.1 (POS 4 OF 4) |
+| rival car or shadow in any shot | **none** | **none** |
+| visibility queries nonzero, c2 to the end | 444 of 18,668 (2.4%) | 492 of 17,095 (2.9%) |
+| query batches with every report 0 | 2,280 of 2,674 | 2,042 of 2,474 |
+| `pend` > 0 | 0 frames | 0 frames |
+
+Section 20.3's first row holds: **no rival in either arm.** The owner's "no NPC cars visible at all, ever, nor
+their shadows" is what Career's Safari SS-1 shows on this emulator with the fence wait off (the code before the
+fix) and on alike, and capture 1 already showed it on `5e4196fefd`, a build from before reports.c changed. The
+fix did not remove the cars there. The visibility reads are mostly zero in Career and equally so in both arms,
+against 30% nonzero in Single Race (section 20.1), so Career's tests have few hits to report on either build.
+
+Not checked: whether a real Xbox shows a rival in Career's Safari SS-1 in the first minute. A player who drives
+the stage longer, or another Career event, is not covered. Nothing here suggests an emulator defect in Career,
+and nothing rules one out. If one exists, it is older than the fix.
+
+### 22.2 The car is drawn on every frame of the pass on the fix build: pixels counted
+
+The patched screenrecord bursts of section 17.3 (`s804e-c`, installed APK `acc497b4f822` = `510ebb25f2`, code
+identical to the owner's `064ca7aa43`) and the unpatched perflog1 burst (`s804e-b`, `10f14d301d`) keep every
+video frame. `carpix.py` takes each unique frame (a frame that differs from the previous one by a mean of 0.5 or
+more out of 255) and counts the Nissan's red livery pixels below the HUD row, with the tachometer masked.
+`carshare.py` sets the pass window from the first to the last frame with red share > 0.015 (the car near the
+camera) and calls a frame absent at red share <= 0.003. Calibrated by eye on perflog1: the shadow-only frames
+read 0.0007-0.0014, and frames with the body drawn read 0.004-0.06.
+
+| burst | build | pass window (race clock ~7.2 to ~8.8) | body drawn | absent frames |
+|---|---|---|---|---|
+| perflog1 | unpatched | 50 unique frames | **43 (86.0%)** | u63, u69, u75, u77, u81, u82, u97 (race clock 7.52, 7.71, 7.92, 7.97, 8.09, 8.10, ~8.6) |
+| patched-run1 | the fix | 48 | **48 (100%)** | none |
+| patched-run2 | the fix | 51 | **51 (100%)** | none |
+
+Sheets with the race clock on every frame: `runs/presence/{perflog1,patched1,patched2}-pass.jpg`. Read by eye,
+they agree with the count, with one difference: perflog1 also loses the body at 07.17 (just before the window
+opens) and at 08.52 (u95), where the exhaust flame's orange pixels lift the red share to 0.0049. So the
+unpatched miss count is at least 7 and by eye 9.
+
+**This capture shows a car**, the passing Nissan. It is the capture the PR names.
+
+What it does not cover:
+- **30 s with the countdown, on the fix build, under a screenrecord.** The patched bursts are 10 s and start at
+  race clock ~5. On the fix build the grid cars are drawn in single shots: occl-fix c4-c6 (Beetle and Corolla at
+  00:00.00) and lane.local's hold frame 015. But those runs had `pend` = 0, so a blink could not show in them.
+  The unpatched countdown blink (plain1) has no filmed counterpart on the fix build.
+- **Why the blink needs a screenrecord.** Every dispatched run without one had `pend` = 0 (sections 20.1, 22.1).
+
+**fps on the fix build**: lane.local's 600 s hold (16:22, the installed `510ebb25f2`) scored 534 windows, 100% at
+or above the 30 fps bar, window median 56.5, min 29.63
+(`~/hakux-work/perf/2026-10-04-ralli804-fps/run/verdict.json`). That hold's player was stuck behind the field,
+so most of its windows are not the ~30 queries per flip of a rival pass. The fps cost of the wait while rivals
+are in view is not measured on its own.
+
+### 22.3 Where #804 stands
+
+| question | answer | evidence |
+|---|---|---|
+| does the fix zero the visibility reads or remove the cars? | no, in both modes tried | Single Race: 30.0% vs 30.9% nonzero, cars on the grid and in the pass (20.1). Career: 2.9% vs 2.4%, no rivals in either arm (22.1) |
+| where does the owner's "no cars, ever" come from? | Career's Safari SS-1 looks like that on the code before the fix too (capture 1, 22.1) | the owner's mode is still unconfirmed; Career is the menu default |
+| does the fix stop the blink? | yes in the pass: body in 100% of 99 unique frames over two bursts, against 86% unpatched | 22.2 |
+| what is left | a 30 s filmed window with the countdown on the fix build, and the owner's eye check in **Single Race** | needs a held screenrecord session or the owner |
+
+No device time was used in this attempt.
+
+## 23. Do not repeat (additions)
+
+- Do not judge RalliSport's rivals in Career, Safari SS-1: no rival is drawn in the first minute on any build
+  tested, so "no cars" there tells you nothing about a fix. Use Single Race (804c/d/f routes).
+- Before asking for a new capture, check whether the old ones kept every frame. The section 17 bursts kept all
+  frames in `.scratch/s804e-*/run*/fr/`, which was enough for a per-frame presence count with no device time.
+- In a blink count, a red share threshold can mistake the exhaust flame for the body (perflog1 u95). Read the
+  sheet by eye next to the count.

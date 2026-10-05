@@ -64,3 +64,13 @@
   either build. **Recommend no revert.** Also: my no-fix arm left `HAKUX_OCCL_WAIT=0` (the pre-fix read) in the
   Nova's `env_vars`. The dispatcher clears it only at the next request, so lane.pathfind's 19:25 held run has it,
   and so would an owner session before the queued runs (they end on the fix setting). NOTES section 20.
+- 2026-10-04 ~21:00 PDT, **#804 re-open closed out: the fix does not remove the cars, and it draws the passing car
+  on every frame.** Career, Safari SS-1, throttle held for 60 s: **no rival or shadow in any shot with the fence
+  wait off (pre-fix) or on**. Visibility reads were 2.4% vs 2.9% nonzero, and capture 1 on a pre-fix build looked
+  the same. So the owner's "no NPC cars, ever" matches Career on any build, not a regression. Single Race shows
+  the rivals on the grid and in the pass on the fix build. Per-frame pixel count over the rival pass (race clock
+  ~7.2-8.8), from the section 17 screenrecords: unpatched **43 of 50** unique frames with the Nissan's body (86%,
+  7 shadow-only), fix build **48 of 48 and 51 of 51** (100%). Sheets: `docs/lanes/accuracy804/runs/presence/`.
+  fps on the fix build: lane.local's 600 s hold had 100% of windows at the 30 fps bar (median 56.5). **Not
+  covered:** a filmed 30 s window with the countdown on the fix build. **For the owner's check, use Single Race,
+  not Career.** Recommend keeping the fix. NOTES section 22.

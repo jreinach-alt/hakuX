@@ -1,9 +1,0 @@
-# waiting on two Nova runs at 5e16698c99 (route rallisport-804g: CAREER Safari SS-1, throttle held ~50 s, shots
-# c1-c3 countdown and d1-d20 driving), queued 10-04 19:4x PDT behind lane.pathfind's hold. Same binary; env switches
-# the #804 fence wait. Order matters: the no-fix arm first, so the Nova is left on the shipped behaviour.
-#   no-fix arm: HAKUX_OCCL_LOG=100 HAKUX_OCCL_WAIT=0
-#   fix arm   : HAKUX_OCCL_LOG=100
-# Read: d* shots for any rival car (body + shadow) in each arm at the same stage point; `[occl804]` lines with
-# docs/lanes/accuracy804/occl_read.py. NOTES section 20.3 says what each outcome means.
-run 1791167617-lane.accuracy804-3666473
-run 1791167624-lane.accuracy804-3669384
