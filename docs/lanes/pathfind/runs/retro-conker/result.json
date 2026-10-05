@@ -1,0 +1,32 @@
+{
+ "title_id": "4D530051",
+ "name": "Conker: Live & Reloaded",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Conker Live & Reloaded.iso",
+ "result": "gave-up",
+ "tool": "65d87c461e",
+ "started": "2026-10-04 20:20:01 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/retro-conker/frames/009-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/retro-conker/frames/009-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/retro-conker/frames/009-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/retro-conker/frames/009-probe-right.jpg"
+ ],
+ "reason": "budget 15 min",
+ "last_state": "cutscene",
+ "model_calls": 83,
+ "calls_by_model": {
+  "claude-sonnet-5": 83
+ },
+ "steps": 88,
+ "seconds": 904.4,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/retro-conker/frames/088-cutscene.jpg",
+ "replayed": 1,
+ "sib_replayed": 0,
+ "guide": [
+  "4D530051"
+ ],
+ "cheap": 3,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/retro-conker/strip.jpg"
+}

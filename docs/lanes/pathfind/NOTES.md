@@ -35,6 +35,20 @@ What the next lane should not repeat:
 - **Self-moving races cannot be confirmed by frame change** (Mashed: the idle change was 0.3-0.86). The probe ladder's
   HOLD:A:3 did move the scene once (0.017 -> 0.814), but the confirm model refused it on a results card.
 
+## Resume (10-04 19:42 PDT, attempt 2): why the last attempt did not finish
+
+- The 19:13 session (attempt 1) wrote the Guilty Gear hold fix and selftested it. Its attempt-2 re-hold (19:29-19:40,
+  `hold2/`) used its 15-min claim budget without confirming gameplay, so no 600-s hold started (see below).
+- The 19:40 RetroTechDad addendum (fresh titles first) arrived as that claim ended. The session did not start it, and
+  the session ended with nothing held and no WAITING file. The fix stands; its re-hold is not yet proven.
+- The Nova is held by `lane.local-owner1004` (owner list: Deathrow, MechAssault 1/2) at 19:42, so this resume waits on
+  that hold through `heldrun.sh`'s `hold.sh wait` (1200-s timeout) before each title.
+- This resume's order (owner 19:40): Tork (55530040), JSRF (4D53003D), Conker (4D530051), DOA3 (54430001), Amped 2 (4D530041),
+  Ninja Gaiden Black (54430003), Buffy (45410012), Tron 2.0 (id not in the goldens table; by ISO name), then Halo 2 / Dino
+  Crisis 3. Stop 23:30 PDT.
+- Per title: first-run claim (15 min), then ONE 600-s hold with frames at least every 30 s; a claim-budget miss or a
+  3-min/5-min "off course" read names the cost and moves on. Each result goes to OUTBOX as it lands.
+
 ## Resume (10-04 19:13 PDT, attempt 1): why the last attempt did not finish
 
 - The last session ended at 14:20 PDT with SCREENING DONE 12/12 and the Nova released. Its 11:3x addendum (Guilty Gear XX:

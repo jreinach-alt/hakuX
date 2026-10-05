@@ -358,6 +358,89 @@ What the frames show:
 - The hold did what the title hold says: X at 1.8 s, then the four-stroke left-stick walk. Two still windows later, X again. Y, R1, BACK, START and B were never sent in the walk.
 - Per cycle, the walk changed 0.82 of the frame once after each X, then 0.0002-0.002 for the rest. The fighter did not travel.
 
+## #433 -- 2026-10-04 20:02 PDT
+
+[lane.pathfind] RetroTechDad list 1/9: **Tork: Prehistoric Punk (55530040, Nova, golden 6cb2e3c07c9e, `--state any`): PASS.**
+Verdict line: `Tork: Prehistoric Punk ? PASS None gameplay=632.7s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0976 play_share=0.952 fps_excluded=32.0s`.
+Claimed at 3.85 min, 28 model calls (26 steps, 3 replayed). The hold ran 601 s of play; fps median 29.0 (locked 30), share >= 30 1.0.
+Frames: 55 under docs/lanes/pathfind/runs/retro-tork/frames/ (about one per 12 s, at least one per 30 s in the scored window); strip: runs/retro-tork/hold_strip.jpg; gameplay frame: runs/retro-tork/frames/025-gameplay.png.
+The position test: static_frac 0.098 (the window changed on most samples). Frame review by lane.local is the remaining check; the owner's flicker check is separate.
+Caveat: the run exited rc=1 after its result line: `titlestate: cannot read x1box_prefs.xml` in the post-run restore. The verdict and result were written before it.
+
+NEW ISSUE: titlestate release cannot read x1box_prefs.xml after a held run, so pathfind exits rc=1 (Tork, 10-04 20:01 PDT)
+Evidence: runs/retro-tork/heldrun.log line 41 (`titlestate: cannot read x1box_prefs.xml`, from set_hdd's `</map>` check in docs/testing/titles/titlestate.py:1059), then `pathfind rc=1`; the verdict and result.json were already written. It is not yet known whether hddPath was restored on the device, so the next run's prepare must read it back.
+It blocks a clean exit code for every held run (the wrapper treats rc=1 as a failure), not the verdict.
+
+## #433 -- 2026-10-04 20:20 PDT
+
+[lane.pathfind] RetroTechDad list 2/9: **JSRF - Jet Set Radio Future (USA) (Nova, first-run, ISO name; no golden): PASS.**
+Verdict line: `JSRF - Jet Set Radio Future (USA) ? PASS None gameplay=602.4s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0135 play_share=0.9997 fps_excluded=2.0s`.
+Claimed at 2.39 min, 22 model calls (17 steps, none replayed). The hold ran 600 s of play; the exit was rc=0.
+Frames: 44 under docs/lanes/pathfind/runs/retro-jsrf/frames/ (at least one per 30 s); strip: runs/retro-jsrf/hold_strip.jpg; gameplay frame: runs/retro-jsrf/frames/016-gameplay.jpg.
+Static fraction 0.014: the scene changed through the window (the camera and the character moved). The title's Sega GT id is shared (4D53003D); the run used the ISO name, so it was JSRF.
+Frame review by lane.local is still needed; the owner's flicker check is separate.
+
+## #433 -- 2026-10-04 20:36 PDT
+
+[lane.pathfind] RetroTechDad list 3/9: **Conker: Live & Reloaded (Nova, golden d18aa0a71b74, `--state any`): GAVE UP at the 15-min claim budget.** No gameplay confirmed; no hold run. 83 model calls, 88 steps, one replay.
+Identified cause (runs/retro-conker/heldrun.log, steps 4-10 and 17-30):
+- Steps 4-8 read a live multiplayer match (timer, kill feed, HUD) as gameplay, and the probes read control 0.39-0.85. That read was wrong; the screen was not a single-player play state.
+- Step 9's probe (HOLD:A:3, STICK) opened a save-data error box (step 10). It offers only A to repair. After it the title returned to its bar hub (a main menu with 'Chapters' as the lit item).
+- From step 17 to 88 the hub's Chapters entry did not change: A, UP, START, B, DOWN+A, RIGHT+A, LEFT, stick, Y/X, BACK all returned to the same screen, and Xbox Live sign-in and submenus came up. The 'Chapters' submenu was a dead end for the model.
+- So: the golden's save disk raised a save-data error on the first probe; the claim then had nothing to go back to. The next attempt should be a first-run (no golden) claim, which the golden's save error does not touch. Not re-run today.
+NEW ISSUE candidate (lane.pathfind to file): golden d18aa0a71b74 raises a save-data error when probed on the Nova; check the golden's save before any returning run.
+
+## #433 -- 2026-10-04 21:01 PDT
+
+[lane.pathfind] RetroTechDad list 4/9: **Dead or Alive 3 (54430001, Nova, first-run): FAIL.**
+Verdict line: `Dead or Alive 3 ? FAIL(menu time: 70.1% of the scored window in play (bar 90%; play 600 s, cutscene 123 s, menu 88 s, game_over 22 s)) gameplay=855.9s fps_ok=0.4394 crash=False hang=False audio_short=5e-05 hitches=20/1.508pm worst_ms=653.2 static_frac=0.0 play_share=0.7014 fps_excluded=253`.
+Claimed at 4.74 min, 58 model calls (26 steps, none replayed). Hold ran 602 s of play, then the window's breakdown above.
+Cost, line by line:
+- **Play share 70%.** About 210 s of the window was non-play: 123 s cutscene (the fight's intro/KO moments the attack hold ran into), 88 s menu, 22 s game over. The hold did not keep the fight going through round ends.
+- **fps.** Median 35 at 191 s, then median 30 at 307 s (share >= 30 0.55 over 145 samples). It is not on course for the 90% bar on fps alone: fps_ok 0.44 on the scored play.
+- **Hitches.** 20 in the window, worst 653 ms (the per-title slowdown of #413, judged on this hold).
+Frames: 25+ under docs/lanes/pathfind/runs/retro-doa3/frames/ (at least one per 30 s); strip: runs/retro-doa3/hold_strip.jpg; gameplay frame: runs/retro-doa3/frames/025-gameplay.jpg.
+Not re-run. Identified; the next DOA3 step is a menu-free hold (stop at game over, re-enter the round) and a perflog on the fps, if the owner wants it.
+Frames: 73 under runs/retro-doa3/frames/ (about one per 8 s).
+
+## #433 -- 2026-10-04 21:20 PDT
+
+[lane.pathfind] RetroTechDad list 5/9: **Amped 2 (4D530041, Nova, first-run, ISO name): FAIL on fps.**
+Verdict line: `Amped 2 ? FAIL(fps: 44.2% of gameplay at >= 30 fps (bar 90%)) gameplay=629.6s fps_ok=0.4423 crash=False hang=False audio_short=0.0 hitches=6/0.632pm worst_ms=177.9 static_frac=0.0003 play_share=0.9594 fps_excluded=26.4s`.
+Claimed at 4.36 min, 29 model calls (26 steps, 7 replayed; "four probes refused" at the end of the claim). The hold ran the full 630 s of play. Play share 96%: the menu problem is not the cause here.
+fps: median 28.5 at 185 s (share >= 30 0.50), median 27.0 at 310 s (share >= 30 0.44). At the 5-minute check it sits right at the screening's median-27 line, not on course for 90%.
+Class by the screening rule: **close** (median >= 27 at 5 min) on fps; it fails the 90% bar. Cause not yet named: this is the same family as Amped's 10-03 perflog (guest busy 31.6 ms/frame, vCPU), so a perflog run is the next step, not a re-hold.
+Frames: 82 under runs/retro-amped2/frames/ (about one per 8 s); strip: runs/retro-amped2/hold_strip.jpg; gameplay frame: runs/retro-amped2/frames/025-gameplay.jpg.
+
+## #433 -- 2026-10-04 21:37 PDT
+
+[lane.pathfind] RetroTechDad list 6/9: **Ninja Gaiden Black (Nova, first-run, ISO name): FAIL on fps.**
+Verdict line: `Ninja Gaiden Black ? FAIL(fps: 24.9% of gameplay at >= 30 fps (bar 90%)) gameplay=610.6s fps_ok=0.2495 crash=False hang=False audio_short=0.000273 hitches=7/0.763pm worst_ms=311.6 static_frac=0.0153 play_share=0.9997 fps_excluded=0.0s`.
+Claimed at 4.74 min, 30 model calls (35 steps, 9 replayed). Hold 611 s of play, play share 99.97%: the hold design held here.
+fps: median 26.0 at 187 s (share >= 30 0.24), median 27.0 at 305 s (share >= 30 0.24). Below the 28.5 bar for the whole window.
+**This is a regression, not a known ceiling**: the 10-02 Ninja Gaiden Black run read 55-75 fps (`docs/investigations/frame-pacing-and-parallelism.md`, the guest-visible vblank notes). Same title, same device; the difference is not named. Cause to find before any re-hold: the build (this run's build vs 10-02), the vCPU busy share (decompose.py), or the GPL/ubershader setting. Not re-run.
+Class by the screening rule: median 27.0 at 5 min is the close line, but the share (24%) is far from 60%, so **fail (on fps)**.
+Frames: 69 under runs/retro-ngb/frames/; strip: runs/retro-ngb/hold_strip.jpg; gameplay frame: runs/retro-ngb/frames/034-gameplay.jpg.
+
+## #433 -- 2026-10-04 21:50 PDT
+
+[lane.pathfind] RetroTechDad list 7/9: **Buffy the Vampire Slayer (USA) (Nova, first-run, ISO name): FAIL on fps (close by the screening rule).**
+Verdict line: `Buffy the Vampire Slayer ? FAIL(fps: 55.2% of gameplay at >= 30 fps (bar 90%)) gameplay=608.1s fps_ok=0.5516 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.3422 play_share=0.9997 fps_excluded=0.0s`.
+Claimed at 1.9 min, 20 model calls (13 steps, none replayed). The #659 channel_valid abort and the #660 save-slot limit did not occur in this run.
+fps: median 29.0 at 182 s (share >= 30 0.58), median 29.0 at 306 s (share >= 30 0.61). **By the screening rule this is close** (60-90% at >= 30 or median >= 27), not a clean fail on fps.
+**Static: 34% of the window** (static_frac 0.342). The hold's position test passed it, but a third of the samples did not change: the player was still in part of the window. Frame review must check whether the player travelled (runs/retro-buffy/frames/, at least one per 30 s, 41 frames). The known ledge loop (#730) is the likely cause; not re-run.
+Frames: 41 under runs/retro-buffy/frames/; gameplay frame: runs/retro-buffy/frames/012-gameplay.jpg.
+
+## #433 -- 2026-10-04 22:10 PDT
+
+[lane.pathfind] RetroTechDad list 8/9: **Tron 2.0 - Killer App (USA, Europe) (Nova, first-run, ISO name): PASS. Handed to lane.local for frame review.**
+Verdict line: `Tron 2.0 - Killer App (USA, Europe) ? PASS None gameplay=612.5s fps_ok=0.9777 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0376 play_share=0.9994 fps_excluded=0.0s`.
+Claimed at 9.79 min, 71 model calls (75 steps, none replayed; "four probes refused" at the end of the claim). The hang watch (#672) did not trip: no hang gap, no 744-ms stall in the window, worst_ms 0.
+fps: median 36.0 at 183 s (share >= 30 0.89), median 37.0 at 311 s (share >= 30 0.94).
+Static 3.8%: the scene changed through the window.
+Frames: 109 under runs/retro-tron/frames/ (about one per 6 s, at least one per 30 s); strip: runs/retro-tron/hold_strip.jpg; gameplay frame: runs/retro-tron/frames/074-gameplay.jpg.
+Frame review must list what the scene should contain (the player, the grid or the level's enemies, the HUD). Flicker is the owner's check.
+
 Verdict on the change: the title hold does not move Black Stone's fighter. The stance rule from 10-03 ("one X lowers the sword, then the stick walks") is not confirmed by this run. The 10-02 probe moved him only after a mixed sequence. I am not queuing another 600-s Black Stone run until a stick-response probe shows what moves him.
 
 **Note on the profile:** the run was started as first-run, not returning. Black Stone has a golden (86c8f6eada06), and the first-run route composes the disk without it, so the claim got through Name Entry on its own (about 4 min) and saved a new profile to the latest slot. That was a state mistake on my side; the next run uses returning.
