@@ -570,3 +570,13 @@ Hint: docs/testing/titles/pathknow/hints/series-nfl-blitz.md. Sports rule commit
 
 NEW ISSUE: NFL Blitz 2002 claim cannot set the quarter length (Quickplay has no period screen; the setting is not found) and reads pre-snap formations as gameplay
 Evidence: docs/lanes/pathfind/runs/nfl-blitz-2002/hold/steps.jsonl (steps 8-16 period, 16/73/76/79 pre-snap), frames 010-016. Blocks the sports family's standing period rule (Blitz and its siblings).
+
+[lane.pathfind] NFL Blitz 2002 CLEAR (fps) -- flicker unchecked (10-05 11:57, runs/nfl-blitz-2002/hold2): full window, 600 s hold after a 13.2-min claim. Harness verdict PASS: play_share 0.990 of 606.9 s gameplay, fps_ok 0.996 at the bar 28.5, window median 45.1 (min 25.2). Period length used: QUARTER LENGTH 5 MINUTES (OPTIONS, then PLAY OPTIONS: the longest offered). Aborted at: full window (no 3/5-min abort). Perflog: not taken (the fps gate was not tripped).
+SCENE SHOULD CONTAIN: a live Arizona vs Arizona game, both teams on the field, the human-controlled player marked by the yellow/blue arrow, the scorebug with the score and quarter clock, the field moving between plays (position first-to-last 0.86 of the bar).
+FRAME REVIEW CAVEAT (my read of the strip): the scene matches, but 5 of the 16 kept frames (097, 115, 118, 124, 130) show a PLAY-CALL overlay between plays. The loop pressed through those with A (the genre loop's A picks the play), and the model read them as play. So the harness play share is generous: the real play share is below 0.99 by an amount I did not measure. Please check the strip (hold2/hold_strip.jpg) before counting it.
+Claim: 80 steps to the hold start (76 steps, 93 model calls in the claim, from `result.json`); the period was set on the OPTIONS path the first run never tried. The sports look read 1st 4:35, human controlled. Model use: claim Sonnet, sports look and 6 hold checks Sonnet; spend not totalled here (see calls.jsonl).
+Not done: no `paths/<id>.json` was written, because the ISO has no title id and paths are keyed by id, so a replay does not set the period by itself. The route is in the hint (series-nfl-blitz.md, verified this run).
+Frames: docs/lanes/pathfind/runs/nfl-blitz-2002/hold2/frames (hold kept frames 094-139 every 30 s) and hold_strip.jpg. Log: runs/nfl-blitz-2002/heldrun2.log.
+
+NEW ISSUE: a play-call overlay between football plays reads as play in the hold (the play share counts it)
+Evidence: hold2 frames 097, 115, 118, 124, 130 (5 of 16 kept frames); the hold's model checks read in_play on those looks. The verdict's play_share 0.990 is the harness figure. Blocks an honest play share for every football title (the NFL Blitz family and the EA/2K football titles).
