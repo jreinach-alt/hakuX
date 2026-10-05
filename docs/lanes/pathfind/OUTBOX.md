@@ -580,3 +580,50 @@ Frames: docs/lanes/pathfind/runs/nfl-blitz-2002/hold2/frames (hold kept frames 0
 
 NEW ISSUE: a play-call overlay between football plays reads as play in the hold (the play share counts it)
 Evidence: hold2 frames 097, 115, 118, 124, 130 (5 of 16 kept frames); the hold's model checks read in_play on those looks. The verdict's play_share 0.990 is the harness figure. Blocks an honest play share for every football title (the NFL Blitz family and the EA/2K football titles).
+
+[lane.pathfind] NFL Blitz Pro (10-05 12:31, runs/nfl-blitz-pro): STOPPED at claim step 2, not a fail. Stopped on lane.local's 12:35 order (football last); the hold was released at once and the Nova went to AMF Bowling 2004. No verdict, no hold.
+
+[lane.pathfind] AMF Bowling 2004 FAIL on hold design, not fps (10-05 12:43, runs/amf-bowling-2004/hold): claim 15 min to gameplay (controller 1 set Human; game length set to 10 frames, the longest offered). Hold ended at 283 of 600 s of play, "off play for 13 steps" (period_break, frame scorecard with REPLAY AVAILABLE). fps: median 59.0, 100% at the bar over 301 s, so fps is clear. Named causes, from hold.jsonl:
+1. The hold used the team-sports loop (RT, X, B, Y, A, sticks). It never throws the ball: the bowler stood at the foul line for the whole play window, and its B and Y opened the pause menu (states "pause" at 197 s and 301 s). A bowling hold needs its own loop: aim with the stick, throw with A.
+2. Each frame's scorecard is a period_break, and the START/A continue budget (4 presses, shared with CONTINUE) ran out on the first scorecards. After that the model's own START/A answers repeated on the same scorecard until HOLD_NAV_MAX (12) ended the hold.
+Not re-run. Next: a bowling loop in the hold (per-title hint in the bowling family) with a per-frame scorecard rule, then one re-hold.
+
+NEW ISSUE: bowling hold loop throws nothing and a frame scorecard ends the hold (team loop used for bowling; continue budget exhausted on frame scorecards)
+Evidence: docs/lanes/pathfind/runs/amf-bowling-2004/hold/hold.jsonl (hold_s 197-386: pause and period_break looks), frames of the run. Blocks the bowling family (AMF Bowling 2004, Strike Force Bowling, AMF Xtreme).
+
+[lane.pathfind] NBA 2K2 PASS (harness; flicker unchecked; 10-05 13:07, runs/nba-2k2/hold): full 600-s hold after a 12.6-min claim (76-80 steps, 89 model calls). play_share 0.9996 of 606.8 s, fps_ok 0.995 at the bar 28.5, window median 57.0. Position first-to-last 0.61, no still window by the position test. Aborted at: full window. Perflog: not taken.
+Period: the claim goal set the quarter length to the longest offered, but the setting was not read back from the frames. The hold opened at 1st quarter 4:52 (sports look: human-controlled player "Wells" marked, LAL vs POR). Treat the period length as UNVERIFIED until the claim's steps show the value.
+SCENE SHOULD CONTAIN: a live LAL vs POR game, both teams and their players on the court, the human-controlled player marked, the scorebug with the score and quarter clock, the crowd and courtside.
+FRAME REVIEW CAVEAT (my read of hold_strip.jpg, 16 kept frames): 101 is an ACTION REPLAY card and 122 is the NBA logo, so the harness play share counts two non-play frames. 13 frames are live court view. The true play share is below 0.9996 by an amount not measured. Frames: runs/nba-2k2/hold/frames and hold_strip.jpg.
+Model spend: claim and hold, Sonnet, 89 claim calls; spend not totalled here (calls.jsonl).
+Claim: the team select had no controller assigned for ~20 steps (steps 40-55: A, stick+A, X, Y, HOLD:A, R1+A, L1 all failed in the team list before controller 1 was set). The claim was slow, but it reached play.
+
+[lane.pathfind] NBA 2K2 claim note (10-05 13:07): team select with the controller not assigned took ~20 steps, and a pre-game intro with START toggled pause twice. Named, not a new issue (the claim reached play).
+
+[lane.pathfind] AMF Bowling 2004 CLOSE (10-05 13:24, runs/amf-bowling-2004/hold2): the bowling loop works. Held 603 s; verdict FAIL on play share 89.2 percent (bar 90: play 601 s, menu 66 s, results 6 s). fps_ok 1.0 at the bar, window median 59.9. Position first-to-last 0.52, no still window. The loop threw and the scorecards no longer end the hold (the 12:43 failure was the team loop and the shared CONTINUE budget). CLASS: CLOSE (play share 60-90 band, not a hold failure).
+Named cost: the game is 10 frames (the longest offered, set in the claim), so it ends at 271 s with Game Over, Press START. The walk back through title, Start New Game, Open Bowling, Controller Port Select (START x3), Regular Game and Bowl cost 66 s. One game over is the whole miss. Candidate next lever: a rematch or play-again entry at the game-over screen, if the game has one (not verified).
+SCENE SHOULD CONTAIN: a live bowling lane with the bowler at the foul line, the pins set and the aim and power meter, the ball rolling down the lane between throws.
+Frames: runs/amf-bowling-2004/hold2 (frames and hold_strip.jpg). Spend: claim 35 model calls (Sonnet).
+
+[lane.pathfind] MLB SlugFest 2003 CLOSE (10-05 13:45, runs/mlb-slugfest-2003/hold): claim to gameplay, then a 606-s hold. Verdict FAIL on play share 88.3 percent (bar 90): play 607 s, still 74 s, other 7 s. fps_ok 1.0 at the bar, window median 59.9. Position first-to-last 0.74, 2 still windows out of 17 pairs. Innings: set to the longest offered by the claim goal (not read back; the sports look read 1ST inning, no clock in baseball). CLASS: CLOSE (play share band, not a hold failure).
+Named cost: 74 s still. The held scene stops between pitches (the pitch and batter reset, not a menu), so the position test counts it as still. The hold sent its genre loop there; the still time is the game's own pitch cycle. Candidate lever: count a pitch-cycle still as play (a baseball scene check), not a hold change.
+SCENE SHOULD CONTAIN: a live ANA game, the pitcher on the mound, the batter and the PLAYER 1 batting prompt, the scorebug with the inning and score, the fielders.
+Frames: runs/mlb-slugfest-2003/hold (frames and hold_strip.jpg). Spend: claim and hold Sonnet, not totalled here (calls.jsonl).
+
+[lane.pathfind] NHL Hitz Pro CLOSE (10-05 14:01, runs/nhl-hitz-pro/hold): claim 3.3 min, 20 steps; hold 603 s. Verdict FAIL on fps: 75.0 percent of gameplay at 30 (the verdict's own bar was 30, not 28.5; the 28.5-bar share is not computed in the verdict, so I have not guessed it). Window median 37.4, min 15.8, play share 0.936 of 646.5 s, fps excluded 40.2 s. Three hitches after warmup (worst 108 ms, unexplained). CLASS: CLOSE (fps: 60-90 band at 30; median above 27).
+Named cost: 25 percent of play below 30 fps, which a 28.5 bar would mostly clear. Re-check the share at the 28.5 harness bar from the logcat before counting it.
+Human control: UNVERIFIED. The claim put controller 1 under the Islanders and the sports look read no controller icon or marked player; the hold ran the team loop. A CPU-vs-CPU match would fail play share, and this one passed at 0.936, so the controlled player was probably moving, but the frames should be checked for a marked player.
+SCENE SHOULD CONTAIN: a live Hitz game, skaters on the ice, the human-controlled player marked, the 3:00 or quarter clock and the score.
+Frames: runs/nhl-hitz-pro/hold (frames and hold_strip.jpg). Spend: Sonnet, not totalled here.
+
+[lane.pathfind] NHL 2K3 CAN'T-PATH on the claim (10-05 14:16, runs/nhl-2k3): gave up at the 15-min claim budget after 70 steps and 84 model calls. The HUD and a running period clock were live from step 32, and every stick probe was refused: the stick did not move the controlled skater (control 0.2-0.3 against input 0.1-0.4, and the camera cuts to a stoppage or line-change panel between probes). Likely cause, NOT verified: controller 1 was never assigned to a team on team select, so the stick drives nobody. The claim goal asked for it, but no frame of the team select was checked. Identification needed, not a re-run: read the team select frame in runs/nhl-2k3/hold/frames and look for a controller icon under a team.
+
+NEW ISSUE: NHL 2K3 claim cannot confirm a controlled skater: stick probes never move the player (controller not assigned on team select, likely)
+Evidence: docs/lanes/pathfind/runs/nhl-2k3/hold/steps.jsonl, steps 32-70 (probe refusals, the stick did not move the controlled skater). Blocks NHL 2K3 and the other hockey titles on this engine.
+
+[lane.pathfind] Strike Force Bowling FAIL on hold design, not fps (10-05 14:27, runs/strike-force-bowling/hold): claim to bowling aim in about 3.5 min, hold ran 266 of 600 s of play. fps: median 59.0, 100% at the bar over 281 s, so fps is clear. The hold ended at 266 s: "off play for 13 steps" in a high-score Name Entry screen (name AAAAA, Strength/Accuracy/Curve bars, Done).
+Named causes, from hold.jsonl:
+1. At 266 s the play looked still for two windows, so the hold's still rotation replaced the bowl loop with the unlock ladder: X, then RT and the stick. The X opened the high-score name entry at the end of the game.
+2. The name entry was answered with A, which types a letter on that keyboard (the 10-03 RULES warning), 12 times in a row. Nothing pressed START (which jumps to Done on some keyboards) or B to close it on the screen the model named. HOLD_NAV_MAX (12) then ended the hold.
+Not re-run. Identification is done. Next lever: a name_entry rule in the hold (START to Done, then A to confirm) and the still rotation not sending X on a bowling hold. Both are generic, so they go with the bowling-family fix, not a Strike-Force one-off.
+Frames: runs/strike-force-bowling/hold.
