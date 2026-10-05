@@ -4,7 +4,7 @@ State: draft (waiting on two queued Nova runs, Career with the throttle held, fe
 
 Lane: accuracy804          Issue: #804
 Base: master @ 6f463a0ae2
-Files: docs/lanes/accuracy804/NOTES.md, docs/lanes/accuracy804/OUTBOX.md, docs/lanes/accuracy804/PR.md, docs/lanes/accuracy804/WAITING, docs/lanes/accuracy804/occl_read.py, docs/lanes/accuracy804/rallisport-804f.route, docs/lanes/accuracy804/rallisport-804g.route, docs/lanes/accuracy804/runs/cap1-career-sheet.jpg, docs/lanes/accuracy804/runs/occl-fix/occl804.log, docs/lanes/accuracy804/runs/occl-fix/sheet.jpg, docs/lanes/accuracy804/runs/occl-nofix/occl804.log, docs/lanes/accuracy804/runs/occl-nofix/sheet.jpg, hw/xbox/nv2a/pgraph/vk/reports.c
+Files: docs/lanes/accuracy804/NOTES.md, docs/lanes/accuracy804/OUTBOX.md, docs/lanes/accuracy804/PR.md, docs/lanes/accuracy804/WAITING, docs/lanes/accuracy804/occl_read.py, docs/lanes/accuracy804/rallisport-804f.route, docs/lanes/accuracy804/rallisport-804g.route, docs/lanes/accuracy804/runs/cap1-career-sheet.jpg, docs/lanes/accuracy804/runs/occl-fix/occl804.tsv, docs/lanes/accuracy804/runs/occl-fix/sheet.jpg, docs/lanes/accuracy804/runs/occl-nofix/occl804.tsv, docs/lanes/accuracy804/runs/occl-nofix/sheet.jpg, hw/xbox/nv2a/pgraph/vk/reports.c
 Prediction: none: a survey of car presence (screencaps) and visibility-test values (logcat); no pgraph golden is claimed to move
 Needs device: yes (Nova: two queued 240 s runs, 1791167617 and 1791167624)    Needs NDK: no
 Release note (none): instrumentation only, off unless HAKUX_OCCL_LOG / HAKUX_OCCL_WAIT are set.
