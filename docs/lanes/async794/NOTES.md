@@ -304,3 +304,26 @@ does no device work. It does not queue Counter-Strike, MC3 or Burnout Revenge:
 their pairs tested fix 1, which is refuted, and fix 2 claims no fps change.
 The branch merges `origin/master` (10f14d301d) without conflicts, so the fold
 can do that merge itself.
+
+## Session 5 (2026-10-05, attempt 1 of the fold-gate brief): why session 4 did not finish
+
+Session 4 did its brief (`State: ready`), but the fold queue still refused the
+head aae14b6f54: the fold rule wants one finished, non-void device run built
+from the head, because the PR changes emulator code. No such run could exist.
+aae14b6f54 predates master's libfolders change (10f14d301d), and a build without
+libfolders boots to the setup wizard on a device whose folder pref has been
+migrated, so the soak voids. Session 4 noted the clean merge but left it for
+the fold to do; the fold gate needs that merge on the branch.
+
+This session merges origin/master (no conflicts; master's 80 surface.c lines
+sit apart from the lane's 8), re-checks draw.c, surface.c and texture.c
+(no errors, plain, perflog, and perflog+`__ANDROID__`; the three
+unused-variable warnings in texture.c are master's, not this diff's), runs the
+jobs selftest, and queues the one fold-gate run: a 120 s Nova hold at the
+merge head. No fps claim, no pair.
+
+Do not repeat: the selftest took longer than the Bash tool's 10 minutes here
+(three selftests were sharing the host: master_selftest, a fold worktree,
+this one), and `timeout 590` runs in the foreground kept cutting it off in
+`51-dispatch-hardening` E2, which looked like a hang. It was not. Run it once
+as an in-session background task with no timeout, and wait on that.
