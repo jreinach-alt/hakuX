@@ -4,10 +4,13 @@ What is in flight right now. Generated from the working tree and updated as work
 
 ## 0.5 release: 50 Playable titles
 
-**22 of 50** titles confirmed Playable (1 today). A title is Playable after a 600 s held run on a handheld at or above the frame-rate bar, with every kept frame reviewed.
+**25 of 50** titles confirmed Playable (4 today). A title is Playable after a 600 s held run on a handheld at or above the frame-rate bar, with every kept frame reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-05 | AMF Bowling 2004 | accepted on review (89.2% against a 90% bar: 66 s walk-back through title and controller select after the 10-frame game ended) (flicker not yet checked) |
+| 2026-10-05 | MLB SlugFest 2003 | accepted on review (88.3% against a 90% bar: 74 s still between pitches, the game's pitch cycle) (flicker not yet checked) |
+| 2026-10-05 | NBA 2K2 | PASS 606.8 s, play_share 0.9996, fps_ok 0.995 (30 fps bar, window median 57.0, min 20.1), 0 hitches, audio_starve 0, no crash/hang (flicker not yet checked) |
 | 2026-10-05 | NFL Blitz 2002 | PASS 606.9 s, play_share 0.990, fps_ok 0.996 (30 fps bar, window median 45.1, min 25.2), 0 hitches, audio_starve 0, no crash/hang (flicker not yet checked) |
 | 2026-10-04 | Tork: Prehistoric Punk | PASS 632.7 s, play_share 0.952 (30 s 'still' excluded), fps_ok 1.0 (30 fps bar, overlay reads 29), 0 hitches, audio_starve 0, no crash/hang (flicker not yet checked) |
 | 2026-10-04 | Jet Set Radio Future | PASS 602 s, play_share 0.9997, fps_ok 1.0 (30 fps bar), 0 hitches, audio_starve 0, no crash/hang (flicker not yet checked) |
@@ -35,7 +38,7 @@ What is in flight right now. Generated from the working tree and updated as work
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `9b63688e0d` | 2026-10-05 11:58 |
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `217ab2ce8a` | 2026-10-05 12:56 |
 
 ## Recently landed on master
 
@@ -55,4 +58,4 @@ What is in flight right now. Generated from the working tree and updated as work
 - `6dc95ff117` 2026-10-05 hitchcause: attempt 4 notes; IRQ14 is the IDE device on a DMA path; WAITING on the [ide425d] build smoke (#433, #819)
 - `af37f7a3ea` 2026-10-05 hitchcause: [ide425d] DMA, command-to-IRQ, IRQ-to-command and drain timing per 2 s window (telemetry only) (#433, #819)
 
-_Updated 2026-10-05 12:31 PDT._
+_Updated 2026-10-05 14:09 PDT._
