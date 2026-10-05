@@ -4,12 +4,16 @@ State: ready
 
 Lane: pathfind            Issue: #433
 Base: master @ 425ffe1ad1 (origin/master merged into lane/pathfind 10-04 08:15 PDT)
-Files: docs/lanes/pathfind/NOTES.md, docs/lanes/pathfind/OUTBOX.md, docs/lanes/pathfind/PR.md, docs/lanes/pathfind/runs/, docs/testing/titles/pathfind.py, docs/testing/titles/pathfind_selftest.py, docs/testing/titles/pathknow/hints/learned-pub-454D.md, docs/testing/titles/pathknow/hints/learned-pub-4553.md, docs/testing/titles/pathknow/hints/learned-pub-4D53.md, docs/testing/titles/pathknow/hints/learned-pub-5341.md, docs/testing/titles/pathknow/hints/learned-pub-5655.md, docs/testing/titles/pathknow/hints/learned-series-rallisport.md, docs/testing/titles/pathknow/paths/
+Files: docs/lanes/pathfind/NOTES.md, docs/lanes/pathfind/OUTBOX.md, docs/lanes/pathfind/PR.md, docs/lanes/pathfind/runs/, docs/testing/titles/pathknow/hints/learned-pub-5451.md, docs/testing/titles/pathknow/hints/learned-pub-5454.md, docs/testing/titles/pathknow/paths/
 Prediction: none: no arm (tooling and a probe measure; no emulator code)
 Needs device: yes (held, direct driving; no dispatcher requests)    Needs NDK: no
 
 10-04, the owner's screening (`pm/screen-1004.tsv`): each title is pathed first-run, its profile promoted, then a 600-s
 held measurement against the 30 fps bar. Per-title lines are in OUTBOX.md and the scoreboard is at the top of NOTES.md.
+Result: 12 of 12 screened. 7 clear (3 verdict PASS: RalliSport Challenge, The Simpsons Hit & Run, Dark Summit; 4 with
+fps_ok >= 0.99 that miss Playable on hold design), 1 fail (Amped, aborted at 5:04, vCPU-bound at 31.6 ms/frame),
+4 can't-path (Phantom Crash, Simpsons Road Rage, Mashed, Whiteout; Whiteout's load card never finished, filed as
+NEW ISSUE). Spend about $53 of $60.
 Tool changes in `pathfind.py`, each with a selftest case:
 - **The 3/5-min fps gate** (`FPS_GATES`, owner 10-04 ~08:10). At 3 min and 5 min of a hold, the hold's own gfps
   lines are read. Median < 22 at 3 min, or < 27 at 5 min, with under 60% at 30 x 0.95, stops the hold. One 180-s
@@ -58,7 +62,14 @@ model's answer on the same frames; NOTES.md "Probe gate" gives the full history 
 Attempt 2-4 (earlier 10-03): hold-play (`pathfind.py --hold-s 600`, Nova only), the team-sport genre and `--goal`, the
 X unlock ladder and the hold perflog marks. See NOTES.md.
 
-Local checks (no CI), at the head after merging origin/master 10-03 14:55 PDT:
+Local checks (no CI), 10-04 14:25 PDT, at the head after merging origin/master:
+`python3 docs/testing/titles/pathfind_selftest.py` -> all ok, 63 checks (adds `fpsgate`, `dialogue`, `proberot`).
+`bash docs/testing/preflight.sh --allow-tracker` -> every gate ok except `coverage`. That gate fails on five issues
+filed in the last hour (#811-#815) that have no lane or blocker row on origin/board yet. #811 is this lane's Whiteout
+finding. Board rows are not a lane's to write; lane.local or the board owner classifies them. No harness file under
+docs/testing/jobs is changed.
+
+Earlier local checks, at the head after merging origin/master 10-03 14:55 PDT:
 `python3 docs/testing/titles/pathfind_selftest.py` -> all ok (adds `holdstill`, `holdshed`, `rounds`, `ownrt` and the
 RT+/LT+ `actions` checks; `holdstill` and `rounds` fail on the old code). `bash docs/testing/preflight.sh --allow-tracker`
 -> "preflight passed - safe to push". No harness file under docs/testing/jobs is changed.

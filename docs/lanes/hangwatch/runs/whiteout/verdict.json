@@ -1,0 +1,27 @@
+{
+ "hang": true,
+ "title_id": "4B4E0001",
+ "name": "Whiteout",
+ "since": 27183146.745,
+ "tripped": 27183242.003,
+ "state": {
+  "still": true,
+  "pinned": true,
+  "quiet": true
+ },
+ "window": {
+  "w": 122,
+  "it": 2048,
+  "idle_us": 0,
+  "busy_us": 2047086,
+  "share": 1.0,
+  "top": "r:800151ed"
+ },
+ "probe": {
+  "action": [
+   "A"
+  ],
+  "frame_change": 0.0
+ },
+ "reason": "HANG: frames still, audio quiet and the vCPU pinned for 95 s; one A press changed nothing (frame change 0.000)"
+}

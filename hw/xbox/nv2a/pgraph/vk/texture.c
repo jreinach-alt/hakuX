@@ -1463,6 +1463,68 @@ static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
            surface->host_fmt.host_bytes_per_pixel == vk_format_texel_size(tex_vkf.vk_format);
 }
 
+#if NV2A_PERF_LOG
+/*
+ * async794: why create_texture() downloads the surface at the texture's
+ * address instead of binding or copying it on the GPU (TXDL_*, renderer.h).
+ * The tests run in check_surface_to_texture_compatiblity()'s order and the
+ * first that refuses names the reason; a surface that passes them all was
+ * refused only for the upload it still owed. The first few of each reason are
+ * logged with both shapes, which is what a GPU-side path for that reason has
+ * to convert between.
+ */
+static void txdl_count(const SurfaceBinding *surface,
+                       const TextureShape *shape)
+{
+    static const char *const names[TXDL__N] = {
+        "levels", "dim", "cube", "pitch", "swz", "cvt", "bpp", "upl", "oth",
+    };
+    static int logged[TXDL__N];
+    BasicColorFormatInfo f = pgraph_get_color_format_info(shape->color_format);
+    int why;
+
+    if (shape->levels != 1) {
+        why = TXDL_LEVELS;
+    } else if (surface->width != shape->width ||
+               surface->height != shape->height) {
+        why = TXDL_DIM;
+    } else if (shape->cubemap) {
+        why = TXDL_CUBE;
+    } else if (check_surface_to_texture_compatiblity(surface, shape)) {
+        why = TXDL_UPL;
+    } else if (!surface->color) {
+        why = TXDL_OTH;
+    } else if (!surface->swizzle && surface->pitch != shape->pitch) {
+        why = TXDL_PITCH;
+    } else if (surface->swizzle == f.linear) {
+        why = TXDL_SWZ;
+    } else if (pgraph_texture_format_is_converted(shape->color_format)) {
+        why = TXDL_CVT;
+    } else {
+        why = TXDL_BPP;
+    }
+    g_opt_stats.txr_why[why]++;
+
+#ifdef __ANDROID__
+    if (logged[why] < 4) {
+        logged[why]++;
+        __android_log_print(ANDROID_LOG_INFO, "hakuX",
+            "[txdl794] why=%s surf %ux%u pitch%u swz%d color%d bpp%u "
+            "upl%d | tex %ux%u pitch%u levels%u cube%d fmt0x%x lin%d bpp%u",
+            names[why], surface->width, surface->height, surface->pitch,
+            (int)surface->swizzle, (int)surface->color,
+            surface->host_fmt.host_bytes_per_pixel,
+            (int)surface->upload_pending, shape->width, shape->height,
+            shape->pitch, shape->levels, (int)shape->cubemap,
+            shape->color_format, (int)f.linear, f.bytes_per_pixel);
+    }
+#else
+    (void)names;
+    (void)logged;
+#endif
+}
+#endif
+
 /*
  * What the texture unit reads for this colour surface's pad bits, as a
  * component swizzle for the alpha channel, or VK_COMPONENT_SWIZZLE_IDENTITY
@@ -1969,7 +2031,8 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     if (!surface_to_texture && surface && surface->draw_dirty) {
         TEX_PERF(g_opt_stats.txr_dl++;
                  g_opt_stats.txr_dl_b += (uint64_t)surface->pitch * surface->height;
-                 tx_srf = true);
+                 tx_srf = true;
+                 txdl_count(surface, &state));
         TXW_BEGIN(SDL);
         pgraph_vk_surface_download_if_dirty(d, surface);
         TXW_END(SDL);

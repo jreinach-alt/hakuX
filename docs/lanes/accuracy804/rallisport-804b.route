@@ -1,0 +1,71 @@
+# state: any   (the golden cc9b4ced4a0f holds pathfind's profile; lane.accuracy804, #804)
+# RalliSport Challenge (4D53000F): pathfind's recorded menu path (main menu RIGHT -> SINGLE RACE
+# -> Rally -> Safari SS1 -> default car -> start race), then hands off the pad. flicker801's
+# positive bursts came from this mode; rallisport-804.route took CAREER (Safari Trophy) to the
+# same stage, and its run (1791136124-lane.accuracy804-3752333) had no rival in view at any
+# race clock from 7.37 to 46.30.
+#
+# Fixed waits only (a dispatched soak gets the route's text; a `waitfor` crop does not travel).
+# Times are route-relative, from the first run's log (each `wait 6` + shot took 6.3-7.4 s):
+#   0-64 s no input; START at ~+64 (title by ~+70); title A ~+73; profile A ~+79 -> main menu.
+#   main menu: RIGHT on the hat (Single Race; Career is lit), A ~+89 -> race type (Rally lit) A ~+95 ->
+#   track (SAFARI SS1 lit) A ~+102 -> car (default lit) A ~+108 -> loading 25 s -> options,
+#   "start race" lit, A ~+134. The first run's race clock read 0 seven seconds after this A,
+#   so race clock 0 is ~+141 and the rival stretch (race clock ~7.5 s on) ~+148.
+#   The second A at ~+142 is a spare for a lost press; in a running race A does nothing visible.
+#   A lost RIGHT sends the A presses down Career's path instead (shots `racetype`/`track` say so).
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+press START
+wait 5
+shot title
+wait 3
+press A
+wait 6
+press A
+wait 6
+shot mainmenu
+# RIGHT as pathfind sends it (pathfind.py send(): HATX max, then mid, 0.35 s), not `press RIGHT`
+# (pad.sh's BTN_DPAD_RIGHT key, which goldeneye-ra.first-run.route found ignored by a title).
+axis HATX max
+wait 0.35
+axis HATX mid
+wait 2
+press A
+wait 6
+shot racetype
+press A
+wait 6
+shot track
+press A
+wait 6
+shot car
+press A
+wait 25
+shot options
+press A
+wait 8
+press A
+wait 3
+shot r1
+wait 2
+shot r2
+wait 2
+shot r3
+wait 2
+shot r4
+wait 2
+shot r5
+wait 3
+shot r6
+wait 3
+shot r7
+mark gameplay
+repeat forever {
+    wait 20
+    shot hold
+}

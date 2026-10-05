@@ -1135,12 +1135,18 @@ static void opt_stats_log_and_reset(void)
                 TX_KIB(s->txk_b[TXK_CVT]), TX_KIB(s->txk_b[TXK_SWZ]));
             __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
                 "txr[ct%d bt%d/%d dl%d/%lluK sc%d scdl%d img%d pool%d "
-                "s2tc%d s2td%d]",
+                "s2tc%d s2td%d] txdl[lv%d dim%d cube%d pitch%d swz%d "
+                "cvt%d bpp%d upl%d oth%d]",
                 s->txr_ct, s->txr_bt, s->txr_btl,
                 s->txr_dl, TX_KIB(s->txr_dl_b),
                 s->txr_sc, s->txr_scdl,
                 s->tex_pool_hits + s->tex_pool_misses, s->tex_pool_hits,
-                s->txr_s2tc, s->txr_s2td);
+                s->txr_s2tc, s->txr_s2td,
+                s->txr_why[TXDL_LEVELS], s->txr_why[TXDL_DIM],
+                s->txr_why[TXDL_CUBE], s->txr_why[TXDL_PITCH],
+                s->txr_why[TXDL_SWZ], s->txr_why[TXDL_CVT],
+                s->txr_why[TXDL_BPP], s->txr_why[TXDL_UPL],
+                s->txr_why[TXDL_OTH]);
 #undef TX_KIB
         }
         {
@@ -4284,7 +4290,36 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
             }
 
             if (!deferred) {
+                /*
+                 * #796: a surface download's finish waits here for the GPU
+                 * with pgraph.lock released, as wait_frame_fence (vk/surface.c)
+                 * already does for the fence waits of the same downloads.
+                 * Top Spin takes ~26 of these a frame from its texture binds,
+                 * and its vCPU waited 10-13.6 ms a frame for the lock behind
+                 * them, on reads of PGRAPH 0xb10 (PATT_COLOR0).
+                 *
+                 * Held: on the PFIFO thread a finish runs inside a method or
+                 * the flip-stall path, both under pgraph.lock (pfifo.c's
+                 * puller, the renderer switch); the render thread's finishes
+                 * take the branch above. The wait reads nothing the lock
+                 * protects -- the render thread submits and waits the fence,
+                 * and takes no pgraph.lock -- and the staged downloads are
+                 * copied into VRAM below, after the lock is retaken. In the
+                 * window only the guest's interrupt and register MMIO may run
+                 * (pgraph_read/pgraph_write); every other taker, the VRAM
+                 * access callback included, waits in pgraph_lock_settled()
+                 * until the method ends.
+                 */
+                NV2AState *fd = container_of(pg, NV2AState, pgraph);
+                bool unlock = finish_reason == VK_FINISH_REASON_SURFACE_DOWN &&
+                              qemu_thread_is_self(&fd->pfifo.thread);
+                if (unlock) {
+                    pgraph_lock_release_for_fence(pg);
+                }
                 qemu_event_wait(&finish_event);
+                if (unlock) {
+                    pgraph_lock_retake_after_fence(pg);
+                }
                 qemu_event_destroy(&finish_event);
                 gpu_ts_readback(r, r->current_frame);
 

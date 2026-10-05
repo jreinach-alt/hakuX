@@ -1,0 +1,94 @@
+# state: any   (the golden cc9b4ced4a0f holds pathfind's profile; lane.accuracy804, #804)
+# RalliSport Challenge (4D53000F): CAREER -> Safari SS-1, then DRIVE (throttle held), for the
+# owner's 10-04 19:10 report ("no NPC cars visible at all, ever, nor their shadows").
+#
+# The menu part is rallisport-804.route unchanged (capture 1, 1791136124: it reached SAFARI SS-1
+# OPTIONS at +127 s and the first start-race A started the race; race clock 0 = that A + 7.0 s).
+# Career is the item lit on the game menu, so it is the mode a player reaches by pressing A.
+# Capture 1 stood still at the start and saw no rival from race clock 4 to 46 (0 rival body
+# draws in its 600-frame dump, on code from before the #804 fix). This route holds the throttle
+# from the spare A on, so the player leaves the start and any rival on the stage can come into
+# view. No steering: the shots say how far the car got.
+#
+#   c1-c3: the countdown (start-race A + 3..6 s). Then the spare A (+8 s), RT held for 40 s with
+#   a shot every ~2 s (d1-d20), RT released, then hold shots.
+# Triggers rest at min (rallisport-2.returning.route); `axis RT max` is full throttle.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+press START
+wait 5
+shot title
+wait 3
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+shot event
+press A
+wait 6
+shot car
+press A
+wait 25
+shot options
+press A
+wait 3
+shot c1
+wait 1.5
+shot c2
+wait 1.5
+shot c3
+wait 2
+press A
+axis RT max
+wait 2
+shot d1
+wait 2
+shot d2
+wait 2
+shot d3
+wait 2
+shot d4
+wait 2
+shot d5
+wait 2
+shot d6
+wait 2
+shot d7
+wait 2
+shot d8
+wait 2
+shot d9
+wait 2
+shot d10
+wait 2
+shot d11
+wait 2
+shot d12
+wait 2
+shot d13
+wait 2
+shot d14
+wait 2
+shot d15
+wait 2
+shot d16
+wait 2
+shot d17
+wait 2
+shot d18
+wait 2
+shot d19
+wait 2
+shot d20
+axis RT min
+mark gameplay
+repeat forever {
+    wait 15
+    shot hold
+}

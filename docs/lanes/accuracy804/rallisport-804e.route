@@ -1,0 +1,41 @@
+# state: any   (the golden cc9b4ced4a0f holds pathfind's profile; lane.accuracy804, #804)
+# RalliSport Challenge (4D53000F): rallisport-804d.route to the race start, with no screencap in the
+# race. For a HELD session (session804e.sh): the route ends at race clock ~4, and the caller starts a
+# screenrecord burst at once, so the rival's close pass (race clock ~7.3-8.6) is filmed at the
+# display rate with nothing else reading the screen. Every press keeps 804d's measured time
+# (start-race A +140.6, race clock 0 ~+147.4).
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+press START
+wait 5
+shot title
+wait 3
+press A
+wait 6
+press A
+wait 6
+shot mainmenu
+# RIGHT exactly as pathfind sends it (pathfind.py send(): HATX max, HATX mid at once, then 0.35 s).
+axis HATX max
+axis HATX mid
+wait 2.35
+press A
+wait 6
+shot racetype
+press A
+wait 6
+shot track
+press A
+wait 6
+shot car
+press A
+wait 25
+shot options
+press A
+wait 8
+press A
+wait 3
