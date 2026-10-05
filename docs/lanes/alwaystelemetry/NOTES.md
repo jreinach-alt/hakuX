@@ -239,3 +239,39 @@ updated 18:xx with these numbers.
    decides between 1 and 2. Not queued.
 4. **Per-section split of perflog (one arm per section).** Only useful for promoting a deep item into the always-on
    tier. P about 0.5 that it promotes something, small win. Defer until the tier 1 arm reports its self-time.
+
+## Attempt 5 (2026-10-05 07:50 PDT, resume): why this was not a continuation, and what master changed
+
+**Why this resume was not a continuation:** attempt 4 finished. Its PR.md was `State: ready`, its design was posted
+in OUTBOX.md, and lane.local folded the branch into master as `4a3308a21e` (fold: lane/alwaystelemetry, offline).
+The resume found the lane branch already an ancestor of master, so `git merge origin/master` fast-forwarded it to
+`d32c35d3ce`. The lane's own diff against master is empty. No emulator file was edited in this attempt.
+
+**What master changed under the design.** Master moved 201 commits after the measurement ref `a971c31220`.
+The render-path files the design cites changed, so its line references no longer hold:
+
+| design cites (a971c31220) | on master d32c35d3ce | status |
+|---|---|---|
+| `renderer.c:273` (GPU timestamp early return) | `renderer.c:309` | moved |
+| `draw.c:3659,3673,4094,4512` (timestamps) | `draw.c:3665,3679,4100,4547` | moved, +6..+35 |
+| `shaders.c 590-, 895` (`pgraph_vk_ubosz_note_upload`) | `shaders.c:672` definition; caller `draw.c:5696` | moved |
+| `pfifo.c 1680-1836` (per-method puller timing) | `:1680` start, `:1767-1797` method timers | holds at the start line |
+| `debug.h 489/539` (inc_counter) | `:489`, `:539` | holds; 66 call sites, not 64 |
+| `texture.c 52-` (#474 bind_textures timers) | `:52` | holds |
+| `texture.c 1925-2366` (#461 hash reasons) | not re-checked | verify before use |
+| `pgraph.c 242-293` (slow-method histogram) | `hakuX-mhist` at `pgraph.c:271` | holds, approximately |
+| `pgraph.c 900-` (`[lock474]`) | not re-checked | verify before use |
+| `dispatcher.sh:2010` (logcat drop of xemu-vsync/xemu-pace/hakuX-mhist) | the tags still exist (`profile.c:731,735`, `pgraph.c:271`); no filter at line 2010 now; the dispatcher takes its spec from `LOGCAT_SPEC` | the "paid but unread" claim must be re-read against the current spec before it is acted on |
+
+New on master, not in the design, for the Opus slot to read before it starts:
+- `hw/xbox/nv2a/pgraph/vk/reports.c` (149 lines, new) and `renderer.h` (10 lines): a reports path that may already
+  carry a GPU-side counter. Check it before adding a second timestamp mechanism.
+- `docs/testing/title_verdict.py` (75 lines changed) and `dispatcher.sh` (124 lines changed). The design's statement
+  that the verdict logic is unchanged must be re-read against the current file.
+
+**Consequence for the design:** the tier split (always-on counters and sampled timers, deep per-method and per-draw
+behind `-Pperflog`) and the measured cost are unaffected. The file and line map for the Opus slot must be
+regenerated on the branch it works on, not copied from OUTBOX.md. The correction is also in OUTBOX.md.
+
+**Not done in this attempt, on purpose:** the two-tier change itself (the Opus slot's job) and any new device run.
+Part 1 is Sonnet's and has no emulator edits.
