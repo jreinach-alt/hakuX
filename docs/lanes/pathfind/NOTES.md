@@ -952,3 +952,12 @@ What this shows, and what it does not:
   harmlessly. Its FMV renders as green blocks (a rendering defect, not a pathfind problem).
 - Midnight Club 3: the agent took Career (garage tutorial: buy a car, Test Drive) where Arcade might be
   shorter; it still reached driving in 6.2 min. The disk keeps saved profiles between runs (CAPA T2).
+
+## Resume state 10-05 15:50 PDT (attempt 3, sports order)
+- Sibling verdicts today: Blitz 2002 PASS (harness), NBA 2K2 PASS (harness), MLB SlugFest 2004 PASS, MLB SlugFest Loaded PASS.
+  MLB 2003 CLOSE (play 0.883), AMF Bowling 2004 CLOSE (play 0.892 after the bowl loop), NHL Hitz Pro CLOSE (fps 75 percent at 30).
+  Strike Force Bowling FAIL (name entry, twice). NBA 2K3 and NHL 2K3 can't-path (team select: no controller icon under a team).
+- The team-select identification is in OUTBOX (frame nba-2k3/hold/frames/021-main_menu.jpg). The input is not verified.
+- Open for the next lane: the ESPN team-select input; a name-entry Done confirm; the bowling game-over rematch (not seen in the AMF frames);
+  the play share on replay cards and between-pitch frames (generous for the 2K and baseball strips).
+- Nova: free. Nothing held, nothing queued by this lane. WAITING: none.

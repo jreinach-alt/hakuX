@@ -643,3 +643,22 @@ Period: innings set to the longest offered by the claim goal (not read back). Th
 SCENE SHOULD CONTAIN: a live game, a pitcher and batter with the PLAYER 1 batting prompt (Contact, Power, Bunt, Dodge), fielders, the scorebug with the inning, outs and score, batter intro cards and STRIKEOUT banners.
 FRAME REVIEW (my read of hold_strip.jpg, 16 kept frames): the scene matches. The batter intro cards (044, 059) and the STRIKEOUT banner (038) are in-game, not menus. No menu frame in the strip.
 Frames: runs/mlb-slugfest-loaded/hold (frames, hold_strip.jpg). Spend: Sonnet, not totalled here (calls.jsonl).
+
+[lane.pathfind] NBA 2K3 CAN'T-PATH on the claim (10-05 15:46, runs/nba-2k3): gave up at the 15-min claim budget after 79 steps and 77 model calls. The team select never gave controller 1 a team: the controller icons stayed in the middle column, so the CPU would have played both sides. No gameplay was reached, so no hold ran.
+
+IDENTIFICATION, team select (ESPN / Sega Sports, the same screen as NBA 2K2 and NHL 2K3). Frame: runs/nba-2k3/hold/frames/021-main_menu.jpg. What it shows: AWAY NETS on the left, HOME LAKERS on the right, STAPLES CENTER between. In the middle column four controller icons stack vertically. The top one is green with a "User Name" bar above it. The other three are dark. Two small side arrows sit at mid-height, left and right of the column. The footer reads X help, B back, START start game, Y options. What the models tried, from the steps: A, D-pad LEFT/RIGHT and A, STICK+A, L1, R1, L3, RT, X, Y and HOLD:A. None put the green icon under a team, and the controller count never changed.
+What is NOT verified: which input moves a controller icon under a team. The side arrows are the likely target (press the D-pad toward the side arrow while the green icon is selected, then A), but no run has shown it. Next run's identification: one frame sequence of LEFT then A, then a frame, on NBA 2K3's team select, to see which press moves the green icon. No re-run today.
+
+Applies to: NBA 2K2 (lost ~20 steps to this, then reached play), NBA 2K3 (this run, no play), NHL 2K3 (the 14:16 can't-path: the stick probes never moved a skater, consistent with an unassigned controller).
+
+NEW ISSUE: ESPN team select (NBA 2K2, NBA 2K3, NHL 2K3): no controller icon moves under a team, so the CPU plays both sides and the claim cannot confirm a human player
+Evidence: runs/nba-2k3/hold/frames/021-main_menu.jpg; steps 19-79 of runs/nba-2k3/hold/steps.jsonl; NHL 2K3 steps 32-70. Blocks the 2K family's human-controlled team and the NBA 2K/NHL 2K siblings.
+
+[lane.pathfind] DAY SUMMARY 10-05 (for lane.local, spend not totalled here; claim and hold model calls are in each run's calls.jsonl):
+- Harness PASSes, full 600-s windows: NFL Blitz 2002 (play 0.990, fps 0.996, 5-min quarter via OPTIONS; frame review: 2 of 16 kept frames are play-call overlays, the play share is generous), NBA 2K2 (play 0.9996, fps 0.995; 2 of 16 frames are a replay card and the NBA logo, so the play share is generous), MLB SlugFest 2004 (fps 1.0, 604 s), MLB SlugFest Loaded (play 0.9995, fps 1.0).
+- CLOSE: AMF Bowling 2004 re-hold (play 0.892, a 10-frame game's game-over walk-back of 66 s; the bowling loop works), MLB SlugFest 2003 (play 0.883, 74 s between pitches), NHL Hitz Pro (fps 75% at 30, window median 37.4; play 0.936; human control unverified).
+- FAIL: Strike Force Bowling (both holds ended on a high-score name entry; the fps was clear).
+- Can't-path: NHL 2K3 (stick never moved a skater; the team select, see the NEW ISSUE), NBA 2K3 (team select never assigned controller 1), Phantom Crash and the earlier screening list as in NOTES.
+- Not run today: NFL Blitz Pro (stopped at step 2 on the 12:35 football-last order), AMF Xtreme, NBA 2K3 retry, Tork (deferred by the owner), the football titles (last in the order).
+- Code committed on lane/pathfind today: the sports period rule (period_break, the claim period goal, the sports look), the claim's live grace window, a bowl hold loop with its own period budget, the name-entry rule (START then A) and the reason-based name_entry label, and the bowl still move (no X). Selftest all ok (last run: scratch/selftest-attempt3h.log).
+- Model use: Sonnet throughout (FAST = claude-sonnet-5).
