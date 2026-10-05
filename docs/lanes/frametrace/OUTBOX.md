@@ -52,6 +52,37 @@ pthreads, no device). Please copy it in.
 - **Simpsons needs a host capture under a pathfind hold** (as vcpusleep's
   simp1): the request follows once the pilot's frame records are read.
 
+### 09:15 PDT: the Thor pilot, and what is queued now
+
+- **Thor fault, not the instrument:** both pilot runs died before the race
+  (B, instrument on, at 42 s in the intro; A, instrument OFF, at 25 s with
+  `not-foreground: com.magneticchen.daijishou` in front). Same family as
+  lane.gpuclock's 08:51 aborts (Lime3DS in front). I have not re-queued on
+  the Thor. Whoever owns the Thor's focus/second-screen state: two lanes
+  have hit it this morning.
+- B's frame CSV (761 frames) shows the record works on the device: all
+  rows filled, the GPU clock readable by the app (615 MHz from kgsl
+  `gpuclk`, an open question for lane.gpuclock), builder cost 17-19 us/frame.
+- The [hakuX-ft*] lines were dropped by LOGCAT_SPEC; fixed at 0bb89cd1f5
+  (they now go out on `hakuX-lane`, which the spec keeps).
+- Queued on the Nova (behind pathfind's hold and the four requests ahead):
+  `1-1791216614-lane.frametrace-2373212` Nightfire, on;
+  `1-1791216620-lane.frametrace-2374008` Tron (vcpuwait433's
+  tron-newgame-anystate), on; `1-1791216621-lane.frametrace-2374160`
+  Nightfire, off (the overhead pair's A; queued last so the Nova is left
+  without the env). 24 min of device time in all.
+
+### HOST CAPTURE REQUEST: Simpsons free roam under a pathfind hold
+
+`docs/lanes/frametrace/capture_simpsons_frametrace.sh simpft1` (lane.local
+runs it; a lane does not touch the device). It is
+`capture_simpsons_gpuclock.sh` without the performance_mode switching, with
+`env_vars=HAKUX_FRAMETRACE=1` set and read back before the session and
+cleared (read back) on every exit, a second logcat that keeps `hakuX-lane`,
+and the frame CSV pulled at the end. APK: `dispatch/builds/0bb89cd1f5.apk`
+(the dispatcher builds it for the Nova requests above). HOLD_S 300, about
+10 min of device time. Out: `perf/2026-10-05-frametrace/simpft1/`.
+
 ### Spend
 
 Session 1 (Opus): reading, design, instrument, selftest, hook patch, pilot

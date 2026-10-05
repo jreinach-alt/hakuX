@@ -154,6 +154,48 @@ number the budget is judged on, O2/O3 say whether the instrument moved the
 pace by more than the noise. If O2 fails, a second pair is queued (B and A
 order swapped) before any conclusion.
 
+## 3. The Thor pilot (2026-10-05 09:06-09:09 PDT): the instrument works; the Thor run did not reach the race
+
+| arm | id | ran | how it ended |
+|---|---|---|---|
+| B, HAKUX_FRAMETRACE=1 | `1-1791216352-lane.frametrace-2340761` | 42 s, boot + intro videos | `guest exited after 42s`; route `result=terminated` in intro_video; no F/libc line |
+| A, unset | `1-1791216356-lane.frametrace-2340965` | 25 s | `ROUTE STOPPED: ...:xemu is gone ... (not-foreground: com.magneticchen.daijishou ...)` |
+
+The arm WITHOUT the instrument died first, with a launcher in front: the
+same Thor foreground fault lane.gpuclock's Forza pair hit at 08:51 (Lime3DS
+in front, both aborted at 10 s). Not the instrument, and not re-queued on
+the Thor (reported in OUTBOX).
+
+What B's record shows (761 frames, `ftread.py --all`; boot and the 30 Hz
+intro, not gameplay, so no gameplay claim is made from it):
+
+- **The record is sane end to end.** Every frame has the vCPU, PFIFO and
+  main rows; the guest's interval was inferred as 2 VBLANKs (98.2% of flips
+  on 2) and 703 of 760 frames read vsync; the 57 late ones are the boot's
+  multi-second frames, all **run** (the vCPU on-CPU for most of each).
+- **The app can read the GPU clock**: kgsl `gpuclk` read 615 MHz on every
+  frame (the max regimen's floor). lane.gpuclock had this as an open
+  question.
+- **Builder cost: `ins` 17-19 us/frame** in steady state (mean 19.7 over
+  the run, boot included). O1's budget is 200.
+- In the intro the vCPU is on-CPU about 30 of each 33 ms frame while the
+  guest is vsync-paced and **[rr425w] reads idle_us=0**: Forza's intro waits
+  for the VBLANK by polling outside the kernel idle loop. G1 (the idle-loop
+  hook) cannot see such a wait either; on a late frame it would read
+  **run**. A limit to state for any title that busy-waits in its own code.
+- **No [hakuX-ft*] line arrived**: the dispatcher's logcat keeps only the
+  tags in LOGCAT_SPEC. Fixed at 0bb89cd1f5 (lines go out on `hakuX-lane`).
+  pathfind's own logcat spec does not carry `hakuX-lane` either, so the
+  Simpsons capture script runs a second logcat.
+
+Slack, as measured: p50 32.6 ms on a 33.4 ms deadline. The flip time is
+when the PFIFO thread reaches FLIP_STALL; it stalls there until the guest's
+present, so frame N's flip comes about one processing time (1-2 ms) after
+frame N-1's release whenever the guest has already submitted frame N. Slack
+is therefore "deadline minus when frame N was submitted AND translated",
+and it shrinks only when the guest or the PFIFO thread is late; it does not
+include the GPU's execution of frame N (asynchronous).
+
 ## Log
 
 - 10-05 session 1: read profile.c, cpus.c, the vcpu60 / vcpusleep NOTES,
