@@ -862,7 +862,15 @@ issues = ["507"]
 files = ["docs/lanes/vcpusleep/**", "docs/testing/predictions/vcpusleep-*.json", "hw/xbox/nv2a/user.c", "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/nv2a_int.h"]
 note = "GRANTED 12:09 PDT 10-04 (hostops jam duty, lane.local ask 12:10): code lane from lane.vcpu60 rank 1 (#507, the vCPU sleep in Simpsons). user.c, pfifo.c and nv2a_int.h moved from [free] (all three were free: released by retired adpf, flip474, vcpuwait433; no active row named them)."
 
+
+[lane.dashretro]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/dashretro/**", "docs/testing/jobs/status_html.py"]
+note = "STARTED lane.local 2026-10-05 14:25 PDT (owner: the dashboard's 0.5 graphs must match the last 5 days): the 0.5 panel counts the Playable ledger and pathfind held runs. Row written by lane.local 2026-10-05 15:00 PDT for the offline fold; status_html.py claimed from [free]."
+
 [free]
+# CLAIMED (lane.local 2026-10-05 15:00 PDT): docs/testing/jobs/status_html.py -> lane.dashretro (dashboard 0.5 panel retrofit, #433).
 # RELEASED (hostops 2026-10-03 18:3x PDT) by retiring lane.savestate433 (PR/fold fe090373b7 + 1b40b9253a, both on master, unit gone): docs/lanes/savestate433/**, docs/testing/titles/titlestate.py, docs/testing/titles/titlestate_selftest.py, docs/testing/titles/saves.py, docs/testing/titles/nav.py, docs/testing/jobs/selftest.d/85-savestate.sh, docs/testing/titles/routes/*.route, docs/testing/soak_title.sh, docs/testing/jobs/selftest.d/99-hdd-split.sh -> [free]; docs/testing/jobs/selftest.d/89-title-verdict.sh -> lane.failgate.
 # RELEASED (hostops 2026-10-03 PDT) by retiring lane.tcg424flip (PR #693 folded a143aa5db8): accel/tcg/tb-maint.c, accel/tcg/tb-internal.h, docs/lanes/tcg424flip/**, docs/testing/predictions/tcg424flip-*.json.
 # RELEASED (hostops 20:49 PDT) by retiring lane.crashattr (PR folded 87aefa1358, ancestor of origin/master): docs/testing/title_verdict.py, docs/lanes/crashattr/**. docs/testing/jobs/selftest.d/89-title-verdict.sh -> lane.savestate433 (lane.local's 20:46 ask). docs/testing/soak_title.sh -> lane.savestate433 (out of free).
