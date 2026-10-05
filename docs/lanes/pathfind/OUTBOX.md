@@ -627,3 +627,7 @@ Named causes, from hold.jsonl:
 2. The name entry was answered with A, which types a letter on that keyboard (the 10-03 RULES warning), 12 times in a row. Nothing pressed START (which jumps to Done on some keyboards) or B to close it on the screen the model named. HOLD_NAV_MAX (12) then ended the hold.
 Not re-run. Identification is done. Next lever: a name_entry rule in the hold (START to Done, then A to confirm) and the still rotation not sending X on a bowling hold. Both are generic, so they go with the bowling-family fix, not a Strike-Force one-off.
 Frames: runs/strike-force-bowling/hold.
+
+[lane.pathfind] Strike Force Bowling FAIL (10-05 14:56, runs/strike-force-bowling/hold3; re-hold after the 14:27 fix): held 276 of 600 s. fps clear (median 59.0, 100% at the bar over 284 s). The bowl loop threw and scored (frame scorecard, aim, Player 1's turn). It ended on a high-score NAME ENTRY at 276 s: "off play for 13 steps", and the name_entry label now fires (reason rule and START, A per 10-05). The entry did not close in 13 presses (START, A, B cycled), so the cause is the name-entry keyboard's confirm, not the loop.
+Cause (not verified on the keyboard): the entry's Done/confirm is a cursor button the presses did not reach; the claim never saw a name entry. Named cost: about 60 s of game-over and entry per game, and a game is 10 frames. Stopped for today per lane.local (14:50); no further runs on this title today.
+Frames: runs/strike-force-bowling/hold3.
