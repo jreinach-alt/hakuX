@@ -4,10 +4,12 @@ What is in flight right now. Generated from the working tree and updated as work
 
 ## 0.5 release: 50 Playable titles
 
-**25 of 50** titles confirmed Playable (4 today). A title is Playable after a 600 s held run on a handheld at or above the frame-rate bar, with every kept frame reviewed.
+**27 of 50** titles confirmed Playable (6 today). A title is Playable after a 600 s held run on a handheld at or above the frame-rate bar, with every kept frame reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-05 | MLB SlugFest - Loaded | PASS 600.8 s, play_share 0.9995, fps_ok 1.0 (30 fps bar, window median 58.9, min 29.7), 0 hitches, audio_starve 0, no crash/hang (flicker not yet checked) |
+| 2026-10-05 | MLB SlugFest 2004 | PASS 603.9 s, play_share 0.9997, fps_ok 1.0 (30 fps bar, window median 44.4, min 32.0), 0 hitches, audio_starve 0, no crash/hang (flicker not yet checked) |
 | 2026-10-05 | AMF Bowling 2004 | accepted on review (89.2% against a 90% bar: 66 s walk-back through title and controller select after the 10-frame game ended) (flicker not yet checked) |
 | 2026-10-05 | MLB SlugFest 2003 | accepted on review (88.3% against a 90% bar: 74 s still between pitches, the game's pitch cycle) (flicker not yet checked) |
 | 2026-10-05 | NBA 2K2 | PASS 606.8 s, play_share 0.9996, fps_ok 0.995 (30 fps bar, window median 57.0, min 20.1), 0 hitches, audio_starve 0, no crash/hang (flicker not yet checked) |
@@ -38,10 +40,12 @@ What is in flight right now. Generated from the working tree and updated as work
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `217ab2ce8a` | 2026-10-05 12:56 |
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `5760db4dcd` | 2026-10-05 15:30 |
 
 ## Recently landed on master
 
+- `8522288a77` 2026-10-05 fold: lane/dashretro (offline) -- dashretro: the 0.5 panel counts the Playable ledger and pathfind's held runs (#433)
+- `22aa0df5d9` 2026-10-05 dashretro: the 0.5 panel counts the Playable ledger and pathfind's held runs (#433)
 - `d354705c69` 2026-10-05 fold: lane/hitchcause (offline) -- hitchcause: the MTV 330 ms hitches are guest-side waits, not the IDE host read ([ide425d] held run on af3
 - `750d572f1c` 2026-10-05 fold: lane/belowbar1005 (offline) -- belowbar1005: the #804 fence wait is not what holds Buffy, NG Black or DOA3 below the bar; their bounds
 - `fde487f5a0` 2026-10-05 belowbar1005: answer, side effects, do-not-repeat; PR ready (#433)
@@ -55,7 +59,5 @@ What is in flight right now. Generated from the working tree and updated as work
 - `a160529e4a` 2026-10-05 hitchcause: MTV [ide425d] hold on af37f7a3ea: the 330 ms hitches are guest-side waits, not the IDE host read (#433, #819)
 - `0dd4c30436` 2026-10-05 belowbar1005: Buffy arm N: Buffy reads no occlusion queries, the fence wait never runs on it; NGB and DOA3 perflog soaks queued, routes from
 - `097eb9567d` 2026-10-05 belowbar1005: build per below-bar run (Buffy/NGB ran without the #804 wait), offline bounds, Buffy WAIT A/B registered (#433)
-- `6dc95ff117` 2026-10-05 hitchcause: attempt 4 notes; IRQ14 is the IDE device on a DMA path; WAITING on the [ide425d] build smoke (#433, #819)
-- `af37f7a3ea` 2026-10-05 hitchcause: [ide425d] DMA, command-to-IRQ, IRQ-to-command and drain timing per 2 s window (telemetry only) (#433, #819)
 
-_Updated 2026-10-05 14:09 PDT._
+_Updated 2026-10-05 15:45 PDT._
