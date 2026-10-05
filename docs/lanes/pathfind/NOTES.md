@@ -35,6 +35,15 @@ What the next lane should not repeat:
 - **Self-moving races cannot be confirmed by frame change** (Mashed: the idle change was 0.3-0.86). The probe ladder's
   HOLD:A:3 did move the scene once (0.017 -> 0.814), but the confirm model refused it on a results card.
 
+## Resume (10-05 06:37 PDT, attempt 1 of the 10-04 22:2x overnight plan): why the last attempt did not finish
+
+- The 22:18 session started the Tork re-run as a session background task. The 600-s ceiling ended the session and killed the
+  run at about 311 s (`runs/tork-rerun/`, partial, not scored). Nothing ran overnight; the Nova was idle about 8 h.
+- No WAITING file was written and no run was queued, so the session ended with the owner's first item unstarted.
+- This attempt: selftest all ok (`pathfind_selftest: all ok`, before device time). Took the Nova with `scratch/heldrun.sh`
+  (`hold.sh wait`, then `wait-idle`, released on every exit) for the Tork re-run, `--state any` as in the 10-04 run,
+  output `runs/tork-rerun2/`. Log: `runs/tork-rerun2/heldrun.log`. The run is a held run, watched in the foreground.
+
 ## Resume (10-04 late, lane.pathfind attempt 1 of the 22:2x Tork brief): why the last attempt did not finish
 
 - The last session committed the two code changes the Tork brief asked for (a684c6035a letterboxed cutscene repeats and

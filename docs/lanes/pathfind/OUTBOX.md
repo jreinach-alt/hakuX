@@ -533,3 +533,13 @@ SCREENING DONE 12/12, clear 7, close 0, fail 1, can't-path 4
 - can't-path: Phantom Crash (story dialogue), The Simpsons Road Rage (the car never moved under RT), Mashed (self-moving race, rounds ended at once), Whiteout (load card never finished: NEW ISSUE above).
 - The owner's target of 8 clear-or-close was not reached: 7 of 12. Three PASS verdicts are Playable candidates for lane.local's frame review (RalliSport, Hit & Run, Dark Summit). Four more cleared fps but missed on hold design (play share or the hold's recovery), not on performance: AvP (RTS camera), LEGO (Diner hub and pause menu), MTV (between-round screens), Guilty Gear (CONTINUE screen).
 - Spend: about $53 of the $60 cap (Sonnet). The Nova is released.
+
+TORK RERUN: STOOD STILL (not traversed). Run docs/lanes/pathfind/runs/tork-rerun2/ (600 s hold, 603 s of play, fps median 29, fps_ok 1.0 at the bar, no crash/hang; frames every ~30 s in frames/, hold_strip.jpg).
+- First frame of the hold (031-gameplay.jpg): village with huts and fire, Tork on dirt in front of the huts.
+- Frames 041-056 (about 73 s to 600 s into the hold): the same cliff-side stair with cacti and a fence, Tork at the same spot (046 and 056 are nearly the same frame). The hold sent the same genre walk (STICK:up:4, A, STICK:up:3, STICK:right/left) every step from 73 s on and never changed action, so the stand-still check did not fire.
+- Reading: the player walked out of the village in the first minute, then stood on one stair for the rest of the window. This is the Tork lesson again: the walk loop is not enough, and there is no working stuck-detector yet. Not a Playable retest; the Playable already counts.
+- The automatic verdict says FAIL (static window 64%), but its frames are the claim's route-frames (13 sampled), not the hold's frames. Treat that verdict as the harness reading the wrong frames; the frame review above is the real judgement.
+- NEW ISSUE: Tork: the hold walk does not detect a stand-still (no action change for 500+ s)
+  Evidence: runs/tork-rerun2 (hold.jsonl steps 42-68: the same genre walk, changed 0.19-0.25 each step; frames 046 vs 056 the same spot). The hold must try a different action after 60 s with no movement (the brief's rule), which it did not.
+- Verdict run: 06:38-06:54 PDT. Spend this session: nothing new beyond the claim (4.3 min, 20 model calls, Sonnet). Stopped at 06:55 PDT, the 07:00 window.
+- Next (not started, window closes at 07:00): Tier 1 Guilty Gear XX, LEGO Star Wars, AvP.
