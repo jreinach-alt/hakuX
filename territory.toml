@@ -2065,3 +2065,9 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/gpuclock/**"]
 note = "STARTED lane.local 2026-10-05 08:40 PDT: GPU ms/frame vs GPU MHz per title under stock and pinned clocks; measurement only. Row written by hostops 2026-10-05 08:50 PDT (NO-ROW FAIL)."
+
+[lane.gpunonrender]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/gpunonrender/**", "hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/surface.c", "hw/xbox/nv2a/pgraph/vk/texture.c"]
+note = "STARTED lane.local 2026-10-05 16:40 PDT (owner: high value): bracket the non-render GPU time (uploads, copies, converts, clears) per category behind HAKUX_GPUXFR=1, default off; telemetry only; Sonnet, $25 cap."
