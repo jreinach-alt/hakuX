@@ -339,3 +339,12 @@ xo rose 1.8-2.4 C per run in either condition; no thermal pause, no ceiling cut 
   `align_decomp.py`, `cpu7share.py`; the instrument samples the CPU side (2b). Grant for
   profile.c: still no answer (no row change on origin/board). Simpsons host capture: not run (no
   `perf/2026-10-05-gpuclock/`).
+- 10-05 ~16:50 PDT: queued at 84c718ecdd (the cseq build), Nova, pins read back: Tron
+  `1-1791241711-...-435567` (default) and `1-1791241720-...-436985` (max), order drawn at random;
+  Forza replicate reversed, `1-1791241720-...-437094` (default) then `1-1791241721-...-437210`
+  (max). The Simpsons host script now probes Game Mode and fixed-performance mode after its blocks
+  (OUTBOX, revised host request). preflight at 51274c3a78 (`--allow-tracker`): every gate ok
+  except `coverage`, which fails on #834 (an open issue with no lane or blocker on origin/board),
+  a board row this lane may not edit. **Waiting** (WAITING): the four runs, the host session, the
+  grant. On resume: `readpairs.py` with the new pairs added, then align.py and NOTES 3b's split for
+  Tron, using `vmhz` from the TSV.
