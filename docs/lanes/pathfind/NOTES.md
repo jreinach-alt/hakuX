@@ -953,6 +953,13 @@ What this shows, and what it does not:
 - Midnight Club 3: the agent took Career (garage tutorial: buy a car, Test Drive) where Arcade might be
   shorter; it still reached driving in 6.2 min. The disk keeps saved profiles between runs (CAPA T2).
 
+## Resume 10-05 15:52 PDT (attempt 4, sports order): why attempt 3 did not finish
+- Attempt 3 wrote the day summary and the resume state at 15:47 and ended its turn with the Nova free, the order not done
+  (AMF Xtreme Bowling staged at 15:16 and unrun, then LEGO / AvP / sweep titles, then football) and the cap not reached.
+  Cause: the session treated the day summary as a stopping point. The 12:35 order runs to 6 Playables or 22:00.
+- This attempt: AMF Xtreme Bowling first (`scratch/amfxtreme.sh`, log `runs/amf-xtreme-bowling/heldrun.log`, started
+  15:55 detached), with AMF Bowling 2004's route in its goal (the xiso has no title id, so no sibling path file exists).
+
 ## Resume state 10-05 15:50 PDT (attempt 3, sports order)
 - Sibling verdicts today: Blitz 2002 PASS (harness), NBA 2K2 PASS (harness), MLB SlugFest 2004 PASS, MLB SlugFest Loaded PASS.
   MLB 2003 CLOSE (play 0.883), AMF Bowling 2004 CLOSE (play 0.892 after the bowl loop), NHL Hitz Pro CLOSE (fps 75 percent at 30).

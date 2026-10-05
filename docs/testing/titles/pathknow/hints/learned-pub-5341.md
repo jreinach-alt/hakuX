@@ -1,3 +1,2 @@
 # Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
-- Guilty Gear XX Reload The Midnight Carnival (53410002, nova, pathfind 2026-10-04): gameplay in 5.9 min via publisher_logo A -> cutscene START -> title_screen START -> main_menu A -> title_screen START -> main_menu A -> unknown A -> title_screen START -> publisher_logo A -> main_menu A -> submenu A -> title_screen START
-- Guilty Gear XX #Reload (53410002, nova, pathfind 2026-10-04): after a lost match the CONTINUE countdown did not take A (four presses ran it to GAME OVER); try START there. At character select START alone did not start a match.
+- Guilty Gear XX Reload The Midnight Carnival (53410002, nova, pathfind 2026-10-05): gameplay in 7.4 min via publisher_logo A -> title_screen START -> main_menu A -> submenu A -> title_screen START -> submenu A -> continue START -> submenu A -> continue START -> submenu A
