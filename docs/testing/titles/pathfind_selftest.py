@@ -161,9 +161,9 @@ rc, res, steps, calls = run("dialogue", [("cine", 0), ("cine", 40), ("cine", 80)
                              {"state": "cutscene", "why": "dialogue box", "action": ["A"], "wait_s": 2},
                              {"state": "main_menu", "why": "menu", "action": ["A"], "wait_s": 2}], ["--no-record"])
 src = [s.get("src") for s in steps]
-check("dialogue", src[:5] == ["fast", "repeat", "repeat", "repeat", "fast"],
-      f"one look, three unlooked repeats, then a look (not the stronger model): {src}")
-check("dialogue", all(s.get("action") == ["A"] for s in steps[:5]), "the repeats send the look's own press")
+check("dialogue", src[:6] == ["fast"] + ["repeat"] * 5,
+      f"one look, five unlooked repeats (CLAIM_REPEAT_BOX on a letterboxed cutscene), then the next step: {src}")
+check("dialogue", all(s.get("action") == ["A"] for s in steps[:6]), "the repeats send the look's own press")
 
 # proberot: a live HUD whose probe input never moves anything (Road Rage's RT, 10-04): the third probe is not RT
 check("proberot", [pathfind.probe_key(t) for t in ("RT:1.5", "RT:3", "HOLD:A:3", "STICK:up:2", "RT+left:1.2", "A")]

@@ -35,6 +35,33 @@ What the next lane should not repeat:
 - **Self-moving races cannot be confirmed by frame change** (Mashed: the idle change was 0.3-0.86). The probe ladder's
   HOLD:A:3 did move the scene once (0.017 -> 0.814), but the confirm model refused it on a results card.
 
+## Resume (10-04 late, lane.pathfind attempt 1 of the 22:2x Tork brief): why the last attempt did not finish
+
+- The last session committed the two code changes the Tork brief asked for (a684c6035a letterboxed cutscene repeats and
+  the intro/logo START-A-B ladder; 5bc98877ce TITLE_HOLD["55530040"] forward walk) and then ended. It queued no Tork
+  run: `runs/tork-rerun` did not exist, nothing was on the Nova, and there was no WAITING file.
+- Its selftest log (`scratch/pf_selftest3.log`) predates both commits, so the new code had never passed selftest.
+  Rerunning it now fails one check, `dialogue`: it still expects three unlooked repeats. The letterboxed cutscene
+  fixture gets `CLAIM_REPEAT_BOX` (6 presses including the first look), so the test expectation was stale, not the
+  code. Fixed in `pathfind_selftest.py` (five repeats after the first look). `pathfind_selftest: all ok` (65 checks,
+  `scratch/selftest-attempt4.log`).
+- `pathfind.py` is not edited in this attempt (brief: it belongs to lane.hangwatch). The working tree held only
+  NOTES.md changes from the session before this one, which this section now sits on.
+- The Nova was held by lane.local-overnight1004 (push of Rogue Trooper) at the start of this attempt, so the Tork run
+  waits on `hold.sh wait` through `scratch/heldrun.sh` (tag `lane.pathfind`, released on every exit).
+
+## Resume (10-04 22:10 PDT, attempt 3): why the last attempt did not finish
+
+- The 19:42 session (attempt 2) ran Tork, JSRF, Conker, DOA3, Amped 2, Ninja Gaiden Black, Buffy and Tron 2.0 in that order.
+  Results: Tork PASS (20:02), JSRF PASS (20:20), Conker GAVE UP at the claim budget, DOA3/Amped 2/NG Black/Buffy FAIL on fps or
+  identification, Tron 2.0 PASS (22:10, handed to lane.local for frame review).
+- It ended at 22:10 PDT, right after Tron's 600-s hold, and did not start the 22:2x overnight order. The overnight addendum
+  (Guilty Gear XX first, then LEGO, AvP, then the owner list) arrived while Tron was running, and the session had no WAITING
+  file and nothing queued. Cause: the session treated the Tron hold as the end of its work instead of the start of the queue.
+- Black Stone's hold3 (`runs/black-stone-hold3`) failed with the fighter never moving: NEW ISSUE filed in OUTBOX (10-04 22:10).
+- This attempt: committed the pending session state (1b56e71989), merged origin/master (bce438ecaa), reran
+  `pathfind_selftest.py` (all ok, `scratch/selftest-attempt3.log`), then started the overnight order at Guilty Gear XX.
+
 ## Resume (10-04 19:42 PDT, attempt 2): why the last attempt did not finish
 
 - The 19:13 session (attempt 1) wrote the Guilty Gear hold fix and selftested it. Its attempt-2 re-hold (19:29-19:40,
