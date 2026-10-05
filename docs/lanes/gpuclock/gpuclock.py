@@ -136,7 +136,19 @@ def read_run(d, block=None):
                 mhz, busy = s.split('/')
                 seq.append((int(mhz), int(busy)))
         w['seq'] = seq
-        w['mhz'] = statistics.mean(s[0] for s in seq) if seq and all(s[0] > 0 for s in seq) else None
+        # the CPU side (cseq; builds before the lane's second instrument have
+        # none): c7/c3/core per sample; the busiest thread's core clock is c7
+        # on core 7, c3 on cores 3-6
+        cseq = []
+        if g.get('cseq', '-') != '-':
+            for s in g['cseq'].split(','):
+                c7, c3, p = (int(x) for x in s.split('/'))
+                cseq.append((c7, c3, p, c7 if p == 7 else (c3 if 3 <= p <= 6 else None)))
+        w['cseq'] = cseq
+        w['vt'] = g.get('vt')
+        vm = [c[3] for c in cseq if c[3]]
+        w['vmhz'] = statistics.mean(vm) if vm and len(vm) == len(cseq) else None
+        w['mhz'] =statistics.mean(s[0] for s in seq) if seq and all(s[0] > 0 for s in seq) else None
         w['busy'] = statistics.mean(s[1] for s in seq) if seq and all(s[1] >= 0 for s in seq) else None
         w['fps'] = w['frames'] / w['dt'] if w['dt'] and w['frames'] else None
         w['F'] = 1000.0 / w['fps'] if w['fps'] else None
@@ -226,6 +238,26 @@ def summarize(r):
             else:
                 i += 1
     out['lag'] = (med(lags), len(lags), cens)
+    # the CPU side: where the busiest thread ran and the clock of its core
+    cs = [c for w in W for c in w.get('cseq', [])]
+    out['csamples'] = len(cs)
+    if cs:
+        core = {}
+        for c in cs:
+            core[c[2]] = core.get(c[2], 0) + 1
+        out['core'] = {k: v / len(cs) for k, v in sorted(core.items())}
+        vm = [c[3] for c in cs if c[3]]
+        vh = {}
+        for m_ in vm:
+            vh[m_] = vh.get(m_, 0) + 1
+        out['vhist'] = {k: v / len(vm) for k, v in sorted(vh.items())} if vm else {}
+        out['c7_at_max'] = sum(1 for c in cs if c[0] >= 3187) / len(cs)
+        out['vmhz'] = statistics.mean(vm) if vm else None
+        vts = {}
+        for w in W:
+            if w.get('vt'):
+                vts[w['vt'].split('/', 1)[-1]] = vts.get(w['vt'].split('/', 1)[-1], 0) + 1
+        out['vt'] = vts
     span = sum(w['dt'] for w in W if w['dt'])
     out['fps_mean'] = sum(w['frames'] for w in W if w['dt']) / span if span else None
     pw = r.get('pw') or {}
@@ -265,6 +297,10 @@ def show(r, s):
     print('   busy>=90 %s of samples; busy>=90 under the ceiling (hot) %s; step response after hot: median %s samples (n=%d, censored %d)' % (
         f(100 * s['busy90'] if s['busy90'] is not None else None) + '%', f(100 * s['hot'] if s['hot'] is not None else None) + '%',
         s['lag'][0], s['lag'][1], s['lag'][2]))
+    if s.get('csamples'):
+        print('   cpu (%d samples): busiest thread %s; its core %s; its core clock (MHz) %s, mean %s; cpu7 at 3187 %.0f%%' % (
+            s['csamples'], s['vt'], ' '.join('%d:%.0f%%' % (k, 100 * v) for k, v in s['core'].items()),
+            ' '.join('%d:%.0f%%' % (k, 100 * v) for k, v in s['vhist'].items()), f(s['vmhz'], 0), 100 * s['c7_at_max']))
     if 'hot0' in s:
         print('   thermal: hottest %s -> %s C (%s C/min), xo %s -> %s, pause %s, lowest ceiling %s MHz, cpu7 %s MHz, battery %s, thermal.jsonl gpuclk %s' % (
             f(s['hot0']), f(s['hot1']), f(s['rate'], 2), f(s['xo0']), f(s['xo1']), s['pause'], s['mincap'], s['cpu7'], s['batt'], s['th_gpu']))
@@ -305,11 +341,12 @@ for r, s in zip(runs, sums):
     show(r, s)
 if a.tsv:
     with open(a.tsv, 'w') as fh:
-        fh.write('run\tt\tfps\tF\tgms\tgrn\tmhz\tbusy\tfloor\tceil\tns\n')
+        fh.write('run\tt\tfps\tF\tgms\tgrn\tmhz\tbusy\tfloor\tceil\tns\tvmhz\n')
         for r in runs:
             for w in r['win']:
                 fh.write('\t'.join(str(x) for x in (r['name'], f(w['t']), f(w['fps'], 2), f(w['F'], 2), w['gms'], w['grn'],
-                                                     f(w['mhz'], 0), f(w['busy'], 0), w['floor'], w['ceil'], w['ns'])) + '\n')
+                                                     f(w['mhz'], 0), f(w['busy'], 0), w['floor'], w['ceil'], w['ns'],
+                                                     f(w['vmhz'], 0))) + '\n')
 if a.pair:
     for i in range(0, len(runs) - 1, 2):
         lo, hi = sums[i], sums[i + 1]

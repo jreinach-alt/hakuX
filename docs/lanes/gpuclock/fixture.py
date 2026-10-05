@@ -25,18 +25,26 @@ for name, mhz in (('lo', 401), ('hi', 615)):
               open(os.path.join(d, 'perf_regimen.json'), 'w'))
     json.dump(dict(device_label='thor', ref='fixture', env=[]), open(os.path.join(d, 'result.json'), 'w'))
     lines = ['10-05 09:59:59.000 I hakuX-perf: [gpuclk433] init period_us=100000 floor=401 ceil=680 gov=msm-adreno-tz err=none']
-    t = 0.0
+    t, cs = 0.0, 0
     for i in range(60):
         gms = C + K / mhz + random.gauss(0, 0.3)
         F = 1.6 * gms + 2
         t += 60 * F / 1000
         n = int(60 * F / 100)
         seq = ','.join('%d/%d' % (mhz, 95 if k % 3 == 0 else 70) for k in range(n))
+        # the CPU side: lo's busiest thread on core 7 at 3187 half the samples,
+        # core 7 at 1843 a quarter, core 4 (c3 2803) a quarter; hi's on core 7
+        # at 3187 throughout
+        cseq = ','.join('3187/2803/7' if name == 'hi' else
+                        ('3187/1651/7', '1843/1651/7', '3187/1651/7', '3187/2803/4')[(cs + k) % 4] for k in range(n))
+        cs += n
         m = int(t // 60)
         lines.append('10-05 10:%02d:%06.3f I hakuX-perf: [gpuclk433] f=%d frames=60 fr=60 gms=%.2f grn=%.2f '
-                     'floor=%d ceil=680 ns=%d dr=0 seq=%s' % (m, t - 60 * m, i * 60, gms, gms * .8,
-                                                             mhz if name == 'hi' else 401, n, seq))
+                     'floor=%d ceil=680 ns=%d dr=0 seq=%s vt=4242/CPU_0/TCG cseq=%s'
+                     % (m, t - 60 * m, i * 60, gms, gms * .8, mhz if name == 'hi' else 401, n, seq, cseq))
     open(os.path.join(d, 'logcat.txt'), 'w').write('\n'.join(lines) + '\n')
+print('expect cpu: lo core 4:25% 7:75%, core clock 1843:25% 2803:25% 3187:50%, cpu7 at 3187 75%; '
+      'hi core 7:100%, 3187:100%, cpu7 at 3187 100%; busiest thread CPU_0/TCG')
 print('expect: lo gms %.2f hi gms %.2f, e %.2f, fit c %.1f k %.0f' % (
     C + K / 401, C + K / 615, __import__('math').log((C + K / 401) / (C + K / 615)) / __import__('math').log(615 / 401), C, K))
 

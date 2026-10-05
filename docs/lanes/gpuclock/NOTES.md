@@ -72,6 +72,17 @@ Whether the app's SELinux context may read kgsl sysfs is unknown until the first
 adb shell can (thermal.jsonl), the app has never tried. If it cannot, the init line says so and
 the ladder still has `gms` plus thermal.jsonl's 30 s clock.
 
+### 2b. The CPU side (added in attempt 3, same file, telemetry only)
+
+`cseq=c7/c3/p,...`, one entry per `seq` sample: cpu7's and cpu3's `scaling_cur_freq` (MHz) and
+the core the busiest thread last ran on (field 39 of its `/proc/self/task/<tid>/stat`). `vt=tid/comm`
+names that thread: the one with the most utime+stime over the previous line's window, re-chosen at
+every line (the vCPU, ~97% of a core). The app pins nothing (no `pinned to` line in any run's
+logcat; XEMU_OPT_THREAD_AFFINITY is off), so the vCPU's core is read, not assumed. Reader:
+`gpuclock.py` prints the thread, its core shares, its core's clock distribution, and a `vmhz`
+TSV column; `fixture.py` plants a 25/25/50 split (core 7 at 1843 / core 4 at 2803 / core 7 at
+3187) and the reader returns it exactly. Type-checked at NV2A_PERF_LOG 1 and 0 (`synchk.py`).
+
 ## 3. The experiment, registered before any run
 
 Per title: arms at `PERF_REGIMEN=default` (floor 401) and `PERF_REGIMEN=max` (floor 615), same
@@ -111,6 +122,25 @@ e 0.5-0.8 and fps following partly; Tron, whose vCPU is the long pole (near30), 
 flat; Nightfire unknown. The governor holds the floor because the GPU idles while the CPU works
 (serialized frames), so busy% stays under its up-threshold: P 0.6 that busy >= 90% at the floor is
 under 10% of samples.
+
+### 3b. Registered before the attempt-3 runs (Tron and Forza on the cseq build)
+
+**Tron, the CPU confound.** Scene-match the pair (align.py lag), then split the matched bins by the
+stock arm's vCPU core clock from `cseq` (`vmhz` >= 3100: core at max; < 2500: core low). The max
+arm's core is expected at 3187 throughout (if not, the split is void and says so).
+- In core-at-max bins only the GPU floor differs. **The GPU explains Tron's fps** if dF/dGPU there
+  is <= 1.3 (registered band: the frame follows the GPU about 1:1, as in Nightfire).
+- **The CPU floor explains the excess** if dF/dGPU in core-at-max bins is <= 1.3 AND in core-low
+  bins >= 2.
+- **Neither** if dF/dGPU in core-at-max bins stays >= 2: the excess then comes from something the
+  floor moves other than either clock we read (the DDR vote that follows the GPU level, or a sync
+  wait whose latency is not GPU execution time), and it is named as unexplained.
+- Fewer than 15 matched bins in either class: no verdict on that class.
+
+**Forza, the replicate.** Reversed order (default first). Same rule as section 3; the two pairs'
+e are reported side by side, not pooled, and the 0.59 of pair 1 is called clock-limited only if
+pair 2's e is >= 0.6 as well. cseq checks that cpu7 is at its maximum in both arms (pair 1's 30 s
+samples: 13/14 and 15/15).
 
 ## 4. Device plan
 
@@ -153,6 +183,56 @@ under 10% of samples.
 - Cost: +0.76 W net (+10%) for +11% frames/time: J/frame unchanged (x0.99). Battery 80%, status
   Charging in the default arm (net draw 7.4 W exceeds the USB input, so the battery discharged
   anyway: +0.91 W and +1.67 W).
+
+### Pairs 2-4 (Nova, ref 521ea8a93e; `out/*.txt` is each reader output as printed)
+
+`gpuclock.py --pair LOW HIGH` medians (out/<pair>.txt), and `align.py` (new): both arms' windows in
+2 s bins from the mark, the high arm shifted by the lag that best correlates the two log-gms series,
+then per-bin ratios. Scripted content (a cutscene, a blind route) replays at the same pace in both
+arms, so once the lag is found equal time is the same scene; a correlation under 0.5 means the arms
+did not replay the same content. `align_decomp.py` puts near30's `decompose.py` vCPU split through
+the same lag (out/<pair>.adecomp.txt).
+
+| title (content) | pair, order | clock (100 ms samples) | gms low -> high | e (medians / scene-matched, corr) | F low -> high | dF / dGPU | validity | J/frame |
+|---|---|---|---|---|---|---|---|---|
+| Nightfire (prologue), pair 1 | default, max | 401 100% / 615 100% | 11.23 -> 7.67 | 0.89 / - | 29.2 -> 25.3 | 1.08 | fps void (stock arm cooled 0.64 C/min) | 0.225 -> 0.223 |
+| Nightfire, pair 2 | max, default | 401 100% / 615 100% | 11.24 -> 7.38 | **0.98 / 0.76 (0.88)** | 29.0 -> 25.0 | **1.03** (matched 0.84) | ok | 0.220 -> 0.212 |
+| Tron (in-engine intro, near30's path) | default, max | 401 99.4% / 615 100% | 5.50 -> 4.02 | 0.73 / 0.95 (0.86) | 21.1 -> 17.3 | 2.5 (matched 2.9) | fps void (1.97 vs 5.37 C/min); **cpu7 confound** | 0.137 -> 0.151 |
+| Forza (race, blind drive) | max, default (3.5 h apart) | 401 100% / 615 100% | 24.47 -> 19.02 | **0.59** / 0.66 (0.27: not matched) | 40.5 -> 37.2 | 0.61 | ok | 0.322 -> 0.305 |
+
+Frames checked: Forza's window is the race in both arms (8th place, lap 1/2) but the blind drive
+leaves the car in different places, so the scenes differ (corr 0.27; per 30 s segment e runs from
+-0.26 to 1.15). Tron's window is the in-engine intro, not play: the default arm ended in a loading
+screen, the max arm reached the "basic training" prompt 256 s after the mark. near30's 615-vs-401
+reading was the same intro.
+
+**Where the clock goes in the frame (scene-matched vCPU split).** In Nightfire and Forza the vCPU
+thread is on-CPU ~97% of the frame either way; the guest's *busy* time does not move (Nightfire
+15.0 -> 18.1 ms, Forza 25.2 -> 25.9) and its *idle*, woken by the timer, shrinks (Nightfire 13.5 ->
+6.9 ms, Forza 15.1 -> 11.6). The guest finishes its CPU work and then waits for the GPU; a faster
+GPU shortens the wait. That is the serialized frame, measured: F = guest CPU work + wait on GPU.
+Nightfire's segment 90-150 s (GPU 0.6 ms/frame, busy 5%: a scene with almost no GPU work) is the
+built-in check: there the clock should not help and does not (F 34 -> 38-40 ms, guest busy = F).
+
+**The knob is not GPU-only, and in Tron that decides it.** `cpu7share.py` (new; out/cpu7share.txt),
+from thermal.jsonl's 30 s samples:
+
+| arm | cpu7 (prime core) at 3187 | cpu3 (mid cluster) at 2803 |
+|---|---|---|
+| Nightfire default x2 | 9/9, 9/9 | 2/9, 5/9 |
+| Nightfire max x2 | 9/9, 9/9 | 9/9, 9/9 |
+| Tron default | **7/14** (the rest 1843) | 3/14 |
+| Tron max | 15/15 | 15/15 |
+| Forza default | 13/14 | 3/14 |
+| Forza max | 15/15 | 15/15 |
+
+In Nightfire and Forza the prime core sits at its maximum in both arms, so their dF is the GPU's
+(and dF <= dGPU, so the mid cluster's floor adds nothing visible). In Tron the guest never idles
+(gidle 0), the frame is the vCPU's, and the stock arm's prime core read 1843 MHz in half its
+samples: the knob moved the vCPU's clock too. Tron's v_run fell 24.8 -> 18.4 ms and v_blk 6.7 ->
+3.3 ms (matched); dF is 2.9x dGPU. Tron's fps gain cannot be given to the GPU from these runs. The
+30 s samples cannot say which bins ran at 1843, so the instrument now samples the CPU side too
+(section 2b) and Tron is re-run on it.
 
 ### What a third rung needs
 
@@ -199,3 +279,13 @@ step is short, x1.12, so its e carries +-0.1 from 0.3 ms of noise).
   identification (OUTBOX), not re-run. Forza moved to the Nova on ibcache's blind drive route
   (`forza-nova-gpuclock.route`; drive.py stuck on the Nova's menus on 10-03): `-2660089` (max)
   then `-2660193` (default), order drawn at random.
+- 10-05 ~16:00 PDT, **attempt 3**. Why attempt 2 did not finish: it did not fail; it ended,
+  correctly, in a waiting state on six queued Nova runs (WAITING), the profile.c grant and the
+  Simpsons host capture, all outside the session. The handback resumed the lane when the last run
+  (Forza default, `-2660193`, which waited ~3.5 h behind pathfind) was DONE. Merged origin/master
+  (8522288a77). Read pairs 2-4 (section 5): Nightfire replicates (e 0.98, fps follows 1:1, valid);
+  Forza e 0.59 with scenes unmatched; Tron e 0.73-0.95 but its fps gain is confounded with the
+  prime core's clock (stock arm at 1843 MHz in 7 of 14 samples). New: `align.py`,
+  `align_decomp.py`, `cpu7share.py`; the instrument samples the CPU side (2b). Grant for
+  profile.c: still no answer (no row change on origin/board). Simpsons host capture: not run (no
+  `perf/2026-10-05-gpuclock/`).

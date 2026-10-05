@@ -65,6 +65,13 @@ void nv2a_profile_increment(void)
  *            samples, dr = samples the ring dropped (the line came too late).
  *   floor/ceil  min_clock_mhz and max_clock_mhz at the line: the
  *            performance_mode floor and the thermal ceiling.
+ *   cseq     the CPU side, one entry per seq sample: `c7/c3/p`, the prime
+ *            core's (cpu7) and the mid cluster's (cpu3, policy3) clocks in
+ *            MHz and the core the busiest thread last ran on. performance_mode
+ *            raises the CPU floors with the GPU's, so a GPU reading needs the
+ *            CPU's beside it. vt = that thread, `tid/comm`: the one with the
+ *            most CPU time over the previous line's window (the vCPU, which
+ *            runs ~97% of a frame), re-chosen at every line.
  *
  * Read from the app's own context. A node the app may not read is said once,
  * in the init line (`err=<node>:<errno>`), and its field is -1, never 0.
@@ -73,20 +80,47 @@ void nv2a_profile_increment(void)
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <dirent.h>
 
 #define GPUCLK_DIR "/sys/class/kgsl/kgsl-3d0/"
+#define GPUCLK_CPUFREQ(n) "/sys/devices/system/cpu/cpu" #n "/cpufreq/scaling_cur_freq"
 #define GPUCLK_PERIOD_US 100000
 #define GPUCLK_RING 256
 #define GPUCLK_SEQ_MAX 120
+#define GPUCLK_TASKS 160
 
 static struct {
-    int fd_clk, fd_busy;
+    int fd_clk, fd_busy, fd_c7, fd_c3;
     uint32_t ring[GPUCLK_RING];    /* mhz << 8 | (busy + 1), 0 = empty */
+    uint32_t cring[GPUCLK_RING];   /* c7 << 20 | c3 << 8 | (cpu + 1) */
     unsigned head;                 /* written by the sampler only */
     unsigned tail;                 /* read by the line only */
+    int vtid;                      /* set by the line, read by the sampler */
     int64_t win_gpu_ns, win_rnd_ns;
     unsigned win_frames, win_gpu_frames;
-} gpuclk = { -1, -1 };
+} gpuclk = { -1, -1, -1, -1 };
+
+/* The core a thread last ran on: field 39 of its stat, the 37th after ')'. */
+static int gpuclk_task_cpu(int fd)
+{
+    char b[512];
+    ssize_t n;
+    char *p;
+    int i;
+    if (fd < 0) {
+        return -1;
+    }
+    n = pread(fd, b, sizeof(b) - 1, 0);
+    if (n <= 0) {
+        return -1;
+    }
+    b[n] = 0;
+    p = strrchr(b, ')');
+    for (i = 0; p && i < 37; i++) {
+        p = strchr(p + 1, ' ');
+    }
+    return p ? atoi(p + 1) : -1;
+}
 
 static long gpuclk_read(int fd)
 {
@@ -119,17 +153,122 @@ static long gpuclk_read_path(const char *name)
 
 static void *gpuclk_sampler(void *opaque)
 {
+    int vtid = 0, vfd = -1;
     for (;;) {
         long hz = gpuclk_read(gpuclk.fd_clk);
         long busy = gpuclk_read(gpuclk.fd_busy);
+        long c7 = gpuclk_read(gpuclk.fd_c7);
+        long c3 = gpuclk_read(gpuclk.fd_c3);
+        int want = qatomic_read(&gpuclk.vtid), cpu;
         uint32_t mhz = hz > 0 ? (uint32_t)(hz / 1000000) : 0;
         uint32_t b = busy >= 0 && busy <= 100 ? (uint32_t)busy + 1 : 0;
+        uint32_t m7 = c7 > 0 ? MIN((uint32_t)(c7 / 1000), 4095u) : 0;
+        uint32_t m3 = c3 > 0 ? MIN((uint32_t)(c3 / 1000), 4095u) : 0;
         unsigned h = qatomic_read(&gpuclk.head);
+        if (want != vtid) {
+            char path[64];
+            if (vfd >= 0) {
+                close(vfd);
+            }
+            snprintf(path, sizeof(path), "/proc/self/task/%d/stat", want);
+            vfd = want > 0 ? open(path, O_RDONLY | O_CLOEXEC) : -1;
+            vtid = want;
+        }
+        cpu = gpuclk_task_cpu(vfd);
         gpuclk.ring[h % GPUCLK_RING] = (mhz << 8) | b;
+        gpuclk.cring[h % GPUCLK_RING] = (m7 << 20) | (m3 << 8) |
+                                        (uint32_t)(cpu >= 0 && cpu < 254 ? cpu + 1 : 0);
         qatomic_set(&gpuclk.head, h + 1);
         usleep(GPUCLK_PERIOD_US);
     }
     return NULL;
+}
+
+/*
+ * The busiest thread of this process over the last window (utime + stime
+ * delta, /proc/self/task): the vCPU. Its tid goes to the sampler, which reads
+ * the core it runs on; `vt` in the line names it.
+ */
+static void gpuclk_pick_thread(char *vt, size_t vtlen)
+{
+    static int tids[GPUCLK_TASKS];
+    static unsigned long ticks[GPUCLK_TASKS];
+    static int ntask;
+    int ntids[GPUCLK_TASKS];
+    unsigned long nticks[GPUCLK_TASKS];
+    int nn = 0, best = 0, i, fd;
+    unsigned long best_d = 0;
+    struct dirent *de;
+    DIR *d = opendir("/proc/self/task");
+    char path[64], b[512];
+
+    snprintf(vt, vtlen, "-");
+    if (!d) {
+        return;
+    }
+    while ((de = readdir(d)) && nn < GPUCLK_TASKS) {
+        int tid = atoi(de->d_name);
+        unsigned long ut = 0, st = 0, prev = 0;
+        ssize_t n;
+        char *p;
+        if (tid <= 0) {
+            continue;
+        }
+        snprintf(path, sizeof(path), "/proc/self/task/%d/stat", tid);
+        fd = open(path, O_RDONLY | O_CLOEXEC);
+        if (fd < 0) {
+            continue;
+        }
+        n = pread(fd, b, sizeof(b) - 1, 0);
+        close(fd);
+        if (n <= 0) {
+            continue;
+        }
+        b[n] = 0;
+        p = strrchr(b, ')');
+        /* utime and stime are fields 14 and 15: the 12th and 13th after ')' */
+        for (i = 0; p && i < 12; i++) {
+            p = strchr(p + 1, ' ');
+        }
+        if (!p || sscanf(p + 1, "%lu %lu", &ut, &st) != 2) {
+            continue;
+        }
+        for (i = 0; i < ntask; i++) {
+            if (tids[i] == tid) {
+                prev = ticks[i];
+                break;
+            }
+        }
+        ntids[nn] = tid;
+        nticks[nn] = ut + st;
+        if (i < ntask && ut + st - prev >= best_d) {
+            best_d = ut + st - prev;
+            best = tid;
+        }
+        nn++;
+    }
+    closedir(d);
+    memcpy(tids, ntids, nn * sizeof(int));
+    memcpy(ticks, nticks, nn * sizeof(unsigned long));
+    ntask = nn;
+    if (best > 0) {
+        char comm[24] = "?";
+        snprintf(path, sizeof(path), "/proc/self/task/%d/comm", best);
+        fd = open(path, O_RDONLY | O_CLOEXEC);
+        if (fd >= 0) {
+            ssize_t r = pread(fd, comm, sizeof(comm) - 1, 0);
+            comm[r > 0 ? r : 0] = 0;
+            comm[strcspn(comm, "\n")] = 0;
+            for (i = 0; comm[i]; i++) {
+                if (comm[i] == ' ' || comm[i] == ',') {
+                    comm[i] = '_';
+                }
+            }
+            close(fd);
+        }
+        snprintf(vt, vtlen, "%d/%s", best, comm);
+        qatomic_set(&gpuclk.vtid, best);
+    }
 }
 
 static void gpuclk_start(void)
@@ -148,6 +287,14 @@ static void gpuclk_start(void)
     if (gpuclk.fd_busy < 0) {
         n += snprintf(err + n, sizeof(err) - n, " busy:%d", errno);
     }
+    gpuclk.fd_c7 = open(GPUCLK_CPUFREQ(7), O_RDONLY | O_CLOEXEC);
+    if (gpuclk.fd_c7 < 0) {
+        n += snprintf(err + n, sizeof(err) - n, " cpu7:%d", errno);
+    }
+    gpuclk.fd_c3 = open(GPUCLK_CPUFREQ(3), O_RDONLY | O_CLOEXEC);
+    if (gpuclk.fd_c3 < 0) {
+        n += snprintf(err + n, sizeof(err) - n, " cpu3:%d", errno);
+    }
     fd = open(GPUCLK_DIR "devfreq/governor", O_RDONLY | O_CLOEXEC);
     if (fd >= 0) {
         ssize_t r = pread(fd, gov, sizeof(gov) - 1, 0);
@@ -161,7 +308,7 @@ static void gpuclk_start(void)
                         GPUCLK_PERIOD_US, gpuclk_read_path("min_clock_mhz"),
                         gpuclk_read_path("max_clock_mhz"), gov,
                         n ? err + 1 : "none");
-    if (gpuclk.fd_clk >= 0 || gpuclk.fd_busy >= 0) {
+    if (gpuclk.fd_clk >= 0 || gpuclk.fd_busy >= 0 || gpuclk.fd_c7 >= 0) {
         pthread_create(&th, NULL, gpuclk_sampler, NULL);
         pthread_detach(th);
     }
@@ -180,13 +327,16 @@ static void gpuclk_line(unsigned int frame)
 {
     static bool started;
     char seq[GPUCLK_SEQ_MAX * 9 + 1];
+    char cseq[GPUCLK_SEQ_MAX * 15 + 1];
+    char vt[48];
     unsigned h, t, ns = 0, dr = 0;
-    int n = 0;
+    int n = 0, cn = 0;
 
     if (!started) {
         started = true;
         gpuclk_start();
     }
+    gpuclk_pick_thread(vt, sizeof(vt));
     h = qatomic_read(&gpuclk.head);
     t = gpuclk.tail;
     if (h - t > GPUCLK_RING) {
@@ -194,11 +344,16 @@ static void gpuclk_line(unsigned int frame)
         t = h - GPUCLK_RING;
     }
     seq[0] = 0;
+    cseq[0] = 0;
     for (; t != h; t++) {
         uint32_t s = gpuclk.ring[t % GPUCLK_RING];
+        uint32_t c = gpuclk.cring[t % GPUCLK_RING];
         if (ns < GPUCLK_SEQ_MAX) {
             n += snprintf(seq + n, sizeof(seq) - n, "%s%u/%d", ns ? "," : "",
                           s >> 8, (int)(s & 0xff) - 1);
+            cn += snprintf(cseq + cn, sizeof(cseq) - cn, "%s%u/%u/%d",
+                           ns ? "," : "", c >> 20, (c >> 8) & 0xfff,
+                           (int)(c & 0xff) - 1);
         } else {
             dr++;
         }
@@ -207,12 +362,12 @@ static void gpuclk_line(unsigned int frame)
     gpuclk.tail = h;
     __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
         "[gpuclk433] f=%u frames=%u fr=%u gms=%.2f grn=%.2f floor=%ld ceil=%ld "
-        "ns=%u dr=%u seq=%s",
+        "ns=%u dr=%u seq=%s vt=%s cseq=%s",
         frame, gpuclk.win_frames, gpuclk.win_gpu_frames,
         gpuclk.win_frames ? gpuclk.win_gpu_ns / 1e6 / gpuclk.win_frames : -1.0,
         gpuclk.win_frames ? gpuclk.win_rnd_ns / 1e6 / gpuclk.win_frames : -1.0,
         gpuclk_read_path("min_clock_mhz"), gpuclk_read_path("max_clock_mhz"),
-        ns, dr, ns ? seq : "-");
+        ns, dr, ns ? seq : "-", vt, ns ? cseq : "-");
     gpuclk.win_gpu_ns = gpuclk.win_rnd_ns = 0;
     gpuclk.win_frames = gpuclk.win_gpu_frames = 0;
 }
