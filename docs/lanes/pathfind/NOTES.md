@@ -49,6 +49,20 @@ What the next lane should not repeat:
   sports setup line in the claim prompt, a per-hold sports look logged in `held["sports"]`), with selftest; (2) the Sports
   section in `pathknow/hints/global.md`; (3) NFL Blitz 2002 first-run to a verdict once the Nova gap allows, under the
   period-length rule; (4) then the lead-title order.
+- Done: (1) 500dcaff1d sports rule, selftest 69 ok (`scratch/selftest-attempt3c.log` is before the grace test fix; the
+  final run is `scratch/selftest-attempt3e.log`, all ok); (2) the Sports section in `global.md`; a claim confirm grace of
+  one 5-min window past the claim budget (dedf328901; the MTV give-up at step 88-89 is the case it fixes, and no selftest
+  case covers it: the selftest pins `CONFIRM_GRACE_S = 0` because its budgets are seconds long, so the next real claim is
+  its test); a pre-snap formation is not play, plus `series-nfl-blitz.md` (1e8bd8d269).
+- NFL Blitz 2002, first run (`runs/nfl-blitz-2002/hold`, log `heldrun.log`, 10:50-11:05): CLAIM FAIL, gave up at 15 min.
+  The period was never set: Quickplay goes main menu -> SELECT TEAMS -> loading -> kickoff, clock 1ST 2:00. The model
+  assumed a setup screen after team select; none appeared. Pre-snap formations were read as gameplay four times and
+  refused by the probe. OUTBOX has the line and a NEW ISSUE.
+- Launch note: the Nova was held by lane.local's sports push and the frametrace request when the run took it; `hold.sh
+  wait` then `wait-idle` took 10:50. The run was started detached from python3 (`subprocess.Popen(..., start_new_session=True)`)
+  because the Bash tool rejects `setsid`; poll its log in the foreground.
+- Next: rerun NFL Blitz 2002 with the claim goal that opens OPTIONS first (`scratch/blitz.sh`). The OPTIONS location is
+  unverified; if the claim finds no period setting in OPTIONS either, the rerun's own frames say where to look.
 
 ## Resume (10-05 09:58 PDT, attempt 2 of the 10:00 sports order): why the last attempt did not finish
 

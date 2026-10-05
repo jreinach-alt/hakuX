@@ -1,0 +1,30 @@
+{
+ "title_id": null,
+ "name": "NFL Blitz 2002",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/NFL_Blitz_2002.xiso.iso",
+ "result": "gave-up",
+ "tool": "fd72244b28",
+ "started": "2026-10-05 10:50:09 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nfl-blitz-2002/hold/frames/080-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nfl-blitz-2002/hold/frames/080-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nfl-blitz-2002/hold/frames/080-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nfl-blitz-2002/hold/frames/080-probe-right.jpg"
+ ],
+ "reason": "budget 15 min",
+ "last_state": "probe",
+ "model_calls": 84,
+ "calls_by_model": {
+  "claude-sonnet-5": 84
+ },
+ "steps": 80,
+ "seconds": 912.9,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nfl-blitz-2002/hold/frames/079-gameplay.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nfl-blitz-2002/hold/strip.jpg"
+}

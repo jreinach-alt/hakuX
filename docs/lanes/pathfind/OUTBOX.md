@@ -562,3 +562,11 @@ TORK RERUN: STOOD STILL (not traversed). Run docs/lanes/pathfind/runs/tork-rerun
 - Next (rerun 7, running): a model-free rule in the fighting hold, a menu look whose reason names a select screen (not a title or attract) takes A, not START. Selftest 66 ok.
 
 [lane.pathfind] Guilty Gear XX rerun 7 (10-05 09:37, runs/gg-rerun7): HELD 608 s of play, FAIL on play share 78.3% (menu 111 s, black 15 s, continue 12 s). fps_ok 1.0 at 59 median. CLASS: CLOSE (60-90%), not Playable. The select rule works (A on select, no START on the character screens). What is left is the fight itself: the loop loses a round two or three times in 10 min, and each game over returns through title, ARCADE, select, versus (5-7 looks, ~6 s each). Named cost: game-over walk-back, about 35 s per loss. A cheaper loop is the next lever, not another rerun of this hold. Frames: gg-rerun7/hold_strip.jpg.
+
+[lane.pathfind] NFL Blitz 2002 (10-05 ~10:50-11:05, runs/nfl-blitz-2002): CLAIM FAIL, gave up at the 15-min budget after 80 steps, 84 model calls (Sonnet; spend not totalled here, see calls.jsonl). No gameplay confirmed, no hold, no verdict. Named causes, from steps.jsonl and frames 010/016:
+1. The period was not set. Quickplay went main menu -> SELECT TEAMS (A FORWARD) -> loading -> kickoff with the first quarter's clock at 1ST 2:00 (frame 016). The model guessed the quarter setting came after team select; no such screen appeared. OPTIONS on the main menu was never opened. Next run's goal says OPTIONS first (unverified location).
+2. Pre-snap formations with the HUD and no menu were read as gameplay four times (steps 16, 73, 76, 79); the stick probe moved nothing and the claim spent its budget there. Rule added: a formation before the snap is not play; A snaps.
+Hint: docs/testing/titles/pathknow/hints/series-nfl-blitz.md. Sports rule committed (500dcaff1d, 1e8bd8d269): period_break state with START then A, sports look before a team hold, claim sets the longest period.
+
+NEW ISSUE: NFL Blitz 2002 claim cannot set the quarter length (Quickplay has no period screen; the setting is not found) and reads pre-snap formations as gameplay
+Evidence: docs/lanes/pathfind/runs/nfl-blitz-2002/hold/steps.jsonl (steps 8-16 period, 16/73/76/79 pre-snap), frames 010-016. Blocks the sports family's standing period rule (Blitz and its siblings).
