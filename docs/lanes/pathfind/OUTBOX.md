@@ -543,3 +543,8 @@ TORK RERUN: STOOD STILL (not traversed). Run docs/lanes/pathfind/runs/tork-rerun
   Evidence: runs/tork-rerun2 (hold.jsonl steps 42-68: the same genre walk, changed 0.19-0.25 each step; frames 046 vs 056 the same spot). The hold must try a different action after 60 s with no movement (the brief's rule), which it did not.
 - Verdict run: 06:38-06:54 PDT. Spend this session: nothing new beyond the claim (4.3 min, 20 model calls, Sonnet). Stopped at 06:55 PDT, the 07:00 window.
 - Next (not started, window closes at 07:00): Tier 1 Guilty Gear XX, LEGO Star Wars, AvP.
+
+[lane.pathfind] TORK RERUN 2 (10-05 07:23, runs/tork-rerun3, 600 s hold on the walk with the stand-still move): STOOD STILL. Verdict says FAIL (still 100 s, play share 0.857, fps_ok 1.0 at 29 locked). Frames agree: 059 village with the fire; 062 to 088 the same stair, the fence at the same place, the "Press A to jump" prompt on screen, Tork in the same spot every frame from 62 on.
+- Why the stand-still move did not fire: the window test (classify.motion) read 0.17-0.30 on every 30-s window that stood still, because the attack flash changes pixels in place. Two still windows in a row never happened, so no move was sent. My detector fixed the trigger, not the measure.
+- Fix committed on lane/pathfind: title holds judge still by the scene's shift (phase correlation, scene_shift: 0 px on every standing pair, 36 px on the walk out of the village), and two still windows send the next move. Rerun next (tork-rerun4).
+- Spend this session: claim 4.3 min, about 20 Sonnet calls for the claim, plus one hold. Running total against the $80 cap is in the next line.

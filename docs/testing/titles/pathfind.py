@@ -134,6 +134,7 @@ INTRO_STATES = ("cutscene", "intro_video", "publisher_logo")
 # move in that window. 10-03, scratch/posprobe.py on the held runs: Black Stone standing on its octagon for 600 s
 # (sword swinging, verdict PASS) 0.002-0.013 per 30-s pair; Panzer Dragoon Orta flying 0.31-0.92.
 HOLD_STILL = 0.03
+SHIFT_STILL = 1.5                    # a title hold's still window: the scene moved under this many pixels (scene_shift)
 # "should we continue?" (owner 10-04 ~08:10): at 3 and 5 min of a hold longer than 5 min, read the gfps lines the
 # hold's logcat has so far. A title on course for clear/close has >= 60% of seconds at >= 30 fps or a median >= 27;
 # median < 22 at 3 min, or < 27 at 5 min (and the share under 60%), will not get there: stop the hold, so the
@@ -392,6 +393,25 @@ def window_change(a, b):
     """Change between two kept hold frames at the probe's contrast step: did the player or camera move?"""
     ga = grey(a)
     return classify.motion(ga, grey(b), pixel=probe_step(ga))[0]
+
+
+def scene_shift(a, b):
+    """How far the scene moved between two hold frames, in pixels at 160x120 (phase correlation of the grey frames).
+    A camera that follows the player moves the scene when the player walks; an attack flash or an effect in place
+    does not. Tork (10-05, runs/tork-rerun3): window change 0.17-0.26 on every 30-s window of a stand-still stair, shift
+    0 px on each; the walk out of the village shifted 36 px."""
+    fa = np.asarray(grey(a).resize(classify.MOTION_SIZE, Image.BILINEAR), dtype=np.float64)
+    fb = np.asarray(grey(b).resize(classify.MOTION_SIZE, Image.BILINEAR), dtype=np.float64)
+    fa -= fa.mean()
+    fb -= fb.mean()
+    h, w = fa.shape
+    win = np.outer(np.hanning(h), np.hanning(w))
+    peak = np.abs(np.fft.ifft2(np.fft.fft2(fa * win) * np.conj(np.fft.fft2(fb * win)) /
+                               (np.abs(np.fft.fft2(fa * win) * np.conj(np.fft.fft2(fb * win))) + 1e-9)))
+    iy, ix = np.unravel_index(np.argmax(peak), peak.shape)
+    dy = iy - h if iy > h // 2 else iy
+    dx = ix - w if ix > w // 2 else ix
+    return float(np.hypot(dx, dy))
 
 
 def probe_key(tok):
@@ -1601,7 +1621,12 @@ class Agent:
                 if kept and not off:
                     mv = window_change(kept[-1], jp)
                     look["window"] = round(mv, 4)
-                    if mv < HOLD_STILL:
+                    # a title hold judges still by the scene's shift (an effect in place changes pixels, not the scene)
+                    if th:
+                        sh = scene_shift(kept[-1], jp)
+                        look["shift"] = round(sh, 1)
+                    still_now = sh < SHIFT_STILL if th else mv < HOLD_STILL
+                    if still_now:
                         still_windows += 1
                         if th:
                             # two still windows in a row (60 s): X once, then a different move for the next 30 s
