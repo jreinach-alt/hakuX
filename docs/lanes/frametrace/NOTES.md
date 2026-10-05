@@ -199,9 +199,30 @@ include the GPU's execution of frame N (asynchronous).
 ## Log
 
 - 10-05 session 1: read profile.c, cpus.c, the vcpu60 / vcpusleep NOTES,
-  near30's decompose.py; designed the record; grant request G1-G7 in
-  OUTBOX; instrument and selftest written; holder test redesigned after the
-  live selftest refuted the whole-span version (section 1).
+  near30's decompose.py; designed the record; grant request G1-G8 in
+  OUTBOX (`hooks.diff`, type-checked); instrument and selftest written;
+  holder test redesigned after the live selftest refuted the whole-span
+  version (section 1). Thor pilot read (section 3). Holder thread (`vho`)
+  and per-frame wait counts (`nw`) added at 22a1ac3942 (after the queued
+  Nova runs' ref 0bb89cd1f5, so those runs do not carry them).
+- 10-05 ~09:20 PDT, **waiting** (WAITING file): the three Nova runs
+  (Nightfire on, Tron on, Nightfire off), queued behind pathfind's hold and
+  five other requests. Also outstanding, not in WAITING because nothing
+  resolves them automatically: the G1-G8 grant and the Simpsons host
+  capture (OUTBOX).
+
+### Next session, in order
+
+1. Read the Nightfire on-run (`ftread.py <result>`): gameplay window,
+   the five tables. O1 from `ins` + `wcpu_us`. Check the [hakuX-ft1] and
+   [hakuX-ft] lines arrived on hakuX-lane.
+2. O2/O3 from the Nightfire on/off pair (gfps and [idlehalt] run_us per
+   frame over each scored window).
+3. Tron read. If the pilot reads clean, write `pilots/lane.frametrace.ok`
+   and queue the rest (Forza on the Nova if its copy is there, a second
+   overhead pair if O2 is inside noise but unclear).
+4. If granted: apply `hooks.diff` as one commit, re-run the selftest and
+   the type-check, and re-capture the four titles on that ref.
 
 ## Do not repeat
 

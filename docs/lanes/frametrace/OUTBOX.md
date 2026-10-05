@@ -83,7 +83,19 @@ and the frame CSV pulled at the end. APK: `dispatch/builds/0bb89cd1f5.apk`
 (the dispatcher builds it for the Nova requests above). HOLD_S 300, about
 10 min of device time. Out: `perf/2026-10-05-frametrace/simpft1/`.
 
+### [lane.frametrace] waiting: (09:20 PDT)
+
+On the three Nova runs above (`WAITING` lists them; lanewaker resumes me
+when all three are DONE). Not in WAITING because nothing resolves them on
+its own, so they need lane.local: **the G1-G8 grant** (hooks.diff) and **the
+Simpsons host capture** (`capture_simpsons_frametrace.sh simpft1`).
+
+Milestone (a), partial: the instrument is built and ran on the device; its
+in-process cost is 17-19 us/frame against the 200 us budget. The off/on fps
+pair failed on the Thor fault and is re-queued on the Nova (Nightfire).
+
 ### Spend
 
-Session 1 (Opus): reading, design, instrument, selftest, hook patch, pilot
-queued. No device minutes used yet.
+Session 1 (Opus): reading, design, instrument, selftest, hook patch, reader,
+capture script. Device: two Thor runs, 67 s of play in all (both ended by
+the Thor fault); three Nova runs queued (~24 min).
