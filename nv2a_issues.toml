@@ -5790,3 +5790,35 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "Forge issue, open; hostops 2026-10-05 (08:10 PDT, jam duty) added the row to clear the coverage gate: the fleet and coverage check both report #823 with no row. Nothing blocks it: titlestate.py set_hdd's </map> check (line 1059) raises on a held run; the fix is a harness code change for lane.local to start."
+
+[issue.829]
+title = "NFL Blitz 2002 claim cannot set the quarter length (Quickplay has no period screen) and reads pre-snap formations as gameplay"
+no_suites = "a navigation and measurement defect in lane.pathfind's hold; no golden suite scores a title's period setting."
+disposition = "harness"
+status = "open"
+status_note = "Classified by hostops 2026-10-05 so the coverage gate can pass; filed by issue_sync from lane.pathfind OUTBOX.md (evidence: docs/lanes/pathfind/runs/nfl-blitz-2002/hold/steps.jsonl steps 8-16, frames 010-016)."
+blocked_on = "lane.pathfind (running, holds the Nova) owns the fix in docs/testing/titles/pathfind.py. Refuted by a held pathfind run on NFL Blitz 2002 that finds and sets the quarter length from a menu and whose frames count no pre-snap screen as gameplay."
+
+[issue.830]
+title = "A play-call overlay between football plays reads as play in the hold (the play share counts it)"
+no_suites = "a measurement defect in lane.pathfind's hold classifier; the verdict's play share is the harness figure, not a golden score."
+disposition = "harness"
+status = "open"
+status_note = "Classified by hostops 2026-10-05 so the coverage gate can pass; filed by issue_sync from lane.pathfind OUTBOX.md (evidence: hold2 frames 097, 115, 118, 124, 130)."
+blocked_on = "lane.pathfind (running, holds the Nova) owns the fix in docs/testing/titles/pathfind.py. Refuted by a held football run whose play-call overlay frames are classed out of play, with play share recomputed from the remaining frames."
+
+[issue.832]
+title = "Bowling hold loop throws nothing and a frame scorecard ends the hold (team loop used for bowling; continue budget exhausted on frame scorecards)"
+no_suites = "a navigation defect in lane.pathfind's hold loop; no golden suite scores a hold."
+disposition = "harness"
+status = "open"
+status_note = "Classified by hostops 2026-10-05 so the coverage gate can pass; filed by issue_sync from lane.pathfind OUTBOX.md (evidence: docs/lanes/pathfind/runs/amf-bowling-2004/hold/hold.jsonl hold_s 197-386)."
+blocked_on = "lane.pathfind (running, holds the Nova) owns the fix in docs/testing/titles/pathfind.py. Refuted by a held AMF Bowling 2004 run whose hold loop emits at least one input and whose frame scorecards do not end the hold."
+
+[issue.833]
+title = "NHL 2K3 claim cannot confirm a controlled skater: stick probes never move the player (controller not assigned on team select, likely)"
+no_suites = "a navigation defect in lane.pathfind's claim step; no golden suite scores a controller assignment."
+disposition = "harness"
+status = "open"
+status_note = "Classified by hostops 2026-10-05 so the coverage gate can pass; filed by issue_sync from lane.pathfind OUTBOX.md (evidence: docs/lanes/pathfind/runs/nhl-2k3/hold/steps.jsonl steps 32-70)."
+blocked_on = "lane.pathfind (running, holds the Nova) owns the fix in docs/testing/titles/pathfind.py. Refuted by a held NHL 2K3 run where a stick probe moves the controlled skater after the controller is assigned on team select."
