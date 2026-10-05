@@ -592,6 +592,107 @@ restore_hdd_pref() {
     log "  hddPath restored to ${orig:-(unset)}"
 }
 
+# A BUILD FROM BEFORE LIBFOLDERS MUST STILL FIND ITS GAMES FOLDER.
+#
+# Since 10f14d301d (libfolders) the app keeps its games folders as a JSON
+# array in `gamesFolderUris`, and GamesFolders.read() migrates the old single
+# `gamesFolderUri` into it and DELETES the old key; every write() deletes it
+# again. A build from an older ref reads only `gamesFolderUri`, finds nothing,
+# opens the setup wizard ("Games Folder: Not set"), and the soak reports that
+# the title did not boot -- a void that names neither cause nor ref. Once one
+# libfolders build has run on a handheld, every older soak on it went that way
+# (fmv303c's 179114986 on the Thor).
+#
+# So before a soak the pref carries both keys: when `gamesFolderUris` has
+# entries and `gamesFolderUri` is absent, `gamesFolderUri` gets the first one.
+# A libfolders build ignores the old key while the new one is there, so this
+# changes nothing for it. Every other byte of the file is kept, as with
+# env_vars and hddPath. No entries, or the old key already present: no write.
+# A write that does not read back fails the request -- the run would be the
+# void this exists to prevent, and a `cat >` that truncated the file would be
+# the setup wizard for every request after it.
+#
+# folder_pref_edit need|get|set <file> [value]
+#   need: the first gamesFolderUris entry when gamesFolderUri is absent, else ""
+#   get:  gamesFolderUri, unescaped
+#   set:  add gamesFolderUri=<value> (the file must not hold it already)
+folder_pref_edit() {
+    python3 - "$@" <<'PYFOLD'
+import html, json, re, sys
+mode, path = sys.argv[1], sys.argv[2]
+s = open(path, errors="replace").read()
+def val(key):
+    m = re.search(r'<string name="%s">(.*?)</string>' % re.escape(key), s, re.S)
+    return None if m is None else html.unescape(m.group(1))
+legacy = val("gamesFolderUri")
+if mode == "get":
+    sys.stdout.write(legacy or "")
+    sys.exit(0)
+if mode == "need":
+    if legacy is not None:
+        sys.exit(0)
+    try:
+        uris = json.loads(val("gamesFolderUris") or "[]")
+    except ValueError:
+        sys.exit("gamesFolderUris is not a JSON array; leaving it alone")
+    if isinstance(uris, list) and uris and isinstance(uris[0], str):
+        sys.stdout.write(uris[0])
+    sys.exit(0)
+want = sys.argv[3]
+if "</map>" not in s:
+    sys.exit("prefs file has no </map>; refusing to write")
+if legacy is not None:
+    sys.exit("gamesFolderUri is already set; refusing to overwrite it")
+esc = want.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+s = s.replace("</map>", '    <string name="gamesFolderUri">%s</string>\n</map>' % esc)
+open(path, "w").write(s)
+PYFOLD
+}
+
+# ensure_legacy_folder_pref: sets FOLDER_PREF_STATE (result.json); 1 = fail.
+ensure_legacy_folder_pref() {
+    local pkg tmp want back
+    pkg="${PKG:-com.jreinach.hakux.debug}"
+    tmp="$D/.prefs.${DEVICE_LABEL:-$SERIAL}.folder.xml"
+    FOLDER_PREF_STATE=""
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (folder pref)" shell am force-stop "$pkg" >/dev/null 2>&1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as cat x1box_prefs.xml (folder)" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" 2>/dev/null | tr -d '\r' > "$tmp"
+    if [ -s "${ADB_HUNG_FILE:-}" ]; then
+        log "  FOLDER PREF: adb hung ($(head -1 "$ADB_HUNG_FILE"))"; return 1
+    fi
+    if [ ! -s "$tmp" ]; then
+        # No prefs at all is a device never set up; nothing here can fix that.
+        export FOLDER_PREF_STATE="unread: x1box_prefs.xml empty or run-as refused"
+        log "  WARNING: FOLDER PREF: cannot read x1box_prefs.xml; left as is"
+        return 0
+    fi
+    if ! want=$(folder_pref_edit need "$tmp" 2>"$tmp.err"); then
+        export FOLDER_PREF_STATE="kept: $(head -1 "$tmp.err")"
+        log "  WARNING: FOLDER PREF: $FOLDER_PREF_STATE"
+        return 0
+    fi
+    if [ -z "$want" ]; then
+        export FOLDER_PREF_STATE="kept: no change needed"
+        return 0
+    fi
+    if ! folder_pref_edit set "$tmp" "$want" 2>"$tmp.err"; then
+        log "  FOLDER PREF: $(head -1 "$tmp.err")"; return 1
+    fi
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as write x1box_prefs.xml (folder)" --in "$tmp" \
+        shell "run-as $pkg sh -c 'cat > shared_prefs/x1box_prefs.xml'" >/dev/null 2>&1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as read back x1box_prefs.xml (folder)" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" 2>/dev/null | tr -d '\r' > "$tmp.back"
+    back=$(folder_pref_edit get "$tmp.back")
+    # The key goes in just before </map>, so a read-back holding both is a
+    # file that was written to its end.
+    if [ "$back" != "$want" ] || ! grep -q '</map>' "$tmp.back"; then
+        log "  FOLDER PREF: wrote gamesFolderUri=$want but read back '$back'"; return 1
+    fi
+    export FOLDER_PREF_STATE="added: gamesFolderUri from gamesFolderUris[0]"
+    log "  folder pref: gamesFolderUri=$want (for a build before libfolders)"
+}
+
 # dev_sha256 <device path> -> sha256, or "" when the file is absent
 dev_sha256() {
     adb_call 300 "sha256sum $1" shell "sha256sum '$1' 2>/dev/null || true" 2>/dev/null \
@@ -1331,6 +1432,12 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
+        # Before the titles disk, which edits the same file: a build from
+        # before libfolders needs the old games folder key to boot anything.
+        if ! ensure_legacy_folder_pref; then
+            adb_error "could not give x1box_prefs.xml the pre-libfolders gamesFolderUri; see dispatcher.log" > "$rdir/ERROR"
+            log "  FOLDER PREF FAILED"; mv "$req" "$rdir/request.json"; return 0
+        fi
         # Which title, and the state its route was written for (request.sh
         # --route, titlestate.py resolve-route). A request queued before that
         # carries neither: its title from the ISO name, state `any`.
@@ -1418,6 +1525,9 @@ json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                # Cold or warm shader cache: a cleared cache puts shader
                # warm-up in the first minute of a frame-rate soak.
                shader_cache=os.environ.get("SHADER_CACHE_STATE", ""),
+               # Whether the old games folder key had to be put back for a
+               # build from before libfolders (ensure_legacy_folder_pref).
+               folder_pref=os.environ.get("FOLDER_PREF_STATE", ""),
                # THE ENVIRONMENT THIS RUN ACTUALLY RAN WITH. An env A/B has one
                # binary, so apk_sha is identical across its arms and cannot
                # distinguish them -- this field is the only thing in the result
