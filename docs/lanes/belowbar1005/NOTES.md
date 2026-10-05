@@ -289,7 +289,7 @@ VBLANKs): DOA3 on that stage is GPU-bound first.
 ## Cross-title: GPU time outside render passes (`xfrsurvey.py`, offline)
 
 NG Black's and DOA3's GPU frames are half non-render time, so every perflog
-soak of the last 14 days was ranked by it (`xfrsurvey.txt`; medians of the
+soak of the last 14 days was ranked by it (`xfrsurvey.tsv`, fixed-width; medians of the
 `xemu-gpu` lines with Tot >= 8 ms, so menus drop out; whole logcats, a
 ranking, not a verdict). Xfr is `gpu_nonrender_ms`: the command buffer's
 GPU span (`cb_end - cb_start` timestamps) minus the timestamped spans of its
