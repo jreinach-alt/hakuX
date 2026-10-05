@@ -508,6 +508,21 @@ check("bowl", [l.get("action") for l in pb[:2]] == [["START"], ["A"]] and all("c
       f"scorecards press START, then A, counted as period looks: {[(l.get('action'), l.get('period')) for l in pb[:3]]}")
 check("bowl", any(l.get("action") == loop for l in look) and hold.get("ok") is True,
       f"the hold runs the bowl loop and holds play after the scorecards: ok {hold.get('ok')}")
+# name entry (10-05, Strike Force Bowling): a high-score keyboard during a hold gets START, then A, on its own budget
+# (NAME_TRIES), and a bowling still window never sends X (the unlock ladder's button that opened the entry).
+NE = {"state": "name_entry", "in_play": False, "why": "high-score name entry with a keyboard", "action": ["A"], "wait_s": 1}
+ROUTE_LOG.clear()
+rc, res, steps, calls = run("nameent", PREFIX + [("game", 0)] * 120 + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, {"genre": "bowl"}]
+                            + [NE] * 8 + [PLAYING] * 160,
+                            ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
+hold = res.get("hold", {})
+look = [json.loads(l) for l in open(os.path.join(TMP, "nameent", "out", "hold.jsonl"))]
+ne = [l for l in look if l.get("state") == "name_entry"]
+check("nameent", [l.get("action") for l in ne[:2]] == [["START"], ["A"]] and all("continue" not in l for l in ne),
+      f"a name entry gets START, then A, unlooked: {[l.get('action') for l in ne[:2]]}")
+check("nameent", all("X" not in m for m in sum(pathfind.HOLD_UNSTICK["bowl"], [])),
+      f"a bowling still window moves the aim, not X: {pathfind.HOLD_UNSTICK['bowl']}")
 pathfind.now, pathfind.time.sleep = real_now, real_sleep
 
 # actions

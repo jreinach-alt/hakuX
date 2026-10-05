@@ -152,6 +152,9 @@ HOLD_UNSTICK = {
     # a fighter that stands on its arena (Black Stone, 10-03: the attack loop's up and down cancel, 600 s on one spot,
     # window change 0.002-0.013). Each still window walks a square: the four legs are not undone by the next one.
     "attack": (["STICK:right:2", "A"], ["STICK:up:2", "A"], ["STICK:left:2", "A"], ["STICK:down:2", "A"]),
+    # a bowling lane that stands still (10-05, Strike Force Bowling: the still rotation sent X and opened a high-score
+    # name entry): step the aim left and right and throw, no X, B or Y
+    "bowl": (["STICK:up:0.5", "A"], ["STICK:down:0.5", "A"]),
 }
 # play that drops into a menu right after a loop cycle: a loop button opened it (ToeJam & Earl III, 10-03: the
 # "Presents" inventory in 13 of 19 kept frames). Each such drop sheds the next of these from the loop.
@@ -176,6 +179,10 @@ HOLD_GENRES = {
 # a period break (a quarter, half, inning, or a bowling frame's scorecard) has its own START/A budget per episode, so a
 # scorecard does not spend the shared CONTINUE budget (lane.local 12:52: each frame's scorecard is a per-frame continue)
 PERIOD_TRIES = 8
+# a name entry (a high-score or profile keyboard) during a hold: START jumps to Done on some keyboards, then A confirms.
+# A alone types a letter (the RULES warning), so an entry that A never closes ended Strike Force Bowling at 266 s (10-05).
+NAME_TRIES = 6
+NAME_PRESS = ("START", "A")
 # Title-specific hold loops (10-03 addendum, the owner's Black Stone design). They replace the genre's loop and its
 # unlock rotation for these title ids. The walk moves the player with the left stick only, in long strokes that
 # change direction. X is pressed once, alone: at the start of the hold and after two still windows in a row. Y, R1,
@@ -1546,6 +1553,7 @@ class Agent:
         rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
         cont_tries = 0                   # CONTINUE presses in this off-play episode (CONTINUE_PRESS, CONTINUE_TRIES)
         pb_tries = 0                     # period-break presses in this episode (CONTINUE_PRESS, PERIOD_TRIES), own budget
+        name_tries = 0                   # name-entry presses in this episode (NAME_PRESS, NAME_TRIES), own budget
         last_png, last_check, last_kept, drop = None, now(), None, []
         fps_seen, fps_checks = set(), []  # the FPS_GATES passed so far, and what each read
         # the perflog: logcat from the mark to `soak end`, with a state line at every change of play, so
@@ -1649,6 +1657,11 @@ class Agent:
                         action, wait_s = [CONTINUE_PRESS[pb_tries % len(CONTINUE_PRESS)]], 1.5
                         pb_tries += 1
                         look["period"] = pb_tries
+                    elif st == "name_entry" and not th and name_tries < NAME_TRIES:
+                        # a name entry (10-05): START to Done, then A to confirm, unlooked; its own budget
+                        action, wait_s = [NAME_PRESS[name_tries % len(NAME_PRESS)]], 1.5
+                        name_tries += 1
+                        look["name"] = name_tries
                     elif th:
                         # title hold: a menu is closed with one B and X follows; anything else keeps the model's press
                         # minus the forbidden buttons (a cutscene's A)
@@ -1671,6 +1684,7 @@ class Agent:
                     rep_left = 0
                     cont_tries = 0
                     pb_tries = 0
+                    name_tries = 0
             if not off and look.get("action") is None:
                 # play: the genre loop (a check look that said play sends it too). The time credited is this
                 # cycle's own, from its frame to its inputs: the look before may have been off play.
