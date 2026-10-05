@@ -30,6 +30,7 @@ import argparse
 import bisect
 import csv
 import glob
+import gzip
 import json
 import os
 import re
@@ -54,16 +55,24 @@ def pct(v, p):
 
 def find_files(d, pf):
     csvs = sorted(glob.glob(os.path.join(d, 'pulled', 'frametrace_*.csv')) +
-                  glob.glob(os.path.join(d, 'frametrace_*.csv')))
+                  glob.glob(os.path.join(d, 'frametrace_*.csv')) +
+                  glob.glob(os.path.join(d, 'frames.csv.gz')))   # archive.py
     logs = [p for p in [os.path.join(d, 'ft-logcat.txt'),
                         os.path.join(d, 'logcat.txt'),
-                        os.path.join(d, 'pf', 'logcat.txt')] if os.path.exists(p)]
+                        os.path.join(d, 'pf', 'logcat.txt'),
+                        os.path.join(d, 'ft.log.gz')] if os.path.exists(p)]
     return csvs, logs
+
+
+def opentext(path):
+    if path.endswith('.gz'):
+        return gzip.open(path, 'rt', errors='replace')
+    return open(path, errors='replace')
 
 
 def read_frames(path):
     rows = []
-    for r in csv.DictReader(open(path)):
+    for r in csv.DictReader(opentext(path)):
         f = {}
         for k, v in r.items():
             if k == 'cls':
@@ -87,7 +96,7 @@ def read_logs(logs, d):
     marks = []
     summ, hitch = [], []
     for p in logs:
-        for line in open(p, errors='replace'):
+        for line in opentext(p):
             m = TS.match(line)
             if not m:
                 continue
@@ -108,11 +117,12 @@ def read_logs(logs, d):
                 marks.append(wall)
     if marks:
         mark = marks[0]
-    rl = os.path.join(d, 'run.log')
-    if os.path.exists(rl):
-        mk = re.search(r'ROUTE (\d+):(\d+):([\d.]+) mark gameplay', open(rl, errors='replace').read())
-        if mk:
-            mark = secs(*mk.groups())
+    for rl in (os.path.join(d, 'run.log'), os.path.join(d, 'meta.md')):
+        if os.path.exists(rl):
+            mk = re.search(r'ROUTE (\d+):(\d+):([\d.]+) mark gameplay', open(rl, errors='replace').read())
+            if mk:
+                mark = secs(*mk.groups())
+                break
     return anchors, pace, mark, summ, hitch
 
 

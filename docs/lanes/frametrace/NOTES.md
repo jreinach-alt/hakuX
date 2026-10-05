@@ -196,6 +196,166 @@ is therefore "deadline minus when frame N was submitted AND translated",
 and it shrinks only when the guest or the PFIFO thread is late; it does not
 include the GPU's execution of frame N (asynchronous).
 
+## 4. First reads: Nightfire and Tron on the Nova (ref 0bb89cd1f5)
+
+Read with `ftread.py` (window: `mark gameplay` + 20 s to the end). Raw
+frames and the [hakuX-ft*] lines: `captures/<result id>/` (`archive.py`;
+`ftread.py captures/<id>` reproduces the tables). Neither run has frames
+inside the window (no `--frames-every`): gameplay rests on the route's mark
+and its frame, which showed gameplay for both. The duty and Forza runs
+queued now carry `--frames-every`.
+
+| | Nightfire (`1-1791216614-...2373212`) | Tron 2.0 (`1-1791216620-...2374008`) |
+|---|---|---|
+| window | 13017 frames, 335 s | 11642 frames, 260 s |
+| guest interval (deadline) | 1 VBLANK (16.7 ms) | 1 VBLANK (16.7 ms) |
+| fps; period p50/p95/p99/max ms | 38.8; 24.1/36.7/45.2/246 | 44.8; 17.3/38.3/57.7/1079 |
+| late frames | 50.4% | 23.6% |
+
+**Q1. Pacemaker.** Late = more VBLANKs than the guest asked for.
+
+| class | Nightfire all | Nightfire late | Tron all | Tron late |
+|---|---|---|---|---|
+| vsync | 49.6% | - | 76.4% | - |
+| run (guest vCPU on-CPU > deadline) | 50.3% | **99.8%** | 21.0% | **88.9%** |
+| unattr | 0.1% | 0.2% | 2.6% | 11.1% |
+| bgpu, block, rsub, pgraph, gpu | 0 | 0 | 0 | 0 |
+
+Tron's unattr frames are the DMA_PUT pfifo.lock wait (`lockw`, 5.1 ms per
+late frame), which this build sees only as a total with no holder (G4).
+
+**Q2. GPU ms against MHz.** The kgsl clock read 615 MHz on every Nightfire
+frame and on 99.1% of Tron's (107 frames at 680). One clock: the
+clock-or-work question cannot be answered from these runs (the 107-frame
+"elasticity" is a different scene, not a clock effect). It does not decide
+anything here: GPU execution p50/p95 is 7.5/14.4 ms (Nightfire) and
+4.4/8.5 ms (Tron), the GPU is busy 34% / 22% of the median frame, and **no
+frame in either window had the GPU busy >= 90% of its period.**
+
+**Q3. vCPU time per frame, ms (mean; late frames in brackets).**
+
+| | Nightfire | Tron |
+|---|---|---|
+| on-CPU | 24.85 (27.39) | 19.46 (29.62) |
+| run queue | 0.04 (0.04) | 0.03 (0.08) |
+| blocked | 0.92 (0.95) | 2.88 (5.97) |
+| BQL wait (holder running) | 0.78 (1.07), holder ran 0.75 | 0.41 (0.72), holder ran 0.39 |
+| halt | 0.04 (0.08) | 0 |
+| DMA_PUT pfifo.lock (`lockw`, no holder) | 0.28 (0.25) | 2.32 (5.06) |
+| PFIFO on-CPU / idle (waiting for work) | 13.7 / 5.3 (12.6 / 9.1) | 7.0 / 13.0 (11.2 / 18.8) |
+| GPU execution | 7.43 (7.31) | 4.77 (6.85) |
+
+The guest's kernel idle loop never ran in Nightfire's gameplay: `[rr425w]`
+reads `idle_us=0` in every window, so G1's absence costs nothing there and
+the vCPU's on-CPU time is the guest's own code. On late frames the PFIFO
+thread waits for work 9.1 ms (Nightfire) and 18.8 ms (Tron) of the frame:
+the GPU side is waiting for the vCPU, not the other way round. The JIT
+compiles almost nothing in gameplay (`[tlb68] jcus` 0-1 ms per 2 s); the
+on-CPU time is spent running translated code (`[rr425] tbus` 1.2-1.3 s per
+2 s, which includes helpers and MMIO: nothing in-row can split those).
+
+**Q4. Hitches** (period > max(2 x median of the previous 60 frames, 50 ms);
+every row in `ftread.py`'s section 4; blocks in `captures/*/ft.log.gz`).
+
+| | Nightfire | Tron |
+|---|---|---|
+| hitch frames in window | 40 | 88 |
+| pacemaker | run 39, vsync 1 (a 56 ms frame on 1 VBLANK) | run 88 |
+| largest | 246 ms: vCPU on-CPU 241, PFIFO on-CPU 172 | 745 and 585 ms (11:12:01-02): vCPU on-CPU 731 / 528, PFIFO idle 731 / 570, GPU < 1 ms |
+| runs of slow frames | 10:45:31-10:46:30: ~30 frames of 64-81 ms, vb 4-6, GPU 0.5 ms, PFIFO idle 62 ms, vCPU on-CPU throughout | 11:11:55-58: 30 frames of 100-142 ms, the same shape |
+
+Every hitch is the vCPU running with the GPU side idle. The long ones
+(Tron's 0.6-0.7 s, the 100+ ms runs) have the shape of a load: GPU ~1 ms,
+PFIFO waiting, the JIT not compiling (`jcus=0` in Tron's 11:12:00 window),
+the vCPU busy in guest code. Without frames in the window I cannot say what
+was on screen; the queued runs capture frames.
+
+**Q5. Deadline against delivery.**
+
+| VBLANKs per flip | Nightfire | Tron |
+|---|---|---|
+| 0 / 1 / 2 / 3 / 4 / 5+ | 0.1 / 49.5 / 47.8 / 2.0 / 0.3 / 0.4 % | 0.8 / 75.6 / 19.6 / 2.9 / 0.3 / 1.0 % |
+| slack p50 / p5 / min, ms | 1.26 / -12.24 / -229.1 | 15.41 / 5.79 / -554.6 |
+
+Both titles ask for 60 (one VBLANK). Nightfire meets it on half its flips
+and takes two on the other half; Tron meets it on three in four.
+
+### What this first read says, and what it cannot
+
+On both 60 Hz titles the late frames are the vCPU's: its on-CPU time alone
+exceeds the 16.7 ms deadline (27.4 and 29.6 ms on late frames) while the
+PFIFO thread waits for work and the GPU is busy a third of the frame or
+less. Locks cost 1 ms (Nightfire) to 3 ms (Tron) of vCPU time per frame.
+That is the answer to "which chip waits on which" for these two: **the GPU
+side waits on the vCPU.**
+
+What would make it wrong: guest code that busy-polls for the GPU side reads
+as `run` (the Forza intro's VBLANK poll, section 3). Against that here: the
+PFIFO thread is idle (waiting for pushes) a third to a half of each late
+frame, which a guest polling for PFIFO progress would not produce. Not
+excluded: a poll on something other than PFIFO progress. The check is the
+`[rr425pc]` hot-pc list joined to the late frames, and G9 (below).
+
+## 5. The overhead pair (separate runs) is void; a one-run test replaces it
+
+| leg | B on (`...2373212`) | A off (`...2374160`) | |
+|---|---|---|---|
+| O1 builder + writer, us/frame | 25.3 + 46.0 = **71.3** (insmax 119) | - | pass (<= 200) |
+| O2 gfps median (IQR) | 41 (33-45) | 37 (33-39) | B **faster** by 10.8% |
+| O2 fps from the pace counter | 38.83 | 36.35 | B faster by 6.8% |
+| O3 vCPU run_us per frame | 24887 | 25210 | -1.3% |
+
+The instrument cannot make the emulator faster; the pair measured two other
+things. **Content:** A's route lost sync (its `mark gameplay` frame is the
+letterboxed opening cutscene; B's is the sniper scope), so the windows hold
+different scenes. **Temperature:** A started at xo 47 C (it ran right after
+Tron), B at 31 C. The pair is void as an O2/O3 reading; O1 (in-process
+cost, 71 us/frame on the Nova, 0.3% of a 25 ms frame) stands.
+
+Replacement, built at 65bd51712b: `HAKUX_FRAMETRACE_DUTY=<s>` makes the
+writer switch the instrument off and on every s seconds inside one run
+(on first). Off is the shipped path (every hook a load and a branch); the
+first flip after it is a baseline, not a frame, and the writer reads no
+slack across the gap. Each switch is logged
+(`[hakuX-ft1] duty=on|off k= rt_ms= t_ms=`). Both arms then share the
+content and the temperature, alternating every 15 s. Selftest: three new
+checks, three new mutants, all caught (36 checks, 12 mutants).
+
+Judging the duty run (written before it runs): label each 2-s
+`hakuX-perf gfps` and `[idlehalt]` window by the phase it lies wholly in
+(drop windows that straddle a switch or hold a route frame capture), pair
+each on phase with the mean of its two neighbouring off phases, and report
+the mean paired difference with its 95% interval. Pass: the interval lies
+inside +-3% of the off-phase mean, or its upper cost bound is under 3%.
+
+Queued: `1-1791225231-lane.frametrace-2914369` (Nightfire, duty 15 s,
+360 s, frames every 15 s: the captures alternate phases, so each phase
+holds one).
+
+## 6. Next steps, ranked by P x win (two titles read; Forza and Simpsons to come)
+
+The win is stated as the late frames it could reach; P is the probability
+the step finds or removes what it targets, with the evidence.
+
+| # | step | win at full scale | P, and why | kind |
+|---|---|---|---|---|
+| 1 | **Split the vCPU's on-CPU time** into translated guest code, MMIO dispatch by device (nv2a, APU, IDE, other) and the rest, per frame: grant **G9** (`system/memory.c` 1485 and 1546, two clock reads around `memory_region_dispatch_read1` / the write op on the vCPU thread). | It aims the vCPU work at every late frame read so far (99.8% and 88.9% of them are `run`): Nightfire needs 27.4 -> 16.7 ms on its late half. | High (0.8) that it decides where the vCPU time goes: `tbus` already puts 60-65% of each 2 s in TBs including helpers and MMIO, and nothing in-row separates them. It is a measurement, so P is the chance it separates, not that it speeds anything. | instrument (grant) |
+| 2 | The vCPU JIT direction (owner, 09-28), aimed by step 1's split. | Same late frames; Nightfire 38.8 -> 60 fps needs a 1.6x faster vCPU on its late frames. | The vCPU being the pacemaker is now measured (P ~0.9 that speeding the vCPU's guest code moves these frames); the size per change is not: memfast removed 21% of host instructions for 4-6%. | the hard work that fits |
+| 3 | Name the DMA_PUT pfifo.lock wait's holder: grant **G4** (`hw/xbox/nv2a/user.c` 92-95). | Tron: 5.1 ms of each late frame, 11% of its late frames unattributed. | Medium (0.5): it names the holder; whether that holder's time is removable is the next question. | instrument (grant) |
+| 4 | The load-shaped hitches (Tron 0.6-0.7 s, 30-frame runs of 100+ ms in both titles): join the hitch blocks with hitchcause's `[ide425]` and the route frames. | The long hitches; they do not move the average. | Medium: the shape (vCPU busy in guest code, GPU and PFIFO idle, no JIT compile) points at the guest's own work on a load; the frames will say whether it is a load screen. | read, no device |
+| 5 | G1 (guest idle hook) and G3 (PFIFO fence/submit spans). | Titles that idle by spinning (Forza) and the PFIFO thread's 6.6 ms of unnamed blocked time per Nightfire late frame. | Low for Nightfire and Tron (idle_us=0, so G1 changes nothing there); higher for Forza, which idles 20 ms a frame (vcpu60). | instrument (grant) |
+
+Not on the list: anything GPU-side for these two titles. No frame had the
+GPU busy over 90% of its period and the clock never moved off 615 MHz, so a
+GPU or clock change cannot reach their late frames.
+
+## Why attempt 1 did not finish
+
+It finished by the contract: it ended at 09:20 PDT on a `waiting:` for three
+queued Nova runs (WAITING), with the G1-G8 grant and the Simpsons host
+capture outstanding in OUTBOX. The runs completed 10:50-11:22; this session
+is the resume. The grant and the host capture are still not answered.
+
 ## Log
 
 - 10-05 session 1: read profile.c, cpus.c, the vcpu60 / vcpusleep NOTES,
@@ -211,24 +371,42 @@ include the GPU's execution of frame N (asynchronous).
   resolves them automatically: the G1-G8 grant and the Simpsons host
   capture (OUTBOX).
 
+- 10-05 ~11:30 PDT, session 2 (resume): merged master (750d572f1c). The
+  three Nova runs were DONE. Read Nightfire and Tron (section 4); the
+  separate-run overhead pair is void (section 5); built the one-run duty
+  test (65bd51712b). Archived both captures (`captures/`). Found the env
+  outlived my 10:50 run into pathfind's NFL Blitz 2002 hold (its CSV was
+  pulled into the Tron result; `archive.py` drops it by clock range).
+  Queued: the duty run (Nightfire) and Forza on the Nova (the Thor's Forza
+  runs die in their first 42 s, 6 of 6 today; gpuclock's blind Nova route,
+  copied as `forza-nova-frametrace.route`).
+
 ### Next session, in order
 
-1. Read the Nightfire on-run (`ftread.py <result>`): gameplay window,
-   the five tables. O1 from `ins` + `wcpu_us`. Check the [hakuX-ft1] and
-   [hakuX-ft] lines arrived on hakuX-lane.
-2. O2/O3 from the Nightfire on/off pair (gfps and [idlehalt] run_us per
-   frame over each scored window).
-3. Tron read. If the pilot reads clean, write `pilots/lane.frametrace.ok`
-   and queue the rest (Forza on the Nova if its copy is there, a second
-   overhead pair if O2 is inside noise but unclear).
-4. If granted: apply `hooks.diff` as one commit, re-run the selftest and
-   the type-check, and re-capture the four titles on that ref.
+1. Duty run `1-1791225231-lane.frametrace-2914369`: judge O2/O3 by the
+   rule in section 5 (write the phase-labelling reader into `overhead.py`
+   first, then read). Its frames show what the 64-81 ms stretch is.
+2. Forza `1-1791225335-lane.frametrace-2925645`: the five tables; check
+   the window's frames show the race; G1's absence matters here (Forza
+   idles by spinning), so read `run` against `[rr425w] idle_us`.
+3. Simpsons: still needs the host capture (OUTBOX). If it does not come,
+   say so in the final NOTES rather than substitute a title.
+4. If granted: apply `hooks.diff` (+ G9) as one commit, selftest,
+   type-check, re-capture.
 
 ## Do not repeat
 
 - A whole-span holder test ("same state at both ends") books every real
   GPU-held lock wait as MIXED: the holder leaves the fence before it can
   unlock. Use the overlap split.
+- An overhead A/B as two separate runs on a timed route: Nightfire's route
+  desynced in one arm (cutscene vs gameplay at the mark) and the second arm
+  started 16 C warmer. Use `HAKUX_FRAMETRACE_DUTY` (both arms in one run).
+- Trusting every `frametrace_*.csv` in a result's `pulled/`: the env stays
+  on the device until the next request, so a held session in between
+  writes its own CSV and the next `--pull` collects it (pathfind's NFL
+  Blitz 2002 hold, 10:50-11:05, in the Tron result). Select by clock range
+  (`archive.py`) or by the run's `[hakuX-ft1] csv=` line.
 - QEMU threads are not named on Android (`debug-threads` is off), so
   `/proc/self/task/*/comm` cannot find the render thread; and
   `pthread_setname_np` refuses names over 15 characters

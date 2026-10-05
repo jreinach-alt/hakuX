@@ -99,3 +99,64 @@ pair failed on the Thor fault and is re-queued on the Nova (Nightfire).
 Session 1 (Opus): reading, design, instrument, selftest, hook patch, reader,
 capture script. Device: two Thor runs, 67 s of play in all (both ended by
 the Thor fault); three Nova runs queued (~24 min).
+
+## 2026-10-05 ~11:55 PDT (session 2): milestone (b), first title captures read
+
+**Finding (Nightfire and Tron, Nova, 260-335 s of gameplay each; NOTES
+section 4):** both ask for 60 fps. Nightfire is late on 50.4% of frames,
+Tron on 23.6%, and **the late frames are the vCPU's: 99.8% (Nightfire) and
+88.9% (Tron) are `run`**, the vCPU on-CPU 27.4 / 29.6 ms per late frame
+against a 16.7 ms deadline, while the PFIFO thread waits for work 9.1 /
+18.8 ms of it. The GPU is busy 34% / 22% of the median frame; no frame in
+either window had it over 90%; the clock sat at 615 MHz throughout. Locks
+cost the vCPU 1 ms (Nightfire) to 3 ms (Tron) per frame. Every hitch (40 and
+88 frames) is the vCPU running with the GPU side idle; the largest (Tron
+745 ms) has a load's shape. **The GPU side waits on the vCPU.** The one
+other cost of note is Tron's DMA_PUT pfifo.lock wait (5.1 ms per late
+frame), which this build cannot attribute to a holder (G4).
+
+**Overhead:** in-process cost **71 us/frame** on the Nova (builder 25 +
+writer 46; budget 200). The separate-run fps pair is void (the arms differ
+in content and start temperature, NOTES section 5); replaced by a one-run
+test (`HAKUX_FRAMETRACE_DUTY`, 65bd51712b), judged by a rule written before
+the run. The (a) milestone's fps leg waits on that run.
+
+### GRANT REQUEST G9 (new): split the vCPU's on-CPU time
+
+`system/memory.c` 1485 (`memory_region_dispatch_read1` in
+`memory_region_dispatch_read`) and 1546 (the `mr->ops->write` dispatch in
+`memory_region_dispatch_write`), lines at 98c6791c56: a
+`hakux_ft_mmio_begin/end` pair (one load and a branch when off) that books
+the vCPU thread's ns and count per frame by region (nv2a, APU, IDE, other).
+It is step 1 of NOTES section 6: every late frame read so far is the vCPU
+on-CPU, `[rr425] tbus` counts helpers and MMIO as guest code, and nothing in
+the row can split them. G1-G8 (hooks.diff) still stand; G4 is step 3.
+
+### Queued (Nova, both on 65bd51712b)
+
+- `1-1791225231-lane.frametrace-2914369`: Nightfire, duty 15 s, 360 s,
+  frames every 15 s (the overhead test).
+- `1-1791225335-lane.frametrace-2925645`: Forza, HAKUX_FRAMETRACE=1, 480 s,
+  frames every 20 s, lane.gpuclock's blind Nova route (the Thor's Forza
+  runs die in their first 42 s, 6 of 6 today). 
+
+### For whoever owns the Nova's held sessions
+
+The env outlives a run: after my 10:42 Nightfire run, pathfind's NFL Blitz
+2002 hold (10:50-11:05) ran with `HAKUX_FRAMETRACE=1` (~70 us/frame and a
+CSV in the app's files dir). After the Forza run the Nova carries
+`HAKUX_FRAMETRACE=1` until the next dispatched request. Telemetry only; no
+guest-visible change. Say if you want a trailing env-clearing request.
+
+### Still outstanding
+
+- The Simpsons host capture (`capture_simpsons_frametrace.sh simpft1`,
+  above). Without it the lane reports three titles, not four.
+- The Thor's foreground fault (launcher takes focus; 6 of 6 Forza runs
+  today across two lanes).
+
+### Spend (session 2)
+
+Opus: reading two captures, the duty switch + selftest, archive and reader
+changes, NOTES. Device: 0 new so far; queued ~17 min of Nova time (both
+requests together, 90 s setup each included).
