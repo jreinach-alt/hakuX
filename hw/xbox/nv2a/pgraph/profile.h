@@ -120,6 +120,8 @@ typedef struct HakuxFtFrame {
     uint16_t rp, mhz, ins;          /* render passes, GPU MHz (0 none), builder us */
     HakuxFtRow r[HAKUX_FT_NROW];
     uint32_t vh[HAKUX_FT_NH];       /* vCPU lock waits by holder class */
+    uint32_t vho[HAKUX_FT_NROLE + 1];   /* ... by holder thread (last: none) */
+    uint16_t nw[HAKUX_FT_NROLE];    /* waits that ended, per row */
     uint32_t gidle;                 /* guest idle (HAKUX_FT_NA if unhooked) */
     uint32_t pidle;                 /* PFIFO waiting for work (always on) */
     uint32_t lockw;                 /* DMA_PUT pfifo.lock wait (user.c) */
@@ -422,6 +424,8 @@ typedef struct FtRole {
     uint8_t wreason;
     uint64_t acc[HAKUX_FT_NW];      /* booked wait ns */
     uint64_t hold[HAKUX_FT_NH];     /* booked lock-wait ns by holder class */
+    uint64_t hrole[HAKUX_FT_NROLE + 1]; /* ... by holder role, last: none */
+    uint64_t nwait;                 /* waits ended */
     uint64_t gacc;                  /* guest idle ns booked (vCPU) */
     int64_t gt0;                    /* guest idle in progress since, 0 none */
     uint32_t span_head;
@@ -715,10 +719,13 @@ void hakux_ft_wait_end_slow(HakuxFtWait *w)
         ft_wbegin(r);
         FT_ST(&r->acc[w->reason], r->acc[w->reason] + (uint64_t)dur);
         if (lockw) {
+            int hr = w->holder >= 0 ? w->holder : HAKUX_FT_NROLE;
             for (int k = 0; k < HAKUX_FT_NH; k++) {
                 FT_ST(&r->hold[k], r->hold[k] + hold[k]);
             }
+            FT_ST(&r->hrole[hr], r->hrole[hr] + (uint64_t)dur);
         }
+        FT_ST(&r->nwait, r->nwait + 1);
         FT_ST(&r->wt0, 0);
         ft_publish(r, 1);
         if (dur >= FT_SPAN_MIN_NS) {
@@ -796,6 +803,8 @@ void hakux_ft_vblank(void)
 typedef struct FtSnap {
     uint64_t acc[HAKUX_FT_NROW][HAKUX_FT_NW];
     uint64_t hold[HAKUX_FT_NH];     /* vCPU only */
+    uint64_t hrole[HAKUX_FT_NROLE + 1]; /* vCPU only */
+    uint64_t nwait[HAKUX_FT_NROLE];
     uint64_t gidle;
     uint64_t run[HAKUX_FT_NROLE], rq[HAKUX_FT_NROLE];
     bool ss_ok[HAKUX_FT_NROLE];
@@ -842,11 +851,15 @@ static void ft_snap_role(int i, int64_t now, FtSnap *s)
             for (int k = 0; k < HAKUX_FT_NH; k++) {
                 s->hold[k] = FT_LD(&r->hold[k]);
             }
+            for (int k = 0; k <= HAKUX_FT_NROLE; k++) {
+                s->hrole[k] = FT_LD(&r->hrole[k]);
+            }
             s->gidle = FT_LD(&r->gacc);
             gt0 = FT_LD(&r->gt0);
         } else {
             gt0 = 0;
         }
+        s->nwait[i] = FT_LD(&r->nwait);
         wt0 = FT_LD(&r->wt0);
         wholder = FT_LD(&r->wholder);
         wreason = FT_LD(&r->wreason);
@@ -859,8 +872,10 @@ static void ft_snap_role(int i, int64_t now, FtSnap *s)
             if (i == HAKUX_FT_VCPU && wreason <= HAKUX_FT_W_PGRAPH_LOCK) {
                 if (wholder >= 0 && wholder < HAKUX_FT_NROLE) {
                     ft_holder_split(wholder, wt0, now, s->hold);
+                    s->hrole[wholder] += (uint64_t)(now - wt0);
                 } else {
                     s->hold[HAKUX_FT_H_UNK] += (uint64_t)(now - wt0);
+                    s->hrole[HAKUX_FT_NROLE] += (uint64_t)(now - wt0);
                 }
             }
         }
@@ -1004,6 +1019,13 @@ void hakux_ft_flip(const HakuxFtExt *x)
     for (int k = 0; k < HAKUX_FT_NH; k++) {
         fr->vh[k] = ft_us(s.hold[k], ft.snap.hold[k]);
     }
+    for (int k = 0; k <= HAKUX_FT_NROLE; k++) {
+        fr->vho[k] = ft_us(s.hrole[k], ft.snap.hrole[k]);
+    }
+    for (int k = 0; k < HAKUX_FT_NROLE; k++) {
+        uint64_t d = s.nwait[k] - ft.snap.nwait[k];
+        fr->nw[k] = (uint16_t)(d > 65535 ? 65535 : d);
+    }
     if (s.gidle || ft.snap.gidle) {
         fr->gidle = ft_us(s.gidle, ft.snap.gidle);
         fr->have |= HAKUX_FT_HAVE_GIDLE;
@@ -1057,6 +1079,7 @@ typedef struct FtWriter {
     int32_t slack[512];
     uint32_t nslack;
     uint64_t vrun, vrq, vblk, vgi, vgw, vw[HAKUX_FT_NW], vh[HAKUX_FT_NH];
+    uint64_t vho[HAKUX_FT_NROLE + 1], nw[HAKUX_FT_NROLE];
     uint64_t prun, prq, pblk, pidle, pw[HAKUX_FT_NW], lockw, rrun, rblk;
     uint64_t mhz_sum, ins_sum, crit_sum;
     uint32_t mhz_n, max_ins;
@@ -1141,6 +1164,10 @@ static int ft_fmt_frame(char *b, size_t n, const HakuxFtFrame *fr,
     for (int k = 0; k < HAKUX_FT_NH && o < (int)n; k++) {
         o += snprintf(b + o, n - o, k ? ",%.2f" : "%.2f", fr->vh[k] / 1e3);
     }
+    o += snprintf(b + o, n - o, " vho=%.2f,%.2f,%.2f,%.2f,%.2f nw=%u,%u,%u,%u",
+                  fr->vho[0] / 1e3, fr->vho[1] / 1e3, fr->vho[2] / 1e3,
+                  fr->vho[3] / 1e3, fr->vho[4] / 1e3,
+                  fr->nw[0], fr->nw[1], fr->nw[2], fr->nw[3]);
     o += snprintf(b + o, n - o, " lw=%.2f p=%.2f/%.2f/%.2f pi=%.2f pw=",
                   fr->lockw / 1e3, p->run / 1e3, p->rq / 1e3, p->blk / 1e3,
                   fr->pidle / 1e3);
@@ -1287,6 +1314,11 @@ static void ft_summary(FtWriter *w, int64_t now)
                       w->vh[k] / 1e3 / n);
     }
     o += snprintf(line + o, sizeof(line) - o,
+        " vho=%.2f,%.2f,%.2f,%.2f,%.2f nw=%.1f,%.1f,%.1f,%.1f",
+        w->vho[0] / 1e3 / n, w->vho[1] / 1e3 / n, w->vho[2] / 1e3 / n,
+        w->vho[3] / 1e3 / n, w->vho[4] / 1e3 / n, (double)w->nw[0] / n,
+        (double)w->nw[1] / n, (double)w->nw[2] / n, (double)w->nw[3] / n);
+    o += snprintf(line + o, sizeof(line) - o,
         " lw=%.2f prun=%.2f prq=%.2f pblk=%.2f pidle=%.2f pw=",
         w->lockw / 1e3 / n, w->prun / 1e3 / n, w->prq / 1e3 / n,
         w->pblk / 1e3 / n, w->pidle / 1e3 / n);
@@ -1314,6 +1346,8 @@ static void ft_summary(FtWriter *w, int64_t now)
         w->vrun = w->vrq = w->vblk = w->vgi = w->vgw = 0;
         memset(w->vw, 0, sizeof(w->vw));
         memset(w->vh, 0, sizeof(w->vh));
+        memset(w->vho, 0, sizeof(w->vho));
+        memset(w->nw, 0, sizeof(w->nw));
         w->prun = w->prq = w->pblk = w->pidle = w->lockw = 0;
         memset(w->pw, 0, sizeof(w->pw));
         w->rrun = w->rblk = w->mhz_sum = w->ins_sum = w->crit_sum = 0;
@@ -1344,6 +1378,7 @@ static void ft_csv_open(FtWriter *w)
         for (int k = 0; k < HAKUX_FT_NH; k++) {
             fprintf(w->csv, ",vh_%s", hakux_ft_h_name[k]);
         }
+        fprintf(w->csv, ",vho_v,vho_p,vho_r,vho_m,vho_none,nw_v,nw_p,nw_r,nw_m");
         fprintf(w->csv, ",lockw,p_run,p_rq,p_blk,pidle");
         for (int k = 0; k < HAKUX_FT_NW; k++) {
             fprintf(w->csv, ",p_%s", hakux_ft_w_name[k]);
@@ -1384,6 +1419,12 @@ static void ft_csv_row(FtWriter *w, const HakuxFtFrame *fr, int64_t rel,
     }
     for (int k = 0; k < HAKUX_FT_NH; k++) {
         fprintf(c, ",%u", fr->vh[k]);
+    }
+    for (int k = 0; k <= HAKUX_FT_NROLE; k++) {
+        fprintf(c, ",%u", fr->vho[k]);
+    }
+    for (int k = 0; k < HAKUX_FT_NROLE; k++) {
+        fprintf(c, ",%u", fr->nw[k]);
     }
     fprintf(c, ",%u,%u,%u,%u,%u", fr->lockw, fr->r[1].run, fr->r[1].rq,
             fr->r[1].blk, fr->pidle);
@@ -1469,6 +1510,12 @@ void hakux_ft_writer_frame(FtWriter *w, const HakuxFtFrame *in, int64_t now)
     }
     for (int k = 0; k < HAKUX_FT_NH; k++) {
         w->vh[k] += fr->vh[k];
+    }
+    for (int k = 0; k <= HAKUX_FT_NROLE; k++) {
+        w->vho[k] += fr->vho[k];
+    }
+    for (int k = 0; k < HAKUX_FT_NROLE; k++) {
+        w->nw[k] += fr->nw[k];
     }
     w->prun += p->run;
     w->prq += p->rq;

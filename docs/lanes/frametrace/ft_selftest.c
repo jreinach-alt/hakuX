@@ -346,6 +346,12 @@ static void test_live(void)
     check(f.cls == HAKUX_FT_C_BLK_GPU, "live.fence_holder_frame_is_bgpu",
           "cls=%s P=%u vrun=%u", hakux_ft_cls_name[f.cls], f.P,
           f.r[HAKUX_FT_VCPU].run);
+    /* who held it: the PFIFO thread; one wait each side */
+    check(f.vho[HAKUX_FT_PFIFO] >= 7000 && f.vho[HAKUX_FT_NROLE] < 500 &&
+          f.nw[HAKUX_FT_VCPU] == 1 && f.nw[HAKUX_FT_PFIFO] == 1,
+          "live.holder_thread_and_wait_counts",
+          "vho pfifo=%u none=%u nw v=%u p=%u", f.vho[HAKUX_FT_PFIFO],
+          f.vho[HAKUX_FT_NROLE], f.nw[HAKUX_FT_VCPU], f.nw[HAKUX_FT_PFIFO]);
 
     run_scenario(1);
     f = last_frame(0);

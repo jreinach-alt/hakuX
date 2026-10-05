@@ -254,7 +254,14 @@ def report(d, a):
     rows.append(['DMA_PUT pfifo.lock wait (lock_wait_ns)', both('lockw')])
     for h in H:
         if any(f.get('vh_' + h) for f in win):
-            rows.append(['vCPU lock waits, holder ' + h, both('vh_' + h)])
+            rows.append(['vCPU lock waits, holder doing ' + h, both('vh_' + h)])
+    for k, nm in [('vho_v', 'vCPU'), ('vho_p', 'PFIFO'), ('vho_r', 'render'),
+                  ('vho_m', 'main loop'), ('vho_none', 'unknown')]:
+        if any(f.get(k) for f in win):
+            rows.append(['vCPU lock waits, held by ' + nm, both(k)])
+    if any(f.get('nw_v') for f in win):
+        rows.append(['vCPU waits per frame (count)',
+                     '%.1f (%.1f)' % (m('nw_v', win), m('nw_v', late) if late else 0)])
     rows += [['PFIFO on-CPU', both('p_run')], ['PFIFO run queue', both('p_rq')],
              ['PFIFO blocked', both('p_blk')], ['PFIFO idle (waiting for work)', both('pidle')]]
     for w in W:
