@@ -124,10 +124,17 @@ the run. The (a) milestone's fps leg waits on that run.
 ### GRANT REQUEST G9 (new): split the vCPU's on-CPU time
 
 `system/memory.c` 1485 (`memory_region_dispatch_read1` in
-`memory_region_dispatch_read`) and 1546 (the `mr->ops->write` dispatch in
+`memory_region_dispatch_read`) and 1546-1559 (the two write dispatches in
 `memory_region_dispatch_write`), lines at 98c6791c56: a
 `hakux_ft_mmio_begin/end` pair (one load and a branch when off) that books
-the vCPU thread's ns and count per frame by region (nv2a, APU, IDE, other).
+the vCPU thread's ns and count per frame, and per MemoryRegion by name.
+**The patch is ready: `docs/lanes/frametrace/hooks-g9.diff`** (one file,
+`git apply --check` clean, the patched file type-checked with the NDK
+Release line; regenerate with `make_hooks_g9.py`). The in-row half is
+committed: the frame's `mmio`/`nmmio`, the summary's `mmio= nmmio= mm=`
+(top six regions, us per frame), selftest checks and three mutants. Its
+own cost is unknown until it runs (no counter gives MMIO accesses per
+frame); the duty test measures it with the rest of the instrument.
 It is step 1 of NOTES section 6: every late frame read so far is the vCPU
 on-CPU, `[rr425] tbus` counts helpers and MMIO as guest code, and nothing in
 the row can split them. G1-G8 (hooks.diff) still stand; G4 is step 3.

@@ -279,6 +279,9 @@ def report(d, a):
             rows.append(['PFIFO wait: ' + w, both('p_' + w)])
     if have & 4:
         rows += [['render on-CPU', both('r_run')], ['render blocked', both('r_blk')]]
+    if have & 64:       # G9: the vCPU in MMIO dispatch (waits inside included)
+        rows += [['vCPU in MMIO dispatch (G9)', both('mmio')],
+                 ['MMIO accesses per frame', '%.0f' % m('nmmio', win)]]
     rows += [['main loop on-CPU', both('m_run')], ['GPU execution', both('gpu')],
              ['charged critical path (crit)', both('crit')],
              ['instrument (ins, us)', '%.1f' % m('ins', win)]]

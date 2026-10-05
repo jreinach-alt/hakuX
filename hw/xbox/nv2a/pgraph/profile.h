@@ -126,11 +126,21 @@ typedef struct HakuxFtFrame {
     uint32_t pidle;                 /* PFIFO waiting for work (always on) */
     uint32_t lockw;                 /* DMA_PUT pfifo.lock wait (user.c) */
     uint32_t gpu;                   /* GPU execution read back this frame */
+    uint32_t mmio, nmmio;           /* vCPU in MMIO dispatch: us, accesses
+                                     * (HAKUX_FT_NA / 0 if unhooked: G9) */
 } HakuxFtFrame;
+
+/* MMIO dispatch on the vCPU thread (G9: system/memory.c). The time includes
+ * any wait the handler makes inside (the DMA_PUT pfifo.lock wait is inside a
+ * USER write). Only the outermost dispatch is booked. */
+typedef struct HakuxFtMmio {
+    int64_t t0;
+} HakuxFtMmio;
 
 #define HAKUX_FT_HAVE_ROW(r)  (1u << (r))   /* rows 0..3 have schedstat */
 #define HAKUX_FT_HAVE_GIDLE   (1u << 4)
 #define HAKUX_FT_HAVE_VBLANK  (1u << 5)     /* hakux_ft_vblank() is hooked */
+#define HAKUX_FT_HAVE_MMIO    (1u << 6)     /* MMIO dispatch is hooked (G9) */
 
 /* What profile.c hands over at each flip, read before the per-frame
  * accumulators it names are reset. */
@@ -192,6 +202,24 @@ void hakux_ft_vblank(void);                     /* VBLANK fired */
 void hakux_ft_flip(const HakuxFtExt *x);         /* PFIFO thread, at the flip */
 extern int hakux_ft_bql_owner;                  /* role holding the BQL */
 extern void (*hakux_ft_log)(const char *tag, const char *line);
+void hakux_ft_mmio_begin_slow(HakuxFtMmio *m);
+void hakux_ft_mmio_end_slow(HakuxFtMmio *m, const void *key, const char *name);
+
+static inline void hakux_ft_mmio_begin(HakuxFtMmio *m)
+{
+    m->t0 = 0;
+    if (hakux_ft_enabled()) {
+        hakux_ft_mmio_begin_slow(m);
+    }
+}
+
+static inline void hakux_ft_mmio_end(HakuxFtMmio *m, const void *key,
+                                     const char *name)
+{
+    if (__builtin_expect(m->t0 != 0, 0)) {
+        hakux_ft_mmio_end_slow(m, key, name);
+    }
+}
 
 static inline void hakux_ft_wait_begin(HakuxFtWait *w, int reason, int holder)
 {
@@ -439,6 +467,17 @@ static FtRole ft_role[HAKUX_FT_NROLE];
 static uint64_t ft_other_acc[HAKUX_FT_NW];   /* atomic adds, any thread */
 static __thread int8_t ft_self = -1;
 static __thread uint8_t ft_depth;
+
+/* MMIO dispatch time (G9), written by the vCPU thread only. Slots are keyed
+ * by the MemoryRegion pointer and named at first sight; the last slot takes
+ * whatever does not fit. */
+#define FT_MMIO_SLOTS 32
+static uint64_t ft_mmio_ns, ft_mmio_n;
+static const void *ft_mmio_key[FT_MMIO_SLOTS];
+static char ft_mmio_name[FT_MMIO_SLOTS][16];
+static uint64_t ft_mmio_slot_ns[FT_MMIO_SLOTS];
+static uint32_t ft_mmio_nslots;     /* published after the slot is named */
+static __thread uint8_t ft_mmio_depth;
 
 /* Presents (vCPU) and VBLANKs (the VBLANK timer's thread). */
 static int64_t ft_present_t[FT_PRESENT_RING];
@@ -785,6 +824,42 @@ void hakux_ft_gidle_end(void)
     ft_wend(r);
 }
 
+void hakux_ft_mmio_begin_slow(HakuxFtMmio *m)
+{
+    if (ft_self != HAKUX_FT_VCPU || ft_mmio_depth) {
+        return;                     /* not the vCPU, or nested: t0 stays 0 */
+    }
+    ft_mmio_depth = 1;
+    m->t0 = hakux_ft_now();
+}
+
+void hakux_ft_mmio_end_slow(HakuxFtMmio *m, const void *key, const char *name)
+{
+    int64_t d = hakux_ft_now() - m->t0;
+    uint32_t n = ft_mmio_nslots, i;
+
+    ft_mmio_depth = 0;
+    m->t0 = 0;
+    if (d < 0) {
+        d = 0;
+    }
+    for (i = 0; i < n && ft_mmio_key[i] != key; i++) {
+    }
+    if (i == n) {
+        if (n < FT_MMIO_SLOTS) {
+            ft_mmio_key[n] = key;
+            snprintf(ft_mmio_name[n], sizeof(ft_mmio_name[n]), "%s",
+                     n == FT_MMIO_SLOTS - 1 ? "other" : name ? name : "?");
+            __atomic_store_n(&ft_mmio_nslots, n + 1, __ATOMIC_RELEASE);
+        } else {
+            i = FT_MMIO_SLOTS - 1;
+        }
+    }
+    FT_ST(&ft_mmio_slot_ns[i], ft_mmio_slot_ns[i] + (uint64_t)d);
+    FT_ST(&ft_mmio_ns, ft_mmio_ns + (uint64_t)d);
+    FT_ST(&ft_mmio_n, ft_mmio_n + 1);
+}
+
 /* Single producer each: the vCPU writes presents, one timer thread VBLANKs. */
 void hakux_ft_present(void)
 {
@@ -816,6 +891,7 @@ typedef struct FtSnap {
     uint64_t hrole[HAKUX_FT_NROLE + 1]; /* vCPU only */
     uint64_t nwait[HAKUX_FT_NROLE];
     uint64_t gidle;
+    uint64_t mmio_ns, mmio_n;
     uint64_t run[HAKUX_FT_NROLE], rq[HAKUX_FT_NROLE];
     bool ss_ok[HAKUX_FT_NROLE];
 } FtSnap;
@@ -932,6 +1008,8 @@ static void ft_snap_all(int64_t now, FtSnap *s)
     for (int k = 0; k < HAKUX_FT_NW; k++) {
         s->acc[HAKUX_FT_OTHER][k] = FT_LD(&ft_other_acc[k]);
     }
+    s->mmio_ns = FT_LD(&ft_mmio_ns);
+    s->mmio_n = FT_LD(&ft_mmio_n);
 }
 
 static uint8_t ft_ireq(uint8_t vb)
@@ -1055,6 +1133,14 @@ void hakux_ft_flip(const HakuxFtExt *x)
     if (__atomic_load_n(&ft_vblank_head, __ATOMIC_RELAXED)) {
         fr->have |= HAKUX_FT_HAVE_VBLANK;
     }
+    if (s.mmio_n) {
+        uint64_t dn = s.mmio_n - ft.snap.mmio_n;
+        fr->mmio = ft_us(s.mmio_ns, ft.snap.mmio_ns);
+        fr->nmmio = (uint32_t)(dn > 0xffffffffu ? 0xffffffffu : dn);
+        fr->have |= HAKUX_FT_HAVE_MMIO;
+    } else {
+        fr->mmio = HAKUX_FT_NA;
+    }
     fr->pidle = (uint32_t)(x->pidle_ns > 0 ? x->pidle_ns / 1000 : 0);
     fr->lockw = (uint32_t)(x->lockw_ns > 0 ? x->lockw_ns / 1000 : 0);
     fr->gpu = (uint32_t)(x->gpu_ns > 0 ? x->gpu_ns / 1000 : 0);
@@ -1102,6 +1188,9 @@ typedef struct FtWriter {
     uint64_t vho[HAKUX_FT_NROLE + 1], nw[HAKUX_FT_NROLE];
     uint64_t prun, prq, pblk, pidle, pw[HAKUX_FT_NW], lockw, rrun, rblk;
     uint64_t mhz_sum, ins_sum, crit_sum;
+    uint64_t mmio_sum, nmmio_sum;       /* frames with HAVE_MMIO */
+    uint32_t mmio_frames;
+    uint64_t mm_last[FT_MMIO_SLOTS];    /* slot ns at the last summary */
     uint32_t mhz_n, max_ins;
     uint8_t ireq;
     uint32_t median_us;                 /* period median of the last window */
@@ -1202,6 +1291,10 @@ static int ft_fmt_frame(char *b, size_t n, const HakuxFtFrame *fr,
         o += snprintf(b + o, n - o, " sl=%.2f", slack_ns / 1e6);
     }
     o += snprintf(b + o, n - o, " ins=%u", fr->ins);
+    if (fr->mmio != HAKUX_FT_NA && o < (int)n) {
+        o += snprintf(b + o, n - o, " mmio=%.2f/%u", fr->mmio / 1e3,
+                      fr->nmmio);
+    }
     return o;
 }
 
@@ -1352,6 +1445,35 @@ static void ft_summary(FtWriter *w, int64_t now)
         w->rrun / 1e3 / n, w->rblk / 1e3 / n, s50 / 1e3, s05 / 1e3,
         w->vbd[0], w->vbd[1], w->vbd[2], w->vbd[3], w->vbd[4],
         (double)w->ins_sum / n, w->max_ins, (unsigned long long)wcpu);
+    if (w->mmio_frames) {
+        /* MMIO (G9): us per frame, accesses per frame, and the six regions
+         * with the most time since the last summary, us per frame. */
+        uint32_t ns = __atomic_load_n(&ft_mmio_nslots, __ATOMIC_ACQUIRE);
+        uint64_t d[FT_MMIO_SLOTS];
+        bool used[FT_MMIO_SLOTS] = { false };
+        o += snprintf(line + o, sizeof(line) - o, " mmio=%.2f nmmio=%.1f mm=",
+                      w->mmio_sum / 1e3 / w->mmio_frames,
+                      (double)w->nmmio_sum / w->mmio_frames);
+        for (uint32_t i = 0; i < ns; i++) {
+            uint64_t v = FT_LD(&ft_mmio_slot_ns[i]);
+            d[i] = v - w->mm_last[i];
+            w->mm_last[i] = v;
+        }
+        for (int top = 0; top < 6; top++) {
+            int b = -1;
+            for (uint32_t i = 0; i < ns; i++) {
+                if (!used[i] && d[i] && (b < 0 || d[i] > d[b])) {
+                    b = (int)i;
+                }
+            }
+            if (b < 0 || o >= (int)sizeof(line)) {
+                break;
+            }
+            used[b] = true;
+            o += snprintf(line + o, sizeof(line) - o, top ? ",%s:%.1f" : "%s:%.1f",
+                          ft_mmio_name[b], d[b] / 1e3 / n);
+        }
+    }
     hakux_ft_log("hakuX-ft1", line);
     if (w->csv) {
         fflush(w->csv);
@@ -1371,6 +1493,8 @@ static void ft_summary(FtWriter *w, int64_t now)
         w->prun = w->prq = w->pblk = w->pidle = w->lockw = 0;
         memset(w->pw, 0, sizeof(w->pw));
         w->rrun = w->rblk = w->mhz_sum = w->ins_sum = w->crit_sum = 0;
+        w->mmio_sum = w->nmmio_sum = 0;
+        w->mmio_frames = 0;
     }
 }
 
@@ -1411,7 +1535,7 @@ static void ft_csv_open(FtWriter *w)
         for (int k = 0; k < HAKUX_FT_NW; k++) {
             fprintf(w->csv, ",o_%s", hakux_ft_w_name[k]);
         }
-        fprintf(w->csv, ",gpu,rp,mhz,tp_ns,rel_ns,slack,ins\n");
+        fprintf(w->csv, ",gpu,rp,mhz,tp_ns,rel_ns,slack,ins,mmio,nmmio\n");
     }
     {
         char line[400];
@@ -1464,7 +1588,8 @@ static void ft_csv_row(FtWriter *w, const HakuxFtFrame *fr, int64_t rel,
     if (has_slack) {
         fprintf(c, "%lld", (long long)(slack / 1000));
     }
-    fprintf(c, ",%u\n", fr->ins);
+    fprintf(c, ",%u,%d,%u\n", fr->ins,
+            fr->mmio == HAKUX_FT_NA ? -1 : (int)fr->mmio, fr->nmmio);
 }
 
 /* One frame, in order. Exposed for the selftest. */
@@ -1553,6 +1678,11 @@ void hakux_ft_writer_frame(FtWriter *w, const HakuxFtFrame *in, int64_t now)
     }
     w->ins_sum += fr->ins;
     w->max_ins = fr->ins > w->max_ins ? fr->ins : w->max_ins;
+    if (fr->mmio != HAKUX_FT_NA) {
+        w->mmio_sum += fr->mmio;
+        w->nmmio_sum += fr->nmmio;
+        w->mmio_frames++;
+    }
     w->crit_sum += fr->crit;
 
     /* Hitch: a period over max(2 x the last window's median, 50 ms). */

@@ -78,6 +78,18 @@ MUTANTS = [
      '    __atomic_store_n(&hakux_ft_on, d->on, __ATOMIC_RELEASE);',
      '',
      'duty.switches_off_then_on'),
+    ('mmio: nested dispatch booked twice',
+     'if (ft_self != HAKUX_FT_VCPU || ft_mmio_depth) {',
+     'if (ft_self != HAKUX_FT_VCPU) {',
+     'mmio.outermost_vcpu_dispatch_booked_once'),
+    ('mmio: any thread booked as the vCPU',
+     'if (ft_self != HAKUX_FT_VCPU || ft_mmio_depth) {',
+     'if (ft_mmio_depth) {',
+     'mmio.outermost_vcpu_dispatch_booked_once'),
+    ('mmio: every region booked to one slot',
+     '    for (i = 0; i < n && ft_mmio_key[i] != key; i++) {',
+     '    for (i = 0; i < n; i++) {\n        break;',
+     'mmio.slots_by_region'),
 ]
 
 

@@ -563,6 +563,54 @@ static void test_duty(void)
     }
 }
 
+/* ---- 6. MMIO dispatch time (G9) ---------------------------------------- */
+
+static int mmio_key_a, mmio_key_b;
+
+static void *mmio_vcpu(void *arg)
+{
+    HakuxFtMmio m, inner;
+    (void)arg;
+    hakux_ft_thread(HAKUX_FT_VCPU);
+    hakux_ft_mmio_begin(&m);                /* 2 ms, with a nested access */
+    sleep_ms(1);
+    hakux_ft_mmio_begin(&inner);
+    sleep_ms(1);
+    hakux_ft_mmio_end(&inner, &mmio_key_b, "nv2a-user");
+    hakux_ft_mmio_end(&m, &mmio_key_a, "nv2a-pgraph");
+    hakux_ft_mmio_begin(&m);                /* 1 ms */
+    sleep_ms(1);
+    hakux_ft_mmio_end(&m, &mmio_key_b, "nv2a-user");
+    return NULL;
+}
+
+static void test_mmio(void)
+{
+    pthread_t v;
+    HakuxFtMmio m;
+    HakuxFtFrame f;
+
+    flip(1);                                /* frame boundary before */
+    hakux_ft_mmio_begin(&m);                /* not the vCPU: not booked */
+    sleep_ms(3);
+    hakux_ft_mmio_end(&m, &mmio_key_a, "nv2a-pgraph");
+    pthread_create(&v, NULL, mmio_vcpu, NULL);
+    pthread_join(v, NULL);
+    flip(1);
+    f = last_frame(0);
+    check((f.have & HAKUX_FT_HAVE_MMIO) && f.nmmio == 2 &&
+          f.mmio >= 2800 && f.mmio < 5500,
+          "mmio.outermost_vcpu_dispatch_booked_once",
+          "have=%#x nmmio=%u mmio=%u us", f.have, f.nmmio, f.mmio);
+    check(ft_mmio_nslots == 2 && !strcmp(ft_mmio_name[0], "nv2a-pgraph") &&
+          !strcmp(ft_mmio_name[1], "nv2a-user") &&
+          ft_mmio_slot_ns[0] >= 1800000 && ft_mmio_slot_ns[1] >= 900000 &&
+          ft_mmio_slot_ns[1] < 2500000,
+          "mmio.slots_by_region", "slots=%u %s=%llu %s=%llu", ft_mmio_nslots,
+          ft_mmio_name[0], (unsigned long long)ft_mmio_slot_ns[0],
+          ft_mmio_name[1], (unsigned long long)ft_mmio_slot_ns[1]);
+}
+
 int main(void)
 {
     hakux_ft_log = cap_log;
@@ -576,6 +624,7 @@ int main(void)
     test_live();
     test_hitch();
     test_duty();
+    test_mmio();
     printf("RESULT pass=%d fail=%d\n", npass, nfail);
     return nfail ? 1 : 0;
 }
