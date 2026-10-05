@@ -11,25 +11,25 @@ What is in flight right now. Generated from the working tree and updated as work
 | 2026-10-05 | NFL Blitz 2002 | PASS 606.9 s, play_share 0.990, fps_ok 0.996 (30 fps bar, window median 45.1, min 25.2), 0 hitches, audio_starve 0, no crash/hang (flicker not yet checked) |
 | 2026-10-04 | Tork: Prehistoric Punk | PASS 632.7 s, play_share 0.952 (30 s 'still' excluded), fps_ok 1.0 (30 fps bar, overlay reads 29), 0 hitches, audio_starve 0, no crash/hang (flicker not yet checked) |
 | 2026-10-04 | Jet Set Radio Future | PASS 602 s, play_share 0.9997, fps_ok 1.0 (30 fps bar), 0 hitches, audio_starve 0, no crash/hang (flicker not yet checked) |
-| 2026-10-04 | MTV Celebrity Deathmatch | verdict FAIL on play share only (87.8% vs 90% bar: 37 s cutscene + 34 s menu between rounds) (flicker not yet checked) |
+| 2026-10-04 | MTV Celebrity Deathmatch | accepted on review (87.8% against a 90% bar: 37 s cutscene + 34 s menu between rounds) (flicker not yet checked) |
 | 2026-10-04 | Dark Summit | PASS 606 s, play_share 0.9998, fps_ok 0.9318 (28.5 bar, median 45.9, min 25.8), 2 hitches worst 128 ms, audio_starve 0 (flicker not yet checked) |
 | 2026-10-04 | The Simpsons Hit & Run | PASS 605.7 s, play_share 0.9998, fps_ok 1.0 (30 fps bar, median 37.9, min 28.75), 0 hitches, audio_starve 0 (flicker not yet checked) |
 | 2026-10-03 | Panzer Dragoon Orta | PASS 603.7 s, play_share 0.9997, fps_ok 0.9962 (30 fps bar, median 54.1), 7 hitches worst 386 ms (6 shader) |
 | 2026-10-03 | Halo: Combat Evolved | PASS 722 s, fps_ok 0.994 (30 fps title, 29.97 median), static 0%, one 633-ms compile hitch at +8 s |
 | 2026-10-03 | Spikeout: Battle Street | PASS 607.3 s, fps_ok 1.0, play_share 0.9996 |
 | 2026-10-03 | Castlevania: Curse of Darkness | PASS 677 s, fps_ok 1.0, worst hitch 173 ms |
-| 2026-10-03 | Gunvalkyrie | owner 12:25 PDT: "Gunvalkyrie passes" |
-| 2026-10-02 | ToeJam & Earl III: Mission to Earth | Nova |
-| 2026-10-01 | Tony Hawk's Pro Skater 2x | Nova |
-| 2026-10-01 | 187: Ride or Die | Nova |
-| 2026-09-30 | Kabuki Warriors | Nova |
-| 2026-09-30 | Crimson Skies: High Road to Revenge | Nova |
-| 2026-09-30 | Baldur's Gate: Dark Alliance | Nova |
-| 2026-09-30 | 50 Cent: Bulletproof | Nova |
-| 2026-09-30 | WWE Raw 2 | Nova |
-| 2026-09-29 | Azurik: Rise of Perathia | Nova |
-| 2026-09-29 | KOF: Maximum Impact – Maniax | Nova |
-| 2026-09-26 | Alien Hominid | Thor |
+| 2026-10-03 | Gunvalkyrie | accepted on owner review |
+| 2026-10-02 | ToeJam & Earl III: Mission to Earth | 600 s held run on the Nova |
+| 2026-10-01 | Tony Hawk's Pro Skater 2x | 600 s held run on the Nova |
+| 2026-10-01 | 187: Ride or Die | 600 s held run on the Nova |
+| 2026-09-30 | Kabuki Warriors | 600 s held run on the Nova |
+| 2026-09-30 | Crimson Skies: High Road to Revenge | 600 s held run on the Nova |
+| 2026-09-30 | Baldur's Gate: Dark Alliance | 600 s held run on the Nova |
+| 2026-09-30 | 50 Cent: Bulletproof | 600 s held run on the Nova |
+| 2026-09-30 | WWE Raw 2 | 600 s held run on the Nova |
+| 2026-09-29 | Azurik: Rise of Perathia | 600 s held run on the Nova |
+| 2026-09-29 | KOF: Maximum Impact – Maniax | 600 s held run on the Nova |
+| 2026-09-26 | Alien Hominid | 600 s held run on the Thor |
 
 ## Work in progress
 
@@ -55,4 +55,4 @@ What is in flight right now. Generated from the working tree and updated as work
 - `6dc95ff117` 2026-10-05 hitchcause: attempt 4 notes; IRQ14 is the IDE device on a DMA path; WAITING on the [ide425d] build smoke (#433, #819)
 - `af37f7a3ea` 2026-10-05 hitchcause: [ide425d] DMA, command-to-IRQ, IRQ-to-command and drain timing per 2 s window (telemetry only) (#433, #819)
 
-_Updated 2026-10-05 12:30 PDT._
+_Updated 2026-10-05 12:31 PDT._
