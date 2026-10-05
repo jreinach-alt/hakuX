@@ -169,7 +169,13 @@ HOLD_GENRES = {
     # shoot; on defence the same buttons switch player and steal (NBA Live family, addendum 3, 10-03)
     "team": ["RT:1", "STICK:up:1", "A", "STICK:right:1", "X", "STICK:left:1", "B", "STICK:down:1", "Y"],
     "other": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"],
+    # bowling (10-05, AMF Bowling 2004: the team loop stood the bowler at the foul line and its B and Y opened the pause
+    # menu): aim with the stick, throw with A (press to start the meter, press to release). No B, X or Y here.
+    "bowl": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"],
 }
+# a period break (a quarter, half, inning, or a bowling frame's scorecard) has its own START/A budget per episode, so a
+# scorecard does not spend the shared CONTINUE budget (lane.local 12:52: each frame's scorecard is a per-frame continue)
+PERIOD_TRIES = 8
 # Title-specific hold loops (10-03 addendum, the owner's Black Stone design). They replace the genre's loop and its
 # unlock rotation for these title ids. The walk moves the player with the left stick only, in long strokes that
 # change direction. X is pressed once, alone: at the start of the hold and after two still windows in a row. Y, R1,
@@ -1486,11 +1492,12 @@ class Agent:
         ans = self.model.ask(FAST, (
             f"Screenshot of {self.name}, an Xbox game, in gameplay. The 'FPS: NN' text at the top-left is the "
             "emulator's overlay, not the game's HUD. What kind of play is this? Answer JSON only: "
-            '{"genre": "drive|attack|shooter|rally|team|onrails|other", "why": "<one line>"}. drive: a car, bike, '
+            '{"genre": "drive|attack|shooter|rally|team|bowl|onrails|other", "why": "<one line>"}. drive: a car, bike, '
             "boat or plane moving through a world; attack: a character fighting in melee or with magic; shooter: "
             "a gun game, first or third person, walking through a level and firing a weapon; rally: a ball or "
             "shuttle played back and forth over a net (tennis, volleyball); team: a team sport on a court, "
-            "field or rink (basketball, football, hockey, soccer); onrails: the scene moves on its own and the "
+            "field or rink (basketball, football, hockey, soccer); bowl: a bowling lane, the bowler aims and throws "
+            "at pins; onrails: the scene moves on its own and the "
             "player only aims; other: anything else."), "genre", [jpg]) or {}
         return ans.get("genre") if ans.get("genre") in HOLD_GENRES else "other", str(ans.get("why", ""))[:160]
 
@@ -1538,6 +1545,7 @@ class Agent:
         order = [genre] + [g for g in HOLD_GENRES if g not in (genre, "onrails")]
         rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
         cont_tries = 0                   # CONTINUE presses in this off-play episode (CONTINUE_PRESS, CONTINUE_TRIES)
+        pb_tries = 0                     # period-break presses in this episode (CONTINUE_PRESS, PERIOD_TRIES), own budget
         last_png, last_check, last_kept, drop = None, now(), None, []
         fps_seen, fps_checks = set(), []  # the FPS_GATES passed so far, and what each read
         # the perflog: logcat from the mark to `soak end`, with a state line at every change of play, so
@@ -1630,12 +1638,17 @@ class Agent:
                         wait_s = min(max(float(a.get("wait_s") or 2), 0.5), 8)
                     except (TypeError, ValueError):
                         wait_s = 2.0
-                    if st in ("continue", "period_break") and not th and cont_tries < CONTINUE_TRIES:
-                        # a CONTINUE countdown (fighting games) or a sports period break (10-05): START, then A, unlooked;
-                        # the look after each says which took (both share CONTINUE_TRIES, reset once play is back).
+                    if st == "continue" and not th and cont_tries < CONTINUE_TRIES:
+                        # a CONTINUE countdown (fighting games): START, then A, unlooked; the look after each says which took
                         action, wait_s = [CONTINUE_PRESS[cont_tries % len(CONTINUE_PRESS)]], 1.5
                         cont_tries += 1
                         look["continue"] = cont_tries
+                    elif st == "period_break" and not th and pb_tries < PERIOD_TRIES:
+                        # a sports period break or a bowling frame's scorecard (10-05): START, then A, unlooked, on its own
+                        # budget (PERIOD_TRIES), reset once play is back
+                        action, wait_s = [CONTINUE_PRESS[pb_tries % len(CONTINUE_PRESS)]], 1.5
+                        pb_tries += 1
+                        look["period"] = pb_tries
                     elif th:
                         # title hold: a menu is closed with one B and X follows; anything else keeps the model's press
                         # minus the forbidden buttons (a cutscene's A)
@@ -1657,6 +1670,7 @@ class Agent:
                     nav = 0
                     rep_left = 0
                     cont_tries = 0
+                    pb_tries = 0
             if not off and look.get("action") is None:
                 # play: the genre loop (a check look that said play sends it too). The time credited is this
                 # cycle's own, from its frame to its inputs: the look before may have been off play.

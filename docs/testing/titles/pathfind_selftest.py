@@ -490,6 +490,24 @@ check("sports", [l["action"] for l in pb[:2]] == [["START"], ["A"]],
 check("sports", "period_break" in pathfind.STATES and "LONGEST" in pathfind.RULES
       and "period_break" in pathfind.RULES,
       "the state list names period_break, and the claim prompt sets the period to the longest value")
+# bowling (10-05, AMF Bowling 2004): a bowl hold loops aim and throw with no B, X or Y, and each frame's scorecard
+# (a period_break) gets START, then A, on its own budget (PERIOD_TRIES), not the shared CONTINUE budget.
+ROUTE_LOG.clear()
+rc, res, steps, calls = run("bowl", PREFIX + [("game", 0)] * 120 + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, {"genre": "bowl"}]
+                            + [PB] * 10 + [PLAYING] * 160,
+                            ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
+hold = res.get("hold", {})
+look = [json.loads(l) for l in open(os.path.join(TMP, "bowl", "out", "hold.jsonl"))]
+loop = pathfind.HOLD_GENRES["bowl"]
+check("bowl", hold.get("genre") == "bowl" and not any(t in ("B", "X", "Y") for t in loop),
+      f"the bowl loop is aim and throw, no B, X or Y: {loop}")
+pb = [l for l in look if l.get("state") == "period_break"]
+check("bowl", [l.get("action") for l in pb[:2]] == [["START"], ["A"]] and all("continue" not in l for l in pb)
+      and [l.get("period") for l in pb[:3]] == [1, 2, 3],
+      f"scorecards press START, then A, counted as period looks: {[(l.get('action'), l.get('period')) for l in pb[:3]]}")
+check("bowl", any(l.get("action") == loop for l in look) and hold.get("ok") is True,
+      f"the hold runs the bowl loop and holds play after the scorecards: ok {hold.get('ok')}")
 pathfind.now, pathfind.time.sleep = real_now, real_sleep
 
 # actions
