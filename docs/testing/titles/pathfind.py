@@ -1491,7 +1491,12 @@ class Agent:
             f"overlay, not the game's HUD. An agent is keeping the player playing (genre: {genre}). Read the "
             "screen. Is the player in live play right now (the player's character, vehicle or ball in the game "
             "world, the game running)? A menu cursor, a pause screen, a cutscene, a loading screen, a results or "
-            "game-over screen, or a black screen is NOT play. If it is not play, which input gets back to it?" + fight +
+            "game-over screen, or a black screen is NOT play. If it is not play, which input gets back to it?"
+            # a co-op join prompt over live play (LEGO Star Wars 10-04: the hub's "Press START" read as a cutscene, and
+            # START opened the pause menu twice; Guilty Gear XX's empty player-2 slot): play, and START is never its input
+            " A 'PRESS START' or 'Player 2 press START' prompt shown over the game world while the player's "
+            "character is on screen is a second player's join prompt: that is live play (in_play true), and START "
+            "there opens the pause menu, so never answer START for it." + fight +
             sports +
             ' Answer JSON only: {"state": "gameplay|pause|game_over|results|menu|continue|period_break|cutscene|loading|black|other", '
             '"in_play": true|false, "why": "<one line>", "action": [inputs, e.g. "START", "A", '
