@@ -8,8 +8,8 @@
  * What it records, one HakuxFtFrame per guest flip (FLIP_STALL reaching the
  * PFIFO thread), all durations in microseconds over the flip-to-flip period:
  *
- *   - the period, the VBLANKs and the presents (the guest's NV_PGRAPH_INCREMENT
- *     write, from its VBLANK ISR) since the previous flip;
+ *   - the period, the VBLANKs and the presents (the guest's READ_3D
+ *     increment, written from its VBLANK ISR) since the previous flip;
  *   - per thread row (vCPU, PFIFO, render, main loop): on-CPU, run-queue wait
  *     and blocked time from that thread's /proc schedstat, and the time inside
  *     each instrumented wait, by reason (HAKUX_FT_W_*);
