@@ -203,3 +203,48 @@ in the pref (`HAKUX_OCCL_WAIT=0`, `HAKUX_OCCL_LOG=150`, `PERF_REGIMEN=default`;
 the dispatcher clears env only at the next request). For a title that reads
 occlusion queries that is the pre-#804 behaviour. Arm W, queued behind it,
 restores the shipped env when it runs.
+
+## Step 3a: NG Black (1-1791212834-lane.belowbar1005-2132085, 09:06-09:15 PDT)
+
+Perflog build of d32c35d3ce (apk 63abb775f234, shader cache cleared), regimen
+default, shipped fence wait, `HAKUX_OCCL_LOG=200`. Route `routes/bb-ngb.route`
+(retro-ngb's 32 steps, then the attack loop) reached play at the mark
+(09:11:19): Ryu at the chapter-1 waterfall gorge (route frames 091237-hold
+FPS 39, 091431-hold FPS 35). 217 s of play: fps_ok_share 0.78, 4 hitches
+(worst 291 ms, cold cache). Not retro-ngb's stretch (0.25): pathfind's hold
+walked further; the waterfall is the lighter opening.
+
+**NG Black reads occlusion queries, and the wait never blocks.** 190
+`[occl804] f=` lines from 09:12:35 to 09:14:58: queries in 190 guest frames
+of ~5,000 (q = 1-3 per frame, the visible-pixel count of a small effect,
+values ~200), and `pend=0` on all 190: at every read, no submitted frame was
+still running, so `vkWaitForFences` returned on signalled fences. The wait
+costs NG Black nothing measurable here; no WAIT=0 arm is needed to say so (it
+would differ only by those already-signalled waits).
+
+**Bound: the GPU.** Per guest frame (decompose.py rows, perflog columns):
+
+| rows | n | share >= 28.5 | fps | F | GPU (ph_GPU) | render on-CPU | render blocked | render idle | finish | vCPU asleep | lockw |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| all | 112 | 0.80 | 35.1 | 28.5 | 24.2 | 11.2 | 16.5 | 0.3 | 2.7 | 9.8 | 1.4 |
+| below 28.5 | 23 | -- | 25.5 | 39.2 | 32.6 | 15.0 | 23.9 | 0.3 | 2.6 | 15.2 | 6.3 |
+
+- F tracks the GPU time in every 30-s bucket (GPU 21-27 ms, F 25-38): the
+  frame is the GPU's time plus ~4 ms. The render thread is never idle
+  (Ri < 1.5 ms) and its blocked time (15-24 ms) is the flip waiting on the
+  GPU (finish is only 2.6-4 ms: `Fin:5.8(Sub:0.3 Fen:5.5)` per frame at
+  most, `flip60 stlDef75` per 2 s, **no surface-download finishes**: `sd0`,
+  `dlSrc 0`, so not #794's class).
+- **Half of the GPU time is outside render passes.** xemu-gpu medians:
+  Tot 23.9 = Rnd 12.2 + **Xfr 11.7** ms per frame (`gpu_nonrender_ms`). Over
+  the same windows: 7-8 surface uploads per frame (`xemu-surf #upl:444-463`
+  per 60 frames), 7 render-pass breaks per frame for surfaces
+  (`hakuX-rpbrk srf420` per 60), 3 clears per frame (`clr180`), 9 texture
+  ↔ surface conversions (`S2T:9`). That GPU-side copy/convert work is the
+  lever, not the draws (282 draws/frame, R 10-12 ms).
+- The slow buckets (t = 0-30 and 150-180 s) add pipeline creation (ph_Draw
+  11-17 ms against 6-8, cold cache) and pgraph.lock wait (6-12 ms, `flip_op`
+  10 ms per frame on average); they are where the hitches are.
+- NG Black is a 60-fps title (VBLANKs per flip v1 0.65, v2 0.29 here): it
+  runs 30-40 fps against a 30 bar, so it is under the bar only where the GPU
+  load passes 33 ms.
