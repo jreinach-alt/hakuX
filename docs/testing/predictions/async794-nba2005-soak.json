@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-10-04T15:33:09Z",
+  "who": "lane.async794",
+  "issue": "794",
+  "title": "45410050-NBA_Live_2005.xiso.iso",
+  "device": "nova",
+  "seconds": 800,
+  "route": "fps786-nba2005",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "5e4196fefd",
+  "b_ref": "c825e4b24f",
+  "judge": "python3 docs/lanes/fps20786/decompose.py <dir> (the mark is the route's `mark gameplay`) for F, Ri, rcpu, rblk, ph_Fin, ph_GPU, lockw, v_blk and the 2-s fps rows; python3 docs/lanes/async794/sdcallers.py <results> <id> for the per-caller waits; play shots by eye; the same on both arms",
+  "prediction": "NBA Live 2005, exhibition at the Palace, 12-minute quarters. Premise (lane.fps20786, run 1-1791081646-lane.fps20786-2876934): the unshelve of a ping-ponged render target completes the staged downloads with a finish of its own once a frame ([sdcall] reuse=fin1.00/frame, 11.4 ms/frame), ph_Fin 13.8, renderer cost F - Ri 35.4 ms against 33.3, so half the frames take three VBLANKs. B detaches the reused struct from its pending download and lets each download complete on its own submission's fence, so neither that finish nor the next frame's first recorded download waits for the GPU. Claim: the 11.4 ms leaves the render thread and does not come back at the flip or at frame-slot reuse. P(ph_Fin <= 2.5 ms) 0.5; P(B clears 30 fps on >= 0.90 of 2-s rows) 0.35 -- the GPU is 18.5 ms and render CPU 24.7 ms, under 33.3 only if they overlap.",
+  "legs": {
+    "M0 (instrument)": ">= 100 hakuX-phase lines and >= 100 [sdcall] lines after the gameplay mark in each arm, all parse, and the play shots show play. Otherwise that arm is VOID, not a zero.",
+    "F2 (no corruption)": "B's play shots show no stale, torn, black or one-frame-behind surfaces that A's do not (render targets, reflections, HUD), and B's logcat has no Vulkan validation error, device-lost, assert or crash. FAILS in the world where a completion wrote VRAM out of record order or a reader read around a detached entry; then the change is wrong, not slow.",
+    "P0 (premise, re-measured in A)": "A's [sdcall] reuse fin >= 0.8 per frame and reuse wait >= 8 ms/frame, and A's ph_Fin >= 10 ms/frame. FAILS if this scene no longer takes that path; then P1-P3 are not about this lever.",
+    "F1 (the mover)": "B's [sdcall] reuse fin = 0 and reuse_detach >= 0.8 per frame (the detach happens where the finish was).",
+    "P1 (the claim)": "B's ph_Fin <= 2.5 ms/frame and B's renderer cost F - Ri <= 26 ms on the play rows (the brief's bar).",
+    "X1 (falsifier: the wait only moved)": "FIRES if B's ph_Fin > 8 ms/frame, or B's [sdcall] waits summed over every caller (record, prerec, range, surfupd, tobuf, ext) >= 5 ms/frame, or B's rblk (render thread blocked) is within 3 ms/frame of A's. Then the wait moved to the flip or to frame-slot reuse; it is reported as moved, not counted as a win, and no second theory is stacked on it.",
+    "P2 (fps)": "B's 2-s fps rows: share >= 28.5 at least 0.5 (A 0.07). A title counts only after a plain 600-s held run clears 30 and passes the frame review; this leg does not count it."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off hakuX-phase, [sdcall], [lock474] and txr lines, and the shots by eye."
+}
