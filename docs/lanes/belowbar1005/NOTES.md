@@ -248,3 +248,39 @@ would differ only by those already-signalled waits).
 - NG Black is a 60-fps title (VBLANKs per flip v1 0.65, v2 0.29 here): it
   runs 30-40 fps against a 30 bar, so it is under the bar only where the GPU
   load passes 33 ms.
+
+## Step 3b: DOA3 (1-1791212838-lane.belowbar1005-2132217, 09:53-10:02 PDT)
+
+Same perflog apk (63abb775f234, cache kept from the NGB run), regimen default,
+shipped wait, `HAKUX_OCCL_LOG=120` (`config log=1 after_s=120 wait=1`).
+Route `routes/bb-doa3.route` (retro-doa3's 15 steps, then the attack loop)
+reached a Story fight at the mark (09:56:24), but the loop lost it: from
+~09:58 the frames are the title attract (`PRESS START BUTTON` over stage
+flyovers: 095816 the forest, 100120 the red-and-gold dojo with the lacquered
+floor). A route defect (the loop has no START for the continue screen), not a
+measurement defect: the attract renders the same stages with the same engine.
+Verdict on the window: 323 s, fps_ok_share 0.59.
+
+**DOA3 reads no occlusion queries.** No `[occl804] f=` line in 360 s of
+logged time (fight and attract). The wait never runs, as on Buffy.
+
+**Bound on the slow stage: the GPU, with one synchronous surface download
+per flip.** hakuX-phase medians by window:
+
+| window (s after mark) | scene | GPU ms/frame | render | non-render | finish | sd finishes per flip |
+|---|---|---|---|---|---|---|
+| 0-60 | Story fight | 26.4 | 14.0 | 11.6 | 12.0 | 0 |
+| 60-120 | fight / continue | 21.0 | 10.3 | 10.6 | 2.6 | 0 |
+| 120-150 | attract | 42.4 | 20.9 | 21.1 | 6.4 | 0 |
+| 150-270 | attract (forest etc.) | 15.1 | 8.2 | 7.6 | 0.7 | 0 |
+| **270-330** | **attract, the dojo (FPS 19)** | **58.7** | **33.2** | **25.5** | **30.3** | **1** (`sd60 dirtyIf60` per 2 s) |
+
+The dojo is the stage retro-doa3 spent t = 150-560 s on at 18-20 fps (the
+Bass fight, route frame 204919). There the GPU alone needs ~58 ms per frame:
+33 ms in render passes (the lacquered floor's reflection draws the scene
+twice) and 25 ms outside them (9.4 surface uploads per frame, `#upl:562`
+per 60). On top of that one download-if-dirty per flip ends in a synchronous
+`SURFACE_DOWN` finish (#794's class, the dirtyIf branch, which async794 did
+not change), so the render thread waits 30 ms per frame in Fin (Sub 30.0).
+Even with the download asynchronous the GPU's 58 ms is past 50 ms (three
+VBLANKs): DOA3 on that stage is GPU-bound first.
