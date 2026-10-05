@@ -632,14 +632,18 @@ dev_make_660() {
     [ "$m" = 660 ] || { log "  $1: mode ${m:-unreadable} after chmod 660; the app could not open it read-write"; return 1; }
 }
 # dev_push <host path> <device path>: through <path>.new and a rename, checked.
-# Mode 660 before the rename, so the file is never in place unopenable.
+# Mode 660 before the rename, so the file is never in place unopenable. A
+# failure before the rename leaves <path> as it was and removes <path>.new.
+dev_push_drop() {
+    adb_call "$ADB_QUICK_TIMEOUT" "rm $1.new" shell "rm -f '$1.new'" >/dev/null 2>&1
+}
 dev_push() {
     local src="$1" dst="$2" want
     want=$(sha256sum "$src" | cut -d' ' -f1)
-    adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || return 1
-    [ "$(dev_sha256 "$dst.new")" = "$want" ] || { log "  push $dst: the device's copy does not match"; return 1; }
-    dev_make_660 "$dst.new" || return 1
-    adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || return 1
+    adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
+    [ "$(dev_sha256 "$dst.new")" = "$want" ] || { log "  push $dst: the device's copy does not match"; dev_push_drop "$dst"; return 1; }
+    dev_make_660 "$dst.new" || { dev_push_drop "$dst"; return 1; }
+    adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
     [ "$(dev_sha256 "$dst")" = "$want" ] && [ "$(dev_mode "$dst")" = 660 ]
 }
 
