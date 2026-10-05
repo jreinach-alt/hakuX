@@ -727,7 +727,9 @@ How to act:
 - Sports: a kickoff, tip-off, faceoff, serve or pre-snap play-call screen waits for you: pick a play / press
   A to start the play, then the player can be moved. American football: a play-call screen is a MENU; press
   A to pick the play (sometimes twice: formation, then play), then A again to snap; only after the snap is it
-  gameplay: then probe ["A", "STICK:up:1.5"] (snap and run).
+  gameplay: then probe ["A", "STICK:up:1.5"] (snap and run). A formation with the HUD and clock up but no menu, before
+  the snap, is still NOT gameplay (NFL Blitz 2002, 10-05: the probe there moved nothing and the claim spent 15 min on it):
+  press A to snap, and count play only once the players are running.
 - Sports SETUP (owner rule, 10-05): before the first whistle, tip-off or kickoff, open the game or options screen that
   sets the period length (quarter, period, half, inning, game length) and choose the LONGEST value offered. If there is a
   game-clock speed or accelerated-clock option, choose the slowest or real-time setting. Choose a team a human controls
