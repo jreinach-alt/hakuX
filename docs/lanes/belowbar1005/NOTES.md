@@ -166,6 +166,37 @@ both, the slow rows are the guest's (gbusy 27-31 of 37-38 ms, renderer idle
 19-24 ms). Buffy is a 30-fps title that misses 33.3 ms by a few ms when
 the guest's own work grows.
 
+### Arm W (1-1791212327-lane.belowbar1005-2091528, 08:44-08:51 PDT) and the verdict
+
+Same apk, `[occl804] config log=1 after_s=150 wait=1`. The shader cache was
+cleared here too (`apk unrecorded -> ce2ac5751374`: lane.hitchcause's held
+session had installed its own apk in between), so both arms started cold.
+Again no `[occl804] f=` line in 210 s of logged play.
+
+| arm | fence wait | play s | fps_ok_share | window median | occl lines |
+|---|---|---|---|---|---|
+| N | off | 234 | **0.83** | 29.96 | config only |
+| W | on (shipped) | 212 | **0.67** | 29.96 (verdict), 29.7 rows | config only |
+
+By the registered rule, share(N) - share(W) = 0.16 >= 0.15, which would read
+"the fence wait costs frame rate". **It does not, and the rule as written
+was wrong to key on the share alone**: the code it tests did not run in
+either arm (no query in flight, no report queued, for the whole logged
+window), so the two arms executed the same instructions and the 16 points
+are run-to-run variation. Where it comes from, in 30-s buckets: the arms
+match for the first 90 s (0.53/0.40, 0.73/0.80, 0.93/0.93) and part where the
+loop's walk ends up. Arm W's walk left the mission courtyard for the forest
+path at t = 90-150 s and again at 210 s (route frame 084922-hold: the forest
+path, overlay FPS 24), the same stretch that pulled retro-buffy to 0.55; arm
+N stayed in the courtyard. In those buckets every component rises together
+(guest busy 21-31 ms, render CPU 10.5-12.7, render blocked 7-12.5, vCPU
+asleep 4.4-10): heavier content, not one stall.
+
+So for Buffy: **the #804 fence wait is not the cost; it never executes.**
+And a 300-360 s route soak of Buffy carries about +/-0.15 of share from the
+walk alone; any future Buffy A/B needs either a scene the loop cannot leave
+or the occl-style "did the code run" line, not the share.
+
 Side effect, flagged: lane.pathfind took the Nova (gg5, hold at 07:59:34)
 while arm N ran, so its held run started on this apk with arm N's env still
 in the pref (`HAKUX_OCCL_WAIT=0`, `HAKUX_OCCL_LOG=150`, `PERF_REGIMEN=default`;
