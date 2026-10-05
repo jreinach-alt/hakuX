@@ -1169,10 +1169,22 @@ class Agent:
             if not (l_png and r_png):
                 return False, "screencap failed"
             rec["action"] = rec["action"] + [left, right]
-            q = head + ("A, then B (1 s after A, no input): the scene moves on its own. Then C taken while holding "
-                        "the stick LEFT, then D taken while holding it RIGHT. Is this real player-controlled "
-                        "gameplay (not a menu, cutscene, attract/demo or replay), AND did the player's character, "
-                        "vehicle, aim reticle or camera steer LEFT in C and RIGHT in D? Both are needed. " + tail)
+            if self.team_sport():
+                # a team sport (NBA 2K3, NHL 2K3, 10-05): the broadcast camera, foul banners and replays move the whole
+                # frame, so whole-scene steering was refused on every probe (15 in NBA 2K3). Judge the marked player only.
+                q = head + ("This is a team sport: the broadcast camera, banners and replays move by themselves, so "
+                            "judge ONLY the human-controlled player, the one with a marker (a ring, arrow, star, "
+                            "highlight or name label under or over him). A, then B (1 s after A, no input). Then C "
+                            "taken while holding the stick LEFT, then D taken while holding it RIGHT. Is this live play "
+                            "(not a replay, cutscene, stoppage banner or menu) with a marked controlled player, AND did "
+                            "that marked player move LEFT between B and C, or RIGHT between C and D, measured against "
+                            "the court, field or rink markings (not the screen edge)? One of the two is enough; a camera "
+                            "cut alone is not a response. " + tail)
+            else:
+                q = head + ("A, then B (1 s after A, no input): the scene moves on its own. Then C taken while holding "
+                            "the stick LEFT, then D taken while holding it RIGHT. Is this real player-controlled "
+                            "gameplay (not a menu, cutscene, attract/demo or replay), AND did the player's character, "
+                            "vehicle, aim reticle or camera steer LEFT in C and RIGHT in D? Both are needed. " + tail)
             imgs = [a_jpg, b_jpg, l_jpg, r_jpg]
         else:
             q = head + (f"A, then B (1 s after A, no input), then C (taken while holding {probe}, ~1 s after B). "
@@ -1187,6 +1199,13 @@ class Agent:
         self.write_step(rec)
         self.result["probe_frames"] = imgs
         return ok, rec["verdict"]
+
+    def team_sport(self):
+        """A team sport on a court, field or rink: the run's goal names a period setting or a team select, or the
+        title's name is a team-sports league (the claim has no genre look yet; the hold's genre comes after it)."""
+        text = f"{self.goal} {self.name}".lower()
+        return bool(re.search(r"\b(quarter|period length|halves|team select|nba|nhl|nfl|ncaa|fifa|"
+                              r"basketball|hockey|football|soccer|hoops)\b", text))
 
     def hold_capture(self, tok, tag):
         """Hold one input token, take a frame ~0.8 s into the hold, release."""

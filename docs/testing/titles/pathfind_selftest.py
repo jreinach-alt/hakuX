@@ -54,6 +54,7 @@ import os
 import shutil
 import sys
 import tempfile
+import types
 
 from PIL import Image, ImageDraw
 
@@ -566,6 +567,15 @@ check("fpsgate", locked["share"] > 0.99 and not pathfind.fps_gate_fails(locked, 
       f"a locked-30 title reading 29/31 (AvP) is on the verdict's bar (30 x 0.95): {locked}")
 check("fpsgate", not pathfind.fps_gate_fails(_course([10] * 10), 22) and _course([])["n"] == 0,
       "under 30 s of gfps lines is no evidence either way")
+
+# teamsport (10-05): a team sport's self-moving confirm judges the marked player; bowling, baseball and racing do not
+_ts = lambda goal, name: pathfind.Agent.team_sport(types.SimpleNamespace(goal=goal, name=name))
+check("teamsport", _ts("", "NBA 2K3") and _ts("Set the period length to the LONGEST", "NHL 2K3")
+      and _ts("", "ESPN College Hoops 2K5") and _ts("On TEAM SELECT: press RIGHT", "Some Title"),
+      "NBA/NHL names, a period goal and a team-select goal are team sports")
+check("teamsport", not _ts("Set the game length to the LONGEST (10 frames)", "AMF Xtreme Bowling")
+      and not _ts("Set innings to the longest", "MLB SlugFest 2004") and not _ts("", "RalliSport Challenge"),
+      "bowling, baseball and racing keep the both-ways steering test")
 
 shutil.rmtree(TMP)
 print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))
