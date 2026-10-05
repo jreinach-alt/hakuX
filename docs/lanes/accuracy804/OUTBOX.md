@@ -42,3 +42,15 @@
   the wait is unmeasured; RalliSport's Playable confirmation with the owner's flicker check measures both, on this
   branch's build or after the fold. Other titles that gate draws on visibility tests (lens flares, LOD) get the
   same fix. NOTES section 17.
+
+- 2026-10-04 ~19:45 PDT [lane.accuracy804] #804 re-open, attempt 2: **the owner's build (064ca7aa43) is byte-for-byte the code
+  of three captures that show rival cars**: my patched-run1/2 (Nissan beside the camera, body every frame) and
+  lane.local's own 600 s hold (`perf/2026-10-04-ralli804-fps/run/frames/015-gameplay.jpg`: Beetle and Corolla on the
+  grid at 00:00.00; `016-probe-a.jpg`: the Nissan at 06.67). The hold's strip has no rival because the player is last
+  and stuck, not because cars are missing. So "the fix zeroes every visibility count" is not what the captures show.
+  What the captures never ran is the owner's session: dispatched runs swap the HDD to the golden `titles.qcow2`, the
+  owner plays on `hdd.img` (own profile/options), and mode, track and driving are unknown. **For the PM / owner:**
+  which mode, track and car, and was it the grid/countdown or later? A phone photo of a moment with no cars would
+  settle it. Meanwhile two Nova runs are queued (fence wait on/off in one binary, per-frame visibility values in
+  logcat, grid + pass shots); they run when the owner hold lifts. NOTES section 19. **Recommend no revert yet**: a
+  revert brings the blink back, and no capture shows the fix removing cars.

@@ -1,0 +1,9 @@
+# waiting on two Nova runs at 5e16698c99 (route rallisport-804f: grid shots c1-c6, pass shots r1-r16), queued
+# 10-04 ~19:4x PDT behind the owner's hold owner:ralli804. Same binary; env switches the #804 fence wait.
+#   fix arm   : HAKUX_OCCL_LOG=100
+#   no-fix arm: HAKUX_OCCL_LOG=100 HAKUX_OCCL_WAIT=0
+# Read: c*/r* shots for any rival car (body + shadow) on the grid and in the pass; logcat `[occl804]` lines
+# (hakuX-lane): per guest frame q/qnz/pend/rep/repnz and v= report values, fix vs no-fix (NOTES section 19.2).
+# Silence (no [occl804] config line) is a void capture, not a pass.
+run 1791166524-lane.accuracy804-3407154
+run 1791166528-lane.accuracy804-3408923

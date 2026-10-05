@@ -1,34 +1,39 @@
-# accuracy804: RalliSport's cars blink on alternate frames (#804): identified and fixed
+# accuracy804 (re-open): the owner sees no rival cars on the #804 fix build (#804)
 
-State: ready
+State: draft (waiting on two queued Nova runs; the Nova is under the owner's hold)
 
 Lane: accuracy804          Issue: #804
-Base: master @ 63f4827758
-Files: docs/lanes/accuracy804/NOTES.md, docs/lanes/accuracy804/OUTBOX.md, docs/lanes/accuracy804/PR.md, docs/lanes/accuracy804/alt_draws.py, docs/lanes/accuracy804/rallisport-804.route, docs/lanes/accuracy804/rallisport-804b.route, docs/lanes/accuracy804/rallisport-804c.route, docs/lanes/accuracy804/rallisport-804d.route, docs/lanes/accuracy804/rallisport-804e.route, docs/lanes/accuracy804/reports-804.diff, docs/lanes/accuracy804/runs/patched-run1/capture.json, docs/lanes/accuracy804/runs/patched-run1/flicker.tsv, docs/lanes/accuracy804/runs/patched-run1/sheet.jpg, docs/lanes/accuracy804/runs/patched-run1/worst.jpg, docs/lanes/accuracy804/runs/patched-run2/capture.json, docs/lanes/accuracy804/runs/patched-run2/flicker.tsv, docs/lanes/accuracy804/runs/patched-run2/sheet.jpg, docs/lanes/accuracy804/runs/patched-run2/worst.jpg, docs/lanes/accuracy804/runs/perflog1/capture.json, docs/lanes/accuracy804/runs/perflog1/flicker.tsv, docs/lanes/accuracy804/runs/perflog1/sheet.jpg, docs/lanes/accuracy804/runs/perflog1/worst.jpg, docs/lanes/accuracy804/runs/plain1/capture.json, docs/lanes/accuracy804/runs/plain1/flicker.tsv, docs/lanes/accuracy804/runs/plain1/sheet.jpg, docs/lanes/accuracy804/runs/plain1/worst.jpg, docs/lanes/accuracy804/session804e.sh, hw/xbox/nv2a/pgraph/vk/reports.c
-Prediction: none: the measurement is held screenrecord bursts on RalliSport, read by eye (the owner's flicker check); no pgraph golden is claimed to move
-Needs device: yes (Nova: three held sessions, ~12 min, and three 60 s dispatched install boots, all run)    Needs NDK: no
-Release note (rendering): RalliSport's rival cars no longer vanish on alternate frames (the countdown and close passes); titles that gate draws on occlusion queries read this frame's result.
+Base: master @ 6f463a0ae2
+Files: docs/lanes/accuracy804/NOTES.md, docs/lanes/accuracy804/OUTBOX.md, docs/lanes/accuracy804/PR.md, docs/lanes/accuracy804/WAITING, docs/lanes/accuracy804/rallisport-804f.route, hw/xbox/nv2a/pgraph/vk/reports.c
+Prediction: none: a survey of car presence (screencaps) and visibility-test values (logcat); no pgraph golden is claimed to move
+Needs device: yes (Nova: two queued 240 s runs, 1791166524 and 1791166528)    Needs NDK: no
+Release note (none): instrumentation only, off unless HAKUX_OCCL_LOG / HAKUX_OCCL_WAIT are set.
 
-**Cause.** RalliSport draws each car's body only when its last occlusion-query report says the car was visible.
-After a deferred finish (FLIP_STALL, PRESENTING, STALLED, SURFACE_DOWN_FLUSH), hakuX returns to the guest once
-`vkQueueSubmit` is done, and `pgraph_vk_process_pending_reports_internal()` reads the query pool at once. On Turnip
-the query reset is a GPU command, so a slot the GPU has not reset yet reads as available, holding the previous
-command buffer's count. The report for frame k then carries frame k-1's visibility, and the body alternates while
-its (ungated) shadow is drawn every frame.
+**What the owner saw.** Debug 0.4.1-1004-064ca7aa43 on the Nova: no flicker, and no NPC cars or shadows at all.
 
-**Fix.** `hw/xbox/nv2a/pgraph/vk/reports.c` (granted to this lane): when queries are in flight, wait the fence of
-every submitted frame before reading the results, as upstream xemu does. Only a finish that recorded a query pays.
+**What the captures show on that exact code.** `git diff 510ebb25f2 064ca7aa43 -- . ':!docs'` is empty, so the
+owner's APK is the code of my two patched bursts and of lane.local's 600 s hold. All three show rival cars:
 
-| held screenrecord burst, Nova, `rallisport-804e.route` | build | flicker_score | by eye |
-|---|---|---|---|
-| plain1 | master `63f4827758`, non-perflog | FLICKER p90 29.4 | countdown: the cars in front vanish on alternate frames, shadows kept |
-| perflog1 | master `10f14d301d`, perflog | FLICKER p90 22.1 | race clock 7.92-7.97: the Nissan beside the camera in N only |
-| patched-run1 | master + fix `510ebb25f2`, non-perflog | clear p90 0.83 | race clock 7.36-7.44: body in every frame |
-| patched-run2 | the same | clear p90 1.02 | race clock 7.39-7.42: body in every frame |
+| capture | frames | rivals |
+|---|---|---|
+| patched-run1 (`runs/patched-run1/sheet.jpg`) | race clock 5.15-9.57 | a rival far ahead; the Nissan lands beside the camera at 7.03 and fills the frame 7.36-8.32, body in every frame of the worst triple |
+| patched-run2 | the same pass | the same |
+| lane.local's hold (`~/hakux-work/perf/2026-10-04-ralli804-fps/run/frames/015-gameplay.jpg`, `016-probe-a.jpg`) | grid 00:00.00; 06.67 | Beetle and Corolla on the grid; the Nissan beside the camera |
 
-The earlier frame-dump captures (NOTES sections 9-15) never blinked. The `images` dump waits on a fence every
-frame, which is the same remedy as the fix. **Not measured:** the fps cost of the wait in titles that run many
-queries per flip (RalliSport ~30). RalliSport's Playable confirmation (600 s fps verdict plus the owner's flicker
-check) measures it.
+**No car-present capture of the owner's session exists yet, and no capture reproduces the absence.** Every
+capture ran the golden HDD (`titles.qcow2`, pathfind's Single Race / Safari SS1 / Ford Escort profile) with the
+player standing at the start. The owner plays on `hdd.img` with their own profile and options; mode, track and
+driving are unknown.
+
+**Instrument (this PR).** `hw/xbox/nv2a/pgraph/vk/reports.c`, `pgraph_vk_process_pending_reports_internal()`:
+`HAKUX_OCCL_LOG=<s>` logs per guest frame the queries read, how many were nonzero, how many submitted frames
+were still on the GPU at the read, and the values handed to the guest (`hakuX-lane`, `[occl804]`).
+`HAKUX_OCCL_WAIT=0` turns the #804 fence wait off in the same binary. Both default to the shipped behaviour.
+
+**Queued** (route `rallisport-804f`: six grid/countdown shots, sixteen pass shots): fix arm
+`1791166524-lane.accuracy804-3407154`, no-fix arm `1791166528-lane.accuracy804-3408923`. NOTES section 19.2 says
+what each outcome means.
+
+This PR is not ready: there is no fix to claim, and the owner's observation is not reproduced.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
