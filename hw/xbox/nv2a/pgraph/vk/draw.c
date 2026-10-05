@@ -3686,6 +3686,304 @@ void end_render_pass(PGRAPHVkState *r)
     }
 }
 
+/*
+ * gpunonrender (#433): what the non-render part of the command buffer is made
+ * of. Telemetry only, off unless HAKUX_GPUXFR=1 is set, and reported by the
+ * perflog build as an xemu-xfr line.
+ *
+ * Each top-level non-render operation recorded into the frame's command
+ * buffer (a pgraph_vk_begin_nondraw_commands() scope, see surface.c and
+ * texture.c) is bracketed by a timestamp pair in a pool of its own, so the
+ * gpu_nonrender_ns that gpu_ts_readback() computes is unchanged. A bracket
+ * opened inside another is folded into the outer one. A bracket on the aux
+ * command buffer is not measured (counted in `dropped`).
+ *
+ * HAKUX_GPUXFR_CTRL=N records N bracketed 1 MiB buffer copies at the top of
+ * every frame. Their cost is known from the copy size, so a control arm shows
+ * whether the brackets read a known change before any other reading is trusted.
+ */
+int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
+                        const char *cat, int site);
+void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok);
+
+#define XFR_MAX_OPS 128
+#define XFR_QUERIES_PER_CB (2 * XFR_MAX_OPS)
+#define XFR_WINDOW 60
+#define XFR_MAX_CATS 8
+#define XFR_MAX_SITES 32
+#define XFR_CTRL_BYTES (1u << 20)
+
+static const char *const xfr_cat_names[XFR_MAX_CATS] = {
+    "surf_up", "tex_up", "s2t", "download", "handoff", "barrier", "ctrl",
+    "other",
+};
+
+typedef struct XfrSite {
+    uint32_t site;
+    uint8_t cat;
+    double ms;
+    unsigned n;
+} XfrSite;
+
+static struct {
+    int state;                  /* -1 unread; else 1 when HAKUX_GPUXFR=1 */
+    int ctrl;
+    VkQueryPool pool;
+    int depth;
+    unsigned long dropped;
+    int ops[NUM_SUBMIT_FRAMES];
+    uint8_t cat[NUM_SUBMIT_FRAMES][XFR_MAX_OPS];
+    uint32_t site[NUM_SUBMIT_FRAMES][XFR_MAX_OPS];
+    uint64_t results[XFR_QUERIES_PER_CB];
+    /* the current window of frames, as xemu-gpu's */
+    int win_n;
+    float nr[XFR_WINDOW];
+    float resid[XFR_WINDOW];
+    float cat_ms[XFR_MAX_CATS][XFR_WINDOW];
+    unsigned cat_ops[XFR_MAX_CATS];
+    XfrSite sites[XFR_MAX_SITES];
+    int nsites;
+} xfr = { .state = -1 };
+
+static bool xfr_on(void)
+{
+    if (xfr.state < 0) {
+        const char *on = getenv("HAKUX_GPUXFR");
+        const char *ctrl = getenv("HAKUX_GPUXFR_CTRL");
+        xfr.state = on && on[0] == '1';
+        xfr.ctrl = ctrl ? atoi(ctrl) : 0;
+        xfr.ctrl = MIN(MAX(xfr.ctrl, 0), 64);
+    }
+    return xfr.state;
+}
+
+static int xfr_cat_index(const char *cat)
+{
+    for (int i = 0; i < XFR_MAX_CATS - 1; i++) {
+        if (!strcmp(cat, xfr_cat_names[i])) {
+            return i;
+        }
+    }
+    return XFR_MAX_CATS - 1;
+}
+
+/*
+ * Open a bracket around the operations recorded into `cmd` from here until
+ * pgraph_vk_xfr_end() with the returned token. Returns the op index when the
+ * bracket is measured, -1 when it is not, -2 when it is folded into an outer
+ * one. The end call must follow with the same token.
+ */
+int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
+                        const char *cat, int site)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    if (!xfr_on()) {
+        return -1;
+    }
+    if (xfr.depth++ > 0) {
+        return -2;
+    }
+    int f = r->current_frame;
+    int n = xfr.ops[f];
+    if (!xfr.pool || cmd != r->command_buffer || n >= XFR_MAX_OPS) {
+        xfr.dropped++;
+        return -1;
+    }
+    xfr.cat[f][n] = xfr_cat_index(cat);
+    xfr.site[f][n] = site;
+    xfr.ops[f] = n + 1;
+    vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, xfr.pool,
+                        f * XFR_QUERIES_PER_CB + 2 * n);
+    return n;
+}
+
+void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    if (!xfr_on()) {
+        return;
+    }
+    xfr.depth--;
+    if (tok < 0) {
+        return;
+    }
+    vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, xfr.pool,
+                        r->current_frame * XFR_QUERIES_PER_CB + 2 * tok + 1);
+}
+
+static void gpu_xfr_frame_begin(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    if (!xfr_on() || !r->gpu_ts_supported) {
+        return;
+    }
+    if (!xfr.pool) {
+        VkQueryPoolCreateInfo ci = {
+            .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+            .queryType = VK_QUERY_TYPE_TIMESTAMP,
+            .queryCount = XFR_QUERIES_PER_CB * NUM_SUBMIT_FRAMES,
+        };
+        VK_CHECK(vkCreateQueryPool(r->device, &ci, NULL, &xfr.pool));
+    }
+    VkCommandBuffer cmd = r->command_buffer;
+    int f = r->current_frame;
+    vkCmdResetQueryPool(cmd, xfr.pool, f * XFR_QUERIES_PER_CB,
+                        XFR_QUERIES_PER_CB);
+    xfr.ops[f] = 0;
+    xfr.depth = 0;
+    for (int i = 0; i < xfr.ctrl; i++) {
+        int tok = pgraph_vk_xfr_begin(pg, cmd, "ctrl", __LINE__);
+        VkBufferCopy region = { .size = XFR_CTRL_BYTES };
+        vkCmdCopyBuffer(cmd,
+                        r->storage_buffers[BUFFER_COMPUTE_SRC].buffer,
+                        r->storage_buffers[BUFFER_COMPUTE_DST].buffer,
+                        1, &region);
+        pgraph_vk_xfr_end(pg, cmd, tok);
+    }
+    if (xfr.ctrl) {
+        VkMemoryBarrier ctrl_barrier = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT |
+                             VK_ACCESS_MEMORY_WRITE_BIT,
+        };
+        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0,
+                             1, &ctrl_barrier, 0, NULL, 0, NULL);
+    }
+}
+
+static void xfr_site_add(uint32_t site, int cat, double ms)
+{
+    for (int i = 0; i < xfr.nsites; i++) {
+        XfrSite *s = &xfr.sites[i];
+        if (s->site == site && s->cat == cat) {
+            s->ms += ms;
+            s->n++;
+            return;
+        }
+    }
+    if (xfr.nsites < XFR_MAX_SITES) {
+        xfr.sites[xfr.nsites++] = (XfrSite){ site, cat, ms, 1 };
+    }
+}
+
+#if defined(__ANDROID__) && NV2A_PERF_LOG
+#include <android/log.h>
+
+static int xfr_cmp_float(const void *a, const void *b)
+{
+    float x = *(const float *)a;
+    float y = *(const float *)b;
+    return (x > y) - (x < y);
+}
+
+static int xfr_cmp_site(const void *a, const void *b)
+{
+    double x = ((const XfrSite *)a)->ms;
+    double y = ((const XfrSite *)b)->ms;
+    return (x < y) - (x > y);
+}
+
+/* median, mean and 90th percentile of one window's per-frame values */
+static void xfr_stats(const float *v, float *med, float *mean, float *p90)
+{
+    float tmp[XFR_WINDOW];
+    double sum = 0;
+    memcpy(tmp, v, sizeof(tmp));
+    qsort(tmp, XFR_WINDOW, sizeof(float), xfr_cmp_float);
+    for (int i = 0; i < XFR_WINDOW; i++) {
+        sum += v[i];
+    }
+    *med = tmp[XFR_WINDOW / 2];
+    *p90 = tmp[XFR_WINDOW * 9 / 10];
+    *mean = (float)(sum / XFR_WINDOW);
+}
+
+static void xfr_emit(void)
+{
+    char buf[768];
+    int len;
+    float med, mean, p90;
+
+    xfr_stats(xfr.nr, &med, &mean, &p90);
+    len = snprintf(buf, sizeof(buf), "XFR nr %.2f %.2f %.2f", med, mean, p90);
+    xfr_stats(xfr.resid, &med, &mean, &p90);
+    len += snprintf(buf + len, sizeof(buf) - len, " res %.2f %.2f %.2f",
+                    med, mean, p90);
+    for (int c = 0; c < XFR_MAX_CATS; c++) {
+        xfr_stats(xfr.cat_ms[c], &med, &mean, &p90);
+        len += snprintf(buf + len, sizeof(buf) - len,
+                        " %s %.2f %.2f %.2f n%.1f", xfr_cat_names[c],
+                        med, mean, p90, (double)xfr.cat_ops[c] / XFR_WINDOW);
+    }
+    __android_log_print(ANDROID_LOG_INFO, "xemu-xfr", "%s", buf);
+
+    qsort(xfr.sites, xfr.nsites, sizeof(XfrSite), xfr_cmp_site);
+    len = snprintf(buf, sizeof(buf), "XFR sites");
+    for (int i = 0; i < xfr.nsites && i < 4; i++) {
+        XfrSite *s = &xfr.sites[i];
+        len += snprintf(buf + len, sizeof(buf) - len,
+                        " %s@%u %.2f n%.1f", xfr_cat_names[s->cat], s->site,
+                        s->ms / XFR_WINDOW, (double)s->n / XFR_WINDOW);
+    }
+    snprintf(buf + len, sizeof(buf) - len, " dropped %lu", xfr.dropped);
+    __android_log_print(ANDROID_LOG_INFO, "xemu-xfr", "%s", buf);
+}
+#else
+static void xfr_emit(void)
+{
+}
+#endif
+
+/*
+ * Reduce this frame's brackets to ms per category and file them in the window.
+ * `nonrender_ns` is the gpu_nonrender_ns of the same command buffer, so the
+ * residual says how much of the non-render time the brackets do not cover.
+ */
+static void gpu_xfr_frame(PGRAPHVkState *r, int frame, int64_t nonrender_ns)
+{
+    if (!xfr_on() || !xfr.pool) {
+        return;
+    }
+    int n = xfr.ops[frame];
+    double ms[XFR_MAX_CATS] = { 0 };
+    if (n > 0) {
+        uint32_t count = 2 * n;
+        VkResult res = vkGetQueryPoolResults(
+            r->device, xfr.pool, frame * XFR_QUERIES_PER_CB, count,
+            sizeof(uint64_t) * count, xfr.results, sizeof(uint64_t),
+            VK_QUERY_RESULT_64_BIT);
+        if (res != VK_SUCCESS) {
+            return;
+        }
+        for (int i = 0; i < n; i++) {
+            int64_t ticks = (int64_t)(xfr.results[2 * i + 1] -
+                                      xfr.results[2 * i]);
+            double op_ms = (double)ticks * r->gpu_ts_period_ns / 1e6;
+            int c = xfr.cat[frame][i];
+            ms[c] += op_ms;
+            xfr.cat_ops[c]++;
+            xfr_site_add(xfr.site[frame][i], c, op_ms);
+        }
+    }
+    int w = xfr.win_n++;
+    double sum = 0;
+    for (int c = 0; c < XFR_MAX_CATS; c++) {
+        xfr.cat_ms[c][w] = (float)ms[c];
+        sum += ms[c];
+    }
+    xfr.nr[w] = (float)(nonrender_ns / 1e6);
+    xfr.resid[w] = xfr.nr[w] - (float)sum;
+    if (xfr.win_n == XFR_WINDOW) {
+        xfr_emit();
+        xfr.win_n = 0;
+        memset(xfr.cat_ops, 0, sizeof(xfr.cat_ops));
+        xfr.nsites = 0;
+        xfr.dropped = 0;
+    }
+}
+
 static void gpu_ts_readback(PGRAPHVkState *r, int frame)
 {
     if (!r->gpu_ts_supported) {
@@ -3720,6 +4018,7 @@ static void gpu_ts_readback(PGRAPHVkState *r, int frame)
     if (nonrender_ns < 0) {
         nonrender_ns = 0;
     }
+    gpu_xfr_frame(r, frame, nonrender_ns);
 
     g_nv2a_stats.phase_working.gpu_total_ns += total_ns;
     g_nv2a_stats.phase_working.gpu_render_ns += render_ns;
@@ -4549,6 +4848,7 @@ void pgraph_vk_begin_command_buffer(PGRAPHState *pg)
                             r->gpu_ts_pool, base + 0);
         r->gpu_ts_rp_index = 0;
     }
+    gpu_xfr_frame_begin(pg);
 }
 
 // FIXME: Refactor below

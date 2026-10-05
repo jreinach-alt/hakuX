@@ -30,6 +30,11 @@
 #include "renderer.h"
 #include "system/tcg.h"   /* tcg_enabled(); was implied by cpu.h */
 
+/* gpunonrender (#433): brackets around non-render GPU work, see draw.c */
+int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
+                        const char *cat, int site);
+void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok);
+
 /* Lightweight surface sub-timers — compiled out when profiling is off */
 #if NV2A_PERF_LOG
 #define SURF_TIMER_INIT(name)  int64_t name = nv2a_clock_ns()
@@ -587,6 +592,7 @@ static bool download_surface_record_deferred(NV2AState *d,
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED,
                                  "download_surface_deferred");
+    int xfr_tok_587 = pgraph_vk_xfr_begin(pg, cmd, "download", 587);
 
     /*
      * For color surfaces already in GENERAL, skip the layout transition
@@ -861,6 +867,7 @@ static bool download_surface_record_deferred(NV2AState *d,
         surface->image_layout = saved_layout;
     }
 
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_587);
     pgraph_vk_end_debug_marker(r, cmd);
     pgraph_vk_end_nondraw_commands(pg, cmd);
 
@@ -1509,6 +1516,7 @@ static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
     VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
 #endif
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED, __func__);
+    int xfr_tok_1507 = pgraph_vk_xfr_begin(pg, cmd, "download", 1507);
 
     /* Color surfaces in GENERAL: skip layout transition, use memory barrier */
     bool use_general_for_transfer = surface->color &&
@@ -1858,6 +1866,7 @@ static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
                          &post_copy_dst_barrier, 0, NULL);
 
     nv2a_profile_inc_counter(NV2A_PROF_QUEUE_SUBMIT_1);
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_1507);
     pgraph_vk_end_debug_marker(r, cmd);
 #if OPT_SURF_TO_TEX_INLINE
     pgraph_vk_end_nondraw_commands(pg, cmd);
@@ -3239,6 +3248,7 @@ static void create_surface_image(PGRAPHState *pg, SurfaceBinding *surface)
 
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED, __func__);
+    int xfr_tok_3240 = pgraph_vk_xfr_begin(pg, cmd, "barrier", 3240);
 
     surface->image_layout = surface->color ? VK_IMAGE_LAYOUT_GENERAL :
                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -3247,6 +3257,7 @@ static void create_surface_image(PGRAPHState *pg, SurfaceBinding *surface)
         VK_IMAGE_LAYOUT_UNDEFINED, surface->image_layout);
 
     nv2a_profile_inc_counter(NV2A_PROF_QUEUE_SUBMIT_3);
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_3240);
     pgraph_vk_end_debug_marker(r, cmd);
     pgraph_vk_end_nondraw_commands(pg, cmd);
     nv2a_profile_inc_counter(NV2A_PROF_SURF_CREATE);
@@ -3664,6 +3675,7 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
 
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED, __func__);
+    int xfr_tok_3665 = pgraph_vk_xfr_begin(pg, cmd, "surf_up", 3665);
 
     VkBufferMemoryBarrier host_barrier = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -4038,6 +4050,7 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
     }
 
     nv2a_profile_inc_counter(NV2A_PROF_QUEUE_SUBMIT_2);
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_3665);
     pgraph_vk_end_debug_marker(r, cmd);
     pgraph_vk_end_nondraw_commands(pg, cmd);
 
@@ -4397,6 +4410,7 @@ static void surface_handoff_record(NV2AState *d, SurfaceBinding *src,
 
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED, __func__);
+    int xfr_tok_4398 = pgraph_vk_xfr_begin(pg, cmd, "handoff", 4398);
 
     /* src image -> compute_dst, laid out as the download lays it out. */
     VkImageLayout src_layout = src->image_layout;
@@ -4456,6 +4470,7 @@ static void surface_handoff_record(NV2AState *d, SurfaceBinding *src,
     dst->image_layout = dst_layout;
     surface_handoff_barrier(cmd);
 
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_4398);
     pgraph_vk_end_debug_marker(r, cmd);
     pgraph_vk_end_nondraw_commands(pg, cmd);
     surface_handoffs++;
