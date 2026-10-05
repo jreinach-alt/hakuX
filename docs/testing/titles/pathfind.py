@@ -83,7 +83,7 @@ FAST = os.environ.get("PATHFIND_FAST", "claude-sonnet-5")
 STRONG = os.environ.get("PATHFIND_STRONG", "claude-sonnet-5")
 STATES = ("intro_video", "publisher_logo", "title_screen", "main_menu", "submenu", "profile_creation",
           "name_entry", "save_load_prompt", "controller_prompt", "loading", "cutscene", "pause",
-          "gameplay", "results", "game_over", "continue", "black", "fatal_error", "unknown")
+          "gameplay", "results", "game_over", "continue", "period_break", "black", "fatal_error", "unknown")
 BUTTONS = ("A", "B", "X", "Y", "START", "BACK", "UP", "DOWN", "LEFT", "RIGHT", "L1", "R1", "L3", "R3")
 STICK = {"up": (("LY", "min"),), "down": (("LY", "max"),), "left": (("LX", "min"),),
          "right": (("LX", "max"),), "upleft": (("LY", "min"), ("LX", "min")),
@@ -727,6 +727,12 @@ How to act:
   A to start the play, then the player can be moved. American football: a play-call screen is a MENU; press
   A to pick the play (sometimes twice: formation, then play), then A again to snap; only after the snap is it
   gameplay: then probe ["A", "STICK:up:1.5"] (snap and run).
+- Sports SETUP (owner rule, 10-05): before the first whistle, tip-off or kickoff, open the game or options screen that
+  sets the period length (quarter, period, half, inning, game length) and choose the LONGEST value offered. If there is a
+  game-clock speed or accelerated-clock option, choose the slowest or real-time setting. Choose a team a human controls
+  (a controller icon under that team on team select). Take the defaults elsewhere. One period must outlast the hold.
+- Sports breaks: a quarter, period, half or inning break, halftime, end-of-period stats, a replay card or a next-period
+  prompt is state period_break, not gameplay: its input is START, then A to continue.
 
 Inputs (the "action" list, up to 8 tokens, sent in order ~0.4 s apart):
   A B X Y START BACK UP DOWN LEFT RIGHT L1 R1 L3 R3   one press (UP/DOWN/LEFT/RIGHT are the d-pad)
@@ -741,7 +747,7 @@ An empty list [] means wait and look again.
 
 States (pick exactly one): intro_video, publisher_logo, title_screen, main_menu, submenu, profile_creation,
 name_entry, save_load_prompt, controller_prompt, loading, cutscene, pause, gameplay, results, game_over,
-continue, black, fatal_error, unknown. fatal_error is a screen no input can clear: "there is a problem with the disc /
+continue, period_break, black, fatal_error, unknown. period_break: a sports period, quarter, half or inning break. fatal_error is a screen no input can clear: "there is a problem with the disc /
 dirty or damaged", "an error has occurred", a crash or dashboard error screen.
 
 Say "gameplay" only when you see player-controlled play (a HUD, a playfield with the player's character or
@@ -1451,13 +1457,18 @@ class Agent:
             " A fighting game: a CONTINUE countdown is state continue, and its input is START, then A. A character, "
             "stage or mode select takes A on the highlighted entry (the default is fine); START is for the title or "
             "attract screen's PRESS START only. In a live round do not press START." if genre == "attack" else "")
+        # sports (10-05 owner rule): a period, quarter, half or inning break is its own state, with its own input
+        sports = (" A sports game: a quarter, period, half or inning break, halftime, end-of-period stats, a replay card "
+                  "or a next-period prompt is state period_break, and its input is START, then A. A kickoff, tip-off or "
+                  "faceoff screen takes A to start the play." if genre == "team" else "")
         return self.model.ask(FAST, (
             f"Screenshot of {self.name}, an Xbox game. The 'FPS: NN' text at the top-left is the emulator's "
             f"overlay, not the game's HUD. An agent is keeping the player playing (genre: {genre}). Read the "
             "screen. Is the player in live play right now (the player's character, vehicle or ball in the game "
             "world, the game running)? A menu cursor, a pause screen, a cutscene, a loading screen, a results or "
             "game-over screen, or a black screen is NOT play. If it is not play, which input gets back to it?" + fight +
-            ' Answer JSON only: {"state": "gameplay|pause|game_over|results|menu|continue|cutscene|loading|black|other", '
+            sports +
+            ' Answer JSON only: {"state": "gameplay|pause|game_over|results|menu|continue|period_break|cutscene|loading|black|other", '
             '"in_play": true|false, "why": "<one line>", "action": [inputs, e.g. "START", "A", '
             '"STICK:down:0.5"], "wait_s": <number>}'), "hold-check", [jpg]) or {}
 
@@ -1474,6 +1485,19 @@ class Agent:
             "player only aims; other: anything else."), "genre", [jpg]) or {}
         return ans.get("genre") if ans.get("genre") in HOLD_GENRES else "other", str(ans.get("why", ""))[:160]
 
+    def sports_check(self, jpg):
+        """One look before a team hold (10-05 owner rule): the game clock and the period on screen, and whether a human
+        controls a team. The period length is set in the claim; this records what the hold actually got, so a period
+        that ends inside the hold shows in the record (and a period_break is named when it arrives)."""
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, a sports game in play. Read the screen. What does the game clock show, and "
+            "which period, quarter, half or inning is it? Is a team controlled by a human (a controller icon under "
+            'one team, or the controlled player marked)? Answer JSON only: {"clock": "<clock text or none>", '
+            '"period": "<period text or none>", "human_controlled": true|false, "why": "<one line>"}'),
+            "sports", [jpg]) or {}
+        return {"clock": str(ans.get("clock", ""))[:40], "period": str(ans.get("period", ""))[:40],
+                "human_controlled": ans.get("human_controlled") is True, "why": str(ans.get("why", ""))[:160]}
+
     def hold_play(self, jpg):
         """Keep play going for self.hold_s seconds of play, judged from the frames.
 
@@ -1489,6 +1513,9 @@ class Agent:
         tokens = th["walk"] if th else HOLD_GENRES[genre]
         log = os.path.join(self.out, "hold.jsonl")
         held = {"genre": genre, "why": genre_why}
+        if genre == "team" and not th:
+            held["sports"] = self.sports_check(jpg)
+            print(f"hold-play: sports look {held['sports']}", flush=True)
         print(f"hold-play: genre {genre}, need {self.hold_s:.0f} s of play", flush=True)
         kept, play_s, navs, nav = [], 0.0, 0, 0
         still, off, reason = 0, False, ""
@@ -1594,8 +1621,9 @@ class Agent:
                         wait_s = min(max(float(a.get("wait_s") or 2), 0.5), 8)
                     except (TypeError, ValueError):
                         wait_s = 2.0
-                    if st == "continue" and not th and cont_tries < CONTINUE_TRIES:
-                        # a CONTINUE countdown (fighting games): START, then A, unlooked; the look after each says which took
+                    if st in ("continue", "period_break") and not th and cont_tries < CONTINUE_TRIES:
+                        # a CONTINUE countdown (fighting games) or a sports period break (10-05): START, then A, unlooked;
+                        # the look after each says which took (both share CONTINUE_TRIES, reset once play is back).
                         action, wait_s = [CONTINUE_PRESS[cont_tries % len(CONTINUE_PRESS)]], 1.5
                         cont_tries += 1
                         look["continue"] = cont_tries

@@ -466,6 +466,27 @@ check("continue", [l["action"] for l in cont[:3]] == [["START"], ["A"], ["START"
       f"the continue looks press START, A, START: {[l.get('action') for l in cont[:3]]}")
 check("continue", all(l.get("state") == "continue" for l in cont[:3]) and cont and cont[0]["continue"] == 1,
       f"the continue count is recorded per look: {[l.get('continue') for l in cont[:3]]}")
+
+# sports (10-05 owner rule): a team hold reads the clock and period once before it starts (held["sports"], purpose
+# "sports"), and a quarter/period break is its own state: START, then A, unlooked, like a CONTINUE countdown.
+PB = {"state": "period_break", "in_play": False, "why": "end of the first quarter, stats card", "action": ["A"], "wait_s": 1}
+SPORTS = {"clock": "0:00", "period": "Q1", "human_controlled": True, "why": "Q1 clock, a controller under the home team"}
+ROUTE_LOG.clear()
+rc, res, steps, calls = run("sports", PREFIX + [("game", 0)] * 120 + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, {"genre": "team"}, SPORTS]
+                            + [PB] * 2 + [PLAYING] * 160,
+                            ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
+hold = res.get("hold", {})
+look = [json.loads(l) for l in open(os.path.join(TMP, "sports", "out", "hold.jsonl"))]
+sp = hold.get("sports", {})
+check("sports", any(c["purpose"] == "sports" for c in calls) and sp.get("human_controlled") is True
+      and sp.get("period") == "Q1", f"the team hold reads the clock and period before it starts: {sp}")
+pb = [l for l in look if l.get("state") == "period_break"]
+check("sports", [l["action"] for l in pb[:2]] == [["START"], ["A"]],
+      f"a period break gets START, then A, unlooked: {[l.get('action') for l in pb[:2]]}")
+check("sports", "period_break" in pathfind.STATES and "LONGEST" in pathfind.RULES
+      and "period_break" in pathfind.RULES,
+      "the state list names period_break, and the claim prompt sets the period to the longest value")
 pathfind.now, pathfind.time.sleep = real_now, real_sleep
 
 # actions

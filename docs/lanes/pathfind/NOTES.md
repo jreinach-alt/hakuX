@@ -35,6 +35,33 @@ What the next lane should not repeat:
 - **Self-moving races cannot be confirmed by frame change** (Mashed: the idle change was 0.3-0.86). The probe ladder's
   HOLD:A:3 did move the scene once (0.017 -> 0.814), but the confirm model refused it on a results card.
 
+## Resume (10-05 10:02 PDT, attempt 3 of the 10:00 sports order): why the last attempt did not finish
+
+- The 09:58 attempt (attempt 2) wrote its resume note and stopped there. Nothing was staged or queued by it: `pm/sports-1005.done`
+  lists only NFL Blitz 2002, and the note's "uncommitted change in pathfind.py" is not in the tree (`git diff HEAD` on
+  pathfind.py is empty; `scene_shift` is in HEAD, and it still judges a still window only for a title hold, `if th:`). So the
+  scene-shift-for-every-hold change was never made, and attempt 2 did not start the Blitz run or the sports standing rule.
+- Cause: the session wrote the status and stopped before any device or code step, treating the note as the work.
+- Device: the dispatch queue holds four perf-lane requests (`lane.gpuclock`, `lane.frametrace`, `lane.belowbar1005`,
+  `lane.hitchcause`). Under the 08:42 gap rule the Nova is not re-taken until that queue has no Nova lane.* request, or 25 min
+  after the MTV release (09:53, so 10:18), whichever is first.
+- This attempt, in order: (1) the standing sports rule in code (period-end state `period_break` and its continue rule, the
+  sports setup line in the claim prompt, a per-hold sports look logged in `held["sports"]`), with selftest; (2) the Sports
+  section in `pathknow/hints/global.md`; (3) NFL Blitz 2002 first-run to a verdict once the Nova gap allows, under the
+  period-length rule; (4) then the lead-title order.
+
+## Resume (10-05 09:58 PDT, attempt 2 of the 10:00 sports order): why the last attempt did not finish
+
+- The 07:00 session ended with the MTV Celebrity Deathmatch rerun (`runs/mtv-rerun1`, 09:38-09:53) in flight, and the
+  09:55 order (NFL Blitz 2002 first) was not started. The MTV rerun gave up at the 15-min claim budget (`last_state=probe`,
+  89 steps, `last_frame` 088-gameplay): play was live at step 88 and the budget ended it during the confirm probe. That
+  breaks the 19:40 rule (give the claim its 15 min, do not stop at the claim budget once play is live). Its result is
+  recorded as a claim give-up, not a hold verdict; the 87.8% CLOSE from the screening stands as the last hold number.
+- One change sat uncommitted in `pathfind.py` (still judged by the scene's shift in every hold, not only title holds).
+  It was never selftested or committed, so it does not count as done until this attempt's selftest and commit.
+- Nothing ran on the Nova between 09:53 and this resume, and no WAITING file was written. This attempt starts NFL Blitz 2002
+  (on the Nova, in `pm/sports-1005.done`) first, as the 09:55 order asks.
+
 ## Resume (10-05 07:00 PDT, attempt 2): why the last attempt did not finish
 
 - The 06:37 session ran the Tork re-run (`runs/tork-rerun2`, 600 s held) and judged it: it stood on one stair from about
