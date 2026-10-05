@@ -340,4 +340,65 @@ Per title, the bound and the next step by P x win:
 |---|---|---|---|---|
 | **NG Black** | **GPU**: F = GPU + ~4 ms in every bucket; GPU at 680 MHz (max) in 7 of 8 play samples; Ri < 1.5; no sd finishes; half the GPU time non-render (11.7 of 23.9) | Measure what the non-render GPU time is: timestamps around surface uploads, texture uploads, surface-to-texture copies and conversions in the perflog build (a decide-first measurement), then cut the largest | 0.4 that one category holds most of it and is avoidable (redundant uploads/conversions), on the evidence that the titles at the top share engines and the bottom half of the table has ~0 | NG Black: slow rows 32.6 ms GPU -> ~22-27, so 28.5+ in most windows; the same fix reaches AUF, DOA Ultimate, Otogi, DOA3, ToeJam (5-18 ms each) |
 | **DOA3** | **GPU** on the dojo stage: 58.7 ms (render 33.2, non-render 25.5), plus one synchronous download-if-dirty per flip (Fin 30 ms). Other stages 15-26 ms GPU, 35-50 fps | Same non-render measurement (shared). Then #794's dirtyIf download made asynchronous | 0.2 that the dojo reaches 28.5 even with both: its render passes alone are 33 ms | One stage of DOA3; the rest already passes |
-| **Buffy** | **vCPU**: guest busy 27-31 ms of 37-38 in slow rows, renderer idle 15-24 ms, GPU clock mostly 401-550 MHz (not GPU-bound); vCPU asleep 6-12 ms per frame in the slow rows | Perflog split of that sleep (queued: 1-1791217580); if it is pgraph.lock, the #474 extension; otherwise the vCPU JIT direction (owner 09-28) | see below | Buffy misses 33.3 ms by 4-8 ms on the forest path |
+| **Buffy** | **vCPU**: guest busy 27-31 ms of 37-38 in slow rows, renderer idle 15-24 ms, GPU clock mostly 401-550 MHz in play (not GPU-bound); vCPU asleep 6-12 ms per frame in the slow rows, rising with the render thread's blocked time (arm W: v_blk 7.5-12.4 where rblk is 12-13.6), near30's Tron signature | One perflog soak on `routes/bb-buffy-walk.route` to split that sleep by register (`[lock474]`); if it is pgraph.lock behind render-thread waits, the #474 lock work; otherwise the vCPU JIT direction (owner 09-28), which is the lever for the guest's own 27-31 ms | 0.35 that the sleep is a removable lock wait | 4-8 ms per slow frame: Buffy's forest path from ~37.7 ms to ~31-33, at the edge of two VBLANKs; one title |
+
+Ranked by expected impact: the non-render GPU measurement first (it decides
+what to cut for six-plus titles, NG Black and DOA3 among them, and every
+GPU-bound title in the table gains if it is avoidable); the Buffy lock split
+second (one title, at the edge); DOA3's dojo last (one stage, GPU-bound in
+its render passes alone).
+
+## Not run, and why
+
+- The Buffy perflog split (1-1791217580-lane.belowbar1005-2426510) was
+  queued at 09:33 and **withdrawn by me at 10:46** without running. The Nova
+  had been on this lane's perflog apk since 09:06 (the NGB and DOA3 soaks),
+  and the held sessions that took the Nova between requests (lane.pathfind
+  from ~09:15 and from 10:44) were running on it: perflog puts a clock read
+  around every method and costs the render thread >= 1.2 ms per frame, which
+  is the wrong build for a Playable confirmation. Running a third perflog soak
+  would have extended that. The restore, 1-1791219753-lane.belowbar1005-2573600
+  (plain d32c35d3ce, empty env, 60 s), is queued; lane.hitchcause's perflog
+  request is ahead of it, lane.gpuclock's plain requests behind it.
+- No WAIT=0 arm for NG Black or DOA3: DOA3 never runs the wait, and NG Black's
+  wait never blocked (`pend=0` on every read), so an A/B could only measure
+  run-to-run variation, which Buffy's pair already showed is +/-0.15.
+
+## Side effects on the Nova (for lane.local and lane.pathfind)
+
+| window (PDT 10-05) | what a held session on the Nova ran |
+|---|---|
+| 07:59:34 - ~08:20 (pathfind gg5) | apk ce2ac5751374 (d32c35d3ce plain) with **`HAKUX_OCCL_WAIT=0`**, `HAKUX_OCCL_LOG=150`, `PERF_REGIMEN=default` in the env pref (arm N's) |
+| ~08:23 - 08:44 (lane.hitchcause) | its own apk (af37f7a3ea per its hold note) |
+| 09:15 - 09:53 (pathfind) | **perflog** apk 63abb775f234 (d32c35d3ce), env `HAKUX_OCCL_LOG=200` |
+| 10:02 - next request (lane.local-sports1005, then pathfind from 10:44) | **perflog** apk 63abb775f234, env `HAKUX_OCCL_LOG=120` |
+
+`HAKUX_OCCL_WAIT=0` matters only to titles that read occlusion queries with a
+frame still in flight (RalliSport). The perflog apk matters to every frame
+rate read in those windows: a pathfind Playable confirmation from them should
+be read as perflog, not plain. The general fix is the dispatcher's, not a
+lane's: a held session starts on whatever the last request left, build and
+env alike (memory: request-env-outlives-the-run).
+
+## For the next lane: do not repeat
+
+- **Name the build of a held run before comparing it.** verdict.json has
+  `ref: null` for pathfind holds; `dispatcher.log` (`shader cache cleared:
+  apk X -> Y`, `ENV: cleared`) and the results' `apk_sha` give it. Here it
+  showed that the below-bar Buffy and NG Black runs never had the change
+  under suspicion.
+- **An A/B on a code path needs a line that says the path ran.** Buffy's
+  share moved 16 points with the fence wait executing zero times in both
+  arms. `HAKUX_OCCL_LOG` is that line for the #804 wait; read it before the
+  share.
+- **A route soak's share carries the walk.** The same route gave 0.83 and
+  0.67 on one binary because the loop ended up in different parts of the
+  level. Compare a title's frames, not its share, before calling a
+  difference.
+- **A perflog request leaves a perflog apk for the next held session.** Queue
+  a plain request after it, or do not queue perflog soaks while held lanes
+  are confirming titles on the same handheld.
+- `routes/bb-doa3.route` loses the fight to the title attract after ~2 min:
+  the loop has no START for DOA3's continue screen. The attract renders the
+  same stages, so the dojo reading stands, but a fight-only DOA3 run needs
+  START in the loop at the continue screen.
