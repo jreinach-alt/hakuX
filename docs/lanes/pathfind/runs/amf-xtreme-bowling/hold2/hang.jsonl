@@ -1,0 +1,6 @@
+{"event": "probe", "action": ["A"], "since": 27275732.694, "tripped": 27275823.264, "window": {"w": 53, "it": 2048, "idle_us": 0, "busy_us": 2047923, "share": 1.0, "top": "r:800151ed"}, "at": 1791243432.7}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791243453.4}
+{"event": "probe", "action": ["A"], "since": 27275835.478, "tripped": 27275927.082, "window": {"w": 104, "it": 2048, "idle_us": 0, "busy_us": 2047001, "share": 1.0, "top": "r:800151ed"}, "at": 1791243536.8}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791243557.6}
+{"event": "probe", "action": ["A"], "since": 27275941.307, "tripped": 27276031.679, "window": {"w": 155, "it": 3088, "idle_us": 0, "busy_us": 3002996, "share": 0.9838, "top": "r:800151ed"}, "at": 1791243637.7}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791243659.1}
