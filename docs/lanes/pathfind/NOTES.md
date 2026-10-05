@@ -1,5 +1,24 @@
 # lane.pathfind -- NOTES
 
+## Sports order 10-05: scoreboard (harness verdicts; frame review is lane.local's)
+
+| title | class | play share | fps_ok (28.5) | median | claim | run |
+|---|---|---|---|---|---|---|
+| NFL Blitz 2002 | PASS (ledger 22) | 0.990 | 0.996 | 45.1 | 13.2 min, 93 calls | runs/nfl-blitz-2002/hold2 |
+| NBA 2K2 | PASS | 0.9996 | 0.995 | - | ~80 steps | runs/nba-2k2/hold |
+| MLB SlugFest 2004 | PASS | 604 s | 1.0 | 44.4 | - | runs/mlb-slugfest-2004/hold |
+| MLB SlugFest Loaded | PASS | 0.9995 | 1.0 | 58.9 | - | runs/mlb-slugfest-loaded/hold |
+| AMF Bowling 2004 | CLOSE | 0.892 | 1.0 | 59.9 | 35 calls | runs/amf-bowling-2004/hold2 |
+| MLB SlugFest 2003 | CLOSE | 0.883 | 1.0 | 59.9 | - | runs/mlb-slugfest-2003/hold |
+| NHL Hitz Pro | CLOSE (fps 75% at 30) | 0.936 | - | 37.4 | 3.3 min, 20 steps | runs/nhl-hitz-pro/hold |
+| AMF Xtreme Bowling | CLOSE | 0.832 (Practice ended) | 1.0 | 59.1 | 2.5 min, 43 calls | runs/amf-xtreme-bowling/hold |
+| Strike Force Bowling | FAIL (name entry) | - | 1.0 (284 s) | 59.0 | ~3.5 min | runs/strike-force-bowling/hold3 |
+| NHL 2K3 | can't-path (probe, self-moving camera) | - | - | ~29 | 70 steps, 84 calls | runs/nhl-2k3/hold |
+| NBA 2K3 | can't-path x2 (team select, then probe) | - | - | - | 15 min each | runs/nba-2k3/hold, hold2 |
+
+Fixes landed today in pathfind.py: the sports period rule, bowl loop, name-entry rule, ESPN team select (one RIGHT,
+User Name plate, START), the co-op join prompt in the hold look, the team-sport marked-player confirm.
+
 ## Screening 10-04 (owner order): scoreboard
 
 | # | title | id | class | share >= 30 | median | window | claim (min, calls) | profile | run |
