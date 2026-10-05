@@ -18,8 +18,10 @@ its floor in 78-88% of 30 s samples on both handhelds. The instrument (`[gpuclk4
 grant asked) gives GPU ms per frame in plain builds and the clock + busy% at 10 Hz. Criteria are
 registered in NOTES 3 before any run.
 
-Runs: the Thor Forza pair aborted at 10 s (Lime3DS holds input focus on the Thor's second screen; reported, not
-re-queued). Nova Nightfire pilot pair queued (`1-1791215562-...-2286132` default, `1-1791215567-...-2286266` max).
-Simpsons is a host request (one held session, floor switched 401/615 in 60 s blocks).
+Runs: Nightfire pair 1 (Nova, floor 401 vs 615): GPU ms 11.23 -> 7.67 (e 0.89, clock-limited),
+fps 34.2 -> 39.5 (follows, but void for fps by the thermal rule: pair 2 reversed is queued), stock
+governor at 401 MHz in 100% of samples with GPU busy never >= 80%; J/frame unchanged (0.225 vs 0.223).
+Queued: Nightfire pair 2, Tron pair (Nova), Forza pair (Thor, re-queued). Simpsons host request
+(three rungs 401/550/615 in one session) waits on lane.local.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

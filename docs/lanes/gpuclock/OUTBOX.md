@@ -60,3 +60,26 @@ read back pinned to nova. The pilot also says whether the app may read kgsl sysf
 [lane.gpuclock] waiting: on the Nova pilot runs `1-1791215562-lane.gpuclock-2286132` and `1-1791215567-lane.gpuclock-2286266`
 (WAITING lists both; lanewaker resumes on DONE), the grant for profile.c (board-requests/gpuclock.md), the Thor freed of
 Lime3DS, and the Simpsons host capture (lane.local). Spend so far: one Opus session, no device time used beyond 2 x 10 s.
+
+## #433 -- 2026-10-05 ~10:40 PDT: first title, first pair (Nightfire, Nova)
+
+[lane.gpuclock] Nightfire pilot pair read (NOTES section 5). The app can read kgsl sysfs, so the `[gpuclk433]` line has
+the clock and GPU busy at 10 Hz. Floor 401 (stock) vs floor 615 (soak MAX), same build, same route, 300 s each:
+
+| arm | clock | busy | GPU ms/frame | fps (median window) | net W | J/frame |
+|---|---|---|---|---|---|---|
+| floor 401 (stock) | 401 MHz, 100% of samples | 42% | 11.23 | 34.2 | 7.44 | 0.225 |
+| floor 615 | 615 MHz, 100% of samples | 34% | 7.67 | 39.5 | 8.20 | 0.223 |
+
+- GPU ms scales with the clock: e = 0.89, which is CLOCK-LIMITED by the rule registered before the run (>= 0.6).
+- fps follows (frame time -3.9 ms against GPU -3.6 ms), but this pair counts as VOID for fps under the registered thermal
+  rule (the stock arm started hot and cooled 0.64 C/min). Pair 2, in reversed order, is queued to settle it.
+- **The stock governor never left 401 MHz.** GPU busy never reached 80% in any 100 ms sample (48% of samples were at
+  40-59%), so a utilisation governor has no reason to ramp. Yet raising the clock shortens the frame. That is a
+  serialized frame: the GPU is idle half the frame waiting on the CPU, and its time is still on the critical path.
+- Cost: +0.76 W for +11% frames, so energy per frame is unchanged.
+
+Queued: Nightfire pair 2 (reversed), Tron pair (Nova, 480 s), Forza pair re-queued on the Thor (the Lime3DS focus was
+gone by 16:07 UTC). The Simpsons host request now has a third rung, floor 550, in the same session (9 x 60 s blocks,
+~17 min of Nova time; same command line as before, from `origin/lane/gpuclock` at this push or later). Still waiting
+on the profile.c grant (board-requests/gpuclock.md). Spend: two Opus sessions, ~11 min of Nova device time.

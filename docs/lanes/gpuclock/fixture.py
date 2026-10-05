@@ -8,7 +8,9 @@ frame follows the GPU (dF = 1.6 dGPU).
                               one session switched 0 2 2 0 0 2 2 0 every 60 s
                               (capture_simpsons_gpuclock.sh's logcat shape),
                               with a `state=menu` stretch inside one pm=2 block
-                              that the reader must drop
+                              that the reader must drop; and <out>/ladder: the
+                              same with a pm=1 (550 MHz) level, order
+                              0 2 1 1 0 2 2 1 0
 """
 import json, os, random, sys
 
@@ -51,22 +53,41 @@ def stamp(t):
     return '10-05 10:%02d:%06.3f' % (m, t - 60 * m)
 
 
-for b, pm in enumerate([0, 2, 2, 0, 0, 2, 2, 0]):
-    mhz = 615 if pm == 2 else 401
-    lines.append('%s I hakuX-route: gpuclock pm=%d fan=4 floor=%d' % (stamp(t + 0.01), pm, mhz))
-    end = t + 60
-    if b == 5:
-        lines.append('%s I hakuX-route: state=menu t=1' % stamp(t + 20))
-        lines.append('%s I hakuX-route: state=play t=2' % stamp(t + 40))
-    while t < end:
-        gms = C + K / mhz + random.gauss(0, 0.3)
-        F = 1.6 * gms + 2
-        if b == 5 and 20 < (t - (end - 60)) < 40:
-            gms = 1.0       # a menu: the reader must not see it
-        t += 60 * F / 1000
-        n = int(60 * F / 100)
-        seq = ','.join('%d/%d' % (mhz, 80) for k in range(n))
-        lines.append('%s I hakuX-perf: [gpuclk433] f=%d frames=60 fr=60 gms=%.2f grn=%.2f floor=%d ceil=680 ns=%d dr=0 seq=%s'
-                     % (stamp(t), i * 60, gms, gms * .8, mhz, n, seq))
-        i += 1
-open(os.path.join(d, 'logcat.txt'), 'w').write('\n'.join(sorted(lines)) + '\n')
+MHZ = {0: 401, 1: 550, 2: 615}
+
+
+def session(d, order):
+    os.makedirs(d, exist_ok=True)
+    lines = ['10-05 09:59:58.000 I hakuX-route: mark gameplay',
+             '10-05 09:59:59.000 I hakuX-perf: [gpuclk433] init period_us=100000 floor=401 ceil=680 gov=msm-adreno-tz err=none']
+    t, i = 0.0, 0
+    for b, pm in enumerate(order):
+        mhz = MHZ[pm]
+        lines.append('%s I hakuX-route: gpuclock pm=%d fan=4 floor=%d' % (stamp(t + 0.01), pm, mhz))
+        end = t + 60
+        if b == 5:
+            lines.append('%s I hakuX-route: state=menu t=1' % stamp(t + 20))
+            lines.append('%s I hakuX-route: state=play t=2' % stamp(t + 40))
+        while t < end:
+            gms = C + K / mhz + random.gauss(0, 0.3)
+            F = 1.6 * gms + 2
+            if b == 5 and 20 < (t - (end - 60)) < 40:
+                gms = 1.0       # a menu: the reader must not see it
+            t += 60 * F / 1000
+            n = int(60 * F / 100)
+            seq = ','.join('%d/%d' % (mhz, 80) for k in range(n))
+            lines.append('%s I hakuX-perf: [gpuclk433] f=%d frames=60 fr=60 gms=%.2f grn=%.2f floor=%d ceil=680 ns=%d dr=0 seq=%s'
+                         % (stamp(t), i * 60, gms, gms * .8, mhz, n, seq))
+            i += 1
+    open(os.path.join(d, 'logcat.txt'), 'w').write('\n'.join(sorted(lines)) + '\n')
+
+
+session(d, [0, 2, 2, 0, 0, 2, 2, 0])
+# ladder: capture_simpsons_gpuclock.sh's three-level order; the fit on the
+# level medians must return c ~ C, k ~ K with a residual near 0 (exact 1/MHz)
+session(os.path.join(out, 'ladder'), [0, 2, 1, 1, 0, 2, 2, 1, 0])
+g = {m: C + K / m for m in (401, 550, 615)}
+print('expect ladder: gms %s, step e 401->550 %.2f, 550->615 %.2f, fit c %.1f k %.0f residual ~0' % (
+    ' '.join('%d:%.2f' % kv for kv in sorted(g.items())),
+    __import__('math').log(g[401] / g[550]) / __import__('math').log(550 / 401),
+    __import__('math').log(g[550] / g[615]) / __import__('math').log(615 / 550), C, K))

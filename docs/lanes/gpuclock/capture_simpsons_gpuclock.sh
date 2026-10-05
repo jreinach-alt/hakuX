@@ -1,7 +1,8 @@
 #!/bin/bash
 # lane.gpuclock (#433): The Simpsons: Hit & Run on the Nova, ONE held pathfind
-# session, the GPU floor switched between performance_mode 0 (401 MHz) and 2
-# (615 MHz) in BLOCK_S blocks during free roam, order A B B A A B B A. Every
+# session, the GPU floor switched between performance_mode 0 (401 MHz), 1
+# (550 MHz) and 2 (615 MHz) in BLOCK_S blocks during free roam, order
+# 0 2 1 / 1 0 2 / 2 1 0 (each mode once in each third of the session). Every
 # switch is read back and written to logcat (`hakuX-route: gpuclock pm=<n>
 # fan=<n> floor=<mhz>`), so gpuclock.py --blocks splits the [gpuclk433]
 # windows by condition. Host-run (lane.local): a lane cannot touch the device.
@@ -29,10 +30,10 @@
 set -u
 SHORT=$1
 BLOCK_S=${BLOCK_S:-60}
-ORDER=${ORDER:-"0 2 2 0 0 2 2 0"}
+ORDER=${ORDER:-"0 2 1 1 0 2 2 1 0"}
 GATE_S=${GATE_S:-90}
 DELAY=${DELAY:-20}
-HOLD_S=${HOLD_S:-600}    # pathfind's hold: DELAY + 8 x 60 s blocks + margin
+HOLD_S=${HOLD_S:-720}    # pathfind's hold: DELAY + 9 x 60 s blocks + margin
 TID=56550015
 DEV=nova S=ee317437 MIN_BATT=${MIN_BATT:-20}
 PKG=com.jreinach.hakux.debug
@@ -57,7 +58,7 @@ PFLOG="$OUT/pf/logcat.txt"
 
 [ -f "$APK" ] || { say "no apk $APK"; exit 1; }
 bash "$HOLDSH" wait $DEV $TAG "${HOLD_WAIT_S:-3600}" \
-    "lane.gpuclock #433: held $DEV session, pathfind hold of Simpsons, GPU floor switched 401/615 MHz in ${BLOCK_S} s blocks (apk $APK_REF), ~15 min of device time; capture_simpsons_gpuclock.sh releases on every exit" \
+    "lane.gpuclock #433: held $DEV session, pathfind hold of Simpsons, GPU floor switched 401/550/615 MHz in ${BLOCK_S} s blocks (apk $APK_REF), ~17 min of device time; capture_simpsons_gpuclock.sh releases on every exit" \
     || { say "could not take hold/$DEV: $(bash "$HOLDSH" who $DEV)"; exit 3; }
 say "hold taken"
 
@@ -158,7 +159,7 @@ for pm in $ORDER; do
     kill -0 $PF_PID 2>/dev/null || { say "pathfind ended during the blocks"; break; }
     got=$(perf $pm)
     set -- $got
-    want_floor=$([ "$pm" = 2 ] && echo 615 || echo 401)
+    case $pm in 0) want_floor=401 ;; 1) want_floor=550 ;; 2) want_floor=615 ;; *) want_floor=? ;; esac
     if [ "${1:-}" = "$pm" ] && [ "${2:-}" = 4 ] && [ "${3:-}" = "$want_floor" ]; then
         a shell log -t hakuX-route "'gpuclock pm=$1 fan=$2 floor=$3'" >/dev/null
         say "block pm=$pm read back [$got]"

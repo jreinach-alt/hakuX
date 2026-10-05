@@ -8,7 +8,9 @@ result dirs and answer NOTES section 3's questions.
     gpuclock.py --blocks PF_DIR [...]             one held session switched by
                                                   capture_simpsons_gpuclock.sh: the
                                                   windows split by `gpuclock pm=`,
-                                                  pm 0 as LOW and pm 2 as HIGH
+                                                  pm 0 as LOW and pm 2 as HIGH; pm 1
+                                                  (floor 550), if switched to, joins
+                                                  a three-level ladder fit
     [--skip S]  ignore the first S seconds after `mark gameplay`, and after
                 each block switch (default 10)
     [--tsv F]   one row per window
@@ -32,7 +34,13 @@ F_low - F_high >= 0.6 (gms_low - gms_high). The control: low arm MHz <= 450,
 high arm >= 600, or the pair is inert. Fit gms = c + k/MHz over every window
 of the pair (least squares), with its RMS residual and R^2.
 """
-import argparse, ast, json, math, os, re, statistics
+import argparse, ast, json, math, os, re, statistics, sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'testing'))
+try:
+    import thermal_state
+except Exception:
+    thermal_state = None
 
 ap = argparse.ArgumentParser()
 ap.add_argument('runs', nargs='+')
@@ -168,6 +176,18 @@ def read_run(d, block=None):
         t_end = info['win'][-1]['t']
         th = [x for x in th if x['t'] <= t_end + 30]
     info['th'] = th
+    # power over the scored span (thermal_state.power_over, the soak summary's
+    # own arithmetic); a blocks session interleaves conditions, so none there
+    info['pw'] = None
+    if block is None and info['win'] and mark is not None and thermal_state:
+        try:
+            recs = thermal_state.load(os.path.join(d, 'thermal.jsonl'))
+            r0 = next(r for r in recs if r.get('dev_time'))
+            base = thermal_state.dev_ts(r0) - secs(*re.match(r'\d+-\d+ (\d+):(\d+):(\d+)', r0['dev_time']).groups())
+            w0, w1 = info['win'][0], info['win'][-1]
+            info['pw'] = thermal_state.power_over(recs, base + mark + w0['t'] - (w0['dt'] or 0), base + mark + w1['t'])
+        except Exception as ex:
+            info['pw'] = {'measured': False, 'error': str(ex)}
     return info
 
 
@@ -206,6 +226,11 @@ def summarize(r):
             else:
                 i += 1
     out['lag'] = (med(lags), len(lags), cens)
+    span = sum(w['dt'] for w in W if w['dt'])
+    out['fps_mean'] = sum(w['frames'] for w in W if w['dt']) / span if span else None
+    pw = r.get('pw') or {}
+    out['pw'] = pw
+    out['jpf'] = pw['net_w'] / out['fps_mean'] if pw.get('net_w') and out['fps_mean'] else None
     th = r['th']
     if th:
         out['hot0'], out['hot1'] = th[0]['hot'], th[-1]['hot']
@@ -243,6 +268,10 @@ def show(r, s):
     if 'hot0' in s:
         print('   thermal: hottest %s -> %s C (%s C/min), xo %s -> %s, pause %s, lowest ceiling %s MHz, cpu7 %s MHz, battery %s, thermal.jsonl gpuclk %s' % (
             f(s['hot0']), f(s['hot1']), f(s['rate'], 2), f(s['xo0']), f(s['xo1']), s['pause'], s['mincap'], s['cpu7'], s['batt'], s['th_gpu']))
+    if s.get('pw', {}).get('measured'):
+        p = s['pw']
+        print('   power over the window (%d samples): battery %+.2f W, usb %s W, net %s W; fps (frames/time) %s -> %s J/frame' % (
+            p['samples'], p['battery_w'], f(p['usb_w'], 2), f(p['net_w'], 2), f(s['fps_mean']), f(s['jpf'], 3)))
 
 
 def fit(ws):
@@ -264,8 +293,10 @@ def fit(ws):
             'clock_share_at_401': (k / 401.0) / (c + k / 401.0) if c + k / 401.0 else None}
 
 
+mids = []
 if a.blocks:
     runs = [r for d in a.runs for r in (read_run(d, 0), read_run(d, 2))]
+    mids = [read_run(d, 1) for d in a.runs]
     a.pair = True
 else:
     runs = [read_run(d) for d in a.runs]
@@ -308,7 +339,32 @@ if a.pair:
             if (lo['mincap'] or 680) < 680 or (hi['mincap'] or 680) < 680:
                 bad.append('ceiling under 680')
             print('   validity: %s' % ('; '.join(bad) + ' -> fps VOID' if bad else 'ok'))
+        if lo.get('jpf') and hi.get('jpf'):
+            print('   cost: net %.2f -> %.2f W, %.3f -> %.3f J/frame (x%.2f)' % (
+                lo['pw']['net_w'], hi['pw']['net_w'], lo['jpf'], hi['jpf'], hi['jpf'] / lo['jpf']))
         ft = fit(runs[i]['win'] + runs[i + 1]['win'])
         if ft:
             print('   fit gms = c + k/MHz over %d windows: c %.2f ms, k %.0f ms*MHz, RMS residual %.2f ms, R^2 %s; clock-scaled share at 401 MHz %.0f%%' % (
                 ft['n'], ft['c'], ft['k'], ft['rms'], f(ft['r2'], 2), 100 * ft['clock_share_at_401']))
+
+# The ladder (blocks with a pm 1 level): the three levels' window medians, the
+# elasticity of each step, and gms = c + k/MHz fitted on the three medians
+# (two parameters, three points: the residual is the curvature 1/MHz misses).
+for i, mid in enumerate(mids):
+    if not mid['win']:
+        continue
+    lo, hi = sums[2 * i], sums[2 * i + 1]
+    md = summarize(mid)
+    show(mid, md)
+    lv = sorted([x for x in (lo, md, hi) if x['gms'] is not None and x['mhz']], key=lambda x: x['mhz'])
+    print('\n## ladder %s: %s' % (mid['name'].rsplit(' ', 1)[0], '  '.join(
+        '%s MHz gms %.2f F %.1f (n %d)' % (f(x['mhz'], 0), x['gms'], x['F'], x['n']) for x in lv)))
+    for p, q in zip(lv, lv[1:]):
+        if q['mhz'] > p['mhz'] and q['gms'] > 0:
+            print('   step %s -> %s MHz: e = %.2f, dF %.1f against dGPU %.1f' % (
+                f(p['mhz'], 0), f(q['mhz'], 0), math.log(p['gms'] / q['gms']) / math.log(q['mhz'] / p['mhz']),
+                p['F'] - q['F'], p['gms'] - q['gms']))
+    ft = fit([{'mhz': x['mhz'], 'gms': x['gms']} for x in lv])
+    if ft:
+        print('   fit on the level medians: c %.2f ms, k %.0f ms*MHz, RMS residual %.3f ms, R^2 %s' % (
+            ft['c'], ft['k'], ft['rms'], f(ft['r2'], 3)))

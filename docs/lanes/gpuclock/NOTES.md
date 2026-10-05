@@ -120,6 +120,49 @@ under 10% of samples.
 - Nova: Nightfire (`nightfire.route`), Tron (near30's `tron-newgame.route`), queued in pathfind's
   gaps. Simpsons has no route: host-run under a pathfind hold (lane.local), as vcpusleep did.
 
+## 5. Results
+
+### Nightfire, Nova, pair 1 (pilot; default then max, 300 s each, ref 521ea8a93e)
+
+`gpuclock.py --pair 1-1791215562-lane.gpuclock-2286132 1-1791215567-lane.gpuclock-2286266`:
+
+| arm | windows | MHz (100 ms samples) | busy % | gms | grn | fps (median window) | fps (frames/time) | net W | J/frame |
+|---|---|---|---|---|---|---|---|---|---|
+| default (floor 401) | 151 | 401: 100% of 2735 | 42 | 11.23 | 9.93 | 34.2 | 33.1 | 7.44 | 0.225 |
+| max (floor 615) | 166 | 615: 100% of 2674 | 34 | 7.67 | 6.54 | 39.5 | 36.9 | 8.20 | 0.223 |
+
+- The app reads kgsl sysfs: init `err=none`, governor msm-adreno-tz, ceiling 680. The control
+  holds: the clock moved exactly as set, and never left the floor in either arm.
+- **a.** e = 0.89 (gms x0.683 for MHz x1.534): CLOCK-LIMITED by the registered rule. The window fit
+  (c 1.47 ms, k 3567) has R^2 0.09, RMS 4.91 ms: across windows the scene changes gms far more
+  than the clock does (the prologue's sections), so the per-window fit is not the reading; the
+  elasticity on medians is. The ladder (three levels, section 3) is the fit with a residual that
+  means something.
+- **b.** F 29.2 -> 25.3 ms against dGPU 3.6 ms: fps FOLLOWS (dF/dG 1.08). But **fps VOID** by the
+  registered validity rule: the hottest zone fell 0.64 C/min in the default arm (it started at
+  94.7 C after the previous run) and was flat in the max arm. xo rose 1.6 and 2.1 C in each.
+  Pair 2 (reversed order) is queued to settle it. Within each run, F does not track gms across
+  windows (r -0.09 and -0.23), so the frame is not simply CPU + GPU in series scene by scene.
+- **c.** The stock governor at floor 401: **401 MHz in 100% of 2735 samples**. GPU busy per 100 ms
+  sample: 0-19% 33%, 20-39% 18%, 40-59% 48%, 60-79% 0.6%, >= 80% 0.0%. No sample reached 90, so the
+  step response has nothing to measure: the governor never had a reason to ramp. The GPU is idle
+  more than half of every frame and still, adding clock shortens the frame. That is what a
+  serialized frame looks like (the GPU waits on the CPU's submission, the CPU waits on the GPU's
+  fence): utilisation stays at ~40%, under the governor's up-threshold, while GPU time sits on the
+  critical path. A utilisation governor cannot see that.
+- Cost: +0.76 W net (+10%) for +11% frames/time: J/frame unchanged (x0.99). Battery 80%, status
+  Charging in the default arm (net draw 7.4 W exceeds the USB input, so the battery discharged
+  anyway: +0.91 W and +1.67 W).
+
+### What a third rung needs
+
+performance_mode 1 (floor 550) has no PERF_REGIMEN, so a queued soak cannot reach it. The Simpsons
+host session can: `capture_simpsons_gpuclock.sh` now switches 0 2 1 / 1 0 2 / 2 1 0 (9 x 60 s,
+each mode once in each third), and `gpuclock.py --blocks` adds a ladder section: the three
+levels' medians, each step's e, and gms = c + k/MHz fitted on the three medians with its residual
+(fixture `ladder` leg: planted c 4 / k 6000, read c 3.81 / k 6087, residual 0.07 ms; the 550 -> 615
+step is short, x1.12, so its e carries +-0.1 from 0.3 ms of noise).
+
 ## Log
 
 - 10-05: knobs from the record (section 1); natural experiment on disk (`survey.py`,
@@ -133,3 +176,16 @@ under 10% of samples.
   (`tron-gpuclock.route`, memfast's text). Reader `gpuclock.py` passes its known-answer fixture
   (`fixture.py`: e 0.76 vs 0.75 planted; fit c 3.8 / k 6100 vs 4 / 6000; the blocks leg drops a
   planted menu stretch, residual 0.29 = the planted noise).
+- 10-05 ~10:35 PDT, **attempt 2**. Attempt 1 did not fail: it ended correctly in a waiting state
+  (WAITING named the two Nova pilot runs; the grant, the Thor focus problem and the Simpsons host
+  capture were outside the session). The handback resumed the lane when the pilot pair was DONE.
+  Pilot read (section 5): Nightfire clock-limited, e 0.89. Pilot verdict written to
+  `pilots/lane.gpuclock.ok`. Queued: Nightfire pair 2 reversed (`1-1791220908-...-2641880` max,
+  `1-1791220912-...-2642033` default), Tron pair (`1-1791220914-...-2642143` default,
+  `1-1791220916-...-2642242` max, 480 s, Nova), Forza pair re-queued on the Thor
+  (`1-1791220919-...-2642382` max, `1-1791220921-...-2642489` default, 480 s): the Lime3DS focus
+  was gone by 16:07 UTC (lane.frametrace's Forza runs reached display 0), though both of those
+  exited early with Daijishou in front (42 s, 25 s), cause not identified. Order drawn at random
+  (Tron default first, Forza max first). Reader: J/frame over the window
+  (thermal_state.power_over); three-level ladder for the Simpsons blocks. Grant for profile.c
+  still unanswered; Simpsons host capture not yet run.
