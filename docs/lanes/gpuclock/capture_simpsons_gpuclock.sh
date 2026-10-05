@@ -21,6 +21,15 @@
 #   - On every exit: performance_mode 0 and fan_mode 4 (the device default and
 #     REST), read back, before the hold is released.
 #   - The hold tag is lane.gpuclock.
+#   - (attempt 3) The APK is 84c718ecdd when the dispatcher has built it (the
+#     [gpuclk433] line plus the CPU side, cseq/vt), else 521ea8a93e.
+#   - (attempt 3) After the blocks, while the title still runs, a knob probe:
+#     the platform's Game Mode (`cmd game mode performance|standard <pkg>`, the
+#     user's choice in the Game Dashboard) and `cmd power
+#     set-fixed-performance-mode-enabled`, each read back as performance_mode,
+#     kgsl min/max_clock_mhz, policy7 scaling_min_freq and cpu7's clock, and
+#     logged `hakuX-route: gpuclock probe <what> <readback>`. Both are put back
+#     (standard, false) and read back, here and on every exit.
 #
 #   PATHFIND_TREE=/path/to/pathfind/checkout capture_simpsons_gpuclock.sh simpclk1
 #
@@ -39,7 +48,10 @@ DEV=nova S=ee317437 MIN_BATT=${MIN_BATT:-20}
 PKG=com.jreinach.hakux.debug
 D=/home/justin/hakux-work/dispatch
 OUT=/home/justin/hakux-work/perf/2026-10-05-gpuclock/$SHORT
-APK_REF=${APK_REF:-521ea8a93e}
+if [ -z "${APK_REF:-}" ]; then
+    APK_REF=521ea8a93e
+    [ -f "$D/builds/84c718ecdd.apk" ] && APK_REF=84c718ecdd
+fi
 APK=$D/builds/$APK_REF.apk
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../testing" && pwd)"
 HOLDSH="$HERE/jobs/hold.sh"
@@ -71,10 +83,27 @@ perf() {
     a shell 'echo "$(settings get system performance_mode) $(settings get system fan_mode) $(cat /sys/class/kgsl/kgsl-3d0/min_clock_mhz)"' 2>/dev/null | tr -d '\r' | tail -1
 }
 
+# readback: performance_mode, kgsl floor/ceiling, policy7 floor, cpu7 clock
+readback() {
+    a shell 'echo "pm=$(settings get system performance_mode) floor=$(cat /sys/class/kgsl/kgsl-3d0/min_clock_mhz) ceil=$(cat /sys/class/kgsl/kgsl-3d0/max_clock_mhz) p7min=$(cat /sys/devices/system/cpu/cpufreq/policy7/scaling_min_freq 2>&1) c7=$(cat /sys/devices/system/cpu/cpu7/cpufreq/scaling_cur_freq)"' 2>/dev/null | tr -d '\r' | tail -1
+}
+probe() {   # probe <label> <shell command>
+    a shell "$2" > "$OUT/probe.$1.out" 2>&1
+    sleep 5
+    got="$(readback) rc=$(tail -1 "$OUT/probe.$1.out" | tr ' ' '_' | cut -c1-60)"
+    a shell log -t hakuX-route "'gpuclock probe $1 $got'" >/dev/null 2>&1
+    say "probe $1: $got"
+}
+unprobe() {
+    a shell "cmd game mode standard $PKG" >/dev/null 2>&1
+    a shell "cmd power set-fixed-performance-mode-enabled false" >/dev/null 2>&1
+}
+
 LEASE_PID="" PF_PID="" USED=0
 cleanup() {
     rc=$?
     if [ "$USED" = 1 ]; then
+        unprobe
         got=$(perf 0)
         say "restored performance_mode/fan_mode/floor: $got"
         a shell log -t hakuX-route "'gpuclock end $got'" >/dev/null 2>&1
@@ -171,5 +200,12 @@ for pm in $ORDER; do
 done
 a shell log -t hakuX-route "'gpuclock blocks done'" >/dev/null
 say "blocks done; state=$(last_state)"
+# The knob probe, at the device default, with the title in front.
+say "probe base: $(perf 0) $(readback)"
+a shell "cmd game list-modes $PKG" > "$OUT/probe.list-modes.out" 2>&1
+probe gamemode-performance "cmd game mode performance $PKG"
+probe gamemode-standard "cmd game mode standard $PKG"
+probe fixedperf-on "cmd power set-fixed-performance-mode-enabled true"
+probe fixedperf-off "cmd power set-fixed-performance-mode-enabled false"
 for _ in $(seq "${PF_WAIT_S:-600}"); do kill -0 $PF_PID 2>/dev/null || break; sleep 1; done
 say "done"

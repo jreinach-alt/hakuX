@@ -99,3 +99,47 @@ on the next Thor Forza launch would separate a crash from a kill). This lane mov
 [lane.gpuclock] waiting: on the six queued Nova runs (WAITING lists them: Nightfire pair 2, Tron pair, Forza pair),
 the profile.c grant (board-requests/gpuclock.md), and the Simpsons host capture (lane.local; now three rungs,
 `capture_simpsons_gpuclock.sh` at this push). Resumes on the runs' DONE.
+
+## #433 -- 2026-10-05 ~16:40 PDT (milestone b: three titles read; the knob is not GPU-only)
+
+[lane.gpuclock] Floor 401 (stock) vs floor 615, Nova, same build and route, 100 ms clock samples (NOTES 5-6):
+
+| title | GPU ms/frame 401 -> 615 | e (>= 0.6 = clock-limited) | fps 401 -> 615 | J/frame | verdict |
+|---|---|---|---|---|---|
+| Nightfire, pair 2 (valid) | 11.24 -> 7.38 | 0.98 (pair 1: 0.89) | 34.5 -> 40.0 (+16%) | 0.220 -> 0.212 | clock-limited; fps follows the GPU 1:1 |
+| Forza race | 24.47 -> 19.02 | 0.59 | 24.7 -> 26.9 (+9%) | 0.322 -> 0.305 | on the line; scenes not matched (blind drive): replicate queued |
+| Tron in-engine intro | 5.50 -> 4.02 | 0.73 (scene-matched 0.95) | 47.4 -> 57.7 (+22%) | 0.137 -> 0.151 | GPU clock-limited, but the fps gain is NOT attributable: see below |
+
+- **The stock governor never left 401 MHz** in any stock arm (100% of samples, 99.4% in Tron). GPU busy averaged 42-57% and
+  not one of ~10,700 samples reached 90%. The GPU waits on the CPU for half of every frame and the CPU then waits on the GPU.
+  Measured: the clock shortens the guest's idle (its wait) and leaves its busy time alone. A utilisation governor cannot see
+  GPU time that sits on the critical path.
+- **The knob is not GPU-only.** performance_mode 2 raises the CPU floors as well. In Nightfire and Forza the prime core sat at
+  3187 MHz in both arms, so their gain is the GPU's. In Tron the stock arm's prime core read 1843 MHz in 7 of 14 samples, so
+  Tron's +22% is part CPU. The instrument now samples the CPU side as well (`cseq`, the core the busiest thread runs on and its
+  clock, 10 Hz) at 84c718ecdd, and Tron is re-run on it with the split registered in NOTES 3b.
+- Ranked (P x win): (1) take the GPU off the frame's critical path, for lane.frametrace: the guest's per-frame wait is 13.5 ms
+  of Nightfire's 29.5 and 15.1 of Forza's 41.0; win ~+60%, P ~0.25. (2) hold the GPU floor at 615: +9-16% measured,
+  J/frame unchanged, but a shipped app cannot write the vendor key; the platform paths (Game Mode, fixed-performance mode)
+  are probed in the Simpsons host session. (3) Tron's prime-core clock, pending the re-run.
+
+Queued on the Nova, ref 84c718ecdd: Tron pair (`1-1791241711-lane.gpuclock-435567` default, `1-1791241720-lane.gpuclock-436985`
+max; order drawn), Forza replicate reversed (`1-1791241720-lane.gpuclock-437094` default, `1-1791241721-lane.gpuclock-437210` max).
+
+## #433 -- 2026-10-05 ~16:40 PDT: HOST REQUEST for lane.local (Simpsons, revised; replaces the 09:00 and 10:40 versions)
+
+[lane.gpuclock] HOST REQUEST, still open: one held Nova session of ~18 min. Run it from `origin/lane/gpuclock` at this push or later,
+with the same command line as before:
+
+    PATHFIND_TREE=/home/justin/hakux-work/wt/pathfind bash docs/lanes/gpuclock/capture_simpsons_gpuclock.sh simpclk1 > /home/justin/hakux-work/perf/2026-10-05-gpuclock/simpclk1.cap.log 2>&1
+
+Changes: the APK is `dispatch/builds/84c718ecdd.apk` (with the CPU side) once the queued Tron run has built it, and
+521ea8a93e otherwise. After the nine 60 s blocks (floor 401/550/615), with the title still in front, a ~25 s **knob probe**
+runs: `cmd game mode performance|standard <pkg>` and `cmd power set-fixed-performance-mode-enabled true|false`. Each is read
+back (performance_mode, kgsl min/max_clock_mhz, policy7 scaling_min_freq, cpu7 clock) and logged `hakuX-route: gpuclock
+probe ...`. Both are put back (standard, false) on every exit. This decides whether a shipped app has any legitimate path to
+the GPU floor. Please resume lane.gpuclock with an addendum when `simpclk1.cap.log` ends.
+
+[lane.gpuclock] waiting: on the four Nova runs above (WAITING lists them), the Simpsons host session (lane.local), and the
+profile.c grant (dispatch/board-requests/gpuclock.md; telemetry only, `[gpuclk433]` now with `cseq`/`vt`). Spend: three Opus
+sessions; Nova device time ~60 min so far (8 runs) plus ~38 min queued.

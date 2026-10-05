@@ -243,6 +243,56 @@ levels' medians, each step's e, and gms = c + k/MHz fitted on the three medians 
 (fixture `ladder` leg: planted c 4 / k 6000, read c 3.81 / k 6087, residual 0.07 ms; the 550 -> 615
 step is short, x1.12, so its e carries +-0.1 from 0.3 ms of noise).
 
+## 6. The answers so far (attempt 3; Simpsons and the Tron/Forza re-runs pending)
+
+**a. GPU ms vs MHz: clock-limited in every title measured.** e (window medians, floor 401 -> 615):
+Nightfire 0.89 and 0.98, Forza 0.59, Tron 0.73 (scene-matched 0.95). The rule set before the
+runs is e >= 0.6; Forza sits on the line with scenes unmatched (replicate queued). The fit
+gms = c + k/MHz over windows: Nightfire c 1.40 ms / k 3508, Forza c 7.38 / k 6598, Tron c 0.46 /
+k 2491. Its R^2 is 0.09-0.27 (RMS 2.9-4.8 ms): across windows the scene moves gms far more than
+the clock does, so the per-window fit does not read the clock. The scene-matched per-bin ratios
+do (Nightfire: the high arm's gms is lower in 92% of matched bins; Tron 95%). The clock-scaled
+share of GPU time at 401 MHz is 86% (Nightfire), 69% (Forza) and 93% (Tron). Forza's constant
+(7.4 ms) is the part that does not scale with the core clock: memory-bound work.
+
+**b. fps vs MHz: the frame follows the GPU where the vCPU's clock stayed put.** Nightfire (pair 2,
+valid): F 29.0 -> 25.0 ms against GPU 11.24 -> 7.38 (dF/dG 1.03; matched 0.84), fps +16%. Forza:
+F 40.5 -> 37.2 against GPU 24.5 -> 19.0 (0.61), fps +9%. In both, the clock shortens the guest's
+timer-woken idle and leaves its busy time alone. The frame is CPU work plus a wait for the GPU, in
+series. Tron: fps +22% with dF 2.9x dGPU and the prime core's clock moved too: not attributable yet
+(3b).
+
+**c. The stock governor during play: it never leaves the floor.** 401 MHz in 100% (Nightfire x2,
+Forza) and 99.4% (Tron) of the 100 ms samples. Mean GPU busy is 42% / 57% / 43%. Not one sample
+reached 90% (0 of ~10,700 stock-arm samples), so the step response has nothing to measure. This
+is not "a governor that holds 401 while the GPU runs 90% busy". The GPU is idle about half of
+every frame because it waits for the CPU, and the CPU then waits for it. Utilisation stays under
+the up-threshold while GPU time sits on the critical path. A utilisation governor cannot see that.
+The CPU governor did the same thing to Tron's prime core (1843 MHz in 7 of 14 samples).
+
+**Cost.** J/frame at floor 615 vs 401: Nightfire 0.220 -> 0.212 and 0.225 -> 0.223, Forza 0.322 ->
+0.305 (net +0.07-0.76 W for more frames), Tron 0.137 -> 0.151 (+11%, CPU floor raised too).
+xo rose 1.8-2.4 C per run in either condition; no thermal pause, no ceiling cut on the Nova.
+
+### Ranked next steps (P x win, from these numbers)
+
+1. **Take the GPU off the frame's critical path** (hand to lane.frametrace): the guest waits for
+   the GPU every frame, 13.5 ms of Nightfire's 29.5 ms and 15.1 of Forza's 41.0 at 401 MHz (guest
+   idle, timer-woken). Win if the wait were overlapped with the next frame's CPU work: Nightfire
+   F -> ~15-18 ms, Forza -> ~25 ms, about +60% fps. P ~0.25: what the guest waits on (which
+   fence or flag it reads) is not identified by these runs, and an emulator can report GPU
+   completion early only where the guest does not read what the GPU wrote. Expected ~+15%.
+2. **Hold the GPU floor at 615 during play.** Measured win +16% (Nightfire), +9% (Forza), with
+   J/frame unchanged or lower. P that the shipped app can do it legitimately: the only knob found is
+   `performance_mode`, a vendor key in Settings.System. Since API 23 an app may write only
+   public System keys, so the app cannot set it. The Simpsons host session now probes the
+   platform's own paths, Game Mode (`cmd game mode performance`) and fixed-performance mode. P
+   ~0.3 that one of them moves the kgsl floor. Expected ~+4%. A user can turn the device's
+   performance mode on today, at no cost and with no shipped change.
+3. **Tron: the prime core's clock** (pending 3b). If the cseq re-run gives the excess to the CPU
+   floor, Tron's v_run fell 26% when the core was held at 3187. That is the CPU governor doing to
+   the vCPU what the GPU governor does to the GPU.
+
 ## Log
 
 - 10-05: knobs from the record (section 1); natural experiment on disk (`survey.py`,
