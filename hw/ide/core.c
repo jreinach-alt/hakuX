@@ -52,6 +52,21 @@
         fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
 #endif
 
+/*
+ * [ide425] counters; the line and its fields are documented at ide425_tick.
+ * Declared here because ide_cancel_dma_sync times its drain.
+ */
+static struct {
+    int64_t t_win, t_submit;
+    uint32_t irq, rd_sec, ends, lat_n, words, wr_words;
+    int64_t lat_sum, lat_max, w_sum, w_max;
+    /* DMA, command and drain timing (attempt 4) */
+    int64_t t_irq, t_cmd, t_dma;
+    uint32_t irq_cd, cmd_n, cmd_cd, dma_n, dma_cd, dev_n, gap_n, drain_n;
+    int64_t dma_bytes, dma_sum, dma_max, dev_sum, dev_max;
+    int64_t gap_sum, gap_max, drain_sum, drain_max;
+} ide425;
+
 /* These values were based on a Seagate ST3500418AS but have been modified
    to make more sense in QEMU */
 static const int smart_attributes[][12] = {
@@ -769,9 +784,15 @@ void ide_cancel_dma_sync(IDEState *s)
      * aio operation with preadv/pwritev.
      */
     if (s->bus->dma->aiocb) {
+        int64_t t0 = qemu_clock_get_ns(QEMU_CLOCK_HOST), d;
+
         trace_ide_cancel_dma_sync_remaining();
         blk_drain(s->blk);
         assert(s->bus->dma->aiocb == NULL);
+        d = qemu_clock_get_ns(QEMU_CLOCK_HOST) - t0;
+        ide425.drain_n++;
+        ide425.drain_sum += d;
+        ide425.drain_max = MAX(ide425.drain_max, d);
     }
 }
 
@@ -793,15 +814,28 @@ void ide_cancel_dma_sync(IDEState *s)
  *                   the data-port word writes
  *   rest_us         win_us - lat_us_sum - w_us_sum: guest work between words
  *                   and the MMIO dispatch, and anything outside both
+ * A second line, [ide425d], in the same window, for the non-PIO path (the
+ * smoke of d4b0169ab2 showed IRQ14 raised with no PIO sector and no word):
+ *   irq_cd          of irq, those raised with the ATAPI drive (DVD) active
+ *   cmd, cmd_cd     commands written to the command register (ide_bus_exec_cmd)
+ *   dma, dma_cd, dma_kb
+ *                   DMA transfers started (ide_start_dma: HDD READ/WRITE DMA
+ *                   and ATAPI DMA reads) and the bytes they asked for
+ *   dma_us_sum, dma_us_max
+ *                   ide_start_dma to the next IDE interrupt: the host block
+ *                   read plus the guest's bus-master start write
+ *   dev_n, dev_us_sum, dev_us_max
+ *                   command register write to the next IDE interrupt: the
+ *                   whole device time of a command as the guest sees it
+ *   gap_n, gap_us_sum, gap_us_max
+ *                   an IDE interrupt to the guest's next command: the guest's
+ *                   own time between commands (ISR, copy, decompress)
+ *   drain, drain_us_sum, drain_us_max
+ *                   blk_drain in ide_cancel_dma_sync: a synchronous wait on
+ *                   the host block layer in the vCPU thread
  * Times are QEMU_CLOCK_HOST (ns) internally. One channel assumed (Xbox
  * primary); the counters are BQL-protected like the rest of the IDE state.
  */
-static struct {
-    int64_t t_win, t_submit;
-    uint32_t irq, rd_sec, ends, lat_n, words, wr_words;
-    int64_t lat_sum, lat_max, w_sum, w_max;
-} ide425;
-
 static void ide425_tick(void)
 {
     int64_t now = qemu_clock_get_ns(QEMU_CLOCK_HOST);
@@ -824,6 +858,26 @@ static void ide425_tick(void)
                ide425.lat_n, ide425.lat_sum / 1000, ide425.lat_max / 1000,
                ide425.words, ide425.w_sum / 1000, ide425.w_max / 1000,
                ide425.wr_words, rest / 1000);
+    IDE425_LOG("[ide425d] win_us=%" PRId64 " irq_cd=%u cmd=%u cmd_cd=%u"
+               " dma=%u dma_cd=%u dma_kb=%" PRId64
+               " dma_us_sum=%" PRId64 " dma_us_max=%" PRId64
+               " dev_n=%u dev_us_sum=%" PRId64 " dev_us_max=%" PRId64
+               " gap_n=%u gap_us_sum=%" PRId64 " gap_us_max=%" PRId64
+               " drain=%u drain_us_sum=%" PRId64 " drain_us_max=%" PRId64,
+               win / 1000, ide425.irq_cd, ide425.cmd_n, ide425.cmd_cd,
+               ide425.dma_n, ide425.dma_cd, ide425.dma_bytes / 1024,
+               ide425.dma_sum / 1000, ide425.dma_max / 1000,
+               ide425.dev_n, ide425.dev_sum / 1000, ide425.dev_max / 1000,
+               ide425.gap_n, ide425.gap_sum / 1000, ide425.gap_max / 1000,
+               ide425.drain_n, ide425.drain_sum / 1000,
+               ide425.drain_max / 1000);
+    ide425.irq_cd = ide425.cmd_n = ide425.cmd_cd = 0;
+    ide425.dma_n = ide425.dma_cd = ide425.dev_n = 0;
+    ide425.gap_n = ide425.drain_n = 0;
+    ide425.dma_bytes = ide425.dma_sum = ide425.dma_max = 0;
+    ide425.dev_sum = ide425.dev_max = 0;
+    ide425.gap_sum = ide425.gap_max = 0;
+    ide425.drain_sum = ide425.drain_max = 0;
     ide425.irq = 0;
     ide425.rd_sec = 0;
     ide425.ends = 0;
@@ -1094,6 +1148,14 @@ static void ide_sector_start_dma(IDEState *s, enum ide_dma_cmd dma_cmd)
 
 void ide_start_dma(IDEState *s, BlockCompletionFunc *cb)
 {
+    ide425.t_dma = qemu_clock_get_ns(QEMU_CLOCK_HOST);
+    ide425.dma_n++;
+    if (s->drive_kind == IDE_CD) {
+        ide425.dma_cd++;
+        ide425.dma_bytes += s->packet_transfer_size;
+    } else {
+        ide425.dma_bytes += (int64_t)s->nsector * BDRV_SECTOR_SIZE;
+    }
     s->io_buffer_index = 0;
     ide_set_retry(s);
     if (s->bus->dma->ops->start_dma) {
@@ -2276,6 +2338,24 @@ void ide_bus_exec_cmd(IDEBus *bus, uint32_t val)
     s->error = 0;
     s->io_buffer_offset = 0;
 
+    {
+        int64_t now = qemu_clock_get_ns(QEMU_CLOCK_HOST);
+
+        ide425.cmd_n++;
+        if (s->drive_kind == IDE_CD) {
+            ide425.cmd_cd++;
+        }
+        if (ide425.t_irq) {
+            int64_t g = now - ide425.t_irq;
+
+            ide425.gap_n++;
+            ide425.gap_sum += g;
+            ide425.gap_max = MAX(ide425.gap_max, g);
+            ide425.t_irq = 0;
+        }
+        ide425.t_cmd = now;
+    }
+
     complete = ide_cmd_table[val].handler(s, val);
     if (complete) {
         s->status &= ~BUSY_STAT;
@@ -2930,7 +3010,28 @@ void ide_bus_init_output_irq(IDEBus *bus, qemu_irq irq_out)
 void ide_bus_set_irq(IDEBus *bus)
 {
     if (!(bus->cmd & IDE_CTRL_DISABLE_IRQ)) {
+        int64_t now = qemu_clock_get_ns(QEMU_CLOCK_HOST);
+
         ide425.irq++;
+        if (bus->ifs[bus->unit].drive_kind == IDE_CD) {
+            ide425.irq_cd++;
+        }
+        if (ide425.t_dma) {
+            int64_t d = now - ide425.t_dma;
+
+            ide425.dma_sum += d;
+            ide425.dma_max = MAX(ide425.dma_max, d);
+            ide425.t_dma = 0;
+        }
+        if (ide425.t_cmd) {
+            int64_t d = now - ide425.t_cmd;
+
+            ide425.dev_n++;
+            ide425.dev_sum += d;
+            ide425.dev_max = MAX(ide425.dev_max, d);
+            ide425.t_cmd = 0;
+        }
+        ide425.t_irq = now;
         ide425_tick();
         qemu_irq_raise(bus->irq);
     }
