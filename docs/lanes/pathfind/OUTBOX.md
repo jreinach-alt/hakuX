@@ -637,3 +637,9 @@ Period: the claim goal set innings to the longest offered (not read back from th
 SCENE SHOULD CONTAIN: a live game, a pitcher on the mound, a batter in the box with the PLAYER 1 command menu on a pitch, fielders on the infield, the scorebug with the inning and score, pitch speed (MPH) readouts.
 FRAME REVIEW (my read of hold_strip.jpg, 16 kept frames): the scene matches. The batter-intro "career avg" cards in 060, 080 and 086 are in-game and count as play. 056 shows a fielder down on the grass (a play in progress). No menu frame in the strip.
 Frames: runs/mlb-slugfest-2004/hold (frames, hold_strip.jpg). Spend: Sonnet, not totalled here (calls.jsonl).
+
+[lane.pathfind] MLB SlugFest Loaded PASS (harness; flicker unchecked; 10-05 15:30, runs/mlb-slugfest-loaded/hold): claim to a human-assigned batter, then a full 600-s hold. Verdict PASS: 600.8 s gameplay, play_share 0.9995, fps_ok 1.0 at the bar, window median 58.9, position first-to-last 0.62, no still window. Aborted at: full window. Perflog: not taken.
+Period: innings set to the longest offered by the claim goal (not read back). The strip reaches the 2nd inning, so the innings ran through the hold.
+SCENE SHOULD CONTAIN: a live game, a pitcher and batter with the PLAYER 1 batting prompt (Contact, Power, Bunt, Dodge), fielders, the scorebug with the inning, outs and score, batter intro cards and STRIKEOUT banners.
+FRAME REVIEW (my read of hold_strip.jpg, 16 kept frames): the scene matches. The batter intro cards (044, 059) and the STRIKEOUT banner (038) are in-game, not menus. No menu frame in the strip.
+Frames: runs/mlb-slugfest-loaded/hold (frames, hold_strip.jpg). Spend: Sonnet, not totalled here (calls.jsonl).
