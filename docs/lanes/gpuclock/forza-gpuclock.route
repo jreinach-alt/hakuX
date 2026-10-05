@@ -1,0 +1,6 @@
+# state: any   (screen-driven (drive.py reads each screen); lane.savestate433)
+# Forza Motorsport (4D53006E), lane.gpuclock (#433): forza.drive.route with
+# `mark` in place of `find`. drive.py drives the race for the whole window
+# (RT held) and writes `mark gameplay` at 6 s of confirmed play, so the
+# scored window is the race. 400 s keeps the run under the Thor's 480 s cap.
+drive forza 400 mark

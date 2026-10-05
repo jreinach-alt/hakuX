@@ -48,6 +48,176 @@ void nv2a_profile_increment(void)
     }
 }
 
+#ifdef __ANDROID__
+/*
+ * #433 lane.gpuclock: is the GPU clock-limited? Two always-on readouts, one
+ * line (`[gpuclk433]`) at the hakuX-pace cadence, telemetry only.
+ *
+ *   gms/grn  GPU time per guest frame over the line's window: the sum of the
+ *            command buffers' GPU timestamps (gpu_ts_readback, which runs in
+ *            every build; only the hakuX-phase print of its EMA is perflog)
+ *            divided by the frames flipped. Not an EMA, so a window's value is
+ *            its own. fr = frames that carried any GPU time.
+ *   seq      the Adreno clock (MHz) and kgsl's gpu_busy_percentage, sampled
+ *            by a thread every GPUCLK_PERIOD_US, every sample since the last
+ *            line, `mhz/busy` each, oldest first. busy is kgsl's last devfreq
+ *            accounting window, the input the governor itself reads. ns = the
+ *            samples, dr = samples the ring dropped (the line came too late).
+ *   floor/ceil  min_clock_mhz and max_clock_mhz at the line: the
+ *            performance_mode floor and the thermal ceiling.
+ *
+ * Read from the app's own context. A node the app may not read is said once,
+ * in the init line (`err=<node>:<errno>`), and its field is -1, never 0.
+ */
+#include <pthread.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+
+#define GPUCLK_DIR "/sys/class/kgsl/kgsl-3d0/"
+#define GPUCLK_PERIOD_US 100000
+#define GPUCLK_RING 256
+#define GPUCLK_SEQ_MAX 120
+
+static struct {
+    int fd_clk, fd_busy;
+    uint32_t ring[GPUCLK_RING];    /* mhz << 8 | (busy + 1), 0 = empty */
+    unsigned head;                 /* written by the sampler only */
+    unsigned tail;                 /* read by the line only */
+    int64_t win_gpu_ns, win_rnd_ns;
+    unsigned win_frames, win_gpu_frames;
+} gpuclk = { -1, -1 };
+
+static long gpuclk_read(int fd)
+{
+    char b[32];
+    ssize_t n;
+    if (fd < 0) {
+        return -1;
+    }
+    n = pread(fd, b, sizeof(b) - 1, 0);
+    if (n <= 0) {
+        return -1;
+    }
+    b[n] = 0;
+    return strtol(b, NULL, 10);
+}
+
+static long gpuclk_read_path(const char *name)
+{
+    char path[96];
+    long v;
+    int fd;
+    snprintf(path, sizeof(path), GPUCLK_DIR "%s", name);
+    fd = open(path, O_RDONLY | O_CLOEXEC);
+    v = gpuclk_read(fd);
+    if (fd >= 0) {
+        close(fd);
+    }
+    return v;
+}
+
+static void *gpuclk_sampler(void *opaque)
+{
+    for (;;) {
+        long hz = gpuclk_read(gpuclk.fd_clk);
+        long busy = gpuclk_read(gpuclk.fd_busy);
+        uint32_t mhz = hz > 0 ? (uint32_t)(hz / 1000000) : 0;
+        uint32_t b = busy >= 0 && busy <= 100 ? (uint32_t)busy + 1 : 0;
+        unsigned h = qatomic_read(&gpuclk.head);
+        gpuclk.ring[h % GPUCLK_RING] = (mhz << 8) | b;
+        qatomic_set(&gpuclk.head, h + 1);
+        usleep(GPUCLK_PERIOD_US);
+    }
+    return NULL;
+}
+
+static void gpuclk_start(void)
+{
+    char gov[48] = "-";
+    char err[96] = "";
+    int n = 0;
+    pthread_t th;
+    int fd;
+
+    gpuclk.fd_clk = open(GPUCLK_DIR "gpuclk", O_RDONLY | O_CLOEXEC);
+    if (gpuclk.fd_clk < 0) {
+        n += snprintf(err + n, sizeof(err) - n, " gpuclk:%d", errno);
+    }
+    gpuclk.fd_busy = open(GPUCLK_DIR "gpu_busy_percentage", O_RDONLY | O_CLOEXEC);
+    if (gpuclk.fd_busy < 0) {
+        n += snprintf(err + n, sizeof(err) - n, " busy:%d", errno);
+    }
+    fd = open(GPUCLK_DIR "devfreq/governor", O_RDONLY | O_CLOEXEC);
+    if (fd >= 0) {
+        ssize_t r = pread(fd, gov, sizeof(gov) - 1, 0);
+        gov[r > 0 ? r : 0] = 0;
+        gov[strcspn(gov, "\n")] = 0;
+        close(fd);
+    }
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+                        "[gpuclk433] init period_us=%d floor=%ld ceil=%ld "
+                        "gov=%s err=%s",
+                        GPUCLK_PERIOD_US, gpuclk_read_path("min_clock_mhz"),
+                        gpuclk_read_path("max_clock_mhz"), gov,
+                        n ? err + 1 : "none");
+    if (gpuclk.fd_clk >= 0 || gpuclk.fd_busy >= 0) {
+        pthread_create(&th, NULL, gpuclk_sampler, NULL);
+        pthread_detach(th);
+    }
+}
+
+/* Called once per guest frame, before the phase window is cleared. */
+static void gpuclk_add_frame(const FramePhaseTimingWork *w)
+{
+    gpuclk.win_gpu_ns += w->gpu_total_ns;
+    gpuclk.win_rnd_ns += w->gpu_render_ns;
+    gpuclk.win_frames++;
+    gpuclk.win_gpu_frames += w->gpu_total_ns > 0;
+}
+
+static void gpuclk_line(unsigned int frame)
+{
+    static bool started;
+    char seq[GPUCLK_SEQ_MAX * 9 + 1];
+    unsigned h, t, ns = 0, dr = 0;
+    int n = 0;
+
+    if (!started) {
+        started = true;
+        gpuclk_start();
+    }
+    h = qatomic_read(&gpuclk.head);
+    t = gpuclk.tail;
+    if (h - t > GPUCLK_RING) {
+        dr = h - t - GPUCLK_RING;
+        t = h - GPUCLK_RING;
+    }
+    seq[0] = 0;
+    for (; t != h; t++) {
+        uint32_t s = gpuclk.ring[t % GPUCLK_RING];
+        if (ns < GPUCLK_SEQ_MAX) {
+            n += snprintf(seq + n, sizeof(seq) - n, "%s%u/%d", ns ? "," : "",
+                          s >> 8, (int)(s & 0xff) - 1);
+        } else {
+            dr++;
+        }
+        ns++;
+    }
+    gpuclk.tail = h;
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+        "[gpuclk433] f=%u frames=%u fr=%u gms=%.2f grn=%.2f floor=%ld ceil=%ld "
+        "ns=%u dr=%u seq=%s",
+        frame, gpuclk.win_frames, gpuclk.win_gpu_frames,
+        gpuclk.win_frames ? gpuclk.win_gpu_ns / 1e6 / gpuclk.win_frames : -1.0,
+        gpuclk.win_frames ? gpuclk.win_rnd_ns / 1e6 / gpuclk.win_frames : -1.0,
+        gpuclk_read_path("min_clock_mhz"), gpuclk_read_path("max_clock_mhz"),
+        ns, dr, ns ? seq : "-");
+    gpuclk.win_gpu_ns = gpuclk.win_rnd_ns = 0;
+    gpuclk.win_frames = gpuclk.win_gpu_frames = 0;
+}
+#endif
+
 static void snapshot_phase_timing(void)
 {
     FramePhaseTimingWork *w = &g_nv2a_stats.phase_working;
@@ -243,6 +413,9 @@ void nv2a_profile_flip_stall(void)
     g_nv2a_stats.frame_count++;
     memset(&g_nv2a_stats.frame_working, 0, sizeof(g_nv2a_stats.frame_working));
 
+#ifdef __ANDROID__
+    gpuclk_add_frame(&g_nv2a_stats.phase_working);
+#endif
     snapshot_phase_timing();
     snapshot_cpu_timing();
     snapshot_vsync_timing();
@@ -632,6 +805,7 @@ void nv2a_profile_flip_stall(void)
                             g_nv2a_stats.frame_count, pace_vb[0], pace_vb[1],
                             pace_vb[2], pace_vb[3], pace_vb[4], pace_vsum,
                             pace_max_us / 1000.0, pace_span_us / 1000.0);
+        gpuclk_line(g_nv2a_stats.frame_count);
 
         /*
          * #413: the shader and pipeline cache counters the overlay shows,
