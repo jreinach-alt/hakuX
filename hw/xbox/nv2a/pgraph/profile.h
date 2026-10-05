@@ -456,6 +456,12 @@ static int ft_csv_wanted = 1;       /* HAKUX_FRAMETRACE_CSV=0 turns it off */
 static char ft_dir[256];
 static int ft_mhz_fd = -1;
 static int ft_mhz_div = 1;          /* sysfs unit -> MHz */
+/* HAKUX_FRAMETRACE_DUTY=<s>: the overhead test. The writer turns the
+ * instrument off and on every s seconds (on first), so one run holds both
+ * arms under the same content and temperature. Off is the shipped path: every
+ * hook one load and a branch. On again, the next flip only takes a baseline. */
+static int64_t ft_duty_ns;
+static int ft_resync;
 
 /* Logging, overridable by the selftest. On Android every line goes out on
  * hakuX-lane as "[<tag>] <line>": the dispatcher's logcat keeps only the
@@ -527,6 +533,10 @@ void hakux_ft_init(void)
     if (v && v[0]) {
         snprintf(ft_dir, sizeof(ft_dir), "%s", v);
     }
+    v = getenv("HAKUX_FRAMETRACE_DUTY");
+    if (v && atoi(v) > 0 && atoi(v) <= 600) {
+        ft_duty_ns = (int64_t)atoi(v) * 1000000000LL;
+    }
 #ifdef __ANDROID__
     if (!ft_dir[0]) {
         /* The app's external files dir, which adb (and --pull) can read: the
@@ -561,10 +571,10 @@ void hakux_ft_init(void)
         }
     }
     snprintf(line, sizeof(line),
-             "on: vb=%d csv=%d dir=%s mhz_fd=%d (version 1, rule in "
-             "hw/xbox/nv2a/pgraph/profile.h)",
+             "on: vb=%d csv=%d dir=%s mhz_fd=%d duty_s=%d (version 1, rule "
+             "in hw/xbox/nv2a/pgraph/profile.h)",
              ft_force_ireq, ft_csv_wanted, ft_dir[0] ? ft_dir : "-",
-             ft_mhz_fd);
+             ft_mhz_fd, (int)(ft_duty_ns / 1000000000LL));
     hakux_ft_log("hakuX-ft1", line);
     __atomic_store_n(&hakux_ft_on, 1, __ATOMIC_RELEASE);
 }
@@ -975,6 +985,16 @@ void hakux_ft_flip(const HakuxFtExt *x)
         ft.vbp_n0 = x->vblank_fired;
         ft.vbp_us = 16683;          /* NTSC until measured */
         pthread_create(&ft_writer_thread, NULL, ft_writer, NULL);
+        return;
+    }
+    if (__atomic_exchange_n(&ft_resync, 0, __ATOMIC_ACQ_REL)) {
+        /* On again after a duty-off span: a baseline, not a frame. */
+        ft.t = now;
+        ft.snap = s;
+        ft.vblank_fired = x->vblank_fired;
+        ft.present_head = ph;
+        ft.vbp_t0 = now;
+        ft.vbp_n0 = x->vblank_fired;
         return;
     }
 
@@ -1461,6 +1481,9 @@ void hakux_ft_writer_frame(FtWriter *w, const HakuxFtFrame *in, int64_t now)
 
     *fr = *in;
     w->hist_n++;
+    if (prev && fr->t - (int64_t)fr->P * 1000 > prev->t + 1000000) {
+        prev = NULL;        /* a duty-off span lies between them */
+    }
     v = &fr->r[HAKUX_FT_VCPU];
     p = &fr->r[HAKUX_FT_PFIFO];
     if (!w->sum_t0) {
@@ -1602,11 +1625,52 @@ static void ft_writer_tick(FtWriter *w, int64_t now)
     }
 }
 
+/* The duty switch (HAKUX_FRAMETRACE_DUTY), from the writer's 100 ms tick.
+ * Phase k = (now - t0) / duty: even on, odd off. Exposed for the selftest. */
+typedef struct FtDuty {
+    int64_t t0;
+    int on;
+    uint32_t k;
+} FtDuty;
+
+void hakux_ft_duty_tick(FtDuty *d, int64_t duty_ns, int64_t now);
+void hakux_ft_duty_tick(FtDuty *d, int64_t duty_ns, int64_t now)
+{
+    char line[160];
+    struct timespec rt;
+    uint32_t k;
+
+    if (duty_ns <= 0) {
+        return;
+    }
+    if (!d->t0) {
+        d->t0 = now;
+        d->on = 1;
+        return;
+    }
+    k = (uint32_t)((now - d->t0) / duty_ns);
+    if ((int)!(k & 1) == d->on) {
+        return;
+    }
+    d->on = !(k & 1);
+    d->k = k;
+    if (d->on) {
+        __atomic_store_n(&ft_resync, 1, __ATOMIC_RELEASE);
+    }
+    __atomic_store_n(&hakux_ft_on, d->on, __ATOMIC_RELEASE);
+    clock_gettime(CLOCK_REALTIME, &rt);
+    snprintf(line, sizeof(line), "duty=%s k=%u rt_ms=%lld t_ms=%.1f",
+             d->on ? "on" : "off", k,
+             (long long)rt.tv_sec * 1000 + rt.tv_nsec / 1000000, now / 1e6);
+    hakux_ft_log("hakuX-ft1", line);
+}
+
 static void *ft_writer(void *opaque)
 {
     FtWriter *w = calloc(1, sizeof(*w));
     struct timespec ts = { 0, 100000000 };
     char path[64];
+    FtDuty duty = { 0 };
 
     (void)opaque;
     if (!w) {
@@ -1618,6 +1682,7 @@ static void *ft_writer(void *opaque)
     ft_csv_open(w);
     for (;;) {
         nanosleep(&ts, NULL);
+        hakux_ft_duty_tick(&duty, ft_duty_ns, hakux_ft_now());
         ft_writer_tick(w, hakux_ft_now());
     }
     return NULL;

@@ -66,6 +66,18 @@ MUTANTS = [
      '    if (hakux_ft_enabled()) {\n        hakux_ft_wait_begin_slow',
      '    if (1) {\n        hakux_ft_wait_begin_slow',
      'off.records_nothing'),
+    ('duty: no baseline after an off span',
+     'if (__atomic_exchange_n(&ft_resync, 0, __ATOMIC_ACQ_REL)) {',
+     'if (0) {',
+     'duty.first_flip_after_off_is_a_baseline'),
+    ('duty: slack read across an off span',
+     'if (prev && fr->t - (int64_t)fr->P * 1000 > prev->t + 1000000) {',
+     'if (0) {',
+     'duty.no_slack_across_off_span'),
+    ('duty: switch never turns the instrument off',
+     '    __atomic_store_n(&hakux_ft_on, d->on, __ATOMIC_RELEASE);',
+     '',
+     'duty.switches_off_then_on'),
 ]
 
 

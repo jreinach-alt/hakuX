@@ -497,6 +497,72 @@ static void test_off(void)
           (unsigned long long)ft_other_acc[HAKUX_FT_W_BQL], ft_present_head);
 }
 
+/* ---- 5. the duty switch (HAKUX_FRAMETRACE_DUTY) ------------------------- */
+
+static void test_duty(void)
+{
+    const int64_t D = 10000000000LL, T = 1000000000LL;
+    FtDuty d = { 0 };
+    HakuxFtWait w;
+    uint32_t h0, h1;
+    HakuxFtFrame f;
+    int on1, on2, on3;
+
+    hakux_ft_duty_tick(&d, D, T);
+    on1 = hakux_ft_on;
+    hakux_ft_duty_tick(&d, D, T + 5 * T);
+    on2 = hakux_ft_on;
+    hakux_ft_duty_tick(&d, D, T + D + T / 20);
+    on3 = hakux_ft_on;
+    hakux_ft_wait_begin(&w, HAKUX_FT_W_BQL, -1);
+    hakux_ft_wait_end(&w);
+    hakux_ft_duty_tick(&d, D, T + 2 * D + T / 20);
+    check(on1 == 1 && on2 == 1 && on3 == 0 && w.t0 == 0 && hakux_ft_on == 1 &&
+          strstr(logbuf, "duty=off k=1") && strstr(logbuf, "duty=on k=2"),
+          "duty.switches_off_then_on", "on %d/%d/%d/%d t0=%lld", on1, on2, on3,
+          hakux_ft_on, (long long)w.t0);
+
+    /* Back on after 200 ms off: the first flip is a baseline, the second a
+     * frame of its own length. */
+    sleep_ms(200);
+    h0 = __atomic_load_n(&ft_frame_head, __ATOMIC_ACQUIRE);
+    flip(1);
+    h1 = __atomic_load_n(&ft_frame_head, __ATOMIC_ACQUIRE);
+    sleep_ms(5);
+    flip(1);
+    f = last_frame(0);
+    check(h1 == h0 && f.P >= 4000 && f.P < 50000,
+          "duty.first_flip_after_off_is_a_baseline",
+          "frames at the first flip %u, next P=%u us", h1 - h0, f.P);
+
+    /* The writer reads no slack across the off span (its deadline would be
+     * the release of a frame from before it). */
+    {
+        FtWriter *wr = calloc(1, sizeof(*wr));
+        HakuxFtFrame a = base_frame(), b = base_frame(), c = base_frame();
+        uint32_t s_gap, s_next;
+
+        wr->wss = -1;
+        /* no 1 Hz summary inside a-c: it would reset nslack */
+        wr->sum_t0 = 1020 * T - T / 2;
+        a.f = 1; a.t = 1000 * T; a.P = 16683; a.ireq = 1;
+        b.f = 2; b.t = 1020 * T; b.P = 16683; b.ireq = 1;   /* 20 s later */
+        c.f = 3; c.t = b.t + 16683000; c.P = 16683; c.ireq = 1;
+        wr->pres[wr->pres_n++] = a.t + 1000000;
+        wr->pres[wr->pres_n++] = b.t + 1000000;
+        wr->pres[wr->pres_n++] = c.t + 1000000;
+        hakux_ft_writer_frame(wr, &a, a.t);
+        hakux_ft_writer_frame(wr, &b, b.t);
+        s_gap = wr->nslack;
+        hakux_ft_writer_frame(wr, &c, c.t);
+        s_next = wr->nslack;
+        check(s_gap == 0 && s_next == 1, "duty.no_slack_across_off_span",
+              "slack samples after the gap frame %u, after the next %u",
+              s_gap, s_next);
+        free(wr);
+    }
+}
+
 int main(void)
 {
     hakux_ft_log = cap_log;
@@ -509,6 +575,7 @@ int main(void)
     test_rule();
     test_live();
     test_hitch();
+    test_duty();
     printf("RESULT pass=%d fail=%d\n", npass, nfail);
     return nfail ? 1 : 0;
 }
