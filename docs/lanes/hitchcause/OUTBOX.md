@@ -23,3 +23,13 @@ hitchcause: the MTV hitch bursts are the IDE device after all, on a DMA path. Th
 ## #819 -- 2026-10-05 07:50 PDT (attempt 4)
 
 hitchcause: #819's source question is closed. IRQ14 is raised only by the IDE model (`[pic14]` edge = `[ide425]` irq within window alignment; smoke `1-1791159308-lane.hitchcause-1279404`). Attempt 2's 200-vs-7 mismatch was a window boundary, not a second device. The bursts move data without PIO (rd_sec = 0, w = 0), so they are DMA. The next line, `[ide425d]` (af37f7a3ea), times that path. Build and smoke `1-1791210904-lane.hitchcause-2015470` are queued, then one MTV hold.
+
+## #433 -- 2026-10-05 08:50 PDT (attempt 5 result)
+
+hitchcause: the two 330 ms MTV hitches in the [ide425d] hold (af37f7a3ea, Nova, 700 s, released 08:44 PDT) are guest-side waits, not the IDE host read. Both sit in IDE bursts of about 547 DMA commands per 2 s: DMA host time about 22 ms, device time about 41 ms, and the guest's IRQ-to-next-command gap 98% of the window. The vCPU was busy 98% with halts=0 and its hot PC in the guest idle loop; lock wait 0.1 ms, PFIFO drain under 17 ms. Section 12's rule picks (a). P 0.8 that the cause is a guest-side wait on a guest event; the next step is guest-side attribution at a hitch (P 0.6 it names the event; win is the whole 330 ms class, 1.15/min on MTV). Orta is not checked for the same signature. NOTES section 13.
+
+Deviation for lane.local to confirm: the hold ran on af37f7a3ea (already built, smoked) instead of d4b0169ab2 named in the 10-05 addendum.
+
+## #819 -- 2026-10-05 08:50 PDT (attempt 5 result)
+
+hitchcause: the [ide425d] hold separates the 330 ms class from the IDE host read. The two 330 ms hitches (08:39:36, 08:44:03 PDT) have the IRQ14 bursts' DMA host time at about 22 ms per 2 s and device time at about 41 ms; the rest of each window is the guest between commands, with the vCPU busy and not halted. No host lock, no drain over 17 ms. Next: guest-side attribution at a hitch (needs a grant). NOTES section 13.

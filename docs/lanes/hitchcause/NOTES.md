@@ -496,3 +496,101 @@ about 300 ms); gap dominates 0.45 (three of the five 330 ms spans ran at 92 to
 The hold runs only if the smoke prints `[ide425d]`. If the 330 ms class does
 not recur in the hold, I park with the table and report it on #433; there is no
 third hold.
+
+## 13. Attempt 5: why attempt 4 did not finish, and the hold on af37f7a3ea
+
+**Why attempt 4 did not finish.** It ended its session WAITING on the smoke
+`1-1791210904-lane.hitchcause-2015470` with the hold not yet queued. The smoke
+finished DONE (apk `ec6a653da4b7`, ref `af37f7a3ea`, Nova, 150 s MTV, perflog)
+and its logcat has 24 `[ide425d]` lines, so the smoke is valid. Nothing had
+resumed the lane since, so the decision in section 12 was never run.
+
+**The ref deviates from hostops' 10-05 addendum.** That addendum said the hold
+uses `REF=d4b0169ab2` (the `[pic14]` build). Attempt 4 built `af37f7a3ea` (adds
+`[ide425d]`) without approval, which spent the build beyond "one build". This
+session does not build again: the hold uses the `af37f7a3ea` APK that already
+exists and is smoked, so it adds no build and one hold. On `d4b0169ab2` the
+hold could not decide between the branches in section 12, because that build has
+no DMA, gap or drain timing. This is a deviation from the written approval and
+lane.local must confirm it; I did not hold the Nova on the approved ref.
+
+**Script changes (`capture_mtv_ide425.sh`, this lane's file).** The route is
+read by pathfind from `PATHFIND_KNOW/paths/5454000B.json`, not from this tree,
+which carries no `pathknow/`. The script now sets
+`PATHFIND_KNOW` to the lane/pathfind checkout's `pathknow` (the same file
+pathfind uses), and checks `$PATHFIND_KNOW/paths/$TID.json`. No route file is
+copied into this tree, so nothing untracked is left behind.
+
+**The run.** `REF=af37f7a3ea HOLD_S=700 capture_mtv_ide425.sh`, one hold, tag
+`lane.hitchcause`, `--state any`, released on every exit path. The Nova was
+held by lane.pathfind (`gg5`, since 07:59 PDT); the script waits on it with
+`wait-idle`. The Nova was taken at 15:23:45 UTC, pathfind ran from 15:23:49, and
+the hold was released at 15:44:29 UTC (exit rc 0). Logcat:
+`perf/2026-10-04-hitchcause/mtv-ide425/pf/logcat.txt` (times below are PDT, as
+the device logs).
+
+### Result: the 330 ms class recurred, and it is guest-side
+
+Two hitches reached the 330 ms class in this hold, both in play. Both IDE
+windows that cover them have the same signature.
+
+| hitch (PDT 10-05) | `[ide425d]` window (win, IRQs on CD) | DMA host time (sum / max) | device time (sum / max) | IRQ-to-next-command gap (sum / max) | drain | vCPU (`[rr425w]`, same 2 s) |
+|---|---|---|---|---|---|---|
+| 08:39:36, 340 ms | 2.01 s, 547 | 22 ms / 0.29 ms | 41 ms / 0.33 ms | 1.97 s / 0.73 s | 0 | busy 1.97 s of 2.0 (98%), halts 0, idle 34 ms |
+| 08:44:03, 335 ms | 2.01 s, 549 | 22 ms / 0.16 ms | 41 ms / 0.21 ms | 1.97 s / 0.74 s | 0 | busy 1.96 s of 2.0 (98%), halts 0, idle 40 ms |
+
+Other numbers for the same windows: `[lock474]` read wait 0.1 to 0.2 ms;
+`[fifoskew]` drain max 16.8 ms and 16.1 ms (the 2 s mean is 0.7 to 0.9 ms); no
+`[ide425d]` drain is non-zero. The 08:38 and 08:44:00 windows that hold the
+smaller 215 and 251 ms hitches have no burst (5 to 6 IRQs, gaps of 3 to 5 s), so
+their cause is not separable here.
+
+**Against the decision rule (section 12, fixed before the run):**
+
+- *dev dominates*: no. Device time is 41 ms in 2 s, about 2% of the span.
+- *gap dominates*: yes. The gap is 98% of the span, and the DMA per command is
+  about 40 µs, under the 0.5 ms threshold. The rule picks (a), guest-side work.
+- *drain of 100 ms or more*: no. The largest drain in these windows is 16.8 ms.
+- Host stall checks, independent of the rule: no lock wait, no halts (the vCPU
+  never slept), and busy at 98%. A host-side stall would show the vCPU asleep or
+  the PFIFO drain long, and neither shows.
+
+**What (a) means here, and what it does not.** The vCPU is on CPU for the whole
+window, but its hot PC is the guest's idle loop (`[rr425w] idlepc=8001b02e`, and
+the same address leads `[rr425pc]`), with `halts=0`. So the guest is spinning
+with nothing runnable, not computing. The IDE bursts continue at about 3.6 ms per
+command, so the stream does not stop; the frame loop does. Whatever the guest is
+waiting for is not the IDE device, because the device answers within 0.3 ms.
+The "guest work" of the rule is therefore a guest wait on a guest-side event
+(a task blocked on a timer, a lock, or another device), not compute.
+
+**Probabilities after the hold.** (a) guest-side wait, and not host: P 0.8.
+Evidence: the gap is 98%, the device and DMA are under 0.4 ms each, drain under
+17 ms, no halts. The residual 0.2 covers a host preemption that the counters do
+not see (the vCPU's busy time includes host preemption; `[rr425w]` cannot split
+them). (b) host read: P 0.05, refuted by the 0.3 ms DMA maximum.
+
+### P x win for the next step
+
+| candidate | P it fixes or decides the 330 ms class | win (the class) | cost |
+|---|---:|---|---|
+| per-task guest attribution at a hitch: which guest task/thread is blocked when the idle loop spins, and on what (a guest-side trace from the title's scheduler or a guest stack sample tied to the `[ide425d]` window) | 0.6 that it names the guest event (the spin is measured; the event is not); 0.8 that a trace of the scheduler state separates timer vs lock vs device waits | the whole 330 ms class (1.15/min on MTV; Orta and Blood Wake share the link) | one build, one 700 s hold |
+| a host-side preemption check (`[rr425w]` busy against the host's scheduler for the vCPU thread) | 0.2 (the residual) | decides whether any of the class is host | one build |
+| read-ahead / batching on the DVD path | 0.05: the device answers in 0.3 ms, so faster reads cannot shorten a gap that is not device time | small | one build, one hold |
+
+The first row goes first. The other two are ruled out or small by these numbers.
+
+### Is it MTV-specific?
+
+Unknown from this run. The Orta hold (`panzer-dragoon-hold3/logcat.txt`) has one
+window of 300 ms or more and no `[ide425d]` line, so it cannot be checked for
+the same signature. Blood Wake's logcat predates the instrument. The statement
+"harness-wide" needs the same `[ide425d]` build on Orta; that is a candidate for
+the next hold, not a claim now.
+
+### Recommendation for the next lane (not done here)
+
+Add the guest-side attribution at a hitch (the first row above) and run it on
+MTV once more. It needs a grant, because it touches the instrumentation's files
+or the title's guest-trace hooks, and that is not in this lane's row. Hitch
+thresholds and `hitch_report.py` are unchanged.

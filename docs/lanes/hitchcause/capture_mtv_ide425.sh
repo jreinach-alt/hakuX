@@ -33,7 +33,11 @@ HOLDSH="$HERE/jobs/hold.sh"
 TAG=lane.hitchcause
 LEASE=/tmp/hakux-device-lease.$DEV
 PF="$HERE/titles/pathfind.py"
-ROUTE="$HERE/titles/pathknow/paths/$TID.json"
+# pathfind reads its route and hints from PATHFIND_KNOW (default: HERE/pathknow,
+# which this tree does not carry); the lane/pathfind checkout has the MTV route.
+PATHFIND_KNOW=${PATHFIND_KNOW:-/home/justin/hakux-work/wt/pathfind/docs/testing/titles/pathknow}
+export PATHFIND_KNOW
+ROUTE="$PATHFIND_KNOW/paths/$TID.json"
 mkdir -p "$OUT"
 a() { timeout "${T:-120}" adb -s $S "$@"; }
 say() { echo "CAP $(date -u +%H:%M:%S) $*"; }
