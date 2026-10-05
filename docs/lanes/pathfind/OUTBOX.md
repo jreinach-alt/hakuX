@@ -548,3 +548,7 @@ TORK RERUN: STOOD STILL (not traversed). Run docs/lanes/pathfind/runs/tork-rerun
 - Why the stand-still move did not fire: the window test (classify.motion) read 0.17-0.30 on every 30-s window that stood still, because the attack flash changes pixels in place. Two still windows in a row never happened, so no move was sent. My detector fixed the trigger, not the measure.
 - Fix committed on lane/pathfind: title holds judge still by the scene's shift (phase correlation, scene_shift: 0 px on every standing pair, 36 px on the walk out of the village), and two still windows send the next move. Rerun next (tork-rerun4).
 - Spend this session: claim 4.3 min, about 20 Sonnet calls for the claim, plus one hold. Running total against the $80 cap is in the next line.
+
+[lane.pathfind] TORK RERUN 3 (10-05 08:00, runs/tork-rerun4, 600 s hold with the shift test and the stand-still moves): NOT TRAVERSED, stood on the stair. Hold ended on budget at 219 s of play (not held). Frames 044 to 096: the village, then the same stair with the fence from 047 on, Tork in the same place in every frame, Press A to jump on screen.
+- The shift test fires: scene shift 0 to 2.8 px at 235-543 s, and the moves ran in order (hop with A, RSTICK sweep, back out and sidestep, then the walk). None of them moved Tork off the stair. The stand-still detector works; the walk does not climb this stair.
+- Next for Tork (not run): a different approach to the stair, not more walk. Not a Playable confirmation tonight; the Playable already counts.
