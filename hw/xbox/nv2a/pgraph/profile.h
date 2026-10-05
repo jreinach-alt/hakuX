@@ -453,11 +453,14 @@ static char ft_dir[256];
 static int ft_mhz_fd = -1;
 static int ft_mhz_div = 1;          /* sysfs unit -> MHz */
 
-/* Logging, overridable by the selftest. */
+/* Logging, overridable by the selftest. On Android every line goes out on
+ * hakuX-lane as "[<tag>] <line>": the dispatcher's logcat keeps only the
+ * tags in LOGCAT_SPEC (dispatcher.sh), and a hakuX-ft tag of its own was
+ * dropped whole on the first device run. */
 static void ft_log_default(const char *tag, const char *line)
 {
 #ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_INFO, tag, "%s", line);
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-lane", "[%s] %s", tag, line);
 #else
     fprintf(stderr, "%s: %s\n", tag, line);
 #endif
