@@ -47,6 +47,9 @@
 #include "hw/boards.h"
 #include "hw/hw.h"
 #include "trace.h"
+#ifdef XBOX
+#include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 HAKUX_FRAMETRACE */
+#endif
 
 #ifdef CONFIG_LINUX
 
@@ -439,6 +442,11 @@ void qemu_init_cpu_loop(void)
     qemu_mutex_init(&bql);
 
     qemu_thread_get_self(&io_thread);
+#ifdef XBOX
+    /* Before any vCPU or device thread exists, so each can register. */
+    hakux_ft_init();
+    hakux_ft_thread(HAKUX_FT_MAIN);
+#endif
 }
 
 void run_on_cpu(CPUState *cpu, run_on_cpu_func func, run_on_cpu_data data)
@@ -801,12 +809,18 @@ void hakux_idle_halt_after_wait(CPUState *cpu, bool slept)
 void qemu_process_cpu_events(CPUState *cpu)
 {
     bool slept = false;
+#ifdef XBOX
+    HakuxFtWait ftw = { 0 };
+#endif
 
     qatomic_set(&cpu->exit_request, false);
     while (cpu_thread_is_idle(cpu)) {
         if (!slept) {
             slept = true;
             qemu_plugin_vcpu_idle_cb(cpu);
+#ifdef XBOX
+            hakux_ft_wait_begin(&ftw, HAKUX_FT_W_HALT, -1);
+#endif
         }
 #ifdef XBOX
         if (hakux_idle_halt_wait(cpu, cpu->halt_cond)) {
@@ -817,6 +831,7 @@ void qemu_process_cpu_events(CPUState *cpu)
 #endif
     }
 #ifdef XBOX
+    hakux_ft_wait_end(&ftw);
     hakux_idle_halt_after_wait(cpu, slept);
 #endif
     if (slept) {
@@ -923,6 +938,25 @@ void bql_lock_impl(const char *file, int line)
     QemuMutexLockFunc bql_lock_fn = qatomic_read(&bql_mutex_lock_func);
 
     g_assert(!bql_locked());
+#ifdef XBOX
+    /*
+     * #433 frametrace: a contended acquire is a wait, booked against the
+     * role that held the BQL when it began. Uncontended, the trylock is the
+     * whole cost. Off, this is one load and a branch.
+     */
+    if (unlikely(hakux_ft_enabled())) {
+        if (qemu_mutex_trylock_impl(&bql, file, line) != 0) {
+            HakuxFtWait w;
+
+            hakux_ft_wait_begin(&w, HAKUX_FT_W_BQL,
+                                qatomic_read(&hakux_ft_bql_owner));
+            bql_lock_fn(&bql, file, line);
+            hakux_ft_wait_end(&w);
+        }
+        qatomic_set(&hakux_ft_bql_owner, hakux_ft_role_self());
+        return;
+    }
+#endif
     bql_lock_fn(&bql, file, line);
 }
 
@@ -946,6 +980,9 @@ void qemu_cond_timedwait_bql(QemuCond *cond, int ms)
 /* signal CPU creation */
 void cpu_thread_signal_created(CPUState *cpu)
 {
+#ifdef XBOX
+    hakux_ft_thread(HAKUX_FT_VCPU);     /* on the vCPU thread */
+#endif
     cpu->created = true;
     qemu_cond_signal(&qemu_cpu_cond);
 }
