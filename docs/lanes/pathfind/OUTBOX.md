@@ -880,6 +880,12 @@ SCENE SHOULD CONTAIN: Rogue Trooper in third person on an alien crystal landscap
 
 Flicker: owner's check (frames above).
 
+## #433 -- 2026-10-06 02:44 PDT
+
+[lane.pathfind] Tecmo Classic Arcade GAVE UP at the 15-min claim budget (no hold, no verdict): 70 steps, 76 model calls. The claim reached a live Tecmo Cup match at about 14.5 min (step 67: HUD, a counting clock, players moving), the probe was refused (control 0.014 under input 0.100), a GOAL banner followed, and the budget ran out at step 70. Last named state: cutscene (GOAL banner), runs/sweep-5443000E (steps.jsonl, frames).
+
+Named cost (steps 61-64): a GAME OVER screen (match ended, TIME 00:00) cycled START, A, B, DOWN+A, UP+A and X RIGHT A for ~60 s, none of which left it; the attract screen (PUSH ONE PLAYER BUTTON, step 65) then took START. The claim spent about 150 s of the budget on game-over and attract screens before it reached a live match. Not re-run: identify first. Next step for a re-claim: the arcade collection's game-over exit (START from the match-end card) is the input to test, and the claim's budget should not stop once play is live (ADDENDUM 10-04 rule).
+
 ## #433 -- 2026-10-06 02:29 PDT
 
 [lane.pathfind] Blowout FAIL (play share, still walls; fps clear): 1.8 min to gameplay, 25 model calls, 8 steps; hold 780 s, play share 0.776 (bar 0.90), fps_ok 1.0, no crash or hang. Run dir: runs/sweep-4D4A0008 (frames/024-hold.jpg, frames/062-hold.jpg, verdict.json). The model read gameplay in every check; the hold's own motion readings show 3 still stretches (windows at 78-112 s, 447 s and 717 s, change 0.005 to 0.02, against 0.13 to 0.28 in the moving windows), about 175 s in all. Frames 024 and 062 are different corridors, so the player moved between them; the still stretches are where the genre walk pressed into a dark corridor wall. The stand-still unstick fired two windows late each time (the first still window at 78 s; play resumed only at 153 s).
