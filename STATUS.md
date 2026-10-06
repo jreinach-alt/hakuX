@@ -864,4 +864,4 @@ _Written by `docs/testing/jobs/status.sh` on the host every job tick and every 3
 
 ---
 
-The per-title detail and the original layout: [index.svg](https://raw.githubusercontent.com/jreinach-alt/hakuX/status/index.svg) opens as the full page; [IN-FLIGHT.md](IN-FLIGHT.md) lists the work in progress and recent folds.
+The per-title detail and the original layout: [index.svg](index.svg) opens as the full page; [IN-FLIGHT.md](IN-FLIGHT.md) lists the work in progress and recent folds.
