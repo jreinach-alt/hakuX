@@ -43,6 +43,7 @@ xfr = {}         # cat -> [medians], n
 xfr_n = {}
 sites = {}
 rp = {}          # XFR rp line: in/out/nr_out/res_out window means, n
+dup = [0, 0.0]   # XFR rp line: second readbacks skipped, their summed CB ms
 rp_inrp = set()
 seen = set()
 first = last = None
@@ -102,6 +103,10 @@ for line in open(os.path.join(D, rid, "logcat.txt"), errors="replace"):
         if n:
             rp.setdefault("n", []).append(float(n.group(1)))
             rp_inrp.add(n.group(2))
+        d = re.search(r" dup (\d+) ([\d.]+)", body)
+        if d:
+            dup[0] += int(d.group(1))
+            dup[1] += float(d.group(2))
     elif body.startswith("xemu-xfr XFR sites"):
         for name, ms, n in re.findall(r"(\w+@\d+) ([\d.]+) n([\d.]+)", body):
             sites.setdefault(name, []).append((float(ms), float(n)))
@@ -156,6 +161,9 @@ if rp:
         if k in rp:
             print("   %-8s %6.2f per CB  %6.2f per frame" % (
                 k, st.mean(rp[k]), st.mean(rp[k]) * cbpf))
+    if dup[0]:
+        print("   dup      %.2f second readbacks skipped per frame, %.2f ms/frame"
+              % (dup[0] / F, dup[1] / F))
 print("xemu-xfr sites (ms/frame, ops/frame; a site absent from a line counts 0):")
 nl = max(len(xfr.get("nr", [])), 1)
 for s, v in sorted(sites.items(), key=lambda kv: -sum(x[0] for x in kv[1])):

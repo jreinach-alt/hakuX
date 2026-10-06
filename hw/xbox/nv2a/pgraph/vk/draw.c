@@ -3770,6 +3770,9 @@ static struct {
     float nr_out[XFR_WINDOW];   /* cb span minus rp_out */
     float res_out[XFR_WINDOW];  /* nr_out minus the bracketed categories */
     unsigned rp_n;
+    /* second readbacks of one recording, skipped (gpu_ts_readback) */
+    unsigned long dup;
+    double dup_ms;
     float cat_ms[XFR_MAX_CATS][XFR_WINDOW];
     unsigned cat_ops[XFR_MAX_CATS];
     XfrSite sites[XFR_MAX_SITES];
@@ -4018,8 +4021,10 @@ static void xfr_emit(void)
         len += snprintf(buf + len, sizeof(buf) - len, " %s %.2f %.2f %.2f",
                         rp[i].name, med, mean, p90);
     }
-    snprintf(buf + len, sizeof(buf) - len, " n%.1f inrp%d dropped %lu",
-             (double)xfr.rp_n / XFR_WINDOW, gpu_ts_inrp(), xfr.rpo_dropped);
+    snprintf(buf + len, sizeof(buf) - len,
+             " n%.1f inrp%d dropped %lu dup %lu %.2f",
+             (double)xfr.rp_n / XFR_WINDOW, gpu_ts_inrp(), xfr.rpo_dropped,
+             xfr.dup, xfr.dup_ms);
     __android_log_print(ANDROID_LOG_INFO, "xemu-gpu", "xemu-xfr %s", buf);
 }
 #else
@@ -4100,12 +4105,45 @@ static void gpu_xfr_frame(PGRAPHVkState *r, int frame, int64_t total_ns,
         xfr.dropped = 0;
         xfr.rp_n = 0;
         xfr.rpo_dropped = 0;
+        xfr.dup = 0;
+        xfr.dup_ms = 0;
     }
+}
+
+/*
+ * A slot's stamps are read once per recording. A finish on the PFIFO thread
+ * that is not deferred waits for the render thread's submit and reads the slot
+ * back at once, but the render thread marked the slot submitted
+ * (render_thread.c), so frame rotation reaches the same slot before it is
+ * recorded again and read it a second time: each such command buffer counted
+ * twice in the GPU phase stats. Cleared when the slot's command buffer begins.
+ */
+static bool gpu_ts_read[NUM_SUBMIT_FRAMES];
+
+/* A skipped second readback, counted on the XFR rp line. */
+static void gpu_ts_dup(PGRAPHVkState *r, int frame)
+{
+    if (!xfr_on() || !xfr.pool) {
+        return;
+    }
+    uint64_t ts[2];
+    if (vkGetQueryPoolResults(r->device, r->gpu_ts_pool,
+                              frame * GPU_TS_QUERIES_PER_CB, 2, sizeof(ts),
+                              ts, sizeof(uint64_t),
+                              VK_QUERY_RESULT_64_BIT) != VK_SUCCESS) {
+        return;
+    }
+    xfr.dup++;
+    xfr.dup_ms += (double)(int64_t)(ts[1] - ts[0]) * r->gpu_ts_period_ns / 1e6;
 }
 
 static void gpu_ts_readback(PGRAPHVkState *r, int frame)
 {
     if (!r->gpu_ts_supported) {
+        return;
+    }
+    if (gpu_ts_read[frame]) {
+        gpu_ts_dup(r, frame);
         return;
     }
 
@@ -4120,6 +4158,7 @@ static void gpu_ts_readback(PGRAPHVkState *r, int frame)
     if (res != VK_SUCCESS) {
         return;
     }
+    gpu_ts_read[frame] = true;
 
     uint64_t cb_start = r->gpu_ts_results[0];
     uint64_t cb_end = r->gpu_ts_results[1];
@@ -4966,6 +5005,7 @@ void pgraph_vk_begin_command_buffer(PGRAPHState *pg)
                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                             r->gpu_ts_pool, base + 0);
         r->gpu_ts_rp_index = 0;
+        gpu_ts_read[r->current_frame] = false;
     }
     gpu_xfr_frame_begin(pg);
 }

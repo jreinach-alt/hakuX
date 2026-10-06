@@ -838,6 +838,139 @@ Expected results, per title, written before queueing:
   outer stamps. NG Black counts as "not": its largest category is 3.3% of
   `nr`.
 
+## Attempt 8: why attempt 7 did not finish
+
+Attempt 7 did not fail. It read X0/X1/S1/K0/K1, queued T0 and D0, set WAITING
+on them and ended. That is a finished wait. T0 ran 05:01-05:07 PDT and D0
+05:07-05:16 PDT, both DONE, and hostops' restore
+(1791288512-hostops-restore-c3a0b, master, empty env) ran DONE after D0, so the
+Nova is off the lane build. origin/master had not moved (0 commits to merge).
+
+## T0 and D0 read (attempt 8)
+
+Reader: `abread.py <id> --from <mark gameplay + 20 s>`. Both runs at
+d946e1ba44, `HAKUX_GPUXFR=1`, `PERF_REGIMEN=default`, no thermal pause,
+battery 80% (on USB, 6.0-6.1 W in; it read "Charging" for part of each run).
+
+| run | id | window | GPU MHz (thermal.jsonl) |
+|---|---|---|---|
+| T0 ToeJam & Earl III | 1-1791288045-lane.gpunonrender-3440051 | 05:04:18-05:07:01 (163 s) | 401, every sample |
+| D0 DOA3 | 1-1791288049-lane.gpunonrender-3440825 | 05:10:51-05:15:48 (297 s) | 680 to 05:13:17, then 401 |
+
+What was on screen (route frames): T0 is the in-game "Vinyl Albums" overlay
+drawn over the live 3D world for the whole window (the route's inputs opened
+it; 23-30 fps on the overlay counter). That is the same route uberdefault569 and
+belowbar1005 used, and `Xfr` median reads 17.9 ms, the survey's own figure, so
+it is the survey's workload. It is not free-roam play. D0 is a fight in the cage
+stage ("YOU LOSE" at 05:11:45) while the clock is 680, then the attract title
+screen at 401. The dojo stage was not on screen in this window, so D0 is split
+by clock and scene below.
+
+Per frame (window sums over `[sdcall]` frames; `xemu-xfr` per CB times CBs per
+frame):
+
+| quantity | T0 ToeJam | D0 fight (680 MHz) | D0 title (401 MHz) |
+|---|---|---|---|
+| gfps mean | 25.4 | 36.6 | 48.5 |
+| `nr` (in-pass stamps) | 17.45 | 13.32 | 9.42 |
+| `in` render span | 31.05 | 13.36 | 11.46 |
+| `out` render span | 47.95 | 26.41 | 20.55 |
+| **`out` − `in`, share of `nr`** | **16.90, 97%** | **13.05, 98%** | **9.09, 96%** |
+| **`nr_out`, share of `nr`** | **0.55, 3.2%** | **0.26, 2.0%** | **0.34, 3.6%** |
+| largest category: `download` | 0.46 (site 587 0.44) | 0.24 | 0.30 |
+| `res_out` (outside every bracket and pass), share of `nr_out` | 0.09, 16% | 0.01, 4% | 0.03, 9% |
+| render passes | 17.6 | 2.1 | 4.7 |
+
+Against the rule written before the runs: **the artifact holds on both titles,
+far past its bar** (`nr_out` at most 30% of `nr`; it is 2-4%). On ToeJam, the
+title with the largest survey `nr` and the lowest Xfr/Tot, 97% of its "non-render"
+time is render-pass work the in-pass stamps miss.
+
+- The real between-pass GPU time is 0.26-0.55 ms a frame on all three readings,
+  and its largest category is `download` (site 587) every time.
+- T0's `res_out` is 16% of `nr_out`, just over the 15% bar, but it is 0.09 ms a
+  frame (0.2% of the GPU frame). What is outside the brackets there is not
+  named; at that size it cannot move a ranking.
+- The brief's decision rule ("this category is the cost": one category at least
+  50% of `nr` in at least 3 of 6 titles) is judged **not**: NG Black, ToeJam and
+  DOA3 each put their largest category at 2-3% of `nr`. Otogi (Thor, out of
+  service), AUF and DOA Ultimate (no route) were not run. The rule could only
+  flip if all three of them showed at least 50% real between-pass work, against
+  a driver mechanism (Turnip's last-tile stamp, tu_query_pool.cc:2108) that
+  applies to every GMEM pass and gave 96-98% on all three measured titles. No
+  run is queued for them.
+
+### The GPU timestamps count some command buffers twice
+
+T0's per-frame GPU span (Tot 48.5 ms) is longer than its frame (38.4 ms at the
+`[sdcall]` frame rate): 78 command buffers a second at 16.2 ms each is 1.27 s of
+GPU per second, on one queue. CB spans on one queue cannot overlap here: the CB
+end stamp is BOTTOM_OF_PIPE, which Turnip precedes with a wait-for-idle
+(tu_query_pool.cc:2122), and concurrent binning is off (drirc
+`tu_allow_concurrent_binning` defaults false in the fork; hakuX does not set it).
+So command buffers are counted more than once.
+
+The code says where. A finish on the PFIFO thread that is not deferred hands the
+submit to the render thread, waits for it, and reads the slot's stamps back
+(draw.c:4742). The render thread marked the slot submitted when it submitted it
+(render_thread.c:153), and nothing clears that mark. Frame rotation reaches the
+same slot as `next_frame` before it is recorded again, sees it submitted, and
+reads the same stamps back a second time (draw.c:4803-4807). Every such command
+buffer is counted twice in `gpu_total_ns`/`gpu_render_ns`/`gpu_nonrender_ns`
+(the `xemu-gpu` Tot/Rnd/Xfr line, the frametrace record's `gpu`) and in
+`xemu-xfr`.
+
+The counts agree with that: readbacks per frame (`cbpf`) minus submits per frame
+is the non-deferred finishes. T0: 3.00 readbacks, 2.10 finishes, of which 1.0 is
+`sd` (a surface download finish, not deferred). D0: 1.13 readbacks, 1.07
+finishes, `sd` 0.05. X0 (NG Black) is the row without them: `sd` 0, 1.06
+readbacks for 1.07 finishes, and Tot (23.0 ms) under its 25.5 ms frame. So NG
+Black's X0 numbers are not over-counted. The render thread's own
+synchronous path (draw.c:4648) does not mark the slot, so it is read once.
+
+What this changes and what it does not:
+
+- **Shares inside a command buffer are not affected.** A duplicate read
+  repeats one CB's own `in`, `out`, `nr` and categories together, so `out` −
+  `in` over `nr` and `nr_out` over `nr` are weighted averages of real per-CB
+  values. The verdicts above stand.
+- **Absolute per-frame GPU ms are over-counted** on titles with non-deferred
+  PFIFO finishes, by the weight of those CBs: on T0 by at least 10 ms of 48.5
+  (Tot cannot exceed the 38.4 ms frame). belowbar1005's survey figures (ToeJam
+  17.9 ms `nr`, and its Tot/Xfr/Rnd per title) carry the same over-count, and
+  so does any "GPU-bound" judgement read from `xemu-gpu` Tot on such a title.
+  Titles whose finishes are all deferred or on the render thread (D0: 0.05 a
+  frame) are barely touched.
+
+The fix (this attempt, draw.c only, telemetry; nothing that renders reads these
+stats): a slot's stamps are read once per recording. A per-slot flag is cleared
+when the slot's command buffer begins and set by the first readback; a second
+readback of the same recording is skipped and, under `HAKUX_GPUXFR=1`, counted
+on the `XFR rp` line as `dup <n> <ms>` (count and summed CB span in that
+window). T1 checks it against a known answer (below).
+
+### T1: the readback fix against a known answer (written before queueing)
+
+T1: ToeJam & Earl III, the T0 route (`routes/gnr-toejam`), 300 s, Nova,
+perflog, `PERF_REGIMEN=default`, `HAKUX_GPUXFR=1`, at the commit that carries
+the fix. Window: `mark gameplay` + 20 s to the end. T0 is its pair (same route,
+same env, the build before the fix).
+
+The known answer: T0 has 1.0 `sd` finish a frame (not deferred, PFIFO thread),
+and 0.90 more readbacks a frame than finishes.
+
+- **The fix reads the change:** `dup` is within 0.15 of T1's own `sd`
+  finishes per frame, and `cbpf` is within 0.10 of T1's finishes per frame.
+- **The over-count is gone:** Tot × (`[sdcall]` frames per second) is at most
+  1.0 s per s (T0: 1.27).
+- **The size of the over-count:** T0's Tot minus T1's Tot is within 25% of
+  T1's `dup` ms per frame, if gfps is within 10% of T0's (same scene). If the
+  scene moved, only the first two legs are judged.
+- **Shares unchanged:** `nr_out` at most 30% of `nr`, as in T0.
+- **Fails:** `dup` 0 with `cbpf` still above finishes + 0.5 (another
+  double-count path); or `dup` matches but Tot still exceeds the frame time
+  (then something else overlaps, and the absolute GPU ms stay unexplained).
+
 ## Control, read from the existing counter (attempt 1 arms)
 
 The `xemu-gpu` line already carries `Xfr` = `gpu_nonrender_ms` (profile.c,
