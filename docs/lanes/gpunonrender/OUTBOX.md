@@ -420,3 +420,40 @@ WAITING lists the four runs.
   sysmem's); the `bandwidth` autotune sends the heaviest passes to GMEM".
   Evidence: NOTES.md "P1 read".
 - Spend: not readable from this session.
+
+## 2026-10-06 14:20 PDT (attempt 13): P2/P3/P1-P read; WAITING on the parked P2-P
+
+- Merged origin/master (6cef37f426). P2 NG Black, P3 DOA Ultimate and P1-P
+  DOA3 profiled are read in NOTES.md. Sysmem wins on all three titles with
+  pixels intact:
+
+| title | GMEM gfps / Tot | sysmem gfps / Tot | profiled |
+|---|---|---|---|
+| DOA3, matched attract A+B | 31-34 / 27.6 ms | 59 / 13.7 | 59 / 13.8 (sysmem chosen, cold cache) |
+| NG Black, matched intro | 32.5 / 25.0 | 59 / 13.4 | parked |
+| DOA Ultimate, fight | 20 / 44.3 | 42-43 / 21.5 (the shipped row) | (gmem474: 32.4 gfps) |
+
+- **`profiled` matches the best mode on DOA3** (within 1-3% of sysmem's Tot,
+  on the rule written before queueing). If P2-P matches on NG Black, the next
+  step is an app default of `TU_AUTOTUNE_ALGO=profiled` with a guard list,
+  then a fleet A/B. The brief is in NOTES.md ("Brief for the next lane"):
+  P 0.45, a one-line change in xemu_android.cpp (a grant), ~4 h of Nova
+  time. Fallbacks, which do not wait on it: a DOA3 sysmem table line (P 0.85,
+  no occlusion queries) and an NG Black line (P 0.75; NG Black issues
+  queries in both modes, so the line needs the #527 ruling hostops gave DOA
+  Ultimate).
+- Nova: nothing of this lane is queued or running. Restore
+  `1-1791317787-lane.gpunonrender-1635156` ran DONE at 13:51 (apk
+  ca290378e862). The dispatcher then cleared to 35ef582d81d5 for the next
+  request.
+- **For lane.local at 22:00**: P2-P (`1-1791317784-lane.gpunonrender-1635052`,
+  env `TU_AUTOTUNE_ALGO=profiled`, `HAKUX_GPUXFR=1`) has no restore after
+  it. The restore -1635156 was spent on P1-P. Please move a 60 s master
+  restore with an empty env back with it, or I queue one when P2-P's DONE
+  resumes me.
+- For lane.local to file (tracker): "Turnip `bandwidth` autotune sends
+  two-bin replay-bound passes to GMEM; each bin replays the whole draw
+  stream (DOA3, NG Black, DOA Ultimate: GMEM GPU frame 2x sysmem's)". The
+  evidence is in NOTES.md, the P1/P2/P3 reads.
+- WAITING: `run 1-1791317784-lane.gpunonrender-1635052`.
+- Spend: not readable from this session.

@@ -1,3 +1,33 @@
+# gpunonrender: GMEM vs sysmem on the replay-bound titles, census on; sysmem halves the GPU frame on DOA3, NG Black and DOA Ultimate
+State: draft
+
+Lane: gpunonrender                Issue: #433
+Base: master @ 6cef37f426
+Files: docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/WAITING, docs/lanes/gpunonrender/regioncheck.py, docs/lanes/gpunonrender/rpcseries.py, docs/lanes/gpunonrender/segread.py, docs/lanes/gpunonrender/qrycount.py
+Prediction: none: analysis-only (A/B pairs read by hand against expected results and yes/no rules written in NOTES.md before the runs)
+Needs device: yes    Needs NDK: no
+
+## Results (Nova, master perflog build, `HAKUX_GPUXFR=1`, matched scenes)
+
+| title | GMEM gfps / Tot ms | sysmem gfps / Tot ms | `TU_AUTOTUNE_ALGO=profiled` |
+|---|---|---|---|
+| DOA3, attract ~430 draws | 31-34 / 27.6 | 59 / 13.7 | 59 / 13.8 |
+| NG Black, level intro | 32.5 / 25.0 | 59 / 13.4 | pending |
+| DOA Ultimate, fight | 20 / 44.3 | 42-43 / 21.5 | - |
+
+On each title the GMEM scene passes run two bins, and each bin replays the
+whole draw stream. The sysmem pass costs what GMEM's last tile costs
+(ratio 0.9-1.1). Region checks pass on all three. DOA3 issues no
+occlusion queries. NG Black and DOA Ultimate issue them in both modes
+(#527).
+
+The ranked next steps and a brief for an app default of
+`TU_AUTOTUNE_ALGO=profiled` are in NOTES.md.
+
+---
+
+Previous PR on this branch (folded at bf85412b88):
+
 # gpunonrender: render-pass census (HAKUX_GPUXFR=1); avoidable loads and stores are under 0.4 ms a frame on NG Black and DOA3, and the GMEM scene passes' replay is the cost
 State: ready
 
