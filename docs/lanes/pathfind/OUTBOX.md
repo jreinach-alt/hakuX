@@ -771,3 +771,13 @@ Frames for the owner: runs/sweep-4D570034/frames (strip every 3 s, kept frames e
 SCENE SHOULD CONTAIN: Shang Tsung against Kung Lao (or the claim's fighter pair) on the Shaolin temple stage, two fighters in a live round with the health bars and the round wins, blood and snow on the stage. The window also held a CONTINUE? countdown (frame 041: the hold pressed through it, START then A) and a loading screen (045), then the fight resumed; the reviewer should expect them within the 8.5% non-play.
 
 Frames for the owner: runs/sweep-4D57000C/frames.
+
+## #433 -- 2026-10-05 21:20 PDT
+
+[lane.pathfind] Spider-Man 2 FAIL (fps; play share fine): runs/sweep-4156002B, 608 s held, claim 1 run (about 9 min). Play share 0.9995 (gameplay 607 s, no menu). fps: window median 25.8, min 17.9, 28.9% of play at the 28.5 harness bar (the 3- and 5-minute gates read median 29.0 and 29.0, so they did not stop it: the rule is below 22 at 3 min or below 27 at 5 min). Aborted at: full window. Perflog: the hold's own logcat, with the mark copied into a scratch run.log (no separate run; no re-run queued).
+
+Named cost (decompose.py on the hold's logcat, 302 two-second windows, 158 s at or above the bar, 446 s below, share 0.26 at the bar): in the below-bar windows the frame rate is 23.6 against 29.7 at the bar, and the RENDERER is the busy side: renderer idle (Ri) falls from 18.1 ms per frame to 7.1 ms, while the guest sits idle (27.4 ms per frame on average, timer-woken). Guest busy is about the same (12.5 against 10.4 ms). So the slow frames are the renderer's (host GPU or draw path), not the vCPU's: the opposite of NHL 2K3's pattern.
+
+NEW ISSUE: Spider-Man 2 frame rate drops to ~24 fps in 60% of play with the renderer busy (Ri 7 ms against 18 at bar; guest busy unchanged): runs/sweep-4156002B logcat, decompose.py output above. Blocks Spider-Man 2's Playable (play share 0.9995; fps is the only failing gate).
+
+SCENE SHOULD CONTAIN: Spider-Man in New York streets or interiors, moving, traffic and pedestrians, the health bar and the web meter, the camera following him.
