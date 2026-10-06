@@ -1546,3 +1546,80 @@ in 0.5% (the loading text); every animated scene (intro, title, fight) in
 check is: s07, s10, s11 within twice that floor with the differing pixels
 inside the same panels, plus the fight frames read by eye for a sysmem
 defect.
+
+### P1 read: DOA3
+
+P1-S `1-1791316312-lane.gpunonrender-1511368` (`TU_DEBUG=sysmem`, first, cache
+cleared: `shader cache cleared: apk ad6f37a2f087 -> 4028728fcc5a`) and P1-G
+`1-1791316317-lane.gpunonrender-1511854` (no env, cache kept). Both apk
+4028728fcc5a (master bf85412b88, perflog). Battery 80% on USB in both. No
+thermal pause in either run (`pause` false in every thermal.jsonl sample).
+
+- **R1 holds**: `render_mode: auto (default) title=54430001 TU_DEBUG=sysmem`
+  in P1-S, `TU_DEBUG=(unset)` in P1-G.
+- **R2 holds in P1-S**: in/out is 0.99-1.00 on every census line with a pass
+  over 1 ms; the GMEM-read passes carry nothing but the clear-only ones.
+- **R2 fails in P1-G's fight**: in/out 0.95 over the fight, not <= 0.7. The
+  driver itself ran that fight sysmem.
+- **The fights differ in scene**: story mode drew a different opponent and
+  stage in each run. P1-S fought Bass on the ice stage, P1-G Zack in the
+  snow, and D1 Zack on the street. Each fight lasted under 40 s. The fight
+  comparison is not read: R2 fails, and the scenes differ.
+
+| window | gfps median | `xemu-gpu` Tot ms | census in/out | draws/CB |
+|---|---|---|---|---|
+| P1-S fight, ice (13:01:14-13:01:47) | 47.0 | 15.3 | 1.00 | ~280 |
+| P1-G fight, snow (13:07:12-13:07:45) | 39.5 | 18.0 | 0.95 (driver chose sysmem) | ~150 |
+| D1 fight, street (10:25:00-10:26:00) | 22.0 | 38.5 | 0.50 | ~600 |
+
+**The matched scene is the attract demo.** After the fight the title cycles
+through demo stages, and the demo is deterministic. The census draw count
+per command buffer follows the same sequence in D1, P1-G and P1-S (for
+example 391, 400, 415, 427, 432, 426, 434, 434, 432, then 344-362, ...), at
+whatever speed each arm runs it (`rpcseries.py`). P1-G reproduces D1 line
+for line (GMEM in both, in/out 0.50), so the matched segments compare
+directly. This comparison was found after the runs, not written before
+them. It is the one comparison where the scene is the same.
+
+| matched segment (`segread.py`) | arm | gfps median | Tot ms | out ms/CB | in ms/CB | GPU MHz |
+|---|---|---|---|---|---|---|
+| A+B, ~430 then ~350 draws | D1 GMEM | 34.0 | 28.3 | 27.2 | 13.5 | 680 |
+| | P1-G GMEM | 31.0 | 27.6 | 27.1 | 13.7 | 615-680 |
+| | P1-S sysmem | **59.0** (vsync) | **13.7** | 13.5 | 13.5 | 401-550 |
+| C, ~800 draws | D1 GMEM | 21.0 | 35.8 | 36.8 | 18.2 | 680 |
+| | P1-G GMEM | 22.0 | 44.7 | 36.7 | 18.2 | 680 |
+| | P1-S sysmem | **52.5** | **16.3** | 16.5 | 16.4 | 550 |
+
+The GMEM pass's last tile (`in`, 13.5 ms) equals the whole sysmem pass (13.5
+ms). The pass has two bins, and each bin executes the whole draw stream at
+full cost. Sysmem executes it once, and its fill costs nothing that shows.
+So on DOA3 GMEM costs exactly one extra replay, and sysmem halves the GPU
+frame. It does this at a lower clock (401-550 MHz against 680), so the clock
+works against sysmem, not for it.
+
+Region check (d): character select s10/s11 differ 5.6% / 6.0% against P1-G
+and 2.5% / 2.4% against D1, inside the animated portrait panel (floor 2.4% /
+5.2%): **pass**. s07 is the title over a panning beach in both arms, caught
+at different points of the pan (timing, not a defect). P1-S's fight and
+stage frames, read by eye: no torn or black tiles, depth and blending
+intact. The one dark frame (13:02:26) is a fade between demo stages.
+
+**Verdict, DOA3: sysmem wins on the matched scenes** (gfps 31-34 -> 59 and
+21-22 -> 52.5; Tot 0.49x and 0.37-0.46x; pixels pass). The fight comparison
+written before the runs is void (R2 fails in P1-G, different stages). D1's
+street fight is the matched pattern again: one ~600-draw pass at in/out
+0.50, in 19.5 ms. Sysmem should bring its Tot toward ~20 ms; this is not
+measured.
+
+A second finding comes free from P1-G. The driver's autotune ran the snow
+fight (~150 draws per CB) sysmem, and the attract stages (350-900 draws) and
+the street fight GMEM. So it sends the heavier passes to GMEM, and those are
+exactly the passes where the replay costs most. The fork's autotune
+apparently prices bandwidth, not replayed draws. That is the per-pass
+autotune candidate's mechanism, seen in the driver's own choices.
+
+Pilot: P1 reached gameplay in both arms, R1 and R2 read the env through to
+the driver, and every readout was present. P2 and P3 are queued on it.
+Lesson for P2/P3: a story-mode fight is not a fixed scene. DOA Ultimate's
+survey route is read on matched segments as well (draw-count sequences),
+not on wall-clock windows.
