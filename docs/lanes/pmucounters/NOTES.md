@@ -164,6 +164,20 @@ guest polling), not a JIT stall.
 - Asked in OUTBOX.md: the grant, `security.perf_harden 0` on both handhelds
   (until reboot; hostops's leave), and one r0_probe.sh run.
 
+## 3a. Attempt 2 (2026-10-05 night, resume)
+
+Why attempt 1 did not finish: it built the instrument and stopped at the
+asks in OUTBOX.md (the grant, `perf_harden 0`, one R0 probe). The owner's
+R0 order (09:04 PDT) went to lane.local and was never run, so no device
+read exists yet. Nothing in the tree was wrong; the lane was waiting on
+actions outside its session.
+
+Attempt 2: merged `origin/master` (45 commits behind; merge clean). hostops
+has set `security.perf_harden` to 0 on the Thor (read back 0 at 04:50Z) and
+the addendum makes R0 the standalone probe, no `HARDEN0`. The probe does not
+need the hook in the build, so R0 can run now. R1/R2 stay blocked until the
+grant is on origin/board and the hook is in a build.
+
 ## 4. Plan once granted (the resume starts here)
 
 1. `syntax_check.py --write` (applies the two hunks and copies the .inc to
