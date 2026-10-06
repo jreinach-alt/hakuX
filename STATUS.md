@@ -2,6 +2,18 @@
 
 What is in flight right now. Generated from the working tree and updated as work lands.
 
+## Right now
+
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `pathfind` | claude-sonnet-5 | 3h 33m | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+
+- **Handhelds:** 2 connected.
+  - Nova: in use by `lane.pathfind`
+  - Thor: in use by `lanelocal-fanwait`
+- **Device queue:** 0 waiting, 0 running.
+- **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
+
 ## 0.5 release: Playable titles
 
 **27 titles are confirmed Playable** (6 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
@@ -57,4 +69,4 @@ What is in flight right now. Generated from the working tree and updated as work
 - 2026-10-04 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
 - 2026-10-04 hangwatch: a locked-up title is caught on telemetry in about 90 s, not waited out
 
-_Updated 2026-10-05 21:19 PDT._
+_Updated 2026-10-05 21:23 PDT._
