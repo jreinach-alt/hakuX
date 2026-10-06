@@ -1062,3 +1062,19 @@ What this shows, and what it does not:
   football last. Each run: detached (`scratch/queue1006.sh`), polled in the foreground.
 - Device: the Nova had no hold and no lane request at the start of this attempt (`dispatch/hold` lists only lifted holds
   and thor).
+
+## Resume 10-06 06:31 PDT (attempt 4, lane.local 06:35 order: re-hold five titles on master): why attempt 3 did not finish
+
+- Attempt 3 (00:50 to 03:26 PDT) ran the 10-05 PM overnight order: Marvel Nemesis r2 (REMATCH loop, 284 s) and r3 (one 1.01 s
+  host-idle stall, 0.9998 play). Its last OUTBOX line is 03:26. It then started NFL Blitz Pro (`scratch/queue1006d.sh`, 03:30) and
+  took the Nova at 03:25 with Nova-bound requests queued, which the 01:49 addendum forbids. The PM stopped it at 03:33 (hostops:
+  that hold ran on lane/gpunonrender's APK with HAKUX_SURFSPLICE=1 in `.env_pref.nova`, so it is void). Attempt 3 wrote no
+  resume note after that stop and left no WAITING file, so the session ended with the stop unrecorded here.
+- Cause: the session finished its queue and did not read the 03:33 stop as the end of its device work. Nothing was queued
+  between 03:33 and this resume (the Nova is free: no hold, empty queue, last Nova run 1-1791289541 at c3a0c70ace, env []).
+- This attempt: the five re-holds on master, in the 06:35 order (MK Armageddon 4D570034, MK Shaolin Monks 4D570029, MK Deadly
+  Alliance 4D57000C, NBA 2K3 `NBA_2K3.xiso.iso`, Marvel Nemesis 4541038A). Each runs the full pathfind (first-run or golden
+  claim, 600-s hold, `--state any`) into `runs/rehold-<id>`. The old void run dirs stay as they are. A gate
+  (`scratch/rehold1006_gate.py`) checks before every take that the newest Nova result is on master with env [] and perflog
+  off, that `.env_pref.nova` is absent, and that no Nova-bound request is queued (or 25 min have passed since the last
+  release). A dirty Nova stops the queue rather than taking a hold.

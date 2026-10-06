@@ -925,3 +925,17 @@ SCENE SHOULD CONTAIN: the Konami WE9 pitch with both teams (Austria in red and w
 SCENE SHOULD CONTAIN: Remy the rat in third person in the Ratatouille village (a stone cottage, gardens, a stone wall, grass, collectible mushrooms), the HUD counter top left (mushrooms collected, x/35) rising through the window (1/35 at frame 030, 6/35 at frame 091: real collection progress), the camera behind the rat.
 
 Flicker: owner's check (frames above).
+
+## #433 -- 2026-10-06 06:46 PDT
+
+[lane.pathfind] Mortal Kombat: Armageddon (4D570034) FAIL on play share (fps clear): re-hold, first-run claim (no golden loaded), 600-s hold, run dir runs/rehold-4D570034 (frames/013-gameplay.jpg, hold_strip.jpg, verdict.json). Scored 588.6 s from the gameplay mark: play share 0.798 (bar 0.90): play 469.8 s, menu 93.7 s, still 16.9 s, black 8.1 s. fps_ok 1.0 at the 28.5 bar, median 59.9, min 30.2, no crash, no hang. Claim to the first live round at 2.0 min.
+
+Ref and env: I could not read this run's device record (pathfind.py passes no ref, and no dispatch result carries its request id). The pre-hold gate read the last clean Nova result before the take: ref c3a0c70ace (origin/master), apk 6beaa5ac1cdd, env []. Read that as the build, not as a per-run receipt.
+
+Named cost (hold.jsonl): most of the menu time is the Character Select grid with Scorpion highlighted, read as not a live round on about 15 looks in a row. The recovery answered each look with A on the highlighted fighter, and the round never restarted from that screen. This is the fighting-game hold recovery (the same family as the Guilty Gear CONTINUE/select problem), not performance.
+
+NEW ISSUE: fighting-game hold stalls on Character Select after a round, so the play share falls to 0.80 on Mortal Kombat Armageddon. The recovery needs a rule for returning from the grid to a live round, not one A per look. Blocks Armageddon's Playable (fps clear; play share 0.80 against 0.90). Not re-run: identify the input from the frames first.
+
+SCENE SHOULD CONTAIN: MK Armageddon live rounds, two fighters in a 3D arena, a HUD with health bars and a round timer, the fighters moving and trading hits between rounds; no character-select grid during the window.
+
+Spend: model calls for this run, not priced (claim and hold looks). Queue continues: MK Shaolin Monks is next.
