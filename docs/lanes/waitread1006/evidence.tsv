@@ -22,3 +22,9 @@ E-VERD-1	all four	verdict.json of each run	whole run	fps_ok_share, gameplay_s	Tr
 E-SW3-OLD	Star Wars III (10-02 survey)	1790921690-titleroutes-1082096	whole survey	fps_ok_share, window median, ref, apk, env	0.8766 / 30.0 / 7a090b6fa2 / 81768b9f7ed2 / env none	dispatch/results/1790921690-titleroutes-1082096/result.json and verdict; docs/lanes/titleroutes/OUTBOX.md:790	grep
 E-SW3-RANGE	Star Wars III	7a090b6fa2..c3a0c70ace	commit range	commits total / touching hw, accel, android	676 / 46	git log --oneline 7a090b6fa2..c3a0c70ace -- hw accel android	git
 E-FT-1	frametrace instrument	docs/lanes/frametrace/NOTES.md:981	own runs	instrument overhead	21-29 us per frame	NOTES line 981	read
+E-FAM-1	NFS MW #843	sweep-4541007B (pathfind worktree)	whole run	vblank frames v0..v4	0/205/4349/2772/294	pathfind/docs/lanes/pathfind/runs/sweep-4541007B/logcat.txt	tools/family_read.py
+E-FAM-2	LOTR RotK #845	sweep-4541003E	whole run	vblank frames v0..v4	0/218/13801/2213/328	pathfind/.../sweep-4541003E/logcat.txt	tools/family_read.py
+E-FAM-3	Hulk #846	sweep-56550039	whole run	vblank frames v0..v4	0/9/16312/794/45	pathfind/.../sweep-56550039/logcat.txt	tools/family_read.py
+E-FAM-4	Spider-Man 2 #842	sweep-4156002B	whole run	vblank frames v0..v4	0/612/8848/5920/100	pathfind/.../sweep-4156002B/logcat.txt	tools/family_read.py
+E-FAM-5	MC2 #844	sweep-54540008	whole run	vblank frames v0..v4	0/6/2895/4163/16	pathfind/.../sweep-54540008/logcat.txt	tools/family_read.py
+E-851-1	Marvel Nemesis r3 (#851)	sweep-4541038A-r3	03:17:26.911 f=19140	stall max / dsm / dpc	1014.3 ms / 0 / 0	pathfind/.../sweep-4541038A-r3/logcat.txt	run_waits.py

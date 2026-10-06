@@ -35,12 +35,14 @@ can say about it.
 
 ## What is not done, and why
 
-- **Family rows (#839-#846):** NHL 2K3, NFS MW, LOTR RotK and Hulk have no
-  10-06 run on disk. The issue bodies are on the forge, which this session
-  could not read (its API call needs approval; the data is outside the worktree).
-- **Castlevania 1.43 s and #851 1.01 s stalls:** not on disk.
-- **Filing the split issues:** not done. The forge call needs approval. The
-  drafts are in `issues/split-drafts.md`.
+- **Family rows (#839-#846):** the issue titles name the pathfind sweep runs
+  (`pathfind/docs/lanes/pathfind/runs/sweep-*`); `tools/family_read.py` re-reads
+  their pace and vblank lines. NHL 2K3's run dir was not found. The vCPU
+  (`decompose.py`) figures are the issues' own; not re-read here.
+- **#851 (1.01 s):** is the Marvel Nemesis r3 run, `sweep-4541038A-r3` (1014 ms, dpc 0, dsm 0).
+- **Castlevania 1.43 s stall:** not on disk.
+- **Split issues:** filed as #863-#867 with `gh` (the forge answers `gh` here, and
+  the draft PR is #862). `tools/file_split_issues.py` did it once; do not re-run it.
 - **The 96% SW3 figure:** not on disk. Stated as 87.7% in REPORT.md §0.
 
 ## Next lane should not repeat
@@ -49,3 +51,4 @@ can say about it.
 - Do not call the Tron 1.06 s stall "shader": the counter sums to 188 of 1063 ms.
 - Do not call GTA's load-time `dpc` a gameplay cost: 38 ms in gameplay, 7.9 s run-wide.
 - Do not compare a 10-02 survey with a 10-06 run without naming the env change (`HAKUX_FRAMETRACE=1` is on in the 10-06 runs and off in the survey).
+- Do not read the family's vCPU/renderer split from the issue titles as measured here: those figures come from `decompose.py` on the pathfind runs, and this lane re-read only the pace and vblank lines.

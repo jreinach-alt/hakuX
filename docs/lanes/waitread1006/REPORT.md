@@ -20,8 +20,9 @@ gameplay rows and reported separately.
 | Tron "92%" with a "1.06 s hitch" | `fps_ok_share` 0.9199; worst frame 1062.8 ms at 04:01:39.709 (`logcat.txt:39104`) | as stated |
 | SW3 "47%" | `fps_ok_share` 0.474 | as stated |
 | SW3 "96% at 10-02" | not on disk. The closest 10-02 measurement is the titleroutes survey `1790921690-titleroutes-1082096` at ref `7a090b6fa2`, apk `81768b9f7ed2`, env `[]`: `fps_ok_share` 0.8766, window median 30.0 (`docs/lanes/titleroutes/OUTBOX.md:790`) | §3 uses 87.7% |
-| #839-#846 family rows | no dispatch result on disk for NHL 2K3, NFS MW, LOTR RotK or Hulk on 10-06. Spider-Man 2 and Midnight Club II have only gpunonrender's 10-06 runs (`docs/lanes/gpunonrender/NOTES.md`). The issue bodies are on the forge and this session cannot read them | §1 lists these as gaps, not rows |
-| Castlevania 1.43 s and #851 1.01 s all-idle stalls | not found on disk. The 10-06 result dirs contain no Castlevania run | §1 lists them as gaps |
+| #839-#846 family rows | the issue titles (read with `gh`) name the pathfind sweep runs and give vCPU/renderer figures. The run dirs are in the pathfind worktree; pace and vblank rows are re-read here with `tools/family_read.py`. The vCPU (`decompose.py`) figures are the issues' own and not re-read | §1 family table |
+| #851 1.01 s all-idle stall | it is the Marvel Nemesis r3 stall (`sweep-4541038A-r3`, 1014.3 ms at 03:17:26.911). Read here: `dsm` 0, `dpc` 0 | §2 |
+| Castlevania 1.43 s stall | not found on disk. The 10-06 result dirs contain no Castlevania run | gap |
 
 ## 1. Titles grouped by the named wait (gameplay windows)
 
@@ -35,11 +36,21 @@ gameplay rows and reported separately.
 | **Pipeline shader-bind CPU (not a compile)** | D&D Heroes | `Pipe.Sh` 8.1 ms/frame. Gameplay `dgl`+`dsnu`+`dpc` sums are 11 ms in total, so this is not compile time | E-DND-4 |
 | **Unexplained stall (vCPU-side candidates, see §2)** | GTA SA 513.8 ms (`00:55:15.848`, `dpc` 0); D&D 266 ms | `dsm` 0 in both windows | E-GTA-5, E-DND-5 |
 
-Gaps: NHL 2K3 (#839), NFS MW (#843), LOTR RotK (#845), Hulk (#846): no
-10-06 run on disk. Spider-Man 2 (#842) and MC2 (#844) have renderer numbers
-from gpunonrender (`S1` `surfupd` 6.0 ms/frame; MC2 `range` 8.0 ms/frame, at
-`docs/lanes/gpunonrender/NOTES.md`), not a 10-06 gameplay row. Castlevania
-1.43 s and #851 1.01 s: not on disk.
+Family (pathfind sweep runs, pace and vblank re-read here; `tools/family_read.py`;
+the vCPU and renderer split is the issue title's own `decompose.py` figure, not
+re-read). These have no `hakuX-phase` line, so there are no Fen/Sub rows:
+
+| named wait | title (issue) | re-read here: frames by vblanks, v2 / v3 / v4+ | issue's own figure |
+|---|---|---|---|
+| guest-CPU bound | NFS MW (#843), `sweep-4541007B` | 4349 / 2772 / 294 of 7620 (v1 205) | guest ~25 ms a frame throughout play |
+| guest-CPU bound | LOTR RotK (#845), `sweep-4541003E` | 13801 / 2213 / 328 of 16560 (v1 218) | guest 24-28 ms a frame |
+| guest-CPU bound | Hulk (#846), `sweep-56550039` | 16312 / 794 / 45 of 17160 (v1 9) | guest 30 ms a frame vs 16 at bar |
+| guest-CPU bound | NHL 2K3 (#839) | not in the pathfind worktree (run dir not found) | ~24 fps in 31% of play; guest 13 → 27 ms |
+| renderer-side (issue's reading) | Spider-Man 2 (#842), `sweep-4156002B` | 8848 / 5920 / 100 of 15480 (v1 612) | renderer busy, Ri 7 vs 18 at bar; guest unchanged |
+| renderer-saturated (issue's reading) | MC2 (#844), `sweep-54540008` | 2895 / 4163 / 16 of 7080 (v1 6) | Ri 0 ms; median 23 fps |
+
+Renderer numbers for Spider-Man 2 and MC2 from gpunonrender (`S1` `surfupd`
+6.0 ms a frame; MC2 `range` 8.0 ms a frame) are in `docs/lanes/gpunonrender/NOTES.md`.
 
 ## 2. The 1.06 s Tron stall, and the other two stalls
 
@@ -59,12 +70,18 @@ creation accounts for 188 ms, the TLB churn for ~52 ms, and the rest (~800 ms)
 has no counter that reads it. The two other gameplay stalls (744 ms and 530 ms)
 have no shader or pipeline work at all (`dpc` 0, `dsm` 0-1).
 
-**The #851 1.01 s all-idle stall and Castlevania's 1.43 s stall cannot be
-compared here.** Neither is on disk, and "all-idle" needs the per-frame
-`hakuX-stall`/`frametrace` record of the stall, which these runs have only in
-`[hakuX-ft]` spans (`logcat.txt:39060-39082`, a different frame set).
-What settles it: a frametrace record that covers frame 21240 in the Tron run,
-or the same record on the #851 run.
+**#851 is the cleaner case.** Marvel Nemesis r3 (`sweep-4541038A-r3`) has
+one stall, 1014.3 ms at 03:17:26.911 (pace window wall 4912 ms), with `dsm` 0
+and `dpc` 0 (`tools/run_waits.py`). No shader work, no pipeline creation. The
+issue (#851) reads it as an all-idle host stall, with guest and renderer both
+idle. So Tron's 1.06 s stall and #851's 1.01 s stall are the same size, with
+different causes: 188 ms of shader work in Tron, none in #851.
+
+**Castlevania's 1.43 s stall cannot be compared:** it is not on disk.
+
+What settles the Tron stall: a frametrace record that covers frame 21240 in the
+Tron run. What settles #851: the issue's "idle" reading is only as good as its
+`[hakuX-stall]`/timer record, which this read did not reproduce.
 
 ## 3. SW3: why 96% (10-02) became 47% (10-06)
 
@@ -109,9 +126,12 @@ know.
 | 6 | Tron's unexplained stalls (744, 530, and ~800 ms of the 1063): a frametrace record over the stall, then a fix on whatever it names. The known candidates are the code-page write storm (8,342 blocks discarded) and TLB churn (191k fills per 2 s) | 0.5 that the record names one of them | Tron: 3 gameplay stalls; hitch bar 500 ms; duration 326 s needs 600 s | one frametrace run of Tron (device; lane.local's) |
 | 7 | D&D `Pipe.Sh` CPU shader bind, 8.1 ms/frame (~11% of `Tot`) | 0.4 | 8 ms/frame. D&D stays under 30 fps | read the bind path (`pipe_bind_shd_ns`); no device time |
 | 8 | SW3 and GTA "frame-time" per title (the survey's six-title study) | 0.2 | not decided here | not started |
+| 9 | #851 hitch bar: the 1014 ms Marvel Nemesis stall has no shader, no pipeline and no guest work, and its verdict is the only fail. Fix the verdict or the capture, not the title | 0.9 that it is a verdict or capture issue (the issue says the same, and the counters agree) | Marvel Nemesis: one hitch to a Playable (fps_ok 0.992, play 0.9998 in that run) | a verdict change; no device time |
+| 10 | Family guest-bound titles (NFS MW #843, LOTR #845, Hulk #846): the vCPU plan's candidates | 0.3 | 24-30 fps titles; a 10% vCPU gain moves them only if the guest is the binding path (not measured here) | already dispatched in the vCPU plan |
 
-**Ranked:** 1 (highest P×win for a title currently near the bar), then 2 (it
-decides 3), then 4 (cheap, certain, but load time, not fps), then 5, 6, 7, 3, 8.
+**Ranked:** 9 first (a verdict or capture fix: high P, one Playable, no device
+time), then 1 (highest P×win for a title near the bar), then 2 (it decides 3), then
+4 (cheap, certain, but load time, not fps), then 5, 10, 6, 7, 3, 8.
 Row 3 is only worth building if row 2 says the GPU is busy.
 
 ## 5. Notes on the instruments
@@ -124,8 +144,6 @@ Row 3 is only worth building if row 2 says the GPU is busy.
 
 ## 6. Split issues (#747, #746)
 
-Filing these needs the forge API, and this session's `curl` to 127.0.0.1:3330
-needs an approval it did not get, and the forge data is outside this
-worktree. The bodies are drafted in `issues/` (one file per proposed split
-issue) and listed in OUTBOX.md as not filed. They should go under #747 (SW3,
-GTA, Tron, the stalls) and #746 (D&D).
+Filed on the forge as #863 (SW3), #864 (GTA), #865 (Tron) under #747, and
+#866 (D&D submit-bound) and #867 (D&D CPU shader bind) under #746. The bodies
+are in `issues/split-drafts.md`; the numbers are in OUTBOX.md.

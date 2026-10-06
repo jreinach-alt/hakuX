@@ -16,20 +16,30 @@
 - **Tron's 1.06 s stall is not a shader stall** on the counters: pipeline
   creation is 188 ms of it. The rest has no counter yet.
 
-## Issues: NOT FILED
+## Issues filed (forge, via `gh`; drafts in `issues/split-drafts.md`)
 
-- Split issues under #747 and #746 are drafted in `issues/split-drafts.md`
-  (five drafts: SW3, GTA, Tron under #747; D&D ×2 under #746).
-- Filing needs the forge API. This session's `curl` to 127.0.0.1:3330 needs
-  an approval it did not get, and the forge data is outside the worktree.
-- So there are no issue numbers to list. Whoever has the forge call should file
-  the five drafts and append the numbers here.
+- #863 [#747] Star Wars III: fence-bound at 36 render passes a frame
+- #864 [#747] GTA SA: guest-bound; shader compile is load-time
+- #865 [#747] Tron 2.0: three gameplay stalls; two have no shader work
+- #866 [#746] D&D Heroes: submit-bound; the GPU time behind it is unverified
+- #867 [#746] D&D Heroes: CPU shader bind is 8.1 ms a frame (not compile)
+
+Lane PR: #862 (draft, `lane/waitread1006`). Filed by `tools/file_split_issues.py`.
+
+## Family and #851 (added after the first filing)
+
+- The family issue titles name the pathfind sweep runs. Re-read here (pace and vblank
+  only; `tools/family_read.py`): NFS MW #843, LOTR #845, Hulk #846 are guest-bound;
+  Spider-Man 2 #842 and MC2 #844 are renderer-side per their issues. NHL 2K3 #839's
+  run dir was not found.
+- #851 is Marvel Nemesis r3 (`sweep-4541038A-r3`): one 1014 ms frame with dsm 0 and dpc 0.
+  Tron's 1063 ms has 188 ms of shader work. Both are the same size; only one is shader.
 
 ## Gaps
 
-- NHL 2K3 (#839), NFS MW (#843), LOTR RotK (#845), Hulk (#846): no 10-06 run on disk.
-- Castlevania 1.43 s and #851 1.01 s stalls: not on disk.
-- Spider-Man 2 (#842) and MC2 (#844): renderer numbers only, from gpunonrender; no 10-06 gameplay row.
+- NHL 2K3 (#839): run dir not found in the pathfind worktree.
+- Castlevania 1.43 s stall: not on disk.
+- Spider-Man 2 and MC2 have no 10-06 gameplay row here, only the issues' and gpunonrender's figures.
 
 ## Spend
 

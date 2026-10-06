@@ -1,9 +1,9 @@
 # waitread1006: D&D is submit-bound and its GPU time is unverified; SW3 is fence-bound at 36 passes a frame; GTA is guest-bound; Tron's 1.06 s stall is 188 ms shader work
 State: ready
 
-Lane: waitread1006                Issue: #433 (split issues #747, #746: drafted, not filed)
+Lane: waitread1006                Issue: #433 (split issues filed: #863, #864, #865 under #747; #866, #867 under #746; lane PR #862)
 Base: master @ bf85412b88
-Files: docs/lanes/waitread1006/NOTES.md, docs/lanes/waitread1006/REPORT.md, docs/lanes/waitread1006/evidence.tsv, docs/lanes/waitread1006/OUTBOX.md, docs/lanes/waitread1006/PR.md, docs/lanes/waitread1006/issues/split-drafts.md, docs/lanes/waitread1006/tools/summ_verdicts.py, docs/lanes/waitread1006/tools/run_waits.py, docs/lanes/waitread1006/tools/sd_share.py
+Files: docs/lanes/waitread1006/NOTES.md, docs/lanes/waitread1006/REPORT.md, docs/lanes/waitread1006/evidence.tsv, docs/lanes/waitread1006/OUTBOX.md, docs/lanes/waitread1006/PR.md, docs/lanes/waitread1006/issues/split-drafts.md, docs/lanes/waitread1006/tools/summ_verdicts.py, docs/lanes/waitread1006/tools/run_waits.py, docs/lanes/waitread1006/tools/sd_share.py, docs/lanes/waitread1006/tools/family_read.py, docs/lanes/waitread1006/tools/file_split_issues.py
 Prediction: none: analysis-only (no change to the emulator; no device run)
 Needs device: no    Needs NDK: no
 
@@ -26,5 +26,6 @@ Also: the SW3 figure on disk for 10-02 is 87.7% (survey `7a090b6fa2`), not
 
 ## Not done
 
-- Family rows (#839, #842-#846) and the Castlevania and #851 stalls: not on disk.
-- Split issues: drafted in `issues/split-drafts.md`, not filed (forge call needs approval).
+- Family rows: pace and vblank re-read for five sweep runs (`tools/family_read.py`); NHL 2K3's run dir was not found; the vCPU split is the issues' own figure.
+- Castlevania's 1.43 s stall: not on disk. #851 is Marvel Nemesis r3 (1014 ms, no shader work).
+- Split issues: filed as #863-#867 from `issues/split-drafts.md`.
