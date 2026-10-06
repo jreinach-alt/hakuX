@@ -787,3 +787,13 @@ SCENE SHOULD CONTAIN: Spider-Man in New York streets or interiors, moving, traff
 [lane.pathfind] Batman Begins CAN'T-PATH (claim budget 15 min, 100 steps, 75 model calls, about $3): gameplay looks reached 21 times and the probe ran 21 times. The probe refusals were in a combat tutorial with enemy thugs in view and the prompts changing (X, Y, B finisher): the control and under-input values read 0.35 to 0.88 against 0.30 to 0.70 under input, so no probe settled as control. The mission failed six times (game_over: Restart Level, Continue Last Checkpoint dimmed), and the last 8 steps were cutscenes (START) with black frames between. Last named state: cutscene (step 100, runs/sweep-45410389, steps.jsonl). No hold ran; not re-run in this session (can't-path rule: move on).
 
 NEW ISSUE (for identification): Batman Begins: the confirm probe cannot settle the combat tutorial (thugs moving under input, prompts for X/Y/B), and the mission-failed loop restarts the claim. Blocks Batman Begins' path. The tutorial's prompts should be taken as the input (X, then Y, then B finisher), not probed.
+
+## #433 -- 2026-10-05 21:45 PDT
+
+[lane.pathfind] Need for Speed Most Wanted FAIL (fps; aborted at 5:06 by the fps gate): runs/sweep-4541007B. Play 306 s (share 0.999 of the window), fps_ok 0.19 at the 28.5 bar. The gate read median 26 at 5:06 (below 27, 20% of 127 samples at the bar) and stopped the hold, as the rule says. Claim about 14 min, 53 model calls. Aborted at: 5:06 (fps gate). Perflog: the hold's own logcat (mark 21:23:12.8 copied into a scratch run.log; no separate 3-min run was queued, since the perf lines are already in the record).
+
+Named cost (decompose.py, 152 two-second windows, 56 s at or above the bar, 248 s below): guest busy is about 25 ms per frame in both the fast and the slow windows (24.1 at the bar, 25.5 below), and renderer idle is the same (11.2 against 10.7 ms). The slow windows add timer-woken idle (13.9 ms against 9.1 per frame) and the frame rate falls to 24 fps. So the cost is the vCPU's: the guest code costs about 25 ms per frame throughout (a ceiling near 40 fps by itself), and the slow windows are pacing on top of it. Not a renderer cost.
+
+NEW ISSUE: Need for Speed Most Wanted: the guest code (vCPU) costs about 25 ms per frame throughout play, so the title runs at ~24-26 fps (median 26 at 5 min): runs/sweep-4541007B logcat, decompose.py output above. Blocks NFS Most Wanted's Playable (play share fine; fps is the only gate).
+
+SCENE SHOULD CONTAIN (for the next reviewer, if it ever clears): a car on a Rockport or city road, traffic and police cars, the HUD speedometer and the heat bar, the camera behind the car.

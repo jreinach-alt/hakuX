@@ -1,0 +1,142 @@
+{
+  "title": "Need for Speed Most Wanted",
+  "title_id": null,
+  "name": null,
+  "device": "",
+  "ref": null,
+  "apk_sha": null,
+  "request_id": "sweep-4541007B",
+  "route": null,
+  "surface_scale": null,
+  "adb_failures": null,
+  "thermal": {
+    "measured": false,
+    "samples": 0,
+    "unread": 0,
+    "pauses": [],
+    "in_window": false,
+    "window_covered": null,
+    "gap": null,
+    "first_pause_s": null,
+    "regimen": null,
+    "failed_sustained": null,
+    "still_heating": null
+  },
+  "human_review": "",
+  "booted": true,
+  "reached_gameplay": true,
+  "gameplay_by": "route",
+  "crash": false,
+  "crash_detail": [],
+  "crash_warnings": 0,
+  "gameplay_s": 306.4,
+  "timeline": {
+    "play_s": 306.2,
+    "scored_s": 306.4,
+    "play_share": 0.9994,
+    "by_state": {
+      "play": 306.2,
+      "no-timeline": 0.2
+    },
+    "play_spans": 1,
+    "changes": 1,
+    "fps_excluded_s": 0.0,
+    "fps_excluded_windows": 0
+  },
+  "capture_gaps_s": [],
+  "capture_lost_s": 0,
+  "capture_truncated": false,
+  "capture_truncated_s": null,
+  "hang": false,
+  "hang_gaps_s": [],
+  "fps_windows": 126,
+  "fps_bar": 30.0,
+  "fps_ok_share": 0.1937,
+  "fps_ok_window_share": 0.2302,
+  "fps_window_median": 25.76,
+  "fps_window_min": 17.21,
+  "g_fps_mean_reported_not_judged": 25.19,
+  "target_fps": 30.0,
+  "own_target_share": 0.1937,
+  "confirmation_need_s": 600.0,
+  "below_own_target": false,
+  "power": {
+    "measured": false,
+    "samples": 0,
+    "sign": "battery_w: + discharging, - charging; net_w = battery_w + usb_w",
+    "battery_w": null,
+    "usb_w": null,
+    "usb_from": null,
+    "usb_bound": null,
+    "net_w": null,
+    "sign_suspect": 0,
+    "thermal_status_max": null,
+    "scored_s": 305.4,
+    "flips": 7560,
+    "j_per_frame": null,
+    "j_per_frame_battery": null
+  },
+  "audio_measured": true,
+  "audio_starve_share": 0.0,
+  "audio_empty_calls": 0,
+  "pace": {
+    "lines": 127,
+    "nominal_vblanks": 2,
+    "late_per_100": 40.24,
+    "worst_stall": 108.9,
+    "last": "f=18360 v0=0 v1=2 v2=27 v3=22 v4=9 vb=158 max=63.7 ms=2636.0"
+  },
+  "hitches": {
+    "n": 1,
+    "n_after_warmup": 1,
+    "per_min_after_warmup": 0.244,
+    "worst_ms": 108.9,
+    "n_big_after_warmup": 0,
+    "classification": {
+      "shader": 0,
+      "texture": 1,
+      "both": 0,
+      "unexplained": 0
+    },
+    "worst5": [
+      {
+        "off_s": 291.5,
+        "max_ms": 108.9,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 21687,
+        "cls": "texture"
+      }
+    ]
+  },
+  "hitch_allowance": null,
+  "static_window": {
+    "measured": true,
+    "frozen_frac": 0.0302,
+    "n": 8,
+    "source": "route-frames"
+  },
+  "position": {
+    "measured": true,
+    "reason": null,
+    "source": "route-frames",
+    "samples": 8,
+    "pairs": 7,
+    "still": 0,
+    "still_frac": 0.0,
+    "first_last": 0.5673,
+    "bar": 0.025
+  },
+  "pass_kind": "confirmation",
+  "void": null,
+  "pass": false,
+  "failing": "duration: 306 s of gameplay < 600 s confirmation",
+  "failures": [
+    "duration: 306 s of gameplay < 600 s confirmation",
+    "fps: 19.4% of gameplay at >= 30 fps (bar 90%)"
+  ],
+  "rating_candidate": null,
+  "contact_sheet": "contact.png",
+  "judged_utc": "2026-10-06T04:28:23Z"
+}
