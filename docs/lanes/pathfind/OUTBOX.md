@@ -747,3 +747,11 @@ Next: AvP re-hold (one try, title hold 56550022), football last.
 Named cost: the squad orders do not register on this screen. The hold reads the screen as dark and static, and the look never names a control that changes the view. Not re-run (a failed run is identified first, not repeated). Next step for AvP: read the claim frames (runs/avp-extinction claim) for the order mode's footer before another hold.
 
 NEW ISSUE: AvP Extinction: the squad-order input does not move the RTS scene (99% static over 20 min; the map is almost black); needs the order-mode footer read from frames before a hold. Blocks AvP's Playable.
+
+## #433 -- 2026-10-05 20:22 PDT
+
+[lane.pathfind] Mortal Kombat Shaolin Monks PASS (harness, full window): play share 0.936 of 645 s, fps_ok 1.0 at the bar, hitches 1 (worst 116 ms), no crash or hang. Claim 3.5 min, 30 steps, 27 model calls (Sonnet, about $1.5). Run: runs/sweep-4D570029 (frames/, hold_strip.jpg, verdict.json). Aborted at: full window. Perflog: not taken. Flicker: unchecked (owner's check).
+
+SCENE SHOULD CONTAIN: Liu Kang (or the fighter the claim picked) walking and fighting through the dungeon rooms, the health bar and EXP bar in the top-left, enemies in the room, the room changing across the window (frames 042 to 088 show three rooms).
+
+Frames for the owner: runs/sweep-4D570029/frames (about one frame per 3 s in the strip; the kept frames are every 15-30 s). Frame review: the strip shows the scene moving and the player walking, not a title card.
