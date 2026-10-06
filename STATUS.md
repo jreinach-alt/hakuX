@@ -40,7 +40,7 @@ What is in flight right now. Generated from the working tree and updated as work
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `1cf78f5aa7` | 2026-10-05 20:34 |
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `84a77cc1ad` | 2026-10-05 20:50 |
 
 ## Recently landed on master
 
@@ -60,4 +60,4 @@ What is in flight right now. Generated from the working tree and updated as work
 - `98c6791c56` 2026-10-05 Merge remote-tracking branch 'origin/master' into lane/frametrace
 - `750d572f1c` 2026-10-05 fold: lane/belowbar1005 (offline) -- belowbar1005: the #804 fence wait is not what holds Buffy, NG Black or DOA3 below the bar; their bounds
 
-_Updated 2026-10-05 20:47 PDT._
+_Updated 2026-10-05 21:03 PDT._
