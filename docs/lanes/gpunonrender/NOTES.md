@@ -243,6 +243,107 @@ them silently:
 
 No run is pending for the control. WAITING is cleared.
 
+## Attempt 5: why attempt 4 did not finish
+
+Attempt 4 finished what it was resumed for: it judged the C0 baseline, the
+control passed, and it ended with nothing queued (WAITING cleared). It did
+not start the title batch because the overnight addendum said to stay on the
+branch and not merge, and the batch needs origin/master merged first. So the
+lane stopped at milestone (a) with no run pending and no next step queued. The
+PM addendum of 00:33 PDT 10-06 then added scope (A)-(C) below; this attempt
+merged origin/master (4cb9d98c67) and takes it up.
+
+## Scope (A): the Forza `surfupd` round trip, on the GPU (HAKUX_SURFSPLICE)
+
+What frametrace measured (its NOTES, "The PFIFO thread's unhooked wait,
+named"): on Forza the PFIFO thread waits 12.2 ms of a 37 ms frame at
+draw.c:4319, in non-deferred `SURFACE_DOWN` finishes that
+`pgraph_vk_surface_update` submits (surface.c `SDC_SURF_UPDATE`) because a
+binding is about to upload from VRAM a pending download is about to write.
+lane.forza414 (NOTES 29, 33, 42) already split those finishes: ~1.9 per frame
+after hunk 5 (the full-clear share is gone), `why=new` (a fresh zeta binding:
+the 640x480 / 1280x480 flips at one address) and `inv`, on draws, so the old
+bytes are read and the upload is needed. forza414 42 also found that removing
+finishes early in the frame moved most of the wait to the next sync point
+(all `[sdcall]` waits fell 1.95 ms of 6.7). So the fix has to remove the round
+trip, not move the completion.
+
+The approach (the one that fits a renderer whose surfaces live on the GPU):
+both staging buffers already hold guest VRAM bytes. A pending download's
+staging rows are exactly what its completion memcpys into VRAM, and an
+upload's staging rows are what it memcpys out of VRAM. So the upload reads VRAM
+as it is, then the GPU copies every byte a pending download will write over it
+from that download's staging rows into the upload's staging, in record order.
+That is what VRAM will hold once the downloads complete, and no finish or wait
+is needed: the downloads stay pending and complete where any other reader
+(range lookup, CPU-access watch, flip, slot rotation) completes them today.
+`cpuw0` holds by construction: a guest write over a pending download completes
+it first, so at an upload the pending bytes are always newer than VRAM.
+
+Where it does not apply, and what happens instead: a swizzled download (the
+CPU swizzles at completion), a batch a finish already submitted (frame >= 0 or
+the flip's pre-download), a swizzled upload the CPU unswizzles. These complete
+as before, counted as `spl...cmpl`. Commit 5eef1dacd9, surface.c only, behind
+`HAKUX_SURFSPLICE=1`, off by default. `[sdcall]` gains
+`spl=def<n>/up<n>/dl<n>/<n>kB/cmpl<n>`: updates the switch let defer with an
+uploading binding, uploads that spliced, downloads and KiB spliced, uploads
+that completed instead. Both perflog and plain builds of surface.c compile
+clean with the NDK clang (-Wall, no new warnings).
+
+Not covered: draw.c's own forced completions, texture.c's (`txr dl`, the
+`pgraph_vk_flush_all_frames` at the render-to-texture bind, forza414 28), and
+surface.c:1266's fence wait (3.1 ms on Forza). If the wait moves there, that is
+the reading, not a failure of the splice.
+
+### Runs and their expected results (written before queueing)
+
+All on the Nova, perflog, ref 5eef1dacd9, `PERF_REGIMEN=default`,
+`HAKUX_GPUXFR=1` in every arm (the same instrument on both sides of the A/B).
+
+| arm | title, route, s | extra env |
+|---|---|---|
+| F0 | Forza, `forza.drive`, 300 | none |
+| F1 | Forza, `forza.drive`, 300 | `HAKUX_SURFSPLICE=1` |
+| S0 | Spider-Man 2, `gnr-spiderman2` (this dir), 300 | none |
+| M0 | Midnight Club II, `gnr-mc2` (this dir), 330 | none |
+
+Forza window: the race, from the route's `mark gameplay` to the end; per-frame
+values are `[sdcall]` sums over the window divided by its frames.
+
+- **Mechanism (F1):** the log has `[surfsplice] on`; `spl=up` > 0 and `spl=dl`
+  > 0 per window; F0 has `spl=` all zero. If F1 shows `spl=up0`, the switch did
+  not reach the app or nothing was spliceable: no further reading.
+- **P1, the finish is gone:** F1 `surfupd` fin per frame <= 30% of F0's.
+- **P2, the wait left the thread (the claim):** the sum of all `[sdcall]`
+  completion waits per frame (every caller) in F1 <= 60% of F0's, and the
+  `hakuX-stall` `Fin` per frame falls by at least half the F0 `surfupd` wait.
+  If P1 holds and P2 fails, the wait moved to the next sync point (forza414
+  42's shape): the splice is correct and is not the fps lever, and the caller
+  the wait moved to is the next target.
+- **P3, safety:** no crash or hang line; the route frames of F1 show the same
+  scenes as F0 with no depth or colour corruption (the splice is a byte copy;
+  a wrong offset shows as torn or banded geometry).
+- **Readout, not a leg:** fps in the race window. Forza needs 3.6 ms a frame
+  for its 30; if P2 holds at full size (12 ms) Forza holds 30.
+
+Scope (B), S0 and M0 (and F0): the `xemu-xfr` category table per title, and
+the `[sdcall]` line. The question is whether (A) reaches them:
+
+- **(A) reaches the title:** `[sdcall]` `surfupd` wait >= 3 ms/frame with
+  `su_upl` >= 0.5/frame, `why=` mostly `new`/`inv`/`stale` (bytes a download
+  is about to write). Then a splice arm on that title is the next run.
+- **It does not:** `surfupd` wait < 1 ms/frame, or the wait sits in another
+  caller (`tobuf`, `range`, `txr`). Then the title's missing time is elsewhere,
+  named by the caller that carries it.
+- The GPU categories (`download`, `surf_up`) show the copies' GPU time, not the
+  PFIFO's wait for the fence. A round trip costs mostly the wait, so the
+  categories can be small while the round trip is the cost. Both are recorded;
+  the `[sdcall]` wait is the one that answers (B).
+
+Scope (C) (Simpsons, pfifo.lock across the STALLED finish's slot-fence wait)
+needs reports.c and pfifo.c, held by lane.accuracy804 and lane.vcpusleep. It
+waits on those rows; asked in OUTBOX.
+
 ## Control, read from the existing counter (attempt 1 arms)
 
 The `xemu-gpu` line already carries `Xfr` = `gpu_nonrender_ms` (profile.c,
