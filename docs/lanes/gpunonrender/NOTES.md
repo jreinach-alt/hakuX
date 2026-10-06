@@ -879,7 +879,10 @@ frame):
 | **`nr_out`, share of `nr`** | **0.55, 3.2%** | **0.26, 2.0%** | **0.34, 3.6%** |
 | largest category: `download` | 0.46 (site 587 0.44) | 0.24 | 0.30 |
 | `res_out` (outside every bracket and pass), share of `nr_out` | 0.09, 16% | 0.01, 4% | 0.03, 9% |
-| render passes | 17.6 | 2.1 | 4.7 |
+| render passes | 17.6 (9.3 counted once, T1) | 2.1 | 4.7 |
+
+T0's absolute ms and pass count are over-counted by its one `sd` finish a frame
+(the next section; T1 below has the values counted once). Its shares are not.
 
 Against the rule written before the runs: **the artifact holds on both titles,
 far past its bar** (`nr_out` at most 30% of `nr`; it is 2-4%). On ToeJam, the
@@ -971,6 +974,60 @@ and 0.90 more readbacks a frame than finishes.
   double-count path); or `dup` matches but Tot still exceeds the frame time
   (then something else overlaps, and the absolute GPU ms stay unexplained).
 
+### T1 read: the fix reads the known change, and ToeJam is not GPU-bound
+
+T1 `1-1791289531-lane.gpunonrender-3548254`, apk 7e21e360c518 (ref
+5c35880d0a), window 05:28:29-05:31:12 (163 s), GPU 401 MHz in every sample, no
+thermal pause, battery 80% on USB. The route reached the same overlay scene as
+T0. gfps 25.4 and G 38.8 ms in both runs, and the windows hold the same 4260
+`[sdcall]` frames.
+
+| per frame | T0 (before) | T1 (fix) | leg |
+|---|---|---|---|
+| finishes (`sd`) | 2.10 (1.0) | 2.09 (1.01) | |
+| readbacks (`cbpf`) | 3.00 | **2.00** | within 0.10 of finishes: 0.09, **pass** |
+| `dup` skipped | - | **1.00**, 23.01 ms | within 0.15 of `sd`: 0.01, **pass** |
+| `xemu-gpu` Tot | 48.54 | **25.50** | |
+| Tot × frames/s | 1.27 s/s | **0.67 s/s** | at most 1.0, **pass** |
+| T0 Tot − T1 Tot | 23.04 | | within 25% of `dup` ms (23.01): 0.1%, **pass** |
+| Rnd / Xfr | 31.09 / 17.46 | 16.52 / 8.98 | |
+| `out` − `in`, share of `nr` | 16.90, 97% | 8.46, 94% | |
+| `nr_out`, share of `nr` | 0.55, 3.2% | 0.52, 5.8% | at most 30%, **pass** |
+| `download` | 0.46 | 0.46 | |
+
+Every leg passes. The instrument now counts each command buffer once, and the
+skipped readbacks are exactly the `sd` finishes. The CB that was counted twice
+is the big one: 23 ms of ToeJam's frame.
+
+What it changes:
+
+- **ToeJam & Earl III is not GPU-bound on this scene.** Its GPU frame is 25.5 ms
+  inside a 38.8 ms guest frame, 66% busy at 401 MHz. belowbar1005's 52.3 ms Tot
+  and 17.9 ms `nr` were about twice the real values. The real `nr` is 9.0 ms,
+  and 94% of it is render-pass work. What paces ToeJam at 25 fps is not the
+  GPU's work and is not measured here. It is a wait to find (the owner's rule:
+  never a faster clock or mode).
+- The conclusion on the brief's question does not move. The real between-pass
+  GPU time on ToeJam is 0.52 ms a frame.
+
+### Which survey titles carry the over-count
+
+A title's GPU numbers are inflated when it has non-deferred finishes on the
+PFIFO thread. From the hakuX-stall `Finish:` counts in each belowbar1005
+survey run (`sdscan.py`, over the survey's "a run" column), `sd` finishes per
+flip:
+
+| affected (`sd` per flip) | not affected (`sd` ≤ 0.1 per flip) |
+|---|---|
+| Top Spin 18.3, Midtown Madness 3 5.36, Conker 4.10, Counter-Strike 1.70, Halo 2 1.67, Burnout 1.37, BloodRayne 1.34, Blinx 2 1.30, Forza 1.24, Nightfire 1.23, PGR 1.04, Castlevania CoD 0.94, Azurik 0.93, ToeJam 0.84, Midnight Club 3 0.81, NBA Live 2005 0.67, Otogi 0.42, Fuzion Frenzy 0.42 | NG Black 0, 007 AUF 0, DOA Ultimate 0, Black 0, Kabuki Warriors 0, RalliSport 0, GTA SA 0, Battlefield 2 MC 0, Alias 0, Blinx 0, Tron 2.0 0.02, Crimson Skies 0.04, DOA3 0.05, Ghoulies 0.08, Crash Twinsanity 0.09 |
+
+How much each affected title is inflated is the span of the CBs its `sd`
+finishes end. That is 23 ms on ToeJam and is not known for the others from the
+old logs. Any "GPU-bound" judgement read from `xemu-gpu` Tot on a title in the
+left column, before 5c35880d0a, needs a re-read on a build with the fix.
+Non-deferred STALLED finishes go through the same path. The `stl` count does
+not say which are deferred, so they are not in this table.
+
 ## Control, read from the existing counter (attempt 1 arms)
 
 The `xemu-gpu` line already carries `Xfr` = `gpu_nonrender_ms` (profile.c,
@@ -1035,26 +1092,27 @@ count, and the GPU clock from thermal.jsonl for the same window.
 Final after T0 and D0 (three titles under the outer stamps: NG Black, ToeJam &
 Earl III, DOA3). Ranked by P × win.
 
-The answer to the brief's question: on all three titles, 96-98% of
+The answer to the brief's question: on all three titles, 94-98% of
 `gpu_nonrender_ms` is render-pass work that the in-pass stamps cannot see
 (Turnip's binning, every tile but the last, and the tile loads and stores). The
-GPU's real time between render passes is 0.26-0.55 ms a frame, and its largest
+GPU's real time between render passes is 0.26-0.52 ms a frame, and its largest
 category is `download` (site 587) on every title. No upload, copy, conversion
 or barrier fix can win the 5-18 ms the survey suggested. The time is inside the
 render passes.
 
 | # | candidate | P (evidence) | win | cost |
 |---|---|---|---|---|
-| 1 | **Render-pass cost on the tiler**: per pass, GMEM vs sysmem, bin count, and which attachments are loaded and stored per tile. The code today: `get_optimal_color_load_op`/`get_optimal_zeta_load_op` (draw.c:3567-3593) LOAD any initialised surface, so a pass that begins with a full guest clear still loads every tile first; and every colour and depth/stencil attachment is STOREd (draw.c:1774-1794), including a depth buffer nobody reads after the pass. Every pass break (`render_pass_breaks`) pays a full load and store of each attachment. | 0.35. For: the outer stamps put 96-98% of the "non-render" time inside passes on all three titles, at 0.87 (NG Black), 0.96 (ToeJam) and 6.2 (DOA3 fight, 2.1 big passes) ms per pass outside the last tile. `TU_DEBUG=sysmem` gained 8 gfps on DOA and AUF (lane.flip474), so per-pass mode alone moves fps there. Against: no per-pass census exists, some loads are required (the guest draws over the previous contents), and the bins/tiles part is inherent to GMEM | NG Black: GPU-bound at 680 MHz, 23 ms GPU frame; 3-6 ms off it is 28.5+ in most windows. ToeJam: 17.6 passes a frame, the most per-pass load/store exposure. The same reaches AUF, DOA Ultimate and Otogi if they behave as these three (not run) | First a measurement, telemetry only: a per-pass census under `HAKUX_GPUXFR=1` (attachment sizes, load/store ops, whether the first draw is a full clear, draws, outer span per pass), one NG Black run and one ToeJam run. Then the fix lane. Brief below |
+| 1 | **Render-pass cost on the tiler**: per pass, GMEM vs sysmem, bin count, and which attachments are loaded and stored per tile. The code today: `get_optimal_color_load_op`/`get_optimal_zeta_load_op` (draw.c:3567-3593) LOAD any initialised surface, so a pass that begins with a full guest clear still loads every tile first; and every colour and depth/stencil attachment is STOREd (draw.c:1774-1794), including a depth buffer nobody reads after the pass. Every pass break (`render_pass_breaks`) pays a full load and store of each attachment. | 0.35. For: the outer stamps put 94-98% of the "non-render" time inside passes on all three titles, at 0.87 (NG Black), 0.91 (ToeJam, T1) and 6.2 (DOA3 fight, 2.1 big passes) ms per pass outside the last tile. `TU_DEBUG=sysmem` gained 8 gfps on DOA and AUF (lane.flip474), so per-pass mode alone moves fps there. Against: no per-pass census exists, some loads are required (the guest draws over the previous contents), and the bins/tiles part is inherent to GMEM | NG Black: GPU-bound at 680 MHz, 23 ms GPU frame (X0 is not over-counted: no `sd` finishes); 3-6 ms off it is 28.5+ in most windows. DOA3's fight: 26.4 ms GPU in a 31.4 ms frame at 680 MHz. Not ToeJam: T1 shows its GPU 66% busy, so a GPU win does not move its fps. AUF and DOA Ultimate have no `sd` finishes, so their survey Tot stands; reached if they behave as these titles (not run) | First a measurement, telemetry only: a per-pass census under `HAKUX_GPUXFR=1` (attachment sizes, load/store ops, whether the first draw is a full clear, draws, outer span per pass), one NG Black run and one DOA3 run. Then the fix lane. Brief below |
 | 2 | Forza and Midnight Club II: texture.c:2100's surface-range scan completes a pending download because the texture reads a rendered surface through VRAM | 0.35 (unchanged; needs one counter: why the bind does not take the surface-to-texture path) | Forza 8-19 ms per frame of PFIFO wait, MC2 8.0 | a counter, then the fix lane |
 | 3 | (A) on Spider-Man 2: the splice's eligibility check refused every update (S1) | 0.15. The refusal reason is not counted; if it is a swizzled download, the splice needs a GPU swizzle; and F1 showed the wait can move to `range` once `surfupd` is gone | up to 6 ms per frame, 26.8 to ~30 fps, one title | a refusal-reason counter, one run, then possibly a GPU swizzle |
 | 4 | Simpsons, the STALLED submit or the lock across its wait | 0.05. Both halves are refuted: simp2 (lock) and K1 (submit) each lost fps | none expected | a frametrace capture of K1 would name where the PFIFO thread holds pfifo.lock, if anyone wants the reason |
 | - | In-pass stamp cost in the shipped build | refuted by X1 (+0.5% per pass with the stamps removed) | none | none |
 
-| - | Absolute GPU ms in `xemu-gpu` (Tot/Rnd/Xfr) on titles with non-deferred PFIFO finishes | fixed in this lane (5c35880d0a, a slot's stamps read once); T1 checks it | correct "GPU-bound" judgements, e.g. ToeJam's Tot 48.5 ms against a 38.4 ms frame | done; one run |
+| - | Absolute GPU ms in `xemu-gpu` (Tot/Rnd/Xfr) on titles with non-deferred PFIFO finishes | fixed in this lane (5c35880d0a, a slot's stamps read once); T1 passed its known answer | correct "GPU-bound" judgements: ToeJam's Tot fell from 48.5 to 25.5 ms on the same scene. 18 survey titles carry the over-count (table above) | done |
+| - | What paces ToeJam at 25 fps with the GPU 66% busy | not measured here | ToeJam is a survey title, not a ledger one | a frametrace capture names the wait |
 
 By the brief's decision rule, no category is "the cost": on NG Black, ToeJam
-and DOA3 the largest (`download`) is 2-3% of `nr`. The single next lane is (1),
+and DOA3 the largest (`download`) is 2-5% of `nr`. The single next lane is (1),
 and its first step is the per-pass census, because "which attachments are
 loaded and stored per tile, and which of those loads are overwritten by a clear"
 is a guess until it is counted.
@@ -1081,7 +1139,11 @@ operation in the pass is a clear covering the whole render area, the number of
 draws, and the pass's outer span (the outer stamp pair exists:
 `xfr_rp_outer`). Report per frame: passes, passes whose LOAD is followed by a
 full clear, passes whose depth is never read after the pass, and the outer ms
-in each group. One NG Black run (`bb-ngb`) and one ToeJam run (`gnr-toejam`).
+in each group. One NG Black run (`bb-ngb`) and one DOA3 run (`bb-doa3`; the
+fight before 05:13 in D0 ran at 680 MHz with the GPU 84% busy). Not ToeJam:
+with stamps read once its GPU is 66% busy (T1), so a GPU saving does not move
+its fps. Use a build at or after 5c35880d0a, so the GPU ms count each command
+buffer once.
 
 Expected result to write before the runs, and the decision: if the passes with
 an avoidable load or store carry at least 30% of the outer render span, step 2

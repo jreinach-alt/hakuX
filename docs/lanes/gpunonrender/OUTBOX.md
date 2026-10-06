@@ -267,3 +267,55 @@ WAITING lists the four runs.
 | Forza/MC2 texture.c:2100 range scan | 0.35 | Forza 8-19 ms/frame PFIFO wait, MC2 8.0 | a counter, then the fix lane |
 | (A) on Spider-Man 2 | 0.15 (gate refused all; the wait may move as on Forza) | up to 6 ms/frame, one title | a refusal counter, one run, maybe a GPU swizzle |
 | Simpsons STALLED submit or lock | 0.05 (both halves refuted) | none expected | none |
+
+## 2026-10-06 05:40 PDT (attempt 8): milestone (c); the GPU stamp double count found and fixed
+
+- Attempt 7 ended on a WAITING for T0/D0. That is a finished wait. Both ran
+  DONE, and hostops' restore ran after them. origin/master had not moved.
+- **T0 (ToeJam & Earl III) and D0 (DOA3): the artifact holds.**
+  - 94-98% of `gpu_nonrender_ms` is render-pass work that the in-pass stamps
+    miss, as on NG Black X0.
+  - The real GPU time between render passes is 0.26-0.52 ms a frame, and
+    `download` (site 587) is its largest part on every title.
+- **Milestone (c), the brief's decision rule:** judged "not". On NG Black,
+  ToeJam and DOA3 the largest category is 2-5% of `nr`.
+  - Otogi (Thor, fan), AUF and DOA Ultimate (no route) were not run. The rule
+    could only flip if all three of them broke the driver mechanism that gave
+    94-98% on the three measured titles.
+- **Found and fixed, 5c35880d0a (draw.c, telemetry only): the GPU timestamp
+  stats counted some command buffers twice.**
+  - The mechanism: a non-deferred PFIFO finish reads its slot back
+    (draw.c:4742). The render thread had marked the slot submitted
+    (render_thread.c:153), so frame rotation read the same stamps again
+    (draw.c:4803-4807).
+  - The fix: a slot's stamps are read once per recording, and skipped
+    readbacks are counted as `dup` on the `XFR rp` line.
+  - **T1** (`1-1791289531-lane.gpunonrender-3548254`, ToeJam, same route and
+    scene as T0): every leg of the known answer, written before the run,
+    passes.
+    - `dup` 1.00 per frame against 1.01 `sd` finishes.
+    - 2.00 readbacks per frame for 2.09 finishes.
+    - Tot fell from 48.5 to 25.5 ms. The drop (23.04 ms) equals the skipped
+      span (23.01 ms).
+  - **ToeJam is not GPU-bound on this scene.** Its GPU is busy 25.5 ms of a
+    38.8 ms frame, at 401 MHz. belowbar1005's 52.3 Tot / 17.9 `nr` were about
+    twice the real values.
+  - **18 of belowbar1005's 33 survey titles carry this over-count** (any `sd`
+    finish). These include Top Spin, Midtown Madness 3, Conker, Halo 2,
+    Forza, Nightfire, Otogi and ToeJam; the full table is in NOTES.md.
+  - NG Black, DOA3, AUF and DOA Ultimate do not carry it. Any "GPU-bound"
+    judgement from `xemu-gpu` Tot on an affected title needs a re-read on a
+    build with the fix.
+  - Lanes reading `xemu-gpu` or the frametrace record's `gpu` field
+    (frametrace, the fps chain) should know this.
+- Nova runs this attempt: T1 (300 s) and a 60 s master restore after it (DONE).
+- Spend: not readable from this session.
+
+## Next
+
+| candidate | P | win | cost |
+|---|---|---|---|
+| Render-pass load/store census, then the fix (brief in NOTES.md "Brief for the next lane"): LOAD of every initialised surface even when the pass starts with a full clear (draw.c:3567-3593); STORE of every depth/stencil attachment (draw.c:1774-1794) | 0.35 | NG Black 3-6 ms off a 23 ms GPU frame (GPU-bound at 680 MHz); DOA3's fight (GPU 84% busy at 680) | one draw.c telemetry commit, two Nova runs (NG Black, DOA3), then the fix lane |
+| Re-read "GPU-bound" on the 18 affected survey titles with the fix (one perflog soak each, no code) | 0.6 that at least one more title, like ToeJam, turns out not GPU-bound | decides which titles a GPU-side fix can help at all | 18 soaks; a sweep-tier batch after a pilot of two |
+| What paces ToeJam at 25 fps with the GPU 66% busy | unmeasured | one survey title | a frametrace capture |
+| Forza/MC2 texture.c:2100 range scan | 0.35 | Forza 8-19 ms/frame PFIFO wait, MC2 8.0 | a counter, then the fix lane |

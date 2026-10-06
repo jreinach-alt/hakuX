@@ -1,6 +1,0 @@
-# lane.gpunonrender 2026-10-06 05:10 PDT: waiting for two Nova runs (expected results in NOTES.md, written before queueing).
-# T0: ToeJam & Earl III, D0: DOA3; both HAKUX_GPUXFR=1 outer render-pass stamps at d946e1ba44.
-# Then resume: read with docs/lanes/gpunonrender/abread.py (window mark gameplay + 20 s) and judge against NOTES.md
-# "Next runs: is the stamp artifact the same on the other titles?"; finalise the Ranking.
-run 1-1791288045-lane.gpunonrender-3440051
-run 1-1791288049-lane.gpunonrender-3440825

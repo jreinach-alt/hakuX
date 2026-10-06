@@ -1,6 +1,6 @@
 Lane: gpunonrender                Issue: #433
 Base: master @ c3a0c70ace
-Files: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/reports.c, docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/WAITING, docs/lanes/gpunonrender/stepsdump.py, docs/lanes/gpunonrender/qstate.py, docs/lanes/gpunonrender/abread.py, docs/lanes/gpunonrender/rls.py, docs/lanes/gpunonrender/routes/gnr-spiderman2.route, docs/lanes/gpunonrender/routes/gnr-mc2.route, docs/lanes/gpunonrender/routes/gnr-toejam.route
+Files: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/reports.c, docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/sdscan.py, docs/lanes/gpunonrender/stepsdump.py, docs/lanes/gpunonrender/qstate.py, docs/lanes/gpunonrender/abread.py, docs/lanes/gpunonrender/rls.py, docs/lanes/gpunonrender/routes/gnr-spiderman2.route, docs/lanes/gpunonrender/routes/gnr-mc2.route, docs/lanes/gpunonrender/routes/gnr-toejam.route
 Prediction: none: no arm (A/B soaks read by hand against expected results written in NOTES.md before each run)
 Needs device: yes    Needs NDK: yes
 
@@ -101,6 +101,12 @@ was counted twice in the GPU phase stats (`xemu-gpu` Tot/Rnd/Xfr, the frametrace
 record's `gpu`) and in `xemu-xfr`. On ToeJam & Earl III, which has one such
 finish a frame, Tot read 48.5 ms per frame against a 38.4 ms frame.
 
+On the same route and scene, with the stamps read once, ToeJam's Tot is 25.5
+ms per frame. The skipped readbacks are 1.00 per frame, matching its 1.01
+surface-download finishes, and their summed span (23.0 ms) is the drop in Tot.
+Titles with no such finishes (NG Black, DOA3, 007 Agent Under Fire, Dead or
+Alive Ultimate) were not affected.
+
 A per-slot flag is now cleared when the slot's command buffer begins and set by
 the first readback; a second readback of the same recording is skipped. Under
 `HAKUX_GPUXFR=1` the `XFR rp` line counts the skipped readbacks and their summed
@@ -146,8 +152,9 @@ until the flip or another finish submits them. The perflog log shows
 - **ToeJam & Earl III and DOA3, outer stamps:** the same result as NG Black.
   97% (ToeJam) and 96-98% (DOA3, fight and title screen) of
   `gpu_nonrender_ms` is render-pass work. The time outside every render pass is
-  0.55 ms (ToeJam) and 0.26-0.34 ms (DOA3) per frame, and `download` is the
-  largest part on both.
+  0.52 ms (ToeJam) and 0.26-0.34 ms (DOA3) per frame, and `download` is the
+  largest part on both. With the stamps read once, ToeJam's GPU is busy 25.5 ms
+  of its 38.8 ms frame, so it is not GPU-bound on that scene.
 - On all three titles the GPU frame is inside render passes. The cost to look
   at next is per-pass load/store and GMEM binning, not uploads or copies.
 
