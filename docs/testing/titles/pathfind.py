@@ -132,8 +132,18 @@ CONTINUE_TRIES = 4
 # run its rounds AND the budget is gone.
 HOLD_LADDER = ("A", "START", "A", "A", "B", "START")
 HOLD_LADDER_ROUNDS = 6
+TEAM_CLAIM_EXTRA_S = 600         # a team sport's claim gets this much more budget for its setup (10-06)
 HOLD_VERDICT_S = 60              # once play has reached hold_s, the hold re-judges its validity this often
 HOLD_PLAY_AGREE_S = 5.0          # the hold's play_s and the verdict's play time may differ by this much; the verdict's is trusted
+
+
+def replay_diverged(own, el_s, matched):
+    """A title with a recorded path (10-06 owner order): the screen matches no step of it, and the claim has run past the
+    path's recorded time to gameplay plus 3 min. Then the run stops and reports the divergence step; it does not fall back to
+    a 15-min model claim."""
+    if not own or not own.get("steps") or matched:
+        return False
+    return el_s > (float(own.get("minutes") or 0) + 3) * 60
 
 
 def hold_budget_s(claim_s, hold_s):
@@ -1341,6 +1351,11 @@ class Agent:
         self.dev.launch(self.iso)
         self.launched_at = now()
         self.watch = hangwatch.start(self.dev, self.out)
+        if self.team_sport():
+            # team setup (team select, the period setting, the controller pick) needs its own allowance (10-06: NBA 2K3 reached
+            # team select at about 12 of 15 min)
+            self.budget_s += TEAM_CLAIM_EXTRA_S
+            self.result.update(team_claim_extra_s=TEAM_CLAIM_EXTRA_S)
         relaunches = 0
         last_png = None
         last_therm = now()
@@ -1411,6 +1426,11 @@ class Agent:
                 self.steps[-1]["why"] += f" | probe: {why}"
                 last_png = None
                 continue
+            if dec.get("src") == "diverged":
+                self.write_step(dec)
+                self.result.update(result="diverged", reason=dec["why"][:200], step=dec.get("step"),
+                                   minutes=round(self.el() / 60, 2), frame=dec["frame"])
+                return self.finish(last=jpg)
             if dec["state"] == "fatal_error" and self.steps and self.steps[-1].get("state") == "fatal_error":
                 # twice in a row: the title cannot go on (ESPN NBA 2K5 on the Thor, 10-02: "disc is dirty or
                 # damaged" after team select; four more inputs changed nothing)
@@ -1421,8 +1441,15 @@ class Agent:
             self.send(dec["action"])
             time.sleep(min(max(float(dec.get("wait_s") or 2), 0.5), 12))
             last_png = png
+        last = self.steps[-1] if self.steps else None
+        if self.hold_s and last and last.get("state") == "gameplay" and last.get("frame"):
+            # the budget ran out with the last look reading live play (10-06 owner order): a refused or inconclusive probe is
+            # not a stop; the hold's verdict decides (play share, fps, frames). Only menu, loading, crash or black ends the claim.
+            print(f"claim: budget ran out on live play (step {len(self.steps)}): entering the hold", flush=True)
+            self.result.update(claim_budget_live=True)
+            return self.success(os.path.join(self.out, last["frame"]))
         self.result.update(result="gave-up", reason=f"budget {self.budget_s / 60:.0f} min",
-                           last_state=self.steps[-1].get("state") if self.steps else None)
+                           last_state=last.get("state") if last else None)
         return self.finish(last=jpg if self.steps else None)
 
     def decide(self, png, jpg, sig):
@@ -1455,6 +1482,12 @@ class Agent:
             self.cursor = j + 1
             return dict(base, state=s["state"], why=f"replay step {j}: {s['why']}", action=list(s["action"]),
                         wait_s=s.get("wait_s", 2), src="replay")
+        if not (tried or seen) and replay_diverged(self.own, self.el(), False) and self.cursor < len(self.own["steps"]):
+            # the path is no longer on screen past its recorded time (10-06 owner order): report the step, do not guess
+            j = self.cursor
+            exp = self.own["steps"][j]
+            return dict(base, state="diverged", why=f"replay diverged at recorded step {j} "
+                        f"({exp.get('state')}: {str(exp.get('why', ''))[:120]})", action=[], wait_s=2, src="diverged", step=j)
         sp = self.sib_replay(sig) if not (tried or seen or self.own) else None
         if sp:
             k, j, s = sp

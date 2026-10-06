@@ -989,3 +989,19 @@ Named cost: the claim reached a live fight at 10.7 min, then spent about 4 min i
 NEW ISSUE: fighting titles give up at the 15-min claim budget with live fight on screen (Marvel Nemesis at step 63, 10.7 min; Deadly Alliance and NBA 2K3 the same shape). The shared claim budget runs out in probe and continue cycles after play is live, so no fighter hold runs. Blocks Marvel's Playable and the fighter family (Armageddon, Deadly Alliance, Guilty Gear, Marvel). Not re-run: the claim budget and the probe rule for fights need identifying together.
 
 Spend: model calls for this run (77), not priced.
+
+## #433 -- 2026-10-06 08:10 PDT
+
+[lane.pathfind] Replay divergence, offline (owner order 08:00): first pass from this morning's steps.jsonl, no device time. Per title, the first step where a recorded-path replay stops matching the screen, and what is written:
+
+- Shaolin Monks (4D570029, run rehold-4D570029): replay ran 13 steps in sync to the cutscene section. The first non-replay step is a Character Select read at step 7 that the path did not expect, so the model took A on Liu Kang; then a black stretch and a loading screen at step 12 that the path did not hold. The replay resynced at step 13 and reached gameplay at step 28 (3.15 min claim, the same as the recorded time). So the path reached play; the failure was the hold's still stretch (82.6 s), not the replay. Path file: NOT changed (no step to fix); the recovery the hold needs is the still-scene unstick (the same as Blowout).
+- Deadly Alliance (4D57000C): replay ran 8 steps, then a black frame at step 8 with no recorded step matching it; the claim budget then ended on live play (the 07:16 result). The divergence is at recorded step 8. Path file: NOT changed yet. The fix (what the path expects after the black frame) needs the frame at step 8 read before writing it.
+- NBA 2K3 (no paths/ file for this title): 0 replay steps; it ran from the hint alone. No divergence to name; there is nothing to write. The team-select recovery is the claim time (the +10 min team allowance is in).
+- Marvel Nemesis (4541038A): replay ran 7 steps; the first non-replay step is a publisher logo at step 3 (a mid-animation card the path did not record). Path file: NOT changed; the recovery is a skip (A, re-read), which the model already does; the claim then ended in the fight probes.
+- Armageddon (4D570034, the retry rehold2b): replay ran 4 steps, the first non-replay is a Sofdec logo at step 3. Path recorded at 07:57 by its own claim. Path file: NOT changed; its hold is still running.
+
+Nothing in this pass met step 3's bar (a named divergence step and the input that recovers it, confirmed on frames). So no path file was written and no per-title run is queued by it. The one-run-each list in step 4 is therefore empty until a path changes: Shaolin's still-scene hold is a hold change, which is a separate run only after its fix.
+
+The replay abort rule (step 2) is in `pathfind.py` with its own pure leg (`replay_diverged`: Deadly Alliance aborts past 7.5 min on a non-matching screen, not before). The integration of the abort into the claim loop is NOT yet exercised on a device; it is the first thing a later replay run tests.
+
+Spend: no device time and no model calls for this pass.

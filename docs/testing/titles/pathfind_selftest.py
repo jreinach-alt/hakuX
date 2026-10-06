@@ -604,6 +604,23 @@ check("teamsport", not _ts("Set the game length to the LONGEST (10 frames)", "AM
       and not _ts("Set innings to the longest", "MLB SlugFest 2004") and not _ts("", "RalliSport Challenge"),
       "bowling, baseball and racing keep the both-ways steering test")
 
+# claim (10-06 owner order): the budget ends on live play with refused probes, so the run enters the hold instead of giving up
+rc, res, steps, calls = run("claimlive", PREFIX + [("game", 0)] * 400,
+                            [GAME] + [{"gameplay": True, "responded": False, "why": "the probe did not move the scene"}] * 30,
+                            ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "2"])
+check("claimlive", res.get("claim_budget_live") is True and res.get("result") == "gameplay"
+      and res.get("hold") is not None,
+      f"the claim budget ran out on live play: the run enters the hold ({res.get('result')}, hold {bool(res.get('hold'))})")
+check("claimlive", pathfind.TEAM_CLAIM_EXTRA_S == 600 and pathfind.hold_budget_s(0, 600) == 1050 + 300,
+      "a team claim gets 600 s more budget; the hold budget formula is unchanged")
+
+# replay abort (10-06 owner order): a path that no longer matches, past its recorded time to gameplay + 3 min, stops the run
+dpath = {"minutes": 4.44, "steps": [{"state": "menu"}]}
+check("diverge", pathfind.replay_diverged(dpath, 7.5 * 60 + 1, False) and not pathfind.replay_diverged(dpath, 6 * 60, False)
+      and not pathfind.replay_diverged(dpath, 7.5 * 60 + 1, True) and not pathfind.replay_diverged(None, 9999, False)
+      and not pathfind.replay_diverged({"minutes": 4.44, "steps": []}, 9999, False),
+      "Deadly Alliance (4.44 min recorded): aborts past 7.5 min on a non-matching screen, not before, not on a match, not without a path")
+
 # validity (10-06 owner order): the hold ends on a passing verdict; a shortfall is extended only when more play can fix it
 short_dur = {"pass": False, "failing": "duration: 589 s of gameplay < 600 s confirmation", "crash": False, "hang": False,
              "fps_ok_share": 1.0, "gameplay_s": 589, "timeline": {"play_share": 0.99, "play_s": 589, "scored_s": 589}}
