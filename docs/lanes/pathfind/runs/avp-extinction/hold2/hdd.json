@@ -1,0 +1,27 @@
+{
+ "title_id": "56550022",
+ "disk_title_id": "56550022",
+ "state": "any",
+ "save": "50a35dcd33ed",
+ "loaded": "golden",
+ "golden_status": "golden",
+ "goldens": 92,
+ "path": "/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2",
+ "sha256_at_start": "81154929b7b6e8a9369dc42a81f513574d39b89f824559fef237bbd2b2e3f23a",
+ "bytes_at_start": 18939904,
+ "plans": [
+  {
+   "action": "build",
+   "reason": "the disk carries a run's writes since it was pushed; every run starts from the goldens"
+  },
+  {
+   "action": "keep",
+   "reason": "the disk is the composed goldens, untouched since its push"
+  }
+ ],
+ "mode_found": "660",
+ "mode": "660",
+ "split": "on",
+ "split_from": "held",
+ "run": "held-nova-20261005T194217"
+}

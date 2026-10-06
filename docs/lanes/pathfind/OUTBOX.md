@@ -731,3 +731,19 @@ NEW ISSUE: Strike Force Bowling hold ends at the first game's end: the high-scor
 SCENE SHOULD CONTAIN: a bowler at the foul line with the aim meter, the ball rolling down the lane, pins falling and resetting, the frame sheet, neighbouring lanes with bowlers.
 
 Parked: no third run today (rule: identify, do not re-run). Next: LEGO Star Wars re-hold (one try), then AvP re-hold (one try), football last.
+
+## #433 -- 2026-10-05 20:00 PDT
+
+[lane.pathfind] LEGO Star Wars CLOSE (play share 84%, fps clear): re-hold (runs/lego-star-wars/hold2), 607 s held, scored window 727 s. Verdict FAIL on play share 0.84 (bar 0.90): play 611 s, still 74 s, cutscene 42 s. fps_ok 0.976 at the bar, median 59.0, 3 hitches (worst 157 ms). The join-prompt fix worked: the hub did not go to the pause menu (the previous run's 68.5% share had 117 s of cutscene and 17 s of pause). Claim and hold: 9 claim steps, the golden 5251f98730d1 with `--state any`. Aborted at: full window. Perflog: not taken. Spend: a few model calls (Sonnet).
+
+Named cost, from frames (hold_strip.jpg): (1) about 60 s of title and story cards at the start of the window: the "Episode 1 The Phantom Menace" card (frame 024), the level's "Chapter 1 NEGOTIATIONS" card (043-051, about 20 s of no-control card), the Star Wars crawl (055), then a cutscene of battle droids (058): these are the cutscene and loading share. (2) From about 540 s the two characters stand in one room, attacking the droids with the saber while the camera stays put (frames 080-098): the scene is live but the characters do not travel, so the still test counted about 74 s of still. That is the stand-still case (the 60-s rule), and the hold did not rotate its inputs. Not re-run: CLOSE, one try per title.
+
+SCENE SHOULD CONTAIN: a LEGO minifigure hero (Anakin or Obi-Wan) with the health hearts and stud counter in the corner, moving through a level, droids and enemies in the room, the camera following the hero, no card, no crawl.
+
+Next: AvP re-hold (one try, title hold 56550022), football last.
+
+[lane.pathfind] AvP Extinction FAIL (play share 0.06, scene still; re-hold 2): runs/avp-extinction/hold2, budget 23 min, play 67 s, still 1146 s (static_frac 0.99), fps_ok 1.0 (median 31, locked 30). The title hold (TITLE_HOLD 56550022: select the squad, long cursor strokes, A to order) never moved the scene: the strip is a near-black RTS map with a small panel and a cursor that moves a few pixels. Aborted at: budget (23 min); no crash, no hang. Perflog: not taken.
+
+Named cost: the squad orders do not register on this screen. The hold reads the screen as dark and static, and the look never names a control that changes the view. Not re-run (a failed run is identified first, not repeated). Next step for AvP: read the claim frames (runs/avp-extinction claim) for the order mode's footer before another hold.
+
+NEW ISSUE: AvP Extinction: the squad-order input does not move the RTS scene (99% static over 20 min; the map is almost black); needs the order-mode footer read from frames before a hold. Blocks AvP's Playable.
