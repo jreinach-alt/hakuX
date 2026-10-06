@@ -1209,3 +1209,14 @@ What this shows, and what it does not:
 - At 13:21 seven lane.gpunonrender requests were queued (1-1791317654..1791317787), so the Strike Force hold (`scratch/sfb-1006-a3`)
   was NOT launched; the launch script refuses to start when the queue is not empty. Those runs will leave a lane APK on the Nova,
   so a second clean restore is needed before the Strike Force hold.
+
+## Resume 10-06 13:50 PDT (attempt 1 of this resume, lane.local 13:55 order): why the previous attempt did not finish
+
+- The 12:41 attempt (attempt 2) finished NBA 2K3 hold3 (12:57 PASS, OUTBOX written) and then tried Strike Force Bowling at 13:05
+  while gpunonrender requests were queued. It released the hold itself at 13:07 (self-correction above). At 13:20 it ran a clean
+  master restore, then the Strike Force launch was refused because seven lane.gpunonrender requests (1-1791317654..1791317787) were
+  queued. The session ended there with no Strike Force run, no WAITING file, and no OUTBOX line after the 13:20 restore.
+- Cause: the session treated the queue refusal as the end of its work. It had no waiting condition written, and it stopped while
+  the Nova queue was about to drain. Nothing ran on the Nova from 13:20 to this resume.
+- This attempt: Nova queue and holds checked (no queued request, no pathfind hold). CHARSEL (ab8788c38b) and LIVE_SELFMOVE_TO_HOLD
+  (314ef06f72) are ancestors of HEAD. origin/master is 4 commits ahead of this branch (merged below). The first title is MK Armageddon.

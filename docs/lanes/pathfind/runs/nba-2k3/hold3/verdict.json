@@ -29,20 +29,19 @@
   "crash": false,
   "crash_detail": [],
   "crash_warnings": 0,
-  "gameplay_s": 615.3,
+  "gameplay_s": 605.1,
   "timeline": {
-    "play_s": 608.0,
-    "scored_s": 615.3,
-    "play_share": 0.9881,
+    "play_s": 605.0,
+    "scored_s": 605.1,
+    "play_share": 0.9998,
     "by_state": {
-      "play": 608.0,
-      "other": 7.1,
-      "no-timeline": 0.2
+      "play": 605.0,
+      "no-timeline": 0.1
     },
-    "play_spans": 2,
-    "changes": 3,
-    "fps_excluded_s": 9.2,
-    "fps_excluded_windows": 8
+    "play_spans": 1,
+    "changes": 1,
+    "fps_excluded_s": 1.4,
+    "fps_excluded_windows": 1
   },
   "capture_gaps_s": [],
   "capture_lost_s": 0,
@@ -50,15 +49,15 @@
   "capture_truncated_s": null,
   "hang": false,
   "hang_gaps_s": [],
-  "fps_windows": 399,
+  "fps_windows": 413,
   "fps_bar": 30.0,
-  "fps_ok_share": 0.9204,
-  "fps_ok_window_share": 0.9449,
-  "fps_window_median": 41.84,
-  "fps_window_min": 25.7,
-  "g_fps_mean_reported_not_judged": 41.81,
+  "fps_ok_share": 0.9632,
+  "fps_ok_window_share": 0.9758,
+  "fps_window_median": 42.86,
+  "fps_window_min": 24.04,
+  "g_fps_mean_reported_not_judged": 43.21,
   "target_fps": 30.0,
-  "own_target_share": 0.9204,
+  "own_target_share": 0.9632,
   "confirmation_need_s": 600.0,
   "below_own_target": false,
   "power": {
@@ -72,8 +71,8 @@
     "net_w": null,
     "sign_suspect": 0,
     "thermal_status_max": null,
-    "scored_s": 605.8,
-    "flips": 23940,
+    "scored_s": 605.2,
+    "flips": 24780,
     "j_per_frame": null,
     "j_per_frame_battery": null
   },
@@ -81,30 +80,40 @@
   "audio_starve_share": 0.0,
   "audio_empty_calls": 0,
   "pace": {
-    "lines": 408,
+    "lines": 415,
     "nominal_vblanks": 2,
-    "late_per_100": 5.96,
-    "worst_stall": 95.4,
-    "last": "f=46080 v0=0 v1=21 v2=37 v3=2 v4=0 vb=101 max=41.1 ms=1708.6"
+    "late_per_100": 4.89,
+    "worst_stall": 294.0,
+    "last": "f=35760 v0=0 v1=37 v2=23 v3=0 v4=0 vb=83 max=30.3 ms=1370.5"
   },
   "hitches": {
-    "n": 0,
-    "n_after_warmup": 0,
-    "per_min_after_warmup": 0.0,
-    "worst_ms": 0.0,
+    "n": 1,
+    "n_after_warmup": 1,
+    "per_min_after_warmup": 0.11,
+    "worst_ms": 294.0,
     "n_big_after_warmup": 0,
     "classification": {
-      "shader": 0,
+      "shader": 1,
       "texture": 0,
       "both": 0,
       "unexplained": 0
     },
-    "worst5": []
+    "worst5": [
+      {
+        "off_s": 230.4,
+        "max_ms": 294.0,
+        "dsm": 12,
+        "dpc_ms": 36.8,
+        "shader_stage_ms": 36.4,
+        "tex_us": 15122,
+        "cls": "shader"
+      }
+    ]
   },
   "hitch_allowance": null,
   "static_window": {
     "measured": true,
-    "frozen_frac": 0.1545,
+    "frozen_frac": 0.1524,
     "n": 16,
     "source": "route-frames"
   },
@@ -116,7 +125,7 @@
     "pairs": 15,
     "still": 0,
     "still_frac": 0.0,
-    "first_last": 0.6855,
+    "first_last": 0.4979,
     "bar": 0.025
   },
   "pass_kind": "confirmation",
@@ -127,5 +136,5 @@
   "rating_candidate": null,
   "rating_note": "passed, but surface_scale None is not 1 or 2 (or was not logged)",
   "contact_sheet": "contact.png",
-  "judged_utc": "2026-10-06T01:13:12Z"
+  "judged_utc": "2026-10-06T19:56:51Z"
 }

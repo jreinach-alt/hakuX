@@ -4,75 +4,75 @@
  "device": "nova",
  "iso": "/storage/E6C6-D7AA/Games/XBox/NBA_2K3.xiso.iso",
  "result": "gameplay",
- "tool": "78fc90aecb",
- "started": "2026-10-05 17:54:41 PDT",
+ "tool": "84dca42871",
+ "started": "2026-10-06 12:42:38 PDT",
+ "team_claim_extra_s": 600,
  "probe_frames": [
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/042-probe-a.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/042-probe-b.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/042-probe-c.jpg"
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/020-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/020-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/020-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/020-probe-right.jpg"
  ],
- "reason": "four probes refused",
- "minutes": 7.49,
- "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/041-gameplay.jpg",
+ "claim_live_selfmove": 3,
+ "minutes": 3.35,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/019-gameplay.jpg",
  "after_frames": [
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/043-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/044-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/045-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/046-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/047-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/048-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/049-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/050-after.jpg"
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/028-after.jpg"
  ],
  "learned": [],
  "hold": {
   "genre": "team",
-  "why": "Basketball on a court with Lakers and NJ players, scoreboard and shot clock visible, so it is a team sport.",
+  "why": "A player in a blue #30 jersey dribbles a ball on an indoor basketball court with arena crowds behind, a team sport on a court.",
   "sports": {
-   "clock": "3:39",
-   "period": "1st",
-   "human_controlled": true,
-   "why": "Scoreboard reads 1st, NJ 7 \u2013 LAL 0 at 3:39; a green-marked controlled player (name tag with health bar) is in the foreground in the navy NJ jersey."
+   "clock": "none",
+   "period": "none",
+   "human_controlled": false,
+   "why": "No scoreboard, clock, or period indicator is visible, and no controller icon or marker appears under either team; the screen is faded, so control can't be confi"
   },
-  "ok": true,
-  "play_s": 607.0,
+  "ok": false,
+  "play_s": 604.8,
   "need_s": 600.0,
-  "hold_s": 615.2,
-  "model_navs": 1,
+  "hold_s": 605.1,
+  "model_navs": 0,
   "frames": 17,
   "still_windows": 0,
-  "shed": [
-   "B"
-  ],
-  "reason": "",
+  "shed": [],
+  "reason": "verdict stops the hold: fps_ok 0.9631, crash False, hang False",
   "title_hold": false,
   "fps_checks": [
    {
-    "n": 122,
-    "median": 41.0,
-    "share": 0.869,
-    "at_s": 189.7,
+    "n": 130,
+    "median": 43.0,
+    "share": 0.931,
+    "at_s": 188.0,
     "floor": 22.0,
     "stop": false
    },
    {
-    "n": 204,
-    "median": 42.0,
-    "share": 0.907,
-    "at_s": 308.3,
+    "n": 210,
+    "median": 43.0,
+    "share": 0.948,
+    "at_s": 308.5,
     "floor": 27.0,
     "stop": false
    }
   ],
-  "verdict": "VERDICT NBA 2K3 ? PASS None gameplay=615.3s fps_ok=0.9204 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.1545 play_share=0.9881 fps_excluded=9.2s"
+  "verdict": "VERDICT NBA 2K3 ? PASS None gameplay=605.1s fps_ok=0.9632 crash=False hang=False audio_short=0.0 hitches=1/0.11pm worst_ms=294.0 static_frac=0.1524 play_share=0.9998 fps_excluded=1.4s"
  },
- "model_calls": 51,
+ "model_calls": 28,
  "calls_by_model": {
-  "claude-sonnet-5": 51
+  "claude-sonnet-5": 28
  },
- "steps": 42,
- "seconds": 1110.5,
- "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/099-hold.jpg",
+ "steps": 20,
+ "seconds": 853.5,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nba-2k3/hold3/frames/077-hold.jpg",
  "last_state": "probe",
  "replayed": 0,
  "sib_replayed": 0,

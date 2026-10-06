@@ -7,7 +7,7 @@
  "golden_status": null,
  "goldens": 92,
  "path": "/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2",
- "sha256_at_start": "b17ae02be410128739f356df3bf9e517c3d3f4182e2109ec03b79b72c8347f67",
+ "sha256_at_start": "bed5938af9381519e080922846af0b26b5192568498f2cdb78fa55fe98116761",
  "bytes_at_start": 18939904,
  "plans": [
   {
@@ -23,5 +23,5 @@
  "mode": "660",
  "split": "on",
  "split_from": "held",
- "run": "held-nova-20261005T175441"
+ "run": "held-nova-20261006T124238"
 }
