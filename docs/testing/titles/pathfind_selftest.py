@@ -66,6 +66,10 @@ os.environ["PATHFIND_AFTER_S"] = "0"
 os.makedirs(os.path.join(TMP, "know", "hints"))
 sys.path.insert(0, HERE)
 import pathfind  # noqa: E402
+# The fake device has no logcat for title_verdict.py, so the validity check would find no verdict and hold on. The
+# existing hold legs test the loop, so their check passes; the validity rule itself is tested by the 'validity' legs
+# below (hold_shortfall on fake verdicts), and on the device by every held run's validity lines in hold.jsonl.
+pathfind.Agent.hold_check = lambda self, play_s, log: ("pass", 0.0, "")
 # the selftest's claim budgets are seconds long and run on real time: a 300-s confirm grace would let every
 # budget-ended case wait out its sim. The grace is a production setting; its path is the next real claim's test.
 pathfind.CONFIRM_GRACE_S = 0
@@ -367,15 +371,17 @@ check("hold", ROUTE_LOG[:2] == ["mark gameplay", "soak start"] and ROUTE_LOG[-1]
 kept_left = [f for f in os.listdir(os.path.join(TMP, "hold", "out", "frames")) if "hold" in f and f.endswith(".jpg")]
 check("hold", len(kept_left) == hold.get("frames"), f"the other hold frames were deleted ({len(kept_left)} left)")
 
-# hold stuck: the screen stays a pause and START never gets back to play: the hold gives up after the nav cap
+# hold stuck: the screen stays a pause and START never gets back to play. The step cap no longer ends the hold while budget
+# remains (10-06 owner order): it runs ladder rounds, and the hold stops only when the ladder has run out and the budget is gone
 rc, res, steps, calls = run("holdstuck", PREFIX + [("menu", 0)] * 30,
                             [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE]
                             + [PAUSED] * 16, ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
 hold = res.get("hold", {})
-check("holdstuck", res["result"] == "gameplay" and hold.get("ok") is False and "off play" in hold.get("reason", ""),
-      f"the claim stands but the hold gives up: {hold.get('reason', '')[:80]}")
-check("holdstuck", sum(1 for c in calls if c["purpose"] == "hold-check") <= pathfind.HOLD_NAV_MAX + 1,
-      "no more than the nav cap of model steps")
+check("holdstuck", res["result"] == "gameplay" and hold.get("ok") is False
+      and ("off play" in hold.get("reason", "") or "budget" in hold.get("reason", "")),
+      f"the claim stands but the hold gives up at the end of its budget: {hold.get('reason', '')[:80]}")
+check("holdstuck", sum(1 for c in calls if c["purpose"] == "hold-check") > pathfind.HOLD_NAV_MAX + 1,
+      "the hold runs past the nav cap while budget remains, with ladder rounds, instead of stopping at it")
 
 # holdrepeat: a cutscene that asks for A (an episode card) is answered once; its A is repeated HOLD_REPEAT times
 # with no model call, then the screen is read again, and the play resumes (Panzer, 10-03: 4 looks per death)
@@ -597,6 +603,30 @@ check("teamsport", _ts("", "NBA 2K3") and _ts("Set the period length to the LONG
 check("teamsport", not _ts("Set the game length to the LONGEST (10 frames)", "AMF Xtreme Bowling")
       and not _ts("Set innings to the longest", "MLB SlugFest 2004") and not _ts("", "RalliSport Challenge"),
       "bowling, baseball and racing keep the both-ways steering test")
+
+# validity (10-06 owner order): the hold ends on a passing verdict; a shortfall is extended only when more play can fix it
+short_dur = {"pass": False, "failing": "duration: 589 s of gameplay < 600 s confirmation", "crash": False, "hang": False,
+             "fps_ok_share": 1.0, "gameplay_s": 589, "timeline": {"play_share": 0.99, "play_s": 589, "scored_s": 589}}
+kind, s = pathfind.hold_shortfall(short_dur, 600)
+check("validity", kind == "duration" and abs(s - 26) < 0.01,
+      f"11 s short on duration is extended by 11 + 15 = 26 s: {kind} {s}")
+menu94 = {"pass": False, "failing": "menu time: 0.84 of the scored window in play (bar 90%)", "crash": False, "hang": False,
+          "fps_ok_share": 1.0, "gameplay_s": 600, "timeline": {"play_share": 0.84, "play_s": 506, "scored_s": 600}}
+kind, s = pathfind.hold_shortfall(menu94, 600)
+check("validity", kind == "share" and abs(s - 340) < 0.01,
+      f"94 s of menu in a 600-s window needs 94 / 0.10 - 600 = 340 s more: {kind} {s}")
+fps_fail = {"pass": False, "failing": "fps: 40% of gameplay at >= 28.5 fps (bar 90%)", "crash": False, "hang": False,
+            "fps_ok_share": 0.4, "gameplay_s": 600, "timeline": {"play_share": 0.99, "play_s": 600, "scored_s": 600}}
+hitch_fail = dict(short_dur, failing="hitch: 3 stalls over 500 ms after warm-up")
+check("validity", pathfind.hold_shortfall(fps_fail, 600)[0] == "stop" and pathfind.hold_shortfall(hitch_fail, 600)[0] == "stop"
+      and pathfind.hold_shortfall({"pass": True}, 600)[0] == "pass" and pathfind.hold_shortfall(None, 600)[0] == "stop",
+      "an fps fail and a hitch stop the hold at once; a pass ends it; no verdict stops it")
+# the ladder (10-06): off play past the cap runs its rounds, one press per look, cycling A, START, A, A, B, START
+check("ladder", pathfind.HOLD_LADDER[0] == "A" and pathfind.HOLD_LADDER[1] == "START" and "B" in pathfind.HOLD_LADDER
+      and pathfind.HOLD_LADDER_ROUNDS >= 1 and pathfind.HOLD_LADDER_ROUNDS * pathfind.HOLD_NAV_MAX >= 60,
+      f"A then START on the select, B out of a menu; {pathfind.HOLD_LADDER_ROUNDS} rounds x {pathfind.HOLD_NAV_MAX} steps")
+# budget: a 600-s hold with a 15-min claim gets 900 + 1050 + 300 s, not the old 900 + 900 + 300
+check("budget", pathfind.hold_budget_s(900, 600) == 900 + 1050 + 300, f"claim + 1.75 x hold + 300: {pathfind.hold_budget_s(900, 600)}")
 
 shutil.rmtree(TMP)
 print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))

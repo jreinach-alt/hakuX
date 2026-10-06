@@ -126,6 +126,47 @@ HOLD_REPEAT_STATES = ("cutscene", "game_over")
 # episode, then ask the model again. The hold log's `continue` look says which press took.
 CONTINUE_PRESS = ("START", "A")
 CONTINUE_TRIES = 4
+# Off play past the step cap (owner order 10-06): the cap no longer ends the hold while budget remains. Each cap trip runs one
+# ladder round, one press per look: a fighting select takes A on the highlighted fighter, START or A on a confirm, B out of a
+# menu (MK Armageddon's Character Select held the hold 10 min, 10-06). The hold stops for off play only when the ladder has
+# run its rounds AND the budget is gone.
+HOLD_LADDER = ("A", "START", "A", "A", "B", "START")
+HOLD_LADDER_ROUNDS = 6
+HOLD_VERDICT_S = 60              # once play has reached hold_s, the hold re-judges its validity this often
+HOLD_PLAY_AGREE_S = 5.0          # the hold's play_s and the verdict's play time may differ by this much; the verdict's is trusted
+
+
+def hold_budget_s(claim_s, hold_s):
+    """The budget the hold runs under (10-06): the claim's time, then hold_s x 1.75 for the extensions a validity check can
+    ask for, and 300 s for the rest."""
+    return claim_s + hold_s * 1.75 + 300
+
+
+def hold_shortfall(v, need_s=600.0):
+    """What more play could fix in a confirmation verdict (title_verdict.py's dict): ('pass', 0), ('duration', s),
+    ('share', s), or ('stop', 0) for a failure more play cannot fix. Duration: the need less the gameplay so far, plus a
+    15 s margin. Share: the window that more play must add so that off play stays at most 10 % of it (off / 0.10 - window).
+    Crash, hang, an fps share under 0.90, or no timeline stop the hold at once."""
+    if not v:
+        return "stop", 0.0
+    if v.get("pass"):
+        return "pass", 0.0
+    if v.get("crash") or v.get("hang") or (v.get("fps_ok_share") or 0) < 0.9:
+        return "stop", 0.0
+    # title_verdict reports its first failure only: a duration or menu-time failure is one more play can fix; anything else
+    # (a hitch, audio, the heat, a void) is not, so the hold stops on it
+    if not str(v.get("failing") or "").startswith(("duration", "menu time")):
+        return "stop", 0.0
+    tl = v.get("timeline")
+    if not isinstance(tl, dict) or tl.get("play_share") is None:
+        return "stop", 0.0
+    gameplay = float(v.get("gameplay_s") or 0)
+    if gameplay < need_s:
+        return "duration", need_s - gameplay + 15.0
+    scored = float(tl.get("scored_s") or gameplay)
+    off = max(0.0, scored - float(tl.get("play_s") or 0))
+    more = off / 0.10 - scored
+    return ("share", more) if more > 0 else ("stop", 0.0)
 CONFIRM_GRACE_S = 300                # seconds the claim budget is extended once a gameplay read starts its confirm (10-05)
 CLAIM_REPEAT = 3                     # the claim's unlooked repeats of a single press that advanced a cutscene
 CLAIM_REPEAT_STATES = ("cutscene", "intro_video", "publisher_logo")
@@ -1637,8 +1678,9 @@ class Agent:
         t_hold = now()
         # claim and hold get separate clocks (addendum 4, 10-03): the claim used the budget, the hold is owed its
         # seconds of play. A claim at 13 min used to leave the 600-s hold 2 min of budget (Black Stone, 10-03).
-        self.budget_s = max(self.budget_s, self.el() + self.hold_s * 1.5 + 300)
-        while play_s < self.hold_s and self.el() < self.budget_s:
+        self.budget_s = max(self.budget_s, hold_budget_s(self.el(), self.hold_s))
+        held_ok, last_v, ladder_rounds, ladder_i = False, None, 0, 0   # validity (10-06): the hold ends on a verdict, not on hold_s alone
+        while not held_ok and self.el() < self.budget_s:
             self.n += 1
             t_cycle = now()
             png, jp = self.frame("hold")
@@ -1704,9 +1746,15 @@ class Agent:
                     nav += 1
                     navs += 1
                     if nav > HOLD_NAV_MAX:
-                        reason = f"off play for {nav} steps: {a.get('state')} ({a.get('why', '')})"[:240]
-                        self.hold_note(log, dict(look, action=[]))
-                        break
+                        if ladder_rounds >= HOLD_LADDER_ROUNDS and self.el() + 60 >= self.budget_s:
+                            # the ladder has run its rounds AND the budget is gone: only now does off play end the hold
+                            reason = f"off play for {nav} steps: {a.get('state')} ({a.get('why', '')})"[:240]
+                            self.hold_note(log, dict(look, action=[]))
+                            break
+                        ladder_rounds, nav, ladder_i = ladder_rounds + 1, 0, 0
+                        look["ladder_round"] = ladder_rounds
+                        print(f"hold-play: off play for {HOLD_NAV_MAX} steps ({a.get('state')}): ladder round {ladder_rounds}",
+                              flush=True)
                     action = clean_action(a.get("action"))
                     if genre == "attack" and not th and st == "menu" and action == ["START"]:
                         # a fighting select screen takes A on the highlighted entry, not START (10-04 rule; the GG rerun
@@ -1740,6 +1788,11 @@ class Agent:
                         action, wait_s = name_press(self.name, name_tries), 1.5
                         name_tries += 1
                         look["name"] = name_tries
+                    elif ladder_rounds and not th:
+                        # the ladder (10-06): one press per look, unlooked, cycling the fighting select's inputs
+                        action, wait_s = [HOLD_LADDER[ladder_i % len(HOLD_LADDER)]], 2.0
+                        ladder_i += 1
+                        look["ladder"] = ladder_i
                     elif th:
                         # title hold: a menu is closed with one B and X follows; anything else keeps the model's press
                         # minus the forbidden buttons (a cutscene's A)
@@ -1763,6 +1816,7 @@ class Agent:
                     cont_tries = 0
                     pb_tries = 0
                     name_tries = 0
+                    ladder_i = 0
             if not off and look.get("action") is None:
                 # play: the genre loop (a check look that said play sends it too). The time credited is this
                 # cycle's own, from its frame to its inputs: the look before may have been off play.
@@ -1823,10 +1877,24 @@ class Agent:
             drop = [] if keep else [png, jp]
             look.update(play_s=round(play_s, 1), kept=keep)
             self.hold_note(log, look)
+            if play_s >= self.hold_s and (last_v is None or now() - last_v >= HOLD_VERDICT_S):
+                # the validity check (10-06 owner order): the hold ends on a verdict that passes, not on hold_s alone
+                last_v = now()
+                kind, s, why = self.hold_check(play_s, log)
+                if kind == "pass":
+                    held_ok = True
+                elif kind == "retry":
+                    print("hold-play: no verdict this check; checking again", flush=True)
+                elif kind == "stop" or self.el() + s > self.budget_s:
+                    reason = why or f"{kind} short by {s:.0f} s with no budget left"
+                    break
+                else:
+                    print(f"hold-play: verdict short on {kind} by {s:.0f} s; holding on (budget {self.budget_s - self.el():.0f} s left)",
+                          flush=True)
             last_png = png
         for p in drop:
             os.remove(p)
-        ok = play_s >= self.hold_s
+        ok = held_ok
         if not ok and not reason:
             reason = f"budget {self.budget_s / 60:.0f} min with {play_s:.0f} s of play"
         held.update(ok=ok, play_s=round(play_s, 1), need_s=self.hold_s, hold_s=round(now() - t_hold, 1),
@@ -1842,6 +1910,48 @@ class Agent:
             cat.terminate()
             held["verdict"] = self.hold_verdict(now() - t_hold)
         return self.finish(last=kept[-1] if kept else jpg, post=kept)
+
+    def hold_check(self, play_s, log):
+        """The hold's own validity check (10-06): title_verdict.py on the logcat so far, in a provisional folder whose logcat
+        ends with a `soak end` at its last logged time. Returns (kind, seconds, why) from hold_shortfall. The hold's play and
+        the verdict's play are both logged; the verdict's is trusted when they disagree."""
+        pdir = os.path.join(self.out, "provisional")
+        os.makedirs(pdir, exist_ok=True)
+        try:
+            lines = open(os.path.join(self.out, "logcat.txt"), errors="replace").read().splitlines()
+        except OSError:
+            lines = []
+        stamp = next((l[:18] for l in reversed(lines) if re.match(r"^\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}\s", l)), None)
+        with open(os.path.join(pdir, "logcat.txt"), "w") as f:
+            f.write("\n".join(lines) + "\n")
+            if stamp:
+                f.write(f"{stamp} I/hakuX-route(    0): soak end\n")
+        with open(os.path.join(pdir, "request.json"), "w") as f:
+            json.dump({"title": self.name, "title_id": self.tid, "device": self.dev.label,
+                       "iso": os.path.basename(self.iso or "")}, f)
+        with open(os.path.join(pdir, "run.log"), "w") as f:
+            f.write(f"held {self.name} for {int(play_s)}s\n")
+        v = None
+        try:
+            subprocess.run([sys.executable, VERDICT, pdir, "--require", "confirmation"],
+                           capture_output=True, text=True, timeout=120)
+            v = json.load(open(os.path.join(pdir, "verdict.json")))
+        except (subprocess.TimeoutExpired, OSError, ValueError):
+            v = None
+        # no verdict is an unknown, not a failure: the hold checks again at the next interval, and ends at the budget
+        kind, s = ("retry", 0.0) if v is None else hold_shortfall(v, self.hold_s)
+        tl = (v or {}).get("timeline")
+        vplay = tl.get("play_s") if isinstance(tl, dict) else None
+        if vplay is not None and abs(float(vplay) - play_s) > HOLD_PLAY_AGREE_S:
+            print(f"hold-play: play disagrees: hold {play_s:.1f} s, verdict {float(vplay):.1f} s (verdict trusted)", flush=True)
+        why = ""
+        if kind == "stop":
+            why = ("no verdict" if v is None else
+                   f"verdict stops the hold: fps_ok {v.get('fps_ok_share')}, crash {v.get('crash')}, hang {v.get('hang')}")
+        self.hold_note(log, {"check": kind, "short_s": round(s, 1), "hold_play_s": round(play_s, 1),
+                             "verdict_play_s": vplay, "gameplay_s": (v or {}).get("gameplay_s")})
+        print(f"hold-play: validity check {kind} {s:.0f} s (hold {play_s:.0f} s of play, verdict {vplay})", flush=True)
+        return kind, s, why
 
     def hold_verdict(self, secs):
         """title_verdict.py on the hold's logcat: its one VERDICT line (verdict.json beside it)."""

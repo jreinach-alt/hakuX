@@ -1078,3 +1078,23 @@ What this shows, and what it does not:
   (`scratch/rehold1006_gate.py`) checks before every take that the newest Nova result is on master with env [] and perflog
   off, that `.env_pref.nova` is absent, and that no Nova-bound request is queued (or 25 min have passed since the last
   release). A dirty Nova stops the queue rather than taking a hold.
+
+## Validity rule (10-06 07:05 owner order, via lane.local): a hold ends on a valid result, not on hold_s
+
+- Cause: MK Armageddon's hold ended at 587 s with 469 s of play. The 13-step off-play cap fired on the Character Select grid with
+  ~10 min of budget left, so the run was void.
+- Change in `docs/testing/titles/pathfind.py`:
+  1. The off-play cap starts a ladder round (HOLD_LADDER: A, START, A, A, B, START, one press per look, unlooked) instead of
+     stopping. The hold stops for off play only when HOLD_LADDER_ROUNDS are used up AND the budget is gone.
+  2. The hold ends on `hold_check`: `title_verdict.py --require confirmation` on a provisional copy of the logcat with a `soak
+     end` at its last logged time. `hold_shortfall` decides: pass ends it; a duration shortfall (600 - gameplay + 15 s) or a
+     menu-time shortfall (off / 0.10 - window) is extended while budget remains; an fps, crash, hang or any other first failure
+     stops at once; no verdict retries at the next check. Checks run once play reaches hold_s, then every 60 s.
+  3. The budget is claim + 1.75 x hold_s + 300 (`hold_budget_s`).
+  4. The hold's play and the verdict's play are both logged; the verdict's is trusted when they differ by more than 5 s.
+- Selftest (`pathfind_selftest.py`, clean pass `scratch/selftest-validity3.log`, all ok): 11 s short on duration -> 26 s; 94 s of
+  menu -> 340 s share; fps and hitch fail -> stop; pass; no verdict -> stop; the ladder constants; the budget formula. The
+  `holdstuck` leg now asserts that the hold runs past the nav cap with budget left. The older hold legs stub `hold_check` to pass,
+  because the fake device has no logcat for title_verdict.py; the extension path through the loop is NOT covered by a selftest
+  and is first exercised by the Armageddon retry.
+- Previous code kept at `scratch/pathfind.pre-validity.py` for diff.
