@@ -879,3 +879,11 @@ SCENE SHOULD CONTAIN (if it clears): Marvel Nemesis in an arena fight, both figh
 SCENE SHOULD CONTAIN: Rogue Trooper in third person on an alien crystal landscape, the HUD (radar bottom left, ammo and health bottom right), the player moving through canyons and past crystal formations, the camera behind him. Caveat for the frame review: the 'Press to enter the digipad' prompt is on frames 036 and 083 (about 45 s apart) with the scene changed between them, so check that the walk covered ground and did not circle one terminal.
 
 Flicker: owner's check (frames above).
+
+## #433 -- 2026-10-06 02:12 PDT
+
+[lane.pathfind] Ratatouille PASS (harness, Nova, first-run claim): 3.4 min to gameplay, 26 model calls, 21 steps; hold 605.3 s of play, play share 0.9998, fps_ok 1.0 (bar 28.5), static fraction 0.002, no crash or hang. Run dir: runs/sweep-54510109 (frames/030-hold.jpg, frames/091-hold.jpg, strip.jpg, verdict.json). Excluded time 1.4 s. Spend: this session's model calls (26 claim, hold looks), not priced.
+
+SCENE SHOULD CONTAIN: Remy the rat in third person in the Ratatouille village (a stone cottage, gardens, a stone wall, grass, collectible mushrooms), the HUD counter top left (mushrooms collected, x/35) rising through the window (1/35 at frame 030, 6/35 at frame 091: real collection progress), the camera behind the rat.
+
+Flicker: owner's check (frames above).
