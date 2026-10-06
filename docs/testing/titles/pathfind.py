@@ -272,6 +272,34 @@ def rematch_press(why, st):
     if "rematch" not in why or st not in ("results", "menu"):
         return None
     return ["A"] if REMATCH_HL.search(why) else ["UP"]
+# The fighting Character Select grid (10-06, MK Armageddon in three re-holds: rehold, rehold2, rehold2b). A on the
+# highlighted fighter opens the handicap panel and does not start the round. The presses that did start it were B (close
+# the panel) then START: rehold2 looks 77-79 and rehold2b looks 57-59, the round's black frame and fight intro one look
+# after. The ladder reached that pair only after ~30 looks on the grid, because it waits for the off-play cap. So a grid
+# look plays the cycle at once, unlooked, CHARSEL_TRIES presses (four cycles); then the ladder takes over.
+CHARSEL = ("A", "B", "START")
+CHARSEL_TRIES = 12
+CHARSEL_RE = re.compile(r"character select|select grid|fighter select|select screen|fighter grid")
+
+
+def charsel_press(why, st, i):
+    """The next press of the fighting select's cycle for a Character Select grid look, else None (i presses so far)."""
+    why = (why or "").lower()
+    if st not in ("menu", "other") or i >= CHARSEL_TRIES or not CHARSEL_RE.search(why):
+        return None
+    if any(w in why for w in ("title", "attract")):
+        return None
+    return [CHARSEL[i % len(CHARSEL)]]
+
+
+def still_window(shift_test, mv, sh):
+    """Whether a hold window is still. A title hold and a fighting hold judge it by the scene's shift: an effect in place
+    (blood, sparks, a hit flash) changes pixels, not the scene. Shaolin Monks (10-06, rehold-4D570029): a melee on one spot
+    read 0.13-0.21 pixel change with 0 px shift on four windows in a row, so the pixel test never sent the unstick. Other
+    genres keep the pixel test, which their windows were tuned on (not re-measured with the shift)."""
+    return sh < SHIFT_STILL if shift_test else mv < HOLD_STILL
+
+
 # Title-specific hold loops (10-03 addendum, the owner's Black Stone design). They replace the genre's loop and its
 # unlock rotation for these title ids. The walk moves the player with the left stick only, in long strokes that
 # change direction. X is pressed once, alone: at the start of the hold and after two still windows in a row. Y, R1,
@@ -1358,6 +1386,7 @@ class Agent:
             self.result.update(team_claim_extra_s=TEAM_CLAIM_EXTRA_S)
         relaunches = 0
         last_png = None
+        last_look, last_live = None, None   # the newest look's state, and the newest gameplay look's frame (10-06 claim rule)
         last_therm = now()
         while self.el() < self.budget_s:
             if now() - last_therm > 30:
@@ -1404,6 +1433,9 @@ class Agent:
             os.replace(jpg, jpg.replace("-look.jpg", f"-{dec['state']}.jpg"))
             jpg = jpg.replace("-look.jpg", f"-{dec['state']}.jpg")
             dec["frame"] = os.path.relpath(jpg, self.out)
+            last_look = dec["state"] if dec.get("src") != "black" else None
+            if last_look == "gameplay":
+                last_live = dec["frame"]
             if dec["state"] == "gameplay" and dec.get("src") != "black":
                 self.write_step(dec)
                 # play is live: the claim budget does not end the confirm (19:40 rule; MTV rerun 10-05 gave up at step 89
@@ -1442,12 +1474,12 @@ class Agent:
             time.sleep(min(max(float(dec.get("wait_s") or 2), 0.5), 12))
             last_png = png
         last = self.steps[-1] if self.steps else None
-        if self.hold_s and last and last.get("state") == "gameplay" and last.get("frame"):
-            # the budget ran out with the last look reading live play (10-06 owner order): a refused or inconclusive probe is
+        if self.hold_s and last_look == "gameplay" and last_live:
+            # the budget ran out with the newest look reading live play (10-06 owner order): a refused or inconclusive probe is
             # not a stop; the hold's verdict decides (play share, fps, frames). Only menu, loading, crash or black ends the claim.
             print(f"claim: budget ran out on live play (step {len(self.steps)}): entering the hold", flush=True)
             self.result.update(claim_budget_live=True)
-            return self.success(os.path.join(self.out, last["frame"]))
+            return self.success(os.path.join(self.out, last_live))
         self.result.update(result="gave-up", reason=f"budget {self.budget_s / 60:.0f} min",
                            last_state=last.get("state") if last else None)
         return self.finish(last=jpg if self.steps else None)
@@ -1713,6 +1745,7 @@ class Agent:
         # seconds of play. A claim at 13 min used to leave the 600-s hold 2 min of budget (Black Stone, 10-03).
         self.budget_s = max(self.budget_s, hold_budget_s(self.el(), self.hold_s))
         held_ok, last_v, ladder_rounds, ladder_i = False, None, 0, 0   # validity (10-06): the hold ends on a verdict, not on hold_s alone
+        charsel_i = 0   # the fighting select's cycle presses on this off-play episode (charsel_press)
         while not held_ok and self.el() < self.budget_s:
             self.n += 1
             t_cycle = now()
@@ -1821,6 +1854,11 @@ class Agent:
                         action, wait_s = name_press(self.name, name_tries), 1.5
                         name_tries += 1
                         look["name"] = name_tries
+                    elif genre == "attack" and not th and charsel_press(a.get("why"), st, charsel_i):
+                        # the fighting select's cycle (10-06): A, B, START, one press per look, from the first grid look
+                        action, wait_s = charsel_press(a.get("why"), st, charsel_i), 2.0
+                        charsel_i += 1
+                        look["charsel"] = charsel_i
                     elif ladder_rounds and not th:
                         # the ladder (10-06): one press per look, unlooked, cycling the fighting select's inputs
                         action, wait_s = [HOLD_LADDER[ladder_i % len(HOLD_LADDER)]], 2.0
@@ -1850,6 +1888,7 @@ class Agent:
                     pb_tries = 0
                     name_tries = 0
                     ladder_i = 0
+                    charsel_i = 0
             if not off and look.get("action") is None:
                 # play: the genre loop (a check look that said play sends it too). The time credited is this
                 # cycle's own, from its frame to its inputs: the look before may have been off play.
@@ -1866,10 +1905,11 @@ class Agent:
                     mv = window_change(kept[-1], jp)
                     look["window"] = round(mv, 4)
                     # a title hold judges still by the scene's shift (an effect in place changes pixels, not the scene)
-                    if th:
+                    shift_test = bool(th) or genre == "attack"
+                    if shift_test:
                         sh = scene_shift(kept[-1], jp)
                         look["shift"] = round(sh, 1)
-                    still_now = sh < SHIFT_STILL if th else mv < HOLD_STILL
+                    still_now = still_window(shift_test, mv, sh if shift_test else 0)
                     if still_now:
                         still_windows += 1
                         if th:

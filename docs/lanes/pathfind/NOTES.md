@@ -1098,3 +1098,46 @@ What this shows, and what it does not:
   because the fake device has no logcat for title_verdict.py; the extension path through the loop is NOT covered by a selftest
   and is first exercised by the Armageddon retry.
 - Previous code kept at `scratch/pathfind.pre-validity.py` for diff.
+
+## Resume 10-06 10:02 PDT (attempt 2, lane.local 10:05 order: the Nova screens again): why attempt 1 did not finish
+
+- Attempt 1 ran 08:01-09:50 PDT. It committed the claim live-play rule (853ee7da6a), the Armageddon retry FAIL (1b19fab549, 08:18),
+  and a merge of origin/master (8d7af64998, 09:50). Its last device run ended before 08:18.
+- It did not finish the 08:50 offline work: the Character Select exit (`CHARSEL`), the still-window change for title and fighting
+  holds (`still_window`), and their selftest legs were coded in the worktree but never run or committed. Its selftest edit also
+  scripted 1500 looks into the `claimlive` leg; on real time that run did not end inside 540 s, so no selftest result was recorded.
+- Cause: the session read the 08:50 "no device" order as the end of its work and stopped after the merge, before the selftest that
+  gates its own change. No WAITING file was left, and the Nova was free from 08:18.
+- This attempt: restores the `claimlive` leg to HEAD (its wall-clock budget is the production one; the 1500-look version is
+  dropped), runs the full selftest detached (`scratch/selftest-attempt2-1006.log`), commits the CHARSEL and still-window change
+  only if it passes, then takes the Nova for NFL Blitz Pro (10:05 order item 1a: a claim on a title with no recorded path).
+
+## Resume 10-06 10:44 PDT (attempt 3, lane.local 10:05 order: the Nova screens again): why attempt 2 did not finish
+
+- Attempt 2 (10:02) wrote that it would restore the `claimlive` selftest leg to HEAD, run the selftest, and commit the CHARSEL and
+  still-window change only if it passed. It did none of that. At the start of this attempt the worktree still held the 1500-look
+  `claimlive` leg, so the selftest could not finish inside its timeout, and nothing was committed.
+- Cause: the session started the selftest with the wrong leg still in the file and wrote its status note in place of the restore,
+  the same failure as attempt 1 (the 08:50 offline order was read as the end of work before the gating selftest ran).
+- This attempt: stopped that background selftest (it had written only a partial log), restored `claimlive` to HEAD's 400-look,
+  2-min-budget form, and reran the full selftest detached (`scratch/selftest-attempt3-1006.log`). The CHARSEL / still-window commit
+  waits on its result. The Nova had no hold and no queued Nova request at 10:44.
+- Next on the Nova (10:05 order item 1a, title with no recorded path): NFL Blitz Pro (`NFL_Blitz_Pro.xiso.iso`, on the Nova), then
+  NFL 2K2 and NHL Hitz Pro. Football sits last in the 12:35 10-05 owner order; the 10-06 10:05 note lists NFL Blitz Pro first, and I
+  am taking the newer note, which names the title explicitly.
+
+## Resume 10-06 10:56 PDT (attempt 4, lane.local 11:00 order: take the Nova first): why attempt 3 did not finish
+
+- Attempt 3 (10:44) restored `claimlive`, ran the full selftest (`scratch/selftest-attempt3-1006.log`, 10:54) and ended on its
+  FAIL without a device run, a commit or an OUTBOX line. The Nova had no pathfind run 08:18-10:58.
+- Cause (lane.local's reading, and mine): the session treated the offline selftest as a gate on device time. It is not; the
+  claim runs on committed tools.
+- The `claimlive` FAIL itself had two causes, both in the leg, not in pathfind.py: (1) its canned answers were a GAME look plus
+  30 confirm refusals, but only the first probe moves (PREFIX), so later looks took refusal-shaped answers and read `unknown`,
+  then the sim ran dry; the budget never ended on live play. (2) The leg ran after the selftest restores the real clock, so the
+  hold it should enter has a ~11-min wall budget. Fixed: one refusal, then 600 GAME looks, on the fake clock
+  (`scratch/claimlive_try.py` runs the leg alone in seconds: gameplay, claim_budget_live, hold entered).
+- This attempt: Nova hold taken 10:58 for NFL Blitz Pro (claim + 600-s hold), run from a clean detached checkout of HEAD
+  8d7af64998 (`~/hakux-work/wt/pathfind-head`, dirty=0), log `scratch/blitzpro2.log`, out `runs/nfl-blitz-pro/hold2`. Nova build
+  before the hold: the 0342eba317 master restore (apk ad6f37a2f087, env []), no `.env_pref.nova`. Full selftest with the leg fix
+  and the CHARSEL / still-window change runs detached (`scratch/selftest-attempt4-1006.log`).

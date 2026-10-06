@@ -518,6 +518,20 @@ check("rematch", pathfind.rematch_press("END OF MATCH results: REMATCH highlight
       and pathfind.rematch_press("Are you sure you want to RETURN TO CHARACTER SELECT? NO highlighted", "menu") == ["A"]
       and pathfind.rematch_press("pause menu, resume", "pause") is None,
       "REMATCH: A on the highlighted REMATCH row else UP; DOWN and A on the REMATCH confirm; A cancels a RETURN confirm")
+# fighting select (10-06, MK Armageddon rehold, rehold2, rehold2b): a grid look plays A, B, START from the first look
+check("charsel", pathfind.charsel_press("Character select grid is showing with STRYKER highlighted; not live play.", "menu", 0) == ["A"]
+      and pathfind.charsel_press("Character select grid, handicap panel open", "menu", 1) == ["B"]
+      and pathfind.charsel_press("Character select grid", "menu", 2) == ["START"]
+      and pathfind.charsel_press("Character select grid", "menu", 3) == ["A"]
+      and pathfind.charsel_press("Character select grid", "menu", pathfind.CHARSEL_TRIES) is None
+      and pathfind.charsel_press("Character select grid", "gameplay", 0) is None
+      and pathfind.charsel_press("title screen with PRESS START", "menu", 0) is None
+      and pathfind.charsel_press("Fight HUD, round timer 90", "other", 0) is None,
+      "the select cycle is A, B, START; a grid look only, not a title, not play, CHARSEL_TRIES presses at most")
+# still by the scene's shift for title and fighting holds (10-06, Shaolin Monks: effects in place read as moving on pixels)
+check("still-shift", pathfind.still_window(True, 0.2, 0.0) and not pathfind.still_window(True, 0.0, 2.0)
+      and pathfind.still_window(False, 0.01, 50.0) and not pathfind.still_window(False, 0.2, 0.0),
+      "a title or fighting window is still on the shift (effect in place: still); other genres on the pixel change")
 # bowling (10-05, AMF Bowling 2004): a bowl hold loops aim and throw with no B, X or Y, and each frame's scorecard
 # (a period_break) gets START, then A, on its own budget (PERIOD_TRIES), not the shared CONTINUE budget.
 ROUTE_LOG.clear()
@@ -605,9 +619,16 @@ check("teamsport", not _ts("Set the game length to the LONGEST (10 frames)", "AM
       "bowling, baseball and racing keep the both-ways steering test")
 
 # claim (10-06 owner order): the budget ends on live play with refused probes, so the run enters the hold instead of giving up
+# On the fake clock: on real time the hold's budget (claim + 1.75 x hold + 300) is ~11 min of wall time. One confirm refusal
+# (the PREFIX probe moves), then every look reads play: a refusal-shaped answer taken by a look reads unknown, not play.
+CLOCK = [1000.0]
+pathfind.now = lambda: CLOCK[0]
+pathfind.time.sleep = lambda s: CLOCK.__setitem__(0, CLOCK[0] + s)
 rc, res, steps, calls = run("claimlive", PREFIX + [("game", 0)] * 400,
-                            [GAME] + [{"gameplay": True, "responded": False, "why": "the probe did not move the scene"}] * 30,
+                            [GAME, {"gameplay": True, "responded": False, "why": "the probe did not move the scene"}]
+                            + [GAME] * 600,
                             ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "2"])
+pathfind.now, pathfind.time.sleep = real_now, real_sleep
 check("claimlive", res.get("claim_budget_live") is True and res.get("result") == "gameplay"
       and res.get("hold") is not None,
       f"the claim budget ran out on live play: the run enters the hold ({res.get('result')}, hold {bool(res.get('hold'))})")
