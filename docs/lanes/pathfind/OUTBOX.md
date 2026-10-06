@@ -719,3 +719,15 @@ NEW ISSUE: NHL 2K3 frame rate drops to ~24 fps in 31% of play (vCPU guest busy d
 SCENE SHOULD CONTAIN (for the next reviewer): the hockey broadcast camera on a live rink, a human-controlled skater with the marker, the puck in play, the scoreboard HUD with a running clock; the replay footer must not appear.
 
 Spend: NHL 2K3 hold2 (73 model calls) and hold3 (46 calls) in Sonnet, about $6 for the two claims and looks together.
+
+## #433 -- 2026-10-05 19:40 PDT
+
+[lane.pathfind] Strike Force Bowling FAIL (play share, game end): hold4 (runs/strike-force-bowling/hold4) and hold5 (runs/strike-force-bowling/hold5). Claim 3.1 min, 17 steps, 34 model calls: the name entry at the start (DOWN x4, A, the default name) worked on the bowler's creation, and the claim reached the bowling aim screen at about 2.5 min. fps clear: median 59.0, 100% at the bar, window min not below 28.5. Play share 0.80 (hold4) and 0.73 (hold5) of about 380 s; the hold ended off play at 276-279 s both times, after 13 off-play steps.
+
+Named cost, from hold.jsonl and frame 085 (hold5): (1) the first game ends at about 4.6 min of play (the loop's A presses walk through the game-over prompts); (2) the game then opens the high-score NAME ENTRY for the bowler ("Name field, Strength/Accuracy/Curve bars, Done"), and then Name Entry for Player 2, 3, 4, 5; (3) the title's DOWN x4 then A (the claim's default-name sequence) did NOT leave that high-score entry in hold5 (six presses, same screen); the recovery's B and A then reached PlayerSelect (frame 085: Mary Anne highlighted, Change / Select / Cancel footer), where no lanes are in play. The hold ends there. The game-length setting in the claim was not confirmed to be the longest offered (one game of about 4.6 min); if the first game is the longest, a rematch or Add-another-game entry on the game-over screen is the input to find.
+
+NEW ISSUE: Strike Force Bowling hold ends at the first game's end: the high-score name entry is not left by the title's default-name sequence, and PlayerSelect is the only way back (runs/strike-force-bowling/hold5/frames/085-hold.jpg). Blocks the bowling Playable (fps clear, play share 0.73-0.80). Input for the high-score entry and the rematch screen not yet identified; needs the game-over frames (hold4 frames 040-080) read before the next run.
+
+SCENE SHOULD CONTAIN: a bowler at the foul line with the aim meter, the ball rolling down the lane, pins falling and resetting, the frame sheet, neighbouring lanes with bowlers.
+
+Parked: no third run today (rule: identify, do not re-run). Next: LEGO Star Wars re-hold (one try), then AvP re-hold (one try), football last.
