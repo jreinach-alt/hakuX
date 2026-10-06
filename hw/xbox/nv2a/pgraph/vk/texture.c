@@ -52,6 +52,11 @@ static void image_pool_drain(PGRAPHVkState *r);
 int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
                         const char *cat, int site);
 void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok);
+/* the render-pass census's surface events, as draw.c's */
+void pgraph_vk_xfr_surf(const SurfaceBinding *s, int ev);
+#define XFR_SURF_READ 1
+#define XFR_SURF_UPLOAD 2
+#define XFR_SURF_GONE 3
 
 /*
  * #474: wall time of each step of pgraph_vk_bind_textures(), NV2A_PERF_LOG
@@ -972,6 +977,7 @@ static void copy_zeta_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surfac
 #endif
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_GREEN, __func__);
     int xfr_tok_960 = pgraph_vk_xfr_begin(pg, cmd, "s2t", 960);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_READ);
 
     unsigned int scaled_width = surface->width,
                  scaled_height = surface->height;
@@ -1155,6 +1161,7 @@ static void bind_surface_as_texture(PGRAPHState *pg, SurfaceBinding *surface,
     TXW_BEGIN(ND);
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
     int xfr_tok_1146 = pgraph_vk_xfr_begin(pg, cmd, "barrier", 1146);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_READ);
     TXW_END(ND);
 
     VkImageMemoryBarrier barrier = {
@@ -1215,6 +1222,7 @@ static void bind_zeta_surface_as_texture(PGRAPHState *pg,
     TXW_BEGIN(ND);
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
     int xfr_tok_1204 = pgraph_vk_xfr_begin(pg, cmd, "barrier", 1204);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_READ);
     TXW_END(ND);
 
     VkImageMemoryBarrier barrier = {
@@ -1282,6 +1290,7 @@ static void copy_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surface,
 #endif
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_GREEN, __func__);
     int xfr_tok_1264 = pgraph_vk_xfr_begin(pg, cmd, "s2t", 1264);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_READ);
 
     pgraph_vk_transition_image_layout(
         pg, cmd, surface->image, surface->host_fmt.vk_format,

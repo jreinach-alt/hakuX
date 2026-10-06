@@ -34,6 +34,11 @@
 int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
                         const char *cat, int site);
 void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok);
+/* the render-pass census's surface events, as draw.c's */
+void pgraph_vk_xfr_surf(const SurfaceBinding *s, int ev);
+#define XFR_SURF_READ 1
+#define XFR_SURF_UPLOAD 2
+#define XFR_SURF_GONE 3
 
 /* Lightweight surface sub-timers — compiled out when profiling is off */
 #if NV2A_PERF_LOG
@@ -844,6 +849,7 @@ static bool download_surface_record_deferred(NV2AState *d,
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED,
                                  "download_surface_deferred");
     int xfr_tok_587 = pgraph_vk_xfr_begin(pg, cmd, "download", 587);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_READ);
 
     /*
      * For color surfaces already in GENERAL, skip the layout transition
@@ -1773,6 +1779,7 @@ static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
 #endif
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED, __func__);
     int xfr_tok_1507 = pgraph_vk_xfr_begin(pg, cmd, "download", 1507);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_READ);
 
     /* Color surfaces in GENERAL: skip layout transition, use memory barrier */
     bool use_general_for_transfer = surface->color &&
@@ -3565,6 +3572,7 @@ typedef struct DeferredSurfaceRelease {
 
 static void destroy_surface_image(PGRAPHVkState *r, SurfaceBinding *surface)
 {
+    pgraph_vk_xfr_surf(surface, XFR_SURF_GONE);
     pgraph_vk_texture_surface_view_retired(&g_nv2a->pgraph,
                                            surface->image_view);
 
@@ -3946,6 +3954,7 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED, __func__);
     int xfr_tok_3665 = pgraph_vk_xfr_begin(pg, cmd, "surf_up", 3665);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_UPLOAD);
 
     VkBufferMemoryBarrier host_barrier = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -4693,6 +4702,8 @@ static void surface_handoff_record(NV2AState *d, SurfaceBinding *src,
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED, __func__);
     int xfr_tok_4398 = pgraph_vk_xfr_begin(pg, cmd, "handoff", 4398);
+    pgraph_vk_xfr_surf(src, XFR_SURF_READ);
+    pgraph_vk_xfr_surf(dst, XFR_SURF_UPLOAD);
 
     /* src image -> compute_dst, laid out as the download lays it out. */
     VkImageLayout src_layout = src->image_layout;
