@@ -16,7 +16,7 @@ No lane session is running.
 
 ## 0.5 release: Playable titles
 
-**27 titles are confirmed Playable** (6 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**27 titles are confirmed Playable** (0 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
@@ -56,6 +56,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-06 frametrace: the PFIFO thread's GPU waits named per title (draw.c:4386 under pfifo.lock on Simpsons
 - 2026-10-05 frametrace: per-frame critical-path telemetry (HAKUX_FRAMETRACE=1): who set the pace, frame by frame
 - 2026-10-05 dashretro: the 0.5 panel counts the Playable ledger and pathfind's held runs (#433)
 - 2026-10-05 hitchcause: the MTV 330 ms hitches are guest-side waits, not the IDE host read ([ide425d] held run on af37f7a3ea) (#433)
@@ -67,4 +68,4 @@ No branch is being worked right now.
 - 2026-10-04 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
 - 2026-10-04 hangwatch: a locked-up title is caught on telemetry in about 90 s, not waited out
 
-_Updated 2026-10-05 23:57 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-06 00:13 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
