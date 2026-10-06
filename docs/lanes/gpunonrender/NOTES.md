@@ -1740,3 +1740,54 @@ background differ in both arms alike. **Verdict: the shipped sysmem row
 stands**, at about 2x the GMEM frame rate on today's master (flip474: 13 ->
 21; gmem474's profiled arm: 32.4). Once more GMEM's last tile (21.6 ms) is
 the whole sysmem pass (20.9 ms).
+
+## Attempt 13: why attempt 12 did not finish
+
+The session ended after committing P3's read (9c3cb73b15). At that point
+P1-P was running, P2-P and the last restore were queued, no WAITING file was
+set, and OUTBOX had no entry for P2 or P3. The PM replan at 13:55 parked
+P2-P (`dispatch/parked/gpunonrender-profiled-20261006`) until 22:00. This
+attempt reads P1-P, writes OUTBOX, and keeps the Nova free until 22:00.
+
+### P1-P read: DOA3, `TU_AUTOTUNE_ALGO=profiled`
+
+`1-1791317784-lane.gpunonrender-1634952`: apk 4028728fcc5a, cache kept
+after P1-S/P1-G/P2/P3. Battery 80%, charging on USB. No thermal pause.
+`env: TU_AUTOTUNE_ALGO=profiled`, `render_mode: auto (default)
+title=54430001 TU_DEBUG=(unset)`, so the driver chose the mode per pass.
+
+- **What profiled chose**: in/out 0.97 over the whole fight and attract
+  window (13:46:28-13:50:16: in 12.97, out 13.31 ms a frame), so sysmem on
+  every heavy pass. The pre-game screens (13:44:45-13:45:21, ~300 draws at
+  1.7 ms a CB) read in/out 0.65: GMEM on passes that cost almost nothing in
+  either mode.
+- The fight was a third stage again (story mode), so it is not compared.
+  The attract demo ran the same draw-count sequence as P1-S (`rpcseries.py`):
+
+| matched segment (`segread.py`) | arm | gfps median | Tot ms (median) | out ms/CB | GPU MHz |
+|---|---|---|---|---|---|
+| A+B, ~430 then ~350 draws | P1-S sysmem (13:02:12-13:02:26) | 59.0 | 13.65 | 13.50 | 401-550 |
+| | P1-P profiled (13:48:41-13:48:56) | 59.0 | 13.80 | 13.48 | 401 |
+| | P1-G GMEM (from P1 read) | 31.0 | 27.6 | 27.1 | 615-680 |
+| C, 770-900 draws | P1-S sysmem (13:02:43-13:02:48) | 46.0 | 19.50 | 19.42 | 550 |
+| | P1-P profiled (13:49:11-13:49:17) | 48.0 | 18.90 | 17.95 | 550 |
+
+(These C bounds are the four to five census lines whose draw counts match
+across the two arms: 771/878/800/660 and 902/831/701. The P1 read's C row,
+52.5 gfps and Tot 16.3, used a wider window.)
+
+**Decision (the rule written before queueing): profiled matches the best
+mode on DOA3.** Tot is within 1% of P1-S on A+B and 3% under it on C, so
+well inside 10% of the lower arm. The `bandwidth` autotune sent these
+passes to GMEM (P1-G, in/out 0.50), and `profiled` sends them to sysmem.
+NG Black's P2-P decides the second title. It is parked until 22:00 and is
+read against P2-S's matched intro (13:19:14-13:19:25, Tot 13.4) and P2-G's
+(13:27:42-13:27:58, Tot 25.0). Profiled matches if its Tot on the intro
+segment is at most 14.7 ms.
+
+Energy: thermal.jsonl samples power every ~30 s while the Nova charges
+from USB, so the system draw is the USB input minus the battery's charge
+current. One sample per matched segment, at a different point in each, is
+not a J/frame reading. gmem474's Crimson figure (+8% J/frame with profiled)
+stays the only energy number. The fleet A/B below reads J/frame from its
+600 s windows.
