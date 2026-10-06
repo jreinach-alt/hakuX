@@ -491,6 +491,13 @@ check("sports", [l["action"] for l in pb[:2]] == [["START"], ["A"]],
 check("sports", "period_break" in pathfind.STATES and "LONGEST" in pathfind.RULES
       and "period_break" in pathfind.RULES,
       "the state list names period_break, and the claim prompt sets the period to the longest value")
+# replay (10-05, NHL 2K3 hold2): the hold's look prompt names the instant-replay footer as period_break, not play. The fake
+# model cannot read a prompt, so this checks the rule's text and that the look sends it (the frame test is the device run).
+import inspect  # noqa: E402
+rp = pathfind.HOLD_REPLAY
+check("replay", all(w in rp for w in ("Rewind", "Play/Pause", "Back", "period_break", "START"))
+      and "HOLD_REPLAY" in inspect.getsource(pathfind.Agent.hold_look),
+      "the hold look sends the replay footer rule: a replay is period_break, input START")
 # bowling (10-05, AMF Bowling 2004): a bowl hold loops aim and throw with no B, X or Y, and each frame's scorecard
 # (a period_break) gets START, then A, on its own budget (PERIOD_TRIES), not the shared CONTINUE budget.
 ROUTE_LOG.clear()

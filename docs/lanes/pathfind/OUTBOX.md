@@ -699,3 +699,11 @@ NEXT SCREENING ORDER when the perf queue drains (P x win; fps is already clear o
 4. AvP: Extinction re-hold: fps locked 30, the new title hold (3b1cb99dd3) selects the squad and scrolls the map. P about 0.3 (controls unverified).
 5. Football last, per the 12:35 order (NFL Blitz Pro, NFL 2K2, then the rest).
 Not again today: AMF Xtreme (crash, for identification), Strike Force Bowling (name-entry wheel identified, untested), Guilty Gear XX, Tork.
+
+## #433 -- 2026-10-05 18:50 PDT
+
+[lane.pathfind] NHL 2K3 FAIL (replay counted as play; harness verdict is wrong): hold2 (runs/nhl-2k3/hold2, 622 s held, 11.2 min claim, 73 model calls) reported PASS on play share 0.973 and fps_ok 1.0 (median 29, locked 30). The frames do not show live play for the back half: frames 070-115 are the instant-replay viewer, with its footer across the bottom reading L Rewind, R Forward, A Play/Pause, X Zoom In, B Zoom Out, Y Hide, START Back (frame 091 is the clearest). The hold's looks read those frames as "gameplay" ("the game world is live", "could be a replay"), so the hold never pressed START and the verdict counted about 300 s of replay as play. The sports look at the start also read no controlled skater (human_controlled false, a goalie close-up), so the controlled-player check did not hold either. SCENE SHOULD CONTAIN (for the re-hold): a human-controlled skater with the marker, the puck moving, the scoreboard and period clock, the crowd, and no replay footer.
+
+NEW ISSUE: the hold verdict counts an instant-replay viewer as play: NHL 2K3 hold2 scored 0.973 play share over about 300 s of replay (footer "L Rewind R Forward A Play/Pause X Zoom In B Zoom Out Y Hide START Back", frames 070-115 of runs/nhl-2k3/hold2/frames). Blocks any sports Playable whose replays run in the hold (the same looks would pass NBA 2K3 replays too). Fix in progress: the hold look now names the footer as period_break with input START (HOLD_REPLAY in pathfind.py; selftest "replay" ok, 77 ok).
+
+Fix committed, one re-hold queued (NHL 2K3 hold3, same recipe). Spend: about 73 model calls on hold2 plus hold looks, Sonnet.

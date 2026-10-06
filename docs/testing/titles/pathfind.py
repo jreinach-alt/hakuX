@@ -160,6 +160,12 @@ HOLD_UNSTICK = {
 # "Presents" inventory in 13 of 19 kept frames). Each such drop sheds the next of these from the loop.
 HOLD_SHED = ("B", "X", "Y", "BACK", "R1", "L1")
 HOLD_SHED_STATES = ("menu", "pause", "other")
+# an instant-replay viewer (NHL 2K3 hold2, 10-05 18:3x): the game picture keeps moving, so it reads as live play, but a
+# footer along the bottom ("L Rewind, R Forward, A Play/Pause, X Zoom In, B Zoom Out, Y Hide, START Back") marks it. The
+# hold read 300 s of replay as gameplay and the verdict passed it. START returns to the game.
+HOLD_REPLAY = (" An instant-replay viewer is NOT play, whatever the camera shows: a footer along the bottom of the picture "
+               "reads Rewind, Forward, Play/Pause, Zoom In, Zoom Out, Hide, Back. That is state period_break, in_play false, "
+               "and its input is START (Back returns to the game).")
 HOLD_GENRES = {
     "drive": ["RT:2", "RT+left:0.8", "RT+right:0.8"],
     "attack": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"],
@@ -1521,7 +1527,7 @@ class Agent:
             # START opened the pause menu twice; Guilty Gear XX's empty player-2 slot): play, and START is never its input
             " A 'PRESS START' or 'Player 2 press START' prompt shown over the game world while the player's "
             "character is on screen is a second player's join prompt: that is live play (in_play true), and START "
-            "there opens the pause menu, so never answer START for it." + fight +
+            "there opens the pause menu, so never answer START for it." + HOLD_REPLAY + fight +
             sports +
             ' Answer JSON only: {"state": "gameplay|pause|game_over|results|menu|continue|period_break|cutscene|loading|black|other", '
             '"in_play": true|false, "why": "<one line>", "action": [inputs, e.g. "START", "A", '
