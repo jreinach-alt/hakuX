@@ -755,3 +755,11 @@ NEW ISSUE: AvP Extinction: the squad-order input does not move the RTS scene (99
 SCENE SHOULD CONTAIN: Liu Kang (or the fighter the claim picked) walking and fighting through the dungeon rooms, the health bar and EXP bar in the top-left, enemies in the room, the room changing across the window (frames 042 to 088 show three rooms).
 
 Frames for the owner: runs/sweep-4D570029/frames (about one frame per 3 s in the strip; the kept frames are every 15-30 s). Frame review: the strip shows the scene moving and the player walking, not a title card.
+
+## #433 -- 2026-10-05 20:40 PDT
+
+[lane.pathfind] Mortal Kombat: Armageddon PASS (harness, full window): play share 0.955 of 636 s, fps_ok 1.0 at the bar, hitches 0, no crash or hang. Claim and hold in one run (runs/sweep-4D570034, 13 min). Run dir: frames/, hold_strip.jpg, verdict.json. Aborted at: full window. Perflog: not taken. Flicker: unchecked (owner's check).
+
+SCENE SHOULD CONTAIN: two fighters in a live round (Scorpion against Jax, Havoc, Sektor or Kenpo in the frames), the health bars, round timer, wins counter, a stage with blood and background movement. The hold also passed two menu frames (the ARCADE / VERSUS / PRACTICE menu at 056 and a roster select at 060) between rounds, and then returned to the fight; the reviewer should expect those within the 4.5% non-play.
+
+Frames for the owner: runs/sweep-4D570034/frames (strip every 3 s, kept frames every 15-30 s).
