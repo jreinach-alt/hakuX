@@ -1439,3 +1439,13 @@ For whoever resumes this: the census's mode inference cannot classify a pass
 shorter than ~0.1 ms (K3 fails there). A fix that reads the mode should test
 the ratio only above a minimum outer span. The load/store groups do not depend
 on it.
+
+### Where attempt 11 stopped
+
+Done: census telemetry (f4ffe285e7), N0 and D1 read against the rule written
+before them, the restore at master ran, `nv2a_index.json` regenerated, PR.md
+`State: ready`. preflight passes every gate but `coverage`, which fails on
+board rows for open issues #852-#857 (fighting-game hold work, not this lane's
+files). Nothing of this lane is queued or running. WAITING is `fold
+gpunonrender` again, so the keepalive pass leaves the lane stopped until the
+fold.

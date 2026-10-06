@@ -74,5 +74,7 @@ Details, the per-scene tables and a ranked render-mode recommendation are in
 |---|---|
 | draw.c, surface.c, texture.c at f4ffe285e7, NDK clang line of the release build, with and without `NV2A_PERF_LOG`, `-Wall` | compile; no warnings beyond those on master |
 | Android build, perflog, at f4ffe285e7 | built by the dispatcher, apk 281bf2515bb8; ran N0 and D1 on the Nova |
+| `docs/testing/nv2a_index.py build` (tests 6743b6ab, the committed index's) | regenerated: 104 suites, 3002 sites |
+| `docs/testing/preflight.sh --allow-tracker` | every gate ok but `coverage`: open issues #852-#857 have no tracker row (board files) |
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
