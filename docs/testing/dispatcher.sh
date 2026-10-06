@@ -1164,6 +1164,20 @@ PY
 # closes it without having to prove it was the one.
 lane_file() { echo "$D/lanes/$DEVICE_LABEL"; }
 
+# THE MASTER RESTORE (10-06). A run that left its handheld on a test build (a
+# branch ref, an env_vars A/B) is followed by a 60 s master run queued here, so
+# the next measurement does not start on that build. device_build.py decides
+# whether this run needs one and writes the request into queue/; it writes
+# nothing for a run already on master, or for a restore itself. A failure here
+# is logged and never fails the run it follows.
+queue_master_restore() {   # $1 = run id (results/<id>)
+    local out
+    out=$(python3 "$HERE/jobs/device_build.py" restore "$D" "$DEVICE_LABEL" "$1" 2>&1) \
+        && { [ -z "$out" ] || log "  master restore queued: $out"; } \
+        || log "  master restore NOT queued for $1: $out"
+    return 0
+}
+
 lane_claim() {
     local f; f="$(lane_file)"
     # Cheap enough to call every tick: one read, and a write only when the
@@ -1555,6 +1569,7 @@ PYEOF
             [ -d "$rdir/frames" ] && printf ', %s frames' "$(ls "$rdir/frames" | wc -l)")"
         mv "$req" "$rdir/request.json"
         rm -f "$D/running/$id.owner"
+    queue_master_restore "$id"
     touch "$rdir/DONE"
         return 0
     fi
@@ -2013,6 +2028,7 @@ PYEOF
         return 0
     fi
     rm -f "$D/running/$id.owner"
+    queue_master_restore "$id"
     touch "$rdir/DONE"
     log "  done -> $rdir"
     adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (after run)" shell am force-stop com.jreinach.hakux.debug >/dev/null 2>&1
