@@ -989,3 +989,16 @@ What this shows, and what it does not:
 - Open for the next lane: the ESPN team-select input; a name-entry Done confirm; the bowling game-over rematch (not seen in the AMF frames);
   the play share on replay cards and between-pitch frames (generous for the 2K and baseball strips).
 - Nova: free. Nothing held, nothing queued by this lane. WAITING: none.
+
+## Resume 10-05 17:50 PDT (attempt 1 of the 12:35 sports order): why attempt 4 did not finish
+
+- Attempt 4 ended at 16:55 by design, not by a stall: the owner's perf priority (lane.local) parked the Nova
+  for lane.frametrace and lane.gpuclock, and WAITING named those seven requests. The park was right; the
+  resume was never run because nothing woke the lane.
+- The seven WAITING requests have cleared: each was admitted by the dispatcher (logs/dispatcher.log, 16:55 to
+  17:43: frametrace 1-1791225335, gpuclock 1-1791241711 / -436985 / -437094 / -437210, gpunonrender
+  1-1791243663 / -1791243666). The queue is empty. Only lane.frametrace 1-1791245535-lane.frametrace-680559
+  is running (admitted 17:47, not ours). No Nova hold is set. WAITING is removed in this commit.
+- Next, in the OUTBOX order: NBA 2K3 hold3 (`scratch/nba2k3c.sh`, takes the Nova with `hold.sh wait`, then
+  `wait-idle`). It is the first run of the team-sport marked-player confirm (b2f6838b03), which has not been
+  on a device yet. Then NHL 2K3 hold2, LEGO Star Wars re-hold, AvP re-hold, then football last.
