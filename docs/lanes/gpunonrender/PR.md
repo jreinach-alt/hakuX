@@ -1,10 +1,10 @@
 Lane: gpunonrender                Issue: #433
-Base: master @ 8522288a77 (merged c3a0c70ace)
-Files: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/WAITING, docs/lanes/gpunonrender/stepsdump.py, docs/lanes/gpunonrender/qstate.py, docs/lanes/gpunonrender/routes/gnr-spiderman2.route, docs/lanes/gpunonrender/routes/gnr-mc2.route
-Prediction: none: no arm
+Base: master @ c3a0c70ace
+Files: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/reports.c, docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/WAITING, docs/lanes/gpunonrender/stepsdump.py, docs/lanes/gpunonrender/qstate.py, docs/lanes/gpunonrender/abread.py, docs/lanes/gpunonrender/rls.py, docs/lanes/gpunonrender/routes/gnr-spiderman2.route, docs/lanes/gpunonrender/routes/gnr-mc2.route
+Prediction: none: no arm (A/B soaks read by hand against expected results written in NOTES.md before each run)
 Needs device: yes    Needs NDK: yes
 
-Release note (none): telemetry and an opt-in switch; HAKUX_GPUXFR and HAKUX_SURFSPLICE are off by default and change no rendering or timing.
+Release note (none): telemetry and opt-in switches; HAKUX_GPUXFR, HAKUX_GPUTS_INRP, HAKUX_SURFSPLICE and HAKUX_STALLFIN are off by default and change no rendering or timing.
 
 ## What this measures
 
@@ -51,7 +51,6 @@ line starts with `xemu-xfr`, so it can still be grepped.
   completes, so a category can read a little early or late. The control arm is
   what shows how far that goes.
 - When the variable is unset, each bracket is one call that returns at once.
-  Its cost is not yet measured; a timed arm with it unset is queued.
 
 ## HAKUX_SURFSPLICE (off by default)
 
@@ -66,12 +65,59 @@ pending and complete where other readers already complete them. Swizzled
 downloads, downloads a finish already submitted, and uploads the CPU unswizzles
 complete as before. `[sdcall]` (perflog) gains `spl=def/up/dl/kB/cmpl`.
 
+## Render-pass spans on a tiling GPU
+
+The render-pass stamps behind `gpu_nonrender_ms` are written inside the render
+pass. Turnip records such a stamp into the pass's draw stream. A GMEM pass
+replays that stream once per tile, and the last tile's value is the one that
+lands (tu_query_pool.cc, `tu_CmdWriteTimestamp2`). In a GMEM pass, the
+"render" span is therefore the last tile's draws. The binning pass, the other
+tiles and the tile loads and stores are counted as non-render.
+
+With `HAKUX_GPUXFR=1`, every render pass also gets a stamp pair outside it
+(before `vkCmdBeginRenderPass`, after `vkCmdEndRenderPass`). A third
+`xemu-xfr` line, `XFR rp`, reports per command buffer:
+- `in`: the in-pass render span.
+- `out`: the outer render span.
+- `nr_out`: the command buffer's span minus `out`.
+- `res_out`: `nr_out` minus the bracketed categories.
+
+`xemu-xfr` values are per command buffer. `xemu-gpu` values are per guest
+frame.
+
+`HAKUX_GPUTS_INRP=0` leaves out the in-pass stamp pair. Its end stamp is a
+`BOTTOM_OF_PIPE` write, which Turnip precedes with a wait-for-idle, once in
+every tile it is replayed in. With the variable set, `Rnd` reads 0. A run with
+and without it measures what that pair costs the GPU.
+
+## HAKUX_STALLFIN=reports (off by default)
+
+When the pusher catches up with `DMA_PUT` while the command buffer holds draws,
+the PFIFO loop submits it (a `STALLED` finish). That rotates the frame slot,
+and the rotation waits for the command buffer two finishes back. The zpass
+reports are the only guest-visible value written after a finish: semaphores
+are written at the method, and surface bytes the CPU reads have their own
+download finishes. With `HAKUX_STALLFIN=reports`, the caught-up submit happens
+only when a report is queued. Otherwise the draws stay in the command buffer
+until the flip or another finish submits them. The perflog log shows
+`[stallfin] reports-only on` (hakuX-vk).
+
 ## Status
 
-The instrument is built and committed. Two control arms on Nova (NG Black, same
-route, same binary, 150 s each: `HAKUX_GPUXFR=1`, and the same with
-`HAKUX_GPUXFR_CTRL=16`) were queued at 9609d0299f. The `xemu-gpu` lines of the
-earlier pair already show the 16-copy control in the existing `Xfr` value
-(0.40 to 1.10 ms per frame median); the `xemu-xfr` category reading is pending.
-The per-title category tables, the ranking and the cost measurement follow in
-`docs/lanes/gpunonrender/NOTES.md`.
+- The category instrument passed its control. 16 bracketed 1 MiB copies
+  read 0.68 ms per command buffer in `ctrl`, `nr` rose by the same amount,
+  and no other category moved.
+- `HAKUX_SURFSPLICE` removes Forza's `surfupd` finishes (2.00 to 0.00 per
+  frame), but it does not remove the wait. That moves to the texture bind's
+  surface-range scan (`range` rises from 8.1 to 19.3 ms per frame).
+- Spider-Man 2 carries a 6.0 ms per frame `surfupd` wait. Midnight Club II
+  carries none; its 8.0 ms is in `range`.
+- The unbracketed share of `gpu_nonrender_ms` is 34-83% on these titles.
+- Pending:
+  - The outer-stamp reading (NG Black, with and without the in-pass pair).
+  - A Spider-Man 2 splice arm.
+  - A Simpsons `HAKUX_STALLFIN=reports` A/B.
+
+Details and per-run tables are in `docs/lanes/gpunonrender/NOTES.md`.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)

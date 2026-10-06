@@ -1,8 +1,9 @@
-# lane.gpunonrender 2026-10-06 01:10 PDT: waiting for four Nova runs at 5eef1dacd9 (perflog, HAKUX_GPUXFR=1).
-# F0/F1 are the scope (A) A/B (HAKUX_SURFSPLICE off/on) on Forza; S0/M0 are scope (B)'s surveys.
-# Then resume: judge them against docs/lanes/gpunonrender/NOTES.md "Runs and their expected results".
-# The Nova is in pathfind's per-title sweep holds; the dispatcher admits these between titles.
-run 1-1791274121-lane.gpunonrender-2621218
-run 1-1791274126-lane.gpunonrender-2621918
-run 1-1791274133-lane.gpunonrender-2624513
-run 1-1791274137-lane.gpunonrender-2624798
+# lane.gpunonrender 2026-10-06 04:45 PDT: waiting for five Nova runs (expected results in NOTES.md, written before queueing).
+# X0/X1: NG Black outer render-pass stamps, with and without the in-pass pair (d946e1ba44).
+# S1: Spider-Man 2 HAKUX_SURFSPLICE=1 vs S0 (5eef1dacd9). K0/K1: Simpsons HAKUX_STALLFIN=reports A/B (6f6af20088).
+# Then resume: read with docs/lanes/gpunonrender/abread.py and judge against NOTES.md.
+run 1-1791284834-lane.gpunonrender-3228352
+run 1-1791284845-lane.gpunonrender-3230278
+run 1-1791284850-lane.gpunonrender-3230633
+run 1-1791285173-lane.gpunonrender-3251320
+run 1-1791285177-lane.gpunonrender-3251434

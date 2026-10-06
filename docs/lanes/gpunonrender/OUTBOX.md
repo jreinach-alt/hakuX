@@ -134,3 +134,85 @@
 | the original six-title category study | 0.9 that it names the largest category | targets 5-18 ms/frame on six titles | six Nova/Thor runs, after (A)/(B) |
 
 WAITING lists the four runs.
+
+## 2026-10-06 04:45 PDT (attempt 6): F0/F1/S0/M0 read; what `gpu_nonrender_ms` is; (C) re-scoped; five Nova runs queued
+
+- Attempt 5 ended on a WAITING for four runs, which is a finished wait. All
+  four ran DONE between 03:00 and 03:53. Verdicts are in NOTES.md, "The four
+  runs read (attempt 6)".
+- **(A) Forza splice:**
+  - Mechanism holds, and P1 holds: `surfupd` finishes go from 2.00 to 0.00
+    per frame.
+  - **P2 fails.** The all-caller wait is 24.1 ms/frame without the splice
+    and 26.3 with it. The wait moved to `range`, the texture bind's
+    surface scan at texture.c:2100 (8.1 to 19.3 ms; `txw scan` 8.2 to
+    19.4).
+  - So the bytes are read by a texture through VRAM. (A) is correct but is
+    not Forza's lever, and it stays default off.
+- **(B):**
+  - Spider-Man 2 meets the "(A) reaches it" rule: `surfupd` 6.0 ms/frame,
+    2.5 per frame, all `stale`. A splice arm, S1, is queued.
+  - Midnight Club II does not: it has no `surfupd`, and its 8.0 ms/frame
+    is in `range`.
+  - `range` (texture.c:2100) is the caller common to Forza-with-splice and
+    MC2.
+- **`xemu-xfr` is per command buffer, `xemu-gpu` per frame.** Scaled by
+  CBs per frame, they agree on all four runs. The control verdict stands,
+  because `ctrl` and `nr` are both per CB.
+- **Milestone (b), the category tables:**
+  - The residual is 34-83% of `nr` (Spider-Man 2: 83%). By the decision
+    rules the tables are incomplete.
+  - The reason is found in Turnip's source (tu_query_pool.cc:2108). A
+    timestamp written inside a render pass is replayed per tile, and the
+    last tile wins. Our render-pass stamps are inside the pass, so in a GMEM
+    pass "Rnd" is the last tile's draws only. `gpu_nonrender_ms` therefore
+    holds binning, the other tiles and the tile loads and stores.
+  - That fits belowbar1005's Xfr/Tot of about 0.5 on NG Black, AUF, Otogi,
+    DOA3 and Black (two bins, one seen). It also fits TU_DEBUG=sysmem's +8
+    gfps on DOA/AUF.
+  - **The premise of the brief, that half the GPU frame is not render
+    passes, is very likely an artifact of where the stamps sit.** This is a
+    hypothesis; X0 measures it.
+- **A shipped-build cost found:** the GPU timestamp pool is on in every build
+  (renderer.c:490-506, no `NV2A_PERF_LOG` guard), and only telemetry reads it.
+  Its in-pass end stamp is BOTTOM_OF_PIPE, which Turnip precedes with a
+  wait-for-idle, once per tile per render pass. X1 measures its cost.
+- **New in d946e1ba44 (draw.c, defaults unchanged):** outer render-pass stamps
+  under `HAKUX_GPUXFR=1` (a new `xemu-xfr XFR rp` line), and
+  `HAKUX_GPUTS_INRP=0`.
+- **(C) re-scoped:**
+  - Releasing pfifo.lock across the STALLED finish's fence wait frees the
+    vCPU in the same way vcpusleep's posted DMA_PUT did. That change
+    (c2dfca18a1) ran on Simpsons and was reverted (f6ac723228): fps fell
+    from 40.0 to 36-38, and the PFIFO's slot-fence wait grew from 8 to 21
+    ms a frame. So the lock is not the pacer; the rotation fence wait is,
+    about 8.8 times a frame with the GPU 24% busy. P(C as briefed) is about
+    0.1. Not built.
+  - **(C') instead, 6f6af20088 (reports.c only, default off):**
+    `HAKUX_STALLFIN=reports` submits at a caught-up FIFO only when a zpass
+    report is queued. That is the only guest-visible value written after a
+    finish: semaphores are written at the method, and surface reads have
+    their own finishes. This removes the per-catch-up rotation and its fence
+    wait. Simpsons K0/K1 A/B is queued.
+- **Queued, Nova, expected results in NOTES.md before queueing:**
+  - X0 NG Black outer stamps `1-1791284834-lane.gpunonrender-3228352`
+  - X1 NG Black `HAKUX_GPUTS_INRP=0` `1-1791284845-lane.gpunonrender-3230278`
+  - S1 Spider-Man 2 splice `1-1791284850-lane.gpunonrender-3230633`
+  - K0 Simpsons baseline `1-1791285173-lane.gpunonrender-3251320`
+  - K1 Simpsons `HAKUX_STALLFIN=reports` `1-1791285177-lane.gpunonrender-3251434`
+- About 42 min of Nova time. That is over the 30-min gate, so the lane's
+  pilot verdict (F0/F1/S0/M0 reviewed) is recorded in
+  `dispatch/pilots/lane.gpunonrender.ok`.
+- This is more than the PM's 3-5 runs for (A)-(C). X0/X1 belong to the
+  brief's own question, S1 is (B)'s pre-stated next run, and K0/K1 are (C).
+- Spend: not readable from this session.
+
+## Next
+
+| candidate | P | win | cost |
+|---|---|---|---|
+| (C') Simpsons `HAKUX_STALLFIN=reports` (K0/K1 queued) | 0.4. For: simp2 measured the rotation fence wait as the pacer once the vCPU was freed (8 to 21 ms/frame), and this removes most rotations. Against: the guest's own 16.2 ms sits just under the 17.9 ms deadline, and an unknown report-free guest dependency on a submit would show as a hang | Simpsons 40.9 to ~50-60 fps (ledger title, the owner's 60-fps direction) | done; two runs queued |
+| In-pass stamp cost in the shipped build (X1) | 0.3 that it is at least 1 ms/frame (a wait-for-idle per tile per pass on every GMEM pass; size unknown) | every GMEM title, every frame; if real, a fix is a few lines (gate the stamps on `NV2A_PERF_LOG`, or move them outside the pass) | one A/B, queued |
+| Re-read the six-title "non-render" study with the outer stamps (X0 first) | 0.8 that X0 shows most of `nr` is render-pass work | it decides whether any copy/upload fix can win the 10-18 ms the survey promised (probably not), and points the GPU work at tile load/store and binning (GMEM vs sysmem per pass, lane.rendermode474's area) | X0 queued; the other titles after it |
+| Forza/MC2: texture.c:2100 range scan (texture reads a rendered surface through VRAM) | 0.35, needs one counter first (why the bind does not take the surface-to-texture path) | Forza 8-19 ms/frame of PFIFO wait, MC2 8.0 | a counter, then the fix lane |
+| (A) on Spider-Man 2 (S1 queued) | 0.25 after F1 (the wait may move as on Forza) | up to 6 ms/frame, 26.8 to ~30 fps | one run, queued |
