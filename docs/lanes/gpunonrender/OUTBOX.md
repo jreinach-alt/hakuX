@@ -339,3 +339,16 @@ WAITING lists the four runs.
 - The PR stays `State: ready`. The next step is the fold, then the
   render-pass load/store census lane (NOTES.md "Brief for the next lane").
 - Spend: not readable from this session.
+
+## 2026-10-06 07:00 PDT (attempt 10): WAITING fold; nothing else
+
+- Resumed at 06:55 PDT by the lanewaker keepalive pass. That pass resumes a
+  keepalive-listed lane whose branch has no WAITING file, even when PR.md is
+  `State: ready`. No new work. origin/master is still c3a0c70ace, and nothing
+  of this lane is queued or running.
+- Added `docs/lanes/gpunonrender/WAITING` with `fold gpunonrender`, so the
+  keepalive pass leaves the lane stopped until the fold.
+- For lane.local: a keepalive entry for a lane whose PR.md is `State: ready`
+  resumes it every 15 min with nothing to do. lanewaker's keepalive pass could
+  skip `State: ready` the way its stranded pass already does.
+- Spend: not readable from this session.

@@ -1038,6 +1038,18 @@ lane is queued or running, and the Nova's last run on the lane APK was
 followed by the master restore. The lane's next step is the fold, then the
 load/store census lane in "Brief for the next lane".
 
+## Attempt 10: why attempt 9 did not finish
+
+Attempt 9 did finish; there was nothing left to do. The lanewaker's keepalive
+pass resumed the lane again at 06:55 PDT. That pass resumes a lane named in
+`keepalive-lanes.txt` (this lane, until 07:00 PDT) when its unit is down and
+its branch has no WAITING file. A ready lane waiting only for its fold had no
+WAITING file. Fix: `docs/lanes/gpunonrender/WAITING` now reads
+`fold gpunonrender`. The keepalive pass skips a lane with a WAITING file, and
+lanewaker never resumes a folded branch, so the lane stays stopped until its
+fold. origin/master is still c3a0c70ace (merged), and nothing of this lane is
+queued or running.
+
 ## Control, read from the existing counter (attempt 1 arms)
 
 The `xemu-gpu` line already carries `Xfr` = `gpu_nonrender_ms` (profile.c,
