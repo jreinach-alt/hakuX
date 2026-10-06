@@ -2,7 +2,7 @@
 # NFL Blitz 2002, first run to a held 600-s verdict (sports rule 10-05: the claim sets the longest period).
 set -u
 cd /home/justin/hakux-work/wt/pathfind || exit 1
-OUT=docs/lanes/pathfind/runs/nfl-blitz-2002/hold
+OUT=docs/lanes/pathfind/runs/nfl-blitz-2002/hold2
 release() { bash docs/testing/jobs/hold.sh release nova lane.pathfind; echo "released rc=$?"; }
 trap release EXIT
 bash docs/testing/jobs/hold.sh wait nova lane.pathfind 1200 "pathfind NFL Blitz 2002 held run (#433)" || { echo "take timed out"; exit 3; }

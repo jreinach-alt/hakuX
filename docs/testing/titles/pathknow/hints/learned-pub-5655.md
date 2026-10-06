@@ -1,4 +1,5 @@
 # Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
 - Bruce Lee: Quest of the Dragon (56550016, nova, pathfind 2026-10-02): gameplay in 4.9 min via publisher_logo START A -> cutscene START A -> title_screen START A -> submenu DOWN DOWN A
-- Aliens Versus Predator Extinction (56550022, nova, pathfind 2026-10-04): gameplay in 2.7 min via publisher_logo A -> title_screen START -> main_menu DOWN A -> main_menu A -> submenu A -> cutscene START -> cutscene A
 - The Simpsons Hit Run (56550015, nova, pathfind 2026-10-04): gameplay in 2.7 min via publisher_logo A -> cutscene START -> publisher_logo A -> title_screen START -> cutscene START -> main_menu A -> cutscene START -> cutscene A -> cutscene START -> cutscene A -> cutscene START -> cutscene STICK:up:1.5 -> cutscene A
+- Aliens Versus Predator Extinction (56550022, nova, pathfind 2026-10-05): gameplay in 2.0 min via publisher_logo A -> title_screen START -> main_menu DOWN A -> main_menu A -> submenu A -> cutscene START -> cutscene A
+- The Incredible Hulk Ultimate Destruction (56550039, nova, pathfind 2026-10-05): gameplay in 2.0 min via publisher_logo A -> cutscene A -> publisher_logo A -> cutscene A -> main_menu A -> submenu A -> title_screen START -> cutscene START

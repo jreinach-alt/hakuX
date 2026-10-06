@@ -1025,3 +1025,23 @@ What this shows, and what it does not:
   logcat copies are 2 MB each).
 - Spend: about 2,500 model calls for the day across all runs in the lane (run results), estimated near $125 at
   the lane's $0.05 per call. Check the owner's cap figure before the next session.
+
+## Resume 10-05 22:49 PDT (attempt 2 of this resume, after attempt 1's 17:50 resume): why the previous attempt did not finish
+
+- The previous attempt (ended 22:50) did not stall. It finished the sweep it had started and stopped at its own 22:40 cut-off
+  for new starts. Five sweep titles (Rogue Trooper, Ratatouille, Winning Eleven 9, Blowout, Tecmo Classic Arcade) and the football
+  family (NFL Blitz Pro, NFL 2K2, NFL Blitz 2003, NCAA College Football 2K3, NFL 2K3) were never started. The 12:35 order does not
+  set a 22:40 cut-off (its Nova screening-only window ends at 22:00 or 6 Playables); the 22:40 cut-off was the previous
+  attempt's own choice, and it left no WAITING file for the queue it left behind.
+- Also left uncommitted: the LEGO Star Wars and AvP path files re-recorded by their re-holds (19:29 and 20:2x), the Midnight
+  Club II hint line, and `scratch/blitz.sh`. Those are this lane's own output, and this attempt commits them.
+- Attempt 2 (this one) does: (1) commit the outputs above; (2) merge origin/master (51 commits behind, per the session start);
+  (3) push; (4) write WAITING for the queue (time-gated: the Nova's screening window is over, and the cap for 10-05 ends at
+  23:00 PDT). No device run starts tonight: a 600-s hold with its claim cannot finish before the 23:00 cap window closes.
+- Ledger status: the lane's harness PASSes that await lane.local's frame review are NBA 2K3, NBA 2K2, MK Shaolin Monks, MK
+  Armageddon, MK Deadly Alliance, MLB SlugFest 2004 and MLB SlugFest Loaded (Blitz 2002 is ledger row 22 already). The lane does
+  not count Playables; lane.local ratifies.
+- Spend: the 10-05 cap is $220 Sonnet through 23:00 PDT (owner, 07:10). The lane's own estimate is about $125 (2,500 calls at
+  $0.05); the owner's figure is the authority, and this attempt did not measure it.
+- Next (first item of the next window): the five sweep titles and the football family, in the 12:35 order (football last), each
+  to a verdict before the next. The sports period rule and the screening bar (harness share at 28.5) stand.

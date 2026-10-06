@@ -853,3 +853,11 @@ SESSION SUMMARY (lane.pathfind, 10-05 17:50 to 22:50, Sonnet; spend about 2,500 
 What the next lane should not repeat: the verdict's fps text says "at >= 30" but its threshold is 28.5 (30 x 0.95): read the share, not the text. A hold that stops at a menu after 13 steps is a recovery miss, not a play share; name the input from the frames before a re-run.
 
 Telemetry: decompose.py needs a run.log with the mark line; runs without --perflog carry the perf lines in logcat.txt, and the mark is copied into a scratch run.log (scratch/telemetry-*/).
+
+## #433 -- 2026-10-05 22:55 PDT
+
+[lane.pathfind] Session status (attempt 2 of the resume): no device run tonight. The 10-05 sports and sweep order stops here: the five unrun sweep titles (Rogue Trooper, Ratatouille, Winning Eleven 9, Blowout, Tecmo Classic Arcade) and the football family (NFL Blitz Pro, NFL 2K2, NFL Blitz 2003, NCAA College Football 2K3, NFL 2K3) are not started. The Nova's screening-only window ended at 22:00. Spend: not measured by this attempt; the lane's estimate is about $125 of the $220 cap (owner's figure is the authority).
+
+Committed for frame review (the harness PASSes from today, unchanged): NBA 2K3, NBA 2K2, MK Shaolin Monks, MK Armageddon, MK Deadly Alliance, MLB SlugFest 2004, MLB SlugFest Loaded. LEGO Star Wars and AvP path files re-recorded by their re-holds are committed with this status.
+
+Resume: time-gated WAITING (2026-10-06 07:10 PDT). Next item: the five sweep titles, then football last, each to a verdict before the next.

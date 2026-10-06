@@ -1,3 +1,4 @@
 # Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
 - Midnight Club 3: DUB Edition (54540079, nova, pathfind 2026-10-02): gameplay in 6.2 min via publisher_logo START A -> title_screen START -> profile_creation A -> main_menu A -> name_entry START -> cutscene START A -> submenu B -> submenu B B B -> submenu LEFT A -> submenu B B B -> submenu UP A -> cutscene START B -> cutscene START A -> submenu DOWN A
 - MTV Celebrity Deathmatch (5454000B, nova, pathfind 2026-10-04): gameplay in 7.8 min via publisher_logo A -> cutscene A -> publisher_logo A -> title_screen START -> main_menu DOWN A -> submenu A -> submenu HOLD:A:1.5 -> submenu A -> cutscene START -> cutscene A -> unknown A -> unknown X -> unknown B -> unknown Y -> cutscene A
+- Midnight Club II (54540008, nova, pathfind 2026-10-05): gameplay in 8.0 min via publisher_logo A -> cutscene START A -> profile_creation A -> name_entry A -> main_menu A -> cutscene START A -> cutscene A
