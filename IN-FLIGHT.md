@@ -6,9 +6,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `gpunonrender` | claude-opus-5-5 | 3 min | Lane: gpunonrender                Issue: #433 |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -54,9 +52,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/gpunonrender` | Lane: gpunonrender                Issue: #433 | `9c864dcc4a` | 2026-10-06 04:14 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -72,4 +68,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-04 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
 - 2026-10-04 hangwatch: a locked-up title is caught on telemetry in about 90 s, not waited out
 
-_Updated 2026-10-06 04:59 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-06 05:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
