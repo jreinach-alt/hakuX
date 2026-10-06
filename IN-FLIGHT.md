@@ -8,7 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pathfind` | claude-sonnet-5 | 4h 5m | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+| `frametrace` | claude-opus-5-5 | 0 min | frametrace: per-frame critical-path telemetry (HAKUX_FRAMETRACE=1): who set the pace, frame by frame |
+| `pathfind` | claude-sonnet-5 | 4h 17m | pathfind: a screen-reading agent that drives a title from boot into gameplay |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.pathfind`
@@ -56,7 +57,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `38788832f9` | 2026-10-05 21:42 |
+| `lane/frametrace` | frametrace: per-frame critical-path telemetry (HAKUX_FRAMETRACE=1): who set the pace, frame by frame | `fb3b8e652e` | 2026-10-05 18:05 |
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `9450509287` | 2026-10-05 21:59 |
 
 ## Recently landed on master
 
@@ -71,4 +73,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-04 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
 - 2026-10-04 hangwatch: a locked-up title is caught on telemetry in about 90 s, not waited out
 
-_Updated 2026-10-05 21:55 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-05 22:06 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
