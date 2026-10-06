@@ -1449,3 +1449,90 @@ board rows for open issues #852-#857 (fighting-game hold work, not this lane's
 files). Nothing of this lane is queued or running. WAITING is `fold
 gpunonrender` again, so the keepalive pass leaves the lane stopped until the
 fold.
+
+## Attempt 12: why attempt 11 did not finish
+
+It did: the census PR was ready and WAITING named the fold, which landed at
+11:53 (bf85412b88). This attempt is new scope (D): the sysmem A/B pairs that
+the census recommendation ranks first.
+
+## Scope (D): GMEM vs sysmem on the replay-bound titles, census on
+
+Two premises of the brief, checked against master before any run:
+
+- The per-title table is `kTitleRenderModes` in
+  `android/app/src/main/cpp/xemu_android.cpp` (`ApplyRenderMode`), as
+  gmem474 found; there is no `TitleDefaults.kt`.
+- **DOA Ultimate (`54430006`) is already `sysmem` in that table** (with 007
+  AUF). On master its no-env arm is sysmem, so its pair is
+  `--env TU_DEBUG=gmem` (the table yields to an env that names a mode) against
+  no env. It re-measures a shipped default with the census on; it does not
+  decide a new table line.
+
+Every arm: Nova, master's perflog build (bf85412b88, the census is in it),
+`PERF_REGIMEN=default`, `HAKUX_GPUXFR=1`, one run per arm. The non-shipped
+arm runs first and the shipped arm second, so the shipped arm reuses the
+shader cache (same apk): any cache effect favours the GMEM arm on DOA3 and
+NG Black. A 60 s restore at master with an empty env follows the last arm.
+
+| pair | title, route, s | arm 1 (first) | arm 2 |
+|---|---|---|---|
+| P1 | DOA3 `54430001`, `belowbar1005/routes/bb-doa3`, 330 | S: `TU_DEBUG=sysmem` | G: no env (driver GMEM) |
+| P2 | NG Black `5443000D`, `belowbar1005/routes/bb-ngb`, 480 | S: `TU_DEBUG=sysmem` | G: no env |
+| P3 | DOA Ultimate `54430006`, `survey` (flip474's), 300 | G: `TU_DEBUG=gmem` | S: no env (table sysmem) |
+
+P1 and its restore are the pilot; P2 and P3 are queued after P1 is read.
+
+Windows. DOA3: the fight, `mark gameplay` to the "YOU LOSE" frame (60-70 s in
+D1; the route loses the fight, so this window is under the 180 s telemetry
+bar on both arms alike), and the attract stages after it beside it. NG Black:
+`mark gameplay` + 20 s to the end (~187 s). DOA Ultimate: 151-288 s
+(flip474's), bounded by the frames.
+
+**Instrument legs (known answers; a failed leg voids the arm, not the pair's
+title):**
+
+- R1: the `hakuX-build` `render_mode:` line names the arm's mode (DOA3 and NG
+  Black S: `TU_DEBUG=sysmem`; G: `(unset)`; DOA Ultimate G: `table, env wins`
+  with `TU_DEBUG=gmem`; S: `sysmem (table)`).
+- R2 (the census's mode inference on large passes, which K3 could not check):
+  in every sysmem arm the in-pass span over every pass is at least 0.9 of the
+  outer span, and the passes read as GMEM carry at most 5% of the outer ms. In
+  every GMEM arm the scene passes read as GMEM: in/out at most 0.7 (D1 0.50,
+  N0 0.52). If R2 fails in a sysmem arm, the env did not reach the driver or
+  the stamp model is wrong, and the pair is not read.
+- R3: the window is gameplay in both arms (frames), no thermal pause (cpu3-7
+  online), GPU MHz noted from thermal.jsonl.
+
+**Expected (written before the runs):**
+
+| pair | GMEM arm | sysmem arm |
+|---|---|---|
+| P1 DOA3 fight | as D1: gfps 22, Tot 38.5 ms, out 38.7 / in 19.5 | Tot 22-30 ms (one execution of the ~700-draw pass instead of a binning pass plus replays; DOA Ultimate's ratio puts it near 29), gfps 26-30 unless the CPU becomes the wait |
+| P2 NG Black | as N0: gfps 36, Tot 24.6, out 24.5 / in 12.8 | Tot 16-22 ms; gfps 38-44. Less sure than DOA3: ~90 draws per scene pass, so sysmem's fill cost may eat the replay saving |
+| P3 DOA Ultimate | as flip474's base: Tot ~2x the sysmem arm, in/out ~0.5 | flip474: 21 gfps against 13; Tot 19 against 36 |
+
+**Decision per pair (yes/no, fixed before the runs).** Sysmem **wins** a title
+when, over the read window, all of: (a) gfps median sysmem >= GMEM + 2 and
+>= 1.08x GMEM; (b) `xemu-gpu` Tot sysmem <= 0.85x GMEM; (c) R1-R3 hold in both
+arms; (d) the region check passes. Sysmem **loses** when gfps median sysmem
+<= GMEM, or Tot sysmem >= GMEM. Anything between is **no decision**, which is
+not a win.
+
+Region check (d): sysmem is not shown pixel-inert per title (memory of
+flip474's two disagreeing pgraph pairs). Each pair is checked on route frames
+taken at the same route step in both arms, where the screen is the same
+scene: DOA3 the character-select frames (s10, s11) and the title (s08); NG
+Black the main menu (s05) and the first gameplay frame (s32); DOA Ultimate
+the first boot frames. Per frame pair: the differing-pixel count and its
+bounding box with the FPS overlay (top-left 130x50) masked; a difference
+confined to moving content (characters, animated backgrounds) is read on the
+frames by eye for a sysmem defect (missing depth, black or torn tiles, wrong
+blending); a difference in a static region (HUD bars, menu panels) is a
+fail until explained.
+
+**What the three pairs decide (the brief's rule):** sysmem wins on all three
+with pixels intact: the per-pass autotune in the Turnip fork (many draws,
+few bins: sysmem) is the next step, P 0.3, every replay-bound title. They
+split: the winners become `kTitleRenderModes` lines (xemu_android.cpp, a
+grant away), and the losers say what the autotune must not do.
