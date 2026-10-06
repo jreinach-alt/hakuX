@@ -48,6 +48,11 @@ static void image_pool_drain(PGRAPHVkState *r);
 #define TEX_PERF(...) do { } while (0)
 #endif
 
+/* gpunonrender (#433): brackets around non-render GPU work, see draw.c */
+int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
+                        const char *cat, int site);
+void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok);
+
 /*
  * #474: wall time of each step of pgraph_vk_bind_textures(), NV2A_PERF_LOG
  * only. The phase line's Pipe.Tx is ~9 ms/frame of wall on AUF and Blinx
@@ -61,11 +66,6 @@ static void image_pool_drain(PGRAPHVkState *r);
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
-
-/* gpunonrender (#433): brackets around non-render GPU work, see draw.c */
-int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
-                        const char *cat, int site);
-void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok);
 
 enum {
     TXW_BT, TXW_RES, TXW_CT, TXW_SDL, TXW_SCAN, TXW_FAF,
