@@ -72,7 +72,9 @@ def main():
         if len(fr) < 5:
             continue
         D = max(f['ireq'] or 1 for f in fr) * statistics.median(f['vbp'] for f in fr) / 1000.0
-        late = [f for f in fr if f['late']]
+        # period-late (profile.h since session 4): the CSV's `late` of an
+        # older capture misses frames whose VBLANK the deferral held
+        late = [f for f in fr if f['late'] or f['P'] * 20 > D * 1000 * 21]
         vrun = statistics.mean(f['v_run'] for f in fr) / 1000.0
         ipf = idle / 1000.0 / len(fr)
         rows.append((a1, len(fr), len(late) / len(fr), vrun, ipf, vrun - ipf,

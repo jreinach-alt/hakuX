@@ -149,13 +149,30 @@ static void test_rule(void)
      * guest's interval is the guest's pace. */
     f = base_frame();
     f.vb = 1;
+    f.P = 16700;
     f.r[HAKUX_FT_VCPU].w[HAKUX_FT_W_PFIFO_LOCK] = 9000;
     f.vh[HAKUX_FT_H_GPU] = 9000;
     expect_cls("rule.on_time_is_vsync", f, HAKUX_FT_C_VSYNC);
 
+    /* A deferred VBLANK: one VBLANK counted across a 22 ms flip of a 60 Hz
+     * guest (Simpsons' shape: 15.5 ms of guest work, 6.3 ms in the DMA_PUT
+     * pfifo.lock wait). The period says late; vb alone would say vsync. */
+    f.P = 22400;
+    f.r[HAKUX_FT_VCPU].run = 15500;
+    f.r[HAKUX_FT_VCPU].rq = 40;
+    f.r[HAKUX_FT_VCPU].blk = 6860;
+    f.r[HAKUX_FT_VCPU].w[HAKUX_FT_W_PFIFO_LOCK] = 0;
+    f.vh[HAKUX_FT_H_GPU] = 0;
+    f.lockw = 6300;
+    expect_cls("rule.deferred_vblank_period_late", f, HAKUX_FT_C_UNATTR);
+    f.vh[HAKUX_FT_H_GPU] = 0;
+    f.lockw = 0;
+    f.P = 16700;
+
     /* A 30-locked guest (ireq 2) on 2 VBLANKs is on time; on 3 it is late. */
     f.ireq = 2;
     f.vb = 2;
+    f.P = 33400;
     expect_cls("rule.ireq2_vb2_is_vsync", f, HAKUX_FT_C_VSYNC);
     f.vb = 3;
     f.P = 50000;

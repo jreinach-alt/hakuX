@@ -250,3 +250,69 @@ milestone (c), PR ready. Preflight on 4633d9dadd: every branch gate passes;
 `territory` (surface.c and texture.c each claimed by two other lanes) and
 `coverage` (#834, #835, #837 unclassified) fail on origin/board, the
 board's to fix.
+
+## 2026-10-05 ~18:30 PDT (session 4): milestone (c) -- four titles read; the lateness rule corrected
+
+**Simpsons (Nova, 203 s of free roam; frames show Homer on foot, against a
+wall corner).** 44.7 fps against the guest's 60. The vCPU's 22.4 ms frame
+closes on two parts: 15.7 ms of guest code (the guest idles 0.3 ms) and
+**6.3 ms in the DMA_PUT pfifo.lock wait**. The PFIFO thread is blocked
+7.4 ms a frame in an unhooked wait, while **the GPU executes 5.1 ms of the
+frame** (main command buffers, 615 MHz, 23% busy). That answers
+vcpusleep's open question ("name the GPU-side frame time"). The posted
+DMA_PUT store moved the wait rather than removing it, and the GPU's
+measured execution does not explain the wait it moved to. The gap is
+between the PFIFO thread and GPU completion: the aux command buffer, the
+queueing of 8.7 submits a frame, or fence latency. G3 + G10 decide which.
+
+**Correction to sessions 1-3, all four titles.** The rule called a frame
+on time when it saw no more VBLANKs than the guest asked for. nv2a.c's
+adaptive deferral holds the VBLANK to the flip (100% of VBLANKs in
+Simpsons' and Nightfire's windows), so the rule undercounted late frames:
+Simpsons 30.5 -> **97.2%**, Nightfire 50.4 -> **99.4%**, Forza 46.1 ->
+**66.9%**, Tron 23.6 -> **47.9%**. Fixed in profile.h (late also when
+P > 1.05 D; selftest 39 checks, 16 mutants, all caught). `chain.py` re-reads
+old captures; its port of the rule matches the device's verdict on 100% of
+frames in all four.
+
+**Who sets the pace (late frames):**
+
+| | Simpsons | Forza | Nightfire | Tron |
+|---|---|---|---|---|
+| late (period-late) | 97% | 67% | 99% | 48% |
+| guest work alone over the deadline | 10% | 34% | 27% | 70% |
+| the rest: the vCPU waits in | DMA_PUT lock (6.3 ms) | its idle loop (12.5 ms) | its idle loop (8.2 ms) | DMA_PUT lock (2.3 ms) |
+| PFIFO blocked, unhooked, ms/frame | 7.4 | 14.6 | 6.6 | 2.5 |
+| GPU main-CB busy share | 23% | 48% | 34% | 22% |
+
+Three of four titles are mostly waiting, not guest work, and the wait sits
+in our code between the PFIFO thread and GPU completion. Tron is the
+vCPU-bound one. Ranked list: NOTES section 9.
+
+### GRANT REQUEST, re-ranked (supersedes the 17:30 list)
+
+1. **G1 + G3 + G4 + G10, one commit.** G1 `accel/tcg/cpu-exec.c`
+   1255/1276; G3 `hw/xbox/nv2a/pgraph/vk/draw.c` 1731, 3786, 3978-4030,
+   4211, 4221, 4319, 4386; G4 `hw/xbox/nv2a/user.c` 92-95 (hooks.diff, written
+   and type-checked). **New, G10:** a per-submit GPU timeline in
+   `hw/xbox/nv2a/pgraph/vk/draw.c` 3689-3740 (gpu_ts_readback), 4098-4103
+   and 4158-4162 (a timestamp pair around the aux command buffer too), 4543-4551
+   (CB begin), and `hw/xbox/nv2a/pgraph/vk/renderer.c` ~213 and 309 (timestamp
+   period; VK_EXT_calibrated_timestamps for a host-clock offset), so each
+   fence wait can be split into GPU busy and GPU idle. Not written yet; I
+   will write it once the rows are granted.
+2. G9 (`system/memory.c`, hooks-g9.diff) for the guest-work share (Tron
+   70%).
+3. G5 + G8 for Forza's hitches.
+
+### Spend (session 4)
+
+Opus: one session; reading one result, the rule fix and its selftest,
+`chain.py`, re-reading four captures, NOTES. Device: none this session.
+Running total of device time: Thor pilot ~1 min, Nova 6 runs (~45 min).
+
+### Status
+
+PR ready (PR.md). WAITING removed: nothing of this lane is queued. The
+next device read is useful only after the grant (step 1); until then the
+in-row build has measured what it can see.

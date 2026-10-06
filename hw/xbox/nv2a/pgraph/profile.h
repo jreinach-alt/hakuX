@@ -270,7 +270,11 @@ static inline uint32_t hakux_ft_sub0(uint32_t a, uint32_t b)
  *  D, the deadline, is the guest's own interval: ireq VBLANKs (inferred from
  *  the flips, or HAKUX_FRAMETRACE_VB) times the VBLANK period.
  *
- *  1. On time (vb <= ireq): VSYNC. The guest asked for this pace.
+ *  1. On time (vb <= ireq and P <= 1.05 D): VSYNC. The guest asked for this
+ *     pace. The period test is needed because nv2a.c's adaptive VBLANK
+ *     deferral holds a VBLANK until the flip: a 60 Hz guest flipping every
+ *     22 ms then sees 1 or 2 VBLANKs per flip, never more, and vb alone
+ *     reads 70% of its frames on time (Simpsons, session 4).
  *  2. Late, and guest work + run-queue wait > D: RUN. With every wait
  *     removed the frame would still miss.
  *  3. Late otherwise: the waits made it late. Each wait is charged to a
@@ -375,8 +379,8 @@ static inline void hakux_ft_attribute(HakuxFtFrame *fr,
             best = i;
         }
     }
-    fr->late = fr->ireq ? fr->vb > fr->ireq
-                        : (uint64_t)fr->P * 20 > (uint64_t)D * 21;
+    fr->late = (fr->ireq && fr->vb > fr->ireq) ||
+               (D && (uint64_t)fr->P * 20 > (uint64_t)D * 21);
     if (!fr->late) {
         fr->cls = HAKUX_FT_C_VSYNC;
         fr->crit = work + charge[best];

@@ -63,7 +63,11 @@ to the literal rule when the holder was in one state throughout.
 `hakux_ft_attribute()` in profile.h, run on the device (the 1 Hz histogram,
 the CSV's `cls`) and in the selftest. D = ireq x the VBLANK period.
 
-1. On time (vb <= ireq): **vsync**. The guest asked for this pace.
+1. On time (vb <= ireq **and P <= 1.05 D**): **vsync**. The guest asked for
+   this pace. The period half was added in session 4 (section 8): nv2a.c's
+   adaptive VBLANK deferral holds each VBLANK until the flip, so vb alone
+   read 70% of Simpsons' 22 ms frames as on time for a 60 Hz guest. Captures
+   made before it carry the old verdict; `chain.py` re-reads them.
 2. Late, and guest work + run-queue wait > D: **run** (guest-vCPU-run). With
    every wait removed the frame would still miss.
 3. Late otherwise: the waits made it late. Each wait is charged to a class
@@ -110,6 +114,10 @@ in-row captures of such titles with that in mind.
   until G6 (it includes the guest ISR's latency).
 
 ### Selftest (`selftest.py`, host, ~7 s)
+
+(Session 4: 39 checks, 16 mutants, all caught; the new pair is
+`rule.deferred_vblank_period_late` and the mutant that reads lateness from
+VBLANK counts alone. The paragraph below is the session-1 count.)
 
 32 checks: the rule on synthetic frames (the brief's pair: a 9 ms
 fence-held lock wait reads **bgpu**, the same wait with the holder running
@@ -213,6 +221,12 @@ queued now carry `--frames-every`.
 | late frames | 50.4% | 23.6% |
 
 **Q1. Pacemaker.** Late = more VBLANKs than the guest asked for.
+
+**CORRECTED in session 4 (section 8):** that definition misses frames whose
+VBLANK the deferral held to the flip. With late = vb > ireq or P > 1.05 D,
+Nightfire is 99.4% late (not 50.4%) and Tron 47.9% (not 23.6%). The
+shares of late frames below stand roughly (run 99.4% and 72.4%), but the
+`run` of both is bounded by the idle join (section 8's table).
 
 | class | Nightfire all | Nightfire late | Tron all | Tron late |
 |---|---|---|---|---|
@@ -379,6 +393,9 @@ reproduces every number here.
 | fps; period p50/p95/p99/max ms | 26.9; 34.4/47.8/51.6/140.8 |
 | late frames | 46.1% |
 
+(Session 4: under the period-late rule Forza is 66.9% late, not 46.1%;
+section 8.)
+
 | class (as the in-row record reads it) | all | late |
 |---|---|---|
 | vsync | 53.9% | - |
@@ -499,6 +516,9 @@ Q5, deadline against delivery: VBLANKs per flip 1/2/3/4: 3.5/71.5/24.7/0.3%
 
 ## 7. Next steps, ranked by P x win (three titles read; Simpsons queued)
 
+**Superseded by section 9** (four titles read, and the lateness rule
+corrected). Kept as written for the record.
+
 Win: the late frames (or hitches) the step reaches. P: the probability it
 decides or removes what it targets, with the evidence. Per the owner's
 10-05 17:05 rule every remedy below is a wait in our code; no clock or mode.
@@ -514,6 +534,179 @@ decides or removes what it targets, with the evidence. Per the owner's
 
 Not on the list: anything GPU-execution-side. No frame in three titles had
 the GPU busy over 90% of its period, and the clock sat at 615 MHz.
+
+## 8. Session 4: Simpsons, and the lateness rule was wrong under VBLANK deferral
+
+### Simpsons Hit & Run, Nova, ref 65bd51712b (`1-1791245535-lane.frametrace-680559`)
+
+Route: `simpsons-frametrace.route` (blind). **The frames show free roam:**
+every route frame from `mark gameplay` (17:50:55) to the end (17:54:22)
+has Homer on foot in the world with the Marge portrait and the minimap, no
+dialog. The walk input pinned him against a wall corner, so the window is a
+low-motion free-roam scene, not a walk through town. Window: mark + 20 s,
+9,085 frames, 203 s. `ftread.py`, `chain.py` and `idlejoin.py` on
+`captures/1-1791245535-lane.frametrace-680559` reproduce every number.
+
+**Its flips are not on the VBLANK grid.** Flip periods run 20-26 ms with a
+p50 of 22.4 ms; 2.0% of them lie within 1.5 ms of a whole number of
+VBLANKs. `[vblphase]` says why: all 11,801 VBLANKs in the window were
+deferred, all in unlock mode. nv2a.c's adaptive deferral holds each VBLANK
+until the guest's flip (FLIP_STALL fires it), so the guest's VBLANK clock
+follows its own frame. A 22 ms flip then counts 1 or 2 VBLANKs, never 3,
+and the session-1 rule (late = vb > ireq) read 69.5% of frames `vsync`
+against a 60 Hz guest running at 44.7 fps. The rule now also calls a frame
+late when P > 1.05 D (profile.h; selftest `rule.deferred_vblank_period_late`
+and its mutant). `chain.py` re-reads a pre-fix CSV with the new rule. Its
+port of `hakux_ft_attribute`, run with the old lateness, reproduces the
+device's `cls` on 100.00% of frames in all four captures, so the re-read
+is the device's rule with one line changed.
+
+| | Simpsons |
+|---|---|
+| deadline | 1 VBLANK (60 Hz guest; D read as 17.17 ms, the deferral-stretched VBLANK) |
+| fps; P p50/p95/p99/max ms | 44.7; 22.44/24.84/28.49/38.52 |
+| late, old rule / period-late | 30.5% / **97.2%** |
+| P - D, ms: p5/p50/p95/p99 | 2.42 / 5.25 / 7.71 / 11.22 |
+
+**Q1, pacemaker (period-late).** vsync 2.8%, run 14.5% (14.9% of late
+frames), **unattr 82.7% (85.1% of late frames)**. The guest barely idles
+(0.28 ms a frame, `idlejoin.py`), so here `run` is not inflated by the idle
+loop as it is in Forza. 10.2% of late frames exceed the deadline on guest
+work alone. The unattributed 85% are the DMA_PUT pfifo.lock wait, which
+the in-row build sees only as a total with no holder (G4).
+
+**The vCPU's chain closes on two parts.**
+
+| part, ms per frame | mean | of P | corr with P, per frame |
+|---|---|---|---|
+| guest on-CPU (work 15.45 + idle loop 0.28) | 15.73 | 70.3% | 0.73 |
+| DMA_PUT pfifo.lock (`lockw`) | **6.34** | **28.3%** | 0.59 |
+| BQL (held by the main loop while it ran) | 0.37 | 1.6% | 0.28 |
+| run queue, halt, other, unnamed | 0.16 | 0.7% | |
+| sum against P = 22.37 | 22.59 | 101% | |
+
+| other side, ms per frame | mean | corr with P | corr with `lockw` |
+|---|---|---|---|
+| PFIFO on-CPU | 5.69 | -0.01 | -0.31 |
+| PFIFO idle (waiting for work) | 9.17 | 0.80 | 0.46 |
+| PFIFO blocked in no hooked wait | **7.44** | 0.36 | 0.55 |
+| GPU execution, main command buffers | 5.11 | 0.23 | 0.35 |
+
+**Q2.** 615 MHz on every frame; GPU p50 5.16, p95 5.35 ms; busy 23% of the
+median frame; no frame at 90%. One clock, so clock against work is not
+answerable, and the owner's rule makes it moot.
+
+**Q3.** vCPU blocked 6.60 ms a frame: DMA_PUT pfifo.lock 6.34 (holder not
+recorded in-row; vcpusleep's sampled holder pass found the PFIFO thread
+off-CPU for 97% of these waits), BQL 0.37 (main loop, running), 0.12
+unnamed; 26 waits a frame. This measures vcpusleep's 9.4 ms premise per
+frame instead of from samples: 6.6 ms here, with 6.3 of it the one wait
+they named.
+
+**Q4.** No hitch in the window (max 38.5 ms). The run's 11 hitch blocks are
+all before the mark (boot, menus, loading, 17:47:30-17:49:09).
+
+**Q5.** VBLANKs per flip 0/1/2: 0.4/69.2/30.5%, an artefact of the deferral
+(above). The CSV's `slack` is blind here too: the deferred VBLANK fires at
+the flip, so present and flip coincide and slack reads ~17 ms on every
+frame. Read delivery as P - D (table above): **every frame is 2-11 ms late,
+5.25 at the median.**
+
+### What Simpsons says, joined with vcpusleep's arm
+
+vcpusleep removed the DMA_PUT wait (posted store, c2dfca18a1): the lock
+wait went from 8.85 to 0.80 ms a frame and the frames did not come back.
+The guest idled 14.9 ms a frame instead, and the PFIFO thread's one long
+sleep per frame went from 8 to 21 ms (inferred to be the frame-slot fence,
+draw.c:4386). They concluded "the frame is then paced by the GPU side" and
+ranked "name the GPU-side frame time on Simpsons" first.
+
+**This capture names it: the GPU's measured execution is 5.1 ms of a
+22.4 ms frame.** The PFIFO thread's blocked time outside its idle is
+7.4 ms, longer than everything the GPU executed in the main command
+buffers that frame. So the vCPU waits on the PFIFO thread (6.3 ms, lock),
+and the PFIFO thread waits for something on the GPU side (7.4 ms) that is
+not the main command buffers' execution. What the timestamps do not
+cover, and so the candidates:
+
+- the aux command buffer each submit carries: the staging copies,
+  `flush_memory_buffer`, and an ALL_COMMANDS -> ALL_COMMANDS barrier
+  (draw.c 4107-4156), outside the timestamp pair;
+- queueing between submits: `[rwait526]` counts 3,862-3,934 deferred
+  finishes per 10 s against 446-449 flips, **8.7 submits a guest frame**,
+  and each frame-slot rotation waits a slot submitted only a few finishes
+  earlier;
+- fence signal latency, and other GPU clients (the compositor) between
+  submits.
+
+Main-CB execution is a lower bound on the GPU's occupancy, not its value.
+Which of the three it is needs per-submit GPU start/end on the host
+clock beside the host's submit and fence-return times (section 9, step 1).
+
+### The four titles re-read with the period-late rule
+
+`chain-session4.md` is the full `chain.py` output; `idlejoin.py` re-run
+with period-late.
+
+| | Simpsons | Forza | Nightfire | Tron |
+|---|---|---|---|---|
+| guest asks for | 60 (D 16.7) | 30 (D 33.4) | 60 | 60 |
+| fps | 44.7 | 26.9 | 38.8 | 44.8 |
+| late, old rule -> period-late | 30.5 -> **97.2%** | 46.1 -> **66.9%** | 50.4 -> **99.4%** | 23.6 -> **47.9%** |
+| P - D ms, p50 / p95 | 5.25 / 7.71 | 8.04 / 17.98 | 7.35 / 20.05 | 0.61 / 21.19 |
+| VBLANKs deferred; in unlock mode | 100%; 100% | 51%; 0% | 100%; 99% | 60%; 88% |
+| flip periods on the VBLANK grid | 2.0% | 50.0% | 8.3% | 56.3% |
+| guest work ms/frame (on-CPU - idle loop) | 15.45 | 23.46 | 17.48 | 23.18 |
+| guest idle loop ms/frame | 0.28 | 12.53 | 8.22 | 1.00 |
+| **late frames over D on guest work alone** | **10%** | **34%** | **27%** | **70%** |
+| vCPU DMA_PUT lock wait ms/frame | 6.34 | 0.03 | 0.28 | 2.32 |
+| PFIFO blocked in no hooked wait ms/frame | 7.44 | 14.61 | 6.58 | 2.54 |
+| corr(lock wait, PFIFO unhooked), per frame | 0.55 | 0.02 | -0.14 | **0.96** |
+| GPU main-CB ms p50; busy share of the frame | 5.2; 23% | 16.0; 48% | 7.5; 34% | 4.4; 22% |
+| GPU MHz | 615 | 615 | 615 | 615 (99.1%) |
+| hitches in the window | 0 | 5 | 40 | 88 |
+
+**Who sets the pace, per title:**
+
+- **Tron: the vCPU's guest code**, for 70% of its late frames. Most of the
+  rest is the DMA_PUT lock wait, and there it moves frame by frame with the
+  PFIFO thread's unhooked block (r = 0.96) and with GPU execution (0.79):
+  the Simpsons chain, smaller.
+- **Simpsons: the vCPU waits on the PFIFO thread, which waits on the GPU
+  side**, for 90% of its late frames. Guest work alone (15.45 ms) fits the
+  deadline.
+- **Nightfire and Forza: the guest waits in its own idle loop** (8.2 and
+  12.5 ms a frame, mostly timer-woken) for 73% and 66% of their late
+  frames, while the PFIFO thread is blocked in an unhooked wait 6.6 and
+  14.6 ms a frame and the GPU executes a third to a half of the frame.
+  What the guest waits for is G1's question (the idle span intersected
+  with the PFIFO's named waits).
+
+So in three of four titles most late frames are a wait, not guest work.
+The PFIFO thread's unhooked blocked time is the one span on the other side
+in all four, and the GPU's measured execution is under half of every
+title's frame. That is the shape the owner described, one processor
+waiting on the other. The wait is in our code, between the PFIFO thread
+and GPU completion, and G3 names it.
+
+## 9. Next steps, ranked by P x win (four titles read)
+
+Win: the late frames the step reaches, from section 8's table. P: that it
+decides or removes them, with the evidence. Remedies are waits in our code
+(owner, 10-05 17:05); no clock or mode.
+
+| # | step | win at full scale | P, and why | kind |
+|---|---|---|---|---|
+| 1 | **G3 + G1 + G4, plus a per-submit GPU timeline**: the PFIFO thread's fence, submit and render-thread spans (`draw.c`, hooks.diff), the guest-idle span (`cpu-exec.c`), the DMA_PUT wait's holder (`user.c`), and GPU start/end of the aux and main command buffers on the host clock (VK_EXT_calibrated_timestamps) beside host submit and fence-return times (draw.c 4100-4230, 4386; new, G10). | Every late frame that is not guest work: **Simpsons 90%, Nightfire 73%, Forza 66%, Tron 30%**. | 0.8 that it names the wait in all four. The PFIFO spans feed the holder split already (selftest); main-CB time is measured and is under half the frame everywhere, so the remaining question is narrow: GPU busy outside the main CB, or GPU idle while the fence is outstanding. Against: the wait could be in a fourth place (a draw.c lock), which the hooks would show as unhooked time staying high. | instrument (grant) |
+| 2 | **If 1 shows GPU-idle time inside the PFIFO's fence waits: stop the PFIFO thread waiting on GPU completion per finish** (8.7 finishes a frame, each frame-slot rotation waiting a slot a few finishes old, with pfifo.lock held), and re-arm vcpusleep's posted DMA_PUT on top (`git revert f6ac723228`; pixels byte-identical, M and S passed). | Simpsons: P 22.4 -> ~16 ms if both waits go (guest work 15.45 + BQL 0.4): 44.7 -> ~60 fps. Tron's 30%, and the waiting share of Nightfire and Forza if G1 ties their idle to it. | 0.4 now. The chain is measured end to end on Simpsons. The posted store alone moved the wait rather than removing it (vcpusleep), so it is ready but not sufficient. The site of the fix is inferred, not hooked. | code (the hard work) |
+| 3 | **G9** (MMIO split, `system/memory.c`, hooks-g9.diff) and the vCPU JIT direction (owner 09-28). | Late frames on guest work alone: **Tron 70%, Forza 34%, Nightfire 27%, Simpsons 10%**. | 0.9 that faster guest code moves these frames (measured: the guest works past the deadline with the other side idle); the size per JIT change is unknown (memfast: 21% of host instructions bought 4-6%). G9 says how much of "guest work" is MMIO dispatch. | instrument, then the hard work |
+| 4 | **G5 + G8**: the vCPU's waits under the BQL. | Forza's hitches (4 of 5, 60% of hitch time). Hitches only. | 0.7 | instrument (grant) |
+| 5 | Load-shaped hitches (Tron 0.6-0.7 s; Nightfire's 64-81 ms runs), joined with `[ide425]` and frames. | Hitches only. | medium | read, no device |
+
+Re-ranking against section 7: G4 moves into step 1, because the DMA_PUT
+wait is 85% of Simpsons' late frames and Tron's second class. The
+GPU-execution side stays off the list: main-CB time is under half the
+frame in every title at the one clock seen.
 
 ## Why attempt 1 did not finish
 
@@ -531,6 +724,13 @@ session (attempt 3) is the resume. The grant (G1-G9) and the Simpsons host
 capture were still unanswered, so this session wrote a blind Simpsons route
 (`simpsons-frametrace.route`) and queued it through the dispatcher instead
 of waiting on the host capture.
+
+## Why attempt 3 did not finish
+
+By the contract again: it ended at 17:40 PDT on a `waiting:` for the
+Simpsons run (`1-1791245535-lane.frametrace-680559`, in WAITING), the
+fourth title and the last thing milestone (c) needed. The run went DONE at
+17:54. This session (attempt 4) read it and finished (c).
 
 ## Log
 
@@ -576,18 +776,35 @@ of waiting on the host capture.
   on 4633d9dadd passes every branch gate; `territory` and `coverage` fail
   on origin/board (other lanes' overlapping claims; #834/#835/#837).
 
+- 10-05 ~18:00 PDT, session 4 (attempt 4, resume): master already merged.
+  Simpsons DONE; its frames show free roam (Homer against a wall corner).
+  Read it (section 8). Found that the lateness rule was wrong under the
+  VBLANK deferral; fixed the rule in profile.h (selftest 39 checks, 16
+  mutants), wrote `chain.py` (a port of the rule, checked against the
+  device's `cls` on 100% of frames) and re-read all four titles. GPU
+  main-CB time on Simpsons is 5.1 ms of 22.4, which answers vcpusleep's
+  open question. Milestone (c). No device time this session.
+
 ### Next session, in order
 
-1. Simpsons `1-1791245535-lane.frametrace-680559`: first check its frames
-   show free roam from `mark gameplay` + 20 s (fail closed if not: say so,
-   do not substitute a title); archive; `ftread.py`; `idlejoin.py`; the five
-   tables into section 6's shape. vcpusleep's 9.4 ms/frame blocked is the
-   number to meet or refute.
-2. Milestone (c) in OUTBOX; PR.md ready.
-3. If granted: apply `hooks.diff` (+ G9) as one commit, selftest,
-   type-check, re-capture Forza and Nightfire first (section 7 step 1).
+1. If granted: apply `hooks.diff` (G1-G8) + G9 + the G10 timeline as one
+   commit, selftest, type-check, re-capture Simpsons and Forza first
+   (section 9 step 1). Simpsons' route is `simpsons-frametrace.route`.
+2. Without a grant there is no further device read that decides anything:
+   the in-row build has measured what it can see.
 
 ## Do not repeat
+
+- Judging "late" from VBLANKs per flip. nv2a.c's adaptive deferral holds
+  the VBLANK to the flip (all of Simpsons' and Nightfire's VBLANKs in the
+  window), so a 60 Hz guest at 45 fps counts 1-2 VBLANKs a flip. Compare
+  the period to the deadline; check `[vblphase] def=`/`unl=` and whether
+  the periods sit on the VBLANK grid (`chain.py` section 1). The CSV's
+  `slack` is blind for the same reason.
+- Reading "GPU execution" from the timestamps as the GPU's whole
+  occupancy. They bracket the main command buffer of each slot; the aux
+  buffer (staging copies, memory flush, barrier) and the gaps between
+  8.7 submits a frame are outside them. A lower bound.
 
 - A whole-span holder test ("same state at both ends") books every real
   GPU-held lock wait as MIXED: the holder leaves the fence before it can

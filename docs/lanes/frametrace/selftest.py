@@ -62,6 +62,10 @@ MUTANTS = [
      '    charge[HAKUX_FT_C_BLK_GPU] = fr->vh[HAKUX_FT_H_GPU] + '
      'fr->vh[HAKUX_FT_H_RUN] +',
      'rule.running_holder_is_block'),
+    ('lateness read from VBLANK counts alone',
+     '               (D && (uint64_t)fr->P * 20 > (uint64_t)D * 21);',
+     '               0;',
+     'rule.deferred_vblank_period_late'),
     ('off path records',
      '    if (hakux_ft_enabled()) {\n        hakux_ft_wait_begin_slow',
      '    if (1) {\n        hakux_ft_wait_begin_slow',
