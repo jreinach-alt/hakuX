@@ -8,7 +8,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pathfind` | claude-sonnet-5 | 1h 25m | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+| `pathfind` | claude-sonnet-5 | 1h 41m | pathfind: a screen-reading agent that drives a title from boot into gameplay |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.pathfind`
@@ -59,20 +59,15 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `722b72a2c6` | 2026-10-06 07:46 |
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `853ee7da6a` | 2026-10-06 08:01 |
 
 ## Recently landed on master
 
+- 2026-10-06 gpunonrender: the GPU's "non-render" time is render-pass work on Turnip (94-98% on NG Black, ToeJam, DOA3)
 - 2026-10-06 frametrace: the PFIFO thread's GPU waits named per title (draw.c:4386 under pfifo.lock on Simpsons
 - 2026-10-05 frametrace: per-frame critical-path telemetry (HAKUX_FRAMETRACE=1): who set the pace, frame by frame
 - 2026-10-05 dashretro: the 0.5 panel counts the Playable ledger and pathfind's held runs (#433)
 - 2026-10-05 hitchcause: the MTV 330 ms hitches are guest-side waits, not the IDE host read ([ide425d] held run on af37f7a3ea) (#433)
 - 2026-10-05 belowbar1005: the #804 fence wait is not what holds Buffy, NG Black or DOA3 below the bar
-- 2026-10-04 accuracy804 (re-open): the #804 fix keeps the rival cars
-- 2026-10-04 accuracy804: RalliSport's cars blink on alternate frames (#804): identified and fixed
-- 2026-10-04 dispatcher: a soak from a pre-libfolders ref still finds its games folder
-- 2026-10-04 hddperm: dev_push removes <path>.new on a failed push
-- 2026-10-04 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
-- 2026-10-04 hangwatch: a locked-up title is caught on telemetry in about 90 s, not waited out
 
-_Updated 2026-10-06 07:56 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-06 08:12 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
