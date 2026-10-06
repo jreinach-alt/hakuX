@@ -939,3 +939,17 @@ NEW ISSUE: fighting-game hold stalls on Character Select after a round, so the p
 SCENE SHOULD CONTAIN: MK Armageddon live rounds, two fighters in a 3D arena, a HUD with health bars and a round timer, the fighters moving and trading hits between rounds; no character-select grid during the window.
 
 Spend: model calls for this run, not priced (claim and hold looks). Queue continues: MK Shaolin Monks is next.
+
+## #433 -- 2026-10-06 07:01 PDT
+
+[lane.pathfind] Mortal Kombat: Shaolin Monks (4D570029) FAIL on play share, a near miss (fps clear): re-hold, first-run claim, 600-s hold, run dir runs/rehold-4D570029 (frames/028-gameplay.jpg, verdict.json, hold.jsonl). Claim to gameplay 3.15 min. Scored 686.5 s from the gameplay mark, 84.7 s excluded: play share 0.880 (bar 0.90): play 603.8 s, still 82.6 s. fps_ok 1.0 at the 28.5 bar, median 50.9, min 38.6, no crash, no hang.
+
+Ref and env: as for Armageddon, this run's device record could not be read (pathfind.py passes no ref). The pre-hold gate read ref c3a0c70ace (origin/master), apk 6beaa5ac1cdd, env [] from the last clean Nova result. Read that as the build, not as a per-run receipt.
+
+Named cost (hold.jsonl, steps 39-60): the scene goes still from about 130 s to 230 s (window change falls from 0.55 to 0.003) while the genre walk keeps pressing STICK:up, X and A. The stand-still check fires and the unstick comes only at 229 s (STICK:right:2 and A), so the still stretch costs about 100 s. The other still stretches (about 60 s in all, 466-520 s and 634 s) show the same recovery lag. Frames not yet read for the still stretch; that is the next step for identification.
+
+NEW ISSUE: the generic hold's stand-still recovery is slow on Mortal Kombat Shaolin Monks: two windows of still scene pass before the unstick, and the walk repeats the same press (the same finding as Blowout). Blocks Shaolin Monks' Playable (fps clear; play share 0.88 against 0.90). Not re-run: identify the still stretch from the frames first.
+
+SCENE SHOULD CONTAIN: MK Shaolin Monks gameplay, a 3D arena with two fighters, the HUD (health bars, round timer), the fighters moving and trading hits through the window; no still camera on one wall.
+
+Spend: model calls for this run, not priced. Queue continues: MK Deadly Alliance is running now.
