@@ -1017,3 +1017,15 @@ Named cost (hold.jsonl, the ladder): the off-play cap tripped once, at 12 menu s
 NEW ISSUE: Armageddon's Character Select is not exited by the hold's ladder (A, START, A, A, B, START): menu time 140 s and the share falls to 0.76 with fps clear. Blocks Armageddon's Playable. Not re-run: the select screen's working input needs identifying from these frames (the 'PRESS START' join prompt in the claim's step 88 of Deadly Alliance is the same family).
 
 Spend: model calls for this run, not priced.
+
+## #433 -- 2026-10-06 11:30 PDT
+
+[lane.pathfind] NFL Blitz Pro (NFL_Blitz_Pro.xiso.iso, no title id) claim FAIL: gave-up at the 25-min claim budget (15 + 10 team), 134 steps, 154 model calls, $12.25. No hold, so no benchmark window. Run runs/nfl-blitz-pro/hold2 (frames/, steps.jsonl, calls.jsonl). Nova 10:58-11:23 PDT. Build: ref 0342eba317 (master restore, the last Nova result before the hold), apk ad6f37a2f087, env []; tools 8d7af64998 from a clean checkout.
+
+Identified, two causes:
+1. The claim-live rule (07:50 order: the budget ending on live play enters the hold) was NOT in committed 8d7af64998. It was only in the uncommitted worktree, although 853ee7da6a's message names it. This run reached live football from ~656 s (snaps, tackles, clock running) and ended on a live look (#133) and then a refused probe (#134). On the rule it would have entered the hold. The rule is now committed in ab8788c38b, and its selftest leg (claimlive) passes; the full selftest is 89 ok.
+2. The quarter length was never set: Blitz Pro's MAIN MENU tabs (GAME MODES, with L/R arrows) change with the triggers. The model pressed R1/L1 and the d-pad for 13 steps (~10 min) and went to QUICKPLAY at the default 2:00 quarter.
+
+Next, started 11:28: one run on ab8788c38b (runs/nfl-blitz-pro/hold3) with a goal naming RT/LT for the tabs. This is not a blind retry: both causes above are fixed.
+
+Spend: $12.25 this run.
