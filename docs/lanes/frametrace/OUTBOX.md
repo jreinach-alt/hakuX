@@ -178,3 +178,65 @@ Not in WAITING because nothing resolves them on its own: the G1-G9 grant,
 the Simpsons host capture, the Thor's focus fault. Preflight: every gate on
 this branch passes; `coverage` fails on #829 (an open board issue with no
 lane row), which is the board's to classify.
+
+## 2026-10-05 ~17:30 PDT (session 3): milestone (a) done; Forza read; a correction
+
+**(a) Overhead: PASS.** One-run duty test (Nightfire, instrument off and
+on every 15 s, 10 pairs): the instrument moves neither the pace nor the
+vCPU's run share by 3% (fps cost bound -1.1%, run share -0.10%
+[-0.38, +0.18]); in-process cost 89 us/frame (Nightfire) and 76 us/frame
+(Forza) against the 200 budget. NOTES section 5.
+
+**(b) Forza (Nova, 260 s of race, 30 Hz title, 46% of frames late).** The
+in-row record says 95.8% of late frames are `run`, and **that is wrong**:
+Forza idles 12.5 ms a frame in the guest's idle loop (woken by the timer
+tick), which the in-row build books as vCPU time (the G1 gap, pinned by the
+selftest). With the idle taken out (`idlejoin.py`, from the always-on
+[rr425w] line), its guest work is 22-25 ms a frame against a 33.4 ms
+deadline in every window, and lateness tracks the idle, not the work.
+Meanwhile the PFIFO thread is blocked ~15 ms a frame in no hooked wait and
+the GPU is busy under half of each frame (615 MHz throughout). Shape: a
+serial chain (PFIFO translates, then waits on the GPU side; the guest waits
+on the PFIFO). Hypothesis, not yet measured: G1 + G3 decide it.
+
+**Correction to session 2's Nightfire read:** "the guest never idles" was
+wrong (134 of 168 windows idle, up to 0.8 s per 2 s). Nightfire has two
+regimes: 40 windows vCPU-bound (31 ms of guest work a frame), 124 windows
+where the guest works 12-15 ms, idles 10-12 ms, and still misses a third
+to two thirds of its VBLANKs. Tron's verdict (vCPU-bound) stands: 89% of
+its late frames exceed the deadline on guest work alone.
+
+**Hitches (Forza):** 4 of 5 have the vCPU blocked 20-100 ms in no hooked
+wait **while holding the BQL** (the main loop queues behind it) and the
+PFIFO thread busy: a vCPU wait on the PFIFO thread under the BQL (G5 or G8
+sites).
+
+### GRANT REQUEST, re-ranked by what the reads now show
+
+1. **G1 + G3 first** (hooks.diff: `accel/tcg/cpu-exec.c` 1255/1276;
+   `hw/xbox/nv2a/pgraph/vk/draw.c` 1731, 3786, 3978-4030, 4211, 4221,
+   4319, 4386). They decide Forza's whole late class and half of
+   Nightfire's. The patch is written and type-checked.
+2. G9 (`system/memory.c`, hooks-g9.diff) for the vCPU-bound regime (Tron,
+   Nightfire's 40 windows).
+3. G5 + G8 (`pgraph.c` 958-968; `surface.c` 70, 79, 1266, 2079, 2560) for
+   the BQL-holding vCPU waits in Forza's hitches.
+4. G4, G2, G6, G7 as before.
+
+### Queued
+
+`1-1791245535-lane.frametrace-680559`: Simpsons Hit & Run, Nova
+(hard pin), ref 65bd51712b (the Forza and duty build), 420 s,
+HAKUX_FRAMETRACE=1, frames every 20 s, route
+`docs/lanes/frametrace/simpsons-frametrace.route` (blind, written from
+pathfind's 10-04 hold: rounds of START/A to free control, then walk). This
+replaces the host capture request (withdrawn: lane.local need not run
+`capture_simpsons_frametrace.sh`). If its frames do not show free roam the
+lane says so rather than substitute a title. After it the Nova carries
+HAKUX_FRAMETRACE=1 until the next request (telemetry only).
+
+### Spend (session 3)
+
+Opus: reading two results, the duty judge, `idlejoin.py`, the Forza and
+correction tables, the route, NOTES. Device: duty 6 + Forza 8 min (queued
+in session 2) ran; queued 8.5 min (Simpsons).

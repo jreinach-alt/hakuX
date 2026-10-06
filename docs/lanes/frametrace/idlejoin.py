@@ -103,6 +103,17 @@ def main():
         still_a, late_n, 100.0 * still_a / late_n if late_n else 0))
     print('  (b) all the window idle in its late frames: %d of %d (%.1f%%)' % (
         still_b, late_n, 100.0 * still_b / late_n if late_n else 0))
+    # windows binned by late share: does guest work per frame cross the
+    # deadline where the frames are late?
+    print()
+    print('| late share of the window | windows | guest work ms/frame | idle ms/frame | vCPU on-CPU ms/frame |')
+    print('|---|---|---|---|---|')
+    for lo, hi in ((0, .2), (.2, .5), (.5, .8), (.8, 1.01)):
+        b = [r for r in rows if lo <= r[2] < hi]
+        if b:
+            print('| %.1f-%.1f | %d | %.2f | %.2f | %.2f |' % (
+                lo, min(hi, 1), len(b), statistics.mean(r[5] for r in b),
+                statistics.mean(r[4] for r in b), statistics.mean(r[3] for r in b)))
     # does lateness track guest work or idle across windows?
     if len(rows) > 3:
         def corr(x, y):
