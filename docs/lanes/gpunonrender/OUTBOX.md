@@ -31,6 +31,26 @@
   The work so far is a read of the render and nondraw paths and one instrument;
   I have not run anything on a device yet.
 
+## 2026-10-05 17:55 PDT (attempt 2): the control arms ran; their xemu-xfr lines were dropped
+
+- Attempt 1's two arms both ran to DONE on apk fc4e0d3d7a20. Their `xemu-xfr`
+  lines never reached logcat: the perflog logcat filter is a tag list ending in
+  `*:S`, and `xemu-xfr` is not on it. So attempt 1 had no per-category control
+  reading. I should have checked the filter before going to WAITING.
+- Fix, commit 9609d0299f: the two `xemu-xfr` lines are logged under the
+  `xemu-gpu` tag (in the spec) with the `xemu-xfr` prefix. Adding `xemu-xfr:I`
+  to the spec is lane.local's; I have not asked for it since the prefix route
+  works without it.
+- Read from the attempt-1 `xemu-gpu` lines (NG Black, menu frames): Xfr
+  (`gpu_nonrender_ms`) median 0.40 ms in C0 and 1.10 ms in C16; Rnd unchanged
+  at 0.30. The rise is the control, about 0.044 ms per copy. Recorded in NOTES.md.
+- Re-run queued at 9609d0299f, same route and env: C0 1-1791247925-lane.gpunonrender-863985,
+  C16 1-1791247926-lane.gpunonrender-864108. The verdict waits on them.
+- The route is the intro-first route; gameplay starts about 150-200 s in, so the
+  control reads menu frames. That is fine for the control. The title soaks need
+  a longer run (300-360 s).
+- Spend: not readable from here, so no figure.
+
 ## Next
 
 Milestone (b) once the control results land: the control verdict, then the

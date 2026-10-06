@@ -1,9 +1,8 @@
-# hostops 2026-10-05 PDT: rewritten into lanewaker's grammar; the meaning is the lane's.
-# The lane wrote it prose-form and uncommitted, so lanewaker could not read it.
-# Waiting for the two Nova control arms (NG Black, route bb-ngb, perflog, 16784acb80):
-#   1-1791243663-lane.gpunonrender-551868   HAKUX_GPUXFR=1
-#   1-1791243666-lane.gpunonrender-551969   HAKUX_GPUXFR=1 HAKUX_GPUXFR_CTRL=16
-# Then resume: read both results' xemu-xfr lines and judge them against docs/lanes/gpunonrender/NOTES.md "Control".
+# hostops 2026-10-05 PDT, attempt 2: the attempt-1 arms ran, but their xemu-xfr lines were dropped by the logcat tag filter (attempt 1's NOTES.md section "Attempt 2").
+# Re-queued at 9609d0299f (the xemu-xfr line now rides on the xemu-gpu tag). Waiting for the two re-run control arms (NG Black, route gpunonrender-ngb.first-run, perflog, Nova):
+#   1-1791247925-lane.gpunonrender-863985   HAKUX_GPUXFR=1
+#   1-1791247926-lane.gpunonrender-864108   HAKUX_GPUXFR=1 HAKUX_GPUXFR_CTRL=16
+# Then resume: read both results' xemu-xfr lines and judge them against docs/lanes/gpunonrender/NOTES.md "Control". The attempt-1 xemu-gpu Xfr reads (C16 +0.70 ms median) are already in NOTES.md.
 # Nova is screening-only until 22:00 PDT unless lane.local queues a perf request there; the dispatcher decides.
-run 1-1791243663-lane.gpunonrender-551868
-run 1-1791243666-lane.gpunonrender-551969
+run 1-1791247925-lane.gpunonrender-863985
+run 1-1791247926-lane.gpunonrender-864108

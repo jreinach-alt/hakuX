@@ -36,6 +36,10 @@ frame, the residual against `gpu_nonrender_ms`, and the four largest call sites
 bracketed 1 MiB buffer copies at the top of every frame, as a control whose cost
 is known in advance.
 
+The `xemu-xfr` lines are logged under the `xemu-gpu` tag: the perflog logcat
+filter keeps only the tags it lists, and `xemu-xfr` is not one of them. The
+line starts with `xemu-xfr`, so it can still be grepped.
+
 ## Limits, stated in advance
 
 - A bracket opened inside another is folded into the outer one.
@@ -53,6 +57,8 @@ is known in advance.
 
 The instrument is built and committed. Two control arms on Nova (NG Black, same
 route, same binary, 150 s each: `HAKUX_GPUXFR=1`, and the same with
-`HAKUX_GPUXFR_CTRL=16`) are queued and their results are not in this PR yet.
+`HAKUX_GPUXFR_CTRL=16`) were queued at 9609d0299f. The `xemu-gpu` lines of the
+earlier pair already show the 16-copy control in the existing `Xfr` value
+(0.40 to 1.10 ms per frame median); the `xemu-xfr` category reading is pending.
 The per-title category tables, the ranking and the cost measurement follow in
 `docs/lanes/gpunonrender/NOTES.md`.
