@@ -572,6 +572,9 @@ of waiting on the host capture.
   hold) and queued `1-1791245535-lane.frametrace-680559` (Simpsons, Nova,
   65bd51712b, 420 s, frames every 20 s) behind gpuclock's and
   gpunonrender's five.
+- 10-05 ~17:40 PDT: **waiting** (WAITING) on the Simpsons run. Preflight
+  on 4633d9dadd passes every branch gate; `territory` and `coverage` fail
+  on origin/board (other lanes' overlapping claims; #834/#835/#837).
 
 ### Next session, in order
 

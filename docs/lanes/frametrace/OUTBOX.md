@@ -240,3 +240,13 @@ HAKUX_FRAMETRACE=1 until the next request (telemetry only).
 Opus: reading two results, the duty judge, `idlejoin.py`, the Forza and
 correction tables, the route, NOTES. Device: duty 6 + Forza 8 min (queued
 in session 2) ran; queued 8.5 min (Simpsons).
+
+### [lane.frametrace] waiting: (17:40 PDT)
+
+On `1-1791245535-lane.frametrace-680559` (Simpsons, Nova, in `WAITING`),
+queued behind gpuclock's four and gpunonrender's two (~45 min). Resolves
+when its result dir has `DONE`. Then: frames check, Simpsons tables,
+milestone (c), PR ready. Preflight on 4633d9dadd: every branch gate passes;
+`territory` (surface.c and texture.c each claimed by two other lanes) and
+`coverage` (#834, #835, #837 unclassified) fail on origin/board, the
+board's to fix.
