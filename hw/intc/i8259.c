@@ -31,6 +31,9 @@
 #include "hw/isa/i8259_internal.h"
 #include "trace.h"
 #include "qom/object.h"
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
 
 /*#define DEBUG_IRQ_LATENCY*/
 
@@ -100,6 +103,60 @@ static int pic_get_irq(PICCommonState *s)
     }
 }
 
+/*
+ * [pic14] (tag hakuX): one line per 2 s window of IRQ14 at the slave PIC
+ * input (slave pin 6, the PIC's own irq_index 14). Telemetry only. Fields:
+ *   win_us       the window's length
+ *   raise        set_irq calls that assert pin 14 (level 1), whether or not
+ *                they change anything
+ *   edge         of those, the ones that find last_irr clear, i.e. a new
+ *                edge that sets IRR
+ *   lower        set_irq calls that deassert pin 14 (level 0)
+ *   ack          pin 14 acknowledged by pic_intack (the CPU took the vector)
+ *   eoi          end-of-interrupt for pin 14 (OCW2 on the slave)
+ *   isr, imr     the slave's ISR and IMR at the window's close
+ * The window is closed from any pic_set_irq call, so it prints on the first
+ * line event after the 2 s elapse. Counts are per PIC instance (one slave).
+ */
+static struct {
+    int64_t t_win;
+    uint32_t raise, edge, lower, ack, eoi;
+} pic14;
+
+#define PIC14_WIN_NS 2000000000LL
+
+#ifdef __ANDROID__
+#define PIC14_LOG(...) \
+    __android_log_print(ANDROID_LOG_WARN, "hakuX", __VA_ARGS__)
+#else
+#define PIC14_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+static void pic14_tick(void)
+{
+    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_HOST);
+    int64_t win = now - pic14.t_win;
+
+    if (pic14.t_win == 0) {
+        pic14.t_win = now;
+        return;
+    }
+    if (win < PIC14_WIN_NS || !slave_pic) {
+        return;
+    }
+    PIC14_LOG("[pic14] win_us=%" PRId64 " raise=%u edge=%u lower=%u ack=%u"
+              " eoi=%u isr=%02x imr=%02x",
+              win / 1000, pic14.raise, pic14.edge, pic14.lower, pic14.ack,
+              pic14.eoi, slave_pic->isr, slave_pic->imr);
+    pic14.raise = 0;
+    pic14.edge = 0;
+    pic14.lower = 0;
+    pic14.ack = 0;
+    pic14.eoi = 0;
+    pic14.t_win = now;
+}
+
 /* Update INT output. Must be called every time the output may have changed. */
 static void pic_update_irq(PICCommonState *s)
 {
@@ -123,6 +180,17 @@ static void pic_set_irq(void *opaque, int irq, int level)
 
     trace_pic_set_irq(s->master, irq, level);
     pic_stat_update_irq(irq_index, level);
+    pic14_tick();
+    if (!s->master && irq == 6) {
+        if (level) {
+            pic14.raise++;
+            if (!(s->last_irr & mask)) {
+                pic14.edge++;
+            }
+        } else {
+            pic14.lower++;
+        }
+    }
 
 #ifdef DEBUG_IRQ_LATENCY
     if (level) {
@@ -159,6 +227,9 @@ static void pic_set_irq(void *opaque, int irq, int level)
 /* acknowledge interrupt 'irq' */
 static void pic_intack(PICCommonState *s, int irq)
 {
+    if (!s->master && irq == 6) {
+        pic14.ack++;
+    }
     if (s->auto_eoi) {
         if (s->rotate_on_auto_eoi) {
             s->priority_add = (irq + 1) & 7;
@@ -268,6 +339,9 @@ static void pic_ioport_write(void *opaque, hwaddr addr64,
                 if (priority != 8) {
                     irq = (priority + s->priority_add) & 7;
                     s->isr &= ~(1 << irq);
+                    if (!s->master && irq == 6) {
+                        pic14.eoi++;
+                    }
                     if (cmd == 5) {
                         s->priority_add = (irq + 1) & 7;
                     }
@@ -277,6 +351,9 @@ static void pic_ioport_write(void *opaque, hwaddr addr64,
             case 3:
                 irq = val & 7;
                 s->isr &= ~(1 << irq);
+                if (!s->master && irq == 6) {
+                    pic14.eoi++;
+                }
                 pic_update_irq(s);
                 break;
             case 6:
@@ -286,6 +363,9 @@ static void pic_ioport_write(void *opaque, hwaddr addr64,
             case 7:
                 irq = val & 7;
                 s->isr &= ~(1 << irq);
+                if (!s->master && irq == 6) {
+                    pic14.eoi++;
+                }
                 s->priority_add = (irq + 1) & 7;
                 pic_update_irq(s);
                 break;

@@ -1,0 +1,68 @@
+# state: any   (the golden cc9b4ced4a0f holds pathfind's profile; lane.accuracy804, #804, attempt 2)
+# RalliSport Challenge (4D53000F): rallisport-804d.route with six screencaps during the 3-2-1
+# countdown, where the owner looked for cars on the fix build and where plain1 (unfixed master)
+# showed the grid cars blinking. The spare A keeps 804d's time (~+8 s after the start-race A).
+# Purpose: is a rival car on screen at all, on the grid and in the pass, with the #804 fence wait
+# on and off (HAKUX_OCCL_WAIT), while HAKUX_OCCL_LOG records what each visibility test returned.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+press START
+wait 5
+shot title
+wait 3
+press A
+wait 6
+press A
+wait 6
+shot mainmenu
+# RIGHT exactly as pathfind sends it (pathfind.py send(): HATX max, HATX mid at once, then 0.35 s).
+axis HATX max
+axis HATX mid
+wait 2.35
+press A
+wait 6
+shot racetype
+press A
+wait 6
+shot track
+press A
+wait 6
+shot car
+press A
+wait 25
+shot options
+press A
+wait 1.5
+shot c1
+shot c2
+shot c3
+shot c4
+shot c5
+shot c6
+press A
+wait 3
+shot r1
+shot r2
+shot r3
+shot r4
+shot r5
+shot r6
+shot r7
+shot r8
+shot r9
+shot r10
+shot r11
+shot r12
+shot r13
+shot r14
+shot r15
+shot r16
+mark gameplay
+repeat forever {
+    wait 20
+    shot hold
+}

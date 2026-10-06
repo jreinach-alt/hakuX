@@ -520,3 +520,236 @@ Nova hold time used: 3.2 + 3.0 + 5.9 = ~12 min (three sessions), plus three 60 s
   sha256 against `builds/<ref>.apk` before touching anything.
 - `rallisport-804e.route`'s first start-race A is sometimes lost (plain1). The spare A then starts the race ~8 s
   later, and a 6 s burst lands on the countdown, which blinks too. A 10 s burst covers either case.
+
+## 19. Attempt 2 of the re-open (addendum 10-04 19:10 PDT): the owner sees no rival cars on the fix build
+
+**Why the previous attempt did not finish.** It did finish the brief it had: "does a plain build blink, and if so
+which knob removes it" (section 17), and it was folded as `6f463a0ae2`. Its acceptance test was "does not blink",
+which a build with no rival cars also passes. The owner then played the fix build (debug
+0.4.1-1004-064ca7aa43) and saw no flicker and **no NPC cars or shadows at all**. This attempt answers that.
+
+### 19.1 Offline, before any device run
+
+**The owner's build is the code my patched captures ran, file for file.** `git diff 510ebb25f2 064ca7aa43 -- .
+':!docs'` is empty: the owner's APK and my test APK (`acc497b4f822`, section 17.3) differ only in docs.
+
+**Three captures on that exact code show rival cars**, two of them in frames I had already read:
+
+| capture | code | what the frames show |
+|---|---|---|
+| patched-run1, 16:05-16:11 (`runs/patched-run1/sheet.jpg`) | `510ebb25f2`, non-perflog | a rival far ahead at race clock 5.15-6.40, the Nissan landing beside the camera at 7.03, its rear filling the frame 7.36-8.32, then pulling away at 8.94-9.57. Body drawn in every frame of the worst triple |
+| patched-run2 | same | same pass, body in all three frames of the worst triple |
+| lane.local's 600 s hold, 16:22 (`~/hakux-work/perf/2026-10-04-ralli804-fps/run/frames/015-gameplay.jpg`, `016-probe-a.jpg`) | the installed `510ebb25f2` (lanelocal-log 16:35 entry) | **015, race clock 00:00.00 (the grid): the Beetle (#1, Mobil) right in front of the camera and the Corolla (#6, Castrol) to its left, both drawn.** 016-probe-a, 06.67: the Nissan beside the camera. The hold's own strip (race clock 1:38-12:05) shows no rival because the player is last and stuck on scenery, not because cars are missing |
+
+So the claim "the fix makes the visibility count read 0 on every frame" does not hold on the dispatcher's path: the
+grid cars and the passing Nissan are drawn on the fix build. What the owner saw is not reproduced by any capture,
+and no capture so far ran what the owner ran.
+
+**What differs between the owner's session and every capture**, from the dispatcher's last copy of the Nova prefs
+(`dispatch/.prefs.nova.xml`, 15:50) and `titlestate`:
+
+1. **The HDD.** Every dispatched and pathfind run swaps `hddPath` to `titles.qcow2`, the composed golden
+   (`cc9b4ced4a0f`, pathfind's profile: Single Race, Rally, Safari SS1, Ford Escort). The app's own `hddPath` is
+   `hdd.img`, which is what the owner plays on: their own profile, saves and game options.
+2. **The mode, track and how far they drove.** Unknown. My captures and lane.local's have the player standing or
+   stuck at the start, with the rivals passing the camera. A player who drives off the line leaves the rivals behind
+   (out of view, shadows too) unless the race has cars ahead.
+3. **Session age and shader cache.** The owner played after a 120 s gate run and a reinstall; mine ran straight
+   after an APK switch.
+
+None of these is shown to matter. The instrument below separates "the visibility tests return 0" (an emulator
+defect the owner's session exposes) from "the cars were not in view" (a capture question).
+
+### 19.2 Instrumentation (reports.c, granted file; off unless set)
+
+`HAKUX_OCCL_LOG=<s>` writes one `hakuX-lane` line per guest frame from `<s>` seconds after the first report: the
+queries read (`q`), how many were nonzero (`qnz`), how many submitted frames were still running on the GPU at the
+read (`pend`), the reports handed to the guest (`rep`, `repnz`, `repmax`) and the first 48 report values (`v=`).
+`HAKUX_OCCL_WAIT=0` skips the #804 fence wait, the code before the fix, in the same binary. So one build gives the
+zero-vs-nonzero split before and after the change. Compiled with the NDK clang (`-fsyntax-only -Wall`): clean.
+
+Route `rallisport-804f.route`: 804d plus six screencaps during the countdown (`c1`-`c6`), then 804d's sixteen race
+shots (`r1`-`r16`, race clock ~5-11, the pass).
+
+| arm | env | reads |
+|---|---|---|
+| fix | `HAKUX_OCCL_LOG=100` | grid and pass shots show the rivals or not; `v=` shows what the guest got |
+| no-fix | `HAKUX_OCCL_LOG=100 HAKUX_OCCL_WAIT=0` | the same, the pre-fix reads; `pend` > 0 with a changed `v=` pattern is the stale read of section 17.3 |
+
+What each outcome means:
+
+| fix arm | reading |
+|---|---|
+| cars in the shots, `repnz` > 0 on car frames | the fix works on this path; the owner's session differs in something the golden HDD and this route do not reproduce, and the owner is asked for mode/track/what was on screen |
+| no cars, `repnz` = 0 where the no-fix arm has nonzero | the correct read is 0: the visibility test's own draws pass no samples on our GPU path, and the pre-fix blink came from stale slots holding another query's count. The fix belongs in what the test draws against (depth/clip state of the query draws), not in the read |
+
+## 20. Attempt 3 of the re-open: the two queued runs, read; Career is the lead
+
+**Why the previous attempt did not finish.** It ended as designed, WAITING on two Nova runs queued behind the
+owner's hold (section 19.2). Both ran 19:16-19:25 PDT (clean, adb_failures 0), and handback resumed the lane.
+
+### 20.1 The fence wait on and off, one binary (`5e16698c99`), route `rallisport-804f` (Single Race, Safari SS1)
+
+Evidence: `runs/occl-fix/`, `runs/occl-nofix/` (contact sheets of c1-c6 and r1-r16, the `[occl804]` lines).
+`occl_read.py` reads the logcat lines.
+
+| | fix arm `1791166524` (`HAKUX_OCCL_LOG=100`) | no-fix arm `1791166528` (`+ HAKUX_OCCL_WAIT=0`) |
+|---|---|---|
+| intro flyover (c1-c3) | Escort #7 and the others drawn | the same |
+| grid, race clock 00:00.00 (c4-c6) | **Beetle #3/#2 in front of the camera, Corolla #6 to its left, both drawn** | the same |
+| race clock 2.8-6.3 | a rival ahead on the left, drawn in every shot | the same |
+| the pass | **Nissan rear fills the frame at 07.39 and 08.14**, drawn at 08.77, 09.45 | Nissan airborne beside the camera at 07.08, rear fills the frame 07.76 and 08.32, drawn at 08.96 |
+| `[occl804]` frames logged | 5,571 | 5,597 |
+| `pend` > 0 (a submitted frame still on the GPU at the read) | **0 frames** | **0 frames** |
+| race window (grid to r16): queries nonzero | 6,545 of 21,848 (30.0%) | 6,907 of 22,363 (30.9%) |
+| race window: query batches with every report 0 | 37 of 745 | 48 of 747 |
+
+So, on the owner's exact code, in the Single Race scene: the rivals and their shadows are drawn on the grid and
+through the pass, and the visibility tests return nonzero counts in 30% of reads, the same with the fence wait
+on and off. The brief's candidates for "results now zero or unreachable" (wrong slots, reset at read, reading
+an unsubmitted frame, wrong offset) each predict a zero-heavy fix arm. None shows: the fix arm's report values
+are indistinguishable from the no-fix arm's.
+
+`pend` = 0 on every frame of both arms also means that **in these runs, with no screenrecord, the fence wait
+had nothing to wait for**. Every submitted frame's fence was already signalled when the reports were read
+(`submit_frames` = 2 on the Nova, per the dump session records of captures 3-6). The stale read of section 17.3
+needs a frame still on the GPU at the read. It did not occur in either arm here, so these two runs could not
+blink and say nothing for or against the fix's effect on the blink. They answer only the owner's question: on
+this path the fix build does not zero the visibility reads and does not remove the cars. The blinking runs
+(plain1, perflog1, flicker801) all ran a 6-10 s `screenrecord`, which adds GPU and encoder load. Whether the
+owner's eye-visible blink came from the same GPU-behind-the-read window is not measured.
+
+### 20.2 The owner's symptom on code from before the fix: Career
+
+Capture 1 (`1791136124`, ref `5e4196fefd`, **before the reports.c fix**) took **CAREER -> Safari SS-1**, the item
+lit on the game menu, so the mode a player reaches by pressing A. Its shots (`runs/cap1-career-sheet.jpg`; the
+originals are in the result dir) show POS 4 OF 4, the player at the start banner, and **no rival car or shadow
+at race clock 7.37, 11.31, 15.21, 19.05, 23.96 or 46.30**. Its dump has **0 frames with a rival body draw**
+(shaders `9d4f17a01cee3e05`/`ece9f59044a636fd`) in 600 race frames (race clock 4-14). Capture 3 (Single Race,
+same code) has them in 414 of 600. The visibility boxes run in Career too (shader `8f6c865e558bb778`, 390
+frames).
+
+So "no NPC cars visible at all, ever, nor their shadows" is what Career's Safari SS-1 looked like **before the
+fix**, to a standing player. Single Race starts all four cars on a grid behind each other. Career starts the
+player alone at the banner, and the rivals are not drawn. The mode has not been confirmed by the owner. Career is
+the default and the likeliest choice, P ~0.6. If the owner drove, a rival might still come into view later in
+the stage: capture 1 stood still.
+
+### 20.3 What would close it, queued
+
+`rallisport-804g.route`: capture 1's Career path, unchanged, then the throttle held (`axis RT max`) for ~50 s
+with a shot every ~2 s, no steering. The same binary, the fence wait off then on:
+
+| run | env |
+|---|---|
+| `1791167617-lane.accuracy804-3666473` | `HAKUX_OCCL_LOG=100 HAKUX_OCCL_WAIT=0` (pre-fix) |
+| `1791167624-lane.accuracy804-3669384` | `HAKUX_OCCL_LOG=100` (the shipped fix) |
+
+| result | reading |
+|---|---|
+| no rival in any shot of either arm | the owner's "no cars" is Career's normal start on any build; the fix did not remove them. RalliSport goes to the owner's flicker check in Single Race, where both rival scenes exist |
+| a rival in the no-fix arm's shots and none in the fix arm's, at the same stage point | a real regression in Career; the `[occl804]` values of the two arms at that point show which reads changed |
+| a rival in both | not a regression; the owner's session differed in something else (ask for the mode and the moment) |
+
+The order is deliberate: the no-fix arm runs first, so the Nova is left with `HAKUX_OCCL_LOG=100` only, the
+shipped fence-wait behaviour plus a log line per frame.
+
+**Side effect to know about.** The dispatcher clears `env_vars` only at the next request (dispatcher.sh "we clean
+up after ourselves", lazily). After my 19:24 no-fix arm, the Nova's app carried `HAKUX_OCCL_WAIT=0`, the pre-fix
+read, into whatever ran next by hand: lane.pathfind's held run from 19:25 (`gg-hold2`), and the owner, if they
+play before the next dispatched request. The owner's own 17:2x-19:10 session inherited no env: the dispatched
+runs before it (15:52-17:20) all had empty env.
+
+## 21. Do not repeat (additions)
+
+- Do not reach RalliSport's rivals through CAREER and do not judge "cars missing" there: Career's Safari SS-1
+  start shows no rival on code from before the fix (capture 1). Single Race (804c/d/f) has the grid and the pass.
+- `pend` (submitted frames still on the GPU at the report read) was 0 in every frame of a dispatched run without
+  screenrecord. A run that is to show the stale read needs the GPU behind the read; check `pend` before reading a
+  no-fix arm as "the blink's condition".
+- A request's env stays on the device until the next request: queue an A/B so the shipped-behaviour arm runs last.
+
+## 22. Attempt 4 of the re-open: the Career drive runs, read; car presence counted per frame
+
+**Why the previous attempt did not finish.** It ended as designed, WAITING on the two Career runs of section 20.3,
+queued behind lane.pathfind's hold. Both ran (20:02 and 20:36 PDT, ref `5e16698c99`, APK `2c335088e76b`, the
+golden HDD) and handback resumed the lane. Nothing was left half-done.
+
+### 22.1 Career, Safari SS-1, throttle held, fence wait off and on
+
+Evidence: `runs/career-nofix/`, `runs/career-fix/` (sheets of c1-c3 and d1-d20 plus the gameplay shot; the
+`[occl804]` lines from c2 to the gameplay shot).
+
+| | no-fix arm `1791167617` (`HAKUX_OCCL_WAIT=0`) | fix arm `1791167624` (shipped fix) |
+|---|---|---|
+| shots | start banner, race clock 0.00 and 1.4, then 6.9 to 60.7 (POS 4 OF 4 in every shot) | start banner, 0.00 and 1.7, then 7.1 to 61.1 (POS 4 OF 4) |
+| rival car or shadow in any shot | **none** | **none** |
+| visibility queries nonzero, c2 to the end | 444 of 18,668 (2.4%) | 492 of 17,095 (2.9%) |
+| query batches with every report 0 | 2,280 of 2,674 | 2,042 of 2,474 |
+| `pend` > 0 | 0 frames | 0 frames |
+
+Section 20.3's first row holds: **no rival in either arm.** The owner's "no NPC cars visible at all, ever, nor
+their shadows" is what Career's Safari SS-1 shows on this emulator with the fence wait off (the code before the
+fix) and on alike, and capture 1 already showed it on `5e4196fefd`, a build from before reports.c changed. The
+fix did not remove the cars there. The visibility reads are mostly zero in Career and equally so in both arms,
+against 30% nonzero in Single Race (section 20.1), so Career's tests have few hits to report on either build.
+
+Not checked: whether a real Xbox shows a rival in Career's Safari SS-1 in the first minute. A player who drives
+the stage longer, or another Career event, is not covered. Nothing here suggests an emulator defect in Career,
+and nothing rules one out. If one exists, it is older than the fix.
+
+### 22.2 The car is drawn on every frame of the pass on the fix build: pixels counted
+
+The patched screenrecord bursts of section 17.3 (`s804e-c`, installed APK `acc497b4f822` = `510ebb25f2`, code
+identical to the owner's `064ca7aa43`) and the unpatched perflog1 burst (`s804e-b`, `10f14d301d`) keep every
+video frame. `carpix.py` takes each unique frame (a frame that differs from the previous one by a mean of 0.5 or
+more out of 255) and counts the Nissan's red livery pixels below the HUD row, with the tachometer masked.
+`carshare.py` sets the pass window from the first to the last frame with red share > 0.015 (the car near the
+camera) and calls a frame absent at red share <= 0.003. Calibrated by eye on perflog1: the shadow-only frames
+read 0.0007-0.0014, and frames with the body drawn read 0.004-0.06.
+
+| burst | build | pass window (race clock ~7.2 to ~8.8) | body drawn | absent frames |
+|---|---|---|---|---|
+| perflog1 | unpatched | 50 unique frames | **43 (86.0%)** | u63, u69, u75, u77, u81, u82, u97 (race clock 7.52, 7.71, 7.92, 7.97, 8.09, 8.10, ~8.6) |
+| patched-run1 | the fix | 48 | **48 (100%)** | none |
+| patched-run2 | the fix | 51 | **51 (100%)** | none |
+
+Sheets with the race clock on every frame: `runs/presence/{perflog1,patched1,patched2}-pass.jpg`. Read by eye,
+they agree with the count, with one difference: perflog1 also loses the body at 07.17 (just before the window
+opens) and at 08.52 (u95), where the exhaust flame's orange pixels lift the red share to 0.0049. So the
+unpatched miss count is at least 7 and by eye 9.
+
+**This capture shows a car**, the passing Nissan. It is the capture the PR names.
+
+What it does not cover:
+- **30 s with the countdown, on the fix build, under a screenrecord.** The patched bursts are 10 s and start at
+  race clock ~5. On the fix build the grid cars are drawn in single shots: occl-fix c4-c6 (Beetle and Corolla at
+  00:00.00) and lane.local's hold frame 015. But those runs had `pend` = 0, so a blink could not show in them.
+  The unpatched countdown blink (plain1) has no filmed counterpart on the fix build.
+- **Why the blink needs a screenrecord.** Every dispatched run without one had `pend` = 0 (sections 20.1, 22.1).
+
+**fps on the fix build**: lane.local's 600 s hold (16:22, the installed `510ebb25f2`) scored 534 windows, 100% at
+or above the 30 fps bar, window median 56.5, min 29.63
+(`~/hakux-work/perf/2026-10-04-ralli804-fps/run/verdict.json`). That hold's player was stuck behind the field,
+so most of its windows are not the ~30 queries per flip of a rival pass. The fps cost of the wait while rivals
+are in view is not measured on its own.
+
+### 22.3 Where #804 stands
+
+| question | answer | evidence |
+|---|---|---|
+| does the fix zero the visibility reads or remove the cars? | no, in both modes tried | Single Race: 30.0% vs 30.9% nonzero, cars on the grid and in the pass (20.1). Career: 2.9% vs 2.4%, no rivals in either arm (22.1) |
+| where does the owner's "no cars, ever" come from? | Career's Safari SS-1 looks like that on the code before the fix too (capture 1, 22.1) | the owner's mode is still unconfirmed; Career is the menu default |
+| does the fix stop the blink? | yes in the pass: body in 100% of 99 unique frames over two bursts, against 86% unpatched | 22.2 |
+| what is left | a 30 s filmed window with the countdown on the fix build, and the owner's eye check in **Single Race** | needs a held screenrecord session or the owner |
+
+No device time was used in this attempt.
+
+## 23. Do not repeat (additions)
+
+- Do not judge RalliSport's rivals in Career, Safari SS-1: no rival is drawn in the first minute on any build
+  tested, so "no cars" there tells you nothing about a fix. Use Single Race (804c/d/f routes).
+- Before asking for a new capture, check whether the old ones kept every frame. The section 17 bursts kept all
+  frames in `.scratch/s804e-*/run*/fr/`, which was enough for a per-frame presence count with no device time.
+- In a blink count, a red share threshold can mistake the exhaust flame for the body (perflog1 u95). Read the
+  sheet by eye next to the count.
