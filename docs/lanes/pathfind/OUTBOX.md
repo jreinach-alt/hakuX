@@ -797,3 +797,13 @@ Named cost (decompose.py, 152 two-second windows, 56 s at or above the bar, 248 
 NEW ISSUE: Need for Speed Most Wanted: the guest code (vCPU) costs about 25 ms per frame throughout play, so the title runs at ~24-26 fps (median 26 at 5 min): runs/sweep-4541007B logcat, decompose.py output above. Blocks NFS Most Wanted's Playable (play share fine; fps is the only gate).
 
 SCENE SHOULD CONTAIN (for the next reviewer, if it ever clears): a car on a Rockport or city road, traffic and police cars, the HUD speedometer and the heat bar, the camera behind the car.
+
+## #433 -- 2026-10-05 22:00 PDT
+
+[lane.pathfind] Midnight Club II FAIL (fps; aborted at 5:03 by the fps gate): runs/sweep-54540008, claim about 14 min. Gate at 5:03: median 23, 0% of 117 samples at the bar, stopped as the rule says (below 27 at 5 min). Gameplay 303 s; verdict play share 0.635 (still 0.53 of the window: the camera and car wait at a few points); fps_ok 0.00. Aborted at: 5:03 (fps gate). Perflog: the hold's own logcat (mark 21:37:04.5 copied into a scratch run.log, no separate run).
+
+Named cost (decompose.py, 151 two-second windows, all below the bar, median 23.1): the RENDERER is saturated: renderer idle (Ri) is 0.0 ms per frame, so the render thread never waits for the guest, while the guest is idle 30 ms of a 43-ms frame (timer-woken 22 ms, other 7 ms) and busy 13 ms. This is a renderer-bound title: the frame time is the render thread's own work, and the guest is waiting on it.
+
+NEW ISSUE: Midnight Club II: the renderer is saturated (Ri 0 ms per frame) at a median of 23 fps: runs/sweep-54540008 logcat, decompose.py output above. Blocks Midnight Club II's Playable (fps is the only failing gate; play is 0.64 with the stalls at the camera).
+
+SCENE SHOULD CONTAIN (for the next reviewer, if it clears): a street race in a city, the car moving, traffic, the speedometer and the race position, the camera behind the car.
