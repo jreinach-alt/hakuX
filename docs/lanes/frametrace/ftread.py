@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read a frametrace capture (#433): per-title tables and a timeline.
 
-    ftread.py <result dir> [...] [--all] [--delay 20] [--tsv timeline.tsv]
+    ftread.py <result dir> [...] [--all] [--delay 20] [--until HH:MM:SS] [--tsv timeline.tsv]
     ftread.py --pf <host capture dir>          (capture_simpsons_frametrace.sh)
 
 A capture is the frame CSV (`frametrace_*.csv`, in <dir>/pulled/ for a
@@ -9,7 +9,9 @@ dispatcher result, in <dir>/ for a host capture) plus the logcat beside it.
 
 THE WINDOW. Only frames inside the gameplay window count: from the route's
 `mark gameplay` (run.log's `ROUTE hh:mm:ss mark gameplay`, or logcat's
-`hakuX-route: mark gameplay`) plus --delay seconds, to the end of the frames.
+`hakuX-route: mark gameplay`) plus --delay seconds, to the end of the frames,
+or to --until (wall clock, the frames' day) when the frames show play ending
+before the run does (a cutscene, a menu, a mission-failed screen).
 No mark, no window: the capture is VOID unless --all is given (and then the
 tables say ALL FRAMES, not gameplay). Frame times are mapped to wall clock by
 the [hakuX-ft1] lines (rt_ms beside t_ms); without them, by hakuX-pace's
@@ -25,6 +27,9 @@ What it prints per capture:
   4. hitches: periods over max(2 x the median of the previous 60 frames,
      50 ms), each with the frame record and its pacemaker
   5. VBLANKs per flip, the inferred interval, and slack to the deadline
+  6. Vulkan waits and submits by call site (the summary's fw=, from
+     f2763fe4c0): ms and calls per gameplay frame, each site with its row,
+     context and the .so offset its `site #` line gave (addr2line it)
 """
 import argparse
 import bisect
@@ -95,6 +100,7 @@ def read_logs(logs, d):
     mark = None
     marks = []
     summ, hitch = [], []
+    sites = {}              # slot -> description, from "[hakuX-ft1] site #"
     for p in logs:
         for line in opentext(p):
             m = TS.match(line)
@@ -107,6 +113,10 @@ def read_logs(logs, d):
                 if tm:
                     anchors.append((float(tm.group(1)), wall))
                 summ.append((wall, line.split('[hakuX-ft1] ', 1)[1].strip()))
+            elif '[hakuX-ft1] site #' in line:
+                sm = re.search(r'site #(\d+) (.*)$', line.strip())
+                if sm:
+                    sites[int(sm.group(1))] = sm.group(2)
             elif '[hakuX-ft] ' in line:
                 hitch.append((wall, line.split('[hakuX-ft] ', 1)[1].strip()))
             elif 'hakuX-pace' in line:
@@ -123,7 +133,7 @@ def read_logs(logs, d):
             if mk:
                 mark = secs(*mk.groups())
                 break
-    return anchors, pace, mark, summ, hitch
+    return anchors, pace, mark, summ, hitch, sites
 
 
 def wall_of(frames, anchors, pace):
@@ -172,7 +182,7 @@ def report(d, a):
     frames = []
     for p in csvs:
         frames += read_frames(p)
-    anchors, pace, mark, summ, hitch = read_logs(logs, d)
+    anchors, pace, mark, summ, hitch, sites = read_logs(logs, d)
     how = wall_of(frames, anchors, pace)
     title = ''
     rq = os.path.join(d, 'request.json')
@@ -184,9 +194,10 @@ def report(d, a):
           (title or d, len(frames), ', '.join(os.path.basename(c) for c in csvs), how))
     if mark is not None and how:
         t0 = mark + a.delay
-        win = [f for f in frames if f['wall'] >= t0]
-        print('window: mark gameplay %s + %d s -> %d frames (%.0f s)' %
-              (fmt_t(mark), a.delay, len(win),
+        t1 = secs(*a.until.split(':')) if a.until else float('inf')
+        win = [f for f in frames if t0 <= f['wall'] < t1]
+        print('window: mark gameplay %s + %d s%s -> %d frames (%.0f s)' %
+              (fmt_t(mark), a.delay, ' until %s' % a.until if a.until else '', len(win),
                (win[-1]['wall'] - win[0]['wall']) if win else 0))
     elif a.all:
         win = frames[1:]
@@ -277,6 +288,11 @@ def report(d, a):
     for w in W:
         if any(f.get('p_' + w) for f in win):
             rows.append(['PFIFO wait: ' + w, both('p_' + w)])
+    for k, nm in [('p_c_none', 'in a method (pgraph.lock held)'),
+                  ('p_c_rep', 'in process_pending_reports (pfifo.lock HELD)'),
+                  ('p_c_pend', 'in process_pending')]:
+        if any(f.get(k) for f in win):
+            rows.append(['PFIFO hooked waits ' + nm, both(k)])
     if have & 4:
         rows += [['render on-CPU', both('r_run')], ['render blocked', both('r_blk')]]
     if have & 64:       # G9: the vCPU in MMIO dispatch (waits inside included)
@@ -323,6 +339,35 @@ def report(d, a):
         print('slack to the deadline, ms: p50 %s, p5 %s, min %s; frames with slack < 0: %d'
               % (ms(pct(sl, 50)), ms(pct(sl, 5)), ms(min(sl)), sum(1 for s in sl if s < 0)))
     print()
+
+    # 6. Vulkan call sites (fw=), over the summaries inside the window
+    t0w, t1w = win[0]['wall'], win[-1]['wall']
+    agg, nfr = {}, 0
+    for wall, line in summ:
+        if wall < t0w or wall > t1w + 1.0:
+            continue
+        nm = re.match(r'n=(\d+)', line)
+        fw = re.search(r' fw=(\S*)', line)
+        if not nm or fw is None:
+            continue
+        k = int(nm.group(1))
+        nfr += k
+        for ent in filter(None, fw.group(1).split(',')):
+            em = re.match(r'([^#]+)#(\d+):([\d.]+)/([\d.]+)$', ent)
+            if em:
+                key = (em.group(1), int(em.group(2)))
+                t = agg.setdefault(key, [0.0, 0.0])
+                t[0] += float(em.group(3)) * k
+                t[1] += float(em.group(4)) * k
+    if nfr:
+        print('### 6. Vulkan waits and submits by call site (fw=), per frame\n')
+        rows = []
+        for (key, slot), (tms, tn) in sorted(agg.items(), key=lambda kv: -kv[1][0]):
+            rows.append([key, slot, '%.2f' % (tms / nfr), '%.1f' % (tn / nfr),
+                         sites.get(slot, '?')])
+        print(table(rows, ['row.ctx.reason', 'slot', 'ms/frame', 'calls/frame', 'site']))
+        print('\n(%d frames of summaries in the window; a site outside a line\'s top 8 '
+              'is not counted there)\n' % nfr)
     if a.tsv:
         with open(a.tsv, 'w') as o:
             o.write('wall\tf\tP\tvb\tcls\tv_run\tv_blk\tlockw\tp_run\tp_blk\tpidle\tgpu\tmhz\n')
@@ -344,6 +389,7 @@ def main():
     ap.add_argument('--pf', action='append', default=[])
     ap.add_argument('--all', action='store_true')
     ap.add_argument('--delay', type=int, default=20)
+    ap.add_argument('--until', help='end of the window, HH:MM:SS wall clock')
     ap.add_argument('--tsv')
     a = ap.parse_args()
     for d in a.dirs + a.pf:

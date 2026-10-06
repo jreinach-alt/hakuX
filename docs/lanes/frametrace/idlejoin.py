@@ -41,7 +41,7 @@ def main():
     frames = []
     for c in csvs:
         frames += ftread.read_frames(c)
-    anchors, pace, mark, _, _ = ftread.read_logs(logs, a.capture or a.d)
+    anchors, pace, mark = ftread.read_logs(logs, a.capture or a.d)[:3]
     if mark is None:
         mk = re.search(r'ROUTE (\d+):(\d+):([\d.]+) mark gameplay',
                        open(os.path.join(a.d, 'run.log'), errors='replace').read())

@@ -26,6 +26,12 @@
  * it without QEMU; this is its one implementation. */
 #define HAKUX_FT_IMPLEMENTATION
 #include "hw/xbox/nv2a/pgraph/profile.h"
+#ifdef CONFIG_VULKAN
+#include <volk.h>
+#ifdef __ANDROID__
+#include <dlfcn.h>
+#endif
+#endif
 
 #ifdef XBOX
 extern uint64_t tb_cache_stats_lookup_hits;
@@ -239,6 +245,148 @@ static void snapshot_surf_timing(void)
     memset(w, 0, sizeof(*w));
 }
 
+#ifdef CONFIG_VULKAN
+/*
+ * #433 frametrace: the Vulkan waits, measured from inside the row. volk keeps
+ * every device entry point in a writable global; with HAKUX_FRAMETRACE=1 the
+ * flip swaps five of them for wrappers that book the call as a wait on the
+ * calling thread (the PFIFO row's pw= and pc=, the vCPU lock waits' holder
+ * split) and by call site (the summary's fw=), then call the driver's entry
+ * with the same arguments. Unset, nothing is swapped. A later volkLoadDevice
+ * (a renderer re-init) puts the driver's pointers back; the next flip swaps
+ * them again.
+ */
+static PFN_vkWaitForFences ft_real_wait_fences;
+static PFN_vkQueueSubmit ft_real_queue_submit;
+static PFN_vkGetQueryPoolResults ft_real_query_results;
+static PFN_vkQueueWaitIdle ft_real_queue_wait_idle;
+static PFN_vkDeviceWaitIdle ft_real_device_wait_idle;
+
+/* Set before the swap is published; a caller that sees the wrapper before
+ * the real pointer reaches it waits for the store already made. */
+#define FT_REAL(p) ({                                                  \
+    __typeof__(p) f_;                                                  \
+    while (!(f_ = __atomic_load_n(&(p), __ATOMIC_ACQUIRE))) {          \
+    }                                                                  \
+    f_;                                                                \
+})
+
+#define FT_VK_TIMED(reason, call) ({                                   \
+    uintptr_t ra_ = (uintptr_t)__builtin_return_address(0);            \
+    int64_t t0_ = hakux_ft_now();                                      \
+    HakuxFtWait w_;                                                    \
+    VkResult r_;                                                       \
+    hakux_ft_wait_begin(&w_, (reason), -1);                            \
+    r_ = (call);                                                       \
+    hakux_ft_wait_end(&w_);                                            \
+    hakux_ft_site_add(ra_, (reason), hakux_ft_now() - t0_);            \
+    r_;                                                                \
+})
+
+static VKAPI_ATTR VkResult VKAPI_CALL __attribute__((noinline))
+ft_vk_wait_fences(VkDevice dev, uint32_t n, const VkFence *f, VkBool32 all,
+                  uint64_t timeout)
+{
+    PFN_vkWaitForFences real = FT_REAL(ft_real_wait_fences);
+
+    if (!hakux_ft_enabled() || timeout == 0) {      /* off, or a poll */
+        return real(dev, n, f, all, timeout);
+    }
+    return FT_VK_TIMED(HAKUX_FT_W_FENCE, real(dev, n, f, all, timeout));
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL __attribute__((noinline))
+ft_vk_queue_submit(VkQueue q, uint32_t n, const VkSubmitInfo *s, VkFence f)
+{
+    PFN_vkQueueSubmit real = FT_REAL(ft_real_queue_submit);
+
+    if (!hakux_ft_enabled()) {
+        return real(q, n, s, f);
+    }
+    return FT_VK_TIMED(HAKUX_FT_W_SUBMIT, real(q, n, s, f));
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL __attribute__((noinline))
+ft_vk_query_results(VkDevice dev, VkQueryPool pool, uint32_t first,
+                    uint32_t count, size_t size, void *data,
+                    VkDeviceSize stride, VkQueryResultFlags flags)
+{
+    PFN_vkGetQueryPoolResults real = FT_REAL(ft_real_query_results);
+
+    if (!hakux_ft_enabled() || !(flags & VK_QUERY_RESULT_WAIT_BIT)) {
+        return real(dev, pool, first, count, size, data, stride, flags);
+    }
+    return FT_VK_TIMED(HAKUX_FT_W_FENCE,
+                       real(dev, pool, first, count, size, data, stride,
+                            flags));
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL __attribute__((noinline))
+ft_vk_queue_wait_idle(VkQueue q)
+{
+    PFN_vkQueueWaitIdle real = FT_REAL(ft_real_queue_wait_idle);
+
+    if (!hakux_ft_enabled()) {
+        return real(q);
+    }
+    return FT_VK_TIMED(HAKUX_FT_W_FENCE, real(q));
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL __attribute__((noinline))
+ft_vk_device_wait_idle(VkDevice dev)
+{
+    PFN_vkDeviceWaitIdle real = FT_REAL(ft_real_device_wait_idle);
+
+    if (!hakux_ft_enabled()) {
+        return real(dev);
+    }
+    return FT_VK_TIMED(HAKUX_FT_W_FENCE, real(dev));
+}
+
+#ifdef __ANDROID__
+/* The call instruction's offset in its .so (the return address less one
+ * instruction): `llvm-addr2line -e <the APK's .so> <pc>` gives file:line. */
+static void ft_site_describe_dl(uintptr_t ra, char *buf, size_t n)
+{
+    Dl_info di;
+
+    if (ra > 4 && dladdr((void *)(ra - 4), &di) && di.dli_fbase) {
+        const char *obj = di.dli_fname ? strrchr(di.dli_fname, '/') : NULL;
+        snprintf(buf, n, "pc=0x%lx obj=%s sym=%s+0x%lx",
+                 (unsigned long)(ra - 4 - (uintptr_t)di.dli_fbase),
+                 obj ? obj + 1 : di.dli_fname ? di.dli_fname : "?",
+                 di.dli_sname ? di.dli_sname : "?",
+                 di.dli_saddr ?
+                 (unsigned long)(ra - 4 - (uintptr_t)di.dli_saddr) : 0UL);
+    } else {
+        snprintf(buf, n, "ra=0x%lx", (unsigned long)ra);
+    }
+}
+#endif
+
+#define FT_SWAP(fn, wrap, real) do {                                   \
+    __typeof__(fn) cur_ = __atomic_load_n(&(fn), __ATOMIC_ACQUIRE);    \
+    if (cur_ && cur_ != (wrap)) {                                      \
+        __atomic_store_n(&(real), cur_, __ATOMIC_RELEASE);             \
+        __atomic_store_n(&(fn), (wrap), __ATOMIC_RELEASE);             \
+    }                                                                  \
+} while (0)
+
+static void ft_vk_hook(void)
+{
+#ifdef __ANDROID__
+    hakux_ft_site_describe = ft_site_describe_dl;
+#endif
+    FT_SWAP(vkWaitForFences, ft_vk_wait_fences, ft_real_wait_fences);
+    FT_SWAP(vkQueueSubmit, ft_vk_queue_submit, ft_real_queue_submit);
+    FT_SWAP(vkGetQueryPoolResults, ft_vk_query_results,
+            ft_real_query_results);
+    FT_SWAP(vkQueueWaitIdle, ft_vk_queue_wait_idle, ft_real_queue_wait_idle);
+    FT_SWAP(vkDeviceWaitIdle, ft_vk_device_wait_idle,
+            ft_real_device_wait_idle);
+}
+#endif /* CONFIG_VULKAN */
+
 void nv2a_profile_flip_stall(void)
 {
     int64_t now = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
@@ -255,6 +403,9 @@ void nv2a_profile_flip_stall(void)
             .vblank_fired = g_nv2a_stats.pacing.vblank_fired,
         };
         hakux_ft_flip(&x);
+#ifdef CONFIG_VULKAN
+        ft_vk_hook();
+#endif
     }
 
     g_nv2a_stats.frame_working.mspf = render_time;

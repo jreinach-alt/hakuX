@@ -26,6 +26,7 @@
 #endif
 
 #include "hw/xbox/nv2a/nv2a_int.h"
+#include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace */
 #ifdef __ANDROID__
 #include "hw/core/cpu.h"
 #include "target/i386/cpu.h"
@@ -959,12 +960,15 @@ static void pgraph_mmio_lock(PGRAPHState *pg, bool write, hwaddr addr,
     if (!locked || (settle && pg->lock_released_for_fence)) {
         int phase = qatomic_read(&lock474_phase);
         int64_t t0 = nv2a_clock_ns();
+        HakuxFtWait ftw;
+        hakux_ft_wait_begin(&ftw, HAKUX_FT_W_PGRAPH_LOCK, HAKUX_FT_PFIFO);
         if (!locked) {
             qemu_mutex_lock(&pg->lock);
         }
         while (settle && pg->lock_released_for_fence) {
             qemu_cond_wait(&pg->lock_settled_cond, &pg->lock);
         }
+        hakux_ft_wait_end(&ftw);
         wait = nv2a_clock_ns() - t0;
         lock474.wait_ns[write][phase] += wait;
         if (wait >= LOCK474_SLOW_NS) {
@@ -1065,6 +1069,27 @@ static inline void lock474_log(void) {}
 static inline void pgraph_mmio_lock(PGRAPHState *pg, bool write, hwaddr addr,
                                     bool settle)
 {
+    /*
+     * #433 frametrace (G5): a contended acquire, or one held off by a
+     * lock-released fence wait, is a vCPU wait on the PFIFO thread. The same
+     * lock and the same settle loop as pgraph_lock_settled(); off, one load
+     * and a branch.
+     */
+    if (unlikely(hakux_ft_enabled())) {
+        bool locked = qemu_mutex_trylock(&pg->lock) == 0;
+        if (!locked || (settle && pg->lock_released_for_fence)) {
+            HakuxFtWait ftw;
+            hakux_ft_wait_begin(&ftw, HAKUX_FT_W_PGRAPH_LOCK, HAKUX_FT_PFIFO);
+            if (!locked) {
+                qemu_mutex_lock(&pg->lock);
+            }
+            while (settle && pg->lock_released_for_fence) {
+                qemu_cond_wait(&pg->lock_settled_cond, &pg->lock);
+            }
+            hakux_ft_wait_end(&ftw);
+        }
+        return;
+    }
     if (settle) {
         pgraph_lock_settled(pg);
     } else {
@@ -5619,7 +5644,11 @@ static void do_wait_for_renderer_switch(CPUState *cpu, run_on_cpu_data data)
 void pgraph_process_pending(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
+    /* #433 frametrace: the PFIFO thread's waits in here are the render
+     * thread's downloads, flush and display sync (pfifo.lock released). */
+    int ft_ctx = hakux_ft_ctx_enter(HAKUX_FT_CTX_PENDING);
     pg->renderer->ops.process_pending(d);
+    hakux_ft_ctx_leave(ft_ctx);
 
     if (g_config.display.renderer != pg->renderer->type &&
         pg->renderer_switch_phase == PGRAPH_RENDERER_SWITCH_PHASE_IDLE) {
@@ -5669,7 +5698,12 @@ void pgraph_process_pending(NV2AState *d)
 void pgraph_process_pending_reports(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
+    /* #433 frametrace: called from the PFIFO loop with pfifo.lock held, so
+     * a wait in its STALLED finish is a wait the guest's DMA_PUT store
+     * (user.c) queues behind. */
+    int ft_ctx = hakux_ft_ctx_enter(HAKUX_FT_CTX_REPORTS);
     pg->renderer->ops.process_pending_reports(d);
+    hakux_ft_ctx_leave(ft_ctx);
 }
 
 void pgraph_pre_savevm_trigger(NV2AState *d)
