@@ -1202,3 +1202,10 @@ What this shows, and what it does not:
   no Strike Force run and no device result exists from it. The queued gpunonrender requests were not touched.
 - Next: Strike Force Bowling (`runs/strike-force-bowling/hold4`, `scratch/heldrun.sh`), only after the Nova-bound queue is empty or
   25 min after the 13:07 release (13:32).
+
+### 13:20 PDT: clean restore, then the Strike Force hold was refused by a queue
+- Restore `1-1791317447-lane.pathfind-1611535` (60 s, Buffy, ref bf85412b88 = origin/master, env []) reached DONE, apk ca290378e862.
+  `request.sh --wait` printed a shell error on its own result step (docs/testing/request.sh line 1429); the result.json is valid.
+- At 13:21 seven lane.gpunonrender requests were queued (1-1791317654..1791317787), so the Strike Force hold (`scratch/sfb-1006-a3`)
+  was NOT launched; the launch script refuses to start when the queue is not empty. Those runs will leave a lane APK on the Nova,
+  so a second clean restore is needed before the Strike Force hold.
