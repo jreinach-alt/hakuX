@@ -833,3 +833,23 @@ SCENE SHOULD CONTAIN (if it clears): the Hulk in a city street or a destruction 
 [lane.pathfind] Fight Club CAN'T-PATH (claim budget 15 min, 72 steps, 77 model calls, about $3): the claim reached a live fight 22 times and probed each (22 probes). The probes were read against the hit reactions of the fight: most refused, and the closest read was control 0.51 against 0.41 under input, which was not enough to confirm. The claim then ran into the post-fight rematch prompt (YES highlighted, A accepted it) and a cinematic close-up (step 72). No hold ran. Last named state: cutscene (step 72, runs/sweep-5655002F, steps.jsonl). Not re-run (can't-path: move on).
 
 NEW ISSUE (for identification): Fight Club: the fight confirm probe (STICK probes during a fight) refuses on hit reactions; the attack-genre loop would confirm on the fight's own action (X presses change the fighters' stances), and the rematch prompt is an A press. Blocks Fight Club's path; the fighting probe needs the same treatment as the Guilty Gear fight hold.
+
+## #433 -- 2026-10-05 22:50 PDT
+
+[lane.pathfind] Marvel Nemesis: Rise of the Imperfects FAIL (menu loop at the end-of-match panel; fps fine): runs/sweep-4541038A. Claim about 13 min, 73 steps, 77 model calls; the claim's "four probes refused" reason is not the hold's. Hold: 251 s of play (verdict play share 0.62; fps_ok 1.0, no hitches), then the hold stopped at 155 s of play on the END OF MATCH panel after 13 off-play steps.
+
+Named cost (hold.jsonl, looks 155-247 s): a two-screen cycle. The panel (REMATCH / RETURN TO CHARACTER SELECT / QUIT TO MAIN MENU) and the "Are you sure you want to REMATCH?" dialog (NO/YES, NO highlighted) turned into each other six times: the loop pressed STICK:down and A, which lands on NO and returns to the panel. The working input is not verified: from the confirm dialog, YES then A (the cursor is on NO by default), or B to cancel and A on REMATCH. Not re-run (identify first).
+
+NEW ISSUE: Marvel Nemesis: the end-of-match REMATCH confirm defaults to NO, and the hold's recovery cycles panel to confirm to panel (6 times in 90 s). Blocks Marvel Nemesis' Playable (fps clear; play 0.62).
+
+SESSION SUMMARY (lane.pathfind, 10-05 17:50 to 22:50, Sonnet; spend about 2,500 model calls for the day, estimated near $125 at the lane's $0.05 a call -- the owner's cap is the number to check):
+- Full-window harness PASS, for lane.local frame review: NBA 2K3 (play 0.988, 615 s, fps 0.92); Mortal Kombat Shaolin Monks (0.936, 645 s); Mortal Kombat: Armageddon (0.955, 636 s); Mortal Kombat Deadly Alliance (0.915, 657 s).
+- FAIL on fps (named cost, telemetry from the hold's own logcat): NHL 2K3 hold3 (guest busy in slow windows; NEW ISSUE, replay-free); Spider-Man 2 (renderer busy, Ri 7 vs 18 ms; NEW ISSUE); NFS Most Wanted (guest 25 ms per frame; aborted at 5:06; NEW ISSUE); Midnight Club II (renderer saturated, Ri 0; aborted at 5:03; NEW ISSUE); LOTR Return of the King (vCPU guest busy; NEW ISSUE); Hulk Ultimate Destruction (vCPU guest in slow scenes; NEW ISSUE).
+- FAIL, other: NHL 2K3 hold2 (replay read as play, fixed; NEW ISSUE filed); Strike Force Bowling (game-end high-score entry; NEW ISSUE); AvP re-hold (scene still; NEW ISSUE); Marvel Nemesis (REMATCH confirm loop; NEW ISSUE).
+- CLOSE: LEGO Star Wars (play 0.84, fps 0.98: cards and a still room; one try used).
+- CAN'T-PATH: Batman Begins (combat tutorial probes; NEW ISSUE); Fight Club (fight probes on hit reactions; NEW ISSUE).
+- Not run (deadline 22:40 for starts): Rogue Trooper, Ratatouille, Winning Eleven 9, Blowout, Tecmo Classic Arcade. Football (NFL Blitz Pro, NFL 2K2 etc.) not started, per the 12:35 order.
+
+What the next lane should not repeat: the verdict's fps text says "at >= 30" but its threshold is 28.5 (30 x 0.95): read the share, not the text. A hold that stops at a menu after 13 steps is a recovery miss, not a play share; name the input from the frames before a re-run.
+
+Telemetry: decompose.py needs a run.log with the mark line; runs without --perflog carry the perf lines in logcat.txt, and the mark is copied into a scratch run.log (scratch/telemetry-*/).
