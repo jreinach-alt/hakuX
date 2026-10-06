@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Read a frametrace capture (#433): per-title tables and a timeline.
 
-    ftread.py <result dir> [...] [--all] [--delay 20] [--tsv timeline.tsv]
+    ftread.py <result dir> [...] [--all] [--delay 20] [--until HH:MM:SS] [--tsv timeline.tsv]
     ftread.py --pf <host capture dir>          (capture_simpsons_frametrace.sh)
 
 A capture is the frame CSV (`frametrace_*.csv`, in <dir>/pulled/ for a
@@ -9,7 +9,9 @@ dispatcher result, in <dir>/ for a host capture) plus the logcat beside it.
 
 THE WINDOW. Only frames inside the gameplay window count: from the route's
 `mark gameplay` (run.log's `ROUTE hh:mm:ss mark gameplay`, or logcat's
-`hakuX-route: mark gameplay`) plus --delay seconds, to the end of the frames.
+`hakuX-route: mark gameplay`) plus --delay seconds, to the end of the frames,
+or to --until (wall clock, the frames' day) when the frames show play ending
+before the run does (a cutscene, a menu, a mission-failed screen).
 No mark, no window: the capture is VOID unless --all is given (and then the
 tables say ALL FRAMES, not gameplay). Frame times are mapped to wall clock by
 the [hakuX-ft1] lines (rt_ms beside t_ms); without them, by hakuX-pace's
@@ -192,9 +194,10 @@ def report(d, a):
           (title or d, len(frames), ', '.join(os.path.basename(c) for c in csvs), how))
     if mark is not None and how:
         t0 = mark + a.delay
-        win = [f for f in frames if f['wall'] >= t0]
-        print('window: mark gameplay %s + %d s -> %d frames (%.0f s)' %
-              (fmt_t(mark), a.delay, len(win),
+        t1 = secs(*a.until.split(':')) if a.until else float('inf')
+        win = [f for f in frames if t0 <= f['wall'] < t1]
+        print('window: mark gameplay %s + %d s%s -> %d frames (%.0f s)' %
+              (fmt_t(mark), a.delay, ' until %s' % a.until if a.until else '', len(win),
                (win[-1]['wall'] - win[0]['wall']) if win else 0))
     elif a.all:
         win = frames[1:]
@@ -338,10 +341,10 @@ def report(d, a):
     print()
 
     # 6. Vulkan call sites (fw=), over the summaries inside the window
-    t0w = win[0]['wall']
+    t0w, t1w = win[0]['wall'], win[-1]['wall']
     agg, nfr = {}, 0
     for wall, line in summ:
-        if wall < t0w:
+        if wall < t0w or wall > t1w + 1.0:
             continue
         nm = re.match(r'n=(\d+)', line)
         fw = re.search(r' fw=(\S*)', line)
@@ -386,6 +389,7 @@ def main():
     ap.add_argument('--pf', action='append', default=[])
     ap.add_argument('--all', action='store_true')
     ap.add_argument('--delay', type=int, default=20)
+    ap.add_argument('--until', help='end of the window, HH:MM:SS wall clock')
     ap.add_argument('--tsv')
     a = ap.parse_args()
     for d in a.dirs + a.pf:

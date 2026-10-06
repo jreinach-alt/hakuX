@@ -850,6 +850,148 @@ the dispatcher's f2763fe4c0 APK, and confirm or refute the naming above.
 Preflight: every branch gate passes; `coverage` fails on #838-#846 (open
 board issues with no lane row), the board's to classify.
 
+## 11. Session 6 (10-05 ~23:15 PDT): the three captures read; two waits, not one
+
+### Why the previous attempt did not finish
+
+By the contract: session 5 ended at 22:58 PDT on a `waiting:` for the three
+Nova captures in WAITING. They ran 22:49-23:14 PDT, all DONE, at ref
+f2763fe4c0 with `HAKUX_FRAMETRACE=1` (request.json). This session read them.
+origin/master was already merged (c3625aad90 is HEAD's ancestor; nothing newer).
+
+### The windows (frames checked, fail closed)
+
+| title | request | window | frames | what the frames show |
+|---|---|---|---|---|
+| Simpsons | `1-1791264140-lane.frametrace-1709247` | mark 22:53:48.6 + 20 s to the end | 7,756 (189 s) | free roam, Homer at the same wall corner as section 8 (f016, f022) |
+| Forza | `1-1791264148-lane.frametrace-1709509` | mark 23:01:37.6 + 20 s to the end | 6,947 (257 s) | the race, lap 0/2 then 1/2, race clock running; the car mostly stopped against the wall, 8th of 8 (f014, f020, f025) |
+| Nightfire | `1-1791264150-lane.frametrace-1709628` | mark 23:08:15.7 + 20 s **until 23:09:33** | 2,138 (57 s) | sniper gameplay (f007-f009). From ~23:09:34 a letterboxed cutscene (f010-f012), a 239 ms load at 23:10:38, then "Mission Failed" menus (f013-f015): not play, cut with `ftread.py --until` (new) |
+
+Read without `--until`, Nightfire's whole run (11,554 frames) carries 50
+hitches of ~65 ms at 23:09:34-23:10:37: the cutscene (guest run 64 ms, PFIFO
+idle 62 ms, GPU 0.47 ms), not play.
+
+### Per title (ftread.py; ms per frame, mean)
+
+| | Simpsons | Forza | Nightfire (play) |
+|---|---|---|---|
+| fps; period p50 / p95 / p99 / max ms | 40.9; 24.5 / 27.6 / 32.9 / 102.8 | 27.0; 35.2 / 47.0 / 54.5 / 145.6 | 37.3; 23.5 / 41.2 / 43.8 / 87.1 |
+| guest interval, deadline | 1 VBLANK, 17.9 ms | 2, 33.4 ms | 1, 16.7 ms |
+| late (period-late rule) | 96.7% | 57.8% | 99.1% |
+| late frames by pacemaker | unattr 89.5, run 10.4 | pgraph 57.0, run 23.0, unattr 19.9 | run 63.8, pgraph 34.1, unattr 1.7 |
+| GPU ms p50 / p95 at MHz | 5.93 / 6.21 at 615 | 17.34 / 24.29 at 615 | 8.62 / 15.53 at 615 |
+| GPU busy share of the frame, p50 | 24% | 49% | 35% |
+| vCPU on-CPU / guest idle (G1) | 16.23 / 0.32 | 35.11 / 36.47 | 26.07 / 4.87 |
+| vCPU DMA_PUT pfifo.lock wait (lockw) | **7.90** | 0.05 | 0.11 |
+| vCPU BQL / pgraph.lock | 0.35 / 0.07 | 2.74 / 0.59 | 0.58 / 0.20 |
+| PFIFO on-CPU | 6.24 | 16.73 | 14.85 |
+| PFIFO idle (no work) | 9.21 | 4.59 | 3.87 |
+| PFIFO hooked fence waits | **8.98** (all in `rep`, pfifo.lock held) | 3.20 (3.34 in a method) | 0.09 |
+| PFIFO blocked, no hook | 0.12 | **12.24** | **~7.8** |
+
+The GPU ran at 615 MHz in every frame of all three windows, busy a quarter
+to a half of the frame. No title here is GPU-throughput-bound at the clock it
+ran: the waits below are the CPU side waiting for one GPU result at a time.
+
+### Vulkan waits by call site (`fw=`, addr2line against the dispatcher's f2763fe4c0 APK)
+
+| site | file:line | Simpsons | Forza | Nightfire (play) |
+|---|---|---|---|---|
+| PFIFO, `pgraph_vk_finish` frame-slot rotation | `vk/draw.c:4386` | **8.06 ms / 8.0 calls** (`rep`) | 0.10 / 4.3 | 0.07 / 4.2 |
+| PFIFO, #804 drain of every slot | `vk/reports.c:259` | 0.93 / 1.0 (`rep`) | 0 | 0.00 / 0.1 |
+| PFIFO, `wait_frame_fence` (lock released) | `vk/surface.c:1266` | 0 | **3.09 / 0.8** | 0.01 / 0.4 |
+| render thread, `process_finish` non-deferred fence | `vk/render_thread.c:157` | 0.00 | **12.56 / 3.3** | **7.41 / 2.0** |
+| render thread, submit | `vk/render_thread.c:151` | 0.39 / 8.0 | 0.32 / 4.3 | 0.26 / 4.2 |
+| UI thread, display fence under pfifo.lock | `vk/renderer.c:2824` | 0.03 / 1.5 | 0.08 / 1.5 | 0.03 / 1.5 |
+
+(The `dispatch/build-tree` the APK was built from was at f2763fe4c0; these
+lines match this branch's sources.)
+
+### Section 10's naming, judged: right for Simpsons, wrong for Forza and Nightfire
+
+Section 10 said the naming holds if the draw.c:4386 site carries most of the
+PFIFO's non-idle blocked time and `p.rep` bounds the vCPU's `lockw`.
+
+- **Simpsons: holds.** 4386 carries 8.06 of the PFIFO's 8.92 ms of
+  non-idle blocked time (90%); with reports.c:259, 8.98 is booked and 0.12
+  is left. `p.rep` 8.98 >= `lockw` 7.90. The chain is closed in-row:
+  guest on-CPU 16.23 + lockw 7.90 + BQL 0.35 = 24.5 = P (24.4). **The vCPU
+  waits for pfifo.lock while the PFIFO thread, holding it in
+  `pgraph_process_pending_reports` (the STALLED finish), waits at draw.c:4386
+  for the GPU to finish a command buffer two finishes old.**
+- **Forza and Nightfire: refuted.** 4386 carries 0.07-0.10 ms. The PFIFO's
+  blocked time is still unbooked (12.24 and ~7.8 ms a frame), which section
+  10 said would point at a pfifo.c mutex. It does not: the unbooked time is
+  the size of the **render thread's** fence wait at render_thread.c:157, and
+  moves with it second by second (`rtjoin.py`, new):
+
+| capture | 1-s lines | render_thread.c:157 ms/frame | PFIFO unbooked ms/frame | corr | slope | corr with PFIFO idle (control) |
+|---|---|---|---|---|---|---|
+| Forza | 254 | 12.89 | 12.64 | **0.97** | 1.24 | -0.86 |
+| Nightfire, play | 57 | 7.79 | 8.26 | **0.99** | 1.01 | 0.13 |
+| Nightfire, whole run | 327 | 3.55 | 3.93 | **1.00** | 1.05 | -0.53 |
+| Simpsons (no such wait) | 188 | 0.00 | 0.12 | - | - | - |
+
+A mutex would not follow the render thread's fence wait at slope ~1.
+
+### The PFIFO thread's unhooked wait, named
+
+**`hw/xbox/nv2a/pgraph/vk/draw.c:4319`, `qemu_event_wait(&finish_event)`**
+in `pgraph_vk_finish`, for a **non-deferred** finish: the PFIFO thread
+enqueues the command buffer to the render thread and sleeps on an event
+while the render thread submits it (render_thread.c:151) and waits for the
+GPU to finish it (render_thread.c:157). It waits on the GPU timeline, one
+hop removed, which is why the Vulkan interposer could not see it: the
+PFIFO's own call is an event wait.
+
+Which finish: on Forza, the only non-deferred reason in the perf-log runs is
+`sd` (SURFACE_DOWN; vtx, sc, buf, fb and flu are 0; flip, pres and stl are
+deferred), and every `sd` is a `cDef` (surface.c:1310,
+`download_surface_complete_deferred_at`'s own finish). `[sdcall]` names the
+caller: **`surfupd`, `pgraph_vk_surface_update` at surface.c:5169**, 12-74
+finishes per 60 frames, `why=new/stale`, **`cpuw0` in every window**
+(lane.memfast `1-1791047880-lane.memfast-3557775`, ref 5e249bbfe0,
+2026-10-03, perf log). Between that ref and f2763fe4c0 this path changed only
+in c825e4b24f/2344ae1ee2 (async794: pgraph.lock released across the wait;
+fix 1 stripped), which leaves the finish and the event wait in place. So on
+Forza: a surface bind that must upload from VRAM first completes the pending
+downloads, which submits everything recorded and waits for the GPU; then it
+uploads the bytes it just downloaded. async794 (NOTES "The pilot") read the
+same round trip on NBA (image -> VRAM -> image) and left "keep the image when
+the CPU-access watch saw no guest write" as an untried theory; Forza's
+`cpuw0` is the condition that theory needs.
+
+Nightfire's caller is not named by this capture (no perf log): async794's
+table puts Nightfire's completions in `range` (6.3 ms, memfast-1478575) and
+the texture bind's `txr dl`; the memfast stall line splits Nightfire's `sd`
+half `dl` (the download-to-buffer finish, surface.c:1865) and half `cDef`.
+
+Also on the Forza PFIFO: surface.c:1266 (`wait_frame_fence`, 3.09 ms a frame,
+lock released): a completion whose downloads were already submitted, waiting
+the slot's fence. Same class (a CPU consumer of GPU-rendered bytes), smaller.
+
+### What else the captures close
+
+- reports.c:259 (#804's drain): 0.93 ms a frame on Simpsons, ~0 elsewhere.
+- The UI thread's display-fence wait under pfifo.lock (renderer.c:2824):
+  0.03-0.08 ms a frame. Not a cause on these titles.
+- Forza's first hitches (23:01:59-23:02:18, 92-122 ms of PFIFO on-CPU in one
+  frame) are PFIFO work, not waits; consistent with first-use pipeline
+  compiles (#569), not read further here.
+- The instrument's overhead in these runs: 21-29 us a frame (`ins`).
+
+### Next steps, ranked by P x win (code-side waits; no clock or mode)
+
+| # | step | win at full scale | P, and the evidence | kind |
+|---|---|---|---|---|
+| 1 | **Forza: stop the `surfupd` round trip.** In `pgraph_vk_surface_update` (surface.c:5163-5170), when the binding uploads from VRAM bytes a pending download is about to write and the CPU-access watch saw no guest write (`cpuw0`), take the image's contents on the GPU (copy/convert image to image) instead of completing the downloads (surface.c:1310 -> draw.c:4319 -> render_thread.c:157) and re-uploading. The approach that fits a renderer whose surfaces live in VkImages. | Forza: 12.2 ms of a 37.0 ms frame is this wait, on the thread that sets the pace in 57% of late frames; Forza needs 3.6 ms to hold its 30 (27.0 fps now). If Nightfire's caller is the same class, 7.4 of its 23.5 ms. | 0.45. For: the wait is measured to the line (corr 0.97, slope ~1), the finish reason and caller are logged (`sd` = `cDef` = `surfupd`), and `cpuw0` says the bytes are the image's own. Against: half the uploads are `new` structs at an aliased address, which may need a format conversion, not a copy; the caller was read at 5e249bbfe0 (one perf-log Forza run at head confirms it, ~10 min, and decides whether to start); async794 showed a moved wait when only one site changed, so the fix must remove the round trip, not defer it. | code (the hard work) |
+| 2 | **Simpsons: stop waiting for the GPU with pfifo.lock held.** The STALLED finish in the PFIFO loop's `process_pending_reports` (reports.c:330-336, called at pfifo.c:2163 under pfifo.lock) rotates a frame slot and waits a two-finish-old fence (draw.c:4386) 8 times a frame. Release pfifo.lock across that wait (the #474/#796 pattern), or rotate per guest frame, then re-arm vcpusleep's posted DMA_PUT (`git revert f6ac723228`) on top. | Simpsons: lockw 7.90 of P 24.4; guest on-CPU 16.2 + BQL 0.4 leaves P ~16.6: 40.9 -> ~60 fps (deadline 17.9). | 0.5. For: the chain is closed in-row (lockw <= the PFIFO's `rep` fence time, 0.12 ms unbooked, sum = P). Against: vcpusleep's posted store alone moved the wait; both halves are needed; Simpsons' guest work (~15.9 ms) sits just under its deadline. | code |
+| 3 | **Nightfire: guest work.** 64% of late play frames are the vCPU's own work (on-CPU 26.1 - guest idle 4.9 = ~21 ms against 16.7). | Nightfire 37 -> 60 needs ~5 ms of guest time a frame. | 0.9 that faster guest code moves these frames; size per JIT change unknown (memfast). The vCPU JIT direction (owner 09-28). | the hard work |
+| 4 | **Instrument: book draw.c:4319 in-row** (profile.c only: when the render thread is in its non-deferred fence wait and the PFIFO is blocked unhooked, book the PFIFO's time as render-thread -> GPU), and the DMA_PUT wait's holder (G4, user.c; or the same overlap against the PFIFO's `rep` fence). Then the in-row pacemaker says "blocked on GPU" for Forza and Simpsons instead of `pgraph` / `unattr`. | Correct per-frame labels; no fps. | 0.9; `rtjoin.py` already shows the overlap is exact at 1 s. | instrument |
+
+Rejected as a next step: a GPU-side change for GPU throughput. GPU busy is
+24-49% of the frame at the clock seen.
+
 ## Why attempt 1 did not finish
 
 It finished by the contract: it ended at 09:20 PDT on a `waiting:` for three
@@ -927,15 +1069,40 @@ fourth title and the last thing milestone (c) needed. The run went DONE at
   main-CB time on Simpsons is 5.1 ms of 22.4, which answers vcpusleep's
   open question. Milestone (c). No device time this session.
 
+- 10-05 ~22:30 PDT, session 5: G1 + G5 applied, Vulkan wait interposer and
+  call sites (f2763fe4c0); draw.c:4386 named from the code; three Nova
+  captures queued. **Waiting** on them (section 10).
+
+- 10-05 ~23:15 PDT, session 6 (resume): all three DONE. Read, frames
+  checked, Nightfire cut to its 57 s of play (`ftread.py --until`, new).
+  draw.c:4386 confirmed on Simpsons, refuted on Forza and Nightfire, whose
+  PFIFO wait is draw.c:4319 behind render_thread.c:157 (`rtjoin.py`, new;
+  corr 0.97-1.00). Forza's finish reason and caller from lane.memfast's
+  perf-log `[sdcall]`: `surfupd`, `cpuw0`. `chain.py` and `idlejoin.py` fixed
+  for `read_logs`' sixth return value; `chain.py`'s port check accepts the
+  period-late rule. Three captures archived. Section 11. No device time.
+
 ### Next session, in order
 
-1. If granted: apply `hooks.diff` (G1-G8) + G9 + the G10 timeline as one
-   commit, selftest, type-check, re-capture Simpsons and Forza first
-   (section 9 step 1). Simpsons' route is `simpsons-frametrace.route`.
-2. Without a grant there is no further device read that decides anything:
-   the in-row build has measured what it can see.
+1. Nothing of this lane's waits on a device. The fix targets (section 11,
+   steps 1 and 2) are code lanes' (draw.c is lane.gpunonrender's; surface.c,
+   reports.c, pfifo.c are not this row). Route them.
+2. Step 4 (book draw.c:4319 in-row, profile.c only) is this row's, and
+   worth doing before the fix lanes' arms so their captures label the frames
+   right.
 
 ## Do not repeat
+
+- Reading the PFIFO's unbooked blocked time as one wait on every title.
+  Simpsons' is the frame-slot fence (draw.c:4386, booked by the interposer);
+  Forza's and Nightfire's are the non-deferred finish's event wait
+  (draw.c:4319), which no Vulkan hook can see. `rtjoin.py` tells them apart.
+- Taking a mark window to the end of the run on Nightfire's route: play ends
+  at ~mark + 78 s in a cutscene and then "Mission Failed" menus. Check the
+  frames and pass `--until`.
+- Trusting the in-row `unattr` on Simpsons as "unknown": it is the DMA_PUT
+  wait, whose holder the record does not carry (G4). The `fw=`/`pc=` join
+  names it.
 
 - Judging "late" from VBLANKs per flip. nv2a.c's adaptive deferral holds
   the VBLANK to the flip (all of Simpsons' and Nightfire's VBLANKs in the

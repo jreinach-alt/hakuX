@@ -1,11 +1,34 @@
-# frametrace: the PFIFO thread's GPU wait named (draw.c:4386 under pfifo.lock); Vulkan waits measured by call site; G1 + G5
-State: draft (waiting on three Nova captures)
+# frametrace: the PFIFO thread's GPU waits named per title (draw.c:4386 under pfifo.lock on Simpsons; draw.c:4319 behind the render thread's fence on Forza and Nightfire); Vulkan waits by call site; G1 + G5
+State: ready
 
 Lane: frametrace            Issue: #433
 Base: master @ c3625aad90 (the fold of this lane's first PR)
-Files: accel/tcg/cpu-exec.c, hw/xbox/nv2a/pgraph/pgraph.c, hw/xbox/nv2a/pgraph/profile.c, hw/xbox/nv2a/pgraph/profile.h, docs/lanes/frametrace/NOTES.md, docs/lanes/frametrace/OUTBOX.md, docs/lanes/frametrace/PR.md, docs/lanes/frametrace/WAITING, docs/lanes/frametrace/build_local.sh, docs/lanes/frametrace/ft_selftest.c, docs/lanes/frametrace/ftread.py, docs/lanes/frametrace/selftest.py
+Files: accel/tcg/cpu-exec.c, hw/xbox/nv2a/pgraph/pgraph.c, hw/xbox/nv2a/pgraph/profile.c, hw/xbox/nv2a/pgraph/profile.h, docs/lanes/frametrace/NOTES.md, docs/lanes/frametrace/OUTBOX.md, docs/lanes/frametrace/PR.md, docs/lanes/frametrace/build_local.sh, docs/lanes/frametrace/ft_selftest.c, docs/lanes/frametrace/ftread.py, docs/lanes/frametrace/selftest.py, docs/lanes/frametrace/chain.py, docs/lanes/frametrace/idlejoin.py, docs/lanes/frametrace/rtjoin.py, docs/lanes/frametrace/captures/1-1791264140-lane.frametrace-1709247/frames.csv.gz, docs/lanes/frametrace/captures/1-1791264140-lane.frametrace-1709247/ft.log.gz, docs/lanes/frametrace/captures/1-1791264140-lane.frametrace-1709247/meta.md, docs/lanes/frametrace/captures/1-1791264148-lane.frametrace-1709509/frames.csv.gz, docs/lanes/frametrace/captures/1-1791264148-lane.frametrace-1709509/ft.log.gz, docs/lanes/frametrace/captures/1-1791264148-lane.frametrace-1709509/meta.md, docs/lanes/frametrace/captures/1-1791264150-lane.frametrace-1709628/frames.csv.gz, docs/lanes/frametrace/captures/1-1791264150-lane.frametrace-1709628/ft.log.gz, docs/lanes/frametrace/captures/1-1791264150-lane.frametrace-1709628/meta.md
 Prediction: none: telemetry, off by default; judged by the selftest and the overhead test already passed (NOTES section 5)
-Needs device: yes (three Nova captures queued)    Needs NDK: yes
+Needs device: no (the three Nova captures are read)    Needs NDK: yes
+
+**Result (NOTES section 11).** Three Nova captures at f2763fe4c0, frames
+checked, read by call site (`fw=`, addr2line against the built APK):
+
+| title | the PFIFO thread blocks at | waiting for | ms/frame | consequence |
+|---|---|---|---|---|
+| Simpsons | `vk/draw.c:4386`, frame-slot fence, STALLED finish under pfifo.lock | the GPU, 8 times a frame | 8.06 (+0.93 `reports.c:259`) | the vCPU's DMA_PUT waits 7.90 ms/frame behind it; guest 16.2 + 7.9 + 0.4 = P 24.4 |
+| Forza | `vk/draw.c:4319`, `qemu_event_wait`, non-deferred SURFACE_DOWN finish | the render thread's fence wait (`render_thread.c:157`): the GPU. Caller `surfupd` (surface.c:5169), `cpuw0` | 12.2 (+3.1 `surface.c:1266`) | the PFIFO thread sets the pace in 57% of late frames; 27.0 fps against 30 |
+| Nightfire (play) | `vk/draw.c:4319`, same | `render_thread.c:157` | 7.4 | 64% of late frames are guest work |
+
+`rtjoin.py` (new) shows that `draw.c:4319` is the unhooked wait: per second,
+the PFIFO's unbooked time tracks the render thread's fence wait (corr
+0.97-1.00, slope 1.0-1.24). The GPU ran at 615 MHz and was busy 24-49% of the
+frame in every title. The waits are serial round trips, not GPU throughput.
+Ranked fix targets (code lanes'): Forza's `surfupd` round trip; Simpsons'
+GPU wait under pfifo.lock.
+
+Reader changes: `ftread.py --until` (end a window where the frames stop
+showing play); `chain.py`/`idlejoin.py` follow `read_logs`' sixth value;
+`chain.py`'s port check accepts the period-late rule. Raw frame blocks of
+the three captures are in `captures/`.
+
+### Session 5 (the instrument at this head)
 
 The owner's question: which processor waits on which, and where in our
 code. From the code, joined with the counters every capture already has,
@@ -33,7 +56,7 @@ row), the instrument now interposes volk's Vulkan entry points when
 | G1, G5 | applied as granted. G5 is hooked in the release variant of `pgraph_mmio_lock` too; hooks.diff reached only the perf-log twin |
 | selftest | 43 checks, 21 mutants, all caught |
 
-Queued (Nova, ref f2763fe4c0): Simpsons `1-1791264140-lane.frametrace-1709247`,
+Captured and read (Nova, ref f2763fe4c0): Simpsons `1-1791264140-lane.frametrace-1709247`,
 Forza `1-1791264148-lane.frametrace-1709509`, Nightfire
 `1-1791264150-lane.frametrace-1709628`.
 
