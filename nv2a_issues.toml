@@ -5910,111 +5910,143 @@ status_note = "Forge issue, open (local-only); the tracker had no row for it whe
 [issue.848]
 title = "Marvel Nemesis: the end-of-match REMATCH confirm defaults to NO, and the hold's recovery cycles panel to confirm to panel (6 times in 90 s). Blocks Marvel Nemesis' Playable (fps clear; play 0.62)."
 status = "open"
-dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
-status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind, the Playable title runs; its brief is the reader. Forge issue, open (local-only)."
 
 [issue.849]
 title = "Fight Club: the fight confirm probe refuses on hit reactions, so the path stops at the rematch prompt (can't-path)"
 status = "open"
-dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
-status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind, the Playable title runs; its brief is the reader. Forge issue, open (local-only)."
 
 [issue.850]
 title = "Blowout: the generic hold's stand-still recovery is slow in dark corridors (two still windows before the first unstick, and the walk returns to the same wall); blocks Blowout's Playable at 77.6% play"
 status = "open"
-dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
-status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind, the Playable title runs; its brief is the reader. Forge issue, open (local-only)."
 
 [issue.851]
 title = "the hitch bar counts an all-idle host stall as a title hitch: Marvel Nemesis r3 fails on one 1.01 s stall at 167 s where guest and renderer are both idle (timer-woken, Ri 25 ms; decompose on runs/swee"
 status = "open"
-dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
-status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind, the Playable title runs; its brief is the reader. Forge issue, open (local-only)."
 
 [issue.852]
 title = "fighting-game hold stalls on Character Select after a round, so the play share falls to 0.80 on Mortal Kombat Armageddon. The recovery needs a rule for returning from the grid to a live round, not one"
 status = "open"
-dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
-status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind, the Playable title runs; its brief is the reader. Forge issue, open (local-only)."
 
 [issue.853]
 title = "the generic hold's stand-still recovery is slow on Mortal Kombat Shaolin Monks: two windows of still scene pass before the unstick, and the walk repeats the same press (the same finding as Blowout). B"
 status = "open"
-dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
-status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind, the Playable title runs; its brief is the reader. Forge issue, open (local-only)."
 
 [issue.854]
 title = "fighting-game claim confirm refuses live rounds: the stick probe measures control at 0.1 to 0.5 in a live Mortal Kombat Deadly Alliance round, so the claim gives up at its budget with play on screen ("
 status = "open"
-dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
-status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind, the Playable title runs; its brief is the reader. Forge issue, open (local-only)."
 
 [issue.855]
 title = "NBA 2K3 claim budget (15 min) runs out in team select before the live court on a re-hold: the first live read came at 14.5 min with the probe still open. hold3 (10-05) passed from the same title with"
 status = "open"
-dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
-status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind, the Playable title runs; its brief is the reader. Forge issue, open (local-only)."
 
 [issue.856]
 title = "fighting titles give up at the 15-min claim budget with live fight on screen (Marvel Nemesis at step 63, 10.7 min; Deadly Alliance and NBA 2K3 the same shape). The shared claim budget runs out in prob"
 status = "open"
-dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
-status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind, the Playable title runs; its brief is the reader. Forge issue, open (local-only)."
 
 [issue.857]
 title = "Armageddon's Character Select is not exited by the hold's ladder (A, START, A, A, B, START): menu time 140 s and the share falls to 0.76 with fps clear. Blocks Armageddon's Playable. Not re-run: the s"
 status = "open"
-dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
-status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind, the Playable title runs; its brief is the reader. Forge issue, open (local-only)."
 
 [issue.859]
 title = "NHL Hitz Pro hangs on the loading screen after team select (guest busy at r:800151ed, frozen frame), and the claim loop"
 status = "open"
-dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 13:0x PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
-status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind, the Playable title runs; its brief is the reader. Forge issue, open (local-only)."
 
 [issue.863]
 title = "[#747] Star Wars III: gameplay is fence-bound at 36 render passes a frame; the median frame is 1.8 ms over the 30-fps deadline"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 13:0x PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+blocked_on = "Measured by lane.waitread1006 under #747 (600-s screening); blocked until #747 names a fix lane. Triage of #747 is the PM's."
 status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
 
 [issue.864]
 title = "[#747] GTA SA: gameplay is guest-bound (renderer starved for frames); shader compile is a load-time cost, not a gameplay one"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 13:0x PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+blocked_on = "Measured by lane.waitread1006 under #747 (600-s screening); blocked until #747 names a fix lane. Triage of #747 is the PM's."
 status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
 
 [issue.865]
 title = "[#747] Tron 2.0: three gameplay stalls, 744 / 530 / 1063 ms; two have no shader work"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 13:0x PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+blocked_on = "Measured by lane.waitread1006 under #747 (600-s screening); blocked until #747 names a fix lane. Triage of #747 is the PM's."
 status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
 
 [issue.866]
 title = "[#746] D&D Heroes: gameplay is submit-bound (vkQueueSubmit blocks 38.6 ms a frame); the GPU time behind it is unverified"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 13:0x PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+blocked_on = "Measured by lane.waitread1006 under #746 (D&D Heroes frame cost); blocked until #746 names a fix lane. Triage of #746 is the PM's."
 status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
 
 [issue.867]
 title = "[#746] D&D Heroes: CPU shader bind is 8.1 ms a frame (not compile)"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "UNTRIAGED (hostops 2026-10-06 13:0x PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+blocked_on = "Measured by lane.waitread1006 under #746 (D&D Heroes frame cost); blocked until #746 names a fix lane. Triage of #746 is the PM's."
 status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.868]
+title = "LEGO Star Wars: held run scores 0.840 play share (74 s still, the rest cutscene) (#433 Playable)"
+component = "games"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind (PM table row 7). Forge issue, open (local-only)."
+
+[issue.869]
+title = "Guilty Gear XX Reload: post-round menu and game-over time keep play share at 0.68-0.81 (#433 Playable)"
+component = "games"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind (PM table row 8). Forge issue, open (local-only)."
+
+[issue.870]
+title = "Dead or Alive 3: 600 s of play clears fps but 123 s of cutscene plus menu fails play share (#433 Playable)"
+component = "games"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Triaged 14:09 PDT (lane.local PM replan 14:00, applied by hostops): dispatchable to lane.pathfind (PM table row 11). Forge issue, open (local-only)."
+
+[issue.871]
+title = "GMEM scene-pass replay is the GPU cost on DOA3 and NG Black; per-pass sysmem or per-title mode (#746)"
+component = "pgraph"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "lane.gpunonrender's sysmem A/B result (its scope D); the render-pass census is folded and the load/store cost is under 0.4 ms a frame. Filed 14:09 PDT (hostops, lane.local request)."
+status_note = "Forge issue, open (local-only). Under #746."
