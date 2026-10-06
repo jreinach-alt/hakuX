@@ -628,6 +628,87 @@ static void test_mmio(void)
           ft_mmio_name[1], (unsigned long long)ft_mmio_slot_ns[1]);
 }
 
+/* ---- 7. waits by context, and the Vulkan call-site table ---------------- */
+
+static void *site_other_thread(void *arg)
+{
+    (void)arg;                              /* unregistered: the UI thread */
+    hakux_ft_site_add(0x2000, HAKUX_FT_W_FENCE, 3000000);
+    return NULL;
+}
+
+static void test_sites(void)
+{
+    HakuxFtWait w;
+    HakuxFtFrame f;
+    pthread_t o;
+    int c;
+    FtWriter *wr;
+    char line[1024];
+    int k_rep = -1, k_none = -1, k_other = -1;
+
+    /* The main thread is the PFIFO row here (its flips registered it). */
+    flip(1);
+    c = hakux_ft_ctx_enter(HAKUX_FT_CTX_REPORTS);
+    hakux_ft_wait_begin(&w, HAKUX_FT_W_FENCE, -1);
+    sleep_ms(4);
+    hakux_ft_wait_end(&w);
+    hakux_ft_site_add(0x1000, HAKUX_FT_W_FENCE, 4000000);
+    hakux_ft_ctx_leave(c);
+    hakux_ft_wait_begin(&w, HAKUX_FT_W_FENCE, -1);
+    sleep_ms(2);
+    hakux_ft_wait_end(&w);
+    hakux_ft_site_add(0x1000, HAKUX_FT_W_FENCE, 2000000);
+    pthread_create(&o, NULL, site_other_thread, NULL);
+    pthread_join(o, NULL);
+    flip(1);
+    f = last_frame(0);
+    check(f.r[HAKUX_FT_PFIFO].c[HAKUX_FT_CTX_REPORTS] >= 3500 &&
+          f.r[HAKUX_FT_PFIFO].c[HAKUX_FT_CTX_REPORTS] < 6000 &&
+          f.r[HAKUX_FT_PFIFO].c[HAKUX_FT_CTX_NONE] >= 1500 &&
+          f.r[HAKUX_FT_PFIFO].c[HAKUX_FT_CTX_NONE] < 3500 &&
+          f.r[HAKUX_FT_PFIFO].w[HAKUX_FT_W_FENCE] >= 5500 &&
+          hakux_ft_ctx == HAKUX_FT_CTX_NONE,
+          "ctx.pfifo_wait_booked_by_context", "rep=%u none=%u fence=%u ctx=%u",
+          f.r[HAKUX_FT_PFIFO].c[HAKUX_FT_CTX_REPORTS],
+          f.r[HAKUX_FT_PFIFO].c[HAKUX_FT_CTX_NONE],
+          f.r[HAKUX_FT_PFIFO].w[HAKUX_FT_W_FENCE], hakux_ft_ctx);
+
+    /* One call site, two contexts: two slots. Another thread: a third. */
+    for (int i = 0; i < FT_SITE_SLOTS; i++) {
+        uint64_t key = ft_site[i].key;
+        if (key == ft_site_key(0x1000, HAKUX_FT_W_FENCE, HAKUX_FT_PFIFO,
+                               HAKUX_FT_CTX_REPORTS)) {
+            k_rep = i;
+        } else if (key == ft_site_key(0x1000, HAKUX_FT_W_FENCE, HAKUX_FT_PFIFO,
+                                      HAKUX_FT_CTX_NONE)) {
+            k_none = i;
+        } else if (key == ft_site_key(0x2000, HAKUX_FT_W_FENCE, -1,
+                                      HAKUX_FT_CTX_NONE)) {
+            k_other = i;
+        }
+    }
+    check(k_rep >= 0 && k_none >= 0 && k_other >= 0 &&
+          ft_site[k_rep].ns == 4000000 && ft_site[k_none].ns == 2000000 &&
+          ft_site[k_other].ns == 3000000 && ft_site[k_rep].n == 1,
+          "site.keyed_by_site_role_context", "slots rep=%d none=%d other=%d",
+          k_rep, k_none, k_other);
+
+    /* The summary names each site once and ranks them by time. */
+    wr = calloc(1, sizeof(*wr));
+    ft_sites_fmt(wr, line, sizeof(line), 1);
+    check(strstr(line, " fw=p.rep.fence#") == line &&
+          strstr(line, ":4.00/1.0,o.none.fence#") &&
+          strstr(line, ":3.00/1.0,p.none.fence#") &&
+          strstr(logbuf, "row=p ctx=rep reason=fence ra=0x1000") &&
+          strstr(logbuf, "row=o ctx=none reason=fence ra=0x2000"),
+          "site.summary_ranks_and_names_sites", "line=%s", line);
+    ft_sites_fmt(wr, line, sizeof(line), 1);
+    check(!strcmp(line, " fw="), "site.summary_is_since_last", "line=%s",
+          line);
+    free(wr);
+}
+
 int main(void)
 {
     hakux_ft_log = cap_log;
@@ -642,6 +723,7 @@ int main(void)
     test_hitch();
     test_duty();
     test_mmio();
+    test_sites();
     printf("RESULT pass=%d fail=%d\n", npass, nfail);
     return nfail ? 1 : 0;
 }
