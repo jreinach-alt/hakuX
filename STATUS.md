@@ -61,4 +61,4 @@ What is in flight right now. Generated from the working tree and updated as work
 - `0dd4c30436` 2026-10-05 belowbar1005: Buffy arm N: Buffy reads no occlusion queries, the fence wait never runs on it; NGB and DOA3 perflog soaks queued, routes from
 - `097eb9567d` 2026-10-05 belowbar1005: build per below-bar run (Buffy/NGB ran without the #804 wait), offline bounds, Buffy WAIT A/B registered (#433)
 
-_Updated 2026-10-05 17:57 PDT._
+_Updated 2026-10-05 17:58 PDT._
