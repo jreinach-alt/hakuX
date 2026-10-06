@@ -40,7 +40,7 @@ What is in flight right now. Generated from the working tree and updated as work
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gpunonrender` | Lane: gpunonrender                Issue: #433 | `dabc1eda42` | 2026-10-05 16:49 |
+| `lane/frametrace` | frametrace: per-frame critical-path telemetry (HAKUX_FRAMETRACE=1): who set the pace, frame by frame | `7e47dde38c` | 2026-10-05 17:17 |
 | `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `13728a9fd5` | 2026-10-05 16:56 |
 
 ## Recently landed on master
@@ -61,4 +61,4 @@ What is in flight right now. Generated from the working tree and updated as work
 - `0dd4c30436` 2026-10-05 belowbar1005: Buffy arm N: Buffy reads no occlusion queries, the fence wait never runs on it; NGB and DOA3 perflog soaks queued, routes from
 - `097eb9567d` 2026-10-05 belowbar1005: build per below-bar run (Buffy/NGB ran without the #804 wait), offline bounds, Buffy WAIT A/B registered (#433)
 
-_Updated 2026-10-05 17:50 PDT._
+_Updated 2026-10-05 17:55 PDT._
