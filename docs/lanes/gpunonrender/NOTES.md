@@ -647,6 +647,197 @@ to the end. Frames every 20 s. K0 has no env; K1 sets `HAKUX_STALLFIN=reports`.
   so this arm's frames are evidence, not a sign-off.
 - Readout: fps period p50, and finishes per frame by reason.
 
+## Attempt 7: why attempt 6 did not finish
+
+Attempt 6 did not fail. It built the outer stamps (d946e1ba44) and
+`HAKUX_STALLFIN=reports` (6f6af20088), wrote the expected results, queued five
+Nova runs, set WAITING on them and ended. That is a finished wait. All five ran
+DONE on the Nova between 04:12 and 04:50 PDT on 10-06. This attempt reads them.
+`origin/master` had not moved since the last merge (0 commits), so there was
+nothing to merge.
+
+## The five runs read (attempt 7)
+
+Reader: `abread.py <id> --from <mark gameplay + 20 s>`, to the end of the log.
+Device state (run.log THERMAL, thermal.jsonl): no thermal pause in any run; on
+USB (5.2-6.5 W in) with the battery at 80% at the start.
+
+| run | id | GPU MHz in the window |
+|---|---|---|
+| X0 | 1-1791284834-lane.gpunonrender-3228352 | 680 (one 550 sample) |
+| X1 | 1-1791284845-lane.gpunonrender-3230278 | 680 (one 550 sample, same place) |
+| S1 | 1-1791284850-lane.gpunonrender-3230633 | 401 |
+| K0 | 1-1791285173-lane.gpunonrender-3251320 | 401 |
+| K1 | 1-1791285177-lane.gpunonrender-3251434 | 401 (one 475 sample) |
+
+Each pair ran at the same clock, so no clock state is read as a cost.
+
+### X0: the "non-render" half is render-pass work behind the in-pass stamps
+
+NG Black, `bb-ngb`, window 04:18:02-04:21:07 (185 s of play), per frame:
+
+| quantity | ms/frame | share of `nr` |
+|---|---|---|
+| `xemu-gpu` Tot / Rnd / Xfr | 22.96 / 12.07 / 10.89 | |
+| `nr` (CB span − in-pass render spans, from `xemu-xfr`) | 10.75 | 100% |
+| `in`: render span, in-pass stamps | 11.91 | |
+| `out`: render span, outer stamps | 22.27 | |
+| **`out` − `in`: render-pass work the in-pass stamps miss** | **10.36** | **96%** |
+| **`nr_out`: CB span − outer render spans** | **0.39** | **3.6%** |
+| download (6.14 ops/frame, site 587) | 0.35 | |
+| s2t (0.68 ops/frame) | 0.01 | |
+| `res_out` (outside every bracket, outside every pass) | 0.02 | |
+
+Render passes: 11.96 per frame, so the in-pass stamps miss 0.87 ms per pass.
+
+Against the rule written before the run: **"the stamps hide it" holds**, far
+past its bar. `out` − `in` is 96% of `nr` (the bar was at least 50%), and
+`nr_out` is 3.6% of `nr` (the bar was at most 50%).
+
+- On NG Black, the GPU's real time outside render passes is **0.39 ms a frame**,
+  not 10.9. It is 1.7% of the GPU frame.
+- The categories reconcile under the outer stamps: download 0.35 + s2t 0.01 +
+  `res_out` 0.02 = 0.38 of `nr_out` 0.39. The unbracketed residual is 5% of
+  `nr_out`, under the 15% bar, so this title's table is complete.
+- The largest category is `download` at 90% of `nr_out`. At 0.35 ms a frame it
+  cannot move fps: the most it can win is 0.35 of a 26.8 ms G frame.
+- The other 10.4 ms that belowbar1005 read as non-render is the work Turnip
+  emits at `vkCmdEndRenderPass` for a GMEM pass: the binning pass, every tile
+  but the last, and the tile loads and stores (tu_query_pool.cc:2108; the
+  section above). The GPU frame on NG Black is 97% render passes.
+
+So the brief's premise, "half of every GPU frame is not render passes", is a
+stamp artifact on NG Black, measured. No copy, upload or conversion fix can win
+the 10-18 ms the survey promised there. The GPU's time is inside the render
+passes, and the lever is how each pass runs on a tiler: GMEM vs sysmem, bin
+count, and which attachments are loaded and stored per tile.
+
+### X1: the in-pass stamp pair costs nothing measurable
+
+| per frame | X0 (in-pass on) | X1 (`HAKUX_GPUTS_INRP=0`) |
+|---|---|---|
+| render passes | 11.96 | 11.98 |
+| `out` render span | 22.27 | 22.42 |
+| `out` per pass | 1.862 | 1.871 |
+| `xemu-gpu` Tot | 22.96 | 23.20 |
+| `nr_out` | 0.39 | 0.39 |
+| gfps (readout) | 39.2 | 38.3 |
+
+Per-pass `out` is +0.5% with the stamps removed (the bar for "they cost" was
+at most 0.9×), and Tot did not fall. Verdict: **nothing measurable**. A
+wait-for-idle per tile per pass is below this arm's ±10% resolution on NG Black.
+The shipped build keeps the stamps, and this is not a fix candidate.
+
+### S1: the splice never engaged on Spider-Man 2
+
+| per frame | S0 (splice off) | S1 (`HAKUX_SURFSPLICE=1`) |
+|---|---|---|
+| `[surfsplice] on` logged | no | yes (04:30:14) |
+| `spl` def / up / dl / cmpl | 0 / 0 / 0 / 0 | **0 / 0 / 0 / 0** |
+| `[sdcall]` surfupd: fin, wait ms | 2.50, 6.01 | 2.50, 6.29 |
+| all callers, wait ms | 10.91 | 11.55 |
+| `su_upl`, `why` | 2.50, all `stale` | 2.50, all `stale` |
+| gfps | 26.8 | 26.5 |
+
+The mechanism leg fails. `spl def` counts updates that the switch let defer
+with a binding uploading, and it is 0. So `surface_update_may_defer_downloads`
+refused every one: `surfsplice_covers` was false for a binding each time. That
+happens when an overlapping pending download is swizzled, has a host format
+whose bytes per pixel differ from the guest's, or is already submitted (it is
+not: the `surfupd` waits are finishes, not fence waits), or when the uploading
+binding is swizzled and not 4 bytes per pixel. Which one applies is not
+counted. P1 and P2 are not judged, because nothing was spliced. The run is not
+void: the build, env and route are correct, and the gate itself is what the
+run measured.
+
+Verdict: (A) does not reach Spider-Man 2 as built. Reaching it would need a
+refusal-reason counter, then (if the download is swizzled) a GPU swizzle in
+the splice, then a run. F1 already showed the wait can move to another caller
+once `surfupd` is removed. Ranked below (P 0.15).
+
+### K0/K1: STALLED submits fall to 20%, and fps falls
+
+Simpsons, `simpsons-frametrace`, both in free roam at the same wall (frames
+f00012 of each: Homer, the brick wall, the window; FPS overlay 34 in K0, 25 in
+K1). No crash or hang line. K1's frames show no missing geometry (the flicker
+check is the owner's).
+
+| per frame (window means) | K0 | K1 (`HAKUX_STALLFIN=reports`) |
+|---|---|---|
+| `[stallfin] reports-only on` | no | yes |
+| STALLED finishes (`stl`), `stlDef` | 5.36, 5.36 | **1.05**, 2.05 |
+| all finishes | 6.37 | 2.35 (adds `pres` 0.30) |
+| `[rwait526]` deferred waits per 10 s, wait ms | 1617, 112 | 539, 47 |
+| **gfps** | **30.3** | **25.8** |
+| G (guest frame ms) | 33.0 | 37.75 |
+| vCPU DMA_PUT wait on pfifo.lock (`CPU: Lw`) | 16.1 | **20.4** |
+| `[lock474]` flip op holding pgraph.lock, ms per 2 s | 0.4 | 17.7 |
+| `[lock474]` vCPU register-read wait, ms per 2 s | 0.7 | 10.2 |
+| fifoskew drain mean, ms | 3.90 | 4.19 |
+| `xemu-gpu` Tot / Rnd / Xfr | 19.6 / 12.6 / 7.0 | **25.7** / 12.7 / **13.0** |
+
+Against the rules written before the runs:
+
+- **Mechanism: holds.** STALLED finishes are 20% of K0's, under the 30% bar.
+  Simpsons' catch-ups do not carry reports.
+- **The claim: fails.** gfps fell by 4.5 (it needed to rise by at least 5).
+  The rotation wait fell, but it was small on this route. K0's deferred
+  rotation wait is 112 ms per 10 s, about 0.37 ms a frame, not the 8 ms that
+  simp2 measured in frametrace's window. K0 runs at 30 fps here, not 40.9, so
+  this route's scene is paced by something else.
+- **The pacer moved, and is named by the counters:**
+  - The vCPU's DMA_PUT wait on pfifo.lock grew by 4.3 ms a frame. That is
+    about the 4.75 ms the guest frame grew.
+  - The GPU frame grew 6.1 ms at the same 401 MHz, and all of it is outside
+    the in-pass stamps (Rnd unchanged). After X0, that is most likely
+    render-pass work (bins and tiles), not copies. Batching more draws into
+    one submit made the GPU's frame longer. Why is not measured.
+  - The flip now holds pgraph.lock for 0.33 ms a flip (was 0.01). That is
+    small per frame, but it is the place where a whole frame's work is now
+    submitted.
+- Reading: with catch-up submits gone, the GPU starts a frame's work at the
+  flip, and the PFIFO thread (holding pfifo.lock, which the vCPU's DMA_PUT
+  waits for) waits for that work behind it. The overlap the per-catch-up
+  submits gave between recording and GPU execution was worth more than the
+  rotation waits they cost.
+
+Verdict: (C') is refuted on Simpsons and stays default off. Together with
+simp2 (the lock half, refuted in f6ac723228), both halves of (C) have been
+tried and both lost fps. Neither the STALLED submit nor the lock across its
+wait is what holds Simpsons at 30-40 fps on these routes.
+
+### Next runs: is the stamp artifact the same on the other titles?
+
+X0 settles NG Black. The brief asks for six titles, and the decision that
+depends on them is whether any title has real between-pass GPU work worth a
+fix lane. Two titles can be run on the Nova now with existing routes. **ToeJam
+& Earl III** has the largest `nr` (17.9 ms) and the lowest Xfr/Tot (0.34), so it
+is the one most likely to differ from NG Black. **DOA3** has the dojo stage
+(25.5 ms `nr`). Otogi's route and title are on the Thor, which is out of
+service (fan). AUF and DOA Ultimate have no route.
+
+Both runs: Nova, perflog, `PERF_REGIMEN=default`, `HAKUX_GPUXFR=1`, ref
+d946e1ba44 (X0's apk, so the shader cache carries over only if no other apk
+ran between). Window: `mark gameplay` + 20 s to the end.
+
+| arm | title, route, s |
+|---|---|
+| T0 | ToeJam & Earl III, `uberdefault569/routes/toejam-earl-3`, 300 |
+| D0 | DOA3, `belowbar1005/routes/bb-doa3`, 480 (attract reaches the dojo at about 270-330 s) |
+
+Expected results, per title, written before queueing:
+
+- **The artifact holds there too:** `nr_out` is at most 30% of `nr`. Then the
+  survey's non-render time is render-pass work on that title as well.
+- **Real between-pass work:** `nr_out` is at least 80% of `nr`, with `res_out`
+  at most 15% of `nr_out`. Then that title's largest category is ranked as
+  the brief asks (avoidable or inherent, from the code path).
+- In between: both are present, and the numbers give each one's size.
+- The brief's "this category is the cost" rule (one category at least 50% of
+  `nr` in at least 3 of 6 titles) is judged on `nr_out` for every title with
+  outer stamps. NG Black counts as "not": its largest category is 3.3% of
+  `nr`.
+
 ## Control, read from the existing counter (attempt 1 arms)
 
 The `xemu-gpu` line already carries `Xfr` = `gpu_nonrender_ms` (profile.c,
