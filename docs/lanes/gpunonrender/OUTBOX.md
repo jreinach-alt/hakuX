@@ -216,3 +216,54 @@ WAITING lists the four runs.
 | Re-read the six-title "non-render" study with the outer stamps (X0 first) | 0.8 that X0 shows most of `nr` is render-pass work | it decides whether any copy/upload fix can win the 10-18 ms the survey promised (probably not), and points the GPU work at tile load/store and binning (GMEM vs sysmem per pass, lane.rendermode474's area) | X0 queued; the other titles after it |
 | Forza/MC2: texture.c:2100 range scan (texture reads a rendered surface through VRAM) | 0.35, needs one counter first (why the bind does not take the surface-to-texture path) | Forza 8-19 ms/frame of PFIFO wait, MC2 8.0 | a counter, then the fix lane |
 | (A) on Spider-Man 2 (S1 queued) | 0.25 after F1 (the wait may move as on Forza) | up to 6 ms/frame, 26.8 to ~30 fps | one run, queued |
+
+## 2026-10-06 05:10 PDT (attempt 7): X0/X1/S1/K0/K1 read; two confirmation runs queued
+
+- Attempt 6 ended on a WAITING for five runs. That is a finished wait. All five
+  ran DONE on the Nova between 04:12 and 04:50. Verdicts are in NOTES.md, "The
+  five runs read (attempt 7)". origin/master had not moved, so there was
+  nothing to merge.
+- **X0, NG Black, outer render-pass stamps: the brief's premise is a stamp
+  artifact.**
+  - Of `gpu_nonrender_ms`'s 10.75 ms per frame, 10.36 (96%) is render-pass work
+    that the in-pass stamps miss. That is Turnip's binning, the other tiles,
+    and the tile loads and stores.
+  - The GPU's time outside every render pass is **0.39 ms per frame**:
+    download 0.35, s2t 0.01, unbracketed 0.02 (5%, under the 15% bar).
+  - The GPU frame is 97% render passes, at 680 MHz in both arms.
+  - No copy or upload category can win the 10-18 ms the survey promised.
+- **X1:** removing the in-pass stamp pair moves the per-pass span by +0.5%.
+  Nothing measurable, so the shipped-build stamp cost is not a candidate.
+- **S1, Spider-Man 2 splice:** never engaged (`spl def` 0). The eligibility
+  check refused every update, and the `surfupd` wait is unchanged (6.0 to 6.3
+  ms). The refusal reason is not counted. (A) does not reach Spider-Man 2 as
+  built.
+- **K0/K1, Simpsons `HAKUX_STALLFIN=reports`: refuted.**
+  - Mechanism holds: STALLED finishes go from 5.36 to 1.05 per frame.
+  - **fps fell from 30.3 to 25.8.** The vCPU's DMA_PUT wait on pfifo.lock grew
+    by 4.3 ms per frame, and the GPU frame grew 6.1 ms at the same 401 MHz.
+  - On this route the rotation wait was only ~0.37 ms per frame to begin with.
+  - Both halves of (C) have now been tried (simp2, the lock; K1, the submit),
+    and both lost fps. It stays off.
+- **Milestone (b)/(c), partial:** NG Black's table is complete under the outer
+  stamps. Two confirmation runs are queued, same build (d946e1ba44),
+  `HAKUX_GPUXFR=1`, expected results in NOTES.md:
+  - T0 ToeJam & Earl III (largest `nr`, 17.9; lowest Xfr/Tot):
+    `1-1791288045-lane.gpunonrender-3440051`, 300 s.
+  - D0 DOA3 (dojo): `1-1791288049-lane.gpunonrender-3440825`, 480 s.
+  - Otogi is on the Thor (out of service, fan). AUF and DOA Ultimate have no
+    route.
+  - About 23 min of Nova time.
+- New file: `docs/lanes/gpunonrender/routes/gnr-toejam.route` is
+  uberdefault569's route plus the `# state: first-run` line that request.sh
+  now requires.
+- Spend: not readable from this session.
+
+## Next
+
+| candidate | P | win | cost |
+|---|---|---|---|
+| Render-pass cost on the tiler: per pass, GMEM vs sysmem, bin count, attachment load/store ops (draw.c render-pass begin and the render-pass create info; lane.rendermode474's area) | 0.35: X0 puts 97% of NG Black's GPU frame in render passes; TU_DEBUG=sysmem gave +8 gfps on DOA/AUF (flip474) | NG Black 3-6 ms off a 23 ms GPU frame (28.5+ in most windows); every GMEM-heavy title if T0/D0 agree | a per-pass census (telemetry), one NG Black run, then the fix lane |
+| Forza/MC2 texture.c:2100 range scan | 0.35 | Forza 8-19 ms/frame PFIFO wait, MC2 8.0 | a counter, then the fix lane |
+| (A) on Spider-Man 2 | 0.15 (gate refused all; the wait may move as on Forza) | up to 6 ms/frame, one title | a refusal counter, one run, maybe a GPU swizzle |
+| Simpsons STALLED submit or lock | 0.05 (both halves refuted) | none expected | none |

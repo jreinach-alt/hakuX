@@ -899,6 +899,18 @@ count, and the GPU clock from thermal.jsonl for the same window.
 
 ## Ranking
 
-To be written after the six titles. Candidates are ranked by P x win, with the
-win stated per title as ms/frame and fps, and each avoidable/inherent call
-backed by the code path and the op counts, not a guess.
+Provisional, after X0 (NG Black, outer stamps). It becomes final when T0 and D0
+are read. Ranked by P × win.
+
+| # | candidate | P (evidence) | win | cost |
+|---|---|---|---|---|
+| 1 | **Render-pass cost on the tiler**: per pass, GMEM vs sysmem, bin count, and which attachments are loaded and stored per tile (`loadOp` LOAD where CLEAR or DONT_CARE would do, `storeOp` STORE of a depth buffer nobody reads). Code: draw.c's render-pass begin (`begin_render_pass`, the `VkRenderPassCreateInfo` attachment ops in renderer/pipeline setup). | 0.35. For: X0 puts 97% of NG Black's GPU frame inside render passes, and 0.87 ms per pass is outside the last tile. `TU_DEBUG=sysmem` gained 8 gfps on DOA and AUF (lane.flip474), which says per-pass mode alone moves fps there. Against: no per-pass census of load/store ops exists yet, and some loads are required (the guest draws over the previous contents) | NG Black is GPU-bound at 680 MHz with a 23 ms GPU frame; 3-6 ms off it is 28.5+ in most windows. The same reaches every GMEM-heavy title in belowbar's survey (AUF, DOA Ultimate, Otogi, DOA3, ToeJam) if T0/D0 show the same artifact | First a measurement, telemetry only: a per-pass census (attachment load/store ops, size, draws, and the outer span per pass) under `HAKUX_GPUXFR=1`, one NG Black run. Then the fix lane, whose territory is lane.rendermode474's |
+| 2 | Forza and Midnight Club II: texture.c:2100's surface-range scan completes a pending download because the texture reads a rendered surface through VRAM | 0.35 (unchanged; needs one counter: why the bind does not take the surface-to-texture path) | Forza 8-19 ms per frame of PFIFO wait, MC2 8.0 | a counter, then the fix lane |
+| 3 | (A) on Spider-Man 2: the splice's eligibility check refused every update (S1) | 0.15. The refusal reason is not counted; if it is a swizzled download, the splice needs a GPU swizzle; and F1 showed the wait can move to `range` once `surfupd` is gone | up to 6 ms per frame, 26.8 to ~30 fps, one title | a refusal-reason counter, one run, then possibly a GPU swizzle |
+| 4 | Simpsons, the STALLED submit or the lock across its wait | 0.05. Both halves are refuted: simp2 (lock) and K1 (submit) each lost fps | none expected | a frametrace capture of K1 would name where the PFIFO thread holds pfifo.lock, if anyone wants the reason |
+| - | In-pass stamp cost in the shipped build | refuted by X1 (+0.5% per pass with the stamps removed) | none | none |
+
+By the brief's decision rule, no copy, upload or conversion category is "the
+cost" on NG Black: the largest (`download`) is 3.3% of `nr`. The single next
+lane is (1), and its first step is the per-pass census, because "which
+attachments are loaded and stored per tile" is a guess until it is counted.

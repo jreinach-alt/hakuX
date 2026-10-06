@@ -1,6 +1,6 @@
 Lane: gpunonrender                Issue: #433
 Base: master @ c3a0c70ace
-Files: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/reports.c, docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/WAITING, docs/lanes/gpunonrender/stepsdump.py, docs/lanes/gpunonrender/qstate.py, docs/lanes/gpunonrender/abread.py, docs/lanes/gpunonrender/rls.py, docs/lanes/gpunonrender/routes/gnr-spiderman2.route, docs/lanes/gpunonrender/routes/gnr-mc2.route
+Files: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/reports.c, docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/WAITING, docs/lanes/gpunonrender/stepsdump.py, docs/lanes/gpunonrender/qstate.py, docs/lanes/gpunonrender/abread.py, docs/lanes/gpunonrender/rls.py, docs/lanes/gpunonrender/routes/gnr-spiderman2.route, docs/lanes/gpunonrender/routes/gnr-mc2.route, docs/lanes/gpunonrender/routes/gnr-toejam.route
 Prediction: none: no arm (A/B soaks read by hand against expected results written in NOTES.md before each run)
 Needs device: yes    Needs NDK: yes
 
@@ -113,10 +113,21 @@ until the flip or another finish submits them. The perflog log shows
 - Spider-Man 2 carries a 6.0 ms per frame `surfupd` wait. Midnight Club II
   carries none; its 8.0 ms is in `range`.
 - The unbracketed share of `gpu_nonrender_ms` is 34-83% on these titles.
-- Pending:
-  - The outer-stamp reading (NG Black, with and without the in-pass pair).
-  - A Spider-Man 2 splice arm.
-  - A Simpsons `HAKUX_STALLFIN=reports` A/B.
+- **NG Black, outer stamps:** of `gpu_nonrender_ms`'s 10.75 ms per frame,
+  10.36 ms (96%) is render-pass work that the in-pass stamps miss. The time
+  outside every render pass is 0.39 ms per frame: `download` 0.35, `s2t` 0.01,
+  unbracketed 0.02. The GPU frame is 97% render passes, and no copy or upload
+  category is large enough to move fps.
+- Removing the in-pass stamp pair (`HAKUX_GPUTS_INRP=0`) changes the per-pass
+  span by +0.5% and the GPU frame by +0.2 ms: no measurable cost.
+- `HAKUX_SURFSPLICE=1` does not engage on Spider-Man 2. Every update with a
+  binding uploading was refused by the splice's eligibility check, and the
+  `surfupd` wait is unchanged (6.0 to 6.3 ms per frame).
+- `HAKUX_STALLFIN=reports` on Simpsons cuts STALLED finishes from 5.36 to 1.05
+  per frame, and fps falls from 30.3 to 25.8. The vCPU's wait for pfifo.lock
+  grows 4.3 ms per frame, and the GPU frame grows 6.1 ms at the same clock.
+  It stays off.
+- Pending: the outer-stamp reading on ToeJam & Earl III and DOA3.
 
 Details and per-run tables are in `docs/lanes/gpunonrender/NOTES.md`.
 
