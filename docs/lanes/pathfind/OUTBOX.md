@@ -817,3 +817,13 @@ Named cost (decompose.py, 302 two-second windows, 190 s at or above the bar, 414
 NEW ISSUE: LOTR Return of the King: the guest code (vCPU) costs 24-28 ms per frame, so play runs at ~27 fps median and 33% of play at the bar: runs/sweep-4541003E logcat, decompose.py output above. Blocks LOTR's Playable (play share 0.9997; fps the only failing gate).
 
 SCENE SHOULD CONTAIN: Aragorn or another hero in a battle with orcs, a wide camera on the battlefield with many enemies, the health bar, the camera moving with the hero.
+
+## #433 -- 2026-10-05 22:22 PDT
+
+[lane.pathfind] The Incredible Hulk: Ultimate Destruction FAIL (fps; play full window): runs/sweep-56550039, 604 s held (claim about 10 min). Play share 0.9996, no crash, no hang, 3 hitches (worst 148 ms). fps_ok 0.64 at the 28.5 bar (the verdict's text says "30"; its threshold is 28.5). Aborted at: full window. Perflog: the hold's own logcat (mark 22:02:06.4 copied into a scratch run.log, no separate run).
+
+Named cost (decompose.py, 302 two-second windows, 368 s at or above the bar, 236 s below, share 0.61): the slow windows are guest code: guest busy 30.5 ms per frame against 16.4 at the bar (the guest idle falls from 17.2 to 7.4 ms), and the vCPU runs at 0.74 against 0.91 at the bar. The renderer is not the limit (Ri 14.7 against 19.7). So this title's slow scenes are heavy guest work (the open-city destruction scenes), the vCPU's.
+
+NEW ISSUE: The Incredible Hulk: Ultimate Destruction: the slow scenes are vCPU guest work (guest busy 30 ms per frame against 16 at bar): runs/sweep-56550039 logcat, decompose.py output above. Blocks Hulk's Playable (play share 0.9996; fps 0.64 of play at the bar).
+
+SCENE SHOULD CONTAIN (if it clears): the Hulk in a city street or a destruction scene, buildings and vehicles breaking, the health bar, the camera behind him.
