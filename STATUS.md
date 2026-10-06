@@ -6,7 +6,9 @@ What is in flight right now. Generated from the working tree and updated as work
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pathfind` | claude-sonnet-5 | 3h 52m | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+| `gpunonrender` | claude-sonnet-5 | 0 min | Lane: gpunonrender                Issue: #433 |
+| `pathfind` | claude-sonnet-5 | 4h 1m | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+| `pmucounters` | claude-sonnet-5 | 0 min | Lane: pmucounters            Issue: #433 |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.pathfind`
@@ -54,7 +56,9 @@ What is in flight right now. Generated from the working tree and updated as work
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `b095bf76d1` | 2026-10-05 21:28 |
+| `lane/gpunonrender` | Lane: gpunonrender                Issue: #433 | `dabc1eda42` | 2026-10-05 16:49 |
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `38788832f9` | 2026-10-05 21:42 |
+| `lane/pmucounters` | Lane: pmucounters            Issue: #433 | `a30c76be62` | 2026-10-05 09:00 |
 
 ## Recently landed on master
 
@@ -69,4 +73,4 @@ What is in flight right now. Generated from the working tree and updated as work
 - 2026-10-04 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
 - 2026-10-04 hangwatch: a locked-up title is caught on telemetry in about 90 s, not waited out
 
-_Updated 2026-10-05 21:42 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-05 21:50 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
