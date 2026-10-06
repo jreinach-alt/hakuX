@@ -1,10 +1,10 @@
 Lane: gpunonrender                Issue: #433
-Base: master @ 8522288a77
-Files: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/OUTBOX.md
+Base: master @ 8522288a77 (merged c3a0c70ace)
+Files: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/WAITING, docs/lanes/gpunonrender/stepsdump.py, docs/lanes/gpunonrender/qstate.py, docs/lanes/gpunonrender/routes/gnr-spiderman2.route, docs/lanes/gpunonrender/routes/gnr-mc2.route
 Prediction: none: no arm
 Needs device: yes    Needs NDK: yes
 
-Release note (none): telemetry only; HAKUX_GPUXFR is off by default and changes no rendering or timing.
+Release note (none): telemetry and an opt-in switch; HAKUX_GPUXFR and HAKUX_SURFSPLICE are off by default and change no rendering or timing.
 
 ## What this measures
 
@@ -52,6 +52,19 @@ line starts with `xemu-xfr`, so it can still be grepped.
   what shows how far that goes.
 - When the variable is unset, each bracket is one call that returns at once.
   Its cost is not yet measured; a timed arm with it unset is queued.
+
+## HAKUX_SURFSPLICE (off by default)
+
+When a surface binding is about to upload from VRAM bytes that a pending
+surface download has not written yet, `pgraph_vk_surface_update` used to
+complete the downloads with a finish and a wait for the GPU, then upload the
+bytes it had just downloaded. With `HAKUX_SURFSPLICE=1` the upload copies those
+bytes from the download's staging rows into its own staging on the GPU, in the
+order the downloads were recorded. Both staging buffers hold guest VRAM bytes,
+so the result is what VRAM holds once the downloads complete; the downloads stay
+pending and complete where other readers already complete them. Swizzled
+downloads, downloads a finish already submitted, and uploads the CPU unswizzles
+complete as before. `[sdcall]` (perflog) gains `spl=def/up/dl/kB/cmpl`.
 
 ## Status
 

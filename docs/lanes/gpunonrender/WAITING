@@ -1,0 +1,8 @@
+# lane.gpunonrender 2026-10-06 01:10 PDT: waiting for four Nova runs at 5eef1dacd9 (perflog, HAKUX_GPUXFR=1).
+# F0/F1 are the scope (A) A/B (HAKUX_SURFSPLICE off/on) on Forza; S0/M0 are scope (B)'s surveys.
+# Then resume: judge them against docs/lanes/gpunonrender/NOTES.md "Runs and their expected results".
+# The Nova is in pathfind's per-title sweep holds; the dispatcher admits these between titles.
+run 1-1791274121-lane.gpunonrender-2621218
+run 1-1791274126-lane.gpunonrender-2621918
+run 1-1791274133-lane.gpunonrender-2624513
+run 1-1791274137-lane.gpunonrender-2624798

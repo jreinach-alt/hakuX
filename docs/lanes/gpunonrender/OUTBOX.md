@@ -90,9 +90,47 @@
   overnight brief says to stay on the branch.
 - Spend: not readable from here, so no figure.
 
+## 2026-10-06 01:10 PDT (attempt 5): scope (A) built, four Nova runs queued
+
+- origin/master merged (4cb9d98c67).
+- (A), commit 5eef1dacd9, surface.c only, `HAKUX_SURFSPLICE=1`, off by default.
+  When a binding uploads from VRAM bytes that a pending download is about to write,
+  the GPU copies those bytes from the download's staging rows into the upload's
+  staging. Both buffers hold guest VRAM bytes. The update then needs no finish and
+  no wait. The round trip is removed, not deferred: the downloads complete where any
+  other reader completes them today. These cases fall back to today's completion:
+  swizzled downloads, already-submitted batches, and CPU-unswizzled uploads.
+  `[sdcall]` gains `spl=def/up/dl/kB/cmpl`. It compiles clean with NDK clang,
+  perflog and plain.
+- Forza's remaining forced finishes are fresh zeta bindings at an aliased address
+  (forza414 NOTES 29/42). Their old bytes are read, so the upload is needed. That
+  is why the fix copies on the GPU rather than skipping the upload.
+- Queued at 5eef1dacd9, Nova, perflog, `HAKUX_GPUXFR=1` in every arm. The expected
+  results were written in NOTES.md before queueing.
+  - F0 Forza (splice off) `1-1791274121-lane.gpunonrender-2621218`
+  - F1 Forza (`HAKUX_SURFSPLICE=1`) `1-1791274126-lane.gpunonrender-2621918`
+  - S0 Spider-Man 2 `1-1791274133-lane.gpunonrender-2624513`
+  - M0 Midnight Club II `1-1791274137-lane.gpunonrender-2624798`
+- Spider-Man 2 and Midnight Club II had no route. Their routes
+  (`docs/lanes/gpunonrender/routes/`) are built from pathfind's sweep runs of
+  10-05 (steps2route.py). Both titles are on the Nova now (pathfind ran them
+  there), though the 10-04 titlepush listing still puts them on the Thor.
+- (B) is read from `[sdcall]`, not only from the GPU categories. A round trip's cost
+  is the PFIFO thread waiting on the fence, and `download`/`surf_up` hold only the
+  copies' GPU time.
+- **Ask, lane.local:** (C) needs `hw/xbox/nv2a/pgraph/vk/reports.c` (held by
+  lane.accuracy804) and `hw/xbox/nv2a/pfifo.c` (held by lane.vcpusleep). Please
+  grant them to lane.gpunonrender when those rows are released. Until then (C)
+  is not started.
+- Spend: not readable from this session.
+
 ## Next
 
-Milestone (b): the first title's category table. NG Black has a route on the
-Nova, but the 150 s run ends in cutscenes, before gameplay (the intro-first route
-reaches gameplay about 150-200 s in). The title soak needs 300-360 s, or a route
-that starts later. Merge origin/master first. The overhead arm goes with the title batch.
+| candidate | P | win | cost |
+|---|---|---|---|
+| (A) splice on Forza (F0/F1 queued) | 0.45. For: it removes the finish and the wait, not just the completion site. Against: forza414 42 saw a removed finish's wait reappear at the next sync point | Forza 27 -> 30 fps if >= 3.6 of the 12.2 ms leaves the PFIFO thread | done; two Nova runs |
+| (A) on Spider-Man 2 / Midnight Club II | unknown until S0/M0 read `[sdcall]` | up to 2 more titles | one splice arm each if (B) says yes |
+| (C) Simpsons, pfifo.lock across the STALLED finish's fence wait | 0.5 (frametrace) | 40.9 -> ~60 fps | waits on the reports.c/pfifo.c grant |
+| the original six-title category study | 0.9 that it names the largest category | targets 5-18 ms/frame on six titles | six Nova/Thor runs, after (A)/(B) |
+
+WAITING lists the four runs.
