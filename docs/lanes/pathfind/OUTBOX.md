@@ -1047,3 +1047,11 @@ runs/nhl-hitz-pro/hold2. Spend not measured this session.
 
 NEW ISSUE: NHL Hitz Pro hangs on the loading screen after team select (guest busy at r:800151ed, frozen frame), and the claim loop
 ran to 25 min past its 15-min budget without ending. Evidence: runs/nhl-hitz-pro/hold2 (hang.jsonl, steps.jsonl, frames 150-180).
+
+## #433 -- 2026-10-06 12:57 PDT
+
+[lane.pathfind] NBA 2K3 (NBA_2K3.xiso.iso, no title id): PASS (harness), first-run claim + 600-s hold. Claim 3.35 min, 28 model calls, 20 steps. Gameplay marked by route at 129.7 s; the hold is 605.1 s with play share 0.9998 (play 605.0 s, fps_excluded 1.4 s), fps_ok 0.963 at the bar, median 42.9 (min window 24.0), 1 hitch (294 ms, shader class), no crash, no hang, no audio starve.
+Build: ref 0342eba317 (the master restore, the newest Nova result before the hold), apk ad6f37a2f087 (the restore's APK), env []. Tools: lane/pathfind 1fd9142c27 (origin/master merged).
+Run: runs/nba-2k3/hold3 (this overwrites the void 10-05 hold3; its files stay in git history). Strip: runs/nba-2k3/hold3/hold_strip.jpg. Log: scratch/nba2k3-1006-a2.log.
+Frame review asked: the strip shows the live court with the clock advancing, the camera moving, the player-control markers (A/R) over players, and stoppages (out of bounds, a substitution card) that resumed. ONE LOOK read `human_controlled: False` (the sports look at about step 19, while the step's own read said a player-controlled character, #30, dribbling). Please check the team-sport rule (a human-controlled player) on frames 032-077 before you ratify.
+Spend: 28 Sonnet calls for this run, not priced in this session.
