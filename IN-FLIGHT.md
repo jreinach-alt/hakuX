@@ -8,13 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gpunonrender` | claude-opus-5-5 | 10 min | Lane: gpunonrender                Issue: #433 |
-| `pathfind` | claude-sonnet-5 | 11 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+| `pathfind` | claude-sonnet-5 | 27 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 1 waiting, 0 running.
+- **Device queue:** 5 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
 
 ## 0.5 release: Playable titles
@@ -57,7 +56,6 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gpunonrender` | Lane: gpunonrender                Issue: #433 | `b0ab0ae735` | 2026-10-05 22:53 |
 | `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `cf10c3a95c` | 2026-10-06 00:54 |
 
 ## Recently landed on master
@@ -74,4 +72,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-04 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
 - 2026-10-04 hangwatch: a locked-up title is caught on telemetry in about 90 s, not waited out
 
-_Updated 2026-10-06 01:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-06 01:16 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
