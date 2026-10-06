@@ -74,3 +74,43 @@ Lane state: `lane/pmucounters` merged with origin/master (clean), NOTES
 attempt-2 section committed (69ef7e50d1). PR stays a draft; no PR tonight.
 R1/R2 not started: the hook grant is recorded in WAITING and not yet in the
 build, so their device runs wait.
+
+## #433 -- 2026-10-05 22:xx PDT (attempt 3: R0 read, probe fixed, NOT re-run)
+
+Read the hostops R0 result (`perf/2026-10-05-pmucounters/r0-thor/`). Three
+things it shows, and one it does not:
+
+1. **The X3 pin fails from shell and run-as.** `taskset 80` returns EINVAL.
+   `taskset 08` (cpu3) and `taskset 01` (cpu0) work, and the slice lines
+   confirm the pin (`cpus=8`, `cpus=1`). EINVAL from sched_setaffinity means
+   no CPU in the caller's cpuset. My hypothesis: the shell cpuset excludes
+   cpu7. The probe now reads the cpuset first (step 1b) to settle it. Not
+   confirmed yet.
+2. **The counters opened but read zero.** Groups open (`g0=ok`), but no slice
+   line has a `p=` field and the controls printed no `ctl=` line. The hook
+   skips a zero group silently, so the run could not say whether the reads
+   failed or the events never ran. Fixed: the hook now logs the first 12 bad
+   reads (`[pmu433] read ...` with errno and raw nr/en/run), and
+   `pmuread.py --controls` says when there were any.
+3. **One PMU, not one per core type.** The Thor exposes only
+   `armv8_pmuv3` (type 8, cpus 0-7). The hook's per-core-type design and the
+   control names (`armv9_cortex_x3`) assume more. Recorded in NOTES 3b and in
+   the hook's header.
+
+Not done: the device R0 re-run. I did not touch the device from this session.
+The R0 probe is now `DEV=thor bash docs/lanes/pmucounters/r0_probe.sh` (no
+HARDEN0), taking ~3 min, no title; it needs an idle Thor under a hold that
+someone else takes (`hold.sh take thor lane.pmucounters && hold.sh wait-idle`,
+or the existing lanelocal-fanwait hold). Ask: hostops or lane.local, run it
+under the next Thor hold and point me at `r0-thor/`. The first thing to read is
+the `[pmu433] read` lines in `probe_shell_cpu3.txt`: they say whether the
+counters fail to read (errno) or read with time_running 0.
+
+Checks done here (host only): probe builds for the host with
+`-DPMU433_TEST_SW` (-Werror), `pmuread.py --selftest` PASS, `syntax_check.py`
+PASS (0 new diagnostics in cpu-exec with the hook), and a zero-read log makes
+`--controls` report "no control can be judged" and exit 1.
+
+Spend this session: about 10 min of wall time, no device, no queued requests.
+Model: Sonnet 5. Lane state: no PR change; still draft; R1/R2 blocked on the
+hook being in the build and a device hold.

@@ -59,8 +59,8 @@ TS = re.compile(r"^(\d\d-\d\d \d\d:\d\d:\d\d\.\d+)")
 def parse(line):
     """-> (head dict, {pmu: [[group values] x3, [run ms] x3]}) or None."""
     i = line.find("[pmu433] ")
-    if i < 0:
-        return None
+    if i < 0 or line[i + 9:].startswith("read "):
+        return None   # the hook's bad-read diagnostic, not a slice or ctl line
     body = line[i + 9:]
     parts = re.split(r" p=", body)
     head = dict(TOKEN.findall(parts[0]))
@@ -124,9 +124,10 @@ def metric(vals, m, units):
 
 
 def controls(paths):
-    rows, bad = [], 0
+    rows, bad, unread = [], 0, 0
     for path in paths:
         for line in open(path, errors="replace"):
+            unread += "[pmu433] read " in line
             p = parse(line)
             if not p or "ctl" not in p[0]:
                 continue
@@ -149,6 +150,9 @@ def controls(paths):
         print("| %s | %s | %s | %s | %s | %g-%g | %s | %s |"
               % (f, pmu, name, m, vs, lo, hi, verdict, cpu))
     print("\n%d of %d expectations failed" % (bad, len(rows)))
+    if unread:
+        print("%d bad group reads logged by the hook (see [pmu433] read lines): "
+              "the counters did not read, so no control can be judged" % unread)
     return 1 if bad or not rows else 0
 
 

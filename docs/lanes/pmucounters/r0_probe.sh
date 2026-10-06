@@ -20,18 +20,23 @@
 #   1. getprop security.perf_harden, /proc/sys/kernel/perf_event_paranoid,
 #      uptime, the event_source PMUs (name, type, cpus) and each CPU's MIDR
 #      part (/proc/cpuinfo), battery, thermal xo.
+#   1b. the shell's cpuset and its allowed CPUs (the 10-05 run's EINVAL from
+#      taskset 80 is read against this: a mask with no CPU in the caller's
+#      cpuset returns EINVAL).
 #   2. simpleperf list hw / raw (which events the kernel says it can count).
 #   3. pmuprobe (the [pmu433] hook built standalone) as shell, pinned to the
-#      X3 (cpu7), then the A715 (cpu3) and the A510 (cpu0): open result per
-#      PMU, then the eight control kernels, then 3 s of slice lines.
-#   4. the same pinned to cpu7 under `run-as` (the debug app's uid and SELinux
-#      context; closer to the in-process hook's than shell's).
-#   5. simpleperf stat with hardware events on pmuprobe (as shell, cpu7): the
+#      A715 (cpu3) and the A510 (cpu0): open result per PMU, then the eight
+#      control kernels, then 3 s of slice lines. One step still asks for the X3
+#      (cpu7), to record whether the shell's cpuset admits it.
+#   4. the same pinned to cpu3 under `run-as` (the debug app's uid and SELinux
+#      context; closer to the in-process hook's than shell's). run-as inherits
+#      the shell's cpuset, so this is the same CPU set, not the app's.
+#   5. simpleperf stat with hardware events on pmuprobe (as shell, cpu3): the
 #      same counts by simpleperf's path, for agreement with step 3.
 #   6. simpleperf record -e cpu-cycles and -e raw-l1d-cache-refill on
-#      pmuprobe (5 s): can hardware events be SAMPLED (R2's attribution)?
+#      pmuprobe (2 s, cpu3): can hardware events be SAMPLED (R2's attribution)?
 #   7. the same question by the hook's own path: pmuprobe in sampling mode
-#      (12 s each, cycles and L1D refills, pinned to the X3).
+#      (12 s each, cycles and L1D refills, pinned to cpu3).
 set -u
 DEV=${DEV:-thor}
 case $DEV in nova) S=ee317437 ;; thor) S=bdc158a5 ;; *) echo "DEV nova|thor"; exit 2 ;; esac
@@ -73,6 +78,9 @@ run env 'getprop security.perf_harden; cat /proc/sys/kernel/perf_event_paranoid;
   for z in /sys/class/thermal/thermal_zone*; do
     case $(cat $z/type) in *xo*|*cpu-1-3*|cpuss*) echo "$(cat $z/type) $(cat $z/temp)";; esac;
   done'
+run cpuset 'cat /proc/self/cpuset; grep Cpus_allowed_list /proc/self/status;
+  cs=$(cut -d: -f3 /proc/self/cpuset); echo "cpuset dir=$cs cpus=$(cat /dev/cpuset$cs/cpus 2>&1)";
+  for c in top-app foreground background system; do echo "$c cpus=$(cat /dev/cpuset/$c/cpus 2>&1)"; done'
 run list_hw 'simpleperf list hw'
 run list_raw 'simpleperf list raw'
 
@@ -83,16 +91,16 @@ run probe_shell_cpu3 "taskset 08 $T/pmuprobe 3"
 run probe_shell_cpu0 "taskset 01 $T/pmuprobe 3"
 # run-as: copy into the app's own files (an app may not exec shell files on
 # every release), then run from there; if that exec is refused, try /data/local/tmp.
-run probe_runas_cpu7 "run-as $PKG sh -c 'mkdir -p files/pmu433 && cp $T/pmuprobe files/pmu433/ && chmod 700 files/pmu433/pmuprobe && taskset 80 files/pmu433/pmuprobe 3'"
-grep -q '\[pmu433\] open pmu' "$OUT/probe_runas_cpu7.txt" \
-    || run probe_runas_tmp_cpu7 "run-as $PKG taskset 80 $T/pmuprobe 3"
-run stat_basic_cpu7 "taskset 80 simpleperf stat -e cpu-cycles,instructions $T/pmuprobe 1"
-run stat_cpu7 "taskset 80 simpleperf stat -e cpu-cycles,instructions,branch-misses,raw-stall-frontend,raw-stall-backend,raw-l1i-cache-refill,raw-l1d-cache-refill,raw-l2d-cache-refill $T/pmuprobe 1"
-run record_cycles "cd $T && taskset 80 simpleperf record -e cpu-cycles -c 100000 -o $T/rec-cyc.data $T/pmuprobe 2 > /dev/null; simpleperf report -i $T/rec-cyc.data --sort symbol 2>&1 | head -25"
-run record_l1d "cd $T && taskset 80 simpleperf record -e raw-l1d-cache-refill -c 1000 -o $T/rec-l1d.data $T/pmuprobe 2 > /dev/null; simpleperf report -i $T/rec-l1d.data --sort symbol 2>&1 | head -25"
-# 7. the hook's own sampling path (HAKUX_PMU=2), X3: cycles and L1D refills.
+run probe_runas_cpu3 "run-as $PKG sh -c 'mkdir -p files/pmu433 && cp $T/pmuprobe files/pmu433/ && chmod 700 files/pmu433/pmuprobe && taskset 08 files/pmu433/pmuprobe 3'"
+grep -q '\[pmu433\] open pmu' "$OUT/probe_runas_cpu3.txt" \
+    || run probe_runas_tmp_cpu3 "run-as $PKG taskset 08 $T/pmuprobe 3"
+run stat_basic_cpu3 "taskset 08 simpleperf stat -e cpu-cycles,instructions $T/pmuprobe 1"
+run stat_cpu3 "taskset 08 simpleperf stat -e cpu-cycles,instructions,branch-misses,raw-stall-frontend,raw-stall-backend,raw-l1i-cache-refill,raw-l1d-cache-refill,raw-l2d-cache-refill $T/pmuprobe 1"
+run record_cycles "cd $T && taskset 08 simpleperf record -e cpu-cycles -c 100000 -o $T/rec-cyc.data $T/pmuprobe 2 > /dev/null; simpleperf report -i $T/rec-cyc.data --sort symbol 2>&1 | head -25"
+run record_l1d "cd $T && taskset 08 simpleperf record -e raw-l1d-cache-refill -c 1000 -o $T/rec-l1d.data $T/pmuprobe 2 > /dev/null; simpleperf report -i $T/rec-l1d.data --sort symbol 2>&1 | head -25"
+# 7. the hook's own sampling path (HAKUX_PMU=2), A715: cycles and L1D refills.
 #    smph lines must name pmuprobe's main loop (elfsyms.py on $OUT/pmuprobe).
-run sample_cyc_cpu7 "taskset 80 $T/pmuprobe 12 11 100000"
-run sample_l1d_cpu7 "taskset 80 $T/pmuprobe 12 03 1000"
+run sample_cyc_cpu3 "taskset 08 $T/pmuprobe 12 11 100000"
+run sample_l1d_cpu3 "taskset 08 $T/pmuprobe 12 03 1000"
 run cleanup "run-as $PKG rm -rf files/pmu433; rm -rf $T"
 say "done: $OUT (read with docs/lanes/pmucounters/pmuread.py --controls $OUT/probe_*.txt)"

@@ -178,6 +178,51 @@ the addendum makes R0 the standalone probe, no `HARDEN0`. The probe does not
 need the hook in the build, so R0 can run now. R1/R2 stay blocked until the
 grant is on origin/board and the hook is in a build.
 
+## 3b. Attempt 3 (2026-10-05 22:2x PDT, resume on Sonnet)
+
+Why attempt 2 did not finish: its R0 run was refused by the tool permission
+layer, so no device read was made from the session. Hostops then ran the
+probe under lanelocal-fanwait (log `logs/hostops/r0-thor-20261005-2206.log`,
+result dir `perf/2026-10-05-pmucounters/r0-thor/`). That run answered less than
+it looked like:
+
+- **Pinning to the X3 failed.** `taskset 80` (cpu7) returned `Invalid argument`
+  from shell, from `run-as`, and from `simpleperf` under taskset. `taskset 08`
+  (cpu3) and `taskset 01` (cpu0) succeed, and the slice lines read `cpus=8` and
+  `cpus=1`, so the pin took. cpu7 is online (`/sys/.../cpu7` reads 0-7).
+  EINVAL from `sched_setaffinity` means the mask has no CPU in the caller's
+  cpuset. Hypothesis (not yet read from the device): the shell's cpuset
+  excludes cpu7 (the prime core) and the app's top-app set includes it. The
+  emulator's vCPU sat on cpu7 for 92-99% of a GTA capture, so the app can reach
+  it. The probe was also missing the cpuset read, so this run could not show it.
+- **The hardware counters read zero.** Every probe run opened its groups
+  (`g0=ok g1=ok g2=ok`), but no slice line carries a `p=` field, and the
+  control kernels printed no `ctl=` line. `pmu433_fmt` and the control
+  printer skip a group whose `time_running` delta is zero, so the run was silent
+  about it. Either the read failed or the events never ran; the probe did not
+  say which. Its selftest did not catch this, because the selftest feeds
+  synthetic lines and never exercises a real zero read.
+- **There is one PMU, not one per core type.** `/sys/bus/event_source/devices/`
+  holds `armv8_pmuv3` (type 8, `cpus=0-7`), not `armv9_cortex_x3` /
+  `armv8_cortex_a510` as the hook's comment and the control expectations assume.
+  The per-PMU migration record in the slice line therefore does not exist on this
+  kernel; the core is read from `getcpu` (`cpus=`) alone. Consequence: a
+  control's `p=` name is no longer a core name on this device.
+- The CPU parts (`/proc/cpuinfo` MIDR): cpu0-2 0xd46 (A510), cpu3-4 0xd4d
+  (A715), cpu5-6 0xd47 (A710), cpu7 0xd4e (X3). The probe's cpu3 step is the
+  A715, not an X3.
+- `simpleperf stat` and `record` did not run on cpu7 for the same EINVAL.
+  `security.perf_harden` is 0 and `perf_event_paranoid` is 1, as hostops said.
+  `getenforce` is denied from shell (not a blocker for perf).
+
+Attempt 3 changes: the hook logs the first bad group reads (short read,
+wrong `nr`, or enabled but never running: `[pmu433] read ...`, at most 12
+lines, with errno and the raw `nr/en/run`), so the next run names which of the
+two it is. The probe's pinned steps use cpu3 and cpu0 (what the shell cpuset
+allows), keep one cpu7 attempt as the recorded EINVAL, and the probe reads the
+shell's cpuset first. The X3 reading needs the app's own process (the in-process
+hook), not a shell pin, if the cpuset hypothesis holds.
+
 ## 4. Plan once granted (the resume starts here)
 
 1. `syntax_check.py --write` (applies the two hunks and copies the .inc to

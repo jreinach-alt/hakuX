@@ -13,14 +13,16 @@
  *                     sampled pc attributed here; see "SAMPLING" below
  *
  * WHY PER PMU. The SD 8 Gen 2 has three or four core types (A510 cpu0-2,
- * A715/A710 cpu3-6, X3 cpu7) and the kernel registers one arm_pmu per type. A generic
- * PERF_TYPE_HARDWARE or PERF_TYPE_RAW event goes to ONE of them (the first
- * registered), and a per-thread event only counts while the thread runs on
- * that PMU's cores: a thread on the X3 would read zero and look idle. So every
+ * A715/A710 cpu3-6, X3 cpu7). Where the kernel registers one arm_pmu per type,
+ * a generic PERF_TYPE_HARDWARE or PERF_TYPE_RAW event goes to ONE of them (the
+ * first registered), and a per-thread event only counts while the thread runs
+ * on that PMU's cores: a thread on the X3 would read zero and look idle. So every
  * PMU found under /sys/bus/event_source/devices/ (an entry with a `cpus` file)
  * gets its own groups, by its own `type`, with raw PMUv3 event numbers. Each
- * PMU's time_running then says how long the thread sat on that core type,
- * which is the migration record the brief asks for.
+ * PMU's time_running then says how long the thread sat on that core type.
+ * CAVEAT (Thor, R0 10-05): the kernel exposes ONE PMU, armv8_pmuv3 (type 8,
+ * cpus 0-7), not one per core type. The per-PMU record is then one entry and
+ * the core is read from `cpus=` (getcpu) alone.
  *
  * GROUPS. cycles (the dedicated counter) + 6 events, the PMUv3 minimum of
  * programmable counters; three groups per PMU, multiplexed by the kernel.
@@ -292,6 +294,31 @@ static void pmu433_start(void)
  * read (en, run, values) and prev is advanced. A group that did not open or
  * read short reads as all zero.
  */
+/*
+ * A group that reads short, with the wrong nr, or enabled but never running
+ * reads as zero, and a zero is silent in the slice line. So the first dozen
+ * such reads are logged (errno and the raw nr / enabled / running), and a
+ * reader can tell an unreadable group from one that is simply not scheduled.
+ */
+static int pmu433_nodiag = 12;
+
+static void pmu433_diag(const Pmu433Pmu *p, int g, ssize_t got, int err,
+                        const uint64_t *r)
+{
+    if (pmu433_nodiag <= 0) {
+        return;
+    }
+    pmu433_nodiag--;
+    if (got < 3 * (ssize_t)sizeof(uint64_t)) {
+        PMU433_LOG("[pmu433] read pmu=%s g%d got=%lld errno=%d",
+                   p->name, g, (long long)got, got < 0 ? err : 0);
+        return;
+    }
+    PMU433_LOG("[pmu433] read pmu=%s g%d got=%lld nr=%llu en=%llu run=%llu",
+               p->name, g, (long long)got, (unsigned long long)r[0],
+               (unsigned long long)r[1], (unsigned long long)r[2]);
+}
+
 static void pmu433_read(uint64_t out[PMU433_MAXPMU][PMU433_NGRP][2 + PMU433_NEV])
 {
     for (int i = 0; i < pmu433_npmu; i++) {
@@ -301,9 +328,17 @@ static void pmu433_read(uint64_t out[PMU433_MAXPMU][PMU433_NGRP][2 + PMU433_NEV]
             uint64_t r[3 + PMU433_NEV];
             ssize_t want = (3 + p->nev[g]) * sizeof(uint64_t);
             memset(out[i][g], 0, sizeof(out[i][g]));
-            if (p->fd[g][0] < 0 || read(p->fd[g][0], r, want) != want ||
-                r[0] != (uint64_t)p->nev[g]) {
+            if (p->fd[g][0] < 0) {
                 continue;
+            }
+            ssize_t got = read(p->fd[g][0], r, want);
+            int err = errno;
+            if (got != want || r[0] != (uint64_t)p->nev[g]) {
+                pmu433_diag(p, g, got, err, r);
+                continue;
+            }
+            if (r[1] && !r[2]) {
+                pmu433_diag(p, g, got, err, r);
             }
             for (int k = 0; k < 2 + p->nev[g]; k++) {
                 out[i][g][k] = r[1 + k] - p->prev[g][k];
