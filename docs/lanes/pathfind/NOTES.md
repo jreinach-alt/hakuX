@@ -1247,3 +1247,21 @@ What this shows, and what it does not:
   `--state any`, `--hold-s 600`, on HEAD. Named change for its failure frames (08:12 retry: Character Select held the window, the
   ladder A, START, A, A, B, START did not start a round): the committed CHARSEL change (A, B, START on the Character Select grid).
   If the Armageddon run fails on the same screen, CHARSEL is refuted for this title and the next row is taken.
+
+## MK Armageddon held run (10-06 13:55-14:09 PDT): PASS (harness), one run
+
+- Run `runs/armageddon1006d` on HEAD 4b0f82702e, `--state any --hold-s 600 --budget-min 40`, launcher `scratch/armageddon1006d.sh`.
+  Verdict PASS: play share 0.934 of 646.2 s scored (603.8 s play), fps_ok 1.0, median 59.2, no crash, no hang. Claim 1.9 min, 22 calls.
+- The committed CHARSEL change answered the 08:12 Character Select failure: the claim got through the grid to a round.
+- Stale `lane.pathfind` hold (13:54, from the attempt before this one) was released by its own tag before the take; no other
+  process held it.
+
+## MK Deadly Alliance (4D57000C), next, 10-06 14:10 PDT
+
+- Last failure (OUTBOX 10-05 claim give-up, NEW ISSUE): the claim budget ended on live rounds; the path replay diverged at
+  recorded step 8 (black frame).
+- Committed change for this run: the claim-live rule (a claim does not quit on live play; `ab8788c38b`) and the replay abort
+  (`replay_diverged`, a diverged replay stops at its recorded time + 3 min instead of a 15-min model claim). These answer the
+  give-up and the divergence in the run; the step-8 path itself is NOT re-recorded. If the step-8 black frame recurs, the replay
+  abort is what should answer it, and that is the thing to check in the frames.
+- Run: `scratch/title1006.sh 4D57000C` (same launcher as Armageddon, title as an argument), `runs/deadly-alliance-1006`.
