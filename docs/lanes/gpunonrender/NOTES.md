@@ -344,6 +344,237 @@ Scope (C) (Simpsons, pfifo.lock across the STALLED finish's slot-fence wait)
 needs reports.c and pfifo.c, held by lane.accuracy804 and lane.vcpusleep. It
 waits on those rows; asked in OUTBOX.
 
+## Attempt 6: why attempt 5 did not finish
+
+Attempt 5 did not fail. It built (A), wrote the expected results, queued F0, F1,
+S0 and M0, set WAITING on them and ended. That is a finished wait. All four
+ran DONE on the Nova between 03:00 and 03:53 PDT on 10-06. This attempt reads
+them.
+
+## The four runs read (attempt 6)
+
+Reader: `abread.py <id> --from HH:MM:SS` (new). It gives per-frame sums of
+`[sdcall]`, `hakuX-stall` finishes, gfps, `xemu-gpu` and `xemu-xfr` over the
+window. Windows run to the end of the log. Forza starts 20 s after the drive
+reached play (F0 03:02:37, F1 03:26:36). S0 and M0 start at `mark gameplay`
++ 20 s (03:43:38 and 03:50:25).
+
+- All four ran at GPU 401 MHz for the whole run (run.log THERMAL `gpu 401-401
+  of 680`). There was no thermal pause. The device was on USB (6.5 W in), with
+  the battery at 79% at the start.
+- The A/B pair is compared at that one clock. The clock is a fact of these
+  runs, not a lever. Under the energy rule, nothing here asks for a faster one.
+
+### `xemu-xfr` is per command buffer; `xemu-gpu` is per guest frame
+
+`xemu-xfr` takes one sample per readback, which is one per command buffer.
+`xemu-gpu` sums a guest frame. Command buffers per frame (readbacks / frames)
+link the two, and the scaled `nr` matches `Xfr` in all four runs:
+
+| run | CB per frame | `nr` per CB | x CB = per frame | `xemu-gpu` Xfr |
+|---|---|---|---|---|
+| F0 | 7.19 | 0.44 | 3.13 | 3.01 |
+| F1 | 5.61 | 0.68 | 3.79 | 3.73 |
+| S0 | 10.00 | 0.78 | 7.78 | 8.01 |
+| M0 | 4.01 | 0.19 | 0.77 | 0.78 |
+
+The control verdict still stands: it compared `ctrl` with `nr`, and both are
+per CB. `abread.py` prints the per-frame values.
+
+### Scope (A), Forza F0/F1: the splice works, and the wait moves to the texture scan
+
+| per frame | F0 (splice off) | F1 (`HAKUX_SURFSPLICE=1`) |
+|---|---|---|
+| gfps (mean) | 22.1 | 19.9 |
+| `[sdcall]` surfupd: fin, wait ms | 2.00, 9.64 | 0.00 (0.25 fence), 0.24 |
+| `[sdcall]` range: fin, wait ms | 0.97, 8.10 | 1.95, **19.29** |
+| `[sdcall]` record: wait ms | 6.34 | 5.49 |
+| `[sdcall]` all callers, wait ms | **24.13** | **26.30** |
+| `spl` up / dl / KiB | 0 / 0 / 0 | 2.00 / 2.00 / 300 |
+| `su_upl`, `why` | 2.00, all `inv` | 2.01, all `inv` |
+| finishes (`sd`) | 4.21 (3.01) | 3.50 (2.26) |
+| texture bind surface scan (`txw scan`, texture.c:2100) ms | 8.16 | **19.35** |
+| `xemu-gpu` Tot / Rnd / Xfr | 37.8 / 34.8 / 3.0 | 43.7 / 40.0 / 3.7 |
+
+Against the expected results:
+
+- **Mechanism: holds.** F1 logs `[surfsplice] on` and splices 2.00 uploads
+  and 2.00 downloads per frame (300 KiB). F0 splices none.
+- **P1: holds.** `surfupd` finishes go from 2.00 to 0.00 per frame.
+- **P2: fails.** The all-caller wait is 109% of F0's (the bar was 60% or less).
+  Finishes fall by 0.71 per frame, which is less than the 1.0 the leg needed.
+  The wait moved to `range` (`pgraph_vk_download_surfaces_in_range_if_dirty`,
+  surface.c:739). Its finishes double and its wait rises 11.2 ms. The texture
+  bind's surface scan (texture.c:2100, `TXW_BEGIN(SCAN)`) rises by the same
+  11.2 ms. This is forza414 42's shape.
+- What it means: the bytes that the splice left pending are read by a texture
+  bind through VRAM, so that reader completes them. The upload was never the
+  only consumer of the download. On Forza the round trip belongs to a texture
+  that samples a rendered surface's VRAM.
+- **P3:** there is no crash or hang line. The drive route takes no frames, so
+  corruption is not judged. The splice stays default off.
+- **Readout:** gfps fell 22.1 to 19.9, but Rnd (render-pass time, which the
+  splice does not touch) rose 34.8 to 40.0. The two races differ in scene, and
+  the fps difference is not attributed to the splice.
+- `why` is `inv` here, not the `new`/`stale` mix that forza414 read at an
+  older ref.
+
+Verdict: (A) is correct but is not Forza's fps lever. The next target on Forza
+is texture.c:2100: a texture bind whose range overlaps a pending download
+completes it, because the texture is read from VRAM rather than from the
+surface's image.
+
+### Scope (B), S0 Spider-Man 2 and M0 Midnight Club II
+
+| per frame | S0 Spider-Man 2 | M0 Midnight Club II |
+|---|---|---|
+| gfps (mean) | 26.8 | 23.7 |
+| `[sdcall]` surfupd: fin, wait ms | **2.50, 6.01** (`su_upl` 2.50, all `stale`) | none |
+| `[sdcall]` range: fin, wait ms | 1.00, 0.56 | 1.00, **7.98** (dl 2.5) |
+| `[sdcall]` record: wait ms | 4.35 | 0.01 |
+| `[sdcall]` all callers, wait ms | 10.91 | 8.00 |
+| finishes (`sd`) | 5.50 (4.50) | 2.61 (1.51) |
+| `xemu-gpu` Tot / Rnd / Xfr | 19.8 / 11.8 / 8.0 | 34.6 / 33.8 / 0.8 |
+
+- **Spider-Man 2: (A) reaches it** by the stated rule: a `surfupd` wait of
+  6.0 ms (at least 3), `su_upl` 2.5 (at least 0.5), all `stale`. A splice arm
+  is the next run (S1 below). F1 already showed a splice can move the wait
+  instead of removing it. On S0 the texture scan's `range` wait is 0.56 ms, so
+  whether the same thing happens is open.
+- **Midnight Club II: (A) does not reach it.** It has no `surfupd` wait. Its
+  8.0 ms is in `range`, the caller that Forza's wait moved to.
+- So (A) can clear at most one more title (Spider-Man 2). `range` carries the
+  wait on two titles (M0, and F1 once the splice removes `surfupd`). That
+  makes texture.c:2100's scan the common target.
+
+### The GPU categories, per frame, and the residual
+
+| per frame, ms (share of `nr`) | F0 | F1 | S0 | M0 |
+|---|---|---|---|---|
+| `nr` | 3.13 | 3.79 | 7.78 | 0.77 |
+| download | 1.53 (49%) | 1.61 (43%) | 0.60 (8%) | 0.40 (52%) |
+| s2t | 0.40 (13%) | 0.39 (10%) | 0.19 (2%) | 0 |
+| surf_up | 0.07 | 0.34 | 0.50 (6%) | 0 |
+| tex_up | 0.05 | 0.06 | 0.10 | 0 |
+| **res (unbracketed)** | 1.07 (34%) | 1.37 (36%) | **6.48 (83%)** | 0.36 (47%) |
+
+The residual is above 15% in all four runs. By the decision rules, these
+category tables are not complete. On Spider-Man 2, 83% of `gpu_nonrender_ms`
+is outside every bracket. The next section names what that is.
+
+## What `gpu_nonrender_ms` is on Turnip: render-pass work behind a stamp placement
+
+The render-pass stamps (`begin_render_pass` / `end_render_pass`, draw.c) are
+written **inside** the render pass. Turnip (tu_query_pool.cc:2108-2112, the
+fork's Mesa tree at `/home/justin/hakux-work/mesa-turnipfork`) says:
+
+> Inside a render pass, just write the timestamp multiple times so that the
+> user gets the last one if we use GMEM.
+
+The stamp goes into the pass's `draw_cs`. A GMEM pass replays that stream
+once per tile (bin), after a binning pass, with tile loads and stores around
+each replay. So in a GMEM pass, Rnd is **the last tile's draws only**.
+`gpu_nonrender_ms` = CB span − Rnd then holds the binning pass, every other
+tile's draws, and every tile load and store. A sysmem pass (which Turnip's
+autotune picks per pass) is stamped correctly.
+
+That fits what was measured:
+
+- **belowbar1005's Xfr/Tot sits at 0.49-0.56** on NG Black, AUF, Otogi, DOA3
+  and Black. That is what two bins per pass give when the stamp sees one of
+  them.
+- It does not track the pass count. The bin count depends on resolution and
+  attachment format, not on the number of passes. Otogi's 2 large passes give
+  11.4 ms; Top Spin's 149 small passes are probably mostly sysmem.
+- Forza (Rnd 35 of Tot 38) and Midnight Club II (34 of 35) read as almost all
+  render. That is the sysmem pattern, and their residuals are small in ms.
+  Spider-Man 2 reads as half non-render with 83% unbracketed.
+- `TU_DEBUG=sysmem` gained 8 gfps on DOA and AUF (lane.flip474), the two
+  titles with the most "non-render" time after ToeJam.
+
+So belowbar1005's premise, "half of every GPU frame is not render passes", is
+very likely an artifact of where the stamps sit. In that case the half is
+render-pass work (tiles, binning, loads and stores), and no copy or upload
+category will account for it. That is a hypothesis with code-level evidence,
+not yet a measurement. X0 below measures it.
+
+**The in-pass stamps also cost GPU time, in every build.** `gpu_ts_supported`
+is set whenever the device has timestamps (renderer.c:490-506), with no
+`NV2A_PERF_LOG` guard. The only readers are telemetry (`g_nv2a_stats`
+phase stats and frametrace's `gpu_ns`). The end stamp is BOTTOM_OF_PIPE, and
+for that Turnip emits a wait-for-idle before the counter read
+(`emit_counter_barrier`, tu_query_pool.cc:2122-2132). Inside `draw_cs`, that
+is **one wait-for-idle per tile per render pass**, plus one in the binning
+pass, in the shipped build. X1 below measures what it costs.
+
+### The instrument (this commit, draw.c only; defaults unchanged)
+
+- With `HAKUX_GPUXFR=1`, every render pass also gets a stamp pair **outside**
+  it. The begin stamp (TOP_OF_PIPE) is written before `vkCmdBeginRenderPass`
+  and the end stamp (BOTTOM_OF_PIPE) after `vkCmdEndRenderPass`. Up to 64 per
+  CB, in the xfr pool. Turnip emits a GMEM pass's binning, tiles, loads and
+  stores at `vkCmdEndRenderPass`, between these two stamps.
+- A new line, `xemu-xfr XFR rp in/out/nr_out/res_out <med mean p90> n<rp per
+  CB> inrp<0|1> dropped`, gives, per CB:
+  - `in`: the render span from the in-pass stamps (Rnd).
+  - `out`: the render span from the outer stamps.
+  - `nr_out`: CB span − `out`.
+  - `res_out`: `nr_out` − the bracketed categories.
+- `HAKUX_GPUTS_INRP=0` leaves out the in-pass pair (Rnd then reads 0). It is
+  read once and cached, and has no effect when unset.
+- Overlap caveat: a TOP_OF_PIPE begin stamp can fire while unbracketed work
+  recorded just before the pass is still running. That is counted on the
+  render side. Bracketed work ends in a BOTTOM_OF_PIPE stamp, so it is drained
+  first.
+- The outer end stamp adds one wait-for-idle per pass in xfr-on arms only
+  (not one per tile).
+- The NDK clang build is clean (perflog and release, `-Wall`, no new
+  warnings).
+
+### Runs and their expected results (written before queueing)
+
+All on the Nova, perflog, `PERF_REGIMEN=default`. Window: `mark gameplay` +
+20 s to the end.
+
+| arm | title, route, s | ref | env |
+|---|---|---|---|
+| X0 | NG Black, `belowbar1005/routes/bb-ngb` (belowbar's own run), 480 | this commit | `HAKUX_GPUXFR=1` |
+| X1 | the same | this commit | `HAKUX_GPUXFR=1 HAKUX_GPUTS_INRP=0` |
+| S1 | Spider-Man 2, `gnr-spiderman2`, 300 | 5eef1dacd9 (S0's apk) | `HAKUX_GPUXFR=1 HAKUX_SURFSPLICE=1` |
+
+**X0: is the "non-render" time render-pass work behind the stamps?**
+belowbar read NG Black at Tot 23.9 = Rnd 12.2 + Xfr 11.7.
+
+- **The stamps hide it (expected):** per frame, `out` − `in` is at least 50%
+  of `nr`, and `nr_out` is at most 50% of `nr`. Then belowbar's survey and this
+  lane's question rest on a stamp artifact. The GPU's real non-render time is
+  `nr_out`, and its share is what any fix of copies or uploads could win.
+- **It is real between-pass work:** `nr_out` is at least 80% of `nr`. Then the
+  outer stamps barely move it, and `res_out` names how much is outside the
+  brackets (the aux CB, barriers).
+- In between: both effects are present, and the numbers give each one's size.
+
+**X1: what the in-pass stamp pair costs the GPU.** Compared with X0 per frame
+on `out` (render span) and `xemu-gpu` Tot:
+
+- **They cost:** X1's `out` per render pass is at most 0.9 x X0's, and Tot per
+  frame falls by at least 1 ms. Then a fix lane removes them from the release
+  build: either gate them on `NV2A_PERF_LOG`, or move them outside the pass.
+- **Nothing measurable:** per-pass `out` is within ±10% of X0's. Scene
+  differences between two route runs are about that size, so this arm cannot
+  see a smaller cost.
+- gfps is a readout, not a leg.
+
+**S1: does the splice remove Spider-Man 2's wait, or move it?** These are
+F1's legs against S0:
+
+- Mechanism: `spl` up > 0.
+- P1: `surfupd` finishes are at most 30% of S0's 2.50.
+- P2: the all-caller wait is at most 60% of S0's 10.91 (6.5 ms or less), and
+  finishes fall by at least 1.25 per frame.
+- If P1 holds and P2 fails, the wait moved (name the caller, as on Forza).
+- Readout: gfps (S0 26.8; 30 needs 3.3 ms off the period).
+
 ## Control, read from the existing counter (attempt 1 arms)
 
 The `xemu-gpu` line already carries `Xfr` = `gpu_nonrender_ms` (profile.c,
