@@ -29,3 +29,5 @@ Also: the SW3 figure on disk for 10-02 is 87.7% (survey `7a090b6fa2`), not
 - Family rows: pace and vblank re-read for five sweep runs (`tools/family_read.py`); NHL 2K3's run dir was not found; the vCPU split is the issues' own figure.
 - Castlevania's 1.43 s stall: not on disk. #851 is Marvel Nemesis r3 (1014 ms, no shader work).
 - Split issues: filed as #863-#867 from `issues/split-drafts.md`.
+
+Preflight: every gate passes but coverage, which fails on #863-#867 (no tracker rows; board request at dispatch/board-requests/waitread1006.md) and on #859 (not this lane).

@@ -44,3 +44,10 @@ Lane PR: #862 (draft, `lane/waitread1006`). Filed by `tools/file_split_issues.py
 ## Spend
 
 Not readable from this session.
+
+## Preflight
+
+- Every gate passes except coverage: open issues #863-#867 (mine) and #859 (not mine)
+  have no tracker row. --allow-tracker does not clear that gate here.
+- The board request asking for the five rows is at dispatch/board-requests/waitread1006.md.
+  Until host ops adds them, the gate stays red for these issues only.
