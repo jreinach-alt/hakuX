@@ -1536,3 +1536,13 @@ with pixels intact: the per-pass autotune in the Turnip fork (many draws,
 few bins: sysmem) is the next step, P 0.3, every replay-bound title. They
 split: the winners become `kTitleRenderModes` lines (xemu_android.cpp, a
 grant away), and the losers say what the autotune must not do.
+
+Region-check noise floor, measured before P1 (`regioncheck.py`, GMEM against
+GMEM: D0 `-3440825` vs D1 `-631156`, same route, same build family): the
+character-select frames differ in 2.4% (s10) and 5.2% (s11) of pixels, all
+inside the animated portrait and profile panel; the black loading frame (s07)
+in 0.5% (the loading text); every animated scene (intro, title, fight) in
+25-98%. So a whole-frame count on an animated scene says nothing, and the
+check is: s07, s10, s11 within twice that floor with the differing pixels
+inside the same panels, plus the fight frames read by eye for a sysmem
+defect.
