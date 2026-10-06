@@ -708,6 +708,130 @@ wait is 85% of Simpsons' late frames and Tron's second class. The
 GPU-execution side stays off the list: main-CB time is under half the
 frame in every title at the one clock seen.
 
+## 10. Session 5 (10-05 ~22:30 PDT): the PFIFO thread's wait, named; the instrument measures it in-row
+
+Brief: hostops' 22:1x resume (owner via lane.xbox 22:04), aimed at 60 fps:
+apply the granted hooks, build, one Nova capture each of Simpsons, Forza and
+Nightfire, and NAME the PFIFO thread's unhooked wait with a file:line.
+
+### Why the previous attempt did not finish
+
+It did. Session 4 finished milestone (c), marked the PR ready and ended
+with nothing queued; the fold (c3625aad90) took it to master. This session
+is a new order on top of it, not a retry. Merged origin/master (a
+fast-forward to c3625aad90) before anything else.
+
+### The wait, named (code reading, joined with what is measured)
+
+The span: the PFIFO thread is blocked, outside its idle park, 7.4 ms a
+frame on Simpsons, 14.6 Forza, 6.6 Nightfire, 2.5 Tron (section 8), and no
+hook in the record could name it.
+
+**It is `hw/xbox/nv2a/pgraph/vk/draw.c:4386`: `vkWaitForFences(
+r->frame_fences[next_frame])`, the frame-slot rotation at the end of every
+PFIFO-thread `pgraph_vk_finish`. It waits on the GPU timeline: for the GPU to
+finish the command buffer this thread submitted two finishes earlier.**
+
+- Three slots (`g_xemu_submit_frames = 3`, draw.c:37), and the slot rotates
+  on every finish the PFIFO thread makes (draw.c:4357-4390), not once per
+  guest frame. Simpsons makes 3,934 finishes per 10 s at 449 flips
+  (`[rwait526] deferred calls`, every one followed by a rotation): **8.8
+  finishes a guest frame**. So the PFIFO thread can run at most two submits,
+  about a quarter of a guest frame, ahead of the GPU, and every rotation ties
+  it back to the GPU. That is the serial chain section 6 inferred for Forza.
+- Most of those finishes are the STALLED finish in
+  `pgraph_vk_process_pending_reports` (vk/reports.c:330-336): every time the
+  pusher catches up with DMA_PUT while the command buffer holds draws. Its
+  caller is the PFIFO loop, **with pfifo.lock held** (pfifo.c:2163; the lock
+  is taken at 2119 and released only inside methods and at the park). So the
+  guest's DMA_PUT store (user.c:93) queues behind the PFIFO thread's GPU
+  wait. That is Simpsons' 6.3 ms a frame of `lockw` (section 8) and
+  vcpusleep's exact holder pass (simp1, 10-04: during the vCPU's `user_write`
+  waits the PFIFO thread was off-CPU 97% of the time, asleep in "the
+  frame-slot fence wait" after `wait_frame_submitted`). user.c's own header
+  (lines 33-38) describes the same lock hold for the DMA_GET read, already
+  made lock-free.
+- The method finishes (FLIP_STALL, downloads, buffer space) reach the same
+  line with pgraph.lock held and pfifo.lock released.
+
+What it is not, from lines already in every capture: the render thread
+(`[rwait526]`: rotate waits 0; the deferred submit wait is 0.36 s per 10 s,
+0.8 ms a frame) and the BQL (`pw=` bql 0.00 in every Simpsons summary; the
+BQL hook in cpus.c covers the PFIFO thread once it registers).
+
+Two more GPU waits on the same paths, which the code shows and no capture
+has separated yet:
+
+- **vk/reports.c:259 (#804, since 510ebb25f2, in all my captures).** Every
+  finish ends in `pgraph_vk_process_pending_reports_internal` (draw.c:4520),
+  which, when occlusion queries are in flight, waits for EVERY submitted slot:
+  a full CPU/GPU drain per finish that recorded a query. Whether these
+  titles record queries is not known.
+- **The UI thread, under pfifo.lock.** `pgraph_vk_get_framebuffer_surface`
+  (vk/renderer.c:2803) takes pfifo.lock on every 60 Hz UI refresh and, when
+  the display image's copy is still in flight, waits its fence with the lock
+  held (renderer.c:2824; the Nova runs this path: `external memory
+  interop=enabled`, `AHB interop: available`). The vCPU's DMA_PUT and the
+  PFIFO thread's re-takes of pfifo.lock after each method (pfifo.c:1727 and
+  1808, the `XEMU_OPT_PFIFO_LOCK_BATCH` paths that are compiled) queue
+  behind it.
+
+What would make the naming wrong: the capture below shows the PFIFO's
+fence time small and its blocked time still unbooked. Then the wait is a
+mutex (pgraph.lock taken under pfifo.lock at pfifo.c:1713 and 1784, or
+pfifo.lock re-taken at 1727 and 1808), and the pfifo.c hooks (G7, extended
+to those four lines) are next.
+
+### What this session added to the instrument (f2763fe4c0)
+
+- **G1** (`accel/tcg/cpu-exec.c`, the guest idle span) and **G5**
+  (`pgraph.c`, the vCPU's pgraph.lock waits) from hooks.diff, as granted.
+  hooks.diff's G5 hunk only reached the `NV2A_PERF_LOG` twin of
+  `pgraph_mmio_lock`; release builds compile the other one, so the hunk was
+  inert there. Both variants are hooked now.
+- **A Vulkan wait interposer, inside the row (profile.c).** volk keeps every
+  device entry point in a writable global. With `HAKUX_FRAMETRACE=1` the flip
+  swaps `vkWaitForFences`, `vkQueueSubmit`, `vkGetQueryPoolResults` (WAIT_BIT
+  only), `vkQueueWaitIdle` and `vkDeviceWaitIdle` for wrappers that book the
+  call as a wait on the calling thread (fence or submit: the PFIFO row's
+  `pw=`, and the holder split of the vCPU's lock waits) and by call site, then
+  call the driver's entry with the same arguments. Unset, nothing is swapped.
+  This does what G3 asked for, for every fence wait and submit, without
+  editing draw.c (lane.gpunonrender's).
+- **Caller context.** `pgraph.c` tags the PFIFO loop's two non-method calls:
+  `pgraph_process_pending_reports` (`rep`, pfifo.lock held) and
+  `pgraph_process_pending` (`pend`). A wait is booked to its context: the
+  PFIFO row's `pc=none,rep,pend` (summary, frame lines; CSV
+  `p_c_none,p_c_rep,p_c_pend`, appended last so old readers still work).
+- **Call sites.** The summary's `fw=` lists the eight sites with the most
+  Vulkan wait or submit time since the last line, each
+  `<row>.<ctx>.<reason>#<slot>:<ms/frame>/<calls/frame>`; a slot is named
+  once on its own line, `site #<slot> row= ctx= reason= pc=0x.. obj= sym=`,
+  where `pc` is the call's offset in the .so (`llvm-addr2line -e <the
+  APK's .so> <pc>` gives the file:line). Unregistered threads (the UI thread,
+  the render thread) are row `o`.
+- Selftest: 43 checks, 21 mutants, all caught (new: waits by context, the
+  site key, ranking and the since-last-line delta). NDK type-check of
+  profile.c, pgraph.c, cpu-exec.c, cpus.c: clean apart from warnings that
+  were there before.
+
+### The capture, queued
+
+All three on the Nova (hard pin), ref f2763fe4c0, `HAKUX_FRAMETRACE=1`,
+frames every 20 s, `--pull 'frametrace_*'`, same routes as before:
+
+| title | request | s |
+|---|---|---|
+| Simpsons (free roam) | `1-1791264140-lane.frametrace-1709247` | 420 |
+| Forza (race) | `1-1791264148-lane.frametrace-1709509` | 480 |
+| Nightfire (gameplay) | `1-1791264150-lane.frametrace-1709628` | 360 |
+
+25.5 min with setup, inside the 30-min pilot. Read each with `ftread.py` and
+the `fw=`/`pc=` fields: the naming above holds if `p.rep.fence` (and
+`p.none.fence`) at the site `addr2line` puts on draw.c:4386 carries most of
+the PFIFO's non-idle blocked time, and `p.rep` time per frame bounds the
+vCPU's `lockw`.
+
 ## Why attempt 1 did not finish
 
 It finished by the contract: it ended at 09:20 PDT on a `waiting:` for three
