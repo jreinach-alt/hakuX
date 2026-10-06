@@ -871,3 +871,11 @@ Named cost, from hold.jsonl (n134-n146): the run used the first rule (one STICK:
 Fix in the tree (cf10c3a95c and the next commit): the panel now takes UP, UP, A (two taps reach the top row from any of its three rows); the confirm takes DOWN, A (to YES); a RETURN confirm takes B back to the panel. Selftest 79 ok. Not yet run on the device; a re-hold (runs/sweep-4541038A-r2) is queued behind the sweep queue, after Rogue Trooper and the other unrun titles.
 
 SCENE SHOULD CONTAIN (if it clears): Marvel Nemesis in an arena fight, both fighters' health bars and portraits, the camera following the fighters, a live round (not an END OF MATCH panel).
+
+## #433 -- 2026-10-06 01:55 PDT
+
+[lane.pathfind] Rogue Trooper PASS (harness, Nova, first-run claim): 6.1 min to gameplay, 31 model calls, 27 steps; hold 609.8 s of play, play share 0.9997, fps_ok 1.0 (bar 28.5), no crash or hang. Run dir: runs/sweep-5343000E (frames/036-hold.jpg, frames/083-hold.jpg, strip.jpg, verdict.json). Excluded time 1.1 s. Spend: this session's model calls (31 claim, hold looks), not priced.
+
+SCENE SHOULD CONTAIN: Rogue Trooper in third person on an alien crystal landscape, the HUD (radar bottom left, ammo and health bottom right), the player moving through canyons and past crystal formations, the camera behind him. Caveat for the frame review: the 'Press to enter the digipad' prompt is on frames 036 and 083 (about 45 s apart) with the scene changed between them, so check that the walk covered ground and did not circle one terminal.
+
+Flicker: owner's check (frames above).
