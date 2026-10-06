@@ -861,3 +861,13 @@ Telemetry: decompose.py needs a run.log with the mark line; runs without --perfl
 Committed for frame review (the harness PASSes from today, unchanged): NBA 2K3, NBA 2K2, MK Shaolin Monks, MK Armageddon, MK Deadly Alliance, MLB SlugFest 2004, MLB SlugFest Loaded. LEGO Star Wars and AvP path files re-recorded by their re-holds are committed with this status.
 
 Resume: time-gated WAITING (2026-10-06 07:10 PDT). Next item: the five sweep titles, then football last, each to a verdict before the next.
+
+## #433 -- 2026-10-06 01:28 PDT
+
+[lane.pathfind] Marvel Nemesis: Rise of the Imperfects FAIL on play share (menu time), fps clear: 85.6% of the scored window in play (567 s play, 45 s menu, 35 s results, 15 s pause; bar 90%), fps_ok 0.991, median 29, no crash or hang. Run: runs/sweep-4541038A (claim 12.9 min, 74 model calls, replayed 6 steps; hold 664 s). Spend: this session's model calls (claim 74 + hold looks); not priced.
+
+Named cost, from hold.jsonl (n134-n146): the run used the first rule (one STICK:up:0.5, then A). The stick push did not move the panel cursor: the A that followed opened QUIT TO MAIN MENU (n134-135), then the hold cycled QUIT, RETURN and the panel for ~90 s, with B and STICK-down-A on each dialog, before the stop at 562 s. The REMATCH confirm was reached only once, at n102 of the earlier run. Frames 101 and 106 show the panel opens on REMATCH and the confirm on NO.
+
+Fix in the tree (cf10c3a95c and the next commit): the panel now takes UP, UP, A (two taps reach the top row from any of its three rows); the confirm takes DOWN, A (to YES); a RETURN confirm takes B back to the panel. Selftest 79 ok. Not yet run on the device; a re-hold (runs/sweep-4541038A-r2) is queued behind the sweep queue, after Rogue Trooper and the other unrun titles.
+
+SCENE SHOULD CONTAIN (if it clears): Marvel Nemesis in an arena fight, both fighters' health bars and portraits, the camera following the fighters, a live round (not an END OF MATCH panel).

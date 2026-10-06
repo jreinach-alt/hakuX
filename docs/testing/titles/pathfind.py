@@ -201,18 +201,21 @@ def name_press(name, tries):
     return list(seq) if seq else [NAME_PRESS[tries % len(NAME_PRESS)]]
 
 
-# an end-of-match REMATCH (10-06, Marvel Nemesis, frames 101 and 106 of runs/sweep-4541038A): the panel opens on REMATCH, but
-# the cursor stays where the last cancel left it, and the confirm dialog opens on NO. A down-and-A walked the panel to RETURN
-# and looped six times in 90 s. So: up to the top row and A (the dialog opens), then down to YES and A.
+# an end-of-match REMATCH (10-06, Marvel Nemesis, runs/sweep-4541038A): the panel opens on REMATCH (top of three rows), but the
+# cursor stays where the last cancel left it, and the confirm dialog opens on NO. One UP from RETURN lands on REMATCH, one from
+# QUIT does not, and a DOWN-and-A walked it to RETURN six times in 90 s (the 01:23 run: one UP put the dialog on RETURN). So:
+# two UP taps (the panel's top row from any row) and A opens the confirm; DOWN to YES and A; a RETURN confirm gets B back to the panel.
 def rematch_press(why, st):
     """The inputs for one REMATCH step of an end-of-match panel or its confirm dialog, else None."""
     why = (why or "").lower()
+    if "sure" in why and "return to character select" in why:
+        return ["B"]
     if "rematch" not in why:
         return None
     if "sure" in why:
-        return ["STICK:down:0.5", "A"]
+        return ["DOWN", "A"]
     if st in ("results", "menu"):
-        return ["STICK:up:0.5", "A"]
+        return ["UP", "UP", "A"]
     return None
 # Title-specific hold loops (10-03 addendum, the owner's Black Stone design). They replace the genre's loop and its
 # unlock rotation for these title ids. The walk moves the player with the left stick only, in long strokes that
