@@ -1173,3 +1173,8 @@ What this shows, and what it does not:
 - Verdict: no gameplay reached. Classify as a hang on the loading screen after team select (failure for identification, not a
   re-run). NEW ISSUE to file: NHL Hitz Pro hangs on the post-team-select loading screen (guest busy at r:800151ed, frozen frame),
   and the claim loop does not end at its budget while the screen is loading.
+
+### NHL Hitz Pro outcome (12:25 PDT)
+- Final: result gave-up, reason budget 25 min, last state loading, 180 steps, no gameplay frame. The process exited on its own
+  (rc=1) at 12:25:16; the wrapper released the Nova hold (rc=0). The earlier stop-by-PID was refused and was not needed.
+- Verdict: FAIL (hang on the post-team-select loading screen; failure for identification, not a re-run).

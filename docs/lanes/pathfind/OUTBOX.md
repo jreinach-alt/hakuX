@@ -1038,3 +1038,12 @@ Spend: $12.25 this run.
 - Fix, committed with its selftest (91 ok): LIVE_SELFMOVE_TO_HOLD = 3. A --hold-s claim enters the hold after the third live read whose probe was refused on a self-moving scene (control > SELF_MOVING). In this run that is #67 at ~723 s, which would have saved ~13 min of Nova time.
 - Next: Blitz Pro run 4 on the new commit, once no Nova-bound request is queued.
 Spend: $13.24 this run; $25.49 this session.
+
+## #433 -- 2026-10-06 12:25 PDT
+[lane.pathfind] NHL Hitz Pro FAIL: gave up at budget 25 min, last state loading, 180 steps, no gameplay. Stuck on the loading screen
+after team select (USER1 on AWAY team at ~126 s; spinner frozen from ~126 s to the end). Hang probe tripped 5 times, guest ~97-100%
+busy at r:800151ed, frame_change 0.0 on each A press. ref e383da4992, apk not recorded by pathfind.py, env []. Run dir
+runs/nhl-hitz-pro/hold2. Spend not measured this session.
+
+NEW ISSUE: NHL Hitz Pro hangs on the loading screen after team select (guest busy at r:800151ed, frozen frame), and the claim loop
+ran to 25 min past its 15-min budget without ending. Evidence: runs/nhl-hitz-pro/hold2 (hang.jsonl, steps.jsonl, frames 150-180).
