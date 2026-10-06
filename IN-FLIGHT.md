@@ -6,7 +6,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `pathfind` | claude-sonnet-5 | 7 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -55,7 +57,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `1b19fab549` | 2026-10-06 08:18 |
 
 ## Recently landed on master
 
@@ -66,4 +70,4 @@ No branch is being worked right now.
 - 2026-10-05 hitchcause: the MTV 330 ms hitches are guest-side waits, not the IDE host read ([ide425d] held run on af37f7a3ea) (#433)
 - 2026-10-05 belowbar1005: the #804 fence wait is not what holds Buffy, NG Black or DOA3 below the bar
 
-_Updated 2026-10-06 10:36 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-06 10:52 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
