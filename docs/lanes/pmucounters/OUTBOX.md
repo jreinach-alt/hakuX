@@ -114,3 +114,45 @@ PASS (0 new diagnostics in cpu-exec with the hook), and a zero-read log makes
 Spend this session: about 10 min of wall time, no device, no queued requests.
 Model: Sonnet 5. Lane state: no PR change; still draft; R1/R2 blocked on the
 hook being in the build and a device hold.
+
+## #433 -- 2026-10-05 late (attempt 4, resume on Sonnet): the R0 read failure diagnosed; no device run from the session
+
+Read `r0-thor-2` by hand (`probe_shell_cpu3.txt`, `probe_runas_cpu3.txt`,
+`cpuset.txt`, `stat_cpu3.txt`):
+
+1. **The hook reads correctly, and the groups never run.** Every group reads
+   `got=80 nr=7 en=<growing> run=0`. That is exactly 3+7 u64 with `enabled`
+   advancing and `running` never moving: the seven-event group is enabled
+   and never gets a counter. Not an errno, so not a bad read. The hook's
+   read path is not at fault.
+2. **The PMU counts, with fewer counters than events.** simpleperf stat on
+   cpu3 counts all eight of its events and prints its multiplexing warning.
+3. **The cpuset hypothesis is refuted.** The shell and top-app cpusets read
+   `0-7`, which includes cpu7.
+4. **cpu7 EINVAL is still open.** cpu3 and cpu0 pin in the same run. The
+   thermal-pause note says a pause can hide from `cpu/online` and the cpuset.
+   The run did not read the cooling-device state, so I have not settled it.
+
+Checked on this host, not the device: `pmuprobe sched` on the i7-6700K
+(`cpu` PMU, 4 programmable + 2 fixed) reads the largest schedulable group as
+6 and refuses 7 at open. The control reads as predicted. The ARM build of the
+sweep passes the NDK `-Werror` build, and `pmuread.py --selftest` is PASS.
+
+Changes (`docs/lanes/pmucounters/`, committed on `lane/pmucounters`):
+- `pmuprobe.c`: the `sched` mode (group sizes 1..19 and each single event).
+- `r0_probe.sh`: `sched_cpu3`, `sched_cpu0`, `sched_cpu7` steps, and a `cpuhp`
+  step (isolated, per-CPU online, cooling-device `cur_state`).
+- NOTES.md section 3c has the table and the next steps.
+
+Ask (one device run, no HARDEN0, no title, under the next Thor hold):
+`DEV=thor bash docs/lanes/pmucounters/r0_probe.sh` into `r0-thor-3`. Read
+`sched_cpu3.txt` (largest group N and which singles run) and `cpuhp.txt` (is
+the thermal pause on, is cpu7 paused). I have not touched the device from this
+session and have no hold. Hostops or lane.local: please run it and point me at
+the result dir.
+
+Verify status: `pmuread.py --controls` on the new run is not yet possible; the
+control kernels read 0 of 0 on r0-thor-2 and will be re-judged on r0-thor-3.
+Still no PR change; still draft; R1 and R2 wait on the hook's layout (N) and
+the grant.
+Model: claude-sonnet-5 (budget).

@@ -78,6 +78,9 @@ run env 'getprop security.perf_harden; cat /proc/sys/kernel/perf_event_paranoid;
   for z in /sys/class/thermal/thermal_zone*; do
     case $(cat $z/type) in *xo*|*cpu-1-3*|cpuss*) echo "$(cat $z/type) $(cat $z/temp)";; esac;
   done'
+run cpuhp 'echo "isolated=$(cat /sys/devices/system/cpu/isolated 2>&1)"; echo "possible=$(cat /sys/devices/system/cpu/possible 2>&1) present=$(cat /sys/devices/system/cpu/present 2>&1)";
+  for c in 0 1 2 3 4 5 6 7; do echo "cpu$c online=$(cat /sys/devices/system/cpu/cpu$c/online 2>&1)"; done;
+  for c in /sys/class/thermal/cooling_device*; do echo "$(cat $c/type 2>&1) cur=$(cat $c/cur_state 2>&1) max=$(cat $c/max_state 2>&1)"; done'
 run cpuset 'cat /proc/self/cpuset; grep Cpus_allowed_list /proc/self/status;
   cs=$(cut -d: -f3 /proc/self/cpuset); echo "cpuset dir=$cs cpus=$(cat /dev/cpuset$cs/cpus 2>&1)";
   for c in top-app foreground background system; do echo "$c cpus=$(cat /dev/cpuset/$c/cpus 2>&1)"; done'
@@ -86,6 +89,12 @@ run list_raw 'simpleperf list raw'
 
 a shell "rm -rf $T; mkdir -p $T"
 a push "$OUT/pmuprobe" $T/pmuprobe > /dev/null && a shell "chmod 755 $T/pmuprobe"
+# sched: the group-size sweep (pmuprobe sched). It answers why the 7-event
+# groups read run=0: the largest group this PMU schedules, and which single
+# events count at all.
+run sched_cpu3 "taskset 08 $T/pmuprobe sched"
+run sched_cpu0 "taskset 01 $T/pmuprobe sched"
+run sched_cpu7 "taskset 80 $T/pmuprobe sched"
 run probe_shell_cpu7 "taskset 80 $T/pmuprobe 3"
 run probe_shell_cpu3 "taskset 08 $T/pmuprobe 3"
 run probe_shell_cpu0 "taskset 01 $T/pmuprobe 3"

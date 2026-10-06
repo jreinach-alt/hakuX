@@ -248,3 +248,71 @@ hook), not a shell pin, if the cpuset hypothesis holds.
    Read with `pmuread.py --samples LOG --apk dispatch/builds/<ref>.apk`.
 6. **R3**: price the top candidate per `briefs/_next-step-rule.md` with the
    discount (section 0). Recommend it; do not build it.
+
+## 3c. Attempt 4 (2026-10-05 late, resume on Sonnet)
+
+Why attempt 3 did not finish: it made the hook log bad group reads and moved
+the probe's pins, but the device run that answered them (hostops, `r0-thor-2`)
+was read only for the controls. The read failure was never diagnosed, and the
+cpuset hypothesis from 3b was never checked against the probe's own output.
+
+### What `r0-thor-2` shows (read by hand, not from pmuread)
+
+- Every group, on cpu3 (shell and run-as) and cpu0: `got=80 nr=7 en=... run=0`.
+  80 bytes is exactly 3 + 7 u64, so the read is intact. `en` grows and `run`
+  stays 0: the group is enabled and never gets a counter. It is not an errno.
+  The hook's read path is not the fault.
+- simpleperf stat on cpu3 counts all eight of its events, with its warning
+  "the number of hardware events are more than the number of available CPU PMU
+  hardware counters" (multiplexing). So the PMU does count, and it has fewer
+  counters than eight.
+- The cpuset is `0-7` for the shell, for top-app and for foreground
+  (`cpuset.txt`). The cpuset hypothesis from 3b is refuted.
+- cpu7 still returns EINVAL, while cpu3 and cpu0 pin in the same run. The
+  thermal-pause note (`thor-thermal-pause`) says a pause can hide from
+  `cpu/online` and the cpuset, so that is the live hypothesis. The run did not
+  read the cooling-device state, so it stays open.
+
+### Diagnosis
+
+Each hook group is seven events: cycles plus six programmable ones. The probe
+never asks the PMU how many events one group can hold, so I checked the
+mechanism on a known PMU first:
+
+| check | what it reads | expectation | result |
+|---|---|---|---|
+| host sweep (i7-6700K, `cpu` PMU, `-DPMU433_TEST_HW`) | group sizes 1-7, 4 programmable + 2 fixed | largest scheduled group 6 | largest group 6; n=7 refused at open (EINVAL) |
+| host singles | each generic event alone | all count | all count |
+| ARM sweep build (NDK, `-Werror`) | | builds | PASS |
+
+The host refuses an oversize group at open. The ARM kernel does not: the
+hook's 7-event groups opened, and then never got a counter. So the open-time
+check cannot be the test on the Thor; the run-time read is (`run == 0` with
+`enabled` growing). The hypothesis is that this PMU has fewer than six
+programmable counters beside the cycle counter, so no seven-event group can
+run. Not yet read from the device.
+
+### Changes this attempt
+
+- `pmuprobe.c`: `pmuprobe sched`. Groups of 1..19 events (cycles leader first)
+  and each event alone, 50 ms of work on the thread each, printing
+  `[pmu433] sched ... run=` and `largest scheduled group=N`.
+- `r0_probe.sh`: `sched_cpu3`, `sched_cpu0`, `sched_cpu7` steps (the X3 step
+  records whether the X3 pins at all and whether it schedules), and a `cpuhp`
+  step (isolated, possible/present, per-CPU online, and every cooling device's
+  `cur_state`, which shows `thermal-pause` if it is active).
+- The hook (`hakux-pmu.c.inc`) is unchanged. Its group layout waits on N: the
+  groups must hold at most N events each, and the 7-event groups split if N < 7.
+  Splitting changes which events share a window, so R1's ratios are taken only
+  inside one group, as now.
+
+### Next
+
+1. One device run of R0 (`DEV=thor bash docs/lanes/pmucounters/r0_probe.sh`,
+   no `HARDEN0`, under the next Thor hold). Read first: `sched_cpu3.txt`
+   (largest group N, and which singles read run=0), then `cpuhp.txt` (is the
+   thermal pause on, and is cpu7 offline or paused).
+2. If N is at most 5, the hook's layout changes before R1. If N is 6, the
+   seven-event group loses one event. Either way the change is in the hook,
+   not the probe.
+3. R1 and R2 stay behind the grant and the build.
