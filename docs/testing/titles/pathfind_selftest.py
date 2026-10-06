@@ -686,5 +686,17 @@ check("ladder", pathfind.HOLD_LADDER[0] == "A" and pathfind.HOLD_LADDER[1] == "S
 check("budget", pathfind.hold_budget_s(900, 600) == 900 + 1050 + 300, f"claim + 1.75 x hold + 300: {pathfind.hold_budget_s(900, 600)}")
 
 shutil.rmtree(TMP)
+# football goes last (owner order 10-05 12:35): football titles are refused, every other sport is not, and the env lifts it
+_fb = [("NFL Blitz Pro", "NFL_Blitz_Pro.xiso.iso"), ("ESPN NFL 2K5", "ESPN_NFL_2K5.iso"), ("Madden NFL 2005", "x.iso"),
+       ("NCAA College Football 2K3", "NCAA_College_Football_2K3.xiso.iso")]
+_ok = [("NHL Hitz Pro", "NHL_Hitz_Pro.xiso.iso"), ("NBA 2K2", "NBA_2K2.xiso.iso"), ("AMF Bowling 2004", "AMF_Bowling_2004.xiso.iso"),
+       ("NCAA March Madness 2005", "NCAA_March_Madness_2005.iso"), ("MLB SlugFest 2003", "MLB_SlugFest_2003.xiso.iso")]
+os.environ.pop("PATHFIND_FOOTBALL", None)
+check("football", all(pathfind.football_deferred(n, f) for n, f in _fb) and not any(pathfind.football_deferred(n, f) for n, f in _ok),
+      "NFL Blitz Pro, NFL 2K5, Madden and NCAA Football are deferred; hockey, basketball, bowling, baseball and March Madness are not")
+os.environ["PATHFIND_FOOTBALL"] = "1"
+check("football", not any(pathfind.football_deferred(n, f) for n, f in _fb), "PATHFIND_FOOTBALL=1 lifts the deferral")
+os.environ.pop("PATHFIND_FOOTBALL", None)
+
 print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))
 sys.exit(1 if fails else 0)

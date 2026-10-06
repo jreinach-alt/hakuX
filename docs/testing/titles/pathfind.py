@@ -663,6 +663,17 @@ def targets():
     return out
 
 
+FOOTBALL = re.compile(r"\b(nfl|madden|football|gridiron)\b")
+
+
+def football_deferred(name, iso):
+    """Owner order 10-05 12:35: every football title runs after every other sport. PATHFIND_FOOTBALL=1 lifts it."""
+    if os.environ.get("PATHFIND_FOOTBALL") == "1":
+        return False
+    text = (str(name) + " " + os.path.basename(str(iso))).lower().replace("_", " ").replace(".", " ")
+    return bool(FOOTBALL.search(text))
+
+
 def blocked(tid, name):
     try:
         for line in open(BLOCKED):
@@ -2168,6 +2179,9 @@ def main(argv=None):
     why = blocked(tid, name)
     if why:
         sys.exit(f"pathfind: {name} is owner-blocked: {why}")
+    if football_deferred(name, iso):
+        sys.exit(f"pathfind: {name} is a football title and football goes last (owner order 10-05 12:35); "
+                 "take the next non-football title in briefs/pathfind.md, or set PATHFIND_FOOTBALL=1 when lane.local lifts it")
     if a.hold_s and dev.label == "thor":
         sys.exit("pathfind: --hold-s is Nova only: the Thor's fan is dead and it stops within 30 s of a claim")
     print(f"pathfind: {name} ({tid}) on {dev.label}: {iso}", flush=True)
