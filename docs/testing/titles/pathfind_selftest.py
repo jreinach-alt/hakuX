@@ -628,7 +628,26 @@ rc, res, steps, calls = run("claimlive", PREFIX + [("game", 0)] * 400,
                             [GAME, {"gameplay": True, "responded": False, "why": "the probe did not move the scene"}]
                             + [GAME] * 600,
                             ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "2"])
+res_budget = res
+# self-moving live play (10-06, NFL Blitz Pro: live football from ~610 s, every probe refused on the moving camera): the
+# third live read whose probe was refused on a self-moving scene enters the hold, not the 25-min budget. One answer serves
+# the look (state, probe), the confirm (refused), the genre and the hold looks (in_play), so call order cannot shift it.
+SELFMOVE = [("game", 0), ("game", 0), ("game", 80), ("game", 160), ("game", 0), ("game", 0)]   # look, a b c, left, right
+LIVE = dict(GAME, gameplay=True, responded=False, in_play=True, genre="drive")
+rc, res, steps, calls = run("selfmove", SELFMOVE * 4 + [("game", (i * 47) % 160) for i in range(400)], [LIVE] * 300,
+                            ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
+nprobe = sum(1 for s in steps if s.get("state") == "probe")
+check("selfmove", res.get("claim_live_selfmove") == pathfind.LIVE_SELFMOVE_TO_HOLD and res.get("result") == "gameplay"
+      and res.get("hold") is not None and nprobe == pathfind.LIVE_SELFMOVE_TO_HOLD and CLOCK[0] - 1000 < 1800,
+      f"3 refused self-moving probes of live play enter the hold ({res.get('result')}, {nprobe} probes, "
+      f"live {res.get('claim_live_selfmove')}, hold {bool(res.get('hold'))})")
+CLOCK[0] = 1000.0
+rc, res, steps, calls = run("selfmove0", SELFMOVE * 4 + [("game", 0)] * 40, [LIVE] * 300,
+                            ["--no-record", "--no-replay", "--budget-min", "1"])
+check("selfmove", res.get("claim_live_selfmove") is None and res.get("result") != "gameplay",
+      f"with no --hold-s the refusals stand: no claim ({res.get('result')})")
 pathfind.now, pathfind.time.sleep = real_now, real_sleep
+res = res_budget
 check("claimlive", res.get("claim_budget_live") is True and res.get("result") == "gameplay"
       and res.get("hold") is not None,
       f"the claim budget ran out on live play: the run enters the hold ({res.get('result')}, hold {bool(res.get('hold'))})")

@@ -178,6 +178,10 @@ def hold_shortfall(v, need_s=600.0):
     more = off / 0.10 - scored
     return ("share", more) if more > 0 else ("stop", 0.0)
 CONFIRM_GRACE_S = 300                # seconds the claim budget is extended once a gameplay read starts its confirm (10-05)
+# live gameplay reads whose probe was refused on a self-moving scene before a --hold-s claim enters the hold (10-06: NFL
+# Blitz Pro read live football from ~610 s, every probe refused on the moving camera, and the claim-live rule only entered
+# the hold at the 25-min budget; the hold's verdict decides either way, so the wait was ~13 min of Nova time)
+LIVE_SELFMOVE_TO_HOLD = 3
 CLAIM_REPEAT = 3                     # the claim's unlooked repeats of a single press that advanced a cutscene
 CLAIM_REPEAT_STATES = ("cutscene", "intro_video", "publisher_logo")
 CLAIM_REPEAT_BOX = 6                 # the same, on a frame the letterbox check says is a cutscene
@@ -1036,6 +1040,8 @@ class Agent:
         self.hints = knowledge(tid, name)
         self.probes = 0
         self.grace_used = False          # the claim's one confirm grace (CONFIRM_GRACE_S), see run()
+        self.probe_selfmove = False      # the newest probe saw the scene move with no input (ctrl > SELF_MOVING)
+        self.live_selfmove = 0           # gameplay reads whose probe was refused on a self-moving scene (LIVE_SELFMOVE_TO_HOLD)
         self.dead_probes = 0         # probes in a row whose input moved nothing at all (UNLOCK_LADDER)
         self.probe_tries = {}        # probe_key -> confirms that used it (PROBE_LADDER past PROBE_REFUSED_MAX)
         self.black_since = None
@@ -1213,6 +1219,7 @@ class Agent:
     # -- gameplay confirmation (brief rule 5)
     def confirm(self, probe, why):
         self.probes += 1
+        self.probe_selfmove = False
         toks = clean_action(probe if isinstance(probe, list) else [probe]) or ["STICK:up:1.5"]
         pre, probe = toks[:-1], toks[-1]
         if self.dead_probes >= 2:
@@ -1244,6 +1251,7 @@ class Agent:
         rec = {"state": "probe", "action": pre + [probe], "why": f"control {ctrl:.3f}, under input {moved:.3f}",
                "src": "probe", "changed": moved}
         selfmove = ctrl > SELF_MOVING
+        self.probe_selfmove = selfmove
         self.dead_probes = self.dead_probes + 1 if moved < PROBE_MOVED and ctrl < PROBE_MOVED else 0
         won = False
         if not selfmove and ctrl >= PROBE_MOVED and moved < 1.5 * ctrl:
@@ -1457,6 +1465,18 @@ class Agent:
                     self.result.update(reason="four probes refused")
                 self.steps[-1]["why"] += f" | probe: {why}"
                 last_png = None
+                if self.probe_selfmove and not why.startswith("retracted"):
+                    self.live_selfmove += 1
+                    if self.hold_s and self.live_selfmove >= LIVE_SELFMOVE_TO_HOLD:
+                        # the scene moves on its own, so the probe cannot say who moved it; play has been read live this
+                        # many times, and the budget's end would enter the hold on the same read (claim-live rule)
+                        print(f"claim: {self.live_selfmove} live reads with self-moving refused probes: entering the hold",
+                              flush=True)
+                        self.result.update(claim_live_selfmove=self.live_selfmove)
+                        r = self.success(os.path.join(self.out, last_live))
+                        if r is not None:
+                            return r
+                        self.live_selfmove = 0      # retracted 30 s on: the scene left play; read again from scratch
                 continue
             if dec.get("src") == "diverged":
                 self.write_step(dec)

@@ -1029,3 +1029,12 @@ Identified, two causes:
 Next, started 11:28: one run on ab8788c38b (runs/nfl-blitz-pro/hold3) with a goal naming RT/LT for the tabs. This is not a blind retry: both causes above are fixed.
 
 Spend: $12.25 this run.
+
+## #433 -- 2026-10-06 11:55 PDT
+
+[lane.pathfind] NFL Blitz Pro run 3 (runs/nfl-blitz-pro/hold3, Nova 11:28-11:49 PDT) claim FAIL again: gave-up at the 25-min budget, 130 steps, 168 calls, $13.24. Build: ref 0342eba317, apk ad6f37a2f087, env [] (no Nova request ran between run 2 and run 3). Tools: ab8788c38b.
+- The menu fix worked. RT reached SETTINGS, then GAME OPTIONS, then GAMEPLAY OPTIONS, and QUARTER LENGTH went from 3 to 5 MINUTE (the longest). The claim then reached live football at ~610 s. The route is now in hints/series-nfl-blitz.md.
+- Why it still gave up: the claim-live rule needs the NEWEST look to read gameplay. The budget ended on a pre-snap play-call read (#130, "pause"); about half of football's looks are pre-snap.
+- Fix, committed with its selftest (91 ok): LIVE_SELFMOVE_TO_HOLD = 3. A --hold-s claim enters the hold after the third live read whose probe was refused on a self-moving scene (control > SELF_MOVING). In this run that is #67 at ~723 s, which would have saved ~13 min of Nova time.
+- Next: Blitz Pro run 4 on the new commit, once no Nova-bound request is queued.
+Spend: $13.24 this run; $25.49 this session.
