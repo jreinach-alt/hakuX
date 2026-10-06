@@ -880,6 +880,14 @@ SCENE SHOULD CONTAIN: Rogue Trooper in third person on an alien crystal landscap
 
 Flicker: owner's check (frames above).
 
+## #433 -- 2026-10-06 02:13 PDT
+
+[lane.pathfind] World Soccer Winning Eleven 9 PASS on the harness, WITH A CONTROL CAVEAT: 6.3 min to gameplay, 39 model calls, 30 steps; hold 629.7 s, play share 0.9731 (static 0.113), fps_ok 1.0 (bar 28.5), no crash or hang. Run dir: runs/sweep-4B4E002F (frames/039-hold.jpg, frames/084-hold.jpg, strip.jpg, verdict.json). Setup done in the claim: Match Time set to 20 min (the longest offered), so the first half ran 24:21 of clock with no half-time in the window. Spend: this session's model calls, not priced.
+
+The control check is NOT confirmed. The sports look in the hold said human_controlled: False (no controller icon under either name bar), so the hold ran its generic team loop. Frames 039 and 084 show a blue control marker (an arrow and a ring on the radar) on a player, which is what a human-controlled player looks like here, but no frame pair shows the marked player moving under the hold's input. Lane.local should confirm control before it counts this as a Playable; a CPU-only match would be a FAIL.
+
+SCENE SHOULD CONTAIN: the Konami WE9 pitch with both teams (Austria in red and white, the other side in white and black), the HUD (half and clock top left, score top right, the radar at the bottom middle with the blue control ring on your player), players moving across the pitch, the score moving in a live half.
+
 ## #433 -- 2026-10-06 01:55 PDT
 
 [lane.pathfind] Ratatouille PASS (harness, Nova, first-run claim): 3.4 min to gameplay, 26 model calls, 21 steps; hold 605.3 s of play, play share 0.9998, fps_ok 1.0 (bar 28.5), static fraction 0.002, no crash or hang. Run dir: runs/sweep-54510109 (frames/030-hold.jpg, frames/091-hold.jpg, strip.jpg, verdict.json). Excluded time 1.4 s. Spend: this session's model calls (26 claim, hold looks), not priced.
