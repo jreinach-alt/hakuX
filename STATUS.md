@@ -40,24 +40,24 @@ What is in flight right now. Generated from the working tree and updated as work
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `88c5094d6e` | 2026-10-05 19:00 |
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `1e7d2280e3` | 2026-10-05 19:26 |
 
 ## Recently landed on master
 
+- `c3625aad90` 2026-10-05 fold: lane/frametrace (offline) -- frametrace: per-frame critical-path telemetry (HAKUX_FRAMETRACE=1): who set the pace, frame by frame
+- `fb3b8e652e` 2026-10-05 frametrace: Simpsons read; the lateness rule missed frames whose VBLANK the deferral held (period-late now; all four titles re-read); milest
+- `7e47dde38c` 2026-10-05 frametrace: waiting on the Simpsons run (#433)
+- `4633d9dadd` 2026-10-05 frametrace: Forza read; the in-row run class is wrong where the guest idles (Forza, most of Nightfire); duty overhead PASS; G1+G3 first; Sim
+- `94968fcfb1` 2026-10-05 frametrace: duty overhead judged (pass), Forza captured; idlejoin.py splits guest idle from the in-row run; blind Simpsons route (#433)
+- `02b01b7b44` 2026-10-05 Merge remote-tracking branch 'origin/master' into lane/frametrace
 - `8522288a77` 2026-10-05 fold: lane/dashretro (offline) -- dashretro: the 0.5 panel counts the Playable ledger and pathfind's held runs (#433)
 - `22aa0df5d9` 2026-10-05 dashretro: the 0.5 panel counts the Playable ledger and pathfind's held runs (#433)
+- `f34c8cb6e0` 2026-10-05 frametrace: waiting on the duty overhead run and Forza (Nova); Simpsons script defaults to 65bd51712b (#433)
+- `537607f767` 2026-10-05 frametrace: vCPU time in MMIO dispatch per frame and by region (in-row half of G9); hooks-g9.diff for system/memory.c ready for the grant (#
+- `837f9c68b5` 2026-10-05 frametrace: first reads (Nightfire, Tron): late frames are the vCPU's (99.8%, 88.9%); GPU side waits on it; raw captures archived; one-run o
+- `65bd51712b` 2026-10-05 frametrace: HAKUX_FRAMETRACE_DUTY, the overhead test inside one run (instrument off and on every s seconds); selftest 36 checks, 12 mutants 
 - `d354705c69` 2026-10-05 fold: lane/hitchcause (offline) -- hitchcause: the MTV 330 ms hitches are guest-side waits, not the IDE host read ([ide425d] held run on af3
+- `98c6791c56` 2026-10-05 Merge remote-tracking branch 'origin/master' into lane/frametrace
 - `750d572f1c` 2026-10-05 fold: lane/belowbar1005 (offline) -- belowbar1005: the #804 fence wait is not what holds Buffy, NG Black or DOA3 below the bar; their bounds
-- `fde487f5a0` 2026-10-05 belowbar1005: answer, side effects, do-not-repeat; PR ready (#433)
-- `01f1bfb7a1` 2026-10-05 belowbar1005: commit the survey output (#433)
-- `73b699f27f` 2026-10-05 belowbar1005: cross-title non-render GPU survey; the answer table and per-title P x win (#433)
-- `3c0433736b` 2026-10-05 belowbar1005: DOA3: no occlusion queries; the dojo stage is GPU-bound (58 ms/frame) plus one sync surface download per flip (#433)
-- `583fa640fb` 2026-10-05 belowbar1005: NGB share fix; Buffy perflog walk soak queued (#433)
-- `f078663ebc` 2026-10-05 belowbar1005: NG Black: reads occlusion queries but the wait never blocks (pend=0 x190); GPU-bound, half the GPU time outside render passes 
-- `eef7590935` 2026-10-05 belowbar1005: OUTBOX Buffy verdict (#433)
-- `8c14ed643d` 2026-10-05 belowbar1005: Buffy arm W: 0.67 vs 0.83 with the wait code not run in either arm; the gap is the walk (forest path vs courtyard) (#433)
-- `a160529e4a` 2026-10-05 hitchcause: MTV [ide425d] hold on af37f7a3ea: the 330 ms hitches are guest-side waits, not the IDE host read (#433, #819)
-- `0dd4c30436` 2026-10-05 belowbar1005: Buffy arm N: Buffy reads no occlusion queries, the fence wait never runs on it; NGB and DOA3 perflog soaks queued, routes from
-- `097eb9567d` 2026-10-05 belowbar1005: build per below-bar run (Buffy/NGB ran without the #804 wait), offline bounds, Buffy WAIT A/B registered (#433)
 
-_Updated 2026-10-05 19:12 PDT._
+_Updated 2026-10-05 19:28 PDT._
