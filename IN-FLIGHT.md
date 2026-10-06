@@ -8,10 +8,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pathfind` | claude-opus-5-5 | 43 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+| `pathfind` | claude-opus-5-5 | 59 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.pathfind`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
@@ -63,6 +63,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Recently landed on master
 
+- 2026-10-06 gpunonrender: render-pass census (HAKUX_GPUXFR=1)
 - 2026-10-06 gpunonrender: the GPU's "non-render" time is render-pass work on Turnip (94-98% on NG Black, ToeJam, DOA3)
 - 2026-10-06 frametrace: the PFIFO thread's GPU waits named per title (draw.c:4386 under pfifo.lock on Simpsons
 - 2026-10-05 frametrace: per-frame critical-path telemetry (HAKUX_FRAMETRACE=1): who set the pace, frame by frame
@@ -70,4 +71,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-05 hitchcause: the MTV 330 ms hitches are guest-side waits, not the IDE host read ([ide425d] held run on af37f7a3ea) (#433)
 - 2026-10-05 belowbar1005: the #804 fence wait is not what holds Buffy, NG Black or DOA3 below the bar
 
-_Updated 2026-10-06 11:39 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-06 11:55 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
