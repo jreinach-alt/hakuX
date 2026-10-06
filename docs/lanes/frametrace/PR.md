@@ -3,7 +3,7 @@ State: draft (waiting on three Nova captures)
 
 Lane: frametrace            Issue: #433
 Base: master @ c3625aad90 (the fold of this lane's first PR)
-Files: accel/tcg/cpu-exec.c, hw/xbox/nv2a/pgraph/pgraph.c, hw/xbox/nv2a/pgraph/profile.c, hw/xbox/nv2a/pgraph/profile.h, docs/lanes/frametrace/NOTES.md, docs/lanes/frametrace/OUTBOX.md, docs/lanes/frametrace/PR.md, docs/lanes/frametrace/WAITING, docs/lanes/frametrace/build_local.sh, docs/lanes/frametrace/ft_selftest.c, docs/lanes/frametrace/selftest.py
+Files: accel/tcg/cpu-exec.c, hw/xbox/nv2a/pgraph/pgraph.c, hw/xbox/nv2a/pgraph/profile.c, hw/xbox/nv2a/pgraph/profile.h, docs/lanes/frametrace/NOTES.md, docs/lanes/frametrace/OUTBOX.md, docs/lanes/frametrace/PR.md, docs/lanes/frametrace/WAITING, docs/lanes/frametrace/build_local.sh, docs/lanes/frametrace/ft_selftest.c, docs/lanes/frametrace/ftread.py, docs/lanes/frametrace/selftest.py
 Prediction: none: telemetry, off by default; judged by the selftest and the overhead test already passed (NOTES section 5)
 Needs device: yes (three Nova captures queued)    Needs NDK: yes
 

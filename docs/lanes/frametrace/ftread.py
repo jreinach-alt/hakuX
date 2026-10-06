@@ -25,6 +25,9 @@ What it prints per capture:
   4. hitches: periods over max(2 x the median of the previous 60 frames,
      50 ms), each with the frame record and its pacemaker
   5. VBLANKs per flip, the inferred interval, and slack to the deadline
+  6. Vulkan waits and submits by call site (the summary's fw=, from
+     f2763fe4c0): ms and calls per gameplay frame, each site with its row,
+     context and the .so offset its `site #` line gave (addr2line it)
 """
 import argparse
 import bisect
@@ -95,6 +98,7 @@ def read_logs(logs, d):
     mark = None
     marks = []
     summ, hitch = [], []
+    sites = {}              # slot -> description, from "[hakuX-ft1] site #"
     for p in logs:
         for line in opentext(p):
             m = TS.match(line)
@@ -107,6 +111,10 @@ def read_logs(logs, d):
                 if tm:
                     anchors.append((float(tm.group(1)), wall))
                 summ.append((wall, line.split('[hakuX-ft1] ', 1)[1].strip()))
+            elif '[hakuX-ft1] site #' in line:
+                sm = re.search(r'site #(\d+) (.*)$', line.strip())
+                if sm:
+                    sites[int(sm.group(1))] = sm.group(2)
             elif '[hakuX-ft] ' in line:
                 hitch.append((wall, line.split('[hakuX-ft] ', 1)[1].strip()))
             elif 'hakuX-pace' in line:
@@ -123,7 +131,7 @@ def read_logs(logs, d):
             if mk:
                 mark = secs(*mk.groups())
                 break
-    return anchors, pace, mark, summ, hitch
+    return anchors, pace, mark, summ, hitch, sites
 
 
 def wall_of(frames, anchors, pace):
@@ -172,7 +180,7 @@ def report(d, a):
     frames = []
     for p in csvs:
         frames += read_frames(p)
-    anchors, pace, mark, summ, hitch = read_logs(logs, d)
+    anchors, pace, mark, summ, hitch, sites = read_logs(logs, d)
     how = wall_of(frames, anchors, pace)
     title = ''
     rq = os.path.join(d, 'request.json')
@@ -277,6 +285,11 @@ def report(d, a):
     for w in W:
         if any(f.get('p_' + w) for f in win):
             rows.append(['PFIFO wait: ' + w, both('p_' + w)])
+    for k, nm in [('p_c_none', 'in a method (pgraph.lock held)'),
+                  ('p_c_rep', 'in process_pending_reports (pfifo.lock HELD)'),
+                  ('p_c_pend', 'in process_pending')]:
+        if any(f.get(k) for f in win):
+            rows.append(['PFIFO hooked waits ' + nm, both(k)])
     if have & 4:
         rows += [['render on-CPU', both('r_run')], ['render blocked', both('r_blk')]]
     if have & 64:       # G9: the vCPU in MMIO dispatch (waits inside included)
@@ -323,6 +336,35 @@ def report(d, a):
         print('slack to the deadline, ms: p50 %s, p5 %s, min %s; frames with slack < 0: %d'
               % (ms(pct(sl, 50)), ms(pct(sl, 5)), ms(min(sl)), sum(1 for s in sl if s < 0)))
     print()
+
+    # 6. Vulkan call sites (fw=), over the summaries inside the window
+    t0w = win[0]['wall']
+    agg, nfr = {}, 0
+    for wall, line in summ:
+        if wall < t0w:
+            continue
+        nm = re.match(r'n=(\d+)', line)
+        fw = re.search(r' fw=(\S*)', line)
+        if not nm or fw is None:
+            continue
+        k = int(nm.group(1))
+        nfr += k
+        for ent in filter(None, fw.group(1).split(',')):
+            em = re.match(r'([^#]+)#(\d+):([\d.]+)/([\d.]+)$', ent)
+            if em:
+                key = (em.group(1), int(em.group(2)))
+                t = agg.setdefault(key, [0.0, 0.0])
+                t[0] += float(em.group(3)) * k
+                t[1] += float(em.group(4)) * k
+    if nfr:
+        print('### 6. Vulkan waits and submits by call site (fw=), per frame\n')
+        rows = []
+        for (key, slot), (tms, tn) in sorted(agg.items(), key=lambda kv: -kv[1][0]):
+            rows.append([key, slot, '%.2f' % (tms / nfr), '%.1f' % (tn / nfr),
+                         sites.get(slot, '?')])
+        print(table(rows, ['row.ctx.reason', 'slot', 'ms/frame', 'calls/frame', 'site']))
+        print('\n(%d frames of summaries in the window; a site outside a line\'s top 8 '
+              'is not counted there)\n' % nfr)
     if a.tsv:
         with open(a.tsv, 'w') as o:
             o.write('wall\tf\tP\tvb\tcls\tv_run\tv_blk\tlockw\tp_run\tp_blk\tpidle\tgpu\tmhz\n')
