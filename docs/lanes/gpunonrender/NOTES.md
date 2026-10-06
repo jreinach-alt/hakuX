@@ -1922,3 +1922,16 @@ most 14.7 ms).
    locked to sysmem. A title that gains nothing and reads in/out near 1 in
    both arms was already sysmem under `bandwidth`. That is a hold, not a
    miss.
+
+No result on disk since 5c35880d0a (05:25 PDT) re-reads Otogi, Halo 2 or
+Top Spin. The only candidate-title run after it is Tron 2.0
+(`1791267037-hostops-measured-tron`), which was never inflated. So the
+fleet A/B's `bandwidth` arm is also those three titles' first clean GPU
+reading. Read it before their `profiled` arm is judged.
+
+### Where attempt 13 stopped
+
+At 14:25 PDT, WAITING on P2-P (`run 1-1791317784-lane.gpunonrender-1635052`),
+parked by lane.local until 22:00. On resume: read P2-P on the matched intro
+segment against P2-S and P2-G (rule above). Queue the 60 s master restore if
+lane.local has not, then follow the order in "Next, ranked".
