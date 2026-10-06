@@ -1178,3 +1178,17 @@ What this shows, and what it does not:
 - Final: result gave-up, reason budget 25 min, last state loading, 180 steps, no gameplay frame. The process exited on its own
   (rc=1) at 12:25:16; the wrapper released the Nova hold (rc=0). The earlier stop-by-PID was refused and was not needed.
 - Verdict: FAIL (hang on the post-team-select loading screen; failure for identification, not a re-run).
+
+## Resume 10-06 12:41 PDT (attempt 2): why attempt 1 of this session did not finish
+
+- Attempt 1 ended at 12:25 when NHL Hitz Pro gave up on the post-team-select loading hang (OUTBOX 12:25, NEW ISSUE). It took the
+  hold, got its verdict and released the hold, then ended without taking the next title in the 11:52 order (NBA 2K2 was already
+  accepted, so the next is NBA 2K3). Cause: the session stopped at the verdict instead of going to the next title, so the Nova sat
+  idle from 12:25.
+- This attempt: merged origin/master (6 commits, clean, 1fd9142c27). Nova is free: no hold, no queued request, last result
+  0342eba317 env [] (the clean master restore). NBA 2K2 is on playable-accepted.tsv (10-05), so it gets no run. NHL 2K3 is a
+  performance miss (hold3, 69% at the bar): it needs telemetry and a fix, not a re-queue, so it is next after NBA 2K3.
+- Next on the Nova: NBA 2K3 first-run held run (`scratch/nba2k3c.sh`, log `scratch/nba2k3-1006-a2.log`, out `runs/nba-2k3/hold3`, the same dir as the void 10-05 hold3: its files are overwritten, and the old ones stay in git history at
+  the last commit before this run).
+  The 10-05 hold3 PASS was on the frametrace APK (void), and lane.local's 06:35 order re-holds it.
+- Launch note: `setsid` is refused by this sandbox; detach with python3 `subprocess.Popen(..., start_new_session=True)`.
