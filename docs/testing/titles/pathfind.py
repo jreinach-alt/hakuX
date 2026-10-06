@@ -201,22 +201,26 @@ def name_press(name, tries):
     return list(seq) if seq else [NAME_PRESS[tries % len(NAME_PRESS)]]
 
 
-# an end-of-match REMATCH (10-06, Marvel Nemesis, runs/sweep-4541038A): the panel opens on REMATCH (top of three rows), but the
-# cursor stays where the last cancel left it, and the confirm dialog opens on NO. One UP from RETURN lands on REMATCH, one from
-# QUIT does not, and a DOWN-and-A walked it to RETURN six times in 90 s (the 01:23 run: one UP put the dialog on RETURN). So:
-# two UP taps (the panel's top row from any row) and A opens the confirm; DOWN to YES and A; a RETURN confirm gets B back to the panel.
+# an end-of-match REMATCH (10-06, Marvel Nemesis, runs/sweep-4541038A and -r2): the panel's rows are REMATCH, RETURN TO CHARACTER
+# SELECT, QUIT TO MAIN MENU, and its cursor is NOT reset on each open: the look reads REMATCH highlighted and two UP taps still
+# opened RETURN (the menu wraps: UP from the top row goes to QUIT). So the rule acts on what the look reads: A only when REMATCH is
+# highlighted, else one UP and read again. The REMATCH confirm opens on NO: DOWN to YES, then A. The RETURN confirm also opens on
+# NO, so A there cancels back to the panel (B did not reliably close it).
+REMATCH_HL = re.compile(r"rematch (is )?highlight")
+
+
 def rematch_press(why, st):
     """The inputs for one REMATCH step of an end-of-match panel or its confirm dialog, else None."""
     why = (why or "").lower()
-    if "sure" in why and "return to character select" in why:
-        return ["B"]
-    if "rematch" not in why:
-        return None
     if "sure" in why:
-        return ["DOWN", "A"]
-    if st in ("results", "menu"):
-        return ["UP", "UP", "A"]
-    return None
+        if "rematch" in why:
+            return ["DOWN", "A"]
+        if "return to character select" in why:
+            return ["A"]
+        return None
+    if "rematch" not in why or st not in ("results", "menu"):
+        return None
+    return ["A"] if REMATCH_HL.search(why) else ["UP"]
 # Title-specific hold loops (10-03 addendum, the owner's Black Stone design). They replace the genre's loop and its
 # unlock rotation for these title ids. The walk moves the player with the left stick only, in long strokes that
 # change direction. X is pressed once, alone: at the start of the hold and after two still windows in a row. Y, R1,
