@@ -3,7 +3,7 @@ State: ready
 
 Lane: gpunonrender                Issue: #433
 Base: master @ 0342eba317
-Files: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/rpcread.py, docs/lanes/gpunonrender/WAITING
+Files: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/rpcread.py, docs/lanes/gpunonrender/WAITING, docs/testing/nv2a_index.json
 Prediction: none: no arm (two telemetry soaks read by hand against expected results and a decision rule written in NOTES.md before the runs)
 Needs device: yes    Needs NDK: yes
 
