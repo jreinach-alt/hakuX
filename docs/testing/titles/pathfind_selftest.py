@@ -504,6 +504,13 @@ check("nameseq", pathfind.name_press("Strike Force Bowling", 0) == ["DOWN", "DOW
       and pathfind.name_press("Strike_Force_Bowling", 3) == ["DOWN", "DOWN", "DOWN", "DOWN", "A"]
       and pathfind.name_press("NBA 2K3", 0) == ["START"] and pathfind.name_press("NBA 2K3", 1) == ["A"],
       "a title's name sequence is used at a name entry; other titles keep START, then A")
+# REMATCH (10-06, Marvel Nemesis, runs/sweep-4541038A): the panel goes up to the top row and A; the confirm dialog (which
+# opens on NO) goes down to YES and A. A panel that does not name REMATCH, or any other menu, gets no rule.
+check("rematch", pathfind.rematch_press("END OF MATCH with REMATCH highlighted", "results") == ["STICK:up:0.5", "A"]
+      and pathfind.rematch_press("Are you sure you want to REMATCH? NO highlighted", "menu") == ["STICK:down:0.5", "A"]
+      and pathfind.rematch_press("END OF MATCH panel, RETURN TO CHARACTER SELECT", "results") is None
+      and pathfind.rematch_press("pause menu, resume", "pause") is None,
+      "REMATCH: up and A on the panel, down and A on its confirm; other panels get no rule")
 # bowling (10-05, AMF Bowling 2004): a bowl hold loops aim and throw with no B, X or Y, and each frame's scorecard
 # (a period_break) gets START, then A, on its own budget (PERIOD_TRIES), not the shared CONTINUE budget.
 ROUTE_LOG.clear()

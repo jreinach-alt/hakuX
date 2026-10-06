@@ -199,6 +199,21 @@ def name_press(name, tries):
     """The inputs for one name-entry press: the title's own sequence, else NAME_PRESS in turn."""
     seq = NAME_SEQ.get(re.sub(r"[^A-Z0-9]+", "_", (name or "").upper()).strip("_"))
     return list(seq) if seq else [NAME_PRESS[tries % len(NAME_PRESS)]]
+
+
+# an end-of-match REMATCH (10-06, Marvel Nemesis, frames 101 and 106 of runs/sweep-4541038A): the panel opens on REMATCH, but
+# the cursor stays where the last cancel left it, and the confirm dialog opens on NO. A down-and-A walked the panel to RETURN
+# and looped six times in 90 s. So: up to the top row and A (the dialog opens), then down to YES and A.
+def rematch_press(why, st):
+    """The inputs for one REMATCH step of an end-of-match panel or its confirm dialog, else None."""
+    why = (why or "").lower()
+    if "rematch" not in why:
+        return None
+    if "sure" in why:
+        return ["STICK:down:0.5", "A"]
+    if st in ("results", "menu"):
+        return ["STICK:up:0.5", "A"]
+    return None
 # Title-specific hold loops (10-03 addendum, the owner's Black Stone design). They replace the genre's loop and its
 # unlock rotation for these title ids. The walk moves the player with the left stick only, in long strokes that
 # change direction. X is pressed once, alone: at the start of the hold and after two still windows in a row. Y, R1,
@@ -1698,7 +1713,11 @@ class Agent:
                         wait_s = min(max(float(a.get("wait_s") or 2), 0.5), 8)
                     except (TypeError, ValueError):
                         wait_s = 2.0
-                    if st == "continue" and not th and cont_tries < CONTINUE_TRIES:
+                    rm = rematch_press(a.get("why"), st) if not th else None
+                    if rm:
+                        action, wait_s = rm, 2.0
+                        look["rematch"] = True
+                    elif st == "continue" and not th and cont_tries < CONTINUE_TRIES:
                         # a CONTINUE countdown (fighting games): START, then A, unlooked; the look after each says which took
                         action, wait_s = [CONTINUE_PRESS[cont_tries % len(CONTINUE_PRESS)]], 1.5
                         cont_tries += 1

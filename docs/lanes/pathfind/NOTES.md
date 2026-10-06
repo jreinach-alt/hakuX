@@ -1045,3 +1045,20 @@ What this shows, and what it does not:
   $0.05); the owner's figure is the authority, and this attempt did not measure it.
 - Next (first item of the next window): the five sweep titles and the football family, in the 12:35 order (football last), each
   to a verdict before the next. The sports period rule and the screening bar (harness share at 28.5) stand.
+
+## Resume 10-06 00:50 PDT (attempt 3, overnight order from the 00:33 PM addendum): why attempt 2 did not finish
+
+- Attempt 2 (ended 22:55 PDT 10-05) did not stall on the device. It stopped at its OWN 22:40/22:55 cut-off for new starts
+  and left WAITING `time 2026-10-06T07:10`. The 10-05 PM overnight order and the 00:33 PM addendum say the cut-off does not
+  apply tonight, so the time gate was the lane's choice, not the owner's. Nothing was queued and the Nova was idle from
+  ~22:50 to this session.
+- This attempt: WAITING removed (no wait). Offline prep first: the Marvel Nemesis REMATCH input, read from frames
+  (runs/sweep-4541038A frames 101 and 106, the 99-111 hold records): the end-of-match panel opens on REMATCH (top row), the
+  confirm dialog opens on NO. The loop's STICK:down moved the panel to RETURN TO CHARACTER SELECT, then A on NO returned to
+  the panel, six times. Fix in pathfind.py (`rematch_press`, used before the continue/period/name branches): on the panel
+  STICK:up then A, on the confirm STICK:down then A. Selftest 79 ok (`scratch/selftest-attempt3.log`), including `rematch`.
+- Then, in the 10-05 PM order: Marvel Nemesis (path 4541038A.json on master), Rogue Trooper, Ratatouille, WE9, Blowout,
+  Tecmo Classic Arcade (ROMS/xbox per sweep-1004.tsv; first-run, 15-min claim), Fight Club / Batman Begins (attack-genre),
+  football last. Each run: detached (`scratch/queue1006.sh`), polled in the foreground.
+- Device: the Nova had no hold and no lane request at the start of this attempt (`dispatch/hold` lists only lifted holds
+  and thor).
