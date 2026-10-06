@@ -1713,3 +1713,30 @@ Tot 0.54x, 32.5 -> 59 gfps; pixels pass). The census ranking gave this pair
 P 0.3, because ~90 draws per scene pass looked less replay-bound than DOA3.
 That was wrong: with two bins, every pass pays its replay, whatever its draw
 count.
+
+### P3 read: DOA Ultimate (the shipped `sysmem` table row, re-measured)
+
+P3-G `1-1791317662-lane.gpunonrender-1629224` (`TU_DEBUG=gmem`: `render_mode:
+sysmem (table, env wins) title=54430006 TU_DEBUG=gmem`) and P3-S
+`1-1791317663-lane.gpunonrender-1629401` (no env: `sysmem (table)
+TU_DEBUG=sysmem`). Both ran with the cache kept (apk 4028728fcc5a, after
+P2). R1 holds. R2 holds: P3-G's fight passes read in/out 0.50; P3-S's passes
+read as GMEM carry 0.07 of 19.7 ms. Survey route, story mode, Kasumi's first
+stage (the clock tower) in both arms. The opponent differs: Lei Fang in
+P3-G, Tina in P3-S, who won the first round quickly. P3-S continued, so it has
+two fight windows. The START presses pause the fight about half the time in
+both arms alike.
+
+| window | gfps median | Tot ms | out / in ms per frame | draws/frame |
+|---|---|---|---|---|
+| P3-G GMEM, fight (13:34:20-13:36:05) | 20.0 | 44.3 | 43.4 / 21.6 | 755 |
+| P3-S sysmem, fight 1 (13:40:00-13:40:44) | **43.0** | **21.6** | 21.2 / 21.1 | 709 (both fights) |
+| P3-S sysmem, fight 2 (13:41:03-13:41:58) | **42.0** | **21.3** | 20.9 / 20.9 | |
+
+Rule: gfps +22 (2.1x), Tot 0.49x, R1-R3 hold. Pixels: boot40 and booted are
+**identical** in the two modes (0.0% differing). Character select differs
+5.4-6.7%, inside the animated portrait. The menu frames over the animated 3D
+background differ in both arms alike. **Verdict: the shipped sysmem row
+stands**, at about 2x the GMEM frame rate on today's master (flip474: 13 ->
+21; gmem474's profiled arm: 32.4). Once more GMEM's last tile (21.6 ms) is
+the whole sysmem pass (20.9 ms).
