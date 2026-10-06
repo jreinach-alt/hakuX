@@ -42,7 +42,7 @@ What is in flight right now. Generated from the working tree and updated as work
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `fdc56753a2` | 2026-10-05 21:03 |
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `33c908a4ed` | 2026-10-05 21:19 |
 
 ## Recently landed on master
 
@@ -57,4 +57,4 @@ What is in flight right now. Generated from the working tree and updated as work
 - 2026-10-04 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
 - 2026-10-04 hangwatch: a locked-up title is caught on telemetry in about 90 s, not waited out
 
-_Updated 2026-10-05 21:08 PDT._
+_Updated 2026-10-05 21:19 PDT._
