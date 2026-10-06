@@ -101,11 +101,25 @@ enum {
     HAKUX_FT_NC,
 };
 
+/* The caller's context when a wait began: which PFIFO-loop call it was taken
+ * under. pgraph.c sets it around the two calls the PFIFO thread makes
+ * between methods that can wait on the GPU side. */
+enum {
+    HAKUX_FT_CTX_NONE,      /* anything else; on the PFIFO thread, a method
+                             * (pgraph.lock held, pfifo.lock released) */
+    HAKUX_FT_CTX_REPORTS,   /* pgraph_process_pending_reports: its STALLED
+                             * finish runs with pfifo.lock HELD (pfifo.c) */
+    HAKUX_FT_CTX_PENDING,   /* pgraph_process_pending: downloads, flush and
+                             * the display sync, on the render thread */
+    HAKUX_FT_NCTX,
+};
+
 #define HAKUX_FT_NA 0xffffffffu   /* a field this build cannot measure */
 
 typedef struct HakuxFtRow {
     uint32_t run, rq, blk;          /* schedstat on-CPU, run queue, the rest */
     uint32_t w[HAKUX_FT_NW];        /* instrumented waits, by reason */
+    uint32_t c[HAKUX_FT_NCTX];      /* the same waits, by context */
 } HakuxFtRow;
 
 typedef struct HakuxFtFrame {
@@ -188,7 +202,38 @@ typedef struct HakuxFtWait {
     int64_t t0;
     int8_t holder;          /* holder role, -1 none */
     int8_t reason;
+    uint8_t ctx;            /* HAKUX_FT_CTX_* when it began */
 } HakuxFtWait;
+
+extern __thread uint8_t hakux_ft_ctx;
+
+/* Around a call whose waits are to be booked to @ctx. Off: one load and a
+ * branch, and the tag is never written. */
+static inline int hakux_ft_ctx_enter(int ctx)
+{
+    int old;
+
+    if (!hakux_ft_enabled()) {
+        return -1;
+    }
+    old = hakux_ft_ctx;
+    hakux_ft_ctx = (uint8_t)ctx;
+    return old;
+}
+
+static inline void hakux_ft_ctx_leave(int old)
+{
+    if (old >= 0) {
+        hakux_ft_ctx = (uint8_t)old;
+    }
+}
+
+/* One Vulkan wait or submit returning to @ra, @ns long, booked by call site,
+ * the calling thread's role and its context: the summary's fw= field. Called
+ * by the Vulkan interposer in profile.c, on any thread. */
+void hakux_ft_site_add(uintptr_t ra, int reason, int64_t ns);
+/* Names a call site in the log; profile.c points it at dladdr. */
+extern void (*hakux_ft_site_describe)(uintptr_t ra, char *buf, size_t n);
 
 void hakux_ft_init(void);                       /* reads the environment */
 void hakux_ft_thread(int role);                 /* register the calling thread */
@@ -406,6 +451,9 @@ static const char *const hakux_ft_h_name[HAKUX_FT_NH] __attribute__((unused)) = 
 static const char *const hakux_ft_row_name[HAKUX_FT_NROW] __attribute__((unused)) = {
     "v", "p", "r", "m", "o"
 };
+static const char *const hakux_ft_ctx_name[HAKUX_FT_NCTX] __attribute__((unused)) = {
+    "none", "rep", "pend"
+};
 
 #ifdef HAKUX_FT_IMPLEMENTATION
 /* ------------------------------------------------------------------------ */
@@ -454,7 +502,9 @@ typedef struct FtRole {
     int64_t wt0;                    /* in-progress wait start, 0 none */
     int8_t wholder;
     uint8_t wreason;
+    uint8_t wctx;
     uint64_t acc[HAKUX_FT_NW];      /* booked wait ns */
+    uint64_t cacc[HAKUX_FT_NCTX];   /* ... by context */
     uint64_t hold[HAKUX_FT_NH];     /* booked lock-wait ns by holder class */
     uint64_t hrole[HAKUX_FT_NROLE + 1]; /* ... by holder role, last: none */
     uint64_t nwait;                 /* waits ended */
@@ -471,6 +521,26 @@ static FtRole ft_role[HAKUX_FT_NROLE];
 static uint64_t ft_other_acc[HAKUX_FT_NW];   /* atomic adds, any thread */
 static __thread int8_t ft_self = -1;
 static __thread uint8_t ft_depth;
+__thread uint8_t hakux_ft_ctx;
+
+/* Vulkan wait and submit call sites, any thread, lock-free. A slot is claimed
+ * by a CAS on its key: the return address, the reason, the caller's role
+ * (+1; 0 unregistered: the UI thread, the render thread) and its context.
+ * What does not fit is counted, not dropped silently. */
+#define FT_SITE_SLOTS 64
+#define FT_SITE_TOP 8               /* sites per summary line */
+typedef struct FtSite {
+    uint64_t key, ns, n;
+} FtSite;
+static FtSite ft_site[FT_SITE_SLOTS];
+static uint64_t ft_site_drop_ns;
+
+static void ft_site_describe_default(uintptr_t ra, char *buf, size_t n)
+{
+    snprintf(buf, n, "ra=0x%llx", (unsigned long long)ra);
+}
+void (*hakux_ft_site_describe)(uintptr_t ra, char *buf, size_t n) =
+    ft_site_describe_default;
 
 /* MMIO dispatch time (G9), written by the vCPU thread only. Slots are keyed
  * by the MemoryRegion pointer and named at first sight; the last slot takes
@@ -732,6 +802,7 @@ void hakux_ft_wait_begin_slow(HakuxFtWait *w, int reason, int holder)
     }
     w->t0 = hakux_ft_now();
     w->reason = (int8_t)reason;
+    w->ctx = hakux_ft_ctx < HAKUX_FT_NCTX ? hakux_ft_ctx : HAKUX_FT_CTX_NONE;
     w->holder = (int8_t)(holder >= 0 && holder < HAKUX_FT_NROLE &&
                          holder != self ? holder : -1);
     if (self >= 0) {
@@ -740,6 +811,7 @@ void hakux_ft_wait_begin_slow(HakuxFtWait *w, int reason, int holder)
         FT_ST(&r->wt0, w->t0);
         FT_ST(&r->wholder, w->holder);
         FT_ST(&r->wreason, (uint8_t)reason);
+        FT_ST(&r->wctx, w->ctx);
         ft_publish(r, 2 + (uint32_t)reason);
         ft_wend(r);
     }
@@ -771,6 +843,7 @@ void hakux_ft_wait_end_slow(HakuxFtWait *w)
         FtRole *r = &ft_role[self];
         ft_wbegin(r);
         FT_ST(&r->acc[w->reason], r->acc[w->reason] + (uint64_t)dur);
+        FT_ST(&r->cacc[w->ctx], r->cacc[w->ctx] + (uint64_t)dur);
         if (lockw) {
             int hr = w->holder >= 0 ? w->holder : HAKUX_FT_NROLE;
             for (int k = 0; k < HAKUX_FT_NH; k++) {
@@ -799,6 +872,40 @@ void hakux_ft_wait_end_slow(HakuxFtWait *w)
         ft_wend(r);
     }
     w->t0 = 0;
+}
+
+static inline uint64_t ft_site_key(uintptr_t ra, int reason, int role, int ctx)
+{
+    return ((uint64_t)ra & 0xffffffffffffull) |
+           ((uint64_t)(reason & 15) << 48) |
+           ((uint64_t)((role + 1) & 15) << 52) |
+           ((uint64_t)(ctx & 15) << 56);
+}
+
+void hakux_ft_site_add(uintptr_t ra, int reason, int64_t ns)
+{
+    uint64_t key = ft_site_key(ra, reason, ft_self, hakux_ft_ctx);
+    uint32_t i = (uint32_t)((key * 0x9E3779B97F4A7C15ull) >> 58);
+
+    if (ns < 0) {
+        ns = 0;
+    }
+    for (uint32_t p = 0; p < FT_SITE_SLOTS;
+         p++, i = (i + 1) % FT_SITE_SLOTS) {
+        uint64_t k = __atomic_load_n(&ft_site[i].key, __ATOMIC_ACQUIRE);
+        if (k == 0) {
+            uint64_t z = 0;
+            k = __atomic_compare_exchange_n(&ft_site[i].key, &z, key, false,
+                                            __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)
+                ? key : z;
+        }
+        if (k == key) {
+            __atomic_fetch_add(&ft_site[i].ns, (uint64_t)ns, __ATOMIC_RELAXED);
+            __atomic_fetch_add(&ft_site[i].n, 1, __ATOMIC_RELAXED);
+            return;
+        }
+    }
+    __atomic_fetch_add(&ft_site_drop_ns, (uint64_t)ns, __ATOMIC_RELAXED);
 }
 
 void hakux_ft_gidle_begin(void)
@@ -891,6 +998,7 @@ void hakux_ft_vblank(void)
 
 typedef struct FtSnap {
     uint64_t acc[HAKUX_FT_NROW][HAKUX_FT_NW];
+    uint64_t cacc[HAKUX_FT_NROLE][HAKUX_FT_NCTX];
     uint64_t hold[HAKUX_FT_NH];     /* vCPU only */
     uint64_t hrole[HAKUX_FT_NROLE + 1]; /* vCPU only */
     uint64_t nwait[HAKUX_FT_NROLE];
@@ -929,13 +1037,16 @@ static void ft_snap_role(int i, int64_t now, FtSnap *s)
         uint32_t s1 = __atomic_load_n(&r->sq, __ATOMIC_ACQUIRE);
         int64_t wt0, gt0;
         int8_t wholder;
-        uint8_t wreason;
+        uint8_t wreason, wctx;
 
         if (s1 & 1) {
             continue;
         }
         for (int k = 0; k < HAKUX_FT_NW; k++) {
             s->acc[i][k] = FT_LD(&r->acc[k]);
+        }
+        for (int k = 0; k < HAKUX_FT_NCTX; k++) {
+            s->cacc[i][k] = FT_LD(&r->cacc[k]);
         }
         if (i == HAKUX_FT_VCPU) {
             for (int k = 0; k < HAKUX_FT_NH; k++) {
@@ -953,12 +1064,16 @@ static void ft_snap_role(int i, int64_t now, FtSnap *s)
         wt0 = FT_LD(&r->wt0);
         wholder = FT_LD(&r->wholder);
         wreason = FT_LD(&r->wreason);
+        wctx = FT_LD(&r->wctx);
         __atomic_thread_fence(__ATOMIC_ACQUIRE);
         if (__atomic_load_n(&r->sq, __ATOMIC_RELAXED) != s1) {
             continue;
         }
         if (wt0 && now > wt0 && wreason < HAKUX_FT_NW) {
             s->acc[i][wreason] += (uint64_t)(now - wt0);
+            if (wctx < HAKUX_FT_NCTX) {
+                s->cacc[i][wctx] += (uint64_t)(now - wt0);
+            }
             if (i == HAKUX_FT_VCPU && wreason <= HAKUX_FT_W_PGRAPH_LOCK) {
                 if (wholder >= 0 && wholder < HAKUX_FT_NROLE) {
                     ft_holder_split(wholder, wt0, now, s->hold);
@@ -1111,6 +1226,9 @@ void hakux_ft_flip(const HakuxFtExt *x)
         for (int k = 0; k < HAKUX_FT_NW; k++) {
             row->w[k] = ft_us(s.acc[i][k], ft.snap.acc[i][k]);
         }
+        for (int k = 0; i < HAKUX_FT_NROLE && k < HAKUX_FT_NCTX; k++) {
+            row->c[k] = ft_us(s.cacc[i][k], ft.snap.cacc[i][k]);
+        }
         if (i < HAKUX_FT_NROLE && s.ss_ok[i] && ft.snap.ss_ok[i]) {
             row->run = ft_us(s.run[i], ft.snap.run[i]);
             row->rq = ft_us(s.rq[i], ft.snap.rq[i]);
@@ -1191,6 +1309,10 @@ typedef struct FtWriter {
     uint64_t vrun, vrq, vblk, vgi, vgw, vw[HAKUX_FT_NW], vh[HAKUX_FT_NH];
     uint64_t vho[HAKUX_FT_NROLE + 1], nw[HAKUX_FT_NROLE];
     uint64_t prun, prq, pblk, pidle, pw[HAKUX_FT_NW], lockw, rrun, rblk;
+    uint64_t pc[HAKUX_FT_NCTX];
+    uint64_t site_ns[FT_SITE_SLOTS], site_n[FT_SITE_SLOTS]; /* at the last
+                                                            * summary */
+    bool site_named[FT_SITE_SLOTS];
     uint64_t mhz_sum, ins_sum, crit_sum;
     uint64_t mmio_sum, nmmio_sum;       /* frames with HAVE_MMIO */
     uint32_t mmio_frames;
@@ -1287,6 +1409,8 @@ static int ft_fmt_frame(char *b, size_t n, const HakuxFtFrame *fr,
     for (int k = 0; k < HAKUX_FT_NW && o < (int)n; k++) {
         o += snprintf(b + o, n - o, k ? ",%.2f" : "%.2f", p->w[k] / 1e3);
     }
+    o += snprintf(b + o, n - o, " pc=%.2f,%.2f,%.2f",
+                  p->c[0] / 1e3, p->c[1] / 1e3, p->c[2] / 1e3);
     o += snprintf(b + o, n - o,
                   " r=%.2f/%.2f/%.2f gpu=%.2f rp=%u mhz=%u",
                   r->run / 1e3, r->rq / 1e3, r->blk / 1e3,
@@ -1367,6 +1491,88 @@ static void ft_dump_hitch(FtWriter *w)
     w->pending = false;
 }
 
+/*
+ * The summary's fw= field: the FT_SITE_TOP call sites with the most Vulkan
+ * wait or submit time since the last summary, each as
+ * <row>.<ctx>.<reason>#<slot>:<ms per frame>/<calls per frame>. A slot seen
+ * for the first time is named first on its own line ("site #<slot> ..."),
+ * so a log carries the file:line key (pc=, the .so offset of the call) once.
+ * fwd= is time that found every slot taken.
+ */
+static const char *ft_site_row(uint64_t key)
+{
+    int role = (int)((key >> 52) & 15) - 1;
+    return hakux_ft_row_name[role >= 0 && role < HAKUX_FT_NROLE ? role
+                                                                 : HAKUX_FT_OTHER];
+}
+
+static const char *ft_site_ctx(uint64_t key)
+{
+    unsigned c = (unsigned)((key >> 56) & 15);
+    return hakux_ft_ctx_name[c < HAKUX_FT_NCTX ? c : HAKUX_FT_CTX_NONE];
+}
+
+static const char *ft_site_reason(uint64_t key)
+{
+    unsigned r = (unsigned)((key >> 48) & 15);
+    return hakux_ft_w_name[r < HAKUX_FT_NW ? r : HAKUX_FT_W_OTHER];
+}
+
+static int ft_sites_fmt(FtWriter *w, char *b, size_t n, uint32_t frames)
+{
+    uint64_t d[FT_SITE_SLOTS], dn[FT_SITE_SLOTS], drop;
+    bool used[FT_SITE_SLOTS] = { false };
+    static uint64_t drop_last;
+    int o = 0;
+
+    for (int i = 0; i < FT_SITE_SLOTS; i++) {
+        uint64_t key = __atomic_load_n(&ft_site[i].key, __ATOMIC_ACQUIRE);
+        uint64_t ns = FT_LD(&ft_site[i].ns), cn = FT_LD(&ft_site[i].n);
+
+        d[i] = ns - w->site_ns[i];
+        dn[i] = cn - w->site_n[i];
+        w->site_ns[i] = ns;
+        w->site_n[i] = cn;
+        if (key && !w->site_named[i]) {
+            char desc[200], line[320];
+
+            hakux_ft_site_describe((uintptr_t)(key & 0xffffffffffffull), desc,
+                                   sizeof(desc));
+            snprintf(line, sizeof(line), "site #%d row=%s ctx=%s reason=%s %s",
+                     i, ft_site_row(key), ft_site_ctx(key), ft_site_reason(key),
+                     desc);
+            hakux_ft_log("hakuX-ft1", line);
+            w->site_named[i] = true;
+        }
+    }
+    o += snprintf(b + o, n - o, " fw=");
+    for (int top = 0; top < FT_SITE_TOP && o < (int)n; top++) {
+        int best = -1;
+        uint64_t key;
+
+        for (int i = 0; i < FT_SITE_SLOTS; i++) {
+            if (!used[i] && d[i] && (best < 0 || d[i] > d[best])) {
+                best = i;
+            }
+        }
+        if (best < 0) {
+            break;
+        }
+        used[best] = true;
+        key = FT_LD(&ft_site[best].key);
+        o += snprintf(b + o, n - o, "%s%s.%s.%s#%d:%.2f/%.1f", top ? "," : "",
+                      ft_site_row(key), ft_site_ctx(key), ft_site_reason(key),
+                      best, d[best] / 1e6 / frames, (double)dn[best] / frames);
+    }
+    drop = FT_LD(&ft_site_drop_ns);
+    if (drop != drop_last && o < (int)n) {
+        o += snprintf(b + o, n - o, " fwd=%.2f",
+                      (drop - drop_last) / 1e6 / frames);
+        drop_last = drop;
+    }
+    return o < (int)n ? o : (int)n - 1;
+}
+
 static void ft_summary(FtWriter *w, int64_t now)
 {
     char line[2048];
@@ -1443,6 +1649,8 @@ static void ft_summary(FtWriter *w, int64_t now)
         o += snprintf(line + o, sizeof(line) - o, k ? ",%.2f" : "%.2f",
                       w->pw[k] / 1e3 / n);
     }
+    o += snprintf(line + o, sizeof(line) - o, " pc=%.2f,%.2f,%.2f",
+                  w->pc[0] / 1e3 / n, w->pc[1] / 1e3 / n, w->pc[2] / 1e3 / n);
     o += snprintf(line + o, sizeof(line) - o,
         " rrun=%.2f rblk=%.2f sl50=%.2f sl05=%.2f vb=%u/%u/%u/%u/%u "
         "ins=%.1f insmax=%u wcpu_us=%llu",
@@ -1478,6 +1686,7 @@ static void ft_summary(FtWriter *w, int64_t now)
                           ft_mmio_name[b], d[b] / 1e3 / n);
         }
     }
+    o += ft_sites_fmt(w, line + o, sizeof(line) - o, n);
     hakux_ft_log("hakuX-ft1", line);
     if (w->csv) {
         fflush(w->csv);
@@ -1496,6 +1705,7 @@ static void ft_summary(FtWriter *w, int64_t now)
         memset(w->nw, 0, sizeof(w->nw));
         w->prun = w->prq = w->pblk = w->pidle = w->lockw = 0;
         memset(w->pw, 0, sizeof(w->pw));
+        memset(w->pc, 0, sizeof(w->pc));
         w->rrun = w->rblk = w->mhz_sum = w->ins_sum = w->crit_sum = 0;
         w->mmio_sum = w->nmmio_sum = 0;
         w->mmio_frames = 0;
@@ -1539,7 +1749,8 @@ static void ft_csv_open(FtWriter *w)
         for (int k = 0; k < HAKUX_FT_NW; k++) {
             fprintf(w->csv, ",o_%s", hakux_ft_w_name[k]);
         }
-        fprintf(w->csv, ",gpu,rp,mhz,tp_ns,rel_ns,slack,ins,mmio,nmmio\n");
+        fprintf(w->csv, ",gpu,rp,mhz,tp_ns,rel_ns,slack,ins,mmio,nmmio"
+                        ",p_c_none,p_c_rep,p_c_pend\n");
     }
     {
         char line[400];
@@ -1592,8 +1803,9 @@ static void ft_csv_row(FtWriter *w, const HakuxFtFrame *fr, int64_t rel,
     if (has_slack) {
         fprintf(c, "%lld", (long long)(slack / 1000));
     }
-    fprintf(c, ",%u,%d,%u\n", fr->ins,
-            fr->mmio == HAKUX_FT_NA ? -1 : (int)fr->mmio, fr->nmmio);
+    fprintf(c, ",%u,%d,%u,%u,%u,%u\n", fr->ins,
+            fr->mmio == HAKUX_FT_NA ? -1 : (int)fr->mmio, fr->nmmio,
+            fr->r[1].c[0], fr->r[1].c[1], fr->r[1].c[2]);
 }
 
 /* One frame, in order. Exposed for the selftest. */
@@ -1659,6 +1871,9 @@ void hakux_ft_writer_frame(FtWriter *w, const HakuxFtFrame *in, int64_t now)
     for (int k = 0; k < HAKUX_FT_NW; k++) {
         w->vw[k] += v->w[k];
         w->pw[k] += p->w[k];
+    }
+    for (int k = 0; k < HAKUX_FT_NCTX; k++) {
+        w->pc[k] += p->c[k];
     }
     for (int k = 0; k < HAKUX_FT_NH; k++) {
         w->vh[k] += fr->vh[k];
