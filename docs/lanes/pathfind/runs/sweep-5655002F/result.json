@@ -1,0 +1,30 @@
+{
+ "title_id": "5655002F",
+ "name": "Fight Club",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/5655002F-Fight_Club.xiso.iso",
+ "result": "gave-up",
+ "tool": "9dff62f2fa",
+ "started": "2026-10-05 22:12:18 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5655002F/frames/070-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5655002F/frames/070-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5655002F/frames/070-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5655002F/frames/070-probe-right.jpg"
+ ],
+ "reason": "budget 15 min",
+ "last_state": "cutscene",
+ "model_calls": 77,
+ "calls_by_model": {
+  "claude-sonnet-5": 77
+ },
+ "steps": 72,
+ "seconds": 905.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5655002F/frames/072-cutscene.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5655002F/strip.jpg"
+}

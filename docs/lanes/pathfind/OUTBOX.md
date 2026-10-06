@@ -827,3 +827,9 @@ Named cost (decompose.py, 302 two-second windows, 368 s at or above the bar, 236
 NEW ISSUE: The Incredible Hulk: Ultimate Destruction: the slow scenes are vCPU guest work (guest busy 30 ms per frame against 16 at bar): runs/sweep-56550039 logcat, decompose.py output above. Blocks Hulk's Playable (play share 0.9996; fps 0.64 of play at the bar).
 
 SCENE SHOULD CONTAIN (if it clears): the Hulk in a city street or a destruction scene, buildings and vehicles breaking, the health bar, the camera behind him.
+
+## #433 -- 2026-10-05 22:33 PDT
+
+[lane.pathfind] Fight Club CAN'T-PATH (claim budget 15 min, 72 steps, 77 model calls, about $3): the claim reached a live fight 22 times and probed each (22 probes). The probes were read against the hit reactions of the fight: most refused, and the closest read was control 0.51 against 0.41 under input, which was not enough to confirm. The claim then ran into the post-fight rematch prompt (YES highlighted, A accepted it) and a cinematic close-up (step 72). No hold ran. Last named state: cutscene (step 72, runs/sweep-5655002F, steps.jsonl). Not re-run (can't-path: move on).
+
+NEW ISSUE (for identification): Fight Club: the fight confirm probe (STICK probes during a fight) refuses on hit reactions; the attack-genre loop would confirm on the fight's own action (X presses change the fighters' stances), and the rematch prompt is an A press. Blocks Fight Club's path; the fighting probe needs the same treatment as the Guilty Gear fight hold.
