@@ -383,3 +383,15 @@ Nova first when the hold is released):
 Opus: one session; code reading (pfifo, draw, reports, renderer, user),
 the interposer and context tags, selftest, a local Android build, NOTES.
 Device: none run; 25.5 min queued.
+
+Build: `assembleDebug` of f2763fe4c0 passes locally (BUILD SUCCESSFUL;
+the interposer is in `libxemu.so`). Preflight: all branch gates pass;
+`coverage` fails on #838-#846, the board's.
+
+### [lane.frametrace] waiting: (22:58 PDT)
+
+On `1-1791264140-lane.frametrace-1709247`, `1-1791264148-lane.frametrace-1709509`
+and `1-1791264150-lane.frametrace-1709628` (Nova, in WAITING), behind one
+lane.gpunonrender request and lane.pathfind's sweep hold. Resolves when each
+result has `DONE`. Then the per-title `fw=` tables confirm or refute
+draw.c:4386 as the PFIFO thread's wait (NOTES section 10).

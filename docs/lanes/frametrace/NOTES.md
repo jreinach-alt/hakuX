@@ -814,6 +814,14 @@ to those four lines) are next.
   site key, ranking and the since-last-line delta). NDK type-check of
   profile.c, pgraph.c, cpu-exec.c, cpus.c: clean apart from warnings that
   were there before.
+- **Build:** `build_local.sh` (`assembleDebug`, as the dispatcher builds)
+  at f2763fe4c0's native tree: BUILD SUCCESSFUL, `GRADLE_EXIT=0`;
+  `libxemu.so` carries `ft_vk_wait_fences`, `hakux_ft_site_add`,
+  `hakux_ft_ctx` and `hakux_ft_gidle_begin`.
+- `ftread.py` section 6 aggregates `fw=` over the gameplay window (ms and
+  calls per frame per site, with each site's `.so` offset); section 3 adds
+  the PFIFO's hooked waits by context. Checked on a synthetic log; old
+  captures read as before.
 
 ### The capture, queued
 
@@ -831,6 +839,16 @@ the `fw=`/`pc=` fields: the naming above holds if `p.rep.fence` (and
 `p.none.fence`) at the site `addr2line` puts on draw.c:4386 carries most of
 the PFIFO's non-idle blocked time, and `p.rep` time per frame bounds the
 vCPU's `lockw`.
+
+### Waiting (22:58 PDT)
+
+On the three Nova requests above (WAITING), queued behind one
+lane.gpunonrender request and lane.pathfind's sweep hold. Resolves when each
+result dir has `DONE`. Then: frames check (fail closed on a window that is
+not gameplay), `ftread.py` per title, `addr2line` the `fw=` sites against
+the dispatcher's f2763fe4c0 APK, and confirm or refute the naming above.
+Preflight: every branch gate passes; `coverage` fails on #838-#846 (open
+board issues with no lane row), the board's to classify.
 
 ## Why attempt 1 did not finish
 

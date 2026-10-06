@@ -39,7 +39,7 @@ Forza `1-1791264148-lane.frametrace-1709509`, Nightfire
 
 Checks: NDK clang type-check of profile.c, pgraph.c, cpu-exec.c, cpus.c
 (Release line, re-pointed): clean apart from warnings that were there
-before. Local `assembleDebug`: see NOTES section 10. Desktop build: not run
+before. Local `assembleDebug` of f2763fe4c0: BUILD SUCCESSFUL. Preflight: all branch gates pass; `coverage` fails on #838-#846, the board's. Desktop build: not run
 (this host cannot build desktop; AGENTS.md).
 
 Release note (none): opt-in telemetry, off unless HAKUX_FRAMETRACE=1.
