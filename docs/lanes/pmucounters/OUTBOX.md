@@ -48,3 +48,29 @@ host with software events: 80,669 samples, 0 lost, attributed. It
 compile-checks inside `cpu-exec.c` with the Android build's flags (and a
 planted error fails that check). The R0 probe now also exercises the sampling
 path on the device, so it takes about 2 minutes instead of 90 s.
+
+## #433 -- 2026-10-06 04:5x UTC (attempt 2: R0 NOT RUN, blocked by a tool permission)
+
+State checked before the run, all met:
+- Thor `bdc158a5`: no request in `running/` and none in `queue/`; no
+  `hakux` process on the device.
+- thermal `xo-therm` 38.1 C (limit 60); battery level 100%, not charging.
+- `security.perf_harden` = 0, `perf_event_paranoid` = 1 (hostops's set, not
+  touched by me). Probe runs without `HARDEN0`.
+- Hold: `thor` held by `lanelocal-fanwait` (not taken or overwritten by me).
+  The probe runs inside that hold, as the addendum says.
+
+The run itself was refused by the tool permission layer ("This command
+requires approval") on `DEV=thor bash docs/lanes/pmucounters/r0_probe.sh`.
+I did not work around it. Nothing ran on the device; nothing is queued,
+running or held by me.
+
+To run R0 (one line; ~2-4 min, no title, no pref touched):
+`cd /home/justin/hakux-work/wt/pmucounters && DEV=thor bash docs/lanes/pmucounters/r0_probe.sh`
+Output goes to `~/hakux-work/perf/<date>-pmucounters/r0-thor/`. Read it
+with `python3 docs/lanes/pmucounters/pmuread.py --controls <out>/probe_*.txt`.
+
+Lane state: `lane/pmucounters` merged with origin/master (clean), NOTES
+attempt-2 section committed (69ef7e50d1). PR stays a draft; no PR tonight.
+R1/R2 not started: the hook grant is recorded in WAITING and not yet in the
+build, so their device runs wait.
