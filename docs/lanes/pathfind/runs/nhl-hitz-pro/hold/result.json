@@ -1,0 +1,81 @@
+{
+ "title_id": null,
+ "name": "NHL Hitz Pro",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/NHL_Hitz_Pro.xiso.iso",
+ "result": "gameplay",
+ "tool": "056b94959f",
+ "started": "2026-10-05 13:46:18 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/020-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/020-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/020-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/020-probe-right.jpg"
+ ],
+ "minutes": 3.26,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/019-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/028-after.jpg"
+ ],
+ "learned": [],
+ "hold": {
+  "genre": "team",
+  "why": "Two hockey teams (Islanders vs. Predators) face off on a rink at center ice with a referee dropping the puck, with the scoreboard and skaters in team jerseys.",
+  "sports": {
+   "clock": "3:00",
+   "period": "1st period",
+   "human_controlled": false,
+   "why": "The center-ice faceoff shows a 3:00 clock, but no period label appears on screen, and no controller icon or marked player shows a human-controlled team (the sho"
+  },
+  "ok": true,
+  "play_s": 603.0,
+  "need_s": 600.0,
+  "hold_s": 646.4,
+  "model_navs": 4,
+  "frames": 17,
+  "still_windows": 0,
+  "shed": [],
+  "reason": "",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 108,
+    "median": 38.0,
+    "share": 0.796,
+    "at_s": 183.6,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 176,
+    "median": 38.0,
+    "share": 0.812,
+    "at_s": 305.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT NHL Hitz Pro ? FAIL(fps: 75.0% of gameplay at >= 30 fps (bar 90%)) gameplay=646.5s fps_ok=0.7499 crash=False hang=False audio_short=0.0 hitches=3/0.307pm worst_ms=107.7 static_frac=0.0 play_share=0.9357 fps_excluded=40.2s"
+ },
+ "model_calls": 32,
+ "calls_by_model": {
+  "claude-sonnet-5": 32
+ },
+ "steps": 20,
+ "seconds": 888.8,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/frames/079-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-hitz-pro/hold/strip.jpg"
+}

@@ -1,0 +1,77 @@
+{
+ "title_id": "5343000E",
+ "name": "Rogue Trooper",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/5343000E-Rogue_Trooper.xiso.iso",
+ "result": "gameplay",
+ "tool": "31d3a8af4f",
+ "started": "2026-10-06 01:23:54 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/027-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/027-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/027-probe-c.jpg"
+ ],
+ "reason": "four probes refused",
+ "minutes": 6.08,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/026-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/031-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/032-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/033-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/034-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/035-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5343.md"
+ ],
+ "hold": {
+  "genre": "shooter",
+  "why": "Third-person view of a soldier walking a canyon path with a weapon, ammo counter and radar HUD, so it is a gun game.",
+  "ok": true,
+  "play_s": 609.3,
+  "need_s": 600.0,
+  "hold_s": 609.6,
+  "model_navs": 0,
+  "frames": 17,
+  "still_windows": 0,
+  "shed": [],
+  "reason": "",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 164,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 182.7,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 279,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 313.2,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Rogue Trooper ? PASS None gameplay=609.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0344 play_share=0.9997 fps_excluded=1.1s"
+ },
+ "model_calls": 31,
+ "calls_by_model": {
+  "claude-sonnet-5": 31
+ },
+ "steps": 27,
+ "seconds": 1025.3,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/frames/083-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-5343000E/strip.jpg"
+}

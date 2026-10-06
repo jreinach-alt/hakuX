@@ -1,0 +1,80 @@
+{
+ "title_id": null,
+ "name": "MLB SlugFest Loaded",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/MLB_SlugFest_Loaded.xiso.iso",
+ "result": "gameplay",
+ "tool": "12d780b26a",
+ "started": "2026-10-05 15:16:21 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/026-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/026-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/026-probe-c.jpg"
+ ],
+ "minutes": 3.51,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/025-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/031-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/032-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/033-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/034-after.jpg"
+ ],
+ "learned": [],
+ "hold": {
+  "genre": "team",
+  "why": "A baseball game on a field: the batter is at the plate, the pitcher is on the mound, and the Contact/Power/Bunt/Dodge prompts are the batting controls.",
+  "sports": {
+   "clock": "none",
+   "period": "1st inning",
+   "human_controlled": true,
+   "why": "No game clock in baseball; the top bar shows 1st inning (\u25b2 top) with 0 outs, and the batting button prompts (Contact/Power/Bunt/Dodge) indicate the human contro"
+  },
+  "ok": true,
+  "play_s": 600.8,
+  "need_s": 600.0,
+  "hold_s": 600.9,
+  "model_navs": 0,
+  "frames": 16,
+  "still_windows": 0,
+  "shed": [],
+  "reason": "",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 186,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 188.5,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 295,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 301.9,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT MLB SlugFest Loaded ? PASS None gameplay=600.8s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0328 play_share=0.9995 fps_excluded=1.4s"
+ },
+ "model_calls": 26,
+ "calls_by_model": {
+  "claude-sonnet-5": 26
+ },
+ "steps": 26,
+ "seconds": 861.2,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/frames/080-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 9,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/mlb-slugfest-loaded/hold/strip.jpg"
+}

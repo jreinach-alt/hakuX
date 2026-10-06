@@ -1,0 +1,75 @@
+{
+ "title_id": null,
+ "name": "AMF Xtreme Bowling",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/AMF_Xtreme_Bowling.xiso.iso",
+ "result": "gameplay",
+ "tool": "1f83d78418",
+ "started": "2026-10-05 16:35:02 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/048-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/048-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/048-probe-c.jpg"
+ ],
+ "minutes": 10.07,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/047-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/049-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/050-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/051-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/052-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/053-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/054-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/055-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/056-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/057-after.jpg"
+ ],
+ "learned": [],
+ "hold": {
+  "genre": "bowl",
+  "why": "A bowling lane is shown with the bowler in the foreground holding a ball, aiming down the lane toward the pins.",
+  "ok": false,
+  "play_s": 426.5,
+  "need_s": 600.0,
+  "hold_s": 574.6,
+  "model_navs": 22,
+  "frames": 17,
+  "still_windows": 0,
+  "shed": [],
+  "reason": "off play for 13 steps: menu (Emulator shows the Game Library list with Tony Hawk's Pro Skater 2x, not AMF Xtreme Bowling; game not started.)",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 173,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 183.5,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 281,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 300.0,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT AMF Xtreme Bowling ? FAIL(crash: exiting due to SIG_DFL handler for signal 11, ucontext 0x6fcde81e20) gameplay=574.4s fps_ok=1.0 crash=True hang=False audio_short=0.0 hitches=7/0.817pm worst_ms=210.7 static_frac=0.0 play_share=0.7469 fps_excluded=67.1s"
+ },
+ "model_calls": 86,
+ "calls_by_model": {
+  "claude-sonnet-5": 86
+ },
+ "steps": 48,
+ "seconds": 1225.5,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/frames/132-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold2/strip.jpg"
+}

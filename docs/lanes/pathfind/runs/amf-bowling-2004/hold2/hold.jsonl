@@ -1,0 +1,96 @@
+{"n": 27, "hold_s": 0.9, "play_s": 6.7, "changed": null, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": true}
+{"n": 28, "hold_s": 7.8, "play_s": 14.1, "changed": 0.1256, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 29, "hold_s": 15.2, "play_s": 21.1, "changed": 0.4808, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 30, "hold_s": 22.0, "play_s": 27.8, "changed": 0.6536, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 31, "hold_s": 28.8, "play_s": 34.9, "changed": 0.5812, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 32, "hold_s": 35.9, "play_s": 41.8, "changed": 0.5617, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.5765, "kept": true}
+{"n": 33, "hold_s": 42.8, "play_s": 49.3, "changed": 0.4544, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 34, "hold_s": 50.2, "play_s": 56.0, "changed": 0.6375, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 35, "hold_s": 56.9, "play_s": 62.3, "changed": 0.817, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 36, "hold_s": 63.2, "play_s": 68.6, "changed": 0.7992, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 37, "hold_s": 69.6, "play_s": 75.0, "changed": 0.778, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.7448, "kept": true}
+{"n": 38, "hold_s": 76.0, "play_s": 82.0, "changed": 0.7887, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 39, "hold_s": 82.9, "play_s": 88.2, "changed": 0.6603, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 40, "hold_s": 89.2, "play_s": 97.6, "changed": 0.418, "off": false, "src": "check", "state": "gameplay", "why": "Bowler stands at the foul line with the ball-return and lane visible, 10 pins set, power meter and 'REPLAY AVAILABLE' shown; the game is live with no menu or ov", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 41, "hold_s": 98.6, "play_s": 104.4, "changed": 0.423, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 42, "hold_s": 105.4, "play_s": 111.7, "changed": 0.513, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.7612, "kept": true}
+{"n": 43, "hold_s": 112.7, "play_s": 118.3, "changed": 0.517, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 44, "hold_s": 119.3, "play_s": 125.3, "changed": 0.7749, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 45, "hold_s": 126.4, "play_s": 132.1, "changed": 0.7757, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 46, "hold_s": 133.1, "play_s": 139.0, "changed": 0.8249, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 47, "hold_s": 140.1, "play_s": 146.4, "changed": 0.7671, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.5383, "kept": true}
+{"n": 48, "hold_s": 147.4, "play_s": 153.1, "changed": 0.5371, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 49, "hold_s": 154.2, "play_s": 159.9, "changed": 0.517, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 50, "hold_s": 161.0, "play_s": 166.6, "changed": 0.5178, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 51, "hold_s": 167.6, "play_s": 173.3, "changed": 0.5619, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 52, "hold_s": 174.3, "play_s": 180.6, "changed": 0.6067, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.6252, "kept": true}
+{"n": 53, "hold_s": 181.7, "play_s": 189.8, "changed": 0.4263, "off": false, "src": "check", "state": "gameplay", "why": "Bowler stands at the lane with the ball return and pinsetter visible, the aim/power meter and replay prompt present, and the ten pins are set, so the player is ", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 54, "hold_s": 190.9, "play_s": 196.5, "changed": 0.2604, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 55, "hold_s": 197.6, "play_s": 202.9, "changed": 0.3931, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 56, "hold_s": 203.9, "play_s": 210.3, "changed": 0.6241, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 57, "hold_s": 211.3, "play_s": 216.9, "changed": 0.7694, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.7595, "kept": true}
+{"n": 58, "hold_s": 218.0, "play_s": 223.7, "changed": 0.7291, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 59, "hold_s": 224.5, "play_s": 230.0, "changed": 0.7714, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 60, "hold_s": 231.1, "play_s": 236.7, "changed": 0.7536, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 61, "hold_s": 237.9, "play_s": 244.2, "changed": 0.6606, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 62, "hold_s": 245.3, "play_s": 250.9, "changed": 0.6045, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.7648, "kept": true}
+{"n": 63, "hold_s": 252.0, "play_s": 257.5, "changed": 0.3538, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 64, "hold_s": 258.6, "play_s": 264.2, "changed": 0.5487, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 65, "hold_s": 264.9, "play_s": 270.5, "changed": 0.9275, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 66, "hold_s": 271.3, "play_s": 270.5, "changed": 0.0025, "off": false, "src": "check", "state": "results", "why": "Lane 7 score sheet shows 'Game Over. Press START to continue.' with all frames at 0; no ball or bowler in live play.", "action": ["START"], "kept": false}
+{"n": 67, "hold_s": 278.2, "play_s": 270.5, "changed": 0.8379, "off": true, "src": "check", "state": "menu", "why": "Title/attract screen with 'Press START' prompt; no game world visible.", "action": ["START"], "kept": true}
+{"n": 68, "hold_s": 284.6, "play_s": 270.5, "changed": 0.7424, "off": true, "src": "check", "state": "menu", "why": "Main Menu is showing with 'Start New Game' highlighted; no bowling play is active.", "action": ["A"], "kept": false}
+{"n": 69, "hold_s": 290.7, "play_s": 270.5, "changed": 0.0175, "off": true, "src": "check", "state": "menu", "why": "The 'Start New Game' menu is showing with 'Open Bowling' highlighted, so no game is running yet.", "action": ["A"], "kept": false}
+{"n": 70, "hold_s": 296.9, "play_s": 270.5, "changed": 0.0136, "off": true, "src": "check", "state": "menu", "why": "Open Bowling mode-select menu is showing (Regular Game / Team Game / Practice); no ball or lanes in play.", "action": ["A"], "kept": false}
+{"n": 71, "hold_s": 303.0, "play_s": 270.5, "changed": 0.1591, "off": true, "src": "check", "state": "menu", "why": "Controller Port Select screen; Player 1 is waiting to press START to join before any bowling begins.", "action": ["START"], "kept": false}
+{"n": 72, "hold_s": 309.6, "play_s": 270.5, "changed": 0.0072, "off": true, "src": "check", "state": "menu", "why": "Controller Port Select screen is showing; Player 1 is assigned but the game hasn't started, so no bowling is in progress.", "action": ["START"], "kept": true}
+{"n": 73, "hold_s": 315.5, "play_s": 270.5, "changed": 0.0076, "off": true, "src": "check", "state": "menu", "why": "Controller Port Select screen is showing; no bowling in progress, and Player 1 is assigned but Port 2 still says Press START.", "action": ["START"], "kept": false}
+{"n": 74, "hold_s": 321.6, "play_s": 270.5, "changed": 0.0035, "off": true, "src": "check", "state": "menu", "why": "Controller Port Select menu is showing, with Controller Port 1 set to Player 1 and no game world visible.", "action": ["A"], "kept": false}
+{"n": 75, "hold_s": 327.9, "play_s": 270.5, "changed": 0.2112, "off": true, "src": "check", "state": "menu", "why": "Bowling setup screen 'Regular Game' is showing player slots with an A-to-Select prompt; no ball or lanes are in play.", "action": ["A"], "kept": false}
+{"n": 76, "hold_s": 334.1, "play_s": 270.5, "changed": 0.23, "off": true, "src": "check", "state": "menu", "why": "Regular Game options menu is showing ('Bowl' highlighted, Select A); no bowling lane or ball is in play.", "action": ["A"], "kept": false}
+{"n": 77, "hold_s": 342.0, "play_s": 282.7, "changed": 0.8618, "off": true, "src": "check", "state": "gameplay", "why": "The lane and bowlers are rendered in the game world with the ball in the bowler's hand; the 'Player 1, Stash Richards' text is a turn-start banner over live pla", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.8489, "kept": true}
+{"n": 78, "hold_s": 354.2, "play_s": 289.7, "changed": 0.8047, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 79, "hold_s": 361.0, "play_s": 296.4, "changed": 0.7708, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 80, "hold_s": 367.7, "play_s": 303.8, "changed": 0.7362, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 81, "hold_s": 375.0, "play_s": 310.4, "changed": 0.7721, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.7455, "kept": true}
+{"n": 82, "hold_s": 381.8, "play_s": 317.2, "changed": 0.7662, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 83, "hold_s": 388.6, "play_s": 324.2, "changed": 0.5593, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 84, "hold_s": 395.4, "play_s": 330.8, "changed": 0.7559, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 85, "hold_s": 402.2, "play_s": 338.1, "changed": 0.7051, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 86, "hold_s": 409.5, "play_s": 344.9, "changed": 0.621, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.7735, "kept": true}
+{"n": 87, "hold_s": 416.2, "play_s": 351.2, "changed": 0.4664, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 88, "hold_s": 422.7, "play_s": 358.1, "changed": 0.4645, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 89, "hold_s": 429.6, "play_s": 365.2, "changed": 0.5519, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 90, "hold_s": 436.4, "play_s": 376.3, "changed": 0.8349, "off": false, "src": "check", "state": "gameplay", "why": "Live 3D lane view with a standing pin and its reflection; no menu or overlay is covering the game, though no ball is visible.", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 91, "hold_s": 447.7, "play_s": 383.1, "changed": 0.871, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.4699, "kept": true}
+{"n": 92, "hold_s": 454.5, "play_s": 389.8, "changed": 0.5981, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 93, "hold_s": 461.2, "play_s": 396.6, "changed": 0.1883, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 94, "hold_s": 467.8, "play_s": 403.7, "changed": 0.6847, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 95, "hold_s": 475.2, "play_s": 410.7, "changed": 0.7309, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 96, "hold_s": 482.1, "play_s": 417.4, "changed": 0.7707, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.7977, "kept": true}
+{"n": 97, "hold_s": 488.9, "play_s": 424.3, "changed": 0.7881, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 98, "hold_s": 495.8, "play_s": 431.0, "changed": 0.594, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 99, "hold_s": 502.1, "play_s": 438.0, "changed": 0.7918, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 100, "hold_s": 509.5, "play_s": 444.5, "changed": 0.8551, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 101, "hold_s": 515.8, "play_s": 450.9, "changed": 0.7876, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.6732, "kept": true}
+{"n": 102, "hold_s": 522.3, "play_s": 457.5, "changed": 0.8076, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 103, "hold_s": 528.9, "play_s": 467.7, "changed": 0.7308, "off": false, "src": "check", "state": "gameplay", "why": "A pink ball is rolling down the lane toward the intact pin setup with the aim/power meter visible, so the ball is in live play.", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 104, "hold_s": 539.2, "play_s": 474.6, "changed": 0.7989, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 105, "hold_s": 546.0, "play_s": 481.5, "changed": 0.146, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.7753, "kept": true}
+{"n": 106, "hold_s": 553.0, "play_s": 488.4, "changed": 0.0963, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 107, "hold_s": 559.9, "play_s": 495.2, "changed": 0.6504, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 108, "hold_s": 566.6, "play_s": 502.7, "changed": 0.734, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 109, "hold_s": 574.2, "play_s": 509.6, "changed": 0.6946, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 110, "hold_s": 581.0, "play_s": 516.3, "changed": 0.1803, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.0783, "kept": true}
+{"n": 111, "hold_s": 587.8, "play_s": 523.1, "changed": 0.3623, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 112, "hold_s": 594.7, "play_s": 530.0, "changed": 0.5208, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 113, "hold_s": 602.1, "play_s": 537.6, "changed": 0.7029, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 114, "hold_s": 609.3, "play_s": 544.6, "changed": 0.7755, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 115, "hold_s": 616.1, "play_s": 551.2, "changed": 0.6528, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.483, "kept": true}
+{"n": 116, "hold_s": 622.8, "play_s": 561.3, "changed": 0.8057, "off": false, "src": "check", "state": "gameplay", "why": "A bowling ball is visible on the lane in the game world, rolling down the lane with the game running and no menu or overlay on top.", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 117, "hold_s": 632.7, "play_s": 568.6, "changed": 0.8498, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 118, "hold_s": 640.1, "play_s": 575.1, "changed": 0.8117, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 119, "hold_s": 646.7, "play_s": 582.0, "changed": 0.6768, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.5671, "kept": true}
+{"n": 120, "hold_s": 653.6, "play_s": 588.8, "changed": 0.6621, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 121, "hold_s": 660.3, "play_s": 595.5, "changed": 0.4331, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 122, "hold_s": 667.0, "play_s": 603.1, "changed": 0.6342, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}

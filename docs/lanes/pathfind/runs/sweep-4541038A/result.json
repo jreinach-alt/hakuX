@@ -4,66 +4,77 @@
  "device": "nova",
  "iso": "/storage/E6C6-D7AA/Games/XBox/4541038A-Marvel_Nemesis_Rise_of_the_Imperfects.xiso.iso",
  "result": "gameplay",
- "tool": "9dff62f2fa",
- "started": "2026-10-05 22:27:44 PDT",
+ "tool": "31d3a8af4f",
+ "started": "2026-10-06 00:59:09 PDT",
  "probe_frames": [
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/073-probe-a.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/073-probe-b.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/073-probe-c.jpg"
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/064-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/064-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/064-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/064-probe-right.jpg"
  ],
  "reason": "four probes refused",
- "minutes": 12.95,
- "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/072-gameplay.jpg",
+ "minutes": 12.89,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/063-gameplay.jpg",
  "after_frames": [
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/074-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/075-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/076-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/077-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/078-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/079-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/080-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/081-after.jpg",
-  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/082-after.jpg"
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/065-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/066-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/067-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/068-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/069-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/070-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/071-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/072-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/073-after.jpg"
  ],
  "learned": [
   "hints/learned-pub-4541.md"
  ],
  "hold": {
   "genre": "attack",
-  "why": "The character in the foreground is fighting with green glowing energy powers and kicks, not walking through a level firing a gun.",
+  "why": "Two character health bars shown; a character is fighting in melee combat in an arena.",
   "ok": false,
-  "play_s": 155.1,
+  "play_s": 562.2,
   "need_s": 600.0,
-  "hold_s": 249.9,
+  "hold_s": 662.7,
   "model_navs": 13,
-  "frames": 7,
-  "still_windows": 1,
+  "frames": 19,
+  "still_windows": 0,
   "shed": [],
-  "reason": "off play for 13 steps: menu (END OF MATCH results menu is up over a dark background; the player is not in live play.)",
+  "reason": "off play for 13 steps: results (END OF MATCH screen with REMATCH / RETURN TO CHARACTER SELECT / QUIT TO MAIN MENU; no live play.)",
   "title_hold": false,
   "fps_checks": [
    {
-    "n": 91,
+    "n": 92,
     "median": 29.0,
-    "share": 1.0,
-    "at_s": 181.3,
+    "share": 0.967,
+    "at_s": 184.0,
     "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 149,
+    "median": 29.0,
+    "share": 0.973,
+    "at_s": 301.2,
+    "floor": 27.0,
     "stop": false
    }
   ],
-  "verdict": "VERDICT Marvel Nemesis Rise of the Imperfects ? FAIL(duration: 251 s of gameplay < 600 s confirmation) gameplay=250.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.2358 play_share=0.6173 fps_excluded=98.1s"
+  "verdict": "VERDICT Marvel Nemesis Rise of the Imperfects ? FAIL(menu time: 85.6% of the scored window in `play` (bar 90%; play 567 s, menu 45 s, results 35 s, pause 15 s)) gameplay=662.2s fps_ok=0.9913 crash=False hang=False audio_short=0.0 hitches=1/0.1pm worst_ms=1021.4 static_frac=0.0005 play_share=0.8558 fps_excluded=96.1s"
  },
- "model_calls": 77,
+ "model_calls": 74,
  "calls_by_model": {
-  "claude-sonnet-5": 77
+  "claude-sonnet-5": 74
  },
- "steps": 73,
- "seconds": 1076.7,
- "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/106-hold.jpg",
+ "steps": 64,
+ "seconds": 1482.5,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/frames/142-hold.jpg",
  "last_state": "probe",
- "replayed": 0,
+ "replayed": 6,
  "sib_replayed": 0,
- "guide": [],
+ "guide": [
+  "4541038A"
+ ],
  "cheap": 1,
  "thermal": [],
  "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A/strip.jpg"

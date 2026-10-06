@@ -1,0 +1,80 @@
+{
+ "title_id": "4541038A",
+ "name": "Marvel Nemesis Rise of the Imperfects",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4541038A-Marvel_Nemesis_Rise_of_the_Imperfects.xiso.iso",
+ "result": "gameplay",
+ "tool": "f6101e1ee6",
+ "started": "2026-10-06 03:06:22 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/046-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/046-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/046-probe-c.jpg"
+ ],
+ "reason": "four probes refused",
+ "minutes": 7.6,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/045-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/047-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/048-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/049-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/050-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/051-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/052-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/053-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/054-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/055-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4541.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "A third-person character fights enemies in melee, with health bars for both fighters and a 'DANGER' meter, and no vehicle, gun, or ball is involved.",
+  "ok": true,
+  "play_s": 601.2,
+  "need_s": 600.0,
+  "hold_s": 601.3,
+  "model_navs": 0,
+  "frames": 17,
+  "still_windows": 0,
+  "shed": [],
+  "reason": "",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 92,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 185.5,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 150,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 302.9,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Marvel Nemesis Rise of the Imperfects ? FAIL(hitches: a 1014 ms stall after the first 60 s (bar 500 ms)) gameplay=601.8s fps_ok=0.9918 crash=False hang=False audio_short=0.0 hitches=1/0.111pm worst_ms=1014.3 static_frac=0.0015 play_share=0.9998 fps_excluded=2.0s"
+ },
+ "model_calls": 48,
+ "calls_by_model": {
+  "claude-sonnet-5": 48
+ },
+ "steps": 46,
+ "seconds": 1103.2,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/frames/119-hold.jpg",
+ "last_state": "probe",
+ "replayed": 7,
+ "sib_replayed": 0,
+ "guide": [
+  "4541038A"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541038A-r3/strip.jpg"
+}
