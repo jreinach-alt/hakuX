@@ -172,6 +172,77 @@ title runs.
 
 Spend: not readable from this session, so no figure.
 
+## Attempt 4: why attempt 3 did not finish
+
+Attempt 3 queued the C0 baseline and went WAITING on it, as its own WAITING
+file said. The run finished (DONE, 22:49 PDT), but the session that queued it
+ended before the result was read, so the baseline was not judged then. The
+hostops addendum (22:50 PDT) resumed the lane to do that. Attempt 4 is that
+resume. (The brief's header says "attempt 1"; the lane's own count is at 3, and
+this section keeps the lane's count.)
+
+## Control verdict (attempt 4): the C0 baseline is read, and the control passes
+
+Pair: C0 `1-1791262296-lane.gpunonrender-1610133` against C16
+`1-1791247926-lane.gpunonrender-864108`. Both NG Black on Nova, both apk
+`a771c3e50905`, both ref `9609d0299f`, both `PERF_REGIMEN=default`, 150 s, route
+`gpunonrender-ngb.first-run`. The only difference is `HAKUX_GPUXFR_CTRL=16`.
+The run is menu and cutscene frames only (the route's own frames: publisher
+logos, main menu, cutscenes, one black), not gameplay. Clock: GPU 401 MHz,
+fixed (`gpu 401-401 of 680`), no thermal pause. Battery 79% at start, on
+battery.
+
+C0, per frame, over its 108 `xemu-xfr` windows (`nr` is the lane's
+`gpu_nonrender_ms`; the value is the median of the window medians):
+
+| category | median ms | mean ms | p90 (median of windows) |
+|---|---|---|---|
+| `nr` | 0.62 | 0.37 | 0.67 |
+| `ctrl` | 0.00 | 0.00 | 0.00 |
+| `download` | 0.56 | 0.28 | 0.58 |
+| `tex_up` | 0.04 | 0.02 | 0.04 |
+| `surf_up`, `s2t`, `handoff`, `barrier`, `other` | 0.00 | 0.00 | 0.00 |
+| `res` | 0.06 | 0.06 | 0.07 |
+
+The same run's `xemu-gpu` per-second line: Tot median 0.7, Rnd median 0.3,
+Xfr median 0.40 (mean 0.36). The C0 result has 216 `xemu-xfr` lines and 322
+`xemu-gpu` lines; no `xemu-xfr` line is missing from the window count.
+
+Against the criteria written before the readings:
+
+- **C0 reads no `ctrl`: PASS.** `ctrl` is zero in all 108 windows.
+- **`nr` rises by about the `ctrl` total: PASS.** C16 `nr` median 1.30 against
+  C0 0.62: +0.68 ms, which is the C16 `ctrl` median of 0.68 ms. The `xemu-gpu`
+  Xfr medians are 0.40 (C0) and 1.0 (C16, per the attempt-2 read), +0.6; the
+  attempt-1 pair gives 0.40 to 1.10, +0.70. Per-second Xfr is a 60-frame smoothed
+  value, so it is the coarser of the two readings. The per-frame window medians
+  are the reading the control criteria name, and they give +0.68.
+- **Other categories do not move: PASS.** `download` 0.56 (C0) against 0.57
+  (C16); `tex_up` 0.04 against 0.00, a 0.04 ms difference that is at the level of
+  the window spread; `surf_up`, `s2t`, `handoff`, `barrier`, `other` are zero in
+  both.
+- **`res` does not rise: PASS.** 0.06 (C0) against 0.07 (C16), the window p90
+  spread is 0.07 to 0.08 in both.
+
+Verdict: the control passes. The brackets read the known change: 16 copies cost
+0.68 ms per frame (0.043 ms per 1 MiB copy), the total moves `nr` by the same
+amount, and nothing else moves. The 0.6 ms of `download` in the menu frames is
+present in C0 and so is not caused by the control; it is a baseline category of
+these frames, which is the first place a non-control category shows a value.
+
+Two limits on this verdict, both stated so the title batch does not inherit
+them silently:
+
+1. The control is menu and cutscene frames. It proves the instrument reads a
+   known change. It does not say whether the brackets cover gameplay's
+   non-render time; that is the title batch's question.
+2. The overhead arm (`HAKUX_GPUXFR` unset, same title, same route) is not run.
+   The brief requires the bracket's own GPU cost to be measured before the
+   title categories are trusted. It goes with the title batch, on the title with
+   the most brackets, as the measurement plan says.
+
+No run is pending for the control. WAITING is cleared.
+
 ## Control, read from the existing counter (attempt 1 arms)
 
 The `xemu-gpu` line already carries `Xfr` = `gpu_nonrender_ms` (profile.c,

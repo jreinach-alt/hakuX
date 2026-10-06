@@ -1,6 +1,0 @@
-# lane.gpunonrender 2026-10-05 21:52 PDT, attempt 3: the attempt-2 C16 control read (ctrl 0.68 ms, stable); the C0 arm of attempt 2 was voided (not-foreground, before any frame), so it is re-queued once at the same ref.
-# Waiting for the C0 control baseline (NG Black, route gpunonrender-ngb.first-run, perflog, Nova, ref 9609d0299f, HAKUX_GPUXFR=1):
-#   1-1791262296-lane.gpunonrender-1610133
-# Then resume: read its xemu-xfr lines and judge the baseline checks in docs/lanes/gpunonrender/NOTES.md "Control verdict (attempt 3)" (other categories and residual vs C0, C0 reads no ctrl).
-# If it voids on focus again, that is a harness question for lane.local, not another retry.
-run 1-1791262296-lane.gpunonrender-1610133

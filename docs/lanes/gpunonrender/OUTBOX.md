@@ -72,8 +72,27 @@
   commits behind origin/master and is merged before the title runs.
 - Spend: not readable from here, so no figure.
 
+## 2026-10-05 22:52 PDT (attempt 4): C0 baseline read; control passes
+
+- C0 `1-1791262296-lane.gpunonrender-1610133` finished DONE, not voided: the route
+  played (menus, cutscenes, one black frame). Same apk, ref and env as C16
+  864108 except `CTRL=16`.
+- `ctrl` reads 0 in all 108 C0 windows. C16 reads 0.68 ms. `nr` moves from 0.62
+  (C0 window median) to 1.30 (C16), +0.68, which matches `ctrl`. `download` is
+  0.56 in C0 and 0.57 in C16. `res` is 0.06 and 0.07. The control criteria all
+  pass (NOTES.md, "Control verdict (attempt 4)").
+- Milestone (a) is complete: the instrument reads a known change against a baseline.
+- Not yet done: the overhead arm (HAKUX_GPUXFR unset), and gameplay. The control
+  runs are menu and cutscene frames. Both belong to the title batch.
+- No re-run is needed for the control. WAITING is cleared. No run is queued.
+- The title batch needs origin/master merged first (the branch is 21 commits behind).
+  I have not merged it, since that changes the tree the title runs use and the
+  overnight brief says to stay on the branch.
+- Spend: not readable from here, so no figure.
+
 ## Next
 
-Milestone (a) completes when the C0 baseline lands. Then milestone (b): the first
-title's category table. The overhead arm (HAKUX_GPUXFR unset) goes with the title
-batch.
+Milestone (b): the first title's category table. NG Black has a route on the
+Nova, but the 150 s run ends in cutscenes, before gameplay (the intro-first route
+reaches gameplay about 150-200 s in). The title soak needs 300-360 s, or a route
+that starts later. Merge origin/master first. The overhead arm goes with the title batch.
