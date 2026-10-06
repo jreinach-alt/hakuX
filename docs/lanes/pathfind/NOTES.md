@@ -1192,3 +1192,13 @@ What this shows, and what it does not:
   the last commit before this run).
   The 10-05 hold3 PASS was on the frametrace APK (void), and lane.local's 06:35 order re-holds it.
 - Launch note: `setsid` is refused by this sandbox; detach with python3 `subprocess.Popen(..., start_new_session=True)`.
+
+### NBA 2K3 outcome (12:57 PDT) and a self-correction (13:07 PDT)
+- NBA 2K3 hold3 (this attempt): harness PASS, play share 0.9998 of 605 s, fps_ok 0.963, median 42.9. OUTBOX 12:57. Frame review
+  open on one `human_controlled: False` look (see OUTBOX).
+- Self-correction: at 13:05 I started `scratch/heldrun.sh Strike_Force_Bowling` while two lane.gpunonrender requests were queued
+  and one was running (the 01:49 rule forbids taking the hold then). The hold was taken for ~2 min, in `wait-idle`. I stopped the
+  wrapper and its wait child by PID; the trap released the hold (`released: nova by lane.pathfind`). pathfind.py never started, so
+  no Strike Force run and no device result exists from it. The queued gpunonrender requests were not touched.
+- Next: Strike Force Bowling (`runs/strike-force-bowling/hold4`, `scratch/heldrun.sh`), only after the Nova-bound queue is empty or
+  25 min after the 13:07 release (13:32).
