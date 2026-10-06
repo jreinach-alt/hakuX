@@ -880,6 +880,14 @@ SCENE SHOULD CONTAIN: Rogue Trooper in third person on an alien crystal landscap
 
 Flicker: owner's check (frames above).
 
+## #433 -- 2026-10-06 03:00 PDT
+
+[lane.pathfind] Marvel Nemesis re-hold FAIL (duration: 284 s of gameplay, the REMATCH loop again): run runs/sweep-4541038A-r2, claim 10.8 min, 71 model calls, hold stopped at 186 s of play (off play 13 steps on the END OF MATCH panel and its confirms). fps_ok 0.988, median fine, no crash. Spend: model calls, not priced.
+
+Named cost (hold.jsonl, looks 101-111): the panel reads REMATCH highlighted, and UP UP A still opened RETURN TO CHARACTER SELECT's confirm, then the cycle ran panel, RETURN confirm, panel, QUIT. The menu wraps: UP from the top row goes to QUIT, so two UPs from REMATCH land on RETURN. The 13-step cap then stopped the hold, so the REMATCH confirm (which the rule would have answered: DOWN, A) was never reached.
+
+Fix (2b851dd27f): the panel takes A only when the look reads REMATCH highlighted, else one UP and read again; the REMATCH confirm takes DOWN, A (to YES); a RETURN confirm takes A (its NO default cancels back to the panel). Selftest 79 ok. Re-hold queued as runs/sweep-4541038A-r3 (log scratch/queue1006c.log), the third and last Marvel run unless it clears.
+
 ## #433 -- 2026-10-06 02:44 PDT
 
 [lane.pathfind] Tecmo Classic Arcade GAVE UP at the 15-min claim budget (no hold, no verdict): 70 steps, 76 model calls. The claim reached a live Tecmo Cup match at about 14.5 min (step 67: HUD, a counting clock, players moving), the probe was refused (control 0.014 under input 0.100), a GOAL banner followed, and the budget ran out at step 70. Last named state: cutscene (GOAL banner), runs/sweep-5443000E (steps.jsonl, frames).
