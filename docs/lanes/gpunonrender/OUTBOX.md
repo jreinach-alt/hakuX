@@ -381,3 +381,6 @@ WAITING lists the four runs.
 | NG Black `5443000D` to sysmem after an A/B on `bb-ngb` | 0.3 | up to ~10 ms of a 24.6 ms GPU frame; 36 toward ~45 gfps | one A/B pair |
 
 - Spend: not readable from this session.
+- PR.md `State: ready` at c3dd710a53 (pushed). preflight: every gate ok but
+  `coverage`, which fails on open issues #852-#857 having no board row
+  (lane.local: those rows are board files). WAITING is `fold gpunonrender`.
