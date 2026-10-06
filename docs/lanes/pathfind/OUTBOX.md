@@ -707,3 +707,15 @@ Not again today: AMF Xtreme (crash, for identification), Strike Force Bowling (n
 NEW ISSUE: the hold verdict counts an instant-replay viewer as play: NHL 2K3 hold2 scored 0.973 play share over about 300 s of replay (footer "L Rewind R Forward A Play/Pause X Zoom In B Zoom Out Y Hide START Back", frames 070-115 of runs/nhl-2k3/hold2/frames). Blocks any sports Playable whose replays run in the hold (the same looks would pass NBA 2K3 replays too). Fix in progress: the hold look now names the footer as period_break with input START (HOLD_REPLAY in pathfind.py; selftest "replay" ok, 77 ok).
 
 Fix committed, one re-hold queued (NHL 2K3 hold3, same recipe). Spend: about 73 model calls on hold2 plus hold looks, Sonnet.
+
+## #433 -- 2026-10-05 19:20 PDT
+
+[lane.pathfind] NHL 2K3 re-hold FAIL (fps; the replay fix worked): hold3 (runs/nhl-2k3/hold3, 612 s held, 6.2 min claim, 46 model calls, Sonnet). Play share 0.989 of 612 s (fps excluded 9.4 s). The frames are live play through both periods (1st 12:27 to 2nd 12:23; PWR PLAY, ICING, PUCK FROZEN, no replay footer: the HOLD_REPLAY rule held). Harness verdict FAIL: 69.4% of gameplay at or above the 28.5 bar (the verdict's text says "30", but the threshold is 30 x 0.95), median 35.0, window min 17.3. Hold2 (the replay run) had median 30.1 at the same title, so the frame rate is not stable between runs. Aborted at: full window. Perflog: taken from the hold's logcat (the hold carries the perf lines; no separate run).
+
+Named cost (decompose.py on the hold's own logcat; the mark copied into a scratch run.log, see NOTES): 305 two-second windows, 422 s at or above the bar, 188 s below (share 0.69). Below-bar windows: fps 24.2 against 36.2 at the bar; guest busy 26.6 ms per frame against 13.3 at the bar; guest idle 14.9 against 13.0; renderer idle (Ri) 40.7 against 27.2; timer interrupts about 12 ms in both groups. A slow frame here is guest code on the vCPU (busy time doubles, idle does not fall, Ri rises as the renderer waits for the guest), not the renderer or a shader stall. The slowest 10% of windows (fps 22.0) are the same pattern (guest busy 24.5 ms).
+
+NEW ISSUE: NHL 2K3 frame rate drops to ~24 fps in 31% of play (vCPU guest busy doubles, 13 to 27 ms per frame in the slow windows): runs/nhl-2k3/hold3 logcat.txt, decompose.py output above. Blocks the NHL 2K3 Playable: play share 0.99 and the replay fix are fine, fps is the only failing gate. Not queued again today (owner rule: a miss gets telemetry and a named cost, not a re-run).
+
+SCENE SHOULD CONTAIN (for the next reviewer): the hockey broadcast camera on a live rink, a human-controlled skater with the marker, the puck in play, the scoreboard HUD with a running clock; the replay footer must not appear.
+
+Spend: NHL 2K3 hold2 (73 model calls) and hold3 (46 calls) in Sonnet, about $6 for the two claims and looks together.

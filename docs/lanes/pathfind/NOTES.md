@@ -16,6 +16,9 @@
 | NHL 2K3 | can't-path (probe, self-moving camera) | - | - | ~29 | 70 steps, 84 calls | runs/nhl-2k3/hold |
 | AMF Xtreme Bowling (re-hold) | FAIL (crash: SIGSEGV in vulkan.purple.so under pgraph_vk_draw_end at 426 s) | 0.747 | 1.0 | 59.0 | boot hang once, then 6 min | runs/amf-xtreme-bowling/hold2 |
 | NBA 2K3 | can't-path x2 (team select, then probe) | - | - | - | 15 min each | runs/nba-2k3/hold, hold2 |
+| NBA 2K3 (hold3) | PASS (harness) | 0.988 of 615 s | 0.920 | 41-42 | 7.5 min, 51 calls | runs/nba-2k3/hold3 |
+| NHL 2K3 (hold2) | FAIL (replay counted as play; invalid PASS) | 0.973 of 622 s, replay ~300 s | 1.0 | 30.1 | 11.2 min, 73 calls | runs/nhl-2k3/hold2 |
+| NHL 2K3 (hold3) | FAIL (fps: 69% at bar, vCPU guest busy in slow windows) | 0.989 of 612 s | 0.694 | 35.0 (min 17.3) | 6.2 min, 46 calls | runs/nhl-2k3/hold3 |
 
 Fixes landed today in pathfind.py: the sports period rule, bowl loop, name-entry rule, ESPN team select (one RIGHT,
 User Name plate, START), the co-op join prompt in the hold look, the team-sport marked-player confirm.
