@@ -385,7 +385,7 @@ WAITING lists the four runs.
   `coverage`, which fails on open issues #852-#857 having no board row
   (lane.local: those rows are board files). WAITING is `fold gpunonrender`.
 
-## 2026-10-06 13:45 PDT (attempt 12): scope (D) P1 DOA3 read; sysmem halves the GPU frame on matched scenes
+## 2026-10-06 13:20 PDT (attempt 12): scope (D) P1 DOA3 read; sysmem halves the GPU frame on matched scenes
 
 - Merged origin/master (fast-forward to bf85412b88); WAITING removed. The
   census is on master, so every arm runs master's perflog build with `--env`.

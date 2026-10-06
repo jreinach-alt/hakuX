@@ -1665,3 +1665,51 @@ of `TU_AUTOTUNE_ALGO=profiled`. Its next step is a fleet A/B (default vs
 profiled) on the screened titles, with the Crimson J/frame cost and Kabuki's
 cold cache named as the known risks. If it fails on either title, the
 candidate goes back to a fork change or per-title table lines.
+
+### P2 read: NG Black
+
+P2-S `1-1791317653-lane.gpunonrender-1627450` (`TU_DEBUG=sysmem`, first;
+`shader cache cleared: apk ca290378e862 -> 4028728fcc5a`, after the P1
+restore) and P2-G `1-1791317654-lane.gpunonrender-1627551` (no env, cache
+kept). Battery 80%, discharging. No thermal pause; xo 51-59 C.
+
+- R1 holds (`TU_DEBUG=sysmem` / `(unset)`). R2 holds in both: P2-S's
+  passes read as GMEM carry 0.06 of 12.53 ms a frame; P2-G's scene passes
+  read in/out 0.55 (N0: 0.52). R3 holds: gameplay in the canyon in every
+  hold frame of both arms.
+
+| window | gfps median | Tot ms | out / in ms per frame | draws/frame | GPU MHz |
+|---|---|---|---|---|---|
+| P2-G GMEM, `mark` + 20 s to end (13:28:21-13:31:19) | 38.0 | 21.9 | 21.6 / 11.8 | 340 | 680 |
+| P2-S sysmem, same (13:19:42-13:22:40) | **59.0** (vsync) | **12.9** | 12.5 / 12.5 | 242 | mostly 401 |
+| N0 GMEM (census run) | 36.3 | 24.6 | 24.5 / 12.8 | 351 | 475-680 |
+
+The decision rule passes: gfps +21 and 1.55x; Tot 0.59x; R1-R3 hold; region
+check below. The gameplay windows are not one scene, though. The route's
+input is blind, and P2-S's camera spent the window against the canyon wall
+(242 draws a frame, against 340), so the window flatters sysmem. The matched
+check: the level's opening seconds run the same draw-count sequence in both
+arms (449, 459, 420, 239, 235, 174, 165, 279, 491, ...; `rpcseries.py`).
+
+| matched segment, gameplay intro | gfps median | Tot ms | out / in ms per CB |
+|---|---|---|---|
+| P2-G GMEM (13:27:42-13:27:58) | 32.5 | 25.0 | 23.1 / 12.1 |
+| P2-S sysmem (13:19:14-13:19:25) | **59.0** (vsync) | **13.4** | 13.3 / 13.2 |
+
+So the matched scene gives the same answer: Tot 0.54x, and sysmem reaches the
+vsync cap. As on DOA3, GMEM's last tile (12.1 ms) is about the whole sysmem
+pass (13.3 ms). The scene passes have two bins, and each replays the draw
+stream; sysmem pays ~1.2 ms of extra fill to drop one replay.
+
+Region check: s05 (main menu) differs 4.9% S-vs-G, and the same 4.9% N0-vs-G
+(GMEM against GMEM), inside the animated menu items: **pass**. s13 and s32
+differ 78-99% in both pairs alike (animated content, caught at different
+times). By eye, P2-S's gameplay and intro frames show water, rock, the
+characters, the sword trail and the HUD with no tile, depth or blend
+defect.
+
+**Verdict, NG Black: sysmem wins** (rule passes on the window; matched intro
+Tot 0.54x, 32.5 -> 59 gfps; pixels pass). The census ranking gave this pair
+P 0.3, because ~90 draws per scene pass looked less replay-bound than DOA3.
+That was wrong: with two bins, every pass pays its replay, whatever its draw
+count.
