@@ -575,6 +575,78 @@ F1's legs against S0:
 - If P1 holds and P2 fails, the wait moved (name the caller, as on Forza).
 - Readout: gfps (S0 26.8; 30 needs 3.3 ms off the period).
 
+## Scope (C), Simpsons: the measured outcome of the lock half already exists
+
+The PM's (C) is to release pfifo.lock across the STALLED finish's slot-fence
+wait (draw.c's rotation `vkWaitForFences`, frametrace's 4386, now ~4804).
+For the vCPU, that has the same effect as vcpusleep's posted DMA_PUT store
+(c2dfca18a1): the guest's DMA_PUT no longer waits for the PFIFO thread's
+fence wait. That change ran on Simpsons (simp2), and it was reverted in
+f6ac723228 for this reason:
+
+> the vCPU's off-CPU time fell from 19,987 to 2,543 ms a minute and v_blk from
+> 8.85 to 0.80 ms/frame, but fps went from 40.0 to 36.2-37.9. The freed time
+> became guest idle that the vCPU spins through, and the PFIFO thread's
+> frame-slot fence wait grew from about 8 to 21 ms a frame.
+
+So the lock is not what paces Simpsons. The rotation fence wait is.
+- There are ~8.8 STALLED finishes a guest frame, and each one rotates one of 3
+  slots and waits for the command buffer two finishes back. The GPU is busy
+  24% of the frame (frametrace: 5.9 ms at 615 MHz).
+- That is submit-to-completion latency, paid ~9 times a frame, not GPU
+  throughput.
+- Freed from the lock, the guest pushes faster, and the PFIFO thread waits
+  more often. That is simp2's 8 to 21 ms.
+
+Releasing the lock as briefed is expected to reproduce simp2. I put its P at
+0.1 (it removes the same vCPU wait simp2 removed) and did not build it.
+
+### (C'): no STALLED submit unless a report is queued (HAKUX_STALLFIN=reports)
+
+What a STALLED submit gives the guest:
+- Semaphore releases are written at the method (pgraph.c:5275-5294).
+- Surface bytes the CPU reads are downloaded by their own finishes.
+- The zpass reports are the only guest-visible value written after a finish
+  (`pgraph_vk_process_pending_reports_internal`).
+
+The STALLED finish is upstream's "Finish when queue is empty" (c41853a3f3).
+hakuX made it deferred (2b33fd95e7) and batched (f534b0bb51). With
+`HAKUX_STALLFIN=reports`, a caught-up FIFO submits only when `report_queue`
+is non-empty. Otherwise the draws stay in the command buffer until the flip or
+another finish submits them, which removes the rotation, and so its fence
+wait, at every other catch-up.
+- Change: `vk/reports.c` only (granted 03:33). The flag is read once, logs
+  `[stallfin] reports-only on` (hakuX-vk), and is off by default.
+- NDK clang: clean for perflog and release.
+- What it gives up: the GPU starts a frame's draws at the flip rather than at
+  each catch-up. That costs throughput only if the GPU would otherwise sit
+  idle with work queued. With 3 slots the PFIFO thread still runs up to two
+  submits ahead.
+- Risk to check: a guest that waits on a GPU product other than a report with
+  the FIFO idle. None is known in the code (the list above). A hang would show
+  in the run as a frozen route frame or a missing flip.
+
+Runs (expected results written before queueing). Both arms: the Nova,
+perflog, `PERF_REGIMEN=default`, this commit, Simpsons
+`frametrace/simpsons-frametrace` route, 420 s. Window: `mark gameplay` + 20 s
+to the end. Frames every 20 s. K0 has no env; K1 sets `HAKUX_STALLFIN=reports`.
+
+- **Mechanism:** K1 logs `[stallfin] reports-only on`. Its STALLED finishes
+  (`stl` + `stlDef` in `hakuX-stall Finish`) per frame are at most 30% of
+  K0's. If not, Simpsons' STALLED finishes carry reports, and this gate cannot
+  reach them.
+- **The wait leaves the chain (the claim):** K1's `[rwait526]` rotate waits
+  and the finish count per frame fall, and gfps rises by at least 5 (40.9 in
+  frametrace's window, not this route's K0). Use K0 as the baseline.
+- If finishes fall and fps does not rise, the pacer moved. The next reading
+  is where the PFIFO or the guest waits in K1 (`lockw`, `hakuX-stall`
+  finishes by reason).
+- **Safety:** the route reaches free roam in both arms (frames). No crash or
+  hang line. K1's frames are free of missing geometry. A report-dependent
+  effect would show as a flicker or missing pass. The owner checks flicker,
+  so this arm's frames are evidence, not a sign-off.
+- Readout: fps period p50, and finishes per frame by reason.
+
 ## Control, read from the existing counter (attempt 1 arms)
 
 The `xemu-gpu` line already carries `Xfr` = `gpu_nonrender_ms` (profile.c,
