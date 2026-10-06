@@ -781,3 +781,9 @@ Named cost (decompose.py on the hold's logcat, 302 two-second windows, 158 s at 
 NEW ISSUE: Spider-Man 2 frame rate drops to ~24 fps in 60% of play with the renderer busy (Ri 7 ms against 18 at bar; guest busy unchanged): runs/sweep-4156002B logcat, decompose.py output above. Blocks Spider-Man 2's Playable (play share 0.9995; fps is the only failing gate).
 
 SCENE SHOULD CONTAIN: Spider-Man in New York streets or interiors, moving, traffic and pedestrians, the health bar and the web meter, the camera following him.
+
+## #433 -- 2026-10-05 21:30 PDT
+
+[lane.pathfind] Batman Begins CAN'T-PATH (claim budget 15 min, 100 steps, 75 model calls, about $3): gameplay looks reached 21 times and the probe ran 21 times. The probe refusals were in a combat tutorial with enemy thugs in view and the prompts changing (X, Y, B finisher): the control and under-input values read 0.35 to 0.88 against 0.30 to 0.70 under input, so no probe settled as control. The mission failed six times (game_over: Restart Level, Continue Last Checkpoint dimmed), and the last 8 steps were cutscenes (START) with black frames between. Last named state: cutscene (step 100, runs/sweep-45410389, steps.jsonl). No hold ran; not re-run in this session (can't-path rule: move on).
+
+NEW ISSUE (for identification): Batman Begins: the confirm probe cannot settle the combat tutorial (thugs moving under input, prompts for X/Y/B), and the mission-failed loop restarts the claim. Blocks Batman Begins' path. The tutorial's prompts should be taken as the input (X, then Y, then B finisher), not probed.
