@@ -5934,3 +5934,45 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
 status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.852]
+title = "fighting-game hold stalls on Character Select after a round, so the play share falls to 0.80 on Mortal Kombat Armageddon. The recovery needs a rule for returning from the grid to a live round, not one"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.853]
+title = "the generic hold's stand-still recovery is slow on Mortal Kombat Shaolin Monks: two windows of still scene pass before the unstick, and the walk repeats the same press (the same finding as Blowout). B"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.854]
+title = "fighting-game claim confirm refuses live rounds: the stick probe measures control at 0.1 to 0.5 in a live Mortal Kombat Deadly Alliance round, so the claim gives up at its budget with play on screen ("
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.855]
+title = "NBA 2K3 claim budget (15 min) runs out in team select before the live court on a re-hold: the first live read came at 14.5 min with the probe still open. hold3 (10-05) passed from the same title with"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.856]
+title = "fighting titles give up at the 15-min claim budget with live fight on screen (Marvel Nemesis at step 63, 10.7 min; Deadly Alliance and NBA 2K3 the same shape). The shared claim budget runs out in prob"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.857]
+title = "Armageddon's Character Select is not exited by the hold's ladder (A, START, A, A, B, START): menu time 140 s and the share falls to 0.76 with fps clear. Blocks Armageddon's Playable. Not re-run: the s"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
