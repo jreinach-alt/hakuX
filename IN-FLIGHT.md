@@ -8,10 +8,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pathfind` | claude-opus-5-5 | 11 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+| `pathfind` | claude-opus-5-5 | 27 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.pathfind`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
@@ -59,7 +59,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `1b19fab549` | 2026-10-06 08:18 |
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `c6ab9e80d4` | 2026-10-06 11:16 |
 
 ## Recently landed on master
 
@@ -70,4 +70,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-05 hitchcause: the MTV 330 ms hitches are guest-side waits, not the IDE host read ([ide425d] held run on af37f7a3ea) (#433)
 - 2026-10-05 belowbar1005: the #804 fence wait is not what holds Buffy, NG Black or DOA3 below the bar
 
-_Updated 2026-10-06 11:08 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-06 11:24 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
