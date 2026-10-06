@@ -807,3 +807,13 @@ Named cost (decompose.py, 151 two-second windows, all below the bar, median 23.1
 NEW ISSUE: Midnight Club II: the renderer is saturated (Ri 0 ms per frame) at a median of 23 fps: runs/sweep-54540008 logcat, decompose.py output above. Blocks Midnight Club II's Playable (fps is the only failing gate; play is 0.64 with the stalls at the camera).
 
 SCENE SHOULD CONTAIN (for the next reviewer, if it clears): a street race in a city, the car moving, traffic, the speedometer and the race position, the camera behind the car.
+
+## #433 -- 2026-10-05 22:08 PDT
+
+[lane.pathfind] The Lord of the Rings: The Return of the King FAIL (fps; play full window): runs/sweep-4541003E, 607 s held, claim about 10 min. Play share 0.9997 of 607 s, no crash, no hang, 0 hitches. fps: window median 27.7, min 20.3, 33.3% of play at the 28.5 bar; the 3- and 5-minute gates read median 27.0 and 27.0 (on the rule's line, so the hold went on). Aborted at: full window. Perflog: the hold's own logcat (mark 21:49:12.3 copied into a scratch run.log, no separate run).
+
+Named cost (decompose.py, 302 two-second windows, 190 s at or above the bar, 414 s below, share 0.31): guest busy is the cost: 27.9 ms per frame below the bar against 24.1 at it, and the vCPU runs 0.70 of the time. Renderer idle is 22.7 ms, so the renderer is waiting, not saturated. This is the vCPU's guest code (the same pattern as NHL 2K3 and NFS MW), not the renderer.
+
+NEW ISSUE: LOTR Return of the King: the guest code (vCPU) costs 24-28 ms per frame, so play runs at ~27 fps median and 33% of play at the bar: runs/sweep-4541003E logcat, decompose.py output above. Blocks LOTR's Playable (play share 0.9997; fps the only failing gate).
+
+SCENE SHOULD CONTAIN: Aragorn or another hero in a battle with orcs, a wide camera on the battlefield with many enemies, the health bar, the camera moving with the hero.
