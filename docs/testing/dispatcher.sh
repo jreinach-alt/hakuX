@@ -1430,6 +1430,28 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
         mv "$req" "$rdir/request.json"; return 0
     fi
 
+    # THE MASTER RESTORE ENDS HERE. device_build.py queues it after a run off
+    # master: no title and no suites. Its build, install and env reset above are
+    # the whole job. The disc path refuses a request with no suites ("NO SUITES"),
+    # so without this exit the restore is refused and the device keeps the test
+    # build. The result.json written here is what device_build.py reads as the
+    # device's newest run, so a restore that ran shows master and env [] there.
+    if [ "$requester" = dispatch.restore ]; then
+        python3 - "$rdir" "$sha" "$ref" "$requester" "$req_env" "$purpose" <<'PYEOF'
+import json, os, sys
+rdir, sha, ref, who, env, purpose = sys.argv[1:7]
+json.dump(dict(kind="restore", apk_sha=sha, ref=ref, env=json.loads(env),
+               requester=who, purpose=purpose, seconds=0,
+               device_label=os.environ.get("DEVICE_LABEL", "")),
+          open(os.path.join(rdir, "result.json"), "w"), indent=2)
+PYEOF
+        log "  master restore done: ref $ref binary $sha, env $req_env"
+        mv "$req" "$rdir/request.json"
+        rm -f "$D/running/$id.owner"
+        touch "$rdir/DONE"
+        return 0
+    fi
+
     # A soak request runs a real title and keeps its log, instead of running a
     # test disc and scoring captures. It exists because some questions have no
     # golden framebuffer: the audio path is silent on the pgraph discs, so

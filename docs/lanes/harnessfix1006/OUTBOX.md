@@ -16,7 +16,7 @@ Needed for the code to land. Each is in the PR's `Files:` line.
 - `docs/testing/titles/pathfind.py` -- lane.pathfind's file. Two things:
   - `result.json` (written at `pathfind.py:1689`, initial dict at `:848`) carries `device`, `title_id`, `iso`, and no `ref`, `apk_sha` or `env`. Ask: record the device's build here. Suggested: read `jobs/device_build.py`'s `last_run(D, label)` (the newest result for the device) and put its `ref`, `apk_sha`, `env` in as `device_record`. A pathfind run does not go through the dispatcher, so the installed APK is the last dispatcher run's; say so in the field.
   - No `--ref` exists. Only needed if pathfind is to queue its own runs.
-- `docs/testing/titles/drive.py` -- lines 1050-1051 write `mark gameplay` (`self.dev.logcat("mark gameplay")`) whenever the classifier's state is `play` for `confirm_play_s` seconds with `self.mark` set. That is the place a window that is not live play is labelled gameplay: nothing checks live control at that point, and `title_verdict.py:522` and `hitch_report.py:331` read the label as the scored window. The fix is an owner's decision, not a lane's: either the mark waits for the probe-and-change confirmation pathfind uses (`pathfind.py:1112`), or the reviewer retracts it. Not edited.
+- `docs/testing/titles/drive.py` -- lines 1050-1051 write `mark gameplay` (`self.dev.logcat("mark gameplay")`) whenever the classifier's state is `play` for `confirm_play_s` seconds with `self.mark` set. That is the place a window that is not live play is labelled gameplay: nothing checks live control at that point, and `docs/testing/title_verdict.py:522` and `docs/testing/hitch_report.py:331` read the label as the scored window. The fix is an owner's decision, not a lane's: either the mark waits for the probe-and-change confirmation pathfind uses (`pathfind.py:1112`), or the reviewer retracts it. Not edited.
 - `host-tools/lanewaker.py` -- not in this repo, and not readable from this worktree. Ask lane.local to check the keepalive pass (item f): a lane whose `PR.md` says `State: ready` and differs from origin/master must be skipped; a lane with a WAITING file must be skipped; `briefs/<lane>.model` must be honoured. Also: does lanewaker resume a finished lane through `lane.sh resume`? That spends an attempt (`lane.sh` `next_attempt`).
 
 ## 3. Corrections to the brief, for the record
@@ -24,7 +24,11 @@ Needed for the code to land. Each is in the PR's `Files:` line.
 - The fourth attempt on a lane runs `MODEL_LANE_ESCALATED`, which `docs/testing/jobs/models.env` sets to `claude-fable-5-1`, not Opus. Fourth start is refused at `LANE_MAX_ATTEMPTS=4`.
 - `result.json` already records `ref`, `apk_sha`, `env` and `device_label` for the dispatcher's soak and disc runs. Only `pathfind.py` lacks them.
 
-## 4. Pending
+## 4. Found in attempt 2, fixed in `dispatcher.sh` (granted)
 
-- One 60 s Nova smoke, after the grant and the fix lands in the lane build. Then the master restore: the dispatcher queues it itself after a run off master (`queue_master_restore`). The smoke is not queued by this lane: the Nova is held by lane.pathfind now.
-- Before the smoke, lane.local should confirm the dispatcher's queue walk accepts a `dispatch.restore` request with `title: ""`, no `program`, `ref: master`, and a `<epoch>-dispatch.restore-<tail>.req` file name. Not verified here: the walk is in `dispatcher.sh`, outside this lane's reading of the queue format.
+- The master restore request had no title and no suites, so it fell to the disc path and was refused with `NO SUITES` (`dispatcher.sh` ~1587). The device would have kept the test build. Fixed: `serve_one` ends a `dispatch.restore` request after its build, install and env reset, writes `result.json` with `kind: "restore"`, and marks DONE. Leg (j) covers it, and its mutant goes red. This is inside the granted `dispatcher.sh`; no new file.
+
+## 5. Pending (after 22:00 only)
+
+- One 60 s Nova smoke, in the lane build, after 22:00 and when the Nova is free. Then the master restore: the dispatcher's own restore request, which is now the first device proof of section 4. The smoke is not queued before 22:00 (lane.local's instruction).
+- `pathfind.py`'s receipt (section 2) is lane.pathfind's, for after 22:00.

@@ -22,10 +22,13 @@
   ok   (h) a restore run queues no restore of its own
   ok   (i) dispatcher.sh calls queue_master_restore after the soak and disc results
   ok   (i) dispatcher.sh's hook calls device_build.py restore
+  ok   (j) the dispatcher ends a master restore before the title/disc split, with a restore result
   ok   the real hold.sh carries both gate calls (take and wait)
   ok   mutant built: hold.sh with its gate calls replaced by :
   ok   mutant: hold.sh without the gate takes the non-release Nova (leg (b) is not vacuous)
   ok   mutant: device_build.py that never asks for a restore queues nothing (leg (f) is not vacuous)
-selftest: 99-build-gate.sh took 1s
+  ok   mutant built: dispatcher.sh with the restore exit disabled
+  ok   mutant: without the restore exit the restore is not ended before the split (leg (j) is not vacuous)
+selftest: 99-build-gate.sh took 2s
 
-selftest: 27 passed, 0 failed, PARTIAL: 1 of 128 fragments (fake host in /tmp/hakux-selftest.YzbnuH)
+selftest: 30 passed, 0 failed, PARTIAL: 1 of 128 fragments (fake host in /tmp/hakux-selftest.Eelvz3)

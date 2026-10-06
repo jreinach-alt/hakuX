@@ -4,12 +4,19 @@ Brief: `/home/justin/hakux-work/briefs/harnessfix1006.md`. Attempt 1 of this lan
 
 ## Why the previous attempt did not finish
 
-The branch `lane/harnessfix1006` had no commits beyond master, no pushed ref,
-no PR, no `docs/lanes/harnessfix1006/`, and no NOTES when this session began
-(the worktree was clean at `bf85412b88`, master). Nothing on disk records what
-it did or why it stopped, so the cause is unknown. The likeliest reading is
-that it ended before its first commit. This attempt starts from the brief,
-not from a previous attempt's work.
+The previous session did the work: `c2005ce255` (the gate, the restore hook,
+the 27 legs) and `33176d0bcf` (this NOTES, the preflight result) are on the
+branch and on origin, and draft PR #861 carries them with `State: waiting`.
+What it did not do is the 60 s Nova smoke, the `State: ready` step, and a
+review of the restore's own request, which is why this session went back over
+it. Nothing on disk records why that session ended. The likeliest reading is
+that it stopped at the smoke, which needed the Nova while lane.pathfind held
+it. The earlier version of this section said the branch had no commits; that
+described the worktree before `c2005ce255` and was stale. Corrected here.
+
+Attempt 2 (this session, 10-06, 13:5x PDT) read the brief, the addenda and the
+OUTBOX grant. It found one defect in the previous attempt's work, fixed below,
+and checked the rest by reading. The brief's attempt count is the lane's own.
 
 ## What the brief's premises turned out to be (claims checked, not taken on trust)
 
@@ -120,11 +127,64 @@ escape did not cover it; the failure is reported, not hidden. The run's output i
   this lane's file.
 - The `drive.py` gameplay fix (decision above).
 - The lanewaker verification (sandbox).
-- The restore's real dispatch: `queue_master_restore` writes a `.req` file
-  named `<epoch>-dispatch.restore-<tail>.req`, and the dispatcher's queue
-  reader is not confirmed to accept a `dispatch.restore` requester or a
-  request with `title: ""` and no `program`. Must be read by lane.local against
-  `dispatcher.sh`'s queue walk before the smoke.
+- The restore's real dispatch, on a device: read in attempt 2, and it was
+  refused (`NO SUITES`) until the restore exit above. Still unrun. The smoke
+  is the first device proof, after 22:00.
+- `pathfind.py`'s ref/apk/env receipt (OUTBOX section 2): lane.pathfind's file.
+
+## The restore was refused by the dispatcher (found and fixed in attempt 2)
+
+The previous attempt left the restore's dispatch an open question: "the
+dispatcher's queue reader is not confirmed to accept a `dispatch.restore`
+requester or a request with `title: ""` and no `program`." Reading
+`serve_one` answers it, and the answer is no:
+
+- No requester filter exists, so `dispatch.restore` is claimed like any request.
+- The build, the install, the shader-cache clear and the env reset run for it,
+  as they should (`dispatcher.sh` ~1380-1435).
+- Then, with no `title`, it falls to the disc path, whose first check is
+  `"no suites named"` (`dispatcher.sh` ~1587). `device_build.py` writes
+  `suites: []`, so the restore is refused with `NO SUITES`, moved to
+  `request.json`, and the device keeps the test build. `queue_master_restore`
+  is not reached on that path, so nothing retries it.
+
+The fix (`dispatcher.sh`, in `serve_one`, after `restore_hdd_pref` and before
+the soak split): a request whose requester is `dispatch.restore` writes
+`result.json` with `kind: "restore"`, `ref`, `apk_sha`, `env` (the env it
+ran with) and `device_label`, then marks DONE and returns. It runs no title
+and no disc, so the 60 s in the request is not spent: the job of a restore is
+the build and install, and `device_build.py check` reads that result as the
+device's newest run. Leg (j) orders the block before the split and before
+`NO SUITES`, and a mutant with the block disabled fails it. Full fragment:
+30 legs, 0 failed (`selftest-pass.txt`).
+
+Open for the smoke, after 22:00: nothing has run this path on a device. The
+result `kind: "restore"` is a new kind; `request.sh:450` branches on
+`kind == "soak"`, and nothing should read a restore as a disc. Check that
+when the smoke's result lands.
+
+## Lanewaker and attempts (item f), what the repo shows
+
+- `host-tools/lanewaker.py` is not in this repo, and the sandbox cannot read it
+  from this worktree. Its keepalive pass is unverified here. Asked in OUTBOX.
+- `lane.sh` `next_attempt` (line 205) honours `briefs/<lane>.model` up to
+  `LANE_ESCALATE_AFTER` (3). The fourth start runs `MODEL_LANE_ESCALATED`, which
+  `models.env` sets to `claude-fable-5-1`, not Opus as the brief says, and
+  `LANE_MAX_ATTEMPTS` (4) refuses the fifth. Every `lane.sh start` and
+  `lane.sh resume` spends one attempt, a refused one is refunded
+  (`refund_attempt`, line 231).
+- `handback.sh` resumes through `lane.sh resume` for four causes. Its strand
+  causes (draft-strand-runs, draft-strand-idle, and the draft strand) and
+  `idle-no-pr` / `merged-runs` are marked `uncounted` (lines ~1518 and ~1522),
+  and the count is put back after a successful resume (line ~1553). So a
+  handback resume of a finished lane does not spend an attempt. A lane that is
+  not draft and has an open PR is not picked by the idle or strand causes at
+  all (`idle_lanes` skips any branch with an OPEN or MERGED PR; `stranded_drafts`
+  takes `isDraft` only). A `State: ready` PR that is not a draft is therefore
+  not resumed here.
+- The one path this repo cannot rule out is lanewaker's keepalive, if it
+  resumes a lane through `lane.sh resume` without the refund. That is the
+  question in OUTBOX, for lane.local.
 
 ## What the next lane should not repeat
 

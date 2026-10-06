@@ -24,6 +24,10 @@
 #       prevents).
 #   (i) the dispatcher's restore hook is not wired into the run path, so the
 #       functions above are never called. Checked by grep of dispatcher.sh.
+#   (j) the restore request reaches the disc path, which refuses a request
+#       with no suites ("NO SUITES"): the restore is refused and the device
+#       stays on the test build. The restore ends in serve_one before the
+#       title/disc split, after its build, install and env reset.
 #
 # SELFTEST_HOLD_SH points leg (b) at another hold.sh. The mutant legs at the
 # end run with the fix removed, and must show the thing the real leg refuses.
@@ -125,6 +129,22 @@ check "(i) dispatcher.sh calls queue_master_restore after the soak and disc resu
     [ "$(grep -cF 'queue_master_restore "$id"' "$HERE/../dispatcher.sh")" -ge 2 ]
 check "(i) dispatcher.sh's hook calls device_build.py restore" grep -qF 'jobs/device_build.py" restore' "$HERE/../dispatcher.sh"
 
+# (j) the restore ends in serve_one before the title and disc split. Ordering,
+# not a grep for a line: the block must come first, write the kind=restore
+# result that device_build.py reads, and sit before the "NO SUITES" refusal.
+db_restore_exit() {   # <dispatcher.sh> ; 0 when the restore ends before the split
+    python3 - "$1" <<'PY'
+import sys
+s = open(sys.argv[1]).read()
+r = s.find('if [ "$requester" = dispatch.restore ]; then')
+t = s.find('if [ -n "$title" ]; then', r) if r >= 0 else -1
+n = s.find('"no suites named"')
+sys.exit(0 if r >= 0 and t > r and n > r and 'kind="restore"' in s else 1)
+PY
+}
+check "(j) the dispatcher ends a master restore before the title/disc split, with a restore result" \
+    db_restore_exit "$HERE/../dispatcher.sh"
+
 # MUTANTS: the fix removed must go red. Each mutant is checked for the very
 # behaviour its leg above asserts, so a leg that passes on the mutant is vacuous.
 DB_MUT="$T/devbuild/mut"; mkdir -p "$DB_MUT"
@@ -138,3 +158,12 @@ check "mutant: hold.sh without the gate takes the non-release Nova (leg (b) is n
 rm -f "$DB_D/hold/nova" "$DB_D/hold/nova.why"
 check "mutant: device_build.py that never asks for a restore queues nothing (leg (f) is not vacuous)" \
     bash -c "b=\$(ls '$DB_D/queue' | wc -l); python3 '$DB_MUT/device_build.py' restore '$DB_D' nova new >/dev/null; [ \$(ls '$DB_D/queue' | wc -l) -eq \$b ]"
+
+# The restore exit (leg (j)) removed from a copy of dispatcher.sh must fail the
+# same ordering check, or the leg is vacuous.
+DB_DISP_MUT="$DB_MUT/dispatcher.sh"
+sed 's/if \[ "\$requester" = dispatch.restore \]; then/if false; then/' "$HERE/../dispatcher.sh" > "$DB_DISP_MUT"
+check "mutant built: dispatcher.sh with the restore exit disabled" [ "$(grep -c 'if false; then' "$DB_DISP_MUT")" -eq 1 ]
+db_restore_exit_absent() { ! db_restore_exit "$1"; }
+check "mutant: without the restore exit the restore is not ended before the split (leg (j) is not vacuous)" \
+    db_restore_exit_absent "$DB_DISP_MUT"
