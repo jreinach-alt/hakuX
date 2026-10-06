@@ -11,7 +11,7 @@ No lane session is running.
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 2 waiting, 1 running.
+- **Device queue:** 0 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
 
 ## 0.5 release: Playable titles
@@ -67,4 +67,4 @@ No branch is being worked right now.
 - 2026-10-04 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
 - 2026-10-04 hangwatch: a locked-up title is caught on telemetry in about 90 s, not waited out
 
-_Updated 2026-10-05 22:54 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-05 23:10 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
