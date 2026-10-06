@@ -872,7 +872,7 @@ Fix in the tree (cf10c3a95c and the next commit): the panel now takes UP, UP, A 
 
 SCENE SHOULD CONTAIN (if it clears): Marvel Nemesis in an arena fight, both fighters' health bars and portraits, the camera following the fighters, a live round (not an END OF MATCH panel).
 
-## #433 -- 2026-10-06 01:55 PDT
+## #433 -- 2026-10-06 01:41 PDT
 
 [lane.pathfind] Rogue Trooper PASS (harness, Nova, first-run claim): 6.1 min to gameplay, 31 model calls, 27 steps; hold 609.8 s of play, play share 0.9997, fps_ok 1.0 (bar 28.5), no crash or hang. Run dir: runs/sweep-5343000E (frames/036-hold.jpg, frames/083-hold.jpg, strip.jpg, verdict.json). Excluded time 1.1 s. Spend: this session's model calls (31 claim, hold looks), not priced.
 
@@ -880,7 +880,7 @@ SCENE SHOULD CONTAIN: Rogue Trooper in third person on an alien crystal landscap
 
 Flicker: owner's check (frames above).
 
-## #433 -- 2026-10-06 02:12 PDT
+## #433 -- 2026-10-06 01:55 PDT
 
 [lane.pathfind] Ratatouille PASS (harness, Nova, first-run claim): 3.4 min to gameplay, 26 model calls, 21 steps; hold 605.3 s of play, play share 0.9998, fps_ok 1.0 (bar 28.5), static fraction 0.002, no crash or hang. Run dir: runs/sweep-54510109 (frames/030-hold.jpg, frames/091-hold.jpg, strip.jpg, verdict.json). Excluded time 1.4 s. Spend: this session's model calls (26 claim, hold looks), not priced.
 
