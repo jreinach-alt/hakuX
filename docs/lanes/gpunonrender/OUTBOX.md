@@ -352,3 +352,35 @@ WAITING lists the four runs.
   resumes it every 15 min with nothing to do. lanewaker's keepalive pass could
   skip `State: ready` the way its stranded pass already does.
 - Spend: not readable from this session.
+
+## 2026-10-06 10:45 PDT (attempt 11): census done; no load/store A/B; PR ready
+
+- Telemetry commit f4ffe285e7 (draw.c, surface.c, texture.c; `HAKUX_GPUXFR=1`,
+  default off): the render-pass census, `xemu-xfr XFR rpc` lines.
+- N0 NG Black `1-1791306758-lane.gpunonrender-630725` and D1 DOA3
+  `1-1791306763-lane.gpunonrender-631156`, apk 281bf2515bb8 (dispatcher:
+  `shader cache cleared: apk 6beaa5ac1cdd -> 281bf2515bb8`). Restore
+  `1-1791306764-lane.gpunonrender-631498` ran DONE at 0342eba317 (apk
+  ad6f37a2f087, empty env): the Nova is on master. Nothing of this lane is
+  queued or running.
+- Rule written before the runs: S (avoidable passes carry at least 30% of the
+  outer span) and B (avoidable MiB x 0.043 ms at least 1.0 ms a frame). S holds
+  (82%, 93%), **B fails on both** (0.39 ms NG Black, 0.38 ms DOA3 fight, over
+  every pass). No load/store fix, no A/B.
+- The cost is the GMEM scene passes outside their last tile: 11.7 ms a frame on
+  NG Black, 19.3 ms on the DOA3 fight (one ~700-draw pass at in/out 0.50, DOA
+  Ultimate's replay pattern).
+- DOA3's fight window is 60 s, not 180: the route loses the fight in a minute
+  (as in D0). Its structure matches D0's fight; the attract screens are read
+  beside it.
+
+| candidate (for lane.rendermode474's area) | P | win | cost |
+|---|---|---|---|
+| DOA3 `54430001` to sysmem in `kTitleRenderModes` after an A/B on `bb-doa3` | 0.55 | fight GPU 38.5 toward ~29 ms; 22 toward ~28 gfps | one A/B pair (default vs `TU_DEBUG=sysmem`, census on), then a table line |
+| Per-pass mode in the Turnip fork's autotune (many draws, few bins: sysmem) | 0.3 | every replay-bound title, size unknown | a fork change plus a per-pass bin count |
+| NG Black `5443000D` to sysmem after an A/B on `bb-ngb` | 0.3 | up to ~10 ms of a 24.6 ms GPU frame; 36 toward ~45 gfps | one A/B pair |
+
+- Spend: not readable from this session.
+- PR.md `State: ready` at c3dd710a53 (pushed). preflight: every gate ok but
+  `coverage`, which fails on open issues #852-#857 having no board row
+  (lane.local: those rows are board files). WAITING is `fold gpunonrender`.

@@ -1111,6 +1111,10 @@ count, and the GPU clock from thermal.jsonl for the same window.
 
 ## Ranking
 
+Row 1 below was measured by the render-pass census (N0, D1, "Render-pass
+census" at the end of this file): the avoidable loads and stores are worth at
+most 0.4 ms a frame, and the lever is the scene passes' render mode.
+
 Final after T0 and D0 (three titles under the outer stamps: NG Black, ToeJam &
 Earl III, DOA3). Ranked by P × win.
 
@@ -1177,3 +1181,271 @@ per-pass GMEM vs sysmem (lane.rendermode474's area), not load/store.
 
 Cost: one draw.c telemetry commit and two Nova runs for step 1. P(step 2 wins
 at least 3 ms a frame on NG Black) 0.35.
+
+## Attempt 11: why attempt 10 did not finish
+
+Attempt 10 did finish. It was waiting for the fold, and the fold landed
+(0342eba317). lane.local resumed the lane at 10:20 PDT 10-06 with new scope:
+step 1 of "Brief for the next lane" above, the render-pass load/store census.
+This attempt merged origin/master (fast-forward to 0342eba317) and deleted the
+fold WAITING file.
+
+## Render-pass census (step 1 of the brief above)
+
+### The instrument (draw.c, surface.c, texture.c; `HAKUX_GPUXFR=1`, default off)
+
+Each pass that has an outer stamp pair also gets a census record. At readback
+the record is filed with the pass's outer span, its in-pass span, and a mode
+inferred from the two. A new pair of lines, `xemu-xfr XFR rpc` (every pass) and
+`xemu-xfr XFR rpc g` (passes read as GMEM), gives per command buffer, for each
+group: passes, outer ms, and avoidable MiB.
+
+| group | the pass... | avoidable bytes |
+|---|---|---|
+| `all` | every pass | - |
+| `lclr` | LOADs an attachment whose first operation in the pass is a clear covering the whole binding | that attachment |
+| `lunif` | LOADs an attachment whose content is a whole-binding clear with nothing after it (a clear-only pass before it, typically) | that attachment |
+| `zdead` | STOREs a depth/stencil attachment whose next use is a whole-binding clear or a full upload (no draw with depth or stencil, partial clear, download, copy or bind as texture in between) | the depth attachment |
+| `clronly` | has a clear and no draw | - |
+| `any` | `lclr`, `lunif` or `zdead` | the larger of the two loads, plus the dead store |
+
+Also per command buffer: `ldMB` (all LOADed attachments), `stMB` (all stored),
+`in` (in-pass span of the paired passes), `draws`, `paired` (passes with both
+stamp spans), `zlive`/`zpend` (depth stores read later / still unresolved at
+readback), and `late` (dead/live resolved after their CB was read).
+
+Mode inference: Turnip writes an in-pass stamp into the pass's draw stream,
+which a GMEM pass replays per tile, so its in-pass span is the last tile; a
+sysmem pass is stamped in full. A pass whose in-pass span is under 0.8 of its
+outer span reads as GMEM. In a sysmem pass a LOAD or STORE op emits nothing,
+so only the `g` line's bytes are real tile traffic.
+
+Draws are counted in `begin_draw` (a draw "uses" the colour attachment when a
+colour write mask is on, the depth attachment when Z or stencil test is on) and
+in `emit_reorder_entry` (its own `color_write`, `depth_test`, `stencil_test`).
+Surface content and pending depth stores are kept per `SurfaceBinding` in a
+32-entry table. A freed surface is dropped (`destroy_surface_image`); a pointer
+reused after a free can at worst read as unknown content.
+
+NDK clang, perflog and release, `-Wall`: no new warnings.
+
+### What is already on disk (X0, D0), and what it predicts
+
+From the existing perflog lines of X0 (NG Black) and D0 (DOA3 fight, 05:11:00-
+05:11:30 at 680 MHz), per frame:
+
+| | NG Black X0 | DOA3 D0 fight |
+|---|---|---|
+| render passes (`XFR rp` n, per CB) | 12.7 | 2.0 |
+| clears (`xemu-work` Clr) | 3 | 2 |
+| inline clears, hits/misses (`InlClr`) | 0 / 3 | 1 / 1 |
+| `rp_break_clear` (a clear-only pass ending) | 3 | 1 |
+| outer span / in-pass span per CB (ms) | 14.6 / 9.0 | 44.0 / 22.0 |
+| draws per frame (`xemu-work` BE) | 260-390, ~20 per pass | ~1500, nearly all in one pass |
+| `surface_scale` | 1 (640x480) | 1 |
+
+So NG Black opens 3 clear-only passes a frame (a clear arriving with no pass
+open gets a pass of its own, `pgraph_vk_clear_surface`'s fallback), and DOA3
+opens 1, followed by one big pass whose in-pass span is half its outer span.
+In this Turnip fork a pass with fewer than 5 draws runs sysmem
+(tu_autotune.cc, "Too few draws to tune" returns `default_mode`, which is
+`SYSMEM`), so the clear-only passes are sysmem, and the pass after each one
+LOADs a surface that holds nothing but the clear.
+
+At scale 1, a 32-bit 640x480 attachment is 1.2 MiB. The lane's own control
+(C16) measured a 1 MiB buffer-to-buffer copy, read plus write, at 0.043 ms. A
+tile load or store moves its attachment once between memory and GMEM, so
+0.043 ms per MiB is an upper bound on what each avoidable MiB costs in bytes.
+
+### Runs and their expected results (written before queueing)
+
+Both on the Nova, perflog, `PERF_REGIMEN=default`, `HAKUX_GPUXFR=1`, at the
+census commit. Window: `mark gameplay` + 20 s to the end (NG Black); the fight
+frames for DOA3 (the route's frames say where the fight ends).
+
+| arm | title, route, s |
+|---|---|
+| N0 | NG Black, `belowbar1005/routes/bb-ngb`, 480 |
+| D1 | DOA3, `belowbar1005/routes/bb-doa3`, 480 |
+
+**Instrument legs (known answers; if one fails, the census is not read):**
+
+- K1: `rpc all` passes per CB equal the `XFR rp` n of the same window, within
+  0.05 (they count the same passes).
+- K2: `rpc clronly` passes per frame equal the inline-clear misses per frame of
+  the same window (`InlClr` second figure / 60), within 0.3.
+- K3: clear-only passes read as sysmem: `rpc g clronly` n is at most 0.1 of
+  `rpc clronly` n. If K3 fails the mode inference is wrong, and only the
+  all-pass figures are read.
+- K4: `paired` is within 0.1 of `rpc all` n (fewer than 48 passes per CB).
+
+**Expected:** NG Black, `clronly` about 2.8 per CB and `lunif` 2-3 per CB, with
+`zdead` at least 1 per CB. DOA3, `clronly` 1 and `lunif` 1 per CB, the `lunif`
+pass being the big GMEM pass. On both, the `g any` passes carry at least 30% of
+the outer span (the scene passes are the ones after the clears), and the
+avoidable bytes are small: `g any` at most 8 MiB per frame on NG Black and
+4 MiB on DOA3, which is at most 0.35 ms and 0.17 ms per frame.
+
+**Decision (fixed before the runs):**
+
+- Leg S, the brief's rule: `rpc g any` ms is at least 30% of `rpc all` ms.
+- Leg B, the size: `rpc g any` MiB per frame x 0.043 ms is at least 1.0 ms per
+  frame on NG Black. Leg B is added here, before any run, because the share in
+  leg S cannot size the win: a pass with one avoidable load carries its whole
+  span into the group, and the fix removes only the load.
+- S and B both hold: step 2 (a CLEAR load op when the pass's first operation is
+  a whole clear, or when the surface holds only a clear; DONT_CARE store for a
+  dead depth), behind an env switch, default off; one A/B on NG Black (600 s,
+  frames every 30 s, read from fps_ok and GPU ms) and a frame pair.
+- S fails, or B fails: no load/store A/B. The remaining GMEM cost is bins and
+  tiles, and the census's `g` line gives its size per pass (`g all` ms − `g in`
+  ms, against `g draws`). That goes to lane.rendermode474's area as a per-pass
+  GMEM-vs-sysmem recommendation, and the lane stops at ready.
+
+My expectation is S holds and B fails on both titles: P(step 2 is triggered)
+about 0.15. What B does not see: a fixed per-tile cost of each load or store
+blit beyond its bytes. If B fails while `g all` − `g in` is large per pass and
+`g` passes are few, that fixed cost is the open question, and the
+GMEM-vs-sysmem lever covers it either way.
+
+### N0 read: NG Black
+
+`1-1791306758-lane.gpunonrender-630725`, ref f4ffe285e7, apk 281bf2515bb8
+(dispatcher: `shader cache cleared: apk 6beaa5ac1cdd -> 281bf2515bb8`).
+Window 10:18:33-10:21:40 PDT (187 s from `mark gameplay` + 20 s), 6240 frames,
+1.05 CBs per frame. Gameplay in the canyon in every hold frame (FPS 36 on the
+overlay). gfps 36.3, G 29.9 ms. GPU 475-680 MHz in the window, no thermal pause.
+Battery 80%, on USB (5.8 W in). `xemu-gpu` Tot 24.6 ms (X0: 23.0), `nr_out`
+0.42 ms, as X0. Reader: `rpcread.py <id> --from 10:18:30.8`.
+
+Per frame:
+
+| group | every pass: n / outer ms / avoidable MiB | passes read as GMEM: n / ms / MiB |
+|---|---|---|
+| `all` | 13.08 / 24.53 / - | 5.18 / 22.95 / - |
+| `lclr` | 3.00 / 0.08 / 4.33 | 2.04 / 0.03 / 0.53 |
+| `lunif` | 3.14 / 19.88 / 4.33 | 1.23 / 19.46 / 3.64 |
+| `zdead` | 0.27 / 0.24 / 0.39 | 0.15 / 0.16 / 0.15 |
+| `clronly` | 3.00 / 0.08 / - | 2.04 / 0.03 / - |
+| `any` | 6.06 / 20.18 / 9.02 | 3.10 / 19.65 / 4.30 |
+| `ldMB` / `stMB` (all attachments) | 21.8 / 21.8 | 8.9 / 8.9 |
+| in-pass span `in` | 12.82 ms | 11.28 ms |
+| draws | 351 | 273 |
+
+Depth stores: 6.41 a frame read later (`zlive`), 0.27 dead, 0.01 pending at
+readback.
+
+Instrument legs: **K1 pass** (0.002 per CB), **K2 pass** (clear-only passes 3.00
+a frame against 2.97 inline-clear misses, 0 hits), **K4 pass** (every pass
+paired). **K3 fails**: 2.04 of the 3.00 clear-only passes read as GMEM. A
+clear-only pass spans 0.03 ms, where the fixed cost of the stamps and the pass
+setup decides the in/out ratio, so the 0.8 rule cannot tell a tiny pass's
+mode. By the rule written before the run, only the all-pass figures are read.
+Leg B does not need the mode split: it is bounded by every pass's bytes.
+
+Decision legs:
+
+- **S holds**: the passes with an avoidable load or store carry 82% of the outer
+  span over every pass (20.18 of 24.53 ms). As expected, they are the scene
+  passes: each of the 3 clear-only passes is followed by a pass that LOADs a
+  surface holding only that clear (`lunif` 3.14 a frame, 19.9 ms).
+- **B fails**: the avoidable traffic over every pass is 9.02 MiB a frame
+  (expected at most 8), so at most 9.02 x 0.043 = **0.39 ms a frame**. Even every
+  load and store of every pass (43.6 MiB) bounds at 1.9 ms.
+
+So on NG Black the load/store fix would remove at most 0.4 ms of a 24.6 ms GPU
+frame: no A/B for it. What the GMEM passes cost beyond their last tile is
+**11.7 ms a frame** (out 24.53 − in 12.82 over every pass; 22.95 − 11.28 on the
+GMEM-read passes), almost all in the ~3 scene passes: about 3.7 ms per scene
+pass, of which loads and stores are at most 0.6. The rest is binning and the
+tiles before the last, the part that only the per-pass render mode moves.
+
+### D1 read: DOA3
+
+`1-1791306763-lane.gpunonrender-631156`, ref f4ffe285e7, apk 281bf2515bb8
+(the N0 apk; no cache clear between them). The route reaches a fight on the
+street stage at 10:24:58 and loses it at 10:26:08 ("YOU LOSE"); after that it
+is the attract screens (title over 3D stages). Fight window 10:25:00-10:26:00,
+**60 s, not the 180 s the telemetry bar names**: the route loses within a
+minute, as it did in D0. The census is a per-pass structure, and the fight's
+reading matches D0's fight (2 passes a frame, one inline clear and one
+clear-only pass, in/out 0.50), so it is read, with the attract screens beside
+it as a second scene. GPU 680 MHz through the fight, no thermal pause, battery
+80% on USB (6.2 W in). Fight: gfps 22.0, G 44.0 ms, `xemu-gpu` Tot 38.5 ms (the
+GPU 87% busy).
+
+Per frame:
+
+| group | fight, every pass | fight, GMEM-read | attract, every pass | attract, GMEM-read |
+|---|---|---|---|---|
+| `all` n / ms | 2.33 / 38.73 | 1.33 / 38.43 | 3.29 / 18.31 | 1.61 / 16.98 |
+| `lclr` n / ms / MiB | 1.00 / 0.04 / 3.94 | 0.06 / 0.00 / 0.23 | 1.33 / 0.04 / 4.24 | 0.52 / 0.01 / 1.04 |
+| `lunif` | 1.00 / 34.96 / 3.94 | 0.99 / 34.83 / 3.90 | 1.43 / 16.73 / 4.49 | 0.94 / 16.12 / 3.68 |
+| `zdead` | 0.35 / 11.98 / 0.94 | 0.33 / 11.90 / 0.89 | 0.57 / 5.46 / 1.33 | 0.37 / 5.27 / 0.98 |
+| `clronly` | 1.00 / 0.04 | 0.06 / 0.00 | 1.33 / 0.04 | 0.52 / 0.01 |
+| `any` | 2.08 / 36.34 / 8.82 | 1.12 / 36.13 / 5.02 | 2.80 / 17.23 / 9.80 | 1.51 / 16.48 / 5.64 |
+| `ldMB` = `stMB` | 9.23 | 5.26 | 10.92 | 5.32 |
+| `in` ms | 19.48 | 19.19 | 9.70 | 8.44 |
+| draws | 716 | 704 | 341 | 312 |
+
+Instrument legs, fight: **K1, K2, K3, K4 all pass** (K3: 0.06 of 1.00 clear-only
+passes read as GMEM). Attract: K1, K2, K4 pass, K3 fails (0.52 of 1.33), as on
+NG Black: a clear-only pass is too short for the ratio.
+
+Decision legs, fight: **S holds** (93%), **B fails**: 5.02 MiB a frame on the
+GMEM passes, 0.22 ms; over every pass 8.82 MiB, 0.38 ms. Attract: S holds (90%),
+B fails (0.24 ms; 0.42 over every pass).
+
+### The decision: no load/store A/B; the lever is the render mode of the scene passes
+
+The rule written before the runs: S and B must both hold for step 2. B fails on
+both titles by a factor of 2.5 or more even when every pass's bytes are
+counted, so **no load/store fix is built and no A/B is queued**. The census
+shows why the share in leg S was the wrong measure: the passes that carry an
+avoidable load are the scene passes themselves (each follows a clear-only
+pass), so they carry the frame, but what is avoidable in them is one 1.2 MiB
+load each.
+
+What the GMEM scene passes cost beyond their last tile, from the same lines:
+
+| | GPU frame (`xemu-gpu` Tot) | outer span | in-pass span (last tile) | out − in | scene passes | draws per scene pass | avoidable bytes, bound |
+|---|---|---|---|---|---|---|---|
+| NG Black (N0) | 24.6 ms | 24.53 | 12.82 | **11.7 ms** | ~3 | ~90 | 0.39 ms |
+| DOA3 fight (D1) | 38.5 ms | 38.73 | 19.48 | **19.3 ms** | 1 | ~700 | 0.38 ms |
+| DOA3 attract (D1) | | 18.31 | 9.70 | **8.6 ms** | ~1 | ~310 | 0.42 ms |
+
+On the DOA3 fight the one scene pass spends 38.4 ms in GMEM and 19.2 ms in its
+last tile: in/out 0.50, the pattern lane.flip474 measured on DOA Ultimate,
+where "GMEM rendering executes DOA's draw stream twice, and sysmem once", and
+`TU_DEBUG=sysmem` took the fight from 14-16 to 21 gfps (Tot 58-64 to 41 ms).
+That is a draw-replay cost (each bin replays all ~700 draws), not bytes.
+
+### Recommendation for lane.rendermode474's area (per-pass GMEM vs sysmem)
+
+Ranked by P x win. All three are render-mode changes in the driver's code
+path, judged by fps and J/frame as gmem474 did, not a clock or a power mode.
+
+| # | candidate | P (evidence) | win | cost |
+|---|---|---|---|---|
+| 1 | DOA3 (`54430001`) to `sysmem` in `kTitleRenderModes` (xemu_android.cpp), after an A/B | 0.55. For: D1's fight pass is one GMEM pass with ~700 draws at in/out 0.50, the signature of DOA Ultimate, which sysmem took from 14-16 to 21 gfps; the GPU is 87% busy at 680 MHz. Against: Kabuki's fight stalled under sysmem (gmem474), and DOA Ultimate's sysmem arm changed the ZPASS report in the pgraph suite (flip474 `sysmem.md`; shipped as an exception) | fight: GPU 38.5 ms toward ~29 ms at DOA Ultimate's ratio (one sysmem execution 19.3 ms against 12.6-12.8 per GMEM replay, 1.5x; here a replay is ~19.2 ms); G 44 ms toward ~35, 22 gfps toward ~28 if the GPU stays the pacing wait | one A/B on `bb-doa3` (default vs `--env TU_DEBUG=sysmem`), census on in both arms, 480 s each, read in the fight; then a one-line table entry |
+| 2 | Per-pass mode in the Turnip fork's autotune: a pass with many draws whose bin count is small runs sysmem (the replay cost grows with draws times bins; the fill cost of sysmem grows with pixels) | 0.3 until #1 and #3 are measured; the fork already chooses per pass (tu_autotune.cc), so the lever exists | reaches every replay-bound title without a table entry; size unknown | a fork change; needs the per-pass bin count, which the census does not have |
+| 3 | NG Black (`5443000D`) to `sysmem`, after an A/B | 0.3. For: 11.7 ms of a 24.6 ms GPU frame is outside the last tile of ~3 GMEM scene passes. Against: ~90 draws per scene pass, so less replay-bound than DOA3; flip474 did not measure NG Black | up to ~10 ms of the GPU frame if replay dominates; 36 gfps toward 45 | the same A/B on `bb-ngb` |
+
+A check that comes free with the A/Bs: in a `TU_DEBUG=sysmem` arm every pass is
+sysmem, so the census's `g` line must read near 0 passes and `in` near `out`.
+That is the known answer the mode inference (K3) still lacks on large passes.
+
+For whoever resumes this: the census's mode inference cannot classify a pass
+shorter than ~0.1 ms (K3 fails there). A fix that reads the mode should test
+the ratio only above a minimum outer span. The load/store groups do not depend
+on it.
+
+### Where attempt 11 stopped
+
+Done: census telemetry (f4ffe285e7), N0 and D1 read against the rule written
+before them, the restore at master ran, `nv2a_index.json` regenerated, PR.md
+`State: ready`. preflight passes every gate but `coverage`, which fails on
+board rows for open issues #852-#857 (fighting-game hold work, not this lane's
+files). Nothing of this lane is queued or running. WAITING is `fold
+gpunonrender` again, so the keepalive pass leaves the lane stopped until the
+fold.
