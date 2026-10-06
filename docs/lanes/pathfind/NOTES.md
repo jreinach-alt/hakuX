@@ -1005,3 +1005,23 @@ What this shows, and what it does not:
 - Next, in the OUTBOX order: NBA 2K3 hold3 (`scratch/nba2k3c.sh`, takes the Nova with `hold.sh wait`, then
   `wait-idle`). It is the first run of the team-sport marked-player confirm (b2f6838b03), which has not been
   on a device yet. Then NHL 2K3 hold2, LEGO Star Wars re-hold, AvP re-hold, then football last.
+- Done this attempt (17:50 to 22:50): NBA 2K3 PASS (harness, 0.988). NHL 2K3 hold2 was a replay read as play; the
+  HOLD_REPLAY rule (START out of the instant-replay footer) fixed it, and hold3 ran clean but FAILED on fps (69%
+  at the bar). Strike Force Bowling: a title's own name sequence (NAME_SEQ, DOWN x4 then A) was added and selftested,
+  but the game-end high-score entry is a different screen, and the hold never left it (hold4 and hold5 both stopped
+  at the PlayerSelect screen). LEGO CLOSE (84%). AvP still (99% static). Then the 16-title sweep loop
+  (`scratch/sweep1005.sh`, one run per title, Nova taken and released per title, starts stopped at 22:40): 4 PASS
+  (MK Shaolin Monks, MK Armageddon, MK Deadly Alliance, NBA 2K3), 6 fps FAILs with telemetry (NHL 2K3, Spider-Man 2,
+  NFS MW, Midnight Club II, LOTR, Hulk), 2 can't-path (Batman Begins, Fight Club), Marvel Nemesis FAIL (the REMATCH
+  confirm loop). Five sweep titles not run (Rogue Trooper, Ratatouille, WE9, Blowout, Tecmo) and football not started.
+- Next attempt, in order: (1) the fps telemetry splits into two families: guest-busy (NHL 2K3, NFS MW, LOTR, Hulk,
+  vCPU work per frame) and renderer-bound (Spider-Man 2 at Ri 7 ms, Midnight Club II at Ri 0): the decision is
+  for lane.gpuclock / lane.frametrace, not this lane; (2) Marvel Nemesis REMATCH: from the confirm dialog, YES then A,
+  or B then A on REMATCH, to be checked on frames first; (3) Fight Club and Batman Begins: the fight confirm probe
+  needs the attack-genre rule (X stances), not STICK probes; (4) the five unrun sweep titles, then football last.
+- Telemetry route used this session: decompose.py reads `run.log` for the `ROUTE <hh:mm:ss.mmm> mark gameplay`
+  line, which runs without --perflog do not write; the mark is copied from the hold's logcat.txt into a scratch
+  folder (`scratch/telemetry-*/run.log` plus a copy of logcat.txt) and the script runs there. Not committed (the
+  logcat copies are 2 MB each).
+- Spend: about 2,500 model calls for the day across all runs in the lane (run results), estimated near $125 at
+  the lane's $0.05 per call. Check the owner's cap figure before the next session.
