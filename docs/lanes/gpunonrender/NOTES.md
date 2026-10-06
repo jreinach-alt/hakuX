@@ -1028,6 +1028,16 @@ left column, before 5c35880d0a, needs a re-read on a build with the fix.
 Non-deferred STALLED finishes go through the same path. The `stl` count does
 not say which are deferred, so they are not in this table.
 
+## Attempt 9: why attempt 8 did not finish
+
+Attempt 8 did finish. It read T0/D0/T1, fixed the stamp double count, fixed
+the release build, ran preflight and the jobs selftest, and set PR.md to
+`State: ready` at 8cb3cdf0e7 (pushed, 06:34 PDT). The resume at 06:40 PDT found
+nothing to do: origin/master has not moved past c3a0c70ace, nothing of this
+lane is queued or running, and the Nova's last run on the lane APK was
+followed by the master restore. The lane's next step is the fold, then the
+load/store census lane in "Brief for the next lane".
+
 ## Control, read from the existing counter (attempt 1 arms)
 
 The `xemu-gpu` line already carries `Xfr` = `gpu_nonrender_ms` (profile.c,

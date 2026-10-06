@@ -330,3 +330,12 @@ WAITING lists the four runs.
   `State: ready`. The full release APK is forge-android's to build.
 - Nothing of this lane is queued or running. The Nova is on master (the
   restore after T1 ran DONE).
+
+## 2026-10-06 06:45 PDT (attempt 9): nothing left; ready for the fold
+
+- Resumed 6 minutes after attempt 8 marked the PR ready. No new work:
+  origin/master is still c3a0c70ace, the branch is pushed (8cb3cdf0e7 plus
+  this note), and nothing of this lane is queued or running on either device.
+- The PR stays `State: ready`. The next step is the fold, then the
+  render-pass load/store census lane (NOTES.md "Brief for the next lane").
+- Spend: not readable from this session.
