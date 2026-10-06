@@ -319,3 +319,14 @@ WAITING lists the four runs.
 | Re-read "GPU-bound" on the 18 affected survey titles with the fix (one perflog soak each, no code) | 0.6 that at least one more title, like ToeJam, turns out not GPU-bound | decides which titles a GPU-side fix can help at all | 18 soaks; a sweep-tier batch after a pilot of two |
 | What paces ToeJam at 25 fps with the GPU 66% busy | unmeasured | one survey title | a frametrace capture |
 | Forza/MC2 texture.c:2100 range scan | 0.35 | Forza 8-19 ms/frame PFIFO wait, MC2 8.0 | a counter, then the fix lane |
+
+## 2026-10-06 06:35 PDT (attempt 8): PR ready
+
+- A release build of the lane branch did not compile. texture.c declared the
+  `xemu-xfr` bracket calls only inside its perflog block, and every device run
+  so far was perflog. Fixed in ddfea13092. All four lane TUs now compile
+  under the release NDK line, with and without `NV2A_PERF_LOG`.
+- Jobs selftest: 3088 passed, 0 failed. preflight passed. PR.md is
+  `State: ready`. The full release APK is forge-android's to build.
+- Nothing of this lane is queued or running. The Nova is on master (the
+  restore after T1 ran DONE).

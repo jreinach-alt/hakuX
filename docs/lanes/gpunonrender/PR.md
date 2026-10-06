@@ -1,3 +1,6 @@
+# gpunonrender: the GPU's "non-render" time is render-pass work on Turnip (94-98% on NG Black, ToeJam, DOA3); GPU stamps read once per command buffer; xemu-xfr categories and outer render-pass stamps
+State: ready
+
 Lane: gpunonrender                Issue: #433
 Base: master @ c3a0c70ace
 Files: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/reports.c, docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/sdscan.py, docs/lanes/gpunonrender/stepsdump.py, docs/lanes/gpunonrender/qstate.py, docs/lanes/gpunonrender/abread.py, docs/lanes/gpunonrender/rls.py, docs/lanes/gpunonrender/routes/gnr-spiderman2.route, docs/lanes/gpunonrender/routes/gnr-mc2.route, docs/lanes/gpunonrender/routes/gnr-toejam.route
@@ -159,5 +162,14 @@ until the flip or another finish submits them. The perflog log shows
   at next is per-pass load/store and GMEM binning, not uploads or copies.
 
 Details and per-run tables are in `docs/lanes/gpunonrender/NOTES.md`.
+
+## Checks
+
+| check | result |
+|---|---|
+| Android build, perflog, at 5c35880d0a | built by the dispatcher, apk 7e21e360c518; ran T1 on the Nova |
+| draw.c, surface.c, texture.c, reports.c at ddfea13092, each under the NDK clang line of the release build, with and without `NV2A_PERF_LOG`, `-Wall` | compile; no warnings beyond those on master. The full release APK is forge-android's |
+| `docs/testing/preflight.sh --allow-tracker` | passed |
+| jobs selftest (`docs/testing/jobs/selftest.sh`, all shards) | 3088 passed, 0 failed, all 127 fragments |
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
