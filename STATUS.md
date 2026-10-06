@@ -51,7 +51,6 @@ What is in flight right now. Generated from the working tree and updated as work
 - 2026-10-05 hitchcause: the MTV 330 ms hitches are guest-side waits, not the IDE host read ([ide425d] held run on af37f7a3ea) (#433)
 - 2026-10-05 belowbar1005: the #804 fence wait is not what holds Buffy, NG Black or DOA3 below the bar
 - 2026-10-04 accuracy804 (re-open): the #804 fix keeps the rival cars
-- 2026-10-04 State: ready
 - 2026-10-04 accuracy804: RalliSport's cars blink on alternate frames (#804): identified and fixed
 - 2026-10-04 dispatcher: a soak from a pre-libfolders ref still finds its games folder
 - 2026-10-04 hddperm: dev_push removes <path>.new on a failed push
