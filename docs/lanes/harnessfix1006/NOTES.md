@@ -99,6 +99,16 @@ Not verified from this worktree (see above). What the repo shows:
   `lane.sh` is the open question for lane.local. If it does, that spends an
   attempt on a finished lane, and that is the thing to fix there.
 
+## Preflight
+
+`docs/testing/preflight.sh` on the branch: every gate ok except `coverage`,
+which fails on #859 ("NHL Hitz Pro hangs on the loading screen"): an open
+issue with no lane and no `blocked_on`. That row is the board's, not this
+lane's, and this lane's diff does not touch territory or nv2a files.
+Run with `--allow-tracker` too, the same gate still failed (exit 1), so the
+escape did not cover it; the failure is reported, not hidden. The run's output is
+`preflight-run.txt`.
+
 ## Not done, and why
 
 - The 60 s Nova smoke. It runs after the fix lands in the lane build and the
