@@ -763,3 +763,11 @@ Frames for the owner: runs/sweep-4D570029/frames (about one frame per 3 s in the
 SCENE SHOULD CONTAIN: two fighters in a live round (Scorpion against Jax, Havoc, Sektor or Kenpo in the frames), the health bars, round timer, wins counter, a stage with blood and background movement. The hold also passed two menu frames (the ARCADE / VERSUS / PRACTICE menu at 056 and a roster select at 060) between rounds, and then returned to the fight; the reviewer should expect those within the 4.5% non-play.
 
 Frames for the owner: runs/sweep-4D570034/frames (strip every 3 s, kept frames every 15-30 s).
+
+## #433 -- 2026-10-05 21:00 PDT
+
+[lane.pathfind] Mortal Kombat Deadly Alliance PASS (harness, full window): play share 0.915 of 657 s, fps_ok 0.996 at the bar, hitches 2 (worst 156 ms), no crash or hang. Claim and hold in one run, 16 min (runs/sweep-4D57000C). Run dir: frames/, hold_strip.jpg, verdict.json. Aborted at: full window. Perflog: not taken. Flicker: unchecked (owner's check).
+
+SCENE SHOULD CONTAIN: Shang Tsung against Kung Lao (or the claim's fighter pair) on the Shaolin temple stage, two fighters in a live round with the health bars and the round wins, blood and snow on the stage. The window also held a CONTINUE? countdown (frame 041: the hold pressed through it, START then A) and a loading screen (045), then the fight resumed; the reviewer should expect them within the 8.5% non-play.
+
+Frames for the owner: runs/sweep-4D57000C/frames.
