@@ -4,7 +4,7 @@ Files: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/
 Prediction: none: no arm (A/B soaks read by hand against expected results written in NOTES.md before each run)
 Needs device: yes    Needs NDK: yes
 
-Release note (none): telemetry and opt-in switches; HAKUX_GPUXFR, HAKUX_GPUTS_INRP, HAKUX_SURFSPLICE and HAKUX_STALLFIN are off by default and change no rendering or timing.
+Release note (none): telemetry and opt-in switches; HAKUX_GPUXFR, HAKUX_GPUTS_INRP, HAKUX_SURFSPLICE and HAKUX_STALLFIN are off by default and change no rendering or timing. The GPU timestamp stats now count each command buffer once (perflog numbers only).
 
 ## What this measures
 
@@ -90,6 +90,22 @@ frame.
 every tile it is replayed in. With the variable set, `Rnd` reads 0. A run with
 and without it measures what that pair costs the GPU.
 
+## GPU stamps are read once per command buffer
+
+A finish on the PFIFO thread that is not deferred hands the submit to the
+render thread, waits for it, and reads the slot's timestamps back. The render
+thread marks the slot submitted when it submits (render_thread.c), and nothing
+cleared that mark, so frame rotation reached the same slot before it was
+recorded again and read the same stamps a second time. Each such command buffer
+was counted twice in the GPU phase stats (`xemu-gpu` Tot/Rnd/Xfr, the frametrace
+record's `gpu`) and in `xemu-xfr`. On ToeJam & Earl III, which has one such
+finish a frame, Tot read 48.5 ms per frame against a 38.4 ms frame.
+
+A per-slot flag is now cleared when the slot's command buffer begins and set by
+the first readback; a second readback of the same recording is skipped. Under
+`HAKUX_GPUXFR=1` the `XFR rp` line counts the skipped readbacks and their summed
+command-buffer span as `dup <n> <ms>`. Nothing that renders reads these stats.
+
 ## HAKUX_STALLFIN=reports (off by default)
 
 When the pusher catches up with `DMA_PUT` while the command buffer holds draws,
@@ -127,7 +143,13 @@ until the flip or another finish submits them. The perflog log shows
   per frame, and fps falls from 30.3 to 25.8. The vCPU's wait for pfifo.lock
   grows 4.3 ms per frame, and the GPU frame grows 6.1 ms at the same clock.
   It stays off.
-- Pending: the outer-stamp reading on ToeJam & Earl III and DOA3.
+- **ToeJam & Earl III and DOA3, outer stamps:** the same result as NG Black.
+  97% (ToeJam) and 96-98% (DOA3, fight and title screen) of
+  `gpu_nonrender_ms` is render-pass work. The time outside every render pass is
+  0.55 ms (ToeJam) and 0.26-0.34 ms (DOA3) per frame, and `download` is the
+  largest part on both.
+- On all three titles the GPU frame is inside render passes. The cost to look
+  at next is per-pass load/store and GMEM binning, not uploads or copies.
 
 Details and per-run tables are in `docs/lanes/gpunonrender/NOTES.md`.
 

@@ -1032,18 +1032,64 @@ count, and the GPU clock from thermal.jsonl for the same window.
 
 ## Ranking
 
-Provisional, after X0 (NG Black, outer stamps). It becomes final when T0 and D0
-are read. Ranked by P × win.
+Final after T0 and D0 (three titles under the outer stamps: NG Black, ToeJam &
+Earl III, DOA3). Ranked by P × win.
+
+The answer to the brief's question: on all three titles, 96-98% of
+`gpu_nonrender_ms` is render-pass work that the in-pass stamps cannot see
+(Turnip's binning, every tile but the last, and the tile loads and stores). The
+GPU's real time between render passes is 0.26-0.55 ms a frame, and its largest
+category is `download` (site 587) on every title. No upload, copy, conversion
+or barrier fix can win the 5-18 ms the survey suggested. The time is inside the
+render passes.
 
 | # | candidate | P (evidence) | win | cost |
 |---|---|---|---|---|
-| 1 | **Render-pass cost on the tiler**: per pass, GMEM vs sysmem, bin count, and which attachments are loaded and stored per tile (`loadOp` LOAD where CLEAR or DONT_CARE would do, `storeOp` STORE of a depth buffer nobody reads). Code: draw.c's render-pass begin (`begin_render_pass`, the `VkRenderPassCreateInfo` attachment ops in renderer/pipeline setup). | 0.35. For: X0 puts 97% of NG Black's GPU frame inside render passes, and 0.87 ms per pass is outside the last tile. `TU_DEBUG=sysmem` gained 8 gfps on DOA and AUF (lane.flip474), which says per-pass mode alone moves fps there. Against: no per-pass census of load/store ops exists yet, and some loads are required (the guest draws over the previous contents) | NG Black is GPU-bound at 680 MHz with a 23 ms GPU frame; 3-6 ms off it is 28.5+ in most windows. The same reaches every GMEM-heavy title in belowbar's survey (AUF, DOA Ultimate, Otogi, DOA3, ToeJam) if T0/D0 show the same artifact | First a measurement, telemetry only: a per-pass census (attachment load/store ops, size, draws, and the outer span per pass) under `HAKUX_GPUXFR=1`, one NG Black run. Then the fix lane, whose territory is lane.rendermode474's |
+| 1 | **Render-pass cost on the tiler**: per pass, GMEM vs sysmem, bin count, and which attachments are loaded and stored per tile. The code today: `get_optimal_color_load_op`/`get_optimal_zeta_load_op` (draw.c:3567-3593) LOAD any initialised surface, so a pass that begins with a full guest clear still loads every tile first; and every colour and depth/stencil attachment is STOREd (draw.c:1774-1794), including a depth buffer nobody reads after the pass. Every pass break (`render_pass_breaks`) pays a full load and store of each attachment. | 0.35. For: the outer stamps put 96-98% of the "non-render" time inside passes on all three titles, at 0.87 (NG Black), 0.96 (ToeJam) and 6.2 (DOA3 fight, 2.1 big passes) ms per pass outside the last tile. `TU_DEBUG=sysmem` gained 8 gfps on DOA and AUF (lane.flip474), so per-pass mode alone moves fps there. Against: no per-pass census exists, some loads are required (the guest draws over the previous contents), and the bins/tiles part is inherent to GMEM | NG Black: GPU-bound at 680 MHz, 23 ms GPU frame; 3-6 ms off it is 28.5+ in most windows. ToeJam: 17.6 passes a frame, the most per-pass load/store exposure. The same reaches AUF, DOA Ultimate and Otogi if they behave as these three (not run) | First a measurement, telemetry only: a per-pass census under `HAKUX_GPUXFR=1` (attachment sizes, load/store ops, whether the first draw is a full clear, draws, outer span per pass), one NG Black run and one ToeJam run. Then the fix lane. Brief below |
 | 2 | Forza and Midnight Club II: texture.c:2100's surface-range scan completes a pending download because the texture reads a rendered surface through VRAM | 0.35 (unchanged; needs one counter: why the bind does not take the surface-to-texture path) | Forza 8-19 ms per frame of PFIFO wait, MC2 8.0 | a counter, then the fix lane |
 | 3 | (A) on Spider-Man 2: the splice's eligibility check refused every update (S1) | 0.15. The refusal reason is not counted; if it is a swizzled download, the splice needs a GPU swizzle; and F1 showed the wait can move to `range` once `surfupd` is gone | up to 6 ms per frame, 26.8 to ~30 fps, one title | a refusal-reason counter, one run, then possibly a GPU swizzle |
 | 4 | Simpsons, the STALLED submit or the lock across its wait | 0.05. Both halves are refuted: simp2 (lock) and K1 (submit) each lost fps | none expected | a frametrace capture of K1 would name where the PFIFO thread holds pfifo.lock, if anyone wants the reason |
 | - | In-pass stamp cost in the shipped build | refuted by X1 (+0.5% per pass with the stamps removed) | none | none |
 
-By the brief's decision rule, no copy, upload or conversion category is "the
-cost" on NG Black: the largest (`download`) is 3.3% of `nr`. The single next
-lane is (1), and its first step is the per-pass census, because "which
-attachments are loaded and stored per tile" is a guess until it is counted.
+| - | Absolute GPU ms in `xemu-gpu` (Tot/Rnd/Xfr) on titles with non-deferred PFIFO finishes | fixed in this lane (5c35880d0a, a slot's stamps read once); T1 checks it | correct "GPU-bound" judgements, e.g. ToeJam's Tot 48.5 ms against a 38.4 ms frame | done; one run |
+
+By the brief's decision rule, no category is "the cost": on NG Black, ToeJam
+and DOA3 the largest (`download`) is 2-3% of `nr`. The single next lane is (1),
+and its first step is the per-pass census, because "which attachments are
+loaded and stored per tile, and which of those loads are overwritten by a clear"
+is a guess until it is counted.
+
+### Brief for the next lane: render-pass load/store on the tiler (#433)
+
+What the GPU does inside a render pass, beyond the guest's draws. On NG Black,
+ToeJam & Earl III and DOA3, 96-98% of what belowbar1005 measured as
+"non-render" GPU time is inside the render passes (docs/lanes/gpunonrender/NOTES.md,
+X0 and "T0 and D0 read"): binning, every tile but the last, and the tile loads
+and stores. The emulator's choices that set the load/store part:
+
+- `get_optimal_color_load_op` / `get_optimal_zeta_load_op` (draw.c:3567-3593)
+  return LOAD for any initialised surface. A pass whose first guest operation
+  clears the whole surface still loads every tile, then clears it.
+- Render-pass attachments are created with `storeOp` STORE for colour and for
+  depth and stencil (draw.c:1774-1794). A depth buffer that no later pass,
+  texture or download reads is still written out for every tile.
+- Each pass break stores every attachment and the next pass loads them again.
+
+Step 1, telemetry only (default off, `HAKUX_GPUXFR=1`): per pass, record the
+attachment formats and sizes, the load/store ops chosen, whether the first
+operation in the pass is a clear covering the whole render area, the number of
+draws, and the pass's outer span (the outer stamp pair exists:
+`xfr_rp_outer`). Report per frame: passes, passes whose LOAD is followed by a
+full clear, passes whose depth is never read after the pass, and the outer ms
+in each group. One NG Black run (`bb-ngb`) and one ToeJam run (`gnr-toejam`).
+
+Expected result to write before the runs, and the decision: if the passes with
+an avoidable load or store carry at least 30% of the outer render span, step 2
+is the fix (LOAD to CLEAR or DONT_CARE when the first operation is a full
+clear; DONT_CARE store for a depth attachment whose next use is a clear or
+nothing), behind an env switch, default off, with a golden arm. If they carry
+less, the remaining cost is bins and tiles (GMEM itself), and the next step is
+per-pass GMEM vs sysmem (lane.rendermode474's area), not load/store.
+
+Cost: one draw.c telemetry commit and two Nova runs for step 1. P(step 2 wins
+at least 3 ms a frame on NG Black) 0.35.
