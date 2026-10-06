@@ -304,6 +304,39 @@ def still_window(shift_test, mv, sh):
     return sh < SHIFT_STILL if shift_test else mv < HOLD_STILL
 
 
+REVERSE_N = 3                        # owner 10-06 16:08: looks in a row at or under UNCHANGED before the walk turns round
+REVERSE_SWAP = {"up": "down", "down": "up", "left": "right", "right": "left"}
+
+
+def reverse_trigger(ch, low_run, flipped, rev_row):
+    """One look's step of the reverse rule (16:08, Blowout: 22 min in one hangar corner, looks at 0.003-0.007 change).
+    Returns (low_run, flipped, rev_row, flip_now). REVERSE_N looks in a row at or under UNCHANGED flip the walk. Two flips
+    with no moving look between them stop flipping: the still-window unstick rotation takes the hold from there."""
+    if ch is None:
+        return low_run, flipped, rev_row, False
+    if ch > UNCHANGED:
+        return 0, flipped, 0, False
+    low_run += 1
+    if low_run < REVERSE_N or rev_row >= 2:
+        return low_run, flipped, rev_row, False
+    return 0, not flipped, rev_row + 1, True
+
+
+def flip_walk(toks, flipped):
+    """The loop's stick tokens with their direction turned round (STICK:up:1 -> STICK:down:1) while the walk is reversed."""
+    if not flipped:
+        return toks
+    out = []
+    for t in toks:
+        head, _, rest = t.partition(":")
+        if head == "STICK":
+            name, _, amount = rest.partition(":")
+            out.append(f"STICK:{REVERSE_SWAP.get(name, name)}:{amount}" if amount else f"STICK:{REVERSE_SWAP.get(name, name)}")
+        else:
+            out.append(t)
+    return out
+
+
 # Title-specific hold loops (10-03 addendum, the owner's Black Stone design). They replace the genre's loop and its
 # unlock rotation for these title ids. The walk moves the player with the left stick only, in long strokes that
 # change direction. X is pressed once, alone: at the start of the hold and after two still windows in a row. Y, R1,
@@ -1777,6 +1810,7 @@ class Agent:
         self.budget_s = max(self.budget_s, hold_budget_s(self.el(), self.hold_s))
         held_ok, last_v, ladder_rounds, ladder_i = False, None, 0, 0   # validity (10-06): the hold ends on a verdict, not on hold_s alone
         charsel_i = 0   # the fighting select's cycle presses on this off-play episode (charsel_press)
+        low_run, flipped, rev_row, reversals = 0, False, 0, 0   # the reverse rule (16:08): looks still in a row, walk turned round
         while not held_ok and self.el() < self.budget_s:
             self.n += 1
             t_cycle = now()
@@ -1813,6 +1847,12 @@ class Agent:
             suspect = is_black(png) or still >= 1
             look = {"n": self.n, "hold_s": round(hold_el, 1), "play_s": round(play_s, 1),
                     "changed": None if ch is None else round(ch, 4), "off": off}
+            low_run, flipped, rev_row, flip_now = reverse_trigger(ch, low_run, flipped, rev_row)
+            if flip_now:
+                reversals += 1
+                look["reverse"] = True   # the walk turns round from this look (flip_walk); the verdict reader sees it here
+                print(f"hold-play: {REVERSE_N} still looks: walk reversed ({'back' if flipped else 'forward'}) at {hold_el:.0f} s",
+                      flush=True)
             if rep_left and off:
                 # model-free recovery (Panzer, 10-03: each death cost 4 model looks at ~9 s, one per A of an episode
                 # card): repeat the last look's single press, unlooked, then look again
@@ -1923,7 +1963,7 @@ class Agent:
             if not off and look.get("action") is None:
                 # play: the genre loop (a check look that said play sends it too). The time credited is this
                 # cycle's own, from its frame to its inputs: the look before may have been off play.
-                loop = [t for t in tokens if t not in shed_set]
+                loop = flip_walk([t for t in tokens if t not in shed_set], flipped)
                 if th and press_x:
                     loop, press_x = ["X"], False
                 look.update(src=look.get("src", "genre"), action=loop)
@@ -2002,7 +2042,7 @@ class Agent:
         if not ok and not reason:
             reason = f"budget {self.budget_s / 60:.0f} min with {play_s:.0f} s of play"
         held.update(ok=ok, play_s=round(play_s, 1), need_s=self.hold_s, hold_s=round(now() - t_hold, 1),
-                    model_navs=navs, frames=len(kept), still_windows=still_windows, shed=sorted(shed_set),
+                    model_navs=navs, frames=len(kept), still_windows=still_windows, shed=sorted(shed_set), reversals=reversals,
                     reason=reason, title_hold=bool(th), fps_checks=fps_checks)
         self.result["hold"] = held
         print(f"hold-play: {'HELD' if ok else 'not held'} {play_s:.0f}/{self.hold_s:.0f} s of play; {reason}",

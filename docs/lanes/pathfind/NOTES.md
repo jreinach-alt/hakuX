@@ -1265,3 +1265,41 @@ What this shows, and what it does not:
   give-up and the divergence in the run; the step-8 path itself is NOT re-recorded. If the step-8 black frame recurs, the replay
   abort is what should answer it, and that is the thing to check in the frames.
 - Run: `scratch/title1006.sh 4D57000C` (same launcher as Armageddon, title as an argument), `runs/deadly-alliance-1006`.
+
+## MK Deadly Alliance held run (10-06 14:10-14:40 PDT): FAIL on hitch, one run
+
+- Run `runs/deadly-alliance-1006` on HEAD 4b0f82702e (`scratch/title1006.sh 4D57000C deadly-alliance-1006`). The claim reached
+  live play inside its budget (the claim-live rule answered the 10-05 give-up). The hold ran 1495 s under the validity check, which
+  kept extending until the share cleared; the share passed (0.901) and fps passed (0.9955), so the window is valid.
+- FAIL on one hitch: a 5475 ms stall at 470 s, class unexplained (no shader/texture/DSM work), no ANR in logcat. NEW ISSUE in OUTBOX.
+- Not re-run: a hitch that the perflog cannot name is a telemetry gap, not a pathing fault. Next title in the 13:55 order: MK Shaolin Monks.
+
+## MK Shaolin Monks (4D570029), 10-06 14:41-14:55 PDT: FAIL on fps (valid window), one run
+
+- Run `runs/shaolin-1006`, HEAD 4b0f82702e. Committed change named for its last failure (still scene): still-by-shift (ab8788c38b).
+  It was recorded at launch, not before, which the 13:55 order asks for; the run's play share (0.973) shows the hold moved.
+- Verdict FAIL on fps: fps_ok 0.491 at 28.5, median 45.9, min 15.7 over 621.7 s gameplay. No crash, no hang.
+- Telemetry: decompose.py says VOID (no mark). This run was not a perflog build, and pathfind.py has no perflog option. Filed as
+  a NEW ISSUE in OUTBOX. No 3-min run was taken.
+- Next: Blowout (4D4A0008), still-by-shift.
+
+## Blowout (4D4A0008) and Marvel Nemesis (4541038A), 10-06 15:05-15:50 PDT: both FAIL on a valid window, one run each
+
+- Blowout (`runs/blowout-1006`): play share 0.831 with fps clear; 236 s still. Still-by-shift (ab8788c38b) did not clear it.
+- Marvel Nemesis (`runs/marvel-1006`): play share 0.561; menu 400 s (rematch and results screens). Rematch press (committed)
+  did not exit them.
+- Both are NEW ISSUEs in OUTBOX. Not re-run. Next in the 13:55 order: Guilty Gear XX (53410002), CHARSEL named.
+
+## Reverse-on-still (lane.local 16:08 addendum), 10-06 16:10-16:40 PDT: offline
+
+- `reverse_trigger` / `flip_walk` in `pathfind.py`: REVERSE_N = 3 looks in a row at or under UNCHANGED (0.01) flip the walk's
+  stick tokens (up<->down, left<->right); a moving look resets; two flips with no movement stop flipping (the still unstick takes
+  over). Logged as `reverse: true` on the look and `reversals` in the hold record.
+- Replay of blowout-1006 hold.jsonl through the trigger: flips at n=30 (hold_s 62.8), n=33 (108.7), n=42 (258.6). The first flip
+  lands where the addendum wants (n=30-31, under 80 s).
+- Not reproduced: the addendum's n=83-85 and n=97-100 flips. Those stretches do not hold three looks under 0.01: n=83-84 are
+  0.0174 and 0.0197 and n=85 is 0.235; n=97 is 0.0083 alone, and n=92-96 read 0.014-0.023. Kept at 0.01 as specified; the
+  stretch values are in OUTBOX for the owner to pick a threshold.
+- Selftest: `reverse-trigger` and `reverse-stop` added; `titlehold` accepts the reversed walk and its moves (it expected the
+  forward walk only). Full selftest: all ok (`scratch/selftest-reverse2.log`).
+- Device validation (one run): DOA3 (54430001), walking genre, next in the order.

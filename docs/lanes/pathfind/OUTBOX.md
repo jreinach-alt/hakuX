@@ -1059,3 +1059,37 @@ Spend: 28 Sonnet calls for this run, not priced in this session.
 ## #433 -- 2026-10-06 14:09 PDT
 
 [lane.pathfind] Mortal Kombat: Armageddon (4D570034) PASS (harness): play share 0.934 over 646.2 s scored (603.8 s play; menu 19.2, black 16.0, other 7.0; fps excluded 44.5 s, mark gameplay at route, 1.9 min claim, 22 model calls, 14 steps, 5 replayed). fps_ok 1.0 at the 30 bar, median 59.2, one 105 ms shader hitch at 145 s, no crash, no hang. Run dir docs/lanes/pathfind/runs/armageddon1006d (verdict.json, hold_strip.jpg, frames/). Ref 4b0f82702e (HEAD, CHARSEL ab8788c38b is in it); the run was a direct held run, not a dispatch request, so its apk is not in the verdict: the last clean Nova restore before it was 1-1791319908 (ref 6cef37f426, apk 35ef582d81d5, env []). Env []. Spend: 22 Sonnet calls for this title, not priced here. Frame review is lane.local's: the scene should show Armageddon's fighters in an arena round (player fighter, opponent, HUD); flicker is the owner's check.
+
+## #433 -- 2026-10-06 14:39 PDT
+
+[lane.pathfind] Mortal Kombat Deadly Alliance (4D57000C) FAIL (hitch, harness): full 1495 s hold window, play share 0.901 of the scored window (bar 0.90), fps_ok 0.9955 at 28.5, median 39.9, no crash, no hang. The one failing bar is a single 5475 ms stall at 470 s of hold (bar 500 ms); the perflog classes it unexplained (dsm 0, dpc 0, shader 0, texture 474 us), and logcat has no ANR or timeout marker. Run dir docs/lanes/pathfind/runs/deadly-alliance-1006 (verdict.json, hold.jsonl, frames/, hold_strip.jpg). Ref HEAD 4b0f82702e, env []; the hold ran from the last clean Nova restore (1-1791319908, apk 35ef582d81d5). Claim reached live play at 15-min budget, not at the give-up of 10-05. Spend: about 60 model calls this title, not priced here.
+
+NEW ISSUE: MK Deadly Alliance: one 5.5 s stall at 470 s of play, unexplained by the perflog (no shader, texture, or DSM work in the window) and with no ANR in logcat; it fails the hitch bar alone, with fps and share passing. Evidence: run deadly-alliance-1006, verdict hitches worst5 off_s 470.2, cls unexplained. Blocks Deadly Alliance's Playable (hitch bar), not re-run: the stall needs a telemetry pass on the window (the 5.5 s is a guest or host stall, the decomposition has no owner for it yet).
+
+## #433 -- 2026-10-06 14:54 PDT
+
+[lane.pathfind] Mortal Kombat Shaolin Monks (4D570029) FAIL (fps, benchmarked, valid window): 605 s hold, play share 0.973 of 621.7 s gameplay, fps_ok 0.4912 at 28.5 (bar 0.90), median 45.91, min 15.74, worst hitch 516.5 ms, no crash, no hang. Run dir docs/lanes/pathfind/runs/shaolin-1006. Ref HEAD 4b0f82702e, env [] (last clean restore, apk 35ef582d81d5). Spend: about 25 model calls, not priced here. Still-by-shift (ab8788c38b) is in the build; the hold moved (play share passed), so the miss is frame rate, not pathing.
+
+NEW ISSUE: MK Shaolin Monks runs at fps_ok 0.4912 (median 45.91) on a valid 605-s window; the same engine family as Armageddon (median 59) and Deadly Alliance (median 40) is not the same cost. Evidence: run shaolin-1006, verdict fps_ok 0.4912. Blocks Shaolin's Playable. A 3-min perflog telemetry run follows.
+
+## #433 -- 2026-10-06 14:55 PDT
+
+[lane.pathfind] Shaolin telemetry: NOT taken. The 3-minute perflog run needs a perflog build (decompose.py reads the mark, and shaolin-1006 has none: VOID no mark). pathfind.py has no perflog option, so a telemetry run on the recorded path cannot be queued from here. NEW ISSUE: pathfind has no perflog route for a held run; the perflog must go through a dispatch request on the recorded path. Blocks the telemetry half of the Shaolin fps finding.
+
+## #433 -- 2026-10-06 15:21 PDT
+
+[lane.pathfind] Blowout (4D4A0008) FAIL (play share, harness): hold ran 1397 s scored; play 1161 s, still 236 s (share 0.831 at bar 0.90). fps_ok 1.0 at 28.5, median 30.0, no crash, no hang. Ref HEAD 4b0f82702e, env []. Run dir docs/lanes/pathfind/runs/blowout-1006. The still time is the miss: the still-by-shift rule (ab8788c38b) did not move the scene for 236 s. Identification from the frames is the next step; not re-run. Spend: about 40 model calls, not priced here.
+
+NEW ISSUE: Blowout holds still for 236 s of a 1397-s window (play 0.831) with fps at the bar; the still-by-shift rule did not clear it. Evidence: run blowout-1006, verdict timeline still 235.9 s. Blocks Blowout's Playable.
+
+## #433 -- 2026-10-06 15:50 PDT
+
+[lane.pathfind] Marvel Nemesis (4541038A) FAIL (menu time, harness): 1074 s scored; play 602 s, menu 400 s, other 22 s, results 18 s (share 0.561 at bar 0.90). fps_ok 0.989 at 28.5, one 1023 ms stall (the #851 family), no crash, no hang. Ref HEAD 4b0f82702e, env []. Run dir docs/lanes/pathfind/runs/marvel-1006. The 400 s of menu is the miss: the rematch and results screens the hold did not leave, identified from the frames, not re-run. Spend: about 60 model calls, not priced here.
+
+NEW ISSUE: Marvel Nemesis spent 400 s of a 1074-s window in menus (rematch/results); the hold ladder did not exit them. Evidence: run marvel-1006, verdict menu 400 s, share 0.561. Blocks Marvel's Playable.
+
+## #433 -- 2026-10-06 16:09 PDT
+
+[lane.pathfind] Guilty Gear XX #Reload (53410002) FAIL (play share, harness): 906 s scored; play 603 s, menu 109 s, still 91 s, game over 64 s (share 0.665 at bar 0.90). fps_ok 1.0 at 28.5, no crash, no hang. Ref HEAD 4b0f82702e, env []. Run dir docs/lanes/pathfind/runs/guiltygear-1006. The CHARSEL change got the round started, which is the 10-04 miss; the continue, game-over and still time is the cost now, not the select screen. Spend: about 40 model calls, not priced here.
+
+NEW ISSUE: Guilty Gear XX holds 109 s in menus, 91 s still and 64 s game over in a 906-s window (play 0.665). Evidence: run guiltygear-1006, verdict. Blocks Guilty Gear's Playable.

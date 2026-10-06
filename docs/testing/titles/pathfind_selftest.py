@@ -456,7 +456,9 @@ check("titlehold", not any(t in pathfind.TITLE_HOLD_FORBID for t in flat),
 check("titlehold", [a for a in acts if "X" in a] == [["X"]] * flat.count("X") and flat.count("X") >= 2,
       f"X is pressed alone again after still windows: {flat.count('X')} presses")
 walk = pathfind.TITLE_HOLD["58490004"]["walk"]
+# the walk may be turned round (16:08 reverse rule): each walk and move, in either direction
 moves = [m + walk for m in pathfind.TITLE_UNSTICK]
+moves = moves + [pathfind.flip_walk(a, True) for a in moves] + [pathfind.flip_walk(walk, True)]
 check("titlehold", all(a in (walk, ["X"]) or a in moves for a in acts),
       f"every other cycle is the walk or a stand-still move before it: {acts[:6]}")
 check("titlehold", any(l.get("unstick") for l in look),
@@ -532,6 +534,25 @@ check("charsel", pathfind.charsel_press("Character select grid is showing with S
 check("still-shift", pathfind.still_window(True, 0.2, 0.0) and not pathfind.still_window(True, 0.0, 2.0)
       and pathfind.still_window(False, 0.01, 50.0) and not pathfind.still_window(False, 0.2, 0.0),
       "a title or fighting window is still on the shift (effect in place: still); other genres on the pixel change")
+# the reverse rule (16:08 owner order, Blowout's corner): REVERSE_N looks in a row at or under UNCHANGED turn the walk round;
+# a moving look resets the count; two flips with no movement between stop flipping (the still unstick takes over)
+_lr, _fl, _rv, _flips = 0, False, 0, []
+for _ch in [0.2, 0.004, 0.005, 0.006, 0.005, 0.2, 0.003, 0.004, 0.002, 0.001, 0.002, 0.003]:
+    _lr, _fl, _rv, _now = pathfind.reverse_trigger(_ch, _lr, _fl, _rv)
+    if _now:
+        _flips.append(_fl)
+_lr, _fl, _rv, _stuck = 0, False, 0, []
+for _ch in [0.004] * 9:
+    _lr, _fl, _rv, _now = pathfind.reverse_trigger(_ch, _lr, _fl, _rv)
+    if _now:
+        _stuck.append(_fl)
+check("reverse-stop", _stuck == [True, False] and _rv == 2,
+      f"nine still looks flip twice then stop: the still unstick takes the hold from there: {_stuck}")
+check("reverse-trigger", _flips == [True, False, True]
+      and pathfind.flip_walk(["STICK:up:1", "A", "STICK:left:2.5", "RSTICK:right:0.6"], True)
+          == ["STICK:down:1", "A", "STICK:right:2.5", "RSTICK:right:0.6"]
+      and pathfind.flip_walk(["STICK:up:1", "A"], False) == ["STICK:up:1", "A"],
+      f"three still looks flip the walk, a moving look resets, two flips with no movement stop, the stick tokens turn round: {_flips}")
 # bowling (10-05, AMF Bowling 2004): a bowl hold loops aim and throw with no B, X or Y, and each frame's scorecard
 # (a period_break) gets START, then A, on its own budget (PERIOD_TRIES), not the shared CONTINUE budget.
 ROUTE_LOG.clear()
