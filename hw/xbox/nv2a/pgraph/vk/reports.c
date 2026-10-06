@@ -322,6 +322,42 @@ void pgraph_vk_process_pending_reports_internal(NV2AState *d)
     NV2A_VK_DGROUP_END();
 }
 
+/*
+ * #433 (gpunonrender): HAKUX_STALLFIN=reports submits the open command buffer
+ * at a caught-up FIFO only when a report is queued. Off unless set.
+ *
+ * Every STALLED finish rotates the frame slot, and the rotation waits for the
+ * slot two finishes back (pgraph_vk_finish). Simpsons makes ~8.8 of them a
+ * guest frame, with the GPU busy a quarter of it, so the PFIFO thread waits on
+ * one small command buffer after another, with pfifo.lock held, and the
+ * guest's DMA_PUT waits behind it. Taking the vCPU off the lock alone
+ * (c2dfca18a1, reverted in f6ac723228) moved the wait to that fence: 8 to 21
+ * ms a frame, fps down.
+ *
+ * What a guest can observe from a submit here: semaphores are written at the
+ * method (pgraph.c, BACK_END_WRITE_SEMAPHORE_RELEASE), and surface bytes the
+ * CPU reads are downloaded by their own finishes. The zpass reports are the
+ * only guest-visible value written after a finish
+ * (pgraph_vk_process_pending_reports_internal). So with a queued report the
+ * submit happens as before; without one the draws stay in the command buffer
+ * until the flip or another finish submits them.
+ */
+static bool stall_reports_only(void)
+{
+    static int on = -1;
+    if (on < 0) {
+        const char *v = getenv("HAKUX_STALLFIN");
+        on = v && !strcmp(v, "reports");
+#ifdef __ANDROID__
+        if (on) {
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-vk",
+                                "[stallfin] reports-only on");
+        }
+#endif
+    }
+    return on;
+}
+
 void pgraph_vk_process_pending_reports(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -331,6 +367,9 @@ void pgraph_vk_process_pending_reports(NV2AState *d)
     uint32_t *dma_put = &d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT];
 
     if (*dma_get == *dma_put && r->in_command_buffer) {
+        if (stall_reports_only() && QSIMPLEQ_EMPTY(&r->report_queue)) {
+            return;
+        }
         if (pg->draw_time != r->last_stall_draw_time) {
             pgraph_vk_finish(pg, VK_FINISH_REASON_STALLED);
             r->last_stall_draw_time = pg->draw_time;

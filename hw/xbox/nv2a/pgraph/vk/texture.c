@@ -48,6 +48,11 @@ static void image_pool_drain(PGRAPHVkState *r);
 #define TEX_PERF(...) do { } while (0)
 #endif
 
+/* gpunonrender (#433): brackets around non-render GPU work, see draw.c */
+int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
+                        const char *cat, int site);
+void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok);
+
 /*
  * #474: wall time of each step of pgraph_vk_bind_textures(), NV2A_PERF_LOG
  * only. The phase line's Pipe.Tx is ~9 ms/frame of wall on AUF and Blinx
@@ -61,6 +66,7 @@ static void image_pool_drain(PGRAPHVkState *r);
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
+
 enum {
     TXW_BT, TXW_RES, TXW_CT, TXW_SDL, TXW_SCAN, TXW_FAF,
     TXW_BS, TXW_FLQ, TXW_ND, TXW_CP, TXW_UP, TXW__N
@@ -869,6 +875,7 @@ static void upload_texture_image(PGRAPHState *pg, int texture_idx,
 
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_GREEN, __func__);
+    int xfr_tok_870 = pgraph_vk_xfr_begin(pg, cmd, "tex_up", 870);
 
     VkBufferMemoryBarrier host_barrier = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -899,6 +906,7 @@ static void upload_texture_image(PGRAPHState *pg, int texture_idx,
     binding->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     nv2a_profile_inc_counter(NV2A_PROF_QUEUE_SUBMIT_4);
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_870);
     pgraph_vk_end_debug_marker(r, cmd);
     pgraph_vk_end_nondraw_commands(pg, cmd);
 
@@ -963,6 +971,7 @@ static void copy_zeta_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surfac
     VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
 #endif
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_GREEN, __func__);
+    int xfr_tok_960 = pgraph_vk_xfr_begin(pg, cmd, "s2t", 960);
 
     unsigned int scaled_width = surface->width,
                  scaled_height = surface->height;
@@ -1108,6 +1117,7 @@ static void copy_zeta_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surfac
 
     vkDestroyImageView(r->device, depth_view, NULL);
 
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_960);
     pgraph_vk_end_debug_marker(r, cmd);
 #if OPT_SURF_TO_TEX_INLINE
     pgraph_vk_end_nondraw_commands(pg, cmd);
@@ -1144,6 +1154,7 @@ static void bind_surface_as_texture(PGRAPHState *pg, SurfaceBinding *surface,
     // End render pass to flush tile writes, then barrier for shader reads
     TXW_BEGIN(ND);
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+    int xfr_tok_1146 = pgraph_vk_xfr_begin(pg, cmd, "barrier", 1146);
     TXW_END(ND);
 
     VkImageMemoryBarrier barrier = {
@@ -1168,6 +1179,7 @@ static void bind_surface_as_texture(PGRAPHState *pg, SurfaceBinding *surface,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         0, 0, NULL, 0, NULL, 1, &barrier);
 
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_1146);
     pgraph_vk_end_nondraw_commands(pg, cmd);
 
     texture->draw_time = surface->draw_time;
@@ -1202,6 +1214,7 @@ static void bind_zeta_surface_as_texture(PGRAPHState *pg,
 
     TXW_BEGIN(ND);
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+    int xfr_tok_1204 = pgraph_vk_xfr_begin(pg, cmd, "barrier", 1204);
     TXW_END(ND);
 
     VkImageMemoryBarrier barrier = {
@@ -1228,6 +1241,7 @@ static void bind_zeta_surface_as_texture(PGRAPHState *pg,
 
     surface->image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_1204);
     pgraph_vk_end_nondraw_commands(pg, cmd);
 
     texture->draw_time = surface->draw_time;
@@ -1267,6 +1281,7 @@ static void copy_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surface,
     VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
 #endif
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_GREEN, __func__);
+    int xfr_tok_1264 = pgraph_vk_xfr_begin(pg, cmd, "s2t", 1264);
 
     pgraph_vk_transition_image_layout(
         pg, cmd, surface->image, surface->host_fmt.vk_format,
@@ -1303,6 +1318,7 @@ static void copy_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surface,
                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     texture->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_1264);
     pgraph_vk_end_debug_marker(r, cmd);
 #if OPT_SURF_TO_TEX_INLINE
     pgraph_vk_end_nondraw_commands(pg, cmd);
