@@ -1,8 +1,6 @@
-# hostops 2026-10-05 PDT, attempt 2: the attempt-1 arms ran, but their xemu-xfr lines were dropped by the logcat tag filter (attempt 1's NOTES.md section "Attempt 2").
-# Re-queued at 9609d0299f (the xemu-xfr line now rides on the xemu-gpu tag). Waiting for the two re-run control arms (NG Black, route gpunonrender-ngb.first-run, perflog, Nova):
-#   1-1791247925-lane.gpunonrender-863985   HAKUX_GPUXFR=1
-#   1-1791247926-lane.gpunonrender-864108   HAKUX_GPUXFR=1 HAKUX_GPUXFR_CTRL=16
-# Then resume: read both results' xemu-xfr lines and judge them against docs/lanes/gpunonrender/NOTES.md "Control". The attempt-1 xemu-gpu Xfr reads (C16 +0.70 ms median) are already in NOTES.md.
-# Nova is screening-only until 22:00 PDT unless lane.local queues a perf request there; the dispatcher decides.
-run 1-1791247925-lane.gpunonrender-863985
-run 1-1791247926-lane.gpunonrender-864108
+# lane.gpunonrender 2026-10-05 21:52 PDT, attempt 3: the attempt-2 C16 control read (ctrl 0.68 ms, stable); the C0 arm of attempt 2 was voided (not-foreground, before any frame), so it is re-queued once at the same ref.
+# Waiting for the C0 control baseline (NG Black, route gpunonrender-ngb.first-run, perflog, Nova, ref 9609d0299f, HAKUX_GPUXFR=1):
+#   1-1791262296-lane.gpunonrender-1610133
+# Then resume: read its xemu-xfr lines and judge the baseline checks in docs/lanes/gpunonrender/NOTES.md "Control verdict (attempt 3)" (other categories and residual vs C0, C0 reads no ctrl).
+# If it voids on focus again, that is a harness question for lane.local, not another retry.
+run 1-1791262296-lane.gpunonrender-1610133

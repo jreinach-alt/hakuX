@@ -51,8 +51,29 @@
   a longer run (300-360 s).
 - Spend: not readable from here, so no figure.
 
+## 2026-10-05 21:52 PDT (attempt 3): control verdict; C0 baseline re-queued
+
+- The attempt-2 C16 re-run (864108) read cleanly: `ctrl` 0.68 ms per frame,
+  stable across 105 windows (median, p90 and max 0.68 to 0.69), so 0.043 ms per
+  1 MiB copy. The categories plus the residual reconcile to `nr` within 0.07 ms.
+  The tag fix works: 210 `xemu-xfr` lines reached logcat.
+- The attempt-2 C0 re-run (863985) was voided before any frame: `ROUTE NOT
+  PLAYED`, not-foreground on Nova display 0, no input sent. A focus-at-start
+  failure, not a performance cause. Re-queued once at the same ref, route, env
+  and device: `1-1791262296-lane.gpunonrender-1610133`.
+- So the baseline half of the control (C0 reads no `ctrl`; other categories and
+  the residual do not move against C0) is not read yet. It waits on that run.
+  The `nr` rise (+0.70 ms against `ctrl` 0.68 ms) rests on attempt 1's xemu-gpu
+  pair only.
+- Milestone (a) is reached in part: the instrument reads the known change. The
+  C0 baseline is the open half. Verdict and tables are in NOTES.md, "Control
+  verdict (attempt 3)".
+- Nothing merged. The branch stays at 9609d0299f for the control; it is 21
+  commits behind origin/master and is merged before the title runs.
+- Spend: not readable from here, so no figure.
+
 ## Next
 
-Milestone (b) once the control results land: the control verdict, then the
-first title's category table. The overhead arm (HAKUX_GPUXFR unset) goes with the
-title batch.
+Milestone (a) completes when the C0 baseline lands. Then milestone (b): the first
+title's category table. The overhead arm (HAKUX_GPUXFR unset) goes with the title
+batch.

@@ -95,6 +95,83 @@ tag, which is in the spec, with `xemu-xfr` as the message prefix (draw.c,
 `xfr_emit`). Adding `xemu-xfr:I` to the spec is the cleaner fix, but the spec
 is lane.local's, so it is an OUTBOX request, not a change here.
 
+## Attempt 3: why attempt 2 did not finish
+
+Attempt 2 fixed the tag, queued the two re-run arms and went WAITING. The
+re-runs did run to DONE, but the lane was not resumed to read them, so no
+`xemu-xfr` verdict was written. One of them (the C0 arm) was voided before any
+frame, and attempt 2 did not queue a replacement for it.
+
+## Control verdict (attempt 3)
+
+Four control arms exist, all NG Black on Nova, all at ref 9609d0299f or
+16784acb80 as noted:
+
+| arm | request | `xemu-xfr` lines | `xemu-gpu` lines | result |
+|---|---|---|---|---|
+| attempt 1 C0 | 1-1791243663-lane.gpunonrender-551868 | 0 (tag not in spec) | 107 | ran |
+| attempt 1 C16 | 1-1791243666-lane.gpunonrender-551969 | 0 (tag not in spec) | 108 | ran |
+| attempt 2 C0 | 1-1791247925-lane.gpunonrender-863985 | 0 | 0 | VOID, see below |
+| attempt 2 C16 | 1-1791247926-lane.gpunonrender-864108 | 210 (105 windows) | 313 | ran, read below |
+
+The C16 re-run (864108), per frame, over its 105 `xemu-xfr` windows:
+
+| category | median ms | mean ms | p90 (median of windows) | ops/frame |
+|---|---|---|---|---|
+| `nr` (gpu_nonrender_ms) | 1.30 | 1.10 | 1.36 | |
+| `ctrl` (16 x 1 MiB copies) | 0.68 | 0.68 | 0.68 | 16 |
+| `download` | 0.57 | 0.33 | 0.58 | ~2.3 |
+| `tex_up` | 0.00 | 0.02 | 0.04 | ~0.1 |
+| `surf_up`, `s2t`, `barrier`, `handoff`, `other` | 0.00 | 0.00 | 0.00 | ~1 (barrier) |
+| `res` (unbracketed residual) | 0.07 | 0.07 | 0.07 | |
+
+The same run's `xemu-gpu` line: Tot 1.4, Rnd 0.3, Xfr median 1.0 (mean 1.06).
+The categories plus the residual reconcile to `nr` within 0.07 ms (under 6%).
+
+Against the criteria written before the readings:
+
+- **`ctrl` reads a known change: PASS.** 0.68 ms per frame, stable (median,
+  p90 and max 0.69 across 105 windows), every window counts 16 ops. That is
+  0.043 ms per 1 MiB copy.
+- **`nr` rises by about the `ctrl` total: PARTIAL.** Only attempt 1 has a C0
+  baseline with a usable counter: `Xfr` 0.40 ms (C0) to 1.10 ms (C16), a rise
+  of 0.70 ms against `ctrl` 0.68 ms. The attempt-2 C0 is void, so this is one
+  pair, not two.
+- **Other categories do not move: NOT JUDGED.** No C0 run has a per-category
+  reading. Attempt 1's C0 and C16 logs have no `xemu-xfr` lines at all.
+- **`res` does not rise: NOT JUDGED** against a baseline, for the same reason.
+  The C16 residual is 0.07 ms, which is small.
+- **C0 reads no `ctrl`: NOT JUDGED**, same reason.
+
+Verdict: the tag fix works. The instrument reads the known 16-copy cost, and
+its categories reconcile with `nr`. The baseline half of the control is not
+read yet. The C0 arm that would give it, 863985, was voided before any frame.
+
+The void's cause, from its `run.log`: `FOREGROUND: waiting: foreground-unknown:
+ee317437 has no focused window on display 0`, then `ROUTE NOT PLAYED: hakuX did
+not hold display 0 and input focus; no input was sent`. This is a
+focus-at-start failure, not a performance cause, and it is not known to be
+fixed. The first retry is the rule for a single-run flake (the device-run-flakes
+note), so the C0 arm was re-queued once at the same ref, route, env and device:
+
+- `1-1791262296-lane.gpunonrender-1610133`: `HAKUX_GPUXFR=1`, NG Black,
+  route `gpunonrender-ngb.first-run`, 150 s, perflog, Nova, ref 9609d0299f.
+
+If that run also voids on focus, the next step is a harness question for
+lane.local (the focus-at-start path), not another retry of this lane.
+
+Attempt 2's C16 also gives a first look at a category nobody had measured on
+menu frames: `download` is 0.57 ms per frame with about 2.3 ops, while
+`surf_up` and `s2t` are zero. These are menu frames, so this is not a
+gameplay reading. It is the first place the per-category numbers show anything
+other than the control.
+
+The branch is 21 commits behind origin/master. It stays at 9609d0299f for the
+control, so the control arms match each other. The merge comes before the
+title runs.
+
+Spend: not readable from this session, so no figure.
+
 ## Control, read from the existing counter (attempt 1 arms)
 
 The `xemu-gpu` line already carries `Xfr` = `gpu_nonrender_ms` (profile.c,
