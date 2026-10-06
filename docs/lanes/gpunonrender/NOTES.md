@@ -1751,8 +1751,10 @@ attempt reads P1-P, writes OUTBOX, and keeps the Nova free until 22:00.
 
 ### P1-P read: DOA3, `TU_AUTOTUNE_ALGO=profiled`
 
-`1-1791317784-lane.gpunonrender-1634952`: apk 4028728fcc5a, cache kept
-after P1-S/P1-G/P2/P3. Battery 80%, charging on USB. No thermal pause.
+`1-1791317784-lane.gpunonrender-1634952`: apk 4028728fcc5a, **cache
+cleared** (`shader cache cleared: apk ca290378e862 -> 4028728fcc5a` at
+13:44:24, because P3's restore ran between). So P1-P ran on a cold cache,
+which works against it. Battery 80%, charging on USB. No thermal pause.
 `env: TU_AUTOTUNE_ALGO=profiled`, `render_mode: auto (default)
 title=54430001 TU_DEBUG=(unset)`, so the driver chose the mode per pass.
 
@@ -1791,3 +1793,132 @@ current. One sample per matched segment, at a different point in each, is
 not a J/frame reading. gmem474's Crimson figure (+8% J/frame with profiled)
 stays the only energy number. The fleet A/B below reads J/frame from its
 600 s windows.
+
+### Offline, until P2-P (parked to 22:00)
+
+**Occlusion queries (#527's rule)** (`qrycount.py`, hakuX-rpbrk lines with
+`qry > 0` over the whole logcat):
+
+| title | sysmem arm | GMEM arm | profiled arm |
+|---|---|---|---|
+| DOA3 | 0 of 278 | 0 of 258 | 0 of 275 |
+| NG Black | 22 of 408 (max 64) | 36 of 344 (max 120) | parked |
+| DOA Ultimate | 7 of 271 | 5 of 186 | - |
+
+DOA3 issues no occlusion queries, so #527's rule (no sysmem default for a
+title whose sysmem run has qry lines) does not touch a DOA3 table line. NG
+Black issues them in gameplay in both modes. So a sysmem line for NG Black
+needs the same ruling hostops gave DOA Ultimate (15:42Z on #474): the
+report is a per-run constant in both modes (#527), so the rule protects no
+correct value. That is a ruling for hostops or the owner, not for this
+lane.
+
+**What `profiled` does** (mesa-turnipfork `tu_autotune.cc` 1085-1212,
+1936). Each render pass is keyed by framebuffer size, attachment image ids
+and load/store flags (`rp_key`, 821-894). Until a key has 5 samples in each
+mode, it runs the less-sampled mode 80% of the time. After that the sysmem
+probability steps 5 points per update toward the faster mode (to 5/95), then
+1 point (to 1/99). It locks a pass at 0 or 100 when four things hold: the
+slower mode takes at least 1 ms, the gap is at least 30%, each mode has at
+least 15 samples, and the same mode has won for 30 s. For a game this
+means four things:
+
+- The heavy replay-bound passes (DOA3's: 13.5 against 27 ms, 2x) lock to
+  sysmem after about 30 s, as P1-P shows: in/out 0.97 over the window.
+- A pass under 1 ms, or whose gap is under 30%, never locks. It keeps 1-5%
+  of its executions in the slower mode for good. On a title where the two
+  modes differ in pixels, those passes vary from frame to frame and from
+  run to run. A golden captured under `profiled` can vary the same way.
+- A pass keyed on a new image id starts again from 50/50. If xemu recreates
+  a surface's VkImage (a resize, or a surface-cache eviction), that pass
+  explores again, and 20-80% of its next ~10 executions run in the slower
+  mode.
+- The algorithm prices GPU time per pass, not energy. Where the frame is
+  capped or the CPU is the wait, a GPU-time win buys no frame. Sysmem's
+  DRAM traffic can then cost energy: Crimson +8.4% J/frame at the same fps
+  (gmem474). Under the owner's energy rule, that is a regression with
+  nothing gained.
+
+**A model of the sysmem saving, from the three pairs.** On every matched
+segment, the sysmem pass costs about what GMEM's last tile costs (the
+census `in`):
+
+| title, segment | GMEM `in` ms | sysmem Tot ms | ratio |
+|---|---|---|---|
+| DOA3 A+B | 13.5-13.7 | 13.7 | 1.00 |
+| DOA3 C | 18.2 | 16.3-19.5 | 0.90-1.07 |
+| NG Black intro | 12.1 | 13.4 | 1.10 |
+| DOA Ultimate fight | 21.6 | 21.3-21.6 | 0.99 |
+
+So on a title whose GMEM passes run two bins, sysmem's Tot is about
+`Rnd x [0.9, 1.1]` plus the real non-render work (`nr_out`, 0.2-0.4 ms on
+these titles). belowbar1005's `Rnd` column is the in-pass span, the same
+quantity. That gives a prediction per title. A title is a candidate where
+`Xfr/T` is near 0.5 (two bins replayed) and its `xemu-gpu` numbers are not
+inflated by `sd` finishes (the over-count table above):
+
+| survey title (not tabled) | Tot | Rnd | Xfr/T | `sd`/flip | predicted sysmem Tot |
+|---|---|---|---|---|---|
+| Crash Twinsanity | 18.3 | 10.3 | 0.39 | 0.09 | 9.5-11.7 |
+| Black | 11.2 | 5.8 | 0.49 | 0 | 5.5-6.7 |
+| RalliSport Challenge | 10.4 | 6.8 | 0.39 | 0 | 6.4-7.8 |
+| Kabuki Warriors | 9.1 | 5.4 | 0.50 | 0 | sysmem stalls the fight (gmem474); guard, not candidate |
+| Otogi | 22.4 | 11.0 | 0.51 | 0.42 | re-read first (inflated) |
+| Halo 2 | 14.3 | 8.2 | 0.44 | 1.67 | re-read first (inflated) |
+| Top Spin | 10.4 | 6.0 | 0.43 | 18.3 | re-read first (inflated) |
+
+A GPU-time saving is a frame-rate win only where the GPU is the wait, that
+is, where `1000 / gfps` is near Tot. The survey has no gfps column, so this
+table predicts GPU ms and no fps. Each arm of the fleet A/B reads gfps
+and J/frame alongside Tot.
+
+### Next, ranked by P x win (before P2-P)
+
+| candidate | P (evidence) | win | cost |
+|---|---|---|---|
+| 1. App default `TU_AUTOTUNE_ALGO=profiled`, set in `ApplyRenderMode` where `TU_DEBUG` is set, with a guard list for the titles it must not touch | 0.45: it matched the best mode on DOA3 (P1-P, cold cache), DOA Ultimate and AUF (gmem474), and kept Kabuki at 59.9 with no stall (n=1). Against it: Crimson +8.4% J/frame at the same fps, unlocked passes that alternate modes, and only 5 titles measured | every untabled title with two-bin GMEM passes, without a table line per title: Crash Twinsanity 18.3 -> ~10.6 ms GPU, Black, RalliSport, and Otogi, Halo 2 and Top Spin if their re-read holds. The fps win is per title, where the GPU is the wait | one line in xemu_android.cpp (a grant) plus a fleet A/B: about 10 titles x 2 arms x 600 s, ~4 h of Nova time |
+| 2. DOA3 `54430001` sysmem line in `kTitleRenderModes` | 0.85: matched attract scenes 31-34 -> 59 and 21-22 -> 52.5 gfps, Tot 0.37-0.49x, pixels pass, no queries. The story fight was not compared, because the stage differs each run | DOA3's heavy scenes about 2x; the fight's GPU frame toward ~20 ms (D1: 38.5) | one line, plus one confirmation soak on the table build |
+| 3. NG Black `5443000D` sysmem line | 0.75 on performance (matched intro 32.5 -> 59, Tot 0.54x, pixels pass), but it waits on a #527 ruling (queries in both modes) | 32-38 -> 59 gfps (vsync) on the canyon | one line, plus the ruling |
+| 4. Per-pass autotune in the fork (many draws, few bins: sysmem) | 0.3, unchanged | the same titles as 1 | a fork change and its build; only if 1 fails on a title the fork could fix |
+
+Candidates 2 and 3 do not wait on 1. They are certain wins on titles
+already measured. Candidate 1 ranks first on P x win because its win spans
+the fleet. If 1 ships, 2 and 3 become redundant: `profiled` picks sysmem on
+DOA3 by itself, and P2-P says whether it does on NG Black. The order is
+therefore P2-P at 22:00, then: if P2-P matches, write 1's brief (below) and
+hold 2 and 3 as its fallback; if P2-P fails, 2 and 3 go in as table lines,
+and 1 goes back to the fork (4).
+
+### Brief for the next lane: `TU_AUTOTUNE_ALGO=profiled` as the app default (#433, #474)
+
+Start only if P2-P matches on NG Black (its Tot on the intro segment is at
+most 14.7 ms).
+
+1. **Change** (xemu_android.cpp `ApplyRenderMode`, a grant): when the env
+   has no `TU_AUTOTUNE_ALGO` and the title is not in the guard list, run
+   `setenv("TU_AUTOTUNE_ALGO", "profiled", 0)` before the instance exists.
+   Print it on the `render_mode:` line. Put it behind a runtime override
+   (`autotune=bandwidth|profiled`). Its default is decided by the A/B
+   below, and stays `bandwidth` until then. Guard list: the titles that
+   read ZPASS reports (Blinx, #527) and Kabuki Warriors (sysmem stalls its
+   fight, gmem474). The guard keeps `bandwidth` for them.
+2. **Fleet A/B** (Nova, perflog, census on, 600 s, frames every 30 s;
+   `bandwidth` arm first so `profiled` gets the warm cache; a 60 s master
+   restore after the last arm): Crash Twinsanity, Black, RalliSport, Otogi,
+   Halo 2, Top Spin, Tron 2.0, Fuzion Frenzy (candidates), and Crimson
+   (energy guard; Nova copy if one exists, else the Thor's <= 480 s cold
+   slot). Kabuki (stall guard) and Forza (Xfr/T 0.13, where nothing should
+   change) are the controls.
+3. **Rule, written before the runs**, per title over the gameplay window:
+   `profiled` **wins** with gfps at least bandwidth + 2 and at least 1.08x,
+   and J/frame at most 1.05x. It **holds** with gfps within ±1 and J/frame
+   at most 1.05x. It **loses** on gfps below bandwidth - 1, on J/frame
+   above 1.05x at equal gfps, or on any stall (a perf-line gap of 2 s or
+   more that bandwidth does not have). The region check (`regioncheck.py`)
+   runs on every frame pair. The default flips to `profiled` if it wins on
+   at least 3 candidates and loses on none. A title that loses goes on the
+   guard list only when its loss has a named cause.
+4. **What the census adds**: in/out per arm says which passes `profiled`
+   locked to sysmem. A title that gains nothing and reads in/out near 1 in
+   both arms was already sysmem under `bandwidth`. That is a hold, not a
+   miss.
