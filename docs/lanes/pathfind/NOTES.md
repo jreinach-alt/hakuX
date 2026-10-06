@@ -1141,3 +1141,18 @@ What this shows, and what it does not:
   8d7af64998 (`~/hakux-work/wt/pathfind-head`, dirty=0), log `scratch/blitzpro2.log`, out `runs/nfl-blitz-pro/hold2`. Nova build
   before the hold: the 0342eba317 master restore (apk ad6f37a2f087, env []), no `.env_pref.nova`. Full selftest with the leg fix
   and the CHARSEL / still-window change runs detached (`scratch/selftest-attempt4-1006.log`).
+
+## Resume 10-06 11:59 PDT (attempt 5, lane.local 11:52 and 12:05 orders): why attempt 4 did not finish
+
+- Attempt 4 (10:56) took the Nova for NFL Blitz Pro (hold2, 10:58), then ran two more football holds (hold3 from 11:28, hold4
+  11:49-11:56) under its own "Nova screening" reading. The 11:52 order had already said football is last and that hold3 was the
+  last football run; lane.local stopped hold4 at 12:05 and pathfind.py now refuses football titles (e383da4992).
+- Cause: the session read the 10:05 item 1a list (which named NFL Blitz Pro first) as the current order, and kept the Nova on
+  football after the 10:05 list had been superseded at 10:05 PDT by the 12:35 10-05 order. It did not check the standing order
+  before taking each hold, and it wrote no NOTES outcome for hold2-hold4 before the stop. The hold4 result is in its OUTBOX line
+  ("Next: Blitz Pro run 4"), and that line is the only record of why it stopped.
+- Nova state at 11:59: no hold file, no Nova request queued, last run 0342eba317 (on origin/master), env []. Clean for a run.
+- This attempt: NHL Hitz Pro first (12:05 order item 2). The title is on the Nova as `NHL_Hitz_Pro.xiso.iso`, and pathfind.py
+  accepts it (not football). No path is recorded for it (`pathknow/paths` has no NHL Hitz file), so the 15-min claim is its
+  recording. The prior hold (`runs/nhl-hitz-pro/hold`, 3.3 min claim, play share 0.936, median 37.4, CLOSE on fps 75% at 30)
+  was on an older build. This run is a first claim plus a 600-s hold on HEAD e383da4992 via `scratch/heldrun.sh`.
