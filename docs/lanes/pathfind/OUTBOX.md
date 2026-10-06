@@ -977,3 +977,15 @@ Named cost: the claim spent most of its 15 min in team select and the probe ladd
 NEW ISSUE: NBA 2K3 claim budget (15 min) runs out in team select before the live court on a re-hold: the first live read came at 14.5 min with the probe still open. hold3 (10-05) passed from the same title with a longer route; the claim budget is the blocker here. Not re-run: identify the time split from these steps first.
 
 Spend: model calls for this run (82), not priced.
+
+## #433 -- 2026-10-06 07:47 PDT
+
+[lane.pathfind] Marvel Nemesis (4541038A) GAVE UP at the 15-min claim budget (no hold, no verdict): 87 steps, 77 model calls, 7 replayed, run runs/rehold-4541038A (run.log, steps). Live fight with the HUD and both health bars read as gameplay from about step 63 (10.7 min); the claim ended at 15 min in the fight probes, the same shape as Deadly Alliance and NBA 2K3.
+
+Ref and env: as for the other re-holds, the pre-hold gate read ref c3a0c70ace (origin/master), apk 6beaa5ac1cdd, env [] from the last clean Nova result. This run's own device record was not readable. Read that as the build, not as a per-run receipt.
+
+Named cost: the claim reached a live fight at 10.7 min, then spent about 4 min in probe and continue cycles with the budget running out. The REMATCH fix (2b851dd27f) was not reached, since the match did not end in the claim. Its earlier r3 hold (10-06 03:26) ran the hold and was judged on play share, so this claim give-up is a different failure: the claim's own budget, not the hold.
+
+NEW ISSUE: fighting titles give up at the 15-min claim budget with live fight on screen (Marvel Nemesis at step 63, 10.7 min; Deadly Alliance and NBA 2K3 the same shape). The shared claim budget runs out in probe and continue cycles after play is live, so no fighter hold runs. Blocks Marvel's Playable and the fighter family (Armageddon, Deadly Alliance, Guilty Gear, Marvel). Not re-run: the claim budget and the probe rule for fights need identifying together.
+
+Spend: model calls for this run (77), not priced.
