@@ -1005,3 +1005,15 @@ Nothing in this pass met step 3's bar (a named divergence step and the input tha
 The replay abort rule (step 2) is in `pathfind.py` with its own pure leg (`replay_diverged`: Deadly Alliance aborts past 7.5 min on a non-matching screen, not before). The integration of the abort into the claim loop is NOT yet exercised on a device; it is the first thing a later replay run tests.
 
 Spend: no device time and no model calls for this pass.
+
+## #433 -- 2026-10-06 08:12 PDT
+
+[lane.pathfind] Mortal Kombat: Armageddon (4D570034) retry FAIL on play share, fps clear (run runs/rehold2b-4D570034, verdict.json, hold.jsonl, hold_strip.jpg). The validity check ran as designed: the hold played 603 s, the verdict counted 604 s of play in a 795.3 s scored window, play share 0.760 (bar 0.90), menu 140 s, black 25 s, other 15 s. fps_ok 1.0, median 59.9, no crash, no hang. The check asked for 1117 s more play to reach 90 %, and the budget was gone, so the hold ended not held ('share short by 1117 s with no budget left'). Excluded time as the verdict counts it.
+
+Ref and env: as for the other re-holds, this run's device record was not readable (pathfind.py passes no ref). The pre-hold gate read ref c3a0c70ace (origin/master), apk 6beaa5ac1cdd, env [] from the last clean Nova result. Read that as the build, not a per-run receipt.
+
+Named cost (hold.jsonl, the ladder): the off-play cap tripped once, at 12 menu steps, and started ladder round 1. The menu time that followed was the Character Select grid again, and the ladder's A, START, A, A, B, START did not clear it in the rest of the window (one round in about 800 s, so the cap did not trip again while the grid was up). The validity rule did what the owner asked (no stop at the cap; the check named the shortfall). What is still missing is a Character Select exit that works: the ladder's A on a highlighted fighter did not start a round.
+
+NEW ISSUE: Armageddon's Character Select is not exited by the hold's ladder (A, START, A, A, B, START): menu time 140 s and the share falls to 0.76 with fps clear. Blocks Armageddon's Playable. Not re-run: the select screen's working input needs identifying from these frames (the 'PRESS START' join prompt in the claim's step 88 of Deadly Alliance is the same family).
+
+Spend: model calls for this run, not priced.

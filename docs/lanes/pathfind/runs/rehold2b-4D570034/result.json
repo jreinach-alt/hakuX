@@ -1,0 +1,83 @@
+{
+ "title_id": "4D570034",
+ "name": "Mortal Kombat: Armageddon",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D570034-Mortal_Kombat_Armageddon.xiso.iso",
+ "result": "gameplay",
+ "tool": "fad7af4691",
+ "started": "2026-10-06 07:54:02 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/018-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/018-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/018-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/018-probe-right.jpg"
+ ],
+ "minutes": 2.36,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/017-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/027-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4D57.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Two characters (Scorpion and Kung Lao) fight in melee, with health bars, round timer, and fighting-style labels, which is a 2D-style versus fighting game.",
+  "ok": false,
+  "play_s": 602.5,
+  "need_s": 600.0,
+  "hold_s": 793.9,
+  "model_navs": 27,
+  "frames": 24,
+  "still_windows": 0,
+  "shed": [
+   "B",
+   "X"
+  ],
+  "reason": "share short by 1117 s with no budget left",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 187,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 186.0,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 302,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 303.1,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Mortal Kombat: Armageddon ? FAIL(menu time: 75.9% of the scored window in `play` (bar 90%; play 604 s, menu 140 s, black 25 s, other 15 s)) gameplay=795.3s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.7595 fps_excluded=192.1s"
+ },
+ "model_calls": 46,
+ "calls_by_model": {
+  "claude-sonnet-5": 46
+ },
+ "steps": 18,
+ "seconds": 983.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/frames/129-hold.jpg",
+ "last_state": "probe",
+ "replayed": 4,
+ "sib_replayed": 0,
+ "guide": [
+  "4D570034"
+ ],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold2b-4D570034/strip.jpg"
+}
