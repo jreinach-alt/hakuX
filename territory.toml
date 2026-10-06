@@ -2071,3 +2071,15 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/gpunonrender/**", "hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/surface.c", "hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/vk/reports.c", "hw/xbox/nv2a/pfifo.c", "docs/testing/nv2a_index.json"]
 note = "STARTED lane.local 2026-10-05 16:40 PDT (owner: high value): bracket the non-render GPU time (uploads, copies, converts, clears) per category behind HAKUX_GPUXFR=1, default off; telemetry only; Sonnet, $25 cap. GRANTED 03:3x PDT 10-06 (hostops, PM 03:33): reports.c from folded lane.accuracy804 and pfifo.c from folded lane.vcpusleep, for scope (C), the Simpsons pfifo.lock across the finish slot-fence wait. || GRANTED 10:5x PDT 10-06 (hostops jam duty, [foldqueue] 10:43): docs/testing/nv2a_index.json, which lane/gpunonrender changes (census hooks, regenerated over the fold pins); unclaimed on origin/board; the fold refused it as outside territory."
+
+[lane.waitread1006]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/waitread1006/**"]
+note = "STARTED lane.local 2026-10-06 12:58 PDT (PM midday plan action 3): offline, no device; what each slow title waits on. Row added by hostops 13:0x PDT (jam duty: the [foldqueue] 12:57 refusal, no row on origin/board)."
+
+[lane.harnessfix1006]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/harnessfix1006/**"]
+note = "STARTED lane.local 2026-10-06 12:58 PDT (PM midday plan action 4): harness fix. Its dispatcher/result.json files are named in OUTBOX for a grant. Row added by hostops 13:0x PDT (jam duty, per lane.local's 12:58 request)."

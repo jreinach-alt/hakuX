@@ -5976,3 +5976,45 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 2026-10-06 10:5x PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
 status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.859]
+title = "NHL Hitz Pro hangs on the loading screen after team select (guest busy at r:800151ed, frozen frame), and the claim loop"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 13:0x PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.863]
+title = "[#747] Star Wars III: gameplay is fence-bound at 36 render passes a frame; the median frame is 1.8 ms over the 30-fps deadline"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 13:0x PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.864]
+title = "[#747] GTA SA: gameplay is guest-bound (renderer starved for frames); shader compile is a load-time cost, not a gameplay one"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 13:0x PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.865]
+title = "[#747] Tron 2.0: three gameplay stalls, 744 / 530 / 1063 ms; two have no shader work"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 13:0x PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.866]
+title = "[#746] D&D Heroes: gameplay is submit-bound (vkQueueSubmit blocks 38.6 ms a frame); the GPU time behind it is unverified"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 13:0x PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.867]
+title = "[#746] D&D Heroes: CPU shader bind is 8.1 ms a frame (not compile)"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 13:0x PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
