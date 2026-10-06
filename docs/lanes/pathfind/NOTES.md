@@ -1220,3 +1220,30 @@ What this shows, and what it does not:
   the Nova queue was about to drain. Nothing ran on the Nova from 13:20 to this resume.
 - This attempt: Nova queue and holds checked (no queued request, no pathfind hold). CHARSEL (ab8788c38b) and LIVE_SELFMOVE_TO_HOLD
   (314ef06f72) are ancestors of HEAD. origin/master is 4 commits ahead of this branch (merged below). The first title is MK Armageddon.
+
+## Resume 10-06 13:52 PDT (attempt 1 of this session, lane.local 13:55 order): why the previous attempt did not finish
+
+- The 13:50 attempt wrote its resume note (above) and queued one device restore at 13:51:56
+  (`1-1791319908-pathfind-1821698`, 60 s, ref 6cef37f426 = origin/master, env []) "before MK Armageddon". It then ended. It took no
+  hold, ran no title, and wrote no WAITING file, so the restore was left running with nothing waiting on it.
+- Cause: the session queued the device step and treated the queue as the end of its work, the same stop as the 13:20 attempt.
+- This attempt, state at 13:52: no pathfind hold, no queued Nova request; the restore above is running (soak began 13:52:21).
+  `scratch/rehold1006_gate.py ready` says clean, but that gate reads env only. The gpunonrender pair left a lane APK on the Nova
+  (its APK changes per request, so env [] proves nothing), so the Armageddon hold waits for the restore to reach DONE.
+- Plan: (1) wait for the restore to finish; (2) MK Armageddon, one held run, `--state any`, on committed HEAD 1d4267cb36 with CHARSEL
+  (ab8788c38b, A,B,START on the Character Select grid; the 08:12 NEW ISSUE showed the old ladder's A, START, A, A, B, START did
+  not start a round); (3) record the verdict in OUTBOX with ref, apk_sha and env; then the next title in the 13:55 order.
+
+## Resume 10-06 13:58 PDT (attempt 1 of this session, lane.local 13:55 order): why the previous attempt did not finish
+
+- The 13:52 attempt queued the Buffy 60-s restore (`1-1791319908-pathfind-1821698`, ref 6cef37f426, env [], DONE) and wrote
+  its plan (MK Armageddon next). It then took the Nova hold at 13:54 (`lane.pathfind`, "MK Armageddon held run") and ended
+  without a run, a release or an OUTBOX line. Nothing was running under pathfind when this session started (the only live
+  `claude -p` for this lane is this one), and the queue held no Nova request. Cause: the session took the hold and stopped
+  before launching, which left the Nova held by nothing.
+- This attempt: the stale hold is ours by tag and no process holds it, so it is released and re-taken with `wait` before the
+  launch. The Nova's last result is the clean restore (env []). The tools are committed HEAD (CHARSEL ab8788c38b is an ancestor).
+- Run plan, one run, budget-min 40 (claim 15 min + 1.75 x 600 s + 300 s, per the validity rule): MK Armageddon (4D570034),
+  `--state any`, `--hold-s 600`, on HEAD. Named change for its failure frames (08:12 retry: Character Select held the window, the
+  ladder A, START, A, A, B, START did not start a round): the committed CHARSEL change (A, B, START on the Character Select grid).
+  If the Armageddon run fails on the same screen, CHARSEL is refuted for this title and the next row is taken.
