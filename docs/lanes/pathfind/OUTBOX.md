@@ -880,6 +880,14 @@ SCENE SHOULD CONTAIN: Rogue Trooper in third person on an alien crystal landscap
 
 Flicker: owner's check (frames above).
 
+## #433 -- 2026-10-06 02:29 PDT
+
+[lane.pathfind] Blowout FAIL (play share, still walls; fps clear): 1.8 min to gameplay, 25 model calls, 8 steps; hold 780 s, play share 0.776 (bar 0.90), fps_ok 1.0, no crash or hang. Run dir: runs/sweep-4D4A0008 (frames/024-hold.jpg, frames/062-hold.jpg, verdict.json). The model read gameplay in every check; the hold's own motion readings show 3 still stretches (windows at 78-112 s, 447 s and 717 s, change 0.005 to 0.02, against 0.13 to 0.28 in the moving windows), about 175 s in all. Frames 024 and 062 are different corridors, so the player moved between them; the still stretches are where the genre walk pressed into a dark corridor wall. The stand-still unstick fired two windows late each time (the first still window at 78 s; play resumed only at 153 s).
+
+NEW ISSUE: Blowout: the generic hold's stand-still recovery is slow in dark corridors (two still windows before the first unstick, and the walk returns to the same wall); blocks Blowout's Playable at 77.6% play share (fps clear, 1.0). Not re-run: next step is a Blowout walk (or an earlier unstick for the generic genre) identified from these frames.
+
+SCENE SHOULD CONTAIN (if it clears): Blowout's dark industrial corridors with the first-person weapon and HUD (ammo, health bars), a moving view down the corridors, enemies or doorways changing across the window.
+
 ## #433 -- 2026-10-06 02:13 PDT
 
 [lane.pathfind] World Soccer Winning Eleven 9 PASS on the harness, WITH A CONTROL CAVEAT: 6.3 min to gameplay, 39 model calls, 30 steps; hold 629.7 s, play share 0.9731 (static 0.113), fps_ok 1.0 (bar 28.5), no crash or hang. Run dir: runs/sweep-4B4E002F (frames/039-hold.jpg, frames/084-hold.jpg, strip.jpg, verdict.json). Setup done in the claim: Match Time set to 20 min (the longest offered), so the first half ran 24:21 of clock with no half-time in the window. Spend: this session's model calls, not priced.
