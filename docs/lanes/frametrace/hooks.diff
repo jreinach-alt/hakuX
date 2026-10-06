@@ -1,0 +1,374 @@
+diff --git a/accel/tcg/cpu-exec.c b/accel/tcg/cpu-exec.c
+index d63e676086..97a22a670c 100644
+--- a/accel/tcg/cpu-exec.c
++++ b/accel/tcg/cpu-exec.c
+@@ -32,6 +32,7 @@
+ #include "exec/mmap-lock.h"
+ #include "exec/translation-block.h"
+ #include "tcg/tcg.h"
++#include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace */
+ #include "qemu/atomic.h"
+ #include "qemu/rcu.h"
+ #include "exec/log.h"
+@@ -1255,6 +1256,9 @@ static void rrw_sti(CPUState *cpu, uint32_t pc)
+     }
+     rrw_idle = true;
+     rrw_t = now;
++    if (hakux_ft_enabled()) {
++        hakux_ft_gidle_begin();
++    }
+ }
+ 
+ /* cpu_handle_interrupt took an interrupt. */
+@@ -1273,6 +1277,9 @@ static void rrw_wake(void)
+     }
+     now = get_clock();
+     rrw_idle = false;
++    if (hakux_ft_enabled()) {
++        hakux_ft_gidle_end();
++    }
+     if (w) {
+         int64_t idle = now - rrw_t;
+         w->n++;
+diff --git a/hw/xbox/nv2a/nv2a.c b/hw/xbox/nv2a/nv2a.c
+index 239e07b75f..b1aac75484 100644
+--- a/hw/xbox/nv2a/nv2a.c
++++ b/hw/xbox/nv2a/nv2a.c
+@@ -20,6 +20,7 @@
+  */
+ 
+ #include "hw/xbox/nv2a/nv2a_int.h"
++#include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace */
+ #include "hw/xbox/game-compat.h"
+ #include "hw/core/cpu.h"
+ #include "target/i386/cpu.h"
+@@ -929,6 +930,7 @@ static void nv2a_simple_vblank_cb(NV2AState *d)
+      * zero in simple mode -- exactly the mode you switch to when you want
+      * pacing numbers with the deferral heuristics out of the way. */
+     g_nv2a_stats.pacing.vblank_fired++;
++    hakux_ft_vblank();
+     nv2a_vblank_note_fire(period, now);
+     nv2a_vblank_record(d, VBH_SRC_SIMPLE, false, d->vblank_next_target_ns);
+ 
+@@ -1156,6 +1158,7 @@ static void nv2a_vblank_timer_cb(void *opaque)
+ 
+     /* Track VBLANK firing stats */
+     g_nv2a_stats.pacing.vblank_fired++;
++    hakux_ft_vblank();
+     g_nv2a_stats.pacing.unlock_mode_active = unlocked;
+     if (was_deferred) {
+         g_nv2a_stats.pacing.defers_total++;
+diff --git a/hw/xbox/nv2a/pfifo.c b/hw/xbox/nv2a/pfifo.c
+index c2b1316911..2ce52a89a7 100644
+--- a/hw/xbox/nv2a/pfifo.c
++++ b/hw/xbox/nv2a/pfifo.c
+@@ -20,6 +20,7 @@
+  */
+ 
+ #include "nv2a_int.h"
++#include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace */
+ /* For `current_cpu`, which is how the submission-detection below tells the
+  * guest CPU thread from the main loop and from the PFIFO thread itself. It
+  * was included only under __ANDROID__, for the EIP in pfifo_read's poll log. */
+@@ -2185,6 +2186,8 @@ void *pfifo_thread(void *arg)
+ 
+         if (!d->pfifo.fifo_kick) {
+             int64_t idle_t0 = nv2a_clock_ns();
++            HakuxFtWait ftw;
++            hakux_ft_wait_begin(&ftw, HAKUX_FT_W_IDLE, -1);
+             cbl_enter(cbl_park_cat(d));
+ 
+ #if XEMU_OPT_FIFO_SPIN
+@@ -2227,6 +2230,7 @@ void *pfifo_thread(void *arg)
+ #endif
+ 
+             cbl_leave();
++            hakux_ft_wait_end(&ftw);
+             {
+                 /* Always on: idle_t0 above is read unconditionally, so this
+                  * costs one more clock read per wait and answers the
+diff --git a/hw/xbox/nv2a/pgraph/pgraph.c b/hw/xbox/nv2a/pgraph/pgraph.c
+index 74110c1fe4..3754acface 100644
+--- a/hw/xbox/nv2a/pgraph/pgraph.c
++++ b/hw/xbox/nv2a/pgraph/pgraph.c
+@@ -26,6 +26,7 @@
+ #endif
+ 
+ #include "hw/xbox/nv2a/nv2a_int.h"
++#include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace */
+ #ifdef __ANDROID__
+ #include "hw/core/cpu.h"
+ #include "target/i386/cpu.h"
+@@ -959,12 +960,15 @@ static void pgraph_mmio_lock(PGRAPHState *pg, bool write, hwaddr addr,
+     if (!locked || (settle && pg->lock_released_for_fence)) {
+         int phase = qatomic_read(&lock474_phase);
+         int64_t t0 = nv2a_clock_ns();
++        HakuxFtWait ftw;
++        hakux_ft_wait_begin(&ftw, HAKUX_FT_W_PGRAPH_LOCK, HAKUX_FT_PFIFO);
+         if (!locked) {
+             qemu_mutex_lock(&pg->lock);
+         }
+         while (settle && pg->lock_released_for_fence) {
+             qemu_cond_wait(&pg->lock_settled_cond, &pg->lock);
+         }
++        hakux_ft_wait_end(&ftw);
+         wait = nv2a_clock_ns() - t0;
+         lock474.wait_ns[write][phase] += wait;
+         if (wait >= LOCK474_SLOW_NS) {
+diff --git a/hw/xbox/nv2a/pgraph/vk/draw.c b/hw/xbox/nv2a/pgraph/vk/draw.c
+index d550ef7278..0fad32f6ce 100644
+--- a/hw/xbox/nv2a/pgraph/vk/draw.c
++++ b/hw/xbox/nv2a/pgraph/vk/draw.c
+@@ -23,6 +23,7 @@
+ #include "qemu/processor.h"
+ #include "qemu/timer.h"
+ #include "renderer.h"
++#include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace */
+ #include "system/physmem.h"
+ #include "ui/xemu-settings.h"
+ #include "hw/xbox/nv2a/pgraph/prim_rewrite.h"
+@@ -1728,8 +1729,11 @@ void pgraph_vk_finalize_pipelines(PGRAPHState *pg)
+     for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+         r->frame_enqueued[i] = false;
+         if (r->frame_submitted[i]) {
++            HakuxFtWait ftw;
++            hakux_ft_wait_begin(&ftw, HAKUX_FT_W_FENCE, -1);
+             VK_CHECK(vkWaitForFences(r->device, 1, &r->frame_fences[i],
+                                      VK_TRUE, UINT64_MAX));
++            hakux_ft_wait_end(&ftw);
+             r->frame_submitted[i] = false;
+         }
+         for (int j = 0; j < r->deferred_framebuffer_count[i]; j++) {
+@@ -3783,8 +3787,11 @@ void pgraph_vk_flush_all_frames(PGRAPHState *pg)
+     for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+         r->frame_enqueued[i] = false;
+         if (r->frame_submitted[i]) {
++            HakuxFtWait ftw;
++            hakux_ft_wait_begin(&ftw, HAKUX_FT_W_FENCE, -1);
+             VK_CHECK(vkWaitForFences(r->device, 1, &r->frame_fences[i],
+                                      VK_TRUE, UINT64_MAX));
++            hakux_ft_wait_end(&ftw);
+             gpu_ts_readback(r, i);
+             r->frame_submitted[i] = false;
+             for (int j = 0; j < r->deferred_framebuffer_count[i]; j++) {
+@@ -3988,6 +3995,9 @@ static void wait_frame_submitted(PGRAPHVkState *r, int frame, int site)
+     }
+ 
+     int64_t cpu0 = rwait_thread_cpu_ns();
++    HakuxFtWait ftw;
++
++    hakux_ft_wait_begin(&ftw, HAKUX_FT_W_RTHREAD, HAKUX_FT_RENDER);
+ 
+     if (rwait_mode() == RWAIT_YIELD || r->is_render_thread_context) {
+         while (!qatomic_read(&r->frame_submitted[frame])) {
+@@ -4020,6 +4030,7 @@ static void wait_frame_submitted(PGRAPHVkState *r, int frame, int site)
+     }
+ 
+     int64_t dt = get_clock() - t0;
++    hakux_ft_wait_end(&ftw);
+     rwait526.wait_cpu_ns += rwait_thread_cpu_ns() - cpu0;
+     rwait526.waits[site]++;
+     rwait526.wait_ns[site] += dt;
+@@ -4207,9 +4218,13 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
+                 .pWaitDstStageMask = wait_stages,
+             };
+ 
++            HakuxFtWait ftw;
++
+             vkResetFences(r->device, 1, &r->command_buffer_fence);
++            hakux_ft_wait_begin(&ftw, HAKUX_FT_W_SUBMIT, -1);
+             VK_CHECK(vkQueueSubmit(r->queue, 1, &submit_info,
+                                    r->command_buffer_fence));
++            hakux_ft_wait_end(&ftw);
+             qatomic_inc(&r->submit_count);
+ 
+             if (finish_reason == VK_FINISH_REASON_PRESENTING) {
+@@ -4218,9 +4233,11 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
+                  * stay untouched until the GPU finishes. */
+                 qatomic_set(&r->frame_submitted[r->current_frame], true);
+             } else {
++                hakux_ft_wait_begin(&ftw, HAKUX_FT_W_FENCE, -1);
+                 VK_CHECK(vkWaitForFences(r->device, 1,
+                                          &r->command_buffer_fence,
+                                          VK_TRUE, UINT64_MAX));
++                hakux_ft_wait_end(&ftw);
+                 if (r->pending_post_fence_cb) {
+                     r->pending_post_fence_cb(r, NULL,
+                                              r->pending_post_fence_opaque);
+@@ -4316,7 +4333,10 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
+                 if (unlock) {
+                     pgraph_lock_release_for_fence(pg);
+                 }
++                HakuxFtWait ftw;
++                hakux_ft_wait_begin(&ftw, HAKUX_FT_W_FENCE, -1);
+                 qemu_event_wait(&finish_event);
++                hakux_ft_wait_end(&ftw);
+                 if (unlock) {
+                     pgraph_lock_retake_after_fence(pg);
+                 }
+@@ -4383,9 +4403,12 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
+             r->frame_enqueued[next_frame] = false;
+ 
+             if (qatomic_read(&r->frame_submitted[next_frame])) {
++                HakuxFtWait ftw;
++                hakux_ft_wait_begin(&ftw, HAKUX_FT_W_FENCE, -1);
+                 VK_CHECK(vkWaitForFences(r->device, 1,
+                                          &r->frame_fences[next_frame],
+                                          VK_TRUE, UINT64_MAX));
++                hakux_ft_wait_end(&ftw);
+                 gpu_ts_readback(r, next_frame);
+                 qatomic_set(&r->frame_submitted[next_frame], false);
+ 
+diff --git a/hw/xbox/nv2a/pgraph/vk/render_thread.c b/hw/xbox/nv2a/pgraph/vk/render_thread.c
+index 9dc0642b29..4f8efa91b1 100644
+--- a/hw/xbox/nv2a/pgraph/vk/render_thread.c
++++ b/hw/xbox/nv2a/pgraph/vk/render_thread.c
+@@ -19,6 +19,7 @@
+ 
+ #include "qemu/osdep.h"
+ #include "renderer.h"
++#include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace */
+ #ifdef __ANDROID__
+ #include <android/log.h>
+ #include <unistd.h>
+@@ -147,21 +148,29 @@ static void process_finish(PGRAPHVkState *r, RenderCommand *cmd)
+         .pSignalSemaphores = signal_sems,
+     };
+ 
++    HakuxFtWait ftw;
++
+     vkResetFences(r->device, 1, &cmd->finish.fence);
++    hakux_ft_wait_begin(&ftw, HAKUX_FT_W_SUBMIT, -1);
+     VK_CHECK(vkQueueSubmit(r->queue, 1, &submit_info,
+                            cmd->finish.fence));
++    hakux_ft_wait_end(&ftw);
+     qatomic_set(&r->frame_submitted[cmd->finish.frame_index], true);
+     qatomic_inc(&r->submit_count);
+ 
+     if (!cmd->finish.deferred) {
++        hakux_ft_wait_begin(&ftw, HAKUX_FT_W_FENCE, -1);
+         VK_CHECK(vkWaitForFences(r->device, 1, &cmd->finish.fence,
+                                  VK_TRUE, UINT64_MAX));
++        hakux_ft_wait_end(&ftw);
+         if (cmd->finish.post_fence_cb) {
+             cmd->finish.post_fence_cb(r, NULL, cmd->finish.post_fence_opaque);
+         }
+     } else if (cmd->finish.post_fence_cb) {
++        hakux_ft_wait_begin(&ftw, HAKUX_FT_W_FENCE, -1);
+         VK_CHECK(vkWaitForFences(r->device, 1, &cmd->finish.fence,
+                                  VK_TRUE, UINT64_MAX));
++        hakux_ft_wait_end(&ftw);
+         cmd->finish.post_fence_cb(r, NULL, cmd->finish.post_fence_opaque);
+     }
+ 
+@@ -205,6 +214,7 @@ static void *render_thread_func(void *opaque)
+     PGRAPHVkState *r = opaque;
+     RenderThread *rt = &r->render_thread;
+ 
++    hakux_ft_thread(HAKUX_FT_RENDER);
+     while (true) {
+         qemu_mutex_lock(&rt->lock);
+ 
+diff --git a/hw/xbox/nv2a/pgraph/vk/surface.c b/hw/xbox/nv2a/pgraph/vk/surface.c
+index 8625ea3947..7d573c5330 100644
+--- a/hw/xbox/nv2a/pgraph/vk/surface.c
++++ b/hw/xbox/nv2a/pgraph/vk/surface.c
+@@ -28,6 +28,7 @@
+ #include "qemu/compiler.h"
+ #include "ui/xemu-settings.h"
+ #include "renderer.h"
++#include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace */
+ #include "system/tcg.h"   /* tcg_enabled(); was implied by cpu.h */
+ 
+ /* Lightweight surface sub-timers — compiled out when profiling is off */
+@@ -67,7 +68,12 @@ void pgraph_vk_set_surface_scale_factor(NV2AState *d, unsigned int scale)
+     qemu_mutex_lock(&d->pfifo.lock);
+     pfifo_kick(d);
+     qemu_mutex_unlock(&d->pfifo.lock);
+-    qemu_event_wait(&d->pgraph.vk_renderer_state->dirty_surfaces_download_complete);
++    {
++        HakuxFtWait ftw;
++        hakux_ft_wait_begin(&ftw, HAKUX_FT_W_DOWNLOAD, HAKUX_FT_PFIFO);
++        qemu_event_wait(&d->pgraph.vk_renderer_state->dirty_surfaces_download_complete);
++        hakux_ft_wait_end(&ftw);
++    }
+ 
+     pgraph_lock_settled(&d->pgraph);
+     qemu_event_reset(&d->pgraph.flush_complete);
+@@ -76,7 +82,12 @@ void pgraph_vk_set_surface_scale_factor(NV2AState *d, unsigned int scale)
+     qemu_mutex_lock(&d->pfifo.lock);
+     pfifo_kick(d);
+     qemu_mutex_unlock(&d->pfifo.lock);
+-    qemu_event_wait(&d->pgraph.flush_complete);
++    {
++        HakuxFtWait ftw;
++        hakux_ft_wait_begin(&ftw, HAKUX_FT_W_DOWNLOAD, HAKUX_FT_PFIFO);
++        qemu_event_wait(&d->pgraph.flush_complete);
++        hakux_ft_wait_end(&ftw);
++    }
+ 
+     qemu_mutex_lock(&d->pfifo.lock);
+     qatomic_set(&d->pfifo.halt, false);
+@@ -1263,8 +1274,11 @@ static void wait_frame_fence(NV2AState *d, int fi, bool release_lock)
+     if (release_lock) {
+         pgraph_lock_release_for_fence(&d->pgraph);
+     }
++    HakuxFtWait ftw;
++    hakux_ft_wait_begin(&ftw, HAKUX_FT_W_FENCE, -1);
+     VK_CHECK(vkWaitForFences(r->device, 1, &r->frame_fences[fi], VK_TRUE,
+                              UINT64_MAX));
++    hakux_ft_wait_end(&ftw);
+     if (release_lock) {
+         pgraph_lock_retake_after_fence(&d->pgraph);
+     }
+@@ -2076,7 +2090,12 @@ void pgraph_vk_wait_for_surface_download(SurfaceBinding *surface)
+         qatomic_set(&d->pgraph.vk_renderer_state->downloads_pending, true);
+         pfifo_kick(d);
+         qemu_mutex_unlock(&d->pfifo.lock);
+-        qemu_event_wait(&d->pgraph.vk_renderer_state->downloads_complete);
++        {
++            HakuxFtWait ftw;
++            hakux_ft_wait_begin(&ftw, HAKUX_FT_W_DOWNLOAD, HAKUX_FT_PFIFO);
++            qemu_event_wait(&d->pgraph.vk_renderer_state->downloads_complete);
++            hakux_ft_wait_end(&ftw);
++        }
+     }
+ }
+ 
+@@ -2557,7 +2576,12 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
+         qatomic_set(&r->downloads_pending, true);
+         pfifo_kick(d);
+         qemu_mutex_unlock(&d->pfifo.lock);
+-        qemu_event_wait(&r->downloads_complete);
++        {
++            HakuxFtWait ftw;
++            hakux_ft_wait_begin(&ftw, HAKUX_FT_W_DOWNLOAD, HAKUX_FT_PFIFO);
++            qemu_event_wait(&r->downloads_complete);
++            hakux_ft_wait_end(&ftw);
++        }
+     }
+ }
+ 
+diff --git a/hw/xbox/nv2a/user.c b/hw/xbox/nv2a/user.c
+index 453fd0eaef..6119e040a5 100644
+--- a/hw/xbox/nv2a/user.c
++++ b/hw/xbox/nv2a/user.c
+@@ -20,6 +20,7 @@
+  */
+ 
+ #include "nv2a_int.h"
++#include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace */
+ 
+ /* USER - PFIFO MMIO and DMA submission area
+  *
+@@ -90,7 +91,10 @@ void user_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
+     assert(channel_id < NV2A_NUM_CHANNELS);
+ 
+     int64_t lock_t0 = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
++    HakuxFtWait ftw;
++    hakux_ft_wait_begin(&ftw, HAKUX_FT_W_PFIFO_LOCK, HAKUX_FT_PFIFO);
+     qemu_mutex_lock(&d->pfifo.lock);
++    hakux_ft_wait_end(&ftw);
+     g_nv2a_stats.cpu_working.lock_wait_ns +=
+         qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - lock_t0;
+ 
