@@ -1,0 +1,30 @@
+{
+ "title_id": null,
+ "name": "NBA 2K3",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/NBA_2K3.xiso.iso",
+ "result": "gave-up",
+ "tool": "f7dccfdf91",
+ "started": "2026-10-06 07:16:03 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-NBA_2K3/frames/081-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-NBA_2K3/frames/081-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-NBA_2K3/frames/081-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-NBA_2K3/frames/081-probe-right.jpg"
+ ],
+ "reason": "budget 15 min",
+ "last_state": "probe",
+ "model_calls": 82,
+ "calls_by_model": {
+  "claude-sonnet-5": 82
+ },
+ "steps": 81,
+ "seconds": 920.4,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-NBA_2K3/frames/080-gameplay.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 2,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-NBA_2K3/strip.jpg"
+}

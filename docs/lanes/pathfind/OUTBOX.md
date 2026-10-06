@@ -965,3 +965,15 @@ Named cost (run.log steps 86 to 95): a CONTINUE countdown at step 87 (START, the
 NEW ISSUE: fighting-game claim confirm refuses live rounds: the stick probe measures control at 0.1 to 0.5 in a live Mortal Kombat Deadly Alliance round, so the claim gives up at its budget with play on screen (step 94, 15 min budget). Blocks Deadly Alliance's Playable and needs the same fighting-game confirm fix as Armageddon and Guilty Gear. Not re-run: the claim needs its probe rule identified from these frames first.
 
 Spend: model calls for this run (71), not priced.
+
+## #433 -- 2026-10-06 07:32 PDT
+
+[lane.pathfind] NBA 2K3 (NBA_2K3.xiso.iso) GAVE UP at the 15-min claim budget (no hold, no verdict): 81 steps, 82 model calls, run runs/rehold-NBA_2K3 (run.log, steps). Live court with the HUD and players read as gameplay from about step 80 (14.5 min); the stick probe at step 81 read control 0.70 under input 0.46, and the budget ended the claim there. The validity rule did not run: it lives in the hold, and this run never reached one.
+
+Ref and env: as for the other re-holds, the pre-hold gate read ref c3a0c70ace (origin/master), apk 6beaa5ac1cdd, env [] from the last clean Nova result. This run's own device record was not readable. Read that as the build, not as a per-run receipt.
+
+Named cost: the claim spent most of its 15 min in team select and the probe ladder before the live court. Team select was not reached before about 12 min (the sports setup and team pick came late), and the first live read came at 14.5 min with no confirm time left. The team-sport setup needs its own claim time, not the shared 15 min.
+
+NEW ISSUE: NBA 2K3 claim budget (15 min) runs out in team select before the live court on a re-hold: the first live read came at 14.5 min with the probe still open. hold3 (10-05) passed from the same title with a longer route; the claim budget is the blocker here. Not re-run: identify the time split from these steps first.
+
+Spend: model calls for this run (82), not priced.
