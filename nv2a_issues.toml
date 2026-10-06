@@ -5843,3 +5843,94 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 2026-10-05 17:49 PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+
+[issue.838]
+title = "the hold verdict counts an instant-replay viewer as play: NHL 2K3 hold2 scored 0.973 play share over about 300 s of replay (footer \"L Rewind R Forward A Play/Pause X Zoom In B Zoom Out Y Hide START Ba"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.839]
+title = "NHL 2K3 frame rate drops to ~24 fps in 31% of play (vCPU guest busy doubles, 13 to 27 ms per frame in the slow windows): runs/nhl-2k3/hold3 logcat.txt, decompose.py output above. Blocks the NHL 2K3 Pl"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.840]
+title = "Strike Force Bowling hold ends at the first game's end: the high-score name entry is not left by the title's default-name sequence, and PlayerSelect is the only way back (runs/strike-force-bowling/hol"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.841]
+title = "AvP Extinction: the squad-order input does not move the RTS scene (99% static over 20 min; the map is almost black); needs the order-mode footer read from frames before a hold. Blocks AvP's Playable."
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.842]
+title = "Spider-Man 2 frame rate drops to ~24 fps in 60% of play with the renderer busy (Ri 7 ms against 18 at bar; guest busy unchanged): runs/sweep-4156002B logcat, decompose.py output above. Blocks Spider-M"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.843]
+title = "Need for Speed Most Wanted: the guest code (vCPU) costs about 25 ms per frame throughout play, so the title runs at ~24-26 fps (median 26 at 5 min): runs/sweep-4541007B logcat, decompose.py output abo"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.844]
+title = "Midnight Club II: the renderer is saturated (Ri 0 ms per frame) at a median of 23 fps: runs/sweep-54540008 logcat, decompose.py output above. Blocks Midnight Club II's Playable (fps is the only failin"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.845]
+title = "LOTR Return of the King: the guest code (vCPU) costs 24-28 ms per frame, so play runs at ~27 fps median and 33% of play at the bar: runs/sweep-4541003E logcat, decompose.py output above. Blocks LOTR's"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.846]
+title = "The Incredible Hulk: Ultimate Destruction: the slow scenes are vCPU guest work (guest busy 30 ms per frame against 16 at bar): runs/sweep-56550039 logcat, decompose.py output above. Blocks Hulk's Play"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.848]
+title = "Marvel Nemesis: the end-of-match REMATCH confirm defaults to NO, and the hold's recovery cycles panel to confirm to panel (6 times in 90 s). Blocks Marvel Nemesis' Playable (fps clear; play 0.62)."
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.849]
+title = "Fight Club: the fight confirm probe refuses on hit reactions, so the path stops at the rematch prompt (can't-path)"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.850]
+title = "Blowout: the generic hold's stand-still recovery is slow in dark corridors (two still windows before the first unstick, and the walk returns to the same wall); blocks Blowout's Playable at 77.6% play"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."
+
+[issue.851]
+title = "the hitch bar counts an all-idle host stall as a title hitch: Marvel Nemesis r3 fails on one 1.01 s stall at 167 s where guest and renderer are both idle (timer-woken, Ri 25 ms; decompose on runs/swee"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-06 03:45 PDT, coverage gate): filed on the forge by the pathfind title sweep with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open (local-only); the tracker had no row for it when the coverage gate was run."

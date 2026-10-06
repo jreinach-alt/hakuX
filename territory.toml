@@ -859,7 +859,7 @@ note = "ROW ADDED (hostops jam duty 2026-10-03 PDT): hakux-lane-issuesweep RUNNI
 
 [lane.vcpusleep]
 issues = ["507"]
-files = ["docs/lanes/vcpusleep/**", "docs/testing/predictions/vcpusleep-*.json", "hw/xbox/nv2a/user.c", "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/nv2a_int.h"]
+files = ["docs/lanes/vcpusleep/**", "docs/testing/predictions/vcpusleep-*.json", "hw/xbox/nv2a/user.c", "hw/xbox/nv2a/nv2a_int.h"]
 note = "GRANTED 12:09 PDT 10-04 (hostops jam duty, lane.local ask 12:10): code lane from lane.vcpu60 rank 1 (#507, the vCPU sleep in Simpsons). user.c, pfifo.c and nv2a_int.h moved from [free] (all three were free: released by retired adpf, flip474, vcpuwait433; no active row named them)."
 
 
@@ -2022,7 +2022,7 @@ note = "GRANTED 08:50 PDT (hostops jam duty, lane.local ask 08:25 PDT): its lane
 
 [lane.accuracy804]
 issues = ["804"]
-files = ["docs/lanes/accuracy804/**", "docs/testing/predictions/accuracy804-*.json", "hw/xbox/nv2a/pgraph/vk/reports.c"]
+files = ["docs/lanes/accuracy804/**", "docs/testing/predictions/accuracy804-*.json"]
 note = "GRANTED 10:5x PDT 10-04 (hostops jam duty, lane.local ask 10:55): #804 RalliSport alternate-frame car draw. reports.c is in no row on origin/board. PR #535 (lane/cloud-527) also edits reports.c in pgraph_vk_process_pending_reports(); the accuracy804 hunk is in pgraph_vk_process_pending_reports_internal(), no overlap. If #535 folds first the lane rebases."
 
 
@@ -2069,5 +2069,5 @@ note = "STARTED lane.local 2026-10-05 08:40 PDT: GPU ms/frame vs GPU MHz per tit
 [lane.gpunonrender]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/gpunonrender/**", "hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/surface.c", "hw/xbox/nv2a/pgraph/vk/texture.c"]
-note = "STARTED lane.local 2026-10-05 16:40 PDT (owner: high value): bracket the non-render GPU time (uploads, copies, converts, clears) per category behind HAKUX_GPUXFR=1, default off; telemetry only; Sonnet, $25 cap."
+files = ["docs/lanes/gpunonrender/**", "hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/surface.c", "hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/vk/reports.c", "hw/xbox/nv2a/pfifo.c"]
+note = "STARTED lane.local 2026-10-05 16:40 PDT (owner: high value): bracket the non-render GPU time (uploads, copies, converts, clears) per category behind HAKUX_GPUXFR=1, default off; telemetry only; Sonnet, $25 cap. GRANTED 03:3x PDT 10-06 (hostops, PM 03:33): reports.c from folded lane.accuracy804 and pfifo.c from folded lane.vcpusleep, for scope (C), the Simpsons pfifo.lock across the finish slot-fence wait."
