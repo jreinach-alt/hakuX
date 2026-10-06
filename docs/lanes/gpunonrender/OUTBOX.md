@@ -384,3 +384,39 @@ WAITING lists the four runs.
 - PR.md `State: ready` at c3dd710a53 (pushed). preflight: every gate ok but
   `coverage`, which fails on open issues #852-#857 having no board row
   (lane.local: those rows are board files). WAITING is `fold gpunonrender`.
+
+## 2026-10-06 13:45 PDT (attempt 12): scope (D) P1 DOA3 read; sysmem halves the GPU frame on matched scenes
+
+- Merged origin/master (fast-forward to bf85412b88); WAITING removed. The
+  census is on master, so every arm runs master's perflog build with `--env`.
+- Brief premise corrected: the table is `kTitleRenderModes` in
+  xemu_android.cpp (there is no TitleDefaults.kt), and **DOA Ultimate is
+  already `sysmem` there**. Its pair is `TU_DEBUG=gmem` vs the table.
+- P1 DOA3 (`-1511368` sysmem, `-1511854` GMEM; apk 4028728fcc5a,
+  `shader cache cleared: apk ad6f37a2f087 -> 4028728fcc5a`). Story mode drew
+  a different stage per run, and the driver ran P1-G's snow fight sysmem by
+  itself, so the fight comparison is void. The attract demo is deterministic
+  (same draw-count sequence in D1, P1-G and P1-S):
+
+| matched segment | GMEM gfps / Tot | sysmem gfps / Tot |
+|---|---|---|
+| ~430 draws/CB | 31-34 / 27.6 ms | 59 (vsync) / 13.7 ms |
+| ~800 draws/CB | 21-22 / 35.8-44.7 ms | 52.5 / 16.3 ms |
+
+  GMEM's last tile (13.5 ms) equals the whole sysmem pass (13.5 ms): two
+  bins, and each bin replays the whole draw stream. Region check passes.
+- **New top candidate**: gmem474 found that `TU_AUTOTUNE_ALGO=profiled`
+  picks sysmem by itself on DOA Ultimate (15.6 -> 32.4 gfps) and AUF
+  (19 -> 23). It keeps Kabuki at 59.9 with no stall, and matches Crimson's
+  fps. An app default of `profiled` would reach every replay-bound title
+  without a fork change. Added one profiled arm each on DOA3 and NG Black.
+- Queued (Nova, study priority): P2-S `1-1791317653-lane.gpunonrender-1627450`
+  (running), P2-G `-1627551`, P3-G `-1629224`, P3-S `-1629401`, restore
+  `-1629543`, P1-P `-1634952`, P2-P `-1635052`, restore
+  `1-1791317787-lane.gpunonrender-1635156` (last). Pilot verdict rewritten in
+  `pilots/lane.gpunonrender.ok`.
+- For lane.local to file (no tracker access from here): "GMEM scene passes
+  replay the whole draw stream per bin on Turnip (DOA3: 2 bins, GPU frame 2x
+  sysmem's); the `bandwidth` autotune sends the heaviest passes to GMEM".
+  Evidence: NOTES.md "P1 read".
+- Spend: not readable from this session.
