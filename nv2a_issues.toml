@@ -5624,7 +5624,7 @@ no_suites = "A GUEST-LATE STALL: the stall is a TLB-flush burst in the guest, no
 status = "open"
 dispatch_state = "blocked"
 blocker_tested = "confirmed 2026-10-04T00:11Z: [lane.flushstall787] lists #787 on this board push."
-blocked_on = "IN FLIGHT (hostops 2026-10-04T00:11Z): lane.flushstall787 (attempt 1, started 16:55 PDT) is measuring the flush-burst signature; the lane owns it until its counter lands."
+blocked_on = "RETIRED (hostops 2026-10-05 17:49 PDT, PM order): lane.flushstall787 finished and folded to master (branch is an ancestor of origin/master, unit inactive); no live predecessor on this issue. Was: IN FLIGHT (hostops 2026-10-04T00:11Z): lane.flushstall787 (attempt 1, started 16:55 PDT) is measuring the flush-burst signature; the lane owns it until its counter lands."
 status_note = "FILED by lane.local 2026-10-03 on the owner's order: one shared stall signature across Kabuki, SW3 and Tron. Tracker row added by hostops on the lane's start (the coverage gate needs a row)."
 impact_px = 0
 impact_onestep_px = 0
@@ -5667,7 +5667,7 @@ title = "Synchronous surface-download finishes (VK_FINISH_REASON_SURFACE_DOWN, 1
 component = "renderer"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "IN FLIGHT (08:50 PDT, hostops jam duty): lane.async794 (Opus, $80 cap; with #796). Started 08:10 PDT 10-04 by lane.local."
+blocked_on = "RETIRED (hostops 2026-10-05 17:49 PDT, PM order): lane.async794 finished and folded to master (branch is an ancestor of origin/master, unit inactive); no live predecessor on this issue. Was: IN FLIGHT (08:50 PDT, hostops jam duty): lane.async794 (Opus, $80 cap; with #796). Started 08:10 PDT 10-04 by lane.local."
 status_note = "Filed on the forge (lane.local, 10-04). Tracker row added by hostops 08:50 PDT so check_coverage can see the issue."
 
 [issue."796"]
@@ -5675,7 +5675,7 @@ title = "Top Spin's ~30 download-if-dirty surface finishes per frame hold pgraph
 component = "renderer"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "IN FLIGHT (08:50 PDT, hostops jam duty): lane.async794 (Opus, $80 cap; with #794). Started 08:10 PDT 10-04 by lane.local."
+blocked_on = "RETIRED (hostops 2026-10-05 17:49 PDT, PM order): lane.async794 finished and folded to master (branch is an ancestor of origin/master, unit inactive); no live predecessor on this issue. Was: IN FLIGHT (08:50 PDT, hostops jam duty): lane.async794 (Opus, $80 cap; with #794). Started 08:10 PDT 10-04 by lane.local."
 status_note = "Filed on the forge (lane.local, 10-04). Tracker row added by hostops 08:50 PDT so check_coverage can see the issue."
 
 [issue."795"]
@@ -5822,3 +5822,24 @@ disposition = "harness"
 status = "open"
 status_note = "Classified by hostops 2026-10-05 so the coverage gate can pass; filed by issue_sync from lane.pathfind OUTBOX.md (evidence: docs/lanes/pathfind/runs/nhl-2k3/hold/steps.jsonl steps 32-70)."
 blocked_on = "lane.pathfind (running, holds the Nova) owns the fix in docs/testing/titles/pathfind.py. Refuted by a held NHL 2K3 run where a stick probe moves the controlled skater after the controller is assigned on team select."
+
+[issue.834]
+title = "ESPN team select (NBA 2K2, NBA 2K3, NHL 2K3): no controller icon moves under a team, so the CPU plays both sides and the claim cannot confirm a human player"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-05 17:49 PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+
+[issue.835]
+title = "AMF Xtreme Bowling hangs at boot 1 time in 2 on the Nova: guest vCPU pinned at r:800151ed on the brushed-metal backdrop, FPS 1"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-05 17:49 PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+
+[issue.837]
+title = "AMF Xtreme Bowling: SIGSEGV in the pushed GPU driver (vulkan.purple.so+0xa21264, si_addr 0x80) under pgraph_vk_draw_end after 7 min of Pin Challenge on the Nova"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 2026-10-05 17:49 PDT, coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage: dispatch with a row, close, or name the blocker. Not dispatchable from here."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
