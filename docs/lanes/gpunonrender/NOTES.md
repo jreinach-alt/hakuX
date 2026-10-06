@@ -1623,3 +1623,45 @@ the driver, and every readout was present. P2 and P3 are queued on it.
 Lesson for P2/P3: a story-mode fight is not a fixed scene. DOA Ultimate's
 survey route is read on matched segments as well (draw-count sequences),
 not on wall-clock windows.
+
+### Two added arms: `TU_AUTOTUNE_ALGO=profiled` on DOA3 and NG Black (written before queueing)
+
+gmem474 (NOTES.md, "Final per-title decision") ran the fork's other autotune
+algorithm, `TU_AUTOTUNE_ALGO=profiled` (the default is `bandwidth`,
+`tu_autotune.cc:102`), on four titles. It picks sysmem by itself where
+sysmem wins, and GMEM where GMEM is needed:
+
+| title | autotune (bandwidth) | profiled | forced sysmem |
+|---|---|---|---|
+| DOA Ultimate (Nova) | 15.6 gfps, X/R 1.00 | **32.4**, X/R 0.02 | ~31 before a stall |
+| AUF (Nova) | 18.7-19.1 | **23.0**, X/R 0.00 | 22.6 |
+| Crimson (Thor) | 29.4 | 29.8 (J/frame +8%) | 29.5 |
+| Kabuki (Nova) | 59.9 | 59.9, X/R 0.29, no stall | stalls the fight |
+
+So the general fix may not need a fork change. The app could set
+`TU_AUTOTUNE_ALGO=profiled` as its default before the instance is created,
+where `ApplyRenderMode` sets `TU_DEBUG` today. P1 shows that `bandwidth`
+sends DOA3's heaviest passes to GMEM. The two added arms ask whether
+`profiled` sends them to sysmem.
+
+| arm | title, route, s | env (plus `PERF_REGIMEN=default`, `HAKUX_GPUXFR=1`) |
+|---|---|---|
+| P1-P | DOA3, `bb-doa3`, 330 | `TU_AUTOTUNE_ALGO=profiled` |
+| P2-P | NG Black, `bb-ngb`, 480 | `TU_AUTOTUNE_ALGO=profiled` |
+
+Both run after their title's S and G arms on the same apk, so the shader
+cache is warm for them. The census reads the mode per pass (R2): no extra log
+is needed to see what `profiled` chose.
+
+**Expected:** P1-P reads in/out >= 0.9 on DOA3's attract segments A+B and C
+(sysmem chosen), and Tot and gfps within 10% of P1-S on the same segments.
+P2-P follows whichever of P2-S and P2-G is cheaper on NG Black's scene
+passes, within 10% of its Tot.
+
+**Decision (yes/no):** `profiled` **matches the best mode** on a title when
+its Tot over the matched window is within 10% of the lower of the S and G
+arms. If it matches on DOA3 and NG Black, the general fix is an app default
+of `TU_AUTOTUNE_ALGO=profiled`. Its next step is a fleet A/B (default vs
+profiled) on the screened titles, with the Crimson J/frame cost and Kabuki's
+cold cache named as the known risks. If it fails on either title, the
+candidate goes back to a fork change or per-title table lines.
