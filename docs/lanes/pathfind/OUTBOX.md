@@ -880,6 +880,14 @@ SCENE SHOULD CONTAIN: Rogue Trooper in third person on an alien crystal landscap
 
 Flicker: owner's check (frames above).
 
+## #433 -- 2026-10-06 03:26 PDT
+
+[lane.pathfind] Marvel Nemesis r3 FAIL on ONE HITCH (play share and fps clear): runs/sweep-4541038A-r3, claim 7.6 min (48 model calls, 46 steps), hold 603 s, play share 0.9998, fps_ok 0.992, static 0.0015, no crash or hang. The REMATCH rule did not fire in this run (the match did not end in 600 s), so the fix is still unexercised on the device. The only miss is a 1014 ms stall at 167 s into the window against the 500 ms hitch bar (verdict: `unexplained`, not shader or texture).
+
+Named cost (decompose.py on the run's logcat; 300 two-second windows, 594 s at the bar, 6 s below): the three slow windows (one at 12 fps) have the guest busy 10.9 ms and the vCPU idle 41.6 ms, of which 38.6 ms is timer-woken (the guest waits on time), and the renderer idle (Ri) 25 ms. Neither the guest's work nor the renderer's is the cost: both are idle at once. That points at a host stall outside the emulated work (the capture or the host), not at Marvel's scene.
+
+NEW ISSUE: the hitch bar counts an all-idle host stall as a title hitch: Marvel Nemesis r3 fails on one 1.01 s stall at 167 s where guest and renderer are both idle (timer-woken, Ri 25 ms; decompose on runs/sweep-4541038A-r3). Blocks Marvel's Playable (play 0.9998, fps_ok 0.992; the only fail is the hitch). Not re-run: the cause is named but not fixed (a host stall is not a title cost, so the fix is in the verdict or the capture).
+
 ## #433 -- 2026-10-06 03:00 PDT
 
 [lane.pathfind] Marvel Nemesis re-hold FAIL (duration: 284 s of gameplay, the REMATCH loop again): run runs/sweep-4541038A-r2, claim 10.8 min, 71 model calls, hold stopped at 186 s of play (off play 13 steps on the END OF MATCH panel and its confirms). fps_ok 0.988, median fine, no crash. Spend: model calls, not priced.
