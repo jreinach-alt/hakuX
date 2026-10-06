@@ -126,6 +126,14 @@ def duty(d, delay):
         b = os.path.basename(p)[:6]
         if b.isdigit():
             caps.append(int(b[:2]) * 3600 + int(b[2:4]) * 60 + int(b[4:6]))
+    # --frames-every screencaps (frames/fNNNNN.png) carry no time in the
+    # name; the file's mtime is when adb finished writing it, so the capture
+    # ran in the second before. Host clock, as the route's mark is.
+    if '--keep-frames' not in sys.argv:
+        import time
+        for p in glob.glob(os.path.join(d, 'frames', '*.png')):
+            lt = time.localtime(os.stat(p).st_mtime)
+            caps.append(lt.tm_hour * 3600 + lt.tm_min * 60 + lt.tm_sec - 0.5)
     # phase boundaries: before the first switch the instrument was on, k=0
     bounds = [(-1e9, 0, True)] + sw
 
@@ -159,6 +167,11 @@ def duty(d, delay):
             ph.setdefault(k, {'fps': [], 'gfps': [], 'run': []})['run'].append(r)
     m_ = {k: {q: statistics.mean(v[q]) if v[q] else None for q in v}
           for k, v in ph.items()}
+    if '-v' in sys.argv:
+        for k in sorted(m_):
+            print('  k=%2d %s fps %5.1f gfps %5.1f run %.3f (n %d)' % (
+                k, 'on ' if k % 2 == 0 else 'off', m_[k]['fps'] or 0,
+                m_[k]['gfps'] or 0, m_[k]['run'] or 0, len(ph[k]['fps'])))
     print('phases scored: %d (on %d, off %d); switches %d; frame captures %d'
           % (len(m_), sum(1 for k in m_ if k % 2 == 0),
              sum(1 for k in m_ if k % 2), len(sw), len(caps)))
@@ -178,6 +191,9 @@ def duty(d, delay):
         if len(diffs) < 2:
             print('%s: %d pairs, not enough' % (name, len(diffs)))
             continue
+        if '-v' in sys.argv:
+            print('  %s pairs (on-off)/off %%: %s' % (q, ' '.join(
+                '%+.1f' % (100 * x / y) for x, y in zip(diffs, base))))
         md = statistics.mean(diffs)
         hw = t95(len(diffs) - 1) * statistics.stdev(diffs) / len(diffs) ** 0.5
         b = statistics.mean(base)
