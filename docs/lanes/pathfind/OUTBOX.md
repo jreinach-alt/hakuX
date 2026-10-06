@@ -953,3 +953,15 @@ NEW ISSUE: the generic hold's stand-still recovery is slow on Mortal Kombat Shao
 SCENE SHOULD CONTAIN: MK Shaolin Monks gameplay, a 3D arena with two fighters, the HUD (health bars, round timer), the fighters moving and trading hits through the window; no still camera on one wall.
 
 Spend: model calls for this run, not priced. Queue continues: MK Deadly Alliance is running now.
+
+## #433 -- 2026-10-06 07:16 PDT
+
+[lane.pathfind] Mortal Kombat Deadly Alliance (4D57000C) GAVE UP at the 15-min claim budget (no hold, no verdict): 80 steps, 71 model calls, run runs/rehold-4D57000C (run.log, steps). Live rounds were read as gameplay from about step 88 (14.0 min) on, with a HUD and a counting timer, but each fighter probe was refused (control 0.10 to 0.90 under input 0.12 to 0.58), and the budget ended the claim during the probes. Claim budget spent: 15 min.
+
+Ref and env: as for Armageddon, the pre-hold gate read ref c3a0c70ace (origin/master), apk 6beaa5ac1cdd, env [] from the last clean Nova result. Read that as the build, not as a per-run receipt.
+
+Named cost (run.log steps 86 to 95): a CONTINUE countdown at step 87 (START, then A), a 'PLAYER 2 PRESS START' join prompt read as gameplay at step 88 (A pressed on it), and four probe-and-read pairs in which the screen was live but the stick probe measured control at 0.10 to 0.47 under input. The probe reads the fighter's stick response, and a fighting game's fighter does not move under a stick push in every state (block stance, hit reaction, a round just started). So the confirm refused live rounds and the claim spent its last 2 min on probes.
+
+NEW ISSUE: fighting-game claim confirm refuses live rounds: the stick probe measures control at 0.1 to 0.5 in a live Mortal Kombat Deadly Alliance round, so the claim gives up at its budget with play on screen (step 94, 15 min budget). Blocks Deadly Alliance's Playable and needs the same fighting-game confirm fix as Armageddon and Guilty Gear. Not re-run: the claim needs its probe rule identified from these frames first.
+
+Spend: model calls for this run (71), not priced.
