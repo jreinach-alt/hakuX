@@ -435,6 +435,257 @@ static bool deferred_downloads_overlap_range(NV2AState *d, hwaddr start,
     return false;
 }
 
+/*
+ * #433, HAKUX_SURFSPLICE=1 (off by default): a binding that uploads from VRAM
+ * bytes a pending download is about to write takes those bytes from the
+ * download's staging copy on the GPU, instead of completing the download first.
+ *
+ * Forza Motorsport's race evicts its zeta binding twice a frame between
+ * 640x480 and 1280x480 at one address (lane.forza414, NOTES 29). The eviction
+ * records the old binding's download; the new binding uploads from the same
+ * VRAM; and pgraph_vk_surface_update completes the download before the upload
+ * with a finish of its own and a wait for the GPU (surface.c, the `surfupd`
+ * caller, `cpuw0`: no guest write in between). That is an image -> VRAM ->
+ * image round trip with the PFIFO thread waiting in the middle: 12.2 ms of a
+ * 37 ms frame on the Nova (lane.frametrace, draw.c:4319).
+ *
+ * Both staging buffers hold guest VRAM bytes. A download's staging rows are
+ * what its completion memcpys into VRAM (width * bpp each, `pitch` apart), and
+ * an upload's staging rows are what it memcpys out of VRAM. So the upload can
+ * read VRAM as it is now, then have the GPU copy every byte a pending download
+ * will write over it from that download's staging rows, in the order the
+ * downloads were recorded. The result is what VRAM will hold once they
+ * complete. The downloads stay pending and complete where they would have if
+ * no binding had uploaded; any reader of guest memory still completes them
+ * first (deferred_downloads_overlap_range), and so does a guest write.
+ *
+ * A download can be spliced when its rows are VRAM bytes (not swizzled: the
+ * swizzle is done on the CPU at completion) and its copy was recorded in the
+ * command buffer the upload records into (no finish has submitted the batch).
+ * An upload can take a splice when its staging is VRAM bytes: a linear
+ * surface, or a swizzled one the compute unswizzle takes as-is. Anything else
+ * completes the downloads first, as without the switch.
+ */
+static int surfsplice_state = -1;
+
+static bool surfsplice_enabled(void)
+{
+    if (surfsplice_state < 0) {
+        const char *e = getenv("HAKUX_SURFSPLICE");
+        surfsplice_state = e && e[0] == '1';
+        if (surfsplice_state) {
+            SURF92_LOG("[surfsplice] on");
+        }
+    }
+    return surfsplice_state;
+}
+
+/* Set by pgraph_vk_surface_update around its two uploads: the only caller
+ * whose completion the splice replaces. */
+static bool g_surfsplice_armed;
+
+/* VRAM bytes as rows: `rows` rows of `len` bytes, the first at `start`,
+ * `stride` apart in VRAM and `len` apart in staging. */
+typedef struct SpliceLayout {
+    hwaddr start, stride, len;
+    unsigned int rows;
+} SpliceLayout;
+
+static hwaddr splice_layout_end(SpliceLayout const *l)
+{
+    return l->start + (hwaddr)(l->rows - 1) * l->stride + l->len;
+}
+
+static bool surfsplice_is_ds(VkFormat f)
+{
+    return f == VK_FORMAT_D24_UNORM_S8_UINT ||
+           f == VK_FORMAT_D32_SFLOAT_S8_UINT;
+}
+
+/* The bytes a download writes into VRAM. A swizzled one is one block. */
+static void surfsplice_dl_layout(NV2AState *d,
+                                 DeferredSurfaceDownload const *dl,
+                                 SpliceLayout *l)
+{
+    l->start = dl->dest_ptr - d->vram_ptr;
+    if (dl->swizzle) {
+        l->rows = 1;
+        l->len = (hwaddr)dl->width * dl->height * dl->bytes_per_pixel;
+        l->stride = l->len;
+    } else {
+        l->rows = dl->height;
+        l->len = (hwaddr)dl->width * dl->bytes_per_pixel;
+        l->stride = dl->pitch;
+    }
+}
+
+static bool surfsplice_dl_ok(PGRAPHVkState *r,
+                             DeferredSurfaceDownload const *dl)
+{
+    return r->deferred_downloads_frame < 0 &&
+           !r->display_predownload_pending && !dl->swizzle &&
+           dl->pitch >= dl->width * dl->bytes_per_pixel &&
+           (surfsplice_is_ds(dl->host_fmt.vk_format) ||
+            dl->host_fmt.host_bytes_per_pixel == dl->bytes_per_pixel);
+}
+
+/* The bytes an upload reads from VRAM, if its staging holds them as-is
+ * (pgraph_vk_upload_surface_data's memcpy_image and compute-unswizzle
+ * branches). */
+static bool surfsplice_upload_layout(SurfaceBinding const *s, SpliceLayout *l)
+{
+    unsigned int bpp = s->fmt.bytes_per_pixel;
+
+    l->start = s->vram_addr;
+    if (s->swizzle) {
+        if (bpp != 4 || surfsplice_is_ds(s->host_fmt.vk_format)) {
+            return false;
+        }
+        l->rows = 1;
+        l->len = (hwaddr)s->width * s->height * bpp;
+        l->stride = l->len;
+        return true;
+    }
+    l->rows = s->height;
+    l->len = (hwaddr)s->width * bpp;
+    l->stride = s->pitch;
+    return s->pitch >= l->len;
+}
+
+/* Whether every pending download over the bytes this upload reads can be
+ * spliced into it. True when none is pending there. */
+static bool surfsplice_upload_ok(NV2AState *d, SurfaceBinding const *s)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+
+    if (!s->width || !s->height || r->num_deferred_downloads == 0) {
+        return true;
+    }
+    SpliceLayout u;
+    bool u_ok = surfsplice_upload_layout(s, &u);
+    hwaddr lo = s->vram_addr;
+    hwaddr hi = u_ok ? splice_layout_end(&u) :
+        lo + MAX(MAX((hwaddr)s->size,
+                     (hwaddr)s->width * s->height * s->fmt.bytes_per_pixel),
+                 (hwaddr)s->pitch * s->height);
+    for (int i = 0; i < r->num_deferred_downloads; i++) {
+        DeferredSurfaceDownload *dl = &r->deferred_downloads[i];
+        SpliceLayout l;
+        surfsplice_dl_layout(d, dl, &l);
+        if (l.start < hi && lo < splice_layout_end(&l) &&
+            (!u_ok || !surfsplice_dl_ok(r, dl))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool surfsplice_covers(NV2AState *d, SurfaceBinding const *s)
+{
+    return !s || !s->upload_pending || surfsplice_upload_ok(d, s);
+}
+
+static void surfsplice_barrier(VkCommandBuffer cmd, VkAccessFlags dst_access)
+{
+    VkMemoryBarrier b = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        .dstAccessMask = dst_access,
+    };
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 1, &b, 0, NULL, 0,
+                         NULL);
+}
+
+/*
+ * Record the GPU copies from every pending download's staging rows into the
+ * upload's staging rows they overlap, one vkCmdCopyBuffer per download in the
+ * order they were recorded (a later download's bytes win, as at completion).
+ * The caller has made sure each overlapping download can be spliced
+ * (surfsplice_upload_ok). Returns the number of downloads spliced.
+ */
+static int surfsplice_record(NV2AState *d, VkCommandBuffer cmd,
+                             SurfaceBinding const *s, VkBuffer dst,
+                             VkDeviceSize dst_base, uint64_t *bytes)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+    SpliceLayout u;
+
+    if (r->num_deferred_downloads == 0 || !s->width || !s->height ||
+        !surfsplice_upload_layout(s, &u)) {
+        return 0;
+    }
+    hwaddr u_end = splice_layout_end(&u);
+    VkBuffer src = r->storage_buffers[BUFFER_STAGING_DST].buffer;
+    GArray *regions = g_array_new(FALSE, FALSE, sizeof(VkBufferCopy));
+    int spliced = 0;
+
+    for (int i = 0; i < r->num_deferred_downloads; i++) {
+        DeferredSurfaceDownload *dl = &r->deferred_downloads[i];
+        SpliceLayout l;
+        surfsplice_dl_layout(d, dl, &l);
+        if (l.start >= u_end || u.start >= splice_layout_end(&l)) {
+            continue;
+        }
+        assert(surfsplice_dl_ok(r, dl));
+
+        g_array_set_size(regions, 0);
+        for (unsigned int row = 0; row < l.rows; row++) {
+            hwaddr a = l.start + (hwaddr)row * l.stride;
+            hwaddr a_end = a + l.len;
+            if (a_end <= u.start || a >= u_end) {
+                continue;
+            }
+            unsigned int j = a > u.start ? (a - u.start) / u.stride : 0;
+            for (; j < u.rows; j++) {
+                hwaddr b = u.start + (hwaddr)j * u.stride;
+                if (b >= a_end) {
+                    break;
+                }
+                hwaddr lo = MAX(a, b), hi = MIN(a_end, b + u.len);
+                if (lo >= hi) {
+                    continue;
+                }
+                VkBufferCopy c = {
+                    .srcOffset = dl->staging_offset + (hwaddr)row * l.len +
+                                 (lo - a),
+                    .dstOffset = dst_base + (hwaddr)j * u.len + (lo - b),
+                    .size = hi - lo,
+                };
+                if (regions->len) {
+                    VkBufferCopy *p = &g_array_index(regions, VkBufferCopy,
+                                                     regions->len - 1);
+                    if (p->srcOffset + p->size == c.srcOffset &&
+                        p->dstOffset + p->size == c.dstOffset) {
+                        p->size += c.size;
+                        continue;
+                    }
+                }
+                g_array_append_val(regions, c);
+            }
+        }
+        if (!regions->len) {
+            continue;
+        }
+        /* The download's copy into its staging, and an earlier splice's
+         * write to the same upload bytes, before this one. */
+        surfsplice_barrier(cmd, VK_ACCESS_TRANSFER_READ_BIT |
+                                    VK_ACCESS_TRANSFER_WRITE_BIT);
+        vkCmdCopyBuffer(cmd, src, dst, regions->len,
+                        (VkBufferCopy *)regions->data);
+        for (guint k = 0; k < regions->len; k++) {
+            *bytes += g_array_index(regions, VkBufferCopy, k).size;
+        }
+        spliced++;
+    }
+    if (spliced) {
+        /* Before the upload's own reads of its staging. */
+        surfsplice_barrier(cmd, VK_ACCESS_TRANSFER_READ_BIT);
+    }
+    g_array_free(regions, TRUE);
+    return spliced;
+}
+
 bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
                                                    hwaddr start, hwaddr size)
 {
@@ -1150,6 +1401,10 @@ static struct {
     unsigned long su_upl, su_deferred;
     unsigned long why[UPW__COUNT];
     unsigned long clr, clrfull, clrskip;
+    /* HAKUX_SURFSPLICE: updates it let defer with a binding uploading, the
+     * uploads that spliced, the downloads and KiB spliced, and the uploads
+     * that completed the downloads themselves (one could not be spliced). */
+    unsigned long spl_defer, spl_up, spl_dl, spl_kb, spl_cmpl;
 } g_sdcall;
 
 /* The bindings a clearing update counted in why=, until the next update
@@ -1227,13 +1482,14 @@ static void sdcall_log(PGRAPHState *pg)
         snprintf(buf + n, sizeof(buf) - n,
                  " su_upl=%lu su_deferred=%lu why=new%lu/inv%lu/stale%lu/"
                  "hoff%lu/cpuw%lu/gap%lu/oth%lu clr=%lu clrfull=%lu "
-                 "clrskip=%lu",
+                 "clrskip=%lu spl=def%lu/up%lu/dl%lu/%lukB/cmpl%lu",
                  g_sdcall.su_upl, g_sdcall.su_deferred,
                  g_sdcall.why[UPW_NEW], g_sdcall.why[UPW_INVALID],
                  g_sdcall.why[UPW_STALE], g_sdcall.why[UPW_HANDOFF],
                  g_sdcall.why[UPW_CPUW], g_sdcall.why[UPW_GAP],
                  g_sdcall.why[UPW_NONE], g_sdcall.clr, g_sdcall.clrfull,
-                 g_sdcall.clrskip);
+                 g_sdcall.clrskip, g_sdcall.spl_defer, g_sdcall.spl_up,
+                 g_sdcall.spl_dl, g_sdcall.spl_kb, g_sdcall.spl_cmpl);
     }
     SURF92_LOG("%s", buf);
     memset(&g_sdcall, 0, sizeof(g_sdcall));
@@ -3564,6 +3820,14 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
         return;
     }
 
+    /* HAKUX_SURFSPLICE: a pending download over these bytes that cannot be
+     * spliced completes before VRAM is read, as surface_update would have. */
+    bool splice = g_surfsplice_armed;
+    if (splice && !surfsplice_upload_ok(d, surface)) {
+        download_surface_complete_deferred(d, SDC_SURF_UPDATE);
+        SDCALL_DO(g_sdcall.spl_cmpl++);
+    }
+
     VK_LOG("upload_surface: %s addr=0x%x %ux%u pitch=%d bpp=%d swizzle=%d",
            surface->color ? "COLOR" : "ZETA", surface->vram_addr,
            surface->width, surface->height, surface->pitch,
@@ -3659,6 +3923,12 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
             }
         }
     }
+    /* A finish above submits the batch, which can then only be waited on:
+     * a fence wait, no finish, so staging_base stays ours. */
+    if (splice && !surfsplice_upload_ok(d, surface)) {
+        download_surface_complete_deferred(d, SDC_SURF_UPDATE);
+        SDCALL_DO(g_sdcall.spl_cmpl++);
+    }
     StorageBuffer *copy_buffer = get_staging_buffer(r, BUFFER_STAGING_SRC);
     void *mapped_memory_ptr = copy_buffer->mapped + staging_base;
 
@@ -3690,6 +3960,18 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
     vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_HOST_BIT,
                          VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 1,
                          &host_barrier, 0, NULL);
+
+    if (splice) {
+        uint64_t spl_bytes = 0;
+        int spl_n = surfsplice_record(d, cmd, surface, copy_buffer->buffer,
+                                      staging_base, &spl_bytes);
+        SDCALL_DO(if (spl_n) {
+            g_sdcall.spl_up++;
+            g_sdcall.spl_dl += spl_n;
+            g_sdcall.spl_kb += spl_bytes / 1024;
+        });
+        (void)spl_n;
+    }
 
     // Set up image copy regions (which may be modified by compute unpack)
 
@@ -5060,7 +5342,10 @@ static bool surface_update_may_defer_downloads(NV2AState *d, bool upload)
     if (upload &&
         ((r->color_binding && r->color_binding->upload_pending) ||
          (r->zeta_binding && r->zeta_binding->upload_pending))) {
-        return false;
+        /* #433: unless the uploads can take the pending bytes on the GPU. */
+        return surfsplice_enabled() &&
+               surfsplice_covers(d, r->color_binding) &&
+               surfsplice_covers(d, r->zeta_binding);
     }
     return true;
 }
@@ -5176,7 +5461,14 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                   upw_count(pg, r->zeta_binding, 1);
               });
     if (surface_update_may_defer_downloads(d, upload)) {
-        SDCALL_DO(g_sdcall.su_deferred++);
+        SDCALL_DO(g_sdcall.su_deferred++;
+                  if (upload && r->num_deferred_downloads > 0 &&
+                      ((r->color_binding &&
+                        r->color_binding->upload_pending) ||
+                       (r->zeta_binding &&
+                        r->zeta_binding->upload_pending))) {
+                      g_sdcall.spl_defer++;
+                  });
     } else {
         /* Every caller of surface_update is a method or the flip-stall path
          * on the PFIFO thread, holding pgraph.lock; the thread test keeps any
@@ -5192,6 +5484,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
 
     bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);
 
+    g_surfsplice_armed = upload && tcg_enabled() && surfsplice_enabled();
     {
         SURF_TIMER_INIT(_su0);
         if (r->color_binding) {
@@ -5223,6 +5516,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         }
         SURF_TIMER_ACC(upload_ns, _su0);
     }
+    g_surfsplice_armed = false;
     SURF413_ACC(upl_ns, _s413);
 
     // Sanity check color and zeta dimensions match
