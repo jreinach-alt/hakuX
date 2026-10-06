@@ -3900,6 +3900,11 @@ static void xfr_stats(const float *v, float *med, float *mean, float *p90)
     *mean = (float)(sum / XFR_WINDOW);
 }
 
+/*
+ * The lines ride on the xemu-gpu tag, not their own: the perflog logcat filter
+ * is a tag list (LOGCAT_SPEC in dispatcher.sh) that ends in *:S, so an
+ * xemu-xfr tag is dropped unread. The xemu-xfr prefix keeps them greppable.
+ */
 static void xfr_emit(void)
 {
     char buf[768];
@@ -3917,7 +3922,7 @@ static void xfr_emit(void)
                         " %s %.2f %.2f %.2f n%.1f", xfr_cat_names[c],
                         med, mean, p90, (double)xfr.cat_ops[c] / XFR_WINDOW);
     }
-    __android_log_print(ANDROID_LOG_INFO, "xemu-xfr", "%s", buf);
+    __android_log_print(ANDROID_LOG_INFO, "xemu-gpu", "xemu-xfr %s", buf);
 
     qsort(xfr.sites, xfr.nsites, sizeof(XfrSite), xfr_cmp_site);
     len = snprintf(buf, sizeof(buf), "XFR sites");
@@ -3928,7 +3933,7 @@ static void xfr_emit(void)
                         s->ms / XFR_WINDOW, (double)s->n / XFR_WINDOW);
     }
     snprintf(buf + len, sizeof(buf) - len, " dropped %lu", xfr.dropped);
-    __android_log_print(ANDROID_LOG_INFO, "xemu-xfr", "%s", buf);
+    __android_log_print(ANDROID_LOG_INFO, "xemu-gpu", "xemu-xfr %s", buf);
 }
 #else
 static void xfr_emit(void)

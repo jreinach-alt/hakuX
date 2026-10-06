@@ -76,7 +76,48 @@ What "the brackets do not read it" looks like: `ctrl` reads 0 or is missing
 (the stamps are not where the copies run, or the copies run outside the
 measured span), or an unrelated category moves with `ctrl`.
 
-Results: pending (see WAITING).
+## Attempt 2: why attempt 1 did not finish
+
+Attempt 1 built the instrument, queued the two arms and went WAITING. Both
+arms ran to DONE (the apk is fc4e0d3d7a20, built from 16784acb80), but the
+attempt stopped there. It never read the `xemu-xfr` lines, and it did not
+check that they reached logcat before waiting on them. They did not:
+
+- The dispatcher's logcat spec (`LOGCAT_SPEC` in `docs/testing/dispatcher.sh`,
+  ending in `*:S`) is a tag list. `xemu-xfr` is not in it, so every
+  `xemu-xfr` line was dropped unread. The C0 logcat has 107 `xemu-gpu` lines
+  and no `xemu-xfr` line; the C16 logcat has none either.
+- The per-category ms for the control (`ctrl`) therefore does not exist in
+  either arm's artifacts.
+
+Fix (attempt 2): the two `xemu-xfr` lines are now logged under the `xemu-gpu`
+tag, which is in the spec, with `xemu-xfr` as the message prefix (draw.c,
+`xfr_emit`). Adding `xemu-xfr:I` to the spec is the cleaner fix, but the spec
+is lane.local's, so it is an OUTBOX request, not a change here.
+
+## Control, read from the existing counter (attempt 1 arms)
+
+The `xemu-gpu` line already carries `Xfr` = `gpu_nonrender_ms` (profile.c,
+the same stats the readback fills), once per second. Per-second medians
+over the 150 s run (107 windows C0, 108 windows C16):
+
+| arm | Tot med | Rnd med | Xfr med | Xfr mean |
+|---|---|---|---|---|
+| C0 (`HAKUX_GPUXFR=1`) | 0.70 | 0.30 | 0.40 | 0.37 |
+| C16 (`+ CTRL=16`) | 1.40 | 0.30 | 1.10 | 1.10 |
+
+Xfr rises by 0.70 ms per frame, Rnd does not move, and Tot moves by the same
+0.70. That is the pre-stated pass shape for `nr`. A 16-copy total of 0.70 ms
+is about 0.044 ms per 1 MiB copy. This is partial: the per-category `ctrl`
+value needs the `xemu-xfr` line, which the re-run below emits.
+
+These arms are menu frames. The route runs the publisher logos, the title and
+the main menu, and the 150 s soak did not reach NG Black gameplay. That is fine
+for a control of a known cost. It is not a gameplay reading, and the title
+measurements need a route that reaches gameplay.
+
+Results: the attempt-1 arms are read above. The attempt-2 re-run (same route,
+same env, fixed tag) is the instrument verdict; see the Attempt 2 section below.
 
 ## Measurement plan after the control
 
