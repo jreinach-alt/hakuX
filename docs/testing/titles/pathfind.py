@@ -189,6 +189,16 @@ PERIOD_TRIES = 8
 # A alone types a letter (the RULES warning), so an entry that A never closes ended Strike Force Bowling at 266 s (10-05).
 NAME_TRIES = 6
 NAME_PRESS = ("START", "A")
+# a title's own name-entry input, when the frames have shown one (10-05, Strike Force Bowling: the claim accepted the
+# default name with DOWN x4 then A, Done being the last panel row; the hold's high-score entry at a game end never got it,
+# and START did nothing there). Keyed by the title's name, upper case with runs of other characters as "_".
+NAME_SEQ = {"STRIKE_FORCE_BOWLING": ["DOWN", "DOWN", "DOWN", "DOWN", "A"]}
+
+
+def name_press(name, tries):
+    """The inputs for one name-entry press: the title's own sequence, else NAME_PRESS in turn."""
+    seq = NAME_SEQ.get(re.sub(r"[^A-Z0-9]+", "_", (name or "").upper()).strip("_"))
+    return list(seq) if seq else [NAME_PRESS[tries % len(NAME_PRESS)]]
 # Title-specific hold loops (10-03 addendum, the owner's Black Stone design). They replace the genre's loop and its
 # unlock rotation for these title ids. The walk moves the player with the left stick only, in long strokes that
 # change direction. X is pressed once, alone: at the start of the hold and after two still windows in a row. Y, R1,
@@ -1701,7 +1711,7 @@ class Agent:
                         look["period"] = pb_tries
                     elif st == "name_entry" and not th and name_tries < NAME_TRIES:
                         # a name entry (10-05): START to Done, then A to confirm, unlooked; its own budget
-                        action, wait_s = [NAME_PRESS[name_tries % len(NAME_PRESS)]], 1.5
+                        action, wait_s = name_press(self.name, name_tries), 1.5
                         name_tries += 1
                         look["name"] = name_tries
                     elif th:

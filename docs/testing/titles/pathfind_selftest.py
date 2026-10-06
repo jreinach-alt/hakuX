@@ -498,6 +498,12 @@ rp = pathfind.HOLD_REPLAY
 check("replay", all(w in rp for w in ("Rewind", "Play/Pause", "Back", "period_break", "START"))
       and "HOLD_REPLAY" in inspect.getsource(pathfind.Agent.hold_look),
       "the hold look sends the replay footer rule: a replay is period_break, input START")
+# name entry (10-05, Strike Force Bowling hold4): a title's own name sequence is pressed at a name entry in the hold; any
+# other title gets START, then A, in turn. The high-score entry at a game end walked the hold off the lanes.
+check("nameseq", pathfind.name_press("Strike Force Bowling", 0) == ["DOWN", "DOWN", "DOWN", "DOWN", "A"]
+      and pathfind.name_press("Strike_Force_Bowling", 3) == ["DOWN", "DOWN", "DOWN", "DOWN", "A"]
+      and pathfind.name_press("NBA 2K3", 0) == ["START"] and pathfind.name_press("NBA 2K3", 1) == ["A"],
+      "a title's name sequence is used at a name entry; other titles keep START, then A")
 # bowling (10-05, AMF Bowling 2004): a bowl hold loops aim and throw with no B, X or Y, and each frame's scorecard
 # (a period_break) gets START, then A, on its own budget (PERIOD_TRIES), not the shared CONTINUE budget.
 ROUTE_LOG.clear()

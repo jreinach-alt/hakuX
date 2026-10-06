@@ -1,0 +1,74 @@
+{
+ "title_id": null,
+ "name": "Strike Force Bowling",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Strike_Force_Bowling.xiso.iso",
+ "result": "gameplay",
+ "tool": "38a6f41920",
+ "started": "2026-10-05 19:01:23 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/017-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/017-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/017-probe-c.jpg"
+ ],
+ "minutes": 3.09,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/016-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/025-after.jpg"
+ ],
+ "learned": [],
+ "hold": {
+  "genre": "bowl",
+  "why": "A bowling lane with pins in the inset view, a bowler standing at the foul line, and a ball selector showing weight (16lbs Resin) and spin (10%), so the player a",
+  "ok": false,
+  "play_s": 279.2,
+  "need_s": 600.0,
+  "hold_s": 353.8,
+  "model_navs": 13,
+  "frames": 11,
+  "still_windows": 0,
+  "shed": [],
+  "reason": "off play for 13 steps: menu (PlayerSelect screen with a profile chooser; no bowling lane or ball in play yet.)",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 166,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 184.8,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 281,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 303.4,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Strike Force Bowling ? FAIL(duration: 354 s of gameplay < 600 s confirmation) gameplay=353.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.7996 fps_excluded=72.1s"
+ },
+ "model_calls": 34,
+ "calls_by_model": {
+  "claude-sonnet-5": 34
+ },
+ "steps": 17,
+ "seconds": 582.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/frames/076-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/strike-force-bowling/hold4/strip.jpg"
+}
