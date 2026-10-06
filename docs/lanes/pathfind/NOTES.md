@@ -1156,3 +1156,20 @@ What this shows, and what it does not:
   accepts it (not football). No path is recorded for it (`pathknow/paths` has no NHL Hitz file), so the 15-min claim is its
   recording. The prior hold (`runs/nhl-hitz-pro/hold`, 3.3 min claim, play share 0.936, median 37.4, CLOSE on fps 75% at 30)
   was on an older build. This run is a first claim plus a 600-s hold on HEAD e383da4992 via `scratch/heldrun.sh`.
+
+## NHL Hitz Pro, attempt 5 (12:00-12:22 PDT): CLAIM NOT FINISHED, run still alive past budget
+
+- Run: `runs/nhl-hitz-pro/hold2`, log `heldrun2.log`, pathfind pid 1375015, HEAD e383da4992, Nova, first-run, `--hold-s 600`.
+- The title got through the publisher logos, title screen, Exhibition, and team select (USER1 assigned to the AWAY team, Ottawa)
+  by step 13 (~126 s). From step 14 (~126 s) to step 154 (1280 s+) it sat on a loading screen after team select: spinner
+  barely moving, every look `wait`.
+- hang.jsonl: the hang probe tripped repeatedly (5 probes, A pressed each time); each probe read `frame_change 0.0`, busy share
+  0.97-1.0, top address `r:800151ed`. That is a guest stuck in one loop, not a long load. Logcat was still updating at 12:10:59.
+- The claim budget is 15 min (900 s). At 1280 s the process had not exited, so the budget did not end the claim. Unresolved: why
+  the claim loop did not stop at its budget (the process is past 900 s and past the 300 s confirm grace).
+- Attempted to stop it by PID (1375015); the stop was refused by the sandbox. The Nova hold (`lane.pathfind`) is still taken
+  because the wrapper releases only on exit. The next session must end this process (kill the pid) and then run
+  `docs/testing/jobs/hold.sh release nova lane.pathfind`.
+- Verdict: no gameplay reached. Classify as a hang on the loading screen after team select (failure for identification, not a
+  re-run). NEW ISSUE to file: NHL Hitz Pro hangs on the post-team-select loading screen (guest busy at r:800151ed, frozen frame),
+  and the claim loop does not end at its budget while the screen is loading.
