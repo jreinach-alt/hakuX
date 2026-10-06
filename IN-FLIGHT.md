@@ -8,7 +8,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pathfind` | claude-sonnet-5 | 1h 31m | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+| `pathfind` | claude-sonnet-5 | 1h 47m | pathfind: a screen-reading agent that drives a title from boot into gameplay |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.pathfind`
@@ -56,7 +56,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `51d287f566` | 2026-10-06 02:14 |
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `38c4e6945e` | 2026-10-06 02:29 |
 
 ## Recently landed on master
 
@@ -72,4 +72,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-04 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
 - 2026-10-04 hangwatch: a locked-up title is caught on telemetry in about 90 s, not waited out
 
-_Updated 2026-10-06 02:20 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-06 02:36 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
