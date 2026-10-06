@@ -8,20 +8,23 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gpunonrender` | claude-opus-5-5 | 1h 2m | Lane: gpunonrender                Issue: #433 |
+| `pathfind` | claude-sonnet-5 | 5 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-fanwait`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
 
 ## 0.5 release: Playable titles
 
-**27 titles are confirmed Playable** (0 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**30 titles are confirmed Playable** (3 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-06 | World Soccer Winning Eleven 9 | Playable, 10-minute run, median 59.9 fps |
+| 2026-10-06 | Ratatouille | Playable, 10-minute run, median 52.8 fps |
+| 2026-10-06 | Rogue Trooper | Playable, 10-minute run, median 58.9 fps |
 | 2026-10-05 | MLB SlugFest - Loaded | Playable, 10-minute run, median 58.9 fps |
 | 2026-10-05 | MLB SlugFest 2004 | Playable, 10-minute run, median 44.4 fps |
 | 2026-10-05 | AMF Bowling 2004 | Playable, accepted on review, median 59.9 fps |
@@ -50,13 +53,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-11 of these still await the owner's flicker check.
+14 of these still await the owner's flicker check.
 
 ## Work in progress
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gpunonrender` | Lane: gpunonrender                Issue: #433 | `ddfea13092` | 2026-10-06 05:46 |
+| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `c8ac2d999c` | 2026-10-06 03:25 |
 
 ## Recently landed on master
 
@@ -72,4 +75,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-04 303: surface write-back probe for Spikeout's FMV green blocks (lane.fmv303c)
 - 2026-10-04 hangwatch: a locked-up title is caught on telemetry in about 90 s, not waited out
 
-_Updated 2026-10-06 06:20 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-06 06:36 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
