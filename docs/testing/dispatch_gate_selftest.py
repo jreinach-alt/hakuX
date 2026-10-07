@@ -19,11 +19,15 @@ reported red as `MUTANT SURVIVED`.
 import contextlib
 import datetime as dt
 import hashlib
+import http.server
 import json
 import os
+import re
 import shutil
+import subprocess
 import sys
 import tempfile
+import threading
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -35,14 +39,32 @@ UTC = dt.timezone.utc
 NOW = dt.datetime(2026, 10, 6, 20, 30, tzinfo=UTC)          # 13:30 PDT
 T = lambda h, m=0, d=6: dt.datetime(2026, 10, d, h, m, tzinfo=UTC)   # noqa: E731
 
-# fixture commits: sha -> commit time (fake git)
+# fixture commits: sha -> commit time (fake git). History is linear by time, except
+# NOT_IN_BUILD (a lane branch that has not folded).
 COMMITS = {
     "aaaaaaaaaa": T(1, 0, 4),        # the fixture's libfolders floor (10-04)
-    "bbbbbbbbbb": T(18, 0),          # master build used by the requests (10-06 11:00 PDT)
-    "c0ffee0001": T(19, 0),          # NAME_SEQ / CHARSEL / "fix folded" (10-06 12:00 PDT): newer than every fixture verdict
+    "c0ffee0001": T(19, 0),          # NAME_SEQ / CHARSEL (10-06 12:00 PDT): changes MK's and Strike Force's path files
+    "f1x2000001": T(20, 0),          # route fixes for Tron/NGB/Amped 2/Spider-Man 2, after their post-fix verdicts
+    "7f1x000001": T(20, 2),          # a harness-wide change (pathfind.py): answers no title by its paths
+    "unf01ded01": T(20, 5),          # MK's path file + emulator code on a lane branch, not in the build
+    "d0c5f1x001": T(20, 6),          # MK's path file alone on pathfind's branch, not in the build
+    "a11ce80401": T(19, 10),         # RalliSport's path file (an accuracy804-like fix): answers its menu time
+    "6cef37f426": T(20, 10),         # the real 10-06 waitread1006 fold: lane docs only, newer than every verdict
+    "bbbbbbbbbb": T(20, 15),         # master build used by the requests (10-06 13:15 PDT)
     "0ldf1x0001": T(1, 0, 3),        # a fix OLDER than the verdicts it would answer
 }
-ANCESTRY = {("aaaaaaaaaa", "bbbbbbbbbb")}
+PF_PATHS = "docs/testing/titles/pathknow/paths/%s.json"
+COMMIT_PATHS = {
+    "c0ffee0001": [PF_PATHS % "4D570034", PF_PATHS % "43560008", "docs/testing/titles/pathfind.py"],
+    "f1x2000001": [PF_PATHS % t for t in ("42560001", "5443000D", "4D530041", "4156002B")],
+    "7f1x000001": ["docs/testing/titles/pathfind.py", "docs/testing/titles/pathfind_selftest.py"],
+    "unf01ded01": [PF_PATHS % "4D570034", "hw/xbox/nv2a/pgraph/vk/draw.c"],
+    "d0c5f1x001": [PF_PATHS % "4D570034"],
+    "a11ce80401": [PF_PATHS % "4D53000F"],
+    "6cef37f426": ["docs/lanes/waitread1006/NOTES.md", "docs/lanes/waitread1006/evidence.tsv",
+                   "docs/lanes/waitread1006/tools/run_waits.py"],
+}
+NOT_IN_BUILD = {"unf01ded01", "d0c5f1x001"}
 BUILD = "bbbbbbbbbb"
 APK = b"fixture apk bytes for bbbbbbbbbb"
 APK_SHA12 = hashlib.sha256(APK).hexdigest()[:12]
@@ -116,6 +138,12 @@ RUNS = {
     "amf-xtreme-bowling/hold2": ("42530014", verdict(1.0, play_share=0.747, crash=True, judged=T(23, 55, 5)), "nova"),
     "amf-bowling-2004/hold2": ("42530009", verdict(1.0, play_share=0.892, judged=T(20, 24, 5)), "nova"),
     "blowout-1006": ("4D4A0008", verdict(1.0, play_share=0.831, judged=T(22, 21) - dt.timedelta(hours=3)), "nova"),
+    # the four owner-held below-bar titles after a fix: perf now clears, menu time fails. Only the
+    # owner's below_bar hold (released by lane.local, never by a verdict) keeps them out.
+    "postfix-tron": ("42560001", verdict(0.95, play_share=0.70, judged=T(19, 30)), "nova"),
+    "postfix-ngb": ("5443000D", verdict(0.95, play_share=0.70, judged=T(19, 30)), "nova"),
+    "postfix-amped2": ("4D530041", verdict(0.95, play_share=0.70, judged=T(19, 30)), "nova"),
+    "postfix-sm2": ("4156002B", verdict(0.95, play_share=0.70, judged=T(19, 30)), "nova"),
 }
 
 LEDGER = "date_pdt\ttitle\ttitle_id\tresult\taccepted_by\tevidence\n" \
@@ -186,7 +214,48 @@ class FakeCtx(G.Ctx):
         return None
 
     def is_ancestor(self, older, newer):
-        return older == newer or (older, newer) in ANCESTRY
+        if older == newer:
+            return True
+        to, tn = self.commit_time(older), self.commit_time(newer)
+        return bool(to and tn) and to <= tn and not any(_sha_pre(older, k) for k in NOT_IN_BUILD)
+
+    def commit_paths(self, sha):
+        return next((v for k, v in COMMIT_PATHS.items() if _sha_pre(sha, k)), [] if self.commit_time(sha) else None)
+
+
+def _sha_pre(a, b):
+    return bool(a and b) and (a.startswith(b) or b.startswith(a))
+
+
+class _AllAncestors(FakeCtx):
+    """Mutant: every commit is in every build."""
+    def is_ancestor(self, older, newer):
+        return True
+
+
+def _pre_review_rule():
+    """Mutant: the matrix as lane.local's 18:10 review found it. Any commit newer than the
+    latest verdict was a fix, and a below-bar title with one got a Playable attempt."""
+    def old_fix(ctx, req, row):
+        vt = G._latest_verdict_time(row)
+        for sha in G._because(req, "fix") + ([row["fix_commit"]] if row.get("fix_commit") else []):
+            ct = ctx.commit_time(sha)
+            if ct is not None and (vt is None or ct > vt):
+                return sha, "newer"
+        return None, "none newer"
+
+    def rule_class_status(ctx, req, row, d):
+        if row and req.get("class") == "PLAYABLE_ATTEMPT" and row["status"] == "BELOW_BAR":
+            if not old_fix(ctx, req, row)[0]:
+                d.deny("matrix", "below the bar, no newer commit")
+            return
+        real = G._answering_fix
+        G._answering_fix = old_fix
+        try:
+            G.rule_class_status(ctx, req, row, d)
+        finally:
+            G._answering_fix = real
+    return rule_class_status
 
 
 def fresh_ctx(root, now=NOW):
@@ -259,6 +328,124 @@ def rebuilt(root, now=NOW):
     return ctx
 
 
+# ---------------------------------------------------------------- the forge: local HTTP, never gh
+
+GH_CALL = re.compile(r"""(\[\s*|\(\s*|which\(\s*)["']gh["']|["']gh\s+(issue|api|pr|repo)\b""")
+# the line lane.local's review found at title_registry.py:484 (10-06 18:10)
+REVIEWED_GH_LINE = 'out = subprocess.run(["gh", "issue", "list", "--repo", "jreinach-alt/hakuX", "--state", "open",'
+
+
+def gh_calls(text):
+    return [l.strip() for l in text.splitlines() if GH_CALL.search(l) and not l.lstrip().startswith("#")]
+
+
+class _FakeForge(http.server.BaseHTTPRequestHandler):
+    """Forgejo's issue listing: OPEN pages, then an empty page. Records each request's auth."""
+    OPEN = []
+    SEEN = []
+
+    def do_GET(self):
+        page = int((re.search(r"[?&]page=(\d+)", self.path) or [0, "1"])[1])
+        _FakeForge.SEEN.append((self.path, self.headers.get("Authorization")))
+        body = json.dumps(_FakeForge.OPEN if page == 1 else []).encode()
+        self.send_response(200 if self.headers.get("Authorization") == "token fixture-token" else 403)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, *a):
+        pass
+
+
+def forge_legs():
+    print("== the forge: read over local HTTP, never gh; unreadable keeps holds active")
+    srcs = {n: open(os.path.join(HERE, n)).read() for n in ("title_registry.py", "dispatch_gate.py", "dispatch_audit.py")}
+    found = {n: gh_calls(t) for n, t in srcs.items() if gh_calls(t)}
+    check("no `gh` invocation in title_registry.py, dispatch_gate.py, dispatch_audit.py", not found,
+          not gh_calls(srcs["title_registry.py"] + "\n        " + REVIEWED_GH_LINE),
+          "found %s | mutant[the reviewed line restored] flagged" % (found or "none"))
+    tmp = tempfile.mkdtemp(prefix="dispatchgate-forge-")
+    srv = http.server.HTTPServer(("127.0.0.1", 0), _FakeForge)
+    th = threading.Thread(target=srv.serve_forever, daemon=True)
+    th.start()
+    url = "http://127.0.0.1:%d" % srv.server_address[1]
+    calls = []
+    real_run, real_popen, real_system = subprocess.run, subprocess.Popen, os.system
+
+    def rec(name, real):
+        def f(*a, **kw):
+            argv = a[0] if a else kw.get("args")
+            calls.append(argv if isinstance(argv, (list, tuple)) else str(argv).split())
+            return real(*a, **kw)
+        return f
+    try:
+        build_tree(tmp)
+        with open(os.path.join(tmp, "pm", "owner-holds.tsv"), "w") as f:
+            f.write(holds_text(with_amf_hold=True))
+        os.makedirs(os.path.join(tmp, "forge", "tokens"))
+        with open(os.path.join(tmp, "forge", "tokens", "jobs.token"), "w") as f:
+            f.write("fixture-token\n")
+        p = TR.Paths(tmp)
+        subprocess.run, subprocess.Popen, os.system = rec("run", real_run), rec("Popen", real_popen), rec("system", real_system)
+
+        def amf(forge_url, use_forge=True):
+            rows, _, oi = TR.build(p, now=NOW, use_forge=use_forge, forge_url=forge_url)
+            out = os.path.join(tmp, "pm", "reg-forge.tsv")
+            TR.write(p, rows, out, now=NOW, open_issues=oi)
+            hdr, reg = TR.read_registry(out)
+            return hdr.get("forge"), reg["42530014"]["holds"], oi
+        _FakeForge.OPEN = [{"number": 835, "title": "AMF Xtreme SIGSEGV"}, {"number": 900, "title": "a PR",
+                                                                            "pull_request": {}}]
+        f_open, h_open, oi_open = amf(url)
+        _FakeForge.OPEN = [{"number": 10, "title": "unrelated"}]
+        f_closed, h_closed, _ = amf(url)
+        f_down, h_down, _ = amf("http://127.0.0.1:9")
+        os.remove(os.path.join(tmp, "forge", "tokens", "jobs.token"))
+        f_notok, h_notok, _ = amf(url)
+        auths = set(a for _, a in _FakeForge.SEEN)
+        gh_seen = [c for c in calls if c and os.path.basename(str(c[0])) == "gh"]
+
+        # mutant: the reviewed reader, shelling out to gh (a stub that is never on PATH here)
+        def gh_reader(p, use_forge=True, url=None):
+            try:
+                out = subprocess.run(["gh", "issue", "list", "--state", "open", "--json", "number,title"],
+                                     capture_output=True, text=True, timeout=10, env={"PATH": "/nonexistent"})
+                return {int(x["number"]): x["title"] for x in json.loads(out.stdout)}
+            except (OSError, ValueError):
+                return None
+        real_reader = TR.forge_open_issues
+        TR.forge_open_issues = gh_reader
+        try:
+            amf(url)
+        finally:
+            TR.forge_open_issues = real_reader
+        gh_mut = [c for c in calls if c and os.path.basename(str(c[0])) == "gh"]
+
+        # mutant: an unreadable forge read as "nothing open"
+        TR.forge_open_issues = lambda p, use_forge=True, url=None: real_reader(p, use_forge, url) or {}
+        try:
+            _, h_mut, _ = amf("http://127.0.0.1:9")
+        finally:
+            TR.forge_open_issues = real_reader
+    finally:
+        subprocess.run, subprocess.Popen, os.system = real_run, real_popen, real_system
+        srv.shutdown()
+        shutil.rmtree(tmp, ignore_errors=True)
+    check("registry build reads the forge over HTTP with the jobs token, never runs gh",
+          not gh_seen and auths == {"token fixture-token"} and oi_open == {835: "AMF Xtreme SIGSEGV"},
+          not gh_mut, "%d HTTP request(s), %d gh call(s) | mutant[gh reader] -> %d gh call(s)"
+          % (len(_FakeForge.SEEN), len(gh_seen), len(gh_mut)))
+    check("#835 open on the forge -> AMF's crash hold active; #835/#837 closed -> released",
+          f_open == "ok" and "amf-xtreme-835-837" in h_open and f_closed == "ok" and "amf-xtreme-835-837" not in h_closed,
+          False, "open: %r / closed: %r" % (h_open, h_closed))
+    check("forge unreachable or no token -> header forge=unreadable, the hold stays active",
+          f_down == "unreadable" and "amf-xtreme-835-837" in h_down and f_notok == "unreadable"
+          and "amf-xtreme-835-837" in h_notok,
+          "amf-xtreme-835-837" in h_mut,
+          "down: forge=%s holds=%r; no token: forge=%s | mutant[unreadable read as nothing open] -> holds=%r"
+          % (f_down, h_down, f_notok, h_mut))
+
+
 def main():
     tmp = tempfile.mkdtemp(prefix="dispatchgate-selftest-")
     try:
@@ -303,8 +490,8 @@ def main():
         leg("DOA3 PLAYABLE_ATTEMPT citing a fix OLDER than its verdict -> deny", ctx,
             req(ctx, "54430001", "PLAYABLE_ATTEMPT", because=["fix:0ldf1x0001"]), False,
             dict(disabled=["rule_class_status"]), "no matrix")
-        # 2. RalliSport: the owner hold, with a 'fix folded' that is newer than the verdict
-        ralli = req(ctx, "4D53000F", "PLAYABLE_ATTEMPT", because=["fix:c0ffee0001"])
+        # 2. RalliSport: the owner hold, with a 'fix folded' that answers its menu time
+        ralli = req(ctx, "4D53000F", "PLAYABLE_ATTEMPT", because=["fix:a11ce80401"])
 
         def no_exclude_holds(c, r):
             with holds_without(kinds=("exclude",)):
@@ -355,14 +542,93 @@ def main():
               False, " || ".join(x["why"][:90] for x in rj))
         check("plan_check passes rows 1 and 10", not [x for x in prej if x["row"] in ("1", "10")], False,
               "%d rows, %d rejects" % (len(prow), len(prej)))
-        # owner-excluded below-bar titles, each WITH a newer fix cited so only the owner hold stands
+        # owner-held below-bar titles after a clearing verdict, each WITH a fix that answers its
+        # remaining menu-time failure, so only the owner hold stands
         for tid in ("42560001", "5443000D", "4D530041", "4156002B"):
             def no_below_holds(c, r):
                 with holds_without(kinds=("below_bar",)):
                     return G.admit(rebuilt(tmp), r, write_log=False, shadow=False)
             leg("%s PLAYABLE_ATTEMPT -> deny (owner below-bar hold)" % TITLES[tid][0], ctx,
-                req(ctx, tid, "PLAYABLE_ATTEMPT", because=["fix:c0ffee0001"]), False, no_below_holds,
+                req(ctx, tid, "PLAYABLE_ATTEMPT", because=["fix:f1x2000001"]), False, no_below_holds,
                 "below_bar holds dropped")
+
+        print("== what counts as a fix (lane.local review 10-06 18:10)")
+        pre = _pre_review_rule()
+
+        def pre_review(c, r):            # mutant: the gate as reviewed (a newer commit is a fix)
+            i = G.RULES.index(G.rule_class_status)
+            G.RULES[i] = pre
+            try:
+                return G.admit(c, r, write_log=False, shadow=False)
+            finally:
+                G.RULES[i] = G.rule_class_status
+        leg("DOA3 PLAYABLE_ATTEMPT citing fix:6cef37f426 (an unrelated fold) -> deny", ctx,
+            req(ctx, "54430001", "PLAYABLE_ATTEMPT", because=["fix:6cef37f426"]), False, pre_review,
+            "newer commit = fix")
+        leg("MK Armageddon (menu time) citing fix:6cef37f426 -> deny", ctx,
+            req(ctx, "4D570034", "PLAYABLE_ATTEMPT", because=["fix:6cef37f426"]), False, pre_review,
+            "newer commit = fix")
+        mk_ok = req(ctx, "4D570034", "PLAYABLE_ATTEMPT", because=["fix:c0ffee0001"])
+
+        def no_gate_paths(c, r):
+            saved = dict(G.GATE_PATHS)
+            G.GATE_PATHS.clear()
+            try:
+                return G.admit(c, r, write_log=False, shadow=False)
+            finally:
+                G.GATE_PATHS.update(saved)
+        leg("MK citing a commit that changes its own path file -> allow", ctx, mk_ok, True, no_gate_paths,
+            "GATE_PATHS empty")
+        leg("MK citing a harness-wide commit, no title-fixes row -> deny", ctx,
+            dict(mk_ok, because=["fix:7f1x000001"]), False, pre_review, "newer commit = fix")
+        leg("MK citing a fix with emulator code not in the requested build -> deny", ctx,
+            dict(mk_ok, because=["fix:unf01ded01"]), False,
+            lambda c, r: G.admit(_AllAncestors(tmp, now=NOW), r, write_log=False, shadow=False), "every commit in build")
+
+        def apk_only(c, r):              # mutant: a path-file (tooling) fix must also be in the APK build
+            saved = G.TOOLING_PREFIXES
+            G.TOOLING_PREFIXES = ("no-such-prefix/",)
+            try:
+                return G.admit(c, r, write_log=False, shadow=False)
+            finally:
+                G.TOOLING_PREFIXES = saved
+        leg("MK citing a path-file-only fix not in the APK build -> allow (tool tree)", ctx,
+            dict(mk_ok, because=["fix:d0c5f1x001"]), True, apk_only, "tooling fix needs the APK")
+        fixes_tsv = os.path.join(tmp, "pm", "title-fixes.tsv")
+
+        def with_fixes(rows, r, how=lambda c, r: G.admit(c, r, write_log=False, shadow=False)):
+            with open(fixes_tsv, "w") as f:
+                f.write("\t".join(TR.FIX_COLS) + "\n" + "".join("\t".join(x) + "\n" for x in rows))
+            try:
+                return how(rebuilt(tmp), r)
+            finally:
+                os.remove(fixes_tsv)
+        row_ll = ["4D570034", "menu_time", "7f1x000001", "lane.local", "2026-10-06 13:20",
+                  "the CHARSEL step in pathfind.py is what MK's menu time failed on (hold frames 40-52)"]
+        r_hw = dict(mk_ok, because=["fix:7f1x000001"])
+        d_ll = with_fixes([row_ll], r_hw)
+        d_pf = with_fixes([row_ll[:3] + ["lane.pathfind"] + row_ll[4:]], r_hw)
+        d_gate = with_fixes([row_ll[:1] + ["audio"] + row_ll[2:]], r_hw)
+        d_nowhy = with_fixes([row_ll[:5] + [""]], r_hw)
+        check("harness-wide commit + a lane.local title-fixes row naming menu_time -> allow",
+              d_ll.allow, d_pf.allow, "row set_by lane.local -> %s; mutant set_by lane.pathfind -> %s"
+              % ("ALLOW" if d_ll.allow else "DENY: " + "; ".join(d_ll.reasons)[:160], "ALLOW" if d_pf.allow else "DENY"))
+        check("a title-fixes row naming another gate, or with no why, answers nothing",
+              d_ll.allow and not d_gate.allow and not d_nowhy.allow, False,
+              "gate audio -> %s, no why -> %s" % ("ALLOW" if d_gate.allow else "DENY", "ALLOW" if d_nowhy.allow else "DENY"))
+        fps_row = [["54430001", "fps", "7f1x000001", "lane.local", "2026-10-06 13:20", "a perf fix"]]
+        r_fps = req(ctx, "54430001", "PLAYABLE_ATTEMPT", because=["fix:7f1x000001"])
+        d_fps = with_fixes(fps_row, r_fps)
+        d_fps_mut = with_fixes(fps_row, r_fps, pre_review)
+        check("DOA3 with a recorded fps fix and no verdict after it: PLAYABLE_ATTEMPT -> deny",
+              not d_fps.allow and any("verdict after" in x for x in d_fps.reasons), not d_fps_mut.allow,
+              "%s | mutant[newer commit = fix] -> %s" % ((d_fps.reasons or ["ALLOW"])[0][:110],
+                                                         "ALLOW" if d_fps_mut.allow else "DENY"))
+        ctx = rebuilt(tmp)             # title-fixes.tsv is gone again: rebuild over the restored sources
+        tel = req(ctx, "54430001", "TELEMETRY", because=["fix:7f1x000001"], valid_end="capture:600s")
+        leg("DOA3 TELEMETRY on the fix build -> allow", ctx, tel, True,
+            lambda c, r: G.admit(c, dict(r, **{"class": "PLAYABLE_ATTEMPT", "valid_end": "valid-verdict"}),
+                                 write_log=False, shadow=False), "same request as a Playable attempt")
         # football: refused with no release; the env var changes nothing
         os.environ["PATHFIND_FOOTBALL"] = "1"
         fb = req(ctx, "4D570014", "SCREEN", input_seq="discovery")
@@ -433,7 +699,7 @@ def main():
                                                         env={"HAKUX_FRAMETRACE": "1"}), False,
             dict(disabled=["rule_env"]), "no env rule")
         leg("build without the libfolders floor -> deny", ctx,
-            req(ctx, "4D570034", "PLAYABLE_ATTEMPT", because=["fix:c0ffee0001"], build="0ldf1x0001"), False,
+            req(ctx, "5655002F", "SCREEN", input_seq="discovery", build="0ldf1x0001"), False,
             dict(disabled=["rule_build"]), "no build rule")
         with open(os.path.join(tmp, "dispatch", "hold", "nova"), "w") as f:
             f.write("lane.gpunonrender\n")
@@ -535,10 +801,11 @@ def main():
         check("hold-check (shadow): refuses nothing, logs SHADOW-HOLD-UNGATED",
               r_shadow == 0 and log3[-1]["decision"] == "SHADOW-HOLD-UNGATED", r_shadow != 0,
               log3[-1]["decision"])
+        forge_legs()
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
-    red = [n for n, s in RESULTS if s != "GREEN"]
+    red =[n for n, s in RESULTS if s != "GREEN"]
     print("\n%d legs, %d green, %d red" % (len(RESULTS), len(RESULTS) - len(red), len(red)))
     for n in red:
         print("RED: " + n)

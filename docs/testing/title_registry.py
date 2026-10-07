@@ -33,10 +33,13 @@ SOURCES (all read as data):
   pm/failure-intake.tsv, pm/pathfind-pool.tsv   crash/hang/menu rows
   pm/owner-holds.tsv                            owner holds and owner orders (lane.local writes it)
   host-tools/blocked-titles.txt                 owner-blocked titles (Galleon)
-  wt/pathfind/docs/lanes/pathfind/below-bar.tsv per-title fix_commit (pathfind's, when it exists)
+  pm/title-fixes.tsv                            fixes that answer a named gate of a title (lane.local writes it)
   wt/pathfind/docs/testing/titles/pathknow/paths/<TID>.json   recorded input sequences
   hardware/titlepush/listing-*.txt, pm/*-100?.done            what is staged on which handheld
-  the forge's open issues (gh shim, 127.0.0.1)  a hold whose release is "issue closes"
+  the local forge's open issues                 a hold whose release is "issues close". Read over the
+                                                Forgejo HTTP API (127.0.0.1:3330, W/forge/tokens/jobs.token),
+                                                never `gh` (no GitHub contact). Unreadable: the header says
+                                                forge=unreadable and every such hold stays active.
 """
 import argparse
 import csv
@@ -46,13 +49,17 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 import sys
+import urllib.error
+import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 DEFAULT_ROOT = "/home/justin/hakux-work"
+FORGE_URL = "http://127.0.0.1:3330"     # the local Forgejo (since 2026-10-02); never GitHub
+FORGE_REPO = "jreinach-alt/hakuX"
+FORGE_USER = "jobs"
 STALE_S = 15 * 60
 FPS_SHARE_MIN = 0.90      # targets.toml [defaults] fps_share_min
 PLAY_SHARE_MIN = 0.90     # title_verdict.py play_share_min default
@@ -65,7 +72,7 @@ PERF_GATES = ("fps", "hitch", "audio")
 TID_RE = re.compile(r"^[0-9A-F]{8}$")
 ISO_TID = re.compile(r"^([0-9A-Fa-f]{8})-(.+)$")
 
-COLUMNS = ["title_id", "aliases", "name", "status", "status_rule", "ledger", "holds", "hold_detail",
+COLUMNS = ["title_id", "aliases", "name", "status", "status_rule", "ledger", "flicker", "holds", "hold_detail",
            "latest_verdict", "verdict_utc", "fps_ok_share", "fps_window_median", "play_share",
            "play_s", "hitch", "crash", "hang", "void", "failing_all", "cause", "fix_commit",
            "last_run", "last_run_utc", "last_run_build", "runs_total", "runs_today",
@@ -87,7 +94,7 @@ class Paths:
         self.blocked = os.path.join(root, "host-tools", "blocked-titles.txt")
         self.pf = os.path.join(root, "wt", "pathfind")
         self.pf_runs = os.path.join(self.pf, "docs", "lanes", "pathfind", "runs")
-        self.pf_belowbar = os.path.join(self.pf, "docs", "lanes", "pathfind", "below-bar.tsv")
+        self.fixes = os.path.join(self.pm, "title-fixes.tsv")
         self.pf_paths = os.path.join(self.pf, "docs", "testing", "titles", "pathknow", "paths")
         self.dispatch = os.path.join(root, "dispatch")
         self.results = os.path.join(self.dispatch, "results")
@@ -96,12 +103,12 @@ class Paths:
         self.xemu = sorted(glob.glob(os.path.join(root, "titles", "xemu-compat-*.csv")))
         self.targets = os.path.join(HERE, "titles", "targets.toml")
         self.routes = os.path.join(HERE, "titles", "routes")
-        self.forge_cache = os.path.join(self.pm, ".forge-open-issues.json")
+        self.forge_token = os.path.join(root, "forge", "tokens", FORGE_USER + ".token")
 
     def source_files(self):
         """Every file whose change makes a built registry stale. Sorted."""
         fs = [self.ledger, self.holds, self.intake, self.pool, self.asks, self.blocked,
-              self.pf_belowbar, self.targets] + self.inventory + self.xemu
+              self.fixes, self.targets] + self.inventory + self.xemu
         fs += glob.glob(os.path.join(self.titlepush, "listing-*.txt"))
         fs += [os.path.join(self.titlepush, "owner-library-done.tsv")]
         fs += glob.glob(os.path.join(self.pm, "*-100?.done"))
@@ -476,19 +483,33 @@ def hold_active(h, open_issues):
     return True
 
 
-def forge_open_issues(p, use_forge=True):
-    """{number: title} of open forge issues, or None if unreadable."""
+def forge_open_issues(p, use_forge=True, url=FORGE_URL):
+    """{number: title} of the local forge's open issues (pull requests excluded), read
+    over its HTTP API with W/forge/tokens/jobs.token; None if anything is unreadable
+    (no token, refused, a bad page). Never shells out to `gh`: GitHub is not contacted,
+    and the forge is reached only at `url`."""
     if not use_forge:
         return None
     try:
-        out = subprocess.run(["gh", "issue", "list", "--repo", "jreinach-alt/hakuX", "--state", "open",
-                              "--limit", "1000", "--json", "number,title"],
-                             capture_output=True, text=True, timeout=60)
-        if out.returncode != 0:
-            return None
-        return {int(x["number"]): x["title"] for x in json.loads(out.stdout)}
-    except (OSError, ValueError, subprocess.SubprocessError):
+        tok = open(p.forge_token).read().strip()
+    except OSError:
         return None
+    out = {}
+    try:
+        for page in range(1, 201):
+            q = urllib.request.Request("%s/api/v1/repos/%s/issues?state=open&type=issues&limit=50&page=%d"
+                                       % (url, FORGE_REPO, page))
+            q.add_header("Authorization", "token " + tok)
+            with urllib.request.urlopen(q, timeout=30) as r:
+                items = json.load(r)
+            if not items:
+                return out
+            for x in items:
+                if x.get("pull_request") is None:
+                    out[int(x["number"])] = x.get("title") or ""
+    except (OSError, ValueError, KeyError, TypeError, urllib.error.URLError):
+        return None
+    return None             # 200 pages and no empty one: not a listing to trust
 
 
 # ---------------------------------------------------------------- the build
@@ -526,17 +547,27 @@ def input_sequences(p, cat):
     return out
 
 
+FIX_COLS = ["title_id", "gate", "fix_commit", "set_by", "date", "why"]
+
+
+def load_title_fixes(p):
+    """pm/title-fixes.tsv rows: lane.local's record that a commit answers a named failed
+    gate of a title. Whether a row counts is dispatch_gate._answering_fix's decision."""
+    return [r for r in read_tsv(p.fixes) if (r.get("title_id") or "").strip()]
+
+
 def fix_commits(p, cat):
-    """pathfind's below-bar.tsv: title_id -> fix_commit (blank = none)."""
+    """title_id -> 'sha(gate),...' from pm/title-fixes.tsv, for the fix_commit column."""
     out = {}
-    for r in read_tsv(p.pf_belowbar):
-        tid = (r.get("title_id") or "").upper()
+    for r in load_title_fixes(p):
+        tid = r["title_id"].strip().upper()
         if TID_RE.match(tid) and (r.get("fix_commit") or "").strip():
-            out[cat.canonical(tid)] = r["fix_commit"].strip()
-    return out
+            out.setdefault(cat.canonical(tid), []).append(
+                "%s(%s)" % (r["fix_commit"].strip(), (r.get("gate") or "").strip()))
+    return {k: ",".join(v) for k, v in out.items()}
 
 
-def build(p, now=None, use_forge=True):
+def build(p, now=None, use_forge=True, forge_url=FORGE_URL):
     now = now or dt.datetime.now(dt.timezone.utc)
     today_pt = now.astimezone(PT).date()
     cat = build_catalog(p)
@@ -575,7 +606,7 @@ def build(p, now=None, use_forge=True):
             intake.setdefault(tid, []).append(dict(r, _src=os.path.basename(src), _t=parse_utc(r.get("utc"))))
 
     holds = load_holds(p)
-    open_issues = forge_open_issues(p, use_forge)
+    open_issues = forge_open_issues(p, use_forge, forge_url)
     staged = staged_map(p, cat)
     for r in runs:       # a run found the ISO on that device (the 10-04 listings predate later pushes)
         if r.device in ("nova", "thor"):
@@ -649,6 +680,7 @@ def build(p, now=None, use_forge=True):
         rows.append(dict(
             title_id=tid, aliases=",".join(sorted(cat.aliases.get(tid, set()) - {tid})), name=name, status=status, status_rule=rule,
             ledger=(ledger[tid].get("date_pdt", "") if tid in ledger else ""),
+            flicker=flicker_state(ledger.get(tid), active),
             holds=",".join(h["id"] for h in active),
             hold_detail=" || ".join("%s %s: %s; release: %s" % (h.get("since", ""), h.get("by", ""),
                                                                  h.get("quote", ""), h.get("release", ""))
@@ -665,6 +697,23 @@ def build(p, now=None, use_forge=True):
             staged=",".join(sorted(staged.get(tid, []))), input_seq=seqs.get(tid, ""),
             notes="; ".join(notes.get(tid, []))))
     return rows, unresolved, open_issues
+
+
+def flicker_state(ledger_row, active_holds):
+    """The owner's flicker check (owner-only, by eye): HOLD:<id> while an owner flicker hold
+    is active; for a ledger row, what its evidence records -- CLEARED only on the words
+    'flicker cleared by owner', UNCHECKED on 'flicker UNCHECKED', else unrecorded."""
+    h = next((h for h in active_holds if "flicker" in h["id"]), None)
+    if h:
+        return "HOLD:" + h["id"]
+    if not ledger_row:
+        return ""
+    ev = " ".join((ledger_row.get(k) or "") for k in ("result", "evidence"))
+    if re.search(r"flicker cleared by owner", ev, re.I):
+        return "CLEARED"
+    if re.search(r"flicker UNCHECKED", ev):
+        return "UNCHECKED"
+    return "unrecorded"
 
 
 def _f(x):

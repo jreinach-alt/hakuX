@@ -3,6 +3,21 @@
 Owner order 2026-10-06 ~16:50 (#433 / 0.5): "We need bulletproof controls on what gets
 dispatched." Offline lane, no device, nothing queued.
 
+## 0. Attempt 2 (10-06 ~18:15 PDT): why attempt 1 did not finish
+
+Attempt 1 marked the PR ready (6348049107) with a defect its own fixtures could not see. lane.local's
+read-only review (18:10) found:
+1. **Blocking.** `_answering_fix` counted any commit newer than the latest verdict as a fix.
+   `fix:6cef37f426` (the waitread1006 fold, lane docs only) admitted DOA3, Hulk Ultimate Destruction
+   and LOTR ROTK for a Playable attempt. That reopens today's DOA3 incident. Every fixture fix commit
+   was one *meant* to answer its title, and every mutant switched a whole rule off. No leg cited an
+   unrelated newer commit, and no mutant put back the weaker rule.
+2. `title_registry.py` called `gh` with no guard (no GitHub contact since 09-29).
+3. `plan-check`, `99-dispatch-gate.sh`, `verify_patches.py` and `live_incidents.py` were not re-run by
+   the reviewer, and `live_incidents.py` rewrote the host's real registry.
+
+All three are fixed in attempt 2 (sections 2, 4 and 7).
+
 ## 1. What exists now
 
 | file | what it is |
@@ -10,7 +25,8 @@ dispatched." Offline lane, no device, nothing queued.
 | `docs/testing/title_registry.py` | builds `pm/title-registry.tsv`: one generated row per canonical title id, with status, the latest scored verdict, every gate value **recomputed from the verdict's values** (`failing_all`), owner holds, fix commit, last run, runs today, staging and the recorded input sequence |
 | `docs/testing/dispatch_gate.py` | `admit(request) -> allow/deny + reasons + token`; `plan_check`; `admit-request` (request.sh's entry); `hold-check` (hold.sh take's entry); `verify`; `skip`; `mode` |
 | `docs/testing/dispatch_audit.py` | the daily review: ungated title runs, refusals, Nova minutes on flagged titles |
-| `docs/testing/dispatch_gate_selftest.py` | 45 legs, each the incident or rule with a mutant that must flip it |
+| `docs/testing/dispatch_gate_selftest.py` | 59 legs, each the incident or rule with a mutant that must flip it |
+| `docs/lanes/dispatchgate1006/title-fixes.template.tsv` | the header and rules of `pm/title-fixes.tsv` (lane.local creates and owns it; absent = no recorded fix) |
 | `docs/testing/jobs/selftest.d/99-dispatch-gate.sh` | runs the selftest in the CI selftest harness |
 | `docs/lanes/dispatchgate1006/owner-holds.seed.tsv` | the seed of `pm/owner-holds.tsv` (installed on the host 10-06 ~17:05 PDT) |
 | `docs/lanes/dispatchgate1006/patches/*.patch` | the call sites in files this lane may not edit (section 5) |
@@ -30,22 +46,42 @@ does not resolve (a path that does not exist, a sha that is not a commit) denies
 
 | class | allowed when | denied otherwise, e.g. |
 |---|---|---|
-| PLAYABLE_ATTEMPT | status FAILED_HARNESS (fps clear, a non-perf gate failed) **and** a cited/recorded fix commit **newer than the latest verdict**; or BELOW_BAR / VOID with such a fix | in the ledger; EXCLUDED; PENDING_OWNER; CRASH_OR_HANG; UNSCREENED (that is a SCREEN); a harness PASS not in the ledger (owed a frame review, not a run); a fix older than the verdict (same inputs again) |
+| PLAYABLE_ATTEMPT | status FAILED_HARNESS (perf clear, a non-perf gate failed) or VOID, **and every failed gate answered** by a fix (below) | in the ledger; EXCLUDED; PENDING_OWNER; CRASH_OR_HANG; **BELOW_BAR, with or without a fix**; UNSCREENED (that is a SCREEN); a harness PASS not in the ledger (owed a frame review, not a run); a commit that is only newer; a fix older than the verdict (same inputs again) |
 | SCREEN | UNSCREENED with zero runs on record | any title with a run |
 | TELEMETRY | BELOW_BAR or CRASH_OR_HANG; valid end `capture:<N>s` / `condition:` | `valid-verdict` (a telemetry run is never a confirmation, owner 10-03) |
 | VALIDATION | names the condition it exercises (`condition:<text>`) | no condition |
 | OWNER_DIAGNOSTIC | an unreleased `order` row in `pm/owner-holds.tsv` for this title | no order, a spent order, an env var |
+
+**What counts as a fix** (`_answering_fix`, `_fix_answers`; attempt 2). A commit answers a failed
+gate of a title only by one of two records. Being newer than the verdict is never enough:
+- (a) a row of **`pm/title-fixes.tsv`**, which lane.local owns (template
+  `docs/lanes/dispatchgate1006/title-fixes.template.tsv`): `title_id, gate, fix_commit, set_by, date,
+  why`. `set_by` must be `lane.local` or `owner`, `why` must be filled, and `gate` names the gate(s)
+  (`+`-joined, or `route` for menu_time+reached_gameplay+duration+static+position);
+- (b) the commit's changed paths (first parent, so a fold counts its whole lane) match **`GATE_PATHS`**.
+  Only the route gates have entries: `^docs/testing/titles/pathknow/paths/{TID}\.json$`, where
+  `{TID}` is the title's id or an alias. The map is narrow on purpose. A harness-wide change
+  (pathfind.py) or an emulator change may answer every title or none, so it answers nothing by its
+  paths and needs an (a) row.
+
+The fix must also be newer than the latest verdict (or the last run when there is no verdict) and
+answer **every** failed gate. When the fix changes anything outside `docs/` it must be in the
+requested build (`git merge-base --is-ancestor`). A `docs/`-only fix acts from the tool tree, not from
+the APK. **A perf gate (fps/hitch/audio) is never answered for a Playable attempt.** The fix allows
+TELEMETRY or VALIDATION. A verdict after it that clears the bar moves the title out of BELOW_BAR, and
+only then is a Playable attempt possible.
 
 **Title-level reasons not to dispatch:**
 
 | reason | rule | source read |
 |---|---|---|
 | already Playable | matrix: status PLAYABLE | `pm/playable-accepted.tsv`, title id or exact-name resolved |
-| below the fps bar, no fix | matrix BELOW_BAR + `_answering_fix` | latest scored verdict, gates recomputed; fix commit time vs verdict time (host bare repo, every branch) |
+| below the fps bar | matrix BELOW_BAR: a Playable attempt always denies | latest scored verdict, gates recomputed |
 | owner-excluded (RalliSport, football, Galleon, Tron/NGB/Amped 2/Spider-Man 2, NHL 2K3) | `rule_holds` + status | `pm/owner-holds.tsv`, `host-tools/blocked-titles.txt` |
 | open hang/crash, no fix | matrix CRASH_OR_HANG | latest judged run's crash/hang; `crash` holds (#859, #835/#837, released when the forge closes them); failure-intake crash/hang rows newer than any verdict |
 | pending owner ruling (#851 Marvel) | `pending` hold | `pm/owner-holds.tsv` |
-| no committed fix since the last failure | `_answering_fix` | fix commit time > `verdict_utc` |
+| no committed fix *that answers* the last failure | `_answering_fix` | `pm/title-fixes.tsv` or `GATE_PATHS` (paths from the host bare repo), commit time > `verdict_utc`, ancestry of the build |
+| open hang/crash issue state | `hold_active` at build time | the local forge's open issues over HTTP (127.0.0.1:3330, `forge/tokens/jobs.token`), never `gh`; unreadable = `forge=unreadable` in the header and the hold stays active |
 | identical inputs already run | `rule_identical` | an ALLOW in `pm/dispatch-log.tsv` with the same class/build/input sequence and a verdict since |
 | ISO not staged | `rule_staged` | device listings, `pm/*-100?.done`, and runs that found the ISO on that device |
 | "fix folded" in a plan row | `plan_check` | the row must name a commit that exists **and** a verdict after it |
@@ -74,7 +110,8 @@ decision unchanged, and that a mutant rule which honours the variable flips it.
 
 | rule | why the gate cannot read it | who | where it is written |
 |---|---|---|---|
-| the fix *answers* the failure (not just "a newer commit exists") | a commit's relevance to a failure's frames is judgement | lane.local at plan time, pathfind before a run | the plan row's "Committed change" cell (with the sha) and pathfind's NOTES; `fix:<sha>` in `--because` |
+| the fix *answers* the failure, for a fix outside the title's own path file | whether a commit fixes a failure seen in frames is judgement. The gate reads the judgement once it is recorded | lane.local | a row of `pm/title-fixes.tsv` (title, gate, sha, set_by, why). The gate refuses without one |
+| a `docs/`-only fix is in the tool tree that runs the title | the gate does not know which worktree (pathfind's, the dispatcher's) will run the request | the caller (pathfind) | pathfind's NOTES; a future `tools_ref` in the request |
 | flicker cleared | the owner checks flicker by eye (owner 10-04) | owner | lane.local fills `released` on `ralli-flicker-804` with the date and the owner's words |
 | sports: longest period / slowest clock set | lives in the input sequence and hold frames | pathfind / lane.local frame review | the path file's steps; the ledger row's evidence |
 | a recorded path is *verified* (replayed to gameplay), not only recorded complete | path files record `complete` and `result`, not a later replay's outcome | pathfind | a future `replayed_ok` field in `pathknow/paths/<TID>.json` |
@@ -87,7 +124,46 @@ decision unchanged, and that a mutant rule which honours the variable flips it.
 
 ## 4. Verified by running, and not
 
-Ran (quoted output in OUTBOX and below):
+Attempt 2 (10-06 ~18:20-18:50 PDT), all run in this session:
+- `python3 docs/testing/dispatch_gate_selftest.py` -> `59 legs, 59 green, 0 red`. The new legs:
+  `GREEN DOA3 PLAYABLE_ATTEMPT citing fix:6cef37f426 (an unrelated fold) -> deny DENY | mutant[newer
+  commit = fix] -> ALLOW`, and the same for MK Armageddon and for a harness-wide commit. Also: a
+  path-file fix allows (mutant: GATE_PATHS empty -> DENY); a lane.local title-fixes row allows (mutant:
+  set_by lane.pathfind -> DENY); a row naming another gate, or with no why, denies; DOA3 with a
+  recorded fps fix denies a Playable attempt (mutant: the reviewed rule -> ALLOW) and allows TELEMETRY;
+  an emulator fix not in the build denies; a docs-only fix not in the APK build allows. The four
+  owner-held below-bar titles now rest on a post-fix verdict that clears perf, so only the hold denies
+  (mutant: holds dropped -> ALLOW).
+- Forge legs: `GREEN no `gh` invocation in title_registry.py, dispatch_gate.py, dispatch_audit.py`
+  (mutant: the reviewed line restored is flagged). `GREEN registry build reads the forge over HTTP with
+  the jobs token, never runs gh 4 HTTP request(s), 0 gh call(s) | mutant[gh reader] -> 2 gh call(s)`.
+  Against a fake local forge: #835 open keeps AMF's hold, closed releases it. Unreachable or no token
+  -> `forge=unreadable` and the hold stays active (mutant: unreadable read as nothing open -> released).
+- `env SELFTEST_ONLY=99-dispatch-gate.sh bash docs/testing/jobs/selftest.sh` -> `4 passed, 0 failed`
+  (two new greps: the 6cef37f426 leg and the gh leg ran).
+- `tools/live_incidents.py` now builds into a scratch file and prints `host registry
+  /home/justin/hakux-work/pm/title-registry.tsv untouched: True`. Against the real records, DOA3
+  (4D53002D), Hulk UD (56550039) and LOTR ROTK (4541003E) with `fix:6cef37f426` all DENY (BELOW_BAR).
+  Fight Club 5655002F is `PLAYABLE flicker=UNCHECKED`; RalliSport 4D53000F is
+  `EXCLUDED flicker=HOLD:ralli-flicker-804`.
+- `dispatch_gate.py plan-check pm/plan-2026-10-06-evening.md` -> rc 2, 7 rows, 7 rejected;
+  `plan-2026-10-06-replan.md` -> rc 2, 14 rows, 14 rejected (rows that do not resolve, below-bar, no
+  recorded fix, "first run" of titles that ran).
+- `tools/verify_patches.py` -> `verify_patches: all pass`.
+- `Ctx().commit_paths` against the host bare repo: `6cef37f426` -> 11 paths, all under
+  `docs/lanes/waitread1006/`.
+- `python3 docs/testing/title_registry.py build` regenerated the host registry (it now has a `flicker`
+  column; the forge was read over HTTP, `forge=ok`): 951 rows, PLAYABLE 33, EXCLUDED 27, PENDING_OWNER 1,
+  CRASH_OR_HANG 13, BELOW_BAR 35, FAILED_HARNESS 23, VOID 0, UNSCREENED 819.
+- `dispatch_audit.py --no-refresh` runs: 90 ungated title runs in 24 h, 457.2 Nova min on titles now
+  flagged.
+- `preflight.sh --allow-tracker` -> `preflight passed`.
+
+Not verified in attempt 2: the real `Ctx.is_ancestor` with a lane-branch fix (only fixtures); the
+title-fixes path on the host (`pm/title-fixes.tsv` does not exist; lane.local creates it from the
+template).
+
+Attempt 1 ran (quoted output in OUTBOX and below):
 - `python3 docs/testing/dispatch_gate_selftest.py` -> `45 legs, 45 green, 0 red`; every leg's mutant flips it.
 - `env SELFTEST_ONLY=99-dispatch-gate.sh bash docs/testing/jobs/selftest.sh` -> `2 passed, 0 failed`.
 - `tools/live_incidents.py` against the host's real records (no log rows written): DOA3, Dino Crisis 3,
@@ -190,3 +266,9 @@ are lane.harnessfix1006's until it folds after 22:00.
 - A selftest fixture needs one rule standing between the request and ALLOW, or its mutant cannot
   flip it: the RalliSport leg cites a newer fix so only the owner hold denies.
 - The shell tool here rejects heredocs with quoted braces: generators live in `tools/*.py`.
+- **A mutant that switches a rule off is not enough.** Attempt 1's legs each disabled a whole rule,
+  and every fixture fix was a commit meant to answer. A rule weakened to "any newer commit" passed
+  every leg. Write the mutant that brings the defect back (`_pre_review_rule` in the selftest), and give
+  the fixture the input that tells the two apart: an unrelated commit that is newer.
+- A tool that replays requests against the host must build its registry in a scratch file
+  (`G.Ctx(registry=scratch)`), never the host's `pm/title-registry.tsv`.

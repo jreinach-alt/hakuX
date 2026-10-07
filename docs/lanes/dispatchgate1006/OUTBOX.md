@@ -1,5 +1,40 @@
 # OUTBOX: dispatchgate1006 (harness defect, no issue)
 
+## 2026-10-06 ~18:50 PDT: attempt 2, the 18:10 review's three items fixed; ready again; still SHADOW
+
+1. **Blocking item fixed: a newer commit is no longer a fix.** A fix counts only from a row of
+   `pm/title-fixes.tsv` (yours: `title_id, gate, fix_commit, set_by, date, why`; set_by lane.local
+   or owner; template `docs/lanes/dispatchgate1006/title-fixes.template.tsv`), or when the commit
+   changes the title's own `docs/testing/titles/pathknow/paths/<TID>.json`. It must also answer every
+   failed gate, be newer than the verdict, and be in the build if it touches anything outside `docs/`.
+   **BELOW_BAR never gets a Playable attempt.** Its fix allows TELEMETRY or VALIDATION, and a verdict
+   after the fix that clears the bar moves it out of BELOW_BAR. Against the real records, DOA3, Hulk UD
+   and LOTR ROTK with `fix:6cef37f426` all DENY. The fixture `DOA3 PLAYABLE_ATTEMPT citing
+   fix:6cef37f426 (an unrelated fold) -> deny` is green, and its mutant (the reviewed rule) ALLOWs.
+   **`pm/title-fixes.tsv` does not exist on the host.** Until you create it, a Playable attempt is
+   admitted only on a fix to the title's own path file.
+2. **No `gh`.** The registry reads the forge's open issues over HTTP at 127.0.0.1:3330 with
+   `forge/tokens/jobs.token`. On the host that is 252 open issues, `forge=ok`. If it is unreadable, the
+   header says `forge=unreadable` and every issue hold stays active. A selftest leg fails if any of the
+   three files invokes `gh`, and a runtime leg records every subprocess while it builds.
+3. **Re-run and quoted (NOTES section 4):** selftest `59 legs, 59 green, 0 red`; CI fragment
+   `4 passed, 0 failed`; `verify_patches: all pass`; plan-check on the evening and replan plans gives
+   rc 2 with 7/7 and 14/14 rows rejected; `live_incidents.py` now builds into a scratch file and reports
+   `host registry ... untouched: True`.
+
+**Fight Club / RalliSport:** after a fresh build of the host registry, 5655002F is `PLAYABLE`
+(ledger 2026-10-06 18:05, new column `flicker=UNCHECKED`), and 4D53000F is `EXCLUDED`
+(`flicker=HOLD:ralli-flicker-804`).
+
+**Registry now (built 2026-10-07T01:03:19Z, forge ok, 454 sources): 951 rows.** PLAYABLE 33,
+EXCLUDED 27, PENDING_OWNER 1, CRASH_OR_HANG 13, BELOW_BAR 35, FAILED_HARNESS 23, VOID 0, UNSCREENED 819.
+The BELOW_BAR, EXCLUDED and CRASH_OR_HANG lists below are unchanged. The only move is Fight Club, from
+FAILED_HARNESS to PLAYABLE. Every record resolved to a title id.
+
+**Files to grant:** add `docs/lanes/dispatchgate1006/title-fixes.template.tsv` (under the lane dir).
+The five `docs/testing/` files are unchanged in name. Shadow mode only; hold.sh and dispatcher.sh
+were not touched.
+
 ## 2026-10-06 ~17:40 PDT: done; the gate is built, verified offline, and in SHADOW mode
 
 Nothing refuses anything yet: `pm/dispatch-gate.mode` does not exist. No device was touched and
