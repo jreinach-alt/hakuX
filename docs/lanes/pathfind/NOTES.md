@@ -1372,3 +1372,51 @@ What this shows, and what it does not:
   NFS MW, Spider-Man 2, LOTR, Hulk) are sweep-window verdicts, not a measured hold: under the rule they are refused until a screen or fix
   is recorded. Each row's cause is in the TSV; a fix lifts it by a commit on `fix_commit`.
 - Selftest: `below-bar` legs (refuse, fix lifts, share at the bar, no row, env lifts, seeding keeps cause). Log `scratch/selftest-belowbar.log`.
+
+## Strike Force Bowling (10-06 18:2x PDT), next in the 13:55 order (9th): one held run
+
+- Named change for its last failure (name entry, `runs/strike-force-bowling/hold3`): `NAME_SEQ` for STRIKE_FORCE_BOWLING =
+  DOWN x4, A (pathfind.py, committed before this run). If the name entry still stops the claim, NAME_SEQ is refuted for this title.
+- Run: `scratch/title1006.sh "Strike Force Bowling" strike-force-1006`, HEAD 9973ee594e, `--state any --hold-s 600`, budget 40 min,
+  launched detached (log `scratch/sfb1006.log`). Last Nova result before it: ref 6cef37f426 (ancestor of HEAD, after libfolders), env [].
+
+## Resume 10-06 18:52 PDT (attempt 3): why attempt 2 did not finish
+
+- Attempt 2 launched the Strike Force Bowling run detached at 18:19:51 (`scratch/title1006.sh`, HEAD 9973ee594e) and then ended.
+  The run's `run.log` and `hold.jsonl` stop at 18:39-18:40 with the only line in `scratch/sfb1006.log` being "Terminated". The
+  process was killed with its session, not by the hold: nothing in the run log names a cause. The Nova hold `lane.pathfind` was left
+  taken with nothing running (dispatch running/ and queue/ empty at 18:52). Attempt 2 wrote no NOTES entry for the run.
+- Lesson kept: a run launched from an agent session dies with that session. Detach with `setsid nohup`, poll in the foreground.
+
+## Strike Force Bowling (runs/strike-force-1006, run by name), 18:19-18:40 PDT: FAIL (name entry at a game end), one run
+
+- Claim: the NAME_SEQ (DOWN x4, A) bowler setup worked; gameplay (bowling lane, HUD, aim) at 140 s; bowl genre hold reached
+  play_s 277.7 at look ~70 (fps median 59.0, share >= 30 1.0 over 295 samples).
+- Failure, identified from the frames (runs/strike-force-1006/frames/067-hold.jpg, 072-hold.jpg): the game ended and a HIGH-SCORE
+  Name Entry (letter grid row "0-9 ! - ' END DEL", Name field, Strength/Accuracy/Curve bars, Done under them; footer Change Letter /
+  Select A / Cancel B) opened at look 71. It is a different screen from the bowler setup entry that NAME_SEQ was built on.
+- What each input did: NAME_SEQ DOWN x4 then A (6 presses, looks 71-76): the name field grew by A (".. AA", then "AAAA", "AAAAAA");
+  the screen did not close. Then the ladder (START, A, B, rounds 1-9): START and B never closed it; A kept adding letters. The
+  hold ran to hold_s 1053 with play_s frozen at 277.7 (off play from look 71) until it was killed.
+- So NAME_SEQ is refuted for the high-score variant; the bowler-setup entry is still the claim's only verified input. The fix that
+  would answer this frame is not yet known: which move highlights Done on the high-score panel (the frames do not show the cursor).
+- Not re-run (identification first). Strike Force stays out of the order until a fix is named from a frame.
+- Hold 600 s was reached in play? No: play_s 277.7 of 600 s, so this is not a valid window.
+
+## Blowout validation run blowout-val2 (18:01): a dark-scene FAIL on the harness, not a stuck player (offline, 18:5x)
+
+- Verdict: play share 0.981 of 620 s, fps_ok 1.0 (median 29.97), but `static window 43.8%` and `position 0.008 vs bar 0.025`.
+- `scratch/contrast_static.py` on its 18 route frames (same 10/255 rule): unstretched never-moved 0.38; each frame stretched to
+  its 99.5th-percentile brightness: never-moved 0.21 and the 30-s pair-changed median 0.34. The scene changes between samples;
+  the contact sheet (route-frames, 17:50-18:00) shows different corridors, cages and pipes. The fixed threshold reads a dark
+  hangar as frozen. This is the 10-04 contrast addendum's defect, still unfixed in title_verdict's static and position legs.
+- Not a Playable: the verdict fails and the harness measure is the question. NEW ISSUE for lane.local: contrast-normalise the
+  static and position legs (or re-judge blowout-val2 by frame review with the stretch numbers above).
+
+## Batman Begins (45410389), 18:5x PDT: first run, claim plus 600-s hold
+
+- Path file: pathknow/paths/45410389.json is `gave-up` (complete false, 75 calls, 2026-10-05), so this run is a claim, not a replay.
+- Committed change for its last failure (the sweep's can't-path at the fight confirm probe): the attack-genre fight confirm that
+  took Fight Club to a harness PASS (883d9f0a40, runs/fightclub-1006).
+- Run: `scratch/title1006.sh "Batman Begins" batman-1006`, HEAD (9973ee594e plus this NOTES), `--state any --hold-s 600`, budget 40 min,
+  detached with setsid nohup (log `scratch/batman1006.log`). Nova: no lane APK; last Nova result 6cef37f426, env [].
