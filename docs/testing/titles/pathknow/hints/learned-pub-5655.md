@@ -3,3 +3,4 @@
 - The Simpsons Hit Run (56550015, nova, pathfind 2026-10-04): gameplay in 2.7 min via publisher_logo A -> cutscene START -> publisher_logo A -> title_screen START -> cutscene START -> main_menu A -> cutscene START -> cutscene A -> cutscene START -> cutscene A -> cutscene START -> cutscene STICK:up:1.5 -> cutscene A
 - Aliens Versus Predator Extinction (56550022, nova, pathfind 2026-10-05): gameplay in 2.0 min via publisher_logo A -> title_screen START -> main_menu DOWN A -> main_menu A -> submenu A -> cutscene START -> cutscene A
 - The Incredible Hulk Ultimate Destruction (56550039, nova, pathfind 2026-10-05): gameplay in 2.0 min via publisher_logo A -> cutscene A -> publisher_logo A -> cutscene A -> main_menu A -> submenu A -> title_screen START -> cutscene START
+- Fight Club (5655002F, nova, pathfind 2026-10-06): gameplay in 3.0 min via publisher_logo A -> title_screen START -> save_load_prompt A -> main_menu A -> profile_creation A -> cutscene START
