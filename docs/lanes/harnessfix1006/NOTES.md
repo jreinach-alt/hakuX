@@ -159,9 +159,28 @@ device's newest run. Leg (j) orders the block before the split and before
 30 legs, 0 failed (`selftest-pass.txt`).
 
 Open for the smoke, after 22:00: nothing has run this path on a device. The
-result `kind: "restore"` is a new kind; `request.sh:450` branches on
-`kind == "soak"`, and nothing should read a restore as a disc. Check that
-when the smoke's result lands.
+result `kind: "restore"` is a new kind. Checked by reading (attempt 2, after
+22:00): `request.sh:450` is the `exp_path` branch and does not read `kind` from
+a result; `request.sh:1436` branches on `kind == "soak"` for `--wait` only, and
+a restore is queued by the dispatcher with no waiter, so a restore falls to the
+disc reader only if someone waits on its id. Nothing does. The smoke's result
+is the first device proof.
+
+## Attempt 2, after the 22:00 PDT gate (10-07 05:0x UTC)
+
+- The 22:00 gate in the 13:55 addendum has passed. WAITING is removed.
+- `origin/master` (`b6532fb3db`) is merged into the branch. The merge is clean,
+  and it brings in the dispatch gate (`dispatch_gate.py`, `99-dispatch-gate.sh`).
+  `hold.sh` and `dispatcher.sh` changed on master only in regions this lane
+  does not touch.
+- `SELFTEST_ONLY=99-build-gate.sh` on the merged tree: 30 passed, 0 failed
+  (`selftest-merged.txt`).
+- `drive.py:1051` (`mark gameplay`) and the readers `title_verdict.py:522`,
+  `hitch_report.py:331` are unchanged on master: the mislabel is still there and
+  is still named in OUTBOX for lane.local.
+- The Nova is held by lane.pathfind (`hold.sh who nova`, a 600 s hold from
+  04:55Z). The smoke is queued with `request.sh`, which waits its turn behind
+  that hold. This lane does not take the hold itself.
 
 ## Lanewaker and attempts (item f), what the repo shows
 
