@@ -485,7 +485,10 @@ WAITING lists the four runs.
   60 s, study priority). The Nova is held by `lane.pathfind` for a Playable
   run (`hold/nova`, taken 23:40:49 PDT, 600 s); this request went through
   `request.sh`, not a hold, so it runs in pathfind's next gap.
-- PR.md updated to this candidate's state; `docs/lanes/gpunonrender/WAITING`
-  removed (nothing of mine gates on a result right now -- the restore is
-  bookkeeping, not an analysis I'm waiting to read).
+- PR.md is `State: ready` (preflight --allow-tracker passes but for the
+  board's open-issue coverage gate, same as the folded census PR).
+  `WAITING` is `fold gpunonrender`: the next analytical step (the app
+  default and its fleet A/B) is blocked on the xemu_android.cpp grant
+  above, not on anything I can read myself, so there is nothing to do on
+  this branch until either the fold or the grant lands.
 - Spend: not readable from this session.
