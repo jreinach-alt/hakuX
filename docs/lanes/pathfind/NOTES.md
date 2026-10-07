@@ -1506,3 +1506,14 @@ What this shows, and what it does not:
   a context prompt "to kick press y") and sends that button before the loop's cycle, logged `counter` on the look. Selftest leg
   `counter` (ok); full selftest 103 ok, no FAIL (`scratch/selftest-counter.log`).
 - Not yet validated on a device. The Batman run that tests it is the next step.
+
+## Batman Begins (45410389) held run batman-2, 20:25-20:40 PDT: FAIL, one run (identification, not re-run)
+
+- Ref bbea2b885f (HEAD: counter fix), apk not recorded by the verdict (nova master restore before the hold), env []. Claim 7.5 min, 41 model calls, 45 steps, gameplay by route at ~3 min.
+- Hold stopped at 320 s of play (of 600): the hold's foreground check read "hakuX left the foreground" and the hold ended. The
+  last kept frame (095-hold.jpg, 20:39) is Android "App info" for hakuX (test builds): OPEN / UNINSTALL / FORCE STOP. The look rows
+  do not name the press that opened it; the last looks sent STICK, A, X, B only. Cause not identified from here.
+- fps: median 29.0 at 183 s and 302 s, share at 30 about 0.90. Verdict fps_ok 0.946, play share 0.887, no crash, no hang.
+- The counter fix did not run: no play look read "Press X/Y now" (the claim's prompts were context prompts, "To kick press Y"),
+  so counter=0 across 33 looks. Its validation is still open.
+- Next: identify the foreground drop from frames 090-095 and hold.jsonl n=88-94 before any more device time.

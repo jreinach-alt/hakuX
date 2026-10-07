@@ -1,0 +1,83 @@
+{
+ "title_id": "45410389",
+ "name": "Batman Begins",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/45410389-Batman_Begins.xiso.iso",
+ "result": "gameplay",
+ "tool": "3624b0a01d",
+ "started": "2026-10-06 20:25:39 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/053-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/053-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/053-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/053-probe-right.jpg"
+ ],
+ "minutes": 7.53,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/052-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/054-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/055-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/056-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/057-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/058-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/059-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/060-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/061-after.jpg"
+ ],
+ "retracted": 1,
+ "reason": "four probes refused",
+ "claim_live_selfmove": 3,
+ "learned": [
+  "hints/learned-pub-4541.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Batman is fighting a Crane Thug in close-quarters melee, with a health bar and a prompt to press Y to kick.",
+  "ok": false,
+  "play_s": 320.2,
+  "need_s": 600.0,
+  "hold_s": 363.3,
+  "model_navs": 0,
+  "frames": 10,
+  "still_windows": 1,
+  "shed": [],
+  "reversals": 0,
+  "reason": "hakuX left the foreground during the hold",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 91,
+    "median": 29.0,
+    "share": 0.89,
+    "at_s": 182.7,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 150,
+    "median": 29.0,
+    "share": 0.907,
+    "at_s": 301.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Batman Begins ? FAIL(duration: 365 s of gameplay < 600 s confirmation) gameplay=364.9s fps_ok=0.9457 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0063 play_share=0.8868 fps_excluded=40.4s"
+ },
+ "model_calls": 41,
+ "calls_by_model": {
+  "claude-sonnet-5": 41
+ },
+ "steps": 45,
+ "seconds": 861.2,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/frames/093-hold.jpg",
+ "last_state": "probe",
+ "replayed": 1,
+ "sib_replayed": 0,
+ "guide": [
+  "45410389"
+ ],
+ "cheap": 5,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-2/strip.jpg"
+}

@@ -1167,3 +1167,9 @@ SCENE SHOULD CONTAIN (expected, checked from hold_strip.jpg): the player's rail-
 NEW ISSUE: the verdict reads "window unmeasured" on a 692-s hold that kept 44 frames: 0 post-mark route-frames and 0 post-mark frames/ samples. Evidence: runs/nightfire-1006/provisional/verdict.json (static_window and position, "need 3 of one"), frames/ 692 to 768 s. This blocks the window check on any hold whose route took no frames.
 
 NEW ISSUE: the verdict's fps bar here is 30.0 (fps_ok 0.891), while the 10-04 correction says classify on the harness bar 28.5. Evidence: nightfire-1006/provisional/verdict.json fps_bar 30.0. The two bars disagree on which share is the verdict.
+
+## #433 -- 2026-10-06 20:42 PDT
+
+[lane.pathfind] Batman Begins (45410389) FAIL, batman-2: gameplay 365 s, play 320 s of 600 (hold stopped at "hakuX left the foreground"). Ref bbea2b885f (HEAD), apk not recorded by the verdict, env []. Run dir docs/lanes/pathfind/runs/batman-2. Last frame 095-hold.jpg is Android App info for hakuX. Not re-run (identification first). Counter-prompt fix not exercised (no "Press X/Y now" read on play looks). Spend: 41 model calls this claim.
+
+NEW ISSUE: the Batman hold dropped to Android App info (hakuX, test builds) at 20:39 and the hold ended on "left the foreground". Evidence: runs/batman-2/frames/090-095-hold.jpg, hold.jsonl n=88-94, run.log. Blocks Batman's Playable.
