@@ -15,4 +15,8 @@ python3 "$REPO/docs/testing/dispatch_gate_selftest.py" > "$T/dispatch-gate.txt" 
 check "dispatch_gate_selftest.py: every leg green, every mutant flips its leg" [ "$dg_rc" -eq 0 ]
 check "...and it ran the incident legs (DOA3, RalliSport, Strike Force)" \
     grep -q "GREEN DOA3 PLAYABLE_ATTEMPT -> deny" "$T/dispatch-gate.txt"
+check "...and a commit that is merely newer is not a fix (fix:6cef37f426 denies DOA3)" \
+    grep -q "GREEN DOA3 PLAYABLE_ATTEMPT citing fix:6cef37f426" "$T/dispatch-gate.txt"
+check "...and the registry never shells out to gh" \
+    grep -q "GREEN no .gh. invocation" "$T/dispatch-gate.txt"
 [ "$dg_rc" -eq 0 ] || tail -20 "$T/dispatch-gate.txt"

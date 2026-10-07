@@ -17,8 +17,11 @@ and a device. Every path that puts a title on a handheld calls it.
 
 THE CLASSES (exactly one per dispatch, with evidence ids in --because):
   PLAYABLE_ATTEMPT  a title not in the ledger whose latest scored verdict clears the perf gates,
-                    with no open hold, whose last failure is answered by a committed fix newer
-                    than that verdict (`fix:<sha>`). No blind re-run.
+                    with no open hold, whose every failed gate is ANSWERED by a commit newer
+                    than that verdict and in the build: a pm/title-fixes.tsv row (lane.local's)
+                    or a change to the title's own files (GATE_PATHS). A newer commit is not
+                    a fix. A BELOW_BAR title never: its fix buys TELEMETRY/VALIDATION, and a
+                    verdict after it that clears the bar. No blind re-run.
   SCREEN            the first run of a title with no run on record (`--input-seq discovery` allowed).
   TELEMETRY         a BELOW_BAR or CRASH_OR_HANG title, to name the cost; never a confirmation
                     (its valid end is `capture:<N>s` or `condition:<text>`, not `valid-verdict`).
@@ -115,6 +118,21 @@ class Ctx:
         if out.returncode != 0 or not out.stdout.strip():
             return None
         return dt.datetime.fromtimestamp(int(out.stdout.strip()), dt.timezone.utc)
+
+    def commit_paths(self, sha):
+        """Paths the commit changed against its first parent (a fold's whole lane), or
+        None if it cannot be read."""
+        if not re.match(r"^[0-9a-f]{7,40}$", sha or ""):
+            return None
+        try:
+            out = subprocess.run(["git", "--git-dir", self.git_dir, "diff-tree", "-r", "--root", "--no-commit-id",
+                                  "--name-only", "-m", "--first-parent", sha + "^{commit}"],
+                                 capture_output=True, text=True, timeout=60)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if out.returncode != 0:
+            return None
+        return [x for x in out.stdout.splitlines() if x.strip()]
 
     def is_ancestor(self, older, newer):
         try:
@@ -257,21 +275,111 @@ def _latest_verdict_time(row):
     return TR.parse_utc(row.get("verdict_utc")) if row else None
 
 
+# A commit ANSWERS a failed gate of a title by one of two records, never by being newer
+# than the verdict (lane.local's review 10-06 18:10: fix:6cef37f426, an unrelated fold,
+# admitted DOA3, Hulk Ultimate Destruction and LOTR ROTK):
+#  (a) a row of pm/title-fixes.tsv (lane.local's; title_id, gate, fix_commit, set_by,
+#      date, why) set by one of FIX_SETTERS, naming the gate, with a why;
+#  (b) the commit's changed paths (first parent: a fold counts its whole lane) match a
+#      GATE_PATHS pattern for that gate, {TID} being the title's id or an alias.
+# The map is deliberately narrow: only files that belong to one title answer a
+# route gate; a harness-wide or emulator-wide change answers nothing by its paths
+# (it may answer every title or none) and needs a title-fixes row.
+FIX_SETTERS = ("lane.local", "owner")
+ROUTE_GATES = ("menu_time", "reached_gameplay", "duration", "static", "position")
+GATE_ALIASES = {"route": ROUTE_GATES}
+GATE_PATHS = {g: (r"^docs/testing/titles/pathknow/paths/{TID}\.json$",) for g in ROUTE_GATES}
+# A fix that changes only these is harness input (routes, paths, pathfind): it acts from the tool
+# tree that runs the title, not from the APK, so it is not required to be in the requested build.
+# Whether that tree has it is not checked (NOTES section 3).
+TOOLING_PREFIXES = ("docs/",)
+
+
+def _gate_set(cell):
+    out = set()
+    for g in re.split(r"[+,\s]+", (cell or "").strip()):
+        out.update(GATE_ALIASES.get(g, (g,)) if g else ())
+    return out
+
+
+def _sha_eq(a, b):
+    a, b = (a or "").strip().lower(), (b or "").strip().lower()
+    return len(min(a, b, key=len)) >= 7 and (a.startswith(b) or b.startswith(a))
+
+
+def _fix_answers(ctx, sha, row):
+    """{gate: how} this commit answers for this title, by (a) or (b)."""
+    ids = {row["title_id"]} | set(filter(None, (row.get("aliases") or "").split(",")))
+    out = {}
+    for f in TR.load_title_fixes(ctx.p):
+        if f["title_id"].strip().upper() not in ids or not _sha_eq(f.get("fix_commit"), sha):
+            continue
+        if (f.get("set_by") or "").strip() not in FIX_SETTERS or not (f.get("why") or "").strip():
+            continue
+        for g in _gate_set(f.get("gate")):
+            out[g] = "pm/title-fixes.tsv row (%s %s: %s)" % (f.get("set_by"), f.get("date"), f["why"][:80])
+    paths = ctx.commit_paths(sha) or []
+    for g, pats in GATE_PATHS.items():
+        if g in out:
+            continue
+        for pat in pats:
+            rx = [re.compile(pat.replace("{TID}", re.escape(t)), re.I) for t in ids]
+            hit = next((p for p in paths if any(r.search(p) for r in rx)), None)
+            if hit:
+                out[g] = "touches %s" % hit
+                break
+    return out
+
+
 def _answering_fix(ctx, req, row):
-    """(sha, why) of a committed fix newer than the latest verdict, from --because
-    fix: ids or the registry's fix_commit; (None, why) otherwise."""
-    vt = _latest_verdict_time(row)
-    cands = _because(req, "fix") + ([row["fix_commit"]] if row.get("fix_commit") else [])
+    """(sha, why) when committed fixes newer than the latest verdict, and in the requested
+    build, answer EVERY failed gate of it (by pm/title-fixes.tsv or GATE_PATHS); (None,
+    why) otherwise. A perf gate (fps/hitch/audio) is never answered here: a fix for it
+    admits a Playable attempt only once a verdict AFTER it clears the bar, so the fix
+    alone buys a TELEMETRY or VALIDATION run."""
+    failing = _gate_set((row.get("failing_all") or "").replace("+", " "))
+    perf = sorted(failing & set(TR.PERF_GATES))
+    if perf:
+        return None, ("the latest verdict fails %s: a fix for a perf gate needs a verdict after it that clears the bar "
+                      "before a Playable attempt (run TELEMETRY or VALIDATION on the fix build)" % "+".join(perf))
+    vt = _latest_verdict_time(row) or TR.parse_utc(row.get("last_run_utc"))
+    ids = {row["title_id"]} | set(filter(None, (row.get("aliases") or "").split(",")))
+    recorded = [f["fix_commit"].strip() for f in TR.load_title_fixes(ctx.p)
+                if f["title_id"].strip().upper() in ids and (f.get("fix_commit") or "").strip()]
+    cands = list(dict.fromkeys(_because(req, "fix") + recorded))
     if not cands:
-        return None, "no committed fix is cited (fix:<sha>) or recorded (fix_commit)"
+        return None, "no committed fix is cited (fix:<sha>) or recorded in pm/title-fixes.tsv"
+    build = re.sub(r"-[a-z0-9]+$", "", req.get("build") or "")
+    answered, used, why = {}, [], []
     for sha in cands:
         ct = ctx.commit_time(sha)
         if ct is None:
+            why.append("%s is not a commit" % sha)
             continue
-        if vt is None or ct > vt:
-            return sha, "fix %s (%s) is newer than the latest verdict (%s)" % (sha, TR.iso_z(ct), row.get("verdict_utc"))
-    return None, "every cited fix (%s) is missing or older than the latest verdict %s (%s): the same inputs again" % (
-        ", ".join(cands), row.get("latest_verdict"), row.get("verdict_utc"))
+        if vt is not None and ct <= vt:
+            why.append("%s (%s) is not newer than the latest verdict/run (%s): the same inputs again"
+                       % (sha, TR.iso_z(ct), TR.iso_z(vt)))
+            continue
+        paths = ctx.commit_paths(sha) or []
+        tooling = bool(paths) and all(p.startswith(TOOLING_PREFIXES) for p in paths)
+        if build and not tooling and not ctx.is_ancestor(sha, build):
+            why.append("%s changes code outside %s and is not in build %s" % (sha, "/".join(TOOLING_PREFIXES), build))
+            continue
+        got = _fix_answers(ctx, sha, row)
+        if not got:
+            why.append("%s answers no gate of %s: no pm/title-fixes.tsv row (set_by lane.local/owner) names it and it "
+                       "touches none of the title's paths; a newer commit is not a fix" % (sha, row["title_id"]))
+            continue
+        used.append(sha)
+        for g, how in got.items():
+            answered.setdefault(g, "%s %s" % (sha, how))
+    need = failing or {"*"}
+    missing = sorted(g for g in need if g not in answered and not (g == "*" and answered))
+    if missing or not used:
+        return None, "failed gate(s) %s not answered by a recorded fix (%s)" % (
+            "+".join(missing) or "?", "; ".join(why) or "answered: " + ", ".join(sorted(answered)))
+    return "+".join(used), "fix %s answers %s" % ("+".join(used), "; ".join(
+        "%s by %s" % (g, answered[g]) for g in sorted(answered) if g in need or need == {"*"}))
 
 
 def rule_class_status(ctx, req, row, d):
@@ -290,12 +398,12 @@ def rule_class_status(ctx, req, row, d):
         if st == "UNSCREENED":
             return d.deny("matrix", "never screened: the first run is a SCREEN, not a Playable attempt: %s" % ref)
         if st == "BELOW_BAR":
-            sha, why = _answering_fix(ctx, req, row)
-            if not sha:
-                return d.deny("matrix", "below the bar (fps_ok_share %s, failing %s) with no fix: TELEMETRY only; %s; %s"
-                              % (row["fps_ok_share"], row["failing_all"], why, ref))
-            d.notes.append("below-bar title with an answering fix: " + why)
-            return
+            # Never, fix or no fix: a fix lets TELEMETRY/VALIDATION produce a verdict after it,
+            # and a verdict that clears the bar moves the title out of BELOW_BAR.
+            _, why = _answering_fix(ctx, req, row)
+            return d.deny("matrix", "below the bar (fps_ok_share %s, failing %s): no Playable attempt until a verdict "
+                          "after a fix clears it; TELEMETRY or VALIDATION only; %s; %s"
+                          % (row["fps_ok_share"], row["failing_all"] or "-", why, ref))
         if st == "FAILED_HARNESS":
             if not row.get("failing_all") and row.get("latest_verdict"):
                 return d.deny("matrix", "the latest verdict is a harness PASS not in the ledger: it needs a frame "
