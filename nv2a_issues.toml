@@ -6050,3 +6050,99 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "lane.gpunonrender's sysmem A/B result (its scope D); the render-pass census is folded and the load/store cost is under 0.4 ms a frame. Filed 14:09 PDT (hostops, lane.local request)."
 status_note = "Forge issue, open (local-only). Under #746."
+
+[issue.873]
+title = "MK Deadly Alliance: one 5.5 s stall at 470 s of play, unexplained by the perflog (no shader, texture, or DSM work in the window) and with no ANR in logcat; it fails the hitch bar alone, with fps and still otherwise passing"
+no_suites = "a device-timing finding from a pathfind screening run, not a golden-suite capture."
+disposition = "defect"
+status = "open"
+dispatch_state = ""
+blocked_on = "lane.pathfind owns the finding (filed from its own OUTBOX.md during the 10-07 screening run). Needs the perflog's render-thread trace at 470 s re-examined for a cause outside shader/texture/DSM (e.g. a GC pause, a disk stall from the titles volume, or a host-side hitch); not yet scheduled. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
+
+[issue.874]
+title = "MK Shaolin Monks runs at fps_ok 0.4912 (median 45.91) on a valid 605-s window; the same engine family as Armageddon (median 59) and Deadly Alliance (median 40) is not the same cost. Evidence: run shaolinmonks-1006"
+no_suites = "a device-timing finding from a pathfind screening run, not a golden-suite capture."
+disposition = "defect"
+status = "open"
+dispatch_state = ""
+blocked_on = "lane.pathfind owns the finding. Needs a same-engine-family comparison (what Shaolin Monks' scene/content does that Armageddon's and Deadly Alliance's representative windows do not) before this is a renderer claim rather than a content one; not yet scheduled. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
+
+[issue.875]
+title = "Blowout holds still for 236 s of a 1397-s window (play 0.831) with fps at the bar; the still-by-shift rule did not clear it. Evidence: run blowout-1006, verdict timeline still 235.9 s. Blocks Blowout's Playable"
+no_suites = "a navigation and measurement defect in lane.pathfind's hold; no golden suite scores a title's still-by-shift rule."
+disposition = "harness"
+status = "open"
+dispatch_state = ""
+blocked_on = "lane.pathfind owns the fix in docs/testing/titles/pathfind.py's still-by-shift logic (or title_verdict.py's reading of it). Refuted by a held pathfind run on Blowout where the still window is correctly re-classified as play or genuinely stuck. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
+
+[issue.876]
+title = "Marvel Nemesis spent 400 s of a 1074-s window in menus (rematch/results); the hold ladder did not exit them. Evidence: run marvel-1006, verdict menu 400 s, share 0.561. Blocks Marvel's Playable"
+no_suites = "a navigation defect in lane.pathfind's hold ladder; no golden suite scores a title's menu-exit path."
+disposition = "harness"
+status = "open"
+dispatch_state = ""
+blocked_on = "lane.pathfind (owns docs/testing/titles/pathfind.py's hold ladder) needs a rematch/results exit added for Marvel Nemesis's genre, same shape as the #829 NFL Blitz 2002 fix. Refuted by a held pathfind run that exits those menus and recovers the lost 400 s as play. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
+
+[issue.877]
+title = "Guilty Gear XX holds 109 s in menus, 91 s still and 64 s game over in a 906-s window (play 0.665). Evidence: run guiltygear-1006, verdict. Blocks Guilty Gear's Playable"
+no_suites = "a navigation defect in lane.pathfind's hold ladder; no golden suite scores a title's menu/game-over exit path."
+disposition = "harness"
+status = "open"
+dispatch_state = ""
+blocked_on = "lane.pathfind owns the fix (menu and game-over exits in pathfind.py's hold ladder for the fighting-genre). Refuted by a held run that exits menus/game-over and lifts play share above the 0.90 bar. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
+
+[issue.878]
+title = "DOA3 replay check fails at recorded step 0 on a loading logo: the path's first step is a title-screen step and the screen at that moment is a centred green logo on white; the diverged abort then ends the run"
+no_suites = "a harness defect in the replay/path-divergence check, not a renderer one."
+disposition = "harness"
+status = "open"
+dispatch_state = ""
+blocked_on = "lane.pathfind owns docs/testing/titles/pathfind.py's replay-divergence check; it needs to tolerate a loading-logo frame at step 0 (treat it as a wait state, not a path mismatch) before DOA3 can re-run past this abort. Not yet scheduled. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
+
+[issue.879]
+title = "Blowout's parked-still credit: 225 s of a 1052-s window read still while the per-look change was 0.02-0.27 (n=54-100). The play share is short because the window-level still rule parks play credit, and the per-look signal disagrees with it"
+no_suites = "a measurement defect in title_verdict.py's still rule, not a golden-suite capture."
+disposition = "harness"
+status = "open"
+dispatch_state = ""
+blocked_on = "lane.pathfind owns docs/testing/title_verdict.py's window-level still rule; it needs to defer to the per-look change signal (0.02-0.27, read as motion) instead of parking the whole window as still. Related to #875 on the same title; not yet scheduled. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
+
+[issue.880]
+title = "Tecmo Classic Arcade's game-information card (Tecmo Cup, \"PUSH ONE PLAYER BUTTON\") reads as play, so the hold credits menu time and the static-window check then fails it. Evidence: run tecmo-1006"
+no_suites = "a measurement defect in title_verdict.py's play/menu classifier, not a golden-suite capture."
+disposition = "harness"
+status = "open"
+dispatch_state = ""
+blocked_on = "lane.pathfind owns title_verdict.py's play classifier; a \"PUSH ... BUTTON\" game-information card needs to read as a menu/prompt state, not play, the same class of fix as #880's sibling menu-exit issues. Not yet scheduled. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
+
+[issue.881]
+title = "title_verdict's static-window check reads a dark hangar as static (44% of pixels under the absolute 10/255 step, frame 069 with the HUD live); it fails a 0.981 play window. Needs a contrast-relative step"
+no_suites = "a measurement defect in title_verdict.py's static-window threshold, not a golden-suite capture."
+disposition = "harness"
+status = "open"
+dispatch_state = ""
+blocked_on = "lane.pathfind owns title_verdict.py's static-window check; the absolute 10/255-step threshold needs to become contrast-relative so a dark scene with live HUD motion is not misread as static. Not yet scheduled. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
+
+[issue.882]
+title = "the verdict reads \"window unmeasured\" on a 692-s hold that kept 44 frames: 0 post-mark route-frames and 0 post-mark frames/samples. Evidence: runs/nightfire-1006/provisional/verdict.json (static_window)"
+no_suites = "a measurement defect in title_verdict.py's post-mark accounting, not a golden-suite capture."
+disposition = "harness"
+status = "open"
+dispatch_state = ""
+blocked_on = "lane.pathfind owns title_verdict.py's post-mark frame accounting for Nightfire; 44 frames were kept but 0 are counted post-mark, which is why the window reads unmeasured instead of scored. Related to #883 on the same run. Not yet scheduled. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
+
+[issue.883]
+title = "the verdict's fps bar here is 30.0 (fps_ok 0.891), while the 10-04 correction says classify on the harness bar 28.5. Evidence: nightfire-1006/provisional/verdict.json fps_bar 30.0. The two bars disagree"
+no_suites = "a measurement/configuration defect in title_verdict.py's fps-bar selection, not a golden-suite capture."
+disposition = "harness"
+status = "open"
+dispatch_state = ""
+blocked_on = "lane.pathfind owns title_verdict.py's fps-bar selection; Nightfire's verdict used 30.0 where the 10-04 correction calls for the harness bar of 28.5, so fps_ok needs recomputing against the right bar before this run's Playable claim can stand. Related to #882 on the same run. Not yet scheduled. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
+
+[issue.884]
+title = "the Batman hold dropped to Android App info (hakuX, test builds) at 20:39 and the hold ended on \"left the foreground\". Evidence: runs/batman-2/frames/090-095-hold.jpg, hold.jsonl n=88-94, run.log. Blocks Batman's Playable"
+no_suites = "a device/navigation defect in lane.pathfind's hold, not a renderer one."
+disposition = "harness"
+status = "open"
+dispatch_state = ""
+blocked_on = "lane.pathfind owns the hold in docs/testing/titles/pathfind.py; something during the Batman hold-play (an OS prompt, a notification, or a mis-aimed input) backed out to the hakuX app-info settings screen, which the hold needs to detect and recover from (return-to-foreground) rather than end the run on. Not yet scheduled. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
