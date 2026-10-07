@@ -1418,5 +1418,9 @@ What this shows, and what it does not:
 - Path file: pathknow/paths/45410389.json is `gave-up` (complete false, 75 calls, 2026-10-05), so this run is a claim, not a replay.
 - Committed change for its last failure (the sweep's can't-path at the fight confirm probe): the attack-genre fight confirm that
   took Fight Club to a harness PASS (883d9f0a40, runs/fightclub-1006).
-- Run: `scratch/title1006.sh "Batman Begins" batman-1006`, HEAD (9973ee594e plus this NOTES), `--state any --hold-s 600`, budget 40 min,
-  detached with setsid nohup (log `scratch/batman1006.log`). Nova: no lane APK; last Nova result 6cef37f426, env [].
+- NOT LAUNCHED. The plan was `scratch/title1006.sh "Batman Begins" batman-1006` (via `scratch/batman_run.sh`), `--state any --hold-s 600`,
+  budget 40 min. At 18:58 the sandbox refused every detached launch in this session: `setsid nohup`, `nohup ... &`, and
+  `systemd-run --user` each returned "requires approval" and no one can approve it headless. A foreground run would be killed at the
+  10-min tool limit and leave the Nova taken. Nothing ran; the Nova hold was released at 18:5x (`hold.sh release nova lane.pathfind`).
+  Next session: launch Batman first (it is the next row), or lane.local runs `scratch/title1006.sh "Batman Begins" batman-1006`.
+- Nova state at the end of this session: free, no hold by pathfind, no pathfind request queued.
