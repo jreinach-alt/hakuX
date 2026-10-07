@@ -1158,7 +1158,7 @@ Ledger for today stands at 6 (Rogue Trooper, Ratatouille, WE9, NBA 2K3, MK Armag
 
 ## #433 -- 2026-10-06 20:05 PDT
 
-[lane.pathfind] 007: Nightfire (45410026) CLOSE, one run: play share 0.865 of 692.5 s scored (play 599.3 s; menu 36 s, other 24 s, game over 17 s, continue 8 s, results 7 s), fps_ok 0.891 at the verdict's bar 30.0 (window share 0.923), median 40.0, min 26.1, no hitches, no crash, no hang. Verdict FAIL on play share, fps 89%, and "window unmeasured". Run dir docs/lanes/pathfind/runs/nightfire-1006 (hold_strip.jpg, hold.jsonl, provisional/verdict.json, 44 kept frames to 768 s). Ref HEAD ef0936c843, apk_sha not recorded by the verdict, env [] (last Nova result 6cef37f426, clean). Spend: 35 Sonnet calls (about $3-4 at Sonnet rates; not priced here). Not re-run.
+[lane.pathfind] 007: Nightfire (45410026) CLOSE, one run: play share 0.865 of 692.5 s scored (play 599.3 s; menu 36 s, other 24 s, game over 17 s, continue 8 s, results 7 s), fps_ok 0.891 at the verdict's bar 30.0 (window share 0.923), median 40.0, min 26.1, no hitches, no crash, no hang. Verdict FAIL on play share, fps 89%, and "window unmeasured". Run dir docs/lanes/pathfind/runs/nightfire-1006 (hold_strip.jpg, hold.jsonl, provisional/verdict.json, 44 kept frames to 768 s). Ref HEAD ef0936c843, apk_sha not recorded by the verdict, env [] (last Nova result 6cef37f426, clean). Spend: 35 Sonnet calls (cost not priced here). Not re-run.
 
 Frames: frame 020 is the "Mission Failed / REPLAY TUTORIAL" card at the start of the hold (the claim left the tutorial failed); the rest is the rail-shooter tutorial with auto-aim and fire, dark at the game-over and continue spans. The loop stayed in play.
 
