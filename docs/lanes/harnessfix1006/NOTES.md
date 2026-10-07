@@ -181,6 +181,15 @@ is the first device proof.
 - The Nova is held by lane.pathfind (`hold.sh who nova`, a 600 s hold from
   04:55Z). The smoke is queued with `request.sh`, which waits its turn behind
   that hold. This lane does not take the hold itself.
+- Queued at `55e66e43ae`: `1-1791349581-lane.harnessfix1006-4034827` (release
+  priority, #433; Galleon, 60 s, pinned to nova, `--no-expect`).
+
+waiting: on request `1-1791349581-lane.harnessfix1006-4034827` (the 60 s Nova
+smoke at `55e66e43ae`). The signal that resolves it is that request's
+`result.json` in `results/<id>/`, read with `device_build.py check nova`, and
+then the restore request the dispatcher queues after it, whose `result.json`
+has `kind: "restore"`, `env: []`, and the master ref. Only after both are read
+does this lane mark PR.md `State: ready`. The lane does not hold the device.
 
 ## Lanewaker and attempts (item f), what the repo shows
 

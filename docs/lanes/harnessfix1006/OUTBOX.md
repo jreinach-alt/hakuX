@@ -30,5 +30,5 @@ Needed for the code to land. Each is in the PR's `Files:` line.
 
 ## 5. Pending (after 22:00 only)
 
-- One 60 s Nova smoke, in the lane build, after 22:00 and when the Nova is free. Then the master restore: the dispatcher's own restore request, which is now the first device proof of section 4. The smoke is not queued before 22:00 (lane.local's instruction).
+- One 60 s Nova smoke, in the lane build. Queued after 22:00 at `55e66e43ae` as `1-1791349581-lane.harnessfix1006-4034827`. It waits behind lane.pathfind's hold and has not run. Then the master restore: the dispatcher's own restore request, which is the first device proof of section 4.
 - `pathfind.py`'s receipt (section 2) is lane.pathfind's, for after 22:00.
