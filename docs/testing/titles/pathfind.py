@@ -276,6 +276,18 @@ def rematch_press(why, st):
     if "rematch" not in why or st not in ("results", "menu"):
         return None
     return ["A"] if REMATCH_HL.search(why) else ["UP"]
+# A fighter's counter prompt is a quick-time press that must land within a second or so (Batman Begins, 10-06 19:08 run:
+# "Press Y now" over looks 61-86, "Press X now" from look ~141). The attack loop never sent Y, so the counter passed
+# unanswered and the frames stayed still. A play look that reads one of these names its button, which goes first.
+COUNTER_RE = re.compile(r"press ([xy]) now")
+
+
+def counter_press(why):
+    """The button a fighter's counter prompt asks for ("Press Y now"), else None. A context prompt ("To kick press Y") is not one."""
+    m = COUNTER_RE.search((why or "").lower())
+    return [m.group(1).upper()] if m else None
+
+
 # The fighting Character Select grid (10-06, MK Armageddon in three re-holds: rehold, rehold2, rehold2b). A on the
 # highlighted fighter opens the handicap panel and does not start the round. The presses that did start it were B (close
 # the panel) then START: rehold2 looks 77-79 and rehold2b looks 57-59, the round's black frame and fight intro one look
@@ -1930,6 +1942,7 @@ class Agent:
             if last_png:
                 # the structural still per look (lane.local 10-06 17:4x): replayable against `changed` on the next run
                 look["shift_look"] = round(scene_shift(last_png, png), 2)
+            counter = None   # this cycle's counter-prompt button (counter_press), set by a play check look
             if rep_left and off:
                 # model-free recovery (Panzer, 10-03: each death cost 4 model looks at ~9 s, one per A of an episode
                 # card): repeat the last look's single press, unlooked, then look again
@@ -1942,6 +1955,8 @@ class Agent:
                 a = self.hold_look(jp, genre)
                 was_play = not off
                 off = a.get("in_play") is not True
+                if genre == "attack" and not th and not off:
+                    counter = counter_press(a.get("why"))
                 st = ("still" if parked else "play") if not off else \
                     re.sub(r"[^a-z_]", "", str(a.get("state") or "other").lower()) or "other"
                 if off and was_play and st in HOLD_SHED_STATES:
@@ -2051,6 +2066,9 @@ class Agent:
                 loop = flip_walk([t for t in tokens if t not in shed_set], flipped)
                 if th and press_x:
                     loop, press_x = ["X"], False
+                if counter:
+                    loop = counter + loop
+                    look["counter"] = counter[0]
                 look.update(src=look.get("src", "genre"), action=loop)
                 self.send(loop)
                 if not parked:

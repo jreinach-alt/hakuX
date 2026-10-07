@@ -521,6 +521,11 @@ check("rematch", pathfind.rematch_press("END OF MATCH results: REMATCH highlight
       and pathfind.rematch_press("pause menu, resume", "pause") is None,
       "REMATCH: A on the highlighted REMATCH row else UP; DOWN and A on the REMATCH confirm; A cancels a RETURN confirm")
 # fighting select (10-06, MK Armageddon rehold, rehold2, rehold2b): a grid look plays A, B, START from the first look
+check("counter", pathfind.counter_press("Batman fights a Crane Thug with a 'Press Y now' QTE prompt; live round") == ["Y"]
+      and pathfind.counter_press("Batman in combat, 'Press X now' over live play") == ["X"]
+      and pathfind.counter_press("Batman with a 'To kick press Y' context prompt") is None
+      and pathfind.counter_press("pause menu, resume") is None,
+      "a counter prompt names its button; a context prompt does not")
 check("charsel", pathfind.charsel_press("Character select grid is showing with STRYKER highlighted; not live play.", "menu", 0) == ["A"]
       and pathfind.charsel_press("Character select grid, handicap panel open", "menu", 1) == ["B"]
       and pathfind.charsel_press("Character select grid", "menu", 2) == ["START"]

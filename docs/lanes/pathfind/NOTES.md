@@ -1496,3 +1496,13 @@ What this shows, and what it does not:
 - Plan for this attempt, in order: (1) verify on the Batman frames that "Press X now" is on screen across the stretch the hold
   stood still; (2) commit the counter-X rule in the attack loop, with a selftest leg; (3) one Batman run before 21:15 if the
   claim goes; (4) otherwise the next screening row. Spend so far this attempt: none (offline reads only).
+
+## Batman Begins counter prompt: the frames say Y and X, not X (10-06 20:25 PDT, offline)
+
+- Read from `runs/batman-1006/hold_strip.jpg`: looks 61-86 show "To kick press Y" and "Press Y now" over the Crane Thug fight;
+  from about look 141 the strip shows "Press X now" (with the Counter X glyph). The 19:08 NOTES said X only: half right.
+- The attack loop has no Y, so the Y counters went unanswered for the whole 61-86 stretch.
+- Fix (committed): `counter_press(why)` in pathfind.py reads "press x now" / "press y now" on an attack-genre play look (not
+  a context prompt "to kick press y") and sends that button before the loop's cycle, logged `counter` on the look. Selftest leg
+  `counter` (ok); full selftest 103 ok, no FAIL (`scratch/selftest-counter.log`).
+- Not yet validated on a device. The Batman run that tests it is the next step.
