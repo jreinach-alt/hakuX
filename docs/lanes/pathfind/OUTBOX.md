@@ -1117,3 +1117,11 @@ NEW ISSUE: Blowout's parked-still credit: 225 s of a 1052-s window read still wh
 Identification from the frames: the late hold frames (109-hold.jpg) show Tecmo Cup's "ONE PLAYER GAME INFORMATION / PUSH ONE PLAYER BUTTON / PLAY TIME 1:30" card, not a match. The hold credited that card as play for most of the window, so play share 0.903 is not gameplay. The 20-step claim reached a game-information card and read it as play.
 
 NEW ISSUE: Tecmo Classic Arcade's game-information card (Tecmo Cup, "PUSH ONE PLAYER BUTTON") reads as play, so the hold credits menu time and the static-window check then fails it. Evidence: run tecmo-1006, frames 109-hold.jpg. Blocks Tecmo's Playable.
+
+## #433 -- 2026-10-06 17:39 PDT
+
+[lane.pathfind] Fight Club (5655002F) PASS (harness, full window, first run): play share 0.906 of 812.1 s scored (fps_excluded 77.4 s), fps_ok 0.937 at 28.5, median 47.0 (the 300 s course read 0.979 at the bar), 9 hitches worst 340 ms (bar 500 ms), no crash, no hang. Run dir docs/lanes/pathfind/runs/fightclub-1006 (verdict.json, hold.jsonl, hold_strip.jpg). Frames: 64 files under frames/ (first 001-unknown.jpg, last 123-hold.jpg). Ref HEAD d03d625e81 (reverse rule), env []. Spend: about 40 model calls, not priced here.
+
+SCENE SHOULD CONTAIN (expected, not yet checked against the frames): the player's fighter in a live bout with an opponent on screen, a health bar pair and a round timer, and a change in the scene between the start and end of the window (fighter position, opponent, arena). The frame review should say whether both fighters are present in each strip frame; a single fighter on a static arena is a miss.
+
+Frame review is lane.local's, and flicker is the owner's check.
