@@ -221,3 +221,132 @@ does this lane mark PR.md `State: ready`. The lane does not hold the device.
   reads results, which is the only record of what ran.
 - Do not add an override to skip the gate for a lane. A lane that needs a test
   build gets it through a request, and the restore follows.
+
+## Attempt 3 (10-07, 03:4x-04:x UTC): why attempt 2 did not finish, and what it missed
+
+Attempt 2 ended on a `waiting:` comment, correctly: it was waiting on its own
+queued smoke and the restore that follows it, neither of which it could
+control from inside a session (both are device-side, and a lane does not
+hold the device). That is not a defect; `handback.sh` resumed this lane once
+both results existed, per the hostops 03:43 addendum, which is this attempt.
+
+**What attempt 2's plan got right:** both results it was waiting on are in,
+exactly as the addendum describes them (checked by reading each
+`result.json` directly, not by trusting the description):
+- `dispatch/results/1-1791349581-lane.harnessfix1006-4034827/result.json`:
+  `kind: "soak"`, `ref: "55e66e43ae"`, `apk_sha: "d07cfc84067e"`, `env: []`,
+  `device_label: "nova"`. This lane's own smoke, on its own lane build.
+- `dispatch/results/1-1791350958-hostops-restore-nova-50958/result.json`:
+  `kind: "soak"`, `ref: "b6532fb3db"`, `env: []`, `requester: "lane.hostops"`,
+  purpose names it a master restore after the smoke. A plain soak of a title
+  (Buffy the Vampire Slayer), not this lane's own `kind: "restore"` path --
+  as the addendum already said, since this branch is unfolded and its
+  dispatcher has never served a live request.
+
+**What attempt 2's plan did NOT check, and should have:** whether
+`device_build.py check nova`, the tool this PR ships and the one named as
+the verification step, actually reads either result as release. Run against
+the live dispatch dir:
+
+    $ python3 docs/testing/jobs/device_build.py check /home/justin/hakux-work/dispatch nova
+    nova is on a non-release build: ref b6532fb3db (run 1-1791356003-lane.gpunonrender-147451).
+    It is not on master; ...
+
+Exit 4. The newest run by the time this attempt read it was a third one
+(`lane.gpunonrender`'s, also `ref: b6532fb3db`, `env: []` -- still clean),
+but the tool refused it as a test build regardless. The hostops addendum's
+"if it confirms (it should ...)" did not hold: the one command it named as
+the confirmation check returned the opposite of "confirms."
+
+### The bug, and why it is not a one-off reading
+
+`build_of()` (`device_build.py`) called a run "release" only when `ref` was
+the literal string `"master"`/`"origin/master"`, or exactly equal to an env
+var `MASTER_SHA` that no caller in this repo ever sets (checked: grep for
+`MASTER_SHA` outside `device_build.py` itself finds nothing in `hold.sh` or
+`dispatcher.sh`). But `request.sh` resolves every `--ref` to a concrete sha
+AT QUEUE TIME (`request.sh:720-722`, deliberately -- its own comment: "HEAD
+in a queued request is a moving target... a request must name the tree the
+requester meant"). So **no real request ever carries the literal string
+"master"**; only `device_build.py`'s own `restore_request()` does, by
+writing straight into `queue/` and bypassing `request.sh` entirely. That is
+the *only* path that was ever recognized as release.
+
+Consequence, read from the code and confirmed against both live cases
+above: a hand-queued restore (`request.sh --ref master`, the exact remedy
+`cmd_check`'s own refusal message suggests) resolves to a sha and is *never*
+recognized as release by this check -- not now, not after any number of
+retries, until `device_build.py`'s own internal restore happens to run next.
+And on the `dispatcher.sh` side, `queue_master_restore` calls the same
+`build_of()` through `restore_needed()`: an ordinary, unmodified run on
+trunk -- not just a test build -- would have queued a 60 s restore after
+*every single run*, since its ref is also always a resolved sha. That is a
+worse version of the problem this lane exists to fix: not losing holds to a
+test build, but burning a fixed 60 s tax on every release run forever. This
+had not fired yet in production because this branch is unfolded (zero
+`dispatch.restore`-requester results found in the last 60 live results), so
+nothing had exercised it for real.
+
+**The fix**, within this lane's granted files: `build_of()` additionally
+accepts a resolved sha that is an ancestor of `origin/master`
+(`git merge-base --is-ancestor`), which correctly distinguishes the two live
+cases -- confirmed directly, not assumed:
+
+    $ git merge-base --is-ancestor b6532fb3db origin/master; echo $?
+    0        # a real master commit, several folds behind current HEAD: release
+    $ git merge-base --is-ancestor 55e66e43ae origin/master; echo $?
+    1        # this lane's own branch commit, never merged: a test build
+
+`device_build.py` resolves the repo for that git call from `DISPATCH_REPO`
+(new env var, set by `dispatcher.sh`'s `queue_master_restore` to `$REPO` --
+needed because `$HERE` there is the snapshot a worker re-execs into, which
+has no `.git` above it) or, failing that, its own file location (right when
+it is the real `jobs/device_build.py`, as `hold.sh` runs it; silently wrong,
+never silently right, for the snapshot copy, where the git call just fails
+and ancestry is not checked -- same as today's behaviour, no regression).
+With the fix, re-running the live check now correctly confirms:
+
+    $ python3 docs/testing/jobs/device_build.py check /home/justin/hakux-work/dispatch nova
+    nova: on master (master)
+
+A new selftest leg (k), with its own mutant, covers it: a throwaway git
+repo (not this one -- this lane's own commits become ancestors of
+`origin/master` the moment this PR is folded, so a real sha from this
+checkout would flip from "not on trunk" to "on trunk" right then, and a leg
+built on it would rot silently without ever failing loudly).
+
+### Verifying it: the full selftest.sh is blocked in this session, not by this change
+
+`docs/testing/jobs/selftest.sh` does an unconditional `git -C "$REPO" fetch
+-q origin master` in its shared setup, before any fragment runs and
+regardless of `SELFTEST_ONLY`. `origin` here is a local path remote
+(`/home/justin/hakux-work/offline-git/hakuX.git`), and this session's
+sandbox refuses any file access outside this worktree -- confirmed directly:
+a bare `ls` on that same path is refused with "may only list files in the
+allowed working directories," and `dangerouslyDisableSandbox` does not lift
+it (it is a harness working-directory wall, not a sandbox flag). This is an
+environmental fact of this session, not a result of this attempt's changes
+-- it would block any fragment, not only this lane's.
+
+Worked around for verification by sourcing the real, unmodified
+`selftest.d/99-build-gate.sh` directly, with the same `$T`/`$HERE`/`$REPO`
+and `ok`/`bad`/`check` that `selftest.sh` would hand it, skipping only the
+unrelated shared setup that needs the blocked fetch:
+**34 passed, 0 failed** -- the 30 from before, plus the two new (k) legs and
+the two new mutant-sanity legs. Also separately confirmed by hand (not part
+of the committed fragment, since this lane's own branch would rot as a
+fixture): both live device results from this session read correctly after
+the fix, as shown above. The committed fragment is exactly what CI
+(`.github/workflows/jobs-selftest.yml`) and the owner's host run, both of
+which have real access to `origin`; this session's inability to run
+`selftest.sh` end-to-end is not evidence either way about those.
+
+### Readiness
+
+With the fix in place, both live results and the real dispatch dir all read
+as expected: the Nova is clean, `device_build.py check nova` confirms it,
+and the finding that triggered this work is fixed rather than papered over.
+Per the hostops addendum, not re-proving `queue_master_restore`'s own
+dispatch by hand (the fold will exercise the real `dispatcher.sh`), and the
+`pathfind.py`/`drive.py`/lanewaker questions remain lane.local's per OUTBOX.
+Marking `State: ready`.

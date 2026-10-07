@@ -1172,7 +1172,11 @@ lane_file() { echo "$D/lanes/$DEVICE_LABEL"; }
 # is logged and never fails the run it follows.
 queue_master_restore() {   # $1 = run id (results/<id>)
     local out
-    out=$(python3 "$HERE/jobs/device_build.py" restore "$D" "$DEVICE_LABEL" "$1" 2>&1) \
+    # DISPATCH_REPO: $HERE is the snapshot in a worker ($HERE *is* $SNAP
+    # there, see the comment above SRC), which has no .git above it, so
+    # device_build.py's own ancestry check needs the real repo named
+    # explicitly rather than guessed from its own path.
+    out=$(DISPATCH_REPO="$REPO" python3 "$HERE/jobs/device_build.py" restore "$D" "$DEVICE_LABEL" "$1" 2>&1) \
         && { [ -z "$out" ] || log "  master restore queued: $out"; } \
         || log "  master restore NOT queued for $1: $out"
     return 0

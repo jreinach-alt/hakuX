@@ -28,6 +28,18 @@
 #       with no suites ("NO SUITES"): the restore is refused and the device
 #       stays on the test build. The restore ends in serve_one before the
 #       title/disc split, after its build, install and env reset.
+#   (k) a resolved sha -- the shape every real request carries, since
+#       request.sh resolves --ref to a concrete sha AT QUEUE TIME before a
+#       request ever reaches the dispatcher, and no caller writes the
+#       literal string "master" except the restore's own direct queue write
+#       (restore_request, which bypasses request.sh entirely) -- that is
+#       reachable from origin/master reads as a branch and is refused
+#       forever, with no MASTER_SHA and no literal ref string to match. A
+#       Nova actually on a clean, slightly-behind-trunk build would then be
+#       refused on every take, and queue_master_restore would queue a
+#       60 s restore after every run, release or not, forever. Found 10-07
+#       by running `device_build.py check` against the Nova's own live
+#       result after a real restore: a clean build, flagged non-release.
 #
 # SELFTEST_HOLD_SH points leg (b) at another hold.sh. The mutant legs at the
 # end run with the fix removed, and must show the thing the real leg refuses.
@@ -145,6 +157,29 @@ PY
 check "(j) the dispatcher ends a master restore before the title/disc split, with a restore result" \
     db_restore_exit "$HERE/../dispatcher.sh"
 
+# (k) a resolved sha, reachable from origin/master, is release -- the real
+# shape, not the literal "master" every fixture above uses. A throwaway
+# repo, not $REPO: this lane's own commits become part of master's history
+# the moment this PR is folded, so a real sha from this checkout would flip
+# from "not on trunk" to "on trunk" right then and the leg would rot silently.
+DB_REPO="$T/devbuild/repo"; rm -rf "$DB_REPO"; mkdir -p "$DB_REPO"
+git -C "$DB_REPO" init -q
+git -C "$DB_REPO" -c user.email=t@t.test -c user.name=t commit -q --allow-empty -m trunk
+TRUNK_SHA=$(git -C "$DB_REPO" rev-parse --short HEAD)
+git -C "$DB_REPO" update-ref refs/remotes/origin/master HEAD
+git -C "$DB_REPO" checkout -q -b offtrunk
+git -C "$DB_REPO" -c user.email=t@t.test -c user.name=t commit -q --allow-empty -m offtrunk
+BRANCH_SHA=$(git -C "$DB_REPO" rev-parse --short HEAD)
+dbcheck_repo() { DISPATCH_REPO="$1" python3 "$DB_PY" check "$DB_D" nova; }
+
+dbrun ktrunk 7000 nova "$TRUNK_SHA" '[]' lane.gpunonrender
+check "(k) a resolved sha reachable from origin/master is release, no MASTER_SHA needed" \
+    dbrc 0 dbcheck_repo "$DB_REPO"
+
+dbrun kbranch 8000 nova "$BRANCH_SHA" '[]' lane.b
+check "(k) a resolved sha never merged to trunk is refused even with DISPATCH_REPO set" \
+    dbrc 4 dbcheck_repo "$DB_REPO"
+
 # MUTANTS: the fix removed must go red. Each mutant is checked for the very
 # behaviour its leg above asserts, so a leg that passes on the mutant is vacuous.
 DB_MUT="$T/devbuild/mut"; mkdir -p "$DB_MUT"
@@ -167,3 +202,13 @@ check "mutant built: dispatcher.sh with the restore exit disabled" [ "$(grep -c 
 db_restore_exit_absent() { ! db_restore_exit "$1"; }
 check "mutant: without the restore exit the restore is not ended before the split (leg (j) is not vacuous)" \
     db_restore_exit_absent "$DB_DISP_MUT"
+
+# Leg (k)'s mutant: device_build.py with the ancestry check's contribution
+# to build_of removed. The trunk sha from (k) above is still the Nova's
+# newest result (ktrunk, mtime 7000 < kbranch's 8000 -- re-run as newest).
+dbrun ktrunk 9000 nova "$TRUNK_SHA" '[]' lane.gpunonrender
+sed 's/ or _on_trunk(ref)//' "$DB_PY" > "$DB_MUT/device_build_k.py"
+check "mutant built: device_build.py without the ancestry check at the call site" \
+    bash -c "! grep -q 'or _on_trunk(ref)' '$DB_MUT/device_build_k.py'"
+check "mutant: without the ancestry check a trunk sha is wrongly refused (leg (k) is not vacuous)" \
+    bash -c "DISPATCH_REPO='$DB_REPO' python3 '$DB_MUT/device_build_k.py' check '$DB_D' nova; [ \$? -eq 4 ]"

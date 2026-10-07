@@ -28,7 +28,11 @@ Needed for the code to land. Each is in the PR's `Files:` line.
 
 - The master restore request had no title and no suites, so it fell to the disc path and was refused with `NO SUITES` (`dispatcher.sh` ~1587). The device would have kept the test build. Fixed: `serve_one` ends a `dispatch.restore` request after its build, install and env reset, writes `result.json` with `kind: "restore"`, and marks DONE. Leg (j) covers it, and its mutant goes red. This is inside the granted `dispatcher.sh`; no new file.
 
-## 5. Pending (after 22:00 only)
+## 5. Resolved after 22:00
 
-- One 60 s Nova smoke, in the lane build. Queued after 22:00 at `55e66e43ae` as `1-1791349581-lane.harnessfix1006-4034827`. It waits behind lane.pathfind's hold and has not run. Then the master restore: the dispatcher's own restore request, which is the first device proof of section 4.
-- `pathfind.py`'s receipt (section 2) is lane.pathfind's, for after 22:00.
+- The smoke ran: `1-1791349581-lane.harnessfix1006-4034827`, DONE 22:13 PDT, `ref 55e66e43ae`, `apk_sha d07cfc84067e`, `env []`. hostops then queued a plain restore by hand (`1-1791350958-hostops-restore-nova-50958`, DONE 22:40 PDT, `ref b6532fb3db`, `env []`) rather than this lane's own `dispatch.restore` path, since this branch is unfolded. Both read correctly by `device_build.py check nova` after the fix in section 6.
+- `pathfind.py`'s receipt (section 2) is still lane.pathfind's, open.
+
+## 6. Found and fixed in attempt 3 (10-07): the check itself did not confirm
+
+Reading the two results above with the tool this PR ships (`device_build.py check nova`, the step the hostops addendum named as the confirmation) returned exit 4, "non-release" -- on a Nova that was actually clean. Cause: `request.sh` resolves every `--ref` to a concrete sha before a request reaches the dispatcher (queue-time resolution, deliberate), so no real request ever carries the literal string `"master"`/`"origin/master"` that `build_of()` matched; only the gate's own internal restore (`restore_request()`, which bypasses `request.sh` and writes straight into `queue/`) ever did. Unfixed, this would also have made `dispatcher.sh`'s `queue_master_restore` queue a 60 s restore after every ordinary run, not only a test build, since every real `ref` is a resolved sha. Fixed: `build_of()` now also accepts a resolved sha that `git merge-base --is-ancestor` finds reachable from `origin/master`. `device_build.py` resolves the repo for that call from `DISPATCH_REPO` (set by `dispatcher.sh`'s `queue_master_restore` to `$REPO`, since `$HERE` there can be the snapshot a worker re-execs into, with no `.git` above it) or its own file location otherwise. Selftest leg (k) and its mutant cover it (NOTES.md has the full account, including why this lane's own branch sha could not be used as the leg's fixture). This is inside the already-granted `device_build.py` and `dispatcher.sh`; no new file, no new grant needed.

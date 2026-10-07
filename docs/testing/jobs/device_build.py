@@ -15,20 +15,61 @@
         run's result.json is written.
 
 A run is on master when its result.json says ref master (or origin/master,
-or the master sha given as MASTER_SHA) and env []. A result with no `env`
-key predates the field, so the build it ran is not known to be master: it is
-not release. The record is the result.json the dispatcher wrote for the
-device's newest run (device_label == label), read by mtime.
+or the master sha given as MASTER_SHA, or a sha reachable from origin/master
+-- see _on_trunk below) and env []. A result with no `env` key predates the
+field, so the build it ran is not known to be master: it is not release.
+The record is the result.json the dispatcher wrote for the device's newest
+run (device_label == label), read by mtime.
 """
 import datetime
 import glob
 import json
 import os
+import subprocess
 import sys
 
 MASTER_REFS = ("master", "origin/master")
 RESTORE_REQUESTER = "dispatch.restore"
 RESTORE_SECONDS = 60
+
+
+def _repo_root():
+    """Best-effort repo path for _on_trunk's git calls.
+
+    DISPATCH_REPO, when the caller has one -- dispatcher.sh always does
+    ($REPO), even from the snapshot its worker re-execs into. Otherwise this
+    file's own location: right when it is the real jobs/device_build.py in
+    a checkout, which is how hold.sh runs it; wrong (no .git above it) for
+    the snapshot's copy, where the git call below just fails and ancestry
+    is not checked.
+    """
+    return os.environ.get("DISPATCH_REPO") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "..", "..")
+
+
+def _on_trunk(ref):
+    """True when ref names a commit reachable from origin/master.
+
+    request.sh resolves every --ref to a concrete sha AT QUEUE TIME, before
+    a request ever reaches the dispatcher (a request must name the tree the
+    requester meant, not "whatever HEAD is when this is served"). So a real
+    request's ref is never the literal string "master": only
+    restore_request() below ever writes that, straight into queue/, for the
+    dispatcher's own internal restore. Without this check, an ordinary
+    measurement run -- any plain run on trunk -- reads as non-release
+    forever, and queue_master_restore would queue a 60 s restore after
+    every single run, not only after a test build.
+    """
+    if not ref:
+        return False
+    try:
+        return subprocess.run(
+            ["git", "-C", _repo_root(), "merge-base", "--is-ancestor", ref,
+             "origin/master"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        ).returncode == 0
+    except OSError:
+        return False
 
 
 def build_of(rec):
@@ -41,9 +82,9 @@ def build_of(rec):
         return False, "its run (ref %s) predates the env field" % (ref or "?")
     if rec["env"]:
         return False, "ref %s with env %s" % (ref or "?", ", ".join(rec["env"]))
-    if ref not in MASTER_REFS and not (master_sha and ref == master_sha):
-        return False, "ref %s" % (ref or "?")
-    return True, "master"
+    if ref in MASTER_REFS or (master_sha and ref == master_sha) or _on_trunk(ref):
+        return True, "master"
+    return False, "ref %s" % (ref or "?")
 
 
 def last_run(dispatch_dir, label):
