@@ -2084,3 +2084,9 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/harnessfix1006/**", "docs/testing/jobs/device_build.py", "docs/testing/jobs/hold.sh", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/99-build-gate.sh"]
 note = "STARTED lane.local 2026-10-06 12:58 PDT (PM midday plan action 4): harness fix. Its dispatcher/result.json files are named in OUTBOX for a grant. Row added by hostops 13:0x PDT (jam duty, per lane.local's 12:58 request). Grant (hostops 2026-10-06T20:49Z): the four Files named in its OUTBOX section 1 (jam duty; lane.harnessfix1006 waiting on the grant)."
+
+[lane.dispatchgate1006]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/dispatchgate1006/**"]
+note = "STARTED lane.local 2026-10-06 16:55 PDT, owner order \"bulletproof controls on what gets dispatched\"; offline, no device; harness defect, dispatched directly with no GitHub issue. Row added by hostops 17:1x PDT (jam duty, per lane.local's 16:55 request). Further Files (docs/testing/titlestate.py, admit.py, dispatch_audit.py, plan_check.py) will be named in its OUTBOX for a grant."
