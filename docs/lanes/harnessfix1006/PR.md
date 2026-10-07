@@ -1,3 +1,4 @@
+# harnessfix1006: the Nova's runs record their build, and a test build never stays on it -- fixed the release check itself, which never matched a real run
 State: ready
 
 Lane: harnessfix1006            Issue: #433
