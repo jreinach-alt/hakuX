@@ -193,6 +193,17 @@ grant itself; the shim exercises the exact same sourced leg file with the same f
 contracts). `python3 docs/lanes/stuckdetect1007/stuckdetect.py selftest` and `... validate` were
 also run directly and pasted above.
 
+## preflight.sh
+
+`bash docs/testing/preflight.sh`: every step passes (`psh_differ build/report`, `aci_vmstate`,
+`nv2a index`, `territory`, `board files`) except `coverage`, which fails on 12 pre-existing open
+issues (#884, #883, #882, #881, #880, #879, #878, #877, #876, #875, #874, #873) that have neither
+a lane nor a `blocked_on` claim in `territory.toml` -- none of them #433, none of them touching a
+file this PR changes, and none created by this lane. `--allow-tracker` does not suppress this
+step (it only covers the separate "board files" step, which already passes here); fixing it
+would mean assigning 12 unrelated issues a lane or a blocked_on claim in `territory.toml`, which
+this lane may not edit. Reported here rather than worked around.
+
 ## Not done in this lane (by brief, and by territory)
 
 - `pathfind.py`/`drive.py` are not edited. `OUTBOX.md` names the exact integration points for
