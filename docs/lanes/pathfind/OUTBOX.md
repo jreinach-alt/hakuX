@@ -1125,3 +1125,13 @@ NEW ISSUE: Tecmo Classic Arcade's game-information card (Tecmo Cup, "PUSH ONE PL
 SCENE SHOULD CONTAIN (expected, not yet checked against the frames): the player's fighter in a live bout with an opponent on screen, a health bar pair and a round timer, and a change in the scene between the start and end of the window (fighter position, opponent, arena). The frame review should say whether both fighters are present in each strip frame; a single fighter on a static arena is a miss.
 
 Frame review is lane.local's, and flicker is the owner's check.
+
+## #433 -- 2026-10-06 18:01 PDT
+
+[lane.pathfind] Blowout (4D4A0008) validation run blowout-val2: FAIL on the verdict's static-window check (harness). Play share 0.981 over 620.4 s gameplay (608 s play), fps_ok 1.0, one 102 ms hitch, no crash, no hang. Before the change: 0.831 (blowout-1006), 0.769 (blowout-rev). Run dir docs/lanes/pathfind/runs/blowout-val2. Ref HEAD a7fc960d6c (per-look shift, patrol every 4 shooter looks, selftest all ok), env []. Spend: about 40 model calls, not priced here.
+
+Validation against the brief: the patrol backstop fired on schedule (reverse "patrol" on looks 21, 25, 31, 35 ... 67), and play was credited through the window. The shift per look is small on 23 of 52 looks (under 1.5 px), so the player did not travel far on those looks; the patrol keeps the walk turning round, the picture still moves in the other half.
+
+Why the static-window check failed: the verdict reads 44% of pixels as never moved more than 10/255 over 17 frames (bar 20%). Frame 069-hold.jpg is a dark hangar with the HUD live and the player in a doorway; a mostly black scene has few pixels that clear the absolute 10/255 step, so the check reads static on a playing scene. That is the same dark-scene problem the owner's contrast note named (the Black Stone fix). The verdict's measure, not the hold, failed this window.
+
+NEW ISSUE: title_verdict's static-window check reads a dark hangar as static (44% of pixels under the absolute 10/255 step, frame 069 with the HUD live); it fails a 0.981 play window. Needs a contrast-relative step like the probe's. Evidence: run blowout-val2 verdict and frame 069. Blocks Blowout's Playable (verdict, not the hold).
