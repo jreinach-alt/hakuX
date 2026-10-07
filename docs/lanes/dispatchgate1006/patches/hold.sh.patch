@@ -1,0 +1,44 @@
+--- a/docs/testing/jobs/hold.sh
++++ b/docs/testing/jobs/hold.sh
+@@ -199,6 +199,25 @@
+     printf 'run: hold.sh wait-idle %s <timeout_s>, and touch the device only on exit 0\n' "$label" >&2
+ }
+ 
++# THE DISPATCH GATE (docs/testing/dispatch_gate.py hold-check). A direct hold
++# that runs a title is a dispatch: it must carry an unexpired ALLOW token from
++# `dispatch_gate.py admit --via hold` for this device, issued to this tag (or
++# with the token in <why>), for the title id <why> names. SHADOW mode (the
++# default; pm/dispatch-gate.mode != enforce) logs an ungated hold to
++# pm/dispatch-log.tsv and refuses nothing. ENFORCE refuses it (exit 3), except
++# the non-dispatch holds the gate exempts (host update window, charging, the
++# Thor's fan-wait park, the owner's playtest). In shadow a gate that cannot
++# run refuses nothing either: pathfind's holds must never be refused by it.
++gate_check() {   # <label> <tag> <why> ; 0 = take may proceed
++    local gate root
++    gate="$(dirname "$0")/../dispatch_gate.py"
++    root="$(dirname "$D")"
++    [ -f "$gate" ] || return 0
++    python3 "$gate" hold-check --root "$root" --device "$1" --tag "$2" --why "$3" && return 0
++    [ "$(python3 "$gate" mode --root "$root" 2>/dev/null)" = enforce ] && return 1
++    return 0
++}
++
+ [ $# -ge 2 ] || usage
+ op=$1 label=$2
+ valid label "$label"
+@@ -209,6 +228,7 @@
+     take)
+         [ $# -ge 4 ] || usage
+         valid tag "$3"
++        gate_check "$label" "$3" "${*:4}" || exit 3
+         hold_py take "$label" "$3" "${*:4}" || exit $?
+         notice_idle ;;
+     wait-idle)
+@@ -237,6 +257,7 @@
+         valid tag "$3"
+         [[ "$4" =~ ^[0-9]+$ ]] || { echo "hold.sh: timeout '$4' is not whole seconds" >&2; exit 2; }
+         deadline=$(( $(date +%s) + $4 ))
++        gate_check "$label" "$3" "${*:5}" || exit 3
+         while :; do
+             hold_py take "$label" "$3" "${*:5}" 2>/dev/null && { notice_idle; exit 0; }
+             rc=$?

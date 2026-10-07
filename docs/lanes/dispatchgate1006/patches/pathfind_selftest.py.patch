@@ -1,0 +1,38 @@
+--- a/docs/testing/titles/pathfind_selftest.py
++++ b/docs/testing/titles/pathfind_selftest.py
+@@ -719,5 +719,35 @@
+ check("football", not any(pathfind.football_deferred(n, f) for n, f in _fb), "PATHFIND_FOOTBALL=1 lifts the deferral")
+ os.environ.pop("PATHFIND_FOOTBALL", None)
+ 
++# the dispatch gate at pathfind's intake (dispatchgate1006): it asks admit() with --via hold, its own path or
++# `discovery`, and never reads back the device on a dry run; a deny stops main() only when the gate says so
++# (exit != 0, i.e. enforce mode), a shadow deny prints and goes on.
++_calls = []
++_real_run = pathfind.subprocess.run
++
++
++def _fake_gate(rc, text):
++    def run(cmd, **kw):
++        _calls.append(cmd)
++        return types.SimpleNamespace(returncode=rc, stdout=text, stderr="")
++    return run
++
++
++_ga = types.SimpleNamespace(gate_caller="lane.pathfind", dispatch_class="PLAYABLE_ATTEMPT", build="6cef37f426",
++                            valid_end="valid-verdict", hold_s=600, budget_min=15, because=["fix:ab8788c38b"], order=None)
++pathfind.subprocess.run = _fake_gate(0, "SHADOW-DENY 54430001 PLAYABLE_ATTEMPT on nova\n  - matrix: below the bar")
++_ok_sh, _lines_sh = pathfind.dispatch_gate("54430001", "Dead or Alive 3", "nova", _ga)
++pathfind.subprocess.run = _fake_gate(2, "DENY 54430001 PLAYABLE_ATTEMPT on nova\n  - matrix: below the bar")
++_ok_en, _lines_en = pathfind.dispatch_gate("54430001", "Dead or Alive 3", "nova", _ga)
++_n = len(_calls)
++_ok_dry, _ = pathfind.dispatch_gate("54430001", "Dead or Alive 3", "nova", _ga, dry_run=True)
++pathfind.subprocess.run = _real_run
++_c = _calls[0] if _calls else []
++check("dispatchgate", _ok_sh and not _ok_en and "--via" in _c and _c[_c.index("--via") + 1] == "hold"
++      and "--readback" in _c and _c[_c.index("--class") + 1] == "PLAYABLE_ATTEMPT"
++      and any(x.startswith("path:") or x == "discovery" for x in _c) and _ok_dry and len(_calls) == _n,
++      "shadow deny goes on, enforce deny stops; --via hold, the class, an input sequence, the APK read back; "
++      "a dry run never asks the gate (it would log a simulated run)")
++
+ print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))
+ sys.exit(1 if fails else 0)
