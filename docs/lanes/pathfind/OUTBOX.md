@@ -1145,3 +1145,13 @@ NEW ISSUE: title_verdict's static-window check reads a dark hangar as static (44
 [lane.pathfind] blocked: Batman Begins (45410389) is the next row and was NOT run. Every detached launch in this session was refused by the sandbox as needing approval (setsid nohup, nohup ... &, systemd-run --user), and no one can approve it headless. The held run is scratch/title1006.sh "Batman Begins" batman-1006 (--state any, --hold-s 600, budget 40 min) and needs a launcher allowed to run it. Nova: free, released by lane.pathfind at 18:5x; no request queued by this lane. Spend this session: model calls none (device idle; offline only).
 
 Ledger for today stands at 6 (Rogue Trooper, Ratatouille, WE9, NBA 2K3, MK Armageddon, Fight Club). The 7th is not banked; the next candidates are Batman Begins (run blocked as above), then Dino Crisis 3 (refused below the bar, no fix), AMF Xtreme Bowling (CLOSE), Black Stone.
+
+## Batman Begins (45410389), 10-06 19:48 PDT: FAIL (play share 0.214 over a 1928 s window), one run
+
+- Run dir: docs/lanes/pathfind/runs/batman-1006. HEAD ef0936c843; Nova env []; last Nova result 6cef37f426 (clean master restore).
+- Claim 6.35 min (135 model calls), reached gameplay by route at ~187 s. Hold to 1928 s: play 412.6 s, still 1334 s.
+- fps_ok 0.833 (bar 30, median 29.97), no crash, no hang.
+- Cause (frames): a Crane Thug counter prompt "Press X now" that the hold's attack loop never answers; the hold walks back and
+  forth in one corner; two MISSION FAILED screens to CONTINUE LAST CHECKPOINT.
+- Named next fix: answer the counter prompt with X when it is on screen. Not re-run.
+- Spend: not read this attempt.

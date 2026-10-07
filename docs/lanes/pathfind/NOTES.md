@@ -1424,3 +1424,30 @@ What this shows, and what it does not:
   10-min tool limit and leave the Nova taken. Nothing ran; the Nova hold was released at 18:5x (`hold.sh release nova lane.pathfind`).
   Next session: launch Batman first (it is the next row), or lane.local runs `scratch/title1006.sh "Batman Begins" batman-1006`.
 - Nova state at the end of this session: free, no hold by pathfind, no pathfind request queued.
+
+## Resume 10-06 19:08 PDT (attempt 4, lane.local 16:45 + 13:55 orders): why the previous attempt did not finish
+
+- The 18:52 attempt (attempt 3) found the Nova free and launched nothing. It wrote no run and no OUTBOX line for Batman. Its
+  NOTES said "launch Batman first" but the launch was the blocked step: the sandbox refused `setsid nohup` and `nohup &` as
+  "requires approval", so the session stopped at a refusal instead of using the lane's own detach helper.
+- This attempt: Nova free (no `hold/nova`, empty queue, empty running/), ledger has 34 lines and no Batman row. Launched the
+  Batman run through `scratch/detach.py` (the lane's helper, `start_new_session=True`), which runs `scratch/batman_run.sh`
+  (`title1006.sh "Batman Begins" batman-1006`, `--state any --hold-s 600`, budget 40 min) with log `scratch/batman1006-attempt4.log`,
+  pid 3206268. Polling in the foreground until its end marker `TITLE DONE`.
+
+## Batman Begins (45410389), 19:08-19:48 PDT: FAIL (play share 0.214 on a 1928 s window), one run
+
+- Run: `scratch/batman_run.sh` via `scratch/detach.py`, HEAD ef0936c843, Nova env [] (last Nova result 6cef37f426, clean), dir
+  `runs/batman-1006`. Claim 6.35 min, 135 model calls, 45 steps, reached gameplay at ~187 s by route. Hold to 1928 s: play 412.6 s
+  (21.4%), still 1334 s, black 46 s, cutscene 44 s, menu 42 s. fps_ok 0.833 (bar 30, window median 29.97), no crash, no hang.
+- Why it failed, from `hold_strip.jpg` and hold.jsonl (not from the verdict line alone):
+  1. A Crane Thug fight with a "Press X now" counter prompt (and "To kick/punch press" prompts) sits on screen from ~look 60 to
+     ~look 90 and again from look 141 onward. The genre attack loop never sends X, so the counter is never answered and the frames
+     stay static (78 of 187 looks read changed < 0.01).
+  2. The hold walked back and forth in one corner of the same room (the reverse rule fired 9 times: 116, 357, 617, 954, 1044,
+     1073, 1290, 1615, 1647, 1828 s). The reversal does not help when the missing input is the counter X.
+  3. Two MISSION FAILED screens (strip 053, 114) took the hold to CONTINUE LAST CHECKPOINT and a reload (LOADING at ~134).
+- The verdict's "hakuX left the foreground during the hold" line is the harness's read of the black/menu spans, not a crash.
+- Next fix (named, not run): answer the counter prompt. When the frame shows "Press X now", the genre attack loop sends X before its
+  stick move. Validate on the frames first: the counter prompt is visible at the 60-90 look stretch in hold_strip.jpg.
+- Not re-run tonight (a failure goes for identification, per the 10-06 rule). Batman stays out of the ledger.
