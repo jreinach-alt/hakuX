@@ -729,6 +729,35 @@ check("football", all(pathfind.football_deferred(n, f) for n, f in _fb) and not 
 os.environ["PATHFIND_FOOTBALL"] = "1"
 check("football", not any(pathfind.football_deferred(n, f) for n, f in _fb), "PATHFIND_FOOTBALL=1 lifts the deferral")
 os.environ.pop("PATHFIND_FOOTBALL", None)
+# below the bar (owner order 10-06 16:45): a title whose latest verdict is under 0.9 with no fix is refused in code,
+# a committed fix or PATHFIND_BELOW_BAR=1 lifts it, and seeding keeps the cause and fix of a row it already has
+_bb = tempfile.mkdtemp(prefix="pf_belowbar_")
+_tsv = os.path.join(_bb, "below-bar.tsv")
+with open(_tsv, "w") as f:
+    f.write("\t".join(pathfind.BELOW_BAR_COLS) + "\n")
+    f.write("\t".join(["Dino Crisis 3", "", "0.3793", "runs/dino/verdict.json", "2026-10-04T04:44", "slowdown", ""]) + "\n")
+    f.write("\t".join(["Blowout", "4D4A0008", "0.9000", "runs/b/verdict.json", "2026-10-06", "", "abc123"]) + "\n")
+    f.write("\t".join(["Tork: Prehistoric Punk", "", "1.0000", "runs/t/verdict.json", "2026-10-05", "", ""]) + "\n")
+os.environ.pop("PATHFIND_BELOW_BAR", None)
+check("below-bar", pathfind.below_bar_refusal(None, "Dino Crisis 3", _tsv) is not None,
+      "a row under 0.9 with no fix refuses its title, and the refusal names the cause")
+check("below-bar", pathfind.below_bar_refusal("4D4A0008", "Blowout", _tsv) is None,
+      "a fix commit lifts the refusal, and a share at the bar is not below it")
+check("below-bar", pathfind.below_bar_refusal(None, "Tork Prehistoric Punk", _tsv) is None,
+      "a title whose latest verdict clears the bar is not refused")
+check("below-bar", pathfind.below_bar_refusal(None, "Mario Kart", _tsv) is None,
+      "a title with no row is not refused")
+os.environ["PATHFIND_BELOW_BAR"] = "1"
+check("below-bar", pathfind.below_bar_refusal(None, "Dino Crisis 3", _tsv) is None, "PATHFIND_BELOW_BAR=1 lifts it for telemetry")
+os.environ.pop("PATHFIND_BELOW_BAR", None)
+_runs = os.path.join(_bb, "runs")
+for _d, _j, _s in [("old", "2026-10-03T10:00Z", 0.3), ("new", "2026-10-04T10:00Z", 0.95)]:
+    os.makedirs(os.path.join(_runs, _d))
+    json.dump({"title": "Dino Crisis 3", "fps_ok_share": _s, "judged_utc": _j}, open(os.path.join(_runs, _d, "verdict.json"), "w"))
+_seeded = pathfind.seed_below_bar(_runs, _tsv)
+check("below-bar", len(_seeded) == 1 and _seeded[0]["fps_ok_share"] == "0.9500" and _seeded[0]["cause"] == "slowdown",
+      "seeding keeps the latest verdict per title and the cause already recorded on its row")
+shutil.rmtree(_bb)
 
 print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))
 sys.exit(1 if fails else 0)

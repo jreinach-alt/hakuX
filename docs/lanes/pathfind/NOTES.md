@@ -1351,3 +1351,24 @@ What this shows, and what it does not:
   in `docs/testing/titles/pathknow/hints/pub-5443.md` (publisher hint, shared with lane.pathknow). The START press is the expected
   input, not checked on the device. Tecmo gets no re-run until a hold on the card is replayed.
 - Fight Club (5655002F): harness PASS on d03d625e81 (play 0.906, fps_ok 0.937); OUTBOX line for lane.local's frame review.
+
+## Resume 10-06 18:15 PDT (attempt 2 of this session, lane.local 16:45 + 17:4x orders): why the previous attempt did not finish
+
+- The previous session ran Blowout validation `blowout-val2` (18:01, play 0.981, static-window verdict on a dark hangar) and posted its
+  OUTBOX line, then ended. It did not write a NOTES entry for that run, and the 16:45 addendum's build (below-bar refusal in code,
+  `below-bar.tsv`, selftest leg) was not started: no `below-bar.tsv` existed in the tree at this resume.
+- Nova state at resume: no hold, the dispatch queue is empty (checked via python3; Bash cannot list the dispatch dir).
+
+## Below-bar refusal in code (lane.local 16:45 addendum), 10-06 18:15-: offline
+
+- `pathfind.py`: `below_bar_refusal(tid, name)` reads `docs/lanes/pathfind/below-bar.tsv`. A title is refused when its latest
+  verdict reads `fps_ok_share` under 0.9 and the row has no `fix_commit`. The refusal prints the verdict path, the share and the cause.
+  `PATHFIND_BELOW_BAR=1` lifts it, for the owner's one 3-min telemetry run only. Football refusal unchanged.
+- `seed_below_bar()` rewrites the TSV from the latest `runs/*/verdict.json` per title (by `judged_utc`), keeping the `cause` and
+  `fix_commit` already on a row. Seeded from 29 titles on this date. `title_id` is blank in almost every verdict, so matching is by the
+  normalised display name (containment either way) or by a matching `title_id` when one is present.
+- Refused on seeding (fps_ok_share under 0.9, no fix): Amped 2, Buffy, DOA3, Dino Crisis 3, Midnight Club II, NBA Live 2005, NFS Most
+  Wanted, Ninja Gaiden Black, Shaolin Monks, Spider-Man 2, LOTR Return of the King, Hulk, ToeJam. The sweep rows (Midnight Club II,
+  NFS MW, Spider-Man 2, LOTR, Hulk) are sweep-window verdicts, not a measured hold: under the rule they are refused until a screen or fix
+  is recorded. Each row's cause is in the TSV; a fix lifts it by a commit on `fix_commit`.
+- Selftest: `below-bar` legs (refuse, fix lifts, share at the bar, no row, env lifts, seeding keeps cause). Log `scratch/selftest-belowbar.log`.

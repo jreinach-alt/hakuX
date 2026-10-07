@@ -713,6 +713,73 @@ def football_deferred(name, iso):
     return bool(FOOTBALL.search(text))
 
 
+# Owner order 10-06 16:45 (lane.local): a title whose latest verdict is below the bar with no committed fix is refused,
+# not hand-listed. The TSV is the record: one row per title (latest verdict by judged_utc), with the cause and the
+# fix commit that lifts the refusal. seed_below_bar() rewrites the verdict columns from runs/*/verdict.json and keeps
+# the cause and fix columns of every row it already has.
+LANE_DIR = os.path.join(HERE, "..", "..", "lanes", "pathfind")
+BELOW_BAR_TSV = os.path.join(LANE_DIR, "below-bar.tsv")
+BELOW_BAR_RUNS = os.path.join(LANE_DIR, "runs")
+BELOW_BAR_SHARE = 0.9
+BELOW_BAR_COLS = ["title", "title_id", "fps_ok_share", "verdict", "judged_utc", "cause", "fix_commit"]
+
+
+def below_bar_rows(path=BELOW_BAR_TSV):
+    try:
+        lines = [ln.rstrip("\n") for ln in open(path) if ln.strip() and not ln.startswith("#")]
+    except OSError:
+        return []
+    head = lines[0].split("\t") if lines else []
+    return [dict(zip(head, ln.split("\t"))) for ln in lines[1:]] if head == BELOW_BAR_COLS else []
+
+
+def below_bar_refusal(tid, name, path=BELOW_BAR_TSV):
+    """Why a title is refused for a below-bar latest verdict with no fix, or None. PATHFIND_BELOW_BAR=1 lifts it for a
+    telemetry run (owner rule: one 3-min perflog run on a title that has shown it will not clear)."""
+    if os.environ.get("PATHFIND_BELOW_BAR") == "1":
+        return None
+    want = norm(name)
+    for r in below_bar_rows(path):
+        key = norm(r.get("title", ""))
+        same_id = bool(tid) and r.get("title_id") == tid
+        if not (same_id or (key and want and (key in want or want in key))):
+            continue
+        share = float(r.get("fps_ok_share") or 1.0)
+        if share >= BELOW_BAR_SHARE or r.get("fix_commit"):
+            return None
+        return (f"{r['title']}: latest verdict {r['verdict']} reads fps_ok_share {share:.3f} (bar {BELOW_BAR_SHARE}); "
+                f"cause: {r.get('cause') or 'none recorded yet'}. No fix is committed; PATHFIND_BELOW_BAR=1 is for a telemetry run only")
+    return None
+
+
+def seed_below_bar(runs=BELOW_BAR_RUNS, path=BELOW_BAR_TSV):
+    """Rewrite the TSV from the latest runs/*/verdict.json per title, keeping cause and fix_commit already recorded."""
+    kept = {r.get("title", ""): r for r in below_bar_rows(path)}
+    latest = {}
+    for vp in glob.glob(os.path.join(runs, "*", "verdict.json")):
+        try:
+            v = json.load(open(vp))
+        except (OSError, ValueError):
+            continue
+        title = v.get("title") or v.get("name") or os.path.basename(os.path.dirname(vp))
+        k = norm(title)
+        if k not in latest or str(v.get("judged_utc") or "") > latest[k][1]:
+            latest[k] = (v, str(v.get("judged_utc") or ""), vp, title)
+    rows = []
+    for k, (v, judged, vp, title) in sorted(latest.items()):
+        old = kept.get(title, {})
+        share = v.get("fps_ok_share")
+        rows.append({"title": title, "title_id": v.get("title_id") or old.get("title_id", ""),
+                     "fps_ok_share": "" if share is None else f"{share:.4f}",
+                     "verdict": os.path.relpath(vp, os.path.join(LANE_DIR, "..", "..", "..")),
+                     "judged_utc": judged, "cause": old.get("cause", ""), "fix_commit": old.get("fix_commit", "")})
+    with open(path, "w") as f:
+        f.write("\t".join(BELOW_BAR_COLS) + "\n")
+        for r in rows:
+            f.write("\t".join(str(r[c]).replace("\t", " ") for c in BELOW_BAR_COLS) + "\n")
+    return rows
+
+
 def blocked(tid, name):
     try:
         for line in open(BLOCKED):
@@ -2240,6 +2307,9 @@ def main(argv=None):
     if football_deferred(name, iso):
         sys.exit(f"pathfind: {name} is a football title and football goes last (owner order 10-05 12:35); "
                  "take the next non-football title in briefs/pathfind.md, or set PATHFIND_FOOTBALL=1 when lane.local lifts it")
+    below = below_bar_refusal(tid, name)
+    if below:
+        sys.exit(f"pathfind: refused, below the bar (owner order 10-06 16:45): {below}")
     if a.hold_s and dev.label == "thor":
         sys.exit("pathfind: --hold-s is Nova only: the Thor's fan is dead and it stops within 30 s of a claim")
     print(f"pathfind: {name} ({tid}) on {dev.label}: {iso}", flush=True)
