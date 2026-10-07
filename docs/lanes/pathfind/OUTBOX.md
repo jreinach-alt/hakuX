@@ -1093,3 +1093,19 @@ NEW ISSUE: Marvel Nemesis spent 400 s of a 1074-s window in menus (rematch/resul
 [lane.pathfind] Guilty Gear XX #Reload (53410002) FAIL (play share, harness): 906 s scored; play 603 s, menu 109 s, still 91 s, game over 64 s (share 0.665 at bar 0.90). fps_ok 1.0 at 28.5, no crash, no hang. Ref HEAD 4b0f82702e, env []. Run dir docs/lanes/pathfind/runs/guiltygear-1006. The CHARSEL change got the round started, which is the 10-04 miss; the continue, game-over and still time is the cost now, not the select screen. Spend: about 40 model calls, not priced here.
 
 NEW ISSUE: Guilty Gear XX holds 109 s in menus, 91 s still and 64 s game over in a 906-s window (play 0.665). Evidence: run guiltygear-1006, verdict. Blocks Guilty Gear's Playable.
+
+## #433 -- 2026-10-06 16:42 PDT
+
+[lane.pathfind] Dead or Alive 3 (54430001) DIVERGED (no hold, no verdict): 7.8 min, 38 model calls, 41 steps, 0 replayed. The claim read live rounds (round-start banner, a YOU LOSE banner at 440 s), then the probe at 465 s and the replay check at step 0 read a loading logo and aborted ("replay diverged at recorded step 0"). Run dir docs/lanes/pathfind/runs/doa3-rev. Ref HEAD d03d625e81 (reverse rule), env []. Not re-run: the failure is the recorded-path check at step 0 on a logo screen, to be identified from the frames. Spend: about 38 model calls, not priced here.
+
+NEW ISSUE: DOA3 replay check fails at recorded step 0 on a loading logo: the path's first step is a title-screen step and the screen at that moment is a centred green logo on white; the diverged abort then ends the claim with live rounds on screen. Evidence: run doa3-rev, steps 60-63. Blocks DOA3's Playable.
+
+## #433 -- 2026-10-06 17:03 PDT
+
+[lane.pathfind] Blowout (4D4A0008) reverse-rule validation run (blowout-rev): FAIL (play share, harness). Scored 1052.7 s; play 810 s, still 225 s, other 12 s, pause 6 s (share 0.769 at bar 0.90). fps_ok 1.0 at 28.5, no crash, no hang. Ref HEAD d03d625e81 (reverse rule), env []. Compare blowout-1006 (same title, before the rule): share 0.831, still 236 s.
+
+The reverse rule fired ONCE (look n=25, hold_s 59.9). The per-look change on this run was mostly above 0.01 (the trigger needs three looks in a row at or under 0.01), so the rule had little to act on; this run does not validate it. Flat play with changed > 0.01: 18 looks (n=54-100). Those seconds are the parked still credit, not per-look pixel change: play_s is only credited while the hold is not parked, and a 30-s kept-frame window below HOLD_STILL parks it, so a scene that changes per look but holds still over the window earns no play. That is a separate cause from the reverse rule and is not fixed.
+
+Run dir docs/lanes/pathfind/runs/blowout-rev (hold.jsonl, verdict.json, hold_strip.jpg). Spend: about 40 model calls, not priced here.
+
+NEW ISSUE: Blowout's parked-still credit: 225 s of a 1052-s window read still while the per-look change was 0.02-0.27 (n=54-100). The play share is short because the window-level still rule parks play credit, and the reverse rule (per-look trigger) does not reach it. Evidence: run blowout-rev, hold.jsonl n=54-100. Blocks Blowout's Playable.

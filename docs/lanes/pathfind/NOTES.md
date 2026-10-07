@@ -1303,3 +1303,19 @@ What this shows, and what it does not:
 - Selftest: `reverse-trigger` and `reverse-stop` added; `titlehold` accepts the reversed walk and its moves (it expected the
   forward walk only). Full selftest: all ok (`scratch/selftest-reverse2.log`).
 - Device validation (one run): DOA3 (54430001), walking genre, next in the order.
+
+## Excluded from the order (lane.local via hakux-eb, 10-06 16:50)
+
+- DOA3 (54430001) and Dino Crisis 3 are excluded: below bar on their own verdicts (runs/retro-doa3 fps_ok 0.439; Dino Crisis 3
+  hold fps_ok 0.379, 10-03). Telemetry and a fix, never another confirmation run (10-03 owner rule).
+- The DOA3 run `doa3-rev` (16:34-16:42) had already ended as DIVERGED before this order; nothing was stopped.
+- Rule from here: before any title, read its latest `runs/*/verdict.json` fps_ok_share; skip it if under 0.9 with no committed fix.
+- Validation: the Blowout run `blowout-rev` (4D4A0008) is the reverse-rule validation, to compare against `blowout-1006`.
+
+## Blowout validation run (blowout-rev, 16:35-17:03 PDT): reverse rule NOT validated
+
+- Reverse rule fired once (n=25, hold_s 59.9). Per-look change was mostly above 0.01, so the three-look trigger had little to act on.
+- Share 0.769 (play 810 s of 1052.7 s; still 225 s), against 0.831 before the rule (blowout-1006). Not a validation; not a gain.
+- Cause of the flat-play stretches with changed > 0.01 (n=54-100): the hold parks play credit on the 30-s kept-frame window
+  (`still_window`), not on the per-look change. The reverse rule reads the per-look change, so it does not reach them.
+  Separate problem, filed as a NEW ISSUE in OUTBOX.
