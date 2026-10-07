@@ -737,9 +737,102 @@ def _req_from_args(a):
     return req
 
 
+# Holds that are not dispatches: the host's update window, charging, the Thor's
+# fan-wait park, the owner's playtest. Enforcement exempts them; lane.local
+# confirms the list before writing `enforce` (NOTES, "hold.sh").
+NON_DISPATCH_TAGS = re.compile(r"^(hostupd-|lanelocal-fanwait$|lanelocal-topup|charge-|playtest)")
+TID_IN_TEXT = re.compile(r"\b([0-9A-F]{8})\b")
+
+
+def hold_check(ctx, device, tag, why):
+    """hold.sh take's call site. A direct hold on a handheld is a dispatch when it
+    runs a title, so it must carry an unexpired ALLOW token for this device whose
+    caller is the taker (or whose token text is in the why), and -- when the why
+    names a title id -- for that title. Shadow: log what would be refused, exit 0.
+    Enforce: exit 3 (hold.sh's "refused") unless the tag is a non-dispatch hold."""
+    rows = TR.read_tsv(ctx.log)
+    named = set(TID_IN_TEXT.findall(why or ""))
+    cat = TR.build_catalog(ctx.p)
+    named = {cat.canonical(t) for t in named}
+    found = None
+    for r in reversed(rows):
+        if r.get("decision") != "ALLOW" or r.get("device") != device:
+            continue
+        tok = r.get("token") or ""
+        if r.get("caller") != tag and tok not in (why or ""):
+            continue
+        parts = tok.split()
+        exp = TR.parse_utc(parts[5]) if len(parts) == 8 else None
+        if not exp or exp < ctx.now:
+            continue
+        if named and r.get("title_id") not in named:
+            continue
+        found = r
+        break
+    mode = ctx.mode()
+    if found:
+        _append_log(ctx, dict(utc=TR.iso_z(ctx.now), decision="HOLD-GATED", mode=mode, caller=tag, via="hold",
+                              title_id=found.get("title_id"), device=device, reasons="token " + found.get("token", "")[:60]))
+        return 0
+    exempt = bool(NON_DISPATCH_TAGS.match(tag or ""))
+    why_no = ("no unexpired ALLOW token in dispatch-log.tsv for device %s and caller %s%s"
+              % (device, tag, (" naming " + ",".join(sorted(named))) if named else ""))
+    dec = "HOLD-EXEMPT" if exempt else ("SHADOW-HOLD-UNGATED" if mode != "enforce" else "HOLD-DENY")
+    _append_log(ctx, dict(utc=TR.iso_z(ctx.now), decision=dec, mode=mode, caller=tag, via="hold",
+                          title_id=",".join(sorted(named)), device=device, reasons=why_no + "; why: " + (why or "")[:200]))
+    if exempt or mode != "enforce":
+        if not exempt:
+            print("dispatch gate (shadow): hold %s by %s has no gate token: %s" % (device, tag, why_no), file=sys.stderr)
+        return 0
+    print("dispatch gate: refusing the hold: %s (run dispatch_gate.py admit --via hold first)" % why_no, file=sys.stderr)
+    return 3
+
+
+def admit_request(ctx, a):
+    """request.sh's call site: the queued request JSON (a.arg) supplies title, device,
+    ref, seconds and env; the gate flags supply class, evidence, input sequence, valid
+    end and order. ALLOW writes `gate_token` into the request. In shadow mode it
+    always exits 0; in enforce mode a DENY exits 2 and request.sh does not queue."""
+    rq = json.load(open(a.arg))
+    if not rq.get("title"):
+        return 0                        # a disc request: no title, nothing to admit
+    env = {}
+    for e in rq.get("env") or []:
+        if "=" in e:
+            k, v = e.split("=", 1)
+            env[k] = v
+    req = {"title": rq.get("title_id") or rq.get("title"), "device": rq.get("device") or a.device or "", "build": rq.get("ref") or "",
+           "seconds": rq.get("seconds") or 0, "env": env, "declared_env": a.declare or [],
+           "caller": a.caller or rq.get("requester") or "", "via": "request"}
+    if a.cls:
+        req["class"] = a.cls
+    for k in ("because", "input_seq", "valid_end", "order", "plan"):
+        v = getattr(a, k)
+        if v:
+            req[k] = v
+    if not req.get("input_seq") and rq.get("route_name"):
+        req["input_seq"] = "route:" + rq["route_name"]
+    d = admit(ctx, req, shadow=True if a.shadow else None)
+    if d.allow:
+        rq["gate_token"] = d.token
+        tmp = a.arg + ".gate"
+        with open(tmp, "w") as f:
+            json.dump(rq, f, indent=1)
+        os.replace(tmp, a.arg)
+        print("dispatch gate: ALLOW %s" % d.token, file=sys.stderr)
+        return 0
+    print("dispatch gate: %s %s %s on %s" % ("SHADOW-DENY (logged, not refused)" if d.mode == "shadow" else "DENY",
+                                             (d.row or {}).get("title_id", req["title"]), req.get("class"),
+                                             req["device"] or "any"), file=sys.stderr)
+    for r in d.reasons:
+        print("  - " + r, file=sys.stderr)
+    return 0 if d.mode == "shadow" else 2
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="dispatch admission control")
-    ap.add_argument("cmd", choices=["admit", "verify", "plan-check", "skip", "mode"])
+    ap.add_argument("cmd", choices=["admit", "admit-request", "hold-check", "verify", "plan-check", "skip", "mode"])
+    ap.add_argument("--tag")
     ap.add_argument("arg", nargs="?")
     ap.add_argument("--root", default=TR.DEFAULT_ROOT)
     ap.add_argument("--json")
@@ -768,7 +861,7 @@ def main(argv=None):
     if a.cmd == "mode":
         print(ctx.mode())
         return 0
-    if a.cmd in ("admit", "plan-check") and not a.no_refresh:
+    if a.cmd in ("admit", "admit-request", "plan-check") and not a.no_refresh:
         ok, _ = TR.freshness(ctx.p, ctx.registry_path)
         if not ok:
             rows, _, oi = TR.build(ctx.p)
@@ -785,6 +878,10 @@ def main(argv=None):
         for r in d.reasons:
             print("  - " + r)
         return 0 if d.mode == "shadow" else 2
+    if a.cmd == "admit-request":
+        return admit_request(ctx, a)
+    if a.cmd == "hold-check":
+        return hold_check(ctx, a.device or "", a.tag or "", a.why or "")
     if a.cmd == "verify":
         ok, why = verify_token(ctx, a.arg, a.title, a.device)
         print(("VALID " if ok else "INVALID ") + why)

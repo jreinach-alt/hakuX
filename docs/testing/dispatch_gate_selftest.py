@@ -462,6 +462,53 @@ def main():
         os.remove(lctx.log)
         mode_default = lctx.mode()
         check("mode is shadow until lane.local writes enforce", mode_default == "shadow", False, mode_default)
+
+        print("== call sites: request.sh (admit-request) and hold.sh take (hold-check)")
+        rq = os.path.join(tmp, "req.json")
+
+        def admit_request(mode, title_id, cls, extra=()):
+            with open(rq, "w") as f:
+                json.dump({"id": "x", "requester": "lane.pathfind", "title": "x.iso", "title_id": title_id,
+                           "device": "nova", "ref": BUILD, "seconds": 900, "env": [], "route_name": ""}, f)
+            with open(lctx.modefile, "w") as f:
+                f.write(mode)
+            argv = ["admit-request", rq, "--root", tmp, "--no-refresh", "--class", cls,
+                    "--because", "verdict:wt/pathfind/docs/lanes/pathfind/runs", "--valid-end", "valid-verdict"] + list(extra)
+            real = G.Ctx
+            G.Ctx = lambda root, readback=None: FakeCtx(root, now=NOW)
+            try:
+                with contextlib.redirect_stderr(open(os.devnull, "w")):
+                    rc = G.main(argv)
+            finally:
+                G.Ctx = real
+            return rc, json.load(open(rq)).get("gate_token")
+        lctx = rebuilt(tmp)
+        rc_sh, _ = admit_request("shadow", "54430001", "PLAYABLE_ATTEMPT", ["--input-seq", seq(lctx, "54430001")])
+        rc_en, _ = admit_request("enforce", "54430001", "PLAYABLE_ATTEMPT", ["--input-seq", seq(lctx, "54430001")])
+        rc_ok, tok = admit_request("enforce", "5655002F", "SCREEN", ["--input-seq", "discovery"])
+        check("admit-request: DOA3 queued in shadow (exit 0), refused in enforce (exit 2)",
+              rc_sh == 0 and rc_en == 2, rc_sh == rc_en, "shadow %s, enforce %s" % (rc_sh, rc_en))
+        check("admit-request: an allowed SCREEN writes gate_token into the request", rc_ok == 0 and bool(tok), False,
+              (tok or "")[:40])
+        hc = lambda tag, why: G.hold_check(FakeCtx(tmp, now=NOW), "nova", tag, why)   # noqa: E731
+        with open(lctx.modefile, "w") as f:
+            f.write("enforce")
+        r_untok = hc("lane.pathfind", "pathfind 54430001 one run, 600 s hold")
+        r_exempt = hc("hostupd-123", "host update window")
+        G.admit(FakeCtx(tmp, now=NOW), dict(req(lctx, "5655002F", "SCREEN", input_seq="discovery"), caller="lane.pathfind"),
+                shadow=False)
+        r_tok = hc("lane.pathfind", "pathfind 5655002F first run")
+        r_other = hc("lane.pathfind", "pathfind 54430001 one run")
+        with open(lctx.modefile, "w") as f:
+            f.write("shadow")
+        r_shadow = hc("lane.pathfind", "pathfind 54430001 one run, 600 s hold")
+        log3 = TR.read_tsv(lctx.log)
+        check("hold-check (enforce): no token -> 3; token for the title -> 0; token for another title -> 3; "
+              "host hold exempt", (r_untok, r_tok, r_other, r_exempt) == (3, 0, 3, 0), r_untok == 0,
+              "untok %s tok %s other %s exempt %s" % (r_untok, r_tok, r_other, r_exempt))
+        check("hold-check (shadow): refuses nothing, logs SHADOW-HOLD-UNGATED",
+              r_shadow == 0 and log3[-1]["decision"] == "SHADOW-HOLD-UNGATED", r_shadow != 0,
+              log3[-1]["decision"])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
