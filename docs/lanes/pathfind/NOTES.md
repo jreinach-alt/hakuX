@@ -1333,3 +1333,21 @@ What this shows, and what it does not:
 - Conclusion: a per-look pixel threshold cannot separate the n=53-56 stall from a walk that is moving. The trigger needs the
   structural still (scene shift, which still_window uses on kept frames). hold.jsonl does not log a per-look shift, so the replay
   test cannot run on existing data. Next: log the per-look shift in hold.jsonl, gate the trigger on shift and change, validate.
+
+## Per-look structural shift and the patrol backstop (lane.local/hakux-eb 17:4x), 10-06 offline, no device
+
+- `hold.jsonl` now carries `shift_look` on every look that has a previous frame: `scene_shift(last_png, png)`, the same
+  phase-correlation shift `still_window` uses on kept frames. Logged only; the trigger does not read it yet. The next run's
+  logs can be replayed against it (the stall rows, n=53-56 on blowout-rev, should read small shift).
+- Patrol backstop: `patrol_due(looks)` is True every `PATROL_EVERY` (4) play looks. On the shooter genre (not a title hold) the
+  walk turns round on each such look (`flipped` toggles; look logs `reverse: "patrol"`). Two turns return the walk to where it
+  started. The reverse-on-still trigger (`reverse_trigger`, d03d625e81) stays as it was.
+- Selftest: `patrol` leg (cadence 4, 8, 12; reversed at look 4; back at look 8). Mutant with the periodic turn removed: RED
+  (`scratch/mutant_patrol.py`). Full selftest: all ok (`scratch/selftest-patrol.log`).
+- Replay of the flip rows against shift: not possible on existing data (no per-look shift in the blowout hold logs). Blowout is
+  not re-run until this is committed; its next run is the validation (play_s must advance through the n=53-56 stall, and any
+  flat play_s with a changed look is named from its frames).
+- Tecmo: its card is the "Tecmo Cup" game-information screen (frame 109 of tecmo-1006), read as play by the hold. The correction is
+  in `docs/testing/titles/pathknow/hints/pub-5443.md` (publisher hint, shared with lane.pathknow). The START press is the expected
+  input, not checked on the device. Tecmo gets no re-run until a hold on the card is replayed.
+- Fight Club (5655002F): harness PASS on d03d625e81 (play 0.906, fps_ok 0.937); OUTBOX line for lane.local's frame review.

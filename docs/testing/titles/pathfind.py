@@ -305,7 +305,13 @@ def still_window(shift_test, mv, sh):
 
 
 REVERSE_N = 3                        # owner 10-06 16:08: looks in a row at or under UNCHANGED before the walk turns round
+PATROL_EVERY = 4                     # lane.local 10-06 17:4x: the shooter loop turns round every 4 looks (~50 s), stall or not
 REVERSE_SWAP = {"up": "down", "down": "up", "left": "right", "right": "left"}
+
+
+def patrol_due(looks):
+    """Whether the patrol backstop turns the shooter walk round on this play look (the count of play looks so far)."""
+    return looks > 0 and looks % PATROL_EVERY == 0
 
 
 def reverse_trigger(ch, low_run, flipped, rev_row):
@@ -1811,6 +1817,7 @@ class Agent:
         held_ok, last_v, ladder_rounds, ladder_i = False, None, 0, 0   # validity (10-06): the hold ends on a verdict, not on hold_s alone
         charsel_i = 0   # the fighting select's cycle presses on this off-play episode (charsel_press)
         low_run, flipped, rev_row, reversals = 0, False, 0, 0   # the reverse rule (16:08): looks still in a row, walk turned round
+        patrol_looks = 0   # play looks on the shooter loop, for the patrol backstop (patrol_due)
         while not held_ok and self.el() < self.budget_s:
             self.n += 1
             t_cycle = now()
@@ -1853,6 +1860,9 @@ class Agent:
                 look["reverse"] = True   # the walk turns round from this look (flip_walk); the verdict reader sees it here
                 print(f"hold-play: {REVERSE_N} still looks: walk reversed ({'back' if flipped else 'forward'}) at {hold_el:.0f} s",
                       flush=True)
+            if last_png:
+                # the structural still per look (lane.local 10-06 17:4x): replayable against `changed` on the next run
+                look["shift_look"] = round(scene_shift(last_png, png), 2)
             if rep_left and off:
                 # model-free recovery (Panzer, 10-03: each death cost 4 model looks at ~9 s, one per A of an episode
                 # card): repeat the last look's single press, unlooked, then look again
@@ -1963,6 +1973,14 @@ class Agent:
             if not off and look.get("action") is None:
                 # play: the genre loop (a check look that said play sends it too). The time credited is this
                 # cycle's own, from its frame to its inputs: the look before may have been off play.
+                if genre == "shooter" and not th:
+                    # the patrol backstop (17:4x): a walk that turns round every PATROL_EVERY looks is gameplay even when
+                    # the picture barely moves; the reverse trigger above is the first line, this is the floor under it
+                    patrol_looks += 1
+                    if patrol_due(patrol_looks):
+                        flipped = not flipped
+                        reversals += 1
+                        look["reverse"] = "patrol"
                 loop = flip_walk([t for t in tokens if t not in shed_set], flipped)
                 if th and press_x:
                     loop, press_x = ["X"], False

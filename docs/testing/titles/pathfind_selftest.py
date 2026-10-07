@@ -548,6 +548,17 @@ for _ch in [0.004] * 9:
         _stuck.append(_fl)
 check("reverse-stop", _stuck == [True, False] and _rv == 2,
       f"nine still looks flip twice then stop: the still unstick takes the hold from there: {_stuck}")
+# the patrol backstop (lane.local 17:4x): the shooter walk turns round every PATROL_EVERY play looks, and two turns bring
+# the walk back to where it started. A mutant that drops the periodic turn fails the cadence and the round trip.
+_due = [n for n in range(1, 13) if pathfind.patrol_due(n)]
+_walk = pathfind.HOLD_GENRES["shooter"]
+_fl, _seen = False, []
+for _n in range(1, 9):
+    if pathfind.patrol_due(_n):
+        _fl = not _fl
+    _seen.append(pathfind.flip_walk(_walk, _fl))
+check("patrol", _due == [4, 8, 12] and _seen[3] != _walk and _seen[7] == _walk,
+      f"the shooter walk turns at looks {_due}, is reversed at look 4 and back to the start at look 8")
 check("reverse-trigger", _flips == [True, False, True]
       and pathfind.flip_walk(["STICK:up:1", "A", "STICK:left:2.5", "RSTICK:right:0.6"], True)
           == ["STICK:down:1", "A", "STICK:right:2.5", "RSTICK:right:0.6"]
