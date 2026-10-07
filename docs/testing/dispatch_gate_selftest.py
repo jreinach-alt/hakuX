@@ -490,6 +490,32 @@ def main():
               rc_sh == 0 and rc_en == 2, rc_sh == rc_en, "shadow %s, enforce %s" % (rc_sh, rc_en))
         check("admit-request: an allowed SCREEN writes gate_token into the request", rc_ok == 0 and bool(tok), False,
               (tok or "")[:40])
+
+        def admit_iso(title, title_id):
+            with open(rq, "w") as f:
+                json.dump({"id": "x", "requester": "lane.pathfind", "title": title, "title_id": title_id,
+                           "device": "nova", "ref": BUILD, "seconds": 900, "env": [], "route_name": ""}, f)
+            real = G.Ctx
+            G.Ctx = lambda root, readback=None: FakeCtx(root, now=NOW)
+            try:
+                with contextlib.redirect_stderr(open(os.devnull, "w")):
+                    return G.main(["admit-request", rq, "--root", tmp, "--no-refresh", "--class", "SCREEN",
+                                   "--because", "issue:#433", "--valid-end", "valid-verdict", "--input-seq", "discovery"])
+            finally:
+                G.Ctx = real
+        with open(lctx.modefile, "w") as f:
+            f.write("enforce")
+        rc_match = admit_iso("5655002F-Fight_Club.xiso.iso", "5655002F")
+        rc_stale = admit_iso("5655002F-Fight_Club.xiso.iso", "54540082")
+        real_shape = G.rule_request_shape
+
+        def shape_without_conflict(c, r, row, d):     # mutant: trust whichever id the request names
+            return real_shape(c, dict(r, _id_conflict=""), row, d)
+        G.RULES[G.RULES.index(real_shape)] = shape_without_conflict
+        rc_mut = admit_iso("5655002F-Fight_Club.xiso.iso", "54540082")
+        G.RULES[G.RULES.index(shape_without_conflict)] = real_shape
+        check("admit-request: a stale request title_id (GTA's 54540082 on another ISO) -> deny",
+              rc_match == 0 and rc_stale == 2, rc_mut == 2, "match %s, stale %s, mutant %s" % (rc_match, rc_stale, rc_mut))
         hc = lambda tag, why: G.hold_check(FakeCtx(tmp, now=NOW), "nova", tag, why)   # noqa: E731
         with open(lctx.modefile, "w") as f:
             f.write("enforce")

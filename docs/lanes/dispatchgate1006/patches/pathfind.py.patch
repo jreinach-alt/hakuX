@@ -1,6 +1,6 @@
 --- a/docs/testing/titles/pathfind.py
 +++ b/docs/testing/titles/pathfind.py
-@@ -2184,6 +2184,36 @@
+@@ -2184,6 +2184,37 @@
          return 0 if self.result["result"] == "gameplay" else 1
  
  
@@ -13,6 +13,8 @@
 +    title's own recorded path (or `discovery` for a first run) and the installed APK read
 +    back off the device. Returns (ok, lines). In SHADOW mode (the default) it is never
 +    False: it prints what it would have refused and the run goes on."""
++    if dry_run:
++        return True, ["dispatch gate: dry run (PATHFIND_DRY), not asked"]   # never logs a simulated run
 +    if not os.path.isfile(GATE):
 +        return True, ["dispatch gate: %s missing; not gated" % GATE]
 +    own = os.path.join(KNOW, "paths", "%s.json" % tid.upper()) if tid else ""
@@ -27,8 +29,7 @@
 +        cmd += ["--because", b]
 +    if a.order:
 +        cmd += ["--order", a.order]
-+    if not dry_run:
-+        cmd.append("--readback")
++    cmd.append("--readback")
 +    out = subprocess.run(cmd, capture_output=True, text=True)
 +    lines = (out.stdout + out.stderr).strip().splitlines()
 +    return out.returncode == 0, lines
@@ -37,7 +38,7 @@
  def main(argv=None):
      ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
      ap.add_argument("title")
-@@ -2204,6 +2234,16 @@
+@@ -2204,6 +2235,16 @@
      ap.add_argument("--goal", default="",
                      help="a settings goal on the way into play, given to the model each step "
                           "(e.g. the longest quarter length, so one quarter covers the hold)")
@@ -54,7 +55,7 @@
      ap.add_argument("--sim", help="PATHFIND_DRY: frames dir to play back")
      ap.add_argument("--sim-answers", help="PATHFIND_DRY: JSON list of canned model answers")
      a = ap.parse_args(argv)
-@@ -2216,6 +2256,11 @@
+@@ -2216,6 +2257,11 @@
          dev = Device(a.device)
          model = Model(a.out)
      tid, name, iso = resolve(dev, a.title)

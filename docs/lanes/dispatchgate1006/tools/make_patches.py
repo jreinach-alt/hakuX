@@ -140,6 +140,8 @@ def dispatch_gate(tid, name, dev_label, a, dry_run=False):
     title's own recorded path (or `discovery` for a first run) and the installed APK read
     back off the device. Returns (ok, lines). In SHADOW mode (the default) it is never
     False: it prints what it would have refused and the run goes on."""
+    if dry_run:
+        return True, ["dispatch gate: dry run (PATHFIND_DRY), not asked"]   # never logs a simulated run
     if not os.path.isfile(GATE):
         return True, ["dispatch gate: %s missing; not gated" % GATE]
     own = os.path.join(KNOW, "paths", "%s.json" % tid.upper()) if tid else ""
@@ -154,8 +156,7 @@ def dispatch_gate(tid, name, dev_label, a, dry_run=False):
         cmd += ["--because", b]
     if a.order:
         cmd += ["--order", a.order]
-    if not dry_run:
-        cmd.append("--readback")
+    cmd.append("--readback")
     out = subprocess.run(cmd, capture_output=True, text=True)
     lines = (out.stdout + out.stderr).strip().splitlines()
     return out.returncode == 0, lines
@@ -206,15 +207,18 @@ def _fake_gate(rc, text):
 _ga = types.SimpleNamespace(gate_caller="lane.pathfind", dispatch_class="PLAYABLE_ATTEMPT", build="6cef37f426",
                             valid_end="valid-verdict", hold_s=600, budget_min=15, because=["fix:ab8788c38b"], order=None)
 pathfind.subprocess.run = _fake_gate(0, "SHADOW-DENY 54430001 PLAYABLE_ATTEMPT on nova\\n  - matrix: below the bar")
-_ok_sh, _lines_sh = pathfind.dispatch_gate("54430001", "Dead or Alive 3", "nova", _ga, dry_run=True)
+_ok_sh, _lines_sh = pathfind.dispatch_gate("54430001", "Dead or Alive 3", "nova", _ga)
 pathfind.subprocess.run = _fake_gate(2, "DENY 54430001 PLAYABLE_ATTEMPT on nova\\n  - matrix: below the bar")
-_ok_en, _lines_en = pathfind.dispatch_gate("54430001", "Dead or Alive 3", "nova", _ga, dry_run=True)
+_ok_en, _lines_en = pathfind.dispatch_gate("54430001", "Dead or Alive 3", "nova", _ga)
+_n = len(_calls)
+_ok_dry, _ = pathfind.dispatch_gate("54430001", "Dead or Alive 3", "nova", _ga, dry_run=True)
 pathfind.subprocess.run = _real_run
 _c = _calls[0] if _calls else []
 check("dispatchgate", _ok_sh and not _ok_en and "--via" in _c and _c[_c.index("--via") + 1] == "hold"
-      and "--readback" not in _c and _c[_c.index("--class") + 1] == "PLAYABLE_ATTEMPT"
-      and any(x.startswith("path:") or x == "discovery" for x in _c),
-      "shadow deny goes on, enforce deny stops; --via hold, the class, an input sequence, no readback on a dry run")
+      and "--readback" in _c and _c[_c.index("--class") + 1] == "PLAYABLE_ATTEMPT"
+      and any(x.startswith("path:") or x == "discovery" for x in _c) and _ok_dry and len(_calls) == _n,
+      "shadow deny goes on, enforce deny stops; --via hold, the class, an input sequence, the APK read back; "
+      "a dry run never asks the gate (it would log a simulated run)")
 
 print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))'''),
 ]
@@ -235,10 +239,22 @@ VERDICT = [
 ]
 
 
+HOURLY = [
+    ('''  echo "--- harness_health (restored 10-03''',
+     '''  echo "--- DISPATCH GATE (dispatch_audit.py, last 24 h: ungated title runs, refusals, Nova min on flagged titles)"
+  timeout 120 python3 $R/docs/testing/dispatch_audit.py --hours 24 --max-lines 12 2>&1 | cut -c1-240 \\
+      || echo "  dispatch_audit.py unavailable (lane dispatchgate1006 not folded, or it failed)"
+  echo "--- harness_health (restored 10-03'''),
+]
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pathfind-tree", default="/home/justin/hakux-work/wt/pathfind")
+    ap.add_argument("--host-tools", default="/home/justin/hakux-work/host-tools")
     a = ap.parse_args()
+    src, new = edit(os.path.join(a.host_tools, "hourly_report.sh"), HOURLY)
+    write_patch("hourly_report.sh.patch", "host-tools/hourly_report.sh", src, new)
     for name, rel, reps, root in (("request.sh.patch", "docs/testing/request.sh", REQUEST, REPO),
                                   ("hold.sh.patch", "docs/testing/jobs/hold.sh", HOLD, REPO),
                                   ("title_verdict.py.patch", "docs/testing/title_verdict.py", VERDICT, REPO),

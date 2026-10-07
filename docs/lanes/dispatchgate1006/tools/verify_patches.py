@@ -22,6 +22,7 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", "..", "..", ".."))
 P = os.path.join(HERE, "..", "patches")
+TR_ROOT = "/home/justin/hakux-work"
 fails = []
 
 
@@ -104,8 +105,13 @@ def main():
         for patch in ("pathfind.py.patch", "pathfind_selftest.py.patch"):
             r = run(["git", "apply", os.path.abspath(os.path.join(P, patch))], cwd=pt)
             ok("applied in scratch: " + patch, r.returncode == 0, r.stderr.strip()[:200])
+        real_log = os.path.join(TR_ROOT, "pm", "dispatch-log.tsv")
+        before = os.path.getsize(real_log) if os.path.exists(real_log) else -1
         r = run([sys.executable, os.path.join(pt, "docs/testing/titles/pathfind_selftest.py")],
                 cwd=os.path.join(pt, "docs/testing/titles"), timeout=900)
+        after = os.path.getsize(real_log) if os.path.exists(real_log) else -1
+        ok("pathfind_selftest wrote nothing to the host's pm/dispatch-log.tsv", before == after,
+           "size %d -> %d" % (before, after))
         last = [l for l in r.stdout.splitlines() if "dispatchgate" in l or l.startswith("pathfind_selftest:")]
         ok("pathfind_selftest (patched), dispatchgate leg included",
            r.returncode == 0 and any("dispatchgate" in l for l in last),

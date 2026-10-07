@@ -235,6 +235,8 @@ def rule_request_shape(ctx, req, row, d):
         d.deny("class", "class %r is not one of %s" % (req.get("class"), ", ".join(CLASSES)))
     if not row:
         d.deny("title", "title %r is not a registry row (resolve: %s)" % (req.get("title"), req.get("_resolve")))
+    if req.get("_id_conflict"):
+        d.deny("title", req["_id_conflict"])
     if req.get("device") not in DEVICES:
         d.deny("device", "device %r is not one of %s" % (req.get("device"), ", ".join(DEVICES)))
     if not req.get("because"):
@@ -801,7 +803,15 @@ def admit_request(ctx, a):
         if "=" in e:
             k, v = e.split("=", 1)
             env[k] = v
-    req = {"title": rq.get("title_id") or rq.get("title"), "device": rq.get("device") or a.device or "", "build": rq.get("ref") or "",
+    # IDENTITY: the ISO the dispatcher will boot is the title. The request's own
+    # `title_id` comes from request.sh's TITLE_ID and has been stale: the 10-05
+    # Tron and Star Wars III requests carry GTA SA's 54540082. A conflict denies.
+    cat = TR.build_catalog(ctx.p)
+    by_iso, _ = cat.resolve(rq.get("title") or "")
+    by_id = cat.canonical(rq["title_id"]) if TR.TID_RE.match((rq.get("title_id") or "").upper()) else None
+    conflict = "request title_id %s is not the title of its ISO %r (%s)" % (rq.get("title_id"), rq.get("title"), by_iso) \
+        if by_iso and by_id and by_iso != by_id else ""
+    req = {"title": by_iso or rq.get("title_id") or rq.get("title"), "_id_conflict": conflict, "device": rq.get("device") or a.device or "", "build": rq.get("ref") or "",
            "seconds": rq.get("seconds") or 0, "env": env, "declared_env": a.declare or [],
            "caller": a.caller or rq.get("requester") or "", "via": "request"}
     if a.cls:
