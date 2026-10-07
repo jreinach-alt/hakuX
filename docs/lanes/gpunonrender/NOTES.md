@@ -1891,8 +1891,8 @@ and 1 goes back to the fork (4).
 
 ### Brief for the next lane: `TU_AUTOTUNE_ALGO=profiled` as the app default (#433, #474)
 
-Start only if P2-P matches on NG Black (its Tot on the intro segment is at
-most 14.7 ms).
+P2-P matched on NG Black (see "Attempt 2: P2-P read" below), so this brief is
+cleared to start. It still needs the xemu_android.cpp grant named in step 1.
 
 1. **Change** (xemu_android.cpp `ApplyRenderMode`, a grant): when the env
    has no `TU_AUTOTUNE_ALGO` and the title is not in the guard list, run
@@ -1935,3 +1935,68 @@ At 14:25 PDT, WAITING on P2-P (`run 1-1791317784-lane.gpunonrender-1635052`),
 parked by lane.local until 22:00. On resume: read P2-P on the matched intro
 segment against P2-S and P2-G (rule above). Queue the 60 s master restore if
 lane.local has not, then follow the order in "Next, ranked".
+
+## Attempt 14: P2-P read; profiled matches on NG Black too
+
+Attempt 13 did not finish because P2-P was parked by lane.local's 13:55 PDT
+replan (the Nova stayed Playable-only until 22:00) and the session ended on
+that wait, as instructed, with no restore queued after it. This attempt
+resumes at 23:49 PDT: P2-P's run finished at 23:48 (the park lifted at
+22:00, and the dispatcher ran it once the Nova had a gap). Merged
+origin/master (b6532fb3db, carrying the dispatchgate1006 fold; clean merge,
+no conflicts).
+
+**P2-P** (`1-1791317784-lane.gpunonrender-1635052`, apk 4028728fcc5a, cache
+kept since P3's restore never ran -- see attempt 13's note that the restore
+after P2-P was never queued before the park). `render_mode: auto (default)
+title=5443000D TU_DEBUG=(unset)`, so the driver chose the mode per pass
+under `TU_AUTOTUNE_ALGO=profiled`. No thermal pause; xo 48-56 C; GPU clock
+401-475 MHz throughout the played window (P2-G's GMEM window ran 680 MHz;
+P2-S's sysmem window ran mostly 401), so the clock trace alone reads as
+mostly-sysmem.
+
+The level's opening draw-count sequence (`rpcseries.py`, fuzzy match on the
+nine-CB run 449/459/420/239/235/174/165/279/491 against P2-P's
+450/459/449/250/241/205/171/325/492, score 0.52 against the next-best
+candidate's 1.41) locates the matched intro at 23:44:48, the same transition
+point P2-S and P2-G were read at:
+
+| matched segment | gfps median | Tot ms (median / mean) | in/out ms per CB |
+|---|---|---|---|
+| P2-G GMEM (13:27:42-13:27:58, from P2 read) | 32.5 | 25.0 | 12.1 / 23.1 |
+| P2-S sysmem (13:19:14-13:19:25, from P2 read) | **59.0** | **13.4** | 13.2 / 13.3 |
+| P2-P profiled (23:44:48-23:44:58, `abread.py`) | **59.0** | **13.95 / 14.58** | 12.98 / 13.16 |
+| P2-P profiled, wider (23:44:48-23:45:03) | 57.0 | 14.55 / 16.09 | 15.47 / 15.85 |
+
+**Decision (the rule written in attempt 13, before this read): profiled
+matches NG Black's best mode if its Tot on the intro segment is at most
+14.7 ms.** 13.95 ms (10 s window) and 14.55 ms (15 s window) are both under
+the bound, within 4-9% of P2-S's 13.4 ms. in/out near 1 confirms sysmem, not
+a GMEM pass that happens to be cheap. **Verdict: profiled matches on NG
+Black.**
+
+Combined with P1-P's DOA3 match (attempt 13), **profiled now matches the
+best mode on both titles tested.** Per the decision rule in "P1/P2 profiled
+arms": the general fix is confirmed to be an app default of
+`TU_AUTOTUNE_ALGO=profiled`. The brief above ("Brief for the next lane") is
+cleared to start; candidates 2 and 3 (DOA3 and NG Black table lines) stay as
+its fallback, not as parallel work, per the ranking's own note that they
+become redundant if candidate 1 ships.
+
+**Blocked on the grant**: step 1 of the brief edits `xemu_android.cpp`
+(`ApplyRenderMode`), which is not in this lane's territory (draw.c,
+surface.c, texture.c, reports.c, pfifo.c, and `docs/lanes/gpunonrender/**`).
+Filed in OUTBOX. The fleet A/B in step 2 is sized at ~10 titles x 2 arms x
+600 s (~4 h of Nova time); per the pilot rule, that starts as two pilot
+requests (Crash Twinsanity and Crimson, the cheapest candidate and the
+energy guard) once the grant lands and the `pilots/lane.gpunonrender.ok`
+window allows it, not as the whole batch at once.
+
+Queued the mandatory post-lane-APK restore: `1-1791356003-lane.gpunonrender-147451`
+(master b6532fb3db, empty env, 60 s, study priority; the dispatcher noted
+"priority release: '0.5' on #433", from the newly-merged dispatch gate). The
+Nova is held by `lane.pathfind` for a Playable run (`hold/nova`, taken
+23:40:49 PDT, 600 s); this request was queued through `request.sh`, not
+taken as a hold, so it runs in pathfind's next gap.
+
+Spend: not readable from this session.

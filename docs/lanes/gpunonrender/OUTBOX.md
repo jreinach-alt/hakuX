@@ -457,3 +457,35 @@ WAITING lists the four runs.
   evidence is in NOTES.md, the P1/P2/P3 reads.
 - WAITING: `run 1-1791317784-lane.gpunonrender-1635052`.
 - Spend: not readable from this session.
+
+## 2026-10-06 23:55 PDT (attempt 14): P2-P read; profiled matches on NG Black -- requesting the xemu_android.cpp grant
+
+- Merged origin/master (b6532fb3db, carrying the dispatchgate1006 fold;
+  clean). P2-P (`1-1791317784-lane.gpunonrender-1635052`) finished at 23:48
+  once the Nova's 22:00 park lifted. Matched intro segment: Tot 13.95 ms
+  median (14.7 ms bound), gfps 59.0, in/out 0.985 -- **matches** P2-S's
+  sysmem reading (13.4 ms), not P2-G's GMEM one (25.0 ms). Full read and the
+  fuzzy draw-count match in NOTES.md, "Attempt 14: P2-P read".
+- **`profiled` now matches the best mode on both titles tested** (DOA3 in
+  attempt 13, NG Black here). Per the decision rule written before queueing,
+  this confirms candidate 1: an app default of `TU_AUTOTUNE_ALGO=profiled`.
+  NOTES.md's "Brief for the next lane" is cleared to start.
+- **Requesting a grant**: step 1 of that brief is a one-line change in
+  `xemu_android.cpp` (`ApplyRenderMode`, `setenv("TU_AUTOTUNE_ALGO",
+  "profiled", 0)` behind a runtime override, guard list for Blinx/ZPASS
+  titles and Kabuki Warriors). That file is not in this lane's territory
+  (draw.c, surface.c, texture.c, reports.c, pfifo.c). Please add it, or say
+  where this change should land instead.
+- The brief's step 2 fleet A/B is ~10 titles x 2 arms x 600 s (~4 h Nova
+  time). Per the pilot rule this starts as two pilots (Crash Twinsanity,
+  Crimson) once the grant lands, not the whole batch -- I have not queued
+  any of it yet.
+- Queued the mandatory restore after P2-P (a lane-APK run):
+  `1-1791356003-lane.gpunonrender-147451` (master b6532fb3db, empty env,
+  60 s, study priority). The Nova is held by `lane.pathfind` for a Playable
+  run (`hold/nova`, taken 23:40:49 PDT, 600 s); this request went through
+  `request.sh`, not a hold, so it runs in pathfind's next gap.
+- PR.md updated to this candidate's state; `docs/lanes/gpunonrender/WAITING`
+  removed (nothing of mine gates on a result right now -- the restore is
+  bookkeeping, not an analysis I'm waiting to read).
+- Spend: not readable from this session.

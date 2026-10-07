@@ -1,9 +1,9 @@
-# gpunonrender: GMEM vs sysmem on the replay-bound titles, census on; sysmem halves the GPU frame on DOA3, NG Black and DOA Ultimate
-State: draft
+# gpunonrender: GMEM vs sysmem on the replay-bound titles, census on; profiled picks sysmem by itself on DOA3 and NG Black
+State: ready
 
 Lane: gpunonrender                Issue: #433
-Base: master @ 6cef37f426
-Files: docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/WAITING, docs/lanes/gpunonrender/regioncheck.py, docs/lanes/gpunonrender/rpcseries.py, docs/lanes/gpunonrender/segread.py, docs/lanes/gpunonrender/qrycount.py
+Base: master @ b6532fb3db
+Files: docs/lanes/gpunonrender/NOTES.md, docs/lanes/gpunonrender/OUTBOX.md, docs/lanes/gpunonrender/PR.md, docs/lanes/gpunonrender/qrycount.py, docs/lanes/gpunonrender/regioncheck.py, docs/lanes/gpunonrender/rpcseries.py, docs/lanes/gpunonrender/segread.py
 Prediction: none: analysis-only (A/B pairs read by hand against expected results and yes/no rules written in NOTES.md before the runs)
 Needs device: yes    Needs NDK: no
 
@@ -11,8 +11,8 @@ Needs device: yes    Needs NDK: no
 
 | title | GMEM gfps / Tot ms | sysmem gfps / Tot ms | `TU_AUTOTUNE_ALGO=profiled` |
 |---|---|---|---|
-| DOA3, attract ~430 draws | 31-34 / 27.6 | 59 / 13.7 | 59 / 13.8 |
-| NG Black, level intro | 32.5 / 25.0 | 59 / 13.4 | pending |
+| DOA3, attract ~430 draws | 31-34 / 27.6 | 59 / 13.7 | 59 / 13.8 (sysmem chosen) |
+| NG Black, level intro | 32.5 / 25.0 | 59 / 13.4 | 59 / 13.95 (sysmem chosen) |
 | DOA Ultimate, fight | 20 / 44.3 | 42-43 / 21.5 | - |
 
 On each title the GMEM scene passes run two bins, and each bin replays the
@@ -21,8 +21,20 @@ whole draw stream. The sysmem pass costs what GMEM's last tile costs
 occlusion queries. NG Black and DOA Ultimate issue them in both modes
 (#527).
 
-The ranked next steps and a brief for an app default of
-`TU_AUTOTUNE_ALGO=profiled` are in NOTES.md.
+`TU_AUTOTUNE_ALGO=profiled` now matches the best mode on both titles it was
+tried on (DOA3 and NG Black), against the 10%-of-the-better-arm rule written
+before each run. The brief for an app default of `profiled` (one line in
+`xemu_android.cpp`, a grant this lane does not hold, plus a fleet A/B) is
+written in NOTES.md and cleared to start. Falling back to per-title
+`kTitleRenderModes` lines for DOA3 (no queries) and NG Black (needs the
+#527 ruling DOA Ultimate already got) stays ranked, but redundant if the
+app default ships.
+
+## Checks
+
+| check | result |
+|---|---|
+| `docs/testing/preflight.sh --allow-tracker` | every gate ok but `coverage`: 12 open issues (#873-#884) have no tracker row (board files, not this lane's) |
 
 ---
 
