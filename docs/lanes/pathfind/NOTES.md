@@ -1319,3 +1319,17 @@ What this shows, and what it does not:
 - Cause of the flat-play stretches with changed > 0.01 (n=54-100): the hold parks play credit on the 30-s kept-frame window
   (`still_window`), not on the per-look change. The reverse rule reads the per-look change, so it does not reach them.
   Separate problem, filed as a NEW ISSUE in OUTBOX.
+
+## Tecmo Classic Arcade (tecmo-1006), 17:01-17:21 PDT: FAIL (static window), one run
+
+- Late frames are Tecmo Cup's "Game Information / Push One Player Button" card; the hold credited it as play. Not re-run.
+
+## Reverse-trigger threshold replay (hakux-eb 17:0x request), offline
+
+- Per-look `changed` only (hold.jsonl has no structural shift per look).
+- At 0.06: blowout-rev flips at n=24, 30, 33, 72, 81, 93, 96 (play advancing in each) and at n=65, 84, 101 (play flat). blowout-1006 flips
+  at 30, 94 (advancing) and 33, 42, 97 (flat). The request's test ("must not flip where play_s advances") fails at 0.06.
+- At 0.01: blowout-rev flips once (n=25, advancing); the n=53-56 stall (changed 0.02-0.053) is never three looks under 0.01.
+- Conclusion: a per-look pixel threshold cannot separate the n=53-56 stall from a walk that is moving. The trigger needs the
+  structural still (scene shift, which still_window uses on kept frames). hold.jsonl does not log a per-look shift, so the replay
+  test cannot run on existing data. Next: log the per-look shift in hold.jsonl, gate the trigger on shift and change, validate.

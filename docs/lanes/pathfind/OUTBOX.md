@@ -1109,3 +1109,11 @@ The reverse rule fired ONCE (look n=25, hold_s 59.9). The per-look change on thi
 Run dir docs/lanes/pathfind/runs/blowout-rev (hold.jsonl, verdict.json, hold_strip.jpg). Spend: about 40 model calls, not priced here.
 
 NEW ISSUE: Blowout's parked-still credit: 225 s of a 1052-s window read still while the per-look change was 0.02-0.27 (n=54-100). The play share is short because the window-level still rule parks play credit, and the reverse rule (per-look trigger) does not reach it. Evidence: run blowout-rev, hold.jsonl n=54-100. Blocks Blowout's Playable.
+
+## #433 -- 2026-10-06 17:21 PDT
+
+[lane.pathfind] Tecmo Classic Arcade (5443000E) FAIL (static window, harness; first run): 826 s gameplay, play share 0.903, fps_ok 1.0 at 28.5, no crash, no hang, the verdict's static-window check (23% of pixels never moved over 23 route frames, bar 20%) stopped the hold at 743 s of play. Run dir docs/lanes/pathfind/runs/tecmo-1006. Ref HEAD d03d625e81, env []. Spend: about 40 model calls, not priced here.
+
+Identification from the frames: the late hold frames (109-hold.jpg) show Tecmo Cup's "ONE PLAYER GAME INFORMATION / PUSH ONE PLAYER BUTTON / PLAY TIME 1:30" card, not a match. The hold credited that card as play for most of the window, so play share 0.903 is not gameplay. The 20-step claim reached a game-information card and read it as play.
+
+NEW ISSUE: Tecmo Classic Arcade's game-information card (Tecmo Cup, "PUSH ONE PLAYER BUTTON") reads as play, so the hold credits menu time and the static-window check then fails it. Evidence: run tecmo-1006, frames 109-hold.jpg. Blocks Tecmo's Playable.
