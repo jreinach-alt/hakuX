@@ -384,3 +384,111 @@ WAITING lists the four runs.
 - PR.md `State: ready` at c3dd710a53 (pushed). preflight: every gate ok but
   `coverage`, which fails on open issues #852-#857 having no board row
   (lane.local: those rows are board files). WAITING is `fold gpunonrender`.
+
+## 2026-10-06 13:20 PDT (attempt 12): scope (D) P1 DOA3 read; sysmem halves the GPU frame on matched scenes
+
+- Merged origin/master (fast-forward to bf85412b88); WAITING removed. The
+  census is on master, so every arm runs master's perflog build with `--env`.
+- Brief premise corrected: the table is `kTitleRenderModes` in
+  xemu_android.cpp (there is no TitleDefaults.kt), and **DOA Ultimate is
+  already `sysmem` there**. Its pair is `TU_DEBUG=gmem` vs the table.
+- P1 DOA3 (`-1511368` sysmem, `-1511854` GMEM; apk 4028728fcc5a,
+  `shader cache cleared: apk ad6f37a2f087 -> 4028728fcc5a`). Story mode drew
+  a different stage per run, and the driver ran P1-G's snow fight sysmem by
+  itself, so the fight comparison is void. The attract demo is deterministic
+  (same draw-count sequence in D1, P1-G and P1-S):
+
+| matched segment | GMEM gfps / Tot | sysmem gfps / Tot |
+|---|---|---|
+| ~430 draws/CB | 31-34 / 27.6 ms | 59 (vsync) / 13.7 ms |
+| ~800 draws/CB | 21-22 / 35.8-44.7 ms | 52.5 / 16.3 ms |
+
+  GMEM's last tile (13.5 ms) equals the whole sysmem pass (13.5 ms): two
+  bins, and each bin replays the whole draw stream. Region check passes.
+- **New top candidate**: gmem474 found that `TU_AUTOTUNE_ALGO=profiled`
+  picks sysmem by itself on DOA Ultimate (15.6 -> 32.4 gfps) and AUF
+  (19 -> 23). It keeps Kabuki at 59.9 with no stall, and matches Crimson's
+  fps. An app default of `profiled` would reach every replay-bound title
+  without a fork change. Added one profiled arm each on DOA3 and NG Black.
+- Queued (Nova, study priority): P2-S `1-1791317653-lane.gpunonrender-1627450`
+  (running), P2-G `-1627551`, P3-G `-1629224`, P3-S `-1629401`, restore
+  `-1629543`, P1-P `-1634952`, P2-P `-1635052`, restore
+  `1-1791317787-lane.gpunonrender-1635156` (last). Pilot verdict rewritten in
+  `pilots/lane.gpunonrender.ok`.
+- For lane.local to file (no tracker access from here): "GMEM scene passes
+  replay the whole draw stream per bin on Turnip (DOA3: 2 bins, GPU frame 2x
+  sysmem's); the `bandwidth` autotune sends the heaviest passes to GMEM".
+  Evidence: NOTES.md "P1 read".
+- Spend: not readable from this session.
+
+## 2026-10-06 14:20 PDT (attempt 13): P2/P3/P1-P read; WAITING on the parked P2-P
+
+- Merged origin/master (6cef37f426). P2 NG Black, P3 DOA Ultimate and P1-P
+  DOA3 profiled are read in NOTES.md. Sysmem wins on all three titles with
+  pixels intact:
+
+| title | GMEM gfps / Tot | sysmem gfps / Tot | profiled |
+|---|---|---|---|
+| DOA3, matched attract A+B | 31-34 / 27.6 ms | 59 / 13.7 | 59 / 13.8 (sysmem chosen, cold cache) |
+| NG Black, matched intro | 32.5 / 25.0 | 59 / 13.4 | parked |
+| DOA Ultimate, fight | 20 / 44.3 | 42-43 / 21.5 (the shipped row) | (gmem474: 32.4 gfps) |
+
+- **`profiled` matches the best mode on DOA3** (within 1-3% of sysmem's Tot,
+  on the rule written before queueing). If P2-P matches on NG Black, the next
+  step is an app default of `TU_AUTOTUNE_ALGO=profiled` with a guard list,
+  then a fleet A/B. The brief is in NOTES.md ("Brief for the next lane"):
+  P 0.45, a one-line change in xemu_android.cpp (a grant), ~4 h of Nova
+  time. Fallbacks, which do not wait on it: a DOA3 sysmem table line (P 0.85,
+  no occlusion queries) and an NG Black line (P 0.75; NG Black issues
+  queries in both modes, so the line needs the #527 ruling hostops gave DOA
+  Ultimate).
+- Nova: nothing of this lane is queued or running. Restore
+  `1-1791317787-lane.gpunonrender-1635156` ran DONE at 13:51 (apk
+  ca290378e862). The dispatcher then cleared to 35ef582d81d5 for the next
+  request.
+- **For lane.local at 22:00**: P2-P (`1-1791317784-lane.gpunonrender-1635052`,
+  env `TU_AUTOTUNE_ALGO=profiled`, `HAKUX_GPUXFR=1`) has no restore after
+  it. The restore -1635156 was spent on P1-P. Please move a 60 s master
+  restore with an empty env back with it, or I queue one when P2-P's DONE
+  resumes me.
+- For lane.local to file (tracker): "Turnip `bandwidth` autotune sends
+  two-bin replay-bound passes to GMEM; each bin replays the whole draw
+  stream (DOA3, NG Black, DOA Ultimate: GMEM GPU frame 2x sysmem's)". The
+  evidence is in NOTES.md, the P1/P2/P3 reads.
+- WAITING: `run 1-1791317784-lane.gpunonrender-1635052`.
+- Spend: not readable from this session.
+
+## 2026-10-06 23:55 PDT (attempt 14): P2-P read; profiled matches on NG Black -- requesting the xemu_android.cpp grant
+
+- Merged origin/master (b6532fb3db, carrying the dispatchgate1006 fold;
+  clean). P2-P (`1-1791317784-lane.gpunonrender-1635052`) finished at 23:48
+  once the Nova's 22:00 park lifted. Matched intro segment: Tot 13.95 ms
+  median (14.7 ms bound), gfps 59.0, in/out 0.985 -- **matches** P2-S's
+  sysmem reading (13.4 ms), not P2-G's GMEM one (25.0 ms). Full read and the
+  fuzzy draw-count match in NOTES.md, "Attempt 14: P2-P read".
+- **`profiled` now matches the best mode on both titles tested** (DOA3 in
+  attempt 13, NG Black here). Per the decision rule written before queueing,
+  this confirms candidate 1: an app default of `TU_AUTOTUNE_ALGO=profiled`.
+  NOTES.md's "Brief for the next lane" is cleared to start.
+- **Requesting a grant**: step 1 of that brief is a one-line change in
+  `xemu_android.cpp` (`ApplyRenderMode`, `setenv("TU_AUTOTUNE_ALGO",
+  "profiled", 0)` behind a runtime override, guard list for Blinx/ZPASS
+  titles and Kabuki Warriors). That file is not in this lane's territory
+  (draw.c, surface.c, texture.c, reports.c, pfifo.c). Please add it, or say
+  where this change should land instead.
+- The brief's step 2 fleet A/B is ~10 titles x 2 arms x 600 s (~4 h Nova
+  time). Per the pilot rule this starts as two pilots (Crash Twinsanity,
+  Crimson) once the grant lands, not the whole batch -- I have not queued
+  any of it yet.
+- Queued the mandatory restore after P2-P (a lane-APK run):
+  `1-1791356003-lane.gpunonrender-147451` (master b6532fb3db, empty env,
+  60 s, study priority). The Nova is held by `lane.pathfind` for a Playable
+  run (`hold/nova`, taken 23:40:49 PDT, 600 s); this request went through
+  `request.sh`, not a hold, so it runs in pathfind's next gap.
+- PR.md is `State: ready` (preflight --allow-tracker passes but for the
+  board's open-issue coverage gate, same as the folded census PR).
+  `WAITING` is `fold gpunonrender`: the next analytical step (the app
+  default and its fleet A/B) is blocked on the xemu_android.cpp grant
+  above, not on anything I can read myself, so there is nothing to do on
+  this branch until either the fold or the grant lands.
+- Spend: not readable from this session.
