@@ -1451,3 +1451,17 @@ What this shows, and what it does not:
 - Next fix (named, not run): answer the counter prompt. When the frame shows "Press X now", the genre attack loop sends X before its
   stick move. Validate on the frames first: the counter prompt is visible at the 60-90 look stretch in hold_strip.jpg.
 - Not re-run tonight (a failure goes for identification, per the 10-06 rule). Batman stays out of the ledger.
+
+## Resume 10-06 20:0x PDT (attempt 1 of this session, brief through the 16:45 below-bar addendum): why the previous attempt did not finish
+
+- The 19:08 attempt (attempt 4) ran Batman Begins to a FAIL at 19:48 and wrote it up. It then launched 007: Nightfire (45410026)
+  detached at 19:47:57 (`scratch/title1006.sh 45410026 nightfire-1006`, pid 3647097, HEAD ef0936c843, budget 40 min) and ended its
+  session while that run was still in its hold. It wrote no NOTES entry and no OUTBOX line for Nightfire, so the run had no record.
+- hostops' 19:49 restore released the Nova hold while the run kept going; the run's EXIT trap re-releases it. The hold file names
+  `lane.pathfind` with the run's tag, and the dispatch queue and running dir are empty.
+- Batman's named fix (answer "Press X now" with X) is still not committed, so Batman is not re-run. It stays an identification item.
+- Ledger check (pm/playable-accepted.tsv, 10-06 rows): seven lines dated 10-06 (Rogue Trooper, Ratatouille, WE9, NBA 2K3, MK
+  Armageddon, Fight Club, Blowout). The owner's 7-Playable requirement is met on the ledger; the lane's rule is that once 7 are
+  banked the remaining rows go to screening for the 145-benchmarked goal.
+- This attempt: no new run is started while Nightfire's hold is live. Its verdict gets an entry below; then the next title is
+  chosen from the screening rows, with a committed change named for its last failure before any device time.
