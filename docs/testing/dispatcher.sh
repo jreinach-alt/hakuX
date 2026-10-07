@@ -90,7 +90,7 @@ SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
 make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
 battery_admit.py titles/titlestate.py titles/saves.py titles/drive.py \
-titles/classify.py titles/waitfor_match.py"
+titles/classify.py titles/waitfor_match.py jobs/device_build.py"
 # DATA A SHIPPED SCRIPT PICKS AT RUN TIME, shipped by glob, never by name.
 #
 # route.sh's `drive <profile>` step runs drive.py on
@@ -141,7 +141,8 @@ snapshot_scripts() {
              affinity.py captures.py make_test_iso.py extract_results.py \
              sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
              titles/route.sh perf/pad.sh battery_admit.py titles/titlestate.py \
-             titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py; do
+             titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py \
+             jobs/device_build.py; do
         snapshot_one "$f"
     done
     for g in $(snapshot_globbed); do
