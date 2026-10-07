@@ -2091,3 +2091,10 @@ standing = false
 files = ["docs/lanes/dispatchgate1006/**", "docs/testing/dispatch_audit.py", "docs/testing/dispatch_gate.py", "docs/testing/dispatch_gate_selftest.py", "docs/testing/jobs/selftest.d/99-dispatch-gate.sh", "docs/testing/title_registry.py"]
 released = ["docs/lanes/dispatchgate1006/**"]
 note = "STARTED lane.local 2026-10-06 16:55 PDT, owner order \"bulletproof controls on what gets dispatched\"; offline, no device; harness defect, dispatched directly with no GitHub issue. Row added by hostops 17:1x PDT (jam duty, per lane.local's 16:55 request). Further Files (docs/testing/titlestate.py, admit.py, dispatch_audit.py, plan_check.py) will be named in its OUTBOX for a grant."
+
+[lane.stuckdetect1007]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/stuckdetect1007/**"]
+released = ["docs/lanes/stuckdetect1007/**"]
+note = "Harness defect, dispatched directly, no GitHub issue (owner order 2026-10-07 14:10 PDT: catch Nova runs stuck past pathfind's 600 s hold without burning more runs). PR #885 ready (standalone offline detector module, no device run). Row added by hostops 15:0x PDT (jam duty): the lane finished with no territory row on origin/board, which would have fold-refused it the same way as dashretro/waitread1006."
