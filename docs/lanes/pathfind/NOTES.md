@@ -1465,3 +1465,21 @@ What this shows, and what it does not:
   banked the remaining rows go to screening for the 145-benchmarked goal.
 - This attempt: no new run is started while Nightfire's hold is live. Its verdict gets an entry below; then the next title is
   chosen from the screening rows, with a committed change named for its last failure before any device time.
+
+## 007: Nightfire (45410026), 19:47-20:01 PDT: CLOSE on fps, play share short, one run (runs/nightfire-1006)
+
+- Run: `scratch/title1006.sh 45410026 nightfire-1006` (detached), HEAD ef0936c843, `--state any --hold-s 600`, Nova env [] (last Nova
+  result 6cef37f426 is ancestor of HEAD). Hold released at the run's exit (`hold.sh who nova` free at 20:02).
+- Claim: gameplay by route; 35 Sonnet calls for the run (calls.jsonl, all claude-sonnet-5).
+- Hold: play 599.3 s of 692.5 s scored; play share 0.865 (menu 36.4 s, other 24.5 s, game over 17.2 s, continue 7.6 s, results
+  7.3 s). fps_excluded 90.8 s. fps_ok 0.891 at the verdict's fps_bar 30.0 (window share 0.923), median 40.0, min 26.1, no hitches,
+  no crash, no hang. The verdict's bar is 30.0 here, not the 28.5 harness bar of the 10-04 correction; not reconciled in this run.
+- Verdict FAILS on three counts: play share (bar 90%), fps at 90% (89.1%), and "window unmeasured" (0 post-mark route-frames and
+  0 post-mark frames/ samples, although frames/ holds 44 kept frames to 768 s). The third is a harness gap, not a pathing miss: a
+  NEW ISSUE for it is in OUTBOX.
+- Frames (hold_strip.jpg): frame 020 is "Mission Failed: REPLAY TUTORIAL / QUIT TO MAIN MENU" at the start of the hold (the claim
+  left the tutorial failed); the rest is the rail-shooter tutorial (Pull R to fire, auto-aim, "Tutorial: Limited weapon control"),
+  vehicles and muzzle flashes, with dark frames at the game-over and continue spans. The hold stayed in the play loop.
+- Class: CLOSE (fps 89% at 30, median 40), not a Playable. Next step, if this title is run again: restart the mission from the
+  claim so the tutorial is not failed at the hold's first look, and resolve the window-measure gap first. Not re-run tonight.
+- Batman's named fix (answer "Press X now") is still uncommitted; Batman is not re-run.
