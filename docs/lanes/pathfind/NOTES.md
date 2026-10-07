@@ -1483,3 +1483,16 @@ What this shows, and what it does not:
 - Class: CLOSE (fps 89% at 30, median 40), not a Playable. Next step, if this title is run again: restart the mission from the
   claim so the tutorial is not failed at the hold's first look, and resolve the window-measure gap first. Not re-run tonight.
 - Batman's named fix (answer "Press X now") is still uncommitted; Batman is not re-run.
+
+## Resume 10-06 20:16 PDT (attempt 2 of this session): why the previous attempt did not finish
+
+- The 20:0x attempt (attempt 1) wrote the Nightfire verdict, its NOTES entry and its OUTBOX line (20:05), then ended. It
+  named the next step (answer Batman's "Press X now" counter prompt with X, and validate it on the frames) and did not start it,
+  and it did not pick the next title. Cause: the session treated the write-up as the end of the work, the same stop as
+  attempts 3 and 4 in this lane's history: a named fix with no commit and no device step.
+- State at this resume: Nova free (no hold, dispatch queue and running empty). Ledger (`pm/playable-accepted.tsv`) holds 7
+  dated 10-06 (Rogue Trooper, Ratatouille, WE9, NBA 2K3, MK Armageddon, Fight Club, Blowout), so the day's 7 are met. Per the
+  13:55 order the rest go to screening for the 145-benchmarked goal, and no row goes to a run for its own sake.
+- Plan for this attempt, in order: (1) verify on the Batman frames that "Press X now" is on screen across the stretch the hold
+  stood still; (2) commit the counter-X rule in the attack loop, with a selftest leg; (3) one Batman run before 21:15 if the
+  claim goes; (4) otherwise the next screening row. Spend so far this attempt: none (offline reads only).
