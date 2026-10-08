@@ -244,7 +244,18 @@ Test environment (`/tmp/selfdeps-gitconfig`, `/tmp/selfdeps-test/*.sh`, test onl
   merge was clean, and master had not touched any file this lane edits since
   the last merge --- verified with `git diff c52cc408b7..HEAD --stat` restricted
   to those paths, empty). Removed `WAITING`, re-verified the three edited
-  Python files parse, and moved the PR to ready.
+  Python files parse, committed (`30f1fc5bba`).
+  Then caught a second problem before setting ready: the existing head-run
+  proof (run `1888089`, queued from `8db47e3a8c`) is stale --- `855a1375c2`
+  added non-docs changes (`scripts/gen-license.py`, `.github/scripts/gen-changelog.py`)
+  *after* that ref, so it no longer proves the build this PR actually ships
+  (see [[offline-fold-head-run-is-exact-sha]]: the fold's gate wants a finished
+  run whose ref has no non-docs commit between it and HEAD). Queued a fresh
+  run from `30f1fc5bba` (this branch's exact head at the time, and the last
+  commit with any non-docs change), then added `WAITING` in its own commit
+  --- docs-only, same pattern as the attempt-1 `WAITING` commit on `8db47e3a8c`
+  (`512a38145c` touched only `docs/lanes/selfdeps/**`), which keeps the ref
+  valid. `State: draft` until that run lands DONE and not void.
 
 ### Thor run `1-1791043414-selfdeps-1888089` (step 5): done, not void
 

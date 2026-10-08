@@ -1,12 +1,12 @@
 # selfdeps: builds fetch nothing from GitHub (#433)
 
-State: ready
+State: draft
 
 Lane: selfdeps               Issue: #433 (0.5: 50 Playable)
 Base: master @ 1d3b6d0148 (merged into the lane branch)
 Files: android/app/src/main/cpp/CMakeLists.txt, docs/lanes/selfdeps/NOTES.md, docs/lanes/selfdeps/PR.md, docs/lanes/selfdeps/OUTBOX.md, docs/lanes/selfdeps/mirror_sources.py, scripts/gen-license.py, .github/scripts/gen-changelog.py
 Prediction: none: build and release plumbing, no pixel change
-Needs device: yes (one short Thor pgraph run, done: run 1-1791043414-selfdeps-1888089, not void)    Needs NDK: yes
+Needs device: yes (Thor pgraph run from this exact head, queued: run 1-1791467140-selfdeps-3362937)    Needs NDK: yes
 
 Release note (none): build and release tooling only; no player-visible behaviour.
 
@@ -45,7 +45,8 @@ Full commands in NOTES.md ("Proof"). The logs are local (`*.log` is gitignored) 
 | Android, clean `.cxx`/`build`, GitHub and gitlab unreachable, `gradlew --offline assembleDebug` | **BUILD SUCCESSFUL in 6m 20s** (`logs/android-clean.log`) |
 | Desktop, `meson subprojects download`, network dead | all 37 wraps resolved from the mirrors (`logs/meson-subprojects-download.log`) |
 | Desktop, `./configure` compile side | stops at OpenSSL headers absent on this host (meson builds curl unconditionally). Not a fetch failure; filed in OUTBOX.md |
-| Dispatcher build + Thor run | `1-1791043414-selfdeps-1888089` from `8db47e3a8c`: DONE, not void, build succeeded (`BUILD SUCCESSFUL in 2m 12s`; warm `.cxx`, so no cold-fetch proof from this run) |
+| Dispatcher build + Thor run (first) | `1-1791043414-selfdeps-1888089` from `8db47e3a8c`: DONE, not void, build succeeded (`BUILD SUCCESSFUL in 2m 12s`; warm `.cxx`). That ref is stale now (non-docs commits landed after it: `scripts/gen-license.py`, `.github/scripts/gen-changelog.py`) |
+| Dispatcher build + Thor run (head) | `1-1791467140-selfdeps-3362937` queued from `30f1fc5bba`, this branch's exact head at queue time (no non-docs commit since) --- see WAITING |
 | gen-license, cache only | 31 of 31 license texts resolve with no network |
 
 ## Not done, and why
@@ -57,6 +58,8 @@ Full commands in NOTES.md ("Proof"). The logs are local (`*.log` is gitignored) 
 
 ## Next
 
+- **Waiting on run `1-1791467140-selfdeps-3362937`** (queued from this exact head, `30f1fc5bba`).
+  Mark ready once it lands DONE and not void; see `WAITING`.
 - **Windows toolchain image proof** (no docker on this host) and the **desktop compile-side
   proof past `./configure`** (needs `libssl-dev` on a host with network, filed in OUTBOX.md)
   are the two open items; neither blocks `State: ready` since both are "not done, and why"
