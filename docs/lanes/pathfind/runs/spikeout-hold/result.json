@@ -1,0 +1,60 @@
+{
+ "title_id": "53450029",
+ "name": "Spikeout: Battle Street",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Spikeout - Battle Street (Europe).iso",
+ "result": "gameplay",
+ "tool": "b987c41b3e",
+ "started": "2026-10-03 14:19:41 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/053-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/053-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/053-probe-c.jpg"
+ ],
+ "reason": "four probes refused",
+ "minutes": 8.24,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/052-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/054-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/055-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/056-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/057-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/058-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/059-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/060-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/061-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5345.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "A brawler character (Spike Jr.) stands in a fighting pose with a health bar, K.O. counter, and lock-on target markers, which is a fighting game.",
+  "ok": true,
+  "play_s": 607.1,
+  "need_s": 600.0,
+  "hold_s": 607.2,
+  "model_navs": 0,
+  "frames": 18,
+  "still_windows": 0,
+  "shed": [],
+  "reason": "",
+  "verdict": "VERDICT Spikeout: Battle Street ? PASS None gameplay=607.3s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=unmeasured play_share=0.9996 fps_excluded=2.0s"
+ },
+ "model_calls": 50,
+ "calls_by_model": {
+  "claude-sonnet-5": 50
+ },
+ "steps": 53,
+ "seconds": 1148.7,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/frames/116-hold.jpg",
+ "last_state": "probe",
+ "replayed": 3,
+ "sib_replayed": 0,
+ "guide": [
+  "53450029"
+ ],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/spikeout-hold/strip.jpg"
+}

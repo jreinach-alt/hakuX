@@ -1,0 +1,30 @@
+id	title	run	window	metric	value	source	reader
+E-GTA-1	GTA SA	1791272940-hostops-2038851-c3a0	gameplay from 00:53:29	frame wall median (fps)	33.79 ms (29.6 fps), n=160 windows	logcat.txt pace lines; tools/run_waits.py	run_waits.py 1791272940-hostops-2038851-c3a0@00:53:29
+E-GTA-2	GTA SA	1791272940-hostops-2038851-c3a0	gameplay	phase Tot / IdleFr / IdleSt / Draw / Pipe / Fin(Fen) / GPU_R	29.0 / 10.0 / 7.35 / 6.5 / 3.1 / 3.5 (3.3) / 8.7 ms per frame	logcat.txt hakuX-phase lines (profile.c:1011)	run_waits.py
+E-GTA-3	GTA SA	1791272940-hostops-2038851-c3a0	gameplay	vblanks per frame, v0..v4	7 / 584 / 7782 / 1134 / 93 frames	logcat.txt hakuX-pace (v0..v4 fields)	run_waits.py
+E-GTA-4	GTA SA	1791272940-hostops-2038851-c3a0	whole run incl. load	shader dpc_ms sum; gameplay-only sum	7945 ms; 38 ms	logcat.txt [shd413] lines	run_waits.py (with and without @time)
+E-GTA-5	GTA SA	1791272940-hostops-2038851-c3a0	00:55:15.848	stall (pace max) with dsm / dpc	513.8 ms; dsm 0, dpc 0	logcat.txt pace f=7500 and shd413 f=7500; verdict.json hitches	run_waits.py
+E-SW3-1	Star Wars III	1791267038-hostops-measured-starwars3	gameplay from 04:07:23	frame wall median (fps)	35.07 ms (28.5 fps), n=143	logcat.txt pace lines	run_waits.py 1791267038-hostops-measured-starwars3@04:07:23
+E-SW3-2	Star Wars III	1791267038-hostops-measured-starwars3	gameplay	phase Tot / Fin(Fen, Sub) / Idle(IdleFr, IdleSt) / Draw / GPU_R / GPU_X / GPU_RP	30.8 / 11.6 (9.8, 1.6) / 15.0 (6.5, 6.3) / 5.5 / 8.7 / 1.9 / 36 ms (RP passes)	logcat.txt hakuX-phase	run_waits.py
+E-SW3-3	Star Wars III	1791267038-hostops-measured-starwars3	gameplay	vblanks per frame, v0..v4	2 / 553 / 6338 / 1667 / 20 frames	logcat.txt hakuX-pace	run_waits.py
+E-SW3-4	Star Wars III	1791267038-hostops-measured-starwars3	gameplay	sd share of finishes	0% (of 237890 counted)	logcat.txt hakuX-stall Finish lines	tools/sd_share.py
+E-DND-1	D&D Heroes	1791272941-hostops-2039487-c3a0	gameplay from 04:55:39	frame wall median (fps)	79.94 ms (12.5 fps), n=57 windows	logcat.txt pace lines; verdict.json fps_window_median 12.51	run_waits.py 1791272941-hostops-2039487-c3a0@04:55:39
+E-DND-2	D&D Heroes	1791272941-hostops-2039487-c3a0	gameplay	phase Tot / Fin / Sub / Fen / Draw / Pipe(Sh) / GPU_R / GPU_X	74.4 / 42.3 / 38.6 / 3.7 / 15.7 / 10.6 (8.1) / 41.3 / 0.5 ms	logcat.txt hakuX-phase	run_waits.py
+E-DND-3	D&D Heroes	1791272941-hostops-2039487-c3a0	gameplay	vblanks per frame, v0..v4	0 / 0 / 7 / 199 / 3214 frames	logcat.txt hakuX-pace	run_waits.py
+E-DND-4	D&D Heroes	1791272941-hostops-2039487-c3a0	gameplay	shader dpc / dgl / dsnu sums	11 / 10 / 11 ms	logcat.txt [shd413]	run_waits.py
+E-DND-5	D&D Heroes	1791272941-hostops-2039487-c3a0	gameplay	sd share of finishes	17.6% (3401 of 19366)	logcat.txt hakuX-stall Finish lines	tools/sd_share.py
+E-TRN-1	Tron 2.0	1791267037-hostops-measured-tron	gameplay from 03:57:27	frame wall median (fps)	18.35 ms (54.5 fps), n=258 windows	logcat.txt pace lines	run_waits.py 1791267037-hostops-measured-tron@03:57:27
+E-TRN-2	Tron 2.0	1791267037-hostops-measured-tron	gameplay	phase Tot / Idle(IdleFr) / Draw / Pipe(Sh) / GPU_R / GPU_X	15.0 / 7.45 (6.35) / 5.3 / 3.0 (1.8) / 8.1 / 4.6 ms	logcat.txt hakuX-phase	run_waits.py
+E-TRN-3	Tron 2.0	1791267037-hostops-measured-tron	gameplay	stalls (pace max >= 500 ms): 04:00:00.545 / 04:00:02.149 / 04:01:39.709	743.9 (dpc 0) / 530.2 (dpc 0) / 1062.8 (dpc 188.1, dsm 49) ms	logcat.txt pace f=15960, f=16020, f=21240 and shd413 same frames	run_waits.py
+E-TRN-4	Tron 2.0	1791267037-hostops-measured-tron	04:01:39.709 (f=21240)	tcg787 w=236 tf / tfus; pages inval ev	190994 fills, 51.9 ms; 8343 blocks	logcat.txt:38763 (tcg787), :39102 (hakuX-pages)	grep of the lines
+E-TRN-5	Tron 2.0	1791267037-hostops-measured-tron	04:01:39.709	phase Tot / Draw / Pipe.Sh / Fen / IdleFr (per frame, window)	43.0 / 19.9 / 8.5 / 8.0 / 9.2 ms; window wall 7310 ms for 60 frames	logcat.txt:39104, :39106	grep of the lines
+E-VERD-1	all four	verdict.json of each run	whole run	fps_ok_share, gameplay_s	Tron 0.9199 / 325.8 s; GTA 0.746 / 332.0 s; SW3 0.474 / 303.5 s; D&D 0.0 / 253.0 s	dispatch/results/<run>/verdict.json	tools/summ_verdicts.py
+E-SW3-OLD	Star Wars III (10-02 survey)	1790921690-titleroutes-1082096	whole survey	fps_ok_share, window median, ref, apk, env	0.8766 / 30.0 / 7a090b6fa2 / 81768b9f7ed2 / env none	dispatch/results/1790921690-titleroutes-1082096/result.json and verdict; docs/lanes/titleroutes/OUTBOX.md:790	grep
+E-SW3-RANGE	Star Wars III	7a090b6fa2..c3a0c70ace	commit range	commits total / touching hw, accel, android	676 / 46	git log --oneline 7a090b6fa2..c3a0c70ace -- hw accel android	git
+E-FT-1	frametrace instrument	docs/lanes/frametrace/NOTES.md:981	own runs	instrument overhead	21-29 us per frame	NOTES line 981	read
+E-FAM-1	NFS MW #843	sweep-4541007B (pathfind worktree)	whole run	vblank frames v0..v4	0/205/4349/2772/294	pathfind/docs/lanes/pathfind/runs/sweep-4541007B/logcat.txt	tools/family_read.py
+E-FAM-2	LOTR RotK #845	sweep-4541003E	whole run	vblank frames v0..v4	0/218/13801/2213/328	pathfind/.../sweep-4541003E/logcat.txt	tools/family_read.py
+E-FAM-3	Hulk #846	sweep-56550039	whole run	vblank frames v0..v4	0/9/16312/794/45	pathfind/.../sweep-56550039/logcat.txt	tools/family_read.py
+E-FAM-4	Spider-Man 2 #842	sweep-4156002B	whole run	vblank frames v0..v4	0/612/8848/5920/100	pathfind/.../sweep-4156002B/logcat.txt	tools/family_read.py
+E-FAM-5	MC2 #844	sweep-54540008	whole run	vblank frames v0..v4	0/6/2895/4163/16	pathfind/.../sweep-54540008/logcat.txt	tools/family_read.py
+E-851-1	Marvel Nemesis r3 (#851)	sweep-4541038A-r3	03:17:26.911 f=19140	stall max / dsm / dpc	1014.3 ms / 0 / 0	pathfind/.../sweep-4541038A-r3/logcat.txt	run_waits.py

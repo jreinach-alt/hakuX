@@ -1,0 +1,65 @@
+# state: any   (the golden cc9b4ced4a0f holds pathfind's profile; lane.accuracy804, #804)
+# RalliSport Challenge (4D53000F): rallisport-804c.route (pathfind's Single Race path, hat released
+# at once) with the race shots back to back. 804c's capture (1791150087-lane.accuracy804-2199171)
+# reached the race and its dump records the near rival's body in every frame from race clock ~8
+# to ~10; it had no images, so it cannot say whether that run flickered. Sixteen screencaps with
+# no wait between them (0.7-2.4 s each on 804c's log) from race clock ~5.6 cover the rival pass:
+# with the body absent on alternate frames, several of them show the shadow without the body.
+# Every press keeps 804c's measured time (start-race A +140.6, race clock 0 ~+147.4).
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+press START
+wait 5
+shot title
+wait 3
+press A
+wait 6
+press A
+wait 6
+shot mainmenu
+# RIGHT exactly as pathfind sends it (pathfind.py send(): HATX max, HATX mid at once, then 0.35 s).
+# 804b held the hat 0.35 s between max and mid: the menu auto-repeated past Single Race to Options.
+axis HATX max
+axis HATX mid
+wait 2.35
+press A
+wait 6
+shot racetype
+press A
+wait 6
+shot track
+press A
+wait 6
+shot car
+press A
+wait 25
+shot options
+press A
+wait 8
+press A
+wait 3
+shot r1
+shot r2
+shot r3
+shot r4
+shot r5
+shot r6
+shot r7
+shot r8
+shot r9
+shot r10
+shot r11
+shot r12
+shot r13
+shot r14
+shot r15
+shot r16
+mark gameplay
+repeat forever {
+    wait 20
+    shot hold
+}

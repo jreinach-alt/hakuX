@@ -31,8 +31,10 @@ records the last elapse and fires once on the next boot if 00:30 was missed;
 cron cannot do that.
 
 `Linger=yes` is set for the user, which is what lets a user timer run without
-an active login. `gh` and `git` both resolve credentials from `$HOME` in a
-minimal environment, which a user unit provides -- checked, not assumed.
+an active login. `git` resolves its remote from `$HOME` in a minimal environment,
+which a user unit provides -- checked, not assumed. `gh` on that PATH is the
+forge shim (`~/hakux-work/forge/shim/bin/gh`), which talks to the local forge
+with the `jobs` token from `~/hakux-work/forge/tokens/`, not to GitHub.
 
 ## What the timer does NOT do
 

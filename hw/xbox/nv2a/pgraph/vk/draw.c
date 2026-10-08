@@ -1135,12 +1135,18 @@ static void opt_stats_log_and_reset(void)
                 TX_KIB(s->txk_b[TXK_CVT]), TX_KIB(s->txk_b[TXK_SWZ]));
             __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
                 "txr[ct%d bt%d/%d dl%d/%lluK sc%d scdl%d img%d pool%d "
-                "s2tc%d s2td%d]",
+                "s2tc%d s2td%d] txdl[lv%d dim%d cube%d pitch%d swz%d "
+                "cvt%d bpp%d upl%d oth%d]",
                 s->txr_ct, s->txr_bt, s->txr_btl,
                 s->txr_dl, TX_KIB(s->txr_dl_b),
                 s->txr_sc, s->txr_scdl,
                 s->tex_pool_hits + s->tex_pool_misses, s->tex_pool_hits,
-                s->txr_s2tc, s->txr_s2td);
+                s->txr_s2tc, s->txr_s2td,
+                s->txr_why[TXDL_LEVELS], s->txr_why[TXDL_DIM],
+                s->txr_why[TXDL_CUBE], s->txr_why[TXDL_PITCH],
+                s->txr_why[TXDL_SWZ], s->txr_why[TXDL_CVT],
+                s->txr_why[TXDL_BPP], s->txr_why[TXDL_UPL],
+                s->txr_why[TXDL_OTH]);
 #undef TX_KIB
         }
         {
@@ -3586,6 +3592,15 @@ static VkAttachmentLoadOp get_optimal_zeta_load_op(PGRAPHVkState *r)
     return VK_ATTACHMENT_LOAD_OP_LOAD;
 }
 
+static void xfr_rp_outer(PGRAPHVkState *r, bool end);
+static bool gpu_ts_inrp(void);
+static void xfr_census_begin(PGRAPHState *pg, const RenderPassState *st,
+                             unsigned int w, unsigned int h);
+static void xfr_census_end(PGRAPHVkState *r);
+static void xfr_census_clear(PGRAPHState *pg, uint32_t parameter,
+                             bool write_color, bool write_zeta);
+static void xfr_census_draw(PGRAPHVkState *r, bool color, bool zeta);
+
 static void begin_render_pass(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -3648,11 +3663,13 @@ static void begin_render_pass(PGRAPHState *pg)
         .clearValueCount = 0,
         .pClearValues = NULL,
     };
+    xfr_rp_outer(r, false);
+    xfr_census_begin(pg, &begin_state, vp_width, vp_height);
     vkCmdBeginRenderPass(r->command_buffer, &render_pass_begin_info,
                          VK_SUBPASS_CONTENTS_INLINE);
     r->in_render_pass = true;
 
-    if (r->gpu_ts_supported &&
+    if (r->gpu_ts_supported && gpu_ts_inrp() &&
         r->gpu_ts_rp_index < GPU_TS_MAX_RENDER_PASSES) {
         uint32_t base = r->current_frame * GPU_TS_QUERIES_PER_CB;
         uint32_t slot = base + 2 + r->gpu_ts_rp_index * 2;
@@ -3666,7 +3683,7 @@ void end_render_pass(PGRAPHVkState *r)
 {
     if (r->in_render_pass) {
         OPT_STAT_INC(render_pass_breaks);
-        if (r->gpu_ts_supported &&
+        if (r->gpu_ts_supported && gpu_ts_inrp() &&
             r->gpu_ts_rp_index < GPU_TS_MAX_RENDER_PASSES) {
             uint32_t base = r->current_frame * GPU_TS_QUERIES_PER_CB;
             uint32_t slot = base + 2 + r->gpu_ts_rp_index * 2 + 1;
@@ -3677,12 +3694,843 @@ void end_render_pass(PGRAPHVkState *r)
         }
         vkCmdEndRenderPass(r->command_buffer);
         r->in_render_pass = false;
+        xfr_census_end(r);
+        xfr_rp_outer(r, true);
     }
+}
+
+/*
+ * gpunonrender (#433): what the non-render part of the command buffer is made
+ * of. Telemetry only, off unless HAKUX_GPUXFR=1 is set, and reported by the
+ * perflog build as an xemu-xfr line.
+ *
+ * Each top-level non-render operation recorded into the frame's command
+ * buffer (a pgraph_vk_begin_nondraw_commands() scope, see surface.c and
+ * texture.c) is bracketed by a timestamp pair in a pool of its own, so the
+ * gpu_nonrender_ns that gpu_ts_readback() computes is unchanged. A bracket
+ * opened inside another is folded into the outer one. A bracket on the aux
+ * command buffer is not measured (counted in `dropped`).
+ *
+ * HAKUX_GPUXFR_CTRL=N records N bracketed 1 MiB buffer copies at the top of
+ * every frame. Their cost is known from the copy size, so a control arm shows
+ * whether the brackets read a known change before any other reading is trusted.
+ *
+ * The render-pass stamps that gpu_nonrender_ns is computed from are written
+ * inside the render pass. Turnip records such a stamp into the pass's draw
+ * stream, which a GMEM pass replays once per tile, and the last tile's value
+ * is the one that lands (tu_query_pool.cc, tu_CmdWriteTimestamp2). So in a
+ * GMEM pass the "render" span is the last tile's draws, and the binning pass,
+ * the other tiles and every tile load and store count as non-render. With
+ * HAKUX_GPUXFR=1 each render pass also gets a stamp pair outside it (before
+ * vkCmdBeginRenderPass, after vkCmdEndRenderPass), whose span holds all of
+ * that; the `XFR rp` line reports both spans per command buffer.
+ *
+ * HAKUX_GPUTS_INRP=0 leaves out the in-render-pass pair, whose end stamp is a
+ * BOTTOM_OF_PIPE write and so a wait-for-idle in every tile it is replayed
+ * in. With it set, Rnd reads 0 and the outer pair is the render reading; an
+ * arm with and without it is what that pair costs the GPU.
+ *
+ * The render-pass census (the `XFR rpc` line, same switch) says, per pass,
+ * which attachment loads and stores are avoidable, and how much of the outer
+ * render span those passes carry:
+ *   - lclr: an attachment is LOADed and the pass's first operation on it is a
+ *     clear covering the whole binding (pgraph_vk_clear_covers_binding).
+ *   - lunif: an attachment is LOADed whose content is a whole-binding clear
+ *     and nothing since (a clear-only pass before it, typically: a clear that
+ *     arrives with no pass open gets a pass of its own, see
+ *     pgraph_vk_clear_surface). A CLEAR load op would give the same pixels.
+ *   - zdead: the depth/stencil attachment is STOREd, and the next thing to
+ *     touch that surface is a whole-binding clear or a full upload, with no
+ *     draw, partial clear, download or copy to a texture in between.
+ * A pass's mode is inferred from its two stamp spans: a sysmem pass is
+ * stamped in full by the in-pass pair, a GMEM pass only for its last tile, so
+ * in/out < 0.8 reads as GMEM. Loads and stores are tile blits only in a GMEM
+ * pass; on sysmem a LOAD or STORE op emits nothing, which is why the groups
+ * are also given on GMEM passes alone (`g`). Surface content and pending
+ * depth stores are tracked per SurfaceBinding in a small table here; a
+ * pointer reused after a free can carry stale content, which reads as
+ * `unknown` at worst. A depth store still pending when its command buffer is
+ * read back is `pend`; one resolved after it is counted in `late`.
+ */
+int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
+                        const char *cat, int site);
+void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok);
+void pgraph_vk_xfr_surf(const SurfaceBinding *s, int ev);
+
+#define XFR_MAX_OPS 128
+#define XFR_MAX_RP 64
+#define XFR_RP_BASE (2 * XFR_MAX_OPS)
+#define XFR_QUERIES_PER_CB (2 * XFR_MAX_OPS + 2 * XFR_MAX_RP)
+#define XFR_WINDOW 60
+#define XFR_MAX_CATS 8
+#define XFR_MAX_SITES 32
+#define XFR_CTRL_BYTES (1u << 20)
+
+static const char *const xfr_cat_names[XFR_MAX_CATS] = {
+    "surf_up", "tex_up", "s2t", "download", "handoff", "barrier", "ctrl",
+    "other",
+};
+
+typedef struct XfrSite {
+    uint32_t site;
+    uint8_t cat;
+    double ms;
+    unsigned n;
+} XfrSite;
+
+/* census: a pass's first operation on an attachment */
+enum { XOP_NONE, XOP_CLEAR_FULL, XOP_CLEAR_PART, XOP_DRAW };
+/* census: what a surface holds */
+enum { XSC_UNKNOWN, XSC_UNIFORM, XSC_OTHER };
+/* census: a depth store's fate */
+enum { XZF_NONE, XZF_PEND, XZF_DEAD, XZF_LIVE };
+/* pgraph_vk_xfr_surf events */
+enum { XFR_SURF_READ = 1, XFR_SURF_UPLOAD = 2, XFR_SURF_GONE = 3 };
+
+#define XFR_PASS_C 0x01         /* colour attachment */
+#define XFR_PASS_Z 0x02         /* depth/stencil attachment */
+#define XFR_PASS_CLOAD 0x04
+#define XFR_PASS_ZLOAD 0x08
+#define XFR_PASS_CUNIF 0x10     /* colour LOAD of a uniform clear */
+#define XFR_PASS_ZUNIF 0x20
+
+typedef struct XfrPass {
+    uint8_t flags;
+    uint8_t cfirst, zfirst;
+    uint8_t zfate;
+    uint16_t draws, clears;
+    uint32_t ckb, zkb;          /* attachment sizes, scaled, KiB */
+} XfrPass;
+
+#define XFR_MAX_SURF 32
+#define XFR_SURF_PEND 4
+
+typedef struct XfrSurf {
+    const SurfaceBinding *s;
+    uint8_t content;
+    uint8_t npend;
+    struct {
+        uint8_t f, i;
+        uint64_t ser;
+    } pend[XFR_SURF_PEND];
+} XfrSurf;
+
+/* census groups on the XFR rpc line, summed over a window */
+enum { XG_ALL, XG_LCLR, XG_LUNIF, XG_ZDEAD, XG_CLRONLY, XG_ANY, XG_N };
+
+static struct {
+    int state;                  /* -1 unread; else 1 when HAKUX_GPUXFR=1 */
+    int ctrl;
+    VkQueryPool pool;
+    int depth;
+    unsigned long dropped;
+    int ops[NUM_SUBMIT_FRAMES];
+    uint8_t cat[NUM_SUBMIT_FRAMES][XFR_MAX_OPS];
+    uint32_t site[NUM_SUBMIT_FRAMES][XFR_MAX_OPS];
+    uint64_t results[XFR_QUERIES_PER_CB];
+    /* outer render-pass pairs: recorded, and whether one is open */
+    int rpo[NUM_SUBMIT_FRAMES];
+    bool rpo_open;
+    unsigned long rpo_dropped;
+    /* the current window of frames, as xemu-gpu's */
+    int win_n;
+    float nr[XFR_WINDOW];
+    float resid[XFR_WINDOW];
+    float rp_in[XFR_WINDOW];    /* render span, in-pass stamps (as Rnd) */
+    float rp_out[XFR_WINDOW];   /* render span, outer stamps */
+    float nr_out[XFR_WINDOW];   /* cb span minus rp_out */
+    float res_out[XFR_WINDOW];  /* nr_out minus the bracketed categories */
+    unsigned rp_n;
+    /* second readbacks of one recording, skipped (gpu_ts_readback) */
+    unsigned long dup;
+    double dup_ms;
+    float cat_ms[XFR_MAX_CATS][XFR_WINDOW];
+    unsigned cat_ops[XFR_MAX_CATS];
+    XfrSite sites[XFR_MAX_SITES];
+    int nsites;
+    /* render-pass census: per slot, per outer-stamped pass */
+    XfrPass pass[NUM_SUBMIT_FRAMES][XFR_MAX_RP];
+    uint64_t ser[NUM_SUBMIT_FRAMES];    /* recording serial of the slot */
+    uint64_t ser_next;
+    bool read[NUM_SUBMIT_FRAMES];       /* slot read back since recorded */
+    int cur;                            /* open census pass, or -1 */
+    const SurfaceBinding *cur_c, *cur_z;
+    XfrSurf surf[XFR_MAX_SURF];
+    int surf_next;
+    /* window sums: per group, [0] every pass, [1] passes read as GMEM */
+    unsigned g_n[2][XG_N];
+    double g_ms[2][XG_N];
+    double g_kb[2][XG_N];       /* avoidable KiB in the group */
+    double load_kb[2], store_kb[2];
+    unsigned paired;            /* passes with both stamp spans */
+    double in_ms[2];            /* in-pass span of the paired passes */
+    unsigned long draws[2];
+    unsigned zlive, zpend, zlate_dead, zlate_live;
+} xfr = { .state = -1, .cur = -1 };
+
+static bool xfr_on(void)
+{
+    if (xfr.state < 0) {
+        const char *on = getenv("HAKUX_GPUXFR");
+        const char *ctrl = getenv("HAKUX_GPUXFR_CTRL");
+        xfr.state = on && on[0] == '1';
+        xfr.ctrl = ctrl ? atoi(ctrl) : 0;
+        xfr.ctrl = MIN(MAX(xfr.ctrl, 0), 64);
+    }
+    return xfr.state;
+}
+
+static bool gpu_ts_inrp(void)
+{
+    static int inrp = -1;
+    if (inrp < 0) {
+        const char *v = getenv("HAKUX_GPUTS_INRP");
+        inrp = !(v && v[0] == '0');
+    }
+    return inrp;
+}
+
+/* The outer stamp of a render pass: before it begins, or after it ends. */
+static void xfr_rp_outer(PGRAPHVkState *r, bool end)
+{
+    if (!xfr_on() || !xfr.pool) {
+        return;
+    }
+    int f = r->current_frame;
+    if (!end) {
+        if (xfr.rpo[f] >= XFR_MAX_RP) {
+            xfr.rpo_dropped++;
+            return;
+        }
+        vkCmdWriteTimestamp(r->command_buffer,
+                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, xfr.pool,
+                            f * XFR_QUERIES_PER_CB + XFR_RP_BASE +
+                                2 * xfr.rpo[f]);
+        xfr.rpo_open = true;
+    } else if (xfr.rpo_open) {
+        vkCmdWriteTimestamp(r->command_buffer,
+                            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, xfr.pool,
+                            f * XFR_QUERIES_PER_CB + XFR_RP_BASE +
+                                2 * xfr.rpo[f] + 1);
+        xfr.rpo[f]++;
+        xfr.rpo_open = false;
+    }
+}
+
+static XfrSurf *xfr_surf_find(const SurfaceBinding *s, bool add)
+{
+    if (!s) {
+        return NULL;
+    }
+    for (int i = 0; i < XFR_MAX_SURF; i++) {
+        if (xfr.surf[i].s == s) {
+            return &xfr.surf[i];
+        }
+    }
+    if (!add) {
+        return NULL;
+    }
+    XfrSurf *e = &xfr.surf[xfr.surf_next];
+    xfr.surf_next = (xfr.surf_next + 1) % XFR_MAX_SURF;
+    *e = (XfrSurf){ .s = s };
+    return e;
+}
+
+/* Settle the depth stores pending on a surface: dead or live. */
+static void xfr_surf_resolve(XfrSurf *e, bool dead)
+{
+    if (!e) {
+        return;
+    }
+    for (int k = 0; k < e->npend; k++) {
+        int f = e->pend[k].f;
+        if (xfr.ser[f] != e->pend[k].ser) {
+            continue;   /* the slot was recorded again */
+        }
+        if (xfr.read[f]) {
+            if (dead) {
+                xfr.zlate_dead++;
+            } else {
+                xfr.zlate_live++;
+            }
+            continue;
+        }
+        xfr.pass[f][e->pend[k].i].zfate = dead ? XZF_DEAD : XZF_LIVE;
+    }
+    e->npend = 0;
+}
+
+/* A surface read, fully re-uploaded, or freed outside a render pass. */
+void pgraph_vk_xfr_surf(const SurfaceBinding *s, int ev)
+{
+    if (!xfr_on()) {
+        return;
+    }
+    XfrSurf *e = xfr_surf_find(s, false);
+    if (!e) {
+        return;
+    }
+    switch (ev) {
+    case XFR_SURF_READ:
+        xfr_surf_resolve(e, false);
+        break;
+    case XFR_SURF_UPLOAD:
+        xfr_surf_resolve(e, true);
+        e->content = XSC_OTHER;
+        break;
+    case XFR_SURF_GONE:
+        e->npend = 0;
+        e->s = NULL;
+        break;
+    }
+}
+
+static uint32_t xfr_kb(const SurfaceBinding *b, unsigned int w,
+                       unsigned int h)
+{
+    return (uint32_t)(((uint64_t)w * h * b->host_fmt.host_bytes_per_pixel +
+                       1023) / 1024);
+}
+
+static void xfr_census_begin(PGRAPHState *pg, const RenderPassState *st,
+                             unsigned int w, unsigned int h)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    xfr.cur = -1;
+    if (!xfr_on() || !xfr.pool || !xfr.rpo_open) {
+        return;
+    }
+    int f = r->current_frame;
+    XfrPass *p = &xfr.pass[f][xfr.rpo[f]];
+    *p = (XfrPass){ 0 };
+    xfr.cur = xfr.rpo[f];
+    xfr.cur_c = r->color_binding;
+    xfr.cur_z = r->zeta_binding;
+    if (r->color_binding) {
+        XfrSurf *e = xfr_surf_find(r->color_binding, true);
+        p->flags |= XFR_PASS_C;
+        p->ckb = xfr_kb(r->color_binding, w, h);
+        if (st->color_load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
+            p->flags |= XFR_PASS_CLOAD;
+            if (e->content == XSC_UNIFORM) {
+                p->flags |= XFR_PASS_CUNIF;
+            }
+        }
+    }
+    if (r->zeta_binding) {
+        XfrSurf *e = xfr_surf_find(r->zeta_binding, true);
+        p->flags |= XFR_PASS_Z;
+        p->zkb = xfr_kb(r->zeta_binding, w, h);
+        if (st->zeta_load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
+            p->flags |= XFR_PASS_ZLOAD;
+            if (e->content == XSC_UNIFORM) {
+                p->flags |= XFR_PASS_ZUNIF;
+            }
+        }
+    }
+}
+
+/* The pass's depth store waits for whatever touches the surface next. */
+static void xfr_census_end(PGRAPHVkState *r)
+{
+    if (xfr.cur < 0) {
+        return;
+    }
+    int f = r->current_frame;
+    XfrPass *p = &xfr.pass[f][xfr.cur];
+    XfrSurf *e = xfr_surf_find(xfr.cur_z, false);
+    if (e && (p->flags & XFR_PASS_Z)) {
+        if (e->npend == XFR_SURF_PEND) {
+            /* oldest one stays pending */
+            memmove(&e->pend[0], &e->pend[1],
+                    sizeof(e->pend[0]) * (XFR_SURF_PEND - 1));
+            e->npend--;
+        }
+        e->pend[e->npend].f = f;
+        e->pend[e->npend].i = xfr.cur;
+        e->pend[e->npend].ser = xfr.ser[f];
+        e->npend++;
+        p->zfate = XZF_PEND;
+    }
+    xfr.cur = -1;
+}
+
+static void xfr_census_op(XfrPass *p, bool zeta, int op)
+{
+    uint8_t *first = zeta ? &p->zfirst : &p->cfirst;
+    if (*first == XOP_NONE) {
+        *first = op;
+    }
+    XfrSurf *e = xfr_surf_find(zeta ? xfr.cur_z : xfr.cur_c, true);
+    if (zeta) {
+        xfr_surf_resolve(e, op == XOP_CLEAR_FULL);
+    }
+    e->content = op == XOP_CLEAR_FULL ? XSC_UNIFORM : XSC_OTHER;
+}
+
+static void xfr_census_clear(PGRAPHState *pg, uint32_t parameter,
+                             bool write_color, bool write_zeta)
+{
+    if (xfr.cur < 0) {
+        return;
+    }
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    XfrPass *p = &xfr.pass[r->current_frame][xfr.cur];
+    p->clears++;
+    if (write_color && xfr.cur_c) {
+        bool full = pgraph_vk_clear_covers_binding(
+            pg, (SurfaceBinding *)xfr.cur_c, parameter);
+        xfr_census_op(p, false, full ? XOP_CLEAR_FULL : XOP_CLEAR_PART);
+    }
+    if (write_zeta && xfr.cur_z) {
+        bool full = pgraph_vk_clear_covers_binding(
+            pg, (SurfaceBinding *)xfr.cur_z, parameter);
+        xfr_census_op(p, true, full ? XOP_CLEAR_FULL : XOP_CLEAR_PART);
+    }
+}
+
+/* A draw: `color`/`zeta` say whether it writes or tests that attachment. */
+static void xfr_census_draw(PGRAPHVkState *r, bool color, bool zeta)
+{
+    if (xfr.cur < 0) {
+        return;
+    }
+    XfrPass *p = &xfr.pass[r->current_frame][xfr.cur];
+    p->draws++;
+    if (color && xfr.cur_c) {
+        xfr_census_op(p, false, XOP_DRAW);
+    }
+    if (zeta && xfr.cur_z) {
+        xfr_census_op(p, true, XOP_DRAW);
+    }
+}
+
+/* File one read-back pass in the census window. */
+static void xfr_census_pass(const XfrPass *p, double out_ms, double in_ms,
+                            int gmem)
+{
+    bool lclr = ((p->flags & XFR_PASS_CLOAD) && p->cfirst == XOP_CLEAR_FULL) ||
+                ((p->flags & XFR_PASS_ZLOAD) && p->zfirst == XOP_CLEAR_FULL);
+    bool lunif = p->flags & (XFR_PASS_CUNIF | XFR_PASS_ZUNIF);
+    bool zdead = p->zfate == XZF_DEAD;
+    bool clronly = p->draws == 0 && p->clears > 0;
+    double lclr_kb =
+        ((p->flags & XFR_PASS_CLOAD) && p->cfirst == XOP_CLEAR_FULL ?
+             p->ckb : 0) +
+        ((p->flags & XFR_PASS_ZLOAD) && p->zfirst == XOP_CLEAR_FULL ?
+             p->zkb : 0);
+    double lunif_kb = (p->flags & XFR_PASS_CUNIF ? p->ckb : 0) +
+                      (p->flags & XFR_PASS_ZUNIF ? p->zkb : 0);
+    double zdead_kb = zdead ? p->zkb : 0;
+    bool in[XG_N] = {
+        [XG_ALL] = true, [XG_LCLR] = lclr, [XG_LUNIF] = lunif,
+        [XG_ZDEAD] = zdead, [XG_CLRONLY] = clronly,
+        [XG_ANY] = lclr || lunif || zdead,
+    };
+    double kb[XG_N] = {
+        [XG_LCLR] = lclr_kb, [XG_LUNIF] = lunif_kb, [XG_ZDEAD] = zdead_kb,
+        /* a load counted in both lclr and lunif is one load */
+        [XG_ANY] = MAX(lclr_kb, lunif_kb) + zdead_kb,
+    };
+    for (int m = 0; m < (gmem ? 2 : 1); m++) {
+        for (int g = 0; g < XG_N; g++) {
+            if (in[g]) {
+                xfr.g_n[m][g]++;
+                xfr.g_ms[m][g] += out_ms;
+                xfr.g_kb[m][g] += kb[g];
+            }
+        }
+        xfr.load_kb[m] += (p->flags & XFR_PASS_CLOAD ? p->ckb : 0) +
+                          (p->flags & XFR_PASS_ZLOAD ? p->zkb : 0);
+        xfr.store_kb[m] += p->ckb + p->zkb;
+        xfr.in_ms[m] += in_ms;
+        xfr.draws[m] += p->draws;
+    }
+    if (p->zfate == XZF_LIVE) {
+        xfr.zlive++;
+    } else if (p->zfate == XZF_PEND) {
+        xfr.zpend++;
+    }
+}
+
+static int xfr_cat_index(const char *cat)
+{
+    for (int i = 0; i < XFR_MAX_CATS - 1; i++) {
+        if (!strcmp(cat, xfr_cat_names[i])) {
+            return i;
+        }
+    }
+    return XFR_MAX_CATS - 1;
+}
+
+/*
+ * Open a bracket around the operations recorded into `cmd` from here until
+ * pgraph_vk_xfr_end() with the returned token. Returns the op index when the
+ * bracket is measured, -1 when it is not, -2 when it is folded into an outer
+ * one. The end call must follow with the same token.
+ */
+int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
+                        const char *cat, int site)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    if (!xfr_on()) {
+        return -1;
+    }
+    if (xfr.depth++ > 0) {
+        return -2;
+    }
+    int f = r->current_frame;
+    int n = xfr.ops[f];
+    if (!xfr.pool || cmd != r->command_buffer || n >= XFR_MAX_OPS) {
+        xfr.dropped++;
+        return -1;
+    }
+    xfr.cat[f][n] = xfr_cat_index(cat);
+    xfr.site[f][n] = site;
+    xfr.ops[f] = n + 1;
+    vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, xfr.pool,
+                        f * XFR_QUERIES_PER_CB + 2 * n);
+    return n;
+}
+
+void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    if (!xfr_on()) {
+        return;
+    }
+    xfr.depth--;
+    if (tok < 0) {
+        return;
+    }
+    vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, xfr.pool,
+                        r->current_frame * XFR_QUERIES_PER_CB + 2 * tok + 1);
+}
+
+static void gpu_xfr_frame_begin(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    if (!xfr_on() || !r->gpu_ts_supported) {
+        return;
+    }
+    if (!xfr.pool) {
+        VkQueryPoolCreateInfo ci = {
+            .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+            .queryType = VK_QUERY_TYPE_TIMESTAMP,
+            .queryCount = XFR_QUERIES_PER_CB * NUM_SUBMIT_FRAMES,
+        };
+        VK_CHECK(vkCreateQueryPool(r->device, &ci, NULL, &xfr.pool));
+    }
+    VkCommandBuffer cmd = r->command_buffer;
+    int f = r->current_frame;
+    vkCmdResetQueryPool(cmd, xfr.pool, f * XFR_QUERIES_PER_CB,
+                        XFR_QUERIES_PER_CB);
+    xfr.ops[f] = 0;
+    xfr.depth = 0;
+    xfr.rpo[f] = 0;
+    xfr.rpo_open = false;
+    xfr.ser[f] = ++xfr.ser_next;
+    xfr.read[f] = false;
+    xfr.cur = -1;
+    for (int i = 0; i < xfr.ctrl; i++) {
+        int tok = pgraph_vk_xfr_begin(pg, cmd, "ctrl", __LINE__);
+        VkBufferCopy region = { .size = XFR_CTRL_BYTES };
+        vkCmdCopyBuffer(cmd,
+                        r->storage_buffers[BUFFER_COMPUTE_SRC].buffer,
+                        r->storage_buffers[BUFFER_COMPUTE_DST].buffer,
+                        1, &region);
+        pgraph_vk_xfr_end(pg, cmd, tok);
+    }
+    if (xfr.ctrl) {
+        VkMemoryBarrier ctrl_barrier = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT |
+                             VK_ACCESS_MEMORY_WRITE_BIT,
+        };
+        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0,
+                             1, &ctrl_barrier, 0, NULL, 0, NULL);
+    }
+}
+
+static void xfr_site_add(uint32_t site, int cat, double ms)
+{
+    for (int i = 0; i < xfr.nsites; i++) {
+        XfrSite *s = &xfr.sites[i];
+        if (s->site == site && s->cat == cat) {
+            s->ms += ms;
+            s->n++;
+            return;
+        }
+    }
+    if (xfr.nsites < XFR_MAX_SITES) {
+        xfr.sites[xfr.nsites++] = (XfrSite){ site, cat, ms, 1 };
+    }
+}
+
+#if defined(__ANDROID__) && NV2A_PERF_LOG
+#include <android/log.h>
+
+static const char *const xfr_group_names[XG_N] = {
+    "all", "lclr", "lunif", "zdead", "clronly", "any",
+};
+
+static int xfr_cmp_float(const void *a, const void *b)
+{
+    float x = *(const float *)a;
+    float y = *(const float *)b;
+    return (x > y) - (x < y);
+}
+
+static int xfr_cmp_site(const void *a, const void *b)
+{
+    double x = ((const XfrSite *)a)->ms;
+    double y = ((const XfrSite *)b)->ms;
+    return (x < y) - (x > y);
+}
+
+/* median, mean and 90th percentile of one window's per-frame values */
+static void xfr_stats(const float *v, float *med, float *mean, float *p90)
+{
+    float tmp[XFR_WINDOW];
+    double sum = 0;
+    memcpy(tmp, v, sizeof(tmp));
+    qsort(tmp, XFR_WINDOW, sizeof(float), xfr_cmp_float);
+    for (int i = 0; i < XFR_WINDOW; i++) {
+        sum += v[i];
+    }
+    *med = tmp[XFR_WINDOW / 2];
+    *p90 = tmp[XFR_WINDOW * 9 / 10];
+    *mean = (float)(sum / XFR_WINDOW);
+}
+
+/*
+ * The lines ride on the xemu-gpu tag, not their own: the perflog logcat filter
+ * is a tag list (LOGCAT_SPEC in dispatcher.sh) that ends in *:S, so an
+ * xemu-xfr tag is dropped unread. The xemu-xfr prefix keeps them greppable.
+ */
+static void xfr_emit(void)
+{
+    char buf[768];
+    int len;
+    float med, mean, p90;
+
+    xfr_stats(xfr.nr, &med, &mean, &p90);
+    len = snprintf(buf, sizeof(buf), "XFR nr %.2f %.2f %.2f", med, mean, p90);
+    xfr_stats(xfr.resid, &med, &mean, &p90);
+    len += snprintf(buf + len, sizeof(buf) - len, " res %.2f %.2f %.2f",
+                    med, mean, p90);
+    for (int c = 0; c < XFR_MAX_CATS; c++) {
+        xfr_stats(xfr.cat_ms[c], &med, &mean, &p90);
+        len += snprintf(buf + len, sizeof(buf) - len,
+                        " %s %.2f %.2f %.2f n%.1f", xfr_cat_names[c],
+                        med, mean, p90, (double)xfr.cat_ops[c] / XFR_WINDOW);
+    }
+    __android_log_print(ANDROID_LOG_INFO, "xemu-gpu", "xemu-xfr %s", buf);
+
+    qsort(xfr.sites, xfr.nsites, sizeof(XfrSite), xfr_cmp_site);
+    len = snprintf(buf, sizeof(buf), "XFR sites");
+    for (int i = 0; i < xfr.nsites && i < 4; i++) {
+        XfrSite *s = &xfr.sites[i];
+        len += snprintf(buf + len, sizeof(buf) - len,
+                        " %s@%u %.2f n%.1f", xfr_cat_names[s->cat], s->site,
+                        s->ms / XFR_WINDOW, (double)s->n / XFR_WINDOW);
+    }
+    snprintf(buf + len, sizeof(buf) - len, " dropped %lu", xfr.dropped);
+    __android_log_print(ANDROID_LOG_INFO, "xemu-gpu", "xemu-xfr %s", buf);
+
+    const struct {
+        const char *name;
+        const float *v;
+    } rp[] = {
+        { "in", xfr.rp_in }, { "out", xfr.rp_out },
+        { "nr_out", xfr.nr_out }, { "res_out", xfr.res_out },
+    };
+    len = snprintf(buf, sizeof(buf), "XFR rp");
+    for (int i = 0; i < (int)ARRAY_SIZE(rp); i++) {
+        xfr_stats(rp[i].v, &med, &mean, &p90);
+        len += snprintf(buf + len, sizeof(buf) - len, " %s %.2f %.2f %.2f",
+                        rp[i].name, med, mean, p90);
+    }
+    snprintf(buf + len, sizeof(buf) - len,
+             " n%.1f inrp%d dropped %lu dup %lu %.2f",
+             (double)xfr.rp_n / XFR_WINDOW, gpu_ts_inrp(), xfr.rpo_dropped,
+             xfr.dup, xfr.dup_ms);
+    __android_log_print(ANDROID_LOG_INFO, "xemu-gpu", "xemu-xfr %s", buf);
+
+    /*
+     * Census, per command buffer (window sums / XFR_WINDOW): for each group,
+     * passes, outer ms and avoidable MiB, over every pass and then over the
+     * passes read as GMEM (`g`).
+     */
+    for (int m = 0; m < 2; m++) {
+        len = snprintf(buf, sizeof(buf), "XFR rpc%s", m ? " g" : "");
+        for (int g = 0; g < XG_N; g++) {
+            len += snprintf(buf + len, sizeof(buf) - len,
+                            " %s %.2f %.2f %.2f", xfr_group_names[g],
+                            (double)xfr.g_n[m][g] / XFR_WINDOW,
+                            xfr.g_ms[m][g] / XFR_WINDOW,
+                            xfr.g_kb[m][g] / 1024.0 / XFR_WINDOW);
+        }
+        len += snprintf(buf + len, sizeof(buf) - len,
+                        " ldMB %.2f stMB %.2f in %.2f draws %.1f",
+                        xfr.load_kb[m] / 1024.0 / XFR_WINDOW,
+                        xfr.store_kb[m] / 1024.0 / XFR_WINDOW,
+                        xfr.in_ms[m] / XFR_WINDOW,
+                        (double)xfr.draws[m] / XFR_WINDOW);
+        if (!m) {
+            snprintf(buf + len, sizeof(buf) - len,
+                     " paired %.2f zlive %.2f zpend %.2f late %u/%u",
+                     (double)xfr.paired / XFR_WINDOW,
+                     (double)xfr.zlive / XFR_WINDOW,
+                     (double)xfr.zpend / XFR_WINDOW, xfr.zlate_dead,
+                     xfr.zlate_live);
+        }
+        __android_log_print(ANDROID_LOG_INFO, "xemu-gpu", "xemu-xfr %s", buf);
+    }
+}
+#else
+static void xfr_emit(void)
+{
+}
+#endif
+
+/*
+ * Reduce this frame's brackets to ms per category and file them in the window.
+ * `nonrender_ns` is the gpu_nonrender_ns of the same command buffer, so the
+ * residual says how much of the non-render time the brackets do not cover.
+ * The outer render-pass pairs give the same split with the passes' tile
+ * loads, stores and binning on the render side (`nr_out`, `res_out`).
+ */
+static void gpu_xfr_frame(PGRAPHVkState *r, int frame, int64_t total_ns,
+                          int64_t nonrender_ns)
+{
+    if (!xfr_on() || !xfr.pool) {
+        return;
+    }
+    int n = xfr.ops[frame];
+    double ms[XFR_MAX_CATS] = { 0 };
+    if (n > 0) {
+        uint32_t count = 2 * n;
+        VkResult res = vkGetQueryPoolResults(
+            r->device, xfr.pool, frame * XFR_QUERIES_PER_CB, count,
+            sizeof(uint64_t) * count, xfr.results, sizeof(uint64_t),
+            VK_QUERY_RESULT_64_BIT);
+        if (res != VK_SUCCESS) {
+            return;
+        }
+        for (int i = 0; i < n; i++) {
+            int64_t ticks = (int64_t)(xfr.results[2 * i + 1] -
+                                      xfr.results[2 * i]);
+            double op_ms = (double)ticks * r->gpu_ts_period_ns / 1e6;
+            int c = xfr.cat[frame][i];
+            ms[c] += op_ms;
+            xfr.cat_ops[c]++;
+            xfr_site_add(xfr.site[frame][i], c, op_ms);
+        }
+    }
+    double rp_out_ms = 0;
+    int nrp = xfr.rpo[frame];
+    xfr.read[frame] = true;
+    if (nrp > 0) {
+        uint32_t count = 2 * nrp;
+        VkResult res = vkGetQueryPoolResults(
+            r->device, xfr.pool, frame * XFR_QUERIES_PER_CB + XFR_RP_BASE,
+            count, sizeof(uint64_t) * count, xfr.results, sizeof(uint64_t),
+            VK_QUERY_RESULT_64_BIT);
+        if (res != VK_SUCCESS) {
+            return;
+        }
+        /* pass i has both spans when every pass got both pairs */
+        bool paired = gpu_ts_inrp() && r->gpu_ts_rp_counts[frame] == nrp;
+        for (int i = 0; i < nrp; i++) {
+            int64_t ticks = (int64_t)(xfr.results[2 * i + 1] -
+                                      xfr.results[2 * i]);
+            double out_ms = (double)ticks * r->gpu_ts_period_ns / 1e6;
+            rp_out_ms += out_ms;
+            int gmem = 0;
+            double in_ms = 0;
+            if (paired) {
+                int64_t in_ticks =
+                    (int64_t)(r->gpu_ts_results[2 + 2 * i + 1] -
+                              r->gpu_ts_results[2 + 2 * i]);
+                gmem = ticks > 0 && in_ticks < 0.8 * ticks;
+                in_ms = (double)in_ticks * r->gpu_ts_period_ns / 1e6;
+                xfr.paired++;
+            }
+            xfr_census_pass(&xfr.pass[frame][i], out_ms, in_ms, gmem);
+        }
+    }
+    int w = xfr.win_n++;
+    double sum = 0;
+    for (int c = 0; c < XFR_MAX_CATS; c++) {
+        xfr.cat_ms[c][w] = (float)ms[c];
+        sum += ms[c];
+    }
+    xfr.nr[w] = (float)(nonrender_ns / 1e6);
+    xfr.resid[w] = xfr.nr[w] - (float)sum;
+    xfr.rp_in[w] = (float)((total_ns - nonrender_ns) / 1e6);
+    xfr.rp_out[w] = (float)rp_out_ms;
+    xfr.nr_out[w] = (float)MAX(total_ns / 1e6 - rp_out_ms, 0);
+    xfr.res_out[w] = xfr.nr_out[w] - (float)sum;
+    xfr.rp_n += nrp;
+    if (xfr.win_n == XFR_WINDOW) {
+        xfr_emit();
+        xfr.win_n = 0;
+        memset(xfr.cat_ops, 0, sizeof(xfr.cat_ops));
+        xfr.nsites = 0;
+        xfr.dropped = 0;
+        xfr.rp_n = 0;
+        xfr.rpo_dropped = 0;
+        xfr.dup = 0;
+        xfr.dup_ms = 0;
+        memset(xfr.g_n, 0, sizeof(xfr.g_n));
+        memset(xfr.g_ms, 0, sizeof(xfr.g_ms));
+        memset(xfr.g_kb, 0, sizeof(xfr.g_kb));
+        memset(xfr.load_kb, 0, sizeof(xfr.load_kb));
+        memset(xfr.store_kb, 0, sizeof(xfr.store_kb));
+        xfr.paired = 0;
+        memset(xfr.in_ms, 0, sizeof(xfr.in_ms));
+        memset(xfr.draws, 0, sizeof(xfr.draws));
+        xfr.zlive = xfr.zpend = xfr.zlate_dead = xfr.zlate_live = 0;
+    }
+}
+
+/*
+ * A slot's stamps are read once per recording. A finish on the PFIFO thread
+ * that is not deferred waits for the render thread's submit and reads the slot
+ * back at once, but the render thread marked the slot submitted
+ * (render_thread.c), so frame rotation reaches the same slot before it is
+ * recorded again and read it a second time: each such command buffer counted
+ * twice in the GPU phase stats. Cleared when the slot's command buffer begins.
+ */
+static bool gpu_ts_read[NUM_SUBMIT_FRAMES];
+
+/* A skipped second readback, counted on the XFR rp line. */
+static void gpu_ts_dup(PGRAPHVkState *r, int frame)
+{
+    if (!xfr_on() || !xfr.pool) {
+        return;
+    }
+    uint64_t ts[2];
+    if (vkGetQueryPoolResults(r->device, r->gpu_ts_pool,
+                              frame * GPU_TS_QUERIES_PER_CB, 2, sizeof(ts),
+                              ts, sizeof(uint64_t),
+                              VK_QUERY_RESULT_64_BIT) != VK_SUCCESS) {
+        return;
+    }
+    xfr.dup++;
+    xfr.dup_ms += (double)(int64_t)(ts[1] - ts[0]) * r->gpu_ts_period_ns / 1e6;
 }
 
 static void gpu_ts_readback(PGRAPHVkState *r, int frame)
 {
     if (!r->gpu_ts_supported) {
+        return;
+    }
+    if (gpu_ts_read[frame]) {
+        gpu_ts_dup(r, frame);
         return;
     }
 
@@ -3697,6 +4545,7 @@ static void gpu_ts_readback(PGRAPHVkState *r, int frame)
     if (res != VK_SUCCESS) {
         return;
     }
+    gpu_ts_read[frame] = true;
 
     uint64_t cb_start = r->gpu_ts_results[0];
     uint64_t cb_end = r->gpu_ts_results[1];
@@ -3714,6 +4563,7 @@ static void gpu_ts_readback(PGRAPHVkState *r, int frame)
     if (nonrender_ns < 0) {
         nonrender_ns = 0;
     }
+    gpu_xfr_frame(r, frame, total_ns, nonrender_ns);
 
     g_nv2a_stats.phase_working.gpu_total_ns += total_ns;
     g_nv2a_stats.phase_working.gpu_render_ns += render_ns;
@@ -4284,7 +5134,36 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
             }
 
             if (!deferred) {
+                /*
+                 * #796: a surface download's finish waits here for the GPU
+                 * with pgraph.lock released, as wait_frame_fence (vk/surface.c)
+                 * already does for the fence waits of the same downloads.
+                 * Top Spin takes ~26 of these a frame from its texture binds,
+                 * and its vCPU waited 10-13.6 ms a frame for the lock behind
+                 * them, on reads of PGRAPH 0xb10 (PATT_COLOR0).
+                 *
+                 * Held: on the PFIFO thread a finish runs inside a method or
+                 * the flip-stall path, both under pgraph.lock (pfifo.c's
+                 * puller, the renderer switch); the render thread's finishes
+                 * take the branch above. The wait reads nothing the lock
+                 * protects -- the render thread submits and waits the fence,
+                 * and takes no pgraph.lock -- and the staged downloads are
+                 * copied into VRAM below, after the lock is retaken. In the
+                 * window only the guest's interrupt and register MMIO may run
+                 * (pgraph_read/pgraph_write); every other taker, the VRAM
+                 * access callback included, waits in pgraph_lock_settled()
+                 * until the method ends.
+                 */
+                NV2AState *fd = container_of(pg, NV2AState, pgraph);
+                bool unlock = finish_reason == VK_FINISH_REASON_SURFACE_DOWN &&
+                              qemu_thread_is_self(&fd->pfifo.thread);
+                if (unlock) {
+                    pgraph_lock_release_for_fence(pg);
+                }
                 qemu_event_wait(&finish_event);
+                if (unlock) {
+                    pgraph_lock_retake_after_fence(pg);
+                }
                 qemu_event_destroy(&finish_event);
                 gpu_ts_readback(r, r->current_frame);
 
@@ -4513,7 +5392,9 @@ void pgraph_vk_begin_command_buffer(PGRAPHState *pg)
                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                             r->gpu_ts_pool, base + 0);
         r->gpu_ts_rp_index = 0;
+        gpu_ts_read[r->current_frame] = false;
     }
+    gpu_xfr_frame_begin(pg);
 }
 
 // FIXME: Refactor below
@@ -5195,6 +6076,18 @@ static void begin_draw(PGRAPHState *pg)
     if (!r->in_render_pass) {
         begin_render_pass(pg);
         must_bind_pipeline = true;
+    }
+    if (!pg->clearing && xfr.cur >= 0) {
+        uint32_t c0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);
+        uint32_t c1 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1);
+        xfr_census_draw(
+            r,
+            c0 & (NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE |
+                  NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE |
+                  NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE |
+                  NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE),
+            (c0 & NV_PGRAPH_CONTROL_0_ZENABLE) ||
+                (c1 & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE));
     }
 
     if (must_bind_pipeline) {
@@ -6816,6 +7709,7 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
         begin_render_pass(pg);
         pipeline_changed = true;
     }
+    xfr_census_draw(r, e->color_write, e->depth_test || e->stencil_test);
 
     if (pipeline_changed) {
         if (!e->pipeline_binding || e->pipeline_binding->pipeline == VK_NULL_HANDLE) {
@@ -8029,6 +8923,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
                 };
             }
 
+            xfr_census_clear(pg, parameter, write_color, write_zeta);
             if (num_attachments) {
                 vkCmdClearAttachments(r->command_buffer, num_attachments,
                                       clear_attachments, 1, &clear_rect);
@@ -8053,6 +8948,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
         RGBA_BLUE, "Clear %08" HWADDR_PRIx,
         binding->vram_addr);
     begin_draw(pg);
+    xfr_census_clear(pg, parameter, write_color, write_zeta);
 
     // FIXME: What does hardware do when min >= max?
     // FIXME: What does hardware do when min >= surface size?

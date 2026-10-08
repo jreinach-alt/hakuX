@@ -1,0 +1,13 @@
+[Unit]
+Description=hakuX ops tick, every 5 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+RandomizedDelaySec=15
+# WSL2 is shut down whenever the owner closes it; catch up once on boot.
+Persistent=true
+Unit=hakux-ops-tick.service
+
+[Install]
+WantedBy=timers.target

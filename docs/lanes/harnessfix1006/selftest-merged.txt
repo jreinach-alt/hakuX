@@ -1,0 +1,34 @@
+== device_build.py + hold.sh's build gate: a test build never stays on the Nova
+  ok   device_build.py parses
+  ok   hold.sh parses (bash -n)
+  ok   (a) newest Nova run with an env set is refused by check (exit 4)
+  ok   (a) the refusal names the env
+  ok   (a) the refusal names the device
+  ok   (a) a branch ref with no env is not master: refused
+  ok   (a) the refusal names the ref
+  ok   (a) a master run with no env is release (exit 0)
+  ok   (a) a result with no env key is not release (exit 4)
+  ok   (b) take on a non-release Nova exits 4
+  ok   (b) no hold/nova is written by the refused take
+  ok   (b) wait refuses at once on a non-release Nova (exit 4)
+  ok   (c) the refusal names the build on stderr
+  ok   (d) take on a release Nova exits 0
+  ok   (d) the taken hold is the taker's
+  ok   (e) take on a non-release Thor is not refused (exit 0)
+  ok   (f) a run off master queues exactly one restore request
+  ok   (f) the restore's id is printed
+  ok   (f) the restore names ref master, env [], 60 s, device nova, requester dispatch.restore
+  ok   (g) a run on master queues no restore
+  ok   (h) a restore run queues no restore of its own
+  ok   (i) dispatcher.sh calls queue_master_restore after the soak and disc results
+  ok   (i) dispatcher.sh's hook calls device_build.py restore
+  ok   (j) the dispatcher ends a master restore before the title/disc split, with a restore result
+  ok   the real hold.sh carries both gate calls (take and wait)
+  ok   mutant built: hold.sh with its gate calls replaced by :
+  ok   mutant: hold.sh without the gate takes the non-release Nova (leg (b) is not vacuous)
+  ok   mutant: device_build.py that never asks for a restore queues nothing (leg (f) is not vacuous)
+  ok   mutant built: dispatcher.sh with the restore exit disabled
+  ok   mutant: without the restore exit the restore is not ended before the split (leg (j) is not vacuous)
+selftest: 99-build-gate.sh took 2s
+
+selftest: 30 passed, 0 failed, PARTIAL: 1 of 129 fragments (fake host in /tmp/hakux-selftest.2hvUIS)

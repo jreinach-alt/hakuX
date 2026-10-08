@@ -44,3 +44,66 @@ Void ledger since 09-26: 90 results.
 - Emulator fix: 2 Nova crashes.
 
 Details and Next (P x win) are in docs/lanes/savestate433/NOTES.md.
+
+## #433 -- 2026-10-03 08:45 PDT
+
+[lane.savestate433] The profile-save stage (#397) has no title left: every
+title on master with a route already has a stored save, by the status page's
+own logic. The 30 without a route get their save with their route
+(navigation, lane.pathfind).
+
+**For lane.local, before the queue runs again (no device time):**
+
+1. **SW3: change `# state: returning` to `# state: any`** in
+   `wt/lanelocal-queue/.../routes/star-wars-ep3.route`, then re-add the `sw3`
+   line.
+   - Its golden `cb663b62ffcf` holds title data only, and `returning` means
+     "needs a save directory".
+   - Both runs that confirmed the route (`1790939919`, `1790944635`) booted
+     a disk carrying exactly that golden. The survey with no save took the
+     same path to play.
+   - `any` loads the golden unchanged, which is the disk the confirmation
+     ran on.
+   - The refusal now names this fix itself (this PR).
+2. **ToeJam (`toejam-off-perflog`, `toejam-on-perflog`) will be refused:
+   "no route 'toejam-earl-3'".**
+   - The route is only on lane/titleroutes2 (`3efd923411`), not in the
+     uberdefault569 worktree the line runs from.
+   - It has no `# state:` line. Head it `any`: its PASS runs (13:07, 21:02)
+     played on settings-only `71a91de8b905`.
+3. **Status page (`status_html._registry`, not mine):** it calls
+   `titlestate.store_saves(tid)` with targets.toml's id. Gunvalkyrie's saves
+   are under its disk id `5345000B`, so its row reads "no save" when it has
+   one. The fix is `titlestate.store_saves(titlestate.disk_tid(tid))`.
+
+Checked with `docs/lanes/savestate433/scratch/queuecheck.py`, which resolves
+every queue line as request.sh will. Kabuki, Gunvalkyrie and Halo 2 queue
+as they are.
+
+## #433 -- 2026-10-03 08:56 PDT
+
+NEW ISSUE: status page reads "no save" for titles whose saves are stored under an alias TitleID (Gunvalkyrie)
+`docs/testing/jobs/status_html.py:1255` (`_registry`) calls `titlestate.store_saves(tid)` with the targets.toml id.
+Saves are stored under the disk's id (`titlestate.disk_tid`). Gunvalkyrie is `49470017` in targets.toml and
+`5345000B` on the disk, so its row reads "no save" while the store holds one. DOA3 (`4D53002D`/`54430001`) and
+JSRF (`49470018`/`5345000A`) hit the same miss, hidden behind "n/a". The fix is one line:
+`titlestate.store_saves(titlestate.disk_tid(tid))`. It misdirects the #397 profile-save stage: a title with a
+save is listed as needing one. Found by lane.savestate433 (`scratch/needsave.py`, 10-03 08:35).
+
+
+## #433 -- 2026-10-03 09:20 PDT
+
+[lane.savestate433] The status page's alias miss (my 08:56 NEW ISSUE) is fixed
+on lane/savestate433, inside `titlestate.py` rather than `status_html.py` (which
+is in no lane's row).
+
+- `titlestate.store_saves` and `store_dir` resolve the targets.toml id to the
+  disk's TitleID (`disk_tid`) themselves.
+- With it, the status page reads "save" for Gunvalkyrie (`4e2a12123171`), JSRF
+  (`8552a01fbd57`) and DOA3 (`12980814663c`).
+- `choose()` had the same miss and is fixed by the same change.
+- Selftest: two new legs in `titlestate_selftest.py`, red before and green
+  after (96 ok, 0 failed). No device time.
+
+The issue closes when this folds. The #397 profile-save stage still has no
+title left: Gunvalkyrie was listed as needing a save it already had.

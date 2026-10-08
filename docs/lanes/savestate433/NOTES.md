@@ -221,23 +221,148 @@ pathfind.py, `85-savestate.sh`, and the `# state:` line of every route.
 - The Bash tool here rejects heredocs with quoted braces and `$VAR`; patch
   files through a script under `scratch/`.
 
+## Session 2 (2026-10-03 08:31-08:4x PDT): the profile-save stage
+
+**Why attempt 1 "did not finish":** it did. PR.md went `ready` at
+`0c8ab805e0` (10-02 ~20:45). It then sat unfolded for 11 h on the board's
+side, not the lane's: foldqueue read the first PR.md in the branch's diff
+(buildstamp's draft) until 22:55, then refused the branch at 23:25 on
+territory (`dispatcher.sh`, `pathfind.py` were not on the row). The grant
+and the fold landed at 07:57 (`cfa37a359e`). This session is the 08:30
+addendum's continuation: the #397 profile-save stage.
+
+**The stage's work list, read from the status page's own logic**
+(`status_html._registry`, `scratch/needsave.py`, 08:35):
+
+- Every title on master with a route (inputs) already has a stored save.
+  None is waiting on "extract the profile save".
+- 30 titles have no route on master. Their save comes with their route: any
+  title run harvests to the store, and a first-run that reaches `mark
+  profile-saved` with no golden makes its save the golden. They need
+  navigation (lane.pathfind), not this stage.
+- So **no title with a working route lacks a save**. The stage has nothing
+  to extract today.
+
+**What the queue hit instead (hostops 08:12, "runner refused sw3, no save
+dir"):** my own guard, working as built, with a reason that named no way
+forward.
+
+- lane.local headed `star-wars-ep3.route` `# state: returning` ("its PASS-like
+  runs played on the profile that is now its golden").
+- That golden, `cb663b62ffcf`, holds title data only. `returning` means "needs
+  a save directory", so the guard refused.
+- The record (`scratch/hddstate.py`):
+  - replay 1 (`1790939919`) and run 2 (`1790944635`) both booted a disk
+    carrying `cb663b62ffcf`;
+  - the survey (`1790921690`) booted with no 4C410017 save at all and took
+    the same path to play (cycle 13).
+- So the honest header is `any`. `any` loads the golden unchanged, which is
+  exactly the disk the confirmation ran on.
+- **Guard change:** both settings-only refusals (`resolve_route`, `compose`)
+  now end with the fix: head it `# state: any` if the route was confirmed on
+  this golden, else `promote` a save with a save directory.
+- **Selftest:** `titlestate_selftest.py`'s SW3 leg was red before the change.
+  It asserts the reason names `# state: any`, the `any` header queues, and
+  its disk carries the golden unchanged.
+
+**The rest of lane.local's queue (`scratch/queuecheck.py`, resolved as
+request.sh will, from each line's worktree, 08:36):**
+
+| key | golden (save dirs) | route state | result |
+|---|---|---|---|
+| sw3 | cb663b62ffcf (0) | returning | REFUSE: settings-only; fix is `# state: any` |
+| kabuki | bbb88f4302f6 (0) | first-run | OK |
+| gunvalkyrie | 4e2a12123171 (1) | first-run | OK |
+| halo2 | 0a4742f1e45d (2) | returning | OK |
+| toejam-off/on-perflog | 71a91de8b905 (0) | - | REFUSE: `toejam-earl-3.route` is not in the uberdefault569 worktree. It exists only on lane/titleroutes2 (`3efd923411`) and has no `# state:` line. Its two PASS runs (13:07, 21:02) played on settings-only `71a91de8b905`, so it should be headed `any` too |
+
+**Status page, not mine:** `status_html._registry` calls
+`titlestate.store_saves(tid)` with targets.toml's id. Gunvalkyrie's saves are
+stored under its disk id `5345000B`, so its row reads "no save" when it has
+one. The fix is one line: `titlestate.store_saves(titlestate.disk_tid(tid))`.
+DOA3 and JSRF hide the same miss behind their single routes ("n/a").
+
 ## Next (P x win)
 
-1. **Confirm or replace the 83 proposed goldens** (lane.local/owner, no device).
-   P 0.9 that confirming changes nothing for first-run titles; the win is the
-   returning titles (Crimson Skies, Castlevania, KOF MI, Midtown, RalliSport,
-   Spikeout, MC3, PGR, Burnout 3/Revenge): about 10 titles whose route
-   correctness rests on the proposal. Cost: one look per title at its save
-   names (`titlestate.py golden`).
-2. **Record routes from the goldens for Blinx 2 and ToeJam & Earl III**
-   (navigation, a held nav.py session with `--title-id ... --variant
-   returning`). P 0.6 (Blinx 2's owner profile reaches a level menu from a
-   Continue; ToeJam unknown). Win: 2 titles from no route to a route. Cost:
-   ~30 min held Nova each.
-3. **Nova post-restart hold** (dispatcher: hold requests N min after a device
+1. **lane.local: head SW3 and ToeJam `# state: any`, and put ToeJam's route
+   where the runner reads it.** P 0.95: the guard accepts `any` on these
+   goldens (selftest leg), and both routes reached play on exactly these
+   disks. Win: 2 of the 4-5 titles the owner wants today stop being refused
+   (SW3 is the plan's top P, 0.55). Cost: two header lines and a copy, no
+   device time.
+2. **Confirm or replace the proposed goldens.** Done by lane.local overnight:
+   all are `golden` now.
+3. **Record routes from the goldens for Blinx 2 and ToeJam & Earl III.**
+   Re-scored:
+   - ToeJam has a working route on its golden, so it needs none.
+   - Blinx 2 is lane.near30's held session today, and navigation is
+     lane.pathfind's.
+   - Dropped from this lane.
+4. **Nova post-restart hold** (dispatcher: hold requests N min after a device
    reconnect). P 0.3: 6 of 7 burst voids are unexplained, and the one
    explained was the disk mode. Win: up to 6 voids per 6 days. A cheap
    measurement decides it first: correlate the 6 with `devwatch` reconnect
    times. If they follow a reconnect within 5 min, do the hold. If not, drop it.
-4. **Foreground pre-admission**: P 0.1. A launcher in front BEFORE the app
+5. **Foreground pre-admission**: P 0.1. A launcher in front BEFORE the app
    starts is normal, and the 17 losses happened mid-run. Not recommended.
+
+## Session 3 (2026-10-03 08:55 PDT): resumed to read the 08:37-08:47 addenda
+
+**Why attempt 2 "did not finish":** its work was done. PR.md went `ready` at
+`dd4b5e5f49` (08:41, pushed, `origin/master` is an ancestor). It ended before
+the brief gained two addenda, so hostops' jam duty resumed it to read them:
+
+- **08:37, request.sh is lane.localforge's now.** No change needed: this PR
+  does not touch request.sh (`git diff --stat origin/master...HEAD`). The
+  request.sh behavior my work needs (`--route` resolving by state, refusing a
+  mismatch) folded with the first PR at 07:57.
+- **Every defect that outlives the session gets a tracked issue.** The status
+  page's alias miss (Gunvalkyrie reads "no save"; `status_html.py:1255`, still
+  on master) is now a `NEW ISSUE:` in OUTBOX.md. lane.local's queue items (SW3
+  and ToeJam headed `any`) are queue edits, not defects; they stay in the 08:45
+  entry.
+
+The work list still has no title left (session 2), so per the 08:30 addendum
+this session ends with the PR ready and no WAITING file.
+
+## Session 4 (2026-10-03 09:12 PDT): the alias miss, fixed in titlestate.py
+
+**Why session 3 did not finish:** it found the status page's alias miss and
+left it as a `NEW ISSUE:` for someone else, because the line it named
+(`status_html.py:1255`) is in no lane's territory row. Hostops' 09:1x
+addendum asked for the fix on this branch.
+
+**The fix lives in titlestate.py, not status_html.py.**
+- `store_saves(tid)` and `store_dir(tid, save)` now resolve the alias
+  (`disk_tid`) themselves. Both are in my row, so the fold's territory check
+  holds, and every caller is fixed at once.
+- **A second caller had the same miss:** `choose()` lists the store with the
+  targets id. For DOA3, JSRF and Gunvalkyrie it could not offer the stored
+  save to import.
+- `store_dir` resolves too, so a save `store_saves` lists is always found
+  where `store_dir` looks.
+- **Safe to apply twice:** no alias value is also a key in the live
+  `golden.json` (`49470017->5345000B`, `49470018->5345000A`,
+  `4D53002D->54430001`). Callers that already pass the disk id are unchanged.
+
+**Selftest (`titlestate_selftest.py`, next to the DOA3 alias leg):**
+- "the store's saves are listed under the targets id" and "each one's
+  directory is found under it". Both were red before the change (`[]`) and
+  are green after it. 96 ok, 0 failed.
+
+**Live check (`scratch/status-alias.out`):** `status_html._registry` now
+reads `save= True` for all three aliased titles:
+- Gunvalkyrie: `4e2a12123171`;
+- JSRF: `8552a01fbd57`;
+- DOA3: `12980814663c`.
+
+Before the change, `store_saves` returned `[]` for each of them under its
+targets id.
+
+**What this changes for #397:** nothing new to save. Gunvalkyrie was the one
+title listed as needing a save while the store held one. It now reads as
+saved, and the stage still has no title left.
+
+**Do not repeat:** a finding whose obvious line is in an unowned file may
+still have a fix inside your own row. Look for the shared helper before
+handing it off.

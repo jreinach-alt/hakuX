@@ -1,0 +1,94 @@
+pathfind: Phantom Crash (504C0001) on nova: /storage/E6C6-D7AA/Games/XBox/504C0001-Phantom_Crash.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 504C0001 first-run, loaded none
+[  10.2s] #  1 publisher_logo    fast    A                        Early boot (0.1 min) showing a logo animation with no title or menu yet; no skip needed wh
+[  18.8s] #  2 publisher_logo    fast    A                        Middleware logos (MPEG Sofdec, ADX) shown at early boot, no title or menu yet; per the hin
+[  28.2s] #  3 publisher_logo    fast    A                        This is the Zoxxo/ZOXX TOKYO developer logo card at early boot, no title or menu yet; skip
+[  35.7s] #  4 title_screen      fast    START                    New game title screen with no prompt visible; START is the standard advance key on a title
+[  44.7s] #  5 main_menu         fast    DOWN A                   Title menu is up with VS MODE the bright highlighted-looking option; QUEST MODE looks dimm
+[  53.7s] #  6 submenu           fast    A                        Join screen for VS mode; no player has entered yet. Player 1 is the first slot, so press A
+[  64.0s] #  7 submenu           fast    START                    Player 1 has already joined ("You entered."), so the join step is done. Pressing A again w
+[  74.0s] #  8 submenu           fast    START                    Player 1 is already entered; the join step is done. Pressing START on the join screen conf
+[  86.8s] #  9 submenu           fast    RIGHT A                  Player 1 is already joined, and A and START have not advanced the screen. Moving to the PL
+[ 102.6s] # 10 submenu           fast    HOLD:A:2                 Player 1 is already joined, and A, START, and RIGHT+A have all come back to this screen. T
+[ 117.4s] # 11 submenu           fast    B                        Player 1 is already entered, and A, START, and RIGHT+A have all returned to this screen. N
+[ 130.5s] # 12 submenu           fast    X                        Earlier A, START, RIGHT+A, HOLD A and B all returned to this same screen, so I'm trying a 
+[ 143.6s] # 13 submenu           fast    UP A                     Still on the VS join screen after A, START, RIGHT+A, HOLD A and B did nothing. Player-01 i
+[ 170.4s] # 14 submenu           fast    Y                        Player 1 is already entered and A, START, RIGHT+A, HOLD A, B, X and UP+A all returned to t
+[ 183.9s] # 15 submenu           fast    HOLD:START:2             Same join screen after A, START, RIGHT+A, HOLD A, B, X, UP+A and Y. None advanced it. Tryi
+[ 202.3s] # 16 submenu           fast    wait                     Player 1 is already entered and every button tried so far (A, START, B, X, Y, UP+A, RIGHT+
+[ 218.2s] # 17 submenu           fast    R1                       Player 1 is already entered and A, START, B, X, Y, RIGHT+A, HOLD A/START and UP+A all retu
+[ 229.6s] # 18 submenu           fast    B                        Player 1 is already entered and every confirm/hold tried so far returned here. Joining nee
+[ 238.3s] # 19 submenu           fast    BACK                     Earlier confirms, holds and B on this join screen all returned here, so joining is stuck. 
+[ 246.0s] # 20 title_screen      fast    START                    Title screen with a 'PRESS START BUTTON' prompt; the prompt asks for START, so START is th
+[ 254.0s] # 21 main_menu         fast    A                        Title menu is up; VS MODE appears to be the brightest/boxed item and is the quickest route
+[ 263.2s] # 22 main_menu         fast    A                        Title menu with NEW GAME highlighted as the fastest route to play; a cold boot should star
+[ 276.2s] # 23 publisher_logo    fast    wait                     Abstract transition graphic, not a title or menu; it looks like an animated logo/intro wip
+[ 289.0s] # 24 unknown           fast    wait                     Abstract graphic with no title, menu or HUD; matches the previous step's animated logo/int
+[ 302.9s] # 25 cutscene          fast    wait                     Animated intro/cinematic artwork after the title-screen transition, not a menu or gameplay
+[ 311.0s] # 26 cutscene          fast    wait                     Animated intro artwork after the title transition, not a menu or gameplay; no skip prompt 
+[ 319.9s] # 27 cutscene          fast    wait                     Still an animated intro/transition artwork after the title, not a menu or gameplay; the pr
+[ 334.3s] # 28 cutscene          fast    wait                     Still the animated intro/transition artwork after the title; no skip prompt, menu, or HUD 
+[ 344.2s] # 29 cutscene          fast    START                    Animated intro artwork after the title transition, not a menu or gameplay. It has persiste
+[ 352.9s] # 30 cutscene          fast    wait                     Animated intro/title-transition card, not a menu or gameplay; no skip prompt shown. Previo
+[ 361.8s] # 31 cutscene          fast    wait                     A typewriter-style caution text on a black CRT-style screen is an intro screen, not a menu
+[ 372.4s] # 32 cutscene          fast    START                    Intro/transition artwork with a boot-style data screen after the title sequence; not a men
+[ 381.3s] # 33 cutscene          fast    A                        Intro dialogue/story text still playing after the title, not gameplay and no player-contro
+[ 389.1s] # 34 submenu           fast    A                        A management-sim info/tutorial dialog over a shop-management screen, not player-controlled
+[ 398.9s] # 35 cutscene          fast    START                    This is a story dialogue box with a continue arrow, not a menu or gameplay. The previous A
+[ 407.7s] # 36 cutscene          fast    B                        Story dialogue with a continue arrow, not gameplay or a menu. A, A and START already left 
+[ 415.5s] # 37 cutscene          fast    RIGHT A                  Story dialogue box with a continue arrow, not a menu or gameplay. Previous A, A, START, B 
+[ 424.5s] # 38 cutscene          fast    STICK:down:0.5 A         Story dialogue with a continue arrow, no menu cursor and no player-controlled play; prior 
+[ 436.5s] # 39 cutscene          fast    Y                        Story dialogue with a continue arrow, not gameplay or a menu. A, START, B and RIGHT+A did 
+[ 446.8s] # 40 cutscene          fast    X A                      Story dialogue with a continue arrow, not a menu or gameplay. A, START, B, RIGHT+A, STICK 
+[ 455.2s] # 41 cutscene          fast    A                        Story dialogue with a continue marker, no menu cursor and no player-controlled play; prior
+[ 463.2s] # 42 cutscene          fast    A                        Story dialogue (Phantom Crash ClubWired-style talk scene), not gameplay or a menu. Prior s
+[ 472.6s] # 43 cutscene          fast    B                        Story dialogue with a continue arrow, not a menu or gameplay. Prior A/A/START/B/RIGHT+A/Y/
+[ 481.5s] # 44 cutscene          fast    BACK                     Story dialogue, not gameplay or a menu. A, B, START, Y, X+A and STICK down did not advance
+[ 489.1s] # 45 cutscene          fast    STICK:down:0.5 A         Story dialogue with a continue marker, not gameplay or a menu. Prior A, START, B, Y, X+A, 
+[ 500.6s] # 46 cutscene          fast    HOLD:A:2 R1 A            Story dialogue with a continue arrow, not a menu or gameplay. Earlier A, B, BACK, and STIC
+[ 511.6s] # 47 cutscene          fast    R1 A                     Story dialogue box with no player-controlled character or HUD play; this is ClubWired talk
+[ 520.0s] # 48 cutscene          fast    A                        Story dialogue in the ClubWired talk scene, not gameplay or a menu. Previous attempts (A, 
+[ 528.0s] # 49 cutscene          fast    STICK:down:0.5 START     Still story dialogue with a continue arrow, not gameplay or a menu. Prior presses (A, B, B
+[ 538.7s] # 50 cutscene          fast    A                        Story dialogue in the ClubWired talk scene, not gameplay or a menu. Earlier presses were m
+[ 549.9s] # 51 cutscene          fast    X                        Story dialogue, not gameplay or a menu. Earlier A, B, BACK, START and stick-down presses d
+[ 560.3s] # 52 cutscene          fast    Y                        Story dialogue, not a menu or gameplay. Earlier A, B, BACK, START, stick-down, R1, and X p
+[ 572.2s] # 53 cutscene          fast    LT:1 UP LEFT             Still story dialogue, not gameplay or a menu. A, B, BACK, START, stick-down, R1, X and Y h
+[ 583.0s] # 54 cutscene          fast    A                        Still story dialogue with a continue arrow; prior presses did nothing useful. Trying A to 
+[ 591.6s] # 55 cutscene          fast    wait                     Dialogue is still typing out (text ends mid-word 'se'), so the box is not waiting for inpu
+[ 602.4s] # 56 cutscene          fast    L1 A                     Story dialogue, not gameplay or a menu. The text has finished and a continue marker shows,
+[ 610.8s] # 57 cutscene          fast    wait                     Story dialogue with a text box still on screen, not a menu or player-controlled play. Prev
+[ 619.3s] # 58 cutscene          fast    A                        Story dialogue with a text box and a continue marker, not a menu or player-controlled play
+[ 627.1s] # 59 cutscene          fast    B                        Story dialogue with a continue arrow, not a menu or player-controlled play. Previous A and
+[ 637.8s] # 60 cutscene          fast    START                    Story dialogue with a continue arrow, not a menu or player-controlled play. A, L1+A and B 
+[ 645.4s] # 61 cutscene          fast    RIGHT A                  Story dialogue with a continue arrow, not a menu or player-controlled play. Previous A, L1
+[ 655.4s] # 62 cutscene          fast    R1 A                     Story dialogue, not gameplay or a menu. Earlier A, B, START, L1+A, X, Y and RIGHT+A were a
+[ 665.9s] # 63 cutscene          fast    L1 A                     Story dialogue box with a continue arrow and no player-controlled play; prior A/B/START/L1
+[ 677.8s] # 64 cutscene          fast    DOWN A                   Story dialogue with a continue arrow, not a menu or player control. A, B, START, X, Y, L1+
+[ 687.5s] # 65 cutscene          fast    BACK L3 R3 A             Story dialogue with a continue arrow, not a menu or player control. Earlier A, B, START, X
+[ 699.8s] # 66 cutscene          fast    HOLD:A:1.5 X             Story dialogue with a continue arrow, not a menu or player control. Earlier A, B, START, L
+[ 711.2s] # 67 cutscene          fast    HOLD:A:3                 Story dialogue with a continue arrow, not a menu or player-controlled play. Previous attem
+[ 722.8s] # 68 cutscene          fast    X                        Story dialogue with a continue arrow, no player-controlled play. Prior attempts with A/B/S
+[ 729.7s] # 69 cutscene          fast    DOWN A                   Story dialogue with a continue arrow, no player control. Prior A/B/START/L1/R1/X attempts 
+[ 739.9s] # 70 cutscene          fast    B                        Story dialogue in a ClubWired/story scene, not player-controlled play; prior A/B/START/X/Y
+[ 747.9s] # 71 cutscene          fast    RIGHT A                  Story dialogue with a continue arrow, not player-controlled play. Prior attempts with A/B/
+[ 756.5s] # 72 cutscene          fast    L3                       Story dialogue with a continue arrow, not player-controlled play; the box advances with A,
+[ 764.3s] # 73 cutscene          fast    STICK:down:0.5 A         Story dialogue with a continue arrow, not player-controlled play. Prior attempts used A/B/
+[ 775.1s] # 74 cutscene          fast    A                        Story dialogue with no player control; the recent history shows A, B, START, X, Y, L1, R1,
+[ 782.9s] # 75 cutscene          fast    A                        Story dialogue in the ClubWired menu-style scene, not player-controlled play. Prior steps 
+[ 790.4s] # 76 cutscene          fast    A                        Still story dialogue with no player control; the box has a small advance arrow, so A advan
+[ 798.4s] # 77 name_entry        fast    START                    Default name already filled in; the highlighted item is not clearly on END, so press START
+[ 807.2s] # 78 cutscene          fast    wait                     Story dialogue in the ClubWired scene, not player-controlled play. Text is still typing ou
+[ 814.1s] # 79 cutscene          fast    A                        Story dialogue with no player control; the box has an advance arrow, so A advances it. Not
+[ 822.8s] # 80 cutscene          fast    wait                     Story dialogue with no player control, and the text says to wait. No advance arrow is visi
+[ 832.6s] # 81 cutscene          fast    wait                     Story dialogue with no player control. The text says to wait for a transaction, and earlie
+[ 847.6s] # 82 cutscene          fast    START                    Story dialogue with no player control, not gameplay. A and wait have both returned to this
+[ 856.4s] # 83 cutscene          fast    B                        Story dialogue with no player control, not gameplay. Wait, A and START have all returned t
+[ 866.4s] # 84 cutscene          fast    X A                      Story dialogue with no player control. The previous A, START, B and wait inputs all return
+[ 876.4s] # 85 cutscene          fast    wait                     Story/talk dialogue with no player control, not gameplay. The text is still typing out and
+[ 884.1s] # 86 cutscene          fast    B                        Story/talk dialogue with no player control, not gameplay. Prior inputs (A, A, START) retur
+[ 893.2s] # 87 cutscene          fast    A                        Story dialogue with no player control, not gameplay. The text is fully typed and the advan
+[ 902.1s] # 88 cutscene          fast    A                        Story/talk dialogue with no player control, not gameplay. Text is fully typed and the adva
+{"name": "Phantom Crash", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 92, "steps": 88, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

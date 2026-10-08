@@ -1,0 +1,30 @@
+{
+ "registered_utc": "2026-10-04T20:49:25Z",
+ "who": "lane.vcpusleep",
+ "issue": "507",
+ "device": "nova",
+ "a_ref": "3ff55c9ac2",
+ "b_ref": "c2dfca18a1",
+ "runs_per_arm": 1,
+ "arms": {
+  "Simpsons": {
+   "title": "The Simpsons Hit & Run",
+   "driver": "host capture, not a request: Simpsons has no route, so lane.local runs docs/lanes/vcpusleep/capture_simpsons_offcpu.sh (pathfind hold 56550015 to free roam, 60 s off-CPU simpleperf starting 60 s after `mark gameplay`). The arms job skips this prediction (a soak with no route).",
+   "B": "APK_REF=c2dfca18a1 PATHFIND_TREE=<lane/pathfind checkout> bash docs/lanes/vcpusleep/capture_simpsons_offcpu.sh simp2, on the Nova; the apk is dispatch/builds/c2dfca18a1.apk, built by the pixel arm B request (vcpusleep-pixels.json).",
+   "A": "simp1, on disk: perf/2026-10-04-vcpusleep/simp1/ (13:28 PDT), apk 3ff55c9ac2 (master's emulator code), the same script and driver. Frames 132842/132919 free roam. decompose.py over the whole hold (123 rows): fps 40.03, v_run 16.46, v_blk 8.79 ms/frame, Ri 9.28; over the record window (29 rows): fps 39.62, v_blk 8.88. waitsite.py: vCPU off-CPU 19,987 ms of 60,019; pfifo.lock in USER MMIO 11,225 ms = 79.3% of attributed, 100% of it user_write (the DMA_PUT store)."
+  }
+ },
+ "prediction": "#507 posted DMA_PUT store. simp1 put 79.3% of the Simpsons vCPU's attributed off-CPU time in free roam on user_write's pfifo.lock acquire (the DMA_PUT store), 5-10 ms per wait, held by the PFIFO thread asleep in the STALLED pgraph_vk_finish (wait_frame_submitted). B posts that store when the lock is busy, so the vCPU no longer waits there. vcpuwait433 removed the same lock from the read and Tron's sleep did not go (it named this store as the likely next layer), so the legs separate the mechanism from the outcome. Read B with docs/lanes/vcpuwait433/decompose.py (whole hold and record window, the same stub run.log line from logcat's mark gameplay) and docs/lanes/vcpuwait433/waitsite.py (and --detail on B's top site).",
+ "legs": {
+  "V": "B is VOID unless all hold: the cap log ends `profile=1 void=no` with an off-CPU record of >= 55 s; the kept route-frames inside the record window show Simpsons in free roam (character portrait top left, minimap bottom right, no dialog box), read by eye before any other leg; logcat's fifoskew lines carry the `posted=` field (only c2dfca18a1 prints it, so it proves the build); decompose.py gives >= 60 rows over the hold and >= 20 in the record window; no BugCheck and no hang (pathfind keeps state=play through the record).",
+  "M": "The vCPU stops waiting at the store (mechanism; separates inert from refuted). In B's waitsite.py output, `pfifo.lock in USER MMIO` is <= 10% of attributed off-CPU (A 79.3%), AND the fifoskew lines in the record window sum to posted > 0. P 0.85. FAIL = refuted: the posted path did not act (a bug, or the store is not reached through it); the --detail chain says which.",
+  "S": "The sleep goes. B's whole-hold v_blk <= 6.0 ms/frame (A 8.79), and the record window's <= 6.0 (A 8.88). P 0.5. M passing with S failing = inert: the vCPU now sleeps at another site, and B's own capture names it (waitsite top site and its holders); that is the diagnosis, not a reason to rerun.",
+  "O1": "The frames come back. B's whole-hold mean fps >= 44.0 (A 40.03, +10%). P 0.4. M and S passing with O1 failing means the freed time became guest spin (v_run up by about what v_blk fell) or the renderer became the limit (Ri near 0).",
+  "O2": "B's whole-hold mean fps >= 48.0 (A 40.03, +20%). P 0.2.",
+  "noise": "One run per arm, and A ran its record inside the same hold. Simpsons free roam moves with where pathfind walks (vcpu60's 10-04 hold read 37 fps median, simp1 40), so O1/O2 alone are weak evidence. M is the low-noise leg: it reads a site's share in B's own capture. S's 2.8 ms margin is about 3x the gap between simp1's window and whole-hold v_blk."
+ },
+ "expect": {},
+ "expect_counts": {},
+ "must_not_move": [],
+ "must_not_regress": []
+}

@@ -48,6 +48,16 @@ static void image_pool_drain(PGRAPHVkState *r);
 #define TEX_PERF(...) do { } while (0)
 #endif
 
+/* gpunonrender (#433): brackets around non-render GPU work, see draw.c */
+int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
+                        const char *cat, int site);
+void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok);
+/* the render-pass census's surface events, as draw.c's */
+void pgraph_vk_xfr_surf(const SurfaceBinding *s, int ev);
+#define XFR_SURF_READ 1
+#define XFR_SURF_UPLOAD 2
+#define XFR_SURF_GONE 3
+
 /*
  * #474: wall time of each step of pgraph_vk_bind_textures(), NV2A_PERF_LOG
  * only. The phase line's Pipe.Tx is ~9 ms/frame of wall on AUF and Blinx
@@ -61,6 +71,7 @@ static void image_pool_drain(PGRAPHVkState *r);
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
+
 enum {
     TXW_BT, TXW_RES, TXW_CT, TXW_SDL, TXW_SCAN, TXW_FAF,
     TXW_BS, TXW_FLQ, TXW_ND, TXW_CP, TXW_UP, TXW__N
@@ -869,6 +880,7 @@ static void upload_texture_image(PGRAPHState *pg, int texture_idx,
 
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_GREEN, __func__);
+    int xfr_tok_870 = pgraph_vk_xfr_begin(pg, cmd, "tex_up", 870);
 
     VkBufferMemoryBarrier host_barrier = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
@@ -899,6 +911,7 @@ static void upload_texture_image(PGRAPHState *pg, int texture_idx,
     binding->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     nv2a_profile_inc_counter(NV2A_PROF_QUEUE_SUBMIT_4);
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_870);
     pgraph_vk_end_debug_marker(r, cmd);
     pgraph_vk_end_nondraw_commands(pg, cmd);
 
@@ -963,6 +976,8 @@ static void copy_zeta_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surfac
     VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
 #endif
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_GREEN, __func__);
+    int xfr_tok_960 = pgraph_vk_xfr_begin(pg, cmd, "s2t", 960);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_READ);
 
     unsigned int scaled_width = surface->width,
                  scaled_height = surface->height;
@@ -1108,6 +1123,7 @@ static void copy_zeta_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surfac
 
     vkDestroyImageView(r->device, depth_view, NULL);
 
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_960);
     pgraph_vk_end_debug_marker(r, cmd);
 #if OPT_SURF_TO_TEX_INLINE
     pgraph_vk_end_nondraw_commands(pg, cmd);
@@ -1144,6 +1160,8 @@ static void bind_surface_as_texture(PGRAPHState *pg, SurfaceBinding *surface,
     // End render pass to flush tile writes, then barrier for shader reads
     TXW_BEGIN(ND);
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+    int xfr_tok_1146 = pgraph_vk_xfr_begin(pg, cmd, "barrier", 1146);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_READ);
     TXW_END(ND);
 
     VkImageMemoryBarrier barrier = {
@@ -1168,6 +1186,7 @@ static void bind_surface_as_texture(PGRAPHState *pg, SurfaceBinding *surface,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         0, 0, NULL, 0, NULL, 1, &barrier);
 
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_1146);
     pgraph_vk_end_nondraw_commands(pg, cmd);
 
     texture->draw_time = surface->draw_time;
@@ -1202,6 +1221,8 @@ static void bind_zeta_surface_as_texture(PGRAPHState *pg,
 
     TXW_BEGIN(ND);
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+    int xfr_tok_1204 = pgraph_vk_xfr_begin(pg, cmd, "barrier", 1204);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_READ);
     TXW_END(ND);
 
     VkImageMemoryBarrier barrier = {
@@ -1228,6 +1249,7 @@ static void bind_zeta_surface_as_texture(PGRAPHState *pg,
 
     surface->image_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
 
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_1204);
     pgraph_vk_end_nondraw_commands(pg, cmd);
 
     texture->draw_time = surface->draw_time;
@@ -1267,6 +1289,8 @@ static void copy_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surface,
     VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
 #endif
     pgraph_vk_begin_debug_marker(r, cmd, RGBA_GREEN, __func__);
+    int xfr_tok_1264 = pgraph_vk_xfr_begin(pg, cmd, "s2t", 1264);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_READ);
 
     pgraph_vk_transition_image_layout(
         pg, cmd, surface->image, surface->host_fmt.vk_format,
@@ -1303,6 +1327,7 @@ static void copy_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surface,
                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     texture->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok_1264);
     pgraph_vk_end_debug_marker(r, cmd);
 #if OPT_SURF_TO_TEX_INLINE
     pgraph_vk_end_nondraw_commands(pg, cmd);
@@ -1462,6 +1487,68 @@ static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
     return tex_vkf.vk_format &&
            surface->host_fmt.host_bytes_per_pixel == vk_format_texel_size(tex_vkf.vk_format);
 }
+
+#if NV2A_PERF_LOG
+/*
+ * async794: why create_texture() downloads the surface at the texture's
+ * address instead of binding or copying it on the GPU (TXDL_*, renderer.h).
+ * The tests run in check_surface_to_texture_compatiblity()'s order and the
+ * first that refuses names the reason; a surface that passes them all was
+ * refused only for the upload it still owed. The first few of each reason are
+ * logged with both shapes, which is what a GPU-side path for that reason has
+ * to convert between.
+ */
+static void txdl_count(const SurfaceBinding *surface,
+                       const TextureShape *shape)
+{
+    static const char *const names[TXDL__N] = {
+        "levels", "dim", "cube", "pitch", "swz", "cvt", "bpp", "upl", "oth",
+    };
+    static int logged[TXDL__N];
+    BasicColorFormatInfo f = pgraph_get_color_format_info(shape->color_format);
+    int why;
+
+    if (shape->levels != 1) {
+        why = TXDL_LEVELS;
+    } else if (surface->width != shape->width ||
+               surface->height != shape->height) {
+        why = TXDL_DIM;
+    } else if (shape->cubemap) {
+        why = TXDL_CUBE;
+    } else if (check_surface_to_texture_compatiblity(surface, shape)) {
+        why = TXDL_UPL;
+    } else if (!surface->color) {
+        why = TXDL_OTH;
+    } else if (!surface->swizzle && surface->pitch != shape->pitch) {
+        why = TXDL_PITCH;
+    } else if (surface->swizzle == f.linear) {
+        why = TXDL_SWZ;
+    } else if (pgraph_texture_format_is_converted(shape->color_format)) {
+        why = TXDL_CVT;
+    } else {
+        why = TXDL_BPP;
+    }
+    g_opt_stats.txr_why[why]++;
+
+#ifdef __ANDROID__
+    if (logged[why] < 4) {
+        logged[why]++;
+        __android_log_print(ANDROID_LOG_INFO, "hakuX",
+            "[txdl794] why=%s surf %ux%u pitch%u swz%d color%d bpp%u "
+            "upl%d | tex %ux%u pitch%u levels%u cube%d fmt0x%x lin%d bpp%u",
+            names[why], surface->width, surface->height, surface->pitch,
+            (int)surface->swizzle, (int)surface->color,
+            surface->host_fmt.host_bytes_per_pixel,
+            (int)surface->upload_pending, shape->width, shape->height,
+            shape->pitch, shape->levels, (int)shape->cubemap,
+            shape->color_format, (int)f.linear, f.bytes_per_pixel);
+    }
+#else
+    (void)names;
+    (void)logged;
+#endif
+}
+#endif
 
 /*
  * What the texture unit reads for this colour surface's pad bits, as a
@@ -1969,7 +2056,8 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     if (!surface_to_texture && surface && surface->draw_dirty) {
         TEX_PERF(g_opt_stats.txr_dl++;
                  g_opt_stats.txr_dl_b += (uint64_t)surface->pitch * surface->height;
-                 tx_srf = true);
+                 tx_srf = true;
+                 txdl_count(surface, &state));
         TXW_BEGIN(SDL);
         pgraph_vk_surface_download_if_dirty(d, surface);
         TXW_END(SDL);

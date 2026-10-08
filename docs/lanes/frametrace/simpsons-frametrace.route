@@ -1,0 +1,47 @@
+# lane.frametrace (#433), 2026-10-05: The Simpsons Hit & Run free roam, blind.
+# state: any
+# Written from pathfind's held session (docs/lanes/pathfind/runs/
+# screen-simpsons-hit-run/hold.log, Nova, golden bcc71e970cff loaded):
+#   logos (A x3, A), intro cinematic (START), title "PRESS START" (START), sky
+#   cutscene (START), main menu with NEW GAME the only item (A), five
+#   character cutscenes (START / A alternately), loading, tutorial boxes (A =
+#   Continue; the stick advanced one), free control at 152 s.
+# Every screen on that path yields to START or A, so the entry is rounds of
+# START then A (forza414's shape) instead of the session's exact timings: a
+# press that lands early on a transition is repeated by the next round. In
+# free control START pauses and the A after it takes the pause menu's first
+# item (continue), so a round that lands in play costs one pause.
+# Play: walk (LY min) with turns, A (jump; also Continue on a tutorial box).
+# The window is checked against the --frames-every frames, not assumed.
+wait 10
+repeat 30 {
+    press START
+    wait 2.5
+    press A
+    wait 2.5
+    shot entry
+}
+repeat 3 {
+    axis LY min
+    wait 1.5
+    axis LY mid
+    press A
+    wait 2
+}
+shot gameplay
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 3
+    axis LX min
+    wait 0.8
+    axis LX mid
+    wait 3
+    axis LX max
+    wait 0.8
+    axis LX mid
+    axis LY mid
+    press A
+    wait 1
+    shot play
+}

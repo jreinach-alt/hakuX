@@ -1,0 +1,2 @@
+{"event": "probe", "action": ["A"], "since": 27183146.745, "tripped": 27183236.983, "window": {"w": 122, "it": 2048, "idle_us": 0, "busy_us": 2047086, "share": 1.0, "top": "r:800151ed"}, "at": 1791150840.7}
+{"event": "hang", "verdict": "HANG: frames still, audio quiet and the vCPU pinned for 95 s; one A press changed nothing (frame change 0.000)", "at": 1791150862.9}
