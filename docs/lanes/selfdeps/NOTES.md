@@ -257,6 +257,26 @@ Test environment (`/tmp/selfdeps-gitconfig`, `/tmp/selfdeps-test/*.sh`, test onl
   (`512a38145c` touched only `docs/lanes/selfdeps/**`), which keeps the ref
   valid. `State: draft` until that run lands DONE and not void.
 
+- **Attempt 4** (this session, from 06:52 PT). Attempt 3 did not finish for the
+  reason it gave: it queued the head-exact run (`1-1791467140-selfdeps-3362937`,
+  from `30f1fc5bba`) and ended the session on `WAITING` for it, which is a
+  correct stopping point, not an unfinished one --- but nothing had yet checked
+  the run back in, so the lane was still `State: draft`. `git log HEAD..origin/master`
+  is empty (master has not moved since the merge), so no fresh merge is needed.
+  Read the run back (below): `DONE`, not void, build log has no `Cloning into`
+  line, matching the attempt-1/2 pattern. Removed `WAITING`, set `PR.md` to
+  `State: ready`.
+
+### Thor run `1-1791467140-selfdeps-3362937` (head, `30f1fc5bba`): done, not void
+
+- `result.json`: `ref 30f1fc5bba`, `apk_sha f9d79de6c5e8`, device `bdc158a5` (thor),
+  `captures_vs_goldens.ZPass_pixel_count` 72/78 scored (partial, same retired-test
+  gap as the first run), `DONE` present, no void marker.
+- Build: `logs/build-30f1fc5bba.log` (dispatch logs), `BUILD SUCCESSFUL in 1m 44s`,
+  no `Cloning into` line --- this is the exact head this PR ships, so the
+  dispatcher's own build path is proven for the ref this PR actually names, not
+  a predecessor.
+
 ### Thor run `1-1791043414-selfdeps-1888089` (step 5): done, not void
 
 - Queued from `8db47e3a8c`, `--suites ZPass_pixel_count --device thor --hard-pin`.
