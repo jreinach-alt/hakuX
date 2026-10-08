@@ -230,8 +230,21 @@ Test environment (`/tmp/selfdeps-gitconfig`, `/tmp/selfdeps-test/*.sh`, test onl
   OpenSSL (finding 2), PR.md still named the old base, and nothing had marked the PR
   ready. The lane-local addendum (Addendum 1, 09:55 PT) came after attempt 1 had stopped,
   so the tooling sweep in "Addendum 1" below was not started then.
-- **Attempt 2** (this session, from 09:41 PT). Merged `origin/master` (`4630e4bf95`).
-  The Thor run finished, so `WAITING` is removed. Work continues below.
+- **Attempt 2** (09:41-09:55 PT, last commit `c52cc408b7`). Merged `origin/master`
+  (`4630e4bf95`), confirmed the Thor run, and widened the mirror/inventory to
+  `scripts/gen-license.py` and `.github/scripts/gen-changelog.py` per Addendum 1.
+  Ended on `WAITING` for two territory grants: those two files were not in the
+  brief's requested territory, and the board's `[lane.selfdeps]` row did not yet
+  list them. It did not finish: PR.md stayed `State: draft` and nothing had
+  requested the grants beyond writing `WAITING`.
+- **Attempt 3** (this session, from 06:41 PT). The grants had already landed
+  (`[lane.selfdeps]` on `origin/board`, "WIDENED (hostops jam duty, 2026-10-08
+  06:3x PDT)": both files added, neither claimed elsewhere, the lane's own
+  `WAITING` cited as the reason). Merged `origin/master` (487 commits; the
+  merge was clean, and master had not touched any file this lane edits since
+  the last merge --- verified with `git diff c52cc408b7..HEAD --stat` restricted
+  to those paths, empty). Removed `WAITING`, re-verified the three edited
+  Python files parse, and moved the PR to ready.
 
 ### Thor run `1-1791043414-selfdeps-1888089` (step 5): done, not void
 

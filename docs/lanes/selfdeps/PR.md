@@ -1,9 +1,9 @@
 # selfdeps: builds fetch nothing from GitHub (#433)
 
-State: draft
+State: ready
 
 Lane: selfdeps               Issue: #433 (0.5: 50 Playable)
-Base: master @ 4630e4bf95 (merged into the lane branch)
+Base: master @ 1d3b6d0148 (merged into the lane branch)
 Files: android/app/src/main/cpp/CMakeLists.txt, docs/lanes/selfdeps/NOTES.md, docs/lanes/selfdeps/PR.md, docs/lanes/selfdeps/OUTBOX.md, docs/lanes/selfdeps/mirror_sources.py, scripts/gen-license.py, .github/scripts/gen-changelog.py
 Prediction: none: build and release plumbing, no pixel change
 Needs device: yes (one short Thor pgraph run, done: run 1-1791043414-selfdeps-1888089, not void)    Needs NDK: yes
@@ -57,6 +57,12 @@ Full commands in NOTES.md ("Proof"). The logs are local (`*.log` is gitignored) 
 
 ## Next
 
-Needs grants: `scripts/gen-license.py` and `.github/scripts/gen-changelog.py` are not in
-the requested territory. Mark ready once the grants land and the mirror proof is recorded
-in NOTES.md.
+- **Windows toolchain image proof** (no docker on this host) and the **desktop compile-side
+  proof past `./configure`** (needs `libssl-dev` on a host with network, filed in OUTBOX.md)
+  are the two open items; neither blocks `State: ready` since both are "not done, and why"
+  above, not a regression in what this PR claims.
+  - **P:** high the fix is trivial (install `libssl-dev` or point meson's `openssl`
+    dependency at the mirror) once a host has the package; **win:** completes the desktop
+    compile proof, no behaviour change. **cost:** needs a host with `apt`/network or sudo,
+    which this lane does not have. Leave for the next lane or the owner.
+  - The Windows toolchain needs docker, which this host does not have either; same disposition.
