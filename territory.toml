@@ -2112,3 +2112,10 @@ note = "Harness defect, dispatched directly, no GitHub issue (owner order 2026-1
 # docs/testing/predictions/profileddefault1008-*.json, docs/testing/titles/routes/fps786-topspin.route
 # and android/app/src/main/cpp/xemu_android.cpp (the owner-approved ApplyRenderMode render_mode
 # log-line grant, now folded) -> [free].
+
+[lane.fpstelemetry1008]
+issues = []
+standing = false
+files = ["docs/lanes/fpstelemetry1008/**"]
+released = []
+note = "Dispatched directly by lane.local (owner order 10-08 ~21:00 PDT: below-bar title telemetry cause table; no GitHub issue, lane brief forbids board-file edits by the lane itself). Resumed as attempt 4 at 01:47:26 PDT 10-09 after its prior fold (5810476b58) retired this row to [free]; row re-added by hostops (jam duty) because the lane was RUNNING with no territory row for 2 ticks. Brief restricts the lane to docs/lanes/fpstelemetry1008/** only, no code edits."
