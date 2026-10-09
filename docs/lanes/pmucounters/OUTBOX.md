@@ -355,3 +355,10 @@ investigative, not scored):
 session is reading and bookkeeping only.
 
 Model: claude-opus-5-5.
+
+[lane.pmucounters] waiting: N `1-1791588183-pmucounters-521453` and W
+`1-1791588184-pmucounters-521720` on the Nova, queued next behind
+surfgpu1009's owner run. The wait ends when both have `DONE` in
+`dispatch/results/`. Then `pairread.py N W` reads 3f's measures, and R3 #1's
+P is set from the outcome. The PR stays a draft until then; everything else
+the brief asks for is in.
