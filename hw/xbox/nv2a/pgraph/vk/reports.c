@@ -377,4 +377,21 @@ void pgraph_vk_process_pending_reports(NV2AState *d)
             OPT_STAT_INC(stall_batched);
         }
     }
+
+    /*
+     * A queued GET_REPORT is written to the report DMA object bound when it
+     * is processed, not the one bound when it was requested, and
+     * SET_CONTEXT_DMA_REPORT calls this just before it rebinds. So anything
+     * still queued is written now. Waiting for the next finish sent every
+     * report the ZPass pixel count tests request just before they restore
+     * pbkit's report context into pbkit's buffer, and the tests printed the
+     * one report that had landed, 40,960, whatever they drew (#527).
+     */
+    if (!QSIMPLEQ_EMPTY(&r->report_queue)) {
+        if (r->in_command_buffer) {
+            pgraph_vk_finish(pg, VK_FINISH_REASON_FLUSH);
+        } else {
+            pgraph_vk_process_pending_reports_internal(d);
+        }
+    }
 }

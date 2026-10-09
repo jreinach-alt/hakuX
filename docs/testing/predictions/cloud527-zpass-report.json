@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-09-28T03:19:59Z",
+  "who": "lane.cloud-527",
+  "issue": "527",
+  "prediction": "#527: b_ref writes queued GET_REPORT results synchronously when SET_CONTEXT_DMA_REPORT is about to rebind (vk/reports.c). On a_ref every ZPass_pixel_count test after ZPass prints ZPass's first report (40,960 on the default render mode) because its own report was written into pbkit's report buffer, and ZPass's second report prints 0. Movers, read by hand from the captures (zpassread.py or by eye): in B, ZPass's second report (GET_REPORT at 0x10) is nonzero, and the 35 other ZPass tests no longer all print one value; tests whose expected counts differ print different reports. Refuted if B's 35 later tests still all print 40,960 or ZPass's second report is still 0. Whether each printed count EQUALS its expected value is not predicted: the counter itself is a separate question (ZPass's first report was 49,152 at 0026f00534 and 65,536 in one sysmem/kept-cache run). Inert everywhere else: only this suite issues GET_REPORT or rebinds the report DMA, so the new block never runs; the depth captures (_ZB) of the ZPass suite do not move either.",
+  "a_ref": "f82e7e87fe",
+  "b_ref": "9e19e81a05",
+  "must_not_move": [
+    "Antialiasing_tests/*",
+    "Clear/*",
+    "Depth_buffer/*",
+    "ZPass_pixel_count/*_ZB"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Antialiasing_tests",
+      "Clear",
+      "Depth_buffer",
+      "ZPass_pixel_count"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
