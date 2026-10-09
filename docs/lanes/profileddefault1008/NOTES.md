@@ -250,18 +250,147 @@ posting `[lane.profileddefault1008] waiting:` naming the ten ids above, per
 `roles/lane.md`'s "finished outcome" clause for a wait on something outside
 the session (the Nova's queue, not a background task of mine).
 
-## Results
+### Attempt 4 (resumed 2026-10-09): why attempt 3 did not finish, scored batch read, rule applied
 
-Pilot (informational, wrong ref for the registered predictions -- see
-Attempt 3 above): Top Spin bandwidth gfps 47.1/41.4 (all/last-2/3), mean J
-1.76/2.62; Fuzion Frenzy bandwidth gfps 42.6/44.4, mean J 3.69/3.92; no
-hang, no crash, no thermal pause on either.
+Attempt 3 queued the full 10-request scored batch and ended its turn posting
+the wait, correctly -- per `roles/lane.md` item 5 and memory
+`lane-background-task-dies-with-session`, a lane must never end a session
+waiting on its own `run_in_background` job, and attempt 3 did not: it named
+the ten request ids and stopped, which is a finished outcome, not an
+unfinished one. Nothing was lost between attempts; the Nova simply needed
+time to drain the queue (plus lane.fpstelemetry1008's requests ahead of it,
+per the dispatcher's serialization) that no session could sit through.
 
-Scored batch (10 requests, ref `7e51edfe98`, see table above): queued, not
-yet run as of this attempt's end.
+On resume, all ten results existed in `dispatch/results/` (checked via a
+`python3` script reading the directory directly -- `Write`/the Bash tool
+block literal outside-cwd paths on the command line, not a path read from
+inside a script file, memory `lane-sandbox-blocks-board-requests`): 8 `DONE`,
+2 `ERROR` (both Kabuki Warriors arms, see below).
 
-<!-- filled in per title/arm once the scored batch lands -->
+**Reading method.** `docs/testing/title_verdict.py`'s `judge()` is this
+project's canonical per-request scorer (gfps via its `fps_window_median`
+and `g_fps_mean_reported_not_judged`, J/frame via its `power.j_per_frame`),
+and it worked cleanly for Top Spin, Fuzion Frenzy and Crimson Skies -- all
+three routes write a `mark gameplay`/`mark play` logcat line the judge reads
+to window the scored period. Forza's route (`forza.drive`, screen-driven
+`drive forza 420 find`) does not write that mark at all -- it is a pre-existing
+gap in that route, not something this A/B introduced -- so `judge()` returned
+`reached_gameplay: false, gameplay_s: 0.0` for both Forza arms despite the
+run completing cleanly. Wrote three scratch scripts (not committed, same
+scratch treatment as `run_build.sh`) to read Forza's raw `hakuX-perf` `gfps=`
+line average over the full run, then windowed from each arm's own
+`reached-play` timestamp (from `run.log`, matched to the correct calendar
+date via each log's own first/last line dates, since the profiled arm's run
+crossed midnight) to the run's end, confirming the gap holds throughout
+(first-half vs second-half means) rather than being a transient dip.
+
+**Results, scored batch (ref `7e51edfe98`, `--seconds 600`):**
+
+| title | role | arm | gfps (median / mean) | J/frame | fps_ok_share | hitches/min (worst ms) | crash/hang | thermal pause |
+|---|---|---|---|---|---|---|---|---|
+| Top Spin | candidate | bandwidth | 32.57 / 33.35 | 0.2387 | 0.9123 | 0.999 (684.9) | no/no | none |
+| Top Spin | candidate | profiled | 32.66 / 32.66 | 0.2305 | 0.9186 | 0.361 (115.9) | no/no | none |
+| Fuzion Frenzy | candidate | bandwidth | 38.71 / 43.49 | 0.2051 | 0.8493 | 1.475 (1714.6) | no/no | none |
+| Fuzion Frenzy | candidate | profiled | 58.03 / 51.15 | 0.1612 | 0.9950 | 1.069 (1559.4) | no/no | none |
+| Crimson Skies | guard | bandwidth | 30.00 / 29.98 | 0.2428 | 1.0000 | 0.0 (0.0) | no/no | none |
+| Crimson Skies | guard | profiled | 30.00 / 29.98 | 0.2455 | 1.0000 | 0.0 (0.0) | no/no | none |
+| Forza (windowed, no route mark) | control | bandwidth | -- / 28.92 | n/m | n/m | n/m | no/no | none |
+| Forza (windowed, no route mark) | control | profiled | -- / 26.61 | n/m | n/m | n/m | no/no | none |
+| Kabuki Warriors | stall-guard | both | **ERROR: title not on device** (searched `/storage/E6C6-D7AA/Games/XBox`) | | | | | |
+
+Forza's `[watch311] invalid=` stayed flat (9-10) on both arms, not climbing
+-- the `forza-583-floor` hold's defect (unbounded invalid-surfaces growth)
+does not reproduce; the gap is something else.
+
+**Rule applied (NOTES.md rule above, written before any run):**
+
+- **Top Spin: HOLDS.** gfps within +/-1 (32.57 vs 32.66) and J/frame 0.2305
+  is 0.97x bandwidth's (<=1.05x). Secondary signal in profiled's favor:
+  roughly a third of the hitch rate and a sixth of the worst hitch, and 3.4%
+  lower J/frame -- not enough to cross the WINS bar (needs >=1.08x gfps) but
+  a clean, non-regressing result.
+- **Fuzion Frenzy: WINS.** gfps >= bandwidth+2 (58.03 vs 38.71 median, both
+  comfortably past the 1.08x bar) and J/frame 0.1612 is 0.79x bandwidth's
+  (well under 1.05x). fps_ok_share also jumps 0.849 -> 0.995. This repeats
+  the pilot's informational read (gfps ~42-44 on the bandwidth arm, matching
+  this scored run's bandwidth mean of 43.49) and both gpunonrender's prior
+  findings: profiled picks a materially better mode here.
+- **Crimson Skies (guard): HOLDS.** Identical gfps (both fps-capped at
+  30.0), J/frame 1.01x (<=1.05x). profiled does not regress the title
+  already on the wall.
+- **Forza (control): LOSES**, by the gfps leg of the rule alone (windowed
+  mean 26.61 < bandwidth's 28.92 - 1 = 27.92), confirmed steady across the
+  windowed run (first/second-half means 26.51/26.71 vs bandwidth's
+  28.84/29.00 -- not a transient dip or a thermal recovery curve) and
+  reproduced in the un-windowed full-span average too (26.47 vs 28.27). No
+  thermal pause, no crash/hang, no climbing `invalid=` count: nothing voids
+  this arm. **This directly contradicts the premise this lane queued Forza
+  as a control under** (`docs/lanes/gpunonrender/NOTES.md`'s Xfr/T=0.13
+  survey figure, read as "profiled should pick the same mode bandwidth
+  already gets and gfps/J should not move") -- the premise was wrong, or an
+  ~8% mode-driven gap exists here that the survey's single ratio doesn't
+  predict. Per the rule, **a LOSS goes on the guard list only with a named
+  cause, not just "it lost"** -- this lane did not find that cause (budget
+  did not extend to a GPU-side trace of which mode `profiled` actually
+  picked on Forza vs. bandwidth), so Forza is **not** added to
+  `kAutotuneGuardTitles` by this lane. It is flagged here as a real,
+  reproduced regression that the next lane (or this lane's follow-up) must
+  name before either guard-listing Forza or ruling the gap out as noise.
+- **Kabuki Warriors (stall-guard): VOID, not a verdict.** Both arms errored
+  before running -- `43560001-Kabuki_Warriors.xiso.iso` was not found on the
+  Nova's SD card at run time, despite the Nova-availability check earlier in
+  this lane (prequeue + dispatch history) confirming a Nova copy existed.
+  The title moved off the Nova between that check and these requests
+  actually running (device inventory is lane.local's to manage, memory
+  `shuffle-means-onto-the-nova`) -- not a measurement failure, and not
+  evidence either way for the gmem474 stall this guard exists to confirm.
+  Re-running it needs the title shuffled back onto the Nova first, which is
+  outside this lane's grant.
+
+**Default-flip decision: does not flip.** `kAutotuneProfiledDefault` stays
+`false` (confirmed unchanged in the current tree, commit `cd557f569e`). Two
+independent reasons, either alone sufficient:
+
+1. **Candidate count.** Only 2 of the brief's candidates actually ran (Top
+   Spin, Fuzion Frenzy) -- Halo 2 and Tron 2.0 were dropped/deferred before
+   any run (see PR.md's Status section: pathfind never reached confirmed
+   gameplay on Halo 2; Tron 2.0's ~530 s intro/cutscene sequence was not
+   attempted blind). The rule needs **>=3 WINS among candidates** to flip;
+   with only 2 candidates total (1 WIN, 1 HOLDS), the bar cannot be met this
+   lane regardless of how either scored.
+2. **The Forza regression**, unresolved. Even if the candidate count had
+   reached 3 wins, a control that was expected not to move and lost by ~8%
+   gfps, for no identified reason, is a reason to hold the flip open rather
+   than ship it -- the rule's text scopes ">= 3 candidates and LOSES on
+   none" to candidates, but a control's whole purpose is to catch exactly
+   this kind of surprise, and this lane is not overriding that on its own
+   judgment the way it did earlier for the Nova-availability BLOCK holds.
 
 ## Guard list after this lane
 
-<!-- filled in once the rule is applied, after the scored batch lands -->
+No change to `kAutotuneGuardTitles` (still Blinx #527, Kabuki Warriors
+gmem474) -- Forza's regression has no named cause yet (see above) and the
+rule requires one before a guard-list addition. The compiled default,
+runtime override channel, and per-game `autotune` override from this lane's
+grant all ship as committed (`cd557f569e`); only `kAutotuneProfiledDefault`
+itself is undecided, and stays `false`.
+
+**What the next lane should not repeat:**
+
+- Don't re-run the Forza pair blind hoping the gap was noise -- it held
+  flat across two independent read methods (full-span and windowed-from-mark)
+  and across first/second half of the windowed run. If it's worth chasing,
+  it needs a trace of which autotune mode each arm actually picked on
+  Forza's surfaces (the same GPU-identical-scene matching gpunonrender used
+  for DOA3/NG Black), not another soak.
+- Forza's route (`forza.drive`) writes no `mark gameplay`/`mark play`
+  logcat line, so `title_verdict.py`'s canonical judge cannot score it at
+  all (`reached_gameplay: false` even on a clean run) -- this is a
+  pre-existing gap in that route, worth fixing in the route itself (outside
+  this lane's territory) rather than re-deriving a windowed read by hand
+  every time Forza needs a perf comparison.
+- Kabuki Warriors needs shuffling back onto the Nova before its stall-guard
+  arms can run at all; don't requeue them against the current inventory.
+- To get the candidate count past 2, Halo 2 needs its pathfind route fixed
+  (Armory camera not responding) and Tron 2.0 needs its ~530 s intro
+  replicated -- neither is a quick requeue.

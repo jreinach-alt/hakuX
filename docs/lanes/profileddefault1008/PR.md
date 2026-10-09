@@ -1,5 +1,5 @@
-# profileddefault1008: TU_AUTOTUNE_ALGO=profiled behind an autotune override; fleet A/B in progress
-State: draft
+# profileddefault1008: TU_AUTOTUNE_ALGO=profiled behind an autotune override; fleet A/B read, default does not flip
+State: ready
 
 Lane: profileddefault1008          Issue: #433, #474
 Base: master @ 7960e78e20
@@ -50,10 +50,38 @@ Wrote `pilots/lane.profileddefault1008.ok` and queued the full scored batch:
 10 requests, 5 titles x 2 arms (bandwidth then profiled), all
 `--ref 7e51edfe98 --device nova --seconds 600 --perflog --frames-every 30`:
 Top Spin, Fuzion Frenzy (candidates), Crimson Skies (guard), Kabuki Warriors
-(stall-guard), Forza Motorsport (control). Request ids in NOTES.md. ~115 min
-of Nova device time now queued, none of it run yet as of this attempt.
+(stall-guard), Forza Motorsport (control). Request ids in NOTES.md.
 
-<!-- updated once the scored batch lands -->
+**Scored batch read (full results table and rule application in NOTES.md
+Attempt 4).** 8 of 10 requests landed DONE; Kabuki Warriors' two arms
+ERRORed (title not on the Nova's SD card at run time -- a device-inventory
+gap outside this lane's grant, not a measurement). Verdicts under the rule
+written before any run:
+
+- **Top Spin (candidate): HOLDS** -- gfps within +/-1 (32.57 vs 32.66
+  median), J/frame 0.97x bandwidth's. Fewer/smaller hitches and lower
+  J/frame on profiled, but not past the WINS bar.
+- **Fuzion Frenzy (candidate): WINS** -- gfps 58.03 vs 38.71 median (1.50x,
+  past the 1.08x bar), J/frame 0.79x bandwidth's. Confirms the pilot's
+  informational read and gpunonrender's DOA3/NG Black findings.
+- **Crimson Skies (guard): HOLDS** -- identical gfps, J/frame 1.01x. No
+  regression on the already-Playable title.
+- **Forza (control): LOSES** -- windowed gfps 26.61 vs bandwidth's 28.92
+  (steady across first/second half, not transient; no thermal pause,
+  no climbing `invalid=`). This contradicts the Xfr/T=0.13 premise this
+  lane queued Forza as a control under. No named cause found this lane, so
+  per the rule it is **not** added to the guard list -- flagged for
+  follow-up instead.
+- **Kabuki Warriors (stall-guard): VOID** -- title absent from the Nova at
+  run time.
+
+**Default does not flip** (`kAutotuneProfiledDefault` stays `false`,
+confirmed unchanged at the current tree): only 2 of the brief's candidates
+actually ran (Halo 2 and Tron 2.0 were dropped/deferred before any run, see
+Status above), short of the rule's >=3-candidate-WINS bar regardless of
+score; and Forza's unresolved regression is reason on its own to hold the
+flip open even had the count been met. Full reasoning, the guard-list
+decision, and what the next lane should not repeat are in NOTES.md.
 
 ## Checks
 
