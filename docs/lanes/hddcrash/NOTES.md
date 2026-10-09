@@ -177,3 +177,41 @@ shard logs are `scratch/selftest-shard-{0..3}.log` in this worktree
 
 Next, unchanged: after the fold and the dispatcher update, the three Nova
 proof requests in "Device proof", then tell lane.local to remove the drop-in.
+
+## Attempt 4, 2026-09-30 ~01:35 PDT: why attempt 3 did not finish
+
+Attempt 3 did finish its part: PR.md was set `State: ready` and lane.local
+folded it offline as `146b8887db` at 01:26 PDT (full `selftest.sh` rc 0 in
+the fold). What was left is the device proof, which could not be queued
+before the fold (the worker runs a snapshot of master), so the lane was
+resumed for it. The branch fast-forwards to `146b8887db`; nothing to merge.
+
+Queued, both pinned to the Nova, ref `146b8887db`, Crash Bandicoot: The
+Wrath of Cortex, route `crash-wrath-of-cortex` (gameplay mark at ~91 s),
+240 s, `--env HAKUX_TITLES_DISK=1`.
+
+Two, not three: the brief's step 5 asks for two runs on one disk, and
+lane.local's 01:30 addendum accepts `keep` plus a mode repair in place of a
+`build` (the Nova's disk is 52e0, which plans `keep`). What each should
+show:
+
+- `1790757182-lane.hddcrash-1696988` (1/2): `hdd.json` plan `keep` on
+  52e0.., `mode_found` 644, `mode` 660, `split_from` request; logcat
+  `HDD from pref: .../titles.qcow2` and `qemu_init took`; the warp-room hub
+  in the route frames after the `gameplay` mark.
+- `1790757193-lane.hddcrash-1697566` (2/2): the same disk, plan `keep`,
+  `mode_found` 660 (nothing to repair), booted, gameplay.
+
+Both queued at PLAIN priority: request.sh could not read #397's labels
+(GitHub is offline), so they did not get the release tier and sit behind
+the `1-` queue and the older plain requests. At queue time the Nova was
+also under the host update window's hold (`nova.hostupd`, 08:27Z), which
+fast-forwards the dispatcher tree onto the fold; `$DISPATCH_DIR/bin`'s
+dispatcher.sh was still the 09-29 18:20 snapshot, without the override.
+If a proof run's `hdd.json` has no `split_from`, it ran old code and
+proves nothing; re-queue it.
+
+Parked: waiting on those two request ids. On resume, read each result
+dir's `hdd.json`, `logcat.txt` and route frames, write the verdict to
+OUTBOX.md (#397), and tell lane.local to remove the drop-in only if both
+are green.
