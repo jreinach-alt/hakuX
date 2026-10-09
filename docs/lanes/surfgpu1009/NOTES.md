@@ -284,3 +284,24 @@ stays (`upl` 0.24 ms/frame in 06's `[surf413]`).
   built.
 - **A second download batch** (removes a `record` residual). Whether it is
   needed is decided by this arm's `record` number, so it is not built first.
+
+## 7. Arms (one build, 1e5b1af818; env-only A/B on the Nova)
+
+Predictions registered and committed (c49c78ddf2) before any run:
+`surfgpu1009-nba2005-soak.json`, `-nba06-soak.json`, `-nba07-soak.json`
+(named `expect` rules scored by `sg_judge.py`) and `-golden.json` (disc
+suites, `ab_compare.py`, worse=0 over ten surface/texture suites).
+
+Every arm is queued by hand: `arms.sh` skips title soaks and a_ref == b_ref
+pairs. B (flag on) goes first and A (flag off) last, so the env left behind
+is the shipped one. B starts on a cleared shader cache when the apk is new.
+Its cold-cache compiles bias against the prediction.
+
+Pilot (two requests, 2 x (500 + 90) s = 19.7 min, under the 30-min gate):
+
+| arm | request | env |
+|---|---|---|
+| B NBA 05 | `1-1791586168-surfgpu1009-381463` | GPUXFR, FRAMETRACE, SURFGPU=1 |
+| A NBA 05 | `1-1791586172-surfgpu1009-381687` | GPUXFR, FRAMETRACE |
+
+`prequeue.py "NBA Live 2005"` printed only the exempt fps-bar BLOCK.
