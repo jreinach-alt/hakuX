@@ -156,3 +156,43 @@ control kernels read 0 of 0 on r0-thor-2 and will be re-judged on r0-thor-3.
 Still no PR change; still draft; R1 and R2 wait on the hook's layout (N) and
 the grant.
 Model: claude-sonnet-5 (budget).
+
+## 2026-10-09 15:2x PDT -- attempt 5: R0 read, hook resized and pushed, pilot queued (Opus)
+
+**R0 verdict (from `perf/20261009-pmucounters/r0-nova-1`, read by hand):** the
+Nova's PMU schedules at most **5 events per group** (cycles + 4) on the A715
+(cpu3) and the A510 (cpu0). Groups of 6 and 7 open and never run; 8 fail with
+EINVAL. That is the whole of 10-05's "36 bad group reads". Sampling works on
+hardware: 240,229 cycle samples, 0 lost. `paranoid` read 1 at 11:30
+(`perf_harden 0`). The X3 still cannot be pinned by `taskset` from the shell.
+That does not matter to the in-process hook. The control kernels are judged
+in run A below, through the hook's own counters.
+
+**Hook (`5e4110e016` on `lane/pmucounters`, granted files only):**
+- `accel/tcg/hakux-pmu.c.inc` is called from the `[tlb68]` gate in
+  `cpu-exec.c`. Groups are 5 events; five groups rotate the 15 events.
+- Each group is opened per CPU, so every count belongs to one core type.
+- `HAKUX_PMU=2` samples up to 4 events, attributed in-process to a TB, the
+  dispatch stub or a host library offset.
+- Checks:
+  - NDK `-Werror` clean;
+  - `syntax_check.py` PASS on the real patched `cpu-exec.c`;
+  - the link check against libxemu.so passes;
+  - `pmuread.py --selftest` PASS.
+- The hook is off by default.
+
+**Queued on the Nova (investigative, no scoring):**
+- A `1-1791584641-pmucounters-283582`: controls, 90 s boot,
+  `HAKUX_PMU=1 HAKUX_PMU_CTL=1`.
+- B `1-1791584645-pmucounters-283745`: R1, `amped2` route, 578 s, `--perflog`,
+  `HAKUX_PMU=1`.
+
+I checked the route's input from fpstelemetry1008's frames before queuing:
+the rider moves between holds. C (R2 sampling) and D (the no-env overhead
+arm) follow once A and B are read.
+
+`perf_harden`: a lane cannot run getprop. The hook logs
+`paranoid=<value>` on its open line. If run A shows it is no longer -1/0/1,
+or shows the opens refused (EACCES), I will report that here rather than
+work around it.
+Model: claude-opus-5-5.

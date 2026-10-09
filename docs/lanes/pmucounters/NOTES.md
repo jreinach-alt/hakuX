@@ -410,3 +410,17 @@ counter. Every 7-event group in the 10-05 hook could never run.
 
 A + B is the pilot (~13 min with setup). C and D go after A and B are read
 and `pilots/pmucounters.ok` is written.
+
+### Queued (10-09 15:2x PDT, ref 5e4110e016)
+
+- Route input checked before queuing: fpstelemetry1008's run
+  `1-1791538465-fpstelemetry1008-1131600` hold frames 03:22:33 and 03:27:20
+  show the rider at clearly different places on the slope (open run with
+  the lift, then a tree-lined trail). The route reaches live play and the
+  player moves.
+- A: `1-1791584641-pmucounters-283582`. B: `1-1791584645-pmucounters-283745`.
+  Both pinned to the Nova, release tier (#433 carries 0.5).
+- B leaves `HAKUX_PMU=1` in the Nova's `env_vars` pref until the next
+  dispatched request starts; an owner or held session in between runs with
+  counting on (one `[pmu433]` line a second and the counters' own cost). D,
+  the no-env arm, goes last of C and D for that reason.

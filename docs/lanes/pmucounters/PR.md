@@ -2,7 +2,7 @@ State: draft
 
 Lane: pmucounters            Issue: #433
 Base: master @ f2c6b9c5d6
-Files: accel/tcg/hakux-pmu.c.inc, accel/tcg/cpu-exec.c, docs/lanes/pmucounters/NOTES.md, docs/lanes/pmucounters/OUTBOX.md, docs/lanes/pmucounters/PR.md, docs/lanes/pmucounters/WAITING, docs/lanes/pmucounters/hakux-pmu.c.inc, docs/lanes/pmucounters/pmuprobe.c, docs/lanes/pmucounters/build_probe.sh, docs/lanes/pmucounters/r0_probe.sh, docs/lanes/pmucounters/pmuread.py, docs/lanes/pmucounters/syntax_check.py, docs/lanes/pmucounters/elfsyms.py
+Files: accel/tcg/hakux-pmu.c.inc, accel/tcg/cpu-exec.c, docs/lanes/pmucounters/NOTES.md, docs/lanes/pmucounters/OUTBOX.md, docs/lanes/pmucounters/PR.md, docs/lanes/pmucounters/WAITING, docs/lanes/pmucounters/pmuprobe.c, docs/lanes/pmucounters/build_probe.sh, docs/lanes/pmucounters/r0_probe.sh, docs/lanes/pmucounters/pmuread.py, docs/lanes/pmucounters/syntax_check.py, docs/lanes/pmucounters/elfsyms.py
 Prediction: none: measurement lane, no arm (no behaviour change; the counting on/off pair is an overhead check read by hand)
 Needs device: yes    Needs NDK: yes
 
@@ -32,7 +32,10 @@ R0 (10-09, Nova): the PMU schedules at most 5 events per group. The 10-05
 hook's 7-event groups never ran, which is why it read zero. Results for R1,
 R2 and R3 are in OUTBOX.md as they land.
 
-`docs/lanes/pmucounters/hakux-pmu.c.inc` is on the Files line because this
-PR deletes it: the hook now has one copy, at `accel/tcg/`.
+The hook has one copy, at `accel/tcg/`; the lane directory's earlier copy is
+gone (it never reached master).
+
+Device runs (Nova, investigative, ref 5e4110e016): A controls
+`1-1791584641-pmucounters-283582`, B R1 `1-1791584645-pmucounters-283745`.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
