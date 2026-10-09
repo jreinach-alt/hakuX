@@ -16,6 +16,27 @@ that required another actor): both requests had in fact finished before the resu
 outside this worktree's Bash cwd — see §0). This attempt reads those two results,
 decomposes them, and finishes the table.
 
+## Attempt 3 (why attempt 2's "ready" PR did not actually finish the brief)
+
+Attempt 2 finished §1-7, wrote the cause table (MechAssault 2 + Buffy fresh, nine
+existing-data attributions, a long exclusion list) and marked PR.md `State: ready` at
+commit `097f6e1114` (2026-10-08 22:54:12 -07:00). Reading the timestamps: **Addendum 2**
+(route-resolution fix, routes `fps786-nba2005`/`fps1008-shaolin` placed under
+`docs/testing/titles/routes/`) landed at 22:50, four minutes *before* that ready commit,
+but attempt 2's own §2 table and §7 table still say NBA Live 2005 and MK Shaolin Monks are
+"blocked by the route-resolution tooling gap" — the two result dirs on disk
+(`1-1791521273-...-3634946` = MechAssault 2, `1-1791521323-...-3686892` = Buffy) confirm
+no NBA2005/Shaolin request was ever queued, and the route files are no longer present
+under `docs/testing/titles/routes/` (either never picked up, or placed-then-consumed by a
+different lane — not determinable from here). **Addendum 3** (re-measure the CPU-only
+causes with fresh perflog+GPUXFR+FRAMETRACE runs, Fantastic 4 now on the Nova, a specific
+order, a pilot rule for untested routes) landed at 22:55, one minute *after* the ready
+commit — attempt 2 never saw it at all. So the PR was marked ready against a stale brief;
+this attempt picks up Addenda 2 and 3, which is most of the remaining work: re-measuring
+eight titles that attempt 2's table sourced from old CPU-only hold logcats, plus Fantastic
+4, NBA Live 2005, MK Shaolin Monks and Arctic Thunder. PR.md `State` is reset to
+`in progress` below until that is done or the session ends on a documented wait.
+
 ## 0. Where the brief's paths actually are (verified before touching anything)
 
 The brief names `pm/owner-holds.tsv`, `pm/playable-ledger*`, `pm/prequeue.py` and
@@ -338,3 +359,209 @@ present, gate CLEAR-after-REVIEW) was not reached this session (two runs plus wr
 exhausted this lane's reasonable budget inside the $25 cap); it is the next title to queue
 if this lane or a successor continues. NBA Live 2005 and MK Shaolin Monks remain blocked by
 the route-resolution tooling gap named in §2, not by the fps gate.
+
+## 8. Attempt 3: the §1-2 gate audit was more conservative than the addendum intends; three
+   requests queued, the pilot gate stopped a fourth
+
+**Correction to §1-2.** Re-running `prequeue.py` on the exact titles Addendum 3 orders
+(NFS MW, Spider-Man 2, LOTR ROTK, Fantastic 4, Dino Crisis 3, Hulk, NHL 2K3, Midnight Club
+II, NGB, DOA3, NBA Live 2005, MK Shaolin Monks, Arctic Thunder) shows every `BLOCK` line on
+every one of them is the *same* substantive reason as the cleared one, just emitted from a
+different source (the registry's generic BELOW_BAR rule vs. that title's own
+`owner-holds.tsv` row), e.g. Pilot Down's row text is "below the bar: telemetry and a fix,
+not a retest" and NHL 2K3's is "NHL 2K3 misses on fps (#839): telemetry, not a re-hold" —
+not a *different* block (no crash, no device hold, no banked Playable, no RalliSport/
+football exclusion) but the identical cleared reason in the row's own words. §1-2 (attempt
+2) read a title-specific `below_bar` owner-holds row as one of the "still stops" categories
+and skipped Pilot Down, Amped 2, Ninja Gaiden Black, Spider-Man 2 and NHL 2K3 on that basis
+— too conservative; Addendum 3 orders exactly those titles to be re-measured, which only
+makes sense if they are cleared. Corrected reading: **every title audited this session
+clears the gate for telemetry** (RESULT is `BLOCK`-but-cleared or `REVIEW`, never a
+genuinely different block). The real remaining blockers are route availability and, newly
+found, a per-route "has this ever run" check (below).
+
+**ISO check, redone for the full Addendum-3 list** (`adb -s ee317437 shell ls
+/storage/E6C6-D7AA/Games/XBox/`): all of NFS Most Wanted (`4541007B-...`), Spider-Man 2
+(`4156002B-...`), LOTR ROTK (`4541003E-...`), **Fantastic 4 (`4156001A-Fantastic_4.xiso.iso`,
+confirmed present — lane.local's 22:49 push landed)**, Dino Crisis 3 (`Dino Crisis 3.iso`),
+Hulk (`56550039-...`), NHL 2K3 (`NHL_2K3.xiso.iso`), Midnight Club II (`54540008-...`),
+Ninja Gaiden Black (`Ninja Gaiden Black.iso`), DOA3 (`54430001-Dead_or_Alive_3.xiso.iso` —
+**the correct id; the stored `doa3.route`'s own header comment says `4D53002D`, which is
+the Microsoft-publisher prefix pattern (`MS`) and cannot be right for a Tecmo title — a
+pre-existing typo in that file's comment, harmless to the request since `--route` resolves
+by name and `--title` by the ISO filename, not by the comment**), NBA Live 2005
+(`45410050-...`), MK Shaolin Monks (`4D570029-...`) and Arctic Thunder (`4D570002-...`) are
+present. Amped 2 (`Amped 2 (USA).xiso.iso`) and Pilot Down (`4F580002-...`) are present
+too (confirmed earlier by attempt 2).
+
+**A route being present is not the same as a route being proven.** Reading the route files
+themselves (not just checking they exist) found `docs/testing/titles/routes/doa3.route`
+carries its own disclaimer: `# NOT YET REPLAYED -- a Thor screening soak is its validation
+(no interactive Thor session while the fan is dead)`. The screening soak it cites
+(`1790801641-titleroutes-1213635`) ran an *earlier, simpler* version of the route (a blind
+300 s wait, no button presses) — not the current version with the STORY-mode navigation
+and fight-loop presses, which has literally never executed end-to-end. Per the brief's own
+pilot rule ("any route that has never run on the device as a timed route"), DOA3 needed a
+pilot despite being a "stored" route, same as MK Shaolin Monks. `arctic-thunder.route` and
+`fps786-nba2005.route` carry no such disclaimer and cite an actual played/soaked session
+each (nav.py on the Thor 2026-09-27 for Arctic Thunder reaching the first checkpoint;
+`lane.async794`'s pre-fix run for NBA Live 2005, cited in §4a) — both are treated as
+proven, no pilot. `dino-crisis-3.route` exists but is the same broken route §5 already
+named (menu time 79% of the window; the shooter loop does not move the player) — still
+excluded, not re-tried, because Addendum 3 asks to re-measure the *fps* cause, not to fix
+a route the brief says not to invent input for.
+
+**Queued this session** (`docs/testing/request.sh --who fpstelemetry1008 ... --issue 433`,
+all `--device nova`, none `--wait` — the Nova's queue had 10-11 requests ahead from
+`lane.profileddefault1008` and `lane.surfdl1008` before any of mine, so blocking would only
+burn the Bash tool's 10-minute cap without accomplishing anything; the dispatcher is a host
+process independent of this session and runs the queue regardless):
+
+| id | title | seconds | route | flags | purpose |
+|---|---|---|---|---|---|
+| `1-1791525926-fpstelemetry1008-4089047` | NBA Live 2005 | 820 | `fps786-nba2005` | `--perflog --env HAKUX_GPUXFR=1 --env HAKUX_FRAMETRACE=1` | full telemetry (route proven, no pilot) |
+| `1-1791525932-fpstelemetry1008-4091099` | DOA3 | 180 | `doa3` | none | **pilot** — route never run; mark-gameplay elapsed ≈117 s + 60 s margin |
+| `1-1791525936-fpstelemetry1008-4091494` | MK Shaolin Monks | 330 | `fps1008-shaolin` | none | **pilot** — route never run, per Addendum 2/3 |
+
+**Arctic Thunder's full-telemetry request was refused by the pilot gate**, not by anything
+title-specific: `request.sh` computed this requester's queued+running device time at ~27
+min from the three requests above, and Arctic Thunder's 510 s (+90 s setup) would push it
+to ~37 min, over the unreviewed-pilot ceiling (owner rule, 2026-09-26:
+`/home/justin/hakux-work/dispatch/pilots/fpstelemetry1008.ok` does not exist, and the first
+30 min always goes through without one). Per that rule's own "way out": queue at most two
+(I queued three, still under 30 min, so it was allowed), review what they produced, write
+the verdict to `pilots/fpstelemetry1008.ok`, then queue the rest — including Arctic
+Thunder. **That review has not happened yet**: none of the three requests above had
+finished by the time this session's remaining budget required writing this up (the queue
+position check below). Arctic Thunder, and everything past it in Addendum 3's order
+(the eight CPU-only re-measures plus Amped 2 and Pilot Down, all of which first need a
+generated route — see below), stay queued-but-not-submitted pending that review.
+
+**Queue position at the time this was written** (`dispatch/queue/`, FIFO within the
+release-priority tier): 10 requests ahead of mine (8 remaining from
+`lane.profileddefault1008`'s original 9 — one has already started running — and 2 from
+`lane.surfdl1008`), then my three, then one `dispatch.restore` entry. At roughly
+90 s setup + each request's own `--seconds`, this queue does not clear fast; this session
+cannot responsibly block on it inside the Bash tool's 10-minute-per-call limit, and ending
+the session with these three in flight is the documented "waiting on an external actor"
+case (the host dispatcher, not a background task of this session), not the "never end
+waiting on your own background task" case the lane rules warn against.
+
+**Still open for a continuation (next resume), in Addendum 3's order:**
+1. Read the three queued results (`dispatch/results/1-1791525926-...`,
+   `...-4091099`, `...-4091494`) when they land. For the two pilots: read their frames
+   (a contact sheet every 30 s is enough) and decide whether DOA3 reached the fight and
+   Shaolin reached live `attack`-genre gameplay and stayed there. Write the verdict —
+   result ids, what the frames showed, the date — to
+   `/home/justin/hakux-work/dispatch/pilots/fpstelemetry1008.ok` (via `python3`, since
+   the dispatch dir is outside this worktree's Bash cwd) so the pilot gate clears for
+   the rest of this batch.
+2. If DOA3's pilot shows it actually reached the fight, queue DOA3's full telemetry run
+   (`--route doa3 --perflog --env HAKUX_GPUXFR=1 --env HAKUX_FRAMETRACE=1`, `--seconds`
+   ≈117 (mark gameplay) + 300 (post-mark play, per the brief) ≈ 420). If not, write the
+   route defect (which step, what the frame shows) and move on — do not rerun blind.
+3. Same for Shaolin: on a good pilot, queue the full run at ≈792 s (Addendum 2's own
+   figure for this route's natural length) with the telemetry flags.
+4. Queue Arctic Thunder's full run exactly as attempted above (510 s, `--route
+   arctic-thunder`, telemetry flags) — it needs no pilot, only room under the pilot-gate
+   ceiling once item 1's `.ok` file exists.
+5. For NFS Most Wanted, Spider-Man 2, LOTR ROTK, Fantastic 4, Hulk, NHL 2K3, Midnight
+   Club II, Ninja Gaiden Black, Amped 2 and Pilot Down: **no route exists in any blessed
+   location yet.** Addendum 3 names the fix — generate one per title with
+   `docs/lanes/fps20786/steps2route.py <steps.jsonl> --name N --gameplay STEP --loop
+   TOKENS --source S` from a pathfind run that reached real gameplay
+   (`/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/` and
+   `/home/justin/hakux-work/wt/pathfind/scratch/runs/<name>/`, e.g. `amped-2` for Amped 2),
+   genre loop tokens from `HOLD_GENRES` in `pathfind.py`. This attempt launched a
+   read-only research agent to locate the exact `steps.jsonl` path, gameplay step index
+   and loop tokens for all ten of these titles before the session's budget ran out; if
+   its findings are not in this file below this line, the agent either did not finish or
+   its results were not folded in — re-run that lookup before generating routes, do not
+   invent one. Every generated route is untested and needs the same pilot-then-full-run
+   treatment as Shaolin above; do not skip straight to the full telemetry run on a route
+   this lane just wrote.
+6. Dino Crisis 3 stays excluded (route/input defect, §5) unless a route fix lands from
+   elsewhere; this lane does not write one (brief: no invented input).
+
+## 9. Routes generated this session (free, no device time) — ready to pilot once the
+   pilot-gate `.ok` file exists
+
+A read-only research agent located, for each title still missing a route, the pathfind
+run whose `steps.jsonl` reached real gameplay, the step index, and the fitting
+`HOLD_GENRES` loop (`docs/testing/titles/pathfind.py:232-247` in the pathfind worktree —
+the canonical copy; `scratch/legotest/...pathfind.py` is a stale fork and was not used).
+Two corrections to its own first pass, both re-checked here: NHL 2K3 uses `hold3` (the
+FAIL run OUTBOX.md actually cites for the below-bar scenario), not the cleaner-passing
+`hold2`; Amped 2 uses `retro-amped2` (a full 628 s hold, `ok=true`) rather than the
+`scratch/runs/amped-2` probe NOTES.md cited loosely by elapsed minutes, not step number
+(that probe has no hold phase and its "step ~9" in NOTES.md:875 does not correspond to a
+`steps.jsonl` index at all).
+
+**Tool bug found, not worked around**: `steps2route.py`'s `tok_lines()` has no branch for
+a combo token (`RT+left:N`, `RT+right:N`) — only `send()` in `pathfind.py` handles those.
+NFS Most Wanted (`sweep-4541007B`) and Midnight Club II (`sweep-54540008`) both drive with
+recorded steering tokens in that form, **in their own recorded step actions, not just the
+loop** — so no `--loop` substitution avoids it; the generator crashes on steps 1-N
+regardless. `docs/lanes/fps20786/steps2route.py` is shared tooling, not under this lane's
+territory (`docs/lanes/fpstelemetry1008/**`), and fixing it is a code edit the brief
+forbids here. **NFS Most Wanted and Midnight Club II cannot get a generated route this
+way until that tool is fixed elsewhere.** Record, do not invent a per-step rewrite.
+
+Generated (`docs/lanes/fps20786/steps2route.py <steps.jsonl> --name N --gameplay G --loop
+L --hold-s 300 --source S`, all pass `docs/testing/titles/route.sh --check`), written
+under `docs/testing/titles/routes/` (untracked, same convention as Addendum 2's two
+routes — left in place across this session boundary deliberately, see below, not
+deleted-after-queuing yet because none of them has been queued):
+
+| file | title (id) | source run | gameplay step | loop genre | route's own "ends ~Ns" | mark-gameplay elapsed (ends − 300) |
+|---|---|---|---|---|---|---|
+| `spiderman2.route` | Spider-Man 2 (4156002B) | `sweep-4156002B` | 12 | attack | 406 | 106 |
+| `lotr-rotk.route` | LOTR: Return of the King (4541003E) | `sweep-4541003E` | 46 | attack | 674 | 374 |
+| `hulk-ud.route` | Incredible Hulk: UD (56550039) | `sweep-56550039` | 13 | attack | 418 | 118 |
+| `nhl2k3.route` | NHL 2K3 (53450017, plain-name ISO) | `nhl-2k3/hold3` | 30 | team | 658 | 358 |
+| `ngb.route` | Ninja Gaiden Black (5443000D, plain-name ISO) | `retro-ngb` | 34 | attack | 575 | 275 |
+| `amped2.route` | Amped 2 (4D530041, plain-name ISO) | `retro-amped2` | 25 | other | 578 | 278 |
+| `pilotdown.route` | Pilot Down (4F580002) | `n-4F580002-1007` | 24 | other | 545 | 245 |
+| `fantastic4.route` | Fantastic 4 (4156001A) | `n-4156001A-1007` | 21 | **attack (uncertain — see below)** | 485 | 185 |
+
+**Fantastic 4's genre is a guess, flag it in the pilot review.** The source run's own hold
+read genre `onrails` (scripted camera, no input) and only 36% of its 1675 s scored window
+was `play` (783 s cutscene + 219 s `game_over` — repeated deaths likely). `onrails` sends
+no input at all, which cannot produce 5 minutes of *played* telemetry if the game is
+actually a brawler needing input; this route uses `attack` instead, per the research
+agent's read of the title (a brawler, not a rail shooter). **Pilot this one first and read
+the frames especially carefully** — if `attack`'s presses do nothing (truly on-rails) or
+cause repeated deaths (game_over looping), that is itself a finding (say so, do not
+force a retry with different inputs — that would be inventing a third guess).
+
+**Why these are left in place rather than deleted now**: Addendum 3's own instruction
+("queue with request.sh --route <name>, then delete the file") describes the
+queue-then-delete cycle for a single session that does both steps. This session hit the
+pilot gate (§8) before any of these could be queued at all — deleting them now would only
+cost the next resume the same `steps2route.py` lookups this agent already did. They stay
+until queued; whichever session queues one deletes it immediately after, per the brief.
+
+**Next resume, once `pilots/fpstelemetry1008.ok` exists (§8) and queue room allows**, the
+pilot command for each (no `--perflog`, no GPUXFR/FRAMETRACE, `--seconds` = mark-gameplay
+elapsed + 60, `--no-expect "route pilot, not a measurement"`) and, once that pilot's
+frames confirm it reached and held gameplay, the full run (`--seconds` = the route's own
+"ends ~Ns" line, `--perflog --env HAKUX_GPUXFR=1 --env HAKUX_FRAMETRACE=1`):
+
+| route | pilot --seconds | full --seconds |
+|---|---|---|
+| spiderman2 | 166 | 406 |
+| lotr-rotk | 434 | 674 |
+| hulk-ud | 178 | 418 |
+| nhl2k3 | 418 | 658 |
+| ngb | 335 | 575 |
+| amped2 | 338 | 578 |
+| pilotdown | 305 | 545 |
+| fantastic4 | 245 | 485 |
+
+ISO filenames for `--title` (from `adb -s ee317437 shell ls
+/storage/E6C6-D7AA/Games/XBox/`, §8): Spider-Man 2 `4156002B-Spider_Man_2.xiso.iso`; LOTR
+ROTK `4541003E-The_Lord_of_the_Rings_The_Return_of_the_King.xiso.iso`; Hulk
+`56550039-The_Incredible_Hulk_Ultimate_Destruction.xiso.iso`; NHL 2K3 `NHL_2K3.xiso.iso`;
+Ninja Gaiden Black `Ninja Gaiden Black.iso`; Amped 2 `Amped 2 (USA).xiso.iso`; Pilot Down
+`4F580002-Pilot_Down_Behind_Enemy_Lines_Europe.xiso.iso`; Fantastic 4
+`4156001A-Fantastic_4.xiso.iso`.
