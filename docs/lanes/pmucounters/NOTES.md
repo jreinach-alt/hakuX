@@ -678,7 +678,9 @@ With the slack gone in those windows, both land on the frame.
 | < 24 | 0.6 | 14.2 | 5.4 | 4.50 | 0.88 | **9.7** |
 | all | | | | | | 4.6 |
 
-The PFIFO side, ms/frame:
+The PFIFO side, ms/frame. This table misses site #19, the same #804 wait
+logged with ctx=none (3.9-5.1 ms/frame in every bin). The #804 wait in
+full is 7.2 at 30 fps and 11.9 under 24 fps; see 3g.
 
 | fps bin | PFIFO fence wait | site #25 (#804 wait, ctx=rep) | site #6 (STALLED finish, ctx=rep) | gpu50 | GPU MHz |
 |---|---|---|---|---|---|
@@ -866,3 +868,42 @@ Both are 578 s on the `amped2` route with `--perflog`. 2 x (578 + 90) s is
   class verdict ("high IPC, a lot of instructions") holds with the spin
   out: IPC >= 2, front-end and speculation in their miss columns, back-end
   28% between its columns.
+
+### Correction to 3e's frametrace table (written before N and W ran)
+
+`pairread.py` (this directory) reads every measure 3f pre-registered from
+a result dir's logcat. Checked against the recorded figures before use:
+
+- On B2, C and D it gives the 3f spread inputs exactly: frames/wall 28.61 /
+  28.03 / 27.67, share >= 29.7 0.49 / 0.40 / 0.44, off-CPU 6.7 / 7.2 / 6.9.
+- On `1131600` it gives `waits.py`'s vw (bql 0.73, pgraph.lock 3.11, 8332
+  frames) and the same impossible line dropped, plus `lw` 4.57 overall
+  (3e: 4.6).
+
+Its bins come from each `[hakuX-ft1]` line's own rate, so they differ
+slightly from 3e's pace-window bins.
+
+What it adds: in `1131600` the #804 wait has **two** site numbers.
+
+- Site #19 is `pgraph_vk_process_pending_reports_internal+0x37c` with
+  ctx=none. Site #25 is the same pc with ctx=rep.
+- 3e's table quoted #25 alone.
+
+| fps bin (ft1 lines) | frames | PFIFO fence wait | #804 wait (#19 + #25) | #19 | #25 | #6 STALLED finish | `lw` |
+|---|---|---|---|---|---|---|---|
+| < 24 | 1557 | 16.61 | **11.93** | 3.91 | 8.02 | 4.69 | 9.84 |
+| 24-27 | 1898 | 13.08 | 9.82 | 3.46 | 6.36 | 2.96 | 6.84 |
+| 27-29 | 1467 | 9.10 | 8.22 | 4.91 | 3.30 | 0.83 | 2.86 |
+| >= 29.7 | 3382 | 7.68 | **7.20** | 5.14 | 2.06 | 0.24 | 1.65 |
+
+- The #804 wait is the larger part of the PFIFO thread's fence wait in
+  every bin: 72% in slow windows and 94% at 30 fps. The STALLED finish
+  (#6) is the second part, and it grows only in slow windows.
+- At 30 fps the PFIFO thread waits 7.2 ms a frame on the #804 fence, yet
+  the vCPU's `lw` is only 1.65 ms. The lock costs the vCPU only when it
+  needs the lock during the wait, and that happens more often in slow
+  windows.
+- 3f's mechanism check 3 matches by symbol, so it already covers both
+  sites. The outcomes and the probabilities stay as registered. The
+  correction makes "miss" less likely to come from the knob missing its
+  wait, but it says nothing about "moved": site #6 is still next in line.

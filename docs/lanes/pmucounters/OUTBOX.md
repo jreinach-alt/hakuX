@@ -307,7 +307,10 @@ more of the same code (one chain's entries per frame double at the same
 vCPU's DMA_PUT store waiting for pfifo.lock, 1.4 -> 9.7 ms per frame. The
 PFIFO thread holds that lock while it waits on GPU fences in report
 processing (the #804 wait and the STALLED finish). Meanwhile the GPU is busy
-19.8 ms of a 44.5 ms frame at the same clock.
+19.8 ms of a 44.5 ms frame at the same clock. The #804 wait is the larger
+part of that: 7.2 ms/frame at 30 fps and 11.9 in < 24 fps windows. It is
+logged under two site numbers, and the first table quoted only one (NOTES
+3g).
 
 **R2: where in the code, by counter** (C `…341517`; 108,544 cycle samples,
 0 lost; shares of the vCPU thread's samples):
