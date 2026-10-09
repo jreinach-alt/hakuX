@@ -37,12 +37,23 @@ first, CRASH_OR_HANG last run), Crimson Skies (guard), Kabuki Warriors
 owner-hold floor should not apply, but `invalid=` is watched per the fix's
 own memory note).
 
-Pilot queued (`lane.profileddefault1008`'s first requests, no `pilots/*.ok`
-yet): Top Spin bandwidth arm (`1-1791521412-lane.profileddefault1008-3730973`)
-and Fuzion Frenzy bandwidth arm (`1-1791521422-lane.profileddefault1008-3732463`),
-both `--device nova --seconds 600 --perflog --frames-every 30`.
+Pilot DONE, both clean: Top Spin bandwidth arm
+(`1-1791521412-lane.profileddefault1008-3730973`, gfps 47.1/41.4 all/last-2/3)
+and Fuzion Frenzy bandwidth arm
+(`1-1791521422-lane.profileddefault1008-3732463`, gfps 42.6/44.4) -- no
+crash/hang/thermal pause on either; the 09-27 Fuzion Frenzy `CRASH_OR_HANG`
+does not reproduce. Both ran at `--ref e85e55450d`, one ref behind the five
+registered predictions' `a_ref`/`b_ref` (`7e51edfe98`) -- informational
+only, not the scored A-arm; see NOTES.md Attempt 3 for the ref-gate math.
 
-<!-- updated once the pilot and the full A/B read -->
+Wrote `pilots/lane.profileddefault1008.ok` and queued the full scored batch:
+10 requests, 5 titles x 2 arms (bandwidth then profiled), all
+`--ref 7e51edfe98 --device nova --seconds 600 --perflog --frames-every 30`:
+Top Spin, Fuzion Frenzy (candidates), Crimson Skies (guard), Kabuki Warriors
+(stall-guard), Forza Motorsport (control). Request ids in NOTES.md. ~115 min
+of Nova device time now queued, none of it run yet as of this attempt.
+
+<!-- updated once the scored batch lands -->
 
 ## Checks
 
