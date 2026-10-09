@@ -196,3 +196,57 @@ arm) follow once A and B are read.
 or shows the opens refused (EACCES), I will report that here rather than
 work around it.
 Model: claude-opus-5-5.
+
+## 2026-10-09 15:4x PDT -- attempt 5: pilot read, three hook faults fixed, R1/R2/overhead queued (Opus)
+
+**R0 controls on the device (A `…283582`):** 9 of 11 pass through the hook's
+own counters on the X3:
+
+- IPC 1.03 on the one-cycle ALU chain and 0.52 on the multiply chain;
+- an 8-way indirect branch mispredicts 0.875 per jump, against 0 for a
+  1-way;
+- the 512 KB code walk takes 1.02 L1I refills per line, against 0 for 16 KB;
+- the 64 MB chase stalls the back end on 99.7% of cycles.
+
+The two misses were chase64m's L1D and L2D refill counts. The cause was in
+the hook: the kernel built its ring inside the counted window. That is now
+fixed.
+
+`paranoid=1` on every open. **`perf_harden` is still 0**, and nothing needed
+working around.
+
+**R1 first read (B `…283745`, Amped 2, moving player, no thermal pause):**
+260 of 298 slice lines were cut at Android's 1023-byte log limit, so the
+per-core tables are partial and B2 replaces them. The uncut heads still show
+one thing clearly. The vCPU thread is on-CPU **81.9%** of wall: 87.5% in good
+slices and 72.4% in slow ones. On the X3 its IPC hardly moves (4.46 vs 4.34,
+good-slice sd 0.14). On this read, slow frames come from the thread waiting,
+not from the JIT's code running worse. The partial X3 profile:
+
+- IPC 4.45;
+- the front end stalls on 8% of cycles and the back end on 26%;
+- 0.2 branch mispredicts per 1000 instructions;
+- 2.7 L1I refills per 1000 instructions.
+
+**Fixed (b387f4971a):**
+- slice lines now split under the limit;
+- the software context-switch and migration counters now include the kernel,
+  where they count (both read 0 before);
+- the chase setup now happens before the counted window.
+
+The reader joins split lines and counts cut ones (b345b5b613). The selftest
+passes all 8 cases.
+
+**Queued on the Nova (ref b345b5b613, investigative, admitted by the reviewed
+pilot):**
+
+| run | id |
+|---|---|
+| A2 controls | `1-1791585654-pmucounters-340915` |
+| B2 R1 | `1-1791585654-pmucounters-341117` |
+| C R2 sampling | `1-1791585655-pmucounters-341517` |
+| D no-env off-arm, last | `1-1791585656-pmucounters-341827` |
+
+B2 and D together measure what counting costs.
+
+Model: claude-opus-5-5.

@@ -35,7 +35,21 @@ R2 and R3 are in OUTBOX.md as they land.
 The hook has one copy, at `accel/tcg/`; the lane directory's earlier copy is
 gone (it never reached master).
 
-Device runs (Nova, investigative, ref 5e4110e016): A controls
-`1-1791584641-pmucounters-283582`, B R1 `1-1791584645-pmucounters-283745`.
+Device runs (Nova, investigative):
+
+| ref | run | id |
+|---|---|---|
+| 5e4110e016 | A controls (9/11 PASS) | `1-1791584641-pmucounters-283582` |
+| 5e4110e016 | B R1 (lines cut at the log limit) | `1-1791584645-pmucounters-283745` |
+| b345b5b613 | A2 controls | `1-1791585654-pmucounters-340915` |
+| b345b5b613 | B2 R1 | `1-1791585654-pmucounters-341117` |
+| b345b5b613 | C R2 sampling | `1-1791585655-pmucounters-341517` |
+| b345b5b613 | D counting off | `1-1791585656-pmucounters-341827` |
+
+A and B found three faults in the hook, all fixed in b387f4971a:
+
+- a slice line over Android's 1023-byte log limit was cut, and is now split;
+- software switch and migration counts read 0 until the kernel was included;
+- a control kernel's setup ran inside its counted window.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

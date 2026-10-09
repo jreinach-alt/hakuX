@@ -424,3 +424,77 @@ and `pilots/pmucounters.ok` is written.
   dispatched request starts; an owner or held session in between runs with
   counting on (one `[pmu433]` line a second and the counters' own cost). D,
   the no-env arm, goes last of C and D for that reason.
+
+### Pilot read (A and B, ref 5e4110e016)
+
+**A (controls), 9 of 11 PASS**, all on c7-x3 (the X3 at 2.92 GHz). All 8
+per-CPU units opened 5/5 groups. `paranoid=1` on every open line, so
+`perf_harden` was still 0.
+
+| control | metric | read | expected | verdict |
+|---|---|---|---|---|
+| alu1 | IPC | 1.031 | 0.95-1.12 | PASS |
+| mul1 | IPC | 0.516 | 0.45-0.58 | PASS |
+| ind1 / ind8 | brm per unit | 0 / 0.875 | 0-0.01 / 0.75-0.95 | PASS |
+| chase16k | l1d per unit | 0 | 0-0.02 | PASS |
+| chase64m | l1d / l2d per unit | 1.737 / 0.733 | 0.9-1.1 / 0.85-1.1 | **FAIL** |
+| chase64m | sbe/cyc | 0.997 | 0.8-1 | PASS |
+| code16k / code512k | l1i per unit | 0 / 1.023 | 0-0.05 / 0.8-1.2 | PASS |
+| code512k | sfe/cyc | 0.640 | 0.4-1 | PASS |
+
+The chase64m failure was the hook's fault, not the PMU's. The kernel built
+its 64 MB ring inside the counted window: mmap, page faults, shuffle and link.
+That added refills that are not one per load. Coverage was 0.938.
+
+**B (R1, Amped 2):** a valid run with damaged data.
+
+- **Valid:** the route reached play with a moving player (score 0, then 510,
+  then 1,625 across frames 153203, 153427 and 153654), and there was no
+  thermal pause.
+- **Damaged:** 260 of the 298 gameplay slice lines ran past Android's
+  1023-byte log payload and were cut. The units printed last were dropped, and
+  c7 was often among them, so coverage was 0.30 and the core split cannot be
+  trusted. `cs` and `mig` read 0: software events count in kernel mode, and
+  the hook set `exclude_kernel`.
+
+What still holds in B comes from the head of each line (task-clock, wall,
+frames), which is never cut:
+
+| | all | good (<= 34.5 ms) | slow |
+|---|---|---|---|
+| slices | 298 | 187 | 111 |
+| fps | 28.4 | 29.9 | 25.9 |
+| vCPU thread on-CPU, % of wall | 81.9 | 87.5 | 72.4 |
+| X3 IPC (partial) | 4.45 | 4.46 | 4.34 (good sd 0.144) |
+| X3 stall_fe / stall_be % of cycles (partial) | 8.1 / 25.9 | 8.1 / 25.9 | 8.8 / 26.0 |
+
+In slow slices the thread is off-CPU 15 points more. Its code runs at almost
+the same IPC. **On the first read, slow frames are waits, not slower code.**
+B2 has to confirm this with whole lines.
+
+### Fixes from the pilot (b387f4971a; reader b345b5b613)
+
+- A slice line closes at 1000 bytes and continues on a `s=N+` line. The reader
+  joins the two. A line that still reaches 1023 bytes has its last unit
+  dropped and counted as cut.
+- Software `cs` and `mig` count with the kernel included. If that open fails,
+  the hook retries without the kernel and the open line says `kern=0`.
+- Each chase kernel's ring is built before the first read and freed after the
+  second.
+- Per-unit control metrics are scaled by instructions, because each group sees
+  only part of the kernel.
+- The reader reads the `layout` line even when it comes before the `--after`
+  mark.
+- `--selftest` passes all 8 cases, including a new split/cut case.
+
+### Queued (10-09 15:4x PDT, ref b345b5b613), after `pilots/pmucounters.ok`
+
+| run | id | env |
+|---|---|---|
+| A2 controls, 90 s | `1-1791585654-pmucounters-340915` | `HAKUX_PMU=1 HAKUX_PMU_CTL=1` |
+| B2 R1, route, 578 s, perflog | `1-1791585654-pmucounters-341117` | `HAKUX_PMU=1` |
+| C R2, route, 578 s, perflog | `1-1791585655-pmucounters-341517` | `HAKUX_PMU=2 HAKUX_PMU_EV=11:1500000,24:1000000,23:1000000,22:20000` |
+| D off-arm, route, 578 s, perflog | `1-1791585656-pmucounters-341827` | none (shipped behaviour, last) |
+
+The pilot gate admitted the 36 minutes because the reviewed pilot was in
+place. B2 and D are the overhead pair: same ref, same route, same device.
