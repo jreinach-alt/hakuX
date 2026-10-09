@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pmucounters` | claude-opus-5-5 | 41 min | Lane: pmucounters            Issue: #433 |
-| `surfgpu1009` | claude-opus-5-5 | 41 min | surfgpu1009: HAKUX_SURFGPU=1 -- the reuse rebind takes pending bytes on the GPU, a flip batch without a displa |
+| `pmucounters` | claude-opus-5-5 | 56 min | Lane: pmucounters            Issue: #433 |
+| `surfgpu1009` | claude-opus-5-5 | 56 min | surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433,  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 5 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-09`, build `5810476b58`.
 
 ## 0.5 release: Playable titles
@@ -75,7 +75,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/pmucounters` | Lane: pmucounters            Issue: #433 | `0afc17fbbc` | 2026-10-09 15:41 |
-| `lane/surfgpu1009` | surfgpu1009: HAKUX_SURFGPU=1 -- the reuse rebind takes pending bytes on the GPU, a flip batch without a display surface  | `1e5b1af818` | 2026-10-09 15:39 |
+| `lane/surfgpu1009` | surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433, 0.5) | `52f9b89435` | 2026-10-09 15:50 |
 
 ## Recently landed on master
 
@@ -92,4 +92,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-07 gpunonrender: GMEM vs sysmem on the replay-bound titles, census on
 - 2026-10-06 dispatchgate1006: a generated title registry and one admit() gate between "decide to run it" and a handheld (shadow mode)
 
-_Updated 2026-10-09 15:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-09 16:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
