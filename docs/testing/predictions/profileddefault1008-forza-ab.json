@@ -1,0 +1,27 @@
+{
+  "registered_utc": "2026-10-09T04:53:11Z",
+  "who": "lane.profileddefault1008",
+  "issue": "433,474",
+  "title": "4D53006E-Forza_Motorsport.xiso.iso",
+  "device": "nova",
+  "seconds": 600,
+  "route": "forza.drive",
+  "perflog": true,
+  "frames_every": 30,
+  "runs_per_arm": 1,
+  "a_ref": "7e51edfe98f0943d6b5f448563a1ea8dd2ed19b3",
+  "b_ref": "7e51edfe98f0943d6b5f448563a1ea8dd2ed19b3",
+  "role": "control",
+  "queue_order": "A (bandwidth) then B (profiled), each request.sh --title --route forza.drive --device nova --seconds 600 --perflog --frames-every 30 --env TU_AUTOTUNE_ALGO=<bandwidth|profiled>",
+  "rule": "WINS: gfps >= bandwidth+2 and >= 1.08x, J/frame <= 1.05x. HOLDS: gfps within +/-1, J/frame <= 1.05x. LOSES: gfps < bandwidth-1, or J/frame > 1.05x at equal gfps, or a perf-line gap >= 2s bandwidth's arm lacks. A thermal pause voids the arm (rerun once, only after the cause is read).",
+  "judge": "grep 'render_mode:' in each logcat for 'autotune=' and 'TU_AUTOTUNE_ALGO=' to confirm the arm actually set what it asked for; gfps and J/frame over the gameplay window from perflog; eyeball the two shots for the same scene (region check); longest gap between hakuX-perf lines for a stall.",
+  "prediction": "#474 control: Forza's Xfr/T is 0.13 (gpunonrender's survey), so profiled should pick the same mode bandwidth already gets and gfps/J should not move. The forza-583-floor hold's invalid-surfaces defect (#517) is fixed on this branch (10fe2f59a7 is an ancestor) -- watch [watch311] invalid= anyway; a climbing count is a void, not a profiled loss.",
+  "legs": {
+    "M0 (instrument)": "both arms reach 'mark gameplay' (or the route's equivalent) and perflog lines run to the end. Otherwise VOID, rerun once.",
+    "D0 (the env took)": "B's logcat 'render_mode:' line shows TU_AUTOTUNE_ALGO=profiled; A's shows bandwidth or unset. KILL: either arm's line does not match what --env asked for.",
+    "F1 (the rule)": "WINS: gfps >= bandwidth+2 and >= 1.08x, J/frame <= 1.05x. HOLDS: gfps within +/-1, J/frame <= 1.05x. LOSES: gfps < bandwidth-1, or J/frame > 1.05x at equal gfps, or a perf-line gap >= 2s bandwidth's arm lacks. A thermal pause voids the arm (rerun once, only after the cause is read)."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures."
+}
