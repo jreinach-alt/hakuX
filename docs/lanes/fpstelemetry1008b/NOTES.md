@@ -1,5 +1,24 @@
 # lane.fpstelemetry1008b: the four titles lane A could not measure (#433, 0.5)
 
+## Attempt 3: why attempt 2 did not finish
+
+Attempt 2 reviewed the four queued pilots (§6), wrote up the two bad ones (Midnight
+Club II, Dino Crisis 3), and launched the two full telemetry runs the good pilots
+cleared (NFS Most Wanted, Fantastic 4) via `request.sh --wait` under the Bash tool's
+`run_in_background` (§7). The session ended there: `PR.md` still read `State: in
+progress` and §7's own text still said "in progress as this is written", NOTES.md had
+no cause-table section (§7's heading promised one but the table itself was never
+written), and no `WAITING` file was left naming the two request ids — per
+[[lane-background-task-dies-with-session]], a `run_in_background` Bash call does not
+survive its own session ending, so the `--wait` polling loop died with it. **The
+requests themselves were not lost**: both had already been accepted by the dispatcher
+before the background shell died, so both ran to completion on the device
+independently of this session (`1-1791549076-fpstelemetry1008b-1823645` NFS MW,
+`1-1791549078-fpstelemetry1008b-1823751` Fantastic 4, both `DONE`, confirmed by this
+resume reading `dispatch/results/` directly — same "work not lost, only unreviewed"
+shape as attempt 1→2's own pilots). This attempt reads both runs' perflog/GPUXFR data,
+writes the cause-table rows the brief asks for, and closes out the PR.
+
 ## -1. Resume (attempt 2): why attempt 1 did not finish
 
 Attempt 1 fixed `steps2route.py` (combo tokens + `--hold-log`), generated all four
@@ -258,11 +277,103 @@ ends on a `repeat`/hold-log boundary):
 - NFS Most Wanted (4541007B), route `nfs-mw`, `--seconds 600` (route ends ~595 s).
 - Fantastic 4 (4156001A), route `fantastic4`, `--seconds 940` (route ends ~934 s).
 
-Both requests launched in the background from this session (Bash tool
-`run_in_background`, not a detached/nohup process outside the harness) so this
-session stays live to receive their completion notifications. `nfs-mw.route` and
-`fantastic4.route` are kept in `docs/testing/titles/routes/` until each request is
-confirmed `DONE` (untracked, never `git add`). `mc2.route` and
-`dino-crisis-3-regen.route` were deleted after §6's review — both titles are done
-with (bad pilot, no further run planned), matching the brief's "delete the file"
-instruction for a route this lane has no further queueing use for.
+Both requests launched in the background from attempt 2's session (Bash tool
+`run_in_background`, not a detached/nohup process outside the harness). As Attempt 3's
+resume note (top of this file) records, that session ended before either request's
+`--wait` loop returned — but both had already been accepted by the dispatcher and ran
+to completion independently: `1-1791549076-fpstelemetry1008b-1823645` (NFS MW, `DONE`,
+held 603 s, no thermal pause, no crash) and `1-1791549078-fpstelemetry1008b-1823751`
+(Fantastic 4, `DONE`, held 949 s, no thermal pause, no crash), confirmed this session
+by reading `dispatch/results/` directly. `mc2.route` and `dino-crisis-3-regen.route`
+were deleted after §6's review — both titles are done with (bad pilot, no further run
+planned). `nfs-mw.route` and `fantastic4.route` are now deleted too (§8 below), both
+requests confirmed `DONE`.
+
+## 8. Cause table: NFS Most Wanted and Fantastic 4, decomposed
+
+`docs/lanes/fps20786/decompose.py --bar 30` (bar 30, matching NFS MW's own registry row
+and Fantastic 4's own source-hold owner-hold text, both "fps >= 30"), plus
+`docs/lanes/belowbar1005/xfrsurvey.py --days 1` and `docs/lanes/fps20786/sdsurvey.py
+--days 1 /home/justin/hakux-work/dispatch/results` (both scan the whole results tree by
+mtime; they picked up these two fresh runs without being pointed at them individually).
+Both runs' `result.json["frames"]` reads `{"every":0,"count":0,"bytes":0,"dir":null}` —
+same as lane A's §6 finding, `HAKUX_FRAMETRACE=1` alone produced no frame-trace data
+here either.
+
+**NFS Most Wanted** (4541007B), 204 two-second windows (408 s), fps_ok_share 0.10 at bar
+30 (42 s at/above, 366 s below — consistent with the title-registry's own 0.1937 from a
+different, shorter sweep run, both badly failing the title's 90% confirmation bar):
+
+```
+group      n    fps      F   gbusy  gidle timer    Ri   rcpu   rblk  v_blk  vcpu  ph_GPU ph_Fin
+all      204  29.96  33.38  17.85  15.56 13.65  8.15  17.71   7.65   3.66  0.89    6.90   9.90
+>=bar     21  30.03  33.30  17.62  15.63 13.67  8.20  17.57   7.38   3.67  0.89    6.90   9.90
+<bar     183  29.95  33.39  17.86  15.55 13.64  8.10  17.72   7.66   3.66  0.89    6.90   9.90
+<bar p10  46  29.35  34.07  19.26  15.05 12.80  8.00  17.96   8.34   3.92  0.88    7.20  10.10
+```
+
+Every group sits within a couple of ms of every other on every column — this title is
+capped tight against the 33.3 ms two-VBLANK line (fps 29.35-30.03 across all four rows),
+not falling away in a slow tail the way most of lane A's table does. `xfrsurvey.py`: Tot
+9.7, Rnd 4.7, Xfr 4.9, Xfr/Tot 0.51, RP 3. `sdsurvey.py`: sd/flip 1.50, dirty 0.50, cDef
+1.00, Fin 9.8, GPU 6.9, gfps 29. **This corrects OUTBOX.md:797's CPU-only read** (cited
+unchanged in lane A's own table, "guest busy ~25 ms/frame throughout play... constant
+cost, not scene-dependent"): on this trusted-stamp run guest busy is only 17.85-19.26 ms
+of a 33.4 ms frame (53-57%, not the dominant share OUTBOX's figure implied) and barely
+moves between the fastest and slowest groups — not a guest-CPU story. The better-supported
+driver is the GPU side: **Fin (9.8 ms, a completion-deferred surface-download finish-wait,
+1.5 per flip) exceeds the GPU's own render budget (GPU 6.9 ms, Rnd 4.7 ms) on its own** —
+the same shape as NBA Live 2005's and Midnight Club II's rows in lane A's table, not the
+vCPU class OUTBOX originally named.
+
+**Fantastic 4** (4156001A), 386 windows (772 s, this lane's `--hold-log --hold-cutoff
+750` replay, §3), fps_ok_share 0.53 at bar 30 (412 s at/above, 360 s below) — **read with
+a caveat, not taken at face value**: the "at bar" group's own median fps is 59.45 at
+F=16.82 ms with gidle=0.00 — these are the hold's own cutscene/game_over/dialogue-skip
+screens (nothing moving, nothing to render, so the frame finishes fast), not fast
+gameplay. The "below bar" group (fps 21.17, F=47.23 ms, n=180, 360 s) is where the actual
+gameplay bursts live:
+
+```
+group      n    fps      F   gbusy  gidle timer    Ri   rcpu   rblk  v_blk  vcpu  ph_GPU ph_Fin
+all      386  33.86  29.53  22.82   8.28  6.97 14.20  12.67   9.07   6.67  0.73    8.38   7.10
+>=bar    206  59.45  16.82  16.69   0.00  0.00 13.55   3.94   1.83   3.47  0.82    1.45   4.42
+<bar     180  21.17  47.23  29.10  17.68 14.98 16.10  16.83  14.03  16.36  0.64   14.50  16.60
+<bar p10  46  19.98  50.06  30.39  19.76 17.21 17.60  18.09  14.60  17.31  0.65   14.00  18.50
+```
+
+Inside the `<bar` gameplay rows, guest busy is large and rises further at the tail
+(29.10→30.39 ms of a 47-50 ms frame), the render thread's own CPU and blocked time are
+both comparably large (rcpu 16.83→18.09, rblk 14.03→14.60), and the guest-blocked time
+decompose.py's interrupt classifier cannot place (`v_blk`) is larger here than anywhere
+else in this project's cause-table work so far (16.36→17.31 ms — Buffy's 3.97-6.10 ms,
+NBA Live 2005's did not report v_blk at all, is the next-largest). `xfrsurvey.py`: Tot
+14.3, Rnd 7.0, Xfr 7.3, Xfr/Tot 0.51, RP 5. `sdsurvey.py` (whole logcat, dominated by the
+fast non-gameplay majority of frames — not read as the gameplay-only figure): sd/flip
+0.00, Fin 4.7, GPU 1.5, gfps 59. **Named cause: inside the actual gameplay windows, three
+things are elevated together — guest busy, render-thread blocked time, and an unusually
+large unattributed guest wait — not one clean driver**, unlike most of lane A's table.
+
+| title (id) | gfps median | Tot ms/frame | gbusy share | Ri ms | GMEM Xfr/Tot, RP | sd/flip, Fin ms | thermal pause | named cause | fix could be |
+|---|---|---|---|---|---|---|---|---|---|
+| NFS Most Wanted (4541007B) | 29.96 median, fps_ok_share 0.10 (fresh full run, `1-1791549076-fpstelemetry1008b-1823645`, bar 30) | 9.7 Rnd 4.7 Xfr 4.9, Xfr/Tot 0.51, RP 3 | 17.85 (all) to 19.26 (p10) — nearly flat, not the driver | 8.15 flat (8.20 at bar to 8.00 at p10) | 0.51, RP 3 | 1.50/flip, Fin 9.8 — **exceeds the 6.9 ms GPU render budget on its own** | no (`THERMAL: no thermal-pause device above 0`) | **corrects OUTBOX.md:797**: guest busy is only 53-57% of frame time and barely moves across bar groups on this trusted-stamp run — the better-supported driver is a completion-deferred surface-download finish-wait (1.5/flip, Fin 9.8 ms > GPU 6.9 ms), same class as NBA Live 2005/Midnight Club II | GPU-side surface-download/texture-conversion work (the NBA Live 2005/Midnight Club II candidate), not vCPU/JIT |
+| Fantastic 4 (4156001A) | bimodal: 59.45 median in non-gameplay frames (cutscene/game_over, gidle 0.00, nothing to render), 21.17 median in the gameplay burst; fps_ok_share 0.53 over this run's 772 s replay window (owner-hold's own source-run figure: fps_ok 0.426 over the full 1383 s hold, 600 s play + 783 s cutscene — this run replays only the first 750 s, a different, earlier slice) | 14.3 Rnd 7.0 Xfr 7.3, Xfr/Tot 0.51, RP 5 (whole-logcat, cutscene-majority — see gameplay-only decompose figures instead) | 29.10 (gameplay <bar) rising to 30.39 (p10) | 16.10 (gameplay <bar) rising to 17.60 (p10) — does not fall as gbusy rises | 0.51, RP 5 | 0.00/flip, Fin 4.7 (whole-logcat, cutscene-majority, not the gameplay figure) | no (`THERMAL: no thermal-pause device above 0`) | **mixed, not one clean driver**: inside the gameplay-only window, guest busy (29-30 ms), render-thread blocked time (14-15 ms) and an unusually large unattributed guest wait (v_blk 16-17 ms, the largest in this project's table so far) are all elevated together | vCPU/JIT for the guest share; the v_blk component needs a different instrument (same gap NBA Live 2005/Buffy already flagged) to say what it is waiting on |
+
+## 9. What this run adds to lane A's §6 ("what the instrument cannot see")
+
+- **Fantastic 4's bimodal fps split is a hold-log-replay artifact, not two different
+  bottlenecks**: because this route replays a title's own recorded cutscene/game_over
+  cycle verbatim (§3) rather than a continuous gameplay loop, roughly 53% of the window
+  is non-gameplay screens rendering at an uncapped ~59 fps with nothing to draw —
+  `decompose.py`'s bar split (fps >= / < 30) partitions "gameplay vs not", not "slow vs
+  fast gameplay", for this specific run. A future lane reading this run's raw all-window
+  median (33.86 fps, "fps_ok_share 0.53") without reading the per-group table would
+  under-state how bad the actual gameplay is (21.17 fps) and over-state the title's
+  measured health.
+- **NFS Most Wanted's own distribution is the opposite shape**: every group (all/
+  >=bar/<bar/p10) sits within ~1 fps and ~1 ms of every other. There is no slow tail to
+  decompose here — the whole 408 s window runs at one speed, just under the bar. A
+  bottleneck search that only reads the worst decile (as most of lane A's table does)
+  would find nothing distinguishing it from the median here; the Fin/GPU imbalance (§8)
+  is visible only by reading `sdsurvey.py`/`xfrsurvey.py` on the whole run, not by
+  comparing bar groups.
