@@ -6,8 +6,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NDK=${NDK:-/home/justin/Android/Sdk/ndk/29.0.14206865}
 CC=$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android30-clang
 OUT=${1:-$HERE/pmuprobe}
+# the hook itself is accel/tcg/hakux-pmu.c.inc (one copy, the tree's)
 "$CC" -O2 -Wall -Wextra -Wno-unused-parameter -Werror \
-    -o "$OUT" "$HERE/pmuprobe.c"
+    -I"$HERE/../../../accel/tcg" -o "$OUT" "$HERE/pmuprobe.c"
 echo "built $OUT"
 # DIS=1: also write the disassembly next to it (check the control kernels:
 # alu1 must be 64 dependent adds, ind* a `br` through the table).

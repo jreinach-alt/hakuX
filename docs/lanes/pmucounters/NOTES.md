@@ -316,3 +316,97 @@ run. Not yet read from the device.
    seven-event group loses one event. Either way the change is in the hook,
    not the probe.
 3. R1 and R2 stay behind the grant and the build.
+
+## 3d. Attempt 5 (2026-10-09, resume on Opus): grant in, hook resized, R1/R2 queued
+
+Why attempt 4 did not finish: it ended correctly, waiting. Its diagnosis (a
+7-event group never gets a counter) needed one device run to read the
+largest group the PMU schedules, and a lane session cannot run the host-side
+probe. That run happened on 10-09 11:29 PDT on the Nova (lane.local,
+`perf/20261009-pmucounters/r0-nova-1`), and the grant for
+`accel/tcg/hakux-pmu.c.inc` and `accel/tcg/cpu-exec.c` landed on board
+82379753c2 the same day. Nothing in attempt 4 was wrong; it had nothing left
+it could do.
+
+### What `r0-nova-1` shows (read by hand)
+
+| step | reading |
+|---|---|
+| `sched_cpu3` (A715) | n=1..5 run (n=5: `en=run=50.0 ms`); n=6 and n=7 open and read `run=0`; n=8 refused at open (errno 22). Largest scheduled group **5** |
+| `sched_cpu0` (A510) | the same: largest **5** |
+| `sched_cpu7` | `taskset` EINVAL again: the X3 cannot be pinned from shell (still unexplained; irrelevant to the in-process hook, which reads whichever CPU the vCPU is on) |
+| `cpuhp` | every CPU online, no isolated CPU, every `thermal-pause-*` and `pause-cpu*` cooling device at `cur_state 0` |
+| sampling (`sample_cyc_cpu3`) | 240,229 cycle samples, 0 lost: the overflow ring works on hardware |
+| paranoid | 1 at 11:30 PDT (`perf_harden 0`, set by lane.local at 10:55) |
+| singles on a spin loop | A715: 0x7a (BR_INDIRECT_SPEC), 0x34 (DTLB_WALK), 0x2a (L3D_CACHE_REFILL) read 0; A510: 0x35, 0x2a read 0. A zero on a loop with no indirect branch or data miss does not show the event unsupported; the ind8 / chase64m controls decide it |
+
+So attempt 4's hypothesis holds: 4 programmable counters beside the cycle
+counter. Every 7-event group in the 10-05 hook could never run.
+
+### Hook changes (the brief's "groups of <= 5, rotated")
+
+- Groups are cycles + instructions + 3 events (5 in all, `HAKUX_PMU_GSZ`),
+  five groups covering the same 15 events as before. The kernel rotates them;
+  two 5-event groups cannot share the PMU, so per unit the groups' running
+  times add up to the thread's time there (less rotation gaps). One
+  `[pmu433] layout` line names the groups; the reader takes names from it.
+- **One counter set per CPU.** One PMU covers four core types, so a
+  per-thread event mixes them. Each group is now opened per CPU (pid = this
+  thread, cpu = N): it counts only while the thread runs on CPU N, and units
+  of different CPUs never compete. Units are named `c7-x3` etc. from
+  /proc/cpuinfo's CPU part. Fallback to one any-CPU set (`HAKUX_PMU_PERCPU=0`,
+  or if no per-CPU open succeeds).
+- The bad-read diagnostic now fires only for a unit that ran >= 50 ms in the
+  slice while one of its groups got `run=0`; a CPU the thread never visited
+  is not an error.
+- Sampling (`HAKUX_PMU=2`): up to four events, each its own group
+  `[ev, cycles, instructions]` with its own ring, period and tables;
+  `HAKUX_PMU_EV=11:1500000,24:1000000`. Samples carry their CPU
+  (`PERF_SAMPLE_CPU`), reported per event as `cpu=7:N,...`.
+- One copy: the hook lives at `accel/tcg/hakux-pmu.c.inc` only;
+  `pmuprobe.c` and `syntax_check.py` read it there.
+
+### Checks (host)
+
+| check | result |
+|---|---|
+| `build_probe.sh` (NDK 29, `-Werror`) | clean |
+| host build `-DPMU433_TEST_SW` (gcc `-Werror`), mode 1, per-CPU units | 8 units x 5 groups open; slice s=1: c2 350.7 ms + c3 684.0 ms = 1034.7 = task-clock |
+| host mode 2, `11,24` | 97,233 / 97,617 samples, 0 lost, per-CPU counts, `dladdr` offsets |
+| host mode 2 at 50k samples/s | `lost=237526` reported (a 512 KB ring drained once a second holds ~21.8k samples); device periods are set for <= 5k/s per event |
+| `pmuread.py --selftest` | 7 cases PASS (the 10-05 formats unchanged, plus layout, per-CPU, merged ctl lines, the good-slice spread flag, two-event sampling); the ind8 control built to fail FAILs |
+| `syntax_check.py` (Android flags, the real patched cpu-exec.c) | PASS, 0 diagnostics in the new code; `--falsify` FAILs |
+| link check (`scratch/objcheck433.py`: cpu-exec.o built with the Android flags vs `libxemu.so` of 34a0b032b9) | every new undefined symbol is defined in libxemu.so or imported from libc, except `__clear_cache`, a compiler-rt builtin that the NDK links statically (defined `T` in `libclang_rt.builtins-aarch64-android.a`; present in pmuprobe) |
+
+### Pre-registration added before the device runs (10-09)
+
+- **Coverage** (summed group running time / task-clock): 0.90-1.00 expected.
+  Below 0.8 means counters were taken away (another perf user, or a vendor
+  counter reservation that varies), and every per-frame count is short by
+  that much; ratios inside a group stay exact.
+- **Core split**: the vCPU on the X3 most of the time (section 0: 72-99% in
+  earlier captures). Tables are per core type; a type under 5% of counted
+  time is not tabled.
+- **Overhead (on/off pair)**: the counting run and a run with no PMU env, same
+  ref, route and device. Hit (overhead negligible): median fps and the
+  perflog vCPU busy per frame differ by less than the run-to-run spread of
+  the earlier Amped 2 runs (27.23 median in fpstelemetry1008). Miss: the PMU
+  run slower by more than that. One pair bounds the cost, it does not measure
+  it below the noise.
+- **R2**: a TB, the dispatch stub or a host function is a fix candidate only
+  if its cycle share is >= 3% of the vCPU's samples, AND the event that marks
+  its class (sbe for memory, sfe for front-end, brm for speculation) has a
+  share there at least as large as its cycle share. A sampled share is priced
+  at 1/4 to 1/15 of itself as removable time (memfast discount).
+
+### Device plan (Nova only, investigative, no scoring)
+
+| run | what | env | seconds |
+|---|---|---|---|
+| A | controls + paranoid + layout, Amped 2 boot, no route | `HAKUX_PMU=1 HAKUX_PMU_CTL=1` | 90 |
+| B | R1: Amped 2 route (fpstelemetry1008's `amped2`), counting | `HAKUX_PMU=1` + `--perflog` | 578 |
+| C | R2: same route, sampling 4 events | `HAKUX_PMU=2 HAKUX_PMU_EV=11:1500000,24:1000000,23:1000000,22:20000` + `--perflog` | 578 |
+| D | overhead off-arm: same route, no PMU env | `--perflog` | 578 |
+
+A + B is the pilot (~13 min with setup). C and D go after A and B are read
+and `pilots/pmucounters.ok` is written.

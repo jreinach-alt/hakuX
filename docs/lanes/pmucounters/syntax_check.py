@@ -4,8 +4,9 @@ with the Android build's own flags, before the grant lets it into the tree.
 
 Takes the cpu-exec.c entry of the newest Android compile_commands.json, makes
 a copy of this worktree's accel/tcg/cpu-exec.c with the two-hunk patch the
-grant asks for (apply_hook below), puts hakux-pmu.c.inc beside it, points the
-source-tree -I paths at this worktree, and runs the same compiler with
+grant asks for (apply_hook below; nothing when the file already has it, as
+since the grant of 10-09), puts accel/tcg/hakux-pmu.c.inc beside it, points
+the source-tree -I paths at this worktree, and runs the same compiler with
 -fsyntax-only -Werror. Exit 0 = clean.
 
   syntax_check.py [--write] [--falsify]
@@ -39,6 +40,8 @@ ANCHOR_CALL = "                    rr425_tick(cpu);\n"
 
 
 def apply_hook(text):
+    if "PMU433_TICK();" in text:
+        return text   # applied (the grant of 10-09)
     assert text.count(ANCHOR_INC) == 1, "include anchor"
     assert text.count(ANCHOR_CALL) == 1, "call anchor"
     text = text.replace(ANCHOR_INC, ANCHOR_INC + INCLUDE)
@@ -49,10 +52,9 @@ def apply_hook(text):
 def main(argv):
     src = os.path.join(TREE, "accel/tcg/cpu-exec.c")
     text = apply_hook(open(src).read())
+    inc = os.path.join(TREE, "accel/tcg/hakux-pmu.c.inc")
     if "--write" in argv:
         open(src, "w").write(text)
-        shutil.copy(os.path.join(HERE, "hakux-pmu.c.inc"),
-                    os.path.join(TREE, "accel/tcg/hakux-pmu.c.inc"))
         print("patched", src)
     dbs = sorted(glob.glob(SRC_TREE + "/android/app/.cxx/Release/*/arm64-v8a/"
                            "compile_commands.json"), key=os.path.getmtime)
@@ -66,7 +68,7 @@ def main(argv):
     os.makedirs(scratch, exist_ok=True)
     tmp = os.path.join(scratch, "cpu-exec.c")
     open(tmp, "w").write(text)
-    shutil.copy(os.path.join(HERE, "hakux-pmu.c.inc"), scratch)
+    shutil.copy(inc, scratch)
     if "--falsify" in argv:
         # the check must see the new code: an undeclared name in the copy
         # has to FAIL it (else XBOX/__linux__ hid the include and the PASS

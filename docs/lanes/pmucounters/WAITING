@@ -1,3 +1,1 @@
-grant accel/tcg/hakux-pmu.c.inc
-grant accel/tcg/cpu-exec.c
-3	owner lane.pmucounters R0 sweep: one run of DEV=thor bash docs/lanes/pmucounters/r0_probe.sh (no HARDEN0) under the next Thor hold; output ~/hakux-work/perf/<date>-pmucounters/r0-thor-3. See docs/lanes/pmucounters/OUTBOX.md.
+# pilot requests not queued yet; this file lists them as run <id> lines once queued

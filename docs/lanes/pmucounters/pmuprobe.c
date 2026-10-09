@@ -127,7 +127,7 @@ static uint64_t sched_run(uint32_t type, const uint64_t *cfg, int n,
 
     for (int k = 0; k < n; k++) {
         sched_attr(&a, type, cfg[k], k == 0);
-        fd[k] = pmu433_open(&a, k ? fd[0] : -1);
+        fd[k] = pmu433_open(&a, -1, k ? fd[0] : -1);
         if (fd[k] < 0) {
             err = errno;
             break;
@@ -164,14 +164,14 @@ static int sched_main(void)
 
 #ifndef PMU433_TEST_HW
     pmu433_find();
-    if (!pmu433_npmu) {
+    if (!pmu433_nsrc) {
         PMU433_LOG("[pmu433] sched: no PMU found");
         return 2;
     }
-    type = pmu433_pmu[0].type;
+    type = pmu433_src[0].type;
     PMU433_LOG("[pmu433] sched pid=%d cpu=%d pmu=%s type=%u cpus=%s",
-               (int)getpid(), pmu433_getcpu(), pmu433_pmu[0].name, type,
-               pmu433_pmu[0].cpus);
+               (int)getpid(), pmu433_getcpu(), pmu433_src[0].name, type,
+               pmu433_src[0].cpus);
 #else
     PMU433_LOG("[pmu433] sched host pid=%d cpu=%d type=%u",
                (int)getpid(), pmu433_getcpu(), type);
@@ -190,8 +190,9 @@ static int sched_main(void)
 
 /*
  * pmuprobe [secs]            counting: open, controls, slice lines
- * pmuprobe secs EV PERIOD    sampling (HAKUX_PMU=2) of raw event EV (hex):
- *                            smp/smph lines for this binary's busy loop
+ * pmuprobe secs EV PERIOD    sampling (HAKUX_PMU=2) of raw events EV (hex
+ *                            list, e.g. 11,24): smp/smph lines per event for
+ *                            this binary's busy loop
  */
 int main(int argc, char **argv)
 {
