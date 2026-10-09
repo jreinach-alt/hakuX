@@ -485,6 +485,48 @@ static bool surfsplice_enabled(void)
     return surfsplice_state;
 }
 
+/*
+ * #433, HAKUX_SURFGPU=1 (off by default): rebinding a shelved binding whose
+ * previous life still has a download pending takes those bytes on the GPU
+ * instead of completing the download (lane.surfgpu1009, NOTES sections 1-4).
+ * NBA Live 05 and 06 wait 11.5 and 20.5 ms a flip at the reuse in
+ * update_surface_part (`reuse`), about the whole GPU frame so far; 07 waits
+ * half of that, plus a fence wait at the first surface_update after a flip
+ * that submitted its downloads without a pre-download (`surfupd`).
+ *
+ * (a) The reuse detaches the pending entries from the struct instead of
+ *     completing them, as freeing a struct does. The binding still comes
+ *     back stale, and its upload splices the pending bytes from their staging
+ *     (the route above, byte-exact with the CPU path's guest-format round
+ *     trip), so this switch arms the splice too.
+ * (b) A flip whose pre-record finds no display surface to record still marks
+ *     the downloads it submits as its batch, and surface_update leaves that
+ *     pending as it does the pre-download (#474).
+ *
+ * Either way the downloads complete where any pending one does: at a trapped
+ * guest access, an overlapping texture, vertex or blit range, the next record,
+ * the frame-slot rotation or the next flip.
+ */
+static int surfgpu_state = -1;
+
+static bool surfgpu_enabled(void)
+{
+    if (surfgpu_state < 0) {
+        const char *e = getenv("HAKUX_SURFGPU");
+        surfgpu_state = e && e[0] == '1';
+        if (surfgpu_state) {
+            SURF92_LOG("[surfgpu] on");
+        }
+    }
+    return surfgpu_state;
+}
+
+/* The splice's switches: its own, or HAKUX_SURFGPU's rebind. */
+static bool surfsplice_on(void)
+{
+    return surfsplice_enabled() || surfgpu_enabled();
+}
+
 /* Set by pgraph_vk_surface_update around its two uploads: the only caller
  * whose completion the splice replaces. */
 static bool g_surfsplice_armed;
@@ -1411,6 +1453,9 @@ static struct {
      * uploads that spliced, the downloads and KiB spliced, and the uploads
      * that completed the downloads themselves (one could not be spliced). */
     unsigned long spl_defer, spl_up, spl_dl, spl_kb, spl_cmpl;
+    /* HAKUX_SURFGPU: reuse completions it detached instead, and flip batches
+     * it marked with no display surface. Printed on a [surfgpu] line. */
+    unsigned long sg_detach, sg_nodisp;
 } g_sdcall;
 
 /* The bindings a clearing update counted in why=, until the next update
@@ -1498,6 +1543,10 @@ static void sdcall_log(PGRAPHState *pg)
                  g_sdcall.spl_dl, g_sdcall.spl_kb, g_sdcall.spl_cmpl);
     }
     SURF92_LOG("%s", buf);
+    if (surfgpu_enabled()) {
+        SURF92_LOG("[surfgpu] frames=%d detach=%lu nodisp=%lu", frames,
+                   g_sdcall.sg_detach, g_sdcall.sg_nodisp);
+    }
     memset(&g_sdcall, 0, sizeof(g_sdcall));
     g_sdcall.frame0 = pg->frame_time;
 }
@@ -2257,6 +2306,30 @@ static void download_surface_deferred(NV2AState *d, SurfaceBinding *surface)
     download_surface(d, surface, true);
 }
 
+/*
+ * HAKUX_SURFGPU (lane.surfgpu1009 NOTES section 4b): the downloads a
+ * surface_update left pending in this command buffer go out with the flip's
+ * submit whether or not a display surface joins them. Mark them as the flip's
+ * batch anyway, so the first surface_update after the flip leaves them
+ * pending as it does a pre-download (#474) instead of waiting for the fence
+ * the GPU is still working towards: NBA Live 07's `surfupd` in the surfdl1008
+ * survey is that fence wait, every other flip. No display surface is named,
+ * so nothing here is held for a handoff.
+ */
+static void surfgpu_mark_flip_batch(NV2AState *d)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+
+    if (!tcg_enabled() || !surfgpu_enabled() ||
+        r->num_deferred_downloads == 0 || r->deferred_downloads_frame >= 0) {
+        return;
+    }
+    r->display_predownload_pending = true;
+    r->display_predownload_frame_index = r->current_frame;
+    r->display_predownload_surface = NULL;
+    SDCALL_DO(g_sdcall.sg_nodisp++);
+}
+
 bool pgraph_vk_prerecord_display_download(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -2291,11 +2364,13 @@ bool pgraph_vk_prerecord_display_download(NV2AState *d)
         d, d->pcrtc.start + vga_display_params.line_offset);
 
     if (!surface || !surface->color || !surface->draw_dirty) {
+        surfgpu_mark_flip_batch(d);
         return false;
     }
 
     if (!download_surface_record_deferred(
             d, surface, d->vram_ptr + surface->vram_addr)) {
+        surfgpu_mark_flip_batch(d);
         return false;
     }
 
@@ -5102,9 +5177,25 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
              * the binding it was recorded for before the struct becomes a
              * new one; see deferred_downloads_reference. The invalid list
              * skips such structs instead, so only the shelf pays this.
+             *
+             * HAKUX_SURFGPU detaches it instead, as freeing a struct does
+             * (lane.surfgpu1009 NOTES section 4a): the download still writes
+             * VRAM when its batch completes, and retires nothing. The new
+             * binding has the same range (get_shelved_surface matches address,
+             * pitch and size), and surface_put below registers its watch over
+             * it, so a guest access there still waits for the download. If
+             * the binding comes back stale, its upload takes the pending
+             * bytes by the splice, or completes them first where the splice
+             * cannot (surface_update_may_defer_downloads). A handoff keeps the
+             * completion: its fallback records a download of its own.
              */
             if (deferred_downloads_reference(r, surface)) {
-                download_surface_complete_deferred(d, SDC_REUSE);
+                if (tcg_enabled() && surfgpu_enabled() && !handoff_src) {
+                    deferred_downloads_clear_surface(r, surface);
+                    SDCALL_DO(g_sdcall.sg_detach++);
+                } else {
+                    download_surface_complete_deferred(d, SDC_REUSE);
+                }
             }
             unregister_cpu_access_callback(surface);
             *surface = target;
@@ -5354,7 +5445,7 @@ static bool surface_update_may_defer_downloads(NV2AState *d, bool upload)
         ((r->color_binding && r->color_binding->upload_pending) ||
          (r->zeta_binding && r->zeta_binding->upload_pending))) {
         /* #433: unless the uploads can take the pending bytes on the GPU. */
-        return surfsplice_enabled() &&
+        return surfsplice_on() &&
                surfsplice_covers(d, r->color_binding) &&
                surfsplice_covers(d, r->zeta_binding);
     }
@@ -5495,7 +5586,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
 
     bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);
 
-    g_surfsplice_armed = upload && tcg_enabled() && surfsplice_enabled();
+    g_surfsplice_armed = upload && tcg_enabled() && surfsplice_on();
     {
         SURF_TIMER_INIT(_su0);
         if (r->color_binding) {
