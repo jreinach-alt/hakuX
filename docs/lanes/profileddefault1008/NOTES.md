@@ -139,6 +139,31 @@ on it). Both report through `request.sh --wait`.
 
 <!-- filled in after the pilot runs -->
 
+### Attempt 2 (resumed 2026-10-08 ~22:1x PDT): why attempt 1 did not finish
+
+Attempt 1 queued the two pilot requests above
+(`1-1791521412-lane.profileddefault1008-3730973` Top Spin,
+`1-1791521422-lane.profileddefault1008-3732463` Fuzion Frenzy) and ended its
+session by starting `wait_pilot.sh` in the background and waiting on it to
+notify. Per `roles/lane.md` and memory `lane-background-task-dies-with-session`,
+that cannot work: this lane runs as a headless session, and every
+`run_in_background` job and Monitor it starts dies with the session's turn.
+The host's own addendum confirms the two requests were still sitting
+unstarted in `dispatch/queue/` when this attempt resumed, so nothing was
+lost -- the wait script just never got a chance to report before the prior
+session ended.
+
+On resume: checked `dispatch/running/` and found a different
+`lane.fpstelemetry1008` request actively running (queued 21:48:43 PDT,
+ahead of both of mine at 21:50:12/21:50:22); both pilot requests confirmed
+still in `dispatch/queue/`, not yet started. The build (`cd557f569e`,
+`BUILD SUCCESSFUL in 4m 53s`) and the code grant are already committed and
+unaffected. Merged `origin/master` (2 commits: `e9eb8bcf07`, `93fbc525fc`,
+both unrelated `surfdl1008` NOTES/PR docs, no conflicts, no territory
+overlap) per the session-start gate, and pushed. This attempt polls the two
+result dirs in the foreground inside bounded tool calls instead of
+backgrounding anything.
+
 ## Results
 
 <!-- filled in per title/arm after each result lands -->
