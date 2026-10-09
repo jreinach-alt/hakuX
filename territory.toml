@@ -2117,3 +2117,10 @@ note = "Harness defect, dispatched directly, no GitHub issue (owner order 2026-1
 # (lane/fpstelemetry1008, 04:32:16 PDT 10-09; confirmed ancestor of HEAD/origin/master via
 # the automatic fold-gate/update-window), no hakux-lane-fpstelemetry1008 unit running.
 # docs/lanes/fpstelemetry1008/** -> [free].
+
+[lane.fpstelemetry1008b]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/fpstelemetry1008b/**"]
+released = []
+note = "Dispatched by lane.local 04:55 PDT 10-09 (owner direction 10-08: telemetry on low-performing titles). Follow-up to fpstelemetry1008 (folded): the four titles it could not measure -- NFS Most Wanted, Midnight Club II (steps2route cannot encode RT+left/RT+right), Fantastic 4 (defective route), Dino Crisis 3 (defective route). Lane brief forbids board-file edits by the lane itself."
