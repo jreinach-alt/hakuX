@@ -83,6 +83,10 @@
 #define PMU433_MAXEV 24
 #define PMU433_NSEV 4
 #define PMU433_RING_PAGES 128
+/* a log line's payload stays under the 1024 bytes Android formats into */
+#ifndef PMU433_LINE
+#define PMU433_LINE 1000
+#endif
 
 /* The events after cycles and instructions, in group order. */
 static const uint16_t pmu433_evdef[] = {
@@ -495,14 +499,28 @@ static void pmu433_start(void)
         PERF_COUNT_SW_TASK_CLOCK, PERF_COUNT_SW_CONTEXT_SWITCHES,
         PERF_COUNT_SW_CPU_MIGRATIONS,
     };
+    /*
+     * Switches and migrations happen in the scheduler, in kernel mode, so
+     * with exclude_kernel they never count (r0 on the Nova read cs=0 mig=0
+     * while the thread visited five CPUs in a slice). They are counted with
+     * the kernel included where paranoid allows it (<= 1), else excluded
+     * and logged as `kern=0`.
+     */
+    bool kern = true;
     for (int k = 0; k < 3; k++) {
         pmu433_attr(&a, PERF_TYPE_SOFTWARE, swc[k], false);
         a.read_format = 0;
+        a.exclude_kernel = k ? 0 : 1;
         pmu433_sw[k] = pmu433_open(&a, -1, -1);
+        if (pmu433_sw[k] < 0 && k) {
+            a.exclude_kernel = 1;
+            pmu433_sw[k] = pmu433_open(&a, -1, -1);
+            kern = false;
+        }
     }
-    PMU433_LOG("[pmu433] open sw task=%d cs=%d mig=%d groups=%d units=%d",
-               pmu433_sw[0] >= 0, pmu433_sw[1] >= 0, pmu433_sw[2] >= 0,
-               opened, pmu433_nunit);
+    PMU433_LOG("[pmu433] open sw task=%d cs=%d mig=%d kern=%d groups=%d "
+               "units=%d", pmu433_sw[0] >= 0, pmu433_sw[1] >= 0,
+               pmu433_sw[2] >= 0, kern, opened, pmu433_nunit);
     pmu433_state = opened ? 1 : -1;
 }
 
@@ -682,20 +700,25 @@ t6: acc += 17; goto next;
 t7: acc += 19; goto next;
 }
 
-/* Pointer chase over a random cycle of 64-byte lines spanning `bytes`. */
-static uint64_t pmu433_k_chase(uint64_t n, size_t bytes)
+/*
+ * Pointer chase over a random cycle of 64-byte lines spanning `bytes`. The
+ * ring is built before the counters are read: on r0 the build (a shuffle
+ * and a link pass, ~2/3 of chase64m's instructions, each line a miss) sat
+ * inside the window and the per-load L1D/L2D refill counts could not be
+ * judged.
+ */
+static void **pmu433_chase_prep(size_t bytes)
 {
     size_t lines = bytes / 64;
     char *m = mmap(NULL, bytes, PROT_READ | PROT_WRITE,
                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    uint32_t *perm = g_new(uint32_t, lines);
+    uint32_t *perm;
     uint64_t s = 0x2545f4914f6cdd1dull;
-    void **p;
 
     if (m == MAP_FAILED) {
-        g_free(perm);
-        return 0;
+        return NULL;
     }
+    perm = g_new(uint32_t, lines);
     for (size_t i = 0; i < lines; i++) {
         perm[i] = (uint32_t)i;
     }
@@ -709,12 +732,18 @@ static uint64_t pmu433_k_chase(uint64_t n, size_t bytes)
             m + (size_t)perm[(i + 1) % lines] * 64;
     }
     g_free(perm);
-    p = (void **)m;
+    return (void **)m;
+}
+
+static uint64_t pmu433_k_chase(void **p, uint64_t n)
+{
+    if (!p) {
+        return 0;
+    }
     for (uint64_t i = 0; i < n; i++) {
         p = (void **)*p;
     }
     pmu433_sink = (uintptr_t)p;
-    munmap(m, bytes);
     return n;
 }
 
@@ -782,6 +811,8 @@ static void pmu433_ctl_one(const char *name, int which)
     int c0, c1;
     int64_t t0;
     char buf[1024];
+    size_t cbytes = which == 4 ? 16 << 10 : which == 5 ? 64 << 20 : 0;
+    void **ring = cbytes ? pmu433_chase_prep(cbytes) : NULL;
 
     pmu433_read(d);
     c0 = pmu433_getcpu();
@@ -801,13 +832,16 @@ static void pmu433_ctl_one(const char *name, int which)
             break;
     case 3: pmu433_sink = pmu433_k_ind(100000000, 7); units = 100000000;
             break;
-    case 4: units = pmu433_k_chase(300000000, 16 << 10); break;
-    case 5: units = pmu433_k_chase(4000000, 64 << 20); break;
+    case 4: units = pmu433_k_chase(ring, 300000000); break;
+    case 5: units = pmu433_k_chase(ring, 4000000); break;
     case 6: units = pmu433_k_code(400000, 256); break;
     case 7: units = pmu433_k_code(8000, 8192); break;
     }
     c1 = pmu433_getcpu();
     pmu433_read(d);
+    if (ring) {
+        munmap(ring, cbytes);
+    }
     for (int i = 0; i < pmu433_nunit; i++) {
         if (!pmu433_ran(d[i])) {
             continue;
@@ -1108,13 +1142,26 @@ static void pmu433_tick(void)
                    " fr=%u fmax=%d tclk=%.1f cs=%" PRIu64 " mig=%" PRIu64
                    " cpus=%" PRIx64, slice, (now - prev_ns) / 1000000, nf,
                    fmax, tclk / 1e6, cs, mig, cpus_seen);
-    /* one unit is at most ~8 groups x 7 values; a unit that would not fit
-     * is left out whole rather than cut mid-number */
-    for (int i = 0; i < pmu433_nunit && off < (int)sizeof(buf) - 700; i++) {
+    /*
+     * __android_log_print formats into 1024 bytes and cuts the rest, so a
+     * slice that visited many CPUs lost its last units (c7, the X3, comes
+     * last) and could end mid-number. A unit that would pass PMU433_LINE
+     * goes on a continuation line, `s=N+`, which the reader joins to slice N.
+     */
+    for (int i = 0; i < pmu433_nunit; i++) {
+        char ub[1024];
+        int n;
+
         if (!pmu433_ran(d[i])) {
             continue;
         }
-        off += pmu433_fmt(buf + off, sizeof(buf) - off, i, d[i]);
+        n = pmu433_fmt(ub, sizeof(ub), i, d[i]);
+        if (off + n >= PMU433_LINE) {
+            PMU433_LOG("%s", buf);
+            off = snprintf(buf, sizeof(buf), "[pmu433] s=%u+", slice);
+        }
+        memcpy(buf + off, ub, n + 1);
+        off += n;
     }
     PMU433_LOG("%s", buf);
     if (pmu433_mode == 2) {

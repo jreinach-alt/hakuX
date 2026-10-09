@@ -74,6 +74,7 @@ EXPECT = [
 ]
 
 TOKEN = re.compile(r"(\w+)=(\S+)")
+LOGMAX = 1023   # __android_log_print's payload, less its NUL
 TS = re.compile(r"^(\d\d-\d\d \d\d:\d\d:\d\d\.\d+)")
 
 
@@ -99,6 +100,11 @@ def parse(line):
         return None   # open / layout / cores / read / smp* lines
     parts = body.split(" p=")
     head = dict(TOKEN.findall(parts[0]))
+    if len(line[i:].rstrip("\n")) >= LOGMAX and len(parts) > 1:
+        # Android cut this line (5e4110e016 and older): its last unit may
+        # be partial or end mid-number, so it is dropped and counted
+        parts = parts[:-1]
+        head["_cut"] = 1
     units = {}
     for part in parts[1:]:
         name, _, rest = part.partition(" ")
@@ -122,6 +128,7 @@ def records(path, after=None):
     """(layout, head, units) for every ctl / slice line after `after`."""
     started = after is None
     layout = LAYOUT_1005
+    held = None   # a slice is complete when a line that is not its `s=N+`
     for line in open(path, errors="replace"):
         if not started:
             started = re.search(after, line) is not None
@@ -131,8 +138,20 @@ def records(path, after=None):
             layout = lay
             continue
         p = parse(line)
-        if p:
-            yield layout, p[0], p[1]
+        if not p:
+            continue
+        s = p[0].get("s", "")
+        if s.endswith("+"):
+            if held and held[1].get("s") == s[:-1]:
+                held[2].update(p[1])
+                if p[0].get("_cut"):
+                    held[1]["_cut"] = held[1].get("_cut", 0) + 1
+            continue
+        if held:
+            yield held
+        held = (layout, p[0], p[1])
+    if held:
+        yield held
 
 
 def keyed(layout, vals, runs=None):
@@ -198,6 +217,13 @@ def metric(acc, m, units):
     x, cyc, ins = ev(acc, num)
     if x is None:
         return None
+    if den == "unit":
+        # the groups take turns, so a group saw only part of the kernel's
+        # units: scale its count to the whole kernel by instructions (a
+        # kernel's units are a fixed number of instructions each)
+        if not ins:
+            return None
+        x = x * totals(acc)[1] / ins
     base = {"unit": units, "cyc": cyc, "ins": ins, "kins": ins / 1000.0}[den]
     return x / base if base else None
 
@@ -306,6 +332,11 @@ def slices(path, after=None, secs=None, slow_ms=34.5):
           % (len(rows), len(classes["good"]), len(classes["slow"]), slow_ms,
              100 * tclk_all / dt_all, run_all / tclk_all if tclk_all else 0,
              1000 * cs_all / dt_all, 1000 * mig_all / dt_all))
+    cut = [h for _, h, _ in rows if h.get("_cut")]
+    if cut:
+        print("cut by the log limit: %d slices, %d units dropped (their "
+              "counts are missing from the tables)"
+              % (len(cut), sum(h["_cut"] for h in cut)))
     print("core-type share of counted time: " + ", ".join(
         "%s %.1f%%" % (k, 100 * v / tot) for k, v in
         sorted(cshare.items(), key=lambda kv: -kv[1])))
@@ -539,8 +570,8 @@ def _tmp(lines):
 def selftest():
     import os
     results = []
-    # 10-05 format: alu1 at IPC 1.03 (PASS), ind8 at 0.40 mispredicts/unit
-    # (must FAIL)
+    # 10-05 format: alu1 at IPC 1.03 (PASS), ind8 at 1.20 mispredicts/unit
+    # (40M in g0, which saw a third of the instructions; must FAIL)
     lines = [
         "[pmu433] ctl=alu1 units=1600000000 ms=520 cpu=7-7 p=armv9_cortex_x3"
         " g0=170.0:1650000000,1700000000,1000,2000,26000000,10,5"
@@ -556,7 +587,7 @@ def selftest():
     os.unlink(path)
     results.append(("controls 10-05", rc == 1
                     and "alu1 | ipc | 1.030 | 0.95-1.12 | PASS" in out
-                    and "ind8 | brm/unit | 0.400 | 0.75-0.95 | FAIL" in out))
+                    and "ind8 | brm/unit | 1.200 | 0.75-0.95 | FAIL" in out))
     # 10-05 slices: one good (30 frames) and one slow (20 frames) slice
     sl = [
         "10-05 12:00:01.000 1 2 W hakuX: [pmu433] s=0 dt=1000 fr=30 fmax=34"
@@ -574,7 +605,8 @@ def selftest():
                     and "| stall_be % | 40 | 30 | 50 | 20 |" in out2))
     # 10-09 format: layout line, per-CPU units, 5-event groups. alu1 on c7-x3
     # with a 2 ms sliver on c3-a715 (not judged); chase64m l2d (g3) at 0.95
-    # per load (PASS); ind8 bis absent from g0 must not matter.
+    # per load (PASS: 760k in g3, which saw a fifth of the instructions);
+    # ind8 bis absent from g0 must not matter.
     lay = ("[pmu433] layout mode=1 gsz=5 g0=11,08,23,24,22 g1=11,08,01,02,35"
            " g2=11,08,03,05,34 g3=11,08,17,2a,21 g4=11,08,7a,14,04")
     g = " g%d=100.0:330000000,340000000,1,1,1"
@@ -589,7 +621,7 @@ def selftest():
         + g % 4,
         "[pmu433] ctl=chase64m units=4000000 ms=400 cpu=7-7 p=c7-x3"
         " g0=80:300000000,800000,1,270000000,1 g1=80:300000000,800000,1,1,1"
-        " g2=80:300000000,800000,1,1,1 g3=80:300000000,800000,3800000,1,1"
+        " g2=80:300000000,800000,1,1,1 g3=80:300000000,800000,760000,1,1"
         " g4=80:300000000,800000,1,1,1",
     ]
     path = _tmp(lines)
@@ -668,6 +700,24 @@ def selftest():
                                                         "l3d", "brr"]
                     and parse_layout("[pmu433] layout mode=2 gsz=5 g0=24,11,08"
                                      )[0] == ["sbe", "cyc", "ins"]))
+    # a slice split over a `s=N+` line is one slice with both units; a line
+    # Android cut (payload 1023 bytes) loses its last, partial unit
+    u = " p=c%d-a715" + "".join(" g%d=10.0:1000,2000,1,1,1" % k
+                                 for k in range(5))
+    head = "[pmu433] s=%s dt=1000 fr=30 fmax=34 tclk=900.0 cs=1 mig=0 cpus=88"
+    full = head % "2" + "".join(u % c for c in range(7))
+    full += " p=c7-x3 g0=10.0:1000,2000,1,1,1 g1=10.0:1000,2000,1,1,1"
+    full = full[:LOGMAX - 4] + "1,22"
+    lines = [lay, head % "1" + u % 3, "[pmu433] s=1+" + u % 4, full,
+             "[pmu433] ctl=alu1 units=1 ms=1 cpu=7-7" + u % 7]
+    path = _tmp(lines)
+    got = [(h.get("s", h.get("ctl")), sorted(un), h.get("_cut"))
+           for _, h, un in records(path)]
+    os.unlink(path)
+    results.append(("split/cut", len(full) == LOGMAX and got == [
+        ("1", ["c3-a715", "c4-a715"], None),
+        ("2", ["c%d-a715" % c for c in range(7)], 1),
+        ("alu1", ["c7-a715"], None)]))
     for o in (out, out2, out4, out5, out3, out6):
         print(o)
     for name, ok in results:
