@@ -907,3 +907,18 @@ What it adds: in `1131600` the #804 wait has **two** site numbers.
   sites. The outcomes and the probabilities stay as registered. The
   correction makes "miss" less likely to come from the knob missing its
   wait, but it says nothing about "moved": site #6 is still next in line.
+
+### Waiting (2026-10-09 16:4x PDT)
+
+The lane waits on the Nova for N `1-1791588183-pmucounters-521453` and W
+`1-1791588184-pmucounters-521720` (WAITING). They are queued behind
+surfgpu1009's run. Steps on resume:
+
+1. Run `pairread.py dispatch/results/<N> dispatch/results/<W>`.
+2. Check validity from the hold frames (a moving player) and from
+   `thermal.jsonl` (no pause).
+3. Apply 3f's outcomes as written.
+4. Set R3 #1's P from the outcome, then write OUTBOX and set PR.md
+   `State: ready`.
+
+Every other deliverable of the 10-09 brief is in 3e-3g.
