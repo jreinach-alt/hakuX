@@ -1,5 +1,20 @@
 # surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 
+## Attempt 2: why attempt 1 did not cover this, and what changed
+
+Attempt 1 finished and its PR was folded into master at 22:00:33 PDT
+(`93fbc525fc` on `origin/master`, merge of `e9eb8bcf07`), concluding NBA Live
+06 and 07 were both gated off (`prequeue.py` REVIEW/BLOCK) with no existing
+perflog soak to read instead, and that Midnight Club 2 was fully answered by
+an unrelated lane's existing run. That conclusion was correct for the
+information live at the time. The owner's addendum clearing the below-bar
+BLOCK for this lane's telemetry requests was approved at 22:05 PDT -- five
+minutes *after* the fold -- so attempt 1 never saw it. This attempt (resumed
+in the same worktree, fast-forwarded onto `origin/master` which already
+contains attempt 1's folded work) acts on the addendum: NBA Live 06 and 07
+are re-gated below, found eligible for telemetry, and queued. See "Attempt 2"
+sections below; the Midnight Club 2 analysis is unchanged from attempt 1.
+
 Brief (owner order 10-08 ~21:30 PDT, dispatched directly by lane.local, no issue):
 NBA Live 05 makes one synchronous surface-download finish per frame
 (`fps20786`, filed as #794; `async794` built and refuted fix 1 for NBA's own
@@ -172,12 +187,102 @@ conversion to also not add GPU work of its own, which is outside what this
 lane's instruments can see (decompose.py and `[sdcall]` give per-frame CPU/
 wait time, not where inside the GPU's 34.6 ms a converted path would land).
 
+## Attempt 2: the addendum applies, NBA Live 06 and 07 queued
+
+Re-ran `pm/prequeue.py` on both titles against today's current state (after
+merging `origin/master`, which already carries attempt 1's folded work).
+Both now print a single BLOCK, the identical reason named in the addendum:
+
+```
+BLOCK   last verdict missed the fps bar: telemetry and a fix, not a retest (owner 10-03)
+RESULT: BLOCK
+```
+(plus non-blocking REVIEW lines for the same FAIL verdicts and prose
+mentions, unchanged from attempt 1's reading). Note this *disagrees* with
+attempt 1's NOTES, which read NBA Live 06 as REVIEW-only (not BLOCK) due to
+a suspected `fps_ok_share` `0 or 1` substitution bug in `prequeue.py`. Reread
+the actual line here: `last.get("fps_ok_share", 1) is not None and
+last.get("fps_ok_share", 1) < 0.9` -- `.get(key, default)` only substitutes
+the default when the KEY IS ABSENT, not when its value is falsy, so
+`fps_ok_share: 0.0` reads as `0.0`, not `1`, and `0.0 < 0.9` correctly fires
+BLOCK. That bug does not reproduce by reading the code now; attempt 1's
+claim was a misread, not a fixed regression (no change to `pm/prequeue.py`
+was made by this lane or found in its history). Correcting the record here
+since attempt 1's "For the next lane" repeated the claim.
+
+Per the owner's addendum, this one BLOCK reason does not stop a telemetry
+request from this lane, and no other BLOCK fires for either title (no
+RalliSport exclusion, no football, no crash/device hold, no banked Playable,
+and both have confirmed Nova copies per `listing-nova.txt`). Both titles are
+in scope.
+
+**Route.** The brief requires a stored route; attempt 1 (quoting
+`fps20786/NOTES.md`, written before 10-06) said NBA Live 2004/06/07 had "no
+path or route". That is now stale: pathfind ran confirmation holds on both
+titles on 10-06 (`wt/pathfind/docs/lanes/pathfind/runs/nbalive06-1006` and
+`.../nbalive07-1006`), each with a `steps.jsonl` that reaches gameplay
+through a scripted menu path -- including the sports-setup rule's own
+"Quarter Length to the longest" steps (06: steps 10-12, maxing at 12
+minutes; 07: steps 10-13, same) -- before the hold's free-play fps gate
+stopped each at ~188s (median 19 fps, well below the confirmation bar; this
+is the same FAIL that `prequeue.py` reads above, not a crash or a route
+defect). That scripted menu-nav prefix plus `fps20786/steps2route.py` is
+exactly the recipe attempt 1 used to build Midnight Club 2's `gnr-mc2` route
+from a *different* lane's pathfind path -- the same tool applies here, from
+these titles' *own* pathfind paths.
+
+Built both routes with `steps2route.py`, cutting at each run's first
+`gameplay`-state step (06: step 14 @136.2s; 07: step 16 @158.6s -- matching
+NBA Live 2005's own recipe in `fps20786/make-routes.sh`, which also cuts at
+its first `gameplay` step, #20), then looping NBA Live 2005's own basketball
+genre tokens (`RT:1,STICK:up:1,A,STICK:right:1,X,STICK:left:1,B,STICK:down:1,Y`
+-- same engine, same genre, reused rather than invented) for `--hold-s 300`
+(5 minutes) post-mark:
+
+```
+python3 docs/lanes/fps20786/steps2route.py <pathfind run>/steps.jsonl \
+    --name "NBA Live 0X (<id>)" --gameplay <N> \
+    --loop "RT:1,STICK:up:1,A,STICK:right:1,X,STICK:left:1,B,STICK:down:1,Y" \
+    --hold-s 300 --source "pathfind runs/nbalive0X-1006 (10-06, lane/pathfind)"
+```
+
+Both validated with `docs/testing/titles/route.sh --check` (134 and 140
+lines; route ends ~446s and ~467s after launch respectively). Committed
+copies live at `docs/lanes/surfdl1008/routes/{nbalive06,nbalive07}.route`
+(this lane's own territory). `request.sh --route NAME` resolves only from
+`docs/testing/titles/routes/` (no path override in `titlestate.py
+resolve-route`), so each was copied there *transiently* -- long enough to
+queue, since the queued request copies the route's full TEXT into itself
+and is then self-contained -- and removed immediately after both requests
+were accepted; `git status` on that directory is clean again (same pattern
+as attempt 1's unstated inference that `lane.gpunonrender` did this for
+`gnr-mc2`, which never appears committed anywhere either).
+
+**Queued** (Nova, `--priority study`, `--no-expect "telemetry survey, not an
+A/B arm"`, no device hold taken, no `--wait`):
+
+| title | request id | route | seconds | env |
+|---|---|---|---|---|
+| NBA Live 06 (4541007A) | `1-1791525334-surfdl1008-4042714` | nbalive06 | 460 | perflog, HAKUX_GPUXFR=1, HAKUX_FRAMETRACE=1 |
+| NBA Live 07 (454100A1) | `1-1791525340-surfdl1008-4043345` | nbalive07 | 480 | perflog, HAKUX_GPUXFR=1, HAKUX_FRAMETRACE=1 |
+
+At queue time, `dispatch/queue/` held 9 earlier `lane.profileddefault1008`
+requests ahead of both of mine (checked the directory directly, not
+`status.sh`, which blocks as a live dashboard rather than a one-shot
+report). Both of mine queue behind those, as the brief requires for
+`lane.fpstelemetry1008`'s Nova requests, and by the same courtesy for
+whatever else is already ahead. **No result yet** -- this is a WAITING
+state, not a finished measurement; see `docs/lanes/surfdl1008/WAITING`.
+
 ## Verdict (per title)
 
-- **NBA Live 06: not measured.** Blocked at the gate (prequeue REVIEW, not
-  CLEAR); no existing perflog soak to read instead.
-- **NBA Live 07: not measured.** Blocked at the gate (prequeue BLOCK, owner
-  10-03 policy); no existing perflog soak to read instead.
+- **NBA Live 06: queued, not yet measured.** Cleared at the gate under the
+  owner's addendum (BLOCK was the only reason, and it is the one named as
+  cleared); route built from pathfind's own 10-06 path; request
+  `1-1791525334-surfdl1008-4042714` queued behind 9 others. Update this
+  section once the result lands.
+- **NBA Live 07: queued, not yet measured.** Same gate/route situation;
+  request `1-1791525340-surfdl1008-4043345` queued behind the same 9.
 - **Midnight Club 2: partial generalisation, different caller.** The same
   class of bound is present (a synchronous `SURFACE_DOWN` finish
   serialising the render thread against the GPU, ~8.0 ms/frame of it, with
@@ -195,16 +300,32 @@ wait time, not where inside the GPU's 34.6 ms a converted path would land).
 
 ## For the next lane
 
-- Don't re-run NBA Live 06/07 without clearing the gate first (prequeue
-  REVIEW/BLOCK); if the owner wants telemetry on either despite the
-  below-bar hold, that needs an explicit exception recorded against the
-  hold, not a lane routing around `prequeue.py`'s RESULT line.
-- `pm/prequeue.py`'s fps-bar BLOCK rule (`last.get("fps_ok_share") or 1 <
-  0.9`) misses a verdict whose `fps_ok_share` is exactly `0.0` (Python's
-  `or` treats it as missing and substitutes `1`). NBA Live 06 is the live
-  example. Not fixed here (outside this lane's territory: `pm/` is not under
-  `docs/lanes/surfdl1008/**`); flagging for whoever owns `pm/prequeue.py`.
+- **Finish reading the two queued results** (`1-1791525334-surfdl1008-4042714`
+  NBA Live 06, `1-1791525340-surfdl1008-4043345` NBA Live 07) with
+  `fps20786/sdsurvey.py` + `xfrsurvey.py` + `near30/decompose.py`, mark at
+  each route's `mark gameplay` line, same method as the Midnight Club 2
+  section above, and fill in the Verdict bullets. Check for a thermal pause
+  first (voids the row) before reading anything else.
+- Attempt 1's claim of a `prequeue.py` `fps_ok_share` `0 or 1` gate bug does
+  **not** reproduce: re-read in Attempt 2 above, the actual line is
+  `last.get("fps_ok_share", 1)`, whose default only applies when the key is
+  missing, not when its value is falsy, so `0.0` reads as `0.0` and BLOCKs
+  correctly. Don't repeat that claim; there is no known bug in this rule.
 - Before queuing any device request, check `dispatch/results` for an
   existing perflog soak of the same title first (title/ISO string, any age).
   Midnight Club 2 already had one, 2 days old, built by an unrelated lane
   for an unrelated question, and it answered this brief in full.
+- A title with "no path or route" in an older lane's NOTES may have one now:
+  `fps20786/NOTES.md`'s "no path or route" for NBA Live 06/07 was written
+  before pathfind's 10-06 confirmation holds on both existed. Check
+  `wt/pathfind/docs/lanes/pathfind/runs/<slug>/steps.jsonl` directly (glob
+  `**/<slug>*/verdict.json` under that tree, per `pm/prequeue.py`'s own
+  search pattern) before concluding no route can be built.
+- `request.sh --route NAME` only resolves from `docs/testing/titles/routes/`
+  (no override flag in `titlestate.py resolve-route`), which is outside any
+  lane's own territory. The pattern every lane before this one seems to have
+  used (none commit a route there) is: copy the route in, queue (the
+  request embeds the route's full text, so it is self-contained from then
+  on), remove the copy, confirm `git status` is clean of that directory
+  again. Routes built here are kept, committed, under
+  `docs/lanes/surfdl1008/routes/` for provenance.

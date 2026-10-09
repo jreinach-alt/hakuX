@@ -1,17 +1,30 @@
 # surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 
-State: ready
+State: draft
 
 Lane: surfdl1008          Issue: none (dispatched directly by lane.local, #433 umbrella)
-Base: master @ 7960e78e20
-Files: docs/lanes/surfdl1008/NOTES.md, docs/lanes/surfdl1008/PR.md
-Prediction: none: analysis-only, no device request queued, no code touched
-Needs device: no (gate blocked both NBA titles; Midnight Club 2 was answered by an existing run, read not queued)    Needs NDK: no
+Base: master @ 93fbc525fc (attempt 1's own fold, merged into this branch)
+Files: docs/lanes/surfdl1008/NOTES.md, docs/lanes/surfdl1008/PR.md, docs/lanes/surfdl1008/WAITING, docs/lanes/surfdl1008/routes/nbalive06.route, docs/lanes/surfdl1008/routes/nbalive07.route
+Prediction: none: telemetry survey, not an A/B arm
+Needs device: yes, two Nova requests queued (below)    Needs NDK: no
 
-NBA Live 06 and NBA Live 07 are not measured: both are gated off by
-`pm/prequeue.py` (REVIEW and BLOCK respectively, both titles below-bar on
-10-06 holds), and neither has an existing perflog soak on disk to read
-instead. No device time was spent on either.
+**Attempt 2** (owner addendum 22:05 PDT, 5 min after attempt 1's own fold):
+the addendum clears NBA Live 06/07's below-bar `prequeue.py` BLOCK for this
+lane's telemetry requests specifically. Re-checked the gate (both now print
+that one BLOCK, no other reason), built a route for each from pathfind's own
+10-06 confirmation-hold paths (`steps2route.py`, NBA 2005's own basketball
+loop tokens, mark cut at each run's first `gameplay` step), and queued two
+Nova soaks: `1-1791525334-surfdl1008-4042714` (NBA Live 06, route
+`nbalive06`, 460s) and `1-1791525340-surfdl1008-4043345` (NBA Live 07, route
+`nbalive07`, 480s), both `--perflog --env HAKUX_GPUXFR=1 --env
+HAKUX_FRAMETRACE=1 --priority study`. At queue time 9 `lane.profileddefault1008`
+requests sat ahead of both in `dispatch/queue/`; neither has run yet. See
+`docs/lanes/surfdl1008/WAITING` and NOTES.md's "Attempt 2" section for the
+full gate re-check, route recipe, and a correction to attempt 1's claimed
+`prequeue.py` gate bug (does not reproduce on a careful read of the code).
+
+Midnight Club 2's analysis (below) is unchanged from attempt 1, already
+answered from an existing run, no device time spent on it.
 
 Midnight Club 2 cleared the gate (`CLEAR`, ISO confirmed on the Nova), but
 rather than queue a new 5-minute request, an existing perflog+`HAKUX_GPUXFR=1`
@@ -52,11 +65,12 @@ is not shown here to be sufficient alone: Midnight Club 2's GPU cost
 finish wait is counted, unlike NBA 2005's 18.5 ms. No patch attempted (out
 of scope per the brief).
 
-Full numbers, the prequeue gate readout for all three titles, and the
-`pm/prequeue.py` gate bug noticed along the way (an exactly-0.0
-`fps_ok_share` escapes its BLOCK rule via Python's `0.0 or 1`) are in
-NOTES.md.
+Full numbers and the prequeue gate readout for all three titles are in
+NOTES.md. (Attempt 1's claimed `pm/prequeue.py` gate bug -- an exactly-0.0
+`fps_ok_share` escaping the BLOCK rule via `0.0 or 1` -- does not reproduce;
+see NOTES.md's correction.)
 
-Release note: none (analysis only, no code or behaviour change).
+Release note: none (analysis only, no code or behaviour change; two Nova
+telemetry soaks queued, results pending).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
