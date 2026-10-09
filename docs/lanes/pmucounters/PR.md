@@ -2,7 +2,7 @@ State: draft
 
 Lane: pmucounters            Issue: #433
 Base: master @ f2c6b9c5d6
-Files: accel/tcg/hakux-pmu.c.inc, accel/tcg/cpu-exec.c, docs/lanes/pmucounters/NOTES.md, docs/lanes/pmucounters/OUTBOX.md, docs/lanes/pmucounters/PR.md, docs/lanes/pmucounters/WAITING, docs/lanes/pmucounters/pmuprobe.c, docs/lanes/pmucounters/build_probe.sh, docs/lanes/pmucounters/r0_probe.sh, docs/lanes/pmucounters/pmuread.py, docs/lanes/pmucounters/syntax_check.py, docs/lanes/pmucounters/elfsyms.py
+Files: accel/tcg/hakux-pmu.c.inc, accel/tcg/cpu-exec.c, docs/lanes/pmucounters/NOTES.md, docs/lanes/pmucounters/OUTBOX.md, docs/lanes/pmucounters/PR.md, docs/lanes/pmucounters/WAITING, docs/lanes/pmucounters/pmuprobe.c, docs/lanes/pmucounters/build_probe.sh, docs/lanes/pmucounters/r0_probe.sh, docs/lanes/pmucounters/pmuread.py, docs/lanes/pmucounters/syntax_check.py, docs/lanes/pmucounters/elfsyms.py, docs/lanes/pmucounters/overhead.py, docs/lanes/pmucounters/waits.py, docs/lanes/pmucounters/spinfps.py, docs/lanes/pmucounters/tbbins.py, docs/lanes/pmucounters/tbper.py, docs/lanes/pmucounters/objcheck433.py
 Prediction: none: measurement lane, no arm (no behaviour change; the counting on/off pair is an overhead check read by hand)
 Needs device: yes    Needs NDK: yes
 
@@ -28,12 +28,41 @@ slice:
 `HAKUX_PMU=2` samples up to four events instead, each attributed in-process to
 a TB, the dispatch stub or a host library offset.
 
-R0 (10-09, Nova): the PMU schedules at most 5 events per group. The 10-05
-hook's 7-event groups never ran, which is why it read zero. Results for R1,
-R2 and R3 are in OUTBOX.md as they land.
+## Results (Amped 2, Nova)
 
-The hook has one copy, at `accel/tcg/`; the lane directory's earlier copy is
-gone (it never reached master).
+- **The counters are an instrument.** 10 of 11 control kernels read as
+  predicted on the X3: IPC, indirect mispredicts, L1I and L1D refills, and
+  both stall classes. L2 refills read 16% high, because of page-walk traffic.
+- **Slow frames are waits, not slower code.** No counter differs between
+  good and slow 1 s slices by more than one good-slice sd. The vCPU thread
+  is off-CPU 8 points more in slow slices.
+- **The JIT's code runs at high IPC.** With the title's pacing spin out, it
+  is about 3.1-3.3 on the X3. Front-end stall is 12% of cycles. Mispredicts
+  are at most 0.028 per indirect branch, about 2% of cycles. Back-end stall
+  is 28%. On the code side the lever is instruction count, not a stall
+  class.
+- **Where the cycles go (sampled).**
+  - JIT code is 56% of cycles; the pacing spin TB alone is 24%.
+  - Dispatch (`helper_lookup_tb_ptr`, `tb_lookup`, `qht`) is 17%.
+  - softmmu `mmu_lookup1` is 7%.
+  - With the spin removed, no other TB reaches 1%.
+- **The frame.** From a 30 fps window to a < 24 fps one, the frame grows
+  11 ms:
+  - about 9 ms is more guest work;
+  - about 11 ms is more off-CPU time, mostly the vCPU's DMA_PUT waiting on
+    pfifo.lock while the PFIFO thread waits on GPU fences in report
+    processing;
+  - the pacing spin shrinks by 9 ms, which offsets part of that growth.
+- **Ranked candidates** (P x win):
+  1. the report-processing fence waits under pfifo.lock, ~5% of frame time
+     overall;
+  2. dispatch, ~1%;
+  3. `mmu_lookup1`, ~0.4%.
+
+  A pre-registered pair (`HAKUX_OCCL_WAIT=0` vs the shipped wait) decides #1.
+- **Counting cost** is below the route's run-to-run noise (on/off pair).
+
+NOTES.md 3e-3g has the tables and the evidence.
 
 Device runs (Nova, investigative):
 
@@ -41,10 +70,12 @@ Device runs (Nova, investigative):
 |---|---|---|
 | 5e4110e016 | A controls (9/11 PASS) | `1-1791584641-pmucounters-283582` |
 | 5e4110e016 | B R1 (lines cut at the log limit) | `1-1791584645-pmucounters-283745` |
-| b345b5b613 | A2 controls | `1-1791585654-pmucounters-340915` |
-| b345b5b613 | B2 R1 | `1-1791585654-pmucounters-341117` |
+| b345b5b613 | A2 controls (10/11 PASS) | `1-1791585654-pmucounters-340915` |
+| b345b5b613 | B2 R1 counting | `1-1791585654-pmucounters-341117` |
 | b345b5b613 | C R2 sampling | `1-1791585655-pmucounters-341517` |
 | b345b5b613 | D counting off | `1-1791585656-pmucounters-341827` |
+| b345b5b613 | N report wait skipped (queued) | `1-1791588183-pmucounters-521453` |
+| b345b5b613 | W shipped wait (queued) | `1-1791588184-pmucounters-521720` |
 
 A and B found three faults in the hook, all fixed in b387f4971a:
 

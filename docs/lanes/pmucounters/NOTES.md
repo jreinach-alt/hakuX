@@ -376,7 +376,7 @@ counter. Every 7-event group in the 10-05 hook could never run.
 | host mode 2 at 50k samples/s | `lost=237526` reported (a 512 KB ring drained once a second holds ~21.8k samples); device periods are set for <= 5k/s per event |
 | `pmuread.py --selftest` | 7 cases PASS (the 10-05 formats unchanged, plus layout, per-CPU, merged ctl lines, the good-slice spread flag, two-event sampling); the ind8 control built to fail FAILs |
 | `syntax_check.py` (Android flags, the real patched cpu-exec.c) | PASS, 0 diagnostics in the new code; `--falsify` FAILs |
-| link check (`scratch/objcheck433.py`: cpu-exec.o built with the Android flags vs `libxemu.so` of 34a0b032b9) | every new undefined symbol is defined in libxemu.so or imported from libc, except `__clear_cache`, a compiler-rt builtin that the NDK links statically (defined `T` in `libclang_rt.builtins-aarch64-android.a`; present in pmuprobe) |
+| link check (`objcheck433.py`: cpu-exec.o built with the Android flags vs `libxemu.so` of 34a0b032b9) | every new undefined symbol is defined in libxemu.so or imported from libc, except `__clear_cache`, a compiler-rt builtin that the NDK links statically (defined `T` in `libclang_rt.builtins-aarch64-android.a`; present in pmuprobe) |
 
 ### Pre-registration added before the device runs (10-09)
 
@@ -639,7 +639,7 @@ largest is 0.9%), so no single TB is a candidate.
 - Frametrace's "RUN" verdict counts it as vCPU work. A per-frame "vCPU
   busy" over this title overstates work by the spin's ms.
 
-### Where the vCPU's frame goes (D, shipped behaviour, `scratch/spinfps.py`)
+### Where the vCPU's frame goes (D, shipped behaviour, `spinfps.py`)
 
 D is `1-1791585656-pmucounters-341827`. All values are ms per frame.
 - on-CPU comes from [tlb68];
@@ -812,3 +812,57 @@ Prediction: hit 0.45, moved 0.35, miss 0.20.
 `HAKUX_OCCL_WAIT=0` restores the pre-#804 stale visibility reads. N's frames
 may show occlusion-driven artefacts (flares, sun). This is a measurement
 knob and never a recommendation.
+
+## 3g. Attempt 6 (2026-10-09 16:2x PDT, resume on Opus)
+
+Why attempt 5 did not finish: it hit the 300-turn cap at 16:23 PDT
+(`logs/lane/index.tsv`: MAXTURNS, $20.42), about a minute after it queued
+the N/W pair of 3f. Its results (3e) and the pair's pre-registration (3f)
+were committed and pushed in f248dd0552. The queue ids were not recorded,
+and OUTBOX, PR.md and WAITING still described the 15:4x batch. Nothing it
+measured was wrong.
+
+### Queued (ref b345b5b613, Nova, study priority, 23:23Z)
+
+| arm | id | env |
+|---|---|---|
+| N | `1-1791588183-pmucounters-521453` | `HAKUX_FRAMETRACE=1 HAKUX_OCCL_LOG=100 HAKUX_OCCL_WAIT=0` |
+| W | `1-1791588184-pmucounters-521720` | `HAKUX_FRAMETRACE=1 HAKUX_OCCL_LOG=100` |
+
+Both are 578 s on the `amped2` route with `--perflog`. 2 x (578 + 90) s is
+22 min, inside `pilots/pmucounters.ok` (10-09).
+
+### Checked before relying on the pair (read from the source, not run)
+
+- **The knob exists at the queued ref.** `reports.c` at b345b5b613 reads
+  `HAKUX_OCCL_WAIT`. `0` skips only the #804 `vkWaitForFences` loop and
+  prints `[occl804] config ... wait=0`, so mechanism check 1 can be read.
+- **R3 #1's premise.** `pfifo_thread` takes pfifo.lock at pfifo.c:2119 and
+  calls `pgraph_process_pending_reports` at 2163 without dropping it. A
+  fence wait in report processing therefore holds the lock the vCPU's
+  DMA_PUT store waits on.
+- **R3 #2's premise.** cpu-exec.c:2507 sets `last_tb = NULL` for any TB with
+  a second page (`tb_page_addr1(tb) != -1`), counted as `RR_GS`.
+- **A parked switch exists for the other wait site.** `HAKUX_STALLFIN=reports`
+  (gpunonrender (C')) drops STALLED submits when no report is queued. It was
+  refuted on Simpsons: gfps 30.3 -> 25.8, and the vCPU's DMA_PUT wait grew
+  4.3 ms. If N reads "moved" to site #6, that switch is not the next arm
+  unless something shows Amped 2 differs from Simpsons there.
+
+### Two R1 figures the table implies
+
+- **Mispredicts per indirect branch on the X3 are at most 0.028**
+  (0.39 brm / 14.0 `BR_INDIRECT_SPEC` per k-instr). brm counts every branch
+  kind, so this is an upper bound. At ~15 cycles a mispredict, 0.39 /kins
+  at IPC 3.59 is about 2% of X3 cycles. The brief's bad-speculation row
+  (`exit_tb` dispatch, the IBC) is answered no.
+- **The JIT work's own IPC on the X3 is about 3.1-3.3.** No sample carries
+  an instruction count, so there is no per-TB IPC. The spin's share of
+  on-CPU time differs between the two slice classes (D's bins: 38% at 30
+  fps; 8-24% across 24-29 fps). Solving good = (1-s_g)w + s_g p and
+  slow = (1-s_s)w + s_s p with IPC 3.73 and 3.36 gives the spin p = 4.5-4.7
+  and the work w = 3.1-3.3, for s_s from 0.08 to 0.15. The assumption is
+  that the spin's share of X3 cycles equals its share of on-CPU time. The
+  class verdict ("high IPC, a lot of instructions") holds with the spin
+  out: IPC >= 2, front-end and speculation in their miss columns, back-end
+  28% between its columns.

@@ -250,3 +250,105 @@ pilot):**
 B2 and D together measure what counting costs.
 
 Model: claude-opus-5-5.
+
+## 2026-10-09 16:3x PDT -- R0, R1, R2, R3 milestones (Amped 2, Nova); report-wait pair queued (Opus)
+
+All four runs of the 15:4x batch (ref b345b5b613) are valid. B2, C and D
+reached live play with a moving player (the rider at different places on
+the slope across the hold frames). None had a thermal pause. `paranoid=1`
+on every open, so `perf_harden` was still 0. Details and the per-row
+evidence are in NOTES.md 3e.
+
+**R0 verdict: the counters are an instrument on the X3.** Controls (A2
+`…340915`): 10 of 11 pass through the hook's own counters.
+- IPC 1.03 on a one-cycle add chain, 0.52 on a multiply chain.
+- Mispredicts 0.875 per jump on an 8-way random indirect branch, 0 on a
+  1-way.
+- L1I refills 1.03 per line on a 512 KB code walk, 0 on 16 KB.
+- L1D refills 1.00 per load and back-end stall 99.9% on a 64 MB pointer
+  chase.
+- The miss: L2 refills read 1.16 per load against 0.85-1.1. The chase's
+  page-table walks refill L2 too, so R1's L2 counts include walk traffic.
+
+**R1: where the vCPU thread's time goes on Amped 2** (B2 `…341117`, 1 s
+slices, coverage 0.994; X3 67% of counted time, A715 21%, A710 12%):
+
+| X3 | good slices (29.9 fps) | slow slices (26.5 fps) | good-slice sd |
+|---|---|---|---|
+| vCPU on-CPU, % of wall | 81.5 | 73.2 | |
+| IPC | 3.73 | 3.36 | 0.70 |
+| front-end / back-end stall, % of cycles | 11.4 / 27.5 | 12.4 / 28.4 | 4.0 / 1.4 |
+| branch mispredicts per k-instr | 0.36 | 0.44 | 0.24 |
+| L1I refill / L1D refill per k-instr | 5.0 / 0.50 | 7.0 / 0.63 | 3.0 / 0.29 |
+
+- **Slow frames are waits, not slower code.** No counter on any core type
+  differs between good and slow slices by more than one good-slice sd. The
+  thread is off-CPU 8 points more in slow slices.
+- **The JIT's code is high-IPC.** With the title's pacing spin taken out,
+  the work runs at IPC about 3.1-3.3. It is not front-end bound, and it is
+  not mispredict bound (at most 0.028 mispredicts per indirect branch,
+  about 2% of cycles). The back end stalls on 28% of cycles. The lever on
+  the code side is instruction count, not stalls.
+- **A third of good frames is idle spin.** TB `0031e901` (5 guest
+  instructions, the title's 30 fps pacing loop) is 24% of cycle samples. It
+  fills 11 ms of a 30 fps frame and 2 ms of a < 24 fps one. Frametrace's
+  "RUN" counts it as work.
+
+**Frame budget** (D, counting off, ms per frame):
+
+| fps bin | wall | work | spin | off-CPU |
+|---|---|---|---|---|
+| >= 29.7 | 33.4 | 18.5 | 11.3 | 3.6 |
+| < 24 | 44.5 | 27.8 | 2.0 | 14.7 |
+
+Between those bins the frame grows 11 ms. Work grows ~9 ms: the guest runs
+more of the same code (one chain's entries per frame double at the same
+~9 us each). Off-CPU grows ~11 ms. Frametrace puts that growth on the
+vCPU's DMA_PUT store waiting for pfifo.lock, 1.4 -> 9.7 ms per frame. The
+PFIFO thread holds that lock while it waits on GPU fences in report
+processing (the #804 wait and the STALLED finish). Meanwhile the GPU is busy
+19.8 ms of a 44.5 ms frame at the same clock.
+
+**R2: where in the code, by counter** (C `…341517`; 108,544 cycle samples,
+0 lost; shares of the vCPU thread's samples):
+
+| row | cycles | mispredicts | front-end stall | back-end stall |
+|---|---|---|---|---|
+| JIT code (inside a TB) | 55.9 | 40.3 | 48.0 | 53.5 |
+| of which the pacing spin | 23.8 | 0.0 | 0.1 | 22.6 |
+| dispatch (`helper_lookup_tb_ptr` 7.9, `tb_lookup` 7.4, `qht` 2.0) | 17.4 | 19.9 | 18.2 | 17.0 |
+| softmmu (`mmu_lookup1` 7.3) | 8.6 | 7.6 | 4.3 | 9.4 |
+| helpers | 1.5 | 1.1 | 0.4 | 1.4 |
+
+- With the spin removed, no single TB reaches 3% of cycles (the largest
+  is 0.9%).
+- Only `mmu_lookup1` passes the pre-registered rule in both views (memory
+  class: its back-end share is at least its cycle share).
+- 81% of the main loop's dispatches re-enter a TB that spans two pages.
+  System-mode TCG never chains into those (cpu-exec.c:2507).
+
+**R3: candidates in our code, ranked by P x win** (no clock or governor
+change among them):
+
+| # | candidate | measured | win | P | P x win |
+|---|---|---|---|---|---|
+| 1 | Report processing waits on GPU fences while holding pfifo.lock (#804 wait, reports.c 257-262; STALLED finish, reports.c 374). Write reports when their fence signals, or drop the locks across the wait | vCPU lock wait 4.6 ms/frame overall, 9.7 in < 24 fps windows | slow windows ~44.5 -> ~34 ms | 0.4 | ~5% of frame time, ~9% in slow windows |
+| 2 | Dispatch: lookups and the page-spanning re-entry | 17.4% of cycles (22.8% without the spin) | 1.5-5.7% of work (memfast discount) | 0.3 | ~1% |
+| 3 | softmmu `mmu_lookup1` (the out-of-line TLB path) | 7.3% of cycles (9.6% without the spin) | 0.6-2.4% of work | 0.3 | ~0.4% |
+
+#1's P is 0.4 because gpunonrender removed the vCPU's side of this lock on
+Simpsons and the wait moved to the frame-slot fence (fps down). One pair
+decides it on Amped 2, pre-registered in NOTES 3f (hit 0.45, moved 0.35,
+miss 0.20).
+
+**Queued on the Nova** (ref b345b5b613, study priority, 2 x 578 s,
+investigative, not scored):
+- N `1-1791588183-pmucounters-521453`: `HAKUX_OCCL_WAIT=0`, the #804 wait
+  skipped. This is a measurement knob, never a recommendation, because it
+  brings back the stale visibility reads.
+- W `1-1791588184-pmucounters-521720`: the shipped wait.
+
+**Spend:** attempt 5 was $20.42 (301 turns, cut at the turn cap). This
+session is reading and bookkeeping only.
+
+Model: claude-opus-5-5.
