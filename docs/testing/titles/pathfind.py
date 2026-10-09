@@ -58,6 +58,11 @@ sys.path.insert(0, HERE)
 import classify  # noqa: E402  (content(), motion(), FPS_CORNER: the cheap checks)
 sys.path.insert(0, os.path.join(HERE, ".."))
 import hangwatch  # noqa: E402  (a HANG: frames, audio and the vCPU all still for HANG_S; stopped with telemetry)
+sys.path.insert(0, os.path.join(HERE, "..", "..", "lanes", "stuckdetect1007"))
+try:
+    import stuckdetect  # noqa: E402  (10-07: a hold stuck at a wall or in a menu is unstuck, then ended with a reason)
+except Exception:   # the detector is optional: a missing or broken copy leaves the hold exactly as it was
+    stuckdetect = None
 
 PAD = os.path.join(HERE, "..", "perf", "pad.sh")
 KNOW = os.environ.get("PATHFIND_KNOW") or os.path.join(HERE, "pathknow")
@@ -144,6 +149,9 @@ def replay_diverged(own, el_s, matched):
     if not own or not own.get("steps") or matched:
         return False
     return el_s > (float(own.get("minutes") or 0) + 3) * 60
+
+
+LIMIT_STREAK_STOP = 4   # consecutive usage-limit answers that end a run as void-limit
 
 
 def hold_budget_s(claim_s, hold_s):
@@ -1071,6 +1079,7 @@ class Model:
         self.sim = sim               # PATHFIND_DRY: a list of canned answers
         self.calls = 0
         self.by_model = {}
+        self.limit_streak = 0        # consecutive answers that were the plan's usage-limit notice (10-08)
 
     def ask(self, model, prompt, purpose, images=()):
         """One call; `images` (JPEG paths) go INLINE in a stream-json user
@@ -1114,6 +1123,7 @@ class Model:
                     "cache_read": u.get("cache_read_input_tokens"),
                     "cache_write": u.get("cache_creation_input_tokens"),
                     "cost_usd": meta.get("total_cost_usd") if isinstance(meta, dict) else None})
+        self.limit_streak = self.limit_streak + 1 if "hit your weekly limit" in (text or "") else 0
         ans = parse_json(text) if text else None
         rec["answer"] = ans if ans is not None else (text or "")[:300]
         self.calls += 1
@@ -1531,6 +1541,9 @@ class Agent:
                 if not self.thermal_ok():
                     self.result.update(result="heat-stop", reason=f"Thor xo {self.thermal[-1][1]} C")
                     return self.finish()
+            if self.model.limit_streak >= LIMIT_STREAK_STOP:
+                self.result.update(result="void-limit", reason=f"model weekly limit hit ({self.model.limit_streak} answers in a row); not a title verdict")
+                return self.finish()
             self.n += 1
             png, jpg = self.frame("look")
             if not png:
@@ -1895,6 +1908,10 @@ class Agent:
         self.budget_s = max(self.budget_s, hold_budget_s(self.el(), self.hold_s))
         held_ok, last_v, ladder_rounds, ladder_i = False, None, 0, 0   # validity (10-06): the hold ends on a verdict, not on hold_s alone
         charsel_i = 0   # the fighting select's cycle presses on this off-play episode (charsel_press)
+        # the stuck detector (10-07, stuckdetect1007): the last STUCK_MIN_SAMPLES kept frames all near-identical = stuck;
+        # an unstick rung per kept frame, then the hold ends with a reason (stuck_abort), not a Playable
+        sd_watch = stuckdetect.StuckWatch(genre, HOLD_SHED_STATES, HOLD_UNSTICK.get(genre), UNLOCK_LADDER[:3]) if stuckdetect else None
+        sd_abort, last_st, sd_rungs = "", "play", 0
         low_run, flipped, rev_row, reversals = 0, False, 0, 0   # the reverse rule (16:08): looks still in a row, walk turned round
         patrol_looks = 0   # play looks on the shooter loop, for the patrol backstop (patrol_due)
         while not held_ok and self.el() < self.budget_s:
@@ -1959,6 +1976,7 @@ class Agent:
                     counter = counter_press(a.get("why"))
                 st = ("still" if parked else "play") if not off else \
                     re.sub(r"[^a-z_]", "", str(a.get("state") or "other").lower()) or "other"
+                last_st = st
                 if off and was_play and st in HOLD_SHED_STATES:
                     shed = next((b for b in HOLD_SHED if b in tokens and b not in shed_set), None)
                     if shed:
@@ -2118,12 +2136,32 @@ class Agent:
                 last_kept = hold_el
                 kept.append(jp)
                 route_frame(self.out, png)
+                if sd_watch:
+                    try:
+                        d = sd_watch.sample(stuckdetect.frame_signature(png), last_st if off else "play")
+                        if d.get("stuck"):
+                            look["stuck"] = {k: d.get(k) for k in ("menu", "run", "reason", "action", "abort")}
+                            if d["abort"]:
+                                sd_abort = f"stuck_abort: {d['reason']}; {sd_rungs} unstick rung(s) tried, still stuck"
+                            else:
+                                sd_rungs += 1
+                                print(f"hold-play: stuck ({d['reason']}): unstick {' '.join(d['action'])} at {hold_el:.0f} s", flush=True)
+                                self.send(d["action"])
+                        else:
+                            sd_rungs = 0
+                    except Exception as e:   # never let the detector end a hold it cannot read
+                        sd_watch = None
+                        look["stuck_error"] = repr(e)[:120]
             # the previous look's frame is spent now: this look has been measured against it
             for p in drop:
                 os.remove(p)
             drop = [] if keep else [png, jp]
             look.update(play_s=round(play_s, 1), kept=keep)
             self.hold_note(log, look)
+            if sd_abort:
+                reason = sd_abort
+                print(f"hold-play: {reason}", flush=True)
+                break
             if play_s >= self.hold_s and (last_v is None or now() - last_v >= HOLD_VERDICT_S):
                 # the validity check (10-06 owner order): the hold ends on a verdict that passes, not on hold_s alone
                 last_v = now()
@@ -2146,7 +2184,7 @@ class Agent:
             reason = f"budget {self.budget_s / 60:.0f} min with {play_s:.0f} s of play"
         held.update(ok=ok, play_s=round(play_s, 1), need_s=self.hold_s, hold_s=round(now() - t_hold, 1),
                     model_navs=navs, frames=len(kept), still_windows=still_windows, shed=sorted(shed_set), reversals=reversals,
-                    reason=reason, title_hold=bool(th), fps_checks=fps_checks)
+                    reason=reason, title_hold=bool(th), fps_checks=fps_checks, stuck_abort=bool(sd_abort))
         self.result["hold"] = held
         print(f"hold-play: {'HELD' if ok else 'not held'} {play_s:.0f}/{self.hold_s:.0f} s of play; {reason}",
               flush=True)
