@@ -130,12 +130,12 @@ def records(path, after=None):
     layout = LAYOUT_1005
     held = None   # a slice is complete when a line that is not its `s=N+`
     for line in open(path, errors="replace"):
-        if not started:
-            started = re.search(after, line) is not None
-            continue
-        lay = parse_layout(line)
+        lay = parse_layout(line)   # the layout is printed once, at start
         if lay:
             layout = lay
+            continue
+        if not started:
+            started = re.search(after, line) is not None
             continue
         p = parse(line)
         if not p:
