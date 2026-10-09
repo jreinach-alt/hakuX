@@ -1,0 +1,69 @@
+--- a/docs/testing/titles/pathfind.py
++++ b/docs/testing/titles/pathfind.py
+@@ -2184,6 +2184,37 @@
+         return 0 if self.result["result"] == "gameplay" else 1
+ 
+ 
++GATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "dispatch_gate.py")
++
++
++def dispatch_gate(tid, name, dev_label, a, dry_run=False):
++    """THE DISPATCH GATE (docs/testing/dispatch_gate.py, owner order 2026-10-06 ~16:50):
++    pathfind's title intake. admit() with --via hold, the run's class and evidence, the
++    title's own recorded path (or `discovery` for a first run) and the installed APK read
++    back off the device. Returns (ok, lines). In SHADOW mode (the default) it is never
++    False: it prints what it would have refused and the run goes on."""
++    if dry_run:
++        return True, ["dispatch gate: dry run (PATHFIND_DRY), not asked"]   # never logs a simulated run
++    if not os.path.isfile(GATE):
++        return True, ["dispatch gate: %s missing; not gated" % GATE]
++    own = os.path.join(KNOW, "paths", "%s.json" % tid.upper()) if tid else ""
++    seq = "discovery"
++    if own and os.path.isfile(own):
++        import hashlib
++        seq = "path:%s@%s" % (tid, hashlib.sha256(open(own, "rb").read()).hexdigest()[:12])
++    cmd = ["python3", GATE, "admit", "--title", tid or name, "--device", dev_label, "--via", "hold",
++           "--caller", a.gate_caller, "--class", a.dispatch_class or "", "--build", a.build or "",
++           "--input-seq", seq, "--valid-end", a.valid_end, "--seconds", str(int(a.hold_s or 0) + int(a.budget_min * 60))]
++    for b in a.because or []:
++        cmd += ["--because", b]
++    if a.order:
++        cmd += ["--order", a.order]
++    cmd.append("--readback")
++    out = subprocess.run(cmd, capture_output=True, text=True)
++    lines = (out.stdout + out.stderr).strip().splitlines()
++    return out.returncode == 0, lines
++
++
+ def main(argv=None):
+     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+     ap.add_argument("title")
+@@ -2204,6 +2235,16 @@
+     ap.add_argument("--goal", default="",
+                     help="a settings goal on the way into play, given to the model each step "
+                          "(e.g. the longest quarter length, so one quarter covers the hold)")
++    # THE DISPATCH GATE: what this run is FOR (dispatch_gate.py's classes) and its evidence ids.
++    ap.add_argument("--dispatch-class", choices=("PLAYABLE_ATTEMPT", "SCREEN", "TELEMETRY", "VALIDATION",
++                                                 "OWNER_DIAGNOSTIC"))
++    ap.add_argument("--because", action="append",
++                    help="evidence id: verdict:<path> fix:<sha> issue:#N order:<id> plan:<file>#<row> condition:<text>")
++    ap.add_argument("--build", help="the build lane.local installed for this run (a commit); read back against the device")
++    ap.add_argument("--order", help="an owner order id in pm/owner-holds.tsv (OWNER_DIAGNOSTIC)")
++    ap.add_argument("--valid-end", default="valid-verdict",
++                    help="valid-verdict | capture:<N>s | condition:<text>: the run ends only on a valid result")
++    ap.add_argument("--gate-caller", default="lane.pathfind", help="the hold tag the gate's token is issued to")
+     ap.add_argument("--sim", help="PATHFIND_DRY: frames dir to play back")
+     ap.add_argument("--sim-answers", help="PATHFIND_DRY: JSON list of canned model answers")
+     a = ap.parse_args(argv)
+@@ -2216,6 +2257,11 @@
+         dev = Device(a.device)
+         model = Model(a.out)
+     tid, name, iso = resolve(dev, a.title)
++    ok, lines = dispatch_gate(tid, name, dev.label, a, dry_run=dry())
++    for line in lines:
++        print("pathfind: " + line, flush=True)
++    if not ok:
++        sys.exit("pathfind: the dispatch gate refused %s (%s); see pm/dispatch-log.tsv" % (name, tid))
+     why = blocked(tid, name)
+     if why:
+         sys.exit(f"pathfind: {name} is owner-blocked: {why}")

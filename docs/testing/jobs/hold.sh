@@ -2,7 +2,7 @@
 #
 # Take and release a device hold. A hold is removed only by its taker.
 #
-#   hold.sh take    <label> <tag> <why...>               exit 0 taken, 3 held by someone else
+#   hold.sh take    <label> <tag> <why...>               exit 0 taken, 3 held by someone else, 4 refused: non-release build (nova)
 #   hold.sh release <label> <tag>                        exit 0 released, 3 not yours (nothing removed)
 #   hold.sh who     <label>                              exit 0 held (prints holder), 1 free
 #   hold.sh wait    <label> <tag> <timeout_s> <why...>   take, retrying every 15 s; exit 3 on timeout
@@ -188,6 +188,22 @@ sys.exit(2)
 PY
 }
 
+# THE BUILD GATE (10-06). A lane that holds the Nova to measure gets the build
+# the Nova last ran, and a test build (a branch, an env A/B) left on it is
+# what the next measurement runs on. Refused before the hold is written, with
+# the build named: device_build.py reads the device's newest result.json. Only
+# the labels in HOLD_RELEASE_LABELS are gated (nova); the Thor's screening
+# runs deliberately vary their env. HOLD_RELEASE_LABELS="" turns it off.
+HOLD_RELEASE_LABELS="${HOLD_RELEASE_LABELS-nova}"
+build_gate() {   # $1 label ; 0 pass, 4 refused (named on stderr)
+    case " $HOLD_RELEASE_LABELS " in *" $1 "*) ;; *) return 0 ;; esac
+    local out rc
+    out=$(python3 "$(dirname "$0")/device_build.py" check "$D" "$1" 2>&1); rc=$?
+    [ "$rc" -eq 0 ] && return 0
+    echo "hold.sh: refusing $1: $out" >&2
+    return "$rc"
+}
+
 # After a successful take: say so on stderr if the device is not idle yet. The
 # exit code and stdout are take's own; this only puts the second half in front
 # of a caller who reads one line and starts (session 61 read "taken:").
@@ -209,6 +225,7 @@ case "$op" in
     take)
         [ $# -ge 4 ] || usage
         valid tag "$3"
+        build_gate "$label" || exit $?
         hold_py take "$label" "$3" "${*:4}" || exit $?
         notice_idle ;;
     wait-idle)
@@ -237,6 +254,7 @@ case "$op" in
         valid tag "$3"
         [[ "$4" =~ ^[0-9]+$ ]] || { echo "hold.sh: timeout '$4' is not whole seconds" >&2; exit 2; }
         deadline=$(( $(date +%s) + $4 ))
+        build_gate "$label" || exit $?
         while :; do
             hold_py take "$label" "$3" "${*:5}" 2>/dev/null && { notice_idle; exit 0; }
             rc=$?

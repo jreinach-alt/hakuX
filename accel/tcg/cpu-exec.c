@@ -32,6 +32,7 @@
 #include "exec/mmap-lock.h"
 #include "exec/translation-block.h"
 #include "tcg/tcg.h"
+#include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace */
 #include "qemu/atomic.h"
 #include "qemu/rcu.h"
 #include "exec/log.h"
@@ -1255,6 +1256,9 @@ static void rrw_sti(CPUState *cpu, uint32_t pc)
     }
     rrw_idle = true;
     rrw_t = now;
+    if (hakux_ft_enabled()) {
+        hakux_ft_gidle_begin();
+    }
 }
 
 /* cpu_handle_interrupt took an interrupt. */
@@ -1273,6 +1277,9 @@ static void rrw_wake(void)
     }
     now = get_clock();
     rrw_idle = false;
+    if (hakux_ft_enabled()) {
+        hakux_ft_gidle_end();
+    }
     if (w) {
         int64_t idle = now - rrw_t;
         w->n++;

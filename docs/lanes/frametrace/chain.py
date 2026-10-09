@@ -104,7 +104,7 @@ def window(d, delay):
     frames = []
     for p in csvs:
         frames += ftread.read_frames(p)
-    anchors, pace, mark, _, _ = ftread.read_logs(logs, d)
+    anchors, pace, mark = ftread.read_logs(logs, d)[:3]
     how = ftread.wall_of(frames, anchors, pace)
     if mark is None or not how:
         return None, logs
@@ -137,10 +137,12 @@ def report(d, a):
         return
     n = len(win)
 
-    # 0. the port check
-    agree = sum(1 for f in win if attribute(f, False)[0] == f['cls'])
-    print('port check: %d of %d frames (%.2f%%) match the device cls under the old rule'
-          % (agree, n, 100.0 * agree / n))
+    # 0. the port check: captures before 65bd51712b's successor carry the
+    # old lateness in `cls`; captures after it (session 5 on) the period-late one
+    agree, rule = max((sum(1 for f in win if attribute(f, pl)[0] == f['cls']), pl)
+                      for pl in (False, True))
+    print('port check: %d of %d frames (%.2f%%) match the device cls under the %s rule'
+          % (agree, n, 100.0 * agree / n, 'period-late' if rule else 'old'))
     if agree < 0.995 * n:
         print('PORT WRONG: stop\n')
         return

@@ -184,87 +184,89 @@ for um_instant in 2026-10-02T17:10:00Z 2026-09-18T03:59:59Z 2026-09-18T04:00:01Z
 done
 unset -f um_agrees
 
-echo "== mode.sh: low saves and applies the dials; normal restores them exactly"
+echo "== mode.sh: low is one file; it rewrites no dial and no .model, so normal restores nothing"
 MM="$T/usagemode-mode"; rm -rf "$MM"; mkdir -p "$MM/work/briefs" "$MM/systemd"
 export HAKUX_WORK="$MM/work" HAKUX_SYSTEMD_USER_DIR="$MM/systemd"
 printf 'LANE_MAX=10\nMODEL_LANE_ESCALATED=claude-fable-5-1\n' > "$MM/work/limits.env"
 echo claude-opus-5-5 > "$MM/work/briefs/alpha.model"
-# beta has no override at all -- Low must not invent one for it.
+cp "$MM/work/limits.env" "$MM/limits.before"; cp "$MM/work/briefs/alpha.model" "$MM/alpha.before"
 
 bash "$HERE/usage/mode.sh" low > "$MM/low.out" 2>&1
-check "low sets LANE_MAX to 3" grep -q '^LANE_MAX=3$' "$MM/work/limits.env"
-check "low sets MODEL_LANE_ESCALATED to the cheaper model" \
-    grep -q '^MODEL_LANE_ESCALATED=claude-sonnet-5$' "$MM/work/limits.env"
+check "low writes the low-active file lane.sh reads" test -s "$MM/work/usage/low-active"
 check "low adds the navigation agent's call cap" \
     grep -q '^PATHFIND_MODEL_CALLS_MAX=20$' "$MM/work/limits.env"
-check "an EXISTING lane .model override is forced to the cheaper model" \
-    grep -q '^claude-sonnet-5$' "$MM/work/briefs/alpha.model"
-check "a lane with NO override is not given one by Low" \
-    bash -c '! test -e "$1"' _ "$MM/work/briefs/beta.model"
-check "low writes the low-active signal board.sh would read (not wired yet; see NOTES.md)" \
-    test -s "$MM/work/usage/low-active"
+check "low leaves LANE_MAX alone (lane.sh caps it at read time)" grep -q '^LANE_MAX=10$' "$MM/work/limits.env"
+check "low leaves the escalation model alone" \
+    grep -q '^MODEL_LANE_ESCALATED=claude-fable-5-1$' "$MM/work/limits.env"
+check "low leaves a lane's .model file byte-identical" cmp -s "$MM/alpha.before" "$MM/work/briefs/alpha.model"
+check "low writes no snapshot directory" bash -c '! test -e "$1"' _ "$MM/work/usage/saved"
 check "low writes a hostops heartbeat drop-in" grep -q 'OnCalendar' "$MM/systemd/hakux-hostops.timer.d/usage-low.conf"
 check "the mode file says low, and manual" grep -q '^mode=low$' "$MM/work/usage/mode"
 check "...and manual" grep -q '^source=manual$' "$MM/work/usage/mode"
 check "every switch is logged" grep -q -- '-> low (manual)' "$MM/work/usage/switches.log"
 
-# Drift while low (as if some other dial-writer touched it) must NOT become
-# the value "normal" restores -- the snapshot was taken once, on the way in.
-sed -i 's/^LANE_MAX=.*/LANE_MAX=1/' "$MM/work/limits.env"
-bash "$HERE/usage/mode.sh" low > /dev/null 2>&1
 bash "$HERE/usage/mode.sh" normal > "$MM/normal.out" 2>&1
-check "normal restores the ORIGINAL LANE_MAX (10), not a value seen while low" \
-    grep -q '^LANE_MAX=10$' "$MM/work/limits.env"
-check "normal restores the original escalated model" \
-    grep -q '^MODEL_LANE_ESCALATED=claude-fable-5-1$' "$MM/work/limits.env"
-check "normal removes the navigation cap entirely: it was absent before low" \
-    bash -c '! grep -q PATHFIND_MODEL_CALLS_MAX "$1"' _ "$MM/work/limits.env"
-check "normal restores alpha's original model" grep -q '^claude-opus-5-5$' "$MM/work/briefs/alpha.model"
-check "beta still has no override after the round trip" \
-    bash -c '! test -e "$1"' _ "$MM/work/briefs/beta.model"
+check "normal leaves limits.env exactly as it was before low" cmp -s "$MM/limits.before" "$MM/work/limits.env"
+check "normal leaves alpha's .model exactly as it was" cmp -s "$MM/alpha.before" "$MM/work/briefs/alpha.model"
 check "normal removes the hostops drop-in" \
     bash -c '! test -e "$1"' _ "$MM/systemd/hakux-hostops.timer.d/usage-low.conf"
-check "normal removes the low-active signal" bash -c '! test -e "$1"' _ "$MM/work/usage/low-active"
+check "normal removes the low-active file" bash -c '! test -e "$1"' _ "$MM/work/usage/low-active"
 check "the mode file says normal" grep -q '^mode=normal$' "$MM/work/usage/mode"
 
-echo "== mode.sh: auto evaluates against the meter's last report; tick respects a manual lock"
+echo "== mode.sh: every tick re-evaluates against the meter; no latch, hysteresis, manual lock"
 mkdir -p "$MM/work/usage"
-um_state() {   # <week_end epoch> <estimated pct> <projected pct or "">
-    python3 - "$MM/work/usage/state.json" "$1" "$2" "${3:-}" <<'PY'
+um_state() {   # <estimated pct> <projected pct or "">
+    python3 - "$MM/work/usage/state.json" "$1" "${2:-}" <<'PY'
 import json, sys
-path, week_end, pct, proj = sys.argv[1], int(sys.argv[2]), float(sys.argv[3]), sys.argv[4]
+path, pct, proj = sys.argv[1], float(sys.argv[2]), sys.argv[3]
 json.dump({"calibration": [], "events": [], "offsets": {},
-           "last_report": {"week_end_epoch": week_end, "estimated_percent": pct,
+           "last_report": {"week_end_epoch": 1, "estimated_percent": pct,
                             "projected_percent_at_reset": float(proj) if proj else None}},
           open(path, "w"))
 PY
 }
-far_future=$((UM_NOW + 400000))
+um_tick() { HAKUX_NOW="$UM_NOW" bash "$HERE/usage/mode.sh" tick > "$MM/$1.out" 2>&1; }
+um_mode() { sed -n 's/^mode=//p' "$MM/work/usage/mode"; }
+um_lines() { wc -l < "$MM/work/usage/switches.log"; }
+
 bash "$HERE/usage/mode.sh" normal > /dev/null 2>&1    # known starting state, source=manual
-check "status after an explicit normal reports source=manual" grep -q '^source=manual$' "$MM/work/usage/mode"
-bash "$HERE/usage/mode.sh" tick > "$MM/tick1.out" 2>&1
-check "tick is a no-op while a manual lock is held" grep -qi 'manual override' "$MM/tick1.out"
-check "...and does not flip the mode" grep -q '^mode=normal$' "$MM/work/usage/mode"
+um_state 85 90
+um_tick t1
+check "tick is a no-op while a manual lock is held" grep -qi 'manual override' "$MM/t1.out"
+check "...and does not flip the mode" [ "$(um_mode)" = normal ]
 
 bash "$HERE/usage/mode.sh" auto > /dev/null 2>&1
-check "auto clears the manual lock" grep -q '^source=auto$' "$MM/work/usage/mode"
-um_state "$far_future" 85 90
-HAKUX_NOW="$UM_NOW" bash "$HERE/usage/mode.sh" tick > "$MM/tick2.out" 2>&1
-check "a tick sees estimated 85% >= 80 and switches to low" grep -q '^mode=low$' "$MM/work/usage/mode"
-check "...and the switch names the reading that caused it" \
-    grep -q -- '-> low (auto)' "$MM/work/usage/switches.log"
+check "auto clears the manual lock and evaluates: 85% used is low" [ "$(um_mode)" = low ]
+check "...and source=auto" grep -q '^source=auto$' "$MM/work/usage/mode"
+check "...and the switch names the reading that caused it" grep -q -- '-> low (auto): estimated 85' "$MM/work/usage/switches.log"
 
-um_state "$far_future" 10 12
-HAKUX_NOW="$UM_NOW" bash "$HERE/usage/mode.sh" tick > "$MM/tick3.out" 2>&1
-check "never flaps: a later tick reading only 10% does NOT revert low to normal" \
-    grep -q '^mode=low$' "$MM/work/usage/mode"
+n=$(um_lines); um_tick t2
+check "a tick that changes nothing logs nothing" [ "$(um_lines)" = "$n" ]
 
-um_state "$((UM_NOW - 10))" 10 12   # the week has already rolled over
-HAKUX_NOW="$UM_NOW" bash "$HERE/usage/mode.sh" tick > "$MM/tick4.out" 2>&1
-check "the reset -- and only the reset -- brings it back to normal" \
-    grep -q '^mode=normal$' "$MM/work/usage/mode"
-check "the reset re-arms auto" grep -q '^source=auto$' "$MM/work/usage/mode"
+um_state 10 80; um_tick t3
+check "hysteresis: under 80% used but still 80% projected (>= 75) stays low" [ "$(um_mode)" = low ]
 
-unset -f um_dump um_state
+um_state 10 50; um_tick t4
+check "no latch: 10% used and 50% projected brings it back to normal mid-week" [ "$(um_mode)" = normal ]
+check "...and removes low-active" bash -c '! test -e "$1"' _ "$MM/work/usage/low-active"
+
+um_state 40 80; um_tick t5
+check "hysteresis the other way: 80% projected from normal (< 90) stays normal" [ "$(um_mode)" = normal ]
+
+um_state 40 95; um_tick t6
+check "projected over: 40% used but 95% projected (>= 90) goes low" [ "$(um_mode)" = low ]
+
+um_state 2 ""; um_tick t7
+check "the week rolling over (2% used, no projection yet) is just a low reading: normal" [ "$(um_mode)" = normal ]
+
+printf 'USAGE_LOW_PROJ=60\n' >> "$MM/work/limits.env"
+um_state 10 65; um_tick t8
+check "the entry line is a limits.env dial: USAGE_LOW_PROJ=60 makes 65% projected low" [ "$(um_mode)" = low ]
+sed -i '/^USAGE_LOW_PROJ=/d' "$MM/work/limits.env"
+
+rm -f "$MM/work/usage/low-active"; um_state 10 80; um_tick t9
+check "a mode file saying low with low-active missing heals: the file comes back" test -s "$MM/work/usage/low-active"
+
+unset -f um_dump um_state um_tick um_mode um_lines
 unset UM MM UM_NOW UM_NOW_ISO far_future um_instant
 unset HAKUX_NOW

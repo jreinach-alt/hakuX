@@ -90,7 +90,7 @@ SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
 make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
 battery_admit.py titles/titlestate.py titles/saves.py titles/drive.py \
-titles/classify.py titles/waitfor_match.py"
+titles/classify.py titles/waitfor_match.py jobs/device_build.py"
 # DATA A SHIPPED SCRIPT PICKS AT RUN TIME, shipped by glob, never by name.
 #
 # route.sh's `drive <profile>` step runs drive.py on
@@ -141,7 +141,8 @@ snapshot_scripts() {
              affinity.py captures.py make_test_iso.py extract_results.py \
              sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
              titles/route.sh perf/pad.sh battery_admit.py titles/titlestate.py \
-             titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py; do
+             titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py \
+             jobs/device_build.py; do
         snapshot_one "$f"
     done
     for g in $(snapshot_globbed); do
@@ -1164,6 +1165,24 @@ PY
 # closes it without having to prove it was the one.
 lane_file() { echo "$D/lanes/$DEVICE_LABEL"; }
 
+# THE MASTER RESTORE (10-06). A run that left its handheld on a test build (a
+# branch ref, an env_vars A/B) is followed by a 60 s master run queued here, so
+# the next measurement does not start on that build. device_build.py decides
+# whether this run needs one and writes the request into queue/; it writes
+# nothing for a run already on master, or for a restore itself. A failure here
+# is logged and never fails the run it follows.
+queue_master_restore() {   # $1 = run id (results/<id>)
+    local out
+    # DISPATCH_REPO: $HERE is the snapshot in a worker ($HERE *is* $SNAP
+    # there, see the comment above SRC), which has no .git above it, so
+    # device_build.py's own ancestry check needs the real repo named
+    # explicitly rather than guessed from its own path.
+    out=$(DISPATCH_REPO="$REPO" python3 "$HERE/jobs/device_build.py" restore "$D" "$DEVICE_LABEL" "$1" 2>&1) \
+        && { [ -z "$out" ] || log "  master restore queued: $out"; } \
+        || log "  master restore NOT queued for $1: $out"
+    return 0
+}
+
 lane_claim() {
     local f; f="$(lane_file)"
     # Cheap enough to call every tick: one read, and a write only when the
@@ -1416,6 +1435,28 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
         mv "$req" "$rdir/request.json"; return 0
     fi
 
+    # THE MASTER RESTORE ENDS HERE. device_build.py queues it after a run off
+    # master: no title and no suites. Its build, install and env reset above are
+    # the whole job. The disc path refuses a request with no suites ("NO SUITES"),
+    # so without this exit the restore is refused and the device keeps the test
+    # build. The result.json written here is what device_build.py reads as the
+    # device's newest run, so a restore that ran shows master and env [] there.
+    if [ "$requester" = dispatch.restore ]; then
+        python3 - "$rdir" "$sha" "$ref" "$requester" "$req_env" "$purpose" <<'PYEOF'
+import json, os, sys
+rdir, sha, ref, who, env, purpose = sys.argv[1:7]
+json.dump(dict(kind="restore", apk_sha=sha, ref=ref, env=json.loads(env),
+               requester=who, purpose=purpose, seconds=0,
+               device_label=os.environ.get("DEVICE_LABEL", "")),
+          open(os.path.join(rdir, "result.json"), "w"), indent=2)
+PYEOF
+        log "  master restore done: ref $ref binary $sha, env $req_env"
+        mv "$req" "$rdir/request.json"
+        rm -f "$D/running/$id.owner"
+        touch "$rdir/DONE"
+        return 0
+    fi
+
     # A soak request runs a real title and keeps its log, instead of running a
     # test disc and scoring captures. It exists because some questions have no
     # golden framebuffer: the audio path is silent on the pgraph discs, so
@@ -1555,6 +1596,7 @@ PYEOF
             [ -d "$rdir/frames" ] && printf ', %s frames' "$(ls "$rdir/frames" | wc -l)")"
         mv "$req" "$rdir/request.json"
         rm -f "$D/running/$id.owner"
+    queue_master_restore "$id"
     touch "$rdir/DONE"
         return 0
     fi
@@ -2013,6 +2055,7 @@ PYEOF
         return 0
     fi
     rm -f "$D/running/$id.owner"
+    queue_master_restore "$id"
     touch "$rdir/DONE"
     log "  done -> $rdir"
     adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (after run)" shell am force-stop com.jreinach.hakux.debug >/dev/null 2>&1

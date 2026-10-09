@@ -316,3 +316,127 @@ Running total of device time: Thor pilot ~1 min, Nova 6 runs (~45 min).
 PR ready (PR.md). WAITING removed: nothing of this lane is queued. The
 next device read is useful only after the grant (step 1); until then the
 in-row build has measured what it can see.
+
+## 2026-10-05 ~22:45 PDT (session 5): the PFIFO thread's wait, named; capture queued
+
+**The wait (brief step 3): `hw/xbox/nv2a/pgraph/vk/draw.c:4386`**,
+`vkWaitForFences(r->frame_fences[next_frame])` in `pgraph_vk_finish`'s
+frame-slot rotation. It waits on the GPU timeline, for the command buffer the
+PFIFO thread submitted two finishes earlier. Three slots (draw.c:37) rotate
+on every PFIFO-thread finish, not once per guest frame, and Simpsons makes
+8.8 finishes a guest frame (`[rwait526]`), so the PFIFO thread can run at
+most a quarter of a frame ahead of the GPU. Most of those finishes are the
+STALLED finish (vk/reports.c:335), called from the PFIFO loop **with
+pfifo.lock held** (pfifo.c:2163), which is what the guest's DMA_PUT store
+(user.c:93) queues behind: Simpsons' 6.3 ms/frame `lockw`. Not the render
+thread (rotate waits 0), not the BQL (PFIFO `pw` bql 0). Two more GPU waits
+on the same paths, not yet separated by any capture: vk/reports.c:259 (the
+#804 drain of every slot when queries are in flight, after every finish) and
+the UI thread's display-fence wait under pfifo.lock (vk/renderer.c:2803,
+2824). Evidence and the falsifier: NOTES section 10. The capture below
+measures all three by call site.
+
+**Fix target this names (not done here; a code lane's, ranked in NOTES):**
+the per-finish slot rotation and the STALLED finish under pfifo.lock, in
+draw.c/reports.c/pfifo.c. draw.c is lane.gpunonrender's; please route the
+finding there.
+
+**Applied (f2763fe4c0):** G1 (`accel/tcg/cpu-exec.c`) and G5
+(`hw/xbox/nv2a/pgraph/pgraph.c`), as granted. The brief's "G8 in pgraph.c"
+is in vk/surface.c in hooks.diff, which is not granted; not applied.
+hooks.diff's G5 hunk reached only the perf-log twin of `pgraph_mmio_lock`
+and would have been inert in release builds; the release variant is hooked
+too.
+
+**New, in the row:** a Vulkan wait interposer in profile.c (volk's device
+pointers swapped for timing wrappers when `HAKUX_FRAMETRACE=1`; untouched
+when unset), plus caller-context tags in pgraph.c. It books every fence wait
+and submit on every thread by call site and context (`fw=`, `pc=`). **This
+covers what G3 (draw.c) and the fence half of G2 were for: lane.local can
+drop the draw.c ask.** Selftest 43 checks, 21 mutants, all caught; NDK
+type-check clean.
+
+### Grant ask (lane.local), only if the capture leaves PFIFO time unbooked
+
+`hw/xbox/nv2a/pfifo.c` (at c3625aad90): the idle park 2187-2229 (G7), and
+waits around the four mutex takes on the compiled LOCK_BATCH paths:
+pgraph.lock under pfifo.lock at 1713 and 1784, pfifo.lock re-taken at 1727
+and 1808. Then `hw/xbox/nv2a/user.c` 92-95 (G4, the DMA_PUT wait's holder).
+G2 (render_thread.c registration, for its schedstat row) and G6 (nv2a.c
+VBLANK stamp) stay as before, lower.
+
+### Device
+
+Queued on the Nova (hard pin), ref f2763fe4c0, `HAKUX_FRAMETRACE=1`, frames
+every 20 s, behind lane.pathfind's sweep hold (owner: this capture takes the
+Nova first when the hold is released):
+
+- `1-1791264140-lane.frametrace-1709247` Simpsons, 420 s
+- `1-1791264148-lane.frametrace-1709509` Forza, 480 s
+- `1-1791264150-lane.frametrace-1709628` Nightfire, 360 s
+
+25.5 min with setup, inside the 30-min pilot. After them the Nova carries
+`HAKUX_FRAMETRACE=1` until the next request (telemetry only).
+
+### Spend (session 5)
+
+Opus: one session; code reading (pfifo, draw, reports, renderer, user),
+the interposer and context tags, selftest, a local Android build, NOTES.
+Device: none run; 25.5 min queued.
+
+Build: `assembleDebug` of f2763fe4c0 passes locally (BUILD SUCCESSFUL;
+the interposer is in `libxemu.so`). Preflight: all branch gates pass;
+`coverage` fails on #838-#846, the board's.
+
+### [lane.frametrace] waiting: (22:58 PDT)
+
+On `1-1791264140-lane.frametrace-1709247`, `1-1791264148-lane.frametrace-1709509`
+and `1-1791264150-lane.frametrace-1709628` (Nova, in WAITING), behind one
+lane.gpunonrender request and lane.pathfind's sweep hold. Resolves when each
+result has `DONE`. Then the per-title `fw=` tables confirm or refute
+draw.c:4386 as the PFIFO thread's wait (NOTES section 10).
+
+## 2026-10-05 ~23:30 PDT (session 6): the three captures read; the PFIFO waits named, two of them
+
+All three Nova runs DONE (ref f2763fe4c0, `HAKUX_FRAMETRACE=1`), frames
+checked; Nightfire cut to its 57 s of play (a cutscene and mission-failed
+menus follow). Tables: NOTES section 11.
+
+**The PFIFO thread's waits, by file:line (brief step 3):**
+
+| title | where the PFIFO thread blocks | what it waits for | ms/frame | who queues behind it |
+|---|---|---|---|---|
+| Simpsons | `hw/xbox/nv2a/pgraph/vk/draw.c:4386`, frame-slot rotation fence, in the STALLED finish under **pfifo.lock** (reports.c:330-336, pfifo.c:2163) | the GPU, a command buffer two finishes old; 8 a frame | 8.06 (+0.93 at reports.c:259) | the vCPU's DMA_PUT store: 7.90 ms/frame, 32% of the frame |
+| Forza | `hw/xbox/nv2a/pgraph/vk/draw.c:4319`, `qemu_event_wait(&finish_event)`, non-deferred SURFACE_DOWN finish | the render thread's fence wait at `vk/render_thread.c:157`, i.e. the GPU; caller `pgraph_vk_surface_update` (surface.c:5169 -> 1310), the `surfupd` download-then-re-upload round trip, `cpuw0` | 12.2 (+3.1 at surface.c:1266) | the PFIFO thread itself, which sets the pace in 57% of late frames |
+| Nightfire (play) | same as Forza, draw.c:4319 | render_thread.c:157 (caller not logged at head) | 7.4 | the PFIFO; but 64% of late frames are guest work |
+
+Proof that draw.c:4319 is the unhooked wait: per second, the PFIFO's unbooked
+blocked time tracks the render thread's fence wait at render_thread.c:157
+with corr 0.97 (Forza), 0.99 (Nightfire play), slope 1.0-1.24 (`rtjoin.py`).
+Section 10's draw.c:4386 naming holds for Simpsons only.
+
+**Fix targets, ranked (code lanes'; not done here):**
+1. Forza: remove the `surfupd` round trip (surface.c:5163-5170): when no guest
+   write happened (`cpuw0`), take the bound image's contents on the GPU
+   instead of completing the downloads with a finish and re-uploading.
+   12.2 ms/frame of a 37 ms frame; Forza needs 3.6 ms to hold 30. P 0.45.
+   One perf-log Forza run at head confirms the caller first.
+2. Simpsons: release pfifo.lock across the STALLED finish's slot-fence wait
+   (or rotate per guest frame), then vcpusleep's posted DMA_PUT. 40.9 -> ~60
+   fps if both go. P 0.5.
+3. Nightfire: guest work (vCPU JIT direction).
+
+lane.local: please route 1 and 2 to the renderer lane holding `vk/draw.c`,
+`vk/surface.c`, `vk/reports.c`, `pfifo.c` (lane.gpunonrender holds draw.c).
+No grant needed by this lane now.
+
+### Spend (session 6)
+
+Opus: one session; reading three captures, addr2line, frames, one Explore
+agent over past perf-log runs, `rtjoin.py`, NOTES. Device: none run this
+session (the three runs, 21 min plus setup, were queued in session 5).
+
+### Milestone
+
+Brief steps 1-3 done: hooks applied (session 5), build passed, three captures
+read, the wait named with file:line. Nothing queued; no WAITING.
