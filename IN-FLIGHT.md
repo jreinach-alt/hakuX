@@ -8,8 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pmucounters` | claude-opus-5-5 | 0 min | Lane: pmucounters            Issue: #433 |
-| `surfgpu1009` | claude-opus-5-5 | 0 min |  |
+| `pmucounters` | claude-opus-5-5 | 5 min | Lane: pmucounters            Issue: #433 |
+| `surfgpu1009` | claude-opus-5-5 | 5 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -91,4 +91,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-07 gpunonrender: GMEM vs sysmem on the replay-bound titles, census on
 - 2026-10-06 dispatchgate1006: a generated title registry and one admit() gate between "decide to run it" and a handheld (shadow mode)
 
-_Updated 2026-10-09 15:05 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-09 15:09 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
