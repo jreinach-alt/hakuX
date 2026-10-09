@@ -4,6 +4,18 @@ Owner order 2026-10-08 ~21:00 PDT: pivot into fps improvements; prioritize telem
 low-performing titles over clearing more titles. Nova only. Offline (no `gh`); PR.md is
 the deliverable, not a GitHub PR.
 
+## Attempt 2 (why attempt 1 did not finish)
+
+Attempt 1 did the gate audit (§1-2), queued the two reachable titles' telemetry requests
+(§3, MechAssault 2 and Buffy) with `--wait`, and stopped there — the session ended while
+the second request was still running on the device, with `RESULTS_PLACEHOLDER` and
+`TABLE_PLACEHOLDER` left in this file and PR.md at `State: in progress`. That is not a
+blocked or waiting state in the lane-contract sense (nothing external was left unresolved
+that required another actor): both requests had in fact finished before the resume
+(`DONE` markers on disk, read via `python3` since `/home/justin/hakux-work/dispatch` is
+outside this worktree's Bash cwd — see §0). This attempt reads those two results,
+decomposes them, and finishes the table.
+
 ## 0. Where the brief's paths actually are (verified before touching anything)
 
 The brief names `pm/owner-holds.tsv`, `pm/playable-ledger*`, `pm/prequeue.py` and
@@ -99,7 +111,66 @@ Both via `docs/testing/request.sh --perflog --env HAKUX_GPUXFR=1 --env HAKUX_FRA
 - Buffy the Vampire Slayer (45410012), route `buffy`, `--seconds 420`. Request
   `1-1791521323-fpstelemetry1008-3686892`.
 
-<!-- RESULTS_PLACEHOLDER -->
+Both `DONE`, both completed their full route (`run.log`: `... end` after the last scripted
+input, `held <iso> for <522|421>s`) with no crash tag and no thermal-pause episode
+(`thermal.jsonl`'s `pause` field `false` on every sample both runs; the "hottest zone
+94.3/94.7 C" in `THERMAL:` is a CPU junction zone (`cpu-1-9`), not `xo-therm`, which read
+max 53.4 C (MechAssault 2) — nowhere near the dispatcher's 70 C pause point. Neither run is
+void. MechAssault 2's run.log logs `adb_failures=1` (one transient adb hiccup somewhere in
+520 s); nothing downstream (logcat line count, DONE marker, result.json) shows a gap, so
+not treated as voiding the run, but recorded in case a later lane sees the same title flake.
+
+Decomposed with `docs/lanes/near30/decompose.py --bar 30` and `docs/lanes/fps20786/decompose.py --bar 30`
+(30, not the scripts' 28.5 default, to match these two titles' own verdict bar: both
+title-registry rows read "fps: N% of gameplay at >= 30 fps"), plus
+`docs/lanes/belowbar1005/xfrsurvey.py` and `docs/lanes/fps20786/sdsurvey.py` (both scan the
+whole `dispatch/results` tree by mtime, so they picked up these two fresh runs without
+being pointed at them individually).
+
+**MechAssault 2** (4D53006B), 151 two-second windows, F=33.4 ms median (29.94 fps median,
+but only 15% of windows at/above the 30 fps bar — lower than the title-registry's 26.7%
+from a different run three weeks earlier, inside the normal run-to-run spread this project
+has seen elsewhere, not investigated further): guest busy is the largest share of the frame
+in the typical and fast windows (30.75 ms of 33.3, 92%, at/above bar; 25.57 of 33.4, 76%,
+below bar) with the vCPU thread itself pegged (`vcpu` 0.98 in every group) — the ordinary
+pattern this lane has already named for NFS MW/LOTR/Hulk/NHL2K3 (vCPU guest code). But the
+worst decile inverts it: renderer idle (Ri) collapses to 0.30 ms (from 18.4 at bar) while
+the render thread's own CPU time (rcpu, fps20786 decompose) rises to 16.18 ms and its
+non-CPU non-idle time (rblk, "blocked") to 17.64 ms — in the worst 10% of windows the
+render thread is saturated and the guest is *not* (guest busy there is actually the lowest
+of the three groups, 25.08 ms). `xfrsurvey.py` reads RP (render passes per guest frame) at
+28 for this title's run — high against the common 1-4 but not rare in this project's wider
+table (Top Spin 148, Azurik 141, Conker 102 all run with far higher RP and are not
+GMEM-flagged by that fact alone, so RP=28 is named as a correlate, not a proven cause).
+`sdsurvey.py`: sd/flip 0.07 (rare), Fin 13.2 ms, GPU 12.1 ms/frame — a real but small
+surface-download rate, not the story. **Two different bottlenecks in one title: guest-CPU
+in most of the window (the class this project is already pursuing with the vCPU/JIT
+direction), render-thread saturation in the worst decile that is not explained by
+surface-download finishes and only loosely correlated with an elevated render-pass count.**
+
+**Buffy the Vampire Slayer** (45410012), 152 windows, F=34.9 ms median (28.65 fps, only 3%
+of windows at/above bar — much worse than the title-registry's 55.2% from the pathfind
+hold three days earlier; the route is not the same capture (`docs/testing/titles/routes/buffy.route`
+vs pathfind's own recorded path), so this is read as a different slice of the game, not a
+regression, and flagged rather than averaged into one number). Guest busy is large and
+*rises* at the tail (28.40 ms/34.9=81% overall, 33.33/37.52=89% at p10 — the opposite of
+MechAssault 2's pattern, guest cost growing as frames slow, not handing off to the
+renderer). Ri stays low and flat (9.0-9.65 ms) rather than collapsing, and `vcpu` sits at
+0.88, a little under MechAssault 2's 0.98 — some guest idle is unattributed to a known
+interrupt (`v_blk` 3.97-6.10 ms, clearly larger than MechAssault 2's 0.57-0.59, and growing
+at the tail): this is time `decompose.py`'s wake-interrupt classifier cannot place. GPU
+cost is also substantial on its own: `xfrsurvey.py` Tot 27.7 ms/frame, Xfr/Tot 0.51 — over
+half of the GPU's own per-frame time is transfer, not render, in the same high band as
+007 Agent Under Fire (0.50), Otogi (0.51) and DOA3 (0.52) from the wider 30-day table, not
+an outlier for this project but still a large absolute number (14.1 ms/frame) that is close
+in magnitude to the guest's own busy time. `sdsurvey.py`: sd/flip 0.00, Fin 0.5 ms — no
+synchronous surface-download story here, unlike NBA Live 2005 (§4a). **Named cause: guest
+(vCPU) work dominates and grows with frame time, with a GPU-transfer cost (Xfr/Tot 0.51,
+14.1 ms/frame) large enough on its own to matter sitting alongside it; a meaningful share
+of guest idle (v_blk) is on an interrupt this instrument does not classify.**
+
+Both runs set `HAKUX_FRAMETRACE=1` as asked; it produced nothing beyond the env-echo line
+in the logcat (`frames: {count:0, dir:null}` in both `result.json`s) — see §6.
 
 ## 4. Already-attributed titles (no device time spent; cited with source)
 
@@ -117,7 +188,7 @@ not re-derive them.
 | Hulk Ultimate Destruction | OUTBOX.md:827, `runs/sweep-56550039` | slow scenes are guest (vCPU) work: 30 ms/frame against 16 at the bar |
 | NHL 2K3 | OUTBOX.md:717, `runs/nhl-2k3/hold3` | guest busy doubles, 13 to 27 ms/frame, in 31% of play (the other 69% is clear) |
 | Spider-Man 2 | OUTBOX.md:781, `runs/sweep-4156002B` | renderer busy (Ri 7 ms against an 18 ms bar) in 60% of play; guest busy unchanged — renderer-bound, not guest |
-| Midnight Club II | OUTBOX.md:807, `runs/sweep-54540008` | renderer saturated (Ri 0 ms/frame) at a median of 23 fps — renderer-bound |
+| Midnight Club II | OUTBOX.md:807, `runs/sweep-54540008`; **sharpened by `docs/lanes/surfdl1008/NOTES.md` (folded onto master 2026-10-08, picked up by this lane's post-§3 merge)** | renderer saturated (Ri 0 ms/frame); GPU cost alone (34.6 ms/frame) already exceeds the 33.3 ms two-VBLANK ceiling, plus an 8.0 ms/frame synchronous surface-download finish at `texture.c:2100` that async794's survey already shows deferral cannot fix — see §7's row, not just "renderer-bound" |
 | Ninja Gaiden Black | belowbar1005 NOTES.md Step 1, `retro-ngb` | render thread blocked 24 ms/frame, on-CPU only 11.6, guest never idles; **GPU vs fence wait not distinguished — belowbar1005 named this as needing a perflog run, still open** |
 | Dead or Alive 3 | belowbar1005 NOTES.md Step 1, `retro-doa3` | render thread blocked 30-37 ms/frame **on one stage only** (the gold-screen dojo fight, reflective floor; other fights read 30-55 fps); one synchronous download-if-dirty per flip, Fin ~30 ms (belowbar1005 Step 1 + `xfrsurvey.tsv`/`sdsurvey-by-title.tsv` rows for 54430001) |
 | Buffy (prior, lower confidence) | belowbar1005 NOTES.md Step 1, `retro-buffy` | guest busy 31-39 ms/frame, renderer idle ~19 ms — vCPU-bound, confirmed independently by this session's own fresh run (§3) |
@@ -203,7 +274,67 @@ section is the existing-data half of the same finding, cited here for the one ta
 - A "fix could be X" entry in the table is a hypothesis sized by the measured bound
   (guest vs renderer vs download-wait), not a patch; none was written (territory:
   `docs/lanes/fpstelemetry1008/**` only, no code edits).
+- **MechAssault 2's two-regime split** (guest-bound in most windows, render-thread-bound in
+  the worst decile) is visible only because `decompose.py` was read by group (`<bar p10`),
+  not as one median; a single all-window row would have reported "guest busy 83%, Ri 11.5"
+  and hidden the tail inversion entirely. The render-thread "blocked" time at the tail
+  (rblk 17.64 ms) has no finish-reason attached (`sdsurvey.py`'s Fin is a separate, low
+  13.2 ms figure, not obviously the same 17.64 ms) — decompose.py cannot say whether that
+  block is a GPU fence, a lock, or something else; it can only say it is not idle-waiting
+  on the guest and not the render thread's own CPU time.
+- **`HAKUX_FRAMETRACE=1` produced no frame-trace data in either run** (`result.json`'s
+  `frames` block reads `count:0, dir:null` in both; the logcat shows only the env-var echo
+  line, no frame-trace output tag). Either this build's frame-trace needs another flag or
+  a `--frames` request option this lane did not pass, or it writes somewhere `pulled/`
+  never reached. Not investigated further (territory: no code reading); recorded so the
+  next lane that wants an actual frame trace does not assume `HAKUX_FRAMETRACE=1` alone is
+  sufficient.
+- **Buffy's fresh fps share (3%) vs. the title-registry's recorded verdict (55%)**: read as
+  two different slices of the same title (a different route/path reaching different
+  content), not a regression or a measurement error, because nothing else about the run
+  (thermal, crash, play share) is abnormal. This instrument cannot tell *which* scene either
+  number belongs to without a frame review; none was done here (brief: region checks not
+  needed, no pixels change — but a frame review for scene identity is a different question
+  this table leaves open).
+- Rows sourced from `pm/title-registry.tsv`/owner-holds are a point-in-time snapshot
+  (2026-10-07T01:03 build for the registry); a title's fps_ok there can disagree with a
+  fresh run for reasons this table does not adjudicate (route difference, as above; natural
+  run-to-run spread; a build change).
 
 ## 7. Cause table
 
-<!-- TABLE_PLACEHOLDER -->
+All `gbusy share` and `Ri` figures below are decompose.py medians over the run's below-bar
+windows (or the whole below-bar hold, where that is all that is on record), at each title's
+own fps bar (28.5 unless noted 30). `Tot`/`Xfr/Tot`/`RP` are `xfrsurvey.py` per-title
+medians; `sd/flip`/`Fin` are `sdsurvey.py` medians. "n/a (no perflog run)" means no
+`xemu-gpu`/`hakuX-stall` lines exist for that title's below-bar run — a CPU-only sweep, not
+a gap in this table. Thermal pause is read from `thermal.jsonl`/the hold's own `THERMAL:`
+line, not from the fps figure.
+
+| title (id) | gfps median | Tot ms/frame | gbusy share | Ri ms | GMEM Xfr/Tot, RP | sd/flip, Fin ms | thermal pause | named cause | fix could be |
+|---|---|---|---|---|---|---|---|---|---|
+| MechAssault 2 (4D53006B) | 29.9 (15% @ bar 30, fresh run) | 13.3 (xfrsurvey) / 28.8 (phase) | 76% below bar, 92% at bar, **falls to 70% at p10** | 11.6 overall, **0.3 at p10** | 0.35, RP 28 | 0.07, 13.2 | no | **split: guest-CPU-bound in most of the window; render-thread-saturated (CPU+blocked, Fin does not explain it) in the worst decile** | the vCPU/JIT work already underway for the common case; the render-pass count (28/frame) is a candidate for the tail but unconfirmed as cause |
+| Buffy the Vampire Slayer (45410012) | 28.6 (3% @ bar 30, fresh run; 55% in the 10-05 verdict, different route) | 27.7 (xfrsurvey) | 81% below bar, **89% at p10 (grows with frame time)** | 9.0, flat | 0.51, RP 2 | 0.00, 0.5 | no | guest (vCPU) work, growing at the tail, alongside a large GPU-transfer cost (14.1 ms/frame) that is not surface-download-driven | vCPU/JIT for the guest side; the 0.51 Xfr/Tot share (007AUF/Otogi/DOA3-class) is a separate, GMEM-side candidate |
+| NFS Most Wanted (4541007B) | 26 median | n/a (no perflog run) | ~65% (25 ms of ~38.5 ms F), flat fast-to-slow | n/a | n/a | n/a | not reported | guest (vCPU) code, constant ~25 ms/frame cost, not scene-dependent (OUTBOX.md:797) | vCPU/JIT; a perflog re-run would add Tot/Ri |
+| LOTR Return of the King (4541003E) | 27.7 median, 27.0 at 3-5 min gates | n/a | 24.1 ms (at bar) to 27.9 ms (below) of F; vCPU busy 0.70 | 22.7, renderer waiting | n/a | n/a | not reported | guest (vCPU) code, same pattern as NHL 2K3/NFS MW (OUTBOX.md:817) | vCPU/JIT |
+| The Incredible Hulk: UD (56550039) | fps_ok 0.64 @ 28.5 | n/a | 16.4 ms (at bar) to 30.5 ms (below) of F; vCPU 0.74 vs 0.91 | 14.7 vs 19.7, not the limit | n/a | n/a | not reported | guest (vCPU) code in open-city destruction scenes (OUTBOX.md:827) | vCPU/JIT |
+| NHL 2K3 (53450017) | fps 24.2 below bar vs 36.2 at bar, share 0.69 at bar | n/a | 13.3 ms (at bar) to 26.6 ms (below) of F | 27.2 (at bar) to 40.7 (below) — renderer waits more as guest slows | n/a | n/a | not reported | guest (vCPU) code, busy time doubles in the slow third of play (OUTBOX.md:717) | vCPU/JIT |
+| Spider-Man 2 (4156002B) | 23.6 below bar vs 29.7 at bar, share 0.26 | n/a (not below-bar window; see §6) | guest busy ~unchanged, 10.4-12.5 ms | **18.1 (at bar) falling to 7.1 (below) — renderer busy, not guest** | n/a | n/a | not reported | renderer-bound (host GPU/draw path), opposite of NHL 2K3's pattern (OUTBOX.md:781) | renderer/draw-path work, not vCPU |
+| Midnight Club II (54540008) | 24.3 mean, 0% @ 28.5 (lane.surfdl1008, same below-bar window, 10-08) | 34.6 (xemu-gpu, already above the 33.3 ms two-VBLANK ceiling on its own) | 13.4 ms of 41.1 ms F, guest mostly idle | **0.0 — render thread never parks, fully saturated** | n/a (sd/flip 1.50/frame instead, see sd col) | 1.50 (dirty 0.50+cDef 1.00), ph_Fin 16.45 (**8.0 ms of it is a surface-download finish at `texture.c:2100`**, the other ~8.4 is every title's flip fence wait) | no | **renderer-bound, sharper than OUTBOX's original read: GPU cost alone (34.6 ms) exceeds the ceiling, plus an 8 ms/frame synchronous surface-download finish from a texture-bind call site async794 already showed deferral cannot fix** | a GPU-side surface-to-texture conversion replacing `create_texture()`'s call to `pgraph_vk_download_surfaces_in_range_if_dirty()` -- not shown sufficient alone (surfdl1008, 10-08, folded during this lane's merge) |
+| Ninja Gaiden Black (5443000D) | n/a (belowbar1005) | n/a (not below-bar window) | on-CPU only 11.6 ms | render thread blocked 24 ms/frame | n/a | n/a | not reported | render thread blocked, guest never idles; **GPU-fence vs other wait not distinguished — still open per belowbar1005** | a perflog run on the actual below-bar window (not yet done) |
+| Dead or Alive 3 (54430001) | n/a (one stage only) | n/a (not below-bar window) | n/a | render thread blocked 30-37 ms/frame on the gold-screen dojo fight only (other fights 30-55 fps) | n/a | one sync download-if-dirty per flip, Fin ~30 ms | not reported | scene-specific: a reflective-floor render target forcing a sync download once per flip | avoid the sync download on that render target (scene-specific, not general) |
+| NBA Live 2005 (45410050) | 25.3 median, fps_ok 0.0 (pre-fix run, CPU figures only trusted) | 18.5 (pre-fix xfrsurvey, GPU figures untrusted) | 20.5 ms flat regardless of frame speed (not the bottleneck) | grows 0.3→11.2 ms as fps drops (renderer waits behind the guest) | n/a trusted | 1.00/flip, Fin 13.6 (§4a sdsurvey rerun, post-fix) | not reported | one completion-deferred surface-download finish per flip, ~13.6 ms wait against an 17.8 ms GPU budget — not guest- or render-bound | fix the per-flip sync download finish-wait (lane.surfdl1008 is testing whether this generalises) |
+
+**Excluded from this table, with reason, in §5**: Dino Crisis 3, Crash Bandicoot: Wrath of
+Cortex, Cel Damage, Arx Fatalis, Gun, Gui Yi, Puyo Pop Fever, MTV Music Gen 3, Avatar: TLA
+(route/input defects, not an fps cause); Otogi (thermal pause voids the figure); MK Deadly
+Alliance, Blood Wake (not actually failing fps); 007 Agent Under Fire, Blinx, Blinx 2
+(`reached_gameplay: unconfirmed`, needs a frame review first); Fantastic 4, Turok:
+Evolution, Ultimate Spider-Man, DBZ Sagas, Beyond Good & Evil (not on the Nova, not
+staged). Pilot Down and Amped 2 (owner-holds `below_bar`, ISO on Nova) had no route in any
+of the brief's blessed locations and were not run, per the brief's "no route = skip, say
+so, do not invent input" — a gap, not a decision. Arctic Thunder (route present, ISO
+present, gate CLEAR-after-REVIEW) was not reached this session (two runs plus write-up
+exhausted this lane's reasonable budget inside the $25 cap); it is the next title to queue
+if this lane or a successor continues. NBA Live 2005 and MK Shaolin Monks remain blocked by
+the route-resolution tooling gap named in §2, not by the fps gate.
