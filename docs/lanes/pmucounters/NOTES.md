@@ -498,3 +498,317 @@ B2 has to confirm this with whole lines.
 
 The pilot gate admitted the 36 minutes because the reviewed pilot was in
 place. B2 and D are the overhead pair: same ref, same route, same device.
+
+## 3e. Results (10-09 16:2x PDT): R0 on device, R1, R2, overhead, and where the frame goes
+
+All four runs of the 15:4x batch are valid.
+- **A2** is a boot run with no route.
+- **B2, C and D** each reached live play with a moving player: the rider was
+  at clearly different places on the slope across the hold frames (D:
+  160924, an open run with the lift at score 500; 161259, a tree-lined
+  trail).
+- None had a thermal pause (D's hottest zone was 94.3 C).
+- `paranoid=1` on every open line, so `perf_harden` was 0.
+
+### R0 on device: A2 controls, 10 of 11 PASS (`1-1791585654-pmucounters-340915`)
+
+| control | metric | read | expected | verdict |
+|---|---|---|---|---|
+| alu1 / mul1 | IPC | 1.031 / 0.516 | 0.95-1.12 / 0.45-0.58 | PASS |
+| ind1 / ind8 | brm per unit | 0.000 / 0.875 | 0-0.01 / 0.75-0.95 | PASS |
+| chase16k | l1d per unit | 0.000 | 0-0.02 | PASS |
+| chase64m | l1d per unit, sbe/cyc | 1.000, 0.999 | 0.9-1.1, 0.8-1 | PASS |
+| chase64m | l2d per unit | **1.162** | 0.85-1.1 | **FAIL** |
+| code16k / code512k | l1i per unit | 0.000 / 1.031 | 0-0.05 / 0.8-1.2 | PASS |
+| code512k | sfe/cyc | 0.641 | 0.4-1 | PASS |
+
+The setup fix took: chase64m's l1d now reads 1.000, where it read 1.737.
+l2d still reads 16% over the range. Each load into a 64 MB ring also misses
+the TLB, and the page-table walk's own fetches refill L2 too, so this is
+expected. The range stays as written and the row stays a FAIL. L2 refill
+counts in R1 carry the same walk traffic.
+
+### R1: B2, counting per 1 s slice (`1-1791585654-pmucounters-341117`)
+
+- coverage 0.994;
+- 244 slices: 137 good (frame time <= 34.5 ms), 107 slow;
+- the vCPU on-CPU 77.9% of wall;
+- context switches 2072/s, migrations 186/s (168 in good slices, 207 in
+  slow).
+
+Core split of counted time: X3 67.2%, A715 20.8%, A710 11.8%, A510 0.1%.
+
+| X3 (67% of counted time) | all | good | slow | slow - good | good sd |
+|---|---|---|---|---|---|
+| fps | 28.4 | 29.9 | 26.5 | -3.45 | |
+| vCPU on-CPU, % of wall | 77.9 | 81.5 | 73.2 | -8.3 | |
+| on the X3, % of on-CPU | 66.8 | 70.5 | 61.6 | -8.9 | |
+| M instructions per frame | 188 | 206 | 164 | -42 | |
+| IPC | 3.59 | 3.73 | 3.36 | -0.37 | 0.70 |
+| stall_fe / stall_be, % of cycles | 11.8 / 27.9 | 11.4 / 27.5 | 12.4 / 28.4 | +1.0 / +0.9 | 4.0 / 1.4 |
+| branch mispredicts per k-instr | 0.39 | 0.36 | 0.44 | +0.09 | 0.24 |
+| indirect branches (spec) per k-instr | 14.0 | 12.6 | 16.5 | +3.9 | 8.1 |
+| L1I refill / L1I TLB refill per k-instr | 5.74 / 0.53 | 5.03 / 0.46 | 7.00 / 0.65 | +2.0 / +0.19 | 3.0 / 0.28 |
+| L1D refill / L1D TLB refill per k-instr | 0.54 / 1.49 | 0.50 / 1.35 | 0.63 / 1.75 | +0.13 / +0.41 | 0.29 / 0.81 |
+| L2D / L3D refill per k-instr | 1.32 / 0.94 | 1.23 / 0.88 | 1.48 / 1.03 | +0.25 / +0.15 | 0.80 / 0.58 |
+| ITLB / DTLB walks per k-instr | 0.019 / 0.069 | 0.017 / 0.064 | 0.021 / 0.076 | | 0.013 / 0.043 |
+
+The A715 (IPC 2.35, stall_fe 20%) and the A710 (IPC 2.11, stall_fe 22%) do
+not differ between good and slow slices on any row by more than a good-slice
+sd.
+
+What R1 says:
+- **Slow slices are waits, not slower code.** On every core type, no
+  counter differs between good and slow slices by more than one good-slice
+  sd. The pilot B said the same with a third of the data.
+- **On the X3 the code is mostly high-IPC with moderate back-end stall.**
+  It is not front-end bound (stall_fe 12%). The classes of section 2 put
+  the X3's JIT time in "high IPC, a lot of instructions", with the back-end
+  share as a second term.
+- **The X3 IPC includes the title's pacing spin** (below), which runs
+  five instructions a loop at a very high IPC. That is why good slices show
+  more instructions per frame (206 M) than slow ones (164 M): the spin
+  shrinks when frames are late.
+- **In slow slices the thread spends 9 points less of its on-CPU time on
+  the X3.** Migrations rise 23%. That follows from the waits: each block is
+  followed by a wakeup and a new placement. It is not a lever this lane
+  ranks; the owner's rule excludes clock and governor fixes, and the waits
+  come first.
+
+### R2: C, sampled attribution (`1-1791585655-pmucounters-341517`)
+
+Sample counts and placement:
+- 108,544 cycle samples, 13,006 brm, 22,682 sfe and 42,557 sbe.
+- 0 lost and 0 dropped for every event.
+- Cycle samples by CPU: X3 71.6%, A715 17.9%, A710 10.5%.
+
+Shares are % of that event's samples on the vCPU thread:
+
+| row | cyc | brm | sfe | sbe |
+|---|---|---|---|---|
+| JIT code (inside a TB) | 55.87 | 40.26 | 48.01 | 53.45 |
+| of which TB 0031e901 (the pacing spin) | 23.84 | 0.00 | 0.11 | 22.59 |
+| of which the next-largest TB (0002d786) | 0.90 | 0.86 | 0.36 | 1.07 |
+| dispatch (`helper_lookup_tb_ptr`, `tb_lookup`, `qht_lookup_custom`, loop) | 17.37 | 19.92 | 18.20 | 17.04 |
+| softmmu (`mmu_lookup1`, `mmu_lookup`, `do_ld4_mmu`, ...) | 8.63 | 7.59 | 4.31 | 9.42 |
+| other (vdso clock 2.19, TB tree compare, ...) | 3.09 | 8.83 | 7.67 | 4.51 |
+| helpers (`helper_maskmov_xmm`, `mulps`, `fldz`, ...) | 1.52 | 1.06 | 0.37 | 1.42 |
+| translation | 1.25 | 2.24 | 1.75 | 1.47 |
+| the dispatch stub in the code buffer | 0.03 | 0.07 | 0.05 | 0.04 |
+
+| host function | cyc | brm | sfe | sbe |
+|---|---|---|---|---|
+| `helper_lookup_tb_ptr` | 7.93 | 6.55 | 4.63 | 7.55 |
+| `tb_lookup` | 7.38 | 8.14 | 6.93 | 7.03 |
+| `mmu_lookup1` | 7.34 | 5.41 | 3.19 | 8.07 |
+| `[vdso]+0x300` (clock_gettime) | 2.19 | 4.77 | 3.90 | 2.84 |
+| `qht_lookup_custom` | 2.04 | 5.11 | 6.39 | 2.46 |
+
+**The pre-registered R2 rule** asks for >= 3% of cycles, and for the class
+event's share to be at least the cycle share.
+
+| row | as written | spin excluded |
+|---|---|---|
+| `mmu_lookup1` | **passes** (memory: sbe 8.07 >= 7.34) | **passes** (sbe 10.42 >= 9.64) |
+| `tb_lookup` | passes (speculation: brm 8.14 >= 7.38) | **fails** (brm 8.14 < 9.69) |
+| `helper_lookup_tb_ptr` | fails: no class (high instruction count) | fails |
+| any single TB other than the spin | under 3% | under 3% |
+| TB 0031e901 | fails (sbe 22.59 < 23.84); slack, see below | excluded |
+
+Spin excluded means the spin's samples are removed from every event's
+total. The spin has almost no brm or sfe samples, so it deflates the cycle
+share of every other row against brm and sfe. That makes the as-written test
+easier to pass for those two classes; the spin-excluded column is the
+unbiased one. JIT code with the spin excluded is 42.06% of cycles and 47.95%
+of sfe: front-end class as a body, but spread over thousands of TBs (the
+largest is 0.9%), so no single TB is a candidate.
+
+### The 0031e901 loop is the title's 30 fps pacing slack, not work
+
+- The loop is 5 guest instructions ending in a `jb` at 0031e909.
+- [rr425pc] shows a kick out of it about 1,400 times a second.
+- Its share of TB time ([tpc787]) tracks frame rate in three runs:
+
+| fps bin | B2 | C | fpstelemetry1008 `1131600` | D |
+|---|---|---|---|---|
+| < 24 | 0.05 | 0.05 | 0.02 | 2.0 ms/frame |
+| 30 (>= 29.7) | 0.22 | 0.32 | 0.43 | 11.3 ms/frame |
+
+- When frames are late the loop runs almost not at all; at the cap it fills
+  the rest of the 33.3 ms.
+- Frametrace's "RUN" verdict counts it as vCPU work. A per-frame "vCPU
+  busy" over this title overstates work by the spin's ms.
+
+### Where the vCPU's frame goes (D, shipped behaviour, `scratch/spinfps.py`)
+
+D is `1-1791585656-pmucounters-341827`. All values are ms per frame.
+- on-CPU comes from [tlb68];
+- spin = [tpc787] share x [rr425] TB fraction x on-CPU;
+- off-CPU = wall - on-CPU.
+
+| fps bin | windows | wall | on-CPU | spin | work (on-CPU less spin) | off-CPU | pgraph.lock wait [lock474] |
+|---|---|---|---|---|---|---|---|
+| < 24 | 18 | 44.5 | 29.7 | 2.0 | 27.8 | **14.7** | 5.64 |
+| 24-27 | 24 | 39.2 | 28.6 | 2.4 | 26.1 | 10.6 | 4.09 |
+| 27-29 | 15 | 35.4 | 28.8 | 6.9 | 21.8 | 6.7 | 3.10 |
+| 29-29.7 | 21 | 34.0 | 28.5 | 9.3 | 19.2 | 5.4 | 2.90 |
+| >= 29.7 | 61 | 33.4 | 29.8 | 11.3 | 18.5 | **3.6** | 1.84 |
+| all | 139 | 36.1 | 29.3 | 7.8 | 21.5 | 6.9 | 3.02 |
+
+B2 and C give the same shape: work 21.2/19.0 -> 28.2/28.5 ms and off-CPU
+6.4/5.1 -> 13.6/13.5 ms from the 30 fps bin to the < 24 bin. From a 30 fps
+window to a < 24 one the frame grows 11 ms. The two parts:
+- **Work grows ~9 ms.** The scene is heavier: the guest enters the same
+  code more often per frame. The chain entered at 00324ffd keeps ~9 us per
+  entry in every bin, while its entries per frame double, 550 to 1100. That
+  is more of the same work, not a longer wait in one place. The guest code
+  is on the device's ISO, not on the host, so what that chain does is not
+  read here.
+- **Off-CPU grows ~11 ms.**
+
+With the slack gone in those windows, both land on the frame.
+
+**What the off-CPU growth is** (frametrace, `1131600`, the same route on
+4ea49d12e7, `HAKUX_FRAMETRACE=1`), the vCPU side, ms/frame:
+
+| fps bin | vrq | vblk | named waits (vw) | of which pgraph.lock | of which BQL | `lw` (DMA_PUT on pfifo.lock) |
+|---|---|---|---|---|---|---|
+| 30 | 0.1 | 3.2 | 2.4 | 1.70 | 0.67 | 1.4 |
+| 24-27 | | | | | | 6.3 |
+| < 24 | 0.6 | 14.2 | 5.4 | 4.50 | 0.88 | **9.7** |
+| all | | | | | | 4.6 |
+
+The PFIFO side, ms/frame:
+
+| fps bin | PFIFO fence wait | site #25 (#804 wait, ctx=rep) | site #6 (STALLED finish, ctx=rep) | gpu50 | GPU MHz |
+|---|---|---|---|---|---|
+| 30 | 7.4 | 1.71 | 0.22 | 14.0 | 615 |
+| < 24 | 16.3 | 7.68 | 4.73 | 19.8 | 615 |
+
+Reading:
+- `vblk - vw - lw` is -0.6 and -0.9: the vCPU's blocked time is fully named.
+- Its growth is the DMA_PUT store waiting for pfifo.lock (`user_write`,
+  user.c:92-95), plus pgraph.lock.
+- The holder is the PFIFO thread. `pfifo_thread` keeps pfifo.lock across
+  its loop (pfifo.c ~2119-2235), including
+  `pgraph_process_pending_reports`. There it waits on GPU fences:
+  - the #804 `vkWaitForFences` on every submitted frame (reports.c 257-262);
+  - the STALLED finish (reports.c 374), whose frame-slot rotation waits
+    for the slot two finishes back.
+- The GPU is not the limit: 19.8 ms busy at median in a 44.5 ms frame, at
+  the same clock.
+- The vCPU waits behind a CPU-GPU serialisation in report processing, not
+  behind GPU throughput.
+
+### Overhead: counting does not slow the run (pre-registration: hit)
+
+| run | PMU | frames/wall fps | window fps median / p10 / mean | share of windows >= 29.7 | vCPU on-CPU ms/frame | off-CPU ms/frame |
+|---|---|---|---|---|---|---|
+| B (5e4110e016) | counting | | 29.57 / 25.48 / 28.60 | | 29.15 | |
+| B2 | counting | 28.61 | 29.61 / 26.19 / 28.72 | 0.49 | 28.50 | 6.7 |
+| C | sampling 4 events | 28.03 | 29.13 / 24.90 / 28.22 | 0.40 | 28.54 | 7.2 |
+| D | **off** | 27.67 | 29.45 / 23.25 / 27.95 | 0.44 | 29.41 | 6.9 |
+
+- The off arm is not faster. It has the lowest frames/wall, the lowest p10
+  and the highest vCPU ms per frame, all inside the three runs' spread
+  (0.94 fps, 0.9 ms/frame).
+- The counting cost is below the route's run-to-run noise. One pair bounds
+  it there; it does not measure it.
+- The pre-registration's reference was fpstelemetry1008's 27.23 median;
+  the same-ref spread above is the tighter one.
+
+### Dispatch, from the counters [rr425] already prints (D, per 2 s window)
+
+- `hc` = 16 M, so `helper_lookup_tb_ptr` runs 8 M times a second. It misses
+  about 27 times a second (`hm`).
+- `it` = 450 k loop dispatches. Of those, `g` = 367 k returned through an
+  unpatched goto_tb exit, and **`gs` = 365 k of those because the target
+  TB spans two pages**. System-mode TCG never chains into a page-spanning TB
+  (cpu-exec.c 2501-2513).
+- So 81% of the main loop's dispatches are re-entries of page-spanning
+  TBs. They show in [tpc787] as entry pcs ending in `ff9`-`fff`.
+- The loop gap (`gapus`) is 3.7% of wall. The rest of the dispatch row's
+  17% is `helper_lookup_tb_ptr` on indirect jumps, returns, and direct
+  jumps that cross a page (`translator_use_goto_tb` refuses those).
+- lane.ibcache's inline probe (opt-in `HAKUX_IBC=1`, off here: `[ibc507]
+  on=0`) removes helper calls on jump-cache hits. It gave no fps on any
+  title it ran, and J/frame x1.10 on Forza with the idle halt off.
+
+### R3: fix candidates in our code, by expected impact
+
+Prices use the measured share. A sampled host share is worth 1/4 to 1/15 of
+itself as removable time (memfast). A measured wait is priced at its
+measured ms, times the probability that the time is not taken by the next
+wait in line.
+
+| # | candidate (our code) | measured share | win at full scale | P | P x win | evidence for P |
+|---|---|---|---|---|---|---|
+| 1 | **Report processing holds pfifo.lock (and pgraph.lock) across GPU fence waits**: the #804 wait (reports.c 257-262) and the STALLED finish (reports.c 374) run inside `pfifo_thread`'s lock. Fix shapes: write occlusion reports when their fence signals, without blocking the pusher (the hardware is asynchronous here too); or drop both locks across the fence waits as #474 did for the flip | `lw` 4.6 ms/frame overall (13% of a 36 ms frame), **9.7 ms/frame in windows under 24 fps** (22%); pgraph.lock +2.8 ms in the same windows | slow windows' off-CPU 14.7 -> ~4 ms: 44.5 -> ~34 ms frames there, time-weighted fps ~27.7 -> ~29.5 (the cap is 30) | 0.4 | ~5% of frame time overall, ~9% in slow windows | For: the GPU has headroom (gpu50 19.8 of 44.5 ms), and the vCPU's blocked time is fully named. Against: gpunonrender (reports.c 329-335) took the vCPU off the lock alone on Simpsons and the wait moved to the frame-slot fence, fps down. Decided by the N/W pair below |
+| 2 | **Dispatch**: `helper_lookup_tb_ptr` + `tb_lookup` + `qht`, and the main-loop re-entry of page-spanning TBs | 17.4% of cycles (22.8% with the spin excluded), 8 M lookups/s, 182 k page-spanning re-entries/s | 1/15 to 1/4 of 22.8% of work = 1.5-5.7%, 0.3-1.2 ms/frame of 21.5 | 0.3 | ~1% | ibcache's probe removed most helper calls and moved no title's fps. Only the brm test as written passes it, and that pass is the spin's artifact |
+| 3 | **softmmu `mmu_lookup1`** (the out-of-line TLB path taken from the load/store helpers) | 7.34% of cycles (9.64% with the spin excluded); the only row that passes the R2 rule in both views (memory class) | 1/15 to 1/4 of 9.64% = 0.6-2.4% of work, 0.1-0.5 ms/frame | 0.3 | ~0.4% | why the inline fast path falls through this often is not measured here (page-crossing or flagged pages, or TLB misses); `tlb_reset_dirty` at 1.25% of brm hints at code-page writes |
+
+Candidates 2 and 3 are work-side and act in every frame. Candidate 1 acts
+where frames are late, which is where the frame rate is lost. A 30 fps
+title at 29.7+ in 44% of windows gains nothing from faster code in those
+windows, because the spin absorbs it. Never a faster clock or governor:
+none of the three is one.
+
+## 3f. Pre-registration: does the report-processing wait cost Amped 2 its slow frames? (written before the runs)
+
+Pair, Nova only, investigative (not scored):
+- ref b345b5b613 perflog (the apk B2/C/D ran; shader cache warm);
+- Amped 2 route `amped2`, 578 s per arm.
+
+| arm | env | order |
+|---|---|---|
+| N | `HAKUX_FRAMETRACE=1 HAKUX_OCCL_LOG=100 HAKUX_OCCL_WAIT=0` (the #804 wait skipped) | first |
+| W | `HAKUX_FRAMETRACE=1 HAKUX_OCCL_LOG=100` (shipped wait) | last |
+
+W leaves `HAKUX_FRAMETRACE=1 HAKUX_OCCL_LOG=100` in the Nova's `env_vars`
+pref until the next dispatched request. Both are logging only; the
+behaviour is the shipped one.
+
+**Did the code run (each arm, else the arm is inert and reads nothing):**
+1. `[occl804] config ... wait=0` in N and `wait=1` in W;
+2. `[occl804] f=` lines with `q>0` in both (Amped 2 reads occlusion queries
+   in play);
+3. frametrace's `fw=` site `pgraph_vk_process_pending_reports_internal+0x37c`
+   carries >= 1 ms/frame in W and < 0.3 ms/frame in N.
+
+**Valid:** live play with a moving player in the hold frames, and no
+thermal pause.
+
+**Measures,** whole window from the mark, per frame:
+- frames/wall fps;
+- the share of pace windows >= 29.7 fps;
+- `lw` (frametrace);
+- `vblk`;
+- off-CPU (wall - [tlb68] on-CPU);
+- the PFIFO fence wait.
+
+The three-run spread on this ref and route (B2, C, D) is 0.94 fps
+frames/wall, 0.09 in the share, and 0.5 ms/frame off-CPU.
+
+**Outcomes:**
+- **Hit, the wait is the cost.** All four of these:
+  - N's `lw` <= 0.5 x W's;
+  - N's off-CPU at least 1.5 ms/frame under W's;
+  - frames/wall fps N - W >= +1.0;
+  - the share >= 29.7 N - W >= +0.15.
+
+  Then candidate 1 stands at P ~0.8, and the fix shape is the asynchronous
+  report write (it gives the guest what the hardware does, without the stale
+  read #804 fixed).
+- **Moved, the wait goes elsewhere.** N's `lw` <= 0.5 x W's, but fps and
+  off-CPU within the spread. Then name the wait that rose: frametrace `vw`
+  reasons, the `fw=` sites (site #6, the STALLED finish, is the first
+  suspect), and the TB shares of a guest poll. Candidate 1's P drops to
+  ~0.15, and the next lever is the frame-slot rotation or ring space.
+- **Miss.** N's `lw` > 0.5 x W's: `lw`'s holder is not the #804 wait.
+  Read the `fw=` sites by context.
+
+Prediction: hit 0.45, moved 0.35, miss 0.20.
+
+`HAKUX_OCCL_WAIT=0` restores the pre-#804 stale visibility reads. N's frames
+may show occlusion-driven artefacts (flares, sun). This is a measurement
+knob and never a recommendation.
