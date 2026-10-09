@@ -2099,10 +2099,11 @@ files = ["docs/lanes/stuckdetect1007/**"]
 released = ["docs/lanes/stuckdetect1007/**"]
 note = "Harness defect, dispatched directly, no GitHub issue (owner order 2026-10-07 14:10 PDT: catch Nova runs stuck past pathfind's 600 s hold without burning more runs). PR #885 ready (standalone offline detector module, no device run). Row added by hostops 15:0x PDT (jam duty): the lane finished with no territory row on origin/board, which would have fold-refused it the same way as dashretro/waitread1006."
 
-[lane.fpstelemetry1008]
-issues = ["433"]
-files = ["docs/lanes/fpstelemetry1008/**"]
-note = "STARTED (lane.local 2026-10-09T04:32Z, offline), briefs/fpstelemetry1008.md: perflog + GPUXFR + FRAMETRACE on the below-bar titles on the Nova, one cause table via decompose.py. No code edits."
+# RETIRED (hostops 2026-10-09 00:51 PDT jam duty, [lanewaker] stranded fpstelemetry1008):
+# folded as 5810476b58 (lane/fpstelemetry1008, 23:04:44 PDT 10-08; confirmed ancestor of
+# HEAD/origin/master), PR.md State: ready, no hakux-lane-fpstelemetry1008 unit, no
+# nv2a_issues.toml blocked_on reference. The "no commit for 94 min" alert is the lane
+# being DONE, not stuck. docs/lanes/fpstelemetry1008/** -> [free].
 
 [lane.surfdl1008]
 issues = ["433"]
@@ -2111,5 +2112,5 @@ note = "STARTED (lane.local 2026-10-09T04:32Z, offline), briefs/surfdl1008.md: d
 
 [lane.profileddefault1008]
 issues = ["433", "474"]
-files = ["android/app/src/main/cpp/xemu_android.cpp", "docs/lanes/profileddefault1008/**", "docs/testing/predictions/profileddefault1008-*.json"]
-note = "STARTED (lane.local 2026-10-09T04:32Z, offline), briefs/profileddefault1008.md: TU_AUTOTUNE_ALGO=profiled app default behind a runtime override, fleet A/B on the Nova. GRANTED (lane.local 2026-10-09T04:32Z, owner approval 10-08 ~21:30 PDT): android/app/src/main/cpp/xemu_android.cpp, ApplyRenderMode and its render_mode: log line only; no other hunk."
+files = ["android/app/src/main/cpp/xemu_android.cpp", "docs/lanes/profileddefault1008/**", "docs/testing/predictions/profileddefault1008-*.json", "docs/testing/titles/routes/fps786-topspin.route"]
+note = "STARTED (lane.local 2026-10-09T04:32Z, offline), briefs/profileddefault1008.md: TU_AUTOTUNE_ALGO=profiled app default behind a runtime override, fleet A/B on the Nova. GRANTED (lane.local 2026-10-09T04:32Z, owner approval 10-08 ~21:30 PDT): android/app/src/main/cpp/xemu_android.cpp, ApplyRenderMode and its render_mode: log line only; no other hunk. LENT (hostops 2026-10-09 00:51 PDT jam duty, [foldqueue] territory refusal): docs/testing/titles/routes/fps786-topspin.route -- its Top Spin pilot wrote a new route file under docs/testing/titles/routes/**, which falls to [free]'s broad glob and is unclaimed by any active lane; lent directly, same as routefix1002/savestate433 precedent."
