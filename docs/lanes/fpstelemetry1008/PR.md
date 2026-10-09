@@ -5,8 +5,9 @@ State: ready
 Lane: fpstelemetry1008      Issue: #433 (dispatched directly, no tracker issue)
 Base: master @ 4ea49d12e7 (attempt 4 merged origin/master, 17 commits, clean — picked up
   lane.profileddefault1008 and lane.surfdl1008's folds, neither touching this territory)
-Files: docs/lanes/fpstelemetry1008/NOTES.md, docs/lanes/fpstelemetry1008/PR.md,
-  docs/lanes/fpstelemetry1008/WAITING.md (removed — nothing left to wait on)
+Files: docs/lanes/fpstelemetry1008/NOTES.md, docs/lanes/fpstelemetry1008/PR.md
+  (WAITING.md was added and removed within this branch's own history — nets to no diff
+  against origin/master, so it does not appear in `git diff --stat origin/master...HEAD`)
 Prediction: none — telemetry survey, no golden, no A/B arm (every request `--no-expect`d)
 Needs device: yes (Nova only, never the Thor). 13 soak requests landed across this lane's
   four attempts, ~95 min of device time this attempt alone; no crash, no hang, no thermal
