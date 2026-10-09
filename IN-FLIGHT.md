@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pmucounters` | claude-opus-5-5 | 17 min | Lane: pmucounters            Issue: #433 |
-| `surfgpu1009` | claude-opus-5-5 | 17 min |  |
+| `pmucounters` | claude-opus-5-5 | 26 min | Lane: pmucounters            Issue: #433 |
+| `surfgpu1009` | claude-opus-5-5 | 26 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-09`, build `5810476b58`.
 
 ## 0.5 release: Playable titles
@@ -74,7 +74,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pmucounters` | Lane: pmucounters            Issue: #433 | `a30c76be62` | 2026-10-05 09:00 |
+| `lane/pmucounters` | Lane: pmucounters            Issue: #433 | `cf92f2bb7a` | 2026-10-09 15:24 |
 
 ## Recently landed on master
 
@@ -91,4 +91,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-07 gpunonrender: GMEM vs sysmem on the replay-bound titles, census on
 - 2026-10-06 dispatchgate1006: a generated title registry and one admit() gate between "decide to run it" and a handheld (shadow mode)
 
-_Updated 2026-10-09 15:21 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-09 15:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
