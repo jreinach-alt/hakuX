@@ -1,5 +1,23 @@
 # surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 
+## Attempt 3: why attempt 2 did not finish, and what this attempt does
+
+Attempt 2 did everything up to and including queuing the two Nova requests
+(gate re-check under the owner's addendum, routes built from pathfind's
+10-06 confirmation-hold paths, both requests accepted behind 9 earlier
+`lane.profileddefault1008` requests) and then correctly stopped in a
+WAITING state rather than block on its own session for a device run it has
+no way to poll from inside one turn ([[lane-background-task-dies-with-session]]).
+That is a finished sub-step, not a finished lane: the Verdict section was
+left as "queued, not yet measured" for both NBA titles. This attempt
+resumes in the same worktree, merges `origin/master` first (picked up
+`lane.fpstelemetry1008`'s fold, `5810476b58` -- unrelated territory, no
+conflict, and its own NOTES.md confirms at line 223 that it knows
+`lane.surfdl1008` is running the same NBA Live 2005 surface-download
+question concurrently and defers to this lane's device time rather than
+duplicating it), then finds both requests already `DONE` in
+`dispatch/results/` and reads them.
+
 ## Attempt 2: why attempt 1 did not cover this, and what changed
 
 Attempt 1 finished and its PR was folded into master at 22:00:33 PDT
@@ -274,15 +292,149 @@ report). Both of mine queue behind those, as the brief requires for
 whatever else is already ahead. **No result yet** -- this is a WAITING
 state, not a finished measurement; see `docs/lanes/surfdl1008/WAITING`.
 
+## Attempt 3: both NBA results read
+
+Both requests finished (`DONE` in their result dirs) and were found already
+landed when this attempt started -- no device time spent this session.
+Read with `fps20786/decompose.py` (auto-detects the `ROUTE ... mark
+gameplay` line already in `run.log`, no `--mark` needed since these routes
+carry their own mark, unlike a held pathfind run) and `fps20786/extras.py`
+for the post-mark VBLANK histogram and `gpu.Xfr`/`phase.*` medians (from
+`HAKUX_GPUXFR=1`/`HAKUX_FRAMETRACE=1`). Thermal pause checked first in both
+(`decompose.py`'s THERMAL line: "no thermal-pause device above 0" for both;
+neither row is voided).
+
+**`fps20786/sdsurvey.py` and `async794/sdcallers.py` read the whole logcat
+(menus included), by their own documented caveat** -- not what the brief's
+other instruments (decompose.py, extras.py) do, which read only after the
+mark. Wrote `docs/lanes/surfdl1008/postmark_sdsurvey.py`, this lane's own
+mark-restricted combination of both scripts' regexes (same per-flip/
+per-frame method, same column names, just gated on the same `ROUTE ...
+mark gameplay` / `hakuX-route ... mark gameplay` line decompose.py/
+extras.py already key on), to avoid the boot-logo/menu prefix (NBA 06: ~126s
+of publisher logos and menu nav before the mark; NBA 07: ~160s) diluting
+the per-flip medians. Ran both whole-logcat and mark-restricted; the
+mark-restricted numbers are reported below and are the ones this lane
+trusts, with the whole-logcat run shown only as a sanity cross-check
+(same callers active, as expected).
+
+### NBA Live 06 (4541007A), route `nbalive06`, request `1-1791525334-surfdl1008-4042714`
+
+Post-mark window: mark at logcat `00:21:02.501`, soak end `00:26:15.516` --
+313 s, 158 decompose rows, no thermal pause.
+
+| metric | value |
+|---|---|
+| gfps (mean, post-mark rows) | 20.10 |
+| at/above 28.5 fps bar | 1/158 = 0.01 |
+| F (ms/frame) | 49.74 |
+| VBLANKs/flip | v2 0.16, v3 0.82 -- mostly 3-VBLANK (20 fps) |
+| ph_GPU | 19.60 (under the 33.3 ms two-VBLANK ceiling, like NBA 2005's 18.5) |
+| ph_Draw | 9.30 |
+| ph_Fin | 22.20 |
+| ph_Idle | 8.60 |
+| ph_Tot | 43.30 |
+| Ri (render thread parked) | 8.90 |
+| lockw (vCPU pgraph.lock wait) | 0.04 -- no contention |
+| gbusy / gidle | 17.11 / 31.71 |
+| sd/flip, dirtyIf/flip, cDef/flip (post-mark, `RPBreaks`) | 1.00, 0.00, 1.00 |
+| `[sdcall]` caller, post-mark | **`reuse`**: fin/fr 1.00, wait 20.48 ms/frame (only caller active; `record` negligible) |
+
+Share of Tot: ph_Fin / ph_Tot = 22.20 / 43.30 = **51%**; ph_Fin / F = 45%.
+Removing just `ph_Fin` from `ph_Tot` leaves 21.10 ms, comfortably under the
+33.3 ms ceiling.
+
+### NBA Live 07 (454100A1), route `nbalive07`, request `1-1791525340-surfdl1008-4043345`
+
+Post-mark window: mark at logcat `00:29:50.301`, soak end `00:34:55.604` --
+305 s, 155 decompose rows, no thermal pause.
+
+| metric | value |
+|---|---|
+| gfps (mean, post-mark rows) | 22.17 |
+| at/above 28.5 fps bar | 0/155 = 0.00 |
+| F (ms/frame) | 45.10 |
+| VBLANKs/flip | v1 0.27, v2 0.17, v3 0.03, v4 0.48 -- bimodal (fast ~30 fps frames and slow ~15 fps frames, no settled 20) |
+| ph_GPU | 21.30 (under the 33.3 ms ceiling) |
+| ph_Draw | 10.80 |
+| ph_Fin | 13.80 |
+| ph_Idle | 2.05 |
+| ph_Tot | 36.60 |
+| Ri (render thread parked) | 2.35 |
+| lockw (vCPU pgraph.lock wait) | 0.28 -- negligible |
+| gbusy / gidle | 17.50 / 27.95 |
+| sd/flip, dirtyIf/flip, cDef/flip (post-mark, `RPBreaks`) | 0.50, 0.00, 0.50 |
+| `[sdcall]` caller, post-mark | **`reuse`**: fin/fr 0.50, wait 10.70 ms/frame; **`surfupd`**: fence/fr 0.50, wait 8.74 ms/frame; `range` 0.00 |
+
+Share of Tot: ph_Fin / ph_Tot = 13.80 / 36.60 = **38%**; ph_Fin / F = 31%.
+Removing `ph_Fin` from `ph_Tot` leaves 22.80 ms, comfortably under 33.3.
+
+**What the instrument cannot see here:** `reuse`'s and `surfupd`'s
+post-mark per-frame waits (10.70 + 8.74 = 19.44 ms) sum to more than the
+directly-measured `ph_Fin` (13.80 ms). The two callers' `fin`/`fence`
+counters are each 0.50/frame -- they fire on alternating frames, not every
+frame -- so the `[sdcall]` ms columns cannot simply be added to reconstruct
+`ph_Fin`; they identify *which* caller is active, not an exact ms split.
+`ph_Fin` (from `hakuX-phase`, a direct per-frame measurement) is the
+trustworthy total; the caller split is read qualitatively only, same
+caveat `async794`'s own NOTES applies to the same columns.
+
+### NBA Live 06 and NBA Live 07: the same finding, the same call sites, already pilot-tested
+
+Both titles show `dirtyIf/flip = 0.00` -- ruling out Midnight Club 2's
+class (the texture-bind `range` caller at `texture.c:2100`). Both show the
+synchronous surface-download finish landing on **`reuse`**
+(`deferred_downloads_clear_surface` / `download_surface_complete_deferred_at`,
+`hw/xbox/nv2a/pgraph/vk/surface.c`) -- the *exact* caller name
+`fps20786`/`async794` already measured and pilot-tested on NBA Live 2005
+itself (not merely "the same class": the same code path, same tag in the
+same source file). NBA Live 07 additionally shows **`surfupd`** active on
+the alternating half of frames -- also not a new site: `async794`'s own
+pilot (its NOTES.md, the fix-1 pilot table, "`reuse` 11.18 / `surfupd`
+11.48 ms/frame") already found that detaching the `reuse` site's struct
+(fix 1's mechanism) does not remove NBA 2005's own wait, it **moves it to
+`surfupd`**, because `surfupd`'s rebind path (`upload_pending`,
+gated by `surface_update_may_defer_downloads`) completes the download on
+the spot regardless of where the first site's wait was scheduled. NBA Live
+07 showing both callers present simultaneously, on the same engine, is
+that exact mechanism, not a new one needing its own pilot.
+
+**This is a full generalisation, not a partial one**: same engine family
+(EA Sports basketball, NBA Live 05/06/07; the 06 and 07 routes' own boot
+steps reference sibling title IDs `45410038`/`45410050` in their hint
+text), same forcing caller(s), same already-refuted fix. No new pilot is
+needed to know that an async794-style deferral fix would not remove either
+title's wait: the refutation already measured on NBA 2005's own `surfupd`
+site applies verbatim, because the mechanism (`surfupd` completes on the
+spot, independent of where the `reuse` wait was scheduled) is a property
+of the rebind path, not of which title's frame triggered it.
+
+**What the fix would have to change** (named per the brief; no patch
+attempted, out of scope): not the `reuse`/`surfupd` call sites themselves
+(moving the wait between them is exactly what `async794`'s fix 1 already
+tried and refuted) but the thing both sites bottom out on: give
+`surfupd`'s rebind consumer -- the `upload_pending` path gated by
+`surface_update_may_defer_downloads` in `hw/xbox/nv2a/pgraph/vk/surface.c`
+-- a GPU-side route from the surface's image back into the texture/render
+target it is rebinding, so that path never needs a CPU-visible, completed
+download at all. That is `async794`'s own fix-3 direction (the GPU-side
+conversion path, not yet built there either), not a new fix invented here.
+
 ## Verdict (per title)
 
-- **NBA Live 06: queued, not yet measured.** Cleared at the gate under the
-  owner's addendum (BLOCK was the only reason, and it is the one named as
-  cleared); route built from pathfind's own 10-06 path; request
-  `1-1791525334-surfdl1008-4042714` queued behind 9 others. Update this
-  section once the result lands.
-- **NBA Live 07: queued, not yet measured.** Same gate/route situation;
-  request `1-1791525340-surfdl1008-4043345` queued behind the same 9.
+- **NBA Live 06: finding generalises in full.** Same caller (`reuse`) as
+  NBA Live 2005's own measured site, ~20.5 ms/frame post-mark, 51% of
+  `ph_Tot`; GPU cost (19.6 ms) is comfortably under the 33.3 ms ceiling, so
+  removing the wait would plausibly clear two VBLANKs if nothing else
+  changed (not shown here to be sufficient alone -- see MC2's caveat on the
+  same reasoning below). No thermal pause; row not voided. Request
+  `1-1791525334-surfdl1008-4042714`, 313 s post-mark, 158 rows.
+- **NBA Live 07: finding generalises in full, both of NBA 2005's own
+  callers present.** `reuse` and `surfupd` alternate, 0.50 fin/fence per
+  frame each, summing (qualitatively, not additively per the caveat above)
+  to most of a 13.8 ms `ph_Fin` (38% of `ph_Tot`); GPU cost (21.3 ms) also
+  under the ceiling. No thermal pause; row not voided. Request
+  `1-1791525340-surfdl1008-4043345`, 305 s post-mark, 155 rows.
 - **Midnight Club 2: partial generalisation, different caller.** The same
   class of bound is present (a synchronous `SURFACE_DOWN` finish
   serialising the render thread against the GPU, ~8.0 ms/frame of it, with
@@ -300,12 +452,21 @@ state, not a finished measurement; see `docs/lanes/surfdl1008/WAITING`.
 
 ## For the next lane
 
-- **Finish reading the two queued results** (`1-1791525334-surfdl1008-4042714`
-  NBA Live 06, `1-1791525340-surfdl1008-4043345` NBA Live 07) with
-  `fps20786/sdsurvey.py` + `xfrsurvey.py` + `near30/decompose.py`, mark at
-  each route's `mark gameplay` line, same method as the Midnight Club 2
-  section above, and fill in the Verdict bullets. Check for a thermal pause
-  first (voids the row) before reading anything else.
+This lane is finished: all three titles have a verdict, both NBA requests
+are read, no result is pending. If a next lane picks up the fix itself
+(#794's extension, or a new issue for `surfupd`'s GPU-side path), it is a
+separate lane -- no patch was attempted here, by the brief.
+
+- **`fps20786/sdsurvey.py` and `async794/sdcallers.py` read the whole
+  logcat, menus included** -- by their own documented caveat, not what
+  `decompose.py`/`extras.py` do. For a route with a real boot/menu prefix
+  (NBA 06/07: 2+ minutes each), that caveat is not academic: the
+  whole-logcat `reuse` wait medians (8.86, 10.29 ms/frame) read noticeably
+  lower than the mark-restricted ones (20.48, 10.70 ms/frame) because
+  zero-valued menu rows pad the median down. Use
+  `docs/lanes/surfdl1008/postmark_sdsurvey.py` (this lane's mark-restricted
+  combination of both scripts) for any title with a nontrivial pre-mark
+  prefix, not the two lane-local scripts directly.
 - Attempt 1's claim of a `prequeue.py` `fps_ok_share` `0 or 1` gate bug does
   **not** reproduce: re-read in Attempt 2 above, the actual line is
   `last.get("fps_ok_share", 1)`, whose default only applies when the key is

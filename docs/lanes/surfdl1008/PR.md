@@ -1,12 +1,15 @@
 # surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 
-State: draft
+State: ready
 
 Lane: surfdl1008          Issue: none (dispatched directly by lane.local, #433 umbrella)
-Base: master @ 93fbc525fc (attempt 1's own fold, merged into this branch)
-Files: docs/lanes/surfdl1008/NOTES.md, docs/lanes/surfdl1008/PR.md, docs/lanes/surfdl1008/WAITING, docs/lanes/surfdl1008/routes/nbalive06.route, docs/lanes/surfdl1008/routes/nbalive07.route
+Base: master @ 93fbc525fc (attempt 1's own fold, merged into this branch); merged origin/master's `5810476b58` (lane.fpstelemetry1008's fold, unrelated territory) in attempt 3
+Files: docs/lanes/surfdl1008/NOTES.md, docs/lanes/surfdl1008/PR.md, docs/lanes/surfdl1008/postmark_sdsurvey.py, docs/lanes/surfdl1008/routes/nbalive06.route, docs/lanes/surfdl1008/routes/nbalive07.route
 Prediction: none: telemetry survey, not an A/B arm
-Needs device: yes, two Nova requests queued (below)    Needs NDK: no
+Needs device: no -- both Nova requests queued in attempt 2 finished and are read in attempt 3    Needs NDK: no
+
+**All three titles answered. Full generalisation for NBA Live 06 and 07,
+partial for Midnight Club 2.**
 
 **Attempt 2** (owner addendum 22:05 PDT, 5 min after attempt 1's own fold):
 the addendum clears NBA Live 06/07's below-bar `prequeue.py` BLOCK for this
@@ -18,10 +21,43 @@ Nova soaks: `1-1791525334-surfdl1008-4042714` (NBA Live 06, route
 `nbalive06`, 460s) and `1-1791525340-surfdl1008-4043345` (NBA Live 07, route
 `nbalive07`, 480s), both `--perflog --env HAKUX_GPUXFR=1 --env
 HAKUX_FRAMETRACE=1 --priority study`. At queue time 9 `lane.profileddefault1008`
-requests sat ahead of both in `dispatch/queue/`; neither has run yet. See
-`docs/lanes/surfdl1008/WAITING` and NOTES.md's "Attempt 2" section for the
-full gate re-check, route recipe, and a correction to attempt 1's claimed
-`prequeue.py` gate bug (does not reproduce on a careful read of the code).
+requests sat ahead of both in `dispatch/queue/`.
+
+**Attempt 3**: both requests were already `DONE` when this attempt resumed.
+Read with `decompose.py`/`extras.py` (mark-restricted; neither run shows a
+thermal pause) plus a mark-restricted combination of `sdsurvey.py`'s and
+`async794/sdcallers.py`'s regexes (`docs/lanes/surfdl1008/postmark_sdsurvey.py`
+-- those two scripts read the whole logcat, menus included, which pads
+their per-frame medians down on a route with a 2+ minute boot/menu prefix).
+
+| title | gfps | ph_GPU | ph_Fin | ph_Tot | share of Tot | caller(s) |
+|---|---|---|---|---|---|---|
+| NBA Live 06 (4541007A) | 20.10 | 19.60 | 22.20 | 43.30 | 51% | `reuse` only, 20.48 ms/frame |
+| NBA Live 07 (454100A1) | 22.17 | 21.30 | 13.80 | 36.60 | 38% | `reuse` 10.70 + `surfupd` 8.74 ms/frame, alternating frames |
+
+Both show `dirtyIf/flip = 0.00` and land on **`reuse`**
+(`deferred_downloads_clear_surface`, `hw/xbox/nv2a/pgraph/vk/surface.c`) --
+the exact caller `fps20786`/`async794` already measured and pilot-tested on
+NBA Live 2005 itself, not merely "the same class." NBA Live 07 additionally
+shows `surfupd` active, the exact second site `async794`'s own fix-1 pilot
+found the wait moves to when `reuse`'s struct is detached (its NOTES.md:
+"`reuse` 11.18 / `surfupd` 11.48 ms/frame" on NBA 2005 itself). Both titles'
+GPU cost is comfortably under the 33.3 ms two-VBLANK ceiling (19.6, 21.3 ms),
+same shape as NBA 2005's own 18.5 ms. **No new pilot is needed**: the
+refutation of a deferral-only fix already measured on NBA 2005's own
+`surfupd` site applies verbatim, since the mechanism (`surfupd` completing
+the download on the spot, independent of where the `reuse` wait was
+scheduled) is a property of the rebind path, not of which title triggered
+it. What a fix would have to change: give `surfupd`'s `upload_pending`
+rebind path (gated by `surface_update_may_defer_downloads`,
+`hw/xbox/nv2a/pgraph/vk/surface.c`) a GPU-side route from the surface's
+image to the texture/render target it rebinds, so it never needs a
+CPU-visible completed download -- `async794`'s own fix-3 direction, not
+built there either, not attempted here (out of scope).
+
+Full per-title tables, the instrument caveat on why `reuse`+`surfupd`'s
+summed ms exceed NBA 07's measured `ph_Fin` (callers alternate, not
+additive), and the VBLANK histograms are in NOTES.md's "Attempt 3" section.
 
 Midnight Club 2's analysis (below) is unchanged from attempt 1, already
 answered from an existing run, no device time spent on it.
@@ -71,6 +107,6 @@ NOTES.md. (Attempt 1's claimed `pm/prequeue.py` gate bug -- an exactly-0.0
 see NOTES.md's correction.)
 
 Release note: none (analysis only, no code or behaviour change; two Nova
-telemetry soaks queued, results pending).
+telemetry soaks queued and read, no device time left pending).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
