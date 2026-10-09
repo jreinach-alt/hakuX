@@ -82,6 +82,24 @@ lm_start "$TESTING/lane.sh" "$LM/nofile.log" ""
 check "with no .model file, MODEL_LANE (\$lm_default) is what starts" \
     [ "$(lm_model "$LM/nofile.log")" = "$lm_default" ]
 
+# ----------------------------------------------- usage Low, read at every start
+# jobs/usage/mode.sh only creates or removes $WORK/usage/low-active; lane.sh
+# applies Low itself, so the .model file keeps saying what the brief wants.
+mkdir -p "$LM/work/usage"; echo "selftest: low" > "$LM/work/usage/low-active"
+lm_fresh
+lm_start "$TESTING/lane.sh" "$LM/low.log" claude-opus-5-5
+check "usage Low: a lane whose .model is Opus starts on Sonnet" \
+    [ "$(lm_model "$LM/low.log")" = claude-sonnet-5 ]
+lm_fresh
+lm_start "$TESTING/lane.sh" "$LM/lowover.log" claude-opus-5-5 HAKUX_MODEL=claude-fable-5-1
+check "usage Low: an explicit HAKUX_MODEL still wins" \
+    [ "$(lm_model "$LM/lowover.log")" = claude-fable-5-1 ]
+rm -f "$LM/work/usage/low-active"
+lm_fresh
+lm_start "$TESTING/lane.sh" "$LM/lowoff.log" claude-opus-5-5
+check "low-active gone: the same .model starts on Opus again, nothing to restore" \
+    [ "$(lm_model "$LM/lowoff.log")" = claude-opus-5-5 ]
+
 # ------------------------------------------------------------------ mutants
 # One per leg above, made by editing a COPY OF lane.sh LEFT IN PLACE beside
 # the real one, not a copy of the whole jobs/ tree. lane.sh finds its jobs/
@@ -108,6 +126,21 @@ lm_mutant() {   # <name> <sed-expr> -> path to a mutated lane.sh, living in $TES
     echo "$f"
 }
 lm_differs() { ! cmp -s "$1" "$TESTING/lane.sh"; }
+
+# MUTANT: drop Low's model cap. The Low leg must go red.
+m=$(lm_mutant nolowcap 's/MODEL=\$LOW_MODEL ;;/;;/')
+check "mutant nolowcap: dropping the cap assignment, the sed applied" lm_differs "$m"
+echo "selftest: low" > "$LM/work/usage/low-active"
+lm_fresh; lm_start "$m" "$LM/mutlow.log" claude-opus-5-5
+rm -f "$LM/work/usage/low-active"
+if [ "$(lm_model "$LM/mutlow.log")" = claude-sonnet-5 ]; then
+    bad "mutant nolowcap: an Opus lane still starts on Sonnet under Low"
+elif [ "$(lm_model "$LM/mutlow.log")" = claude-opus-5-5 ]; then
+    ok "mutant nolowcap: the lane starts on Opus, and the Low leg is red"
+else
+    bad "mutant nolowcap: the mutant start never reached systemd-run (empty log), so it proves nothing"
+fi
+rm -f "$m"
 
 # MUTANT 1: drop the read of the .model file entirely. Kills the start leg
 # (and would kill the resume leg too, which is exactly why mutant 2 below is
