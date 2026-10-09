@@ -90,6 +90,14 @@ LANE_MAX=2
 # which is what it already did for LANE_MAX and for every name in models.env.
 # `$WORK/limits.env is the host's dial` (jobs/window.sh) means one dial.
 TURNS="${LANE_TURNS:-150}"
+# USAGE LOW IS READ HERE, AT EVERY START AND RESUME. jobs/usage/mode.sh only
+# creates or removes $WORK/usage/low-active; it rewrites no dial and no .model
+# file, so there is no snapshot to restore and nothing to go stale. While the
+# file exists, fewer lanes run and an expensive model runs on LOW_MODEL.
+LOW_LANE_MAX="${USAGE_LOW_LANE_MAX:-3}"
+LOW_MODEL="${USAGE_LOW_MODEL:-claude-sonnet-5}"
+usage_low() { [ -e "$WORK/usage/low-active" ]; }
+if usage_low && [ "$LANE_MAX" -gt "$LOW_LANE_MAX" ]; then LANE_MAX=$LOW_LANE_MAX; fi
 
 cmd="${1:-}"; name="${2:-}"
 
@@ -215,6 +223,15 @@ next_attempt() {   # prints the attempt number this start will be, and the model
         MODEL="${HAKUX_MODEL:-$MODEL_LANE_ESCALATED}"
     else
         MODEL="${HAKUX_MODEL:-${lane_model:-$MODEL_LANE}}"
+    fi
+    # An explicit HAKUX_MODEL is a person's choice for this one start; Low
+    # caps only what the brief or the escalation rule picked.
+    if usage_low && [ -z "${HAKUX_MODEL:-}" ]; then
+        case "$MODEL" in
+            "$LOW_MODEL"|*sonnet*|*haiku*) ;;
+            *) echo "usage Low: lane $1 starts on $LOW_MODEL, not $MODEL ($WORK/usage/low-active)" >&2
+               MODEL=$LOW_MODEL ;;
+        esac
     fi
     echo "$n" > "$f"
     ATTEMPT=$n
