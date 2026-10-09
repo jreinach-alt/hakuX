@@ -2105,12 +2105,10 @@ note = "Harness defect, dispatched directly, no GitHub issue (owner order 2026-1
 # nv2a_issues.toml blocked_on reference. The "no commit for 94 min" alert is the lane
 # being DONE, not stuck. docs/lanes/fpstelemetry1008/** -> [free].
 
-[lane.surfdl1008]
-issues = ["433"]
-files = ["docs/lanes/surfdl1008/**"]
-note = "STARTED (lane.local 2026-10-09T04:32Z, offline), briefs/surfdl1008.md: does NBA Live 05's per-frame surface download generalise to NBA Live 06/07 and Midnight Club 2. No code edits."
-
-[lane.profileddefault1008]
-issues = ["433", "474"]
-files = ["android/app/src/main/cpp/xemu_android.cpp", "docs/lanes/profileddefault1008/**", "docs/testing/predictions/profileddefault1008-*.json", "docs/testing/titles/routes/fps786-topspin.route"]
-note = "STARTED (lane.local 2026-10-09T04:32Z, offline), briefs/profileddefault1008.md: TU_AUTOTUNE_ALGO=profiled app default behind a runtime override, fleet A/B on the Nova. GRANTED (lane.local 2026-10-09T04:32Z, owner approval 10-08 ~21:30 PDT): android/app/src/main/cpp/xemu_android.cpp, ApplyRenderMode and its render_mode: log line only; no other hunk. LENT (hostops 2026-10-09 00:51 PDT jam duty, [foldqueue] territory refusal): docs/testing/titles/routes/fps786-topspin.route -- its Top Spin pilot wrote a new route file under docs/testing/titles/routes/**, which falls to [free]'s broad glob and is unclaimed by any active lane; lent directly, same as routefix1002/savestate433 precedent."
+# RETIRED (hostops 2026-10-09 01:5x PDT jam duty): folded as cc775f16e8 (lane/profileddefault1008,
+# 01:45:37 PDT) and 58c7e9b804 (lane/surfdl1008, 01:45:44 PDT); both confirmed ancestors of
+# HEAD/origin/master, neither has a running hakux-lane-* unit, no nv2a_issues.toml blocked_on
+# reference. docs/lanes/surfdl1008/**, docs/lanes/profileddefault1008/**,
+# docs/testing/predictions/profileddefault1008-*.json, docs/testing/titles/routes/fps786-topspin.route
+# and android/app/src/main/cpp/xemu_android.cpp (the owner-approved ApplyRenderMode render_mode
+# log-line grant, now folded) -> [free].
