@@ -6,9 +6,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `pathfind` | claude-opus-5-5 | 59 min | pathfind: a screen-reading agent that drives a title from boot into gameplay |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -18,10 +16,24 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## 0.5 release: Playable titles
 
-**30 titles are confirmed Playable** (3 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**44 titles are confirmed Playable** (0 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-08 | Max Payne 2: The Fall of Max Payne | Playable, 10-minute run |
+| 2026-10-07 | Legacy of Kain: Defiance | Playable, 10-minute run |
+| 2026-10-07 | The Lord of the Rings: The Fellowship of the Ring | Playable, 10-minute run |
+| 2026-10-07 | SpongeBob SquarePants: Battle for Bikini Bottom | Playable, 10-minute run |
+| 2026-10-07 | Indigo Prophecy | Playable, 10-minute run |
+| 2026-10-07 | Blade II | Playable, 10-minute run |
+| 2026-10-07 | Capcom vs. SNK 2 EO | Playable, 10-minute run |
+| 2026-10-07 | Future Tactics: The Uprising | Playable, 10-minute run on the Nova, median 59.9 fps |
+| 2026-10-06 | Call of Duty 3 | Playable, 10-minute run on the Nova |
+| 2026-10-06 | NBA Live 2004 | Playable, 10-minute run on the Nova |
+| 2026-10-06 | Blowout | Playable, accepted on review, median 0.34 fps |
+| 2026-10-06 | Fight Club | Playable, 10-minute run on the Nova, median 43.4 fps |
+| 2026-10-06 | Mortal Kombat: Armageddon | Playable, 10-minute run, median 59.2 fps |
+| 2026-10-06 | NBA 2K3 | Playable, 10-minute run, median 42.9 fps |
 | 2026-10-06 | World Soccer Winning Eleven 9 | Playable, 10-minute run, median 59.9 fps |
 | 2026-10-06 | Ratatouille | Playable, 10-minute run, median 52.8 fps |
 | 2026-10-06 | Rogue Trooper | Playable, 10-minute run, median 58.9 fps |
@@ -53,22 +65,25 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-14 of these still await the owner's flicker check.
+28 of these still await the owner's flicker check.
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/pathfind` | pathfind: a screen-reading agent that drives a title from boot into gameplay | `0fda722dbb` | 2026-10-06 11:24 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
-- 2026-10-06 gpunonrender: render-pass census (HAKUX_GPUXFR=1)
-- 2026-10-06 gpunonrender: the GPU's "non-render" time is render-pass work on Turnip (94-98% on NG Black, ToeJam, DOA3)
-- 2026-10-06 frametrace: the PFIFO thread's GPU waits named per title (draw.c:4386 under pfifo.lock on Simpsons
-- 2026-10-05 frametrace: per-frame critical-path telemetry (HAKUX_FRAMETRACE=1): who set the pace, frame by frame
-- 2026-10-05 dashretro: the 0.5 panel counts the Playable ledger and pathfind's held runs (#433)
-- 2026-10-05 hitchcause: the MTV 330 ms hitches are guest-side waits, not the IDE host read ([ide425d] held run on af37f7a3ea) (#433)
-- 2026-10-05 belowbar1005: the #804 fence wait is not what holds Buffy, NG Black or DOA3 below the bar
+- 2026-10-09 usagemode1009: usage Low is a read-time cap, re-evaluated every tick (#433)
+- 2026-10-09 fpstelemetry1008b: the four titles lane A could not measure -- NFS Most Wanted, Midnight Club II, Fantastic 4, Dino Crisis 3 (#433)
+- 2026-10-09 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
+- 2026-10-09 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
+- 2026-10-09 profileddefault1008: TU_AUTOTUNE_ALGO=profiled behind an autotune override
+- 2026-10-08 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
+- 2026-10-08 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
+- 2026-10-08 selfdeps: builds fetch nothing from GitHub (#433)
+- 2026-10-07 stuckdetect1007: a stuck/menu detector for pathfind's 600-s hold, validated offline on stored frames (#433)
+- 2026-10-07 harnessfix1006: the Nova's runs record their build, and a test build never stays on it -- fixed the release check itself, which never matched a real run
+- 2026-10-07 gpunonrender: GMEM vs sysmem on the replay-bound titles, census on
+- 2026-10-06 dispatchgate1006: a generated title registry and one admit() gate between "decide to run it" and a handheld (shadow mode)
 
-_Updated 2026-10-06 11:55 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-09 14:51 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
