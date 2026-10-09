@@ -3,7 +3,7 @@ State: draft
 
 Lane: profileddefault1008          Issue: #433, #474
 Base: master @ 7960e78e20
-Files: android/app/src/main/cpp/xemu_android.cpp, docs/lanes/profileddefault1008/NOTES.md, docs/lanes/profileddefault1008/PR.md, docs/lanes/profileddefault1008/pgraph_register.py, docs/testing/predictions/profileddefault1008-pgraph.json, docs/testing/predictions/profileddefault1008-*.json
+Files: android/app/src/main/cpp/xemu_android.cpp, docs/lanes/profileddefault1008/NOTES.md, docs/lanes/profileddefault1008/PR.md, docs/lanes/profileddefault1008/pgraph_register.py, docs/lanes/profileddefault1008/soak_register.py, docs/testing/predictions/profileddefault1008-pgraph.json, docs/testing/predictions/profileddefault1008-*.json, docs/testing/titles/routes/fps786-topspin.route
 Prediction: docs/testing/predictions/profileddefault1008-pgraph.json (registered, a_ref == b_ref == 54f8fb48ea); per-title soak predictions follow the pilot
 Needs device: yes    Needs NDK: yes
 Release note (none): the compiled default stays bandwidth (kAutotuneProfiledDefault = false); nothing a player sees changes unless the fleet A/B below flips it.
