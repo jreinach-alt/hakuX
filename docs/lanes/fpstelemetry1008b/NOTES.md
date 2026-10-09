@@ -1,5 +1,21 @@
 # lane.fpstelemetry1008b: the four titles lane A could not measure (#433, 0.5)
 
+## -1. Resume (attempt 2): why attempt 1 did not finish
+
+Attempt 1 fixed `steps2route.py` (combo tokens + `--hold-log`), generated all four
+routes, ran the gate audit (§5), and **queued all four pilot requests** -- but the
+session ended before any of the four pilots had landed or been reviewed: `PR.md`
+still read `State: in progress`, NOTES.md §6 was a placeholder, no `pilots/
+fpstelemetry1008b.ok` existed, and no `WAITING` file was left naming the four
+request ids, so this resume had to rediscover them by listing `dispatch/results/`
+for anything named `fpstelemetry1008b` rather than reading them off a waiting
+note. All four requests (`...1711214` NFS MW, `...1711744` Midnight Club II,
+`...1711839` Fantastic 4, `...1711978` Dino Crisis 3) had already completed
+(`DONE`) by the time this session started -- the work was not lost, only
+unreviewed and unrecorded. This attempt reviews those four pilots (§6), queues
+the two full-telemetry runs their review clears, and writes up the two it does
+not.
+
 Follow-up to lane.fpstelemetry1008 (folded to master as 34a0b032b9). Owner direction
 10-08: pivot to fps, telemetry first on the low-performing titles. This lane picks up the
 four titles lane A's cause table (NOTES.md §7) could not reach: NFS Most Wanted and
@@ -153,6 +169,100 @@ All four ISOs confirmed present on the Nova (`adb -s ee317437 shell ls
 /storage/E6C6-D7AA/Games/XBox/`): `4541007B-Need_for_Speed_Most_Wanted.xiso.iso`,
 `54540008-Midnight_Club_II.xiso.iso`, `4156001A-Fantastic_4.xiso.iso`, `Dino Crisis 3.iso`.
 
-## 6. Pilots (RESULTS_PLACEHOLDER)
+## 6. Pilots: four queued by attempt 1, reviewed this session
 
-TABLE_PLACEHOLDER
+All four pilots used the route's own mark-gameplay elapsed + ~60-90 s margin, no
+`--perflog`/GPUXFR/FRAMETRACE, `--no-expect "route pilot, not a measurement"`, per
+the brief's pilot rule. All four landed `DONE`, no crash tag, no thermal pause
+(`thermal.jsonl` `pause: false` throughout; hottest zone 88-95 C, all CPU-junction
+zones, nowhere near the dispatcher's 70 C `xo-therm` pause point).
+
+| request id | title | seconds | verdict (frames read) |
+|---|---|---|---|
+| `1-1791547117-fpstelemetry1008b-1711214` | NFS Most Wanted | 290 | **GOOD** — live driving |
+| `1-1791547136-fpstelemetry1008b-1711839` | Fantastic 4 | 245 | **GOOD** — stays in gameplay |
+| `1-1791547135-fpstelemetry1008b-1711744` | Midnight Club II | 548 | **BAD** — car never moves |
+| `1-1791547138-fpstelemetry1008b-1711978` | Dino Crisis 3 | 268 | **BAD** — player never moves |
+
+**NFS Most Wanted — good.** First confirmed gameplay frame (`050247-s17-gameplay`,
+HUD "Race HUD... player-controlled car") already shows a moving scene (FPS:20).
+The two frames inside the genre-loop hold, 35 s apart (`050336-gameplay` and
+`050411-hold`), show the race HUD's own progress fields climbing: lap complete
+61%→64%, distance +945 FT→+3,335 FT, elapsed 1:42.88→2:22.92, speedometer
+non-zero in both. **This directly refutes the high-risk flag written before
+piloting (§2): the exact `RT:2, RT+left:0.8, RT+right:0.8` neutral-first sequence
+this route plays — untried by the source pathfind session, which only tried
+`RT+left`/`RT+right` paired with a held `LT` — does drive the car.** The
+combo-token fix (§1) produces a genuinely working route for this title.
+
+**Fantastic 4 — good, and the `--hold-log` fix is confirmed, not just plausible.**
+First gameplay frame (`051804-s21-gameplay`, HP 100/100) matches lane A's own mark
+point. The next two frames, 6 s and 51 s later (`051810-gameplay` HP 100/85,
+`051855-hold-0044` HP 100/9), stay in the **same** gameplay scene (identical
+camera framing, same "Von Doom" structure, same falling pose) — HP falls as the
+character takes damage, but the screen never cuts to a cutscene the way lane A's
+genre-loop route did at a comparable elapsed time (~76 s post-mark). Replaying
+the source run's own recorded `START`/`A` skip presses (§3) is doing what it was
+meant to do. (HP reaching 9/100 by the last frame is itself unremarkable — the
+source `hold.jsonl` this is a literal replay of is the same run whose own
+`game_over`→`A`-dismiss cycle this route's later rows reproduce; a near-death
+reading mid-cycle is expected, not a sign of a stuck run.)
+
+**Midnight Club II — bad, route/input defect, not an fps measurement.** The
+first gameplay-marked frame (`050721-s14-gameplay`) and the last hold frame
+(`051359-gameplay`, 638 s later — nearly the entire pilot) are visually
+indistinguishable: same camera angle, same two cars (player's white sedan,
+parked tan sedan ahead), same on-screen "Click Left Thumbstick To Flash Beams"
+prompt, speedometer **000 in gear N** in every frame checked across the window
+(`050721`, `051000`, `051359`). The car never moves. This is exactly the outcome
+flagged before spending device time on it (§2): this pathfind session's own
+29-step search for *any* input that moved the car never succeeded, including
+every combo-token pairing it tried — and the one untried combination (the clean
+`RT:2, RT+left:0.8, RT+right:0.8` sequence, same as NFS MW's) also does not move
+this title's car. **Conclusion: Midnight Club II's stall is not a
+`steps2route.py` encoding gap (§1 already fixed that) — it is a route/input
+defect in the source pathfind session itself** (wrong vehicle state, parking
+brake, a blocked ignition sequence, or similar), which this lane's territory
+does not include fixing. No full telemetry run queued; recorded here as the
+result per the brief's "a bad pilot is a result" instruction.
+
+**Dino Crisis 3 — bad, route/input defect, not an fps measurement.** The pilot's
+60 s post-mark margin produced only three captured frames in the time before the
+hold ended (`052307-s23-gameplay`, `052311-gameplay` 4 s later, `052317-hold-0004`
+6 s after that — the window is short because `--gameplay 23` marks late in a
+268 s pilot), but all three are pixel-identical in composition: same two
+characters in the same standing pose, same camera, same corridor, only the FPS
+counter changes (26→30→29). No movement in the only window this pilot captured.
+This matches the brief's framing for this title ("shooter loop does not move the
+player") even though §4 found the *source* `hold.jsonl`'s own recorded play_share
+was 79% (a correction to the stored route's registry citation, not this regen) —
+**replaying that same recorded hold data did not reproduce movement in this
+pilot's short observed window**, so whatever let the original session's play_share
+read 79% is not visible in the first ~10 s after this replay's own gameplay mark.
+Per the brief's explicit instruction for this title ("if the pilot is not live
+gameplay, record the defect and stop"): no full run queued, no second attempt.
+
+**Pilot-gate verdict written** to `/home/justin/hakux-work/dispatch/pilots/
+fpstelemetry1008b.ok` (via `python3`, §0) so the 30-minute pilot ceiling no longer
+applies to this lane's remaining requests.
+
+## 7. Full telemetry runs queued (the two pilots that cleared)
+
+Both via `docs/testing/request.sh --perflog --env HAKUX_GPUXFR=1 --env
+HAKUX_FRAMETRACE=1 --device nova --no-expect "telemetry, not an A/B arm"
+--priority study --issue 433 --wait`, ref HEAD (post-5c35880d0a, so GPU stamp
+figures are reliable), `--seconds` set to each route's own "route ends ~N s after
+launch" comment (§2's generated figure) with no extra margin (the route already
+ends on a `repeat`/hold-log boundary):
+
+- NFS Most Wanted (4541007B), route `nfs-mw`, `--seconds 600` (route ends ~595 s).
+- Fantastic 4 (4156001A), route `fantastic4`, `--seconds 940` (route ends ~934 s).
+
+Both requests launched in the background from this session (Bash tool
+`run_in_background`, not a detached/nohup process outside the harness) so this
+session stays live to receive their completion notifications. `nfs-mw.route` and
+`fantastic4.route` are kept in `docs/testing/titles/routes/` until each request is
+confirmed `DONE` (untracked, never `git add`). `mc2.route` and
+`dino-crisis-3-regen.route` were deleted after §6's review — both titles are done
+with (bad pilot, no further run planned), matching the brief's "delete the file"
+instruction for a route this lane has no further queueing use for.
