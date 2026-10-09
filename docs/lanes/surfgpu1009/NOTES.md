@@ -305,3 +305,65 @@ Pilot (two requests, 2 x (500 + 90) s = 19.7 min, under the 30-min gate):
 | A NBA 05 | `1-1791586172-surfgpu1009-381687` | GPUXFR, FRAMETRACE |
 
 `prequeue.py "NBA Live 2005"` printed only the exempt fps-bar BLOCK.
+
+### 7.1 NBA Live 2005 pilot: every scored leg PASS
+
+`sg_judge.py --expect surfgpu1009-nba2005-soak.json --a ...381687 --b
+...381463 --floor 1-1791525926-fpstelemetry1008-4089047`. Same apk
+6257c859de70 in both arms. B ran first on a cleared shader cache, A kept it.
+Neither arm had a thermal pause. `[surfgpu] on` appears in B only.
+
+| post-mark | A (flag off) | B (HAKUX_SURFGPU=1) | rule |
+|---|---|---|---|
+| gfps | 25.25 | **43.00** | P4 gain >= 1.5: +17.75 |
+| ph_Fin ms/frame | 12.80 | 2.80 | P3 drop >= 8.0: 10.00 |
+| ph_Tot (render thread) | 29.10 | 12.90 | |
+| ph_GPU | 9.80 | 14.00 | not scored, see below |
+| F (frame period, ms) | 39.61 | 23.25 | |
+| gbusy / gidle (guest, ms/frame) | 19.22 / 21.38 | 21.99 / 1.42 | |
+| vcpu load % | 57.22 | 90.26 | |
+| `reuse` wait ms/flip | 11.84 (fin 1.00/flip) | 0.00 | P0 >= 8.0, P1 <= 1.0 |
+| `record` wait ms/flip | 0.01 | 0.21 (pre 1.00/flip) | the residual |
+| all `[sdcall]` waits ms/flip | 11.85 | 0.22 | P2 ratio <= 0.5: 0.02 |
+| `[surfgpu]` detach / nodisp per flip | - | 1.00 / 0.50 | P1 detach >= 0.9 |
+| `spl=` up / dl / cmpl per flip | 0 / 0 / 0 | 1.00 / 2.00 / 0.00 | |
+
+The n column is 143 (A) and 138 (B) decompose rows of 2 s each, and 116
+(A) and 200 (B) post-mark `[sdcall]` windows. surfdl1008's
+`postmark_sdsurvey.py` reads the same: A sd/flip 1.00 with `reuse`
+11.84 ms/frame, B sd/flip 0.00 with `record` 0.21.
+
+- **Moving player, from the hold frames.** Both arms are a live game after
+  the mark, minutes apart.
+  - B: clock 11:00 -> 10:25 -> 9:37, DET 4 -> 9 -> 14, players in new
+    places each frame. The Pistons splash in two holds is the game's
+    transition after a basket.
+  - A: 10:55 -> 9:56, 3 -> 8.
+  - The game clock is frame-locked. B advanced 83 game-seconds in 144 s
+    of wall time, A 59 in 143.
+- **The wait is gone, and the frame is now the guest's.** The render
+  thread is at 12.9 ms of a 23.25 ms frame, and the guest idles 1.42 ms a
+  frame (21.38 in A) at 90% vCPU load. NBA 05's next limiter is guest CPU
+  work, about 22 ms/frame, not surface downloads.
+- **ph_GPU +4.2 ms/frame is not attributed.** This instrument cannot split
+  it: GPU clocks read the same range in both arms (401-615 MHz), and the
+  splice adds about 1.46 MB/frame of buffer copies, which is well under a
+  millisecond of bandwidth. It does not limit the frame (ph_Tot 12.9 < F
+  23.25).
+- **Pixels, route frames.** Regions B vs A are the same order as A vs the
+  older flag-off run on every step (menus, cutscenes and gameplay differ by
+  timing in both). The only static-screen difference (s02-s04, 0.2-0.3%,
+  x 879-1071 y 85-110) is the title screen's pulsing PRESS START. The
+  floor's s03 differs in the same strip. By eye, B's gameplay frames show
+  the court reflection, shadows, crowd, scoreboard and HUD with no stale
+  or garbled surface. Route frames cannot test a guest readback exactly;
+  the disc golden below does.
+
+Pilot verdict written to `pilots/surfgpu1009.ok`. Queued next, B first
+in each pair:
+
+| arm | request |
+|---|---|
+| golden B / A | `1-1791588861-surfgpu1009-610569` / `-610665` |
+| NBA 06 B / A (460 s, nbalive06) | `1-1791588869-surfgpu1009-611883` / `-612026` |
+| NBA 07 B / A (480 s, nbalive07) | `1-1791588870-surfgpu1009-612141` / `1-1791588871-surfgpu1009-612271` |
