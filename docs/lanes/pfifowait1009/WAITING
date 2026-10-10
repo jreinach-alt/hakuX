@@ -1,9 +1,0 @@
-# pfifowait1009: brief step 5 scored A/B arms, queued 2026-10-10 ~09:17 PDT
-# pgraph disc leg (pfifowait1009-pgraph-inert.json)
-run 1-1791622671-pfifowait1009-332891
-run 1-1791622678-pfifowait1009-333205
-# amped2 soak leg (pfifowait1009-amped2-soak.json), 2 runs per arm
-run 1-1791622681-pfifowait1009-333368
-run 1-1791622686-pfifowait1009-333514
-run 1-1791622691-pfifowait1009-333706
-run 1-1791622692-pfifowait1009-333840

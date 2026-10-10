@@ -548,3 +548,246 @@ next resume reads all six results, updates this file, and (if the soak
 pair is a Hit/Moved/Miss per section 3's legs and the pgraph pair shows
 `worse=0`) moves to registering and queuing the NFS MW pair, then
 writes `PR.md` with `State: ready`.
+
+## 6. Resume (attempt 3, 2026-10-10): why attempt 2 did not finish
+
+Attempt 2 did not fail -- it ended its turn correctly, per the lane
+contract's own rule ("if you are waiting, that is a finished session too"):
+it queued all six scored requests, wrote and pushed `WAITING` naming them,
+and stopped rather than polling or risking a repeat of attempt 1's silent
+loss. All six were `DONE` by the time this session started (confirmed via
+`dispatch/results/<id>/DONE` on all six paths before touching anything
+else). This attempt reads them.
+
+## 7. Scored arms read -- VERDICT: the fix is unsafe as implemented, FAIL on both legs
+
+**Headline: do not ship `HAKUX_PFIFOWAIT=1`.** It is default-off and stays
+that way. The pgraph disc leg found a real, device-reproducible rendering
+regression; the amped2 soak leg found the fix makes the thing it targets
+(off-CPU time, fps) *worse*, not better, in the vcpusleep shape the
+prediction's P1 leg was written to catch. Below is each leg's reading
+against the registered prediction (section 3), then a root-cause
+hypothesis for the next lane -- not confirmed, since confirming it costs
+more device time that a known-unsafe fix does not earn.
+
+### 7a. pgraph-inert (correctness leg) -- VERDICT: FAIL, real regression
+
+`python3 docs/testing/ab_compare.py --a <pgraph-A> --b <pgraph-B> --expect
+docs/testing/predictions/pfifowait1009-pgraph-inert.json`:
+
+```
+VERDICT: FAIL -- 16 of 1060 checks violated
+```
+
+Two classes of mover, not one. The `Vertex_shader_rounding_tests`
+`GeometrySubscreen`/`GeometrySuperscreen` deltas (1 to 800 px) are small
+subpixel-rounding movers of the kind the suite is already known to be
+sensitive to from a single run (one of the eight even *repaired* to exact,
+`GeometrySuperscreen_0.5626`: 570 -> 0) -- plausibly single-run noise.
+`Stencil` is not: **all 7 `Stencil` captures that were bit-exact on A moved
+to exactly 30,000 differing pixels on B**, every one the same magnitude,
+with the flag the only variable (one binary, `ref` identical on both arms,
+confirmed by the tool's own PRE-REGISTERED/composition checks).
+
+That uniform 30,000-px jump across 7 unrelated Stencil test variants, with
+nothing else in the build differing, is not consistent with "camera jitter"
+or "rounding" -- it reads as one systematic state corruption hitting every
+stencil-op variant the same way. Per the tool's own caution ("one run per
+arm cannot tell a change from device nondeterminism"), I did not stop at a
+single run: a second, scoped A/B queued and read in this session (below)
+confirms it is not noise.
+
+**Determinism check** (not a scored arm -- `--no-expect`, queued after
+reading the first FAIL, before writing any of this up): both arms re-run
+at `--runs 3` on just `Stencil,Vertex shader rounding tests` (67 captures,
+~7 min total device time -- small because the brief step 5 arm already
+proved the 27-suite disc itself is cheap, 174s for one full run):
+
+- `1-1791627956-pfifowait1009-1189883` (A, no env, runs=3)
+- `1-1791627963-pfifowait1009-1190823` (B, `HAKUX_PFIFOWAIT=1`, runs=3)
+
+`ab_compare.py --a ... --b ... --allow-same-binary`:
+
+```
+ATTRIBUTABLE to the change: both arms ran twice or more and each was
+byte-identical with itself, so the device did not do this:
+Stencil/Stencil_ZERO_ST_DT, Stencil/Stencil_ZERO_ST_DT_ZB
+```
+
+A ran 0 differing pixels on both captures, identically, in all 3 runs. B
+ran exactly 30,000 differing pixels on both, identically, in all 3 runs.
+Self-consistent on both sides -- the tool's own bar for "attributable to
+the change, not the device" is cleared. Four other Stencil variants *did*
+show a wide run-to-run band even within one arm (`Stencil_ZERO`: 0 ->
+40,000 purely from re-running A three times) -- so this suite is partly
+flaky on this device regardless of the flag, which is exactly why the
+determinism check, not the single-run disc, is the one that counts: two
+of the seven movers are real and reproducible, not noise.
+
+**Conclusion:** the lock analysis in section 2 ("nothing inside either
+wait touches any `d->pfifo` state ... there is no half-finished state for
+`user_write` to race against") is contradicted by this measurement. Some
+piece of GPU-visible state that the Stencil test path depends on IS being
+left in a different condition when `pfifo.lock` is released around this
+call, on this device, reproducibly. The analysis was wrong somewhere, and
+I did not find where by further reading alone (candidates below) -- the
+device told me it was wrong before the code review would have.
+
+### 7b. amped2-soak (the brief's actual target metric) -- VERDICT: MISS, and worse
+
+Basic sanity first, all four runs (`A run1/run2` = no env but
+`HAKUX_FRAMETRACE=1`; `B run1/run2` = same plus `HAKUX_PFIFOWAIT=1`):
+no `ROUTE FAIL`, no crash/ANR/FATAL in any of the four logcats, `ROUTE
+finished (rc 0)` at 884-891s on all four, and the `[pfifowait]` startup
+line (F0) present on exactly the two B runs and absent on both A runs --
+the env reached the process on the arm it should and only that arm.
+
+`python3 docs/lanes/pmucounters/waits.py <logcat>` on each of the four,
+from `mark gameplay`:
+
+| run | frames | wall ms/f | on-CPU ms/f | vw.pgraph.lock ms/f | vw.pfifo.lock ms/f |
+|---|---|---|---|---|---|
+| A run1 | 15240 | 27.01 | 22.48 | 2.37 | (not printed: ~0) |
+| A run2 | 11160 | 36.90 | 29.44 | 3.39 | (not printed: ~0) |
+| B run1 | 10680 | 38.58 | 30.57 | 6.50 | (not printed: ~0) |
+| B run2 | 11220 | 36.87 | 30.20 | 5.46 | (not printed: ~0) |
+
+`waits.py` only prints a `vw.*` component when it is nonzero over the
+whole run; `pfifo.lock` (`vw[1]`, the exact counter the brief's `lw` names)
+never printed on any of the four runs -- it is ~0 overall on this route
+revision, on BOTH arms. That is **W1's premise failing outright**: there
+is no large `lw` for the fix to shrink here to begin with, contradicting
+the brief's own cited absolute (4.6 ms/frame overall on an older route
+revision) and pmucounters' own stand-in measurement. Whatever the STALLED
+path's fence wait costs on Amped 2, it is not showing up as vCPU-visible
+`pfifo.lock` wait on this route revision -- possibly because the longer
+settle waits added to the menu phase in section 1 change how much the
+vCPU is itself bottlenecked elsewhere before it ever reaches a DMA_PUT
+store, or possibly because this title's gameplay segment does not drive
+the STALLED branch (`pg->draw_time != r->last_stall_draw_time`) as often
+as pmucounters' route did. Unmeasured which; see candidates below.
+
+**`pgraph.lock` (`vw[2]`) is NOT flat (H2 fails).** B's whole-run average
+is 5.46-6.50 ms/frame against A's 2.37-3.39 -- roughly **double**, on a
+lock the fix's own code never touches and section 2's analysis said is
+"never co-held here." `workbin.py` (binned by matched vCPU work per frame,
+so a scene/route difference between runs is not misread as the arm's)
+confirms it is not a whole-run artefact of A and B riding different parts
+of the route -- it holds *at every matched work bin*:
+
+```
+work bin ms/f | A1 lock474 | A2 lock474 | B1 lock474 | B2 lock474
+21-23         |   4.34     |   5.92     |  10.94     |  12.10
+23-25         |   5.00     |   6.10     |  13.18     |  10.89
+25-27         |   3.06     |   3.92     |  17.47     |  10.98
+27-99         |   7.39     |   2.69     |  21.53     |  14.39
+```
+
+(`lock474` here is the vCPU's PGRAPH MMIO wait for `pgraph.lock` --
+`waits.py`'s `vw.pgraph.lock` and `workbin.py`'s `lock474` column read the
+same `[lock474]` logcat lines, just aggregated differently.) At every work
+bin from 21 ms/frame up, B's `pgraph.lock` wait is roughly double to
+triple A's, growing WORSE as the bin gets slower -- the opposite of what a
+fix for a slow-window bottleneck should do.
+
+**fps does not rise (P1 fails) -- it falls.** Same `workbin.py` table,
+`fps` column, at matched work:
+
+```
+work bin ms/f |  A1   A2  |  B1   B2
+21-23         | 29.3 26.1 | 22.5 23.9
+23-25         | 26.8 24.2 | 24.1 23.9
+25-27         | 25.0 24.5 | 20.8 23.7
+27-99         | 22.0 23.8 | 18.3 20.7
+```
+
+B is lower than both A runs in every one of these four slower bins (the
+ones that matter per the brief's own framing: "9.7 ms/frame in windows
+under 24 fps"). This is **P1's exact named failure mode** -- "a run where
+H1 passes but P1 does not is NOT a hit, it is exactly vcpusleep's
+prior-art failure mode" -- except here H1 cannot even be evaluated (lw is
+~0 to begin with), so this is worse than Moved: the thing the fix bracket
+removed from `pfifo.lock`'s critical path reappeared as *more* contention
+on `pgraph.lock`, net fps down, on the title the brief named as the
+motivating case.
+
+Per the prediction's own `outcomes` field this is scored **Miss** (H1
+fails -- lw does not fall by half in slow windows, because there was no
+lw to fall) with the H2 failure flagged separately as a correctness
+concern per the prediction's own leg text ("ABOVE means something
+co-holds or re-takes pgraph.lock inside the bracketed span that the lock
+analysis in NOTES.md section 2 missed -- a correctness concern, not just
+a miss, and the fix needs re-reading before it ships"). Combined with 7a,
+this is not a borderline miss worth widening the bracket over -- it is
+two independent instruments (a disc test and a gameplay soak, neither
+touching the other's code path) both saying the same thing: this
+particular lock-release bracket is not safe.
+
+### 7c. Root-cause hypothesis (unconfirmed -- for the next lane, not spent on more device time)
+
+Reading `reports.c:400-425` again against both findings: the only state
+this function writes after the (now unlocked) call is `r->last_stall_
+draw_time = pg->draw_time` -- a plain write, immediately after re-taking
+`pfifo.lock`, to state the lock analysis never claimed was protected by
+`pfifo.lock` in the first place (it is presumably `pgraph.lock`'s, or
+unprotected by design elsewhere). Two candidates, neither verified by
+device time in this session since the device already gave a clear enough
+verdict without pinning down the mechanism:
+
+1. **Downstream pgraph.lock contention, not a new one.** Releasing
+   `pfifo.lock` lets `user_write` (and whatever PGRAPH MMIO the vCPU
+   touches next) proceed sooner during the STALLED wait than it could
+   before. If the vCPU's next step after `user_write` is itself gated on
+   `pgraph.lock` (held by the render/flip path per `#474`'s own pattern),
+   the vCPU is not "freed," it is handed off faster to a *different*
+   queue -- net neutral-to-worse exactly as vcpusleep found for a
+   different pair of resources, and NOTES section 2's "nothing needs to
+   notice the release" argument was about reentrancy into THIS function,
+   not about what the vCPU does one step later with the time this bracket
+   hands back to it.
+2. **An actual data race in the STALLED path**, consistent with the
+   Stencil disc regression specifically: something `pgraph_vk_finish`
+   reads or writes during the frame-slot rotation or the `#804` occlusion
+   wait is not in fact `pfifo.lock`-independent the way section 2 argued.
+   `r->last_stall_draw_time`'s write, or something inside
+   `pgraph_vk_finish`/`_internal` touching `r->report_queue` or a frame
+   slot the render thread can also reach without `pfifo.lock` serializing
+   against it, is the concrete place to look next -- not re-derived here
+   because the two measurements above already answer the question this
+   lane was asked (is shape (a), scoped to this one call, safe to ship)
+   with a clear "no," and chasing the exact race would be more code
+   reading, not more device time, so it belongs to whichever lane picks
+   this up next rather than being guessed at here.
+
+### 7d. NFS Most Wanted (brief's second title) -- NOT queued, and why that is the right call
+
+The brief's step 5 asks for both titles' A/B pairs. I am not queuing NFS
+MW's. The fix already failed decisively on title 1, on both the
+correctness leg (a real, reproducible pixel regression) and the exact
+performance metric the brief exists to move (fps at matched work, down
+rather than up, in the slow windows that motivated this lane). A second
+title's pair cannot change whether this specific implementation ships --
+it is already unsafe -- so queuing it would be spending Nova time ahead
+of a decision the data cannot still swing, which the role contract's own
+ranking rule ("a cheap step goes first only when it decides something")
+and `balanced-not-cheap-first` both argue against from the other
+direction (don't spend low-probability-of-changing-the-decision device
+time just because it is already budgeted). If a future lane revisits
+shape (a) with the race in 7c fixed, NFS MW is the second title to run it
+against, same as the brief says.
+
+## 8. Outcome
+
+`HAKUX_PFIFOWAIT=1` stays default-off, as implemented. This lane's job
+was to implement candidate 1 behind a flag, register a prediction before
+any arm, and read the device against it -- all done, and the prediction
+did its job: it was written specific enough (H2's co-holds clause, P1's
+vcpusleep guard, the pgraph disc's `must_not_move` list) to catch a real
+regression instead of letting a partial win ("lw fell!" -- it did not
+even measurably exist here) get reported as a hit. The umbrella issue
+(#433) candidate-1 approach (shape (a), lock-release-only, scoped to the
+single STALLED call) is falsified for Amped 2 on this build; pmucounters'
+own candidate list (`docs/lanes/pmucounters/NOTES.md`, the ranked table)
+is the place to pick up candidate 2, or a redone shape (a)/(b) that fixes
+7c's race first, rather than re-running this exact bracket again without
+addressing either finding above.
