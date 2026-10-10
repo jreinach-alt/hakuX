@@ -8,10 +8,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `nfs30plan1010` | claude-fable-5-1 | 48 min | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and re |
+| `nfs30plan1010` | claude-fable-5-1 | 1h 3m | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and re |
+| `nfsframe1010` | claude-sonnet-5 | 1 min | NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `2026-10-10T16:56:41Z`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
 - **Device queue:** 10 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
@@ -73,7 +74,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/nfs30plan1010` | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation  | `0767c425c2` | 2026-10-10 09:48 |
+| `lane/nfs30plan1010` | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation  | `b4124f4a52` | 2026-10-10 10:10 |
+| `lane/nfsframe1010` | NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5) | `c6525f485e` | 2026-10-10 09:29 |
 
 ## Recently landed on master
 
@@ -87,4 +89,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 
-_Updated 2026-10-10 10:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 10:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
