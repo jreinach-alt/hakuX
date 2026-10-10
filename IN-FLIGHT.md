@@ -8,7 +8,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `drawrec1010` | claude-opus-5-5 | 33 min | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#43 |
+| `drawrec1010` | claude-opus-5-5 | 34 min | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#43 |
 | `texscan1010` | claude-opus-5-5 | 12 min | lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download |
 
 - **Handhelds:** 2 connected.
@@ -90,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 
-_Updated 2026-10-10 11:29 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 11:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
