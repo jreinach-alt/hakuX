@@ -6,12 +6,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `perdrawon1010` | claude-opus-5-5 | 6 min | Lane: perdrawon1010       Issue: #433 (umbrella), none filed |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 2 waiting, 1 running.
+- **Device queue:** 1 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -69,7 +71,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/perdrawon1010` | Lane: perdrawon1010       Issue: #433 (umbrella), none filed | `3757933cd4` | 2026-10-10 06:44 |
 
 ## Recently landed on master
 
@@ -81,4 +85,4 @@ No branch is being worked right now.
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 usagemode1009: usage Low is a read-time cap, re-evaluated every tick (#433)
 
-_Updated 2026-10-10 07:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 07:14 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
