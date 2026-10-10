@@ -997,6 +997,45 @@ static bool stall_reports_only(void)
     return on;
 }
 
+/*
+ * #433 (pfifowait1009): default off. When enabled, pfifo.lock is released
+ * across the STALLED finish below -- the frame-slot rotation wait inside
+ * pgraph_vk_finish (see the HAKUX_STALLFIN comment above: "the rotation
+ * waits for the slot two finishes back") and the #804 occlusion-query wait
+ * it tail-calls (pgraph_vk_process_pending_reports_internal, the
+ * vkWaitForFences/vkGetQueryPoolResults loop above) -- so a vCPU's
+ * DMA_PUT/DMA_GET/REF store (user_write, pfifo.lock held there too) does not
+ * queue behind either one. Neither wait touches d->pfifo state: the only
+ * pfifo.lock-protected reads this function makes are dma_get/dma_put just
+ * below, both taken before the lock is ever dropped. The guest still gets
+ * the same occlusion values; only what else may run while this function
+ * waits for them changes.
+ *
+ * This is NOT c2dfca18a1 (reverted f6ac723228, see the comment above): that
+ * fix freed the vCPU by posting its store instead, which let the vCPU race
+ * ahead into the guest's own busy-wait and starve this thread, moving the
+ * fence wait from 8 to 21 ms a frame with fps down. Here the vCPU still
+ * blocks in user_write -- only on pfifo.lock, which this thread is not
+ * otherwise using while parked in the finish -- so it cannot race ahead of
+ * where DMA_PUT says it is.
+ */
+static bool pfifowait_enabled(void)
+{
+    static int on = -1;
+    if (on < 0) {
+        const char *v = getenv("HAKUX_PFIFOWAIT");
+        on = v && !strcmp(v, "1");
+#ifdef __ANDROID__
+        if (on) {
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-vk",
+                                "[pfifowait] pfifo.lock released across "
+                                "STALLED finish");
+        }
+#endif
+    }
+    return on;
+}
+
 void pgraph_vk_process_pending_reports(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -1010,7 +1049,13 @@ void pgraph_vk_process_pending_reports(NV2AState *d)
             return;
         }
         if (pg->draw_time != r->last_stall_draw_time) {
-            pgraph_vk_finish(pg, VK_FINISH_REASON_STALLED);
+            if (pfifowait_enabled()) {
+                qemu_mutex_unlock(&d->pfifo.lock);
+                pgraph_vk_finish(pg, VK_FINISH_REASON_STALLED);
+                qemu_mutex_lock(&d->pfifo.lock);
+            } else {
+                pgraph_vk_finish(pg, VK_FINISH_REASON_STALLED);
+            }
             r->last_stall_draw_time = pg->draw_time;
         } else {
             OPT_STAT_INC(stall_batched);
