@@ -336,12 +336,53 @@ PASS.
 instrument the four-run file lacked -- HAKUX_UNI_BULK/_UBERCACHE/_FOGCACHE cut
 STATIC Draw us/draw by 1.70 (-15.2%) and (Pipe+Mfp)/draw by 1.66, with gfps
 unchanged at the 30 fps cap and pixels unchanged (XT). This closes job items
-4-6. Job item 7 (BF2/Spider-Man 2 generalisation via genread.py) is the one
-piece of the brief not run; PR.md says so and leaves it for whoever picks this
-up next, since the NFS result alone already clears job items 1-6 and the lane
-is otherwise done.
+4-6.
 
-## 11. What the next lane should not repeat
+## 12. The BF2 generalisation arm (job item 7)
+
+NFS won and pixels held, so job item 7 applies: one generalisation arm on a
+second draw-heavy title. genread.py (334904b9e7) was already written for
+this but never run.
+
+**Grounding the prediction instead of guessing a number.** `docs/lanes/bf2stall433/NOTES.md`
+(folded, this tree) sized BF2's own known heavy-view cost: 12-14 us/draw, and
+section 1/7 there found it is GPU-side serialization from the per-draw UBO
+rebind, not CPU uniform-copy time -- there is no per-draw barrier, event wait
+or render-pass split on master, and "the draws are serialized" on the GPU.
+`docs/lanes/bf2push656/NOTES.md` section 5 then built the fix that budget
+predicts (push constants, halving UBO binds/draw, 0.916 -> 0.453) and its
+heavy-view GPU ms did NOT move (38.3 -> 42.3 ms, P1 REFUTED): BF2's heavy
+view is GPU-bound, so a CPU/driver-side fix there does not show as GPU ms or
+fps. This lane's fix is exactly that kind of fix -- CPU time inside
+`pgraph_vk_update_shader_uniforms` (memcpy, cached uber constants, cached fog
+string) -- so the generalisation question is whether it moves genread.py's
+CPU-side "med us/draw", not whether it moves BF2's fps. Registered
+`docs/testing/predictions/perdraw1009-bf2-gen.json` (commit 62e4491ef6,
+sha256 32999ceee794cf74e15dd11313a95c7f09f33d95bb4484781e3253ee6d095e09)
+against `a_ref`/`b_ref` 9cf824802e (this branch, after the toggle-read
+commit): point prediction GAME median us/draw B-A in [-3.0, -0.3] (genread's
+own built-in defaults, which already matched this reasoning), (Pipe+Mfp)/draw
+B-A <= -0.3, no heavy-row gfps regression (>= -1.0), no requirement either way
+on heavy-row gfps improving (GPU-bound). One build (switches are env-gated,
+default off), A = no env, B = the three switches =1, route bf2mc, 420 s,
+`--perflog --device nova`. Queued:
+
+| arm | request |
+|---|---|
+| A | 1-1791620320-perdraw1009-3885164 |
+| B | 1-1791620323-perdraw1009-3885931 |
+
+`docs/lanes/perdraw1009/WAITING` carries both ids. When they land: `python3
+docs/lanes/perdraw1009/genread.py --a 1-...-3885164 --b 1-...-3885931 --expect
+docs/testing/predictions/perdraw1009-bf2-gen.json --sheet <out>.png`, read the
+sheet and every leg (same discipline as section 10), update this section with
+the result, update PR.md, and only then mark the PR ready. A G1 pass with G4
+flat is the generalisation result job item 7 asks for; a G1 fail means the
+NFS win is specific to NFS's uniform mix (worth knowing, not a reason to
+touch anything else) and should be written up as such, not retried with a
+different band.
+
+## 13. What the next lane should not repeat
 
 - Do not read pfifo_thread's self time as renderer work: 87.5% of it is perflog
   clock reads.

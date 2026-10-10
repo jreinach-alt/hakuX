@@ -4,8 +4,8 @@ State: draft
 
 Lane: perdraw1009          Issue: none (#433 umbrella)
 Base: master @ 3f6762f180
-Files: hw/xbox/nv2a/pgraph/vk/shaders.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/testing/titles/routes/nfs-mw.route, docs/testing/predictions/perdraw1009-nfs-soak.json, docs/testing/predictions/perdraw1009-nfs-toggle.json, docs/lanes/perdraw1009/NOTES.md, docs/lanes/perdraw1009/OUTBOX.md, docs/lanes/perdraw1009/PR.md, docs/lanes/perdraw1009/WAITING, docs/lanes/perdraw1009/armread.py, docs/lanes/perdraw1009/genread.py, docs/lanes/perdraw1009/togread.py, docs/lanes/perdraw1009/bulkcheck.sh, docs/lanes/perdraw1009/prof_tree.py
-Prediction: docs/testing/predictions/perdraw1009-nfs-toggle.json @ 482fc384aa29445f981bacd6cd7171c9684b6ff4cd8b8e61c4e8e76b206fe840 (supersedes perdraw1009-nfs-soak.json @ b1ee6d91fc5d6477ba737905abe2057af741d806fe49894ad1ad193f96f46641 -- see table below)
+Files: hw/xbox/nv2a/pgraph/vk/shaders.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/testing/titles/routes/nfs-mw.route, docs/testing/predictions/perdraw1009-nfs-soak.json, docs/testing/predictions/perdraw1009-nfs-toggle.json, docs/testing/predictions/perdraw1009-bf2-gen.json, docs/lanes/perdraw1009/NOTES.md, docs/lanes/perdraw1009/OUTBOX.md, docs/lanes/perdraw1009/PR.md, docs/lanes/perdraw1009/WAITING, docs/lanes/perdraw1009/armread.py, docs/lanes/perdraw1009/genread.py, docs/lanes/perdraw1009/togread.py, docs/lanes/perdraw1009/bulkcheck.sh, docs/lanes/perdraw1009/prof_tree.py
+Prediction: docs/testing/predictions/perdraw1009-nfs-toggle.json @ 482fc384aa29445f981bacd6cd7171c9684b6ff4cd8b8e61c4e8e76b206fe840 (supersedes perdraw1009-nfs-soak.json @ b1ee6d91fc5d6477ba737905abe2057af741d806fe49894ad1ad193f96f46641 -- see table below); docs/testing/predictions/perdraw1009-bf2-gen.json @ 32999ceee794cf74e15dd11313a95c7f09f33d95bb4484781e3253ee6d095e09 (generalisation arm, job item 7, pending)
 Needs device: yes (Nova only)    Needs NDK: yes
 
 Release note (none): three opt-in per-draw uniform switches (HAKUX_UNI_BULK, HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE), off by default; the perflog ubosz counter now needs HAKUX_UBOSZ_LOG=1
@@ -54,8 +54,20 @@ supersedes perdraw1009-nfs-soak.json's X leg for the reason above.
 
 | run | result |
 |---|---|
-| 1-1791618767-perdraw1009-3415447 | pending |
+| 1-1791618767-perdraw1009-3415447 | all six legs PASS: STATIC Draw us/draw on-off -1.70 (-15.2%), (Pipe+Mfp)/draw -1.66, gfps +0.00 at the 30 fps cap, pixels unchanged (XT excess -2 of a +8 budget) |
 
-NOTES.md section 10 has the toggle design and will carry the verdict.
+NOTES.md section 10 has the full toggle read. **Job items 1-6 are closed by
+this result.**
+
+Job item 7 (generalisation, since NFS won and pixels held): one A/B on
+Battlefield 2 MC, registered as perdraw1009-bf2-gen.json, grounded on
+bf2stall433/bf2push656's own findings that BF2's heavy view is GPU-bound and
+this CPU-side fix should show in genread.py's CPU "med us/draw" without
+moving heavy-row fps (NOTES.md section 12).
+
+| arm | request | result |
+|---|---|---|
+| A | 1-1791620320-perdraw1009-3885164 | pending |
+| B | 1-1791620323-perdraw1009-3885931 | pending |
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
