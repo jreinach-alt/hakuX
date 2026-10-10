@@ -1792,6 +1792,20 @@ static int uni_bulk_enabled = -1;
 static int uni_ubercache_enabled = -1;
 static int uni_fogcache_enabled = -1;
 
+/*
+ * HAKUX_UNI_TOGGLE=<seconds>, an A/B instrument: all three switches follow
+ * a square wave of that half-period (off, on, off, ...) and each change is
+ * logged as `[perdraw433] phase=<0|1>`. One run then measures both states
+ * in the same scene, which separate runs of a raced route do not reach
+ * (NFS MW's cars stop against a different wall run to run). Safe to flip
+ * mid-run: the vsh_cache entries are pure functions of the binding's state
+ * and are invalidated by entry_init whatever the switch, and the bulk copy
+ * writes the same bytes as the loop.
+ */
+static int64_t uni_toggle_us;
+static int uni_toggle_phase = -1;
+static unsigned uni_toggle_tick;
+
 static int perdraw_env_flag(const char *name)
 {
     const char *e = getenv(name);
@@ -1800,17 +1814,32 @@ static int perdraw_env_flag(const char *name)
 
 static void perdraw_flags_init(void)
 {
-    if (uni_bulk_enabled >= 0) {
-        return;
+    if (uni_bulk_enabled < 0) {
+        uni_bulk_enabled = perdraw_env_flag("HAKUX_UNI_BULK");
+        uni_ubercache_enabled = perdraw_env_flag("HAKUX_UNI_UBERCACHE");
+        uni_fogcache_enabled = perdraw_env_flag("HAKUX_UNI_FOGCACHE");
+        const char *t = getenv("HAKUX_UNI_TOGGLE");
+        uni_toggle_us = t ? (int64_t)(atof(t) * 1e6) : 0;
+        if (uni_toggle_us < 100000) {
+            uni_toggle_us = 0;
+        }
+        /* Once per process, whatever the values: an env A/B's arms share
+         * one binary, and the env pref outlives the request that set it, so
+         * this line is what says which arm a logcat is. */
+        UBER_LOG("[perdraw433] bulk=%d ubercache=%d fogcache=%d toggle_ms=%d",
+                 uni_bulk_enabled, uni_ubercache_enabled, uni_fogcache_enabled,
+                 (int)(uni_toggle_us / 1000));
     }
-    uni_bulk_enabled = perdraw_env_flag("HAKUX_UNI_BULK");
-    uni_ubercache_enabled = perdraw_env_flag("HAKUX_UNI_UBERCACHE");
-    uni_fogcache_enabled = perdraw_env_flag("HAKUX_UNI_FOGCACHE");
-    /* Once per process, whatever the values: an env A/B's arms share one
-     * binary, and the env pref outlives the request that set it, so this
-     * line is what says which arm a logcat is. */
-    UBER_LOG("[perdraw433] bulk=%d ubercache=%d fogcache=%d",
-             uni_bulk_enabled, uni_ubercache_enabled, uni_fogcache_enabled);
+    if (uni_toggle_us && (uni_toggle_tick++ & 31) == 0) {
+        int phase = (int)((g_get_monotonic_time() / uni_toggle_us) & 1);
+        if (phase != uni_toggle_phase) {
+            uni_toggle_phase = phase;
+            uni_bulk_enabled = phase;
+            uni_ubercache_enabled = phase;
+            uni_fogcache_enabled = phase;
+            UBER_LOG("[perdraw433] phase=%d", phase);
+        }
+    }
 }
 
 /* uniform_copy (glsl.h) for one element, with the size a constant the
