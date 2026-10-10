@@ -1,0 +1,33 @@
+{
+  "registered_utc": "2026-10-10T14:59:11Z",
+  "who": "lane.perdrawon1010",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "route": "nfs-mw-quickrace",
+  "device": "nova",
+  "seconds": 500,
+  "a_ref": "4ad1154e5528eb51455f8de1a597575a543216fb",
+  "b_ref": "4ad1154e5528eb51455f8de1a597575a543216fb",
+  "a_env": [
+    "HAKUX_UNI_TOGGLE=4"
+  ],
+  "b_env": [
+    "HAKUX_UNI_TOGGLE=4"
+  ],
+  "runs_per_arm": 1,
+  "queue_order": "(1) THE JUDGED SET: three identical toggled requests, request.sh --who perdrawon1010 --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw-quickrace --seconds 500 --ref 4ad1154e55 --perflog --device nova --expect docs/testing/predictions/perdrawon1010-racestart.json --env HAKUX_UNI_TOGGLE=4, both states read from inside each run, 12 race starts per run. (2) THE CROSS-CHECK AND ENERGY SET: four fixed-state requests on the same route, ref and seconds, in the order off, on, on, off (off = no env, the shipped default; on = --env HAKUX_UNI_BULK=1 --env HAKUX_UNI_UBERCACHE=1 --env HAKUX_UNI_FOGCACHE=1), because the second arm of a pair inherits the first's shader cache; read with the same legs by the same reader, and for energy with title_verdict.py's power block (j_per_frame), which needs a whole run in one state since the thermal samples come ~every 26 s and a 4-s toggle cannot be split between them.",
+  "judge": "python3 docs/lanes/perdrawon1010/startread.py <T1> <T2> <T3> --expect docs/testing/predictions/perdrawon1010-racestart.json (the judged set); the same command over <OFF1> <ON1> <ON2> <OFF2> is the cross-check, legs read the same way. Rows, flips and the pure-row rule come from perdraw1009's togread.py/armread.py at a_ref via `git show`. Window: mark + 1.5 .. mark + 12.0 device seconds, the route writing each mark ~1.5 s before GO (pass 3's frames: GO ~4.1 s after a restart's OK, ~21 s after the first start's transmission A). Bins 1100/1400/1700 draws/frame.",
+  "prediction": "#433 perdrawon1010, the race start the owner asked about on 10-10 (\"the FPS drops are in the first few seconds of the race when other cars are on scene\"): Quick Race, Sprint, Diamond & Union, 2 opponents (3 racers), Fiat Grande Punto, RT held from before GO, 12 starts per boot by STANDINGS -> Restart. Pass 3's one valid start (1-1791643217-perdrawon1010-95991) ran ~1,900-2,000 draws/frame at 13-14 fps across the countdown and GO, falling to 1,500 (20 fps) by GO+4, 900 (25 fps) by GO+7 and 500 (29 fps) by GO+9 as the two opponents pull away from the Punto. MODEL: the switches remove a fixed per-draw cost (-1.70 us/draw parked, perdraw1009; -2.01 us/draw over the prologue, this lane's attempt 3), i.e. ~3-4 ms of renderer time per frame at 1,400-2,000 draws; but the prologue's ~2,100-draw multi-car cutscene lost ~6 ms/frame of renderer time with no fps change, and lane.local's 10-09 profile put the renderer at ~27 ms of a ~64 ms frame at the 3-racer start, so the renderer is not the whole frame there and most of the cut should not reach fps. LEGS. V: every run has its 12 marks (V_min_starts), finishes its route, no fatal line, no thermal pause from 60 s before the first mark to the last window's end, toggle_ms 4000 for the toggled set (V_toggle_ms) or one fixed state per run for the cross-check, one apk. S1: matched-work (bin-weighted) us/draw on-off in [-4.0, 0.0]. S2: matched-work gfps on-off in [-1.0, +2.0]: the start's fps moves by at most ~2 fps either way, a gain above +2.0 would falsify the model above (the renderer would then be the frame at the start). S3: at least 10 pure rows per state. S4: with the switches ON, gfps over the first 10 s after GO stays below 28: the start does NOT hold 28-30 fps with the switches on. ENERGY (telemetry, reported not judged): j_per_frame per fixed-state run; below the cap the guest makes more frames when the frame gets cheaper, so any change is expected inside the run-to-run band of the two runs per state.",
+  "must_not_move": [],
+  "expect": {
+    "V_min_starts": 12,
+    "V_toggle_ms": 4000,
+    "S1_us_per_draw_min": -4.0,
+    "S1_us_per_draw_max": 0.0,
+    "S2_gfps_min": -1.0,
+    "S2_gfps_max": 2.0,
+    "S3_min_rows_per_state": 10,
+    "S4_on_gfps_max": 28.0
+  },
+  "expect_counts": {}
+}
