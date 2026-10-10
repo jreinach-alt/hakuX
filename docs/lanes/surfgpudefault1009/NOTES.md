@@ -60,3 +60,57 @@ compiled clean under the current content. Not re-run from scratch, but a genuine
 source hashes, not timestamps, and the files on disk are the ones with the surfgpu switch in them.
 
 ## 4. Device proof (Nova)
+
+Committed section 1-3's work as `214da4fe81`, pushed `lane/surfgpudefault1009`, then queued both arms at once
+(pilot gate did not apply: two 480 s soaks is ~19 min of device time, under the 30 min that always goes through
+with no `pilots/surfgpudefault1009.ok` file). Both `--ref HEAD` resolved to `214da4fe81`.
+
+```
+HAKUX_RELEASE_PRIO=1 docs/testing/request.sh --who surfgpudefault1009 \
+  --purpose "surfgpudefault1009: app default (switch on, no env), NBA Live 07 A (#433)" \
+  --title "454100A1-NBA_Live_07.xiso.iso" --route nbalive07 --seconds 480 --perflog \
+  --device nova --ref HEAD --no-expect "settings plumbing; perf evidence is lane.surfgpu1009's"
+# -> 1-1791614519-surfgpudefault1009-2139156
+
+HAKUX_RELEASE_PRIO=1 docs/testing/request.sh --who surfgpudefault1009 \
+  --purpose "surfgpudefault1009: env override (HAKUX_SURFGPU=0), NBA Live 07 B (#433)" \
+  --title "454100A1-NBA_Live_07.xiso.iso" --route nbalive07 --seconds 480 --perflog \
+  --device nova --ref HEAD --env HAKUX_SURFGPU=0 \
+  --no-expect "settings plumbing; perf evidence is lane.surfgpu1009's"
+# -> 1-1791614524-surfgpudefault1009-2139314
+```
+
+Both queued at release priority (`HAKUX_RELEASE_PRIO=1`), sat behind one running and one queued `perdraw1009`
+request plus a build for this new ref, then ran in order. gfps figures below are the mean/median of every
+`gfps=` sample in `logcat.txt` from the route's `mark gameplay` line to the end (the loop body, same window
+lane.surfgpu1009's own NBA07 reads used).
+
+| | A: no env (switch default) | B: `--env HAKUX_SURFGPU=0` |
+|---|---|---|
+| result id | `...2139156` | `...2139314` |
+| `[surfgpu] on` present | yes (1x) | no (0x) |
+| MainActivity log | `surfgpu: ON (#433)` | `surfgpu: ON (#433)` (the switch's own decision; see below) |
+| `env: HAKUX_SURFGPU=` (xemu_android.cpp) | not set (no env passed) | `HAKUX_SURFGPU=0` |
+| `[surfgpu] frames=` lines | present throughout | **0** |
+| `hold=`/`frames=` (sampled) | `60/60` = 1.00/flip | n/a (surfgpu_enabled() false) |
+| gfps, post-mark (n samples) | median 47.0, mean 44.9 (n=241) | median 23.0, mean 21.0 (n=114) |
+| pass bar (brief) | `[surfgpu] on`, hold ~1.00/flip, gfps >= 40 | no `[surfgpu] on`, gfps ~22 | 
+| verdict | **PASS** | **PASS** |
+
+**Why B's Kotlin log still says `ON`.** `surfgpuEnabled(prefs)` in `MainActivity.kt` reports the *switch's*
+decision (global default `true`, no per-game override here) and calls `nativeSetenv("HAKUX_SURFGPU", "1")`
+regardless of what a queued request's `--env` will do -- by design, per the brief: the `env_vars` pref's
+`HAKUX_SURFGPU=0` line is applied by `xemu_android.cpp` AFTER `nativeSetenv`, and wins. `logcat` confirms the
+order: `surfgpu: ON (#433)` at 00:29:27.180, then `env: HAKUX_SURFGPU=0` at 00:29:27.228 (48 ms later, same PID).
+`surfgpu_enabled()` in `surface.c` then reads the final value at first use and logs nothing (`0` occurrences of
+`[surfgpu] on` or `[surfgpu] frames=` anywhere in B's `logcat.txt`) -- the native switch is off for the whole run,
+exactly as it should be when the request overrides the app's own default.
+
+This is the thing step 4 set out to show: the app's on-by-default switch reaches native code (A), and an
+`--env` override still reaches native code ahead of the switch (B) -- so `request.sh --env HAKUX_SURFGPU=0/1`
+remains available to any future lane working on `surface.c` itself, independent of whatever the Settings default
+is at the time.
+
+No golden/pixel check queued here (brief: "Prediction: none ... the performance evidence is lane.surfgpu1009's" --
+that lane's own golden3 (9.4) and NBA07-held (9.3) reads already cover pixel safety and the `record`/`hold`
+mechanics; this lane changes no native code, so there is nothing new to check pixels against).
