@@ -1,11 +1,11 @@
-device 1-1791617969-surfgpudefault1009-3278970
+run 1-1791617969-surfgpudefault1009-3278970
 
-Fold-head confirmation run (brief step 6): NBA Live 07, nbalive07.route, 480s, --perflog,
---device nova, ref 52f32bb2c8 (this lane's final head, PR.md State: ready).
-Same shape as arm A (no env, switch default on). Queued with HAKUX_RELEASE_PRIO=1.
-
-Resolves when dispatch/results/1-1791617969-surfgpudefault1009-3278970/result.json exists.
-Pass bar: logcat has "[surfgpu] on", hold= near 1.00/flip, gfps >= 40 post-mark (same as
-NOTES.md section 4's arm A: median 47.0, mean 44.9). If it passes, this file can be removed
-and the PR is done. If it fails, treat as a build/regression on the merge and investigate
-before removing WAITING.
+# Fold-head confirmation run (brief step 6): NBA Live 07, nbalive07.route, 480s, --perflog,
+# --device nova, ref 52f32bb2c8 (this lane's final head, PR.md State: ready).
+# Same shape as arm A (no env, switch default on). Queued with HAKUX_RELEASE_PRIO=1.
+#
+# Resolves when dispatch/results/1-1791617969-surfgpudefault1009-3278970/result.json exists.
+# Pass bar: logcat has "[surfgpu] on", hold= near 1.00/flip, gfps >= 40 post-mark (same as
+# NOTES.md section 4's arm A: median 47.0, mean 44.9). If it passes, this file can be removed
+# and the PR is done. If it fails, treat as a build/regression on the merge and investigate
+# before removing WAITING.
