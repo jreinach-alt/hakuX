@@ -456,3 +456,15 @@ by itself kill the design.
 Baseline before any probe ran, plain off 3707918 (b10dcdb737, F1-F3 only, no
 REPORT_ASYNC/TEXSCAN): warm 39.2 ms/frame. vCPU busy 24.1 and idle 15.7 ms/frame (61%
 busy; vcpuread over [mark-4, mark+1.5]).
+
+**Status, 2026-10-10 15:49 PDT: waiting.** 11 runs are pending, each with a `run` line in
+`WAITING`: 3708870 is running on the Nova, and the other 10 are queued behind it (~10 min
+each). The two finished plain runs (3707918 off, 3708043 ON) each show a moving car in all 12
+`s*-g11.png` frames (50-94 and 42-85 mph). `drawread.py` on that single pair gives warm
+39.2 -> 37.4 ms/frame and v2 +13.2 points. With one run per state this is not a verdict.
+When the runs are in:
+- `drawread.py` over 3707918/3708043/3708870/3709079 against `drawrec1010-nfs.json`;
+- `ab_compare.py` over 3709316/3709731;
+- `proberead.py` over the 8 probe runs against `drawrec1010-probe.json`;
+- the g11 check on the base and SNAPQ arms;
+- then PR.md's three-line verdict, and ready.

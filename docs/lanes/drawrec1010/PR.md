@@ -4,10 +4,10 @@ State: draft
 Lane: drawrec1010       Issue: #433 (umbrella), none filed
 Base: master @ c271f515b4
 Files: hw/xbox/nv2a/pgraph/vk/draw.c, docs/lanes/drawrec1010/**, docs/testing/predictions/drawrec1010-*.json
-Prediction: docs/testing/predictions/drawrec1010-pixels.json @ 958f10d9dd48e384c5e9b16eebffbaede5b2e8253fee21bf5b80c4b984cbd681, docs/testing/predictions/drawrec1010-nfs.json @ 7f465817484721653e51b27e84ae8ac4e77744b7a2d358265193b30cdb649d82
+Prediction: docs/testing/predictions/drawrec1010-pixels.json @ 958f10d9dd48e384c5e9b16eebffbaede5b2e8253fee21bf5b80c4b984cbd681, docs/testing/predictions/drawrec1010-nfs.json @ 7f465817484721653e51b27e84ae8ac4e77744b7a2d358265193b30cdb649d82, docs/testing/predictions/drawrec1010-probe.json @ 4bd24c464b34e68005c1fac14745f9d1048fb935b4fd5d7a3a9b368ab81e27a9
 Needs device: yes (Nova, used)
 Needs NDK: no
-Release note (none): opt-in switch HAKUX_DRAWREC=1, default off
+Release note (none): opt-in switch HAKUX_DRAWREC=1 and measurement-only probes HAKUX_PROBE_*, all default off
 
 Step 3 of `docs/lanes/nfs30plan1010/PLAN.md`: cut the PFIFO thread's per-draw
 recording cost at the NFS Most Wanted race start.
@@ -50,6 +50,17 @@ Tables: NOTES sections 5.1-5.3.
 
 `HAKUX_DRAWREC_VTX=0` / `HAKUX_DRAWREC_SHC=0` turn one part off.
 
+Addendum 1 probes (draw.c, default off, measurement only, never for default;
+NOTES section 13):
+
+- `HAKUX_PROBE_NULLREC=1` keeps PFIFO's part of a recorder design and skips the
+  pipeline, uniform, descriptor and recording work: the floor.
+- `HAKUX_PROBE_SNAPQ=1` adds, to the unchanged path, a ~40 KB input snapshot plus the
+  payload per draw, enqueued to the render thread: the handoff's upper bound.
+- `HAKUX_PROBE_SNAPQ=2` does the same with a ~0.7 KB record: the lower bound.
+- `HAKUX_PROBE_WAITS=1` counts and times every GPU wait on the PFIFO thread,
+  mid-frame vs at the flip.
+
 ## Results
 
 ### Pilot (one run per state)
@@ -88,6 +99,10 @@ byte-identical. The 7 that moved:
 
 The prediction's runs=3 recheck is queued (NOTES section 10.1).
 
-Plain A/B (2 runs per state) and the pixel recheck: queued, NOTES section 4.
+Plain A/B (2 runs per state) and the pixel recheck: 2 of 4 NFS runs are in (off
+`1-1791670433-drawrec1010-3707918`, ON `1-1791670434-drawrec1010-3708043`, moving car in
+all 12 g11 frames of each, 50-94 and 42-85 mph). The rest is queued, NOTES section 4.
+
+Addendum 1 arms (`drawrec1010-probe.json`, 8 runs on `bf43e8c4ef`): queued.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
