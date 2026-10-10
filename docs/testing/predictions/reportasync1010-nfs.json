@@ -1,5 +1,5 @@
 {
-  "registered_utc": "2026-10-10T18:23:37Z",
+  "registered_utc": "2026-10-10T19:14:06Z",
   "who": "lane.reportasync1010",
   "issue": "433",
   "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
@@ -9,13 +9,13 @@
   "perflog": false,
   "frames_every": 0,
   "runs_per_arm": 2,
-  "a_ref": "2e9f535300",
-  "b_ref": "2e9f535300",
+  "a_ref": "ba9a6df8fc",
+  "b_ref": "ba9a6df8fc",
   "a_env": [],
   "b_env": [
     "HAKUX_REPORT_ASYNC=1"
   ],
-  "queue_order": "Queued by the lane (an env A/B; arms.sh skips a_ref == b_ref): four requests of one run each, off, on, on, off (request.sh --who reportasync1010 --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw-quickrace --seconds 500 --device nova --ref 2e9f535300 [--env HAKUX_REPORT_ASYNC=1] --expect this file), plain build (no --perflog), so neither state always runs on the shader cache the other warmed, and the device is left in the shipped state.",
+  "queue_order": "Queued by the lane (an env A/B; arms.sh skips a_ref == b_ref): four requests of one run each, off, on, on, off (request.sh --who reportasync1010 --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw-quickrace --seconds 500 --device nova --ref ba9a6df8fc [--env HAKUX_REPORT_ASYNC=1] --expect this file), plain build (no --perflog), so neither state always runs on the shader cache the other warmed, and the device is left in the shipped state.",
   "judge": "python3 docs/lanes/reportasync1010/raread.py <off1> <on1> <on2> <off2> --expect docs/testing/predictions/reportasync1010-nfs.json",
   "baseline": "Off, from runs that already exist, read with raread.py over the same window (mark-2 .. mark+1.5 s, the countdown; 12 starts each, plain build at 07937793af, which runs master's race-start code since perdraw1009's switches are default-off): 1-1791649039-nfsframe1010-2037292 cold 56.3 ms, warm 41.4 ms (v2 54% v3 43% v4 2%); 1-1791649724-nfsframe1010-2219502 cold 58.5 ms, warm 40.2 ms (v2 52% v3 41% v4 1%); pooled cold 57.4 (2 lines), warm 40.7 (31 lines), v2 53%. Frametrace (nfs30plan1010 1-1791649387, 1-1791649388, NOTES 5.5): the PFIFO thread blocks 6.7 ms/frame cold and 4.3 ms/frame warm at p_fence (#54) inside pgraph_vk_process_pending_reports_internal, once per frame, under pfifo.lock.",
   "prediction": "#433 HAKUX_REPORT_ASYNC=1 at the NFS MW race start. With the switch on, the finish hands the occlusion reports to a reader thread and returns without waiting on any fence; the reader waits for the frame slot's own fence and writes the reports. The PFIFO thread, which paces the frame, loses the p_fence wait (4.3 ms/frame warm, 6.7 cold), and the guest's DMA_PUT store no longer queues behind it on pfifo.lock. Predicted, pooled over 2 runs per state, 12 starts each, pace lines printed in mark-2 .. mark+1.5 s: W: warm countdown period (starts 2-12) on <= 38.0 ms and on - off <= -2.5 ms (point estimate 40.7 -> 37 ms: most of the 4.3 ms is critical path, since the wait sits on the pacing thread and the GPU is not the limit at this scene); off inside [39, 44] (the baseline's band), else the arm is not the baseline. C: cold start 1 on <= 55.0 ms (point 57 -> 52; two pace lines per state, so loose), off inside [54, 64]. H: frames are VBLANK-quantized, so the gain shows as frames moving from 3 VBLANKs to 2: warm v2 share on - off >= +10 points (point 53% -> 65%). What refutes it: W and H fail with the build's '[reportasync] on' line present -- the wait was not on the critical path (the vCPU, not the PFIFO thread, sets the period) or it moved to another site (rule 3's gate, or the render thread), which the trace's gate= field on the pilot run names. Pixels: route frames at the 12 marks (s*-g11.png) on vs off, region by region: a report read before it was written shows as a car, a light or a flare missing or popping.",
@@ -29,9 +29,10 @@
     "C_off_min": 54.0,
     "C_off_max": 64.0,
     "C_on_max": 55.0,
-    "H_dv2_min": 10.0
+    "H_dv2_min": 10.0,
+    "V_min_valid_starts": 10
   },
-  "expect_note": "Named rules read by docs/lanes/reportasync1010/raread.py --expect (legs V, W, C, H); a soak writes no captures. The frametrace confirmation (p_fence at #54 -> 0, one perflog run) is optional and not part of this verdict.",
+  "expect_note": "Named rules read by docs/lanes/reportasync1010/raread.py --expect (legs V, W, C, H); a soak writes no captures. Re-registered 2026-10-10 on ba9a6df8fc (2e9f535300 merged with master @ c829b64c8e; HAKUX_PFIFOWAIT unset in both arms) with the thresholds unchanged; one validity rule added, direction-neutral: a start whose route input failed or took > 3 s (an adb hang: the pilot's async run lost go4 and go9 that way and raced from a menu) is left out of every leg on both arms, and a run needs >= V_min_valid_starts of its 12. The arm is read from request.json env (b_env present = on), and the log line must agree. The frametrace confirmation (p_fence at #54 -> 0, one perflog run) is optional and not part of this verdict; the pilot's HAKUX_REPORT_TRACE run already counts the finishing thread's report waits (0 on, 4114 off, 1-1791656656 / 1-1791656657).",
   "expect_counts": {},
   "must_not_move": [],
   "must_not_regress": []

@@ -223,6 +223,8 @@ def judge(dirs, exp, lo, hi, plo, phi):
     p_off, p_on = period(arms['off']['post']), period(arms['on']['post'])
     v2_off, v2_on = vshare(arms['off']['warm'], 2), vshare(arms['on']['warm'], 2)
     if None in (w_off, w_on, c_off, c_on, v2_off, v2_on) or ('P_on_max' in e and None in (p_off, p_on)):
+        for leg, ok, what in legs:
+            print(f'  {leg} {"PASS" if ok else "FAIL"}  {what}')
         print('VERDICT: VOID -- an arm has no pace lines in the window')
         return 2
     legs.append(('W', e['W_off_min'] <= w_off <= e['W_off_max'],
