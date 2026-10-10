@@ -1,0 +1,32 @@
+{
+  "registered_utc": "2026-10-10T08:20:00Z",
+  "who": "lane.perdraw1009",
+  "issue": "433",
+  "title": "45410062-Battlefield_2_Modern_Combat.xiso.iso",
+  "route": "bf2mc",
+  "device": "nova",
+  "seconds": 420,
+  "a_ref": "9cf824802e22f26ac8584716e6060127708bafe9",
+  "b_ref": "9cf824802e22f26ac8584716e6060127708bafe9",
+  "a_env": [],
+  "b_env": [
+    "HAKUX_UNI_BULK=1",
+    "HAKUX_UNI_UBERCACHE=1",
+    "HAKUX_UNI_FOGCACHE=1"
+  ],
+  "runs_per_arm": 1,
+  "queue_order": "one request.sh --title 45410062-Battlefield_2_Modern_Combat.xiso.iso --route bf2mc --seconds 420 --ref 9cf824802e22f26ac8584716e6060127708bafe9 --perflog --device nova arm A (no env), one arm B (--env HAKUX_UNI_BULK=1 --env HAKUX_UNI_UBERCACHE=1 --env HAKUX_UNI_FOGCACHE=1). One build (both arms' env lives in the same binary, the switches default off): A/B is env-only.",
+  "judge": "python3 docs/lanes/perdraw1009/genread.py --a <A_RUN> --b <B_RUN> --expect docs/testing/predictions/perdraw1009-bf2-gen.json --sheet <out>.png",
+  "prediction": "Job item 7: the NFS per-draw uniform cut (HAKUX_UNI_BULK/_UBERCACHE/_FOGCACHE, shaders.c, already shipped default-off and verified on NFS MW by perdraw1009-nfs-toggle.json: STATIC Draw us/draw on-off -1.70, (Pipe+Mfp)/draw -1.66, gfps and pixels unchanged) generalises to a second draw-heavy title. MODEL: bf2stall433's NOTES (section 1, 'U per-draw constant reload') found BF2's known 12-14 us/draw heavy-view cost is GPU-side serialization from the per-draw UBO rebind, not CPU uniform-copy time; bf2push656 (folded b80a92b61f) already halved UBO binds/draw with push constants and heavy-view GPU ms did NOT move (38.3 -> 42.3 ms, REFUTED on P1), confirming BF2's heavy view is GPU-bound and a CPU/driver-side fix there should not move GPU ms or heavy-view fps. This lane's fix targets a DIFFERENT budget -- CPU time inside pgraph_vk_update_shader_uniforms (memcpy instead of per-element copy, cached uber-constant values instead of rebuilding them every draw, a cached fog string instead of snprintf every draw) -- so the predicted win is in genread.py's CPU-side 'med us/draw' (Draw*1000/BE, the same quantity armread.py read as a CPU cost on NFS), not in GPU ms, heavy-row gfps, or Fin. Point prediction: GAME median us/draw B-A around -1.5 to -2.5 (BF2's lighting-context arrays are larger than NFS's per-draw uniform set, so the bulk-memcpy share could be larger; kept inside the same order of magnitude as NFS pending the actual row). No fps change is predicted at the heavy rows (BF2 is GPU-bound there per push656), and no regression either, since the three switches touch CPU staging only, not the GPU command stream. LEGS. V: both arms marked, no fatal line, no thermal pause from 60s before the mark to the end of GAME, >= 15 GAME rows and >= 4 heavy rows (BE>=1800) each, one apk. P0: A's flags read (0,0,0) and B's read (1,1,1) from the [perdraw433] log line -- confirms the env reached the build, same check as the NFS arms. G1 (the claim): GAME median us/draw, B minus A, in [-3.0, -0.3] (genread.py's own defaults, matching this model). G2 (the counter that must move, confirming the switches reached the per-draw path): GAME (Pipe+Mfp)/draw, B minus A, <= -0.3. G3 (separation): |B-A| exceeds 3x the larger of each arm's own run-to-run spread (n/a here, runs_per_arm 1, so this leg degrades to the rows' pooled SE alone) or the rows' SE. G4 (no regression): heavy-row gfps B-A >= -1.0 -- a loss beyond genread's tolerance would mean the cut cost something on the GPU-bound path, which the mechanism does not predict but the leg still checks. XB (pixels, gross-break only -- BF2's two runs do not share a scene at the same second, so this cannot see a shading change, only black-frame or flat-colour breakage): every run's last 3 periodic frames have mean luma >= 12 and luma sd >= 8. A win on G1/G2 with G4 flat is the generalisation result job item 7 asks for; G1 failing would mean the NFS win does not transfer and is specific to NFS's uniform mix, which is itself useful to know before touching anything else.",
+  "must_not_move": [],
+  "expect": {
+    "V_min_rows": 15,
+    "V_min_heavy_rows": 4,
+    "G1_us_per_draw_min": -3.0,
+    "G1_us_per_draw_max": -0.3,
+    "G2_pm_per_draw_max": -0.3,
+    "G3_sep": 3.0,
+    "G4_heavy_gfps_min": -1.0
+  },
+  "expect_counts": {}
+}
