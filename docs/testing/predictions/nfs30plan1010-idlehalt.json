@@ -1,0 +1,30 @@
+{
+ "registered_utc": "2026-10-10T17:12:00Z",
+ "who": "lane.nfs30plan1010",
+ "issue": "433",
+ "kind": "telemetry",
+ "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+ "device": "nova",
+ "seconds": 500,
+ "route": "nfs-mw-quickrace",
+ "perflog": false,
+ "runs_per_arm": 2,
+ "a_ref": "07937793af",
+ "b_ref": "07937793af",
+ "a_env": [],
+ "b_env": ["HAKUX_IDLE_HALT=1"],
+ "a_results": ["1-1791649039-nfsframe1010-2037292", "1-1791649724-nfsframe1010-2219502"],
+ "queue_order": "A is lane.nfsframe1010's two plain runs at 07937793af (already run / running; same title, route, seconds, device, no perflog, no env). B1, B2: request.sh --who nfs30plan1010 --ref 07937793af --title <title> --route nfs-mw-quickrace --seconds 500 --device nova --env HAKUX_IDLE_HALT=1. One binary.",
+ "window": "the countdown of each of the 12 starts: hakuX-pace lines printed in [mark-2, mark+1.5] s (ms=/60) and hakuX-perf G in the same window; post-GO [mark+1.5, mark+12] reported, not judged",
+ "judge": "python3 docs/lanes/nfs30plan1010/phaseread.py <dirs> --window=-2,1.5 (G and pace ms/60 pooled over the 12 starts; the plain build prints hakuX-perf/pace but no phase line) and vcpuread.py for the vCPU busy/idle split; the s*-g11.png frames must show the player moving",
+ "what_it_decides": "Section 5.5 of NOTES.md: the PFIFO thread is the critical path (cls pgraph 78-98% at the countdown, 30-39 ms on CPU per frame), while the vCPU thread holds the X3 core 88% of wall time, mostly spinning in the guest's idle loop (gidle 26-38 ms/frame). HAKUX_IDLE_HALT=1 makes that spin a halt (#525), freeing the X3. If the PFIFO thread then runs on the X3 its on-CPU time per frame falls by the A715/X3 ratio, and the countdown period follows, because the PFIFO thread paces the frame. The switch is used here as an INSTRUMENT to decide whether thread placement (pin-by-role, perfarch NOTES) goes on PLAN.md's path with a measured P; it is not proposed as a fix or a default (lane.idlehaltdefault's verdict, 09-29, stands: opt-in).",
+ "prediction": "B's pooled countdown period (pace ms/60 over the 12 starts, 2 runs) is at or below 0.92 x A's pooled countdown period (A: nfsframe1010's runs 1 and 2 at the same ref), with the vCPU on-CPU share down by at least 25 points, if placement is on the path. The 8% bound is the smallest move the PFIFO thread's 30-39 ms of on-CPU time at an A715->X3 speedup of ~1.2x would show after the vCPU's own share is removed; a 0.92-1.00 result says the PFIFO thread did not move to the X3 (or the X3 does not help it), and placement leaves the plan as a lever and stays as a measurement item only.",
+ "legs": {
+  "V (validity)": "Per run: ROUTE finished rc 0, 12 marks, [idlehalt] armed logged, s*-g11.png shows the player moving (speed > 0, % complete > 0) on at least 10 of 12 starts; a thermal pause inside a countdown voids that start.",
+  "F (fps, the point)": "B pooled countdown pace ms/60 <= 0.92 x A pooled; reported per start as well (the cold start 1 separately from the warm restarts).",
+  "H (host)": "B's vCPU on-CPU share (hakuX-cpu / [idlehalt] counters) at least 25 points under A's; [rr425w] guest idle share within 10 points of A (the guest does the same work).",
+  "Falsifier": "F fails (B > 0.92 x A) in both B runs: placement is NOT a measured lever for NFS's race start; PLAN.md keeps it as 'unmeasured, P unknown' and does not count its ms. B wedging or failing V on both runs: the probe is void, same conclusion for the plan."
+ },
+ "accuracy": "none expected: HAKUX_IDLE_HALT changes when the vCPU sleeps, not what it computes; the pixel suites were run by lane.idlehalt (idlehalt-pixels.json).",
+ "notes": "Not registered with ab_compare.py --register: that tool keys on pixel-suite goldens and this is a route telemetry A/B (the same shape as idlehalt-auf.json). The arms job must not queue suites for it."
+}
