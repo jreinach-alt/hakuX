@@ -2,8 +2,10 @@ gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start p
 
 State: draft
 Lane: gpupass1010            Issue: #433
-Base: origin/master @ bfd6986fa2 (lane/texscan1010 merged in, per the dispatch note; step 3's
-  census needs texscan1010's GPU-side cube-face copy on the base)
+Base: origin/master @ c18fdd344a (lane/texscan1010 merged in at bfd6986fa2 per the dispatch
+  note; origin/master merged in again at c18fdd344a to bring in texscan1010/pfifowait1009/
+  forzasurf1010's folds -- see NOTES.md section 5. Both arm refs (9c8b1b12b6, 81ab5f3418) are
+  unchanged by either merge.)
 Files: android/app/src/main/cpp/xemu_android.cpp (kTitleRenderModes row only),
   docs/lanes/gpupass1010/**, docs/testing/predictions/gpupass1010-*.json
 Prediction: docs/testing/predictions/gpupass1010-rendermode.json @ sha256 d6615f8ae93fda3b947f4e750d96ce353f36bd867ec8e55341cdab16a6155000;
@@ -31,17 +33,27 @@ Two predictions registered before any device run (`docs/testing/predictions/gpup
 naming `9c8b1b12b6`/`81ab5f3418` as `a_ref`/`b_ref`. Full reasoning in
 `docs/lanes/gpupass1010/NOTES.md`.
 
-## Run plan (4-run/500s cap; see NOTES.md section 3)
+## Run plan (4-run/500s cap; corrected -- see NOTES.md sections 4-5)
 
-| run | ref | env | serves |
-|---|---|---|---|
-| A | R_off | `HAKUX_GPUXFR=1` | step 1 off-arm + step 3 off-arm |
-| B | R_off | `HAKUX_GPUXFR=1 HAKUX_TEXSCAN=1` | step 3 on-arm |
-| C | R_on | `HAKUX_GPUXFR=1` | step 1 on-arm, sample 1 |
-| D | R_on | `HAKUX_GPUXFR=1` | step 1 on-arm, sample 2 |
+A **plain build's `xfr_emit()` is compiled out** (`NV2A_PERF_LOG`-gated; only `--perflog` sets
+it), so the brief's literal "plain build + HAKUX_GPUXFR=1 for the pass census" cannot produce
+any of the GPU-busy/X/R/passes figures. Discovered via the pilot pair (both ran clean, zero
+`xemu-xfr` lines); corrected (`ebcbd61064`) before queuing further device time. Final plan,
+inside the same 4-run cap:
 
-Pilot gate (lane-role contract): A+C queued first as the pilot (~19.7 min est.), reviewed, then
-B+D.
+| run | ref | env | build | serves |
+|---|---|---|---|---|
+| A | R_off | `HAKUX_GPUXFR=1` | plain | period/pace/v-hist only (no XFR data) |
+| C | R_on | `HAKUX_GPUXFR=1` | plain | period/pace/v-hist only (no XFR data) |
+| B' | R_off | `HAKUX_GPUXFR=1` | perflog | step 1 off-arm GPU busy/X/R/passes |
+| D' | R_on | `HAKUX_GPUXFR=1` | perflog | step 1 on-arm GPU busy/X/R/passes |
+
+Step 3's `HAKUX_TEXSCAN=1` on-arm is **DEFERRED**, not measured this lane (budget fully
+consumed by A/C/B'/D'; see `gpupass1010-texscan.json`'s `status` field). Pilot gate: A+C queued
+first (~19.7 min est.), reviewed (`pilots/gpupass1010.ok`), then B'+D' queued.
+`1-1791660793-gpupass1010-760340` (B', off) / `1-1791660794-gpupass1010-761330` (D', on) are
+queued on the shared Nova behind 8 `reportasync1010` + several `drawrec1010` requests at the
+time of writing -- see `WAITING`.
 
 ## Step 4 (pixel check) -- answered without new device time
 
@@ -55,8 +67,10 @@ table row does. No pixel run queued for this leg.
 
 ## Status
 
-Draft -- device runs pending. This PR will move to `State: ready` with the full tables, the
-`Release note (...): ...` line, and the keep/drop recommendation once results land; see
-`docs/lanes/gpupass1010/NOTES.md` / `WAITING` for what is still outstanding.
+Draft -- waiting on `1-1791660793-gpupass1010-760340` (off, perflog) and
+`1-1791660794-gpupass1010-761330` (on, perflog), queued but not yet run (Nova shared queue,
+8+ requests ahead at merge time `c18fdd344a`). This PR will move to `State: ready` with the
+full tables, the `Release note (...): ...` line, and the keep/drop recommendation once results
+land; see `docs/lanes/gpupass1010/NOTES.md` / `WAITING`.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

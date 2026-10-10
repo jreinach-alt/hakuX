@@ -86,4 +86,71 @@ setup) total ~39 min, over the 30-min pilot cap, and there is no `pilots/lane.gp
 yet. Queued runs A and C first (the most informative pair: one off sample, one on sample, ~19.7
 min estimated) as the pilot, reviewed them, then queued B and D.
 
-<!-- pilot verdict and full run results appended below once device time lands -->
+Pilot pair (A=1-1791659388 off/plain, C=1-1791659390 on/plain) read: both completed
+cleanly (12/12 go marks, 0 fatal lines, no truncation per `ab_compare.py
+--check-truncation`), but landed **zero** `xemu-xfr` lines in either logcat (17000+
+lines each). Investigated: `draw.c`'s real `xfr_emit()` (the function that prints
+`XFR rp`/`XFR rpc`) is compiled only `#if defined(__ANDROID__) && NV2A_PERF_LOG`
+(draw.c ~3706-4317; confirmed by an `awk` scan of every `#if`/`#else`/`#endif` in
+that range -- exactly one controlling `#if`, and the `#else` at 4398 is an empty
+stub). `NV2A_PERF_LOG` is the CMake define `--perflog` sets
+(`android/app/src/main/cpp/CMakeLists.txt:973,1093`), so a **plain** build's
+`xfr_emit()` is a no-op regardless of `HAKUX_GPUXFR=1` at runtime -- the brief's
+"plain build + HAKUX_GPUXFR=1 for the pass census" cannot work as literally
+written. Cross-checked: every prior XFR-reading run in this issue thread
+(nfs30plan1010's census, texscan1010's own A/B, both cited above as baseline) was
+in fact a `--perflog` build; `draw.c`'s own comment at the `xfr_emit` site says
+as much ("reported by the perflog build as an xemu-xfr line").
+
+**Correction, before any further device time was spent**: both prediction files
+(`gpupass1010-rendermode.json`, `gpupass1010-texscan.json`) were edited to
+`"perflog": true`, with a `"correction"`/`"status"` field each documenting this
+in full (run ids, code line numbers, CMake lines), committed as `ebcbd61064` --
+registering the correction before queuing the next pair, per the lane contract's
+"register, then run" order. The two plain runs are kept (useful for
+period/pace/v-histogram; not useful for GPU busy/X/R/passes) and are not
+resubmitted, since the 4-run/500s cap does not stretch to a third pair. This
+forces dropping step 3's `HAKUX_TEXSCAN=1` on-arm measurement entirely this lane
+(`gpupass1010-texscan.json`'s `"status"` field: DEFERRED) -- the remaining 2 of
+4 runs went to step 1's perflog off/on pair instead, since the brief's own
+dispatch condition and "Why" section frame step 1 (is the GPU on NFS's path at
+all) as the headline question, and step 3's census is explicitly "name a
+follow-up, not to be fixed/measured further this lane" framing already.
+
+Queued second pair (perflog): `1-1791660793-gpupass1010-760340` (off,
+`9c8b1b12b6`, `HAKUX_GPUXFR=1`, `--perflog`) and
+`1-1791660794-gpupass1010-761330` (on, `81ab5f3418`, same env, `--perflog`).
+Pilot verdict written to `$DISPATCH_DIR/pilots/gpupass1010.ok` per the lane-role
+contract (via `python3`, since the dispatch dir sandbox blocks direct `Write`).
+
+## 5. Merge: origin/master brought in (not rebased) after the first pair landed
+
+`origin/master` had moved 23 commits ahead of this branch's base (fold of
+texscan1010/pfifowait1009/forzasurf1010 and their own resume cycles). Merged
+(`c18fdd344a`, not rebased -- `9c8b1b12b6`/`81ab5f3418` keep their shas, so both
+predictions' refs stay valid) rather than concluding anything further on a stale
+tree. The merge is clean: master never had this lane's `kTitleRenderModes` row
+(the one-line diff `HEAD..origin/master` on `xemu_android.cpp` is *removing*
+the NFS row, i.e. it is absent upstream, not conflicting), so no territory
+conflict.
+
+**Relevant to this lane's own period-vs-GPU-busy falsifier**: the fold brought
+in `pfifowait1009`'s own resume-attempt-3 verdict (`f1e99aaa0f`, doc
+`docs/lanes/pfifowait1009/NOTES.md` section 7) -- **FAIL on both legs**.
+`HAKUX_PFIFOWAIT=1` (releasing `pfifo.lock` across the STALLED finish's fence
+waits, the mechanism the brief's own "Why" section names as what would put the
+GPU in parallel with the PFIFO thread) is measured unsafe (a real pgraph pixel
+regression) and does not even help its own target metric (fps falls, wait
+roughly doubles on amped2 in the slow bins) -- it stays **default-off**. This is
+corroborating evidence, not proof, for this lane's own prediction text ("period
+unchanged unless the GPU was the path... reportasync1010 is not yet merged
+here"): the specific mechanism named in the brief as what would expose GPU busy
+time to NFS's critical path did not ship, so a near-zero period delta on this
+base is the expected outcome, not a surprise, when the on-arm perflog run lands.
+
+Second perflog pair still queued at merge time, behind 8 `reportasync1010`
+requests and 1 running + several `drawrec1010` requests sharing the Nova --
+well beyond a few 10-minute polling chunks. Writing `WAITING` rather than
+polling further this turn.
+
+<!-- full run results appended below once device time lands -->
