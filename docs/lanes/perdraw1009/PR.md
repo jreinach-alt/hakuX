@@ -3,9 +3,9 @@
 State: draft
 
 Lane: perdraw1009          Issue: none (#433 umbrella)
-Base: master @ 39379dafdd
-Files: hw/xbox/nv2a/pgraph/vk/shaders.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/testing/titles/routes/nfs-mw.route, docs/testing/predictions/perdraw1009-nfs-soak.json, docs/lanes/perdraw1009/NOTES.md, docs/lanes/perdraw1009/OUTBOX.md, docs/lanes/perdraw1009/PR.md, docs/lanes/perdraw1009/WAITING, docs/lanes/perdraw1009/armread.py, docs/lanes/perdraw1009/bulkcheck.sh, docs/lanes/perdraw1009/prof_tree.py
-Prediction: docs/testing/predictions/perdraw1009-nfs-soak.json @ b1ee6d91fc5d6477ba737905abe2057af741d806fe49894ad1ad193f96f46641
+Base: master @ 3f6762f180
+Files: hw/xbox/nv2a/pgraph/vk/shaders.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/testing/titles/routes/nfs-mw.route, docs/testing/predictions/perdraw1009-nfs-soak.json, docs/testing/predictions/perdraw1009-nfs-toggle.json, docs/lanes/perdraw1009/NOTES.md, docs/lanes/perdraw1009/OUTBOX.md, docs/lanes/perdraw1009/PR.md, docs/lanes/perdraw1009/WAITING, docs/lanes/perdraw1009/armread.py, docs/lanes/perdraw1009/genread.py, docs/lanes/perdraw1009/togread.py, docs/lanes/perdraw1009/bulkcheck.sh, docs/lanes/perdraw1009/prof_tree.py
+Prediction: docs/testing/predictions/perdraw1009-nfs-toggle.json @ 482fc384aa29445f981bacd6cd7171c9684b6ff4cd8b8e61c4e8e76b206fe840 (supersedes perdraw1009-nfs-soak.json @ b1ee6d91fc5d6477ba737905abe2057af741d806fe49894ad1ad193f96f46641 -- see table below)
 Needs device: yes (Nova only)    Needs NDK: yes
 
 Release note (none): three opt-in per-draw uniform switches (HAKUX_UNI_BULK, HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE), off by default; the perflog ubosz counter now needs HAKUX_UBOSZ_LOG=1
@@ -30,14 +30,32 @@ with ~25 s of motion, then a fixed scene against a wall at 12.3 +- 0.2 us/draw. 
 scene runs at the 30 fps cap with ~14 ms of renderer idle, so the A/B judges us/draw
 and states gfps as unchanged.
 
-A/B: one build (9bdfd6d4f0), flags on (B) vs off (A), two runs each, judged by
-armread.py against the registered prediction (point -1.5 us/draw in the fixed scene).
+A/B, round 1 (separate runs, flags on (B) vs off (A)), judged by armread.py
+against perdraw1009-nfs-soak.json:
 
 | arm | request | result |
 |---|---|---|
-| B1 | 1-1791614071-perdraw1009-2017514 | pending |
-| A1 | 1-1791614079-perdraw1009-2018606 | pending |
-| B2 | 1-1791614081-perdraw1009-2018875 | pending |
-| A2 | 1-1791614116-perdraw1009-2019230 | pending |
+| B1 | 1-1791614071-perdraw1009-2017514 | matched with A1: STATIC Draw us/draw -2.29, (Pipe+Mfp)/draw -1.88, both within band |
+| A1 | 1-1791614079-perdraw1009-2018606 | matched with B1 (65% plain wall, 439/438 draws/frame) |
+| B2 | 1-1791614081-perdraw1009-2018875 | matched with A2: STATIC Draw us/draw -1.49, (Pipe+Mfp)/draw -1.59, both within band |
+| A2 | 1-1791614116-perdraw1009-2019230 | matched with B2 (66% billboard wall, 801/855 draws/frame) |
+
+Each pair passed P1-P3/P6 independently, but the two pairs stopped against two
+different walls, so the combined four-run table failed P4 (cross-pair scene
+mismatch, not a regression) and X (region diffs from camera parallax between
+any two live runs of the same held input run as large as between arms --
+confirmed by diffing A1 against A2, same flags, max region diff 208). X as
+registered cannot separate a flag effect from per-run camera drift on this
+route with one run per arm. Full tables and frame evidence: NOTES.md section 9.
+
+A/B, round 2 (one run, HAKUX_UNI_TOGGLE=10, both states read against the same
+scene): judged by togread.py against perdraw1009-nfs-toggle.json, which
+supersedes perdraw1009-nfs-soak.json's X leg for the reason above.
+
+| run | result |
+|---|---|
+| 1-1791618767-perdraw1009-3415447 | pending |
+
+NOTES.md section 10 has the toggle design and will carry the verdict.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

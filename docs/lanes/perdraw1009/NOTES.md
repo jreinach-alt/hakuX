@@ -23,6 +23,26 @@ uncommitted; it had queued no device request. Its session log is empty (killed
 before the JSON was written). The Opus session that resumes from here (still
 counted "attempt 2") re-checks section 1's reading before building on it.
 
+**The rest of attempt 2 (Opus, 23:01-00:3x) built sections 3-8, the four-run
+A/B, genread.py and HAKUX_UNI_TOGGLE/togread.py, and the attempt counter was
+reset to 1 for usage-window bookkeeping before this resume** (`pm/lanelocal-log.md`
+"2026-10-09 23:05 PDT": "attempt counter overwritten 2 -> 1"). That session ended
+on `WAITING` for the four queued arms (300-turn cap) and was resumed by
+lanewaker once they landed; it then wrote 315feaaa87 (NOTES on the measured
+splits), 334904b9e7 (genread.py) and 3b6ab0f363 (HAKUX_UNI_TOGGLE + togread.py,
+00:04 PDT) but **never ran armread.py against the four completed results, so
+it never found the thing togread.py was built to fix**: the finished commit
+message for 3b6ab0f363 already states the cause correctly from the result
+files' draws/frame alone (439/438 vs 801), but no armread.py table or frame
+was pulled to confirm it, no toggle run was queued, and WAITING/PR.md/OUTBOX
+were never updated past the four-arm state. It ended mid-work with no
+device request outstanding and no `WAITING` line for lanewaker to act on,
+which is why this session starts from a clean idle state rather than a
+resumed wait. This session (still "attempt 1" per the restarted counter)
+read the four results with armread.py (section 9), confirmed the scene-drift
+diagnosis on the actual frames, registered `perdraw1009-nfs-toggle.json` and
+queued the toggle run (section 10).
+
 ## 1. Where the per-draw time goes (job item 1)
 
 Source: lane.local's 45 s simpleperf profile of the owner's 3-racer start
@@ -196,7 +216,90 @@ Profile pass: the dispatcher has no simpleperf hook (request.sh and the soak tak
 profiling option). If the flag-on arm needs a profile, it is a separate pass with
 host-tools/profile_ab.sh, not a hand-recorded one on a timed arm (lane.local, 10-09).
 
-## 8. What the next lane should not repeat
+## 9. The four-run A/B, read (job items 4-6, continued)
+
+`armread.py --a 1-...-2018606 1-...-2019230 --b 1-...-2017514 1-...-2018875 --expect
+perdraw1009-nfs-soak.json`: V, P0-P3, P6 PASS; P4, P5, X FAIL. Reading the per-pair
+table (armread.py prints one row per run) rather than the combined arm means first:
+
+| pair | A run | B run | A draws/frame | B draws/frame | A us/d | B us/d | B-A us/d | B-A pm/d | A gfps | B gfps |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1 | 2018606 | 2017514 | 439 | 438 | 11.27 | 8.98 | -2.29 | -1.88 | 29.0 | 29.0 |
+| 2 | 2019230 | 2018875 | 855 | 801 | 9.31 | 7.83 | -1.49 | -1.59 | 26.4 | 28.4 |
+
+**The two pairs stopped against two different walls.** Frames at the route's
++10s shot (`drive-010s`, common to all four runs, before any divergence) show
+all four at the same 65% wall under the same sunset skyline -- the step that
+does not yet distinguish pairs. By the STATIC window (+40..+78s host) pair 1's
+frames (`234030`/`234629`-ish) are the plain wall at 65%/68% complete (timer
+2:34-2:35) and pair 2's (`235244`/`001734`) are a wall under a burning "Heat It
+Up" billboard at 66% (timer 2:45) -- a different stretch of the same curved
+wall, reached because the car keeps grinding along it for the ~120s after the
+LX pulse rather than stopping dead; which stretch it ends up grinding to is
+not controlled by anything this route scripts. **Re-running armread.py on each
+pair alone (table above) passes every perf leg**: both pairs independently
+read -1.5 to -2.3 us/draw and -1.6 to -1.9 (Pipe+Mfp)/draw, both inside the
+registered bands, with gfps unchanged in pair 1 (both at the 29.0 fps cap) and
+up in pair 2 (A2 at 26.4, below the cap, so the cut shows as fps there --
+a win, not the predicted "no change", because that particular wall position
+wasn't fully capped). The combined table's P4 and P5 fail only because they
+average across the two different scenes, not because either arm regressed.
+
+**X fails for the same reason, and by more than scene content alone
+explains.** Pixel-diffing the +10s frames (verifiably the *same* wall, same
+timer to within 0.1s, same 65% complete) across all four runs: A1-vs-B1 (same
+arm pairing as the file judges) reads max region d 207, mean 49.5, 144/192
+regions over floor+8 -- and **A1-vs-A2 (both off, flags 0/0/0) reads max 208,
+mean 50.1, 156/192**, as large as any cross-arm pair. Two runs of the SAME
+flag state differ from each other by as much as two runs of different flag
+states, at a point in the route both plainly share. The chase camera's
+position is a few degrees off between any two live runs of the same held
+input (collision/physics jitter), which reframes the whole background against
+the fixed 80 px grid -- a camera pan moves every region, a flag changing a
+handful of draws' shading would not. **With one run per arm, X's floor is
+forced to 0** (armread.py's within-arm floor needs >= 2 runs per arm to
+compute; this file has that, but only within a pair, and the combined table
+mixes pairs), so a margin of 8 over a floor of 0 fails on run-to-run camera
+noise alone, before any flag effect. X as registered is not a valid falsifier
+on this route with separate runs -- not because the fix is wrong, but because
+the instrument cannot tell a camera pan from a shading change. (Verified with
+`armread.py`'s own `regions`/`dmax` on the four `drive-010s.png` files,
+pairwise, outside any leg.)
+
+**Verdict on the four-run file: P1-P3 and P6 held in both pairs independently;
+P4/P5 are an artifact of averaging two scenes; X cannot be read as registered.**
+The per-draw cut itself is not in doubt from this data. What is still open is
+the pixel leg job item 6 actually asks for ("the flag-on arm must match
+flag-off on the same scenes"), which needs same-scene frames from different
+flag states -- exactly what HAKUX_UNI_TOGGLE was built for (section 10).
+
+## 10. The toggle run (job item 6, retried)
+
+Registered `docs/testing/predictions/perdraw1009-nfs-toggle.json` (sha256
+482fc384aa29445f981bacd6cd7171c9684b6ff4cd8b8e61c4e8e76b206fe840) against
+`a_ref`/`b_ref` 3f6762f180 (this branch's HEAD after merging origin/master,
+which carries 3b6ab0f363's HAKUX_UNI_TOGGLE/togread.py; the merge brought in
+only nightlynotes1009's fold, nothing touching this lane's files). One run,
+`HAKUX_UNI_TOGGLE=10` only (no HAKUX_UNI_BULK/_UBERCACHE/_FOGCACHE env: the
+toggle poll overwrites all three from the wall clock on its first tick
+regardless of their initial value, so setting them is a no-op once the toggle
+is on). Queued: `1-1791618767-perdraw1009-3415447`, `--seconds 380` (the
+updated route's comment says it ends ~360s after launch), `--route nfs-mw
+--device nova --perflog --ref 3f6762f180`.
+
+This reads both flag states against the SAME wall (one run, so one camera
+trajectory), which is what section 9 found the four-run file could not do.
+Judge with `togread.py <run> --expect perdraw1009-nfs-toggle.json --sheet
+<out>.png`; read the sheet (green/red bar per frame = on/off) before any leg,
+the same discipline as armread.py's baseline check.
+
+`docs/lanes/perdraw1009/WAITING` carries this request id. When it lands:
+read togread.py's table and legs, update this section with the result, update
+PR.md's state, and only then consider job item 7 (BF2/Spider-Man 2
+generalisation via genread.py, already written but not yet run against
+anything).
+
+## 11. What the next lane should not repeat
 
 - Do not read pfifo_thread's self time as renderer work: 87.5% of it is perflog
   clock reads.
@@ -204,3 +307,13 @@ host-tools/profile_ab.sh, not a hand-recorded one on a timed arm (lane.local, 10
   at the cap. Judge us/draw and Idle.
 - A cpu-clock profile is blind to Fin's waits; size Fin from the phase line.
 - A pulsed RT on NFS MW never gets the car going; hold it.
+- **Separate runs of a live-input route are not the same scene even when
+  draws/frame nearly match (438 vs 439), and are not reliably far apart when
+  they visibly differ (801 vs 855 both read as "pair 2").** Pixel-diff the
+  frames before trusting draws/frame as a scene proxy; two off-arm runs can
+  differ as much as an on-vs-off pair.
+- A table averaged across runs can hide that every individual run passed (or
+  every individual run failed); read armread.py's per-run rows, not just its
+  combined legs, before concluding from P4/P5/X.
+- HAKUX_UNI_TOGGLE exists so a route that cannot be pinned to one scene across
+  runs can still be A/B'd: flip within a run instead of queuing more runs.
