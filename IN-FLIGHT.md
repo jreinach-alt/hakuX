@@ -8,7 +8,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `perdraw1009` | claude-opus-5-5 | 14 min | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) |
+| `perdraw1009` | claude-opus-5-5 | 29 min | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -73,7 +73,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/perdraw1009` | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) | `c6d613338e` | 2026-10-09 23:04 |
+| `lane/perdraw1009` | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) | `9bdfd6d4f0` | 2026-10-09 23:23 |
 
 ## Recently landed on master
 
@@ -87,4 +87,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-08 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 - 2026-10-08 selfdeps: builds fetch nothing from GitHub (#433)
 
-_Updated 2026-10-09 23:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-09 23:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
