@@ -8,14 +8,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `lanepath1009` | claude-sonnet-5 | 11 min |  |
-| `pfifowait1009` | claude-sonnet-5 | 42 min | pfifowait1009: release pfifo.lock across the STALLED finish's fence waits (#433, 0.5) |
-| `surfgpudefault1009` | claude-sonnet-5 | 36 min | surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5) |
+| `lanepath1009` | claude-sonnet-5 | 25 min |  |
+| `pfifowait1009` | claude-sonnet-5 | 57 min | pfifowait1009: revert amped2.route to plain waits -- waitfor does not reach a dispatched run (#433, 0.5) |
+| `surfgpudefault1009` | claude-sonnet-5 | 51 min | surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 4 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
 
 ## 0.5 release: Playable titles
@@ -75,7 +75,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pfifowait1009` | pfifowait1009: release pfifo.lock across the STALLED finish's fence waits (#433, 0.5) | `77fd9d4881` | 2026-10-10 00:06 |
+| `lane/pfifowait1009` | pfifowait1009: revert amped2.route to plain waits -- waitfor does not reach a dispatched run (#433, 0.5) | `221a22f5a8` | 2026-10-10 00:15 |
 | `lane/surfgpudefault1009` | surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5) | `214da4fe81` | 2026-10-09 23:40 |
 
 ## Recently landed on master
@@ -90,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-08 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
 - 2026-10-08 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 
-_Updated 2026-10-10 00:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 00:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
