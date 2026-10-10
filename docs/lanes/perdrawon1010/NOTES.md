@@ -232,6 +232,50 @@ short for the hi-BE question, reported as such in section 2's Result, and
 section 2's recommendation leans on M1/M2 (which already have enough power)
 plus BF2's generalization check rather than on M3.
 
+## 5b. Attempt 3: why attempt 2 did not finish; the prologue batch, read
+
+Attempt 2 did not finish because it ended, as designed, on a WAITING file
+holding the three replicate runs (`...-3615994`, `-3618156`, `-3619271`): device
+runs outside the session. All three finished (`DONE`), and lanewaker resumed
+this lane as attempt 3, together with lane.local's 07:05 addendum (owner order:
+measure the race start, not the prologue). Perdraw1009 has still not folded
+(`git diff 4ad1154e55 origin/master -- hw/` is still exactly its own two
+files, after fetching), so every run stays on `4ad1154e55`.
+
+**All six runs of `nfs-mw.route`, pooled (`motionread.py`, the six dirs once
+each). This is the prologue scene, not the race start.** The route plays
+Career's scripted prologue race and gets control mid-lap 2/2; the MOTION rows
+after the mark are the player's car alone or nearing a wall.
+
+| phase | BE bin | rows | us/draw | se | gfps | draws/frame | Tot ms | Idle ms |
+|---|---|---|---|---|---|---|---|---|
+| off | <700 | 12 | 11.34 | 0.13 | 29.0 | 513 | 29.47 | 13.40 |
+| off | >=700 | 3 | 9.90 | 0.30 | 26.7 | 889 | 32.30 | 10.70 |
+| on | <700 | 13 | 9.46 | 0.17 | 29.1 | 547 | 29.28 | 13.98 |
+| on | >=700 | 5 | 8.04 | 0.21 | 25.4 | 928 | 33.56 | 11.76 |
+
+Legs: V FAIL (4 of 6 runs miss the `ROUTE finished` line, the tail poll race
+of section 5a, after the window closes), M1 PASS (on-off **-2.01 us/draw**, off
+10.91 n=15, on 8.90 n=18), M2 PASS (SE 0.29), M3 FAIL (hi bin gfps on-off
+-1.27, off 26.7 n=3, on 25.4 n=5), M4 PASS (every cell >= 3 rows).
+
+Run-to-run band of the on-off per-draw cost (each run alone, 2-3 pure rows
+per phase): -1.71, -1.90, -1.25, -3.11, -2.01, -2.02 us/draw. Every run has
+the same sign; the spread is 1.25-3.11.
+
+M3's -1.27 is not evidence of a regression: the on rows in that bin carry
+more work (928 against 889 draws/frame, Tot 33.56 against 32.30 ms), there are
+3 and 5 rows, and Idle is still 10-12 ms per frame in both, so the renderer is
+not the limit in these rows at all. What this batch settles is the per-draw
+cost, -2.0 us/draw (-18%) in a moving scene, the same size as perdraw1009's
+STATIC -1.70. It cannot say anything about fps where the renderer limits it,
+because nothing after the mark in this route is that scene: 24-30 fps at
+288-1,043 draws/frame. The one multi-car scene in the route is the cutscene
+before control (14-21 fps, ~2,100 draws/frame), where lane.local read about
+-6 ms/frame with the switches on and no fps change.
+
+So the race start needs its own route (addendum step 1), section 7.
+
 ## 5. Device budget and pilot
 
 Pilot batch queued (2026-10-10, ~22.5 min estimated, under the 30 min cap,
