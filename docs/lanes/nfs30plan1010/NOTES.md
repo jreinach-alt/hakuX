@@ -124,9 +124,9 @@ xemu-gpu, hakuX, hakuX-phase, hakuX-stall, hakuX-cpu, hakuX-pace, hakuX-perf, xe
 
 | line | source | cadence | fields | cannot see |
 |---|---|---|---|---|
-| `hakuX-perf gfps= G: D: S: J: Df Vd Ul Vpf Ri Tq` | profile.c:794-807 | 60 flips | guest fps, draws, surfaces, ... | per-frame variance |
-| `hakuX-pace f= v0..v4 vb= max= ms=` | profile.c | 60 flips | flip count, VBLANKs-per-frame histogram, ms over the 60 frames | which frame was the slow one |
-| `hakuX-phase Surf Tex [TxH] Shd Draw [Vtx Syn Prw Pipe(Tx Sh Lu) Desc Setup Cmd [Sfp Mfp FTx]] Fin(Sub Fen) Flip Idle(Fr St) \| Tot GPU(R X RP Pre Post MxG g:)` | profile.c, perflog build only | 60 flips, EMA alpha 0.2 | PFIFO-thread wall time per phase; `Draw` excludes finish; `Fin` includes the #804 tail | anything on another thread; the ~12 ms per frame no phase covers (lane.local: Tot 44.1 vs pace 56.2) -- the gap is PFIFO time outside any timer: method parsing, pusher, lock waits, logging |
+| `hakuX-perf gfps= G:ms(min-max) D: S: J: Df Vd Ul Vpf Ri Tq` | profile.c:794-807, pacing string :934 | printed every 60 flips; `G:` is an EMA alpha 0.2 of the flip-to-flip period updated EVERY flip (profile.c:774) | guest fps; `G` = the period the phase line below was measured at | `Tq` is not draws (it is a pacing field). Draws per frame are `xemu-work BE:` (profile.c:1247, begin/end count of the last COMPLETED frame before the print, once a second) |
+| `hakuX-pace f= v0..v4 vb= max= ms=` | profile.c:802 | 60 flips | flip count, VBLANKs-per-frame histogram, `ms=` the exact wall span of the 60 flips | which frame was the slow one; at 12-20 fps a 60-flip span is 3-5 s and straddles a menu or GO |
+| `hakuX-phase Surf Tex [TxH] Shd Draw [Vtx Syn Prw Pipe(Tx Sh Lu) Desc Setup Cmd [Sfp Mfp FTx]] Fin(Sub Fen) Flip Idle(Fr St) \| Tot GPU(R X RP Pre Post MxG g:)` | profile.c, perflog build only | printed every 60 flips, but every field is an EMA alpha 0.2 updated EVERY flip (`snapshot_phase_timing` profile.c:66-80, called from the flip hook at :415). A line is therefore a sample of the ~5-10 frames before its print, NOT a 60-flip mean; its matched period is `G:` on the `hakuX-perf` line of the same timestamp, not `pace ms=/60`. Do not try to invert the EMA across lines (this lane did; the result was garbage) | PFIFO-thread wall time per phase; `Draw` excludes finish; `Fin` includes the #804 tail | anything on another thread; the ms per frame no phase covers (G - Tot: 8-13 ms here, section 5.4) -- PFIFO time outside any timer: method parsing, pusher, lock waits, runqueue wait, logging |
 | `hakuX-cpu CPU: K: W:K M:(Fh: Ni:) Push:ms [Pull:(Lk: Mth: Fst:)] SpH:% TbH:% Lw:` | pfifo.c / cpu-exec.c | 60 flips | pusher ms, puller ms (lock, method, fast path), TB hit rates, DMA_PUT lock wait | per-method cost |
 | `xemu-gpu GPU: Tot Rnd Xfr RP` | draw.c, timestamps | 60 flips | GPU busy per frame | GMEM in-pass stamps mark the last tile (render vs transfer misattributed); double count fixed 5c35880d0a; sanity Tot x fps <= 1 |
 | `xemu-gpu XFR nr/sites/rp/rpc` | draw.c:4324-4372, `HAKUX_GPUXFR=1` | window | readback count, render-pass pairs, pass census | - |
@@ -211,12 +211,60 @@ driven by hand, not the route.
 Queue at 16:31 UTC: texscan1010 running; nfsframe1010 run 1 ahead of mine; nfsframe1010 run 2 and the two
 forzasurf1010 arms behind. Results land in `~/hakux-work/dispatch/results/<id>/` (logcat.txt, run.log,
 route-frames/, pulled/frametrace_*.csv). Reads planned: moving player from `route-frames/s*-g11.png`;
-`startread.py --window -4,1.5` (PERDRAW1009_REF=4ad1154e55) and `--window 1.5,12`; `vcpuread.py`;
-`docs/lanes/frametrace/ftread.py <dir>` (window from `mark gameplay`) and `rtjoin.py`; `[pmu433]`; `XFR rpc`
-pass census; `[sdcall]`; `hakuX-stall`; `hakuX-phase`. Then the per-thread heavy-frame table (section 5.4).
+`phaseread.py --window=-2,1.5` and `--window=1.5,12` (not `startread.py`: it needs the `[perdraw433]`
+state line that only perdraw1009's build prints, and fails "one state missing" on every other build);
+`vcpuread.py`; `docs/lanes/frametrace/ftread.py <dir>` (window from `mark gameplay`) and `rtjoin.py`;
+`[pmu433]`; `XFR rpc` pass census; `[sdcall]`; `hakuX-stall`; `hakuX-phase`. Then the per-thread
+heavy-frame table (section 5.5).
 
-### 5.4 The heavy frame, per thread
-(filled in from the runs; until then the only end-to-end numbers are 4.1 and 4.2)
+### 5.4 The PFIFO thread at the countdown, from the free perflog run (texscan1010's `1-1791648919-texscan1010-2004607`)
+Build 4784750c3c = master + the `[tsc]` census (no switch), `--perflog`, no env, same route, 12 starts,
+ROUTE finished, player moving on every `s*-g11.png`. Reader: `phaseread.py` (this dir), one sample per
+phase line printed in [mark-2, mark+1.5] (the countdown proper), period = `G:` of the same print.
+
+| start | G ms | fps | Draw | Fin (Sub) | Idle (Fr) | Tot | G - Tot | GPU (R X) |
+|---|---|---|---|---|---|---|---|---|
+| 1 (cold: menus -> load -> race) | 74.3 | 13.5 | 21.6 | 25.9 (18.7) | 11.1 (9.2) | 61.2 | 13.1 | 22.7 (15.3 7.4) |
+| 2 | 63.0 | 15.9 | 20.4 | 17.5 (12.1) | 10.9 (10.1) | 50.9 | 12.1 | 14.6 (14.2 0.4) |
+| 4-12 (warm restarts, 10 samples) | 53.2-58.0 | 17-19 | 16.2-18.1 | 14.4-15.9 (9.2-10.1) | 9.1-12.3 | 42.5-47.6 | 9-11 | 11.7-13.0 |
+| pooled, 12 samples | 56.6 | 17.7 | 17.5 | 16.0 (10.6, Fen 1.5) | 11.1 (9.7, St 1.4) | 46.5 | 10.1 | 13.2 (12.3 0.9) |
+
+Pooled detail: Surf 1.7, Syn 3.9, Pipe 5.4 (Sh 3.4), Desc 2.1, Setup 1.1, Mfp 3.0; draws/frame 1,577
+(`BE`), so Draw is 11.1 us/draw; Push 0.67, Pull 0.62, Lw 0.00 ms/frame; `txw` bind 8.6 and
+create_texture 8.5 ms/frame, of which sync-dl 3.7 (0.5/frame, the cube's face 0) and range-scan 3.9 (286
+scans/frame, 1 finish + 4 downloads/frame); finishes per 60 frames sd 90, flip 60, stl 70, total 220.
+Same reader, [mark+1.5, mark+12] (post-GO): G 47.6 (21 fps), Draw 14.3, Fin 13.3, Idle 10.5, Tot 39.7,
+G - Tot 8.0, GPU 10.7, 1,172 draws/frame (12.2 us/draw), create_texture 10.1 (sync-dl 4.4, scan 4.6).
+
+Read:
+- **The cold first start is the owner's 13 fps.** Only start 1 reaches 74 ms, and its extra over a warm
+  restart is Sub (+8 ms: first-use texture uploads, X 7.4 = GPU transfers) and Draw (+4 ms at ~1,900
+  draws, `BE` 1929/1846 at that start against ~1,577 later). The owner's by-hand runs are always cold
+  starts (and a downtown track); the route's restarts are warm. The plan has to hold 30 at the cold start.
+- **GPU is not the limit**: GPU x fps = 0.23 pooled, 0.31 cold. Rendering is 12-15 ms of GPU per frame.
+- **Draw (recording) is 17.5 ms = 11 us/draw**, the same per-draw cost perdraw1009 measured; at 2,000
+  draws it is 22 ms by itself, two thirds of the 33.3 ms budget before anything else runs.
+- **Fin 16 ms is mostly the two synchronous texture-coherence paths**: sync-dl 3.7 + scan 3.9 = 7.6 ms
+  inside create_texture, each a `pgraph_vk_finish` plus a GPU->CPU copy, plus the flip finish (60/60) and
+  the deferred-stall finishes (70/60). Sub 10.6 is the submit+wait part of those finishes.
+- **Idle.Fr ~10 ms every frame, hot or cold, cold or warm**: the PFIFO thread waits for the guest's next
+  frame after the flip for ~10 ms regardless of load. That is the serial alternation: guest frame, then
+  our frame, not overlapped (5.1 shows the guest half idle in the same windows).
+- **G - Tot = 8-13 ms outside every phase timer.** Frametrace's `prq`/`pblk`/`pw=` on this lane's runs
+  (5.5) say what it is.
+- `vcpuread.py` on the same run, [mark-2, mark+1.5]: 53.8 ms/frame, vCPU busy 28.0, idle 25.8 per frame
+  (52% busy), of which 22.2 ms is work done after an NV2A wake and 4.4 after a timer wake.
+  nfsframe1010's run 1 (`1-1791649039-nfsframe1010-2037292`, ref 07937793af, **no perflog**, same route):
+  countdown 45.6 ms/frame, busy 27.4, idle 18.2 (60%); post-GO 38.4 ms/frame, busy 24.5, idle 13.9 (64%).
+  So the guest's own frame costs ~27 ms of vCPU wall time at the countdown on both builds, and the
+  **perflog build is ~8-10 ms/frame slower than the plain build at the countdown** (45.6 vs 53.8 ms;
+  post-GO 38.4 vs 47.2). Every phase figure in this section carries that instrument cost; the plan's budget
+  is set against the plain build's period (45.6 ms countdown warm, 13 fps = ~74 ms cold by the owner).
+  Caveat: rr425w busy is wall time outside the idle loop, so a vCPU MMIO wait on our side counts as busy;
+  frametrace's `vw=` split (5.5) separates it.
+
+### 5.5 The heavy frame, per thread
+(filled in from this lane's runs, 5.3; until then the end-to-end numbers are 4.1, 4.2 and 5.4)
 
 ## 6. Coordination
 
@@ -224,7 +272,10 @@ pass census; `[sdcall]`; `hakuX-stall`; `hakuX-phase`. Then the per-thread heavy
   (`1-1791649039`, `1-1791649724`) WITHOUT perflog and WITHOUT env, so they carry no phase lines, no
   frametrace, no PMU, no census. They answer "does the vCPU idle after GO" from `[rr425w]`. This lane's runs
   carry perflog + frametrace + PMU + census on the same emulator; I read nfsframe1010's results for the
-  post-GO rr425w and do not re-run that question.
+  post-GO rr425w and do not re-run that question. Its run 1 is read in 5.4: the plain build's period is
+  45.6 ms (countdown) / 38.4 ms (post-GO) with the vCPU 60-64% busy. Its NOTES section 2 is a good
+  independent check of the instrument semantics, except that it calls the phase line "per-~1s-window
+  averaged": it is a per-flip EMA (section 3 here).
 - **lane.texscan1010** (Opus): `HAKUX_TEXSCAN` GPU-side range scan. The cube-map `txr dl` route is a
   different path (section 2.4) and is NOT covered by its switch as described; PLAN.md says so.
 - **lane.perdrawon1010**: done measuring; its result is 4.2/4.3.
@@ -236,6 +287,12 @@ pass census; `[sdcall]`; `hakuX-stall`; `hakuX-phase`. Then the per-thread heavy
 - Do not price a vCPU change by sample share (4.5). At the countdown the vCPU is half idle (5.1).
 - Do not run this route without `--perflog` if the question is where the PFIFO thread's time goes; the
   non-perflog build prints pace/perf/cpu/rr425w only.
-- `startread.py` needs `PERDRAW1009_REF` to a reachable sha; it reads `mark gameplay` / `mark goN`.
+- `startread.py` needs `PERDRAW1009_REF` to a reachable sha AND a build that prints the `[perdraw433]`
+  state line; on any other build it fails "one state missing". `phaseread.py` here reads any perflog run.
+- A `hakuX-phase` line is a per-flip EMA, not a window mean (section 3). Select lines by print time and
+  pair each with its own `G:`; never divide `pace ms=` by 60 to get the period of a phase line, and never
+  try to de-EMA.
+- The perflog build costs ~8-10 ms/frame at this scene (5.4). Price a rework against the plain build's
+  period, and judge an A/B on the plain build when the switch does not need phase lines.
 - The route copy that request.sh resolves must sit in `docs/testing/titles/routes/` of the tree you run
   it from; that copy is outside this lane's territory and is not committed here.
