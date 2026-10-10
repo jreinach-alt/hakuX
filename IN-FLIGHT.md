@@ -6,12 +6,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `lanepath1009` | claude-sonnet-5 | 10 min | lane.lanepath1009: lane.sh gives each lane unit a shim-first PATH with --setenv (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -69,7 +71,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/lanepath1009` | lane.lanepath1009: lane.sh gives each lane unit a shim-first PATH with --setenv (#433, 0.5) | `69aa814fe1` | 2026-10-10 00:41 |
 
 ## Recently landed on master
 
@@ -82,4 +86,4 @@ No branch is being worked right now.
 - 2026-10-09 fpstelemetry1008b: the four titles lane A could not measure -- NFS Most Wanted, Midnight Club II, Fantastic 4, Dino Crisis 3 (#433)
 - 2026-10-09 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
 
-_Updated 2026-10-10 04:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 04:59 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
