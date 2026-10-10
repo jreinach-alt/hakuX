@@ -8,12 +8,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `perdraw1009` | claude-opus-5-5 | 29 min | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) |
+| `perdraw1009` | claude-opus-5-5 | 43 min | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) |
+| `pfifowait1009` | claude-sonnet-5 | 12 min |  |
+| `surfgpudefault1009` | claude-sonnet-5 | 6 min | surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 5 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
 
 ## 0.5 release: Playable titles
@@ -73,10 +75,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/perdraw1009` | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) | `9bdfd6d4f0` | 2026-10-09 23:23 |
+| `lane/perdraw1009` | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) | `334904b9e7` | 2026-10-09 23:42 |
+| `lane/surfgpudefault1009` | surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5) | `214da4fe81` | 2026-10-09 23:40 |
 
 ## Recently landed on master
 
+- 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 usagemode1009: usage Low is a read-time cap, re-evaluated every tick (#433)
 - 2026-10-09 fpstelemetry1008b: the four titles lane A could not measure -- NFS Most Wanted, Midnight Club II, Fantastic 4, Dino Crisis 3 (#433)
@@ -85,6 +89,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-09 profileddefault1008: TU_AUTOTUNE_ALGO=profiled behind an autotune override
 - 2026-10-08 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
 - 2026-10-08 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
-- 2026-10-08 selfdeps: builds fetch nothing from GitHub (#433)
 
-_Updated 2026-10-09 23:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-09 23:44 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
