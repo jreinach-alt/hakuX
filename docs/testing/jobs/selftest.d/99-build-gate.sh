@@ -40,6 +40,12 @@
 #       60 s restore after every run, release or not, forever. Found 10-07
 #       by running `device_build.py check` against the Nova's own live
 #       result after a real restore: a clean build, flagged non-release.
+#   (l) a restore already queued (or running) for a device is not queued
+#       again by the next non-master run: without this, a chain of
+#       non-master runs piles up one duplicate dispatch.restore-*.req per
+#       run, forever, since a queued restore writes no result.json until
+#       served and last_run() keeps reading the same stale off-master
+#       result in the meantime (#433, found 10-09: 14 of them in 2h18m).
 #
 # SELFTEST_HOLD_SH points leg (b) at another hold.sh. The mutant legs at the
 # end run with the fix removed, and must show the thing the real leg refuses.
@@ -180,6 +186,23 @@ dbrun kbranch 8000 nova "$BRANCH_SHA" '[]' lane.b
 check "(k) a resolved sha never merged to trunk is refused even with DISPATCH_REPO set" \
     dbrc 4 dbcheck_repo "$DB_REPO"
 
+# (l) #433 (10-09): two non-master runs for the same device, served back to
+# back, queue only one restore between them, not two. A queued restore
+# writes no result.json until served, so before this lane's fix last_run()
+# kept reading the same off-master result for every later non-master run
+# and cmd_restore wrote one more request each time -- an unbounded pile of
+# duplicate dispatch.restore-*.req files in queue/ for as long as the chain
+# of non-master runs continued (observed on the Nova: 14 of them in 2h18m).
+rm -f "$DB_D/queue"/*dispatch.restore*.req
+dbrun lr1 2700 nova master '["HAKUX_X=3"]' lane.d
+dbrun lr2 2800 nova master '["HAKUX_X=3"]' lane.d
+rid_l1=$(python3 "$DB_PY" restore "$DB_D" nova lr1)
+rid_l2=$(python3 "$DB_PY" restore "$DB_D" nova lr2)
+check "(l) the first run off master queues a restore" [ -n "$rid_l1" ]
+check "(l) the second run off master queues nothing while one restore is pending" [ -z "$rid_l2" ]
+check "(l) exactly one dispatch.restore request survives in queue/" \
+    [ "$(ls "$DB_D/queue"/*dispatch.restore*.req 2>/dev/null | wc -l)" -eq 1 ]
+
 # MUTANTS: the fix removed must go red. Each mutant is checked for the very
 # behaviour its leg above asserts, so a leg that passes on the mutant is vacuous.
 DB_MUT="$T/devbuild/mut"; mkdir -p "$DB_MUT"
@@ -212,3 +235,16 @@ check "mutant built: device_build.py without the ancestry check at the call site
     bash -c "! grep -q 'or _on_trunk(ref)' '$DB_MUT/device_build_k.py'"
 check "mutant: without the ancestry check a trunk sha is wrongly refused (leg (k) is not vacuous)" \
     bash -c "DISPATCH_REPO='$DB_REPO' python3 '$DB_MUT/device_build_k.py' check '$DB_D' nova; [ \$? -eq 4 ]"
+
+# Leg (l)'s mutant: device_build.py with the restore_pending gate disabled.
+cp "$DB_PY" "$DB_MUT/device_build_l.py"
+sed -i 's/if restore_pending(dispatch_dir, label):/if False:/' "$DB_MUT/device_build_l.py"
+check "mutant built: device_build.py with the pending check disabled" \
+    [ "$(grep -c 'if restore_pending(dispatch_dir, label):' "$DB_MUT/device_build_l.py")" -eq 0 ]
+rm -f "$DB_D/queue"/*dispatch.restore*.req
+dbrun lm1 2900 nova master '["HAKUX_X=4"]' lane.e
+dbrun lm2 3000 nova master '["HAKUX_X=4"]' lane.e
+python3 "$DB_MUT/device_build_l.py" restore "$DB_D" nova lm1 >/dev/null
+python3 "$DB_MUT/device_build_l.py" restore "$DB_D" nova lm2 >/dev/null
+check "mutant: without the pending check a second run off master queues a duplicate restore (leg (l) is not vacuous)" \
+    [ "$(ls "$DB_D/queue"/*dispatch.restore*.req 2>/dev/null | wc -l)" -eq 2 ]
