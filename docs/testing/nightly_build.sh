@@ -314,12 +314,30 @@ offline_clean_title() {   # <branch> <lane> <title> -> title without a leading "
     title=$(sed -E "s/^lane\.${l_re}( [^:]*)?: //" <<<"$title")
     sed -E 's/ \(#[0-9]+\)$//' <<<"$title"
 }
-lane_body_line() {   # <lane> <sha> -> "category<TAB>line" from docs/lanes/<lane>/PR.md's Release note line, at <sha>
-    local body
-    body=$(git show "$2:docs/lanes/$1/PR.md" 2>/dev/null)
-    printf '%s\n' "$body" | tr -d '\r' | sed -nE \
-        's/^[[:space:]]*[Rr]elease[ -][Nn]otes?( \(([A-Za-z ]+)\))?:[[:space:]]*(.*[^[:space:]])[[:space:]]*$/\2\t\3/p' \
-        | head -1
+lane_body_line() {   # <lane> <sha> -> "category<TAB>line" from docs/lanes/<lane>/PR.md's Release note line, at
+                      # <sha>, plus any lines a lane wrapped it onto. The category group admits anything but ")" --
+                      # not just letters and spaces -- so an unfilled template line, "(performance|stability|
+                      # rendering|other|none)", still yields its text instead of matching nothing.
+    local body line cat="" text="" in_note=0 trimmed
+    body=$(git show "$2:docs/lanes/$1/PR.md" 2>/dev/null | tr -d '\r')
+    while IFS= read -r line; do
+        if [ "$in_note" = 0 ]; then
+            if [[ $line =~ ^[[:space:]]*[Rr]elease[-\ ][Nn]otes?(\ \(([^\)]*)\))?:[[:space:]]*(.*[^[:space:]])[[:space:]]*$ ]]; then
+                cat=${BASH_REMATCH[2]}; text=${BASH_REMATCH[3]}; in_note=1
+            fi
+            continue
+        fi
+        # Stop at a blank line, a markdown heading, or another "Key:" line
+        # (State:, Files:, Prediction:, Needs device:, ...) -- anything else
+        # between the note and one of those is the lane's own wrap of it.
+        if [[ -z $line ]] || [[ $line =~ ^\#+[[:space:]] ]] || [[ $line =~ ^[A-Za-z][A-Za-z[:space:]]*:([[:space:]]|$) ]]; then
+            break
+        fi
+        trimmed=$(sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' <<<"$line")
+        [ -n "$trimmed" ] && text="$text $trimmed"
+    done <<<"$body"
+    [ "$in_note" = 1 ] || return 0
+    printf '%s\t%s\n' "$cat" "$text"
 }
 flush_change() {
     [ "$have" = 1 ] || return 0
