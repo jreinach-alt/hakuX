@@ -6,14 +6,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `modelpolicy1010` | claude-sonnet-5 | 39 min | Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `2026-10-10T23:28:49Z`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 10 waiting, 1 running.
+- **Device queue:** 9 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -71,9 +69,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/modelpolicy1010` | Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly) | `2b7d7cc063` | 2026-10-10 08:39 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -90,4 +86,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5)
 - 2026-10-10 Lane: nightlywrap1010            Issue: none (dispatched directly by lane.local, #433 umbrella)
 
-_Updated 2026-10-10 16:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 16:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
