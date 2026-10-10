@@ -6,12 +6,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `surfgpu1009` | claude-sonnet-5 | 1 min | surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433,  |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `owner:surfgpu`
   - Thor: held by `lanelocal-fanwait`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
@@ -71,9 +69,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/surfgpu1009` | surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433, 0.5) | `29d62d7016` | 2026-10-09 20:12 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -87,4 +83,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-08 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 - 2026-10-08 selfdeps: builds fetch nothing from GitHub (#433)
 
-_Updated 2026-10-09 21:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-09 21:29 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
