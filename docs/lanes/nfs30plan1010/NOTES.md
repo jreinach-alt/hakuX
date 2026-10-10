@@ -215,7 +215,18 @@ route-frames/, pulled/frametrace_*.csv). Reads planned: moving player from `rout
 state line that only perdraw1009's build prints, and fails "one state missing" on every other build);
 `vcpuread.py`; `docs/lanes/frametrace/ftread.py <dir>` (window from `mark gameplay`) and `rtjoin.py`;
 `[pmu433]`; `XFR rpc` pass census; `[sdcall]`; `hakuX-stall`; `hakuX-phase`. Then the per-thread
-heavy-frame table (section 5.5).
+heavy-frame table (section 5.5). Both runs DONE and read in 5.5.
+
+**Placement probe, queued 17:12 UTC** (plain build, ref 07937793af, no perflog, env `HAKUX_IDLE_HALT=1`, 500 s,
+route nfs-mw-quickrace, `--expect docs/testing/predictions/nfs30plan1010-idlehalt.json`):
+- `1-1791652213-nfs30plan1010-2992539` (B1)
+- `1-1791652214-nfs30plan1010-2992731` (B2)
+Queue at enqueue time: forzasurf1010 one running + one queued, then texscan1010's six (pixel leg
+`1-1791650753`/`-757`, NFS `1-1791650940-…-2621346`/`-2621780`, `1-1791650941`, `1-1791650942`), then these
+two. A arms: nfsframe1010's `1-1791649039`, `1-1791649724` (DONE). Read on resume: `phaseread.py <A dirs> ` and
+`phaseread.py <B dirs>` with `--window=-2,1.5` (pace ms/60 pooled; the plain build prints no phase line, so G
+and pace only), `vcpuread.py` for the vCPU busy split, `route-frames/s*-g11.png` for the moving player. The
+verdict goes to PLAN.md 4.9 (P for placement) and decides whether `briefs/placement1010.md` is dispatched.
 
 ### 5.4 The PFIFO thread at the countdown, from the free perflog run (texscan1010's `1-1791648919-texscan1010-2004607`)
 Build 4784750c3c = master + the `[tsc]` census (no switch), `--perflog`, no env, same route, 12 starts,
@@ -376,10 +387,19 @@ that is this build's cold start, not the plain build's.
   45.6 ms (countdown) / 38.4 ms (post-GO) with the vCPU 60-64% busy. Its NOTES section 2 is a good
   independent check of the instrument semantics, except that it calls the phase line "per-~1s-window
   averaged": it is a per-flip EMA (section 3 here).
-- **lane.texscan1010** (Opus): `HAKUX_TEXSCAN` GPU-side range scan. The cube-map `txr dl` route is a
-  different path (section 2.4) and is NOT covered by its switch as described; PLAN.md says so.
+- **lane.texscan1010** (Opus): `HAKUX_TEXSCAN` GPU-side copy. **Correction (10-10, after reading its
+  census `1-1791648919-texscan1010-2004607`):** an earlier version of this entry, and of my summary, said the
+  switch covered only the range scan and not the cube-map `txr dl` route. Its census shows every synchronous
+  download at the race start is a face of one 128x128 cube environment map @352a080: face 0 through the SDL
+  block, faces 1-5 through the range scan, and the switch copies all six on the GPU. PLAN.md 1 and 4.1 use
+  the corrected reading. One thing to tell that lane (PLAN.md 3, "one structural fact"): draws reach the
+  GPU only at a finish, and its `sd` finishes are what submit mid-frame; with them gone the report fence
+  (4.2) waits for the whole frame's GPU work, so its A/B period should move 4-8 ms, not 16-23, until
+  reportasync1010 lands. A small move is the model, not a failed copy.
 - **lane.perdrawon1010**: done measuring; its result is 4.2/4.3.
 - **lane.forzasurf1010**: SURFGPU on/off on Forza; off NFS's path.
+- **lane.nfsframe1010's run 2** (`1-1791649724`) is the second A arm of the placement probe
+  (`nfs30plan1010-idlehalt.json`): same build, route, seconds, device, no env.
 
 ## 7. What the next lane should not repeat
 - Do not release `pfifo.lock` or `pgraph.lock` around a finish wait and call it a fix: three lanes did,
@@ -396,3 +416,30 @@ that is this build's cold start, not the plain build's.
   period, and judge an A/B on the plain build when the switch does not need phase lines.
 - The route copy that request.sh resolves must sit in `docs/testing/titles/routes/` of the tree you run
   it from; that copy is outside this lane's territory and is not committed here.
+- `request.sh` refuses an enqueue without `--expect <prediction file>` or `--no-expect <reason>`; register
+  the prediction before queuing, then pass it.
+- The render thread has no frametrace row (profile.h registers vCPU, PFIFO, main; `pgraph.vk.render` is not
+  registered). Its `vkWaitForFences` lands in `o_fence`, and the PFIFO thread's `finish_event` /
+  `wait_frame_submitted` waits are unhooked: they show only as `p_blk - (hooked sites)`. Register the row
+  before the next frametrace read of a finish-heavy scene (an instrument request to the board; profile.h and
+  render_thread.c are outside this lane's territory).
+- Compare pace windows like for like. The first 60-flip window after `mark gameplay` straddles the menu
+  transition; `[mark-2, mark+1.5]` print-time selection is the countdown; both builds must use the same rule
+  before their periods are compared (5.5, "Instrument cost").
+- Draws reach the GPU only at a finish (draw.c:4881), and at this scene the finishes are `sd` 90 / `flip`
+  60 / `stl` 70 per 60 frames with `buf` 0. Two GPU waits on the PFIFO thread are therefore one pool: removing
+  the mid-frame finishes moves their GPU work onto the next fence. Price GPU-wait removals together, never by
+  summing the sites (PLAN.md 3 and 5).
+- Do not read the texscan switch's coverage from a description of the code path. Its census named every
+  download at the scene and showed both paths (SDL block and range scan) are faces of one cube map; my
+  earlier "not covered" statement came from the path description, not from the census (6).
+
+## 8. Session state
+
+**[lane.nfs30plan1010] waiting:** the placement probe, requests `1-1791652213-nfs30plan1010-2992539` and
+`1-1791652214-nfs30plan1010-2992731` (queued behind forzasurf1010's two and texscan1010's six on the Nova;
+~9 runs x ~10 min ahead). The signal is both result dirs under `~/hakux-work/dispatch/results/` with
+`run.log` ending in the route's rc; `WAITING` carries the two ids for lanewaker. On resume: read the probe
+(5.3), set PLAN.md 4.9's P and the placement row in PLAN.md 5, decide `briefs/placement1010.md`'s dispatch
+condition, and if texscan1010's NFS runs are DONE by then, check PLAN.md 7.2's model test against them. The
+deliverable (PLAN.md 0-9, four briefs, this file) is complete without the probe; the probe only sets one P.
