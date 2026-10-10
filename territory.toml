@@ -2227,6 +2227,12 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/nfsframe1010/**", "docs/testing/predictions/nfsframe1010-*.json"]
 note = "STARTED lane.local 2026-10-10 09:01 PDT (Sonnet, measurement, FPS priority): NFS MW race start, master head, no fix: account for the whole frame period (heavy frames ~55 ms, 3-4 vblanks) against the phase line's Tot (~44 ms); the ~12 ms gap, the ~10 ms post-flip idle and the rest of Sub, one table per heavy frame, ranked P x win."
+
+[lane.nfs30plan1010]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/nfs30plan1010/**", "docs/testing/predictions/nfs30plan1010-*.json"]
+note = "STARTED lane.local 2026-10-10 09:11 PDT (Fable, owner escalation 10-10 ~09:10): analysis and remediation plan for NFS MW's race start (countdown + first ~4 s after GO, ~2,000 draws/frame, 13-14 fps) to hold 30 fps; every subsystem on the table (JIT, PFIFO path, Vulkan recording, sync, surfaces, GPU, driver, pacing). Instruments by board request only."
 [lane.surfgpu1009]
 issues = ["433"]
 standing = false
