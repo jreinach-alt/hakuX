@@ -2,7 +2,7 @@ State: ready
 
 Lane: pmucounters            Issue: #433
 Base: master @ 2b9846b729
-Files: accel/tcg/hakux-pmu.c.inc, accel/tcg/cpu-exec.c, docs/lanes/pmucounters/NOTES.md, docs/lanes/pmucounters/OUTBOX.md, docs/lanes/pmucounters/PR.md, docs/lanes/pmucounters/WAITING, docs/lanes/pmucounters/pmuprobe.c, docs/lanes/pmucounters/build_probe.sh, docs/lanes/pmucounters/r0_probe.sh, docs/lanes/pmucounters/pmuread.py, docs/lanes/pmucounters/syntax_check.py, docs/lanes/pmucounters/elfsyms.py, docs/lanes/pmucounters/overhead.py, docs/lanes/pmucounters/waits.py, docs/lanes/pmucounters/spinfps.py, docs/lanes/pmucounters/tbbins.py, docs/lanes/pmucounters/tbper.py, docs/lanes/pmucounters/objcheck433.py, docs/lanes/pmucounters/pairread.py, docs/lanes/pmucounters/workbin.py
+Files: accel/tcg/hakux-pmu.c.inc, accel/tcg/cpu-exec.c, docs/lanes/pmucounters/NOTES.md, docs/lanes/pmucounters/OUTBOX.md, docs/lanes/pmucounters/PR.md, docs/lanes/pmucounters/pmuprobe.c, docs/lanes/pmucounters/build_probe.sh, docs/lanes/pmucounters/r0_probe.sh, docs/lanes/pmucounters/pmuread.py, docs/lanes/pmucounters/syntax_check.py, docs/lanes/pmucounters/elfsyms.py, docs/lanes/pmucounters/overhead.py, docs/lanes/pmucounters/waits.py, docs/lanes/pmucounters/spinfps.py, docs/lanes/pmucounters/tbbins.py, docs/lanes/pmucounters/tbper.py, docs/lanes/pmucounters/objcheck433.py, docs/lanes/pmucounters/pairread.py, docs/lanes/pmucounters/workbin.py
 Prediction: none: measurement lane, no arm (no behaviour change; the counting on/off pair is an overhead check read by hand)
 Needs device: yes    Needs NDK: yes
 
