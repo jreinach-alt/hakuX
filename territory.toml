@@ -870,6 +870,12 @@ standing = false
 files = ["docs/lanes/dashretro/**", "docs/testing/jobs/status_html.py"]
 note = "STARTED lane.local 2026-10-05 14:25 PDT (owner: the dashboard's 0.5 graphs must match the last 5 days): the 0.5 panel counts the Playable ledger and pathfind held runs. Row written by lane.local 2026-10-05 15:00 PDT for the offline fold; status_html.py claimed from [free]."
 
+[lane.boardgateenv1009]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/boardgateenv1009/**", "docs/testing/jobs/board-push-gate.sh", "docs/testing/jobs/selftest.d/97-board-push-gate.sh"]
+note = "STARTED lane.local 2026-10-09 23:04 PDT: the board pre-push hook runs with GIT_DIR exported, so board-push-gate.sh:58 stages origin/master's docs/testing into the pushing board tree's index and the next board commit sweeps it in (ffda08b215 carried 126 such files). Gate clears git's repo env; selftest 97 case + mutant. Both files were unclaimed. Sonnet."
+
 [lane.usage24h1009]
 issues = ["433"]
 standing = false
