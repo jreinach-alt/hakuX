@@ -8,13 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `nfs30plan1010` | claude-fable-5-1 | 33 min | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and re |
-| `texscan1010` | claude-opus-5-5 | 43 min | lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download |
+| `nfs30plan1010` | claude-fable-5-1 | 48 min | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and re |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `2026-10-10T16:56:41Z`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 5 waiting, 1 running.
+- **Device queue:** 10 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -74,11 +73,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/nfs30plan1010` | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation  | `1ea9525809` | 2026-10-10 09:34 |
-| `lane/texscan1010` | lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download, behind H | `e654516849` | 2026-10-10 09:43 |
+| `lane/nfs30plan1010` | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation  | `0767c425c2` | 2026-10-10 09:48 |
 
 ## Recently landed on master
 
+- 2026-10-10 Lane: nightlywrap1010            Issue: none (dispatched directly by lane.local, #433 umbrella)
 - 2026-10-10 lane.lanepath1009: lane.sh gives each lane unit a shim-first PATH with --setenv (#433, 0.5)
 - 2026-10-10 ghlive1010 -- AGENTS.md: GitHub is up
 - 2026-10-10 Lane: restoreleak1009            Issue: #433
@@ -88,4 +87,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 
-_Updated 2026-10-10 09:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 10:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
