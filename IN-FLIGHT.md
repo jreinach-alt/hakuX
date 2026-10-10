@@ -8,9 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `forzasurf1010` | claude-sonnet-5 | 5 min | lane.forzasurf1010 -- does the default-on surfgpu route remove Forza's surface-download wait? (#433, 0.5) |
-| `nfs30plan1010` | claude-fable-5-1 | 18 min | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and re |
-| `texscan1010` | claude-opus-5-5 | 28 min | lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download |
+| `nfs30plan1010` | claude-fable-5-1 | 33 min | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and re |
+| `texscan1010` | claude-opus-5-5 | 43 min | lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -75,9 +74,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/forzasurf1010` | lane.forzasurf1010 -- does the default-on surfgpu route remove Forza's surface-download wait? (#433, 0.5) | `33479d7464` | 2026-10-10 08:54 |
-| `lane/nfs30plan1010` | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation  | `da9182b483` | 2026-10-10 09:12 |
-| `lane/texscan1010` | lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download, behind H | `4784750c3c` | 2026-10-10 09:15 |
+| `lane/nfs30plan1010` | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation  | `1ea9525809` | 2026-10-10 09:34 |
+| `lane/texscan1010` | lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download, behind H | `e654516849` | 2026-10-10 09:43 |
 
 ## Recently landed on master
 
@@ -90,4 +88,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 
-_Updated 2026-10-10 09:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 09:44 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
