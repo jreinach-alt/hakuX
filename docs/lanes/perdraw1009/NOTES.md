@@ -47,6 +47,23 @@ rather than an unfinished state; this resume (still counted "attempt 2") found
 the run's `DONE` marker already on disk, read it with `togread.py` (section
 10's close), and finishes the job from there.
 
+**Attempt 3 (this session) resumes mid-job-item-7, not mid-crash.** Attempt 2
+ended correctly on `WAITING` for the two queued BF2 generalisation arms
+(300-turn cap, nothing else outstanding) after section 12's queue. Both runs'
+`DONE` markers were already on disk at resume. Reading them with `genread.py`
+(section 12's close, below) found G1-G4 all PASS but XB FAIL with "0 gameplay
+frames": the two requests were queued without `--frames-every`, so
+`start_frame_capture` (dispatcher.sh:288) never ran and `<rdir>/frames/` does
+not exist. `bf2mc.route`'s `repeat forever` gameplay loop has no `shot`
+command either (not this lane's file to add one to), so there was no pixel
+evidence of any kind to read. This is a request-construction gap in the
+previous session's queue command, not a genread.py bug (its `last_frames()`
+path, `frames/f*.png`, matches exactly what `--frames-every` writes) and not
+a route-ownership block (`--frames-every` is a soak-only, dispatcher-side
+capture independent of the route file). Fixed by re-queuing both arms with
+`--frames-every 20` added, same ref/env/route/seconds otherwise (section 12's
+close has the new ids); nothing else from attempt 2 needed redoing.
+
 ## 1. Where the per-draw time goes (job item 1)
 
 Source: lane.local's 45 s simpleperf profile of the owner's 3-racer start
@@ -382,6 +399,62 @@ NFS win is specific to NFS's uniform mix (worth knowing, not a reason to
 touch anything else) and should be written up as such, not retried with a
 different band.
 
+**Read (2026-10-10, attempt 3).** `genread.py --a 1-...-3885164 --b
+1-...-3885931 --expect perdraw1009-bf2-gen.json --sheet /tmp/bf2-gen-sheet.png`:
+
+| arm | flags | n | med us/d | se | pm/d | heavy n | gfps | Idle | Fin | Draw | BE |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A (3885164) | (0,0,0) | 28 | 9.06 | 0.23 | 4.74 | 10 | 19.3 | 3.3 | 16.6 | 17.8 | 2124 |
+| B (3885931) | (1,1,1) | 30 | 7.00 | 0.13 | 2.96 | 7 | 20.3 | 4.8 | 15.8 | 13.8 | 2151 |
+
+- V, P0 PASS: both marked, no fatal/thermal, one apk, flags confirmed from the
+  `[perdraw433]` line.
+- G1 PASS: GAME median us/draw B-A -2.06 (-22.7%), inside [-3.0, -0.3].
+- G2 PASS: (Pipe+Mfp)/draw B-A -1.78, <= -0.3 -- the switches reach the timed
+  per-draw path on BF2 too.
+- G3 PASS: |B-A| 2.06 against pooled SE 0.27 (x7.6, >= 3x needed).
+- G4 PASS: heavy-row gfps B-A +0.99 (19.3 -> 20.3), no regression; heavy Draw
+  down 4.0 ms, Idle up 1.5 ms -- consistent with a CPU-side cut on a path that
+  was not fully GPU-bound at these heavy rows (push656's finding was about its
+  *own* fix and view; this one still shows up a little on gfps, which the
+  prediction treated as a bonus, not a requirement).
+- XB **FAIL on these two runs**: "0 gameplay frames; none black or flat" --
+  not a pixel regression, an empty instrument. The request queued with
+  `frames_every: 0` (no `--frames-every` on the command line), so
+  `start_frame_capture` never created `<rdir>/frames/`; `bf2mc.route`'s
+  `repeat forever` loop also has no `shot` command, so even `route-frames/`
+  has nothing past the `nohelp` milestone, 8 s before `mark gameplay`. There
+  is no pixel data of any kind in these two runs, in either directory.
+
+**This is a gap in the queue command, not in genread.py or in bf2mc.route.**
+`--frames-every` is a dispatcher-side, soak-only capture (`docs/testing/
+request.sh` and `dispatcher.sh:288`'s `start_frame_capture`, independent of
+route `shot` commands) that writes exactly `<rdir>/frames/fNNNNN.png` --
+genread.py's `last_frames()` path matches it exactly. `bf2mc.route` belongs to
+titleroutes, not this lane, but adding periodic frames does not need editing
+it: `--frames-every 20` gets the same result without touching the route file.
+Re-queued both arms, same ref (9cf824802e, still an ancestor of HEAD, no
+shaders.c changes since), same env, `--frames-every 20` added, same
+prediction file (G1-G4's bands are about the measured legs, not about frame
+capture, so no re-registration needed -- XB's mechanics are unchanged, only
+the missing input to it):
+
+| arm | request |
+|---|---|
+| A2 | 1-1791621991-perdraw1009-242022 |
+| B2 | 1-1791621998-perdraw1009-245238 |
+
+`WAITING` updated to these two ids. When they land: re-run genread.py with
+`--a 1-...-242022 --b 1-...-245238`, check XB (and re-check G1-G4 hold with
+frame capture running in both arms -- the dispatcher's own note says frame
+capture costs frame rate, but it costs both arms alike, so G1-G3 (CPU
+us/draw, a ratio) should be unaffected; G4's absolute heavy-row gfps might
+move a little in both arms together and should be read as a relative
+B-vs-A check, same as above, not against this pair's numbers). If XB passes
+and G1/G2 still hold, job item 7 is closed and the PR can go ready. If
+G1/G2 no longer hold under frame capture, that is itself worth a line here
+before retrying without it.
+
 ## 13. What the next lane should not repeat
 
 - Do not read pfifo_thread's self time as renderer work: 87.5% of it is perflog
@@ -400,3 +473,9 @@ different band.
   combined legs, before concluding from P4/P5/X.
 - HAKUX_UNI_TOGGLE exists so a route that cannot be pinned to one scene across
   runs can still be A/B'd: flip within a run instead of queuing more runs.
+- A soak request needs `--frames-every N` to get *any* periodic pixel capture
+  during a `repeat forever` gameplay loop with no `shot` command in it; a
+  route's own milestone `shot`s stop at the last scripted step and do not
+  continue into the loop. Check a route file for a `shot` inside its loop
+  before assuming route-frames will have anything to read there; if it does
+  not, `--frames-every` is a request-side fix that needs no route edit.

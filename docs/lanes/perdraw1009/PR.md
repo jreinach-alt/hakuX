@@ -67,7 +67,18 @@ moving heavy-row fps (NOTES.md section 12).
 
 | arm | request | result |
 |---|---|---|
-| A | 1-1791620320-perdraw1009-3885164 | pending |
-| B | 1-1791620323-perdraw1009-3885931 | pending |
+| A | 1-1791620320-perdraw1009-3885164 | G1-G4 PASS: med us/draw B-A -2.06 (-22.7%), (Pipe+Mfp)/draw -1.78, heavy gfps +0.99 (no regression). XB FAIL: queued without `--frames-every`, so no periodic frames exist in either run (empty instrument, not a pixel regression) |
+| B | 1-1791620323-perdraw1009-3885931 | see A's row |
+
+Re-queued with `--frames-every 20` added (same ref/env/route, same prediction
+file) to get XB a pixel instrument to read:
+
+| arm | request | result |
+|---|---|---|
+| A2 | 1-1791621991-perdraw1009-242022 | pending |
+| B2 | 1-1791621998-perdraw1009-245238 | pending |
+
+NOTES.md section "Attempt 3" and section 12's close have the full read and
+the re-queue reasoning.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
