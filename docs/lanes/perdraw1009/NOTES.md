@@ -64,6 +64,19 @@ capture independent of the route file). Fixed by re-queuing both arms with
 `--frames-every 20` added, same ref/env/route/seconds otherwise (section 12's
 close has the new ids); nothing else from attempt 2 needed redoing.
 
+**Attempt 4 (this session) resumes on a completed wait, same as 2 and 3.**
+Attempt 3 ended correctly on `WAITING` for the two re-queued arms (A2
+`1-1791621991-perdraw1009-242022`, B2 `1-1791621998-perdraw1009-245238`),
+nothing else outstanding. Both runs' `DONE` markers and `frames/` directories
+(23 frames each) were already on disk at resume. Reading them with
+`genread.py` found all legs PASS including XB this time (section 12's close,
+below) -- job item 7 is closed. Before concluding anything, merged
+`origin/master` (23 commits, all from lane.surfgpu1009/surfgpudefault1009's
+folds, which transfer `vk/draw.c`/`vk/surface.c`/`vk/texture.c` out of that
+lane's territory per the brief; no conflict, nothing in this lane's files
+touched) -- new HEAD 5a103679d3. This session's job is to close out NOTES/PR
+and mark the PR ready.
+
 ## 1. Where the per-draw time goes (job item 1)
 
 Source: lane.local's 45 s simpleperf profile of the owner's 3-racer start
@@ -454,6 +467,45 @@ B-vs-A check, same as above, not against this pair's numbers). If XB passes
 and G1/G2 still hold, job item 7 is closed and the PR can go ready. If
 G1/G2 no longer hold under frame capture, that is itself worth a line here
 before retrying without it.
+
+**Read (2026-10-10, attempt 4).** `genread.py --a 1-...-242022 --b
+1-...-245238 --expect perdraw1009-bf2-gen.json --sheet /tmp/bf2-gen-sheet2.png`:
+
+| arm | flags | n | med us/d | se | pm/d | heavy n | gfps | Idle | Fin | Draw | BE |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A2 (242022) | (0,0,0) | 30 | 9.01 | 0.17 | 4.69 | 7 | 17.9 | 3.8 | 16.4 | 17.9 | 2134 |
+| B2 (245238) | (1,1,1) | 29 | 7.12 | 0.25 | 3.06 | 9 | 19.7 | 4.9 | 16.0 | 14.9 | 2235 |
+
+- V, P0 PASS: both marked, no fatal/thermal, one apk (0bb52b36e67d), flags
+  confirmed from `[perdraw433]`.
+- G1 PASS: GAME median us/draw B-A -1.90 (-21.0%), inside [-3.0, -0.3].
+  Matches the frameless read (-2.06) within run-to-run noise.
+- G2 PASS: (Pipe+Mfp)/draw B-A -1.63, <= -0.3.
+- G3 PASS: |B-A| 1.90 against the larger of within-arm spread (0.00, one run
+  per arm) and the rows' difference SE (0.30) -- x3.0, exactly at the
+  required margin by construction of the leg (matches the frameless pair's
+  x7.6 on the same underlying effect; the two reads are consistent).
+- G4 PASS: heavy-row gfps B-A +1.81 (17.9 -> 19.7), no regression; heavy
+  Draw down 3.08 ms, Idle up 1.06 ms, Fin down 0.39 ms -- same direction as
+  the frameless read, a CPU-side cut showing up partly on fps at these heavy
+  rows.
+- XB **PASS this time**: 6 gameplay frames across the two runs (the last
+  three periodic `frames/f*.png` per run, `--frames-every 20` now present),
+  none black or flat. The sheet (`/tmp/bf2-gen-sheet2.png`, scratch, not
+  committed) shows normal BF2 MC gameplay in both arms -- HUD, crosshair,
+  minimap, a firefight in one B frame -- no corruption, no blank frame, no
+  flat colour in either arm.
+
+**Verdict: job item 7 is closed.** The per-draw cut generalises from NFS MW to
+BF2 MC: GAME median us/draw down 1.90 (-21.0%), (Pipe+Mfp)/draw down 1.63,
+heavy-row gfps up (no regression), pixels show ordinary gameplay in both arms
+with no gross breakage. This is a second title corroborating the NFS result
+(section 10) with an independent measure (genread.py's median-over-GAME-rows,
+not armread.py's STATIC-scene read), on a route that cannot hold one scene,
+so G3's margin is set by run-to-run noise rather than by many repeated rows --
+consistent in direction and rough magnitude with the frameless read, which is
+the right amount of confidence for one A/B pair on a live gameplay loop.
+Items 1-7 of the brief are now all closed; nothing is still WAITING.
 
 ## 13. What the next lane should not repeat
 

@@ -1,11 +1,11 @@
 # perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5)
 
-State: draft
+State: ready
 
 Lane: perdraw1009          Issue: none (#433 umbrella)
 Base: master @ 3f6762f180
-Files: hw/xbox/nv2a/pgraph/vk/shaders.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/testing/titles/routes/nfs-mw.route, docs/testing/predictions/perdraw1009-nfs-soak.json, docs/testing/predictions/perdraw1009-nfs-toggle.json, docs/testing/predictions/perdraw1009-bf2-gen.json, docs/lanes/perdraw1009/NOTES.md, docs/lanes/perdraw1009/OUTBOX.md, docs/lanes/perdraw1009/PR.md, docs/lanes/perdraw1009/WAITING, docs/lanes/perdraw1009/armread.py, docs/lanes/perdraw1009/genread.py, docs/lanes/perdraw1009/togread.py, docs/lanes/perdraw1009/bulkcheck.sh, docs/lanes/perdraw1009/prof_tree.py
-Prediction: docs/testing/predictions/perdraw1009-nfs-toggle.json @ 482fc384aa29445f981bacd6cd7171c9684b6ff4cd8b8e61c4e8e76b206fe840 (supersedes perdraw1009-nfs-soak.json @ b1ee6d91fc5d6477ba737905abe2057af741d806fe49894ad1ad193f96f46641 -- see table below); docs/testing/predictions/perdraw1009-bf2-gen.json @ 32999ceee794cf74e15dd11313a95c7f09f33d95bb4484781e3253ee6d095e09 (generalisation arm, job item 7, pending)
+Files: hw/xbox/nv2a/pgraph/vk/shaders.c, hw/xbox/nv2a/pgraph/vk/renderer.h, docs/testing/titles/routes/nfs-mw.route, docs/testing/predictions/perdraw1009-nfs-soak.json, docs/testing/predictions/perdraw1009-nfs-toggle.json, docs/testing/predictions/perdraw1009-bf2-gen.json, docs/lanes/perdraw1009/NOTES.md, docs/lanes/perdraw1009/OUTBOX.md, docs/lanes/perdraw1009/PR.md, docs/lanes/perdraw1009/armread.py, docs/lanes/perdraw1009/genread.py, docs/lanes/perdraw1009/togread.py, docs/lanes/perdraw1009/bulkcheck.sh, docs/lanes/perdraw1009/prof_tree.py
+Prediction: docs/testing/predictions/perdraw1009-nfs-toggle.json @ 482fc384aa29445f981bacd6cd7171c9684b6ff4cd8b8e61c4e8e76b206fe840 (supersedes perdraw1009-nfs-soak.json @ b1ee6d91fc5d6477ba737905abe2057af741d806fe49894ad1ad193f96f46641 -- see table below); docs/testing/predictions/perdraw1009-bf2-gen.json @ 32999ceee794cf74e15dd11313a95c7f09f33d95bb4484781e3253ee6d095e09 (generalisation arm, job item 7, closed -- G1-G4/XB all PASS)
 Needs device: yes (Nova only)    Needs NDK: yes
 
 Release note (none): three opt-in per-draw uniform switches (HAKUX_UNI_BULK, HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE), off by default; the perflog ubosz counter now needs HAKUX_UBOSZ_LOG=1
@@ -75,10 +75,13 @@ file) to get XB a pixel instrument to read:
 
 | arm | request | result |
 |---|---|---|
-| A2 | 1-1791621991-perdraw1009-242022 | pending |
-| B2 | 1-1791621998-perdraw1009-245238 | pending |
+| A2 | 1-1791621991-perdraw1009-242022 | G1-G4 PASS: GAME median us/draw B-A -1.90 (-21.0%), (Pipe+Mfp)/draw -1.63, heavy gfps +1.81 (no regression). XB PASS: 6 gameplay frames, none black or flat |
+| B2 | 1-1791621998-perdraw1009-245238 | see A2's row |
 
-NOTES.md section "Attempt 3" and section 12's close have the full read and
-the re-queue reasoning.
+**Job item 7 is closed.** The per-draw cut generalises from NFS MW to BF2 MC:
+GAME median us/draw down 21.0%, (Pipe+Mfp)/draw down 1.63 us, heavy-row gfps
+up (no regression), pixels show ordinary gameplay with no gross breakage in
+either arm. NOTES.md section 12's close has the full read. All job items
+(1-7) are closed; nothing is outstanding.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
