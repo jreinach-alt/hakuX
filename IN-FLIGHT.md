@@ -11,8 +11,8 @@ No lane session is running.
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 7 waiting, 1 running.
-- **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
+- **Device queue:** 4 waiting, 1 running.
+- **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
 
@@ -81,4 +81,4 @@ No branch is being worked right now.
 - 2026-10-09 fpstelemetry1008b: the four titles lane A could not measure -- NFS Most Wanted, Midnight Club II, Fantastic 4, Dino Crisis 3 (#433)
 - 2026-10-09 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
 
-_Updated 2026-10-10 02:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 02:29 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
