@@ -87,4 +87,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-08 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
 - 2026-10-08 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 
-_Updated 2026-10-10 01:44 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 01:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
