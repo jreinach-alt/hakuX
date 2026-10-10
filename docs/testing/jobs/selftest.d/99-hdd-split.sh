@@ -39,8 +39,9 @@ case "$1" in
     shell) shift; c="$*"
         case "$c" in
             "am force-stop"*) ;;
-            "chmod "*)   # nochmod: a device that refuses the chmod
+            "chmod "*)   # nochmod: a device that refuses the chmod; chmodnoop: it says yes and ignores it
                 [ -f "$HS_DEV/nochmod" ] && exit 1
+                [ -f "$HS_DEV/chmodnoop" ] && exit 0
                 sh -c "$(map "$c")" ;;
             *"cat > shared_prefs/x1box_prefs.xml"*) cat > "$HS_DEV/prefs.xml"
                 [ -f "$HS_DEV/drop_readback" ] && touch "$HS_DEV/drop_next" ;;
@@ -274,6 +275,25 @@ check "  ... the new hdd.img is not the old one" \
       [ "$(sha256sum "$HS/dev/fs/hdd.img" | cut -d' ' -f1)" != "$osha" ]
 check "  ... and every save on it survived" \
       eval 'for t in 4D530021 4541005B; do python3 "$TESTING/titles/saves.py" verify "$HS/dev/fs/hdd.img" "$HS/fix/$t" >/dev/null || exit 1; done'
+
+# (lane.hddperm.) A push whose mode cannot be set fails before the rename: the
+# disk in place is the one it was, mode and all, and <path>.new is gone.
+echo "== hdd split: a push whose mode cannot be set fails and replaces nothing"
+# -p: a plain cp masks the mode by the runner's umask (022 on CI).
+cp -p "$HS/dev/fs/hdd.img" "$HS/hdd.before"; bmode=$(stat -c %a "$HS/hdd.before")
+head -c 4096 /dev/urandom > "$HS/other.img"
+for how in nochmod chmodnoop; do
+    touch "$HS/dev/$how"
+    hs_env 'dev_push "$HS/other.img" "$X/hdd.img"' > "$HS/$how.log" 2>&1; rc=$?
+    rm -f "$HS/dev/$how"
+    check "$how: dev_push fails (rc=$rc)" [ "$rc" != 0 ]
+    check "  ... hdd.img is the disk it was" cmp -s "$HS/hdd.before" "$HS/dev/fs/hdd.img"
+    check "  ... and its mode is unchanged (got: $(stat -c %a "$HS/dev/fs/hdd.img"), was $bmode)" \
+          [ "$(stat -c %a "$HS/dev/fs/hdd.img")" = "$bmode" ]
+    check "  ... hdd.img.new is removed" test ! -e "$HS/dev/fs/hdd.img.new"
+    rm -f "$HS/dev/fs/hdd.img.new"; cp -p "$HS/hdd.before" "$HS/dev/fs/hdd.img"   # so a red leg does not redden the next
+done
+check "  ... the log names the mode the chmod left" grep -q 'mode 644 after chmod 660' "$HS/chmodnoop.log"
 
 # (pass-1 M2.) A reset that cannot succeed on this disk is paid for once.
 echo "== hdd split: a failed reset is not retried on the same disk"

@@ -6146,3 +6146,12 @@ disposition = "harness"
 status = "open"
 dispatch_state = ""
 blocked_on = "lane.pathfind owns the hold in docs/testing/titles/pathfind.py; something during the Batman hold-play (an OS prompt, a notification, or a mis-aimed input) backed out to the hakuX app-info settings screen, which the hold needs to detect and recover from (return-to-foreground) rather than end the run on. Not yet scheduled. Row added by hostops 15:0x PDT (jam duty): the coverage gate had no row for this issue at all."
+
+[issue.897]
+title = "Beyond Good & Evil (55530018): whole-screen flicker in gameplay on the Nova"
+suites = []
+no_suites = "A VISUAL DEFECT IN A COMMERCIAL TITLE (whole-screen flicker in Beyond Good & Evil's gameplay). Not yet identified, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "OWNER DEFERRED 2026-10-09 22:3x PDT (\"Defer the BG&E flicker but log an issue for it so we dont lose sight of it\"): the weekend is performance-only (through Sun 10-11). Not identified: also flickers with HAKUX_SURFGPU=0, and 0.4.0-j1 runs the title at ~1 fps with stray black frames, so it predates the current build. Unblocks when the owner lifts the deferral; first measurement then is an 8 s adb screenrecord of gameplay to classify the bad frames. Blocks BG&E as a Playable title."

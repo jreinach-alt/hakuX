@@ -27,6 +27,16 @@ mkdir -p "$WORK/logs/board" "$WORK/briefs" "$WORK/board"
 LOG="$WORK/logs/board/tick.log"
 # The tick log is read by hand when something jams, so it is display: local.
 say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
+# THE LOCAL FORGE (lane.localforge, 2026-10-02). While GitHub is suspended,
+# `gh` is the forge shim, and the unit's forge drop-in sets HAKUX_FORGE=1.
+# Under it, this tick reads the forge and writes the brief, but it STARTS
+# NOTHING:
+#   - no board session;
+#   - no cloud.sh claim.
+# It logs what it would have started, and keeps the brief under
+# logs/board/dry-run/. That holds until lane.local sets BOARD_DRY_RUN=0 in
+# the drop-in; the owner is still deciding the operating modes.
+BOARD_DRY_RUN="${BOARD_DRY_RUN:-${HAKUX_FORGE:-0}}"
 # The account's five-hour and weekly windows: window_check / window_defer_line.
 # Sourced from beside THIS file, which is the fetched trunk's copy after the
 # re-exec below, so the reserve is the trunk's rule and not the owner's
@@ -367,15 +377,29 @@ positive_gate() {
         return
     fi
     if [ "$lanes" -lt "${LANE_MAX:-2}" ] && [ "${WINDOW_DEFER:-0}" != 1 ]; then
-        capacity=$(board_filter issues "$(timeout 60 gh issue list --repo "$GH_REPO" \
-            --state open --limit 200 --json number,title,labels 2>/dev/null)")
+        capacity=$(board_filter issues "$(gh_or_say "issue list" issue list --repo "$GH_REPO" \
+            --state open --limit 200 --json number,title,labels)")
         # The focus count is a note, not a startable issue (see board_filter).
         focus_note=$(printf '%s\n' "$capacity" | sed -n 's/^FOCUS: //p')
         capacity=$(printf '%s\n' "$capacity" | grep -v '^FOCUS: ')
         [ -n "$focus_note" ] && say "$focus_note"
     fi
-    unlabelled=$(board_filter prs "$(timeout 60 gh pr list --repo "$GH_REPO" \
-        --state open --limit 100 --json number,title,isDraft,labels 2>/dev/null)")
+    unlabelled=$(board_filter prs "$(gh_or_say "pr list" pr list --repo "$GH_REPO" \
+        --state open --limit 100 --json number,title,isDraft,labels)")
+}
+
+# A FAILED READ IS SAID, THEN READ AS EMPTY. The trigger stays quiet, as
+# designed above, but the tick log now shows that gh failed. Before this, a
+# failure printed exactly what "no work" prints. That is how 2026-09-29's
+# suspension went unseen for days: every gh call returned 403 and the board
+# logged "nothing actionable" (lane.localforge).
+gh_or_say() {  # gh_or_say <what> <gh args...>
+    local out rc errf
+    errf=$(mktemp)
+    out=$(timeout 60 gh "${@:2}" 2>"$errf"); rc=$?
+    [ "$rc" -ne 0 ] && say "gh $1 FAILED (rc=$rc): $(head -c 300 "$errf" | tr '\n' ' ')"
+    rm -f "$errf"
+    printf '%s' "$out"
 }
 
 # ONE PREDICATE, SHARED. The tick below and `board.sh gate` must agree about
@@ -608,6 +632,8 @@ board_recheck() {
 window_check
 if [ "${WINDOW_DEFER:-0}" = 1 ]; then
     say "$(window_defer_line "the audit outlet's next claim")"
+elif [ "$BOARD_DRY_RUN" = 1 ]; then
+    say "DRY RUN (BOARD_DRY_RUN=1, local forge): the audit outlet was not run; cloud.sh list says: $(timeout 120 bash "$JOBS/cloud.sh" list 2>&1 | tr '\n' ' ' | cut -c1-400)"
 else
     bash "$JOBS/cloud.sh" >/dev/null 2>&1 || say "audit outlet (cloud.sh) exited $?"
 fi
@@ -704,6 +730,16 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
     echo
     echo "Clear fleet items by the rules in your role file, in this order: fold-ready, blocked-on-a-free-file, reported-not-folded, dispatchable-not-dispatched, then the rest. Anything you cannot decide by rule becomes a decision-needed issue. Do not author code. End when every list above is empty or every item on it has a label, a comment, an issue, or (for up to three capacity items) a running lane."
 } > "$brief"
+if [ "$BOARD_DRY_RUN" = 1 ]; then
+    # Nothing is marked read, so the same findings are offered again once
+    # lane.local turns the gate on.
+    mkdir -p "$WORK/logs/board/dry-run"
+    kept="$WORK/logs/board/dry-run/brief.$(date -u +%Y%m%dT%H%M%SZ).md"
+    cp "$brief" "$kept"
+    say "DRY RUN (BOARD_DRY_RUN=1, local forge): would start the board session now. Brief kept at $kept. Nothing started; nothing marked read."
+    bash "$JOBS/status.sh" >/dev/null 2>&1
+    exit 0
+fi
 bash "$JOBS/run-claude-job.sh" board "$WT" "$brief" "${BOARD_TURNS:-70}"; rc=$?
 # MARKED SEEN ONLY NOW, AND ONLY ON A TICK THAT RAN. The sweep rewrites the
 # same findings for as long as they hold, so without this key one untriaged

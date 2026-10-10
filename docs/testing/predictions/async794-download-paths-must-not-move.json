@@ -1,0 +1,42 @@
+{
+  "registered_utc": "2026-10-04T15:30:13Z",
+  "who": "lane.async794",
+  "issue": "794",
+  "prediction": "Inert-in-goldens arm for async794 (b_ref c825e4b24f vs master 5e4196fefd). The change moves WHEN staged surface downloads complete and which pgraph.lock state their waits run in, not WHAT they copy: per-submission fences instead of one batch fence, a ring for staging, the unshelve that reused a struct a pending download named detaches it instead of completing it, and SURFACE_DOWN waits release pgraph.lock on the PFIFO thread. Every reader of guest memory still completes an overlapping pending download first, so every capture in the suites that read surfaces back (readbacks, render-to-texture, blits over surfaces, CPU updates, clears) must stay put. What would move one, and which leg it lands in: a completion that wrote VRAM out of record order (a surface's older copy landing over its newer one: Surface_clip, Color_zeta_overlap), a detached entry whose range a reader read around (Texture_render_target, Texture_CPU_Update), or a staging ring overlap (garbage in any readback). Reported per capture; a move inside the measured run-to-run band is NOISE, not a failure.",
+  "a_ref": "5e4196fefd",
+  "b_ref": "c825e4b24f",
+  "must_not_move": [
+    "Surface_clip/*",
+    "Surface_format/*",
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/*",
+    "Texture_render_target/*",
+    "Texture_render_update_in_place/*",
+    "Texture_Framebuffer_Blit/*",
+    "Image_blit/*",
+    "Texture_CPU_Update/*",
+    "Clear/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Color zeta overlap",
+      "Depth buffer fixed function",
+      "Image blit",
+      "Surface clip",
+      "Surface format",
+      "Texture CPU Update",
+      "Texture Framebuffer Blit",
+      "Texture render target",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

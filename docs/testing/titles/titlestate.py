@@ -242,7 +242,9 @@ def no_save(device, tid, reason, run):
 
 
 def store_dir(tid, save_id):
-    return os.path.join(root(), "saves", tid, save_id)
+    # Under the disk's TitleID (disk_tid): targets.toml's id finds the same
+    # directory, as store_saves() lists it.
+    return os.path.join(root(), "saves", disk_tid(tid), save_id)
 
 
 def harvest(device, tid, image, run):
@@ -488,7 +490,7 @@ def rebuild(device, keep=5, title_id=None, state="any"):
 
 
 def store_saves(tid):
-    d = os.path.join(root(), "saves", tid)
+    d = os.path.join(root(), "saves", disk_tid(tid))
     if not os.path.isdir(d):
         return []
     out = []
@@ -860,7 +862,7 @@ def compose(device, title_id=None, state="any"):
         want.pop(dt, None)
     elif state == "returning" and dt in want and not save_dirs(dt, want[dt]):
         raise NoGolden(f"{title_id}'s golden {want[dt]} is title data only, no save directory; a "
-                       f"returning route would meet no profile (`promote` a save that has one)")
+                       f"returning route would meet no profile. {SETTINGS_ONLY_FIX}")
     elif state == "returning" and dt not in want:
         if g:
             raise NoGolden(f"{title_id}'s golden {g['save']} was rejected on {device}; a returning "
@@ -873,6 +875,13 @@ def compose(device, title_id=None, state="any"):
 
 
 # ------------------------------------------------------------ route state --
+
+# A refusal names its way forward (Star Wars Ep. III, 10-03: a route
+# confirmed on its settings-only golden, headed `returning`, was refused and
+# dropped from the queue as a decision for someone else).
+SETTINGS_ONLY_FIX = ("If the route was confirmed on this golden as it is, head it `# state: any` (that loads the "
+                     "golden unchanged); if it needs a save, `promote` one that has a save directory.")
+
 
 def tid_for_iso(name):
     """TitleID for an ISO file name: targets.toml's `iso` entries, else an
@@ -958,7 +967,7 @@ def resolve_route(name, title_id=None, device=None, routes_dir=None):
                              f"{why}: the disk would carry none")
         elif not save_dirs(disk_tid(title_id), g["save"]):
             out["refuse"] = (f"{os.path.basename(out['path'])} assumes a profile, and {title_id}'s golden "
-                             f"{g['save']} is title data only, no save directory")
+                             f"{g['save']} is title data only, no save directory. {SETTINGS_ONLY_FIX}")
     return out
 
 

@@ -23,7 +23,10 @@ Type=oneshot
 # need to find credentials, and a user unit already has it.
 ExecStart=/usr/bin/env bash /home/justin/hakuX/docs/testing/jobs/run-nightly.sh
 # 75: another nightly still held the lock, so this tick skipped. Not a failure.
-SuccessExitStatus=75
+# 9: the build's window has no player-facing change, so nothing was published
+# (owner 2026-10-09: take down a nightly with no changes). Not a failure either;
+# nightly/<date>.log says "not published: <reason>".
+SuccessExitStatus=75 9
 # Its own log file as well as the journal. A nightly that failed silently is
 # worse than no nightly, because a missing release looks like a day with no
 # work -- so make the failure readable two ways.
