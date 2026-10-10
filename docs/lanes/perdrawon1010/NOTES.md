@@ -93,8 +93,12 @@ for this question rather than the numbers being asserted as settling it).
 
 ### Result
 
-*(not yet run -- device requests queued after this file and the prediction
-are committed; results filled in here once read)*
+The six runs of `nfs-mw.route` are read in section 5b: -2.01 us/draw with the
+switches on (-18%), every run the same sign. But no row after the mark in that
+route is a renderer-limited scene: the car is alone, or near a wall, at 24-30
+fps. The owner's 10-10 order replaced this scene with the race start, which
+section 7 measures. The scene choice above (the existing MOTION window) is
+superseded by section 7's route.
 
 ## 3. Pixels: pgraph inert disc
 
@@ -179,8 +183,34 @@ telemetry, not scored pass/fail.
 
 ### Result
 
-*(not yet run; queued after the main question's pilot batch is reviewed, per
-the pilot gate -- see section 5)*
+Plan changed with the addendum: the energy runs are section 7's four
+fixed-state race-start runs, not long `nfs-mw.route` runs. Each is a whole run
+in one state, so its `thermal.jsonl` samples (every ~26 s) are all in that
+state. The scored window is title_verdict's: `mark gameplay` to the soak's
+end, ~300 s that hold all twelve starts, the eleven restart prompts and ~35 s
+idle on the track after the route ends. The window is the same in both states.
+The power block comes from `title_verdict.judge()` called in Python. It is the
+same function the CLI runs, without writing `verdict.json` into the dispatch
+results dir.
+
+| run | state | samples | battery W | USB W | net W | scored s | guest flips | J/frame | median fps |
+|---|---|---|---|---|---|---|---|---|---|
+| `1-1791644405-perdrawon1010-365120` (OFF1) | off | 11 | +0.955 | 6.541 | 7.496 | 300.2 | 7,200 | 0.3126 | 23.79 |
+| `1-1791645060-perdrawon1010-726861` (ON1) | on | 11 | +0.807 | 6.538 | 7.345 | 304.3 | 7,680 | 0.2910 | 26.35 |
+| `1-1791645063-perdrawon1010-728778` (ON2) | on | 11 | +0.805 | 6.541 | 7.346 | 299.5 | 7,500 | 0.2934 | 25.62 |
+| `1-1791645064-perdrawon1010-729270` (OFF2) | off | 11 | +0.898 | 6.544 | 7.442 | 299.2 | 7,320 | 0.3041 | 25.68 |
+
+USB is a measurement (`usb current_now x voltage_now`, `usb_bound` false), and
+no sample is `sign_suspect`. `flips` is title_verdict's count, 60 per perflog
+line, so it moves in steps of 60 frames.
+
+**Energy result:** off 0.3126 and 0.3041 J/frame (net 7.50 and 7.44 W). On
+0.2910 and 0.2934 J/frame (net 7.35 and 7.35 W). On-off: **-0.016 J/frame
+(-5%)**, and -0.12 W net while drawing 3-7% more frames. With two runs per
+state the bands do not overlap (off 0.304-0.313, on 0.291-0.293), but two runs
+are a thin sample. Read it as "a small saving, the same sign as the per-draw
+cut", not as a measured size. USB input is pinned at 6.54 W in every run, so
+the difference shows up in battery draw: +0.90-0.96 W off, +0.81 W on.
 
 ## 5a. Attempt 2: why attempt 1 did not finish, and the pilot's read
 
@@ -351,9 +381,39 @@ disc (section 3) and power (section 4) legs, pilot-reviewed and written to
 `pilots/perdrawon1010.ok` if that next batch would push cumulative time
 past 30 min. 4 h Nova budget total; ~22.5 min spent on this pilot so far.
 
+**Device time at the end of attempt 3**, from each result dir's first file
+to its `DONE`. All on the Nova; the Thor was never used.
+
+| batch | runs | minutes |
+|---|---|---|
+| prologue, `nfs-mw.route` toggled, 360 s (sections 5a, 5b) | 6 | 40 |
+| pixel disc A/B, 60 s (section 3) | 2 | 15 |
+| pixel determinism check, runs=3 (section 3) | 2 | ~15 (timestamps give 2 each; three runs of a 60 s disc each) |
+| race route passes 1-3 (section 7) | 3 | 23 |
+| race start, 500 s: T1 (pilot), OFF1, ON1, T2, T3, ON2, OFF2 | 7 | 62 |
+| total | | **~2 h 35 min of the 6 h (4 h + 2 h)** |
+
+`pilots/perdrawon1010.ok` was written (python3, 2026-10-10 08:16 PDT) after the
+T1 pilot's read. It cites T1 and pass 3, and what their frames and rows showed.
+The remaining five race-start runs went through the gate on it.
+
 ## 6. Second title (optional, job item 5)
 
-Not started. Revisit if budget remains after sections 2-4 are read.
+Not done. Device budget remained (about 2.5 h used of 6 h), but a second title
+would not change the recommendation:
+
+- The question is whether the switches harm anything, and whether they help
+  where the renderer limits the frame rate.
+- Harm is covered for every title by the 27-suite pixel disc (section 3) and
+  by perdraw1009's host byte-identity check of the BULK copy.
+- Help is now measured in two titles: perdraw1009's BF2 (+1.81 gfps on heavy
+  rows) and this lane's NFS race start (section 7).
+
+A third title is the place to start if the owner wants a wider sample before
+flipping the default. Choose one from `title_verdict` output with
+`fps_window_median` under 25 at 1,000+ draws/frame, and run it toggled on an
+existing route. Read it with `startread.py --window` over its own mark (one
+`mark gameplay` gives one "start").
 
 ## 7. The race start (addendum, owner order 10-10)
 
@@ -458,3 +518,150 @@ S2 matched gfps on-off in [-1.0, +2.0], S3 at least 10 pure rows per state,
 S4 switches-on gfps over the first 10 s after GO below 28 (the start does not
 hold 28-30 fps). Judged set: three toggled runs. Cross-check and energy set:
 four fixed-state runs, off, on, on, off.
+
+Queue order as run (all at `4ad1154e55`, apk `72fe2eabc46e`, `--seconds 500`,
+`--expect perdrawon1010-racestart.json`). The fixed-state arms are interleaved
+with the toggled runs, so the two OFF arms bracket everything:
+
+| # | request | env | shader cache at start |
+|---|---|---|---|
+| T1 | `1-1791644404-perdrawon1010-362940` | `HAKUX_UNI_TOGGLE=4` | cleared (new apk) |
+| OFF1 | `1-1791644405-perdrawon1010-365120` | none (shipped) | kept |
+| ON1 | `1-1791645060-perdrawon1010-726861` | `HAKUX_UNI_BULK=1 HAKUX_UNI_UBERCACHE=1 HAKUX_UNI_FOGCACHE=1` | **cleared** (a 90 s Forza request on another apk ran in between) |
+| T2 | `1-1791645061-perdrawon1010-727551` | `HAKUX_UNI_TOGGLE=4` | kept |
+| T3 | `1-1791645062-perdrawon1010-728073` | `HAKUX_UNI_TOGGLE=4` | kept |
+| ON2 | `1-1791645063-perdrawon1010-728778` | the three switches =1 | kept |
+| OFF2 | `1-1791645064-perdrawon1010-729270` | none (shipped), queued last | kept |
+
+Every run's frames were read (contact sheets of every `go<N>`, `r<N>-ok` and
+`s<N>-g11` frame). All 84 starts are valid:
+- every mark frame shows the grid with the race clock at 0.00 and the
+  countdown, or GO! at the first start of T3, whose load ran long;
+- every `r<N>-ok` frame shows the restart prompt on OK;
+- every `s<N>-g11` frame shows the race running, with the clock at 11.0-11.4 s.
+
+With no steering, the Punto reaches the first corner's chevron barrier by
+~GO+9-11, so the tail of each window is a light scene (500-900 draws/frame).
+Binning by draws/frame keeps that tail apart from the start. The opponents'
+cars (colours) change from boot to boot, which is part of the run-to-run band.
+ON1 began with a cold shader cache and OFF1 with a warm one. That works
+against the switches, and ON1 still reads at or above ON2 in every table
+below.
+
+### Results: the judged set (three toggled runs), `startread.py T1 T2 T3 --expect perdrawon1010-racestart.json`
+
+**Legs: V PASS, S1 PASS, S2 PASS, S3 PASS, S4 PASS.**
+
+| state | draws/frame bin | pure rows | gfps (min-max) | frame ms | us/draw | draws/frame |
+|---|---|---|---|---|---|---|
+| off | <1100 | 11 | 25.7 (22-29) | 38.9 | 11.35 | 827 |
+| off | 1100-1400 | 2 | 22.0 (21-23) | 45.5 | 10.07 | 1,231 |
+| off | all | 13 | 25.2 | 39.8 | 11.08 | 889 |
+| on | <1100 | 19 | 27.7 (24-31) | 36.1 | 9.81 | 778 |
+| on | 1100-1400 | 7 | 21.6 (21-22) | 46.4 | 8.31 | 1,295 |
+| on | all | 26 | 26.0 | 38.4 | 9.24 | 917 |
+
+Matched-work on-off: **+1.41 gfps, -1.9 ms/frame, -1.59 us/draw** (S1 needs
+[-4, 0], S2 [-1, +2]). Run-to-run band, each run's own on-off: +1.79, +1.09,
++2.11 gfps; -1.47, -1.94, -1.99 us/draw. Every run has the same sign.
+
+The toggled set is thin where it matters. It has no pure row above 1,400
+draws/frame. A perflog row is 60 guest frames, so at 17 fps a row lasts
+~3.5 s, and a 4-s toggle half-period almost never holds a whole one. A pure
+row also has to fit inside the window, which drops the rows that straddle GO.
+T2 gave 1 off row against 11 on: its restart cycle (~22.4 s) drifts slowly
+against the 8-s toggle cycle, so most of its pure rows fall in one phase. The
+toggle instrument cannot see the start's heaviest frames, and the fixed-state
+arms below are the measurement for them.
+
+### Results: the fixed-state arms (OFF1, ON1, ON2, OFF2), same reader
+
+**Legs: V PASS, S1 PASS, S2 PASS, S3 PASS, S4 PASS** (unjudged cross-check,
+the registered expect).
+
+| state | draws/frame bin | rows | gfps (min-max) | frame ms | us/draw | draws/frame | Tot ms | Idle ms |
+|---|---|---|---|---|---|---|---|---|
+| off | <1100 | 48 | 27.0 (23-31) | 37.0 | 11.49 | 750 | 30.7 | 10.8 |
+| off | 1100-1400 | 21 | 20.8 (19-22) | 48.1 | 9.81 | 1,292 | 38.2 | 10.2 |
+| off | 1400-1700 | 3 | 18.0 (17-19) | 55.6 | 9.11 | 1,551 | 43.9 | 10.8 |
+| off | all | 72 | 24.8 | 40.3 | 10.65 | 941 | 33.4 | 10.6 |
+| on | <1100 | 45 | 26.6 (23-30) | 37.7 | 9.58 | 823 | 30.8 | 11.1 |
+| on | 1100-1400 | 23 | 21.6 (20-23) | 46.3 | 8.26 | 1,272 | 36.0 | 10.0 |
+| on | 1400-1700 | 6 | 20.2 (19-21) | 49.6 | 7.86 | 1,463 | 39.3 | 11.0 |
+| on | all | 74 | 24.5 | 40.8 | 8.87 | 1,015 | 33.1 | 10.7 |
+
+Per run: OFF1 24.2 gfps / 10.53 us/draw / 978 draws/frame; ON1 24.6 / 8.70 /
+1,025; ON2 24.4 / 9.03 / 1,005; OFF2 25.5 / 10.78 / 904. Matched-work on-off:
++0.08 gfps, -0.5 ms, **-1.76 us/draw**. The near-zero gfps comes from the
+<1100 bin: there the on rows carry 823 draws/frame against off's 750, and a
+300-draw bin is too wide to match work. The two fits below take load out
+properly.
+
+**Frame time against draws/frame** (`startfit.py`, unjudged, added after the
+read). For each state it fits frame ms = a + b x draws/frame by least squares
+over the same rows. It is a reading aid for the bin problem above, and none of
+the registered legs depend on it.
+
+| draws/frame | off fps (ms) | on fps (ms) | on-off ms | on-off fps | per-run off | per-run on |
+|---|---|---|---|---|---|---|
+| 1,133 | 22.2 (45.1) | 22.9 (43.6) | -1.5 | +0.8 | 22.1, 22.2 | 23.1, 22.8 |
+| 1,259 | 21.0 (47.7) | 21.8 (45.9) | -1.8 | +0.8 | 21.0, 21.0 | 21.9, 21.7 |
+| 1,374 | 20.0 (50.1) | 20.9 (47.9) | -2.1 | +0.9 | 20.0, 20.0 | 21.0, 20.7 |
+| 1,500 | 19.0 (52.6) | 19.9 (50.2) | -2.5 | +0.9 | 19.1, 18.9 | 20.0, 19.8 |
+| 1,658 | 17.9 (55.9) | 18.9 (53.0) | -2.8 | +1.0 | 18.0, 17.8 | 19.0, 18.7 |
+
+At every load from 1,133 to 1,658 draws/frame, both on runs are faster than
+both off runs. The per-run bands do not overlap, and the gap grows with draws:
+the slope falls from 20.5 to 18.0 us per draw of frame time. The toggled set's
+own fit agrees: -1.7 to -1.8 ms, +0.6 to +1.2 fps at 800-1,650 draws/frame.
+
+**Sensitivity windows** (same four arms, unjudged):
+
+| window | what it holds | off gfps (ms) | on gfps (ms) | per-run off | per-run on | matched on-off |
+|---|---|---|---|---|---|---|
+| mark+0 .. +6 (GO-1.5 .. GO+4.5) | the first seconds of racing, 1,400-1,500 draws/frame | 19.1 (52.5) | 20.7 (48.4) | 19.0, 19.1 | 20.5, 20.8 | +1.08 fps, -2.8 ms |
+| mark-4 .. +1.5 (the countdown) | 1,560-1,600 draws/frame | 18.0 (55.4) | 19.5 (51.3) | 18.3, 17.8 | 19.0, 20.0 | +1.41 fps, -3.8 ms |
+| mark+1.5 .. +12 (GO .. GO+10.5, registered) | the start and the run to the first corner | 24.8 (40.3) | 24.5 (40.8) | 24.2, 25.5 | 24.6, 24.4 | -1.76 us/draw (fits above) |
+
+### Next to the owner's numbers
+
+| scene | draws/frame | owner 10-09 (build 1b1fec978d, switches not in it) | this lane, switches off | this lane, switches on |
+|---|---|---|---|---|
+| 3-racer sprint start | 1,374-1,658 | 12-16 fps; 13 fps at ~1,650 | 20.0-17.9 fps (50-56 ms) | **20.9-18.9 fps (48-53 ms)** |
+| 1v1 circuit start | 1,133-1,259 | 16-19 fps | 22.2-21.0 fps (45-48 ms) | 22.9-21.8 fps (44-46 ms) |
+| first 6 s after the mark, measured | ~1,450 | -- | 19.1 fps (52.5 ms) | **20.7 fps (48.4 ms)** |
+
+This lane's off column runs faster than the owner's at the same draws/frame.
+That is expected: a different track (Diamond & Union, Sprint's default,
+against the owner's downtown pick) and a newer build. Draws/frame is the common axis, but it does not make the two scenes
+the same. The comparison that carries weight is on against off on the same
+route and build.
+
+**The start does not hold 28-30 fps with the switches on.** At the owner's
+1,374-1,658 draws/frame it runs 18.9-20.9 fps (48-53 ms per frame). 30 fps
+is 33.3 ms. The switches take 2-4 ms off a start frame, and a start frame
+would need to lose another 15-20 ms to reach 30 fps.
+
+## 8. What the next lane should not repeat
+
+- **`nfs-mw.route` is not a race start.** It plays Career's prologue and gets
+  control mid-lap 2/2, alone. Use `nfs-mw-quickrace.route`: 12 three-racer
+  starts per boot in ~460 s, every one valid on frames.
+- **A restart does not reload.** GO comes ~4.1 s after the restart prompt's
+  OK, and the prompt opens on Cancel (left, then A).
+- **Do not use `HAKUX_UNI_TOGGLE=4` where the frame rate is under ~20 fps.** A
+  perflog row is 60 guest frames, ~3.5 s at 17 fps, so a 4-s half-period
+  almost never holds a pure row. The toggled race-start set had no pure row
+  above 1,400 draws/frame. Fixed-state arms (whole runs per state, bracketed
+  off-on-on-off) see every row. With 12 starts per run, two runs per state
+  gave 72-74 rows.
+- **Wide draws/frame bins do not match work.** Inside <1100 the on rows sat
+  at 823 draws/frame against off's 750, and that alone took the matched gfps
+  from about +0.9 to +0.08. Fit frame ms against draws/frame
+  (`startfit.py`), or use bins of 200 draws or less.
+- **A different apk between two arms clears the shader cache** for the arm
+  that follows (`result.json` `shader_cache`). Check it per run; ON1 started
+  cold here.
+- **Do not cite the owner's 13 fps as this route's off number.** The owner's
+  start was a different track and build: 13 fps at ~1,650 draws/frame, where
+  this route's off fit gives 17.9.
