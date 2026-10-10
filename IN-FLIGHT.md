@@ -11,7 +11,7 @@ No lane session is running.
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 8 waiting, 1 running.
+- **Device queue:** 6 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -73,6 +73,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-10 lane.fgrace1010 -- the display guard's "guest exit mid-route" leg loses a race and fails folds (#433, 0.5)
 - 2026-10-10 lane.fleetflush1010 -- fleet.py's FAIL lines land mid-line when stdout and stderr share a file (#433, 0.5)
 - 2026-10-10 lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download, behind HAKUX_TEXSCAN=1 (#433, 0.5)
 - 2026-10-10 pfifowait1009: stop holding pfifo.lock across the report-processing fence waits (#433, 0.5)
@@ -84,6 +85,5 @@ No branch is being worked right now.
 - 2026-10-10 Lane: nightlywrap1010            Issue: none (dispatched directly by lane.local, #433 umbrella)
 - 2026-10-10 lane.lanepath1009: lane.sh gives each lane unit a shim-first PATH with --setenv (#433, 0.5)
 - 2026-10-10 ghlive1010 -- AGENTS.md: GitHub is up
-- 2026-10-10 Lane: restoreleak1009            Issue: #433
 
-_Updated 2026-10-10 14:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 14:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
