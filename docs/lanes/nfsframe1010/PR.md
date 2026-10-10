@@ -32,14 +32,26 @@ Progress so far (docs/lanes/nfsframe1010/NOTES.md has detail):
   master. Queuing this lane's own 2 runs on master's actual head so the
   deliverable's numbers are this lane's, on an unambiguous ref.
 
-Queued this lane's 2 runs on master's head (07937793af), no env, same
+Queued this lane's first 2 runs on master's head (07937793af), no env, same
 route: `1-1791649039-nfsframe1010-2037292` and
-`1-1791649724-nfsframe1010-2219502`. Nova was busy with another lane's
-request at queue time; both sit behind it. `docs/lanes/nfsframe1010/WAITING`
-names both.
+`1-1791649724-nfsframe1010-2219502`. Both landed DONE, and turned out to be
+telemetry-blind for this brief: the Draw/Fin/Sub/Idle/Fr/GPU phase
+breakdown (`nv2a_profile_get_phase_timing_str`, profile.c:896) is compiled
+out unless the build carries `-Pperflog=true`
+(`android/app/src/main/cpp/CMakeLists.txt`), which needs `request.sh
+--perflog` at queue time — neither of the two did. Both logged zero
+`hakuX-phase`/`hakuX-cpu`/`xemu-gpu`/`xemu-surf`/`xemu-work` lines, and
+`hakuX-stall` only carried the always-on `ubo_ring_grow` line, not the
+perflog-gated `Finish:`/`sd[...]`/`dif[...]` counts this brief needs
+(detail: docs/lanes/nfsframe1010/NOTES.md §7). Requeued the same ref,
+route, title and device with `--perflog` added:
+`1-1791653167-nfsframe1010-3263852` and
+`1-1791653177-nfsframe1010-3266390`. `docs/lanes/nfsframe1010/WAITING` now
+names these two; the first pair is kept as an always-on `hakuX-pace`
+pacing cross-check (NOTES.md §8), not reused for the phase table.
 
-Remaining: build the per-heavy-frame accounting table and the P×win
-ranking from this lane's 2 runs, write the final NOTES.md section, flip
-this PR to ready.
+Remaining: once the perflog pair lands, verify car movement from
+route-frames, build the per-heavy-frame accounting table and the P×win
+ranking, write the final NOTES.md section, flip this PR to ready.
 
 Release note (none): measurement only.

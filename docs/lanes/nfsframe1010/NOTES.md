@@ -124,3 +124,87 @@ to the period) and the P×win ranking using `hakuX-phase`, `hakuX-pace`,
 `HAKUX_FRAMETRACE=1` as a third run only if Q1 (the ~12ms Tot-vs-period
 gap) or Q3 (ms per Sub reason, vs `hakuX-stall`'s raw counts) is still
 unexplained after these two.
+
+## 6. Why attempt 1 did not finish
+
+Attempt 1 queued the two runs in §4, pushed `WAITING` naming both, and
+correctly ended the session there — a run was outstanding and the lane
+contract says to stop rather than poll. That is not what blocked the
+lane: both runs landed DONE (`1-1791649039-nfsframe1010-2037292` at
+09:42, `1-1791649724-nfsframe1010-2219502` at 10:09) and attempt 1 simply
+ran out of turn before lanewaker resumed it to read them. Reading them in
+attempt 2 (this session) surfaced a problem attempt 1 had no chance to
+catch: **those two runs cannot answer the brief**, for a reason specific
+to this build, not to the route or the reader.
+
+## 7. The two baseline runs are telemetry-blind: `hakuX-phase` needs a perflog build
+
+Checked both runs' logcats directly rather than trusting the copied
+reader to say so:
+
+```
+hakuX-phase: run1=0 run2=0
+hakuX-cpu:   run1=0 run2=0
+xemu-vsync/xemu-surf/xemu-work/xemu-gpu: 0 in both
+hakuX-stall: run1=16 run2=16, and every line is `ubo_ring_grow: n.. pools.. sets..`
+             (draw.c's pool-growth log), not one `Finish:`/`sd[...]`/`dif[...]` line
+```
+
+Read `hw/xbox/nv2a/pgraph/profile.c:896` (`#if defined(__ANDROID__) &&
+NV2A_PERF_LOG`): the entire phase/cpu/vsync/surf/work/gpu block this
+brief's table is built from — `nv2a_profile_get_phase_timing_str`
+(`Surf:/Tex:/Shd:/Draw:/Fin:(Sub:/Fen:)/Flip:/Idle:(Fr:/St:)/Tot:/GPU:`,
+the exact fields the brief's "Why" table quotes) — is compiled out unless
+`NV2A_PERF_LOG` is defined, and `android/app/src/main/cpp/CMakeLists.txt:973,1093`
+only defines it when gradle is invoked with `-Pperflog=true`. That is not
+a runtime env flag; `docs/testing/dispatcher.sh:1019-1040` (`build_ref`)
+builds a **second APK variant**, cached under `$sha-perflog.apk` with a
+different `apk_sha`, and only when the *request* carries `"perflog":
+true` — which needs `request.sh --perflog` at queue time
+(`docs/testing/request.sh:169`). Neither of attempt 1's two requests
+passed it (`request.json` for both: `"perflog": ""`), so both built and
+ran the plain APK, which — per dispatcher.sh's own comment at line
+2076-2083 — "produced ZERO phase lines while the binary was correct,
+which reads exactly like a soak that measured nothing." Exactly what
+happened here. The `hakuX-stall` tag is NOT perflog-gated — it is
+always-on — but draw.c's `g_opt_stats` `Finish:` line this lane's §2
+describes is itself inside the same `#if NV2A_PERF_LOG` guard family
+(checked: the `ubo_ring_grow` line is a *different*, always-on call under
+the same tag; the `g_opt_stats` line never fires without the perflog
+build). So §2's reading of `hakuX-stall` was right about the mechanism
+and wrong about availability without a flag this lane had not yet found.
+
+This is not a dead end for the brief's Q1-Q3, because the finding is
+mechanical and the fix is a request flag, not a new instrument:
+`hakuX-pace`/`hakuX-perf` (always-on, confirmed present and correct in
+§2) still give frame period and vblank histogram from the two done runs,
+but the Draw/Fin/Sub/Idle/Fr/GPU breakdown the deliverable table needs
+only exists in a perflog build's log.
+
+**Queued two replacement runs**, same ref/route/title/device, this time
+with `--perflog`:
+
+- `1-1791653167-nfsframe1010-3263852` (perflog run 1 of 2)
+- `1-1791653177-nfsframe1010-3266390` (perflog run 2 of 2)
+
+`docs/lanes/nfsframe1010/WAITING` now names these two (the prior two are
+DONE and kept only as the always-on pacing cross-check — §8). This still
+fits the brief's "run 2 runs on master's head build": the perflog binary
+is the same source ref (`07937793af`), differently compiled; its
+`apk_sha` will differ from the plain build's, which is deliberate
+(dispatcher.sh's own reasoning: a mixed-variant table would be silently
+wrong without that).
+
+## 8. What the two non-perflog runs are still good for
+
+Not wasted device time — `hakuX-pace`/`hakuX-perf` are unaffected by the
+perflog flag (always-on), so these two runs are a same-ref, non-perflog
+cross-check on frame pacing once the perflog pair lands: if the perflog
+build's `hakuX-pace` numbers (period, vblank histogram) disagree with
+these outside noise, that is itself a finding (the extra instrumentation
+changing the measured frame rate — dispatcher.sh's own stated risk for
+the *reverse* mix-up, worth checking even though this lane did not mix
+APKs). Quick read of run 1's `hakuX-pace` tail (last line, closest to
+whatever heavy frames logged near it) deferred to the next section, once
+the perflog pair's phase lines are in hand and can be lined up against
+the same wall-clock window.
