@@ -197,3 +197,108 @@ wait, and propose the texture.c GPU-side surface-to-texture follow-on (per brief
 this lane's numbers as its P x win row, even though outcome is formally (b) not pure (c) --
 `range` is present and growing in both arms, so the follow-on's rationale (the one caller surfgpu
 structurally cannot reach) still applies.
+
+## 7. Why attempt 4 resumes cleanly, and the full 2-run/arm read (attempt 4)
+
+Attempt 3 ended correctly per its own rule: NOTES committed, `WAITING` held both A2/B2 run ids,
+turn stopped with nothing of this lane's running in the background. A2/B2 were both `DONE` on
+disk at this session's start (queued 10-10 ~09:31, finished by the time this session opened).
+Nothing was lost; picking up at "read A2/B2" as instructed.
+
+**Validity, both runs:** `request.json` confirms `HAKUX_SURFGPU=0` (A2) / `=1` (B2); `logcat.txt`
+has zero `[surfgpu] on` lines in A2, exactly one in B2 -- switch state matches intent. Full
+`route-state.tsv` read (not just the tail, which misled on a first glance -- B2's last ~30 s dip
+into a second lap's menu/cutscene/stall-escape cycle at the very end of the 480 s window, after
+the scored lap had already finished around t=413 s): both runs reach `mark gameplay` promptly
+(A2 at t=124.0 s, B2 at t=70.1 s) and then hold continuous `play`/`hud:hud-lap+motion` with no
+intervening `stalled` rows for the bulk of the run (A2: 124.0->480.2 s unbroken, 356 s; B2:
+70.1->413.5 s unbroken, 343 s, before the lap ends and a second attempt begins). Both windows are
+a moving car, matching A1/B1's pilot read -- no exclusion needed.
+
+**THERMAL, both runs:** `run.log`'s own `THERMAL: no thermal-pause device above 0; ...` line
+confirms no pause in A2 or B2 directly (hottest zone 95.1 C / 95.5 C, same ballpark as the pilot
+pair) -- `sg_judge.py`'s V4 FAILs again for exactly the same reason as the pilot pair (section 6):
+its `decompose()` call finds no `ROUTE H:M:S mark gameplay` line in `run.log` (drive.py's `mark`
+routes never write one) and treats the resulting empty THERMAL read as "paused". Not a real event,
+same judge-tool gap, confirmed the same way: a scratch copy of each result dir
+(`/tmp/ffix/A2`, `/tmp/ffix/B2`) with a `ROUTE <device-clock H:M:S of the logcat 'mark gameplay'
+line> mark gameplay` line appended to `run.log`, then `near30/decompose.py` run against the four
+scratch dirs (A1/B1/A2/B2) directly -- all four print their real `THERMAL:` line and a full `all`
+row.
+
+**sg_judge.py per-caller table, A2/B2** (same method as section 6, this run's own numbers):
+
+| caller | A2 (off) ms/flip | B2 (on) ms/flip |
+|---|---|---|
+| surfupd | 6.63 | 0.18 |
+| range | 5.83 | 9.95 |
+| record | 4.80 | (absent) |
+| reuse | 0.14 | (absent) |
+| tobuf | (absent) | 3.51 |
+| expire | (absent) | 0.52 |
+| **all callers (median of windows)** | **17.98** | **14.06** |
+
+`[surfgpu]` counters on B2: `detach 1.00/flip  nodisp 0.02/flip  dedup 3.17/flip  hold 0.88/flip`.
+
+**decompose.py `all` row, all four runs** (patched, as above):
+
+| run | n (2s rows) | gfps | ph_Fin (ms) |
+|---|---|---|---|
+| A1 (off) | 191 | 25.00 | 12.60 |
+| A2 (off) | 183 | 24.83 | 12.90 |
+| B1 (on)  | 195 | 26.56 | 14.10 |
+| B2 (on)  | 209 | 25.43 | 14.60 |
+
+**Averaged across the registered 2 runs/arm** (A = (A1+A2)/2, B = (B1+B2)/2):
+
+| metric | A (off) | B (on) | registered threshold | result |
+|---|---|---|---|---|
+| surfupd ms/flip | 6.635 | 0.16 | P0>=4.0, P1<=2.0 | both PASS |
+| range ms/flip | 5.77 | 9.685 | (reported, not scored) | grows under surfgpu |
+| tobuf ms/flip | (absent) | 3.46 | (reported, not scored) | new caller under surfgpu |
+| all-callers sum ms/flip | 17.785 | 13.77 | P2 ratio<=0.6 | ratio 0.774, **FAIL** |
+| [surfgpu] detach/flip | -- | 1.00 | P1>=0.3 | PASS |
+| [surfgpu] nodisp/flip | -- | 0.045 | P1>=0.2 | **FAIL** (both runs individually: 0.07, 0.02) |
+| gfps | 24.915 | 25.995 | P4 gain>=1.0 | +1.08, PASS (marginal: per-run gain was +1.56 then +0.60 -- the floor only clears on the average, not on either run alone) |
+| ph_Fin ms | 12.75 | 14.35 | P3 drop>=3.0 | **rose** +1.60 (both runs individually rose: +1.50, +1.70) |
+
+V1/V2/V3 PASS both pairs; V4 is the judge-tool false-FAIL, confirmed no real thermal pause in any
+of the four runs from `run.log` directly -- not scored as a void.
+
+**Reading it, with both runs now in:** the pilot pair's read holds and sharpens. `surfupd`'s wait
+is removed consistently and by a large, stable margin in both runs (6.6ish -> ~0.15-0.2 ms/flip,
+P0/P1 both PASS both times) -- this is the mechanism working exactly as surfgpu1009 built it.
+But the two callers it does not reach, `range` and the new `tobuf`, absorb most of the freed
+budget in both runs (range: 5.71->9.42 and 5.83->9.95; tobuf: 0->3.41 and 0->3.51 -- both pairs
+agree to within 6%), so the all-caller sum only falls ~23% against a 40% ceiling (P2 FAILs both
+times, ratio 0.77 and 0.78). `ph_Fin` -- decompose.py's renderer-finish-wait phase, which is what
+the all-`[sdcall]`-caller sum feeds -- **rises** in both runs (+1.50, +1.70), not falls: the P3
+leg's registered direction (a drop) is wrong for what this scene actually does, consistently.
+`gfps` rises in both runs but inconsistently in size (+1.56, then +0.60) -- averaged it clears the
+registered +1.0 floor by a small margin, but given ph_Fin rising in both runs, the gain is not
+coming from the renderer-finish-wait path sg_judge.py measures; it plausibly comes from slack
+elsewhere in the frame (CPU/vCPU side, not scored by this judge) that happens to net positive
+despite the renderer side getting slightly slower. nodisp, surfgpu's no-display-surface-needed
+counter, stayed low in both runs (0.07, 0.02) -- well under the 0.2 floor NBA Live's mechanism
+cleared -- meaning Forza's surfaces are reread for reasons surfgpu's dedup path does not avoid
+here, plausibly the HUD/minimap texture feed visible as the new `tobuf` caller.
+
+**This is outcome (b), confirmed on 2 runs/arm, not outcome (a) or (c):** surfgpu removes the wait
+it was built to remove (`surfupd`), but it does not remove Forza's overall surface-download wait --
+most of it relocates to `range` (surfdl1008's Midnight Club 2 caller, `texture.c`'s
+`pgraph_vk_download_surfaces_in_range_if_dirty`, which surfgpu structurally does not touch) and a
+new caller `tobuf`, which together leave the renderer-finish-wait phase flat-to-worse even as
+headline gfps ticks up slightly. The brief's follow-on rationale (step 5(c), a GPU-side
+surface-to-texture conversion at the `texture.c` call site) applies regardless of the formal
+outcome letter: `range` is present and growing under surfgpu in both runs, is the dominant single
+caller in the ON arm (9.685 ms/flip averaged, more than `surfupd` ever was OFF), and is a caller
+surfgpu's design cannot reach. `tobuf` (new, 3.46 ms/flip averaged on) would need separate
+investigation -- it does not appear in the OFF arm at all, so it is conditional on surfgpu's own
+path, not a pre-existing wait being moved by coincidence; naming its call site is follow-on work,
+not this lane's.
+
+PR.md written with this decision and the P x win row for the follow-on. `WAITING` removed (no
+runs pending). Merged `origin/master` (one unrelated fold, nightlywrap1010's nightly-notes
+tooling, no conflict, nothing in this lane's territory) before concluding anything from this tree,
+per the lane contract -- `ab1acc4154` (registered `a_ref`/`b_ref`) unaffected, no re-registration
+needed. State: ready.
