@@ -150,15 +150,15 @@ if [ "$TRUNK_OK" = 0 ]; then
     LAST_FETCH="never"
     [ -n "$FH" ] && [ -e "$FH" ] && LAST_FETCH=$(date -r "$FH" '+%F %H:%M %Z' 2>/dev/null || echo unknown)
     say "REFUSING: cannot reach origin/$TIP, so $SHA cannot be confirmed as the trunk (last fetch: $LAST_FETCH)"
-    PROV="built from \`$SHA\` on \`$BRANCH\`"
+    PROV="Built from \`$SHA\` on \`$BRANCH\`"
 elif [ "$BEHIND" -gt 0 ]; then
     say "REFUSING: HEAD $SHA is $BEHIND commit(s) behind origin/$TIP ($TRUNK); the nightly publishes the trunk or nothing"
-    PROV="built from \`$SHA\` on \`$BRANCH\`"
+    PROV="Built from \`$SHA\` on \`$BRANCH\`"
 elif [ "$AHEAD" -gt 0 ]; then
     say "WARNING: $AHEAD commit(s) not on origin/$TIP; the release will say so"
-    PROV="built from **unpushed** \`$SHA\` on \`$BRANCH\` ($AHEAD commits ahead of origin/$TIP)"
+    PROV="Built from **unpushed** \`$SHA\` on \`$BRANCH\` ($AHEAD commits ahead of origin/$TIP)"
 else
-    PROV="built from \`$SHA\` on \`$BRANCH\` (the tip of \`origin/$TIP\`)"
+    PROV="Built from \`$SHA\` on \`$BRANCH\` (the tip of \`origin/$TIP\`)"
 fi
 
 # Refuse BEFORE ./gradlew, not after: ten minutes of build time spent on a
