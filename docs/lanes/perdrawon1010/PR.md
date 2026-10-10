@@ -26,9 +26,13 @@ through `title_verdict.py`'s power block, no strict prediction (J/frame
 has no falsifiable judge here; "no measurable change at this noise" is an
 acceptable answer per the brief).
 
-**State: not ready -- device requests not yet queued.** Tooling and both
-predictions committed first (prediction-before-arm, never rebased after).
-Next: queue the 3-run MOTION pilot (~22.5 min, under the pilot cap), read
-it, then the disc and power legs.
+**State: not ready -- waiting on the 3-run MOTION pilot
+(`1-1791638052-perdrawon1010-3286571`, `-3287113`, `-3290290`; ~22.5 min,
+under the pilot cap, no `pilots/perdrawon1010.ok` needed).** Tooling and
+both predictions committed first (prediction-before-arm, never rebased
+after). `docs/lanes/perdrawon1010/WAITING` holds the three request ids;
+resumes when they land. Next after that: read `motionread.py` against the
+three results, then queue the disc leg (section 3) and the two power runs
+(section 4).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

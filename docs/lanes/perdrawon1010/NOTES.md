@@ -138,13 +138,32 @@ the pilot gate -- see section 5)*
 
 ## 5. Device budget and pilot
 
-Nothing queued yet as of this writing (predictions and tooling committed
-first). Plan: pilot batch = 3 x `HAKUX_UNI_TOGGLE=4` MOTION runs (~360 s
-route + ~90 s setup each =~ 1350 s =~ 22.5 min), under the ~30 min pilot cap,
-no `pilots/perdrawon1010.ok` needed for this first batch. Larger batches
-(pgraph-inert disc, the two power runs, any `runs=3` follow-up) queued after
-reviewing the pilot and writing that file. 4 h Nova budget total; this
-section is updated with actual queued/spent time as requests land.
+Pilot batch queued (2026-10-10, ~22.5 min estimated, under the 30 min cap,
+no `pilots/perdrawon1010.ok` needed): three `HAKUX_UNI_TOGGLE=4` runs of
+`nfs-mw.route`, 360 s each, ref `4ad1154e55`, device nova, `--expect
+perdrawon1010-nfs-motion.json`.
+
+| run | request id |
+|---|---|
+| 1 | `1-1791638052-perdrawon1010-3286571` |
+| 2 | `1-1791638067-perdrawon1010-3287113` |
+| 3 | `1-1791638073-perdrawon1010-3290290` |
+
+`nfs-mw.route` is perdraw1009's (ready, folding, not yet on master); its
+route file is not yet in this tree so it was materialized **untracked**
+(`git show lane/perdraw1009:docs/testing/titles/routes/nfs-mw.route`,
+verified byte-identical, not staged/committed -- `git status --porcelain`
+shows it `??`) purely so `request.sh`'s local route-resolution step could
+read it. No `refs/` crop assets exist for this route (grep: no `waitfor`
+steps), so nothing else was needed. Not a WAITING-grant case: the route is
+not new, just not locally present yet because of fold timing; nothing in
+this lane's committed tree changed.
+
+Writing `docs/lanes/perdrawon1010/WAITING` with the three request ids and
+ending this turn here; the next turn reads the results, then queues the
+disc (section 3) and power (section 4) legs, pilot-reviewed and written to
+`pilots/perdrawon1010.ok` if that next batch would push cumulative time
+past 30 min. 4 h Nova budget total; ~22.5 min spent on this pilot so far.
 
 ## 6. Second title (optional, job item 5)
 
