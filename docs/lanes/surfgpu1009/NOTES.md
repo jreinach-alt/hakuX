@@ -367,3 +367,51 @@ in each pair:
 | golden B / A | `1-1791588861-surfgpu1009-610569` / `-610665` |
 | NBA 06 B / A (460 s, nbalive06) | `1-1791588869-surfgpu1009-611883` / `-612026` |
 | NBA 07 B / A (480 s, nbalive07) | `1-1791588870-surfgpu1009-612141` / `1-1791588871-surfgpu1009-612271` |
+
+## 8. Resume, attempt 1 (2026-10-09 ~17:00 PDT)
+
+**Why the previous session did not finish.** It queued the six requests
+above at 16:34 PDT and ended without a `waiting:` line. None of the six had
+started: the Nova was running `pmucounters`' Amped 2 pair
+(`1-1791588183-pmucounters-521453` running at 16:59 PDT, `-521720` queued
+ahead of these). Nothing in this lane failed. This session reads the six
+results as they land.
+
+### 8.1 The generalisation arm, read from the code before any device time
+
+Brief step 6 names Spider-Man 2 or NHL 2K3. I ran surfdl1008's
+`postmark_sdsurvey.py` on fpstelemetry1008's full runs (already on disk, not
+re-run) and read the `[evict372]` pairs against the splice's gates
+(`surfsplice_dl_ok`, `surfsplice_upload_layout`):
+
+| title | run | post-mark waits | evict pairs (one address) | switch reaches it? |
+|---|---|---|---|---|
+| Spider-Man 2 | `1-1791538675-fpstelemetry1008-1143702` | `surfupd` fin 2.50/fr, 2.60 ms/fr; `record` 0.80; `range` 0.78 | Z f130 **sz** 256x256 -> 128x128 -> 64x64 -> 256x256 | **no** |
+| NHL 2K3 | `1-1791540124-fpstelemetry1008-1240862` | `surfupd` fin 3.50/fr, 6.67 ms/fr (`why=stale`, no `reuse`); `record` 1.03 | Z f130 ln 640x612 <-> 640x480; 640x612 <-> Z f130 **sz** 256x512 | partly |
+
+- **Spider-Man 2.** Every zeta binding in the chain is swizzled D32F_S8.
+  `surfsplice_dl_ok` refuses a swizzled download, because its staging is
+  unswizzled and the CPU swizzles at completion. `surfsplice_upload_layout`
+  refuses a swizzled depth upload. Flag on, every `surfupd` there still
+  completes at `SDC_SURF_UPDATE` (`spl_cmpl`). An arm would measure nothing,
+  so none is queued.
+- **NHL 2K3.**
+  - The 640x480 <-> 640x612 linear half can splice.
+  - Any upload overlapping the pending swizzled 256x512 download cannot. A
+    fallback completes the whole batch, so the GPU time queued before it is
+    still waited.
+  - So the switch removes at most part of the 6.67 ms/frame. How much is set
+    by the order of the four evictions in the frame, which no counter
+    records.
+- **What would reach both.** A splice for swizzled downloads and uploads.
+  The download's staging is linear guest-format rows. The upload's VRAM
+  bytes are swizzled, so a GPU swizzle (compute) would replace the CPU's.
+  For square power-of-two nests like Spider-Man 2's, the smaller texture's
+  swizzle is a prefix of the larger's.
+  - It is a separate change with its own golden.
+  - Win: NHL 2K3 about 6.7 ms/frame, Spider-Man 2 about 2.6. Both are
+    smaller than NBA's.
+  - It is the next lane's step if NBA 06/07 hold, not this lane's.
+- NHL 2K3 is the only generalisation arm with a mechanism this switch
+  touches. It is queued only after NBA 06/07 and the golden are read, with
+  its own registered prediction.

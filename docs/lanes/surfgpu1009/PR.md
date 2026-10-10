@@ -1,6 +1,6 @@
 # surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433, 0.5)
 
-State: draft (pilot queued; see NOTES.md section 7)
+State: draft (NBA 05 pilot read; golden and NBA 06/07 pairs queued; see NOTES.md sections 7-8)
 
 Lane: surfgpu1009          Issue: none (dispatched directly by lane.local, #433 umbrella)
 Base: master @ f2c6b9c5d6
