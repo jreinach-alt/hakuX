@@ -102,14 +102,21 @@ counters below name the largest per-draw cost directly (section 5.3).
 | id | what | build | result |
 |---|---|---|---|
 | 1-1791656193-drawrec1010-4097387 | census, race start, 12 starts, HAKUX_UNI_BULK/UBERCACHE/FOGCACHE=1 | perflog @ e7f2e720c8 | DONE; 12 marks, 68 windows, section 5 |
-| 1-1791661636-drawrec1010-950252 | pixels B: 27-suite disc, F1-F3 + HAKUX_DRAWREC=1 | plain @ b10dcdb737 | queued |
-| 1-1791661643-drawrec1010-951834 | pixels A: 27-suite disc, F1-F3 | plain @ b10dcdb737 | queued |
-| 1-1791661643-drawrec1010-951926 | NFS race start, F1-F3 + HAKUX_DRAWREC=1, 500 s | perflog @ b10dcdb737 | queued |
-| 1-1791661644-drawrec1010-952014 | NFS race start, F1-F3, 500 s | perflog @ b10dcdb737 | queued |
+| 1-1791661636-drawrec1010-950252 | pixels B: 27-suite disc, F1-F3 + HAKUX_DRAWREC=1 | plain @ b10dcdb737 | DONE; section 10.1 |
+| 1-1791661643-drawrec1010-951834 | pixels A: 27-suite disc, F1-F3 | plain @ b10dcdb737 | DONE; section 10.1 |
+| 1-1791661643-drawrec1010-951926 | NFS race start, F1-F3 + HAKUX_DRAWREC=1, 500 s | perflog @ b10dcdb737 | DONE; section 10.2 |
+| 1-1791661644-drawrec1010-952014 | NFS race start, F1-F3, 500 s | perflog @ b10dcdb737 | DONE; section 10.2 |
+| 1-1791670433-drawrec1010-3707918 | NFS race start plain 1/4, off | plain @ b10dcdb737 | queued |
+| 1-1791670434-drawrec1010-3708043 | NFS race start plain 2/4, ON | plain @ b10dcdb737 | queued |
+| 1-1791670441-drawrec1010-3708870 | NFS race start plain 3/4, ON | plain @ b10dcdb737 | queued |
+| 1-1791670442-drawrec1010-3709079 | NFS race start plain 4/4, off | plain @ b10dcdb737 | queued |
+| 1-1791670443-drawrec1010-3709316 | pixels A recheck, 27-suite disc, runs 2 | plain @ b10dcdb737 | queued |
+| 1-1791670444-drawrec1010-3709731 | pixels B recheck, 27-suite disc, runs 2 | plain @ b10dcdb737 | queued |
 
 All F1-F3 runs carry `HAKUX_UNI_BULK=1 HAKUX_UNI_UBERCACHE=1 HAKUX_UNI_FOGCACHE=1`.
-The four queued runs are the pilot (24.7 min by the gate's estimate). After they are
-read, the plain NFS runs go in the order off, ON, ON, off (section 9).
+The first four were the pilot (24.7 min by the gate's estimate; ~8-9 min each on the
+device). Its verdict is in `$DISPATCH_DIR/pilots/drawrec1010.ok`; the plain NFS runs went
+in the order off, ON, ON, off (section 9), and the pixel recheck is section 10.1's.
 
 ## 5. Census result (run 1-1791656193-drawrec1010-4097387)
 
@@ -223,6 +230,12 @@ Attempt 2 read the census (section 5), built step 2 (section 8, b10dcdb737), reg
 both predictions (section 9, f789451fec), queued the pilot runs (section 4) and ends on
 `WAITING` with their ids, for the same reason.
 
+Attempt 3 found all four pilot runs DONE. Attempt 2 had not failed: it ended on a
+`WAITING` naming four dispatch runs, which is a finished session for a headless lane, and
+lanewaker resumed it when they were DONE. Attempt 3 read them (section 10), queued the
+plain A/B and the pixel recheck, and builds the walk-cost follow-up (section 11) while
+those run.
+
 ## 8. Step 2 as built (b10dcdb737, draw.c only)
 
 `HAKUX_DRAWREC=1`, default off; `HAKUX_DRAWREC_VTX=0` and `HAKUX_DRAWREC_SHC=0` turn
@@ -276,7 +289,64 @@ existing `TARGET_PAGE_MASK` lines).
 Both are env A/Bs on one ref, which `arms.sh` skips (a_ref == b_ref); the lane queues
 them itself.
 
-## 10. Do not repeat
+## 10. Pilot results (attempt 3)
+
+### 10.1 Pixels, 27-suite disc (A 1-1791661643-drawrec1010-951834, B 1-1791661636-drawrec1010-950252)
+
+`ab_compare.py --a A --b B --expect drawrec1010-pixels.json`: 1,060 captures each, 1,053
+byte-identical, 7 moved, so the verdict is FAIL as written:
+
+| capture | A (off) | B (ON) | reading |
+|---|---|---|---|
+| Stencil/Stencil_ZERO_ST | 0 | 30,000 | not named as noise in the prediction; explained below |
+| Vertex_shader_rounding_tests/GeometrySuperscreen_0.0010 | 800 | 400 | named noise; better |
+| .../GeometrySuperscreen_0.4999 | 0 | 800 | named noise |
+| .../GeometrySuperscreen_0.5000 | 0 | 400 | named noise |
+| .../GeometrySuperscreen_0.5626 | 570 | 0 | named noise; better |
+| .../GeometrySuperscreen_0.9990 | 0 | 285 | named noise |
+| .../GeometrySuperscreen_1.0000 | 0 | 285 | named noise |
+
+Stencil_ZERO_ST, region by region: the 30,000 px are three quarters of the 200x200 test
+square (rows 140-339, cols 220-419), red (the golden) in A and black in B. That is the
+same flip, the same size and the same place as the named Stencil_REPLACE* noise. Over the
+35 earlier 27-suite runs in `results/` without this switch (11 apks), this capture read
+30,000 in 32 and 0 in 3, and the 0s came from apks that also read 30,000 in other runs
+(ba0eafaead0a 8/1, 8d38739bc784 6/1, d71bf14ee8af 1/1). B has the usual value; A has
+the rare one. The prediction's own rule is a runs=3 recheck for named-noise moves, so both
+arms were requeued with runs 2 each (3 per arm with the pilot): 3709316 (A), 3709731 (B).
+Logcat: B `[drawrec1010] drawrec=1 vtx=1 shc=1`, A `drawrec=0 vtx=0 shc=0`.
+
+### 10.2 NFS perflog (ON 1-1791661643-drawrec1010-951926, off 1-1791661644-drawrec1010-952014)
+
+Both: 12 marks, no fatal signal, switch line agrees with the env, and a moving car in
+every `s*-g11.png` (30-96 mph). Same cars, barriers, road and HUD in each frame, ON and
+off. `drawread.py`, countdown windows [mark-2, mark+1.5]:
+
+| state | draws/frame | us/draw | Draw | Syn | Pipe (Sh) | Desc | Setup | Mfp | warm pace ms (n) | v2 | [rdc] vtx walks/flip, ms/flip |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| off | 1,603 | 7.77 | 12.45 | 3.97 | 3.84 (1.75) | 0.53 | 1.06 | 0.98 | 42.9 (12) | 46.0% | 157 warm, 2.47 |
+| ON | 1,614 | 6.16 | 9.93 | 1.91 | 2.96 (1.11) | 0.21 | 1.05 | 1.77 | 41.9 (14) | 49.3% | 64 warm, 0.96 |
+
+Cold start (one window per run): off 65.6, ON 43.4 ms/frame; n=1 each, not read.
+
+Legs (the pilot is one perflog run per state, so V is VOID until the plain runs land):
+U PASS (-20.8%, Syn 1.91 <= 2.0); R FAIL ON (64-66 walks/flip, predicted <= 20);
+P PASS on perflog (-1.0 ms/frame, the edge of [-7, -1]); H FAIL on perflog (+3.3 points).
+
+What R's failure says. The `[drawrec]` line (ON, n=134 windows, per flip): dirty 136.5
+ranges, REDO-only copies 288.2 (1,555 KB), walks 0.78 at the flip + 8.61 by budget, runs
+52.1. The budget walks are the walk cost left: each batch makes ~5.5
+`physical_memory_dirty_bits_cleared()` calls, one per run, and each call scans the
+whole TLB (~15 us) whatever its length. So the walks fell from 157 to 64 per flip, not
+to ~1: the forced re-copies of owed pages trip the 32-copy budget ~9 times a flip, and
+each batch pays one scan per run. This is the refutation the prediction named for R
+("the budget walks fire as often as..."), in part: they fire less often than the walks
+they replace, but far more than once per flip.
+
+SHC moved draws from the full path to MFP as intended: Pipe -0.88, Desc -0.32, Mfp +0.79
+ms/frame; net ~-0.4.
+
+## 12. Do not repeat
 
 - Do not `cd` out of the worktree in a Bash call: the session's working directory follows.
 - `phaseread.py` takes `--window=-2,13` (with the equals sign); `-2,13` as a separate
