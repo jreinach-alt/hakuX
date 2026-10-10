@@ -2113,7 +2113,7 @@ note = "GRANTED (lane.local 2026-10-09 15:25 PDT, owner weekend perf direction):
 issues = ["433"]
 standing = false
 files = ["docs/lanes/gpuclock/**"]
-note = "STARTED lane.local 2026-10-05 08:40 PDT: GPU ms/frame vs GPU MHz per title under stock and pinned clocks; measurement only. Row written by hostops 2026-10-05 08:50 PDT (NO-ROW FAIL)."
+note = "RETIRED (lane.local 2026-10-10 07:5x PDT): superseded, not folded. Its corrected deliverable (owner 10-05 17:05: name the CPU/GPU wait per title, no clock or mode as a fix) was delivered by lane.frametrace on master (draw.c:4319 behind the render thread fence on Forza and Nightfire; draw.c:4386 under pfifo.lock on Simpsons), and its follow-ons ran as surfgpu1009 and pfifowait1009. Its 4 unread Nova runs are 401-vs-615 MHz clock arms, instrument-only. The profile.c grant is withdrawn: frametrace already logs GPU ms and MHz per frame. Brief renamed to gpuclock.md.STOPPED-*; lane/gpuclock kept as evidence."
 
 [lane.gpunonrender]
 issues = ["433"]
