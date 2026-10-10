@@ -426,3 +426,45 @@ four requests (expected done about 18:45-19:15 PDT). The wait ends when both
 have `DONE` in `dispatch/results/`. Then NOTES 3h "On resume" reads them and
 sets R3 #1's P. The PR stays a draft until then; everything else the brief
 asks for is in.
+
+## #433 -- 2026-10-09 (attempt 8: N2 valid, W2 void again; R3 #1 finalized, P 0.8; PR ready)
+
+N2 (`1-1791592304-pmucounters-321962`) and W2 (`1-1791592309-pmucounters-323321`)
+finished clean (DONE, no thermal pause, no restart). N2 is valid: the rider
+moves through a halfpipe, a trail and an out-of-bounds recovery across all 8
+hold frames. **W2 is void, the same failure as W**, but a different shape:
+from its third hold frame on it is stuck cycling the mountain-select /
+change-gear / board-stats / career menus for 6 consecutive frames, never
+returning to the run, at the menu's own 59 fps cap instead of the 30 fps
+in-run one. Two independent runs of the shipped-wait arm have now gone
+off-script on the same fixed-timing route while both no-wait runs completed
+it: the extra pacing from the report-processing wait is enough to land the
+scripted button presses on a different screen. That is a finding about this
+route's script, not about #1, and it is why a third blind N3/W3 pair is not
+queued -- 0 of 2 shipped-wait tries have given a usable primary control, and
+repeating the same script a third time with no fix to it is a cheap step
+with a demonstrated low success rate, not the next step.
+
+The registered secondary (pool no-wait N+N2 against shipped-wait data at
+matched vCPU work per frame) does not depend on W2's validity: it reads a
+**hit**. Substituting the three valid shipped-wait runs already on hand
+(B2/C/D, since the W+W2 pool would otherwise mix in non-gameplay menu
+windows the "low-work window" assumption was never meant to cover), the
+no-wait pool's off-CPU time is 2.5-4.5 ms/frame lower than shipped's in
+every work bin >= 21 ms/frame, frames-weighted gap 4.39 ms/frame against the
+registered 1.5 ms/frame hit threshold, and it replicates independently
+between N and N2.
+
+**R3 #1 (report-processing fence waits held under pfifo.lock) is final: P
+0.8.** Fix shape: write occlusion reports when their fence signals without
+blocking the pusher, or drop both locks across the fence wait as #474 did
+for the flip. Never a faster clock or governor; `HAKUX_OCCL_WAIT=0` stays a
+measurement knob.
+
+Everything the 10-09 brief asked for (R0-R3, the ranked table, the pair) is
+in NOTES.md 3e-3i and PR.md. **PR.md is now `State: ready`.**
+
+Spend this attempt: read two result dirs (screenshots + `workbin.py`), no
+new device time.
+
+Model: claude-opus-5-5.

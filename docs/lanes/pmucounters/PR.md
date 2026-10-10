@@ -1,7 +1,7 @@
-State: draft
+State: ready
 
 Lane: pmucounters            Issue: #433
-Base: master @ f2c6b9c5d6
+Base: master @ 2b9846b729
 Files: accel/tcg/hakux-pmu.c.inc, accel/tcg/cpu-exec.c, docs/lanes/pmucounters/NOTES.md, docs/lanes/pmucounters/OUTBOX.md, docs/lanes/pmucounters/PR.md, docs/lanes/pmucounters/WAITING, docs/lanes/pmucounters/pmuprobe.c, docs/lanes/pmucounters/build_probe.sh, docs/lanes/pmucounters/r0_probe.sh, docs/lanes/pmucounters/pmuread.py, docs/lanes/pmucounters/syntax_check.py, docs/lanes/pmucounters/elfsyms.py, docs/lanes/pmucounters/overhead.py, docs/lanes/pmucounters/waits.py, docs/lanes/pmucounters/spinfps.py, docs/lanes/pmucounters/tbbins.py, docs/lanes/pmucounters/tbper.py, docs/lanes/pmucounters/objcheck433.py, docs/lanes/pmucounters/pairread.py, docs/lanes/pmucounters/workbin.py
 Prediction: none: measurement lane, no arm (no behaviour change; the counting on/off pair is an overhead check read by hand)
 Needs device: yes    Needs NDK: yes
@@ -59,14 +59,19 @@ a TB, the dispatch stub or a host library offset.
   2. dispatch, ~1%;
   3. `mmu_lookup1`, ~0.4%.
 
-  A pre-registered pair (`HAKUX_OCCL_WAIT=0` vs the shipped wait) was
-  meant to decide #1. In the first pair the control (W) is void: its rider
-  is stuck at one tree for the whole hold. The arm with the wait skipped
-  (N) is valid. At matched vCPU work per frame, N's off-CPU time is lower
-  than all three shipped-wait runs in every bin. The gap is 2.8-3.4
-  ms/frame at 23-25 ms of work. #1's P is now 0.6, provisional, up from
-  0.4. A second pair (N2, W2) is pre-registered and queued, and it sets
-  the final P.
+  Two pre-registered pairs (`HAKUX_OCCL_WAIT=0` vs the shipped wait) were
+  meant to decide #1 directly. In both, the shipped-wait arm (W, then W2)
+  went void: the route's fixed-timing script, with the wait's extra pacing
+  change, lands its button presses on a different screen than it does
+  without the wait (parked against a tree in the first pair, stuck
+  cycling menus in the second) -- a finding in its own right about this
+  route, independent of #1. The registered fallback secondary (pool the
+  two valid no-wait runs, N and N2, against the three valid shipped-wait
+  runs from R1/R2/overhead, B2/C/D, at matched vCPU work per frame) reads
+  a **hit**: off-CPU time is 2.5-4.5 ms/frame lower for no-wait across
+  every work bin >= 21 ms/frame, frames-weighted gap 4.39 ms/frame, well
+  past the registered 1.5 ms/frame threshold, and it replicates
+  independently between N and N2. **#1's P is 0.8, final.**
 - **Counting cost** is below the route's run-to-run noise (on/off pair).
 
 NOTES.md 3e-3h has the tables and the evidence.
@@ -83,8 +88,8 @@ Device runs (Nova, investigative):
 | b345b5b613 | D counting off | `1-1791585656-pmucounters-341827` |
 | b345b5b613 | N report wait skipped (valid) | `1-1791588183-pmucounters-521453` |
 | b345b5b613 | W shipped wait (void: stuck rider) | `1-1791588184-pmucounters-521720` |
-| b345b5b613 | N2 report wait skipped (queued) | `1-1791592304-pmucounters-321962` |
-| b345b5b613 | W2 shipped wait (queued) | `1-1791592309-pmucounters-323321` |
+| b345b5b613 | N2 report wait skipped (valid) | `1-1791592304-pmucounters-321962` |
+| b345b5b613 | W2 shipped wait (void: stuck in menus) | `1-1791592309-pmucounters-323321` |
 
 A and B found three faults in the hook, all fixed in b387f4971a:
 
