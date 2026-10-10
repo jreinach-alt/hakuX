@@ -228,3 +228,139 @@ eye, on vs off.
 
 **Not repeatable from here:** a later lane should not re-measure the off baseline. The three runs above are
 on disk.
+
+## 6. Attempt 2: why attempt 1 did not finish
+
+Attempt 1 stopped on purpose, in the waiting state the brief prescribes. It queued the 6 Nova runs of section 5,
+pushed `WAITING` with them (8fa509de16, 16:51 UTC), and ended. The last run finished at 18:13 UTC. Nothing
+failed. What was left was reading the runs, the verdict and PR.md, which is this attempt.
+
+Attempt 2 merged origin/master (dff4de7bbe). Master's changes since the base touch `renderer.h` and `shaders.c`
+only, nothing in this lane's files, so the measured build (e654516849) is still what the switch does on the head.
+
+## 7. Pixel leg: the switch does nothing outside a cube
+
+B (on) `1-1791650753-texscan1010-2542806`, A (off) `1-1791650757-texscan1010-2543971`, apk 67490eb10d09, 719
+of 719 captures in both arms.
+
+`ab_compare.py --expect texscan1010-pixels.json` FAIL, 1 of 719. 718 captures are the same. The one that moved:
+
+| capture | A (off) px off golden | B (on) |
+|---|---|---|
+| Texture_border/2D_BorderTex_SZ | 17103 | 16268 |
+
+It is device noise in this test, not the switch:
+
+- **The switch cannot reach it.** A 2D border texture is refused at `texscan_shape_ok` (not a cube, has a
+  border), so both arms run the same code. B's logcat has `[texscan] on` and no `[texscan] first copy`, as
+  predicted: no test in these 29 suites rendered into a cube and sampled it.
+- **B's value is this test's usual one.** 16268 is what most recent APKs read for this capture: 7ff91c72566a x3,
+  893d6f55a111 x3, bd60ff410b34 x3, d5aa7a873b21 x4, and others. The same test has also read 20618, 9328 and
+  1120 on those APKs. The off arm, 17103, is the outlier.
+
+So this leg shows the switch inert where it does not fire. It does not exercise the copy. The copy's pixels
+are the car's reflection at the NFS race start: the `s5-g11` route frames of off1 (`104240`, 68 mph) and on2
+(`110056`, 59 mph) both show a moving car and a reflection of the same kind on its body. It is not black,
+stale or garbage.
+
+## 8. NFS leg: the downloads are gone, and the start is slower
+
+Runs, apk 15d83b0da02e, perflog, 12 starts each:
+
+| run | state | period ms | v2 / v3 / v4+ | range ms/frame | gfps | draws/frame |
+|---|---|---|---|---|---|---|
+| `1-1791650940-texscan1010-2621346` | off | 46.6 | 31.8 / 57.8 / 10.3 % | 4.03 | 22.7 | 1015 |
+| `1-1791650940-texscan1010-2621780` | on | 49.4 | 27.3 / 52.3 / 18.8 % | 0.00 | 21.7 | 881 |
+| `1-1791650941-texscan1010-2622254` | on | 48.9 | 26.7 / 53.2 / 17.8 % | 0.00 | 22.1 | 891 |
+| `1-1791650942-texscan1010-2622720` | off | void | | | | |
+
+**off2 is void.** Its boot inputs went one menu level too deep. At `s12-main_menu` the game was already in the
+career main menu, and every start after that was the "You must create a new alias" dialog: 59 fps, 389
+draws/frame, range 0. The route has no check that it reached the main menu.
+
+texread.py's V leg passed it anyway. V checks starts, route finished, env and build, not what was on screen
+(section 11). The registered judge over all 4 runs reads:
+
+`legs: V=PASS R=PASS P=FAIL H=FAIL F=FAIL N=PASS` (period +25.6 ms, gfps -26.02; both are the void run)
+
+Over the 3 valid runs, `python3 docs/lanes/texscan1010/texread.py <off1> <on1> <on2> --expect ...`:
+
+| leg | predicted | measured | |
+|---|---|---|---|
+| R | range on <= 0.5, off >= 2.5 ms/frame | on 0.00, off 4.03 | PASS |
+| P | period on - off in [-12, -2] ms | **+2.6** (off 46.6, on 49.2) | FAIL |
+| H | v3+v4 down >= 10 points, v2 up >= 10 | v3+v4 **+2.9**, v2 **-4.8** | FAIL |
+| F | matched-work gfps in [+1, +8] | **-1.40** over 90 rows (frame_ms +3.0) | FAIL |
+| N | >= 30 pace lines per state | off 33, on 57 | PASS |
+
+`txw` agrees with R: create_texture's own time goes from ct 8.96 ms/frame (sdl 3.87 + scan 4.02) to ct 1.04
+(sdl 0.00, scan 0.01).
+
+The route, per 60 frames on: bind 122.7, cp 273.0, keep 461.3, force 2.0, faf 48.8, cmpl 0.5, fb 0. It
+never fell back. With it on, `[sdcall] range` still shows `fin 0 dl 23.7` per 60 frames at 0.00 ms. These are
+scan downloads with no finish and no measurable cost.
+
+**The sign does not depend on off2.** The on period, 48.9 and 49.4, is above every off reading of this start on
+record: 46.6 here, 46.4 (census `1-1791648919-texscan1010-2004607`), 43.5 and 41.9 (perdrawon1010). No
+replacement off run can make on - off negative, so none was queued.
+
+**No MC2 pair.** Brief step 5 runs one "if NFS wins". It did not.
+
+## 9. Why: the wait moved to the report fence
+
+The phase rows, averaged over in-start rows. Phase fields are per-flip EMAs, so these are approximate. The
+period in section 8 is the measure. `Fin rest` is Fin - Sub - Fen, which holds
+`pgraph_vk_process_pending_reports_internal`.
+
+| run | Draw | Fin | Sub | Fen | Fin rest | Idle (Fr / St) | Tot | GPU (R / X / MxG) |
+|---|---|---|---|---|---|---|---|---|
+| off1 | 12.7 | 12.0 | 6.4 | 1.0 | ~4.6 | 10.4 (9.8 / 0.6) | 36.5 | 9.4 (9.1 / 0.3 / 0.1) |
+| on1 | 11.3 | 11.9 | 0.2 | 1.3 | ~10.4 | 14.1 (12.6 / 1.6) | 38.6 | 10.9 (8.2 / 2.7 / 2.3) |
+| on2 | 11.5 | 12.2 | 0.2 | 1.3 | ~10.7 | 13.9 (12.5 / 1.4) | 38.8 | 11.1 (8.3 / 2.8 / 2.5) |
+| census 2004607, off | 12.8 | 12.0 | 6.6 | 1.4 | ~4.0 | 10.4 | 36.6 | 9.4 (9.1 / 0.3 / 0.1) |
+
+- **Fin does not move.** The 6.4 ms of synchronous wait inside `Sub` (the SURFACE_DOWN finishes) is gone, and
+  the same time reappears in `Fin rest`. That is the #804 wait (reports.c:243-263). When queries are in flight,
+  every finish waits on every submitted frame's fence, then `vkGetQueryPoolResults` with WAIT_BIT.
+- **NFS has occlusion queries in every frame.** `hakuX-rpbrk` reads `qry120` per 60-frame line in all three
+  runs, two query breaks per frame. So the pgraph thread waits for the whole frame's GPU work at the report
+  either way. With the switch off, the mid-frame cube-face finishes submitted part of that work early, and the
+  report fence found the GPU nearly done. With it on, nothing submits before the end-of-frame finish, and
+  `xemu-work` QS goes from 3.1 to 1.2-1.4 submits per frame. The fence then waits for all of it.
+  The downloads' wait was GPU execution the frame needs anyway, not the readback. That is the "waits hidden
+  behind GPU-bound time" refutation section 5 wrote down.
+- **The GPU does about 1.6 ms more per frame on** (R+X 9.4 -> 11.0), mostly in one inter-render-pass gap
+  (MxG 0.1 -> 2.4). On Turnip a GMEM pass's binning, other tiles and loads/stores count as non-render
+  (draw.c:3722-3730), and the switch changes how the frame is split into passes and command buffers (`Bar`
+  939 -> 490, `Tr` 1236 -> 1916 per 60 frames, the latter the copy route's ~11 transitions per frame). So
+  this gap is not shown to be the copies themselves. `HAKUX_GPUXFR=1` brackets each non-draw scope, which
+  includes `texscan_apply`, and one on run with it would say. That matters only while the pgraph thread
+  waits for the GPU, which is the case here.
+- **The CPU side did improve.** create_texture dropped from 8.96 to 1.04 ms/frame. Draw is 1.2 ms lower and
+  `TexU` (texture uploads) goes 1.0 -> 0 per frame: the cube is no longer re-hashed and re-uploaded. Fin
+  rest and Idle absorbed all of it.
+
+## 10. Verdict and recommendation
+
+- **Prediction: R PASS, V PASS, N PASS; P, H, F FAIL, wrong sign.** The switch removes the downloads it was
+  built to remove, and makes the NFS race start 2.6 ms per frame slower (21.5 -> 20.3 fps), with more frames
+  at 4+ vblanks.
+- **Keep it default-off. Not recommended default-on on its own.**
+- **What it is for:** lane.reportasync1010 (`HAKUX_REPORT_ASYNC=1`) moves the report write to the render
+  thread after the fence. That removes the wait this switch moved to. Its brief step 5 runs both switches on
+  vs both off when this switch is on its base. That pair, not this lane's, decides whether HAKUX_TEXSCAN
+  goes default-on. Folding this PR as-is (opt-in, inert when off, pixel-checked) is what lets that pair run.
+
+## 11. For the next lane
+
+- **Do not run HAKUX_TEXSCAN=1 alone again** to look for an NFS win. Any title with an occlusion query in the
+  frame turns the removed download wait into a report-fence wait. Pair it with the async report.
+- **Before blaming the copy for the GPU gap,** take one on run with `HAKUX_GPUXFR=1` (section 9).
+- **Forza.** lane.forzasurf1010 measured the `range` caller at 5.77 -> 9.69 ms/flip with surfgpu on. Whether
+  those are cube faces is not known. One perflog run there reads it from `[tsc] cls` and `ts[fb]`. If they
+  are not cubes, this route refuses them (`fb`), and the census table in section 3 says which shape to build.
+- **The route.** `nfs-mw-quickrace` needs a check that it is on the main menu before it steps into Quick
+  Race. off2 went one level too deep and ran 12 starts of an alias dialog.
+- **texread.py's V leg** checks starts, route, env and build, not the scene. A start window with draws/frame
+  far below the others (389 vs ~900-1000) should void the run. That reader is in this lane, but its rules were
+  registered before the runs, so it is not edited here.
