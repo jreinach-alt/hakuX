@@ -6,16 +6,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `drawrec1010` | claude-opus-5-5 | 33 min | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#43 |
-| `fleetflush1010` | claude-sonnet-5 | 1h 7m |  |
-| `gpupass1010` | claude-sonnet-5 | 57 min | gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 14 waiting, 1 running.
+- **Device queue:** 15 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -73,10 +69,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/drawrec1010` | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#433, 0.5) | `b10dcdb737` | 2026-10-10 12:38 |
-| `lane/gpupass1010` | gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5) | `ebcbd61064` | 2026-10-10 12:33 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -93,4 +86,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 Lane: restoreleak1009            Issue: #433
 - 2026-10-10 boardgateenv1009 -- the board push gate stages master's docs/testing into the pushing tree's index (#433, 0.5)
 
-_Updated 2026-10-10 12:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 13:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
