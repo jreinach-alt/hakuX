@@ -6,6 +6,11 @@ and `1-1791649724-nfsframe1010-2219502` (the plain build, same route), and lane.
 `1-1791648919-texscan1010-2004607` (census), unless a source is named. NOTES.md section 5 holds the readings and the
 readers. A figure with no source is marked **(assumption)**.
 
+**Revised 10-10 (attempt 2) on two results:** the placement probe (NOTES 5.6: freeing the X3 lengthened the frame
+2-4 ms, F failed; step 4 is dropped) and texscan1010's NFS A/B (NOTES 5.7: the GPU-side copy ALONE costs +2.6 to
++7 ms/frame; the structural fact in section 3 is confirmed and steps 1 and 2 are one step, landed in the order
+2 then 1). Section numbers are unchanged; other lanes cite them.
+
 ## 0. Owner summary
 
 **The frame is not slow in one place. It is slow because one thread, the PFIFO thread, does everything in series:
@@ -23,28 +28,40 @@ What a heavy cold-start frame (plain build, ~59 ms) is made of, on that one thre
 | waiting for the next emulated VBLANK after the frame is done (frames are quantized to 16.7 ms steps) | 0-12 | not removable; it is why 34 ms of work becomes a 50 ms frame. The work must fit in 33 ms every frame |
 
 The two GPU waits are one pool, not two: the GPU only receives work at those stops, so removing the
-environment-map stops alone makes the occlusion-query stop wait for the whole frame's GPU work instead. They
-have to go together, and the order is:
+environment-map stops alone makes the occlusion-query stop wait for the whole frame's GPU work instead.
+**texscan1010's A/B measured exactly that (NOTES 5.7): with the copy on and nothing else, the frame got 2.6 ms
+LONGER over the start and 7 ms longer at the countdown** (the 10.8 ms of face waits left, 13.7 ms arrived at the
+query fence, and the GPU did 3-5 ms more work per frame on the copy route). They have to go together, and the
+order is:
 
-1. **Land the GPU-side environment-map copy (texscan1010).** Biggest wait, already built, A/B queued. Alone it
-   is worth 4-8 ms, not 16-23 (its A/B will read small for that reason); with step 2 the full amount. P 0.7.
-2. **Stop waiting for occlusion-query results on the FIFO thread** (new lane `reportasync1010`): the GPU writes
-   the report when it is done, as the hardware does. With step 1: warm start and post-GO at 30 fps (every frame
-   in 2 vblanks), cold start 25-28. P 0.6. Dispatch now; it does not wait for step 1.
-3. **Cut the per-draw recording cost** (new lane `drawrec1010`): first a census of what changes between
-   consecutive draws, then descriptor/uniform/pipeline-state caching; the drastic form is a recorder thread so
-   the FIFO thread only parses. This is what holds 30 at the cold start and on heavier tracks. P 0.5 for -30%,
-   P 0.4 for the recorder thread, 10-25 lane-days.
-4. **Thread placement** (pin the FIFO thread to the big core): priced only once the probe queued now
-   (HAKUX_IDLE_HALT=1, `nfs30plan1010-idlehalt.json`) says whether freeing the X3 moves this scene.
+Step numbers are kept as first written (other lanes cite them); the LANDING order is 2, then 1.
+
+1. **The GPU-side environment-map copy (texscan1010): built, ready, default-off; it lands on top of step 2,
+   never alone.** The pair's A/B (reportasync1010's step 5) decides its default. Together: warm start and
+   post-GO at 30 fps (every frame in 2 vblanks), cold start 25-28 (model). P 0.7 that the copy is correct (its
+   pixel leg), **P 0.5 that the pair reaches the warm-start model**, lowered from 0.7 because the copy route
+   costs the GPU 3-5 ms/frame that the model had not priced (NOTES 5.7).
+2. **Stop waiting for occlusion-query results on the FIFO thread** (lane `reportasync1010`, dispatched 10-10,
+   pilot pair queued): the GPU writes the report when it is done, as the hardware does. Alone: 50-55 cold /
+   37-38 warm (model). P 0.6. **This is the step that lands first.**
+3. **Cut the per-draw recording cost** (lane `drawrec1010`, dispatched 10-10, census run on the Nova): first a
+   census of what changes between consecutive draws, then descriptor/uniform/pipeline-state caching; the drastic
+   form is a recorder thread so the FIFO thread only parses. This is what holds 30 at the cold start and on
+   heavier tracks. P 0.5 for -30%, P 0.4 for the recorder thread, 10-25 lane-days.
+4. **Thread placement: dropped.** The probe (HAKUX_IDLE_HALT=1, `nfs30plan1010-idlehalt.json`, NOTES 5.6) freed
+   the X3 for a third of wall time and the FIFO thread's frame grew 2-4 ms. Its brief is not dispatched.
 5. **GPU work and the guest JIT are not on the path** at this scene (GPU 13-22 ms of a 33 ms budget; the guest
    needs 24-29 ms of vCPU time and spends the rest spinning), so a JIT rewrite and a driver fork are priced in
-   section 6 but not scheduled. They become the path only after steps 1-3, on heavier scenes.
+   section 6 but not scheduled. They become the path only after steps 1-3, on heavier scenes. One change from
+   the A/B: with the copy on the GPU is 18 ms/frame at the cold countdown (instr.), so the GPU pass work
+   (`gpupass1010`) moves up to "with the pair" from "after".
 
-What to stop: nothing that is running. texscan1010 is step 1 (its switch covers all six cube faces, not only the
-range scan). nfsframe1010's two plain runs are the baseline arm; it needs no more runs. perdrawon1010 is done; its
--1.8 us/draw is real and small, and its switches should go default-on as a part of step 3, not as a fix.
-forzasurf1010 is off NFS's path (Forza's surface wait is a different call) and should finish for Forza's sake only.
+What to stop: nothing that is running. texscan1010 is step 1's switch (it covers all six cube faces, not only the
+range scan); it went ready default-off and must NOT go default-on alone. nfsframe1010's two plain runs are the
+baseline arm; it is ready. perdrawon1010 is folded; its -1.8 us/draw is real and small, and its switches go
+default-on as a part of step 3, not as a fix. forzasurf1010 is off NFS's path (Forza's surface wait is a
+different call) and should finish for Forza's sake only. Idle halt: NFS gets no title-table entry for it (the
+probe read +2-4 ms/frame at this scene).
 
 Risk, in one line: steps 1 and 2 remove waits, so they are low-risk to pixels (the bytes are the same) and
 medium-risk to timing (a guest that reads the report or the face before the GPU is done). Step 3 touches the
@@ -55,9 +72,9 @@ pixel disc as the gate.
 
 | lane | verdict | why |
 |---|---|---|
-| **texscan1010** | **keep; it is step 1.** | Its census (`1-1791648919`, NOTES section 3 of that lane) shows every synchronous download at the race start is a face of one 128x128 cube environment map: face 0 through the SDL block (30/60 frames), faces 1-5 through the range scan (60+60+60+30+30 per 60 frames), 7.3 ms/frame inside `create_texture` on the perflog build, and `HAKUX_TEXSCAN=1` copies all six on the GPU. This lane's frametrace puts the same waits at 17.3 ms/frame cold, 10.1 warm (the PFIFO thread's unhooked blocked time; the render thread's `vkWaitForFences` at 1.5 calls/frame matches both count and time, NOTES 5.5). The six runs it queued (pixel leg + 4 NFS runs) are the right judge. Nothing to add. |
-| **nfsframe1010** | **stop after its two runs; no further device time.** | Its runs `1-1791649039`/`1-1791649724` are the plain-build baseline this plan is priced against (and the A arm of the placement probe). Its three questions are answered here: the ~12 ms between `Tot` and the period is PFIFO time outside every phase timer (method parsing, texture-bind bookkeeping, pending-report processing, clock reads; NOTES 5.5), the ~10 ms post-flip idle is the wait for the next VBLANK grid line (section 4.3), and the other 5-6 ms of `Sub` is the two cube-face finishes plus the flip finish's submit (NOTES 5.4-5.5). Its NOTES should say so and go ready. |
-| **perdrawon1010** | **done.** | -1.76 us/draw (-17%) on the race start, 18.9-20.9 fps on vs 17.9-20.0 off at the owner's draw counts (its PR.md). Real, and 2-4 ms of a 59 ms frame. Its three switches are part of step 3's baseline; the lane should not run again. |
+| **texscan1010** | **done; ready, default-off. It is step 1's switch, on only with step 2.** | Its census (`1-1791648919`, NOTES section 3 of that lane) shows every synchronous download at the race start is a face of one 128x128 cube environment map: face 0 through the SDL block (30/60 frames), faces 1-5 through the range scan (60+60+60+30+30 per 60 frames), 7.3 ms/frame inside `create_texture` on the perflog build, and `HAKUX_TEXSCAN=1` copies all six on the GPU. This lane's frametrace puts the same waits at 17.3 ms/frame cold, 10.1 warm (NOTES 5.5). **Its A/B (NOTES 5.7, three valid runs; `-2622720` void, a menu): period +2.6 ms over the start, +7 at the countdown; `Sub` 10.8 -> 0.2 and the fence's remainder 4.1 -> 17.8; GPU 13.4 -> 18.0 instr.** The copy works and the wait moved, as section 3 said it would; the switch stays off until reportasync1010's pair. |
+| **nfsframe1010** | **ready; no further device time.** | Its runs `1-1791649039`/`1-1791649724` are the plain-build baseline this plan is priced against (and the A arm of the placement probe). Its three questions are answered here: the ~12 ms between `Tot` and the period is PFIFO time outside every phase timer (method parsing, texture-bind bookkeeping, pending-report processing, clock reads; NOTES 5.5), the ~10 ms post-flip idle is the wait for the next VBLANK grid line (section 4.3), and the other 5-6 ms of `Sub` is the two cube-face finishes plus the flip finish's submit (NOTES 5.4-5.5). Its NOTES section 11 says so. |
+| **perdrawon1010** | **folded (9fd2608f8f).** | -1.76 us/draw (-17%) on the race start, 18.9-20.9 fps on vs 17.9-20.0 off at the owner's draw counts (its PR.md). Real, and 2-4 ms of a 59 ms frame. Its three switches are on master, default-off (`perdraw_env_flag`, shaders.c:1809), and are part of step 3's baseline; drawrec1010 runs with them on. |
 | **forzasurf1010** | **finish for Forza; off NFS's path.** | NFS's surface-to-texture wait is the cube map (above), which `HAKUX_SURFGPU` does not take (`check_surface_to_texture_compatiblity` refuses `shape->cubemap`, texture.c:1402). Its A2/B2 runs decide Forza only. |
 
 ## 2. The budget
@@ -130,7 +147,17 @@ Each entry: measured cost on the critical path (with its source), the design, wh
 critical path moves, P(lands) with the evidence for it, lane-days, accuracy risk, the pixel check, dependencies.
 "Plain" figures use section 2's scaling assumption; "instr." figures are measured on the perflog build.
 
-### 4.1 Surface/texture coherence: the cube-map faces (step 1, lane.texscan1010, built)
+### 4.1 Surface/texture coherence: the cube-map faces (step 1, lane.texscan1010, built and ready; lands after 4.2)
+
+**Measured 10-10 (NOTES 5.7), overriding the model below:** alone, `HAKUX_TEXSCAN=1` reads **+2.6 ms** on the
+period over the start (texscan1010's reader, matched-work gfps -1.40) and **+7 ms at the countdown** (this
+lane's reader; pace 46.2 -> 53.3, one valid A run against two B). `Sub` fell 10.8 -> 0.2 and Fin's remainder,
+the report fence, rose 4.1 -> 17.8; GPU busy rose 13.4 -> 18.0 (`X` 0.8 -> 5.8, MxG 0.1 -> 2.4) and submits per
+frame fell 3.1 -> 1.2-1.4. The model's "-4 to -8 alone" was wrong in sign for two reasons it did not price:
+with no mid-frame submit the GPU's work no longer overlaps the recording (the fence waits for all of it after
+the FIFO runs dry), and the copy route costs the GPU 3-5 ms/frame more than the readback did. Removes 10.1-17.3
+ms of waits only together with 4.2; "with 4.2 the full amount" still stands, less the 3-5 ms of GPU the copy
+adds, which is on the path only when the GPU is (4.6).
 
 - **Cost on the path:** 17.3 ms cold / 10.1 warm instr. (PFIFO `finish_event` waits for the `sd` finishes,
   1.5/frame; NOTES 5.5), same on plain (a GPU wait). The CPU side of the download (swizzle, memcpy into the
@@ -362,9 +389,19 @@ critical path moves, P(lands) with the evidence for it, lane-days, accuracy risk
   **Dependencies:** none to build; on the path only after 4.1 + 4.2 + 4.4.
 - **A different JIT backend:** section 6.
 
-### 4.9 Threading and placement (step 4, conditional lane `placement1010`)
+### 4.9 Threading and placement (step 4: dropped; `placement1010` not dispatched)
 
-- **Cost on the path:** unknown. The vCPU spins on the X3 88% of wall (PMU, NOTES 5.5); which core the PFIFO
+**Probe result (NOTES 5.6):** F FAILED on both B runs. With the vCPU halting instead of spinning (its on-CPU
+share 50-52% of wall against ~100%, 506-558 halts/s, X3 free 35-38% of wall), the countdown pace read 43.5 and
+43.7 ms/frame against 41.7 pooled for the plain baseline (B/A 1.04-1.05; the bound was 0.92); post-GO 44.0
+against 40.0; the guest's own busy time per frame rose 3.3 ms at the same idle share. Freeing the X3 does not
+shorten the PFIFO thread's frame at this scene, and the halted vCPU runs its work slower. **P <= 0.2 for the 4-5
+ms below; none of it is counted in section 5; the brief is not dispatched.** What is still unmeasured is the
+PFIFO thread's CPU id per frame (the brief's step 1); it is worth a lane only if a later step leaves the cold
+start within ~5 ms of 33.3 with PFIFO on-CPU the remaining term. Idle halt stays opt-in and NFS gets no
+title-table entry for it.
+
+- **Cost on the path:** unknown (the pre-probe text follows). The vCPU spins on the X3 88% of wall (PMU, NOTES 5.5); which core the PFIFO
   thread runs on was not recorded (blind spot). If the PFIFO thread runs on an A715 while the X3 spins idle,
   its 30.4 ms plain cold on-CPU is ~1.2x what the X3 would take: **~5 ms cold / ~4 warm (assumption, the
   A715/X3 ratio)**.
@@ -394,15 +431,17 @@ it.** Current, measured: cold 56-62, warm 41-42, post-GO 40.0 (nfsframe1010).
 | 0 now | | **56-62** (meas.) | **41-42** (meas.) | v2 ~50% warm |
 | 2 first: `reportasync1010` alone | the report fence 6.7 / 4.3 | 50-55 | 37-38 | v2 ~65% warm; the sd finishes still drain the GPU mid-frame |
 | 1: texscan1010 on top | sd waits 17.3 / 10.1 and ~6 / ~4 CPU; nothing new waits (the fence is gone) | PFIFO 24-25 -> **35-40** (2-3 VBLANKs, mixed) | PFIFO ~20 -> **33.3** (every frame in 2 VBLANKs without deferral) | **warm start at 30 fps; post-GO at 30**; cold start 25-28 fps |
-| 1 alone (if 2 is not done) | sd waits, but the fence absorbs the frame's GPU work: 21.7 / 12.8 | 52-58 | 38-40 | the warning for texscan1010's A/B: a small move is this, not a failure of the copy |
-| 3: `drawrec1010` steps 2-3 | -30% recording: 5.5 / 4 | PFIFO 19-20 -> **33.3** at p50, 2-3 VBLANKs at p95 | PFIFO ~16 -> 33.3 with 17 ms of margin | **cold start at 30 at p50**; GPU 21.7 now the second-largest term |
-| 4: placement, if the probe passes | 4-5 / 4 | PFIFO 15 -> 33.3 at p95 | margin | holds 30 through the cold start's heaviest frames |
-| 5: GPU sysmem for NFS | GPU busy 21.7 -> ~13 if AUF-like | no period change; margin for heavier tracks | | needed only when GPU > PFIFO |
+| 1 alone (if 2 is not done) | sd waits, but the fence absorbs the frame's GPU work AND the copy adds 3-5 ms of GPU | **MEASURED: +7 at the countdown (46.2 -> 53.3, instr.), +2.6 over the start** | +2 to +4 post-GO (instr.) | texscan1010's A/B (NOTES 5.7). The model row said 52-58 / 38-40, i.e. a small gain; the sign was wrong. Never ship 1 without 2 |
+| 3: `drawrec1010` steps 2-3 | -30% recording: 5.5 / 4 | PFIFO 19-20 -> **33.3** at p50, 2-3 VBLANKs at p95 | PFIFO ~16 -> 33.3 with 17 ms of margin | **cold start at 30 at p50**; GPU (21.7 cold instr., +3-5 with the copy) now the second-largest term |
+| 4: placement | DROPPED: the probe read +2 to +4 ms with the X3 freed (NOTES 5.6) | | | p95 margin at the cold start now comes from step 3's recorder-thread form or step 6, not from placement |
+| 5: GPU sysmem / passes for NFS (`gpupass1010`) | GPU busy 21.7 -> ~13 if AUF-like; with the copy on, 18 ms instr. at the cold countdown | no period change until GPU > PFIFO; with steps 1+2 that is ~24-25 cold PFIFO vs 18-25 GPU: **close at the cold start** | | moved up to "with the pair": the pair's on-run carries `HAKUX_GPUXFR=1` |
 | 6: JIT items | guest 27.4 -> 19-21 | the vCPU is co-critical from step 3 on (27.4 vs PFIFO 19-20); this is what keeps the cold start at 30 when the guest, not the FIFO, is the larger term | | |
 
-Reading the table: **steps 2 + 1 together are what brings the warm start and post-GO to 30 fps; step 3 brings
-the cold start to 30 at the median; steps 4-6 are what holds it at p95 and on heavier scenes.** The owner's
-13 fps was a perflog build by hand (section 2); the plain build is at 16-18 cold and 24 warm now.
+Reading the table: **steps 2 + 1 together (the fence first, then the copy) are what brings the warm start and
+post-GO to 30 fps; step 3 brings the cold start to 30 at the median; steps 5-6 are what holds it at p95 and on
+heavier scenes; step 4 is gone.** The owner's 13 fps was a perflog build by hand (section 2); the plain build
+is at 16-18 cold and 24 warm now. The cold-start GPU margin after the pair is thin (18-25 ms of GPU against
+24-25 of PFIFO, instr.), which is why `gpupass1010` runs with the pair rather than after it.
 
 Not summed: 4.1 and 4.2 share the GPU-wait pool (the table takes them together); 4.4 and 4.5 share the
 untimed bookkeeping (4.5 is inside 4.4's lane); 4.8's items overlap each other on memory-bound blocks; 4.9's
@@ -420,30 +459,33 @@ gain scales 4.4's and 4.5's remaining on-CPU time, not the waits.
 
 ## 7. Open measurements (what must be read before the plan's numbers firm up)
 
-1. **Placement probe** (queued): `1-1791652213-nfs30plan1010-2992539`, `1-1791652214-nfs30plan1010-2992731`.
-   Read with `phaseread.py`/`vcpuread.py` against nfsframe1010's runs; sets 4.9's P and whether `placement1010`
-   is dispatched.
-2. **texscan1010's four NFS runs** (`1-1791650940-…-2621346/-2621780`, `1-1791650941`, `1-1791650942`): the
-   test of section 3's structural fact. If the B arm's period moves by the full 10-17 ms, the GPU was not idle
-   between finishes and 4.2's share is smaller than priced (good news; re-price 4.2 down). If it moves 4-8 ms,
-   the model holds and 4.2 is what makes 4.1 whole.
-3. **Consecutive-draw state census** (drawrec1010 step 1): sets 4.4's P and chooses between reuse, batching, and
-   the recorder thread.
+1. **Placement probe: DONE, F FAILED** (`1-1791652213-nfs30plan1010-2992539`, `1-1791652214-nfs30plan1010-2992731`;
+   NOTES 5.6). 4.9 is dropped; `placement1010` is not dispatched.
+2. **texscan1010's four NFS runs: DONE** (`1-1791650940-…-2621346/-2621780`, `1-1791650941-…-2622254`;
+   `1-1791650942-…-2622720` void; NOTES 5.7). The structural fact held in full (the wait moved to the fence), and
+   the period moved the WRONG way (+2.6 / +7): 4.2 is what makes 4.1 whole, and 4.1 adds 3-5 ms of GPU the
+   model had not priced. 4.1 and 5 are re-priced above.
+3. **Consecutive-draw state census** (drawrec1010 step 1, run `1-1791656193-drawrec1010-4097387` on the Nova at
+   this writing): sets 4.4's P and chooses between reuse, batching, and the recorder thread.
 4. **Plain-build PFIFO-thread simpleperf on the route** (inside drawrec1010): names the untimed 7-9 ms.
 5. **Render-thread row in frametrace** (instrument request to the board: `profile.h`/`render_thread.c`
    registration; this lane cannot edit them): until then the render thread's run time and the PFIFO thread's
    `finish_event`/`wait_frame_submitted` waits are only the unhooked remainder.
 6. **Report consumption timing** (reportasync1010 step 1): fence-to-guest-read gap; decides 4.2's default.
 7. **NFS GPU X/R and passes under sysmem** (4.6's A/B): needed only after steps 1-2.
+8. **Where the copy route's extra GPU time goes** (new, 10-10): one `HAKUX_TEXSCAN=1` run with `HAKUX_GPUXFR=1`
+   on the perflog build, inside reportasync1010's pair (its on-arm), to split the +3-5 ms of GPU between the
+   copy's transitions (`Tr` 1236 -> 1916 per 60 frames) and the inter-pass gap (MxG 0.1 -> 2.4). Decides whether
+   `gpupass1010`'s first item is the copy's layout transitions rather than the render mode.
 
 ## 8. Briefs written (docs/lanes/nfs30plan1010/briefs/)
 
 | brief | step | dispatch when |
 |---|---|---|
-| `reportasync1010.md` | 2 | now |
-| `drawrec1010.md` | 3 | now (its census step does not depend on steps 1-2) |
-| `placement1010.md` | 4 | only if the probe's F passes (section 7.1); the brief says what passing looks like |
-| `gpupass1010.md` | 5 | after texscan1010 and reportasync1010 land, or if their A/B shows the GPU on the path |
+| `reportasync1010.md` | 2 (lands first) | **dispatched 10-10** by lane.local (`origin/lane/reportasync1010`; pilot `1-1791656656-reportasync1010-4183629` async+trace, `1-1791656657-reportasync1010-4184121` trace). Its design puts the report write on a reader thread of its own, not the render thread; same mechanism as 4.2 (the fence leaves the PFIFO thread) |
+| `drawrec1010.md` | 3 | **dispatched 10-10** by lane.local (`origin/lane/drawrec1010`; census run `1-1791656193-drawrec1010-4097387`) |
+| `placement1010.md` | 4 | **NOT dispatched**: the probe's F failed on both B runs (NOTES 5.6); the brief's header says so |
+| `gpupass1010.md` | 5 | with reportasync1010's pair (NOTES 5.7: GPU 18 ms instr. at the cold countdown with the copy on), not after it; the pair's on-run carries `HAKUX_GPUXFR=1` (section 7.8) |
 
 Steps 1 (texscan1010) and 6 (vcpuplan's items) have briefs already (`briefs/texscan1010.md`; vcpuplan's
 NOTES); nothing is re-dispatched here. Model per the 10-10 table: Opus for engineering, Sonnet when usage
@@ -455,7 +497,13 @@ is Low.
   + PMU + census, ref ab1acc4154); readers `ftwin.py`, `phaseread.py`, `vcpuread.py`; NOTES.md sections 2-5.
 - lane.nfsframe1010: `1-1791649039-nfsframe1010-2037292`, `1-1791649724-nfsframe1010-2219502` (plain build,
   07937793af): the baseline period, histogram and `[rr425w]`.
-- lane.texscan1010: `1-1791648919-texscan1010-2004607` (census, free perflog run); its NOTES section 3.
+- This lane's placement probe: `1-1791652213-nfs30plan1010-2992539`, `1-1791652214-nfs30plan1010-2992731` (plain
+  build 07937793af, `HAKUX_IDLE_HALT=1`); prediction `docs/testing/predictions/nfs30plan1010-idlehalt.json`;
+  NOTES 5.6.
+- lane.texscan1010: `1-1791648919-texscan1010-2004607` (census, free perflog run); its NOTES section 3. Its NFS
+  A/B (ref e654516849 perflog): `1-1791650940-texscan1010-2621346` (off), `1-1791650940-texscan1010-2621780` and
+  `1-1791650941-texscan1010-2622254` (on), `1-1791650942-texscan1010-2622720` (off, VOID: menu); its NOTES 8-11;
+  NOTES 5.7 here.
 - lane.perdraw1009 (`origin/lane/perdraw1009`): per-draw sub-phases, F1-F3; lane.perdrawon1010: `1-1791644405`,
   `1-1791645060`, `-726861`: us/draw and the draw-count fit.
 - lane.local 10-09 simpleperf (`~/hakux-work/lanelocal-scratch/nfs-race-1009/prof/split.txt`).

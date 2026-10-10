@@ -124,10 +124,16 @@ def mean(xs):
 
 
 def collect(ev, marks, lo, hi):
-    """One sample dict per phase line inside a window; plus window-level BE/txw/stall/sdcall."""
+    """One sample dict per phase line inside a window; plus window-level BE/txw/stall/sdcall.
+
+    On a plain (non-perflog) build there is no phase line, so the window's `hakuX-perf G:` lines are
+    kept as samples of their own ('plain': True) and the report prints G and pace only."""
     samples, be, txw, stall, sdc, pace = [], [], [], [], [], []
     for mt, name in marks:
         w0, w1 = mt + lo, mt + hi
+        if not ev['phase']:
+            for p in inwin(ev['perf'], w0, w1):
+                samples.append({'mark': name, 't': p[0], 'plain': True, 'G': p[2], 'gfps': p[1]})
         for t, ph in inwin(ev['phase'], w0, w1):
             perf = [p for p in ev['perf'] if abs(p[0] - t) < 0.05]
             cpu = [c for c in ev['cpu'] if abs(c[0] - t) < 0.05]
@@ -147,8 +153,16 @@ def collect(ev, marks, lo, hi):
 
 
 def report(name, samples, be, txw, stall, sdc, pace):
-    if not samples:
-        print(f"{name}: no phase lines in the window")
+    if not samples and not pace:
+        print(f"{name}: no phase, perf or pace lines in the window")
+        return
+    if not samples or samples[0].get('plain'):
+        # plain build: G (per-flip EMA at print time) and the exact 60-flip pace spans only
+        G = mean([s['G'] for s in samples])
+        print(f"{name}: PLAIN build, {len(samples)} perf samples, G {G:.1f} ms ({1000 / G:.1f} fps; gfps line "
+              f"{mean([s['gfps'] for s in samples]):.1f}), pace windows {len(pace)}: "
+              f"{mean([p[3] / 60 for p in pace]):.1f} ms/frame, v4 {mean([p[2] for p in pace]):.0f}/60"
+              + (f", draws/frame {mean(be):.0f} (BE n={len(be)})" if be else ''))
         return
     n = len(samples)
     G = mean([s['G'] for s in samples])

@@ -227,6 +227,7 @@ two. A arms: nfsframe1010's `1-1791649039`, `1-1791649724` (DONE). Read on resum
 `phaseread.py <B dirs>` with `--window=-2,1.5` (pace ms/60 pooled; the plain build prints no phase line, so G
 and pace only), `vcpuread.py` for the vCPU busy split, `route-frames/s*-g11.png` for the moving player. The
 verdict goes to PLAN.md 4.9 (P for placement) and decides whether `briefs/placement1010.md` is dispatched.
+**Both DONE (attempt 2) and read in 5.6: F failed on both B runs; placement is off the path.**
 
 ### 5.4 The PFIFO thread at the countdown, from the free perflog run (texscan1010's `1-1791648919-texscan1010-2004607`)
 Build 4784750c3c = master + the `[tsc]` census (no switch), `--perflog`, no env, same route, 12 starts,
@@ -377,6 +378,73 @@ that is this build's cold start, not the plain build's.
 - Phase fields are per-flip EMAs (section 3); `Draw`'s sub-phases do not sum to `Draw` (Vtx/Prw/Cmd are
   unprinted) and `txw bind` overlaps them.
 
+### 5.6 The placement probe (attempt 2): freeing the X3 does not shorten the frame
+
+Prediction `docs/testing/predictions/nfs30plan1010-idlehalt.json`. A: nfsframe1010's plain runs
+`1-1791649039-nfsframe1010-2037292`, `1-1791649724-nfsframe1010-2219502` (ref 07937793af, no env). B: this
+lane's `1-1791652213-nfs30plan1010-2992539`, `1-1791652214-nfs30plan1010-2992731` (same ref, same route,
+`HAKUX_IDLE_HALT=1`). Readers: `phaseread.py` (now reads a plain build: `hakuX-perf G:` samples and
+`hakuX-pace ms=/60` printed in the window), reportasync1010's `raread.py` as a second reader (its own
+cold/warm split), `vcpuread.py`, and the `[idlehalt]` counters pooled over [mark-4, mark+1.5].
+
+| arm | countdown pace ms/frame [mark-2, mark+1.5] (n) | G | post-GO pace [mark+1.5, mark+12] (n) | raread cold (2 lines) / warm / post-warm | vCPU on CPU | `[rr425w]` busy / idle ms per frame |
+|---|---|---|---|---|---|---|
+| A, plain | 42.4 (14), 41.2 (19): **41.7** (33) | 45.8 | 40.0 (106) | 57.4 / 40.7 / 39.5 | ~100% (the idle loop spins) | 25.2 / 17.8 and 24.7 / 17.5 (59%, 58% busy) |
+| B, idle halt | 43.5 (13), 43.7 (15): **43.6** (28) | 49.3 | 46.2, 42.0: 44.0 (97) | 52.4 / 42.9 / 43.4 | 50-52% (slept 35-38%, 506-558 halts/s, runnable 0.2%) | 28.2 / 16.4 and 28.5 / 14.2 (63%, 67%) |
+
+Legs: **V PASS** on all four runs (ROUTE rc 0, 12 marks, `[idlehalt] armed at 8001b031` on both B runs, all
+48 `s*-g11.png` frames show the player moving at 48-97 mph and 4-5% complete, no thermal pause). **H PASS**:
+the vCPU's on-CPU share fell ~50 points; the guest idle share (37%, 33%) is within 10 points of A's (41%, 42%).
+**F FAIL on both B runs**: B/A = 43.5/41.7 = 1.04 and 43.7/41.7 = 1.05 against the 0.92 bound; post-GO +4.0 ms
+(+10%). The cold start reads 52.4 vs 57.4 on two pace lines per arm, which is inside one start's spread
+(A's two cold lines are 56.3 and 58.5) and is not a pass of anything.
+
+Read: freeing the X3 did not shorten the PFIFO thread's frame; the frame grew 2-4 ms. The guest's own busy time
+per frame rose 3.3 ms (25.0 -> 28.3) at the same idle share, so the halted vCPU does its work slower (wake latency
+after each halt, or a colder core after each migration; this probe cannot split the two), and B run 2 held cpu7 at
+3187 MHz throughout yet read the same 43.7 ms as run 1 (1843-3187), so the prime core's clock is not what moved.
+Per the registered reading: **placement is not a measured lever for this scene**; PLAN.md 4.9 keeps it at "P
+unknown", counts none of its 4-5 ms, and `briefs/placement1010.md` is not dispatched. What the probe did not
+test: a direct pin of the PFIFO thread to the X3 (with the vCPU spinning the X3 would be shared; with it halted
+the scheduler evidently did not put the PFIFO thread there, or the X3 does not help it). That stays unmeasured;
+with this null and idlehalt's corpus (fps within 1.3% on four titles) its P for >= 4 ms is <= 0.2 and it is not
+scheduled. A second finding: idle halt costs NFS 2-4 ms/frame at this scene, so idlehaltdefault's opt-in verdict
+stands and NFS must not get a title-table entry for it.
+
+### 5.7 lane.texscan1010's NFS A/B at the countdown (PLAN.md 7.2's model test)
+
+Its four runs, ref e654516849 `--perflog`, read here with `phaseread.py --window=-2,1.5`. Its run
+`1-1791650942-texscan1010-2622720` (A) is VOID: the boot inputs went one menu level too deep and all 12 "starts"
+were the alias dialog (389 draws/frame at 60 fps); its NOTES section 8 says the same. So A is one run.
+
+| arm | pace ms/frame (n) | G | Draw (draws) | Fin = Sub + Fen + rest | Idle (Fr) | Tot | GPU (R, X) | sd finishes /60 | create_texture |
+|---|---|---|---|---|---|---|---|---|---|
+| A off `-2621346` | **46.2** (12) | 58.2 | 18.4 (1,616) | 16.3 = 10.8 + 1.4 + 4.1 | 11.1 (10.3) | 47.7 | 13.4 (12.5, 0.8) | 90 | 9.1 (sync-dl 3.9 + scan 4.2) |
+| B on `-2621780`, `-2622254` | **54.6, 52.0 = 53.3** (22) | 62.6 | 16.8 (1,521) | 19.5 = 0.2 + 1.5 + 17.8 | 14.2 (12.9) | 52.2 | 18.0 (12.2, 5.8) | 0 | 1.0 |
+
+Post-GO [mark+1.5, mark+12]: A 50.1 ms (45; Sub 7.8, rest 4.6, GPU 10.8 with X 0.7); B 54.7 and 52.4 (Sub 0.2,
+rest ~12.5, Idle 14.0, GPU 13.3/12.8 with X 3.7/3.5). texscan1010's own reader over in-start rows: period
++2.6 ms, matched-work gfps -1.40, `xemu-work QS` 3.1 -> 1.2-1.4 submits per frame, `qry120` per 60 frames (two
+occlusion queries every frame), `Tr` 1236 -> 1916 transitions per 60 frames, MxG 0.1 -> 2.4 (its NOTES 8-9).
+
+What it says for the plan:
+- **The structural fact (PLAN.md 3) is confirmed, in full.** The 10.6 ms of `Sub` wait left and 13.7 ms arrived
+  in Fin's remainder, which is `pgraph_vk_process_pending_reports_internal` (the #804 fence); post-GO +8.
+- **The model's sign was wrong.** PLAN.md 4.1 said "alone: -4 to -8 ms"; measured **+7 ms at the countdown
+  (one A run) and +2.6 to +4 over the start**. Two things the model under-counted: with the `sd` finishes gone
+  nothing is submitted until the end-of-frame finish, so the GPU's work no longer overlaps the recording and
+  the fence waits for all of it (the overlap 4.2 is meant to buy is exactly what 4.1 alone removes); and the
+  GPU does 3-5 ms more per frame with the copy (X +5.0 at the countdown, +3 post-GO: the copy route's
+  transitions and one render-pass gap; `HAKUX_GPUXFR=1` on one on-run would name it, not run yet).
+- So **steps 1 and 2 are one step, and 2 (reportasync1010) is the one that lands first**; `HAKUX_TEXSCAN`
+  goes default-on only on the pair's verdict (reportasync1010's brief step 5), which texscan1010's verdict
+  (ready, default-off) already says.
+- The GPU term with the copy on is 18 ms instr. at the countdown (13.4 off): after steps 1+2 the GPU is ~55% of
+  the 33.3 budget at a cold start, earlier than PLAN.md 5 placed it; `gpupass1010` moves up to "with the
+  pair", and the pair's on-run must carry `HAKUX_GPUXFR=1`.
+- A route judge needs a draws-per-frame bound: `raread.py`/`texread.py` V legs passed a run that was 12 alias
+  dialogs. Below ~600 draws/frame in a countdown window the start is void.
+
 ## 6. Coordination
 
 - **lane.nfsframe1010** (Sonnet): [GO, GO+10.5] window, master's head, two queued runs
@@ -396,10 +464,25 @@ that is this build's cold start, not the plain build's.
   GPU only at a finish, and its `sd` finishes are what submit mid-frame; with them gone the report fence
   (4.2) waits for the whole frame's GPU work, so its A/B period should move 4-8 ms, not 16-23, until
   reportasync1010 lands. A small move is the model, not a failed copy.
-- **lane.perdrawon1010**: done measuring; its result is 4.2/4.3.
+- **lane.perdrawon1010**: done measuring; its result is 4.2/4.3. Folded to master (9fd2608f8f) with
+  perdraw1009 (be3195db77); the `HAKUX_UNI_*` switches are on master and default-OFF (`perdraw_env_flag`,
+  shaders.c:1809).
 - **lane.forzasurf1010**: SURFGPU on/off on Forza; off NFS's path.
 - **lane.nfsframe1010's run 2** (`1-1791649724`) is the second A arm of the placement probe
-  (`nfs30plan1010-idlehalt.json`): same build, route, seconds, device, no env.
+  (`nfs30plan1010-idlehalt.json`): same build, route, seconds, device, no env. nfsframe1010 went ready
+  (ad1bf996d5) after lane.local's addendum; its NOTES section 11 points here.
+- **Attempt 2 (10-10 ~12:00 PDT):** texscan1010 is ready, default-off, A/B read (5.7, its NOTES 8-11).
+  lane.local dispatched two of this plan's briefs before this attempt resumed: **lane.reportasync1010**
+  (`origin/lane/reportasync1010`, base 9fd2608f8f): `HAKUX_REPORT_ASYNC=1` on a reader thread of its own
+  (`nv2a.vk.reports`, not the render thread, which is the submitter), per-slot query ranges, the report's
+  guest address taken on the finishing thread, `done` kept 0 and ordered last; `HAKUX_REPORT_TRACE=1`; pilot
+  `1-1791656656-reportasync1010-4183629` (async + trace) and `1-1791656657-reportasync1010-4184121` (trace)
+  queued; its `raread.py` reads pace on the plain build. **lane.drawrec1010** (`origin/lane/drawrec1010`):
+  `HAKUX_DRAWCENSUS=1` census of what changes between consecutive draws, with a first cut from this lane's run
+  1 (`xemu-sfp`: SFP hits 0.4%, 42-49% of first misses "shader changed" while only ~21% of draws rebind the
+  pipeline: a sticky `shader_bindings_changed`, shaders.c:2149/2202, is the candidate); census run
+  `1-1791656193-drawrec1010-4097387` running on the Nova at resume. Both lanes read this plan's section numbers;
+  nothing in this attempt renumbers them. `briefs/placement1010.md` is NOT dispatched (5.6).
 
 ## 7. What the next lane should not repeat
 - Do not release `pfifo.lock` or `pgraph.lock` around a finish wait and call it a fix: three lanes did,
@@ -433,13 +516,29 @@ that is this build's cold start, not the plain build's.
 - Do not read the texscan switch's coverage from a description of the code path. Its census named every
   download at the scene and showed both paths (SDL block and range scan) are faces of one cube map; my
   earlier "not covered" statement came from the path description, not from the census (6).
+- Do not run `HAKUX_TEXSCAN=1` alone on NFS again, and do not price a wait removal as a win when the GPU work
+  it drained is still needed before the next wait on the same thread (5.7): the model here said -4 to -8 ms
+  and the device said +2.6 to +7. Remove the LAST GPU wait in the frame first (the report fence), then the
+  earlier ones.
+- Do not read a freed core as a faster thread (5.6): halting the vCPU freed the X3 for 35-38% of wall and the
+  PFIFO thread's frame got 2-4 ms longer. A placement claim needs the thread's CPU id per frame
+  (`briefs/placement1010.md` step 1), which no instrument on master prints.
+- `phaseread.py` reads a plain build now (G samples and pace spans only); `raread.py` (reportasync1010) does the
+  same with a cold/warm split. Both V legs need a draws-per-frame bound (5.7): a 60 fps "start" at 389 draws is
+  a menu.
+- The `scratch/` directory under this lane is not committed; contact sheets of the 12 `g11` frames per run
+  (PIL, 4x3 at 426x320) are the fast way to check 48 frames for a moving player.
 
 ## 8. Session state
 
-**[lane.nfs30plan1010] waiting:** the placement probe, requests `1-1791652213-nfs30plan1010-2992539` and
-`1-1791652214-nfs30plan1010-2992731` (queued behind forzasurf1010's two and texscan1010's six on the Nova;
-~9 runs x ~10 min ahead). The signal is both result dirs under `~/hakux-work/dispatch/results/` with
-`run.log` ending in the route's rc; `WAITING` carries the two ids for lanewaker. On resume: read the probe
-(5.3), set PLAN.md 4.9's P and the placement row in PLAN.md 5, decide `briefs/placement1010.md`'s dispatch
-condition, and if texscan1010's NFS runs are DONE by then, check PLAN.md 7.2's model test against them. The
-deliverable (PLAN.md 0-9, four briefs, this file) is complete without the probe; the probe only sets one P.
+**Attempt 1 (10-10 09:10-10:40 PDT)** delivered PLAN.md 0-9, four briefs, this file and the two instrumented runs,
+then ended in the waiting state the brief prescribes: `WAITING` carried the placement probe's two request ids,
+and the PR was marked ready. It did not "fail to finish"; the only open item was a device result that had not
+arrived (the probe was queued behind eight other runs on the Nova). lanewaker resumed it when both were DONE.
+
+**Attempt 2 (10-10 ~12:00 PDT):** merged origin/master (11ccacf68f: perdraw1009 and perdrawon1010 folded; the
+untracked route copy was identical to master's and removed); read the probe (5.6: F FAIL, placement off the
+path, brief not dispatched) and texscan1010's four NFS runs (5.7: wrong sign, the structural fact confirmed);
+updated PLAN.md 0, 1, 4.1, 4.9, 5, 7, 8 and the placement brief's header; taught `phaseread.py` the plain build;
+removed `WAITING`. Nothing of this lane's is queued or running; the PR stays ready. The next device results
+that bear on the plan are reportasync1010's pilot pair and drawrec1010's census, both other lanes' work.

@@ -3,7 +3,14 @@
 Opus (engineering, per the 10-10 model table; Sonnet when usage is Low). Issue: none (dispatched directly by lane.local,
 #433 umbrella; step 4 of docs/lanes/nfs30plan1010/PLAN.md). Nova only.
 
-**Dispatch condition.** Only if lane.nfs30plan1010's probe passes: requests `1-1791652213-nfs30plan1010-2992539` and
+**NOT DISPATCHED (10-10, nfs30plan1010 attempt 2).** The probe ran and F failed on both B runs: countdown pace
+43.5 and 43.7 ms/frame with the vCPU halted against 41.7 pooled without (B/A 1.04-1.05, bound 0.92); post-GO
++4.0 ms; the vCPU's on-CPU share fell ~50 points, so the X3 was free and the PFIFO thread's frame still grew.
+nfs30plan1010 NOTES 5.6 has the table. Placement stays "unmeasured, P <= 0.2" in PLAN.md 4.9; step 1 of this
+brief (the CPU-id trace) is the only part still worth a lane, and only if a later step leaves the cold start
+within ~5 ms of 33.3 with the PFIFO thread on CPU as the remaining term.
+
+**Dispatch condition (as written before the probe).** Only if lane.nfs30plan1010's probe passes: requests `1-1791652213-nfs30plan1010-2992539` and
 `1-1791652214-nfs30plan1010-2992731` (`HAKUX_IDLE_HALT=1`, plain build, route `nfs-mw-quickrace`) against
 nfsframe1010's `1-1791649039`/`1-1791649724`, prediction `docs/testing/predictions/nfs30plan1010-idlehalt.json`:
 B's pooled countdown pace <= 0.92 x A's with the vCPU on-CPU share down >= 25 points. If F fails in both B runs,
