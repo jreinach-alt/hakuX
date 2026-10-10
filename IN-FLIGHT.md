@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `nightlynotes1009` | claude-sonnet-5 | 3 min | nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5) |
+| `nightlynotes1009` | claude-sonnet-5 | 18 min | nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `2026-10-10T01:24:53Z`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 2 waiting, 0 running.
-- **Latest nightly:** `nightly-2026-10-07`, build `c6298a383d`.
+- **Device queue:** 0 waiting, 0 running.
+- **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
 
 ## 0.5 release: Playable titles
 
@@ -86,8 +86,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-08 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 - 2026-10-08 selfdeps: builds fetch nothing from GitHub (#433)
 - 2026-10-07 stuckdetect1007: a stuck/menu detector for pathfind's 600-s hold, validated offline on stored frames (#433)
-- 2026-10-07 harnessfix1006: the Nova's runs record their build, and a test build never stays on it -- fixed the release check itself, which never matched a real run
-- 2026-10-07 gpunonrender: GMEM vs sysmem on the replay-bound titles, census on
-- 2026-10-06 dispatchgate1006: a generated title registry and one admit() gate between "decide to run it" and a handheld (shadow mode)
 
-_Updated 2026-10-09 18:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-09 18:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
