@@ -8,13 +8,15 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `modelpolicy1010` | claude-sonnet-5 | 8 min |  |
-| `perdrawon1010` | claude-opus-5-5 | 36 min | Lane: perdrawon1010       Issue: #433 (umbrella), none filed |
+| `fgrace1010` | claude-sonnet-5 | 12 min |  |
+| `forzasurf1010` | claude-sonnet-5 | 4 min |  |
+| `modelpolicy1010` | claude-sonnet-5 | 23 min |  |
+| `perdrawon1010` | claude-opus-5-5 | 51 min | Lane: perdrawon1010       Issue: #433 (umbrella), none filed |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -74,10 +76,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/perdrawon1010` | Lane: perdrawon1010       Issue: #433 (umbrella), none filed | `2b684669d1` | 2026-10-10 07:41 |
+| `lane/perdrawon1010` | Lane: perdrawon1010       Issue: #433 (umbrella), none filed | `4890735dff` | 2026-10-10 07:59 |
 
 ## Recently landed on master
 
+- 2026-10-10 ghlive1010 -- AGENTS.md: GitHub is up
 - 2026-10-10 Lane: restoreleak1009            Issue: #433
 - 2026-10-10 boardgateenv1009 -- the board push gate stages master's docs/testing into the pushing tree's index (#433, 0.5)
 - 2026-10-10 surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5)
@@ -86,4 +89,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 usagemode1009: usage Low is a read-time cap, re-evaluated every tick (#433)
 
-_Updated 2026-10-10 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 07:59 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
