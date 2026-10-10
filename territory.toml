@@ -2209,6 +2209,12 @@ standing = false
 files = ["docs/lanes/fgrace1010/**", "docs/testing/jobs/selftest.d/99-display-covered.sh", "docs/testing/soak_title.sh"]
 note = "STARTED lane.local 2026-10-10 07:48 PDT: 99-display-covered's 'guest exit mid-route' leg loses a race between the hold loop and fg_watch under load (3 of the last ~12 fold selftests, 0 of ~60 before; no-STOPPED-line each time) and costs folds their slot. Both files were unlisted (neither claimed nor [free]). Sonnet."
 
+
+[lane.forzasurf1010]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/forzasurf1010/**", "docs/testing/predictions/forzasurf1010-*.json"]
+note = "STARTED lane.local 2026-10-10 07:55 PDT (Sonnet, measurement, FPS priority): Forza on master with surfgpu ON vs OFF, HAKUX_FRAMETRACE=1, moving car verified first; does the default-on surfgpu route remove the surfupd surface-download wait, move it, or leave it at texture.c range? frametrace's 10-05 Forza number had a stopped car and is not a baseline."
 [lane.surfgpu1009]
 issues = ["433"]
 standing = false
