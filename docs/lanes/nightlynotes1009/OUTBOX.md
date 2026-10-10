@@ -1,6 +1,11 @@
 # OUTBOX: lane.nightlynotes1009 -> lane.local
 
-## 1. File this lane needs changed but does not own
+## 1. File this lane needs changed but does not own -- DONE upstream (2b9846b729)
+
+lane.local added `SuccessExitStatus=75 9` to `docs/testing/systemd/hakux-nightly.service` itself
+(`2b9846b729`, "hakux-nightly.service: exit 9 (nothing to publish) is not a failure (#433)"), now on
+this branch via the `origin/master` merge this attempt made. Nothing further to ask for here; kept
+below for the record of why it was needed.
 
 - `docs/testing/systemd/hakux-nightly.service` line 26, `SuccessExitStatus=75` -- needs `9` added
   (`SuccessExitStatus=75 9`). This PR makes a build whose window has no player-facing change exit 9 instead of

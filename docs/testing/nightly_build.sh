@@ -284,10 +284,34 @@ declare -A REVERTED=() REVERT_EMU=()
 CH_PR=(); CH_TITLE=(); CH_LANE=(); CH_SHA=()
 N_INTERNAL=0
 cur_sub=""; cur_sha=""; cur_emu=0; have=0
-offline_clean_title() {   # <lane> <title> -> title without a leading "<lane>[ attempt N]: " or trailing " (#NNN)"
-    local lane_re=$1 title=$2
-    lane_re=$(printf '%s' "$lane_re" | sed 's/[.[\*^$/]/\\&/g')
-    title=$(sed -E "s/^${lane_re}( attempt [0-9]+)?: //" <<<"$title")
+escape_re() { printf '%s' "$1" | sed 's/[.[\*^$/]/\\&/g'; }
+# A fold's branch is not always the directory its PR.md lives under: a
+# retry or a split takes a suffixed branch (forzadecay414-fix, uberspike569-gpl)
+# while the lane keeps its original docs/lanes/<name>/ directory, and the
+# title then names that original with a "lane.<name>" token instead of
+# repeating the branch. Tried in order, first existing wins; the branch
+# itself is the common case and stays first.
+resolve_lane_dir() {   # <branch> <sha> <title> -> the docs/lanes/<name> this fold's PR.md lives under
+    local branch=$1 sha=$2 title=$3 cand
+    git cat-file -e "$sha:docs/lanes/$branch/PR.md" 2>/dev/null && { printf '%s' "$branch"; return; }
+    if [[ $title =~ ^lane\.([A-Za-z0-9_]+) ]]; then
+        cand=${BASH_REMATCH[1]}
+        git cat-file -e "$sha:docs/lanes/$cand/PR.md" 2>/dev/null && { printf '%s' "$cand"; return; }
+    fi
+    cand=$branch
+    while [[ $cand == *-* ]]; do
+        cand=${cand%-*}
+        git cat-file -e "$sha:docs/lanes/$cand/PR.md" 2>/dev/null && { printf '%s' "$cand"; return; }
+    done
+    printf '%s' "$branch"
+}
+offline_clean_title() {   # <branch> <lane> <title> -> title without a leading "<branch>[ attempt N]: " or
+                          # "lane.<lane>[ qualifier]: " prefix, or a trailing " (#NNN)"
+    local branch=$1 lane=$2 title=$3 b_re l_re
+    b_re=$(escape_re "$branch")
+    title=$(sed -E "s/^${b_re}( attempt [0-9]+)?: //" <<<"$title")
+    l_re=$(escape_re "$lane")
+    title=$(sed -E "s/^lane\.${l_re}( [^:]*)?: //" <<<"$title")
     sed -E 's/ \(#[0-9]+\)$//' <<<"$title"
 }
 lane_body_line() {   # <lane> <sha> -> "category<TAB>line" from docs/lanes/<lane>/PR.md's Release note line, at <sha>
@@ -312,9 +336,11 @@ flush_change() {
             pr=${cur_sub#fold: PR #}; pr=${pr%%[!0-9]*}
             case "$cur_sub" in *" -- "*) title=${cur_sub#* -- } ;; esac ;;
         "fold: lane/"*" (offline) -- "*)
-            lane=${cur_sub#fold: lane/}; lane=${lane%% (offline)*}
+            local branch
+            branch=${cur_sub#fold: lane/}; branch=${branch%% (offline)*}
             title=${cur_sub#*" (offline) -- "}
-            title=$(offline_clean_title "$lane" "$title")
+            lane=$(resolve_lane_dir "$branch" "$sha" "$title")
+            title=$(offline_clean_title "$branch" "$lane" "$title")
             ;;
     esac
     if [ "$cur_emu" = 1 ]; then
@@ -403,7 +429,7 @@ for i in "${!CH_PR[@]}"; do
     fi
     cat=$(norm_cat "${r%%$'\t'*}"); text=""
     [ -n "$r" ] && text=${r#*$'\t'}
-    [ "${text,,}" = none ] && cat=none
+    [[ ${text,,} =~ ^none([^a-z]|$) ]] && cat=none
     if [ "$cat" = none ]; then
         N_DROPPED=$((N_DROPPED+1)); N_INTERNAL=$((N_INTERNAL+1)); continue
     fi
@@ -411,6 +437,12 @@ for i in "${!CH_PR[@]}"; do
         if [ -n "$lane" ]; then text="${CH_TITLE[$i]}"; else text=$(clean_title "${CH_TITLE[$i]}"); fi
     fi
     [ -n "$cat" ] || cat=$(guess_cat "$text")
+    # Only the lane path: an offline lane's own Release note (or its own
+    # title, as the no-note fallback) is free-form prose an author wrote
+    # without this file in mind, and several start lowercase ("a game you
+    # have played before no longer freezes ..."). A numbered PR's text and a
+    # bare commit subject are left as the author wrote them, same as before.
+    [ -n "$lane" ] && text="${text^}"
     [ -n "$pr" ] && ! [[ $text =~ \#[0-9] ]] && text="$text (#$pr)"
     if grep -qiE "$INTERNAL_RE" <<<"$text"; then
         who="a direct commit"; [ -n "$pr" ] && who="#$pr"

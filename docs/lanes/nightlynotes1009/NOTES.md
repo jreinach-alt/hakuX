@@ -1,5 +1,149 @@
 # lane.nightlynotes1009
 
+## Why attempt 2 resumed
+
+Attempt 1 left `State: ready`, pushed, with items 1-5 done and the five owner-evidence bodies in place
+(below). It did not act on lane.local's addendum (2026-10-09 18:35 PDT), posted after c61abb39ce: a
+real defect in that commit, found by lane.local's own review, with its own repro and fix shape. This
+attempt's whole job is that one fix, its test, and nothing else. See "Addendum fix" below.
+
+While here, this attempt also merged `origin/master` (the lane was 1 commit behind at resume, per the
+session banner): lane.local had, in the meantime, independently added `SuccessExitStatus=75 9` to
+`docs/testing/systemd/hakux-nightly.service` (`2b9846b729`) -- exactly the OUTBOX item 1 this lane asked
+for in attempt 1 ("Nothing else changes: lane.local adds `SuccessExitStatus=75 9` to hakux-nightly.service
+itself (OUTBOX item 1, accepted)"). OUTBOX item 1 is now done upstream; nothing further to ask for there.
+
+## Addendum fix (lane.local, 2026-10-09 18:35 PDT): the exact-match "none" test
+
+**Defect, as found.** `nightly_build.sh`'s classification loop (then line 406) read
+`[ "${text,,}" = none ] && cat=none` -- an exact match. A `Release note:` line whose text is `none.
+<prose>` or `none (<prose>)` (no `(category)` right after "Release note", so `norm_cat` returns "" for
+cat and the whole tail becomes `text`) fell through: `cat` stayed empty, `guess_cat` ran on the full
+`none. ...` string, and the change was LISTED under a guessed category (usually Other) instead of
+dropped. A window whose only player-visible-looking change was one of these said "would publish"
+instead of "would not publish". `none.` is the second most common `Release note:` shape on master's
+`docs/lanes/*/PR.md` (this very PR's own PR.md from attempt 1 uses it), so this was not a rare shape --
+any ordinary lane that touches `android/` or `hw/` and writes "none. because X" hit it.
+
+**Fix.** One line, `docs/testing/nightly_build.sh`:
+```
+-    [ "${text,,}" = none ] && cat=none
++    [[ ${text,,} =~ ^none([^a-z]|$) ]] && cat=none
+```
+This one line is shared by both lookup paths (`lane_body_line()` for an offline fold's own `PR.md`, and
+`map_line`/`body_line` for a numbered PR) -- `r` from either path feeds the same `text`/`cat` extraction
+above it, so fixing it once fixes both, exactly as the addendum said it would ("body_line uses the same
+regex shape, so the PR path has the same hole"). `Release note (none): ...` is untouched (that already
+short-circuits via `norm_cat`'s own `none|skip` case on the parenthesised category, regardless of what
+follows the colon), and a real note that merely contains the word "none" later in the sentence (e.g.
+"performance is fine, none of this regressed") still does not match `^none(...)`, so it is still listed.
+
+## Selftest for the fix
+
+Added to `86-nightly-notes.sh`'s existing offline-fold fixture tree (`FIX4`): two more lanes,
+`offlinenonedot` (`Release note: none. This PR changes no emulator code.`) and `offlinenoneparen`
+(`Release note: none (analysis only; no emulator code changed)`), both touching an `hw/` path (so
+`lane_body_line` is actually consulted -- the brief's "an EMU_RE path" requirement; a `docs/`-only fold
+is already internal for an unrelated reason and would not exercise this code path at all). Checked:
+neither fold's "nothing a player would see" text appears anywhere in the body, and the log's counts
+updated correctly (4 emulator, 2 lines, 2 left out, 4 internal -- up from 2/2/0/2: 2 more EMU-touching
+folds, both dropped as none, so +2 to both emulator and left-out, and +2 to internal, same as before).
+
+Added a second, separate fixture tree (`FIX6`, "offline-nonedot-only") whose *only* change is one
+`none.`-noted EMU-path fold: notes mode lists nothing and says `would not publish: no player-facing
+change` -- the brief's "a window containing only those does not publish" requirement. Build mode's exit
+9 for this shape was already covered by the pre-existing docs-only "nothing published" fixture (same
+`PUBLISH_WHY` gate, reached here through the regex fix rather than through `$INTERNAL_RE`), so this new
+tree only needs to show `notes` mode's side of it, per the addendum ("exit 9 in build mode is already
+covered; notes mode `would not publish`").
+
+**Falsification**, inline rather than a full legacy-script copy (the predicate itself is one line, so a
+whole second `nightly_build.sh` copy would test nothing a direct check doesn't): the replaced exact-match
+test (`[ "${text,,}" = none ]`) run directly against both prose forms FAILS to recognise either as
+`none` -- reproducing the defect lane.local found -- while it still correctly catches a bare `none`
+(not vacuous), and the new regex catches both prose forms while still leaving alone a real note that
+merely mentions "none" later in a sentence.
+
+**Counts.** Fragment alone (`SELFTEST_ONLY="86-nightly-notes"`): **76 passed, 0 failed** (up from 66/0 in
+attempt 1 -- 10 new checks: 2 "not listed", 1 updated log-count check, 2 for the publish-gate fixture, and
+5 for the falsification). Chain shard (`SELFTEST_ONLY="86-nightly-notes 87-nightly-trunk"`): **118 passed,
+0 failed** (up from 108/0), re-run again after merging `origin/master` in (below) to confirm the merge
+changed nothing this fragment depends on.
+
+## Addendum 2 fix (relayed from lane.local via a cross-session message, verified against
+`/home/justin/hakux-work/briefs/nightlynotes1009.md` at 18:32 PDT before acting on it): branch/lane-dir
+mismatch, and "lane." leaking into `$INTERNAL_RE`
+
+**Defect, as found.** A retry or split branch (e.g. `forzadecay414-fix`, `uberspike569-gpl`) does not
+share its name with the lane directory its `PR.md` actually lives under (`docs/lanes/forzadecay414/`,
+`docs/lanes/uberspike569/`) -- the title instead carries a `lane.<name>: ...` token naming the original.
+Two independent things then went wrong on this shape:
+- `lane_body_line` was called with the branch name, so `docs/lanes/<branch>/PR.md` never existed, and the
+  fold's own `Release note:` line (e.g. forzadecay414's "Forza Motorsport no longer slows down over a
+  race", under `performance`) was silently never read.
+- `offline_clean_title` only stripped a literal `<branch>: ` prefix, so the fallback title (used whenever
+  there is no note, and also exercised here while chasing the dir) kept its `lane.<name>: ` token, and
+  `$INTERNAL_RE`'s `\blanes?\b` matched "lane" in it (the regex word boundary falls at the `.`, not at the
+  end of "lanes"), so the change read as process commentary and was dropped or number-only even when a
+  real note existed elsewhere in the same `PR.md`.
+
+Confirmed against real history, not just the addendum's example: `uberspike569-gpl`, `memfast` (title
+qualifier `W1`), and `vcpusleep` (title qualifier `(#507)`) are the same shape already on master.
+`vcpusleep`'s and `shaderprebuild569`'s own `Release note:` text also confirmed the third requirement
+below is real and not hypothetical: both start lowercase ("what the vCPU sleeps on...", "a game you have
+played before no longer freezes the first time a scene loads.") because an offline lane's own prose was
+never written with this file's list format in mind.
+
+**Fix**, `docs/testing/nightly_build.sh`:
+- `resolve_lane_dir(branch, sha, title)`: try `docs/lanes/<branch>/PR.md` at `sha` first (the common
+  case, unchanged); then the title's `lane.<name>` token, if the title has one; then `<branch>` with a
+  trailing `-<word>` segment stripped, one at a time, until one exists or none do (falls back to
+  `branch`, same failure as before, if nothing matches). `flush_change`'s offline-fold case now calls this
+  to produce `lane`, instead of using the branch directly.
+- `offline_clean_title(branch, lane, title)` (was 2-arg: `branch, title`) now also strips a leading
+  `lane.<lane>[ qualifier]: ` prefix (qualifier: `(#NNN)`, a bare word like `W1`, or `attempt N`) after
+  the existing branch-prefix strip, using the *resolved* `lane`, not the branch -- so the token never
+  reaches `$INTERNAL_RE` regardless of which of the three lookups above found the directory.
+- Listed lines start with a capital letter, but **only for the lane path** (`[ -n "$lane" ]`): a numbered
+  PR's note/title and a bare direct-commit subject are left exactly as their author wrote them, same as
+  before this PR. Only an offline lane's own freeform `PR.md` prose is capitalised. This scoping was not
+  in the addendum's own wording ("Capitalise the first letter of each listed line") but is required to
+  avoid touching `87-nightly-trunk.sh` (out of this lane's territory), whose own fixture asserts an exact
+  lowercase direct-commit subject (`'target/i386: trunk commit 5, landed today'`); capitalising
+  universally broke that check with no way to fix it without leaving territory. The real motivating
+  example for this requirement (`shaderprebuild569`, confirmed above) is itself lane-sourced, so scoping
+  to the lane path loses nothing the addendum actually needed.
+
+## Selftest for Addendum 2
+
+Added a new fixture tree (`FIX7`, "offline-branch-mismatch") with two branches: `lane/foo-fix` (title
+`lane.foo: x (#1)`, `docs/lanes/foo/PR.md` carrying `Release note (performance): a game you have played
+before no longer freezes at its loading screen`) and `lane/bar-fix` (title `lane.bar: y (#2)`,
+`docs/lanes/bar/PR.md` carrying `Release note (none): telemetry only, off by default`). Checked: the
+`foo` note is found via the title's `lane.foo` token (the branch-named directory never exists) and
+listed, capitalised, under Performance; neither `lane.foo` nor `foo-fix` survives into the body anywhere;
+the `bar` mismatch with a `(none)` note lists nothing for it.
+
+**Falsification**, against the replaced code directly: the old lookup
+(`docs/lanes/<branch>/PR.md` = `docs/lanes/foo-fix/PR.md`) does not exist, while
+`docs/lanes/foo/PR.md` (the new fallback) does; the old title-cleaning (strip only the literal branch
+prefix, `foo-fix: `) leaves `lane.foo: x` in the text, which `$INTERNAL_RE`'s `\blanes?\b` matches (not
+vacuous: the new cleaning's output, "A game you have played before...", does not match it).
+
+Fixing the universal capitalization down to the lane-only path also meant reverting four assertion
+strings in `86-nightly-notes.sh` that an earlier, broader version of this fix had capitalised by mistake
+(all four are non-lane: `notes_name_the_buried_fix()`'s direct-commit subject, and three `fold_pr`
+fixtures -- PR #203, #208, #172) back to the lowercase text their authors actually wrote, so they match
+what the scoped fix now produces for the non-lane path. The two genuinely lane-sourced capitalised checks
+(`offlinebare`'s "A vertex buffer no longer drops its last row", and FIX7's "A game you have played
+before...") were never touched.
+
+**Counts.** Fragment alone (`SELFTEST_ONLY="86-nightly-notes"`): **85 passed, 0 failed**. Chain shard
+(`SELFTEST_ONLY="86-nightly-notes 87-nightly-trunk"`): **127 passed, 0 failed**, with zero edits to
+`87-nightly-trunk.sh` -- the one check that shape would otherwise have broken
+(`"the day's five trunk commits are in the notes"`, an exact-case direct-commit match) stayed green
+because capitalisation never applies outside the lane path.
+
 ## Why attempt 1 did not finish the first time
 
 Resumed into a worktree that already had the brief's two core edits sitting uncommitted
@@ -166,9 +310,12 @@ is taken down automatically instead of by hand.
 
 ## Outside this lane's territory
 
-See `OUTBOX.md`: `docs/testing/systemd/hakux-nightly.service` line 26 needs `9` added to
-`SuccessExitStatus=75`, or the new exit-9 no-op is read by `status.sh`'s failed-unit scan as a false
-alarm every night the gate holds. Not edited here (not in this lane's territory). `run-nightly.sh` and
-`docs/lanes/nightlynotes/release_notes.tsv` were read and need no change (also in OUTBOX, for the record).
+See `OUTBOX.md`: `docs/testing/systemd/hakux-nightly.service` line 26 needed `9` added to
+`SuccessExitStatus=75`, or the new exit-9 no-op would be read by `status.sh`'s failed-unit scan as a
+false alarm every night the gate holds. Not edited here (not in this lane's territory). **Done upstream**
+as of this attempt's merge: lane.local's `2b9846b729` (`hakux-nightly.service: exit 9 (nothing to
+publish) is not a failure (#433)`) set `SuccessExitStatus=75 9`, now on this branch via the
+`origin/master` merge below. `run-nightly.sh` and `docs/lanes/nightlynotes/release_notes.tsv` were read
+and need no change (also in OUTBOX, for the record).
 
 ## State: ready

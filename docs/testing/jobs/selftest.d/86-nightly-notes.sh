@@ -117,7 +117,8 @@ run_notes() {   # <script> <outfile> ; SINCE is fixed so the wall clock cannot m
 }
 # THE CHECKS, as functions so the falsifications below can put the replaced
 # code through the identical test.
-notes_name_the_buried_fix() {   # <notes file>
+notes_name_the_buried_fix() {   # <notes file> -- a direct (non-lane) commit's subject is left exactly
+                                # as the author wrote it; only an offline lane's own prose is capitalised
     grep -qxF -- '- target/i386: FIST honours the rounding mode' "$1"
 }
 # Our words, in a list line. A list line is what the replaced code filled with
@@ -238,6 +239,30 @@ git -C "$FIX4" checkout -q -b lane/offlinedocs master
 commit_touching "$FIX4" "offlinedocs: just analysis notes" docs/lanes/offlinedocs/NOTES.md
 fold_offline "$FIX4" offlinedocs lane/offlinedocs "offlinedocs: just analysis notes (#433)"
 
+# Two folds that DO touch hw/ (so lane_body_line is consulted at all) but
+# whose own PR.md says "none" with prose after it, the two forms addressed by
+# the exact-match defect found reviewing c61abb39ce: `[ "${text,,}" = none ]`
+# only caught the bare word, so "none. <prose>" and "none (<prose>)" fell
+# through to guess_cat and were LISTED under Other, and a window whose only
+# change was one of these said "would publish" instead of "would not
+# publish". Both forms are ordinary: "none." is the second most common
+# Release note shape on master, and this PR's own PR.md uses it.
+git -C "$FIX4" checkout -q -b lane/offlinenonedot master
+commit_touching "$FIX4" "offlinenonedot: nothing a player would see" hw/xbox/nv2a/pgraph/offlinenonedot.c
+mkdir -p "$FIX4/docs/lanes/offlinenonedot"
+printf '%s\n' "Lane: offlinenonedot" "" "Release note: none. This PR changes no emulator code." \
+    > "$FIX4/docs/lanes/offlinenonedot/PR.md"
+git -C "$FIX4" add -A; git -C "$FIX4" commit -q -m "offlinenonedot: PR.md"
+fold_offline "$FIX4" offlinenonedot lane/offlinenonedot "offlinenonedot: nothing a player would see (#433)"
+
+git -C "$FIX4" checkout -q -b lane/offlinenoneparen master
+commit_touching "$FIX4" "offlinenoneparen: nothing a player would see either" hw/xbox/nv2a/pgraph/offlinenoneparen.c
+mkdir -p "$FIX4/docs/lanes/offlinenoneparen"
+printf '%s\n' "Lane: offlinenoneparen" "" "Release note: none (analysis only; no emulator code changed)" \
+    > "$FIX4/docs/lanes/offlinenoneparen/PR.md"
+git -C "$FIX4" add -A; git -C "$FIX4" commit -q -m "offlinenoneparen: PR.md"
+fold_offline "$FIX4" offlinenoneparen lane/offlinenoneparen "offlinenoneparen: nothing a player would see either (#433)"
+
 # A bogus map row and body file at the umbrella number: if either leaked into
 # the output, the (#433) tail was looked up as a PR number, which it never is.
 printf '%s\t%s\t%s\n' 433 other "SHOULD NOT APPEAR" > "$NB/offline-map.tsv"
@@ -253,20 +278,133 @@ check "THE CHECK: an offline fold with a PR.md note is listed with that note" \
     bash -c 'grep -qxF -- "- Some made-up rendering fix text (#999)" "$1"' \
         _ <(section_of "$NB/offline.md" "Rendering fixes")
 check "  an offline fold with no PR.md is listed with its cleaned title, under a guessed category" \
-    bash -c 'grep -qxF -- "- a vertex buffer no longer drops its last row" "$1"' \
+    bash -c 'grep -qxF -- "- A vertex buffer no longer drops its last row" "$1"' \
         _ <(section_of "$NB/offline.md" "Rendering fixes")
 check "  neither offline fold's lane name nor \"(offline)\" survives into the body" \
     bash -c '! grep -qiE "offlinenote|offlinebare|offlinedocs|\(offline\)" "$1"' _ "$NB/offline.md"
 check "  an offline fold touching only docs/ is internal: not listed, and counted" \
     bash -c '! grep -qF "just analysis notes" "$1" && grep -qxF "Plus internal test-harness work." "$1"' _ "$NB/offline.md"
+check "THE CHECK: an EMU-path fold whose note is 'none. <prose>' is not listed" \
+    bash -c '! grep -qiF "nothing a player would see" "$1"' _ "$NB/offline.md"
+check "  neither is one whose note is 'none (<prose>)'" \
+    bash -c '! grep -qiF "nothing a player would see either" "$1"' _ "$NB/offline.md"
 check "  the umbrella tail (#433) is never looked up as a PR number" \
     bash -c '! grep -qF "SHOULD NOT APPEAR" "$1"' _ "$NB/offline.md"
 check "  the fold merge subjects take no line" \
     bash -c '! grep -qF "fold: " "$1"' _ "$NB/offline.md"
-check "  the log counts it right: 2 emulator, 2 lines, 0 left out, 2 internal" \
-    grep -qF '2 emulator change(s), 2 line(s), 0 left out, 2 internal' "$NB/offline.md.err"
-check "  and prints 'would publish' (something IS listed)" \
+check "  the log counts it right: 4 emulator, 2 lines, 2 left out, 4 internal" \
+    grep -qF '4 emulator change(s), 2 line(s), 2 left out, 4 internal' "$NB/offline.md.err"
+check "  and prints 'would publish' (something IS listed, from the other two folds)" \
     grep -qF 'would publish' "$NB/offline.md.err"
+
+# A window whose ONLY change is one of these "none.
+# <prose>"/"none (<prose>)" EMU-path folds: notes mode must say it would NOT
+# publish. (Build mode's exit 9 for this shape is already covered by the
+# docs-only fixture below; this is the same gate, reached through the
+# regex fix instead of the docs/ path.)
+FIX6="$NB/offline-nonedot-only"
+git -c init.defaultBranch=master init -q "$FIX6"
+git -C "$FIX6" config user.email s@t; git -C "$FIX6" config user.name s
+commit_touching "$FIX6" "base" README.md
+git -C "$FIX6" checkout -q -b lane/onlynonedot master
+commit_touching "$FIX6" "onlynonedot: nothing a player would see" hw/xbox/nv2a/pgraph/onlynonedot.c
+mkdir -p "$FIX6/docs/lanes/onlynonedot"
+printf '%s\n' "Lane: onlynonedot" "" "Release note: none. This PR changes no emulator code." \
+    > "$FIX6/docs/lanes/onlynonedot/PR.md"
+git -C "$FIX6" add -A; git -C "$FIX6" commit -q -m "onlynonedot: PR.md"
+fold_offline "$FIX6" onlynonedot lane/onlynonedot "onlynonedot: nothing a player would see (#433)"
+NIGHTLY_TREE="$FIX6" NIGHTLY_OUT="$NB/must-not-exist" \
+    bash "$NIGHTLY" notes 2000-01-01 >"$NB/offline-nonedot-only.md" 2>"$NB/offline-nonedot-only.md.err"
+check "THE CHECK: a window with only a 'none.'-noted EMU fold lists nothing" \
+    bash -c '! grep -qE "^(###|- )" "$1" && grep -qxF "No player-facing changes in this build." "$1"' \
+        _ "$NB/offline-nonedot-only.md"
+check "  and notes mode says it would NOT publish" \
+    grep -qF 'would not publish: no player-facing change' "$NB/offline-nonedot-only.md.err"
+
+# FALSIFICATION: the exact-match test this PR replaced, `[ "${text,,}" =
+# none ]`, run directly against the two prose forms above. It must FAIL to
+# recognise either as "none" -- that failure is exactly the defect found
+# reviewing c61abb39ce (it fell through to guess_cat and was listed under
+# Other) -- while the regex this PR uses catches both, and still leaves a
+# real note that merely contains the word "none" later on alone.
+check "FALSIFIED: the replaced exact-match test misses a 'none.' prose tail" \
+    bash -c '[ "${1,,}" != none ]' _ "none. This PR changes no emulator code."
+check "FALSIFIED:   and misses a 'none (' prose tail the same way" \
+    bash -c '[ "${1,,}" != none ]' _ "none (analysis only; no emulator code changed)"
+check "  not vacuous: the exact-match test does still catch a bare 'none'" \
+    bash -c '[ "${1,,}" = none ]' _ "none"
+check "  the new regex catches the 'none.' prose tail" \
+    bash -c '[[ "${1,,}" =~ ^none([^a-z]|$) ]]' _ "none. This PR changes no emulator code."
+check "  the new regex catches the 'none (' prose tail" \
+    bash -c '[[ "${1,,}" =~ ^none([^a-z]|$) ]]' _ "none (analysis only; no emulator code changed)"
+check "  and the new regex leaves alone a real note that merely mentions none later" \
+    bash -c '! [[ "${1,,}" =~ ^none([^a-z]|$) ]]' _ "performance is fine, none of this regressed"
+
+# --------------------------------- an offline fold's lane dir can differ from its branch
+# A retry or a split takes a suffixed branch (forzadecay414-fix, uberspike569-gpl
+# on master) while the title names the ORIGINAL lane with a "lane.<name>"
+# token, and docs/lanes/<name>/ keeps that original name too. The REPLACED
+# code looked up docs/lanes/<branch>/ (never existed for either real case) and
+# only stripped a literal "<branch>: " prefix from the title, never
+# "lane.<name>: " -- so "lane." stayed in the text, and $INTERNAL_RE's
+# \blanes?\b matched it (the word boundary after "lane" is satisfied by the
+# "."), dropping a real Release note as process instead of listing it. Model
+# is e816bc35dd on master: branch forzadecay414-fix, title "lane.forzadecay414:
+# ...", note under docs/lanes/forzadecay414/.
+echo "== nightly_build.sh: an offline fold's PR.md can live under a name other than its branch"
+FIX7="$NB/offline-branch-mismatch"
+git -c init.defaultBranch=master init -q "$FIX7"
+git -C "$FIX7" config user.email s@t; git -C "$FIX7" config user.name s
+commit_touching "$FIX7" "base" README.md
+
+# A branch suffixed "-fix", titled with a bare "lane.<name>" token (no
+# qualifier) naming the ORIGINAL lane directory. Its own Release note starts
+# lowercase, so this fixture also covers "a lowercase note is listed
+# capitalised".
+git -C "$FIX7" checkout -q -b lane/foo-fix master
+commit_touching "$FIX7" "foo: a fix landed on a retry branch" hw/x/a.c
+mkdir -p "$FIX7/docs/lanes/foo"
+printf '%s\n' "Lane: foo" "" \
+    "Release note (performance): a game you have played before no longer freezes at its loading screen" \
+    > "$FIX7/docs/lanes/foo/PR.md"
+git -C "$FIX7" add -A; git -C "$FIX7" commit -q -m "foo: PR.md"
+fold_offline "$FIX7" foo-fix lane/foo-fix "lane.foo: x (#1)"
+
+# The same shape, but the note is (none): nothing should be listed even
+# though the branch/title mismatch is identical.
+git -C "$FIX7" checkout -q -b lane/bar-fix master
+commit_touching "$FIX7" "bar: a no-op fix landed on a retry branch" hw/x/b.c
+mkdir -p "$FIX7/docs/lanes/bar"
+printf '%s\n' "Lane: bar" "" "Release note (none): telemetry only, off by default" \
+    > "$FIX7/docs/lanes/bar/PR.md"
+git -C "$FIX7" add -A; git -C "$FIX7" commit -q -m "bar: PR.md"
+fold_offline "$FIX7" bar-fix lane/bar-fix "lane.bar: y (#2)"
+
+NIGHTLY_TREE="$FIX7" NIGHTLY_OUT="$NB/must-not-exist" \
+    bash "$NIGHTLY" notes 2000-01-01 >"$NB/branch-mismatch.md" 2>"$NB/branch-mismatch.md.err"
+rc=$?
+check "branch-mismatch fixture: notes mode exits 0" [ "$rc" = 0 ]
+check "THE CHECK: the PR.md under the title's lane.<name> token is found and listed, capitalised" \
+    bash -c 'grep -qxF -- "- A game you have played before no longer freezes at its loading screen" "$1"' \
+        _ <(section_of "$NB/branch-mismatch.md" Performance)
+check "  neither \"lane.foo\" nor the branch name survives into the body" \
+    bash -c '! grep -qiE "lane\.foo|foo-fix" "$1"' _ "$NB/branch-mismatch.md"
+check "  the same mismatch with a (none) note lists nothing for it" \
+    bash -c '! grep -qiE "no-op fix|lane\.bar|bar-fix" "$1"' _ "$NB/branch-mismatch.md"
+
+# FALSIFICATION: the two causes named above, checked directly against this
+# fixture, without re-deriving the whole pipeline.
+check "FALSIFIED: the replaced lookup (docs/lanes/<branch>/PR.md) finds nothing" \
+    bash -c '! git -C "$1" cat-file -e lane/foo-fix:docs/lanes/foo-fix/PR.md 2>/dev/null' _ "$FIX7"
+check "  while docs/lanes/<the title's lane.<name> token>/PR.md (the new fallback) does exist" \
+    bash -c 'git -C "$1" cat-file -e lane/foo-fix:docs/lanes/foo/PR.md 2>/dev/null' _ "$FIX7"
+check "FALSIFIED: the replaced title-cleaning (strip only the literal branch prefix) leaves \"lane.\" in the text" \
+    bash -c 'title=$(sed -E "s/^foo-fix( attempt [0-9]+)?: //" <<<"lane.foo: x (#1)"); \
+             title=$(sed -E "s/ \(#[0-9]+\)\$//" <<<"$title"); [ "$title" = "lane.foo: x" ]'
+check "  ...which \$INTERNAL_RE's \\blanes?\\b then matches (the boundary after \"lane\" is the \".\")" \
+    bash -c 'grep -qiE "\\blanes?\\b" <<<"lane.foo: x"'
+check "  not vacuous: the new title-cleaning does not leave \"lane.\" in the text" \
+    bash -c '! grep -qiE "\\blanes?\\b" <<<"A game you have played before no longer freezes at its loading screen"'
 
 # ------------------------------------- publish nothing when nothing changed
 # Owner, 2026-10-09: "if any of them have no changes, take down the nightly."
