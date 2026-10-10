@@ -3,7 +3,7 @@ State: draft
 
 Lane: drawrec1010       Issue: #433 (umbrella), none filed
 Base: master @ c271f515b4
-Files: hw/xbox/nv2a/pgraph/vk/draw.c, docs/lanes/drawrec1010/**, docs/testing/predictions/drawrec1010-*.json
+Files: hw/xbox/nv2a/pgraph/vk/draw.c, docs/lanes/drawrec1010/**, docs/testing/predictions/drawrec1010-*.json, docs/testing/nv2a_index.json (regenerated)
 Prediction: docs/testing/predictions/drawrec1010-pixels.json @ 958f10d9dd48e384c5e9b16eebffbaede5b2e8253fee21bf5b80c4b984cbd681, docs/testing/predictions/drawrec1010-nfs.json @ 7f465817484721653e51b27e84ae8ac4e77744b7a2d358265193b30cdb649d82, docs/testing/predictions/drawrec1010-probe.json @ 4bd24c464b34e68005c1fac14745f9d1048fb935b4fd5d7a3a9b368ab81e27a9
 Needs device: yes (Nova, used)
 Needs NDK: no
