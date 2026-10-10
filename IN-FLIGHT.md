@@ -6,7 +6,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `restoreleak1009` | claude-sonnet-5 | 4 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner:surfgpu`
@@ -83,4 +85,4 @@ No branch is being worked right now.
 - 2026-10-08 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 - 2026-10-08 selfdeps: builds fetch nothing from GitHub (#433)
 
-_Updated 2026-10-09 21:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-09 22:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
