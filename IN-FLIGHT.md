@@ -6,14 +6,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `perdraw1009` | claude-sonnet-5 | 2 min | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 7 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
 
 ## 0.5 release: Playable titles
@@ -71,12 +69,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/perdraw1009` | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) | `380b725688` | 2026-10-10 01:19 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-10 surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 usagemode1009: usage Low is a read-time cap, re-evaluated every tick (#433)
@@ -85,6 +82,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-09 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 - 2026-10-09 profileddefault1008: TU_AUTOTUNE_ALGO=profiled behind an autotune override
 - 2026-10-08 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
-- 2026-10-08 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 
-_Updated 2026-10-10 01:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 02:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
