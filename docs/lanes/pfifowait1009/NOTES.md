@@ -442,3 +442,35 @@ track, board angle and snow trail both changed between the two frames --
 moving through the trees as an intentional obstacle section, not the
 "parked against a tree" void pmucounters hit). Baseline pacing: route
 holds up.
+
+### Resume (attempt 2, 2026-10-10): why attempt 1 did not finish
+
+Attempt 1 ended at 01:14 PDT having just queued run #2
+(`1-1791618877-pfifowait1009-3451596`, `HAKUX_PFIFOWAIT=1` pacing, no
+frametrace) and did not commit a `WAITING` file naming it, so nothing woke
+the lane when the run finished (DONE at 01:25) -- per Addendum 2, this was
+the exact "ended a turn waiting on a run with no WAITING marker" failure
+mode the lane contract and this file's own earlier text warn about. No
+code or route change was lost; only the result-reading and NOTES update
+were outstanding. This attempt reads run #2's result below, merges
+`origin/master` (15 commits behind at resume, all `surfgpu1009`'s own
+files -- `git diff --stat HEAD...origin/master` touched none of this
+lane's territory, confirmed before merging), and continues with the
+scored A/B arms (brief step 5).
+
+### Run #2 result -- PASS (2026-10-10 01:14-01:25 PDT)
+
+`1-1791618877-pfifowait1009-3451596` (`HAKUX_PFIFOWAIT=1`, no
+frametrace, otherwise identical request to run #1): `run.log` line 1229,
+`ROUTE finished (rc 0) after 896s; holding without input` -- no `ROUTE
+FAIL`. `logcat.txt` has zero `FATAL EXCEPTION`/`ANR in`/`Native crash`
+matches. All 25 scripted steps plus the genre loop produced a frame (38
+files in `route-frames/`, matching run #1's count). Eyeballed
+`s13-gameplay` and `s23-gameplay` (both 29 fps): player under control,
+different terrain and camera angle between the two, weaving past distinct
+trees -- in motion, not parked or menu-stuck. The route also holds up
+under the fix's OWN pacing (PFIFO thread blocks at different points than
+shipped), which is what step 4's two-pacing-check actually asks for, not
+just two runs of the same pacing. Both pacing checks pass; step 4 is
+satisfied. Proceeding to the scored arms (step 5, prediction already
+registered in section 3).
