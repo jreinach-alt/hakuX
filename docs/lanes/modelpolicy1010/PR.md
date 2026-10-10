@@ -1,12 +1,12 @@
 Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly)
-Base: master @ 1878dbf06d (merged origin/master @ 510dacff37 before push)
+Base: master @ 1878dbf06d; merged origin/master @ c271f515b4 (clean, no conflicts) before this push
 Files: docs/testing/jobs/models.toml, docs/testing/jobs/models.py, docs/testing/jobs/models.sh,
        docs/testing/jobs/models.env (deleted), docs/testing/jobs/cloud.sh,
        docs/testing/jobs/ops/ops_tick.py, docs/testing/jobs/run-claude-job.sh,
        docs/testing/jobs/usage/mode.sh, docs/testing/lane.sh,
        docs/testing/titles/pathfind.py, docs/testing/titles/drive.py,
        docs/testing/jobs/selftest.d/87-ops-tick.sh, docs/testing/jobs/selftest.d/89-usage-mode.sh,
-       docs/testing/jobs/selftest.d/99-lane-model-file.sh,
+       docs/testing/jobs/selftest.d/99-lane-model-file.sh, docs/testing/dispatcher.sh,
        docs/lanes/modelpolicy1010/NOTES.md, docs/lanes/modelpolicy1010/PR.md
 Prediction: none: harness only, no pixels
 Needs device: no
@@ -20,6 +20,11 @@ One table (`docs/testing/jobs/models.toml`), one reader (`models.py`/
 see NOTES.md). `models.env` is deleted. `$WORK/limits.env` (host) still needs
 its model/usage lines removed by hand -- see below, it is not a committed
 file this lane can touch.
+
+`dispatcher.sh` ships `jobs/models.py` and `jobs/models.toml` in the run
+snapshot (`SCRIPT_DEPS` and `snapshot_scripts`). `titles/drive.py` now imports
+`models` from `../jobs`, and a route's `drive` step runs from the snapshot, so
+without them every `drive` step on a device run would stop on the import.
 
 Low (`$WORK/usage/low-active`) is unchanged as the one switch; `mode.sh`
 writes only that file and `usage/mode`/`switches.log`, same as before this
@@ -40,16 +45,45 @@ readers found and left alone, a fixture-ordering bug this lane's own change
 surfaced and fixed, and the selftest-by-selftest rundown -- is in
 `docs/lanes/modelpolicy1010/NOTES.md`.
 
+## Addenda from lane.local (both addressed this session)
+
+**Addendum 1** (clock-step clamp in `ops_tick.py`): already landed in the
+head this lane started from (`_lane_idle_min()` clamps at `max(0.0, ...)`,
+with the fixture leg in `87-ops-tick.sh` -- "(addendum 1) a commit a few
+seconds ahead of NOW is still named under grace 0" plus its mutant leg).
+Re-ran `87-ops-tick.sh` this session: 54/54, mutant leg confirmed red
+without the clamp.
+
+**Addendum 2** (head `2b7d7cc063` broke `97-board-priority.sh` at fold,
+twice, both times shard 2, `HAKUX_WORK: unbound variable`): cause was
+`89-usage-mode.sh`'s end-of-fragment `unset HAKUX_WORK HAKUX_CLAUDE_PROJECTS
+HAKUX_SYSTEMD_USER_DIR` -- `selftest.sh` exports `HAKUX_WORK` exactly once,
+at the top of the whole run, so removing it instead of restoring it left
+every fragment sourced afterward in the same shell (97, 98, 99) with no
+`$HAKUX_WORK` under `set -u`. Fixed in `89-usage-mode.sh`: save each of the
+three vars (and whether each was set at all) before this fragment overrides
+them, restore the same way at the end, and a new check asserts `HAKUX_WORK`
+is back to the harness's own value afterward. Verified by reinstating the
+old bare `unset` as a mutant -- it reproduces the exact `97-board-
+priority.sh` failure from the fold logs -- then restoring the fix, which
+clears it.
+
 ## Verified
 
 | fragment | result |
 |---|---|
 | 87-ops-tick.sh | 54/54 |
 | 88-window-budget.sh | 50/50 |
-| 89-usage-mode.sh | 49/49 |
+| 89-usage-mode.sh | 49/49 (18 old + the new HAKUX_WORK-restored check) |
 | 99-lane-model-file.sh | 36/36 |
-| 87+88+89+99 together | 189/189 |
+| 97-board-priority.sh | 18/18 |
+| 87+88+89+99 together (post-merge) | 218/218 |
+| 89+97 together, after reinstating the old bare-unset mutant | reproduces the exact fold failure (`HAKUX_WORK: unbound variable` in 97) |
+| 89+97 together, fix restored | both green |
+| 96-fleet-flush.sh, 99-lane-path.sh (lanepath1009's own new fragments, merged from master) | 36/36 |
 | 78-sweep-remote.sh, 99-handback.sh, 99-limits-env.sh, 98-lane-shape.sh, 98-audit-outlet.sh, 99-handback-waiter.sh | 269/269 |
+| `--check-shards 4` | shards 0..3 cover all 131 fragments, each once |
+| shard 2/4 in full (`SELFTEST_SHARD=2/4`, the exact shard that failed at fold) | run by the fold selftest (all four shards) |
 
 A full, no-`SELFTEST_ONLY` run was tried under a short timeout from this
 session; it only reached the `arms.sh` fragments (well before 87-/88-/89-/
@@ -57,7 +91,10 @@ session; it only reached the `arms.sh` fragments (well before 87-/88-/89-/
 targeted runs above. The brief's own words: run the fragments you touch
 before `State: ready` (done, table above) -- the full ~60 minute run is
 lane.local's job at fold, not something a headless session can complete
-within one turn.
+within one turn. Shard 2 in full (36 fragments, the exact shard that failed
+twice at the previous fold) is the one exception worth running end to end,
+since addendum 2 asked specifically for the shard-2 result with fragments
+in order, not 89/97 in isolation.
 
 ## For lane.local after the fold
 

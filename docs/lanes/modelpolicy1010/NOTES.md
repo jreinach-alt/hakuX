@@ -1,3 +1,24 @@
+## Attempt 2: why attempt 1 did not finish
+
+Attempt 1 landed the full design (commit `2b7d7cc063`) and pushed it, but
+that head never reached `State: ready` turned into a mergeable PR: the fold
+selftest ran against it twice after the push (15:25 and 15:40 PDT) and
+failed shard 2 both times, 22 FAILs, all in `97-board-priority.sh`
+(`HAKUX_WORK: unbound variable`) -- lane.local's addendum 2. The cause was
+this lane's own fix for the *other* fragment-ordering bug it found
+(09-usage-mode.sh leaking `low-active` into `99-lane-model-file.sh`): the
+fix it shipped was a bare `unset HAKUX_WORK HAKUX_CLAUDE_PROJECTS
+HAKUX_SYSTEMD_USER_DIR` at the end of `89-usage-mode.sh`, which removed
+`$HAKUX_WORK` outright instead of restoring it -- and `selftest.sh` only
+exports it once, at the very top of the whole run, so every fragment
+sourced into that same shell afterward (97, 98, 99) was left with none.
+Attempt 1 ended there, mid-fix, with the branch pushed but not ready and no
+`PR.md` committed yet. This session (attempt 2) replaces the bare unset
+with a proper save/restore (see "Addendum 2" below), re-verifies the two
+fragments together plus the full shard 2, merges `origin/master` (92
+commits, clean, no conflicts), and writes this file's "For lane.local"
+section and `PR.md`.
+
 # lane.modelpolicy1010 -- one model table, one reader, one Low switch (#433, 0.5)
 
 Owner-approved design (2026-10-10, "Proceed with all this."). See
@@ -101,13 +122,55 @@ not scope `HAKUX_WORK`, so when fragments run in the same shell (sourced, as
 `selftest.sh` runs them, exactly how the real fold does it) `lm_default`
 silently read 89's leftover `low-active` file and computed Sonnet instead of
 Opus for "Normal, engineering" -- two checks failed only when both fragments
-ran together, never when either ran alone. Fixed both sides: `89` now unsets
-`HAKUX_WORK`/`HAKUX_CLAUDE_PROJECTS`/`HAKUX_SYSTEMD_USER_DIR` at its end (the
-same hygiene it already uses for `HAKUX_NOW`), and `99`'s `$lm_default` pins
-its own `HAKUX_WORK="$LM/work"` so it does not depend on fragment order at
-all. Caught by running touched fragments TOGETHER, not just individually --
-worth remembering for any future fragment that computes something at
-top-of-file without its own `HAKUX_WORK`.
+ran together, never when either ran alone. Fixed both sides in attempt 1:
+`89` unset `HAKUX_WORK`/`HAKUX_CLAUDE_PROJECTS`/`HAKUX_SYSTEMD_USER_DIR` at
+its end (the same hygiene it already uses for `HAKUX_NOW`), and `99`'s
+`$lm_default` pins its own `HAKUX_WORK="$LM/work"` so it does not depend on
+fragment order at all. Caught by running touched fragments TOGETHER, not
+just individually -- worth remembering for any future fragment that
+computes something at top-of-file without its own `HAKUX_WORK`.
+
+**That `89` fix was itself wrong** -- see "Addendum 2" below, found by
+lane.local at fold, not by this lane. `HAKUX_NOW` is a variable `89` always
+sets itself (every fragment that uses it does), so unsetting it at the end
+is always safe. `HAKUX_WORK` is different: `selftest.sh` sets it exactly
+once, at the top of the whole run (`selftest.sh:168`), not per-fragment, so
+a later fragment sourced into the same shell has no other source for it.
+Unsetting it does not "ask the real one again" the way the old comment
+claimed -- it removes the only copy there is.
+
+## Addendum 2 (fixed in attempt 2): restore HAKUX_WORK, don't unset it
+
+Lane.local's fold selftest ran attempt 1's head (`2b7d7cc063`) twice (15:25
+and 15:40 PDT) and failed shard 2 both times, 22 FAILs, all in
+`97-board-priority.sh: line 135: HAKUX_WORK: unbound variable` -- shard 2
+runs `88-window-budget.sh`, `89-usage-mode.sh` and `97-board-priority.sh` in
+that order in the same shell (see `--list-shards 4` output), so 89's bare
+`unset` at its end left 97 with no `$HAKUX_WORK` under `set -u`.
+
+Fix: `89-usage-mode.sh` now saves whether each of `HAKUX_WORK`,
+`HAKUX_CLAUDE_PROJECTS` and `HAKUX_SYSTEMD_USER_DIR` was set at all, and its
+value if so (`UM_SAVED_*_SET=${VAR+1}; UM_SAVED_*=${VAR-}`, read with `-`
+not a bare `$VAR` since `set -u` is active and none of the three is
+guaranteed set going in), before overriding them for its own fixtures. At
+the end it restores each one the same way: re-export the saved value if it
+had one, `unset` only if it did not. A new check,
+`"HAKUX_WORK is restored to the harness's own value after this fragment"`,
+asserts `HAKUX_WORK = $T/work` afterward.
+
+Verified the mutant: reinstated the old bare
+`unset HAKUX_WORK HAKUX_CLAUDE_PROJECTS HAKUX_SYSTEMD_USER_DIR` in place of
+the restore block and re-ran `SELFTEST_ONLY="89-usage-mode 97-board-
+priority"` -- it reproduces the exact fold failure, `97-board-priority.sh:
+line 135: HAKUX_WORK: unbound variable`, with every one of 97's first-section
+checks FAILing. Restored the fix; both fragments green together, and the
+new check itself passes (it would not, if the restore were wrong in the
+other direction -- e.g. restoring to `89`'s own `$UM/work` instead of the
+harness's `$T/work`).
+
+Ran the full shard 2 (`SELFTEST_SHARD=2/4`, 36 fragments in order, the exact
+shard that failed at fold) after merging `origin/master`: see PR.md for the
+result line.
 
 ## Selftests (brief item 7)
 
