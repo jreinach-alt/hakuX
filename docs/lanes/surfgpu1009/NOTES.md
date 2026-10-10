@@ -553,3 +553,66 @@ what the instrument cannot see: this run's `[surfgpu]` counters cannot confirm
 works. A future read of this dedup path should keep the full logcat or grep
 the un-truncated device log, not the harness's retained tail, if the counter
 itself needs confirming.
+
+### 9.2 g_sg_held committed, judge extended, re-arm queued (2026-10-09 ~20:00-20:04 PDT)
+
+Build of the uncommitted `g_sg_held` work (found at this session's start,
+reviewed in 9 above) was already SUCCESSFUL in the background
+(`/tmp/sgbuild1009.log`, `GRADLE_EXIT=0`) before this subsection; committed as
+`7cde4fcf54` (`surface.c`, `draw.c`, `NOTES.md`), then merged `origin/master`
+(32 commits, zero territory conflicts) to `1b1fec978d` and pushed.
+
+Extended `sg_judge.py` to parse the new `[surfgpu]` fields (`dedup= hold=
+hwait= hrot= wrap=`) and score two new legs, `P1.B_record_ms_per_frame_max`
+and `P1.B_hold_per_frame_min` (hold >= 0.3/flip is the signal the held-batch
+path actually engaged; without it a record drop would be unexplained).
+Re-ran against the OLD nba07-soak result pair to check the parser is
+backward-compatible with logs from before this field existed: it is --
+unscored new fields print 0.00, verdict unchanged (still FAILs P2 at 0.66).
+
+Registered two predictions on ref `1b1fec978d` (both BEFORE any device run on
+this ref, per the lane rule): `surfgpu1009-nba07-held.json` (does `record`
+clear the P2 bar with `g_sg_held` engaged) and `surfgpu1009-golden3.json` (a
+fresh pixel safety check -- this mechanism is in the same completion-ordering
+class golden2 already caught a real bug in once, see 9.1). Committed as
+`7b87201a83`.
+
+Queuing the NBA07 arm hit a gap: `docs/testing/titles/routes/nbalive07.route`
+does not exist in this worktree or anywhere under `/home/justin/hakux-work`
+(checked all worktrees) -- the route a prior sub-session generated for the
+NBA07 soak (612141/612271, read in section 9) was never committed, so it is
+gone. Not gitignored, and other lanes (titleroutes) commit theirs normally,
+so this looks like an oversight in whichever earlier session first generated
+it, not a convention. Regenerated it with
+`docs/lanes/fps20786/steps2route.py` from the same pathfind recording its
+own header already named (`pathfind runs/nbalive07-1006`, read from
+`/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nbalive07-1006/steps.jsonl`),
+using the loop grammar `RT:1.0,STICK:up:1.0,A,STICK:right:1.0,X,STICK:left:1.0,B,STICK:down:1.0,Y`
+and `--hold-s 280` -- this reproduces `9.1 s, 3 per frame, 11 frames` and
+`route ends ~467 s after launch` exactly, and the regenerated body diffs
+BYTE-IDENTICAL against the route text embedded in request `612141`'s
+`request.json` (only the header's title-name wording and a trailing newline
+differ). `route.sh --check` passes. Committed as `6a274261c2`, flagged here
+and on the PR rather than blocked on it (no request can queue without it,
+and it reconstructs a lost artifact rather than adding scope) --
+`docs/testing/titles/routes/` is outside this lane's stated territory
+(`docs/lanes/surfgpu1009/**`, the three `vk/*.c` files,
+`docs/testing/predictions/surfgpu1009-*.json`), so this is named explicitly
+rather than folded in quietly.
+
+Queued (pilot window `pilots/surfgpu1009.ok` is from 16:40 PDT today, still
+<24h old, so this batch of 4 doesn't need a fresh pilot pass):
+- NBA07-held B (flag on): `1-1791601841-surfgpu1009-2092062`
+- NBA07-held A (flag off): `1-1791601847-surfgpu1009-2092716`
+- golden3 B (flag on): `1-1791601877-surfgpu1009-2093286`
+- golden3 A (flag off): `1-1791601882-surfgpu1009-2098499`
+
+Next session: read all four, score NBA07-held with `sg_judge.py --floor
+1-1791588871-surfgpu1009-612271`, score golden3 with `ab_compare.py
+--allow-same-binary`. If `record` clears P2 and golden3 is clean (worse=0),
+proceed to NHL 2K3 (8.1) or close out with `PR.md State: ready` if the
+brief's definition of done is otherwise met. If `record` does not clear P2,
+or a new residual shows at frame-slot rotation (watch `ph_Idle`/`ph_Fin` even
+if P2 passes, per 9's own plan), report NBA07 as a partial win (parts a/b
+hold; the second-batch mechanism did not fully close the gap) rather than
+iterate further without a specific new finding to act on.
