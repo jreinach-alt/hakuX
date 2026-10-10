@@ -27,8 +27,11 @@
  *                         memory by a thread of their own, after the GPU has
  *                         finished the command buffer that counted them,
  *                         instead of by the thread running the finish, which
- *                         waited for every submitted frame first (#804). See
- *                         ra_internal() below.
+ *                         waited for every submitted frame first (#804). Only
+ *                         reports whose status word the guest armed (nonzero)
+ *                         before GET_REPORT go to that thread; the finish
+ *                         still writes the others itself. See ra_internal()
+ *                         below.
  *   HAKUX_REPORT_TRACE=1  one record per GET_REPORT: when it was queued, when
  *                         the finish handed it off, when its fence passed and
  *                         its value was written, which guest frame each of
@@ -647,7 +650,9 @@ static void *ra_reader(void *opaque)
  * the render thread, which does not rotate, waits for its own batch.
  *
  * If the slot count changed under the open command buffer (the submit-frames
- * setting), the batch is run here, as #804 did, once the reader is idle.
+ * setting), the batch is run here, as #804 did, once the reader is idle. So
+ * is a batch holding a report whose status word the guest did not arm (see
+ * below): it waits for its own slot's fence, before the finish returns.
  */
 static void ra_internal(NV2AState *d)
 {
@@ -671,6 +676,7 @@ static void ra_internal(NV2AState *d)
         b->nq = nq;
         b->divisor = pg->surface_scale_factor * pg->surface_scale_factor;
         b->nreports = 0;
+        bool unarmed = false;
         while ((report = QSIMPLEQ_FIRST(&r->report_queue)) != NULL) {
             assert(report->query_count >= ra.cur_base);
             assert(report->query_count <= r->num_queries_in_flight);
@@ -679,18 +685,29 @@ static void ra_internal(NV2AState *d)
             o->qend = report->query_count - ra.cur_base;
             o->dst = report->clear ? NULL : ra_map(d, report->parameter, true);
             o->trace = (!report->clear && rt.on) ? rt_handoff(t_e) : 0;
+            if (o->dst && !ldl_le_p(o->dst + 12)) {
+                unarmed = true;
+            }
             QSIMPLEQ_REMOVE_HEAD(&r->report_queue, entry);
             free_report(r, report);
         }
 
-        if (b->wait_all) {
+        /*
+         * A report whose status word the guest left at 0 (DONE) is one it
+         * will not poll: it reads the count when something else says the GPU
+         * is done, a semaphore or a PGRAPH idle wait, as the ZPass pgraph
+         * test does. Those batches are written here, before the finish
+         * returns, as the synchronous path writes them. A guest that arms the
+         * status word before GET_REPORT (NFS MW: 0xffffffff on every report)
+         * sees DONE only once the reader has written the count.
+         */
+        if (b->wait_all || unarmed) {
             int64_t t0 = rt.on ? g_get_monotonic_time() : 0;
             qemu_mutex_lock(&ra.lock);
             while (ra.head || ra.busy) {
                 qemu_cond_wait(&ra.cond, &ra.lock);
             }
             qemu_mutex_unlock(&ra.lock);
-            b->slot = -1;
             ra_run(r, b);
             g_free(b);
             if (rt.on) {
