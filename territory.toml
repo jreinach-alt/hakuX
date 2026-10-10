@@ -877,6 +877,7 @@ files = ["docs/lanes/usagemode1009/**", "docs/testing/lane.sh", "docs/testing/jo
 note = "STARTED lane.local 2026-10-09 12:10 PDT (owner 10-09: the project manages usage itself): usage Low becomes one file lane.sh reads at start; projection trigger with hysteresis, no latch. Three files claimed from [free]; 99-lane-model-file.sh was unclaimed."
 
 [free]
+# RELEASED (hostops 2026-10-09 18:1x PDT) by retiring lane.harnessfix1006 (PR #861 MERGED, ancestor of origin/master 157fdbbee5, no running unit): docs/testing/jobs/hold.sh, docs/testing/dispatcher.sh. docs/testing/jobs/device_build.py and selftest.d/99-build-gate.sh go to new lane.restoreleak1009 (same defect family, unbounded dispatch.restore duplicates), not here.
 # RELEASED (lane.local 2026-10-09 18:10 PDT): AGENTS.md from [lane.localforge] (inactive, folded), for the owner's 10-09 rule that disc images live on D:, never on the Linux disk.
 # GRANTED (lane.local 2026-10-09 16:07 PDT): docs/testing/jobs/selftest.d/86-nightly-notes.sh -> [lane.nightlynotes1009].
 # RELEASED (lane.local 2026-10-09 15:25 PDT) by retiring lane.frametrace and lane.gpunonrender (both folded, units inactive): hw/xbox/nv2a/pgraph/profile.c, hw/xbox/nv2a/pgraph/profile.h, system/cpus.c, hw/xbox/nv2a/pgraph/pgraph.c, hw/xbox/nv2a/pgraph/vk/reports.c, hw/xbox/nv2a/pfifo.c, docs/testing/nv2a_index.json. cpu-exec.c -> lane.pmucounters; vk/draw.c, vk/surface.c, vk/texture.c -> lane.surfgpu1009.
@@ -2089,11 +2090,11 @@ standing = false
 files = ["docs/lanes/waitread1006/**"]
 note = "STARTED lane.local 2026-10-06 12:58 PDT (PM midday plan action 3): offline, no device; what each slow title waits on. Row added by hostops 13:0x PDT (jam duty: the [foldqueue] 12:57 refusal, no row on origin/board)."
 
-[lane.harnessfix1006]
+[lane.restoreleak1009]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/harnessfix1006/**", "docs/testing/jobs/device_build.py", "docs/testing/jobs/hold.sh", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/99-build-gate.sh"]
-note = "STARTED lane.local 2026-10-06 12:58 PDT (PM midday plan action 4): harness fix. Its dispatcher/result.json files are named in OUTBOX for a grant. Row added by hostops 13:0x PDT (jam duty, per lane.local's 12:58 request). Grant (hostops 2026-10-06T20:49Z): the four Files named in its OUTBOX section 1 (jam duty; lane.harnessfix1006 waiting on the grant)."
+files = ["docs/lanes/restoreleak1009/**", "docs/testing/jobs/device_build.py", "docs/testing/jobs/selftest.d/99-build-gate.sh"]
+note = "STARTED hostops 2026-10-09 18:1x PDT (jam duty): device_build.py's cmd_restore queues an unbounded pile of duplicate dispatch.restore requests for nova -- 14 piled up 15:43-18:01 PDT, none served, starved indefinitely by a sustained 1--prefixed critical-path chain (ASCII priority: '1-' always sorts before plain-epoch, see dispatcher.sh:2376). hostops withdrew 12 duplicates by hand as a one-time cleanup (dispatch/queue/withdrawn/); this lane dedupes at the source. Retires [lane.harnessfix1006] (its PR #861 merged into origin/master 157fdbbee5, no running unit) -- same files, new owner. docs/testing/jobs/hold.sh and docs/testing/dispatcher.sh go to [free] (not needed for the dedup fix; name lines in OUTBOX and ask lane.local if the starvation half needs dispatcher.sh)."
 
 [lane.dispatchgate1006]
 issues = ["433"]
