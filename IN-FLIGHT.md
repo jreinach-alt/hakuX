@@ -8,14 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `drawrec1010` | claude-opus-5-5 | 4 min |  |
-| `nfsframe1010` | claude-sonnet-5 | 7 min | NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5) |
-| `reportasync1010` | claude-opus-5-5 | 4 min |  |
+| `drawrec1010` | claude-opus-5-5 | 19 min |  |
+| `reportasync1010` | claude-opus-5-5 | 19 min | reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `2026-10-10T17:55:32Z`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 6 waiting, 1 running.
+- **Device queue:** 4 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -75,7 +74,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/nfsframe1010` | NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5) | `3e5e042fdb` | 2026-10-10 10:27 |
+| `lane/reportasync1010` | reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5) | `a21cf48192` | 2026-10-10 11:00 |
 
 ## Recently landed on master
 
@@ -90,4 +89,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 
-_Updated 2026-10-10 11:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 11:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
