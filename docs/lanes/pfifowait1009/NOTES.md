@@ -362,3 +362,68 @@ PFIFO thread's own GPU-bound wait, not the vCPU's, the actual fps-limiting
 resource on Amped 2?) is exactly what the prediction below (step 3) has to
 be able to catch as a miss, not just check that `lw` dropped. See the
 prediction's legs for the explicit vcpusleep-style falsifier.
+
+## 3. Prediction registration (brief step 3, done before any arm)
+
+Two files, both on this branch's then-tip `221a22f5a8`, registered and
+committed before any device run that could score them:
+
+- `docs/testing/predictions/pfifowait1009-pgraph-inert.json` -- the
+  correctness leg, registered via `ab_compare.py --register` (so its
+  `disc`/`must_not_move` are machine-checked, not hand-typed prose). One
+  binary, `a_ref` = `b_ref` = `221a22f5a8`; the pgraph suite is not run
+  with any env override on either side of THIS file -- it exists to pin
+  down that the shipped build renders the 26-suite set (the same broad
+  "fence-wait/lock-scope-only" disc flip474 and async794 used, plus
+  `ZPass_pixel_count` for the occlusion-query path this fix's bracket
+  surrounds) identically to itself, i.e. the byte-identical/noise-floor
+  claim that brief step 5 asks for gets its own falsifiable record.
+  Brief step 5's actual A/B pixel check (flag on vs off, same suite set)
+  reads against this file's `disc` composition.
+- `docs/testing/predictions/pfifowait1009-amped2-soak.json` -- hand-written,
+  copying pmucounters' NOTES.md section 3f format (pre-registration,
+  hit/moved/miss framing, explicit outcomes) rather than `ab_compare.py
+  --register`'s schema, since a soak writes no captures for that tool to
+  diff. `a_ref` = `b_ref` = `221a22f5a8`, env is the independent variable:
+  A = `HAKUX_FRAMETRACE=1`, B = `HAKUX_FRAMETRACE=1 HAKUX_PFIFOWAIT=1`.
+  The judge is pmucounters' own `waits.py`/`workbin.py` (already built to
+  read `[hakuX-ft1]`'s `vw` breakdown, where `vw[1]` is `lw`, the exact
+  metric the brief cites). Legs: M0 instrument validity, F0 the env
+  actually reached the process, W1 re-measures the premise on THIS route
+  revision (thresholds are relative to each run's own A, not pmucounters'
+  absolute numbers, since the route's menu-phase waits changed), H1 the
+  wait itself must fall, H2 pgraph.lock must stay flat (the lock analysis
+  said it is never co-held here -- a mover here is a correctness red
+  flag, not just a miss), **P1 is the explicit vcpusleep guard**: fps must
+  rise, not just `lw` fall, or the outcome is scored Moved (vcpusleep's
+  exact shape: wait relieved, fps flat/down) and not reported as a hit.
+  F2 is the pixel/corruption leg in motion (shots + logcat), H0 is the
+  no-hang leg (a missed unlock/lock pairing would hang or crash the PFIFO
+  thread, not just read slow).
+
+## 4. First device runs (brief step 4's two-pacing-check, 2026-10-10)
+
+Queued on the Nova once the hold from host maintenance lifted
+(`jobs/hold.sh who nova` -> `free: nova`, after returning `held: ...
+bounded 30 min` on the first check):
+
+- `1-1791616849-pfifowait1009-2796495` -- baseline, no env, `--perflog`,
+  900s, `--no-expect "pre-arm route pacing-robustness validation, not a
+  scored arm"`. This is step 4's run #1: does the corrected route (plain
+  `wait`, no `waitfor`) survive the SHIPPED pacing end to end with no
+  `ROUTE FAIL`. Queued behind `lane.surfgpudefault1009`'s active run on
+  the Nova (intended -- its runs carry the release tier and go first per
+  the brief's Rules section); still queued, not yet started, as of this
+  writing.
+
+Plan for run #2 (not yet queued, queue after #1's result is read): the
+same route with `HAKUX_PFIFOWAIT=1` and no frametrace, matching run #1's
+instrumentation, purely to confirm the route also survives the DIFFERENT
+pacing the fix itself produces (the two-pacing-check brief step 4 actually
+asks for -- flag on vs off is a real pacing difference on this title,
+since it changes when the PFIFO thread blocks). If both come back with no
+`ROUTE FAIL`, step 4 is satisfied and the scored A/B pairs (register:
+section 3 above) get queued separately, with `HAKUX_FRAMETRACE=1` on
+BOTH arms so `waits.py`/`workbin.py` have the `[hakuX-ft1]` lines the
+prediction's legs read -- run #1/#2 above deliberately do not carry
+frametrace, so they are pacing checks only, not arm data.
