@@ -168,6 +168,12 @@ T="${SELFTEST_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/hakux-selftest.XXXXXX")}"
 export HAKUX_WORK="$T/work" HAKUX_REPO_DIR="$REPO" DISPATCH_DIR="$T/work/dispatch" GOLDENS="$T/goldens" GH_REPO="example/hakux"
 export HOME="${HOME:-$T}"
 mkdir -p "$T/bin" "$HAKUX_WORK"/{arms,logs/arms,logs/lane,logs/board,logs/fold,logs/cloud,status,briefs,attempts} "$DISPATCH_DIR"/{queue,running,results,expect} "$GOLDENS"
+# lane.sh (#433) refuses to start or resume a lane without a forge shim dir.
+# One stub, one export: every fragment's own $HAKUX_WORK (shared or private)
+# inherits it through lane_path()'s HAKUX_SHIM_BIN override, so no fragment
+# needs its own copy of this directory.
+mkdir -p "$T/shim/bin"
+export HAKUX_SHIM_BIN="$T/shim/bin"
 pass=0; fail=0
 ok()   { echo "  ok   $*"; pass=$((pass+1)); }
 bad()  { echo "  FAIL $*"; fail=$((fail+1)); }
