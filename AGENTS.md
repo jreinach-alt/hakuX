@@ -23,8 +23,8 @@ is being folded into it; every lane is a branch `lane/<name>` from master with
 one draft PR whose body lists its files; the board (`territory.toml`,
 `nv2a_issues.toml`, briefs) is moving to the orphan `board` branch and is
 written by the board job only; the long-lived orchestrator session is
-replaced by scheduled jobs. GitHub is suspended (since 2026-09-29), so the
-harness runs on a self-hosted forge; see "The forge" below. Where a rule below
+replaced by scheduled jobs. The harness works on a self-hosted forge, and
+GitHub is its one-way mirror; see "The forge" below. Where a rule below
 names the campaign branch, read `master`. Where it says "ask the
 orchestrator", write a board request and carry on. The measurement
 discipline below -- predictions registered before the run, per-capture
@@ -34,11 +34,16 @@ queues its arms** (the arms job on the host runs every prediction whose refs
 are live and posts the verdict on your PR), and the live state of the whole
 harness is one comment on the issue labelled `harness-status`.
 
-## The forge (GitHub suspended since 2026-09-29)
+## The forge (the working space; GitHub is a one-way mirror)
 
 The harness's issue tracker, pull requests, labels, releases and CI are a local
 Forgejo at **http://127.0.0.1:3330** (loopback only), repo `jreinach-alt/hakuX`.
-Nothing in the harness may reach github.com.
+**GitHub is up.** It was suspended from 2026-09-29 to 2026-10-05. The forge stays
+the place of work by the owner's choice, to keep GitHub's transaction volume
+down, not because GitHub is unavailable. Exactly one job writes to GitHub:
+`hakux-github-gateway.timer` (`~/hakux-work/host-tools/github_gateway.sh push`)
+fast-forwards the branches every 15 minutes, and the nightly goes there as a
+prerelease. Nothing else in the harness may reach github.com.
 
 - **`gh` is a shim** (`~/hakux-work/forge/shim/bin/gh`, source
   `docs/testing/jobs/gh-shim/gh`). It is first on PATH for every harness unit
@@ -56,10 +61,11 @@ Nothing in the harness may reach github.com.
 - **Local CI** runs `.forgejo/workflows/forge-selftest.yml` and
   `forge-android.yml` on a host runner (capacity 1), on ready PRs only.
 
-**After the return.** When GitHub is restored, completed work transfers in
-throttled batches; the procedure, and what changes for CI, is in
-[`docs/lanes/localforge/RETURN.md`](docs/lanes/localforge/RETURN.md). Until
-that runs, do not reintroduce `gh` calls that target github.com.
+**The transfer to GitHub** is the gateway above: fast-forward only, throttled,
+with a safety scan before each push. Its log is
+`~/hakux-work/logs/github_gateway.log`; a last line more than about 20 minutes
+old means the mirror has stopped. GitHub Actions stays off. Do not add `gh`
+calls that target github.com.
 
 ## Start here
 
