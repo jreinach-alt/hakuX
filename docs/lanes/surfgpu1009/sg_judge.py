@@ -17,7 +17,8 @@ Readouts, all restricted to the logcat at or after the route's
     window without the caller counts 0), as surfdl1008's
     postmark_sdsurvey.py does; and the SUM over all callers per window, so a
     wait that moved to another caller is still counted;
-  - `[surfgpu]` detach= and nodisp= per flip, and `spl=` up/dl/cmpl per flip.
+  - `[surfgpu]` detach=, nodisp=, dedup=, hold=, hwait=, hrot= and wrap= per
+    flip, and `spl=` up/dl/cmpl per flip.
 With --floor, route-frame regions (gpunonrender/regioncheck.py) for B vs A
 and for A vs the older flag-off run on the same route, the noise floor. The
 pixel leg is read by eye from those two tables and the hold frames; this
@@ -77,9 +78,13 @@ def read_log(rid):
                 out["spl"].append((fr,) + tuple(int(x) for x in sm.groups()))
             out["win"].append(w)
         elif "[surfgpu] frames=" in line:
-            gm = re.search(r'frames=(\d+) detach=(\d+) nodisp=(\d+)', line)
+            gm = re.search(
+                r'frames=(\d+) detach=(\d+) nodisp=(\d+)'
+                r'(?: dedup=(\d+) hold=(\d+) hwait=(\d+) hrot=(\d+) '
+                r'wrap=(\d+))?', line)
             if gm:
-                out["sg"].append(tuple(int(x) for x in gm.groups()))
+                vals = [int(x) if x is not None else 0 for x in gm.groups()]
+                out["sg"].append(tuple(vals))
     return out
 
 
@@ -177,8 +182,10 @@ def main():
         print("   all callers: %.2f ms/flip (median of windows), %.2f "
               "(total ms / total flips)" % s)
         if lg["sg"]:
-            print("   [surfgpu] detach %.2f/flip  nodisp %.2f/flip" % (
-                sg_rate(lg, 1), sg_rate(lg, 2)))
+            print("   [surfgpu] detach %.2f/flip  nodisp %.2f/flip  "
+                  "dedup %.2f/flip  hold %.2f/flip  hwait %.2f/flip  "
+                  "hrot %.2f/flip  wrap %.2f/flip" % tuple(
+                      sg_rate(lg, i) for i in (1, 2, 3, 4, 5, 6, 7)))
         if lg["spl"]:
             print("   spl= up %.2f dl %.2f cmpl %.2f per flip" % tuple(
                 med([x[i] / x[0] for x in lg["spl"] if x[0]])
@@ -198,6 +205,8 @@ def main():
         "P1.B_detach_per_frame_min": sg_rate(lb, 1),
         "P1.B_surfupd_ms_per_frame_max": per_frame(lb, "surfupd"),
         "P1.B_nodisp_per_frame_min": sg_rate(lb, 2),
+        "P1.B_record_ms_per_frame_max": per_frame(lb, "record"),
+        "P1.B_hold_per_frame_min": sg_rate(lb, 4),
         "P2.sdcall_wait_sum_ratio_max": (sb[0] / sa[0]) if sa[0] else None,
         "P3.ph_Fin_drop_ms_min": (
             fnum(ra, "ph_Fin") - fnum(rb, "ph_Fin")
