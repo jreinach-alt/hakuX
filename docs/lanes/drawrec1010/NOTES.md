@@ -106,12 +106,20 @@ counters below name the largest per-draw cost directly (section 5.3).
 | 1-1791661643-drawrec1010-951834 | pixels A: 27-suite disc, F1-F3 | plain @ b10dcdb737 | DONE; section 10.1 |
 | 1-1791661643-drawrec1010-951926 | NFS race start, F1-F3 + HAKUX_DRAWREC=1, 500 s | perflog @ b10dcdb737 | DONE; section 10.2 |
 | 1-1791661644-drawrec1010-952014 | NFS race start, F1-F3, 500 s | perflog @ b10dcdb737 | DONE; section 10.2 |
-| 1-1791670433-drawrec1010-3707918 | NFS race start plain 1/4, off | plain @ b10dcdb737 | queued |
-| 1-1791670434-drawrec1010-3708043 | NFS race start plain 2/4, ON | plain @ b10dcdb737 | queued |
-| 1-1791670441-drawrec1010-3708870 | NFS race start plain 3/4, ON | plain @ b10dcdb737 | queued |
+| 1-1791670433-drawrec1010-3707918 | NFS race start plain 1/4, off | plain @ b10dcdb737 | DONE; 12 marks |
+| 1-1791670434-drawrec1010-3708043 | NFS race start plain 2/4, ON | plain @ b10dcdb737 | DONE; 12 marks |
+| 1-1791670441-drawrec1010-3708870 | NFS race start plain 3/4, ON | plain @ b10dcdb737 | running |
 | 1-1791670442-drawrec1010-3709079 | NFS race start plain 4/4, off | plain @ b10dcdb737 | queued |
 | 1-1791670443-drawrec1010-3709316 | pixels A recheck, 27-suite disc, runs 2 | plain @ b10dcdb737 | queued |
 | 1-1791670444-drawrec1010-3709731 | pixels B recheck, 27-suite disc, runs 2 | plain @ b10dcdb737 | queued |
+| 1-1791672296-drawrec1010-4030728 | Addendum 1 probe, NFS race start, base | plain @ bf43e8c4ef | queued |
+| 1-1791672298-drawrec1010-4031146 | Addendum 1 probe, NFS race start, SNAPQ=1 | plain @ bf43e8c4ef | queued |
+| 1-1791672299-drawrec1010-4031484 | Addendum 1 probe, NFS race start, NULLREC | plain @ bf43e8c4ef | queued |
+| 1-1791672301-drawrec1010-4032023 | Addendum 1 probe, NFS race start, SNAPQ=2 | plain @ bf43e8c4ef | queued |
+| 1-1791672303-drawrec1010-4032671 | Addendum 1 probe, NFS race start, SNAPQ=2 | plain @ bf43e8c4ef | queued |
+| 1-1791672305-drawrec1010-4033552 | Addendum 1 probe, NFS race start, NULLREC | plain @ bf43e8c4ef | queued |
+| 1-1791672307-drawrec1010-4034091 | Addendum 1 probe, NFS race start, SNAPQ=1 | plain @ bf43e8c4ef | queued |
+| 1-1791672308-drawrec1010-4034875 | Addendum 1 probe, NFS race start, base | plain @ bf43e8c4ef | queued |
 
 All F1-F3 runs carry `HAKUX_UNI_BULK=1 HAKUX_UNI_UBERCACHE=1 HAKUX_UNI_FOGCACHE=1`.
 The first four were the pilot (24.7 min by the gate's estimate; ~8-9 min each on the
@@ -380,3 +388,71 @@ an env A/B (`HAKUX_DRAWREC=1` with `HAKUX_DRAWREC_MAP=0` vs unset) on the NFS ro
   argument is read as an option.
 - The vertex-sync counters `Vsyn` are on the overlay only, not in logcat; the `[rdc]`
   line is the logcat source for the walk cost.
+
+## 13. Addendum 1: what a recorder thread would buy (probes, default off, measurement only)
+
+lane.local's Addendum 1 (2026-10-10 15:12 PDT) asks three things before anyone builds a
+recorder thread that takes pipeline, descriptor, uniform and recording work off PFIFO:
+the floor PFIFO reaches without that work, what the handoff costs, and how often PFIFO
+waits on the GPU mid-frame. Every switch stays default off and is never proposed for
+default.
+
+**The switches (draw.c, ff6c3adc47 and 0a4976ece0):**
+
+- `HAKUX_PROBE_NULLREC=1`, the floor. `flush_draw_one_pass` keeps what a recorder
+  design leaves on PFIFO: attribute bind, vertex-RAM sync, remap, primitive rewrite,
+  texture upload (`poll_bound_textures` and a `bind_textures` when the generations
+  moved), and the inline vertex/index uploads into the staging buffers. It skips
+  `begin_pre_draw` (pipeline, uniforms, descriptors), `begin_draw`, the `vkCmd*` and
+  `end_draw` with a `goto` to each branch's `*_done` label. The surface update is in
+  `pgraph_vk_draw_begin` and clears still take the full path, so surface/finish ordering
+  and the skew bound are unchanged. `pgraph_vk_ensure_command_buffer` is still called, so
+  that `pgraph_vk_finish` submits and rotates and the staging buffers reset as before.
+  Pixels are wrong: the frames show only clears.
+- `HAKUX_PROBE_SNAPQ=1`, the upper bound on the handoff. The real path runs unchanged.
+  In addition, `pgraph_vk_draw_end` copies a full `RenderCommandSnapshot` (~40 KB:
+  32 KB of `regs_`, the program, the vertex constants, the attributes) plus the draw's
+  payload (the inline array/buffer/elements) into an 8 MB ring. It then enqueues an
+  `RCMD_DRAW` to the render thread, which frees it (`default: break`).
+  `try_snapshot_draw_arrays` / `try_snapshot_inline_elements` were not used as the
+  addendum named them, because they run `begin_pre_draw` and store its OUTPUTS (pipeline,
+  descriptor set, uniforms). That is the split a recorder moving pipeline and descriptor
+  work cannot use, and calling them on PFIFO would charge the moved work twice.
+- `HAKUX_PROBE_SNAPQ=2`, the lower bound. As 1, but the record is
+  `sizeof(ReorderWindowEntry)` (~0.7 KB) of `regs_`. That is what a recorder fed by
+  dirty deltas would copy.
+- `HAKUX_PROBE_WAITS=1` (on in every arm; NULLREC and SNAPQ imply it) times every
+  GPU wait on the PFIFO thread in `pgraph_vk_finish`:
+  - the non-deferred `qemu_event_wait(finish_event)`;
+  - the rotation's `vkWaitForFences(frame_fences[next])`.
+  A non-deferred finish is always a point; a rotation wait is a point if >= 100 us.
+  FLIP_STALL/PRESENTING finishes count as the flip; every other reason is mid-frame.
+  It prints `[probe1010]` on hakuX-stall every 60 flips, with mid/frame, ms each, a
+  0/1/2/3/4+ histogram, non-deferred finishes by reason, rotation waits, draws, and the
+  snapshot's KB/copy us/enqueue us (1 in 8 draws timed).
+
+**Arms** (`drawrec1010-probe.json`, refs `bf43e8c4ef` on `lane/drawrec1010-probe`:
+the probes merged with reportasync1010 @ 0f6326deac, whose `HAKUX_REPORT_ASYNC=1`
+the addendum asks for). Plain build, 500 s, two runs each of base / NULLREC / SNAPQ=1 /
+SNAPQ=2, interleaved (section 4). Every arm carries F1-F3, `HAKUX_DRAWREC=1`,
+`HAKUX_REPORT_ASYNC=1`, `HAKUX_TEXSCAN=1`, `HAKUX_FRAMETRACE=1`,
+`HAKUX_PROBE_WAITS=1`, and pulls `frametrace_*.csv`. 8 x (500 s + 90 s) ~79 min,
+inside the addendum's 1.5 h.
+
+**Judge:** `proberead.py` over the warm countdown (go2..go12, [mark-2, mark+1.5]) gives,
+per arm:
+- pace ms/frame;
+- vCPU busy/idle per frame (rr425w windows inside [mark-4, mark+1.5]);
+- the `[probe1010]` lines;
+- ftwin's per-frame table.
+
+Verdict as registered:
+- BUILD = floor <= 28 and SNAPQ=1 - base <= 2 and base mid <= 1/frame;
+- DO NOT BUILD = floor > 33, or SNAPQ=2 - base > half of (base - floor).
+
+The lower bound decides DO NOT BUILD, so that a 40 KB copy no design would ship cannot
+by itself kill the design.
+
+Baseline before any probe ran, plain off 3707918 (b10dcdb737, F1-F3 only, no
+REPORT_ASYNC/TEXSCAN): warm 39.2 ms/frame. vCPU busy 24.1 and idle 15.7 ms/frame (61%
+busy; vcpuread over [mark-4, mark+1.5]).
