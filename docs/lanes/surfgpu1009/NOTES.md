@@ -415,3 +415,141 @@ re-run) and read the `[evict372]` pairs against the splice's gates
 - NHL 2K3 is the only generalisation arm with a mechanism this switch
   touches. It is queued only after NBA 06/07 and the golden are read, with
   its own registered prediction.
+
+## 9. Resume, attempt 2 (2026-10-09 ~19:55 PDT): the record residual, and why the previous session stopped mid-build
+
+**Why attempt 2 did not finish.** Its session read the six results section 8
+left pending (golden B/A, NBA 06 B/A, NBA 07 B/A), found a real pixel bug and
+a real residual, fixed the first, built most of a fix for the second, and
+ended without committing the second fix or writing this section. Reconstructed
+from the working tree and dispatch results, in the order it must have
+happened:
+
+1. **Golden B/A** (`...610569`/`...610665`) moved exactly one capture:
+   `Image_blit/Overlap_TR_Outside` 1 -> 16384 px. Root cause and fix: commit
+   `c663a91697` (a record does not retire the generation under the splice, so
+   an evicted surface whose download was left pending stayed draw_dirty and
+   got recorded a second time, behind the subsurface's download; completion
+   in record order put the backbuffer's clear over the gradient). A dedup
+   check closes it. Prediction for the recheck registered as
+   `surfgpu1009-golden2.json`, committed `50892613de`, pair queued
+   (`...895207`/`...895356`) -- this is the "two results landed, unread" the
+   lanewaker resume pointed at.
+2. **NBA 06 B/A** (`...611883`/`...612026`): read now with `sg_judge.py`,
+   every scored leg PASSes clean on the already-built `1e5b1af818`/dedup-fix
+   combination that golden2 also uses: reuse 21.03 -> 0.00 ms/flip, all waits
+   21.04 -> 2.19 ms/flip, ph_Fin -20.1 ms, gfps 20.26 -> 45.79 (registered
+   min +3.0). No further work needed here.
+3. **NBA 07 B/A** (`...612141`/`...612271`): read now with `sg_judge.py`,
+   **FAILS P2** (`sdcall_wait_sum_ratio_max` 0.5, measured 0.66). `reuse` and
+   `surfupd` both reach 0.00 ms/flip (every P1 leg passes, P0 confirms the
+   baseline waits were real), but `record` rises to 12.68 ms/flip in B,
+   where A had 0.01: the wait did not shrink, it moved caller. gfps still
+   gains (21.71 -> 23.93, +2.22, just over the 2.0 min) because `record`'s
+   12.68 ms is less than `reuse`+`surfupd`'s 19.65, but the sum-ratio leg is
+   what section 6 flagged as the open question: *"A second download batch
+   (removes a `record` residual). Whether it is needed is decided by this
+   arm's `record` number, so it is not built first."* The arm says it is
+   needed.
+
+**The mechanism (`g_sg_held`, uncommitted in the working tree when this
+session started, reviewed and finished here).** `record`'s wait is
+`complete_submitted_downloads`: when a new download is recorded and an
+earlier finish has already submitted a batch, one fence covers one batch, so
+the new record used to wait the old batch out before starting its own
+(`download_surface_complete_deferred(d, SDC_RECORD)`). NBA 07's flip
+piggybacks the display download onto the flip stall (`surfupd`'s fix, part
+(b) of section 4) often enough that the *next* frame's first record now hits
+an already-submitted batch and pays for the GPU work the flip just handed
+it -- the residual section 5 named and declined to build ("outside this
+lane's territory... the next step if `record` takes most of the wait").
+
+The fix: hold the submitted batch aside with its own fence
+(`g_sg_held`, file-static in `surface.c`, not in `PGRAPHVkState` --
+`renderer.h` is outside this lane's territory, as section 5 said, so the
+static is the one-file version of the "next step") instead of waiting it at
+record time, and let the new download start the next batch
+(`r->deferred_downloads`) immediately. The held batch is always the older of
+the two, so:
+
+- it completes first wherever either does (`complete_staged`, used by both
+  `pgraph_vk_complete_staged_downloads` and the new `surfgpu_complete_held_at`);
+- every guest-visible completion path in section 2/3's list now checks it
+  too: `deferred_downloads_overlap_range` (a trapped CPU access, a blit/vertex
+  range), `surfsplice_upload_ok` (a rebind must not splice over bytes the
+  held batch still owns), `deferred_downloads_pending` (replaces plain
+  `num_deferred_downloads > 0` at each of those call sites, including
+  `surface_access_callback`'s `wait_for_downloads` and
+  `pgraph_vk_download_surfaces_in_range_if_dirty`), `deferred_downloads_reference`
+  and `deferred_downloads_clear_surface` (a rebind of a surface the held
+  batch still names detaches or NULLs it there too, not just in the current
+  batch), and `surface_handoff_partner` (a display pre-download the held
+  batch is keeping is not handed off);
+- on its own, with no current batch forcing it, it completes at the frame
+  slot rotation that its fence belongs to (`pgraph_vk_surfgpu_slot_retired`,
+  called from `vk/draw.c`'s `pgraph_vk_finish` right after that slot's fence
+  is known waited -- outside the `frame_resources_in_use` test, because
+  `pgraph_vk_flush_all_frames` can wait a slot's fence without going through
+  the normal per-frame cleanup that would have completed it) -- this is the
+  bound on the residual section 5 left unmeasured ("bounded by ph_GPU minus
+  the CPU time from flip to first eviction"), now paid at a point this
+  session did not have to guess about.
+- the staging buffer is linear and the held batch's rows are behind the
+  current batch's offset until the held batch frees them, so a new download
+  that would overlap them wraps to the front instead (`surfgpu_staging_fits`,
+  `g_sg_wrap`) rather than reusing live bytes.
+- `download_surface_record_deferred`'s dedup check (part 1 above) now also
+  checks the held batch, since a surface the held batch already downloaded at
+  its current generation must not be recorded a second time either -- the
+  same bug golden2 is rechecking, one batch earlier.
+
+Two submitted batches are never both held: `surfgpu_hold_submitted` completes
+whatever is already held (waiting its fence) before holding the new one, so
+there is one `g_sg_held` slot, not a queue. This keeps the design to the one
+extra batch section 6 asked for, not an unbounded pipeline.
+
+**What this does not change.** Still behind `HAKUX_SURFGPU=1`, still default
+off (`surfgpu_hold_submitted`'s own gate is `tcg_enabled() && surfgpu_enabled()`,
+the same switch). Telemetry gains `[surfgpu] hold= hwait= hrot= wrap=` on top
+of the existing `detach=`/`nodisp=`/`dedup=`, so a B run with none of the four
+set to 0 is evidence the held-batch paths were reached, same as `detach=` was
+for part (a).
+
+**Plan from here, in the order that decides something first:**
+1. Build (already running in the background this session started) --
+   compiles or it doesn't, decided before any device time is spent.
+2. One NBA 07 pilot pair on the new ref (2 requests, under the already-valid
+   `pilots/surfgpu1009.ok` window): does `record` fall and does P2 clear.
+3. One golden pair on the same ref, since this mechanism touches the same
+   completion-ordering class of bug golden2 just caught once already, and a
+   second `g_sg_held`-shaped one is exactly the kind of bug a per-60-frame
+   telemetry counter can miss (golden2's own `dedup=` sum was 0 across the
+   kept logcat even though the per-capture pixel count is the thing that
+   actually confirmed the fix -- see golden2's read below). The per-capture
+   pixel table is the decision; the counter is corroboration only, not proof
+   by itself.
+4. If both hold, NHL 2K3 (section 8.1) is still the only generalisation
+   candidate with a mechanism this switch reaches, and is unaffected by
+   this section's change (its wait is `surfupd`/`why=stale`, not `record`).
+
+### 9.1 golden2 read: dedup fix confirmed by the pixel table, not by the counter
+
+`ab_compare.py --a ...895356 --b ...895207 --expect surfgpu1009-golden2.json
+--allow-same-binary`: **PASS**, worse=0, 266/266 same, byte-identical hash on
+every shared capture. The specific capture golden1 broke is back to golden1 A's
+value exactly: `Image_blit/Overlap_TR_Outside` B 1 px (was 16384), A 1 px, at
+the same registered pixel (176,180).
+
+The prediction's own text named a second, falsifiable check: B's `[surfgpu]`
+line should carry `dedup= > 0` summed over the run, "the skip fired". It did
+not -- `grep '\[surfgpu\]' ...895207/logcat1.txt` sums to `dedup=0` across all
+3 printed windows (`detach=1 nodisp=0` on the first, matching golden1 B's own
+first window exactly). Only 3 `[surfgpu]` windows are in the kept logcat
+against 266 captures, so the dedup hit -- if it happened -- is very likely in
+a window the retained log cut, not evidence the fix is a no-op: the decisive
+evidence is the per-capture score, which moved from broken to matching. Say
+what the instrument cannot see: this run's `[surfgpu]` counters cannot confirm
+*why* the capture is fixed, only the capture itself can, and it says the fix
+works. A future read of this dedup path should keep the full logcat or grep
+the un-truncated device log, not the harness's retained tail, if the counter
+itself needs confirming.

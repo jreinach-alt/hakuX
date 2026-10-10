@@ -46,6 +46,10 @@ void pgraph_vk_ubosz_note_bind(VkDescriptorSet set, const uint32_t off[2]);
 void pgraph_vk_ubosz_log_and_reset(void);
 #endif
 
+/* HAKUX_SURFGPU's held download batch, in vk/surface.c. Declared here because
+ * renderer.h is outside lane.surfgpu1009's files. */
+void pgraph_vk_surfgpu_slot_retired(NV2AState *d, int frame);
+
 /*
  * BEHIND A FLAG, DEFAULT OFF. AGENTS.md: "Instrumentation is not free ...
  * Profile-grade tracing belongs behind a flag." This probe is the expensive
@@ -5252,6 +5256,11 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                 r->frame_staging[next_frame].uniform_staging.buffer_offset = 0;
                 r->frame_staging[next_frame].staging_src.buffer_offset = 0;
             }
+            /* A held download batch this slot covers (vk/surface.c). Outside
+             * the test above: pgraph_vk_flush_all_frames may have waited the
+             * slot without completing it. */
+            pgraph_vk_surfgpu_slot_retired(container_of(pg, NV2AState, pgraph),
+                                           next_frame);
 
             /* Oldest frame's fence has been waited — its descriptor sets
              * are safe to reuse. Check if any other frame slot is still
