@@ -104,6 +104,8 @@ class PerGameSettingsActivity : AppCompatActivity() {
         addBoolPicker(container, "async_compile", getString(R.string.settings_async_compile), "async_compile")
         addBoolPicker(container, "ubershader", getString(R.string.settings_ubershader), "ubershader",
             globalDefault = true)
+        addBoolPicker(container, "surfgpu", getString(R.string.settings_surfgpu), "surfgpu",
+            globalDefault = true)
         addBoolPicker(container, "texture_dump_enabled", "Dump Textures", "texture_dump_enabled")
         // addBoolPicker(container, "texture_replace_enabled", "Custom Textures", "texture_replace_enabled")  // hidden for now
     }
