@@ -2172,6 +2172,12 @@ standing = false
 files = ["docs/lanes/perdraw1009/**", "hw/xbox/nv2a/pgraph/vk/shaders.c", "hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pgraph/vk/renderer.h", "docs/testing/titles/routes/nfs-mw.route", "docs/testing/predictions/perdraw1009-*.json"]
 note = "STARTED lane.local 2026-10-09 22:4x PDT (owner 22:3x: 'brief the per-draw lane now'; weekend direction: performance only): cut the renderer's per-draw CPU cost, ~11 us/draw, 14.6 ms of a ~64 ms NFS Most Wanted frame (lane.local's owner-driven profile 10-09). Fixes env-gated, A/B on the Nova with a moving player; new nfs-mw.route with R2 gas. vk/shaders.c from [free]; vk/renderer.c and renderer.h were unclaimed anywhere. vk/draw.c, surface.c, texture.c stay with [lane.surfgpu1009] until it folds; lane.local transfers them then. Opus."
 
+[lane.perdrawon1010]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/perdrawon1010/**", "docs/testing/predictions/perdrawon1010-*.json"]
+note = "STARTED lane.local 2026-10-10 05:5x PDT (weekend direction: performance only; Nova idle since 03:33): measure perdraw1009's three uniform switches where the renderer limits the frame (NFS MW racing, moving player), plus the pgraph inert disc and J/frame, so the owner can decide a default-on flip. Measurement only, no emulator code. Both paths were unclaimed. Sonnet (usage Low)."
+
 [lane.surfgpu1009]
 issues = ["433"]
 standing = false
