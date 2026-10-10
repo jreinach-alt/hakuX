@@ -26,13 +26,21 @@ through `title_verdict.py`'s power block, no strict prediction (J/frame
 has no falsifiable judge here; "no measurable change at this noise" is an
 acceptable answer per the brief).
 
-**State: not ready -- waiting on the 3-run MOTION pilot
-(`1-1791638052-perdrawon1010-3286571`, `-3287113`, `-3290290`; ~22.5 min,
-under the pilot cap, no `pilots/perdrawon1010.ok` needed).** Tooling and
-both predictions committed first (prediction-before-arm, never rebased
-after). `docs/lanes/perdrawon1010/WAITING` holds the three request ids;
-resumes when they land. Next after that: read `motionread.py` against the
-three results, then queue the disc leg (section 3) and the two power runs
-(section 4).
+**State: not ready -- waiting on 3 more MOTION runs.** The first 3-run pilot
+(`...-3286571`, `-3287113`, `-3290290`) landed and was read: M1/M2 (the
+pooled on-off effect, -1.69 us/draw, separated from noise) PASS; V's
+mechanical "route did not finish" on 2 of 3 runs is a harness poll-timing
+artifact at the very tail of the run, not a real failure -- explained in
+NOTES.md section 5a with the run.log evidence, and does not touch the
+MOTION window (which closes ~40s before the route's RT release). M3/M4
+(the hi-BE bin, >=700 draws/frame, closest to the owner's profiled
+high-draw racing) FAIL on sample count alone (n=2/phase) -- too few rows
+cross into "hi" in 3 runs' worth of ramp. Queued 3 more replicate runs
+(`1-1791639780-perdrawon1010-3615994`, `-3618156`, `-3619271`, same
+env/route/ref) to pool to n=6 before calling the hi-BE question settled
+either way; still well inside the 4h/30min-batch budget (~45 min of 240 so
+far). `docs/lanes/perdrawon1010/WAITING` holds these three ids; resumes
+when they land. Next after that: re-read `motionread.py` over all 6, then
+queue the disc leg (section 3) and the two power runs (section 4).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
