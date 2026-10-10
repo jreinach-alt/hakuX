@@ -900,6 +900,17 @@ def released_files(terr):
 
 
 def main():
+    # LINE-BUFFERED, NOT THE DEFAULT. stdout defaults to block buffering (8 KB)
+    # whenever it is not a tty -- a file, or either side of a pipe -- while
+    # sys.stderr stays line-buffered regardless. A caller that merges both
+    # streams into one file (session-start.sh's `2>&1`, every selftest
+    # fixture's `fleet_run`) then gets stdout's output in whatever 8 KB
+    # chunks happened to fill and stderr's FAIL lines spliced in between by
+    # flush order, not emission order -- so once the inventory above passes
+    # 8 KB, a FAIL line can land mid-line and a `^FAIL` grep misses it. This
+    # makes each print() flush at its own newline, so no later stderr write
+    # can land inside one.
+    sys.stdout.reconfigure(line_buffering=True)
     fleet = load_fleet()
     # The board lives on the `board` branch when it exists, and in the tree
     # until then; board_files says which was read, so a stale local copy is

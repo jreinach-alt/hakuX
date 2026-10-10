@@ -1,0 +1,38 @@
+{
+  "registered_utc": "2026-10-10T16:48:35Z",
+  "who": "lane.texscan1010",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "device": "nova",
+  "seconds": 500,
+  "route": "nfs-mw-quickrace",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "e654516849",
+  "b_ref": "e654516849",
+  "a_env": [],
+  "b_env": [
+    "HAKUX_TEXSCAN=1"
+  ],
+  "queue_order": "Queued by the lane (an env A/B; arms.sh skips a_ref == b_ref): four requests of one run each, off, on, on, off (request.sh --who texscan1010 --title <title> --route nfs-mw-quickrace --seconds 500 --perflog --device nova --ref e654516849 [--env HAKUX_TEXSCAN=1] --expect this file), so neither state always runs on the shader cache the other warmed, and the device is left in the shipped state.",
+  "judge": "python3 docs/lanes/texscan1010/texread.py <off1> <on1> <on2> <off2> --expect docs/testing/predictions/texscan1010-nfs.json",
+  "baseline": "Off, from runs that already exist, read with texread.py over the same windows (12 starts each): census 1-1791648919-texscan1010-2004607 (4784750c3c, perflog): period 46.4 ms (21.5 fps), v2 32.1% v3 57.6% v4+ 10.1%, range 4.05 ms/frame, txw sdl 3.93 + scan 4.09 of ct 9.09 ms/frame, phase-row gfps 22.9; perdrawon1010 1-1791644405 (fix off): period 43.5, v2 42.7% v3 51.5% v4+ 4.8%, range 3.89; 1-1791645060: period 41.9, v2 48.3% v3 48.1% v4+ 2.1%, range 3.95. Run-to-run band of the off period: ~4.5 ms.",
+  "prediction": "#433 HAKUX_TEXSCAN=1 at the NFS MW race start. The census (NOTES.md section 3) found every create_texture() download in the starts is a whole face of the car's 128x128 cube environment map: face 0 by the SDL block (30/60 frames), faces 1-5 by the range scan (240/60 frames), each site one synchronous GPU finish plus a readback, together ~8 ms/frame of the pgraph thread (sdl ~3.9 + scan ~4.0). With the switch on, the route copies the changed faces on the GPU instead and the CPU waits for nothing; the cube is also no longer re-hashed and re-uploaded from VRAM every frame, because the downloads no longer rewrite its VRAM. Predicted, pooled over 2 runs per state, 12 starts each, GO+0..GO+10.5 s: R: [sdcall] range ms/frame on <= 0.5 (the scan of this cube is skipped; nothing else downloads), off >= 2.5. P: frame period on - off in [-12, -2] ms; point estimate -5 ms (off ~44 ms / 23 fps -> on ~39 ms / 26 fps): the finish drains the GPU mid-frame and the CPU then records while the GPU idles, so removing it lets the two overlap; not all of the ~8 ms is critical path, because part of each wait is GPU work the frame needs anyway. H: frames are vblank-quantized, so the gain shows as frames crossing a boundary: the v3+v4 share falls by at least 10 points and the v2 share rises by at least 10 (point estimate v2 ~40% -> ~55%). The start still does not hold 30 fps (v2 stays well under 90%): the rest of the ~39 ms is draw work this route does not touch. F: phase-row gfps at matched work (bin-weighted by draws/frame) on - off in [+1, +8], point +2.5. What refutes it: R passes and P/H fail -- the waits were hidden behind GPU-bound time, the frame is GPU-limited at the start, and the switch has no fps value there (it then stays default-off and the lane says so). R fails on -- something else downloads in the starts once the cube stops, which ts[fb] and [tsc] cls name. V also requires the route to have fired in every on run (ts cp > 0 in the starts) and never in an off run. Pixels: the car's reflection is the copied cube; the route frames at each mark are checked by eye, on vs off, for a reflection that is present and the same kind (not black, not stale, not garbage).",
+  "expect": {
+    "V_min_starts": 12,
+    "V_min_pace_lines": 30,
+    "R_on_max": 0.5,
+    "R_off_min": 2.5,
+    "P_dperiod_min": -12.0,
+    "P_dperiod_max": -2.0,
+    "H_dslow_max": -10.0,
+    "H_dv2_min": 10.0,
+    "F_gfps_min": 1.0,
+    "F_gfps_max": 8.0
+  },
+  "expect_note": "Named rules read by docs/lanes/texscan1010/texread.py (legs V, R, P, H, F, N); a soak writes no captures.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}
