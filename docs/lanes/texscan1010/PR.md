@@ -9,4 +9,8 @@ Files: hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/surface.c, docs/
 Prediction: none yet (to be registered before any arm: NFS MW race start, HAKUX_TEXSCAN on vs off, same build)
 Needs device: yes (Nova)    Needs NDK: yes
 
-Working. Step 1 (name the downloads at the NFS race start) first.
+Working.
+
+- Step 1 is done: NOTES.md section 3. Every download at the NFS race start is a whole face of the car's 128x128 cube environment map, 270 per 60 frames, and together they cost 7.3 ms/frame.
+- Step 2 is built: NOTES.md section 4. HAKUX_TEXSCAN=1 copies those faces on the GPU.
+- Next: the pixel suites, switch on vs off.
