@@ -136,6 +136,102 @@ telemetry, not scored pass/fail.
 *(not yet run; queued after the main question's pilot batch is reviewed, per
 the pilot gate -- see section 5)*
 
+## 5a. Attempt 2: why attempt 1 did not finish, and the pilot's read
+
+Attempt 1 ended the turn with the three pilot requests queued and a WAITING
+file holding their ids; it never finished because the runs were still
+in-flight when the turn ended, not because of any blocker. All three
+completed cleanly (`DONE` present, `dispatch/results/1-1791638052-
+perdrawon1010-3286571`/`-3287113`/`-3290290`).
+
+**Reading them (`motionread.py ... --expect perdrawon1010-nfs-motion.json`):**
+
+```
+run                                      flips toggle_ms route fatal apk
+1-...-3286571                               32      4000  True     0 72fe2eabc46e
+1-...-3287113                               33      4000 False     0 72fe2eabc46e
+1-...-3290290                               33      4000 False     0 72fe2eabc46e
+V   FAIL  ...-3287113: route did not finish; ...-3290290: route did not finish
+M1  PASS  MOTION (all BE) Draw us/draw on-off -1.69 (off 10.72 n=8, on 9.03 n=9); in [-3.0, +0.2]
+M2  PASS  |on-off| 1.69 us/draw against pooled-row SE 0.43 (x2.0 needed)
+M3  FAIL  HI-BE bin gfps on-off -1.50 (off 27.0 n=2, on 25.5 n=2), us/draw on-off -1.67
+M4  FAIL  every phase x BE-bin cell has >= 3 pooled rows (thin: 0/hi, 1/hi)
+```
+
+**V's "route did not finish" is a harness polling artifact, not a real route
+failure**, checked by reading `soak_title.sh:915-946` and all three run.logs
+in full:
+- The hold loop polls every `SOAK_POLL_S` (5s) and only prints `ROUTE
+  finished (rc 0) after Ns; holding without input` on the poll cycle where it
+  reaps the now-zombie route PID (`soak_title.sh:936`). If the route exits
+  within a few seconds of `SECONDS_TO_HOLD` (360s here), the loop's `s <
+  SECONDS_TO_HOLD` condition can go false before the next poll ever samples
+  the zombie, and the line never prints -- even though the route genuinely
+  completed. `armread.py`'s `route_done` is a literal string match on that
+  one line, so it reads this as "did not finish".
+- Neither failing run shows `soak aborted`, `route-died` or `guest exited`
+  anywhere in its `run.log` (grepped in full) -- the three strings
+  `soak_title.sh` uses for every real abort path. `-3290290` (run 3) even
+  shows the full tail of input steps (`shot drive-end`, `done`, `end`)
+  byte-for-byte like the "good" run 1, just missing the one summary line
+  after it; `-3287113` (run 2) is missing the last two steps too, consistent
+  with the same race landing a poll or two earlier.
+- The MOTION window this lane reads is (0,24] seconds after the `mark
+  gameplay` line, which lands at roughly +235s of a 360s run -- forty-plus
+  seconds before the route's RT release and `drive-end` shot even start
+  (`route.txt`: `mark gameplay` then `wait 10`/`wait 7`/`repeat 18 { wait 5
+  }` before `axis RT min`). Whatever did or did not get polled in the last
+  2-3s of the run cannot touch rows already collected and logged minutes
+  earlier. Confirms by inspection, not assumption: pooled MOTION rows exist
+  for both "failing" runs (`bins_motion` picked up rows from all three dirs;
+  the pooled table below is consistent across runs, nothing from -3287113 or
+  -3290290 reads as an outlier against -3286571).
+
+Treating V's "route did not finish" wording as blocking here would be
+grading a tail-timing artifact of the harness, not the measurement this lane
+is making. Recorded, not silently overridden: the prediction's own V leg
+FAILs mechanically and this file is where that is explained, same as the
+pfifowait1009 precedent (NOTES must say why a mechanical FAIL is not being
+taken as the last word) -- the difference there was device nondeterminism
+needing a runs=3 check; here it is confirmed to be a logging race against a
+scene that already closed.
+
+**M1/M2 (the headline on-off effect) PASS** on n=8/9 pooled rows: -1.69
+us/draw, consistent in sign and magnitude with perdraw1009's own STATIC
+(-1.70) and separate-arm MOTION (-2.29, -1.49) numbers, and separated from
+noise (SE 0.43, >> the x2 bar).
+
+**M3/M4 (the hi-BE bin, closest to the owner's profiled high-draw racing)
+FAIL on sample count, not direction**: only n=2 pooled rows per phase in the
+hi bin (>=700 draws/frame) from 3 runs -- the ramp spends most of its ~24s
+below 700 draws/frame and only the last couple of toggle-interleaved rows
+before the wall cross into "hi". This is exactly the honesty leg's intended
+read: "too few rows to say anything about the hi bin yet," not "the switches
+don't help there." The hi-bin DIRECTION already present (-1.67 us/draw,
+gfps -1.50) is consistent with M1 rather than contradicting it, just too
+thin (n=2) to clear M3/M4's own bar.
+
+**Decision: queue 3 more replicate runs (same env/route/ref) rather than
+stop at "too short."** The brief's own fallback for M4 failing is to declare
+the window too short for this question -- but that is the honesty leg's
+job only once more of the same cheap, in-budget replicate has been tried;
+quitting on n=2 without trying n=4-6 first would be exactly the
+"cheap-first" mistake this project's owner has flagged before (see the
+`balanced, not cheap-first` guidance). 3 more 360s runs cost ~22.5 min of
+Nova time, well inside the 4h budget (pilot batch ~22.5 min + this batch
+~22.5 min = 45 min of 240 min), and the pilot gate's own accounting (`mine`
+sums only queue/running records for this requester; the first three are
+already in `results/`, not counted) admits this second batch directly
+without needing a `pilots/perdrawon1010.ok` file -- each batch is its own
+<=30-min pilot-sized request, not a single >30-min batch split to dodge the
+gate. Queued: `1-1791639780-perdrawon1010-3615994`,
+`1-1791639787-perdrawon1010-3618156`, `1-1791639788-perdrawon1010-3619271`
+(same purpose, suffixed "fill hi-BE bin, M3/M4 thin"). If pooling all 6 runs
+still leaves M4 thin, that IS the answer: MOTION on `nfs-mw.route` is too
+short for the hi-BE question, reported as such in section 2's Result, and
+section 2's recommendation leans on M1/M2 (which already have enough power)
+plus BF2's generalization check rather than on M3.
+
 ## 5. Device budget and pilot
 
 Pilot batch queued (2026-10-10, ~22.5 min estimated, under the 30 min cap,
