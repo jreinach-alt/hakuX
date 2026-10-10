@@ -8,13 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `drawrec1010` | claude-opus-5-5 | 20 min | drawrec1010: HAKUX_DRAWREC=1 (default off): owe the vertex sync's TLB walk, and consume a stale shader_binding |
-| `reportasync1010` | claude-opus-5-5 | 5 min | reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5) |
+| `drawrec1010` | claude-opus-5-5 | 35 min | drawrec1010: HAKUX_DRAWREC=1 (default off): owe the vertex sync's TLB walk, and consume a stale shader_binding |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 8 waiting, 1 running.
+- **Device queue:** 15 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -74,8 +73,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/drawrec1010` | drawrec1010: HAKUX_DRAWREC=1 (default off): owe the vertex sync's TLB walk, and consume a stale shader_bindings_changed  | `97eba43bc5` | 2026-10-10 15:28 |
-| `lane/reportasync1010` | reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5) | `a21a3361d9` | 2026-10-10 15:27 |
+| `lane/drawrec1010` | drawrec1010: HAKUX_DRAWREC=1 (default off): owe the vertex sync's TLB walk, and consume a stale shader_bindings_changed  | `acc1f8170b` | 2026-10-10 15:44 |
 
 ## Recently landed on master
 
@@ -92,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 Lane: nightlywrap1010            Issue: none (dispatched directly by lane.local, #433 umbrella)
 - 2026-10-10 lane.lanepath1009: lane.sh gives each lane unit a shim-first PATH with --setenv (#433, 0.5)
 
-_Updated 2026-10-10 15:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 15:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
