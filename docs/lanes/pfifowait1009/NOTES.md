@@ -474,3 +474,77 @@ shipped), which is what step 4's two-pacing-check actually asks for, not
 just two runs of the same pacing. Both pacing checks pass; step 4 is
 satisfied. Proceeding to the scored arms (step 5, prediction already
 registered in section 3).
+
+## 5. Scored A/B arms queued (brief step 5, 2026-10-10 ~09:17 PDT)
+
+Pilot verdict written first: `$DISPATCH_DIR/pilots/pfifowait1009.ok`,
+dated 2026-10-10 01:56 PDT, recording run #1/#2 above (route-holds-up,
+not scored) as the pilot per the role contract's "queue at most two
+first, write the verdict, then queue the rest." The gate's own stderr on
+the third queued request confirms it was read: `pilot gate: pfifowait1009
+would hold ~38 min of device time; reviewed pilot ... (0.0 h old) admits
+it` (and again at ~54, ~71 min for the following two).
+
+Before queuing: merged `origin/master` (15 commits, all `surfgpu1009`'s
+own files, none touching this lane's territory -- `git diff --stat`
+checked first) so the device-budget estimate and any shared-tree state
+are current, per the lane contract's "merge before concluding anything
+from this tree."
+
+`--suites` built from `pfifowait1009-pgraph-inert.json`'s registered
+`disc.suites` (27, not 26 -- miscounted when the brief's prose said
+"26 suites" in section 3; the registered list itself, which is what
+`must_not_move` actually checks, has always had 27) via `s.replace('_',
+' ')` -- confirmed that is the right direction by reading
+`ab_compare.py:1093` (`want = {s.replace("_", " ") for s in suites}`),
+since request.sh's own examples (`uberspike569/host/requeue3.sh`) use
+space-separated suite names and the registered JSON's names are the
+underscored ab_compare.py-internal form.
+
+| arm | id | what |
+|---|---|---|
+| pgraph A | `1-1791622671-pfifowait1009-332891` | 27-suite disc, no env, ref 221a22f5a8 |
+| pgraph B | `1-1791622678-pfifowait1009-333205` | same suites, `HAKUX_PFIFOWAIT=1`, ref 221a22f5a8 |
+| amped2 A run1 | `1-1791622681-pfifowait1009-333368` | `HAKUX_FRAMETRACE=1`, 900s, ref 221a22f5a8 |
+| amped2 B run1 | `1-1791622686-pfifowait1009-333514` | `HAKUX_FRAMETRACE=1 HAKUX_PFIFOWAIT=1`, 900s, ref 221a22f5a8 |
+| amped2 A run2 | `1-1791622691-pfifowait1009-333706` | `HAKUX_FRAMETRACE=1`, 900s, ref 221a22f5a8 |
+| amped2 B run2 | `1-1791622692-pfifowait1009-333840` | `HAKUX_FRAMETRACE=1 HAKUX_PFIFOWAIT=1`, 900s, ref 221a22f5a8 |
+
+All `--who pfifowait1009 --issue 433`, pinned `--device nova`, all scored
+against their stated `--expect` prediction file (`ab_compare.py` for the
+pgraph pair, `waits.py`/`workbin.py` by hand for the soak pair per the
+prediction's own `judge` field). Queued at `release: '0.5'` priority
+(auto-picked up from `#433`'s label) -- ahead of plain `study` requests
+but, per the brief's Rules, still behind `surfgpu1009`'s and
+`perdraw1009`'s own release-tier runs already queued or running on the
+shared Nova.
+
+Each `--env HAKUX_FRAMETRACE=1`/`HAKUX_PFIFOWAIT=1` soak request printed
+a `WARNING: must_not_move has 1 entry on a SOAK` -- expected and harmless:
+that field (the pgraph-inert cross-reference) is read by eye from
+`NOTES.md` section 3's text, not by any tool on a soak result; the
+warning is request.sh correctly saying so, not a problem with the queued
+request.
+
+NFS Most Wanted (the brief's second title, route read from
+`lane/perdraw1009`, not edited) is NOT yet queued: its own A/B needs a
+registered prediction first (none exists for it in this lane yet), and
+that registration is the next step after reading these six results,
+not before. Device time already queued here is ~71 min total
+((900+90)*4 soak + the two pgraph discs, each materially shorter); adding
+a third title's pair before reading what this batch shows would be
+spending device time ahead of a decision it could change, which the pilot
+rule and `balanced-not-cheap-first` both argue against.
+
+### Ending this turn WAITING, not polling
+
+Six requests queued, ~71+ min of Nova time, shared with two other lanes'
+release-tier runs ahead of mine in queue order -- polling synchronously in
+this turn risks either the turn ending mid-wait (attempt 1's exact
+failure) or spending the whole turn blocked on `sleep` loops for no
+benefit over a resume. Per Addendum 2: commit + push
+`docs/lanes/pfifowait1009/WAITING` naming all six ids, then stop. The
+next resume reads all six results, updates this file, and (if the soak
+pair is a Hit/Moved/Miss per section 3's legs and the pgraph pair shows
+`worse=0`) moves to registering and queuing the NFS MW pair, then
+writes `PR.md` with `State: ready`.
