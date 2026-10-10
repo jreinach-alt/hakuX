@@ -153,4 +153,159 @@ requests and 1 running + several `drawrec1010` requests sharing the Nova --
 well beyond a few 10-minute polling chunks. Writing `WAITING` rather than
 polling further this turn.
 
-<!-- full run results appended below once device time lands -->
+## 6. Why attempt 1 didn't finish
+
+Attempt 1 did everything through registering the predictions, merging in
+texscan1010/pfifowait1009/forzasurf1010, and queuing the B'/D' perflog pair
+(`1-1791660793-gpupass1010-760340` off, `1-1791660794-gpupass1010-761330`
+on) behind 8+ `reportasync1010`/`drawrec1010` requests on the shared Nova.
+Per the lane contract ("never end a turn waiting for a background task"),
+it wrote `WAITING` with both request ids and stopped rather than poll —
+correct behavior, not a failure. The runs were simply still queued when the
+turn budget ran out. Both are now `DONE`; this section and PR.md pick up
+from there.
+
+## 7. Three `gpuread.py` bugs found reading the perflog pair (fixed, `d3baeb348b`)
+
+Both landed runs initially read as `FAIL` across the board. All three
+causes were bugs in this lane's own reader, not the device data:
+
+1. **FATAL regex matched a benign tag.** `FATAL` included `hakuX-unhandled`,
+   a deduped per-(class,method) diagnostic for unimplemented NV2A methods
+   (`docs/investigations/unhandled-methods-inventory.md`), not a crash.
+   `title_verdict.py:333`'s own convention treats only `hakuX-crash` at E/F
+   as fatal. Fixed by dropping it from the regex.
+2. **Cold-window label never matched anything.** The reader looked for
+   `windows(marks, {'go1'}, ...)`, but `nfs-mw-quickrace.route` writes
+   `mark gameplay` for the first start and `mark go2`..`go12` for the rest
+   (confirmed directly in the route file) — there is no `go1`. Every cold
+   bucket, in every prior invocation since this script was written, was
+   silently empty. Fixed by replacing `{'go1'}` with `{'gameplay'}` in all
+   three occurrences.
+3. **`pace_pool`'s denominator was the cumulative flip counter, not the
+   window's flip count.** `hakuX-pace`'s `f=` field is a run-cumulative
+   total (confirmed from raw lines: `f=60`, `f=120`, ... `f=19020` by the
+   end of a 500 s run), not a per-window count; summing it across pooled
+   windows inflated the denominator by roughly (cumulative/60)x and read
+   `ms_per_frame` two orders of magnitude too low. Fixed by using `tot`
+   (the v0..v4 histogram sum, which genuinely is a per-window flip count,
+   always 60) as the denominator instead.
+
+A fourth change, not a bug fix: added `cold_cd`/`warm_cd` buckets that pool
+the same rp/rpc data over `COUNTDOWN_WINDOW` (pre-GO load/countdown) rather
+than `GAMEPLAY_WINDOW` (post-GO racing), at zero extra device time. This
+matters because the baseline this lane's predictions cite
+(nfs30plan1010's 21.7 ms/69-pass cold census, NOTES 5.5) was measured over
+the countdown slice for the first start only — a different window than
+`gpuread.py`'s original "cold" bucket. `cold_cd`/`warm_cd` is the
+closer-to-apples-to-apples comparison; both are reported below.
+
+## 8. Results
+
+Both runs: `max` perf/fan regimen (`perf_regimen.json`, identical across
+arms, rules out a thermal/clock confound), no truncation
+(`ab_compare.py --check-truncation`, clean on both), shader cache cleared
+fresh for each (`result.json`'s `shader_cache`), 12/12 go marks, no fatal
+lines. Moving-player gameplay confirmed by reading `s1-g11.png` for both
+arms directly: off (`141958-s1-g11.png`) and on (`142908-s1-g11.png`) both
+show the car mid-race, "2/3 COMPLETE 5%", ~11.7 s into the start — matched
+scene, not a parked HUD clock.
+
+`python3 docs/lanes/gpupass1010/gpuread.py --arm <off|on> <run dir>`:
+
+| window | arm | n | GPU busy ms | X/R | mode(in/out) | passes/frame | period ms |
+|---|---|---|---|---|---|---|---|
+| cold (gameplay) | off | 9 | 5.10 | 0.24 | 0.81 | 15.6 | 59.56 (n=4) |
+| cold (gameplay) | on | 11 | 3.83 | 0.02 | 0.98 | 13.8 | 51.37 (n=4) |
+| warm (gameplay) | off | 119 | 3.98 | 0.03 | 0.97 | 10.4 | 44.50 (n=44) |
+| warm (gameplay) | on | 140 | 3.54 | 0.01 | 0.99 | 9.6 | 43.71 (n=46) |
+| cold_cd (countdown) | off | 3 | 7.12 | 0.41 | 0.71 | 23.6 | -- |
+| cold_cd (countdown) | on | 3 | 5.15 | 0.02 | 0.98 | 21.9 | -- |
+| warm_cd (countdown) | off | 35 | 4.26 | 0.02 | 0.98 | 10.0 | -- |
+| warm_cd (countdown) | on | 36 | 4.07 | 0.01 | 0.99 | 9.2 | -- |
+
+`gpuread.py`'s own verdict legs: off-arm `V=PASS M=FAIL G=PASS X=PASS
+P=PASS`; on-arm `V=PASS M=PASS G=PASS X=PASS P=PASS`.
+
+### Reading the legs against `gpupass1010-rendermode.json`'s prediction
+
+- **M (mode-confirmation), off-arm FAIL by a hair:** gameplay-window cold
+  mode is 0.81, one hundredth above the 0.80 GMEM-active cutoff. Read
+  alongside `cold_cd` (0.71, clearly GMEM) and the on-arm's own clean 0.98
+  PASS, this reads as a windowing artifact (the gameplay-window cold bucket
+  has only n=9 and includes less tile-heavy tail frames), not evidence
+  that the render-mode row failed to take effect. The countdown window is
+  the closer analog to the baseline's own measurement and confirms GMEM on
+  the off arm unambiguously.
+- **G/X (GPU busy, X/R):** directionally as predicted — GPU busy falls
+  off->on in every bucket (cold_cd -28%, cold gameplay -25%, warm_cd -4%,
+  warm gameplay -11%), and X/R collapses toward 0 in every bucket (biggest
+  in cold_cd: 0.41->0.02). But the *magnitude* is far smaller than the
+  conditional prediction's premise (21.7->14 ms, assuming NFS behaves like
+  AUF/DOA): off's own cold GPU busy here is only 5.10-7.12 ms, nowhere near
+  21.7 ms. See section 9 — this is an open discrepancy against the cited
+  baseline, not a render-mode effect.
+- **P (passes/frame):** roughly unchanged by the mode switch alone, as
+  predicted — cold gameplay 15.6->13.8, cold_cd 23.6->21.9, both within the
+  predicted "no mode effect on pass count" claim.
+- **Period:** flat within noise in the reliable bucket (warm, n=44/46:
+  44.50->43.71 ms, -1.8%, inside the ~4-5 ms noise band). The cold bucket's
+  apparent larger drop (59.56->51.37 ms, n=4 each) is not attributable to
+  the measured GPU-busy delta (1.27-1.97 ms) — far smaller than the
+  8.2 ms period delta — so it reads as sampling noise from only 4
+  flip-windows per arm, not a GPU-driven effect. This supports the
+  prediction's framing: on this base (reportasync1010 not yet merged here),
+  the GPU is not on NFS's critical path, consistent with
+  `pfifowait1009`'s own FAIL verdict cited in section 5.
+
+### Step 3 cross-check (texscan census, off-arm only, no new device time)
+
+`gpupass1010-texscan.json`'s `a_env` arm (`HAKUX_GPUXFR=1` only) is the
+same request as this lane's off-arm run, reused. Its cold passes/frame:
+15.6 (gameplay window) / 23.6 (countdown window, closer match to the
+baseline's own window). The `b_env` arm (`+HAKUX_TEXSCAN=1`) was never
+queued — budget was fully spent on the render-mode pair, as recorded in
+that file's `status` field at registration. No on/off `HAKUX_TEXSCAN` delta
+is reported here; that prediction remains unjudged, carried forward as a
+follow-up for #433 (not blocking this PR).
+
+## 9. Open discrepancy: both arms read far below the cited baseline
+
+Both arms' GPU busy and pass counts are 3-4x smaller than
+nfs30plan1010's own census (21.7 ms/69 passes cold, 12.8 ms/26.5 passes
+warm) — and this gap appears in BOTH arms equally, so it is not a
+render-mode effect. Conditions match on paper: same route, same disc,
+fresh shader cache, first-run hdd state, `HAKUX_GPUXFR=1`, `--perflog`.
+The `cold_cd` bucket (closest window match to the baseline's own) narrows
+the gap least and still reads 7.12/5.15 ms against 21.7 ms, and
+23.6/21.9 passes against 69.
+
+Not chased further here — the 4-run/500s device budget is fully spent, and
+tracing this needs either a side-by-side rerun of nfs30plan1010's own exact
+reader against this lane's logcats, or new device time, neither of which
+fit this lane's cap. Flagged as a named follow-up for whichever lane picks
+up #433 next: **re-verify nfs30plan1010's census figures against a fresh
+run with gpuread.py's windowing, or identify what differs between the two
+readers' window/line-selection logic.** Until resolved, treat the *relative*
+(off vs on) deltas in section 8 as trustworthy (same reader, same route,
+same windowing, applied identically to both arms) but the *absolute*
+magnitudes as uncertain against the brief's cited baseline.
+
+## 10. Keep/drop recommendation for the NFS `kTitleRenderModes` row
+
+**Keep.** Zero measured downside: pixel check is an architectural no-op
+(section on step 4, pixel suites boot under a title id matching no table
+row, so `rendermode474`'s existing PASS 1059 already covers it); passes/frame
+is unchanged within noise; period does not regress in the reliable (warm)
+bucket. And a real, if modest, upside: GPU busy drops 25-28% at the race
+start and the mode-confirmation/X/R legs both confirm the row actually
+engages sysmem and collapses the GMEM double-pass signature, matching the
+corpus's established remedy class (gmem474/rendermode474/flip474). The
+absolute-magnitude discrepancy in section 9 is a measurement-methodology
+open question, not evidence of harm — it affects how big the win is, not
+whether there is one. GPU is not yet on NFS's critical path at this base
+(section 8's period reading), so a player will not see a frame-time change
+from this row today; that is expected and already named in the brief's
+"Why" (this row is positioning for when the GPU IS on the path, e.g. once
+reportasync1010 lands here, or on heavier tracks/conditions).
+
