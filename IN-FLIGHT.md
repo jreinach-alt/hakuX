@@ -8,14 +8,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `perdraw1009` | claude-opus-5-5 | 59 min | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) |
-| `pfifowait1009` | claude-sonnet-5 | 28 min | pfifowait1009: make amped2.route's menu phase pacing-robust (#433, 0.5) |
-| `surfgpudefault1009` | claude-sonnet-5 | 22 min | surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5) |
+| `lanepath1009` | claude-sonnet-5 | 11 min |  |
+| `pfifowait1009` | claude-sonnet-5 | 42 min | pfifowait1009: release pfifo.lock across the STALLED finish's fence waits (#433, 0.5) |
+| `surfgpudefault1009` | claude-sonnet-5 | 36 min | surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `2026-10-10T06:51:41Z`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 6 waiting, 0 running.
+- **Device queue:** 3 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
 
 ## 0.5 release: Playable titles
@@ -75,8 +75,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/perdraw1009` | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) | `334904b9e7` | 2026-10-09 23:42 |
-| `lane/pfifowait1009` | pfifowait1009: make amped2.route's menu phase pacing-robust (#433, 0.5) | `b8f3881f2f` | 2026-10-09 23:54 |
+| `lane/pfifowait1009` | pfifowait1009: release pfifo.lock across the STALLED finish's fence waits (#433, 0.5) | `77fd9d4881` | 2026-10-10 00:06 |
 | `lane/surfgpudefault1009` | surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5) | `214da4fe81` | 2026-10-09 23:40 |
 
 ## Recently landed on master
@@ -91,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-08 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
 - 2026-10-08 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 
-_Updated 2026-10-10 00:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 00:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
