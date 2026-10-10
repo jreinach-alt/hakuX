@@ -102,6 +102,14 @@ counters below name the largest per-draw cost directly (section 5.3).
 | id | what | build | result |
 |---|---|---|---|
 | 1-1791656193-drawrec1010-4097387 | census, race start, 12 starts, HAKUX_UNI_BULK/UBERCACHE/FOGCACHE=1 | perflog @ e7f2e720c8 | DONE; 12 marks, 68 windows, section 5 |
+| 1-1791661636-drawrec1010-950252 | pixels B: 27-suite disc, F1-F3 + HAKUX_DRAWREC=1 | plain @ b10dcdb737 | queued |
+| 1-1791661643-drawrec1010-951834 | pixels A: 27-suite disc, F1-F3 | plain @ b10dcdb737 | queued |
+| 1-1791661643-drawrec1010-951926 | NFS race start, F1-F3 + HAKUX_DRAWREC=1, 500 s | perflog @ b10dcdb737 | queued |
+| 1-1791661644-drawrec1010-952014 | NFS race start, F1-F3, 500 s | perflog @ b10dcdb737 | queued |
+
+All F1-F3 runs carry `HAKUX_UNI_BULK=1 HAKUX_UNI_UBERCACHE=1 HAKUX_UNI_FOGCACHE=1`.
+The four queued runs are the pilot (24.7 min by the gate's estimate). After they are
+read, the plain NFS runs go in the order off, ON, ON, off (section 9).
 
 ## 5. Census result (run 1-1791656193-drawrec1010-4097387)
 
@@ -204,14 +212,71 @@ V and R1 go behind `HAKUX_DRAWREC=1` with per-part disables
 (`HAKUX_DRAWREC_VTX=0`, `HAKUX_DRAWREC_SHC=0`). Push constants for the dynamic offsets:
 not built, the dynamic-only class is 0.0%.
 
-## 7. Why attempt 1 did not finish
+## 7. Why attempts 1 and 2 did not finish
 
 Attempt 1 built the census instrument and reader, queued the census arm
 (1-1791656193) and ended correctly on `WAITING` with that run id: a headless session
 cannot wait 90 minutes for a device run. The run is DONE; attempt 2 starts from its
 result.
 
-## 8. Do not repeat
+Attempt 2 read the census (section 5), built step 2 (section 8, b10dcdb737), registered
+both predictions (section 9, f789451fec), queued the pilot runs (section 4) and ends on
+`WAITING` with their ids, for the same reason.
+
+## 8. Step 2 as built (b10dcdb737, draw.c only)
+
+`HAKUX_DRAWREC=1`, default off; `HAKUX_DRAWREC_VTX=0` and `HAKUX_DRAWREC_SHC=0` turn
+one part off alone. Logcat (`hakuX-stall`): `[drawrec1010] drawrec=%d vtx=%d shc=%d`
+once at start, and every 60 flips with the switch on
+`[drawrec] f=<flips> vtx dirty=<ranges> redo=<REDO-only copies> redoKB= walks=<FLIP>+<BUDGET> runs= pages= shc=<flags consumed>`.
+
+- **VTX.** `sync_vertex_ram_buffer()` still test-and-clears `DIRTY_MEMORY_NV2A` over
+  each range and copies it. It no longer calls `physical_memory_dirty_bits_cleared()`
+  per range; the range's pages go into two bitmaps, OWED (bits cleared, TLB not yet
+  re-armed) and REDO (copy on every touch whatever the bits say, because until the
+  re-arm a guest store may set no bit). OWED is walked once per flip (first sync after
+  `g_nv2a_stats.frame_count` moves) and early when REDO-only copies pass 32 copies or
+  256 KB, in runs merged across gaps of <= 16 pages, at most 8 runs per batch (the rest
+  one span). A page copied after its walk with its bits clean leaves REDO.
+  `has_dirty_vertex_pages()` reports a REDO page as dirty.
+- **SHC.** After a full-path draw whose `create_pipeline` exit was SAMEKEY, or LRU with
+  a valid pipeline, `shader_bindings_changed` is cleared after
+  `update_descriptor_sets()`. That is what a no-change `bind_shaders()` leaves; the
+  flag is set again by the next real binding change.
+
+Why the deferred re-arm is safe (read from the code, not measured): the NV2A client's
+bits are the only ones the walk re-arms for the vertex sync. `surface.c`'s NV2A
+test-and-clear is unreachable under TCG; the texture path (`NV2A_TEX`) does its own walk;
+code pages are protected by `tlb_protect_code` independently. A store the deferred walk
+lets through without a bit lands on a REDO page, which is copied on its next touch.
+
+Host gcc and NDK clang build it clean (the `-Wshift-negative-value` warnings are the
+existing `TARGET_PAGE_MASK` lines).
+
+## 9. Predictions and the judge
+
+- `docs/testing/predictions/drawrec1010-pixels.json`: the 27-suite disc, switch on vs
+  off, byte-identical (`must_not_move` every suite). Known noisy captures (Stencil
+  REPLACE*, GeometrySuperscreen_*) are named in the prose with a 3-run recheck if they
+  move. Judge: `ab_compare.py --a <A> --b <B> --expect` it, and the switch line in both
+  logcats.
+- `docs/testing/predictions/drawrec1010-nfs.json`: the NFS race start, F1-F3 on in both
+  arms, one perflog run and two plain runs per state, judged by `drawread.py` here.
+  Legs: V (12 marks, no fatal, switch line matches the env, >= 15 countdown pace lines
+  per state); R (`[rdc]` vtx walks/flip ON <= 20, OFF >= 100); U (perflog us/draw ON/OFF
+  in [-35%, -15%], ON Syn <= 2.0 ms/frame); P (plain warm pace ON - OFF in [-7, -1]
+  ms/frame); H (plain warm v2 share +5 points or more); T (the brief's numbers: warm ON
+  <= 38, cold ON <= 52, v2 +10) reported, not judged. P(R) 0.8, P(U) 0.6, P(P) 0.5,
+  P(H) 0.5. The brief's -30% us/draw is the top of U's range, not its point: F1-F3 already
+  took Desc and Mfp (5.3), so what is left for this lane is Syn's walks and the SHC paths.
+- Baseline read with `drawread.py` from perdrawon1010's perflog runs 726861 + 728778:
+  warm countdown pace 43.5 ms/frame, v2 41.6%, `[rdc]` 161 walks/flip warm (2.58 ms),
+  234 cold (3.82 ms); 7.72 us/draw at 1,578 draws/frame.
+
+Both are env A/Bs on one ref, which `arms.sh` skips (a_ref == b_ref); the lane queues
+them itself.
+
+## 10. Do not repeat
 
 - Do not `cd` out of the worktree in a Bash call: the session's working directory follows.
 - `phaseread.py` takes `--window=-2,13` (with the equals sign); `-2,13` as a separate
