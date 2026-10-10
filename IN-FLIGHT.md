@@ -8,7 +8,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pfifowait1009` | claude-sonnet-5 | 5 min | pfifowait1009: stop holding pfifo.lock across the report-processing fence waits (#433, 0.5) |
+| `pfifowait1009` | claude-sonnet-5 | 6 min | pfifowait1009: stop holding pfifo.lock across the report-processing fence waits (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
