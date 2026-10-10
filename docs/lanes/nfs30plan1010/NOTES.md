@@ -263,8 +263,108 @@ Read:
   Caveat: rr425w busy is wall time outside the idle loop, so a vCPU MMIO wait on our side counts as busy;
   frametrace's `vw=` split (5.5) separates it.
 
-### 5.5 The heavy frame, per thread
-(filled in from this lane's runs, 5.3; until then the end-to-end numbers are 4.1, 4.2 and 5.4)
+### 5.5 The heavy frame, per thread (this lane's runs 1 and 2; brief item 2)
+
+Both runs are VALID: ROUTE finished rc 0 (466 s / 459 s), 12 marks each, the countdown shot shows "1" with
+the HUD clock at 0.00 and the FPS overlay at 12, and every `s*-g11.png` shows the player moving (run 2
+start 1: 64 mph, 5% complete, overlay 26). The two runs agree within 1 ms on every reader below, so the
+figures are run 2's unless a range is given. Readers: `ftwin.py` (frametrace CSV, frames whose END falls in
+the window), `phaseread.py` (phase EMA samples printed in the window), `vcpuread.py` (`[rr425w]`),
+`docs/lanes/pmucounters/pmuread.py` (`[pmu433]`), plus the `[hakuX-ft1]` and `XFR` lines read by hand.
+Build ab1acc4154 `--perflog` + `HAKUX_FRAMETRACE=1 HAKUX_PMU=1 HAKUX_GPUXFR=1` (= master's emulator code).
+
+**The cold start (start 1, frames ending in [mark-2, mark+1.5]; 46 frames per run). Period 75.5 ms (run 1
+76.3), p95 83, every frame late, frametrace `cls` pgraph 83% (run 1 78%) / run 17%, `crit` 61 ms.**
+
+| thread | on CPU | runnable, not scheduled | blocked, by cause | sums to | source |
+|---|---|---|---|---|---|
+| vCPU | 66.6, of which the guest's idle SPIN 37.6 (`gidle`), so guest work ~29 | 0.7 | 8.2: BQL 1.7, 6.5 at no hooked site (MMIO is not hooked, `mmio=-1`; PFIFO USER reads and page-watch downloads live here) | 75.5 | `v_run gidle v_rq v_blk v_bql`; `[rr425w]` busy 25-28 ms/frame agrees |
+| **PFIFO (critical path)** | **38.0** (run 1 38.9) | 0.9 | **36.6** = waiting for the guest's next frame 12.6 (`pidle`, = phase `Idle.Fr`) + pending-report fence under `pfifo.lock` 6.7 (`p_fence`, site #54 `pgraph_vk_process_pending_reports_internal+0x37c`, 1.0 call/frame) + **17.3 at no hooked site** | 75.5 | `p_run p_rq p_blk pidle p_fence`; `pw=` fence 5.9-7.8 on the ft1 lines |
+| render | not measured: the row is never registered (`hakux_ft_thread(HAKUX_FT_RENDER)` has no caller; `have=27`) | - | its Vulkan waits are booked as "other": `o_fence` **16.7** at 1.4-1.7 calls/frame (site #27, `vkWaitForFences` in `process_finish`, `render_thread.c`), `o_submit` 0.4 | - | `fw=o.none.fence#27:14-18/1.5` |
+| main loop | 3.0 | 0.3 | 72.2 (idle) | 75.5 | `m_*` |
+| GPU | busy 21.7 of 75.5 (gpu50 16-24 on the ft1 lines); 69 render passes per frame (`rp`), 24.9 pass pairs, 20 MB GMEM load + 20 MB store per frame | | | | `gpu rp`; `XFR rp in 5.0 out 6.2 n24.9`, `rpc ... ldMB 20.4 stMB 20.4` |
+| present | 4.5 VBLANKs per frame (`vb`): 4.5 x 16.7 = 75 | | | | `vb` |
+
+The PFIFO thread's 17.3 ms at no hooked site is the sd-finish round trip: `Finish sd 91` per 60 frames
+(1.5 per frame: the cube map's face 0 sync download 0.5/frame + the range scan's 1/frame, section 2.4),
+each a non-deferred finish whose `qemu_event_wait(&finish_event)` at `draw.c:5167` has no frametrace hook,
+while the render thread sits in `vkWaitForFences` for the same finish (site #27, 1.5 calls/frame, 16.7 ms).
+The count matches, the time matches, and `[sdcall] fin 1.00/frame dl 4.0/frame` plus `txw sync-dl 0.5/frame`
+name the callers. So at the cold start the PFIFO thread's 75.5 ms is:
+
+    38.0 on CPU  +  17.3 sd-finish round trips  +  6.7 report fence  +  12.6 waiting for the guest  +  0.9 runqueue
+
+and the phase view of the same window (`phaseread.py`, EMA samples, G 78.1 / 77.7) splits the on-CPU part:
+Draw 22.9 (1,860-1,930 draws, `BE`; 11.9 us/draw: Syn 4.6 Pipe 6.4 (Sh 4.1) Desc 2.7 Setup 1.4 Mfp 3.9),
+Surf 2.1, Fin 26.7 (Sub 18.5 = the round trips above plus the submit prep; Fen 1.3; the report tail),
+Idle 12.2, Tot 64.5, and **G - Tot = 13.6 ms of PFIFO time under no phase timer**. Subtracting the waits,
+the PFIFO thread's 38 ms on CPU is ~23 ms of draw recording, ~2 ms of surface work, ~2 ms inside finishes,
+and ~10-13 ms outside every timer: method parsing and the pusher (Push 0.7 + Pull 0.65 on `hakuX-cpu`),
+`pgraph_process_pending`, texture bind bookkeeping (`txw bind 9.9` overlaps Draw), and the perflog clock
+reads themselves (lane.local's 10-09 simpleperf, section 5.2: `pfifo_thread` self 22.3% of the thread's
+on-CPU time, memcpy 15.3%, tlb_reset_dirty 4.3%, ubosz_note_upload 4.2%, surface_update 3.9%,
+apply_uniform_updates 3.7%, memcmp 3.7%, Turnip 4.5%).
+
+**A warm restart (go4-go12 pooled, 9 marks x ~62 frames per run). Period 56.2-57.1 ms, p95 59-62, `cls`
+pgraph 97-98% on 7 of 9 (go4 and go8: pgraph 56-60% / run 40-44%).**
+
+| thread | on CPU | rq | blocked | notes |
+|---|---|---|---|---|
+| vCPU | 50.1 (idle spin 26.5, guest work ~24) | 0.6 | 5.8 (BQL 1.3) | `[rr425w]` busy 24.7-25.1 per frame at the countdown, both runs |
+| PFIFO | 30.4 | 0.6 | 25.4 = guest wait 11.0 + report fence 4.3 + 10.1 unhooked | unhooked = `o_fence` 9.6 again (sd round trips) |
+| GPU | 12.8 busy; 26.5 passes/frame; 10.4 pairs; 12 MB load/store | | | `XFR` at go2 |
+| present | 3.4 VBLANKs/frame | | | |
+
+Phase view (go4-12, `phaseread.py`): G 53-58, Draw 16.2-18.1 (1,550-1,650 draws, 10.8-11.3 us/draw), Fin
+14.4-15.9 (Sub 9.2-10.1), Idle 9.1-12.3, Tot 42.5-47.6, G - Tot 9-11.
+
+Pooled over all 24 countdowns (1,432 frames): P 59.1 (p50 56.5, p95 75.9), gpu 13.7, v_run 52.5 (gidle
+28.4), p_run 31.9, p_blk 26.6 (pidle 11.1, fence 4.6, unhooked 10.9), o_fence 10.3, rp 29.8, vb 3.5. The
+heavy tail (P >= 60, 401 frames): P 68.7, p_run 35.2, p_blk 32.7 (pidle 14.8, fence 5.0, unhooked 12.9),
+o_fence 12.3, gpu 15.9, rp 38. Post-GO ([mark+1.5, mark+12], 5,478 frames): P 46.1 (p95 61.4), late 83%
+(`cls` pgraph 82% / vsync 17%), gpu 10.3, v_run 40.3 (gidle 20.1), p_run 23.6, p_blk 22.1 (pidle 10.5,
+fence 4.4, unhooked 7.2), o_fence 7.0; phase G 46.5, 1,118 draws (12.3 us/draw), Draw 13.7, Fin 13.0,
+Idle 10.6, Tot 38.8; `[rr425w]` busy 26.2 / idle 20.5 per frame (56%).
+
+**The vCPU from the PMU (run 2, `pmuread.py --after "mark gameplay" --secs 300`; run 1 the same within
+2%):** the vCPU thread spends 87.8% of its counted time on the X3 (c7), is on CPU 87.8% of wall (the idle
+loop spins: `HAKUX_IDLE_HALT` is default off), 1,096 context switches/s, 88 migrations/s. Per frame on
+the X3: 306 M instructions, 93 M cycles at 2.87 GHz = 32.5 ms of X3 time per frame INCLUDING the spin,
+IPC 3.28, front-end stall 12.5%, back-end stall 33.8%, 0.43 branch mispredictions and 1.85 L2 refills per
+k-instruction. Good frames (29.9 fps slices) vs slow (20.9): 230 vs 352 M instructions. So the guest's
+own work is instruction-bound at a high IPC, not cache- or stall-bound, and the X3 core is held by a
+spinning vCPU while the thread on the critical path (PFIFO) runs on another core. Not measured: which
+core the PFIFO thread ran on (no instrument on this build prints it: frametrace has no core column,
+`[pmu433]` covers the vCPU only). lane.vcpusleep saw the PFIFO thread "lose the X3" when the vCPU's spin
+rose (its NOTES section 5), and the role pinning in `pfifo.c:1084-1130` / `xemu_android.cpp:1246` is
+compiled out (`XEMU_OPT_THREAD_AFFINITY 0`, perfarch NOTES).
+
+**Instrument cost.** nfsframe1010's plain build (ref 07937793af, no `--perflog`, no env,
+`1-1791649039-nfsframe1010-2037292`) on the same route, like for like on the exact `hakuX-pace ms=/60`
+of the first 60-flip window after `mark gameplay` (the countdown's last second and GO):
+
+| build | pace window after mark gameplay | ms/frame | warm countdown (`G`, go3-go12) | post-GO `[rr425w]` ms/frame |
+|---|---|---|---|---|
+| plain 07937793af (nfsframe run 1) | 3707.4 / 60 | **61.8** (16 fps) | 43.6-44.9 | 38.4 |
+| this build, run 1 | 4741.0 / 60 | 79.0 | 52-59 | 47.3 |
+| this build, run 2 | 4491.9 / 60 | 74.9 | 53-58 | 46.1 |
+
+The instruments add 13-17 ms/frame at the cold start and 8-12 warm (perflog's clock reads on the PFIFO
+and vCPU threads, the frametrace hooks, the PMU reads), so **the budget in PLAN.md is set against the
+plain build: cold start ~62 ms (16 fps), warm ~45 ms (22 fps), target 33.3**, and every CPU cost measured
+here is scaled by the plain/instrumented ratio (0.8) before it is counted; waits are not scaled. The
+owner's 13 fps (brief) was read on a perflog build (1b1fec978d-perflog) on a downtown track, by hand:
+that is this build's cold start, not the plain build's.
+
+**What each instrument cannot see (for the plan's measurement steps):**
+- The render thread's own run time, and any wait of its that is not a hooked Vulkan call: unregistered.
+- The PFIFO thread's `finish_event` wait (`draw.c:5167`) and `wait_frame_submitted` spin/block
+  (`draw.c:4712`): only as the unhooked remainder of `p_blk`.
+- MMIO waits on the vCPU (`mmio=-1`): 6.5 ms/frame of `v_blk` is unattributed.
+- The PFIFO thread's core, and the GPU clock beyond `mhz=615` (constant here, so the GPU was not
+  clock-starved: 615 MHz is the Adreno 740's top bin).
+- Phase fields are per-flip EMAs (section 3); `Draw`'s sub-phases do not sum to `Draw` (Vtx/Prw/Cmd are
+  unprinted) and `txw bind` overlaps them.
 
 ## 6. Coordination
 
