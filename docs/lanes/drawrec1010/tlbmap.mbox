@@ -1,0 +1,309 @@
+From 5980d1b4b5c4bd94467bd343d3a3c2715c6d4cc6 Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Sat, 10 Oct 2026 15:22:51 -0700
+Subject: [PATCH] lane.drawrec1010: HAKUX_DRAWREC MAP: re-arm the owed pages in
+ one TLB walk, not one per run (#433)
+
+tlb_reset_dirty() scans every live TLB entry (~8,300 on the Nova) whatever
+the range, so the owed-page walk paid ~52 scans per flip at the NFS race
+start (64 rdc vtx walks), one per merged run (lane NOTES 10.2). tlb_reset_dirty_bitmap() is
+the same locked walk with a page bitmap test on each entry in range;
+physical_memory_dirty_bitmap_cleared() runs it once per vCPU over [lo, hi)
+of the OWED bitmap, counted as rdc vtx. HAKUX_DRAWREC_MAP=0 restores the
+per-run walk. Inside HAKUX_DRAWREC=1, which stays default off.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ accel/tcg/cputlb.c            | 44 ++++++++++++++++++++++----
+ hw/xbox/nv2a/pgraph/vk/draw.c | 59 ++++++++++++++++++++++-------------
+ include/exec/cputlb.h         |  4 +++
+ include/system/physmem.h      |  6 ++++
+ system/physmem.c              | 43 +++++++++++++++++++++++++
+ 5 files changed, 129 insertions(+), 27 deletions(-)
+
+diff --git a/accel/tcg/cputlb.c b/accel/tcg/cputlb.c
+index 337171ea23..7afb3fc863 100644
+--- a/accel/tcg/cputlb.c
++++ b/accel/tcg/cputlb.c
+@@ -1374,9 +1374,18 @@ void tlb_unprotect_code(ram_addr_t ram_addr)
+  * oversized guests as MTTCG is disabled for them.
+  *
+  * Called with tlb_c.lock held.
++ *
++ * lane.drawrec1010 (#433): with @bmp, an entry in range is re-armed only if
++ * bit @bit0 + its page's offset from @start is set in @bmp. Every caller but
++ * tlb_reset_dirty_bitmap() passes NULL, which the always-inlined walk folds
++ * away.
+  */
+-static bool tlb_reset_dirty_range_locked(CPUTLBEntryFull *full, CPUTLBEntry *ent,
+-                                         uintptr_t start, uintptr_t length)
++static inline bool tlb_reset_dirty_range_locked(CPUTLBEntryFull *full,
++                                                CPUTLBEntry *ent,
++                                                uintptr_t start,
++                                                uintptr_t length,
++                                                const unsigned long *bmp,
++                                                unsigned long bit0)
+ {
+     const uintptr_t addr = ent->addr_write;
+     int flags = addr | full->slow_flags[MMU_DATA_STORE];
+@@ -1384,7 +1393,9 @@ static bool tlb_reset_dirty_range_locked(CPUTLBEntryFull *full, CPUTLBEntry *ent
+     flags &= TLB_INVALID_MASK | TLB_MMIO | TLB_DISCARD_WRITE | TLB_NOTDIRTY;
+     if (flags == 0) {
+         uintptr_t host = (addr & TARGET_PAGE_MASK) + ent->addend;
+-        if ((host - start) < length) {
++        if ((host - start) < length &&
++            (!bmp ||
++             test_bit(bit0 + ((host - start) >> TARGET_PAGE_BITS), bmp))) {
+             qatomic_set(&ent->addr_write, addr | TLB_NOTDIRTY);
+             return true;
+         }
+@@ -1406,7 +1417,9 @@ static inline void copy_tlb_helper_locked(CPUTLBEntry *d, const CPUTLBEntry *s)
+  * We must take tlb_c.lock to avoid racing with another vCPU update. The only
+  * thing actually updated is the target TLB entry ->addr_write flags.
+  */
+-void tlb_reset_dirty(CPUState *cpu, uintptr_t start, uintptr_t length)
++static inline QEMU_ALWAYS_INLINE
++void tlb_reset_dirty_walk(CPUState *cpu, uintptr_t start, uintptr_t length,
++                          const unsigned long *bmp, unsigned long bit0)
+ {
+     MMUIdxMap walk = ALL_MMUIDX_BITS;
+ #ifdef XBOX
+@@ -1455,7 +1468,7 @@ void tlb_reset_dirty(CPUState *cpu, uintptr_t start, uintptr_t length)
+             hits +=
+ #endif
+             tlb_reset_dirty_range_locked(&desc->fulltlb[i], &fast->table[i],
+-                                         start, length);
++                                         start, length, bmp, bit0);
+         }
+ 
+         for (i = 0; i < CPU_VTLB_SIZE; i++) {
+@@ -1463,7 +1476,7 @@ void tlb_reset_dirty(CPUState *cpu, uintptr_t start, uintptr_t length)
+             hits +=
+ #endif
+             tlb_reset_dirty_range_locked(&desc->vfulltlb[i], &desc->vtable[i],
+-                                         start, length);
++                                         start, length, bmp, bit0);
+         }
+ #ifdef XBOX
+         entries += n + CPU_VTLB_SIZE;
+@@ -1491,6 +1504,25 @@ void tlb_reset_dirty(CPUState *cpu, uintptr_t start, uintptr_t length)
+ #endif
+ }
+ 
++void tlb_reset_dirty(CPUState *cpu, uintptr_t start, uintptr_t length)
++{
++    tlb_reset_dirty_walk(cpu, start, length, NULL, 0);
++}
++
++#ifdef XBOX
++/*
++ * lane.drawrec1010 (#433): one walk that re-arms only the pages of
++ * [@start, @start + @length) whose bit is set in @bmp, page p of the range
++ * being bit @bit0 + p. Same as tlb_reset_dirty() once per set bit's run,
++ * for the price of one walk instead of one per run.
++ */
++void tlb_reset_dirty_bitmap(CPUState *cpu, uintptr_t start, uintptr_t length,
++                            const unsigned long *bmp, unsigned long bit0)
++{
++    tlb_reset_dirty_walk(cpu, start, length, bmp, bit0);
++}
++#endif
++
+ /* Called with tlb_c.lock held */
+ static inline void tlb_set_dirty1_locked(CPUTLBEntry *tlb_entry,
+                                          vaddr addr)
+diff --git a/hw/xbox/nv2a/pgraph/vk/draw.c b/hw/xbox/nv2a/pgraph/vk/draw.c
+index 7635614610..4929c152f7 100644
+--- a/hw/xbox/nv2a/pgraph/vk/draw.c
++++ b/hw/xbox/nv2a/pgraph/vk/draw.c
+@@ -2443,7 +2443,9 @@ static void gpl_take_next_pipeline(PGRAPHVkState *r, PipelineBinding *snode)
+  * so a touch of a REDO page copies it whatever the bits say. The OWED pages
+  * are walked together, once per flip (at the first sync after
+  * g_nv2a_stats.frame_count moves) and whenever the copies forced by REDO
+- * alone pass a budget, in runs merged across small gaps. A walked page stays
++ * alone pass a budget: in one walk that tests each entry against OWED
++ * (MAP, HAKUX_DRAWREC_MAP=0 turns it off), or in one walk per run, runs
++ * merged across small gaps. A walked page stays
+  * in REDO: a store between its last copy and the walk set no bit, so it is
+  * copied once more, and a store after the walk sets the bit as before. A
+  * page copied after its walk with its bits still clean leaves REDO. The data
+@@ -2462,7 +2464,7 @@ static void gpl_take_next_pipeline(PGRAPHVkState *r, PipelineBinding *snode)
+ #define DRAWREC_VTX_REDO_B    (256 * 1024)  /* ... or REDO-only bytes */
+ 
+ static struct {
+-    int on, vtx, shc;           /* -1 until read */
++    int on, vtx, shc, map;      /* -1 until read */
+     unsigned long *owed, *redo;
+     unsigned long npages;
+     unsigned long lo, hi;       /* owed pages lie in [lo, hi) */
+@@ -2483,6 +2485,8 @@ static void drawrec_read_env(PGRAPHVkState *r)
+     drawrec.vtx = drawrec.on && !(e && !strcmp(e, "0")) && r->bitmap_size;
+     e = getenv("HAKUX_DRAWREC_SHC");
+     drawrec.shc = drawrec.on && !(e && !strcmp(e, "0"));
++    e = getenv("HAKUX_DRAWREC_MAP");
++    drawrec.map = drawrec.vtx && !(e && !strcmp(e, "0"));
+     drawrec.frame = g_nv2a_stats.frame_count;
+     if (drawrec.vtx) {
+         drawrec.npages = r->bitmap_size;
+@@ -2493,8 +2497,8 @@ static void drawrec_read_env(PGRAPHVkState *r)
+     }
+ #ifdef __ANDROID__
+     __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+-                        "[drawrec1010] drawrec=%d vtx=%d shc=%d", drawrec.on,
+-                        drawrec.vtx, drawrec.shc);
++                        "[drawrec1010] drawrec=%d vtx=%d shc=%d map=%d",
++                        drawrec.on, drawrec.vtx, drawrec.shc, drawrec.map);
+ #endif
+ }
+ 
+@@ -8124,7 +8128,12 @@ static bool drawrec_vtx_redo_any(hwaddr addr, hwaddr size)
+     return p0 < p1 && find_next_bit(drawrec.redo, p1, p0) < p1;
+ }
+ 
+-/* Re-arm every OWED page: one walk per run, runs closer than the gap merged. */
++/*
++ * Re-arm every OWED page. MAP (HAKUX_DRAWREC_MAP=0 turns it off): one walk
++ * that re-arms the set bits of [lo, hi) alone. Off: one walk per run, runs
++ * closer than the gap merged (the gap pages re-armed with them, harmlessly:
++ * re-arming a clean page only sends its next store through the slow path).
++ */
+ static void drawrec_vtx_walk(PGRAPHVkState *r, bool at_flip)
+ {
+     unsigned long lo = drawrec.lo, hi = drawrec.hi;
+@@ -8135,23 +8144,31 @@ static void drawrec_vtx_walk(PGRAPHVkState *r, bool at_flip)
+     if (lo >= hi) {
+         return;
+     }
+-    unsigned long s = find_next_bit(drawrec.owed, hi, lo);
+-    while (s < hi) {
+-        unsigned long e = find_next_zero_bit(drawrec.owed, hi, s);
+-        for (;;) {
+-            unsigned long n = find_next_bit(drawrec.owed, hi, e);
+-            if (n >= hi || (n - e > DRAWREC_VTX_GAP &&
+-                            runs + 1 < DRAWREC_VTX_MAX_RUNS)) {
+-                break;
++    if (drawrec.map) {
++        physical_memory_dirty_bitmap_cleared(r->vram_ram_addr, drawrec.owed,
++                                             lo, hi);
++        drawrec.n_pages += bitmap_count_one_with_offset(drawrec.owed, lo,
++                                                        hi - lo);
++        runs = 1;
++    } else {
++        unsigned long s = find_next_bit(drawrec.owed, hi, lo);
++        while (s < hi) {
++            unsigned long e = find_next_zero_bit(drawrec.owed, hi, s);
++            for (;;) {
++                unsigned long n = find_next_bit(drawrec.owed, hi, e);
++                if (n >= hi || (n - e > DRAWREC_VTX_GAP &&
++                                runs + 1 < DRAWREC_VTX_MAX_RUNS)) {
++                    break;
++                }
++                e = find_next_zero_bit(drawrec.owed, hi, n);
+             }
+-            e = find_next_zero_bit(drawrec.owed, hi, n);
+-        }
+-        physical_memory_dirty_bits_cleared(
+-            r->vram_ram_addr + ((ram_addr_t)s << TARGET_PAGE_BITS),
+-            (ram_addr_t)(e - s) << TARGET_PAGE_BITS);
+-        runs++;
+-        drawrec.n_pages += e - s;
+-        s = e < hi ? find_next_bit(drawrec.owed, hi, e) : hi;
++            physical_memory_dirty_bits_cleared(
++                r->vram_ram_addr + ((ram_addr_t)s << TARGET_PAGE_BITS),
++                (ram_addr_t)(e - s) << TARGET_PAGE_BITS);
++            runs++;
++            drawrec.n_pages += e - s;
++            s = e < hi ? find_next_bit(drawrec.owed, hi, e) : hi;
++        }
+     }
+     bitmap_clear(drawrec.owed, lo, hi - lo);
+     drawrec.lo = drawrec.npages;
+diff --git a/include/exec/cputlb.h b/include/exec/cputlb.h
+index 9bec0e7890..6f03f4ab39 100644
+--- a/include/exec/cputlb.h
++++ b/include/exec/cputlb.h
+@@ -33,6 +33,10 @@ void tlb_unprotect_code(ram_addr_t ram_addr);
+ #ifndef CONFIG_USER_ONLY
+ void tlb_reset_dirty(CPUState *cpu, uintptr_t start, uintptr_t length);
+ void tlb_reset_dirty_range_all(ram_addr_t start, ram_addr_t length);
++#ifdef XBOX
++void tlb_reset_dirty_bitmap(CPUState *cpu, uintptr_t start, uintptr_t length,
++                            const unsigned long *bmp, unsigned long bit0);
++#endif
+ #endif
+ 
+ /**
+diff --git a/include/system/physmem.h b/include/system/physmem.h
+index 879f6eae38..8b2792ff9f 100644
+--- a/include/system/physmem.h
++++ b/include/system/physmem.h
+@@ -38,6 +38,12 @@ uint64_t physical_memory_set_dirty_lebitmap(unsigned long *bitmap,
+                                             ram_addr_t pages);
+ 
+ void physical_memory_dirty_bits_cleared(ram_addr_t start, ram_addr_t length);
++#ifdef XBOX
++void physical_memory_dirty_bitmap_cleared(ram_addr_t base,
++                                          const unsigned long *bmp,
++                                          unsigned long first,
++                                          unsigned long last);
++#endif
+ 
+ bool physical_memory_test_and_clear_dirty(ram_addr_t start,
+                                           ram_addr_t length,
+diff --git a/system/physmem.c b/system/physmem.c
+index 3bc41776f6..dd7f608c19 100644
+--- a/system/physmem.c
++++ b/system/physmem.c
+@@ -1401,6 +1401,49 @@ void physical_memory_dirty_bits_cleared(ram_addr_t start, ram_addr_t length)
+         rdc_dirty_bits_cleared(start, length, RDC_DIRECT);
+     }
+ }
++
++/*
++ * lane.drawrec1010 (#433): physical_memory_dirty_bits_cleared() for every
++ * page p in [@first, @last) with bit p set in @bmp, page p being the one at
++ * @base + p * TARGET_PAGE_SIZE, in one TLB walk per vCPU. The walk scans the
++ * whole TLB whatever the range, so this costs what one range does, where a
++ * call per run of set bits costs one walk each. Counted as RDC_DIRECT, with
++ * the set bits as its pages.
++ */
++void physical_memory_dirty_bitmap_cleared(ram_addr_t base,
++                                          const unsigned long *bmp,
++                                          unsigned long first,
++                                          unsigned long last)
++{
++    CPUState *cpu;
++    RAMBlock *block;
++    ram_addr_t start, length;
++    uintptr_t start1;
++    long pages;
++
++    if (!tcg_enabled() || first >= last) {
++        return;
++    }
++    assert(QEMU_IS_ALIGNED(base, TARGET_PAGE_SIZE));
++    start = base + ((ram_addr_t)first << TARGET_PAGE_BITS);
++    length = (ram_addr_t)(last - first) << TARGET_PAGE_BITS;
++    pages = bitmap_count_one_with_offset(bmp, first, last - first);
++    rdc_ra = (uintptr_t)__builtin_return_address(0);
++    rdc_site = RDC_DIRECT;
++
++    RCU_READ_LOCK_GUARD();
++    block = qemu_get_ram_block(start);
++    assert(block == qemu_get_ram_block(start + length - 1));
++    start1 = (uintptr_t)ramblock_ptr(block, start - block->offset);
++    CPU_FOREACH(cpu) {
++        tlb_reset_dirty_bitmap(cpu, start1, length, bmp, first);
++        rdc_account((ram_addr_t)pages << TARGET_PAGE_BITS, length);
++    }
++    rdc_site = RDC_OTHER;
++    if (!current_cpu) {
++        rdc_tick();
++    }
++}
+ #else
+ void physical_memory_dirty_bits_cleared(ram_addr_t start, ram_addr_t length)
+ {
+-- 
+2.43.0
+

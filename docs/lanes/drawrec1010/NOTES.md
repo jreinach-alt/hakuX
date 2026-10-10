@@ -346,6 +346,33 @@ they replace, but far more than once per flip.
 SHC moved draws from the full path to MFP as intended: Pipe -0.88, Desc -0.32, Mfp +0.79
 ms/frame; net ~-0.4.
 
+## 11. Walk-cost follow-up: one TLB scan per batch (`tlbmap.mbox`, parked, not measured)
+
+R's failure (10.2) is the cost of one `tlb_reset_dirty()` scan per merged run: the scan
+visits every live TLB entry (~8,300) and tests each against `[start, start+length)`, so
+a 1-page run costs the same ~15 us as a 4 MB one. The batching already decides WHEN to
+walk; what is left is that each batch walks ~5.5 times.
+
+`tlbmap.mbox` (local commit 5980d1b4b5 on `lane/drawrec1010-tlbmap`, not pushed to this
+branch) gives a batch one scan: `tlb_reset_dirty_bitmap(cpu, start, length, bmp, bit0)`
+is the same locked walk with a `test_bit()` of the entry's page in the OWED bitmap,
+and `physical_memory_dirty_bitmap_cleared(base, bmp, first, last)` runs it once per
+vCPU over `[first, last)` of OWED. `tlb_reset_dirty()` becomes the walk with a NULL
+bitmap, which the always-inlined body folds away, so the existing callers are unchanged.
+`HAKUX_DRAWREC_MAP=0` restores the per-run walk; it is inside `HAKUX_DRAWREC=1`.
+
+Expected from 10.2's counters, not measured: 9.4 batches/flip, so ~10 scans for the
+owed pages instead of ~52, plus the ~12/flip by which `[rdc]` walks (64) exceed the
+batch's runs (52.1), not identified; ~20 walks/flip and ~0.3 ms/flip against 64 and 0.96 (run 951926), ~-0.65
+ms/flip. That is also what R predicted (<= 20).
+
+It edits `accel/tcg/cputlb.c`, `system/physmem.c`, `include/exec/cputlb.h` and
+`include/system/physmem.h`, none on this lane's row. The board request is in
+`$DISPATCH_DIR/board-requests/drawrec1010.md` (2026-10-10 ~15:25 PDT), unanswered when
+attempt 3 moved on to Addendum 1. Host gcc and NDK clang build it clean. The next lane
+with those four files can `git am docs/lanes/drawrec1010/tlbmap.mbox` and run it as
+an env A/B (`HAKUX_DRAWREC=1` with `HAKUX_DRAWREC_MAP=0` vs unset) on the NFS route.
+
 ## 12. Do not repeat
 
 - Do not `cd` out of the worktree in a Bash call: the session's working directory follows.
