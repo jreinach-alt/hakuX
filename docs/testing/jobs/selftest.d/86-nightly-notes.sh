@@ -616,7 +616,7 @@ for f in new.md bare.md none.md late.md; do
 done
 # Not vacuous: the top of the body as nightly_build.sh wrote it at 48f0618aff
 # for a tree with no reachable origin -- which is every fixture in this file.
-{ echo "Automated nightly. built from \`abc1234\` on \`master\` -- **origin was unreachable**, so this is the last sha this host had, not necessarily the trunk's tip."
+{ echo "Automated nightly. Built from \`abc1234\` on \`master\` -- **origin was unreachable**, so this is the last sha this host had, not necessarily the trunk's tip."
   echo
   echo "> Could not reach \`origin/master\` at build time (this host last fetched at never). The sha below is what was on disk; it may be behind the trunk."
   echo; sed -n '/^### /,$p' "$NB/new.md"; } > "$NB/caveated.md"

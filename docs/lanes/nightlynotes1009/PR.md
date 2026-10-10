@@ -56,6 +56,12 @@ contains the word "lane", so `$INTERNAL_RE` counted it process regardless of wha
    `shaderprebuild569`) that confirmed both parts of the fix against master, not just the addendum's one
    example.
 
+8. **Addendum 3** (lane.local, 21:07 PDT; owner: "Yes, fix the capitalization"): the published provenance
+   line read `Automated nightly. built from \`<sha>\` on \`<branch>\`...` -- lowercase "built" right after
+   a full stop. Capitalised to "Built from" in the four `PROV=` assignments; the printf site and its
+   comments are untouched, and so is `87-nightly-trunk.sh`'s own verbatim legacy/mutant fixture (a
+   different historical defect, out of this lane's territory).
+
 **Selftest, final.** Fragment alone (`SELFTEST_ONLY="86-nightly-notes"`): **85 passed, 0 failed**. Chain
 shard (`SELFTEST_ONLY="86-nightly-notes 87-nightly-trunk"`): **127 passed, 0 failed**, with no edits to
 `87-nightly-trunk.sh`.
