@@ -193,8 +193,8 @@ cp "$MM/work/limits.env" "$MM/limits.before"; cp "$MM/work/briefs/alpha.model" "
 
 bash "$HERE/usage/mode.sh" low > "$MM/low.out" 2>&1
 check "low writes the low-active file lane.sh reads" test -s "$MM/work/usage/low-active"
-check "low adds the navigation agent's call cap" \
-    grep -q '^PATHFIND_MODEL_CALLS_MAX=20$' "$MM/work/limits.env"
+check "low writes no pathfind call cap (dead dial, deleted #433)" \
+    bash -c '! grep -q PATHFIND_MODEL_CALLS_MAX "$1"' _ "$MM/work/limits.env"
 check "low leaves LANE_MAX alone (lane.sh caps it at read time)" grep -q '^LANE_MAX=10$' "$MM/work/limits.env"
 check "low leaves the escalation model alone" \
     grep -q '^MODEL_LANE_ESCALATED=claude-fable-5-1$' "$MM/work/limits.env"
@@ -259,10 +259,16 @@ check "projected over: 40% used but 95% projected (>= 90) goes low" [ "$(um_mode
 um_state 2 ""; um_tick t7
 check "the week rolling over (2% used, no projection yet) is just a low reading: normal" [ "$(um_mode)" = normal ]
 
-printf 'USAGE_LOW_PROJ=60\n' >> "$MM/work/limits.env"
-um_state 10 65; um_tick t8
-check "the entry line is a limits.env dial: USAGE_LOW_PROJ=60 makes 65% projected low" [ "$(um_mode)" = low ]
-sed -i '/^USAGE_LOW_PROJ=/d' "$MM/work/limits.env"
+# No limits.env override remains for this dial (#433) -- the only way to
+# move the entry line now is models.toml itself, via $HAKUX_MODELS_TOML.
+cp "$HERE/models.toml" "$MM/models-lowproj60.toml"
+sed -i 's/^low_proj = 90.*/low_proj = 60/' "$MM/models-lowproj60.toml"
+grep -q '^low_proj = 60$' "$MM/models-lowproj60.toml" || bad "fixture: low_proj edit did not take"
+um_state 10 65
+export HAKUX_MODELS_TOML="$MM/models-lowproj60.toml"
+um_tick t8
+unset HAKUX_MODELS_TOML
+check "the entry line is a models.toml dial: low_proj=60 makes 65% projected low" [ "$(um_mode)" = low ]
 
 rm -f "$MM/work/usage/low-active"; um_state 10 80; um_tick t9
 check "a mode file saying low with low-active missing heals: the file comes back" test -s "$MM/work/usage/low-active"
@@ -270,3 +276,6 @@ check "a mode file saying low with low-active missing heals: the file comes back
 unset -f um_dump um_state um_tick um_mode um_lines
 unset UM MM UM_NOW UM_NOW_ISO far_future um_instant
 unset HAKUX_NOW
+# Exported above for this fragment's own fixtures; unset so a later fragment
+# sourced into this same shell asks the real $HAKUX_WORK, not this one's.
+unset HAKUX_WORK HAKUX_CLAUDE_PROJECTS HAKUX_SYSTEMD_USER_DIR

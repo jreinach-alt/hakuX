@@ -58,6 +58,8 @@ sys.path.insert(0, HERE)
 import classify  # noqa: E402  (content(), motion(), FPS_CORNER: the cheap checks)
 sys.path.insert(0, os.path.join(HERE, ".."))
 import hangwatch  # noqa: E402  (a HANG: frames, audio and the vCPU all still for HANG_S; stopped with telemetry)
+sys.path.insert(0, os.path.join(HERE, "..", "jobs"))
+import models  # noqa: E402  (the one model table/reader, #433)
 
 PAD = os.path.join(HERE, "..", "perf", "pad.sh")
 KNOW = os.environ.get("PATHFIND_KNOW") or os.path.join(HERE, "pathknow")
@@ -76,11 +78,17 @@ LOGCAT_SPEC = ("hakuX-crash:V hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX
 VERDICT = os.path.join(HERE, "..", "title_verdict.py")
 # Sonnet 5 per step, not Haiku: measured 10-02 on the same ESPN frame with the image inline, Sonnet 5
 # answered in 3.5-3.9 s (70-80 output tokens), Haiku 4.5 in 6.4-9.1 s (430-500, most of it thinking),
-# and Haiku had looped 8 times on a Yes/No dialog in Midnight Club 3. Opus 5.5 when stuck.
-FAST = os.environ.get("PATHFIND_FAST", "claude-sonnet-5")
-# Opus 5.5 is the stronger step model, but the owner held Opus for token burn on 10-02 and navigation resumed on
-# Sonnet only for 10-03 (lane.local addendum 2: Sonnet only, <= $25). Restore Opus when that hold lifts.
-STRONG = os.environ.get("PATHFIND_STRONG", "claude-sonnet-5")
+# and Haiku had looped 8 times on a Yes/No dialog in Midnight Club 3.
+#
+# The owner's models.toml table (#433, 2026-10-10) gives "pathfind" ONE model per mode for both the
+# fast step and the stuck/confirm step -- route building and pathfinding are "effectively a
+# classifier for game inputs", Sonnet or Haiku, never Opus. FAST and STRONG stay as two names (the
+# stuck/confirm call sites and the fast/strong telemetry label at calls.jsonl are real distinctions
+# worth keeping) but both read the same kind, so they hold the same value until the table says
+# otherwise. PATHFIND_FAST/PATHFIND_STRONG env overrides are gone with models.env; HAKUX_MODELS_TOML
+# (models.py) is the override point now.
+FAST = models.model_for("pathfind")
+STRONG = FAST
 STATES = ("intro_video", "publisher_logo", "title_screen", "main_menu", "submenu", "profile_creation",
           "name_entry", "save_load_prompt", "controller_prompt", "loading", "cutscene", "pause",
           "gameplay", "results", "game_over", "black", "fatal_error", "unknown")
