@@ -6,9 +6,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `nightlynotes1009` | claude-sonnet-5 | 18 min | nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -71,9 +69,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/nightlynotes1009` | nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5) | `c61abb39ce` | 2026-10-09 17:08 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -87,4 +83,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-08 selfdeps: builds fetch nothing from GitHub (#433)
 - 2026-10-07 stuckdetect1007: a stuck/menu detector for pathfind's 600-s hold, validated offline on stored frames (#433)
 
-_Updated 2026-10-09 18:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-09 19:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
