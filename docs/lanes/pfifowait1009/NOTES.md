@@ -116,25 +116,85 @@ the two pacing-robustness validation runs below still void in this phase
 the same way pmucounters' did, that is the concrete next step and belongs
 in an OUTBOX request, not a guess spent on more device time first.
 
-### Territory note on the reference crops
+### CORRECTION: `waitfor` does not reach a dispatched run at all -- reverted
 
-The brief names exactly `docs/testing/titles/routes/amped2.route` as
-in-territory, not the `routes/refs/amped2/` directory the DSL requires for
-`waitfor` to validate at all (`route.sh`'s own `validate()` hard-fails if a
-named reference crop is missing). The brief's own step 4 asks for "retries
-keyed on what is on screen," which only exists via `waitfor`/`press-until`,
-so I read the ref crops as inseparable, same-tree companions to the named
-file (same `routes/` directory, title- and lane-specific, no plausible
-collision with another lane) rather than a separate grant to queue for.
-Flagging this judgment call here rather than silently assuming it, and
-again in the PR body.
+Before queueing anything, I tried to reproduce exactly what a worker sees,
+rather than trust that my local `route.sh --check` passing meant a
+dispatched run would also pass it. It does not, and this is a general gap,
+not something specific to this lane's route:
+
+`request.sh --route` resolves the named route locally, then re-checks it
+with a **copy of the route file renamed to `route.txt`** (its own comment:
+"AND AS THE RUN WILL SEE IT. ... the dispatcher writes the text to
+`<result dir>/route.txt` and the worker plays it with the SNAPSHOT's
+route.sh"). `route.sh`'s `ref_path()` (`route.sh:124`) is
+`$(dirname "$ROUTE")/refs/$(basename "$ROUTE" .route)/$1.png` -- a path
+relative to the route file's own name. On a worker the route file is
+always literally named `route.txt`, never `<name>.route`, so
+`basename "route.txt" .route` does not strip anything and `ref_path()`
+always resolves to `refs/route.txt/<name>.png`, regardless of what the
+route was originally called. Nothing in `dispatcher.sh` (confirmed by
+grep: the only `route.txt` write is the plain text, `dispatcher.sh:1503`)
+or `request.sh` ever stages a `refs/` directory next to that file. I
+reproduced this directly rather than reasoning it through on paper:
+
+```
+$ cp docs/testing/titles/routes/amped2.route /tmp/routecheck/route.txt
+$ bash docs/testing/titles/route.sh --check /tmp/routecheck/route.txt
+route.sh: /tmp/routecheck/route.txt:5: waitfor 's01-publisher_logo': no
+reference crop /tmp/routecheck/refs/route.txt/s01-publisher_logo.png
+```
+
+This is exactly the failure `request.sh`'s own comment warns about ("A
+route that fails there exits at its first line and the soak runs on with
+no input") and exactly the check it runs before queueing ANY `--route`
+request -- so `request.sh` would have refused to queue `amped2.route` as
+committed, with this same message. It is not specific to my route: ANY
+route using `waitfor`/`press-until` hits this today, including
+`castlevania-cod.first-run.route`, the precedent I cited for the primitive
+-- that route's `waitfor` steps, if it has any reachable from a real
+dispatch, have the same problem; I did not go verify that route separately
+since it is out of my territory and not needed to establish that mine
+cannot run.
+
+**I reverted the `waitfor` conversion.** Steps 1-12 are back to a plain
+`wait N` (then `shot` for diagnostic-only frame logging, which needs no
+reference and is unaffected) before each press -- structurally identical
+to the verbatim original, just with the SAME generous durations I had
+already calibrated for the `waitfor` timeouts (4x the original wait,
+floored at 20s: s01 12.1s->48s, s02 6.6s->26s, ... s12 11.4s->46s -- see
+the table above, now read as `wait` durations instead of `waitfor`
+timeouts). This is the brief's OTHER named option ("longer settle waits,"
+not "retries keyed on what is on screen") and it is the only one of the
+two that is actually deployable through `request.sh` as the pipeline
+exists today. Deleted `docs/testing/titles/routes/refs/amped2/` (the 12
+reference crops), since nothing can use them; the calibration table above
+stays as the record of how the durations were chosen; it just no longer
+describes a live mechanism.
+
+The genre-loop/gameplay phase (13-25 + the repeat block) is unchanged from
+the verbatim original, same reasoning as before (no device evidence that
+widening those specific waits addresses either of pmucounters' actual void
+causes, and -- now doubly true -- no mechanism to make a screen-aware
+check of it reach the device even if I could calibrate one).
+
+A fix for the staging gap itself (copying a route's `refs/` into
+`<result dir>/refs/route.txt/`, keyed by the route name request.sh already
+resolves) belongs in `request.sh`/`dispatcher.sh`, both out of my
+territory. Not filing an OUTBOX request for it: this lane does not need
+`waitfor` to work now that the route is back to plain waits, and the find
+is recorded here for whichever lane next tries to use the primitive on a
+real dispatch.
 
 ### Validation still owed before any scored arm
 
 Per brief step 4: two actual device runs of this route, at different frame
-pacing, before any A/B arm is queued. Not yet run (no device time spent
-yet this lane). Planned next after the lock-mechanism investigation below
-reaches a checkpoint worth protecting with a commit.
+pacing, before any A/B arm is queued. Not yet run. Planned next, and now
+able to double as the brief step 5 A/B's first pair: running the same
+route once with no env (baseline pacing) and once with
+`HAKUX_PFIFOWAIT=1` (the fix's pacing) is two different-pacing runs of the
+same route AND the first A/B pair, as long as neither run reports a
+`ROUTE FAIL`.
 
 ## 2. Lock analysis (brief step 1) -- done
 
