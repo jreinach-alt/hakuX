@@ -922,3 +922,129 @@ surfgpu1009's run. Steps on resume:
    `State: ready`.
 
 Every other deliverable of the 10-09 brief is in 3e-3g.
+
+## 3h. Attempt 7 (2026-10-09 17:2x PDT, resume on Opus): the pair read, W void, N2/W2 queued
+
+Why attempt 6 did not finish: it ended correctly, waiting on N and W. They
+finished at 17:10 and 17:20 PDT. Nothing it did was wrong.
+
+### The pair as registered (3f): the knob ran, the control is void
+
+N's request started three times. The 16:32 and 16:59 starts were cut
+(`Terminated` in run.log). Its logcat holds only the third start (17:00:17
+on, mark 17:05:04), so N's hold frames are the 1705xx-1709xx ones.
+
+| check | N `…521453` (wait skipped) | W `…521720` (shipped wait) |
+|---|---|---|
+| `[occl804] config` wait= | 0 | 1 |
+| `[occl804] f=` lines, with q>0 | 1820, 1820 | 1961, 1961 |
+| reports-site fence wait, ms/frame (3f check 3) | 0.00 | 3.33 |
+| thermal pause (`thermal.jsonl`) | none | none |
+| moving player (hold frames) | **yes**: half-pipe, open slope, rails, a banner, 9 frames | **no**: the same birch trunk in all 8 frames (17:15:24-17:19:49), "Press BACK to reset position" twice, score 0 then 10 |
+
+W is a parked player, so 3f's outcome cannot be applied to N vs W. W's
+29.96 fps and 0.98 share at the cap come from the stuck scene, not from the
+wait. Its vCPU work is 15.4 ms/frame, against 19.7-21.7 in every run with a
+moving rider.
+
+| run | frames/wall fps | share >= 29.7 | work ms/f | off-CPU ms/f | lw | PFIFO fence ms/f |
+|---|---|---|---|---|---|---|
+| N | 29.52 | 0.70 | 19.7 | 3.4 | 1.36 | 0.64 |
+| W (void) | 29.96 | 0.98 | 15.4 | 2.0 | 0.53 | 3.39 |
+| B2 / C / D (shipped, no frametrace) | 28.61 / 28.03 / 27.67 | 0.49 / 0.40 / 0.44 | 21.2 / 21.7 / 21.4 | 6.7 / 7.2 / 6.9 | | |
+
+Against B2/C/D, N would meet all four of 3f's hit thresholds:
+- frames/wall +1.42 over their mean;
+- share +0.26;
+- off-CPU -3.5 ms/frame;
+- `lw` 1.36 against `1131600`'s 4.57.
+
+These are not the registered control. The envs differ: frametrace is on in N
+and off in B2/C/D. N's scene was also lighter: it had no window above 27
+ms/frame of work, while B2/C/D had 13-26 such windows each.
+
+### At matched work (`workbin.py`, written after N and W ran)
+
+A route plays the same input, but the rider goes somewhere different each
+run. `workbin.py` bins pace windows by the vCPU's work per frame (on-CPU less
+the spin), so the scene's load is matched inside a bin. Off-CPU in ms/frame,
+with the number of windows in brackets:
+
+| work ms/f | B2 | C | D | N (no wait) | W (wait, void scene) |
+|---|---|---|---|---|---|
+| < 17 | 2.4 (28) | 2.7 (28) | 2.1 (37) | 1.4 (31) | 1.2 (109) |
+| 17-19 | 3.9 (21) | 5.4 (21) | 3.6 (12) | 2.9 (31) | 2.3 (24) |
+| 19-21 | 7.8 (23) | 6.0 (20) | 4.1 (14) | 3.2 (32) | 3.5 (7) |
+| 21-23 | 6.6 (12) | 7.8 (10) | 8.2 (14) | 3.6 (27) | 6.9 (7) |
+| 23-25 | 9.4 (26) | 9.4 (20) | 8.8 (18) | 6.0 (19) | 8.4 (5) |
+| 25-27 | 8.5 (19) | 9.2 (16) | 11.2 (25) | 6.7 (9) | |
+| >= 27 | 10.4 (13) | 11.4 (26) | 12.2 (19) | | |
+
+- **N is lower than all three shipped runs in every bin.** The gap grows
+  with work: 0.7-1.3 ms/frame under 17 ms of work, 2.8-3.4 at 23-25 ms.
+- **W, with N's env and the shipped wait, reads like N at low work** (1.2
+  vs 1.4, 2.3 vs 2.9). It reads like the shipped runs at 21-25 ms (6.9 and
+  8.4, against N's 3.6 and 6.0), but on 12 windows only.
+- So part of N's lead at low work is the batch (frametrace on, a later
+  hour), not the arm. The arm's effect shows where work is high. That is
+  what 3g's reading predicts: the lock costs the vCPU only when the vCPU
+  needs it during the wait.
+
+### N's lighter work is the scene, not the arm
+
+The [tpc787] TB shares after the mark show no guest poll loop that vanishes
+in N:
+- outside the spin, every entry pc's share is in proportion;
+- the 00324ffd chain is 38-41% of non-spin TB time in all five runs;
+- the one pc absent in N (00164ffd, 0.4-0.5% in B2/C/D) is absent in W
+  too.
+
+### Where the wait went in N
+
+- **The PFIFO thread's fence wait** is 0.64 ms/frame. In `1131600` it was
+  7.7-16.6.
+- **The STALLED-finish site** (`pgraph_vk_finish+0x1330`, ctx rep and
+  none) is 0.54 ms/frame. It did not take over.
+- **pgraph.lock**: the slow windows N still has (504 of 8967 frames under
+  27 fps) wait on it, at 5.9 ms/frame in 24-27 and 11.8 in < 24 (94
+  frames). This is the next wait in line, but it acts in few frames.
+
+### Pre-registration: N2 and W2 (written before they run)
+
+Same ref (b345b5b613), Nova, `amped2` route, 578 s each, `--perflog`, and the
+same envs as N and W. Order: N2 first, then W2, so the Nova keeps the shipped
+wait afterwards.
+
+**Valid:** no thermal pause, and the rider at 3 or more distinct places
+across the hold frames. If the rider sits at one spot in 4 or more
+consecutive hold frames, the run is void (W's failure).
+
+**Primary:** 3f's outcomes as written (hit, moved, miss), on N2 vs W2.
+
+**Secondary,** scene-matched and inside the frametrace batch:
+- Pools: no-wait = N + N2; wait = W + W2.
+- W's windows count here. Binning by work conditions on load, and a stuck
+  rider gives low-work windows, not wrong ones.
+- Bins: work >= 21 ms/frame, each with >= 5 windows in both pools.
+- **Hit:** the no-wait pool's off-CPU is lower by >= 1.5 ms/frame,
+  frames-weighted over those bins.
+- **Miss:** lower by < 0.5 ms/frame.
+- Also expected: under 19 ms/frame of work, the pools differ by < 0.5
+  ms/frame (N vs W read 0.2 and 0.6 there).
+
+If the two disagree, the secondary sets R3 #1's P, because it controls for
+scene and the primary does not. The disagreement is reported.
+
+Prediction:
+- either arm void: 0.3;
+- primary, if both are valid: hit 0.6, moved 0.3, miss 0.1;
+- secondary: hit 0.65, between the thresholds 0.25, miss 0.10.
+
+R3 #1's P after the runs:
+- hit: 0.8;
+- moved: 0.15;
+- miss: 0.1.
+
+Until then the P is **0.6 (provisional)**, up from 0.4. The evidence is N
+against the shipped runs at matched work. The registered control was void,
+so this is not that test.
