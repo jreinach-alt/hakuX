@@ -1,0 +1,40 @@
+{
+  "registered_utc": "2026-10-10T22:31:00Z",
+  "who": "lane.reportasync1010",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "device": "nova",
+  "seconds": 500,
+  "route": "nfs-mw-quickrace",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "a21a3361d9",
+  "b_ref": "a21a3361d9",
+  "a_env": [
+    "HAKUX_FRAMETRACE=1"
+  ],
+  "b_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_REPORT_ASYNC=1",
+    "HAKUX_TEXSCAN=1"
+  ],
+  "queue_order": "Queued by the lane (an env pair; arms.sh skips a_ref == b_ref): two requests of one run each, A then B (request.sh --who reportasync1010 --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw-quickrace --seconds 500 --device nova --ref a21a3361d9 --perflog --pull 'frametrace_*' --env ... --expect this file). a21a3361d9 is the armed gate 477893cdbf merged with master @ c271f515b4; git diff 477893cdbf a21a3361d9 -- hw/ accel/ target/ tcg/ ui/ audio/ android/ is empty.",
+  "judge": "python3 docs/lanes/reportasync1010/ftpair.py <A> <B> --expect docs/testing/predictions/reportasync1010-ftpair.json; then python3 docs/lanes/nfs30plan1010/phaseread.py <A> and <B> (--window=-2,1.5 and --window=1.5,12) for the recording split of p_run",
+  "baseline": "nfs30plan1010's two frametrace runs (ab1acc4154 --perflog, HAKUX_FRAMETRACE=1 HAKUX_PMU=1 HAKUX_GPUXFR=1; 1-1791649387-nfs30plan1010-2138210, 1-1791649388-nfs30plan1010-2138879), read with ftpair.py's account over the warm countdown (go2..go12, frame end in mark-2 .. mark+1.5 s): P 58.4 / 57.5 ms, p_run 31.7 / 31.1, pidle 11.1 / 11.0, p_c_rep 4.5 / 4.3, unhooked p_blk 10.4 / 10.4, o_fence 9.9 / 9.9, vb 3.5. The two replicates agree within 1 ms on every row. This pair drops PMU and GPUXFR, so A should run a little faster than that baseline.",
+  "prediction": "#433, addendum 2 of the brief: where the race start's period goes once the report wait is gone. A is today's default code with the frametrace on; B adds HAKUX_REPORT_ASYNC=1 (the report fence leaves the PFIFO thread) and HAKUX_TEXSCAN=1 (the cube-face/range-scan sd finishes go). Both perflog, so CPU rows carry the perflog cost (~0.8 plain/perflog, nfs30plan1010 NOTES 5.5) and waits do not. Predicted at the warm countdown: F: the report fence on the PFIFO thread (p_c_rep, waits under pgraph_process_pending_reports) is >= 2.5 ms/frame on A and <= 0.5 on B. U: the PFIFO thread's blocked time at no hooked site (the sd finishes' finish_event wait) falls by >= 4 ms/frame A -> B (A ~10, B ~1-3: what is left is wait_frame_submitted and the rule-3 gate). P: the frame period B - A <= -2.5 ms (point -4; the plain-build pair measured -3.5, and quantization to the VBLANK grid keeps it far below the ~14 ms of waits removed). R: on B, the PFIFO thread's on-CPU time (p_run) is >= 50 % of the period, i.e. the residual is CPU work on the pacing thread, not a wait: recording (phase Draw) is its largest named part, pidle (waiting for the guest's next frame, the VBLANK grid) the second-largest row, the report fence ~0, other hooked fences <= 1 ms, cube faces (unhooked) <= 3 ms. What refutes it: F or U failing with the [reportasync] on line and texscan's [tsc] route present (a wait moved to another PFIFO site, which p_oth_hk or unhooked would show); R failing (the residual is a wait, which its row names). The reader thread's own fence waits land in o_fence (unregistered thread) on B and are not on the pacing thread.",
+  "expect": {
+    "V_min_marks": 12,
+    "V_min_valid_starts": 10,
+    "V_min_warm_frames": 300,
+    "F_a_min": 2.5,
+    "F_b_max": 0.5,
+    "U_d_min": 4.0,
+    "P_d_max": -2.5,
+    "R_prun_share_min": 0.5
+  },
+  "expect_note": "Named rules read by docs/lanes/reportasync1010/ftpair.py --expect (legs V, F, U, P, R); a soak writes no captures. A start whose route input hung or failed (> 3 s, raread.bad_starts) is left out on both arms. V also checks each arm's request.json env and perflog. The per-window tables (cold, warm, post-GO; all frames and vb >= 3) are printed for the NOTES table whatever the verdict.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}
