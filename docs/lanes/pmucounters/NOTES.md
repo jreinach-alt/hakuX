@@ -1048,3 +1048,43 @@ R3 #1's P after the runs:
 Until then the P is **0.6 (provisional)**, up from 0.4. The evidence is N
 against the shipped runs at matched work. The registered control was void,
 so this is not that test.
+
+### Queued (ref b345b5b613, Nova, study priority, 2026-10-10 00:31Z)
+
+| arm | env | id |
+|---|---|---|
+| N2 | `HAKUX_FRAMETRACE=1 HAKUX_OCCL_LOG=100 HAKUX_OCCL_WAIT=0` | `1-1791592304-pmucounters-321962` |
+| W2 | `HAKUX_FRAMETRACE=1 HAKUX_OCCL_LOG=100` | `1-1791592309-pmucounters-323321` |
+
+Both are 578 s with `--perflog`. That is 2 x (578 + 90) s, about 22 min of
+Nova time, under the pilot gate (`pilots/pmucounters.ok`, 10-09 15:40).
+
+**The route.** `amped2.route` is not on master. `request.sh --route amped2`
+looks only in `docs/testing/titles/routes/`, so it refuses. As attempt 6
+did, I wrote the route text from W's `request.json` into
+`docs/testing/titles/routes/amped2.route` (untracked), queued both arms, and
+deleted the copy. The text is byte-identical to the `route` field of N, W and
+fpstelemetry1008's 1131600. The dispatcher's `route.txt` for 1131600 hashes
+differently; that is the restore job's copy, not the request.
+
+**Ahead of them** at 00:31Z: surfgpu1009's running owner request, three more
+surfgpu1009 requests (460-480 s each), and 60 s dispatch.restore entries.
+N2 should start around 18:10-18:30 PDT and W2 end around 18:45-19:15.
+
+### On resume
+
+1. Validity, per arm:
+   - `thermal.jsonl` shows no pause;
+   - the hold frames (`route-frames/`, `hold*`) show the rider at 3 or more
+     places, and not at one spot in 4 or more consecutive frames;
+   - the logcat holds one start, not several (N's request started three
+     times).
+2. `pairread.py <N2 dir> <W2 dir>` gives the primary (3f's hit, moved and
+   miss).
+3. `workbin.py 0031e901 N=<N> N2=<N2> W=<W> W2=<W2>` gives the secondary.
+   Pool N+N2 and W+W2 frames-weighted over bins >= 21 ms/frame with >= 5
+   windows in both pools. Also check that under 19 ms/frame the pools differ
+   by < 0.5.
+4. Set R3 #1's P from the table above (hit 0.8, moved 0.15, miss 0.1; the
+   secondary decides if the two disagree). Then update PR.md and OUTBOX, and
+   set `State: ready`.

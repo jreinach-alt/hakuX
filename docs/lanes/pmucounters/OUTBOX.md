@@ -362,3 +362,67 @@ surfgpu1009's owner run. The wait ends when both have `DONE` in
 `dispatch/results/`. Then `pairread.py N W` reads 3f's measures, and R3 #1's
 P is set from the outcome. The PR stays a draft until then; everything else
 the brief asks for is in.
+
+## 2026-10-09 17:3x PDT -- the report-wait pair read: W void, N leads at matched work; N2/W2 queued (Opus)
+
+**The pair as registered cannot be scored.** Both arms ran as configured:
+the occlusion config line, the `f=` lines and the reports call-site times
+all match each arm's env. There was no thermal pause.
+
+W (shipped wait) is **void**. Its rider sits at the same birch trunk in
+all 8 hold frames (17:15-17:19 PDT), with "Press BACK to reset position"
+on screen twice. Under the moving-player rule, its 29.96 fps measures a
+stuck rider. N (wait skipped) is valid: its rider moves through every hold
+frame.
+
+| run | frames/wall | share >= 29.7 | work ms/f | off-CPU ms/f | lw ms/f | PFIFO fence ms/f |
+|---|---|---|---|---|---|---|
+| N (no wait) | 29.52 | 0.70 | 19.7 | 3.4 | 1.36 | 0.64 |
+| W (void) | 29.96 | 0.98 | 15.4 | 2.0 | 0.53 | 3.39 |
+| B2 / C / D (shipped, earlier) | 28.61 / 28.03 / 27.67 | 0.49 / 0.40 / 0.44 | 21.2 / 21.7 / 21.4 | 6.7 / 7.2 / 6.9 | | |
+
+**At matched work** (`workbin.py`, pace windows binned by the vCPU's work
+per frame, which matches the scene's load), N's off-CPU time is lower than
+all three shipped runs in every bin:
+- 0.7-1.3 ms/frame lower at low work;
+- 2.8-3.4 ms/frame lower at 23-25 ms of work.
+
+W reads like N at low work and like the shipped runs at 21-25 ms of work.
+So part of N's low-work lead comes from the batch, and the arm's effect
+shows at high work. N's lighter average work is the scene: no TB vanished,
+and the same hot TB is 38-41% of non-spin time in all runs.
+
+With the #804 wait gone, the PFIFO thread's fence wait drops to 0.64
+ms/frame. The STALLED-finish site did not take over (0.54 ms/frame). In N's
+few slow windows, the next wait is pgraph.lock.
+
+**R3 #1 (report-processing waits under pfifo.lock): P 0.6, provisional**,
+up from 0.4. This rests on N against runs that were not its registered
+control, so it is not the registered test.
+
+**Queued on the Nova** (ref b345b5b613, study, 2 x 578 s, investigative,
+not scored):
+- N2 `1-1791592304-pmucounters-321962`, wait skipped;
+- W2 `1-1791592309-pmucounters-323321`, shipped wait.
+
+Pre-registered in NOTES 3h before they run:
+- validity: no thermal pause, and the rider at 3 or more places;
+- primary: 3f's outcomes on N2 vs W2;
+- secondary: N+N2 vs W+W2 at work >= 21 ms/frame. A hit is >= 1.5 ms/frame
+  less off-CPU; a miss is < 0.5.
+
+The final P is 0.8 on a hit, 0.15 if the wait moved, and 0.1 on a miss.
+`HAKUX_OCCL_WAIT=0` stays a measurement knob, never a fix: the fix is to
+stop holding pfifo.lock across the GPU fence wait.
+
+**Spend:** this session read the pair, wrote `workbin.py`, and queued
+22 min of Nova time.
+
+Model: claude-opus-5-5.
+
+[lane.pmucounters] waiting: N2 `1-1791592304-pmucounters-321962` and W2
+`1-1791592309-pmucounters-323321` on the Nova, queued behind surfgpu1009's
+four requests (expected done about 18:45-19:15 PDT). The wait ends when both
+have `DONE` in `dispatch/results/`. Then NOTES 3h "On resume" reads them and
+sets R3 #1's P. The PR stays a draft until then; everything else the brief
+asks for is in.
