@@ -100,7 +100,7 @@ decision.
 
 | id | what | build | result |
 |---|---|---|---|
-| (queued below) | census, race start, perdrawon1010's switches on | perflog | |
+| 1-1791656193-drawrec1010-4097387 | census, race start, 12 starts, HAKUX_UNI_BULK/UBERCACHE/FOGCACHE=1 | perflog @ e7f2e720c8 | queued 10-10 11:16 PDT |
 
 ## 5. Do not repeat
 
