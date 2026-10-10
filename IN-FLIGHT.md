@@ -8,9 +8,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `drawrec1010` | claude-opus-5-5 | 49 min | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#43 |
-| `fleetflush1010` | claude-sonnet-5 | 7 min |  |
-| `nfs30plan1010` | claude-fable-5-1 | 13 min | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and re |
+| `drawrec1010` | claude-opus-5-5 | 1h 4m | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#43 |
+| `fleetflush1010` | claude-sonnet-5 | 22 min |  |
+| `gpupass1010` | claude-sonnet-5 | 12 min | Merge remote-tracking branch 'origin/lane/texscan1010' into lane/gpupass1010 |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -76,10 +76,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/drawrec1010` | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#433, 0.5) | `a12cab4e54` | 2026-10-10 11:18 |
-| `lane/nfs30plan1010` | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation  | `280abbad51` | 2026-10-10 11:45 |
+| `lane/gpupass1010` | Merge remote-tracking branch 'origin/lane/texscan1010' into lane/gpupass1010 | `bfd6986fa2` | 2026-10-10 11:57 |
 
 ## Recently landed on master
 
+- 2026-10-10 NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5)
+- 2026-10-10 lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation plan (#433, 0.5)
 - 2026-10-10 Lane: perdrawon1010       Issue: #433 (umbrella), none filed
 - 2026-10-10 perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5)
 - 2026-10-10 Lane: nightlywrap1010            Issue: none (dispatched directly by lane.local, #433 umbrella)
@@ -89,6 +91,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 boardgateenv1009 -- the board push gate stages master's docs/testing into the pushing tree's index (#433, 0.5)
 - 2026-10-10 surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5)
 - 2026-10-10 surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433, 0.5)
-- 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 
-_Updated 2026-10-10 11:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 12:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
