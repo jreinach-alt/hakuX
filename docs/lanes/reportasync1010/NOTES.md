@@ -3,9 +3,21 @@
 Step 2 of `docs/lanes/nfs30plan1010/PLAN.md`. Base: master @ 9fd2608f8f (perdraw1009 and perdrawon1010
 folded), merged forward to master @ c829b64c8e (60a04cc81b: pfifowait1009, nfsframe1010, nfs30plan1010 and
 forzasurf1010 folded; `reports.c` auto-merged, pfifowait's default-off `HAKUX_PFIFOWAIT` kept, unset in every run
-here). The both-switches pair (brief step 5) runs on `lane/reportasync1010-ts` @ 3cd9d6b7e3: this branch @
-ba9a6df8fc merged with `origin/lane/texscan1010` @ 227a161cc2, because texscan1010 has not folded. That branch is a
-build ref only, with no PR of its own; nothing from it folds through this PR.
+here), and again to master @ d758e39a59 (f111e7227d) before the armed gate (477893cdbf, section 1). The
+both-switches pair (brief step 5) runs on `lane/reportasync1010-ts` @ 3cd9d6b7e3: this branch @ ba9a6df8fc merged
+with `origin/lane/texscan1010` @ 227a161cc2, because texscan1010 had not folded when the pair was queued. That
+branch is a build ref only, with no PR of its own; nothing from it folds through this PR.
+
+**Where this stands (attempt 3):**
+
+- The NFS A/B fails its registered prediction on one check of six, by 0.2 ms. The warm countdown on is 38.2 ms
+  against a bound of <= 38.0.
+- The both-switches pair fails 4 of 8. Async takes the race start from about 41 to about 37.5 ms: it removes the
+  report wait in texscan's configuration too, but it does not reach the plan's 34 ms (section 2).
+- The pixel leg fails mechanically, on the two rows known to flicker; its determinism check is queued. ZPass is
+  byte-identical.
+- The armed gate (477893cdbf) and its ZPass check are new and queued.
+- Recommendation: default-on once the three pending checks hold (section 6).
 
 ## 1. What the code does
 
@@ -37,6 +49,31 @@ finish and per GET_REPORT; the query pool, the report write and #804's wait are 
   the async write keeps 0 and orders it last: a guest that arms the status word before GET_REPORT and polls
   it sees "done" only after the count is in memory.
 - **No file outside reports.c changes**: not render_thread.c, renderer.h, draw.c or pgraph.c.
+
+### The armed gate (477893cdbf): only reports the guest will poll are deferred
+
+The step-1 trace (section 2) settled what the async write costs a guest. The write lands after the guest's next
+flip on 98.8 % of NFS's reports, so the async path is safe only for a guest that waits for the status word.
+NFS does: it writes `0xffffffff` to the status word before every GET_REPORT. A guest that leaves the status
+at 0 has nothing to wait on, and if it reads the count after a semaphore or a PGRAPH idle wait, it can read
+it before the reader has written it. The ZPass pgraph test is that guest: it zeroes the report memory
+(`zpass_pixel_count_tests.cpp:81`) and never arms it. It came out byte-identical on the ungated build
+(section 2), but by timing, not by any guarantee.
+
+So the finish now reads each report's status word as it hands the batch over (`ra_internal()`; the guest
+address is already resolved there). A batch holding any report whose status word is 0 (DONE) when the finish
+runs is not handed to the reader. The finishing thread first waits for the reader to go idle, then for that
+batch's own slot fence, then writes the batch before the finish returns. That is the synchronous path's
+order, minus its wait on every other submitted frame. Rule 1 still holds: a batch reads only its own
+slot, after its own slot's fence. The trace counts this wait as `wait=` (with `HAKUX_REPORT_TRACE=1`). Armed
+batches go to the reader as before.
+
+What it costs: one 32-bit guest load per report at the finish. On NFS nearly every report is armed: 4,692 of
+4,692 on the texscan + async trace (`1-1791659727-reportasync1010-553973`), 99.9 % on the async pilot. So the gate
+should engage only on that 0.1 %, a handful of batches per run. `1-1791667691-reportasync1010-3049912` (queued)
+checks that `wait=` stays near 0 and that the 12 starts survive.
+`docs/testing/predictions/reportasync1010-gate-zpass.json` (queued) checks that the ZPass test takes the
+synchronous branch and stays byte-identical.
 
 ### Why a thread of its own and not the render thread
 
@@ -80,8 +117,11 @@ thread after the reader is idle, waiting for every submitted fence, as #804 does
   is done (a semaphore it polls, a PGRAPH idle wait), can read it before the reader has written it. The
   synchronous path writes it before the finish returns, with pfifo.lock held, so such a read then waits
   behind the lock. The ZPass pgraph test is that shape (`zpass_pixel_count_tests.cpp:157-200`: GET_REPORT,
-  SEMAPHORE_RELEASE, `WaitForGPU`, spin on the semaphore, print the report): the pixel leg answers whether
-  it reads too early. Whether NFS is that shape is the step-1 question (section 2).
+  SEMAPHORE_RELEASE, `WaitForGPU`, spin on the semaphore, print the report). The armed gate covers a guest
+  that leaves the status at 0. **It does not cover a guest that arms the status word and then reads the count
+  without polling it**, or one that arms a slot again before the previous write landed: such a guest could see
+  the old count, or a stale DONE. NFS does neither (`reuseb4w` 0 on every trace run; it polls). No other
+  title has been traced.
 - Savevm: neither path writes reports still queued when the snapshot is taken; the async path can also have
   one batch in the reader. Not exercised by any run here.
 
@@ -199,7 +239,8 @@ stale one. Whether that is visible is what the pixel checks answer:
   start (28-90 mph) on both runs. They are not region-comparable (different driving lines), and none shows a
   missing car or a popping prop.
 - **The ZPass pixel suite** is the case of a guest that does not poll the status word: it waits for a semaphore
-  and PGRAPH idle, then reads. It is the first leg of the queued batch.
+  and PGRAPH idle, then reads. It was byte-identical on the ungated build ("Pixel leg" below), and the armed
+  gate (section 1) now makes that a guarantee rather than a matter of timing.
 
 **Period** (trace on, not scored: the trace adds a lock and stores per GET_REPORT; `raread.py --starts`):
 
@@ -219,32 +260,158 @@ failed or took over 3 s, on both arms (`bad_starts()`), and the re-registered pr
 starts per run. Separately, the sync run's s10-g11 screenshot failed (22 s in adb). Its inputs were all on time and
 its go10 pace matches its other starts, so the start is kept.
 
+### Pixel leg (27-suite disc, ba9a6df8fc, one binary, on vs off)
+
+`ab_compare.py --a 1-1791659700-reportasync1010-546194 --b 1-1791659693-reportasync1010-543406 --expect
+docs/testing/predictions/reportasync1010-pixels.json --allow-same-binary` gives **FAIL: 8 of 1,060 checks
+violated**. Every mover is in a row this disc is known to flicker on within one state (perdrawon1010 NOTES 3;
+pfifowait1009 NOTES 7a), named in the registered prediction:
+
+| capture | A (off) | B (on) |
+|---|---|---|
+| Stencil/Stencil_REPLACE_ST_DT | 30,000 | 0 |
+| Stencil/Stencil_REPLACE_ST_DT_ZB | 30,000 | 0 |
+| Vertex_shader_rounding_tests/GeometrySuperscreen_0.0010 | 800 | 0 |
+| ..._0.4999 / _0.5624 / _0.5626 | 0 / 0 / 0 | 800 / 400 / 570 |
+| ..._0.9990 / _1.0000 | 285 / 0 | 570 / 570 |
+
+**ZPass_pixel_count: all 72 captures byte-identical.** The pfifowait mover (`Stencil_ZERO_ST_DT*`, 30,000 px,
+attributable) did not move. The registered prediction requires a runs=3 determinism check on both arms before
+any mover is read as the switch. It is queued (`1-1791667080-reportasync1010-2775483` A,
+`1-1791667081-reportasync1010-2775900` B; Stencil and Vertex shader rounding tests, runs=3, ba9a6df8fc). Until
+it is read, the leg stands at FAIL with the movers unattributed. A switch that only defers a 16-byte write to
+report memory cannot reach a stencil or a rasterization result, but that is reasoning; the check is the evidence.
+
+### NFS A/B (brief step 4, ba9a6df8fc, plain build, off/on/on/off)
+
+`raread.py off1 on1 on2 off2 --expect docs/testing/predictions/reportasync1010-nfs.json` gives **FAIL: 5 of 6
+checks hold**. Every run reached 12 valid starts.
+
+| run | arm | cold start 1 | warm countdown | warm v2 / v3 / v4 | post-GO warm |
+|---|---|---|---|---|---|
+| `1-1791659702-reportasync1010-546475` | off1 | 62.4 ms | 41.8 ms | 52 / 45 / 2 % | 39.9 ms (25.1 fps) |
+| `1-1791659703-reportasync1010-547266` | on1 | 51.4 ms | 38.0 ms | 73 / 24 / 1 % | 35.2 ms (28.4 fps) |
+| `1-1791659705-reportasync1010-547898` | on2 | 51.9 ms | 38.4 ms | 71 / 27 / 1 % | 35.5 ms (28.1 fps) |
+| `1-1791659706-reportasync1010-548438` | off2 | 57.6 ms | 41.2 ms | 54 / 43 / 2 % | 39.0 ms (25.6 fps) |
+
+| check | registered | measured | |
+|---|---|---|---|
+| W warm off | in [39, 44] | 41.5 ms | PASS |
+| **W warm on** | **<= 38.0** | **38.2 ms** | **FAIL, by 0.2 ms** |
+| W on - off | <= -2.5 | -3.3 ms | PASS |
+| C cold off | in [54, 64] | 60.0 ms | PASS |
+| C cold on | <= 55 | 51.6 ms | PASS |
+| H warm v2 share | +10 points | 53 -> 72 %, +19.4 | PASS |
+
+Post-GO warm (not a registered check) goes from 39.45 to 35.35 ms pooled, 25.3 -> 28.3 fps.
+
+**Frames.** The `s*-g11` frames of all four runs (48 starts) show a moving player at every mark, 33-84 mph.
+None shows a missing car or a popping prop.
+
+### Both switches (brief step 5, 3cd9d6b7e3: `HAKUX_TEXSCAN=1 HAKUX_REPORT_ASYNC=1` vs both off)
+
+`raread.py off1 on1 on2 off2 --expect docs/testing/predictions/reportasync1010-both.json` gives **FAIL: 4 of 8
+checks hold**. Every run reached 12 valid starts.
+
+| run | arm | cold start 1 | warm countdown | warm v2 / v3 / v4 | post-GO warm |
+|---|---|---|---|---|---|
+| `1-1791659722-reportasync1010-552321` | off1 | 58.2 ms | 41.0 ms | 55 / 42 / 1 % | 40.8 ms (24.5 fps) |
+| `1-1791659723-reportasync1010-552662` | on1 | 47.4 ms | 37.2 ms | 70 / 21 / 2 % | 35.1 ms (28.5 fps) |
+| `1-1791659725-reportasync1010-552924` | on2 | 50.3 ms | 37.9 ms | 69 / 22 / 2 % | 35.3 ms (28.3 fps) |
+| `1-1791659726-reportasync1010-553359` | off2 | 60.6 ms | 41.1 ms | 55 / 41 / 2 % | 39.9 ms (25.1 fps) |
+
+| check | registered | measured | |
+|---|---|---|---|
+| W warm off | in [39, 44] | 41.0 ms | PASS |
+| **W warm on** | **<= 34.0** | **37.5 ms** | **FAIL** |
+| **W on - off** | **<= -5.0** | **-3.5 ms** | **FAIL** |
+| C cold off | in [44, 64] | 59.4 ms | PASS |
+| C cold on | <= 55 | 48.8 ms | PASS |
+| **H warm v2 share** | **+15 points** | **55 -> 70 %, +14.8** | **FAIL** |
+| P post-GO warm off | in [37, 43] | 40.3 ms | PASS |
+| **P post-GO warm on** | **<= 34.0** | **35.2 ms** | **FAIL** |
+
+**Frames.** In the `s*-g11` frames, 46 of 48 starts show a moving player (35-91 mph). The two that do not are
+both cold first starts: off1 s1 reads 0 mph and on2 s1 reads 9 mph (the car is against the wall or recovering).
+Neither enters a scored warm or post-GO window: start 1 is scored only on its countdown, before GO.
+
+**What this says about texscan's default.** The plan's step 1 + 2 prediction was 30 fps (<= 34 ms) at the
+warm countdown and post-GO. It does not hold. The two pairs ran on different refs at different times, so the
+comparison below is not matched, but their off arms agree to within 0.5 ms warm and 0.9 ms post-GO:
+
+| | async alone (NFS A/B on) | texscan + async (both on) | difference |
+|---|---|---|---|
+| warm countdown | 38.2 ms | 37.5 ms | -0.7 ms |
+| post-GO warm | 35.35 ms | 35.2 ms | -0.15 ms |
+
+With async on, texscan no longer costs anything; it gains at most 0.7 ms, which is inside the run-to-run spread
+of a pair. Without async, it costs about 5 ms: the texscan + sync trace run below reads 45.8 ms warm, and the
+sync pilot 40.6 ms, both with the trace on. texscan1010 measured the same loss (46.6 -> 49.2 ms). So texscan's
+default must follow async's. Turning texscan on alone loses fps on NFS. Turning it on with async is neutral at
+the race start, with the cube-face downloads gone.
+
+What holds the race start at about 37 ms once the report wait is gone is not known. This lane did not run a
+frametrace with async on. That is the next measurement (section 4).
+
+### The addendum's question: does async remove the wait with texscan on
+
+Two trace runs on 3cd9d6b7e3, both with `HAKUX_TEXSCAN=1 HAKUX_REPORT_TRACE=1`, not scored. Read with
+`raread.py <async> <sync>`, race starts only:
+
+| per GET_REPORT | texscan + sync (`1-1791659729-reportasync1010-554366`) | texscan + async (`1-1791659727-reportasync1010-553973`) |
+|---|---|---|
+| reports written | 3,490 | 4,692 |
+| queued -> written, < 16.7 / < 33.3 ms | 46.1 / 100 % | 49.5 / 100 % |
+| `late` | 0 % | 97.3 % |
+| `reuseb4w` | 0 | 0 |
+| `armed` | 3,491 of 3,491 | 4,692 of 4,692 |
+| **finishing thread: report waits** | **3,490, 50,642 ms (14.5 ms each)** | **0** |
+| finishing thread: rule-3 gate waits | 0 | 285, 22.2 ms |
+| warm countdown / post-GO warm (trace on) | 45.8 / 48.0 ms | 36.9 / 35.3 ms |
+
+**Yes.** With texscan on, the sync report wait is 14.5 ms per report, larger than texscan1010's ~10.5 ms
+frametrace figure. This lane's instrument times the whole wait, including `vkGetQueryPoolResults`. Async takes it
+to zero on the finishing thread. What is left there is the rule-3 gate: 285 waits, 22 ms over all 12 starts.
+
 ### Runs of this lane
 
 | request | what | ref | env | state |
 |---|---|---|---|---|
 | `1-1791656656-reportasync1010-4183629` | pilot, step-1 trace, async | 2e9f535300 | `HAKUX_REPORT_TRACE=1 HAKUX_REPORT_ASYNC=1` | done, above |
 | `1-1791656657-reportasync1010-4184121` | pilot, step-1 trace, sync | 2e9f535300 | `HAKUX_REPORT_TRACE=1` | done, above |
-| `1-1791659693-reportasync1010-543406` | pixel leg B, 27 suites | ba9a6df8fc | `HAKUX_REPORT_ASYNC=1` | queued 10-10 |
-| `1-1791659700-reportasync1010-546194` | pixel leg A, 27 suites | ba9a6df8fc | none | queued 10-10 |
-| `1-1791659702-reportasync1010-546475` | NFS A/B off1 | ba9a6df8fc | none | queued 10-10 |
-| `1-1791659703-reportasync1010-547266` | NFS A/B on1 | ba9a6df8fc | `HAKUX_REPORT_ASYNC=1` | queued 10-10 |
-| `1-1791659705-reportasync1010-547898` | NFS A/B on2 | ba9a6df8fc | `HAKUX_REPORT_ASYNC=1` | queued 10-10 |
-| `1-1791659706-reportasync1010-548438` | NFS A/B off2 | ba9a6df8fc | none | queued 10-10 |
-| `1-1791659722-reportasync1010-552321` | both-switches off1 | 3cd9d6b7e3 | none | queued 10-10 |
-| `1-1791659723-reportasync1010-552662` | both-switches on1 | 3cd9d6b7e3 | `HAKUX_TEXSCAN=1 HAKUX_REPORT_ASYNC=1` | queued 10-10 |
-| `1-1791659725-reportasync1010-552924` | both-switches on2 | 3cd9d6b7e3 | `HAKUX_TEXSCAN=1 HAKUX_REPORT_ASYNC=1` | queued 10-10 |
-| `1-1791659726-reportasync1010-553359` | both-switches off2 | 3cd9d6b7e3 | none | queued 10-10 |
-| `1-1791659727-reportasync1010-553973` | trace, texscan + async (not scored) | 3cd9d6b7e3 | `HAKUX_TEXSCAN=1 HAKUX_REPORT_ASYNC=1 HAKUX_REPORT_TRACE=1` | queued 10-10 |
-| `1-1791659729-reportasync1010-554366` | trace, texscan + sync (not scored) | 3cd9d6b7e3 | `HAKUX_TEXSCAN=1 HAKUX_REPORT_TRACE=1` | queued 10-10 |
+| `1-1791659693-reportasync1010-543406` | pixel leg B, 27 suites | ba9a6df8fc | `HAKUX_REPORT_ASYNC=1` | done: pixel FAIL 8/1,060, known-flaky rows |
+| `1-1791659700-reportasync1010-546194` | pixel leg A, 27 suites | ba9a6df8fc | none | done: pixel leg A |
+| `1-1791659702-reportasync1010-546475` | NFS A/B off1 | ba9a6df8fc | none | done: NFS FAIL 5/6 |
+| `1-1791659703-reportasync1010-547266` | NFS A/B on1 | ba9a6df8fc | `HAKUX_REPORT_ASYNC=1` | done |
+| `1-1791659705-reportasync1010-547898` | NFS A/B on2 | ba9a6df8fc | `HAKUX_REPORT_ASYNC=1` | done |
+| `1-1791659706-reportasync1010-548438` | NFS A/B off2 | ba9a6df8fc | none | done |
+| `1-1791659722-reportasync1010-552321` | both-switches off1 | 3cd9d6b7e3 | none | done: both FAIL 4/8 |
+| `1-1791659723-reportasync1010-552662` | both-switches on1 | 3cd9d6b7e3 | `HAKUX_TEXSCAN=1 HAKUX_REPORT_ASYNC=1` | done |
+| `1-1791659725-reportasync1010-552924` | both-switches on2 | 3cd9d6b7e3 | `HAKUX_TEXSCAN=1 HAKUX_REPORT_ASYNC=1` | done |
+| `1-1791659726-reportasync1010-553359` | both-switches off2 | 3cd9d6b7e3 | none | done |
+| `1-1791659727-reportasync1010-553973` | trace, texscan + async (not scored) | 3cd9d6b7e3 | `HAKUX_TEXSCAN=1 HAKUX_REPORT_ASYNC=1 HAKUX_REPORT_TRACE=1` | done: report waits 0 |
+| `1-1791659729-reportasync1010-554366` | trace, texscan + sync (not scored) | 3cd9d6b7e3 | `HAKUX_TEXSCAN=1 HAKUX_REPORT_TRACE=1` | done: 14.5 ms per report |
+| `1-1791667080-reportasync1010-2775483` | pixel determinism A, Stencil + VS rounding, runs=3 | ba9a6df8fc | none | queued 10-10 |
+| `1-1791667081-reportasync1010-2775900` | pixel determinism B, Stencil + VS rounding, runs=3 | ba9a6df8fc | `HAKUX_REPORT_ASYNC=1` | queued 10-10 |
+| `1-1791667684-reportasync1010-3047961` | gate ZPass B (`reportasync1010-gate-zpass.json`) | 477893cdbf | `HAKUX_REPORT_ASYNC=1 HAKUX_REPORT_TRACE=1` | queued 10-10 |
+| `1-1791667685-reportasync1010-3048190` | gate ZPass A | 477893cdbf | none | queued 10-10 |
+| `1-1791667691-reportasync1010-3049912` | gate on NFS, trace (not scored: `wait=` ~0, 12 starts) | 477893cdbf | `HAKUX_REPORT_ASYNC=1 HAKUX_REPORT_TRACE=1` | queued 10-10 |
 
 ba9a6df8fc runs the same code as 60a04cc81b (the commits after it change only docs). The pilot verdict is in
-`$DISPATCH_DIR/pilots/reportasync1010.ok`. Device time for the batch: 12 x (500 s, or the disc's run, + 90 s of
-setup), about 2 h, so the lane's total stays under the 3 h allowance. Judges:
+`$DISPATCH_DIR/pilots/reportasync1010.ok`. Device time: the 12-run batch was 12 x (500 s, or the disc's run, + 90 s
+of setup), about 2 h. The five attempt-3 requests add about 25 min: two short-suite runs=3 pairs, two one-suite
+discs, one 500 s soak. The lane's total stays near the 3 h allowance. Judges:
 
 - pixels: `ab_compare.py --a <A> --b <B> --expect docs/testing/predictions/reportasync1010-pixels.json --allow-same-binary`;
 - NFS: `raread.py off1 on1 on2 off2 --expect docs/testing/predictions/reportasync1010-nfs.json`;
 - both switches: `raread.py off1 on1 on2 off2 --expect docs/testing/predictions/reportasync1010-both.json`.
+- determinism: `ab_compare.py --a 1-1791667080-reportasync1010-2775483 --b 1-1791667081-reportasync1010-2775900
+  --allow-same-binary`, and each arm's three runs against each other: a mover that flickers within an arm is noise;
+  one that separates the arms on every run is the switch;
+- gate ZPass: `ab_compare.py --a 1-1791667685-reportasync1010-3048190 --b 1-1791667684-reportasync1010-3047961
+  --expect docs/testing/predictions/reportasync1010-gate-zpass.json --allow-same-binary`, then
+  `grep '\[rtrace\] w' <B>/logcat*.txt` for `wait=` > 0;
+- gate on NFS: `raread.py 1-1791667691-reportasync1010-3049912`: `report waits` about 0, 12 valid starts.
 
 The two trace runs on the `-ts` ref answer the addendum's question. With texscan on, the report wait is the
 largest it has been measured (~10.5 ms/frame, texscan1010's frametrace). The texscan + sync run measures it with
@@ -269,8 +436,11 @@ this lane's instrument, and the texscan + async run shows whether any of it stay
 5. Re-registration (attempt 2): the pixel and NFS legs were registered on 2e9f535300 before the merge. They are
    re-registered on ba9a6df8fc with the same thresholds. The one change is the direction-neutral start-validity
    rule above. The pilot's sync cold start (47.1 ms) sits below the NFS leg's registered off band for cold
-   (54-64 ms). The band is kept as registered; if the off arms read the same, C fails on its off band, and PR.md
-   says so.
+   (54-64 ms). The band is kept as registered. The off arms read 60.0 ms, so C passed.
+6. The armed gate (attempt 3, 477893cdbf): after the step-1 table and the ungated pixel leg, unarmed batches
+   are written synchronously (section 1). Registered `reportasync1010-gate-zpass.json` on 477893cdbf before
+   any run of it. Queued the ZPass pair, one NFS trace run on the gated build, and the pixel leg's determinism
+   check. When those are read: judge them (section 2, "Judges"), run `preflight.sh`, set `State: ready`.
 
 ## 4. For the next lane
 
@@ -283,6 +453,16 @@ this lane's instrument, and the texscan + async run shows whether any of it stay
 
 - `phaseread.py` (nfs30plan1010) prints nothing on the plain build: it returns before the pace line when no
   phase line is in the window. `raread.py` reads pace alone.
+- **The next measurement is a frametrace with `HAKUX_REPORT_ASYNC=1`** (and texscan on): with the report wait
+  gone, the race start sits at about 37 ms warm and 35 ms post-GO, and nothing here says what sets that. The
+  plan's 34 ms needs that answer, not another A/B of these two switches.
+- Do not run texscan without async on NFS: texscan + sync reads 45.8 ms warm against 40.6 for sync alone
+  (both with the trace on; texscan1010 measured the same loss). It only pays together with async.
+- The NFS A/B misses its warm bound by 0.2 ms (38.2 vs <= 38.0), with every other check holding. The bound came
+  from the plan's arithmetic. Re-registering a looser bound and re-running the same pair would only fit the bound
+  to the data; the direction and size (-3.3 ms warm, -4.1 ms post-GO, +19 points v2) are already measured.
+- The trace's `[rtrace] w` lines go to `hakuX-lane`. In a disc run they land in `logcat1.txt`; in a soak they
+  land in `logcat.txt`. `raread.py` reads only `logcat.txt`.
 
 ## 5. Attempts
 
@@ -291,7 +471,7 @@ this lane's instrument, and the texscan + async run shows whether any of it stay
   ended its turn with them in `WAITING`. The pilot gate allows no more than 30 min of device time before a
   reviewed pilot, and the scored arms needed the pilot's answer first: does the async path survive 12 starts, and
   what does step 1 say. Nothing failed.
-- **Attempt 2 (this one), on resume:**
+- **Attempt 2 (2026-10-10), on resume:**
   - read the pilot (section 2) and wrote the pilot verdict;
   - merged master forward (pfifowait1009 folded);
   - fixed `raread.py`'s scoring of hung-input starts;
@@ -299,3 +479,56 @@ this lane's instrument, and the texscan + async run shows whether any of it stay
   - built `lane/reportasync1010-ts` for step 5 and registered its pair;
   - queued the 12-run batch above;
   - ended waiting on it (`WAITING`).
+- **Attempt 2 did not finish because it was waiting on its 12 Nova runs, as it should have.** They were queued
+  behind texscan1010's and drawrec1010's runs, and the session could not outlive them. Nothing failed.
+- **Attempt 3 (this one), on resume:**
+  - read all 12 runs and judged the three predictions: NFS FAIL 5/6 (by 0.2 ms), both switches FAIL 4/8,
+    pixels FAIL on the known-flaky rows (section 2);
+  - answered the addendum: async removes the 14.5 ms-per-report wait with texscan on;
+  - checked the moving player in every scored start from the g11 frames;
+  - queued the pixel leg's determinism check, as its prediction requires;
+  - added the armed gate (477893cdbf), so that a guest that does not poll the status word keeps the synchronous
+    write, after merging master @ d758e39a59;
+  - registered the gate's ZPass prediction and queued it, with one NFS trace run on the gated build;
+  - ended waiting on those five runs (`WAITING`).
+
+## 6. Recommendation: default-on, once the three pending checks hold
+
+**This lane recommends `HAKUX_REPORT_ASYNC=1` default-on, with the armed gate.** That holds once three checks
+pass:
+
+- the determinism check (`-2775483` / `-2775900`) reads the pixel-leg movers as flicker, not the switch;
+- `reportasync1010-gate-zpass.json` holds: 72 byte-identical, with `wait=` > 0 on B;
+- the gated NFS run (`-3049912`) shows `report waits` about 0, with 12 starts.
+
+This PR still ships the switch off (`Release note (none)`). The default flip belongs in a one-line PR of its
+own, so that a regression bisects to it.
+
+**The reason is the step-1 table** (section 2: pilot `-4183629` / `-4184121`, and the texscan traces `-553973` /
+`-554366`). The brief's rule says: over 1 % `late`, the switch needs `done` honoured, or it stays opt-in.
+
+- `late` is 98.8 % (pilot) and 97.3 % (texscan + async). So the async write needs the guest to honour `done`.
+- **NFS honours it.** `armed` is 100 % on three of the four trace runs and 99.9 % on the fourth: the guest
+  writes `0xffffffff` to the status word before GET_REPORT. `tsours` is 0: it rewrites the timestamp too. `reuseb4w` is 0: it never
+  reuses a slot before the previous write landed. The async write puts the status word last, after a write
+  barrier, so the guest sees "in progress" until the count is in memory. A late write costs it a result one
+  frame later, never a wrong one.
+- **With the gate, that holds by construction.** Only reports whose status word the guest armed are deferred. A
+  guest that leaves it at 0 has nothing to poll, so it gets the synchronous write, waiting only on its own slot.
+
+**What it buys, on NFS Most Wanted's race start** (NFS A/B, `-546475` `-547266` `-547898` `-548438`):
+
+- warm countdown 41.5 -> 38.2 ms;
+- post-GO 39.45 -> 35.35 ms (25.3 -> 28.3 fps);
+- cold start 60.0 -> 51.6 ms;
+- v2 share 53 -> 72 %.
+
+With texscan on, the finishing thread's report waits go from 50.6 s over the 12 starts to 0.
+
+**What it does not cover:** a guest that arms the status word and then reads the count without polling it, or
+re-arms a slot before the previous write lands (section 1, known limits). Only NFS has been traced. Before or
+with the default flip, trace two or three report-heavy titles with `HAKUX_REPORT_TRACE=1` and read `armed` and
+`reuseb4w`.
+
+**texscan's default follows this one.** On with async, it is neutral at the race start (-0.7 ms warm, inside
+pair noise) and removes the cube-face downloads. On without async, it loses about 5 ms.
