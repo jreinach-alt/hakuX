@@ -136,19 +136,169 @@ pacing, before any A/B arm is queued. Not yet run (no device time spent
 yet this lane). Planned next after the lock-mechanism investigation below
 reaches a checkpoint worth protecting with a commit.
 
-## 2. Lock analysis (brief step 1) -- in progress
+## 2. Lock analysis (brief step 1) -- done
 
-Confirmed via direct reading (not the brief's own phrasing) that at the
-`pgraph_process_pending_reports(d)` call site in `pfifo_thread`
-(`hw/xbox/nv2a/pfifo.c`, loop body), only `pfifo.lock` is actually held.
-`pgraph.lock` is not taken until *after* that call returns (the
-`diag_capture` block a few lines later explicitly drops `pfifo.lock`,
-takes `pgraph.lock` for `surface_update`/`flip_stall`, then reverses). So
-the brief's "(and pgraph.lock)" framing is almost certainly about a
-correlated-but-separate contributor to the same low-fps windows (the brief
-itself keeps `lw` and the `pgraph.lock` +2.8ms figure as separate clauses),
-not literal co-holding at this call site. Still need to trace the full
-`pgraph_process_pending_reports` (pfifo.c) ->
-`pgraph_vk_process_pending_reports` (reports.c:361) ->
-`_internal` (reports.c:213) call chain precisely before finalizing the fix
-shape and scope. Continuing next.
+### The call chain, confirmed by reading, not by the brief's own phrasing
+
+`pfifo_thread`'s loop body (`hw/xbox/nv2a/pfifo.c:2119-2163`) takes
+`pfifo.lock` once at the top and holds it continuously across
+`pgraph_process_pending_reports(d)` at line 2163. `pgraph.lock` is not held
+there: it is taken *after* that call returns, for the unrelated
+`diag_capture` block a few lines later (2171-2184), which explicitly drops
+`pfifo.lock`, takes `pgraph.lock`, then reverses -- itself a working,
+in-territory-adjacent example of the plain unlock/relock style this fix
+uses, not the flag+cond style (see below). So the brief's "(and
+pgraph.lock)" framing is a correlated-but-separate contributor to the same
+low-fps windows (the brief itself keeps `lw` and the `pgraph.lock` +2.8ms
+figure as separate clauses); `pgraph.lock` is never co-held at this call
+site. Grep-confirmed: `reports.c` and `pgraph_vk_finish` (draw.c) never
+touch `pg->lock` at all.
+
+`pgraph_process_pending_reports` (`pgraph.c:5698-5707`) is a thin wrapper
+whose own comment is the authoritative statement of the problem: "#433
+frametrace: called from the PFIFO loop with pfifo.lock held, so a wait in
+its STALLED finish is a wait the guest's DMA_PUT store (user.c) queues
+behind." It calls `pg->renderer->ops.process_pending_reports(d)`, which for
+the Vulkan renderer is `pgraph_vk_process_pending_reports`
+(`reports.c:361`, `renderer.c:2880`) -- confirmed by grep to be this
+function's *only* caller anywhere in the tree, so it is always reached on
+the PFIFO thread with `pfifo.lock` held and never from the render thread or
+anywhere else.
+
+Inside `pgraph_vk_process_pending_reports`: it reads `dma_get`/`dma_put`
+(plain loads, correctly protected by the already-held `pfifo.lock` -- not
+atomics, so they must not become concurrent with `user_write`'s stores),
+and if the FIFO is drained and a new draw has happened since the last
+stall, it calls `pgraph_vk_finish(pg, VK_FINISH_REASON_STALLED)`
+(`reports.c:374`, the brief's second named site). That one call is where
+both of the brief's wait sites actually live, nested rather than parallel:
+
+- Inside `pgraph_vk_finish`, the STALLED reason is one of the "deferred"
+  reasons (`draw.c:5019-5022`), so after recording and submitting the
+  command buffer it waits only for the render thread's `vkQueueSubmit`
+  hand-off (`wait_frame_submitted`, `draw.c:5131-5134`) -- not the fence
+  itself at that point. But the existing `HAKUX_STALLFIN` comment just
+  above my edit (`reports.c:325-344`, present before this lane) already
+  names a second, earlier wait inside the same function that I did not
+  need to chase into `pgraph_vk_finish`'s body to rely on: "every STALLED
+  finish rotates the frame slot, and the rotation waits for the slot two
+  finishes back." That rotation wait is a real `vkWaitForFences`, and it
+  is why the comment also records the vcpusleep prior art directly,
+  unprompted: "Taking the vCPU off the lock alone (c2dfca18a1, reverted in
+  f6ac723228) moved the wait to that fence: 8 to 21 ms a frame, fps down."
+  This is the same finding `docs/lanes/vcpusleep/OUTBOX.md`'s "attempt 3"
+  entry describes at length (PFIFO thread's own sleep going from median
+  8.0ms to 21.3ms once the vCPU stopped being paced by the lock), already
+  in the code as the warning this lane's own territory grant refers to.
+- `pgraph_vk_finish` unconditionally tail-calls
+  `pgraph_vk_process_pending_reports_internal` at its very end
+  (`draw.c:5364` -- grep-confirmed the *only* call site for `_internal` in
+  the tree). That is where the brief's first named site actually is: the
+  `#804` occlusion-query wait, `vkWaitForFences(..., UINT64_MAX)` over
+  every submitted frame slot (`reports.c:257-262`, unchanged by this lane)
+  followed by a blocking `vkGetQueryPoolResults(..., WAIT_BIT)` loop
+  (`reports.c:265-273`, also unchanged).
+
+So `pgraph_vk_finish(pg, VK_FINISH_REASON_STALLED)` at `reports.c:374` is a
+single call that can block on at least two separate GPU fences (the frame
+rotation's and the occlusion queries') before it returns, and the entire
+thing runs with `pfifo.lock` held. Nothing inside either wait touches any
+`d->pfifo` state: the only `pfifo.lock`-protected reads in this path are
+the `dma_get`/`dma_put` loads already taken before the lock is ever
+dropped (see fix, below).
+
+### #474's and #796's pattern, and why this fix does not reuse it verbatim
+
+`#474`/`#796`'s `pgraph_lock_release_for_fence()` / `_retake_after_fence()`
+(`pgraph.h`, `~160-434`) is a flag (`lock_released_for_fence`) plus a cond
+var (`lock_settled_cond`) that lets *other* takers of `pgraph.lock` -- the
+guest's MMIO handlers, the VRAM access callback -- notice the release and
+park in `pgraph_lock_settled()` until the method ends, rather than
+proceeding against a half-finished state. `#796`'s own application of it
+(`draw.c:5136-5166`) is gated specifically on
+`finish_reason == VK_FINISH_REASON_SURFACE_DOWN && qemu_thread_is_self(&fd->pfifo.thread)`
+-- it does not reach the `STALLED` path I am fixing at all, confirming
+that path currently has zero lock-release coverage of any kind.
+
+I did not build an analogous flag+cond pair for `pfifo.lock`, because
+nothing needs to notice the release the way `#796`'s consumers need to
+notice `pgraph.lock`'s: the only other taker of `pfifo.lock` is
+`user_write` (`user.c:93-132`), and what it does while holding it --
+store `DMA_PUT`/`DMA_GET`/`REF` with `qatomic_store_release` and call
+`pfifo_kick(d)` -- is exactly what it is *supposed* to be free to do while
+the PFIFO thread is parked waiting on a fence it already queued; there is
+no "half-finished state" for `user_write` to race against, because the
+PFIFO thread touches no `pfifo.lock`-protected state during either wait
+(previous paragraph). The existing `diag_capture` unlock/relock a few
+lines below the call site in `pfifo.c` (`pfifo.c:2177-2184`) is already
+the established, simpler style for a plain pfifo.lock drop-and-retake by
+the PFIFO thread itself, not the flag+cond style -- this fix matches that
+existing style rather than importing `#796`'s heavier one needed for a
+*different* lock with *different*, notification-dependent consumers.
+
+`pfifo_kick` (`pfifo.c:1532+`) independently supports the safety argument:
+its own doc comment establishes it is already designed to be called with
+or without `pfifo.lock` held (it distinguishes vCPU-thread callers via
+`current_cpu != NULL` from the VBLANK callback's unlocked diag-capture
+kick), i.e. the codebase already tolerates `pfifo.lock` not being held
+around at least one of `user_write`'s two actions. And since
+`pgraph_vk_process_pending_reports` is only ever reached from the single
+PFIFO thread (confirmed above), there is no reentrancy hazard to guard
+against either -- unlike `#796`, which needed the `qemu_thread_is_self`
+check because `pgraph_vk_finish` has non-PFIFO-thread callers for other
+finish reasons. This call site has exactly one caller, so the fix needs no
+such guard.
+
+### Fix shape chosen: (a), scoped to the one call that blocks
+
+Shape (a) from the brief ("drop both locks across the fence waits, as
+`#474` did for the flip") -- but scoped to the single `pfifo.lock`
+(`pgraph.lock` is never held here, so there is nothing of (b)'s kind to
+retrofit: shape (b), "write each occlusion report when its fence signals,
+without blocking the pusher," would mean restructuring `_internal`'s
+report-writeback to be fence-callback-driven instead of a synchronous
+wait, which is a materially larger, renderer-level change for the same
+correctness outcome).
+
+Implemented in `hw/xbox/nv2a/pgraph/vk/reports.c`
+(`pgraph_vk_process_pending_reports`): when `HAKUX_PFIFOWAIT=1` (read once,
+default off, same `getenv`-cached-static-int style as the file's existing
+`stall_reports_only()`), `pfifo.lock` is released immediately before the
+`pgraph_vk_finish(pg, VK_FINISH_REASON_STALLED)` call and retaken
+immediately after it returns -- bracketing the *entire* call, which
+covers both of the brief's named wait sites in one shot regardless of
+exactly where inside `pgraph_vk_finish`/`_internal` each fence wait
+happens, since nothing in between needs the lock. Unset (the shipped
+default), the code takes the unchanged, un-bracketed `else` branch with no
+new behavior.
+
+### Guarding explicitly against vcpusleep's exact failure mode
+
+`docs/lanes/vcpusleep/OUTBOX.md` ("attempt 3") is the one prior attempt at
+relieving this contention, and it regressed Simpsons' fps (40.05 -> 36.22,
+both outcome legs failed) despite doing exactly what it set out to do:
+vCPU off-CPU time fell 19.99s -> 2.54s/minute, USER MMIO wait share fell
+79.3% -> 3.3%. Its own diagnosis, and the one the `reports.c` comment
+baked in, applies to this fix too if I am not careful: "the frame is paced
+by the GPU side, and the lock was only making the vCPU wait it out" --
+freeing the vCPU just let it spin through GPU-bound idle time (on-CPU
+96%), stealing cycles from the PFIFO thread's own progress and making its
+fence wait *longer* (median 21.3ms vs 8.0ms).
+
+The mechanism difference matters here: vcpusleep's fix (`c2dfca18a1`)
+changed `user_write` to *post* the DMA_PUT store asynchronously, so the
+vCPU's write returned immediately regardless of lock state and the guest
+could race arbitrarily far ahead of where the PFIFO thread actually was.
+This fix leaves `user_write` unchanged -- it still blocks in
+`qemu_mutex_lock(&d->pfifo.lock)` exactly as today, just against a lock
+that is no longer held for however long the two fence waits take. The
+guest cannot race ahead of DMA_PUT/DMA_GET/REF any faster than it could
+today when the lock happens to be free; the only change is that those
+registers are no longer artificially unreachable for the duration of a
+GPU-bound wait that does not need them locked. So the regression
+mechanism vcpusleep hit (free the vCPU to spin unboundedly far ahead) does
+not apply the same way here -- but the open question it raises (is the
+PFIFO thread's own GPU-bound wait, not the vCPU's, the actual fps-limiting
+resource on Amped 2?) is exactly what the prediction below (step 3) has to
+be able to catch as a miss, not just check that `lw` dropped. See the
+prediction's legs for the explicit vcpusleep-style falsifier.
