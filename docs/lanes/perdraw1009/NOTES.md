@@ -14,6 +14,15 @@ claude-sonnet-5"). Nothing about the brief or the worktree was wrong; the
 infra that launched attempt 1 was reading the wrong script. This (attempt 2)
 picks up the brief from scratch, below.
 
+**Attempt 2 (Sonnet, 22:49:59-23:00:59 PDT) did not finish either, again for an
+external reason.** The unit journal shows lane.local stopped it at 23:00:59 and
+restarted it at 23:01:02 on `claude-opus-5-5` (the usage meter was recalibrated
+at 22:57 and the lane's `.model` file says Opus). That session had committed
+93f5542ce3 (sections 1-2 and the shaders.c ubosz gate) and left section 3b
+uncommitted; it had queued no device request. Its session log is empty (killed
+before the JSON was written). The Opus session that resumes from here (still
+counted "attempt 2") re-checks section 1's reading before building on it.
+
 ## 1. flush_draw_one_pass and its callees (job item 1)
 
 Read: `hw/xbox/nv2a/pgraph/vk/draw.c` `flush_draw_one_pass` (9293),
@@ -171,6 +180,14 @@ yourself" and the pilot budget (30 min unreviewed), this is a short (<=60s)
 single investigative run, well under the pilot threshold, and is the
 immediate next step before writing nfs-mw.route or registering any
 A/B prediction. OUTBOX names the exact request.
+
+## 3b. Local check
+
+Host clang type-check (`build-desktop/compile_commands.json`'s shaders.c
+command, file arg redirected at this worktree's shaders.c, `-fsyntax-only`
+appended): rc 0. Both warnings printed (`shader_module_key_persist`,
+`pgraph_vk_set_shader_warmup_progress_cb`, missing-prototype) are on lines
+this session did not touch, same as bf2push656's recipe found.
 
 ## 4. Status / next steps
 
