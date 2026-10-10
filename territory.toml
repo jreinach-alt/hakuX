@@ -2257,6 +2257,12 @@ issues = ["433"]
 standing = false
 files = ["docs/testing/fleet.py", "docs/testing/jobs/selftest.d/96-fleet-registry.sh", "docs/testing/jobs/selftest.d/96-fleet-*.sh", "docs/lanes/fleetflush1010/**"]
 note = "STARTED lane.local 2026-10-10 11:37 PDT (Sonnet, harness): fleet.py's block-buffered stdout splits stderr FAIL lines mid-line when both go to one file; 96-fleet-registry fails every harness fold (usage24h1009 blacklisted 11:31). fleet.py is LENT from [lane.toolsmith]."
+
+[lane.gpupass1010]
+issues = ["433"]
+standing = false
+files = ["android/app/src/main/cpp/xemu_android.cpp", "docs/lanes/gpupass1010/**", "docs/testing/predictions/gpupass1010-*.json"]
+note = "STARTED lane.local 2026-10-10 11:47 PDT (Sonnet; step 5 of nfs30plan1010 PLAN.md, moved up with the pair after texscan1010's A/B): NFS MW render mode A/B (sysmem vs default) and the pass census on vs off HAKUX_TEXSCAN. xemu_android.cpp: the kTitleRenderModes NFS row ONLY."
 [lane.surfgpu1009]
 issues = ["433"]
 standing = false
