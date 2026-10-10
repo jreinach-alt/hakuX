@@ -8,9 +8,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `perdraw1009` | claude-opus-5-5 | 58 min | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) |
-| `pfifowait1009` | claude-sonnet-5 | 27 min | pfifowait1009: make amped2.route's menu phase pacing-robust (#433, 0.5) |
-| `surfgpudefault1009` | claude-sonnet-5 | 21 min | surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5) |
+| `perdraw1009` | claude-opus-5-5 | 59 min | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) |
+| `pfifowait1009` | claude-sonnet-5 | 28 min | pfifowait1009: make amped2.route's menu phase pacing-robust (#433, 0.5) |
+| `surfgpudefault1009` | claude-sonnet-5 | 22 min | surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `2026-10-10T06:51:41Z`
@@ -91,4 +91,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-08 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
 - 2026-10-08 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 
-_Updated 2026-10-09 23:59 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 00:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
