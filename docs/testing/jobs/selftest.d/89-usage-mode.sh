@@ -16,6 +16,14 @@
 echo "== meter.py: actor classification, the week window, and incremental reads"
 UM="$T/usagemode"; rm -rf "$UM"
 mkdir -p "$UM/work/briefs" "$UM/work/logs/pricefit" "$UM/projects" "$UM/systemd"
+# Save the harness's own values (if any) before this fragment's isolation
+# overrides them, so they can be put back exactly -- not just unset. A bare
+# `unset` here (the earlier version of this fix) left 97-board-priority.sh
+# with no $HAKUX_WORK at all, since selftest.sh only ever sets it once, at
+# the top of the whole run, and fragments are sourced into that one shell.
+UM_SAVED_WORK_SET=${HAKUX_WORK+1}; UM_SAVED_WORK=${HAKUX_WORK-}
+UM_SAVED_PROJECTS_SET=${HAKUX_CLAUDE_PROJECTS+1}; UM_SAVED_PROJECTS=${HAKUX_CLAUDE_PROJECTS-}
+UM_SAVED_SYSTEMD_SET=${HAKUX_SYSTEMD_USER_DIR+1}; UM_SAVED_SYSTEMD=${HAKUX_SYSTEMD_USER_DIR-}
 export HAKUX_WORK="$UM/work" HAKUX_CLAUDE_PROJECTS="$UM/projects" HAKUX_SYSTEMD_USER_DIR="$UM/systemd"
 UM_NOW_ISO='2026-10-02T17:10:00Z'
 UM_NOW=$(date -u -d "$UM_NOW_ISO" +%s)
@@ -276,6 +284,15 @@ check "a mode file saying low with low-active missing heals: the file comes back
 unset -f um_dump um_state um_tick um_mode um_lines
 unset UM MM UM_NOW UM_NOW_ISO far_future um_instant
 unset HAKUX_NOW
-# Exported above for this fragment's own fixtures; unset so a later fragment
-# sourced into this same shell asks the real $HAKUX_WORK, not this one's.
-unset HAKUX_WORK HAKUX_CLAUDE_PROJECTS HAKUX_SYSTEMD_USER_DIR
+
+# Restore exactly what was there before (addendum 2, fold selftest
+# 2026-10-10 15:49): re-export the harness's own value if it had one,
+# unset only if it did not, so a later fragment sourced into this same
+# shell (97, 98, 99) sees the real $HAKUX_WORK, not this one's, and sees it
+# as a value, not a missing variable under `set -u`.
+if [ -n "$UM_SAVED_WORK_SET" ]; then export HAKUX_WORK="$UM_SAVED_WORK"; else unset HAKUX_WORK; fi
+if [ -n "$UM_SAVED_PROJECTS_SET" ]; then export HAKUX_CLAUDE_PROJECTS="$UM_SAVED_PROJECTS"; else unset HAKUX_CLAUDE_PROJECTS; fi
+if [ -n "$UM_SAVED_SYSTEMD_SET" ]; then export HAKUX_SYSTEMD_USER_DIR="$UM_SAVED_SYSTEMD"; else unset HAKUX_SYSTEMD_USER_DIR; fi
+unset UM_SAVED_WORK_SET UM_SAVED_WORK UM_SAVED_PROJECTS_SET UM_SAVED_PROJECTS UM_SAVED_SYSTEMD_SET UM_SAVED_SYSTEMD
+check "HAKUX_WORK is restored to the harness's own value after this fragment" \
+    [ "${HAKUX_WORK-}" = "$T/work" ]
