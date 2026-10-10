@@ -531,6 +531,11 @@ static bool surfsplice_on(void)
  * whose completion the splice replaces. */
 static bool g_surfsplice_armed;
 
+/* Records the splice switches skipped because the batch already holds the
+ * surface's current generation (download_surface_record_deferred). Printed
+ * on the [surfgpu] line as dedup=. */
+static unsigned long g_spl_dedup;
+
 /* VRAM bytes as rows: `rows` rows of `len` bytes, the first at `start`,
  * `stride` apart in VRAM and `len` apart in staging. */
 typedef struct SpliceLayout {
@@ -822,6 +827,31 @@ static bool download_surface_record_deferred(NV2AState *d,
     }
 
     complete_submitted_downloads(d);
+
+    /*
+     * #433, with the splice on: the batch already holds a full download of
+     * this surface at its current generation, so these bytes are in it. A
+     * record does not retire the generation (the completion does), so a
+     * surface whose download the splice left pending still reads dirty, and
+     * a range lookup records it again -- behind the downloads recorded since,
+     * which completion then overwrites in record order. Without the switch
+     * the surface update completed the first download and left the surface
+     * clean, so nothing re-recorded it: the first position is the one it
+     * had. Image_blit Overlap_TR_Outside lost its 128x128 gradient that way:
+     * the backbuffer's clear, recorded when the subsurface evicted it, landed
+     * again over the subsurface's download (lane.surfgpu1009 NOTES 9).
+     */
+    if (surfsplice_on()) {
+        for (int i = 0; i < r->num_deferred_downloads; i++) {
+            DeferredSurfaceDownload const *dl = &r->deferred_downloads[i];
+            if (dl->surface == surface && !dl->partial &&
+                dl->dest_ptr == pixels &&
+                dl->draw_generation == surface->draw_generation) {
+                g_spl_dedup++;
+                return true;
+            }
+        }
+    }
 
     bool is_ds =
         surface->host_fmt.vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
@@ -1544,9 +1574,11 @@ static void sdcall_log(PGRAPHState *pg)
     }
     SURF92_LOG("%s", buf);
     if (surfgpu_enabled()) {
-        SURF92_LOG("[surfgpu] frames=%d detach=%lu nodisp=%lu", frames,
-                   g_sdcall.sg_detach, g_sdcall.sg_nodisp);
+        SURF92_LOG("[surfgpu] frames=%d detach=%lu nodisp=%lu dedup=%lu",
+                   frames, g_sdcall.sg_detach, g_sdcall.sg_nodisp,
+                   g_spl_dedup);
     }
+    g_spl_dedup = 0;
     memset(&g_sdcall, 0, sizeof(g_sdcall));
     g_sdcall.frame0 = pg->frame_time;
 }
