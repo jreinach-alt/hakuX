@@ -2551,6 +2551,8 @@ static inline bool drawrec_shc_on(PGRAPHVkState *r)
  * work a recorder moves off this thread, so they price a different
  * handoff. The whole register file makes this an upper bound; a design
  * that sends only what changed pays less of the copy and the same enqueue.
+ * HAKUX_PROBE_SNAPQ=2 is the lower bound: the same payload and enqueue,
+ * with a record the size of a ReorderWindowEntry (~0.7 KB, not ~40 KB).
  *
  * Either switch, or HAKUX_PROBE_WAITS=1 alone, turns on the wait count:
  * each pgraph_vk_finish() on this thread where it waits on the GPU, booked
@@ -2585,8 +2587,11 @@ static bool probe_env(const char *name)
 
 static void probe_read_env(void)
 {
+    const char *sq = getenv("HAKUX_PROBE_SNAPQ");
+
     probe1010.nullrec = probe_env("HAKUX_PROBE_NULLREC");
-    probe1010.snapq = probe_env("HAKUX_PROBE_SNAPQ");
+    probe1010.snapq = !probe_env("HAKUX_PROBE_SNAPQ") ? 0 :
+                      !strcmp(sq, "2") ? 2 : 1;
     probe1010.on = probe1010.nullrec || probe1010.snapq ||
                    probe_env("HAKUX_PROBE_WAITS");
     probe1010.frame = g_nv2a_stats.frame_count;
@@ -2754,7 +2759,9 @@ static void probe_snapq(NV2AState *d)
             n_ib += n_ib1;
         }
     }
-    size_t head = ROUND_UP(sizeof(RenderCommandSnapshot), 64);
+    size_t head = ROUND_UP(probe1010.snapq == 2 ? sizeof(ReorderWindowEntry)
+                                                : sizeof(RenderCommandSnapshot),
+                           64);
     size_t need = ROUND_UP(head + 2 * n_arr + n_el + n_ia + n_ib, 64);
     if (need > PROBE_RING_SIZE) {
         return;
@@ -2766,7 +2773,13 @@ static void probe_snapq(NV2AState *d)
     probe1010.ring_off += need;
 
     RenderCommandSnapshot *snap = (RenderCommandSnapshot *)p;
-    pgraph_vk_snapshot_state(pg, snap);
+    if (probe1010.snapq == 2) {
+        /* a compact record's worth of bytes; nothing reads them */
+        QEMU_BUILD_BUG_ON(sizeof(ReorderWindowEntry) > sizeof(pg->regs_));
+        memcpy(p, pg->regs_, sizeof(ReorderWindowEntry));
+    } else {
+        pgraph_vk_snapshot_state(pg, snap);
+    }
     p += head;
 
     RenderCommand *cmd = g_new0(RenderCommand, 1);
