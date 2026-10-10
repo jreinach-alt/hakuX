@@ -24,14 +24,29 @@ With HAKUX_REPORT_TRACE=1 the build also prints, on hakuX-lane every 2 s,
 countdown + post-GO span of every start (mark+LO .. mark+post HI) and over the
 whole run, into the step-1 table.
 
+A start counts only if the route's inputs for it went through. run.log (the
+host side of the route) is read for the span from the previous start's g11
+shot to this start's mark: a `pad.sh ... failed` line, or an input (press,
+axis) whose next route line comes more than INPUT_HUNG_S later (adb hung), and
+the start is dropped from every table, with the reason printed. Pilot
+1-1791656656 lost two starts that way (start 4: the restart's A never arrived,
+the frame at g11 is the restart prompt; start 9: left-to-OK failed, the frame
+is STANDINGS), and its countdown windows were menus. A failed screenshot does
+not drop a start.
+
     raread.py <run> [...] --expect docs/testing/predictions/reportasync1010-nfs.json
 
-judges the A/B: a run is ON when its request.json env has HAKUX_REPORT_ASYNC=1,
-OFF otherwise, and the build's own `[reportasync] on` line must agree. Legs:
-V (every run has 12 marks, each arm >= V_min_warm_lines warm pace lines, the
-label agrees), W (warm countdown period: off inside [W_off_min, W_off_max], on
-<= W_on_max, on - off <= W_d_max), C (cold start 1: off inside [C_off_min,
-C_off_max], on <= C_on_max), H (warm v2 share on - off >= H_dv2_min points).
+judges the A/B: a run is ON when its request.json env holds every entry of the
+prediction's b_env, OFF when it holds none of them, and the build's own log
+lines (expect V_on_logs, default `[reportasync] on`) must be present on ON
+and absent on OFF. Legs: V (every run has V_min_marks marks and at least
+V_min_valid_starts valid starts, each arm >= V_min_warm_lines warm pace lines,
+the label agrees), W (warm countdown period: off inside [W_off_min,
+W_off_max], on <= W_on_max, on - off <= W_d_max), C (cold start 1: off inside
+[C_off_min, C_off_max], on <= C_on_max), H (warm v2 share on - off >=
+H_dv2_min points), and, when the prediction names P_on_max, P (post-GO warm
+period, mark+1.5 .. mark+12: off inside [P_off_min, P_off_max], on <=
+P_on_max).
 """
 import argparse
 import json
@@ -45,6 +60,8 @@ PACE = re.compile(r'hakuX-pace\(\s*\d+\): f=(\d+) v0=(\d+) v1=(\d+) v2=(\d+) v3=
 MARK = re.compile(r'hakuX-route.*mark (gameplay|go\d+)')
 RTW = re.compile(r'\[rtrace\] w mode=(\w+) (.*)$')
 ON = re.compile(r'\[reportasync\] on')
+ROUTE = re.compile(r'^ROUTE (\d+):(\d+):([\d.]+) (.*)$')
+INPUT_HUNG_S = 3.0
 
 HIST = ['e', 'f', 'w', 'flip', 'next']
 FOUR = ['fle', 'flw']
@@ -70,6 +87,38 @@ def parse_w(s):
         elif k in COUNTS:
             out[k] = int(v)
     return out
+
+
+def bad_starts(d):
+    """{mark name: reason} for starts whose route inputs did not go through."""
+    try:
+        lines = open(os.path.join(d, 'run.log'), errors='replace').read().splitlines()
+    except OSError:
+        return {}
+    route = []
+    for ln in lines:
+        m = ROUTE.match(ln)
+        if m:
+            route.append((int(m.group(1)) * 3600 + int(m.group(2)) * 60 + float(m.group(3)), m.group(4)))
+    bad, span = {}, []
+    for i, (t, cmd) in enumerate(route):
+        mk = re.match(r'mark (gameplay|go\d+)$', cmd)
+        if mk:
+            why = []
+            for j, (tj, cj) in span:
+                if 'failed' in cj.lower() and not cj.startswith('shot '):
+                    why.append(cj)
+                elif re.match(r'(press|axis) ', cj) and j + 1 < len(route) and route[j + 1][0] - tj > INPUT_HUNG_S:
+                    why.append(f'{cj} took {route[j + 1][0] - tj:.1f} s')
+            if why:
+                bad[mk.group(1)] = '; '.join(why)
+            span = []
+            continue
+        if re.match(r'shot s\d+-g11', cmd):
+            span = []
+            continue
+        span.append((i, (t, cmd)))
+    return bad
 
 
 def read(d):
@@ -100,6 +149,16 @@ def read(d):
     return marks, pace, rtw, mode_on
 
 
+def has_log(d, rx):
+    r = re.compile(rx)
+    with open(os.path.join(d, 'logcat.txt'), errors='replace') as f:
+        return any(r.search(ln) for ln in f)
+
+
+def valid(marks, bad):
+    return [mk for mk in marks if mk[1] not in bad]
+
+
 def sel(evs, marks, lo, hi, which):
     out = []
     for t0, name in marks:
@@ -119,35 +178,51 @@ def vshare(lines, k):
     return 100 * sum(x[1][k] for x in lines) / (60 * len(lines)) if lines else None
 
 
-def arm_of(d):
+def arm_of(d, b_env):
+    """'on' if the run's env holds every b_env entry, 'off' if it holds none."""
     try:
         env = json.load(open(os.path.join(d, 'request.json'))).get('env') or []
     except (OSError, ValueError):
         return None
-    return 'on' if 'HAKUX_REPORT_ASYNC=1' in env else 'off'
+    have = [x in env for x in b_env]
+    if all(have):
+        return 'on'
+    return 'off' if not any(have) else None
 
 
-def judge(dirs, exp, lo, hi):
+def judge(dirs, exp, lo, hi, plo, phi):
     e = exp['expect']
-    arms = {'on': {'cold': [], 'warm': []}, 'off': {'cold': [], 'warm': []}}
+    b_env = exp.get('b_env') or ['HAKUX_REPORT_ASYNC=1']
+    on_logs = e.get('V_on_logs') or [r'\[reportasync\] on']
+    arms = {a: {'cold': [], 'warm': [], 'post': []} for a in ('on', 'off')}
     legs = []
     for d in dirs:
-        marks, pace, _, seen = read(d)
-        arm = arm_of(d)
+        marks, pace, _, _ = read(d)
+        bad = bad_starts(d)
+        good = valid(marks, bad)
+        arm = arm_of(d, b_env)
         name = os.path.basename(d.rstrip('/'))
-        ok = arm is not None and seen == (arm == 'on')
-        legs.append(('V', ok, f'{name}: arm {arm}, [reportasync] on {"seen" if seen else "not seen"}'))
+        for rx in on_logs:
+            seen = has_log(d, rx)
+            legs.append(('V', arm is not None and seen == (arm == 'on'),
+                         f'{name}: arm {arm}, /{rx}/ {"seen" if seen else "not seen"}'))
         legs.append(('V', len(marks) >= e['V_min_marks'], f'{name}: {len(marks)} marks'))
+        n_min = e.get('V_min_valid_starts', e['V_min_marks'])
+        legs.append(('V', len(good) >= n_min,
+                     f'{name}: {len(good)} valid starts >= {n_min}'
+                     + ''.join(f'; dropped {k} ({v})' for k, v in bad.items())))
         if arm:
-            arms[arm]['cold'] += sel(pace, marks, lo, hi, 'cold')
-            arms[arm]['warm'] += sel(pace, marks, lo, hi, 'warm')
+            arms[arm]['cold'] += sel(pace, good, lo, hi, 'cold')
+            arms[arm]['warm'] += sel(pace, good, lo, hi, 'warm')
+            arms[arm]['post'] += sel(pace, good, plo, phi, 'warm')
     for arm in ('off', 'on'):
         n = len(arms[arm]['warm'])
         legs.append(('V', n >= e['V_min_warm_lines'], f'{arm}: {n} warm pace lines'))
     w_off, w_on = period(arms['off']['warm']), period(arms['on']['warm'])
     c_off, c_on = period(arms['off']['cold']), period(arms['on']['cold'])
+    p_off, p_on = period(arms['off']['post']), period(arms['on']['post'])
     v2_off, v2_on = vshare(arms['off']['warm'], 2), vshare(arms['on']['warm'], 2)
-    if None in (w_off, w_on, c_off, c_on, v2_off, v2_on):
+    if None in (w_off, w_on, c_off, c_on, v2_off, v2_on) or ('P_on_max' in e and None in (p_off, p_on)):
         print('VERDICT: VOID -- an arm has no pace lines in the window')
         return 2
     legs.append(('W', e['W_off_min'] <= w_off <= e['W_off_max'],
@@ -159,6 +234,10 @@ def judge(dirs, exp, lo, hi):
     legs.append(('C', c_on <= e['C_on_max'], f'cold on {c_on:.1f} ms <= {e["C_on_max"]}'))
     legs.append(('H', v2_on - v2_off >= e['H_dv2_min'],
                  f'warm v2 share {v2_off:.0f}% -> {v2_on:.0f}%, {v2_on - v2_off:+.1f} points >= {e["H_dv2_min"]}'))
+    if 'P_on_max' in e:
+        legs.append(('P', e['P_off_min'] <= p_off <= e['P_off_max'],
+                     f'post-GO warm off {p_off:.1f} ms in [{e["P_off_min"]}, {e["P_off_max"]}]'))
+        legs.append(('P', p_on <= e['P_on_max'], f'post-GO warm on {p_on:.1f} ms <= {e["P_on_max"]}'))
     for leg, ok, what in legs:
         print(f'  {leg} {"PASS" if ok else "FAIL"}  {what}')
     v_ok = all(ok for leg, ok, _ in legs if leg == 'V')
@@ -250,12 +329,13 @@ def main():
     ap.add_argument('--window', default='-2,1.5')
     ap.add_argument('--post', default='1.5,12')
     ap.add_argument('--label', default='')
+    ap.add_argument('--starts', action='store_true', help='one countdown and one post-GO line per start')
     ap.add_argument('--expect', help='judge the A/B against this registered prediction')
     a = ap.parse_args()
     lo, hi = (float(x) for x in a.window.split(','))
     plo, phi = (float(x) for x in a.post.split(','))
     if a.expect:
-        return judge(a.dirs, json.load(open(a.expect)), lo, hi)
+        return judge(a.dirs, json.load(open(a.expect)), lo, hi, plo, phi)
     print(f'countdown: pace lines printed in mark{lo:+.1f} .. mark{hi:+.1f} s; post-GO mark{plo:+.1f} .. '
           f'mark{phi:+.1f} s {a.label}')
     pool = {'cold': [], 'warm': [], 'post_cold': [], 'post_warm': []}
@@ -263,9 +343,19 @@ def main():
     for d in a.dirs:
         marks, pace, rtw, on = read(d)
         name = os.path.basename(d.rstrip('/'))
-        print(f'{name}: {len(marks)} marks, async log {"seen" if on else "not seen"}')
+        bad = bad_starts(d)
+        print(f'{name}: {len(marks)} marks, async log {"seen" if on else "not seen"}, '
+              f'{len(marks) - len(valid(marks, bad))} dropped')
+        for k, v in bad.items():
+            print(f'  dropped {k}: {v}')
+        marks = valid(marks, bad)
         if not marks:
             continue
+        if a.starts:
+            for mk in marks:
+                c, p = sel(pace, [mk], lo, hi, 'all'), sel(pace, [mk], plo, phi, 'all')
+                print(f'    {mk[1]:9s} countdown {pace_line(c)}')
+                print(f'    {"":9s} post-GO   {pace_line(p)}')
         rows = {'cold': sel(pace, marks, lo, hi, 'cold'), 'warm': sel(pace, marks, lo, hi, 'warm'),
                 'post_cold': sel(pace, marks, plo, phi, 'cold'), 'post_warm': sel(pace, marks, plo, phi, 'warm')}
         for k in rows:
