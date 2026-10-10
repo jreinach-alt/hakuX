@@ -1,0 +1,29 @@
+{
+  "registered_utc": "2026-10-10T19:15:00Z",
+  "who": "lane.gpupass1010",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "device": "nova",
+  "seconds": 500,
+  "route": "nfs-mw-quickrace",
+  "perflog": false,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "9c8b1b12b6",
+  "b_ref": "9c8b1b12b6",
+  "a_env": ["HAKUX_GPUXFR=1"],
+  "b_env": ["HAKUX_GPUXFR=1", "HAKUX_TEXSCAN=1"],
+  "queue_order": "Same ref as the off arm of gpupass1010-rendermode.json (an env A/B; a_ref == b_ref). The off run (a_env, HAKUX_GPUXFR=1 only) is the SAME request as that file's off arm, reused -- HAKUX_TEXSCAN defaults off, so one run serves both predictions. The on run (b_env, + HAKUX_TEXSCAN=1) is one more request on the same ref: request.sh --who gpupass1010 --title <title> --route nfs-mw-quickrace --seconds 500 --device nova --ref 9c8b1b12b6 --env HAKUX_GPUXFR=1 --env HAKUX_TEXSCAN=1 --expect this file. Per the dispatch note, this is the only arm of the texscan census on the merged base (one run each, not two): the brief's step 3 asks only for a passes-per-frame report, not a full A/B judgement.",
+  "judge": "python3 docs/lanes/gpupass1010/gpuread.py <off run dir> --arm off --expect docs/testing/predictions/gpupass1010-texscan.json ; python3 docs/lanes/gpupass1010/gpuread.py <on run dir> --arm off --expect docs/testing/predictions/gpupass1010-texscan.json  # --arm off both times: this file does not judge a render-mode change, only HAKUX_TEXSCAN's pass count on the same mode",
+  "baseline": "lane.texscan1010's own A/B (PR.md, NOTES.md section 9; nfs30plan1010 NOTES 5.7): HAKUX_TEXSCAN=1 raises GPU busy 13.4 -> 18.0 ms/frame (the GPU-side cube-face copy itself costs GPU time) and WORSENS period by +2.6 to +7 ms, because removing the mid-frame synchronous downloads also removes the mid-frame GPU submits that used to let partial work land before the end-of-frame occlusion-report fence; Fin stays ~constant at 12.0 ms (Sub falls 6.4->0.2, the report-wait rises ~4.6->~10.5). lane.nfs30plan1010's cold census (pre-texscan, runs 1-1791649387/88): 69 render passes/frame cold, 26.5 warm -- the brief's 2.6x cold-vs-warm break, attributed (NOTES.md section 3, read by texscan1010) to the cube's 6 face downloads each ending a pass.",
+  "prediction": "#433 step 3: render passes per frame, HAKUX_TEXSCAN on vs off, same base (9c8b1b12b6), same render mode (GMEM default -- this file never touches kTitleRenderModes). The brief's own framing says the GPU-side copy may not close the break, because the copied surface still has to leave its render pass for the copy command just as the old CPU download left it for the readback -- the pass boundary is at the surface hand-off, not at which side performs the transfer. Predicted: passes/frame cold is UNCHANGED within noise (P leg's cold count on vs off differ by less than ~3 passes, i.e. the 2.6x break over warm persists under HAKUX_TEXSCAN=1). If the break narrows substantially instead (cold passes/frame drops toward the ~26.5 warm figure), the GPU-side copy is NOT merely moving the same transfer to a different engine, and whatever call site xemu-xfr's 'XFR sites' line names for the remaining cold-only breaks (if any survive) is the follow-up site to name for a later lane -- not to fix here. This prediction does not claim a render-mode effect; it is read with --arm off both times (same mode, env-only toggle) specifically so gpuread.py's M/G/X legs (which assume a render-mode claim) are not misapplied to an env A/B.",
+  "expect": {
+    "V_min_starts": 12,
+    "P_cold_passes_min": 0.0,
+    "P_cold_passes_max": 99.0
+  },
+  "expect_note": "P is read off both invocations by hand (P_cold_passes_* here only bounds sanity, not the on-off delta): the actual texscan verdict is the cold passes/frame delta between the two --arm off POOLED lines, reported in NOTES.md, predicted within +/-3 passes of each other (break persists) and named as a FAIL of that prediction if it narrows toward the ~26.5 warm figure instead.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}

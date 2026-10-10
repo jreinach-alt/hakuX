@@ -227,7 +227,10 @@ def main():
 
     cold_rp = pool_out['cold']['rp']
     if cold_rp:
-        lo, hi = e('M_mode_min', 0.0), e('M_mode_max', 1.5 if args.arm == 'off' else 0.8)
+        # draw.c:3706-3765: in/out < 0.8 reads as GMEM (only the last tile is stamped in full);
+        # the off arm (table default, GMEM) is expected BELOW that line, the on arm (sysmem,
+        # this lane's row) AT or above it.
+        lo, hi = (e('M_mode_min', 0.0), e('M_mode_max', 0.8)) if args.arm == 'off' else (e('M_mode_min', 0.8), e('M_mode_max', 1.5))
         leg('M', lo <= cold_rp['mode'] <= hi,
             "cold in/out (mode-confirmation) %.2f, expected in [%.2f, %.2f] for arm=%s (in/out < 0.8 reads as GMEM still active)"
             % (cold_rp['mode'], lo, hi, args.arm))
