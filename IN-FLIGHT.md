@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pfifowait1009` | claude-sonnet-5 | 1h 27m | pfifowait1009: register predictions before any scored arm (#433, 0.5) |
+| `perdraw1009` | claude-sonnet-5 | 1 min | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 5 waiting, 1 running.
+- **Device queue:** 2 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-05`, build `d32c35d3ce`.
 
 ## 0.5 release: Playable titles
@@ -73,7 +73,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pfifowait1009` | pfifowait1009: register predictions before any scored arm (#433, 0.5) | `859cd75a7b` | 2026-10-10 00:36 |
+| `lane/perdraw1009` | perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5) | `557a949df4` | 2026-10-10 00:57 |
 
 ## Recently landed on master
 
@@ -87,4 +87,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-08 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
 - 2026-10-08 surfdl1008: does the NBA Live 05 surface-download finding generalise? NBA Live 06/07, Midnight Club 2 (#433, 0.5)
 
-_Updated 2026-10-10 01:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 01:14 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
