@@ -8,8 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `nfs30plan1010` | claude-fable-5-1 | 1h 3m | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and re |
-| `nfsframe1010` | claude-sonnet-5 | 1 min | NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5) |
+| `forzasurf1010` | claude-sonnet-5 | 1 min | lane.forzasurf1010 -- does the default-on surfgpu route remove Forza's surface-download wait? (#433, 0.5) |
+| `nfs30plan1010` | claude-fable-5-1 | 1h 18m | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and re |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -74,8 +74,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
+| `lane/forzasurf1010` | lane.forzasurf1010 -- does the default-on surfgpu route remove Forza's surface-download wait? (#433, 0.5) | `abe0a65c01` | 2026-10-10 09:32 |
 | `lane/nfs30plan1010` | lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation  | `b4124f4a52` | 2026-10-10 10:10 |
-| `lane/nfsframe1010` | NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5) | `c6525f485e` | 2026-10-10 09:29 |
 
 ## Recently landed on master
 
@@ -89,4 +89,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 
-_Updated 2026-10-10 10:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 10:29 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
