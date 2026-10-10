@@ -86,4 +86,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-09 fpstelemetry1008b: the four titles lane A could not measure -- NFS Most Wanted, Midnight Club II, Fantastic 4, Dino Crisis 3 (#433)
 - 2026-10-09 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
 
-_Updated 2026-10-10 04:59 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 05:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
