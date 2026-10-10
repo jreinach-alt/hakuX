@@ -776,6 +776,38 @@ Debug builds install as `com.jreinach.hakux.debug`, labelled **hakuX (debug)**,
 alongside a release install. They keep separate settings, HDD images and save
 data.
 
+## Disc images live on D:, never on the Linux disk (owner, 2026-10-09)
+
+**Do not keep a title disc image (`*.iso`, `*.xiso.iso`, or a `.7z` of one) on
+the Linux filesystem: not as an archive, a cache, a copy staged for a push, or
+a title pulled off a device.** Images live on the Windows D: drive, under
+`/mnt/d/hakux-staging/<purpose>/`. The owner's collection is `D:\Xbox`.
+
+The Linux filesystem is one virtual disk file on C:. It grows as Linux writes
+and does not shrink when Linux deletes. While Windows holds restore points on
+C:, every Linux write also costs C: space for a copy of the block it replaces.
+On 2026-10-09 C: filled and the Ubuntu VM crashed, taking every lane, the
+dispatcher and an in-flight Nova run with it. Behind that growth were 38 GB of
+titles pulled off the Nova into `~/hakux-work/nova-archive-1008` on 10-08 and
+a 48 GB push cache in `~/hakux-work/shuffle-cache`. Both now live under
+`/mnt/d/hakux-staging/`.
+
+- **Push from D:.** adb is the Windows `adb.exe`. Give it the Windows path,
+  `adb push "$(wslpath -w "$f")" <device path>`; it cannot stat `/mnt/d/...`.
+- **Pull to D:.** `adb pull <device path> "$(wslpath -w /mnt/d/hakux-staging/<purpose>)"`.
+- **Extract and convert on D:.** The host's title copier
+  (`~/hakux-work/hardware/titlepush/ingest_owner_library.py` and
+  `title_push_xbox.sh`) already works this way, in `/mnt/d/hakux-staging/ingest`
+  and `/mnt/d/hakux-staging/xiso`. A one-off script follows it rather than
+  using `/tmp` or a worktree.
+- A test disc from `make_test_iso.py` or `make_isolation_discs.py` belongs to
+  one run and is not covered: build it, run it, delete it.
+- A free-space check that guards a title copy reads C: (`df /mnt/c`), not `/`.
+  The Linux disk can show hundreds of GB free while C: has none.
+
+The hourly report lists every disc image over 256 MB it finds on the Linux
+disk, and C:'s free space.
+
 ## Working with a device
 
 **Nothing holds a device for more than 30 minutes without a reviewed pilot**
