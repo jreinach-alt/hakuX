@@ -8,7 +8,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `perdrawon1010` | claude-opus-5-5 | 1h 37m | Lane: perdrawon1010       Issue: #433 (umbrella), none filed |
+| `perdrawon1010` | claude-opus-5-5 | 1h 52m | Lane: perdrawon1010       Issue: #433 (umbrella), none filed |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -77,6 +77,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Recently landed on master
 
+- 2026-10-10 lane.lanepath1009: lane.sh gives each lane unit a shim-first PATH with --setenv (#433, 0.5)
 - 2026-10-10 ghlive1010 -- AGENTS.md: GitHub is up
 - 2026-10-10 Lane: restoreleak1009            Issue: #433
 - 2026-10-10 boardgateenv1009 -- the board push gate stages master's docs/testing into the pushing tree's index (#433, 0.5)
@@ -84,6 +85,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
-- 2026-10-09 usagemode1009: usage Low is a read-time cap, re-evaluated every tick (#433)
 
-_Updated 2026-10-10 08:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 09:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
