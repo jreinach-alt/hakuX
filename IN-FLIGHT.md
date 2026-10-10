@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `modelpolicy1010` | claude-sonnet-5 | 25 min | Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly) |
+| `modelpolicy1010` | claude-sonnet-5 | 39 min | Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `2026-10-10T23:28:49Z`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 12 waiting, 1 running.
+- **Device queue:** 10 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -77,6 +77,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Recently landed on master
 
+- 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 - 2026-10-10 lane.usage24h1009: project the week's usage from the trailing 24h burn rate, not the trailing 6h (#433)
 - 2026-10-10 lane.fgrace1010 -- the display guard's "guest exit mid-route" leg loses a race and fails folds (#433, 0.5)
 - 2026-10-10 lane.fleetflush1010 -- fleet.py's FAIL lines land mid-line when stdout and stderr share a file (#433, 0.5)
@@ -88,6 +89,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 Lane: perdrawon1010       Issue: #433 (umbrella), none filed
 - 2026-10-10 perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5)
 - 2026-10-10 Lane: nightlywrap1010            Issue: none (dispatched directly by lane.local, #433 umbrella)
-- 2026-10-10 lane.lanepath1009: lane.sh gives each lane unit a shim-first PATH with --setenv (#433, 0.5)
 
-_Updated 2026-10-10 16:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 16:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
