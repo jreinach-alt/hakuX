@@ -2426,6 +2426,103 @@ static void gpl_take_next_pipeline(PGRAPHVkState *r, PipelineBinding *snode)
 #endif
 
 /*
+ * lane.drawrec1010, HAKUX_DRAWREC=1 (default off; #433): two parts, each
+ * with its own off switch.
+ *
+ * VTX (HAKUX_DRAWREC_VTX=0 turns it off alone): the vertex sync owes its TLB
+ * walk instead of paying it per range. Switch off, a range found dirty is
+ * test-and-cleared, then physical_memory_dirty_bits_cleared() walks every
+ * live TLB entry (~8,300 on the Nova) to re-arm the one or two that map it,
+ * so the next guest store sets the bit again; then the range is copied. At
+ * the NFS Most Wanted race start that is ~240 walks per flip at ~16 us,
+ * 3.4-3.9 ms of the 4.0 ms Syn phase (lane NOTES 5.3, run 726861).
+ *
+ * Switch on, the range is test-and-cleared and copied, and its pages go into
+ * two bitmaps: OWED (cleared, not yet re-armed) and REDO (copy again on the
+ * next touch). Until a page is re-armed a guest store to it may set no bit,
+ * so a touch of a REDO page copies it whatever the bits say. The OWED pages
+ * are walked together, once per flip (at the first sync after
+ * g_nv2a_stats.frame_count moves) and whenever the copies forced by REDO
+ * alone pass a budget, in runs merged across small gaps. A walked page stays
+ * in REDO: a store between its last copy and the walk set no bit, so it is
+ * copied once more, and a store after the walk sets the bit as before. A
+ * page copied after its walk with its bits still clean leaves REDO. The data
+ * any draw reads is therefore never older than with the switch off; what
+ * changes is that some clean ranges are copied again, which the budget
+ * bounds to about one walk's worth per walk saved.
+ *
+ * SHC (HAKUX_DRAWREC_SHC=0 turns it off alone): see drawrec_shc_consumed().
+ *
+ * Both are touched only from the vertex sync and begin_pre_draw_inner(), on
+ * the thread that records draws.
+ */
+#define DRAWREC_VTX_GAP       16    /* pages merged across between owed runs */
+#define DRAWREC_VTX_MAX_RUNS  8     /* walks per batch; the rest is one span */
+#define DRAWREC_VTX_REDO_N    32    /* REDO-only copies before an early walk */
+#define DRAWREC_VTX_REDO_B    (256 * 1024)  /* ... or REDO-only bytes */
+
+static struct {
+    int on, vtx, shc;           /* -1 until read */
+    unsigned long *owed, *redo;
+    unsigned long npages;
+    unsigned long lo, hi;       /* owed pages lie in [lo, hi) */
+    unsigned int frame;         /* g_nv2a_stats.frame_count at the last tick */
+    unsigned int redo_n;        /* REDO-only copies since the last walk */
+    uint64_t redo_b;
+    /* per 60 flips, for the log line */
+    unsigned int log_frames;
+    uint64_t n_dirty, n_redo, b_redo, n_walk_flip, n_walk_budget, n_runs,
+             n_pages, n_shc;
+} drawrec = { .on = -1 };
+
+static void drawrec_read_env(PGRAPHVkState *r)
+{
+    const char *e = getenv("HAKUX_DRAWREC");
+    drawrec.on = (e && e[0] && strcmp(e, "0")) ? 1 : 0;
+    e = getenv("HAKUX_DRAWREC_VTX");
+    drawrec.vtx = drawrec.on && !(e && !strcmp(e, "0")) && r->bitmap_size;
+    e = getenv("HAKUX_DRAWREC_SHC");
+    drawrec.shc = drawrec.on && !(e && !strcmp(e, "0"));
+    drawrec.frame = g_nv2a_stats.frame_count;
+    if (drawrec.vtx) {
+        drawrec.npages = r->bitmap_size;
+        drawrec.owed = bitmap_new(drawrec.npages);
+        drawrec.redo = bitmap_new(drawrec.npages);
+        drawrec.lo = drawrec.npages;
+        drawrec.hi = 0;
+    }
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                        "[drawrec1010] drawrec=%d vtx=%d shc=%d", drawrec.on,
+                        drawrec.vtx, drawrec.shc);
+#endif
+}
+
+static inline bool drawrec_on(PGRAPHVkState *r)
+{
+    if (unlikely(drawrec.on < 0)) {
+        drawrec_read_env(r);
+    }
+    return drawrec.on;
+}
+
+static inline bool drawrec_vtx_on(PGRAPHVkState *r)
+{
+    if (unlikely(drawrec.on < 0)) {
+        drawrec_read_env(r);
+    }
+    return drawrec.vtx;
+}
+
+static inline bool drawrec_shc_on(PGRAPHVkState *r)
+{
+    if (unlikely(drawrec.on < 0)) {
+        drawrec_read_env(r);
+    }
+    return drawrec.shc;
+}
+
+/*
  * lane.drawrec1010's draw census (HAKUX_DRAWCENSUS=1; drawcensus_post()):
  * which way the draw went. Stored on every draw, switch or not -- a byte
  * store each, which testing the switch would not undercut -- and read only
@@ -5485,6 +5582,45 @@ void pgraph_vk_end_nondraw_commands(PGRAPHState *pg, VkCommandBuffer cmd)
 // buffer. For other reasons though (like descriptor set amount, surface
 // changes, etc) we do flush often.
 
+/*
+ * lane.drawrec1010, part SHC: shader_bindings_changed is set by
+ * pgraph_vk_bind_shaders() when the binding really changes and cleared only
+ * at its entry, and bind_shaders() runs only when the shader generation or
+ * the primitive moves. So every draw after a shader change, up to the next
+ * such move, enters with the flag still set and takes the full path: no SFP,
+ * no MFP, no create_pipeline() early hit, a pipeline key built and compared,
+ * and a fresh UBO descriptor set written. At the NFS race start that is 31%
+ * of all draws (census, lane NOTES 5.2).
+ *
+ * Once a full-path draw has looked up a pipeline for the current binding and
+ * written its descriptor sets, the flag has done its job: the state is what
+ * a bind_shaders() call that found no change would leave. So it is cleared
+ * then, and only then: not on a clear, not when the pipeline came back
+ * pending, missing or not at all, and not when the draw was skipped for an
+ * async compile (that returns before here).
+ */
+static void drawrec_shc_consumed(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (!r->shader_bindings_changed || pg->clearing ||
+        !drawrec_shc_on(r)) {
+        return;
+    }
+#if OPT_ASYNC_COMPILE
+    /* update_descriptor_sets() returned without writing anything */
+    if (!r->shader_binding || !qatomic_read(&r->shader_binding->ready)) {
+        return;
+    }
+#endif
+    if ((dcen_cp == DCEN_CP_SAMEKEY || dcen_cp == DCEN_CP_LRU) &&
+        r->pipeline_binding &&
+        r->pipeline_binding->pipeline != VK_NULL_HANDLE) {
+        r->shader_bindings_changed = false;
+        drawrec.n_shc++;
+    }
+}
+
 static void begin_pre_draw_inner(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -5873,6 +6009,7 @@ mfp_miss: (void)0;
     NV2A_PHASE_TIMER_BEGIN_EXCL(draw_desc_set);
     if (!pg->clearing) {
         pgraph_vk_update_descriptor_sets(pg);
+        drawrec_shc_consumed(pg);
     }
     NV2A_PHASE_TIMER_END_EXCL(draw_desc_set);
 
@@ -7971,9 +8108,136 @@ static bool vertex_range_gpu_stale(PGRAPHVkState *r, hwaddr addr, hwaddr size,
     return false;
 }
 
+/* Pages of [addr, addr + size) in VRAM, as bitmap indices. */
+static inline void drawrec_pages(hwaddr addr, hwaddr size, unsigned long *p0,
+                                 unsigned long *p1)
+{
+    *p0 = addr >> TARGET_PAGE_BITS;
+    *p1 = MIN(ROUND_UP(addr + size, TARGET_PAGE_SIZE) >> TARGET_PAGE_BITS,
+              drawrec.npages);
+}
+
+static bool drawrec_vtx_redo_any(hwaddr addr, hwaddr size)
+{
+    unsigned long p0, p1;
+    drawrec_pages(addr, size, &p0, &p1);
+    return p0 < p1 && find_next_bit(drawrec.redo, p1, p0) < p1;
+}
+
+/* Re-arm every OWED page: one walk per run, runs closer than the gap merged. */
+static void drawrec_vtx_walk(PGRAPHVkState *r, bool at_flip)
+{
+    unsigned long lo = drawrec.lo, hi = drawrec.hi;
+    unsigned int runs = 0;
+
+    drawrec.redo_n = 0;
+    drawrec.redo_b = 0;
+    if (lo >= hi) {
+        return;
+    }
+    unsigned long s = find_next_bit(drawrec.owed, hi, lo);
+    while (s < hi) {
+        unsigned long e = find_next_zero_bit(drawrec.owed, hi, s);
+        for (;;) {
+            unsigned long n = find_next_bit(drawrec.owed, hi, e);
+            if (n >= hi || (n - e > DRAWREC_VTX_GAP &&
+                            runs + 1 < DRAWREC_VTX_MAX_RUNS)) {
+                break;
+            }
+            e = find_next_zero_bit(drawrec.owed, hi, n);
+        }
+        physical_memory_dirty_bits_cleared(
+            r->vram_ram_addr + ((ram_addr_t)s << TARGET_PAGE_BITS),
+            (ram_addr_t)(e - s) << TARGET_PAGE_BITS);
+        runs++;
+        drawrec.n_pages += e - s;
+        s = e < hi ? find_next_bit(drawrec.owed, hi, e) : hi;
+    }
+    bitmap_clear(drawrec.owed, lo, hi - lo);
+    drawrec.lo = drawrec.npages;
+    drawrec.hi = 0;
+    drawrec.n_runs += runs;
+    if (at_flip) {
+        drawrec.n_walk_flip++;
+    } else {
+        drawrec.n_walk_budget++;
+    }
+}
+
+/*
+ * After a range was copied: cpu_dirty is whether its NV2A bits were set (and
+ * so have just been cleared, leaving the walk owed).
+ */
+static void drawrec_vtx_copied(hwaddr addr, hwaddr size, bool cpu_dirty)
+{
+    unsigned long p0, p1;
+    drawrec_pages(addr, size, &p0, &p1);
+    if (p0 >= p1) {
+        return;
+    }
+    if (cpu_dirty) {
+        bitmap_set(drawrec.owed, p0, p1 - p0);
+        bitmap_set(drawrec.redo, p0, p1 - p0);
+        drawrec.lo = MIN(drawrec.lo, p0);
+        drawrec.hi = MAX(drawrec.hi, p1);
+        drawrec.n_dirty++;
+        return;
+    }
+    /* Copied for REDO alone: a page already walked is current from here on. */
+    for (unsigned long p = find_next_bit(drawrec.redo, p1, p0); p < p1;
+         p = find_next_bit(drawrec.redo, p1, p + 1)) {
+        if (!test_bit(p, drawrec.owed)) {
+            clear_bit(p, drawrec.redo);
+        }
+    }
+    drawrec.redo_n++;
+    drawrec.redo_b += size;
+    drawrec.n_redo++;
+    drawrec.b_redo += size;
+}
+
+/* Once per flip: walk what is owed, and log the counters every 60 flips. */
+static void drawrec_tick(PGRAPHVkState *r)
+{
+    unsigned int f = g_nv2a_stats.frame_count;
+    if (f == drawrec.frame) {
+        return;
+    }
+    drawrec.log_frames += f - drawrec.frame;
+    drawrec.frame = f;
+    if (drawrec.vtx) {
+        drawrec_vtx_walk(r, true);
+    }
+    if (drawrec.log_frames >= 60) {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+            "[drawrec] f=%u vtx dirty=%" PRIu64 " redo=%" PRIu64
+            " redoKB=%" PRIu64 " walks=%" PRIu64 "+%" PRIu64
+            " runs=%" PRIu64 " pages=%" PRIu64 " shc=%" PRIu64,
+            drawrec.log_frames, drawrec.n_dirty, drawrec.n_redo,
+            drawrec.b_redo >> 10, drawrec.n_walk_flip,
+            drawrec.n_walk_budget, drawrec.n_runs, drawrec.n_pages,
+            drawrec.n_shc);
+#endif
+        drawrec.log_frames = 0;
+        drawrec.n_dirty = drawrec.n_redo = drawrec.b_redo = 0;
+        drawrec.n_walk_flip = drawrec.n_walk_budget = 0;
+        drawrec.n_runs = drawrec.n_pages = drawrec.n_shc = 0;
+    }
+}
+
 static inline bool has_dirty_vertex_pages(PGRAPHVkState *r)
 {
     ram_addr_t ram_base = r->vram_ram_addr;
+
+    if (drawrec_vtx_on(r)) {
+        for (int i = 0; i < r->num_vertex_ram_buffer_syncs; i++) {
+            if (drawrec_vtx_redo_any(r->vertex_ram_buffer_syncs[i].addr,
+                                     r->vertex_ram_buffer_syncs[i].size)) {
+                return true;
+            }
+        }
+    }
 
     for (int i = 0; i < r->num_vertex_ram_buffer_syncs; i++) {
         if (vertex_range_gpu_stale(r, r->vertex_ram_buffer_syncs[i].addr,
@@ -8907,6 +9171,10 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
         return;
     }
 
+    if (unlikely(drawrec_on(r))) {
+        drawrec_tick(r);
+    }
+
     {
         unsigned long *bmp = get_uploaded_bitmap(r);
         bool all_uploaded = true;
@@ -8985,6 +9253,8 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
 
     vw->merged += num_syncs;
 
+    bool vtx_owe = drawrec_vtx_on(r);
+
     {
         ram_addr_t ram_base = r->vram_ram_addr;
 
@@ -9003,17 +9273,20 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
             unsigned long end_page = (start + size) >> TARGET_PAGE_BITS;
             /* #262: GPU writes the bitmap below cannot see */
             bool gpu_stale = vertex_range_gpu_stale(r, addr, size, false);
-            bool dirty = gpu_stale;
+            bool cpu_dirty = false;
+            /* lane.drawrec1010: a page whose walk is owed or just paid */
+            bool redo = vtx_owe && drawrec_vtx_redo_any(addr, size);
 
             while (page < end_page) {
                 unsigned long idx = page / DIRTY_MEMORY_BLOCK_SIZE;
                 unsigned long ofs = page % DIRTY_MEMORY_BLOCK_SIZE;
                 unsigned long num = MIN(end_page - page,
                                         DIRTY_MEMORY_BLOCK_SIZE - ofs);
-                dirty |= bitmap_test_and_clear_atomic(
+                cpu_dirty |= bitmap_test_and_clear_atomic(
                     blocks->blocks[idx], ofs, num);
                 page += num;
             }
+            bool dirty = gpu_stale || cpu_dirty || redo;
 
             if (gpu_stale) {
                 NV2A_VK_DPRINTF("Range overlaps GPU-written surface data. "
@@ -9022,13 +9295,18 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
 
             if (dirty) {
                 NV2A_VK_DPRINTF("Memory dirty. Synchronizing...");
-                physical_memory_dirty_bits_cleared(start, size);
+                if (!vtx_owe) {
+                    physical_memory_dirty_bits_cleared(start, size);
+                }
                 vw->dirty_count++;
                 vw->bytes_copied += size;
                 pgraph_vk_update_vertex_ram_buffer(pg, addr,
                                                    d->vram_ptr + addr, size);
                 /* the update downloaded any draw_dirty overlap first */
                 vertex_range_gpu_stale(r, addr, size, true);
+                if (vtx_owe && (cpu_dirty || redo)) {
+                    drawrec_vtx_copied(addr, size, cpu_dirty);
+                }
 #if HAKUX_VRAM_RACE_PROBE
                 /*
                  * #54 probe. The bits for this range were consumed by the
@@ -9048,6 +9326,11 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
 #endif
             }
         }
+    }
+
+    if (vtx_owe && (drawrec.redo_n >= DRAWREC_VTX_REDO_N ||
+                    drawrec.redo_b >= DRAWREC_VTX_REDO_B)) {
+        drawrec_vtx_walk(r, false);
     }
 
     r->num_vertex_ram_buffer_syncs = 0;
