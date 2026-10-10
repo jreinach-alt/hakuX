@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `modelpolicy1010` | claude-sonnet-5 | 10 min | Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly) |
+| `modelpolicy1010` | claude-sonnet-5 | 25 min | Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 13 waiting, 1 running.
+- **Device queue:** 12 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -90,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 Lane: nightlywrap1010            Issue: none (dispatched directly by lane.local, #433 umbrella)
 - 2026-10-10 lane.lanepath1009: lane.sh gives each lane unit a shim-first PATH with --setenv (#433, 0.5)
 
-_Updated 2026-10-10 16:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 16:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
