@@ -2425,6 +2425,33 @@ static void gpl_take_next_pipeline(PGRAPHVkState *r, PipelineBinding *snode)
 #define gpl_take_next_pipeline(r, snode) do { } while (0)
 #endif
 
+/*
+ * lane.drawrec1010's draw census (HAKUX_DRAWCENSUS=1; drawcensus_post()):
+ * which way the draw went. Stored on every draw, switch or not -- a byte
+ * store each, which testing the switch would not undercut -- and read only
+ * by the census.
+ */
+enum {
+    DCEN_PATH_SFP,
+    DCEN_PATH_MFP,
+    DCEN_PATH_FULL,
+    DCEN_PATH__COUNT
+};
+enum {
+    DCEN_CP_NONE,     /* the path did not call create_pipeline */
+    DCEN_CP_EARLY,    /* no generation moved */
+    DCEN_CP_NOTDIRTY, /* check_pipeline_dirty() false */
+    DCEN_CP_SAMEKEY,  /* key built, equal to the bound pipeline's */
+    DCEN_CP_LRU,      /* key built and hashed, found in the cache */
+    DCEN_CP_PENDING,  /* found, still compiling */
+    DCEN_CP_MISS,     /* not found: created here, or skipped for async */
+    DCEN_CP_LRUFULL,  /* the cache had no free entry */
+    DCEN_CP__COUNT
+};
+static uint8_t dcen_path, dcen_cp;
+static bool dcen_bound_shaders;
+static void drawcensus_frame(void);
+
 static void create_pipeline(PGRAPHState *pg)
 {
     NV2A_VK_DGROUP_BEGIN("Creating pipeline");
@@ -2442,6 +2469,7 @@ static void create_pipeline(PGRAPHState *pg)
         pg->pipeline_state_gen == r->last_pipeline_state_gen &&
         pg->primitive_mode == r->shader_binding->state.geom.primitive_mode) {
         OPT_STAT_INC(pipeline_early_hits);
+        dcen_cp = DCEN_CP_EARLY;
         gpl_take_next_pipeline(r, r->pipeline_binding);
         /* No generation above moved, but a uniform value can change without
          * one: an attribute set once before the first vertex (GPUAA's
@@ -2477,6 +2505,7 @@ static void create_pipeline(PGRAPHState *pg)
         pg->primitive_mode != r->shader_binding->state.geom.primitive_mode) {
         pgraph_vk_bind_shaders(pg);
         r->last_shader_state_gen = pg->shader_state_gen;
+        dcen_bound_shaders = true;
     } else {
         pgraph_vk_update_shader_uniforms(pg);
     }
@@ -2496,6 +2525,7 @@ static void create_pipeline(PGRAPHState *pg)
 
     if (r->pipeline_binding && !pipeline_dirty) {
         NV2A_VK_DPRINTF("Cache hit");
+        dcen_cp = DCEN_CP_NOTDIRTY;
         gpl_take_next_pipeline(r, r->pipeline_binding);
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
@@ -2508,6 +2538,7 @@ static void create_pipeline(PGRAPHState *pg)
     if (r->pipeline_binding &&
         memcmp(&key, &r->pipeline_binding->key, sizeof(key)) == 0) {
         NV2A_VK_DPRINTF("Cache hit (same binding)");
+        dcen_cp = DCEN_CP_SAMEKEY;
         gpl_take_next_pipeline(r, r->pipeline_binding);
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
@@ -2520,6 +2551,7 @@ static void create_pipeline(PGRAPHState *pg)
     LruNode *node = lru_lookup(&r->pipeline_cache, hash, &key);
     if (!node) {
         /* Cache full — all entries in use by current command buffer */
+        dcen_cp = DCEN_CP_LRUFULL;
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
@@ -2528,6 +2560,7 @@ static void create_pipeline(PGRAPHState *pg)
 
 #if OPT_ASYNC_COMPILE
     if (snode->pending) {
+        dcen_cp = DCEN_CP_PENDING;
         r->pipeline_binding = snode;
         r->pipeline_binding_changed = true;
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
@@ -2538,6 +2571,7 @@ static void create_pipeline(PGRAPHState *pg)
 
     if (snode->pipeline != VK_NULL_HANDLE) {
         NV2A_VK_DPRINTF("Cache hit");
+        dcen_cp = DCEN_CP_LRU;
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
         r->pipeline_binding_changed = r->pipeline_binding != snode;
         r->pipeline_binding = snode;
@@ -2549,6 +2583,7 @@ static void create_pipeline(PGRAPHState *pg)
     NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
 
     NV2A_VK_DPRINTF("Cache miss");
+    dcen_cp = DCEN_CP_MISS;
 
 #if OPT_ASYNC_COMPILE
     if (xemu_get_async_compile() && !qatomic_read(&r->shader_binding->ready)) {
@@ -4913,6 +4948,7 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
     if (finish_reason == VK_FINISH_REASON_FLIP_STALL ||
         finish_reason == VK_FINISH_REASON_PRESENTING) {
         opt_stats_log_and_reset();
+        drawcensus_frame();
     }
 
     NV2A_PHASE_TIMER_BEGIN(finish);
@@ -5668,6 +5704,7 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
                     r->last_any_reg_gen = pg->any_reg_gen;
                     r->last_non_dynamic_reg_gen = pg->non_dynamic_reg_gen;
                     OPT_STAT_INC(super_fast_hits);
+                    dcen_path = DCEN_PATH_SFP;
                     r->pre_draw_skipped = true;
                     NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_sfp, draw_ftx);
                     return;
@@ -5758,12 +5795,14 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
             create_frame_buffer(pg);
         }
         pgraph_vk_ensure_command_buffer(pg);
+        dcen_path = DCEN_PATH_MFP;
         NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_mfp, draw_ftx);
         return;
     }
 mfp_miss: (void)0;
     NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_mfp, draw_ftx);
 
+    dcen_path = DCEN_PATH_FULL;
     r->pre_draw_skipped = false;
 
     if (pg->vertex_attr_gen != r->pipeline_vertex_attr_gen) {
@@ -6001,7 +6040,554 @@ mfp_miss: (void)0;
  * numbers are not substitutes: the residual is NOT predictable from #44's
  * 0.674%.
  */
+/*
+ * lane.drawrec1010's draw census, HAKUX_DRAWCENSUS=1 (default off; #433).
+ *
+ * For every consecutive pair of draws: which inputs changed since the
+ * previous draw, which path the draw took (dcen_path, dcen_cp), and what
+ * that path spent on descriptor sets and uniform uploads. One histogram per
+ * 60 frames under hakuX-stall, read by docs/lanes/drawrec1010/censusread.py.
+ *
+ * It decides between reusing state across draws, batching them, or neither:
+ * a draw that changed only its vertex data and uniforms is the reuse case, a
+ * draw that changed nothing tracked here the batching one. It only reads the
+ * renderer's state and writes its own, so the draws are the ones the switch
+ * off records; its cost (a diff of the register file and of c[] per draw)
+ * makes it no timing instrument.
+ */
+enum {
+    DCEN_B_SB, /* shader binding */
+    DCEN_B_PB, /* pipeline binding */
+    DCEN_B_VA, /* vertex attribute or binding descriptions */
+    DCEN_B_TX, /* a bound texture, or a direct surface view */
+    DCEN_B_SF, /* colour or zeta surface */
+    DCEN_B_PM, /* primitive mode */
+    DCEN_B_UC, /* transform constants c[] */
+    DCEN_B_UL, /* lighting: ltctxa, ltctxb, ltc1, lights, material alpha */
+    DCEN_B_UB, /* the uniform bytes the draw's layouts upload */
+    DCEN_B_RC, /* registers: combiners, shader program and clip mode */
+    DCEN_B_RT, /* registers: texture */
+    DCEN_B_RL, /* registers: CSV0/CSV1, point size (fixed-function vertex) */
+    DCEN_B_RB, /* registers: blend, depth, stencil, raster; static bits */
+    DCEN_B_RD, /* registers: the same, dynamic-state bits only */
+    DCEN_B_RF, /* registers read as uniforms: factors, fog, bump, eye */
+    DCEN_B_RW, /* registers: window clip */
+    DCEN_B_RO, /* registers: any other */
+    DCEN_B__COUNT
+};
+
+/* A draw's class: the first that applies, in this order from the bottom */
+enum {
+    DCEN_C_SAME,   /* nothing tracked changed: vertex data only */
+    DCEN_C_DYN,    /* and dynamic state */
+    DCEN_C_UNI,    /* and uniforms, or registers read as uniforms */
+    DCEN_C_REG,    /* a key-feeding register, but shader and pipeline kept */
+    DCEN_C_TEX,    /* textures */
+    DCEN_C_PIPE,   /* pipeline (or vertex format, primitive), shader kept */
+    DCEN_C_SHADER, /* shader binding */
+    DCEN_C_SURF,   /* surface */
+    DCEN_C__COUNT
+};
+
+#define DCEN_REGS (0x2000 / 4)
+#define DCEN_MASKS 64
+#define DCEN_RO 8
+
+static struct {
+    int on; /* -1 until the environment is read */
+
+    /* The previous draw, as drawn */
+    bool have_prev;
+    ShaderBinding *sb;
+    PipelineBinding *pb;
+    SurfaceBinding *color, *zeta;
+    TextureBinding *tex[NV2A_MAX_TEXTURES];
+    VkImageView direct[NV2A_MAX_TEXTURES];
+    int n_attr, n_bind;
+    VkVertexInputAttributeDescription attr[NV2A_VERTEXSHADER_ATTRIBUTES];
+    VkVertexInputBindingDescription bind[NV2A_VERTEXSHADER_ATTRIBUTES];
+    uint32_t prim;
+    uint32_t regs[DCEN_REGS];
+    uint32_t c[NV2A_VERTEXSHADER_CONSTANTS][4];
+    uint64_t light_hash;
+    uint64_t uni_hash;
+
+    /* This draw, at entry */
+    bool shc_in;
+    int ubo_set_in;
+    size_t ubo_off_in[2];
+
+    uint8_t group[DCEN_REGS]; /* DCEN_B_R* per register word */
+
+    /* The window */
+    unsigned frames, window;
+    unsigned draws, clears, skips;
+    unsigned bit[DCEN_B__COUNT];
+    unsigned cls[DCEN_C__COUNT];
+    unsigned path[DCEN_PATH__COUNT];
+    unsigned cp[DCEN_CP__COUNT];
+    unsigned bound_shaders, pbind;
+    unsigned shc_in_n;     /* entered with shader_bindings_changed set */
+    unsigned shc_stale;    /* ... and the shader binding did not change */
+    unsigned shc_stale_full;
+    unsigned ubo_sets;     /* a UBO descriptor set written */
+    unsigned ubo_sets_samesb;
+    unsigned uploads;      /* uniform bytes appended to the ring */
+    unsigned uploads_same; /* ... the same bytes, same binding */
+    unsigned reuse_full;   /* class SAME/DYN/UNI that took the full path */
+    unsigned same_notsfp;  /* class SAME that missed the super-fast path */
+    unsigned crow[NV2A_VERTEXSHADER_CONSTANTS / 16];
+    unsigned nrows[6];     /* c[] rows changed: 0, 1-4, 5-8, 9-16, 17-32, 33+ */
+    uint32_t mask_key[DCEN_MASKS]; /* mask + 1; 0 is empty */
+    unsigned mask_n[DCEN_MASKS];
+    unsigned mask_other;
+    uint16_t ro_addr[DCEN_RO];
+    unsigned ro_n[DCEN_RO], ro_other;
+} dcen = { .on = -1 };
+
+static void drawcensus_init_groups(void)
+{
+    /* Later entries win where ranges overlap (ZCLIP spans ZOFFSET, EYEVEC) */
+    static const struct {
+        unsigned lo, hi;
+        uint8_t g;
+    } ranges[] = {
+        { NV_PGRAPH_ANTIALIASING, NV_PGRAPH_BLENDCOLOR, DCEN_B_RB },
+        { NV_PGRAPH_CONTROL_0, NV_PGRAPH_CONTROL_3, DCEN_B_RB },
+        { NV_PGRAPH_SETUPRASTER, NV_PGRAPH_SETUPRASTER, DCEN_B_RB },
+        { NV_PGRAPH_SHADOWCTL, NV_PGRAPH_SHADOWZSLOPETHRESHOLD, DCEN_B_RB },
+        { NV_PGRAPH_ZCOMPRESSOCCLUDE, NV_PGRAPH_ZCOMPRESSOCCLUDE, DCEN_B_RB },
+        { NV_PGRAPH_ZCLIPMIN, NV_PGRAPH_ZCLIPMAX, DCEN_B_RB },
+        { NV_PGRAPH_BORDERCOLOR0, NV_PGRAPH_BORDERCOLOR3, DCEN_B_RT },
+        { NV_PGRAPH_TEXADDRESS0, NV_PGRAPH_TEXPALETTE3, DCEN_B_RT },
+        { NV_PGRAPH_BUMPMAT00, NV_PGRAPH_CLEARRECTX - 4, DCEN_B_RF },
+        { NV_PGRAPH_COLORKEYCOLOR0, NV_PGRAPH_COLORKEYCOLOR3, DCEN_B_RF },
+        { NV_PGRAPH_COMBINEFACTOR0, NV_PGRAPH_COMBINEALPHAI0 - 4, DCEN_B_RF },
+        { NV_PGRAPH_FOGCOLOR, NV_PGRAPH_FOGPARAM1, DCEN_B_RF },
+        { NV_PGRAPH_SPECFOGFACTOR0, NV_PGRAPH_SPECFOGFACTOR1, DCEN_B_RF },
+        { NV_PGRAPH_EYEVEC0, NV_PGRAPH_EYEVEC2, DCEN_B_RF },
+        { NV_PGRAPH_COMBINEALPHAI0, NV_PGRAPH_COMBINESPECFOG1, DCEN_B_RC },
+        { NV_PGRAPH_SHADERCLIPMODE, NV_PGRAPH_SHADERPROG, DCEN_B_RC },
+        { NV_PGRAPH_CSV0_D, NV_PGRAPH_CSV1_A, DCEN_B_RL },
+        { NV_PGRAPH_POINTSIZE, NV_PGRAPH_POINTSIZE, DCEN_B_RL },
+        { NV_PGRAPH_WINDOWCLIPX0, NV_PGRAPH_WINDOWCLIPY7, DCEN_B_RW },
+    };
+    memset(dcen.group, DCEN_B_RO, sizeof(dcen.group));
+    for (int i = 0; i < ARRAY_SIZE(ranges); i++) {
+        for (unsigned a = ranges[i].lo; a <= ranges[i].hi; a += 4) {
+            dcen.group[a / 4] = ranges[i].g;
+        }
+    }
+}
+
+static bool drawcensus_on(void)
+{
+    if (unlikely(dcen.on < 0)) {
+        const char *e = getenv("HAKUX_DRAWCENSUS");
+        dcen.on = (e && e[0] && strcmp(e, "0")) ? 1 : 0;
+        if (dcen.on) {
+            drawcensus_init_groups();
+        }
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                            "[drawrec1010] census=%d", dcen.on);
+#endif
+    }
+    return dcen.on;
+}
+
+static void drawcensus_pre(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    dcen_path = DCEN_PATH_FULL;
+    dcen_cp = DCEN_CP_NONE;
+    dcen_bound_shaders = false;
+    dcen.shc_in = r->shader_bindings_changed;
+    dcen.ubo_set_in = r->push_ubo_set_index;
+    dcen.ubo_off_in[0] = r->uniform_buffer_offsets[0];
+    dcen.ubo_off_in[1] = r->uniform_buffer_offsets[1];
+}
+
+static void drawcensus_count_mask(uint32_t m)
+{
+    unsigned h = (m * 2654435761u) >> 26;
+    for (int i = 0; i < DCEN_MASKS; i++) {
+        unsigned s = (h + i) % DCEN_MASKS;
+        if (dcen.mask_key[s] == m + 1) {
+            dcen.mask_n[s]++;
+            return;
+        }
+        if (!dcen.mask_key[s]) {
+            dcen.mask_key[s] = m + 1;
+            dcen.mask_n[s] = 1;
+            return;
+        }
+    }
+    dcen.mask_other++;
+}
+
+static void drawcensus_count_ro(unsigned addr)
+{
+    for (int i = 0; i < DCEN_RO; i++) {
+        if (dcen.ro_n[i] && dcen.ro_addr[i] == addr) {
+            dcen.ro_n[i]++;
+            return;
+        }
+        if (!dcen.ro_n[i]) {
+            dcen.ro_addr[i] = addr;
+            dcen.ro_n[i] = 1;
+            return;
+        }
+    }
+    dcen.ro_other++;
+}
+
+static uint64_t drawcensus_light_hash(PGRAPHState *pg)
+{
+    uint64_t h = fast_hash((void *)pg->ltctxa, sizeof(pg->ltctxa));
+    h = h * 31 + fast_hash((void *)pg->ltctxb, sizeof(pg->ltctxb));
+    h = h * 31 + fast_hash((void *)pg->ltc1, sizeof(pg->ltc1));
+    h = h * 31 + fast_hash((void *)pg->light_infinite_half_vector,
+                           sizeof(pg->light_infinite_half_vector));
+    h = h * 31 + fast_hash((void *)pg->light_infinite_direction,
+                           sizeof(pg->light_infinite_direction));
+    h = h * 31 + fast_hash((void *)pg->light_local_position,
+                           sizeof(pg->light_local_position));
+    h = h * 31 + fast_hash((void *)pg->light_local_attenuation,
+                           sizeof(pg->light_local_attenuation));
+    float ma[2] = { pg->material_alpha, pg->material_alpha_back };
+    return h * 31 + fast_hash((void *)ma, sizeof(ma));
+}
+
+static void drawcensus_post(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    ShaderBinding *sb = r->shader_binding;
+
+    if (pg->clearing) {
+        dcen.clears++;
+        return;
+    }
+#if OPT_ASYNC_COMPILE
+    if (r->async_draw_skip || !sb || !qatomic_read(&sb->ready)) {
+        dcen.skips++;
+        return;
+    }
+#endif
+    if (!sb || !r->pipeline_binding || !sb->vsh.upload_info ||
+        !sb->psh.module_info) {
+        dcen.skips++;
+        return;
+    }
+
+    uint32_t m = 0;
+
+    /* Registers, by group; the copy is the previous draw's. regs_ is indexed
+     * by byte address, a word at every fourth entry, so it is compared word
+     * by word; a run of 16 equal words is skipped on one test. */
+    for (int i = 0; i < DCEN_REGS; i++) {
+        if (!(i & 15)) {
+            uint32_t acc = 0;
+            for (int j = 0; j < 16; j++) {
+                acc |= pg->regs_[(i + j) * 4] ^ dcen.regs[i + j];
+            }
+            if (!acc) {
+                i += 15;
+                continue;
+            }
+        }
+        uint32_t v = pg->regs_[i * 4];
+        uint32_t x = v ^ dcen.regs[i];
+        if (!x) {
+            continue;
+        }
+        dcen.regs[i] = v;
+        uint32_t dyn = pgraph_reg_dynamic_mask_table[i];
+        if (x & dyn) {
+            m |= 1u << DCEN_B_RD;
+        }
+        if (x & ~dyn) {
+            m |= 1u << dcen.group[i];
+            if (dcen.group[i] == DCEN_B_RO && dcen.have_prev) {
+                drawcensus_count_ro(i * 4);
+            }
+        }
+    }
+
+    /* Transform constants, by row */
+    int rows = 0;
+    unsigned row_groups = 0;
+    for (int i = 0; i < NV2A_VERTEXSHADER_CONSTANTS; i++) {
+        if (memcmp(pg->vsh_constants[i], dcen.c[i], sizeof(dcen.c[i]))) {
+            memcpy(dcen.c[i], pg->vsh_constants[i], sizeof(dcen.c[i]));
+            rows++;
+            row_groups |= 1u << (i / 16);
+        }
+    }
+    if (rows) {
+        m |= 1u << DCEN_B_UC;
+    }
+
+    uint64_t lh = drawcensus_light_hash(pg);
+    if (lh != dcen.light_hash) {
+        m |= 1u << DCEN_B_UL;
+    }
+
+    /* The bytes uploaded: refreshed on every path but the super-fast one,
+     * which is taken only when they are unchanged */
+    uint64_t uh = dcen.uni_hash;
+    if (dcen_path != DCEN_PATH_SFP) {
+        ShaderUniformLayout *vl = &sb->vsh.upload_info->uniforms;
+        ShaderUniformLayout *fl = &sb->psh.module_info->uniforms;
+        uh = fast_hash(vl->allocation, vl->total_size) * 31 +
+             fast_hash(fl->allocation, fl->total_size);
+    }
+    if (uh != dcen.uni_hash) {
+        m |= 1u << DCEN_B_UB;
+    }
+
+    if (sb != dcen.sb) {
+        m |= 1u << DCEN_B_SB;
+    }
+    if (r->pipeline_binding != dcen.pb) {
+        m |= 1u << DCEN_B_PB;
+    }
+    if (r->num_active_vertex_attribute_descriptions != dcen.n_attr ||
+        r->num_active_vertex_binding_descriptions != dcen.n_bind ||
+        memcmp(r->vertex_attribute_descriptions, dcen.attr,
+               dcen.n_attr * sizeof(dcen.attr[0])) ||
+        memcmp(r->vertex_binding_descriptions, dcen.bind,
+               dcen.n_bind * sizeof(dcen.bind[0]))) {
+        m |= 1u << DCEN_B_VA;
+    }
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        VkImageView dv =
+            r->tex_surface_direct[i] ? r->tex_surface_direct_views[i]
+                                     : VK_NULL_HANDLE;
+        if (r->texture_bindings[i] != dcen.tex[i] || dv != dcen.direct[i]) {
+            m |= 1u << DCEN_B_TX;
+        }
+        dcen.tex[i] = r->texture_bindings[i];
+        dcen.direct[i] = dv;
+    }
+    if (r->color_binding != dcen.color || r->zeta_binding != dcen.zeta) {
+        m |= 1u << DCEN_B_SF;
+    }
+    if (pg->primitive_mode != dcen.prim) {
+        m |= 1u << DCEN_B_PM;
+    }
+
+    bool sb_same = !(m & (1u << DCEN_B_SB));
+    bool ubo_set = r->push_ubo_set_index != dcen.ubo_set_in;
+    bool upload = r->uniform_buffer_offsets[0] != dcen.ubo_off_in[0] ||
+                  r->uniform_buffer_offsets[1] != dcen.ubo_off_in[1];
+
+    if (dcen.have_prev) {
+        int c;
+        if (m & (1u << DCEN_B_SF)) {
+            c = DCEN_C_SURF;
+        } else if (m & (1u << DCEN_B_SB)) {
+            c = DCEN_C_SHADER;
+        } else if (m & ((1u << DCEN_B_PB) | (1u << DCEN_B_VA) |
+                        (1u << DCEN_B_PM))) {
+            c = DCEN_C_PIPE;
+        } else if (m & ((1u << DCEN_B_TX) | (1u << DCEN_B_RT))) {
+            c = DCEN_C_TEX;
+        } else if (m & ((1u << DCEN_B_RC) | (1u << DCEN_B_RL) |
+                        (1u << DCEN_B_RB) | (1u << DCEN_B_RW) |
+                        (1u << DCEN_B_RO))) {
+            c = DCEN_C_REG;
+        } else if (m & ((1u << DCEN_B_UC) | (1u << DCEN_B_UL) |
+                        (1u << DCEN_B_UB) | (1u << DCEN_B_RF))) {
+            c = DCEN_C_UNI;
+        } else if (m & (1u << DCEN_B_RD)) {
+            c = DCEN_C_DYN;
+        } else {
+            c = DCEN_C_SAME;
+        }
+
+        dcen.draws++;
+        dcen.cls[c]++;
+        for (int b = 0; b < DCEN_B__COUNT; b++) {
+            if (m & (1u << b)) {
+                dcen.bit[b]++;
+            }
+        }
+        drawcensus_count_mask(m);
+        dcen.path[dcen_path]++;
+        dcen.cp[dcen_cp]++;
+        dcen.bound_shaders += dcen_bound_shaders;
+        dcen.pbind += r->pipeline_binding_changed;
+        if (dcen.shc_in) {
+            dcen.shc_in_n++;
+            if (sb_same) {
+                dcen.shc_stale++;
+                dcen.shc_stale_full += dcen_path == DCEN_PATH_FULL;
+            }
+        }
+        if (ubo_set) {
+            dcen.ubo_sets++;
+            dcen.ubo_sets_samesb += sb_same;
+        }
+        if (upload) {
+            dcen.uploads++;
+            dcen.uploads_same += sb_same && uh == dcen.uni_hash;
+        }
+        if (c <= DCEN_C_UNI && dcen_path == DCEN_PATH_FULL) {
+            dcen.reuse_full++;
+        }
+        if (c == DCEN_C_SAME && dcen_path != DCEN_PATH_SFP) {
+            dcen.same_notsfp++;
+        }
+        for (int g = 0; g < ARRAY_SIZE(dcen.crow); g++) {
+            if (row_groups & (1u << g)) {
+                dcen.crow[g]++;
+            }
+        }
+        dcen.nrows[rows == 0 ? 0 : rows <= 4 ? 1 : rows <= 8 ? 2 :
+                   rows <= 16 ? 3 : rows <= 32 ? 4 : 5]++;
+    }
+
+    dcen.have_prev = true;
+    dcen.sb = sb;
+    dcen.pb = r->pipeline_binding;
+    dcen.color = r->color_binding;
+    dcen.zeta = r->zeta_binding;
+    dcen.n_attr = r->num_active_vertex_attribute_descriptions;
+    dcen.n_bind = r->num_active_vertex_binding_descriptions;
+    memcpy(dcen.attr, r->vertex_attribute_descriptions,
+           dcen.n_attr * sizeof(dcen.attr[0]));
+    memcpy(dcen.bind, r->vertex_binding_descriptions,
+           dcen.n_bind * sizeof(dcen.bind[0]));
+    dcen.prim = pg->primitive_mode;
+    dcen.light_hash = lh;
+    dcen.uni_hash = uh;
+}
+
+#ifdef __ANDROID__
+#define DCEN_LOG(...) \
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall", __VA_ARGS__)
+#else
+#define DCEN_LOG(...) \
+    do { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+/* Once a frame, from pgraph_vk_finish() beside opt_stats_log_and_reset() */
+static void drawcensus_frame(void)
+{
+    if (!dcen.on || ++dcen.frames % 60) {
+        return;
+    }
+    unsigned w = dcen.window++;
+
+    DCEN_LOG("census w=%u draws=%u clr=%u skip=%u cls same=%u dyn=%u "
+             "uni=%u reg=%u tex=%u pipe=%u shader=%u surf=%u",
+             w, dcen.draws, dcen.clears, dcen.skips, dcen.cls[DCEN_C_SAME],
+             dcen.cls[DCEN_C_DYN], dcen.cls[DCEN_C_UNI], dcen.cls[DCEN_C_REG],
+             dcen.cls[DCEN_C_TEX], dcen.cls[DCEN_C_PIPE],
+             dcen.cls[DCEN_C_SHADER], dcen.cls[DCEN_C_SURF]);
+    DCEN_LOG("census-bits w=%u sb=%u pb=%u va=%u tx=%u sf=%u pm=%u uc=%u "
+             "ul=%u ub=%u rc=%u rt=%u rl=%u rb=%u rd=%u rf=%u rw=%u ro=%u",
+             w, dcen.bit[DCEN_B_SB], dcen.bit[DCEN_B_PB], dcen.bit[DCEN_B_VA],
+             dcen.bit[DCEN_B_TX], dcen.bit[DCEN_B_SF], dcen.bit[DCEN_B_PM],
+             dcen.bit[DCEN_B_UC], dcen.bit[DCEN_B_UL], dcen.bit[DCEN_B_UB],
+             dcen.bit[DCEN_B_RC], dcen.bit[DCEN_B_RT], dcen.bit[DCEN_B_RL],
+             dcen.bit[DCEN_B_RB], dcen.bit[DCEN_B_RD], dcen.bit[DCEN_B_RF],
+             dcen.bit[DCEN_B_RW], dcen.bit[DCEN_B_RO]);
+    DCEN_LOG("census-path w=%u sfp=%u mfp=%u full=%u cp none=%u early=%u "
+             "notdirty=%u samekey=%u lru=%u pend=%u miss=%u lrufull=%u "
+             "bs=%u pbind=%u",
+             w, dcen.path[DCEN_PATH_SFP], dcen.path[DCEN_PATH_MFP],
+             dcen.path[DCEN_PATH_FULL], dcen.cp[DCEN_CP_NONE],
+             dcen.cp[DCEN_CP_EARLY], dcen.cp[DCEN_CP_NOTDIRTY],
+             dcen.cp[DCEN_CP_SAMEKEY], dcen.cp[DCEN_CP_LRU],
+             dcen.cp[DCEN_CP_PENDING], dcen.cp[DCEN_CP_MISS],
+             dcen.cp[DCEN_CP_LRUFULL], dcen.bound_shaders, dcen.pbind);
+    DCEN_LOG("census-cost w=%u shc_in=%u shc_stale=%u shc_stale_full=%u "
+             "ubo_sets=%u ubo_sets_samesb=%u uploads=%u uploads_same=%u "
+             "reuse_full=%u same_notsfp=%u",
+             w, dcen.shc_in_n, dcen.shc_stale, dcen.shc_stale_full,
+             dcen.ubo_sets, dcen.ubo_sets_samesb, dcen.uploads,
+             dcen.uploads_same, dcen.reuse_full, dcen.same_notsfp);
+    DCEN_LOG("census-crow w=%u rows 0=%u 1-4=%u 5-8=%u 9-16=%u 17-32=%u "
+             "33+=%u by16 %u %u %u %u %u %u %u %u %u %u %u %u",
+             w, dcen.nrows[0], dcen.nrows[1], dcen.nrows[2], dcen.nrows[3],
+             dcen.nrows[4], dcen.nrows[5], dcen.crow[0], dcen.crow[1],
+             dcen.crow[2], dcen.crow[3], dcen.crow[4], dcen.crow[5],
+             dcen.crow[6], dcen.crow[7], dcen.crow[8], dcen.crow[9],
+             dcen.crow[10], dcen.crow[11]);
+
+    /* The 24 commonest masks, then the other registers that moved */
+    char buf[640];
+    int o = snprintf(buf, sizeof(buf), "census-mask w=%u other=%u", w,
+                     dcen.mask_other);
+    bool used[DCEN_MASKS] = { false };
+    for (int k = 0; k < 24; k++) {
+        int best = -1;
+        for (int i = 0; i < DCEN_MASKS; i++) {
+            if (dcen.mask_key[i] && !used[i] &&
+                (best < 0 || dcen.mask_n[i] > dcen.mask_n[best])) {
+                best = i;
+            }
+        }
+        if (best < 0) {
+            break;
+        }
+        used[best] = true;
+        o += snprintf(buf + o, sizeof(buf) - o, " %x:%u",
+                      dcen.mask_key[best] - 1, dcen.mask_n[best]);
+    }
+    unsigned rest = 0;
+    for (int i = 0; i < DCEN_MASKS; i++) {
+        if (dcen.mask_key[i] && !used[i]) {
+            rest += dcen.mask_n[i];
+        }
+    }
+    snprintf(buf + o, sizeof(buf) - o, " rest=%u", rest);
+    DCEN_LOG("%s", buf);
+
+    o = snprintf(buf, sizeof(buf), "census-ro w=%u other=%u", w,
+                 dcen.ro_other);
+    for (int i = 0; i < DCEN_RO && dcen.ro_n[i]; i++) {
+        o += snprintf(buf + o, sizeof(buf) - o, " %x:%u", dcen.ro_addr[i],
+                      dcen.ro_n[i]);
+    }
+    DCEN_LOG("%s", buf);
+
+    dcen.draws = dcen.clears = dcen.skips = 0;
+    memset(dcen.bit, 0, sizeof(dcen.bit));
+    memset(dcen.cls, 0, sizeof(dcen.cls));
+    memset(dcen.path, 0, sizeof(dcen.path));
+    memset(dcen.cp, 0, sizeof(dcen.cp));
+    dcen.bound_shaders = dcen.pbind = 0;
+    dcen.shc_in_n = dcen.shc_stale = dcen.shc_stale_full = 0;
+    dcen.ubo_sets = dcen.ubo_sets_samesb = 0;
+    dcen.uploads = dcen.uploads_same = 0;
+    dcen.reuse_full = dcen.same_notsfp = 0;
+    memset(dcen.crow, 0, sizeof(dcen.crow));
+    memset(dcen.nrows, 0, sizeof(dcen.nrows));
+    memset(dcen.mask_key, 0, sizeof(dcen.mask_key));
+    memset(dcen.mask_n, 0, sizeof(dcen.mask_n));
+    dcen.mask_other = 0;
+    memset(dcen.ro_n, 0, sizeof(dcen.ro_n));
+    dcen.ro_other = 0;
+}
+
+static void begin_pre_draw_probe(PGRAPHState *pg);
+
 static void begin_pre_draw(PGRAPHState *pg)
+{
+    if (unlikely(drawcensus_on())) {
+        drawcensus_pre(pg);
+        begin_pre_draw_probe(pg);
+        drawcensus_post(pg);
+        return;
+    }
+    begin_pre_draw_probe(pg);
+}
+
+static void begin_pre_draw_probe(PGRAPHState *pg)
 {
 #if HAKUX_VRAM_RACE_PROBE
     PGRAPHVkState *r = pg->vk_renderer_state;
