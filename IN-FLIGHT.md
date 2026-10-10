@@ -88,4 +88,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 
-_Updated 2026-10-10 09:44 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 09:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
