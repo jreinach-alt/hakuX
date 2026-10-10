@@ -27,6 +27,18 @@
 # and publishes nothing; selftest.d/86-nightly-notes.sh drives it over fixture
 # histories. Both modes generate the body through the same code, so a green
 # test is a statement about what the nightly will actually publish.
+#
+# A build whose window has no player-facing change exits 9 and skips `gh
+# release create`/upload (and the tag push below), but still builds and logs
+# as usual -- so the APK is on disk if anyone wants it, it is just not
+# published. 2026-10-05..10-09 published four nights running with the
+# identical body ("No player-facing changes in this build."), because every
+# one of those nights' changes was an `offline_fold.py` merge
+# (`fold: lane/<lane> (offline) -- <title>`), which flush_change() below used
+# to fall through to the unmatched-subject branch -- counted internal because
+# its whole subject contains the word "lane". The owner's standing order
+# (2026-10-09) is to take such a night down rather than publish a no-op
+# release under a fresh date.
 set -u
 
 REPO="${NIGHTLY_REPO:-jreinach-alt/hakuX}"
@@ -269,12 +281,49 @@ fi
 # trunk commit before it. --diff-merges=first-parent is what makes a fold's
 # paths its net change rather than nothing.
 declare -A REVERTED=() REVERT_EMU=()
-CH_PR=(); CH_TITLE=()
+CH_PR=(); CH_TITLE=(); CH_LANE=(); CH_SHA=()
 N_INTERNAL=0
-cur_sub=""; cur_emu=0; have=0
+cur_sub=""; cur_sha=""; cur_emu=0; have=0
+escape_re() { printf '%s' "$1" | sed 's/[.[\*^$/]/\\&/g'; }
+# A fold's branch is not always the directory its PR.md lives under: a
+# retry or a split takes a suffixed branch (forzadecay414-fix, uberspike569-gpl)
+# while the lane keeps its original docs/lanes/<name>/ directory, and the
+# title then names that original with a "lane.<name>" token instead of
+# repeating the branch. Tried in order, first existing wins; the branch
+# itself is the common case and stays first.
+resolve_lane_dir() {   # <branch> <sha> <title> -> the docs/lanes/<name> this fold's PR.md lives under
+    local branch=$1 sha=$2 title=$3 cand
+    git cat-file -e "$sha:docs/lanes/$branch/PR.md" 2>/dev/null && { printf '%s' "$branch"; return; }
+    if [[ $title =~ ^lane\.([A-Za-z0-9_]+) ]]; then
+        cand=${BASH_REMATCH[1]}
+        git cat-file -e "$sha:docs/lanes/$cand/PR.md" 2>/dev/null && { printf '%s' "$cand"; return; }
+    fi
+    cand=$branch
+    while [[ $cand == *-* ]]; do
+        cand=${cand%-*}
+        git cat-file -e "$sha:docs/lanes/$cand/PR.md" 2>/dev/null && { printf '%s' "$cand"; return; }
+    done
+    printf '%s' "$branch"
+}
+offline_clean_title() {   # <branch> <lane> <title> -> title without a leading "<branch>[ attempt N]: " or
+                          # "lane.<lane>[ qualifier]: " prefix, or a trailing " (#NNN)"
+    local branch=$1 lane=$2 title=$3 b_re l_re
+    b_re=$(escape_re "$branch")
+    title=$(sed -E "s/^${b_re}( attempt [0-9]+)?: //" <<<"$title")
+    l_re=$(escape_re "$lane")
+    title=$(sed -E "s/^lane\.${l_re}( [^:]*)?: //" <<<"$title")
+    sed -E 's/ \(#[0-9]+\)$//' <<<"$title"
+}
+lane_body_line() {   # <lane> <sha> -> "category<TAB>line" from docs/lanes/<lane>/PR.md's Release note line, at <sha>
+    local body
+    body=$(git show "$2:docs/lanes/$1/PR.md" 2>/dev/null)
+    printf '%s\n' "$body" | tr -d '\r' | sed -nE \
+        's/^[[:space:]]*[Rr]elease[ -][Nn]otes?( \(([A-Za-z ]+)\))?:[[:space:]]*(.*[^[:space:]])[[:space:]]*$/\2\t\3/p' \
+        | head -1
+}
 flush_change() {
     [ "$have" = 1 ] || return 0
-    local pr="" title=$cur_sub
+    local pr="" lane="" sha=$cur_sha title=$cur_sub
     case "$cur_sub" in
         "fold: revert #"*|'Revert "fold: PR #'*)
             pr=${cur_sub#*#}; pr=${pr%%[!0-9]*}
@@ -286,9 +335,16 @@ flush_change() {
         "fold: PR #"*)
             pr=${cur_sub#fold: PR #}; pr=${pr%%[!0-9]*}
             case "$cur_sub" in *" -- "*) title=${cur_sub#* -- } ;; esac ;;
+        "fold: lane/"*" (offline) -- "*)
+            local branch
+            branch=${cur_sub#fold: lane/}; branch=${branch%% (offline)*}
+            title=${cur_sub#*" (offline) -- "}
+            lane=$(resolve_lane_dir "$branch" "$sha" "$title")
+            title=$(offline_clean_title "$branch" "$lane" "$title")
+            ;;
     esac
     if [ "$cur_emu" = 1 ]; then
-        CH_PR+=("$pr"); CH_TITLE+=("$title")
+        CH_PR+=("$pr"); CH_TITLE+=("$title"); CH_LANE+=("$lane"); CH_SHA+=("$sha")
     else
         N_INTERNAL=$((N_INTERNAL+1))
     fi
@@ -302,11 +358,13 @@ flush_change() {
 # be answers about the same ref, so neither may be implicit.
 while IFS= read -r line; do
     case "$line" in
-        $'\x01'*) flush_change; cur_sub=${line#$'\x01'}; cur_emu=0; have=1 ;;
+        $'\x01'*) flush_change
+                  rest=${line#$'\x01'}; cur_sha=${rest%%$'\x01'*}; cur_sub=${rest#*$'\x01'}
+                  cur_emu=0; have=1 ;;
         '')       ;;
         *)        [[ $line =~ $EMU_RE ]] && cur_emu=1 ;;
     esac
-done < <(git log --first-parent --diff-merges=first-parent --format=$'\x01%s' --name-only "${RANGE[@]}" 2>/dev/null)
+done < <(git log --first-parent --diff-merges=first-parent --format=$'\x01%H\x01%s' --name-only "${RANGE[@]}" 2>/dev/null)
 flush_change
 TOTAL=$(git log --first-parent --oneline "${RANGE[@]}" 2>/dev/null | wc -l)
 
@@ -358,20 +416,33 @@ L_PERF=(); L_STAB=(); L_REND=(); L_OTHER=(); BY_NUMBER=()
 N_EMU=${#CH_PR[@]}; N_DROPPED=0
 for i in "${!CH_PR[@]}"; do
     pr=${CH_PR[$i]}
+    lane=${CH_LANE[$i]:-}
     if [ -n "$pr" ] && [ -n "${REVERTED[$pr]:-}" ]; then
         say "notes: #$pr was folded and reverted in this window; neither is listed"
         unset "REVERTED[$pr]"; N_DROPPED=$((N_DROPPED+1)); continue
     fi
     r=""
-    r=$(map_line "$pr") || { [ -n "$pr" ] && r=$(body_line "$pr"); }
+    if [ -n "$lane" ]; then
+        r=$(lane_body_line "$lane" "${CH_SHA[$i]}")
+    else
+        r=$(map_line "$pr") || { [ -n "$pr" ] && r=$(body_line "$pr"); }
+    fi
     cat=$(norm_cat "${r%%$'\t'*}"); text=""
     [ -n "$r" ] && text=${r#*$'\t'}
-    [ "${text,,}" = none ] && cat=none
+    [[ ${text,,} =~ ^none([^a-z]|$) ]] && cat=none
     if [ "$cat" = none ]; then
         N_DROPPED=$((N_DROPPED+1)); N_INTERNAL=$((N_INTERNAL+1)); continue
     fi
-    [ -n "$text" ] || text=$(clean_title "${CH_TITLE[$i]}")
+    if [ -z "$text" ]; then
+        if [ -n "$lane" ]; then text="${CH_TITLE[$i]}"; else text=$(clean_title "${CH_TITLE[$i]}"); fi
+    fi
     [ -n "$cat" ] || cat=$(guess_cat "$text")
+    # Only the lane path: an offline lane's own Release note (or its own
+    # title, as the no-note fallback) is free-form prose an author wrote
+    # without this file in mind, and several start lowercase ("a game you
+    # have played before no longer freezes ..."). A numbered PR's text and a
+    # bare commit subject are left as the author wrote them, same as before.
+    [ -n "$lane" ] && text="${text^}"
     [ -n "$pr" ] && ! [[ $text =~ \#[0-9] ]] && text="$text (#$pr)"
     if grep -qiE "$INTERNAL_RE" <<<"$text"; then
         who="a direct commit"; [ -n "$pr" ] && who="#$pr"
@@ -442,8 +513,26 @@ if [ "$N_EMU" -gt "$N_DROPPED" ] && ! grep -q '^- ' "$BODY"; then
     say "WARNING: $((N_EMU - N_DROPPED)) emulator change(s) in the window and the notes list none"
 fi
 
+# A build whose notes have nothing listed is not published (owner 2026-10-09:
+# "if any of them have no changes, take down the nightly"). $PUBLISH_WHY is
+# set here, read by both modes below, and is the one place that decides it --
+# so `notes` mode's answer and the build's actual behavior cannot drift apart.
+PUBLISH_WHY=""
+if [ "$N_LISTED" -eq 0 ]; then
+    if [ -n "$BASE_TAG" ]; then
+        PUBLISH_WHY="no player-facing change since $BASE_TAG"
+    else
+        PUBLISH_WHY="no player-facing change ($WINDOW)"
+    fi
+fi
+
 if [ "$MODE" = notes ]; then
     cat "$BODY"
+    if [ -n "$PUBLISH_WHY" ]; then
+        say "would not publish: $PUBLISH_WHY"
+    else
+        say "would publish"
+    fi
     [ -n "$OUT" ] && rm -rf "$OUT"
     exit 0
 fi
@@ -478,9 +567,26 @@ if [ "$SHA_NOW" != "$SHA" ]; then
     exit 6
 fi
 
+# $NAME is on disk either way -- this only skips the release. Exit 9 is
+# documented (see the header comment) so the service unit and anything
+# reading nightly/<date>.log can tell it apart from a real failure.
+if [ -n "$PUBLISH_WHY" ]; then
+    say "not published: $PUBLISH_WHY"
+    exit 9
+fi
+
 if gh release create "$TAG" "$OUT/$NAME" --repo "$REPO" --prerelease \
         --title "hakuX nightly $DAY ($SHA)" --notes-file "$BODY" >>"$LOG" 2>&1; then
     say "published $TAG"
+    # The notes for tomorrow's nightly read $BASE_TAG from a tag in origin
+    # (the stand-in repo), not from GitHub. Create-only: never clobber a tag
+    # another publish already set, and never force.
+    if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+        git tag "$TAG" "$SHA_NOW"
+    fi
+    if ! git push origin "refs/tags/$TAG" >>"$LOG" 2>&1; then
+        say "WARNING: could not push refs/tags/$TAG to origin; tomorrow's base may stay stale until something else tags it"
+    fi
 else
     say "release create failed; retrying as an upload to an existing tag"
     gh release upload "$TAG" "$OUT/$NAME" --repo "$REPO" --clobber >>"$LOG" 2>&1 \
