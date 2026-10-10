@@ -23,8 +23,18 @@ With HAKUX_REPORT_TRACE=1 the build also prints, on hakuX-lane every 2 s,
 `[rtrace] w ...` (reports.c rt_window_locked); those lines are summed over the
 countdown + post-GO span of every start (mark+LO .. mark+post HI) and over the
 whole run, into the step-1 table.
+
+    raread.py <run> [...] --expect docs/testing/predictions/reportasync1010-nfs.json
+
+judges the A/B: a run is ON when its request.json env has HAKUX_REPORT_ASYNC=1,
+OFF otherwise, and the build's own `[reportasync] on` line must agree. Legs:
+V (every run has 12 marks, each arm >= V_min_warm_lines warm pace lines, the
+label agrees), W (warm countdown period: off inside [W_off_min, W_off_max], on
+<= W_on_max, on - off <= W_d_max), C (cold start 1: off inside [C_off_min,
+C_off_max], on <= C_on_max), H (warm v2 share on - off >= H_dv2_min points).
 """
 import argparse
+import json
 import os
 import re
 import sys
@@ -99,6 +109,65 @@ def sel(evs, marks, lo, hi, which):
             continue
         out += [e for e in evs if t0 + lo <= e[0] <= t0 + hi]
     return out
+
+
+def period(lines):
+    return sum(x[2] for x in lines) / (60 * len(lines)) if lines else None
+
+
+def vshare(lines, k):
+    return 100 * sum(x[1][k] for x in lines) / (60 * len(lines)) if lines else None
+
+
+def arm_of(d):
+    try:
+        env = json.load(open(os.path.join(d, 'request.json'))).get('env') or []
+    except (OSError, ValueError):
+        return None
+    return 'on' if 'HAKUX_REPORT_ASYNC=1' in env else 'off'
+
+
+def judge(dirs, exp, lo, hi):
+    e = exp['expect']
+    arms = {'on': {'cold': [], 'warm': []}, 'off': {'cold': [], 'warm': []}}
+    legs = []
+    for d in dirs:
+        marks, pace, _, seen = read(d)
+        arm = arm_of(d)
+        name = os.path.basename(d.rstrip('/'))
+        ok = arm is not None and seen == (arm == 'on')
+        legs.append(('V', ok, f'{name}: arm {arm}, [reportasync] on {"seen" if seen else "not seen"}'))
+        legs.append(('V', len(marks) >= e['V_min_marks'], f'{name}: {len(marks)} marks'))
+        if arm:
+            arms[arm]['cold'] += sel(pace, marks, lo, hi, 'cold')
+            arms[arm]['warm'] += sel(pace, marks, lo, hi, 'warm')
+    for arm in ('off', 'on'):
+        n = len(arms[arm]['warm'])
+        legs.append(('V', n >= e['V_min_warm_lines'], f'{arm}: {n} warm pace lines'))
+    w_off, w_on = period(arms['off']['warm']), period(arms['on']['warm'])
+    c_off, c_on = period(arms['off']['cold']), period(arms['on']['cold'])
+    v2_off, v2_on = vshare(arms['off']['warm'], 2), vshare(arms['on']['warm'], 2)
+    if None in (w_off, w_on, c_off, c_on, v2_off, v2_on):
+        print('VERDICT: VOID -- an arm has no pace lines in the window')
+        return 2
+    legs.append(('W', e['W_off_min'] <= w_off <= e['W_off_max'],
+                 f'warm off {w_off:.1f} ms in [{e["W_off_min"]}, {e["W_off_max"]}]'))
+    legs.append(('W', w_on <= e['W_on_max'], f'warm on {w_on:.1f} ms <= {e["W_on_max"]}'))
+    legs.append(('W', w_on - w_off <= e['W_d_max'], f'warm on - off {w_on - w_off:+.1f} ms <= {e["W_d_max"]}'))
+    legs.append(('C', e['C_off_min'] <= c_off <= e['C_off_max'],
+                 f'cold off {c_off:.1f} ms in [{e["C_off_min"]}, {e["C_off_max"]}]'))
+    legs.append(('C', c_on <= e['C_on_max'], f'cold on {c_on:.1f} ms <= {e["C_on_max"]}'))
+    legs.append(('H', v2_on - v2_off >= e['H_dv2_min'],
+                 f'warm v2 share {v2_off:.0f}% -> {v2_on:.0f}%, {v2_on - v2_off:+.1f} points >= {e["H_dv2_min"]}'))
+    for leg, ok, what in legs:
+        print(f'  {leg} {"PASS" if ok else "FAIL"}  {what}')
+    v_ok = all(ok for leg, ok, _ in legs if leg == 'V')
+    rest = [ok for leg, ok, _ in legs if leg != 'V']
+    if not v_ok:
+        print('VERDICT: VOID -- a validity check failed')
+        return 2
+    print(f'VERDICT: {"PASS" if all(rest) else "FAIL"} -- {sum(rest)} of {len(rest)} checks hold')
+    return 0 if all(rest) else 1
 
 
 def pace_line(lines):
@@ -181,9 +250,12 @@ def main():
     ap.add_argument('--window', default='-2,1.5')
     ap.add_argument('--post', default='1.5,12')
     ap.add_argument('--label', default='')
+    ap.add_argument('--expect', help='judge the A/B against this registered prediction')
     a = ap.parse_args()
     lo, hi = (float(x) for x in a.window.split(','))
     plo, phi = (float(x) for x in a.post.split(','))
+    if a.expect:
+        return judge(a.dirs, json.load(open(a.expect)), lo, hi)
     print(f'countdown: pace lines printed in mark{lo:+.1f} .. mark{hi:+.1f} s; post-GO mark{plo:+.1f} .. '
           f'mark{phi:+.1f} s {a.label}')
     pool = {'cold': [], 'warm': [], 'post_cold': [], 'post_warm': []}

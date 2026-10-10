@@ -4,7 +4,8 @@ State: draft
 Lane: reportasync1010       Issue: #433 (umbrella), none filed
 Base: master @ 9fd2608f8f
 Files: hw/xbox/nv2a/pgraph/vk/reports.c, docs/lanes/reportasync1010/**, docs/testing/predictions/reportasync1010-*.json
-Prediction: none yet (registered before any device run)
+Prediction: docs/testing/predictions/reportasync1010-nfs.json @ 2201efdad090f4691ada9e2fb87d1b2fd7f1ec901de5d6fb64b221385f7b497a (race start, off/on/on/off, plain build)
+Prediction: docs/testing/predictions/reportasync1010-pixels.json @ 80d0c4d86f5975df665232fa62bd64411cb9b776bdf0675790b6f0f8dc767266 (27-suite disc, must_not_move)
 Needs device: yes (Nova)
 Needs NDK: yes
 
