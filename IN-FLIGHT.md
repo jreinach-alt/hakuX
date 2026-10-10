@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `drawrec1010` | claude-opus-5-5 | 35 min | drawrec1010: HAKUX_DRAWREC=1 (default off): owe the vertex sync's TLB walk, and consume a stale shader_binding |
+| `modelpolicy1010` | claude-sonnet-5 | 1 min | Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 15 waiting, 1 running.
+- **Device queue:** 14 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -73,7 +73,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/drawrec1010` | drawrec1010: HAKUX_DRAWREC=1 (default off): owe the vertex sync's TLB walk, and consume a stale shader_bindings_changed  | `acc1f8170b` | 2026-10-10 15:44 |
+| `lane/modelpolicy1010` | Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly) | `2b7d7cc063` | 2026-10-10 08:39 |
 
 ## Recently landed on master
 
@@ -90,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 Lane: nightlywrap1010            Issue: none (dispatched directly by lane.local, #433 umbrella)
 - 2026-10-10 lane.lanepath1009: lane.sh gives each lane unit a shim-first PATH with --setenv (#433, 0.5)
 
-_Updated 2026-10-10 15:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 15:51 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
