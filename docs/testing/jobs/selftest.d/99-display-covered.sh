@@ -400,13 +400,16 @@ fi
 echo "== foreground guard: soak_title.sh plays the route only while hakuX is in front"
 printf 'press A\nwait 2\npress B\nwait 30\n' > "$DG/fg.route"
 fg_soak() {    # <soak_title.sh> <hold s> <fixture> [<fixture for read 1> ...] -> rc; run.log in $DG/run
+    # SOAK_POLL_S / FG_POLL_S: a caller may export these before calling to
+    # skew the hold loop's and the watcher's relative poll rates (Audit L3's
+    # race block does); unset, both default to 0.2 as before.
     local s="$1" hold="$2" f="$3" i=1 rc; shift 3
     rm -rf "${DG:?}/run"; mkdir -p "$DG/run"; : > "$DG/calls"; rm -f "$DG/started" "$DG/fgn" "$DG"/fg.[0-9]*
     cp "$DG/p.awake" "$DG/power"; cp "$DG/w.clear" "$DG/windows"; cp "$DG/f.$f" "$DG/fg"
     for f in "$@"; do cp "$DG/f.$f" "$DG/fg.$i"; i=$((i+1)); done
     PATH="$DG/bin:$PATH" DG_FAKE="$DG" SERIAL=ee317437 DISPLAY_WAKE_S=0 ADB_RETRY_SLEEP=0 \
-        HAKUX_DEVICE_LEASE="$DG/lease" SOAK_POLL_S=0.2 SOAK_RETRY_S=0.1 HAKUX_WORK="$DG" \
-        PAD_DEV=/dev/input/event7 FG_POLL_S=0.2 FG_WAIT_S=1 FG_REMEDY_S=1 \
+        HAKUX_DEVICE_LEASE="$DG/lease" SOAK_POLL_S="${SOAK_POLL_S:-0.2}" SOAK_RETRY_S=0.1 HAKUX_WORK="$DG" \
+        PAD_DEV=/dev/input/event7 FG_POLL_S="${FG_POLL_S:-0.2}" FG_WAIT_S=1 FG_REMEDY_S=1 \
         PERF_RESULT="$DG/run/perf_regimen.json" ROUTE_FILE="$DG/fg.route" ROUTE_FRAMES="$DG/run/rf" \
         timeout 60 bash "$s" /fake/iso.iso "$hold" > "$DG/run/run.log" 2>&1; rc=$?
     echo "$rc"
@@ -452,16 +455,51 @@ why=$(fg_midroute "$TESTING/soak_title.sh")
 
 # Audit L3: the guest dies mid-route and the launcher comes to the front. The
 # route must stop, but the run is an exit, not a not-foreground void.
+#
+# fg_watch's post-kill `ps` and the hold loop's own alive() both read the
+# guest's liveness independently (soak_title.sh ~840 and ~896), and a busier
+# host can let the hold loop notice first: it logs `guest exited` and its
+# stop_route then reaps fg_watch (by PID, mid-sleep) before fg_watch's own
+# `ROUTE STOPPED` line is written. Either order stops the route and leaves
+# nothing voided, so this leg accepts either stopper rather than only the
+# watcher's line (host memory: three fold selftests failed on exactly this,
+# nightlynotes1009/surfgpu1009/pfifowait1009, 2026-10-09/10 -- alone, and on
+# an idle host, the watcher almost always wins the race first).
 rm -f "$DG/seen"; touch "$DG/gone"
 rc=$(fg_soak "$TESTING/soak_title.sh" 8 lime ours ours ours ours)
 rm -f "$DG/gone" "$DG/seen"
 why=""
-grep -q '^ROUTE STOPPED: com.jreinach.hakux.debug:xemu is gone, so the guest exited (not-foreground: io.github.lime3ds.android ' "$DG/run/run.log" || why="$why no-STOPPED-line"
+grep -q '^ROUTE STOPPED: com.jreinach.hakux.debug:xemu is gone, so the guest exited (not-foreground: io.github.lime3ds.android ' "$DG/run/run.log" \
+    || grep -q '^guest exited after' "$DG/run/run.log" \
+    || why="$why no-stop-signal"
 ! grep -q '^not-foreground:\|^ROUTE ABORTED' "$DG/run/run.log" || why="$why VOIDED"
-grep -q '^guest exited after' "$DG/run/run.log" || why="$why no-exit-line"
 ! grep -q 'sendevent /dev/input/event7 1 305 1' "$DG/calls" || why="$why B-PRESSED"
-[ -z "$why" ] && ok "guest exit mid-route: the route stops, run.log says guest exited, and nothing reads not-foreground" \
+[ -z "$why" ] && ok "guest exit mid-route: the route stops (watcher or hold loop), nothing reads not-foreground, and B is never pressed" \
     || bad "guest exit mid-route:$why | $(tr '\n' '|' < "$DG/run/run.log" | tail -c 500)"
+
+echo "== foreground guard: Audit L3 holds whichever poller notices the guest first"
+# Force the order a busy host produced: a hold loop that polls far faster
+# than the watcher is very likely to read `ps` as gone before the watcher's
+# own post-kill check does, so the ROUTE STOPPED line is often missing here.
+# The leg above must still pass when that happens; this checks it does, by
+# driving the same scenario under that skew several times.
+rm -f "$DG/seen"; touch "$DG/gone"
+stopped=0; silent=0; why=""
+for n in 1 2 3 4 5 6; do
+    SOAK_POLL_S=0.002 FG_POLL_S=0.3 fg_soak "$TESTING/soak_title.sh" 8 lime ours ours ours ours >/dev/null
+    if grep -q '^ROUTE STOPPED:' "$DG/run/run.log"; then stopped=$((stopped+1)); else silent=$((silent+1)); fi
+    grep -q '^not-foreground:\|^ROUTE ABORTED' "$DG/run/run.log" && why="$why run$n-VOIDED"
+    grep -q '^guest exited after' "$DG/run/run.log" || why="$why run$n-no-exit-line"
+    grep -q 'sendevent /dev/input/event7 1 305 1' "$DG/calls" && why="$why run$n-B-PRESSED"
+done
+rm -f "$DG/gone" "$DG/seen"
+if [ -n "$why" ]; then
+    bad "Audit L3 under a faster hold loop:$why"
+elif [ "$silent" -ge 1 ]; then
+    ok "Audit L3 under a hold loop faster than the watcher: $silent/6 runs had no ROUTE STOPPED line (the hold loop won the race), none voided, none pressed B"
+else
+    ok "Audit L3 under a hold loop faster than the watcher: the watcher won all 6 runs here too, and none voided or pressed B"
+fi
 
 echo "== foreground guard mutant: no watcher while the route plays"
 if python3 - "$TESTING" "$DG/t" <<'PY'
