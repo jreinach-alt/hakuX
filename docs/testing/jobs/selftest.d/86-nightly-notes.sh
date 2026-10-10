@@ -200,6 +200,141 @@ check "  and says so in one line, then the harness sentence" \
 check "  and raises no warning (there is nothing to have missed)" \
     bash -c '! grep -q "WARNING: .* emulator change" "$1"' _ "$NB/none.md.err"
 
+# ---------------------------------------- offline folds (lane.local merges)
+# Since 2026-09-29, a fold made while GitHub was down is an `offline_fold.py`
+# merge: `fold: lane/<lane> (offline) -- <title>`, not `fold: PR #N ... --
+# title`. flush_change() used to leave a subject shaped like that whole, and
+# "lane/<lane>" then matched $INTERNAL_RE's `\blanes?\b` -- so a night whose
+# only changes were offline folds counted every one of them internal and
+# printed "No player-facing changes in this build." 2026-10-05 through 10-09
+# all did exactly that.
+echo "== nightly_build.sh: an offline fold is a change, not process"
+FIX4="$NB/offline"
+git -c init.defaultBranch=master init -q "$FIX4"
+git -C "$FIX4" config user.email s@t; git -C "$FIX4" config user.name s
+commit_touching "$FIX4" "base" README.md
+
+fold_offline() {   # <repo> <lane> <branch> <title> -- merges <branch> into master as offline_fold.py does
+    git -C "$1" checkout -q master
+    git -C "$1" merge -q --no-ff --no-edit -m "fold: lane/$2 (offline) -- $4" "$3"
+}
+
+# An offline fold with its own release note, in docs/lanes/<lane>/PR.md.
+git -C "$FIX4" checkout -q -b lane/offlinenote master
+commit_touching "$FIX4" "offlinenote: a made-up rendering fix" hw/xbox/nv2a/pgraph/offline.c
+mkdir -p "$FIX4/docs/lanes/offlinenote"
+printf '%s\n' "Lane: offlinenote" "" "Release note (rendering): Some made-up rendering fix text (#999)" \
+    > "$FIX4/docs/lanes/offlinenote/PR.md"
+git -C "$FIX4" add -A; git -C "$FIX4" commit -q -m "offlinenote: PR.md"
+fold_offline "$FIX4" offlinenote lane/offlinenote "offlinenote: a made-up rendering fix (#433)"
+
+# An offline fold with no PR.md: the cleaned title, category guessed.
+git -C "$FIX4" checkout -q -b lane/offlinebare master
+commit_touching "$FIX4" "offlinebare: a vertex buffer no longer drops its last row" hw/xbox/nv2a/pgraph/offlinebare.c
+fold_offline "$FIX4" offlinebare lane/offlinebare "offlinebare: a vertex buffer no longer drops its last row (#433)"
+
+# An offline fold touching only docs/: internal, same as any other lane.
+git -C "$FIX4" checkout -q -b lane/offlinedocs master
+commit_touching "$FIX4" "offlinedocs: just analysis notes" docs/lanes/offlinedocs/NOTES.md
+fold_offline "$FIX4" offlinedocs lane/offlinedocs "offlinedocs: just analysis notes (#433)"
+
+# A bogus map row and body file at the umbrella number: if either leaked into
+# the output, the (#433) tail was looked up as a PR number, which it never is.
+printf '%s\t%s\t%s\n' 433 other "SHOULD NOT APPEAR" > "$NB/offline-map.tsv"
+mkdir -p "$NB/offline-bodies"
+printf '%s\n' "Release note (other): SHOULD NOT APPEAR EITHER" > "$NB/offline-bodies/433.md"
+
+NIGHTLY_TREE="$FIX4" NIGHTLY_OUT="$NB/must-not-exist" \
+    NIGHTLY_NOTES_MAP="$NB/offline-map.tsv" NIGHTLY_PR_BODIES="$NB/offline-bodies" \
+    bash "$NIGHTLY" notes 2000-01-01 >"$NB/offline.md" 2>"$NB/offline.md.err"
+rc=$?
+check "offline-fold fixture: notes mode exits 0" [ "$rc" = 0 ]
+check "THE CHECK: an offline fold with a PR.md note is listed with that note" \
+    bash -c 'grep -qxF -- "- Some made-up rendering fix text (#999)" "$1"' \
+        _ <(section_of "$NB/offline.md" "Rendering fixes")
+check "  an offline fold with no PR.md is listed with its cleaned title, under a guessed category" \
+    bash -c 'grep -qxF -- "- a vertex buffer no longer drops its last row" "$1"' \
+        _ <(section_of "$NB/offline.md" "Rendering fixes")
+check "  neither offline fold's lane name nor \"(offline)\" survives into the body" \
+    bash -c '! grep -qiE "offlinenote|offlinebare|offlinedocs|\(offline\)" "$1"' _ "$NB/offline.md"
+check "  an offline fold touching only docs/ is internal: not listed, and counted" \
+    bash -c '! grep -qF "just analysis notes" "$1" && grep -qxF "Plus internal test-harness work." "$1"' _ "$NB/offline.md"
+check "  the umbrella tail (#433) is never looked up as a PR number" \
+    bash -c '! grep -qF "SHOULD NOT APPEAR" "$1"' _ "$NB/offline.md"
+check "  the fold merge subjects take no line" \
+    bash -c '! grep -qF "fold: " "$1"' _ "$NB/offline.md"
+check "  the log counts it right: 2 emulator, 2 lines, 0 left out, 2 internal" \
+    grep -qF '2 emulator change(s), 2 line(s), 0 left out, 2 internal' "$NB/offline.md.err"
+check "  and prints 'would publish' (something IS listed)" \
+    grep -qF 'would publish' "$NB/offline.md.err"
+
+# ------------------------------------- publish nothing when nothing changed
+# Owner, 2026-10-09: "if any of them have no changes, take down the nightly."
+# A window whose only change is internal (same shape as 10-05..10-09, which
+# were offline folds that used to be miscounted the same way) must not reach
+# `gh release create`, must still build and log, and must exit a documented,
+# distinct code -- not 0 -- so systemd and anything reading
+# nightly/<date>.log can tell a deliberate no-op from either a real publish
+# or a real failure.
+echo "== nightly_build.sh: nothing published when nothing changed"
+FIX5="$NB/nopublish"
+git -c init.defaultBranch=master init -q "$FIX5"
+git -C "$FIX5" config user.email s@t; git -C "$FIX5" config user.name s
+
+# The android/ stub (as in 87-nightly-trunk.sh's SEED) is what makes build
+# mode runnable here at all. It is dated three days ago, like 87's $OLD, so
+# the default one-day window never counts it -- otherwise its own path
+# (android/...) would match $EMU_RE and the fixture would not be the "nothing
+# changed" shape it is meant to be.
+OLD5=$(date -d '3 days ago' -Iseconds)
+NOW5=$(date -d '2 hours ago' -Iseconds)
+mkdir -p "$FIX5/android/app"
+cat > "$FIX5/android/gradlew" <<'GRADLEW'
+#!/usr/bin/env bash
+mkdir -p app/build/outputs/apk/release
+echo "fake apk for $*" > app/build/outputs/apk/release/app-release.apk
+GRADLEW
+chmod +x "$FIX5/android/gradlew"
+echo 'versionName = "0.9-selftest"' > "$FIX5/android/app/build.gradle.kts"
+git -C "$FIX5" add -A
+GIT_AUTHOR_DATE="$OLD5" GIT_COMMITTER_DATE="$OLD5" git -C "$FIX5" commit -q -m "base: the android stub"
+
+# The one change in the window: an offline fold touching only docs/, same
+# shape as a build-input-plumbing-only night. Dated two hours ago so it IS in
+# the default window; the lane commit under it is never on the first-parent
+# line, so its own date does not matter.
+git -C "$FIX5" checkout -q -b lane/plumbing master
+commit_touching "$FIX5" "plumbing: build-input wiring only" docs/lanes/plumbing/NOTES.md
+git -C "$FIX5" checkout -q master
+GIT_AUTHOR_DATE="$NOW5" GIT_COMMITTER_DATE="$NOW5" git -C "$FIX5" merge -q --no-ff --no-edit \
+    -m "fold: lane/plumbing (offline) -- plumbing: build-input wiring only (#433)" lane/plumbing
+
+ORIGIN5="$NB/nopublish-origin.git"
+git -c init.defaultBranch=master init -q --bare "$ORIGIN5"
+git -C "$FIX5" remote add origin "$ORIGIN5"
+git -C "$FIX5" push -q origin master
+
+NIGHTLY_TREE="$FIX5" NIGHTLY_OUT="$NB/must-not-exist" \
+    bash "$NIGHTLY" notes >"$NB/nopublish-notes.md" 2>"$NB/nopublish-notes.md.err"
+check "nothing-changed fixture: notes mode exits 0 and lists nothing" \
+    bash -c '[ "$1" = 0 ] && grep -qxF "No player-facing changes in this build." "$2"' \
+        _ "$?" "$NB/nopublish-notes.md"
+check "  notes mode prints which way it would go: would not publish" \
+    grep -qF 'would not publish: no player-facing change' "$NB/nopublish-notes.md.err"
+
+GH_NOPUB="$NB/gh-nopublish.log"; : > "$GH_NOPUB"
+NIGHTLY_TREE="$FIX5" NIGHTLY_TIP=master NIGHTLY_OUT="$NB/out-nopublish" \
+    SELFTEST_GH_LOG="$GH_NOPUB" bash "$NIGHTLY" >"$NB/nopublish-build.log" 2>&1
+rc=$?
+check "THE CHECK: build mode on it exits 9 (documented, distinct from 0 and from a failure)" \
+    [ "$rc" = 9 ]
+check "  and says so in the log" \
+    grep -qE 'not published: no player-facing change' "$NB/nopublish-build.log"
+check "  the APK was still built -- it is just not published" \
+    bash -c '[ -n "$(find "$1" -name "*.apk" 2>/dev/null)" ]' _ "$NB/out-nopublish"
+check "  gh was never asked to create or upload a release" \
+    bash -c '! grep -qE "release (create|upload)" "$1"' _ "$GH_NOPUB"
+
 # ------------------------------------------------------------ falsification 1
 # The 2026-09-19 code, verbatim: nightly_build.sh lines 46-47 and 70-76 as
 # they stood at 6ca12eb803, run directly over the same fixture.
