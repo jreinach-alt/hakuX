@@ -32,6 +32,12 @@ Progress so far (docs/lanes/nfsframe1010/NOTES.md has detail):
   master. Queuing this lane's own 2 runs on master's actual head so the
   deliverable's numbers are this lane's, on an unambiguous ref.
 
+Queued this lane's 2 runs on master's head (07937793af), no env, same
+route: `1-1791649039-nfsframe1010-2037292` and
+`1-1791649724-nfsframe1010-2219502`. Nova was busy with another lane's
+request at queue time; both sit behind it. `docs/lanes/nfsframe1010/WAITING`
+names both.
+
 Remaining: build the per-heavy-frame accounting table and the P×win
 ranking from this lane's 2 runs, write the final NOTES.md section, flip
 this PR to ready.

@@ -95,10 +95,32 @@ numbers for the deliverable — queuing those now (§4), pinned to
 
 Queued via `request.sh` (never direct adb), `--who nfsframe1010`,
 `--route nfs-mw-quickrace`, `--title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso`,
-`--seconds 500`, `--device nova`, `--ref <origin/master sha>`, no `--env`
-(master has no per-draw switch to flip), `--no-expect "telemetry, not an
-A/B arm"`, `--priority study`. Two separate requests (soak path ignores
-`--runs`; the replicate is the run, not the window, per `request.sh`'s own
-comment). Logged below as each is queued/lands.
+`--seconds 500`, `--device nova`, `--ref 07937793af` (master's head at
+queue time), no `--env` (master has no per-draw switch to flip),
+`--no-expect "telemetry, not an A/B arm"`, `--priority study`. Two
+separate requests (soak path ignores `--runs`; the replicate is the run,
+not the window, per `request.sh`'s own comment):
 
-<!-- run log appended here -->
+- `1-1791649039-nfsframe1010-2037292` (run 1 of 2), queued 2026-10-10.
+- `1-1791649724-nfsframe1010-2219502` (run 2 of 2), queued 2026-10-10.
+
+The Nova was running texscan1010's `1-1791648919-texscan1010-2004607` at
+queue time; both requests sit behind it. `docs/lanes/nfsframe1010/WAITING`
+names both — lanewaker resumes this lane when they land. First `--wait`
+attempt on run 1 was killed at the Bash tool's background-task boundary
+(exit 143) after the request had already been written to the queue, which
+is why run 1 was re-verified present in `dispatch/queue/` rather than
+re-queued, and why run 2 was queued without `--wait`.
+
+## 5. Next, on resume
+
+Once both results land: verify from `route-frames/*.png` that the car is
+moving in the windows judged (brief's explicit check), then write the
+per-heavy-frame accounting table (named block / ms / instrument, summing
+to the period) and the P×win ranking using `hakuX-phase`, `hakuX-pace`,
+`hakuX-stall` (÷60 for per-frame reason rates, §2) and `hakuX-rr425w`
+(vCPU idle-vs-busy by wake vector, §2) from these two runs — reusing
+`armread.py`'s row/window extraction via the copied `startread.py`. Open
+`HAKUX_FRAMETRACE=1` as a third run only if Q1 (the ~12ms Tot-vs-period
+gap) or Q3 (ms per Sub reason, vs `hakuX-stall`'s raw counts) is still
+unexplained after these two.
