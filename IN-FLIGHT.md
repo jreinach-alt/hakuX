@@ -11,7 +11,7 @@ No lane session is running.
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 10 waiting, 1 running.
+- **Device queue:** 8 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -86,4 +86,4 @@ No branch is being worked right now.
 - 2026-10-10 ghlive1010 -- AGENTS.md: GitHub is up
 - 2026-10-10 Lane: restoreleak1009            Issue: #433
 
-_Updated 2026-10-10 13:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 14:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
