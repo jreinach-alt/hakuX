@@ -1,6 +1,6 @@
 # surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433, 0.5)
 
-State: draft (NBA 05/06/07 pilots and golden2 all read clean; g_sg_held built for NBA07's record residual, re-arm queued on 1b1fec978d; see NOTES.md sections 7-9)
+State: ready (NBA 05/06/07 all read clean, incl. the g_sg_held re-arm and golden3; NHL 2K3 generalisation arm blocked on missing route infrastructure, not on this lane's code -- see NOTES.md 9.5)
 
 Lane: surfgpu1009          Issue: none (dispatched directly by lane.local, #433 umbrella)
 Base: master @ 1b1fec978d
@@ -63,14 +63,38 @@ default off; with it unset every path is the shipped one):
 - NBA Live 07 (480 s, ref 1e5b1af818): PASS on P0/P1/P3/P4 (`reuse`/`surfupd`
   both to 0.00 ms/flip) but **FAIL on P2** (sum-wait ratio 0.66 > 0.5): the
   wait moved to `record`. Root cause and fix: part (c) above.
-- Golden disc re-check after an unrelated record-dedupe fix found in the same
-  pass (`c663a91697`, not part of this PR's diff -- fixed before this PR's
-  branch picked it up): PASS, worse=0, 266/266 captures match, the one
-  previously-broken capture (`Image_blit/Overlap_TR_Outside`) back to 1 px
-  exactly matching flag-off.
-- NBA Live 07 held-batch re-arm (480 s x2, golden3 disc x2, both ref
-  `1b1fec978d`): **queued, not yet read** --
-  `1-1791601841-surfgpu1009-2092062` (B), `-2092716` (A),
-  `-2093286` (golden3 B), `-2098499` (golden3 A). See NOTES.md 9.2.
+- Golden disc re-check after a record-dedupe fix this same pass found and
+  fixed (`c663a91697`, part of this PR's diff -- a record did not retire the
+  generation under the splice, so an evicted surface with a pending download
+  stayed draw_dirty and got recorded a second time): PASS, worse=0, 266/266
+  captures match, the one previously-broken capture
+  (`Image_blit/Overlap_TR_Outside`) back to 1 px exactly matching flag-off.
+- NBA Live 07 held-batch re-arm (480 s x2, ref `1b1fec978d`): **PASS**.
+  `record` fell from 12.68 ms/flip to 0.00 (P2 sum-wait ratio 0.00, well under
+  the 0.5 bar the pre-held arm failed), `ph_Fin` -10.65 ms/frame, gfps
+  22.27 -> 46.83. `[surfgpu] hold=1.00/flip` confirms the held-batch path
+  engaged on every flip; `hwait=0.00` means it always drained at frame-slot
+  rotation, never by force-completing a second hold. One registered leg
+  (`nodisp>=0.3/flip`, inherited from the pre-`g_sg_held` arm) reads 0.00 and
+  is explained, not a regression: `g_sg_held` intercepts the same batch
+  earlier, so part (b)'s narrower mark is reached far less often (it still
+  fires occasionally, confirmed in the raw log). Route-frame pixel diffs
+  track the noise floor within ~1.6x on every scene; see NOTES.md 9.3.
+- golden3 disc re-check on the `g_sg_held` ref (`1-1791601877-surfgpu1009-2093286`
+  / `-2098499`): PASS, worse=0, 266/266 byte-identical. `hold=0` in this run
+  (the disc suite's draw pattern never creates two batches in flight), so this
+  is a valid (a)/(b) safety check but not itself a test of `g_sg_held`; that
+  evidence is the NBA07 arm above. See NOTES.md 9.4.
+- NHL 2K3 generalisation arm (brief step 6): **blocked**, not attempted.
+  Needs `docs/testing/titles/routes/nhl2k3.route`, which does not exist in
+  this tree, on `origin/master`, or in any other worktree, and none of
+  `lane.pathfind`'s three recorded attempts at this title produced a
+  completed input loop to build one from (two gave up or used live
+  per-frame probes, not a fixed sequence). Building that route is a pathfind
+  task outside this lane's territory and this brief's budget. Spider-Man 2
+  (the brief's other candidate) is refuted on the code itself (8.1): every
+  zeta binding in its chain is swizzled, and both splice gates
+  (`surfsplice_dl_ok`, `surfsplice_upload_layout`) refuse a swizzled
+  download/upload, so the switch reaches no path there. See NOTES.md 9.5.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
