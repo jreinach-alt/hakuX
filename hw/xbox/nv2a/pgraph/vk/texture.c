@@ -1643,9 +1643,12 @@ static int tsc_classify(PGRAPHState *pg, const SurfaceBinding *s,
             return same ? TSC_FACE : TSC_FACEX;
         }
     }
-    bool compressed = pgraph_is_texture_format_compressed(pg, st->color_format);
-    unsigned int block = st->color_format ==
-        NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5 ? 8 : 16;
+    /* A compressed texture's mip offsets are not walked: anything past its
+     * base reads as sub. The census found none in the downloads. */
+    if (pgraph_is_texture_format_compressed(pg, st->color_format)) {
+        *level = within == 0 ? 0 : -1;
+        return within == 0 ? TSC_BASE : TSC_SUB;
+    }
     unsigned int w = st->width, h = st->height;
     if (!f.linear && st->border) {
         w = MAX(16, w * 2);
@@ -1657,9 +1660,7 @@ static int tsc_classify(PGRAPHState *pg, const SurfaceBinding *s,
             *level = l;
             return l == 0 ? TSC_BASE : TSC_MIP;
         }
-        lo += compressed ? (size_t)MAX(w / 4, 1) * MAX(h / 4, 1) * block :
-                           (size_t)w * h * f.bytes_per_pixel *
-                               MAX(st->depth, 1);
+        lo += (size_t)w * h * f.bytes_per_pixel * MAX(st->depth, 1);
         w = MAX(w / 2, 1);
         h = MAX(h / 2, 1);
     }
@@ -1937,7 +1938,6 @@ static bool texscan_shape_ok(PGRAPHState *pg, const TextureShape *st)
     return st->cubemap && st->levels == 1 && !st->border &&
            st->dimensionality == 2 && !f.linear &&
            pg->surface_scale_factor == 1 &&
-           st->color_format != NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8 &&
            !pgraph_is_texture_format_compressed(pg, st->color_format) &&
            !pgraph_texture_format_is_converted(st->color_format) &&
            !pgraph_vk_texture_replace_is_enabled();
