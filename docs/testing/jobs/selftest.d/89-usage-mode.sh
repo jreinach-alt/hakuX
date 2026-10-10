@@ -56,9 +56,14 @@ def write(dirname, filename, ages, first_user=None):
                             "usage": {"input_tokens": 1000, "cache_creation_input_tokens": 0,
                                       "cache_read_input_tokens": 0, "output_tokens": 0}}}) + "\n")
 
-# lane:fixlane -- one event in each of 1h / 6h / week-but-not-6h / before-the-
-# week-start, so the three report windows (1h, 6h, week) are each provable
-# against a DIFFERENT subset rather than all moving together.
+# lane:fixlane -- one event in each of 1h / 6h / 24h-but-not-6h /
+# before-the-week-start-but-still-inside-24h, so the four report windows
+# (1h, 6h, 24h, week) are each provable against a DIFFERENT subset rather
+# than all moving together. The last age (72000s = 20h) is before this
+# fixture's week start (13h10m before UM_NOW) but still inside the 24h rate
+# window: it must count toward rate_24h and must NOT count toward
+# spend_since_reset -- the rate window is wall-clock, not week-relative (see
+# meter.py's KEEP_DAYS comment).
 write("-home-justin-hakux-work-wt-fixlane", "s.jsonl", [600, 10800, 36000, 72000])
 write("-home-justin-hakux-work-board-wt", "s.jsonl", [600])
 write("-home-justin-hakux-work-wt-cloud-audit1-42", "s.jsonl", [600])
@@ -84,6 +89,7 @@ print("n_actors=%d" % len(r["spend_by_actor"]))
 print("spend_since_reset=%.2f" % r["spend_since_reset"])
 print("rate_1h=%.2f" % r["rate_1h"])
 print("rate_6h=%.2f" % r["rate_6h"])
+print("rate_24h=%.2f" % r["rate_24h"])
 print("estimated_percent=%s" % r["estimated_percent"])
 print("capacity=%s" % r["capacity_dollars_per_week"])
 print("week_start_epoch=%s" % r["week_start_epoch"])
@@ -109,6 +115,8 @@ check "rate_1h counts only the five events inside the last hour (one dollar each
     grep -q '^rate_1h=5.00$' "$UM/report.txt"
 check "rate_6h is a PER-HOUR figure (6 dollars over 6h), not the window's raw total" \
     grep -q '^rate_6h=1.00$' "$UM/report.txt"
+check "rate_24h is a PER-HOUR figure (8 dollars over 24h -- the 4 fixlane events plus 4 others, including the one 20h ago that is before the week start) / 24" \
+    grep -q '^rate_24h=0.33$' "$UM/report.txt"
 check "the two seeded calibration points are there" grep -q '^n_calibration=2$' "$UM/report.txt"
 # The 16% seed's own reading instant is UM_NOW itself (2026-10-02T10:10 PDT =
 # 17:10Z), so its spend-at-reading equals this run's whole-week total, and
@@ -147,19 +155,77 @@ check "...and it is the one now driving estimated_percent (50, not 16)" \
     grep -q '^estimated_percent=50.0$' "$UM/report.txt"
 
 echo "== meter.py: the projection formula, recomputed independently from the report"
-check "projected_percent_at_reset matches estimated% + rate_6h*hours_left/capacity*100" \
+check "projected_percent_at_reset matches estimated% + rate_24h*hours_left/capacity*100 (NOT rate_6h -- #433, 24h window)" \
     python3 -c "
 import json
 r = json.load(open('$UM/work/usage/state.json'))['last_report']
 hours_left = max(0.0, (r['week_end_epoch'] - $UM_NOW) / 3600.0)
-want = r['estimated_percent'] + r['rate_6h'] * hours_left / r['capacity_dollars_per_week'] * 100.0
+want = r['estimated_percent'] + r['rate_24h'] * hours_left / r['capacity_dollars_per_week'] * 100.0
 got = r['projected_percent_at_reset']
-# r['rate_6h'] is already rounded to 2dp for display, and hours_left/capacity*100
+# r['rate_24h'] is already rounded to 2dp for display, and hours_left/capacity*100
 # here is a ~960x multiplier on it -- a formula bug (wrong rate, missing
 # hours_left, inverted capacity) misses by far more than the rounding noise
 # that amplification alone can produce, so a loose-looking tolerance still
 # catches it.
 assert abs(want - got) < 6.0, (want, got)
+"
+
+echo "== meter.py: the 24h projection ignores a 6h burst that the old rate_6h rule did not (#433)"
+# Hand-built state, not scanned transcripts: build_report() is pure given a
+# state dict, so this constructs exactly the two scenarios the brief asks
+# for and skips writing+scanning fixture files to get there. Round dollar
+# figures throughout so every number below is hand-checkable.
+check "a 6h burst after 18h quiet stays Normal under rate_24h; the OLD rule (project from rate_6h -- the mutant this guards against) would have gone Low on the identical report" \
+    python3 -c "
+import sys
+sys.path.insert(0, '$HERE/usage')
+import meter
+
+wk_end = meter.week_bounds(meter.iso_to_epoch('2026-10-02T17:10:00+00:00'))[1]
+now = wk_end - 48 * 3600              # hours_left = 48, regardless of the real anchor
+capacity = 200.0                      # \$/week
+background_ts = now - 72 * 3600       # 3 days ago: in-week, outside every rate window
+burst_ts = now - 3 * 3600             # 3h ago: inside the 6h window AND the 24h window
+
+state = {
+    'events': [
+        {'ts': background_ts, 'actor': 'lane:x', 'cost': 20.0},
+        {'ts': burst_ts, 'actor': 'lane:x', 'cost': 20.0},
+    ],
+    'calibration': [{'utc': '2026-01-01T00:00:00+00:00', 'percent': 1.0, 'capacity': capacity}],
+    'offsets': {},
+}
+r = meter.build_report(state, now)
+proj_new = r['projected_percent_at_reset']
+# The mutant: reinstate the pre-#433 formula (project from rate_6h) on this
+# SAME report, so the only thing that differs is which rate window is used --
+# not the data, not the capacity, not hours_left.
+proj_old_mutant = r['estimated_percent'] + r['rate_6h'] * 48.0 / capacity * 100.0
+assert proj_new < 90, ('24h rule should stay under the Low line', proj_new)
+assert proj_old_mutant >= 90, ('mutant must actually cross the line to prove the burst drove it, not something else', proj_old_mutant)
+"
+check "the same \$/h rate sustained for the full 24h (not just a 6h burst) still goes Low under rate_24h" \
+    python3 -c "
+import sys
+sys.path.insert(0, '$HERE/usage')
+import meter
+
+wk_end = meter.week_bounds(meter.iso_to_epoch('2026-10-02T17:10:00+00:00'))[1]
+now = wk_end - 48 * 3600
+capacity = 200.0
+background_ts = now - 72 * 3600
+sustained_ts = now - 12 * 3600        # mid-window: not a recent burst, spread over the day
+
+state = {
+    'events': [
+        {'ts': background_ts, 'actor': 'lane:x', 'cost': 20.0},
+        {'ts': sustained_ts, 'actor': 'lane:x', 'cost': 80.0},   # same \$3.33/h as the burst, x4 the duration
+    ],
+    'calibration': [{'utc': '2026-01-01T00:00:00+00:00', 'percent': 1.0, 'capacity': capacity}],
+    'offsets': {},
+}
+r = meter.build_report(state, now)
+assert r['projected_percent_at_reset'] >= 90, ('a genuinely sustained ramp must still trip Low', r)
 "
 
 echo "== meter.py: its week anchor agrees with window.sh's, several instants, across a DST change"
