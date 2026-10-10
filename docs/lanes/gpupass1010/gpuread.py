@@ -43,7 +43,10 @@ XFR_RP = re.compile(
     r'n([\d.]+) inrp(\d) dropped (\d+) dup (\d+) ([\d.]+)')
 XFR_RPC = re.compile(r'XFR rpc( g)? all ([\d.]+) ([\d.]+) ([\d.]+) .* ldMB ([\d.]+) stMB ([\d.]+) in ([\d.]+) draws ([\d.]+)')
 ROUTE_DONE = re.compile(r'hakuX-route.*route (done|finished)')
-FATAL = re.compile(r'(FATAL EXCEPTION|hakuX-crash|hakuX-unhandled)')
+# hakuX-unhandled is a benign, deduped diagnostic for unimplemented GPU methods
+# (docs/investigations/unhandled-methods-inventory.md), not a crash signal; title_verdict.py's
+# own convention treats only hakuX-crash at E/F level as fatal.
+FATAL = re.compile(r'(FATAL EXCEPTION|hakuX-crash)')
 
 GAMEPLAY_WINDOW = (1.5, 12.0)   # GO .. GO+10.5s, same convention as startread.py's start_rows
 COUNTDOWN_WINDOW = (-2.0, 1.5)  # the countdown proper, same convention as phaseread.py's default
@@ -144,18 +147,31 @@ def pace_pool(rows):
     if not rows:
         return None
     v = [sum(r[2 + i] for r in rows) for i in range(5)]
+    # `tot` (the v0..v4 histogram summed) is each window's real flip count, == 60 per print;
+    # `f=` is a run-cumulative counter (profile.c), NOT a per-window count -- summing it across
+    # pooled rows (as an earlier version of this function did) inflates the denominator by
+    # ~(cumulative total / 60) and makes ms_per_frame read two orders of magnitude too low.
     tot = sum(v)
     ms = sum(r[9] for r in rows)
-    f = sum(r[1] for r in rows)
-    return dict(n=len(rows), v=v, tot=tot, ms_per_frame=ms / f if f else float('nan'),
+    return dict(n=len(rows), v=v, tot=tot, ms_per_frame=ms / tot if tot else float('nan'),
                 v2=pct(v[2], tot), v3=pct(v[3], tot), v4=pct(v[4], tot))
 
 
-def run_report(label, ev, marks, cold_wins, warm_wins, cd_wins):
+def run_report(label, ev, marks, cold_wins, warm_wins, cd_wins, cold_cd_wins=None, warm_cd_wins=None):
     out = {}
     for name, wins in (('cold', cold_wins), ('warm', warm_wins)):
         out[name] = dict(rp=rp_pool(collect_rp(ev['rp'], wins)), rpc=rpc_pool(collect_rp(ev['rpc'], wins)),
                           rpc_g=rpc_pool(collect_rp(ev['rpc_g'], wins)), pace=pace_pool(collect_rp(ev['pace'], wins)))
+    # Separate from the gameplay-window cold/warm above: nfs30plan1010's own census (NOTES.md
+    # 5.5) measured its 21.7 ms / 69-pass "cold" figure over [mark-2, mark+1.5] -- the countdown
+    # / load phase, NOT the post-GO racing window -- for the first start only. Pool rp/rpc here
+    # too, split the same way (first start vs restarts), so that figure has a like-for-like
+    # comparison instead of being read against this script's (different) gameplay-window cold.
+    for name, wins in (('cold_cd', cold_cd_wins), ('warm_cd', warm_cd_wins)):
+        if wins is None:
+            continue
+        out[name] = dict(rp=rp_pool(collect_rp(ev['rp'], wins)), rpc=rpc_pool(collect_rp(ev['rpc'], wins)),
+                          rpc_g=rpc_pool(collect_rp(ev['rpc_g'], wins)))
     out['countdown'] = dict(pace=pace_pool(collect_rp(ev['pace'], cd_wins)),
                              G=mean([r[2] for r in collect_rp(ev['perf'], cd_wins)]))
     print(f"\n{label}: {len(marks)} go marks")
@@ -172,6 +188,17 @@ def run_report(label, ev, marks, cold_wins, warm_wins, cd_wins):
         if pace:
             print(f"  {name:5s} pace     n={pace['n']:2d} ms/frame {pace['ms_per_frame']:5.2f}  "
                   f"v2 {pace['v2']:4.1f}% v3 {pace['v3']:4.1f}% v4 {pace['v4']:4.1f}%  (of {pace['tot']} flips)")
+    for name in ('cold_cd', 'warm_cd'):
+        if name not in out:
+            continue
+        rp, rpc = out[name]['rp'], out[name]['rpc']
+        if rp:
+            print(f"  {name:7s} XFR rp   n={rp['n']:2d} GPU busy {rp['gpu_busy']:5.2f} ms  R(in) {rp['in_ms']:5.2f}  "
+                  f"X(out-in) {rp['x_ms']:5.2f}  X/R {rp['xr']:5.2f}  mode(in/out) {rp['mode']:4.2f}  "
+                  f"pass_pairs/frame {rp['pass_pairs']:5.1f}  inrp {rp['inrp']:4.2f}")
+        if rpc:
+            print(f"  {name:7s} XFR rpc  n={rpc['n']:2d} passes/frame {rpc['passes']:5.1f}  ms {rpc['ms']:6.2f}  "
+                  f"ldMB {rpc['ldMB']:5.2f} stMB {rpc['stMB']:5.2f}  draws/frame {rpc['draws']:6.0f}")
     cd = out['countdown']
     if cd['pace']:
         print(f"  countdown pace n={cd['pace']['n']:2d} ms/frame {cd['pace']['ms_per_frame']:5.2f}  "
@@ -205,11 +232,14 @@ def main():
             bad.append("%s: only %d go marks" % (d, n_go))
         if fatal:
             bad.append("%s: %d fatal lines" % (d, fatal))
-        cold_wins = windows(marks, {'go1'}, GAMEPLAY_WINDOW)
+        cold_wins = windows(marks, {'gameplay'}, GAMEPLAY_WINDOW)
         warm_labels = {'go%d' % i for i in range(2, 13)}
         warm_wins = windows(marks, warm_labels, GAMEPLAY_WINDOW)
-        cd_wins = windows(marks, {'go1'} | warm_labels, COUNTDOWN_WINDOW)
-        out = run_report("%s (arm=%s)" % (os.path.basename(d), args.arm), ev, marks, cold_wins, warm_wins, cd_wins)
+        cd_wins = windows(marks, {'gameplay'} | warm_labels, COUNTDOWN_WINDOW)
+        cold_cd_wins = windows(marks, {'gameplay'}, COUNTDOWN_WINDOW)
+        warm_cd_wins = windows(marks, warm_labels, COUNTDOWN_WINDOW)
+        out = run_report("%s (arm=%s)" % (os.path.basename(d), args.arm), ev, marks, cold_wins, warm_wins, cd_wins,
+                          cold_cd_wins, warm_cd_wins)
         all_marks += marks
         all_rp += ev['rp']
         all_rpc += ev['rpc']
@@ -217,11 +247,15 @@ def main():
         all_pace += ev['pace']
         all_perf += ev['perf']
 
-    cold_wins = windows(all_marks, {'go1'}, GAMEPLAY_WINDOW)
-    warm_wins = windows(all_marks, {'go%d' % i for i in range(2, 13)}, GAMEPLAY_WINDOW)
-    cd_wins = windows(all_marks, {'go%d' % i for i in range(1, 13)}, COUNTDOWN_WINDOW)
+    warm_labels_all = {'go%d' % i for i in range(2, 13)}
+    cold_wins = windows(all_marks, {'gameplay'}, GAMEPLAY_WINDOW)
+    warm_wins = windows(all_marks, warm_labels_all, GAMEPLAY_WINDOW)
+    cd_wins = windows(all_marks, {'gameplay'} | warm_labels_all, COUNTDOWN_WINDOW)
+    cold_cd_wins = windows(all_marks, {'gameplay'}, COUNTDOWN_WINDOW)
+    warm_cd_wins = windows(all_marks, warm_labels_all, COUNTDOWN_WINDOW)
     pooled = {'rp': all_rp, 'rpc': all_rpc, 'rpc_g': all_rpc_g, 'pace': all_pace, 'perf': all_perf}
-    pool_out = run_report("POOLED (%d runs, arm=%s)" % (len(args.dirs), args.arm), pooled, all_marks, cold_wins, warm_wins, cd_wins)
+    pool_out = run_report("POOLED (%d runs, arm=%s)" % (len(args.dirs), args.arm), pooled, all_marks, cold_wins, warm_wins, cd_wins,
+                           cold_cd_wins, warm_cd_wins)
 
     leg('V', not bad, "; ".join(bad) or "every run has >= %d go marks, no fatal lines" % e('V_min_starts', 12))
 
