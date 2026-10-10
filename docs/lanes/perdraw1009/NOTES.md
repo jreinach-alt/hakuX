@@ -41,7 +41,11 @@ which is why this session starts from a clean idle state rather than a
 resumed wait. This session (still "attempt 1" per the restarted counter)
 read the four results with armread.py (section 9), confirmed the scene-drift
 diagnosis on the actual frames, registered `perdraw1009-nfs-toggle.json` and
-queued the toggle run (section 10).
+queued the toggle run (section 10). That session ended correctly on
+`WAITING` for the one queued request (300-turn cap, nothing else outstanding)
+rather than an unfinished state; this resume (still counted "attempt 2") found
+the run's `DONE` marker already on disk, read it with `togread.py` (section
+10's close), and finishes the job from there.
 
 ## 1. Where the per-draw time goes (job item 1)
 
@@ -298,6 +302,44 @@ read togread.py's table and legs, update this section with the result, update
 PR.md's state, and only then consider job item 7 (BF2/Spider-Man 2
 generalisation via genread.py, already written but not yet run against
 anything).
+
+**Read (2026-10-10, this session).** `togread.py 1-1791618767-perdraw1009-3415447
+--expect perdraw1009-nfs-toggle.json --sheet /tmp/toggle-sheet.png`: all six legs
+PASS.
+
+| state | n rows | us/draw | se | (Pipe+Mfp)/draw | draws/frame | gfps | Idle ms |
+|---|---|---|---|---|---|---|---|
+| off (phase 0) | 17 | 11.22 | 0.06 | 6.34 | 440 | 29.0 | 14.49 |
+| on (phase 1) | 19 | 9.52 | 0.09 | 4.68 | 432 | 29.0 | 15.54 |
+| on - off | -- | **-1.70** (-15.2%) | -- | **-1.66** | -8 (-1.8%, inside V_be_match) | +0.00 | +1.05 |
+
+- V: marked, finished, no fatal line, no thermal pause in the window, toggle_ms
+  10000, >= 6 rows each phase, on/off BE within 10% (one scene) -- PASS.
+- T1: -1.70 us/draw in [-3.2, -0.7] -- PASS. Matches the four-run file's two
+  matched pairs (-2.29, -1.49) and the profiled model (-1.8).
+- T2: (Pipe+Mfp)/draw -1.66 <= -0.70 -- PASS. The switches reach the timed
+  per-draw path, not some other counter.
+- T3: |on-off| 1.70 us/draw against pooled SE 0.11 (15.5x, >= 3x needed), one
+  sign -- PASS.
+- T4: gfps on-off +0.00, within the 1.0 tolerance; both phases sit at the 30
+  fps cap (29.0 = 29.0) as predicted. Idle up 1.05 ms/frame, consistent with
+  less renderer work at a fixed frame budget -- PASS.
+- XT: 13 drive frames in STATIC, 3 same-phase / 5 cross-phase pairs within the
+  7 s gap; 0 regions crossed same+8, 2 regions crossed cross+8 the other way
+  (the control); excess -2, well inside the +8 budget -- PASS. The sheet
+  (`/tmp/toggle-sheet.png`, not committed -- it's a scratch artifact, regenerate
+  from the run if needed) shows the same wall, same skyline, same speedometer
+  reading across every frame with no visible shading change between green
+  (on) and red (off) bars.
+
+**Verdict: the fix holds.** Read within one run against one scene -- the
+instrument the four-run file lacked -- HAKUX_UNI_BULK/_UBERCACHE/_FOGCACHE cut
+STATIC Draw us/draw by 1.70 (-15.2%) and (Pipe+Mfp)/draw by 1.66, with gfps
+unchanged at the 30 fps cap and pixels unchanged (XT). This closes job items
+4-6. Job item 7 (BF2/Spider-Man 2 generalisation via genread.py) is the one
+piece of the brief not run; PR.md says so and leaves it for whoever picks this
+up next, since the NFS result alone already clears job items 1-6 and the lane
+is otherwise done.
 
 ## 11. What the next lane should not repeat
 
