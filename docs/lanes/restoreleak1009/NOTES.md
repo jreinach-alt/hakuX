@@ -88,3 +88,34 @@ result this attempt recorded.
 - **Dedup (cmd_restore / restore_pending)**: done, verified, tested.
 - **ASCII-priority starvation (dispatcher.sh)**: not touched; documented
   above as a deliberate follow-up, not an oversight.
+
+## Attempt 2, why it did not finish
+
+Attempt 2 did everything above -- verified `restore_pending()`, decided the
+starvation question, wrote and committed the selftest leg, committed
+NOTES.md and PR.md -- then started the *full* `docs/testing/jobs/
+selftest.sh` (all 129 fragments, ~60 min) in the background to confirm
+green before marking the PR ready, and ended its turn to wait on it. A
+`claude -p` session's background jobs die with the turn (see
+`lane-background-task-dies-with-session` in memory, and `AGENTS.md`'s
+"Never end a turn while a job is still running" -- also called out
+explicitly in this lane's resume addendum below): the unit's cgroup killed
+the selftest run, nothing ever woke the session back up, and the PR was
+left in draft with "pending full selftest.sh run" in its `State:` line.
+Everything substantive -- the fix, the leg, the mutant, the docs -- was
+already committed and correct; only the wait-and-report step was wrong.
+
+## Attempt 3 (this one)
+
+Per the lane.local addendum: did not re-run the full suite (the fold runs
+it before folding anything regardless, so a red suite still cannot reach
+master). Instead:
+
+- Merged `origin/master` (two commits ahead: `97c618b10d` and
+  `96852d8144`, both `nightlynotes1009` work -- no conflicts, nothing
+  touching this lane's territory).
+- Re-ran `99-build-gate.sh` alone, in the foreground, on the merged tree:
+  39 passed, 0 failed, including leg (l) and its mutant.
+- Set `PR.md` `State: ready`, updated its `Base:` line to the new merge
+  point, and reworded the Testing section to say the full suite runs at
+  the fold rather than claiming a background run that never finished.

@@ -1,9 +1,9 @@
 Lane: restoreleak1009            Issue: #433
-Base: master @ 39379dafdd (merged origin/master @ current tip after, no conflicts)
+Base: master @ 96852d8144 (merged origin/master @ current tip, no conflicts)
 Files: docs/testing/jobs/device_build.py, docs/testing/jobs/selftest.d/99-build-gate.sh, docs/lanes/restoreleak1009/NOTES.md, docs/lanes/restoreleak1009/PR.md
 Prediction: none: analysis/harness-fix, no device arm
 Needs device: no    Needs NDK: no
-State: draft, pending full selftest.sh run (99-build-gate.sh alone is green; full-suite run in progress)
+State: ready
 
 ## What this fixes
 
@@ -57,11 +57,13 @@ fix -- not vacuous.
 
 `SELFTEST_ONLY="99-build-gate.sh" bash docs/testing/jobs/selftest.sh`: 39
 passed, 0 failed (includes leg (l) and its mutant, plus all pre-existing
-legs (a)-(k) and their mutants, unaffected). Full `selftest.sh` run (all
-129 fragments) kicked off in this session; will update this PR once it
-completes. The diff is confined to `device_build.py`'s restore path and
-this one selftest fragment, so no regression elsewhere is expected, but
-marking this ready is withheld until that run is confirmed green per the
-brief's "when done" criteria.
+legs (a)-(k) and their mutants, unaffected), re-run in the foreground after
+merging origin/master @ 96852d8144. The diff is confined to
+`device_build.py`'s restore path and this one selftest fragment, so no
+regression elsewhere is expected. The full `selftest.sh` run (all 129
+fragments) is not run again here -- the fold runs the whole suite itself
+(~60 min) before folding anything, so a red suite still cannot reach
+master; a prior attempt's background full-suite run was killed when its
+session ended and is not evidence either way.
 
 Release note (performance|stability|rendering|other|none): none -- harness/dispatch bookkeeping only, not emulator code.
