@@ -114,3 +114,28 @@ is at the time.
 No golden/pixel check queued here (brief: "Prediction: none ... the performance evidence is lane.surfgpu1009's" --
 that lane's own golden3 (9.4) and NBA07-held (9.3) reads already cover pixel safety and the `record`/`hold`
 mechanics; this lane changes no native code, so there is nothing new to check pixels against).
+
+## 5. PR.md, State: ready
+
+Committed as `52f32bb2c8`, pushed. `Files:` lists only what this lane itself wrote; a note in PR.md flags that
+the wider `git diff --stat origin/master...HEAD` also carries lane.surfgpu1009's own unfolded files, merged in
+per step 1 so device proof above runs against real `HAKUX_SURFGPU` code.
+
+## 6. Fold-head confirmation run
+
+Step 5's commit (`52f32bb2c8`) changed the head sha again, so arm A above (on `214da4fe81`) is not built from
+the fold's actual head. Queued one more run, same shape as arm A, on the new head:
+
+```
+HAKUX_RELEASE_PRIO=1 docs/testing/request.sh --who surfgpudefault1009 \
+  --purpose "surfgpudefault1009: fold-head confirmation (switch default on, no env), NBA Live 07 (#433)" \
+  --title "454100A1-NBA_Live_07.xiso.iso" --route nbalive07 --seconds 480 --perflog \
+  --device nova --ref HEAD --no-expect "fold-head confirmation; settings plumbing, perf evidence is lane.surfgpu1009's"
+# --ref HEAD resolved to 52f32bb2c8
+# -> 1-1791617969-surfgpudefault1009-3278970
+```
+
+Wrote `docs/lanes/surfgpudefault1009/WAITING` naming this id and its pass bar, per the brief's step 6 and per
+lane.surfgpu1009's own section 9's lesson (a PR comment is not polled offline; a `WAITING` file is what jam-duty
+and lane.local's sweep actually read). Stopping here: nothing left in the brief that doesn't wait on this run's
+result.
