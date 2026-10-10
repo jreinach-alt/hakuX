@@ -2176,8 +2176,8 @@ note = "STARTED lane.local 2026-10-09 22:4x PDT (owner 22:3x: 'brief the per-dra
 [lane.perdrawon1010]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/perdrawon1010/**", "docs/testing/predictions/perdrawon1010-*.json"]
-note = "STARTED lane.local 2026-10-10 05:5x PDT (weekend direction: performance only; Nova idle since 03:33): measure perdraw1009's three uniform switches where the renderer limits the frame (NFS MW racing, moving player), plus the pgraph inert disc and J/frame, so the owner can decide a default-on flip. Measurement only, no emulator code. Both paths were unclaimed. Sonnet (usage Low)."
+files = ["docs/lanes/perdrawon1010/**", "docs/testing/predictions/perdrawon1010-*.json", "docs/testing/titles/routes/nfs-mw-quickrace.route"]
+note = "STARTED lane.local 2026-10-10 05:5x PDT (weekend direction: performance only; Nova idle since 03:33): measure perdraw1009's three uniform switches where the renderer limits the frame (NFS MW racing, moving player), plus the pgraph inert disc and J/frame, so the owner can decide a default-on flip. Measurement only, no emulator code. Both paths were unclaimed. Sonnet (usage Low). 10-10 07:05: GRANTED nfs-mw-quickrace.route (new) for the race-start measurement the owner asked for (Quick Race, mark at GO)."
 
 [lane.ghlive1010]
 issues = ["433"]
