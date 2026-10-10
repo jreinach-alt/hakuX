@@ -852,6 +852,31 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
     return found_overlap;
 }
 
+/*
+ * lane.texscan1010 (HAKUX_TEXSCAN=1, vk/texture.c texscan_prepare): a cube
+ * whose drawn faces are copied on the GPU skips the scan above, and with it
+ * the scan's last test. This is that test for a range the route records no
+ * download of its own for: complete a recorded download that will write it,
+ * which an eviction can leave pending over a face that is no longer
+ * draw_dirty. Returns whether one was completed.
+ */
+bool pgraph_vk_texscan_complete_range(PGRAPHState *pg, hwaddr start,
+                                      hwaddr size);
+
+bool pgraph_vk_texscan_complete_range(PGRAPHState *pg, hwaddr start,
+                                      hwaddr size)
+{
+    NV2AState *d = container_of(pg, NV2AState, pgraph);
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (!deferred_downloads_pending(r) ||
+        !deferred_downloads_overlap_range(d, start, size)) {
+        return false;
+    }
+    download_surface_complete_deferred(d, SDC_RANGE);
+    return true;
+}
+
 
 static void download_surface_complete_deferred(NV2AState *d, int caller);
 static bool surfgpu_hold_submitted(NV2AState *d);

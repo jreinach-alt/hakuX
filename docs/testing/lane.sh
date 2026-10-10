@@ -42,6 +42,36 @@ WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"      # the object store only
 TIP="${HAKUX_TIP:-master}"
 JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")/jobs" && pwd)"   # allowlist, summariser: this tree's
+
+# THE LANE'S PATH. A transient unit's PATH comes from whatever the systemd
+# --user manager holds at the moment it spawns (see jobs/gh-shim/route.sh's
+# environment.d drop-in), not from this script's own. On 2026-10-09 a WSL
+# crash restarted the manager without the forge shim on it, and two live
+# lanes (surfgpu1009, nightlynotes1009) spent part of their session with
+# `gh` resolving to the real GitHub CLI instead of the shim that talks to the
+# local forge. --setenv=PATH here makes the unit's PATH independent of
+# whatever the manager happens to hold. BUILT ONCE, used by both the start
+# and resume systemd-run blocks below: a PATH computed twice is a PATH that
+# drifts the moment one copy is edited and the other is not.
+LANE_SHIM_BIN="${HAKUX_SHIM_BIN:-$WORK/forge/shim/bin}"
+LANE_PATH_TAIL="/home/justin/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"
+lane_path() {   # sets LANE_PATH for the caller, or refuses (exit 78) -- never the caller's own $PATH
+    if [ ! -d "$LANE_SHIM_BIN" ]; then
+        echo "REFUSED: no forge shim at $LANE_SHIM_BIN; starting a lane without it can resolve \`gh\` to the real GitHub CLI on whatever PATH the systemd --user manager happens to hold, not the one this host chose. Install the shim (jobs/gh-shim/install.sh) or fix \$WORK before starting lanes." >&2
+        exit 78
+    fi
+    LANE_PATH="$LANE_SHIM_BIN:$LANE_PATH_TAIL"
+}
+
+# THE STRANDED-SESSION FOOTER. Appended to every lane's prompt (start and
+# resume alike, from this one string) after two Sonnet lanes on 2026-10-09
+# (surfgpudefault1009, restoreleak1009) started a long job in the background
+# and ended their turn to "report back when it finishes": under `claude -p`
+# the session ends with the turn, the unit's cgroup kills the job with it,
+# and the notification never comes. A lane that does not know it is headless
+# cannot avoid that shape.
+LANE_SESSION_FOOTER="This is a headless session: it ends the moment this turn ends, and anything still running then -- a background command, a detached process -- is killed along with it, so a notification you are waiting for will never arrive. Run long commands in the foreground, within this turn, in chunks that fit; never end a turn while a job of yours is still running."
+
 # THE CAP. Every lane is a model session drawing on the account's shared
 # five-hour and weekly windows (docs/ORCHESTRATION-DESIGN.md §9.1), and the
 # first board tick found eleven dispatchable issues. Nothing else stops a
@@ -287,6 +317,7 @@ case "$cmd" in
         echo "REFUSED: $active lane(s) already running and LANE_MAX=$LANE_MAX ($WORK/limits.env). Dispatch nothing more this tick." >&2
         exit 75
     fi
+    lane_path
     git -C "$REPO" fetch -q origin "$TIP" || { echo "fetch of origin/$TIP failed" >&2; exit 4; }
     if git -C "$REPO" rev-parse --verify --quiet "refs/remotes/origin/$branch" >/dev/null; then
         # A lane resuming after a wind-down or a crash continues its own branch.
@@ -306,12 +337,15 @@ case "$cmd" in
     [ -f "$REPO/android/local.properties" ] && cp "$REPO/android/local.properties" "$wt/android/local.properties"
     log="$WORK/logs/lane/$name.$(date -u +%Y%m%dT%H%M%SZ).json"
     systemd-run --user --unit "hakux-lane-$name" --collect \
+        --setenv=PATH="$LANE_PATH" \
         --setenv=HAKUX_ROLE=lane --setenv=HAKUX_BRIEF="$WORK/briefs/$name.md" \
         --setenv=HAKUX_BRANCH="$branch" --setenv=HAKUX_TIP="$TIP" \
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
+        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')
+
+$LANE_SESSION_FOOTER\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
     echo "started hakux-lane-$name in $wt on $branch; attempt $ATTEMPT on $MODEL; log $log"
     [ -n "$issue" ] && echo "issue #$issue -- the lane opens its draft PR; the board job labels it lane:$name"
     ;;
@@ -330,17 +364,21 @@ case "$cmd" in
         echo "REFUSED: $active lane(s) already running and LANE_MAX=$LANE_MAX ($WORK/limits.env)." >&2
         exit 75
     fi
+    lane_path
     next_attempt "$name" || exit 75
     fleet_write "$name" "$branch" "$wt" "$WORK/briefs/$name.md" \
                 "$(cat "$WORK/briefs/$name.issue" 2>/dev/null)" "$ATTEMPT" "$MODEL"
     log="$WORK/logs/lane/$name.$(date -u +%Y%m%dT%H%M%SZ).json"
     systemd-run --user --unit "hakux-lane-$name" --collect \
+        --setenv=PATH="$LANE_PATH" \
         --setenv=HAKUX_ROLE=lane --setenv=HAKUX_BRIEF="$WORK/briefs/$name.md" \
         --setenv=HAKUX_BRANCH="$branch" --setenv=HAKUX_TIP="$TIP" \
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
+        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')
+
+$LANE_SESSION_FOOTER\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
     echo "resumed hakux-lane-$name in $wt; attempt $ATTEMPT on $MODEL; log $log"
     ;;
   rm)

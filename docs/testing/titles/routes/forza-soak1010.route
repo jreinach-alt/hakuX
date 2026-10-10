@@ -1,0 +1,19 @@
+# state: any
+# Forza Motorsport (4D53006E) soak variant of forza.drive.route (#433, lane.forzasurf1010).
+#
+# forza.drive.route (lane.routedriver) is `drive forza 420 find`: drive.py's screen-aware driver
+# (RT = gas, A only on menus, never START) proven to reach confirmed play, but `find` ends the
+# step at 20 s of confirmed play and writes no `mark gameplay` -- it is a path-finding/verification
+# route, not a soak. A scored A/B run needs a driving WINDOW (>= 5 post-mark [sdcall]/decompose.py
+# telemetry windows, each ~2 s of guest frames) to read fps and the surface-download wait from, and
+# a route with no `mark gameplay` line gives every reader (this lane's, surfgpu1009's sg_judge.py,
+# near30's decompose.py) nothing to key its window on.
+#
+# `mark` (not `find`) keeps drive.py's same screen-aware profile running for the whole
+# <seconds> instead of stopping at first confirmed play: it writes `mark gameplay` itself once
+# play is confirmed (drive.py ADDENDUM 1), then keeps driving -- steering, holding RT, skipping
+# any cutscene/pause/menu it can classify -- for the rest of the hold. This is preferred here over
+# a blind scripted loop (lane.gpuclock's LT-brake-then-RT pattern, forza-nova-frametrace.route):
+# that pattern is what frametrace's own capture used, and it still measured a car stalled against
+# the wall 8th of 8 -- screen-aware driving is the one kind of Forza input proven to actually race.
+drive forza 480 mark

@@ -406,6 +406,119 @@ check "  ...which \$INTERNAL_RE's \\blanes?\\b then matches (the boundary after 
 check "  not vacuous: the new title-cleaning does not leave \"lane.\" in the text" \
     bash -c '! grep -qiE "\\blanes?\\b" <<<"A game you have played before no longer freezes at its loading screen"'
 
+# ------------------------------------------- lane_body_line keeps a wrapped note
+# A lane wraps a long Release note onto following lines; the REPLACED
+# lane_body_line() matched one line with sed and piped to `head -1`, so the
+# published note was cut mid-sentence (surfgpudefault1009/PR.md on master,
+# 2026-10-09, fixed by hand). Same function, second defect: an unfilled
+# template line, "Release note (performance|stability|rendering|other|none):
+# none -- ...", has a "|" in the category parenthetical, which the replaced
+# character class "[A-Za-z ]+" does not admit -- so the whole line failed to
+# match and the note was lost (restoreleak1009/PR.md). Both are fixed the
+# same way: the category group now admits anything but ")", and continuation
+# lines are joined in until a blank line, a markdown heading, or another
+# "Key:" line.
+echo "== nightly_build.sh: lane_body_line joins a wrapped Release note, and reads an unfilled template line"
+FIX8="$NB/wrapped-notes"
+git -c init.defaultBranch=master init -q "$FIX8"
+git -C "$FIX8" config user.email s@t; git -C "$FIX8" config user.name s
+commit_touching "$FIX8" "base" README.md
+
+# A one-line note: must come through byte-for-byte unchanged (other than the
+# lane path's usual capitalisation).
+git -C "$FIX8" checkout -q -b lane/wrapnote master
+commit_touching "$FIX8" "wrapnote: a one-line note" hw/xbox/nv2a/pgraph/wrapnote.c
+mkdir -p "$FIX8/docs/lanes/wrapnote"
+printf '%s\n' "Lane: wrapnote" "" "Release note (performance): a one-line note stays exactly as written" \
+    > "$FIX8/docs/lanes/wrapnote/PR.md"
+git -C "$FIX8" add -A; git -C "$FIX8" commit -q -m "wrapnote: PR.md"
+fold_offline "$FIX8" wrapnote lane/wrapnote "wrapnote: a one-line note (#433)"
+
+# THE CHECK: a note wrapped onto two more lines, broken mid-clause, with a
+# markdown heading (and more prose) following it after a blank line.
+git -C "$FIX8" checkout -q -b lane/wrapped master
+commit_touching "$FIX8" "wrapped: a long note" hw/xbox/nv2a/pgraph/wrapped.c
+mkdir -p "$FIX8/docs/lanes/wrapped"
+printf '%s\n' "Lane: wrapped" "" \
+    'Release note (performance): new "GPU surface reuse" graphics setting, on by default, with a per-game override;' \
+    'measured +24 gfps (22.3 -> 46.8 on a common title) when it reuses rather than recreates GPU' \
+    'surfaces across frames.' \
+    "" "## What changed" "" "more prose that must not be included" \
+    > "$FIX8/docs/lanes/wrapped/PR.md"
+git -C "$FIX8" add -A; git -C "$FIX8" commit -q -m "wrapped: PR.md"
+fold_offline "$FIX8" wrapped lane/wrapped "wrapped: a long note (#433)"
+
+# A note immediately followed by a heading, with no blank line between them.
+git -C "$FIX8" checkout -q -b lane/headingnext master
+commit_touching "$FIX8" "headingnext: a note right before a heading" hw/xbox/nv2a/pgraph/headingnext.c
+mkdir -p "$FIX8/docs/lanes/headingnext"
+printf '%s\n' "Lane: headingnext" "" \
+    "Release note (stability): a short stability note right before a heading" \
+    "## What changed" "" "more prose that must not be included" \
+    > "$FIX8/docs/lanes/headingnext/PR.md"
+git -C "$FIX8" add -A; git -C "$FIX8" commit -q -m "headingnext: PR.md"
+fold_offline "$FIX8" headingnext lane/headingnext "headingnext: a note right before a heading (#433)"
+
+# THE CHECK: the unfilled template line, category group left as the literal
+# "performance|stability|rendering|other|none" list.
+git -C "$FIX8" checkout -q -b lane/unfilled master
+commit_touching "$FIX8" "unfilled: harness bookkeeping only" hw/xbox/nv2a/pgraph/unfilled.c
+mkdir -p "$FIX8/docs/lanes/unfilled"
+printf '%s\n' "Lane: unfilled" "" \
+    "Release note (performance|stability|rendering|other|none): none -- harness/dispatch bookkeeping only, not emulator code." \
+    > "$FIX8/docs/lanes/unfilled/PR.md"
+git -C "$FIX8" add -A; git -C "$FIX8" commit -q -m "unfilled: PR.md"
+fold_offline "$FIX8" unfilled lane/unfilled "unfilled: harness bookkeeping only (#433)"
+
+NIGHTLY_TREE="$FIX8" NIGHTLY_OUT="$NB/must-not-exist" \
+    bash "$NIGHTLY" notes 2000-01-01 >"$NB/wrapped.md" 2>"$NB/wrapped.md.err"
+rc=$?
+check "wrapped-notes fixture: notes mode exits 0" [ "$rc" = 0 ]
+check "  a one-line note is unchanged (just capitalised)" \
+    bash -c 'grep -qxF -- "- A one-line note stays exactly as written" "$1"' \
+        _ <(section_of "$NB/wrapped.md" Performance)
+WRAPPED_JOINED="- New \"GPU surface reuse\" graphics setting, on by default, with a per-game override; measured +24 gfps (22.3 -> 46.8 on a common title) when it reuses rather than recreates GPU surfaces across frames."
+check "THE CHECK: all three lines of the wrapped note are kept, joined with single spaces" \
+    bash -c 'grep -qxF -- "$1" "$2"' _ "$WRAPPED_JOINED" <(section_of "$NB/wrapped.md" Performance)
+check "  the heading and the prose after it are not pulled into the note" \
+    bash -c '! grep -qiE "what changed|must not be included" "$1"' _ "$NB/wrapped.md"
+check "THE CHECK: a note stops at a heading with no blank line between them" \
+    bash -c 'grep -qxF -- "- A short stability note right before a heading" "$1"' \
+        _ <(section_of "$NB/wrapped.md" Stability)
+check "THE CHECK: the unfilled template line reads as a none note (text starts with \"none\") and is dropped" \
+    bash -c '! grep -qiF "harness bookkeeping" "$1"' _ "$NB/wrapped.md"
+check "  and it is counted dropped and internal, not emulator" \
+    grep -qF '4 emulator change(s), 3 line(s), 1 left out, 2 internal' "$NB/wrapped.md.err"
+
+# FALSIFICATION: the replaced lane_body_line(), run directly against the same
+# fixture commits, must fail both THE CHECKs above (memory: a mutant must
+# reinstate the weaker rule).
+legacy_lane_body_line() {   # the exact function this PR replaces
+    local body
+    body=$(git show "$2:docs/lanes/$1/PR.md" 2>/dev/null)
+    printf '%s\n' "$body" | tr -d '\r' | sed -nE \
+        's/^[[:space:]]*[Rr]elease[ -][Nn]otes?( \(([A-Za-z ]+)\))?:[[:space:]]*(.*[^[:space:]])[[:space:]]*$/\2\t\3/p' \
+        | head -1
+}
+SHA_WRAPPED=$(git -C "$FIX8" rev-parse lane/wrapped)
+SHA_UNFILLED=$(git -C "$FIX8" rev-parse lane/unfilled)
+legacy_truncates_the_wrapped_note() {
+    local out
+    out=$(cd "$FIX8" && legacy_lane_body_line wrapped "$SHA_WRAPPED")
+    [ "$out" = $'performance\tnew "GPU surface reuse" graphics setting, on by default, with a per-game override;' ]
+}
+legacy_misses_the_unfilled_line() {
+    [ -z "$(cd "$FIX8" && legacy_lane_body_line unfilled "$SHA_UNFILLED")" ]
+}
+check "FALSIFIED: the replaced function truncates the wrapped note mid-clause" \
+    legacy_truncates_the_wrapped_note
+check "  while the new one (exercised above, through the full pipeline) keeps all three lines" \
+    bash -c 'grep -qxF -- "$1" "$2"' _ "$WRAPPED_JOINED" <(section_of "$NB/wrapped.md" Performance)
+check "FALSIFIED: the replaced function's category class rejects the unfilled template line and finds nothing" \
+    legacy_misses_the_unfilled_line
+check "  while the new one (exercised above) still reads it as a none note" \
+    bash -c '! grep -qiF "harness bookkeeping" "$1"' _ "$NB/wrapped.md"
+
 # ------------------------------------- publish nothing when nothing changed
 # Owner, 2026-10-09: "if any of them have no changes, take down the nightly."
 # A window whose only change is internal (same shape as 10-05..10-09, which
