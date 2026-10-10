@@ -31,6 +31,7 @@
 #include "hw/xbox/nv2a/pgraph/surface.h"
 #include "hw/xbox/nv2a/pgraph/texture.h"
 #include "hw/xbox/nv2a/pgraph/glsl/shaders.h"
+#include "hw/xbox/nv2a/pgraph/glsl/vsh-uber.h"
 
 #include <vulkan/vulkan.h>
 #include <glslang/Include/glslang_c_interface.h>
@@ -505,6 +506,16 @@ typedef struct ShaderBinding {
         /* The ubershader's combiner uniform; -1 on a specialised module. */
         int uber_comb_loc;
     } psh;
+    /* #433 (lane.perdraw1009): per-draw values that are pure functions of
+     * state.vsh, which nothing writes after shader_cache_entry_init. Filled
+     * by the first draw that needs them, invalidated by entry_init; read
+     * only under HAKUX_UNI_UBERCACHE / HAKUX_UNI_FOGCACHE (shaders.c). */
+    struct {
+        bool uber_valid;
+        bool fog_valid;
+        VshFogWrite fog_write;
+        uint32_t uber[VSH_UBER_VEC4S * 4];
+    } vsh_cache;
 } ShaderBinding;
 
 #if OPT_ASYNC_COMPILE
