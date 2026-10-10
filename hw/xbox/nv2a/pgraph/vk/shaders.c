@@ -669,8 +669,36 @@ static void ubosz_name_add(char stage, const char *name, unsigned n)
     }
 }
 
+/*
+ * #433 (lane.perdraw1009): this counter is the only NV2A_PERF_LOG cost that
+ * isn't a plain accumulator -- note_upload memcmp/memcpy's the whole VS+PS
+ * uniform block (up to NV2A_VERTEXSHADER_CONSTANTS rows) on every upload, not
+ * just an add. A perflog build is the only build an A/B can run (the hakuX-perf
+ * phase lines come from the same NV2A_PERF_LOG macro), so this cost sits in
+ * both arms of any A/B and dilutes whatever share a per-draw fix wins. On
+ * lane.local's 10-09 3-racer NFS profile it was ~1.2 ms/frame self plus its
+ * memcmp/memcpy, about a third of the "descriptor sets" 2.9 ms/frame bucket --
+ * a release build (NV2A_PERF_LOG=0) carries none of this, block or counter.
+ * Gated separately from NV2A_PERF_LOG itself because the phase timers that
+ * read ms/frame for the A/B still need it on. Default off trades away
+ * bf2ubosize433's standing hakuX-stall line; set HAKUX_UBOSZ_LOG=1 to keep it.
+ */
+static int ubosz_enabled = -1;
+
+static bool ubosz_on(void)
+{
+    if (ubosz_enabled < 0) {
+        const char *e = getenv("HAKUX_UBOSZ_LOG");
+        ubosz_enabled = (e && e[0] && strcmp(e, "0")) ? 1 : 0;
+    }
+    return ubosz_enabled;
+}
+
 void pgraph_vk_ubosz_note_upload(PGRAPHState *pg, int site)
 {
+    if (!ubosz_on()) {
+        return;
+    }
     PGRAPHVkState *r = pg->vk_renderer_state;
     ShaderBinding *binding = r->shader_binding;
     ShaderUniformLayout *layouts[2] = { &binding->vsh.upload_info->uniforms,
@@ -773,6 +801,9 @@ void pgraph_vk_ubosz_note_upload(PGRAPHState *pg, int site)
 
 void pgraph_vk_ubosz_note_bind(VkDescriptorSet set, const uint32_t off[2])
 {
+    if (!ubosz_on()) {
+        return;
+    }
     ubosz.binds++;
     if (set == ubosz_bind_set && off[0] == ubosz_bind_off[0] &&
         off[1] == ubosz_bind_off[1]) {
@@ -785,6 +816,9 @@ void pgraph_vk_ubosz_note_bind(VkDescriptorSet set, const uint32_t off[2])
 
 void pgraph_vk_ubosz_log_and_reset(void)
 {
+    if (!ubosz_on()) {
+        return;
+    }
 #ifdef __ANDROID__
     char h[3][UBOSZ_BINS * 11 + 1];
     const unsigned *src[3] = { ubosz.lay, ubosz.c, ubosz.span };
