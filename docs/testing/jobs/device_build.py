@@ -10,8 +10,9 @@
     device_build.py restore <dispatch_dir> <label> <run_id>
         after a run that is not on master (its ref, env or requester differ),
         writes the 60 s master restore into queue/ and prints its id; prints
-        nothing and writes nothing when the run is already on master, or when
-        the run is itself a restore. The dispatcher calls this after each
+        nothing and writes nothing when the run is already on master, when
+        the run is itself a restore, or when a restore for this device is
+        already queued or running. The dispatcher calls this after each
         run's result.json is written.
 
 A run is on master when its result.json says ref master (or origin/master,
@@ -127,6 +128,28 @@ def restore_needed(rec):
     return not build_of(rec)[0]
 
 
+def restore_pending(dispatch_dir, label):
+    """True when a restore for this device is already queued or running.
+
+    A queued restore writes no result.json until it is served, so without
+    this check last_run() keeps reading the same off-master result for
+    every non-master run that finishes while the restore waits, and queues
+    one more of them -- forever, as long as the chain of non-master runs
+    continues. Checked against both queue/ (not yet claimed) and running/
+    (claimed by a worker, mid-serve): either one already satisfies the need
+    this call would otherwise re-queue for.
+    """
+    for sub in ("queue", "running"):
+        for path in glob.glob(os.path.join(dispatch_dir, sub, "*.req")):
+            try:
+                req = json.load(open(path))
+            except (OSError, ValueError):
+                continue
+            if req.get("requester") == RESTORE_REQUESTER and req.get("device") == label:
+                return True
+    return False
+
+
 def cmd_check(dispatch_dir, label):
     rec, run_id = last_run(dispatch_dir, label)
     release, why = build_of(rec)
@@ -143,6 +166,8 @@ def cmd_restore(dispatch_dir, label, run_id):
     path = os.path.join(dispatch_dir, "results", run_id, "result.json")
     rec = json.load(open(path))
     if not restore_needed(rec):
+        return 0
+    if restore_pending(dispatch_dir, label):
         return 0
     req = restore_request(run_id, label)
     queue = os.path.join(dispatch_dir, "queue")
