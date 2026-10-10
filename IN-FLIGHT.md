@@ -8,9 +8,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `drawrec1010` | claude-opus-5-5 | 18 min | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#43 |
-| `fleetflush1010` | claude-sonnet-5 | 52 min |  |
-| `gpupass1010` | claude-sonnet-5 | 42 min | gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5) |
+| `drawrec1010` | claude-opus-5-5 | 33 min | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#43 |
+| `fleetflush1010` | claude-sonnet-5 | 1h 7m |  |
+| `gpupass1010` | claude-sonnet-5 | 57 min | gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -75,8 +75,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/drawrec1010` | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#433, 0.5) | `5c05092b5c` | 2026-10-10 12:04 |
-| `lane/gpupass1010` | gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5) | `e67cd5cebe` | 2026-10-10 12:09 |
+| `lane/drawrec1010` | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#433, 0.5) | `b10dcdb737` | 2026-10-10 12:38 |
+| `lane/gpupass1010` | gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5) | `ebcbd61064` | 2026-10-10 12:33 |
 
 ## Recently landed on master
 
@@ -93,4 +93,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 Lane: restoreleak1009            Issue: #433
 - 2026-10-10 boardgateenv1009 -- the board push gate stages master's docs/testing into the pushing tree's index (#433, 0.5)
 
-_Updated 2026-10-10 12:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 12:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
