@@ -202,6 +202,8 @@
   <string name="settings_ubershader">Ubershader</string>
   <string name="settings_ubershader_desc">Draw new scenes at once with a general shader while the exact one builds, instead of pausing to compile. Frame rate can dip briefly the first time a scene is seen. Turn off only if a game shows problems with it on.</string>
   <string name="ubershader_disabled_banner">Ubershader is disabled. Loading some scenes may be delayed.</string>
+  <string name="settings_surfgpu">GPU surface reuse</string>
+  <string name="settings_surfgpu_desc">Reuse GPU surfaces across frames instead of recreating them each time, for faster rendering. Turn off only if a game shows stale or flickering images with it on.</string>
 
   <string name="settings_frame_skip">Frame skip</string>
   <string name="settings_frame_skip_desc">Skip rendering when running behind to maintain game speed. May cause visible stuttering.</string>
