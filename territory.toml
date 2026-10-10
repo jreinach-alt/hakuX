@@ -2179,6 +2179,12 @@ standing = false
 files = ["docs/lanes/perdrawon1010/**", "docs/testing/predictions/perdrawon1010-*.json"]
 note = "STARTED lane.local 2026-10-10 05:5x PDT (weekend direction: performance only; Nova idle since 03:33): measure perdraw1009's three uniform switches where the renderer limits the frame (NFS MW racing, moving player), plus the pgraph inert disc and J/frame, so the owner can decide a default-on flip. Measurement only, no emulator code. Both paths were unclaimed. Sonnet (usage Low)."
 
+[lane.ghlive1010]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/ghlive1010/**", "AGENTS.md"]
+note = "STARTED lane.local 2026-10-10 06:59 PDT, done directly by lane.local (docs only, no unit): AGENTS.md said GitHub was suspended; it has been up since 10-05 and the forge is the working space by the owner's choice. AGENTS.md was in no row and not in [free]."
+
 [lane.surfgpu1009]
 issues = ["433"]
 standing = false
