@@ -2137,8 +2137,8 @@ note = "Harness defect, dispatched directly, no GitHub issue (owner order 2026-1
 [lane.surfgpu1009]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/surfgpu1009/**", "hw/xbox/nv2a/pgraph/vk/surface.c", "hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/testing/predictions/surfgpu1009-*.json"]
-note = "STARTED lane.local 2026-10-09 15:25 PDT (owner weekend direction: performance only): the surface-download fix. NBA Live 05/06/07 wait on a CPU-visible download in surface.c's reuse/surfupd paths (async794, surfdl1008); give the rebind a GPU-side route so it never needs a completed download. Behind an env flag, A/B on the Nova. Opus."
+files = ["docs/lanes/surfgpu1009/**", "hw/xbox/nv2a/pgraph/vk/surface.c", "hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/testing/predictions/surfgpu1009-*.json", "docs/testing/titles/routes/nbalive07.route"]
+note = "STARTED lane.local 2026-10-09 15:25 PDT (owner weekend direction: performance only): the surface-download fix. NBA Live 05/06/07 wait on a CPU-visible download in surface.c's reuse/surfupd paths (async794, surfdl1008); give the rebind a GPU-side route so it never needs a completed download. Behind an env flag, A/B on the Nova. Opus. GRANTED (hostops 2026-10-09 22:28 PDT): docs/testing/titles/routes/nbalive07.route, from [free]'s broad docs/testing/titles/** glob (no specific prior claim; `nbalive07` has no other owner in this file) -- its PR (head 31897cb197) failed to fold at 22:21 PDT as 'outside [lane.surfgpu1009]'s files', naming only this one route file; the lane's NBA Live 07 gameplay soaks need to write their own route, so granted outright rather than asked to drop the file."
 
 [lane.nightlynotes1009]
 issues = ["433"]
