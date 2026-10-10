@@ -208,3 +208,142 @@ APKs). Quick read of run 1's `hakuX-pace` tail (last line, closest to
 whatever heavy frames logged near it) deferred to the next section, once
 the perflog pair's phase lines are in hand and can be lined up against
 the same wall-clock window.
+
+## 9. Why attempt 2 did not finish, and why this attempt does not run the perflog pair
+
+Attempt 2 ended the turn correctly per the lane contract — §7's requeue
+with `--perflog` was a real, needed fix (the plain build cannot answer
+the brief's phase breakdown), and `WAITING` naming the two new requests
+was pushed before the session ended. What it did not get to, because the
+requeue came first in that session: writing the deliverable table from
+the two plain-build runs that had *already* landed (§4's
+`1-1791649039`/`1-1791649724`), using only the always-on instruments
+(`hakuX-pace`/`hakuX-perf`) that do not need the perflog flag.
+
+Between attempt 2 ending and this attempt (3) starting, lane.local
+escalated the brief's three open questions to lane.nfs30plan1010 (Fable),
+which ran its own instrumented (FRAMETRACE+PMU+GPUXFR) pair and answered
+all three from that data, using this lane's two plain runs as the
+baseline its whole plan is priced against. Its verdict, addressed to this
+lane by name: "stop after its two runs; no further device time." lane.local
+withdrew this lane's perflog requeue (§7's two requests) to
+`dispatch/queue/withdrawn/` before they ran — they will not produce
+results, and `WAITING` naming them is now stale and removed.
+
+So this attempt does the thing attempt 2 deferred — the table in §10,
+from the plain build's always-on instruments only — rather than waiting
+on perflog runs that were never going to run.
+
+## 10. The two-run table (plain build, always-on instruments only)
+
+Both runs are `1-1791649039-nfsframe1010-2037292` and
+`1-1791649724-nfsframe1010-2219502` (§4: master @ `07937793af`, no
+`--perflog`, route `nfs-mw-quickrace`, 12 starts/run). Read directly from
+`logcat.txt` (not through `armread.py`'s `Draw`/`BE`-keyed row filter,
+which drops every row on this build — see below), by pairing each
+`hakuX-pace f=.. v0=.. v1=.. v2=.. v3=.. v4=.. vb=.. ms=..` line with the
+`hakuX-perf gfps=..` line emitted at the same tick
+(`profile.c:794-807`, `g_nv2a_stats.frame_count % 60 == 0`, always-on
+under `#ifdef __ANDROID__`, **not** gated by `NV2A_PERF_LOG`). Each line
+covers a 60-guest-frame window ending at its timestamp; `ms=` is the
+summed flip-to-flip interval over that window (period = `ms`/60 is not
+quite right when a window straddles a mark, so period below is Σ`ms`/Σframes
+over all lines pooled into a bucket) and `v0..v4`/`vb` are that window's
+vblank-count histogram and total, both reset to zero every 60 frames
+(same mechanism as `hakuX-stall`'s `g_opt_stats`, §2). A line is assigned
+to a window by its end timestamp falling inside `[mark+lo, mark+hi]`,
+matching `startread.py`'s own rule; marks come from
+`hakuX-route: mark gameplay|go<N>` (both runs: 12 marks each, confirming
+the route completed all 12 starts).
+
+Windows, matching lane.nfs30plan1010's PLAN.md section 2 table so the two
+are directly comparable:
+
+| window | run 1 (`-2037292`) | run 2 (`-2219502`) | pooled |
+|---|---|---|---|
+| cold start, countdown `[mark(go1)-2, mark(go1)+1.5]` | period 56.3 ms, gfps 17, v2/v3/v4 12/47/42%, vblanks/flip 3.38 (n=1 pace line, 60 frames) | period 58.5 ms, gfps 18, v2/v3/v4 2/47/52%, vblanks/flip 3.50 (n=1, 60 frames) | period 57.4 ms, v2/v3/v4 7/47/47%, vblanks/flip 3.44 (n=2, 120 frames) |
+| warm restarts, countdown `[mark(go2..12)-2, mark+1.5]` | period 41.4 ms, gfps 21.7, v2/v3/v4 54/43/2% (n=13, 780 frames) | period 40.2 ms, gfps 22.1, v2/v3/v4 52/41/1% (n=18, 1080 frames) | period 40.7 ms, v2/v3/v4 53/42/1% (n=31, 1860 frames) |
+| post-GO `[mark+1.5, mark+12]` (all 12 starts) | period 40.0 ms, gfps 27.2, v2/v3/v4 59/37/2% (n=56, 3360 frames) | period 40.0 ms, gfps 27.3, v2/v3/v4 58/38/2% (n=50, 3000 frames) | period 40.0 ms, v2/v3/v4 58/38/2% (n=106, 6360 frames) |
+| draws/frame, every window | **not available** | **not available** | — |
+
+The pooled cold-start and post-GO periods (57.4 ms, 40.0 ms) match
+lane.nfs30plan1010's PLAN.md section 2 plain-build row (56.3/58.5 ms per
+run, 40.0 ms both runs) almost exactly, which is the expected cross-check
+since PLAN.md's budget table is built from these same two runs, read the
+same way.
+
+**Draws/frame is not available on this build at all, in either window,
+by design, not by a reading error** — confirmed by source, not assumed
+from §7's zero counts alone: `xemu-work` (the line that carries `BE:`,
+the draw count `armread.py`/`startread.py` key on) is written at
+`profile.c:896-910`, inside `#if defined(__ANDROID__) && NV2A_PERF_LOG` —
+the same compile-time guard as `hakuX-phase`, gated on `-Pperflog=true`
+(§7). `hakuX-pace`'s own block (`profile.c:784-807`) is deliberately
+**outside** that guard, which is exactly why it is the one line this
+table could use without the perflog build. Running `startread.py` against these two runs directly (rather than
+hand-parsing) confirms this, not just by code reading:
+
+```
+$ python3 docs/lanes/nfsframe1010/startread.py 1-1791649039-nfsframe1010-2037292 1-1791649724-nfsframe1010-2219502
+run                                      starts flips toggle_ms route fatal rows(off/on) apk
+1-1791649039-nfsframe1010-2037292            12     0      None  True     0     0/0     cd82c9bee99b
+1-1791649724-nfsframe1010-2219502            12     0      None  True     0     0/0     cd82c9bee99b
+V   FAIL  ...: toggle_ms None (toggled and fixed-state runs cannot be pooled); ...
+```
+
+`rows(off/on)` is `0/0` for both: `toggle_ms` reads `None` (this build
+carries no `HAKUX_UNI_TOGGLE` env at all, so `read_toggle` never finds a
+toggle and never falls into the `toggle_ms == 0` fixed-arm path either —
+a plain build is neither case the toggle reader was built for), and
+every row requires `r.get("Draw") is not None` (`startread.py:87`) which
+never fires since `Draw` is never set without `NV2A_PERF_LOG`
+(`profile.c:896-910`, same guard as `xemu-work`). `start_rows` returns
+empty for both runs regardless of the `toggle_ms` path — the Draw-keyed
+reader chain perdrawon1010 built answers a different question (the
+per-draw switch A/B on an instrumented build) and is not applicable to
+this plain build, by the same mechanism §7 found for the phase lines.
+
+## 11. Answered by nfs30plan1010
+
+This lane's §1 three questions are answered in `docs/lanes/nfs30plan1010/PLAN.md`
+(lane.nfs30plan1010, 3806d50fc4), from that lane's own instrumented runs
+(`1-1791649387-nfs30plan1010-2138210`, `1-1791649388-nfs30plan1010-2138879`,
+built with `--perflog` + `HAKUX_FRAMETRACE=1 HAKUX_PMU=1 HAKUX_GPUXFR=1`),
+cited here, not re-measured by this lane and not copied into §10's table
+as if this lane had measured them:
+
+1. **The ~12 ms per frame between `Tot` and the real period** is PFIFO-thread
+   time outside every phase timer: method parsing and the pusher (`Push`/`Pull`
+   on `hakuX-cpu`), `pgraph_process_pending`, texture-bind bookkeeping, and the
+   perflog clock reads themselves. PLAN.md's table row for this lane (section 1)
+   states it as "PFIFO time outside every phase timer (method parsing,
+   texture-bind bookkeeping, pending-report processing, clock reads)"; the
+   measurement behind it is NOTES.md §5.5's "G - Tot" at the cold start (13.6 ms)
+   and warm restarts (9-11 ms), with the on-CPU breakdown attributed against
+   lane.local's 10-09 simpleperf split (§5.2 of that lane's NOTES).
+
+2. **The ~10 ms post-flip idle (`Fr`)** is the wait for the next emulated
+   VBLANK grid line, not an idle-looping guest spending time doing nothing and
+   not an emulator debt owed to the guest: PLAN.md section 4.3 ("Pacing/present:
+   the VBLANK grid") gives the mechanism (`nv2a_vblank_timer_cb`'s deferral,
+   capped at `poll_interval * defer_cap` = ~8.3 ms) and the cost (12.6 ms cold /
+   11.0 ms warm, instrumented), matching `Idle.Fr`/`pidle` in NOTES.md §5.5's
+   per-thread tables. This is a PFIFO-side wait, not vCPU time; §5.5's vCPU row
+   (idle SPIN 37.6 of 66.6 ms cold, `HAKUX_IDLE_HALT` off) answers the
+   attribution this lane's §1 item 2 asked for separately — the guest is mostly
+   idle-looping, and the PFIFO-side wait is quantization, not guest work the
+   emulator is blocking on.
+
+3. **The other ~5-6 ms of `Sub`** is the two cube-face finishes' `sd`
+   round-trip waits plus the flip finish's submit prep, not a separate
+   unaccounted cost: NOTES.md §5.5 states the cold-start phase view directly,
+   "Fin 26.7 (Sub 18.5 = the round trips above plus the submit prep...)", and
+   identifies the round trips as `Finish sd` calls (1.5/frame: the cube map's
+   face-0 sync download 0.5/frame + the range scan's 1/frame), matching this
+   lane's own §2 reading of `hakuX-stall`'s per-frame `sd` rate (1.5) before
+   the perflog gap (§7) made the ms-per-reason conversion unavailable here.
+
+No further device time for this lane (lane.local's addendum, 2026-10-10
+10:52 PDT, and PLAN.md section 1's own verdict row for nfsframe1010:
+"stop after its two runs; no further device time"). §10's table above is
+this lane's own measurement; this section is citation only.

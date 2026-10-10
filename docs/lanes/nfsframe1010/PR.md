@@ -1,13 +1,14 @@
 NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5)
 
-State: draft
+State: ready
 
 Lane: nfsframe1010            Issue: #433 (umbrella; no own issue)
 Base: master @ 07937793af
 Files: docs/lanes/nfsframe1010/**, docs/testing/titles/routes/nfs-mw-quickrace.route
-Prediction: none (telemetry) — measurement only, no A/B
-Needs device: yes (Nova, queuing)
+Prediction: none (telemetry)
+Needs device: yes (Nova, used)
 Needs NDK: no
+Release note (none): measurement only.
 
 Measurement-only lane, no behaviour change. Answering three open questions
 left by lane.local's read of perdrawon1010's race-start runs: the ~12ms gap
@@ -39,19 +40,29 @@ telemetry-blind for this brief: the Draw/Fin/Sub/Idle/Fr/GPU phase
 breakdown (`nv2a_profile_get_phase_timing_str`, profile.c:896) is compiled
 out unless the build carries `-Pperflog=true`
 (`android/app/src/main/cpp/CMakeLists.txt`), which needs `request.sh
---perflog` at queue time — neither of the two did. Both logged zero
-`hakuX-phase`/`hakuX-cpu`/`xemu-gpu`/`xemu-surf`/`xemu-work` lines, and
-`hakuX-stall` only carried the always-on `ubo_ring_grow` line, not the
-perflog-gated `Finish:`/`sd[...]`/`dif[...]` counts this brief needs
-(detail: docs/lanes/nfsframe1010/NOTES.md §7). Requeued the same ref,
-route, title and device with `--perflog` added:
-`1-1791653167-nfsframe1010-3263852` and
-`1-1791653177-nfsframe1010-3266390`. `docs/lanes/nfsframe1010/WAITING` now
-names these two; the first pair is kept as an always-on `hakuX-pace`
-pacing cross-check (NOTES.md §8), not reused for the phase table.
+--perflog` at queue time — neither of the two did (detail:
+docs/lanes/nfsframe1010/NOTES.md §7). Requeued the same ref/route/title/
+device with `--perflog` added.
 
-Remaining: once the perflog pair lands, verify car movement from
-route-frames, build the per-heavy-frame accounting table and the P×win
-ranking, write the final NOTES.md section, flip this PR to ready.
+Before the requeue ran, lane.local escalated this brief's three open
+questions to lane.nfs30plan1010 (Fable), which answered all three from its
+own instrumented runs and this lane's two plain runs as its baseline, and
+told this lane to stop after those two runs — no further device time.
+lane.local withdrew the perflog requeue to `dispatch/queue/withdrawn/`
+before it ran.
 
-Release note (none): measurement only.
+**Final state (NOTES.md §9-11):**
+- §10: the deliverable table — pace/vblank-histogram/gfps per window
+  (cold start, warm restarts, post-GO) from the two plain runs' always-on
+  `hakuX-pace`/`hakuX-perf` lines. Draws/frame is confirmed unavailable on
+  this build (perflog-gated, same as the phase lines), not a reading gap.
+- §11: the brief's three open questions, answered in
+  `docs/lanes/nfs30plan1010/PLAN.md` section 1 (verdict) and section 4.3 /
+  NOTES.md §5.4-5.5 (mechanism and measurement) — cited there, not
+  re-measured by this lane, since this lane's own runs cannot see the
+  phase/thread breakdown those answers are built from.
+
+No P×win ranking or "move 3 vblanks to 2" naming from this lane: that
+ranking is PLAN.md section 0's job (it already did it, across the four
+NFS lanes), and this lane's own instruments cannot see the phase/thread
+split a removability ranking needs.
