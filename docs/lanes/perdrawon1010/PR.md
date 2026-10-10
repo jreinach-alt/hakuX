@@ -68,6 +68,6 @@ Tables, the run ids, the pass-by-pass route work, and what the next lane
 should not repeat are in `docs/lanes/perdrawon1010/NOTES.md`, sections 3, 4,
 7 and 8. Device time: ~2 h 35 min of 6 h, Nova only.
 
-**State: ready**
+State: ready
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
