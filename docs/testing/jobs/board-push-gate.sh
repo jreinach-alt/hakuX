@@ -28,7 +28,23 @@
 # that and says so in a NOTE line rather than printing `ok` over it.
 #
 # NO SIDE EFFECTS on the boardtree: the scratch worktree is detached, lives in
-# $TMPDIR, and is removed (and pruned) on the way out.
+# $TMPDIR, and is removed (and pruned) on the way out. That claim has to hold
+# even when this script runs as a pre-push hook: git exports GIT_DIR (plus
+# GIT_WORK_TREE, GIT_INDEX_FILE, GIT_PREFIX, and the rest of its "local" env
+# vars) to hooks, set to the PUSHING worktree's own git dir. Every git call
+# below already names its tree with -C, so left alone those vars make the
+# first bare `git` call -- `checkout -q "$base_sha" -- docs/testing` on the
+# scratch worktree -- use the pushing tree's git dir and INDEX instead,
+# staging master's docs/testing into the board tree's own index while the
+# scratch checkout quietly absorbs the files on disk. That is the 2026-10-09
+# board.sh defect: the gate still reports PASS (the scratch tree has what the
+# checkers need), but the next `git add` in .boardtree sweeps origin/master's
+# docs/testing in alongside it. `git rev-parse --local-env-vars` is git's own
+# list of which env vars are repository-local; unset every name it reports,
+# rather than a hand-picked subset, so a newer git exporting one more var is
+# still covered.
+for _v in $(git rev-parse --local-env-vars 2>/dev/null); do unset "$_v"; done
+unset _v
 set -u
 rev=""
 if [ "${1:-}" = "--rev" ]; then rev="${2:-}"; shift 2 || true; fi
