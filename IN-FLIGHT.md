@@ -8,12 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `perdrawon1010` | claude-opus-5-5 | 22 min | Lane: perdrawon1010       Issue: #433 (umbrella), none filed |
+| `modelpolicy1010` | claude-sonnet-5 | 8 min |  |
+| `perdrawon1010` | claude-opus-5-5 | 36 min | Lane: perdrawon1010       Issue: #433 (umbrella), none filed |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 2 waiting, 1 running.
+- **Device queue:** 3 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -73,7 +74,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/perdrawon1010` | Lane: perdrawon1010       Issue: #433 (umbrella), none filed | `3757933cd4` | 2026-10-10 06:44 |
+| `lane/perdrawon1010` | Lane: perdrawon1010       Issue: #433 (umbrella), none filed | `2b684669d1` | 2026-10-10 07:41 |
 
 ## Recently landed on master
 
@@ -85,4 +86,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 usagemode1009: usage Low is a read-time cap, re-evaluated every tick (#433)
 
-_Updated 2026-10-10 07:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
