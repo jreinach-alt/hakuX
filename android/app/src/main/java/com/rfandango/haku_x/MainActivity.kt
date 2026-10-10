@@ -107,6 +107,13 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
     }
     android.util.Log.i("hakuX-build", "ubershader: ${if (ubershaderOn) "ON" else "OFF"} (#569)")
 
+    // #433: GPU surface reuse (HAKUX_SURFGPU), on by default. An
+    // HAKUX_SURFGPU line in env_vars is applied after this by
+    // xemu_android.cpp, so it still wins for testing.
+    val surfgpuOn = surfgpuEnabled(prefs)
+    SDLActivity.nativeSetenv("HAKUX_SURFGPU", if (surfgpuOn) "1" else "0")
+    android.util.Log.i("hakuX-build", "surfgpu: ${if (surfgpuOn) "ON" else "OFF"} (#433)")
+
     // Texture settings: per-game override takes precedence over global
     val texDumpEnabled = prefs.getString(PerGameSettingsManager.runtimeKey("texture_dump_enabled"), null)
       ?.let { it == "true" }
@@ -156,6 +163,18 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
     return prefs.getString(PerGameSettingsManager.runtimeKey("ubershader"), null)
       ?.let { it == "true" || it == "1" }
       ?: prefs.getBoolean("ubershader", true)
+  }
+
+  /**
+   * Whether this launch asks the emulator to reuse GPU surfaces
+   * (HAKUX_SURFGPU), on by default: the per-game override, then the global
+   * setting. An HAKUX_SURFGPU line in env_vars still wins, applied after
+   * this by xemu_android.cpp.
+   */
+  private fun surfgpuEnabled(prefs: android.content.SharedPreferences): Boolean {
+    return prefs.getString(PerGameSettingsManager.runtimeKey("surfgpu"), null)
+      ?.let { it == "true" || it == "1" }
+      ?: prefs.getBoolean("surfgpu", true)
   }
 
   /**

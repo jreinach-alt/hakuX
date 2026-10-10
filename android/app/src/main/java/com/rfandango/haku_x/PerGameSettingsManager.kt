@@ -29,6 +29,8 @@ object PerGameSettingsManager {
         "async_compile",
         // #569: on by default; MainActivity sets HAKUX_GPL=0 when it is off.
         "ubershader",
+        // #433: on by default; MainActivity sets HAKUX_SURFGPU accordingly.
+        "surfgpu",
         "submit_frames",
         "tier1_threshold",
         "simple_vblank",
