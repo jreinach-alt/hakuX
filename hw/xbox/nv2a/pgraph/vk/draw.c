@@ -2523,6 +2523,309 @@ static inline bool drawrec_shc_on(PGRAPHVkState *r)
 }
 
 /*
+ * lane.drawrec1010, Addendum 1: two probes that price a recorder thread
+ * before one is built (#433). Measurements only, default off, never meant
+ * to be turned on for play: NULLREC draws wrong pixels by design.
+ *
+ * HAKUX_PROBE_NULLREC=1, the ceiling. A draw keeps on this thread what a
+ * recorder design would keep: the method parse (untouched), the vertex
+ * attribute bind and the vertex-RAM sync, the remap and the index and
+ * inline-vertex copies into staging, the texture poll and upload, and every
+ * surface and finish path (the surface update at begin, the finishes, the
+ * frame rotation and its fence wait, which is the skew bound). It skips
+ * what the design would move: begin_pre_draw() (pipeline lookup, uniforms,
+ * descriptor sets) and the recording (begin_draw(), the vkCmd*, end_draw()).
+ * Clears are recorded as before. The frame period is the floor a perfect
+ * recorder thread could reach, less every GPU wait the dropped draws would
+ * have caused.
+ *
+ * HAKUX_PROBE_SNAPQ=1, the handoff. Every draw runs as before; first, the
+ * state a recorder needs to record it is copied out and enqueued to the
+ * render thread as an RCMD_DRAW, which its loop does not handle and frees.
+ * The copy is pgraph_vk_snapshot_state()'s RenderCommandSnapshot (the
+ * input state the tree's own RCMD_DRAW carries: register file, program,
+ * constants, lighting, attributes) plus the draw's arrays, elements or
+ * inline data, written to a ring as a recorder would, not malloc'd. It is
+ * the INPUT state on purpose: the reorder window's try_snapshot_*() copy
+ * the OUTPUT of begin_pre_draw() (pipeline, descriptor sets), which is the
+ * work a recorder moves off this thread, so they price a different
+ * handoff. The whole register file makes this an upper bound; a design
+ * that sends only what changed pays less of the copy and the same enqueue.
+ *
+ * Either switch, or HAKUX_PROBE_WAITS=1 alone, turns on the wait count:
+ * each pgraph_vk_finish() on this thread where it waits on the GPU, booked
+ * per frame. A point is a non-deferred finish (the render thread submits
+ * and waits the fence while this thread waits for it) or a rotation fence
+ * wait of PROBE_BLOCK_NS or more; mid-frame is any finish but FLIP_STALL
+ * and PRESENTING. One [probe1010] line per 60 flips.
+ */
+#define PROBE_BLOCK_NS    (100 * 1000)
+#define PROBE_RING_SIZE   (8 * 1024 * 1024)
+#define PROBE_NREASON     (VK_FINISH_REASON_STALLED + 1)
+
+static struct {
+    int on, nullrec, snapq;     /* -1 until read */
+    uint8_t *ring;
+    size_t ring_off;
+    unsigned int frame, log_frames, f_mid, f_max;
+    unsigned int hist[5];       /* frames with 0, 1, 2, 3, 4+ mid points */
+    /* per 60 flips */
+    uint64_t mid_n, mid_ns, flip_n, flip_ns;
+    uint64_t nd_n[PROBE_NREASON], nd_ns[PROBE_NREASON];
+    uint64_t rot_n, rot_blk, rot_ns;
+    uint64_t draws, null_draws;
+    uint64_t snap_n, snap_b, snap_t, copy_ns, enq_ns;
+} probe1010 = { .on = -1, .nullrec = -1, .snapq = -1 };
+
+static bool probe_env(const char *name)
+{
+    const char *e = getenv(name);
+    return e && e[0] && strcmp(e, "0");
+}
+
+static void probe_read_env(void)
+{
+    probe1010.nullrec = probe_env("HAKUX_PROBE_NULLREC");
+    probe1010.snapq = probe_env("HAKUX_PROBE_SNAPQ");
+    probe1010.on = probe1010.nullrec || probe1010.snapq ||
+                   probe_env("HAKUX_PROBE_WAITS");
+    probe1010.frame = g_nv2a_stats.frame_count;
+    if (probe1010.snapq) {
+        probe1010.ring = g_malloc(PROBE_RING_SIZE);
+    }
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                        "[probe1010] waits=%d nullrec=%d snapq=%d",
+                        probe1010.on, probe1010.nullrec, probe1010.snapq);
+#endif
+}
+
+static inline bool probe_on(void)
+{
+    if (unlikely(probe1010.on < 0)) {
+        probe_read_env();
+    }
+    return probe1010.on;
+}
+
+static inline bool probe_nullrec_on(void)
+{
+    return probe_on() && probe1010.nullrec;
+}
+
+static inline bool probe_snapq_on(void)
+{
+    return probe_on() && probe1010.snapq;
+}
+
+static const char *const probe_reason_name[PROBE_NREASON] = {
+    [VK_FINISH_REASON_VERTEX_BUFFER_DIRTY] = "vtx",
+    [VK_FINISH_REASON_SURFACE_CREATE] = "screate",
+    [VK_FINISH_REASON_SURFACE_DOWN] = "sdown",
+    [VK_FINISH_REASON_SURFACE_DOWN_FLUSH] = "sdflush",
+    [VK_FINISH_REASON_NEED_BUFFER_SPACE] = "buf",
+    [VK_FINISH_REASON_FRAMEBUFFER_DIRTY] = "fb",
+    [VK_FINISH_REASON_PRESENTING] = "present",
+    [VK_FINISH_REASON_FLIP_STALL] = "flip",
+    [VK_FINISH_REASON_FLUSH] = "flush",
+    [VK_FINISH_REASON_STALLED] = "stalled",
+};
+
+/* Close the frames since the last call, and log every 60. */
+static void probe_tick(void)
+{
+    unsigned int f = g_nv2a_stats.frame_count;
+    if (f == probe1010.frame) {
+        return;
+    }
+    unsigned int k = f - probe1010.frame;
+    probe1010.frame = f;
+    probe1010.hist[MIN(probe1010.f_mid, 4)]++;
+    probe1010.hist[0] += k - 1;
+    probe1010.f_max = MAX(probe1010.f_max, probe1010.f_mid);
+    probe1010.f_mid = 0;
+    probe1010.log_frames += k;
+    if (probe1010.log_frames < 60) {
+        return;
+    }
+#ifdef __ANDROID__
+    double nf = probe1010.log_frames;
+    char nd[256];
+    int o = 0;
+    nd[0] = '\0';
+    for (int i = 0; i < PROBE_NREASON && o < (int)sizeof(nd); i++) {
+        if (probe1010.nd_n[i]) {
+            o += snprintf(nd + o, sizeof(nd) - o, " %s=%.2f/%.2f",
+                          probe_reason_name[i] ? probe_reason_name[i] : "?",
+                          probe1010.nd_n[i] / nf, probe1010.nd_ns[i] / 1e6 / nf);
+        }
+    }
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+        "[probe1010] f=%u nullrec=%d snapq=%d"
+        " mid=%.2f/f %.2fms/f each=%.2fms flip=%.2f/f %.2fms/f"
+        " hist=%u/%u/%u/%u/%u max=%u"
+        " | nd n/f ms/f:%s"
+        " | rot=%.2f/f blk=%.2f/f %.2fms/f"
+        " | draws=%.0f/f null=%.0f/f"
+        " | snap=%.0f/f KB=%.1f copy_us=%.2f enq_us=%.2f",
+        probe1010.log_frames, probe1010.nullrec, probe1010.snapq,
+        probe1010.mid_n / nf, probe1010.mid_ns / 1e6 / nf,
+        probe1010.mid_n ? probe1010.mid_ns / 1e6 / probe1010.mid_n : 0.0,
+        probe1010.flip_n / nf, probe1010.flip_ns / 1e6 / nf,
+        probe1010.hist[0], probe1010.hist[1], probe1010.hist[2],
+        probe1010.hist[3], probe1010.hist[4], probe1010.f_max,
+        nd[0] ? nd : " none",
+        probe1010.rot_n / nf, probe1010.rot_blk / nf,
+        probe1010.rot_ns / 1e6 / nf,
+        probe1010.draws / nf, probe1010.null_draws / nf,
+        probe1010.snap_n / nf,
+        probe1010.snap_n ? probe1010.snap_b / 1024.0 / probe1010.snap_n : 0.0,
+        probe1010.snap_t ? probe1010.copy_ns / 1e3 / probe1010.snap_t : 0.0,
+        probe1010.snap_t ? probe1010.enq_ns / 1e3 / probe1010.snap_t : 0.0);
+#endif
+    probe1010.log_frames = 0;
+    probe1010.f_max = 0;
+    memset(probe1010.hist, 0, sizeof(probe1010.hist));
+    probe1010.mid_n = probe1010.mid_ns = 0;
+    probe1010.flip_n = probe1010.flip_ns = 0;
+    memset(probe1010.nd_n, 0, sizeof(probe1010.nd_n));
+    memset(probe1010.nd_ns, 0, sizeof(probe1010.nd_ns));
+    probe1010.rot_n = probe1010.rot_blk = probe1010.rot_ns = 0;
+    probe1010.draws = probe1010.null_draws = 0;
+    probe1010.snap_n = probe1010.snap_b = probe1010.snap_t = 0;
+    probe1010.copy_ns = probe1010.enq_ns = 0;
+}
+
+/*
+ * One finish on this thread: nd_ns is its non-deferred wait (-1 if it was
+ * deferred), rot_ns its rotation fence wait (-1 if the slot was idle).
+ */
+static void probe_finish_book(FinishReason reason, int64_t nd_ns,
+                              int64_t rot_ns)
+{
+    int64_t ns = 0;
+    bool point = false;
+
+    probe_tick();
+    if (nd_ns >= 0) {
+        probe1010.nd_n[reason]++;
+        probe1010.nd_ns[reason] += nd_ns;
+        ns += nd_ns;
+        point = true;
+    }
+    if (rot_ns >= 0) {
+        probe1010.rot_n++;
+        probe1010.rot_ns += rot_ns;
+        if (rot_ns >= PROBE_BLOCK_NS) {
+            probe1010.rot_blk++;
+            point = true;
+        }
+        ns += rot_ns;
+    }
+    if (!point) {
+        return;
+    }
+    if (reason == VK_FINISH_REASON_FLIP_STALL ||
+        reason == VK_FINISH_REASON_PRESENTING) {
+        probe1010.flip_n++;
+        probe1010.flip_ns += ns;
+    } else {
+        probe1010.mid_n++;
+        probe1010.mid_ns += ns;
+        probe1010.f_mid++;
+    }
+}
+
+/* SNAPQ: copy the draw's input state to the ring and hand it over. */
+static void probe_snapq(NV2AState *d)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    bool timed = (probe1010.snap_n++ & 7) == 0;    /* clock reads cost too */
+    int64_t t0 = timed ? get_clock() : 0;
+
+    size_t n_arr = pg->draw_arrays_length * sizeof(int32_t);
+    size_t n_el = pg->inline_elements_length * sizeof(uint32_t);
+    size_t n_ia = pg->inline_array_length * sizeof(uint32_t);
+    size_t n_ib1 = pg->inline_buffer_length * 4 * sizeof(float);
+    size_t n_ib = 0;
+    for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+        if (pg->vertex_attributes[i].inline_buffer_populated) {
+            n_ib += n_ib1;
+        }
+    }
+    size_t head = ROUND_UP(sizeof(RenderCommandSnapshot), 64);
+    size_t need = ROUND_UP(head + 2 * n_arr + n_el + n_ia + n_ib, 64);
+    if (need > PROBE_RING_SIZE) {
+        return;
+    }
+    if (probe1010.ring_off + need > PROBE_RING_SIZE) {
+        probe1010.ring_off = 0;
+    }
+    uint8_t *p = probe1010.ring + probe1010.ring_off;
+    probe1010.ring_off += need;
+
+    RenderCommandSnapshot *snap = (RenderCommandSnapshot *)p;
+    pgraph_vk_snapshot_state(pg, snap);
+    p += head;
+
+    RenderCommand *cmd = g_new0(RenderCommand, 1);
+    cmd->type = RCMD_DRAW;
+    cmd->draw.snap = snap;
+    cmd->draw.draw_arrays_length = pg->draw_arrays_length;
+    cmd->draw.inline_elements_length = pg->inline_elements_length;
+    cmd->draw.inline_array_length = pg->inline_array_length;
+    cmd->draw.inline_buffer_length = pg->inline_buffer_length;
+    cmd->draw.draw_arrays_prevent_connect = pg->draw_arrays_prevent_connect;
+    cmd->draw.draw_arrays_start = (int32_t *)p;
+    memcpy(p, pg->draw_arrays_start, n_arr);
+    p += n_arr;
+    cmd->draw.draw_arrays_count = (int32_t *)p;
+    memcpy(p, pg->draw_arrays_count, n_arr);
+    p += n_arr;
+    cmd->draw.inline_elements = (uint32_t *)p;
+    memcpy(p, pg->inline_elements, n_el);
+    p += n_el;
+    cmd->draw.inline_array = (uint32_t *)p;
+    memcpy(p, pg->inline_array, n_ia);
+    p += n_ia;
+    for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+        if (pg->vertex_attributes[i].inline_buffer_populated) {
+            memcpy(p, pg->vertex_attributes[i].inline_buffer, n_ib1);
+            p += n_ib1;
+        }
+    }
+
+    int64_t t1 = timed ? get_clock() : 0;
+    pgraph_vk_render_thread_enqueue(r, cmd);
+    if (timed) {
+        probe1010.snap_t++;
+        probe1010.copy_ns += t1 - t0;
+        probe1010.enq_ns += get_clock() - t1;
+    }
+    probe1010.snap_b += need;
+}
+
+/*
+ * NULLREC: what a skipped draw keeps of begin_pre_draw(), the texture poll
+ * and upload (as create_pipeline() and the fast paths gate it).
+ */
+static void probe_nullrec_pre(PGRAPHState *pg)
+{
+    NV2AState *d = container_of(pg, NV2AState, pgraph);
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    pgraph_vk_poll_bound_textures(d);
+    if (pg->texture_state_gen != r->last_texture_state_gen ||
+        r->texture_vram_gen != r->last_texture_vram_gen) {
+        pgraph_vk_bind_textures(d);
+        r->last_texture_state_gen = pg->texture_state_gen;
+        r->last_texture_vram_gen = r->texture_vram_gen;
+    }
+    probe1010.null_draws++;
+}
+
+/*
  * lane.drawrec1010's draw census (HAKUX_DRAWCENSUS=1; drawcensus_post()):
  * which way the draw went. Stored on every draw, switch or not -- a byte
  * store each, which testing the switch would not undercut -- and read only
@@ -5065,6 +5368,9 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
     assert(r->debug_depth == 0);
 
     int deferred_frame = -1;
+    /* lane.drawrec1010 probes: this thread's GPU waits, -1 for none */
+    bool probe_w = probe_on() && !r->is_render_thread_context;
+    int64_t probe_nd = -1, probe_rot = -1;
 
     if (r->in_command_buffer) {
         nv2a_profile_inc_counter(finish_reason_to_counter_enum[finish_reason]);
@@ -5297,7 +5603,11 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                 if (unlock) {
                     pgraph_lock_release_for_fence(pg);
                 }
+                int64_t probe_t0 = probe_w ? get_clock() : 0;
                 qemu_event_wait(&finish_event);
+                if (probe_w) {
+                    probe_nd = get_clock() - probe_t0;
+                }
                 if (unlock) {
                     pgraph_lock_retake_after_fence(pg);
                 }
@@ -5364,9 +5674,13 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
             r->frame_enqueued[next_frame] = false;
 
             if (qatomic_read(&r->frame_submitted[next_frame])) {
+                int64_t probe_t0 = probe_w ? get_clock() : 0;
                 VK_CHECK(vkWaitForFences(r->device, 1,
                                          &r->frame_fences[next_frame],
                                          VK_TRUE, UINT64_MAX));
+                if (probe_w) {
+                    probe_rot = get_clock() - probe_t0;
+                }
                 gpu_ts_readback(r, next_frame);
                 qatomic_set(&r->frame_submitted[next_frame], false);
 
@@ -5495,6 +5809,10 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
 #endif
 
         NV2A_PHASE_TIMER_END(finish_fence);
+
+        if (probe_w) {
+            probe_finish_book(finish_reason, probe_nd, probe_rot);
+        }
 
         if (check_budget) {
             pgraph_vk_check_memory_budget(pg);
@@ -8954,6 +9272,13 @@ void pgraph_vk_draw_end(NV2AState *d)
         return;
     }
 
+    if (unlikely(probe_on())) {
+        probe1010.draws++;
+        if (probe1010.snapq) {
+            probe_snapq(d);
+        }
+    }
+
     if (g_xemu_draw_reorder &&
         (pg->draw_arrays_length || pg->inline_elements_length) && !pg->clearing) {
         ReorderWindow *w = &r->reorder_window;
@@ -10180,7 +10505,10 @@ static void flush_draw_one_pass(NV2AState *d)
         return;
     }
 
-    if (!r->pipeline_binding) {
+    /* NULLREC binds no pipeline, so it does not need one */
+    bool nullrec = probe_nullrec_on();
+
+    if (!r->pipeline_binding && !nullrec) {
         /* Pipeline not available (cache exhausted or async compile pending).
          * Skip this draw to avoid crashing in begin_pre_draw/begin_draw. */
         OPT_STAT_INC(draws_skipped_no_pipeline);
@@ -10199,6 +10527,12 @@ static void flush_draw_one_pass(NV2AState *d)
          */
         NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
         return;
+    }
+
+    if (nullrec) {
+        /* begin_pre_draw() would; a buffer-space finish below then submits
+         * and resets the staging the copies need, as with the switch off */
+        pgraph_vk_ensure_command_buffer(pg);
     }
 
     r->num_vertex_ram_buffer_syncs = 0;
@@ -10283,6 +10617,17 @@ static void flush_draw_one_pass(NV2AState *d)
         }
         NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
+        if (nullrec) {
+            probe_nullrec_pre(pg);
+            copy_remapped_attributes_to_inline_buffer(pg, remap, 0,
+                                                      max_element);
+            if (prim_rw.num_indices > 0) {
+                pgraph_vk_update_index_buffer(
+                    pg, prim_rw.indices,
+                    prim_rw.num_indices * sizeof(uint32_t));
+            }
+            goto draw_arrays_done;
+        }
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto draw_arrays_done;
@@ -10392,6 +10737,13 @@ draw_arrays_done:
         VertexBufferRemap remap = remap_unaligned_attributes(pg, max_element + 1);
         NV2A_PHASE_TIMER_END_EXCL(draw_vtx_sync);
 
+        if (nullrec) {
+            probe_nullrec_pre(pg);
+            copy_remapped_attributes_to_inline_buffer(pg, remap, 0,
+                                                      max_element + 1);
+            pgraph_vk_update_index_buffer(pg, draw_indices, index_data_size);
+            goto inline_elements_done;
+        }
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto inline_elements_done;
@@ -10456,6 +10808,17 @@ inline_elements_done:
         }
         NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
+        if (nullrec) {
+            probe_nullrec_pre(pg);
+            pgraph_vk_update_vertex_inline_buffer(
+                pg, data, sizes, r->num_active_vertex_attribute_descriptions);
+            if (prim_rw.num_indices > 0) {
+                pgraph_vk_update_index_buffer(
+                    pg, prim_rw.indices,
+                    prim_rw.num_indices * sizeof(uint32_t));
+            }
+            goto inline_buffer_done;
+        }
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto inline_buffer_done;
@@ -10535,6 +10898,18 @@ inline_buffer_done:
         }
         NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
+        if (nullrec) {
+            probe_nullrec_pre(pg);
+            void *ia_data = pg->inline_array;
+            pgraph_vk_update_vertex_inline_buffer(pg, &ia_data,
+                                                  &inline_array_data_size, 1);
+            if (prim_rw.num_indices > 0) {
+                pgraph_vk_update_index_buffer(
+                    pg, prim_rw.indices,
+                    prim_rw.num_indices * sizeof(uint32_t));
+            }
+            goto inline_array_done;
+        }
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto inline_array_done;
