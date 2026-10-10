@@ -88,6 +88,8 @@ static struct {
     txw.n[TXW_##k]++; \
 } while (0)
 
+static void tsc_log_window(unsigned int frames);
+
 static void txw_log_window(PGRAPHState *pg)
 {
     int64_t now = nv2a_clock_ns();
@@ -122,6 +124,7 @@ static void txw_log_window(PGRAPHState *pg)
 #undef TXW_FMT
 #undef TXW_N
 #undef TXW_MS
+    tsc_log_window(frames);
     memset(&txw, 0, sizeof(txw));
     txw.frame0 = pg->frame_time;
     txw.t0 = now;
@@ -1498,13 +1501,12 @@ static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
  * logged with both shapes, which is what a GPU-side path for that reason has
  * to convert between.
  */
-static void txdl_count(const SurfaceBinding *surface,
-                       const TextureShape *shape)
+static const char *const txdl_names[TXDL__N] = {
+    "levels", "dim", "cube", "pitch", "swz", "cvt", "bpp", "upl", "oth",
+};
+
+static int txdl_why(const SurfaceBinding *surface, const TextureShape *shape)
 {
-    static const char *const names[TXDL__N] = {
-        "levels", "dim", "cube", "pitch", "swz", "cvt", "bpp", "upl", "oth",
-    };
-    static int logged[TXDL__N];
     BasicColorFormatInfo f = pgraph_get_color_format_info(shape->color_format);
     int why;
 
@@ -1528,15 +1530,25 @@ static void txdl_count(const SurfaceBinding *surface,
     } else {
         why = TXDL_BPP;
     }
+    return why;
+}
+
+static void txdl_count(const SurfaceBinding *surface,
+                       const TextureShape *shape)
+{
+    static int logged[TXDL__N];
+    int why = txdl_why(surface, shape);
+
     g_opt_stats.txr_why[why]++;
 
 #ifdef __ANDROID__
+    BasicColorFormatInfo f = pgraph_get_color_format_info(shape->color_format);
     if (logged[why] < 4) {
         logged[why]++;
         __android_log_print(ANDROID_LOG_INFO, "hakuX",
             "[txdl794] why=%s surf %ux%u pitch%u swz%d color%d bpp%u "
             "upl%d | tex %ux%u pitch%u levels%u cube%d fmt0x%x lin%d bpp%u",
-            names[why], surface->width, surface->height, surface->pitch,
+            txdl_names[why], surface->width, surface->height, surface->pitch,
             (int)surface->swizzle, (int)surface->color,
             surface->host_fmt.host_bytes_per_pixel,
             (int)surface->upload_pending, shape->width, shape->height,
@@ -1544,9 +1556,275 @@ static void txdl_count(const SurfaceBinding *surface,
             shape->color_format, (int)f.linear, f.bytes_per_pixel);
     }
 #else
-    (void)names;
     (void)logged;
 #endif
+}
+
+/*
+ * lane.texscan1010, step 1: WHICH surfaces create_texture() downloads, and
+ * where each one sits in the texture it is downloaded for. NFS Most Wanted's
+ * race start pays one synchronous range completion a frame for about four
+ * scan downloads (txr scdl240 a 60-flip window) plus a cube-base download on
+ * every other frame (txdl cube30), and nothing said what they were.
+ *
+ * Every download the SDL block and the range scan are about to make is
+ * classified against the texture's layout: the base (offset 0, with the s2t
+ * refusal reason), a whole cube face whose shape is the texture's (face),
+ * one that is not (facex), a mip level (mip), somewhere else inside the
+ * texture (sub), or a surface reaching outside it (part). The walk uses the
+ * scan's own predicates (vk/surface.c, pgraph_vk_download_surfaces_in_range_
+ * if_dirty) and its count is checked against the scan's real one (miss).
+ * Each distinct texture/surface pair is printed once when first seen, with
+ * both shapes; each 60-flip window prints how many of each it downloaded,
+ * and the wall time of the scans that downloaded against those that did not.
+ */
+enum { TSC_SDL, TSC_SCAN };
+enum { TSC_ACT, TSC_SHELF, TSC_INV };
+enum { TSC_BASE, TSC_FACE, TSC_FACEX, TSC_MIP, TSC_SUB, TSC_PART, TSC__NC };
+
+typedef struct TscSig {
+    uint8_t site, list, cls, why;
+    int8_t face, level;
+    uint32_t t_addr, t_len, s_addr, s_size;
+    int32_t off;
+    uint16_t tw, th, td, tpitch, sw, sh, spitch;
+    uint8_t tfmt, tlevels, tcube, tlin, tdim, tborder;
+    uint8_t sfmt, sswz, scolor, sbpp;
+} TscSig;
+
+#define TSC_MAX 64
+static struct {
+    TscSig sig[TSC_MAX];
+    bool used[TSC_MAX];
+    uint32_t n[TSC_MAX];     /* this window */
+    uint8_t idle[TSC_MAX];   /* windows since last seen */
+    uint32_t overflow;
+    uint32_t scans, dlscans, dls, sdl, miss;
+    uint32_t cls[TSC__NC];
+    int64_t dlscan_ns, nodl_ns;
+    uint32_t nodl_slow;      /* scans with nothing to download, over 0.5 ms */
+} tsc;
+
+static int tsc_classify(PGRAPHState *pg, const SurfaceBinding *s,
+                        const TextureShape *st, int64_t off, size_t t_len,
+                        int *face, int *level)
+{
+    BasicColorFormatInfo f = pgraph_get_color_format_info(st->color_format);
+    *face = -1;
+    *level = -1;
+    if (off < 0 || off + (int64_t)s->size > (int64_t)t_len) {
+        return TSC_PART;
+    }
+    size_t within = off;
+    if (st->cubemap) {
+        size_t lsz = get_cubemap_layer_size(pg, *st);
+        if (lsz) {
+            *face = off / lsz;
+            within = off % lsz;
+        }
+        if (within == 0) {
+            *level = 0;
+            bool same = s->color && s->width == st->width &&
+                        s->height == st->height &&
+                        s->swizzle == !f.linear &&
+                        s->host_fmt.host_bytes_per_pixel == f.bytes_per_pixel;
+            return same ? TSC_FACE : TSC_FACEX;
+        }
+    }
+    bool compressed = pgraph_is_texture_format_compressed(pg, st->color_format);
+    unsigned int block = st->color_format ==
+        NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5 ? 8 : 16;
+    unsigned int w = st->width, h = st->height;
+    if (!f.linear && st->border) {
+        w = MAX(16, w * 2);
+        h = MAX(16, h * 2);
+    }
+    size_t lo = 0;
+    for (int l = 0; l < st->levels; l++) {
+        if (lo == within) {
+            *level = l;
+            return l == 0 ? TSC_BASE : TSC_MIP;
+        }
+        lo += compressed ? (size_t)MAX(w / 4, 1) * MAX(h / 4, 1) * block :
+                           (size_t)w * h * f.bytes_per_pixel *
+                               MAX(st->depth, 1);
+        w = MAX(w / 2, 1);
+        h = MAX(h / 2, 1);
+    }
+    return TSC_SUB;
+}
+
+static void tsc_note(PGRAPHState *pg, int site, int list,
+                     const SurfaceBinding *s, const TextureShape *st,
+                     hwaddr t_addr, size_t t_len)
+{
+    static const char *const cls_names[TSC__NC] = {
+        "base", "face", "facex", "mip", "sub", "part",
+    };
+    static const char *const list_names[] = { "act", "shelf", "inv" };
+    BasicColorFormatInfo f = pgraph_get_color_format_info(st->color_format);
+    TscSig k;
+    int face, level;
+
+    memset(&k, 0, sizeof(k));
+    k.site = site;
+    k.list = list;
+    k.off = (int32_t)((int64_t)s->vram_addr - (int64_t)t_addr);
+    k.cls = tsc_classify(pg, s, st, k.off, t_len, &face, &level);
+    k.face = face;
+    k.level = level;
+    k.why = k.off == 0 ? txdl_why(s, st) : 0xff;
+    k.t_addr = t_addr;
+    k.t_len = t_len;
+    k.s_addr = s->vram_addr;
+    k.s_size = s->size;
+    k.tw = st->width;
+    k.th = st->height;
+    k.td = st->depth;
+    k.tpitch = st->pitch;
+    k.sw = s->width;
+    k.sh = s->height;
+    k.spitch = s->pitch;
+    k.tfmt = st->color_format;
+    k.tlevels = st->levels;
+    k.tcube = st->cubemap;
+    k.tlin = f.linear;
+    k.tdim = st->dimensionality;
+    k.tborder = st->border;
+    k.sfmt = s->color ? s->shape.color_format : s->shape.zeta_format;
+    k.sswz = s->swizzle;
+    k.scolor = s->color;
+    k.sbpp = s->host_fmt.host_bytes_per_pixel;
+
+    tsc.cls[k.cls]++;
+    int free_slot = -1;
+    for (int i = 0; i < TSC_MAX; i++) {
+        if (!tsc.used[i]) {
+            if (free_slot < 0) {
+                free_slot = i;
+            }
+            continue;
+        }
+        if (!memcmp(&tsc.sig[i], &k, sizeof(k))) {
+            tsc.n[i]++;
+            tsc.idle[i] = 0;
+            return;
+        }
+    }
+    if (free_slot < 0) {
+        tsc.overflow++;
+        return;
+    }
+    tsc.sig[free_slot] = k;
+    tsc.used[free_slot] = true;
+    tsc.n[free_slot] = 1;
+    tsc.idle[free_slot] = 0;
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX",
+        "[tsc] new #%d %s %s %s face%d lv%d s2t=%s | tex @%x len%u fmt0x%x "
+        "%ux%ux%u dim%u lin%d pitch%u levels%u cube%d border%d | surf @%x "
+        "size%u fmt0x%x %ux%u pitch%u swz%d color%d bpp%u off%+d",
+        free_slot, site == TSC_SDL ? "sdl" : "scan", list_names[list],
+        cls_names[k.cls], k.face, k.level,
+        k.why == 0xff ? "-" : txdl_names[k.why], k.t_addr, k.t_len, k.tfmt,
+        k.tw, k.th, k.td, k.tdim, k.tlin, k.tpitch, k.tlevels, k.tcube,
+        k.tborder, k.s_addr, k.s_size, k.sfmt, k.sw, k.sh, k.spitch, k.sswz,
+        k.scolor, k.sbpp, k.off);
+#else
+    (void)cls_names;
+    (void)list_names;
+#endif
+}
+
+static bool tsc_overlaps(const SurfaceBinding *s, hwaddr start, size_t len)
+{
+    return !(s->vram_addr >= start + len || start >= s->vram_addr + s->size);
+}
+
+/* What pgraph_vk_download_surfaces_in_range_if_dirty() is about to download */
+static int tsc_scan_walk(PGRAPHState *pg, const TextureShape *st,
+                         hwaddr t_addr, size_t t_len)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    SurfaceBinding *s;
+    int n = 0;
+
+    QTAILQ_FOREACH(s, &r->surfaces, entry) {
+        if (s->draw_dirty && tsc_overlaps(s, t_addr, t_len)) {
+            tsc_note(pg, TSC_SCAN, TSC_ACT, s, st, t_addr, t_len);
+            n++;
+        }
+    }
+    QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
+        if (s->shelved_dirty && s->draw_dirty && s->width && s->height &&
+            tsc_overlaps(s, t_addr, t_len)) {
+            tsc_note(pg, TSC_SCAN, TSC_SHELF, s, st, t_addr, t_len);
+            n++;
+        }
+    }
+    QTAILQ_FOREACH(s, &r->invalid_surfaces, entry) {
+        if (s->draw_dirty && s->width && s->height &&
+            tsc_overlaps(s, t_addr, t_len)) {
+            tsc_note(pg, TSC_SCAN, TSC_INV, s, st, t_addr, t_len);
+            n++;
+        }
+    }
+    return n;
+}
+
+static void tsc_scan_done(int walked, int downloaded, int64_t ns)
+{
+    tsc.scans++;
+    tsc.dls += downloaded;
+    if (walked != downloaded) {
+        tsc.miss++;
+    }
+    if (downloaded) {
+        tsc.dlscans++;
+        tsc.dlscan_ns += ns;
+    } else {
+        tsc.nodl_ns += ns;
+        if (ns > 500000) {
+            tsc.nodl_slow++;
+        }
+    }
+}
+
+static void tsc_log_window(unsigned int frames)
+{
+    char buf[640];
+    int len = snprintf(buf, sizeof(buf),
+        "[tsc] f%u scans%u dlscans%u dl%u sdl%u miss%u dlscan%.2fms "
+        "nodl%.2fms slow%u ovf%u cls[base%u face%u facex%u mip%u sub%u "
+        "part%u] |",
+        frames, tsc.scans, tsc.dlscans, tsc.dls, tsc.sdl, tsc.miss,
+        tsc.dlscan_ns / 1e6 / frames, tsc.nodl_ns / 1e6 / frames,
+        tsc.nodl_slow, tsc.overflow, tsc.cls[TSC_BASE], tsc.cls[TSC_FACE],
+        tsc.cls[TSC_FACEX], tsc.cls[TSC_MIP], tsc.cls[TSC_SUB],
+        tsc.cls[TSC_PART]);
+    for (int i = 0; i < TSC_MAX; i++) {
+        if (!tsc.used[i]) {
+            continue;
+        }
+        if (tsc.n[i] && len < (int)sizeof(buf) - 16) {
+            len += snprintf(buf + len, sizeof(buf) - len, " #%d:%u", i,
+                            tsc.n[i]);
+        }
+        /* a pair unseen for three windows frees its slot for the next */
+        if (!tsc.n[i] && ++tsc.idle[i] >= 3) {
+            tsc.used[i] = false;
+        }
+        tsc.n[i] = 0;
+    }
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall", "%s", buf);
+#else
+    fprintf(stderr, "[hakuX-stall] %s\n", buf);
+#endif
+    tsc.overflow = tsc.scans = tsc.dlscans = tsc.dls = tsc.sdl = 0;
+    tsc.miss = tsc.nodl_slow = 0;
+    tsc.dlscan_ns = tsc.nodl_ns = 0;
+    memset(tsc.cls, 0, sizeof(tsc.cls));
 }
 #endif
 
@@ -2057,7 +2335,10 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
         TEX_PERF(g_opt_stats.txr_dl++;
                  g_opt_stats.txr_dl_b += (uint64_t)surface->pitch * surface->height;
                  tx_srf = true;
-                 txdl_count(surface, &state));
+                 txdl_count(surface, &state);
+                 tsc.sdl++;
+                 tsc_note(pg, TSC_SDL, TSC_ACT, surface, &state,
+                          texture_vram_offset, texture_length));
         TXW_BEGIN(SDL);
         pgraph_vk_surface_download_if_dirty(d, surface);
         TXW_END(SDL);
@@ -2104,6 +2385,9 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
             /* the scan's downloads are counted where they happen, in
              * vk/surface.c; this call's share is the difference */
             int tx_dl0 = g_opt_stats.dif_other + g_opt_stats.sd_shelved_lazy_dl;
+            int tsc_walked = tsc_scan_walk(pg, &state, texture_vram_offset,
+                                           texture_length);
+            int64_t tsc_t0 = nv2a_clock_ns();
 #endif
             TXW_BEGIN(SCAN);
             bool had_overlap = pgraph_vk_download_surfaces_in_range_if_dirty(
@@ -2112,7 +2396,11 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
             TEX_PERF(g_opt_stats.txr_sc++;
                      g_opt_stats.txr_scdl += g_opt_stats.dif_other +
                                              g_opt_stats.sd_shelved_lazy_dl -
-                                             tx_dl0);
+                                             tx_dl0;
+                     tsc_scan_done(tsc_walked,
+                                   g_opt_stats.dif_other +
+                                       g_opt_stats.sd_shelved_lazy_dl - tx_dl0,
+                                   nv2a_clock_ns() - tsc_t0));
             r->tex_surf_range_cache[texture_idx].vram_addr = texture_vram_offset;
             r->tex_surf_range_cache[texture_idx].length = texture_length;
             r->tex_surf_range_cache[texture_idx].had_overlap = had_overlap;
