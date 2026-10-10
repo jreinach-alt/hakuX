@@ -2225,7 +2225,8 @@ note = "STARTED lane.local 2026-10-10 07:55 PDT (Sonnet, measurement, FPS priori
 issues = ["433"]
 standing = false
 files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/vk/surface.c", "docs/lanes/texscan1010/**", "docs/testing/predictions/texscan1010-*.json"]
-note = "STARTED lane.local 2026-10-10 09:01 PDT (Opus, engineering, FPS priority): create_texture()'s surface-range scan (texture.c ~2109) waits on 1 GPU finish + 4 surface downloads per frame at the NFS MW race start, 4.4 ms/frame, untouched by surfgpu. Name the downloads, then a GPU-side copy behind HAKUX_TEXSCAN=1; pixel suites byte-identical; prediction first; NFS A/B 2 runs per arm, MC2 second."
+released = ["hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/vk/surface.c", "docs/lanes/texscan1010/**", "docs/testing/predictions/texscan1010-*.json"]
+note = "STARTED lane.local 2026-10-10 09:01 PDT (Opus, engineering, FPS priority): create_texture()'s surface-range scan (texture.c ~2109) waits on 1 GPU finish + 4 surface downloads per frame at the NFS MW race start, 4.4 ms/frame, untouched by surfgpu. Name the downloads, then a GPU-side copy behind HAKUX_TEXSCAN=1; pixel suites byte-identical; prediction first; NFS A/B 2 runs per arm, MC2 second. || RELEASED AT READY (lane.local 2026-10-10 11:39 PDT): State: ready at 227a161cc2, default-off; NFS start slower alone (report fence, see PR.md), default-on decided by lane.reportasync1010's both-switch pair."
 
 [lane.nfsframe1010]
 issues = ["433"]
