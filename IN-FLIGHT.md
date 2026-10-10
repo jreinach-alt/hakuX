@@ -73,13 +73,12 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-10 Lane: restoreleak1009            Issue: #433
 - 2026-10-10 boardgateenv1009 -- the board push gate stages master's docs/testing into the pushing tree's index (#433, 0.5)
 - 2026-10-10 surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5)
 - 2026-10-10 surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5)
 - 2026-10-09 usagemode1009: usage Low is a read-time cap, re-evaluated every tick (#433)
-- 2026-10-09 fpstelemetry1008b: the four titles lane A could not measure -- NFS Most Wanted, Midnight Club II, Fantastic 4, Dino Crisis 3 (#433)
-- 2026-10-09 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
 
-_Updated 2026-10-10 06:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 06:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
