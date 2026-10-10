@@ -139,3 +139,26 @@ Wrote `docs/lanes/surfgpudefault1009/WAITING` naming this id and its pass bar, p
 lane.surfgpu1009's own section 9's lesson (a PR comment is not polled offline; a `WAITING` file is what jam-duty
 and lane.local's sweep actually read). Stopping here: nothing left in the brief that doesn't wait on this run's
 result.
+
+## Attempt 3 (resumed): why attempts 1-2 didn't finish, and the WAITING run's result
+
+Attempt 1 ended its turn mid-background-build and the session (and the build) died with it -- see the "Build"
+section above, which attempt 2 already explained. Attempt 2 then finished the brief in full: merge, settings
+plumbing, Kotlin compile, device proof A/B, PR.md, and the fold-head confirmation run queued and WAITING'd
+(commit `4a8b6b8f5e`) -- plus one more commit (`233cf99340`) rewriting WAITING's body to `run <id>` because the
+prose-only version had no line `lanewaker.py`'s grammar recognized and would never auto-resume. Both attempts
+"didn't finish" only in the sense that each ended its own session with a device run still outstanding; nothing
+in the brief itself was left undone, and no rework was needed here.
+
+This session (attempt 3) found `dispatch/results/1-1791617969-surfgpudefault1009-3278970/result.json` already
+present (`ref: "52f32bb2c8"`, this lane's final head, matching). Checked it against the WAITING file's own pass
+bar:
+
+- `[surfgpu] on` -- present (1x), at 00:54:27.978.
+- `hold=`/`frames=` post-`mark gameplay` (line 8259 of `logcat.txt`) -- 221/241 `[surfgpu] frames=` samples show
+  `hold=60` against `frames=60` (1.00/flip); the remaining 20 show `hold=58` or `59` (brief sampling jitter, not
+  a regression -- arm A's own NOTES section 4 saw the same shape).
+- gfps post-mark (n=241): median 47, mean 45.5 -- matches arm A's 47.0/44.9 and clears the >= 40 bar.
+
+**PASS.** Removed `WAITING`; the fold-head confirmation this lane's step 6 asked for is in hand, and nothing in
+the brief remains open. `State: ready` in PR.md stands.
