@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `reportasync1010` | claude-opus-5-5 | 14 min | reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5) |
+| `gpupass1010` | claude-sonnet-5 | 9 min | gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 10 waiting, 1 running.
+- **Device queue:** 8 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -73,10 +73,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/reportasync1010` | reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5) | `96d2ef350e` | 2026-10-10 14:27 |
+| `lane/gpupass1010` | gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5) | `7c2362db75` | 2026-10-10 12:56 |
 
 ## Recently landed on master
 
+- 2026-10-10 lane.usage24h1009: project the week's usage from the trailing 24h burn rate, not the trailing 6h (#433)
 - 2026-10-10 lane.fgrace1010 -- the display guard's "guest exit mid-route" leg loses a race and fails folds (#433, 0.5)
 - 2026-10-10 lane.fleetflush1010 -- fleet.py's FAIL lines land mid-line when stdout and stderr share a file (#433, 0.5)
 - 2026-10-10 lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download, behind HAKUX_TEXSCAN=1 (#433, 0.5)
@@ -88,6 +89,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5)
 - 2026-10-10 Lane: nightlywrap1010            Issue: none (dispatched directly by lane.local, #433 umbrella)
 - 2026-10-10 lane.lanepath1009: lane.sh gives each lane unit a shim-first PATH with --setenv (#433, 0.5)
-- 2026-10-10 ghlive1010 -- AGENTS.md: GitHub is up
 
-_Updated 2026-10-10 14:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 14:44 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
