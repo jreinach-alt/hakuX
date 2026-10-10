@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `surfgpu1009` | claude-opus-5-5 | 1h 15m | surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433,  |
+| `nightlynotes1009` | claude-sonnet-5 | 3 min | nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `2026-10-10T01:24:53Z`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 5 waiting, 1 running.
+- **Device queue:** 2 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-07`, build `c6298a383d`.
 
 ## 0.5 release: Playable titles
@@ -73,7 +73,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/surfgpu1009` | surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433, 0.5) | `50892613de` | 2026-10-09 18:10 |
+| `lane/nightlynotes1009` | nightlynotes1009: list offline folds, and publish nothing when nothing changed (#433, 0.5) | `c61abb39ce` | 2026-10-09 17:08 |
 
 ## Recently landed on master
 
@@ -90,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-07 gpunonrender: GMEM vs sysmem on the replay-bound titles, census on
 - 2026-10-06 dispatchgate1006: a generated title registry and one admit() gate between "decide to run it" and a handheld (shadow mode)
 
-_Updated 2026-10-09 18:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-09 18:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
