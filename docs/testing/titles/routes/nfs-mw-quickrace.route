@@ -1,10 +1,14 @@
 # state: first-run   (NFS MW has no golden profile, so every run is first-run)
 # Need for Speed: Most Wanted (4541007B), lane.perdrawon1010: the race start the owner measured on 10-09.
 # Quick Race -> Custom Race -> Sprint, default track (Diamond & Union), Opponents 2 (3 racers), Fiat Grande
-# Punto, Auto. Menus read from frames (pass 1 1-1791641530-perdrawon1010-3932477, pass 2
-# 1-1791642016-perdrawon1010-4029199). Each start: `mark gameplay` (first) or `mark go<N>` (restarts) at GO,
-# RT held from the countdown through ~11 s of racing, then STANDINGS (d-pad up) -> Y Restart -> OK (the
-# prompt opens on Cancel) for the next start. EXPLORATION pass 3: shots before each GO time the reload.
+# Punto, Auto: every menu step read from frames (passes 1-3, 1-1791641530-perdrawon1010-3932477,
+# 1-1791642016-perdrawon1010-4029199, 1-1791643217-perdrawon1010-95991). Twelve race starts per boot: the
+# first after the menus, eleven more by STANDINGS (d-pad up) -> Y Restart -> OK (the prompt opens on Cancel).
+# Timing, from pass 3's frames: GO comes ~21 s after the transmission A (21.0 and 21.6 s in passes 3 and 2)
+# and ~4.1 s after a restart's OK (4.2, 4.2, 4.0 s; a restart does not reload, the countdown runs at once).
+# Each start holds RT (gas) from before GO, writes `mark gameplay` (first) or `mark go<N>` ~1.5 s BEFORE GO
+# so the mark's screencap is done before the race starts, drives ~11 s past GO, shoots a frame, lets go.
+# startread.py (docs/lanes/perdrawon1010/) reads the 10 s after GO as mark + 1.5 .. mark + 12.
 wait 13.3
 shot s01-publisher_logo
 # step 1 [publisher_logo] This is an early boot logo animation (green polygon emblem on white), before any title or menu. No p
@@ -134,7 +138,7 @@ wait 3
 # transmission prompt opens on Auto
 shot cr-auto
 press A 120
-# start 1: frames every ~2.5 s until the guessed GO, RT from ~3.5 s before it
+# start 1: frames every ~2.5 s through the load and countdown, RT from ~3.5 s before GO
 wait 2
 shot s1-02
 wait 2
@@ -149,14 +153,14 @@ wait 2
 shot s1-12
 wait 2
 shot s1-14
-wait 2.0
+wait 0.5
 axis RT max
-wait 3.5
+wait 1.9
 mark gameplay
-wait 11
+wait 12.4
 shot s1-g11
 axis RT min
-# restart: STANDINGS (d-pad up), Y Restart, the prompt opens on Cancel: left to OK, A
+# start 2: STANDINGS (d-pad up), Y Restart, left to OK, A; GO ~4.1 s later, mark ~1.5 s before it
 axis HATY min
 axis HATY mid
 wait 1.5
@@ -168,35 +172,14 @@ axis HATX mid
 wait 1.2
 shot r2-ok
 press A 120
-# start 2: frames every ~2.5 s until the guessed GO, RT from ~3.5 s before it
-wait 2
-shot s2-02
-wait 2
-shot s2-04
-wait 2
-shot s2-06
-wait 2
-shot s2-08
-wait 2
-shot s2-10
-wait 2
-shot s2-12
-wait 2
-shot s2-14
-wait 2
-shot s2-16
-wait 2
-shot s2-18
-wait 2
-shot s2-20
-wait 0.5
+wait 0.8
 axis RT max
-wait 3.5
+wait 1.3
 mark go2
-wait 11
+wait 12.0
 shot s2-g11
 axis RT min
-# restart: STANDINGS (d-pad up), Y Restart, the prompt opens on Cancel: left to OK, A
+# start 3: STANDINGS (d-pad up), Y Restart, left to OK, A; GO ~4.1 s later, mark ~1.5 s before it
 axis HATY min
 axis HATY mid
 wait 1.5
@@ -208,35 +191,14 @@ axis HATX mid
 wait 1.2
 shot r3-ok
 press A 120
-# start 3: frames every ~2.5 s until the guessed GO, RT from ~3.5 s before it
-wait 2
-shot s3-02
-wait 2
-shot s3-04
-wait 2
-shot s3-06
-wait 2
-shot s3-08
-wait 2
-shot s3-10
-wait 2
-shot s3-12
-wait 2
-shot s3-14
-wait 2
-shot s3-16
-wait 2
-shot s3-18
-wait 2
-shot s3-20
-wait 0.5
+wait 0.8
 axis RT max
-wait 3.5
+wait 1.3
 mark go3
-wait 11
+wait 12.0
 shot s3-g11
 axis RT min
-# restart: STANDINGS (d-pad up), Y Restart, the prompt opens on Cancel: left to OK, A
+# start 4: STANDINGS (d-pad up), Y Restart, left to OK, A; GO ~4.1 s later, mark ~1.5 s before it
 axis HATY min
 axis HATY mid
 wait 1.5
@@ -248,31 +210,162 @@ axis HATX mid
 wait 1.2
 shot r4-ok
 press A 120
-# start 4: frames every ~2.5 s until the guessed GO, RT from ~3.5 s before it
-wait 2
-shot s4-02
-wait 2
-shot s4-04
-wait 2
-shot s4-06
-wait 2
-shot s4-08
-wait 2
-shot s4-10
-wait 2
-shot s4-12
-wait 2
-shot s4-14
-wait 2
-shot s4-16
-wait 2
-shot s4-18
-wait 2
-shot s4-20
-wait 0.5
+wait 0.8
 axis RT max
-wait 3.5
+wait 1.3
 mark go4
-wait 11
+wait 12.0
 shot s4-g11
+axis RT min
+# start 5: STANDINGS (d-pad up), Y Restart, left to OK, A; GO ~4.1 s later, mark ~1.5 s before it
+axis HATY min
+axis HATY mid
+wait 1.5
+shot r5-up
+press Y 120
+wait 1.5
+axis HATX min
+axis HATX mid
+wait 1.2
+shot r5-ok
+press A 120
+wait 0.8
+axis RT max
+wait 1.3
+mark go5
+wait 12.0
+shot s5-g11
+axis RT min
+# start 6: STANDINGS (d-pad up), Y Restart, left to OK, A; GO ~4.1 s later, mark ~1.5 s before it
+axis HATY min
+axis HATY mid
+wait 1.5
+shot r6-up
+press Y 120
+wait 1.5
+axis HATX min
+axis HATX mid
+wait 1.2
+shot r6-ok
+press A 120
+wait 0.8
+axis RT max
+wait 1.3
+mark go6
+wait 12.0
+shot s6-g11
+axis RT min
+# start 7: STANDINGS (d-pad up), Y Restart, left to OK, A; GO ~4.1 s later, mark ~1.5 s before it
+axis HATY min
+axis HATY mid
+wait 1.5
+shot r7-up
+press Y 120
+wait 1.5
+axis HATX min
+axis HATX mid
+wait 1.2
+shot r7-ok
+press A 120
+wait 0.8
+axis RT max
+wait 1.3
+mark go7
+wait 12.0
+shot s7-g11
+axis RT min
+# start 8: STANDINGS (d-pad up), Y Restart, left to OK, A; GO ~4.1 s later, mark ~1.5 s before it
+axis HATY min
+axis HATY mid
+wait 1.5
+shot r8-up
+press Y 120
+wait 1.5
+axis HATX min
+axis HATX mid
+wait 1.2
+shot r8-ok
+press A 120
+wait 0.8
+axis RT max
+wait 1.3
+mark go8
+wait 12.0
+shot s8-g11
+axis RT min
+# start 9: STANDINGS (d-pad up), Y Restart, left to OK, A; GO ~4.1 s later, mark ~1.5 s before it
+axis HATY min
+axis HATY mid
+wait 1.5
+shot r9-up
+press Y 120
+wait 1.5
+axis HATX min
+axis HATX mid
+wait 1.2
+shot r9-ok
+press A 120
+wait 0.8
+axis RT max
+wait 1.3
+mark go9
+wait 12.0
+shot s9-g11
+axis RT min
+# start 10: STANDINGS (d-pad up), Y Restart, left to OK, A; GO ~4.1 s later, mark ~1.5 s before it
+axis HATY min
+axis HATY mid
+wait 1.5
+shot r10-up
+press Y 120
+wait 1.5
+axis HATX min
+axis HATX mid
+wait 1.2
+shot r10-ok
+press A 120
+wait 0.8
+axis RT max
+wait 1.3
+mark go10
+wait 12.0
+shot s10-g11
+axis RT min
+# start 11: STANDINGS (d-pad up), Y Restart, left to OK, A; GO ~4.1 s later, mark ~1.5 s before it
+axis HATY min
+axis HATY mid
+wait 1.5
+shot r11-up
+press Y 120
+wait 1.5
+axis HATX min
+axis HATX mid
+wait 1.2
+shot r11-ok
+press A 120
+wait 0.8
+axis RT max
+wait 1.3
+mark go11
+wait 12.0
+shot s11-g11
+axis RT min
+# start 12: STANDINGS (d-pad up), Y Restart, left to OK, A; GO ~4.1 s later, mark ~1.5 s before it
+axis HATY min
+axis HATY mid
+wait 1.5
+shot r12-up
+press Y 120
+wait 1.5
+axis HATX min
+axis HATX mid
+wait 1.2
+shot r12-ok
+press A 120
+wait 0.8
+axis RT max
+wait 1.3
+mark go12
+wait 12.0
+shot s12-g11
 axis RT min

@@ -112,7 +112,53 @@ device nondeterminism.
 
 ### Result
 
-*(not yet run)*
+Arm A `1-1791641570-perdrawon1010-3943774` (no env), arm B
+`1-1791642456-perdrawon1010-4121401` (all three on), both on the Nova, one
+apk (`98514fe8c452`), 1,060 captures each. `ab_compare.py --expect
+perdrawon1010-pgraph-inert.json`: **5 of 1,060 checks moved**, and every other
+capture is byte-identical:
+
+| capture | A px | B px |
+|---|---|---|
+| Stencil/Stencil_REPLACE | 0 | 40,000 |
+| Stencil/Stencil_REPLACE_ST | 0 | 30,000 |
+| Stencil/Stencil_REPLACE_ST_ZB | 0 | 30,000 |
+| Vertex_shader_rounding_tests/GeometrySuperscreen_0.5626 | 0 | 570 |
+| Vertex_shader_rounding_tests/GeometrySuperscreen_0.9990 | 570 | 0 |
+
+The Stencil moves are pfifowait1009's known nondeterminism: the same
+REPLACE variants moved 0 -> 30,000-40,000 px between plain runs of one binary.
+The GeometrySuperscreen pair is one 570 px difference trading places between
+two neighbouring tests, and the suite total is unchanged (1,638 both arms).
+That is the signature of run-to-run noise, not of a copy that changed a
+value. `ab_compare.py` says the same: NOT ATTRIBUTABLE with one run per arm.
+The `COMPOSITION DIFFERS` warning is the suite-name spelling only (the
+registered names are underscored, the request's are spaced); the 27 suites
+are the same, and every leg is an A-B difference.
+
+Determinism check: those two suites alone, `--runs 3`, both arms
+(`1-1791643407-perdrawon1010-118147` A, `1-1791643408-perdrawon1010-118235`
+B), same apk. Every capture that moved above takes BOTH values within ONE
+state across that state's four runs (the first A/B's run plus three):
+
+| capture | off (A) runs: A/B, det 1-3 | on (B) runs: A/B, det 1-3 |
+|---|---|---|
+| Stencil_REPLACE | 0, 40,000, 0, 40,000 | 40,000, 0, 40,000, 0 |
+| Stencil_REPLACE_ST | 0, 30,000, 30,000, 30,000 | 30,000, 0, 0, 0 |
+| Stencil_REPLACE_ST_ZB | 0, 30,000, 30,000, 0 | 30,000, 0, 0, 0 |
+| GeometrySuperscreen_0.5626 | 0, 0, 0, 0 | 570, 0, 0, 0 |
+| GeometrySuperscreen_0.9990 | 570, 0, 0, 0 | 0, 0, 0, 0 |
+| GeometrySuperscreen_1.0000 | 570, 0, 0, 0 | 570, 0, 0, 0 |
+| GeometrySuperscreen_0.4999 / 0.5000 / 0.5624 | 0 in all four | 0, 768 / 384 / 400 in det runs 2-3 |
+
+`ab_compare.py` on the determinism pair puts Stencil_REPLACE and
+REPLACE_ST_ZB inside the measured band (NOISE), and calls REPLACE_ST "better"
+(30,000 -> 0) because each 3-run request happened to be self-consistent; the
+first A/B had it the other way round (0 -> 30,000), so the direction belongs
+to the request, not the state. Its 25 other violations are "matched no
+capture" for the 25 suites this 2-suite disc does not carry. **Pixels: no
+capture moves with the switches.** Every mover moves within the off state
+alone, which is the definition of not attributable to the switches.
 
 ## 4. Energy
 
@@ -346,15 +392,69 @@ in frame), on a track picked by hand; this route takes Sprint's default,
 Diamond & Union. Draws/frame is the common axis, so every result here is
 binned by it, next to the owner's numbers.
 
+### Pass 3, read: the timing, and why only its first start counts
+
+Pass 3's frames and route log time every GO. The first start's GO came ~21.0 s
+after the transmission A (21.6 s in pass 2). A restart does **not** reload: the
+countdown runs as soon as OK is pressed, and GO comes ~4.1 s later (4.2, 4.2
+and 4.0 s for its three restarts). Pass 3 had guessed a reload of ~20 s, so
+its restarts pressed RT and wrote `mark go2`-`go4` ~22 s after GO: the Punto
+sat on the line while the opponents drove off. Those three windows are not
+the race start and are not used. Its one valid start (the first) ran:
+
+| rows around GO (device s from the mark) | gfps | draws/frame |
+|---|---|---|
+| countdown (-6.3 .. -4.0) | 14 | 2,001 |
+| straddling GO (-4.0 .. +0.5; GO ~ -1.6) | 13 | 1,913 |
+| GO+2 .. GO+6 | 20 | 1,508 |
+| GO+6 .. GO+8 | 25 | 886 |
+| GO+8 .. GO+11 | 29 | 498 |
+
+So on this track the heavy part is the countdown and the first ~4 s, at the
+owner's 13 fps and at more draws than their 1,374-1,658; by GO+8 the two
+opponents have pulled away from the Punto and the frame is light.
+
+The device's logcat clock runs ~3.1-3.5 s ahead of the host's route log
+(`mark gameplay` 07:46:36.403 host, 07:46:39.531 device), which matters only
+when matching a frame to a row by wall time; marks and rows are both device
+time.
+
+### The final route (12 starts per boot)
+
+Same boot and menus. The first start keeps pass 3's frames every ~2.5 s
+through the load, presses RT ~3.5 s before GO and writes `mark gameplay` ~1.5 s
+before it. Each restart presses OK, then RT 0.8 s later, then writes `mark
+go<N>` at OK + ~2.6 s, ~1.5 s before GO. The mark is early on purpose: route.sh
+takes a screencap with every mark (~0.8 s), and it should finish before the
+race starts, not inside the measured window. Each start drives ~11 s past GO,
+takes a frame (`s<N>-g11`), releases RT and restarts. A cycle is ~21.6 s, which
+also keeps every start at a different point of the toggle's 8-s cycle (it
+steps ~5.6 s each start), so neither state owns the first seconds after GO.
+Twelve starts, ~463 s of route, `--seconds 500`.
+
 ### How a start is read
 
 `docs/lanes/perdrawon1010/startread.py`. The first start is `mark gameplay`
 and later ones are `mark go<N>`. A perflog row (a ~2 s window, timed at its
-end) belongs to a start when its window lies inside [GO - 0.5 s, GO + 10.5 s].
-It counts only when no toggle flip falls inside it (perdraw1009's pure-row
-rule, loaded from its `togread.py` at `4ad1154e55`). Results are given per
-state (switches off/on), per draws/frame bin, and as a matched-work (bin
-weighted) on-off. Frame ms is pooled wall time per guest frame, 1000 x rows /
-sum of gfps. RT is pressed during the countdown, so the car launches at GO
-whatever the GO timing; holding the gas through a countdown does not
-false-start in this game.
+end) belongs to a start when its window lies inside [mark + 1.5 s, mark +
+12.0 s], i.e. GO + 0 .. GO + 10.5 (the half second for the first start's GO,
+which wanders ~0.6 s with the load). It counts only when no toggle flip falls
+inside it (perdraw1009's pure-row rule, loaded from its `togread.py` at
+`4ad1154e55`). Results are given per state (switches off/on), per draws/frame
+bin, and as a matched-work (bin weighted) on-off. Frame ms is pooled wall
+time per guest frame, 1000 x rows / sum of gfps. RT is pressed during the
+countdown, so the car launches at GO whatever the GO timing; holding the gas
+through a countdown does not false-start in this game. `--window -4,1.5`
+reads the countdown instead. A run without the toggle is read as one fixed
+state from the build's `[perdraw433] bulk= ubercache= fogcache= toggle_ms=0`
+startup line, which is how the energy runs double as a separate-arm check.
+
+### The prediction and the runs
+
+`docs/testing/predictions/perdrawon1010-racestart.json`, registered before any
+scored run. Legs: V (12 marks, route finished, no fatal, no thermal pause,
+toggle_ms 4000 or one fixed state), S1 matched us/draw on-off in [-4.0, 0.0],
+S2 matched gfps on-off in [-1.0, +2.0], S3 at least 10 pure rows per state,
+S4 switches-on gfps over the first 10 s after GO below 28 (the start does not
+hold 28-30 fps). Judged set: three toggled runs. Cross-check and energy set:
+four fixed-state runs, off, on, on, off.
