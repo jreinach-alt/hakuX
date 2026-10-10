@@ -1,0 +1,44 @@
+{
+  "registered_utc": "2026-10-10T00:45:00Z",
+  "who": "lane.pfifowait1009",
+  "issue": "433",
+  "title": "Amped 2 (USA).xiso.iso",
+  "device": "nova",
+  "route": "amped2",
+  "seconds": 900,
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "221a22f5a8",
+  "b_ref": "221a22f5a8",
+  "a_env": [
+    "HAKUX_FRAMETRACE=1"
+  ],
+  "b_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_PFIFOWAIT=1"
+  ],
+  "judge": "python3 docs/lanes/pmucounters/waits.py <logcat> (per-frame [hakuX-ft1] vw breakdown -- vw[1]=pfifo.lock is `lw`, vw[2]=pgraph.lock -- and [tlb68] on-CPU, from the route's `mark gameplay`); python3 docs/lanes/pmucounters/workbin.py <spin pc> A=<A logcats> B=<B logcats> (fps/off-CPU binned at matched vCPU work per frame, so a scene difference between runs is not read as the arm's); hakuX-pace f= for frames/wall fps and the share of windows under 24 fps; play shots by eye; logcat -b crash on both arms.",
+  "prediction": "#433 pfifowait1009. ONE BINARY (221a22f5a8), env is the variable. A = HAKUX_FRAMETRACE=1 only (shipped locking). B adds HAKUX_PFIFOWAIT=1: pfifo.lock is released around the single pgraph_vk_finish(VK_FINISH_REASON_STALLED) call in reports.c, which transitively covers both the frame-slot rotation wait inside pgraph_vk_finish and the #804 occlusion vkWaitForFences/vkGetQueryPoolResults loop its _internal tail-call runs. A vCPU doing a DMA_PUT/DMA_GET/REF store (user_write, also under pfifo.lock) no longer queues behind either wait. pmucounters measured (same title, older route revision, flag via HAKUX_OCCL_WAIT=0 as a stand-in): lw 4.6 ms/frame overall, 9.7 ms/frame in windows under 24 fps (22% of frame time); pgraph.lock +2.8 ms/frame in the same windows, confirmed NOT co-held at this call site so it should not move. POINT PREDICTION: B's lw falls by at least half in windows under 24 fps (pooled over both runs), B's pgraph.lock component is within the run-to-run spread of A's (it is not touched by this change), and B's frames/wall fps in those windows improves by at least +1.0 over A's, pooled. The route's own numbers will differ from pmucounters' (new amped2 revision, longer settle waits on steps 1-12) -- the THRESHOLDS are relative to each run's own A, not the brief's cited absolutes.",
+  "legs": {
+    "M0 (instrument, VOID not fail)": "every run has >= 100 hakuX-pace f= lines and >= 100 [hakuX-ft1] lines after `mark gameplay`, a `mark gameplay` line, and the play shots show a moving player (not parked, not a menu). A run missing any of these, or a logcat with ROUTE FAIL, is VOID and rerun once.",
+    "F0 (mechanism ran)": "B's logcat has the startup line '[pfifowait] pfifo.lock released across STALLED finish' (printed once, confirms HAKUX_PFIFOWAIT=1 reached the process); A's logcat does not. FAILS if the env did not reach the emulator -- then B measures nothing and must be requeued, not read as a miss.",
+    "W1 (premise re-measured in A)": "A's lw (vw[1], pfifo.lock) in windows under 24 fps is at least 2x A's lw in windows at or above 24 fps, pooled over A's runs. BELOW REFUTES that the fence wait concentrates in the slow windows on this route revision; then H1/P1 are reported but not scored as a hit either way (see Miss below).",
+    "H1 (THE COUNTER THAT MUST MOVE)": "lw in windows under 24 fps: B <= 0.5 x A, pooled over both runs per arm. ABOVE FAILS: the lock was not the thing keeping the vCPU off pfifo.lock in those windows, or STALLED is not where the wait concentrates (check the #804 wait at the un-nested call, reports.c 257-262, outside the bracket only if pg->draw_time never differs from last_stall_draw_time -- read [occl804] f= lines to see whether the STALLED branch was even taken).",
+    "H2 (pgraph.lock is untouched, as analysed)": "B's pgraph.lock component (vw[2]) in windows under 24 fps is within the A-vs-A run-to-run spread (median absolute difference between A's two runs, or 0.5 ms/frame, whichever is larger). ABOVE means something co-holds or re-takes pgraph.lock inside the bracketed span that the lock analysis in NOTES.md section 2 missed -- a correctness concern, not just a miss, and the fix needs re-reading before it ships.",
+    "P1 (fps must rise, not just the wait move -- the vcpusleep guard)": "frames/wall fps in windows under 24 fps: B - A >= +1.0, pooled. A run where H1 passes (lw falls >= 50%) but P1 does not (fps flat or down, within +/-1.0) is NOT a hit -- it is exactly vcpusleep's prior-art failure mode (c2dfca18a1, reverted f6ac723228: the wait relieved but moved, fps down), and must be read as Moved below, with the wait that reappeared named from [hakuX-ft1]'s vw breakdown (watch rthread, submit and fence specifically) before any claim this fix helps.",
+    "F2 (no corruption)": "B's play shots show no stale, torn, black, or one-frame-behind surfaces that A's do not (reflections, HUD, car paint under the occlusion-gated effects), and B's logcat has no Vulkan validation error, device-lost, assert, or crash. FAILS in the world where the brief released lock lets a second caller observe mid-update occlusion-report state -- wrong, not slow.",
+    "H0 (no hang)": "no B run shows a hakuX-perf gap over 5 s after the mark that A's pair does not, and no ANR. A lost unlock/relock pairing (an early return between unlock and lock, or a double-unlock) would hang or crash the PFIFO thread."
+  },
+  "outcomes": {
+    "Hit": "F0, H1, H2, P1, F2, H0 all pass. Candidate stands; fix shape (a) scoped to the single STALLED call is the right size, no widening needed.",
+    "Moved": "H1 passes (lw falls >= 50% in slow windows) but P1 fails (fps does not rise by +1.0). Name the wait that grew from vw's other reasons (fence, submit, rthread, download) in the windows where lw fell. This is the vcpusleep regression shape and MUST NOT be reported as a win on lw alone.",
+    "Miss": "H1 fails (lw does not fall by half in slow windows): the STALLED call is not where the wait concentrates, or W1's premise does not hold on this route revision. Read [occl804] to see whether the un-nested #804 call (reports.c 257-262, outside this bracket) is where the frame actually waits, and whether that site needs its own bracket."
+  },
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/pfifowait1009-pgraph-inert.json (26 suites, 221a22f5a8 vs 221a22f5a8)"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off hakuX-pace, [hakuX-ft1], [occl804] and hakuX-perf lines, and the shots by eye, via waits.py and workbin.py."
+}
