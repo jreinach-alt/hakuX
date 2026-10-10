@@ -18,19 +18,16 @@
 # set): refuse_if_remote asks about a lane name ("pathlane") no territory row
 # anywhere names, so it always falls through.
 #
-# WHY THIS FRAGMENT MAKES ITS OWN $WORK/forge/shim/bin. lane.sh now REFUSES
-# (exit 78) to start or resume a lane when that directory is missing, and no
-# existing selftest fixture creates it -- measured by running
-# 96-fleet-registry.sh, 88-window-budget.sh and the 99-handback-*.sh family in
-# isolation against this change: 47 checks across those files went red,
-# every one of them because the fixture's $WORK never had a shim directory
-# and lane.sh refused before systemd-run ever ran. Those files are outside
-# this lane's territory (docs/testing/lane.sh and this file only) and are not
-# touched here; see docs/lanes/lanepath1009/NOTES.md for the full count and
-# the one-line fix each of them needs. This fragment's own fixture creates
-# the directory precisely so its positive legs are not testing the refusal by
-# accident, and has one leg that removes it on purpose to test the refusal on
-# purpose.
+# WHY THIS FRAGMENT PINS ITS OWN HAKUX_SHIM_BIN. lane.sh now REFUSES (exit
+# 78) to start or resume a lane when $HAKUX_SHIM_BIN (default
+# $WORK/forge/shim/bin) is missing. selftest.sh's fake-host setup exports a
+# shared stub at $T/shim/bin so every OTHER fragment's lane.sh call just
+# works without knowing this requirement exists. This fragment can't rely on
+# that shared stub for its own assertions -- it needs to control exactly
+# when the directory exists and when it doesn't, for the happy path, the
+# refusal path, and the mutants below -- so lp_start/lp_resume always pass
+# their own HAKUX_SHIM_BIN explicitly, overriding the inherited export
+# rather than silently depending on it.
 
 echo "== lane.sh: a lane unit's PATH puts the forge shim first, from one definition"
 LP="$T/lanepath"; rm -rf "$LP"; mkdir -p "$LP/work/briefs" "$LP/dispatch"
@@ -60,6 +57,7 @@ lp_start() {   # <lane.sh> <log> -> exit code of the start, via $LP_RC
     local lsh=$1 log=$2
     : > "$log"
     ( env HAKUX_WORK="$LP/work" HAKUX_REPO_DIR="$LP/repo" DISPATCH_DIR="$LP/dispatch" \
+          HAKUX_SHIM_BIN="${LP_SHIM_BIN:-$LP_SHIM}" \
           SELFTEST_GH_LOG="$log" \
           bash "$lsh" start pathlane "$LP/brief.md" 9401 ) >/dev/null 2>"$log.err"
     LP_RC=$?
@@ -68,6 +66,7 @@ lp_resume() {   # <lane.sh> <log> -- pathlane must already have a worktree+brief
     local lsh=$1 log=$2
     : > "$log"
     ( env HAKUX_WORK="$LP/work" HAKUX_REPO_DIR="$LP/repo" DISPATCH_DIR="$LP/dispatch" \
+          HAKUX_SHIM_BIN="${LP_SHIM_BIN:-$LP_SHIM}" \
           SELFTEST_GH_LOG="$log" \
           bash "$lsh" resume pathlane ) >/dev/null 2>"$log.err"
     LP_RC=$?
@@ -177,6 +176,24 @@ if lp_footer "$LP/mutd-resume.log"; then
 else
     ok "mutant (d) noresumefooter: resume's footer is gone, and this leg is red"
 fi
+rm -f "$m"
+
+# MUTANT (e), Addendum 3: lane_path()'s refusal dropped -- lane.sh must not
+# start (or resume) silently when the shim dir is missing. Pins HAKUX_SHIM_BIN
+# at a path that never exists, so this leg does not depend on $LP_SHIM's
+# on-disk state either way.
+m=$(lp_mutant norefusal '/^    if \[ ! -d "\$LANE_SHIM_BIN" \]; then$/,/^    fi$/d')
+check "mutant (e) norefusal: the sed applied" lp_differs "$m"
+LP_SHIM_BIN="$LP/no-such-shim"
+lp_fresh; lp_start "$m" "$LP/mute-start.log"
+check "  ...and reached systemd-run anyway (not refusing for some other, unrelated reason)" \
+    lp_reached_run "$LP/mute-start.log"
+if [ "$LP_RC" = 78 ]; then
+    bad "mutant (e) norefusal: start still refuses with the shim missing"
+else
+    ok "mutant (e) norefusal: the refusal is gone, start proceeded anyway, and this leg is red"
+fi
+unset LP_SHIM_BIN
 rm -f "$m"
 
 lp_fresh

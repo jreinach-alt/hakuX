@@ -53,7 +53,7 @@ JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")/jobs" && pwd)"   # allowlist, summari
 # whatever the manager happens to hold. BUILT ONCE, used by both the start
 # and resume systemd-run blocks below: a PATH computed twice is a PATH that
 # drifts the moment one copy is edited and the other is not.
-LANE_SHIM_BIN="$WORK/forge/shim/bin"
+LANE_SHIM_BIN="${HAKUX_SHIM_BIN:-$WORK/forge/shim/bin}"
 LANE_PATH_TAIL="/home/justin/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"
 lane_path() {   # sets LANE_PATH for the caller, or refuses (exit 78) -- never the caller's own $PATH
     if [ ! -d "$LANE_SHIM_BIN" ]; then

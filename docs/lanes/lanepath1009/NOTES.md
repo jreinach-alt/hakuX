@@ -4,6 +4,19 @@ PR: none yet (opening after this commit). Branch `lane/lanepath1009`, based on m
 No issue: a harness fix dispatched directly by lane.local under the #433 umbrella. No prediction: no
 pixels, no device run -- docs and harness only.
 
+## Resume (attempt 2): why attempt 1 did not finish
+
+Attempt 1 completed the brief, Addendum 1 and Addendum 2 (`lane_path()`, the footer, `99-lane-path.sh`
+with its four mutants, the real-systemd-run check, the targeted-fragment regression table), wrote
+`OUTBOX.md` naming three files outside its then-current territory that needed a one-line `mkdir -p`
+fix each, and set `State: ready` without those fixes applied -- correct at the time, since
+`docs/testing/jobs/selftest.sh` was not yet in territory. The fold then ran the full suite on
+`69aa814fe1` at 03:13 and found 112 failures (Addendum 3, landed 04:50 PDT, after attempt 1's session had
+already ended): the exact 15 lane.sh-dependent fragments attempt 1 had already identified and sized in
+`OUTBOX.md`/`NOTES.md`. Addendum 3 put `selftest.sh` in territory and asked for the fixture fix to be
+applied directly (preferred shape: one global stub + `HAKUX_SHIM_BIN`, not three separate `mkdir -p`
+edits) rather than left in `OUTBOX.md`. That work is this attempt's addition, below.
+
 ## What was built
 
 1. `docs/testing/lane.sh`: a single `lane_path()` function, built from two variables set once
@@ -180,3 +193,111 @@ file: `99-lane-path.sh` itself (29/0, above), plus every fragment confirmed to c
 `SELFTEST_ONLY`, each also run against the unmodified baseline for comparison -- see the regression table
 above. That is "run only 99-lane-path.sh and any existing fragment that exercises lane.sh" as asked; the
 full-suite run the fold itself performs is what checks the rest.
+
+## Addendum 3 (lane.local 04:50 PDT): fixtures' shim dir fixed directly, `selftest.sh` now in territory
+
+The fold's full-suite run on `69aa814fe1` at 03:13 failed: 3090 passed, 112 failed, all 112 in the 15
+lane.sh-dependent fragments attempt 1 had already named in `OUTBOX.md`/`NOTES.md`
+(`87-fold-stale-ci`, `88-window-budget`, `96-fleet-registry`, and the `99-handback-*`/`99-lane-model-file`/
+`99-limits-env` family -- a superset of the 7 files attempt 1's isolated `SELFTEST_ONLY` runs had found,
+since the full suite exercises a few more call sites of `lane.sh start`/`resume` that isolation skips).
+Cause confirmed as before: `lane_path()` correctly refuses when the shim dir is missing, and no fixture
+created one.
+
+**Applied the brief's preferred shape, not `OUTBOX.md`'s three-file patch.** Rather than adding
+`forge/shim/bin` to three separate fixtures' own `mkdir -p` lines (which only covers the fragments that
+exist today, and misses any future fragment that builds its own private `$WORK`), `lane.sh` now reads the
+shim dir from one variable with a default:
+
+```
+LANE_SHIM_BIN="${HAKUX_SHIM_BIN:-$WORK/forge/shim/bin}"
+```
+
+and `selftest.sh`'s fake-host setup (now in territory) creates one stub shim dir under the run's own `$T`
+and exports `HAKUX_SHIM_BIN` to it, once, right after the existing fixture `mkdir -p`/`export` block:
+
+```
+mkdir -p "$T/shim/bin"
+export HAKUX_SHIM_BIN="$T/shim/bin"
+```
+
+Every fragment that calls real `lane.sh start`/`resume` inherits this through normal environment
+inheritance (`export VAR=...; bash ...` subshells, or `env VAR=... bash ...` -- neither clears the
+parent's exported vars), whether it uses the shared default `$HAKUX_WORK` or builds its own private one
+(`$LW/work`, `$WB/work`, ...). Checked `96-fleet-registry.sh` and `88-window-budget.sh`: neither uses
+`env -i` or unsets `HAKUX_SHIM_BIN`, so the inherited export reaches them unmodified -- no fragment
+needed editing beyond `99-lane-path.sh` itself. (The brief's fallback -- "if a fragment clears its
+environment ... fix that fragment instead" -- did not apply to any of the 15.)
+
+**`99-lane-path.sh` can't rely on the shared stub for its own assertions** (it needs the shim present/
+absent on command, for the happy path, the refusal path, and five mutants), so `lp_start`/`lp_resume` now
+always pass `HAKUX_SHIM_BIN="${LP_SHIM_BIN:-$LP_SHIM}"` explicitly in their `env` call, overriding
+whatever `selftest.sh` exported globally. The happy-path and refusal-path sections are unchanged (they
+already created/removed `$LP_SHIM` on disk and relied on `LP_SHIM_BIN` being unset, i.e. defaulting to
+`$LP_SHIM`); only the refusal case inside the new mutant (e) sets `LP_SHIM_BIN` to a path that never
+exists on disk at all (`$LP/no-such-shim`), so that leg doesn't depend on `$LP_SHIM`'s on-disk state.
+
+**Mutant (e), per Addendum 3's "adds a mutant that drops the refusal"**: `lp_mutant norefusal` deletes
+the `if [ ! -d "$LANE_SHIM_BIN" ]; then ... exit 78; fi` block from a throwaway copy of `lane.sh`, then
+runs `lp_start` against it with `LP_SHIM_BIN` pointed at a directory that does not exist. Re-running
+`99-lane-path.sh` alone with this mutant added: **32 passed, 0 failed** (up from the 29/0 above, which
+predates mutant (e)):
+
+```
+  ok   mutant (e) norefusal: the sed applied
+  ok     ...and reached systemd-run anyway (not refusing for some other, unrelated reason)
+  ok   mutant (e) norefusal: the refusal is gone, start proceeded anyway, and this leg is red
+selftest: 99-lane-path.sh took 4s
+
+selftest: 32 passed, 0 failed, PARTIAL: 1 of 130 fragments
+```
+
+Inside the actual fragment's own fixture (full `lp_fresh`/`lp_start` setup -- real repo, dispatch dir,
+briefs dir), the mutant reaches `systemd-run` (checked explicitly, not just inferred from a non-78 exit
+code) and the refusal is confirmed gone. Positive-assertion confirmation, same method as mutants a-d, run
+through a standalone throwaway harness (own cruder fixture: just a repo, a logging `systemd-run` shim,
+no dispatch/fleet state) with the assertion written as a plain `check`, not if/else, so the literal
+`FAIL` line is read directly:
+
+```
+--- against GOOD lane.sh (expect: refuses, RC=78)
+  ok   start refuses (exit 78) when the shim dir is missing
+--- mutant (e): refusal dropped -- positive assertion, should now FAIL
+  FAIL start refuses (exit 78) when the shim dir is missing
+mutant RC=76
+```
+
+(RC 76, not 78: with the refusal gone, this cruder standalone fixture's `start` fails for some other,
+unrelated reason further into `lane.sh` -- expected, since this throwaway harness skips setup the real
+fragment's fixture does, and is not a claim this mutant reaches `systemd-run` on its own. The thing being
+proven is narrower and sufficient: the mutant's exit code is not 78, so the refusal itself is gone. The
+real fragment's own fixture, which does have that setup, is the one that shows the mutant proceeding all
+the way to `systemd-run`.)
+
+**Verification, targeted subset only** (Addendum 3's explicit instruction -- not the full ~60 min suite,
+same reasoning as Addendum 2):
+
+```
+$ SELFTEST_ONLY="87-fold-stale-ci 88-window-budget 96-fleet-registry 99-handback 99-handback-branch \
+  99-handback-draft 99-handback-idle 99-handback-lane-line 99-handback-merged 99-handback-parked \
+  99-handback-resolved 99-handback-runs 99-handback-strand 99-lane-model-file 99-limits-env \
+  99-lane-path" bash docs/testing/jobs/selftest.sh
+...
+selftest: 495 passed, 0 failed, PARTIAL: 16 of 130 fragments
+real    ~4m30s
+```
+
+| | before (fold, full suite, `69aa814fe1`) | after (this subset, this branch, with mutant (e) added) |
+|---|---|---|
+| passed | 3090 | 495 |
+| failed | 112 | 0 |
+
+(The two "passed" totals aren't directly comparable -- the fold ran all 130 fragments, this run only the
+16 named by Addendum 3, and this run's own `99-lane-path.sh` has one more check than the fold's (mutant
+(e), added after the fold's run) -- but every one of the 112 failures the fold found lives inside those
+16, and all 16 are now clean, including `99-lane-path.sh`'s own 5 mutants.) The fold reruns the full
+suite on this head; that is what checks the other 114 fragments, consistent with Addendum 2's reasoning
+for not duplicating that run here.
+
+No `~/.config` or systemd-unit edit, no real lane started/stopped/resumed, no `pkill -f`/`pgrep -f`.
+`OUTBOX.md` updated to record this is resolved, not left as an open ask.
