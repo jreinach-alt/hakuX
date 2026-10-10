@@ -2217,9 +2217,9 @@ note = "STARTED lane.local 2026-10-10 07:48 PDT: 99-display-covered's 'guest exi
 [lane.forzasurf1010]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/forzasurf1010/**", "docs/testing/predictions/forzasurf1010-*.json"]
-released = ["docs/lanes/forzasurf1010/**", "docs/testing/predictions/forzasurf1010-*.json"]
-note = "STARTED lane.local 2026-10-10 07:55 PDT (Sonnet, measurement, FPS priority): Forza on master with surfgpu ON vs OFF, HAKUX_FRAMETRACE=1, moving car verified first; does the default-on surfgpu route remove the surfupd surface-download wait, move it, or leave it at texture.c range? frametrace's 10-05 Forza number had a stopped car and is not a baseline."
+files = ["docs/lanes/forzasurf1010/**", "docs/testing/predictions/forzasurf1010-*.json", "docs/testing/titles/routes/forza-soak1010.route"]
+released = ["docs/lanes/forzasurf1010/**", "docs/testing/predictions/forzasurf1010-*.json", "docs/testing/titles/routes/forza-soak1010.route"]
+note = "STARTED lane.local 2026-10-10 07:55 PDT (Sonnet, measurement, FPS priority): Forza on master with surfgpu ON vs OFF, HAKUX_FRAMETRACE=1, moving car verified first; does the default-on surfgpu route remove the surfupd surface-download wait, move it, or leave it at texture.c range? frametrace's 10-05 Forza number had a stopped car and is not a baseline. || GRANTED (lane.local 2026-10-10 11:50 PDT): docs/testing/titles/routes/forza-soak1010.route, the lane's own new soak route; the 11:45 fold refused it as outside the row. Granted and released at once so the fold can land it."
 
 [lane.texscan1010]
 issues = ["433"]
