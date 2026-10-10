@@ -156,3 +156,75 @@ A `[texscan] on` line is logged once per process, and `[texscan] first copy ...`
 **Prediction for the switch, from the census.** With the switch on, the 7.3 ms/frame of SDL plus scan should
 drop to the cost of recording 1-6 copies (well under 0.5 ms). The vblank histogram is the deciding measure
 (section 5).
+
+## 5. Arms (queued 2026-10-10 ~17:05 UTC, Nova)
+
+Both legs are env A/Bs on one ref, e654516849. Arms.sh skips a prediction whose `a_ref == b_ref`, so the lane
+queues them itself with `--expect`.
+
+The head moved twice after the queue, to 9acb2fcffb (no NV097 constant in new code). Neither move changes
+what the switch does:
+
+- the I8 test was redundant: `pgraph_texture_format_is_converted()` already refuses I8;
+- the census instrument now reads a compressed texture's offsets past its base as `sub`.
+
+**Pixel leg**: `docs/testing/predictions/texscan1010-pixels.json`.
+
+- 29 suites (every golden suite with texture, surface, cube or render in its name; 721 goldens).
+- RenderTextureLoop is skipped, as the arms job does.
+- Release build. B (on) runs first, then A (off).
+- Predicted:
+  - every capture is the same between arms or inside the band;
+  - B's logcat has no `[texscan] first copy` line. No suite renders into a cube's faces, so this leg shows
+    the switch inert where it does not fire. It does not exercise the copy.
+
+| arm | request |
+|---|---|
+| B, HAKUX_TEXSCAN=1 | 1-1791650753-texscan1010-2542806 |
+| A, no env | 1-1791650757-texscan1010-2543971 |
+
+**NFS leg**: `docs/testing/predictions/texscan1010-nfs.json`, read by `texread.py`.
+
+- Perflog build, 500 s each, route `docs/lanes/texscan1010/nfs-mw-quickrace.route`.
+- Queued as `--route ../../../lanes/texscan1010/nfs-mw-quickrace`. The prediction's `route` field says
+  `nfs-mw-quickrace`.
+- Order off, on, on, off, so neither state always inherits a warm shader cache.
+
+| arm | request |
+|---|---|
+| off | 1-1791650940-texscan1010-2621346 |
+| on | 1-1791650940-texscan1010-2621780 |
+| on | 1-1791650941-texscan1010-2622254 |
+| off | 1-1791650942-texscan1010-2622720 |
+
+Off baseline, read with texread.py over the same windows (12 starts per run):
+
+| run | build | period ms (fps) | v2 / v3 / v4+ | range ms/frame | sdl + scan ms/frame |
+|---|---|---|---|---|---|
+| census 2004607 | 4784750c3c perflog | 46.4 (21.5) | 32.1 / 57.6 / 10.1 % | 4.05 | 3.93 + 4.09 |
+| perdrawon1010 365120 | 72fe2eabc46e | 43.5 (23.0) | 42.7 / 51.5 / 4.8 % | 3.89 | 3.75 + 3.90 |
+| perdrawon1010 726861 | 72fe2eabc46e | 41.9 (23.9) | 48.3 / 48.1 / 2.1 % | 3.95 | 3.79 + 3.96 |
+
+Predicted on - off, pooled over 2 runs per state:
+
+| leg | predicted | point estimate |
+|---|---|---|
+| R | range on <= 0.5, off >= 2.5 ms/frame | |
+| P | period in [-12, -2] ms | -5 ms |
+| H | v3+v4 share down >= 10 points, v2 share up >= 10 points | |
+| F | matched-work gfps in [+1, +8] | +2.5 |
+| V | the route copied faces in every on run, never in an off run | |
+
+The start still does not hold 30 fps.
+
+What refutes the prediction:
+
+- **R passes and P/H fail:** the waits were hidden behind GPU-bound time. The switch then has no fps value at
+  the start, and stays off.
+- **R fails on:** something else downloads in the starts once the cube stops. ts[fb] and [tsc] cls name it.
+
+**Pixels in game:** the car's reflection is the copied cube. The route frames at each mark are checked by
+eye, on vs off.
+
+**Not repeatable from here:** a later lane should not re-measure the off baseline. The three runs above are
+on disk.
