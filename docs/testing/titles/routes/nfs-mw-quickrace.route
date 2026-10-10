@@ -1,0 +1,278 @@
+# state: first-run   (NFS MW has no golden profile, so every run is first-run)
+# Need for Speed: Most Wanted (4541007B), lane.perdrawon1010: the race start the owner measured on 10-09.
+# Quick Race -> Custom Race -> Sprint, default track (Diamond & Union), Opponents 2 (3 racers), Fiat Grande
+# Punto, Auto. Menus read from frames (pass 1 1-1791641530-perdrawon1010-3932477, pass 2
+# 1-1791642016-perdrawon1010-4029199). Each start: `mark gameplay` (first) or `mark go<N>` (restarts) at GO,
+# RT held from the countdown through ~11 s of racing, then STANDINGS (d-pad up) -> Y Restart -> OK (the
+# prompt opens on Cancel) for the next start. EXPLORATION pass 3: shots before each GO time the reload.
+wait 13.3
+shot s01-publisher_logo
+# step 1 [publisher_logo] This is an early boot logo animation (green polygon emblem on white), before any title or menu. No p
+press START 120
+wait 0.6
+wait 11.0
+shot s02-intro_video
+# step 2 [intro_video] The previous step was a publisher logo, and this is a cinematic-style showcase with no menu or promp
+press START 120
+wait 0.6
+press A 120
+wait 0.6
+wait 10.4
+shot s03-intro_video
+# step 3 [intro_video] Static EA title art with a copyright line and no menu or prompt yet, so it is not gameplay. The prev
+press START 120
+wait 0.6
+wait 6.8
+shot s04-save_load_prompt
+# step 4 [save_load_prompt] Save/alias prompt; per the hints, prompts that create a save: Yes is fine and reaches play. The high
+axis HATY max
+axis HATY mid
+wait 0.6
+press A 120
+wait 0.6
+wait 7.9
+shot s05-save_load_prompt
+# step 5 [save_load_prompt] Autosave notice with only an OK button highlighted; no Yes/No choice, so A confirms it and moves the
+press A 120
+wait 0.6
+wait 7.3
+shot s06-save_load_prompt
+# step 6 [save_load_prompt] Autosave notice with only an OK button; no Yes/No choice. A confirms it and returns to the game.
+press A 120
+wait 0.6
+wait 11.0
+shot s07-name_entry
+# step 7 [name_entry] Previous DOWN A and A presses only typed letters and returned here. The cursor is on the letter A, n
+axis HATY max
+axis HATY mid
+wait 0.6
+axis HATY max
+axis HATY mid
+wait 0.6
+axis HATY max
+axis HATY mid
+wait 0.6
+axis HATY max
+axis HATY mid
+wait 0.6
+axis HATX max
+axis HATX mid
+wait 0.6
+axis HATX max
+axis HATX mid
+wait 0.6
+press A 120
+wait 0.6
+wait 11.6
+shot s08-save_load_prompt
+# step 8 [save_load_prompt] Save prompt with No highlighted. Earlier DOWN A (choosing Yes) looped back to the name keyboard, so 
+press A 120
+wait 0.6
+wait 7.0
+shot s09-save_load_prompt
+# step 9 [save_load_prompt] Only an OK button is shown, the same autosave notice seen before. Earlier A presses on this notice r
+press B 120
+wait 0.6
+wait 9.0
+shot s10-save_load_prompt
+# step 10 [save_load_prompt] Only one button (OK) exists, so there is no Yes/No choice. B did nothing on this unchanged screen, a
+press START 120
+wait 0.6
+wait 6.2
+shot s11-save_load_prompt
+# step 11 [save_load_prompt] Only one button (OK) exists, so this is a notice with no Yes/No choice. START and B already did noth
+press A 120
+wait 0.6
+wait 20.6
+shot s12-main_menu
+# main menu (Career, Challenge Series, Quick Race, ...): Quick Race is two right of Career
+axis HATX max
+axis HATX mid
+wait 1.2
+axis HATX max
+axis HATX mid
+wait 1.5
+shot mm-quickrace
+press A 120
+wait 4
+# quick race (Quick Play, Custom Race, Split Screen): Custom Race is one right
+axis HATX max
+axis HATX mid
+wait 1.5
+shot qr-custom
+press A 120
+wait 4
+# custom race mode select (Circuit, Sprint, Drag, Lap Knockout, Speedtrap): Sprint is one right
+axis HATX max
+axis HATX mid
+wait 1.5
+shot cr-sprint
+press A 120
+wait 4
+# sprint track select opens on the default track, Diamond & Union (1/44)
+shot cr-track
+press A 120
+wait 4
+# sprint options (Traffic Level, Opponents, Difficulty, Catch Up; Opponents defaults to 3):
+# Opponents is one down; one left takes it 3 -> 2, so 3 racers
+axis HATY max
+axis HATY mid
+wait 1.2
+axis HATX min
+axis HATX mid
+wait 1.5
+shot cr-opp2
+press A 120
+wait 4
+# car select opens on Stock 1/32, Lexus IS 300; the Fiat Grande Punto is one right (2/32)
+axis HATX max
+axis HATX mid
+wait 1.5
+shot cr-punto
+press A 120
+wait 3
+# transmission prompt opens on Auto
+shot cr-auto
+press A 120
+# start 1: frames every ~2.5 s until the guessed GO, RT from ~3.5 s before it
+wait 2
+shot s1-02
+wait 2
+shot s1-04
+wait 2
+shot s1-06
+wait 2
+shot s1-08
+wait 2
+shot s1-10
+wait 2
+shot s1-12
+wait 2
+shot s1-14
+wait 2.0
+axis RT max
+wait 3.5
+mark gameplay
+wait 11
+shot s1-g11
+axis RT min
+# restart: STANDINGS (d-pad up), Y Restart, the prompt opens on Cancel: left to OK, A
+axis HATY min
+axis HATY mid
+wait 1.5
+shot r2-up
+press Y 120
+wait 1.5
+axis HATX min
+axis HATX mid
+wait 1.2
+shot r2-ok
+press A 120
+# start 2: frames every ~2.5 s until the guessed GO, RT from ~3.5 s before it
+wait 2
+shot s2-02
+wait 2
+shot s2-04
+wait 2
+shot s2-06
+wait 2
+shot s2-08
+wait 2
+shot s2-10
+wait 2
+shot s2-12
+wait 2
+shot s2-14
+wait 2
+shot s2-16
+wait 2
+shot s2-18
+wait 2
+shot s2-20
+wait 0.5
+axis RT max
+wait 3.5
+mark go2
+wait 11
+shot s2-g11
+axis RT min
+# restart: STANDINGS (d-pad up), Y Restart, the prompt opens on Cancel: left to OK, A
+axis HATY min
+axis HATY mid
+wait 1.5
+shot r3-up
+press Y 120
+wait 1.5
+axis HATX min
+axis HATX mid
+wait 1.2
+shot r3-ok
+press A 120
+# start 3: frames every ~2.5 s until the guessed GO, RT from ~3.5 s before it
+wait 2
+shot s3-02
+wait 2
+shot s3-04
+wait 2
+shot s3-06
+wait 2
+shot s3-08
+wait 2
+shot s3-10
+wait 2
+shot s3-12
+wait 2
+shot s3-14
+wait 2
+shot s3-16
+wait 2
+shot s3-18
+wait 2
+shot s3-20
+wait 0.5
+axis RT max
+wait 3.5
+mark go3
+wait 11
+shot s3-g11
+axis RT min
+# restart: STANDINGS (d-pad up), Y Restart, the prompt opens on Cancel: left to OK, A
+axis HATY min
+axis HATY mid
+wait 1.5
+shot r4-up
+press Y 120
+wait 1.5
+axis HATX min
+axis HATX mid
+wait 1.2
+shot r4-ok
+press A 120
+# start 4: frames every ~2.5 s until the guessed GO, RT from ~3.5 s before it
+wait 2
+shot s4-02
+wait 2
+shot s4-04
+wait 2
+shot s4-06
+wait 2
+shot s4-08
+wait 2
+shot s4-10
+wait 2
+shot s4-12
+wait 2
+shot s4-14
+wait 2
+shot s4-16
+wait 2
+shot s4-18
+wait 2
+shot s4-20
+wait 0.5
+axis RT max
+wait 3.5
+mark go4
+wait 11
+shot s4-g11
+axis RT min

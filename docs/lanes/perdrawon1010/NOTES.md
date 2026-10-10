@@ -308,3 +308,53 @@ past 30 min. 4 h Nova budget total; ~22.5 min spent on this pilot so far.
 ## 6. Second title (optional, job item 5)
 
 Not started. Revisit if budget remains after sections 2-4 are read.
+
+## 7. The race start (addendum, owner order 10-10)
+
+### The route, `docs/testing/titles/routes/nfs-mw-quickrace.route`
+
+The owner's 10-09 frames (`lanelocal-scratch/nfs-race-1009/prof/221803.png`)
+show the 3-racer start: HUD `1 / 3` (Player 1, GARDI, JASON), so **3 racers
+in all, 2 opponents**, Fiat Grande Punto, GO with the clock at 0.20 s. The
+route sets that up. Every menu step below was read from a frame:
+
+| screen | what the frames show | input |
+|---|---|---|
+| main menu | Career, Challenge Series, Quick Race, ... (clamped) | right x2, A |
+| quick race | Quick Play, Custom Race, Split Screen | right, A |
+| custom race mode select | Circuit, Sprint, Drag, Lap Knockout, Speedtrap | right (Sprint), A |
+| sprint track select | opens on Diamond & Union, 1/44, 3.5 mi (default); down does nothing | A |
+| sprint options | Traffic Level Minimum, Opponents 3, Difficulty Medium, Catch Up On; down cycles the rows | down, left (Opponents 2), A |
+| car select | opens on Stock 1/32 Lexus IS 300; right is 2/32 Fiat Punto | right, A |
+| transmission prompt | Manual / Auto, Auto focused | A |
+| race | Controls/loading, intro flyby, countdown, GO about 20-22 s after A (pass 2, with a frame every 2 s) | RT from the countdown |
+| in race, d-pad up | STANDINGS: A Exit, X Statistics, Y Restart | Y |
+| restart prompt | "Are you sure you want to restart the race?" OK / Cancel, opens on **Cancel** | left, A |
+
+Pass 1 (`1-1791641530-perdrawon1010-3932477`) mapped the main menu and Quick
+Play, which is a random race (it gave a Circuit with a Golf GTI and 3
+opponents), so the route uses Custom Race instead. Pass 2
+(`1-1791642016-perdrawon1010-4029199`) mapped Custom Race. It raced the IS 300
+with 3 opponents, because the exploration returned to the first car, and its
+Y Restart did nothing: the prompt opened on Cancel. Pass 3
+(`1-1791643217-perdrawon1010-95991`, `HAKUX_UNI_TOGGLE=4`, unscored pilot) runs
+the whole setup with four starts (one plus three restarts), with frames before
+each GO and one 11 s after it, to time each GO from the HUD race clock.
+
+The track differs from the owner's: their start was downtown (tall buildings
+in frame), on a track picked by hand; this route takes Sprint's default,
+Diamond & Union. Draws/frame is the common axis, so every result here is
+binned by it, next to the owner's numbers.
+
+### How a start is read
+
+`docs/lanes/perdrawon1010/startread.py`. The first start is `mark gameplay`
+and later ones are `mark go<N>`. A perflog row (a ~2 s window, timed at its
+end) belongs to a start when its window lies inside [GO - 0.5 s, GO + 10.5 s].
+It counts only when no toggle flip falls inside it (perdraw1009's pure-row
+rule, loaded from its `togread.py` at `4ad1154e55`). Results are given per
+state (switches off/on), per draws/frame bin, and as a matched-work (bin
+weighted) on-off. Frame ms is pooled wall time per guest frame, 1000 x rows /
+sum of gfps. RT is pressed during the countdown, so the car launches at GO
+whatever the GO timing; holding the gas through a countdown does not
+false-start in this game.
