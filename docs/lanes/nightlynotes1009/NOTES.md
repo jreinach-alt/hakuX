@@ -1,5 +1,50 @@
 # lane.nightlynotes1009
 
+## Why attempt 3 resumed
+
+Attempt 2 finished its own assigned job (the Addendum 1 and Addendum 2 fixes below, 85/0 and 127/0
+selftest) and left `State: ready`, pushed as `87cdfcdd4c`. It did not act on Addendum 3 (lane.local,
+2026-10-09 21:07 PDT, after the owner said "Yes, fix the capitalization"): that addendum was posted after
+attempt 2's last commit, and lane.local relayed that attempt 2's work had already folded to master as
+`39379dafdd` before this attempt started -- so there was nothing left over from attempt 2 to finish; this
+attempt's whole job is Addendum 3 alone.
+
+This attempt first merged `origin/master` (fast-forward `87cdfcdd4c..39379dafdd`): that fold commit is
+exactly attempt 2's own content folded back, so the merge changed nothing to re-verify.
+
+## Addendum 3 fix (lane.local, 2026-10-09 21:07 PDT): capitalise the provenance line
+
+**Defect.** Every nightly's notes opened with `Automated nightly. built from \`<sha>\` on \`<branch>\`...`
+-- a lowercase "built" right after a full stop. The four `PROV=` assignments in `nightly_build.sh`
+(:153, :156, :159, :161) each started the string with lowercase `built from`; the `echo "Automated
+nightly. $PROV."` site (:480, unchanged) just interpolates it.
+
+**Fix.** Changed `built from` to `Built from` in all four `PROV=` assignments, nothing else in those
+lines. Left :480 and the comments at :97 and :106 unchanged (not output). `grep -n 'built from'
+docs/testing/nightly_build.sh` now matches only the two comments (:97, :106) and the unrelated
+"not built from" phrase in the mid-build PUBLISH REFUSED message (:566, a different sentence, not this
+line). Updated the matching fixture text in `86-nightly-notes.sh:619` (the legacy-top-of-body
+reconstruction for the falsification at line 617-624) to the same capitalisation, so it still matches what
+the current script would produce if asked to re-render that historical caveat shape.
+
+Checked `87-nightly-trunk.sh` separately: it has its own `built from` lowercase text at :337/:339/:355,
+but that is a *verbatim* legacy/mutant fixture reconstructing the script as it stood at `bda6c52d9c`, a
+different historical defect (claiming to be the trunk while behind) with its own self-contained `PROV`
+variable never read from the real `nightly_build.sh`. It is not asserting against this line and is out of
+this lane's territory (not named in the addendum, not in `86-nightly-notes.sh`) -- left untouched.
+
+**Selftest.** No new fixtures needed (the addendum asked only to fix the existing ones to match); counts
+are unchanged from attempt 2: fragment alone **85 passed, 0 failed**; chain shard
+(`86-nightly-notes 87-nightly-trunk`) **127 passed, 0 failed**.
+
+**Confirmation.** `NIGHTLY_PR_BODIES=/nonexistent bash docs/testing/nightly_build.sh notes
+nightly-2026-10-07`, first line of output:
+```
+Automated nightly. Built from `39379dafdd` on `lane/nightlynotes1009` (the tip of `origin/master`).
+```
+(Branch reads `lane/nightlynotes1009` and not `master` because this is a lane worktree, not a checkout of
+master itself -- expected for notes mode run from here, and irrelevant to the capitalisation check.)
+
 ## Why attempt 2 resumed
 
 Attempt 1 left `State: ready`, pushed, with items 1-5 done and the five owner-evidence bodies in place
