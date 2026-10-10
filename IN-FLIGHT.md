@@ -6,14 +6,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `pfifowait1009` | claude-sonnet-5 | 6 min | pfifowait1009: stop holding pfifo.lock across the report-processing fence waits (#433, 0.5) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -71,9 +69,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/pfifowait1009` | pfifowait1009: stop holding pfifo.lock across the report-processing fence waits (#433, 0.5) | `d8be818604` | 2026-10-10 01:59 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -86,4 +82,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-09 fpstelemetry1008b: the four titles lane A could not measure -- NFS Most Wanted, Midnight Club II, Fantastic 4, Dino Crisis 3 (#433)
 - 2026-10-09 fpstelemetry1008: one cause table for the below-bar titles -- perflog + GPU xfr + frame trace on the Nova (#433)
 
-_Updated 2026-10-10 03:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 03:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
