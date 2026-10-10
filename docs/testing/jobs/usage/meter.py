@@ -359,14 +359,18 @@ def build_report(state, now):
     spend_week = spend_in(state["events"], wk_start)
     spend_1h = spend_in(state["events"], now - 3600)
     spend_6h = spend_in(state["events"], now - 6 * 3600)
+    spend_24h = spend_in(state["events"], now - 24 * 3600)
     total_week = sum(spend_week.values())
     rate_1h = sum(spend_1h.values())              # $/h: a 1h window IS an hourly rate
-    rate_6h = sum(spend_6h.values()) / 6.0        # $/h: averaged over the 6h window,
-                                                    # not the window's raw 6h total -- the
-                                                    # two must be the same UNIT or "burn
-                                                    # rate over the last 1h and 6h" would
-                                                    # print one figure six times the other
-                                                    # for a perfectly flat burn
+    rate_6h = sum(spend_6h.values()) / 6.0        # $/h: averaged over the window,
+    rate_24h = sum(spend_24h.values()) / 24.0     # not the window's raw total -- all
+                                                    # three must be the same UNIT or
+                                                    # "burn rate over the last 1h, 6h,
+                                                    # 24h" would print one figure N
+                                                    # times the others for a flat burn.
+                                                    # KEEP_DAYS=8 keeps a full 24h of
+                                                    # events on hand at every tick, even
+                                                    # the first one right after a reset.
     cal = state.get("calibration") or []
     capacity = None
     for c in cal:                                 # most recent point wins; see docstring
@@ -376,7 +380,12 @@ def build_report(state, now):
     hours_left = max(0.0, (wk_end - now) / 3600.0)
     projected_pct = None
     if capacity and estimated_pct is not None:
-        projected_pct = estimated_pct + (rate_6h * hours_left / capacity * 100.0)
+        # Project from the 24h rate, not the 6h rate: a day/night cycle, so a
+        # single busy evening (bursty lanes, an interactive session) does not
+        # get extrapolated over the quiet overnight hours still to come. A
+        # 24h window still catches a real sustained ramp, just not a 3-6h
+        # spike -- see 89-usage-mode.sh's "burst after quiet" case.
+        projected_pct = estimated_pct + (rate_24h * hours_left / capacity * 100.0)
     top3 = sorted(spend_week.items(), key=lambda kv: -kv[1])[:3]
     return {
         "generated_utc": datetime.datetime.fromtimestamp(now, datetime.timezone.utc)
@@ -384,6 +393,7 @@ def build_report(state, now):
         "week_start_epoch": wk_start, "week_end_epoch": wk_end,
         "spend_by_actor": dict(spend_week), "spend_since_reset": round(total_week, 2),
         "rate_1h": round(rate_1h, 2), "rate_6h": round(rate_6h, 2),
+        "rate_24h": round(rate_24h, 2),
         "capacity_dollars_per_week": capacity,
         "estimated_percent": round(estimated_pct, 1) if estimated_pct is not None else None,
         "projected_percent_at_reset": round(projected_pct, 1) if projected_pct is not None else None,
@@ -396,9 +406,9 @@ def summary_line(report, mode="unknown"):
     proj = report["projected_percent_at_reset"]
     top3 = ", ".join("%s $%.0f" % (a, c) for a, c in report["top3"]) or "none"
     return ("mode=%s estimated_week=%s%% spend_since_reset=$%.0f top3=[%s] "
-            "rate_6h=$%.1f/h projected_at_reset=%s%%" % (
+            "rate_24h=$%.1f/h projected_at_reset=%s%%" % (
                 mode, ("%.0f" % pct) if pct is not None else "?",
-                report["spend_since_reset"], top3, report["rate_6h"],
+                report["spend_since_reset"], top3, report["rate_24h"],
                 ("%.0f" % proj) if proj is not None else "?"))
 
 
