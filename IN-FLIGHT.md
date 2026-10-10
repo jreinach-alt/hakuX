@@ -8,8 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `nightlynotes1009` | claude-sonnet-5 | 0 min |  |
-| `surfgpu1009` | claude-opus-5-5 | 0 min | surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433,  |
+| `nightlynotes1009` | claude-sonnet-5 | 1 min |  |
+| `surfgpu1009` | claude-opus-5-5 | 1 min | surfgpu1009: a GPU-side route for the reuse/surfupd rebind, behind HAKUX_SURFGPU=1 (NBA Live 05/06/07) (#433,  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -91,4 +91,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-07 gpunonrender: GMEM vs sysmem on the replay-bound titles, census on
 - 2026-10-06 dispatchgate1006: a generated title registry and one admit() gate between "decide to run it" and a handheld (shadow mode)
 
-_Updated 2026-10-09 17:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-09 17:01 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
