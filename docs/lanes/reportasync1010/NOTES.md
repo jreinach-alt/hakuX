@@ -121,7 +121,17 @@ same code at the race start):
 
 ### Runs of this lane
 
-(none yet; section 3 is the plan)
+Code ref for every run: `2e9f535300` (the commits after it change docs and the generated index only).
+
+| request | what | env | state |
+|---|---|---|---|
+| `1-1791656656-reportasync1010-4183629` | pilot: step-1 trace, async path, NFS 500 s | `HAKUX_REPORT_TRACE=1 HAKUX_REPORT_ASYNC=1` | queued 10-10 |
+| `1-1791656657-reportasync1010-4184121` | pilot: step-1 trace, sync path, NFS 500 s | `HAKUX_REPORT_TRACE=1` | queued 10-10 |
+
+Waiting on those two (listed in `WAITING`). On resume: `raread.py <async> <sync>` for the step-1 table and the
+period of each; frames `route-frames/s*-g11.png` for a moving player and for a missing or popping car; then the
+pilot verdict to `$DISPATCH_DIR/pilots/reportasync1010.ok` and the rest of section 3 (pixel pair B then A, NFS
+off/on/on/off).
 
 ## 3. Plan
 
