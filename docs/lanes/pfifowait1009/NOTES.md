@@ -427,3 +427,18 @@ section 3 above) get queued separately, with `HAKUX_FRAMETRACE=1` on
 BOTH arms so `waits.py`/`workbin.py` have the `[hakuX-ft1]` lines the
 prediction's legs read -- run #1/#2 above deliberately do not carry
 frametrace, so they are pacing checks only, not arm data.
+
+### Run #1 result -- PASS (2026-10-10 00:38-00:53 PDT)
+
+`1-1791616849-pfifowait1009-2796495`: `run.log` line 1230, `ROUTE finished
+(rc 0) after 896s; holding without input` -- no `ROUTE FAIL` anywhere in
+the log. `logcat.txt` has zero `FATAL EXCEPTION`/`ANR in`/`Native crash`
+matches. All 25 scripted steps plus the genre loop completed and produced
+a shot/probe each (`route-frames/*.png`, 25 named steps + `gameplay`/
+`hold` frames after). Eyeballed `s13-gameplay` (26 fps, snowboarding down
+an open slope, player clearly in motion) and `s22-probe`/`s23-gameplay`
+(29 fps, 23s apart, player weaving through a line of trees lining the
+track, board angle and snow trail both changed between the two frames --
+moving through the trees as an intentional obstacle section, not the
+"parked against a tree" void pmucounters hit). Baseline pacing: route
+holds up.
