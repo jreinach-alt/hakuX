@@ -23,178 +23,184 @@ uncommitted; it had queued no device request. Its session log is empty (killed
 before the JSON was written). The Opus session that resumes from here (still
 counted "attempt 2") re-checks section 1's reading before building on it.
 
-## 1. flush_draw_one_pass and its callees (job item 1)
+## 1. Where the per-draw time goes (job item 1)
 
-Read: `hw/xbox/nv2a/pgraph/vk/draw.c` `flush_draw_one_pass` (9293),
-`begin_pre_draw`/`begin_pre_draw_inner` (5995/5443), `begin_draw` (6036),
-`end_draw` (6362), and `hw/xbox/nv2a/pgraph/vk/shaders.c`
-`pgraph_vk_update_shader_uniforms` (1819/860) and
-`pgraph_vk_update_descriptor_sets` (848).
+Source: lane.local's 45 s simpleperf profile of the owner's 3-racer start
+(`lanelocal-scratch/nfs-race-1009/prof/nfs-race-fp.data`, cpu-clock 1 kHz, frame
+pointers, build 1b1fec978d-perflog), re-split with `prof_tree.py` (this dir): every
+libxemu.so frame re-symbolized with `llvm-symbolizer --inlining` against the same
+build's .so, so a function inlined into its caller gets its own line. Renderer tid
+32436, 18,941 samples. ms/frame below are at 13 fps and ~1,630 draws/frame (the
+brief's figures for that start), so 1 ms/frame = 0.61 us/draw.
 
-**This path is already heavily dirty-tracked.** `begin_pre_draw_inner` is not
-one path but three, tried in order, each one a superset of work:
+**This section replaces attempt 2's Sonnet reading, which had three errors:**
+(a) "no snprintf on the shader-bind path": there is one, every draw:
+`pgraph_glsl_vsh_uber_values` -> `uber_printed_float` -> snprintf, 0.46 ms/frame;
+(b) ubosz was "~1.2 ms/frame": its upload hook alone is 1.39, with its name table
+and strncmp ~1.8 under update_descriptor_sets, and 2.74 in all; (c) the uniform
+copy cost was placed in buffer.c's append_to_buffer: it is in shaders.c's
+`apply_uniform_updates` -> glsl.h `uniform_copy`, one call per array element.
 
-- **SFP (super-fast path)**: ~15 generation/flag checks (pipeline unchanged,
-  no FB/shader/pipeline-state dirt, no descriptor rebind needed, uniforms
-  clean, texture_state_gen/non_dynamic_reg_gen/any_reg_gen all matched,
-  vertex_attr_gen matched or a memcmp of the attribute/binding descriptions
-  confirms the pipeline's key still fits). On a hit: pushes vertex-attr
-  push-constants and returns. **No uniform upload, no descriptor write, no
-  texture bind.**
-- **MFP (medium-fast path)**: looser version of the same checks (allows a
-  vertex_attr_gen change if the memcmp still matches, allows a push-texture
-  update). On a hit: still calls `pgraph_vk_update_shader_uniforms` +
-  `pgraph_vk_update_descriptor_sets` unconditionally, even though both
-  functions early-out internally when their own dirty flags are clear.
-- **Full path**: pipeline (re)creation, render-pass/framebuffer management,
-  full descriptor-set update.
+Under `flush_draw_one_pass` (17.6 ms/frame, 54% of the thread):
 
-So the "uniforms 3.7 / descriptor sets 2.9 / texture bind 1.9" ms/frame in
-lane.local's NFS profile is **not** three flat per-draw costs -- it's whatever
-is left after SFP/MFP already filtered out the draws where nothing changed.
-The profile's "pfifo_thread 0.42 core at ~1,650 draws/frame" and "renderer
-14.6 ms/frame per-draw setup" numbers are each already *post*-fast-path; the
-remaining cost is the draws that genuinely must touch GPU state (NFS, being a
-3D racer with no static geometry reuse like a sports title's rink, likely
-takes SFP/MFP misses on most draws because each object changes its transform,
-texture or both every frame -- unverified, no SFP/MFP hit-rate counters were
-read from this profile; `super_fast_hits`/`super_fast_misses`/`desc_rebind_skips`
-/`desc_rebind_full` in `OPT_STAT_INC` would answer this on the next run and
-should be read before trusting any fix's share).
-
-**Per-step read of what each candidate does and what headroom is left:**
-
-| step | what it does per miss | already cached? | territory |
+| subtree | ms/frame | what it is | whose file |
 |---|---|---|---|
-| `pgraph_vk_ubosz_note_upload` | memcmp+memcpy the whole VS+PS uniform block (perflog-only counter) | N/A -- not a render cost, a measurement artifact | shaders.c (mine) |
-| `pgraph_vk_update_shader_uniforms` -> `pgraph_vk_append_to_buffer` | copies the whole uniform block (up to ~3 KB) into the staging buffer at a new offset, every time `r->uniforms_changed` | Only gated on `uniforms_changed`, which is set by ANY vsh/ltctxa/ltctxb/ltc1 write or fixed-function setter (matrices, texgen, fog, eye, viewport, lights, materials) -- not on whether the resulting bytes differ. No byte-level dedup. | **buffer.c -- not in my territory** (not shaders.c/renderer.c; not listed as surfgpu1009's either -- unclaimed) |
-| `pgraph_vk_update_descriptor_sets` (UBO half) | `vkUpdateDescriptorSets` for the dynamic UBO binding + ring management | Only on `need_new_ubo_set`; already skips when nothing changed via `desc_rebind_skips`/`need_descriptor_rebind` | shaders.c (mine) |
-| `pgraph_vk_update_descriptor_sets` (texture half, standard path) | FNV hash of image views/samplers/layouts, `tex_desc_cache` lookup, `vkUpdateDescriptorSets` on miss | Already has a hash-keyed cache (`tex_desc_cache`, `TEX_DESC_CACHE_SIZE` slots) on top of the gen check | shaders.c (mine) |
-| `pgraph_vk_bind_textures` (texture bind 1.9ms) | per-texture upload/decode decision, sampler lookup | Gated on `texture_vram_gen`/`texture_state_gen`; push-descriptor path writes directly to `push_tex_infos` with no `vkUpdateDescriptorSets` at all | **texture.c -- surfgpu1009's until fold** |
-| `pgraph_vk_surface_update` (1.9ms) | surface/zeta binding refresh | not read this pass | **surface.c -- surfgpu1009's until fold** |
-| vertex-RAM sync / `tlb_reset_dirty` (1.3ms) | dirty-page scan + copy of touched vertex RAM pages | Already has `OPT_SYNC_RANGE_SKIP` (sync_range_covers + has_dirty_vertex_pages) | **draw.c -- surfgpu1009's until fold** |
-| `begin_draw`'s pipeline rebind block | viewport/scissor/pipeline bind, no string formatting found here | gated on `pipeline_binding_changed`/render-pass state | **draw.c -- surfgpu1009's until fold** |
+| create_pipeline (inclusive) | 7.51 | holds bind_shaders, update_shader_uniforms (early-hit path), bind_textures | draw.c |
+| pgraph_vk_update_shader_uniforms | 4.43 | see the next table | shaders.c (mine) |
+| pgraph_vk_update_descriptor_sets | 3.42 | ubosz upload hook 1.39, memcmp 0.79, memcpy 0.68, strncmp 0.24 | shaders.c |
+| pgraph_vk_bind_textures / create_texture | 2.33 / 2.12 | texture lookup, check_texture_dirty 0.76, fast_hash 0.61 | texture.c (surfgpu1009) |
+| sync_vertex_ram_buffer -> tlb_reset_dirty | 1.59 / 1.47 | dirty-page scan of vertex RAM, every draw | draw.c (surfgpu1009) |
+| nv2a_clock_ns (perflog timers) | 1.65 | the phase timers themselves | perflog only |
+| download_surfaces_in_range_if_dirty | 0.71 | surface readback before a draw | draw.c / surface.c |
 
-**No `snprintf` was found in the shader-bind path in shaders.c or in
-`begin_draw`/`begin_pre_draw_inner` in draw.c.** The only `snprintf`s in
-shaders.c are inside the ubosz logger (`pgraph_vk_ubosz_log_and_reset`, once
-per 60 flips, not per-draw). If the brief's "shader bind 2.4 (snprintf 0.4 of
-it)" bucket is `create_pipeline`/`create_clear_pipeline` or a debug-marker
-string in draw.c, it is outside today's two files read (shaders.c, and the
-parts of draw.c reachable without edit rights); flagging this as unresolved
-rather than guessing at a line number.
+Under `pgraph_vk_update_shader_uniforms` (4.43 ms/frame = 2.7 us/draw):
 
-**Ranking (ms/frame x probability, not ease), everything named is CPU-side
-renderer-thread cost, not GPU time -- bf2push656 already measured that halving
-UBO binds on BF2 did NOT move GPU ms (GPU bind cost is ~1-4us), so a win here
-is not guaranteed to generalize to GPU time; it is a renderer-thread-busy
-claim only, which is what idles the guest 12.8ms/frame waiting on the
-renderer in pass 2's profile:**
+| piece | ms/frame | removable by |
+|---|---|---|
+| apply_uniform_updates -> uniform_copy, per element, + memcpy | ~2.84 (vsh 2.01, psh 0.56, ubVsh 0.27) | F1 HAKUX_UNI_BULK, ~1.9 of it (the bytes are still copied) |
+| pgraph_glsl_vsh_uber_values (snprintf of each program constant) | 0.75-0.78 | F2 HAKUX_UNI_UBERCACHE, ~0.73 |
+| update_carried_fog_coord -> vsh_fog_write (token walk) | 0.27 | F3 HAKUX_UNI_FOGCACHE, ~0.24 |
 
-1. **ubosz gate (this lane, done below): ~1.2 ms/frame, P~1.0 (it is a
-   measurement artifact, not a render cost -- the only uncertainty is whether
-   disabling it changes anything else, and it can't: the whole block compiles
-   out in release already).** Does not speed up NFS; decontaminates every
-   other candidate's A/B.
-2. **Byte-identical-upload skip for `pgraph_vk_update_shader_uniforms`**
-   (shaders.c, mine): the bf2ubosize433 counter's own "note Z" found >=30% of
-   BF2's same-binding uploads are byte-identical to the previous upload (set
-   dirty by a fixed-function setter that didn't actually change the value).
-   Unverified for NFS specifically -- no ubosz data exists for NFS yet, and
-   with the counter now gated off by default (see #2 below) I can't read it
-   without `HAKUX_UBOSZ_LOG=1` on a separate run. P 0.3-0.5 contingent on that
-   read; win-if-true is a slice of the 3.7ms/frame uniforms bucket (not all of
-   it -- append_to_buffer's copy is in buffer.c, out of territory, so the
-   skip would need to short-circuit before the call in shaders.c, which is
-   where `r->uniforms_changed` is consumed).
-3. **Texture descriptor cache widening / push-descriptor coverage** (shaders.c
-   texture half): already has a hash cache; before touching it, read
-   `desc_rebind_skips` vs `desc_rebind_full` and the tex_desc_cache hit rate on
-   an NFS run. Not attempted this session -- no device run yet (see #2, the
-   route is still blocked on the gas-axis question).
-4. **vertex-RAM sync, texture bind, surface_update, pfifo pusher/dispatch/spin
-   split**: all outside today's territory (draw.c/texture.c/surface.c pending
-   surfgpu1009's fold; pfifo.c never mine). Named here, not implemented; see
-   OUTBOX for the board question on the pfifo spin.
+**pfifo_thread's self time (the brief's 6.0 ms) is the perflog's own clock.**
+`--self-of pfifo_thread`: 4,231 samples, of which 3,703 (87.5%) are
+`nv2a_clock_ns` (debug.h:477-478), the timers `cbl_enter`/`cbl_leave` and the
+puller's per-method timing call (pfifo.c 849, 864, 1680, 1767, 1776, 1783, 1787,
+1799, 1836, 2202). The pusher and puller themselves are 287 + 72 samples (~0.5 ms
+at the brief's rate), method dispatch inside the puller; the FIFO spin
+(`pfifo_thread` own lines 2196-2206) is ~80 samples. So pfifo_thread is not a
+renderer cost a release build pays; it inflates every perflog run's renderer
+time by ~5 ms/frame at 15.6 fps (the rate the brief's 6.0 came from; 6.3 at 13).
+pfifo.c is not mine: the lines are in OUTBOX.
+
+**Fin is bigger than Draw on NFS and is not CPU work.** Baseline phase line in the
+fixed scene: `Draw:5.5 ... Fin:10.0(Sub:2.5 Fen:1.4) Idle:13.8` with `Fin: Sd1`:
+one surface download a frame forces a finish (draw.c 5017-5183 waits on
+qemu_event_wait for the download). A cpu-clock profile does not sample a thread
+blocked in a wait, so none of the profile's tables above can see it. At the 30 fps
+cap it costs nothing (Idle 13.8 ms is left); in the heavy start it is on the frame's
+path. surfgpu1009's area: OUTBOX.
 
 ## 2. Perflog ubosz counter (job item 2) -- done
 
-`pgraph_vk_ubosz_note_upload`/`_note_bind`/`_log_and_reset` (shaders.c
-672/774/786) are now gated by a new runtime check, `ubosz_on()`, reading
-`HAKUX_UBOSZ_LOG` once (cached, default off -- any unset/empty/"0" value is
-off). All three functions return immediately when off, before any
-memcmp/memcpy/alloc. The call sites in draw.c (1088, 3411, 6554, 6823, 7919)
-are untouched -- they are still inside `#if NV2A_PERF_LOG` (compile-time, so
-release builds still carry none of this at all) but now also check the new
-runtime flag via the functions they call, with no draw.c edit needed (draw.c
-is still surfgpu1009's until its fold lands).
+`pgraph_vk_ubosz_note_upload`/`_note_bind`/`_log_and_reset` (shaders.c) return at
+once unless `HAKUX_UBOSZ_LOG` is set (read once, default off). The draw.c call
+sites are untouched (still inside `#if NV2A_PERF_LOG`). In the profile above that
+hook is 1.39 ms/frame plus ~0.4 of name-table work: every perflog build's renderer
+time drops by about that from this commit on, which is a measurement change, not a
+speedup a player sees. bf2ubosize433's `ubosz[...]` line now needs
+`HAKUX_UBOSZ_LOG=1` (OUTBOX).
 
-Measured size, from lane.local's 10-09 3-racer profile (pm/lanelocal-log.md,
-22:30 PDT entry): ~1.2 ms/frame self, "about a third of the descriptor sets
-2.9 ms/frame bucket" -- i.e. real descriptor-set cost in that profile was
-closer to ~1.7 ms/frame once ubosz is subtracted. This was not independently
-re-measured this session (no device run yet); it is lane.local's number,
-cited rather than re-derived, per "don't re-measure what it settles".
+## 3. NFS controls (Addendum 1, settled on device)
 
-**Behavior change, stated plainly:** this flips the DEFAULT for every
-perflog build, not just this lane's A/B -- bf2ubosize433's standing
-hakuX-stall `ubosz[...]` line goes silent unless `HAKUX_UBOSZ_LOG=1` is set.
-The brief instructs exactly this ("env-gated, default off, or removed"); flagged
-in PR.md and OUTBOX so lane.local can tell any consumer of that line.
+Step-0 run 1-1791612289-perdraw1009-1529147 held LT alone 12 s, then RT alone 12 s.
+Frames: s20-idle 0 MPH gear 1; lt-02s..lt-12s gear R, up to 54 MPH; rt-02s 40 MPH;
+rt-08s 95 MPH gear 3; rt-12s 87 MPH at 65% complete. **pad.sh's `axis RT` is the
+gas and `axis LT` reverses**, as the owner said; no swap reaches the game on the
+Nova's pad. (pad.sh's LOGICAL table maps RT -> ABS_GAS; SDLControllerManager's
+GAS/BRAKE swap is a sort-order swap and does not bite here.) fpstelemetry1008b's
+"gear R at 0 MPH" frames were taken with RT pulsed, not held, so the car never got
+going; that needs no device run. Logcat after 23:09:48 in run 1529147 is the owner
+driving, not the route.
 
-## 3. Addendum 1 / cross-session correction: NFS gas axis
+## 4. Route and baseline
 
-Brief originally said gas is R2 (ABS_GAS, pad.sh's RT) and asked me to verify
-the SDL GAS/BRAKE swap on device before writing the route. Two updates landed
-while reading code, both before any device run:
+`nfs-mw.route`: boot steps from fpstelemetry1008b, `mark gameplay` at ~235 s, then RT
+held, one 1 s LX left pulse at +12 s. Baseline 1-1791613176-perdraw1009-1735811
+(build 1b1fec978d-perflog, no flag), frames on host clock after the mark: +10 s 108
+MPH gear 3 (64%), +21 s 63 MPH scraping the left wall (67%), +31 s on 0 MPH wedged
+against the wall under a left chevron (68%), revving, to the end. The logcat mark
+(`hakuX-route: mark gameplay`) is 2.5 s later on the device clock than run.log's.
 
-- `briefs/perdraw1009.md` "Addendum 1" (lane.local, 22:55 PDT): owner says RT
-  accelerates / LT brakes in NFS MW; the old route held RT and sat in gear R
-  at 0 MPH -- what holding LT looks like -- so the SUSPECT is that pad.sh's
-  logical RT (ABS_GAS, raw axis 9) is arriving at the game as LT, through
-  SDL's GAS/BRAKE swap.
-- A cross-session message (from=hakux-0b) sharpened this further: step 0 is
-  now a one-shot test -- hold `axis LT max` alone (nothing else), check in
-  frames whether the speedometer rises. If yes, the swap is confirmed and
-  nfs-mw.route drives on LT.
+| window (device s after mark) | rows | us/draw (Draw/BE) | row sd | draws/frame | Draw ms | (Pipe+Mfp)/draw | gfps | Idle ms | Fin ms |
+|---|---|---|---|---|---|---|---|---|---|
+| MOTION (0, 24] | 12 | 13.55 | -- | 350-1025 | 5.0-12.8 | 6.84 | 28.3 | -- | -- |
+| STATIC (40, 78] | 19 | 12.26 | 0.16 | 439 | 5.38 | 6.61 | 29.0 | 14.0 | 10.2 |
 
-Read (not edited, per both messages) `docs/testing/perf/pad.sh`: `LOGICAL`
-table maps `LT -> ABS_BRAKE ABS_Z` and `RT -> ABS_GAS ABS_RZ` (pad.sh:46-47),
-so pad.sh's logical LT already resolves to the evdev axis the brief calls
-BRAKE (raw 10), independent of any SDL-side swap -- the SDL swap is a
-separate, later remapping on the Java side.
+So the race scene this route reaches runs at the 30 fps cap (D 16.7, 2 VBLANKs a
+frame) with ~14 ms/frame of renderer idle: **a per-draw cut cannot raise gfps
+here.** The A/B therefore judges Draw us/draw and (Pipe+Mfp)/draw, and states gfps as
+unchanged; the scene where a cut would show as fps (the owner's 3-racer start, 13
+fps, ~1,650 draws) is not reachable by a route yet. The STATIC window is one fixed
+scene with a 0.16 us/draw row sd: the A/B's matched-scene leg. The route's tail was
+then cut to 80 s after the mark (~317 s a run) so four arms fit the 30 min pilot gate.
 
-Read `android/app/src/main/java/org/libsdl/app/SDLControllerManager.java`
-157-181: `RangeComparator` swaps `MotionEvent.AXIS_GAS`/`AXIS_BRAKE` for
-SORT ORDER ONLY, with a comment naming exactly this failure mode ("some
-controllers, like the Moga Pro 2, return AXIS_GAS (22) for right trigger and
-AXIS_BRAKE (23) for left trigger -- swap them so they're sorted in the right
-order for SDL"). This confirms the MECHANISM the addenda suspect exists and
-is controller-model-dependent; it does not by itself prove the Nova's
-"Retroid Pocket Controller" hits it -- that needs the on-device frame check
-named in both addenda.
+What the baseline cannot see: steering. The one LX pulse got the car round one curve
+and into a wall at the next; a longer moving window needs a steering script, which
+is a separate route job (the frames show where: the left-hand turn at 67-68%).
 
-**Status: the on-device LT-alone investigative run has not been queued yet
-this session** (no `request.sh` call made). Per Rule "never hold the device
-yourself" and the pilot budget (30 min unreviewed), this is a short (<=60s)
-single investigative run, well under the pilot threshold, and is the
-immediate next step before writing nfs-mw.route or registering any
-A/B prediction. OUTBOX names the exact request.
+## 5. The fix: three default-off switches (job item 3)
 
-## 3b. Local check
+Commit 9bdfd6d4f0, shaders.c and renderer.h only:
 
-Host clang type-check (`build-desktop/compile_commands.json`'s shaders.c
-command, file arg redirected at this worktree's shaders.c, `-fsyntax-only`
-appended): rc 0. Both warnings printed (`shader_module_key_persist`,
-`pgraph_vk_set_shader_warmup_progress_cb`, missing-prototype) are on lines
-this session did not touch, same as bf2push656's recipe found.
+- **HAKUX_UNI_BULK** (F1): `uniform_copy_draw` sends an array uniform whose reflected
+  stride equals its element size (std140 vec4 arrays, the 192-entry vsh constants)
+  through one memcpy; anything else goes through the original per-element loop with
+  constant-size element copies. Byte identity checked on the host by
+  `bulkcheck.sh` (this dir): shaders.c's own functions, extracted from the file,
+  against glsl.h's `uniform_copy` over 2,000 random std140 blocks plus the 13 shapes
+  the shaders declare: `OK 2013`. Three mutants (copy one element short, vec3 copied
+  as 8 bytes, stride `>=` for `==`) each print MISMATCH.
+- **HAKUX_UNI_UBERCACHE** (F2): `pgraph_glsl_vsh_uber_values` is a pure function of
+  `binding->state.vsh` (glsl/vsh-uber.c 222-317), and nothing writes a binding's
+  state after `shader_cache_entry_init` (grep: reads only). Its output is kept per
+  ShaderBinding (`vsh_cache.uber`), invalidated in entry_init.
+- **HAKUX_UNI_FOGCACHE** (F3): `pgraph_glsl_vsh_fog_write` likewise (glsl/vsh.c 364),
+  kept as `vsh_cache.fog_write`.
 
-## 4. Status / next steps
+`[perdraw433] bulk=%d ubercache=%d fogcache=%d` is logged once per process under
+hakuX-perf. Host type-check: build-desktop/compile_commands.json's shaders.c
+command, redirected at this worktree, `-I wt -I wt/include` first, `-fsyntax-only`:
+rc 0.
 
-Done this session: NOTES.md (this file), ubosz env-gate in shaders.c
-(committed as a WIP-then-final commit per lane.local's request mid-session).
-Not done yet: the LT investigative run, nfs-mw.route, the per-draw fix's own
-HAKUX_* flag (candidate #2 above, contingent on an NFS ubosz read), the
-prediction JSON, any A/B, pixel check, generalisation arm. This session is
-not claiming "done" -- PR.md stays in draft/needs-device state; see OUTBOX
-for the queued asks (pfifo spin lines, ubosz default-flip notice).
+## 6. Ranking (expected ms/frame removed x probability, at the profiled start)
+
+| # | candidate | ms/frame if it works | P | E | status |
+|---|---|---|---|---|---|
+| 1 | F1+F2+F3 per-draw uniform work (shaders.c) | ~2.9 | 0.7 | ~2.0 | done, A/B queued |
+| 2 | Fin: a GPU finish per frame for one surface download (draw.c/surface.c) | several ms at the start (blocked time, unmeasured by the profile) | 0.5 | high, unsized | surfgpu1009's area, OUTBOX |
+| 3 | create_texture/bind_textures lookups (texture.c) | ~1-2 of 4.4 | 0.5 | ~0.7 | surfgpu1009's, OUTBOX |
+| 4 | sync_vertex_ram_buffer's dirty-page reset every draw (draw.c) | ~1.0 of 1.6 | 0.5 | ~0.5 | draw.c, after transfer |
+| 5 | update_descriptor_sets' memcmp/memcpy (shaders.c) | ~0.5 of 1.5 | 0.4 | ~0.2 | not started |
+| -- | pfifo clock reads, ubosz | 5-7 (perflog only) | 1.0 | 0 for a player | measurement; ubosz gated, pfifo in OUTBOX |
+
+P for #1 is the probability the profiled cost transfers to the routed scene and
+turns into removable time; the A/B measures it. #2 is ranked by its size: Fin is
+the largest renderer phase on NFS (10 ms of a 30 ms frame in the fixed scene), and
+an ubershader-style "do it differently" fix there (no per-frame finish: read the
+surface back asynchronously) is the approach that fits a tiled GPU; it is not this
+lane's file.
+
+## 7. The A/B (job items 4-6)
+
+Prediction `docs/testing/predictions/perdraw1009-nfs-soak.json` (registered
+06:34Z, sha256 b1ee6d91fc5d...), judge `armread.py` (this dir), both in dfae6708c1.
+One build, 9bdfd6d4f0; B = the three switches =1, A = all three =0, two runs each,
+queued B1 A1 B2 A2 (off arm last: the env pref outlives a run):
+
+| arm | request |
+|---|---|
+| B1 | 1-1791614071-perdraw1009-2017514 |
+| A1 | 1-1791614079-perdraw1009-2018606 |
+| B2 | 1-1791614081-perdraw1009-2018875 |
+| A2 | 1-1791614116-perdraw1009-2019230 |
+
+Point prediction: STATIC Draw -1.5 us/draw (~-12%, ~-0.66 ms/frame at 439 draws),
+in [-3.0, -0.7]; (Pipe+Mfp)/draw <= -0.7; MOTION in [-3.0, -0.4]; gfps unchanged at
+the cap (|d| <= 0.5) and no MOTION regression (>= -1); pixels: no 80 px region of the
+STATIC frames moves past the within-arm floor + 8. armread.py was checked on the
+baseline as both arms (all A/B legs read zero, V and X pass) and against a mutant
+copy of the baseline with +12 blue over the top third of four frames (X FAIL, 120
+regions).
+
+Profile pass: the dispatcher has no simpleperf hook (request.sh and the soak take no
+profiling option). If the flag-on arm needs a profile, it is a separate pass with
+host-tools/profile_ab.sh, not a hand-recorded one on a timed arm (lane.local, 10-09).
+
+## 8. What the next lane should not repeat
+
+- Do not read pfifo_thread's self time as renderer work: 87.5% of it is perflog
+  clock reads.
+- Do not judge a per-draw cut by gfps on this route: the reachable race scene sits
+  at the cap. Judge us/draw and Idle.
+- A cpu-clock profile is blind to Fin's waits; size Fin from the phase line.
+- A pulsed RT on NFS MW never gets the car going; hold it.
