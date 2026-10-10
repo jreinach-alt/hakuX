@@ -8,15 +8,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `drawrec1010` | claude-opus-5-5 | 3 min | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#43 |
-| `fleetflush1010` | claude-sonnet-5 | 37 min |  |
-| `gpupass1010` | claude-sonnet-5 | 27 min | gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5) |
-| `reportasync1010` | claude-opus-5-5 | 13 min | reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5) |
+| `drawrec1010` | claude-opus-5-5 | 18 min | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#43 |
+| `fleetflush1010` | claude-sonnet-5 | 52 min |  |
+| `gpupass1010` | claude-sonnet-5 | 42 min | gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 7 waiting, 1 running.
+- **Device queue:** 14 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -78,10 +77,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 |---|---|---|---|
 | `lane/drawrec1010` | drawrec1010: census of consecutive-draw state at the NFS Most Wanted race start, then dirty-tracked reuse (#433, 0.5) | `5c05092b5c` | 2026-10-10 12:04 |
 | `lane/gpupass1010` | gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5) | `e67cd5cebe` | 2026-10-10 12:09 |
-| `lane/reportasync1010` | reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5) | `f64418e892` | 2026-10-10 12:14 |
 
 ## Recently landed on master
 
+- 2026-10-10 lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download, behind HAKUX_TEXSCAN=1 (#433, 0.5)
 - 2026-10-10 pfifowait1009: stop holding pfifo.lock across the report-processing fence waits (#433, 0.5)
 - 2026-10-10 lane.forzasurf1010 -- does the default-on surfgpu route remove Forza's surface-download wait? (#433, 0.5)
 - 2026-10-10 NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5)
@@ -93,6 +92,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 ghlive1010 -- AGENTS.md: GitHub is up
 - 2026-10-10 Lane: restoreleak1009            Issue: #433
 - 2026-10-10 boardgateenv1009 -- the board push gate stages master's docs/testing into the pushing tree's index (#433, 0.5)
-- 2026-10-10 surfgpudefault1009: the surfgpu switch as a Graphics toggle, on by default (#433, 0.5)
 
-_Updated 2026-10-10 12:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 12:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
