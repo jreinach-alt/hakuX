@@ -303,16 +303,26 @@ start_frame_capture() {   # <rdir> <interval-seconds> <hold-seconds>
         n=0
         while [ "$n" -lt "$cap" ]; do
             n=$((n+1))
+            local f="$rdir/frames/$(printf 'f%05d' "$n").png"
             # exec-out, not `shell`, so the PNG is not mangled by the tty line
             # discipline -- `adb shell screencap -p` corrupts every 0x0a on
             # some transports and the file opens as a truncated image.
-            timeout 30 adb -s "$SERIAL" exec-out screencap -p \
-                > "$rdir/frames/$(printf 'f%05d' "$n").png" 2>/dev/null
+            timeout 30 adb -s "$SERIAL" exec-out screencap -p > "$f" 2>/dev/null
             # An empty or tiny file is a failed capture, not a black frame.
             # Delete it: a 0-byte PNG in a frame set is an image tool's crash
             # later on, and a count that includes it is a lie about coverage.
-            [ -s "$rdir/frames/$(printf 'f%05d' "$n").png" ] \
-                || rm -f "$rdir/frames/$(printf 'f%05d' "$n").png"
+            if [ -s "$f" ]; then
+                # THE DEVICE CLOCK, not the host's: hitch_report.py's mark
+                # comes from a logcat line stamped by the device (#433
+                # Addendum 1), and the host clock on this machine steps
+                # backward periodically and cannot be trusted to agree with
+                # it. One extra cheap call per frame, appended to a sidecar
+                # so the f%05d names stay what every reader already cites.
+                local devt; devt=$(timeout "$ADB_QUICK_TIMEOUT" adb -s "$SERIAL" shell date +%H:%M:%S 2>/dev/null | tr -d '\r\n')
+                [ -n "$devt" ] && printf '%s\t%s\n' "$(basename "$f")" "$devt" >> "$rdir/frames/index.tsv"
+            else
+                rm -f "$f"
+            fi
             sleep "$every"
         done
     ) &
@@ -352,6 +362,22 @@ stop_frame_capture() {
 # forward an externally-delivered SIGINT to ITS child -- verified separately
 # -- but that signal is never used here: the remote stop is this independent
 # `pkill` call, not a signal to the `timeout` wrapper.)
+# mark_wall / start_wall are read from the DEVICE clock (#433 Addendum 1),
+# the same one the hakuX-route mark line and frames/index.tsv are on, so a
+# moment in the video lines up with the stills and logcat without any
+# host/device conversion -- and so the host clock's periodic backward step
+# (docs/lanes/soakvideo1011/NOTES.md) cannot put a segment's own start
+# before its predecessor's.
+# Retried: a single adb flake here must not read as "the mark never came"
+# (see docs/testing/jobs/selftest.d and the device-run-flakes lesson).
+_device_epoch() {
+    local t try
+    for try in 1 2 3; do
+        t=$(timeout "$ADB_QUICK_TIMEOUT" adb -s "$SERIAL" shell date +%s 2>/dev/null | tr -dc 0-9)
+        [ -n "$t" ] && { printf '%s' "$t"; return 0; }
+    done
+    return 1
+}
 VIDEO_PID=""
 VIDEO_RDIR=""
 _soak_video_meta() {   # <rdir> <seconds> <after> <mark_wall|""> <skip reason|"">
@@ -379,7 +405,7 @@ start_soak_video() {   # <rdir> <seconds> <after> <has-route 0|1> <hold-seconds>
         return 0
     fi
     (
-        local waited=0 mark_wall=""
+        local waited=0 mark_wall="" mark_seen=0
         if [ "$has_route" = 1 ]; then
             # The route player writes "ROUTE HH:MM:SS.mmm mark <name>" to
             # run.log (titles/route.sh's log(), the "mark" step). Watched
@@ -387,14 +413,20 @@ start_soak_video() {   # <rdir> <seconds> <after> <has-route 0|1> <hold-seconds>
             # dispatcher is already writing the soak into.
             while [ "$waited" -lt "$hold" ]; do
                 [ -f "$rdir/video/.stop" ] && break
-                grep -q ' mark ' "$rdir/run.log" 2>/dev/null && { mark_wall=$(date +%s.%3N); break; }
+                if grep -q ' mark ' "$rdir/run.log" 2>/dev/null; then
+                    mark_seen=1; mark_wall=$(_device_epoch); break
+                fi
                 sleep 1; waited=$((waited + 1))
             done
         else
-            mark_wall=$(date +%s.%3N)
+            mark_seen=1; mark_wall=$(_device_epoch)
         fi
         if [ -z "$mark_wall" ]; then
-            _soak_video_meta "$rdir" "$secs" "$after" "" "no mark line seen in run.log before the soak ended"
+            if [ "$mark_seen" = 1 ]; then
+                _soak_video_meta "$rdir" "$secs" "$after" "" "mark seen, but the device clock could not be read"
+            else
+                _soak_video_meta "$rdir" "$secs" "$after" "" "no mark line seen in run.log before the soak ended"
+            fi
             exit 0
         fi
         local a=0
@@ -417,7 +449,7 @@ start_soak_video() {   # <rdir> <seconds> <after> <has-route 0|1> <hold-seconds>
             local this="$seg"
             [ "$this" -gt "$remaining" ] && this="$remaining"
             local remote="/sdcard/Download/hakux_vid_${k}.mp4"
-            local start_wall; start_wall=$(date +%s.%3N)
+            local start_wall; start_wall=$(_device_epoch)
             # Blocks until the segment's own time-limit elapses, OR until
             # stop_soak_video's `pkill -2 screenrecord` reaches the device --
             # either way screenrecord has already finalized the file by the
