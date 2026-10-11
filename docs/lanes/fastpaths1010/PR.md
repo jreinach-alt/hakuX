@@ -2,7 +2,7 @@
 
 Lane: fastpaths1010          Issue: none (dispatched directly by lane.local, #433 umbrella)
 Base: master @ 9b26a9647c
-State: draft
+State: ready
 Files: android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt, android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt, android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt, android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsActivity.kt, android/app/src/main/res/layout/activity_settings.xml, android/app/src/main/res/values/strings.xml, docs/lanes/fastpaths1010/**, docs/testing/predictions/fastpaths1010-*
 Prediction: docs/testing/predictions/fastpaths1010-nfs.json @ PASS (step 2); docs/testing/predictions/fastpaths1010-screen.json @ PASS (step 3, fail_titles=[] as predicted)
 Needs device: yes (Nova only)    Needs NDK: no
@@ -114,5 +114,21 @@ after any rerun, so the 5 owner-deferred titles (Azurik, Baldur's Gate: Dark
 Alliance, NBA Live 2004, Castlevania: Curse of Darkness, 50 Cent:
 Bulletproof) were never pulled in. Full per-title refs and run notes:
 `docs/lanes/fastpaths1010/NOTES.md`.
+
+## GTA San Andreas surface dropouts: present with the toggle off too
+
+GTA San Andreas (not a Playable title) shows hard-edged sky polygons, pale
+or black, and CJ casts no shadow in sunlight. To check whether this toggle
+causes it, one run per arm on the Nova (`gta-sa` route, 600 s, frames every
+5 s, about 72 post-mark frames each):
+
+| arm | run | frames with a hard-edged sky polygon | CJ shadow in sunny frames |
+|---|---|---|---|
+| OFF (`--env` all six `=0`) | `1-1791733219-lane.local-3377194` | f00066 (pale), f00102 (black) | none |
+| ON (app default) | `1-1791733219-lane.local-3377243` | f00089 (pale band), f00107 (black band) | none |
+
+The OFF run's logcat has neither `[reportasync] on` nor `[texscan] on`, so
+the switches were off. Both defects appear in both arms, so they predate this
+toggle and are not a reason to hold it.
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
