@@ -25,6 +25,10 @@ out. A run's period over a window is sum(ms) / (60 x lines); an arm's is the MEA
   T  warm countdown, B <= T_b_max
   G  post-GO warm, B - A <= G_d_max
   C  cold start 1, B <= A + C_d_max
+The legs are the prediction's `expect` keys, in order (pace_legs): `<leg>_d_max` B - A <= limit, `<leg>_b_max`
+B <= limit, `<leg>_dv2_min` warm v2 share B - A >= limit (points, mean of runs); the letter picks the window
+(P/T/F warm countdown, G post-GO, C cold start 1, H v2), a digit names the leg (postput1010-nfsall.json: P2 F2
+C2 H2). An a_env holding HAKUX_DRAWREC=1 or the three HAKUX_UNI_* switches also needs their lines (logs_always).
 
 Frametrace (a prediction with perflog true): one run per arm, read by ftpair.load (reportasync1010), the
 frame's END in the window. Prints ftpair's PFIFO account and ftbuckets's guest line for cold, warm and
@@ -71,9 +75,21 @@ def arm_of(d, exp):
     return None
 
 
-def logs_ok(d, arm):
+def logs_always(exp):
+    """The build's switch lines every run must show: LOGS_ALWAYS, and the line of each switch the
+    prediction's a_env turns on that prints one (postput1010-nfsall.json's full-switch base)."""
+    env = exp.get('a_env') or []
+    out = list(LOGS_ALWAYS)
+    if 'HAKUX_DRAWREC=1' in env:
+        out.append(r'\[drawrec1010\] drawrec=1 vtx=1 shc=1')
+    if all(f'HAKUX_UNI_{k}=1' in env for k in ('BULK', 'UBERCACHE', 'FOGCACHE')):
+        out.append(r'\[perdraw433\] bulk=1 ubercache=1 fogcache=1')
+    return out
+
+
+def logs_ok(d, arm, exp):
     out = []
-    for rx in LOGS_ALWAYS:
+    for rx in logs_always(exp):
         seen = raread.has_log(d, rx)
         out.append((seen, f'/{rx}/ {"seen" if seen else "NOT seen"}'))
     seen = raread.has_log(d, LOG_B)
@@ -140,7 +156,7 @@ def pace_judge(dirs, exp, lo, hi, plo, phi):
             continue
         legs.append(('V', arm is not None, f'{name}: arm {arm} from request.json env {request(d).get("env")}'))
         legs.append(('V', perflog_of(d) == bool(exp.get('perflog')), f'{name}: perflog {perflog_of(d)}'))
-        for ok, what in logs_ok(d, arm):
+        for ok, what in logs_ok(d, arm, exp):
             legs.append(('V', ok, f'{name}: {what}'))
         legs.append(('V', len(r['marks']) >= e['V_min_marks'], f'{name}: {len(r["marks"])} marks'))
         legs.append(('V', len(r['good']) >= e['V_min_valid_starts'],
@@ -170,16 +186,38 @@ def pace_judge(dirs, exp, lo, hi, plo, phi):
     for arm in ('A', 'B'):
         pool = [ln for r in per[arm] for ln in r['warm']]
         print(f"  {arm}           {fmt(m[arm]['cold'])} {fmt(m[arm]['warm'])} {fmt(m[arm]['post'])}   ({hist(pool)})")
-    dw, dp = m['B']['warm'] - m['A']['warm'], m['B']['post'] - m['A']['post']
-    legs.append(('P', dw <= e['P_d_max'],
-                 f"warm countdown A {m['A']['warm']:.2f} B {m['B']['warm']:.2f}, B - A {dw:+.2f} ms <= {e['P_d_max']}"))
-    legs.append(('T', m['B']['warm'] <= e['T_b_max'], f"warm countdown B {m['B']['warm']:.2f} ms <= {e['T_b_max']}"))
-    legs.append(('G', dp <= e['G_d_max'],
-                 f"post-GO warm A {m['A']['post']:.2f} B {m['B']['post']:.2f}, B - A {dp:+.2f} ms <= {e['G_d_max']}"))
-    legs.append(('C', m['B']['cold'] <= m['A']['cold'] + e['C_d_max'],
-                 f"cold start 1 A {m['A']['cold']:.2f} B {m['B']['cold']:.2f}, B - A "
-                 f"{m['B']['cold'] - m['A']['cold']:+.2f} ms <= {e['C_d_max']}"))
+    v2 = {arm: mean([raread.vshare(r['warm'], 2) for r in per[arm]]) for arm in ('A', 'B')}
+    print(f"  warm v2 share, mean of runs: A {v2['A']:.1f} %, B {v2['B']:.1f} %")
+    legs += pace_legs(e, m, v2)
     return verdict(legs)
+
+
+# A pace leg's metric by its letter; the digit after it names the prediction's leg (postput1010-nfsall.json:
+# P2, F2, C2, H2). `_d_max`: B - A <= limit; `_b_max`: B <= limit; `_dv2_min`: B - A >= limit (v2 points).
+PACE_METRIC = {'P': ('warm', 'warm countdown'), 'T': ('warm', 'warm countdown'), 'F': ('warm', 'warm countdown'),
+               'G': ('post', 'post-GO warm'), 'C': ('cold', 'cold start 1')}
+PACE_KEY = re.compile(r'^([PTFGCH]\d?)_(d_max|b_max|dv2_min)$')
+
+
+def pace_legs(e, m, v2):
+    legs = []
+    for key, lim in e.items():
+        k = PACE_KEY.match(key)
+        if not k:
+            continue
+        leg, form = k.groups()
+        if form == 'dv2_min':
+            d = v2['B'] - v2['A']
+            legs.append((leg, d >= lim, f"warm v2 share A {v2['A']:.1f} B {v2['B']:.1f} %, "
+                                        f"B - A {d:+.1f} points >= {lim}"))
+            continue
+        w, what = PACE_METRIC[leg[0]]
+        a, b = m['A'][w], m['B'][w]
+        if form == 'b_max':
+            legs.append((leg, b <= lim, f"{what} B {b:.2f} ms <= {lim}"))
+        else:
+            legs.append((leg, b - a <= lim, f"{what} A {a:.2f} B {b:.2f}, B - A {b - a:+.2f} ms <= {lim}"))
+    return legs
 
 
 def verdict(legs):
@@ -220,7 +258,7 @@ def ft_judge(da, db, exp):
         arm = arm_of(d, exp)
         legs.append(('V', arm == k, f'{name}: arm {arm} from request.json env {request(d).get("env")}'))
         legs.append(('V', perflog_of(d) == bool(exp.get('perflog')), f'{name}: perflog {perflog_of(d)}'))
-        for ok, what in logs_ok(d, arm):
+        for ok, what in logs_ok(d, arm, exp):
             legs.append(('V', ok, f'{name}: {what}'))
         legs.append(('V', r['marks'] >= e['V_min_marks'], f'{name}: {r["marks"]} marks'))
         legs.append(('V', r['marks'] - len(r['bad']) >= e['V_min_valid_starts'],

@@ -2,6 +2,8 @@
 
 Step 2b of `docs/lanes/nfs30plan1010/PLAN.md`. Branch `lane/postput1010`, from master @ b74cff74ed with
 `origin/lane/reportasync1010` @ 4b50801b21 merged in (0d7948085e), because `HAKUX_REPORT_ASYNC` is only there.
+reportasync1010 folded as 6052ff98d4, and origin/master was merged in at b9b36d655c (no conflict). Since then the
+diff against master is this lane's files only.
 
 ## 1. Why
 
@@ -216,8 +218,149 @@ roughly 2.0 ms. P (B - A <= -2.0) can only pass if every heavy frame goes, and T
 so T says nothing about B. The registered checks stand as written. They are not loosened, and they are read with
 this caveat.
 
+### 4.2 Why attempt 2 stopped (attempt 3, 2026-10-10 ~19:05 PDT)
+
+Attempt 2 did not fail either. It ended on purpose, waiting on B2, A2 and the frametrace pair (`WAITING` @
+ccfda33cbe): four device runs of about 9 minutes each, which a session cannot wait out. All four finished DONE at
+18:36, 18:44, 18:55 and 19:03 PDT, on ref c63ec9774f. Attempt 3 read them (4.3, 4.4), merged origin/master once
+reportasync1010 had folded, and set up Addendum 1's full-switch pair (4.6).
+
+### 4.3 The pace A/B: P, T and G fail
+
+`ppread.py <A1> <B2> <B1> <A2> --expect docs/testing/predictions/postput1010-nfs.json`:
+
+| run | arm | cold 1 | warm countdown | post-GO warm | warm v2/v3/v4 | valid | posted, countdown / post-GO |
+|---|---|---|---|---|---|---|---|
+| `1-1791680038-postput1010-1949730` | A1 | 41.4 | 33.90 | 33.50 | 78/10/1 % | 12/12 | 0 |
+| `1-1791682037-postput1010-2642454` | B2 | 41.1 | 34.0 | 33.5 | 78/11/1 % | 12/12 | 12.2 % / 8.6 % of kicks |
+| `1-1791680039-postput1010-1954673` | B1 | 41.5 | 33.99 | 33.49 | 81/10/1 % | 12/12 | 16.4 % / 9.3 % |
+| `1-1791682038-postput1010-2643101` | A2 | 40.1 | 34.0 | 33.5 | 77/12/1 % | 12/12 | 0 |
+| **A** (mean of runs) | | 40.77 | 33.96 | 33.49 | 77.7 % v2 | | |
+| **B** (mean of runs) | | 41.28 | 34.01 | 33.51 | 79.6 % v2 | | |
+
+| check | verdict | figure |
+|---|---|---|
+| V | PASS | 12 marks and 12 valid starts on every run; env, perflog off and the switch lines as registered. Moving car: all 48 `s*-g11` frames of the four runs, one contact sheet per run, show the Punto at 58-88 MPH with 11.4-13.9 s on the race clock |
+| P | **FAIL** | warm countdown B - A = **+0.06 ms** (needed <= -2.0) |
+| T | FAIL | B 34.01 ms (needed <= 34.0) |
+| G | **FAIL** | post-GO warm B - A = **+0.02 ms** (needed <= -1.5) |
+| C | PASS | cold start 1 B - A = +0.52 ms (allowed up to +3.0) |
+
+phaseread.py, the brief's pace reader, agrees. Its pooled countdown windows, cold start included, are A1 34.3,
+B2 34.4, B1 34.3, A2 34.6 ms/frame, so B - A is -0.1 ms. The store is posted on every B run (`[postput] on` logged,
+and fifoskew's `posted=` share above), and the period does not move. P fails, so the pixel leg (brief step 5) is
+not run.
+
+### 4.4 The frametrace pair
+
+`ppread.py <A> <B> --expect docs/testing/predictions/postput1010-ftpair.json`. A is
+`1-1791682044-postput1010-2647298`, B is `1-1791682045-postput1010-2647896`, both perflog with `HAKUX_FRAMETRACE=1`
+on c63ec9774f. The left column is the trace the brief's 7.3 ms comes from, reportasync1010's both-switch run
+`1-1791671434-reportasync1010-3857196` (ref a21a3361d9), read with `ppread.py --ft` over the same windows.
+Per frame, in ms:
+
+| warm countdown, all frames | reportasync1010 B (a21a3361d9) | **A** (c63ec9774f) | **B** (+ posted) | B - A |
+|---|---|---|---|---|
+| period P | 44.81 | 39.77 | 39.49 | -0.29 |
+| PFIFO `p_run` | 27.08 | 27.03 | 27.00 | -0.03 |
+| PFIFO `pidle` (waiting for the guest) | 13.56 | 10.72 | 10.60 | -0.12 |
+| PFIFO other-fence wait `o_fence` | 25.73 | 15.10 | 15.22 | +0.12 |
+| GPU busy | 18.85 | 12.81 | 12.81 | 0.00 |
+| guest `lockw` (pfifo.lock, DMA_PUT) | **6.27** | **1.85** | **1.09** | -0.76 |
+| guest idle `gidle` | 11.9 | 13.1 | 13.9 | +0.8 |
+| guest busy past 2 VBLANKs | 46 % | 9 % | 6 % | |
+| PFIFO busy past 2 VBLANKs | 26 % | 8 % | 8 % | |
+| either thread past 2 VBLANKs | 58 % | 14 % | 12 % | |
+| v2/v3/v4+ | 41/55/3 % | 63/35/1 % | 63/35/1 % | |
+| frames | 859 | 967 | 977 | |
+
+| other windows | A | B | B - A |
+|---|---|---|---|
+| warm heavy (vb >= 3): P / `lockw` / `pidle` / `p_run` | 43.53 / 2.41 / 12.86 / 28.12 | 42.53 / 1.55 / 12.24 / 27.86 | -1.01 / -0.86 / -0.62 / -0.27 |
+| warm heavy: v2/v3/v4+, frames | 0/96/4 %, 349 | 0/98/2 %, 352 | |
+| cold (start 1): P / `lockw` / `gidle` / `p_run` | 50.10 / 5.36 / 14.0 / 33.03 | 50.38 / 2.29 / 17.0 / 33.40 | +0.28 / -3.07 / +3.0 / +0.37 |
+| cold: PFIFO busy past 2 VBLANKs, v2/v3/v4+ | 74 %, 13/74/13 % | 80 %, 9/80/12 % | |
+| post-GO: P / `lockw` / `p_run` / GPU | 35.58 / 1.07 / 22.83 / 10.58 | 35.11 / 0.65 / 22.21 / 10.17 | -0.48 / -0.42 / -0.62 / -0.41 |
+| post-GO: v2/v3/v4+ | 75/19/0 % | 74/18/0 % | |
+| posted share of kicks, countdown / post-GO | 0 | 32.1 % / 26.2 % | |
+
+The judged legs: **L FAIL** (warm `lockw` A 1.85, registered >= 3.0; B 1.09, registered <= 0.5) and **Q FAIL** (the
+guest busy past 2 VBLANKs, A 9 %, registered >= 30; B 6 %). Both fail on A's side: the wait they were written for
+is not there on this base. V passes, including a moving car in all 24 g11 frames (52-89 MPH).
+
+The heavy-frame row (-1.0 ms) is not a gain. B's remaining heavy frames are a different selection from A's, and
+over all warm frames the period moves -0.29 ms with an unchanged v2/v3/v4 split (section 5). The plain A/B (4.3) is
+the pace measurement.
+
+### 4.5 Where the 7.3 ms went
+
+1. **Most of it was gone before the posted store.** The only emulator difference between reportasync1010's trace
+   ref (a21a3361d9) and this lane's base without the posted store (0d7948085e) is one row,
+   `{0x4541007B, "sysmem"}` in `kTitleRenderModes` (`81ab5f3418`, gpupass1010). `git diff --stat` on hw/ target/
+   accel/ android/ tcg/ ui/ audio/ shows that one line. Across the two traces, both with REPORT_ASYNC + TEXSCAN:
+   GPU busy fell 18.85 -> 12.81 ms, the PFIFO thread's other-fence wait fell 25.73 -> 15.10, and the guest's lock
+   wait fell 6.27 -> 1.85 ms per warm frame (7.31 -> 2.41 heavy). The period fell 44.81 -> 39.77 under frametrace,
+   and plain pace fell 37.5 -> 34.0 (4.1). `p_run` did not move (27.08 -> 27.03). So the guest was waiting for the
+   lock while the PFIFO thread held it across GPU fence waits. With sysmem render mode those waits are shorter,
+   and so is the guest's. This compares two separate sessions, not an A/B. One code line is the only difference
+   between them, and both readers show the same direction and size.
+   gpupass1010 measured the period as flat with that row, but on a base where the report wait was still on the
+   PFIFO thread. With REPORT_ASYNC on, the GPU is on the path, and the row is worth ~3.5 ms of plain pace.
+2. **The posted store takes 41 % of what was left.** Warm `lockw` went 1.85 -> 1.09, and cold 5.36 -> 2.29.
+3. **The guest spends what it saves idle.** `gidle` rose +0.8 ms warm and +3.0 ms cold, about what `lockw` lost.
+   `p_run` is unchanged (27.03 / 27.00 warm, 33.03 / 33.40 cold), and so is the period.
+4. **What sets the period.** Cold, it is the PFIFO thread alone. Its busy time (36.5 / 37.2 ms) is past 2 VBLANKs
+   on 74 / 80 % of frames, in both arms. Warm, at 34.0 ms on the plain build, the countdown is 0.5 ms over the
+   33.5 ms v2 floor that drawrec1010 measured. Under frametrace, a thread is past 2 VBLANKs on only 12-14 % of
+   frames, so the guest's lock wait was no longer on the path.
+
+What is left of B's `lockw` (1.09 ms warm) cannot be split with the instruments in this build. Two things count
+into it: the poster's wake lock, taken when it reads `parked` while another holder (the waking PFIFO thread
+itself, or a report or render path) has the lock, and stores to user registers other than DMA_PUT. A separate
+counter for `pfifo_post_kick()`'s wait would split them. It is not worth adding, because the guest is idle, not
+waiting, once it is freed.
+
+For PLAN.md section 6, the recorder thread: the cold period is `p_run` (33 ms of PFIFO CPU in a 50 ms frame), so
+any cold-start lever has to shorten the PFIFO thread's own work. The warm countdown is within 0.5 ms of the
+vblank floor on this base, and a recorder thread has little to take there. drawrec1010's probes reached the same
+conclusion ("floor is vblank").
+
+### 4.6 Addendum 1: the full-switch pair (waiting on drawrec1010's fold)
+
+The pair is A2' = REPORT_ASYNC + TEXSCAN + DRAWREC + UNI_BULK + UNI_UBERCACHE + UNI_FOGCACHE and B2' = A2' +
+POSTED_PUT. The primes keep them apart from the A2/B2 runs above. `HAKUX_DRAWREC` is only on
+`origin/lane/drawrec1010` (ready, dba22feab0), and the brief says to merge origin/master once that has folded,
+never the lane branch. The UNI_* switches are already on master (`shaders.c` `perdraw_flags_init`). At 19:14
+PDT `git log origin/master` ends at 6052ff98d4, so drawrec1010 has not folded. `WAITING` says
+`fold drawrec1010`, and lanewaker resumes this lane when origin/lane/drawrec1010 is an ancestor of origin/master.
+
+Ready for the resume:
+- `ppread.py` now judges any leg the prediction names, in its `expect` order. The keys are `<leg>_d_max`
+  (B - A <= limit), `<leg>_b_max` (B <= limit) and `<leg>_dv2_min` (warm v2 share, B - A >= limit, mean of runs).
+  The leg letter picks the window: P/T/F warm countdown, G post-GO, C cold start 1, H v2 share. The digit after
+  it names the leg, as in P2. With an a_env that holds them, it requires `[drawrec1010] drawrec=1 vtx=1 shc=1` and
+  `[perdraw433] bulk=1 ubercache=1 fogcache=1` on every run. Re-run on 4.3 and 4.4, it gives the same verdicts,
+  and a mock of the nfsall keys over the 4.3 runs gives P2/F2/C2/H2 FAIL (+0.06, 34.01, +0.52, +2.0 points).
+- On the resume: merge origin/master, then register `docs/testing/predictions/postput1010-nfsall.json` on the
+  merge commit, with `expect` V as before, `P2_d_max` -0.5, `F2_b_max` 33.8, `C2_d_max` -2.0, `H2_dv2_min` 10.0.
+  Commit and push it, then queue A2', B2', B2', A2' (`--seconds 500`, plain, 12 starts). The pilot file
+  (`pilots/postput1010.ok`, 18:27 PDT) covers the batch until 18:27 tomorrow. The lane has used about 60 min of
+  its 3 h: six runs at request.sh's estimate of 500 s + 90 s each. The pair adds four more, about 40 min.
+
+Prior, stated before the runs: low. At this base the guest is idle, not waiting, once its lock wait goes. DRAWREC
+cuts the PFIFO thread's work (-1.5 ms/frame warm, per drawrec1010), and that also shortens the time the PFIFO
+thread holds the lock, so it leaves less for the posted store to remove. P2 ~10 %, C2 ~10 %. The size of the win
+is small either way: the warm countdown is near the floor, and cold start 1 is one start in twelve. It is run
+because the brief needs P2/F2/C2 for the recommendation.
+
 ## 5. For the next lane
 
 - `ppread.py` cannot see motion. V's moving-car check is by eye from `route-frames/*-s*-g11.png`, and goes here.
 - Do not judge the frametrace pair on heavy frames only. B is meant to turn heavy frames into light ones, so its
   remaining heavy frames are a different selection from A's; `ppread.py` judges all warm frames and prints both.
+  Here, heavy frames show B - A = -1.0 ms while all warm frames show -0.29 with an identical v2/v3/v4 split.
+- A frametrace mechanism figure goes stale when the base moves under it. This lane's 7.3 ms came from a trace one
+  render-mode row behind its base, and that row had already removed 4.4 ms of the 6.3. Re-trace A on the lane's
+  own base before registering checks on a mechanism figure (L and Q here failed on A's side).
+- Do not re-run the posted store at NFS's race start on the REPORT_ASYNC + TEXSCAN base. It is posted on 12-32 %
+  of kicks and the period does not move.
