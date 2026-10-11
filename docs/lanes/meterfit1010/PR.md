@@ -1,6 +1,6 @@
 # lane.meterfit1010: price transcript tokens, not modelUsage tokens (#433, 0.5)
 
-State: draft
+State: ready
 
 Lane: meterfit1010             Issue: none (harness fix dispatched directly by lane.local, #433 umbrella)
 Base: master @ 7a44ee4d97
@@ -75,12 +75,15 @@ readings (25.45/22.91/19.12 $/pt) -- confirms the measurement script before trus
 turn lands within $1 of the brief's own "per-model correction" reference (27/25/21).
 
 **This fit removes about a fifth of the within-week drift, not all of it.** OLD spread (high − low reading) is
-25.44 − 19.18 = 6.26; NEW spread is 26.89 − 21.88 = 5.01 -- a reduction of 1.25, ~20%. The remaining drift is the
-other cause the audit found: calls billed but never written to a transcript at all. A run missing its
-transcript is invisible to `fit_prices_transcripts()` too (it adds to neither sum) -- its cost still lands on
-whichever other runs for that model *do* have a transcript, instead of being split evenly across all of that
-model's `modelUsage` tokens the way `fit_prices()` does it. Closing that gap needs the missing-call cause fixed
-upstream, not a better price fit; this lane's job was the fit.
+25.44 − 19.18 = 6.26; NEW spread is 26.89 − 21.88 = 5.01 -- a reduction of 1.25, ~20%.
+
+This fit divides `costUSD` by *transcript* eq, so a call that is billed but never written to a transcript at
+all is already priced in -- it is not what is left in the remaining 5.01 spread. Two candidates, neither
+chosen here: interactive sessions (compaction and similar) may carry a different share of unlogged calls than
+the headless runs the fit learns from, and would shift price without any change in headless cost per token;
+and the owner's readings are whole percents, so the 4% reading alone carries roughly ±12% on its own, which is
+a large fraction of a $1-2 move in $/pt. This lane's job was the fit; narrowing which of these (or another
+cause) accounts for the rest is a separate measurement.
 
 ## Selftest: 88-usage-meterfit.sh (fixtures only, temp HAKUX_WORK/HAKUX_CLAUDE_PROJECTS)
 
@@ -92,8 +95,12 @@ upstream, not a better price fit; this lane's job was the fit.
 | migrate | pre-#433 state (cost-only events) migrates: events gain model/eq, latest calibration's capacity changes while percent/utc don't, both CAL_SEED points untouched, a second tick is a no-op |
 | mutant | re-pointing the fit at modelUsage eq (1000) instead of transcript eq (900) collapses the ratio case to 1.0 -- reproduces today's bug |
 
-`SELFTEST_ONLY="88-usage-meterfit.sh 89-usage-mode.sh" bash docs/testing/jobs/selftest.sh` (after merging
-lane.usagerule1010's changes to 89): **69 passed, 0 failed** -- 13 new, 56 existing, no interference.
+Scoped, during development: `SELFTEST_ONLY="88-usage-meterfit.sh 89-usage-mode.sh" bash
+docs/testing/jobs/selftest.sh` (after merging lane.usagerule1010's changes to 89): 69 passed, 0 failed -- 13
+new, 56 existing, no interference.
+
+Full run, all 4 shards, foreground: **3268 passed, 0 failed, across all 132 fragments** (shard 0/4: 284/0 of
+13 fragments; 1/4: 1012/0 of 42; 2/4: 1057/0 of 39; 3/4: 915/0 of 38). No flakes, no rerun needed.
 
 ## Rules followed
 

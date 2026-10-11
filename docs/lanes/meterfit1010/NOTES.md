@@ -1,5 +1,17 @@
 # lane.meterfit1010 — fit prices against transcript tokens (#433, 0.5)
 
+## Attempt 2: why attempt 1 didn't finish
+
+Attempt 1 implemented the fit, wrote the targeted selftest case, and verified it with
+`SELFTEST_ONLY="88-usage-meterfit.sh 89-usage-mode.sh"` (69 passed, 0 failed) — but never ran the *full*
+`selftest.sh` (132 fragments, 4 shards, 18-25 min whole per the CI workflow's own comment). It started that
+full run with `run_in_background` and then ended the session to wait for a notification. This is a headless
+`claude -p` session: a `run_in_background` command is a child of the session process, and when the turn/session
+ends, the process group is killed with it — so the background run died with no completion notification ever
+coming, and the PR was left in draft with the full-suite result unknown. Addendum 1 names this exact trap.
+Fixed here by running each of the four `SELFTEST_SHARD` shards in the foreground, one per tool call, inside the
+10-minute per-call limit.
+
 ## What changed in meter.py
 
 - `transcript_eq(projects_dir, session_id)`: globs `<session_id>.jsonl` plus
@@ -96,13 +108,26 @@ $/point drops across the week in both fits (the model mix shifts as the
 week goes on) — that drop is the "spread" the brief asks about. OLD spread
 (high reading − low reading) is 25.44 − 19.18 = 6.26; NEW spread is 26.89 −
 21.88 = 5.01. **This fit removes about a fifth of the within-week drift
-(1.25 of 6.26, ~20%) — it does not remove all of it**, because the other
-driver (calls billed but never written to a transcript at all, see the
-"Why" section of the brief) isn't something a price fit can fully correct
-for: a run missing from the transcript entirely is invisible to
-`fit_prices_transcripts()` too, it just means that run's cost is absorbed
-into whichever other runs for that model DO have a transcript, rather than
-split evenly across modelUsage tokens the way `fit_prices()` does it.
+(1.25 of 6.26, ~20%) — it does not remove all of it.**
+
+Addendum 1 correction: this fit divides `costUSD` by *transcript* eq, so a
+call that is billed but never written to a transcript at all is already
+priced in — the missing-call cause from the brief's "Why" section cannot be
+what's left in the remaining 5.01 spread (the first draft of this note
+claimed it was; that was wrong, since `fit_prices_transcripts()` prices
+transcript tokens, and a run with no transcript is excluded from both sums,
+not split unevenly against them). Two candidates for the remainder, neither
+chosen here:
+- interactive sessions (compaction and similar) may carry a different share
+  of unlogged-but-billed calls than the headless runs the fit learns from,
+  which would shift the effective price without any change in headless
+  cost-per-token;
+- the owner's readings are whole percents, so the 4.0% reading alone
+  carries roughly ±12% of its own noise — a sizeable fraction of a $1-2
+  move in $/pt.
+
+Narrowing which of these (or another cause) accounts for the rest is a
+separate measurement; this lane's job was the fit.
 
 ## Selftest: 88-usage-meterfit.sh
 
@@ -131,10 +156,32 @@ Fixtures only, temp `HAKUX_WORK`/`HAKUX_CLAUDE_PROJECTS`. Cases:
    price ratio to 1.0, reproducing today's bug and showing case 1 actually
    depends on the fix.
 
-Verified: `SELFTEST_ONLY="88-usage-meterfit.sh 89-usage-mode.sh" bash
-docs/testing/jobs/selftest.sh` → 69 passed, 0 failed (13 new + 56 existing,
-after merging in lane.usagerule1010's changes to 89). 89's behavior is
-untouched by this lane.
+Verified (attempt 1, scoped): `SELFTEST_ONLY="88-usage-meterfit.sh
+89-usage-mode.sh" bash docs/testing/jobs/selftest.sh` → 69 passed, 0 failed
+(13 new + 56 existing, after merging in lane.usagerule1010's changes to 89).
+
+## Full selftest (attempt 2, addendum 1): all 4 shards, foreground
+
+`docs/testing/jobs/selftest.sh` is 132 fragments across 4 `SELFTEST_SHARD`
+shards (the CI workflow's own comment: 18-25 min whole). Ran each shard to
+its own log, in the foreground within this turn (see "why attempt 1 didn't
+finish" above), and waited on all four before proceeding:
+
+| shard | fragments | passed | failed |
+|------:|----------:|-------:|-------:|
+| 0/4   | 13        | 284    | 0      |
+| 1/4   | 42        | 1012   | 0      |
+| 2/4   | 39        | 1057   | 0      |
+| 3/4   | 38        | 915    | 0      |
+| **total** | **132 (all)** | **3268** | **0** |
+
+No failures, so no flake rerun was needed. (The `fail:`/`FAIL`/`failed`
+strings in the raw logs are all test *names* and fixture content describing
+what a failing case should look like — e.g. `fail:
+1791690579-rqp-fail-1467741`, `ok mutant caught by '...rate_fail.logcat':
+ignore the per-minute bar` — not selftest failures; the authoritative line
+per shard is `selftest: N passed, 0 failed, ...`, confirmed above for all
+four.) 89's behavior is untouched by this lane.
 
 ## Rules followed
 
