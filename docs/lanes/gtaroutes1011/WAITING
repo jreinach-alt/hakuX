@@ -1,18 +1,11 @@
-lane.gtaroutes1011 is waiting on two queued Nova device results (#433). Both requests are release-tier
-(`#433` in --purpose) and sit in the dispatcher's nova queue behind other lanes' work; neither is stuck or
-starved -- see docs/lanes/gtaroutes1011/NOTES.md section 6 for queue depth at the time they were queued.
-
-1. dispatch/results/1-1791751023-gtaroutes1011-1901311/result.json
-   Vice City (5454000F) gta-vc.route proof soak, 600s, golden 77a5f0908dce.
-   On arrival: check hdd.json shows "loaded": "golden"; run title_verdict.py --require confirmation for
-   gameplay_s/fps_ok; inspect frames for >=3 post-mark frames showing Tommy in a different place. Write the
-   Vice City row in PR.md's results table from this.
-
-2. dispatch/results/1-1791753097-gtaroutes1011-2255243/result.json
-   San Andreas drive (54540082) gta-sa-drive.route proof soak, 600s, golden 7da19befd45b.
-   On arrival: check hdd.json shows "loaded": "golden"; run title_verdict.py --require confirmation; inspect
-   frames for >=3 post-mark frames showing CJ on the BMX/vehicle, moving, in different places. Write the SA-drive
-   row in PR.md's results table from this.
-
-Once both land: finish PR.md (results table, release note line if both pass, State: ready), merge
-origin/master, push, mark the PR ready with `gh pr ready`.
+# lane.gtaroutes1011 (#433): two re-queued Nova proof soaks, release tier.
+# Previous ids (1901311, 2255243) ERRORed on the bare-tid --title bug
+# (Addendum 3); these are the corrected re-queues, same routes/goldens.
+# VC: write the Vice City row in PR.md -- check hdd.json "loaded":"golden",
+# title_verdict.py --require confirmation, >=3 post-mark frames showing
+# Tommy moved.
+run 1-1791761282-gtaroutes1011-282177
+# SA-drive: write the SA-drive row in PR.md -- check hdd.json
+# "loaded":"golden", title_verdict.py --require confirmation, >=3
+# post-mark frames showing CJ on the BMX/vehicle moved.
+run 1-1791761288-gtaroutes1011-284417

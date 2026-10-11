@@ -196,3 +196,39 @@ existing PR #927 waiting-comment (already names both ids and the backlog depth -
 needed). Per the role file, this is a wait on dispatcher state outside this session's control: stopping here with
 `WAITING` in place rather than polling for hours. Nothing in territory changed this pass beyond `WAITING` itself
 and this note.
+
+## 8. Why attempt 3 did not finish yet (so far): both queued proofs ERRORed on the bare-tid bug, re-queued with the fixed filename
+
+Resumed with hostops's Addendum 3 already in the brief. Both results named in `WAITING` had in fact landed
+(`dispatch/results/1-1791751023-gtaroutes1011-1901311/` at 16:08 PDT, `.../2255243/` at 16:20 PDT) -- so the
+previous attempt's stopping point was correct (the wait was real and finite), but both landed as `ERROR`, not a
+soak result: `title not on device: 5454000F -- searched /storage/E6C6-D7AA/Games/XBox` and the same for
+`54540082`. This is exactly the bug the addendum describes: both `request.json`s show `"title": "5454000F"` /
+`"title": "54540082"` -- the bare 8-hex title id, not the on-device filename -- because the original
+`request.sh --route ... --title <tid>` calls (section 6) passed the tid where `--title` wants a filename.
+`tid_for_iso()` accepted the bare tid as "looks like a tid" and resolved `title_id`/the route gate fine, so
+nothing refused the request at queue time; `device_title_path()` then did a literal file-exists check on that
+same string as a filename and found nothing, 600 s into being queued, not at admission.
+
+Confirmed the real on-device filenames directly (`adb -s ee317437 shell ls /storage/E6C6-D7AA/Games/XBox/`):
+`5454000F-Grand_Theft_Auto_Vice_City.xiso.iso` and `54540082-Grand_Theft_Auto_San_Andreas.xiso.iso`, matching the
+addendum's names exactly. Checked `request.sh` has no `--title-id` or `--find-route` flag (both addenda assumed
+them conditionally; neither exists in this tree's `request.sh` as of `def393be25` -- grepped `-- --title-id)`
+and `find-route`, no hits), so neither applies here; these are plain proof soaks against an existing golden
+(`title_state=any` resolved correctly by `tid_for_iso()` from the full filename), not route-finding.
+
+Re-queued both, `--title` now the full filename, everything else unchanged (`--route`, `--seconds 600`,
+`--frames-every 30`, `--device nova`, the same `(#433)`-tagged `--purpose`, same `--no-expect`):
+
+- VC: `1-1791761282-gtaroutes1011-282177` -- `request.sh` echoed `soak: 5454000F-Grand_Theft_Auto_Vice_City.xiso.iso,
+  600s, route gta-vc [5454000F any], pinned to nova` and `priority release: '0.5' on #433`, confirming the title
+  resolved to the real file and the route's `title_id`/state this time, unlike the dead request.
+- SA-drive: `1-1791761288-gtaroutes1011-284417` -- same confirmation, `54540082-Grand_Theft_Auto_San_Andreas.xiso.iso,
+  ... route gta-sa-drive [54540082 any]`.
+
+Did not withdraw or touch the two dead `ERROR` requests (nothing to withdraw -- they already finished, badly, on
+their own). Updated `WAITING` to name the two new ids in the `run <id>` form `lanewaker.py` actually parses (the
+15:50 PDT WAITING was prose and went unparsed per hostops's 16:04 PDT flag; the corrected 15:48-addendum version
+used `result.json` paths instead of `run <id>` lines -- rewriting now to the exact form Addendum 3 specifies).
+Committing and pushing `WAITING` + this note before resuming the poll loop, per the standing habit this lane
+adopted after hostops's Addendum 2.
