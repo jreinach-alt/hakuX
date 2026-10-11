@@ -25,6 +25,10 @@
 
 #include "renderer.h"
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 VkDeviceSize pgraph_vk_update_index_buffer(PGRAPHState *pg, void *data,
                                            VkDeviceSize size)
 {
@@ -42,6 +46,121 @@ VkDeviceSize pgraph_vk_update_vertex_inline_buffer(PGRAPHState *pg, void **data,
                                       sizes, count, 1);
 }
 
+/*
+ * #433 (lane gtasagpu1011), HAKUX_VTX_HAZARD=1. Every draw in a command
+ * buffer reads its vertices from one staging copy of vertex RAM, when the
+ * command buffer runs, not when the draw is recorded. An upload for a later
+ * draw that changes bytes an earlier draw in the same command buffer reads
+ * replaces that draw's vertices before the GPU reaches it. A guest that
+ * reuses one vertex buffer for several draws a frame, waiting only for the
+ * GPU to have fetched the previous draw (which pgraph has, on the guest's
+ * clock), does that. Upstream finished the command buffer on any re-upload
+ * of a page uploaded since the last finish; 41be412ae0 dropped that check
+ * when it gave each submit frame its own copy, but the copies only keep
+ * command buffers apart, not the draws in one.
+ *
+ * This finishes before such an upload, as upstream did, but only when bytes
+ * an earlier draw reads actually change, not on a shared page: an append to a
+ * ring of vertices shares pages with the draws before it, not bytes.
+ *
+ * Bookkeeping: pgraph_vk_bind_vertex_attributes notes the draw's exact byte
+ * ranges in vtxhz_cur; pgraph_vk_vtxhz_commit (end of begin_pre_draw and
+ * begin_draw, vk/draw.c) adds them to vtxhz_read for the rotation the draw is
+ * recorded in. A rotation empties vtxhz_read. Off by default: one load per
+ * bind, upload and commit.
+ */
+static bool vtxhz_env(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("HAKUX_VTX_HAZARD");
+        v = e && atoi(e) > 0;
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                            "HAKUX_VTX_HAZARD=%d (finish before an upload "
+                            "that rewrites an earlier draw's vertices)", v);
+#endif
+    }
+    return v;
+}
+
+static void vtxhz_note_read(PGRAPHVkState *r, hwaddr lo, hwaddr hi)
+{
+    if (hi > lo && r->vtxhz_cur_n < ARRAY_SIZE(r->vtxhz_cur)) {
+        r->vtxhz_cur[r->vtxhz_cur_n++] =
+            (MemorySyncRequirement){ .addr = lo, .size = hi - lo };
+    }
+}
+
+static void vtxhz_clear(PGRAPHVkState *r)
+{
+    r->vtxhz_rot = r->frame_rotations;
+    r->vtxhz_n = 0;
+    r->vtxhz_lo = (hwaddr)-1;
+    r->vtxhz_hi = 0;
+}
+
+static void vtxhz_sync_rotation(PGRAPHVkState *r)
+{
+    if (r->vtxhz_rot != r->frame_rotations) {
+        vtxhz_clear(r);
+    }
+}
+
+void pgraph_vk_vtxhz_commit(PGRAPHVkState *r)
+{
+    if (!r->vtxhz_on || r->vtxhz_cur_rot == r->frame_rotations) {
+        return;
+    }
+    vtxhz_sync_rotation(r);
+    r->vtxhz_cur_rot = r->frame_rotations;
+    for (size_t i = 0; i < r->vtxhz_cur_n; i++) {
+        hwaddr lo = r->vtxhz_cur[i].addr;
+        hwaddr hi = lo + r->vtxhz_cur[i].size;
+        r->vtxhz_lo = MIN(r->vtxhz_lo, lo);
+        r->vtxhz_hi = MAX(r->vtxhz_hi, hi);
+        if (r->vtxhz_n > 0) {
+            /* Interleaved attributes of one draw, or a draw over the vertices
+             * of the one before it: one range. */
+            MemorySyncRequirement *p = &r->vtxhz_read[r->vtxhz_n - 1];
+            if (lo <= p->addr + p->size && hi >= p->addr) {
+                hwaddr nlo = MIN(lo, p->addr);
+                p->size = MAX(hi, p->addr + p->size) - nlo;
+                p->addr = nlo;
+                continue;
+            }
+        }
+        if (r->vtxhz_n == r->vtxhz_cap) {
+            r->vtxhz_cap = r->vtxhz_cap ? r->vtxhz_cap * 2 : 256;
+            r->vtxhz_read = g_renew(MemorySyncRequirement, r->vtxhz_read,
+                                    r->vtxhz_cap);
+        }
+        r->vtxhz_read[r->vtxhz_n++] =
+            (MemorySyncRequirement){ .addr = lo, .size = hi - lo };
+    }
+}
+
+/* Does copying `data` over the staging copy at `offset` change a byte a draw
+ * already recorded in this command buffer reads? */
+static bool vtxhz_overwrites(PGRAPHVkState *r, const uint8_t *staged,
+                             hwaddr offset, const uint8_t *data,
+                             VkDeviceSize size)
+{
+    vtxhz_sync_rotation(r);
+    hwaddr end = offset + size;
+    if (r->vtxhz_n == 0 || end <= r->vtxhz_lo || offset >= r->vtxhz_hi) {
+        return false;
+    }
+    for (size_t i = 0; i < r->vtxhz_n; i++) {
+        hwaddr lo = MAX(r->vtxhz_read[i].addr, offset);
+        hwaddr hi = MIN(r->vtxhz_read[i].addr + r->vtxhz_read[i].size, end);
+        if (lo < hi && memcmp(staged + lo, data + (lo - offset), hi - lo)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void pgraph_vk_update_vertex_ram_buffer(PGRAPHState *pg, hwaddr offset,
                                         void *data, VkDeviceSize size)
 {
@@ -53,10 +172,45 @@ void pgraph_vk_update_vertex_ram_buffer(PGRAPHState *pg, hwaddr offset,
     size_t end_bit = TARGET_PAGE_ALIGN(offset + size) / TARGET_PAGE_SIZE;
     size_t nbits = end_bit - start_bit;
 
-    /* Per-frame buffer: no finish needed, each frame has its own copy */
+    /* Per-frame buffer: no finish needed between command buffers, each
+     * frame has its own copy. Within one, see HAKUX_VTX_HAZARD above. */
+    bool hazard_finished = false;
+    if (unlikely(r->vtxhz_on) &&
+        /* Not while merged or reordered draws are being recorded: the
+         * finish would flush those queues from inside their own flush. */
+        r->draw_queue.count == 0 && r->reorder_window.count == 0 &&
+        vtxhz_overwrites(r, get_staging_buffer(r, BUFFER_VERTEX_RAM)->mapped,
+                         offset, data, size)) {
+        pgraph_vk_finish(pg, VK_FINISH_REASON_VERTEX_BUFFER_DIRTY);
+        r->vtxhz_finishes++;
+        hazard_finished = true;
+#ifdef __ANDROID__
+        {
+            static int64_t logged_us;
+            static uint64_t logged_n;
+            int64_t now = g_get_monotonic_time();
+            if (now - logged_us >= 10 * G_USEC_PER_SEC) {
+                __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                                    "vtx_hazard: %" PRIu64 " finishes, %"
+                                    PRIu64 " since the last line",
+                                    r->vtxhz_finishes,
+                                    r->vtxhz_finishes - logged_n);
+                logged_us = now;
+                logged_n = r->vtxhz_finishes;
+            }
+        }
+#endif
+        /* Also when the finish did not rotate: what it submitted is no
+         * longer this command buffer's to protect. */
+        vtxhz_clear(r);
+    }
 
     nv2a_profile_inc_counter(NV2A_PROF_GEOM_BUFFER_UPDATE_1);
     StorageBuffer *vram = get_staging_buffer(r, BUFFER_VERTEX_RAM);
+    if (unlikely(nv2a_dbg_framedump_active())) {
+        pgraph_vk_fdump_vertex_upload(r, offset, vram->mapped + offset, data,
+                                      size, hazard_finished);
+    }
     memcpy(vram->mapped + offset, data, size);
 
     FrameStagingState *fs = &r->frame_staging[r->current_frame];
@@ -175,6 +329,10 @@ void pgraph_vk_bind_vertex_attributes(NV2AState *d, unsigned int min_element,
 
     unsigned int num_elements = max_element - min_element + 1;
 
+    r->vtxhz_on = vtxhz_env();
+    r->vtxhz_cur_n = 0;
+    r->vtxhz_cur_rot = UINT64_MAX;
+
     if (inline_data) {
         r->cached_num_active_bindings = 0;
     } else if (pg->vertex_attr_gen == r->last_vertex_attr_gen &&
@@ -200,6 +358,15 @@ void pgraph_vk_bind_vertex_attributes(NV2AState *d, unsigned int min_element,
                                min_element * r->cached_attr_layout[i].stride;
                 update_memory_buffer(d, start,
                                      num_elements * r->cached_attr_layout[i].stride);
+                if (unlikely(r->vtxhz_on)) {
+                    /* The cached layout is this vertex_attr_gen's, so the
+                     * attribute's size and count are still these. */
+                    VertexAttribute *attr = &pg->vertex_attributes[i];
+                    vtxhz_note_read(r, start,
+                                    start + (num_elements - 1) *
+                                                r->cached_attr_layout[i].stride +
+                                            attr->size * attr->count);
+                }
             }
         }
         attr_masks_changed(pg);
@@ -320,6 +487,12 @@ void pgraph_vk_bind_vertex_attributes(NV2AState *d, unsigned int min_element,
         }
 
         NV2A_VK_DPRINTF("offset = %08" HWADDR_PRIx, attrib_data_addr);
+        if (unlikely(r->vtxhz_on) && !inline_data) {
+            /* The bytes it reads, not update_memory_buffer's whole strides:
+             * the last element's stride runs into the next vertex. */
+            vtxhz_note_read(r, start,
+                            start + (num_elements - 1) * stride + element_size);
+        }
         last_entry += stride * provoking_element_index;
         pgraph_update_inline_value(attr, last_entry);
 
@@ -386,6 +559,8 @@ void pgraph_vk_bind_vertex_attributes_inline(NV2AState *d)
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
 
+    r->vtxhz_cur_n = 0;
+    r->vtxhz_cur_rot = UINT64_MAX;
     r->cached_num_active_bindings = 0;
 
     pg->compressed_attrs = 0;

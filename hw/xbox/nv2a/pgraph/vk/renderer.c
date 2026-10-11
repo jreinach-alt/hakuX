@@ -1815,8 +1815,21 @@ extern char g_vulkan_driver_info[256];
  *    stage's address ("srf", "s2t"); each shader hash gets one
  *    {"t":"shader"} record with its combiner registers and GLSL. A schema-3
  *    reader that ignores unknown fields reads a schema-4 dump unchanged.
+ * 5: as 4, plus the vertex RAM the draw reads and every change to it. Each
+ *    draw record adds "rot" (the command-buffer rotation it was recorded in)
+ *    and "vr" (per array attribute, the VRAM byte range of its elements). A
+ *    {"t":"vup"} record is written for every upload into the vertex RAM
+ *    staging buffer that CHANGES bytes, with the changed span. The staging
+ *    buffer is per rotation, not per draw, so a vup in the same "rot" as an
+ *    earlier draw, with a later "n" and a changed span inside that draw's
+ *    "vr", rewrites what the earlier draw will read when the command buffer
+ *    runs. "hzf":1 on a vup: HAKUX_VTX_HAZARD (vk/vertex.c) finished the
+ *    command buffer before that upload. With the `vtxNN` token, a draw
+ *    of at most NN indices also logs its elements' raw position, diffuse and
+ *    texcoord0 words ("v") and the composite matrix and viewport offset
+ *    ("cm"), so its screen coverage can be recomputed offline.
  */
-#define FDUMP_SCHEMA          4
+#define FDUMP_SCHEMA          5
 
 /* `img_sync` on a frame record: >= 0 is the fence slot the image waited on
  * before the display surface came back clean, and these two are the cases
@@ -1839,6 +1852,9 @@ static struct {
     bool images;
     uint64_t shaders_seen[FDUMP_MAX_SHADERS];
     int shaders_n;
+    /* Schema 5's `vtxNN`: draws of at most this many indices log their
+     * vertex words. 0 is off. */
+    int vtx_max;
     int frames_remaining;
     int frame_index;
     int draw_index;
@@ -2042,9 +2058,12 @@ static void fdump_clear_previous(const char *dir, const char *keep)
  *               way a queued soak reaches a scene a title takes a minute to
  *               get to -- request.sh can set an env var and cannot touch a
  *               file on the device mid-run.
+ *   vtxNN       schema 5: a draw of at most NN indices (capped at 256) logs
+ *               its vertices' raw words; see FDUMP_SCHEMA.
  */
 static void fdump_parse_spec(const char *spec, int *frames, bool *images,
-                             int *cap_mb, bool *also_diag, int *after_s)
+                             int *cap_mb, bool *also_diag, int *after_s,
+                             int *vtx_max)
 {
     char buf[160];
     snprintf(buf, sizeof(buf), "%s", spec ? spec : "");
@@ -2068,6 +2087,11 @@ static void fdump_parse_spec(const char *spec, int *frames, bool *images,
             if (v >= 1 && v <= 4096) {
                 *cap_mb = (int)v;
             }
+        } else if (!strncmp(tok, "vtx", 3)) {
+            long v = strtol(tok + 3, NULL, 10);
+            if (v >= 0) {
+                *vtx_max = (int)MIN(v, 256L);
+            }
         } else {
             char *end = NULL;
             long v = strtol(tok, &end, 10);
@@ -2088,7 +2112,9 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     int cap_mb = FDUMP_DEFAULT_MB;
     bool also_diag = false;
     int after_s = 0;
-    fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s);
+    int vtx_max = 0;
+    fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s,
+                     &vtx_max);
 
     const char *base = fdump_base_dir();
     if (!base || !base[0]) {
@@ -2111,6 +2137,7 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     fdump.images_stale = 0;
     fdump.stale_warned = false;
     fdump.shaders_n = 0;
+    fdump.vtx_max = vtx_max;
 
     char self[64];
     snprintf(self, sizeof(self), "%s%u.jsonl", FDUMP_PREFIX, fdump.session);
@@ -2152,12 +2179,13 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
         fp,
         "{\"t\":\"session\",\"schema\":%d,\"id\":%u,\"armed_by\":\"%s\","
         "\"spec\":\"%s\",\"frames\":%d,\"images\":%s,\"cap_mb\":%d,"
-        "\"after_s\":%d,"
+        "\"after_s\":%d,\"vtx\":%d,"
         "\"wall\":%lld,\"uptime_ms\":%lld,\"draw_merge\":%s,"
         "\"draw_reorder\":%s,\"surface_scale\":%d,\"submit_frames\":%d,"
         "\"per_draw_finish\":%s,\"also_diag\":%s,\"driver\":\"%s\"}\n",
         FDUMP_SCHEMA, fdump.session, armed_by, spec ? spec : "", frames,
-        images ? "true" : "false", cap_mb, after_s, (long long)time(NULL),
+        images ? "true" : "false", cap_mb, after_s, vtx_max,
+        (long long)time(NULL),
         (long long)(qemu_clock_get_ns(QEMU_CLOCK_REALTIME) / 1000000),
         xemu_get_draw_merge() ? "true" : "false",
         xemu_get_draw_reorder() ? "true" : "false",
@@ -2197,7 +2225,9 @@ static void fdump_arm(NV2AState *d, const char *armed_by, const char *spec,
     int cap_mb = FDUMP_DEFAULT_MB;
     bool also_diag = false;
     int after_s = 0;
-    fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s);
+    int vtx_max = 0;
+    fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s,
+                     &vtx_max);
 
     if (after_s <= 0) {
         fdump_begin(d, armed_by, spec);
@@ -2462,6 +2492,246 @@ static bool fdump_log_draw_state(PGRAPHState *pg)
     return true;
 }
 
+/* Schema 5. The lowest and highest element a draw from vertex arrays reads,
+ * and how many elements it reads. False for the inline kinds: their vertices
+ * travel in the pushbuffer and are copied per draw, so no later upload can
+ * change what they read. */
+static bool fdump_element_range(PGRAPHState *pg, const char *type,
+                                uint32_t *lo, uint32_t *hi, unsigned *n)
+{
+    uint32_t mn = UINT32_MAX, mx = 0;
+    unsigned total = 0;
+
+    if (!strcmp(type, "inline_elements")) {
+        for (unsigned i = 0; i < pg->inline_elements_length; i++) {
+            mn = MIN(mn, pg->inline_elements[i]);
+            mx = MAX(mx, pg->inline_elements[i]);
+        }
+        total = pg->inline_elements_length;
+    } else if (!strcmp(type, "draw_arrays")) {
+        for (unsigned i = 0; i < pg->draw_arrays_length; i++) {
+            if (pg->draw_arrays_count[i] <= 0) {
+                continue;
+            }
+            uint32_t s = (uint32_t)pg->draw_arrays_start[i];
+            mn = MIN(mn, s);
+            mx = MAX(mx, s + (uint32_t)pg->draw_arrays_count[i] - 1);
+            total += pg->draw_arrays_count[i];
+        }
+    }
+    if (mn > mx) {
+        return false;
+    }
+    *lo = mn;
+    *hi = mx;
+    *n = total;
+    return true;
+}
+
+/* The VRAM offset of an array attribute's element 0, as vertex.c computes
+ * it, and the DMA limit it was mapped under; false when it maps nothing. */
+static bool fdump_attr_base(NV2AState *d, PGRAPHState *pg,
+                            const VertexAttribute *attr, hwaddr *base,
+                            hwaddr *dma_len)
+{
+    uint8_t *p = (uint8_t *)nv_dma_map(
+        d, attr->dma_select ? pg->dma_vertex_b : pg->dma_vertex_a, dma_len);
+    if (attr->offset >= *dma_len) {
+        return false;
+    }
+    *base = p + attr->offset - d->vram_ptr;
+    return true;
+}
+
+/* One element of one attribute as raw words, "-" when the attribute is off.
+ * A uniform attribute (no array, or stride 0) prints its persistent value
+ * with a "u" prefix: that is what every vertex of the draw gets. */
+static int fdump_put_element(NV2AState *d, PGRAPHState *pg, int a,
+                             uint32_t idx)
+{
+    const VertexAttribute *attr = &pg->vertex_attributes[a];
+    uint32_t w[4] = { 0, 0, 0, 0 };
+    int nw;
+
+    if (!attr->count || !attr->stride) {
+        memcpy(w, attr->inline_value, sizeof(w));
+        return fprintf(fdump.fp, "\"u%08x %08x %08x %08x\"", w[0], w[1], w[2],
+                       w[3]);
+    }
+    hwaddr base, dma_len;
+    size_t bytes = MIN((size_t)attr->size * attr->count, sizeof(w));
+    if (!fdump_attr_base(d, pg, attr, &base, &dma_len) ||
+        attr->offset + (hwaddr)idx * attr->stride + bytes > dma_len) {
+        return fprintf(fdump.fp, "\"-\"");
+    }
+    memcpy(w, d->vram_ptr + base + (hwaddr)idx * attr->stride, bytes);
+    nw = (int)((bytes + 3) / 4);
+    switch (nw) {
+    case 1:
+        return fprintf(fdump.fp, "\"%08x\"", w[0]);
+    case 2:
+        return fprintf(fdump.fp, "\"%08x %08x\"", w[0], w[1]);
+    case 3:
+        return fprintf(fdump.fp, "\"%08x %08x %08x\"", w[0], w[1], w[2]);
+    default:
+        return fprintf(fdump.fp, "\"%08x %08x %08x %08x\"", w[0], w[1], w[2],
+                       w[3]);
+    }
+}
+
+/* Schema 5's per-draw vertex fields, after "tex"; see FDUMP_SCHEMA. */
+static bool fdump_log_draw_vertices(NV2AState *d, PGRAPHState *pg,
+                                    const char *type)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    uint32_t lo, hi;
+    unsigned total;
+    int n;
+
+    n = fprintf(fdump.fp, ",\"rot\":%" PRIu64 ",\"vr\":[", r->frame_rotations);
+    if (n < 0) {
+        goto fail;
+    }
+    fdump.bytes_written += n;
+
+    bool arrays = fdump_element_range(pg, type, &lo, &hi, &total);
+    bool first = true;
+    for (int i = 0; arrays && i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+        const VertexAttribute *attr = &pg->vertex_attributes[i];
+        hwaddr base, dma_len;
+        if (!attr->count || !attr->stride ||
+            !fdump_attr_base(d, pg, attr, &base, &dma_len)) {
+            continue;
+        }
+        n = fprintf(fdump.fp,
+                    "%s[%d,\"0x%" HWADDR_PRIx "\",\"0x%" HWADDR_PRIx
+                    "\",%u,%u,%u,%u]",
+                    first ? "" : ",", i, base + (hwaddr)lo * attr->stride,
+                    base + (hwaddr)hi * attr->stride +
+                        (hwaddr)attr->size * attr->count,
+                    attr->stride, attr->format, attr->size, attr->count);
+        if (n < 0) {
+            goto fail;
+        }
+        fdump.bytes_written += n;
+        first = false;
+    }
+    n = fprintf(fdump.fp, "]");
+    if (n < 0) {
+        goto fail;
+    }
+    fdump.bytes_written += n;
+
+    if (!arrays || !fdump.vtx_max || total > (unsigned)fdump.vtx_max) {
+        return true;
+    }
+
+    /* Elements in draw order: index, position, diffuse, texcoord0. */
+    n = fprintf(fdump.fp, ",\"v\":[");
+    if (n < 0) {
+        goto fail;
+    }
+    fdump.bytes_written += n;
+    unsigned k = 0;
+    bool elements = !strcmp(type, "inline_elements");
+    unsigned groups = elements ? 1 : pg->draw_arrays_length;
+    for (unsigned g = 0; g < groups; g++) {
+        unsigned cnt = elements ? pg->inline_elements_length
+                                : (unsigned)MAX(pg->draw_arrays_count[g], 0);
+        for (unsigned j = 0; j < cnt; j++, k++) {
+            uint32_t idx = elements ? pg->inline_elements[j]
+                                    : (uint32_t)pg->draw_arrays_start[g] + j;
+            n = fprintf(fdump.fp, "%s[%u,", k ? "," : "", idx);
+            if (n < 0) {
+                goto fail;
+            }
+            fdump.bytes_written += n;
+            static const int attrs[] = { 0, 3, 9 };
+            for (int a = 0; a < ARRAY_SIZE(attrs); a++) {
+                n = fdump_put_element(d, pg, attrs[a], idx);
+                if (n < 0) {
+                    goto fail;
+                }
+                fdump.bytes_written += n;
+                n = fprintf(fdump.fp, a + 1 < ARRAY_SIZE(attrs) ? "," : "]");
+                if (n < 0) {
+                    goto fail;
+                }
+                fdump.bytes_written += n;
+            }
+        }
+    }
+
+    /* c[0..3] are the composite matrix's columns, so oPos[j] =
+     * dot(position, c[j]); 0x3a/0x3b are the viewport scale and offset. */
+    n = fprintf(fdump.fp, "],\"cm\":[");
+    if (n < 0) {
+        goto fail;
+    }
+    fdump.bytes_written += n;
+    static const int consts[] = { 0, 1, 2, 3, NV_IGRAPH_XF_XFCTX_VPSCL,
+                                  NV_IGRAPH_XF_XFCTX_VPOFF };
+    for (int c = 0; c < ARRAY_SIZE(consts); c++) {
+        const uint32_t *v = pg->vsh_constants[consts[c]];
+        n = fprintf(fdump.fp, "%s\"%08x %08x %08x %08x\"", c ? "," : "", v[0],
+                    v[1], v[2], v[3]);
+        if (n < 0) {
+            goto fail;
+        }
+        fdump.bytes_written += n;
+    }
+    n = fprintf(fdump.fp, "]");
+    if (n < 0) {
+        goto fail;
+    }
+    fdump.bytes_written += n;
+    return true;
+
+fail:
+    fdump_close("write error");
+    return false;
+}
+
+/* Schema 5: an upload into the vertex RAM staging buffer, called by
+ * pgraph_vk_update_vertex_ram_buffer before it copies `data` over `old`. Only
+ * an upload that changes bytes is written, with the first and last changed
+ * byte; `n` is the draw it is syncing for (the next draw record).
+ * `hazard_finished`: HAKUX_VTX_HAZARD finished the command buffer first, so
+ * `rot` is the new one and `old` the new slot's copy ("hzf":1; written even
+ * when that copy already matches). */
+void pgraph_vk_fdump_vertex_upload(PGRAPHVkState *r, hwaddr offset,
+                                   const uint8_t *old, const uint8_t *data,
+                                   size_t size, bool hazard_finished)
+{
+    if (!fdump.fp || fdump.bytes_written >= fdump.byte_limit) {
+        return;
+    }
+    bool same = !memcmp(old, data, size);
+    if (same && !hazard_finished) {
+        return;
+    }
+    size_t a = 0, b = size;
+    if (!same) {
+        while (old[a] == data[a]) {
+            a++;
+        }
+        while (old[b - 1] == data[b - 1]) {
+            b--;
+        }
+    }
+    int n = fprintf(fdump.fp,
+                    "{\"t\":\"vup\",\"f\":%d,\"n\":%d,\"rot\":%" PRIu64 ","
+                    "\"lo\":\"0x%" HWADDR_PRIx "\",\"hi\":\"0x%" HWADDR_PRIx
+                    "\",\"clo\":\"0x%" HWADDR_PRIx "\",\"chi\":\"0x%"
+                    HWADDR_PRIx "\"%s}\n",
+                    fdump.frame_index, fdump.draw_index, r->frame_rotations,
+                    offset, offset + (hwaddr)size, offset + (hwaddr)a,
+                    offset + (hwaddr)b, hazard_finished ? ",\"hzf\":1" : "");
+    if (n > 0) {
+        fdump.bytes_written += n;
+    }
+}
+
 /* Per draw. No Vulkan call, no allocation, one buffered fprintf. */
 static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
                            int count)
@@ -2599,7 +2869,18 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
         fdump.bytes_written += n;
     }
 
-    n = fprintf(fdump.fp, "]}\n");
+    n = fprintf(fdump.fp, "]");
+    if (n < 0) {
+        fdump_close("write error");
+        return;
+    }
+    fdump.bytes_written += n;
+
+    if (!fdump_log_draw_vertices(d, pg, type)) {
+        return;
+    }
+
+    n = fprintf(fdump.fp, "}\n");
     if (n < 0) {
         fdump_close("write error");
         return;

@@ -5399,6 +5399,7 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
         pgraph_vk_flush_all_frames(pg);
         r->num_active_frames = desired_frames;
         r->current_frame = 0;
+        r->frame_rotations++;
         r->command_buffer = r->command_buffers[0];
         r->aux_command_buffer = r->command_buffers[1];
         r->command_buffer_fence = r->frame_fences[0];
@@ -5499,10 +5500,14 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
         nv2a_profile_inc_counter(NV2A_PROF_QUEUE_SUBMIT);
         NV2A_PHASE_TIMER_BEGIN(finish_submit);
 
+        /* VERTEX_BUFFER_DIRTY: only HAKUX_VTX_HAZARD (vk/vertex.c) finishes
+         * for it. The upload after it goes to the next frame's copy, whose
+         * fence the rotation waits; nothing needs this command buffer done. */
         bool deferred = (finish_reason == VK_FINISH_REASON_FLIP_STALL ||
                          finish_reason == VK_FINISH_REASON_PRESENTING ||
                          finish_reason == VK_FINISH_REASON_STALLED ||
-                         finish_reason == VK_FINISH_REASON_SURFACE_DOWN_FLUSH);
+                         finish_reason == VK_FINISH_REASON_SURFACE_DOWN_FLUSH ||
+                         finish_reason == VK_FINISH_REASON_VERTEX_BUFFER_DIRTY);
         if (g_xemu_fast_fences) {
             deferred = deferred ||
                 finish_reason == VK_FINISH_REASON_NEED_BUFFER_SPACE ||
@@ -5828,6 +5833,7 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
             }
 
             r->current_frame = next_frame;
+            r->frame_rotations++;
             r->command_buffer = r->command_buffers[next_frame * 2];
             r->aux_command_buffer = r->command_buffers[next_frame * 2 + 1];
             r->command_buffer_fence = r->frame_fences[next_frame];
@@ -7077,9 +7083,13 @@ static void begin_pre_draw(PGRAPHState *pg)
         drawcensus_pre(pg);
         begin_pre_draw_probe(pg);
         drawcensus_post(pg);
-        return;
+    } else {
+        begin_pre_draw_probe(pg);
     }
-    begin_pre_draw_probe(pg);
+    /* #433 HAKUX_VTX_HAZARD: the draw's vertices are staged; its bytes are
+     * now this command buffer's to protect (again in begin_draw, in case a
+     * finish between here and there moved the draw to the next one). */
+    pgraph_vk_vtxhz_commit(pg->vk_renderer_state);
 }
 
 static void begin_pre_draw_probe(PGRAPHState *pg)
@@ -7447,6 +7457,7 @@ static void begin_draw(PGRAPHState *pg)
     }
 
     r->in_draw = true;
+    pgraph_vk_vtxhz_commit(r);
 }
 
 static void end_draw(PGRAPHState *pg)
