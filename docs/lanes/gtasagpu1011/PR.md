@@ -3,7 +3,7 @@ State: draft
 
 Lane: gtasagpu1011      Issue: none (dispatched directly by lane.local, #433 umbrella)
 Base: master @ 6d8947bb47
-Files: docs/lanes/gtasagpu1011/NOTES.md, docs/lanes/gtasagpu1011/PR.md, docs/lanes/gtasagpu1011/fdread.py, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/vertex.c
+Files: docs/lanes/gtasagpu1011/NOTES.md, docs/lanes/gtasagpu1011/PR.md, docs/lanes/gtasagpu1011/WAITING, docs/lanes/gtasagpu1011/dispcmp.py, docs/lanes/gtasagpu1011/fdread.py, docs/lanes/gtasagpu1011/fsz.py, docs/lanes/gtasagpu1011/litfail.py, docs/lanes/gtasagpu1011/sqscan.py, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/vertex.c
 Prediction: none: switch screens and frame dumps, read by hand; each run's prediction is written in NOTES.md (sections 1, 2b, 2c, 2d) before it was queued
 Needs device: yes (Nova)    Needs NDK: yes
 
@@ -64,6 +64,24 @@ Still open after 651566 (schema 6, below), which showed the texture is right:
 
 The projection draws whole ground collision triangles with UVs far outside [0,1]. Only the UV [0,1] square shows shadow, because the clamp border is black. In 844241 that square was off screen in all 60 dumped consumers, so that run decides nothing. In 176610 it is fully in frame round CJ's legs (f14-f18), and the display image shows no shadow there.
 
+**818197 (schema 7, CJ running down the road): no defect in 24 frames** (NOTES 2e).
+
+| reading | pooled over 24 consumers |
+|---|---|
+| lit pixels (UV square, texel above 8) | 231,059 |
+| passing LEQUAL against `zpre` | 111,918 (48.4%) |
+| failing ones within 1024 units of the depth under them | at most 7 a frame; the rest sit behind the pickup truck or CJ's foot |
+| passing ones the draw changed (all darker) | 89,282 (79.8%) |
+| fragment shader's depth rebuild (float32, offline) against the ideal raster | 0 `clipRange` discards, within 972 units, LEQUAL sets equal to 9 px |
+| paired display images carrying the darkening | 19 of 22 wholly, 3 at half or more |
+
+The shadow is faint by the numbers it is given. The blurred silhouette peaks at 247. n9 then multiplies it by a 32x32 gradient texture, which falls from 0.48 to 0.28 down the rows, leaving a peak of 108. The projection's diffuse is 0x8c-0x8f. The darkest result is 1 - (108/255)(0x8e/255) = 0.76 of the ground's colour, which is what is measured. The game does not lower that diffuse in the alley (176610 f14-f18: 0x8c-0x8d).
+
+That leaves two readings:
+
+1. The alley case fails in a way the road case does not. `2027680` dumps it.
+2. A shadow at most 22% darker vanishes on darker ground. The gradient texture was made before any dump window, so its values cannot be checked against hardware here.
+
 **Schema 6 (8e40300c6c)** adds an `rtt` token to `XEMU_FRAME_DUMP`. For each draw that binds or samples a colour target of 64x64 or smaller, it reads back:
 
 - the target itself;
@@ -84,6 +102,7 @@ The projection draws whole ground collision triangles with UVs far outside [0,1]
 | `1-1791742114-lane.gtasagpu1011-177443` | a6ee1c58fe | schema 5 dump, `HAKUX_VTX_HAZARD=1` | scored (2c) |
 | `1-1791744746-lane.gtasagpu1011-651566` | 8e40300c6c | schema 6 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | scored: the shadow texture is right (outcome A, NOTES 2d) |
 | `1-1791748627-lane.gtasagpu1011-844241` | 50a389ef2b | schema 7 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | scored: the shadow's UV square is off screen in all 60 consumers; A1-A4 undecided (NOTES 2d) |
+| `1-1791745550-lane.gtasagpu1011-818197` | 50a389ef2b | schema 7 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s (valid per lane.local, 14:04 PDT) | scored: drawn, passes depth where nothing stands in front, reaches the display; A4 by the letter (NOTES 2e) |
 | `1-1791752181-lane.gtasagpu1011-2027680` | 50a389ef2b | the same, dump at `after160` (CJ standing in the alley) | queued on the Nova |
 
 ## Step 3

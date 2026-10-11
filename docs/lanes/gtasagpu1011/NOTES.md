@@ -569,7 +569,8 @@ after queueing the schema-7 run `1-1791745550-lane.gtasagpu1011-818197`, again w
 void: hakuX lost the foreground to `com.android.settings` for 90 s or more (12:40-12:41 PDT), so
 the route's input went to Settings. hostops re-queued it unchanged as
 `1-1791748627-lane.gtasagpu1011-844241` (ref 50a389ef2b). 818197 is not scored or used anywhere
-in these notes.
+in these notes. (Superseded at 14:04 PDT: lane.local's addendum 5 says neither run is void, the
+"void" message was wrong, and 818197's dump is valid data. It is scored in 2e.)
 
 This session writes a `waiting:` note before it queues anything, and keeps the turn count low
 while it waits.
@@ -653,3 +654,123 @@ passes the depth test over most of its coverage. Its covering triangles there ha
 negative-w vertices (the host clipper) and one (the geometry shader's wedge). So where nothing
 stands in front, the projection is not behind the ground by construction. That makes A1 less
 likely than the 0.35 written above; the predictions stand as written, and the run scores them.
+
+### 2e result: 818197 (schema 7) -- the shadow is drawn, passes depth, and reaches the display
+
+`1-1791745550-lane.gtasagpu1011-818197`, build 50a389ef2b, `HAKUX_VTX_HAZARD=1`, 30 dumped
+frames, one consumer a frame, `pre`/`zpre`/`post` on the first 24 (FDUMP_CONS_MAX). Addendum 5
+reinstated it after the predictions above were written for 2027680, and its frames are a
+different case from the one they target: CJ running down the road beside a pickup truck (game
+clock 08:33-08:35), not standing in the alley. They are scored here as written, then read for
+what they show.
+
+**Every consumer qualifies.** The square is on screen in all 30 (`sqscan.py`), and the 24 with
+readbacks have 5.5k-11.6k lit covered pixels each.
+
+| frames | lit px | lit and passing LEQUAL (texel-weighted) | changed px (all darker, all inside the coverage) | changed / lit passing |
+|---|---|---|---|---|
+| f0-f2 | 9.0k-10.4k | 15-32% | 1250-2599 | 78-82% |
+| f3-f13 | 9.7k-11.6k | 12-58% | 1106-4819 | 69-89% |
+| f14 | 9.9k | 41% | 3118 | 75% |
+| f15-f23 | 5.5k-10.6k | 84-100% | 4448-8183 | 77-84% |
+
+(Changed pixels are any channel moved by more than 2; the rest of the lit, passing pixels sample
+texels too dim to move an 8-bit channel.)
+
+**Where it fails depth, something stands in front.** Of the lit pixels that fail LEQUAL, at most
+7 a frame are within 1024 units (of 2^24) behind the depth under them, and at most 140 are
+1024-16384 units behind. All the others (276-9996 a frame where the truck is in shot) are more than
+16384 units behind. That is an occluder, not a precision band. `litfail.py`'s per-pixel
+map puts them under the pickup truck's body in f0-f14 (f6 checked by eye), and on CJ's foot in
+f16.
+Where the road is open, the shadow passes.
+
+**The fragment shader agrees with the ideal raster.** `fsz.py` runs the projection's VS and FS
+arithmetic in float32 (per-vertex RTZ `z/w`, the 1/16 screen rounding, the kahan barycentrics and
+the compensated depth rebuild) over f0, f6, f16, f19 and f22. It finds:
+
+- 0 `clipRange` discards in 520k covered pixels;
+- FS depth within 972 units of the ideal depth;
+- LEQUAL-passing sets that agree with the ideal raster's to within 9 pixels a frame.
+
+A2's sub-mechanism is not present in this run.
+
+**The darkening reaches the display image.** The frame image is the surface at `pcrtc.start` when
+the frame ends. Paired against each consumer's `post` (whole-frame mean absolute error), it is
+usually the previous frame's render (double buffering), and sometimes the frame's own. For each
+image and its matching render, the shadow mask is the render's pre/post change. The ratio of
+mean luminance in the mask to a ring 4-12 px around it is computed for `pre`, `post` and the image
+(`dispcmp.py`). An image at the `post` ratio carries the whole shadow; one at the `pre` ratio
+carries none.
+
+| image | render | share of the shadow in the image |
+|---|---|---|
+| f1, f2, f4-f13 | f0-f12 (one behind) | 0.99-1.43 |
+| f14, f15 | f14 | 0.52 |
+| f16 | f16 | 0.65 |
+| f18-f24 | f18-f23 | 0.98-1.01 |
+| f0 | none dumped (its render is f-1) | - |
+| f3, f17 | no image (`img_sync` -2) | - |
+
+19 of the 22 paired images carry the whole shadow, and the other three carry half or more.
+In f16 (pre, post and the image side by side), the image has CJ and the camera about 10 px from
+where `post` has them, so the mask is offset rather than missing. f14 was not examined. None of
+the 22 paired images carries the pre-draw picture.
+
+**Score as written** (pooled over the 24 qualifying consumers, as the rule says): 231,059 lit
+pixels, 111,918 passing LEQUAL (48.4%), 89,282 of those changed (79.8%).
+
+- Q fails: all 24 qualify.
+- A1 fails: 48.4% pass, not under 10%.
+- A2 fails both clauses: under 50% pass, and 79.8% of the passing pixels change, not under 5%.
+- A3 fails its display clause: the image carries the darkening.
+
+That leaves **A4**, by the letter. What it means is that **there is no defect in this run's 24 frames**. The
+projection is drawn, passes depth wherever nothing stands in front, darkens the road, and that
+darkening is what the display shows.
+
+**But the shadow is faint, by the numbers the game feeds it.** The strongest darkening in any
+frame is post/pre 0.76-0.79, and the median is 0.85-0.89. The chain explains that end to end
+(651566 f4, re-read):
+
+| draw | what it does | peak value after it |
+|---|---|---|
+| n0-n4 | CJ into the 64x64 at 0x3513980 (white clear, CJ dark) | 255 background |
+| n5 | invert, `(1-DC)*S` | 253 (CJ) |
+| n6 | resample 64 to 32 into 0x3517a00 | 253 |
+| n7, n8 | blur passes through 0x34e7480 | 247 |
+| n9 | quad, shader faa9d5fc (`tex0 * diffuse`), blend `0*S + SC*D`, samples a 32x32 X8R8G8B8 texture at 0x034e8500 that is not a render surface | 108 |
+| n10 | the black border LINE_STRIP | 108 |
+
+n9's per-row factor (n9 / n8 where n8 is lit) falls linearly from 0.48 at row 3 to 0.28 at row
+29, about 0.0078 a row. That reads as a gradient the game multiplies the shadow by, fading it
+along its length. The texture has no render surface in the dump, so it was made before the dump
+window, and the per-frame chain only samples it. The projection then multiplies by its diffuse,
+0x8c-0x8f:
+1 - (108/255)(0x8e/255) = 0.76, the darkest pixel measured. Each link checks against its
+neighbour, so nothing in the per-frame chain is dimming the shadow beyond what its inputs say.
+The dump cannot say whether the gradient texture's values (about 129 down to 69, if n9's
+diffuse is white) match what the Xbox would hold. The texture predates every dump window, and
+n9's vertex colours are not recorded (n9 is `inline_array`).
+
+**The game does not dim CJ's shadow in the alley.** The projection's diffuse is 0x8c-0x8d in
+176610 f0-f29, including the alley frames f14-f18 where the display showed no shadow, and
+0x8d-0x8f in 818197 and in 844241's CJ consumer. 844241's second consumer samples another
+shadow texture (0x34e6400; by its address, another ped's). Its vertex colour fades
+0x8e -> 0x28 over the 30 frames, a fade the game asks for, and it is not CJ.
+
+Scripts, in this directory, each reading a dump through `fdread.py`: `sqscan.py` (the square's
+on-screen points), `litfail.py` (lit pixels failing LEQUAL, by depth deficit), `fsz.py` (the
+float32 VS/FS depth rebuild) and `dispcmp.py` (shadow share in the display image).
+
+**What this leaves.** In the road case, the renderer does what the draws ask. Two readings remain
+for "the shadow dropping out":
+
+1. a case this run does not contain, such as CJ standing in the alley (176610 f14-f18, and
+   2027680's target);
+2. a shadow faint enough (13-22% darker at best) that it vanishes into darker or busier ground.
+   That would be the gradient's or the intensity's absolute value, which no dump here can check
+   against hardware.
+
+2027680 separates them. If its alley consumers pass and change their lit pixels like 818197's,
+reading 2 stands, and the question becomes the gradient texture made at start.
