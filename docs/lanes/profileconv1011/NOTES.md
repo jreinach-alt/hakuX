@@ -169,3 +169,33 @@ against the baseline's same-named frames:
 One re-run queued to get a clean, complete frame set (genre-loop `hold`
 frames included) -- not a route fix, since nothing the frames showed
 contradicts section 4's prediction.
+
+## 8. Waiting on the Amped 2 re-run
+
+Queued `1-1791749881-profileconv1011-1652106` (same shape as attempt 1: 900s,
+`frames_every 60`, no env, `--route amped2 --device nova`) at 13:18 PDT.
+Polled twice in the foreground (two ~9 min loops on `dispatch/queue/`,
+`dispatch/running/`, and the result dir). By the second poll the queue ahead
+of it totaled ~7560s of device time: the running `lane.gtasagpu1011` request
+plus 25 queued requests, mostly a `nfsdefault1011` batch -- not something a
+few more 9-minute polls will clear, and `priority: study` does not jump it.
+
+This is the long-dispatch-queue wait the lane role's `waiting:` pattern is
+for (the `titleroutes` precedent: "session 63 ended correctly on
+`[lane.titleroutes] waiting:`... this is the stage's normal 'queue, then come
+back' pattern, not a strand"). This lane has no GitHub access, so the PR-
+comment half of that pattern is `docs/lanes/profileconv1011/OUTBOX.md`
+(written this session), not `gh pr comment`. Ending here is not the
+"background task" case the brief's step 4 warns against -- the request is
+queued on the dispatcher, not something I started that dies with this
+session -- so there is nothing to lose by stopping and resuming once
+`result.json` lands.
+
+Next session: read `dispatch/results/1-1791749881-profileconv1011-1652106/`,
+confirm `hdd.json` (`loaded: golden, save: f90786b6e0f5`), compare every shot
+(including the ones attempt 1 never reached: `s01`, `s20-probe`, `s22`-`s25`,
+the 12 genre-loop `hold` frames) against the baseline
+`1-1791616849-pfifowait1009-2796495`'s same-named frames, same method as
+section 6/7. If it confirms: write `TRANSITION-DONE: gta-sa amped2` here and
+set PR.md `State: ready` with both run ids, both `hdd.json` lines, and the
+frame-pair evidence (step 6 of the brief).
