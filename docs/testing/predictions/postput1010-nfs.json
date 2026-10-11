@@ -1,0 +1,40 @@
+{
+  "registered_utc": "2026-10-11T00:53:09Z",
+  "who": "lane.postput1010",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "device": "nova",
+  "seconds": 500,
+  "route": "nfs-mw-quickrace",
+  "perflog": false,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "c63ec9774f",
+  "b_ref": "c63ec9774f",
+  "a_env": [
+    "HAKUX_REPORT_ASYNC=1",
+    "HAKUX_TEXSCAN=1"
+  ],
+  "b_env": [
+    "HAKUX_REPORT_ASYNC=1",
+    "HAKUX_TEXSCAN=1",
+    "HAKUX_POSTED_PUT=1"
+  ],
+  "queue_order": "Queued by the lane (an env A/B on one binary; arms.sh skips a_ref == b_ref): four requests of one run each, A, B, B, A (request.sh --who postput1010 --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw-quickrace --seconds 500 --device nova --ref c63ec9774f --env HAKUX_REPORT_ASYNC=1 --env HAKUX_TEXSCAN=1 [--env HAKUX_POSTED_PUT=1] --expect this file), plain build (no --perflog). A1 and B1 first as the pilot (4 x 590 s is past the 30 min gate), then B2 and A2 once the pilot's frames and logs are read. c63ec9774f is lane/postput1010: master @ b74cff74ed + origin/lane/reportasync1010 @ 4b50801b21 (merge 0d7948085e) + the posted store.",
+  "judge": "python3 docs/lanes/postput1010/ppread.py <A1> <B1> <B2> <A2> --expect docs/testing/predictions/postput1010-nfs.json",
+  "baseline": "A from runs that already exist, read with ppread.py over the same windows (both switches on, plain, ref 3cd9d6b7e3, reportasync1010-both.json's on arm): 1-1791659723-reportasync1010-552662 cold start 1 47.4 ms, warm countdown 37.2 ms, post-GO warm 35.1 ms, warm v2/v3/v4 70/21/2 %; 1-1791659725-reportasync1010-552924 50.3 / 37.9 / 35.3 ms, 69/22/2 %. Mean of runs: cold 48.8, warm 37.5, post-GO 35.2. Frametrace of that configuration (perflog, 1-1791671434-reportasync1010-3857196, all warm frames): guest lockw 6.27 ms/frame, PFIFO pidle 13.56, p_run 27.08, period 44.81; the guest is busy past 2 VBLANKs on 46 % of warm frames, 5 % without lockw; PFIFO busy past 2 VBLANKs 26 %.",
+  "prediction": "#433 HAKUX_POSTED_PUT=1 at the NFS MW race start, on top of HAKUX_REPORT_ASYNC=1 HAKUX_TEXSCAN=1. With both of those on, the guest waits 6.3 ms per warm frame (7.3 per heavy frame) for pfifo.lock to store DMA_PUT while the PFIFO thread parses under it, and the PFIFO thread then idles 13.6 ms for the guest's next push: the two threads serialize on the lock. B posts the store when the lock is busy, so the guest keeps running while the PFIFO thread works. Mechanism: the guest's next push lands sooner, the PFIFO thread's idle shrinks, and frames the guest held past 2 VBLANKs become 2-VBLANK frames. Size: the frametrace bound (guest past 2 VBLANKs 46 % -> 5 % without lockw; either thread past 2 VBLANKs 58 % -> 29 %) halves the 3-VBLANK share at most; on the plain build that is ~30 % -> ~15 % of warm frames, about -2.5 ms at the warm countdown if the whole bound is realized. Point estimate: warm countdown A 37.5, B 35.0 ms; post-GO warm A 35.2, B 33.5; cold start 1 unchanged within its spread. P (B - A <= -2.0) is near the point estimate (probability ~45 %); T (B <= 34.0) needs more than the bound and is unlikely (~15 %). What refutes it: P and G failing with '[postput] on' logged on B and fifoskew's posted= > 0. Then the frametrace pair (postput1010-ftpair.json) says where the wait went: still lockw (the store is not posted), the guest waiting elsewhere (its busy share past 2 VBLANKs stays up), or the PFIFO thread alone setting the period (p_run), which makes a recorder thread (PLAN.md section 6) the next lever. Simpsons lost fps with this store because it is GPU-paced; at this scene the GPU is not on the path (gpupass1010).",
+  "expect": {
+    "V_min_marks": 12,
+    "V_min_valid_starts": 10,
+    "V_min_warm_lines": 10,
+    "P_d_max": -2.0,
+    "T_b_max": 34.0,
+    "G_d_max": -1.5,
+    "C_d_max": 3.0
+  },
+  "expect_note": "Named rules read by docs/lanes/postput1010/ppread.py --expect (legs V, P, T, G, C); a soak writes no captures. The brief's checks, none loosened. An arm's figure is the mean of its two runs' periods. V: each run 12 marks, >= 10 valid starts (a start whose route input failed or hung > 3 s is left out, raread.bad_starts), >= 10 warm pace lines, a g11 frame for every valid warm start, perflog off, the arm read from request.json env, '[reportasync] on' and '[texscan] on' logged on every run and '[postput] on' on B only; and a moving car in the g11 frames, checked by eye and recorded in docs/lanes/postput1010/NOTES.md.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}

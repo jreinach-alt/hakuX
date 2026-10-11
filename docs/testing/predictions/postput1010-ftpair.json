@@ -1,0 +1,42 @@
+{
+  "registered_utc": "2026-10-11T00:53:09Z",
+  "who": "lane.postput1010",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "device": "nova",
+  "seconds": 500,
+  "route": "nfs-mw-quickrace",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "c63ec9774f",
+  "b_ref": "c63ec9774f",
+  "a_env": [
+    "HAKUX_REPORT_ASYNC=1",
+    "HAKUX_TEXSCAN=1",
+    "HAKUX_FRAMETRACE=1"
+  ],
+  "b_env": [
+    "HAKUX_REPORT_ASYNC=1",
+    "HAKUX_TEXSCAN=1",
+    "HAKUX_POSTED_PUT=1",
+    "HAKUX_FRAMETRACE=1"
+  ],
+  "queue_order": "Queued by the lane after the four pace runs (an env pair; arms.sh skips a_ref == b_ref): two requests of one run each, A then B (request.sh --who postput1010 --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw-quickrace --seconds 500 --device nova --ref c63ec9774f --env HAKUX_REPORT_ASYNC=1 --env HAKUX_TEXSCAN=1 [--env HAKUX_POSTED_PUT=1] --env HAKUX_FRAMETRACE=1 --perflog --pull 'frametrace_*' --expect this file).",
+  "judge": "python3 docs/lanes/postput1010/ppread.py <A> <B> --expect docs/testing/predictions/postput1010-ftpair.json",
+  "baseline": "A's configuration traced before (perflog, ref a21a3361d9, 1-1791671434-reportasync1010-3857196, read with ppread.py --ft, all warm frames): P 44.81, p_run 27.08, pidle 13.56, guest lockw 6.27 ms/frame; guest busy past 2 VBLANKs on 46 % of warm frames; v2/v3/v4 41/55/3 %. Heavy frames: lockw 7.31, pidle 15.21, p_run 27.48, GPU busy 19.36.",
+  "prediction": "#433 brief step 4: where the guest's 6.3 ms/frame lock wait goes with HAKUX_POSTED_PUT=1. Over all warm frames: L, the mechanism: guest lockw A >= 3.0 ms/frame (point 6.3), B <= 0.5 (point ~0: a store that finds the lock busy no longer takes it, and the wake lock is taken only while the PFIFO thread is parked, when it is free). Q, the guest leaves the critical path rather than waiting at another site: the share of warm frames with the guest busy (work + v_blk) past 2 VBLANKs A >= 30 % (point 46), B <= 15 % (point 5-10). Reported whatever the verdict, side by side: p_run, pidle, lockw, GPU busy, PFIFO and guest busy past 2 VBLANKs, v2/v3/v4, cold/warm/post-GO, all and heavy frames. What it decides: L fails -> the store is not being posted where the wait was; L passes and Q fails -> the wait moved to another guest site (v_blk names it); L and Q pass with the pace P failing -> the PFIFO thread alone sets the period (p_run), and a recorder thread is next.",
+  "expect": {
+    "V_min_marks": 12,
+    "V_min_valid_starts": 10,
+    "V_min_warm_frames": 300,
+    "L_a_min": 3.0,
+    "L_b_max": 0.5,
+    "Q_a_min": 30.0,
+    "Q_b_max": 15.0
+  },
+  "expect_note": "Named rules read by docs/lanes/postput1010/ppread.py --expect (legs V, L, Q) over frames whose end falls in mark-2 .. mark+1.5 s of go2..go12 (ftpair.load's windows), all frames, not heavy only: B is meant to turn heavy frames light, so its remaining heavy frames are another selection. V also checks env, perflog on, and the three log lines as in postput1010-nfs.json.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}
