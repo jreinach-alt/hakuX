@@ -983,6 +983,22 @@ general form is in this file already -- *establish what your instrument cannot
 see* -- with the half that is easy to miss: a guard written on a proxy for
 ambiguity refuses the cases the proxy happens to cover, not the ambiguous ones.
 
+**A queued soak can also record video of the screen, not just stills.**
+`request.sh --video-seconds N` (default 0, off) and `--video-after S` (default
+30, seconds after the route's `mark` line, or after soak start with no route)
+ask the dispatcher for `screenrecord` segments during a `--title` soak, the
+way `--frames-every` asks for `screencap` stills -- for a defect like GTA San
+Andreas's surface dropouts that a 1-in-150-frames still can miss entirely.
+Files land under `results/<id>/video/v00001.mp4`, `v00002.mp4`, ... (each
+`HAKUX_SOAK_VIDEO_SEG` s, default 60, up to `HAKUX_SOAK_VIDEO_CAP` s, default
+300) and `result.json`'s `video` dict records `seconds`/`after`/`mark_wall`
+plus each segment's `start_wall`/`bytes`/`duration_s`/`samples` (read from the
+mp4's own `moov` atom with a stdlib box reader -- there is no ffmpeg or
+ffprobe on this host). The mp4s are for a person to watch: no lane here can
+decode video, so a frame dump (above) or `--frames-every` stills remain the
+lane-readable path for anything that needs to be measured in-session rather
+than looked at by the owner.
+
 **Dedupe frame records on `nv2a_frame` before treating them as independent
 samples.** A frame record is one `flip_stall`, not one guest frame, and the
 two come apart exactly when something has stalled the guest: the `diag`

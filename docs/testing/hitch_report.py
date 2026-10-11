@@ -173,8 +173,36 @@ def hitch_fail(rep, allowance=None):
     return False, None
 
 
-def _frame_time(name, date_prefix):
-    m = FRAME_NAME.match(os.path.basename(name))
+def _frame_index(rdir, sub):
+    """{basename: "HH:MM:SS"} from rdir/sub/index.tsv, or {} if there is none.
+
+    The dispatcher's own frames/ stills are named f00001.png, f00002.png --
+    sequential, with no time in the name at all, so FRAME_NAME below never
+    matches one of them and window_frames() always saw 0 post-mark frames/
+    samples no matter when they were taken (#433 Addendum 1: this is why
+    every --frames-every soak whose route takes no route-frames shots failed
+    screening as "window unmeasured", e.g. 1-1791733228-lane.local-3377455).
+    dispatcher.sh's start_frame_capture now writes this sidecar, one device
+    clock reading per still -- the same clock the hakuX-route mark line in
+    logcat is stamped on -- so _frame_time can place a still in the window
+    without renaming it."""
+    idx = {}
+    try:
+        with open(os.path.join(rdir, sub, "index.tsv")) as f:
+            for line in f:
+                parts = line.rstrip("\n").split("\t")
+                if len(parts) == 2:
+                    idx[parts[0]] = parts[1]
+    except OSError:
+        pass
+    return idx
+
+
+def _frame_time(name, date_prefix, index=None):
+    base = os.path.basename(name)
+    if index and base in index:
+        return ts("%s %s.000" % (date_prefix, index[base]))
+    m = FRAME_NAME.match(base)
     if not m:
         return None
     return ts("%s %s:%s:%s.000" % (date_prefix, *m.groups()))
@@ -182,9 +210,10 @@ def _frame_time(name, date_prefix):
 
 def _post_mark(rdir, sub, mark_t, end_t, date_prefix):
     """(t, name) for each frame in rdir/sub taken inside [mark_t, end_t], in time order."""
+    index = _frame_index(rdir, sub)
     out = []
     for name in sorted(glob.glob(os.path.join(rdir, sub, "*.png"))):
-        t = _frame_time(name, date_prefix)
+        t = _frame_time(name, date_prefix, index)
         if t is not None and mark_t <= t <= (end_t if end_t is not None else t):
             out.append((t, name))
     out.sort()
