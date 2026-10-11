@@ -17,10 +17,11 @@ print time falls in [mark+LO, mark+HI]; countdown -2 .. +1.5 s, post-GO +1.5 .. 
 out. A run's period over a window is sum(ms) / (60 x lines); an arm's is the MEAN OF ITS RUNS' periods
 (the brief's rule), so each run weighs the same whatever its line count. Legs:
 
-  V  every run: >= V_min_marks marks, >= V_min_valid_starts valid starts, >= V_min_warm_lines warm pace
-     lines, an `s*-g11` frame for every valid warm start, perflog as registered, the arm read from env,
-     and the log lines above. The frames are listed, not read: whether the car moves in them is checked
-     by eye and written in NOTES.md, and V is not passed without that.
+  V  every run: >= V_min_marks marks, >= V_min_valid_starts valid starts, no input failed or hung before
+     `mark gameplay` (the menu path every start rests on), >= V_min_warm_lines warm pace lines, an
+     `s*-g11` frame for every valid warm start, perflog as registered, the arm read from env, and the log
+     lines above. The frames are listed, not read: whether the car moves in them is checked by eye and
+     written in NOTES.md, and V is not passed without that.
   P  warm countdown, B - A <= P_d_max
   T  warm countdown, B <= T_b_max
   G  post-GO warm, B - A <= G_d_max
@@ -162,6 +163,12 @@ def pace_judge(dirs, exp, lo, hi, plo, phi):
         legs.append(('V', len(r['good']) >= e['V_min_valid_starts'],
                      f'{name}: {len(r["good"])} valid starts >= {e["V_min_valid_starts"]}'
                      + ''.join(f'; dropped {k} ({v})' for k, v in r['bad'].items())))
+        # Every start rests on the menu path to the race. A boot input that failed or hung (pad.sh rc 124 when
+        # adb stalls) can land the route on another screen, and route.sh carries on blind: A2'b
+        # (1-1791685202-postput1010-3737568) measured career-mode menus and cutscenes at 27 ms/frame.
+        legs.append(('V', 'gameplay' not in r['bad'],
+                     f'{name}: boot inputs went through before `mark gameplay`'
+                     + (f' -- NO: {r["bad"]["gameplay"]}; every start is suspect' if 'gameplay' in r['bad'] else '')))
         legs.append(('V', len(r['warm']) >= e['V_min_warm_lines'],
                      f'{name}: {len(r["warm"])} warm pace lines >= {e["V_min_warm_lines"]}'))
         fr = g11(d)

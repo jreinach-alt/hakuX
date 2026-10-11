@@ -391,6 +391,59 @@ ubercache=1 fogcache=1` on all four, `[postput] on` on B2' only (ppread.py's V d
 a moving car by eye; then judge with `ppread.py 3732954 3733954 3736342 3737568 --expect
 postput1010-nfsall.json` (full ids), and merge origin/master once drawrec1010 has folded.
 
+### 4.9 Why attempt 4 stopped, and the full-switch read (attempt 5, 2026-10-10 ~20:00 PDT)
+
+Attempt 4 did not fail. It ended on purpose, waiting on the four full-switch runs (`WAITING` @ 3fd1d9d96b). All
+four finished DONE by 19:57 PDT. (The resume's brief calls this attempt 1; it is the fifth session on this lane.)
+drawrec1010 had still not folded at 20:00 PDT: `git log origin/master` ends at 7a44ee4d97 (usagerule1010).
+
+`ppread.py 3732954 3733954 3736342 3737568 --expect postput1010-nfsall.json` (full ids in 4.8):
+
+| run | arm | cold 1 | warm countdown | post-GO warm | warm v2/v3/v4 | valid |
+|---|---|---|---|---|---|---|
+| `1-1791685180-postput1010-3732954` | A2'a | 38.1 | 33.7 | 33.4 | 77/11/1 % | 12/12 |
+| `1-1791685199-postput1010-3733954` | B2'a | 35.8 | 33.6 | 33.4 | 73/12/1 % | 12/12 |
+| `1-1791685200-postput1010-3736342` | B2'b | 34.9 | 33.6 | 33.4 | 75/11/1 % | 12/12 |
+| `1-1791685202-postput1010-3737568` | A2'b | - | 27.1 | 28.2 | 56/2/0 % | 10/12, **void** |
+
+**A2'b is void.** Its g11 frames, one contact sheet per run, show the name-entry keyboard, the save prompt, the
+autosave notice, career cutscenes and a BMW parked against a wall at 1:38-1:41 on a race clock. They do not show
+the Punto at the quick-race start. 27.1 ms/frame is below the 33.3 ms two-VBLANK floor because menus and cutscenes
+run at 60 fps. The cause, from run.log: at the boot's first save prompt (step s04), `pad.sh axis HATY max` hung
+20 s and returned rc 124. The adb transport was stalling then: `COOLDOWN: ... daemon still not running` at the
+start, a WSL `UtilAcceptVsock: accept4 failed 110` and an adb liveness probe failure later in the run. The d-pad
+down that picks No on that prompt was lost, so the A that followed answered the prompt the other way, and every
+blind step after it landed on a different screen. hdd.json is the same for A2'a and A2'b: both first-run, built
+from the same goldens. So the disk is not the cause.
+
+The gap: `route.sh` (`pad()`, docs/testing/titles/route.sh:220) logs a failed pad step and carries on, and
+nothing reads that line except `raread.bad_starts`. bad_starts dropped only start 1 ("gameplay") and kept the
+other ten starts, so ppread's V passed the run by count. Only the by-eye frame check caught it. Two guards:
+
+- **This lane's reader (done):** `ppread.py`'s V now fails a run when any input before `mark gameplay` failed or
+  hung, because every start rests on that menu path. It fails A2'b and passes all eight other plain runs (4.3 and
+  the three above), and their verdicts are unchanged.
+- **The harness (not this lane's territory, named for lane.local):** `route.sh` should stop the route, and the run
+  should end VOID at once, when a pad step fails before the route's first `mark`. Blind steps after a lost input
+  measure an unknown screen. It would also have saved about 8 minutes of Nova time.
+
+The three valid runs show the Punto moving at 48-88 MPH in all 36 g11 frames, with 11.4-13.7 s on the race clock
+and opponents on screen.
+
+Judged on the three valid runs (A = A2'a alone), before the replacement:
+
+| check | verdict | figure |
+|---|---|---|
+| P2 | FAIL | warm countdown B - A = -0.1 ms (needed <= -0.5) |
+| F2 | PASS | B 33.6 ms (needed <= 33.8), but A2'a is 33.7, so F2 says nothing about the store |
+| C2 | PASS on one A run | cold start 1 B - A = -2.75 ms (35.35 - 38.1; needed <= -2.0) |
+| H2 | FAIL | warm v2 share B - A = -3 points (74 - 77; needed >= +10) |
+
+C2 rests on a single cold start in a single A run, and cold start 1 moved 1.3 ms between the two A runs of 4.3
+(41.4, 40.1). C2 is also the one leg that could change the recommendation. So one replacement A2' run was queued
+at 20:03 PDT, with the same env, ref, route and expect file: `1-1791687762-postput1010-417368` (A2'c). It runs
+after both B runs, so the order is A, B, B, (void), A. The judge passes the four valid runs.
+
 ## 5. For the next lane
 
 - `ppread.py` cannot see motion. V's moving-car check is by eye from `route-frames/*-s*-g11.png`, and goes here.
