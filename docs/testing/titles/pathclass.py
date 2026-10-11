@@ -484,22 +484,62 @@ def _mark_highlight(np, a, items):
     for it in items:
         it["highlighted"] = False
     rows = [it for it in items if it["box"]]
-    if len(rows) < 2:
+    group = _menu_column(rows, a.shape[0])
+    if len(group) < 2:
         return
     feats = []
-    for it in rows:
+    for it in group:
         x0, y0, x1, y1 = it["box"]
         reg = a[max(0, y0):max(y0 + 1, y1), max(0, x0):max(x0 + 1, x1)].reshape(-1, 3).astype(np.float64)
         lum = reg.mean(1)
-        bright = reg[lum >= np.percentile(lum, 75)].mean(0)   # the text strokes (or a light bar)
-        dark = reg[lum <= np.percentile(lum, 25)].mean(0)     # the background behind them
-        feats.append(np.concatenate([bright, dark]))
+        sat = reg.max(1) - reg.min(1)
+        top = lum >= np.percentile(lum, 85)
+        # stroke brightness, stroke colour (a yellow or red label), background (a selection bar)
+        feats.append([np.percentile(lum, 92), sat[top].mean(), np.percentile(lum, 15), (y1 - y0)])
     f = np.array(feats)
     med = np.median(f, 0)
-    d = np.sqrt(((f - med) ** 2).sum(1))
-    order = np.argsort(-d)
-    if d[order[0]] > 60 and (len(d) < 3 or d[order[0]] > 2.0 * max(d[order[1]], 15)):
-        rows[order[0]]["highlighted"] = True
+    d = np.abs(f - med) * np.array([1.0, 0.8, 1.0, 3.0])
+    score = d.max(1)
+    order = np.argsort(-score)
+    second = score[order[1]] if len(score) > 1 else 0.0
+    if score[order[0]] >= 25 and score[order[0]] >= 1.6 * max(second, 8):
+        group[order[0]]["highlighted"] = True
+
+
+def _menu_column(rows, H):
+    """The menu list among the OCR boxes: the largest set of 2+ items aligned on a left, centre or right edge,
+    of similar height, between the title band and the button-legend band."""
+    cand = [r for r in rows if 0.08 * H < (r["box"][1] + r["box"][3]) / 2 < 0.88 * H]
+    n = len(cand)
+    if n < 2:
+        return []
+
+    def aligned(p, q):
+        bp, bq = p["box"], q["box"]
+        hp, hq = bp[3] - bp[1], bq[3] - bq[1]
+        if not (0.6 <= hp / max(hq, 1) <= 1.67):
+            return False
+        tol = max(12, 0.6 * min(hp, hq))
+        return (abs(bp[0] - bq[0]) < tol or abs(bp[2] - bq[2]) < tol or
+                abs((bp[0] + bp[2]) / 2 - (bq[0] + bq[2]) / 2) < tol)
+
+    parent = list(range(n))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    for i in range(n):
+        for j in range(i + 1, n):
+            if aligned(cand[i], cand[j]):
+                parent[find(i)] = find(j)
+    comps = {}
+    for i in range(n):
+        comps.setdefault(find(i), []).append(cand[i])
+    best = max(comps.values(), key=len)
+    return best if len(best) >= 2 else []
 
 
 # ---------------------------------------------------------------- client for any python

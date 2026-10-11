@@ -38,9 +38,17 @@ def title_key(raw):
     return re.sub(r"[^a-z0-9]", "", t.lower())
 
 
+def family(k, keys):
+    """The shortest key in `keys` that prefixes k: Ninja Gaiden and Ninja Gaiden Black are one family, so
+    one cannot train while the other is held out."""
+    fam = [o for o in keys if k.startswith(o)]
+    return min(fam, key=len) if fam else k
+
+
 def heldout_titles(keys):
-    """Half of the eval titles, by a fixed hash: these never train."""
-    return {k for k in keys if int(hashlib.sha1(k.encode()).hexdigest(), 16) % 2 == 0}
+    """Half of the eval title families, by a fixed hash: these never train."""
+    keys = set(keys)
+    return {k for k in keys if int(hashlib.sha1(family(k, keys).encode()).hexdigest(), 16) % 2 == 0}
 
 
 def load_eval():

@@ -79,8 +79,14 @@ class Softmax:
         return self.classes_[self.predict_proba(X).argmax(1)]
 
 
+TEXT_W = 1.0   # how much a standardised text feature counts against an image dimension (set by --text-weight)
+N_TEXT = 0     # trailing text dims in X
+
+
 def fit(X, y, C):
     mu, sd = X.mean(0), X.std(0) + 1e-6
+    if N_TEXT:
+        sd[-N_TEXT:] /= TEXT_W   # a bigger standardised value = a smaller L2 price for the same effect
     return Softmax(C).fit((X - mu) / sd, y), mu, sd
 
 
@@ -141,6 +147,7 @@ def main():
     ap.add_argument("--pool", required=True)
     ap.add_argument("--C", type=float, default=0)
     ap.add_argument("--save")
+    ap.add_argument("--text-weight", type=float, default=1.0)
     ap.add_argument("--feats", default="pooled", help="head input: pooled, +grid2 or +grid4, +text")
     ap.add_argument("--ocr-train", help="ocr_eval.py --list cache over the training frames (for +text)")
     ap.add_argument("--gameplay-bar", type=float, help="override the tuned gameplay bar")
@@ -178,6 +185,9 @@ def main():
         print(f"  text features: OCR for {sum(m is not None for m in menus)}/{len(menus)} frames")
     F = np.stack([pathclass.head_input(a.feats, E[i], G[i], menus[i]) for i in range(len(paths))])
     X, Xe = F[:len(lab)], F[len(lab):]
+    global TEXT_W, N_TEXT
+    if "text" in a.feats:
+        TEXT_W, N_TEXT = a.text_weight, len(pathclass.TEXT_FEATS)
     y = np.array([r["state"] for r in lab])
     groups = np.array([r["title"] for r in lab])
     print(f"train {len(lab)} frames, {len(set(groups))} titles; labels: "
