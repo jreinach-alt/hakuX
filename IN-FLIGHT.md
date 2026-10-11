@@ -8,8 +8,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `meterfit1010` | claude-sonnet-5 | 18 min | lane.meterfit1010: price transcript tokens, not modelUsage tokens (#433, 0.5) |
-| `postput1010` | claude-opus-5-5 | 29 min | postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5) |
+| `meterfit1010` | claude-sonnet-5 | 33 min | lane.meterfit1010: price transcript tokens, not modelUsage tokens (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -75,7 +74,6 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/meterfit1010` | lane.meterfit1010: price transcript tokens, not modelUsage tokens (#433, 0.5) | `7fe7799485` | 2026-10-10 19:43 |
-| `lane/postput1010` | postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5) | `7cac3e5b90` | 2026-10-10 20:14 |
 
 ## Recently landed on master
 
@@ -92,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5)
 - 2026-10-10 lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation plan (#433, 0.5)
 
-_Updated 2026-10-10 20:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 20:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
