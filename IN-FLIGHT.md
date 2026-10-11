@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `reportasync1010` | claude-opus-5-5 | 6 min | reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5) |
+| `reportasync1010` | claude-opus-5-5 | 21 min | reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 7 waiting, 1 running.
+- **Device queue:** 6 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -90,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5)
 - 2026-10-10 Lane: nightlywrap1010            Issue: none (dispatched directly by lane.local, #433 umbrella)
 
-_Updated 2026-10-10 17:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 17:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
