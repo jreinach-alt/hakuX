@@ -1,0 +1,30 @@
+# The profile gate's (#433, titlestate.py admit, "transition" clause)
+# named exceptions: a route admitted exactly as it is, with no profile check
+# at all, until its `until`. It exists for routes active lanes already
+# depend on that have not converted to the `any`/`returning` state the gate
+# otherwise requires.
+#
+# Add an entry only with `approved = "owner YYYY-MM-DD"`. An entry past its
+# `until` is the same as no entry -- it is not specially reported, it is
+# just gone. Delete an entry once its route is converted; do not wait for it
+# to expire.
+#
+#   route      the route name exactly as queued (request.sh --route, or the
+#              name resolve-route resolves to), e.g. "gta-sa", not a family
+#              base that resolves to a suffixed variant
+#   until      ISO-8601 UTC, "YYYY-MM-DDTHH:MM:SSZ"
+#   why        why this route still needs the exception, and what it
+#              converts to
+#   approved   who approved it and when
+
+[[entry]]
+route = "gta-sa"
+until = "2026-10-14T07:00:00Z"
+why = "lane.gtasagpu1011's GPU runs; converts to `any` on golden 7da19befd45b"
+approved = "lane.local 2026-10-11 (owner's gate order)"
+
+[[entry]]
+route = "amped2"
+until = "2026-10-14T07:00:00Z"
+why = "fast-forward P0 measuring run; converts to `any` on golden f90786b6e0f5"
+approved = "lane.local 2026-10-11 (owner's gate order)"

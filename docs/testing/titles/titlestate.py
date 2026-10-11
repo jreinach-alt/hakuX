@@ -22,10 +22,19 @@ which route variant a title run should use.
     titlestate.py propose-all --by WHO
     titlestate.py import-save --dir SAVEDIR      a save dir saves.py wrote, verified, into the store
     titlestate.py first-run-saved --title-id T --save SAVE_ID --run ID [--route NAME]
-    titlestate.py compose --device D [--title-id T] [--state S]
+    titlestate.py compose --device D [--title-id T] [--state S] [--save SAVE_ID]
     titlestate.py resolve-route --route NAME [--title-id T | --iso NAME] [--device D]
     titlestate.py tid-for-iso NAME
-    titlestate.py prepare --device D (--title-id T | --iso NAME | --hdd-img) [--state S]
+
+  THE PROFILE GATE (lane.profilegate1011; see "THE PROFILE GATE" below):
+    titlestate.py admit --title-id T [--iso NAME] [--route NAME]
+                         [--route-text-file F] [--device D] [--find-route WHY]
+                         [--remake-profile WHY] [--path-broken RESULT_ID]
+    titlestate.py gate-report --since EPOCH
+    titlestate.py saves --title-id T [--json]
+    titlestate.py readiness [--json]
+
+    titlestate.py prepare --device D (--title-id T | --iso NAME | --hdd-img) [--state S] [--save SAVE_ID]
     titlestate.py release --device D
     titlestate.py take-hdd --device D --title-id T     pull hdd.img, harvest T as `latest`
 
@@ -111,14 +120,75 @@ has a golden and `<base>.first-run` when it has none, and REFUSES a route
 whose declared state the composed disk cannot match: `returning` with no
 golden, or a route that declares nothing. `first-run` always matches (the
 disk is built without the title's save), and `any` claims not to care.
+
+THE PROFILE GATE (#433, owner 2026-10-11, revised 2026-10-11 addenda 1-2).
+The owner's clarification: this gate does not exist to require a profile on
+every run -- it exists to stop REDOING work already done and kept. Profiles
+(has a profile saved on disk) and paths (has a known way to reach gameplay)
+are two different kept things; `admit()` refuses only a run that would redo
+one of them. Three refusal rules, each with its own override:
+
+  R1  no repeat profile creation: a `first-run` route on a title that
+      already HAS a golden (profile or data-only -- either counts as kept
+      settings now). Way forward: play `returning`/`any`. Override:
+      `--remake-profile "<why>"`, for a kept profile that is lost or
+      rejected.
+  R2  creation that is never kept: a `first-run` route with no `mark
+      profile-saved`, on a title with no golden. Way forward: the recipe
+      below. The profile-transition.toml entries (grandfathered routes)
+      still admit as before.
+  R3  no repeat blind navigation: a route-finding run (a queued
+      `--find-route` request, or a pathfind.py session) on a title with a
+      known path. A QUEUED run's known path is a PROVEN route only -- a
+      route with `mark gameplay` that some past result's verdict.json shows
+      actually reached it (`proven_route`). A PATHFIND.PY session's known
+      path is broader -- a proven route OR a pathknow success
+      (`pathknow_success`) -- because a pathknow success alone, with no
+      route written from it yet, is not something `--find-route` can reuse:
+      the route's own first proof soak still needs `--find-route` (it is
+      only a pathknow success at that point, not yet proven), and only
+      after that soak reaches the mark does the route become proven and
+      `--find-route` need overriding too. Way forward: queue the known
+      route. Override: `--path-broken <result id>`, naming a run of the
+      known route/path that failed.
+
+Admitted unconditionally: `returning`/`any`/no-route runs on a title that
+already has a profile (clause `profile`; a data-only golden counts under
+`any`/no-route, not under `returning` -- SETTINGS_ONLY_FIX), `make-profile`
+(first-run with `mark profile-saved`, making the first profile), `--find-route`
+on a title with no proven route, and anything named by
+`--remake-profile`/`--path-broken` above. The owner's base rule -- "runs only
+execute when we have a profile" -- is `returning`/`any`/no-route with NO
+golden at all: refused the same way under every one of those states, unless a
+profile-transition.toml entry grandfathers the route or `--find-route` is
+building the first one blind.
+
+THE PROFILE GATE RECIPE, for a title with no golden:
+  1. `--find-route "<why>"` runs to build a route into play.
+  2. Make the golden:
+       - the title prompts for a profile: a `<base>.first-run` route ending
+         `mark profile-saved` makes the golden automatically.
+       - it never prompts: the run's after-run harvest lands in `latest`;
+         `titlestate.py promote --title-id T --latest --by LANE --note
+         "<run id>"` makes it the golden. A lane may promote the first
+         golden of a title that has none; replacing one stays lane.local's.
+  3. Head the measurement route `# state: any` (or `returning`), and confirm
+     it with one run on the golden.
+
+A held session (nav.py, a lane's capture script, the owner's playtest) other
+than pathfind.py does not go through this gate. A request with no `--title`
+(a test disc, `dispatch.restore`) is not a title run and this gate does not
+apply.
 """
 
 import argparse
 import datetime
 import fcntl
+import glob
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
 import tomllib
@@ -400,7 +470,7 @@ CAP = 512 << 20         # a titles disk grown past this is rebuilt from the stor
 CEILING = 4 << 30       # ... and past this even over a failed harvest: E: fills near 5 GB
 
 
-def plan(device, device_bytes, device_sha, cap=CAP, ceiling=CEILING, title_id=None, state="any"):
+def plan(device, device_bytes, device_sha, cap=CAP, ceiling=CEILING, title_id=None, state="any", save=None):
     """What the dispatcher does to DEVICE's titles disk before a title run.
 
         seed      no titles disk yet: harvest hdd.img into the store first
@@ -431,7 +501,7 @@ def plan(device, device_bytes, device_sha, cap=CAP, ceiling=CEILING, title_id=No
                               f"(run {lp.get('run')}); keeping the whole disk on the host, then rebuilding"}
         return {"action": "harvest", "reason": "the device's disk changed since its last harvest"}
     try:
-        want, _info = compose(device, title_id, state)
+        want, _info = compose(device, title_id, state, save)
     except NoGolden as e:
         return {"action": "refuse", "reason": str(e)}
     if device_bytes < 0:
@@ -459,14 +529,14 @@ def preserved(device, sha, path):
     return img
 
 
-def rebuild(device, keep=5, title_id=None, state="any"):
+def rebuild(device, keep=5, title_id=None, state="any", save=None):
     """Build DEVICE's titles disk from the composed goldens into images/,
     verify every save on it, and name it by content. Keeps the newest KEEP
     per device."""
     d = os.path.join(root(), "images")
     os.makedirs(d, exist_ok=True)
     tmp = os.path.join(d, f".{device}.building.qcow2")
-    built, info = compose(device, title_id, state)
+    built, info = compose(device, title_id, state, save)
     dirs = []
     for t, s in sorted(built.items()):
         sd = store_dir(t, s)
@@ -503,6 +573,13 @@ def store_saves(tid):
     return [s for _, s in sorted(out, reverse=True)]
 
 
+def routes_root():
+    """Where route files live: TITLE_ROUTES, else routes/ beside this script
+    -- the same override convention as targets()/dispatch_dir(), so a
+    selftest fixture can supply routes without touching the real ones."""
+    return os.environ.get("TITLE_ROUTES", os.path.join(HERE, "routes"))
+
+
 def route_path(tid, variant):
     """routes/<route>.<variant>.route, else survey.route: a title with no
     route for this variant is surveyed (frames at every step, no gameplay
@@ -510,10 +587,10 @@ def route_path(tid, variant):
     t = targets().get(tid, {})
     name = t.get("route")
     if name and variant in ("first-run", "returning"):
-        p = os.path.join(HERE, "routes", f"{name}.{variant}.route")
+        p = os.path.join(routes_root(), f"{name}.{variant}.route")
         if os.path.exists(p):
             return p
-    return os.path.join(HERE, "routes", "survey.route")
+    return os.path.join(routes_root(), "survey.route")
 
 
 def single_route(tid):
@@ -522,10 +599,10 @@ def single_route(tid):
     name = targets().get(tid, {}).get("route")
     if not name:
         return None
-    if any(os.path.exists(os.path.join(HERE, "routes", f"{name}.{v}.route"))
+    if any(os.path.exists(os.path.join(routes_root(), f"{name}.{v}.route"))
            for v in ("first-run", "returning")):
         return None
-    p = os.path.join(HERE, "routes", f"{name}.route")
+    p = os.path.join(routes_root(), f"{name}.route")
     return p if os.path.exists(p) else None
 
 
@@ -838,11 +915,15 @@ def import_save(src):
     return tid, sid
 
 
-def compose(device, title_id=None, state="any"):
+def compose(device, title_id=None, state="any", save=None):
     """What a title run's disk carries: every title's golden that DEVICE has
-    not rejected, except TITLE_ID's when STATE is `first-run`. Raises
-    NoGolden when STATE is `returning` and TITLE_ID has no usable golden.
-    Returns (built_from, info) -- info is what the result's hdd.json records."""
+    not rejected, except TITLE_ID's when STATE is `first-run`. SAVE, when
+    given, swaps TITLE_ID's slot for that stored save instead of its golden
+    (the golden itself is never touched). Raises NoGolden when STATE is
+    `returning` and TITLE_ID has no usable golden, or (SAVE given) when SAVE
+    is not in the store for TITLE_ID, was rejected on DEVICE, or (`returning`)
+    carries no save directory. Returns (built_from, info) -- info is what
+    the result's hdd.json records."""
     if state not in STATES:
         raise SystemExit(f"titlestate: state {state!r}: one of {', '.join(STATES)}")
     rej = load(device).get("rejected", {})
@@ -853,9 +934,20 @@ def compose(device, title_id=None, state="any"):
             want[t] = g["save"]
     dt = disk_tid(title_id)
     info = {"title_id": title_id, "disk_title_id": dt, "state": state, "save": None, "loaded": "none",
-            "golden_status": None, "goldens": len(want)}
+            "golden_status": None, "goldens": len(want), "save_override": save is not None}
     if not title_id:
         info["loaded"] = "all goldens (title not identified)"
+        return want, info
+    if save is not None:
+        if save not in store_saves(dt):
+            raise NoGolden(f"{title_id}: --save {save} is not in the store")
+        if save in rej.get(dt, []):
+            raise NoGolden(f"{title_id}: --save {save} was rejected on {device}")
+        if state == "returning" and not save_dirs(dt, save):
+            raise NoGolden(f"{title_id}: --save {save} is title data only, no save directory; a "
+                           f"returning route would meet no profile. {SETTINGS_ONLY_FIX}")
+        want[dt] = save
+        info.update(save=save, loaded="save")
         return want, info
     g = golden(title_id)
     if state == "first-run":
@@ -896,21 +988,27 @@ def tid_for_iso(name):
     return None
 
 
+def route_state_text(text):
+    """Like `route_state`, over a route's TEXT (a request's own `route`
+    field, not necessarily today's file) rather than a path."""
+    for line in text.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        if not s.startswith("#"):
+            break
+        body = s.lstrip("#").strip()
+        if body.lower().startswith("state:"):
+            v = body.split(":", 1)[1].split()[0].strip() if body.split(":", 1)[1].split() else ""
+            return v if v in STATES else f"invalid:{v}"
+    return None
+
+
 def route_state(path):
     """The `# state:` a route file declares, or None. Any line of the header
     (the comments before the first step) may carry it."""
     with open(path) as fh:
-        for line in fh:
-            s = line.strip()
-            if not s:
-                continue
-            if not s.startswith("#"):
-                break
-            body = s.lstrip("#").strip()
-            if body.lower().startswith("state:"):
-                v = body.split(":", 1)[1].split()[0].strip() if body.split(":", 1)[1].split() else ""
-                return v if v in STATES else f"invalid:{v}"
-    return None
+        return route_state_text(fh.read())
 
 
 def resolve_route(name, title_id=None, device=None, routes_dir=None):
@@ -922,7 +1020,7 @@ def resolve_route(name, title_id=None, device=None, routes_dir=None):
 
     Returns {"path", "route_name", "state", "title_id", "golden", "refuse"};
     `refuse` is a one-line reason, or None."""
-    rd = routes_dir or os.path.join(HERE, "routes")
+    rd = routes_dir or routes_root()
     out = {"path": None, "route_name": name, "state": None, "title_id": title_id,
            "golden": None, "refuse": None}
     g = golden(title_id) if title_id else None
@@ -968,6 +1066,570 @@ def resolve_route(name, title_id=None, device=None, routes_dir=None):
         elif not save_dirs(disk_tid(title_id), g["save"]):
             out["refuse"] = (f"{os.path.basename(out['path'])} assumes a profile, and {title_id}'s golden "
                              f"{g['save']} is title data only, no save directory. {SETTINGS_ONLY_FIX}")
+    return out
+
+
+# ---------------------------------------------------------- the profile gate --
+# #433 (owner, 2026-10-11; addenda 1-2 same day): the gate exists to stop
+# redoing work already done and kept, not to require a profile on every
+# run. See the module docstring's THE PROFILE GATE paragraph for R1/R2/R3
+# and their overrides.
+
+FIND_ROUTE_MIN_CHARS = 12
+TRANSITION_PATH = os.path.join(HERE, "profile-transition.toml")
+GATE_REFUSE_TAG = "PROFILE GATE REFUSED: "  # the dispatcher's ERROR prefix gate_report looks for
+
+
+def load_transitions(path=None):
+    """profile-transition.toml's `[[entry]]` rows, each needing `route`,
+    `until`, `why`, `approved`. Raises on a malformed file: validate before
+    writing, same as every structured file here."""
+    path = path or os.environ.get("PROFILE_TRANSITION_PATH") or TRANSITION_PATH
+    try:
+        with open(path, "rb") as fh:
+            doc = tomllib.load(fh)
+    except FileNotFoundError:
+        return []
+    out = []
+    for e in doc.get("entry", []):
+        missing = [k for k in ("route", "until", "why", "approved") if not e.get(k)]
+        if missing:
+            raise SystemExit(f"titlestate: {path}: entry {e!r} missing {missing}")
+        out.append(e)
+    return out
+
+
+def live_transition(route_name, transitions=None, now_iso=None):
+    """The profile-transition.toml entry for ROUTE_NAME that has not reached
+    its `until`, or None. An entry past `until` is the same as no entry."""
+    if not route_name:
+        return None
+    now_s = now_iso or now()
+    for e in (transitions if transitions is not None else load_transitions()):
+        if e["route"] == route_name and now_s < e["until"]:
+            return e
+    return None
+
+
+def title_routes(title_id):
+    """Candidate route names for TITLE_ID, most-recently-queued first:
+    targets.toml's own `route` field, then every route_name seen in
+    dispatch/results history whose request resolved to this title --
+    the same route<->title convention profilegate1011-inventory.py uses
+    (request.json's route_name + tid_for_iso(request.json's title))."""
+    out = []
+    targs = targets()
+    t = targs.get(title_id) or {}
+    if t.get("route"):
+        out.append(t["route"])
+    idx = _iso_index(targs)  # built once per call: tid_for_iso's own targets() reparse, done per
+                             # dispatch/results entry below, is what made this O(results x titles)
+    results = os.path.join(dispatch_dir(), "results")
+    for f in sorted(glob.glob(os.path.join(results, "*", "request.json")), reverse=True):
+        try:
+            with open(f) as fh:
+                r = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        rn = r.get("route_name")
+        if not rn or not r.get("title"):
+            continue
+        if rn not in out and _tid_for_iso_fast(r["title"], idx) == title_id:
+            out.append(rn)
+    return out
+
+
+def pathknow_success(title_id):
+    """Whether pathknow/paths/<TITLE_ID>.json -- pathfind.py's own record of
+    a session, keyed by its resolve()'s targets.toml-style id, the same
+    namespace ADMIT's title_id lives in -- records a complete run that
+    reached gameplay. Reads PATHFIND_KNOW first, the same override
+    pathfind.py's own KNOW uses, so a redirected session is seen here too."""
+    know = os.environ.get("PATHFIND_KNOW") or os.path.join(HERE, "pathknow")
+    try:
+        with open(os.path.join(know, "paths", f"{title_id.upper()}.json")) as fh:
+            rec = json.load(fh)
+    except (OSError, ValueError):
+        return False
+    return bool(rec.get("complete")) and rec.get("result") == "gameplay"
+
+
+def reached_result(title_id, route_name):
+    """The newest dispatch/results id for TITLE_ID on ROUTE_NAME whose
+    verdict.json -- title_verdict.py's own output, read here rather than
+    re-derived -- says reached_gameplay is true. None when no such result
+    exists (including when the result was never judged: no verdict.json)."""
+    idx = _iso_index(targets())  # built once per call; see title_routes' same fix
+    results = os.path.join(dispatch_dir(), "results")
+    for d in sorted(os.listdir(results), reverse=True) if os.path.isdir(results) else []:
+        rdir = os.path.join(results, d)
+        try:
+            with open(os.path.join(rdir, "request.json")) as fh:
+                req = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        if req.get("route_name") != route_name or _tid_for_iso_fast(req.get("title") or "", idx) != title_id:
+            continue
+        try:
+            with open(os.path.join(rdir, "verdict.json")) as fh:
+                v = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        if v.get("reached_gameplay") is True:
+            return d
+    return None
+
+
+def proven_route(title_id):
+    """A route among TITLE_ID's candidates (title_routes) that declares
+    `mark gameplay` (the route file's own text, the inventory script's
+    test) AND has a result that actually reached it (reached_result).
+    (route_name, result_id), or (None, None) when no route is proven yet --
+    including when a route exists but only a pathknow success backs it
+    (Addendum 2: that is not proven until its own first soak reaches the
+    mark)."""
+    for rn in title_routes(title_id):
+        p = os.path.join(routes_root(), f"{rn}.route")
+        try:
+            txt = open(p).read()
+        except OSError:
+            continue
+        if not re.search(r"^mark gameplay", txt, re.M):
+            continue
+        rid = reached_result(title_id, rn)
+        if rid:
+            return rn, rid
+    return None, None
+
+
+def known_path(title_id, broad=False):
+    """R3's "known path" test. A QUEUED run (BROAD False) is blocked only by
+    a PROVEN route: Addendum 2's fix, so a new route's first proof soak --
+    the title has only a pathknow success, no result has proven the route
+    yet -- still gets through on --find-route. A PATHFIND.PY session (BROAD
+    True) is blocked by a pathknow success too, since a session that
+    already reached gameplay once has nothing left to find blind.
+
+    Returns {"known", "route_name", "result_id", "source"}; SOURCE is
+    "proven", "pathknow", or None."""
+    rn, rid = proven_route(title_id)
+    if rn:
+        return {"known": True, "route_name": rn, "result_id": rid, "source": "proven"}
+    if broad and pathknow_success(title_id):
+        return {"known": True, "route_name": None, "result_id": None, "source": "pathknow"}
+    return {"known": False, "route_name": None, "result_id": None, "source": None}
+
+
+def _path_broken_bad(result_id, title_id, route_name):
+    """None if PATH_BROKEN names a real dispatch/results run of TITLE_ID on
+    ROUTE_NAME; else the one-line reason it does not."""
+    rdir = os.path.join(dispatch_dir(), "results", result_id)
+    try:
+        with open(os.path.join(rdir, "request.json")) as fh:
+            req = json.load(fh)
+    except (OSError, ValueError):
+        return f"--path-broken {result_id} does not name a run on record"
+    if tid_for_iso(req.get("title") or "") != title_id:
+        return f"--path-broken {result_id} is not a run of {title_id}"
+    if route_name and req.get("route_name") != route_name:
+        return f"--path-broken {result_id} is not a run of {route_name}"
+    return None
+
+
+def admit(title_id, route_name=None, route_text=None, device=None, find_route=None, routes_dir=None,
+          remake_profile=None, path_broken=None):
+    """The profile gate: whether a title run may be queued or dispatched
+    (R1/R2/R3; see the module docstring's THE PROFILE GATE paragraph).
+    ROUTE_TEXT, when given, is checked instead of today's route file (the
+    dispatcher's own copy of what the request carries); otherwise
+    ROUTE_NAME is read from ROUTES_DIR (default `routes/`) if it names a
+    file there. FIND_ROUTE is the request's `--find-route` reason (None
+    when the flag was not given, not the same as an empty string, which is
+    refused). REMAKE_PROFILE overrides R1; PATH_BROKEN (a dispatch/results
+    id) overrides R3 for a queued find-route request, and must name a run
+    of the known route that failed.
+
+    Returns {"admit", "clause", "refuse", "path", "route_name", "state",
+    "golden"}; `refuse` names the way forward, None when admitted. `clause`
+    is one of profile/make-profile/find-route/transition/remake-profile/
+    path-broken when admitted, else None."""
+    out = {"admit": False, "clause": None, "refuse": None, "path": None,
+           "route_name": route_name, "state": None, "golden": None}
+
+    if find_route is not None:
+        reason = find_route.strip()
+        if len(reason) < FIND_ROUTE_MIN_CHARS:
+            out["refuse"] = (f"--find-route needs a reason of at least {FIND_ROUTE_MIN_CHARS} characters "
+                             f"saying what route this run is finding; {find_route!r} is too short")
+            return out
+        if title_id:
+            kp = known_path(title_id, broad=False)  # R3, the narrower (proven-only) test
+            if kp["known"]:
+                if path_broken:
+                    bad = _path_broken_bad(path_broken, title_id, kp["route_name"])
+                    if bad:
+                        out["refuse"] = bad
+                        return out
+                    return dict(out, admit=True, clause="path-broken", known_path=kp)
+                out["refuse"] = (f"{title_id} already has a proven route ({kp['route_name']}, reached in "
+                                 f"{kp['result_id']}); queue it instead of finding one blind. If it is "
+                                 f'actually broken now, pass --path-broken "<result id>" naming a run of '
+                                 f"it that failed")
+                return out
+        out.update(admit=True, clause="find-route")
+        return out
+
+    if not title_id:
+        out["refuse"] = ("the title could not be identified (no targets.toml `iso` entry, no 8-hex "
+                         "prefix); no golden can be loaded. Add its `iso` entry, or pass "
+                         '--find-route "<why>"')
+        return out
+
+    rd = routes_dir or routes_root()
+    path = None
+    if route_text is None and route_name:
+        cand = os.path.join(rd, f"{route_name}.route")
+        if os.path.exists(cand):
+            path, route_text = cand, open(cand).read()
+    out["path"] = path
+    state = route_state_text(route_text) if route_text is not None else None
+    out["state"] = state
+
+    dt = disk_tid(title_id)
+    gg = golden(title_id)  # unfiltered: R1 and the "was rejected" wording below both need this
+    g = gg
+    if g and device and g["save"] in load(device).get("rejected", {}).get(dt, []):
+        g = None
+    out["golden"] = g["save"] if g else None
+    has_save = bool(g) and bool(save_dirs(dt, g["save"]))
+
+    if state == "returning":
+        if g and has_save:
+            return dict(out, admit=True, clause="profile")
+        tr = live_transition(route_name)  # today's existing fallback, unchanged
+        if tr:
+            return dict(out, admit=True, clause="transition", transition=tr)
+        if g and not has_save:
+            out["refuse"] = (f"{title_id}'s golden {g['save']} is title data only, no save directory; a "
+                             f"returning route would meet no profile. {SETTINGS_ONLY_FIX}")
+        elif gg:
+            out["refuse"] = (f"{title_id}'s golden {gg['save']} was rejected on {device}; a returning "
+                             f"route would meet no profile")
+        else:
+            out["refuse"] = (f"{title_id} has no golden profile; a returning route would meet no profile "
+                             f"(run its first-run route, or `titlestate.py promote` a save)")
+        return out
+
+    if state == "first-run":
+        # The transition grandfather overrides R1 too (it always has: gta-sa's own entry notes
+        # "converts to `any` on golden 7da19befd45b" -- a DIFFERENT golden than the one it has
+        # today, so its first-run keeps running deliberately past R1 until that golden lands).
+        tr = live_transition(route_name)
+        if tr:
+            return dict(out, admit=True, clause="transition", transition=tr)
+        if gg:  # R1: a golden of EITHER kind already exists -- do not remake it
+            if remake_profile and remake_profile.strip():
+                return dict(out, admit=True, clause="remake-profile")
+            out["refuse"] = (f"{os.path.basename(path) if path else route_name or 'this route'} is "
+                             f"first-run, and {title_id} already has a kept profile ({gg['save']}); play "
+                             f"a returning or any route on it, or pass --remake-profile \"<why>\" if that "
+                             f"profile is lost or rejected")
+            return out
+        if "mark profile-saved" in (route_text or ""):
+            return dict(out, admit=True, clause="make-profile")
+        out["refuse"] = (f"{title_id} has no golden profile and this first-run route has no `mark "
+                         f"profile-saved`; make the profile first (a <base>.first-run route with `mark "
+                         f'profile-saved`, or harvest-and-promote), and use --find-route "<why>" while '
+                         f"building it")
+        return out
+
+    # state is `any` or None (no route at all, or a route with no `# state:`): a boot-only or
+    # settings-loading screen redoes nothing IF a profile already exists -- unlike `returning`,
+    # even a data-only golden counts here (DATA_ONLY_GOLDEN_IS_PROFILE: there is nothing for an
+    # `any` boot to meet beyond "some save exists for this title"). With no profile at all, this
+    # is R1's brief items 3/4 (`any`/no-route runs on a title with no golden): refuse, same as
+    # `returning`, unless a transition grandfathers it or --find-route is finding one blind.
+    if g:
+        return dict(out, admit=True, clause="profile")
+    tr = live_transition(route_name)
+    if tr:
+        return dict(out, admit=True, clause="transition", transition=tr)
+    if gg:
+        out["refuse"] = (f"{title_id} has no profile: golden {gg['save']} was rejected on {device}; "
+                         f'`any` meets none either (use --find-route "<why>" to find one blind)')
+    else:
+        out["refuse"] = (f"{title_id} has no profile (no golden) and no route-finding; pass "
+                         f'--find-route "<why>" to find one blind')
+    return out
+
+
+def gate_report(since):
+    """One line each, for the hourly report: every request the gate refused
+    since SINCE (epoch seconds; the dispatcher tags its ERROR with
+    GATE_REFUSE_TAG), every find-route/remake-profile/path-broken run
+    (reason + requester), and every live transition entry (hours to
+    `until`)."""
+    out = []
+    results = os.path.join(dispatch_dir(), "results")
+    for d in sorted(os.listdir(results)) if os.path.isdir(results) else []:
+        rdir = os.path.join(results, d)
+        # The request id is "<priority>-<epoch>-<slug>-<serial>"; fall back
+        # to the result dir's mtime for an id this does not parse.
+        parts = d.split("-")
+        try:
+            when = int(parts[1]) if len(parts) > 1 else os.path.getmtime(rdir)
+        except (ValueError, OSError):
+            when = os.path.getmtime(rdir) if os.path.exists(rdir) else 0
+        if when < since:
+            continue
+        try:
+            with open(os.path.join(rdir, "request.json")) as fh:
+                req = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        if not req.get("title"):
+            continue
+        fr = req.get("find_route")
+        if fr:
+            out.append(f"{d}: find-route by {req.get('requester', '?')}: {fr}")
+            continue
+        rp = req.get("remake_profile")
+        if rp:
+            out.append(f"{d}: remake-profile by {req.get('requester', '?')}: {rp}")
+            continue
+        pb = req.get("path_broken")
+        if pb:
+            out.append(f"{d}: path-broken ({pb}) by {req.get('requester', '?')}")
+            continue
+        err = os.path.join(rdir, "ERROR")
+        if os.path.exists(err):
+            txt = open(err).read()
+            if txt.startswith(GATE_REFUSE_TAG):
+                out.append(f"{d}: PROFILE GATE REFUSED ({req.get('title')}): "
+                           f"{txt[len(GATE_REFUSE_TAG):].strip()[:200]}")
+    now_s = now()
+    for e in load_transitions():
+        try:
+            hrs = ((datetime.datetime.strptime(e["until"], "%Y-%m-%dT%H:%M:%SZ")
+                   - datetime.datetime.strptime(now_s, "%Y-%m-%dT%H:%M:%SZ")).total_seconds() / 3600)
+        except ValueError:
+            hrs = None
+        out.append(f"transition {e['route']}: live, {hrs:.1f}h to until ({e['until']}), {e['why']}"
+                   if hrs is not None and hrs > 0 else
+                   f"transition {e['route']}: EXPIRED ({e['until']}), {e['why']}")
+    return out
+
+
+def title_saves(title_id):
+    """Every stored save for TITLE_ID, newest first: id, utc, who/what made
+    it (the run id when known), whether it carries a save directory, and
+    whether it is the current golden. Metadata comes from golden.json's
+    golden/history/latest records when a save is named there; a save known
+    only from the store (harvested but never promoted or named `latest`)
+    falls back to its save.json's mtime and no attribution."""
+    dt = disk_tid(title_id)
+    rec = load_goldens()["titles"].get(dt) or {}
+    gold = rec.get("golden")
+    meta = {}
+    if gold:
+        meta[gold["save"]] = {"utc": gold.get("utc"), "by": gold.get("by")}
+    for h in rec.get("history", []):
+        meta.setdefault(h["save"], {"utc": h.get("utc"), "by": h.get("by")})
+    lt = rec.get("latest")
+    if lt:
+        meta.setdefault(lt["save"], {"utc": lt.get("utc"), "by": lt.get("run")})
+    out = []
+    for s in store_saves(dt):
+        m = meta.get(s, {})
+        utc = m.get("utc")
+        if not utc:
+            try:
+                utc = datetime.datetime.fromtimestamp(
+                    os.path.getmtime(os.path.join(store_dir(dt, s), "save.json")),
+                    datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            except OSError:
+                utc = None
+        out.append({"save": s, "utc": utc, "by": m.get("by"),
+                    "has_save_dir": bool(save_dirs(dt, s)),
+                    "golden": bool(gold) and gold["save"] == s})
+    return out
+
+
+def _route_time(line):
+    """(seconds since midnight, rest of the line) for a `ROUTE
+    HH:MM:SS.mmm <...>` run.log line, else (None, None)."""
+    m = re.match(r"ROUTE (\d+):(\d+):(\d+(?:\.\d+)?) (.*)$", line)
+    if not m:
+        return None, None
+    h, mi, s, rest = m.groups()
+    return int(h) * 3600 + int(mi) * 60 + float(s), rest
+
+
+def _iso_index(targs):
+    """basename(iso) -> title_id for every targets.toml `iso` entry in
+    TARGS, built once. tid_for_iso's own per-call targets() reparse plus
+    linear scan is fine for admit()'s one title; READINESS walks every
+    dispatch/results entry, so it needs the reverse lookup pre-built."""
+    idx = {}
+    for tid, t in targs.items():
+        for iso in (t.get("iso") or {}).values():
+            idx[iso] = tid
+    return idx
+
+
+def _tid_for_iso_fast(name, idx):
+    """Like tid_for_iso, against a pre-built _iso_index instead of
+    targets()."""
+    base = os.path.basename(name or "")
+    if base in idx:
+        return idx[base]
+    head = base.split("-")[0].split("_")[0].upper()
+    if len(head) == 8 and all(c in "0123456789ABCDEF" for c in head):
+        return head
+    return None
+
+
+def _median(samples):
+    if not samples:
+        return None, 0
+    samples = sorted(samples)
+    n = len(samples)
+    med = samples[n // 2] if n % 2 else (samples[n // 2 - 1] + samples[n // 2]) / 2
+    return med, n
+
+
+def _results_index(targs):
+    """One pass over dispatch/results (newest first) building everything
+    READINESS needs per title, instead of letting title_routes/
+    proven_route/_launch_times each rescan all of dispatch/results per
+    title -- the O(titles x results) cost that timed readiness() out
+    against the real repo (82 titles x 3154 results).
+
+    Returns (title_ids, routes_by_tid, reached_by_key, launches_by_key):
+      title_ids       every title id a request resolved to while queuing
+                      a named route (union targets() in readiness() itself)
+      routes_by_tid   tid -> [route_name, ...] newest-queued-first, deduped
+                      (title_routes' own history half; its targets.toml
+                      `route` field half is cheap and added per-title below)
+      reached_by_key  (tid, route_name) -> newest result id whose
+                      verdict.json says reached_gameplay True
+      launches_by_key (tid, is_returning) -> up to 5 (mark_t - launch_t)
+                      samples, newest-result-first (same source and cutoff
+                      as the old per-title _launch_times)
+    """
+    idx = _iso_index(targs)
+    results = os.path.join(dispatch_dir(), "results")
+    title_ids = set()
+    routes_by_tid = {}
+    reached_by_key = {}
+    launches_by_key = {}
+    route_state_cache = {}
+    for d in sorted(os.listdir(results), reverse=True) if os.path.isdir(results) else []:
+        rdir = os.path.join(results, d)
+        try:
+            with open(os.path.join(rdir, "request.json")) as fh:
+                req = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        rn = req.get("route_name")
+        title = req.get("title")
+        if not rn or not title:
+            continue
+        tid = _tid_for_iso_fast(title, idx)
+        if not tid:
+            continue
+        title_ids.add(tid)
+        rl = routes_by_tid.setdefault(tid, [])
+        if rn not in rl:
+            rl.append(rn)
+        if rn not in route_state_cache:
+            p = os.path.join(routes_root(), f"{rn}.route")
+            route_state_cache[rn] = route_state(p) if os.path.exists(p) else None
+        state = route_state_cache[rn]
+        rkey = (tid, rn)
+        if rkey not in reached_by_key:
+            try:
+                with open(os.path.join(rdir, "verdict.json")) as fh:
+                    v = json.load(fh)
+            except (OSError, ValueError):
+                v = {}
+            if v.get("reached_gameplay") is True:
+                reached_by_key[rkey] = d
+        is_returning = state in ("returning", "any") or state is None
+        lkey = (tid, is_returning)
+        samples = launches_by_key.setdefault(lkey, [])
+        if len(samples) < 5:
+            try:
+                lines = open(os.path.join(rdir, "run.log")).read().splitlines()
+            except OSError:
+                lines = []
+            launch_t = mark_t = None
+            for line in lines:
+                t, rest = _route_time(line)
+                if t is None:
+                    continue
+                if launch_t is None and rest.startswith("start "):
+                    launch_t = t
+                if rest == "mark gameplay":
+                    mark_t = t
+            if launch_t is not None and mark_t is not None and mark_t >= launch_t:
+                samples.append(mark_t - launch_t)
+    return title_ids, routes_by_tid, reached_by_key, launches_by_key
+
+
+def readiness():
+    """One row per title with a route or a targets.toml entry -- the
+    owner's "greatly reduced time" goal, measured: known path (a proven
+    route and the result that proved it), creation path kept (a first-run
+    route with `mark profile-saved`), profile kept (the golden's save id
+    and kind), pathknow path (yes/no), and launch time (median seconds
+    launch -> `mark gameplay`, first-run vs returning/any separately, since
+    a kept profile is exactly what skips the first).
+
+    Built from one shared pass over dispatch/results (_results_index), not
+    per-title calls into title_routes/proven_route/_launch_times -- those
+    keep their own per-call scans for admit()'s single-title cost, which a
+    shared cache would risk making stale across titlestate_selftest.py's
+    sequential fixture tests in one process."""
+    targs = targets()
+    title_ids, routes_by_tid, reached_by_key, launches_by_key = _results_index(targs)
+    title_ids |= set(targs)
+    out = []
+    for tid in sorted(title_ids):
+        t = targs.get(tid) or {}
+        candidates = [t["route"]] if t.get("route") else []
+        for rn in routes_by_tid.get(tid, []):
+            if rn not in candidates:
+                candidates.append(rn)
+        proven_rn = proven_rid = None
+        creation_kept = False
+        for rn in candidates:
+            p = os.path.join(routes_root(), f"{rn}.route")
+            try:
+                txt = open(p).read()
+            except OSError:
+                continue
+            if "mark profile-saved" in txt:
+                creation_kept = True
+            if proven_rn is None and re.search(r"^mark gameplay", txt, re.M):
+                rid = reached_by_key.get((tid, rn))
+                if rid:
+                    proven_rn, proven_rid = rn, rid
+        gg = golden(tid)
+        dt = disk_tid(tid)
+        profile = "none"
+        if gg:
+            profile = "profile" if save_dirs(dt, gg["save"]) else "data-only"
+        fr_med, fr_n = _median(launches_by_key.get((tid, False), []))
+        rt_med, rt_n = _median(launches_by_key.get((tid, True), []))
+        out.append({
+            "title_id": tid, "known_path": proven_rn, "known_path_result": proven_rid,
+            "creation_path_kept": creation_kept,
+            "profile": profile, "golden_save": gg["save"] if gg else None,
+            "pathknow": pathknow_success(tid),
+            "launch_s_first_run": fr_med, "launch_s_first_run_n": fr_n, "launch_s_source": "run.log",
+            "launch_s_returning": rt_med, "launch_s_returning_n": rt_n,
+        })
     return out
 
 
@@ -1075,10 +1737,12 @@ def marker(device):
     return os.path.join(dispatch_dir(), f".hdd_pref.{device}")
 
 
-def prepare(device, title_id=None, state="any", run=None, adb=None, log=print):
+def prepare(device, title_id=None, state="any", run=None, adb=None, log=print, save=None):
     """A held session's titles disk: the dispatcher's plan rounds, then
-    hddPath -> titles.qcow2 with the marker written first. Returns the
-    hdd.json-shaped record. Raises SystemExit (with the reason) on refuse."""
+    hddPath -> titles.qcow2 with the marker written first. SAVE swaps in a
+    specific stored save for TITLE_ID instead of its golden (see compose).
+    Returns the hdd.json-shaped record. Raises SystemExit (with the reason)
+    on refuse."""
     adb = adb or Adb(device)
     run = run or f"held-{device}-{datetime.datetime.now().strftime('%Y%m%dT%H%M%S')}"
     x = x1box()
@@ -1088,7 +1752,7 @@ def prepare(device, title_id=None, state="any", run=None, adb=None, log=print):
     for _ in range(5):
         n = adb.nbytes(dpath)
         sha = adb.sha(dpath) if n >= 0 else ""
-        p = plan(device, n, sha, title_id=title_id, state=state)
+        p = plan(device, n, sha, title_id=title_id, state=state, save=save)
         plans.append(p)
         action = p["action"]
         log(f"titlestate: titles disk: {action} ({p['reason']})")
@@ -1114,7 +1778,7 @@ def prepare(device, title_id=None, state="any", run=None, adb=None, log=print):
                 raise SystemExit("titlestate: pull to preserve failed")
             preserved(device, sha, keep)
         elif action == "build":
-            b = rebuild(device, title_id=title_id, state=state)
+            b = rebuild(device, title_id=title_id, state=state, save=save)
             adb.push(b["path"], dpath)
             pushed(device, b["path"], dpath, b["built_from"])
     if action != "keep":
@@ -1130,7 +1794,7 @@ def prepare(device, title_id=None, state="any", run=None, adb=None, log=print):
         with open(mk, "w") as fh:
             fh.write(was)
     adb.set_hdd(dpath)
-    _, info = compose(device, title_id, state)
+    _, info = compose(device, title_id, state, save)
     rec = dict(info, path=dpath, sha256_at_start=sha, bytes_at_start=n, plans=plans,
                mode_found=mode0 or None, mode="660", split="on", split_from="held", run=run)
     log(f"titlestate: hddPath -> {dpath}: {title_id or '-'} {state}, loaded {info['loaded']}"
@@ -1227,11 +1891,13 @@ def main(argv=None):
     s.add_argument("--ceiling", type=int,
                    default=int(os.environ.get("TITLES_DISK_CEILING_BYTES") or CEILING))
     s.add_argument("--title-id"); s.add_argument("--state", default="any", choices=STATES)
+    s.add_argument("--save")
     s = sub.add_parser("preserved")
     for f in ("--device", "--sha", "--path"):
         s.add_argument(f, required=True)
     s = sub.add_parser("rebuild"); s.add_argument("--device", required=True)
     s.add_argument("--title-id"); s.add_argument("--state", default="any", choices=STATES)
+    s.add_argument("--save")
     s = sub.add_parser("choose"); s.add_argument("--title-id", required=True); s.add_argument("--devices")
     s = sub.add_parser("route"); s.add_argument("--title-id", required=True)
     s.add_argument("--variant", required=True, choices=VARIANTS)
@@ -1248,14 +1914,24 @@ def main(argv=None):
     s.add_argument("--route")
     s = sub.add_parser("compose"); s.add_argument("--device", required=True)
     s.add_argument("--title-id"); s.add_argument("--state", default="any", choices=STATES)
+    s.add_argument("--save")
     s = sub.add_parser("resolve-route"); s.add_argument("--route", required=True)
     s.add_argument("--title-id"); s.add_argument("--iso"); s.add_argument("--device")
     s = sub.add_parser("tid-for-iso"); s.add_argument("name")
+    s = sub.add_parser("admit")
+    s.add_argument("--title-id"); s.add_argument("--iso"); s.add_argument("--route")
+    s.add_argument("--route-text-file"); s.add_argument("--device"); s.add_argument("--find-route")
+    s.add_argument("--remake-profile"); s.add_argument("--path-broken")
+    s = sub.add_parser("gate-report"); s.add_argument("--since", type=int, required=True)
+    s = sub.add_parser("saves"); s.add_argument("--title-id", required=True)
+    s.add_argument("--json", action="store_true")
+    s = sub.add_parser("readiness"); s.add_argument("--json", action="store_true")
     s = sub.add_parser("alias"); s.add_argument("--title-id"); s.add_argument("--disk-tid")
     s.add_argument("--suggest", action="store_true")
     s = sub.add_parser("prepare"); s.add_argument("--device", required=True, choices=DEVICES)
     s.add_argument("--title-id"); s.add_argument("--iso")
     s.add_argument("--state", default="any", choices=STATES); s.add_argument("--run")
+    s.add_argument("--save")
     s.add_argument("--hdd-img", action="store_true",
                    help="hand play on hdd.img: touch nothing, say so")
     s = sub.add_parser("release"); s.add_argument("--device", required=True, choices=DEVICES)
@@ -1299,13 +1975,13 @@ def main(argv=None):
         print(json.dumps(after_run(a.device, a.image, a.run, a.device_sha), sort_keys=True))
     elif a.cmd == "plan":
         print(json.dumps(plan(a.device, a.device_bytes, a.device_sha, a.cap, a.ceiling,
-                              tid_norm(a.title_id) if a.title_id else None, a.state),
+                              tid_norm(a.title_id) if a.title_id else None, a.state, a.save),
                          sort_keys=True))
     elif a.cmd == "preserved":
         preserved(a.device, a.sha, a.path)
     elif a.cmd == "rebuild":
         print(json.dumps(rebuild(a.device, title_id=tid_norm(a.title_id) if a.title_id else None,
-                                 state=a.state), sort_keys=True))
+                                 state=a.state, save=a.save), sort_keys=True))
     elif a.cmd == "choose":
         devs = a.devices.split(",") if a.devices else None
         print(json.dumps(choose(tid_norm(a.title_id), devs), indent=1, sort_keys=True))
@@ -1335,7 +2011,7 @@ def main(argv=None):
         print(json.dumps(first_run_saved(tid_norm(a.title_id), a.save, a.run, a.route), sort_keys=True))
     elif a.cmd == "compose":
         try:
-            want, info = compose(a.device, tid_norm(a.title_id) if a.title_id else None, a.state)
+            want, info = compose(a.device, tid_norm(a.title_id) if a.title_id else None, a.state, a.save)
         except NoGolden as e:
             print(json.dumps({"refuse": str(e)}))
             return 3
@@ -1347,6 +2023,35 @@ def main(argv=None):
         return 3 if r["refuse"] else 0
     elif a.cmd == "tid-for-iso":
         print(tid_for_iso(a.name) or "")
+    elif a.cmd == "admit":
+        tid = tid_norm(a.title_id) if a.title_id else (tid_for_iso(a.iso) if a.iso else None)
+        rtext = open(a.route_text_file).read() if a.route_text_file else None
+        r = admit(tid, a.route, rtext, a.device, a.find_route,
+                  remake_profile=a.remake_profile, path_broken=a.path_broken)
+        print(json.dumps(r, sort_keys=True))
+        return 3 if r["refuse"] else 0
+    elif a.cmd == "gate-report":
+        for line in gate_report(a.since):
+            print(line)
+    elif a.cmd == "saves":
+        if a.json:
+            print(json.dumps(title_saves(tid_norm(a.title_id)), sort_keys=True))
+        else:
+            for s in title_saves(tid_norm(a.title_id)):
+                print(f"{s['save']} {s['utc'] or '-'} by {s['by'] or '-'} "
+                      f"save-dir {'yes' if s['has_save_dir'] else 'no'} "
+                      f"golden {'yes' if s['golden'] else 'no'}")
+    elif a.cmd == "readiness":
+        rows = readiness()
+        if a.json:
+            print(json.dumps(rows, sort_keys=True))
+        else:
+            for r in rows:
+                print(f"{r['title_id']} known_path={r['known_path'] or '-'} "
+                      f"creation_kept={'yes' if r['creation_path_kept'] else 'no'} "
+                      f"profile={r['profile']} pathknow={'yes' if r['pathknow'] else 'no'} "
+                      f"launch_first_run_s={r['launch_s_first_run']} "
+                      f"launch_returning_s={r['launch_s_returning']}")
     elif a.cmd == "alias":
         if a.suggest:
             for t, d, why in suggest_aliases():
@@ -1363,7 +2068,8 @@ def main(argv=None):
         tid = tid_norm(a.title_id) if a.title_id else (tid_for_iso(a.iso) if a.iso else None)
         if not tid:
             raise SystemExit("titlestate: prepare needs --title-id, an --iso targets.toml knows, or --hdd-img")
-        print(json.dumps(prepare(a.device, tid, a.state, a.run, log=lambda m: print(m, file=sys.stderr)),
+        print(json.dumps(prepare(a.device, tid, a.state, a.run, log=lambda m: print(m, file=sys.stderr),
+                                 save=a.save),
                          sort_keys=True))
     elif a.cmd == "release":
         print(json.dumps(release(a.device, a.run, log=lambda m: print(m, file=sys.stderr)), sort_keys=True))

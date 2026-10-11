@@ -595,6 +595,151 @@ def test_route_headers():
     check("  ... and a .first-run/.returning file declares its own variant", not bad, ", ".join(bad))
 
 
+def test_admit(tmp):
+    """#433: admit() refuses a title run that meets no profile, unless it is
+    finding a route. Each clause's admit is paired with the refusal the same
+    disk state draws under a different route/flag, so a check that always
+    admits (the 10-02 void this closes) would pass half of each pair."""
+    print("== titlestate.py admit: the profile gate's four clauses")
+    os.environ["TITLESTATE_DIR"] = os.path.join(tmp, "ts")
+    os.environ["DISPATCH_DIR"] = os.path.join(tmp, "dispatch")
+    os.makedirs(os.environ["DISPATCH_DIR"])
+    import importlib
+    import titlestate as ts
+    importlib.reload(ts)
+
+    WITH, DATA, NONE, REJ = "41560001", "41560002", "41560003", "41560004"
+    fix = os.path.join(tmp, "fix")
+    with_d, with_m = make_save(os.path.join(fix, "w"), WITH, {
+        f"UDATA/{WITH}/TitleMeta.xbx": b"W", f"UDATA/{WITH}/3CE27F2A2215/SaveMeta.xbx": b"save"})
+    data_d, data_m = make_save(os.path.join(fix, "d"), DATA, {f"UDATA/{DATA}/TitleMeta.xbx": b"D"})
+    rej_d, rej_m = make_save(os.path.join(fix, "r"), REJ, {
+        f"UDATA/{REJ}/TitleMeta.xbx": b"R", f"UDATA/{REJ}/3CE27F2A2215/SaveMeta.xbx": b"save"})
+    ts.import_save(with_d)
+    ts.import_save(data_d)
+    ts.import_save(rej_d)
+    ts.set_golden(WITH, with_m["save_id"], by="selftest", how="seed")
+    ts.set_golden(DATA, data_m["save_id"], by="selftest", how="seed")
+    ts.set_golden(REJ, rej_m["save_id"], by="selftest", how="seed")
+    with ts.Registry("nova") as st:
+        st["rejected"][REJ] = [rej_m["save_id"]]
+
+    FR = "building the route from a blank profile"
+    MARKED = "# state: first-run\nmark profile-saved\n"
+    BARE_FR = "# state: first-run\npress A\n"
+
+    r = ts.admit(WITH, route_text="# state: any\n")
+    check("profile: a usable golden loads under `any`", r["admit"] and r["clause"] == "profile", str(r))
+    r = ts.admit(WITH, route_text="# state: returning\n")
+    check("  ... and under `returning`", r["admit"] and r["clause"] == "profile", str(r))
+    r = ts.admit(WITH, route_text=None)
+    check("  ... and with no route at all", r["admit"] and r["clause"] == "profile", str(r))
+
+    r = ts.admit(DATA, route_text="# state: any\n")
+    check("profile: a data-only golden counts under `any` (DATA_ONLY_GOLDEN_IS_PROFILE)",
+          r["admit"] and r["clause"] == "profile", str(r))
+    r = ts.admit(DATA, route_text="# state: returning\n")
+    check("REFUSE: the same golden meets no profile under `returning`",
+          not r["admit"] and "no save directory" in r["refuse"], str(r))
+
+    r = ts.admit(NONE, route_text=MARKED)
+    check("make-profile: a first-run route ending `mark profile-saved` on a title with no golden",
+          r["admit"] and r["clause"] == "make-profile", str(r))
+    r = ts.admit(NONE, route_text=BARE_FR)
+    check("REFUSE: the same title's first-run route with no marker",
+          not r["admit"] and "find-route" in r["refuse"], str(r))
+    r = ts.admit(WITH, route_text=MARKED)
+    check("M7 GUARD: make-profile is refused on a title that already has a profile golden",
+          not r["admit"] and "already has a kept profile" in r["refuse"], str(r))
+
+    r = ts.admit(NONE, find_route=FR)
+    check("find-route: any state, any golden, with a reason of 12+ chars", r["admit"] and r["clause"] == "find-route")
+    r = ts.admit(None, find_route=FR)
+    check("  ... even with no title at all", r["admit"] and r["clause"] == "find-route")
+    r = ts.admit(NONE, find_route="too short")
+    check("REFUSE: a find-route reason under 12 characters",
+          not r["admit"] and "too short" in r["refuse"], str(r))
+
+    r = ts.admit(NONE, route_text="# state: any\n")
+    check("REFUSE: no golden, no route-finding, under `any`", not r["admit"] and "no profile" in r["refuse"], str(r))
+    r = ts.admit(NONE, route_text=None)
+    check("  ... and with no route at all", not r["admit"] and "no profile" in r["refuse"], str(r))
+    r = ts.admit(None, route_text="# state: any\n")
+    check("REFUSE: a title that cannot be identified",
+          not r["admit"] and "could not be identified" in r["refuse"], str(r))
+
+    r = ts.admit(REJ, route_text="# state: returning\n", device="nova")
+    check("REFUSE: a golden rejected on the device meets no profile under `returning`",
+          not r["admit"] and "was rejected on nova" in r["refuse"], str(r))
+    r = ts.admit(REJ, route_text="# state: any\n", device="nova")
+    check("  ... nor under `any` (a rejected golden is not a profile at all)",
+          not r["admit"] and "no profile" in r["refuse"], str(r))
+
+    print("== titlestate.py admit: profile-transition.toml's named exceptions")
+    trans = os.path.join(tmp, "profile-transition.toml")
+    with open(trans, "w") as fh:
+        fh.write(
+            '[[entry]]\nroute = "live-route"\nuntil = "2099-01-01T00:00:00Z"\n'
+            'why = "test"\napproved = "owner 2026-10-11"\n\n'
+            '[[entry]]\nroute = "expired-route"\nuntil = "2000-01-01T00:00:00Z"\n'
+            'why = "test"\napproved = "owner 2026-10-11"\n')
+    entries = ts.load_transitions(trans)
+    check("load_transitions reads both entries", len(entries) == 2, str(entries))
+    check("live_transition finds the one not past `until`",
+          ts.live_transition("live-route", entries) is not None
+          and ts.live_transition("expired-route", entries) is None)
+    bad_trans = os.path.join(tmp, "bad-transition.toml")
+    open(bad_trans, "w").write('[[entry]]\nroute = "x"\n')
+    try:
+        ts.load_transitions(bad_trans)
+        check("load_transitions refuses an entry missing `until`/`why`/`approved`", False)
+    except SystemExit as e:
+        check("load_transitions refuses an entry missing `until`/`why`/`approved`", "missing" in str(e), str(e))
+
+    old_path = ts.TRANSITION_PATH
+    ts.TRANSITION_PATH = trans
+    try:
+        r = ts.admit(NONE, route_name="live-route", route_text="# state: any\n")
+        check("transition: a live entry admits a route with no profile at all",
+              r["admit"] and r["clause"] == "transition", str(r))
+        r = ts.admit(NONE, route_name="live-route", route_text="# state: returning\n")
+        check("  ... under `returning` too", r["admit"] and r["clause"] == "transition", str(r))
+        r = ts.admit(NONE, route_name="live-route", route_text=BARE_FR)
+        check("  ... and under `first-run` with no marker", r["admit"] and r["clause"] == "transition", str(r))
+        r = ts.admit(NONE, route_name="expired-route", route_text="# state: any\n")
+        check("M5 GUARD: an expired transition entry is the same as no entry",
+              not r["admit"] and "no profile" in r["refuse"], str(r))
+    finally:
+        ts.TRANSITION_PATH = old_path
+
+    print("== titlestate.py gate-report: refusals, find-route runs, live transitions")
+    results = os.path.join(os.environ["DISPATCH_DIR"], "results")
+    refused_dir = os.path.join(results, "1-2000000000-refused-1")
+    os.makedirs(refused_dir)
+    json.dump({"title": NONE, "requester": "t"}, open(os.path.join(refused_dir, "request.json"), "w"))
+    open(os.path.join(refused_dir, "ERROR"), "w").write(
+        f"{ts.GATE_REFUSE_TAG}no profile: {NONE} has no profile (any)")
+    fr_dir = os.path.join(results, "1-2000000000-findroute-2")
+    os.makedirs(fr_dir)
+    json.dump({"title": NONE, "requester": "t", "find_route": FR}, open(os.path.join(fr_dir, "request.json"), "w"))
+    ts.TRANSITION_PATH = trans
+    try:
+        lines = ts.gate_report(1000000000)
+    finally:
+        ts.TRANSITION_PATH = old_path
+    check("gate-report lists the refused request", any("PROFILE GATE REFUSED" in l and NONE in l for l in lines),
+          "\n".join(lines))
+    check("  ... the find-route run, with its reason", any(FR in l and "find-route by t" in l for l in lines),
+          "\n".join(lines))
+    check("  ... the live transition, with hours to `until`",
+          any("live-route" in l and "live" in l and "h to until" in l for l in lines), "\n".join(lines))
+    check("  ... and the expired one, marked EXPIRED",
+          any("expired-route" in l and "EXPIRED" in l for l in lines), "\n".join(lines))
+
+    for k in ("TITLESTATE_DIR", "DISPATCH_DIR"):
+        os.environ.pop(k, None)
+
+
 def test_nav_disk(tmp):
     """A held nav.py session on a device never starts on whatever hdd.img
     holds without saying so (gap 3: held sessions bypassed the titles disk)."""
@@ -617,6 +762,8 @@ def test_nav_disk(tmp):
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         test_goldens(tmp)
+    with tempfile.TemporaryDirectory() as tmp:
+        test_admit(tmp)
     with tempfile.TemporaryDirectory() as tmp:
         test_nav_disk(tmp)
     test_route_headers()
