@@ -1,0 +1,31 @@
+{
+  "registered_utc": "2026-10-11T05:50:00Z",
+  "who": "lane.fastpaths1010",
+  "issue": "433",
+  "title": "playable-screen-20of44",
+  "device": "nova",
+  "a_ref": "da07fe5140",
+  "b_ref": "da07fe5140",
+  "queue_order": "One binary (this lane's step-1 commit, merged with origin/master), env-only A/B per title: ON queues with no --env (app default); OFF queues --env with all six vars =0. Scope: 20 of pm/playable-accepted.tsv's 44 titles whose ISO is present on the Nova's DEVICE_ISO_ROOT as of this registration (confirmed live against /home/justin/hakux-work/hardware/titlepush/listing-nova.txt, Oct-3, cross-checked against the live device at queue time -- a request.sh queue failure for a missing ISO is itself evidence a title moved off Nova since the listing). The other 24 are on the Thor only; moving them onto the Nova (\"shuffle\") is lane.local's job, not this lane's grant (memory shuffle-means-onto-the-nova) -- named as a blocker in NOTES.md/PR.md, not run here. 14 of the 20 use their own named route (docs/testing/titles/routes/<name>.route); the other 6 (ToeJam & Earl III, Gunvalkyrie, Halo: Combat Evolved, Panzer Dragoon Orta, NBA Live 2004, Call of Duty 3) have no route in this tree, so they run as a soak to the title screen with --frames-every. Queued in batches of about 10 titles (20 runs), each batch preceded by its own small pilot per the 30-min device-time gate, HAKUX_RELEASE_PRIO=1.",
+  "judge": "per-title: logcat read for a crash/hang/abort in ON that OFF does not show (fatal); route-frames or --frames-every captures at matched points, compared by region, ON vs OFF (frames); reportasync1010's armed/late counters where GET_REPORT traffic appears in logcat (reports); both arms' perf_regimen.json/telemetry fps, reported not gated (gfps). No single numeric threshold applies across 20 different titles -- each title's own row is read by eye against its own OFF baseline, recorded in docs/lanes/fastpaths1010/NOTES.md and PR.md's screen table.",
+  "baseline": "Every one of the 20 titles already has an accepted Playable verdict (pm/playable-accepted.tsv) from an earlier run, most on this same Nova, establishing what correct gameplay for that title's route looks like; this screen's OFF arm is that same known-good code path (all six switches at their native C default, off), and ON is the new default. A title regressing between ON and OFF here would be a regression from fastpaths1010's own step-1 commit, not a pre-existing issue the Playable verdict already accepted.",
+  "prediction": "None of the 20 fail: reportasync1010, texscan1010 (paired with REPORT_ASYNC), drawrec1010 and perdrawon1010 each already screened their own switch (or pair) on some subset of Playable titles or a broader survey without a correctness regression (texscan1010's own finding was a PERFORMANCE regression when TEXSCAN runs alone, not a correctness one, and this toggle never ships TEXSCAN alone). What would refute it: any ON-only crash/hang; any ON-only visual defect in a frame region OFF does not show; a title whose reportasync counters show armed below 100% that OFF's do not (a GET_REPORT race the other three lanes' own survey titles did not happen to hit).",
+  "expect": {
+    "fail_titles": [],
+    "blocked_titles": [
+      "The Simpsons Hit & Run", "Dark Summit", "MTV Celebrity Deathmatch",
+      "NFL Blitz 2002", "NBA 2K2", "MLB SlugFest 2003", "AMF Bowling 2004",
+      "MLB SlugFest 2004", "MLB SlugFest - Loaded", "Rogue Trooper",
+      "Ratatouille", "World Soccer Winning Eleven 9", "NBA 2K3",
+      "Mortal Kombat: Armageddon", "Fight Club", "Blowout",
+      "Future Tactics: The Uprising", "Capcom vs. SNK 2 EO", "Blade II",
+      "Indigo Prophecy", "SpongeBob SquarePants: Battle for Bikini Bottom",
+      "The Lord of the Rings: The Fellowship of the Ring",
+      "Legacy of Kain: Defiance", "Max Payne 2: The Fall of Max Payne"
+    ]
+  },
+  "expect_note": "fail_titles starts empty: the claim under test is that no SCOPED title fails. blocked_titles lists titles out of scope for this registration (ISO not on Nova as of queue time). The 20 scoped titles: Alien Hominid, KOF: Maximum Impact - Maniax, Azurik: Rise of Perathia, WWE Raw 2, 50 Cent: Bulletproof, Baldur's Gate: Dark Alliance, Crimson Skies: High Road to Revenge, Kabuki Warriors, 187: Ride or Die, Tony Hawk's Pro Skater 2x, ToeJam & Earl III: Mission to Earth, Gunvalkyrie, Castlevania: Curse of Darkness, Spikeout: Battle Street, Halo: Combat Evolved, Panzer Dragoon Orta, Jet Set Radio Future, Tork: Prehistoric Punk, NBA Live 2004, Call of Duty 3.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}
