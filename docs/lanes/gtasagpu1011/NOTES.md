@@ -235,3 +235,99 @@ the alpha test), not in a missing draw. The dump does not record either.
 2. **Schema 5:** each small draw's vertex inputs and the composite matrix, so the sky
    triangles' w and screen positions can be computed offline and set against the
    wedge model.
+
+#### 2b result 1: the geometry shader is cleared
+
+`1-1791741002-lane.gtasagpu1011-54100` (33ceb415ca, `HAKUX_MEASURE_NO_GEOM=1`, logcat
+`env: HAKUX_MEASURE_NO_GEOM=1`), dump `framedump_1791741485`, 29 images. The switch reached
+the sky draw: n11 (12f336cc) has no geometry shader in this dump, while the shadow-chain
+draws still do. **The prediction failed.** The ramp is still there. Sky (180,0)-(480,20) mean
+red per frame:
+
+| frames | sky top |
+|---|---|
+| f001-f002, f007-f009, f021, f029 | 124-126 (blue) |
+| f003-f004, f010-f011, f023 | 185-186 |
+| f005-f006, f012-f013, f025 | 225 |
+| f014-f015 | 241 |
+| f016-f020, f022, f024, f026-f028 | 247-252 (white) |
+
+This is the same ramp as 3571105 (each step is one rendered frame; the dump repeats an image
+when `img_sync` is -1). CJ is running here (f001, f017), so it holds with a moving camera too.
+f017 is a white sky with a hard diagonal edge on the right and ghosted treetops.
+**The #223 wedge path is not the cause.** The sky triangles are dropped with the host
+clipper too.
+
+### 2c. Vertex RAM rewritten inside one command buffer (found in code, 41be412ae0)
+
+The sky draw has the same registers in every frame, good or bad. CJ stands still in 3571105
+and runs in 54100, and good and bad frames interleave either way. So what changes between
+frames is the vertex data the draw reads.
+
+How a draw reads vertex RAM:
+
+1. `sync_vertex_ram_buffer` (`vk/draw.c`) copies dirty pages of guest RAM into
+   `frame_staging[current_frame].vertex_ram` (`pgraph_vk_update_vertex_ram_buffer`,
+   `vk/vertex.c`) at the offset of their VRAM address.
+2. `bind_vertex_buffer` binds that staging buffer itself.
+3. The GPU reads it when the command buffer runs, which is at the next finish (frame 4 of
+   3571105: one submit for the whole frame).
+
+So if the guest rewrites vertex memory that an earlier draw in the same command buffer
+reads, and a later draw syncs it, the earlier draw runs with the later draw's vertices.
+
+Upstream xemu guards this. `pgraph_vk_update_vertex_ram_buffer` finishes the command buffer
+(`VK_FINISH_REASON_VERTEX_BUFFER_DIRTY`) before re-uploading a page uploaded since the last
+finish. hakuX commit 41be412ae0 ("vk: add render command thread with per-frame vertex RAM
+buffers") replaced that with "Per-frame buffer: no finish needed, each frame has its own
+copy". The per-frame copies keep command buffers apart, not the draws within one. Nothing in
+the tree passes `VERTEX_BUFFER_DIRTY` any more.
+
+A guest that reuses one vertex buffer for several draws a frame, and waits only until the
+GPU has fetched the previous draw, does exactly this. pgraph fetches on the guest's clock, so
+the wait always passes at once. GTA SA draws the sky band and the stored shadows through
+RenderWare's immediate-mode path: `CClouds::RenderSkyPolys` and `CShadows::RenderStoredShadows`
+both transform into one temporary vertex buffer (`TempBufferVertices`) and draw it with
+`RwIm3DRenderIndexedPrimitive`. The dump fits: the sky is n11 (`inline_elements`, 30 indices)
+and the shadow is n527-n530 (`inline_elements`, 15-24 indices). Both are small indexed draws
+from vertex RAM, near the start of the command buffer, with later immediate-mode draws after
+them.
+
+The hypothesis covers both defects with one cause. Whether a frame comes out good depends on
+whether a later draw in the same command buffer rewrote the buffer before submit. That
+explains the 1-in-7 blue frames.
+
+**Built** (a6ee1c58fe):
+
+- Schema 5 of the dump. Each draw record gets `rot` (its command buffer) and `vr` (each array
+  attribute's VRAM byte range). A `vup` record is written for every staging upload that
+  changes bytes, with the changed span `clo`-`chi`.
+- `HAKUX_VTX_HAZARD=1`, default off. It finishes before an upload that changes bytes an
+  earlier draw in the same command buffer reads.
+  - It is byte-exact, so a ring of vertices appended draw by draw does not trigger it, as a
+    shared page would under upstream's check.
+  - The finish is deferred: the next upload goes to the next frame slot's copy, and the
+    rotation waits that slot's fence.
+  - It logs `vtx_hazard: N finishes` to logcat at most every 10 s.
+
+**Predictions** (written before queueing; both dumps at a6ee1c58fe, `after250`, `vtx64`):
+
+1. **Dump, switch off.**
+   - In every imaged frame whose sky top is not blue (mean red > 150), a `vup` with the same
+     `rot` as n11 and a larger `n` changes bytes inside n11's `vr`.
+   - In the blue frames, none does, or there is a submit between them.
+   - P = 0.65.
+   - If no such `vup` exists in the bad frames, the hypothesis is refuted for the sky. The
+     remaining candidates are then a position the host clipper drops and a torn read of
+     guest RAM (#54's race).
+2. **Dump, switch on.**
+   - All imaged frames have a blue sky top (mean red < 150).
+   - logcat shows `vtx_hazard` lines with N > 0.
+   - `vup` records with `"hzf":1` appear.
+   - P = 0.6. It is lower than prediction 1 because the fix stands down while merged or
+     reordered draws are queued, and the dumps show both off for GTA SA.
+   - Shadow: these 640x480 dump frames cut CJ off at the knees, so the shadow is judged in the
+     step 3 soaks, not here.
+3. **Cost.** The `vtx_hazard` rate is the number of extra submits a frame. Below 10 a frame
+   it is in the noise of 2-3 finishes a frame already. Above 50 it needs option (D): give the
+   rewritten range a private copy instead of a submit. P(≤ 10) = 0.5.
