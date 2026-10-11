@@ -371,6 +371,9 @@ pilot-gate's own ~102 min estimate for route titles alone plus the soaks.
 
 Batch 3 complete: all 7 restored titles pass. 38-title scope now stands at 29 screened (9 batch 1/2 + batch 3's 7, +Call of Duty 3 blocked) and 21 remaining (batch 4, soak titles, queued).
 
+| Indigo Prophecy | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.98/59.97 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1531758`/`...1531859`) |
+| NFL Blitz 2002 | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.98/59.97 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1531953`/`...1532029`) |
+
 **Call of Duty 3 is not on the Nova**, discovered live (same failure mode as
 the Alien Hominid pilot in 4.1.2) despite being in the "8 of the original 20
 the Oct-8 pass did not touch" bucket -- checked and it is in none of
