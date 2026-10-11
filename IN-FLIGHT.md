@@ -6,14 +6,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 5h 46m | fastpaths1010: ToeJam & Earl III passes; soak-title gfps window noted (#433, 0.5) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 9 waiting, 1 running.
+- **Device queue:** 3 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -71,12 +69,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/fastpaths1010` | fastpaths1010: ToeJam & Earl III passes; soak-title gfps window noted (#433, 0.5) | `4debb46e40` | 2026-10-11 02:39 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-10 lane.lanenobg1010 -- lane sessions refuse background commands with a hook, not a footer (#433, 0.5)
 - 2026-10-10 postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5)
@@ -86,6 +83,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5)
 - 2026-10-10 Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly)
 - 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
-- 2026-10-10 lane.usage24h1009: project the week's usage from the trailing 24h burn rate, not the trailing 6h (#433)
 
-_Updated 2026-10-11 02:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 03:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
