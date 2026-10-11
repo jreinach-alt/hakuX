@@ -16,6 +16,14 @@
 echo "== meter.py: actor classification, the week window, and incremental reads"
 UM="$T/usagemode"; rm -rf "$UM"
 mkdir -p "$UM/work/briefs" "$UM/work/logs/pricefit" "$UM/projects" "$UM/systemd"
+# Save the harness's own values (if any) before this fragment's isolation
+# overrides them, so they can be put back exactly -- not just unset. A bare
+# `unset` here (the earlier version of this fix) left 97-board-priority.sh
+# with no $HAKUX_WORK at all, since selftest.sh only ever sets it once, at
+# the top of the whole run, and fragments are sourced into that one shell.
+UM_SAVED_WORK_SET=${HAKUX_WORK+1}; UM_SAVED_WORK=${HAKUX_WORK-}
+UM_SAVED_PROJECTS_SET=${HAKUX_CLAUDE_PROJECTS+1}; UM_SAVED_PROJECTS=${HAKUX_CLAUDE_PROJECTS-}
+UM_SAVED_SYSTEMD_SET=${HAKUX_SYSTEMD_USER_DIR+1}; UM_SAVED_SYSTEMD=${HAKUX_SYSTEMD_USER_DIR-}
 export HAKUX_WORK="$UM/work" HAKUX_CLAUDE_PROJECTS="$UM/projects" HAKUX_SYSTEMD_USER_DIR="$UM/systemd"
 UM_NOW_ISO='2026-10-02T17:10:00Z'
 UM_NOW=$(date -u -d "$UM_NOW_ISO" +%s)
@@ -259,8 +267,8 @@ cp "$MM/work/limits.env" "$MM/limits.before"; cp "$MM/work/briefs/alpha.model" "
 
 bash "$HERE/usage/mode.sh" low > "$MM/low.out" 2>&1
 check "low writes the low-active file lane.sh reads" test -s "$MM/work/usage/low-active"
-check "low adds the navigation agent's call cap" \
-    grep -q '^PATHFIND_MODEL_CALLS_MAX=20$' "$MM/work/limits.env"
+check "low writes no pathfind call cap (dead dial, deleted #433)" \
+    bash -c '! grep -q PATHFIND_MODEL_CALLS_MAX "$1"' _ "$MM/work/limits.env"
 check "low leaves LANE_MAX alone (lane.sh caps it at read time)" grep -q '^LANE_MAX=10$' "$MM/work/limits.env"
 check "low leaves the escalation model alone" \
     grep -q '^MODEL_LANE_ESCALATED=claude-fable-5-1$' "$MM/work/limits.env"
@@ -325,10 +333,16 @@ check "projected over: 40% used but 95% projected (>= 90) goes low" [ "$(um_mode
 um_state 2 ""; um_tick t7
 check "the week rolling over (2% used, no projection yet) is just a low reading: normal" [ "$(um_mode)" = normal ]
 
-printf 'USAGE_LOW_PROJ=60\n' >> "$MM/work/limits.env"
-um_state 10 65; um_tick t8
-check "the entry line is a limits.env dial: USAGE_LOW_PROJ=60 makes 65% projected low" [ "$(um_mode)" = low ]
-sed -i '/^USAGE_LOW_PROJ=/d' "$MM/work/limits.env"
+# No limits.env override remains for this dial (#433) -- the only way to
+# move the entry line now is models.toml itself, via $HAKUX_MODELS_TOML.
+cp "$HERE/models.toml" "$MM/models-lowproj60.toml"
+sed -i 's/^low_proj = 90.*/low_proj = 60/' "$MM/models-lowproj60.toml"
+grep -q '^low_proj = 60$' "$MM/models-lowproj60.toml" || bad "fixture: low_proj edit did not take"
+um_state 10 65
+export HAKUX_MODELS_TOML="$MM/models-lowproj60.toml"
+um_tick t8
+unset HAKUX_MODELS_TOML
+check "the entry line is a models.toml dial: low_proj=60 makes 65% projected low" [ "$(um_mode)" = low ]
 
 rm -f "$MM/work/usage/low-active"; um_state 10 80; um_tick t9
 check "a mode file saying low with low-active missing heals: the file comes back" test -s "$MM/work/usage/low-active"
@@ -336,3 +350,15 @@ check "a mode file saying low with low-active missing heals: the file comes back
 unset -f um_dump um_state um_tick um_mode um_lines
 unset UM MM UM_NOW UM_NOW_ISO far_future um_instant
 unset HAKUX_NOW
+
+# Restore exactly what was there before (addendum 2, fold selftest
+# 2026-10-10 15:49): re-export the harness's own value if it had one,
+# unset only if it did not, so a later fragment sourced into this same
+# shell (97, 98, 99) sees the real $HAKUX_WORK, not this one's, and sees it
+# as a value, not a missing variable under `set -u`.
+if [ -n "$UM_SAVED_WORK_SET" ]; then export HAKUX_WORK="$UM_SAVED_WORK"; else unset HAKUX_WORK; fi
+if [ -n "$UM_SAVED_PROJECTS_SET" ]; then export HAKUX_CLAUDE_PROJECTS="$UM_SAVED_PROJECTS"; else unset HAKUX_CLAUDE_PROJECTS; fi
+if [ -n "$UM_SAVED_SYSTEMD_SET" ]; then export HAKUX_SYSTEMD_USER_DIR="$UM_SAVED_SYSTEMD"; else unset HAKUX_SYSTEMD_USER_DIR; fi
+unset UM_SAVED_WORK_SET UM_SAVED_WORK UM_SAVED_PROJECTS_SET UM_SAVED_PROJECTS UM_SAVED_SYSTEMD_SET UM_SAVED_SYSTEMD
+check "HAKUX_WORK is restored to the harness's own value after this fragment" \
+    [ "${HAKUX_WORK-}" = "$T/work" ]

@@ -77,9 +77,17 @@ T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; JOBS="$T/jobs"
 # READ OUT OF lane.sh rather than repeated here: a repeated default is a
 # second cap that drifts the first time one of them is edited. $WORK/limits.env
 # overrides it, as it does for lane.sh, and it is sourced after, so it wins.
+# LANE_ESCALATE_AFTER/LANE_MAX_ATTEMPTS are read out of lane.sh the same way,
+# for the same reason: the attempt policy is one policy, not a second copy of
+# the numbers that drifts the day someone edits lane.sh alone.
 LANE_MAX=$(sed -n 's/^LANE_MAX=\([0-9][0-9]*\).*/\1/p' "$T/lane.sh" 2>/dev/null | head -1)
-. "$JOBS/models.env"; [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
+LANE_ESCALATE_AFTER=$(sed -n 's/^LANE_ESCALATE_AFTER="\${LANE_ESCALATE_AFTER:-\([0-9][0-9]*\)}"/\1/p' "$T/lane.sh" 2>/dev/null | head -1)
+LANE_MAX_ATTEMPTS=$(sed -n 's/^LANE_MAX_ATTEMPTS="\${LANE_MAX_ATTEMPTS:-\([0-9][0-9]*\)}"/\1/p' "$T/lane.sh" 2>/dev/null | head -1)
+MODELS="$JOBS/models.sh"
+[ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 : "${LANE_MAX:=2}"
+: "${LANE_ESCALATE_AFTER:=3}"
+: "${LANE_MAX_ATTEMPTS:=4}"
 # AND THE TURN CAP IS READ HERE, BELOW THE SOURCE, for the reason lane.sh's
 # own TURNS line carries at length. It had the identical shape and the
 # identical defect: `TURNS="${CLOUD_TURNS:-120}"` sat nine lines up, was
@@ -494,15 +502,20 @@ name="cloud-$kind-$num"; unit="hakux-lane-$name"; wt="$WORK/wt/$name"
 
 # ATTEMPTS, THE SAME POLICY AS A LANE'S. Leaving the state label on a PR whose
 # session did not finish is what makes a retry possible; this is what stops it
-# being endless. The first LANE_ESCALATE_AFTER attempts run on MODEL_AUDIT, the
-# next on the escalated model, and after LANE_MAX_ATTEMPTS the PR is handed to
-# the owner -- labelled blocked:needs-owner, which pr_by_label skips, so the
-# outlet moves on to the next unit instead of spending another window here.
-# This runs BEFORE any git or worktree work: a refusal must be cheap.
+# being endless. The first LANE_ESCALATE_AFTER attempts run on the "audit" kind's
+# model, the next one step up the ladder, and after LANE_MAX_ATTEMPTS the PR is
+# handed to the owner -- labelled blocked:needs-owner, which pr_by_label skips,
+# so the outlet moves on to the next unit instead of spending another window
+# here. This runs BEFORE any git or worktree work: a refusal must be cheap.
 att="$WORK/attempts/$name"
 n=$(( $(cat "$att" 2>/dev/null || echo 0) + 1 ))
-MODEL="${HAKUX_MODEL:-$MODEL_AUDIT}"
-[ "$n" -gt "$LANE_ESCALATE_AFTER" ] && MODEL="${HAKUX_MODEL:-$MODEL_LANE_ESCALATED}"
+if [ -n "${HAKUX_MODEL:-}" ]; then
+    MODEL="$HAKUX_MODEL"
+elif [ "$n" -gt "$LANE_ESCALATE_AFTER" ]; then
+    MODEL=$(bash "$MODELS" model audit --escalate)
+else
+    MODEL=$(bash "$MODELS" model audit)
+fi
 if [ "$n" -gt "$LANE_MAX_ATTEMPTS" ]; then
     if [ "$mode" = list ]; then
         echo "would REFUSE $kind #$num: $(( n - 1 )) attempts (LANE_MAX_ATTEMPTS=$LANE_MAX_ATTEMPTS)"
@@ -513,7 +526,7 @@ if [ "$n" -gt "$LANE_MAX_ATTEMPTS" ]; then
     # `gh pr comment` on an issue number fails; the issue path claims by
     # labelling `lane:cloud-N`, so it can only reach here if that label failed.
     [ "$kind" = issue ] && cmt=issue || cmt=pr
-    gh "$cmt" comment "$num" --repo "$GH_REPO" --body "[job.cloud] $(( n - 1 )) $kind sessions on this PR ended without setting a next state (LANE_MAX_ATTEMPTS=$LANE_MAX_ATTEMPTS), the last on $MODEL_LANE_ESCALATED. Labelled \`blocked:needs-owner\`; the audit outlet will not claim it again. Clear the counter with \`rm $att\` once the brief or the PR is fixed." >/dev/null 2>&1
+    gh "$cmt" comment "$num" --repo "$GH_REPO" --body "[job.cloud] $(( n - 1 )) $kind sessions on this PR ended without setting a next state (LANE_MAX_ATTEMPTS=$LANE_MAX_ATTEMPTS), the last on $MODEL. Labelled \`blocked:needs-owner\`; the audit outlet will not claim it again. Clear the counter with \`rm $att\` once the brief or the PR is fixed." >/dev/null 2>&1
     exit 0
 fi
 [ "$mode" = list ] && { echo "would claim $kind #$num ${head:+($head) }$title -- attempt $n on $MODEL"; exit 0; }
@@ -653,22 +666,14 @@ case "$kind" in
         # from the same name, so it removes its own predecessor first.
         git -C "$REPO" worktree add --quiet --detach "$wt" "origin/$branch" \
             || { say "cannot create $wt for #$num on $branch; not claiming"; exit 5; }
-        # AUDITS SIZED TO THE DIFF. Pass 1 reads emulator code and stays on
-        # MODEL_AUDIT; pass 2 only verifies pass 1's own scenarios, which is a
-        # small task exactly when pass 1 found nothing worth fixing. The
-        # pass-1 file this audit2 task is itself told to read (below) is the
-        # source of truth: a `## HIGH` or `## MEDIUM` finding heading in any
-        # docs/audits/*-<lane>-pass1*.md on this branch means pass 1 (or a
-        # remediation since) had something to verify away, so pass 2 stays on
-        # MODEL_AUDIT; none present means pass 1 found no HIGH or MEDIUM and
-        # pass 2 runs on MODEL_BOOKKEEPING. HAKUX_MODEL and the attempt
-        # escalation both still win -- checked the same way the attempt loop
-        # above set MODEL, not by comparing values that could coincide.
-        if [ "$kind" = audit2 ] && [ -z "${HAKUX_MODEL:-}" ] && [ "$n" -le "$LANE_ESCALATE_AFTER" ]; then
-            if ! grep -lE '^#{2,4} *(HIGH|MEDIUM)[^a-zA-Z]' "$wt"/docs/audits/*-"${head#lane/}"-pass1*.md >/dev/null 2>&1; then
-                MODEL="$MODEL_BOOKKEEPING"
-            fi
-        fi
+        # AUDITS SIZED TO THE DIFF -- removed (#433, 2026-10-10). This used to
+        # drop a clean audit2 pass from the "audit" kind to the "bookkeeping"
+        # kind. The owner-approved models.toml table gives both kinds the
+        # same Normal and Low model (Sonnet/Sonnet), and the same escalated
+        # model (ladder_step(sonnet) = opus either way), so the two kinds are
+        # indistinguishable in every mode: the grep below could never again
+        # change what MODEL held. Deleted as dead code rather than kept as a
+        # branch that still runs but can no longer be observed to do anything.
         case "$kind" in
             remediate) succ_human="needs-audit-2 or fold-ready" ;;
             *)         succ_human="needs-audit-2, needs-remediation or fold-ready" ;;
