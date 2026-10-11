@@ -1,0 +1,129 @@
+run                                      arm  cold1  warm  post   cold v2   warm v2/v3/v4   valid
+0-1791717602-lockwake1011-1988775        A    34.7  33.6  33.3      66 %   76/10/1 %       12/12
+0-1791717604-lockwake1011-1989057        B    33.8  33.6  33.4      71 %   77/10/1 %       12/12
+0-1791717605-lockwake1011-1989154        B    33.5  33.5  33.4      80 %   88/5/1 %        12/12
+0-1791717607-lockwake1011-1989456        A    34.1  33.5  33.4      83 %   84/7/1 %        12/12
+0-1791717609-lockwake1011-1989815        A    34.8  33.6  33.4      67 %   78/10/1 %       12/12
+0-1791717611-lockwake1011-1989918        B    33.4  33.6  33.4      87 %   80/9/1 %        12/12
+
+[probe1010] per frame, lines printed in mark-4.0 .. mark+3.5 s
+run                                      which  frames   rot    blk   ms blk   mid/f  mid ms/f
+0-1791717602-lockwake1011-1988775        cold     240  0.40  0.01    0.08   0.02    0.13
+0-1791717602-lockwake1011-1988775        warm    2460  0.03  0.00    0.01   0.00    0.01
+0-1791717604-lockwake1011-1989057        cold     240  0.18  0.05    0.24   0.05    0.29
+0-1791717604-lockwake1011-1989057        warm    2460  0.01  0.00    0.01   0.00    0.02
+0-1791717605-lockwake1011-1989154        cold     240  0.07  0.02    0.06   0.02    0.12
+0-1791717605-lockwake1011-1989154        warm    2520  0.02  0.00    0.01   0.00    0.02
+0-1791717607-lockwake1011-1989456        cold     240  0.33  0.06    0.30   0.06    0.36
+0-1791717607-lockwake1011-1989456        warm    2400  0.01  0.00    0.00   0.00    0.01
+0-1791717609-lockwake1011-1989815        cold     180  0.46  0.05    0.23   0.05    0.23
+0-1791717609-lockwake1011-1989815        warm    2460  0.02  0.00    0.02   0.00    0.02
+0-1791717611-lockwake1011-1989918        cold     180  0.23  0.05    0.28   0.06    0.35
+0-1791717611-lockwake1011-1989918        warm    2520  0.02  0.00    0.01   0.00    0.02
+
+mean of runs   cold1  warm  post   cold v2 (read, not judged)
+  A            34.5  33.5  33.4    71.9 %
+  B            33.6  33.6  33.4    79.2 %
+
+JUDGE (2026-10-11T11:17:26Z)
+  V PASS  0-1791717602-lockwake1011-1988775: arm A from request.json env ['HAKUX_REPORT_ASYNC=1', 'HAKUX_TEXSCAN=1', 'HAKUX_DRAWREC=1', 'HAKUX_UNI_BULK=1', 'HAKUX_UNI_UBERCACHE=1', 'HAKUX_UNI_FOGCACHE=1', 'HAKUX_PROBE_WAITS=1', 'HAKUX_POSTED_PUT=1', 'HAKUX_SUBMIT_FRAMES=3']
+  V PASS  0-1791717602-lockwake1011-1988775: perflog False
+  V PASS  0-1791717602-lockwake1011-1988775: /\[reportasync\] on/ seen
+  V PASS  0-1791717602-lockwake1011-1988775: /\[texscan\] on/ seen
+  V PASS  0-1791717602-lockwake1011-1988775: /\[drawrec1010\] drawrec=1 vtx=1 shc=1/ seen
+  V PASS  0-1791717602-lockwake1011-1988775: /\[perdraw433\] bulk=1 ubercache=1 fogcache=1/ seen
+  V PASS  0-1791717602-lockwake1011-1988775: /\[probe1010\] waits=1/ seen
+  V PASS  0-1791717602-lockwake1011-1988775: /\[postput\] on/ seen
+  V PASS  0-1791717602-lockwake1011-1988775: /\[coldstart1010\] submit_frames=3 / seen
+  V PASS  0-1791717602-lockwake1011-1988775: /per-frame staging created \(3 frames/ seen
+  V PASS  0-1791717602-lockwake1011-1988775: /\[lockwake\] / not seen on A
+  V PASS  0-1791717602-lockwake1011-1988775: 12 marks
+  V PASS  0-1791717602-lockwake1011-1988775: 12 valid starts >= 10
+  V PASS  0-1791717602-lockwake1011-1988775: boot inputs went through before `mark gameplay`
+  V PASS  0-1791717602-lockwake1011-1988775: 19 warm pace lines >= 10
+  V PASS  0-1791717602-lockwake1011-1988775: g11 frames for 11 of 11 valid warm starts (motion: by eye, NOTES.md)
+  V PASS  0-1791717604-lockwake1011-1989057: arm B from request.json env ['HAKUX_REPORT_ASYNC=1', 'HAKUX_TEXSCAN=1', 'HAKUX_DRAWREC=1', 'HAKUX_UNI_BULK=1', 'HAKUX_UNI_UBERCACHE=1', 'HAKUX_UNI_FOGCACHE=1', 'HAKUX_PROBE_WAITS=1', 'HAKUX_POSTED_PUT=1', 'HAKUX_SUBMIT_FRAMES=3', 'HAKUX_LOCKFREE_WAKE=1']
+  V PASS  0-1791717604-lockwake1011-1989057: perflog False
+  V PASS  0-1791717604-lockwake1011-1989057: /\[reportasync\] on/ seen
+  V PASS  0-1791717604-lockwake1011-1989057: /\[texscan\] on/ seen
+  V PASS  0-1791717604-lockwake1011-1989057: /\[drawrec1010\] drawrec=1 vtx=1 shc=1/ seen
+  V PASS  0-1791717604-lockwake1011-1989057: /\[perdraw433\] bulk=1 ubercache=1 fogcache=1/ seen
+  V PASS  0-1791717604-lockwake1011-1989057: /\[probe1010\] waits=1/ seen
+  V PASS  0-1791717604-lockwake1011-1989057: /\[postput\] on/ seen
+  V PASS  0-1791717604-lockwake1011-1989057: /\[coldstart1010\] submit_frames=3 / seen
+  V PASS  0-1791717604-lockwake1011-1989057: /per-frame staging created \(3 frames/ seen
+  V PASS  0-1791717604-lockwake1011-1989057: /\[lockwake\] on/ seen on B
+  V PASS  0-1791717604-lockwake1011-1989057: 12 valid starts >= 10
+  V PASS  0-1791717604-lockwake1011-1989057: boot inputs went through before `mark gameplay`
+  V PASS  0-1791717604-lockwake1011-1989057: 19 warm pace lines >= 10
+  V PASS  0-1791717604-lockwake1011-1989057: g11 frames for 11 of 11 valid warm starts (motion: by eye, NOTES.md)
+  V PASS  0-1791717605-lockwake1011-1989154: arm B from request.json env ['HAKUX_REPORT_ASYNC=1', 'HAKUX_TEXSCAN=1', 'HAKUX_DRAWREC=1', 'HAKUX_UNI_BULK=1', 'HAKUX_UNI_UBERCACHE=1', 'HAKUX_UNI_FOGCACHE=1', 'HAKUX_PROBE_WAITS=1', 'HAKUX_POSTED_PUT=1', 'HAKUX_SUBMIT_FRAMES=3', 'HAKUX_LOCKFREE_WAKE=1']
+  V PASS  0-1791717605-lockwake1011-1989154: perflog False
+  V PASS  0-1791717605-lockwake1011-1989154: /\[reportasync\] on/ seen
+  V PASS  0-1791717605-lockwake1011-1989154: /\[texscan\] on/ seen
+  V PASS  0-1791717605-lockwake1011-1989154: /\[drawrec1010\] drawrec=1 vtx=1 shc=1/ seen
+  V PASS  0-1791717605-lockwake1011-1989154: /\[perdraw433\] bulk=1 ubercache=1 fogcache=1/ seen
+  V PASS  0-1791717605-lockwake1011-1989154: /\[probe1010\] waits=1/ seen
+  V PASS  0-1791717605-lockwake1011-1989154: /\[postput\] on/ seen
+  V PASS  0-1791717605-lockwake1011-1989154: /\[coldstart1010\] submit_frames=3 / seen
+  V PASS  0-1791717605-lockwake1011-1989154: /per-frame staging created \(3 frames/ seen
+  V PASS  0-1791717605-lockwake1011-1989154: /\[lockwake\] on/ seen on B
+  V PASS  0-1791717605-lockwake1011-1989154: 12 valid starts >= 10
+  V PASS  0-1791717605-lockwake1011-1989154: boot inputs went through before `mark gameplay`
+  V PASS  0-1791717605-lockwake1011-1989154: 20 warm pace lines >= 10
+  V PASS  0-1791717605-lockwake1011-1989154: g11 frames for 11 of 11 valid warm starts (motion: by eye, NOTES.md)
+  V PASS  0-1791717607-lockwake1011-1989456: arm A from request.json env ['HAKUX_REPORT_ASYNC=1', 'HAKUX_TEXSCAN=1', 'HAKUX_DRAWREC=1', 'HAKUX_UNI_BULK=1', 'HAKUX_UNI_UBERCACHE=1', 'HAKUX_UNI_FOGCACHE=1', 'HAKUX_PROBE_WAITS=1', 'HAKUX_POSTED_PUT=1', 'HAKUX_SUBMIT_FRAMES=3']
+  V PASS  0-1791717607-lockwake1011-1989456: perflog False
+  V PASS  0-1791717607-lockwake1011-1989456: /\[reportasync\] on/ seen
+  V PASS  0-1791717607-lockwake1011-1989456: /\[texscan\] on/ seen
+  V PASS  0-1791717607-lockwake1011-1989456: /\[drawrec1010\] drawrec=1 vtx=1 shc=1/ seen
+  V PASS  0-1791717607-lockwake1011-1989456: /\[perdraw433\] bulk=1 ubercache=1 fogcache=1/ seen
+  V PASS  0-1791717607-lockwake1011-1989456: /\[probe1010\] waits=1/ seen
+  V PASS  0-1791717607-lockwake1011-1989456: /\[postput\] on/ seen
+  V PASS  0-1791717607-lockwake1011-1989456: /\[coldstart1010\] submit_frames=3 / seen
+  V PASS  0-1791717607-lockwake1011-1989456: /per-frame staging created \(3 frames/ seen
+  V PASS  0-1791717607-lockwake1011-1989456: /\[lockwake\] / not seen on A
+  V PASS  0-1791717607-lockwake1011-1989456: 12 marks
+  V PASS  0-1791717607-lockwake1011-1989456: 12 valid starts >= 10
+  V PASS  0-1791717607-lockwake1011-1989456: boot inputs went through before `mark gameplay`
+  V PASS  0-1791717607-lockwake1011-1989456: 19 warm pace lines >= 10
+  V PASS  0-1791717607-lockwake1011-1989456: g11 frames for 11 of 11 valid warm starts (motion: by eye, NOTES.md)
+  V PASS  0-1791717609-lockwake1011-1989815: arm A from request.json env ['HAKUX_REPORT_ASYNC=1', 'HAKUX_TEXSCAN=1', 'HAKUX_DRAWREC=1', 'HAKUX_UNI_BULK=1', 'HAKUX_UNI_UBERCACHE=1', 'HAKUX_UNI_FOGCACHE=1', 'HAKUX_PROBE_WAITS=1', 'HAKUX_POSTED_PUT=1', 'HAKUX_SUBMIT_FRAMES=3']
+  V PASS  0-1791717609-lockwake1011-1989815: perflog False
+  V PASS  0-1791717609-lockwake1011-1989815: /\[reportasync\] on/ seen
+  V PASS  0-1791717609-lockwake1011-1989815: /\[texscan\] on/ seen
+  V PASS  0-1791717609-lockwake1011-1989815: /\[drawrec1010\] drawrec=1 vtx=1 shc=1/ seen
+  V PASS  0-1791717609-lockwake1011-1989815: /\[perdraw433\] bulk=1 ubercache=1 fogcache=1/ seen
+  V PASS  0-1791717609-lockwake1011-1989815: /\[probe1010\] waits=1/ seen
+  V PASS  0-1791717609-lockwake1011-1989815: /\[postput\] on/ seen
+  V PASS  0-1791717609-lockwake1011-1989815: /\[coldstart1010\] submit_frames=3 / seen
+  V PASS  0-1791717609-lockwake1011-1989815: /per-frame staging created \(3 frames/ seen
+  V PASS  0-1791717609-lockwake1011-1989815: /\[lockwake\] / not seen on A
+  V PASS  0-1791717609-lockwake1011-1989815: 12 marks
+  V PASS  0-1791717609-lockwake1011-1989815: 12 valid starts >= 10
+  V PASS  0-1791717609-lockwake1011-1989815: boot inputs went through before `mark gameplay`
+  V PASS  0-1791717609-lockwake1011-1989815: 19 warm pace lines >= 10
+  V PASS  0-1791717609-lockwake1011-1989815: g11 frames for 11 of 11 valid warm starts (motion: by eye, NOTES.md)
+  V PASS  0-1791717611-lockwake1011-1989918: arm B from request.json env ['HAKUX_REPORT_ASYNC=1', 'HAKUX_TEXSCAN=1', 'HAKUX_DRAWREC=1', 'HAKUX_UNI_BULK=1', 'HAKUX_UNI_UBERCACHE=1', 'HAKUX_UNI_FOGCACHE=1', 'HAKUX_PROBE_WAITS=1', 'HAKUX_POSTED_PUT=1', 'HAKUX_SUBMIT_FRAMES=3', 'HAKUX_LOCKFREE_WAKE=1']
+  V PASS  0-1791717611-lockwake1011-1989918: perflog False
+  V PASS  0-1791717611-lockwake1011-1989918: /\[reportasync\] on/ seen
+  V PASS  0-1791717611-lockwake1011-1989918: /\[texscan\] on/ seen
+  V PASS  0-1791717611-lockwake1011-1989918: /\[drawrec1010\] drawrec=1 vtx=1 shc=1/ seen
+  V PASS  0-1791717611-lockwake1011-1989918: /\[perdraw433\] bulk=1 ubercache=1 fogcache=1/ seen
+  V PASS  0-1791717611-lockwake1011-1989918: /\[probe1010\] waits=1/ seen
+  V PASS  0-1791717611-lockwake1011-1989918: /\[postput\] on/ seen
+  V PASS  0-1791717611-lockwake1011-1989918: /\[coldstart1010\] submit_frames=3 / seen
+  V PASS  0-1791717611-lockwake1011-1989918: /per-frame staging created \(3 frames/ seen
+  V PASS  0-1791717611-lockwake1011-1989918: /\[lockwake\] on/ seen on B
+  V PASS  0-1791717611-lockwake1011-1989918: 12 valid starts >= 10
+  V PASS  0-1791717611-lockwake1011-1989918: boot inputs went through before `mark gameplay`
+  V PASS  0-1791717611-lockwake1011-1989918: 20 warm pace lines >= 10
+  V PASS  0-1791717611-lockwake1011-1989918: g11 frames for 11 of 11 valid warm starts (motion: by eye, NOTES.md)
+  V PASS  A: 3 runs, registered 3
+  V PASS  B: 3 runs, registered 3
+  K PASS  cold B 33.58 ms <= 34.5, and B - A -0.96 ms <= -0.5
+  C PASS  cold A 34.54 B 33.58, B - A -0.96 ms <= -0.5
+  W PASS  warm countdown A 33.55 B 33.56, B - A +0.01 ms <= 0.2
+  G PASS  post-GO A 33.36 B 33.37, B - A +0.01 ms <= 0.2
+  M PASS  every B run reached 12 marks
+VERDICT: PASS -- 5 of 5 checks hold (V also needs the moving car confirmed by eye)

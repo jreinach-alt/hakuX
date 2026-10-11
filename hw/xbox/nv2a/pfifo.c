@@ -24,6 +24,7 @@
  * guest CPU thread from the main loop and from the PFIFO thread itself. It
  * was included only under __ANDROID__, for the EIP in pfifo_read's poll log. */
 #include "hw/core/cpu.h"
+#include "pgraph/profile.h"   /* #433 frametrace: pfifo_lock_timed_ft() */
 #ifdef __ANDROID__
 #include <android/log.h>
 #include "target/i386/cpu.h"
@@ -1543,10 +1544,11 @@ static void pfifo_bound_skew(NV2AState *d, uint32_t put)
     fsk_note_held(nv2a_clock_ns() - t0, spun, !caught);
 }
 
-/* BEGIN posted-put (docs/lanes/postput1010/selftest_postput.sh compiles this
- * block verbatim; keep it free of anything but d->pfifo, g_nv2a_stats, the
- * qemu atomics, the mutex and condition calls, fifo_skew_bound_mode() and
- * fsk_note_post()) */
+/* BEGIN posted-put (docs/lanes/lockwake1011/selftest_wake.sh compiles this
+ * block verbatim, as postput1010's selftest did before it; keep it free of
+ * anything but d->pfifo, d->exiting, g_nv2a_stats, the qemu atomics, the
+ * mutex, condition and event calls, pfifo_lock_timed(),
+ * fifo_skew_bound_mode() and fsk_note_post()) */
 /*
  * HAKUX_POSTED_PUT=1 (#433, lane.postput1010; off by default): the guest's
  * DMA_PUT store without pfifo.lock when the lock is busy.
@@ -1582,6 +1584,29 @@ static void pfifo_bound_skew(NV2AState *d, uint32_t put)
  *
  * With the switch off every function here runs master's statements: the
  * locked store, a plain kick, a plain condition wait.
+ *
+ * HAKUX_LOCKFREE_WAKE=1 (#433, lane.lockwake1011; off by default, and only
+ * with HAKUX_POSTED_PUT=1): the posted store's wake without the lock. Its
+ * lock was the guest's whole pfifo.lock wait at NFS Most Wanted's cold race
+ * start: 1.5 ms a frame, in waits of 5-7 ms, each ended with the PFIFO
+ * thread still parked, so a third thread held the lock. The display refresh
+ * can: pgraph_vk_get_framebuffer_surface() waits on a fence under it
+ * (docs/lanes/lockwake1011/NOTES.md section 1). The woken PFIFO thread needs
+ * the lock to leave its park anyway; the guest does not.
+ *
+ * So the PFIFO thread parks on the event `wake` with the lock released, and
+ * every waker sets it: the posted store when it reads `parked`, pfifo_kick()
+ * through pfifo_wake(), nv2a_lock_fifo() and nv2a_exitfn(). No wakeup is
+ * lost, by the same store-buffering argument as above. pfifo_park() resets
+ * the event (a read-modify-write and a full barrier), then stores `parked`,
+ * then, after its barrier, reads `fifo_kick`, DMA_PUT and `exiting`. Each
+ * waker stores its condition, then reads `parked` (the poster) or the event
+ * (qemu_event_set()), after a full barrier. If the PFIFO thread misses the
+ * condition, the waker sees the reset (directly, or through `parked`,
+ * stored after it), so its set lands after the reset and the wait returns.
+ * Setting the event before the reset is what the reset is for: that set
+ * belonged to a park that has already ended. NOTES.md section 2 has it at
+ * length.
  */
 static bool pfifo_posted_put_on(void)
 {
@@ -1598,6 +1623,25 @@ static bool pfifo_posted_put_on(void)
                                 fifo_skew_bound_mode(),
                                 fifo_skew_bound_mode() != FIFO_SKEW_OFF
                                     ? " (inert: the bound needs the lock)" : "");
+#endif
+        }
+    }
+    return v;
+}
+
+static bool pfifo_lockfree_wake_on(void)
+{
+    static int on = -1;
+    int v = qatomic_read(&on);
+
+    if (v < 0) {
+        const char *e = getenv("HAKUX_LOCKFREE_WAKE");
+        bool asked = e && !strcmp(e, "1");
+        v = asked && pfifo_posted_put_on();
+        if (qatomic_cmpxchg(&on, -1, v) == -1 && asked) {
+#ifdef __ANDROID__
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-lane", "[lockwake] %s",
+                                v ? "on" : "off (inert: needs HAKUX_POSTED_PUT=1)");
 #endif
         }
     }
@@ -1622,19 +1666,30 @@ static bool pfifo_take_kick(NV2AState *d)
     return was;
 }
 
-/* The PFIFO thread's idle wait on `fifo_cond`, under pfifo.lock. */
+/* The PFIFO thread's idle wait on `fifo_cond`, or with HAKUX_LOCKFREE_WAKE=1
+ * on `wake` with the lock released; called and returns under pfifo.lock. */
 static void pfifo_park(NV2AState *d)
 {
     if (!pfifo_posted_put_on()) {
         qemu_cond_wait(&d->pfifo.fifo_cond, &d->pfifo.lock);
         return;
     }
+    bool lockfree = pfifo_lockfree_wake_on();
+    if (lockfree) {
+        qemu_event_reset(&d->pfifo.wake);
+    }
     qatomic_set(&d->pfifo.parked, true);
     smp_mb();
     if (!qatomic_read(&d->pfifo.fifo_kick) &&
         qatomic_read(&d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT]) ==
             d->pfifo.put_seen) {
-        qemu_cond_wait(&d->pfifo.fifo_cond, &d->pfifo.lock);
+        if (!lockfree) {
+            qemu_cond_wait(&d->pfifo.fifo_cond, &d->pfifo.lock);
+        } else if (!qatomic_read(&d->exiting)) {
+            qemu_mutex_unlock(&d->pfifo.lock);
+            qemu_event_wait(&d->pfifo.wake);
+            qemu_mutex_lock(&d->pfifo.lock);
+        }
     }
     qatomic_set(&d->pfifo.parked, false);
 }
@@ -1644,14 +1699,31 @@ static void pfifo_post_kick(NV2AState *d)
     qatomic_store_release(&d->pfifo.fifo_kick, true);
     smp_mb();
     if (qatomic_read(&d->pfifo.parked)) {
+        if (pfifo_lockfree_wake_on()) {
+            qemu_event_set(&d->pfifo.wake);
+            return;
+        }
         /* Counted as the locked store's wait is, so `lockw` still shows
          * every wait the guest makes for the lock. */
-        int64_t t0 = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
-        qemu_mutex_lock(&d->pfifo.lock);
-        g_nv2a_stats.cpu_working.lock_wait_ns +=
-            qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - t0;
+        pfifo_lock_timed(d, NV2A_LOCKW_KICK);
         qemu_cond_broadcast(&d->pfifo.fifo_cond);
         qemu_mutex_unlock(&d->pfifo.lock);
+    }
+}
+
+/* pfifo_kick()'s wake. Relaxed atomics, which compile to the plain accesses
+ * they replace: with HAKUX_POSTED_PUT=1 a posted store sets the kick without
+ * the lock. A kick already set is left to the thread that set it, which
+ * wakes the PFIFO thread after its store: here, in nv2a_lock_fifo(), or in
+ * pfifo_post_kick() through `parked`. */
+static void pfifo_wake(NV2AState *d)
+{
+    if (!qatomic_read(&d->pfifo.fifo_kick)) {
+        qatomic_set(&d->pfifo.fifo_kick, true);
+        qemu_cond_broadcast(&d->pfifo.fifo_cond);
+        if (pfifo_lockfree_wake_on()) {
+            qemu_event_set(&d->pfifo.wake);
+        }
     }
 }
 
@@ -1678,6 +1750,36 @@ void pfifo_post_dma_put(NV2AState *d, uint32_t val)
     pfifo_post_kick(d);
 }
 /* END posted-put */
+
+/*
+ * pfifo_lock_timed() with HAKUX_FRAMETRACE=1 (#433, lockwake1011): the wait
+ * is a frametrace pfifo.lock wait whose holder is the PFIFO thread, so the
+ * holder split books what that thread was in while the vCPU waited, and it
+ * is booked to @site. `parked` is read with the lock held: set, the PFIFO
+ * thread is in pfifo_park() (in its condition wait, or woken and waiting for
+ * the lock), so the wait ended at its condition wait or at another thread's
+ * release, not at the end of its run. HAKUX_POSTED_PUT=1 only.
+ */
+void pfifo_lock_timed_ft(NV2AState *d, int site, int64_t t0)
+{
+    CpuTimingWork *w = &g_nv2a_stats.cpu_working;
+    HakuxFtWait ftw;
+    int64_t dt;
+
+    hakux_ft_wait_begin(&ftw, HAKUX_FT_W_PFIFO_LOCK, HAKUX_FT_PFIFO);
+    qemu_mutex_lock(&d->pfifo.lock);
+    hakux_ft_wait_end(&ftw);
+    dt = qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - t0;
+    w->lock_wait_ns += dt;
+    w->lockw_site_ns[site] += dt;
+    w->lockw_site_n[site]++;
+    if (dt >= 10000) {
+        w->lockw_site_nb[site]++;
+    }
+    if (qatomic_read(&d->pfifo.parked)) {
+        w->lockw_parked_ns += dt;
+    }
+}
 
 /*
  * HAKUX_POSTED_PUT=1: take up posted DMA_PUT stores for the instruments,
@@ -1708,12 +1810,7 @@ static void pfifo_take_posted(NV2AState *d, const uint32_t *upto)
 
 void pfifo_kick(NV2AState *d)
 {
-    /* Relaxed atomics, which compile to the plain accesses they replace:
-     * with HAKUX_POSTED_PUT=1 a posted store sets the kick without the lock. */
-    if (!qatomic_read(&d->pfifo.fifo_kick)) {
-        qatomic_set(&d->pfifo.fifo_kick, true);
-        qemu_cond_broadcast(&d->pfifo.fifo_cond);
-    }
+    pfifo_wake(d);
 
     /*
      * Which of this function's many callers is a SUBMISSION.

@@ -1361,6 +1361,9 @@ static void nv2a_lock_fifo(NV2AState *d)
     qemu_mutex_lock(&d->pfifo.lock);
     d->pfifo.fifo_kick = true;
     qemu_cond_broadcast(&d->pfifo.fifo_cond);
+    /* HAKUX_LOCKFREE_WAKE=1's park waits on the event, not fifo_cond; with
+     * the switch off nothing waits on it. */
+    qemu_event_set(&d->pfifo.wake);
     bql_unlock();
     qemu_cond_wait(&d->pfifo.fifo_idle_cond, &d->pfifo.lock);
     bql_lock();
@@ -1460,6 +1463,7 @@ static void nv2a_realize(PCIDevice *dev, Error **errp)
     qemu_cond_init(&d->pfifo.fifo_cond);
     qemu_cond_init(&d->pfifo.fifo_idle_cond);
     qemu_cond_init(&d->pfifo.fifo_drained_cond);
+    qemu_event_init(&d->pfifo.wake, false);
 }
 
 static void nv2a_exitfn(PCIDevice *dev)
@@ -1467,9 +1471,12 @@ static void nv2a_exitfn(PCIDevice *dev)
     NV2AState *d;
     d = NV2A_DEVICE(dev);
 
-    d->exiting = true;
+    qatomic_set(&d->exiting, true);
 
     qemu_cond_broadcast(&d->pfifo.fifo_cond);
+    /* After `exiting`: HAKUX_LOCKFREE_WAKE=1's park reads it after its
+     * reset, so either it sees `exiting` or this set wakes it. */
+    qemu_event_set(&d->pfifo.wake);
     qemu_thread_join(&d->pfifo.thread);
 
     pgraph_destroy(&d->pgraph);
