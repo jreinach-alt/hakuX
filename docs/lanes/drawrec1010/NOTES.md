@@ -108,18 +108,18 @@ counters below name the largest per-draw cost directly (section 5.3).
 | 1-1791661644-drawrec1010-952014 | NFS race start, F1-F3, 500 s | perflog @ b10dcdb737 | DONE; section 10.2 |
 | 1-1791670433-drawrec1010-3707918 | NFS race start plain 1/4, off | plain @ b10dcdb737 | DONE; 12 marks |
 | 1-1791670434-drawrec1010-3708043 | NFS race start plain 2/4, ON | plain @ b10dcdb737 | DONE; 12 marks |
-| 1-1791670441-drawrec1010-3708870 | NFS race start plain 3/4, ON | plain @ b10dcdb737 | running |
-| 1-1791670442-drawrec1010-3709079 | NFS race start plain 4/4, off | plain @ b10dcdb737 | queued |
-| 1-1791670443-drawrec1010-3709316 | pixels A recheck, 27-suite disc, runs 2 | plain @ b10dcdb737 | queued |
-| 1-1791670444-drawrec1010-3709731 | pixels B recheck, 27-suite disc, runs 2 | plain @ b10dcdb737 | queued |
-| 1-1791672296-drawrec1010-4030728 | Addendum 1 probe, NFS race start, base | plain @ bf43e8c4ef | queued |
-| 1-1791672298-drawrec1010-4031146 | Addendum 1 probe, NFS race start, SNAPQ=1 | plain @ bf43e8c4ef | queued |
-| 1-1791672299-drawrec1010-4031484 | Addendum 1 probe, NFS race start, NULLREC | plain @ bf43e8c4ef | queued |
-| 1-1791672301-drawrec1010-4032023 | Addendum 1 probe, NFS race start, SNAPQ=2 | plain @ bf43e8c4ef | queued |
-| 1-1791672303-drawrec1010-4032671 | Addendum 1 probe, NFS race start, SNAPQ=2 | plain @ bf43e8c4ef | queued |
-| 1-1791672305-drawrec1010-4033552 | Addendum 1 probe, NFS race start, NULLREC | plain @ bf43e8c4ef | queued |
-| 1-1791672307-drawrec1010-4034091 | Addendum 1 probe, NFS race start, SNAPQ=1 | plain @ bf43e8c4ef | queued |
-| 1-1791672308-drawrec1010-4034875 | Addendum 1 probe, NFS race start, base | plain @ bf43e8c4ef | queued |
+| 1-1791670441-drawrec1010-3708870 | NFS race start plain 3/4, ON | plain @ b10dcdb737 | DONE; 12 marks, section 14 |
+| 1-1791670442-drawrec1010-3709079 | NFS race start plain 4/4, off | plain @ b10dcdb737 | DONE; 12 marks, section 14 |
+| 1-1791670443-drawrec1010-3709316 | pixels A recheck, 27-suite disc, runs 2 | plain @ b10dcdb737 | DONE; section 15 |
+| 1-1791670444-drawrec1010-3709731 | pixels B recheck, 27-suite disc, runs 2 | plain @ b10dcdb737 | DONE; section 15 |
+| 1-1791672296-drawrec1010-4030728 | Addendum 1 probe, NFS race start, base | plain @ bf43e8c4ef | DONE; section 16 |
+| 1-1791672298-drawrec1010-4031146 | Addendum 1 probe, NFS race start, SNAPQ=1 | plain @ bf43e8c4ef | DONE; section 16 |
+| 1-1791672299-drawrec1010-4031484 | Addendum 1 probe, NFS race start, NULLREC | plain @ bf43e8c4ef | DONE; section 16 |
+| 1-1791672301-drawrec1010-4032023 | Addendum 1 probe, NFS race start, SNAPQ=2 | plain @ bf43e8c4ef | DONE; section 16 |
+| 1-1791672303-drawrec1010-4032671 | Addendum 1 probe, NFS race start, SNAPQ=2 | plain @ bf43e8c4ef | DONE; section 16 |
+| 1-1791672305-drawrec1010-4033552 | Addendum 1 probe, NFS race start, NULLREC | plain @ bf43e8c4ef | DONE; section 16 |
+| 1-1791672307-drawrec1010-4034091 | Addendum 1 probe, NFS race start, SNAPQ=1 | plain @ bf43e8c4ef | DONE; section 16 |
+| 1-1791672308-drawrec1010-4034875 | Addendum 1 probe, NFS race start, base | plain @ bf43e8c4ef | DONE; section 16 |
 
 All F1-F3 runs carry `HAKUX_UNI_BULK=1 HAKUX_UNI_UBERCACHE=1 HAKUX_UNI_FOGCACHE=1`.
 The first four were the pilot (24.7 min by the gate's estimate; ~8-9 min each on the
@@ -243,6 +243,14 @@ Attempt 3 found all four pilot runs DONE. Attempt 2 had not failed: it ended on 
 lanewaker resumed it when they were DONE. Attempt 3 read them (section 10), queued the
 plain A/B and the pixel recheck, and builds the walk-cost follow-up (section 11) while
 those run.
+
+Attempt 3 did not finish for the same reason: it built the Addendum 1 probes (section
+13), registered their prediction, and queued 12 runs (2 plain NFS, 2 pixel rechecks,
+8 probe arms; section 13's status line says 11, but `WAITING` lists 12). About 2 h of
+Nova time cannot fit in one headless session, so it ended on `WAITING` with their ids.
+Attempt 4 found all 12 DONE. It merged master (b74cff74ed), read them (sections 14-16),
+wrote the verdicts and recommendations (section 17), removed `WAITING`, and marks the
+PR ready.
 
 ## 8. Step 2 as built (b10dcdb737, draw.c only)
 
@@ -388,6 +396,15 @@ an env A/B (`HAKUX_DRAWREC=1` with `HAKUX_DRAWREC_MAP=0` vs unset) on the NFS ro
   argument is read as an option.
 - The vertex-sync counters `Vsyn` are on the overlay only, not in logcat; the `[rdc]`
   line is the logcat source for the walk cost.
+- A `--runs 2` request measures the band inside one request only. `ab_compare.py`
+  called GeometrySuperscreen_0.5626 "ATTRIBUTABLE" because each recheck request agreed
+  with itself. Across requests the capture took three different images, and one of
+  them appeared in both arms (section 15). Hash the capture across every run of both
+  arms before reading a named-noise move as the switch.
+- A pace floor under 33.3 ms cannot be measured at the NFS race start. The title
+  presents at v2, so `hakuX-pace` stops at the vblank period. Do not predict a pace
+  floor below it (section 16, `P_floor`). If the vCPU's own floor is the question, read
+  the vCPU's busy ms/frame.
 
 ## 13. Addendum 1: what a recorder thread would buy (probes, default off, measurement only)
 
@@ -457,14 +474,204 @@ Baseline before any probe ran, plain off 3707918 (b10dcdb737, F1-F3 only, no
 REPORT_ASYNC/TEXSCAN): warm 39.2 ms/frame. vCPU busy 24.1 and idle 15.7 ms/frame (61%
 busy; vcpuread over [mark-4, mark+1.5]).
 
-**Status, 2026-10-10 15:49 PDT: waiting.** 11 runs are pending, each with a `run` line in
-`WAITING`: 3708870 is running on the Nova, and the other 10 are queued behind it (~10 min
-each). The two finished plain runs (3707918 off, 3708043 ON) each show a moving car in all 12
-`s*-g11.png` frames (50-94 and 42-85 mph). `drawread.py` on that single pair gives warm
-39.2 -> 37.4 ms/frame and v2 +13.2 points. With one run per state this is not a verdict.
-When the runs are in:
-- `drawread.py` over 3707918/3708043/3708870/3709079 against `drawrec1010-nfs.json`;
-- `ab_compare.py` over 3709316/3709731;
-- `proberead.py` over the 8 probe runs against `drawrec1010-probe.json`;
-- the g11 check on the base and SNAPQ arms;
-- then PR.md's three-line verdict, and ready.
+Attempt 3 ended here, waiting on 12 runs. All 12 are read in sections 14-16.
+
+## 14. Plain A/B, two runs per state (attempt 4)
+
+Runs on b10dcdb737, plain build, F1-F3 in both states, queued in the order off, ON,
+ON, off:
+- off: `1-1791670433-drawrec1010-3707918`, `1-1791670442-drawrec1010-3709079`;
+- ON: `1-1791670434-drawrec1010-3708043`, `1-1791670441-drawrec1010-3708870`.
+
+All four have 12 marks, no fatal signal, and the switch line matching the env. Every
+one of the 48 `s*-g11.png` frames shows a moving car: sparks, traffic, and the
+speedometer at 42-94 mph.
+
+`drawread.py --expect drawrec1010-nfs.json` over these four runs and the perflog pilot
+pair (951926/952014):
+
+| | off | ON | ON - off |
+|---|---|---|---|
+| warm countdown pace, ms/frame (pooled; per run) | 38.8 (39.2, 38.5) | 37.3 (37.4, 37.2) | -1.5 |
+| warm v2 share | 66.1% | 75.3% | +9.2 points |
+| cold countdown pace (one line per run) | 49.1 (43.3, 54.9) | 49.0 (47.7, 50.3) | not read |
+| `[rdc]` vtx walks/flip, warm | 165.8 (2.62 ms) | 66.5 (0.99 ms) | -60% |
+| us/draw, perflog pilot | 7.77 | 6.16 | -20.8% |
+
+`[drawrec]` per flip, ON (3 runs): 136-142 dirty ranges, 286-289 REDO-only copies,
+0.8-1.0 flip walks plus 8.4-8.6 budget walks, 52-55 runs. These are the same in every
+run.
+
+Legs:
+- V PASS;
+- **R FAIL**: 68.1 walks/flip, against <= 20 predicted;
+- U PASS: -20.8%, Syn 1.91;
+- P PASS: -1.5 in [-7, -1];
+- H PASS: +9.2 >= 5.
+
+**VERDICT: REFUTED**, on R alone. Every speed leg passed. The mechanism's size was wrong:
+deferring the walk removes 60% of the walks, not 88%. Section 10.2 gives the reason (one
+full-TLB scan per merged run in each budget batch), and `tlbmap.mbox` (section 11) is
+the fix. It is still parked: the board request has no answer.
+
+The brief's T targets (reported, not judged):
+- warm ON 37.3 <= 38: met;
+- cold ON 49.0 <= 52 (n=2): met;
+- v2 +9.2 >= 10: not met.
+
+## 15. Pixel recheck: three runs per arm (attempt 4)
+
+The recheck is A `1-1791670443-drawrec1010-3709316` and B
+`1-1791670444-drawrec1010-3709731`, runs 2 each. With the pilot pair that is three runs
+per arm. The switch line is `drawrec=0 vtx=0 shc=0` in both A logcats and
+`drawrec=1 vtx=1 shc=1` in both B logcats.
+
+`ab_compare.py --a 3709316 --b 3709731 --expect drawrec1010-pixels.json`:
+- 1,059 of 1,060 captures are byte-identical between the arms;
+- GeometrySuperscreen_0.5626 reads 285 px in both A runs and 570 in both B runs;
+- the tool calls that move "ATTRIBUTABLE" and gives **VERDICT: FAIL** on it.
+
+The capture's sha256, every run:
+
+| run | arm | GeometrySuperscreen_0.5626 | px | Stencil_ZERO_ST |
+|---|---|---|---|---|
+| 951834 (pilot) | A off | 0cf84e6cea8f | 570 | d3b4d0470b61 (0 px, the rare one) |
+| 3709316 run 1 | A off | 42eb3edd3567 | 285 | 246921161bac |
+| 3709316 run 2 | A off | 42eb3edd3567 | 285 | 246921161bac |
+| 950252 (pilot) | B ON | 9c6f4705adce | 0 | 246921161bac |
+| 3709731 run 1 | B ON | 0cf84e6cea8f | 570 | 246921161bac |
+| 3709731 run 2 | B ON | 0cf84e6cea8f | 570 | 246921161bac |
+
+How to read it:
+- **GeometrySuperscreen_0.5626 is the prediction's named noise.** Each arm produced two
+  different images over its three runs. One image (0cf84e6c, 570 px) appears in both
+  arms. The two runs of one request agree with each other, but different requests do
+  not, so the tool's within-request band is too narrow to call this the switch.
+- **Stencil_ZERO_ST**, the pilot's one unnamed move, is byte-identical in five of six
+  runs, in both arms. The pilot's A run had the rare image (section 10.1).
+
+Under the registered rule, "a move there gets a runs=3 determinism check of both arms
+before it is read as the switch", **the pixel leg passes: no capture moves with the
+switch.** The tool's one-pair FAIL is recorded here and in PR.md, not overridden.
+
+## 16. Addendum 1 results: the recorder-thread probes
+
+Eight runs on bf43e8c4ef, plain build, apk 0a0ff13f1271, two per arm, interleaved
+(section 4). Every arm carries F1-F3, `HAKUX_DRAWREC=1`, `HAKUX_REPORT_ASYNC=1`,
+`HAKUX_TEXSCAN=1`, `HAKUX_FRAMETRACE=1` and `HAKUX_PROBE_WAITS=1`. All eight have 12
+marks, no fatal signal, the probe line matching the env, `drawrec=1`, and a frametrace
+CSV.
+
+The g11 frames of the base, SNAPQ=1 and SNAPQ=2 runs (72 frames) all show a moving car.
+NULLREC's frames show only clears, as designed, so they cannot show the car. Its route
+reached all 12 marks with 39 warm pace lines.
+
+Read with `proberead.py --expect drawrec1010-probe.json`.
+
+**Warm countdown** (go2..go12, [mark-2, mark+1.5]):
+
+| arm | pace ms/frame (per run) | v2 | ftwin P mean / p50 / p95 | late | frame class | vCPU busy / idle ms/frame | PFIFO run / idle | gpu |
+|---|---|---|---|---|---|---|---|---|
+| base | 34.2 (34.3, 34.1) | 63.5% | 34.4 / 33.3 / 47.6 | 68% | run 50%, vsync 32% | 24.6 / 9.6 (72% busy) | 16.8 / 16.0 | 9.7 |
+| NULLREC | **33.5** (33.6, 33.5) | 96.0% | 33.5 / 33.4 / 35.6 | 9% | vsync 91% | 19.1 / 14.4 (57% busy) | 11.3 / 24.7 | 0.2 |
+| SNAPQ=1 | 38.5 (39.4, 37.8) | 61.7% | 40.9 / 40.0 / 56.5 | 95% | run 74% | 28.4 / 10.4 (73%) | 23.0 / 13.9 | 11.4 |
+| SNAPQ=2 | 37.6 (36.7, 38.6) | 66.3% | 39.4 / 38.9 / 51.9 | 86% | run 56% | 27.8 / 9.7 (74%) | 21.2 / 14.2 | 11.5 |
+
+ftwin read 946 SNAPQ=1 frames, against 1,957-2,300 for the other arms. The pace column
+uses its 30 pace lines.
+
+**Cold start** (`gameplay`; one pace line per run, two for NULLREC; thin):
+
+| arm | pace ms/frame (per run) | ftwin P mean / p50 / p95 (frames) |
+|---|---|---|
+| base | 38.7 (39.4, 37.9) | 41.0 / 39.5 / 57.8 (171) |
+| NULLREC | 34.0 (34.1, 33.8) | 33.8 / 33.5 / 37.3 (207) |
+| SNAPQ=1 | 47.4 (47.3, 47.5) | 52.0 / 50.4 / 70.1 (68) |
+| SNAPQ=2 | 48.7 (47.0, 50.4) | 51.2 / 49.9 / 72.4 (136) |
+
+**Mid-frame GPU waits on the PFIFO thread**, base arm, `[probe1010]`:
+
+| | waits/frame | ms each | ms/frame | frames with 0 / 1 / 2 / 3 / 4+ waits |
+|---|---|---|---|---|
+| warm (2,280 frames) | 0.49 | 3.68 | 1.82 | 1793 / 191 / 128 / 75 / 93 |
+| cold (120 frames) | 1.32 | 2.70 | 3.56 | 66 / 17 / 14 / 6 / 17 |
+
+Almost all of them are rotation fence waits: `vkWaitForFences` on the command-buffer
+ring's next fence for >= 100 us, 0.49/frame and 1.80 ms/frame warm. Non-deferred
+finishes are 0.00-0.02/frame. So these are not reads of a result the GPU produced this
+frame. PFIFO has filled the ring and waits for the GPU to retire a buffer. A recorder
+thread feeding the same ring would block at the same points. reportasync1010's
+frametrace pair was not on master when this was read, so these numbers are from this
+lane's base arm only.
+
+**The handoff** (1 draw in 8 timed):
+
+| arm | record | copy us/draw | enqueue us/draw | ms/frame |
+|---|---|---|---|---|
+| SNAPQ=1 | 41.2 KB | 1.99 | 3.93 | 7.76 |
+| SNAPQ=2 | 1.2 KB | 0.38 | 3.49 | 5.36 |
+
+The enqueue costs about 90% of the handoff, and the copy about 10%. The pace deltas are
++4.3 (SNAPQ=1) and +3.4 (SNAPQ=2) ms/frame. Per run the two bounds overlap: 37.8-39.4
+against 36.7-38.6.
+
+**Verdict, as registered: DO NOT BUILD.** Both clauses hold:
+- floor 33.5 > 33;
+- SNAPQ=2 +3.4 > 0.5 x (34.2 - 33.5) = 0.35.
+
+- **What holds the floor: vblank.** The 33.5 ms floor is the title's v2 present period:
+  96% of NULLREC's warm frames are at v2, and 91% are classed vsync. The vCPU does not
+  hold it: it is busy 19.1 ms/frame, under the ~25-27 ms the addendum anticipated. The
+  waits do not hold it either: 0.06 ms/frame in NULLREC. So the first clause fires
+  because the floor *is* 33.3 ms, not because it is above it. A perfect recorder would
+  reach 30 fps.
+- **Warm, the base is already there:** 34.2 ms/frame, p50 33.3. The most a recorder could
+  win is 0.7 ms/frame, against a handoff of 3.4-4.3 ms/frame through the existing queue.
+  Even a copy-only handoff costs 0.5 ms/frame (0.38 us x 1,382 draws).
+- **Cold, the gap is real but mostly GPU:** base - floor = 4.7 ms/frame (pace, n=2) to
+  7.2 (ftwin mean). Of that, 3.56 ms/frame is the ring's GPU waits, which a recorder
+  still pays. NULLREC removes them only because its command buffers carry no draws. The copy alone is
+  0.65 ms/frame at 2,016 draws. That leaves about 0.5-3 ms/frame at the cold start for a
+  design priced at 15-25 lane-days.
+
+BUILD fails on two counts: the floor is not <= 28, and SNAPQ=1 +4.3 is not <= 2. The
+mid-wait count, 0.49/frame warm, passes BUILD's at-most-one bar. At cold it is
+1.32/frame, which does not.
+
+The registration's point ranges:
+- `P_base` 34.2 in [33, 40];
+- `P_floor` 33.54 **out** of [25, 33]: the prediction did not allow for the v2 cap;
+- `P_snapq_d` 4.3 in [1.5, 7];
+- `P_snapq2_d` 3.38 **out** of [0.2, 3.0]: the enqueue, not the copy, costs;
+- `P_mid` 0.49 in [0, 2].
+
+**Context, not an A/B.** With every switch on (F1-F3, DRAWREC, REPORT_ASYNC, TEXSCAN),
+the probe base arm runs the warm countdown at 34.2 ms/frame and the cold start at 38.7.
+Section 14's ON arm, without REPORT_ASYNC and TEXSCAN, ran 37.3 warm on b10dcdb737. The
+refs differ (bf43e8c4ef merges reportasync1010), so the -3.1 ms is not attributed here.
+
+## 17. Recommendations (attempt 4)
+
+- **`HAKUX_DRAWREC=1`: default-on after one title screen, not now.** It does what the
+  speed legs predicted:
+  - -1.5 ms/frame warm and +9 points of v2 (2 plain runs per state);
+  - -21% us/draw (perflog pilot);
+  - no capture moves on the 27-suite disc in 3 runs per arm.
+
+  The registered verdict is still REFUTED on R. And VTX changes when vertex pages are
+  re-armed, on a correctness argument read from the code (section 8). Only NFS's race
+  start and the disc have exercised it. The check before a flip: a Nova screen of the
+  Playable titles with the switch on against off, with frames region-compared and no new
+  fatal signal. A missed vertex copy shows as broken geometry in a title that writes
+  vertex buffers with the CPU mid-frame, and neither workload here isolates that.
+- **perdrawon1010's three (`HAKUX_UNI_BULK/UBERCACHE/FOGCACHE`): yes, default-on,** as
+  perdrawon1010 recommends. This lane ran them in both arms of every run: 15 NFS runs
+  with no fatal signal, and 6 pixel-disc runs. That is stability evidence only; it adds
+  no measurement of their effect.
+- **Probe switches: never default**, as the addendum says. Their verdict is DO NOT
+  BUILD the recorder thread (section 16).
+- **For the next lane at the cold start:** the cold frame is GPU ring back-pressure
+  (3.56 ms/frame of fence waits), PFIFO lock waits (lockw 9.0 ms/frame in the base
+  arm's cold frames), and the vertex walks `tlbmap.mbox` would cut (~0.65 ms/flip
+  expected, unmeasured). Warm, the race start is at vblank. A per-draw CPU change there
+  shows up as v2 share, not as pace.
