@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `meterfit1010` | claude-sonnet-5 | 11 min |  |
+| `meterfit1010` | claude-sonnet-5 | 26 min | lane.meterfit1010: price transcript tokens, not modelUsage tokens (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 2 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -71,7 +71,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/meterfit1010` | lane.meterfit1010: price transcript tokens, not modelUsage tokens (#433, 0.5) | `7fe7799485` | 2026-10-10 19:43 |
 
 ## Recently landed on master
 
@@ -88,4 +90,4 @@ No branch is being worked right now.
 - 2026-10-10 NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5)
 - 2026-10-10 lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation plan (#433, 0.5)
 
-_Updated 2026-10-10 19:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 19:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
