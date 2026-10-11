@@ -901,6 +901,7 @@ files = ["docs/lanes/usage24h1009/**"]
 note = "RETIRED (lane.local 2026-10-10 14:41 PDT): folded as c271f515b4 (14:40 PDT); unit gone. Held now by other rows: docs/testing/jobs/usage/**, docs/testing/jobs/selftest.d/89-usage-mode.sh."
 
 [free]
+# GRANTED (lane.local 2026-10-11 11:43 PDT) to lane.nfsdefault1011: docs/testing/titles/routes/simpsons-hit-run.route (new; carve-out inside [free]'s docs/testing/titles/**). Its brief's step 3 builds the route; the row missed it.
 # TAKEN (lane.local 2026-10-11 11:30 PDT) from [free] by lane.nfsroute1011: docs/testing/titles/routes/nfs-mw-quickrace.route.
 # TAKEN (lane.local 2026-10-11 09:39 PDT) by lane.soakvideo1011: dispatcher.sh and AGENTS.md from [free]; request.sh from [lane.failgate] (no unit; lane/failgate fully folded, 51305b71dd).
 # RELEASED (lane.local 2026-10-11 09:17 PDT) by retiring lane.fastpaths1010 (folded 6d8947bb47): SettingsActivity.kt, PerGameSettingsManager.kt, activity_settings.xml. MainActivity.kt, PerGameSettingsActivity.kt, strings.xml -> lane.nfsdefault1011; xemu_android.cpp TAKEN from [free] by lane.nfsdefault1011.
@@ -2329,7 +2330,7 @@ note = "STARTED lane.local 2026-10-11 09:39 PDT (Sonnet): request.sh --video-sec
 [lane.nfsdefault1011]
 issues = ["433"]
 standing = false
-files = ["android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsActivity.kt", "android/app/src/main/res/values/strings.xml", "android/app/src/main/cpp/xemu_android.cpp", "docs/lanes/nfsdefault1011/**", "docs/testing/predictions/nfsdefault1011-*"]
+files = ["android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsActivity.kt", "android/app/src/main/res/values/strings.xml", "android/app/src/main/cpp/xemu_android.cpp", "docs/lanes/nfsdefault1011/**", "docs/testing/predictions/nfsdefault1011-*", "docs/testing/titles/routes/simpsons-hit-run.route"]
 note = "STARTED lane.local 2026-10-11 09:17 PDT (Sonnet): Submit frame buffering defaults to 3 everywhere (fresh installs show Triple and ran Double), and HAKUX_POSTED_PUT + HAKUX_LOCKFREE_WAKE join the Fast renderer paths toggle; NFS MW proof, Simpsons free roam, Playable screen ON vs OFF on the Nova. Three Android files handed over from retired lane.fastpaths1010; xemu_android.cpp from [free]. Brief: briefs/nfsdefault1011.md."
 
 [lane.gtasagpu1011]
