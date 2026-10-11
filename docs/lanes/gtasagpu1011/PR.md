@@ -70,6 +70,8 @@ Still open:
 
 `fdread.py DUMP rb F OUTDIR` turns the readbacks into PNG sheets. Predictions A-D and the timing case are in NOTES 2d.
 
+**Schema 7 (50a389ef2b)** extends `rtt` to the draw that projects the shadow. Before that draw is recorded, it reads the full colour target (`pre`) and its depth (`zpre`). After the draw, it reads the colour target again (`post`). `fdread.py DUMP cons` reports how many pixels the draw changed, where they are, and the depth under them. Predictions A1-A4 are in NOTES 2d.
+
 ## Runs
 
 | run | build | what | state |
@@ -78,7 +80,8 @@ Still open:
 | `1-1791741002-lane.gtasagpu1011-54100` | a6ee1c58fe | `HAKUX_MEASURE_NO_GEOM=1` dump | scored: the GS wedge path is refuted (2b) |
 | `1-1791742113-lane.gtasagpu1011-176610` | a6ee1c58fe | schema 5 dump, switch off | scored (2c) |
 | `1-1791742114-lane.gtasagpu1011-177443` | a6ee1c58fe | schema 5 dump, `HAKUX_VTX_HAZARD=1` | scored (2c) |
-| `1-1791744746-lane.gtasagpu1011-651566` | 8e40300c6c | schema 6 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | queued behind the nfsroute1011 hold on the Nova |
+| `1-1791744746-lane.gtasagpu1011-651566` | 8e40300c6c | schema 6 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | queued on the Nova |
+| `1-1791745550-lane.gtasagpu1011-818197` | 50a389ef2b | schema 7 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | queued on the Nova after 651566 |
 
 ## Step 3
 
