@@ -9,9 +9,14 @@
 # hw/xbox/nv2a/pfifo.c verbatim (cut between its BEGIN/END markers), and
 # pfifo_lock_timed_ft() verbatim, against a stub nv2a_int.h that carries the
 # real NV2A_LOCKW_* enum (debug.h), the real pfifo_lock_timed() (nv2a_int.h),
-# the real include/qemu/atomic.h and nv2a_regs.h, -Wall -Werror, and runs the
-# harness twice: with HAKUX_POSTED_PUT=1 (on) and without it (off). The switch
-# is read once per process, as in the build.
+# the real include/qemu/atomic.h, qemu/futex.h and nv2a_regs.h, and
+# util/event.c's QemuEvent functions verbatim (the futex flavour the build
+# uses on Linux and Android), -Wall -Werror, and runs the harness three times:
+#   off   HAKUX_POSTED_PUT unset, HAKUX_LOCKFREE_WAKE=1 (which must be inert)
+#   on    HAKUX_POSTED_PUT=1
+#   wake  HAKUX_POSTED_PUT=1 HAKUX_LOCKFREE_WAKE=1
+# The switches are read once per process, as in the build. Checks 1-7 run in
+# every mode; their expectations for off and on are unchanged.
 #
 #   1. POSTED (on): a DMA_PUT store made while another thread holds pfifo.lock
 #      for 400 ms returns in under 100 ms, stores the value, sets the kick, and
@@ -49,7 +54,22 @@
 #      to PUT when it is not posted (off) and to KICK when it is posted to a
 #      parked PFIFO thread (on), whose wait is also booked as parked; each
 #      acquisition is one frametrace pfifo.lock wait with holder PFIFO; and
-#      lock_wait_ns moves by exactly the sum of the sites.
+#      lock_wait_ns moves by exactly the sum of the sites. Wake: the posted
+#      DMA_PUT takes no lock, so it books nothing anywhere.
+#   8. LOCKFREE: a DMA_PUT store made while a third thread holds pfifo.lock
+#      for 400 ms and the PFIFO thread is parked. Wake: returns in under
+#      100 ms, stores the value, sets the kick and the event (one set), and
+#      adds nothing to lock_wait_ns. On and off: it waits out the hold (the
+#      wait this lane measured on the Nova) and sets no event.
+#   9. IDLE: the event is reset at every park, so an idle PFIFO thread sleeps:
+#      with an old set left on the event and nothing to do, check 4's
+#      stand-in turns its loop at most twice in 200 ms (every mode).
+#  10. EXIT (wake): 2,000 exits made as nv2a_exitfn() makes them -- `exiting`,
+#      the broadcast and the event set, without the lock -- each at a random
+#      point of a PFIFO-thread stand-in's loop (pfifo_thread()'s shape: take
+#      the kick, work, park unless kicked, break on `exiting`). Each must be
+#      joined within 1 s. Master's exit, a bare broadcast with no predicate,
+#      can be lost the same way (NOTES.md section 2); it is not checked here.
 #
 # Falsifiers (each must FAIL a check, or the check means nothing):
 #   F1. the block with the parked wakeup removed (`if (0)`): check 4 must
@@ -66,10 +86,22 @@
 #   F7. pfifo_lock_timed() without its frametrace branch: check 7 must fail.
 #   F8. pfifo_lock_timed_ft() without its lock_wait_ns add: check 7 must fail.
 #   F9. pfifo_post_kick() booking its wait to PUT: check 7 must fail (on).
+#   F1, F3, F4, F5 are also run in wake mode, where they must fail the same
+#   checks: the wake keeps the handshake and both its barriers.
+#   F10. pfifo_park() without the event reset: check 9 must fail (wake).
+#   F11. the reset moved after the condition check, just before the wait:
+#        check 5 must count lost rounds (wake). A set that lands between the
+#        check and the reset is erased.
+#   F12. pfifo_wake() without its event set: check 4 must lose a wakeup (wake).
+#   F13. pfifo_park() without the `exiting` predicate: check 10 must hang (wake).
+#   F14. pfifo_post_kick() without its lock-free branch: check 8 must fail (wake).
 #
 # What it cannot show: the DMA_PUT re-check in pfifo_park() covers a third
 # kick writer under the C11 model (see the block's comment). Neither x86-64
-# nor ARMv8 can produce that case, so no host run can fail without it.
+# nor ARMv8 can produce that case, so no host run can fail without it. Nor
+# does it run nv2a.c: nv2a_lock_fifo()'s and nv2a_exitfn()'s event sets are
+# checked statically, and check 10 runs nv2a_exitfn()'s statements as copied
+# into the harness.
 #
 # Usage: bash docs/lanes/lockwake1011/selftest_wake.sh   (from the repo root)
 # Exit 0 when every check passes and every falsifier fails as it must.
@@ -141,10 +173,19 @@ static inline void stub_cond_wait(QemuCond *c, QemuMutex *m)
     pthread_cond_wait(c, m);
 }
 #define qemu_cond_wait(c, m) stub_cond_wait(c, m)
+/* include/qemu/thread.h's QemuEvent with HAVE_FUTEX. The functions are
+ * util/event.c's, cut by the script and wrapped in harness.c. */
+typedef struct QemuEvent { unsigned value; bool initialized; } QemuEvent;
+void qemu_event_init(QemuEvent *ev, bool init);
+void qemu_event_set(QemuEvent *ev);
+void qemu_event_reset(QemuEvent *ev);
+void qemu_event_wait(QemuEvent *ev);
 typedef struct NV2AState {
+    bool exiting;
     struct {
         QemuMutex lock; QemuCond fifo_cond; uint32_t regs[0x2000];
-        bool fifo_kick; bool parked; uint32_t put_seen; int64_t posted_ts;
+        bool fifo_kick; bool parked; QemuEvent wake; uint32_t put_seen;
+        int64_t posted_ts;
     } pfifo;
 } NV2AState;
 @LOCKW_ENUM@
@@ -179,15 +220,47 @@ void user_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size);
 EOF
 
 cat > "$T/harness.c" <<'EOF'
+#define _GNU_SOURCE
 #include "nv2a_int.h"
+#include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
+#define CONFIG_LINUX 1
+#include "qemu/futex.h"
+#include "event_real.c"   /* util/event.c from EV_SET on, as real_event_* */
 __typeof__(g_nv2a_stats) g_nv2a_stats;
 int hakux_ft_on;
 int stub_ft_begun, stub_ft_ended, stub_ft_wrong;
 int64_t stub_widen_ns;
-int stub_litmus, stub_waited, stub_round, stub_posted_round;
-uint32_t stub_broadcasts;
+int stub_litmus, stub_waited, stub_woken, stub_round, stub_posted_round;
+uint32_t stub_broadcasts, stub_event_sets;
+
+/* The event as the build has it, with what the checks read: sets are
+ * counted; in check 5 a wait records that it would sleep and, once this
+ * round's poster has returned, whether the event is set (a wait that would
+ * not return then never would), and returns; otherwise a wait first spins
+ * `stub_widen_ns` with the lock released. */
+void qemu_event_init(QemuEvent *ev, bool init) { real_event_init(ev, init); }
+void qemu_event_reset(QemuEvent *ev) { real_event_reset(ev); }
+void qemu_event_set(QemuEvent *ev)
+{
+    qatomic_inc(&stub_event_sets);
+    real_event_set(ev);
+}
+void qemu_event_wait(QemuEvent *ev)
+{
+    if (qatomic_read(&stub_litmus)) {
+        int r = qatomic_read(&stub_round);
+        qatomic_set(&stub_waited, 1);
+        while (qatomic_load_acquire(&stub_posted_round) != r) { }
+        qatomic_set(&stub_woken, qatomic_load_acquire(&ev->value) == EV_SET);
+        return;
+    }
+    int64_t until = qemu_clock_get_ns(0) + stub_widen_ns;
+    while (qemu_clock_get_ns(0) < until) { }
+    real_event_wait(ev);
+}
 
 /* What pfifo.c's posted-put block needs from the rest of pfifo.c. */
 #define FIFO_SKEW_OFF 0
@@ -197,15 +270,13 @@ static int fifo_skew_bound_mode(void) { return bound_mode; }
 #include "postput_block.c"
 #include "lock_timed_ft.c"
 
-/* pfifo_kick's wake, as pfifo.c has it; called under the lock. */
+/* pfifo_kick() as pfifo.c has it, less the submission bookkeeping: the
+ * block's pfifo_wake(). Called under the lock. */
 static int locked_kicks;
 void pfifo_kick(NV2AState *d)
 {
     locked_kicks++;
-    if (!qatomic_read(&d->pfifo.fifo_kick)) {
-        qatomic_set(&d->pfifo.fifo_kick, true);
-        qemu_cond_broadcast(&d->pfifo.fifo_cond);
-    }
+    pfifo_wake(d);
 }
 
 static NV2AState s;
@@ -221,22 +292,24 @@ static void *holder(void *arg)
 static int64_t now(void) { return qemu_clock_get_ns(0); }
 static void hold_lock(pthread_t *t) { held = 0; pthread_create(t, NULL, holder, NULL); while (!held) usleep(100); }
 static void spin_ns(int64_t ns) { int64_t until = now() + ns; while (now() < until) { } }
-static void wake_for_exit(void)
+static void wake_for_exit(void)     /* as nv2a_lock_fifo() wakes it */
 {
     pthread_mutex_lock(&s.pfifo.lock);
     qatomic_set(&s.pfifo.fifo_kick, true);
     pthread_cond_broadcast(&s.pfifo.fifo_cond);
+    qemu_event_set(&s.pfifo.wake);
     pthread_mutex_unlock(&s.pfifo.lock);
 }
 
 /* Check 4's PFIFO thread: pfifo_thread()'s loop, less the work. */
 static uint32_t consumed;
-static int stop;
+static int stop, turns;
 static void *pfifo_sim(void *arg)
 {
     unsigned seed = 1;
     pthread_mutex_lock(&s.pfifo.lock);
     while (!qatomic_read(&stop)) {
+        qatomic_inc(&turns);
         bool was_active = pfifo_take_kick(&s);
         qatomic_store_release(&consumed,
             qatomic_load_acquire(&s.pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT]));
@@ -268,10 +341,7 @@ static void *other_kicker(void *arg)
     while (!qatomic_read(&stop)) {
         spin_ns(rand_r(&seed) % 60000);
         pthread_mutex_lock(&s.pfifo.lock);
-        if (!qatomic_read(&s.pfifo.fifo_kick)) {
-            qatomic_set(&s.pfifo.fifo_kick, true);
-            qemu_cond_broadcast(&s.pfifo.fifo_cond);
-        }
+        pfifo_wake(&s);
         pthread_mutex_unlock(&s.pfifo.lock);
     }
     (void)arg; return NULL;
@@ -288,6 +358,7 @@ static void *park_round(void *arg)
         qatomic_set(&s.pfifo.fifo_kick, false);
         s.pfifo.put_seen = qatomic_read(&s.pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT]);
         qatomic_set(&stub_waited, 0);
+        qatomic_set(&stub_woken, 0);
         qatomic_set(&stub_round, i);
         qatomic_store_release(&rounds_ready, i);
         int go;
@@ -304,17 +375,45 @@ static void *park_round(void *arg)
     (void)arg;
 }
 
+/* Check 10's PFIFO thread: pfifo_thread()'s loop with its exit. */
+static void *exit_sim(void *arg)
+{
+    unsigned seed = (unsigned)(uintptr_t)arg;
+    pthread_mutex_lock(&s.pfifo.lock);
+    while (true) {
+        pfifo_take_kick(&s);
+        if (rand_r(&seed) % 2) {
+            spin_ns(rand_r(&seed) % 20000);
+        }
+        if (!qatomic_read(&s.pfifo.fifo_kick)) {
+            pfifo_park(&s);
+        }
+        if (qatomic_read(&s.exiting)) {
+            break;
+        }
+    }
+    pthread_mutex_unlock(&s.pfifo.lock);
+    return NULL;
+}
+
 int main(int argc, char **argv)
 {
-    int on = argc > 1 && !strcmp(argv[1], "on");
+    const char *mode = argc > 1 ? argv[1] : "off";
+    int wake = !strcmp(mode, "wake");
+    int on = wake || !strcmp(mode, "on");
     int bad = 0;
     if (on) setenv("HAKUX_POSTED_PUT", "1", 1); else unsetenv("HAKUX_POSTED_PUT");
+    /* off asks for the wake too: without the posted store it must be inert */
+    if (wake || !on) setenv("HAKUX_LOCKFREE_WAKE", "1", 1); else unsetenv("HAKUX_LOCKFREE_WAKE");
     pthread_mutex_init(&s.pfifo.lock, NULL);
     pthread_cond_init(&s.pfifo.fifo_cond, NULL);
+    qemu_event_init(&s.pfifo.wake, false);
     s.pfifo.regs[NV_PFIFO_MODE] = 1;                     /* channel 0: DMA mode */
     s.pfifo.regs[NV_PFIFO_CACHE1_PUSH1] = 0;             /* CHID 0 */
-    printf("SWITCH %s\n", pfifo_posted_put_on() ? "on" : "off");
+    printf("SWITCH %s WAKE %s\n", pfifo_posted_put_on() ? "on" : "off",
+           pfifo_lockfree_wake_on() ? "on" : "off");
     bad += pfifo_posted_put_on() != on;
+    bad += pfifo_lockfree_wake_on() != wake;
 
     {   /* 1. a store while the lock is held */
         pthread_t t; hold_lock(&t);
@@ -355,7 +454,9 @@ int main(int argc, char **argv)
     {   /* 7. each wait booked to its site (lockwake1011) */
         CpuTimingWork *w = &g_nv2a_stats.cpu_working, w0;
         int64_t sum = 0;
-        int ok7 = 1, acq = on ? 3 : 4, put_site = on ? NV2A_LOCKW_KICK : NV2A_LOCKW_PUT;
+        /* wake: the posted DMA_PUT to a parked thread takes no lock at all */
+        int ok7 = 1, acq = wake ? 2 : on ? 3 : 4, nsite = wake ? 2 : 3;
+        int put_site = on ? NV2A_LOCKW_KICK : NV2A_LOCKW_PUT;
         pthread_t t;
         s.pfifo.fifo_kick = false;
         /* HAKUX_FRAMETRACE off: the sum only */
@@ -376,7 +477,7 @@ int main(int argc, char **argv)
         user_write(&s, NV_USER_DMA_PUT, 0x1210, 4);  /* free: off books PUT; on takes it by trylock */
         qatomic_set(&hakux_ft_on, 0);
         int sites[3] = { NV2A_LOCKW_GET, NV2A_LOCKW_REF, put_site };
-        for (int k = 0; k < 3; k++) {
+        for (int k = 0; k < nsite; k++) {
             int st = sites[k];
             uint32_t want_n = st == NV2A_LOCKW_PUT ? 2 : 1;
             if (w->lockw_site_ns[st] - w0.lockw_site_ns[st] < 300000000LL ||
@@ -390,10 +491,12 @@ int main(int argc, char **argv)
         }
         int other = w->lockw_site_n[NV2A_LOCKW_OTHER] != w0.lockw_site_n[NV2A_LOCKW_OTHER] ||
                     w->lockw_site_n[on ? NV2A_LOCKW_PUT : NV2A_LOCKW_KICK] !=
-                        w0.lockw_site_n[on ? NV2A_LOCKW_PUT : NV2A_LOCKW_KICK];
+                        w0.lockw_site_n[on ? NV2A_LOCKW_PUT : NV2A_LOCKW_KICK] ||
+                    (wake && w->lockw_site_n[NV2A_LOCKW_KICK] !=
+                                 w0.lockw_site_n[NV2A_LOCKW_KICK]);
         int64_t parked = w->lockw_parked_ns - w0.lockw_parked_ns;
         int pass = off_ok && ok7 && !other && sum == w->lock_wait_ns - w0.lock_wait_ns &&
-                   (on ? parked >= 300000000LL : parked == 0) &&
+                   (on && !wake ? parked >= 300000000LL : parked == 0) &&
                    stub_ft_begun == acq && stub_ft_ended == acq && !stub_ft_wrong;
         printf("SITES %s off_ok=%d sites_ok=%d stray=%d sum_ms=%lld lockw_ms=%lld parked_ms=%lld "
                "ft=%d/%d/%d want %d\n", pass ? "ok" : "FAIL", off_ok, ok7, other,
@@ -401,13 +504,45 @@ int main(int argc, char **argv)
                (long long)(parked / 1000000), stub_ft_begun, stub_ft_ended, stub_ft_wrong, acq);
         bad += !pass;
     }
-    {   /* 4. no lost wakeup, end to end */
+    {   /* 8. the posted store's wake to a parked PFIFO thread, the lock held by a third */
+        CpuTimingWork *w = &g_nv2a_stats.cpu_working;
+        int64_t lw0 = w->lock_wait_ns;
+        uint32_t e0 = qatomic_read(&stub_event_sets);
+        pthread_t t;
+        s.pfifo.fifo_kick = false;
+        qemu_event_reset(&s.pfifo.wake);
+        qatomic_set(&s.pfifo.parked, true);
+        hold_lock(&t);
+        int64_t t0 = now();
+        user_write(&s, NV_USER_DMA_PUT, 0x1300, 4);
+        int64_t ms = (now() - t0) / 1000000;
+        pthread_join(t, NULL);
+        qatomic_set(&s.pfifo.parked, false);
+        int set = qatomic_read(&s.pfifo.wake.value) == EV_SET;
+        int sets = (int)(qatomic_read(&stub_event_sets) - e0);
+        int64_t lw = (w->lock_wait_ns - lw0) / 1000000;
+        int stored = s.pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT] == 0x1300 && s.pfifo.fifo_kick;
+        int pass = wake ? ms < 100 && set && sets == 1 && lw == 0 && stored
+                        : ms >= 300 && !set && sets == 0 && lw >= 300 && stored;
+        printf("LOCKFREE %s ms=%lld event_set=%d sets=%d lockw_ms=%lld stored=%d\n",
+               pass ? "ok" : "FAIL", (long long)ms, set, sets, (long long)lw, stored);
+        bad += !pass;
+    }
+    {   /* 4. no lost wakeup, end to end; 9. an idle PFIFO thread sleeps */
         stub_widen_ns = 20000;
         s.pfifo.fifo_kick = false;
         qatomic_set(&consumed, 0x1100);
         s.pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT] = 0x1100;
         pthread_t p, k;
         pthread_create(&p, NULL, pfifo_sim, NULL);
+        usleep(50 * 1000);
+        qemu_event_set(&s.pfifo.wake);   /* an earlier wake's set: the next park must clear it */
+        usleep(20 * 1000);
+        int t0 = qatomic_read(&turns);
+        usleep(200 * 1000);
+        int idle = qatomic_read(&turns) - t0;
+        printf("IDLE %s turns=%d in 200 ms\n", idle <= 2 ? "ok" : "FAIL", idle);
+        bad += idle > 2;
         pthread_create(&k, NULL, other_kicker, NULL);
         int n = 100000, lost = 0, i;
         int k0 = locked_kicks;
@@ -451,7 +586,8 @@ int main(int argc, char **argv)
             while (qatomic_load_acquire(&rounds_done) != i) { }
             int w = round_waited;
             waits += w;
-            if (w && qatomic_read(&stub_broadcasts) == b0) {
+            if (wake ? w && !qatomic_read(&stub_woken)
+                     : w && qatomic_read(&stub_broadcasts) == b0) {
                 lost++;
                 if (!first) first = i;
             }
@@ -465,6 +601,31 @@ int main(int argc, char **argv)
         printf("RACE %s rounds=%d would_sleep=%d lost=%d first_lost=%d\n",
                pass ? "ok" : "FAIL", i - 1, waits, lost, first);
         bad += !pass;
+    }
+    if (wake) {   /* 10. the exit wakes a parked PFIFO thread */
+        stub_widen_ns = 0;
+        int n = 2000, hung = 0, i;
+        unsigned seed = 11;
+        for (i = 1; i <= n && !hung; i++) {
+            qatomic_set(&s.exiting, false);
+            pthread_t p;
+            pthread_create(&p, NULL, exit_sim, (void *)(uintptr_t)i);
+            spin_ns(rand_r(&seed) % 60000);
+            /* nv2a_exitfn() */
+            qatomic_set(&s.exiting, true);
+            qemu_cond_broadcast(&s.pfifo.fifo_cond);
+            qemu_event_set(&s.pfifo.wake);
+            struct timespec dl;
+            clock_gettime(CLOCK_REALTIME, &dl);
+            dl.tv_sec += 1;
+            if (pthread_timedjoin_np(p, NULL, &dl) != 0) {
+                hung = i;
+                qemu_event_set(&s.pfifo.wake);   /* release it, to join */
+                pthread_join(p, NULL);
+            }
+        }
+        printf("EXIT %s exits=%d hung_at=%d\n", hung ? "FAIL" : "ok", i - 1, hung);
+        bad += hung != 0;
     }
     return bad ? 1 : 0;
 }
@@ -491,6 +652,7 @@ build() {
     cp "$1" "$T/$3/user.c"
     cp "$2" "$T/$3/postput_block.c"
     cp "${5:-$T/ftfn.c}" "$T/$3/lock_timed_ft.c"
+    cp "$T/event_real.c" "$T/$3/event_real.c"
     python3 - "$T/stub_head.h" "$T/enum.h" "${4:-$T/lock_timed.h}" > "$T/$3/nv2a_int.h" <<'PY'
 import sys
 s = open(sys.argv[1]).read()
@@ -504,7 +666,7 @@ PY
     fi
 }
 
-run() {     # <tag> on|off
+run() {     # <tag> off|on|wake
     "$T/$1/h" "$2"
 }
 
@@ -515,21 +677,26 @@ fi
 lockw_enum "$REPO/hw/xbox/nv2a/debug.h" > "$T/enum.h"
 lock_timed "$REPO/hw/xbox/nv2a/nv2a_int.h" > "$T/lock_timed.h"
 ft_fn "$REPO/hw/xbox/nv2a/pfifo.c" > "$T/ftfn.c"
-for f in enum.h:NV2A_LOCKW_NSITE lock_timed.h:'static inline void pfifo_lock_timed(' ftfn.c:'lockw_site_nb\[site\]++'; do
+sed -n '/^#define EV_SET/,$p' "$REPO/util/event.c" | sed 's/qemu_event_/real_event_/g' > "$T/event_real.c"
+for f in enum.h:NV2A_LOCKW_NSITE lock_timed.h:'static inline void pfifo_lock_timed(' ftfn.c:'lockw_site_nb\[site\]++' \
+         event_real.c:'qemu_futex_wait(ev, EV_BUSY);'; do
     if ! grep -q "${f#*:}" "$T/${f%%:*}"; then
         bad "cannot cut ${f%%:*} from the source"; echo "== FAIL ($fail)"; exit 1
     fi
 done
 
 build "$REPO/hw/xbox/nv2a/user.c" "$T/block.c" fix || { bad "the fix does not compile"; echo "== FAIL ($fail)"; exit 1; }
-for sw in on off; do
-    echo "== user.c and pfifo.c's posted-put block at the working tree, switch $sw"
+for sw in on off wake; do
+    echo "== user.c and pfifo.c's posted-put block at the working tree, mode $sw"
     OUT=$(run fix $sw); RC=$?
     echo "$OUT" | sed 's/^/    /'
     if [ $RC -eq 0 ]; then
-        if [ $sw = on ]; then ok "on: posted under a held lock, locked when free, locked under the bound, every wait at its site, no lost wakeup, no lost round"
-        else ok "off: locked under a held lock, as master; nothing posted; every wait at its site; no lost wakeup"; fi
-    else bad "switch $sw (rc $RC)"; fi
+        case $sw in
+        on)   ok "on: posted under a held lock, locked when free, locked under the bound, every wait at its site, the posted wake waits for the lock, no lost wakeup, no lost round" ;;
+        off)  ok "off: locked under a held lock, as master; nothing posted; the wake switch inert; every wait at its site; no lost wakeup" ;;
+        wake) ok "wake: the posted wake takes no lock and books nothing; the idle thread sleeps; no lost wakeup, no lost round, no lost exit" ;;
+        esac
+    else bad "mode $sw (rc $RC)"; fi
 done
 
 echo "== static: pfifo.c and user.c"
@@ -565,14 +732,39 @@ if grep -q 'pfifo_lock_timed(d, NV2A_LOCKW_KICK);' "$T/block.c" \
     ok "pfifo_post_kick() books KICK; lock_wait_ns is added only by pfifo_lock_timed() and its _ft()"
 else bad "a lock_wait_ns add outside pfifo_lock_timed(), or post_kick not at KICK"; fi
 
+echo "== static: the lock-free wake (pfifo.c, nv2a.c)"
+N="$REPO/hw/xbox/nv2a/nv2a.c"
+KICKFN=$(sed -n '/^void pfifo_kick(NV2AState \*d)$/,/^}/p' "$P")
+if echo "$KICKFN" | grep -q '^    pfifo_wake(d);$' \
+   && ! echo "$KICKFN" | grep -q 'qemu_cond_broadcast'; then
+    ok "pfifo_kick() wakes through the block's pfifo_wake()"
+else bad "pfifo_kick() does not wake through pfifo_wake()"; fi
+if [ "$(grep -c 'qemu_event_wait(&d->pfifo.wake)' "$P")" = 1 ] \
+   && [ "$(grep -c 'qemu_event_wait(&d->pfifo.wake)' "$T/block.c")" = 1 ] \
+   && [ "$(grep -c 'qemu_event_reset(&d->pfifo.wake)' "$P")" = 1 ] \
+   && [ "$(grep -c 'qemu_event_reset(&d->pfifo.wake)' "$T/block.c")" = 1 ]; then
+    ok "the event's one wait and one reset are pfifo_park()'s"
+else bad "an event wait or reset outside the block"; fi
+EXITFN=$(sed -n '/^static void nv2a_exitfn(/,/^}/p' "$N")
+LOCKFN=$(sed -n '/^static void nv2a_lock_fifo(/,/^}/p' "$N")
+if grep -q 'qemu_event_init(&d->pfifo.wake, false);' "$N" \
+   && echo "$LOCKFN" | grep -q 'qemu_event_set(&d->pfifo.wake);' \
+   && echo "$EXITFN" | awk '/qatomic_set\(&d->exiting, true\);/ { e = 1 }
+        e && /qemu_event_set\(&d->pfifo.wake\);/ { ok = 1 } END { exit !ok }'; then
+    ok "nv2a.c: the event is initialised, and nv2a_lock_fifo() and nv2a_exitfn() (after \`exiting\`) set it"
+else bad "nv2a.c does not init the event, or a waker there does not set it"; fi
+
 echo "== falsifier F1: the block without the parked wakeup must lose one"
 sed 's/if (qatomic_read(&d->pfifo.parked)) {/if (0) {/' "$T/block.c" > "$T/block_f1.c"
 if cmp -s "$T/block.c" "$T/block_f1.c"; then bad "F1 mutation did not apply"; fi
-build "$U" "$T/block_f1.c" f1 && OUT=$(run f1 on)
-echo "$OUT" | sed 's/^/    /'
-if echo "$OUT" | grep -q '^WAKEUP FAIL .*lost_at=[1-9]'; then
-    ok "F1 lost a wakeup: check 4 sees the race"
-else bad "F1 did not lose a wakeup; check 4 cannot discriminate"; fi
+build "$U" "$T/block_f1.c" f1
+for m in on wake; do
+    OUT=$(run f1 $m)
+    echo "$OUT" | grep '^WAKEUP' | sed "s/^/    $m: /"
+    if echo "$OUT" | grep -q '^WAKEUP FAIL .*lost_at=[1-9]'; then
+        ok "F1 ($m) lost a wakeup: check 4 sees the race"
+    else bad "F1 ($m) did not lose a wakeup; check 4 cannot discriminate"; fi
+done
 
 echo "== falsifier F2: user.c at $BASE (before postput1010) must block on the held lock"
 git -C "$REPO" show "$BASE:hw/xbox/nv2a/user.c" > "$T/base_user.c" 2>/dev/null \
@@ -588,11 +780,14 @@ sed '/^    smp_mb();$/d' "$T/block.c" > "$T/block_f3.c"
 if [ "$(diff "$T/block.c" "$T/block_f3.c" | grep -c '^<')" != 2 ]; then
     bad "F3 mutation did not remove exactly the two barriers"
 fi
-build "$U" "$T/block_f3.c" f3 && OUT=$(run f3 on)
-echo "$OUT" | sed 's/^/    /'
-if echo "$OUT" | grep -q '^RACE FAIL .*lost=[1-9]'; then
-    ok "F3 lost rounds: check 5 sees a missing barrier"
-else bad "F3 lost no round; check 5 cannot discriminate"; fi
+build "$U" "$T/block_f3.c" f3
+for m in on wake; do
+    OUT=$(run f3 $m)
+    echo "$OUT" | grep '^RACE' | sed "s/^/    $m: /"
+    if echo "$OUT" | grep -q '^RACE FAIL .*lost=[1-9]'; then
+        ok "F3 ($m) lost rounds: check 5 sees a missing barrier"
+    else bad "F3 ($m) lost no round; check 5 cannot discriminate"; fi
+done
 
 # F4, F5: one barrier at a time. Each side's barrier is needed on its own.
 for f in "F4 pfifo_park pfifo_post_kick" "F5 pfifo_post_kick pfifo_dma_put_may_post"; do
@@ -605,11 +800,14 @@ for f in "F4 pfifo_park pfifo_post_kick" "F5 pfifo_post_kick pfifo_dma_put_may_p
     if [ "$(diff "$T/block.c" "$T/block_$1.c" | grep -c '^<')" != 1 ]; then
         bad "$1 mutation did not remove exactly one barrier"
     fi
-    build "$U" "$T/block_$1.c" "$1" && OUT=$(run "$1" on)
-    echo "$OUT" | grep '^RACE' | sed 's/^/    /'
-    if echo "$OUT" | grep -q '^RACE FAIL .*lost=[1-9]'; then
-        ok "$1 lost rounds: $2()'s barrier is load-bearing"
-    else bad "$1 lost no round"; fi
+    build "$U" "$T/block_$1.c" "$1"
+    for m in on wake; do
+        OUT=$(run "$1" $m)
+        echo "$OUT" | grep '^RACE' | sed "s/^/    $m: /"
+        if echo "$OUT" | grep -q '^RACE FAIL .*lost=[1-9]'; then
+            ok "$1 ($m) lost rounds: $2()'s barrier is load-bearing"
+        else bad "$1 ($m) lost no round"; fi
+    done
 done
 
 echo "== falsifier F6: user.c booking the DMA_GET store to OTHER must fail check 7"
@@ -643,6 +841,52 @@ build "$U" "$T/block_f9.c" f9 && OUT=$(run f9 on)
 echo "$OUT" | grep '^SITES' | sed 's/^/    /'
 if echo "$OUT" | grep -q '^SITES FAIL'; then ok "F9 failed check 7: the posted store's wake is told from the locked store"
 else bad "F9 passed check 7"; fi
+
+echo "== falsifier F10: pfifo_park() without the event reset must fail check 9 (wake)"
+sed '/^        qemu_event_reset(&d->pfifo.wake);$/d' "$T/block.c" > "$T/block_f10.c"
+if [ "$(diff "$T/block.c" "$T/block_f10.c" | grep -c '^<')" != 1 ]; then bad "F10 mutation did not apply"; fi
+build "$U" "$T/block_f10.c" f10 && OUT=$(run f10 wake)
+echo "$OUT" | grep '^IDLE' | sed 's/^/    /'
+if echo "$OUT" | grep -q '^IDLE FAIL'; then ok "F10 failed check 9: the reset is what lets the idle thread sleep"
+else bad "F10 passed check 9"; fi
+
+echo "== falsifier F11: the reset after the condition check must lose a round (wake)"
+awk '/^        qemu_event_reset\(&d->pfifo.wake\);$/ { next }
+     /^            qemu_mutex_unlock\(&d->pfifo.lock\);$/ && !done {
+         print "            qemu_event_reset(&d->pfifo.wake);"; done = 1 }
+     { print }' "$T/block.c" > "$T/block_f11.c"
+if [ "$(diff "$T/block.c" "$T/block_f11.c" | grep -c '^[<>]')" != 2 ]; then bad "F11 mutation did not apply"; fi
+build "$U" "$T/block_f11.c" f11 && OUT=$(run f11 wake)
+echo "$OUT" | grep '^RACE' | sed 's/^/    /'
+if echo "$OUT" | grep -q '^RACE FAIL .*lost=[1-9]'; then ok "F11 lost rounds: the reset must come before the check"
+else bad "F11 lost no round"; fi
+
+echo "== falsifier F12: pfifo_wake() without its event set must lose a wakeup (wake)"
+awk '/^static void pfifo_wake\(/ { f = 1 } f && /^}/ { f = 0 }
+     f && /qemu_event_set\(&d->pfifo.wake\);/ { next } { print }' "$T/block.c" > "$T/block_f12.c"
+if [ "$(diff "$T/block.c" "$T/block_f12.c" | grep -c '^<')" != 1 ]; then bad "F12 mutation did not apply"; fi
+build "$U" "$T/block_f12.c" f12 && OUT=$(run f12 wake)
+echo "$OUT" | grep '^WAKEUP' | sed 's/^/    /'
+if echo "$OUT" | grep -q '^WAKEUP FAIL .*lost_at=[1-9]'; then ok "F12 lost a wakeup: the locked kickers must set the event"
+else bad "F12 lost no wakeup"; fi
+
+echo "== falsifier F13: pfifo_park() without the exiting predicate must hang on exit (wake)"
+sed 's/} else if (!qatomic_read(&d->exiting)) {/} else if (1) {/' "$T/block.c" > "$T/block_f13.c"
+if cmp -s "$T/block.c" "$T/block_f13.c"; then bad "F13 mutation did not apply"; fi
+build "$U" "$T/block_f13.c" f13 && OUT=$(run f13 wake)
+echo "$OUT" | grep '^EXIT' | sed 's/^/    /'
+if echo "$OUT" | grep -q '^EXIT FAIL .*hung_at=[1-9]'; then ok "F13 hung: the exit needs the predicate, not only the set"
+else bad "F13 did not hang; check 10 cannot discriminate"; fi
+
+echo "== falsifier F14: pfifo_post_kick() without its lock-free branch must fail check 8 (wake)"
+awk '/^static void pfifo_post_kick\(/ { f = 1 } f && /^}/ { f = 0 }
+     f && /if \(pfifo_lockfree_wake_on\(\)\) \{/ { sub(/if \(pfifo_lockfree_wake_on\(\)\) \{/, "if (0) {") }
+     { print }' "$T/block.c" > "$T/block_f14.c"
+if [ "$(diff "$T/block.c" "$T/block_f14.c" | grep -c '^<')" != 1 ]; then bad "F14 mutation did not apply"; fi
+build "$U" "$T/block_f14.c" f14 && OUT=$(run f14 wake)
+echo "$OUT" | grep '^LOCKFREE' | sed 's/^/    /'
+if echo "$OUT" | grep -q '^LOCKFREE FAIL'; then ok "F14 failed check 8: the lock-free branch is what skips the lock"
+else bad "F14 passed check 8"; fi
 
 echo "== $([ $fail -eq 0 ] && echo PASS || echo "FAIL ($fail)")"
 exit $((fail > 0))

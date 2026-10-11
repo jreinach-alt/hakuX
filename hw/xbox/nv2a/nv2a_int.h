@@ -157,6 +157,14 @@ typedef struct NV2AState {
          */
         bool parked;
         /*
+         * HAKUX_LOCKFREE_WAKE=1 only (#433, lockwake1011). What pfifo_park()
+         * waits on instead of `fifo_cond`, with pfifo.lock released, so a
+         * posted DMA_PUT store wakes the PFIFO thread without the lock. Set by
+         * every `fifo_cond` waker; reset only by pfifo_park(), before it
+         * checks for work. See the posted-put block in pfifo.c.
+         */
+        QemuEvent wake;
+        /*
          * HAKUX_POSTED_PUT=1 only. The DMA_PUT the PFIFO thread read when it
          * last cleared the kick, under pfifo.lock. pfifo_park() does not wait
          * while DMA_PUT differs from it.

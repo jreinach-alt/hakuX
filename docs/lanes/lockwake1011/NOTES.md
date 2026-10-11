@@ -283,3 +283,35 @@ What the switch changes for the instruments:
 - In wake mode the `kick` site never takes the lock, so the uninstrumented `lockw` reading in arm B should fall
   by the `kick` share. In this configuration that is all of it.
 - A `lockw` that does not fall means the switch did not engage. Check `[lockwake] on` in logcat.
+
+### Built and checked (step 2)
+
+The wake is in pfifo.c's posted-put block (`pfifo_park()`, `pfifo_post_kick()`, and a new `pfifo_wake()` that
+`pfifo_kick()` now calls), nv2a_int.h (`QemuEvent wake` in the pfifo struct) and nv2a.c (init, and the set in
+`nv2a_lock_fifo()` and `nv2a_exitfn()`). Every `fifo_cond` broadcast in the tree is one of those four. Without
+`HAKUX_POSTED_PUT=1` the switch is inert and says so in logcat (`[lockwake] off (inert: ...)`).
+
+- `selftest_wake.sh`: PASS, about 3.5 min. It now runs three modes, off (with `HAKUX_LOCKFREE_WAKE=1` set, to
+  show it inert), on (posted put alone) and wake. Checks 1-7 keep their off and on expectations unchanged.
+  It compiles util/event.c's futex QemuEvent verbatim. New:
+  - check 8 LOCKFREE: a posted store to a parked PFIFO thread under a 400 ms third-thread hold. Wake: 0 ms, one
+    event set, no `lockw`. On: 400 ms and 400 ms of `lockw`, the wait this lane measured.
+  - check 9 IDLE: with a stale set on the event, the idle stand-in turns 0 times in 200 ms (all modes).
+  - check 10 EXIT: 2,000 exits as `nv2a_exitfn()` makes them, at random points of the loop; all joined.
+  - check 7 in wake mode: the posted store books nothing; GET and REF still book their own sites.
+  - check 4 in wake mode: 100,000 stores, 36,929 posted and 63,071 locked, none lost. Check 5: 4.5 M rounds,
+    1.2 M would-sleep, none lost.
+- Falsifiers, all caught:
+  - F1, F3, F4 and F5 now also run in wake mode, and lose wakeups or rounds there too. Without
+    `pfifo_park()`'s barrier, wake mode lost 319 of 4.5 M rounds; without `pfifo_post_kick()`'s, 439.
+  - F10, no reset: the idle thread spins (7,839 turns in 200 ms).
+  - F11, the reset moved after the check: 1,550 rounds lost.
+  - F12, `pfifo_wake()` without its set: the first locked kick is lost.
+  - F13, no `exiting` predicate: the exit hangs (8th exit).
+  - F14, `pfifo_post_kick()` without the lock-free branch: check 8 waits 399 ms.
+- pfifo.c, nv2a.c, user.c, pgraph.c and profile.c compile with the NDK's clang under the dispatcher's flags,
+  with and without `NV2A_PERF_LOG`. No new warnings: profile.c's two (lines 1013 and 1108) are master's.
+- `check_android_guards.py`: ok (3,305 files).
+
+What the selftest does not show: whether the woken PFIFO thread starts any sooner. It does not, by design; it
+still waits for the holder to retake the lock. The A/B measures whether the vCPU's freed time moves the frame.
