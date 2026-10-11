@@ -1,9 +1,11 @@
+# soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request (#433, 0.5)
+State: ready
+
 Lane: soakvideo1011            Issue: none (#433 umbrella) [board 3f54e5d3d7]
 Base: master @ 6d8947bb47
 Files: docs/testing/dispatcher.sh, docs/testing/request.sh, docs/testing/jobs/selftest.d/61-soakvideo1011.sh, docs/testing/jobs/selftest.d/62-routerefs-soakvideo1011.sh, docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh (necessary exception, see Addendum 3), docs/testing/jobs/selftest.d/99-hitch-report.sh, docs/testing/hitch_report.py, AGENTS.md (one paragraph), docs/lanes/soakvideo1011/NOTES.md, docs/lanes/soakvideo1011/PR.md, docs/testing/predictions/soakvideo1011-* (Step 2, not yet registered)
 Prediction: none yet (Step 2, device proof, queued once this is live on master)
-Needs device: yes (Step 2, Nova only)
-Needs NDK: no
+Needs device: yes (Step 2, Nova only)    Needs NDK: no
 
 ## What this is
 
@@ -190,4 +192,4 @@ fixes an existing scorer and queueing check to use data/crops they already
 have; nothing changes for a soak that does not ask for video or name a route
 with no crops.
 
-State: ready
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
