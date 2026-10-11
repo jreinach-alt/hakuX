@@ -53,6 +53,35 @@ The path:
 
 Cold takes 4-6 rotations a frame against 2.3-2.5 warm, so the waits multiply.
 
+**Correction to a premise several lanes carried.** These sources read the 3 at draw.c:37 (the desktop default)
+as the depth:
+- frametrace NOTES ("Three slots ..., the command buffer this thread submitted two finishes earlier");
+- nfs30plan1010 NOTES section 2 ("3 slots, `g_xemu_submit_frames = 3`");
+- the HAKUX_STALLFIN comment in reports.c ("the slot two finishes back");
+- this lane's brief ("`NUM_SUBMIT_FRAMES` is 3").
+
+On the Nova the depth is 2: Android calls `xemu_set_submit_frames()` with the pref before `qemu_init`. Every run
+logs `submit frames: 2`. accuracy804 NOTES section 17 recorded `submit_frames` = 2 from the dump sessions. So
+each rotation waits for the command buffer one finish back, not two.
+
+The frametrace columns of the same probe runs, cold vs warm, ms per frame:
+- PFIFO `p_fence` is 6.14 / 6.27 cold against 2.39 / 2.17 warm. All of it is `p_c_rep`, so every PFIFO fence
+  wait happens inside process_pending_reports, with pfifo.lock held.
+- The guest's lockw is 9.41 / 8.65 cold against 4.06 / 3.80 warm. The part that is not a fence wait (lockw -
+  p_c_rep, the lock held while the PFIFO thread parses and dispatches) is about 3.3 cold and 1.7 warm.
+- `rp` is 61.0 / 62.1 cold against 27.6 / 27.5 warm.
+- The GPU clock is 615 MHz throughout.
+
+The STALLED-finish rate is set by the PFIFO thread's speed. On reportasync1010's REPORT_ASYNC + TEXSCAN base
+(2647298, perflog), cold p_c_rep was 1.44 ms per frame and lockw 5.36. DRAWREC and the uniform switches make
+the PFIFO thread faster, so it catches up with the guest more often, takes more STALLED finishes, and waits
+more often on the ring. The six-switch base shows p_c_rep 6.1 and lockw 9.4.
+
+Already priced, not repeated here: removing the STALLED submit (`HAKUX_STALLFIN=reports`, gpunonrender: Simpsons
+30.3 -> 25.8 fps) and releasing pfifo.lock across the finish (`HAKUX_PFIFOWAIT`, pfifowait1009: lost fps and
+moved Stencil). In both, the wait moved to the next consumer of the GPU's result. A third ring slot removes the
+consumer instead: the next slot to reuse is the one submitted two finishes back.
+
 ## 3. Render passes, cold vs warm (older perflog run 2647298, before the switches)
 
 The cold phase runs from the end of loading to about 6 s past the mark (the intro cinematic and the countdown).
