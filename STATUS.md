@@ -1,11 +1,11 @@
 # hakuX harness
 
-_updated 2026-10-11 15:06 PDT_
+_updated 2026-10-11 15:36 PDT_
 
 1. 0.5: Measured 161 / 145 · Benchmarked 58 / 145 · Playable 44 / 50; gate no candidate is cut yet, so no soak is on the candidate's APK; on the newest soaks it is NOT met.
-2. Now: 21 lanes: 8 stranded, 5 running, 4 waiting on device, 2 waiting on audit, 2 no word in 48 h.
+2. Now: 21 lanes: 8 stranded, 5 waiting on device, 4 running, 2 waiting on audit, 2 no word in 48 h.
 3. Needs a person: 35 items (20 owner decisions).
-4. Machines: thor in use by lanelocal-fanwait; nova running; device-bound: 16 runs queued, both devices busy.
+4. Machines: thor in use by lanelocal-fanwait; nova running; device-bound: 11 runs queued, both devices busy.
 
 ## 1. How close is 0.5?
 
@@ -29,8 +29,8 @@ Pipeline: Copied, Inputs, Save, Bench. ✓ done · – not yet · n/a no profile
 
 | Title and next step | Status | fps | C I S B |
 |---|---|---|---|
-| **187: Ride or Die**<br>done<br>queued 1-1791753422-snapshot1011-2350466 #12 | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · MAX | ✓ ✓ n/a ✓ |
-| **Alien Hominid**<br>done<br>queued 1-1791749214-nfsdefault1011-1495590 #2; queued 1-1791749216-nfsdefault1011-1495950 #3 | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · REST | ✓ ✓ n/a ✓ |
+| **187: Ride or Die**<br>done<br>queued 1-1791753422-snapshot1011-2350466 #7 | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · MAX | ✓ ✓ n/a ✓ |
+| **Alien Hominid**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · REST | ✓ ✓ n/a ✓ |
 | **AMF Bowling 2004**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – ✓ |
 | **Auto Modellista**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – – – |
 | **Baldur's Gate: Dark Alliance**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 09-30 · REST | ✓ ✓ n/a ✓ |
@@ -60,6 +60,7 @@ Pipeline: Copied, Inputs, Save, Bench. ✓ done · – not yet · n/a no profile
 | **Tecmo Classic Arcade**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – – – |
 | **Whacked!**<br>**fix the crash**<br>**blocker: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked | **59.9**<br>66% at 28.5+<br>Nova · 10-04 · REST | ✓ – – – |
 | **World Soccer Winning Eleven 9**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – – ✓ |
+| **WWE Raw 2**<br>done<br>running 1-1791749219-nfsdefault1011-1496518 on the nova | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · MAX, soak | ✓ ✓ n/a ✓ |
 | **XIII USA Europe En Fr De Es It**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
 | **Deathrow**<br>needs a gameplay route | 🔵 copied | **59.9**<br>100% at 28.5+<br>Thor · 09-30 · MAX, screen: 90-240 s only | ✓ – ✓ – |
 | **Fantastic 4**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>43% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
@@ -69,7 +70,6 @@ Pipeline: Copied, Inputs, Save, Bench. ✓ done · – not yet · n/a no profile
 | **Tony Hawk's Pro Skater 3**<br>**fix the crash**<br>**blocker: crash: guest exited after 205s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · MAX, soak | ✓ ✓ n/a – |
 | **Tony Hawk's Pro Skater 2x**<br>done | 🟢 Playable | **59.8**<br>100% at 28.5+<br>Thor · 10-01 · MAX<br>Nova 59.8 | ✓ ✓ n/a ✓ |
 | **Capcom vs. SNK 2 EO**<br>done | 🟢 Playable | **59.8**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – ✓ |
-| **WWE Raw 2**<br>done<br>queued 1-1791749217-nfsdefault1011-1496167 #4; queued 1-1791749219-nfsdefault1011-1496518 #5 | 🟢 Playable | **59.6**<br>100% at 28.5+<br>Nova · 10-11 · MAX, soak | ✓ ✓ n/a ✓ |
 | **Mortal Kombat: Armageddon**<br>done | 🟢 Playable | **59.2**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – ✓ ✓ |
 | **MLB SlugFest: Loaded**<br>done | 🟢 Playable | **58.9**<br>100% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – ✓ |
 | **Rogue Trooper**<br>done | 🟢 Playable | **58.9**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – – ✓ |
@@ -82,7 +82,7 @@ Pipeline: Copied, Inputs, Save, Bench. ✓ done · – not yet · n/a no profile
 | **Tron 2.0 - Killer App (USA, Europe).iso**<br>needs a gameplay route and a save | 🔵 copied | **54.8**<br>92% at 28.5+<br>Nova · 10-06 · REST | ✓ – – – |
 | **Panzer Dragoon Orta**<br>done | 🟢 Playable | **54.1**<br>100% at 28.5+<br>Nova · 10-03 · unrecorded | ✓ – ✓ ✓ |
 | **Disney/Pixar Ratatouille**<br>done | 🟢 Playable | **52.8**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – – ✓ |
-| **KOF: Maximum Impact - Maniax**<br>re-benchmark at MAX<br>running 1-1791749212-nfsdefault1011-1493417 on the nova; queued 1-1791749213-nfsdefault1011-1494854 #1 | 🟣 inputs ready | **52.4**<br>99% at 28.5+<br>Nova · 09-29 · REST | ✓ ✓ n/a – |
+| **KOF: Maximum Impact - Maniax**<br>re-benchmark at MAX | 🟣 inputs ready | **52.4**<br>99% at 28.5+<br>Nova · 09-29 · REST | ✓ ✓ n/a – |
 | **Dead or Alive 3**<br>**fix the crash**<br>**blocker: crash: guest exited after 475s** | 🔴 blocked | **52.2**<br>60% at 28.5+<br>Thor · 09-30 · MAX<br>Nova 30.0 | ✓ ✓ n/a – |
 | **Super Monkey Ball Deluxe**<br>**fix the crash**<br>**blocker: crash: guest exited after 250s** | 🔴 blocked | **48.1**<br>100% at 28.5+<br>Thor · 10-01 · MAX | ✓ ✓ n/a – |
 | **Ty the Tasmanian Tiger Night of the Quinkan USA Australia**<br>needs a gameplay route and a save | 🔵 copied | **47.8**<br>79% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
@@ -138,7 +138,7 @@ Pipeline: Copied, Inputs, Save, Bench. ✓ done · – not yet · n/a no profile
 | **Tork: Prehistoric Punk**<br>done | 🟢 Playable | **30.0**<br>59% at 28.5+<br>Thor · 09-30 · MAX<br>Nova 30.0 | ✓ ✓ n/a ✓ |
 | **Battlefield 2: Modern Combat**<br>re-benchmark at MAX | 🟣 inputs ready | **29.9**<br>67% at 28.5+<br>Nova · 10-01 · REST | ✓ ✓ n/a – |
 | **Cel Damage**<br>needs a gameplay route and a save | 🔵 copied | **29.9**<br>98% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Grand Theft Auto: San Andreas**<br>re-benchmark at MAX<br>queued 1-1791750249-lane.local-1744589 #7; queued 1-1791752181-lane.gtasagpu1011-2027680 #10; 2 more | 🟣 inputs ready | **29.9**<br>91% at 28.5+<br>Nova · 10-11 · REST | ✓ ✓ n/a – |
+| **Grand Theft Auto: San Andreas**<br>re-benchmark at MAX<br>queued 1-1791750249-lane.local-1744589 #2; queued 1-1791752181-lane.gtasagpu1011-2027680 #5; 2 more | 🟣 inputs ready | **29.9**<br>91% at 28.5+<br>Nova · 10-11 · REST | ✓ ✓ n/a – |
 | **Turok: Evolution**<br>needs a gameplay route and a save | 🔵 copied | **29.9**<br>84% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
 | **Call of Duty 3**<br>done | 🟢 Playable | **29.4**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – ✓ ✓ |
 | **Star Wars The Clone Wars USA**<br>needs a gameplay route and a save | 🔵 copied | **29.4**<br>61% at 28.5+<br>Nova · 10-08 · unrecorded | ✓ – – – |
@@ -151,13 +151,13 @@ Pipeline: Copied, Inputs, Save, Bench. ✓ done · – not yet · n/a no profile
 | **Legacy of Kain: Defiance**<br>done | 🟢 Playable | **29.0**<br>37% at 28.5+<br>Nova · 10-11 · MAX, screen: 90-240 s only | ✓ – – ✓ |
 | **Forgotten Realms Demon Stone USA**<br>needs a gameplay route and a save | 🔵 copied | **28.9**<br>51% at 28.5+<br>Nova · 10-08 · unrecorded | ✓ – – – |
 | **Star Wars: Episode III: Revenge of the Sith**<br>needs a gameplay route and a save | 🔵 copied | **28.5**<br>47% at 28.5+<br>Nova · 10-06 · REST | ✓ – – – |
-| **Amped 2**<br>needs a gameplay route<br>queued 1-1791749881-profileconv1011-1652106 #6; queued 1-1791750253-lane.local-1745083 #8 | 🔵 copied | **28.4**<br>44% at 28.5+<br>Nova · 10-04 · unrecorded | ✓ – ✓ – |
+| **Amped 2**<br>needs a gameplay route<br>queued 1-1791749881-profileconv1011-1652106 #1; queued 1-1791750253-lane.local-1745083 #3 | 🔵 copied | **28.4**<br>44% at 28.5+<br>Nova · 10-04 · unrecorded | ✓ – ✓ – |
 | **Otogi: Myth of Demons**<br>re-benchmark at MAX | 🟣 inputs ready | **28.1**<br>35% at 28.5+<br>Thor · 09-30 · REST | ✓ ✓ n/a – |
 | **The Lord of the Rings: The Return of the King**<br>needs a gameplay route and a save | 🔵 copied | **27.7**<br>33% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – – |
 | **Dino Crisis 3**<br>**fix the hang**<br>**blocker: hang: 17.3 s without 60 guest flips after the mark** | 🔴 blocked | **27.2**<br>16% at 28.5+<br>Nova · 10-02 · MAX | ✓ ✓ n/a – |
 | **Counter-Strike**<br>needs a gameplay route and a save | 🔵 copied | **25.9**<br>0% at 28.5+<br>Nova · 10-03 · MAX, soak | ✓ – – – |
 | **Spider-Man 2**<br>needs a gameplay route and a save | 🔵 copied | **25.8**<br>29% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – – |
-| **Need for Speed: Most Wanted**<br>needs a gameplay route and a save<br>queued 1-1791756168-nfsroute1011-3113910 #14 | 🔵 copied | **25.8**<br>19% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – – |
+| **Need for Speed: Most Wanted**<br>needs a gameplay route and a save<br>queued 1-1791756168-nfsroute1011-3113910 #9 | 🔵 copied | **25.8**<br>19% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – – |
 | **BloodRayne**<br>raise fps (8% at 28.5+) | below 30 | **25.6**<br>8% at 28.5+<br>Thor · 09-28 · MAX, soak | ✓ ✓ n/a ✓ |
 | **Midnight Club 3: DUB Edition**<br>raise fps (1% at 28.5+) | below 30 | **25.4**<br>1% at 28.5+<br>Nova · 10-03 · MAX, soak | ✓ ✓ ✓ ✓ |
 | **Galleon**<br>raise fps (10% at 28.5+) | below 30 | **24.7**<br>10% at 28.5+<br>Thor · 09-30 · MAX | ✓ ✓ n/a ✓ |
@@ -593,7 +593,7 @@ Pipeline: Copied, Inputs, Save, Bench. ✓ done · – not yet · n/a no profile
 
 Hand-reviewed rows: pass 1 of #397 ([[lane.titleplay], 2026-09-26 12:09 PDT](https://github.com/jreinach-alt/hakuX/issues/397#issuecomment-5849041338)), performance mode unrecorded.
 
-**Gate:** Ghoulies median >= 25 gfps over 90-240 s on the candidate APK, both handhelds: **no candidate is cut yet, so no soak is on the candidate's APK; on the newest soaks it is NOT met**; thor **17.5** gfps (n=46, 03:22 (347h 44m ago), ref 6bfce4a685); nova **27** gfps (n=65, 20:00 (307h 6m ago), ref 3a5d79e3ea).
+**Gate:** Ghoulies median >= 25 gfps over 90-240 s on the candidate APK, both handhelds: **no candidate is cut yet, so no soak is on the candidate's APK; on the newest soaks it is NOT met**; thor **17.5** gfps (n=46, 03:22 (348h 14m ago), ref 6bfce4a685); nova **27** gfps (n=65, 20:00 (307h 36m ago), ref 3a5d79e3ea).
 
 | lever | owner lane | measured effect |
 |---|---|---|
@@ -606,7 +606,7 @@ Hand-reviewed rows: pass 1 of #397 ([[lane.titleplay], 2026-09-26 12:09 PDT](htt
 
 ## 2. What is happening right now?
 
-8 stranded; 5 running; 4 waiting on device; 2 waiting on audit; 2 no word in 48 h.
+8 stranded; 5 waiting on device; 4 running; 2 waiting on audit; 2 no word in 48 h.
 
 - **lane.collapse433** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: **stranded**; waiting on: no session, nothing queued or running on a device, not parked; no PR; since: 10-01 23:27; latest result: I've found why Battlefield 2 falls short on the Nova; it is not a collapse.
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
@@ -623,8 +623,6 @@ Hand-reviewed rows: pass 1 of #397 ([[lane.titleplay], 2026-09-26 12:09 PDT](htt
   - board note NOT BLOCKED. docs/testing/ab_compare.py and docs/testing/request.sh are both held by the instruments standing lane, per the owner's division of labour on dispatch scripts. Needs no device and no build. Note the ordering constraint if it lands while arms are live: adding a field is backward-compatible, but step (2)'s refusal is NOT -- it would invalidate every prediction registered without the field, which is 106 of 107, so (2) needs a grandfathering rule decided BEFORE it ships.
 - **lane.verdict433** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: **stranded**; waiting on: no session, nothing queued or running on a device, not parked; PR #653 is a draft; since: 10-01 21:11; latest result: Summary Session 19 picked up where session 18 left off (which had finished cleanly and parked with nothing outstanding — the resume was the harness's normal idle-lane pickup, not a stall). (PR #653)
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
-- **lane.gtasagpu1011** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: running (session 3); waiting on: -; since: 10-11 12:57; latest result: First session, running since 12:57; no result yet. (PR #925)
-  - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
 - **lane.nfsroute1011** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: running (session 2); waiting on: -; since: 10-11 15:01; latest result: Step 3 is complete and pushed: `nfs-mw-race.first-run.route` writes a real typed alias ("ABCR"), saves it, reaches the main menu, and ends with `mark profile-saved` + `flush 20`. (PR #929)
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
 - **lane.pathclass** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: running (session 2); waiting on: -; since: 10-11 13:12; latest result: First session, running since 13:12; no result yet. (PR #646)
@@ -633,13 +631,15 @@ Hand-reviewed rows: pass 1 of #397 ([[lane.titleplay], 2026-09-26 12:09 PDT](htt
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
 - **lane.soakvideo1011** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: running (session 2); waiting on: -; since: 10-11 15:01; latest result: Addendum 3 is fully committed, tested (136/136 fragments, 3376/3376 checks green), and the PR (#928) is readied with `docs/lanes/soakvideo1011/PR.md` matching the forge protocol's title/State convention. (PR #928)
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
-- **lane.gtaroutes1011** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: waiting on device; waiting on: 2 runs queued, first at position 9, estimated start 17:28; since: 10-11 13:37; latest result: GTA III's route is proven (passes the brief's criteria after resolving a transient golden-menu anomaly), targets.toml rows and `gta-sa-drive.route` are written, parse-checked, and committed, and both remaining proof soaks (Vice City, SA-drive) are queued at correct release priority behind a multi-hour Nova backlog outside this session's control. (PR #927)
+- **lane.gtaroutes1011** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: waiting on device; waiting on: 2 runs queued, first at position 4, estimated start 16:52; since: 10-11 13:37; latest result: GTA III's route is proven (passes the brief's criteria after resolving a transient golden-menu anomaly), targets.toml rows and `gta-sa-drive.route` are written, parse-checked, and committed, and both remaining proof soaks (Vice City, SA-drive) are queued at correct release priority behind a multi-hour Nova backlog outside this session's control. (PR #927)
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
-- **lane.nfsdefault1011** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: waiting on device; waiting on: running on the nova: step4 screen: kof-mi ON (#433); 5 runs queued, first at position 1, estimated start 15:19; since: 10-11 13:06; latest result: Batch 1 of step 4's title screen (10 route titles, 20 ON/OFF runs) is registered and queued on the Nova, behind two other active lanes' jobs — queue position is advancing normally, just slow given shared device time. (PR #926)
+- **lane.gtasagpu1011** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: waiting on device; waiting on: 2 runs queued, first at position 5, estimated start 17:10; since: 10-11 13:56; latest result: - (PR #925)
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
-- **lane.profileconv1011** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: waiting on device; waiting on: 1 run queued, first at position 6, estimated start 16:24; since: 10-11 13:18; latest result: GTA SA is confirmed; the Amped 2 clean re-run (`1-1791749881-profileconv1011-1652106`) is queued on the Nova behind ~7560s of ahead-of-it device time — well past what foreground polling can reasonably clear in this session. (PR #931)
+- **lane.nfsdefault1011** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: waiting on device; waiting on: running on the nova: step4 screen: wwe-raw-2 OFF (#433); since: 10-11 13:07; latest result: Done for this session. (PR #926)
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
-- **lane.snapshot1011** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: waiting on device; waiting on: 1 run queued, first at position 12, estimated start 18:18; since: 10-11 14:17; latest result: - (PR #932)
+- **lane.profileconv1011** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: waiting on device; waiting on: 1 run queued, first at position 1, estimated start 15:48; since: 10-11 13:18; latest result: Pushed. The `WAITING` file now names run `1-1791749881-profileconv1011-1652106`, so `lanewaker.py`'s 5-min check will see the lane as legitimately waiting instead of eventually flagging it stranded or orphaned. (PR #931)
+  - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
+- **lane.snapshot1011** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: waiting on device; waiting on: 1 run queued, first at position 7, estimated start 17:41; since: 10-11 14:17; latest result: - (PR #932)
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
 - **lane.alwaystelemetry** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: waiting on audit; waiting on: PR #824: an audit label (the PR is ready and unlabelled); since: 10-05 07:50; latest result: Part 1 of #433 was already finished before this session: the perflog overhead is measured and the two-tier design is posted. (PR #824)
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
@@ -703,11 +703,11 @@ Listed: the owner's open decisions (host-tools/escalations.md, issues labelled d
 
 last hour: 0 running, 0 hands-on, 0 waste (idle-waiting + held-idle + overdue)
 
-**Nova** running step4 screen: kof-mi ON (#433), for nfsdefault1011, since 15:06 (0s ago) · watchdog: **running** since 15:01 (dispatch/running/1-1791749212-nfsdefault1011-1493417.req)
+**Nova** running step4 screen: wwe-raw-2 OFF (#433), for nfsdefault1011, since 15:35 (87s ago) · watchdog: **running** since 15:19 (dispatch/running/1-1791749219-nfsdefault1011-1496518.req)
 
-last hour: 59 running, 0 hands-on, **1 waste** (idle-waiting + held-idle + overdue)
+last hour: 60 running, 0 hands-on, **2 waste** (idle-waiting + held-idle + overdue)
 
-**Queue:** device-bound: 16 runs queued, both devices busy. 16 queued, 13 of them 0.5 work; the oldest 0.5 run has waited 1 h 59 min; no idle-tier sweep is queued. Estimated drain: 4 h 26 min.
+**Queue:** device-bound: 11 runs queued, both devices busy. 11 queued, 8 of them 0.5 work; the oldest 0.5 run has waited 2 h 18 min; no idle-tier sweep is queued. Estimated drain: 3 h 19 min.
 
 dispatch/queue and running; durations estimated: a title run its seconds + 8 min, a suite run 5 min + 1.5 min per suite.
 
@@ -715,40 +715,40 @@ dispatch/queue and running; durations estimated: a title run its seconds + 8 min
 
 ### Automation
 
-- arms -- last run: 10-11 15:05; next run: running now; last outcome: queue host:selftest-badkey.json: selftest #1 a=510dacff37 b=07937793af suites=[Blend surface] runs=1
-- authwatch -- last run: 10-11 15:07; next run: 10-11 15:12; last outcome: -
-- autoverdict -- last run: 10-11 15:03; next run: 10-11 15:19; last outcome: -
+- arms -- last run: 10-11 15:36; next run: running now; last outcome: queue host:selftest-badkey.json: selftest #1 a=510dacff37 b=07937793af suites=[Blend surface] runs=1
+- authwatch -- last run: 10-11 15:33; next run: 10-11 15:38; last outcome: -
+- autoverdict -- last run: 10-11 15:34; next run: 10-11 15:49; last outcome: -
 - board -- last run: 10-03 06:50; next run: no timer; last outcome: This tick cleared the one FAIL: `greensize303` is now on the board, and the fleet check no longer reports it.
 - cloud -- last run: 09-29 19:54; next run: no timer; last outcome: finish: #627 moved past needs-audit-2 and carries no claimed:cloud, so an earlier finish already cleared it; this one changed nothing
-- defrag -- last run: 10-11 15:08; next run: 10-11 15:10; last outcome: -
-- devwatch -- last run: 10-11 15:08; next run: 10-11 15:09; last outcome: -
-- driver -- last run: 10-11 15:05; next run: 10-11 15:10; last outcome: -
+- defrag -- last run: 10-11 15:38; next run: 10-11 15:40; last outcome: -
+- devwatch -- last run: 10-11 15:37; next run: 10-11 15:38; last outcome: -
+- driver -- last run: 10-11 15:35; next run: 10-11 15:41; last outcome: -
 - dx -- last run: 10-11 09:23; next run: 10-12 09:23; last outcome: -
-- failintake -- last run: 10-11 15:05; next run: 10-11 15:15; last outcome: -
+- failintake -- last run: 10-11 15:36; next run: 10-11 15:46; last outcome: -
 - fold -- last run: 10-03 08:19; next run: no timer; last outcome: tick: repaired none; folded none; handed back none; waiting none
-- foldqueue -- last run: 10-11 14:01; next run: 10-11 15:10; last outcome: -
-- forge-prsync -- last run: 10-11 15:03; next run: 10-11 15:09; last outcome: -
-- forge-sync -- last run: 10-11 15:07; next run: 10-11 15:08; last outcome: -
-- github-gateway -- last run: 10-11 15:00; next run: 10-11 15:15; last outcome: -
+- foldqueue -- last run: 10-11 15:26; next run: 10-11 15:41; last outcome: -
+- forge-prsync -- last run: 10-11 15:37; next run: 10-11 15:42; last outcome: -
+- forge-sync -- last run: 10-11 15:37; next run: 10-11 15:38; last outcome: -
+- github-gateway -- last run: 10-11 15:30; next run: 10-11 15:45; last outcome: -
 - handback -- last run: 10-03 08:22; next run: no timer; last outcome: nothing handed back (needs-rebase draft-strand-arm draft-strand-runs draft-strand-idle draft-strand-quiet idle-no-pr merged-runs)
-- hostops -- last run: 10-11 15:08; next run: running now; last outcome: Fixed. Tick complete — quiet sweep, no jams found, all detectors clean, soakvideo1011's fold retry verified live-progressing, DONE line written at 14:50 PDT.
+- hostops -- last run: 10-11 15:28; next run: 10-11 15:48; last outcome: This tick's digest: one real jam found and fixed — `profileconv1011` was stranded (ended cleanly, device run genuinely queued, but no `WAITING` file, so `lanewaker` could never pick it back up).
 - hourly -- last run: 10-11 14:45; next run: 10-11 15:45; last outcome: -
-- idlewatch -- last run: 10-11 15:05; next run: 10-11 15:15; last outcome: -
+- idlewatch -- last run: 10-11 15:36; next run: 10-11 15:46; last outcome: -
 - issue-sweep -- last run: 10-02 07:41; next run: no timer; last outcome: gh returned nothing for the open issue list; this tick is blind and writes nothing
-- issue-sync -- last run: 10-11 15:05; next run: 10-11 15:15; last outcome: -
-- jamcheck -- last run: 10-11 15:00; next run: 10-11 15:10; last outcome: -
-- lanewaker -- last run: 10-11 15:07; next run: 10-11 15:12; last outcome: -
-- local-board -- last run: 10-11 14:59; next run: 10-11 15:20; last outcome: lanes: 2/10 units running; ready 1 (blocked 0, waiting 0); draft-strand 8; other 24; report ~/hakux-work/status/local-board.md
+- issue-sync -- last run: 10-11 15:36; next run: 10-11 15:46; last outcome: -
+- jamcheck -- last run: 10-11 15:30; next run: 10-11 15:40; last outcome: -
+- lanewaker -- last run: 10-11 15:33; next run: 10-11 15:38; last outcome: -
+- local-board -- last run: 10-11 15:20; next run: 10-11 15:40; last outcome: lanes: 4/10 units running; ready 1 (blocked 0, waiting 0); draft-strand 9; other 23; report ~/hakux-work/status/local-board.md
 - local-issue-audit -- last run: 10-11 07:41; next run: 10-11 19:41; last outcome: -
-- manifest -- last run: 10-11 15:00; next run: 10-11 15:15; last outcome: -
+- manifest -- last run: 10-11 15:30; next run: 10-11 15:45; last outcome: -
 - nightly -- last run: 10-11 00:30; next run: 10-12 00:30; last outcome: -
-- ops-shadow -- last run: 10-11 15:07; next run: 10-11 15:12; last outcome: -
-- pathfix -- last run: 10-11 15:07; next run: 10-11 15:12; last outcome: -
+- ops-shadow -- last run: 10-11 15:33; next run: 10-11 15:38; last outcome: -
+- pathfix -- last run: 10-11 15:33; next run: 10-11 15:38; last outcome: -
 - pr-sweep -- last run: 10-02 09:13; next run: no timer; last outcome: gh returned nothing for the open PR list; this tick is blind and repairs nothing
 - prune -- last run: 10-11 10:15; next run: 10-11 16:16; last outcome: -
-- stallwatch -- last run: 10-11 15:05; next run: 10-11 15:15; last outcome: -
-- tmpclean -- last run: 10-11 14:37; next run: 10-11 15:37; last outcome: -
-- usage-meter -- last run: 10-11 14:53; next run: 10-11 15:23; last outcome: -
+- stallwatch -- last run: 10-11 15:36; next run: 10-11 15:46; last outcome: -
+- tmpclean -- last run: 10-11 15:37; next run: 10-11 16:37; last outcome: -
+- usage-meter -- last run: 10-11 15:24; next run: 10-11 15:54; last outcome: -
 - fold -- last run: not recorded; next run: no timer; last outcome: a standing board row; it runs when the board dispatches it
 - triage -- last run: not recorded; next run: no timer; last outcome: a standing board row; it runs when the board dispatches it
 
@@ -757,16 +757,13 @@ details
 #### Window budget (the account's five-hour and weekly windows)
 
 - dispatching normally. Lanes and audits start as work allows; expanding is the default.
-- week from 2026-10-08 21:00 PDT (39% elapsed, reserve from 2026-10-14 11:24 PDT), 102 run(s), spend 634.9 of no declared budget, 0 usage-limit hit(s) this week (0 in the reserve).
+- week from 2026-10-08 21:00 PDT (40% elapsed, reserve from 2026-10-14 11:24 PDT), 105 run(s), spend 659.0 of no declared budget, 0 usage-limit hit(s) this week (0 in the reserve).
 - no session has ever been refused by the account's window on this host. That is the only first-hand evidence of a closed window there is: **the remaining five-hour and weekly balance cannot be queried from here**, so the weekly reserve arms on that evidence, or on `WEEK_SPEND_BUDGET` if the owner declares one in `$WORK/limits.env`. Unknown means open, by design.
 
 #### Lane sessions finished (last 24h)
 
 | when (PDT) | lane | model | turns | min | result | PR | said |
 |---|---|---|---|---|---|---|---|
-| 10-11 10:52 | soakvideo1011 | sonnet-5 | 247 | 72 | ok | #928 merged | - |
-| 10-11 11:08 | gtaroutes1011 | sonnet-5 | 72 | 75 | ok | #927 draft | I've documented the blocker and stopped as the lane contract requires. |
-| 10-11 11:09 | gtasagpu1011 | opus-5-5 | 301 | 115 | MAXTURNS | #925 draft |  |
 | 10-11 11:43 | nfsdefault1011 | sonnet-5 | 254 | 147 | ok | #926 draft | Message sent to lane.local. |
 | 10-11 12:33 | nfsroute1011 | sonnet-5 | 45 | 12 | ok | #929 draft | - |
 | 10-11 12:48 | gtasagpu1011 | opus-5-5 | 301 | 77 | MAXTURNS | #925 draft |  |
@@ -776,6 +773,9 @@ details
 | 10-11 13:56 | soakvideo1011 | sonnet-5 | 4 | 0 | ok | #928 merged | - |
 | 10-11 14:12 | gtaroutes1011 | sonnet-5 | 148 | 115 | ok | #927 draft | - |
 | 10-11 14:29 | snapshot1011 | opus-5-5 | 301 | 59 | MAXTURNS | #932 draft |  |
+| 10-11 15:10 | gtasagpu1011 | opus-5-5 | 301 | 132 | MAXTURNS | #925 draft |  |
+| 10-11 15:13 | nfsdefault1011 | sonnet-5 | 20 | 1 | ok | #926 draft | Done for this session. |
+| 10-11 15:32 | profileconv1011 | sonnet-5 | 21 | 2 | ok | #931 draft | Pushed. |
 
 _result: ok = ended on its own; MAXTURNS = cut at the turn cap, work kept; ERR = the session errored. A lane that ended without a ready PR is resumed by the board (attempts 1-3 on opus, then fable, then decision-needed)._
 
@@ -811,15 +811,15 @@ last model ticks:
 10-03 06:50 board claude-sonnet-5 turns=31 58s ok This tick cleared the one FAIL: `greensize303` is now on the board, and the flee
 ```
 
-board branch: d09966237f 16 minutes ago -- territory: soakvideo1011 folded (b73d50a070); request.sh, dispatcher.sh and AGENTS.md relea
+board branch: d09966237f 44 minutes ago -- territory: soakvideo1011 folded (b73d50a070); request.sh, dispatcher.sh and AGENTS.md relea
 
 #### Handhelds and arms
 
 - adb: bdc158a5(device) ee317437(device)
-- dispatcher: active, workers: 2
-- queue: 17 waiting, 0 idle-tier z-\* behind them, 1 running; holds: thor
-- running: nfsdefault1011 7002282149 -- step4 screen: kof-mi OFF (#433)
-- dispatcher last line: `10-11 15:12:44 hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2 (sha256 2bdb9e1511de, 1920204`
+- dispatcher: active, workers: 3
+- queue: 11 waiting, 0 idle-tier z-\* behind them, 1 running; holds: thor
+- running: profileconv1011 6010687a5d -- profileconv1011 (#433): Amped 2 amped2 route re-headed state:any, confirm golden f90786b6e
+- dispatcher last line: `10-11 15:41:54 frames: every 60s, cap 17, -> ~/hakux-work/dispatch/results/1-1791749881-profileconv1011-1652106/frames`
 - affinity: lanes serving `desktop nova` -- an A/B pair queued now is pinned to one of them
 - arms job: 122 pair(s) queued or running and not yet judged; 118 judged; 240 skipped (see `arms.sh list`); watermark 2026-09-18 13:00 PDT (stored as `2026-09-18T20:00:00Z`: arms.sh compares that UTC string to registered_utc, so the file stays UTC and only this rendering is local)
 
@@ -864,7 +864,7 @@ told=2026-10-11T15:28:16Z
 2026-10-03 08:19:11 PDT tick: repaired none; folded none; handed back none; waiting none
 ```
 
-- master: b73d50a070 18 minutes ago -- fold: lane/soakvideo1011 (offline) -- soakvideo1011: screen video during a routed soak, fro
+- master: b73d50a070 47 minutes ago -- fold: lane/soakvideo1011 (offline) -- soakvideo1011: screen video during a routed soak, fro
 
 #### Open lane PRs
 
@@ -900,10 +900,10 @@ told=2026-10-11T15:28:16Z
 #### Host
 
 - checkout `~/hakuX` on master, 0 behind origin/master (jobs run the fetched trunk regardless)
-- timers: arms next -; authwatch next 15:17:49 PDT; autoverdict next 15:19:08 PDT; defrag next 15:14:00 PDT; devwatch next 15:14:30 PDT; driver next 15:15:08 PDT; dx next 09:23:00 PDT; failintake next 15:15:40 PDT; foldqueue next 15:26:03 PDT; forge-prsync next 15:14:43 PDT; forge-sync next 15:14:42 PDT; github-gateway next 15:15:29 PDT; hostops next 15:28:00 PDT; hourly next 15:45:00 PDT; idlewatch next 15
-- attempts: aasample=3 accuracy804=4 adpf=2 affinitybacklog=2 alwaystelemetry=1 armlabel=1 armpin=1 armsflake=1 armsrequeue=1 armsscope=1 armsskip=3 async413=1 async794=1 aufdispatch=1 aufire412=2 aufire412b=2 backlogstate=3 battadmit=2 belowbar1005=1 bf2push656=1 bf2stall433=1 bf2ubosize433=2 blankrule297=2 blendarm50=1 blendrace50=2 blinx2input=2 blinx372=1 blinx372b=1 blinx372c=2 blinx372d=1 blinx372e=2 blit83b=1 blit84=1 blitsafe=2 boardgate=4 boardgateenv1009=1 boardprio=3 boardpushgate=1 boardtreeheal=1 boardwt-checkout-selfheal=1 branchprune=2 brdf315=1 brdf315b=1 buildflags427=1 buildstamp=1 ciskip=1 claimrace=2 cloud-audit1-181=1 cloud-audit2-163=1 cloud-audit2-308=2 cloud-issue-10=1 cloud-issue-111=1 cloud-issue-112=1 cloud-issue-13=1 cloud-issue-188=3 cloud-issue-189=1 cloud-issue-200=2 cloud-issue-271=2 cloud-issue-278=1 cloud-issue-279=1 cloud-issue-282=3 cloud-issue-283=1 cloud-issue-284=4 cloud-issue-286=1 cloud-issue-297=1 cloud-issue-34=1 cloud-issue-527=1 cloud190=1 cloudclaim=1 cloudlaneguard=2 cloudtail=1 cloudterritory=1 clrpad164=2 clrsurf91=3 clrvk184=1 clrwb91=4 clrwin88=1 coldstart1010=1 collapse433=1 crashattr=2 cull13=1 cullnf276=2 dash432=2 defecttriage433=1 desktopchannel=2 diagdump77=2 diagsoak77=1 dirtytlb=3 dispatchgate1006=2 dispatchguard=1 displayguard=3 dispsuper=1 dmasurf277=1 doa413=1 doa413b=3 doa413c=1 dpforce345=2 draftstrand=3 drain474=2 drawrec1010=4 drvab77=1 energymap507=2 escalationparse=1 escitems=1 failgate=3 fanduty507=4 fastpaths1010=1 fgrace1010=1 fgunknown=1 fix311=1 flatlm13=1 fleetabsent=1 fleetflush1010=1 fleetreg=2 fleetstanding=1 flicker801=1 flip474=4 flushstall787=2 fmv303=1 fmv303b=2 fmv303c=1 focusanr=1 fog278=1 foldcancel=1 foldci=3 foldflow=2 foldindex=1 foldregress=2 forza414=2 forzaclock=1 forzadecay414=2 forzasurf1010=4 fps20786=1 fps382=1 fpsshare=1 fpstelemetry1008=4 fpstelemetry1008b=3 framereview=1 frametrace=2 fulldisc50=1 g8b8285=1 gamecheck=1 ghoul311=4 glchannel=1 glerr86=1 gmem474=1 goldencorr287=1 goldens782=1 goldovr287=1 gpl569=3 gpuclock=3 gpunonrender=2 gpupass1010=2 greensize303=1 gta482=4 gtaroutes1011=1 gtasagpu1011=3 handback=3 handbackbranch=1 handbacklane=1 handbackmerged=1 handbackpark=1 handbackresolved=1 handbackstrand=1 handbackwaiter=1 hangwatch=3 harnessfix1006=3 hddcrash=4 hddperm=3 hddsplit=1 hilodot10=1 hitchcause=1 hitchwatch=1 holdlease=2 holdtake=1 holdwait=1 ibcache=2 idlehalt=3 idlehaltdefault=3 idlehaltspin=1 indexcheck=1 indexloc=2 inflightpark=1 isoroots=1 issuerecon=1 issuesweep=1 jcache425=1 kabukistall=2 lanenobg1010=2 lanepath1009=2 laneshape=1 libfolders=2 linecap13=2 litcompile569=2 localforge=4 localjobs=1 localtime=1 lockwake1011=1 measured05=1 memfast=1 meterfit1010=2 modelpolicy1010=2 nanattr281=1 nanfix281=1 near30=4 nfs30plan1010=2 nfsdefault1011=2 nfsframe1010=3 nfsroute1011=2 nightlynotes=3 nightlynotes1009=3 nightlytrunk=1 nightlywrap1010=1 notespath=1 notify488=3 opsrebuild=1 pacing=1 pathclass=2 pathfind=2 pathknow=1 perdraw1009=4 perfarch=2 perfbase=1 perfregimen=2 pfifowait1009=3 pilotgate=3 pipeline413=2 pmc188=3 pmucounters=1 postput1010=2 pri432=2 primpv13=4 profileconv1011=1 profileddefault1008=4 profilegate1011=2 pshaniso284=2 pshqueue=3 rankrule=1 regs200=1 relnote=1 relprio432=1 remotechannel=1 rendermode474=1 reportasync1010=1 reqprio=1 restoreleak1009=3 restoreprio1011=4 retreason425=1 ring53=1 ring53impl=3 routedriver=4 routedriver2=3 routefix1002=4 routeprep=1 routerca433=1 savestate433=4 scoresplit=1 selfdeps=4 selftest86=1 selftestshard=2 selftestsplit=2 shade224=1 shadeflat224=4 shaderfb569=2 shaderplan569=1 shaderprebuild569=4 shadetie224=1 shadetie224b=2 slowdown462=3 slowtier2=3 snapdrive=1 snapshot1011=1 soakflake=1 soakvideo1011=2 sphere273fix=1 spheremap273=1 stalecheck=2 stallmeasure569=1 statusdash=1 statusfresh=1 statusguard=1 statuspage=1 statuswindow=1 stopmarker=1 stuckdetect1007=1 suffixpr=1 surfdl1008=3 surfgpu1009=3 surfgpudefault1009=3 surfwatch382=1 sustain507=2 swatchorder50=1 sweepclock=1 sweepcover=2 sweepremote=1 sweeps=1 swizzle87=1 tbchurn424=1 tbflip424=1 tbsize429=1 tcg424flip=4 tcgchurn=2 texscan1010=2 texvol283=1 thermal507=2 thorbottom800=2 thorheat=1 tie282c=1 tiecode282=2 titleplay=1 titleroutes=4 titleroutes2=2 titlerun=3 titles05=3 titlestate=1 tokentier=1 toolsmith=2 tronhang672=1 turncap=1 turnipcost569=1 turnipfork=2 uberdefault569=1 uberspike569=2 usage24h1009=1 usagemode=1 usagerule1010=1 usbdialog=1 vblank65=1 vcpu60=2 vcpuplan=1 vcpuprime428=2 vcpusleep=3 vcpuwait433=4 verdict10min=1 verdict433=2 visual404=1 vklayer34=1 vkpointsize34=4 vol283r=1 vshconst=3 vshcpu345=1 vshnobegin242=2 vshr12280=1 vshsubneg255=1 vtxarr262=1 waitread1006=1 wbuf31fix=3 wbuf31sel=1 wbufclip=2 wbufdepth24=1 windowbudget=2 wparam223=1 wparamclip223=2 wparamcode223=1 wparamff223=1 wparamgeom223=1 x1a7271=1 y16bump10=2 yuv10=1 zclamp276=1 zdepth272=1 zetaswap275=1 zrtz272=4
+- timers: arms next -; authwatch next 15:43:40 PDT; autoverdict next 15:49:58 PDT; defrag next 15:44:00 PDT; devwatch next -; driver next 15:46:05 PDT; dx next 09:23:00 PDT; failintake next 15:46:24 PDT; foldqueue next 15:56:39 PDT; forge-prsync next 15:42:34 PDT; forge-sync next 15:42:45 PDT; github-gateway next 15:45:27 PDT; hostops next 15:48:00 PDT; hourly next 15:45:00 PDT; idlewatch next 15:46:24 PDT;
+- attempts: aasample=3 accuracy804=4 adpf=2 affinitybacklog=2 alwaystelemetry=1 armlabel=1 armpin=1 armsflake=1 armsrequeue=1 armsscope=1 armsskip=3 async413=1 async794=1 aufdispatch=1 aufire412=2 aufire412b=2 backlogstate=3 battadmit=2 belowbar1005=1 bf2push656=1 bf2stall433=1 bf2ubosize433=2 blankrule297=2 blendarm50=1 blendrace50=2 blinx2input=2 blinx372=1 blinx372b=1 blinx372c=2 blinx372d=1 blinx372e=2 blit83b=1 blit84=1 blitsafe=2 boardgate=4 boardgateenv1009=1 boardprio=3 boardpushgate=1 boardtreeheal=1 boardwt-checkout-selfheal=1 branchprune=2 brdf315=1 brdf315b=1 buildflags427=1 buildstamp=1 ciskip=1 claimrace=2 cloud-audit1-181=1 cloud-audit2-163=1 cloud-audit2-308=2 cloud-issue-10=1 cloud-issue-111=1 cloud-issue-112=1 cloud-issue-13=1 cloud-issue-188=3 cloud-issue-189=1 cloud-issue-200=2 cloud-issue-271=2 cloud-issue-278=1 cloud-issue-279=1 cloud-issue-282=3 cloud-issue-283=1 cloud-issue-284=4 cloud-issue-286=1 cloud-issue-297=1 cloud-issue-34=1 cloud-issue-527=1 cloud190=1 cloudclaim=1 cloudlaneguard=2 cloudtail=1 cloudterritory=1 clrpad164=2 clrsurf91=3 clrvk184=1 clrwb91=4 clrwin88=1 coldstart1010=1 collapse433=1 crashattr=2 cull13=1 cullnf276=2 dash432=2 defecttriage433=1 desktopchannel=2 diagdump77=2 diagsoak77=1 dirtytlb=3 dispatchgate1006=2 dispatchguard=1 displayguard=3 dispsuper=1 dmasurf277=1 doa413=1 doa413b=3 doa413c=1 dpforce345=2 draftstrand=3 drain474=2 drawrec1010=4 drvab77=1 energymap507=2 escalationparse=1 escitems=1 failgate=3 fanduty507=4 fastpaths1010=1 fgrace1010=1 fgunknown=1 fix311=1 flatlm13=1 fleetabsent=1 fleetflush1010=1 fleetreg=2 fleetstanding=1 flicker801=1 flip474=4 flushstall787=2 fmv303=1 fmv303b=2 fmv303c=1 focusanr=1 fog278=1 foldcancel=1 foldci=3 foldflow=2 foldindex=1 foldregress=2 forza414=2 forzaclock=1 forzadecay414=2 forzasurf1010=4 fps20786=1 fps382=1 fpsshare=1 fpstelemetry1008=4 fpstelemetry1008b=3 framereview=1 frametrace=2 fulldisc50=1 g8b8285=1 gamecheck=1 ghoul311=4 glchannel=1 glerr86=1 gmem474=1 goldencorr287=1 goldens782=1 goldovr287=1 gpl569=3 gpuclock=3 gpunonrender=2 gpupass1010=2 greensize303=1 gta482=4 gtaroutes1011=1 gtasagpu1011=3 handback=3 handbackbranch=1 handbacklane=1 handbackmerged=1 handbackpark=1 handbackresolved=1 handbackstrand=1 handbackwaiter=1 hangwatch=3 harnessfix1006=3 hddcrash=4 hddperm=3 hddsplit=1 hilodot10=1 hitchcause=1 hitchwatch=1 holdlease=2 holdtake=1 holdwait=1 ibcache=2 idlehalt=3 idlehaltdefault=3 idlehaltspin=1 indexcheck=1 indexloc=2 inflightpark=1 isoroots=1 issuerecon=1 issuesweep=1 jcache425=1 kabukistall=2 lanenobg1010=2 lanepath1009=2 laneshape=1 libfolders=2 linecap13=2 litcompile569=2 localforge=4 localjobs=1 localtime=1 lockwake1011=1 measured05=1 memfast=1 meterfit1010=2 modelpolicy1010=2 nanattr281=1 nanfix281=1 near30=4 nfs30plan1010=2 nfsdefault1011=2 nfsframe1010=3 nfsroute1011=2 nightlynotes=3 nightlynotes1009=3 nightlytrunk=1 nightlywrap1010=1 notespath=1 notify488=3 opsrebuild=1 pacing=1 pathclass=2 pathfind=2 pathknow=1 perdraw1009=4 perfarch=2 perfbase=1 perfregimen=2 pfifowait1009=3 pilotgate=3 pipeline413=2 pmc188=3 pmucounters=1 postput1010=2 pri432=2 primpv13=4 profileconv1011=2 profileddefault1008=4 profilegate1011=2 pshaniso284=2 pshqueue=3 rankrule=1 regs200=1 relnote=1 relprio432=1 remotechannel=1 rendermode474=1 reportasync1010=1 reqprio=1 restoreleak1009=3 restoreprio1011=4 retreason425=1 ring53=1 ring53impl=3 routedriver=4 routedriver2=3 routefix1002=4 routeprep=1 routerca433=1 savestate433=4 scoresplit=1 selfdeps=4 selftest86=1 selftestshard=2 selftestsplit=2 shade224=1 shadeflat224=4 shaderfb569=2 shaderplan569=1 shaderprebuild569=4 shadetie224=1 shadetie224b=2 slowdown462=3 slowtier2=3 snapdrive=1 snapshot1011=1 soakflake=1 soakvideo1011=2 sphere273fix=1 spheremap273=1 stalecheck=2 stallmeasure569=1 statusdash=1 statusfresh=1 statusguard=1 statuspage=1 statuswindow=1 stopmarker=1 stuckdetect1007=1 suffixpr=1 surfdl1008=3 surfgpu1009=3 surfgpudefault1009=3 surfwatch382=1 sustain507=2 swatchorder50=1 sweepclock=1 sweepcover=2 sweepremote=1 sweeps=1 swizzle87=1 tbchurn424=1 tbflip424=1 tbsize429=1 tcg424flip=4 tcgchurn=2 texscan1010=2 texvol283=1 thermal507=2 thorbottom800=2 thorheat=1 tie282c=1 tiecode282=2 titleplay=1 titleroutes=4 titleroutes2=2 titlerun=3 titles05=3 titlestate=1 tokentier=1 toolsmith=2 tronhang672=1 turncap=1 turnipcost569=1 turnipfork=2 uberdefault569=1 uberspike569=2 usage24h1009=1 usagemode=1 usagerule1010=1 usbdialog=1 vblank65=1 vcpu60=2 vcpuplan=1 vcpuprime428=2 vcpusleep=3 vcpuwait433=4 verdict10min=1 verdict433=2 visual404=1 vklayer34=1 vkpointsize34=4 vol283r=1 vshconst=3 vshcpu345=1 vshnobegin242=2 vshr12280=1 vshsubneg255=1 vtxarr262=1 waitread1006=1 wbuf31fix=3 wbuf31sel=1 wbufclip=2 wbufdepth24=1 windowbudget=2 wparam223=1 wparamclip223=2 wparamcode223=1 wparamff223=1 wparamgeom223=1 x1a7271=1 y16bump10=2 yuv10=1 zclamp276=1 zdepth272=1 zetaswap275=1 zrtz272=4
 
-_Written by `docs/testing/jobs/status.sh` on the host every job tick and every 30 min; republished when the content changes (at most every 10 min) and at least every 30 min. Every time here is PDT. Next tick due by 2026-10-11 15:36 PDT._
+_Written by `docs/testing/jobs/status.sh` on the host every job tick and every 30 min; republished when the content changes (at most every 10 min) and at least every 30 min. Every time here is PDT. Next tick due by 2026-10-11 16:06 PDT._
 
 ---
 
