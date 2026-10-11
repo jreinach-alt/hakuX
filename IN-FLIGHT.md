@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 4h 44m | fastpaths1010: Mortal Kombat Armageddon pass (batch 4) |
+| `fastpaths1010` | claude-sonnet-5 | 4h 59m | fastpaths1010: Blowout pass, MLB SlugFest 2004 ON landed (batch 4) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 9 waiting, 1 running.
+- **Device queue:** 5 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -73,7 +73,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fastpaths1010` | fastpaths1010: Mortal Kombat Armageddon pass (batch 4) | `fe84b0135b` | 2026-10-11 07:43 |
+| `lane/fastpaths1010` | fastpaths1010: Blowout pass, MLB SlugFest 2004 ON landed (batch 4) | `f15a6f04e0` | 2026-10-11 07:52 |
 
 ## Recently landed on master
 
@@ -88,4 +88,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 lane.usagerule1010: usage Low enters only at 80% of the week used AND a projection over 100% (#433, 0.5)
 - 2026-10-10 reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5)
 
-_Updated 2026-10-11 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 08:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
