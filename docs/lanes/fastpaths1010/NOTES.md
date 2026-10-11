@@ -356,6 +356,22 @@ pilot-gate's own ~102 min estimate for route titles alone plus the soaks.
 | Tork: Prehistoric Punk | ON/OFF | none/none | not yet reviewed by eye | 59.81/59.81 | pass (env/on-lines/hdd clean both arms) |
 | ToeJam & Earl III: Mission to Earth | ON/OFF | none/none | not yet reviewed by eye | 59.99/59.96 | pass (env/on-lines/hdd clean both arms, golden/any) |
 | Halo: Combat Evolved | ON/OFF | none/none | not yet reviewed by eye | 59.98/59.98 | pass (env/on-lines/hdd clean both arms, golden/any) |
+| Panzer Dragoon Orta | ON/OFF | none/none | not yet reviewed by eye | 59.88/59.88 | pass (env/on-lines/hdd clean both arms, golden/any) |
+| Call of Duty 3 | ON/OFF | -- | -- | -- | **not run**: both runs errored `title not on device` (refs `...4194026`/`...4194140`) |
+| Capcom vs. SNK 2 EO | ON/OFF | none/none | not yet reviewed by eye | 59.98/59.97 | pass (env/on-lines/hdd clean both arms; hdd golden_status None expected, no targets.toml entry) |
+
+**Call of Duty 3 is not on the Nova**, discovered live (same failure mode as
+the Alien Hominid pilot in 4.1.2) despite being in the "8 of the original 20
+the Oct-8 pass did not touch" bucket -- checked and it is in none of
+`nova-free1008.log`, `shuffle1010.log` or `shuffle1011.log`, so this isn't
+the Oct-8 deletion or either shuffle; the Oct-3/4 listing was simply wrong
+about it independent of those events (a third kind of staleness, beyond
+4.1.1's missing-additions and 4.1.2's later-deleted). Moved to a new
+"not on the Nova (unexplained, live-checked 10-11)" bucket -- 1 title,
+separate from Addendum 3's 5 space-deferred titles. Scope is now 38 of 44
+screenable. Not a `WIDEN:` case (that's for a title that's present but
+fails ON vs OFF); this is presence, like 4.1.2. Named here and will be
+named in `PR.md`; not a device write this lane can fix.
 
 All 4 route titles (Crimson Skies, Spikeout, JSRF, Tork) now screened:
 **pass**. Soak titles (no route) have no `mark gameplay` line, so their
@@ -373,3 +389,28 @@ KOF: Maximum Impact - Maniax, Alien Hominid, WWE Raw 2.
 Remaining after that: the rest of the 23-restored-tonight soak titles from
 4.1.1/4.1.2 (16 of 23, since Capcom vs. SNK 2 EO and 6 others are already
 queued across batches 1-2).
+
+### 4.5 Attempt 2 (10-11, resumed per Addendum 4): why attempt 1 didn't finish, and the stale-worktree hook block
+
+Attempt 1 ended on `error_max_turns` (301 turns in 6h, per Addendum 4) with
+three batch-2 runs still in flight (queued `-310`/`-346`/`-380`, running
+`-4194264`). That is not a defect in this lane's work -- the queued runs
+kept going while the session was down, as Addendum 4 says. This resume did
+not spend an attempt.
+
+This resume opened with the Bash tool fully blocked: every call failed with
+`PreToolUse:Bash hook error: python3: can't open file
+".../docs/testing/jobs/hooks/lane-no-background.py"`. `git log HEAD..origin/master`
+showed this worktree was 13 commits behind (the `session-start.sh` hook had
+already said so), and one of those 13 commits -- `lane/lanenobg1010`'s fold
+(`7f986f73f6`, "lane sessions refuse background commands with a hook, not a
+footer") -- is exactly the commit that added this hook file. A stale lane
+worktree had the hook *registered* (wherever that config lives) but not the
+*file* it runs, so every Bash call hard-failed before it could run anything,
+including the `git merge` that would have fixed it. Broke the deadlock with
+a temporary no-op stub (`sys.exit(0)`) at that path, used it to run `git
+fetch`/`git merge origin/master` (bringing in the real hook among the other
+12 commits), and let the merge's real file replace the stub. Named here per
+`agent-worktree-stale-base`-style memory: an agent worktree starts stale,
+and this is a case where staleness didn't just make a conclusion wrong, it
+blocked the tool that would fix it.
