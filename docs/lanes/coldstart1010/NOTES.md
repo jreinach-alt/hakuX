@@ -91,3 +91,26 @@ If depth 3 wins, the player-facing change is the pref default in `xemu_android.c
 fastpaths1010's, so this lane does not touch it.
 
 On desktop the setter is never called, and the default there is already 3.
+
+## 5. The A/B, registered
+
+`docs/testing/predictions/coldstart1010-depth.json` (sha256 37d06242...). Both refs are 786f82d4bb. A runs the
+six switches with `HAKUX_PROBE_WAITS=1`; B adds `HAKUX_SUBMIT_FRAMES=3`. Plain build, 3 runs per arm, queued
+A B B A A B. The judge is `coldread.py` (this directory). It reuses postput1010's ppread.py for pace and
+validity, and drawrec1010's proberead.py for the `[probe1010]` lines.
+
+| leg | rule | P |
+|---|---|---|
+| K | cold B <= 34.5 ms, or cold v2 share up >= 15 points | ~35 % |
+| C | cold B - A <= -1.0 ms | ~65 % |
+| W | warm countdown B - A <= +0.3 ms | ~85 % |
+| G | post-GO B - A <= +0.3 ms | ~85 % |
+| M | cold ms/frame blocked in the rotation wait, B <= 0.5 x A | ~70 % |
+
+The reader run on drawrec1010's probe base (4030728, 4034875; same configuration as A, older master), without
+a prediction:
+
+| run | cold 1 | warm | post | cold v2 | cold rot/f | blk/f | ms blk/f | warm ms blk/f |
+|---|---|---|---|---|---|---|---|---|
+| 4030728 | 39.4 | 34.3 | 33.5 | 62 % | 3.78 | 1.22 | 4.16 | 1.42 |
+| 4034875 | 37.9 | 34.1 | 33.6 | 50 % | 3.92 | 1.23 | 4.39 | 1.28 |
