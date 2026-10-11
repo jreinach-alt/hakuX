@@ -28,6 +28,9 @@ wakeup is kept.
 switch on and off: 100,000 stores against the real park and kick, with no lost wakeup, and a store-buffering race of
 3.2 M rounds with none lost. Its five mutants each go red, including one per barrier (NOTES.md section 3).
 
-Results: pending (`docs/lanes/postput1010/WAITING`).
+Pilot (A1 `1-1791680038-postput1010-1949730`, B1 `1-1791680039-postput1010-1954673`): warm countdown A1 33.90 ms
+and B1 33.99 ms; post-GO 33.50 and 33.49 ms. B1 posted 16 % of the countdown's stores. A's baseline is 3.5 ms faster
+than the one the prediction registered (37.5 ms on 3cd9d6b7e3); NOTES.md section 4.1 explains why. B2, A2 and the
+frametrace pair are queued (`docs/lanes/postput1010/WAITING`).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

@@ -164,7 +164,57 @@ built and ran c63ec9774f, 12 marks, the three log lines (`[postput] on` on B1 on
 B1, and the g11 frames for a moving car; write `pilots/postput1010.ok`; then queue B2, A2, then the frametrace
 pair A, B.
 
-(Results go here as they land.)
+### 4.1 Why attempt 1 stopped, and the pilot (attempt 2, 2026-10-10 ~18:25 PDT)
+
+Attempt 1 did not fail. It ended on purpose, waiting on A1 and B1 (`WAITING` @ 9569a98bb7): the pilot gate does not
+let the other runs be queued until the pilot has been reviewed, and nothing else in the brief could move until the
+pilot was back. Both runs finished DONE at 18:11 and 18:20 PDT (device clock). Attempt 2 reviewed them, wrote
+`pilots/postput1010.ok`, and queued the rest of the batch at 18:27 PDT, behind nothing. The Nova queue was empty,
+and none of drawrec1010's probe arms were waiting.
+
+| request | arm |
+|---|---|
+| `1-1791682037-postput1010-2642454` | B2, plain |
+| `1-1791682038-postput1010-2643101` | A2, plain |
+| `1-1791682044-postput1010-2647298` | frametrace A, perflog, `--pull 'frametrace_*'` |
+| `1-1791682045-postput1010-2647896` | frametrace B, perflog, `--pull 'frametrace_*'` |
+
+Pilot, read with `ppread.py`:
+
+| run | arm | cold 1 | warm countdown | post-GO warm | warm v2/v3/v4 | valid |
+|---|---|---|---|---|---|---|
+| `1-1791680038-postput1010-1949730` | A1 | 41.4 | 33.90 | 33.50 | 78/10/1 % | 12/12 |
+| `1-1791680039-postput1010-1954673` | B1 | 41.5 | 33.99 | 33.49 | 81/10/1 % | 12/12 |
+
+The pilot passes as a method check: both runs ran c63ec9774f (apk 73f78762d3e1), `[reportasync] on` and
+`[texscan] on` appear in both, and `[postput] on, skew bound mode 0` appears in B1 only. All 24 `s*-g11` frames,
+looked at on one contact sheet per run, show the Punto moving at 60-88 MPH with about 11.5 s on the race clock,
+and an opponent is on screen in most of them.
+
+**B posts a lot of stores.** From fifoskew lines whose time falls in the go2..go12 windows: B1 posted 16.3 % of the
+kicks in the countdown (317 a second, about 10 a frame) and 9.3 % after GO (175 a second). A1 posted 0. So the
+mechanism runs, and the period does not move: B - A is +0.09 ms in the countdown and -0.01 ms after GO. That is
+the brief's case "the period is unchanged because `p_run` alone sets it", or the case where the wait moved to
+another sync point. The frametrace pair decides which.
+
+**A's baseline is not the registered one.** The prediction's baseline for A is reportasync1010's both-switch runs on
+3cd9d6b7e3, with a warm countdown of 37.2 and 37.9 ms. A1 on c63ec9774f is 33.9 ms, which is 3.5 ms faster, with
+v3+v4 at 11 % against 23 %. Two emulator commits lie between those refs, and both are on this branch's base:
+
+- `81ab5f3418`, gpupass1010's `kTitleRenderModes` row: NFS now runs in sysmem render mode (folded via 071aea27ff).
+  gpupass1010 measured the period as flat with it, but on a base without `HAKUX_REPORT_ASYNC`, where the GPU was
+  not on the path.
+- `477893cdbf`, reportasync1010 deferring only armed reports.
+
+No existing plain run with these switches separates the two. reportasync1010's frametrace pair (a21a3361d9), which
+the brief's 7.3 ms comes from, has `477893cdbf` but not the sysmem row. So the 6.3 ms `lockw` it measured may not
+hold on this base. Frametrace A will show whether it does.
+
+What that does to the prediction: at A = 33.9 ms, 78 % of warm frames are already 2-VBLANK frames and about 11 %
+are 1-VBLANK frames. Turning every v3 and v4 frame into a v2 frame would take off about 0.10 x 16.7 + 0.01 x 33.3,
+roughly 2.0 ms. P (B - A <= -2.0) can only pass if every heavy frame goes, and T (B <= 34.0) passes for A as well,
+so T says nothing about B. The registered checks stand as written. They are not loosened, and they are read with
+this caveat.
 
 ## 5. For the next lane
 
