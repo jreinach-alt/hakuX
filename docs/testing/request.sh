@@ -109,6 +109,7 @@ TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""; DEVICE=""
 AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""; ONLY_TESTS=""; PROGRAM="pgraph"
 ENV_VARS=()
 FRAMES_EVERY=0
+VIDEO_SECONDS=0; VIDEO_AFTER=30
 ROUTE=""; ROUTE_TEXT=""
 ISSUE=""
 IDENTIFIED=""
@@ -169,6 +170,8 @@ while [ $# -gt 0 ]; do
         --perflog) PERFLOG=true; shift;;
         --env) ENV_VARS+=("$2"); shift 2;;
         --frames-every) FRAMES_EVERY="$2"; shift 2;;
+        --video-seconds) VIDEO_SECONDS="$2"; shift 2;;
+        --video-after) VIDEO_AFTER="$2"; shift 2;;
         --route) ROUTE="$2"; shift 2;;
         --expect) EXPECT="$2"; shift 2;;
         --no-expect) NO_EXPECT="$2"; shift 2;;
@@ -949,6 +952,61 @@ if [ "${FRAMES_EVERY:-0}" != "0" ]; then
     echo "      leg off this run against one from a soak without frames." >&2
 fi
 
+# --video-seconds N / --video-after S: a video of the screen during a soak,
+# recorded by the dispatcher the way --frames-every records stills (#433,
+# lane.soakvideo1011). It exists for a defect a still only catches by luck: a
+# hard-edged sky polygon or a missing shadow that is visible for a few frames
+# and then drops out, which a screencap every few seconds has about a 1-in-N
+# chance of landing on. See start_soak_video in dispatcher.sh.
+#
+# SOAK ONLY, for the same reason --frames-every is: a disc request already
+# pulls and scores its own captures, so a video there would be a second,
+# worse copy of what the requester already has.
+#
+# THE COST IS THE MEASUREMENT, NOT DISK, for the same reason frames.every is
+# written into result.json either way: encoding a video on the device costs
+# GPU and encoder time, so a video soak and a clean soak are not comparable on
+# gfps, and a reader pooling them should have to see the field to do it.
+if [ "${VIDEO_SECONDS:-0}" != "0" ]; then
+    case "$VIDEO_SECONDS" in
+        ''|*[!0-9]*)
+            echo "--video-seconds wants a whole number of seconds, got '$VIDEO_SECONDS'" >&2
+            exit 2 ;;
+    esac
+    case "$VIDEO_AFTER" in
+        ''|*[!0-9]*)
+            echo "--video-after wants a whole number of seconds, got '$VIDEO_AFTER'" >&2
+            exit 2 ;;
+    esac
+    if [ -z "$TITLE" ]; then
+        echo "refusing to queue: --video-seconds is a SOAK option (--title)." >&2
+        echo "  A disc run already pulls and scores its own captures; a video" >&2
+        echo "  there would be a second, worse copy of what you already have." >&2
+        exit 2
+    fi
+    VIDEO_CAP="${HAKUX_SOAK_VIDEO_CAP:-300}"
+    if [ "$VIDEO_SECONDS" -gt "$VIDEO_CAP" ]; then
+        echo "refusing to queue: --video-seconds $VIDEO_SECONDS exceeds" \
+             "HAKUX_SOAK_VIDEO_CAP ($VIDEO_CAP)." >&2
+        exit 2
+    fi
+    # The mark can come any time at or after the soak starts, so the EARLIEST
+    # the recording could possibly start is right at the soak's own start
+    # (mark at t=0). If even that does not leave room for --video-after +
+    # --video-seconds, no mark time whatsoever would make this fit.
+    if [ $((VIDEO_AFTER + VIDEO_SECONDS)) -gt "$SECONDS_HOLD" ]; then
+        echo "refusing to queue: --video-after $VIDEO_AFTER + --video-seconds" \
+             "$VIDEO_SECONDS is more than the ${SECONDS_HOLD}s soak can hold," \
+             "even if the mark came at the very start." >&2
+        exit 2
+    fi
+    echo "note: video ${VIDEO_SECONDS}s, starting ${VIDEO_AFTER}s after the" >&2
+    echo "      route's mark (or after the soak starts, with no route), will be" >&2
+    echo "      recorded into the result dir. This COSTS GPU and encoder time --" >&2
+    echo "      do not read a gfps leg off this run against one from a soak" >&2
+    echo "      without video." >&2
+fi
+
 # --env IS VALIDATED HERE BECAUSE THE APP DROPS A BAD LINE IN SILENCE.
 #
 # xemu_android.cpp:796 splits the pref on newlines, skips any line with no `=`
@@ -1228,6 +1286,7 @@ fi
 # other list option uses -- would make a value containing a comma unqueueable.
 ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" PRIORITY="$PRIORITY" PIN="$PIN" \
 TITLE_ID="$TITLE_ID" TITLE_STATE="$TITLE_STATE" IDENTIFIED="$IDENTIFIED" \
+VIDEO_SECONDS="$VIDEO_SECONDS" VIDEO_AFTER="$VIDEO_AFTER" \
 python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" "$PROGRAM" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
@@ -1256,6 +1315,11 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            # same information and only the list survives a round trip.
            "env": env_vars,
            "frames_every": int(frames_every or 0),
+           # A video of the screen during the soak; see --video-seconds /
+           # --video-after and dispatcher.sh's start_soak_video. Off by
+           # default, like frames_every.
+           "video_seconds": int(__import__("os").environ.get("VIDEO_SECONDS", "0") or 0),
+           "video_after": int(__import__("os").environ.get("VIDEO_AFTER", "30") or 30),
            # The route's name and its full text as queued; see --route.
            "route_name": __import__("os").environ.get("ROUTE", ""),
            "route": __import__("os").environ.get("ROUTE_TEXT", ""),
