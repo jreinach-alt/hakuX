@@ -15,6 +15,15 @@
         already queued or running. The dispatcher calls this after each
         run's result.json is written.
 
+    device_build.py promote <dispatch_dir> <label>
+        called by jobs/hold.sh's build gate on a refusal: gives the label's
+        queued dispatch.restore request the top queue tier (id prefix "0-"),
+        or queues one (at the same tier) when none is pending. Always exits
+        0 and prints what it did; the caller's refusal is build_gate's, not
+        this command's. restore_request's own id stays bare either way, so
+        the dispatcher's own after-every-off-master-run restores still wait
+        their ASCII-ordered turn.
+
 A run is on master when its result.json says ref master (or origin/master,
 or the master sha given as MASTER_SHA, or a sha reachable from origin/master
 -- see _on_trunk below) and env []. A result with no `env` key predates the
@@ -150,6 +159,62 @@ def restore_pending(dispatch_dir, label):
     return False
 
 
+def _restore_path(dispatch_dir, label, sub):
+    """Path to label's dispatch.restore request under queue/ or running/, or None."""
+    for path in glob.glob(os.path.join(dispatch_dir, sub, "*.req")):
+        try:
+            req = json.load(open(path))
+        except (OSError, ValueError):
+            continue
+        if req.get("requester") == RESTORE_REQUESTER and req.get("device") == label:
+            return path
+    return None
+
+
+def _promote(path):
+    """Atomic rename <dir>/<base> -> <dir>/0-<base>, via a tmp file first.
+
+    A no-op (prints the already-promoted name) on a path already carrying
+    the prefix, so a second caller polling the same refusal does not try to
+    rename a file that is not there under its old name.
+    """
+    d, base = os.path.split(path)
+    if base.startswith("0-"):
+        return base
+    tmp = os.path.join(d, "." + base + ".promote.tmp")
+    dst = os.path.join(d, "0-" + base)
+    os.replace(path, tmp)
+    os.replace(tmp, dst)
+    return os.path.basename(dst)
+
+
+def cmd_promote(dispatch_dir, label):
+    pending = _restore_path(dispatch_dir, label, "queue")
+    if pending is not None:
+        print("promoted: %s" % _promote(pending))
+        return 0
+    running = _restore_path(dispatch_dir, label, "running")
+    if running is not None:
+        print("already running: %s" % os.path.basename(running))
+        return 0
+    rec, run_id = last_run(dispatch_dir, label)
+    if rec is None:
+        print("no run recorded for %s; nothing to restore from" % label)
+        return 0
+    if not restore_needed(rec):
+        print("%s already on master; no restore needed" % label)
+        return 0
+    req = restore_request(run_id, label)
+    queue = os.path.join(dispatch_dir, "queue")
+    tmp = os.path.join(queue, "." + req["id"] + ".req.tmp")
+    with open(tmp, "w") as f:
+        json.dump(req, f, indent=2)
+    path = os.path.join(queue, req["id"] + ".req")
+    os.rename(tmp, path)
+    print("queued: %s" % _promote(path))
+    return 0
+
+
 def cmd_check(dispatch_dir, label):
     rec, run_id = last_run(dispatch_dir, label)
     release, why = build_of(rec)
@@ -184,6 +249,8 @@ def main(argv):
         return cmd_check(argv[2], argv[3])
     if len(argv) == 5 and argv[1] == "restore":
         return cmd_restore(argv[2], argv[3], argv[4])
+    if len(argv) == 4 and argv[1] == "promote":
+        return cmd_promote(argv[2], argv[3])
     sys.stderr.write(__doc__)
     return 2
 

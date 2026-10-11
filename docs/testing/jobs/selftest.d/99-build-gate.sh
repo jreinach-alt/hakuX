@@ -104,9 +104,15 @@ check "(a) a result with no env key is not release (exit 4)" dbrc 4 dbcheck nova
 dbrun new 2000 nova master '["HAKUX_X=1"]' lane.b
 check "(b) take on a non-release Nova exits 4" db_hold_rc 4 take nova lane.test write proof
 check "(b) no hold/nova is written by the refused take" [ ! -e "$DB_D/hold/nova" ]
-check "(b) wait refuses at once on a non-release Nova (exit 4)" db_hold_rc 4 wait nova lane.test 5 write proof
+check "(b) wait outlasts its timeout on a non-release Nova with nothing to promote it onto (exit 4)" db_hold_rc 4 wait nova lane.test 5 write proof
 # (c) the refusal names the build on stderr
 check "(c) the refusal names the build on stderr" bash -c "DISPATCH_DIR='$DB_D' bash '$DB_SH' take nova lane.test write proof 2>&1 >/dev/null | grep -q 'HAKUX_X=1'"
+
+# (b)/(c)'s refused take/wait each promote (99-restore-priority.sh's gate
+# side effect), which queued a restore for nova. Clear it before (f)-(l)
+# below, which measure device_build.py's OWN restore-queueing in isolation
+# and would otherwise see this one as already pending and queue nothing.
+rm -f "$DB_D/queue"/*dispatch.restore*.req
 
 # (d) a master run on the Nova is taken like any other
 dbrun new 3000 nova master '[]' lane.b
@@ -206,9 +212,10 @@ check "(l) exactly one dispatch.restore request survives in queue/" \
 # MUTANTS: the fix removed must go red. Each mutant is checked for the very
 # behaviour its leg above asserts, so a leg that passes on the mutant is vacuous.
 DB_MUT="$T/devbuild/mut"; mkdir -p "$DB_MUT"
-sed 's/build_gate "\$label" || exit \$?/:/' "$DB_SH" > "$DB_MUT/hold.sh"
-check "the real hold.sh carries both gate calls (take and wait)" [ "$(grep -c 'build_gate "$label" ||' "$DB_SH")" -ge 2 ]
-check "mutant built: hold.sh with its gate calls replaced by :" [ "$(grep -c 'build_gate "$label" ||' "$DB_MUT/hold.sh")" -eq 0 ]
+sed -e 's/build_gate "\$label" || exit \$?/:/' -e 's/build_gate "\$label" && break/break/' \
+    "$DB_SH" > "$DB_MUT/hold.sh"
+check "the real hold.sh carries both gate calls (take and wait)" [ "$(grep -c 'build_gate "$label"' "$DB_SH")" -ge 2 ]
+check "mutant built: hold.sh with its gate calls replaced" [ "$(grep -c 'build_gate "$label"' "$DB_MUT/hold.sh")" -eq 0 ]
 cp "$DB_PY" "$DB_MUT/device_build.py"
 sed -i 's/    return not build_of(rec)\[0\]/    return False/' "$DB_MUT/device_build.py"
 check "mutant: hold.sh without the gate takes the non-release Nova (leg (b) is not vacuous)" \
