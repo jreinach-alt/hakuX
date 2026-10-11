@@ -151,3 +151,27 @@ harvest: `titlestate.py promote --title-id 5454000F --latest --by lane.gtaroutes
 golden, title data after reaching gameplay"`. Re-headed `gta-vc.route`'s `# state:` line to `any`.
 
 Proof soak for `gta-vc.route` not yet run -- next step.
+
+## 6. Step 3/4 written; both remaining proofs queued and waiting on the Nova backlog
+
+Added `targets.toml` rows for both titles (`5454000E`, `5454000F`): `iso.nova`, `route`, no `target_fps` (no
+documented cap and no #482-style XBE disassembly attempted this session -- noted as such, falls through to the 30
+default per the brief's "otherwise leave it out and say so"). Wrote `gta-sa-drive.route`: identical boot to
+`gta-sa.route` (not edited) through the alley-walk beat, then a single Y press to mount the blue-cone BMX (the
+header's own prompt, "Press Y to jump on the bike"), `mark gameplay` after the mount, then LY-forward with LX
+alternated for steering. All three new route files parse-check clean (`route.sh --check`).
+
+Queued both remaining proof soaks, explicitly tagging `(#433)` in `--purpose` so they land at release tier (the
+first VC attempt without that tag queued plain and would have sat behind every release-tier item; withdrew that
+queued file by hand -- it was mine, still in `queue/`, not yet claimed -- and requeued correctly):
+
+- VC: `1-1791751023-gtaroutes1011-1901311`
+- SA-drive: `1-1791753097-gtaroutes1011-2255243`
+
+At queue time the Nova had ~20-23 release-tier items ahead (mostly `nfsdefault1011`, some `profileconv1011` /
+`lane.local`), draining at roughly one per 8 minutes of polling observed -- a multi-hour wait, not something to
+foreground-poll to completion in this session per the brief's own "never end the session to wait" + "wait by
+polling, up to about 9 min a call" combination: 9-minute bounded polls were used (several rounds, see request logs
+in `/tmp/gtaroutes1011-scratch/`), but the backlog depth means this is a wait on dispatcher state outside this
+session's control, not this session's own backgrounded task. Posted `[lane.gtaroutes1011] waiting:` on PR #927
+naming both result paths and stopping here per the role file's guidance for exactly this case.
