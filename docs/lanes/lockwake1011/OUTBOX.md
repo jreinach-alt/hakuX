@@ -22,6 +22,12 @@ wait on a fence the render thread has already reset (a hang), or read an image t
 guard is needed on the image: a per-image sequence number, or a short lock held only to sample the fence and the
 image index.
 
-Probability that it moves the cold frame, by this lane's estimate: 0.35, for the same 0.8-1.5 ms plus the PFIFO
-thread's own start. Read the wake's A/B result first. If the wake left the PFIFO thread's start as the new bound,
-this is the next fix.
+Probability that it moves the cold frame, by this lane's estimate before the A/B: 0.35, for the same 0.8-1.5 ms
+plus the PFIFO thread's own start. Read the wake's A/B result first. If the wake left the PFIFO thread's start as
+the new bound, this is the next fix.
+
+**After the A/B (NOTES.md section 3): it did not.** With `HAKUX_LOCKFREE_WAKE=1`, cold start 1 reads 33.58 ms a
+frame against a warm countdown of 33.56, so nothing bounds the cold frame above warm pace any more. At NFS Most
+Wanted's race start this fix has no measured win left. The PFIFO thread still waits behind the display refresh,
+and that wait could be the frame on a title whose PFIFO thread is the bound. Census such a title before building
+this. Re-ranked to P 0.25 in NOTES.md section 5.

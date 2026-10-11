@@ -7,6 +7,15 @@ Where this starts: coldstart1010 NOTES.md sections 9 and 10. In the stacked conf
 2.19 / 2.35 ms a frame for pfifo.lock (`lockw`) against 0.72 / 0.81 warm. `lock_wait_ns` is added at two sites,
 and neither was a frametrace wait, so nothing said which one holds it or what the PFIFO thread was doing.
 
+**Result (section 3): `HAKUX_LOCKFREE_WAKE=1` passes its registered A/B, 5 of 5 legs.** Cold start 1 goes from
+34.54 to 33.58 ms a frame (B - A -0.96), which is the warm countdown's 33.56: the cold residual is gone. Halo CE
+and JSRF ran their 120 s hang checks clean (section 4). Next step, ranked: section 5.
+
+Why attempt 1 did not finish: it stopped at the 300-turn session cap at 04:22 PDT, right after it pushed
+0456082c86. By then the six A/B arms and the two hang checks were queued but not yet run. It left no `waiting:`
+comment, so lane.local resumed the lane once the last hang check finished. The work up to the A/B is attempt 1's.
+Sections 3-5 and the ready state are attempt 2's.
+
 ## 0. The instrument (step 1)
 
 Both sites now go through one function, `pfifo_lock_timed(d, site)` (nv2a_int.h):
@@ -317,3 +326,91 @@ The wake is in pfifo.c's posted-put block (`pfifo_park()`, `pfifo_post_kick()`, 
 
 What the selftest does not show: whether the woken PFIFO thread starts any sooner. It does not, by design; it
 still waits for the holder to retake the lock. The A/B measures whether the vCPU's freed time moves the frame.
+
+## 3. The A/B: PASS, 5 of 5
+
+One binary at 39c6dacc5e (apk 533bebd5890c on every run), plain build, the Nova, queued A B B A A B at the blocker
+tier. Judge: `wakeread.py ... --expect docs/testing/predictions/lockwake1011-lockfree_wake.json`, output in
+`ab_wakeread.txt`.
+
+| run | arm | cold start 1 | warm countdown | post-GO | marks |
+|---|---|---|---|---|---|
+| 0-1791717602-lockwake1011-1988775 | A | 34.7 | 33.6 | 33.3 | 12/12 |
+| 0-1791717604-lockwake1011-1989057 | B | 33.8 | 33.6 | 33.4 | 12/12 |
+| 0-1791717605-lockwake1011-1989154 | B | 33.5 | 33.5 | 33.4 | 12/12 |
+| 0-1791717607-lockwake1011-1989456 | A | 34.1 | 33.5 | 33.4 | 12/12 |
+| 0-1791717609-lockwake1011-1989815 | A | 34.8 | 33.6 | 33.4 | 12/12 |
+| 0-1791717611-lockwake1011-1989918 | B | 33.4 | 33.6 | 33.4 | 12/12 |
+| **mean A** | | **34.54** | 33.55 | 33.36 | |
+| **mean B** | | **33.58** | 33.56 | 33.37 | |
+
+Every B run is below every A run at the cold start: the slowest B is 33.8, the fastest A 34.1.
+
+Leg by leg, against the registered expect:
+
+| leg | rule | read | verdict | predicted |
+|---|---|---|---|---|
+| V | each run's switch lines, valid starts, boot input, g11 frames; `[lockwake] on` on B and absent on A; 12 marks on A | all six runs hold all of them | PASS | |
+| K | cold B <= 34.5 and B - A <= -0.5 | B 33.58, B - A -0.96 | PASS | ~45 % |
+| C | cold B - A <= -0.5 | -0.96 | PASS | ~55 % |
+| W | warm countdown B - A <= +0.2 | +0.01 | PASS | ~85 % |
+| G | post-GO B - A <= +0.2 | +0.01 | PASS | ~90 % |
+| M | every B run reaches 12 marks | 3 of 3 | PASS | ~95 % |
+
+Against the point estimate:
+- A came in at 34.54, against 34.8 +- 1.0 (coldstart1010-stack.json's B arm read 34.79).
+- B came in at 33.58, against 33.9 +- 0.8. The brief expected 33.6-33.9.
+- B - A came in at -0.96, against -0.9 (range +0.2 .. -1.6).
+- Warm and post-GO did not move (0 +- 0.1 predicted).
+
+V's moving car, by eye: a contact sheet of each run's s1, s6, s11 and s12 g11 frames. The car is on the road in
+every frame, the speedometer reads 50-66, and the scenery differs from start to start. As a number: the mean
+absolute difference between each start's GO frame and its g11 frame is 38-64 grey levels out of 255, across all
+72 starts. A parked car would read near 0.
+
+What the result says:
+- **The guest's pfifo.lock wait was the cold residual.** Cold B (33.58) sits on warm B (33.56) and within 0.21 of
+  post-GO (33.37), the 2-VBLANK floor. In the stacked configuration plus the wake, NFS MW's first race start
+  after loading runs at warm pace.
+- **The wake did not leave the PFIFO thread's start as the bound.** The woken PFIFO thread still waits for the
+  display refresh to release pfifo.lock. The frame no longer shows that wait: a bound would keep cold above
+  warm, and cold now equals warm. So the fence-wait release in OUTBOX.md has no measured win left at this
+  scene. OUTBOX.md is updated to say so.
+- What a plain build cannot show: the uninstrumented `lockw` in arm B. The `Lw:` line is perflog-only (section 1).
+  The frame is the measurement, and the frame moved by the amount the census priced.
+
+## 4. Hang checks: Halo CE and JSRF, clean
+
+B's env (the stacked configuration plus `HAKUX_LOCKFREE_WAKE=1`), 120 s each, no route, same binary:
+
+| run | title | `[lockwake] on` | pace lines | frames counted | longest gap between pace lines | frames captured |
+|---|---|---|---|---|---|---|
+| 0-1791717723-lockwake1011-2002180 | Halo: Combat Evolved | yes | 64 | 60 -> 3840 (~30 fps) | 3.4 s | 10, all distinct |
+| 0-1791717725-lockwake1011-2002610 | JSRF | yes | 121 | 60 -> 7260 (60 fps) | 2.5 s | 10, all distinct |
+
+- Halo goes from the main menu into its attract demo (the Warthog on the beach) and is still running it in the
+  last frame.
+- JSRF goes from its title screen into the city and is still in gameplay at f00009. Its last pace line, 0.1 s
+  before the last line of its logcat, counts 60 flips in the second.
+- JSRF's last captured frame, f00010, is Android Settings, Apps, with hakuX listed under "recently opened, 0 min
+  ago". That is the soak's teardown caught by the last capture, not the app dying:
+  - The emulator's pace lines run without a gap to the end of the logcat, at 60 flips a second. The frame's host
+    timestamp cannot be placed against them exactly, because the host clock steps.
+  - fastpaths1010's switch-off screen of The Simpsons Hit & Run (1-1791706608-fastpaths1010-310, no
+    `[lockwake]`) ends on the same Settings screen.
+- No crash, no ANR and no fatal signal in either logcat. Neither run has a hang or crash verdict.
+
+## 5. Next step, ranked by probability times win
+
+| # | step | P | win at full scale | why |
+|---|---|---|---|---|
+| 1 | Cross-title screen of the stacked configuration's switches for default-on: `HAKUX_POSTED_PUT=1`, `HAKUX_LOCKFREE_WAKE=1` (inert without posted put) and `HAKUX_SUBMIT_FRAMES=3`, over the Playable titles fastpaths1010 screens | 0.6 | NFS MW's cold start from 37.93 to ~33.6 for every player (all three are default-off today), and whatever other titles get from the same waits | Nothing default-off reaches a player. The wake has passed its selftest's lost-wakeup falsifiers and three titles' runs. What can fail is another title's wake pattern, and only a screen can see that. Not this lane's call (brief: "Default-off only"). |
+| 2 | Release pfifo.lock around the display refresh's fence wait (OUTBOX.md) | 0.25 | no measured win at NFS MW's cold start any more. The PFIFO thread still waits behind the display refresh there, and on a title where the PFIFO thread is the bound that wait is the frame | It needs a census first on a title whose PFIFO thread is the bound. The lock orders that wait against `render_display()`'s fence reuse, so the fix needs another guard on the image. |
+| 3 | NFS MW's warm countdown, 33.55 against post-GO's 33.37 | 0.3 | 0.18 ms | Small. Not worth device time while 1 is open. |
+
+What the next lane should not repeat:
+- Don't treat `lockw` as the vCPU's own contention. Here all of it was a third thread holding pfifo.lock while the
+  PFIFO thread was parked. Read `lw_parked` before pricing a fix that shortens the PFIFO thread's critical section.
+- Don't read `vhp_run` alone. The PFIFO thread's park is not a frametrace wait, so a wait that ends while it is
+  parked books `run` as well (section 1).
+- The lane's `.txt` readings are kept by `git add -f`, because `.gitignore` has `*.txt`.
