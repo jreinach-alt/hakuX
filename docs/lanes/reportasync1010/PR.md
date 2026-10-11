@@ -1,18 +1,16 @@
 reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5)
-State: draft
+State: ready
 
 Lane: reportasync1010       Issue: #433 (umbrella), none filed
-Base: master @ 9fd2608f8f, merged forward to master @ c829b64c8e (60a04cc81b), to master @ d758e39a59 (f111e7227d) and to master @ c271f515b4 (a21a3361d9). The NFS A/B and pixel leg ran on ba9a6df8fc; the armed gate is 477893cdbf; the addendum-2 frametrace pair runs on a21a3361d9 (the gate merged with master, no emulator-code change). The step-5 pair ran on lane/reportasync1010-ts @ 3cd9d6b7e3: this branch @ ba9a6df8fc merged with origin/lane/texscan1010 @ 227a161cc2, because texscan1010 had not folded when it was queued.
+Base: master @ 9fd2608f8f, merged forward to master @ c829b64c8e (60a04cc81b), to master @ d758e39a59 (f111e7227d), to master @ c271f515b4 (a21a3361d9) and to master @ 071aea27ff (140930dc16). The NFS A/B and pixel leg ran on ba9a6df8fc; the armed gate is 477893cdbf; the addendum-2 frametrace pair runs on a21a3361d9 (the gate merged with master, no emulator-code change). The step-5 pair ran on lane/reportasync1010-ts @ 3cd9d6b7e3: this branch @ ba9a6df8fc merged with origin/lane/texscan1010 @ 227a161cc2, because texscan1010 had not folded when it was queued.
 Files: hw/xbox/nv2a/pgraph/vk/reports.c, docs/testing/nv2a_index.json, docs/lanes/reportasync1010/**, docs/testing/predictions/reportasync1010-*.json
 Prediction: docs/testing/predictions/reportasync1010-nfs.json @ 04c379467242e8d95783d5a9a63042f284126da65702bba2ea5f09ddbe7f6d17 (race start, off/on/on/off, plain build, ref ba9a6df8fc): FAIL, 5 of 6
 Prediction: docs/testing/predictions/reportasync1010-pixels.json @ 1229dc96bea39ca5ea11f8ef6061611b0db3d522f0226c9ce8080db56fdc8f46 (27-suite disc, must_not_move, ref ba9a6df8fc): FAIL, 8 of 1,060, all in the known-flaky rows; the runs=3 determinism check reads every mover as flicker, none as the switch
 Prediction: docs/testing/predictions/reportasync1010-both.json @ 6e6e5c9b2f1484437cc50f940b81619d57b64401de87e7178c50dc7ecd08b904 (HAKUX_TEXSCAN=1 + HAKUX_REPORT_ASYNC=1 vs both off, ref 3cd9d6b7e3): FAIL, 4 of 8
 Prediction: docs/testing/predictions/reportasync1010-gate-zpass.json @ 6caa5cf7036eefcc5a873b308592a13ca6764ec1f805009f328e71cb8efe1083 (armed gate, ZPass suite on vs off, ref 477893cdbf): PASS, 72 of 72
-Prediction: docs/testing/predictions/reportasync1010-ftpair.json @ 775e0c127fc5596d7bd7a68eb9d725b8484cf301560f3240703e8f888767cc29 (addendum 2: NFS race-start frametrace, FRAMETRACE alone vs + REPORT_ASYNC + TEXSCAN, perflog, ref a21a3361d9): queued
+Prediction: docs/testing/predictions/reportasync1010-ftpair.json @ 775e0c127fc5596d7bd7a68eb9d725b8484cf301560f3240703e8f888767cc29 (addendum 2: NFS race-start frametrace, FRAMETRACE alone vs + REPORT_ASYNC + TEXSCAN, perflog, ref a21a3361d9): FAIL, 4 of 5 (F: the rule's context also holds the slot rotation fence, draw.c:5234; the report-fence sites are gone from B's pacing thread)
 Needs device: yes (Nova, used)
 Needs NDK: yes
-
-waiting: two Nova requests in docs/lanes/reportasync1010/WAITING, the addendum-2 frametrace pair (1-1791671433-reportasync1010-3857080 A, 1-1791671434-reportasync1010-3857196 B). They are resolved when DONE in the dispatch results; then ftpair.py and phaseread.py read them (NOTES.md section 2, "Judges"), the per-phase table goes in NOTES.md and here, and this goes to `State: ready`. The five earlier checks are read and hold.
 
 Step 2 of docs/lanes/nfs30plan1010/PLAN.md (section 4.2). At NFS Most Wanted's race start, the PFIFO thread
 (which paces the frame) waits 4.3-6.7 ms per frame for the GPU to finish, so that it can write the zpass report.
@@ -23,6 +21,8 @@ reports whose status word the guest armed are deferred. A guest that leaves the 
 so the finish still writes its reports, after the batch's own slot fence (477893cdbf).
 
 **Results** (every figure is from this lane's runs; NOTES.md section 2 has the per-run tables):
+
+**Once the report wait is gone, the pacing thread's own CPU work is over half the race start's period: 58 % of a heavy warm frame (`p_run` 27.5 of 47.3 ms, `1-1791671434-reportasync1010-3857196`). Recording is about half of that.**
 
 | | off | on | registered | |
 |---|---|---|---|---|
@@ -56,10 +56,59 @@ plus 285 slot-gate waits totalling 22 ms (`1-1791659727-reportasync1010-553973`)
 
 **Step 5 decides texscan's default: it follows this switch.** With async on, texscan adds no cost and gains at
 most 0.7 ms, which is inside pair noise. Without async, it loses about 5 ms. Together the two switches do not
-reach the plan's 34 ms. Something else holds the race start at about 37 ms. Addendum 2's frametrace pair, A
-`HAKUX_FRAMETRACE=1` alone and B with async and texscan on, is queued to say what. It was registered first as
-`reportasync1010-ftpair.json`: the report fence leaves the PFIFO thread, the cube-face waits drop >= 4 ms, the
-period drops >= 2.5 ms, and on B the PFIFO thread's own CPU time (`p_run`) is at least half the period.
+reach the plan's 34 ms. Something else holds the race start at about 37 ms.
+
+**Addendum 2: where the period goes once the report wait is gone.** Two NFS race-start frametrace soaks
+(perflog, ref a21a3361d9): A `HAKUX_FRAMETRACE=1` alone (`1-1791671433-reportasync1010-3857080`), B with
+`HAKUX_REPORT_ASYNC=1 HAKUX_TEXSCAN=1` added (`1-1791671434-reportasync1010-3857196`). Both 12 of 12 marks, 0 bad
+starts, a moving car in all 24 `s*-g11` frames. Registered first as `reportasync1010-ftpair.json`:
+
+| check | registered | measured (warm countdown, all frames) | |
+|---|---|---|---|
+| V | 12 marks, >= 10 valid starts, >= 300 warm frames, env, perflog | 12 / 12, 0 / 0 bad, 721 / 859 frames | PASS |
+| F | `p_c_rep` A >= 2.5, B <= 0.5 ms | A 4.43, B 0.92 | FAIL |
+| U | `unhooked` A - B >= 4.0 ms | 9.64 - 2.49 = 7.14 | PASS |
+| P | period B - A <= -2.5 ms | 53.60 -> 44.81, -8.78 | PASS |
+| R | B `p_run` / P >= 50 % | 27.08 / 44.81 = 60 % | PASS |
+
+F fails on what its row counts: every hooked wait in the `pgraph_process_pending_reports` context. On B that
+context holds one site, the slot rotation fence (`pgraph_vk_finish+0x1330`, draw.c:5234), at 0.92 ms. Neither
+report-fence site (`pgraph_vk_process_pending_reports_internal+0xd54`, `+0xc8c`) appears on B's pacing thread.
+The verdict stands as registered.
+
+Per heavy frame (3+ VBLANKs), ms (`ftpair.py`, `ftbuckets.py`; share = B's share of its period):
+
+| row | A warm | B warm | B share | A post-GO | B post-GO | B share |
+|---|---|---|---|---|---|---|
+| P, the period | 53.68 | 47.34 | 100 % | 48.88 | 42.43 | 100 % |
+| `p_run`, pacing thread on CPU | 28.18 | 27.48 | **58 %** | 24.84 | 24.12 | **57 %** |
+| `pidle`, waiting for the guest's next push | 10.66 | 15.21 | 32 % | 10.51 | 15.27 | 36 % |
+| `p_c_rep`, hooked waits in pending_reports | 4.44 | 1.06 | 2 % | 4.74 | 0.93 | 2 % |
+| `unhooked` (sd finishes on A; `wait_frame_submitted`, gate) | 9.64 | 2.76 | 6 % | 8.18 | 1.24 | 3 % |
+| `p_rq` + `p_oth_hk` | 0.76 | 0.83 | 2 % | 0.61 | 0.88 | 2 % |
+| guest vCPU: `lockw`, waiting for `pfifo.lock` to store DMA_PUT | 0.09 | 7.31 | | 0.08 | 5.57 | |
+| GPU busy | 13.04 | 19.36 | 41 % | 11.78 | 16.08 | 38 % |
+
+The brief's four buckets, B per heavy warm frame [post-GO]:
+
+- recording and the rest of the pacing thread's CPU work (`p_run`): 58 % [57 %]. Recording (phase `Draw`) is
+  about 14.1 ms [10.6] of it; the rest is method parsing, `Surf` and finish CPU work.
+- vblank quantization and waiting for the guest (`pidle`): 32 % [36 %]. 12.1 of its 13.2 ms phase-line `Idle` is
+  after a flip.
+- cube faces: 0 %. B has no sd finishes (90 per 60 frames on A).
+- other fences and waits: 8 % [5 %]. Of that, the rotation fence is 2 % and `wait_frame_submitted` plus the gate
+  is 6 % [3 %].
+
+`p_run`'s share is an upper bound for the plain build, because the perflog clock reads run on the pacing thread.
+If the whole ~4 ms perflog gap (41.7 against 37.5 ms warm, `-552662` / `-552924`) came out of `p_run`, it would
+still be 56 %.
+
+The next limit is on the guest side too. On B the vCPU waits 7.3 ms per heavy warm frame for `pfifo.lock` to
+store DMA_PUT (user.c:92-95), against 0.09 on A; perflog's `hakuX-cpu` `Lw` agrees (6.6 ms on B, 0.0 on A). The
+guest is busy past 2 VBLANKs on 58 % of B's heavy warm frames, and on 8 % without that wait. Frametrace names no
+holder for it. The PFIFO thread holds the lock while it parses the pushbuffer (pfifo.c:2133), in
+`pgraph_process_pending` (2125) and in the end-of-frame finish (2163). Which of the three costs the guest is the
+next measurement, and is outside this lane's files (NOTES.md section 4).
 
 **Recommendation: default-on, with the armed gate.** The three checks it waited on hold: the determinism check,
 the gate's ZPass PASS, and 0 report waits on the gated NFS run. The reason is the step-1

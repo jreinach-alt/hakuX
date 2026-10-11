@@ -5,11 +5,12 @@ folded), merged forward to master @ c829b64c8e (60a04cc81b: pfifowait1009, nfsfr
 forzasurf1010 folded; `reports.c` auto-merged, pfifowait's default-off `HAKUX_PFIFOWAIT` kept, unset in every run
 here), and again to master @ d758e39a59 (f111e7227d) before the armed gate (477893cdbf, section 1), and to
 master @ c271f515b4 (a21a3361d9) for the addendum-2 frametrace pair; `git diff 477893cdbf a21a3361d9` touches no
-emulator code. The both-switches pair (brief step 5) runs on `lane/reportasync1010-ts` @ 3cd9d6b7e3: this branch @ ba9a6df8fc merged
+emulator code. After the pair ran it was merged to master @ 071aea27ff (140930dc16). That merge brings
+gpupass1010's `kTitleRenderModes` row, which renders NFS Most Wanted in sysmem; no run in this lane had it. The both-switches pair (brief step 5) runs on `lane/reportasync1010-ts` @ 3cd9d6b7e3: this branch @ ba9a6df8fc merged
 with `origin/lane/texscan1010` @ 227a161cc2, because texscan1010 had not folded when the pair was queued. That
 branch is a build ref only, with no PR of its own; nothing from it folds through this PR.
 
-**Where this stands (attempt 4):**
+**Where this stands (attempt 5): done, `State: ready`.**
 
 - The NFS A/B fails its registered prediction on one check of six, by 0.2 ms. The warm countdown on is 38.2 ms
   against a bound of <= 38.0.
@@ -20,9 +21,15 @@ branch is a build ref only, with no PR of its own; nothing from it folds through
 - The armed gate (477893cdbf) holds: its ZPass check PASSES (72 of 72 byte-identical, the gate engaged on
   every ZPass report), and the gated NFS run keeps 0 report waits on the finishing thread over 12 valid starts.
 - The three conditions of the default-on recommendation hold (section 6).
-- Queued (addendum 2): one frametrace pair at the race start, `HAKUX_FRAMETRACE=1` alone vs with
-  `HAKUX_REPORT_ASYNC=1 HAKUX_TEXSCAN=1`, to say where the ~37 ms period goes once the report wait is gone
-  (section 2, "Addendum 2"). Its table counts toward `State: ready`.
+- Addendum 2's frametrace pair (`-3857080` alone, `-3857196` with `HAKUX_REPORT_ASYNC=1 HAKUX_TEXSCAN=1`)
+  fails its prediction 4 of 5. F fails because the rule counted the slot-rotation fence along with the report
+  fence; the report fence's own sites are gone from the pacing thread on B (section 2, "Addendum 2").
+- **Once the report wait is gone, on-CPU work on the pacing thread is over half the period**: 58 % of a heavy
+  warm frame (`p_run` 27.5 of 47.3 ms), with recording (`Draw`) about half of that. Waiting for the guest
+  (`pidle`) is 32 %. Cube faces are 0, other fences and waits 8 %.
+- The pacing thread alone overruns 2 VBLANKs on only a third of B's heavy frames. The guest overruns on 58 %:
+  it now waits 7.3 ms per heavy frame for `pfifo.lock` to store DMA_PUT, against 0.09 ms on A. That wait has
+  no measured holder. It is the next lane's measurement (section 4).
 
 ## 1. What the code does
 
@@ -393,8 +400,7 @@ sync pilot 40.6 ms, both with the trace on. texscan1010 measured the same loss (
 default must follow async's. Turning texscan on alone loses fps on NFS. Turning it on with async is neutral at
 the race start, with the cube-face downloads gone.
 
-What holds the race start at about 37 ms once the report wait is gone is not known. This lane did not run a
-frametrace with async on. That is the next measurement (section 4).
+What holds the race start at about 37 ms once the report wait is gone: addendum 2 below.
 
 ### The addendum's question: does async remove the wait with texscan on
 
@@ -416,7 +422,7 @@ Two trace runs on 3cd9d6b7e3, both with `HAKUX_TEXSCAN=1 HAKUX_REPORT_TRACE=1`, 
 frametrace figure. This lane's instrument times the whole wait, including `vkGetQueryPoolResults`. Async takes it
 to zero on the finishing thread. What is left there is the rule-3 gate: 285 waits, 22 ms over all 12 starts.
 
-### Addendum 2: where the ~37 ms period goes once the report wait is gone (queued)
+### Addendum 2: where the ~37 ms period goes once the report wait is gone
 
 Two NFS race-start soaks on a21a3361d9 (the armed gate, merged with master), route `nfs-mw-quickrace`, 500 s,
 Nova, perflog, `--pull 'frametrace_*'`:
@@ -447,7 +453,157 @@ Predicted (rules F, U, P, R):
 - **R:** on B, `p_run` is >= 50 % of the period: the residual is CPU work on the pacing thread, not a wait.
   Recording is its largest named part, `pidle` the second-largest row, other fences <= 1 ms.
 
-The per-phase table, heavy frames (vb >= 3) side by side, goes here when both runs are DONE.
+**Verdict: FAIL, 4 of 5.** Both runs DONE, 12 of 12 marks, 0 bad starts. Every `s*-g11` frame of both runs (24
+starts) shows a moving car, at about 30 mph or more.
+
+| check | registered | measured (warm countdown, all frames) | |
+|---|---|---|---|
+| V | 12 marks, >= 10 valid starts, >= 300 warm frames, env, perflog | 12 / 12 marks, 0 / 0 bad, 721 / 859 frames | PASS |
+| **F** | **`p_c_rep` A >= 2.5, B <= 0.5** | **A 4.43, B 0.92** | **FAIL** |
+| U | `unhooked` A - B >= 4.0 | 9.64 - 2.49 = 7.14 | PASS |
+| P | period B - A <= -2.5 | 53.60 -> 44.81, -8.78 | PASS |
+| R | B `p_run` / P >= 50 % | 27.08 / 44.81 = 60 % | PASS |
+
+**Why F fails: the rule's row is a context, not a site.** `p_c_rep` is every hooked wait the PFIFO thread
+makes inside `pgraph_process_pending_reports`. The frametrace site table (`[hakuX-ft1] site ... row=p` in each
+`logcat.txt`) shows what is in it:
+
+- A: the report fence, `pgraph_vk_process_pending_reports_internal+0xd54` (#1) and `+0xc8c` (#26), and the slot
+  rotation fence, `pgraph_vk_finish+0x1330` (#55);
+- B: the rotation fence only, `pgraph_vk_finish+0x1330` (#34). That is `vkWaitForFences` on the next frame
+  slot (draw.c:5234), in the end-of-frame finish that `pgraph_process_pending_reports` runs. Neither report-fence
+  site appears on B's PFIFO row.
+
+So the report fence is off the pacing thread on B. What F measured on B is the rotation fence, at 0.92 ms. The
+verdict stands as registered: re-registering the rule on the site would fit it to the data.
+
+**The two runs in nfsframe1010's window table** (`raread.py`, pace lines; perflog builds):
+
+| window | A (`-3857080`), frametrace alone | B (`-3857196`), + async + texscan |
+|---|---|---|
+| cold start, countdown | 52.9 ms (18.9 fps), v2/v3/v4 38/23/38 % (1 line) | 50.9 ms (19.6 fps), 34/50/16 % (2 lines) |
+| warm restarts, countdown | 47.7 ms (21.0 fps), 30/54/15 % (13 lines) | 41.7 ms (24.0 fps), 49/42/3 % (13 lines) |
+| post-GO warm | 44.3 ms (22.6 fps), 38/53/7 % (43 lines) | 38.0 ms (26.3 fps), 59/31/1 % (53 lines) |
+
+The perflog + frametrace build runs about 4 ms slower than this lane's plain-build runs with the same switches:
+both-switches on read 37.5 ms warm and 35.2 ms post-GO (`-552662`, `-552924`).
+
+**Per heavy frame (vb >= 3), side by side** (`ftpair.py` and `ftbuckets.py`, ms per frame; share = B's share
+of its period):
+
+| row | A warm | B warm | B share | A post-GO | B post-GO | B share |
+|---|---|---|---|---|---|---|
+| frames | 711 | 499 | | 1,378 | 864 | |
+| **P, the period** | **53.68** | **47.34** | 100 % | **48.88** | **42.43** | 100 % |
+| *PFIFO thread (paces the frame)* | | | | | | |
+| `p_run`, on CPU | 28.18 | 27.48 | **58 %** | 24.84 | 24.12 | **57 %** |
+| `p_rq`, runnable | 0.72 | 0.81 | 2 % | 0.57 | 0.82 | 2 % |
+| `pidle`, waiting for the guest's next push | 10.66 | 15.21 | 32 % | 10.51 | 15.27 | 36 % |
+| `p_c_rep`, hooked waits in pending_reports | 4.44 | 1.06 | 2 % | 4.74 | 0.93 | 2 % |
+| `p_oth_hk`, other hooked waits | 0.04 | 0.02 | 0 % | 0.04 | 0.06 | 0 % |
+| `unhooked` | 9.64 | 2.76 | 6 % | 8.18 | 1.24 | 3 % |
+| busy, P - `pidle` | 43.0 | 32.1 | | 38.4 | 27.2 | |
+| *guest vCPU* | | | | | | |
+| work, `v_run` - `gidle` + `v_rq` | 24.0 | 25.8 | | 21.9 | 22.2 | |
+| `gidle`, the guest's idle loop | 24.0 | 11.8 | | 21.3 | 12.3 | |
+| `v_blk` | 5.7 | 9.8 | | 5.7 | 8.0 | |
+| of which `lockw` (DMA_PUT, `pfifo.lock`) | **0.09** | **7.31** | | **0.08** | **5.57** | |
+| busy, work + `v_blk` | 29.7 | 35.6 | | 27.6 | 30.1 | |
+| *off the pacing thread* | | | | | | |
+| `o_fence` (render thread; on B also the reader) | 9.62 | 27.79 | | 8.24 | 23.55 | |
+| GPU busy | 13.04 | 19.36 | 41 % | 11.78 | 16.08 | 38 % |
+| v2 / v3 / v4+ | 0/78/22 % | 0/94/6 % | | 0/90/10 % | 0/97/3 % | |
+
+The phase line has no per-frame form: its fields are per-flip EMAs over every frame in the window, heavy or not
+(`phaseread.py --window=-2,1.5` and `--window=1.5,12`). Heavy frames are 58 % of B's warm frames and 99 % of A's,
+so B's phases below understate its heavy frames a little:
+
+| phase (all frames, EMA) | A warm | B warm | A post-GO | B post-GO |
+|---|---|---|---|---|
+| G, the phase lines' period | 54.3 | 45.1 | 42.9 | 36.7 |
+| Surf | 1.8 | 1.8 | 1.3 | 1.3 |
+| **Draw, recording** | **15.0** | **14.1** | **11.4** | **10.6** |
+| of which Syn / Pipe (Sh) / Desc / Setup / Mfp | 3.9 / 5.7 (3.6) / 0.5 / 1.1 / 1.9 | 3.6 / 5.1 (3.3) / 0.6 / 1.0 / 1.8 | 2.8 / 4.6 (2.8) / 0.4 / 0.9 / 1.2 | 2.6 / 4.2 (2.6) / 0.4 / 0.8 / 1.2 |
+| Fin (Sub / Fen) | 15.7 (9.9 / 1.2) | 2.6 (0.2 / 2.4) | 12.3 (7.0 / 1.1) | 1.9 (0.1 / 1.7) |
+| Idle (Fr / St) | 11.5 (10.3 / 1.2) | 13.2 (12.1 / 1.1) | 10.3 (9.3 / 1.1) | 14.4 (13.1 / 1.2) |
+| outside every phase, G - Tot | 10.2 | 13.3 | 7.4 | 8.5 |
+| GPU (R / X) | 13.1 (12.6 / 0.5) | 19.2 (12.7 / 6.5) | 10.0 (9.5 / 0.5) | 13.1 (9.3 / 3.9) |
+| finishes per 60 frames: sd / stl | 90 / 73 | 0 / 89 | 90 / 74 | 0 / 83 |
+| texture sync downloads, ms/frame | 4.2 | 0.0 | 4.2 | 0.0 |
+
+**Where B's period goes, by the brief's four buckets** (per heavy warm frame, P 47.34 ms; post-GO heavy, P 42.43,
+in brackets):
+
+| bucket | ms | share | evidence |
+|---|---|---|---|
+| **recording and the rest of the pacing thread's CPU work** (`p_run`) | 27.48 [24.12] | **58 % [57 %]** | over half |
+| of which recording (`Draw`) | about 14.1 [10.6] | about 30 % [29 %] of G | phase line, all frames |
+| of which the rest: method parsing and the pusher, `Surf`, finish CPU | about 13.4 | about 28 % | `p_run` - `Draw` |
+| **vblank quantization, and waiting for the guest** (`pidle`) | 15.21 [15.27] | 32 % [36 %] | `Fr` 12.1 of `Idle` 13.2 is after a flip |
+| **cube faces** (sd finish waits) | 0 | 0 % | sd 0 per 60 frames, from 90 on A |
+| **other fences and waits** | 3.84 [2.23] | 8 % [5 %] | |
+| of which the slot rotation fence (#34, draw.c:5234) | 1.06 [0.93] | 2 % | `p_c_rep` |
+| of which `wait_frame_submitted` and the rule-3 gate | 2.76 [1.24] | 6 % [3 %] | `unhooked`: B has no sd finish |
+| run queue (`p_rq`) | 0.81 [0.82] | 2 % | |
+
+`p_run`'s share is an upper bound for the plain build: the perflog clock reads sit on the pacing thread. If the
+whole ~4 ms perflog gap (41.7 against 37.5 ms warm) came out of `p_run`, the share would still be 56 %.
+
+**Which side misses the second VBLANK** (`ftbuckets.py`, heavy frames). Per frame, each thread's busy time
+(PFIFO: P - `pidle`; guest: work + `v_blk`) against 2 VBLANKs of that frame's own VBLANK period:
+
+| share of heavy frames whose busy time > 2 VBLANKs | A warm | B warm | A post-GO | B post-GO |
+|---|---|---|---|---|
+| PFIFO thread | 100 % | 33 % | 84 % | 17 % |
+| guest | 18 % | 58 % | 6 % | 30 % |
+| guest, `lockw` taken out (a bound) | 17 % | 8 % | 5 % | 5 % |
+| either | 100 % | 72 % | 84 % | 37 % |
+| either, `lockw` taken out (a bound) | 100 % | 37 % | 84 % | 19 % |
+
+- On A, the pacing thread alone overran 2 VBLANKs on every warm heavy frame: 43 ms busy, with the report fence
+  and the cube-face round trips inside it.
+- On B it overruns on a third. The guest overruns on 58 %, and the difference is `lockw`. The vCPU now waits
+  7.3 ms per heavy frame to take `pfifo.lock` and store DMA_PUT (user.c:92-95), against 0.09 ms on A. On A the
+  guest pushed its frame and waited (`gidle` 24 ms). On B it runs alongside the PFIFO thread and meets the lock
+  that thread holds for three things:
+  - while it parses the pushbuffer (`pfifo_run_pusher`, pfifo.c:2133; the fast dispatch
+    `pgraph_method_try_fast` runs with the lock held, pfifo.c:1768-1778);
+  - in `pgraph_process_pending` (2125);
+  - in the end-of-frame finish inside `pgraph_process_pending_reports` (2163), rotation fence and
+    `wait_frame_submitted` included.
+- A second instrument agrees. The perflog `hakuX-cpu` line's `Lw` is the same `lock_wait_ns`, as a per-flip EMA
+  (profile.c:128-185). It reads about 6.6 ms per frame on B's warm countdown and 3.0 post-GO, and 0.0 on A.
+  `phaseread.py` prints these as 0.11 and 0.05 because it divides by 60 again (section 4).
+- Frametrace attributes no holder to this wait (`hakux_ft_attribute`: "the DMA_PUT wait seen only by
+  lock_wait_ns ... UNATTR (no holder)"). So which of those holds costs the guest is not measured. The
+  "`lockw` taken out" rows are a bound: they assume the wait would vanish with nothing in its place.
+- On B post-GO, 63 % of the heavy frames have neither thread over 2 VBLANKs. Those lose the third VBLANK at the
+  handoff: the guest's push arrives too late in the frame for the PFIFO thread's work to finish in time.
+
+**Two more readings, neither a limit:**
+
+- **The GPU** is 41 % of B's heavy warm frame (19.4 ms). Its render passes are unchanged (R 12.6 -> 12.7). Time
+  outside render passes rises from 0.5 to 6.5 ms (X): one command buffer per frame now carries the copies the
+  sd finishes used to submit on their own. This reader does not split X further.
+- **Frametrace's `cls` column is not comparable between A and B.** It judges each frame against D = `ireq` x
+  VBLANK. `ireq` is inferred: the smallest VBLANK count that at least 5 % of the last 256 flips used
+  (profile.h `ft_ireq`). B's flips take 1 VBLANK often enough (6 % warm, 9 % post-GO), so `ireq` reads 1 on 86 %
+  of B's heavy frames, against 2 on 97 % of A's. D halves to 16.7 ms, and any frame with guest work over that
+  reads RUN (87 % of B's heavy frames). The guest's work did not change (24.0 -> 25.8 ms). The deadline the
+  class compares it to did.
+
+**The HUD at g11 is not the switch.** The race HUD's leaderboard (top right) reads differently by arm in this
+lane's `s*-g11` frames:
+
+- async-on runs show racer names: 12 of 12 starts in `-547266`, `-552662` and `-552924`, 11 in `-547898`, about 10
+  in B;
+- async-off runs mostly show "+NN FT" gaps: 12 of 12 in A, `-546475` and `-552321`. The two off2 runs are mixed:
+  `-548438` shows names at about 4 starts, `-553359` at 1.
+
+Four fast async-off runs from another lane separate "the switch" from "the pace": drawrec1010's `-3707918`,
+`-3708043`, `-3708870` and `-3709079`, at 36-38 ms post-GO with no `HAKUX_REPORT_ASYNC`. They show names at g11 in
+19 of their 20 starts s3-s7; the 20th shows an empty list. So the leaderboard follows how far the race has got
+when the shot is taken, not the switch. A fixed wall time after GO is more frames on a faster run.
 
 ### Runs of this lane
 
@@ -472,8 +628,8 @@ The per-phase table, heavy frames (vb >= 3) side by side, goes here when both ru
 | `1-1791667684-reportasync1010-3047961` | gate ZPass B (`reportasync1010-gate-zpass.json`) | 477893cdbf | `HAKUX_REPORT_ASYNC=1 HAKUX_REPORT_TRACE=1` | done: PASS, 72/72 |
 | `1-1791667685-reportasync1010-3048190` | gate ZPass A | 477893cdbf | none | done |
 | `1-1791667691-reportasync1010-3049912` | gate on NFS, trace (not scored: `wait=` ~0, 12 starts) | 477893cdbf | `HAKUX_REPORT_ASYNC=1 HAKUX_REPORT_TRACE=1` | done: 0 report waits, 12 of 12 starts |
-| `1-1791671433-reportasync1010-3857080` | addendum 2, frametrace A (`reportasync1010-ftpair.json`) | a21a3361d9 | `HAKUX_FRAMETRACE=1` (perflog) | queued 10-10 |
-| `1-1791671434-reportasync1010-3857196` | addendum 2, frametrace B | a21a3361d9 | `HAKUX_FRAMETRACE=1 HAKUX_REPORT_ASYNC=1 HAKUX_TEXSCAN=1` (perflog) | queued 10-10 |
+| `1-1791671433-reportasync1010-3857080` | addendum 2, frametrace A (`reportasync1010-ftpair.json`) | a21a3361d9 | `HAKUX_FRAMETRACE=1` (perflog) | done: ftpair FAIL 4/5 (F: rotation fence) |
+| `1-1791671434-reportasync1010-3857196` | addendum 2, frametrace B | a21a3361d9 | `HAKUX_FRAMETRACE=1 HAKUX_REPORT_ASYNC=1 HAKUX_TEXSCAN=1` (perflog) | done: `p_run` 58 % of a heavy frame |
 
 The gated NFS run (`-3049912`, trace on, not scored) reads 44.6 ms cold, 38.1 ms warm countdown (v2 71 %),
 36.0 ms post-GO warm, the same as the ungated async runs. Its `s*-g11` frames show a moving player at all 12 starts
@@ -498,7 +654,8 @@ the 3 h allowance. Judges:
 - addendum 2: `ftpair.py $D/1-1791671433-reportasync1010-3857080 $D/1-1791671434-reportasync1010-3857196 --expect
   docs/testing/predictions/reportasync1010-ftpair.json` (`D=$DISPATCH_DIR/results`; the readers want full
   paths), then `docs/lanes/nfs30plan1010/phaseread.py <run> --window=-2,1.5` and `--window=1.5,12` on each run,
-  for the recording (`Draw`) part of `p_run`.
+  for the recording (`Draw`) part of `p_run`, and `ftbuckets.py <A> <B>` for the vCPU row, `lockw` and the
+  2-VBLANK table.
 
 The two trace runs on the `-ts` ref answer the addendum's question. With texscan on, the report wait is the
 largest it has been measured (~10.5 ms/frame, texscan1010's frametrace). The texscan + sync run measures it with
@@ -529,8 +686,8 @@ this lane's instrument, and the texscan + async run shows whether any of it stay
    any run of it. Queued the ZPass pair, one NFS trace run on the gated build, and the pixel leg's determinism
    check. All three hold (attempt 4).
 7. Addendum 2 (attempt 4): the frametrace pair on a21a3361d9, registered as `reportasync1010-ftpair.json`
-   before it was queued. When both runs are DONE: judge them, write the heavy-frame table into section 2
-   ("Addendum 2") and PR.md, give each bucket's share of the residual, run `preflight.sh`, set `State: ready`.
+   before it was queued. Done (attempt 5): judged FAIL 4 of 5. The heavy-frame table and each bucket's share
+   are in section 2 ("Addendum 2") and PR.md.
 
 ## 4. For the next lane
 
@@ -543,10 +700,34 @@ this lane's instrument, and the texscan + async run shows whether any of it stay
 
 - `phaseread.py` (nfs30plan1010) prints nothing on the plain build: it returns before the pace line when no
   phase line is in the window. `raread.py` reads pace alone.
-- **The next measurement is a frametrace with `HAKUX_REPORT_ASYNC=1`** (and texscan on): with the report wait
-  gone, the race start sits at about 37 ms warm and 35 ms post-GO, and nothing here says what sets that. The
-  plan's 34 ms needs that answer, not another A/B of these two switches. It is queued as addendum 2's pair
-  (section 2); drawrec1010 and gpupass1010 read its table.
+- **The next measurement: who holds `pfifo.lock` while the guest waits to store DMA_PUT.** With async and
+  texscan on, the vCPU waits 7.3 ms per heavy warm frame at user.c:92-95 (0.09 without them). On B, that wait
+  is what puts the guest over 2 VBLANKs on most of the heavy frames that miss (section 2, addendum 2). Frametrace
+  names no holder. The PFIFO thread holds the lock for three things:
+  - the pusher's parsing, and the fast dispatch with it (pfifo.c:1768-1778, 2133);
+  - `pgraph_process_pending` (2125);
+  - the end-of-frame finish inside `pgraph_process_pending_reports` (2163).
+
+  A per-hold timer on those three, read against `lock_wait_ns`, decides the remedy. If the finish's waits hold
+  it, the finish can drop the lock while it waits. If the parsing holds it, the guest's store needs no lock, as
+  `user_read` already does (user.c:26-38). Expected size: "either thread over 2 VBLANKs" falls from 72 % to at
+  most 37 % of B's heavy warm frames if the wait vanished (a bound, `ftbuckets.py`). None of this is in this
+  lane's territory: user.c and pfifo.c.
+- **Recording is the largest named part of the pacing thread's CPU once the waits are gone**, about 14 of
+  27.5 ms per heavy warm frame (`Draw`, all-frame EMA). The other ~13 ms is method parsing, the pusher and the
+  rest outside every phase timer. drawrec1010's and the vCPU JIT's lines are the ones that move it.
+- `phaseread.py` (nfs30plan1010, and gpupass1010's copy) prints `hakuX-cpu`'s `Push`, `Pull` and `Lw` 60 times
+  too small. Those fields are already per flip: profile.c:128-185 smooths each flip's counters and resets them.
+  The reader divides by 60 as if they summed 60 flips (phaseread.py:143-145). Multiply its output by 60.
+- A frametrace rule keyed on a context (`p_c_rep`) counts every wait made inside it. addendum 2's F rule caught
+  the slot rotation fence (draw.c:5234) along with the report fence. Key a rule on the site's `sym=` in the
+  site table instead.
+- Frametrace's `cls` is judged against an inferred `ireq` (profile.h `ft_ireq`). A change that makes 5 % of
+  flips take one VBLANK flips `ireq` from 2 to 1 and reclassifies most frames as RUN. Compare `ireq` before
+  comparing `cls` across two runs.
+- Master now renders NFS Most Wanted in sysmem (gpupass1010's `kTitleRenderModes` row, folded at 071aea27ff).
+  No run here had it. GPU busy was 41 % of B's heavy frame, so it should not move the buckets above. A new
+  race-start measurement on master still runs a different build from these.
 - The pixel disc's Stencil and GeometrySuperscreen rows flicker run to run with no switch at all (the
   determinism table, section 2). A one-run A/B of any switch on that disc will show movers there. Ask for runs=3
   on both arms before reading one.
@@ -595,6 +776,18 @@ this lane's instrument, and the texscan + async run shows whether any of it stay
   - merged master @ c271f515b4 (a21a3361d9);
   - wrote `ftpair.py` and registered `reportasync1010-ftpair.json` on a21a3361d9;
   - queued the addendum-2 frametrace pair, and ends waiting on it (`WAITING`).
+- **Attempt 4 did not finish because it was waiting on its two frametrace runs, as it should have.** Both were
+  queued on the Nova (`WAITING`) and could not finish inside the session. Nothing failed.
+- **Attempt 5 (this one), on resume:**
+  - judged the pair: FAIL 4 of 5. F caught the rotation fence; the report-fence sites are gone from B's
+    pacing thread;
+  - wrote the heavy-frame tables and the bucket shares (section 2, addendum 2). `p_run` is 58 % of B's heavy
+    warm frame, over half;
+  - added `ftbuckets.py` for the vCPU row, which found the guest's 7.3 ms `pfifo.lock` wait. A second
+    instrument (`hakuX-cpu` `Lw`) agrees;
+  - checked the HUD leaderboard difference at g11 against four fast async-off runs: it follows pace, not the
+    switch;
+  - merged master @ 071aea27ff (140930dc16), removed `WAITING`, ran preflight, and set `State: ready`.
 
 ## 6. Recommendation: default-on
 
@@ -628,7 +821,10 @@ own, so that a regression bisects to it.
 - cold start 60.0 -> 51.6 ms;
 - v2 share 53 -> 72 %.
 
-With texscan on, the finishing thread's report waits go from 50.6 s over the 12 starts to 0.
+With texscan on, the finishing thread's report waits go from 50.6 s over the 12 starts to 0. Under frametrace
+(addendum 2, `-3857080` / `-3857196`, texscan on in B too), the report fence's sites leave the pacing thread. Its
+waits in the report context fall from 4.4 to 0.9 ms per frame, and what is left is the rotation fence. The warm
+period falls from 53.6 to 44.8 ms.
 
 **What it does not cover:** a guest that arms the status word and then reads the count without polling it, or
 re-arms a slot before the previous write lands (section 1, known limits). Only NFS has been traced. Before or
@@ -637,3 +833,7 @@ with the default flip, trace two or three report-heavy titles with `HAKUX_REPORT
 
 **texscan's default follows this one.** On with async, it is neutral at the race start (-0.7 ms warm, inside
 pair noise) and removes the cube-face downloads. On without async, it loses about 5 ms.
+
+**What a player sees does not change.** The race HUD's leaderboard reads differently at g11 between the arms,
+but four fast async-off runs show the same thing, so it follows the pace (section 2, addendum 2). ZPass is
+byte-identical, and the pixel leg's movers are flicker.
