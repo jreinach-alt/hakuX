@@ -635,3 +635,21 @@ consumers, pooled.
   - **A3. Drawn, then covered (P = 0.2).** At least 50% of the lit, passing pixels change in
     pre/post (darker), and the frame's display image at those pixels does not show the darkening.
   - **A4. Something else (P = 0.1).** A reading between these, or changes outside the coverage.
+
+**Read after queueing: 844241's depth over the whole coverage.** The depth test does not depend
+on the texture, so 844241's `zpre` says where the projection passes LEQUAL even though its lit
+square was off screen. `fdread.py DUMP cover` on all 60 consumers:
+
+| frames | covered px | pass LEQUAL | draw z - zpre, median |
+|---|---|---|---|
+| f0-f2 | 12k-21k | 4-44% | +0.14 to +0.20 (something near the camera in front) |
+| f3-f5 | 10k-21k | 0-24% | +0.24 to +0.45 |
+| f6-f10 | 4.5k-17k | 80-94% | -0.0038 to -0.0050 |
+| f11 | 1151 | 42% | +0.020 |
+| f12-f29 | 0 | - | - |
+
+In f6-f10 the projection lies about 0.005 (normalised) in front of the ground under it, and
+passes the depth test over most of its coverage. Its covering triangles there have two
+negative-w vertices (the host clipper) and one (the geometry shader's wedge). So where nothing
+stands in front, the projection is not behind the ground by construction. That makes A1 less
+likely than the 0.35 written above; the predictions stand as written, and the run scores them.
