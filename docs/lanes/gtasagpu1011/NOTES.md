@@ -807,7 +807,7 @@ per-row channel means.
 
 **The run.** gta-sa route, 320 s, `XEMU_FRAME_DUMP=watch600,cap512,vtx64,rtt`,
 `HAKUX_VTX_HAZARD=1`, `--pull 'framedump_*'`, ref e53b9fa918. About 7 min of device time.
-Queued as `1-1791755383-lane.gtasagpu1011-2946023` at 15:09 PDT (release priority, #433).
+Queued as `1-1791755383-lane.gtasagpu1011-2946023` at 14:49 PDT (release priority, #433).
 
 **Predictions** (written before queueing):
 
