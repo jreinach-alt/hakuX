@@ -218,6 +218,19 @@ call keeps the literal substring `build_gate "$label" && break` (now
 reached down two different paths -- gated and ungated -- instead of one),
 so that file needed no edit.
 
+One fixture bug found and fixed while writing legs (e)/(f): `last_run()`
+picks the device's newest result by mtime across ALL of `results/`, not
+just what one leg writes, and `results/` accumulates for the whole script
+(legs (a)-(d) never clean it up). Leg (d)'s `off3` fixture (mtime 4000,
+off master) was still the chronological "newest" when legs (e)/(f) and
+their mutants ran, so the first version of each mutant check passed or
+failed for the wrong reason (confirmed by running leg (f)'s mutant alone:
+it failed because `build_gate` read `off3`, not the leg's own
+"restoredFm" master-restore record). Fixed by resetting `results/` before
+each of (e), (f), and their two mutant fixtures, so each reads only its
+own intended "newest" record. Reran the full three-file selftest after
+the fix: 121 passed, 0 failed.
+
 ## Not done here
 
 - `docs/testing/request.sh` and `docs/testing/dispatcher.sh` are read-only

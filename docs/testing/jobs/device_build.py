@@ -24,6 +24,19 @@
         the dispatcher's own after-every-off-master-run restores still wait
         their ASCII-ordered turn.
 
+    device_build.py running <dispatch_dir> <label>
+        exit 0 "restore: <id>": the label's own dispatch.restore request is
+                in running/ right now.
+        exit 1 "other: <id>": some other request for the label is.
+        exit 2 "none": nothing is.
+        jobs/hold.sh's wait loop asks this before trusting a `check` pass:
+        the dispatcher claims its next request the instant a served one
+        ends, at the top of its tick, before the queue (and before this
+        process could see a fresh result.json) -- so a `check` pass read
+        moments after a promoted restore finishes can still be describing
+        a device with a brand new off-master request already running
+        underneath it.
+
 A run is on master when its result.json says ref master (or origin/master,
 or the master sha given as MASTER_SHA, or a sha reachable from origin/master
 -- see _on_trunk below) and env []. A result with no `env` key predates the
@@ -215,6 +228,23 @@ def cmd_promote(dispatch_dir, label):
     return 0
 
 
+def cmd_running(dispatch_dir, label):
+    path = _restore_path(dispatch_dir, label, "running")
+    if path is not None:
+        print("restore: %s" % os.path.basename(path))
+        return 0
+    for p in glob.glob(os.path.join(dispatch_dir, "running", "*.req")):
+        try:
+            req = json.load(open(p))
+        except (OSError, ValueError):
+            continue
+        if req.get("device") == label:
+            print("other: %s" % os.path.basename(p))
+            return 1
+    print("none")
+    return 2
+
+
 def cmd_check(dispatch_dir, label):
     rec, run_id = last_run(dispatch_dir, label)
     release, why = build_of(rec)
@@ -251,6 +281,8 @@ def main(argv):
         return cmd_restore(argv[2], argv[3], argv[4])
     if len(argv) == 4 and argv[1] == "promote":
         return cmd_promote(argv[2], argv[3])
+    if len(argv) == 4 and argv[1] == "running":
+        return cmd_running(argv[2], argv[3])
     sys.stderr.write(__doc__)
     return 2
 

@@ -33,6 +33,20 @@
 #       start racing the release-tier queue for a top slot either -- only a
 #       caller stuck behind a refused hold needs that.
 #
+# Addendum 1 (lane.local, 10-11): legs (a)-(d) above left a race in `wait`.
+# The dispatcher claims its next request the instant the promoted restore
+# finishes (checks hold/<label> only at the top of its tick, before the
+# queue: dispatcher.sh:2354-2363) -- seconds before wait's next poll. A
+# poll that trusted build_gate alone would read the restore's own
+# result.json (still the newest result on disk) and pass, taking the hold
+# while a fresh off-master request is running right now. `wait` now asks
+# `device_build.py running` what is in running/ before trusting a pass:
+#   (e) the label's own restore is running right now: wait must take the
+#       hold before it finishes, not wait for its result to land.
+#   (f) the gate alone would pass (the newest result IS a master restore),
+#       but a non-restore request for the label is running right now: wait
+#       must not trust that stale pass -- it keeps polling and times out.
+#
 # Uses its own DISPATCH_DIR, never the harness's shared one and never the
 # host's real dispatch/ directory.
 
@@ -73,6 +87,22 @@ json.dump({"id":sys.argv[2],"requester":"dispatch.restore",
 rp_hold() { DISPATCH_DIR="$RP_D" HOLD_WAIT_INTERVAL=1 HOLD_IDLE_INTERVAL=1 bash "$RP_SH" "$@"; }
 rp_hold_rc() { local want=$1; shift; rp_hold "$@" >/dev/null 2>&1; [ $? -eq "$want" ]; }
 rp_restores() { ls "$RP_D/queue"/*dispatch.restore*.req 2>/dev/null; }
+# rp_running_restore <id>: nova's own dispatch.restore request, claimed and
+# mid-serve (the shape dispatcher.sh moves from queue/ to running/).
+rp_running_restore() {
+    python3 -c 'import json,sys
+json.dump({"id":sys.argv[2],"requester":"dispatch.restore","device":"nova",
+           "ref":"master","env":[],"seconds":60}, open(sys.argv[1],"w"))' \
+        "$RP_D/running/$1.req" "$1"
+}
+# rp_running_other <id> <requester> <ref>: some other request running for
+# nova right now -- a run that will leave the device off master when it ends.
+rp_running_other() {
+    python3 -c 'import json,sys
+json.dump({"id":sys.argv[2],"requester":sys.argv[3],"device":"nova",
+           "ref":sys.argv[4],"env":[]}, open(sys.argv[1],"w"))' \
+        "$RP_D/running/$1.req" "$1" "$2" "$3"
+}
 
 check "device_build.py parses" python3 -m py_compile "$RP_PY"
 check "hold.sh parses (bash -n)" bash -n "$RP_SH"
@@ -130,6 +160,69 @@ check "(d) the dispatcher's own hook queues a restore" [ -n "$rid" ]
 check "(d) its id is bare (no 0- prefix)" bash -c "case '$rid' in 0-*) false;; *) true;; esac"
 check "(d) the queued file's name is bare too" [ -e "$RP_D/queue/$rid.req" ]
 rm -f "$RP_D/queue"/*dispatch.restore*.req
+
+# (e)-(f) and their mutants below each read the device's newest result by
+# mtime (build_of/last_run over ALL of results/, not just what one leg
+# writes) -- each resets results/ to just its own fixture first, or an
+# earlier leg's record (leg (d)'s off3 at mtime 4000, or a later leg's own
+# "master restore" record) would still be "newest" and the wrong reason
+# would make a check pass or fail.
+rp_results_reset() { rm -rf "$RP_D/results"; mkdir -p "$RP_D/results"; }
+
+# (e) the label's own restore is running right now: wait takes the hold
+# immediately, without waiting for the restore's result to land -- a gate
+# pass alone cannot be trusted the instant the restore ends, since the
+# dispatcher can claim its next request before this loop's next poll would
+# see that result (addendum 1).
+rp_results_reset
+rprun offE 1000 nova feature/branch '[]' lane.a
+rp_running_restore restoreE
+t0=$(date +%s)
+check "(e) wait on a running restore exits 0 without waiting for a result" rp_hold_rc 0 wait nova lane.test 10 write proof
+dt=$(( $(date +%s) - t0 ))
+check "(e) it did not wait out the timeout" [ "$dt" -le 5 ]
+check "(e) the hold it took is lane.test's" bash -c "[ \"\$(cat '$RP_D/hold/nova')\" = lane.test ]"
+rp_hold release nova lane.test >/dev/null 2>&1
+rm -f "$RP_D/running"/*.req "$RP_D/queue"/*dispatch.restore*.req
+
+# (f) the newest result IS a master restore (build_gate alone would pass),
+# but a non-restore request for nova is running right now and will leave
+# the device off master when it ends: wait must not trust the stale pass.
+rp_results_reset
+rprun restoredF 2000 nova master '[]' dispatch.restore
+rp_running_other otherF lane.b feature/branch
+t0=$(date +%s)
+check "(f) wait with a non-restore request running times out (exit 4)" rp_hold_rc 4 wait nova lane.test 3 write proof
+dt=$(( $(date +%s) - t0 ))
+check "(f) it waited out the timeout, not take early" [ "$dt" -ge 3 ]
+check "(f) no hold was written" [ ! -e "$RP_D/hold/nova" ]
+rm -f "$RP_D/running"/*.req
+
+# MUTANT: hold.sh's wait loop with the running-check's exit code forced to 2
+# ("nothing running"), reproducing attempt 1's race exactly -- gate-only,
+# trusting whatever build_gate's last-result read says. Copies device_build.py
+# alongside so build_gate's own device_build.py calls still resolve.
+RP_HMUT="$T/restoreprio/hmut"; mkdir -p "$RP_HMUT"
+cp "$RP_PY" "$RP_HMUT/device_build.py"
+sed 's/rrc=\$?/rrc=2/' "$RP_SH" > "$RP_HMUT/hold.sh"
+check "the real hold.sh reads device_build.py running's exit code" \
+    [ "$(grep -c 'rrc=\$?' "$RP_SH")" -eq 1 ]
+check "mutant built: hold.sh with rrc forced to 2 (treats everything as idle)" \
+    [ "$(grep -c 'rrc=\$?' "$RP_HMUT/hold.sh")" -eq 0 ]
+
+rp_results_reset
+rprun offEm 1000 nova feature/branch '[]' lane.a
+rp_running_restore restoreEm
+check "mutant: without the running check, a running restore is not taken early (leg (e) is not vacuous)" \
+    bash -c "DISPATCH_DIR='$RP_D' HOLD_WAIT_INTERVAL=1 bash '$RP_HMUT/hold.sh' wait nova lane.test 3 write proof >/dev/null 2>&1; [ \$? -eq 4 ]"
+rm -f "$RP_D/running"/*.req "$RP_D/hold/nova" "$RP_D/hold/nova.why" "$RP_D/queue"/*dispatch.restore*.req
+
+rp_results_reset
+rprun restoredFm 2000 nova master '[]' dispatch.restore
+rp_running_other otherFm lane.b feature/branch
+check "mutant: without the running check, a non-restore request running is missed and the hold is taken anyway (leg (f) is not vacuous)" \
+    bash -c "DISPATCH_DIR='$RP_D' HOLD_WAIT_INTERVAL=1 bash '$RP_HMUT/hold.sh' wait nova lane.test 3 write proof >/dev/null 2>&1; [ \$? -eq 0 ]"
+rm -f "$RP_D/running"/*.req "$RP_D/hold/nova" "$RP_D/hold/nova.why"
 
 # MUTANT: device_build.py's promote command, with its rename disabled (it
 # still reports "promoted"/"queued", but never moves the file) -- must turn
