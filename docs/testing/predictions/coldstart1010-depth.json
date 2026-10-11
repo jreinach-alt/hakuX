@@ -1,0 +1,52 @@
+{
+  "registered_utc": "2026-10-11T05:13:13Z",
+  "who": "lane.coldstart1010",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "device": "nova",
+  "seconds": 500,
+  "route": "nfs-mw-quickrace",
+  "perflog": false,
+  "frames_every": 0,
+  "runs_per_arm": 3,
+  "a_ref": "786f82d4bb",
+  "b_ref": "786f82d4bb",
+  "a_env": [
+    "HAKUX_REPORT_ASYNC=1",
+    "HAKUX_TEXSCAN=1",
+    "HAKUX_DRAWREC=1",
+    "HAKUX_UNI_BULK=1",
+    "HAKUX_UNI_UBERCACHE=1",
+    "HAKUX_UNI_FOGCACHE=1",
+    "HAKUX_PROBE_WAITS=1"
+  ],
+  "b_env": [
+    "HAKUX_REPORT_ASYNC=1",
+    "HAKUX_TEXSCAN=1",
+    "HAKUX_DRAWREC=1",
+    "HAKUX_UNI_BULK=1",
+    "HAKUX_UNI_UBERCACHE=1",
+    "HAKUX_UNI_FOGCACHE=1",
+    "HAKUX_PROBE_WAITS=1",
+    "HAKUX_SUBMIT_FRAMES=3"
+  ],
+  "queue_order": "Queued by the lane (an env A/B on one binary; arms.sh skips a_ref == b_ref): six requests of one run each, A B B A A B (HAKUX_RELEASE_PRIO=1 request.sh --who coldstart1010 --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw-quickrace --seconds 500 --device nova --ref 786f82d4bb --env <each of the arm's env> --issue 433 --expect this file), plain build (no --perflog), after the two census runs (1-1791695413-coldstart1010-2905497, 1-1791695414-coldstart1010-2905728) are read and pilots/coldstart1010.ok written. 786f82d4bb is lane/coldstart1010: master @ 9dc20e31f9 + HAKUX_SUBMIT_FRAMES (draw.c xemu_set_submit_frames).",
+  "judge": "python3 docs/lanes/coldstart1010/coldread.py <A1> <B1> <B2> <A2> <A3> <B3> --expect docs/testing/predictions/coldstart1010-depth.json",
+  "baseline": "Every Nova run logs `submit frames: 2`: the Android pref default (xemu_android.cpp, 2 since 5a047fd645, 2026-03-23, unmeasured 'Triple buffering tanks performance'). drawrec1010's probe base arm (six switches + HAKUX_PROBE_WAITS=1, plain, ref bf43e8c4ef), 1-1791672296-drawrec1010-4030728 and 1-1791672308-drawrec1010-4034875, read with this prediction's reader (no --expect): cold start 1 39.4 / 37.9 ms, warm countdown 34.3 / 34.1, post-GO 33.5 / 33.6, cold v2 share 62 / 50 %; [probe1010] lines in gameplay -4 .. +3.5 s: 3.78 / 3.92 rotations per frame, 1.22 / 1.23 of them blocking, 4.16 / 4.39 ms per frame blocked in the rotation fence wait; warm 1.36 / 1.29 rotations, 0.40 / 0.35 blocking, 1.42 / 1.28 ms. Same runs, frametrace (reportasync1010 ftpair/ftbuckets): cold guest lockw 9.41 / 8.65 ms per frame against 4.06 / 3.80 warm; PFIFO p_c_rep (waits inside process_pending_reports, pfifo.lock held) 6.1 cold, 2.2-2.4 warm. postput1010-nfsall.json's A2' (six switches, no probe, ref 772429156c): cold 38.1 / 36.9, warm 33.7 / 33.8.",
+  "prediction": "#433 HAKUX_SUBMIT_FRAMES=3 (ring depth 3 instead of the Android default 2) at NFS MW's cold race start, six-switch base, both arms with HAKUX_PROBE_WAITS=1. At depth 2 every slot rotation at a finish waits for the command buffer submitted at the finish before it; cold start 1 takes 3.8-3.9 rotations per frame (warm 1.3-1.4) because the slower guest lets the PFIFO thread catch up and take a STALLED finish under pfifo.lock, and 1.2 per frame block for 3.4 ms each, so the guest's DMA_PUT store waits on the fence (lockw 9 ms per frame cold). At depth 3 a rotation waits for the command buffer two finishes back; the GPU is busy 12 ms of a 37-39 ms cold frame, so that one is usually done. Point estimate: cold ms per frame blocked in rotation A 4.2, B 1.2 (B/A 0.3, range 0.1-0.6); cold start 1 A 37.5 +- 1.0, B 35.3 +- 1.0, B - A -2.2 (range -0.5 .. -3.5): the guest gets back about the blocked time less the lock holds that remain (parsing, fast dispatch); warm countdown B - A -0.1 (range -0.4 .. +0.2), post-GO 0 +- 0.2; cold v2 share +10 points (range 0 .. +25). Probabilities: K (B <= 34.5 or cold v2 +15) ~35 %; C (B - A <= -1.0) ~65 %; W (warm B - A <= +0.3) ~85 %; G (post-GO B - A <= +0.3) ~85 %; M (B blocked <= 0.5 x A) ~70 %. The B arm also takes buffer_init's depth-3 sizing (128 MB uniform buffer, per-frame staging caps idx 30 vtx 128 uni 92 stg 184 MB against 16/64/64/128), as the pref would; a regression there would show as W or G failing with M passing, as would descriptor pools exhausting more often (fewer resets of descriptor_set_index with two slots in flight) and forcing flush_all_frames. What refutes the mechanism: M failing (the GPU backlog spans more than one command buffer in the cold frames, so the waits are the GPU's cold work, not the ring depth), or M passing with C failing (the blocked time was not on the guest's path; the lock holds left over pace it). A pass of K, C, W, G and M recommends the pref default 2 -> 3 (xemu_android.cpp, fastpaths1010's file) after a pixel leg (a separate prediction, registered before it runs: ring depth changes no draw by design, but the third slot is the less-exercised path, #39).",
+  "expect": {
+    "V_min_marks": 12,
+    "V_min_valid_starts": 10,
+    "V_min_warm_lines": 10,
+    "K_b_max": 34.5,
+    "K_dv2_min": 15.0,
+    "C_d_max": -1.0,
+    "W_d_max": 0.3,
+    "G_d_max": 0.3,
+    "M_frac": 0.5
+  },
+  "expect_note": "Named rules read by docs/lanes/coldstart1010/coldread.py --expect (legs V, K, C, W, G, M). An arm's figure is the mean of its three runs. K, the brief's target: cold start 1 B <= 34.5 ms, or cold v2 share B - A >= +15 points. C: cold start 1 B - A <= -1.0 ms. W: warm countdown B - A <= +0.3 ms (the brief's bound). G: post-GO warm B - A <= +0.3 ms. M: cold ms per frame blocked in rotation fence waits ([probe1010] rot ms/f, lines printed in gameplay -4 .. +3.5 s), mean of runs, B <= 0.5 x A. V: each run 12 marks, >= 10 valid starts (raread.bad_starts), no boot input failure before `mark gameplay`, >= 10 warm pace lines, a g11 frame for every valid warm start, perflog off, the arm read from request.json env, the six switches' lines ('[reportasync] on', '[texscan] on', '[drawrec1010] drawrec=1 vtx=1 shc=1', '[perdraw433] bulk=1 ubercache=1 fogcache=1'), '[probe1010] waits=1', cold [probe1010] lines; '[coldstart1010] submit_frames=3' and 'per-frame staging created (3 frames' on B only, '(2 frames' on A; and a moving car in the g11 frames, checked by eye and recorded in docs/lanes/coldstart1010/NOTES.md. A void run gets its cause named and one rerun.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}
