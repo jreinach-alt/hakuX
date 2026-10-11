@@ -289,7 +289,54 @@ is itself a valid outcome for a correctness screen (the claim under test is
 "no scoped title fails," not "every title gains").
 
 Pilot batch verdict written to `pilots/fastpaths1010.ok` (step-3's own
-pilot, separate from step-2's NFS pilot). Proceeding to queue the remaining
-31 of the 32 scoped titles in batches of about 10.
+pilot, separate from step-2's NFS pilot).
+
+Batch 2 queued next (20 runs, ref `c404a74b97`): the 3 remaining route
+titles (Spikeout, Jet Set Radio Future, Tork) plus 7 soak titles (ToeJam &
+Earl III, Halo: Combat Evolved, Panzer Dragoon Orta, Call of Duty 3, Capcom
+vs. SNK 2 EO, The Simpsons Hit & Run, Dark Summit), ON/OFF each. The pilot
+gate admitted the whole batch on the fresh `pilots/fastpaths1010.ok`
+(no per-run 30-min re-check needed once that file is <24h old).
+
+### 4.3 Scope widens to 39: lane.local's Addenda 2 and 3 (10-11 00:41/00:43 PDT)
+
+While batch 2 was running, lane.local sent a cross-session message (and
+appended Addenda 2 and 3 to `briefs/fastpaths1010.md`) reporting that 7 of
+the 12 titles blocked in 4.1.2 are back on the Nova: Kabuki Warriors,
+Gunvalkyrie, 187: Ride or Die, Tony Hawk's Pro Skater 2x, KOF: Maximum
+Impact - Maniax, Alien Hominid, WWE Raw 2 (unit `lanelocal-shuffle1011`,
+log `/home/justin/hakux-work/lanelocal-scratch/shuffle1011.log`). Verified
+directly rather than taken on trust: the log shows all 7 `pushed` then `on
+Nova, verified <bytes> bytes` between 00:47:51 and 00:52:50 PDT, ending
+`00:52:50 done; Nova free 26 GB`. These move out of `blocked_titles`;
+**scope is now 39 of 44**.
+
+The brief's Addendum 2 text says "four of them have their own route:
+187-ride-or-die, kabuki-warriors, thps2x and castlevania-cod" (castlevania
+not among the seven, so three routes return). Checking
+`docs/testing/titles/routes/` directly found this undercounts: route files
+also exist for `alien-hominid.route`, `kof-mi.returning.route` and
+`wwe-raw-2.route` -- six of the seven restored titles have a route, only
+Gunvalkyrie runs as a soak. Using the files on disk, not the addendum's
+summary, since that's what `request.sh --route` actually reads.
+
+The other 5 (Azurik: Rise of Perathia, Baldur's Gate: Dark Alliance, NBA
+Live 2004, Castlevania: Curse of Darkness, 50 Cent: Bulletproof, ~17 GB
+combined) stay off the Nova -- the owner's ruling (Addendum 3, via
+lane.local, 10-11 ~00:42 PDT) is to screen the 39 and give these 5 a row
+"not on the Nova; owner 10-11: screened only if a defect emerges", not
+blocking `gh pr ready`. A defect (fails fatal or frames, or armed <100%
+on OFF's clean, after two reruns) gets a `WIDEN:` line here naming the
+title/column/result ids, which lane.local reads to shuffle the 5 in.
+
+`fastpaths1010-screen.json` updated: `blocked_titles` now holds just the 5
+owner-deferred titles; `queue_order`/`expect_note` narrate the 32->39 move.
+No device run has used the stale 32-title scope for anything beyond the
+Crimson Skies/batch-2 titles already in both scopes, so this is an in-place
+correction, not a rebase-after-registration violation.
+
+Batch 3 (next): the 7 newly-restored titles, 6 by route + 1 soak
+(Gunvalkyrie). Remaining after that: the rest of the 23-restored-tonight
+list from 4.1.1/4.1.2 not yet run.
 
 (screen results: fill in as batches complete)
