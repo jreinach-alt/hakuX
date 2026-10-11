@@ -1,0 +1,30 @@
+{
+  "registered_utc": "2026-10-10T21:26:00Z",
+  "who": "lane.reportasync1010",
+  "issue": "433",
+  "prediction": "#433 HAKUX_REPORT_ASYNC=1 with the armed-status gate (477893cdbf), ZPass pixel count suite (72 captures) on vs off. ONE build, two arms differing only by env: A no env (the shipped path), B HAKUX_REPORT_ASYNC=1 HAKUX_REPORT_TRACE=1. The ZPass test zeroes its report memory (zpass_pixel_count_tests.cpp:81) and never arms the status word, so under the gate every batch holding one of its reports is written by the finishing thread before the finish returns, after its own slot's fence, as the synchronous path writes it. Predicted: all 72 captures byte-identical A vs B (they were on the ungated build too, 1-1791659700 / 1-1791659693), and B's [rtrace] window lines show wait= > 0 (the gate's synchronous batches) with the reader's gate= near 0. What refutes it: any ZPass capture moving (the printed .report: line is the region), or B's trace showing wait=0 while reports were written (the gate never engaged on an unarmed guest). The trace adds a lock and a few stores per GET_REPORT and changes no byte written.",
+  "a_ref": "477893cdbf",
+  "b_ref": "477893cdbf",
+  "must_not_move": [
+    "ZPass_pixel_count/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "ZPass pixel count"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "a_env": [],
+  "b_env": [
+    "HAKUX_REPORT_ASYNC=1",
+    "HAKUX_REPORT_TRACE=1"
+  ],
+  "device": "nova",
+  "queue_order": "Queued by the lane (a_ref == b_ref is an env A/B, which arms.sh skips): B first (request.sh --env HAKUX_REPORT_ASYNC=1 --env HAKUX_REPORT_TRACE=1), then A (no env), so the device is left in the shipped state. Both: --who reportasync1010 --device nova --ref 477893cdbf --suites 'ZPass pixel count' --expect this file.",
+  "judge": "python3 docs/testing/ab_compare.py --a <A> --b <B> --expect docs/testing/predictions/reportasync1010-gate-zpass.json --allow-same-binary; grep '\\[rtrace\\] w' <B>/logcat1.txt for wait= and gate="
+}

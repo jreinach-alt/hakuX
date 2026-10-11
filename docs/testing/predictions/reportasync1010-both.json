@@ -1,0 +1,47 @@
+{
+  "registered_utc": "2026-10-10T19:14:06Z",
+  "who": "lane.reportasync1010",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "device": "nova",
+  "seconds": 500,
+  "route": "nfs-mw-quickrace",
+  "perflog": false,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "3cd9d6b7e3",
+  "b_ref": "3cd9d6b7e3",
+  "a_env": [],
+  "b_env": [
+    "HAKUX_TEXSCAN=1",
+    "HAKUX_REPORT_ASYNC=1"
+  ],
+  "queue_order": "Queued by the lane (an env A/B; arms.sh skips a_ref == b_ref): four requests of one run each, off, on, on, off (request.sh --who reportasync1010 --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw-quickrace --seconds 500 --device nova --ref 3cd9d6b7e3 [--env HAKUX_TEXSCAN=1 --env HAKUX_REPORT_ASYNC=1] --expect this file), plain build (no --perflog). 3cd9d6b7e3 is lane/reportasync1010-ts: lane/reportasync1010 @ ba9a6df8fc merged with origin/lane/texscan1010 @ 227a161cc2 (texscan1010 not folded to master when queued).",
+  "judge": "python3 docs/lanes/reportasync1010/raread.py <off1> <on1> <on2> <off2> --expect docs/testing/predictions/reportasync1010-both.json",
+  "baseline": "Off = both switches unset = the shipped race-start path, so the off band is the same as reportasync1010-nfs.json's: nfsframe1010's plain runs 1-1791649039 / 1-1791649724 (warm countdown 40.7 ms pooled, cold 57.4, v2 53%, post-GO warm 39.5). texscan alone (texscan1010 PR.md, perflog runs 1-1791650940-texscan1010-2621346 off / -2621780, -2622254 on, texread.py's period): 46.6 -> 49.2 ms, slower, because the end-of-frame report fence then waits for the whole frame (~4.6 -> ~10.5 ms, Fin 12.0 ms either way).",
+  "prediction": "#433 brief step 5 / nfs30plan1010 PLAN.md steps 1+2: HAKUX_TEXSCAN=1 and HAKUX_REPORT_ASYNC=1 together vs both off at the NFS MW race start. texscan removes the cube-face downloads (~7.3 ms/frame of synchronous finish + readback) but on its own moves that time into the #804 report fence (~10.5 ms/frame); the async report path takes that fence off the PFIFO thread, so with both on neither wait is on the pacing thread. Predicted, pooled over 2 runs per state, starts with a failed or hung route input left out: W: warm countdown (mark-2 .. mark+1.5 s, starts 2-12) on <= 34.0 ms, on - off <= -5.0 ms, off inside [39, 44]; P: post-GO warm (mark+1.5 .. +12 s) on <= 34.0 ms, off inside [37, 43]; H: warm v2 share on - off >= +15 points (the period moves from mostly-3-VBLANK to mostly-2); C: cold start 1 on <= 55.0 ms, off inside [44, 64] (loose: two pace lines per state, and the pilot's sync cold was 47.1). Refuted if W or P fail with both '[texscan] on' and '[reportasync] on' logged: then a wait remains on the pacing thread in this configuration (the reader's gate at slot reuse, or the render thread's submit), which a HAKUX_REPORT_TRACE=1 run on the same build names (gate= and wait= fields). This pair decides texscan's default: PASS recommends both default-on together.",
+  "expect": {
+    "V_min_marks": 12,
+    "V_min_valid_starts": 10,
+    "V_min_warm_lines": 20,
+    "V_on_logs": [
+      "\\[reportasync\\] on",
+      "\\[texscan\\] on"
+    ],
+    "W_off_min": 39.0,
+    "W_off_max": 44.0,
+    "W_on_max": 34.0,
+    "W_d_max": -5.0,
+    "P_off_min": 37.0,
+    "P_off_max": 43.0,
+    "P_on_max": 34.0,
+    "C_off_min": 44.0,
+    "C_off_max": 64.0,
+    "C_on_max": 55.0,
+    "H_dv2_min": 15.0
+  },
+  "expect_note": "Named rules read by docs/lanes/reportasync1010/raread.py --expect (legs V, W, P, C, H); a soak writes no captures. V_on_logs: each line must be in logcat on an on run and absent on an off run. Same start exclusion as reportasync1010-nfs.json.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}
