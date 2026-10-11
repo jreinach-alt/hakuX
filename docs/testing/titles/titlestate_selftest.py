@@ -718,7 +718,7 @@ def test_admit(tmp):
     os.makedirs(refused_dir)
     json.dump({"title": NONE, "requester": "t"}, open(os.path.join(refused_dir, "request.json"), "w"))
     open(os.path.join(refused_dir, "ERROR"), "w").write(
-        f"{ts.GATE_REFUSE_TAG}no profile: {NONE} has no profile (any)")
+        f"{ts.GATE_REFUSE_TAG}{NONE} has no profile (any)")
     fr_dir = os.path.join(results, "1-2000000000-findroute-2")
     os.makedirs(fr_dir)
     json.dump({"title": NONE, "requester": "t", "find_route": FR}, open(os.path.join(fr_dir, "request.json"), "w"))

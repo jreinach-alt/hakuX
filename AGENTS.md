@@ -1010,6 +1010,16 @@ than merely serialising its draws, is measured in
 `docs/lanes/diagdump77/NOTES.md` -- it is the sharpest reason not to hunt an
 intermittent artifact under the button path.)
 
+**A `--title` run is refused unless it meets a kept profile/path, or is
+building one (THE PROFILE GATE, lane.profilegate1011, #433).**
+`titlestate.py admit()`, run by `request.sh` at queue time and again by
+`dispatcher.sh` at claim, refuses: **R1** `first-run` remaking a profile
+already on disk (override `--remake-profile "<why>"`); **R2** `first-run`
+with no `mark profile-saved` on a title with none (make the golden first);
+**R3** finding a route blind (`--find-route`/`pathfind.py`) for a title
+with a proven route (override `--path-broken <result id>`). See
+`titlestate.py`'s "THE PROFILE GATE" docstring for the recipe.
+
 ## Sharing one device between a long sweep and active work
 
 A full re-baseline is ~1,600 single-test runs, several hours of the only Nova.

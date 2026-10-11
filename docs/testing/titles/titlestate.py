@@ -1077,7 +1077,7 @@ def resolve_route(name, title_id=None, device=None, routes_dir=None):
 
 FIND_ROUTE_MIN_CHARS = 12
 TRANSITION_PATH = os.path.join(HERE, "profile-transition.toml")
-GATE_REFUSE_TAG = "PROFILE GATE REFUSED: "  # the dispatcher's ERROR prefix gate_report looks for
+GATE_REFUSE_TAG = "refused before the soak: no profile: "  # dispatcher.sh's exact ERROR prefix
 
 
 def load_transitions(path=None):
