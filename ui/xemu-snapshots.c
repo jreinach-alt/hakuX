@@ -871,6 +871,27 @@ static int snap_ms(int64_t us)
     return (int)((us + 500) / 1000);
 }
 
+/*
+ * The display region with the GPU's surfaces written back first. The
+ * write-back takes the FIFO lock and then the BQL, which a running vCPU in a
+ * PFIFO register write holds while it waits for the FIFO lock, so the vCPUs
+ * are paused around it, as they are for a save.
+ */
+static uint64_t snap_hash_now(void)
+{
+    bool running = runstate_is_running();
+    uint64_t h;
+
+    if (running) {
+        vm_stop(RUN_STATE_PAUSED);
+    }
+    h = nv2a_display_region_hash(true);
+    if (running) {
+        vm_start();
+    }
+    return h;
+}
+
 static uint64_t snap_state_bytes(const char *name)
 {
     QEMUSnapshotInfo sn;
@@ -991,7 +1012,7 @@ static int snap_test_step(SnapTest *t)
         t->hash_a = snap_last_save_region;
         return 20000;
     case SNAP_T_C1_SCENE_B:
-        t->hash_b = nv2a_display_region_hash(true);
+        t->hash_b = snap_hash_now();
         SNAP_LOG("[snap] c1 scene-b hash=%016" PRIx64 " differs=%s",
                  t->hash_b, t->hash_b != t->hash_a ? "yes" : "no");
         return 100;
@@ -1007,7 +1028,7 @@ static int snap_test_step(SnapTest *t)
         t->n = 0;
         return 10000;
     case SNAP_T_C2:
-        t->hashes[t->n] = nv2a_display_region_hash(true);
+        t->hashes[t->n] = snap_hash_now();
         nv2a_get_wait_flags(&flip, &nop, &ctx);
         SNAP_LOG("[snap] c2 t=%d hash=%016" PRIx64 " state=%s flip=%d nop=%d",
                  (t->n + 1) * 10, t->hashes[t->n], RunState_str(runstate_get()),
@@ -1078,7 +1099,7 @@ static int snap_test_step(SnapTest *t)
         SNAP_LOG("[snap] c4 resume state=%s", RunState_str(runstate_get()));
         return 10000;
     case SNAP_T_C4_PLAY:
-        h = nv2a_display_region_hash(true);
+        h = snap_hash_now();
         SNAP_LOG("[snap] c4 play hash=%016" PRIx64 " state=%s", h,
                  RunState_str(runstate_get()));
         return 1000;
@@ -1100,7 +1121,7 @@ static int snap_test_step(SnapTest *t)
         bool loaded = snap_load("b");
         bool refused = !loaded && !g_strcmp0(snap_last_refuse,
                                              "controller-layout");
-        t->c5_hash = nv2a_display_region_hash(true);
+        t->c5_hash = snap_hash_now();
         SNAP_LOG("[snap] c5 refused=%s reason=%s state=%s hash=%016" PRIx64,
                  refused ? "yes" : "no",
                  snap_last_refuse ? snap_last_refuse : "-",
@@ -1109,7 +1130,7 @@ static int snap_test_step(SnapTest *t)
         return 5000;
     }
     case SNAP_T_C5_PLAY:
-        h = nv2a_display_region_hash(true);
+        h = snap_hash_now();
         SNAP_LOG("[snap] c5 %s hash=%016" PRIx64 " moving=%s state=%s",
                  t->ok && h != t->c5_hash && runstate_is_running() ? "pass" :
                                                                      "fail",

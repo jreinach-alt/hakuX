@@ -1881,7 +1881,9 @@ type_init(nv2a_register);
  * sequence (ui/xemu-snapshots.c): FNV-1a over 32 rows, from a third of the
  * way down, of the framebuffer at PCRTC_START as RAM holds it. With
  * `download` the renderer first writes its dirty surfaces back to RAM, as a
- * save does, so the rows are what the GPU last drew. Main loop, BQL held.
+ * save does, so the rows are what the GPU last drew. Main loop, BQL held;
+ * with `download`, the vCPUs stopped too (nv2a_lock_fifo retakes the BQL
+ * while it holds the FIFO lock).
  */
 uint64_t nv2a_display_region_hash(bool download)
 {
