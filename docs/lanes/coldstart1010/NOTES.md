@@ -291,3 +291,26 @@ What it says:
 The player-facing change is the native pref default (`xemu_android.cpp:1188`, 2 to 3), which makes the native
 default match the settings screen's. That file is fastpaths1010's (section 4). A pixel leg is not needed:
 depth changes only which slot's command buffer and staging a finish records into, not what any draw draws.
+
+## 8. Stack A/B, posted store on, depth 2 vs 3 (coldstart1010-stack.json): in progress
+
+Runs so far:
+
+| run | arm | cold 1 | warm | post-GO | cold ms blk/f | note |
+|---|---|---|---|---|---|---|
+| 1-1791702188-coldstart1010-3912216 | A | 35.7 | 33.6 | 33.4 | 2.56 | |
+| 1-1791702189-coldstart1010-3912403 | B | - | - | - | - | **void** (below) |
+| 1-1791703256-coldstart1010-3982841 | B | 35.9 | 33.6 | 33.3 | 0.11 | |
+| 1-1791703257-coldstart1010-3982899 | A | 35.8 | 33.5 | 33.4 | 2.32 | |
+
+Stack B1 is void. At the Quick Race menu (`qr-custom`) the route's one `HATX` right, held 194 ms, moved the
+cursor two items, onto Split Screen. The route then drove nothing: every start's frames show the split-screen
+"select player order" screen, and the pace is 16.7 ms throughout. This is a menu input slip, not the arm's
+effect: B2, with the same environment, went through the menu correctly. Its one rerun is
+1-1791703833-coldstart1010-4017651. A3 and B3 are queued after it.
+
+Residual census, queued after the stack: two plain runs of the stacked configuration (six switches, posted
+store, depth 3) with `HAKUX_FRAMETRACE=1` (1-1791704357-coldstart1010-4044114, 1-1791704358-coldstart1010-4044180).
+They measure what the cold start still waits on with both on. The comparison is drawrec1010's plain depth-2 runs
+(4030728, 4034875), read by `census.py`: cold guest work 26.8 / 26.1 against 21.7 / 21.5 warm, lockw 9.4 / 8.7,
+guest idle 3.5 / 3.1.
