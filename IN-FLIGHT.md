@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `coldstart1010` | claude-opus-5-5 | 1h 34m | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) |
-| `fastpaths1010` | claude-sonnet-5 | 2h 31m | fastpaths1010: register step-3 screen prediction; scope to 20 of 44 (#433, 0.5) |
+| `coldstart1010` | claude-opus-5-5 | 1h 49m | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) |
+| `fastpaths1010` | claude-sonnet-5 | 2h 46m | fastpaths1010: step-3 scope 21 of 44; track lane.local's shuffle (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lanelocal-shuffle`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 5 waiting, 0 running.
+- **Device queue:** 4 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -75,7 +75,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/coldstart1010` | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) | `f0a9b0c17d` | 2026-10-10 23:28 |
-| `lane/fastpaths1010` | fastpaths1010: register step-3 screen prediction; scope to 20 of 44 (#433, 0.5) | `f0314170df` | 2026-10-10 22:47 |
+| `lane/fastpaths1010` | fastpaths1010: step-3 scope 21 of 44; track lane.local's shuffle (#433, 0.5) | `a3a7e61302` | 2026-10-10 23:43 |
 
 ## Recently landed on master
 
@@ -89,4 +89,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 - 2026-10-10 lane.usage24h1009: project the week's usage from the trailing 24h burn rate, not the trailing 6h (#433)
 
-_Updated 2026-10-10 23:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 23:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
