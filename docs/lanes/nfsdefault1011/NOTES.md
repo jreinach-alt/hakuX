@@ -90,9 +90,35 @@ start is excluded either way), so the V leg's cold-pace-line floor also fails on
 VOID. This is scoped to `nfsread.py`, not `raread.py` (reportasync1010's shared module): it is this
 route's and this title's screens, not the pace/mark protocol every other lane's reader shares.
 
-**lane.local's direction (2026-10-11):** do not requeue step 2's two voided arms yet. A new lane,
-nfsroute1011, is building a saved profile and a screen-gated version of this route (`waitfor` aborts on a
-mismatch instead of plowing ahead on a stale assumption); wait for its addendum to this lane's brief
+**lane.local's direction (2026-10-11, 11:17 PDT):** do not requeue step 2's two voided arms yet. A new
+lane, nfsroute1011, is building a saved profile and a screen-gated version of this route (`waitfor` aborts
+on a mismatch instead of plowing ahead on a stale assumption); wait for its addendum to this lane's brief
 before requeuing ON2/OFF2. Steps 3 (Simpsons) and 4 (screen) do not depend on it and continue below. The
 HUD check stays in `nfsread.py` as a second opinion even once the gated route lands -- it reads what's
 actually on screen, which a screen-gate's own pass/fail can't fully stand in for on its own.
+
+**lane.local, 11:23 PDT, on the HUD check's margin:** confirmed right, and confirmed holding the
+re-queues. Flagged that the low-side margin is thin -- good frames bottom out at 0.056 (`104226-s9-g11.png`,
+OFF1), attract footage reads 0.017, a gap of 0.039 against the picked bound of 0.05. `HUD_LO = 0.05` sits
+inside that gap, closer to the good side; recorded here rather than moved, per the instruction to treat a
+near-the-edge good frame as a reason to look at the frame by eye, not to retune the threshold on two
+runs' worth of evidence. `nfsroute1011` started 11:22 PDT (Sonnet): first deliverable is a screen-gated
+`nfs-mw-quickrace.route` (same path, same race timing, so ON2/OFF2's eventual re-runs pool with OFF1/ON1).
+Addendum 2 lands when it proves.
+
+## 3. The Simpsons Hit & Run in free roam
+
+**Route.** `docs/testing/titles/routes/simpsons-hit-run.route` (new file; not in the brief's original
+Files: list, added because step 3 says this title "has no route in docs/testing/titles/routes/" and asks
+for one -- recorded in PR.md's Files: line). Copied near-verbatim from lane.frametrace's
+`simpsons-frametrace.route` (docs/lanes/frametrace/), which that lane's NOTES.md section 8 confirms
+reached free roam on the Nova and stayed there: "every route frame from `mark gameplay` ... to the end has
+Homer on foot in the world with the Marge portrait and the minimap, no dialog" (203 s window, golden
+`bcc71e970cff`, run `1-1791245535-lane.frametrace-680559`). That route was itself written from pathfind's
+held confirmation session (`docs/lanes/pathfind/runs/screen-simpsons-hit-run/hold/`, `pass: true`,
+`reached_gameplay: true`, `position.measured: true`, `position.first_last: 0.59` -- the player moved).
+`# state: any` (titlestate.py confirms Simpsons has a golden, `bcc71e970cff`, so `first-run` would be
+wrong); `route.sh --check` and `titlestate.py resolve-route --route simpsons-hit-run --title-id 56550015
+--device nova` both pass (`"state": "any", "refuse": null`). No new route-writing session was needed: the
+proven blind entry (rounds of START/A through every cutscene/menu, then a walk-and-turn loop with
+periodic jump) already does what step 3 asks for.
