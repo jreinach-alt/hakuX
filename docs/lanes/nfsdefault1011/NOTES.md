@@ -261,3 +261,21 @@ within the last day (that lane's own screen lost 12 of 21 titles mid-run once) a
 per-title blocker (moved to `not_run`), not grounds to distrust the batch. Queuing in batches of about
 10 titles per the brief, `HAKUX_RELEASE_PRIO=1`, ON then OFF per title. `pilots/nfsdefault1011.ok` (step
 2, same day) covers the requester; no fresh pilot needed before the first batch.
+
+**Resume, attempt 3 (this session, Addendum 4).** The previous session (attempt 2) ended at 13:25 PDT
+having noted batch 1's queue position in NOTES.md ("advancing normally, not stuck") but wrote no
+`docs/lanes/nfsdefault1011/WAITING` file -- Addendum 4 (hostops, 15:13 PDT) caught this: with no WAITING
+file naming what the lane was waiting on, lanewaker.py had nothing to match against, so the lane sat
+unattended for 90+ min while batch 1 continued draining on the Nova. This is the same class of mistake
+the lane's own rules warn against (never end a session waiting on something with no outside signal
+named) -- the previous session correctly *did not* poll in a blocking background task, but also did not
+register the wait anywhere lanewaker could see it, so nothing resumed the lane until the hostops addendum
+did it by hand.
+
+Checked batch 1's 20 ids against `dispatch/results/*/DONE` at session start (15:12 PDT): 14 DONE, 1 running
+(`...1493417`, KOF: Maximum Impact - Maniax's ON leg), 5 still queued (`...1494854`, `...1495590`,
+`...1495950`, `...1496167`, `...1496518` -- KOF's OFF leg, Alien Hominid, and WWE Raw 2's two legs).
+Unchanged from Addendum 4's own count one minute earlier, confirming the batch is still draining behind
+gtaroutes1011/gtasagpu1011's work, not stuck. Writing `WAITING` with these 6 ids now and ending per
+Addendum 4's instruction, rather than polling in the foreground for however long the rest of the batch
+takes -- lanewaker checks every 5 min and will resume this lane once all 20 are DONE or WITHDRAWN.
