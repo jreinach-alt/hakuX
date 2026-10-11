@@ -871,6 +871,7 @@ struct TitleRenderMode {
 constexpr TitleRenderMode kTitleRenderModes[] = {
     {0x4541000D, "sysmem"},  // 007: Agent Under Fire
     {0x54430006, "sysmem"},  // Dead or Alive 1 Ultimate
+    {0x4541007B, "sysmem"},  // Need for Speed: Most Wanted (#433, lane.gpupass1010 A/B)
 };
 
 static bool HasCsvToken(const std::string& list, const char* token) {
