@@ -378,6 +378,7 @@ Batch 3 complete: all 7 restored titles pass. 38-title scope now stands at 29 sc
 | Legacy of Kain: Defiance | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.96/59.88 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1532500`/`...1532591`) |
 | The Lord of the Rings: The Fellowship of the Ring | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.97/59.99 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1532668`/`...1532803`) |
 | NBA 2K3 | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.96/59.96 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1532989`/`...1533156`) |
+| NBA 2K2 | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.88/59.89 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1533234`/`...1533326`) |
 
 **Call of Duty 3 is not on the Nova**, discovered live (same failure mode as
 the Alien Hominid pilot in 4.1.2) despite being in the "8 of the original 20
