@@ -2,7 +2,7 @@
 
 Lane: fastpaths1010          Issue: none (dispatched directly by lane.local, #433 umbrella)
 Base: master @ 9b26a9647c
-State: ready
+State: draft
 Files: android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt, android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt, android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt, android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsActivity.kt, android/app/src/main/res/layout/activity_settings.xml, android/app/src/main/res/values/strings.xml, docs/lanes/fastpaths1010/**, docs/testing/predictions/fastpaths1010-*
 Prediction: docs/testing/predictions/fastpaths1010-nfs.json @ PASS (step 2); docs/testing/predictions/fastpaths1010-screen.json @ PASS (step 3, fail_titles=[] as predicted)
 Needs device: yes (Nova only)    Needs NDK: no
