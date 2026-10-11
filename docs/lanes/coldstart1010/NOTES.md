@@ -292,22 +292,63 @@ The player-facing change is the native pref default (`xemu_android.cpp:1188`, 2 
 default match the settings screen's. That file is fastpaths1010's (section 4). A pixel leg is not needed:
 depth changes only which slot's command buffer and staging a finish records into, not what any draw draws.
 
-## 8. Stack A/B, posted store on, depth 2 vs 3 (coldstart1010-stack.json): in progress
+## 8. Stack A/B verdict, posted store on, depth 2 vs 3 (coldstart1010-stack.json): FAIL on K by 0.29 ms, C/W/G/M pass
 
-Runs so far:
+| run | arm | cold 1 | warm | post-GO | cold v2 | cold ms blk/f | valid | shader cache |
+|---|---|---|---|---|---|---|---|---|
+| 1-1791702188-coldstart1010-3912216 | A | 35.7 | 33.6 | 33.4 | 74 % | 2.56 | 12/12 | kept |
+| 1-1791703833-coldstart1010-4017651 (B1') | B | 33.8 | 33.6 | 33.4 | 82 % | 0.21 | 10/12 | cleared |
+| 1-1791703256-coldstart1010-3982841 | B | 35.9 | 33.6 | 33.3 | 63 % | 0.11 | 12/12 | kept |
+| 1-1791703257-coldstart1010-3982899 | A | 35.8 | 33.5 | 33.4 | 69 % | 2.32 | 12/12 | kept |
+| 1-1791704340-coldstart1010-4043569 | A | 37.2 | 33.6 | 33.4 | 77 % | 3.08 | 12/12 | cleared |
+| 1-1791704340-coldstart1010-4043654 | B | 34.7 | 33.6 | 33.4 | 64 % | 0.28 | 12/12 | kept |
+| **mean A** | | **36.28** | **33.59** | **33.36** | 73.3 % | **2.66** | | |
+| **mean B** | | **34.79** | **33.58** | **33.36** | 69.7 % | **0.20** | | |
 
-| run | arm | cold 1 | warm | post-GO | cold ms blk/f | note |
-|---|---|---|---|---|---|---|
-| 1-1791702188-coldstart1010-3912216 | A | 35.7 | 33.6 | 33.4 | 2.56 | |
-| 1-1791702189-coldstart1010-3912403 | B | - | - | - | - | **void** (below) |
-| 1-1791703256-coldstart1010-3982841 | B | 35.9 | 33.6 | 33.3 | 0.11 | |
-| 1-1791703257-coldstart1010-3982899 | A | 35.8 | 33.5 | 33.4 | 2.32 | |
+| leg | rule | measured | |
+|---|---|---|---|
+| V | as section 7, plus `[postput] on` on every run | all six runs; the g11 frames by eye below | PASS |
+| K | cold B <= 34.5, or cold v2 B - A >= +15 | 34.79; v2 -3.6 points | **FAIL** (0.29 ms short) |
+| C | cold B - A <= -0.5 | **-1.49** | PASS |
+| W | warm B - A <= +0.3 | -0.01 | PASS |
+| G | post-GO B - A <= +0.3 | -0.00 | PASS |
+| M | cold ms/f blocked in rotation, B <= 0.5 x A | 0.20 against 2.66 (0.08 x) | PASS |
 
-Stack B1 is void. At the Quick Race menu (`qr-custom`) the route's one `HATX` right, held 194 ms, moved the
-cursor two items, onto Split Screen. The route then drove nothing: every start's frames show the split-screen
-"select player order" screen, and the pace is 16.7 ms throughout. This is a menu input slip, not the arm's
-effect: B2, with the same environment, went through the menu correctly. Its one rerun is
-1-1791703833-coldstart1010-4017651. A3 and B3 are queued after it.
+Validity, run by run:
+- **B1 (1-1791702189-coldstart1010-3912403) is void.** At the Quick Race menu (`qr-custom`), the route's one
+  `HATX` right was held 194 ms and moved the cursor two items, onto Split Screen. The route then drove nothing:
+  every start's frames show the split-screen "select player order" screen, and the pace is 16.7 ms throughout.
+  This is a menu input slip, not the arm: B2 ran the same environment through the menu correctly. One rerun,
+  B1'.
+- **B1' is valid at the cold start.** Its gameplay frame shows GO, and s1-g11 shows the car moving. Two host adb
+  hangs (WSL `accept4` 110) made two route inputs fail, so the reader drops go4 and go9, leaving 10 valid starts
+  (the minimum is 10). By eye, start 5 also failed: s4-g11 shows race 3 still running (go4's OK never landed),
+  and s5-g11 shows the restart dialog, not a race. The reader keeps go5. Dropping it moves this run's warm figure
+  by +0.03 ms and its post-GO by 0.00, so W and G stand either way.
+- A3 had one adb hang that broke no route input (12/12). In every other g11 frame of the six runs, the car moves
+  (23-89 mph).
+
+**The two remedies add.** All four configurations are on one binary (786f82d4bb, apk 52aa370cd4d3, plain
+build), each 3 runs. Within each A/B the arms are interleaved; across the two A/Bs the batches are not (the
+depth A/B ran 22:41-00:11 PDT, the stack 00:11-01:32).
+
+| configuration | cold 1 | vs six | warm | post-GO | cold ms blocked in rotation /f |
+|---|---|---|---|---|---|
+| six switches (depth 2) | 37.93 | | 33.75 | 33.40 | 2.91 |
+| + depth 3 | 36.42 | -1.51 | 33.63 | 33.39 | 0.92 |
+| + posted store (depth 2) | 36.28 | -1.65 | 33.59 | 33.36 | 2.66 |
+| + posted store + depth 3 | **34.79** | **-3.14** | 33.58 | 33.36 | 0.20 |
+
+- Depth 3 gives the same -1.5 ms with or without the posted store. The posted store gives -1.65 here, against
+  postput1010's -2.17 on its own pair.
+- So the prediction's mechanism was wrong in one place. It held that with the store posted, depth 3 would help
+  only where the PFIFO thread's own lateness paces the frame, and put B - A at -0.6. It came out at -1.49.
+- That says the PFIFO thread's lateness does pace the cold frame once the guest stops waiting on the lock. The
+  2.46 ms a frame that depth 3 removes from the PFIFO thread's rotation waits comes back as 1.49 ms of pace.
+- Warm countdown and post-GO do not move in either A/B: both run at the 33.3 floor already.
+
+The point estimate was B 35.0 (34.79 measured) and A 35.6 (36.28 measured). The posted store's gain was smaller
+on this ref than in postput1010, and depth 3's gain on top of it larger.
 
 Residual census, queued after the stack: two plain runs of the stacked configuration (six switches, posted
 store, depth 3) with `HAKUX_FRAMETRACE=1` (1-1791704357-coldstart1010-4044114, 1-1791704358-coldstart1010-4044180).
