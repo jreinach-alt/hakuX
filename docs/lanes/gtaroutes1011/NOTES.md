@@ -188,3 +188,11 @@ are still in `dispatch/queue/` (confirmed via `ls`); `dispatch/running/` current
 not either of ours. So the wait itself is still live and correct. Wrote `WAITING` naming both result paths and
 what to do with each, and committed/pushed it before anything else, per the addendum's instruction, then resumed
 the polling loop.
+
+Ran one bounded foreground poll (~9 min, 15 s interval) after pushing `WAITING`: neither result landed; the nova
+queue grew from ~22 to 31 items (profileconv1011's running item plus more lane.local/nfsdefault1011 work queued
+behind it), confirming the backlog is still deep and not shrinking toward these two requests. Consistent with the
+existing PR #927 waiting-comment (already names both ids and the backlog depth -- still accurate, no new comment
+needed). Per the role file, this is a wait on dispatcher state outside this session's control: stopping here with
+`WAITING` in place rather than polling for hours. Nothing in territory changed this pass beyond `WAITING` itself
+and this note.
