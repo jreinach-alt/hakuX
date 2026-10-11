@@ -25,7 +25,12 @@ Legs:
      input failed or hung before `mark gameplay`, each arm >= V_min_cold_lines
      cold pace lines, the run's arm read unambiguously from its env, and:
        ON  logs `[postput] on`, `[lockwake] on` and `submit frames: 3`
-       OFF logs none of `[postput]`/`[lockwake]`, and `submit frames: 2`
+       OFF logs none of `[postput]`/`[lockwake]`, and draw.c's own
+           `[coldstart1010] submit_frames=2 (HAKUX_SUBMIT_FRAMES; pref 3)`
+           (xemu_android.cpp's `submit frames: %d` logs the pref fed into
+           xemu_set_submit_frames, not the value draw.c runs with once the
+           env var overrides it, so it stays "3" on OFF too -- not useful
+           as OFF's proof)
   K  ON's cold start 1 period <= K_max ms (lockwake1011's own K bound).
   N  ON is not slower than OFF at the cold start: ON - OFF <= N_d_max ms.
 """
@@ -43,7 +48,12 @@ LOG_POSTPUT_ANY = r'\[postput\]'
 LOG_LOCKWAKE_ON = r'\[lockwake\] on'
 LOG_LOCKWAKE_ANY = r'\[lockwake\]'
 LOG_SUBMIT3 = r'submit frames: 3'
-LOG_SUBMIT2 = r'submit frames: 2'
+# xemu_android.cpp's "submit frames: %d" always logs the *pref* passed into
+# xemu_set_submit_frames, not the value draw.c runs with once HAKUX_SUBMIT_FRAMES
+# overrides it (confirmed on OFF1: pref logs 3, draw.c's own line below logs the
+# actual 2). draw.c's "[coldstart1010] submit_frames=N (HAKUX_SUBMIT_FRAMES;
+# pref M)" line is the one that reflects what the engine actually ran with.
+LOG_SUBMIT2 = r'\[coldstart1010\] submit_frames=2 \(HAKUX_SUBMIT_FRAMES'
 
 
 def request(d):

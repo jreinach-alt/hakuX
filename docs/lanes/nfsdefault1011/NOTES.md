@@ -49,3 +49,17 @@ lockwake1011's own K bound); N (ON not slower than OFF at the cold start).
 Queued in two batches of two per the pilot gate (no `pilots/nfsdefault1011.ok` on file; `(500+90)*4` = 2360 s =
 39.3 min, over the 30 min that always goes through with no reviewed pilot; `(500+90)*2` = 19.7 min does not
 need one): OFF + ON first, pilot verdict written, then ON + OFF.
+
+**OFF1 (`1-1791735965-nfsdefault1011-3581025`) read:** found and fixed a leg bug, not a code bug. OFF's
+logcat carries `env: HAKUX_SUBMIT_FRAMES=2` and draw.c's own `[coldstart1010] submit_frames=2
+(HAKUX_SUBMIT_FRAMES; pref 3)` -- the engine ran at 2 submit frames as the arm intends. But
+`xemu_android.cpp`'s `"submit frames: %d"` line (the one step 1a's brief cited as "the proof") logs the
+*pref* value fed into `xemu_set_submit_frames` (3, since step 1a's change), not the value draw.c actually
+runs with once `HAKUX_SUBMIT_FRAMES` overrides it -- so that line reads "submit frames: 3" on OFF too, and
+was never going to prove the OFF arm's switch. This is pre-existing coldstart1010 behavior, not something
+introduced by this lane's step 1a, and not a reason to touch `xemu_android.cpp` beyond the one default
+already changed: draw.c's own log is the authoritative line for what the engine ran with when an env
+override is in play, and `nfsread.py`'s `LOG_SUBMIT2` now matches that line instead
+(`\[coldstart1010\] submit_frames=2 \(HAKUX_SUBMIT_FRAMES`). `[postput]`/`[lockwake]`/marks/valid-starts/
+boot-input legs all PASS on OFF1; cold start 1 read 43.94 ms, 12/12 valid starts, 2 cold pace lines pooled
+so far (floor is 3, needs OFF2 too). Full V/K/N verdict waits on all four runs.
