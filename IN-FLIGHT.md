@@ -8,8 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `coldstart1010` | claude-opus-5-5 | 1h 49m | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) |
-| `fastpaths1010` | claude-sonnet-5 | 2h 46m | fastpaths1010: step-3 scope 21 of 44; track lane.local's shuffle (#433, 0.5) |
+| `coldstart1010` | claude-opus-5-5 | 2h 4m | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) |
+| `fastpaths1010` | claude-sonnet-5 | 3h 1m | fastpaths1010: step-3 scope all 44 -- lane.local's shuffle finished (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -75,7 +75,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/coldstart1010` | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) | `f0a9b0c17d` | 2026-10-10 23:28 |
-| `lane/fastpaths1010` | fastpaths1010: step-3 scope 21 of 44; track lane.local's shuffle (#433, 0.5) | `a3a7e61302` | 2026-10-10 23:43 |
+| `lane/fastpaths1010` | fastpaths1010: step-3 scope all 44 -- lane.local's shuffle finished (#433, 0.5) | `7f73de5d85` | 2026-10-10 23:52 |
 
 ## Recently landed on master
 
@@ -89,4 +89,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 - 2026-10-10 lane.usage24h1009: project the week's usage from the trailing 24h burn rate, not the trailing 6h (#433)
 
-_Updated 2026-10-10 23:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 00:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
