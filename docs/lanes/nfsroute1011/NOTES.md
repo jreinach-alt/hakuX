@@ -148,3 +148,75 @@ exactly their region's `w x h`, matching `waitfor_match.py`'s `region_score()`, 
 fixed `CMP_SIZE = (64, 48)` for scoring). Crops cut from the dispatcher `route-frames/*.png` files
 used in this analysis are the same 1280x960 orientation route.sh captures, so no resize/orientation
 fix is needed before cutting Step 1's reference crops.
+
+## Step 2: gated nfs-mw-quickrace.route
+
+Edited `docs/testing/titles/routes/nfs-mw-quickrace.route` additive-only: 36 `wait 0.12` lines
+(one after every zero-hold `axis HATX/HATY max|min` tap, so each hold is >=0.1s before the
+following `mid`), 9 `waitfor` gates for the first-run prompts/menus (s04-s12), 7 `waitfor` gates
+for the pre-race menu screens, and 11 `waitfor restart-ok` gates before each restart loop's `press
+A`. No existing `wait` duration, and no `mark gameplay`/`go2`..`go12` offset, was touched; every
+new gate sits before the committing `press A`, never between it and the mark it feeds, per the
+brief. `route.sh --check docs/testing/titles/routes/nfs-mw-quickrace.route` -> "route ok". Header
+note added citing 87778/87617. Committed at `22f63bc5bb`, pushed (matches `origin/lane/nfsroute1011`).
+
+### Proof blocked: ref crops cannot reach a pre-merge dispatched run
+
+Ran the required proof:
+
+```
+bash docs/testing/request.sh --who nfsroute1011 \
+  --purpose "route proof: gated nfs-mw-quickrace reaches 12 race starts (#433)" \
+  --title "4541007B-Need_for_Speed_Most_Wanted.xiso.iso" --route nfs-mw-quickrace \
+  --seconds 500 --frames-every 30 --device nova \
+  --no-expect "route proof: gated nfs-mw-quickrace reaches 12 race starts"
+```
+
+Refused at queue time, before touching the device:
+
+```
+refusing to queue: route 'nfs-mw-quickrace' parses here but would not run in the dispatched soak:
+  /home/justin/hakux-work/dispatch/bin/titles/route.sh: route.sh: /tmp/tmp.16Ybj5HzIq/route.txt:44: waitfor 'alias-prompt': no reference crop /tmp/tmp.16Ybj5HzIq/refs/route.txt/alias-prompt.png
+  /home/justin/hakuX/docs/testing/titles/route.sh: route.sh: /tmp/tmp.16Ybj5HzIq/route.txt:44: waitfor 'alias-prompt': no reference crop /tmp/tmp.16Ybj5HzIq/refs/route.txt/alias-prompt.png
+```
+
+This is not my route being wrong; it is `request.sh`'s own documented design (its comment above the
+check, ~line 1154-1190): the route's *text* travels with the request and is written to `<result
+dir>/route.txt`, but the worker plays that bare file with the **serving snapshot's**
+(`$SNAPBIN/titles/route.sh`) or **serving tree's** (`/home/justin/hakuX`, tracking master)
+`route.sh`. `ref_path()` resolves a `waitfor`/`press-until` crop at
+`$(dirname ROUTE)/refs/$(basename ROUTE .route)/<name>.png` -- i.e. `<result
+dir>/refs/route.txt/<name>.png` for a file literally named `route.txt` -- and nothing copies a
+`refs/` directory alongside it. `request.sh` checks this exact failure mode itself, against both
+the snapshot and the serving tree, before ever queuing: "A 'waitfor' or 'press-until' crop does not
+travel with the request... must be in the serving snapshot
+(`$SNAPBIN/titles/drive-profiles/`) or on the serving tree's master." Both of those are outside
+this lane's territory (`/home/justin/hakux-work/dispatch/bin`, `/home/justin/hakuX`) and are not
+something a lane may write to directly (the lane role's device rules: `request.sh`/`hold.sh` only,
+no new kind of write). The "private DISPATCH_DIR" the comment mentions as the third fallback is a
+host with no snapshot and no serving tree at all -- not a staging area a lane can point at itself;
+on this host both the snapshot and the serving tree exist, so that branch does not apply here
+either.
+
+**Consequence:** any route whose `waitfor`/`press-until` gates are new (not yet on
+`/home/justin/hakuX`'s master or in the dispatcher's snapshot bin) cannot be proven by a real
+dispatched device run before merge, regardless of whether the route's own logic is correct --
+`route.sh`'s `validate()` checks every `waitfor` ref's existence at parse time, for the whole file,
+before the first step plays, so this is the actual run-time behavior, not an artifact of
+`request.sh`'s own pre-check. Steps 2, 3 and 4 in this brief all introduce new refs directories, so
+all three hit this same wall; it is a harness-level gap in the dispatch/testing path (ref-staging
+for a route under test), not something in this lane's territory (`route.sh`, `request.sh`,
+`dispatcher.sh` are all out of territory) to fix.
+
+This counts as the one failure the brief allows before moving on ("A route that fails its proof
+gets one fix and one rerun. If it fails again, write up what blocks it in NOTES.md and go on to
+step 3.") -- except there is no fix available on this lane's side to attempt a rerun against: the
+failure is in the proof mechanism, not in the route text, which already passes local `route.sh
+--check`. Per that same brief line, proceeding to Step 3. **lane.local / whoever owns
+`request.sh`/`dispatcher.sh`: a route-under-test needs its `refs/<route-stem>/` copied alongside
+`<result dir>/route.txt` (or `ref_path()` needs to resolve against the *request's own* route name,
+not the literal `route.txt` filename the dispatcher writes) before any lane's new `waitfor` gates
+can be proven pre-merge. Until that lands, `nfs-mw-quickrace.route`'s Step 2 gates are reviewed and
+locally validated but not device-proven, and the same will be true of Steps 3 and 4's new routes.**
+
+No `QUICKRACE-GATED:` line follows, because the required proof did not run.
