@@ -1,0 +1,49 @@
+{
+  "registered_utc": "2026-10-10T19:45:32Z",
+  "who": "lane.drawrec1010",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "device": "nova",
+  "seconds": 500,
+  "route": "nfs-mw-quickrace",
+  "perflog": "both: legs P and H read the plain runs, leg U the perflog runs, R and V all of them",
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "perflog_runs_per_arm": 1,
+  "a_ref": "b10dcdb737",
+  "b_ref": "b10dcdb737",
+  "a_env": [
+    "HAKUX_UNI_BULK=1",
+    "HAKUX_UNI_UBERCACHE=1",
+    "HAKUX_UNI_FOGCACHE=1"
+  ],
+  "b_env": [
+    "HAKUX_UNI_BULK=1",
+    "HAKUX_UNI_UBERCACHE=1",
+    "HAKUX_UNI_FOGCACHE=1",
+    "HAKUX_DRAWREC=1"
+  ],
+  "queue_order": "Queued by the lane (an env A/B; arms.sh skips a_ref == b_ref). Common: request.sh --who drawrec1010 --title <title> --route nfs-mw-quickrace --seconds 500 --device nova --ref b10dcdb737 --env <each of the arm's env> --expect this file. Pilot (inside the 30-min gate): perflog ON, then perflog off (--perflog). After the pilot is read (12 marks, a moving car in s*-g11.png, the switch line, no fatal): plain off, ON, ON, off, so neither state always runs on a shader cache the other warmed, and the device is left without the switch.",
+  "judge": "python3 docs/lanes/drawrec1010/drawread.py <every run of both arms> --expect docs/testing/predictions/drawrec1010-nfs.json",
+  "baseline": "Perflog, F1-F3 on, no HAKUX_DRAWREC (it did not exist), read with drawread.py over the same windows: 1-1791645060-perdrawon1010-726861 + 1-1791645063-perdrawon1010-728778 (apk 72fe2eabc46e): countdown Draw 12.18 ms/frame, 1,578 draws/frame, 7.72 us/draw, Syn 3.99, Pipe 3.71 (Sh 1.68), Desc 0.51, Setup 1.04, Mfp 0.96; warm countdown pace 43.5 ms/frame (27 lines), v2 41.6% v3 51.9% v4+ 4.0%; cold 54.6 (2 lines); [rdc] vtx walks 161/flip warm (2.58 ms/flip), 234/flip cold (3.82 ms/flip), ~16 us each, each re-arming ~1 TLB entry. No plain run with F1-F3 on exists at this route; the off arm's plain figures are measured here, not assumed.",
+  "prediction": "#433 HAKUX_DRAWREC=1 at the NFS MW race start, F1-F3 (HAKUX_UNI_BULK/UBERCACHE/FOGCACHE=1) on in both arms. The census (lane NOTES section 5, run 1-1791656193-drawrec1010-4097387) found 63% of consecutive draws differ only in vertex data and uniforms, so the brief's step 2 applies; but F1-F3 have already cut Desc to 0.5 and Mfp to 1.0 ms/frame, and the largest phase left is Syn, 4.0 ms/frame, of which the vertex sync's TLB walks are 2.6 (warm) to 3.8 (cold) ms/flip: one walk of every live TLB entry per dirty range, each re-arming one entry. The switch defers those walks to one batched walk per flip (part VTX), and stops 31% of draws taking the full path only because shader_bindings_changed stays set after the shader change it reports (part SHC). Predicted, countdown windows [mark-2, mark+1.5], pooled per state: R: [rdc] vtx walks per flip OFF >= 100, ON <= 20 (one per flip plus budget walks). U (perflog, one run per state): us/draw ON/OFF - 1 in [-35%, -15%], point -25% (7.7 -> ~5.8): VTX takes ~2.4 ms/frame of walks net of the extra copies, SHC 0.3-1.0; Syn ON <= 2.0 ms/frame (the copies and the test-and-clear stay). The brief's -30% is the upper end of this range, not the point. P (plain, warm restarts go2..go12): pace ms/frame ON - OFF in [-7, -1], point -3. H (plain, warm): v2 share ON - OFF >= +5 points, point +10. T (the brief's targets, reported, not judged): warm ON <= 38, cold ON <= 52, v2 +10 points. The cold start is one start per run, two windows per state; it is reported, not judged. P(R) 0.8, P(U) 0.6, P(P) 0.5, P(H) 0.5. What refutes it: R fails ON (the budget walks fire as often as the walks they replace: the copies forced by owed pages are the dominant pattern, and the [drawrec] redo count shows it); R passes and U fails (the walks were not the cost the phase timer says, or the extra copies cost what the walks did); U passes and P/H fail (PFIFO time is not the critical path at the countdown on the plain build). V requires 12 marks per run, no fatal signal, '[drawrec1010] drawrec=1 vtx=1 shc=1' in every ON run and drawrec=0 in every OFF run, and >= 15 countdown pace lines per state. Pixels: the 12 s*-g11.png and r*-ok frames ON vs OFF, region by region (cars, barriers, road and HUD present and the same kind), and the 27-suite disc in drawrec1010-pixels.json.",
+  "expect": {
+    "V_marks": 12,
+    "V_min_pace": 15,
+    "R_on_max": 20,
+    "R_off_min": 100,
+    "U_min": -0.35,
+    "U_max": -0.15,
+    "U_syn_on_max": 2.0,
+    "P_min": -7.0,
+    "P_max": -1.0,
+    "H_dv2_min": 5.0,
+    "T_warm_on_max": 38,
+    "T_cold_on_max": 52,
+    "T_dv2_min": 10
+  },
+  "expect_note": "Named legs read by docs/lanes/drawrec1010/drawread.py (V, R, U, P, H; T reported); a soak writes no captures.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}
