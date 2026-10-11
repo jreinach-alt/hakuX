@@ -359,6 +359,8 @@ pilot-gate's own ~102 min estimate for route titles alone plus the soaks.
 | Panzer Dragoon Orta | ON/OFF | none/none | not yet reviewed by eye | 59.88/59.88 | pass (env/on-lines/hdd clean both arms, golden/any) |
 | Call of Duty 3 | ON/OFF | -- | -- | -- | **not run**: both runs errored `title not on device` (refs `...4194026`/`...4194140`) |
 | Capcom vs. SNK 2 EO | ON/OFF | none/none | not yet reviewed by eye | 59.98/59.97 | pass (env/on-lines/hdd clean both arms; hdd golden_status None expected, no targets.toml entry) |
+| The Simpsons Hit & Run | ON/OFF | none/none | not yet reviewed by eye | 59.98/59.96 | pass (env/on-lines/hdd clean both arms, golden/any; refs `...4194264`/`...310`) |
+| Dark Summit | ON/OFF | none/none | not yet reviewed by eye | 59.97/59.97 | pass (env/on-lines/hdd clean both arms, golden/any; refs `...346`/`...380`) |
 
 **Call of Duty 3 is not on the Nova**, discovered live (same failure mode as
 the Alien Hominid pilot in 4.1.2) despite being in the "8 of the original 20
@@ -378,17 +380,32 @@ All 4 route titles (Crimson Skies, Spikeout, JSRF, Tork) now screened:
 `gfps` window is `soak start` -> `soak end` instead; ToeJam & Earl III
 (first soak title screened) also passes.
 
-Remaining in batch 2 (queued, awaiting device time): Halo: Combat Evolved,
-Panzer Dragoon Orta, Call of Duty 3, Capcom vs. SNK 2 EO, The Simpsons Hit
-& Run, Dark Summit (ON/OFF each, soak).
+Batch 2 complete: all 10 titles screened (Call of Duty 3 not run, presence
+blocker; the other 9 pass).
 
-Batch 3 (queued after batch 2 drains): the 7 titles restored in 4.3 --
-Kabuki Warriors, Gunvalkyrie, 187: Ride or Die, Tony Hawk's Pro Skater 2x,
-KOF: Maximum Impact - Maniax, Alien Hominid, WWE Raw 2.
+Batch 3 queued (14 runs): the 7 titles restored in 4.3 -- Kabuki Warriors,
+Gunvalkyrie, 187: Ride or Die, Tony Hawk's Pro Skater 2x, KOF: Maximum
+Impact - Maniax, Alien Hominid, WWE Raw 2 -- ON/OFF each, using the exact
+filenames `shuffle1011.log` verified (4.3), not `targets.toml`'s stale
+`thor` entries for the 5 of the 7 it hadn't caught up on yet. 6 by route
+(300s), 1 soak (Gunvalkyrie, 180s + `--frames-every 15`). The pilot gate
+admitted the whole batch on the existing (2h-old) `pilots/fastpaths1010.ok`.
 
-Remaining after that: the rest of the 23-restored-tonight soak titles from
-4.1.1/4.1.2 (16 of 23, since Capcom vs. SNK 2 EO and 6 others are already
-queued across batches 1-2).
+Batch 4 queued (42 runs) immediately after: the remaining 21 of the
+original 32-scope titles not yet run (4.1.2's table) -- MTV Celebrity
+Deathmatch, NFL Blitz 2002, NBA 2K2, MLB SlugFest 2003, AMF Bowling 2004,
+MLB SlugFest 2004, MLB SlugFest - Loaded, Rogue Trooper, Ratatouille, World
+Soccer Winning Eleven 9, NBA 2K3, Mortal Kombat: Armageddon, Fight Club,
+Blowout, Future Tactics: The Uprising, Blade II, Indigo Prophecy, SpongeBob
+SquarePants: Battle for Bikini Bottom, The Lord of the Rings: The
+Fellowship of the Ring, Legacy of Kain: Defiance, Max Payne 2: The Fall of
+Max Payne -- all soak (none has a route), ON/OFF each. Same pilot gate,
+same `--expect` prediction. Together batches 3+4 are the last 28 of the 38
+screenable titles (9 already passed in batches 1-2, Call of Duty 3 blocked
+on presence); request.sh's own running estimate reached ~276 min of
+device time queued for this requester by the last of these 56 requests.
+`--ref` for all of batches 3/4 is `240eadd732` (this lane's branch after
+today's 13-commit master merge, 4.5).
 
 ### 4.5 Attempt 2 (10-11, resumed per Addendum 4): why attempt 1 didn't finish, and the stale-worktree hook block
 
