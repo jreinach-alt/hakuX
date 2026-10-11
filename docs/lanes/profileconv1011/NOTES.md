@@ -221,3 +221,65 @@ without starting a new device run or polling further. `WAITING`'s condition
 is satisfied the moment `dispatch/results/1-1791749881-profileconv1011-1652106/`
 has a `DONE` or `WITHDRAWN.txt`; at that point `lanewaker.py` resumes this
 lane itself. The next session picks up exactly where section 8 left off.
+
+## 10. Attempt 3 -- Amped 2 re-run landed, CONFIRMED; both routes done
+
+Merged `origin/master` first (8 commits behind at session start; clean
+merge, no conflicts, no route/titlestate.py changes in the new commits).
+
+`dispatch/results/1-1791749881-profileconv1011-1652106/` has `DONE`.
+`run.log` ends on `ROUTE ... end` at 900s (`held Amped 2 (USA).xiso.iso for
+901s`) -- the full route ran this time, no adb/WSL abort (compare attempt
+1's flake at 536s, section 7). `hdd.json`: `"state": "any", "loaded":
+"golden", "save": "f90786b6e0f5", "golden_status": "golden"` -- same golden
+load as attempt 1, confirmed again.
+
+Compared every `route-frames` shot (`s01`-`s25`, trailing `gameplay.png`,
+all 10 `hold.png`) against baseline `1-1791616849-pfifowait1009-2796495` by
+label, first with a pixel-diff pass (PIL `ImageChops.difference`, all labels
+present in both, no size mismatches) then by eye on the labels load/profile
+state would show through:
+
+- `s06-name_entry` (the "RIDE!" mountain-select menu): pixel-diff near zero;
+  visually identical -- same `Millicent 1` entry highlighted and marked
+  `NEW`, same seven locked rows, same FPS counter (59), same "0 of 18"
+  challenge tally. No existing-name entry, no Load/Continue prompt.
+- `s08-submenu` (Media Challenge tutorial card): pixel-diff 0.41, same text,
+  same FPS (29) -- the only near-zero submenu diff, confirming the pixel-diff
+  pass is discriminating, not just noisy.
+- `s09`-`s12` `submenu`, and most `gameplay`/`probe` frames: higher
+  pixel-diff (44-77 mean), but by eye these are the same tutorial-prompt
+  sequence at the same hut/rail location with the same zero-value HUD
+  (`0`/`15,000` trophy, `0`/`5,000` media) -- the difference is which
+  in-sequence tutorial text line (e.g. "Press BACK to reset position") and
+  camera angle a fixed-wait capture landed on, and FPS jitter (18 vs 25),
+  not a state difference. Same pattern as section 7's `s13-gameplay` finding
+  for attempt 1.
+- `s13-gameplay` (first frame under player control): same HUD exactly as
+  attempt 1 found (trophy `0`/`15,000`, media `0`/`5,000`, same rider/outfit,
+  FPS 26 both). Confirms the profile is fresh at the moment control starts,
+  identically in both runs.
+- Trailing `gameplay.png` and `hold.png` (end of the 900s route): HUD trophy
+  score differs -- baseline still `0`/`15,000` at its last hold frame, this
+  run's last hold frame shows `774`/`15,000`. This is not a profile
+  carry-over: `s13` confirmed both runs start at `0`, and the route plays
+  ~900s of scripted trick/axis inputs with no save/reload step in between --
+  a run landing a scored trick by its last frame and the other run not is
+  ordinary physics-timing variance in what the inputs happen to connect
+  with, the same class of drift section 7 already named for camera framing.
+  A profile carried over from the golden would show a *non-zero starting*
+  score at `s13`, not a non-zero *end* score after 900s of live play.
+- No frame in either run's `s01`-`s25`/`hold` sequence shows a Load/Continue
+  prompt, an existing non-default profile name, or a settings difference.
+
+Amped 2 confirmed, same as GTA SA (section 6): the golden (title data only,
+no save directory) changes nothing a frame shows. Prediction (section 4)
+holds for both titles.
+
+TRANSITION-DONE: gta-sa amped2
+
+Removed `docs/lanes/profileconv1011/WAITING` (its condition -- `DONE` on
+this run id -- is satisfied) and `OUTBOX.md`'s open wait line no longer
+applies. `PR.md` set to `State: ready` with both run ids and both
+`hdd.json` lines in full; this NOTES.md section is the frame-pair evidence
+the brief's step 6 asks `PR.md` to summarize.

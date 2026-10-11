@@ -17,3 +17,11 @@ GTA SA is already CONFIRMED (NOTES.md section 6, run
 complete frame set. 3 of the 4 allowed device runs are used/committed; the
 budget allows one more if this re-run also needs a retry, but not for an
 infra flake a second time without the frames saying so.
+
+## #433 -- 2026-10-11 (attempt 3) -- resolved
+
+`1-1791749881-profileconv1011-1652106` landed: full 900s run, no flake,
+`hdd.json` confirmed golden loaded, frames match the baseline. Amped 2 is
+CONFIRMED (NOTES.md section 10). Both `gta-sa` and `amped2` are done:
+`TRANSITION-DONE: gta-sa amped2`. `PR.md` is `State: ready`. No longer
+waiting on anything; `docs/lanes/profileconv1011/WAITING` removed.

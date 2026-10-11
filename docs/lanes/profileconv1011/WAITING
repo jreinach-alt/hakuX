@@ -1,5 +1,0 @@
-# Amped 2 re-run queued 13:18 PDT; ~7560s of device time ahead of it on the Nova
-# (NOTES.md section 8). When it lands: apply NOTES.md section 7's frame-comparison
-# method to its frames, confirm hdd.json (loaded: golden, save: f90786b6e0f5), and
-# if it confirms write TRANSITION-DONE: gta-sa amped2 and set PR.md State: ready.
-run 1-1791749881-profileconv1011-1652106
