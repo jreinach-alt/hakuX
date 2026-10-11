@@ -8,13 +8,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `nfsdefault1011` | claude-sonnet-5 | 2h 0m | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) |
-| `soakvideo1011` | claude-sonnet-5 | 10 min | soakvideo1011: device-clock timestamps so hitch_report's window reads the dispatcher's own frames/ (Addendum 1 |
+| `nfsdefault1011` | claude-sonnet-5 | 2h 14m | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) |
+| `nfsroute1011` | claude-sonnet-5 | 7 min |  |
+| `soakvideo1011` | claude-sonnet-5 | 25 min | soakvideo1011: device-clock timestamps so hitch_report's window reads the dispatcher's own frames/ (Addendum 1 |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 1 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -74,7 +75,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/nfsdefault1011` | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) | `8901c055f4` | 2026-10-11 10:49 |
+| `lane/nfsdefault1011` | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) | `e5831604b1` | 2026-10-11 11:26 |
 | `lane/soakvideo1011` | soakvideo1011: device-clock timestamps so hitch_report's window reads the dispatcher's own frames/ (Addendum 1, #433) | `a96282f82d` | 2026-10-11 10:40 |
 
 ## Recently landed on master
@@ -85,4 +86,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 
-_Updated 2026-10-11 11:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 11:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
