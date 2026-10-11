@@ -248,6 +248,11 @@ on the existing reviewed pilot (2.2 h old at queue time), as it should. Nova was
 profileconv1011's job with gtaroutes1011/gtasagpu1011 queued ahead of this batch, so these 20 will wait
 their turn behind other lanes' release-priority requests.
 
+Polled through 20:24 UTC: profileconv1011's job finished, gtaroutes1011's is now running, gtasagpu1011's
+is queued ahead of this batch's 20, no results yet. Queue position is advancing normally (not stuck) --
+Nova is just shared with two other active lanes right now, and this batch alone is ~130 min of device
+time. Stopping here per the lane's own rule on a wait this long; see the `waiting:` PR comment.
+
 Prediction registered: `nfsdefault1011-screen.json` @ `821fb0af67fc791541c771cc3b7b845cca178e04019c1e9bde77d59b4b1607a0`,
 same ref as steps 2/3 (`7002282149`, unchanged since step 1 -- no code has moved). Device presence is
 not re-verified by a live listing before queuing (none exists, confirmed by searching for one); a
