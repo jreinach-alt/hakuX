@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 5h 16m | fastpaths1010: scope widens 32 -> 39 (lane.local Addenda 2/3, 7 of 12 blocked titles restored) (#433, 0.5) |
+| `fastpaths1010` | claude-sonnet-5 | 5h 31m | fastpaths1010: all 4 route titles pass the screen (Crimson Skies, Spikeout, JSRF, Tork) (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 16 waiting, 1 running.
+- **Device queue:** 13 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -73,7 +73,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fastpaths1010` | fastpaths1010: scope widens 32 -> 39 (lane.local Addenda 2/3, 7 of 12 blocked titles restored) (#433, 0.5) | `7a4da16480` | 2026-10-11 01:31 |
+| `lane/fastpaths1010` | fastpaths1010: all 4 route titles pass the screen (Crimson Skies, Spikeout, JSRF, Tork) (#433, 0.5) | `1972502325` | 2026-10-11 02:28 |
 
 ## Recently landed on master
 
@@ -88,4 +88,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 - 2026-10-10 lane.usage24h1009: project the week's usage from the trailing 24h burn rate, not the trailing 6h (#433)
 
-_Updated 2026-10-11 02:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 02:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
