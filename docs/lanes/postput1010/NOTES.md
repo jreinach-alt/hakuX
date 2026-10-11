@@ -152,6 +152,18 @@ reportasync1010's both-switch runs, read with `ppread.py`: `1-1791659723-reporta
 `1-1791659725-reportasync1010-552924`, cold start 1 47.4 / 50.3 ms, warm countdown 37.2 / 37.9 ms, post-GO warm
 35.1 / 35.3 ms, warm v2/v3/v4 70/21/2 and 69/22/2 %.
 
+Queued 2026-10-10 17:5x PDT on the Nova, release tier, behind drawrec1010's probe arms (not reordered):
+
+| request | arm |
+|---|---|
+| `1-1791680038-postput1010-1949730` | A1 (pilot) |
+| `1-1791680039-postput1010-1954673` | B1 (pilot) |
+
+Four runs of 590 s are past request.sh's 30 min pilot gate, so A1 and B1 go first. On their return: check both
+built and ran c63ec9774f, 12 marks, the three log lines (`[postput] on` on B1 only), fifoskew's `posted=` > 0 on
+B1, and the g11 frames for a moving car; write `pilots/postput1010.ok`; then queue B2, A2, then the frametrace
+pair A, B.
+
 (Results go here as they land.)
 
 ## 5. For the next lane
