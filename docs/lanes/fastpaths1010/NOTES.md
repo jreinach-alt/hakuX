@@ -366,6 +366,7 @@ pilot-gate's own ~102 min estimate for route titles alone plus the soaks.
 | 187: Ride or Die | ON/OFF | none/none | not yet reviewed by eye | 59.83/59.87 | pass (env/on-lines/hdd clean both arms, golden=None expected first-run; refs `...1525919`/`...1526768`) |
 | Tony Hawk's Pro Skater 2x | ON/OFF | none/none | not yet reviewed by eye | 59.91/59.90 | pass (env/on-lines/hdd clean both arms, golden=None expected first-run; refs `...1527241`/`...1527431`) |
 | KOF: Maximum Impact - Maniax | ON/OFF | none/none | not yet reviewed by eye | 59.79/59.63 | pass (env/on-lines/hdd clean both arms, golden/returning; refs `...1527559`/`...1528265`) |
+| Alien Hominid | ON/OFF | none/none | not yet reviewed by eye | 59.95/59.92 | pass (env/on-lines/hdd clean both arms, golden=None expected first-run; refs `...1528418`/`...1528569`) |
 
 **Call of Duty 3 is not on the Nova**, discovered live (same failure mode as
 the Alien Hominid pilot in 4.1.2) despite being in the "8 of the original 20
