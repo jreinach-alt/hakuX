@@ -97,3 +97,75 @@ is dashboard metadata, not an in-game settings blob.
 Both routes' `# state:` changed `first-run` -> `any`; no step lines changed
 (prediction above expects no divergence). Added one header line to each
 naming the golden measured on and the date.
+
+## 6. GTA SA confirming run -- CONFIRMED
+
+Run `1-1791746513-profileconv1011-1034280`, queued the same way as the last
+good first-run run (`1-1791733219-lane.local-3377243`: 600s, `frames_every 5`,
+no env): 600s, `frames_every 5`, no env, `--route gta-sa --device nova`.
+
+`hdd.json`: `"state": "any", "loaded": "golden", "save": "7da19befd45b",
+"golden_status": "golden"` -- the golden loaded, not stripped, exactly as
+`compose()`/`resolve_route()` predicted dry (section 4 dry-reads, before this
+run).
+
+Every named `shot` compared against `1-1791733219-lane.local-3377243`'s
+route-frames (same baseline the run log calls "gtasa1011 visual ON: fastpaths
+default (on)", a plain `PERF_REGIMEN=default` first-run capture, same 9 shots
+boot/skA/menu/load/cut1/cut2/cut3/moved/gameplay):
+
+- `boot`, `skA`, `cut1`-`cut3`: same beats, loading-time jitter only (route's
+  own header: "loading time differs between runs"; `load`'s shot falls at a
+  different point in the loading/cutscene train between the two runs -- a 30s
+  fixed wait against variable load time, not a profile effect: one run's
+  `load` shot caught a still-black loading frame at FPS 9, the other a
+  mid-cutscene police-car frame at FPS 19. Neither shows a menu).
+- `menu` (the "Francis INTL. Airport, Liberty City, 1992." title card): pixel
+  match, same FPS counter (29) in both.
+- `moved`: CJ on foot in the Jefferson alley, same HUD (`$00000350`, same red
+  health bar, same radar/minimap, "Press Y to jump on the bike" prompt), same
+  new-game money. In-game clock differs (08:00 vs 07:48) -- cutscene-length
+  jitter carried into the in-game clock, not a state difference.
+- `gameplay` (first frame under player control): same scene and HUD shape as
+  `moved`.
+
+No Load/Continue menu, no settings difference, no save-corruption dialog:
+the golden (title data only, no save directory) changes nothing a frame
+shows. Prediction holds.
+
+## 7. Amped 2 confirming run attempt 1 -- device flake, not a route issue
+
+Run `1-1791746520-profileconv1011-1034452`, queued the same way as the last
+good plain baseline (`1-1791616849-pfifowait1009-2796495`, "amped2.route
+pacing-robustness check A (baseline, no env)"): 900s, `frames_every 60`, no
+env, `--route amped2 --device nova`.
+
+`hdd.json`: `"state": "any", "loaded": "golden", "save": "f90786b6e0f5",
+"golden_status": "golden"` -- golden loaded, as predicted.
+
+`run.log`: the device's adb link went unreadable at the `s20-probe` step
+(13:15:13, "ee317437 adb hung (no answer in 10s)", `WSL ... UtilAcceptVsock
+accept4 failed 110` x5) and the route aborted at 536s of 900s after 5
+consecutive foreground-unreadable probes -- a device/WSL connectivity flake
+(see [[device-run-flakes]]), not a route or profile failure: nothing in the
+captured frames or logcat up to that point shows a state divergence.
+
+Every captured shot through the abort (`s02`-`s19`, plus `s21-gameplay`,
+which one last successful shot landed before the 5th failed probe) compared
+against the baseline's same-named frames:
+
+- `s06-name_entry` (route's own label; the frame is actually the "RIDE!"
+  mountain-select menu, `Millicent 1` highlighted `NEW`): pixel-identical to
+  the baseline, same FPS counter (59) in both.
+- `s13-gameplay` (first frame under player control): same HUD exactly
+  (trophy `0`/`15,000`, red meter `0`/`5,000`, camera icon), same fresh-profile
+  zero scores, same rider/character and outfit. Camera framing/terrain differs
+  by a few frames of simulation drift (expected run-to-run physics timing
+  variance, not a profile effect -- the HUD state, the thing a profile would
+  change, is identical).
+- No sign anywhere in `s02`-`s21` of a Load/Continue prompt, an existing-name
+  profile, non-zero scores, or a settings difference.
+
+One re-run queued to get a clean, complete frame set (genre-loop `hold`
+frames included) -- not a route fix, since nothing the frames showed
+contradicts section 4's prediction.
