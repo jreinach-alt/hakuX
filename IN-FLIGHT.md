@@ -8,16 +8,17 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `nfsdefault1011` | claude-sonnet-5 | 1 min | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) |
-| `nfsroute1011` | claude-sonnet-5 | 43 min | nfsroute1011: status -- Step 3 offline work done, waiting on ref-staging fix |
-| `pathclass` | claude-sonnet-5 | 2h 32m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
-| `profilegate1011` | claude-sonnet-5 | 43 min | profilegate1011: titlestate_selftest.py -- R3, readiness, saves, Addendum 2 (#433) |
-| `soakvideo1011` | claude-sonnet-5 | 43 min | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request |
+| `gtaroutes1011` | claude-sonnet-5 | 10 min | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
+| `nfsroute1011` | claude-sonnet-5 | 58 min | nfsroute1011: status -- Step 3 offline work done, waiting on ref-staging fix |
+| `profileconv1011` | claude-sonnet-5 | 0 min | profileconv1011: gta-sa and amped2 measure on their golden profiles (#433) |
+| `profilegate1011` | claude-sonnet-5 | 58 min | profilegate1011: NOTES.md -- 99-profile-gate.sh, three bugs found and fixed (#433) |
+| `selftestclean1011` | claude-sonnet-5 | 10 min |  |
+| `soakvideo1011` | claude-sonnet-5 | 58 min | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 10 waiting, 1 running.
+- **Device queue:** 30 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -77,10 +78,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/nfsdefault1011` | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) | `b5ff4c8d27` | 2026-10-11 15:13 |
+| `lane/gtaroutes1011` | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) | `82618d5cd1` | 2026-10-11 15:50 |
 | `lane/nfsroute1011` | nfsroute1011: status -- Step 3 offline work done, waiting on ref-staging fix | `95d0893061` | 2026-10-11 12:33 |
-| `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `f442726741` | 2026-10-11 13:21 |
-| `lane/profilegate1011` | profilegate1011: titlestate_selftest.py -- R3, readiness, saves, Addendum 2 (#433) | `baaa7a4ca7` | 2026-10-11 15:18 |
+| `lane/profileconv1011` | profileconv1011: gta-sa and amped2 measure on their golden profiles (#433) | `883642be5f` | 2026-10-11 15:32 |
+| `lane/profilegate1011` | profilegate1011: NOTES.md -- 99-profile-gate.sh, three bugs found and fixed (#433) | `61114c410b` | 2026-10-11 15:57 |
 | `lane/soakvideo1011` | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request (#433, 0. | `ff1bcface2` | 2026-10-11 13:56 |
 
 ## Recently landed on master
@@ -92,4 +93,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 
-_Updated 2026-10-11 15:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 16:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
