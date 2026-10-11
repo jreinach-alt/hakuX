@@ -1244,8 +1244,35 @@ bool xemu_get_frame_skip(void)
     return g_xemu_frame_skip;
 }
 
+/* HAKUX_SUBMIT_FRAMES=N (#433, lane.coldstart1010; off by default): the
+ * command-buffer ring depth, 1..NUM_SUBMIT_FRAMES, over the submit_frames
+ * pref (the Android default is 2). At depth 2 every finish's slot rotation
+ * waits for the command buffer submitted at the finish before it; NFS MW's
+ * cold race start takes STALLED finishes under pfifo.lock 4-6 times a frame,
+ * so the guest's DMA_PUT store waits on those fences. Unset or out of range:
+ * the pref decides, as before. Read once; applies to every later set. */
+static int submit_frames_env(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("HAKUX_SUBMIT_FRAMES");
+        int n = e ? atoi(e) : 0;
+        v = (n >= 1 && n <= NUM_SUBMIT_FRAMES) ? n : 0;
+    }
+    return v;
+}
+
 void xemu_set_submit_frames(int count)
 {
+    int e = submit_frames_env();
+    if (e) {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                            "[coldstart1010] submit_frames=%d "
+                            "(HAKUX_SUBMIT_FRAMES; pref %d)", e, count);
+#endif
+        count = e;
+    }
     if (count < 1) count = 1;
     if (count > NUM_SUBMIT_FRAMES) count = NUM_SUBMIT_FRAMES;
     g_xemu_submit_frames = count;
