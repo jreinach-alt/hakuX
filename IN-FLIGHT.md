@@ -8,14 +8,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `coldstart1010` | claude-opus-5-5 | 4 min | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) |
-| `fastpaths1010` | claude-sonnet-5 | 1h 1m | fastpaths1010: register the NFS MW step-2 prediction (#433, 0.5) |
-| `lanenobg1010` | claude-sonnet-5 | 1h 2m | lanenobg1010: refuse backgrounded Bash and Agent calls in a lane session (#433, 0.5) |
+| `coldstart1010` | claude-opus-5-5 | 19 min | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) |
+| `fastpaths1010` | claude-sonnet-5 | 1h 16m | fastpaths1010: register the NFS MW step-2 prediction (#433, 0.5) |
+| `lanenobg1010` | claude-sonnet-5 | 1h 17m | lanenobg1010: refuse backgrounded Bash and Agent calls in a lane session (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 3 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -75,7 +75,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/coldstart1010` | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) | `4668241bd2` | 2026-10-10 21:56 |
+| `lane/coldstart1010` | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) | `a7fc868303` | 2026-10-10 22:13 |
 | `lane/fastpaths1010` | fastpaths1010: register the NFS MW step-2 prediction (#433, 0.5) | `11109b0086` | 2026-10-10 21:39 |
 | `lane/lanenobg1010` | lanenobg1010: refuse backgrounded Bash and Agent calls in a lane session (#433, 0.5) | `d9e521a217` | 2026-10-10 21:36 |
 
@@ -92,4 +92,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 lane.fgrace1010 -- the display guard's "guest exit mid-route" leg loses a race and fails folds (#433, 0.5)
 - 2026-10-10 lane.fleetflush1010 -- fleet.py's FAIL lines land mid-line when stdout and stderr share a file (#433, 0.5)
 
-_Updated 2026-10-10 22:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 22:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
