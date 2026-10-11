@@ -392,9 +392,8 @@ Batch 3 complete: all 7 restored titles pass. 38-title scope now stands at 29 sc
 
 | MLB SlugFest 2004 | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.97/59.95 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1535932`/`...1536016`) |
 
-MLB SlugFest 2003 ON landed (rid `...1536121`, fatal=False, on_lines=4/4, golden=None,
-state=any, gfps=59.97); its OFF counterpart is still queued, row to follow once
-both arms are in.
+| MLB SlugFest 2003 | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.97/59.97 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1536121`/`...1536196`) |
+| Ratatouille | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.83/59.97 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1536374`/`...1536494`) |
 
 **Call of Duty 3 is not on the Nova**, discovered live (same failure mode as
 the Alien Hominid pilot in 4.1.2) despite being in the "8 of the original 20
