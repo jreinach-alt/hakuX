@@ -135,6 +135,102 @@ Ran `SELFTEST_ONLY="99-build-gate.sh 99-restore-priority.sh 99-hold-take.sh"
 bash docs/testing/jobs/selftest.sh` in the foreground: 111 passed, 0
 failed, PARTIAL (3 of 134 fragments, as expected for a named subset).
 
+## Why attempt 1 did not finish (addendum 1, resumed 10-11)
+
+The first attempt wrote the premise, the promote command, and the gate-side
+fix above, marked PR.md `State: ready`, and stopped there -- before
+lane.local's addendum 1 review caught a race in the `wait` loop it added.
+Everything in this file up to here is attempt 1's work and stands; this
+section and the fix below are the resumed attempt.
+
+**The race.** `dispatcher.sh`'s claim loop checks `hold/<label>` only at
+the top of its tick, before it reads the queue (`dispatcher.sh:2354`,
+comment at :2352-2353: "a hold placed mid-run takes effect after the
+current request rather than interrupting it"). So the instant the promoted
+restore finishes, nothing stops the dispatcher from claiming the very next
+`1-` release-tier request in the same tick -- seconds before attempt 1's
+`wait` loop polls again. That poll calls `build_gate`, which asks
+`device_build.py check` for the device's NEWEST result.json; the restore
+that just finished is still the newest result (the new arm has not
+finished and written one yet), so the gate reads "on master" and passes.
+`wait` then takes the hold while an off-master arm is running RIGHT NOW --
+exactly the state `HOLD_RELEASE_LABELS` exists to prevent, and worse than
+attempt 1's refusal: before this fix a stuck caller was at least refused
+honestly.
+
+**The fix: ask what is running, not only what last finished.** New
+`device_build.py running <dispatch_dir> <label>` (device_build.py:191-207
+in this revision) answers from `running/*.req` (the same files
+`_restore_path` already read for `promote`'s "already running" case) with
+one of three exit codes: 0 "restore: <id>" (the label's own restore is
+running now), 1 "other: <id>" (something else is), 2 "none" (nothing is).
+`hold.sh`'s `wait` loop (only for a gated label -- `label_gated`, the same
+membership check `build_gate` already did, extracted so `wait` can ask it
+too without duplicating the case pattern) now asks this before trusting a
+gate pass:
+
+- **running: a restore** -- take the hold now, before it finishes. The
+  dispatcher's claim loop stops right after it (the hold is now in place
+  for its next tick), and the device is left on master. `cmd_promote`
+  already special-cased this ("already running:"); this is the same
+  check, used by `wait` instead of only by a human reading `promote`'s
+  stdout.
+- **running: something else** -- do NOT call `build_gate` at all this
+  iteration (it would read the stale newest-result pass incorrectly, per
+  the race above). Keep polling. That run finishing off master is exactly
+  what `queue_master_restore` (the dispatcher's own post-run hook, run
+  with no hold or human involved) queues a fresh bare restore for; the
+  next iteration's refusal promotes it, and the "running: a restore" case
+  above then catches it.
+- **running: nothing** -- `build_gate`'s answer is current (nothing
+  finished between the check and now that it would miss); act on it as
+  attempt 1 did.
+
+For an ungated label (anything but `nova` today -- the Thor's screening
+runs vary env on purpose and must not be slowed by this), `label_gated`
+short-circuits `wait`'s loop straight to `build_gate`, which itself
+short-circuits to pass, exactly as before this addendum. Without that
+guard, calling `device_build.py running` unconditionally would make
+`wait thor ...` block on the Thor's normal running arms (which are
+routinely "other", by design) -- a regression `99-hold-take.sh`'s leg (f)
+happens not to catch only because its fixture's `running/` holds `.owner`
+marker files, not the `.req` files `device_build.py running` globs for;
+real production `running/` holds both for a live claim. Confirmed by
+reading `_restore_path`'s glob (`running/*.req`) against what
+`dispatcher.sh` actually writes there for a claimed request, and by
+tracing `99-hold-take.sh`'s leg (f) fixture at
+`docs/testing/jobs/selftest.d/99-hold-take.sh:94` (an `.owner` file only).
+
+While a promoted restore is the thing being waited for, the poll interval
+drops to 5 s (capped, never longer) so case "running: a restore" cannot be
+missed between polls (addendum 1's instruction); it starts at
+`HOLD_WAIT_INTERVAL` (default 15 s) and only drops to 5 s after the first
+refusal, matching attempt 1's unmodified behavior when nothing is starved
+yet.
+
+**Selftest.** `99-restore-priority.sh` gained legs (e) and (f) (addendum
+1's exact two conditions) and a new mutant: a one-line change forcing
+`wait`'s `rrc` to always read 2 ("nothing running"), which reproduces
+attempt 1's race exactly (gate-only, trusting a possibly-stale pass) and
+turns both new legs red. `99-build-gate.sh`'s existing hold.sh mutant
+(the `sed` pair at its "MUTANTS" section) still matches: `wait`'s gate
+call keeps the literal substring `build_gate "$label" && break` (now
+reached down two different paths -- gated and ungated -- instead of one),
+so that file needed no edit.
+
+One fixture bug found and fixed while writing legs (e)/(f): `last_run()`
+picks the device's newest result by mtime across ALL of `results/`, not
+just what one leg writes, and `results/` accumulates for the whole script
+(legs (a)-(d) never clean it up). Leg (d)'s `off3` fixture (mtime 4000,
+off master) was still the chronological "newest" when legs (e)/(f) and
+their mutants ran, so the first version of each mutant check passed or
+failed for the wrong reason (confirmed by running leg (f)'s mutant alone:
+it failed because `build_gate` read `off3`, not the leg's own
+"restoredFm" master-restore record). Fixed by resetting `results/` before
+each of (e), (f), and their two mutant fixtures, so each reads only its
+own intended "newest" record. Reran the full three-file selftest after
+the fix: 121 passed, 0 failed.
+
 ## Not done here
 
 - `docs/testing/request.sh` and `docs/testing/dispatcher.sh` are read-only
@@ -143,3 +239,151 @@ failed, PARTIAL (3 of 134 fragments, as expected for a named subset).
   command.
 - The idlewatch patch (outside this repo) is written out in PR.md for
   lane.local to apply at fold, not applied here.
+
+## Why attempt 2 did not finish (addendum 2, resumed 10-11, attempt 3)
+
+Attempt 2 (the resumed session above, "addendum 1") fixed the race between
+the promoted restore finishing and the dispatcher's next claim, set PR.md
+`State: ready`, and stopped there -- before lane.local's addendum 2 review
+found that the `wait` loop still starves on a fed queue, which is the exact
+case this lane exists for. Everything above this section stands; this
+section and the fix below are the resumed (third) attempt.
+
+**What goes wrong.** In `wait`'s `rrc=1` branch ("other" is running,
+hold.sh:322-324 before this fix), the loop only echoes a message and
+sleeps -- it never calls `promote`. Promotion only happens inside
+`build_gate`'s refusal (hold.sh:213-225), and that is only reached from the
+`rrc=2` branch ("nothing running"). On a queue that is actually fed (the
+case the brief opens with: 15:36-10-10's 7+ starvations, every night this
+weekend's fastpaths/coldstart streams), the dispatcher reclaims within
+seconds of any run ending (`dispatcher.sh:2354-2363`, same race addendum 1
+described), so `running/` holds something for the label almost every time
+`wait` polls. `rrc` reads 1 almost every poll; `rrc=2` (and therefore
+`build_gate`, and therefore `promote`) is reached only in the rare instant
+between one run ending and the next being claimed. So on a fed queue
+`wait` times out at `rrc=1` without ever promoting anything -- worse than
+before this lane, when hostops at least promoted it by hand. The live
+dispatch dir has exactly this case right now: `0-1791706988-dispatch.restore--4043569.req`
+already promoted by hand again, per the addendum.
+
+**The fix: promote from the `rrc=1` branch too, not only from `build_gate`'s
+refusal.** Before sleeping in that branch, make sure a `0-`-prefixed
+restore for the label is in `queue/`, so the dispatcher's very next claim
+-- the moment the in-flight "other" request ends -- is the restore, and
+the `rrc=0` branch (already fixed by addendum 1) catches it immediately.
+Two sub-cases, both handled by one new `device_build.py promote ... --force`
+call:
+
+- **A bare restore is already pending** (the usual steady state:
+  `queue_master_restore`, the dispatcher's own post-run hook, leaves one
+  after every off-master run, deduped to one by `restore_pending()`) --
+  `cmd_promote`'s existing pending-check (`_restore_path(..., "queue")`)
+  finds it and promotes it exactly as before; `--force` changes nothing
+  here, since that branch runs before the force-skippable check.
+- **None is pending**, because the in-flight "other" request has not
+  finished and written its result.json yet, so `last_run()` still reads
+  whatever ran before it -- which, on a fed release-tier queue, is
+  typically another master run, so `restore_needed()` reads false and
+  plain `promote` would print "already on master; no restore needed" and
+  queue nothing (confirmed by reading `cmd_promote`, device_build.py:213-
+  219: the `rec is None` and `not restore_needed(rec)` returns both happen
+  before any queuing). `--force` skips both of those checks and queues +
+  promotes unconditionally.
+
+`--force` is a new keyword arg on `cmd_promote` (device_build.py:204),
+threaded from a `--force` CLI flag in `main` (device_build.py:282-283).
+It changes nothing about the pending/running short-circuits (they still
+run first and return early either way) -- it only removes the "is a
+restore even needed" guard on the final queue-a-new-one path, since that
+guard is reading stale state by construction in this call site.
+
+**Confirmed `restore_pending()` matches the `0-` file, so no duplicate.**
+`restore_pending()` (device_build.py:153-172) globs `queue/*.req` and
+`running/*.req` with no prefix filter, matching on `requester ==
+"dispatch.restore"` and `device == label` alone -- a `0-`-prefixed file
+satisfies that exactly as a bare one would. So when the in-flight "other"
+request finishes and the dispatcher's own `queue_master_restore` hook runs
+for it, `restore_pending()` sees the already-promoted `0-...` file and
+queues nothing more. Verified with leg (g) below, not just read.
+
+**Poll interval.** The `rrc=1` branch now also drops `interval` to 5 (the
+same cap addendum 1 uses in the `rrc=2` branch once a restore is promoted
+there), since once this branch has promoted a restore, missing its
+transition to `running/` for up to 15 s is exactly the gap addendum 1
+closed for the other path -- a promoted restore waiting in `queue/` should
+always be polled at the 5 s cap, regardless of which branch did the
+promoting.
+
+**Selftest.** `99-restore-priority.sh` leg (f) is extended with two more
+checks (none queued, newest result on master: `wait` leaves exactly one
+new `0-`-prefixed restore). A separate leg (f2), in its own fixture, covers
+a bare restore that is already queued: it is promoted in place. A new leg
+(g) confirms the forced queue does not get a duplicate from
+`device_build.py restore` once the in-flight run's result lands. A new
+mutant hardcodes `device_build.py`'s `if not force:` to `if True:`. See
+"Why attempt 3 did not finish" below for what that mutant does and does
+not show; this paragraph overstated it in attempt 3.
+
+Ran `SELFTEST_ONLY="99-build-gate.sh 99-restore-priority.sh 99-hold-take.sh"
+bash docs/testing/jobs/selftest.sh` in the foreground after the fix: 135
+passed, 0 failed, PARTIAL (3 of 134 fragments, as expected for a named
+subset). `99-build-gate.sh` and `99-hold-take.sh` needed no edits for this
+addendum -- confirmed by running them unmodified alongside the new legs.
+
+One detail worth recording for the next reader: `restore_needed()`
+(device_build.py:146-150) returns `False` unconditionally whenever the
+record's own `requester` is `dispatch.restore`, regardless of `force`.
+That is correct and unrelated to this addendum -- `force` only skips the
+`rec is None` / `not restore_needed(rec)` SHORT-CIRCUIT RETURNS in
+`cmd_promote`, which happen `if not force`; the `restore_needed()`
+function itself is unchanged and is also what `cmd_restore` (the
+dispatcher's own post-run hook) still calls un-forced, which is exactly
+how leg (g) confirms no duplicate gets queued once the in-flight run's own
+result lands.
+
+## Why attempt 3 did not finish (addendum 3, resumed 10-11, attempt 4)
+
+Attempt 3 finished addendum 2's code (the forced promote in `wait`'s
+`rrc=1` branch, `--force`, legs (f) extended, (g) and (f2), and the
+`--force` mutant), ran the three fragments green (135 passed), set
+`State: ready` and stopped. lane.local's addendum 3 review accepted the
+code and the selftest as they are. It found two text defects, and this
+attempt fixes only those. No code or selftest changed, so the selftest was
+not re-run.
+
+**1. The `--force` mutant was overstated.** PR.md said the mutant "turns
+(f) and (f2) red", and this file said it "turns both of (f)'s new checks
+red". Neither leg runs under the mutant. What the mutant block actually
+does (`99-restore-priority.sh:319-331`):
+
+- It builds a copy of `device_build.py` with `if not force:` replaced by
+  `if True:`.
+- It recreates (f)'s fixture state: results reset, the newest result a
+  master `dispatch.restore`, nothing queued.
+- It calls the mutant `promote ... --force` directly, not through
+  `hold.sh wait`, and checks that nothing is queued.
+
+That shows (f)'s "exactly one 0- restore queued" check
+(`99-restore-priority.sh:228-229`) depends on `--force`. It does not run
+leg (f) itself.
+
+(f2) is not sensitive to this mutant at all. (f2) has a bare restore
+pending, so `cmd_promote` renames it at `device_build.py:216-219` and
+returns before the `force` check at `:225` is reached. (f2) stays green
+under the mutant. (f2)'s fixture also has an off-master newest result
+(`offF2`), so the unforced path would queue anyway.
+
+The selftest's own comment on that mutant (`99-restore-priority.sh:311-318`)
+and its check label ("f/f2 are not vacuous", `:330`) still carry the
+overstatement. Addendum 3 said not to change the selftest, so they stand,
+and this note is the correction.
+
+**2. A known limit on `take`, missing until now.** `take` calls
+`build_gate` once (`hold.sh:248`). `build_gate` asks `device_build.py
+check` (`hold.sh:216`), which reads `last_run()` (`device_build.py:124-137`):
+the device's newest *finished* run, by result.json mtime. `take` never asks
+`device_build.py running`. So `take` can pass while an off-master request
+is in `running/`, since that request has not written its result yet. The
+caller then holds a device that the in-flight run will leave off master.
+`take` is left as it is, per addendum 2. `wait` is the path for a caller
+who needs master: it asks `running` before it trusts a gate pass.
