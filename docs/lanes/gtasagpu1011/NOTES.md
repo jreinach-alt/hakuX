@@ -68,6 +68,30 @@ The six fastpaths switches are already ruled out by lane.local's OFF run (337719
 Queued at 6d8947bb47: `1-1791735439-lane.gtasagpu1011-3545202` (`HAKUX_SURFGPU=0`) and
 `1-1791735439-lane.gtasagpu1011-3545543` (`HAKUX_GPL=0`).
 
+### Step 1 results
+
+Both runs were read on full-frame contact sheets of every post-mark still, plus the named
+frames at 1280x960.
+
+| switch | run id | env took | post-mark stills | shadow under CJ | (a) post pass | other |
+|---|---|---|---|---|---|---|
+| `HAKUX_SURFGPU=0` | `1-1791735439-lane.gtasagpu1011-3545202` | no `[surfgpu] on` line | f00042-f00107 (mark 10:11:10) | no, in all 66 | f00063 (09:46, at the church: sky blown out, streaks); f00088 (12:16: sky white below a thin blue strip, trees fringed yellow and smeared upward) | static shadows (houses, trees) render; other peds have no shadow either |
+| `HAKUX_GPL=0` | `1-1791735439-lane.gtasagpu1011-3545543` | `[gpl569] requested=0 mode=0` | f00042-f00112 (mark 10:21:49) | no, in all 71 | f00074 (10:54: whole frame streaked, sky white, see right); f00107 (13:59: everything smeared in rays from the centre of the frame, tinted yellow, sky white); f00044, f00049, f00102, f00111, f00112 (sky blown out, milder) | f00074: a flat cyan quad on the pavement under the truck, with straight edges; cyan patches on the distant buildings |
+
+So neither switch brings the shadow into the stills (inconclusive, per addendum 1). Symptom
+(a) is present with either switch off, so neither SURFGPU's download path nor the
+uber-pipeline is needed for it.
+
+The smear in 3545543 f00107 is radial: streaks run outward from near the centre of the frame
+in all directions, like a zoom blur. One pass of a bloom filter does not do that. A pass
+that each frame adds a slightly scaled copy of the **previous** finished frame does, because
+the copies compound. That would happen if the post pass's source (meant to be a copy of the
+current frame before the effect) is instead the previous frame's output. To be tested in the
+dump.
+
+The cyan quad in f00074 is the colour of the sky. It reads as a ground polygon that was not
+drawn, so the cleared sky shows through: a "poly surface dropout" in the owner's words.
+
 **Desktop lavapipe: not run.** The GTA San Andreas disc is not under `/mnt/d/hakux-staging`
 (searched 5 levels deep for `54540082` and `andreas`). And the desktop harness
 (`docs/testing/desktop-runs.md`) runs the pgraph test disc, which needs no input. This route
@@ -109,3 +133,105 @@ and the shadow is missing with every draw present. The dump separates:
 - the surface→texture path: `srf`/`s2t` on the sampling draws;
 - a draw sampling its own colour target (feedback; tile memory on Adreno);
 - blend, depth or cull state on the projected draw.
+
+### 2a. What dump 3571105 shows
+
+`1-1791735798-lane.gtasagpu1011-3571105`, file `pulled/framedump_1791740003.jsonl`, 30 frames,
+PPMs `framedump_1791740003_fNNN.ppm` (640x480). Read with `fdread.py` (this directory). The
+display buffers alternate: 0x3d04000 on even frames, 0x3e30000 on odd ones.
+
+**Only the sky changes.** Mean RGB of three regions in each even frame (same buffer):
+
+| frame | sky (180,0)-(480,20) | road (250,400)-(400,470) | wall (0,150)-(60,300) |
+|---|---|---|---|
+| f00 | 213,203,154 (khaki) | ~60 | ~50 |
+| f02 | 237,234,185 | ~60 | ~50 |
+| f04 | **130,224,250 (blue)** | ~60 | ~50 |
+| f06 | 237 | | |
+| f08 | 247,246,223 | | |
+| f10 | 251 | | |
+| f12 | **128,225,250 (blue)** | | |
+| f14 | 191,241,252 | | |
+| f16 | 228 | | |
+| f18 | 243 | | |
+| f20, f22, f24 | khaki | | |
+| f26 | 236 | | |
+| f28 | 242 | | |
+
+Over all 30 frames the road holds at 57-68, the wall at 42-56 and CJ at 50-73. A post pass
+reading a stale whole frame would brighten those too, by the same factor of about 2.4. So
+"the post pass read the wrong image" (section 0's defect (a)) is refuted as stated. What
+brightens is the part of the sky that was not drawn this frame.
+
+**The mechanism these numbers fit.** Nothing clears the colour buffer. Where the sky draw does
+not cover the top of the screen, the pixels keep what the same buffer held two frames earlier.
+GTA SA's post pass (radiosity and colour filter) then brightens them again each frame. Between
+blue frames the sky goes khaki → 237 → 247 → 251, which fits x_n ≈ 116 + 0.59 · x_(n-2).
+The flat khaki polygon with a straight sloped edge (3377194 f00066, dump f00) is that
+uncovered region on its first frame: what is left of an earlier frame, seen through the hole
+the sky triangle should have filled.
+
+This covers all three of the owner's sky words: the white sky, the hard edges (the hole is
+bounded by triangle edges) and "blue to white" (the brightening ramp). **The church symptom
+(peer message 2) is most likely the same defect.** Uncovered pixels are post-processed again
+every frame while the camera moves, so the old image smears along the direction of motion.
+It is radial (3545543 f00107) when the camera moves forward. The cyan quad on the pavement
+(3545543 f00074) is the same thing on the ground: a polygon that was not drawn.
+
+**The sky draw.** In every frame it is draw n11:
+
+- shader 12f336cc, `inline_elements`, 30 indices, TRIANGLES (10 triangles);
+- no blend, no z test, mask RGBA, no texture;
+- the same registers in every frame, good or bad.
+
+Its vertex shader is fixed-function with skinning off: `oPos = position * compositeMat`, a 3D
+transform. The geometry is a band of polygons around the camera (GTA SA's
+`CClouds::RenderSkyPolys`), so some of its vertices are behind the camera and have w < 0.
+
+The draw is a filled triangle list, so it gets the #223 geometry shader (`glsl/geom.c`,
+`append_wedge`, 77bc07d5e2). Given exactly one negative-w vertex, that shader emits the
+"external wedge" in place of the triangle. Given none, two or three, it passes the triangle
+to the host clipper. Which path a sky triangle takes, and so whether it covers the top of
+the screen, depends on the camera angle.
+
+Around n11:
+
+- n12-n14: 65586dbf LINES, 28 indices each, SA/1-SA;
+- n15: the sun, additive, t0 0x03459180;
+- n16 onward: the world.
+
+The post pass is draws n722-n728 in each frame. Its copy images and draw list are the same
+in good frames and bad ones.
+
+**Ruled out:**
+
+- frame skip: off in logcat;
+- a difference in the draw list between good and bad frames;
+- SURFGPU and GPL (step 1).
+
+**The shadow chain** (frame 4; the same in every frame):
+
+1. n0-n5 draw CJ into 0x3513980 (64x64).
+2. n6-n8 blur it into 0x3517a00 (32x32) via 0x34e7480.
+3. n9 is 0*S + SC*D with t0 0x034e8500.
+4. n10 is a LINE_STRIP border.
+5. n687 is the projected shadow: one triangle, blend ZERO*S + (1-SC)*D, zLE, atest GT 0,
+   t0 0x03517a00 X8R8G8B8 32x32, on the surface→texture copy path.
+
+Every draw is there, so the shadow is lost in the contents (t0's texels, or v0.a against
+the alpha test), not in a missing draw. The dump does not record either.
+
+### 2b. Next measurements (predictions written before queueing)
+
+1. **The same dump with the #223 geometry shader off for smooth filled triangles**
+   (`HAKUX_MEASURE_NO_GEOM=1`, a measurement-only switch already in `geom.c`). The ref is
+   33ceb415ca, same route, `after250`. The sky triangles then go to the host clipper.
+   - Prediction: if the wedge path is what leaves the sky uncovered, all 30 frames show a
+     blue sky top, with no khaki and no ramp. P = 0.45.
+   - The other reading: the ramp persists. Then the GS is cleared, and the geometry itself
+     (stale vertex data, or a position that the host clipper also drops) is next.
+   - Dump 3571105 had 2 blue frames in 15 even ones, so 30 blue frames out of 30 is not
+     chance.
+2. **Schema 5:** each small draw's vertex inputs and the composite matrix, so the sky
+   triangles' w and screen positions can be computed offline and set against the
+   wedge model.
