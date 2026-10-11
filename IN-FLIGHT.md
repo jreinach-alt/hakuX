@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 5h 1m | fastpaths1010: scope widens 32 -> 39 (lane.local Addenda 2/3, 7 of 12 blocked titles restored) (#433, 0.5) |
+| `fastpaths1010` | claude-sonnet-5 | 5h 16m | fastpaths1010: scope widens 32 -> 39 (lane.local Addenda 2/3, 7 of 12 blocked titles restored) (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 19 waiting, 1 running.
+- **Device queue:** 16 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -77,6 +77,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Recently landed on master
 
+- 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-10 lane.lanenobg1010 -- lane sessions refuse background commands with a hook, not a footer (#433, 0.5)
 - 2026-10-10 postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5)
 - 2026-10-10 lane.meterfit1010: price transcript tokens, not modelUsage tokens (#433, 0.5)
@@ -87,4 +88,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 - 2026-10-10 lane.usage24h1009: project the week's usage from the trailing 24h burn rate, not the trailing 6h (#433)
 
-_Updated 2026-10-11 02:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 02:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
