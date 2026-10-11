@@ -484,3 +484,44 @@ by more than 32 in any channel. A flat image does not, whatever its colour.
 - **Separately, timing (P = 0.15).** The finishes `rtt` adds put CJ's shadow into the dump's
   display images, which no earlier dump showed (feet visible in f0-f15 of 177443). That points
   at hypothesis 3, whatever A-D say.
+
+**Schema 7 (`rtt`, extended), built while 651566 waited.** Under outcome A, schema 6 still does
+not show whether n522 writes a pixel, or the depth it is tested against. Schema 7 adds both at
+the consumer draw itself, so a single run answers A's next question instead of a second
+build-and-queue cycle.
+
+- **What it does.** A "consumer" is a draw whose colour target is not small and which samples a
+  colour surface of 64x64 or less. In 177443 these are exactly the projected shadows: n522 in f4,
+  and n615 and n616 in f10, which has two. The 1024x512 effect draws (n552-n557) are not small.
+  For the first `FDUMP_CONS_PER_FRAME` (2) consumers a frame, and `FDUMP_CONS_MAX` (24) a dump,
+  `pgraph_vk_fdump_pre_draw` (called from `flush_draw_one_pass` in vk/draw.c, before anything of
+  the draw is recorded) finishes and reads:
+  - `"pre"`, the full colour target;
+  - `"zpre"`, the depth aspect of the zeta surface. D24S8 (vkfmt 129) is in the low 24 bits of
+    each 4 bytes, D32S8 (130) is a float, and D16 (124) is 2 bytes.
+  The draw's own record then reads `"post"`, the colour target after the draw.
+- **Cost.** At the Nova's `surface_scale` 1 (177443's session record), that is 3 x 1.2 MB a
+  consumer, 88 MB at the cap, inside `cap512`.
+- **Reading it.** `fdread.py DUMP cons [OUTDIR [X0 Y0 X1 Y1]]` prints, per consumer, how many
+  pixels pre and post differ in (any channel by more than 2), their box, their mean change, and
+  zpre's range over the image and over a given box. With OUTDIR it writes pre, post, diff and
+  zpre PNGs. It was tested on a synthetic dump (a known 11x5 darkened box and a D24 ramp); the
+  box, the mean and the depth values come back exactly.
+
+**Predictions for the schema-7 run**, written before queueing. The run is the same route, 320 s,
+`XEMU_FRAME_DUMP=30,after250,cap512,vtx64,rtt`, `HAKUX_VTX_HAZARD=1`. They are conditional on A
+(the texture is right). Under C or D the consumer readbacks show nothing written, and the run's
+schema-6 readbacks are a second sample of 651566's chain.
+
+- **A1. Depth rejects the shadow (P = 0.35 given A).** n522 changes no pixel. zpre over the
+  shadow's screen box (around (373,430) and down, from the 2d geometry) is below the depth the
+  projected quad computes there, so LEQUAL fails. The next step is the depth n522 computes:
+  `calc_triz` in the fragment shader against the FF epilogue's `z/clipRange.y`.
+- **A2. The raster is lost before depth (P = 0.35 given A).** n522 changes no pixel, and zpre
+  over the box is at or beyond the quad's depth (LEQUAL would pass). The host clipper or the
+  two-negative-w triangle drops the coverage. The next step is the clipper path in vk/geom.c
+  for a triangle with two vertices behind the eye.
+- **A3. The shadow is drawn, and a later draw covers it (P = 0.2 given A).** n522 darkens a box
+  near CJ's feet (mean change negative), and the frame's display image has no shadow. The next
+  step is to find the first later draw that writes over the box.
+- **A4. Something else (P = 0.1).** For example, n522 changes pixels outside the expected box.

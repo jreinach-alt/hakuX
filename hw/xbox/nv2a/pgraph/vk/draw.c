@@ -10580,6 +10580,10 @@ static void flush_draw_one_pass(NV2AState *d)
         return;
     }
 
+    /* #433 frame dump schema 7 (`rtt`): reads a consumer draw's target and
+     * depth before any of it is recorded. No-op unless a dump is armed. */
+    pgraph_vk_fdump_pre_draw(d);
+
     if (nullrec) {
         /* begin_pre_draw() would; a buffer-space finish below then submits
          * and resets the staging the copies need, as with the switch off */

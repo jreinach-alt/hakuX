@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read a schema-4/5/6 live frame dump (framedump_<id>.jsonl) by draw.
+"""Read a schema-4/5/6/7 live frame dump (framedump_<id>.jsonl) by draw.
 
   fdread.py DUMP targets            colour targets per frame, draws on each
   fdread.py DUMP draws F [A [B]]    frame F's draws A..B, state decoded
@@ -18,6 +18,15 @@
                                     channel above 32 ("lit"), mean RGBA; with
                                     OUTDIR, one PNG per readback (x4) and a
                                     sheet per frame, f<F>_sheet.png
+  fdread.py DUMP cons [OUTDIR [X0 Y0 X1 Y1]]
+                                    schema 7: per consumer draw (one that
+                                    samples a small target into a large one),
+                                    the pixels its "pre" and "post" readbacks
+                                    differ in (any channel by more than 2),
+                                    their box and mean change, and the depth
+                                    before it ("zpre") over the image and over
+                                    the box X0..X1 x Y0..Y1 when given; with
+                                    OUTDIR, pre/post/diff/zpre PNGs
 
 vhaz: an upload record ("vup") carries the draw it synced for in "n" (the
 draw record is written after its sync) and the first and last changed byte
@@ -125,6 +134,44 @@ def texs(d):
 def tgt(d):
     c = d.get("color")
     return (c["addr"], c["w"], c["h"], c["fmt"], c["swizzle"]) if c else None
+
+
+def load_rgba(base, e):
+    """A colour readback as an RGBA PIL image, or None."""
+    import os
+    from PIL import Image
+    if not e or not e.get("file"):
+        return None
+    path = os.path.join(base, e["file"])
+    if not os.path.exists(path):
+        return None
+    mode = "BGRA" if e["vkfmt"] == 44 else "RGBA"
+    return Image.frombytes("RGBA", (e["w"], e["h"]), open(path, "rb").read(),
+                           "raw", mode)
+
+
+def load_depth(base, e):
+    """A depth readback as (values 0..1 or float, w, h), or None. 129 is
+    D24_UNORM_S8_UINT (depth in the low 24 bits of 4 bytes), 130
+    D32_SFLOAT_S8_UINT (a float), 124 D16_UNORM."""
+    import os
+    import struct
+    if not e or not e.get("file"):
+        return None
+    path = os.path.join(base, e["file"])
+    if not os.path.exists(path):
+        return None
+    raw = open(path, "rb").read()
+    n = e["w"] * e["h"]
+    if e["vkfmt"] == 129:
+        v = [(u & 0xFFFFFF) / 0xFFFFFF for u in struct.unpack("<%dI" % n, raw)]
+    elif e["vkfmt"] == 130:
+        v = list(struct.unpack("<%df" % n, raw))
+    elif e["vkfmt"] == 124:
+        v = [u / 0xFFFF for u in struct.unpack("<%dH" % n, raw)]
+    else:
+        return None
+    return v, e["w"], e["h"]
 
 
 def main(argv):
@@ -243,6 +290,8 @@ def main(argv):
             if "rb" not in d or (only is not None and d["f"] != only):
                 continue
             for e in d["rb"]:
+                if e["k"] == "zpre":
+                    continue
                 tag = "f%d n%d %s %s%s %s %dx%d" % (
                     d["f"], d["n"], d["shader"][:8], e["k"],
                     "" if e["s"] < 0 else e["s"], e["addr"], e["w"], e["h"])
@@ -264,7 +313,8 @@ def main(argv):
                 print("%s lit %d/%d mean %d,%d,%d a %d" % (
                     tag, lit, len(px), m[0], m[1], m[2], m[3]))
                 if out:
-                    big = im.convert("RGB").resize((e["w"] * 4, e["h"] * 4),
+                    x = 4 if e["w"] * e["h"] <= 4096 else 1
+                    big = im.convert("RGB").resize((e["w"] * x, e["h"] * x),
                                                    Image.NEAREST)
                     big.save(os.path.join(out, "f%03d_n%04d_%s%d.png" % (
                         d["f"], d["n"], e["k"], max(e["s"], 0))))
@@ -280,6 +330,74 @@ def main(argv):
                 dr.text((x, y + 129), " ".join(tag.split()[1:5]),
                         fill=(255, 255, 0))
             sheet.save(os.path.join(out, "f%03d_sheet.png" % f))
+    elif cmd == "cons":
+        import os
+        out = argv[3] if len(argv) > 3 else None
+        box = [int(v) for v in argv[4:8]] if len(argv) > 7 else None
+        base = os.path.dirname(argv[1])
+        if out:
+            os.makedirs(out, exist_ok=True)
+        for d in draws:
+            rbs = {e["k"]: e for e in d.get("rb", [])}
+            if "post" not in rbs:
+                continue
+            tag = "f%d n%d %s" % (d["f"], d["n"], d["shader"][:8])
+            pre, post = load_rgba(base, rbs.get("pre")), load_rgba(base, rbs["post"])
+            if pre is None or post is None:
+                print(tag, "pre/post missing")
+                continue
+            w, hh = post.size
+            a, b = pre.load(), post.load()
+            n = 0
+            x0, y0, x1, y1 = w, hh, -1, -1
+            dsum = [0, 0, 0]
+            for y in range(hh):
+                for x in range(w):
+                    p, q = a[x, y], b[x, y]
+                    if max(abs(p[i] - q[i]) for i in range(3)) > 2:
+                        n += 1
+                        x0, y0 = min(x0, x), min(y0, y)
+                        x1, y1 = max(x1, x), max(y1, y)
+                        for i in range(3):
+                            dsum[i] += q[i] - p[i]
+            line = "%s %dx%d changed %d" % (tag, w, hh, n)
+            if n:
+                line += " box %d,%d-%d,%d mean %+.0f,%+.0f,%+.0f" % (
+                    x0, y0, x1, y1, *(v / n for v in dsum))
+            z = load_depth(base, rbs.get("zpre"))
+            if z is not None:
+                zv, zw, zh = z
+                fin = sorted(v for v in zv)
+                line += " | zpre %s min %.6f med %.6f max %.6f" % (
+                    rbs["zpre"]["vkfmt"], fin[0], fin[len(fin) // 2], fin[-1])
+                if box and zw == w:
+                    bx = sorted(zv[y * zw + x]
+                                for y in range(box[1], box[3] + 1)
+                                for x in range(box[0], box[2] + 1))
+                    line += " box min %.6f med %.6f max %.6f" % (
+                        bx[0], bx[len(bx) // 2], bx[-1])
+            elif "zpre" in rbs:
+                print(tag, "zpre not readable (vkfmt %s)" % rbs["zpre"]["vkfmt"])
+            print(line)
+            if out:
+                from PIL import Image
+                stem = os.path.join(out, "f%03d_n%04d_" % (d["f"], d["n"]))
+                pre.convert("RGB").save(stem + "pre.png")
+                post.convert("RGB").save(stem + "post.png")
+                diff = Image.new("RGB", (w, hh))
+                dp = diff.load()
+                for y in range(hh):
+                    for x in range(w):
+                        dp[x, y] = tuple(min(255, 8 * abs(a[x, y][i] - b[x, y][i]))
+                                         for i in range(3))
+                diff.save(stem + "diff.png")
+                if z is not None:
+                    zv, zw, zh = z
+                    lo, hi = min(zv), max(zv)
+                    zi = Image.new("L", (zw, zh))
+                    zi.putdata([int(255 * (v - lo) / (hi - lo)) if hi > lo else 0
+                                for v in zv])
+                    zi.save(stem + "zpre.png")
     elif cmd == "shader":
         s = shaders.get(argv[3]) or next(
             (v for k, v in shaders.items() if k.startswith(argv[3])), None)

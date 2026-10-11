@@ -1722,6 +1722,7 @@ void pgraph_vk_check_memory_budget(PGRAPHState *pg);
 void pgraph_vk_fdump_vertex_upload(PGRAPHVkState *r, hwaddr offset,
                                    const uint8_t *old, const uint8_t *data,
                                    size_t size, bool hazard_finished);
+void pgraph_vk_fdump_pre_draw(NV2AState *d);
 
 // debug.c
 #define RGBA_RED     (float[4]){1,0,0,1}

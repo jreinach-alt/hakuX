@@ -1839,8 +1839,18 @@ extern char g_vulkan_driver_info[256];
  *    row-major, unswizzled, w*h texels in the host format "vkfmt" (44 is
  *    B8G8R8A8_UNORM), or null when it was not written. The finishes change
  *    the schedule the dump is measuring; see per_draw_finish in the header.
+ * 7: as 6, plus, with `rtt`, the draw that CONSUMES a small target: one whose
+ *    own colour target is larger but which samples a colour surface of at
+ *    most FDUMP_RTT_MAX_TEXELS (GTA San Andreas's projected shadow). Up to
+ *    FDUMP_CONS_PER_FRAME such draws a frame, FDUMP_CONS_MAX a dump, also get
+ *    "pre" (its colour target before it ran) and "zpre" (its zeta's depth
+ *    aspect before it ran), read in pgraph_vk_fdump_pre_draw after a finish
+ *    and before anything of the draw is recorded, and "post" (its colour
+ *    target after it). pre and post differ exactly where the draw wrote.
+ *    zpre's texels are 4 bytes for D24_UNORM_S8_UINT (129: depth in the low
+ *    24 bits) and D32_SFLOAT_S8_UINT (130: a float), 2 for D16_UNORM (124).
  */
-#define FDUMP_SCHEMA          6
+#define FDUMP_SCHEMA          7
 
 /* `img_sync` on a frame record: >= 0 is the fence slot the image waited on
  * before the display surface came back clean, and these two are the cases
@@ -1867,8 +1877,25 @@ static struct {
      * vertex words. 0 is off. */
     int vtx_max;
     /* Schema 6's `rtt`: read back small colour targets and the textures
-     * drawn from small surfaces; see fdump_log_rtt. */
+     * drawn from small surfaces; see fdump_log_draw_readbacks. */
     bool rtt;
+    /* Schema 7: the consumer draw whose "pre"/"zpre" pgraph_vk_fdump_pre_draw
+     * read (-1: none pending), what it read, and the per-frame and per-dump
+     * counts that bound the bytes. */
+    int cons_draw;
+    int cons_frame;
+    int cons_in_frame;
+    int cons_total;
+    int cons_nrb;
+    struct {
+        const char *k;
+        hwaddr addr;
+        uint32_t w, h;
+        VkFormat fmt;
+        VkImageLayout layout;
+        bool ok;
+        char file[96];
+    } cons_rb[2];
     int frames_remaining;
     int frame_index;
     int draw_index;
@@ -2075,8 +2102,10 @@ static void fdump_clear_previous(const char *dir, const char *keep)
  *   vtxNN       schema 5: a draw of at most NN indices (capped at 256) logs
  *               its vertices' raw words; see FDUMP_SCHEMA.
  *   rtt         schema 6: read back small render targets and the textures
- *               sampled from them, per draw; see FDUMP_SCHEMA. This one
- *               FINISHES the command buffer at each such draw.
+ *               sampled from them, per draw; schema 7: and the full colour
+ *               target and depth around a draw that samples one; see
+ *               FDUMP_SCHEMA. This one FINISHES the command buffer at each
+ *               such draw.
  */
 static void fdump_parse_spec(const char *spec, int *frames, bool *images,
                              int *cap_mb, bool *also_diag, int *after_s,
@@ -2159,6 +2188,11 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     fdump.shaders_n = 0;
     fdump.vtx_max = vtx_max;
     fdump.rtt = rtt;
+    fdump.cons_draw = -1;
+    fdump.cons_frame = -1;
+    fdump.cons_in_frame = 0;
+    fdump.cons_total = 0;
+    fdump.cons_nrb = 0;
 
     char self[64];
     snprintf(self, sizeof(self), "%s%u.jsonl", FDUMP_PREFIX, fdump.session);
@@ -2760,8 +2794,14 @@ void pgraph_vk_fdump_vertex_upload(PGRAPHVkState *r, hwaddr offset,
  * (docs/lanes/gtasagpu1011/NOTES.md); a 640x480 frame is never read here. */
 #define FDUMP_RTT_MAX_TEXELS  (64 * 64)
 
+/* Schema 7: at most this many consumer draws a frame, and a dump, get the
+ * full-size "pre", "zpre" and "post" readbacks (3 x 1.2 MB at 640x480 1x). */
+#define FDUMP_CONS_PER_FRAME  2
+#define FDUMP_CONS_MAX        24
+
 static void fdump_rtt_barrier(VkCommandBuffer cmd, VkImage image,
-                              VkImageLayout from, VkImageLayout to)
+                              VkImageAspectFlags aspect, VkImageLayout from,
+                              VkImageLayout to)
 {
     VkImageMemoryBarrier b = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -2773,7 +2813,7 @@ static void fdump_rtt_barrier(VkCommandBuffer cmd, VkImage image,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image = image,
         .subresourceRange = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .aspectMask = aspect,
             .levelCount = VK_REMAINING_MIP_LEVELS,
             .layerCount = VK_REMAINING_ARRAY_LAYERS,
         },
@@ -2784,8 +2824,11 @@ static void fdump_rtt_barrier(VkCommandBuffer cmd, VkImage image,
 }
 
 /*
- * Schema 6: copy level 0 of a 4-byte colour image to BUFFER_STAGING_DST and
- * write it raw to the dump directory as `name`. True if the file was written.
+ * Schema 6: copy level 0 of an image to BUFFER_STAGING_DST and write it raw to
+ * the dump directory as `name`. True if the file was written. `fmt` is the
+ * image's format: B8G8R8A8 or R8G8B8A8 colour, or (schema 7) the depth aspect
+ * of D24_UNORM_S8_UINT, D32_SFLOAT_S8_UINT or D16_UNORM; anything else is
+ * refused.
  *
  * The caller has finished the command buffer, so the draw just recorded and
  * everything before it have executed, and this reads the image as that draw
@@ -2794,12 +2837,37 @@ static void fdump_rtt_barrier(VkCommandBuffer cmd, VkImage image,
  * TRANSFER_SRC, and a dump does not need the narrow masks.
  */
 static bool fdump_read_image(NV2AState *d, PGRAPHState *pg, VkImage image,
-                             VkImageLayout layout, uint32_t w, uint32_t h,
-                             const char *name)
+                             VkImageLayout layout, VkFormat fmt, uint32_t w,
+                             uint32_t h, const char *name)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
     StorageBuffer *staging = &r->storage_buffers[BUFFER_STAGING_DST];
-    size_t size = (size_t)w * h * 4;
+    VkImageAspectFlags barrier_aspect, copy_aspect;
+    size_t texel;
+
+    switch (fmt) {
+    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VK_FORMAT_R8G8B8A8_UNORM:
+        barrier_aspect = copy_aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+        texel = 4;
+        break;
+    case VK_FORMAT_D24_UNORM_S8_UINT:
+    case VK_FORMAT_D32_SFLOAT_S8_UINT:
+        /* A layout transition of a combined format names both aspects; the
+         * copy takes one. */
+        barrier_aspect = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+        copy_aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+        texel = 4;
+        break;
+    case VK_FORMAT_D16_UNORM:
+        barrier_aspect = copy_aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+        texel = 2;
+        break;
+    default:
+        return false;
+    }
+
+    size_t size = (size_t)w * h * texel;
 
     if (image == VK_NULL_HANDLE || !w || !h ||
         layout == VK_IMAGE_LAYOUT_UNDEFINED || size > staging->buffer_size) {
@@ -2811,21 +2879,21 @@ static bool fdump_read_image(NV2AState *d, PGRAPHState *pg, VkImage image,
     pgraph_vk_download_surface_complete_deferred(d);
 
     VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
-    fdump_rtt_barrier(cmd, image, layout,
+    fdump_rtt_barrier(cmd, image, barrier_aspect, layout,
                       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     VkBufferImageCopy region = {
         .bufferRowLength = w,
         .bufferImageHeight = h,
         .imageSubresource = {
-            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .aspectMask = copy_aspect,
             .layerCount = 1,
         },
         .imageExtent = { w, h, 1 },
     };
     vkCmdCopyImageToBuffer(cmd, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                            staging->buffer, 1, &region);
-    fdump_rtt_barrier(cmd, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                      layout);
+    fdump_rtt_barrier(cmd, image, barrier_aspect,
+                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, layout);
     VkBufferMemoryBarrier hb = {
         .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
         .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -2861,6 +2929,81 @@ static bool fdump_rtt_small(const SurfaceBinding *s)
            (uint64_t)s->width * s->height <= FDUMP_RTT_MAX_TEXELS;
 }
 
+/* Schema 7: the draw renders into a colour target that is not small and
+ * samples a colour surface that is. Registers and surface bindings only, so
+ * it answers the same before the draw is recorded as after. */
+static bool fdump_is_consumer(NV2AState *d, PGRAPHState *pg)
+{
+    SurfaceBinding *c = pg->vk_renderer_state->color_binding;
+
+    if (!c || !c->color || fdump_rtt_small(c)) {
+        return false;
+    }
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if (pgraph_is_texture_enabled(pg, i) &&
+            fdump_rtt_small(pgraph_vk_surface_get(
+                d, pgraph_get_texture_phys_addr(pg, i)))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/*
+ * Schema 7: "pre" and "zpre" for a consumer draw (see FDUMP_SCHEMA). Called by
+ * flush_draw_one_pass (vk/draw.c) after its early returns and before it
+ * records anything of the draw, which is where a buffer-space finish can
+ * already happen. The draw's record (fdump_log_draw_readbacks) lists them and
+ * adds "post"; a draw that is then skipped unlogged leaves its files
+ * unlisted, and fdump.cons_draw no longer matches the next record.
+ */
+void pgraph_vk_fdump_pre_draw(NV2AState *d)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (!fdump.fp || !fdump.rtt || fdump.bytes_written >= fdump.byte_limit ||
+        fdump.cons_total >= FDUMP_CONS_MAX) {
+        return;
+    }
+    if (fdump.cons_frame != fdump.frame_index) {
+        fdump.cons_frame = fdump.frame_index;
+        fdump.cons_in_frame = 0;
+    }
+    if (fdump.cons_in_frame >= FDUMP_CONS_PER_FRAME ||
+        !fdump_is_consumer(d, pg)) {
+        return;
+    }
+    fdump.cons_in_frame++;
+    fdump.cons_total++;
+    fdump.cons_draw = fdump.draw_index;
+    fdump.cons_nrb = 0;
+
+    pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
+
+    SurfaceBinding *bind[2] = { r->color_binding, r->zeta_binding };
+    static const char *const kind[2] = { "pre", "zpre" };
+    for (int j = 0; j < 2; j++) {
+        SurfaceBinding *s = bind[j];
+        if (!s) {
+            continue;
+        }
+        __typeof__(fdump.cons_rb[0]) *e = &fdump.cons_rb[fdump.cons_nrb++];
+        e->k = kind[j];
+        e->addr = s->vram_addr;
+        e->w = s->width;
+        e->h = s->height;
+        pgraph_apply_scaling_factor(pg, &e->w, &e->h);
+        e->fmt = s->host_fmt.vk_format;
+        e->layout = s->image_layout;
+        snprintf(e->file, sizeof(e->file), "%s%u_f%03d_n%04d_%s0.bin",
+                 FDUMP_PREFIX, fdump.session, fdump.frame_index,
+                 fdump.draw_index, e->k);
+        e->ok = fdump_read_image(d, pg, s->image, s->image_layout, e->fmt,
+                                 e->w, e->h, e->file);
+    }
+}
+
 /* Schema 6's "rb", last in the draw record: after the vertex fields, because
  * they read "rot" and the finish below advances it. See FDUMP_SCHEMA. */
 static bool fdump_log_draw_readbacks(NV2AState *d, PGRAPHState *pg)
@@ -2874,8 +3017,12 @@ static bool fdump_log_draw_readbacks(NV2AState *d, PGRAPHState *pg)
         VkImageLayout layout;
         uint32_t w, h;
         VkFormat fmt;
-    } rb[2 * NV2A_MAX_TEXTURES + 1];
+    } rb[2 * NV2A_MAX_TEXTURES + 2];
     int nrb = 0;
+    /* Schema 7: this is the consumer draw pgraph_vk_fdump_pre_draw read. */
+    int npre = fdump.cons_draw == fdump.draw_index - 1 ? fdump.cons_nrb : 0;
+    bool post = npre > 0;
+    fdump.cons_draw = -1;
 
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
         if (!pgraph_is_texture_enabled(pg, i)) {
@@ -2922,11 +3069,25 @@ static bool fdump_log_draw_readbacks(NV2AState *d, PGRAPHState *pg)
         rb[nrb].fmt = c->host_fmt.vk_format;
         nrb++;
     }
-    if (!nrb) {
+    if (post && c) {
+        rb[nrb].k = "post";
+        rb[nrb].s = -1;
+        rb[nrb].addr = c->vram_addr;
+        rb[nrb].image = c->image;
+        rb[nrb].layout = c->image_layout;
+        rb[nrb].w = c->width;
+        rb[nrb].h = c->height;
+        pgraph_apply_scaling_factor(pg, &rb[nrb].w, &rb[nrb].h);
+        rb[nrb].fmt = c->host_fmt.vk_format;
+        nrb++;
+    }
+    if (!nrb && !npre) {
         return true;
     }
 
-    pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
+    if (nrb) {
+        pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
+    }
 
     int n = fprintf(fdump.fp, ",\"rb\":[");
     if (n < 0) {
@@ -2934,21 +3095,35 @@ static bool fdump_log_draw_readbacks(NV2AState *d, PGRAPHState *pg)
     }
     fdump.bytes_written += n;
 
+    /* The consumer's "pre" and "zpre", already read and written. */
+    for (int j = 0; j < npre; j++) {
+        const __typeof__(fdump.cons_rb[0]) *e = &fdump.cons_rb[j];
+        n = fprintf(fdump.fp,
+                    "%s{\"k\":\"%s\",\"s\":-1,\"addr\":\"0x%" HWADDR_PRIx
+                    "\",\"w\":%u,\"h\":%u,\"vkfmt\":%d,\"layout\":%d,"
+                    "\"file\":%s%s%s}",
+                    j ? "," : "", e->k, e->addr, e->w, e->h, (int)e->fmt,
+                    (int)e->layout, e->ok ? "\"" : "null",
+                    e->ok ? e->file : "", e->ok ? "\"" : "");
+        if (n < 0) {
+            goto fail;
+        }
+        fdump.bytes_written += n;
+    }
+
     for (int j = 0; j < nrb; j++) {
         char name[128];
         snprintf(name, sizeof(name), "%s%u_f%03d_n%04d_%s%d.bin",
                  FDUMP_PREFIX, fdump.session, fdump.frame_index,
                  fdump.draw_index - 1, rb[j].k, rb[j].s < 0 ? 0 : rb[j].s);
-        bool four = rb[j].fmt == VK_FORMAT_B8G8R8A8_UNORM ||
-                    rb[j].fmt == VK_FORMAT_R8G8B8A8_UNORM;
-        bool ok = four && fdump_read_image(d, pg, rb[j].image, rb[j].layout,
-                                           rb[j].w, rb[j].h, name);
+        bool ok = fdump_read_image(d, pg, rb[j].image, rb[j].layout,
+                                   rb[j].fmt, rb[j].w, rb[j].h, name);
         n = fprintf(fdump.fp,
                     "%s{\"k\":\"%s\",\"s\":%d,\"addr\":\"0x%" HWADDR_PRIx
                     "\",\"w\":%u,\"h\":%u,\"vkfmt\":%d,\"layout\":%d,"
                     "\"file\":%s%s%s}",
-                    j ? "," : "", rb[j].k, rb[j].s, rb[j].addr, rb[j].w,
-                    rb[j].h, (int)rb[j].fmt, (int)rb[j].layout,
+                    (j || npre) ? "," : "", rb[j].k, rb[j].s, rb[j].addr,
+                    rb[j].w, rb[j].h, (int)rb[j].fmt, (int)rb[j].layout,
                     ok ? "\"" : "null", ok ? name : "", ok ? "\"" : "");
         if (n < 0) {
             goto fail;
@@ -3262,6 +3437,7 @@ static void fdump_end_frame(NV2AState *d)
     fdump.submit_at_frame_start = submits;
     fdump.frame_index++;
     fdump.draw_index = 0;
+    fdump.cons_draw = -1;
     fdump.frames_remaining--;
 
     if (fdump.frames_remaining <= 0) {
