@@ -390,7 +390,9 @@ Batch 3 complete: all 7 restored titles pass. 38-title scope now stands at 29 sc
 | Mortal Kombat: Armageddon | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.99/59.98 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1534836`/`...1535025`) |
 | Blowout | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.94/59.96 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1535414`/`...1535762`) |
 
-MLB SlugFest 2004 ON landed (rid `...1535932`, fatal=False, on_lines=4/4, golden=None,
+| MLB SlugFest 2004 | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.97/59.95 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1535932`/`...1536016`) |
+
+MLB SlugFest 2003 ON landed (rid `...1536121`, fatal=False, on_lines=4/4, golden=None,
 state=any, gfps=59.97); its OFF counterpart is still queued, row to follow once
 both arms are in.
 
