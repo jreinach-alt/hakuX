@@ -1809,8 +1809,14 @@ extern char g_vulkan_driver_info[256];
  * was among it, so a PPM is this frame's only on the frames where the flip's
  * pre-record succeeded -- and `img_sync` said nothing about which those were.
  * See fdump_end_frame.
+ *
+ * 4: images as in 3. Each draw record adds the fixed-function state ("rs",
+ *    "clip", "aa", "zf", "zeta") and, per texture stage, the surface at the
+ *    stage's address ("srf", "s2t"); each shader hash gets one
+ *    {"t":"shader"} record with its combiner registers and GLSL. A schema-3
+ *    reader that ignores unknown fields reads a schema-4 dump unchanged.
  */
-#define FDUMP_SCHEMA          3
+#define FDUMP_SCHEMA          4
 
 /* `img_sync` on a frame record: >= 0 is the fence slot the image waited on
  * before the display surface came back clean, and these two are the cases
@@ -1824,10 +1830,15 @@ extern char g_vulkan_driver_info[256];
  * base path, and XEMU_FRAME_DUMP_DIR overrides either. */
 static char fdump_dir[512] = "";
 
+/* Schema 4's once-per-shader records; see fdump_log_shader. */
+#define FDUMP_MAX_SHADERS     2048
+
 static struct {
     FILE *fp;
     char *buf;
     bool images;
+    uint64_t shaders_seen[FDUMP_MAX_SHADERS];
+    int shaders_n;
     int frames_remaining;
     int frame_index;
     int draw_index;
@@ -2099,6 +2110,7 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     fdump.submit_at_frame_start = qatomic_read(&r->submit_count);
     fdump.images_stale = 0;
     fdump.stale_warned = false;
+    fdump.shaders_n = 0;
 
     char self[64];
     snprintf(self, sizeof(self), "%s%u.jsonl", FDUMP_PREFIX, fdump.session);
@@ -2263,6 +2275,193 @@ static void fdump_poll_marker(NV2AState *d)
     fdump_arm(d, "marker", line, now);
 }
 
+/* A JSON string body, escaped, for the shader record below. Returns the bytes
+ * written, or -1 on a write error. */
+static int fdump_put_escaped(FILE *fp, const char *s)
+{
+    int total = 0;
+    for (const char *p = s; *p; p++) {
+        int n;
+        unsigned char c = (unsigned char)*p;
+        if (c == '"' || c == '\\') {
+            n = fprintf(fp, "\\%c", c);
+        } else if (c == '\n') {
+            n = fprintf(fp, "\\n");
+        } else if (c < 0x20) {
+            n = fprintf(fp, "\\u%04x", c);
+        } else {
+            n = fputc(c, fp) == EOF ? -1 : 1;
+        }
+        if (n < 0) {
+            return -1;
+        }
+        total += n;
+    }
+    return total;
+}
+
+/*
+ * Schema 4 (gtasagpu1011): the per-draw fixed-function state, raw, and once
+ * per shader hash the register combiner setup and the fragment GLSL it
+ * produced.
+ *
+ * Schema 3 named the colour surface and the texture bindings and nothing
+ * else, so a draw's blend, depth, stencil, colour mask, cull and depth target
+ * were only in the serialising diag capture -- which stops the title, and so
+ * cannot be taken over the stretch of a soak an intermittent artifact needs.
+ * The registers go out undecoded (the diag capture's decode, above, is the
+ * key): nothing is lost to a decode, and the cost is one fprintf of host-side
+ * state, still no Vulkan work.
+ *
+ * The shader table is per dump and bounded; a hash past the bound is still
+ * named in every draw record, it just has no "shader" record of its own.
+ */
+static bool fdump_put_glsl(const char *key, const ShaderModuleInfo *mi)
+{
+    int n = fprintf(fdump.fp, ",\"%s\":\"", key);
+    if (n < 0) {
+        return false;
+    }
+    fdump.bytes_written += n;
+    if (mi && mi->glsl) {
+        n = fdump_put_escaped(fdump.fp, mi->glsl);
+        if (n < 0) {
+            return false;
+        }
+        fdump.bytes_written += n;
+    }
+    n = fprintf(fdump.fp, "\"");
+    if (n < 0) {
+        return false;
+    }
+    fdump.bytes_written += n;
+    return true;
+}
+
+static bool fdump_log_shader(PGRAPHState *pg, uint64_t shader_hash)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    ShaderBinding *sb = r->shader_binding;
+
+    if (!sb) {
+        return true;
+    }
+    for (int i = 0; i < fdump.shaders_n; i++) {
+        if (fdump.shaders_seen[i] == shader_hash) {
+            return true;
+        }
+    }
+    if (fdump.shaders_n >= FDUMP_MAX_SHADERS) {
+        return true;
+    }
+    fdump.shaders_seen[fdump.shaders_n++] = shader_hash;
+
+    /* A line of its own, written ahead of the draw record that first used
+     * it; fdump_log_draw has not opened its own line yet when this runs. */
+    int n = fprintf(fdump.fp,
+                    "{\"t\":\"shader\",\"f\":%d,\"shader\":\"%016" PRIx64 "\","
+                    "\"uber_vs\":%d,"
+                    "\"combinectl\":\"0x%08x\",\"specfog\":[\"0x%08x\","
+                    "\"0x%08x\"],\"shaderprog\":\"0x%08x\","
+                    "\"shaderctl\":\"0x%08x\",\"csv0_d\":\"0x%08x\","
+                    "\"csv0_c\":\"0x%08x\",\"stages\":[",
+                    fdump.frame_index, shader_hash,
+                    sb->vsh.uber_module_info != NULL,
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINECTL),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINESPECFOG0),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINESPECFOG1),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_SHADERPROG),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_SHADERCTL),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_CSV0_D),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_CSV0_C));
+    if (n < 0) {
+        return false;
+    }
+    fdump.bytes_written += n;
+    for (int i = 0; i < 8; i++) {
+        n = fprintf(fdump.fp,
+                    "%s[\"0x%08x\",\"0x%08x\",\"0x%08x\",\"0x%08x\","
+                    "\"0x%08x\",\"0x%08x\"]",
+                    i ? "," : "",
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINECOLORI0 + i * 4),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINECOLORO0 + i * 4),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINEALPHAI0 + i * 4),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINEALPHAO0 + i * 4),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINEFACTOR0 + i * 4),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_COMBINEFACTOR1 + i * 4));
+        if (n < 0) {
+            return false;
+        }
+        fdump.bytes_written += n;
+    }
+    n = fprintf(fdump.fp, "]");
+    if (n < 0) {
+        return false;
+    }
+    fdump.bytes_written += n;
+    if (!fdump_put_glsl("vsh", sb->vsh.module_info) ||
+        !fdump_put_glsl("geom", sb->geom.module_info) ||
+        !fdump_put_glsl("psh", sb->psh.module_info)) {
+        return false;
+    }
+    n = fprintf(fdump.fp, "}\n");
+    if (n < 0) {
+        return false;
+    }
+    fdump.bytes_written += n;
+    return true;
+}
+
+static bool fdump_log_draw_state(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    const SurfaceShape *ss = &pg->surface_shape;
+
+    int n = fprintf(
+        fdump.fp,
+        "\"rs\":{\"c0\":\"0x%08x\",\"c1\":\"0x%08x\",\"c2\":\"0x%08x\","
+        "\"c3\":\"0x%08x\",\"blend\":\"0x%08x\",\"bcol\":\"0x%08x\","
+        "\"sr\":\"0x%08x\",\"clipmode\":\"0x%08x\",\"zmin\":\"0x%08x\","
+        "\"zmax\":\"0x%08x\",\"csv0_d\":\"0x%08x\"},"
+        "\"clip\":[%u,%u,%u,%u],\"aa\":%u,\"zf\":%u,",
+        pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0),
+        pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1),
+        pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_2),
+        pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_3),
+        pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND),
+        pgraph_vk_reg_r(pg, NV_PGRAPH_BLENDCOLOR),
+        pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER),
+        pgraph_vk_reg_r(pg, NV_PGRAPH_SHADERCLIPMODE),
+        pgraph_vk_reg_r(pg, NV_PGRAPH_ZCLIPMIN),
+        pgraph_vk_reg_r(pg, NV_PGRAPH_ZCLIPMAX),
+        pgraph_vk_reg_r(pg, NV_PGRAPH_CSV0_D),
+        ss->clip_x, ss->clip_y, ss->clip_width, ss->clip_height,
+        ss->anti_aliasing, ss->z_format);
+    if (n < 0) {
+        fdump_close("write error");
+        return false;
+    }
+    fdump.bytes_written += n;
+
+    if (r->zeta_binding) {
+        n = fprintf(fdump.fp,
+                    "\"zeta\":{\"addr\":\"0x%x\",\"w\":%u,\"h\":%u,"
+                    "\"fmt\":%u,\"swizzle\":%d},",
+                    (unsigned)r->zeta_binding->vram_addr,
+                    r->zeta_binding->width, r->zeta_binding->height,
+                    r->zeta_binding->shape.zeta_format,
+                    (int)r->zeta_binding->swizzle);
+    } else {
+        n = fprintf(fdump.fp, "\"zeta\":null,");
+    }
+    if (n < 0) {
+        fdump_close("write error");
+        return false;
+    }
+    fdump.bytes_written += n;
+    return true;
+}
+
 /* Per draw. No Vulkan call, no allocation, one buffered fprintf. */
 static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
                            int count)
@@ -2281,6 +2480,10 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
     if (r->shader_binding) {
         shader_hash = fast_hash((const uint8_t *)&r->shader_binding->state,
                                 sizeof(ShaderState));
+    }
+    if (!fdump_log_shader(pg, shader_hash)) {
+        fdump_close("write error");
+        return;
     }
 
     int n = fprintf(
@@ -2323,6 +2526,10 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
     }
     fdump.bytes_written += n;
 
+    if (!fdump_log_draw_state(pg)) {
+        return;
+    }
+
     /* Per stage: the guest's view (raw registers, so nothing is lost to a
      * decode) and the HOST binding identity. The second is the new one -- an
      * image handle that does not change when the guest's texture does, or
@@ -2341,7 +2548,7 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
                     "%s{\"s\":%d,\"en\":%d,\"fmt\":\"0x%08x\","
                     "\"off\":\"0x%08x\",\"addr\":\"0x%08x\","
                     "\"ctl0\":\"0x%08x\",\"ctl1\":\"0x%08x\","
-                    "\"fil\":\"0x%08x\",\"img\":\"%p\",\"submit_time\":%u}",
+                    "\"fil\":\"0x%08x\",\"img\":\"%p\",\"submit_time\":%u",
                     i > 0 ? "," : "", i,
                     (int)pgraph_is_texture_enabled(pg, i),
                     pgraph_vk_reg_r(pg, NV_PGRAPH_TEXFMT0 + i * 4),
@@ -2352,6 +2559,39 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
                     pgraph_vk_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4),
                     tb ? (void *)(uintptr_t)tb->image : NULL,
                     tb ? tb->submit_time : 0u);
+        if (n < 0) {
+            fdump_close("write error");
+            return;
+        }
+        fdump.bytes_written += n;
+
+        /* Schema 4: the surface at this stage's address, if any, and whether
+         * the stage sampled that surface's own image (s2t). A render-to-
+         * texture whose texture shows nothing is told apart here: no surface
+         * (the texture came from VRAM the GPU never wrote), a surface the
+         * compatibility test refused (a VRAM upload after a download), or
+         * the surface's image bound directly. Only enabled stages: a disabled
+         * stage's offset register is whatever the last material left. */
+        SurfaceBinding *ts = NULL;
+        if (pgraph_is_texture_enabled(pg, i)) {
+            ts = pgraph_vk_surface_get(d, pgraph_get_texture_phys_addr(pg, i));
+        }
+        if (ts) {
+            n = fprintf(fdump.fp,
+                        ",\"s2t\":%d,\"srf\":{\"w\":%u,\"h\":%u,\"pitch\":%u,"
+                        "\"fmt\":%u,\"color\":%d,\"swizzle\":%d,\"dirty\":%d,"
+                        "\"upl\":%d,\"dlp\":%d}}",
+                        (int)r->tex_surface_direct[i], ts->width, ts->height,
+                        ts->pitch,
+                        ts->color ? ts->shape.color_format
+                                  : ts->shape.zeta_format,
+                        (int)ts->color, (int)ts->swizzle,
+                        (int)qatomic_read(&ts->draw_dirty),
+                        (int)ts->upload_pending, (int)ts->download_pending);
+        } else {
+            n = fprintf(fdump.fp, ",\"s2t\":%d,\"srf\":null}",
+                        (int)r->tex_surface_direct[i]);
+        }
         if (n < 0) {
             fdump_close("write error");
             return;
