@@ -73,3 +73,17 @@ surfaces something sourceable.
 1800`, OR lane.local/the PM scheduling an explicit gap for this lane's pathfind hold (both sibling briefs already
 say "lane.gtaroutes1011 takes holds for pathfind between runs", so the gap is expected to exist procedurally, just
 not observed in this session's window).
+
+## 3. Why attempt 1 did not finish
+
+Attempt 1 polled `queue/`+`running/` itself, waiting for a `queue=0` instant to then take the hold -- a race it
+documented losing twice (two ~5 s-poll misses, then a 5 min tight-poll window with `queue` pinned at 1 the whole
+time) before concluding the backlog was multi-hour and stopping with nothing in territory written. lane.local's
+addendum 1 (12:2x PDT) says this diagnosis was right but the response wrong: `hold.sh wait` already retries every
+15 s and `take` itself is race-free against a running request (a hold taken while something runs just blocks the
+NEXT claim, per the header comment read in section 2 above) -- so the fix is to call `hold.sh wait nova
+gtaroutes1011 3600 ... && hold.sh wait-idle nova 1800` in the foreground and let it retry, not to hand-poll queue
+state and time a `take` around it. The addendum also retired the `gtasa1011` queue/running check (those runs
+ended) and added the profile-gate consequence: GTA III/VC have no golden, so the first soak per title must be
+route-finding (300 s, `# state: first-run`, `--find-route` if present) rather than the step 2/4 gameplay proof,
+with a golden promoted from that run before the real proof soak. Resuming attempt 2 with that approach now.
