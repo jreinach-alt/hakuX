@@ -8,12 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `reportasync1010` | claude-opus-5-5 | 21 min | reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5) |
+| `postput1010` | claude-opus-5-5 | 6 min |  |
+| `usagerule1010` | claude-sonnet-5 | 12 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 6 waiting, 1 running.
+- **Device queue:** 4 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -71,12 +72,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/reportasync1010` | reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5) | `0f6326deac` | 2026-10-10 15:34 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-10 Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly)
 - 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 - 2026-10-10 lane.usage24h1009: project the week's usage from the trailing 24h burn rate, not the trailing 6h (#433)
 - 2026-10-10 lane.fgrace1010 -- the display guard's "guest exit mid-route" leg loses a race and fails folds (#433, 0.5)
@@ -88,6 +88,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation plan (#433, 0.5)
 - 2026-10-10 Lane: perdrawon1010       Issue: #433 (umbrella), none filed
 - 2026-10-10 perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5)
-- 2026-10-10 Lane: nightlywrap1010            Issue: none (dispatched directly by lane.local, #433 umbrella)
 
-_Updated 2026-10-10 17:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 17:29 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
