@@ -68,15 +68,41 @@ error is dominated by small noisy runs and does not match that question).
 
 Opus and Sonnet are within 5% for this lane's fit, as required.
 
-## The three calibration intervals — STILL BEING VERIFIED
+## The three calibration intervals
 
-Measuring the three owner readings' $/point under both fits. An early
-version of the measurement script double-counted (it didn't dedup assistant
-messages by id across the scanned window), giving $/point roughly double
-both the brief's own reference numbers and the real `state.json`'s stored
-capacities for the same three readings. Re-running with the same
-first-line-wins dedup `scan_transcripts`/`transcript_eq` use everywhere
-else. Numbers to follow in this section and in the PR body once confirmed.
+Measured with `/tmp/meterfit_intervals.py` (exploratory, not committed): a
+bounded scan of every `~/.claude/projects/**/*.jsonl` file whose mtime falls
+at or after this week's start (`week_bounds()`, Thu 21:00 PT), deduped by
+assistant `message.id` globally — the same rule `scan_transcripts` uses (the
+first draft of this script skipped that dedup and double-counted, giving
+$/point roughly double every number below; fixed before reporting). `$/pt
+OLD` runs `meter.fit_prices()` (today's modelUsage/14d fit) over this scan's
+events; `$/pt NEW` runs this lane's `combined_price_map()` the same way.
+
+| reading (UTC)        | pct  | $/pt OLD | $/pt NEW | brief: today | brief: per-model |
+|-----------------------|-----:|---------:|---------:|-------------:|------------------:|
+| 2026-10-09T21:43:56   | 4.0  | 25.44    | 26.89    | 25           | 27                |
+| 2026-10-10T05:52:55   | 11.0 | 22.91    | 25.88    | 22           | 25                |
+| 2026-10-11T00:56:23   | 31.0 | 19.18    | 21.88    | 17           | 21                |
+
+The OLD column lines up with both the brief's "today's" figures and the
+real `state.json`'s stored calibration capacities for these same three
+readings (2544.55/2291.23/1912.34, i.e. 25.45/22.91/19.12 $/pt) — confirming
+this measurement script reproduces production's actual numbers before
+trusting its NEW column. The NEW column lines up with the brief's own
+"per-model correction" reference (27/25/21) within $1.
+
+$/point drops across the week in both fits (the model mix shifts as the
+week goes on) — that drop is the "spread" the brief asks about. OLD spread
+(high reading − low reading) is 25.44 − 19.18 = 6.26; NEW spread is 26.89 −
+21.88 = 5.01. **This fit removes about a fifth of the within-week drift
+(1.25 of 6.26, ~20%) — it does not remove all of it**, because the other
+driver (calls billed but never written to a transcript at all, see the
+"Why" section of the brief) isn't something a price fit can fully correct
+for: a run missing from the transcript entirely is invisible to
+`fit_prices_transcripts()` too, it just means that run's cost is absorbed
+into whichever other runs for that model DO have a transcript, rather than
+split evenly across modelUsage tokens the way `fit_prices()` does it.
 
 ## Selftest: 88-usage-meterfit.sh
 
