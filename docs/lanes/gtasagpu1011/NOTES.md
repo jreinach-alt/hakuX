@@ -525,3 +525,38 @@ schema-6 readbacks are a second sample of 651566's chain.
   near CJ's feet (mean change negative), and the frame's display image has no shadow. The next
   step is to find the first later draw that writes over the box.
 - **A4. Something else (P = 0.1).** For example, n522 changes pixels outside the expected box.
+
+#### 2d result: 651566 (schema 6) -- the texture is right (outcome A)
+
+`1-1791744746-lane.gtasagpu1011-651566`, build 8e40300c6c (apk d94a1d8f54fa), 30 dumped frames.
+Read with `fdread.py DUMP rb 4 OUT` and by eye on the sheet.
+
+| step | readback | what it holds |
+|---|---|---|
+| n0-n4 | `color` 0x3513980 64x64 | CJ's meshes, dark, on white (lit 4000 -> 3716 of 4096 texels as they are added) |
+| n5 | `color` | inverted: a bright silhouette on black, 500 of 4096 texels |
+| n6-n8 | `tex`, `srf`, `color` | the blur passes; `tex` equals `srf` at every step |
+| n9-n10 | `color` 0x3517a00 32x32 | the masked silhouette: 144 of 1024 texels, peak 94-109 of 255 |
+| n590 (the projection in f4) | `tex0`, `srf0` | the same 144-texel silhouette |
+
+All 30 frames have the same chain and one projection draw (shader 7f12c419, 24 indices this
+run). So **predictions B, C and D are refuted, and A holds**: the projection samples the right
+texture, and the shadow is lost in its raster, its depth test, or a later write.
+
+**Where the shadow should land.** `fdread.py DUMP cover F N` works out the projection's coverage
+from its `v` and `cm` words. It takes a pixel as covered when the ray through it meets the
+triangle at w > 0. Two-negative-w triangles therefore come out right, as a host clipper would cut
+them.
+- **651566:** every frame's projection covers 45k-118k pixels, and 333-1423 of them sample a
+  texel above 8. In f8, f12 and f29 that region is at y 336-380, on the wall top and the hedge
+  beside CJ's waist. There the hedge or CJ is in front of it, so these frames cannot show a
+  missing shadow by eye. Inside the region the display image is darker than beside it on the same
+  quad (f6-f29: 26 vs 48, 13 vs 23, 13 vs 22 mean luminance). The surfaces differ, so that is
+  not evidence either way.
+- **177443 f4 (the schema-5 run):** the texture's [0,1] square lands on open dirt from CJ's feet
+  to the bottom edge (x 198-519, y 399-479). The silhouette's body (u 0.5, v 0.25 in either
+  orientation) maps to (343,448). `on_f004.png` shows plain dirt there. That frame is the
+  clearest case of the shadow's pixels being lost.
+
+**What is left inside A** is what the schema-7 run (818197) separates: A1 depth, A2 raster, A3
+a later write.
