@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 1h 29m | fastpaths1010: KOF Maximum Impact - Maniax pass (batch 3) |
+| `fastpaths1010` | claude-sonnet-5 | 1h 44m | fastpaths1010: KOF Maximum Impact - Maniax pass (batch 3) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 54 waiting, 1 running.
+- **Device queue:** 52 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -89,4 +89,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly)
 - 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 
-_Updated 2026-10-11 04:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 04:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
