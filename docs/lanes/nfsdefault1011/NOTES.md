@@ -188,8 +188,22 @@ verdict. Queued the second pair to complete it: ON2 `1-1791745784-nfsdefault1011
 `1-1791745785-nfsdefault1011-877404`.
 
 Both arms' gfps readings here (ON ~59, OFF ~42-47) are well above postput1010/vcpusleep-simpsons.json's
-~40 fps figure for this title. Not investigated further yet -- `title_verdict.judge()`'s
+~40 fps figure for this title. Not investigated further -- `title_verdict.judge()`'s
 `g_fps_mean_reported_not_judged` is the same instrument pathfind's own hold verdict used, and the fix
 changed where Homer walks (now covers open yard and a paved path, not wedged against one wall's texture),
-which is plausibly just a different, more open piece of geometry than the corner nook. Revisit once all 4
-runs are in and W's full verdict reads one way or the other.
+which is plausibly just a different, more open piece of geometry than the corner nook.
+
+**Second pair (full verdict).** ON2 `1-1791745784-nfsdefault1011-874556`, OFF2
+`1-1791745785-nfsdefault1011-877404`. Both B and V PASS on all four runs now. `simpread.py`'s full read:
+
+| | OFF (pre-lane shipped) | ON (this lane's default) |
+|---|---|---|
+| run 1 | `...620311` -- 46.72 gfps, still_frac 0.167 | `...620739` -- 59.29 gfps, still_frac 0.0 |
+| run 2 | `...877404` -- 48.65 gfps, still_frac 0.0 | `...874556` -- 59.19 gfps, still_frac 0.0 |
+| mean | 47.69 | 59.24 |
+
+**W PASS: ON mean 59.24 >= OFF mean 47.69 - 1.0. VERDICT: PASS.** ON is not slower than OFF on this
+GPU-paced title in free roam -- the opposite of the ~4 fps regression `c2dfca18a1` (#507) produced, and
+postput1010's PR.md condition for POSTED_PUT going default-on is satisfied. All three switches
+(`HAKUX_POSTED_PUT`, `HAKUX_LOCKFREE_WAKE`, `HAKUX_SUBMIT_FRAMES=3`) stay in the default. Step 3 is done;
+proceeding to step 4's title screen.

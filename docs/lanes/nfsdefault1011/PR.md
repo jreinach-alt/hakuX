@@ -1,12 +1,12 @@
 nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5)
 
-State: draft (step 1 built and checked; step 2 VOID on a route desync, waiting on nfsroute1011's
-addendum before requeuing -- see NOTES.md; steps 3-4 continuing in the meantime)
+State: draft (step 1 built and checked; step 2 held on nfsroute1011's golden profile route per Addendum 3;
+step 3 PASS; step 4 next -- see NOTES.md)
 
 Lane: nfsdefault1011      Issue: #433 (umbrella), none filed
 Base: master @ 6d8947bb47 (fastpaths1010 folded; fa45851449 confirmed an ancestor)
-Files: android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt, android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsActivity.kt, android/app/src/main/res/values/strings.xml, android/app/src/main/cpp/xemu_android.cpp, docs/lanes/nfsdefault1011/**, docs/testing/predictions/nfsdefault1011-*
-Prediction: docs/testing/predictions/nfsdefault1011-nfs.json @ 1422f53bae47dea23dee81b442a2ea891970130875e38ef4674f26deeefd15de
+Files: android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt, android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsActivity.kt, android/app/src/main/res/values/strings.xml, android/app/src/main/cpp/xemu_android.cpp, docs/lanes/nfsdefault1011/**, docs/testing/predictions/nfsdefault1011-*, docs/testing/titles/routes/simpsons-hit-run.route
+Prediction: docs/testing/predictions/nfsdefault1011-nfs.json @ 1422f53bae47dea23dee81b442a2ea891970130875e38ef4674f26deeefd15de, docs/testing/predictions/nfsdefault1011-simpsons.json @ b47eb7b3b9286eb0b4bff4297fb06bad112f1b8f194e8c911f34a281f07f564e (PASS)
 Needs device: yes (Nova)
 Needs NDK: yes
 
@@ -56,19 +56,51 @@ addendum before requeuing**, per lane.local (2026-10-11). Steps 3-4 below do not
 | pilot valid starts | 12/12 | 11/12 (go6 pad.sh timeout, unrelated) |
 | pilot cold start 1 | 43.94 ms | 45.55 ms |
 | batch 2 result id | `1-1791741306-nfsdefault1011-87778` -- VOID (route desync, 0/12 valid) | `1-1791741301-nfsdefault1011-87617` -- VOID (route desync, 10/12 valid incl. `gameplay`) |
-| K / N | pending requeue after nfsroute1011's addendum | |
+| K / N | pending -- held, see Addendum 3 below | |
 
-## Steps 3-4
+**Addendum 3 (lane.local, 2026-10-11):** step 2's re-run moves to `nfs-mw-race.returning` on the golden
+profile nfsroute1011's step 3 is building, not a gated `nfs-mw-quickrace` -- the owner ruled runs need a
+profile, and the gate under construction will refuse the quickrace route anyway. Run a fresh OFF/ON set on
+the new route when it lands; do not pool with OFF1/ON1. Held until an addendum says the route is live.
 
-Not started. Step 3 (Simpsons free roam route + A/B) and step 4 (37-title screen) remain, pending step 2's
-read and the lane's own device-time budget on the Nova.
+## Step 3: Simpsons Hit & Run free roam (NOTES.md section 3) -- PASS
+
+Route: `docs/testing/titles/routes/simpsons-hit-run.route` (new file, in Files: above), copied
+near-verbatim from lane.frametrace's `simpsons-frametrace.route`. The copied entry sequence (cutscenes/
+menus) was correct, but the free-roam play loop it was given drove Homer into a concave corner of the
+house and he stayed wedged there -- deterministically, reproduced in this lane's first OFF1/ON1 pair
+*and*, re-checked with `hitch_report.py`, in frametrace's own "proven" run too (94% of pixels never moved
+over its scored window). The route's claimed proof traced to pathfind's interactively-driven hold session,
+not a measurement of this blind route's own play loop. Fixed: the play loop now backs up and turns wider
+before resuming forward motion, every lap, so a re-wedge later in the window also clears. Confirmed by a
+validation pilot before committing device time to the full batch; NOTES.md section 3 has the frame-by-frame
+readout.
+
+Four runs, OFF/ON/ON/OFF interleaved, all B and V legs PASS:
+
+| | OFF (pre-lane shipped) | ON (this lane's default) |
+|---|---|---|
+| run 1 | `1-1791744545-nfsdefault1011-620311` -- 46.72 gfps | `1-1791744548-nfsdefault1011-620739` -- 59.29 gfps |
+| run 2 | `1-1791745785-nfsdefault1011-877404` -- 48.65 gfps | `1-1791745784-nfsdefault1011-874556` -- 59.19 gfps |
+| mean | 47.69 | 59.24 |
+
+**W PASS: ON mean 59.24 >= OFF mean 47.69 - 1.0.** ON is not slower than OFF on this GPU-paced title in
+free roam -- the opposite of the ~4 fps regression `c2dfca18a1` (#507) produced, satisfying postput1010's
+PR.md condition for `HAKUX_POSTED_PUT` going default-on. All three switches stay in the default.
+
+## Step 4
+
+Starting the 37-title screen (fastpaths1010's title list, minus Call of Duty 3 (not on the Nova), the five
+space-deferred titles, and RalliSport).
 
 ## Switch list
 
 All three switches (`HAKUX_POSTED_PUT`, `HAKUX_LOCKFREE_WAKE`, `HAKUX_SUBMIT_FRAMES=3`) are in this draft's
-default. None excluded yet; step 3's Simpsons A/B and step 4's screen are what could take one back out.
+default. Step 3's Simpsons A/B passed clean; none excluded. Step 4's screen is what could still take one
+back out.
 
 ## Release note (performance)
 
-Pending step 2's figures: "NFS Most Wanted's first race runs at ... fps (from ...)" and "Submit frame
-buffering now applies its Triple default".
+Pending step 2's figures (held on Addendum 3's route): "NFS Most Wanted's first race runs at ... fps (from
+...)" and "Submit frame buffering now applies its Triple default". Step 3: Simpsons Hit & Run's free-roam
+fps is unaffected (59.2 vs 47.7 mean, ON not slower).
