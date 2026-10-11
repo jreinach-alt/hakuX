@@ -6,12 +6,15 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `fastpaths1010` | claude-sonnet-5 | 14 min | fastpaths1010: queue batches 3 (7 restored titles) and 4 (21 remaining soak titles), 56 runs |
+| `lockwake1011` | claude-opus-5-5 | 12 min | lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lo |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 55 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -69,10 +72,14 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/fastpaths1010` | fastpaths1010: queue batches 3 (7 restored titles) and 4 (21 remaining soak titles), 56 runs | `79ef37590f` | 2026-10-11 03:15 |
+| `lane/lockwake1011` | lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lock-free wa | `4c0d184051` | 2026-10-11 03:08 |
 
 ## Recently landed on master
 
+- 2026-10-11 coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5)
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-10 lane.lanenobg1010 -- lane sessions refuse background commands with a hook, not a footer (#433, 0.5)
@@ -84,4 +91,4 @@ No branch is being worked right now.
 - 2026-10-10 Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly)
 - 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 
-_Updated 2026-10-11 03:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 03:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
