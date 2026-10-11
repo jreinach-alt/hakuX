@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `postput1010` | claude-opus-5-5 | 6 min |  |
-| `usagerule1010` | claude-sonnet-5 | 12 min |  |
+| `postput1010` | claude-opus-5-5 | 21 min |  |
+| `usagerule1010` | claude-sonnet-5 | 27 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 4 waiting, 1 running.
+- **Device queue:** 2 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -89,4 +89,4 @@ No branch is being worked right now.
 - 2026-10-10 Lane: perdrawon1010       Issue: #433 (umbrella), none filed
 - 2026-10-10 perdraw1009: cut the renderer's per-draw CPU cost (NFS Most Wanted, ~11 us per draw) (#433, 0.5)
 
-_Updated 2026-10-10 17:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 17:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
