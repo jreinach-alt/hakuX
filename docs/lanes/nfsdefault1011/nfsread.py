@@ -23,7 +23,9 @@ window is sum(ms) / (60 x lines); an arm's is the MEAN OF ITS RUNS' periods.
 Legs:
   V  every run: >= V_min_marks marks, >= V_min_valid_starts valid starts, no
      input failed or hung before `mark gameplay`, each arm >= V_min_cold_lines
-     cold pace lines, the run's arm read unambiguously from its env, and:
+     cold pace lines, the run's arm read unambiguously from its env, every
+     start's `sN-g11.png` frame shows the race HUD (hud_bad_starts, below),
+     and:
        ON  logs `[postput] on`, `[lockwake] on` and `submit frames: 3`
        OFF logs none of `[postput]`/`[lockwake]`, and draw.c's own
            `[coldstart1010] submit_frames=2 (HAKUX_SUBMIT_FRAMES; pref 3)`
@@ -33,15 +35,48 @@ Legs:
            as OFF's proof)
   K  ON's cold start 1 period <= K_max ms (lockwake1011's own K bound).
   N  ON is not slower than OFF at the cold start: ON - OFF <= N_d_max ms.
+
+raread.bad_starts only drops a start when run.log shows a failed or hung
+route input; it has no way to see the route reach the wrong screen when
+every input it sent still "succeeded" (lane.local, 2026-10-11: the open-loop
+first-run route desynced on both of batch 2's runs -- 87617 lost two HATX
+taps and landed on an autosave dialog then, later, the name-entry keyboard;
+87778 never left the keyboard at all -- yet marks=12, valid=12/12, no
+run.log failures, because every pad.sh input it tried did return). The two
+runs are not evidence either way: hud_bad_starts below reads each start's
+`sN-g11.png` route-frames screenshot and drops it when the race HUD's
+speedometer dial is not where the race always puts it, which is visible even
+when the frame is otherwise a plausible-looking 3D scene (attract-mode demo
+footage, 87617's starts 1 and 12). This is scoped to this reader, not
+raread.py: it is a property of NFS MW's screens and this lane's open-loop
+route, not of the pace/mark protocol every other lane's reader shares.
+nfsroute1011 is building a screen-gated version of this route; once it lands
+this check should still hold as a second opinion, but the route should stop
+producing frames that need it caught after the fact.
 """
 import argparse
+import glob
 import json
 import os
+import re
 import sys
+
+from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', 'reportasync1010'))
 import raread  # noqa: E402
+
+# The speedometer dial (bottom-right HUD) is a near-black disc ringed in
+# orange, present in every known-good sN-g11.png and absent from both a
+# dialog/menu frame (all-black background, high fraction) and attract-mode
+# demo footage of the same track (no HUD at all, near-zero fraction).
+# Measured across the two pilot runs' 24 frames: black_frac in [0.056,
+# 0.526]; measured on the two desynced batch-2 runs: 0.017-0.805, including
+# values the pilot runs never produced on any of their 24 starts.
+HUD_BOX = (0.68, 0.60, 0.95, 0.95)
+HUD_LO, HUD_HI = 0.05, 0.55
+GO = re.compile(r'^go(\d+)$')
 
 LOG_POSTPUT_ON = r'\[postput\] on'
 LOG_POSTPUT_ANY = r'\[postput\]'
@@ -54,6 +89,50 @@ LOG_SUBMIT3 = r'submit frames: 3'
 # actual 2). draw.c's "[coldstart1010] submit_frames=N (HAKUX_SUBMIT_FRAMES;
 # pref M)" line is the one that reflects what the engine actually ran with.
 LOG_SUBMIT2 = r'\[coldstart1010\] submit_frames=2 \(HAKUX_SUBMIT_FRAMES'
+
+
+def mark_num(name):
+    if name == 'gameplay':
+        return 1
+    m = GO.match(name)
+    return int(m.group(1)) if m else None
+
+
+def hud_frac(path):
+    """Fraction of near-black pixels in the speedometer dial's HUD box."""
+    im = Image.open(path).convert('RGB')
+    w, h = im.size
+    x0, y0, x1, y1 = HUD_BOX
+    spd = im.crop((int(x0 * w), int(y0 * h), int(x1 * w), int(y1 * h)))
+    px = spd.load()
+    sw, sh = spd.size
+    n = black = 0
+    for y in range(0, sh, 2):
+        for x in range(0, sw, 2):
+            r, g, b = px[x, y]
+            if r < 35 and g < 35 and b < 35:
+                black += 1
+            n += 1
+    return black / n if n else None
+
+
+def hud_bad_starts(d, marks):
+    """{mark name: reason}, a start whose sN-g11.png frame does not show the
+    race HUD's speedometer dial (the route reached the wrong screen even
+    though its inputs all reported success -- see module docstring)."""
+    bad = {}
+    for _, name in marks:
+        n = mark_num(name)
+        if n is None:
+            continue
+        hits = sorted(glob.glob(os.path.join(d, 'route-frames', f'*-s{n}-g11.png')))
+        if not hits:
+            continue
+        frac = hud_frac(hits[0])
+        if frac is not None and not (HUD_LO <= frac <= HUD_HI):
+            bad[name] = (f'no speedometer HUD in {os.path.basename(hits[0])} '
+                         f'(black frac {frac:.3f} outside [{HUD_LO}, {HUD_HI}])')
+    return bad
 
 
 def request(d):
@@ -108,6 +187,8 @@ def main():
         name = os.path.basename(d.rstrip('/'))
         marks, pace, _, _ = raread.read(d)
         bad = raread.bad_starts(d)
+        for k, v in hud_bad_starts(d, marks).items():
+            bad[k] = f'{bad[k]}; {v}' if k in bad else v
         good = raread.valid(marks, bad)
         arm = arm_of(d, off_env) if exp else None
         cold = raread.sel(pace, good, lo, hi, 'cold')

@@ -63,3 +63,36 @@ override is in play, and `nfsread.py`'s `LOG_SUBMIT2` now matches that line inst
 (`\[coldstart1010\] submit_frames=2 \(HAKUX_SUBMIT_FRAMES`). `[postput]`/`[lockwake]`/marks/valid-starts/
 boot-input legs all PASS on OFF1; cold start 1 read 43.94 ms, 12/12 valid starts, 2 cold pace lines pooled
 so far (floor is 3, needs OFF2 too). Full V/K/N verdict waits on all four runs.
+
+**Pilot batch written up, ON1/OFF1 both pass all V legs** (`pilots/nfsdefault1011.ok` written); second
+batch queued: ON2 `1-1791741301-nfsdefault1011-87617`, OFF2 `1-1791741306-nfsdefault1011-87778`.
+
+**ON2 and OFF2 are VOID -- route desync, not a code finding.** lane.local flagged both (2026-10-11,
+11:17 PDT): the open-loop first-run route lost timing against the game's own menu/dialog pacing.
+87778 never left the name-entry keyboard for all 12 marks (two lost HATX-right taps sent it down
+Start Career -> autosave -> keyboard instead of Quick Race). 87617 hit "The autosave feature has been
+disabled" at the mm-quickrace mark, then settled into the real race for starts 2-11, but start 1
+(`mark gameplay`, the one the cold-start K/N legs read) and start 12 are attract-mode demo footage, not
+the player's race. `raread.bad_starts` saw none of this: every pad.sh input in both runs returned
+success, so marks=12/valid=12 for both runs on the old V leg -- the leg could not see a desync that left
+no input-failure trace in run.log.
+
+Added `hud_bad_starts()`/`hud_frac()` to `nfsread.py` (PIL, already a dependency of several other lanes'
+readers): reads each start's `route-frames/*-sN-g11.png` screenshot and checks the speedometer dial's HUD
+box (bottom-right eighth of frame) for the near-black disc that is only ever present during an actual
+race. Measured on the two pilot runs' 24 known-good frames: black fraction in [0.056, 0.526]. Measured on
+87617/87778's desynced frames: 0.017 (attract footage, no HUD at all) up to 0.805 (dark menu/keyboard
+background) -- both clearly outside that band and outside each other, so one bound width (0.05-0.55)
+catches both failure shapes. Re-read with the fix: 87617 now drops `gameplay` and `go12` (10/12 valid, V
+leg fails since `gameplay` -- the cold-start mark -- is one of the two); 87778 drops all 12 (0/12 valid).
+Pooled OFF1+OFF2 and ON1+ON2 give 0 extra cold pace lines from the VOID runs (correctly; their `gameplay`
+start is excluded either way), so the V leg's cold-pace-line floor also fails on both arms. Full verdict:
+VOID. This is scoped to `nfsread.py`, not `raread.py` (reportasync1010's shared module): it is this
+route's and this title's screens, not the pace/mark protocol every other lane's reader shares.
+
+**lane.local's direction (2026-10-11):** do not requeue step 2's two voided arms yet. A new lane,
+nfsroute1011, is building a saved profile and a screen-gated version of this route (`waitfor` aborts on a
+mismatch instead of plowing ahead on a stale assumption); wait for its addendum to this lane's brief
+before requeuing ON2/OFF2. Steps 3 (Simpsons) and 4 (screen) do not depend on it and continue below. The
+HUD check stays in `nfsread.py` as a second opinion even once the gated route lands -- it reads what's
+actually on screen, which a screen-gate's own pass/fail can't fully stand in for on its own.

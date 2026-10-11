@@ -1,6 +1,7 @@
 nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5)
 
-State: draft (step 1 built and checked; step 2's device proof queued, not yet read)
+State: draft (step 1 built and checked; step 2 VOID on a route desync, waiting on nfsroute1011's
+addendum before requeuing -- see NOTES.md; steps 3-4 continuing in the meantime)
 
 Lane: nfsdefault1011      Issue: #433 (umbrella), none filed
 Base: master @ 6d8947bb47 (fastpaths1010 folded; fa45851449 confirmed an ancestor)
@@ -35,16 +36,27 @@ Prediction registered at `7002282149`, modeled on fastpaths1010's `fpread.py` (s
 OFF-explicit-env shape). Queued in two batches of two per the pilot gate (no `pilots/nfsdefault1011.ok` on
 file yet): OFF+ON, then ON+OFF once the pilot's read is in.
 
-**Device proof is queued, not yet read as of this draft.** Table below fills in once results land.
+**VOID -- blocked on a route fix, not a code finding.** Pilot batch (OFF1 `...3581025`, ON1 `...3581205`)
+read clean: both logged their arm's switch lines exactly right (including a reader bug found and fixed --
+`xemu_android.cpp`'s `submit frames: %d` logs the pref, not draw.c's env-overridden runtime value, so OFF's
+proof is draw.c's own `[coldstart1010] submit_frames=2 (HAKUX_SUBMIT_FRAMES; pref 3)` line instead), 12/12
+and 11/12 valid starts. Second batch (ON2 `...87617`, OFF2 `...87778`) desynced: lane.local caught it from
+the route-frames screenshots (one run never left the name-entry keyboard, the other hit an autosave dialog
+then attract-mode demo footage at its `gameplay`/`go12` marks) -- input-success-only validity
+(`raread.bad_starts`) could not see it, since every route input still "succeeded". Added a frame-content
+HUD check to `nfsread.py` (PIL, reads each start's `sN-g11.png` for the race HUD's speedometer dial) that
+now drops both VOID runs correctly while passing the two good pilot runs' 24 frames. NOTES.md section 2 has
+the full readout. nfsroute1011 is building a screen-gated route; **this step's two voided arms wait on that
+addendum before requeuing**, per lane.local (2026-10-11). Steps 3-4 below do not depend on it.
 
 | | OFF (pre-lane shipped) | ON (this lane's default) |
 |---|---|---|
-| result id | pending | pending |
-| `[postput]`/`[lockwake]` lines | pending | pending |
-| `submit frames:` | pending | pending |
-| cold start 1 (mean of 2) | pending | pending |
-| K (ON <= 34.5 ms) | pending | |
-| N (ON not slower than OFF) | pending | |
+| pilot result id | `1-1791735965-nfsdefault1011-3581025` | `1-1791735970-nfsdefault1011-3581205` |
+| pilot `[postput]`/`[lockwake]`/`submit_frames` lines | correct (none / "2" via draw.c's line) | correct (`on`/`on`/"3") |
+| pilot valid starts | 12/12 | 11/12 (go6 pad.sh timeout, unrelated) |
+| pilot cold start 1 | 43.94 ms | 45.55 ms |
+| batch 2 result id | `1-1791741306-nfsdefault1011-87778` -- VOID (route desync, 0/12 valid) | `1-1791741301-nfsdefault1011-87617` -- VOID (route desync, 10/12 valid incl. `gameplay`) |
+| K / N | pending requeue after nfsroute1011's addendum | |
 
 ## Steps 3-4
 
