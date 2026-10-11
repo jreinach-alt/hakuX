@@ -19,14 +19,22 @@
 # it matters, by the reader, so switching rewrites nothing that a later switch
 # would have to put back:
 #
-#   lane.sh, at every start and resume: LANE_MAX capped at USAGE_LOW_LANE_MAX
-#     (3), and any model other than Sonnet/Haiku -- a brief's .model, or the
-#     escalation model -- runs on USAGE_LOW_MODEL (claude-sonnet-5) instead.
-#     An explicit HAKUX_MODEL still wins. A RUNNING session keeps its model;
-#     the cap applies from its next resume.
-#   limits.env PATHFIND_MODEL_CALLS_MAX=20 while Low, absent while Normal
-#     (lane.pathfind's navigation agent reads it itself; absent IS its normal).
+#   lane.sh, at every start and resume: LANE_MAX capped at models.toml's
+#     [usage].low_lane_max (3), and any escalated-above-Sonnet model -- a
+#     brief's .model, or the escalation model -- comes back down to Sonnet
+#     instead (models.py's cap_at_sonnet(), #433). An explicit HAKUX_MODEL
+#     still wins. A RUNNING session keeps its model; the cap applies from its
+#     next resume.
 #   hostops heartbeat 2h -> 4h, via a systemd timer drop-in.
+#
+# #433 (2026-10-10): the three thresholds below (USAGE_LOW_PCT etc.) moved
+# into models.toml's [usage] table, models.sh's single point; limits.env
+# carries no usage lines any more, so there is no per-host override left to
+# read. PATHFIND_MODEL_CALLS_MAX, which this script used to write into
+# limits.env while Low, is gone with it: grepping the repo and host-tools
+# found no reader anywhere for it -- lane.pathfind's own navigation agent
+# never consulted the dial it was supposedly for -- so it was deleted rather
+# than wired to something that does nothing today.
 #
 # The first version of this script saved every dial and every .model file on
 # the way into Low and restored them on the way out. The snapshot was taken
@@ -35,18 +43,19 @@
 # crossing that meter.py had always already moved past by the time this ran,
 # so it never came back on its own.
 #
-# WHEN. Re-evaluated on every tick, no latch:
-#   enter Low   when estimated% >= USAGE_LOW_PCT (80)
-#               or projected-at-reset >= USAGE_LOW_PROJ (90)
-#   back Normal when estimated% <  USAGE_LOW_PCT
-#               and projected-at-reset < USAGE_NORMAL_PROJ (75)
+# WHEN. Re-evaluated on every tick, no latch (dial names are models.toml's
+# [usage] keys, read through models.sh dial <name>):
+#   enter Low   when estimated% >= low_pct (80)
+#               or projected-at-reset >= low_proj (90)
+#   back Normal when estimated% <  low_pct
+#               and projected-at-reset < normal_proj (75)
 # The gap between 90 and 75 keeps it from flapping on one busy hour. The week
 # rolling over needs no special case: the estimate drops, and so does Low.
 # A tick that changes nothing logs nothing.
 set -u
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 SYSTEMD_DIR="${HAKUX_SYSTEMD_USER_DIR:-$HOME/.config/systemd/user}"
-LIM="$WORK/limits.env"
+MODELS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/models.sh"
 MODE_FILE="$WORK/usage/mode"
 LOW_FILE="$WORK/usage/low-active"
 SWITCH_LOG="$WORK/usage/switches.log"
@@ -64,20 +73,6 @@ now_iso() {
 now_epoch() { echo "${HAKUX_NOW:-$(date -u +%s)}"; }
 
 mkdir -p "$WORK/usage"
-[ -e "$LIM" ] || : > "$LIM"
-
-# -------------------------------------------------------------- limits.env
-get_kv() { sed -n "s/^$2=//p" "$1" | tail -1; }
-set_kv() {   # <file> <key> <value>
-    local f=$1 k=$2 v=$3
-    if grep -q "^$k=" "$f" 2>/dev/null; then
-        sed -i "s/^$k=.*/$k=$v/" "$f"
-    else
-        printf '%s=%s\n' "$k" "$v" >> "$f"
-    fi
-}
-unset_kv() { sed -i "/^$2=/d" "$1" 2>/dev/null; }   # <file> <key>
-dial() { local v; v=$(get_kv "$LIM" "$1"); echo "${v:-$2}"; }   # <key> <default>
 
 # ------------------------------------------------------------ hostops timer
 hostops_low() {
@@ -106,7 +101,6 @@ log_switch() { printf '%s\t%s\n' "$(now_iso)" "$1" >> "$SWITCH_LOG"; }
 
 apply_low() {   # <source> <reason>
     echo "$2" > "$LOW_FILE"
-    set_kv "$LIM" PATHFIND_MODEL_CALLS_MAX 20
     hostops_low
     write_mode low "$1" "$2"
     log_switch "-> low ($1): $2"
@@ -115,7 +109,6 @@ apply_low() {   # <source> <reason>
 
 apply_normal() {   # <source> <reason>
     rm -f "$LOW_FILE"
-    unset_kv "$LIM" PATHFIND_MODEL_CALLS_MAX
     hostops_normal
     write_mode normal "$1" "$2"
     log_switch "-> normal ($1): $2"
@@ -129,8 +122,8 @@ evaluate() {   # <source> -> 0 always; prints what it decided
     local src=$1 cur out
     [ -e "$STATE_JSON" ] || { echo "mode: no meter data yet ($STATE_JSON absent); no change"; return 0; }
     cur=$(read_mode); cur=${cur:-normal}
-    out=$(CUR="$cur" LOW_PCT="$(dial USAGE_LOW_PCT 80)" LOW_PROJ="$(dial USAGE_LOW_PROJ 90)" \
-          NORMAL_PROJ="$(dial USAGE_NORMAL_PROJ 75)" python3 - "$STATE_JSON" <<'PY'
+    out=$(CUR="$cur" LOW_PCT="$(bash "$MODELS" dial low_pct)" LOW_PROJ="$(bash "$MODELS" dial low_proj)" \
+          NORMAL_PROJ="$(bash "$MODELS" dial normal_proj)" python3 - "$STATE_JSON" <<'PY'
 import json, os, sys
 try:
     r = json.load(open(sys.argv[1])).get("last_report") or {}

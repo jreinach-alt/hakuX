@@ -79,7 +79,7 @@ LANE_SESSION_FOOTER="This is a headless session: it ends the moment this turn en
 # without a commit; the board role file tells the job to stop dispatching
 # when this script refuses.
 LANE_MAX=2
-. "$JOBS/models.env"
+MODELS="$JOBS/models.sh"
 # THE WINDOW IS NOT THE CAP. LANE_MAX only ever binds when there IS work, so
 # it throttles the days with a backlog and does nothing on a day the account's
 # window is already spent; it stays what its comment says it is, a runaway
@@ -117,15 +117,22 @@ LANE_MAX=2
 # environment and from systemd-run's --setenv, not from this file.
 #
 # PRECEDENCE, now that it works: the file wins over the process environment,
-# which is what it already did for LANE_MAX and for every name in models.env.
-# `$WORK/limits.env is the host's dial` (jobs/window.sh) means one dial.
+# which is what it already did for LANE_MAX. `$WORK/limits.env is the host's
+# dial` (jobs/window.sh) means one dial.
 TURNS="${LANE_TURNS:-150}"
+# The first LANE_ESCALATE_AFTER attempts run on the kind's (or the brief's
+# .model file's) own model; the next on one step up the ladder; after
+# LANE_MAX_ATTEMPTS the script refuses. Not in models.toml: LANE_MAX itself
+# is the precedent (a bash default here, limits.env overrides it, cloud.sh
+# reads it out of this file rather than repeating it -- see cloud.sh).
+LANE_ESCALATE_AFTER="${LANE_ESCALATE_AFTER:-3}"
+LANE_MAX_ATTEMPTS="${LANE_MAX_ATTEMPTS:-4}"
 # USAGE LOW IS READ HERE, AT EVERY START AND RESUME. jobs/usage/mode.sh only
 # creates or removes $WORK/usage/low-active; it rewrites no dial and no .model
 # file, so there is no snapshot to restore and nothing to go stale. While the
-# file exists, fewer lanes run and an expensive model runs on LOW_MODEL.
-LOW_LANE_MAX="${USAGE_LOW_LANE_MAX:-3}"
-LOW_MODEL="${USAGE_LOW_MODEL:-claude-sonnet-5}"
+# file exists, fewer lanes run (models.toml's [usage].low_lane_max) and the
+# model models.sh picks for any kind is capped at Sonnet.
+LOW_LANE_MAX=$(bash "$MODELS" dial low_lane_max)
 usage_low() { [ -e "$WORK/usage/low-active" ]; }
 if usage_low && [ "$LANE_MAX" -gt "$LOW_LANE_MAX" ]; then LANE_MAX=$LOW_LANE_MAX; fi
 
@@ -227,41 +234,38 @@ PYFLEET
 }
 
 # ATTEMPTS AND ESCALATION. Every start or resume of a lane is one attempt at
-# its issue, counted in $WORK/attempts/<name>. The first LANE_ESCALATE_AFTER
-# attempts run on MODEL_LANE, or on $WORK/briefs/<name>.model when the board
-# wrote one -- a lane doing docs, measurement or harness work costs the same
-# Opus session as JIT or shader engineering otherwise, on every start AND
-# EVERY RESUME, because job.handback resumes a lane whenever its results land
-# and a lane started on the cheaper model was running on Opus again from its
-# first resume. HAKUX_MODEL still overrides either, for one start. The next
-# attempt after LANE_ESCALATE_AFTER runs on MODEL_LANE_ESCALATED regardless of
-# the per-lane file: three failed passes is the signal that the problem needs
-# more reasoning, not the cheaper model. After LANE_MAX_ATTEMPTS the script
-# refuses: the board opens a decision-needed issue instead of spending a fifth
-# session. `lane.sh attempts <name>` shows the count; `lane.sh reset <name>`
-# clears it when the brief itself was the problem.
+# its issue, counted in $WORK/attempts/<name>. A brief names its KIND of work
+# (e.g. "engineering"), looked up in models.toml; $WORK/briefs/<name>.model,
+# when the board wrote one, is read first -- either a kind name, or (77
+# legacy files) a bare model id, both handled by `models.sh resolve`. HAKUX_MODEL
+# overrides either, for one start. The next attempt after LANE_ESCALATE_AFTER
+# runs one step up the ladder regardless of the per-lane file: three failed
+# passes is the signal that the problem needs more reasoning, not the cheaper
+# model. After LANE_MAX_ATTEMPTS the script refuses: the board opens a
+# decision-needed issue instead of spending a fifth session. `lane.sh
+# attempts <name>` shows the count; `lane.sh reset <name>` clears it when the
+# brief itself was the problem.
+#
+# A RESUME AFTER A WAIT IS NOT A FAILED ATTEMPT. This counter still advances
+# on every resume -- handback.sh is what tells a stranded/CI/device-wait
+# resume apart from a genuine failure, by saving and restoring THIS file's
+# count around the resume it issues for a wait, so this script never needs
+# to know which kind of resume it is.
 next_attempt() {   # prints the attempt number this start will be, and the model for it
-    local f="$WORK/attempts/$1" mf="$WORK/briefs/$1.model" n lane_model=""
+    local f="$WORK/attempts/$1" mf="$WORK/briefs/$1.model" n token="engineering"
     mkdir -p "$WORK/attempts"
     n=$(( $(cat "$f" 2>/dev/null || echo 0) + 1 ))
     if [ "$n" -gt "$LANE_MAX_ATTEMPTS" ]; then
-        echo "REFUSED: lane $1 has had $(( n - 1 )) attempts (LANE_MAX_ATTEMPTS=$LANE_MAX_ATTEMPTS), the last on $MODEL_LANE_ESCALATED. Open a decision-needed issue; do not start it again." >&2
+        echo "REFUSED: lane $1 has had $(( n - 1 )) attempts (LANE_MAX_ATTEMPTS=$LANE_MAX_ATTEMPTS), the last already escalated. Open a decision-needed issue; do not start it again." >&2
         return 75
     fi
-    [ -f "$mf" ] && lane_model=$(head -1 "$mf")
-    if [ "$n" -gt "$LANE_ESCALATE_AFTER" ]; then
-        MODEL="${HAKUX_MODEL:-$MODEL_LANE_ESCALATED}"
+    [ -f "$mf" ] && token=$(head -1 "$mf")
+    if [ -n "${HAKUX_MODEL:-}" ]; then
+        MODEL="$HAKUX_MODEL"
+    elif [ "$n" -gt "$LANE_ESCALATE_AFTER" ]; then
+        MODEL=$(bash "$MODELS" resolve "$token" --escalate)
     else
-        MODEL="${HAKUX_MODEL:-${lane_model:-$MODEL_LANE}}"
-    fi
-    # An explicit HAKUX_MODEL is a person's choice for this one start; Low
-    # caps only what the brief or the escalation rule picked.
-    if usage_low && [ -z "${HAKUX_MODEL:-}" ]; then
-        case "$MODEL" in
-            "$LOW_MODEL"|*sonnet*|*haiku*) ;;
-            *) echo "usage Low: lane $1 starts on $LOW_MODEL, not $MODEL ($WORK/usage/low-active)" >&2
-               MODEL=$LOW_MODEL ;;
-        esac
+        MODEL=$(bash "$MODELS" resolve "$token")
     fi
     echo "$n" > "$f"
     ATTEMPT=$n

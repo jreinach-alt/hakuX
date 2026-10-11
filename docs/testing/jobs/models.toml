@@ -1,0 +1,61 @@
+# The one table: which model a job runs on. Read by models.py/models.sh, the
+# one reader every caller (lane.sh, cloud.sh, ops_tick.py, pathfind.py,
+# drive.py) asks. No other file names a model id in an executable line.
+#
+# Set by the owner, 2026-10-10: "we have meter settings splattered all over
+# the repo when we should all be looking at one place. Switching from normal
+# to low should be a single point." Route building and pathfinding are
+# "effectively a classifier for game inputs" -- Sonnet or Haiku, never Opus.
+#
+# $WORK/usage/low-active (written only by jobs/usage/mode.sh) selects the
+# `low` column instead of `normal` for every kind below; nothing else
+# switches it. Escalation (one step up the ladder, after a FAILED attempt
+# only -- see lane.sh/cloud.sh) applies on top of whichever column is active,
+# then Low re-caps the result: escalating under Low can reach Sonnet, never
+# Opus.
+
+[models]
+opus = "claude-opus-5-5"
+sonnet = "claude-sonnet-5"
+haiku = "claude-haiku-4-5-20251001"
+
+# Haiku -> Sonnet -> Opus. No rung above Opus (Fable is retired).
+ladder = ["haiku", "sonnet", "opus"]
+
+# kind of work                                        normal   low
+[kinds.engineering]   # emulator code: JIT, renderer, shaders
+normal = "opus"
+low = "sonnet"
+
+[kinds.harness]       # measurement, docs, harness lanes
+normal = "sonnet"
+low = "sonnet"
+
+[kinds.pathfind]      # route building / pathfind steps (fast and stuck)
+# Haiku 4.5 took 6-9s a step against Sonnet's 3.5-4s and looped on a Yes/No
+# dialog in Midnight Club 3 (pathfind.py notes, 2026-10-02) -- stays on
+# Sonnet in Normal for that reason, not because it is harder work.
+normal = "sonnet"
+low = "haiku"
+
+[kinds.drive]         # drive fallback: a screen classifier, not reasoning
+normal = "haiku"
+low = "haiku"
+
+[kinds.audit]         # cloud.sh's issue/audit1/audit2/remediate claims
+normal = "sonnet"
+low = "sonnet"
+
+[kinds.bookkeeping]   # hostops, PM, ops ticks
+normal = "sonnet"
+low = "sonnet"
+
+# Usage-mode thresholds (jobs/usage/mode.sh): moved out of limits.env here,
+# the table's single point. No limits.env override remains for these --
+# that was the point.
+[usage]
+low_pct = 80          # enter Low when estimated% >= this
+low_proj = 90         # or when projected-at-reset% >= this
+normal_proj = 75      # back to Normal when projected-at-reset% < this (gap
+                       # keeps it from flapping on one busy hour)
+low_lane_max = 3       # LANE_MAX is capped to this while Low
