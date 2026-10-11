@@ -4652,17 +4652,17 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "de1f5d8da95971fc683425516b179a5451b8a5ad",
+  "emulator_commit": "dba22feab06a1bdc58f9df96ec1608b567b2a7b8",
   "gaps": 497,
   "resolved_tables": 1,
-  "sites": 3037,
+  "sites": 3039,
   "suites": 104,
   "support_dirs": [
-   "/home/justin/pbkitplusplus"
+   "/home/justin/hakux-work/fold-pins/pbkitplusplus"
   ],
   "symbols": 961,
   "tests_commit": "6743b6ab164e760e8b995e969c762d829af5d52e",
-  "tests_root": "/home/justin/nxdk_pgraph_tests",
+  "tests_root": "/home/justin/hakux-work/fold-pins/nxdk_pgraph_tests",
   "unread": 139
  },
  "schema": 1,
@@ -5098,6 +5098,16 @@
     "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5622",
     "role": "READ",
     "text": "hwaddr offset = GET_MASK(parameter, NV097_GET_REPORT_OFFSET);"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:169",
+    "role": "READ",
+    "text": "hwaddr offset = GET_MASK(parameter, NV097_GET_REPORT_OFFSET);"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:257",
+    "role": "READ",
+    "text": "uint32_t off = GET_MASK(parameter, NV097_GET_REPORT_OFFSET);"
    }
   ],
   "NV097_GET_REPORT_TYPE": [
@@ -5112,7 +5122,7 @@
     "text": "uint8_t type = GET_MASK(parameter, NV097_GET_REPORT_TYPE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:105",
+    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:514",
     "role": "READ",
     "text": "uint8_t type = GET_MASK(parameter, NV097_GET_REPORT_TYPE);"
    }
@@ -5129,7 +5139,7 @@
     "text": "assert(type == NV097_GET_REPORT_TYPE_ZPASS_PIXEL_CNT);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:106",
+    "loc": "hw/xbox/nv2a/pgraph/vk/reports.c:515",
     "role": "REF",
     "text": "assert(type == NV097_GET_REPORT_TYPE_ZPASS_PIXEL_CNT);"
    }
