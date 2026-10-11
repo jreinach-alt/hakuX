@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `coldstart1010` | claude-opus-5-5 | 1h 19m | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) |
-| `fastpaths1010` | claude-sonnet-5 | 2h 16m | fastpaths1010: register step-3 screen prediction; scope to 20 of 44 (#433, 0.5) |
+| `coldstart1010` | claude-opus-5-5 | 1h 34m | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) |
+| `fastpaths1010` | claude-sonnet-5 | 2h 31m | fastpaths1010: register step-3 screen prediction; scope to 20 of 44 (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lanelocal-shuffle`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 7 waiting, 1 running.
+- **Device queue:** 5 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -74,11 +74,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/coldstart1010` | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) | `06e5f30f51` | 2026-10-10 22:51 |
+| `lane/coldstart1010` | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) | `f0a9b0c17d` | 2026-10-10 23:28 |
 | `lane/fastpaths1010` | fastpaths1010: register step-3 screen prediction; scope to 20 of 44 (#433, 0.5) | `f0314170df` | 2026-10-10 22:47 |
 
 ## Recently landed on master
 
+- 2026-10-10 lane.lanenobg1010 -- lane sessions refuse background commands with a hook, not a footer (#433, 0.5)
 - 2026-10-10 postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5)
 - 2026-10-10 lane.meterfit1010: price transcript tokens, not modelUsage tokens (#433, 0.5)
 - 2026-10-10 drawrec1010: HAKUX_DRAWREC=1 (default off) cuts NFS race-start recording 21%/draw
@@ -87,7 +88,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly)
 - 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 - 2026-10-10 lane.usage24h1009: project the week's usage from the trailing 24h burn rate, not the trailing 6h (#433)
-- 2026-10-10 lane.fgrace1010 -- the display guard's "guest exit mid-route" leg loses a race and fails folds (#433, 0.5)
-- 2026-10-10 lane.fleetflush1010 -- fleet.py's FAIL lines land mid-line when stdout and stderr share a file (#433, 0.5)
 
-_Updated 2026-10-10 23:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 23:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
