@@ -339,4 +339,29 @@ Batch 3 (next): the 7 newly-restored titles, 6 by route + 1 soak
 (Gunvalkyrie). Remaining after that: the rest of the 23-restored-tonight
 list from 4.1.1/4.1.2 not yet run.
 
-(screen results: fill in as batches complete)
+### 4.4 Screen results (filled in as batches complete)
+
+Batch 2 is running behind ordinary queue contention (coldstart1010 held the
+Nova ahead of it for about 15 min; this is normal multi-requester sharing,
+not a blocker). Throughput once running: about one run per 6-8 min (route
+runs 300s + ~90s overhead; soaks 180s + overhead), so this 20-run batch is
+expected to take roughly 2-2.5h of device time, consistent with the
+pilot-gate's own ~102 min estimate for route titles alone plus the soaks.
+
+| title | arm | fatal | frames | gfps | verdict |
+|---|---|---|---|---|---|
+| Crimson Skies: High Road to Revenge | ON/OFF | none/none | normal/normal | 59.90/59.94 | pass (4.2) |
+| Spikeout: Battle Street | ON/OFF | none/none | not yet reviewed by eye (route-frames pulled, not diffed) | 59.94/59.94 | pass (env/on-lines/hdd/marks all clean both arms) |
+| Jet Set Radio Future | ON/OFF | none/none | not yet reviewed by eye | 59.93/59.94 | pass (env/on-lines/hdd both arms clean; hdd golden_status None is expected for a first-run-state title, not a defect) |
+
+Remaining in batch 2 (queued, awaiting device time): Tork, ToeJam & Earl
+III, Halo: Combat Evolved, Panzer Dragoon Orta, Call of Duty 3, Capcom vs.
+SNK 2 EO, The Simpsons Hit & Run, Dark Summit (ON/OFF each).
+
+Batch 3 (queued after batch 2 drains): the 7 titles restored in 4.3 --
+Kabuki Warriors, Gunvalkyrie, 187: Ride or Die, Tony Hawk's Pro Skater 2x,
+KOF: Maximum Impact - Maniax, Alien Hominid, WWE Raw 2.
+
+Remaining after that: the rest of the 23-restored-tonight soak titles from
+4.1.1/4.1.2 (16 of 23, since Capcom vs. SNK 2 EO and 6 others are already
+queued across batches 1-2).
