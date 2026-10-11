@@ -444,6 +444,72 @@ C2 rests on a single cold start in a single A run, and cold start 1 moved 1.3 ms
 at 20:03 PDT, with the same env, ref, route and expect file: `1-1791687762-postput1010-417368` (A2'c). It runs
 after both B runs, so the order is A, B, B, (void), A. The judge passes the four valid runs.
 
+### 4.10 The full-switch pair: P2 and H2 fail, C2 passes by 0.17 ms
+
+A2'c finished DONE at 20:11 PDT on 772429156c. No input failed, 12 of 12 starts are valid, and all 12 g11 frames
+show the Punto moving at 45-88 MPH with 11.3-12.5 s on the race clock. `ppread.py 1-1791685180-postput1010-3732954
+1-1791685199-postput1010-3733954 1-1791685200-postput1010-3736342 1-1791687762-postput1010-417368 --expect
+docs/testing/predictions/postput1010-nfsall.json`:
+
+| run | arm | cold 1 | warm countdown | post-GO warm | warm v2/v3/v4 | valid |
+|---|---|---|---|---|---|---|
+| `1-1791685180-postput1010-3732954` | A2'a | 38.1 | 33.7 | 33.4 | 77/11/1 % | 12/12 |
+| `1-1791685199-postput1010-3733954` | B2'a | 35.8 | 33.6 | 33.4 | 73/12/1 % | 12/12 |
+| `1-1791685200-postput1010-3736342` | B2'b | 34.9 | 33.6 | 33.4 | 75/11/1 % | 12/12 |
+| `1-1791687762-postput1010-417368` | A2'c | 36.9 | 33.8 | 33.4 | 78/10/1 % | 12/12 |
+| **A2'** (mean of runs) | | 37.49 | 33.76 | 33.4 | 77.4 % v2 | |
+| **B2'** (mean of runs) | | 35.32 | 33.59 | 33.4 | 73.9 % v2 | |
+
+| check | verdict | figure |
+|---|---|---|
+| V | PASS | four valid runs: every switch line on all four, `[postput] on` on B2' only, no failed boot input, a moving car in all 48 g11 frames. A2'b is void (4.9) |
+| P2 | **FAIL** | warm countdown B - A = **-0.18 ms** (needed <= -0.5) |
+| F2 | PASS, uninformative | B 33.59 ms (needed <= 33.8). A2' is 33.76, under the bar as well, so F2 says nothing about the store |
+| C2 | **PASS, narrowly** | cold start 1 B - A = **-2.17 ms** (needed <= -2.0) |
+| H2 | **FAIL** | warm v2 share B - A = **-3.5 points** (needed >= +10) |
+
+Reading it:
+
+- **Warm, the store does nothing that counts.** -0.18 ms/frame is inside the spread of A2' alone (33.7, 33.8). Both
+  arms sit 0.1-0.3 ms over the 33.5 ms floor that drawrec1010 measured, so a CPU lever has little left to move there.
+  B's v2 share is lower, not higher. Its frames outside v2-v4 rose from 11 % to 13-14 %. That is a shift in
+  frame pacing, not in pace.
+- **Cold start 1 is where it shows.** Both B2' cold starts (35.8, 34.9) are below both A2' cold starts (38.1,
+  36.9). No earlier pair in this lane showed it: on the REPORT_ASYNC + TEXSCAN base, cold B - A was +0.52 (4.3). This is the
+  prediction's case "C2 passes and P2 fails". With DRAWREC on, the PFIFO thread's per-draw work is shorter, so in
+  the cold frames the guest's DMA_PUT store is late more often, and posting it helps. The 4.4 trace saw the
+  mechanism without the gain: cold `lockw` fell 5.36 -> 2.29 ms on the older base, and the period stayed flat
+  because `p_run` set it.
+- **How much C2 rests on.** There is one cold start per run and two runs per arm. The margin over the bar is 0.17
+  ms. The chance that both B values rank below both A values when the store does nothing is 1 in 6. The prior,
+  stated before the runs, was ~12 %. It is the first evidence for the cold effect, and it is not a measured size.
+  A cold-only design would settle it: N boots, start 1 each, B against A. Each boot is about 3 min of menus.
+- **What a player would see.** Cold start 1 is the first 3.5 s countdown after a race loads, about 2 ms a frame
+  faster, which is still above the floor (~1.8 ms over at 35.3). Nothing changes in the race itself.
+
+Prediction verdicts, all on this lane's runs:
+
+| prediction | base | verdict |
+|---|---|---|
+| `postput1010-nfs.json` | REPORT_ASYNC + TEXSCAN | FAIL: P +0.06, T 34.01, G +0.02; C passes (+0.52 <= +3.0) |
+| `postput1010-ftpair.json` | same, frametrace | FAIL: L and Q fail on A's side, so the wait was not on this base (4.4, 4.5) |
+| `postput1010-nfsall.json` | all six switches | FAIL: P2 -0.18, H2 -3.5 points; F2 passes but says nothing; C2 passes (-2.17) |
+
+**Recommendation: keep opt-in.** The only check the store passes is C2, a cold-start leg that passes by 0.17 ms on
+two starts per arm. That is not "drop" (the nfsall prediction's rule: drop only if P, P2 and C2 all fail), and it is
+not grounds for default-on. Default-on needs two checks, neither of which this lane runs:
+
+1. **A GPU-paced title:** The Simpsons Hit & Run in free roam, a plain fps A/B with the store. That title lost
+   40.05 -> 36.22 fps with `c2dfca18a1`.
+2. **The cold start, measured as a cold start:** NFS race start, several boots per arm, start 1 only, on the
+   full-switch base.
+
+The pixel leg (brief step 5) is not run: it was gated on P, and P failed. Nova time: eleven runs at request.sh's
+estimate of 590 s each, about 108 min of the 3 h.
+
+The selftest re-run on 713cd67a8a (drawrec1010 merged in) passes: switch on and off, the static checks, and all five
+mutants red.
+
 ## 5. For the next lane
 
 - `ppread.py` cannot see motion. V's moving-car check is by eye from `route-frames/*-s*-g11.png`, and goes here.
@@ -454,4 +520,9 @@ after both B runs, so the order is A, B, B, (void), A. The judge passes the four
   render-mode row behind its base, and that row had already removed 4.4 ms of the 6.3. Re-trace A on the lane's
   own base before registering checks on a mechanism figure (L and Q here failed on A's side).
 - Do not re-run the posted store at NFS's race start on the REPORT_ASYNC + TEXSCAN base. It is posted on 12-32 %
-  of kicks and the period does not move.
+  of kicks and the period does not move. On the full-switch base it also leaves the warm countdown alone
+  (-0.18 ms). Only cold start 1 is open (-2.17 ms on two starts per arm), and a cold-only design is the way to
+  test it, not another 12-start soak.
+- Look at every run's g11 frames, even when the reader passes V. A pad.sh hang in a blind route's boot sends the
+  menus somewhere else, and the count checks still pass. `ppread.py` now fails that case. `route.sh` does not, and
+  should end such a run VOID at its first failed boot input (4.9).

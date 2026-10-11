@@ -6,7 +6,7 @@ Base: master @ 6052ff98d4 (merged in at b9b36d655c; reportasync1010 is folded), 
 Files: hw/xbox/nv2a/user.c, hw/xbox/nv2a/nv2a_int.h, hw/xbox/nv2a/pfifo.c, docs/lanes/postput1010/**, docs/testing/predictions/postput1010-*.json
 Prediction: docs/testing/predictions/postput1010-nfs.json @ 1987085cd7bf0642c4678302bef5b9b9f9157bad3d9a6a341b318fec7446d7a5 (race start, A/B/B/A, plain build, ref c63ec9774f): FAIL (P, T, G fail; C passes)
 Prediction: docs/testing/predictions/postput1010-ftpair.json @ 45cb51e232b56881d4eb20f03dc5214f05db490463f6f8adea009865377849de (race-start frametrace pair, perflog, ref c63ec9774f): FAIL (L, Q fail on A's side: the wait is not on this base)
-Prediction: docs/testing/predictions/postput1010-nfsall.json @ 5b11550a770622fbe27bbc6fafae1ea6791d88891d749baa7858185ca57b5df7 (Addendum 1, full-switch base, A2'/B2'/B2'/A2', plain, ref 772429156c): queued, not yet read
+Prediction: docs/testing/predictions/postput1010-nfsall.json @ 5b11550a770622fbe27bbc6fafae1ea6791d88891d749baa7858185ca57b5df7 (Addendum 1, full-switch base, A2'/B2'/B2'/A2', plain, ref 772429156c): FAIL (P2, H2 fail; F2 passes but A passes too; C2 passes, -2.17 ms)
 Needs device: yes (Nova, used)
 Needs NDK: yes
 
@@ -62,18 +62,42 @@ So a recorder thread or anything else that cuts the PFIFO thread's own cold work
 warm countdown is near the floor. P fails, so the pixel leg is not run. NOTES.md sections 4.3-4.5 have the full
 tables.
 
-## Pending: Addendum 1's full-switch pair
+## Addendum 1's full-switch pair: warm unchanged, cold start 1 -2.2 ms on two starts per arm
 
-The pair is A2' = REPORT_ASYNC + TEXSCAN + DRAWREC + UNI_BULK/UBERCACHE/FOGCACHE, B2' = A2' + POSTED_PUT,
-checks P2/F2/C2/H2, on ref 772429156c (origin/lane/drawrec1010 merged in, per Addendum 2). Queued on the Nova,
-in order: A2'a `1-1791685180-postput1010-3732954`, B2'a `1-1791685199-postput1010-3733954`, B2'b
-`1-1791685200-postput1010-3736342`, A2'b `1-1791685202-postput1010-3737568`. The prior, stated before the
-runs, is low (P2 ~7 %, C2 ~12 %): at this base the guest is idle once freed, and DRAWREC shortens the PFIFO
-thread's lock hold too.
+A2' = REPORT_ASYNC + TEXSCAN + DRAWREC + UNI_BULK/UBERCACHE/FOGCACHE, B2' = A2' + POSTED_PUT, plain, ref
+772429156c (origin/lane/drawrec1010 merged in, per Addendum 2), ms per frame, each arm the mean of its runs:
 
-Recommendation (provisional, pending the full-switch pair): **drop**, unless P2/F2/C2 pass. The switch is posted on
-12-32 % of kicks and moves nothing at the scene it was built for. Default-on would also need a GPU-paced title
-re-checked: The Simpsons Hit & Run in free roam, a plain A/B on fps. That is the title that lost 40.05 -> 36.22
-with `c2dfca18a1`.
+| | A2'a `…3732954` | B2'a `…3733954` | B2'b `…3736342` | A2'c `…417368` | A2' | B2' | B2' - A2' | check |
+|---|---|---|---|---|---|---|---|---|
+| warm countdown | 33.7 | 33.6 | 33.6 | 33.8 | 33.76 | 33.59 | **-0.18** | P2 <= -0.5 FAIL; F2 B <= 33.8 PASS (A passes too) |
+| post-GO warm | 33.4 | 33.4 | 33.4 | 33.4 | 33.4 | 33.4 | 0.0 | |
+| cold start 1 | 38.1 | 35.8 | 34.9 | 36.9 | 37.49 | 35.32 | **-2.17** | C2 <= -2.0 PASS |
+| warm v2 share | 77 % | 73 % | 75 % | 78 % | 77.4 % | 73.9 % | -3.5 points | H2 >= +10 FAIL |
+
+(Run ids `1-1791685180-postput1010-3732954`, `1-1791685199-postput1010-3733954`,
+`1-1791685200-postput1010-3736342`, `1-1791687762-postput1010-417368`.) Each run has 12 of 12 valid starts and
+a moving car in all of its g11 frames. A fifth run, A2'b `1-1791685202-postput1010-3737568`, is void. A pad.sh
+hang (rc 124, adb stalling) at the boot's save prompt sent the blind route into career mode, and its g11 frames
+show menus and a parked BMW. `ppread.py`'s V now fails a run whose boot inputs failed. A2'c replaced it.
+`route.sh` still carries on after a failed boot input. Ending the run VOID at that point is a harness guard for
+lane.local (NOTES 4.9).
+
+C2 passes by 0.17 ms. Both B2' cold starts fall below both A2' cold starts. That ranking happens 1 time in 6 by
+chance, and it rests on one cold start per run. Warm, both arms sit 0.1-0.3 ms over the 33.5 ms floor, and the
+store moves nothing.
+
+## Verdicts and recommendation
+
+| prediction | verdict |
+|---|---|
+| `postput1010-nfs.json` (REPORT_ASYNC + TEXSCAN) | FAIL: P +0.06, T 34.01, G +0.02 (C passes) |
+| `postput1010-ftpair.json` (same, frametrace) | FAIL: L, Q fail on A's side; the lock wait was not on this base |
+| `postput1010-nfsall.json` (all six switches) | FAIL: P2 -0.18, H2 -3.5 points (F2 passes, uninformative; C2 passes, -2.17) |
+
+**Recommendation: keep opt-in.** The store passes only a narrow cold-start leg on the full-switch base. Before
+default-on, two checks, neither run here: (1) a GPU-paced title, The Simpsons Hit & Run in free roam, a plain fps
+A/B with the store, because it lost 40.05 -> 36.22 fps with `c2dfca18a1`; (2) NFS race start 1 measured cold,
+several boots per arm, on the full-switch base, to put a size on C2. The pixel leg (brief step 5) was gated on P
+and is not run.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
