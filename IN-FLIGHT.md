@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gtasagpu1011` | claude-opus-5-5 | 1 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
-| `nfsdefault1011` | claude-sonnet-5 | 0 min |  |
+| `gtasagpu1011` | claude-opus-5-5 | 16 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
+| `nfsdefault1011` | claude-sonnet-5 | 15 min | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `2026-10-11T16:13:31Z`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 4 waiting, 1 running.
+- **Device queue:** 8 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -74,7 +74,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `d00d6fcb8a` | 2026-10-11 09:13 |
+| `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `9d59724dc6` | 2026-10-11 09:24 |
+| `lane/nfsdefault1011` | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) | `59ddce9e12` | 2026-10-11 09:25 |
 
 ## Recently landed on master
 
@@ -84,4 +85,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 
-_Updated 2026-10-11 09:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 09:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
