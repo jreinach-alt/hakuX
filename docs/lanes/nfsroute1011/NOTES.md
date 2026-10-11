@@ -415,3 +415,25 @@ analysis). Per Addendum 1, **this route is not queued**: it has new `waitfor` st
 the same `route_refs` / merge signal as Step 2. Next: wait for lane.local's "live" message, merge
 origin/master past that point, then run the Step 3 proof (`request.sh --route nfs-mw-race`, which
 resolves to `.first-run` since 4541007B has no golden yet).
+
+### Status (10-11, end of this session): waiting on the ref-staging fix
+
+Checked directly rather than assuming: `grep -n route_refs /home/justin/hakuX/docs/testing/dispatcher.sh`
+finds nothing yet, and `origin/master` is still at `6d8947bb47` (same base this branch started
+from) -- lane.soakvideo1011's fix has not landed. All of Step 3's offline work (route written,
+offline-checked, crops cut/copied and score-tabled, NOTES.md and the PR body current) is done; the
+only thing left for Step 3 is the device proof, and it is correctly blocked, not idle-blocked.
+
+Step 4 is deliberately NOT started yet beyond this note: writing `nfs-mw-race.returning.route`
+now would mean guessing the post-save boot screen sequence, since no run has ever actually booted
+*with* a saved 4541007B profile -- the brief's own instruction is "record from the frames what the
+boot shows now," and those frames only exist once Step 3's profile is real on a title disk (i.e.
+after Step 3's device proof passes). Doing Step 4 first would repeat the exact mistake this lane
+exists to fix (a route built on assumption instead of a screen read). Step 4 is next once Step 3's
+proof lands, reusing nfs-mw-quickrace's race-menu crops for everything after the (now much
+shorter) boot per addendum 2.
+
+Posted `[lane.nfsroute1011] waiting:` on PR #929 naming this exact signal. Per the lane contract,
+stopping here rather than polling past the turn cap -- `jobs/handback.sh` resumes a draft PR like
+this one once CI is green or a dependency signal lands; a `waiting:` comment names the ref-staging
+fix landing in `dispatcher.sh`, which is outside this session.
