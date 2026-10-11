@@ -37,3 +37,48 @@ only as a side note.
 
 The six fastpaths switches are already ruled out by lane.local's OFF run (3377194).
 `HAKUX_PREBUILD` is on by default but only queues pipeline builds; it draws nothing.
+
+Queued at 6d8947bb47: `1-1791735439-lane.gtasagpu1011-3545202` (`HAKUX_SURFGPU=0`) and
+`1-1791735439-lane.gtasagpu1011-3545543` (`HAKUX_GPL=0`).
+
+**Desktop lavapipe: not run.** The GTA San Andreas disc is not under `/mnt/d/hakux-staging`
+(searched 5 levels deep for `54540082` and `andreas`). And the desktop harness
+(`docs/testing/desktop-runs.md`) runs the pgraph test disc, which needs no input. This route
+needs START, twelve A presses and the stick before CJ is on foot, and the desktop path has
+no input injection. Building one is out of scope here.
+
+## 2. Frame dump
+
+The live dump (schema 3) recorded each draw's colour surface and texture bindings, and
+nothing else. Blend, depth, stencil, colour mask and the depth target were only in the
+serialising diag capture, and GTA San Andreas cannot run under that capture. Schema 4
+(33ceb415ca, `vk/renderer.c`) adds:
+
+- per draw, raw (decode key: `nv2a_diag_log_draw_call`):
+  - `rs`: CONTROL_0..3, BLEND, BLENDCOLOR, SETUPRASTER, SHADERCLIPMODE, ZCLIPMIN/MAX and CSV0_D;
+  - `clip`, `aa`, `zf`;
+  - `zeta`: the depth target's address, size and format;
+- per enabled texture stage: `srf`, the surface at the stage's address if any (size, format,
+  swizzle, dirty and pending flags), and `s2t`, whether the stage bound that surface's image
+  directly;
+- once per shader hash, a `{"t":"shader"}` record: the combiner registers and the VS,
+  GS and FS GLSL.
+
+Queued: `1-1791735798-lane.gtasagpu1011-3571105`, at 33ceb415ca, with
+`XEMU_FRAME_DUMP=30,after250,cap512`. That is 30 frames from 250 s, about 55 s into gameplay
+at an in-game time near 09:00, so sunny.
+
+What to look for (GTA SA's real-time ped shadow, as reverse-engineered for the PC
+version; the Xbox port is a hypothesis to check against the dump):
+
+1. CJ's silhouette is drawn into a small render target, about 128x128.
+2. The silhouette is blurred and inverted by full-raster quads that sample that target.
+3. The result is projected onto ground polygons the CPU clipped, with blend
+   ZERO / INV_SRC_COLOR.
+
+If the target arrives in that last texture as zero, the multiply leaves the ground unchanged,
+and the shadow is missing with every draw present. The dump separates:
+
+- the surface→texture path: `srf`/`s2t` on the sampling draws;
+- a draw sampling its own colour target (feedback; tile memory on Adreno);
+- blend, depth or cull state on the projected draw.
