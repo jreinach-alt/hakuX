@@ -118,7 +118,23 @@ relocating the mutant copy). All 10 checks pass in isolation (`SELFTEST_ONLY=62-
 
 **Commit**: `soakvideo1011: route crops travel with the request (Addendum 3, #433)`, covering `request.sh`,
 `dispatcher.sh`, the new `62-routerefs-soakvideo1011.sh`, and the `97-dispatch-snapshot-drive.sh` exception
-above, in one commit (they are one change: the fix and the fragments that prove it and keep proving it).
+above, in one commit (they are one change: the fix and the fragments that prove it and keep proving it). Landed
+as `0e59d32eb9`.
+
+**Full selftest, rerun after Addendum 3** (same `SELFTEST_SHARD=k/4` split, each shard its own foreground Bash
+call, PID-polled, logfile + `set -o pipefail` + explicit `RC=$?`, per the same discipline as the Addendum-2 run
+above -- this run now includes `62-routerefs-soakvideo1011.sh`, so 136 fragments, not 135):
+
+| shard | fragments | checks passed | failed | result |
+|---|---|---|---|---|
+| 0/4 | 13 | 284 | 0 | RC=0 |
+| 1/4 | 45 | 1104 | 0 | RC=0 |
+| 2/4 | 39 | 1068 | 0 | RC=0 |
+| 3/4 | 39 | 920 | 0 | RC=0 |
+
+136/136 fragments, 3376/3376 checks passed, 0 failed. `bash -n` clean on `dispatcher.sh`, `request.sh`, and
+both touched `selftest.d/*.sh` files (re-checked after the Addendum 3 commit, not just before it). Addendum 3's
+own rerun step is done; `State: ready` next, per Addendum 2's ordering.
 
 ## Step 0 (read)
 
