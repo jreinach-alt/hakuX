@@ -87,3 +87,67 @@ state and time a `take` around it. The addendum also retired the `gtasa1011` que
 ended) and added the profile-gate consequence: GTA III/VC have no golden, so the first soak per title must be
 route-finding (300 s, `# state: first-run`, `--find-route` if present) rather than the step 2/4 gameplay proof,
 with a golden promoted from that run before the real proof soak. Resuming attempt 2 with that approach now.
+
+## 4. GTA III: pathfind, golden, and the proof soak's transient "Load Game" menu
+
+Reached the Nova both times via `hold.sh wait nova gtaroutes1011 3600 ...` + `hold.sh wait-idle nova 1800`, in the
+foreground, per the addendum -- no contention this time; both holds were granted promptly.
+
+`pathfind.py` on GTA III (session 1034707, first-run disk) reached gameplay in 2.2 min / 14 steps: emulator-loading
+icon -> several Rockstar publisher-logo/black screens (~90 s, non-interactive) -> intro credits video (A skips) ->
+title screen (`START`) -> two more cutscenes (A skips each) -> Claude on foot in Portland, full HUD. No menu of any
+kind appeared -- true first-run goes straight from `START` at the title into the cutscenes. Recorded path ->
+`pathknow/paths/5454000E.json`. Wrote `gta-3.route` to match this beat-for-beat, as a 4x-A-press-every-5s train per
+skip point (as gta-sa.route), `# state: first-run` initially.
+
+`titlestate.py golden --title-id 5454000E` showed no existing golden and a `latest` harvest matching the pathfind
+session's run id, so promoted it: `titlestate.py promote --title-id 5454000E --latest --by lane.gtaroutes1011 --note
+"pathfind 1034707: first golden, title data after a New Game"`. Re-headed `gta-3.route`'s `# state:` line to `any`.
+
+Ran the step-2 proof: `request.sh --route gta-3 --seconds 600 --frames-every 30 --no-expect "route proof: frames
+after the mark must show the player moving"` -> result `1-1791747431-gtaroutes1011-1129784`. Confirmed
+`hdd.loaded == "golden"`. `title_verdict.py --require confirmation`: `gameplay=453.6s fps_ok=0.9804` -- clears the
+>=300 s bar.
+
+Frame-by-frame inspection (30 s interval) found a real anomaly, now resolved by reading further frames rather than
+stopping at the first one:
+
+- f00001-f00004 (t=0-90 s): boot -- black, then the GTA III publisher-card/logo screens, as expected.
+- f00005-f00008 (t=120-240 s): **not** the title screen's "Press START" prompt the brief described and pathfind's
+  first-run session saw -- a "Load Game" tab with "New Game" (highlighted) / "Load Game" menu and a
+  "START: Resume Game" hint bar, static across all four frames. This is the golden's doing: the golden carries the
+  title data the pathfind session's own New Game wrote, so `press START` at the title on this disk now opens a
+  save-aware menu instead of starting straight into the cutscenes the first-run disk went to. The route's A-press
+  trains (written for a cutscene skip) were landing on this menu instead, and did not look like they were doing
+  anything frame-to-frame -- the two frames 30 s apart are pixel-identical modulo the hint-bar text.
+- f00009 (t=270 s): resolved -- live gameplay, "Callahan Bridge" location caption, Claude (prison jumpsuit, opening
+  bridge-escape beat) running. Somewhere in t=240-270 s one of the route's A presses did land as "New Game" select
+  and the game proceeded through the opening cutscene into the actual playable prologue.
+- f00010, f00015, f00021 (t=300/450/630 s): all live gameplay, HUD intact, player in a visibly different place/pose
+  and the minimap marker moved each time (standing on the expressway shoulder -> mid-stride on the bridge deck ->
+  running past a girder further down the bridge).
+
+So the menu was a one-time, transient consequence of booting a save-bearing golden through a route written for a
+blank-save first-run boot, not a stuck state: the same A-press train that was meant to skip cutscenes ended up also
+clearing this menu, just slower than intended (about 2 extra A presses' worth of real time, ~120 s, past where the
+cutscenes alone would have taken). Per the brief's pass criteria -- mark reached, `gameplay_s` >= 300 (453.6),
+player in a different place in >=3 post-mark frames (four confirmed: f00009/f00010/f00015/f00021) -- **`gta-3.route`
+passes as written. No fix/rerun needed.** Left the route and its header comment as committed; the header's existing
+note that "the boot sequence does not change once a golden exists" turned out to be wrong in the menu sense (it does
+add a menu) but right in the outcome sense (the same A-press train clears it without a route change), so left it
+rather than rewriting a claim that was directionally fine and is now superseded by this section.
+
+## 5. Vice City: pathfind, golden
+
+`pathfind.py` on Vice City (session 1056194, first-run disk) reached gameplay in 1.5 min / 9 steps: emulator-loading
+icon -> two Rockstar publisher-logo screens (A skips each) -> loading/title-card screen (non-interactive, no START
+press ever recorded) -> three-part "In the Beginning..." cutscene (A skips each) -> Tommy on foot at the Ocean View
+Hotel, full HUD. Confirms the route's header note: no "Start Game"/"New Game" menu and no title-screen START on this
+disk's first run, contrary to the brief's prose expectation -- the probe step re-confirmed the same thing a second
+time within the same session. Recorded path -> `pathknow/paths/5454000F.json`. Wrote `gta-vc.route` to match.
+
+`titlestate.py golden --title-id 5454000F` showed no existing golden; promoted the pathfind session's `latest`
+harvest: `titlestate.py promote --title-id 5454000F --latest --by lane.gtaroutes1011 --note "pathfind 1056194: first
+golden, title data after reaching gameplay"`. Re-headed `gta-vc.route`'s `# state:` line to `any`.
+
+Proof soak for `gta-vc.route` not yet run -- next step.
