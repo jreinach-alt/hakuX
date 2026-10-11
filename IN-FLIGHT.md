@@ -8,13 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 1h 14m | fastpaths1010: Kabuki Warriors pass (batch 3); merge origin/master |
-| `lockwake1011` | claude-opus-5-5 | 1h 12m | lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lo |
+| `fastpaths1010` | claude-sonnet-5 | 1h 29m | fastpaths1010: KOF Maximum Impact - Maniax pass (batch 3) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 48 waiting, 1 running.
+- **Device queue:** 54 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -74,8 +73,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fastpaths1010` | fastpaths1010: Kabuki Warriors pass (batch 3); merge origin/master | `d09f31e39d` | 2026-10-11 03:28 |
-| `lane/lockwake1011` | lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lock-free wa | `39c6dacc5e` | 2026-10-11 04:14 |
+| `lane/fastpaths1010` | fastpaths1010: KOF Maximum Impact - Maniax pass (batch 3) | `93cc446636` | 2026-10-11 04:25 |
 
 ## Recently landed on master
 
@@ -91,4 +89,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly)
 - 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 
-_Updated 2026-10-11 04:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 04:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
