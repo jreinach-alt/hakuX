@@ -163,30 +163,53 @@ below. None of the 23 has a `docs/testing/titles/targets.toml` entry with a
 soaks, same as the 2 soak-plan titles already in the 21 (NBA Live 2004,
 Call of Duty 3, Capcom vs. SNK 2 EO already soak-only).
 
-21 scoped (ISO confirmed present on Nova as of the addendum), with
-route/soak plan:
+### 4.1.2 The Alien Hominid pilot failed live: 12 of the 21 were already gone
+
+The first real step-3 request pair (Alien Hominid ON/OFF,
+`1-1791697695-fastpaths1010-3189025`/`-3189126`) both came back with
+`ERROR: title not on device: 5A440004-Alien_Hominid.xiso.iso -- searched
+/storage/E6C6-D7AA/Games/XBox`, despite Alien Hominid being in the
+"confirmed present" 20/21 from 4.1/4.1.1. The Oct-3 listing this lane
+checked is not just missing 24 additions (4.1.1's fix) -- it can also be
+wrong about presence it claims, because it predates events that remove
+titles.
+
+`wt/pathfind/scratch/nova-free1008.log` (a space-freeing pass, 10-08
+21:25-21:49 PDT, not seen before this pilot failure) records 34 titles
+deleted from the Nova that day to recover space (99% full at the start,
+`/dev/fuse 955G 945G 10G 99%`). Diffing those 34 against the 23 titles
+tonight's shuffle (4.1.1) restored leaves **12 still missing**, never
+restored: Alien Hominid, KOF: Maximum Impact - Maniax, Azurik: Rise of
+Perathia, WWE Raw 2, 50 Cent: Bulletproof, Baldur's Gate: Dark Alliance,
+Kabuki Warriors, 187: Ride or Die, Tony Hawk's Pro Skater 2x, Gunvalkyrie,
+Castlevania: Curse of Darkness, NBA Live 2004 -- all 12 were in this lane's
+original 20/21, none were in tonight's shuffle list (the addendum's 23 was
+built from the brief author's own check, which apparently also didn't
+cross this log). Capcom vs. SNK 2 EO was `archived` in the same Oct-8 pass
+but never `deleted` -- consistent with the addendum finding it present.
+
+These 12 move to `blocked_titles` (`fastpaths1010-screen.json` updated
+again, same in-place reasoning: no device run has used any wider scope).
+**Current scope: 32 of 44** -- 8 of the original 20 the Oct-8 pass did not
+touch, Capcom vs. SNK 2 EO, and the 23 restored tonight. This finding is
+named here (and will go in a PR comment) so lane.local can decide whether
+to shuffle these 12 back; not run here, same reasoning as 4.1.
+
+32 scoped (ISO presence now cross-checked against both the Oct-3 listing
+AND the Oct-8 deletion log; still not a live query, so a further "title not
+on device" on any of these is possible and gets treated as a blocker for
+that one title, not grounds to distrust the whole batch), with route/soak
+plan:
 
 | title | nova iso | route | plan |
 |---|---|---|---|
-| Alien Hominid | `5A440004-Alien_Hominid.xiso.iso` | `alien-hominid` | route |
-| KOF: Maximum Impact - Maniax | `534E0007-KOF_Maximum_Impact_Maniax.xiso.iso` | `kof-mi` (returning variant on disk) | route |
-| Azurik: Rise of Perathia | `4D530007-Azurik_Rise_of_Perathia.xiso.iso` | `azurik` | route |
-| WWE Raw 2 | `5451000D-WWE_Raw_2.xiso.iso` | `wwe-raw-2` | route |
-| 50 Cent: Bulletproof | `56550042-50_Cent_Bulletproof.xiso.iso` | `50cent` | route |
-| Baldur's Gate: Dark Alliance | `5655001A-Baldur_s_Gate_Dark_Alliance.xiso.iso` | `baldurs-gate-da` | route |
 | Crimson Skies: High Road to Revenge | `Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso` | `crimson-skies` | route |
-| Kabuki Warriors | `43560001-Kabuki_Warriors.xiso.iso` | `kabuki-warriors` | route |
-| 187: Ride or Die | `55530036-187_Ride_or_Die.xiso.iso` | `187-ride-or-die` | route |
-| Tony Hawk's Pro Skater 2x | `41560001-Tony_Hawk_s_Pro_Skater_2x.xiso.iso` | `thps2x` | route |
 | ToeJam & Earl III: Mission to Earth | `ToeJam & Earl III - Mission to Earth (USA).iso` | none | soak, 180s, `--frames-every 15` |
-| Gunvalkyrie | `5345000B-Gunvalkyrie.xiso.iso` | none | soak, 180s, `--frames-every 15` |
-| Castlevania: Curse of Darkness | `4B4E002D-Castlevania_Curse_of_Darkness.xiso.iso` | `castlevania-cod` (first-run/returning on disk) | route |
 | Spikeout: Battle Street | `Spikeout - Battle Street (Europe).iso` | `spikeout` (returning variant on disk) | route |
 | Halo: Combat Evolved | `Halo Combat Evolved.iso` | none | soak, 180s, `--frames-every 15` |
 | Panzer Dragoon Orta | `Panzer Dragoon Orta (Europe).iso` | none | soak, 180s, `--frames-every 15` |
 | Jet Set Radio Future | `JSRF - Jet Set Radio Future (USA).xiso.iso` | `jsrf` | route |
 | Tork: Prehistoric Punk | `Tork - Prehistoric Punk (USA).iso` | `tork` | route |
-| NBA Live 2004 | `45410038-NBA_Live_2004.xiso.iso` | none | soak, 180s, `--frames-every 15` |
 | Call of Duty 3 | `4156005D-Call_of_Duty_3.xiso.iso` | none | soak, 180s, `--frames-every 15` |
 | Capcom vs. SNK 2 EO | `43430008-Capcom_vs_SNK_2_EO.xiso.iso` | none (no `targets.toml` entry) | soak, 180s, `--frames-every 15` |
 | The Simpsons Hit & Run | `56550015-The_Simpsons_Hit_Run.xiso.iso` | none | soak, 180s, `--frames-every 15` |
@@ -213,9 +236,11 @@ route/soak plan:
 | Legacy of Kain: Defiance | `4553000F-Legacy_of_Kain_Defiance_USA.xiso.iso` | none | soak, 180s, `--frames-every 15` |
 | Max Payne 2: The Fall of Max Payne | `5454000C-Max_Payne_2_The_Fall_of_Max_Payne.xiso.iso` | none | soak, 180s, `--frames-every 15` |
 
-All 44 Playable titles are now scoped. 14 route runs (300s each), 30 soaks
-(180s each, `--frames-every 15`) -- one run per arm, ON/OFF interleaved,
-giving 88 runs total, matching the brief's own Nova-time estimate.
+32 of 44 Playable titles are scoped (4.1.2); the other 12 are blocked on a
+reshuffle this lane does not run. 4 route titles (300s each: Crimson Skies,
+Spikeout, Jet Set Radio Future, Tork), 28 soak titles (180s each,
+`--frames-every 15`) -- one run per arm, ON/OFF interleaved, giving 64 runs
+for this scope (the brief's own 88-run estimate assumed all 44).
 
 Route runs: 300s, no `--frames-every` (named routes carry their own
 `mark`/`shot` frames, per titlerun's own convention -- `--frames-every` is
