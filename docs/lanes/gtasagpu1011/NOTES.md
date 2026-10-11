@@ -329,5 +329,6 @@ explains the 1-in-7 blue frames.
    - Shadow: these 640x480 dump frames cut CJ off at the knees, so the shadow is judged in the
      step 3 soaks, not here.
 3. **Cost.** The `vtx_hazard` rate is the number of extra submits a frame. Below 10 a frame
-   it is in the noise of 2-3 finishes a frame already. Above 50 it needs option (D): give the
+   it is close to the submits a frame already make (1-6, mean 2.4, over the 29 frame gaps of
+   3571105, from the draw records' `submits`). Above 50 it needs option (D): give the
    rewritten range a private copy instead of a submit. P(≤ 10) = 0.5.
