@@ -1,12 +1,12 @@
 nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5)
 
 State: draft (step 1 built and checked; step 2 held on nfsroute1011's golden profile route per Addendum 3;
-step 3 PASS; step 4 next -- see NOTES.md)
+step 3 PASS; step 4 screen starting -- see NOTES.md)
 
 Lane: nfsdefault1011      Issue: #433 (umbrella), none filed
 Base: master @ 6d8947bb47 (fastpaths1010 folded; fa45851449 confirmed an ancestor)
 Files: android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt, android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsActivity.kt, android/app/src/main/res/values/strings.xml, android/app/src/main/cpp/xemu_android.cpp, docs/lanes/nfsdefault1011/**, docs/testing/predictions/nfsdefault1011-*, docs/testing/titles/routes/simpsons-hit-run.route
-Prediction: docs/testing/predictions/nfsdefault1011-nfs.json @ 1422f53bae47dea23dee81b442a2ea891970130875e38ef4674f26deeefd15de, docs/testing/predictions/nfsdefault1011-simpsons.json @ b47eb7b3b9286eb0b4bff4297fb06bad112f1b8f194e8c911f34a281f07f564e (PASS)
+Prediction: docs/testing/predictions/nfsdefault1011-nfs.json @ 1422f53bae47dea23dee81b442a2ea891970130875e38ef4674f26deeefd15de, docs/testing/predictions/nfsdefault1011-simpsons.json @ b47eb7b3b9286eb0b4bff4297fb06bad112f1b8f194e8c911f34a281f07f564e (PASS), docs/testing/predictions/nfsdefault1011-screen.json @ 821fb0af67fc791541c771cc3b7b845cca178e04019c1e9bde77d59b4b1607a0
 Needs device: yes (Nova)
 Needs NDK: yes
 
@@ -90,8 +90,10 @@ PR.md condition for `HAKUX_POSTED_PUT` going default-on. All three switches stay
 
 ## Step 4
 
-Starting the 37-title screen (fastpaths1010's title list, minus Call of Duty 3 (not on the Nova), the five
-space-deferred titles, and RalliSport).
+Scope: 38 titles (fastpaths1010's PR.md table has 39 rows, one -- Call of Duty 3 -- marked "not run: title
+not on the Nova"; the brief's text says 37, NOTES.md section 4 records the discrepancy). RalliSport and the
+five owner-deferred titles stay off per fastpaths1010's own Addendum 3. Prediction registered (`...screen.json`
+above); queuing in batches of about 10, `HAKUX_RELEASE_PRIO=1`. Table to follow as batches complete.
 
 ## Switch list
 

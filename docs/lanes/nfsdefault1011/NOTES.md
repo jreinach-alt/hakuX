@@ -207,3 +207,41 @@ GPU-paced title in free roam -- the opposite of the ~4 fps regression `c2dfca18a
 postput1010's PR.md condition for POSTED_PUT going default-on is satisfied. All three switches
 (`HAKUX_POSTED_PUT`, `HAKUX_LOCKFREE_WAKE`, `HAKUX_SUBMIT_FRAMES=3`) stay in the default. Step 3 is done;
 proceeding to step 4's title screen.
+
+## 4. The 38-title screen
+
+Scope: fastpaths1010's PR.md table has 39 rows, one ("Call of Duty 3") marked "not run: title not on
+device". That is 38 titles actually screened, not 37 as the brief's own text states -- recorded here,
+not silently corrected to match the brief, since the real number is what the prediction file and the
+queue need. RalliSport was already excluded from fastpaths1010's own scope; the five owner-deferred
+titles (Azurik, Baldur's Gate: Dark Alliance, NBA Live 2004, Castlevania: Curse of Darkness, 50 Cent:
+Bulletproof) stay off per that lane's own Addendum 3, carried forward unchanged.
+
+Request shapes, copied from fastpaths1010/NOTES.md sections 4.1.2/4.3/4.4 (confirmed against that
+lane's own `request.json` files for the ISO filenames and route names, not just its prose table, since
+the "4 route titles" count in its running NOTES.md undercounted a later addendum -- see that lane's own
+section 4.3 for why): 10 titles carry a named route, 300s, no `--frames-every` (a scored route supplies
+its own `mark`/`shot` frames): Crimson Skies (`crimson-skies`), Spikeout (`spikeout`), Jet Set Radio
+Future (`jsrf`), Tork (`tork`), Kabuki Warriors (`kabuki-warriors`), 187: Ride or Die
+(`187-ride-or-die`), Tony Hawk's Pro Skater 2x (`thps2x`), KOF: Maximum Impact - Maniax (`kof-mi`),
+Alien Hominid (`alien-hominid`), WWE Raw 2 (`wwe-raw-2`). The other 28 run as a soak to the title
+screen, 180s, `--frames-every 15`. Full per-title ISO filenames: `nfsdefault1011-screen.json`'s
+`titles` array.
+
+Same env A/B as steps 2/3: ON queues with no `--env` (app default after step 1); OFF queues `--env
+HAKUX_POSTED_PUT=0 --env HAKUX_LOCKFREE_WAKE=0 --env HAKUX_SUBMIT_FRAMES=2`. One run per arm per title
+(not two) -- a screen catches a correctness regression, not a precise pace measurement, per the brief.
+Columns read: fatal, frames, gfps (no reports column). `docs/lanes/nfsdefault1011/screenread.py`
+(new, modeled on `simpread.py`'s use of `title_verdict.judge()`) prints all three per run; frames is a
+raw capture count for me to review by eye, gfps is the same raw `g_fps_mean_reported_not_judged` figure
+`fpread.py`/`simpread.py` already read. There is no automated per-title pass/fail leg -- the brief's own
+screen has no single numeric threshold that works across 38 different titles, same as fastpaths1010's.
+
+Prediction registered: `nfsdefault1011-screen.json` @ `821fb0af67fc791541c771cc3b7b845cca178e04019c1e9bde77d59b4b1607a0`,
+same ref as steps 2/3 (`7002282149`, unchanged since step 1 -- no code has moved). Device presence is
+not re-verified by a live listing before queuing (none exists, confirmed by searching for one); a
+"title not on device" on any of these 38 is possible despite all 38 having run clean under fastpaths1010
+within the last day (that lane's own screen lost 12 of 21 titles mid-run once) and is treated as a
+per-title blocker (moved to `not_run`), not grounds to distrust the batch. Queuing in batches of about
+10 titles per the brief, `HAKUX_RELEASE_PRIO=1`, ON then OFF per title. `pilots/nfsdefault1011.ok` (step
+2, same day) covers the requester; no fresh pilot needed before the first batch.
