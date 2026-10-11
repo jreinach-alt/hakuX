@@ -8,17 +8,17 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gtaroutes1011` | claude-sonnet-5 | 28 min | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
-| `gtasagpu1011` | claude-opus-5-5 | 1h 14m | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
-| `nfsdefault1011` | claude-sonnet-5 | 1h 1m | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) |
-| `profileconv1011` | claude-sonnet-5 | 29 min | profileconv1011: gta-sa and amped2 measure on their golden profiles (#433) |
-| `profilegate1011` | claude-sonnet-5 | 31 min | fold: lane/fastpaths1010 (offline) -- fastpaths1010: the six renderer switches as one Graphics toggle, on by d |
-| `soakvideo1011` | claude-sonnet-5 | 1h 40m | soakvideo1011: device-clock timestamps so hitch_report's window reads the dispatcher's own frames/ (Addendum 1 |
+| `gtaroutes1011` | claude-sonnet-5 | 43 min | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
+| `gtasagpu1011` | claude-opus-5-5 | 2 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
+| `nfsdefault1011` | claude-sonnet-5 | 1h 16m | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) |
+| `profileconv1011` | claude-sonnet-5 | 43 min | profileconv1011: gta-sa and amped2 measure on their golden profiles (#433) |
+| `profilegate1011` | claude-sonnet-5 | 45 min | fold: lane/fastpaths1010 (offline) -- fastpaths1010: the six renderer switches as one Graphics toggle, on by d |
+| `soakvideo1011` | claude-sonnet-5 | 1h 54m | soakvideo1011: device-clock timestamps so hitch_report's window reads the dispatcher's own frames/ (Addendum 1 |
 
-- **Handhelds:** 2 connected.
+- **Handhelds:** 0 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 5 waiting, 1 running.
+- **Device queue:** 4 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -80,7 +80,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 |---|---|---|---|
 | `lane/gtaroutes1011` | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) | `dba7ca0649` | 2026-10-11 12:37 |
 | `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `bdc2b4cada` | 2026-10-11 12:22 |
-| `lane/nfsdefault1011` | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) | `f90a53d46c` | 2026-10-11 12:10 |
+| `lane/nfsdefault1011` | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) | `188965e1fa` | 2026-10-11 12:54 |
 | `lane/profileconv1011` | profileconv1011: gta-sa and amped2 measure on their golden profiles (#433) | `075a31a898` | 2026-10-11 12:21 |
 | `lane/profilegate1011` | fold: lane/fastpaths1010 (offline) -- fastpaths1010: the six renderer switches as one Graphics toggle, on by default (#4 | `6d8947bb47` | 2026-10-11 09:13 |
 | `lane/soakvideo1011` | soakvideo1011: device-clock timestamps so hitch_report's window reads the dispatcher's own frames/ (Addendum 1, #433) | `a96282f82d` | 2026-10-11 10:40 |
@@ -93,4 +93,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 
-_Updated 2026-10-11 12:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 13:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
