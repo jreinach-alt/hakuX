@@ -1,12 +1,12 @@
 postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5)
-State: not ready (Addendum 1's full-switch pair waits on drawrec1010's fold; see WAITING)
+State: not ready (Addendum 1's full-switch pair is queued on the Nova; see WAITING)
 
 Lane: postput1010       Issue: #433 (umbrella), none filed
-Base: master @ 6052ff98d4 (merged in at b9b36d655c; reportasync1010 is folded). The A/B ran on c63ec9774f.
+Base: master @ 6052ff98d4 (merged in at b9b36d655c; reportasync1010 is folded), + origin/lane/drawrec1010 @ f3d0e45979 merged at 772429156c (Addendum 2; not folded yet). The first A/B ran on c63ec9774f, the full-switch pair on 772429156c.
 Files: hw/xbox/nv2a/user.c, hw/xbox/nv2a/nv2a_int.h, hw/xbox/nv2a/pfifo.c, docs/lanes/postput1010/**, docs/testing/predictions/postput1010-*.json
 Prediction: docs/testing/predictions/postput1010-nfs.json @ 1987085cd7bf0642c4678302bef5b9b9f9157bad3d9a6a341b318fec7446d7a5 (race start, A/B/B/A, plain build, ref c63ec9774f): FAIL (P, T, G fail; C passes)
 Prediction: docs/testing/predictions/postput1010-ftpair.json @ 45cb51e232b56881d4eb20f03dc5214f05db490463f6f8adea009865377849de (race-start frametrace pair, perflog, ref c63ec9774f): FAIL (L, Q fail on A's side: the wait is not on this base)
-Prediction: docs/testing/predictions/postput1010-nfsall.json (Addendum 1, full-switch base): not yet registered; it needs HAKUX_DRAWREC on master
+Prediction: docs/testing/predictions/postput1010-nfsall.json @ 5b11550a770622fbe27bbc6fafae1ea6791d88891d749baa7858185ca57b5df7 (Addendum 1, full-switch base, A2'/B2'/B2'/A2', plain, ref 772429156c): queued, not yet read
 Needs device: yes (Nova, used)
 Needs NDK: yes
 
@@ -65,9 +65,11 @@ tables.
 ## Pending: Addendum 1's full-switch pair
 
 The pair is A2' = REPORT_ASYNC + TEXSCAN + DRAWREC + UNI_BULK/UBERCACHE/FOGCACHE, B2' = A2' + POSTED_PUT,
-checks P2/F2/C2/H2. `HAKUX_DRAWREC` is only on lane/drawrec1010 until it folds, so `WAITING` says `fold drawrec1010`.
-`ppread.py` already judges those legs (NOTES.md 4.6). The prior, stated before the runs, is low (~10 % for P2 and
-C2): at this base the guest is idle once freed, and DRAWREC shortens the PFIFO thread's lock hold too.
+checks P2/F2/C2/H2, on ref 772429156c (origin/lane/drawrec1010 merged in, per Addendum 2). Queued on the Nova,
+in order: A2'a `1-1791685180-postput1010-3732954`, B2'a `1-1791685199-postput1010-3733954`, B2'b
+`1-1791685200-postput1010-3736342`, A2'b `1-1791685202-postput1010-3737568`. The prior, stated before the
+runs, is low (P2 ~7 %, C2 ~12 %): at this base the guest is idle once freed, and DRAWREC shortens the PFIFO
+thread's lock hold too.
 
 Recommendation (provisional, pending the full-switch pair): **drop**, unless P2/F2/C2 pass. The switch is posted on
 12-32 % of kicks and moves nothing at the scene it was built for. Default-on would also need a GPU-paced title

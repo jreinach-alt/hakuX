@@ -367,6 +367,30 @@ Attempt 4 merged `origin/lane/drawrec1010` @ f3d0e45979 at 772429156c. No confli
 Then it registered `docs/testing/predictions/postput1010-nfsall.json` on ref 772429156c and queued A2', B2', B2',
 A2' (4.8).
 
+### 4.8 The full-switch pair, queued
+
+`postput1010-nfsall.json` (sha256 5b11550a770622fbe27bbc6fafae1ea6791d88891d749baa7858185ca57b5df7, committed in
+8765e42a54) on ref 772429156c: A2' = REPORT_ASYNC + TEXSCAN + DRAWREC + UNI_BULK + UNI_UBERCACHE + UNI_FOGCACHE,
+B2' = A2' + POSTED_PUT, plain, 500 s, 12 starts, legs V, P2 (B - A <= -0.5), F2 (B <= 33.8), C2 (cold B - A <=
+-2.0), H2 (v2 +10 points), none loosened. The prediction's point estimate is B - A = 0.0 warm and 0 +- 1.5 cold,
+with P2 ~7 %, F2 ~40 % (mostly A2' already being there), C2 ~12 %, H2 ~5 %.
+
+Queued 2026-10-10 ~19:20 PDT on the Nova, release tier (`HAKUX_RELEASE_PRIO=1`), all four at once under the
+pilot file (18:27 PDT). The Nova queue was empty.
+
+| request | arm |
+|---|---|
+| `1-1791685180-postput1010-3732954` | A2'a |
+| `1-1791685199-postput1010-3733954` | B2'a |
+| `1-1791685200-postput1010-3736342` | B2'b |
+| `1-1791685202-postput1010-3737568` | A2'b |
+
+Nova time: the six earlier runs at request.sh's estimate (500 + 90 s) are about 59 min; these four add about 39,
+so about 98 min of the 3 h. On their return: check `[drawrec1010] drawrec=1 vtx=1 shc=1` and `[perdraw433] bulk=1
+ubercache=1 fogcache=1` on all four, `[postput] on` on B2' only (ppread.py's V does that), and the g11 frames for
+a moving car by eye; then judge with `ppread.py 3732954 3733954 3736342 3737568 --expect
+postput1010-nfsall.json` (full ids), and merge origin/master once drawrec1010 has folded.
+
 ## 5. For the next lane
 
 - `ppread.py` cannot see motion. V's moving-car check is by eye from `route-frames/*-s*-g11.png`, and goes here.
