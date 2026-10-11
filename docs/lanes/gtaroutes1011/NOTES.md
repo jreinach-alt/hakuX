@@ -175,3 +175,16 @@ polling, up to about 9 min a call" combination: 9-minute bounded polls were used
 in `/tmp/gtaroutes1011-scratch/`), but the backlog depth means this is a wait on dispatcher state outside this
 session's control, not this session's own backgrounded task. Posted `[lane.gtaroutes1011] waiting:` on PR #927
 naming both result paths and stopping here per the role file's guidance for exactly this case.
+
+## 7. Why that attempt did not finish: no WAITING file
+
+That session's stop was the right call -- both remaining proofs were (and, re-checked at the top of this
+session, still are) sitting unclaimed in `dispatch/queue/` behind ~20-22 other release-tier items, not stuck --
+but it only posted a PR comment, not the `docs/lanes/gtaroutes1011/WAITING` file. hostops's Addendum 2 (15:48
+PDT) caught the gap: `lanewaker.py` only auto-resumes a lane whose `WAITING` file names what it's waiting on, so
+without one nothing would have picked this lane back up once the two results landed. Re-verified at the start of
+this session: `dispatch/results/` has no directory for either `1901311` or `2255243` yet, and both `.req` files
+are still in `dispatch/queue/` (confirmed via `ls`); `dispatch/running/` currently holds a `profileconv1011` item,
+not either of ours. So the wait itself is still live and correct. Wrote `WAITING` naming both result paths and
+what to do with each, and committed/pushed it before anything else, per the addendum's instruction, then resumed
+the polling loop.
