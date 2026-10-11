@@ -112,12 +112,10 @@ that `wait`'s own forced promote leaves exactly one `0-`-prefixed restore
 queued even though the newest result on disk reads master (stale); a new
 leg (g) confirms that queue is not duplicated once the in-flight run's
 result lands; a new leg (f2) confirms a bare restore already queued gets
-promoted in place instead of a second one. A new mutant (`device_build.
-py`'s `if not force:` hardcoded to `if True:`, so the no-restore-needed
-check runs unconditionally) turns (f) and (f2) red: it reproduces this
-addendum's exact starvation (printing "already on master; no restore
-needed" and queuing nothing). `99-build-gate.sh` and `99-hold-take.sh`
-needed no changes.
+promoted in place instead of a second one. A new mutant hardcodes
+`device_build.py`'s `if not force:` to `if True:`. What it shows is under
+"Mutant results" below. `99-build-gate.sh` and `99-hold-take.sh` needed no
+changes.
 
 Re-ran `SELFTEST_ONLY="99-build-gate.sh 99-restore-priority.sh
 99-hold-take.sh" bash docs/testing/jobs/selftest.sh` in the foreground:
@@ -139,18 +137,39 @@ taken early (times out instead of exiting 0), and (f) a non-restore
 request running for the label is missed and the hold is taken anyway
 (exits 0 instead of timing out). Both verified directly.
 
-`device_build.py`'s `if not force:` guard (addendum 2), hardcoded to
-`if True:` so the no-restore-needed check runs regardless of the flag,
-turns leg (f)'s and leg (f2)'s own forced-queue checks red: with the
-newest result reading master (stale), it prints "already on master; no
-restore needed" and queues nothing -- the exact starvation addendum 2
-fixes. Verified directly.
+`device_build.py`'s `if not force:` guard (addendum 2) was hardcoded to
+`if True:`, so the no-restore-needed check runs whatever flag is passed.
+Neither leg (f) nor leg (f2) runs under this mutant:
+
+- The mutant block (`99-restore-priority.sh:319-331`) recreates (f)'s
+  fixture state: the newest result is a master restore and nothing is
+  queued. It then calls the mutant `device_build.py promote ... --force`
+  directly and checks that nothing is queued. The mutant prints "already
+  on master; no restore needed" and queues nothing. That shows (f)'s
+  "exactly one 0- restore queued" check depends on `--force`.
+- (f2) is not sensitive to this mutant. With a bare restore pending,
+  `cmd_promote` renames it (`device_build.py:216-219`) and returns before
+  the `force` check (`:225`) is reached, so (f2) stays green under the
+  mutant.
+
+The selftest's own comment on this mutant and its check label ("f/f2 are
+not vacuous") still overstate it in the same way. Addendum 3 said not to
+change the selftest, so NOTES.md records the correction instead.
+
+## Known limit: `take`
+
+`take` reads the last *finished* run (`hold.sh:248` -> `build_gate` ->
+`device_build.py check` -> `last_run()`). So it can pass while an
+off-master request is in `running/`. `wait` is the path for a caller who
+needs master: it checks `running/` before it trusts a gate pass. Details
+are in NOTES.md.
 
 ## Testing
 
 `SELFTEST_ONLY="99-build-gate.sh 99-restore-priority.sh 99-hold-take.sh"
-bash docs/testing/jobs/selftest.sh`: 121 passed, 0 failed (run in the
-foreground, after the addendum-1 fix). Breakdown in NOTES.md, including
+bash docs/testing/jobs/selftest.sh`: 135 passed, 0 failed (run in the
+foreground, after the addendum-2 fix; 121 after addendum 1). Addendum 3
+changed text only and was not re-run. Breakdown in NOTES.md, including
 why `99-hold-take.sh` needed no change (its fixture `running/` only ever
 holds `.owner` marker files, never the `.req` files `device_build.py
 running` globs for, so the new check sees "none" there regardless; a real

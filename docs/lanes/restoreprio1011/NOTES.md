@@ -315,15 +315,14 @@ always be polled at the 5 s cap, regardless of which branch did the
 promoting.
 
 **Selftest.** `99-restore-priority.sh` leg (f) is extended with two more
-checks in the same fixture (a bare restore already queued gets promoted in
-place; none queued gets exactly one new `0-`-prefixed one), and a new leg
+checks (none queued, newest result on master: `wait` leaves exactly one
+new `0-`-prefixed restore). A separate leg (f2), in its own fixture, covers
+a bare restore that is already queued: it is promoted in place. A new leg
 (g) confirms the forced queue does not get a duplicate from
 `device_build.py restore` once the in-flight run's result lands. A new
-mutant (the `--force` branch's queuing call replaced with the unforced
-`cmd_promote` path, i.e. `force=False` hardcoded) turns both of (f)'s new
-checks red: with the master-reading guard back in place, the "none
-pending, other running, last result on master" case queues nothing, same
-as the defect this addendum fixes.
+mutant hardcodes `device_build.py`'s `if not force:` to `if True:`. See
+"Why attempt 3 did not finish" below for what that mutant does and does
+not show; this paragraph overstated it in attempt 3.
 
 Ran `SELFTEST_ONLY="99-build-gate.sh 99-restore-priority.sh 99-hold-take.sh"
 bash docs/testing/jobs/selftest.sh` in the foreground after the fix: 135
@@ -341,3 +340,50 @@ function itself is unchanged and is also what `cmd_restore` (the
 dispatcher's own post-run hook) still calls un-forced, which is exactly
 how leg (g) confirms no duplicate gets queued once the in-flight run's own
 result lands.
+
+## Why attempt 3 did not finish (addendum 3, resumed 10-11, attempt 4)
+
+Attempt 3 finished addendum 2's code (the forced promote in `wait`'s
+`rrc=1` branch, `--force`, legs (f) extended, (g) and (f2), and the
+`--force` mutant), ran the three fragments green (135 passed), set
+`State: ready` and stopped. lane.local's addendum 3 review accepted the
+code and the selftest as they are. It found two text defects, and this
+attempt fixes only those. No code or selftest changed, so the selftest was
+not re-run.
+
+**1. The `--force` mutant was overstated.** PR.md said the mutant "turns
+(f) and (f2) red", and this file said it "turns both of (f)'s new checks
+red". Neither leg runs under the mutant. What the mutant block actually
+does (`99-restore-priority.sh:319-331`):
+
+- It builds a copy of `device_build.py` with `if not force:` replaced by
+  `if True:`.
+- It recreates (f)'s fixture state: results reset, the newest result a
+  master `dispatch.restore`, nothing queued.
+- It calls the mutant `promote ... --force` directly, not through
+  `hold.sh wait`, and checks that nothing is queued.
+
+That shows (f)'s "exactly one 0- restore queued" check
+(`99-restore-priority.sh:228-229`) depends on `--force`. It does not run
+leg (f) itself.
+
+(f2) is not sensitive to this mutant at all. (f2) has a bare restore
+pending, so `cmd_promote` renames it at `device_build.py:216-219` and
+returns before the `force` check at `:225` is reached. (f2) stays green
+under the mutant. (f2)'s fixture also has an off-master newest result
+(`offF2`), so the unforced path would queue anyway.
+
+The selftest's own comment on that mutant (`99-restore-priority.sh:311-318`)
+and its check label ("f/f2 are not vacuous", `:330`) still carry the
+overstatement. Addendum 3 said not to change the selftest, so they stand,
+and this note is the correction.
+
+**2. A known limit on `take`, missing until now.** `take` calls
+`build_gate` once (`hold.sh:248`). `build_gate` asks `device_build.py
+check` (`hold.sh:216`), which reads `last_run()` (`device_build.py:124-137`):
+the device's newest *finished* run, by result.json mtime. `take` never asks
+`device_build.py running`. So `take` can pass while an off-master request
+is in `running/`, since that request has not written its result yet. The
+caller then holds a device that the in-flight run will leave off master.
+`take` is left as it is, per addendum 2. `wait` is the path for a caller
+who needs master: it asks `running` before it trusts a gate pass.
