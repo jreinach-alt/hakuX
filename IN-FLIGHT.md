@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 29 min | fastpaths1010: Kabuki Warriors pass (batch 3); merge origin/master |
-| `lockwake1011` | claude-opus-5-5 | 27 min | lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lo |
+| `fastpaths1010` | claude-sonnet-5 | 44 min | fastpaths1010: Kabuki Warriors pass (batch 3); merge origin/master |
+| `lockwake1011` | claude-opus-5-5 | 42 min | lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lo |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 55 waiting, 1 running.
+- **Device queue:** 53 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -91,4 +91,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly)
 - 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 
-_Updated 2026-10-11 03:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 03:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
