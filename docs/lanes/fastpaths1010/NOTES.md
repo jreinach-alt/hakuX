@@ -361,6 +361,7 @@ pilot-gate's own ~102 min estimate for route titles alone plus the soaks.
 | Capcom vs. SNK 2 EO | ON/OFF | none/none | not yet reviewed by eye | 59.98/59.97 | pass (env/on-lines/hdd clean both arms; hdd golden_status None expected, no targets.toml entry) |
 | The Simpsons Hit & Run | ON/OFF | none/none | not yet reviewed by eye | 59.98/59.96 | pass (env/on-lines/hdd clean both arms, golden/any; refs `...4194264`/`...310`) |
 | Dark Summit | ON/OFF | none/none | not yet reviewed by eye | 59.97/59.97 | pass (env/on-lines/hdd clean both arms, golden/any; refs `...346`/`...380`) |
+| Kabuki Warriors | ON/OFF | none/none | not yet reviewed by eye | 56.44/59.90 | pass (env/on-lines/hdd clean both arms, golden=None expected first-run; refs `...1524606`/`...1524721`). gfps gap wider than the rest of the screen (6%, vs <1% typical) but no fatal/on-line/hdd defect -- noted, not escalated; route run, single sample. |
 
 **Call of Duty 3 is not on the Nova**, discovered live (same failure mode as
 the Alien Hominid pilot in 4.1.2) despite being in the "8 of the original 20
