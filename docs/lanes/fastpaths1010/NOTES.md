@@ -150,15 +150,18 @@ plan, followed here:
    its last `start (b: ...)`. A title whose push failed gets a row in the
    screen table saying so, not a run.
 
-As of this note (23:38 PDT), the shuffle has verified 17 of the 23 onto the
-Nova already (the six cached + NFL Blitz 2002, then eleven of the sixteen
-pulled from the Thor); it holds the Nova device (`dispatch/hold/nova`,
-`lanelocal-shuffle`, retaken 23:35:54 PDT) while it finishes, which is why
-this lane's own queued requests are not yet running -- expected, not a
-blocker, per the addendum. `fastpaths1010-screen.json` updated in place
-(new commit, not a re-registration on a new ref -- no device run has yet
-used the old 20-title scope) to move Capcom vs. SNK 2 EO from
-`blocked_titles` to the scoped list.
+Update, 23:43:58 PDT: `shuffle1010.log` now ends `done; Nova free 33 GB` --
+all 23 verified (last: Mortal Kombat: Armageddon, 23:43:58), and the Nova
+hold is released (`dispatch/hold/nova` empty). **All 44 Playable titles are
+now on the Nova.** `fastpaths1010-screen.json` updated again (same
+reasoning: no device run has yet used any earlier scope) to drop
+`blocked_titles` to empty and fold the remaining 23 into the scoped list
+below. None of the 23 has a `docs/testing/titles/targets.toml` entry with a
+`route` (only Mortal Kombat: Armageddon has any entry at all, and it is
+`target_fps`/notes only) or a matching file in `docs/testing/titles/routes/`
+-- checked by grepping each of the 23 title IDs against both. All 23 run as
+soaks, same as the 2 soak-plan titles already in the 21 (NBA Live 2004,
+Call of Duty 3, Capcom vs. SNK 2 EO already soak-only).
 
 21 scoped (ISO confirmed present on Nova as of the addendum), with
 route/soak plan:
@@ -186,6 +189,33 @@ route/soak plan:
 | NBA Live 2004 | `45410038-NBA_Live_2004.xiso.iso` | none | soak, 180s, `--frames-every 15` |
 | Call of Duty 3 | `4156005D-Call_of_Duty_3.xiso.iso` | none | soak, 180s, `--frames-every 15` |
 | Capcom vs. SNK 2 EO | `43430008-Capcom_vs_SNK_2_EO.xiso.iso` | none (no `targets.toml` entry) | soak, 180s, `--frames-every 15` |
+| The Simpsons Hit & Run | `56550015-The_Simpsons_Hit_Run.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| Dark Summit | `54510004-Dark_Summit.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| MTV Celebrity Deathmatch | `5454000B-MTV_Celebrity_Deathmatch.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| NFL Blitz 2002 | `4D570001-NFL_Blitz_2002_USA.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| NBA 2K2 | `53450002-NBA_2K2.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| MLB SlugFest 2003 | `4D570008-MLB_SlugFest_2003.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| AMF Bowling 2004 | `42530009-AMF_Bowling_2004.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| MLB SlugFest 2004 | `4D570009-MLB_SlugFest_2004.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| MLB SlugFest - Loaded | `4D57001D-MLB_SlugFest_Loaded.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| Rogue Trooper | `5343000E-Rogue_Trooper.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| Ratatouille | `54510109-Disney_Pixar_Ratatouille.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| World Soccer Winning Eleven 9 | `4B4E002F-World_Soccer_Winning_Eleven_9.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| NBA 2K3 | `53450013-NBA_2K3.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| Mortal Kombat: Armageddon | `4D570034-Mortal_Kombat_Armageddon.xiso.iso` | none (target_fps=60 only) | soak, 180s, `--frames-every 15` |
+| Fight Club | `5655002F-Fight_Club.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| Blowout | `4D4A0008-Blowout.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| Future Tactics: The Uprising | `43560007-Future_Tactics_The_Uprising.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| Blade II | `41560005-Blade_II.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| Indigo Prophecy | `4947007B-Indigo_Prophecy_USA.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| SpongeBob SquarePants: Battle for Bikini Bottom | `5451001A-Nickelodeon_SpongeBob_SquarePants_Battle_for_Bikini_Bottom_USA.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| The Lord of the Rings: The Fellowship of the Ring | `56550004-Lord_of_the_Rings_The_The_Fellowship_of_the_Ring_USA.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| Legacy of Kain: Defiance | `4553000F-Legacy_of_Kain_Defiance_USA.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| Max Payne 2: The Fall of Max Payne | `5454000C-Max_Payne_2_The_Fall_of_Max_Payne.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+
+All 44 Playable titles are now scoped. 14 route runs (300s each), 30 soaks
+(180s each, `--frames-every 15`) -- one run per arm, ON/OFF interleaved,
+giving 88 runs total, matching the brief's own Nova-time estimate.
 
 Route runs: 300s, no `--frames-every` (named routes carry their own
 `mark`/`shot` frames, per titlerun's own convention -- `--frames-every` is
