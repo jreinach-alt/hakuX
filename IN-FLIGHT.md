@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 2h 29m | fastpaths1010: KOF Maximum Impact - Maniax pass (batch 3) |
+| `fastpaths1010` | claude-sonnet-5 | 2h 44m | fastpaths1010: Alien Hominid pass (batch 3) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `2026-10-11T12:40:27Z`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 45 waiting, 1 running.
+- **Device queue:** 43 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -73,10 +73,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fastpaths1010` | fastpaths1010: KOF Maximum Impact - Maniax pass (batch 3) | `93cc446636` | 2026-10-11 04:25 |
+| `lane/fastpaths1010` | fastpaths1010: Alien Hominid pass (batch 3) | `dbc414c216` | 2026-10-11 05:35 |
 
 ## Recently landed on master
 
+- 2026-10-11 lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lock-free wake (#433, 0.5)
 - 2026-10-11 coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5)
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
@@ -86,7 +87,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 drawrec1010: HAKUX_DRAWREC=1 (default off) cuts NFS race-start recording 21%/draw
 - 2026-10-10 lane.usagerule1010: usage Low enters only at 80% of the week used AND a projection over 100% (#433, 0.5)
 - 2026-10-10 reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5)
-- 2026-10-10 Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly)
-- 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 
-_Updated 2026-10-11 05:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 05:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
