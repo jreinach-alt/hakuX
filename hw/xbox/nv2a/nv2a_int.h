@@ -275,6 +275,31 @@ DEFINE_PROTO(pbus)
 DEFINE_PROTO(pfifo)
 bool pfifo_dma_put_may_post(NV2AState *d, unsigned int channel_id);
 void pfifo_post_dma_put(NV2AState *d, uint32_t val);
+
+/*
+ * The vCPU takes pfifo.lock at @site (NV2A_LOCKW_*), timed into
+ * lock_wait_ns as before (#433, lockwake1011). With HAKUX_FRAMETRACE=1 the
+ * slow path also books the wait to its site and as a frametrace pfifo.lock
+ * wait with holder the PFIFO thread, as the vCPU's pgraph.lock waits are;
+ * off, the cost over the plain timed lock is one load and a branch.
+ * hakux_ft_on is profile.h's, not included here: profile.c includes this
+ * header before it defines the frametrace implementation.
+ */
+extern int hakux_ft_on;
+void pfifo_lock_timed_ft(NV2AState *d, int site, int64_t t0);
+
+static inline void pfifo_lock_timed(NV2AState *d, int site)
+{
+    int64_t t0 = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+
+    if (unlikely(qatomic_read(&hakux_ft_on))) {
+        pfifo_lock_timed_ft(d, site, t0);
+        return;
+    }
+    qemu_mutex_lock(&d->pfifo.lock);
+    g_nv2a_stats.cpu_working.lock_wait_ns +=
+        qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - t0;
+}
 DEFINE_PROTO(prma)
 DEFINE_PROTO(pvideo)
 DEFINE_PROTO(ptimer)

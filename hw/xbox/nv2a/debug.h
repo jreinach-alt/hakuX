@@ -315,8 +315,28 @@ typedef struct FramePhaseTimingStats {
 #endif
 } FramePhaseTimingStats;
 
+/* The vCPU's timed pfifo.lock acquisitions, by site (#433, lockwake1011):
+ * pfifo_lock_timed() in nv2a_int.h. */
+enum {
+    NV2A_LOCKW_KICK,    /* pfifo_post_kick(): the posted DMA_PUT's wake */
+    NV2A_LOCKW_PUT,     /* a DMA_PUT store pfifo_dma_put_may_post() refused */
+    NV2A_LOCKW_GET,     /* a DMA_GET store */
+    NV2A_LOCKW_REF,     /* a REF store */
+    NV2A_LOCKW_OTHER,   /* any other USER register */
+    NV2A_LOCKW_NSITE,
+};
+
 typedef struct CpuTimingWork {
     int64_t lock_wait_ns;
+    /* lock_wait_ns by site, booked only with HAKUX_FRAMETRACE=1 (then they
+     * sum to it): ns, acquisitions, acquisitions of 10 us or more. */
+    int64_t lockw_site_ns[NV2A_LOCKW_NSITE];
+    uint32_t lockw_site_n[NV2A_LOCKW_NSITE];
+    uint32_t lockw_site_nb[NV2A_LOCKW_NSITE];
+    /* ... the waits that ended with the PFIFO thread in pfifo_park(), so
+     * at its condition wait or another thread's release, not at the end of
+     * its run (it leaves `parked` clear while it runs and while it spins). */
+    int64_t lockw_parked_ns;
     int64_t pusher_run_ns;
     int64_t method_exec_ns;
     int64_t puller_total_ns;

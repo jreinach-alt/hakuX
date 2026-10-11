@@ -24,6 +24,7 @@
  * guest CPU thread from the main loop and from the PFIFO thread itself. It
  * was included only under __ANDROID__, for the EIP in pfifo_read's poll log. */
 #include "hw/core/cpu.h"
+#include "pgraph/profile.h"   /* #433 frametrace: pfifo_lock_timed_ft() */
 #ifdef __ANDROID__
 #include <android/log.h>
 #include "target/i386/cpu.h"
@@ -1543,9 +1544,10 @@ static void pfifo_bound_skew(NV2AState *d, uint32_t put)
     fsk_note_held(nv2a_clock_ns() - t0, spun, !caught);
 }
 
-/* BEGIN posted-put (docs/lanes/postput1010/selftest_postput.sh compiles this
- * block verbatim; keep it free of anything but d->pfifo, g_nv2a_stats, the
- * qemu atomics, the mutex and condition calls, fifo_skew_bound_mode() and
+/* BEGIN posted-put (docs/lanes/lockwake1011/selftest_wake.sh compiles this
+ * block verbatim, as postput1010's selftest did before it; keep it free of
+ * anything but d->pfifo, g_nv2a_stats, the qemu atomics, the mutex and
+ * condition calls, pfifo_lock_timed(), fifo_skew_bound_mode() and
  * fsk_note_post()) */
 /*
  * HAKUX_POSTED_PUT=1 (#433, lane.postput1010; off by default): the guest's
@@ -1646,10 +1648,7 @@ static void pfifo_post_kick(NV2AState *d)
     if (qatomic_read(&d->pfifo.parked)) {
         /* Counted as the locked store's wait is, so `lockw` still shows
          * every wait the guest makes for the lock. */
-        int64_t t0 = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
-        qemu_mutex_lock(&d->pfifo.lock);
-        g_nv2a_stats.cpu_working.lock_wait_ns +=
-            qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - t0;
+        pfifo_lock_timed(d, NV2A_LOCKW_KICK);
         qemu_cond_broadcast(&d->pfifo.fifo_cond);
         qemu_mutex_unlock(&d->pfifo.lock);
     }
@@ -1678,6 +1677,36 @@ void pfifo_post_dma_put(NV2AState *d, uint32_t val)
     pfifo_post_kick(d);
 }
 /* END posted-put */
+
+/*
+ * pfifo_lock_timed() with HAKUX_FRAMETRACE=1 (#433, lockwake1011): the wait
+ * is a frametrace pfifo.lock wait whose holder is the PFIFO thread, so the
+ * holder split books what that thread was in while the vCPU waited, and it
+ * is booked to @site. `parked` is read with the lock held: set, the PFIFO
+ * thread is in pfifo_park() (in its condition wait, or woken and waiting for
+ * the lock), so the wait ended at its condition wait or at another thread's
+ * release, not at the end of its run. HAKUX_POSTED_PUT=1 only.
+ */
+void pfifo_lock_timed_ft(NV2AState *d, int site, int64_t t0)
+{
+    CpuTimingWork *w = &g_nv2a_stats.cpu_working;
+    HakuxFtWait ftw;
+    int64_t dt;
+
+    hakux_ft_wait_begin(&ftw, HAKUX_FT_W_PFIFO_LOCK, HAKUX_FT_PFIFO);
+    qemu_mutex_lock(&d->pfifo.lock);
+    hakux_ft_wait_end(&ftw);
+    dt = qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - t0;
+    w->lock_wait_ns += dt;
+    w->lockw_site_ns[site] += dt;
+    w->lockw_site_n[site]++;
+    if (dt >= 10000) {
+        w->lockw_site_nb[site]++;
+    }
+    if (qatomic_read(&d->pfifo.parked)) {
+        w->lockw_parked_ns += dt;
+    }
+}
 
 /*
  * HAKUX_POSTED_PUT=1: take up posted DMA_PUT stores for the instruments,

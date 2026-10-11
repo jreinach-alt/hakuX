@@ -106,10 +106,20 @@ void user_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
             return;
         }
     } else {
-        int64_t lock_t0 = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
-        qemu_mutex_lock(&d->pfifo.lock);
-        g_nv2a_stats.cpu_working.lock_wait_ns +=
-            qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - lock_t0;
+        switch (addr & 0xFFFF) {
+        case NV_USER_DMA_PUT:
+            pfifo_lock_timed(d, NV2A_LOCKW_PUT);
+            break;
+        case NV_USER_DMA_GET:
+            pfifo_lock_timed(d, NV2A_LOCKW_GET);
+            break;
+        case NV_USER_REF:
+            pfifo_lock_timed(d, NV2A_LOCKW_REF);
+            break;
+        default:
+            pfifo_lock_timed(d, NV2A_LOCKW_OTHER);
+            break;
+        }
     }
 
     uint32_t channel_modes = d->pfifo.regs[NV_PFIFO_MODE];
