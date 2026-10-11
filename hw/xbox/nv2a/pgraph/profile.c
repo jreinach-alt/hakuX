@@ -172,6 +172,10 @@ static void snapshot_cpu_timing(void)
 #endif
 
     w->lock_wait_ns      = 0;
+    memset(w->lockw_site_ns, 0, sizeof(w->lockw_site_ns));
+    memset(w->lockw_site_n, 0, sizeof(w->lockw_site_n));
+    memset(w->lockw_site_nb, 0, sizeof(w->lockw_site_nb));
+    w->lockw_parked_ns   = 0;
     w->pusher_run_ns     = 0;
     w->method_exec_ns    = 0;
     w->puller_total_ns   = 0;
@@ -387,6 +391,14 @@ static void ft_vk_hook(void)
 }
 #endif /* CONFIG_VULKAN */
 
+/* lockwake1011 (#433): the pfifo.lock wait by site, summed over the
+ * hakuX-perf line's 60 frames. HAKUX_FRAMETRACE=1 only. */
+static struct {
+    int64_t ns[NV2A_LOCKW_NSITE], tot, parked;
+    uint64_t n[NV2A_LOCKW_NSITE], nb[NV2A_LOCKW_NSITE];
+    uint32_t frames;
+} lw_win;
+
 void nv2a_profile_flip_stall(void)
 {
     int64_t now = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
@@ -395,13 +407,27 @@ void nv2a_profile_flip_stall(void)
     /* #433 frametrace: first, while the per-frame accumulators it reads
      * still hold this frame (the snapshots below reset them). */
     if (hakux_ft_enabled()) {
+        const CpuTimingWork *cw = &g_nv2a_stats.cpu_working;
         HakuxFtExt x = {
-            .lockw_ns = g_nv2a_stats.cpu_working.lock_wait_ns,
+            .lockw_ns = cw->lock_wait_ns,
+            .lwp_ns = cw->lockw_parked_ns,
             .pidle_ns = g_nv2a_stats.pacing.renderer_idle_acc_ns,
             .gpu_ns = g_nv2a_stats.phase_working.gpu_total_ns,
             .rp = g_nv2a_stats.phase_working.gpu_rp_count,
             .vblank_fired = g_nv2a_stats.pacing.vblank_fired,
         };
+        QEMU_BUILD_BUG_ON(HAKUX_FT_NLWS != NV2A_LOCKW_NSITE);
+        for (int k = 0; k < HAKUX_FT_NLWS; k++) {
+            x.lws_ns[k] = cw->lockw_site_ns[k];
+            x.lws_n[k] = cw->lockw_site_n[k];
+            x.lws_nb[k] = cw->lockw_site_nb[k];
+            lw_win.ns[k] += cw->lockw_site_ns[k];
+            lw_win.n[k] += cw->lockw_site_n[k];
+            lw_win.nb[k] += cw->lockw_site_nb[k];
+        }
+        lw_win.tot += cw->lock_wait_ns;
+        lw_win.parked += cw->lockw_parked_ns;
+        lw_win.frames++;
         hakux_ft_flip(&x);
 #ifdef CONFIG_VULKAN
         ft_vk_hook();
@@ -805,6 +831,28 @@ void nv2a_profile_flip_stall(void)
                             g_nv2a_stats.frame_count, pace_vb[0], pace_vb[1],
                             pace_vb[2], pace_vb[3], pace_vb[4], pace_vsum,
                             pace_max_us / 1000.0, pace_span_us / 1000.0);
+
+        /* lockwake1011 (#433), HAKUX_FRAMETRACE=1 only: the guest's
+         * pfifo.lock wait (lw=, the hakuX-cpu line's Lw) by site, per frame
+         * over these frames: ms/acquisitions/acquisitions of 10 us or more;
+         * parked = the part that ended with the PFIFO thread parked. */
+        if (lw_win.frames) {
+            double nf = lw_win.frames;
+            char lbuf[384];
+            int lo = snprintf(lbuf, sizeof(lbuf), "lockw f=%u n=%u lw=%.2f",
+                              g_nv2a_stats.frame_count, lw_win.frames,
+                              lw_win.tot / 1e6 / nf);
+            for (int k = 0; k < NV2A_LOCKW_NSITE; k++) {
+                lo += snprintf(lbuf + lo, sizeof(lbuf) - lo,
+                               " %s=%.2f/%.1f/%.1f", hakux_ft_lws_name[k],
+                               lw_win.ns[k] / 1e6 / nf, lw_win.n[k] / nf,
+                               lw_win.nb[k] / nf);
+            }
+            snprintf(lbuf + lo, sizeof(lbuf) - lo, " parked=%.2f",
+                     lw_win.parked / 1e6 / nf);
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-perf", "%s", lbuf);
+            memset(&lw_win, 0, sizeof(lw_win));
+        }
 
         /*
          * #413: the shader and pipeline cache counters the overlay shows,
