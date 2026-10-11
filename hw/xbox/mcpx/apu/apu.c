@@ -1179,6 +1179,11 @@ static int mcpx_apu_pre_load(void *opaque)
     MCPXAPUState *d = opaque;
     mcpx_apu_reset(d);
     qemu_mutex_lock(&d->lock);
+    /* #433: what the monitor FIFO still holds was mixed before the load;
+     * played after it, it is a burst of the scene being left. */
+    qemu_spin_lock(&d->monitor.fifo_lock);
+    fifo8_reset(&d->monitor.fifo);
+    qemu_spin_unlock(&d->monitor.fifo_lock);
     return 0;
 }
 

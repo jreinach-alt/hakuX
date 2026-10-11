@@ -3505,6 +3505,79 @@ bool delete_snapshot(const char *name, bool has_devices,
     return true;
 }
 
+#ifdef XBOX
+/*
+ * #433: what the device state in a snapshot is made of. Every registered
+ * section contributes its name, instance and version, and a VMState section
+ * the name, size, count, flags, version and type of each field and of each
+ * nested description and subsection; RAM blocks contribute their name and
+ * size. Field offsets are left out, so moving a field within its struct does
+ * not change the result, and sections are sorted, because the loader finds
+ * them by name and a controller bound in a different order writes the same
+ * stream.
+ */
+static void schema_add_vmsd(GString *s, const VMStateDescription *vmsd,
+                            int depth)
+{
+    if (!vmsd || depth > 16) {
+        return;
+    }
+    g_string_append_printf(s, "{%s v%d/%d", vmsd->name, vmsd->version_id,
+                           vmsd->minimum_version_id);
+    for (const VMStateField *f = vmsd->fields; f && f->name; f++) {
+        g_string_append_printf(s, " %s:%zu*%d:%x:v%d:%s", f->name, f->size,
+                               f->num, (unsigned)f->flags, f->version_id,
+                               f->info ? f->info->name : "-");
+        schema_add_vmsd(s, f->vmsd, depth + 1);
+    }
+    for (const VMStateDescription * const *sub = vmsd->subsections;
+         sub && *sub; sub++) {
+        schema_add_vmsd(s, *sub, depth + 1);
+    }
+    g_string_append_c(s, '}');
+}
+
+static int schema_add_ram_block(RAMBlock *rb, void *opaque)
+{
+    GPtrArray *items = opaque;
+    g_ptr_array_add(items, g_strdup_printf("ram:%s:%" PRIu64,
+                                           qemu_ram_get_idstr(rb),
+                                           (uint64_t)qemu_ram_get_used_length(rb)));
+    return 0;
+}
+
+static gint schema_cmp(gconstpointer a, gconstpointer b)
+{
+    return strcmp(*(const char * const *)a, *(const char * const *)b);
+}
+
+char *xemu_savevm_schema_fingerprint(void)
+{
+    GPtrArray *items = g_ptr_array_new_with_free_func(g_free);
+    SaveStateEntry *se;
+
+    QTAILQ_FOREACH(se, &savevm_state.handlers, entry) {
+        GString *s = g_string_new(NULL);
+        g_string_append_printf(s, "%s/%u v%d ram%d ", se->idstr,
+                               se->instance_id, se->version_id, se->is_ram);
+        schema_add_vmsd(s, se->vmsd, 0);
+        g_ptr_array_add(items, g_string_free(s, false));
+    }
+    foreach_not_ignored_block(schema_add_ram_block, items);
+    g_ptr_array_sort(items, schema_cmp);
+
+    GChecksum *ck = g_checksum_new(G_CHECKSUM_SHA256);
+    for (guint i = 0; i < items->len; i++) {
+        const char *item = g_ptr_array_index(items, i);
+        g_checksum_update(ck, (const guchar *)item, strlen(item) + 1);
+    }
+    char *digest = g_strdup(g_checksum_get_string(ck));
+    g_checksum_free(ck);
+    g_ptr_array_free(items, true);
+    return digest;
+}
+#endif
+
 void vmstate_register_ram(MemoryRegion *mr, DeviceState *dev)
 {
     qemu_ram_set_idstr(mr->ram_block,
