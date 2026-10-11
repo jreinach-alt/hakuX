@@ -394,6 +394,14 @@ Batch 3 complete: all 7 restored titles pass. 38-title scope now stands at 29 sc
 
 | MLB SlugFest 2003 | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.97/59.97 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1536121`/`...1536196`) |
 | Ratatouille | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.83/59.97 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1536374`/`...1536494`) |
+| AMF Bowling 2004 | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.87/59.84 | pass (env/on-lines clean both arms, golden=golden both arms -- matches, no pixel regression; refs `...1536590`/`...1536672`) |
+
+Batch 4 complete: all remaining titles pass. 38-title screenable scope is now
+fully screened (37 titles passed across batches 1-4 + Call of Duty 3 blocked
+on device presence, see below). No `WIDEN:` condition was triggered anywhere
+in the screen -- no title failed fatal/frames/on-lines/hdd after any rerun, so
+the 5 owner-deferred titles were never pulled in. Step 3 of the brief is done;
+next is finalizing PR.md and marking the PR ready.
 
 **Call of Duty 3 is not on the Nova**, discovered live (same failure mode as
 the Alien Hominid pilot in 4.1.2) despite being in the "8 of the original 20
