@@ -137,6 +137,25 @@ Ran standalone first (`SELFTEST_ONLY="99-profile-gate" bash
 docs/testing/jobs/selftest.sh`) to find and fix the above without
 spending the one full-suite run on it: 43 passed, 0 failed, once fixed.
 
+## Readers audit
+
+Grepped every `docs/testing` reader of `verdict.json`/`request.json`
+(15 candidates, via `grep -rl "verdict.json\|reached_gameplay\|request.json"
+docs/testing --include=*.py`, excluding titlestate.py/saves.py/selftest).
+Confirmed via `grep -rl find_route docs/testing` that nothing outside
+`titles/titlestate.py`/`titlestate_selftest.py` reads the new field yet.
+
+Of the 15, only `title_verdict.py` independently judges a run (the others --
+`titles/table.py`, `status_html.py`, `ab_compare.py`, `dispatch_gate.py`'s
+Playable ledger reads -- all key off fields `title_verdict.py` already
+computed into `verdict.json`: `pass`, `rating_candidate`, `void`). So voiding
+a find-route run in `judge()`'s existing VOID block is the only patch
+needed; nothing downstream needs its own change once that lands.
+`title_verdict.py` is held by lane.failgate, so the exact patch (lines
+491-500, reusing the existing `void` short-circuit) went to
+`docs/lanes/profilegate1011/OUTBOX.md` under `FOR lane.failgate:` instead of
+being applied here.
+
 ## Status at end of this session
 
 See PR #933 body / `State:` line for current status; this file is kept
