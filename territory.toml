@@ -2345,6 +2345,12 @@ standing = false
 files = ["docs/lanes/gtaroutes1011/**", "docs/testing/titles/routes/gta-3.route", "docs/testing/titles/routes/gta-vc.route", "docs/testing/titles/routes/gta-sa-drive.route", "docs/testing/titles/targets.toml", "docs/testing/titles/pathknow/paths/5454000E.json", "docs/testing/titles/pathknow/paths/5454000F.json"]
 note = "STARTED lane.local 2026-10-11 08:42 PDT (Sonnet, route building): routes into play for GTA III (5454000E) and Vice City (5454000F) on the Nova (copied 08:40 by lanelocal shuffle1011b), their targets.toml rows, and a San Andreas driving route gta-sa-drive (gta-sa.route untouched: the gtasa1011 A/B uses it). targets.toml taken from [free]; the two pathknow path files are a carve-out inside [free]'s docs/testing/titles/pathknow/** (exact-string check, same pattern as [lane.pathclass]). Brief: briefs/gtaroutes1011.md."
 
+[lane.profilegate1011]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/profilegate1011/**", "docs/testing/titles/titlestate.py", "docs/testing/titles/titlestate_selftest.py", "docs/testing/titles/profile-transition.toml", "docs/testing/jobs/selftest.d/99-profile-gate.sh"]
+note = "STARTED lane.local 2026-10-11 12:1x PDT (Sonnet, harness; no device): the profile gate. Owner 10-11 12:0x: runs only execute when the title has a profile; the scheduler rejects them otherwise, unless the run is finding a route. titlestate.py admit() with four clauses (profile / make-profile / find-route / transition), called by request.sh at queue time and dispatcher.sh at claim; profile-transition.toml holds gta-sa and amped2 until 10-14 00:00 PDT. titlestate.py, titlestate_selftest.py and profile-transition.toml are carve-outs inside [free]'s docs/testing/titles/** (exact-string check, as [lane.gtaroutes1011]); 99-profile-gate.sh is new. docs/testing/request.sh, docs/testing/dispatcher.sh and AGENTS.md are held by [lane.soakvideo1011] and are granted here when it folds. Brief: briefs/profilegate1011.md."
+
 [lane.nfsroute1011]
 issues = ["433"]
 standing = false
