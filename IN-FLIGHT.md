@@ -8,13 +8,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gtasagpu1011` | claude-opus-5-5 | 16 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
-| `nfsdefault1011` | claude-sonnet-5 | 15 min | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) |
+| `gtasagpu1011` | claude-opus-5-5 | 31 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
+| `nfsdefault1011` | claude-sonnet-5 | 29 min | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) |
+| `soakvideo1011` | claude-sonnet-5 | 5 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 8 waiting, 1 running.
+- **Device queue:** 7 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -85,4 +86,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 
-_Updated 2026-10-11 09:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 09:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
