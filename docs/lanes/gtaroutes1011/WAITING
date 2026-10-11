@@ -1,6 +1,11 @@
 # lane.gtaroutes1011 (#433): two re-queued Nova proof soaks, release tier.
 # Previous ids (1901311, 2255243) ERRORed on the bare-tid --title bug
 # (Addendum 3); these are the corrected re-queues, same routes/goldens.
+# Both still queued as of 2026-10-11 16:28-16:46 PDT, NOT backlog drain:
+# dispatch/hold/nova = owner-nfs-play (owner playing NFS MW on the Nova,
+# lane.local's hold, 90 min cap from 16:23:38 PDT, i.e. until ~17:53 PDT
+# or whenever the owner says done). Do not take/release this hold; just
+# wait for it to clear and the queue to resume draining.
 # VC: write the Vice City row in PR.md -- check hdd.json "loaded":"golden",
 # title_verdict.py --require confirmation, >=3 post-mark frames showing
 # Tommy moved.

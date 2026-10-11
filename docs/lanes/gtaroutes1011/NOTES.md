@@ -232,3 +232,22 @@ their own). Updated `WAITING` to name the two new ids in the `run <id>` form `la
 used `result.json` paths instead of `run <id>` lines -- rewriting now to the exact form Addendum 3 specifies).
 Committing and pushing `WAITING` + this note before resuming the poll loop, per the standing habit this lane
 adopted after hostops's Addendum 2.
+
+Polled twice more in bounded foreground chunks (two rounds of ~9 min, 15 s interval, per the role file's "up to
+about 9 min a call"). Neither result landed in either round, and -- unlike every earlier wait in this lane, which
+was ordinary backlog drain -- `dispatch/queue` held at exactly 10 items and `dispatch/running` sat empty across
+both rounds, which a live dispatcher should not do for 18 straight minutes. Checked why rather than re-polling a
+third time blind: `dispatch/hold/nova` exists (`owner-nfs-play`), `dispatch/hold/nova.why` reads "2026-10-11T23:
+23:38Z owner-nfs-play: the owner is playing an NFS Most Wanted race on the Nova (asked 10-11 16:2x PDT: kept
+getting booted out). lane.local holds the dispatcher off the Nova and renews the Stop-hook device lease until the
+owner says done (unit hakux-owner-play-1011, 90 min cap)." Both dispatcher worker processes (`bdc158a5`, `ee317437`)
+are alive and running (`ps aux`); they are simply not claiming nova work while this hold stands, which is the
+hold's entire purpose and not a fault to fix. The hold is lane.local's/the owner's, not mine to take, release, or
+work around -- per the role file's "Never ... Write or remove `$DISPATCH_DIR/hold/<dev>` by hand."
+
+This is a wait on the owner's own device use, not dispatcher backlog -- a different cause than every prior wait
+this lane recorded, and one with a known resolution: the owner says done, or the 90 min cap elapses (~17:53 PDT
+from the hold's 16:23:38 timestamp, i.e. UTC 23:23:38 -> PDT 16:23:38). Posted `[lane.gtaroutes1011] waiting:` on
+PR #927 naming the two new ids and this cause. Stopping here per the role file ("if you are waiting, that is a
+finished session too") rather than burning further bounded polls against a hold with a known, bounded end that
+this session cannot hasten.
