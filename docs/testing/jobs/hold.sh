@@ -195,12 +195,31 @@ PY
 # the labels in HOLD_RELEASE_LABELS are gated (nova); the Thor's screening
 # runs deliberately vary their env. HOLD_RELEASE_LABELS="" turns it off.
 HOLD_RELEASE_LABELS="${HOLD_RELEASE_LABELS-nova}"
+# ON A REFUSAL, PROMOTE THE RESTORE (#433, 10-11). The dispatcher's own
+# off-master restore (queue_master_restore) names its request with a bare
+# id, so it serves in ASCII order behind every release-tier request -- which
+# is every request a lane queues on a night like 15:36-10-10's, so the lone
+# restore starved for hours and a human renamed it by hand each time. Every
+# served request installs its own apk and writes its own env before any
+# soak starts (serve_one, dispatcher.sh:1375 build_ref, :1410 adb install,
+# :1425 apply_env_pref, ahead of the restore exit at :1445 and the title/suite
+# paths after it) -- so the bare id costs nothing to a served measurement.
+# It only matters here, to a caller about to run something BY HAND on
+# whatever the hold leaves installed. So the gate itself promotes: it finds
+# the device's pending restore and gives it the file a "0-" prefix, queuing
+# one first if none is pending. device_build.py's own restore_request stays
+# bare; only the promote command's rename adds the prefix.
 build_gate() {   # $1 label ; 0 pass, 4 refused (named on stderr)
     case " $HOLD_RELEASE_LABELS " in *" $1 "*) ;; *) return 0 ;; esac
     local out rc
     out=$(python3 "$(dirname "$0")/device_build.py" check "$D" "$1" 2>&1); rc=$?
     [ "$rc" -eq 0 ] && return 0
     echo "hold.sh: refusing $1: $out" >&2
+    if [ "$rc" -eq 4 ]; then
+        local pout
+        pout=$(python3 "$(dirname "$0")/device_build.py" promote "$D" "$1" 2>&1)
+        echo "hold.sh: $pout" >&2
+    fi
     return "$rc"
 }
 
@@ -254,7 +273,21 @@ case "$op" in
         valid tag "$3"
         [[ "$4" =~ ^[0-9]+$ ]] || { echo "hold.sh: timeout '$4' is not whole seconds" >&2; exit 2; }
         deadline=$(( $(date +%s) + $4 ))
-        build_gate "$label" || exit $?
+        # A build-gate refusal (4) promoted the restore (build_gate's own
+        # side effect); keep polling the gate, not exit at once, so a caller
+        # already willing to wait gets to run once the ~60 s restore lands.
+        # Any other refusal (gate off, or device_build.py itself erroring)
+        # is not something waiting fixes.
+        while :; do
+            build_gate "$label" && break
+            rc=$?
+            [ "$rc" -eq 4 ] || exit "$rc"
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+                echo "hold.sh: timed out after $4 s waiting for $label's master restore" >&2
+                exit 4
+            fi
+            sleep "$HOLD_WAIT_INTERVAL"
+        done
         while :; do
             hold_py take "$label" "$3" "${*:5}" 2>/dev/null && { notice_idle; exit 0; }
             rc=$?
