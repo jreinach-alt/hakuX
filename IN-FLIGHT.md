@@ -8,13 +8,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gtaroutes1011` | claude-sonnet-5 | 1h 13m | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
-| `gtasagpu1011` | claude-opus-5-5 | 32 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
-| `pathclass` | claude-sonnet-5 | 17 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
-| `profileconv1011` | claude-sonnet-5 | 1h 13m | profileconv1011: gta-sa and amped2 measure on their golden profiles (#433) |
-| `profilegate1011` | claude-sonnet-5 | 1h 15m | fold: lane/fastpaths1010 (offline) -- fastpaths1010: the six renderer switches as one Graphics toggle, on by d |
-| `snapshot1011` | claude-opus-5-5 | 0 min |  |
-| `soakvideo1011` | claude-sonnet-5 | 2h 24m | soakvideo1011: device-clock timestamps so hitch_report's window reads the dispatcher's own frames/ (Addendum 1 |
+| `gtaroutes1011` | claude-sonnet-5 | 1h 27m | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
+| `gtasagpu1011` | claude-opus-5-5 | 47 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
+| `pathclass` | claude-sonnet-5 | 32 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `snapshot1011` | claude-opus-5-5 | 15 min |  |
+| `soakvideo1011` | claude-sonnet-5 | 2h 39m | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -79,12 +77,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gtaroutes1011` | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) | `dba7ca0649` | 2026-10-11 12:37 |
+| `lane/gtaroutes1011` | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) | `a117f85735` | 2026-10-11 13:36 |
 | `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `d2b6d51d6f` | 2026-10-11 13:03 |
 | `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `f442726741` | 2026-10-11 13:21 |
-| `lane/profileconv1011` | profileconv1011: gta-sa and amped2 measure on their golden profiles (#433) | `6010687a5d` | 2026-10-11 13:17 |
-| `lane/profilegate1011` | fold: lane/fastpaths1010 (offline) -- fastpaths1010: the six renderer switches as one Graphics toggle, on by default (#4 | `6d8947bb47` | 2026-10-11 09:13 |
-| `lane/soakvideo1011` | soakvideo1011: device-clock timestamps so hitch_report's window reads the dispatcher's own frames/ (Addendum 1, #433) | `a96282f82d` | 2026-10-11 10:40 |
+| `lane/soakvideo1011` | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request (#433, 0. | `bee8b76571` | 2026-10-11 13:34 |
 
 ## Recently landed on master
 
@@ -94,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 
-_Updated 2026-10-11 13:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 13:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
