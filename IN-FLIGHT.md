@@ -8,9 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 1 min |  |
-| `lanenobg1010` | claude-sonnet-5 | 2 min |  |
-| `postput1010` | claude-opus-5-5 | 1 min | postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5) |
+| `fastpaths1010` | claude-sonnet-5 | 16 min |  |
+| `lanenobg1010` | claude-sonnet-5 | 17 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -73,9 +72,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/postput1010` | postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5) | `015da20eaf` | 2026-10-10 20:42 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -91,4 +88,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 pfifowait1009: stop holding pfifo.lock across the report-processing fence waits (#433, 0.5)
 - 2026-10-10 lane.forzasurf1010 -- does the default-on surfgpu route remove Forza's surface-download wait? (#433, 0.5)
 
-_Updated 2026-10-10 21:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 21:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
