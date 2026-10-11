@@ -16,6 +16,29 @@ The six frames named in the brief, read at 1280x960:
 CJ has no shadow in any of these frames, and in none of the sunny frames on the contact sheets either.
 Neither do the other peds.
 
+**A third symptom, from lane.local's later A/B** (frames every 30 s; read here at full size).
+At the A-frame church, 60-90 s after the mark, two runs show the same frame:
+
+- `1-1791733228-lane.local-3377455` f00012 (09:45);
+- `1-1791733231-lane.local-3377611` f00010 (08:44).
+
+In both, the sky is blown out yellow-white. The trees, the church roof and the distant buildings
+are smeared into streaks, mostly along one axis, as if each pixel were drawn on top of copies
+of its neighbours. The near geometry (fence, hedge, CJ) is mostly intact. Two other passes of
+the same spot look normal (3377329 f00010, 3377515 f00012). In those, the sky is clean blue
+and there is still no shadow under CJ.
+
+This looks like a full-screen post pass over the frame that read the wrong image: a stale
+one, one at the wrong scale, or the target it is writing to. It also fits the owner's "sky
+going from blue to white" and this lane's 3377194 f00066, where the whole sky is white. So the
+working split is two defects:
+
+1. **(a) post pass:** the white or streaked sky. Intermittent.
+2. **(b) shadow:** missing in every still.
+
+The hard-edged polygons (bands, wedges) are not assigned to either yet. This is a reading of
+four stills, not a finding. The dump decides it.
+
 The bands are long, straight-edged and diagonal, and they end on the ground. A screen-space
 sky polygon would not end on the ground. GTA SA projects pole and entity shadows onto the
 ground as polygons (CShadows), and the real-time ped shadow is one of them. So one candidate is
@@ -34,6 +57,10 @@ changed from the app default. Read by eye: CJ's shadow in sunny post-mark frames
 
 Sky bands: too rare per run (about 2 per 72 frames) for one run to decide, so step 1 reads them
 only as a side note.
+
+Brief addendum 1 (09:40): a still is 1 displayed frame in about 150. A run with a shadow in its
+stills names the subsystem. A run without one is **inconclusive**, not a negative: the shadow
+may show for a few frames at a time. The P values above are for "shadow in the stills".
 
 The six fastpaths switches are already ruled out by lane.local's OFF run (3377194).
 `HAKUX_PREBUILD` is on by default but only queues pipeline builds; it draws nothing.
