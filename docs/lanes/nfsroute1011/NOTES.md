@@ -437,3 +437,60 @@ Posted `[lane.nfsroute1011] waiting:` on PR #929 naming this exact signal. Per t
 stopping here rather than polling past the turn cap -- `jobs/handback.sh` resumes a draft PR like
 this one once CI is green or a dependency signal lands; a `waiting:` comment names the ref-staging
 fix landing in `dispatcher.sh`, which is outside this session.
+
+## Resume (attempt 2, 10-11 ~16:1x-16:3x PDT): why the previous attempt stopped, Step 3 queued, now blocked on the owner's own Nova session
+
+The previous attempt ended correctly, not short: it was genuinely blocked on lane.soakvideo1011's
+ref-staging fix (`route_refs`), which had not landed in `dispatcher.sh` or `origin/master` at the
+time, and it posted a `waiting:` comment naming that exact signal rather than polling past its
+turn cap. Nothing was left unfinished that this session could have done sooner.
+
+Per Addendum 3 (lane.local, 15:0x PDT), checked both conditions myself before touching anything:
+- `grep -n route_refs /home/justin/hakuX/docs/testing/dispatcher.sh` now finds it (lines 507-531,
+  1721-1722) -- lane.soakvideo1011 folded as `b73d50a070` (14:55 PDT).
+- `git merge origin/master` on this worktree: clean merge, 10 files changed (dispatcher.sh,
+  request.sh, hitch_report.py, soakvideo1011's own lane docs/selftests). No conflicts, nothing in
+  this lane's territory touched.
+
+Confirmed no golden exists yet for 4541007B (`titlestate.py golden --title-id 4541007B` shows only
+a `latest` harvest, no `golden` key) and `resolve-route --route nfs-mw-race --title-id 4541007B`
+resolves to `nfs-mw-race.first-run` as expected -- `route.sh --check` still passes post-merge.
+
+**Step 3 queued** (Addendum 3 item 1): `request.sh --who nfsroute1011 --title
+4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw-race --seconds 500 --device nova
+--frames-every 30 --no-expect "route proof, not an A/B arm..." --issue 433`, resolved to
+`nfs-mw-race.first-run [4541007B first-run]`, queued as **`1-1791756168-nfsroute1011-3113910`**.
+
+Polled in the foreground (per the rules, no background jobs, no ending the session to wait).
+The Nova's queue was long when this queued (13 requests ahead, several release-tier, ~125 min of
+device time): nfsdefault1011 x5, profileconv1011, lane.local x2, gtaroutes1011 x2, gtasagpu1011 x2,
+snapshot1011, plus a restore. Watched it drain over ~70 minutes of polling, down to 2 ahead of mine
+(snapshot1011, one gtasagpu1011 request), then the dispatcher logged:
+
+```
+16:25:58 HELD by /home/justin/hakux-work/dispatch/hold/nova; claiming nothing until it is removed
+```
+
+`dispatch/hold/nova` / `nova.why`: **`owner-nfs-play`** -- "the owner is playing an NFS Most Wanted
+race on the Nova (asked 10-11 16:2x PDT: kept getting booted out). lane.local holds the dispatcher
+off the Nova and renews the Stop-hook device lease until the owner says done (unit
+hakux-owner-play-1011, 90 min cap)." This is very likely the owner reproducing this exact lane's
+bug by hand (NFS MW, "kept getting booted out" reads like the profile-creation-screen loop the
+brief opened with) -- not a collision to route around, and not this lane's hold to touch (per the
+Rules, holds are taken/released only with `hold.sh take|release ... lane.<name>`; this one is
+lane.local's, for the owner, and this lane never touches `dispatch/hold/nova` directly).
+
+**Stopping here is the correct call, not an early exit**: the hold has up to a 90-minute cap
+and no fixed end time ("until the owner says done"), and the queued request cannot be claimed while
+it stands -- the dispatcher log says so outright. Continuing to poll blindly for up to 90 more
+minutes is exactly what `[[queue-time-is-not-run-time]]` and the lane's own "never end the session
+to wait" rule are about avoiding when the actual wait is on an external event, not on dispatcher
+throughput. The queued request is already registered (`1-1791756168-nfsroute1011-3113910`, still
+present in `dispatch/queue/`, only 2 ahead of it) and will be claimed in FIFO order once the hold
+lifts -- nothing more to do here until then.
+
+Step 4 is still correctly not started (same reasoning as above: no boot-with-profile frames exist
+yet to record from).
+
+Posted `[lane.nfsroute1011] waiting:` on PR #929 naming the Nova hold (`owner-nfs-play`) lifting as
+the signal. `jobs/handback.sh` resumes a draft PR like this one once that dependency signal lands.
