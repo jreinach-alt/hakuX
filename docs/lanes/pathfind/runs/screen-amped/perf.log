@@ -1,0 +1,38 @@
+pathfind: Amped: Freestyle Snowboarding (4D530005) on nova: /storage/E6C6-D7AA/Games/XBox/4D530005-Amped_Freestyle_Snowboarding.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4D530005 any, loaded golden a7d274372a00
+[  12.5s] #  1 loading           fast    wait                     Blank white frame with only a rendering-in-progress 3D object; no menu or prompt to act on
+[  17.0s] #  2 publisher_logo    replay  START                    replay step 1: replay step 1: Microsoft publisher logo before the title; per hints, START 
+[  24.3s] #  3 publisher_logo    fast    A                        Microsoft logo is still up; START did nothing on this unchanged screen, so per the hint sw
+[  32.7s] #  4 title_screen      fast    START                    Title with a 'Press START' prompt; per the recorded path and hints, START advances it. No 
+[  41.1s] #  5 main_menu         fast    A                        Main menu with CAREER already lit; recorded path confirms A on Career to reach riding.
+[  51.0s] #  6 submenu           fast    A                        Cold boot, so New Career is preferred over Load. It is the lit row, so A confirms it.
+[  58.8s] #  7 submenu           fast    A                        Save-slot picker for a new career; the highlighted Empty Slot is the default and matches t
+[  67.8s] #  8 name_entry        fast    A                        The default name is filled and the highlight is on Done, so A accepts it, matching the rec
+[  76.2s] #  9 save_load_prompt  fast    LEFT A                   Overwrite prompt defaults to No, and A on No loops back to name entry. The recorded path s
+[  88.5s] # 10 submenu           fast    DOWN RIGHT RIGHT RIGHT   Skill allocation blocks progress until all points are spent. Spin is highlighted and point
+[ 100.6s] # 11 submenu           fast    UP RIGHT                 Skill allocation still has one unspent point, which blocks continuing. Balance is the lit 
+[ 112.2s] # 12 submenu           fast    A                        Skill allocation screen; the Points available bar looks nearly empty, so I press A to try 
+[ 122.7s] # 13 submenu           fast    DOWN DOWN RIGHT          One skill point is still unspent, and the game blocks continuing until all are used. Jump 
+[ 134.3s] # 14 submenu           fast    DOWN DOWN RIGHT A        Still on the skill allocation screen, which blocks continuing until all points are spent. 
+[ 146.5s] # 15 submenu           fast    A                        Character setup is the step before riding. Continue is highlighted, so A accepts the defau
+[ 155.2s] # 16 submenu           fast    A                        Gear setup is the last step before riding. Continue is the lit row, so A accepts the defau
+[ 165.0s] # 17 submenu           fast    A                        Career hub with Level Select lit; the recorded path picks Level Select with A to reach a r
+[ 174.6s] # 18 submenu           fast    A                        Level select with Brighton 1 lit; A (Continue) starts the run per the recorded path. Not g
+[ 185.1s] # 19 submenu           fast    A                        Drop-point selection before a run. The lit row MAJESTIC is the default and A Select is the
+[ 193.5s] # 20 submenu           fast    A                        A tutorial/challenge info popup before the run, not yet gameplay. The recorded path advanc
+[ 201.5s] # 21 gameplay          fast    wait                     Live run with the rider in the world and the race/trick HUD up, no menu, popup or letterbo
+[ 218.3s] # 22 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.840, under input 0.553
+[ 225.3s] # 23 gameplay          fast    wait                     Player-controlled rider in the world with the trick/race HUD up, no menu, popup or letterb
+[ 240.7s] # 24 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.418, under input 0.455
+[ 249.7s] # 25 gameplay          fast    wait                     Player-controlled rider is in the world with the score/target HUD up and no menu or popup.
+[ 267.8s] # 26 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.299, under input 0.388
+[ 274.1s] # 27 gameplay          fast    wait                     Player-controlled rider is in the world with the score/target HUD up and no menu, popup or
+[ 287.1s] # 28 probe             probe   STICK:up:1.5             control 0.114, under input 0.304
+hold-play: genre other, need 180 s of play
+hold-play: HELD 186/180 s of play; 
+held Amped: Freestyle Snowboarding for 188s
+VERDICT Amped: Freestyle Snowboarding ? FAIL(duration: 188 s of gameplay < 600 s confirmation) gameplay=187.6s fps_ok=0.0861 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=101.3 static_frac=0.0192 play_share=0.9992 fps_excluded=2.4s
+{"name": "Amped: Freestyle Snowboarding", "device": "nova", "result": "gameplay", "minutes": 4.78, "model_calls": 30, "steps": 28, "replayed": 1, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-amped/perf/frames/027-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

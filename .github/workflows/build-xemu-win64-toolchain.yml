@@ -1,14 +1,9 @@
 name: Build xemu-win64-toolchain
 
+# Manual dispatch only (2026-10-03): see android.yml and
+# docs/lanes/localforge/RETURN.md, section 2a.
 on:
-  push:
-    paths:
-      - '.github/workflows/build-xemu-win64-toolchain.yml'
-      - 'ubuntu-win64-cross/**'
-  pull_request:
-    paths:
-      - '.github/workflows/build-xemu-win64-toolchain.yml'
-      - 'ubuntu-win64-cross/**'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

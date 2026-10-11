@@ -1,0 +1,28 @@
+{
+ "method": "rec",
+ "rc": 0,
+ "stderr": "",
+ "pull_rc": 0,
+ "start": 1791131184.7559001,
+ "wall_s": 4.11,
+ "bytes": 3503792,
+ "device": "nova",
+ "serial": "ee317437",
+ "seconds": 4,
+ "note": "4947002B hold-play burst 3",
+ "flicker": {
+  "frames": 243,
+  "unique": 126,
+  "dup_share": 0.483,
+  "triples": 124,
+  "hits": 2,
+  "rate": 1.61,
+  "p90": 0.0,
+  "max": 823.984,
+  "verdict": "clear",
+  "unique_fps": 31.5,
+  "dt_median_ms": 33.4,
+  "dt_max_ms": 83.5,
+  "worst": "f00002@0.015|f00003@0.030|f00008@0.113"
+ }
+}

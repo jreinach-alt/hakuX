@@ -1,0 +1,3 @@
+# GoldenEye: Rogue Agent (EA, 4541005D)
+- MGM and EA logos (A, then START), "PRESS ANY BUTTON" (START), CREATE NEW PROFILE keyboard with "PLAYER1" and the cursor on a letter: START does nothing; STICK:right moves one key per flick to OK (about ten; it stops at the end), then A.
+- MAIN MENU, Campaign (A); CAMPAIGN: Fort Knox, Normal, PLAY (A); a ~65 s briefing and intro video that neither A nor START skipped; then first person inside the helicopter (the right stick turns the view; it is not in the action list): gameplay. The profile did not always persist: expect the keyboard again on a later boot.

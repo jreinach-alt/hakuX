@@ -41,7 +41,7 @@ class SetupWizardActivity : AppCompatActivity() {
   private var mcpxUri: Uri? = null
   private var flashUri: Uri? = null
   private var hddUri: Uri? = null
-  private var gamesFolderUri: Uri? = null
+  private var gamesFolders: List<Uri> = emptyList()
   private var mcpxPath: String? = null
   private var flashPath: String? = null
   private var hddPath: String? = null
@@ -125,8 +125,8 @@ class SetupWizardActivity : AppCompatActivity() {
     registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
       if (uri != null) {
         persistUriPermission(uri)
-        gamesFolderUri = uri
-        prefs.edit().putString("gamesFolderUri", uri.toString()).apply()
+        GamesFolders.add(prefs, uri)
+        gamesFolders = GamesFolders.read(prefs)
         updateDiscSelection()
         updateButtons()
       }
@@ -141,7 +141,7 @@ class SetupWizardActivity : AppCompatActivity() {
     mcpxUri = prefs.getString("mcpxUri", null)?.let(Uri::parse)
     flashUri = prefs.getString("flashUri", null)?.let(Uri::parse)
     hddUri = prefs.getString("hddUri", null)?.let(Uri::parse)
-    gamesFolderUri = prefs.getString("gamesFolderUri", null)?.let(Uri::parse)
+    gamesFolders = GamesFolders.read(prefs)
 
     val coreReady = isFileReady(mcpxPath) && isFileReady(flashPath) && isFileReady(hddPath)
     val gamesFolderReady = hasGamesFolderReady()
@@ -186,7 +186,7 @@ class SetupWizardActivity : AppCompatActivity() {
     btnPickMcpx.setOnClickListener { pickMcpx.launch(arrayOf("application/octet-stream")) }
     btnPickFlash.setOnClickListener { pickFlash.launch(arrayOf("application/octet-stream")) }
     btnPickHdd.setOnClickListener { pickHdd.launch(arrayOf("application/x-qcow2", "application/octet-stream")) }
-    btnPickDisc.setOnClickListener { pickGamesFolder.launch(gamesFolderUri) }
+    btnPickDisc.setOnClickListener { pickGamesFolder.launch(gamesFolders.firstOrNull()) }
 
     btnBack.setOnClickListener { showStep(currentStep - 1) }
     btnNext.setOnClickListener {
@@ -273,7 +273,8 @@ class SetupWizardActivity : AppCompatActivity() {
   }
 
   private fun updateDiscSelection() {
-    val value = gamesFolderUri?.let { formatTreeLabel(it) } ?: getString(R.string.setup_not_set)
+    val value = gamesFolders.takeIf { it.isNotEmpty() }?.joinToString(", ") { formatTreeLabel(it) }
+      ?: getString(R.string.setup_not_set)
     discPathText.text = getString(R.string.setup_disc_value, value)
   }
 
@@ -313,12 +314,13 @@ class SetupWizardActivity : AppCompatActivity() {
   }
 
   private fun hasGamesFolderReady(): Boolean {
-    val uri = gamesFolderUri ?: return false
-    if (!hasPersistedReadPermission(uri)) {
-      return false
+    return gamesFolders.any { uri ->
+      if (!hasPersistedReadPermission(uri)) {
+        return@any false
+      }
+      val root = DocumentFile.fromTreeUri(this, uri)
+      root != null && root.exists() && root.isDirectory
     }
-    val root = DocumentFile.fromTreeUri(this, uri) ?: return false
-    return root.exists() && root.isDirectory
   }
 
   private fun hasPersistedReadPermission(uri: Uri): Boolean {

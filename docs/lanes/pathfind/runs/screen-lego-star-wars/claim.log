@@ -1,0 +1,13 @@
+pathfind: LEGO Star Wars The Video Game (4553001D) on nova: /storage/E6C6-D7AA/Games/XBox/4553001D-LEGO_Star_Wars_The_Video_Game.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4553001D first-run, loaded none
+[   9.0s] #  1 loading           fast    wait                     Blank white frame with a lone 3D model and no menu or HUD, likely a loading or transitiona
+[  19.6s] #  2 publisher_logo    fast    A                        Title logo splash during boot, not a menu yet; per hints, skip with A once and re-read, bu
+[  31.9s] #  3 cutscene          fast    wait                     Looks like a 3D scene in a corridor with no HUD or menu, plausibly an intro cinematic or a
+[  41.5s] #  4 gameplay          fast    wait                     Player-controllable LEGO Star Wars scene with a HUD (portrait, hearts, status panels) and 
+[  54.9s] #  5 probe             probe   STICK:up:1.5             control 0.035, under input 0.544
+[  59.4s] #  6 gameplay          fast    wait                     Player-controllable LEGO Star Wars character with HUD (portrait, hearts) in the game world
+[  72.4s] #  7 probe             probe   STICK:up:1.5             control 0.009, under input 0.064
+{"name": "LEGO Star Wars The Video Game", "device": "nova", "result": "gameplay", "minutes": 1.21, "model_calls": 9, "steps": 7, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-lego-star-wars/claim/frames/006-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

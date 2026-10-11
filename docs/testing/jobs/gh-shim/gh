@@ -1,0 +1,1557 @@
+#!/usr/bin/env python3
+"""gh-shim: the `gh` operations the hakuX harness uses, served by the local forge.
+
+GitHub suspended the harness account on 2026-09-29 and every `gh` call has
+returned 403 since. Most callers send gh's stderr to /dev/null and read an
+empty stdout as "nothing to do", so the harness went quiet instead of
+failing. This executable sits earlier on PATH than /usr/bin/gh and answers
+the same command lines from the local Forgejo (127.0.0.1:3330,
+docs/lanes/localforge/NOTES.md).
+
+Rules it keeps:
+  * It FAILS LOUDLY. Any error exits nonzero with one stderr line naming the
+    operation. It never turns a failure into empty success.
+  * An operation it does not implement exits 64 with
+    "gh-shim: not implemented: <args>". So do flags it does not know.
+  * Every call is logged, one JSON line, to $GH_SHIM_LOG
+    (default ~/hakux-work/logs/forge/shim.log). That log is how a missing
+    operation shows up.
+  * The repo is --repo/-R, else $GH_REPO, else jreinach-alt/hakuX. The forge
+    has an org of that name, so the default slug needs no translation.
+  * The account is $FORGE_USER, else it follows $HAKUX_ROLE (lane and cloud
+    map to `lanes`), else `jobs`. Its token is $FORGE_TOKENS/<user>.token.
+  * Output follows gh's shapes:
+    - `--json` field names, with uppercase states.
+    - `--jq` runs through jq -r -c, so strings come out raw and objects
+      compact.
+    - `gh api` returns the REST body. GitHub-only endpoints (check-runs,
+      issue events, comment sort order) are synthesised from Forgejo's.
+    - Timestamps are UTC, ending in Z.
+  * Drafts are Forgejo's work-in-progress title prefix ("WIP: "). The prefix
+    is stripped from titles on output and set by `pr create --draft` and
+    `pr ready --undo`.
+  * `pr merge` is refused: merges go through offline-git/foldqueue.sh, and
+    a forge-only commit would be overwritten by the next hakux-forge-sync.
+"""
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
+
+VERSION = "gh version 2.45.0 (forge-shim, lane.localforge 2026-10-02)"
+FORGE_URL = os.environ.get("FORGE_URL", "http://127.0.0.1:3330").rstrip("/")
+HOME = os.path.expanduser("~")
+TOKENS = os.environ.get("FORGE_TOKENS", HOME + "/hakux-work/forge/tokens")
+LOG = os.environ.get("GH_SHIM_LOG", HOME + "/hakux-work/logs/forge/shim.log")
+GIT_DIR = os.environ.get("FORGE_GIT_DIR", "")  # merge-tree source; default: the forge's own repo dir
+REPOS_ROOT = os.environ.get("FORGE_REPOS_ROOT", HOME + "/hakux-work/forge/data/repos")
+CACHE = os.environ.get("FORGE_SHIM_CACHE", HOME + "/hakux-work/forge/cache")
+SYNC = os.environ.get("FORGE_SYNC", HOME + "/hakux-work/forge/bin/forge-sync.sh")
+JQ = os.environ.get("GH_SHIM_JQ", "jq")
+DEFAULT_REPO = "jreinach-alt/hakuX"
+PAGE = 50
+WIP_RE = re.compile(r"^\s*(\[WIP\]|WIP:|WIP)\s*", re.I)
+CLOSE_RE = re.compile(r"(?i)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s+#(\d+)")
+
+
+class Fail(Exception):
+    def __init__(self, rc, msg):
+        super().__init__(msg)
+        self.rc, self.msg = rc, msg
+
+
+class NotImpl(Exception):
+    pass
+
+
+# ---------------------------------------------------------------- utilities
+
+def utc(ts):
+    """Forgejo timestamp (any offset) -> GitHub's 2026-10-02T17:00:00Z."""
+    if not isinstance(ts, str) or not ts:
+        return ts or None
+    if ts.startswith("0001-01-01"):  # Go's zero time: "never"
+        return None
+    try:
+        d = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    except ValueError:
+        return ts
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=timezone.utc)
+    return d.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+TS_KEYS = {"created_at", "updated_at", "closed_at", "merged_at", "due_date", "published_at",
+           "started", "stopped", "run_started_at", "pushed_at"}
+
+
+def norm_ts(obj):
+    if isinstance(obj, dict):
+        return {k: (utc(v) if k in TS_KEYS and isinstance(v, str) else norm_ts(v)) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [norm_ts(x) for x in obj]
+    return obj
+
+
+def actor():
+    u = os.environ.get("FORGE_USER", "").strip()
+    if u:
+        return u
+    role = os.environ.get("HAKUX_ROLE", "")
+    return {"lane": "lanes", "cloud": "lanes", "hostops": "hostops",
+            "lane.local": "lane.local", "local": "lane.local", "owner": "owner"}.get(role, "jobs")
+
+
+def token():
+    u = actor()
+    p = os.path.join(TOKENS, u + ".token")
+    try:
+        with open(p) as f:
+            return f.read().strip()
+    except OSError as e:
+        raise Fail(4, f"no forge token for user '{u}' at {p} ({e.strerror})")
+
+
+class Forge:
+    def __init__(self, repo, op):
+        self.repo = repo
+        self.op = op
+        self.tok = token()
+
+    def request(self, method, path, query=None, body=None, raw=None, ctype="application/json",
+                accept="application/json", ok404=False):
+        """Returns (status, headers, bytes). Raises Fail on transport errors and HTTP >= 400
+        (unless ok404 and the status is 404)."""
+        if not path.startswith("/"):
+            path = "/" + path
+        url = FORGE_URL + "/api/v1" + path
+        if query:
+            q = urllib.parse.urlencode(query, doseq=True)
+            url += ("&" if "?" in url else "?") + q
+        data = raw if raw is not None else (json.dumps(body).encode() if body is not None else None)
+        req = urllib.request.Request(url, method=method, data=data)
+        req.add_header("Authorization", "token " + self.tok)
+        req.add_header("Accept", accept)
+        if data is not None:
+            req.add_header("Content-Type", ctype)
+        try:
+            with urllib.request.urlopen(req, timeout=float(os.environ.get("GH_SHIM_TIMEOUT", "60"))) as r:
+                return r.status, dict(r.headers), r.read()
+        except urllib.error.HTTPError as e:
+            payload = e.read()
+            if ok404 and e.code == 404:
+                return 404, dict(e.headers), payload
+            raise Fail(1, f"{self.op}: HTTP {e.code} from {method} {path}: {errmsg(payload)}") from None
+        except (urllib.error.URLError, OSError) as e:
+            raise Fail(1, f"{self.op}: forge unreachable at {FORGE_URL} ({getattr(e, 'reason', e)}); "
+                          f"is hakux-forge.service running?") from None
+
+    def json(self, method, path, query=None, body=None, ok404=False):
+        st, _h, b = self.request(method, path, query, body, ok404=ok404)
+        if st == 404 and ok404:
+            return None
+        if not b.strip():
+            return None
+        try:
+            return norm_ts(json.loads(b))
+        except ValueError:
+            raise Fail(1, f"{self.op}: non-JSON reply from {method} {path}") from None
+
+    def get(self, path, query=None, ok404=False):
+        return self.json("GET", path, query, ok404=ok404)
+
+    def all(self, path, query=None, cap=None):
+        """Every page of a list endpoint (Forgejo pages by `limit`, not `per_page`)."""
+        out, page = [], 1
+        q = dict(query or {})
+        while True:
+            q.update(page=page, limit=PAGE)
+            rows = self.get(path, q)
+            if not isinstance(rows, list):
+                raise Fail(1, f"{self.op}: expected a list from GET {path}, got {type(rows).__name__}")
+            out.extend(rows)
+            if len(rows) < PAGE or (cap is not None and len(out) >= cap):
+                return out
+            page += 1
+            if page > 400:
+                raise Fail(1, f"{self.op}: GET {path} did not end after 400 pages")
+
+    def r(self, sub=""):
+        return f"/repos/{self.repo}{sub}"
+
+
+def errmsg(payload):
+    try:
+        j = json.loads(payload)
+        if isinstance(j, dict):
+            m = j.get("message") or j.get("error") or ""
+            errs = j.get("errors")
+            if errs:
+                m = (m + " " + json.dumps(errs))[:300]
+            return m or payload[:200].decode(errors="replace")
+    except ValueError:
+        pass
+    return payload[:200].decode(errors="replace").strip()
+
+
+def run_jq(expr, data_json, op):
+    try:
+        p = subprocess.run([JQ, "-r", "-c", expr], input=data_json, capture_output=True, text=True, timeout=60)
+    except FileNotFoundError:
+        raise Fail(1, f"{op}: --jq needs jq on PATH ({JQ} not found)") from None
+    if p.returncode:
+        raise Fail(p.returncode if p.returncode < 64 else 1,
+                   f"{op}: jq failed rc={p.returncode}: {p.stderr.strip()[:200]}")
+    return p.stdout
+
+
+def emit(text):
+    if text:
+        sys.stdout.write(text if text.endswith("\n") else text + "\n")
+
+
+def read_body_file(path):
+    if path == "-":
+        return sys.stdin.read()
+    try:
+        with open(path) as f:
+            return f.read()
+    except OSError as e:
+        raise Fail(1, f"cannot read body file {path}: {e.strerror}") from None
+
+
+# ---------------------------------------------------------------- argument parsing
+
+class Args:
+    """A strict little gh-style parser: unknown flags raise NotImpl."""
+
+    def __init__(self, argv, spec):
+        # spec: canonical -> (aliases tuple, kind) ; kind in {"bool","val","multi"}
+        self.vals, self.pos = {}, []
+        alias = {}
+        for name, (al, kind) in spec.items():
+            for a in (name,) + tuple(al):
+                alias[a] = (name, kind)
+        i = 0
+        while i < len(argv):
+            a = argv[i]
+            if a == "--":
+                self.pos.extend(argv[i + 1:])
+                break
+            if a.startswith("-") and a != "-" and not re.fullmatch(r"-\d+", a):
+                key, val = a, None
+                if a.startswith("--") and "=" in a:
+                    key, val = a.split("=", 1)
+                elif not a.startswith("--") and len(a) > 2 and a[:2] in alias:
+                    key, val = a[:2], a[2:]
+                if key not in alias:
+                    raise NotImpl()
+                name, kind = alias[key]
+                if kind == "bool":
+                    self.vals[name] = True if val is None else val not in ("false", "0")
+                else:
+                    if val is None:
+                        i += 1
+                        if i >= len(argv):
+                            raise Fail(2, f"flag needs an argument: {key}")
+                        val = argv[i]
+                    if kind == "multi":
+                        self.vals.setdefault(name, []).extend(
+                            [v for v in val.split(",") if v] if name in ("--label", "--add-label", "--remove-label") else [val])
+                    else:
+                        self.vals[name] = val
+            else:
+                self.pos.append(a)
+            i += 1
+
+    def get(self, k, d=None):
+        return self.vals.get(k, d)
+
+
+COMMON = {"--repo": (("-R",), "val")}
+JSONFLAGS = {"--json": ((), "val"), "--jq": (("-q",), "val"), "--template": (("-t",), "val")}
+
+
+def spec(*parts, **extra):
+    d = dict(COMMON)
+    for p in parts:
+        d.update(p)
+    d.update({k: v for k, v in extra.items()})
+    return d
+
+
+def repo_of(a):
+    r = a.get("--repo") or os.environ.get("GH_REPO") or DEFAULT_REPO
+    r = re.sub(r"^(https?://)?(github\.com|127\.0\.0\.1:\d+|localhost:\d+)/", "", r).strip("/")
+    r = re.sub(r"\.git$", "", r)
+    if r.count("/") != 1:
+        raise Fail(1, f"invalid repo '{r}': want OWNER/REPO")
+    return r
+
+
+def output(a, objs, op):
+    """--json [--jq] output; without --json the caller prints text itself."""
+    if a.get("--template"):
+        raise NotImpl()
+    text = json.dumps(objs, indent=2)
+    if a.get("--jq"):
+        emit(run_jq(a.get("--jq"), text, op))
+    else:
+        emit(text)
+
+
+def fields_of(a, allowed, op):
+    f = [x.strip() for x in (a.get("--json") or "").split(",") if x.strip()]
+    bad = [x for x in f if x not in allowed]
+    if bad:
+        raise Fail(1, f"{op}: unknown JSON field(s): {', '.join(bad)} (shim knows: {', '.join(sorted(allowed))})")
+    if a.get("--jq") and not f:
+        raise Fail(1, f"{op}: cannot use --jq without --json")
+    return f
+
+
+# ---------------------------------------------------------------- labels
+
+class Labels:
+    def __init__(self, fg):
+        self.fg = fg
+        self._all = None
+
+    def all(self):
+        if self._all is None:
+            self._all = {l["name"]: l for l in self.fg.all(self.fg.r("/labels"))}
+        return self._all
+
+    def ids(self, names, create=True):
+        out = []
+        for n in names:
+            l = self.all().get(n)
+            if l is None:
+                if not create:
+                    raise Fail(1, f"{self.fg.op}: label '{n}' does not exist in {self.fg.repo}")
+                # GitHub creates an unknown label on first use; so does the shim, and logs it.
+                l = self.fg.json("POST", self.fg.r("/labels"), body=dict(name=n, color="#ededed", description=""))
+                self._all[n] = l
+                log_note(f"created label '{n}' on first use")
+            out.append(l["id"])
+        return out
+
+
+def gh_labels(ls):
+    return [dict(id=str(l.get("id")), name=l.get("name"), description=l.get("description", ""),
+                 color=(l.get("color") or "").lstrip("#")) for l in (ls or [])]
+
+
+# ---------------------------------------------------------------- statuses / checks
+
+STATE_UP = {"pending": "PENDING", "success": "SUCCESS", "error": "ERROR", "failure": "FAILURE",
+            "warning": "NEUTRAL", "skipped": "SKIPPED", "cancelled": "CANCELLED"}
+
+
+# Only the forge's own workflows (.forgejo/workflows/forge-*.yml, named "forge ...") count
+# as CI. Forgejo falls back to .github/workflows on a branch without .forgejo/, and those
+# runs ask for runners that do not exist here: they sit PENDING for ever, or FAILURE once
+# cancelled, and deleting the run leaves the commit status behind (measured 2026-10-02).
+CI_CONTEXT_RE = re.compile(os.environ.get("FORGE_CI_CONTEXT_RE", r"^forge[ -]"))
+CI_WORKFLOW_RE = re.compile(os.environ.get("FORGE_CI_WORKFLOW_RE", r"^forge-.*\.ya?ml$"))
+
+
+def statuses(fg, sha):
+    """Latest status per context for a commit (Forgejo's combined status), forge CI only."""
+    if not sha:
+        return []
+    j = fg.get(fg.r(f"/commits/{sha}/status"), ok404=True)
+    if not j:
+        return []
+    return [s for s in j.get("statuses") or [] if CI_CONTEXT_RE.search(s.get("context") or "")]
+
+
+def rollup(fg, sha):
+    return [dict(__typename="StatusContext", context=s.get("context"),
+                 state=STATE_UP.get((s.get("status") or s.get("state") or "").lower(), "PENDING"),
+                 targetUrl=s.get("target_url"), description=s.get("description"),
+                 createdAt=utc(s.get("created_at")), startedAt=utc(s.get("created_at")))
+            for s in statuses(fg, sha)]
+
+
+def check_runs(fg, sha):
+    runs = []
+    for s in statuses(fg, sha):
+        st = (s.get("status") or s.get("state") or "").lower()
+        runs.append(dict(id=s.get("id"), name=s.get("context"), head_sha=sha,
+                         status="in_progress" if st == "pending" else "completed",
+                         conclusion=None if st == "pending" else
+                         {"warning": "neutral", "error": "failure"}.get(st, st),
+                         started_at=utc(s.get("created_at")), completed_at=utc(s.get("updated_at")),
+                         details_url=s.get("target_url"), html_url=s.get("target_url")))
+    return dict(total_count=len(runs), check_runs=runs)
+
+
+# ---------------------------------------------------------------- mergeability
+
+def repo_git_dir(repo):
+    if GIT_DIR:
+        return GIT_DIR
+    o, n = repo.lower().split("/")
+    return os.path.join(REPOS_ROOT, o, n + ".git")
+
+
+def mergeable(repo, base_sha, head_sha):
+    """MERGEABLE / CONFLICTING / UNKNOWN by `git merge-tree`. Forgejo's own flag is
+    false for every WIP (draft) PR, so it cannot tell a draft that conflicts."""
+    if not base_sha or not head_sha:
+        return "UNKNOWN"
+    key = f"{base_sha}..{head_sha}"
+    cfile = os.path.join(CACHE, "mergeable.json")
+    try:
+        with open(cfile) as f:
+            cache = json.load(f)
+    except (OSError, ValueError):
+        cache = {}
+    if key in cache:
+        return cache[key]
+    gd = repo_git_dir(repo)
+    # --write-tree writes the merged trees; send them to a scratch object dir so the
+    # forge's repo is only read. (git 2.43 has no merge-tree --quiet.)
+    scratch = tempfile.mkdtemp(prefix="gh-shim-mt-")
+    env = dict(os.environ, GIT_OBJECT_DIRECTORY=scratch,
+               GIT_ALTERNATE_OBJECT_DIRECTORIES=os.path.join(gd, "objects"))
+    try:
+        p = subprocess.run(["git", "--git-dir", gd, "merge-tree", "--write-tree", "--no-messages",
+                            base_sha, head_sha], capture_output=True, text=True, timeout=120, env=env)
+    except (OSError, subprocess.TimeoutExpired):
+        return "UNKNOWN"
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+    v = {0: "MERGEABLE", 1: "CONFLICTING"}.get(p.returncode, "UNKNOWN")
+    if v != "UNKNOWN":
+        cache[key] = v
+        if len(cache) > 5000:
+            cache = dict(list(cache.items())[-2500:])
+        try:
+            os.makedirs(CACHE, exist_ok=True)
+            tmp = cfile + f".{os.getpid()}"
+            with open(tmp, "w") as f:
+                json.dump(cache, f)
+            os.replace(tmp, cfile)
+        except OSError:
+            pass
+    return v
+
+
+# ---------------------------------------------------------------- object mapping
+
+def user(u):
+    return dict(login=(u or {}).get("login") or (u or {}).get("username") or "ghost",
+                id=str((u or {}).get("id", "")), is_bot=False)
+
+
+def is_draft(pr):
+    return bool(pr.get("draft")) or bool(WIP_RE.match(pr.get("title") or ""))
+
+
+def clean_title(t):
+    return WIP_RE.sub("", t or "", count=1)
+
+
+def pr_state(pr):
+    if pr.get("merged") or pr.get("merged_at"):
+        return "MERGED"
+    return "OPEN" if pr.get("state") == "open" else "CLOSED"
+
+
+PR_FIELDS = {"number", "title", "body", "state", "isDraft", "headRefName", "headRefOid", "baseRefName",
+             "baseRefOid", "mergeable", "labels", "updatedAt", "createdAt", "closedAt", "mergedAt", "url",
+             "id", "author", "statusCheckRollup", "comments", "files", "closingIssuesReferences",
+             "additions", "deletions", "changedFiles", "closed", "isCrossRepository", "mergeCommit",
+             "reviews", "latestReviews", "reviewDecision", "commits", "headRepositoryOwner"}
+
+
+def comments_of(fg, n):
+    return [dict(id=str(c.get("id")), author=user(c.get("user")), body=c.get("body") or "",
+                 createdAt=c.get("created_at"), url=comment_html(c, n), authorAssociation="MEMBER")
+            for c in fg.all(fg.r(f"/issues/{n}/comments"))]
+
+
+def comment_html(c, n=None):
+    u = c.get("html_url") or ""
+    # Forgejo writes PR comment links under /pulls/; GitHub's consumers match /(issues|pull)/.
+    return re.sub(r"/pulls/(\d+)#", r"/issues/\1#", u)
+
+
+def pr_obj(fg, pr, fields):
+    o = {}
+    n = pr["number"]
+    for f in fields:
+        if f == "number":
+            o[f] = n
+        elif f == "title":
+            o[f] = clean_title(pr.get("title"))
+        elif f == "body":
+            o[f] = pr.get("body") or ""
+        elif f == "state":
+            o[f] = pr_state(pr)
+        elif f == "closed":
+            o[f] = pr.get("state") != "open"
+        elif f == "isDraft":
+            o[f] = is_draft(pr)
+        elif f == "headRefName":
+            o[f] = (pr.get("head") or {}).get("ref")
+        elif f == "headRefOid":
+            o[f] = (pr.get("head") or {}).get("sha")
+        elif f == "baseRefName":
+            o[f] = (pr.get("base") or {}).get("ref")
+        elif f == "baseRefOid":
+            o[f] = (pr.get("base") or {}).get("sha")
+        elif f == "isCrossRepository":
+            o[f] = False
+        elif f == "headRepositoryOwner":
+            o[f] = dict(login=fg.repo.split("/")[0])
+        elif f == "mergeable":
+            if pr.get("state") != "open":
+                o[f] = "UNKNOWN"
+            else:
+                o[f] = mergeable(fg.repo, (pr.get("base") or {}).get("sha"), (pr.get("head") or {}).get("sha"))
+        elif f == "labels":
+            o[f] = gh_labels(pr.get("labels"))
+        elif f in ("updatedAt", "createdAt", "closedAt", "mergedAt"):
+            o[f] = pr.get({"updatedAt": "updated_at", "createdAt": "created_at",
+                           "closedAt": "closed_at", "mergedAt": "merged_at"}[f])
+        elif f == "url":
+            o[f] = pr.get("html_url")
+        elif f == "id":
+            o[f] = str(pr.get("id"))
+        elif f == "author":
+            o[f] = user(pr.get("user"))
+        elif f == "statusCheckRollup":
+            o[f] = rollup(fg, (pr.get("head") or {}).get("sha"))
+        elif f == "comments":
+            o[f] = comments_of(fg, n)
+        elif f == "files":
+            o[f] = [dict(path=x.get("filename"), additions=x.get("additions", 0), deletions=x.get("deletions", 0))
+                    for x in fg.all(fg.r(f"/pulls/{n}/files"))]
+        elif f == "closingIssuesReferences":
+            o[f] = [dict(number=int(m)) for m in dict.fromkeys(CLOSE_RE.findall(pr.get("body") or ""))]
+        elif f in ("additions", "deletions"):
+            o[f] = pr.get(f, 0)
+        elif f == "changedFiles":
+            o[f] = pr.get("changed_files", 0)
+        elif f == "mergeCommit":
+            o[f] = dict(oid=pr.get("merge_commit_sha")) if pr.get("merge_commit_sha") else None
+        elif f in ("reviews", "latestReviews"):
+            o[f] = [dict(author=user(r.get("user")), state=(r.get("state") or "").upper(),
+                         body=r.get("body") or "", submittedAt=r.get("submitted_at"))
+                    for r in norm_ts(fg.all(fg.r(f"/pulls/{n}/reviews")))]
+        elif f == "reviewDecision":
+            o[f] = ""
+        elif f == "commits":
+            o[f] = [dict(oid=c.get("sha"), messageHeadline=((c.get("commit") or {}).get("message") or "").split("\n")[0])
+                    for c in fg.all(fg.r(f"/pulls/{n}/commits"))]
+    return o
+
+
+ISSUE_FIELDS = {"number", "title", "body", "state", "labels", "updatedAt", "createdAt", "closedAt", "url",
+                "id", "author", "comments", "closed", "isPinned", "assignees", "milestone", "stateReason"}
+
+
+def issue_obj(fg, it, fields):
+    o = {}
+    for f in fields:
+        if f == "number":
+            o[f] = it["number"]
+        elif f == "title":
+            o[f] = it.get("title") or ""
+        elif f == "body":
+            o[f] = it.get("body") or ""
+        elif f == "state":
+            o[f] = "OPEN" if it.get("state") == "open" else "CLOSED"
+        elif f == "closed":
+            o[f] = it.get("state") != "open"
+        elif f == "stateReason":
+            o[f] = "" if it.get("state") == "open" else "COMPLETED"
+        elif f == "labels":
+            o[f] = gh_labels(it.get("labels"))
+        elif f in ("updatedAt", "createdAt", "closedAt"):
+            o[f] = it.get({"updatedAt": "updated_at", "createdAt": "created_at", "closedAt": "closed_at"}[f])
+        elif f == "url":
+            o[f] = it.get("html_url")
+        elif f == "id":
+            o[f] = str(it.get("id"))
+        elif f == "author":
+            o[f] = user(it.get("user"))
+        elif f == "comments":
+            o[f] = comments_of(fg, it["number"])
+        elif f == "isPinned":
+            o[f] = bool(it.get("pin_order"))
+        elif f == "assignees":
+            o[f] = [user(u) for u in (it.get("assignees") or [])]
+        elif f == "milestone":
+            o[f] = dict(title=it["milestone"]["title"]) if it.get("milestone") else None
+    return o
+
+
+# ---------------------------------------------------------------- pr
+
+def find_pr(fg, ref, op):
+    """A PR by number, URL, or head branch name (open first, then any)."""
+    if ref is None:
+        try:
+            ref = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True,
+                                 text=True, check=True).stdout.strip()
+        except (OSError, subprocess.CalledProcessError):
+            raise Fail(1, f"{op}: no PR given and not on a git branch") from None
+    m = re.search(r"(?:^#?|/(?:pull|pulls|issues)/)(\d+)$", str(ref))
+    if m:
+        pr = fg.get(fg.r(f"/pulls/{m.group(1)}"), ok404=True)
+        if pr is None:
+            raise Fail(1, f"{op}: no pull request #{m.group(1)} in {fg.repo}")
+        return pr
+    prs = [p for p in fg.all(fg.r("/pulls"), dict(state="all", sort="recentupdate"))
+           if (p.get("head") or {}).get("ref") == ref]
+    prs.sort(key=lambda p: (p.get("state") != "open", -p["number"]))
+    if not prs:
+        raise Fail(1, f"{op}: no pull requests found for branch \"{ref}\" in {fg.repo}")
+    return prs[0]
+
+
+def search_quals(a):
+    """`--search` holding only qualifiers -> the matching flags in `a`. Free text raises NotImpl.
+
+    The forge has no PR search; xbox_check.sh's `--search 'head:lane/xbox'` is the form in use.
+    """
+    s = a.get("--search")
+    if s is None:
+        return
+    flag = {"head": "--head", "base": "--base", "author": "--author", "label": "--label"}
+    for tok in s.split():
+        k, _, v = tok.partition(":")
+        if not v:
+            raise NotImpl()
+        if k == "is" and v in ("open", "closed", "merged"):
+            k = "state"
+            flag["state"] = "--state"
+        if k == "label":
+            a.vals.setdefault("--label", []).append(v)
+        elif k in flag:
+            if a.vals.setdefault(flag[k], v) != v:
+                raise Fail(2, f"--search {tok} conflicts with {flag[k]} {a.vals[flag[k]]}")
+        elif k == "is" and v == "draft" or k == "draft" and v == "true":
+            a.vals["--draft"] = True
+        else:
+            raise NotImpl()
+
+
+def list_prs(fg, a, op):
+    search_quals(a)
+    state = (a.get("--state") or "open").lower()
+    if state not in ("open", "closed", "merged", "all"):
+        raise Fail(2, f"{op}: invalid --state {state}")
+    rows = fg.all(fg.r("/pulls"), dict(state={"merged": "closed"}.get(state, state)))
+    if state == "merged":
+        rows = [p for p in rows if pr_state(p) == "MERGED"]
+    elif state == "closed":
+        rows = [p for p in rows if pr_state(p) == "CLOSED"]
+    want = a.get("--label") or []
+    if want:
+        known = {l["name"] for l in fg.all(fg.r("/labels"))}
+        for w in want:
+            if w not in known:
+                log_note(f"{op}: label '{w}' does not exist in {fg.repo}; result is empty for it")
+        rows = [p for p in rows if set(want) <= {l["name"] for l in p.get("labels") or []}]
+    if a.get("--head"):
+        rows = [p for p in rows if (p.get("head") or {}).get("ref") == a.get("--head")]
+    if a.get("--base"):
+        rows = [p for p in rows if (p.get("base") or {}).get("ref") == a.get("--base")]
+    if a.get("--author"):
+        rows = [p for p in rows if (p.get("user") or {}).get("login") == a.get("--author")]
+    if a.get("--draft"):
+        rows = [p for p in rows if is_draft(p)]
+    rows.sort(key=lambda p: -p["number"])
+    return rows[: int(a.get("--limit") or 30)]
+
+
+def cmd_pr(argv):
+    if not argv:
+        raise NotImpl()
+    sub, rest = argv[0], argv[1:]
+    op = "pr " + sub
+    if sub == "list":
+        a = Args(rest, spec(JSONFLAGS, **{"--state": (("-s",), "val"), "--limit": (("-L",), "val"),
+                                          "--label": (("-l",), "multi"), "--head": (("-H",), "val"),
+                                          "--base": (("-B",), "val"), "--author": (("-A",), "val"),
+                                          "--draft": (("-d",), "bool"), "--search": (("-S",), "val")}))
+        fg = Forge(repo_of(a), op)
+        fields = fields_of(a, PR_FIELDS, op)
+        rows = list_prs(fg, a, op)
+        if fields:
+            return output(a, [pr_obj(fg, p, fields) for p in rows], op)
+        for p in rows:
+            emit(f"{p['number']}\t{clean_title(p.get('title'))}\t{(p.get('head') or {}).get('ref')}\t"
+                 f"{'DRAFT' if is_draft(p) else pr_state(p)}\t{p.get('created_at')}")
+        return 0
+    if sub == "view":
+        a = Args(rest, spec(JSONFLAGS, **{"--comments": (("-c",), "bool"), "--web": (("-w",), "bool")}))
+        if a.get("--web"):
+            raise NotImpl()
+        fg = Forge(repo_of(a), op)
+        fields = fields_of(a, PR_FIELDS, op)
+        pr = find_pr(fg, a.pos[0] if a.pos else None, op)
+        if fields:
+            return output(a, pr_obj(fg, pr, fields), op)
+        o = pr_obj(fg, pr, ["number", "title", "state", "isDraft", "author", "headRefName", "baseRefName",
+                            "labels", "url", "body"])
+        emit(f"title:\t{o['title']}\nstate:\t{'DRAFT' if o['isDraft'] else o['state']}\nauthor:\t{o['author']['login']}\n"
+             f"labels:\t{', '.join(l['name'] for l in o['labels'])}\nnumber:\t{o['number']}\nurl:\t{o['url']}\n"
+             f"head:\t{o['headRefName']}\nbase:\t{o['baseRefName']}\n--\n{o['body']}")
+        if a.get("--comments"):
+            for c in comments_of(fg, pr["number"]):
+                emit(f"--\nauthor:\t{c['author']['login']}\ncreated:\t{c['createdAt']}\n--\n{c['body']}")
+        return 0
+    if sub == "comment":
+        a = Args(rest, spec(**{"--body": (("-b",), "val"), "--body-file": (("-F",), "val"),
+                               "--edit-last": ((), "bool")}))
+        if a.get("--edit-last"):
+            raise NotImpl()
+        fg = Forge(repo_of(a), op)
+        pr = find_pr(fg, a.pos[0] if a.pos else None, op)
+        return post_comment(fg, pr["number"], a, op)
+    if sub == "create":
+        a = Args(rest, spec(**{"--title": (("-t",), "val"), "--body": (("-b",), "val"),
+                               "--body-file": (("-F",), "val"), "--base": (("-B",), "val"),
+                               "--head": (("-H",), "val"), "--draft": (("-d",), "bool"),
+                               "--label": (("-l",), "multi"), "--fill": (("-f",), "bool")}))
+        fg = Forge(repo_of(a), op)
+        head = a.get("--head") or subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                                                 capture_output=True, text=True).stdout.strip()
+        if not head or head == "HEAD":
+            raise Fail(1, f"{op}: no --head and not on a branch")
+        base = a.get("--base") or "master"
+        body = read_body_file(a.get("--body-file")) if a.get("--body-file") else (a.get("--body") or "")
+        title = a.get("--title")
+        if not title:
+            if not a.get("--fill"):
+                raise Fail(1, f"{op}: --title required (the shim does not prompt)")
+            title = subprocess.run(["git", "log", "-1", "--format=%s", head], capture_output=True,
+                                   text=True).stdout.strip() or head
+        for p in fg.all(fg.r("/pulls"), dict(state="open")):
+            if (p.get("head") or {}).get("ref") == head and (p.get("base") or {}).get("ref") == base:
+                raise Fail(1, f"{op}: a pull request for branch \"{head}\" into branch \"{base}\" already exists:\n"
+                              f"{p.get('html_url')}")
+        ensure_branch(fg, head, op)
+        if a.get("--draft"):
+            title = "WIP: " + clean_title(title)
+        lab = Labels(fg).ids(a.get("--label") or []) if a.get("--label") else []
+        pr = fg.json("POST", fg.r("/pulls"), body=dict(head=head, base=base, title=title, body=body, labels=lab))
+        emit(pr.get("html_url"))
+        return 0
+    if sub == "ready":
+        a = Args(rest, spec(**{"--undo": ((), "bool")}))
+        fg = Forge(repo_of(a), op)
+        pr = find_pr(fg, a.pos[0] if a.pos else None, op)
+        t = clean_title(pr.get("title"))
+        new = ("WIP: " + t) if a.get("--undo") else t
+        if new != pr.get("title"):
+            fg.json("PATCH", fg.r(f"/pulls/{pr['number']}"), body=dict(title=new))
+        print(f"✓ Pull request #{pr['number']} is {'converted to draft' if a.get('--undo') else 'marked as ready for review'}",
+              file=sys.stderr)
+        return 0
+    if sub == "checks":
+        a = Args(rest, spec(**{"--required": ((), "bool"), "--watch": ((), "bool")}))
+        if a.get("--watch"):
+            raise NotImpl()
+        fg = Forge(repo_of(a), op)
+        pr = find_pr(fg, a.pos[0] if a.pos else None, op)
+        rows = rollup(fg, (pr.get("head") or {}).get("sha"))
+        if not rows:
+            print(f"no checks reported on the '{(pr.get('head') or {}).get('ref')}' branch", file=sys.stderr)
+            return 1
+        bad = pend = 0
+        for s in rows:
+            st = s["state"]
+            word = {"SUCCESS": "pass", "NEUTRAL": "pass", "SKIPPED": "skipping", "PENDING": "pending"}.get(st, "fail")
+            bad += word == "fail"
+            pend += word == "pending"
+            emit(f"{s['context']}\t{word}\t0\t{s.get('targetUrl') or ''}\t{s.get('description') or ''}")
+        return 1 if bad else (8 if pend else 0)
+    if sub == "diff":
+        a = Args(rest, spec(**{"--name-only": ((), "bool"), "--patch": ((), "bool"), "--color": ((), "val")}))
+        fg = Forge(repo_of(a), op)
+        pr = find_pr(fg, a.pos[0] if a.pos else None, op)
+        if a.get("--name-only"):
+            for x in fg.all(fg.r(f"/pulls/{pr['number']}/files")):
+                emit(x.get("filename"))
+            return 0
+        _s, _h, b = fg.request("GET", fg.r(f"/pulls/{pr['number']}.{'patch' if a.get('--patch') else 'diff'}"),
+                               accept="text/plain")
+        sys.stdout.write(b.decode(errors="replace"))
+        return 0
+    if sub == "review":
+        a = Args(rest, spec(**{"--comment": (("-c",), "bool"), "--approve": (("-a",), "bool"),
+                               "--request-changes": (("-r",), "bool"), "--body": (("-b",), "val"),
+                               "--body-file": (("-F",), "val")}))
+        fg = Forge(repo_of(a), op)
+        pr = find_pr(fg, a.pos[0] if a.pos else None, op)
+        ev = "APPROVED" if a.get("--approve") else "REQUEST_CHANGES" if a.get("--request-changes") else "COMMENT"
+        if not (a.get("--approve") or a.get("--request-changes") or a.get("--comment")):
+            raise Fail(2, f"{op}: one of --approve, --request-changes or --comment is required")
+        body = read_body_file(a.get("--body-file")) if a.get("--body-file") else (a.get("--body") or "")
+        if ev != "APPROVED" and not body:
+            raise Fail(2, f"{op}: --body is required for {ev.lower()}")
+        fg.json("POST", fg.r(f"/pulls/{pr['number']}/reviews"), body=dict(event=ev, body=body))
+        print(f"- Reviewed pull request #{pr['number']}", file=sys.stderr)
+        return 0
+    if sub == "edit":
+        a = Args(rest, spec(**{"--title": (("-t",), "val"), "--body": (("-b",), "val"),
+                               "--body-file": (("-F",), "val"), "--add-label": ((), "multi"),
+                               "--remove-label": ((), "multi"), "--base": (("-B",), "val")}))
+        fg = Forge(repo_of(a), op)
+        pr = find_pr(fg, a.pos[0] if a.pos else None, op)
+        return edit_issue(fg, pr["number"], a, op, pr=pr)
+    if sub in ("close", "reopen"):
+        a = Args(rest, spec(**{"--comment": (("-c",), "val"), "--delete-branch": (("-d",), "bool")}))
+        if a.get("--delete-branch"):
+            raise NotImpl()
+        fg = Forge(repo_of(a), op)
+        pr = find_pr(fg, a.pos[0] if a.pos else None, op)
+        if a.get("--comment"):
+            fg.json("POST", fg.r(f"/issues/{pr['number']}/comments"), body=dict(body=a.get("--comment")))
+        fg.json("PATCH", fg.r(f"/pulls/{pr['number']}"), body=dict(state="closed" if sub == "close" else "open"))
+        return 0
+    if sub == "merge":
+        raise Fail(2, "pr merge: refused by the forge shim: merges go through offline-git/foldqueue.sh "
+                      "(a forge-side merge would be overwritten by the next hakux-forge-sync)")
+    raise NotImpl()
+
+
+def ensure_branch(fg, head, op):
+    """The forge copies the bare repo once a minute; a just-pushed branch may not be there yet."""
+    path = fg.r("/branches/" + urllib.parse.quote(head, safe=""))
+    if fg.get(path, ok404=True) is not None:
+        return
+    if os.path.exists(SYNC):
+        subprocess.run([SYNC], capture_output=True, timeout=600)
+        if fg.get(path, ok404=True) is not None:
+            return
+    raise Fail(1, f"{op}: branch '{head}' is not in the forge (push it to origin first; "
+                  f"hakux-forge-sync copies origin into the forge)")
+
+
+def post_comment(fg, n, a, op):
+    if a.get("--body-file"):
+        body = read_body_file(a.get("--body-file"))
+    elif a.get("--body") is not None:
+        body = a.get("--body")
+    else:
+        raise Fail(2, f"{op}: --body or --body-file required (the shim does not prompt)")
+    if not body.strip():
+        raise Fail(1, f"{op}: refusing an empty comment body")
+    c = fg.json("POST", fg.r(f"/issues/{n}/comments"), body=dict(body=body))
+    emit(comment_html(c))
+    return 0
+
+
+def edit_issue(fg, n, a, op, pr=None):
+    patch = {}
+    if a.get("--title") is not None:
+        t = a.get("--title")
+        patch["title"] = ("WIP: " + t) if pr is not None and is_draft(pr) else t
+    if a.get("--body-file"):
+        patch["body"] = read_body_file(a.get("--body-file"))
+    elif a.get("--body") is not None:
+        patch["body"] = a.get("--body")
+    if a.get("--base"):
+        patch["base"] = a.get("--base")
+    if patch:
+        fg.json("PATCH", fg.r(f"/{'pulls' if pr is not None else 'issues'}/{n}"), body=patch)
+    L = Labels(fg)
+    if a.get("--add-label"):
+        fg.json("POST", fg.r(f"/issues/{n}/labels"), body=dict(labels=L.ids(a.get("--add-label"))))
+    for name in a.get("--remove-label") or []:
+        l = L.all().get(name)
+        if l is None:
+            raise Fail(1, f"{op}: label '{name}' does not exist in {fg.repo}")
+        fg.request("DELETE", fg.r(f"/issues/{n}/labels/{l['id']}"), ok404=True)
+    if not (patch or a.get("--add-label") or a.get("--remove-label")):
+        raise Fail(2, f"{op}: nothing to edit")
+    emit(f"{FORGE_URL}/{fg.repo}/{'pulls' if pr is not None else 'issues'}/{n}")
+    return 0
+
+
+# ---------------------------------------------------------------- issue
+
+def cmd_issue(argv):
+    if not argv:
+        raise NotImpl()
+    sub, rest = argv[0], argv[1:]
+    op = "issue " + sub
+    if sub == "list":
+        a = Args(rest, spec(JSONFLAGS, **{"--state": (("-s",), "val"), "--limit": (("-L",), "val"),
+                                          "--label": (("-l",), "multi"), "--author": (("-A",), "val")}))
+        fg = Forge(repo_of(a), op)
+        fields = fields_of(a, ISSUE_FIELDS, op)
+        state = (a.get("--state") or "open").lower()
+        if state not in ("open", "closed", "all"):
+            raise Fail(2, f"{op}: invalid --state {state}")
+        q = dict(state=state, type="issues")
+        want = a.get("--label") or []
+        if want:
+            known = Labels(fg).all()
+            missing = [w for w in want if w not in known]
+            for w in missing:
+                log_note(f"{op}: label '{w}' does not exist in {fg.repo}; result is empty for it")
+            if missing:
+                rows = []
+            else:
+                q["labels"] = ",".join(want)
+                rows = fg.all(fg.r("/issues"), q)
+        else:
+            rows = fg.all(fg.r("/issues"), q)
+        # Exact AND on label names, whatever the server's filter did.
+        rows = [i for i in rows if not i.get("pull_request") and set(want) <= {l["name"] for l in i.get("labels") or []}]
+        if a.get("--author"):
+            rows = [i for i in rows if (i.get("user") or {}).get("login") == a.get("--author")]
+        rows.sort(key=lambda i: -i["number"])
+        rows = rows[: int(a.get("--limit") or 30)]
+        if fields:
+            return output(a, [issue_obj(fg, i, fields) for i in rows], op)
+        for i in rows:
+            emit(f"{i['number']}\t{'OPEN' if i.get('state') == 'open' else 'CLOSED'}\t{i.get('title')}\t"
+                 f"{', '.join(l['name'] for l in i.get('labels') or [])}\t{i.get('updated_at')}")
+        return 0
+    if sub == "view":
+        a = Args(rest, spec(JSONFLAGS, **{"--comments": (("-c",), "bool"), "--web": (("-w",), "bool")}))
+        if a.get("--web") or not a.pos:
+            raise NotImpl()
+        fg = Forge(repo_of(a), op)
+        n = issue_number(a.pos[0], op)
+        it = fg.get(fg.r(f"/issues/{n}"), ok404=True)
+        if it is None:
+            raise Fail(1, f"{op}: no issue #{n} in {fg.repo}")
+        fields = fields_of(a, ISSUE_FIELDS, op)
+        if fields:
+            return output(a, issue_obj(fg, it, fields), op)
+        o = issue_obj(fg, it, ["number", "title", "state", "author", "labels", "url", "body"])
+        emit(f"title:\t{o['title']}\nstate:\t{o['state']}\nauthor:\t{o['author']['login']}\n"
+             f"labels:\t{', '.join(l['name'] for l in o['labels'])}\nnumber:\t{o['number']}\nurl:\t{o['url']}\n--\n{o['body']}")
+        if a.get("--comments"):
+            for c in comments_of(fg, n):
+                emit(f"--\nauthor:\t{c['author']['login']}\ncreated:\t{c['createdAt']}\n--\n{c['body']}")
+        return 0
+    if sub == "create":
+        a = Args(rest, spec(**{"--title": (("-t",), "val"), "--body": (("-b",), "val"),
+                               "--body-file": (("-F",), "val"), "--label": (("-l",), "multi")}))
+        fg = Forge(repo_of(a), op)
+        if not a.get("--title"):
+            raise Fail(2, f"{op}: --title required (the shim does not prompt)")
+        body = read_body_file(a.get("--body-file")) if a.get("--body-file") else (a.get("--body") or "")
+        lab = Labels(fg).ids(a.get("--label") or []) if a.get("--label") else []
+        it = fg.json("POST", fg.r("/issues"), body=dict(title=a.get("--title"), body=body, labels=lab))
+        emit(it.get("html_url"))
+        return 0
+    if sub == "comment":
+        a = Args(rest, spec(**{"--body": (("-b",), "val"), "--body-file": (("-F",), "val")}))
+        fg = Forge(repo_of(a), op)
+        if not a.pos:
+            raise Fail(2, f"{op}: issue number required")
+        return post_comment(fg, issue_number(a.pos[0], op), a, op)
+    if sub == "edit":
+        a = Args(rest, spec(**{"--title": (("-t",), "val"), "--body": (("-b",), "val"),
+                               "--body-file": (("-F",), "val"), "--add-label": ((), "multi"),
+                               "--remove-label": ((), "multi")}))
+        fg = Forge(repo_of(a), op)
+        if not a.pos:
+            raise Fail(2, f"{op}: issue number required")
+        return edit_issue(fg, issue_number(a.pos[0], op), a, op)
+    if sub in ("close", "reopen"):
+        a = Args(rest, spec(**{"--comment": (("-c",), "val"), "--reason": (("-r",), "val")}))
+        fg = Forge(repo_of(a), op)
+        if not a.pos:
+            raise Fail(2, f"{op}: issue number required")
+        n = issue_number(a.pos[0], op)
+        if a.get("--comment"):
+            fg.json("POST", fg.r(f"/issues/{n}/comments"), body=dict(body=a.get("--comment")))
+        fg.json("PATCH", fg.r(f"/issues/{n}"), body=dict(state="closed" if sub == "close" else "open"))
+        return 0
+    if sub in ("pin", "unpin"):
+        a = Args(rest, spec())
+        fg = Forge(repo_of(a), op)
+        if not a.pos:
+            raise Fail(2, f"{op}: issue number required")
+        fg.request("POST" if sub == "pin" else "DELETE", fg.r(f"/issues/{issue_number(a.pos[0], op)}/pin"))
+        return 0
+    raise NotImpl()
+
+
+def issue_number(ref, op):
+    m = re.search(r"(\d+)$", str(ref))
+    if not m:
+        raise Fail(2, f"{op}: not an issue number: {ref}")
+    return int(m.group(1))
+
+
+# ---------------------------------------------------------------- label
+
+def cmd_label(argv):
+    if not argv:
+        raise NotImpl()
+    sub, rest = argv[0], argv[1:]
+    op = "label " + sub
+    if sub == "create":
+        a = Args(rest, spec(**{"--color": (("-c",), "val"), "--description": (("-d",), "val"),
+                               "--force": (("-f",), "bool")}))
+        fg = Forge(repo_of(a), op)
+        if not a.pos:
+            raise Fail(2, f"{op}: label name required")
+        name = a.pos[0]
+        color = "#" + (a.get("--color") or "ededed").lstrip("#")
+        ex = Labels(fg).all().get(name)
+        body = dict(name=name, color=color, description=a.get("--description") or "")
+        if ex is None:
+            fg.json("POST", fg.r("/labels"), body=body)
+        elif a.get("--force"):
+            fg.json("PATCH", fg.r(f"/labels/{ex['id']}"), body=body)
+        else:
+            raise Fail(1, f"{op}: label with name \"{name}\" already exists; use `--force` to update its color and description")
+        return 0
+    if sub == "list":
+        a = Args(rest, spec(JSONFLAGS, **{"--limit": (("-L",), "val")}))
+        fg = Forge(repo_of(a), op)
+        fields = fields_of(a, {"name", "color", "description", "id"}, op)
+        ls = gh_labels(sorted(Labels(fg).all().values(), key=lambda l: l["name"]))
+        if fields:
+            return output(a, [{k: l[k] for k in fields} for l in ls], op)
+        for l in ls:
+            emit(f"{l['name']}\t{l['description']}\t#{l['color']}")
+        return 0
+    if sub == "delete":
+        a = Args(rest, spec(**{"--yes": ((), "bool")}))
+        fg = Forge(repo_of(a), op)
+        ex = Labels(fg).all().get(a.pos[0] if a.pos else "")
+        if ex is None:
+            raise Fail(1, f"{op}: no label '{a.pos[0] if a.pos else ''}'")
+        fg.request("DELETE", fg.r(f"/labels/{ex['id']}"))
+        return 0
+    raise NotImpl()
+
+
+# ---------------------------------------------------------------- release
+
+REL_FIELDS = {"tagName", "name", "isPrerelease", "isDraft", "createdAt", "publishedAt", "url", "body",
+              "isLatest", "assets"}
+
+
+def rel_obj(r, fields):
+    m = dict(tagName=r.get("tag_name"), name=r.get("name"), isPrerelease=bool(r.get("prerelease")),
+             isDraft=bool(r.get("draft")), createdAt=r.get("created_at"), publishedAt=r.get("published_at"),
+             url=r.get("html_url"), body=r.get("body") or "", isLatest=False,
+             assets=[dict(name=x.get("name"), size=x.get("size"), url=x.get("browser_download_url"))
+                     for x in r.get("assets") or []])
+    return {k: m[k] for k in fields}
+
+
+def upload_assets(fg, rel, files, clobber, op):
+    have = {x["name"]: x for x in rel.get("assets") or []}
+    for f in files:
+        path, _, label = f.partition("#")
+        name = os.path.basename(path)
+        if name in have:
+            if not clobber:
+                raise Fail(1, f"{op}: asset {name} already exists (use --clobber)")
+            fg.request("DELETE", fg.r(f"/releases/{rel['id']}/assets/{have[name]['id']}"))
+        try:
+            with open(path, "rb") as fh:
+                data = fh.read()
+        except OSError as e:
+            raise Fail(1, f"{op}: cannot read {path}: {e.strerror}") from None
+        boundary = "gh-shim-" + os.urandom(8).hex()
+        body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"attachment\"; filename=\"{name}\"\r\n"
+                f"Content-Type: application/octet-stream\r\n\r\n").encode() + data + f"\r\n--{boundary}--\r\n".encode()
+        fg.request("POST", fg.r(f"/releases/{rel['id']}/assets"), query=dict(name=name), raw=body,
+                   ctype=f"multipart/form-data; boundary={boundary}")
+
+
+def cmd_release(argv):
+    if not argv:
+        raise NotImpl()
+    sub, rest = argv[0], argv[1:]
+    op = "release " + sub
+    if sub == "list":
+        a = Args(rest, spec(JSONFLAGS, **{"--limit": (("-L",), "val"), "--exclude-drafts": ((), "bool"),
+                                          "--exclude-pre-releases": ((), "bool")}))
+        fg = Forge(repo_of(a), op)
+        fields = fields_of(a, REL_FIELDS, op)
+        rows = fg.all(fg.r("/releases"), cap=int(a.get("--limit") or 30))[: int(a.get("--limit") or 30)]
+        if a.get("--exclude-drafts"):
+            rows = [r for r in rows if not r.get("draft")]
+        if a.get("--exclude-pre-releases"):
+            rows = [r for r in rows if not r.get("prerelease")]
+        if fields:
+            return output(a, [rel_obj(r, fields) for r in rows], op)
+        for r in rows:
+            emit(f"{r.get('name')}\t{'Pre-release' if r.get('prerelease') else ''}\t{r.get('tag_name')}\t{r.get('published_at')}")
+        return 0
+    if sub == "view":
+        a = Args(rest, spec(JSONFLAGS))
+        fg = Forge(repo_of(a), op)
+        if not a.pos:
+            raise NotImpl()
+        r = fg.get(fg.r("/releases/tags/" + urllib.parse.quote(a.pos[0], safe="")), ok404=True)
+        if r is None:
+            raise Fail(1, f"{op}: release not found: {a.pos[0]}")
+        fields = fields_of(a, REL_FIELDS, op)
+        if fields:
+            return output(a, rel_obj(r, fields), op)
+        emit(f"{r.get('name')}\n{r.get('tag_name')}\n{r.get('body') or ''}")
+        return 0
+    if sub == "create":
+        a = Args(rest, spec(**{"--title": (("-t",), "val"), "--notes": (("-n",), "val"),
+                               "--notes-file": (("-F",), "val"), "--prerelease": (("-p",), "bool"),
+                               "--draft": (("-d",), "bool"), "--target": ((), "val")}))
+        fg = Forge(repo_of(a), op)
+        if not a.pos:
+            raise Fail(2, f"{op}: tag required")
+        tag, files = a.pos[0], a.pos[1:]
+        notes = read_body_file(a.get("--notes-file")) if a.get("--notes-file") else (a.get("--notes") or "")
+        body = dict(tag_name=tag, name=a.get("--title") or tag, body=notes,
+                    prerelease=bool(a.get("--prerelease")), draft=bool(a.get("--draft")))
+        if a.get("--target"):
+            body["target_commitish"] = a.get("--target")
+        rel = fg.json("POST", fg.r("/releases"), body=body)
+        upload_assets(fg, rel, files, False, op)
+        emit(rel.get("html_url"))
+        return 0
+    if sub == "upload":
+        a = Args(rest, spec(**{"--clobber": ((), "bool")}))
+        fg = Forge(repo_of(a), op)
+        if len(a.pos) < 2:
+            raise Fail(2, f"{op}: tag and files required")
+        rel = fg.get(fg.r("/releases/tags/" + urllib.parse.quote(a.pos[0], safe="")), ok404=True)
+        if rel is None:
+            raise Fail(1, f"{op}: release not found: {a.pos[0]}")
+        upload_assets(fg, rel, a.pos[1:], bool(a.get("--clobber")), op)
+        return 0
+    raise NotImpl()
+
+
+# ---------------------------------------------------------------- run
+
+RUN_FIELDS = {"workflowName", "status", "conclusion", "headSha", "createdAt", "updatedAt", "databaseId",
+              "displayTitle", "event", "headBranch", "name", "url", "number", "startedAt", "workflowDatabaseId"}
+RUN_STATUS = {"success": ("completed", "success"), "failure": ("completed", "failure"),
+              "cancelled": ("completed", "cancelled"), "skipped": ("completed", "skipped"),
+              "running": ("in_progress", ""), "waiting": ("queued", ""), "blocked": ("waiting", ""),
+              "unknown": ("queued", "")}
+
+
+def run_obj(fg, r, fields):
+    st, concl = RUN_STATUS.get((r.get("status") or "unknown").lower(), ("completed", (r.get("status") or "").lower()))
+    wf = r.get("workflow_id") or ""
+    m = dict(workflowName=re.sub(r"\.ya?ml$", "", wf), name=re.sub(r"\.ya?ml$", "", wf), status=st,
+             conclusion=concl, headSha=r.get("commit_sha") or r.get("head_sha") or "",
+             createdAt=utc(r.get("created") or r.get("created_at")), updatedAt=utc(r.get("updated") or r.get("updated_at")),
+             startedAt=utc(r.get("started") or r.get("run_started_at")), databaseId=r.get("id"),
+             displayTitle=r.get("title") or r.get("display_title") or "", event=r.get("event") or r.get("trigger_event") or "",
+             headBranch=re.sub(r"^refs/heads/", "", r.get("prettyref") or r.get("ref") or r.get("head_branch") or ""),
+             url=r.get("html_url") or "", number=r.get("index_in_repo") or r.get("run_number"), workflowDatabaseId=wf)
+    return {k: m[k] for k in fields}
+
+
+def cmd_run(argv):
+    if not argv:
+        raise NotImpl()
+    sub, rest = argv[0], argv[1:]
+    op = "run " + sub
+    if sub == "list":
+        a = Args(rest, spec(JSONFLAGS, **{"--branch": (("-b",), "val"), "--limit": (("-L",), "val"),
+                                          "--workflow": (("-w",), "val"), "--status": (("-s",), "val"),
+                                          "--commit": (("-c",), "val"), "--event": (("-e",), "val")}))
+        fg = Forge(repo_of(a), op)
+        fields = fields_of(a, RUN_FIELDS, op)
+        lim = int(a.get("--limit") or 20)
+        j = fg.get(fg.r("/actions/runs"), dict(limit=PAGE, **({"head_sha": a.get("--commit")} if a.get("--commit") else {})))
+        rows = [r for r in (j or {}).get("workflow_runs") or [] if CI_WORKFLOW_RE.search(r.get("workflow_id") or "")]
+        objs = [run_obj(fg, r, RUN_FIELDS) for r in rows]
+        if a.get("--branch"):
+            objs = [o for o in objs if o["headBranch"] == a.get("--branch")]
+        if a.get("--workflow"):
+            w = re.sub(r"\.ya?ml$", "", a.get("--workflow"))
+            objs = [o for o in objs if o["workflowName"] == w]
+        if a.get("--event"):
+            objs = [o for o in objs if o["event"] == a.get("--event")]
+        if a.get("--status"):
+            objs = [o for o in objs if a.get("--status") in (o["status"], o["conclusion"])]
+        objs.sort(key=lambda o: o["createdAt"] or "", reverse=True)
+        objs = objs[:lim]
+        if fields:
+            return output(a, [{k: o[k] for k in fields} for o in objs], op)
+        for o in objs:
+            emit(f"{o['status']}\t{o['conclusion']}\t{o['displayTitle']}\t{o['workflowName']}\t{o['headBranch']}\t"
+                 f"{o['event']}\t{o['databaseId']}\t{o['createdAt']}")
+        return 0
+    raise NotImpl()
+
+
+# ---------------------------------------------------------------- api
+
+def parse_fields(pairs, typed):
+    """gh's -f/-F: key=value, key[]=v (array), key[sub]=v (nested), -F @file / typed literals."""
+    out = {}
+    for kind, kv in pairs:
+        if "=" not in kv:
+            raise Fail(2, f"api: field '{kv}' is not key=value")
+        k, v = kv.split("=", 1)
+        if kind == "F":
+            if v.startswith("@"):
+                v = read_body_file(v[1:])
+            elif v in ("true", "false"):
+                v = v == "true"
+            elif v == "null":
+                v = None
+            elif re.fullmatch(r"-?\d+", v):
+                v = int(v)
+        m = re.fullmatch(r"([^\[\]]+)((?:\[[^\[\]]*\])*)", k)
+        if not m:
+            raise Fail(2, f"api: bad field key '{k}'")
+        keys = [m.group(1)] + re.findall(r"\[([^\[\]]*)\]", m.group(2))
+        cur = out
+        for i, kk in enumerate(keys):
+            last = i == len(keys) - 1
+            nxt_arr = (not last) and keys[i + 1] == ""
+            if kk == "":
+                if last:
+                    cur.append(v)
+                else:
+                    raise NotImpl()
+                continue
+            if last:
+                cur[kk] = v
+            else:
+                cur = cur.setdefault(kk, [] if nxt_arr else {})
+    return out
+
+
+def api_path(raw, repo):
+    p = re.sub(r"^https?://api\.github\.com/", "", raw).lstrip("/")
+    o, n = repo.split("/")
+    p = p.replace("{owner}", o).replace("{repo}", n).replace(":owner", o).replace(":repo", n)
+    path, _, qs = p.partition("?")
+    q = urllib.parse.parse_qsl(qs, keep_blank_values=True)
+    return path, q
+
+
+def gh_query(q):
+    """GitHub query parameters -> Forgejo's (per_page -> limit)."""
+    out = []
+    for k, v in q:
+        if k == "per_page":
+            out.append(("limit", str(min(int(v or 30), 100))))
+        else:
+            out.append((k, v))
+    return out
+
+
+def api_special(fg, method, path, q):
+    """GitHub endpoints whose Forgejo equivalent differs. Returns a (pages-list) or None."""
+    R = fg.repo
+    m = re.fullmatch(rf"repos/{re.escape(R)}/commits/([^/]+)/check-runs", path, re.I)
+    if m and method == "GET":
+        return [check_runs(fg, resolve_sha(fg, m.group(1)))]
+    m = re.fullmatch(rf"repos/{re.escape(R)}/commits/([^/]+)/status", path, re.I)
+    if m and method == "GET":
+        sts = statuses(fg, resolve_sha(fg, m.group(1)))
+        for s in sts:
+            s.setdefault("state", s.get("status"))
+        order = ["failure", "error", "pending", "success"]
+        worst = min((s["state"] for s in sts), key=lambda x: order.index(x) if x in order else 3, default="pending")
+        return [dict(state=worst if sts else "pending", statuses=sts, total_count=len(sts), sha=m.group(1))]
+    m = re.fullmatch(rf"repos/{re.escape(R)}/commits/([^/]+)", path, re.I)
+    if m and method == "GET":
+        rows = fg.get(fg.r("/commits"), dict(sha=m.group(1), limit=1, stat="false", files="false", verification="false"))
+        if not rows:
+            raise Fail(1, f"api GET {path}: no commit for {m.group(1)}")
+        return [rows[0]]
+    m = re.fullmatch(rf"repos/{re.escape(R)}/issues/(\d+)/events", path, re.I)
+    if m and method == "GET":
+        return [issue_events(fg, int(m.group(1)))]
+    m = re.fullmatch(rf"repos/{re.escape(R)}/issues/comments", path, re.I)
+    if m and method == "GET":
+        qd = dict(q)
+        fq = {k: v for k, v in qd.items() if k in ("since", "before")}
+        rows = fg.all(fg.r("/issues/comments"), fq)
+        rows.sort(key=lambda c: (c.get("created_at") or "", c.get("id") or 0),
+                  reverse=qd.get("direction") == "desc")
+        rows = [fix_comment(fg, c) for c in rows]
+        per = int(qd.get("per_page") or 30)
+        page = int(qd.get("page") or 1)
+        return ("PAGED", rows, per, page)
+    m = re.fullmatch(rf"repos/{re.escape(R)}/issues/(\d+)/comments", path, re.I)
+    if m and method == "GET":
+        rows = [fix_comment(fg, c) for c in fg.all(fg.r(f"/issues/{m.group(1)}/comments"),
+                                                   {k: v for k, v in q if k in ("since", "before")})]
+        qd = dict(q)
+        return ("PAGED", rows, int(qd.get("per_page") or 30), int(qd.get("page") or 1))
+    m = re.fullmatch(rf"repos/{re.escape(R)}/issues/comments/(\d+)", path, re.I)
+    if m and method in ("GET", "PATCH"):
+        return None  # plain pass-through, html_url fixed below
+    m = re.fullmatch(rf"repos/{re.escape(R)}/issues/(\d+)/labels/(.+)", path, re.I)
+    if m and method == "DELETE":
+        name = urllib.parse.unquote(m.group(2))
+        L = Labels(fg).all()
+        lab = L.get(name)
+        if lab is None and name.isdigit():
+            lab = next((l for l in L.values() if str(l["id"]) == name), None)
+        if lab is None:
+            raise Fail(1, f"api DELETE {path}: label '{name}' does not exist in {R}")
+        on = {l["name"] for l in fg.get(fg.r(f"/issues/{m.group(1)}/labels")) or []}
+        if name not in on and lab["name"] not in on:
+            raise Fail(1, f"api DELETE {path}: HTTP 404: Label does not exist on #{m.group(1)}")
+        fg.request("DELETE", fg.r(f"/issues/{m.group(1)}/labels/{lab['id']}"))
+        return [fg.get(fg.r(f"/issues/{m.group(1)}/labels"))]
+    return None
+
+
+def resolve_sha(fg, ref):
+    if re.fullmatch(r"[0-9a-f]{40}", ref):
+        return ref
+    rows = fg.get(fg.r("/commits"), dict(sha=ref, limit=1, stat="false", files="false", verification="false"))
+    if not rows:
+        raise Fail(1, f"api: cannot resolve ref {ref}")
+    return rows[0]["sha"]
+
+
+def fix_comment(fg, c):
+    c = dict(c)
+    url = c.get("html_url") or ""
+    m = re.search(r"/(?:issues|pulls)/(\d+)", url) or re.search(r"/(\d+)$", c.get("issue_url") or c.get("pull_request_url") or "")
+    if m:
+        n = m.group(1)
+        c["issue_url"] = f"{FORGE_URL}/api/v1/repos/{fg.repo}/issues/{n}"
+    c["html_url"] = comment_html(c)
+    return c
+
+
+def issue_events(fg, n):
+    out = []
+    for t in fg.all(fg.r(f"/issues/{n}/timeline")):
+        ty = t.get("type")
+        ev = None
+        if ty == "label" and t.get("label"):
+            ev = dict(event="labeled" if (t.get("body") or "") == "1" else "unlabeled",
+                      label=dict(name=t["label"].get("name"), color=(t["label"].get("color") or "").lstrip("#")))
+        elif ty in ("close", "reopen", "merge_pull", "pull_push", "assignees", "change_title", "pin", "unpin", "lock"):
+            ev = dict(event={"close": "closed", "reopen": "reopened", "merge_pull": "merged",
+                             "pull_push": "head_ref_force_pushed" if t.get("is_force_push") else "committed",
+                             "assignees": "assigned", "change_title": "renamed", "pin": "pinned",
+                             "unpin": "unpinned", "lock": "locked"}[ty])
+        if ev:
+            ev.update(id=t.get("id"), actor=user(t.get("user")), created_at=t.get("created_at"))
+            out.append(ev)
+    return out
+
+
+def cmd_api(argv):
+    spec_ = dict(COMMON)
+    spec_.update({"--method": (("-X",), "val"), "--jq": (("-q",), "val"), "--paginate": ((), "bool"),
+                  "--silent": ((), "bool"), "--input": ((), "val"), "--header": (("-H",), "multi"),
+                  "--hostname": ((), "val"), "--cache": ((), "val"), "--template": (("-t",), "val"),
+                  "--slurp": ((), "bool"), "--verbose": ((), "bool")})
+    # -f/-F keep their order and repetition; pull them out first.
+    pairs, rest, i = [], [], 0
+    while i < len(argv):
+        x = argv[i]
+        if x in ("-f", "--raw-field", "-F", "--field"):
+            if i + 1 >= len(argv):
+                raise Fail(2, f"api: {x} needs key=value")
+            pairs.append(("f" if x in ("-f", "--raw-field") else "F", argv[i + 1]))
+            i += 2
+            continue
+        m = re.fullmatch(r"(--raw-field|--field)=(.*)", x)
+        if m:
+            pairs.append(("f" if m.group(1) == "--raw-field" else "F", m.group(2)))
+        elif re.fullmatch(r"-[fF].+", x):
+            pairs.append((x[1], x[2:]))
+        else:
+            rest.append(x)
+        i += 1
+    a = Args(rest, spec_)
+    if a.get("--template") or a.get("--verbose"):
+        raise NotImpl()
+    if not a.pos:
+        raise Fail(2, "api: endpoint required")
+    if a.pos[0] == "graphql":
+        raise NotImpl()
+    repo = repo_of(a)
+    path, q = api_path(a.pos[0], repo)
+    fields = parse_fields(pairs, True)
+    method = (a.get("--method") or ("POST" if (pairs or a.get("--input")) else "GET")).upper()
+    op = f"api {method} {path}"
+    fg = Forge(repo, op)
+    body = None
+    if a.get("--input"):
+        raw = read_body_file(a.get("--input"))
+        try:
+            body = json.loads(raw) if raw.strip() else None
+        except ValueError:
+            raise Fail(2, f"{op}: --input is not JSON") from None
+    if fields:
+        if method == "GET":
+            for k, v in fields.items():
+                q.append((k, str(v).lower() if isinstance(v, bool) else str(v)))
+        else:
+            body = dict(body or {}, **fields)
+    if method == "POST" and re.fullmatch(rf"repos/{re.escape(repo)}/issues/\d+/labels", path, re.I) and body:
+        body = dict(body, labels=Labels(fg).ids([str(x) for x in body.get("labels") or []]))
+    pages = api_special(fg, method, path, q)
+    if pages is None:
+        fq = gh_query(q)
+        pages = []
+        page = int(dict(fq).get("page") or 1)
+        while True:
+            qq = [(k, v) for k, v in fq if k != "page"] + ([("page", str(page))] if (a.get("--paginate") or dict(fq).get("page")) else [])
+            st, hdr, b = fg.request(method, "/" + path, qq, body=body)
+            text = b.decode(errors="replace")
+            try:
+                j = norm_ts(json.loads(text)) if text.strip() else None
+            except ValueError:
+                j = text
+            if isinstance(j, list) and re.search(r"/issues/comments$|/issues/\d+/comments$", path):
+                j = [fix_comment(fg, c) for c in j]
+            elif isinstance(j, dict) and re.search(r"/issues/comments/\d+$|/issues/\d+/comments$", path) and method != "DELETE":
+                j = fix_comment(fg, j)
+            pages.append(j)
+            if not a.get("--paginate") or not isinstance(j, list):
+                break
+            lim = int(dict(fq).get("limit") or 30)
+            if len(j) < lim or 'rel="next"' not in (hdr.get("Link") or hdr.get("link") or ""):
+                break
+            page += 1
+            if page > 400:
+                raise Fail(1, f"{op}: --paginate did not end after 400 pages")
+    elif isinstance(pages, tuple) and pages[0] == "PAGED":
+        _t, rows, per, page = pages
+        per = min(max(per, 1), 100)
+        if a.get("--paginate"):
+            pages = [rows[i:i + per] for i in range(0, len(rows), per)] or [[]]
+        else:
+            pages = [rows[(page - 1) * per: page * per]]
+    if a.get("--silent"):
+        return 0
+    if a.get("--jq"):
+        for p in pages:
+            emit(run_jq(a.get("--jq"), json.dumps(p), op))
+        return 0
+    if len(pages) == 1:
+        p = pages[0]
+        if isinstance(p, str):
+            sys.stdout.write(p)
+        elif p is not None:
+            emit(json.dumps(p))
+        return 0
+    if all(isinstance(p, list) for p in pages):
+        emit(json.dumps([x for p in pages for x in p]))
+    else:
+        for p in pages:
+            emit(json.dumps(p))
+    return 0
+
+
+# ---------------------------------------------------------------- auth / misc
+
+def cmd_auth(argv):
+    if not argv or argv[0] != "status":
+        raise NotImpl()
+    a = Args(argv[1:], {"--hostname": (("-h",), "val"), "--show-token": (("-t",), "bool"),
+                        "--active": ((), "bool")})
+    if a.get("--show-token"):
+        raise NotImpl()
+    fg = Forge(os.environ.get("GH_REPO") or DEFAULT_REPO, "auth status")
+    u = fg.get("/user")
+    print(f"{FORGE_URL.split('://')[-1]}\n  ✓ Logged in to the local forge as {u.get('login')} (gh-shim; token "
+          f"{actor()}.token)", file=sys.stderr)
+    return 0
+
+
+LOGGED = {"notes": []}
+
+
+def log_note(msg):
+    LOGGED["notes"].append(msg)
+    print("gh-shim: warning: " + msg, file=sys.stderr)
+
+
+def caller_unit():
+    """The systemd unit this call runs in (hakux-status.service, hakux-lane-x.service, ...)."""
+    try:
+        with open("/proc/self/cgroup") as f:
+            path = f.read().strip().split(":")[-1]
+        units = [p for p in path.split("/") if p.endswith((".service", ".scope"))]
+        return units[-1] if units else ""
+    except OSError:
+        return ""
+
+
+def log_call(argv, rc, t0, err=""):
+    try:
+        os.makedirs(os.path.dirname(LOG), exist_ok=True)
+        rec = dict(ts=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), rc=rc,
+                   ms=int((time.time() - t0) * 1000), user=actor(), unit=caller_unit(), ppid=os.getppid(),
+                   cwd=os.getcwd(), argv=[x if len(x) <= 300 else x[:300] + "...[%d]" % len(x) for x in argv])
+        if err:
+            rec["err"] = err[:400]
+        if LOGGED["notes"]:
+            rec["notes"] = LOGGED["notes"]
+        with open(LOG, "a") as f:
+            f.write(json.dumps(rec) + "\n")
+    except OSError:
+        pass
+
+
+def main(argv):
+    if not argv or argv[0] in ("help", "--help", "-h"):
+        raise NotImpl()
+    if argv[0] in ("--version", "version"):
+        print(VERSION)
+        return 0
+    cmd = argv[0]
+    table = dict(pr=cmd_pr, issue=cmd_issue, label=cmd_label, release=cmd_release, run=cmd_run, api=cmd_api,
+                 auth=cmd_auth)
+    if cmd not in table:
+        raise NotImpl()
+    if any(x in ("--help", "-h") for x in argv[1:]) and cmd != "api":
+        raise NotImpl()
+    return table[cmd](argv[1:]) or 0
+
+
+if __name__ == "__main__":
+    argv = sys.argv[1:]
+    t0 = time.time()
+    try:
+        rc = main(argv)
+        log_call(argv, rc, t0)
+        sys.exit(rc)
+    except NotImpl:
+        msg = "gh-shim: not implemented: " + " ".join(argv)
+        print(msg, file=sys.stderr)
+        log_call(argv, 64, t0, msg)
+        sys.exit(64)
+    except Fail as e:
+        msg = "gh-shim: " + e.msg.replace("\n", " | ")
+        print(msg, file=sys.stderr)
+        log_call(argv, e.rc, t0, msg)
+        sys.exit(e.rc)
+    except BrokenPipeError:
+        log_call(argv, 0, t0, "broken pipe")
+        sys.exit(0)
+    except Exception as e:  # a shim bug must not look like success either
+        msg = f"gh-shim: internal error in `{' '.join(argv[:3])}`: {type(e).__name__}: {e}"
+        print(msg, file=sys.stderr)
+        log_call(argv, 1, t0, msg)
+        sys.exit(1)

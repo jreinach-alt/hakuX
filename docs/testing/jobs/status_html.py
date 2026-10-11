@@ -1454,6 +1454,86 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         add(n, tid, d)
         meas.setdefault(n, {})[d] = _meas_from_verdict(v, d, os.path.dirname(p), at, "title_verdict.py")
 
+    # ---- pathfind's held runs and the Playable ledger (#433, 2026-10-05). From
+    # 09-29 the titles were measured and confirmed by pathfind's 600 s held runs
+    # on the handhelds, not by queued soaks, and the owner's count is the ledger
+    # (pm/playable-accepted.tsv): without these two the panel read Playable 0
+    # with 25 titles accepted. A held run's fps is a gameplay-window reading, so
+    # it counts as Measured; it is not a MAX run, so it never makes a title
+    # Benchmarked on its own. A ledger row makes its title Playable (and so
+    # Benchmarked, as the stage order defines) from its acceptance time.
+    def nkey(x):
+        x = re.sub(r"\([^)]*\)", "", str(x or "")).lower()
+        x = re.sub(r"[^a-z0-9]+", "", x)
+        return x[3:] if x.startswith("the") and len(x) > 6 else x
+
+    def resolve(x, tid=""):
+        if tid and tid in by_tid:
+            return by_tid[tid]
+        k = nkey(x)
+        for y in names:
+            if nkey(y) == k:
+                return y
+        near = [y for y in names if len(k) >= 8 and len(nkey(y)) >= 8 and (nkey(y).endswith(k) or k.endswith(nkey(y)))]
+        return near[0] if len(near) == 1 else x
+    pf_dir = F.E.get("STATUS_PATHFIND_RUNS") or (os.path.join(F.W, "wt", "pathfind", "docs", "lanes", "pathfind", "runs") if F.W else "")
+    pf = []
+    for a in _glob(pf_dir, "verdict.json"):
+        pf.append(a)
+    for sub in (_glob(pf_dir, "") if pf_dir else []):
+        pf.extend(_glob(sub, "verdict.json"))
+    pf_latest = {}
+    for p in pf:
+        v = _jload(p)
+        if not isinstance(v, dict) or not v.get("title"):
+            continue
+        at = F.mtime(p) or 0
+        if not at or at > now:
+            continue
+        n = resolve(_iso_name(str(v["title"])), str(v.get("title_id") or ""))
+        d = v.get("device") or "nova"
+        seen(n, v.get("fps_window_median"), at)
+        if (n, d) not in pf_latest or at > pf_latest[(n, d)][0]:
+            pf_latest[(n, d)] = (at, v, p)
+    if pf_latest:
+        srcs.append("pathfind held runs")
+    for (n, d), (at, v, p) in pf_latest.items():
+        add(n, "", d)
+        m = meas.setdefault(n, {})
+        old = m.get(d)
+        if old is None or (old.get("mode") != "MAX" and at > (old.get("at") or 0)):
+            m[d] = _meas_from_verdict(v, d, os.path.dirname(p), at, "pathfind held run")
+    ledger = {}
+    led_p = F.E.get("STATUS_PLAYABLE_LEDGER") or (os.path.join(F.W, "pm", "playable-accepted.tsv") if F.W else "")
+    try:
+        import csv
+        with open(led_p, encoding="utf-8", newline="") as fh:
+            led_rows = list(csv.DictReader(fh, delimiter="\t"))
+        srcs.append("the Playable ledger")
+    except OSError:
+        led_rows = []
+    for r in led_rows:
+        tid = (r.get("title_id") or "").strip()
+        tid = "" if tid in ("", "-") else tid
+        n = resolve((r.get("title") or "").strip(), tid)
+        if not n:
+            continue
+        try:
+            from zoneinfo import ZoneInfo
+            # hand-written rows: the date always, the time when it reads ("21:1x" reads 21:01)
+            m = re.match(r"\s*(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{1,2}):(\d{1,2}))?", r.get("date_pdt") or "")
+            dt = datetime.datetime(*[int(g) for g in m.groups()[:3]], int(m.group(4) or 0), int(m.group(5) or 0))
+            at = int(dt.replace(tzinfo=ZoneInfo("America/Los_Angeles")).timestamp())
+        except (AttributeError, ValueError, ImportError):
+            continue
+        if at > now:
+            continue
+        add(n, tid)
+        ledger[n] = min(at, ledger.get(n, at))
+        measured.add(n)
+        if n not in first or at < first[n]:
+            first[n] = at
+
     # ---- in flight: requests whose `title` (the ISO file) is this title's
     def req_title(r):
         t = r.get("title") or ""
@@ -1599,6 +1679,8 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             st = "copied"
         else:
             st = "none"
+        if n in ledger:
+            st, blocked = "playable", False
         blocker = ""
         if blocked:
             blocker = prim.get("blocker") or ("crashed" if prim.get("crash") else "hung" if prim.get("hang") else "did not reach gameplay")
@@ -1675,17 +1757,22 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
               "measured": sum(1 for r in out if r["fps_read"])}
     counts.update({k: sum(r["stage"] == k for r in out) for k, _, _ in STAGES})
     # the chart's three step lines, each title at the time it first reached the goal
+    def pl_at(r):
+        return ledger.get(r["title"]) or max(s[0] for s in soaked[r["title"]])
+
+    def bm_at(r):
+        return ledger.get(r["title"]) or (r["prim"] or {}).get("at")
     series = {"measured": _steps(r["measured_at"] for r in out),
-              "benchmarked": _steps(r["prim"].get("at") for r in out if r["stage"] in BENCHMARKED),
-              "playable": _steps(max(s[0] for s in soaked[r["title"]]) for r in out if r["stage"] == "playable")}
+              "benchmarked": _steps(bm_at(r) for r in out if r["stage"] in BENCHMARKED),
+              "playable": _steps(pl_at(r) for r in out if r["stage"] == "playable")}
 
     # the forecast: titles that reached each goal in the last `rate_hours`
     hrs = float(conf.get("rate_hours") or 48)
     fc = {}
     for goal, tgt, when in (("benchmarked", int(conf.get("benchmarked_target") or 145),
-                             [r["prim"].get("at") for r in out if r["stage"] in BENCHMARKED]),
+                             [bm_at(r) for r in out if r["stage"] in BENCHMARKED]),
                             ("playable", int(conf.get("playable_target") or 50),
-                             [max(s[0] for s in soaked[r["title"]]) for r in out if r["stage"] == "playable"])):
+                             [pl_at(r) for r in out if r["stage"] == "playable"])):
         have = counts[goal]
         recent = sum(1 for t in when if t and now - t <= hrs * 3600)
         if have >= tgt:
@@ -2449,7 +2536,8 @@ def _q1(j, now):
             label, n, tg, min(100.0, 100.0 * n / tg) if tg else 0, col))
     out.append(_chart(t.get("series") or {}, now, bt, pt))
     out.append('<p class="src">Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. '
-               'Each title is plotted at its first reading (a soak\'s finish, a verdict, or the pass-1 review\'s date).</p>')
+               'Each title is plotted at its first reading (a soak\'s finish, a verdict, a held run, or the pass-1 review\'s date). '
+               'Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed).</p>')
     fc = t.get("forecast") or {}
     hrs = int(t.get("rate_hours") or 48)
     etas = [fc.get(k, {}).get("eta") for k in ("benchmarked", "playable")]

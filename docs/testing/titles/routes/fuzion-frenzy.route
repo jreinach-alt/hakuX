@@ -1,3 +1,4 @@
+# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
 # Fuzion Frenzy (4D530002), from perf/bench_ff.sh: boot 70 s, Start/A x5 at
 # 1.2 s, settle 3 s. Gameplay is about ninety seconds in behind that mash,
 # with no menu to navigate. It asks for every VBLANK, so unlike Crimson Skies

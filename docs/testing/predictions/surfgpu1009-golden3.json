@@ -1,0 +1,56 @@
+{
+  "registered_utc": "2026-10-10T03:01:53Z",
+  "who": "lane.surfgpu1009",
+  "issue": "433",
+  "prediction": "Golden check for HAKUX_SURFGPU=1 with g_sg_held (lane.surfgpu1009 NOTES section 9; one binary 1b1fec978d, env A/B: a_env none, b_env HAKUX_SURFGPU=1). g_sg_held holds a submitted download batch aside with its own fence instead of waiting it at record time, so a new download starts the next batch immediately; it completes first wherever a current batch does (every guest-visible completion path checked in this session's review: deferred_downloads_overlap_range, surfsplice_upload_ok, surface_access_callback's wait_for_downloads, download_surfaces_in_range_if_dirty, deferred_downloads_reference/clear_surface, surface_handoff_partner, all via deferred_downloads_pending()), or on its own at the frame-slot rotation that owns its fence (pgraph_vk_surfgpu_slot_retired). This is the same class of bug golden2 caught once already (a record not retiring the generation correctly under the splice): a held batch is a second place for a stale/duplicate record or a missed completion to hide. Prediction: no capture in the ten suites moves between the arms; worse = 0. B's [surfgpu] line should carry hold= > 0 summed over the run if the golden suite's draw pattern reaches a submitted-batch-behind-a-record case at all (a count of 0 means this arm did not exercise the new path, same caveat golden2's dedup= counter ran into -- the per-capture pixel table is the decision, the counter is corroboration only). What would move a capture: a held entry a reader read around without waiting it (missing it from one of the checked call sites above), a held batch completed to the wrong VRAM bytes (stale staging_offset after surfgpu_staging_fits wrapped it, g_sg_wrap > 0 is the signal to check first if anything moves), or a display pre-download handoff that should have been blocked by g_sg_held.pre_surface and was not.",
+  "a_ref": "1b1fec978d",
+  "b_ref": "1b1fec978d",
+  "must_not_move": [
+    "Surface_clip/*",
+    "Surface_format/*",
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/*",
+    "Texture_render_target/*",
+    "Texture_render_update_in_place/*",
+    "Texture_Framebuffer_Blit/*",
+    "Image_blit/*",
+    "Texture_CPU_Update/*",
+    "Clear/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Color zeta overlap",
+      "Depth buffer fixed function",
+      "Image blit",
+      "Surface clip",
+      "Surface format",
+      "Texture CPU Update",
+      "Texture Framebuffer Blit",
+      "Texture render target",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "device": "nova",
+  "perflog": true,
+  "runs_per_arm": 1,
+  "a_env": [
+    "HAKUX_GPUXFR=1",
+    "HAKUX_FRAMETRACE=1"
+  ],
+  "b_env": [
+    "HAKUX_GPUXFR=1",
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_SURFGPU=1"
+  ],
+  "queue_order": "Hand-queued (the arms job skips a_ref == b_ref): B first (flag on, cache cleared for a new apk), then A (flag off, cache kept), both request.sh --who surfgpu1009 --suites <the ten disc suites> --ref 1b1fec978d --perflog --device nova --env HAKUX_GPUXFR=1 --env HAKUX_FRAMETRACE=1 [--env HAKUX_SURFGPU=1 on B] --issue 433 --expect docs/testing/predictions/surfgpu1009-golden3.json.",
+  "judge": "python3 docs/testing/ab_compare.py --a <A dir> --b <B dir> --expect docs/testing/predictions/surfgpu1009-golden3.json --allow-same-binary; plus grep '[surfgpu]' in B's logcat1.txt for hold=/hwait=/hrot=/wrap= (whether the suites reached the held-batch path)"
+}

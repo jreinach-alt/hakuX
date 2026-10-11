@@ -1,0 +1,18 @@
+# medians of 2-s rows after the gameplay mark, ms per guest frame; rows from docs/lanes/fps20786/decompose.py --tsv
+title	run	band_F_ms	n	fps	F	v_run	v_blk	v_rq	gidle	Ri	rcpu	rblk	lockw	ph_GPU	ph_Draw	ph_Fin	ph_Idle	ph_Tot	BE
+simpsons	pathfind-hold-2026-10-04-nova	all	302	37.43	26.72	17.25	9.45	0.06	0.65	9.50	6.32	10.61							
+simpsons	pathfind-hold-2026-10-04-nova	<22.2	23	46.80	21.37	14.45	6.69	0.05	1.21	7.80	6.32	8.11							
+simpsons	pathfind-hold-2026-10-04-nova	22.2-26	104	42.02	23.80	15.72	7.95	0.05	0.73	8.90	6.08	9.72							
+simpsons	pathfind-hold-2026-10-04-nova	26-31	147	35.37	28.28	17.96	10.25	0.06	0.63	9.80	6.89	11.23							
+simpsons	pathfind-hold-2026-10-04-nova	31-36	28	31.35	31.90	19.44	12.46	0.07	0.42	10.85	7.73	11.95							
+gta_sa	1790875419-autoverdict-2123622-nova	all	318	29.71	33.65	32.02	1.62	0.10	0.37	20.55	12.51	0.65							
+gta_sa	1790875419-autoverdict-2123622-nova	31-36	279	29.79	33.57	32.02	1.46	0.10	0.41	20.90	12.40	0.29							
+gta_sa	1790875419-autoverdict-2123622-nova	>=36	39	24.37	41.03	32.27	9.72	0.13	0.20	16.30	14.42	10.77							
+nightfire	1-1790676918-lane.memfast-1478620-nova-perflog	all	136	29.61	33.78	28.60	6.15	0.15	2.21	3.50	24.77	4.06	0.20	9.10	11.90	10.30	3.50	30.50	366.00
+nightfire	1-1790676918-lane.memfast-1478620-nova-perflog	22.2-26	6	40.88	24.47	19.53	5.20	0.12	0.17	0.35	17.95	5.71	0.79	9.95	8.35	10.70	0.47	20.05	235.25
+nightfire	1-1790676918-lane.memfast-1478620-nova-perflog	26-31	15	33.10	30.21	24.01	5.85	0.18	7.91	1.70	24.48	4.03	0.25	8.80	11.20	10.10	1.70	23.60	356.00
+nightfire	1-1790676918-lane.memfast-1478620-nova-perflog	31-36	71	29.89	33.46	28.83	5.64	0.12	0.29	4.60	23.68	2.97	0.11	8.50	11.00	9.50	4.60	31.40	352.00
+nightfire	1-1790676918-lane.memfast-1478620-nova-perflog	>=36	44	26.51	37.72	29.49	7.81	0.24	2.70	3.70	27.84	8.47	0.30	13.60	13.50	13.70	3.70	31.30	439.00
+forza	1-1790826491-lane.verdict433-3477700-nova	all	627	27.64	36.18	33.50	2.17	0.10	9.59	0.10	14.10	22.70							
+forza	1-1790826491-lane.verdict433-3477700-nova	31-36	311	29.92	33.42	31.17	2.29	0.09	8.58	10.70	13.29	9.83							
+forza	1-1790826491-lane.verdict433-3477700-nova	>=36	316	20.69	48.33	46.02	1.70	0.11	19.98	0.00	15.96	32.34							

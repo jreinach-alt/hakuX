@@ -90,7 +90,8 @@ SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
 make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
 battery_admit.py titles/titlestate.py titles/saves.py titles/drive.py \
-titles/classify.py titles/waitfor_match.py"
+titles/classify.py titles/waitfor_match.py jobs/device_build.py \
+jobs/models.py jobs/models.toml"
 # DATA A SHIPPED SCRIPT PICKS AT RUN TIME, shipped by glob, never by name.
 #
 # route.sh's `drive <profile>` step runs drive.py on
@@ -141,7 +142,8 @@ snapshot_scripts() {
              affinity.py captures.py make_test_iso.py extract_results.py \
              sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
              titles/route.sh perf/pad.sh battery_admit.py titles/titlestate.py \
-             titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py; do
+             titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py \
+             jobs/device_build.py jobs/models.py jobs/models.toml; do
         snapshot_one "$f"
     done
     for g in $(snapshot_globbed); do
@@ -592,6 +594,107 @@ restore_hdd_pref() {
     log "  hddPath restored to ${orig:-(unset)}"
 }
 
+# A BUILD FROM BEFORE LIBFOLDERS MUST STILL FIND ITS GAMES FOLDER.
+#
+# Since 10f14d301d (libfolders) the app keeps its games folders as a JSON
+# array in `gamesFolderUris`, and GamesFolders.read() migrates the old single
+# `gamesFolderUri` into it and DELETES the old key; every write() deletes it
+# again. A build from an older ref reads only `gamesFolderUri`, finds nothing,
+# opens the setup wizard ("Games Folder: Not set"), and the soak reports that
+# the title did not boot -- a void that names neither cause nor ref. Once one
+# libfolders build has run on a handheld, every older soak on it went that way
+# (fmv303c's 179114986 on the Thor).
+#
+# So before a soak the pref carries both keys: when `gamesFolderUris` has
+# entries and `gamesFolderUri` is absent, `gamesFolderUri` gets the first one.
+# A libfolders build ignores the old key while the new one is there, so this
+# changes nothing for it. Every other byte of the file is kept, as with
+# env_vars and hddPath. No entries, or the old key already present: no write.
+# A write that does not read back fails the request -- the run would be the
+# void this exists to prevent, and a `cat >` that truncated the file would be
+# the setup wizard for every request after it.
+#
+# folder_pref_edit need|get|set <file> [value]
+#   need: the first gamesFolderUris entry when gamesFolderUri is absent, else ""
+#   get:  gamesFolderUri, unescaped
+#   set:  add gamesFolderUri=<value> (the file must not hold it already)
+folder_pref_edit() {
+    python3 - "$@" <<'PYFOLD'
+import html, json, re, sys
+mode, path = sys.argv[1], sys.argv[2]
+s = open(path, errors="replace").read()
+def val(key):
+    m = re.search(r'<string name="%s">(.*?)</string>' % re.escape(key), s, re.S)
+    return None if m is None else html.unescape(m.group(1))
+legacy = val("gamesFolderUri")
+if mode == "get":
+    sys.stdout.write(legacy or "")
+    sys.exit(0)
+if mode == "need":
+    if legacy is not None:
+        sys.exit(0)
+    try:
+        uris = json.loads(val("gamesFolderUris") or "[]")
+    except ValueError:
+        sys.exit("gamesFolderUris is not a JSON array; leaving it alone")
+    if isinstance(uris, list) and uris and isinstance(uris[0], str):
+        sys.stdout.write(uris[0])
+    sys.exit(0)
+want = sys.argv[3]
+if "</map>" not in s:
+    sys.exit("prefs file has no </map>; refusing to write")
+if legacy is not None:
+    sys.exit("gamesFolderUri is already set; refusing to overwrite it")
+esc = want.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+s = s.replace("</map>", '    <string name="gamesFolderUri">%s</string>\n</map>' % esc)
+open(path, "w").write(s)
+PYFOLD
+}
+
+# ensure_legacy_folder_pref: sets FOLDER_PREF_STATE (result.json); 1 = fail.
+ensure_legacy_folder_pref() {
+    local pkg tmp want back
+    pkg="${PKG:-com.jreinach.hakux.debug}"
+    tmp="$D/.prefs.${DEVICE_LABEL:-$SERIAL}.folder.xml"
+    FOLDER_PREF_STATE=""
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (folder pref)" shell am force-stop "$pkg" >/dev/null 2>&1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as cat x1box_prefs.xml (folder)" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" 2>/dev/null | tr -d '\r' > "$tmp"
+    if [ -s "${ADB_HUNG_FILE:-}" ]; then
+        log "  FOLDER PREF: adb hung ($(head -1 "$ADB_HUNG_FILE"))"; return 1
+    fi
+    if [ ! -s "$tmp" ]; then
+        # No prefs at all is a device never set up; nothing here can fix that.
+        export FOLDER_PREF_STATE="unread: x1box_prefs.xml empty or run-as refused"
+        log "  WARNING: FOLDER PREF: cannot read x1box_prefs.xml; left as is"
+        return 0
+    fi
+    if ! want=$(folder_pref_edit need "$tmp" 2>"$tmp.err"); then
+        export FOLDER_PREF_STATE="kept: $(head -1 "$tmp.err")"
+        log "  WARNING: FOLDER PREF: $FOLDER_PREF_STATE"
+        return 0
+    fi
+    if [ -z "$want" ]; then
+        export FOLDER_PREF_STATE="kept: no change needed"
+        return 0
+    fi
+    if ! folder_pref_edit set "$tmp" "$want" 2>"$tmp.err"; then
+        log "  FOLDER PREF: $(head -1 "$tmp.err")"; return 1
+    fi
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as write x1box_prefs.xml (folder)" --in "$tmp" \
+        shell "run-as $pkg sh -c 'cat > shared_prefs/x1box_prefs.xml'" >/dev/null 2>&1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as read back x1box_prefs.xml (folder)" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" 2>/dev/null | tr -d '\r' > "$tmp.back"
+    back=$(folder_pref_edit get "$tmp.back")
+    # The key goes in just before </map>, so a read-back holding both is a
+    # file that was written to its end.
+    if [ "$back" != "$want" ] || ! grep -q '</map>' "$tmp.back"; then
+        log "  FOLDER PREF: wrote gamesFolderUri=$want but read back '$back'"; return 1
+    fi
+    export FOLDER_PREF_STATE="added: gamesFolderUri from gamesFolderUris[0]"
+    log "  folder pref: gamesFolderUri=$want (for a build before libfolders)"
+}
+
 # dev_sha256 <device path> -> sha256, or "" when the file is absent
 dev_sha256() {
     adb_call 300 "sha256sum $1" shell "sha256sum '$1' 2>/dev/null || true" 2>/dev/null \
@@ -632,23 +735,33 @@ dev_make_660() {
     [ "$m" = 660 ] || { log "  $1: mode ${m:-unreadable} after chmod 660; the app could not open it read-write"; return 1; }
 }
 # dev_push <host path> <device path>: through <path>.new and a rename, checked.
-# Mode 660 before the rename, so the file is never in place unopenable.
+# Mode 660 before the rename, so the file is never in place unopenable. A
+# failure before the rename leaves <path> as it was and removes <path>.new.
+dev_push_drop() {
+    adb_call "$ADB_QUICK_TIMEOUT" "rm $1.new" shell "rm -f '$1.new'" >/dev/null 2>&1
+}
 dev_push() {
     local src="$1" dst="$2" want
     want=$(sha256sum "$src" | cut -d' ' -f1)
-    adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || return 1
-    [ "$(dev_sha256 "$dst.new")" = "$want" ] || { log "  push $dst: the device's copy does not match"; return 1; }
-    dev_make_660 "$dst.new" || return 1
-    adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || return 1
+    adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
+    [ "$(dev_sha256 "$dst.new")" = "$want" ] || { log "  push $dst: the device's copy does not match"; dev_push_drop "$dst"; return 1; }
+    dev_make_660 "$dst.new" || { dev_push_drop "$dst"; return 1; }
+    adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || { dev_push_drop "$dst"; return 1; }
     [ "$(dev_sha256 "$dst")" = "$want" ] && [ "$(dev_mode "$dst")" = 660 ]
 }
 
-# titles_disk_prepare <id> <rdir> [<request env json>]: make the device's
-# titles disk current and point hddPath at it. Writes <rdir>/hdd.json.
-# Non-zero fails the request.
+# titles_disk_prepare <id> <rdir> [<request env json>] [<title id>] [<state>]:
+# make the device's titles disk the composed goldens for this title and state
+# (titlestate.py, GOLDENS: every title's golden profile, minus this title's on
+# a first-run) and point hddPath at it. Writes <rdir>/hdd.json, which records
+# what was loaded: title, save, golden or none. Non-zero fails the request;
+# 3 is a refusal (a returning state with no golden), written to
+# <rdir>/hdd.refused, before any disk is touched.
 titles_disk_prepare() {
-    local id="$1" rdir="$2" renv="${3:-[]}" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
-    local split="${HAKUX_TITLES_DISK:-1}" from=worker rsplit mode0
+    local id="$1" rdir="$2" renv="${3:-[]}" tid="${4:-}" tstate="${5:-any}" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
+    local split="${HAKUX_TITLES_DISK:-1}" from=worker rsplit mode0 targs=()
+    [ -n "$tid" ] && targs=(--title-id "$tid")
+    targs+=(--state "$tstate")
     [ -n "${HAKUX_TITLES_DISK:-}" ] || from=default
     # The request's own HAKUX_TITLES_DISK, when it names one, wins.
     rsplit=$(python3 -c '
@@ -672,7 +785,7 @@ print(([str(e).split("=", 1)[1] for e in v if str(e).startswith("HAKUX_TITLES_DI
     for i in 1 2 3 4 5; do
         bytes=$(dev_bytes "$dpath"); sha=""
         [ "$bytes" -ge 0 ] && sha=$(dev_sha256 "$dpath")
-        pj=$(python3 "$TITLESTATE" plan --device "$dev" --device-bytes "$bytes" --device-sha "$sha") || {
+        pj=$(python3 "$TITLESTATE" plan --device "$dev" --device-bytes "$bytes" --device-sha "$sha" "${targs[@]}") || {
             log "  TITLES DISK: plan failed"; return 1; }
         printf '%s\n' "$pj" >> "$rdir/hdd.plan"
         action=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["action"])' "$pj")
@@ -680,6 +793,15 @@ print(([str(e).split("=", 1)[1] for e in v if str(e).startswith("HAKUX_TITLES_DI
         log "  titles disk: $action ($reason)"
         case "$action" in
             keep) break ;;
+            refuse)
+                printf '%s\n' "$reason" > "$rdir/hdd.refused"
+                log "  TITLES DISK: REFUSED: $reason"; return 3 ;;
+            preserve)
+                # The harvest of this disk failed: keep all of it on the host,
+                # then rebuild. A disk a run wrote to is never booted again.
+                local keep; keep="$TITLESTATE_DIR/unharvested/$dev-${sha:0:12}.qcow2"
+                dev_pull "$dpath" "$keep" "$sha" || { log "  TITLES DISK: cannot pull the disk to preserve it"; return 1; }
+                python3 "$TITLESTATE" preserved --device "$dev" --sha "$sha" --path "$keep" || return 1 ;;
             seed)
                 local h hs; h="$TITLESTATE_DIR/pull/$dev-hdd.img"
                 hs=$(dev_sha256 "$x/hdd.img")
@@ -691,7 +813,7 @@ print(([str(e).split("=", 1)[1] for e in v if str(e).startswith("HAKUX_TITLES_DI
                 titles_disk_harvest "$id:before" "$dpath" "$sha" "$rdir/hdd.harvest-before.json" || return 1 ;;
             build)
                 local bj img isha built
-                bj=$(python3 "$TITLESTATE" rebuild --device "$dev") || { log "  TITLES DISK: rebuild failed"; return 1; }
+                bj=$(python3 "$TITLESTATE" rebuild --device "$dev" "${targs[@]}") || { log "  TITLES DISK: rebuild failed"; return 1; }
                 printf '%s\n' "$bj" > "$rdir/hdd.build.json"
                 img=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["path"])' "$bj")
                 built=$(python3 -c 'import json,sys;print(json.dumps(json.loads(sys.argv[1])["built_from"]))' "$bj")
@@ -711,15 +833,20 @@ print(([str(e).split("=", 1)[1] for e in v if str(e).startswith("HAKUX_TITLES_DI
     # set_hdd_pref writes the marker before the pref, so a failure here still
     # leaves serve_one's restore_hdd_pref the value to put back.
     set_hdd_pref "$dpath" "$(hdd_pref_marker)" >/dev/null || return 1
-    python3 - "$rdir" "$dpath" "$sha" "$bytes" "$mode0" "$from" <<'PYHDD'
+    local cj; cj=$(python3 "$TITLESTATE" compose --device "$dev" "${targs[@]}") || cj='{}'
+    python3 - "$rdir" "$dpath" "$sha" "$bytes" "$mode0" "$from" "$cj" <<'PYHDD'
 import json, os, sys
-rdir, path, sha, n, mode0, frm = sys.argv[1:7]
+rdir, path, sha, n, mode0, frm, cj = sys.argv[1:8]
 plans = [json.loads(l) for l in open(os.path.join(rdir, "hdd.plan")) if l.strip()]
-json.dump({"path": path, "sha256_at_start": sha, "bytes_at_start": int(n), "plans": plans,
-           "mode_found": mode0 or None, "mode": "660",
-           "split": "on", "split_from": frm}, open(os.path.join(rdir, "hdd.json"), "w"), indent=1)
+c = json.loads(cj)
+c.pop("built_from", None)
+# title_id, disk_title_id, state, save, loaded (golden|none), golden_status:
+# what this run's title found on the disk (titlestate.py compose).
+json.dump(dict(c, path=path, sha256_at_start=sha, bytes_at_start=int(n), plans=plans,
+               mode_found=mode0 or None, mode="660",
+               split="on", split_from=frm), open(os.path.join(rdir, "hdd.json"), "w"), indent=1)
 PYHDD
-    log "  hddPath -> $dpath (sha256 ${sha:0:12}, $bytes B)"
+    log "  hddPath -> $dpath (sha256 ${sha:0:12}, $bytes B; ${tid:-title unknown} $tstate: $(python3 -c 'import json,sys;c=json.loads(sys.argv[1]);print(c.get("loaded"), c.get("save") or "")' "$cj" 2>/dev/null))"
 }
 
 # titles_disk_harvest <run> <device path> <sha> <out.json>: pull, harvest.
@@ -750,7 +877,26 @@ titles_disk_after() {
                 || printf '{"error": "pull or harvest failed; see dispatcher.log"}\n' > "$rdir/hdd.after.json" ;;
         *) printf '{"unchanged_or_blocked": %s, "sha256": "%s"}\n' "$pj" "$sha" > "$rdir/hdd.after.json" ;;
     esac
+    titles_first_run_golden "$id" "$rdir"
     restore_hdd_pref || log "  WARNING: hddPath not restored; the next request retries"
+}
+
+# titles_first_run_golden <id> <rdir>: a first-run whose route reached `mark
+# profile-saved` made the title's profile; when the title has no golden, the
+# harvested save becomes it (titlestate.py first-run-saved never replaces one).
+titles_first_run_golden() {
+    local id="$1" rdir="$2" dt save
+    grep -q '"state": "first-run"' "$rdir/hdd.json" 2>/dev/null || return 0
+    grep -q 'mark profile-saved' "$rdir/run.log" 2>/dev/null || return 0
+    dt=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("disk_title_id") or "")' "$rdir/hdd.json" 2>/dev/null)
+    save=$(python3 -c 'import json,sys;print((json.load(open(sys.argv[1])).get("harvested") or {}).get(sys.argv[2]) or "")' \
+           "$rdir/hdd.after.json" "$dt" 2>/dev/null)
+    if [ -z "$dt" ] || [ -z "$save" ]; then
+        log "  first-run reached profile-saved, but no save of ${dt:-the title} was harvested; no golden made"
+        return 0
+    fi
+    python3 "$TITLESTATE" first-run-saved --title-id "$dt" --save "$save" --run "$id" \
+        > "$rdir/hdd.golden.json" 2>&1 && log "  golden: $(cat "$rdir/hdd.golden.json")"
 }
 
 # hdd_img_guard <rdir>: disc runs keep hdd.img, and it still grows (E:\nxdk_*
@@ -944,6 +1090,43 @@ _build_ref_locked() {
     echo "$apk"
 }
 
+# THE DISPATCHER MUST NEVER INSTALL THE RELEASE PACKAGE (com.jreinach.hakux,
+# no suffix): that is the owner's stable playtest channel (owner_build.sh,
+# the nightly), and a lane's run reinstalling over it would make "which
+# build is this" unanswerable the same way the debug app already was (#433).
+#
+# _build_ref_locked only ever runs `assembleDebug` and copies the `debug`
+# variant's output, so there is today no path from here to a release apk --
+# but that is an invariant of this file's code, not of the apk on disk, and
+# it is cheap to check the thing that is actually installed rather than trust
+# that nothing upstream changed. A release apk's compiled manifest carries
+# its applicationId as a plain string in AndroidManifest.xml's string pool
+# (usually UTF-16LE); this looks for the bare id with no following "." --
+# which is what a debug or debug2 suffix would add -- so `com.jreinach.hakux`
+# alone refuses and `com.jreinach.hakux.debug` does not.
+#
+# A file zipfile cannot open (including the empty placeholder selftest.d's
+# fakes use in place of a real build) is NOT refused: there is nothing to
+# read the applicationId from, and failing closed here would block every
+# test that fakes build_ref. The real guarantee is structural (above); this
+# is defense in depth against a future change to build_ref, not the only
+# thing standing between a lane and the release package.
+guard_not_release_apk() {   # <apk path> ; 0 = fine to install, 1 = refuse
+    local apk="$1"
+    [ -s "$apk" ] || return 0
+    python3 - "$apk" <<'PY' 2>/dev/null
+import re, sys, zipfile
+try:
+    with zipfile.ZipFile(sys.argv[1]) as z:
+        manifest = z.read("AndroidManifest.xml")
+except Exception:
+    sys.exit(0)
+needle = "com.jreinach.hakux"
+text = manifest.decode("utf-16-le", "ignore") + "\n" + manifest.decode("utf-8", "ignore")
+sys.exit(1 if re.search(re.escape(needle) + r'(?![.\w])', text) else 0)
+PY
+}
+
 # ------------------------------------------------------------ the lane file
 #
 # `lanes/<label>` holds a live worker's pid and is the ONLY input to
@@ -982,6 +1165,24 @@ _build_ref_locked() {
 # minutes later, never restored, and correct again after a restart -- and this
 # closes it without having to prove it was the one.
 lane_file() { echo "$D/lanes/$DEVICE_LABEL"; }
+
+# THE MASTER RESTORE (10-06). A run that left its handheld on a test build (a
+# branch ref, an env_vars A/B) is followed by a 60 s master run queued here, so
+# the next measurement does not start on that build. device_build.py decides
+# whether this run needs one and writes the request into queue/; it writes
+# nothing for a run already on master, or for a restore itself. A failure here
+# is logged and never fails the run it follows.
+queue_master_restore() {   # $1 = run id (results/<id>)
+    local out
+    # DISPATCH_REPO: $HERE is the snapshot in a worker ($HERE *is* $SNAP
+    # there, see the comment above SRC), which has no .git above it, so
+    # device_build.py's own ancestry check needs the real repo named
+    # explicitly rather than guessed from its own path.
+    out=$(DISPATCH_REPO="$REPO" python3 "$HERE/jobs/device_build.py" restore "$D" "$DEVICE_LABEL" "$1" 2>&1) \
+        && { [ -z "$out" ] || log "  master restore queued: $out"; } \
+        || log "  master restore NOT queued for $1: $out"
+    return 0
+}
 
 lane_claim() {
     local f; f="$(lane_file)"
@@ -1192,6 +1393,12 @@ serve_one() {
     local sha; sha=$(sha256sum "$apk" | cut -c1-12)
     log "  binary $sha"
 
+    if ! guard_not_release_apk "$apk"; then
+        echo "refusing to install $apk: it reports applicationId com.jreinach.hakux (the release package); the dispatcher may only install a debug-suffixed build" > "$rdir/ERROR"
+        log "  REFUSING RELEASE INSTALL"
+        mv "$req" "$rdir/request.json"; return 0
+    fi
+
     if ! device_present; then
         log "  device absent; requeueing"
         mv "$req" "$D/queue/$id.req"; sleep 30; return 0
@@ -1229,6 +1436,28 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
         mv "$req" "$rdir/request.json"; return 0
     fi
 
+    # THE MASTER RESTORE ENDS HERE. device_build.py queues it after a run off
+    # master: no title and no suites. Its build, install and env reset above are
+    # the whole job. The disc path refuses a request with no suites ("NO SUITES"),
+    # so without this exit the restore is refused and the device keeps the test
+    # build. The result.json written here is what device_build.py reads as the
+    # device's newest run, so a restore that ran shows master and env [] there.
+    if [ "$requester" = dispatch.restore ]; then
+        python3 - "$rdir" "$sha" "$ref" "$requester" "$req_env" "$purpose" <<'PYEOF'
+import json, os, sys
+rdir, sha, ref, who, env, purpose = sys.argv[1:7]
+json.dump(dict(kind="restore", apk_sha=sha, ref=ref, env=json.loads(env),
+               requester=who, purpose=purpose, seconds=0,
+               device_label=os.environ.get("DEVICE_LABEL", "")),
+          open(os.path.join(rdir, "result.json"), "w"), indent=2)
+PYEOF
+        log "  master restore done: ref $ref binary $sha, env $req_env"
+        mv "$req" "$rdir/request.json"
+        rm -f "$D/running/$id.owner"
+        touch "$rdir/DONE"
+        return 0
+    fi
+
     # A soak request runs a real title and keeps its log, instead of running a
     # test disc and scoring captures. It exists because some questions have no
     # golden framebuffer: the audio path is silent on the pgraph discs, so
@@ -1245,7 +1474,26 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
-        if ! titles_disk_prepare "$id" "$rdir" "$req_env"; then
+        # Before the titles disk, which edits the same file: a build from
+        # before libfolders needs the old games folder key to boot anything.
+        if ! ensure_legacy_folder_pref; then
+            adb_error "could not give x1box_prefs.xml the pre-libfolders gamesFolderUri; see dispatcher.log" > "$rdir/ERROR"
+            log "  FOLDER PREF FAILED"; mv "$req" "$rdir/request.json"; return 0
+        fi
+        # Which title, and the state its route was written for (request.sh
+        # --route, titlestate.py resolve-route). A request queued before that
+        # carries neither: its title from the ISO name, state `any`.
+        local ttid tstate trc
+        ttid=$(jq_get "$req" title_id "")
+        [ -n "$ttid" ] || ttid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
+        tstate=$(jq_get "$req" title_state any)
+        titles_disk_prepare "$id" "$rdir" "$req_env" "$ttid" "$tstate"; trc=$?
+        if [ "$trc" = 3 ]; then
+            echo "refused before the soak: the titles disk cannot carry what the route assumes: $(cat "$rdir/hdd.refused" 2>/dev/null)" > "$rdir/ERROR"
+            log "  TITLES DISK REFUSED"
+            restore_hdd_pref
+            mv "$req" "$rdir/request.json"; return 0
+        elif [ "$trc" != 0 ]; then
             adb_error "could not prepare the titles disk; see dispatcher.log" > "$rdir/ERROR"
             log "  TITLES DISK SETUP FAILED"
             restore_hdd_pref
@@ -1319,6 +1567,9 @@ json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                # Cold or warm shader cache: a cleared cache puts shader
                # warm-up in the first minute of a frame-rate soak.
                shader_cache=os.environ.get("SHADER_CACHE_STATE", ""),
+               # Whether the old games folder key had to be put back for a
+               # build from before libfolders (ensure_legacy_folder_pref).
+               folder_pref=os.environ.get("FOLDER_PREF_STATE", ""),
                # THE ENVIRONMENT THIS RUN ACTUALLY RAN WITH. An env A/B has one
                # binary, so apk_sha is identical across its arms and cannot
                # distinguish them -- this field is the only thing in the result
@@ -1346,6 +1597,7 @@ PYEOF
             [ -d "$rdir/frames" ] && printf ', %s frames' "$(ls "$rdir/frames" | wc -l)")"
         mv "$req" "$rdir/request.json"
         rm -f "$D/running/$id.owner"
+    queue_master_restore "$id"
     touch "$rdir/DONE"
         return 0
     fi
@@ -1804,6 +2056,7 @@ PYEOF
         return 0
     fi
     rm -f "$D/running/$id.owner"
+    queue_master_restore "$id"
     touch "$rdir/DONE"
     log "  done -> $rdir"
     adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (after run)" shell am force-stop com.jreinach.hakux.debug >/dev/null 2>&1

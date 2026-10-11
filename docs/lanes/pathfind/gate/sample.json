@@ -1,0 +1,326 @@
+[
+ {
+  "run": "ninja-gaiden",
+  "pre": "040",
+  "a": "scratch/runs/ninja-gaiden/frames/040-probe-a.jpg",
+  "b": "scratch/runs/ninja-gaiden/frames/040-probe-b.jpg",
+  "c": "scratch/runs/ninja-gaiden/frames/040-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-2.unguided",
+  "pre": "014",
+  "a": "scratch/runs/blinx-2.unguided/frames/014-probe-a.jpg",
+  "b": "scratch/runs/blinx-2.unguided/frames/014-probe-b.jpg",
+  "c": "scratch/runs/blinx-2.unguided/frames/014-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "black-stone-hold",
+  "pre": "084",
+  "a": "docs/lanes/pathfind/runs/black-stone-hold/frames/084-probe-a.jpg",
+  "b": "docs/lanes/pathfind/runs/black-stone-hold/frames/084-probe-b.jpg",
+  "c": "docs/lanes/pathfind/runs/black-stone-hold/frames/084-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "amped-2",
+  "pre": "017",
+  "a": "scratch/runs/amped-2/frames/017-probe-a.jpg",
+  "b": "scratch/runs/amped-2/frames/017-probe-b.jpg",
+  "c": "scratch/runs/amped-2/frames/017-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "black-stone-hold",
+  "pre": "034",
+  "a": "docs/lanes/pathfind/runs/black-stone-hold/frames/034-probe-a.jpg",
+  "b": "docs/lanes/pathfind/runs/black-stone-hold/frames/034-probe-b.jpg",
+  "c": "docs/lanes/pathfind/runs/black-stone-hold/frames/034-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "black-stone-hold",
+  "pre": "018",
+  "a": "docs/lanes/pathfind/runs/black-stone-hold/frames/018-probe-a.jpg",
+  "b": "docs/lanes/pathfind/runs/black-stone-hold/frames/018-probe-b.jpg",
+  "c": "docs/lanes/pathfind/runs/black-stone-hold/frames/018-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-the-time.baseline",
+  "pre": "023",
+  "a": "scratch/runs/blinx-the-time.baseline/frames/023-probe-a.jpg",
+  "b": "scratch/runs/blinx-the-time.baseline/frames/023-probe-b.jpg",
+  "c": "scratch/runs/blinx-the-time.baseline/frames/023-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "tork",
+  "pre": "021",
+  "a": "scratch/runs/tork/frames/021-probe-a.jpg",
+  "b": "scratch/runs/tork/frames/021-probe-b.jpg",
+  "c": "scratch/runs/tork/frames/021-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "black-stone-hold",
+  "pre": "036",
+  "a": "docs/lanes/pathfind/runs/black-stone-hold/frames/036-probe-a.jpg",
+  "b": "docs/lanes/pathfind/runs/black-stone-hold/frames/036-probe-b.jpg",
+  "c": "docs/lanes/pathfind/runs/black-stone-hold/frames/036-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-2.guided",
+  "pre": "031",
+  "a": "scratch/runs/blinx-2.guided/frames/031-probe-a.jpg",
+  "b": "scratch/runs/blinx-2.guided/frames/031-probe-b.jpg",
+  "c": "scratch/runs/blinx-2.guided/frames/031-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "black-stone-hold",
+  "pre": "064",
+  "a": "docs/lanes/pathfind/runs/black-stone-hold/frames/064-probe-a.jpg",
+  "b": "docs/lanes/pathfind/runs/black-stone-hold/frames/064-probe-b.jpg",
+  "c": "docs/lanes/pathfind/runs/black-stone-hold/frames/064-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "black-stone-hold",
+  "pre": "097",
+  "a": "docs/lanes/pathfind/runs/black-stone-hold/frames/097-probe-a.jpg",
+  "b": "docs/lanes/pathfind/runs/black-stone-hold/frames/097-probe-b.jpg",
+  "c": "docs/lanes/pathfind/runs/black-stone-hold/frames/097-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "dead-or-alive-3.baseline",
+  "pre": "058",
+  "a": "scratch/runs/dead-or-alive-3.baseline/frames/058-probe-a.jpg",
+  "b": "scratch/runs/dead-or-alive-3.baseline/frames/058-probe-b.jpg",
+  "c": "scratch/runs/dead-or-alive-3.baseline/frames/058-probe-c.jpg",
+  "left": "scratch/runs/dead-or-alive-3.baseline/frames/058-probe-left.jpg",
+  "right": "scratch/runs/dead-or-alive-3.baseline/frames/058-probe-right.jpg"
+ },
+ {
+  "run": "tiger-woods-pga-tour-2004.baseline",
+  "pre": "013",
+  "a": "scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/013-probe-a.jpg",
+  "b": "scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/013-probe-b.jpg",
+  "c": "scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/013-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "amped-2",
+  "pre": "015",
+  "a": "scratch/runs/amped-2/frames/015-probe-a.jpg",
+  "b": "scratch/runs/amped-2/frames/015-probe-b.jpg",
+  "c": "scratch/runs/amped-2/frames/015-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "counter-strike",
+  "pre": "014",
+  "a": "scratch/runs/counter-strike/frames/014-probe-a.jpg",
+  "b": "scratch/runs/counter-strike/frames/014-probe-b.jpg",
+  "c": "scratch/runs/counter-strike/frames/014-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "dead-or-alive-3.baseline",
+  "pre": "043",
+  "a": "scratch/runs/dead-or-alive-3.baseline/frames/043-probe-a.jpg",
+  "b": "scratch/runs/dead-or-alive-3.baseline/frames/043-probe-b.jpg",
+  "c": "scratch/runs/dead-or-alive-3.baseline/frames/043-probe-c.jpg",
+  "left": "scratch/runs/dead-or-alive-3.baseline/frames/043-probe-left.jpg",
+  "right": "scratch/runs/dead-or-alive-3.baseline/frames/043-probe-right.jpg"
+ },
+ {
+  "run": "black-stone-hold",
+  "pre": "070",
+  "a": "docs/lanes/pathfind/runs/black-stone-hold/frames/070-probe-a.jpg",
+  "b": "docs/lanes/pathfind/runs/black-stone-hold/frames/070-probe-b.jpg",
+  "c": "docs/lanes/pathfind/runs/black-stone-hold/frames/070-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "espn-nhl-2k5.sibguided2",
+  "pre": "012",
+  "a": "scratch/runs/espn-nhl-2k5.sibguided2/frames/012-probe-a.jpg",
+  "b": "scratch/runs/espn-nhl-2k5.sibguided2/frames/012-probe-b.jpg",
+  "c": "scratch/runs/espn-nhl-2k5.sibguided2/frames/012-probe-c.jpg",
+  "left": "scratch/runs/espn-nhl-2k5.sibguided2/frames/012-probe-left.jpg",
+  "right": "scratch/runs/espn-nhl-2k5.sibguided2/frames/012-probe-right.jpg"
+ },
+ {
+  "run": "dead-or-alive-3.baseline",
+  "pre": "037",
+  "a": "scratch/runs/dead-or-alive-3.baseline/frames/037-probe-a.jpg",
+  "b": "scratch/runs/dead-or-alive-3.baseline/frames/037-probe-b.jpg",
+  "c": "scratch/runs/dead-or-alive-3.baseline/frames/037-probe-c.jpg",
+  "left": "scratch/runs/dead-or-alive-3.baseline/frames/037-probe-left.jpg",
+  "right": "scratch/runs/dead-or-alive-3.baseline/frames/037-probe-right.jpg"
+ },
+ {
+  "run": "amped-2",
+  "pre": "039",
+  "a": "scratch/runs/amped-2/frames/039-probe-a.jpg",
+  "b": "scratch/runs/amped-2/frames/039-probe-b.jpg",
+  "c": "scratch/runs/amped-2/frames/039-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "panzer-dragoon",
+  "pre": "023",
+  "a": "scratch/runs/panzer-dragoon/frames/023-probe-a.jpg",
+  "b": "scratch/runs/panzer-dragoon/frames/023-probe-b.jpg",
+  "c": "scratch/runs/panzer-dragoon/frames/023-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "panzer-dragoon",
+  "pre": "017",
+  "a": "scratch/runs/panzer-dragoon/frames/017-probe-a.jpg",
+  "b": "scratch/runs/panzer-dragoon/frames/017-probe-b.jpg",
+  "c": "scratch/runs/panzer-dragoon/frames/017-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-2.guided",
+  "pre": "074",
+  "a": "scratch/runs/blinx-2.guided/frames/074-probe-a.jpg",
+  "b": "scratch/runs/blinx-2.guided/frames/074-probe-b.jpg",
+  "c": "scratch/runs/blinx-2.guided/frames/074-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-2.unguided",
+  "pre": "022",
+  "a": "scratch/runs/blinx-2.unguided/frames/022-probe-a.jpg",
+  "b": "scratch/runs/blinx-2.unguided/frames/022-probe-b.jpg",
+  "c": "scratch/runs/blinx-2.unguided/frames/022-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "bruce-lee.rerun",
+  "pre": "004",
+  "a": "scratch/runs/bruce-lee.rerun/frames/004-probe-a.jpg",
+  "b": "scratch/runs/bruce-lee.rerun/frames/004-probe-b.jpg",
+  "c": "scratch/runs/bruce-lee.rerun/frames/004-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-2.guided",
+  "pre": "043",
+  "a": "scratch/runs/blinx-2.guided/frames/043-probe-a.jpg",
+  "b": "scratch/runs/blinx-2.guided/frames/043-probe-b.jpg",
+  "c": "scratch/runs/blinx-2.guided/frames/043-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-2.guided",
+  "pre": "078",
+  "a": "scratch/runs/blinx-2.guided/frames/078-probe-a.jpg",
+  "b": "scratch/runs/blinx-2.guided/frames/078-probe-b.jpg",
+  "c": "scratch/runs/blinx-2.guided/frames/078-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-2.unguided",
+  "pre": "034",
+  "a": "scratch/runs/blinx-2.unguided/frames/034-probe-a.jpg",
+  "b": "scratch/runs/blinx-2.unguided/frames/034-probe-b.jpg",
+  "c": "scratch/runs/blinx-2.unguided/frames/034-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-2.unguided",
+  "pre": "028",
+  "a": "scratch/runs/blinx-2.unguided/frames/028-probe-a.jpg",
+  "b": "scratch/runs/blinx-2.unguided/frames/028-probe-b.jpg",
+  "c": "scratch/runs/blinx-2.unguided/frames/028-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-2.unguided",
+  "pre": "040",
+  "a": "scratch/runs/blinx-2.unguided/frames/040-probe-a.jpg",
+  "b": "scratch/runs/blinx-2.unguided/frames/040-probe-b.jpg",
+  "c": "scratch/runs/blinx-2.unguided/frames/040-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "black-stone-hold",
+  "pre": "032",
+  "a": "docs/lanes/pathfind/runs/black-stone-hold/frames/032-probe-a.jpg",
+  "b": "docs/lanes/pathfind/runs/black-stone-hold/frames/032-probe-b.jpg",
+  "c": "docs/lanes/pathfind/runs/black-stone-hold/frames/032-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-2.unguided",
+  "pre": "048",
+  "a": "scratch/runs/blinx-2.unguided/frames/048-probe-a.jpg",
+  "b": "scratch/runs/blinx-2.unguided/frames/048-probe-b.jpg",
+  "c": "scratch/runs/blinx-2.unguided/frames/048-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-2.unguided",
+  "pre": "018",
+  "a": "scratch/runs/blinx-2.unguided/frames/018-probe-a.jpg",
+  "b": "scratch/runs/blinx-2.unguided/frames/018-probe-b.jpg",
+  "c": "scratch/runs/blinx-2.unguided/frames/018-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "blinx-2.unguided",
+  "pre": "050",
+  "a": "scratch/runs/blinx-2.unguided/frames/050-probe-a.jpg",
+  "b": "scratch/runs/blinx-2.unguided/frames/050-probe-b.jpg",
+  "c": "scratch/runs/blinx-2.unguided/frames/050-probe-c.jpg",
+  "left": null,
+  "right": null
+ },
+ {
+  "run": "dead-or-alive-3.baseline",
+  "pre": "064",
+  "a": "scratch/runs/dead-or-alive-3.baseline/frames/064-probe-a.jpg",
+  "b": "scratch/runs/dead-or-alive-3.baseline/frames/064-probe-b.jpg",
+  "c": "scratch/runs/dead-or-alive-3.baseline/frames/064-probe-c.jpg",
+  "left": "scratch/runs/dead-or-alive-3.baseline/frames/064-probe-left.jpg",
+  "right": "scratch/runs/dead-or-alive-3.baseline/frames/064-probe-right.jpg"
+ }
+]

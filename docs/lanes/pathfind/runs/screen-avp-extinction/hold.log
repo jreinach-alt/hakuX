@@ -1,0 +1,27 @@
+pathfind: Aliens Versus Predator Extinction (56550022) on nova: /storage/E6C6-D7AA/Games/XBox/56550022-Aliens_Versus_Predator_Extinction.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 56550022 returning, loaded golden 50a35dcd33ed
+[  11.7s] #  1 black             fast    wait                     Blank frame right after cold boot with no logo or title yet; nothing to act on, so I wait 
+[  16.7s] #  2 publisher_logo    replay  A                        replay step 1: Title/logo card still on screen; per hints, skip with A first, and wait for
+[  27.3s] #  3 publisher_logo    fast    A                        EA publisher logo still on screen. Per the hints, skip with A first, then re-read rather t
+[  40.8s] #  4 publisher_logo    fast    A                        Still a logo animation, no title or menu yet; per hints, skip with A once and re-read rath
+[  54.7s] #  5 title_screen      fast    START                    Title screen with a 'Press START' prompt; per hints START advances it. No menu cursor yet.
+[  69.1s] #  6 main_menu         fast    DOWN A                   Profile menu; the lit item is Load Profile, but the hint path for this title creates a New
+[  81.2s] #  7 main_menu         fast    A                        Profile menu: the highlighted 'Create Profile' is the path to play for a new profile. Acce
+[  92.4s] #  8 main_menu         fast    A                        A profile was just created; the prompt asks A to continue past the confirmation. Nothing e
+[ 101.0s] #  9 main_menu         fast    A                        Profile was created and the game is now on the main menu; Start Campaign is the highlighte
+[ 111.1s] # 10 main_menu         fast    A                        Campaign select with Marine Campaign as the top, default-highlighted item; per the recorde
+[ 121.7s] # 11 submenu           fast    A                        Marine character select; the highlight is on Marine 1, the default. Per the recorded path,
+[ 129.2s] # 12 cutscene          fast    START                    Mission briefing text screen with a Press START prompt, not a menu and not gameplay; the r
+[ 137.1s] # 13 cutscene          fast    A                        Intro cinematic with a visible 'Press A to Skip Intro' prompt; not gameplay. Recorded path
+[ 146.0s] # 14 gameplay          fast    wait                     Marine squad on the battlefield with a full in-game HUD (health, ammo, minimap) and no men
+[ 161.4s] # 15 probe             probe   STICK:up:1.5             control 0.013, under input 0.439
+hold-play: genre shooter, need 600 s of play
+hold-play: fps at 184 s: median 29.0, share>=30 0.479 over 96 s
+hold-play: fps at 309 s: median 30.0, share>=30 0.519 over 160 s
+hold-play: HELD 604/600 s of play; 
+held Aliens Versus Predator Extinction for 857s
+VERDICT Aliens Versus Predator Extinction ? FAIL(menu time: 70.7% of the scored window in `play` (bar 90%; play 605 s, still 239 s, other 11 s, no-timeline 0 s)) gameplay=855.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0529 play_share=0.7073 fps_excluded=250.3s
+{"name": "Aliens Versus Predator Extinction", "device": "nova", "result": "gameplay", "minutes": 2.69, "model_calls": 36, "steps": 15, "replayed": 1, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-avp-extinction/hold/frames/014-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,0 +1,130 @@
+{
+  "title": "NBA Live 2005",
+  "title_id": null,
+  "name": null,
+  "device": "",
+  "ref": null,
+  "apk_sha": null,
+  "request_id": "nba-live-2005-hold",
+  "route": null,
+  "surface_scale": null,
+  "adb_failures": null,
+  "thermal": {
+    "measured": false,
+    "samples": 0,
+    "unread": 0,
+    "pauses": [],
+    "in_window": false,
+    "window_covered": null,
+    "gap": null,
+    "first_pause_s": null,
+    "regimen": null,
+    "failed_sustained": null,
+    "still_heating": null
+  },
+  "human_review": "",
+  "booted": true,
+  "reached_gameplay": true,
+  "gameplay_by": "route",
+  "crash": false,
+  "crash_detail": [],
+  "crash_warnings": 0,
+  "gameplay_s": 609.7,
+  "timeline": {
+    "play_s": 609.4,
+    "scored_s": 609.7,
+    "play_share": 0.9996,
+    "by_state": {
+      "play": 609.4,
+      "no-timeline": 0.2
+    },
+    "play_spans": 1,
+    "changes": 1,
+    "fps_excluded_s": 3.0,
+    "fps_excluded_windows": 1
+  },
+  "capture_gaps_s": [],
+  "capture_lost_s": 0,
+  "capture_truncated": false,
+  "capture_truncated_s": null,
+  "hang": false,
+  "hang_gaps_s": [],
+  "fps_windows": 202,
+  "fps_bar": 30.0,
+  "fps_ok_share": 0.0,
+  "fps_ok_window_share": 0.0,
+  "fps_window_median": 19.97,
+  "fps_window_min": 17.79,
+  "g_fps_mean_reported_not_judged": 20.05,
+  "target_fps": 30.0,
+  "own_target_share": 0.0,
+  "confirmation_need_s": 600.0,
+  "below_own_target": false,
+  "power": {
+    "measured": false,
+    "samples": 0,
+    "sign": "battery_w: + discharging, - charging; net_w = battery_w + usb_w",
+    "battery_w": null,
+    "usb_w": null,
+    "usb_from": null,
+    "usb_bound": null,
+    "net_w": null,
+    "sign_suspect": 0,
+    "thermal_status_max": null,
+    "scored_s": 607.4,
+    "flips": 12120,
+    "j_per_frame": null,
+    "j_per_frame_battery": null
+  },
+  "audio_measured": true,
+  "audio_starve_share": 0.0,
+  "audio_empty_calls": 0,
+  "pace": {
+    "lines": 204,
+    "nominal_vblanks": 2,
+    "late_per_100": 94.93,
+    "worst_stall": 119.1,
+    "last": "f=24300 v0=0 v1=0 v2=0 v3=60 v4=0 vb=180 max=56.9 ms=3004.6"
+  },
+  "hitches": {
+    "n": 1,
+    "n_after_warmup": 1,
+    "per_min_after_warmup": 0.109,
+    "worst_ms": 119.1,
+    "n_big_after_warmup": 0,
+    "classification": {
+      "shader": 0,
+      "texture": 0,
+      "both": 0,
+      "unexplained": 1
+    },
+    "worst5": [
+      {
+        "off_s": 227.0,
+        "max_ms": 119.1,
+        "dsm": 0,
+        "dpc_ms": 0.0,
+        "shader_stage_ms": 0.0,
+        "tex_us": 4452,
+        "cls": "unexplained"
+      }
+    ]
+  },
+  "hitch_allowance": null,
+  "static_window": {
+    "measured": false,
+    "reason": "0 post-mark route-frame(s), need 3",
+    "frozen_frac": null,
+    "n": 0
+  },
+  "pass_kind": "confirmation",
+  "void": null,
+  "pass": false,
+  "failing": "fps: 0.0% of gameplay at >= 30 fps (bar 90%)",
+  "failures": [
+    "fps: 0.0% of gameplay at >= 30 fps (bar 90%)"
+  ],
+  "rating_candidate": null,
+  "contact_sheet": "contact.png",
+  "judged_utc": "2026-10-03T23:47:14Z"
+}

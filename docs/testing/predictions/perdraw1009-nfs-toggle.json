@@ -1,0 +1,37 @@
+{
+  "registered_utc": "2026-10-10T07:51:33Z",
+  "who": "lane.perdraw1009",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "route": "nfs-mw",
+  "device": "nova",
+  "seconds": 380,
+  "a_ref": "3f6762f18040f89c0c8ddf20ff1544b79031f640",
+  "b_ref": "3f6762f18040f89c0c8ddf20ff1544b79031f640",
+  "a_env": [
+    "HAKUX_UNI_TOGGLE=10"
+  ],
+  "b_env": [
+    "HAKUX_UNI_TOGGLE=10"
+  ],
+  "runs_per_arm": 1,
+  "queue_order": "one request.sh --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw --seconds 380 --ref 3f6762f180 --perflog --device nova --env HAKUX_UNI_TOGGLE=10, one run, both states read from inside it. Supersedes the separate-run A/B (perdraw1009-nfs-soak.json): B1/A1 (1-1791614071/-079, 65% plain wall, 438/439 draws/frame) and B2/A2 (1-1791614081/-116, 66% 'Heat It Up' billboard, 801/855 draws/frame) each matched within their own pair (STATIC Draw us/draw B-A -2.29 and -1.49, (Pipe+Mfp)/draw -1.88 and -1.59, both inside the registered [-3.0,-0.7]/<=-0.7 bands) but the two pairs stopped against two DIFFERENT walls, so the combined 4-run armread.py table failed P4 (within-arm spread swamped by cross-pair scene difference) and X (644/489 of 192 regions over floor+8, and an A-vs-A region diff as large as 208 at the +10s frame that both pairs DO share -- the chase camera's parallax shifts a few degrees between any two live runs of the same held input, which moves every region more than a flag could). X as designed cannot separate a flag effect from that per-run camera drift with one run per arm. HAKUX_UNI_TOGGLE measures both states inside ONE run so the car (and camera) sit at exactly one wall throughout: X above is not a fix for the 4-run file, just the reason this run replaces it as the pixel leg.",
+  "judge": "python3 docs/lanes/perdraw1009/togread.py <RUN> --expect docs/testing/predictions/perdraw1009-nfs-toggle.json --sheet <out.png>; read the sheet (green/red bar = switches on/off) before any leg. The script is committed with this file and is not edited after the run lands.",
+  "prediction": "THE SAME PER-DRAW UNIFORM CUT AS perdraw1009-nfs-soak.json (HAKUX_UNI_BULK/_UBERCACHE/_FOGCACHE), read within one run instead of across two, using HAKUX_UNI_TOGGLE=10 (shaders.c, commit 3b6ab0f363): all three switches follow a 10 s square wave, logged as `[perdraw433] phase=<0|1>` on every flip, polled every 32 draws (within a few ms of the boundary). togread.py bins pure 2-s perf rows (no flip inside the row's interval) into phase 0 (off) and phase 1 (on) over STATIC = (30,120] device seconds after the mark -- the 4-run file's frames show the car stopped by +21..+31s in every run, and the route releases RT at ~+123s -- and reads on-minus-off per run. MODEL: the two matched-scene pairs from the 4-run arm (B1/A1 at 65% plain wall, B2/A2 at 66% billboard) both showed STATIC Draw us/draw moving -1.5 to -2.3 and (Pipe+Mfp)/draw -1.6 to -1.9, consistent with the profiled ~1.8 us/draw model in perdraw1009-nfs-soak.json; point prediction here is -1.8 us/draw, same reasoning (sample share is not removable time, so below the ~2.9 ms/frame ceiling). LEGS. V (validity): the run is marked, finishes its route, has no fatal line, logs toggle_ms 10000 (V_toggle_ms), has >= 6 pure rows in each phase (V_min_rows_per_state), its on/off phases' mean BE agree within 10% (V_be_match -- one scene, confirmed by the toggle itself rather than assumed), and no thermal pause from 60s before the mark to the end of STATIC. T1 (the claim): STATIC Draw us/draw, on minus off, in [-3.2, -0.7]. T2 (the counter that must move): STATIC (Pipe+Mfp)/draw, on minus off, <= -0.7 (all three timed homes of update_shader_uniforms are inside Pipe+Mfp); if T2 fails the switches did not reach the per-draw path and T1 is not read as a verdict. T3: |on-off| exceeds 3x the rows' pooled SE (T3_sep_over_se), and the sign agrees (there is one run, so 'every run' is this one). T4: STATIC gfps on-off within 1.0 (T4_gfps_tol) -- both the 4-run pairs sat at or near the 30 fps cap (29.0 and 26.4-28.4), so little to no gfps change is predicted; a gain up to the tolerance is not a failure, a loss is. XT (pixels, same-run control): STATIC drive frames (~5.6 s apart, the route's repeat loop), cut into 16x12 80 px regions, frames within 1.5 s of a flip dropped. Per region: median cross-phase d (pairs <= 7 s apart, one in each phase) against median same-phase d (both frames in the same phase) as its own drift control -- the car visibly rocks and smokes while parked (B2's frames showed up to 32 at 10 s apart, 66 at 40 s), so same-phase pairs measure exactly that drift with nothing switched. A region counts UP when cross exceeds same + 8 (X_margin), DOWN when same exceeds cross + 8 -- with no switch effect the two directions are exchangeable, so DOWN over the run is the control rate for how often parking drift alone crosses the margin. Fails when UP - DOWN > 8 (X_excess_regions) or either kind has fewer than 3 pairs (X_min_pairs). It sees a lasting colour shift bigger than parking drift across several regions; it cannot see a shift the drift already produces, or one confined to a handful of small draws inside one 80 px region.",
+  "must_not_move": [],
+  "expect": {
+    "V_toggle_ms": 10000,
+    "V_min_rows_per_state": 6,
+    "V_be_match": 0.10,
+    "T1_us_per_draw_min": -3.2,
+    "T1_us_per_draw_max": -0.7,
+    "T2_pm_per_draw_max": -0.7,
+    "T3_sep_over_se": 3.0,
+    "T4_gfps_tol": 1.0,
+    "X_margin": 8,
+    "X_pair_gap_max": 7.0,
+    "X_min_pairs": 3,
+    "X_excess_regions": 8
+  },
+  "expect_counts": {}
+}

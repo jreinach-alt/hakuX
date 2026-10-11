@@ -1,0 +1,15 @@
+# frames split by the frame's kick wait (lw_kick >= 3 ms vs < 1 ms), means in ms; produced by an ad-hoc splitter over ftpair.load()
+== 0-1791714330-lockwake1011-1625482
+cold lw>=3ms 22 P=39.88 vb=0.00 lw_kick=6.69 lw_parked=6.53 v_run=30.27 v_blk=9.35 gidle=3.38 p_run=20.75 p_blk=18.94 pidle=18.24 m_run=1.71 o_fence=28.49 o_submit=0.32 o_pfl=0.00
+cold lw<1ms 76 P=33.17 vb=0.00 lw_kick=0.01 lw_parked=0.01 v_run=30.64 v_blk=2.31 gidle=8.93 p_run=20.90 p_blk=11.89 pidle=10.66 m_run=1.43 o_fence=16.86 o_submit=0.23 o_pfl=0.00
+warm lw>=3ms 124 P=33.82 vb=0.00 lw_kick=4.27 lw_parked=4.17 v_run=26.99 v_blk=6.69 gidle=6.88 p_run=17.91 p_blk=15.66 pidle=16.70 m_run=1.35 o_fence=18.49 o_submit=0.21 o_pfl=0.00
+warm lw<1ms 943 P=33.35 vb=0.00 lw_kick=0.02 lw_parked=0.02 v_run=30.87 v_blk=2.42 gidle=11.35 p_run=17.93 p_blk=15.25 pidle=16.87 m_run=1.37 o_fence=13.18 o_submit=0.22 o_pfl=0.00
+post lw>=3ms 177 P=33.74 vb=0.00 lw_kick=4.82 lw_parked=4.76 v_run=26.69 v_blk=6.96 gidle=6.88 p_run=17.46 p_blk=16.01 pidle=17.11 m_run=1.32 o_fence=18.74 o_submit=0.23 o_pfl=0.00
+post lw<1ms 3184 P=33.41 vb=0.00 lw_kick=0.00 lw_parked=0.00 v_run=31.33 v_blk=2.05 gidle=13.99 p_run=14.82 p_blk=18.48 pidle=20.51 m_run=1.29 o_fence=9.89 o_submit=0.21 o_pfl=0.00
+== 0-1791714331-lockwake1011-1625531
+cold lw>=3ms 21 P=39.79 vb=0.00 lw_kick=6.89 lw_parked=6.89 v_run=30.04 v_blk=9.44 gidle=3.44 p_run=20.46 p_blk=18.55 pidle=17.18 m_run=1.57 o_fence=29.30 o_submit=0.31 o_pfl=0.00
+cold lw<1ms 74 P=33.39 vb=0.00 lw_kick=0.02 lw_parked=0.02 v_run=30.08 v_blk=3.24 gidle=6.96 p_run=20.05 p_blk=12.99 pidle=10.76 m_run=1.47 o_fence=18.76 o_submit=0.28 o_pfl=0.00
+warm lw>=3ms 146 P=34.47 vb=0.00 lw_kick=4.86 lw_parked=4.86 v_run=27.16 v_blk=7.18 gidle=6.05 p_run=18.02 p_blk=16.05 pidle=16.76 m_run=1.31 o_fence=20.23 o_submit=0.25 o_pfl=0.00
+warm lw<1ms 909 P=33.04 vb=0.00 lw_kick=0.01 lw_parked=0.01 v_run=30.62 v_blk=2.34 gidle=10.88 p_run=18.07 p_blk=14.77 pidle=16.53 m_run=1.35 o_fence=12.89 o_submit=0.21 o_pfl=0.00
+post lw>=3ms 87 P=33.92 vb=0.00 lw_kick=4.32 lw_parked=4.32 v_run=27.35 v_blk=6.51 gidle=7.58 p_run=17.20 p_blk=16.37 pidle=17.54 m_run=1.32 o_fence=18.61 o_submit=0.21 o_pfl=0.00
+post lw<1ms 3260 P=33.33 vb=0.00 lw_kick=0.01 lw_parked=0.01 v_run=31.34 v_blk=1.96 gidle=14.37 p_run=14.41 p_blk=18.80 pidle=20.94 m_run=1.26 o_fence=9.51 o_submit=0.21 o_pfl=0.00

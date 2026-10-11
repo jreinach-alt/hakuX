@@ -1,0 +1,67 @@
+# state: any   (the golden cc9b4ced4a0f holds pathfind's profile; lane.accuracy804, #804)
+# RalliSport Challenge (4D53000F): pathfind's recorded menu path (main menu RIGHT -> SINGLE RACE
+# -> Rally -> Safari SS1 -> default car -> start race), then hands off the pad. Third capture:
+# rallisport-804.route took CAREER (no rival ever in view); rallisport-804b.route held the hat
+# for 0.35 s and the main menu auto-repeated from Career to OPTIONS
+# (1791147878-lane.accuracy804-1639330 ended in Controller Settings).
+#
+# Fixed waits only (a dispatched soak gets the route's text; a `waitfor` crop does not travel).
+# Route-relative times measured on 804b's log (the press sequence is identical, so they carry):
+#   main menu shot +88.4; start-race A +140.3; spare A +148.6. Race clock 0 came 7.0 s after
+#   the start-race A in capture 1 and in pathfind's replay, so race clock 0 ~+147.3 and the
+#   rival stretch (race clock ~7.5 s on, flicker801) from ~+155. Shots r1-r7 run +152..+169.
+#   A lost RIGHT sends the A presses down Career's path instead (shots `racetype`/`track` say so).
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+press START
+wait 5
+shot title
+wait 3
+press A
+wait 6
+press A
+wait 6
+shot mainmenu
+# RIGHT exactly as pathfind sends it (pathfind.py send(): HATX max, HATX mid at once, then 0.35 s).
+# 804b held the hat 0.35 s between max and mid: the menu auto-repeated past Single Race to Options.
+axis HATX max
+axis HATX mid
+wait 2.35
+press A
+wait 6
+shot racetype
+press A
+wait 6
+shot track
+press A
+wait 6
+shot car
+press A
+wait 25
+shot options
+press A
+wait 8
+press A
+wait 3
+shot r1
+wait 2
+shot r2
+wait 2
+shot r3
+wait 2
+shot r4
+wait 2
+shot r5
+wait 3
+shot r6
+wait 3
+shot r7
+mark gameplay
+repeat forever {
+    wait 20
+    shot hold
+}

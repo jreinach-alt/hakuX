@@ -1,0 +1,18 @@
+pathfind: LEGO Star Wars The Video Game (4553001D) on nova: /storage/E6C6-D7AA/Games/XBox/4553001D-LEGO_Star_Wars_The_Video_Game.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 4553001D any, loaded golden 5251f98730d1
+[  11.7s] #  1 publisher_logo    fast    A                        Boot logo splash, not a menu yet; hint says skip with A once and re-read, but this is a ti
+[  20.4s] #  2 publisher_logo    fast    wait                     Title/logo splash mid-animation, not a menu; hint says a title card that moves on by itsel
+[  28.3s] #  3 title_screen      fast    A                        Title menu with New Game as the fastest route to play; New Game looks highlighted, so conf
+[  37.5s] #  4 cutscene          fast    wait                     The 'Dexter's Diner' name card is a level-intro splash, not confirmed player control yet; 
+[  47.5s] #  5 gameplay          fast    wait                     Player-controllable LEGO character with HUD in the game world; hint says confirm with a st
+[  59.9s] #  6 probe             probe   STICK:up:1.5             control 0.038, under input 0.568
+hold-play: genre other, need 600 s of play
+hold-play: fps at 182 s: median 59.0, share>=30 1.0 over 182 samples
+hold-play: fps at 301 s: median 59.0, share>=30 1.0 over 302 samples
+hold-play: not held 498/600 s of play; off play for 13 steps: cutscene (Character-select/intro screen with two figures standing and 'Press START' prompt; not live control of a character in the world.)
+held LEGO Star Wars The Video Game for 735s
+VERDICT LEGO Star Wars The Video Game ? FAIL(menu time: 68.5% of the scored window in `play` (bar 90%; play 502 s, cutscene 117 s, still 78 s, pause 17 s)) gameplay=732.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=100.0 static_frac=0.0008 play_share=0.6845 fps_excluded=232.9s
+{"name": "LEGO Star Wars The Video Game", "device": "nova", "result": "gameplay", "minutes": 1.0, "model_calls": 26, "steps": 6, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-lego-star-wars/hold/frames/005-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

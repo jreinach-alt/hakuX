@@ -1,0 +1,40 @@
+{
+ "title_id": "53450029",
+ "name": "Spikeout: Battle Street",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Spikeout - Battle Street (Europe).iso",
+ "result": "gameplay",
+ "tool": "537290f875",
+ "started": "2026-10-02 10:25:09 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/frames/021-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/frames/021-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/frames/021-probe-c.jpg"
+ ],
+ "minutes": 4.27,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/frames/020-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/frames/028-after.jpg"
+ ],
+ "model_calls": 22,
+ "calls_by_model": {
+  "claude-sonnet-5": 19,
+  "claude-opus-5-5": 3
+ },
+ "steps": 21,
+ "seconds": 292.4,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/frames/020-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/spikeout/strip.jpg"
+}

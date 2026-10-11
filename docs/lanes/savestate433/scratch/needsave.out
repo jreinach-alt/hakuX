@@ -1,0 +1,87 @@
+title                               tid       inp    routes                                            save  golden        dirs save_na
+007: Agent Under Fire               4541000D  -                                                        save  1f60516bf98c  0    
+007: Nightfire                      45410026  inputs nightfire.route                                   save  faf449621348  0    
+187: Ride or Die                    55530036  inputs 187-ride-or-die.route                             save  fa079adf42d5  1    
+25 to Life                          45530018  -                                                        save  c623e1b7bc4a  1    
+50 Cent: Bulletproof                56550042  inputs 50cent.route                                      save  51cba413d999  0    
+Alias                               41430016  inputs alias.route                                       save  5db249c6ee24  0    
+Alien Hominid                       5A440004  inputs alien-hominid.route                               save  c50c0ad5b571  1    
+Amped 2                             4D530041  -                                                        save  f90786b6e0f5  0    
+Amped: Freestyle Snowboarding       4D530005  -                                                        NONE                0    
+Antz Extreme Racing                 56550009  -                                                        NONE                0    
+Aoi Namida                          494C0006  -                                                        NONE                0    
+Arctic Thunder                      4D570002  inputs arctic-thunder.route                              save  493866247e6b  0    
+Area 51                             4D570005  -                                                        NONE                0    
+Azurik: Rise of Perathia            4D530007  inputs azurik.route                                      save  3a92dca37ccf  0    
+Baldur's Gate: Dark Alliance        5655001A  inputs baldurs-gate-da.route                             save  e2bd57a63be3  0    
+Battlefield 2: Modern Combat        45410062  inputs bf2mc.route                                       save  dcf7307455f0  0    
+Bistro Cupid                        53550001  -                                                        save  0becb04b1221  1    
+Black                               45410083  inputs black.first-run.route,black.returning.route       save  46308c8d9a70  0    
+Blinx 2: Battle of Time & Space ~   4D530065  -                                                        save  377a8488c7c5  2    
+Blinx: The Time Sweeper             4D530013  -                                                        save  bad5c9e7e167  1    
+Blood Wake                          4D530010  inputs blood-wake.route                                  save  2cf342919521  1    
+BloodRayne                          4D4A0001  inputs bloodrayne.route                                  save  208af578e883  0    
+Bloody Roar: Extreme                48550001  -                                                        save  a90e393c03f9  0    
+Bruce Lee: Quest of the Dragon      56550016  inputs bruce-lee.route                                   save  71080c6c5dec  0    
+Brute Force                         4D53001E  inputs brute-force.route                                 save  6e97d00a8a46  1    
+Buffy the Vampire Slayer            45410012  inputs buffy.route                                       save  c6b6ec3cb8be  1    
+Burnout                             41430006  inputs burnout.route                                     save  bc52aa2f6fd8  1    
+Burnout 3: Takedown                 4541005B  inputs burnout3.first-run.route,burnout3.returning.rout  save  3853ca5a2387  1    
+Burnout Revenge                     45410076  inputs burnout-revenge.returning.route                   save  a9e935480605  1    
+Call of Duty 3                      4156005D  -                                                        save  a1647bf6ddb4  1    
+Capcom Classics Collection Vol. 2   43430019  inputs capcom-classics2.route                            save  ebc9d653fa70  0    
+Castlevania: Curse of Darkness      4B4E002D  inputs castlevania-cod.first-run.route,castlevania-cod.  save  20235e93867b  1    
+Conker: Live & Reloaded             4D530051  -                                                        save  d18aa0a71b74  1    
+Crash Bandicoot: The Wrath of Cort  56550003  inputs crash-wrath-of-cortex.route                       save  a0b01ac26bf6  0    
+Crash Twinsanity                    56550036  inputs crash-twinsanity.route                            save  e089ebabfb72  0    
+Crimson Skies: High Road to Reveng  4D530021  inputs crimson-skies.route                               save  42b0f68410a3  1    
+Dead or Alive 1 Ultimate            54430006  -                                                        save  3b8e57389755  1    
+Dead or Alive 3                     4D53002D  inputs doa3.route                                        n/a   220536a66fe2  0    
+Dead or Alive Xtreme Beach Volleyb  54430007  inputs doax.route                                        save  b292dbfed04f  1    
+Deathrow                            55530004  -                                                        save  c6cef35af601  0    
+Dino Crisis 3                       43430003  inputs dino-crisis-3.route                               save  f4e2e40a70a8  0    
+Dungeons & Dragons Heroes           49470013  inputs dnd-heroes.route                                  save  8cb83326dc54  0    
+Family Guy: Video Game!             545400B0  inputs family-guy.route                                  save  fc1555366ead  1    
+Forza Motorsport                    4D53006E  -                                                        save  a1baf745d557  4    
+Fuzion Frenzy                       4D530002  inputs fuzion-frenzy.route                               save  294eef288a16  0    
+Galleon                             41540004  inputs galleon.route                                     save  169dc045ed29  2    
+Gauntlet: Dark Legacy               4D57000E  inputs gauntlet.route                                    save  f393e74eb225  0    
+GoldenEye: Rogue Agent              4541005D  inputs goldeneye-ra.first-run.route                      save  e7c6806bb0a9  0    
+Grabbed by the Ghoulies             4D530053  inputs ghoulies.route                                    save  55758513a9e3  1    
+Grand Theft Auto: San Andreas       54540082  inputs gta-sa.route                                      save  7da19befd45b  0    
+Gunvalkyrie                         49470017  -                                                        NONE  4e2a12123171  1    
+Halo 2                              4D530064  -                                                        save  0a4742f1e45d  2    
+Halo: Combat Evolved                4D530004  -                                                        save  90ebd6a27bd1  1    
+JSRF: Jet Set Radio Future          49470018  inputs jsrf.route                                        n/a   8552a01fbd57  0    the Thor's disk (read 2026-09-27 06:59 P
+Kabuki Warriors                     43560001  inputs kabuki-warriors.route                             save  bbb88f4302f6  0    
+KOF: Maximum Impact - Maniax        534E0007  inputs kof-mi.returning.route                            save  97bb36646cf1  1    
+MechAssault 2: Lone Wolf            4D53006B  inputs mechassault-2.route                               save  aeffd81ffd76  1    
+Midnight Club 3: DUB Edition        54540079  inputs midnight-club-3.first-run.route,midnight-club-3.  save  c2242a6c8c70  2    
+Midtown Madness 3                   4D53002A  inputs midtown-madness-3.returning.route                 save  424a68037d87  1    
+Mortal Kombat: Armageddon           4D570034  -                                                        NONE                0    
+Ninja Gaiden                        54430003  -                                                        save  ea05ebe518c2  0    
+Ninja Gaiden Black                  5443000D  -                                                        save  ab037a065b15  0    
+Otogi: Myth of Demons               46530002  inputs otogi.route                                       save  247ba69fcbc2  1    
+Panzer Dragoon Orta                 4947002B  -                                                        save  7cf4eb6181f1  0    
+Petit Copter                        41510001  -                                                        save  8b6326b1bfc8  1    
+Phantom Dust                        4D530046  -                                                        save  20d56308a665  1    
+Plus Plumb 2                        544B0004  -                                                        save  ed7d0165f40b  1    
+Project Gotham Racing               4D530003  inputs pgr.first-run.route,pgr.returning.route           save  c151b9a02c1b  1    
+Project Gotham Racing 2             4D53004B  inputs pgr2.route                                        save  7e22330b1935  1    
+Psychonauts                         4D4A0012  -                                                        save  f978f6019d40  0    
+RalliSport Challenge 2              4D530039  inputs rallisport-2.returning.route                      save  e84d24bb437c  1    
+Sega GT 2002 + JSRF: Jet Set Radio  4D53003D  -                                                        NONE                0    
+Shin Megami Tensei: NINE            41540002  inputs smt-nine.route                                    save  2b6c57485f1e  0    
+Sonic Heroes                        5345002B  inputs sonic-heroes.route                                save  7077776b9746  1    
+Spikeout: Battle Street             53450029  inputs spikeout.returning.route                          save  c714fbc41e16  1    
+SSX Tricky                          45410004  -                                                        save  d72c8ec33898  0    
+Super Monkey Ball Deluxe            53450038  inputs super-monkey-ball-deluxe.route                    save  291732127556  1    
+ToeJam & Earl III: Mission to Eart  5345000F  -                                                        save  71a91de8b905  0    
+Tony Hawk's Pro Skater 2x           41560001  inputs thps2x.route                                      save  eb5a77c99ffd  0    
+Tony Hawk's Pro Skater 3            41560004  inputs thps3.route                                       save  02ceef03a100  0    
+Tork: Prehistoric Punk              55530040  inputs tork.route                                        save  6cb2e3c07c9e  1    
+WWE Raw 2                           5451000D  inputs wwe-raw-2.route                                   save  9616810a4c85  1    
+
+inputs but no save: 0
+inputs, golden without a save directory: 25
+no inputs: 30

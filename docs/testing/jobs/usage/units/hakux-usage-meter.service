@@ -1,0 +1,10 @@
+[Unit]
+Description=hakuX usage meter: spend-by-actor, then the auto mode switch tick
+
+[Service]
+Type=oneshot
+# meter.py writes usage/state.json and usage/summary.txt; mode.sh tick reads
+# the report it just wrote and, in auto mode only, applies Low/Normal. A
+# manual `mode.sh low`/`mode.sh normal` lock makes tick a no-op -- see
+# mode.sh's header comment.
+ExecStart=/usr/bin/env bash -c 'python3 %h/hakuX/docs/testing/jobs/usage/meter.py && bash %h/hakuX/docs/testing/jobs/usage/mode.sh tick'

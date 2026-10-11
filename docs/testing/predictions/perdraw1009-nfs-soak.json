@@ -1,0 +1,41 @@
+{
+  "registered_utc": "2026-10-10T06:34:00Z",
+  "who": "lane.perdraw1009",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "route": "nfs-mw",
+  "device": "nova",
+  "seconds": 335,
+  "a_ref": "9bdfd6d4f0aaf3c7b9ffb51fbb566f4fe60f651d",
+  "b_ref": "9bdfd6d4f0aaf3c7b9ffb51fbb566f4fe60f651d",
+  "a_env": [
+    "HAKUX_UNI_BULK=0",
+    "HAKUX_UNI_UBERCACHE=0",
+    "HAKUX_UNI_FOGCACHE=0"
+  ],
+  "b_env": [
+    "HAKUX_UNI_BULK=1",
+    "HAKUX_UNI_UBERCACHE=1",
+    "HAKUX_UNI_FOGCACHE=1"
+  ],
+  "runs_per_arm": 2,
+  "queue_order": "B1 A1 B2 A2, each a separate request.sh --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw --seconds 335 --ref 9bdfd6d4f0 --perflog --device nova, one binary; the off arm last so the Nova is left on shipped behaviour (the env pref outlives a run). B1 is the build's first run on the Nova and may pay shader compiles in its first seconds; the STATIC window starts 40 s after the mark, past them.",
+  "judge": "python3 docs/lanes/perdraw1009/armread.py --a <A1> <A2> --b <B1> <B2> --expect docs/testing/predictions/perdraw1009-nfs-soak.json --sheet <out.png>; read the speedometer sheet before any leg (each run must show the MPH digits above 0 in its first two drive frames and 0 MPH against the wall from the third on). The script is committed with this file and is not edited after a run lands.",
+  "prediction": "CUT THE RENDERER'S PER-DRAW UNIFORM WORK, ONE BUILD, FLAGS ON AGAINST OFF. Three default-off switches in vk/shaders.c (commit 9bdfd6d4f0): HAKUX_UNI_BULK copies a uniform array whose reflected stride equals its element size with one memcpy instead of one call per element (byte-identical to uniform_copy: docs/lanes/perdraw1009/bulkcheck.sh, OK 2013, three mutants each MISMATCH); HAKUX_UNI_UBERCACHE keeps pgraph_glsl_vsh_uber_values' output per ShaderBinding (a pure function of state.vsh, which nothing writes after shader_cache_entry_init; its cost was snprintf of every program constant, every draw); HAKUX_UNI_FOGCACHE keeps pgraph_glsl_vsh_fog_write per binding the same way. MODEL, from lane.local's 45 s simpleperf profile of the owner's 3-racer start (13 fps, ~1,630 draws/frame, renderer tid 32436, split by docs/lanes/perdraw1009/prof_tree.py): update_shader_uniforms is 4.43 ms/frame there, of which the three switches remove ~1.9 (per-element copy), ~0.73 (uber values) and ~0.24 (fog write) = ~2.9 ms/frame = ~1.8 us/draw. Sample share is not removable time (the bulk copy still moves the bytes), so the point prediction is 1.5 us/draw, not 1.8. SCENE: route nfs-mw gives ~25 s of a moving player from the gameplay mark, then the car wedged against a wall at 68% with RT held (baseline 1-1791613176-perdraw1009-1735811, build 1b1fec978d-perflog: STATIC 12.26 us/draw, row sd 0.16, 439 draws/frame, Draw 5.38 ms/frame, Pipe+Mfp 6.61 us/draw, gfps 29.0, renderer Idle 14.0 ms/frame; MOTION 13.55 us/draw over 12 rows, 350-1025 draws/frame, gfps 28.3). That baseline counted ubosz uploads, which this build only does under HAKUX_UBOSZ_LOG, so this build's A arm reads lower than it; the legs are B against A, never against the baseline. LEGS. V (validity, refuse rather than fail): every run has the logcat mark, finishes its route, has no fatal line, >= 8 MOTION and >= 15 STATIC rows, no thermal pause from 60 s before the mark to the end of STATIC, and all four runs one apk. P0: every B run logs `[perdraw433] bulk=1 ubercache=1 fogcache=1`, every A run `bulk=0 ubercache=0 fogcache=0`. P1 (the counter that must move): STATIC (Pipe+Mfp) per draw, B minus A, <= -0.7 us (all three timed homes of update_shader_uniforms are inside Pipe+Mfp). If P1 fails the switches did not reach the per-draw path on this title and P2-P3 are not read as a verdict. P2 (the claim): STATIC Draw us/draw, B minus A, in [-3.0, -0.7]; point -1.5 us/draw, about -12% of A and -0.66 ms/frame at 439 draws. Above -0.7 refutes the model on this scene (the profiled cost does not transfer from the 3-racer start); below -3.0 also fails: more moved than update_shader_uniforms holds. P3: MOTION Draw us/draw, B minus A, in [-3.0, -0.4] (fewer rows and a scene that differs run to run, hence the wider band); point -1.5, about -0.9 ms/frame at ~600 draws. P4: |B-A| STATIC us/draw exceeds 3x the larger within-arm run-to-run spread. P5 (gfps, the honest leg): the STATIC scene is paced at the 30 fps cap with ~14 ms/frame of renderer idle, so the predicted gfps change there is ZERO, |B-A| <= 0.5; the saved time should show as renderer Idle up by about the Draw saving (+0.66 ms/frame), printed, not judged. P6: MOTION gfps, B minus A, >= -1.0 (no regression). The predicted MOTION gain is 0 to +1 gfps: about 80% of those rows are at the cap, and on the rest (24-28 gfps at 850-1025 draws) a ~1.4 ms/frame cut of a ~40 ms frame is <= +4% if the renderer is on the critical path, inside the row noise. Where a gfps gain should show, and this route cannot reach: the owner's 3-racer start, renderer ~27 of a ~64 ms frame at ~1,650 draws, where -2.5 ms/frame is 13.0 -> 13.5 fps (+4%) if the game and renderer keep taking turns. X (pixels, regions not pixels): the STATIC frames (host clock 38-79 s after the mark) cut into 16x12 regions of mean RGB; no region's B-vs-A difference exceeds the within-arm floor + 8. X sees a scene-wide change (geometry, fog colour, lighting); a constant wrong for a few small draws moves no 80 px mean and is outside it (F1's bytes are covered on the host by bulkcheck.sh; F2/F3 rest on the purity of uber_values and fog_write in state.vsh, read from glsl/vsh-uber.c:222-317 and glsl/vsh.c:364). A thermal pause in a window voids that run, it does not count as a fail.",
+  "must_not_move": [],
+  "expect": {
+    "V_min_motion_rows": 8,
+    "V_min_static_rows": 15,
+    "P1_pm_per_draw_max": -0.7,
+    "P2_us_per_draw_min": -3.0,
+    "P2_us_per_draw_max": -0.7,
+    "P3_motion_us_per_draw_min": -3.0,
+    "P3_motion_us_per_draw_max": -0.4,
+    "P4_sep_over_spread": 3.0,
+    "P5_static_gfps_tol": 0.5,
+    "P6_motion_gfps_min": -1.0,
+    "X_margin": 8,
+    "X_max_failed_regions": 0
+  },
+  "expect_counts": {}
+}

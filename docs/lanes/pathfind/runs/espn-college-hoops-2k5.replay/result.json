@@ -1,0 +1,57 @@
+{
+ "title_id": "53450033",
+ "name": "ESPN College Hoops 2K5",
+ "device": "thor",
+ "iso": "/storage/emulated/0/ROMS/xbox/53450033-ESPN_College_Hoops_2K5.xiso.iso",
+ "result": "gameplay",
+ "tool": "41aeb6ac79",
+ "started": "2026-10-02 10:46:45 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.replay/frames/011-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.replay/frames/011-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.replay/frames/011-probe-c.jpg"
+ ],
+ "minutes": 2.04,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.replay/frames/010-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.replay/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.replay/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.replay/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.replay/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.replay/frames/016-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5345.md",
+  "hints/learned-series-espn-2k5.md"
+ ],
+ "model_calls": 10,
+ "calls_by_model": {
+  "claude-sonnet-5": 8,
+  "claude-opus-5-5": 2
+ },
+ "steps": 11,
+ "seconds": 149.7,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.replay/frames/010-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 2,
+ "sib_replayed": 0,
+ "guide": [
+  "53450033"
+ ],
+ "cheap": 0,
+ "thermal": [
+  [
+   1.5,
+   47.014
+  ],
+  [
+   35.5,
+   52.175
+  ],
+  [
+   72.8,
+   57.684
+  ]
+ ],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.replay/strip.jpg"
+}

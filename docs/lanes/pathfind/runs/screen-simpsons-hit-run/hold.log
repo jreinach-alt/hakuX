@@ -1,0 +1,35 @@
+pathfind: The Simpsons Hit Run (56550015) on nova: /storage/E6C6-D7AA/Games/XBox/56550015-The_Simpsons_Hit_Run.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 56550015 any, loaded golden bcc71e970cff
+[  10.5s] #  1 publisher_logo    fast    A                        Still a publisher/studio logo animation before any title or cutscene; per hints, skip with
+[  17.9s] #  2 publisher_logo    fast    A                        Still a publisher/studio logo animation mid-fade or transition, not a title, cutscene or m
+[  25.3s] #  3 publisher_logo    fast    A                        Still the studio logo, not a title, cutscene or menu. Hints say skip logos with A once, th
+[  29.4s] #  4 cutscene          replay  START                    replay step 3: Looks like an intro cinematic (letterbox bars, audience in a theater) after
+[  36.3s] #  5 publisher_logo    fast    A                        Developer logo still showing before the intro cutscene and title; per hints, skip logos wi
+[  42.0s] #  6 title_screen      replay  START                    replay step 4: Title screen with 'PRESS START' prompt; START is the prompt's required inpu
+[  50.2s] #  7 cutscene          fast    START                    Non-interactive scene (sky/clouds) after the logos and before the title; no prompt or curs
+[  54.2s] #  8 black             black   wait                     black frame
+[  57.9s] #  9 main_menu         replay  A                        replay step 8: Main menu with NEW GAME highlighted as the only choice; per hints, New Game
+[  63.2s] # 10 cutscene          replay  START                    replay step 9: A non-interactive scene with no HUD or player control after New Game, so it
+[  67.5s] # 11 cutscene          replay  START                    replay step 10: Non-interactive animated scene with no HUD or menu after New Game; per hin
+[  78.1s] # 12 cutscene          fast    A                        Non-interactive scene with no menu or HUD. The last START left the screen nearly unchanged
+[  82.4s] # 13 cutscene          replay  START                    replay step 11: Non-interactive character presentation with no menu or player control, sam
+[  90.1s] # 14 cutscene          fast    A                        Non-interactive character presentation on a stage with no menu, HUD, or player control; th
+[  94.4s] # 15 cutscene          replay  START                    replay step 13: Still a non-interactive character presentation with no HUD or player contr
+[  98.5s] # 16 black             black   wait                     black frame
+[ 107.1s] # 17 loading           fast    wait                     A loading screen with a newspaper interstitial; no input is needed, so wait for the game t
+[ 118.1s] # 18 cutscene          fast    A                        A tutorial box over the world, not yet free control; per the hints a dimmed scene with a b
+[ 127.0s] # 19 cutscene          fast    STICK:up:1.5             A on this tutorial box did nothing, so I'm switching inputs. Moving the left stick up shou
+[ 131.6s] # 20 cutscene          repeat  STICK:up:1.5             repeat STICK:up:1.5: it advanced the cutscene
+[ 143.7s] # 21 cutscene          fast    A                        Tutorial box is still up, not free control. Its footer says A = Continue, and the earlier 
+[ 152.5s] # 22 gameplay          fast    wait                     HUD and minimap are up with no dialogue box, so this looks like free control. The stick pr
+[ 160.5s] # 23 probe             probe   STICK:up:1.5             control 0.026, under input 0.559
+hold-play: genre other, need 600 s of play
+hold-play: fps at 186 s: median 40.0, share>=30 0.984 over 122 samples
+hold-play: fps at 303 s: median 40.0, share>=30 0.985 over 198 samples
+hold-play: HELD 605/600 s of play; 
+held The Simpsons Hit Run for 607s
+VERDICT The Simpsons Hit Run ? PASS None gameplay=605.7s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0251 play_share=0.9998 fps_excluded=1.4s
+{"name": "The Simpsons Hit Run", "device": "nova", "result": "gameplay", "minutes": 2.67, "model_calls": 21, "steps": 23, "replayed": 7, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-simpsons-hit-run/hold/frames/022-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

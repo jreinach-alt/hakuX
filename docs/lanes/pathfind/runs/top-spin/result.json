@@ -1,0 +1,41 @@
+{
+ "title_id": "4D530035",
+ "name": "Top Spin",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D530035-Top_Spin.xiso.iso",
+ "result": "gameplay",
+ "tool": "4c74d6e2b0",
+ "started": "2026-10-02 10:11:19 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/026-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/026-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/026-probe-c.jpg"
+ ],
+ "minutes": 5.48,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/025-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/031-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/032-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/033-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/034-after.jpg"
+ ],
+ "model_calls": 24,
+ "calls_by_model": {
+  "claude-sonnet-5": 21,
+  "claude-opus-5-5": 3
+ },
+ "steps": 26,
+ "seconds": 367.2,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/frames/025-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 3,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/top-spin/strip.jpg"
+}

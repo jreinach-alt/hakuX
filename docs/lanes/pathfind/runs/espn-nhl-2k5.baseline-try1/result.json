@@ -1,0 +1,60 @@
+{
+ "title_id": "53450032",
+ "name": "ESPN NHL 2K5",
+ "device": "thor",
+ "iso": "/storage/emulated/0/ROMS/xbox/53450032-ESPN_NHL_2K5.xiso.iso",
+ "result": "heat-stop",
+ "tool": "ac2f20848a",
+ "started": "2026-10-02 10:17:54 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-nhl-2k5.baseline/frames/018-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-nhl-2k5.baseline/frames/018-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-nhl-2k5.baseline/frames/018-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-nhl-2k5.baseline/frames/018-probe-right.jpg"
+ ],
+ "reason": "Thor xo 70.418 C",
+ "model_calls": 16,
+ "calls_by_model": {
+  "claude-sonnet-5": 15,
+  "claude-opus-5-5": 1
+ },
+ "steps": 18,
+ "seconds": 223.1,
+ "last_frame": null,
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 2,
+ "thermal": [
+  [
+   1.5,
+   51.322
+  ],
+  [
+   36.2,
+   55.934
+  ],
+  [
+   67.1,
+   59.471
+  ],
+  [
+   98.7,
+   62.437
+  ],
+  [
+   135.6,
+   65.729
+  ],
+  [
+   178.0,
+   67.734
+  ],
+  [
+   222.7,
+   70.418
+  ]
+ ],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-nhl-2k5.baseline/strip.jpg"
+}

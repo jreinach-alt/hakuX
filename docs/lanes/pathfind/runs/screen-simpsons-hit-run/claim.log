@@ -1,0 +1,25 @@
+pathfind: The Simpsons Hit Run (56550015) on nova: /storage/E6C6-D7AA/Games/XBox/56550015-The_Simpsons_Hit_Run.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 56550015 first-run, loaded none
+[   8.6s] #  1 loading           fast    wait                     Rendering looks like a mid-load or transitional frame of the game, not a menu or gameplay;
+[  17.0s] #  2 publisher_logo    fast    wait                     Publisher logo still animating in, not yet a title or menu; per hints, skip with A once an
+[  24.0s] #  3 publisher_logo    fast    A                        Publisher logo still playing; per hints, A skips it once, then re-read. No cursor or highl
+[  31.2s] #  4 cutscene          fast    START                    Looks like an intro cinematic (letterbox bars, audience in a theater) after the publisher 
+[  39.8s] #  5 title_screen      fast    START                    Title screen with 'PRESS START' prompt; START is the prompt's required input.
+[  48.4s] #  6 black             fast    wait                     Screen is a static cloud backdrop, likely the Simpsons intro/transition sky; no menu or pr
+[  56.2s] #  7 cutscene          fast    START                    Non-interactive animated scene after the title sequence; no prompt to answer. Per hints, s
+[  60.3s] #  8 black             black   wait                     black frame
+[  68.9s] #  9 main_menu         fast    A                        Main menu with NEW GAME highlighted as the only choice; per hints, New Game is the fastest
+[  78.6s] # 10 cutscene          fast    START                    A non-interactive scene with no HUD or player control after New Game, so it is a cutscene.
+[  86.3s] # 11 cutscene          fast    START                    Non-interactive animated scene with no HUD or menu after New Game; per hints, skip cutscen
+[  93.8s] # 12 cutscene          fast    START                    Non-interactive character presentation with no menu or player control, same as the prior s
+[  98.1s] # 13 cutscene          repeat  START                    repeat START: it advanced the cutscene
+[ 107.6s] # 14 cutscene          fast    START                    Still a non-interactive character presentation with no HUD or player control after New Gam
+[ 115.9s] # 15 loading           fast    wait                     Loading screen with a progress bar still filling; no input needed, wait for the game to fi
+[ 126.5s] # 16 gameplay          fast    A                        Tutorial box waiting for A, per hints a dimmed scene with a box is a tutorial that A dismi
+[ 142.4s] # 17 probe             probe   A STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.014, under input 0.014
+[ 152.0s] # 18 gameplay          fast    A                        Per the last steps, the tutorial box is waiting for A to dismiss it, and the probe showed 
+[ 163.9s] # 19 probe             probe   A STICK:up:1.5           control 0.148, under input 0.563
+{"name": "The Simpsons Hit Run", "device": "nova", "result": "gameplay", "minutes": 2.73, "model_calls": 18, "steps": 19, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-simpsons-hit-run/claim/frames/018-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

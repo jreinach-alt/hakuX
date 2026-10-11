@@ -1,0 +1,29 @@
+{
+  "registered_utc": "2026-10-04T00:11:04Z",
+  "who": "lane.flushstall787",
+  "issue": "787",
+  "title": "43560001-Kabuki_Warriors.xiso.iso",
+  "device": "nova",
+  "seconds": 840,
+  "route": "kabuki-warriors",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "1fe520a7092cfda559233429bb94f4e21fed4e37",
+  "b_ref": "1fe520a7092cfda559233429bb94f4e21fed4e37",
+  "a_env": ["HAKUX_GPL=3"],
+  "b_env": ["HAKUX_GPL=3"],
+  "queue_order": "ONE measurement run, not an A/B: request.sh --who lane.flushstall787 --title 43560001-Kabuki_Warriors.xiso.iso --route kabuki-warriors --seconds 840 --perflog --device nova --env HAKUX_GPL=3 --ref 1fe520a709 --issue 787 --expect docs/testing/predictions/flushstall787-kabuki.json, release tier (#787 carries 0.5; HAKUX_RELEASE_PRIO=1 offline). A run that fails V is re-queued once (brief: up to 4 Nova runs); it is never scored.",
+  "judge": "python3 docs/lanes/flushstall787/fs_judge.py <result_dir>  (reads logcat.txt only; never writes inside dispatch/results)",
+  "window": "every hakuX-pace line whose worst flip is >= 400 ms and whose 60-flip span overlaps a [tlb68] window with ff >= 50 (a flush burst), over the whole run; each such stall is judged over the [tlb68] windows that overlap its span (1-2 windows of ~2 s)",
+  "prediction": "#787: is the 0.7 s guest-late stall in Kabuki the TLB flush? NO, it is the guest's own work. A TLB flush discards no translated block in this tree (tlb_flush_by_mmuidx_async_work clears the TLB and jump cache; TBs are found by physical address), and the runs already on disk say little translation follows a burst: 1791054199-lanelocal-1518681's hakuX-pages line over the 698 ms stall reads 79 blocks generated of 2,874 tb_gen_code calls (the 120-frame line holding each of its nine post-boot burst stalls reads 20 to 861 generated, and 2,727 for one 539 ms stall before the gameplay mark, against 25,070 in the boot window, whose [rr425] gap time bounds a generation at <= ~54 us), and [rr425]'s sampled loop-gap time, which contains every tb_gen_code call, is 46.5 + 17.7 ms over the two windows of that stall. So: tb_gen_code time is small in every burst stall, and the flush's whole fallout (translation + TLB refill + flush work) is a minority of the stall. The burst itself (377 same-value CR3 reloads and 16.5k INVLPG in ~2 s) is the guest kernel remapping memory, so the stall time is spent in guest code that [tpc787] names.",
+  "legs": {
+    "V (validity)": "V1: [tcg787] on >= 90% of [tlb68] windows, all pl=1 (a perflog build that times fills). V2: the timer moves with translation: some window with >= 2,000 generations reads gus >= 50 ms, and the median window with <= 20 generations reads gus <= 20 ms. V3: an independent instrument agrees: summed gus <= 1.5 x summed [rr425] gapus (tb_gen_code runs only between TBs). V4: every call is wrapped: summed gc / summed hakuX-pages calls over the span both cover is 0.85-1.10. V5: at least one stall >= 400 ms overlaps a burst (ff >= 50); the perflog run on disk had 9 after boot. Any V failing: the run is re-queued once, not scored.",
+    "G (the brief's leg: re-translation)": "Per burst stall, gus summed over its windows. PASS (guest-side, this prediction) when every burst stall reads < 100 ms; FAIL (re-translation) when any reads >= 400 ms; between is reported as BETWEEN, not rounded either way.",
+    "F (the flush's whole fallout)": "Per burst stall, F = gus + tfus + ffus + pfus over its windows. PASS when every burst stall reads < 250 ms (the flush is at most about a third of a 700 ms stall); FAIL (the flush is the stall) when any reads >= 400 ms; BETWEEN otherwise, and then the number is the size of the win a flush fix could buy against the 500 ms bar. Expected from a bound, not a value: <= ~600 live TLB entries per flush interval (the TLB had shrunk to 512 entries in the burst window) x 377 flushes x ~1 us per refill = ~230 ms worst case.",
+    "N (naming, reported not scored)": "[tpc787]'s top entry pcs over each burst stall's windows, with their share of the sampled TB time; read against [rr425pc] (in the disk run's burst window: the kernel idle loop 8001b02e 102,876 returns, FLDCW-ended blocks at 000bb4ce and 000bb8f9 ~25k each, INVLPG at 8001f4e3/8001fb32)."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [tcg787], [tlb68], [rr425], [tpc787], hakuX-pages and hakuX-pace by fs_judge.py."
+}

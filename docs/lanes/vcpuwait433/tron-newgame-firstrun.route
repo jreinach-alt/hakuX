@@ -1,0 +1,98 @@
+# state: first-run
+# lane.vcpuwait433 (#433), 2026-10-03: the v5 route (tron-newgame.route, no DOWN) below, unchanged,
+# declared first-run so the Tron B arm reaches the in-engine intro under either dispatcher.
+# Why not tron-newgame-returning: at 08:00 PDT the dispatcher workers ran a 10-02 07:55 snapshot of
+# a host tree at 66bce0c222, without savestate433, so `# state: returning` was not enforced and the
+# disk held the first-run leftover d2aff0a53543 (Auto Load greyed): the DOWN would land on Light
+# Cycles (tron1). With no Tron profile, from that leftover or from savestate433 composing first-run,
+# A on Single Player picks New Game and the run plays the intro, the window of A (990012) and tron2.
+# Tron 2.0: Killer App (42560001), Nova, lane.tronhang672 (#672).
+# tron-2-killer-app.route (lane.titleroutes2) with one change: a DOWN
+# before the A on the Single Player menu, so it picks New Game.
+# Why: the hang (1790971658-lanelocal-1220020) came at the second load,
+# after New Game's first load and ~4.5 min of in-engine intro. That run left
+# a save, and since then the Single Player cursor starts on Auto Load
+# (0-1790974820-tronhang672-2186958, route-frame 140237), which skips the
+# intro and goes straight to the second load; there it did not hang.
+# Menu map from 1790971658's route-frames: START on the main menu does
+# nothing, A opens Single Player (130943); START does nothing there, A on
+# New Game opens the difficulty box (130954, Normal lit); A loads (131005).
+# Inputs after that are the base route's, unchanged.
+# v2: START at ~80 s, not ~64 s. In 0-1790975634-tronhang672-2276276 the
+# ESRB card was still up at 64 s (141524) and the title came at 141535, so
+# START hit the card, B hit the title, and the run looped the sign-in.
+# v3: no single START time works. In 0-1790976263-tronhang672-2397053 the
+# attract video was up at 80 s (142828); START dropped it to the title
+# (142846) and B landed on the title again. So press START until the sign-in
+# must be up: START is a no-op on the sign-in (141547), the title needs one,
+# the attract video one more, and the ESRB card ignores it (141524). Five
+# STARTs 7 s apart from 55 s cover 55-90 s; then the one B.
+# v5 (lane.vcpuwait433, 2026-10-02): no DOWN. The Nova's hdd.img no longer
+# holds a Tron save: in capture tron1 (perf/2026-10-02-vcpuwait433/tron1,
+# route-frame 185013) Auto Load and Load Game are greyed and the cursor starts
+# on New Game, so v4's DOWN skipped the greyed Load Game to Light Cycles
+# (185021) and the menu loop ended in Options > Display (185202, 59 fps).
+# Without the DOWN, A picks the top enabled entry: New Game (no save, the
+# path near30 decomposed) or Auto Load (a save, straight to a level). Either
+# way the run ends in-level, not in a menu. Check 'menu-cursor' to see which.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 15
+repeat 5 {
+    press START
+    wait 7
+    shot boot-start
+}
+shot signin
+shot signin
+press B
+wait 5
+shot skip
+press START
+wait 5
+shot menu-start
+press A
+wait 5
+shot menu-a
+press START
+wait 5
+shot menu-start
+wait 2
+shot menu-cursor
+press A
+wait 5
+shot menu-a
+repeat 8 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+mark gameplay               # blind: fires during the intro cutscenes
+repeat forever {
+    axis LY min
+    wait 3
+    shot fwd
+    axis RT max
+    wait 1
+    axis RT min
+    wait 1
+    axis RX max
+    wait 0.4
+    axis RX mid
+    wait 1
+    shot right
+    press A
+    wait 2
+    axis RX min
+    wait 0.4
+    axis RX mid
+    wait 1
+    shot left
+    axis LY mid
+    wait 0.5
+}

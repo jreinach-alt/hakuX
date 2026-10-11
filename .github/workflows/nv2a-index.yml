@@ -7,22 +7,9 @@ name: NV2A index
 #
 # Cheap on purpose - no compiler, no NDK, seconds not minutes.
 
+# Manual dispatch only (2026-10-03): see android.yml and
+# docs/lanes/localforge/RETURN.md, section 2a.
 on:
-  push:
-    branches: [master]
-    paths:
-      - 'hw/xbox/**'
-      - 'docs/testing/nv2a_index.py'
-      - 'docs/testing/nv2a_index.json'
-      - 'docs/testing/nv2a_issues.toml'
-      - '.github/workflows/nv2a-index.yml'
-  pull_request:
-    paths:
-      - 'hw/xbox/**'
-      - 'docs/testing/nv2a_index.py'
-      - 'docs/testing/nv2a_index.json'
-      - 'docs/testing/nv2a_issues.toml'
-      - '.github/workflows/nv2a-index.yml'
   workflow_dispatch:
 
 concurrency:

@@ -1,0 +1,87 @@
+# Copied by lane.uberdefault569 (#569) from the route text queued in 1790981973-lanelocal-3657361
+# (route_name ../../../lanes/tronhang672/tron-newgame), unchanged below, so its B arm plays the A arm's inputs.
+# Tron 2.0: Killer App (42560001), Nova, lane.tronhang672 (#672).
+# tron-2-killer-app.route (lane.titleroutes2) with one change: a DOWN
+# before the A on the Single Player menu, so it picks New Game.
+# Why: the hang (1790971658-lanelocal-1220020) came at the second load,
+# after New Game's first load and ~4.5 min of in-engine intro. That run left
+# a save, and since then the Single Player cursor starts on Auto Load
+# (0-1790974820-tronhang672-2186958, route-frame 140237), which skips the
+# intro and goes straight to the second load; there it did not hang.
+# Menu map from 1790971658's route-frames: START on the main menu does
+# nothing, A opens Single Player (130943); START does nothing there, A on
+# New Game opens the difficulty box (130954, Normal lit); A loads (131005).
+# Inputs after that are the base route's, unchanged.
+# v2: START at ~80 s, not ~64 s. In 0-1790975634-tronhang672-2276276 the
+# ESRB card was still up at 64 s (141524) and the title came at 141535, so
+# START hit the card, B hit the title, and the run looped the sign-in.
+# v3: no single START time works. In 0-1790976263-tronhang672-2397053 the
+# attract video was up at 80 s (142828); START dropped it to the title
+# (142846) and B landed on the title again. So press START until the sign-in
+# must be up: START is a no-op on the sign-in (141547), the title needs one,
+# the attract video one more, and the ESRB card ignores it (141524). Five
+# STARTs 7 s apart from 55 s cover 55-90 s; then the one B.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 15
+repeat 5 {
+    press START
+    wait 7
+    shot boot-start
+}
+shot signin
+shot signin
+press B
+wait 5
+shot skip
+press START
+wait 5
+shot menu-start
+press A
+wait 5
+shot menu-a
+press START
+wait 5
+shot menu-start
+axis HATY max              # v4: the D-pad is a hat; press DOWN was a no-op (144159)
+wait 0.4
+axis HATY mid
+wait 2
+shot menu-down
+press A
+wait 5
+shot menu-a
+repeat 8 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+mark gameplay               # blind: fires during the intro cutscenes
+repeat forever {
+    axis LY min
+    wait 3
+    shot fwd
+    axis RT max
+    wait 1
+    axis RT min
+    wait 1
+    axis RX max
+    wait 0.4
+    axis RX mid
+    wait 1
+    shot right
+    press A
+    wait 2
+    axis RX min
+    wait 0.4
+    axis RX mid
+    wait 1
+    shot left
+    axis LY mid
+    wait 0.5
+}

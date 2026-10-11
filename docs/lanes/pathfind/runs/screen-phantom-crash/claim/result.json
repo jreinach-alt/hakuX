@@ -1,0 +1,24 @@
+{
+ "title_id": "504C0001",
+ "name": "Phantom Crash",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/504C0001-Phantom_Crash.xiso.iso",
+ "result": "gave-up",
+ "tool": "004073f441",
+ "started": "2026-10-04 10:05:36 PDT",
+ "reason": "budget 15 min",
+ "last_state": "cutscene",
+ "model_calls": 92,
+ "calls_by_model": {
+  "claude-sonnet-5": 92
+ },
+ "steps": 88,
+ "seconds": 907.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-phantom-crash/claim/frames/088-cutscene.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-phantom-crash/claim/strip.jpg"
+}

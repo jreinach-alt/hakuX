@@ -22,6 +22,16 @@
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
+/* #433: the frametrace core lives in the header so the selftest can compile
+ * it without QEMU; this is its one implementation. */
+#define HAKUX_FT_IMPLEMENTATION
+#include "hw/xbox/nv2a/pgraph/profile.h"
+#ifdef CONFIG_VULKAN
+#include <volk.h>
+#ifdef __ANDROID__
+#include <dlfcn.h>
+#endif
+#endif
 
 #ifdef XBOX
 extern uint64_t tb_cache_stats_lookup_hits;
@@ -35,6 +45,11 @@ void nv2a_profile_increment(void)
     int64_t now = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
     const int64_t fps_update_interval = 250000;
     g_nv2a_stats.last_flip_time = now;
+
+    /* The guest's INCREMENT of READ_3D: the present, from its VBLANK ISR. */
+    if (hakux_ft_enabled()) {
+        hakux_ft_present();
+    }
 
     static int64_t frame_count = 0;
     frame_count++;
@@ -157,6 +172,10 @@ static void snapshot_cpu_timing(void)
 #endif
 
     w->lock_wait_ns      = 0;
+    memset(w->lockw_site_ns, 0, sizeof(w->lockw_site_ns));
+    memset(w->lockw_site_n, 0, sizeof(w->lockw_site_n));
+    memset(w->lockw_site_nb, 0, sizeof(w->lockw_site_nb));
+    w->lockw_parked_ns   = 0;
     w->pusher_run_ns     = 0;
     w->method_exec_ns    = 0;
     w->puller_total_ns   = 0;
@@ -230,10 +249,190 @@ static void snapshot_surf_timing(void)
     memset(w, 0, sizeof(*w));
 }
 
+#ifdef CONFIG_VULKAN
+/*
+ * #433 frametrace: the Vulkan waits, measured from inside the row. volk keeps
+ * every device entry point in a writable global; with HAKUX_FRAMETRACE=1 the
+ * flip swaps five of them for wrappers that book the call as a wait on the
+ * calling thread (the PFIFO row's pw= and pc=, the vCPU lock waits' holder
+ * split) and by call site (the summary's fw=), then call the driver's entry
+ * with the same arguments. Unset, nothing is swapped. A later volkLoadDevice
+ * (a renderer re-init) puts the driver's pointers back; the next flip swaps
+ * them again.
+ */
+static PFN_vkWaitForFences ft_real_wait_fences;
+static PFN_vkQueueSubmit ft_real_queue_submit;
+static PFN_vkGetQueryPoolResults ft_real_query_results;
+static PFN_vkQueueWaitIdle ft_real_queue_wait_idle;
+static PFN_vkDeviceWaitIdle ft_real_device_wait_idle;
+
+/* Set before the swap is published; a caller that sees the wrapper before
+ * the real pointer reaches it waits for the store already made. */
+#define FT_REAL(p) ({                                                  \
+    __typeof__(p) f_;                                                  \
+    while (!(f_ = __atomic_load_n(&(p), __ATOMIC_ACQUIRE))) {          \
+    }                                                                  \
+    f_;                                                                \
+})
+
+#define FT_VK_TIMED(reason, call) ({                                   \
+    uintptr_t ra_ = (uintptr_t)__builtin_return_address(0);            \
+    int64_t t0_ = hakux_ft_now();                                      \
+    HakuxFtWait w_;                                                    \
+    VkResult r_;                                                       \
+    hakux_ft_wait_begin(&w_, (reason), -1);                            \
+    r_ = (call);                                                       \
+    hakux_ft_wait_end(&w_);                                            \
+    hakux_ft_site_add(ra_, (reason), hakux_ft_now() - t0_);            \
+    r_;                                                                \
+})
+
+static VKAPI_ATTR VkResult VKAPI_CALL __attribute__((noinline))
+ft_vk_wait_fences(VkDevice dev, uint32_t n, const VkFence *f, VkBool32 all,
+                  uint64_t timeout)
+{
+    PFN_vkWaitForFences real = FT_REAL(ft_real_wait_fences);
+
+    if (!hakux_ft_enabled() || timeout == 0) {      /* off, or a poll */
+        return real(dev, n, f, all, timeout);
+    }
+    return FT_VK_TIMED(HAKUX_FT_W_FENCE, real(dev, n, f, all, timeout));
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL __attribute__((noinline))
+ft_vk_queue_submit(VkQueue q, uint32_t n, const VkSubmitInfo *s, VkFence f)
+{
+    PFN_vkQueueSubmit real = FT_REAL(ft_real_queue_submit);
+
+    if (!hakux_ft_enabled()) {
+        return real(q, n, s, f);
+    }
+    return FT_VK_TIMED(HAKUX_FT_W_SUBMIT, real(q, n, s, f));
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL __attribute__((noinline))
+ft_vk_query_results(VkDevice dev, VkQueryPool pool, uint32_t first,
+                    uint32_t count, size_t size, void *data,
+                    VkDeviceSize stride, VkQueryResultFlags flags)
+{
+    PFN_vkGetQueryPoolResults real = FT_REAL(ft_real_query_results);
+
+    if (!hakux_ft_enabled() || !(flags & VK_QUERY_RESULT_WAIT_BIT)) {
+        return real(dev, pool, first, count, size, data, stride, flags);
+    }
+    return FT_VK_TIMED(HAKUX_FT_W_FENCE,
+                       real(dev, pool, first, count, size, data, stride,
+                            flags));
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL __attribute__((noinline))
+ft_vk_queue_wait_idle(VkQueue q)
+{
+    PFN_vkQueueWaitIdle real = FT_REAL(ft_real_queue_wait_idle);
+
+    if (!hakux_ft_enabled()) {
+        return real(q);
+    }
+    return FT_VK_TIMED(HAKUX_FT_W_FENCE, real(q));
+}
+
+static VKAPI_ATTR VkResult VKAPI_CALL __attribute__((noinline))
+ft_vk_device_wait_idle(VkDevice dev)
+{
+    PFN_vkDeviceWaitIdle real = FT_REAL(ft_real_device_wait_idle);
+
+    if (!hakux_ft_enabled()) {
+        return real(dev);
+    }
+    return FT_VK_TIMED(HAKUX_FT_W_FENCE, real(dev));
+}
+
+#ifdef __ANDROID__
+/* The call instruction's offset in its .so (the return address less one
+ * instruction): `llvm-addr2line -e <the APK's .so> <pc>` gives file:line. */
+static void ft_site_describe_dl(uintptr_t ra, char *buf, size_t n)
+{
+    Dl_info di;
+
+    if (ra > 4 && dladdr((void *)(ra - 4), &di) && di.dli_fbase) {
+        const char *obj = di.dli_fname ? strrchr(di.dli_fname, '/') : NULL;
+        snprintf(buf, n, "pc=0x%lx obj=%s sym=%s+0x%lx",
+                 (unsigned long)(ra - 4 - (uintptr_t)di.dli_fbase),
+                 obj ? obj + 1 : di.dli_fname ? di.dli_fname : "?",
+                 di.dli_sname ? di.dli_sname : "?",
+                 di.dli_saddr ?
+                 (unsigned long)(ra - 4 - (uintptr_t)di.dli_saddr) : 0UL);
+    } else {
+        snprintf(buf, n, "ra=0x%lx", (unsigned long)ra);
+    }
+}
+#endif
+
+#define FT_SWAP(fn, wrap, real) do {                                   \
+    __typeof__(fn) cur_ = __atomic_load_n(&(fn), __ATOMIC_ACQUIRE);    \
+    if (cur_ && cur_ != (wrap)) {                                      \
+        __atomic_store_n(&(real), cur_, __ATOMIC_RELEASE);             \
+        __atomic_store_n(&(fn), (wrap), __ATOMIC_RELEASE);             \
+    }                                                                  \
+} while (0)
+
+static void ft_vk_hook(void)
+{
+#ifdef __ANDROID__
+    hakux_ft_site_describe = ft_site_describe_dl;
+#endif
+    FT_SWAP(vkWaitForFences, ft_vk_wait_fences, ft_real_wait_fences);
+    FT_SWAP(vkQueueSubmit, ft_vk_queue_submit, ft_real_queue_submit);
+    FT_SWAP(vkGetQueryPoolResults, ft_vk_query_results,
+            ft_real_query_results);
+    FT_SWAP(vkQueueWaitIdle, ft_vk_queue_wait_idle, ft_real_queue_wait_idle);
+    FT_SWAP(vkDeviceWaitIdle, ft_vk_device_wait_idle,
+            ft_real_device_wait_idle);
+}
+#endif /* CONFIG_VULKAN */
+
+/* lockwake1011 (#433): the pfifo.lock wait by site, summed over the
+ * hakuX-perf line's 60 frames. HAKUX_FRAMETRACE=1 only. */
+static struct {
+    int64_t ns[NV2A_LOCKW_NSITE], tot, parked;
+    uint64_t n[NV2A_LOCKW_NSITE], nb[NV2A_LOCKW_NSITE];
+    uint32_t frames;
+} lw_win;
+
 void nv2a_profile_flip_stall(void)
 {
     int64_t now = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
     int64_t render_time = (now-g_nv2a_stats.last_flip_time)/1000;
+
+    /* #433 frametrace: first, while the per-frame accumulators it reads
+     * still hold this frame (the snapshots below reset them). */
+    if (hakux_ft_enabled()) {
+        const CpuTimingWork *cw = &g_nv2a_stats.cpu_working;
+        HakuxFtExt x = {
+            .lockw_ns = cw->lock_wait_ns,
+            .lwp_ns = cw->lockw_parked_ns,
+            .pidle_ns = g_nv2a_stats.pacing.renderer_idle_acc_ns,
+            .gpu_ns = g_nv2a_stats.phase_working.gpu_total_ns,
+            .rp = g_nv2a_stats.phase_working.gpu_rp_count,
+            .vblank_fired = g_nv2a_stats.pacing.vblank_fired,
+        };
+        QEMU_BUILD_BUG_ON(HAKUX_FT_NLWS != NV2A_LOCKW_NSITE);
+        for (int k = 0; k < HAKUX_FT_NLWS; k++) {
+            x.lws_ns[k] = cw->lockw_site_ns[k];
+            x.lws_n[k] = cw->lockw_site_n[k];
+            x.lws_nb[k] = cw->lockw_site_nb[k];
+            lw_win.ns[k] += cw->lockw_site_ns[k];
+            lw_win.n[k] += cw->lockw_site_n[k];
+            lw_win.nb[k] += cw->lockw_site_nb[k];
+        }
+        lw_win.tot += cw->lock_wait_ns;
+        lw_win.parked += cw->lockw_parked_ns;
+        lw_win.frames++;
+        hakux_ft_flip(&x);
+#ifdef CONFIG_VULKAN
+        ft_vk_hook();
+#endif
+    }
 
     g_nv2a_stats.frame_working.mspf = render_time;
     g_nv2a_stats.frame_history[g_nv2a_stats.frame_ptr] =
@@ -632,6 +831,28 @@ void nv2a_profile_flip_stall(void)
                             g_nv2a_stats.frame_count, pace_vb[0], pace_vb[1],
                             pace_vb[2], pace_vb[3], pace_vb[4], pace_vsum,
                             pace_max_us / 1000.0, pace_span_us / 1000.0);
+
+        /* lockwake1011 (#433), HAKUX_FRAMETRACE=1 only: the guest's
+         * pfifo.lock wait (lw=, the hakuX-cpu line's Lw) by site, per frame
+         * over these frames: ms/acquisitions/acquisitions of 10 us or more;
+         * parked = the part that ended with the PFIFO thread parked. */
+        if (lw_win.frames) {
+            double nf = lw_win.frames;
+            char lbuf[384];
+            int lo = snprintf(lbuf, sizeof(lbuf), "lockw f=%u n=%u lw=%.2f",
+                              g_nv2a_stats.frame_count, lw_win.frames,
+                              lw_win.tot / 1e6 / nf);
+            for (int k = 0; k < NV2A_LOCKW_NSITE; k++) {
+                lo += snprintf(lbuf + lo, sizeof(lbuf) - lo,
+                               " %s=%.2f/%.1f/%.1f", hakux_ft_lws_name[k],
+                               lw_win.ns[k] / 1e6 / nf, lw_win.n[k] / nf,
+                               lw_win.nb[k] / nf);
+            }
+            snprintf(lbuf + lo, sizeof(lbuf) - lo, " parked=%.2f",
+                     lw_win.parked / 1e6 / nf);
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-perf", "%s", lbuf);
+            memset(&lw_win, 0, sizeof(lw_win));
+        }
 
         /*
          * #413: the shader and pipeline cache counters the overlay shows,

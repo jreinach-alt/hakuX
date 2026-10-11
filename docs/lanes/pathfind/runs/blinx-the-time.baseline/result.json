@@ -1,0 +1,45 @@
+{
+ "title_id": "4D530013",
+ "name": "Blinx: The Time Sweeper",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+ "result": "gameplay",
+ "tool": "41aeb6ac79",
+ "started": "2026-10-02 10:51:08 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/023-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/023-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/023-probe-c.jpg"
+ ],
+ "minutes": 4.35,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/022-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/031-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4D53.md",
+  "hints/learned-series-blinx.md"
+ ],
+ "model_calls": 19,
+ "calls_by_model": {
+  "claude-sonnet-5": 17,
+  "claude-opus-5-5": 2
+ },
+ "steps": 23,
+ "seconds": 299.4,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/frames/022-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 5,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-the-time.baseline/strip.jpg"
+}

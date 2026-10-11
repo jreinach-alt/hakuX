@@ -1,0 +1,63 @@
+{
+ "title_id": "53450030",
+ "name": "ESPN NFL 2K5",
+ "device": "thor",
+ "iso": "/storage/emulated/0/ROMS/xbox/53450030-ESPN_NFL_2K5.xiso.iso",
+ "result": "heat-stop",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-nfl-2k5/frames/016-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-nfl-2k5/frames/016-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-nfl-2k5/frames/016-probe-c.jpg"
+ ],
+ "reason": "Thor xo 71.033 C",
+ "model_calls": 20,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 18,
+  "claude-sonnet-5": 2
+ },
+ "steps": 21,
+ "seconds": 372.9,
+ "last_frame": null,
+ "last_state": "probe",
+ "replayed": 0,
+ "cheap": 0,
+ "thermal": [
+  [
+   1.4,
+   38.826
+  ],
+  [
+   38.9,
+   44.409
+  ],
+  [
+   77.5,
+   51.023
+  ],
+  [
+   115.3,
+   55.869
+  ],
+  [
+   156.9,
+   59.319
+  ],
+  [
+   202.3,
+   62.537
+  ],
+  [
+   272.0,
+   66.632
+  ],
+  [
+   303.6,
+   68.142
+  ],
+  [
+   372.6,
+   71.033
+  ]
+ ],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-nfl-2k5/strip.jpg"
+}

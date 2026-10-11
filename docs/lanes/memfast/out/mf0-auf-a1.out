@@ -1,0 +1,15 @@
+== .scratch/nf/1-1790676920-lane.memfast-1478936/logcat.txt
+  lines=132 act_lines=132
+  after act=1: wall=265.2s armed(cb=0)<=2.0s share<=0.0075 (windows that could hold cb=0: w0)
+  cb at last line=3, max=4, min=3
+  installs low: id=22994 nid=1758245 io=0   bar1: id=395439 nid=0 io=0
+  distinct nid pages at end: low=3972 bar1=0   cb 0->1=1 1->0=0
+  vram_pci_base=0xf0000000
+  first: nid va=0x10000 pa=0xbf000 win=l idx=5 cb=0 act=0
+  first: nid va=0x11000 pa=0xe0000 win=l idx=5 cb=0 act=0
+  first: nid va=0x40000 pa=0xef000 win=l idx=5 cb=0 act=0
+  first: nid va=0x41000 pa=0xf0000 win=l idx=5 cb=0 act=0
+  first: nid va=0x12000 pa=0xc1000 win=l idx=5 cb=0 act=0
+  first: nid va=0x13000 pa=0xc2000 win=l idx=5 cb=0 act=0
+  first: nid va=0x14000 pa=0xc3000 win=l idx=5 cb=0 act=0
+  first: nid va=0x15000 pa=0xc4000 win=l idx=5 cb=0 act=0

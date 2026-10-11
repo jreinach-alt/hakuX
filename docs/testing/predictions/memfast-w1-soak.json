@@ -1,0 +1,52 @@
+{
+ "registered_utc": "2026-10-03T15:46:11Z",
+ "who": "lane.memfast",
+ "issue": "507",
+ "a_ref": "5e249bbfe0",
+ "b_ref": "1b0f73a8bd",
+ "device": "nova",
+ "seconds": 300,
+ "perflog": true,
+ "titles": {
+  "conker": {
+   "title": "Conker Live & Reloaded.iso",
+   "route": null,
+   "pair": true,
+   "role": "mechanism + vCPU cost; no gameplay route, so reach is not scored"
+  },
+  "blinx2": {
+   "title": "4D530065-Blinx_2_Battle_of_Time_Space_Blinx_2_Masters_of_Time_Space.xiso.iso",
+   "route": null,
+   "pair": true,
+   "role": "mechanism + vCPU cost; no gameplay route"
+  },
+  "forza": {
+   "title": "4D53006E-Forza_Motorsport.xiso.iso",
+   "route": "forza.drive",
+   "pair": true,
+   "role": "mechanism + vCPU cost + reach (route state: any)"
+  },
+  "crimson": {
+   "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+   "route": "crimson-skies",
+   "pair": false,
+   "role": "reach on B (profile found)"
+  }
+ },
+ "queue_order": "pilot: Conker B1, Conker A1 (the most watch-heavy title). After the pilot is read: Blinx 2 B/A, Forza B/A, Crimson B. Each: env HAKUX_RELEASE_PRIO=1 docs/testing/request.sh --who lane.memfast --issue 507 --title <title> [--route <route>] --seconds 300 --perflog --device nova --ref <ref> --expect docs/testing/predictions/memfast-w1-soak.json",
+ "judge": "docs/lanes/memfast/w1_read.py <result dir> ([tlb68] and [watch311] lines over the whole run); title_verdict.py on a COPY of each dir for reach, crash and hang.",
+ "prediction": "#507 phase 2 W1: the full flush per surface-watch insert and remove is replaced by a walk that drops only the entries mapping the watched RAM. a_ref is master plus docs (no emulator change); b_ref is W1.",
+ "legs": {
+  "V (validity)": "Per run: at least 100 [tlb68] lines and at least one [watch311] line; a run without them is VOID and re-queued once. Every B line has w1=1.",
+  "M (mechanism, the point)": "Whole run, per pair: B's fo per second is at most 10% of A's on Conker, Blinx 2 and Forza (A: about 2 x watch inserts, section 8). On B, wn per second is within 0.8-1.25 x of 2 x [watch311] inserts per second.",
+  "P (a cost W1 can create; observation, from the code review)": "A mode's recorded large-page region (tlb_add_large_page) is reset only by a full flush of that mode. With the watch flushes gone it stays wide, so an INVLPG inside the kernel's 4 MB RAM mapping flushes the whole mode ([tlb68] pfl). Reported per pair: B's pfl/s against A's, and B's ff/s (all causes) against A's. If B's pfl/s exceeds half of A's fo/s, the saving is being spent there, and the next change is to reset the region on a walk that empties it.",
+  "X (coverage cross-check)": "wx = 0 on every [tlb68] line of every B run: the host-pointer test never drops an entry the RAM-address test kept. Any wx > 0 refutes the claim that xlat_section recovery covers every entry, and the fix stays off until it is explained.",
+  "C (vCPU cost; a guess, labelled as one)": "vCPU thread CPU ms per wall second (sum of cpu= over sum of dt=, whole run): B/A <= 0.97 on Conker. Guessed from section 8 (5-15% of Conker's vCPU). Refuted if B/A >= 1.00 on all three paired titles. One pair per title, so a 3% move is within noise; it decides nothing alone.",
+  "G (exactness in play)": "B on Forza and Crimson reaches `mark gameplay`; no B run has crash or hang (title_verdict.py), and [tlb68] lines continue to the end of every B run. The B contact sheets show no stale or torn surface the A sheets do not.",
+  "pixels": "docs/testing/predictions/memfast-w1-pixels.json (arm pair on the Nova)."
+ },
+ "must_not_move": [],
+ "expect": {},
+ "expect_counts": {},
+ "expect_note": "EMPTY ON PURPOSE: a soak writes no captures; the pixel half is memfast-w1-pixels.json"
+}

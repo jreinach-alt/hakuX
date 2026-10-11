@@ -1,0 +1,18 @@
+psh_differ build            ok
+psh_differ report           ok
+  TOTAL                          1555     1122      23    368      0       42
+aci_vmstate                 ok
+    guest state reproduced: 460 of 460 bytes
+    guest state reproduced: 0 of 460 bytes
+nv2a index                  ok
+territory                   ok
+coverage                    DID NOT RUN
+  board read from: territory.toml <- origin/board, nv2a_issues.toml <- origin/board
+  coverage NOT CHECKED -- THE GATE DID NOT RUN: gh: Sorry. Your account was suspended (HTTP 403)
+    NOTHING BELOW WAS VERIFIED. This exits 0 on purpose so a network blip cannot make the repository unpushable, and an exit code of 0 from here therefore means `not checked`, NOT `checked and fine`.
+    (failing open -- a network blip must not make this unpushable)
+  ^^ THE COVERAGE GATE DID NOT RUN. It exits 0 by design so
+     a blip cannot block a push; that 0 is not a pass.
+board files                 ok
+
+preflight passed - safe to push

@@ -43,7 +43,8 @@ class GameLibraryActivity : AppCompatActivity() {
     val title: String,
     val uri: Uri,
     val relativePath: String,
-    val sizeBytes: Long
+    val sizeBytes: Long,
+    val folderUri: Uri
   )
 
   private data class CoverEntry(
@@ -54,6 +55,7 @@ class GameLibraryActivity : AppCompatActivity() {
   )
 
   private val prefs by lazy { getSharedPreferences("x1box_prefs", MODE_PRIVATE) }
+  private val TAG_FOLDERS = "hakuX-folders"
   private val gameExts = setOf("iso", "xiso", "cso", "cci")
   private val titleStopWords = setOf("the", "a", "an", "and", "of", "for", "in", "on", "to")
   private val coverRepoBaseUrl = "https://raw.githubusercontent.com/izzy2lost/X1_Covers/main/"
@@ -74,7 +76,7 @@ class GameLibraryActivity : AppCompatActivity() {
   private lateinit var viewModeToggle: MaterialButtonToggleGroup
   private lateinit var switchBoxArtLookup: MaterialSwitch
 
-  private var gamesFolderUri: Uri? = null
+  private var gamesFolders: List<Uri> = emptyList()
   private var scanGeneration = 0
   private var currentGames: List<GameEntry> = emptyList()
   private var searchFilter = ""
@@ -103,7 +105,16 @@ class GameLibraryActivity : AppCompatActivity() {
     viewModeToggle = findViewById(R.id.library_view_mode_toggle)
     switchBoxArtLookup = findViewById(R.id.switch_box_art_lookup)
 
-    gamesFolderUri = prefs.getString("gamesFolderUri", null)?.let(Uri::parse)
+    // Small and in a corner, so the owner can confirm which build they are
+    // playing (#433) without it competing with the library for attention.
+    findViewById<TextView>(R.id.library_version_label).text =
+      try {
+        packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+      } catch (_: Exception) {
+        ""
+      }
+
+    gamesFolders = GamesFolders.read(prefs)
     useCoverGrid = prefs.getBoolean("library_cover_grid", false)
     boxArtLookupEnabled = prefs.getBoolean("library_box_art_lookup", true)
 
@@ -156,7 +167,7 @@ class GameLibraryActivity : AppCompatActivity() {
           renderGames()
         }
       })
-    if (!isFolderReady(gamesFolderUri)) {
+    if (gamesFolders.none { isFolderReady(it) }) {
       Toast.makeText(this, getString(R.string.library_no_folder), Toast.LENGTH_SHORT).show()
       return
     }
@@ -164,9 +175,22 @@ class GameLibraryActivity : AppCompatActivity() {
     loadGames()
   }
 
+  override fun onResume() {
+    super.onResume()
+    // Settings may have added or removed a folder while this screen sat in the back stack.
+    if (GamesFolders.read(prefs) != gamesFolders) {
+      loadGames()
+    }
+  }
+
   private fun loadGames() {
-    val folderUri = gamesFolderUri
-    if (!isFolderReady(folderUri)) {
+    gamesFolders = GamesFolders.read(prefs)
+    val folders = gamesFolders
+    val usable = folders.filter { isFolderReady(it) }
+    for (skipped in folders - usable.toSet()) {
+      Log.w(TAG_FOLDERS, "skipping unreadable games folder (no permission or gone): $skipped")
+    }
+    if (usable.isEmpty()) {
       setLoading(false)
       currentGames = emptyList()
       renderGames()
@@ -176,7 +200,7 @@ class GameLibraryActivity : AppCompatActivity() {
 
     val generation = ++scanGeneration
     Thread {
-      val games = scanFolderForGames(folderUri!!)
+      val games = scanFoldersForGames(usable)
       runOnUiThread {
         if (generation != scanGeneration) {
           return@runOnUiThread
@@ -549,11 +573,7 @@ class GameLibraryActivity : AppCompatActivity() {
   ): ConvertResult {
     val TAG = "hakuX-xiso"
     Log.i(TAG, "convert: game=${game.relativePath} output=$outputName overwrite=$overwrite")
-    val folderUri = gamesFolderUri
-    if (folderUri == null) {
-      Log.e(TAG, "convert: no games folder URI")
-      return ConvertResult.Error(getString(R.string.library_no_folder))
-    }
+    val folderUri = game.folderUri
     if (!hasPersistedWritePermission(folderUri)) {
       Log.e(TAG, "convert: no write permission on $folderUri")
       return ConvertResult.Error(getString(R.string.library_convert_no_write_permission))
@@ -792,8 +812,7 @@ class GameLibraryActivity : AppCompatActivity() {
         val isoName = game.relativePath.substringAfterLast('/').let {
           it.removeSuffix(".xiso.iso") + ".iso"
         }
-        val folderUri = gamesFolderUri
-        val root = if (folderUri != null) DocumentFile.fromTreeUri(this, folderUri) else null
+        val root = DocumentFile.fromTreeUri(this, game.folderUri)
         val parent = if (root != null) resolveParentDirectory(root, game.relativePath) else null
         val origIso = parent?.findFile(isoName)
 
@@ -802,7 +821,7 @@ class GameLibraryActivity : AppCompatActivity() {
           Toast.makeText(this, getString(R.string.library_xiso_corrupt_rebuilding), Toast.LENGTH_SHORT).show()
           val origGame = GameEntry(game.title, origIso.uri, game.relativePath.substringBeforeLast('/').let {
             if (it.isEmpty()) isoName else "$it/$isoName"
-          }, origIso.length())
+          }, origIso.length(), game.folderUri)
           launchGameWithAutoConvert(origGame)
         } else {
           Toast.makeText(this, getString(R.string.library_xiso_corrupt), Toast.LENGTH_LONG).show()
@@ -1065,8 +1084,7 @@ class GameLibraryActivity : AppCompatActivity() {
    * Look for an existing .xiso.iso file next to the original game file.
    */
   private fun findExistingXiso(game: GameEntry): GameEntry? {
-    val folderUri = gamesFolderUri ?: return null
-    val root = DocumentFile.fromTreeUri(this, folderUri) ?: return null
+    val root = DocumentFile.fromTreeUri(this, game.folderUri) ?: return null
     val parent = resolveParentDirectory(root, game.relativePath) ?: return null
     val xisoName = buildXisoFileName(game.relativePath.substringAfterLast('/'))
     val xisoDoc = parent.findFile(xisoName)
@@ -1077,10 +1095,39 @@ class GameLibraryActivity : AppCompatActivity() {
         relativePath = game.relativePath.substringBeforeLast('/').let {
           if (it.isEmpty()) xisoName else "$it/$xisoName"
         },
-        sizeBytes = xisoDoc.length()
+        sizeBytes = xisoDoc.length(),
+        folderUri = game.folderUri
       )
     }
     return null
+  }
+
+  /** Folders are scanned in order; a file name already seen in an earlier folder is skipped. */
+  private fun scanFoldersForGames(folders: List<Uri>): List<GameEntry> {
+    val merged = ArrayList<GameEntry>()
+    val seenNames = HashSet<String>()
+    for (folder in folders) {
+      val found = try {
+        scanFolderForGames(folder)
+      } catch (e: Exception) {
+        Log.w(TAG_FOLDERS, "skipping games folder that failed to scan: $folder", e)
+        continue
+      }
+      val namesHere = HashSet<String>()
+      for (game in found) {
+        val name = game.relativePath.substringAfterLast('/').lowercase(Locale.ROOT)
+        if (name in seenNames) {
+          Log.i(TAG_FOLDERS, "duplicate of an earlier folder, hidden: ${game.relativePath} in $folder")
+          continue
+        }
+        namesHere.add(name)
+        merged.add(game)
+      }
+      seenNames.addAll(namesHere)
+      Log.i(TAG_FOLDERS, "scanned $folder: ${found.size} found, ${namesHere.size} shown")
+    }
+    merged.sortBy { it.title.lowercase(Locale.ROOT) }
+    return merged
   }
 
   private fun scanFolderForGames(folderUri: Uri): List<GameEntry> {
@@ -1110,7 +1157,8 @@ class GameLibraryActivity : AppCompatActivity() {
             title = toGameTitle(name),
             uri = child.uri,
             relativePath = prefix + name,
-            sizeBytes = child.length()
+            sizeBytes = child.length(),
+            folderUri = folderUri
           )
         )
       }

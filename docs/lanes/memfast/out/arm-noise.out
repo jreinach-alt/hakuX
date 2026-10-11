@@ -1,0 +1,98 @@
+header ['suite', 'test', 'solo', 'status', 'differing', 'max_rgb', 'max_a', 'pixels', 'off_by_one', 'apk_sha', 'disc_id', 'label']
+results with scores1.tsv (memfast excluded, aliases folded): 1251
+
+TOTALS over all devices: capture, runs, not exact, differing-px values
+  Stencil/Stencil_ZERO: 48 runs, 9 not exact: 40000 (8), 5000 (1)
+  Stencil/Stencil_ZERO_ST_DT: 48 runs, 26 not exact: 30000 (23), 34950 (1), 20000 (1), 5050 (1)
+  Stencil/Stencil_ZERO_ST_DT_ZB: 48 runs, 22 not exact: 30000 (18), 20000 (2), 5050 (1), 2500 (1)
+  Stencil/Stencil_ZERO_ST_ZB: 48 runs, 18 not exact: 30000 (16), 20000 (1), 10000 (1)
+  Vertex_shader_rounding_tests/GeometrySuperscreen_0.4999: 59 runs, 7 not exact: 400 (3), 800 (2), 1 (2)
+  Vertex_shader_rounding_tests/GeometrySuperscreen_0.5626: 59 runs, 8 not exact: 285 (5), 570 (3)
+
+GeometrySuperscreen_0.4999  device=: 39 runs, 4 distinct score rows
+     33x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. 1790455261-arms-buildflags427-fix-4129802 ref 6cd1a58b64
+      2x ('False', 'ok', '800', '255', '0', '307200', '0')   e.g. 1790419343-arms-dpforce345-base-4176529 ref 2dc2b5c49a
+      2x ('False', 'ok', '1', '255', '0', '307200', '0')   e.g. 1-1790623780-arms-pacing-base-3038034 ref 01e62d8d1c
+      2x ('False', 'ok', '400', '255', '0', '307200', '0')   e.g. 1790416205-arms-dpforce345-fix-2398503 ref 74a238a614
+
+GeometrySuperscreen_0.4999  device=?: 6 runs, 1 distinct score rows
+      6x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. z-tip-090-Vertex_shader_rounding_tests ref 0026f00534
+
+GeometrySuperscreen_0.4999  device=nova: 2 runs, 1 distinct score rows
+      2x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. 1790365512-arms-vshr12280-fix-476266 ref 8dce0cf12e
+
+GeometrySuperscreen_0.4999  device=thor: 12 runs, 2 distinct score rows
+     11x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. z-a-now-8e683b3a26-090-Vertex_shader_rounding_tests ref 8e683b3a26
+      1x ('False', 'ok', '400', '255', '0', '307200', '0')   e.g. 1-1790610287-arms-rendermode474-base-1969525 ref 59d478911e
+
+GeometrySuperscreen_0.5626  device=: 39 runs, 3 distinct score rows
+     32x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. 1790455261-arms-buildflags427-fix-4129802 ref 6cd1a58b64
+      4x ('False', 'ok', '285', '255', '0', '307200', '0')   e.g. 1790416205-arms-dpforce345-fix-2398503 ref 74a238a614
+      3x ('False', 'ok', '570', '255', '0', '307200', '0')   e.g. 1790419343-arms-dpforce345-base-4176529 ref 2dc2b5c49a
+
+GeometrySuperscreen_0.5626  device=?: 6 runs, 1 distinct score rows
+      6x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. z-tip-090-Vertex_shader_rounding_tests ref 0026f00534
+
+GeometrySuperscreen_0.5626  device=nova: 2 runs, 1 distinct score rows
+      2x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. 1790365512-arms-vshr12280-fix-476266 ref 8dce0cf12e
+
+GeometrySuperscreen_0.5626  device=thor: 12 runs, 2 distinct score rows
+     11x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. z-a-now-8e683b3a26-090-Vertex_shader_rounding_tests ref 8e683b3a26
+      1x ('False', 'ok', '285', '255', '0', '307200', '0')   e.g. 0-0-x-1790549038-flip474-1817562 ref 09fdca3ba1
+
+Stencil_ZERO  device=: 16 runs, 2 distinct score rows
+     12x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. 1790417358-arms-zrtz272-base-3007455 ref 6550967a5e
+      4x ('False', 'ok', '40000', '255', '0', '307200', '0')   e.g. 1790417358-arms-zrtz272-fix-3007793 ref e603fb3540
+
+Stencil_ZERO  device=?: 6 runs, 2 distinct score rows
+      5x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. z-tip-059-Stencil ref 0026f00534
+      1x ('False', 'ok', '40000', '255', '0', '307200', '0')   e.g. z-c866527e03-059-Stencil ref c866527e03
+
+Stencil_ZERO  device=thor: 26 runs, 3 distinct score rows
+     22x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. z-a-now-8e683b3a26-059-Stencil ref 8e683b3a26
+      3x ('False', 'ok', '40000', '255', '0', '307200', '0')   e.g. z-b-v040j1-059-Stencil ref aeb4a096b6
+      1x ('False', 'ok', '5000', '255', '0', '307200', '0')   e.g. 1789345024-orchestrator-1663172 ref e2b6abde73
+
+Stencil_ZERO_ST_DT  device=: 16 runs, 2 distinct score rows
+     10x ('False', 'ok', '30000', '255', '0', '307200', '0')   e.g. 1790417358-arms-zrtz272-fix-3007793 ref e603fb3540
+      6x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. 1790402845-arms-zrtz272-base-1549230 ref b2cf2a6624
+
+Stencil_ZERO_ST_DT  device=?: 6 runs, 2 distinct score rows
+      4x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. z-sweep-060-Stencil ref b63603975c
+      2x ('False', 'ok', '30000', '255', '0', '307200', '0')   e.g. z-tip-059-Stencil ref 0026f00534
+
+Stencil_ZERO_ST_DT  device=thor: 26 runs, 5 distinct score rows
+     12x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. z-b-v040j1-059-Stencil ref aeb4a096b6
+     11x ('False', 'ok', '30000', '255', '0', '307200', '0')   e.g. 1789347057-orchestrator-2288027 ref 7420d389f5
+      1x ('False', 'ok', '34950', '255', '0', '307200', '0')   e.g. 1789388709-skew44-stencil-3797807 ref 220858ee9d
+      1x ('False', 'ok', '20000', '255', '0', '307200', '0')   e.g. 1790347539-xbox-region200-dryrun-3236568 ref 84a67b9cf8
+      1x ('False', 'ok', '5050', '255', '0', '307200', '0')   e.g. z-a-now-8e683b3a26-059-Stencil ref 8e683b3a26
+
+Stencil_ZERO_ST_DT_ZB  device=: 16 runs, 2 distinct score rows
+     10x ('False', 'ok', '30000', '255', '0', '307200', '0')   e.g. 1790417358-arms-zrtz272-fix-3007793 ref e603fb3540
+      6x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. 1790402845-arms-zrtz272-base-1549230 ref b2cf2a6624
+
+Stencil_ZERO_ST_DT_ZB  device=?: 6 runs, 3 distinct score rows
+      4x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. z-sweep-060-Stencil ref b63603975c
+      1x ('False', 'ok', '2500', '255', '0', '307200', '0')   e.g. z-repeat-c866527e03-059-Stencil ref c866527e03
+      1x ('False', 'white-content', '30000', '255', '0', '307200', '0')   e.g. z-tip-059-Stencil ref 0026f00534
+
+Stencil_ZERO_ST_DT_ZB  device=thor: 26 runs, 5 distinct score rows
+     16x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. z-b-v040j1-059-Stencil ref aeb4a096b6
+      6x ('False', 'ok', '30000', '255', '0', '307200', '0')   e.g. 1789345832-orchestrator-1968834 ref e2b6abde73
+      2x ('False', 'ok', '20000', '255', '0', '307200', '0')   e.g. 1790347539-xbox-region200-dryrun-3236568 ref 84a67b9cf8
+      1x ('False', 'white-content', '30000', '255', '0', '307200', '0')   e.g. 1789319082-stencilregress-116405 ref 0026f00534
+      1x ('False', 'ok', '5050', '255', '0', '307200', '0')   e.g. z-a-now-8e683b3a26-059-Stencil ref 8e683b3a26
+
+Stencil_ZERO_ST_ZB  device=: 16 runs, 3 distinct score rows
+      9x ('False', 'ok', '30000', '255', '0', '307200', '0')   e.g. 1790417358-arms-zrtz272-fix-3007793 ref e603fb3540
+      6x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. 1790410947-arms-zrtz272-base-885745 ref 6550967a5e
+      1x ('False', 'ok', '20000', '255', '0', '307200', '0')   e.g. 1-1790625714-arms-forzadecay414-base-3793108 ref 85347ffbd1
+
+Stencil_ZERO_ST_ZB  device=?: 6 runs, 2 distinct score rows
+      5x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. z-tip-059-Stencil ref 0026f00534
+      1x ('False', 'label-differs', '10000', '255', '0', '307200', '0')   e.g. z-sweep-060-Stencil ref b63603975c
+
+Stencil_ZERO_ST_ZB  device=thor: 26 runs, 2 distinct score rows
+     19x ('False', 'ok', '0', '0', '0', '307200', '0')   e.g. z-b-v040j1-059-Stencil ref aeb4a096b6
+      7x ('False', 'ok', '30000', '255', '0', '307200', '0')   e.g. 1789345024-orchestrator-1663172 ref e2b6abde73

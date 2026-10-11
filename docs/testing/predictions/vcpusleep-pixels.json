@@ -1,0 +1,26 @@
+{
+  "registered_utc": "2026-10-04T20:48:47Z",
+  "who": "lane.vcpusleep",
+  "issue": "507",
+  "prediction": "#507 posted DMA_PUT store, pixel leg. A is 3ff55c9ac2 (master's emulator code; the R1 Simpsons capture ran its apk; nothing outside docs/ differs from master 425ffe1ad1 or from c2dfca18a1's parent). B is c2dfca18a1: when pfifo.lock is busy, user_write stores DMA_PUT with release and wakes the PFIFO thread only if it is parked, instead of waiting for the lock; the pusher loads DMA_PUT with acquire. The change alters only WHEN the guest's DMA_PUT store returns, never what the pusher consumes or in what order: DMA_PUT has one writer (the guest), and release/acquire keeps the pushbuffer words before it visible to the pusher. What is new: the guest runs on past a kick while the PFIFO thread is still inside the pusher or the STALLED finish, so it may touch memory (pushbuffer, textures, surfaces) sooner relative to GPU work it has submitted. These three suites are where the guest or the GPU consumes GPU-written memory right after a submission drains (CPU access around surfaces, render-to-texture, a render target updated in place), so a dependence on the old wait would show there. Predicted: every capture in the three suites is the same between arms or inside the run-to-run band (vcpuwait433's lock-free read: 45/45 byte-identical on the same suites). A moved capture means a golden relied on the guest being held at its kick, which the guest's own fences should not need; that refutes 'no golden can need the wait' and blocks the fix.",
+  "a_ref": "3ff55c9ac2",
+  "b_ref": "c2dfca18a1",
+  "must_not_move": [
+    "DMA_corruption_around_surfaces/*",
+    "Texture_render_target/*",
+    "Texture_render_update_in_place/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "DMA corruption around surfaces",
+      "Texture render target",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

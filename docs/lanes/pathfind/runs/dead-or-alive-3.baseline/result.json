@@ -1,0 +1,31 @@
+{
+ "title_id": "54430001",
+ "name": "Dead or Alive 3",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/54430001-Dead_or_Alive_3.xiso.iso",
+ "result": "gave-up",
+ "tool": "41aeb6ac79",
+ "started": "2026-10-02 10:35:36 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/dead-or-alive-3.baseline/frames/064-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/dead-or-alive-3.baseline/frames/064-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/dead-or-alive-3.baseline/frames/064-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/dead-or-alive-3.baseline/frames/064-probe-right.jpg"
+ ],
+ "reason": "budget 15 min",
+ "last_state": "title_screen",
+ "model_calls": 62,
+ "calls_by_model": {
+  "claude-sonnet-5": 53,
+  "claude-opus-5-5": 9
+ },
+ "steps": 72,
+ "seconds": 904.9,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/dead-or-alive-3.baseline/frames/072-title_screen.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 10,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/dead-or-alive-3.baseline/strip.jpg"
+}

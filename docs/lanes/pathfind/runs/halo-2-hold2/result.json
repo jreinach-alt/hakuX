@@ -1,0 +1,31 @@
+{
+ "title_id": "4D530064",
+ "name": "Halo 2",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Halo 2.iso",
+ "result": "gave-up",
+ "tool": "fa58e446af",
+ "started": "2026-10-03 17:38:26 PDT",
+ "reason": "budget 15 min",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/halo-2-hold2/frames/073-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/halo-2-hold2/frames/073-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/halo-2-hold2/frames/073-probe-c.jpg"
+ ],
+ "last_state": "probe",
+ "model_calls": 95,
+ "calls_by_model": {
+  "claude-sonnet-5": 95
+ },
+ "steps": 73,
+ "seconds": 904.4,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/halo-2-hold2/frames/072-gameplay.jpg",
+ "replayed": 4,
+ "sib_replayed": 0,
+ "guide": [
+  "4D530064"
+ ],
+ "cheap": 3,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/halo-2-hold2/strip.jpg"
+}

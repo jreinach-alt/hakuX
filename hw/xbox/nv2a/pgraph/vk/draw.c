@@ -38,6 +38,18 @@ static int g_xemu_submit_frames = 3;
 
 struct OptBisectStats g_opt_stats;
 
+#if NV2A_PERF_LOG
+/* #433 uniform-block churn counter, in vk/shaders.c. Declared here because
+ * renderer.h is outside lane.bf2ubosize433's files. */
+void pgraph_vk_ubosz_note_upload(PGRAPHState *pg, int site);
+void pgraph_vk_ubosz_note_bind(VkDescriptorSet set, const uint32_t off[2]);
+void pgraph_vk_ubosz_log_and_reset(void);
+#endif
+
+/* HAKUX_SURFGPU's held download batch, in vk/surface.c. Declared here because
+ * renderer.h is outside lane.surfgpu1009's files. */
+void pgraph_vk_surfgpu_slot_retired(NV2AState *d, int frame);
+
 /*
  * BEHIND A FLAG, DEFAULT OFF. AGENTS.md: "Instrumentation is not free ...
  * Profile-grade tracing belongs behind a flag." This probe is the expensive
@@ -1076,6 +1088,8 @@ static void opt_stats_log_and_reset(void)
                 g_opt_stats.pipe_evict_recording,
                 plc->num_used, plc->num_used + plc->num_free);
         }
+        /* #433: uniform-block churn per upload; see vk/shaders.c. */
+        pgraph_vk_ubosz_log_and_reset();
         {
             /*
              * #461: what a texture bind spends its time on, counted in
@@ -1125,12 +1139,18 @@ static void opt_stats_log_and_reset(void)
                 TX_KIB(s->txk_b[TXK_CVT]), TX_KIB(s->txk_b[TXK_SWZ]));
             __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
                 "txr[ct%d bt%d/%d dl%d/%lluK sc%d scdl%d img%d pool%d "
-                "s2tc%d s2td%d]",
+                "s2tc%d s2td%d] txdl[lv%d dim%d cube%d pitch%d swz%d "
+                "cvt%d bpp%d upl%d oth%d]",
                 s->txr_ct, s->txr_bt, s->txr_btl,
                 s->txr_dl, TX_KIB(s->txr_dl_b),
                 s->txr_sc, s->txr_scdl,
                 s->tex_pool_hits + s->tex_pool_misses, s->tex_pool_hits,
-                s->txr_s2tc, s->txr_s2td);
+                s->txr_s2tc, s->txr_s2td,
+                s->txr_why[TXDL_LEVELS], s->txr_why[TXDL_DIM],
+                s->txr_why[TXDL_CUBE], s->txr_why[TXDL_PITCH],
+                s->txr_why[TXDL_SWZ], s->txr_why[TXDL_CVT],
+                s->txr_why[TXDL_BPP], s->txr_why[TXDL_UPL],
+                s->txr_why[TXDL_OTH]);
 #undef TX_KIB
         }
         {
@@ -1224,8 +1244,35 @@ bool xemu_get_frame_skip(void)
     return g_xemu_frame_skip;
 }
 
+/* HAKUX_SUBMIT_FRAMES=N (#433, lane.coldstart1010; off by default): the
+ * command-buffer ring depth, 1..NUM_SUBMIT_FRAMES, over the submit_frames
+ * pref (the Android default is 2). At depth 2 every finish's slot rotation
+ * waits for the command buffer submitted at the finish before it; NFS MW's
+ * cold race start takes STALLED finishes under pfifo.lock 4-6 times a frame,
+ * so the guest's DMA_PUT store waits on those fences. Unset or out of range:
+ * the pref decides, as before. Read once; applies to every later set. */
+static int submit_frames_env(void)
+{
+    static int v = -1;
+    if (v < 0) {
+        const char *e = getenv("HAKUX_SUBMIT_FRAMES");
+        int n = e ? atoi(e) : 0;
+        v = (n >= 1 && n <= NUM_SUBMIT_FRAMES) ? n : 0;
+    }
+    return v;
+}
+
 void xemu_set_submit_frames(int count)
 {
+    int e = submit_frames_env();
+    if (e) {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                            "[coldstart1010] submit_frames=%d "
+                            "(HAKUX_SUBMIT_FRAMES; pref %d)", e, count);
+#endif
+        count = e;
+    }
     if (count < 1) count = 1;
     if (count > NUM_SUBMIT_FRAMES) count = NUM_SUBMIT_FRAMES;
     g_xemu_submit_frames = count;
@@ -2405,6 +2452,446 @@ static void gpl_take_next_pipeline(PGRAPHVkState *r, PipelineBinding *snode)
 #define gpl_take_next_pipeline(r, snode) do { } while (0)
 #endif
 
+/*
+ * lane.drawrec1010, HAKUX_DRAWREC=1 (default off; #433): two parts, each
+ * with its own off switch.
+ *
+ * VTX (HAKUX_DRAWREC_VTX=0 turns it off alone): the vertex sync owes its TLB
+ * walk instead of paying it per range. Switch off, a range found dirty is
+ * test-and-cleared, then physical_memory_dirty_bits_cleared() walks every
+ * live TLB entry (~8,300 on the Nova) to re-arm the one or two that map it,
+ * so the next guest store sets the bit again; then the range is copied. At
+ * the NFS Most Wanted race start that is ~240 walks per flip at ~16 us,
+ * 3.4-3.9 ms of the 4.0 ms Syn phase (lane NOTES 5.3, run 726861).
+ *
+ * Switch on, the range is test-and-cleared and copied, and its pages go into
+ * two bitmaps: OWED (cleared, not yet re-armed) and REDO (copy again on the
+ * next touch). Until a page is re-armed a guest store to it may set no bit,
+ * so a touch of a REDO page copies it whatever the bits say. The OWED pages
+ * are walked together, once per flip (at the first sync after
+ * g_nv2a_stats.frame_count moves) and whenever the copies forced by REDO
+ * alone pass a budget, in runs merged across small gaps. A walked page stays
+ * in REDO: a store between its last copy and the walk set no bit, so it is
+ * copied once more, and a store after the walk sets the bit as before. A
+ * page copied after its walk with its bits still clean leaves REDO. The data
+ * any draw reads is therefore never older than with the switch off; what
+ * changes is that some clean ranges are copied again, which the budget
+ * bounds to about one walk's worth per walk saved.
+ *
+ * SHC (HAKUX_DRAWREC_SHC=0 turns it off alone): see drawrec_shc_consumed().
+ *
+ * Both are touched only from the vertex sync and begin_pre_draw_inner(), on
+ * the thread that records draws.
+ */
+#define DRAWREC_VTX_GAP       16    /* pages merged across between owed runs */
+#define DRAWREC_VTX_MAX_RUNS  8     /* walks per batch; the rest is one span */
+#define DRAWREC_VTX_REDO_N    32    /* REDO-only copies before an early walk */
+#define DRAWREC_VTX_REDO_B    (256 * 1024)  /* ... or REDO-only bytes */
+
+static struct {
+    int on, vtx, shc;           /* -1 until read */
+    unsigned long *owed, *redo;
+    unsigned long npages;
+    unsigned long lo, hi;       /* owed pages lie in [lo, hi) */
+    unsigned int frame;         /* g_nv2a_stats.frame_count at the last tick */
+    unsigned int redo_n;        /* REDO-only copies since the last walk */
+    uint64_t redo_b;
+    /* per 60 flips, for the log line */
+    unsigned int log_frames;
+    uint64_t n_dirty, n_redo, b_redo, n_walk_flip, n_walk_budget, n_runs,
+             n_pages, n_shc;
+} drawrec = { .on = -1 };
+
+static void drawrec_read_env(PGRAPHVkState *r)
+{
+    const char *e = getenv("HAKUX_DRAWREC");
+    drawrec.on = (e && e[0] && strcmp(e, "0")) ? 1 : 0;
+    e = getenv("HAKUX_DRAWREC_VTX");
+    drawrec.vtx = drawrec.on && !(e && !strcmp(e, "0")) && r->bitmap_size;
+    e = getenv("HAKUX_DRAWREC_SHC");
+    drawrec.shc = drawrec.on && !(e && !strcmp(e, "0"));
+    drawrec.frame = g_nv2a_stats.frame_count;
+    if (drawrec.vtx) {
+        drawrec.npages = r->bitmap_size;
+        drawrec.owed = bitmap_new(drawrec.npages);
+        drawrec.redo = bitmap_new(drawrec.npages);
+        drawrec.lo = drawrec.npages;
+        drawrec.hi = 0;
+    }
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                        "[drawrec1010] drawrec=%d vtx=%d shc=%d", drawrec.on,
+                        drawrec.vtx, drawrec.shc);
+#endif
+}
+
+static inline bool drawrec_on(PGRAPHVkState *r)
+{
+    if (unlikely(drawrec.on < 0)) {
+        drawrec_read_env(r);
+    }
+    return drawrec.on;
+}
+
+static inline bool drawrec_vtx_on(PGRAPHVkState *r)
+{
+    if (unlikely(drawrec.on < 0)) {
+        drawrec_read_env(r);
+    }
+    return drawrec.vtx;
+}
+
+static inline bool drawrec_shc_on(PGRAPHVkState *r)
+{
+    if (unlikely(drawrec.on < 0)) {
+        drawrec_read_env(r);
+    }
+    return drawrec.shc;
+}
+
+/*
+ * lane.drawrec1010, Addendum 1: two probes that price a recorder thread
+ * before one is built (#433). Measurements only, default off, never meant
+ * to be turned on for play: NULLREC draws wrong pixels by design.
+ *
+ * HAKUX_PROBE_NULLREC=1, the ceiling. A draw keeps on this thread what a
+ * recorder design would keep: the method parse (untouched), the vertex
+ * attribute bind and the vertex-RAM sync, the remap and the index and
+ * inline-vertex copies into staging, the texture poll and upload, and every
+ * surface and finish path (the surface update at begin, the finishes, the
+ * frame rotation and its fence wait, which is the skew bound). It skips
+ * what the design would move: begin_pre_draw() (pipeline lookup, uniforms,
+ * descriptor sets) and the recording (begin_draw(), the vkCmd*, end_draw()).
+ * Clears are recorded as before. The frame period is the floor a perfect
+ * recorder thread could reach, less every GPU wait the dropped draws would
+ * have caused.
+ *
+ * HAKUX_PROBE_SNAPQ=1, the handoff. Every draw runs as before; first, the
+ * state a recorder needs to record it is copied out and enqueued to the
+ * render thread as an RCMD_DRAW, which its loop does not handle and frees.
+ * The copy is pgraph_vk_snapshot_state()'s RenderCommandSnapshot (the
+ * input state the tree's own RCMD_DRAW carries: register file, program,
+ * constants, lighting, attributes) plus the draw's arrays, elements or
+ * inline data, written to a ring as a recorder would, not malloc'd. It is
+ * the INPUT state on purpose: the reorder window's try_snapshot_*() copy
+ * the OUTPUT of begin_pre_draw() (pipeline, descriptor sets), which is the
+ * work a recorder moves off this thread, so they price a different
+ * handoff. The whole register file makes this an upper bound; a design
+ * that sends only what changed pays less of the copy and the same enqueue.
+ * HAKUX_PROBE_SNAPQ=2 is the lower bound: the same payload and enqueue,
+ * with a record the size of a ReorderWindowEntry (~0.7 KB, not ~40 KB).
+ *
+ * Either switch, or HAKUX_PROBE_WAITS=1 alone, turns on the wait count:
+ * each pgraph_vk_finish() on this thread where it waits on the GPU, booked
+ * per frame. A point is a non-deferred finish (the render thread submits
+ * and waits the fence while this thread waits for it) or a rotation fence
+ * wait of PROBE_BLOCK_NS or more; mid-frame is any finish but FLIP_STALL
+ * and PRESENTING. One [probe1010] line per 60 flips.
+ */
+#define PROBE_BLOCK_NS    (100 * 1000)
+#define PROBE_RING_SIZE   (8 * 1024 * 1024)
+#define PROBE_NREASON     (VK_FINISH_REASON_STALLED + 1)
+
+static struct {
+    int on, nullrec, snapq;     /* -1 until read */
+    uint8_t *ring;
+    size_t ring_off;
+    unsigned int frame, log_frames, f_mid, f_max;
+    unsigned int hist[5];       /* frames with 0, 1, 2, 3, 4+ mid points */
+    /* per 60 flips */
+    uint64_t mid_n, mid_ns, flip_n, flip_ns;
+    uint64_t nd_n[PROBE_NREASON], nd_ns[PROBE_NREASON];
+    uint64_t rot_n, rot_blk, rot_ns;
+    uint64_t draws, null_draws;
+    uint64_t snap_n, snap_b, snap_t, copy_ns, enq_ns;
+} probe1010 = { .on = -1, .nullrec = -1, .snapq = -1 };
+
+static bool probe_env(const char *name)
+{
+    const char *e = getenv(name);
+    return e && e[0] && strcmp(e, "0");
+}
+
+static void probe_read_env(void)
+{
+    const char *sq = getenv("HAKUX_PROBE_SNAPQ");
+
+    probe1010.nullrec = probe_env("HAKUX_PROBE_NULLREC");
+    probe1010.snapq = !probe_env("HAKUX_PROBE_SNAPQ") ? 0 :
+                      !strcmp(sq, "2") ? 2 : 1;
+    probe1010.on = probe1010.nullrec || probe1010.snapq ||
+                   probe_env("HAKUX_PROBE_WAITS");
+    probe1010.frame = g_nv2a_stats.frame_count;
+    if (probe1010.snapq) {
+        probe1010.ring = g_malloc(PROBE_RING_SIZE);
+    }
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                        "[probe1010] waits=%d nullrec=%d snapq=%d",
+                        probe1010.on, probe1010.nullrec, probe1010.snapq);
+#endif
+}
+
+static inline bool probe_on(void)
+{
+    if (unlikely(probe1010.on < 0)) {
+        probe_read_env();
+    }
+    return probe1010.on;
+}
+
+static inline bool probe_nullrec_on(void)
+{
+    return probe_on() && probe1010.nullrec;
+}
+
+static inline bool probe_snapq_on(void)
+{
+    return probe_on() && probe1010.snapq;
+}
+
+static const char *const probe_reason_name[PROBE_NREASON] = {
+    [VK_FINISH_REASON_VERTEX_BUFFER_DIRTY] = "vtx",
+    [VK_FINISH_REASON_SURFACE_CREATE] = "screate",
+    [VK_FINISH_REASON_SURFACE_DOWN] = "sdown",
+    [VK_FINISH_REASON_SURFACE_DOWN_FLUSH] = "sdflush",
+    [VK_FINISH_REASON_NEED_BUFFER_SPACE] = "buf",
+    [VK_FINISH_REASON_FRAMEBUFFER_DIRTY] = "fb",
+    [VK_FINISH_REASON_PRESENTING] = "present",
+    [VK_FINISH_REASON_FLIP_STALL] = "flip",
+    [VK_FINISH_REASON_FLUSH] = "flush",
+    [VK_FINISH_REASON_STALLED] = "stalled",
+};
+
+/* Close the frames since the last call, and log every 60. */
+static void probe_tick(void)
+{
+    unsigned int f = g_nv2a_stats.frame_count;
+    if (f == probe1010.frame) {
+        return;
+    }
+    unsigned int k = f - probe1010.frame;
+    probe1010.frame = f;
+    probe1010.hist[MIN(probe1010.f_mid, 4)]++;
+    probe1010.hist[0] += k - 1;
+    probe1010.f_max = MAX(probe1010.f_max, probe1010.f_mid);
+    probe1010.f_mid = 0;
+    probe1010.log_frames += k;
+    if (probe1010.log_frames < 60) {
+        return;
+    }
+#ifdef __ANDROID__
+    double nf = probe1010.log_frames;
+    char nd[256];
+    int o = 0;
+    nd[0] = '\0';
+    for (int i = 0; i < PROBE_NREASON && o < (int)sizeof(nd); i++) {
+        if (probe1010.nd_n[i]) {
+            o += snprintf(nd + o, sizeof(nd) - o, " %s=%.2f/%.2f",
+                          probe_reason_name[i] ? probe_reason_name[i] : "?",
+                          probe1010.nd_n[i] / nf, probe1010.nd_ns[i] / 1e6 / nf);
+        }
+    }
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+        "[probe1010] f=%u nullrec=%d snapq=%d"
+        " mid=%.2f/f %.2fms/f each=%.2fms flip=%.2f/f %.2fms/f"
+        " hist=%u/%u/%u/%u/%u max=%u"
+        " | nd n/f ms/f:%s"
+        " | rot=%.2f/f blk=%.2f/f %.2fms/f"
+        " | draws=%.0f/f null=%.0f/f"
+        " | snap=%.0f/f KB=%.1f copy_us=%.2f enq_us=%.2f",
+        probe1010.log_frames, probe1010.nullrec, probe1010.snapq,
+        probe1010.mid_n / nf, probe1010.mid_ns / 1e6 / nf,
+        probe1010.mid_n ? probe1010.mid_ns / 1e6 / probe1010.mid_n : 0.0,
+        probe1010.flip_n / nf, probe1010.flip_ns / 1e6 / nf,
+        probe1010.hist[0], probe1010.hist[1], probe1010.hist[2],
+        probe1010.hist[3], probe1010.hist[4], probe1010.f_max,
+        nd[0] ? nd : " none",
+        probe1010.rot_n / nf, probe1010.rot_blk / nf,
+        probe1010.rot_ns / 1e6 / nf,
+        probe1010.draws / nf, probe1010.null_draws / nf,
+        probe1010.snap_n / nf,
+        probe1010.snap_n ? probe1010.snap_b / 1024.0 / probe1010.snap_n : 0.0,
+        probe1010.snap_t ? probe1010.copy_ns / 1e3 / probe1010.snap_t : 0.0,
+        probe1010.snap_t ? probe1010.enq_ns / 1e3 / probe1010.snap_t : 0.0);
+#endif
+    probe1010.log_frames = 0;
+    probe1010.f_max = 0;
+    memset(probe1010.hist, 0, sizeof(probe1010.hist));
+    probe1010.mid_n = probe1010.mid_ns = 0;
+    probe1010.flip_n = probe1010.flip_ns = 0;
+    memset(probe1010.nd_n, 0, sizeof(probe1010.nd_n));
+    memset(probe1010.nd_ns, 0, sizeof(probe1010.nd_ns));
+    probe1010.rot_n = probe1010.rot_blk = probe1010.rot_ns = 0;
+    probe1010.draws = probe1010.null_draws = 0;
+    probe1010.snap_n = probe1010.snap_b = probe1010.snap_t = 0;
+    probe1010.copy_ns = probe1010.enq_ns = 0;
+}
+
+/*
+ * One finish on this thread: nd_ns is its non-deferred wait (-1 if it was
+ * deferred), rot_ns its rotation fence wait (-1 if the slot was idle).
+ */
+static void probe_finish_book(FinishReason reason, int64_t nd_ns,
+                              int64_t rot_ns)
+{
+    int64_t ns = 0;
+    bool point = false;
+
+    probe_tick();
+    if (nd_ns >= 0) {
+        probe1010.nd_n[reason]++;
+        probe1010.nd_ns[reason] += nd_ns;
+        ns += nd_ns;
+        point = true;
+    }
+    if (rot_ns >= 0) {
+        probe1010.rot_n++;
+        probe1010.rot_ns += rot_ns;
+        if (rot_ns >= PROBE_BLOCK_NS) {
+            probe1010.rot_blk++;
+            point = true;
+        }
+        ns += rot_ns;
+    }
+    if (!point) {
+        return;
+    }
+    if (reason == VK_FINISH_REASON_FLIP_STALL ||
+        reason == VK_FINISH_REASON_PRESENTING) {
+        probe1010.flip_n++;
+        probe1010.flip_ns += ns;
+    } else {
+        probe1010.mid_n++;
+        probe1010.mid_ns += ns;
+        probe1010.f_mid++;
+    }
+}
+
+/* SNAPQ: copy the draw's input state to the ring and hand it over. */
+static void probe_snapq(NV2AState *d)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    bool timed = (probe1010.snap_n++ & 7) == 0;    /* clock reads cost too */
+    int64_t t0 = timed ? get_clock() : 0;
+
+    size_t n_arr = pg->draw_arrays_length * sizeof(int32_t);
+    size_t n_el = pg->inline_elements_length * sizeof(uint32_t);
+    size_t n_ia = pg->inline_array_length * sizeof(uint32_t);
+    size_t n_ib1 = pg->inline_buffer_length * 4 * sizeof(float);
+    size_t n_ib = 0;
+    for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+        if (pg->vertex_attributes[i].inline_buffer_populated) {
+            n_ib += n_ib1;
+        }
+    }
+    size_t head = ROUND_UP(probe1010.snapq == 2 ? sizeof(ReorderWindowEntry)
+                                                : sizeof(RenderCommandSnapshot),
+                           64);
+    size_t need = ROUND_UP(head + 2 * n_arr + n_el + n_ia + n_ib, 64);
+    if (need > PROBE_RING_SIZE) {
+        return;
+    }
+    if (probe1010.ring_off + need > PROBE_RING_SIZE) {
+        probe1010.ring_off = 0;
+    }
+    uint8_t *p = probe1010.ring + probe1010.ring_off;
+    probe1010.ring_off += need;
+
+    RenderCommandSnapshot *snap = (RenderCommandSnapshot *)p;
+    if (probe1010.snapq == 2) {
+        /* a compact record's worth of bytes; nothing reads them */
+        QEMU_BUILD_BUG_ON(sizeof(ReorderWindowEntry) > sizeof(pg->regs_));
+        memcpy(p, pg->regs_, sizeof(ReorderWindowEntry));
+    } else {
+        pgraph_vk_snapshot_state(pg, snap);
+    }
+    p += head;
+
+    RenderCommand *cmd = g_new0(RenderCommand, 1);
+    cmd->type = RCMD_DRAW;
+    cmd->draw.snap = snap;
+    cmd->draw.draw_arrays_length = pg->draw_arrays_length;
+    cmd->draw.inline_elements_length = pg->inline_elements_length;
+    cmd->draw.inline_array_length = pg->inline_array_length;
+    cmd->draw.inline_buffer_length = pg->inline_buffer_length;
+    cmd->draw.draw_arrays_prevent_connect = pg->draw_arrays_prevent_connect;
+    cmd->draw.draw_arrays_start = (int32_t *)p;
+    memcpy(p, pg->draw_arrays_start, n_arr);
+    p += n_arr;
+    cmd->draw.draw_arrays_count = (int32_t *)p;
+    memcpy(p, pg->draw_arrays_count, n_arr);
+    p += n_arr;
+    cmd->draw.inline_elements = (uint32_t *)p;
+    memcpy(p, pg->inline_elements, n_el);
+    p += n_el;
+    cmd->draw.inline_array = (uint32_t *)p;
+    memcpy(p, pg->inline_array, n_ia);
+    p += n_ia;
+    for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+        if (pg->vertex_attributes[i].inline_buffer_populated) {
+            memcpy(p, pg->vertex_attributes[i].inline_buffer, n_ib1);
+            p += n_ib1;
+        }
+    }
+
+    int64_t t1 = timed ? get_clock() : 0;
+    pgraph_vk_render_thread_enqueue(r, cmd);
+    if (timed) {
+        probe1010.snap_t++;
+        probe1010.copy_ns += t1 - t0;
+        probe1010.enq_ns += get_clock() - t1;
+    }
+    probe1010.snap_b += need;
+}
+
+/*
+ * NULLREC: what a skipped draw keeps of begin_pre_draw(), the texture poll
+ * and upload (as create_pipeline() and the fast paths gate it).
+ */
+static void probe_nullrec_pre(PGRAPHState *pg)
+{
+    NV2AState *d = container_of(pg, NV2AState, pgraph);
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    pgraph_vk_poll_bound_textures(d);
+    if (pg->texture_state_gen != r->last_texture_state_gen ||
+        r->texture_vram_gen != r->last_texture_vram_gen) {
+        pgraph_vk_bind_textures(d);
+        r->last_texture_state_gen = pg->texture_state_gen;
+        r->last_texture_vram_gen = r->texture_vram_gen;
+    }
+    probe1010.null_draws++;
+}
+
+/*
+ * lane.drawrec1010's draw census (HAKUX_DRAWCENSUS=1; drawcensus_post()):
+ * which way the draw went. Stored on every draw, switch or not -- a byte
+ * store each, which testing the switch would not undercut -- and read only
+ * by the census.
+ */
+enum {
+    DCEN_PATH_SFP,
+    DCEN_PATH_MFP,
+    DCEN_PATH_FULL,
+    DCEN_PATH__COUNT
+};
+enum {
+    DCEN_CP_NONE,     /* the path did not call create_pipeline */
+    DCEN_CP_EARLY,    /* no generation moved */
+    DCEN_CP_NOTDIRTY, /* check_pipeline_dirty() false */
+    DCEN_CP_SAMEKEY,  /* key built, equal to the bound pipeline's */
+    DCEN_CP_LRU,      /* key built and hashed, found in the cache */
+    DCEN_CP_PENDING,  /* found, still compiling */
+    DCEN_CP_MISS,     /* not found: created here, or skipped for async */
+    DCEN_CP_LRUFULL,  /* the cache had no free entry */
+    DCEN_CP__COUNT
+};
+static uint8_t dcen_path, dcen_cp;
+static bool dcen_bound_shaders;
+static void drawcensus_frame(void);
+
 static void create_pipeline(PGRAPHState *pg)
 {
     NV2A_VK_DGROUP_BEGIN("Creating pipeline");
@@ -2422,6 +2909,7 @@ static void create_pipeline(PGRAPHState *pg)
         pg->pipeline_state_gen == r->last_pipeline_state_gen &&
         pg->primitive_mode == r->shader_binding->state.geom.primitive_mode) {
         OPT_STAT_INC(pipeline_early_hits);
+        dcen_cp = DCEN_CP_EARLY;
         gpl_take_next_pipeline(r, r->pipeline_binding);
         /* No generation above moved, but a uniform value can change without
          * one: an attribute set once before the first vertex (GPUAA's
@@ -2457,6 +2945,7 @@ static void create_pipeline(PGRAPHState *pg)
         pg->primitive_mode != r->shader_binding->state.geom.primitive_mode) {
         pgraph_vk_bind_shaders(pg);
         r->last_shader_state_gen = pg->shader_state_gen;
+        dcen_bound_shaders = true;
     } else {
         pgraph_vk_update_shader_uniforms(pg);
     }
@@ -2476,6 +2965,7 @@ static void create_pipeline(PGRAPHState *pg)
 
     if (r->pipeline_binding && !pipeline_dirty) {
         NV2A_VK_DPRINTF("Cache hit");
+        dcen_cp = DCEN_CP_NOTDIRTY;
         gpl_take_next_pipeline(r, r->pipeline_binding);
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
@@ -2488,6 +2978,7 @@ static void create_pipeline(PGRAPHState *pg)
     if (r->pipeline_binding &&
         memcmp(&key, &r->pipeline_binding->key, sizeof(key)) == 0) {
         NV2A_VK_DPRINTF("Cache hit (same binding)");
+        dcen_cp = DCEN_CP_SAMEKEY;
         gpl_take_next_pipeline(r, r->pipeline_binding);
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
@@ -2500,6 +2991,7 @@ static void create_pipeline(PGRAPHState *pg)
     LruNode *node = lru_lookup(&r->pipeline_cache, hash, &key);
     if (!node) {
         /* Cache full — all entries in use by current command buffer */
+        dcen_cp = DCEN_CP_LRUFULL;
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
@@ -2508,6 +3000,7 @@ static void create_pipeline(PGRAPHState *pg)
 
 #if OPT_ASYNC_COMPILE
     if (snode->pending) {
+        dcen_cp = DCEN_CP_PENDING;
         r->pipeline_binding = snode;
         r->pipeline_binding_changed = true;
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
@@ -2518,6 +3011,7 @@ static void create_pipeline(PGRAPHState *pg)
 
     if (snode->pipeline != VK_NULL_HANDLE) {
         NV2A_VK_DPRINTF("Cache hit");
+        dcen_cp = DCEN_CP_LRU;
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
         r->pipeline_binding_changed = r->pipeline_binding != snode;
         r->pipeline_binding = snode;
@@ -2529,6 +3023,7 @@ static void create_pipeline(PGRAPHState *pg)
     NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
 
     NV2A_VK_DPRINTF("Cache miss");
+    dcen_cp = DCEN_CP_MISS;
 
 #if OPT_ASYNC_COMPILE
     if (xemu_get_async_compile() && !qatomic_read(&r->shader_binding->ready)) {
@@ -3391,6 +3886,10 @@ static void bind_descriptor_sets(PGRAPHState *pg)
         r->pipeline_binding->layout, 1, 1,
         &r->push_ubo_sets[r->push_ubo_set_index - 1],
         2, dynamic_offsets);
+#if NV2A_PERF_LOG
+    pgraph_vk_ubosz_note_bind(r->push_ubo_sets[r->push_ubo_set_index - 1],
+                              dynamic_offsets);
+#endif
 
     if (r->push_descriptors_supported) {
         /*
@@ -3572,6 +4071,15 @@ static VkAttachmentLoadOp get_optimal_zeta_load_op(PGRAPHVkState *r)
     return VK_ATTACHMENT_LOAD_OP_LOAD;
 }
 
+static void xfr_rp_outer(PGRAPHVkState *r, bool end);
+static bool gpu_ts_inrp(void);
+static void xfr_census_begin(PGRAPHState *pg, const RenderPassState *st,
+                             unsigned int w, unsigned int h);
+static void xfr_census_end(PGRAPHVkState *r);
+static void xfr_census_clear(PGRAPHState *pg, uint32_t parameter,
+                             bool write_color, bool write_zeta);
+static void xfr_census_draw(PGRAPHVkState *r, bool color, bool zeta);
+
 static void begin_render_pass(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -3634,11 +4142,13 @@ static void begin_render_pass(PGRAPHState *pg)
         .clearValueCount = 0,
         .pClearValues = NULL,
     };
+    xfr_rp_outer(r, false);
+    xfr_census_begin(pg, &begin_state, vp_width, vp_height);
     vkCmdBeginRenderPass(r->command_buffer, &render_pass_begin_info,
                          VK_SUBPASS_CONTENTS_INLINE);
     r->in_render_pass = true;
 
-    if (r->gpu_ts_supported &&
+    if (r->gpu_ts_supported && gpu_ts_inrp() &&
         r->gpu_ts_rp_index < GPU_TS_MAX_RENDER_PASSES) {
         uint32_t base = r->current_frame * GPU_TS_QUERIES_PER_CB;
         uint32_t slot = base + 2 + r->gpu_ts_rp_index * 2;
@@ -3652,7 +4162,7 @@ void end_render_pass(PGRAPHVkState *r)
 {
     if (r->in_render_pass) {
         OPT_STAT_INC(render_pass_breaks);
-        if (r->gpu_ts_supported &&
+        if (r->gpu_ts_supported && gpu_ts_inrp() &&
             r->gpu_ts_rp_index < GPU_TS_MAX_RENDER_PASSES) {
             uint32_t base = r->current_frame * GPU_TS_QUERIES_PER_CB;
             uint32_t slot = base + 2 + r->gpu_ts_rp_index * 2 + 1;
@@ -3663,12 +4173,843 @@ void end_render_pass(PGRAPHVkState *r)
         }
         vkCmdEndRenderPass(r->command_buffer);
         r->in_render_pass = false;
+        xfr_census_end(r);
+        xfr_rp_outer(r, true);
     }
+}
+
+/*
+ * gpunonrender (#433): what the non-render part of the command buffer is made
+ * of. Telemetry only, off unless HAKUX_GPUXFR=1 is set, and reported by the
+ * perflog build as an xemu-xfr line.
+ *
+ * Each top-level non-render operation recorded into the frame's command
+ * buffer (a pgraph_vk_begin_nondraw_commands() scope, see surface.c and
+ * texture.c) is bracketed by a timestamp pair in a pool of its own, so the
+ * gpu_nonrender_ns that gpu_ts_readback() computes is unchanged. A bracket
+ * opened inside another is folded into the outer one. A bracket on the aux
+ * command buffer is not measured (counted in `dropped`).
+ *
+ * HAKUX_GPUXFR_CTRL=N records N bracketed 1 MiB buffer copies at the top of
+ * every frame. Their cost is known from the copy size, so a control arm shows
+ * whether the brackets read a known change before any other reading is trusted.
+ *
+ * The render-pass stamps that gpu_nonrender_ns is computed from are written
+ * inside the render pass. Turnip records such a stamp into the pass's draw
+ * stream, which a GMEM pass replays once per tile, and the last tile's value
+ * is the one that lands (tu_query_pool.cc, tu_CmdWriteTimestamp2). So in a
+ * GMEM pass the "render" span is the last tile's draws, and the binning pass,
+ * the other tiles and every tile load and store count as non-render. With
+ * HAKUX_GPUXFR=1 each render pass also gets a stamp pair outside it (before
+ * vkCmdBeginRenderPass, after vkCmdEndRenderPass), whose span holds all of
+ * that; the `XFR rp` line reports both spans per command buffer.
+ *
+ * HAKUX_GPUTS_INRP=0 leaves out the in-render-pass pair, whose end stamp is a
+ * BOTTOM_OF_PIPE write and so a wait-for-idle in every tile it is replayed
+ * in. With it set, Rnd reads 0 and the outer pair is the render reading; an
+ * arm with and without it is what that pair costs the GPU.
+ *
+ * The render-pass census (the `XFR rpc` line, same switch) says, per pass,
+ * which attachment loads and stores are avoidable, and how much of the outer
+ * render span those passes carry:
+ *   - lclr: an attachment is LOADed and the pass's first operation on it is a
+ *     clear covering the whole binding (pgraph_vk_clear_covers_binding).
+ *   - lunif: an attachment is LOADed whose content is a whole-binding clear
+ *     and nothing since (a clear-only pass before it, typically: a clear that
+ *     arrives with no pass open gets a pass of its own, see
+ *     pgraph_vk_clear_surface). A CLEAR load op would give the same pixels.
+ *   - zdead: the depth/stencil attachment is STOREd, and the next thing to
+ *     touch that surface is a whole-binding clear or a full upload, with no
+ *     draw, partial clear, download or copy to a texture in between.
+ * A pass's mode is inferred from its two stamp spans: a sysmem pass is
+ * stamped in full by the in-pass pair, a GMEM pass only for its last tile, so
+ * in/out < 0.8 reads as GMEM. Loads and stores are tile blits only in a GMEM
+ * pass; on sysmem a LOAD or STORE op emits nothing, which is why the groups
+ * are also given on GMEM passes alone (`g`). Surface content and pending
+ * depth stores are tracked per SurfaceBinding in a small table here; a
+ * pointer reused after a free can carry stale content, which reads as
+ * `unknown` at worst. A depth store still pending when its command buffer is
+ * read back is `pend`; one resolved after it is counted in `late`.
+ */
+int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
+                        const char *cat, int site);
+void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok);
+void pgraph_vk_xfr_surf(const SurfaceBinding *s, int ev);
+
+#define XFR_MAX_OPS 128
+#define XFR_MAX_RP 64
+#define XFR_RP_BASE (2 * XFR_MAX_OPS)
+#define XFR_QUERIES_PER_CB (2 * XFR_MAX_OPS + 2 * XFR_MAX_RP)
+#define XFR_WINDOW 60
+#define XFR_MAX_CATS 8
+#define XFR_MAX_SITES 32
+#define XFR_CTRL_BYTES (1u << 20)
+
+static const char *const xfr_cat_names[XFR_MAX_CATS] = {
+    "surf_up", "tex_up", "s2t", "download", "handoff", "barrier", "ctrl",
+    "other",
+};
+
+typedef struct XfrSite {
+    uint32_t site;
+    uint8_t cat;
+    double ms;
+    unsigned n;
+} XfrSite;
+
+/* census: a pass's first operation on an attachment */
+enum { XOP_NONE, XOP_CLEAR_FULL, XOP_CLEAR_PART, XOP_DRAW };
+/* census: what a surface holds */
+enum { XSC_UNKNOWN, XSC_UNIFORM, XSC_OTHER };
+/* census: a depth store's fate */
+enum { XZF_NONE, XZF_PEND, XZF_DEAD, XZF_LIVE };
+/* pgraph_vk_xfr_surf events */
+enum { XFR_SURF_READ = 1, XFR_SURF_UPLOAD = 2, XFR_SURF_GONE = 3 };
+
+#define XFR_PASS_C 0x01         /* colour attachment */
+#define XFR_PASS_Z 0x02         /* depth/stencil attachment */
+#define XFR_PASS_CLOAD 0x04
+#define XFR_PASS_ZLOAD 0x08
+#define XFR_PASS_CUNIF 0x10     /* colour LOAD of a uniform clear */
+#define XFR_PASS_ZUNIF 0x20
+
+typedef struct XfrPass {
+    uint8_t flags;
+    uint8_t cfirst, zfirst;
+    uint8_t zfate;
+    uint16_t draws, clears;
+    uint32_t ckb, zkb;          /* attachment sizes, scaled, KiB */
+} XfrPass;
+
+#define XFR_MAX_SURF 32
+#define XFR_SURF_PEND 4
+
+typedef struct XfrSurf {
+    const SurfaceBinding *s;
+    uint8_t content;
+    uint8_t npend;
+    struct {
+        uint8_t f, i;
+        uint64_t ser;
+    } pend[XFR_SURF_PEND];
+} XfrSurf;
+
+/* census groups on the XFR rpc line, summed over a window */
+enum { XG_ALL, XG_LCLR, XG_LUNIF, XG_ZDEAD, XG_CLRONLY, XG_ANY, XG_N };
+
+static struct {
+    int state;                  /* -1 unread; else 1 when HAKUX_GPUXFR=1 */
+    int ctrl;
+    VkQueryPool pool;
+    int depth;
+    unsigned long dropped;
+    int ops[NUM_SUBMIT_FRAMES];
+    uint8_t cat[NUM_SUBMIT_FRAMES][XFR_MAX_OPS];
+    uint32_t site[NUM_SUBMIT_FRAMES][XFR_MAX_OPS];
+    uint64_t results[XFR_QUERIES_PER_CB];
+    /* outer render-pass pairs: recorded, and whether one is open */
+    int rpo[NUM_SUBMIT_FRAMES];
+    bool rpo_open;
+    unsigned long rpo_dropped;
+    /* the current window of frames, as xemu-gpu's */
+    int win_n;
+    float nr[XFR_WINDOW];
+    float resid[XFR_WINDOW];
+    float rp_in[XFR_WINDOW];    /* render span, in-pass stamps (as Rnd) */
+    float rp_out[XFR_WINDOW];   /* render span, outer stamps */
+    float nr_out[XFR_WINDOW];   /* cb span minus rp_out */
+    float res_out[XFR_WINDOW];  /* nr_out minus the bracketed categories */
+    unsigned rp_n;
+    /* second readbacks of one recording, skipped (gpu_ts_readback) */
+    unsigned long dup;
+    double dup_ms;
+    float cat_ms[XFR_MAX_CATS][XFR_WINDOW];
+    unsigned cat_ops[XFR_MAX_CATS];
+    XfrSite sites[XFR_MAX_SITES];
+    int nsites;
+    /* render-pass census: per slot, per outer-stamped pass */
+    XfrPass pass[NUM_SUBMIT_FRAMES][XFR_MAX_RP];
+    uint64_t ser[NUM_SUBMIT_FRAMES];    /* recording serial of the slot */
+    uint64_t ser_next;
+    bool read[NUM_SUBMIT_FRAMES];       /* slot read back since recorded */
+    int cur;                            /* open census pass, or -1 */
+    const SurfaceBinding *cur_c, *cur_z;
+    XfrSurf surf[XFR_MAX_SURF];
+    int surf_next;
+    /* window sums: per group, [0] every pass, [1] passes read as GMEM */
+    unsigned g_n[2][XG_N];
+    double g_ms[2][XG_N];
+    double g_kb[2][XG_N];       /* avoidable KiB in the group */
+    double load_kb[2], store_kb[2];
+    unsigned paired;            /* passes with both stamp spans */
+    double in_ms[2];            /* in-pass span of the paired passes */
+    unsigned long draws[2];
+    unsigned zlive, zpend, zlate_dead, zlate_live;
+} xfr = { .state = -1, .cur = -1 };
+
+static bool xfr_on(void)
+{
+    if (xfr.state < 0) {
+        const char *on = getenv("HAKUX_GPUXFR");
+        const char *ctrl = getenv("HAKUX_GPUXFR_CTRL");
+        xfr.state = on && on[0] == '1';
+        xfr.ctrl = ctrl ? atoi(ctrl) : 0;
+        xfr.ctrl = MIN(MAX(xfr.ctrl, 0), 64);
+    }
+    return xfr.state;
+}
+
+static bool gpu_ts_inrp(void)
+{
+    static int inrp = -1;
+    if (inrp < 0) {
+        const char *v = getenv("HAKUX_GPUTS_INRP");
+        inrp = !(v && v[0] == '0');
+    }
+    return inrp;
+}
+
+/* The outer stamp of a render pass: before it begins, or after it ends. */
+static void xfr_rp_outer(PGRAPHVkState *r, bool end)
+{
+    if (!xfr_on() || !xfr.pool) {
+        return;
+    }
+    int f = r->current_frame;
+    if (!end) {
+        if (xfr.rpo[f] >= XFR_MAX_RP) {
+            xfr.rpo_dropped++;
+            return;
+        }
+        vkCmdWriteTimestamp(r->command_buffer,
+                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, xfr.pool,
+                            f * XFR_QUERIES_PER_CB + XFR_RP_BASE +
+                                2 * xfr.rpo[f]);
+        xfr.rpo_open = true;
+    } else if (xfr.rpo_open) {
+        vkCmdWriteTimestamp(r->command_buffer,
+                            VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, xfr.pool,
+                            f * XFR_QUERIES_PER_CB + XFR_RP_BASE +
+                                2 * xfr.rpo[f] + 1);
+        xfr.rpo[f]++;
+        xfr.rpo_open = false;
+    }
+}
+
+static XfrSurf *xfr_surf_find(const SurfaceBinding *s, bool add)
+{
+    if (!s) {
+        return NULL;
+    }
+    for (int i = 0; i < XFR_MAX_SURF; i++) {
+        if (xfr.surf[i].s == s) {
+            return &xfr.surf[i];
+        }
+    }
+    if (!add) {
+        return NULL;
+    }
+    XfrSurf *e = &xfr.surf[xfr.surf_next];
+    xfr.surf_next = (xfr.surf_next + 1) % XFR_MAX_SURF;
+    *e = (XfrSurf){ .s = s };
+    return e;
+}
+
+/* Settle the depth stores pending on a surface: dead or live. */
+static void xfr_surf_resolve(XfrSurf *e, bool dead)
+{
+    if (!e) {
+        return;
+    }
+    for (int k = 0; k < e->npend; k++) {
+        int f = e->pend[k].f;
+        if (xfr.ser[f] != e->pend[k].ser) {
+            continue;   /* the slot was recorded again */
+        }
+        if (xfr.read[f]) {
+            if (dead) {
+                xfr.zlate_dead++;
+            } else {
+                xfr.zlate_live++;
+            }
+            continue;
+        }
+        xfr.pass[f][e->pend[k].i].zfate = dead ? XZF_DEAD : XZF_LIVE;
+    }
+    e->npend = 0;
+}
+
+/* A surface read, fully re-uploaded, or freed outside a render pass. */
+void pgraph_vk_xfr_surf(const SurfaceBinding *s, int ev)
+{
+    if (!xfr_on()) {
+        return;
+    }
+    XfrSurf *e = xfr_surf_find(s, false);
+    if (!e) {
+        return;
+    }
+    switch (ev) {
+    case XFR_SURF_READ:
+        xfr_surf_resolve(e, false);
+        break;
+    case XFR_SURF_UPLOAD:
+        xfr_surf_resolve(e, true);
+        e->content = XSC_OTHER;
+        break;
+    case XFR_SURF_GONE:
+        e->npend = 0;
+        e->s = NULL;
+        break;
+    }
+}
+
+static uint32_t xfr_kb(const SurfaceBinding *b, unsigned int w,
+                       unsigned int h)
+{
+    return (uint32_t)(((uint64_t)w * h * b->host_fmt.host_bytes_per_pixel +
+                       1023) / 1024);
+}
+
+static void xfr_census_begin(PGRAPHState *pg, const RenderPassState *st,
+                             unsigned int w, unsigned int h)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    xfr.cur = -1;
+    if (!xfr_on() || !xfr.pool || !xfr.rpo_open) {
+        return;
+    }
+    int f = r->current_frame;
+    XfrPass *p = &xfr.pass[f][xfr.rpo[f]];
+    *p = (XfrPass){ 0 };
+    xfr.cur = xfr.rpo[f];
+    xfr.cur_c = r->color_binding;
+    xfr.cur_z = r->zeta_binding;
+    if (r->color_binding) {
+        XfrSurf *e = xfr_surf_find(r->color_binding, true);
+        p->flags |= XFR_PASS_C;
+        p->ckb = xfr_kb(r->color_binding, w, h);
+        if (st->color_load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
+            p->flags |= XFR_PASS_CLOAD;
+            if (e->content == XSC_UNIFORM) {
+                p->flags |= XFR_PASS_CUNIF;
+            }
+        }
+    }
+    if (r->zeta_binding) {
+        XfrSurf *e = xfr_surf_find(r->zeta_binding, true);
+        p->flags |= XFR_PASS_Z;
+        p->zkb = xfr_kb(r->zeta_binding, w, h);
+        if (st->zeta_load_op == VK_ATTACHMENT_LOAD_OP_LOAD) {
+            p->flags |= XFR_PASS_ZLOAD;
+            if (e->content == XSC_UNIFORM) {
+                p->flags |= XFR_PASS_ZUNIF;
+            }
+        }
+    }
+}
+
+/* The pass's depth store waits for whatever touches the surface next. */
+static void xfr_census_end(PGRAPHVkState *r)
+{
+    if (xfr.cur < 0) {
+        return;
+    }
+    int f = r->current_frame;
+    XfrPass *p = &xfr.pass[f][xfr.cur];
+    XfrSurf *e = xfr_surf_find(xfr.cur_z, false);
+    if (e && (p->flags & XFR_PASS_Z)) {
+        if (e->npend == XFR_SURF_PEND) {
+            /* oldest one stays pending */
+            memmove(&e->pend[0], &e->pend[1],
+                    sizeof(e->pend[0]) * (XFR_SURF_PEND - 1));
+            e->npend--;
+        }
+        e->pend[e->npend].f = f;
+        e->pend[e->npend].i = xfr.cur;
+        e->pend[e->npend].ser = xfr.ser[f];
+        e->npend++;
+        p->zfate = XZF_PEND;
+    }
+    xfr.cur = -1;
+}
+
+static void xfr_census_op(XfrPass *p, bool zeta, int op)
+{
+    uint8_t *first = zeta ? &p->zfirst : &p->cfirst;
+    if (*first == XOP_NONE) {
+        *first = op;
+    }
+    XfrSurf *e = xfr_surf_find(zeta ? xfr.cur_z : xfr.cur_c, true);
+    if (zeta) {
+        xfr_surf_resolve(e, op == XOP_CLEAR_FULL);
+    }
+    e->content = op == XOP_CLEAR_FULL ? XSC_UNIFORM : XSC_OTHER;
+}
+
+static void xfr_census_clear(PGRAPHState *pg, uint32_t parameter,
+                             bool write_color, bool write_zeta)
+{
+    if (xfr.cur < 0) {
+        return;
+    }
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    XfrPass *p = &xfr.pass[r->current_frame][xfr.cur];
+    p->clears++;
+    if (write_color && xfr.cur_c) {
+        bool full = pgraph_vk_clear_covers_binding(
+            pg, (SurfaceBinding *)xfr.cur_c, parameter);
+        xfr_census_op(p, false, full ? XOP_CLEAR_FULL : XOP_CLEAR_PART);
+    }
+    if (write_zeta && xfr.cur_z) {
+        bool full = pgraph_vk_clear_covers_binding(
+            pg, (SurfaceBinding *)xfr.cur_z, parameter);
+        xfr_census_op(p, true, full ? XOP_CLEAR_FULL : XOP_CLEAR_PART);
+    }
+}
+
+/* A draw: `color`/`zeta` say whether it writes or tests that attachment. */
+static void xfr_census_draw(PGRAPHVkState *r, bool color, bool zeta)
+{
+    if (xfr.cur < 0) {
+        return;
+    }
+    XfrPass *p = &xfr.pass[r->current_frame][xfr.cur];
+    p->draws++;
+    if (color && xfr.cur_c) {
+        xfr_census_op(p, false, XOP_DRAW);
+    }
+    if (zeta && xfr.cur_z) {
+        xfr_census_op(p, true, XOP_DRAW);
+    }
+}
+
+/* File one read-back pass in the census window. */
+static void xfr_census_pass(const XfrPass *p, double out_ms, double in_ms,
+                            int gmem)
+{
+    bool lclr = ((p->flags & XFR_PASS_CLOAD) && p->cfirst == XOP_CLEAR_FULL) ||
+                ((p->flags & XFR_PASS_ZLOAD) && p->zfirst == XOP_CLEAR_FULL);
+    bool lunif = p->flags & (XFR_PASS_CUNIF | XFR_PASS_ZUNIF);
+    bool zdead = p->zfate == XZF_DEAD;
+    bool clronly = p->draws == 0 && p->clears > 0;
+    double lclr_kb =
+        ((p->flags & XFR_PASS_CLOAD) && p->cfirst == XOP_CLEAR_FULL ?
+             p->ckb : 0) +
+        ((p->flags & XFR_PASS_ZLOAD) && p->zfirst == XOP_CLEAR_FULL ?
+             p->zkb : 0);
+    double lunif_kb = (p->flags & XFR_PASS_CUNIF ? p->ckb : 0) +
+                      (p->flags & XFR_PASS_ZUNIF ? p->zkb : 0);
+    double zdead_kb = zdead ? p->zkb : 0;
+    bool in[XG_N] = {
+        [XG_ALL] = true, [XG_LCLR] = lclr, [XG_LUNIF] = lunif,
+        [XG_ZDEAD] = zdead, [XG_CLRONLY] = clronly,
+        [XG_ANY] = lclr || lunif || zdead,
+    };
+    double kb[XG_N] = {
+        [XG_LCLR] = lclr_kb, [XG_LUNIF] = lunif_kb, [XG_ZDEAD] = zdead_kb,
+        /* a load counted in both lclr and lunif is one load */
+        [XG_ANY] = MAX(lclr_kb, lunif_kb) + zdead_kb,
+    };
+    for (int m = 0; m < (gmem ? 2 : 1); m++) {
+        for (int g = 0; g < XG_N; g++) {
+            if (in[g]) {
+                xfr.g_n[m][g]++;
+                xfr.g_ms[m][g] += out_ms;
+                xfr.g_kb[m][g] += kb[g];
+            }
+        }
+        xfr.load_kb[m] += (p->flags & XFR_PASS_CLOAD ? p->ckb : 0) +
+                          (p->flags & XFR_PASS_ZLOAD ? p->zkb : 0);
+        xfr.store_kb[m] += p->ckb + p->zkb;
+        xfr.in_ms[m] += in_ms;
+        xfr.draws[m] += p->draws;
+    }
+    if (p->zfate == XZF_LIVE) {
+        xfr.zlive++;
+    } else if (p->zfate == XZF_PEND) {
+        xfr.zpend++;
+    }
+}
+
+static int xfr_cat_index(const char *cat)
+{
+    for (int i = 0; i < XFR_MAX_CATS - 1; i++) {
+        if (!strcmp(cat, xfr_cat_names[i])) {
+            return i;
+        }
+    }
+    return XFR_MAX_CATS - 1;
+}
+
+/*
+ * Open a bracket around the operations recorded into `cmd` from here until
+ * pgraph_vk_xfr_end() with the returned token. Returns the op index when the
+ * bracket is measured, -1 when it is not, -2 when it is folded into an outer
+ * one. The end call must follow with the same token.
+ */
+int pgraph_vk_xfr_begin(PGRAPHState *pg, VkCommandBuffer cmd,
+                        const char *cat, int site)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    if (!xfr_on()) {
+        return -1;
+    }
+    if (xfr.depth++ > 0) {
+        return -2;
+    }
+    int f = r->current_frame;
+    int n = xfr.ops[f];
+    if (!xfr.pool || cmd != r->command_buffer || n >= XFR_MAX_OPS) {
+        xfr.dropped++;
+        return -1;
+    }
+    xfr.cat[f][n] = xfr_cat_index(cat);
+    xfr.site[f][n] = site;
+    xfr.ops[f] = n + 1;
+    vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, xfr.pool,
+                        f * XFR_QUERIES_PER_CB + 2 * n);
+    return n;
+}
+
+void pgraph_vk_xfr_end(PGRAPHState *pg, VkCommandBuffer cmd, int tok)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    if (!xfr_on()) {
+        return;
+    }
+    xfr.depth--;
+    if (tok < 0) {
+        return;
+    }
+    vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, xfr.pool,
+                        r->current_frame * XFR_QUERIES_PER_CB + 2 * tok + 1);
+}
+
+static void gpu_xfr_frame_begin(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    if (!xfr_on() || !r->gpu_ts_supported) {
+        return;
+    }
+    if (!xfr.pool) {
+        VkQueryPoolCreateInfo ci = {
+            .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+            .queryType = VK_QUERY_TYPE_TIMESTAMP,
+            .queryCount = XFR_QUERIES_PER_CB * NUM_SUBMIT_FRAMES,
+        };
+        VK_CHECK(vkCreateQueryPool(r->device, &ci, NULL, &xfr.pool));
+    }
+    VkCommandBuffer cmd = r->command_buffer;
+    int f = r->current_frame;
+    vkCmdResetQueryPool(cmd, xfr.pool, f * XFR_QUERIES_PER_CB,
+                        XFR_QUERIES_PER_CB);
+    xfr.ops[f] = 0;
+    xfr.depth = 0;
+    xfr.rpo[f] = 0;
+    xfr.rpo_open = false;
+    xfr.ser[f] = ++xfr.ser_next;
+    xfr.read[f] = false;
+    xfr.cur = -1;
+    for (int i = 0; i < xfr.ctrl; i++) {
+        int tok = pgraph_vk_xfr_begin(pg, cmd, "ctrl", __LINE__);
+        VkBufferCopy region = { .size = XFR_CTRL_BYTES };
+        vkCmdCopyBuffer(cmd,
+                        r->storage_buffers[BUFFER_COMPUTE_SRC].buffer,
+                        r->storage_buffers[BUFFER_COMPUTE_DST].buffer,
+                        1, &region);
+        pgraph_vk_xfr_end(pg, cmd, tok);
+    }
+    if (xfr.ctrl) {
+        VkMemoryBarrier ctrl_barrier = {
+            .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT |
+                             VK_ACCESS_MEMORY_WRITE_BIT,
+        };
+        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0,
+                             1, &ctrl_barrier, 0, NULL, 0, NULL);
+    }
+}
+
+static void xfr_site_add(uint32_t site, int cat, double ms)
+{
+    for (int i = 0; i < xfr.nsites; i++) {
+        XfrSite *s = &xfr.sites[i];
+        if (s->site == site && s->cat == cat) {
+            s->ms += ms;
+            s->n++;
+            return;
+        }
+    }
+    if (xfr.nsites < XFR_MAX_SITES) {
+        xfr.sites[xfr.nsites++] = (XfrSite){ site, cat, ms, 1 };
+    }
+}
+
+#if defined(__ANDROID__) && NV2A_PERF_LOG
+#include <android/log.h>
+
+static const char *const xfr_group_names[XG_N] = {
+    "all", "lclr", "lunif", "zdead", "clronly", "any",
+};
+
+static int xfr_cmp_float(const void *a, const void *b)
+{
+    float x = *(const float *)a;
+    float y = *(const float *)b;
+    return (x > y) - (x < y);
+}
+
+static int xfr_cmp_site(const void *a, const void *b)
+{
+    double x = ((const XfrSite *)a)->ms;
+    double y = ((const XfrSite *)b)->ms;
+    return (x < y) - (x > y);
+}
+
+/* median, mean and 90th percentile of one window's per-frame values */
+static void xfr_stats(const float *v, float *med, float *mean, float *p90)
+{
+    float tmp[XFR_WINDOW];
+    double sum = 0;
+    memcpy(tmp, v, sizeof(tmp));
+    qsort(tmp, XFR_WINDOW, sizeof(float), xfr_cmp_float);
+    for (int i = 0; i < XFR_WINDOW; i++) {
+        sum += v[i];
+    }
+    *med = tmp[XFR_WINDOW / 2];
+    *p90 = tmp[XFR_WINDOW * 9 / 10];
+    *mean = (float)(sum / XFR_WINDOW);
+}
+
+/*
+ * The lines ride on the xemu-gpu tag, not their own: the perflog logcat filter
+ * is a tag list (LOGCAT_SPEC in dispatcher.sh) that ends in *:S, so an
+ * xemu-xfr tag is dropped unread. The xemu-xfr prefix keeps them greppable.
+ */
+static void xfr_emit(void)
+{
+    char buf[768];
+    int len;
+    float med, mean, p90;
+
+    xfr_stats(xfr.nr, &med, &mean, &p90);
+    len = snprintf(buf, sizeof(buf), "XFR nr %.2f %.2f %.2f", med, mean, p90);
+    xfr_stats(xfr.resid, &med, &mean, &p90);
+    len += snprintf(buf + len, sizeof(buf) - len, " res %.2f %.2f %.2f",
+                    med, mean, p90);
+    for (int c = 0; c < XFR_MAX_CATS; c++) {
+        xfr_stats(xfr.cat_ms[c], &med, &mean, &p90);
+        len += snprintf(buf + len, sizeof(buf) - len,
+                        " %s %.2f %.2f %.2f n%.1f", xfr_cat_names[c],
+                        med, mean, p90, (double)xfr.cat_ops[c] / XFR_WINDOW);
+    }
+    __android_log_print(ANDROID_LOG_INFO, "xemu-gpu", "xemu-xfr %s", buf);
+
+    qsort(xfr.sites, xfr.nsites, sizeof(XfrSite), xfr_cmp_site);
+    len = snprintf(buf, sizeof(buf), "XFR sites");
+    for (int i = 0; i < xfr.nsites && i < 4; i++) {
+        XfrSite *s = &xfr.sites[i];
+        len += snprintf(buf + len, sizeof(buf) - len,
+                        " %s@%u %.2f n%.1f", xfr_cat_names[s->cat], s->site,
+                        s->ms / XFR_WINDOW, (double)s->n / XFR_WINDOW);
+    }
+    snprintf(buf + len, sizeof(buf) - len, " dropped %lu", xfr.dropped);
+    __android_log_print(ANDROID_LOG_INFO, "xemu-gpu", "xemu-xfr %s", buf);
+
+    const struct {
+        const char *name;
+        const float *v;
+    } rp[] = {
+        { "in", xfr.rp_in }, { "out", xfr.rp_out },
+        { "nr_out", xfr.nr_out }, { "res_out", xfr.res_out },
+    };
+    len = snprintf(buf, sizeof(buf), "XFR rp");
+    for (int i = 0; i < (int)ARRAY_SIZE(rp); i++) {
+        xfr_stats(rp[i].v, &med, &mean, &p90);
+        len += snprintf(buf + len, sizeof(buf) - len, " %s %.2f %.2f %.2f",
+                        rp[i].name, med, mean, p90);
+    }
+    snprintf(buf + len, sizeof(buf) - len,
+             " n%.1f inrp%d dropped %lu dup %lu %.2f",
+             (double)xfr.rp_n / XFR_WINDOW, gpu_ts_inrp(), xfr.rpo_dropped,
+             xfr.dup, xfr.dup_ms);
+    __android_log_print(ANDROID_LOG_INFO, "xemu-gpu", "xemu-xfr %s", buf);
+
+    /*
+     * Census, per command buffer (window sums / XFR_WINDOW): for each group,
+     * passes, outer ms and avoidable MiB, over every pass and then over the
+     * passes read as GMEM (`g`).
+     */
+    for (int m = 0; m < 2; m++) {
+        len = snprintf(buf, sizeof(buf), "XFR rpc%s", m ? " g" : "");
+        for (int g = 0; g < XG_N; g++) {
+            len += snprintf(buf + len, sizeof(buf) - len,
+                            " %s %.2f %.2f %.2f", xfr_group_names[g],
+                            (double)xfr.g_n[m][g] / XFR_WINDOW,
+                            xfr.g_ms[m][g] / XFR_WINDOW,
+                            xfr.g_kb[m][g] / 1024.0 / XFR_WINDOW);
+        }
+        len += snprintf(buf + len, sizeof(buf) - len,
+                        " ldMB %.2f stMB %.2f in %.2f draws %.1f",
+                        xfr.load_kb[m] / 1024.0 / XFR_WINDOW,
+                        xfr.store_kb[m] / 1024.0 / XFR_WINDOW,
+                        xfr.in_ms[m] / XFR_WINDOW,
+                        (double)xfr.draws[m] / XFR_WINDOW);
+        if (!m) {
+            snprintf(buf + len, sizeof(buf) - len,
+                     " paired %.2f zlive %.2f zpend %.2f late %u/%u",
+                     (double)xfr.paired / XFR_WINDOW,
+                     (double)xfr.zlive / XFR_WINDOW,
+                     (double)xfr.zpend / XFR_WINDOW, xfr.zlate_dead,
+                     xfr.zlate_live);
+        }
+        __android_log_print(ANDROID_LOG_INFO, "xemu-gpu", "xemu-xfr %s", buf);
+    }
+}
+#else
+static void xfr_emit(void)
+{
+}
+#endif
+
+/*
+ * Reduce this frame's brackets to ms per category and file them in the window.
+ * `nonrender_ns` is the gpu_nonrender_ns of the same command buffer, so the
+ * residual says how much of the non-render time the brackets do not cover.
+ * The outer render-pass pairs give the same split with the passes' tile
+ * loads, stores and binning on the render side (`nr_out`, `res_out`).
+ */
+static void gpu_xfr_frame(PGRAPHVkState *r, int frame, int64_t total_ns,
+                          int64_t nonrender_ns)
+{
+    if (!xfr_on() || !xfr.pool) {
+        return;
+    }
+    int n = xfr.ops[frame];
+    double ms[XFR_MAX_CATS] = { 0 };
+    if (n > 0) {
+        uint32_t count = 2 * n;
+        VkResult res = vkGetQueryPoolResults(
+            r->device, xfr.pool, frame * XFR_QUERIES_PER_CB, count,
+            sizeof(uint64_t) * count, xfr.results, sizeof(uint64_t),
+            VK_QUERY_RESULT_64_BIT);
+        if (res != VK_SUCCESS) {
+            return;
+        }
+        for (int i = 0; i < n; i++) {
+            int64_t ticks = (int64_t)(xfr.results[2 * i + 1] -
+                                      xfr.results[2 * i]);
+            double op_ms = (double)ticks * r->gpu_ts_period_ns / 1e6;
+            int c = xfr.cat[frame][i];
+            ms[c] += op_ms;
+            xfr.cat_ops[c]++;
+            xfr_site_add(xfr.site[frame][i], c, op_ms);
+        }
+    }
+    double rp_out_ms = 0;
+    int nrp = xfr.rpo[frame];
+    xfr.read[frame] = true;
+    if (nrp > 0) {
+        uint32_t count = 2 * nrp;
+        VkResult res = vkGetQueryPoolResults(
+            r->device, xfr.pool, frame * XFR_QUERIES_PER_CB + XFR_RP_BASE,
+            count, sizeof(uint64_t) * count, xfr.results, sizeof(uint64_t),
+            VK_QUERY_RESULT_64_BIT);
+        if (res != VK_SUCCESS) {
+            return;
+        }
+        /* pass i has both spans when every pass got both pairs */
+        bool paired = gpu_ts_inrp() && r->gpu_ts_rp_counts[frame] == nrp;
+        for (int i = 0; i < nrp; i++) {
+            int64_t ticks = (int64_t)(xfr.results[2 * i + 1] -
+                                      xfr.results[2 * i]);
+            double out_ms = (double)ticks * r->gpu_ts_period_ns / 1e6;
+            rp_out_ms += out_ms;
+            int gmem = 0;
+            double in_ms = 0;
+            if (paired) {
+                int64_t in_ticks =
+                    (int64_t)(r->gpu_ts_results[2 + 2 * i + 1] -
+                              r->gpu_ts_results[2 + 2 * i]);
+                gmem = ticks > 0 && in_ticks < 0.8 * ticks;
+                in_ms = (double)in_ticks * r->gpu_ts_period_ns / 1e6;
+                xfr.paired++;
+            }
+            xfr_census_pass(&xfr.pass[frame][i], out_ms, in_ms, gmem);
+        }
+    }
+    int w = xfr.win_n++;
+    double sum = 0;
+    for (int c = 0; c < XFR_MAX_CATS; c++) {
+        xfr.cat_ms[c][w] = (float)ms[c];
+        sum += ms[c];
+    }
+    xfr.nr[w] = (float)(nonrender_ns / 1e6);
+    xfr.resid[w] = xfr.nr[w] - (float)sum;
+    xfr.rp_in[w] = (float)((total_ns - nonrender_ns) / 1e6);
+    xfr.rp_out[w] = (float)rp_out_ms;
+    xfr.nr_out[w] = (float)MAX(total_ns / 1e6 - rp_out_ms, 0);
+    xfr.res_out[w] = xfr.nr_out[w] - (float)sum;
+    xfr.rp_n += nrp;
+    if (xfr.win_n == XFR_WINDOW) {
+        xfr_emit();
+        xfr.win_n = 0;
+        memset(xfr.cat_ops, 0, sizeof(xfr.cat_ops));
+        xfr.nsites = 0;
+        xfr.dropped = 0;
+        xfr.rp_n = 0;
+        xfr.rpo_dropped = 0;
+        xfr.dup = 0;
+        xfr.dup_ms = 0;
+        memset(xfr.g_n, 0, sizeof(xfr.g_n));
+        memset(xfr.g_ms, 0, sizeof(xfr.g_ms));
+        memset(xfr.g_kb, 0, sizeof(xfr.g_kb));
+        memset(xfr.load_kb, 0, sizeof(xfr.load_kb));
+        memset(xfr.store_kb, 0, sizeof(xfr.store_kb));
+        xfr.paired = 0;
+        memset(xfr.in_ms, 0, sizeof(xfr.in_ms));
+        memset(xfr.draws, 0, sizeof(xfr.draws));
+        xfr.zlive = xfr.zpend = xfr.zlate_dead = xfr.zlate_live = 0;
+    }
+}
+
+/*
+ * A slot's stamps are read once per recording. A finish on the PFIFO thread
+ * that is not deferred waits for the render thread's submit and reads the slot
+ * back at once, but the render thread marked the slot submitted
+ * (render_thread.c), so frame rotation reaches the same slot before it is
+ * recorded again and read it a second time: each such command buffer counted
+ * twice in the GPU phase stats. Cleared when the slot's command buffer begins.
+ */
+static bool gpu_ts_read[NUM_SUBMIT_FRAMES];
+
+/* A skipped second readback, counted on the XFR rp line. */
+static void gpu_ts_dup(PGRAPHVkState *r, int frame)
+{
+    if (!xfr_on() || !xfr.pool) {
+        return;
+    }
+    uint64_t ts[2];
+    if (vkGetQueryPoolResults(r->device, r->gpu_ts_pool,
+                              frame * GPU_TS_QUERIES_PER_CB, 2, sizeof(ts),
+                              ts, sizeof(uint64_t),
+                              VK_QUERY_RESULT_64_BIT) != VK_SUCCESS) {
+        return;
+    }
+    xfr.dup++;
+    xfr.dup_ms += (double)(int64_t)(ts[1] - ts[0]) * r->gpu_ts_period_ns / 1e6;
 }
 
 static void gpu_ts_readback(PGRAPHVkState *r, int frame)
 {
     if (!r->gpu_ts_supported) {
+        return;
+    }
+    if (gpu_ts_read[frame]) {
+        gpu_ts_dup(r, frame);
         return;
     }
 
@@ -3683,6 +5024,7 @@ static void gpu_ts_readback(PGRAPHVkState *r, int frame)
     if (res != VK_SUCCESS) {
         return;
     }
+    gpu_ts_read[frame] = true;
 
     uint64_t cb_start = r->gpu_ts_results[0];
     uint64_t cb_end = r->gpu_ts_results[1];
@@ -3700,6 +5042,7 @@ static void gpu_ts_readback(PGRAPHVkState *r, int frame)
     if (nonrender_ns < 0) {
         nonrender_ns = 0;
     }
+    gpu_xfr_frame(r, frame, total_ns, nonrender_ns);
 
     g_nv2a_stats.phase_working.gpu_total_ns += total_ns;
     g_nv2a_stats.phase_working.gpu_render_ns += render_ns;
@@ -4045,6 +5388,7 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
     if (finish_reason == VK_FINISH_REASON_FLIP_STALL ||
         finish_reason == VK_FINISH_REASON_PRESENTING) {
         opt_stats_log_and_reset();
+        drawcensus_frame();
     }
 
     NV2A_PHASE_TIMER_BEGIN(finish);
@@ -4064,6 +5408,9 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
     assert(r->debug_depth == 0);
 
     int deferred_frame = -1;
+    /* lane.drawrec1010 probes: this thread's GPU waits, -1 for none */
+    bool probe_w = probe_on() && !r->is_render_thread_context;
+    int64_t probe_nd = -1, probe_rot = -1;
 
     if (r->in_command_buffer) {
         nv2a_profile_inc_counter(finish_reason_to_counter_enum[finish_reason]);
@@ -4270,7 +5617,40 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
             }
 
             if (!deferred) {
+                /*
+                 * #796: a surface download's finish waits here for the GPU
+                 * with pgraph.lock released, as wait_frame_fence (vk/surface.c)
+                 * already does for the fence waits of the same downloads.
+                 * Top Spin takes ~26 of these a frame from its texture binds,
+                 * and its vCPU waited 10-13.6 ms a frame for the lock behind
+                 * them, on reads of PGRAPH 0xb10 (PATT_COLOR0).
+                 *
+                 * Held: on the PFIFO thread a finish runs inside a method or
+                 * the flip-stall path, both under pgraph.lock (pfifo.c's
+                 * puller, the renderer switch); the render thread's finishes
+                 * take the branch above. The wait reads nothing the lock
+                 * protects -- the render thread submits and waits the fence,
+                 * and takes no pgraph.lock -- and the staged downloads are
+                 * copied into VRAM below, after the lock is retaken. In the
+                 * window only the guest's interrupt and register MMIO may run
+                 * (pgraph_read/pgraph_write); every other taker, the VRAM
+                 * access callback included, waits in pgraph_lock_settled()
+                 * until the method ends.
+                 */
+                NV2AState *fd = container_of(pg, NV2AState, pgraph);
+                bool unlock = finish_reason == VK_FINISH_REASON_SURFACE_DOWN &&
+                              qemu_thread_is_self(&fd->pfifo.thread);
+                if (unlock) {
+                    pgraph_lock_release_for_fence(pg);
+                }
+                int64_t probe_t0 = probe_w ? get_clock() : 0;
                 qemu_event_wait(&finish_event);
+                if (probe_w) {
+                    probe_nd = get_clock() - probe_t0;
+                }
+                if (unlock) {
+                    pgraph_lock_retake_after_fence(pg);
+                }
                 qemu_event_destroy(&finish_event);
                 gpu_ts_readback(r, r->current_frame);
 
@@ -4334,9 +5714,13 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
             r->frame_enqueued[next_frame] = false;
 
             if (qatomic_read(&r->frame_submitted[next_frame])) {
+                int64_t probe_t0 = probe_w ? get_clock() : 0;
                 VK_CHECK(vkWaitForFences(r->device, 1,
                                          &r->frame_fences[next_frame],
                                          VK_TRUE, UINT64_MAX));
+                if (probe_w) {
+                    probe_rot = get_clock() - probe_t0;
+                }
                 gpu_ts_readback(r, next_frame);
                 qatomic_set(&r->frame_submitted[next_frame], false);
 
@@ -4359,6 +5743,11 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                 r->frame_staging[next_frame].uniform_staging.buffer_offset = 0;
                 r->frame_staging[next_frame].staging_src.buffer_offset = 0;
             }
+            /* A held download batch this slot covers (vk/surface.c). Outside
+             * the test above: pgraph_vk_flush_all_frames may have waited the
+             * slot without completing it. */
+            pgraph_vk_surfgpu_slot_retired(container_of(pg, NV2AState, pgraph),
+                                           next_frame);
 
             /* Oldest frame's fence has been waited — its descriptor sets
              * are safe to reuse. Check if any other frame slot is still
@@ -4461,6 +5850,10 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
 
         NV2A_PHASE_TIMER_END(finish_fence);
 
+        if (probe_w) {
+            probe_finish_book(finish_reason, probe_nd, probe_rot);
+        }
+
         if (check_budget) {
             pgraph_vk_check_memory_budget(pg);
         }
@@ -4499,7 +5892,9 @@ void pgraph_vk_begin_command_buffer(PGRAPHState *pg)
                             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                             r->gpu_ts_pool, base + 0);
         r->gpu_ts_rp_index = 0;
+        gpu_ts_read[r->current_frame] = false;
     }
+    gpu_xfr_frame_begin(pg);
 }
 
 // FIXME: Refactor below
@@ -4544,6 +5939,45 @@ void pgraph_vk_end_nondraw_commands(PGRAPHState *pg, VkCommandBuffer cmd)
 // is, but we are obviously not supposed to endlessly append to one command
 // buffer. For other reasons though (like descriptor set amount, surface
 // changes, etc) we do flush often.
+
+/*
+ * lane.drawrec1010, part SHC: shader_bindings_changed is set by
+ * pgraph_vk_bind_shaders() when the binding really changes and cleared only
+ * at its entry, and bind_shaders() runs only when the shader generation or
+ * the primitive moves. So every draw after a shader change, up to the next
+ * such move, enters with the flag still set and takes the full path: no SFP,
+ * no MFP, no create_pipeline() early hit, a pipeline key built and compared,
+ * and a fresh UBO descriptor set written. At the NFS race start that is 31%
+ * of all draws (census, lane NOTES 5.2).
+ *
+ * Once a full-path draw has looked up a pipeline for the current binding and
+ * written its descriptor sets, the flag has done its job: the state is what
+ * a bind_shaders() call that found no change would leave. So it is cleared
+ * then, and only then: not on a clear, not when the pipeline came back
+ * pending, missing or not at all, and not when the draw was skipped for an
+ * async compile (that returns before here).
+ */
+static void drawrec_shc_consumed(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (!r->shader_bindings_changed || pg->clearing ||
+        !drawrec_shc_on(r)) {
+        return;
+    }
+#if OPT_ASYNC_COMPILE
+    /* update_descriptor_sets() returned without writing anything */
+    if (!r->shader_binding || !qatomic_read(&r->shader_binding->ready)) {
+        return;
+    }
+#endif
+    if ((dcen_cp == DCEN_CP_SAMEKEY || dcen_cp == DCEN_CP_LRU) &&
+        r->pipeline_binding &&
+        r->pipeline_binding->pipeline != VK_NULL_HANDLE) {
+        r->shader_bindings_changed = false;
+        drawrec.n_shc++;
+    }
+}
 
 static void begin_pre_draw_inner(PGRAPHState *pg)
 {
@@ -4764,6 +6198,7 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
                     r->last_any_reg_gen = pg->any_reg_gen;
                     r->last_non_dynamic_reg_gen = pg->non_dynamic_reg_gen;
                     OPT_STAT_INC(super_fast_hits);
+                    dcen_path = DCEN_PATH_SFP;
                     r->pre_draw_skipped = true;
                     NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_sfp, draw_ftx);
                     return;
@@ -4854,12 +6289,14 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
             create_frame_buffer(pg);
         }
         pgraph_vk_ensure_command_buffer(pg);
+        dcen_path = DCEN_PATH_MFP;
         NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_mfp, draw_ftx);
         return;
     }
 mfp_miss: (void)0;
     NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_mfp, draw_ftx);
 
+    dcen_path = DCEN_PATH_FULL;
     r->pre_draw_skipped = false;
 
     if (pg->vertex_attr_gen != r->pipeline_vertex_attr_gen) {
@@ -4930,6 +6367,7 @@ mfp_miss: (void)0;
     NV2A_PHASE_TIMER_BEGIN_EXCL(draw_desc_set);
     if (!pg->clearing) {
         pgraph_vk_update_descriptor_sets(pg);
+        drawrec_shc_consumed(pg);
     }
     NV2A_PHASE_TIMER_END_EXCL(draw_desc_set);
 
@@ -5097,7 +6535,554 @@ mfp_miss: (void)0;
  * numbers are not substitutes: the residual is NOT predictable from #44's
  * 0.674%.
  */
+/*
+ * lane.drawrec1010's draw census, HAKUX_DRAWCENSUS=1 (default off; #433).
+ *
+ * For every consecutive pair of draws: which inputs changed since the
+ * previous draw, which path the draw took (dcen_path, dcen_cp), and what
+ * that path spent on descriptor sets and uniform uploads. One histogram per
+ * 60 frames under hakuX-stall, read by docs/lanes/drawrec1010/censusread.py.
+ *
+ * It decides between reusing state across draws, batching them, or neither:
+ * a draw that changed only its vertex data and uniforms is the reuse case, a
+ * draw that changed nothing tracked here the batching one. It only reads the
+ * renderer's state and writes its own, so the draws are the ones the switch
+ * off records; its cost (a diff of the register file and of c[] per draw)
+ * makes it no timing instrument.
+ */
+enum {
+    DCEN_B_SB, /* shader binding */
+    DCEN_B_PB, /* pipeline binding */
+    DCEN_B_VA, /* vertex attribute or binding descriptions */
+    DCEN_B_TX, /* a bound texture, or a direct surface view */
+    DCEN_B_SF, /* colour or zeta surface */
+    DCEN_B_PM, /* primitive mode */
+    DCEN_B_UC, /* transform constants c[] */
+    DCEN_B_UL, /* lighting: ltctxa, ltctxb, ltc1, lights, material alpha */
+    DCEN_B_UB, /* the uniform bytes the draw's layouts upload */
+    DCEN_B_RC, /* registers: combiners, shader program and clip mode */
+    DCEN_B_RT, /* registers: texture */
+    DCEN_B_RL, /* registers: CSV0/CSV1, point size (fixed-function vertex) */
+    DCEN_B_RB, /* registers: blend, depth, stencil, raster; static bits */
+    DCEN_B_RD, /* registers: the same, dynamic-state bits only */
+    DCEN_B_RF, /* registers read as uniforms: factors, fog, bump, eye */
+    DCEN_B_RW, /* registers: window clip */
+    DCEN_B_RO, /* registers: any other */
+    DCEN_B__COUNT
+};
+
+/* A draw's class: the first that applies, in this order from the bottom */
+enum {
+    DCEN_C_SAME,   /* nothing tracked changed: vertex data only */
+    DCEN_C_DYN,    /* and dynamic state */
+    DCEN_C_UNI,    /* and uniforms, or registers read as uniforms */
+    DCEN_C_REG,    /* a key-feeding register, but shader and pipeline kept */
+    DCEN_C_TEX,    /* textures */
+    DCEN_C_PIPE,   /* pipeline (or vertex format, primitive), shader kept */
+    DCEN_C_SHADER, /* shader binding */
+    DCEN_C_SURF,   /* surface */
+    DCEN_C__COUNT
+};
+
+#define DCEN_REGS (0x2000 / 4)
+#define DCEN_MASKS 64
+#define DCEN_RO 8
+
+static struct {
+    int on; /* -1 until the environment is read */
+
+    /* The previous draw, as drawn */
+    bool have_prev;
+    ShaderBinding *sb;
+    PipelineBinding *pb;
+    SurfaceBinding *color, *zeta;
+    TextureBinding *tex[NV2A_MAX_TEXTURES];
+    VkImageView direct[NV2A_MAX_TEXTURES];
+    int n_attr, n_bind;
+    VkVertexInputAttributeDescription attr[NV2A_VERTEXSHADER_ATTRIBUTES];
+    VkVertexInputBindingDescription bind[NV2A_VERTEXSHADER_ATTRIBUTES];
+    uint32_t prim;
+    uint32_t regs[DCEN_REGS];
+    uint32_t c[NV2A_VERTEXSHADER_CONSTANTS][4];
+    uint64_t light_hash;
+    uint64_t uni_hash;
+
+    /* This draw, at entry */
+    bool shc_in;
+    int ubo_set_in;
+    size_t ubo_off_in[2];
+
+    uint8_t group[DCEN_REGS]; /* DCEN_B_R* per register word */
+
+    /* The window */
+    unsigned frames, window;
+    unsigned draws, clears, skips;
+    unsigned bit[DCEN_B__COUNT];
+    unsigned cls[DCEN_C__COUNT];
+    unsigned path[DCEN_PATH__COUNT];
+    unsigned cp[DCEN_CP__COUNT];
+    unsigned bound_shaders, pbind;
+    unsigned shc_in_n;     /* entered with shader_bindings_changed set */
+    unsigned shc_stale;    /* ... and the shader binding did not change */
+    unsigned shc_stale_full;
+    unsigned ubo_sets;     /* a UBO descriptor set written */
+    unsigned ubo_sets_samesb;
+    unsigned uploads;      /* uniform bytes appended to the ring */
+    unsigned uploads_same; /* ... the same bytes, same binding */
+    unsigned reuse_full;   /* class SAME/DYN/UNI that took the full path */
+    unsigned same_notsfp;  /* class SAME that missed the super-fast path */
+    unsigned crow[NV2A_VERTEXSHADER_CONSTANTS / 16];
+    unsigned nrows[6];     /* c[] rows changed: 0, 1-4, 5-8, 9-16, 17-32, 33+ */
+    uint32_t mask_key[DCEN_MASKS]; /* mask + 1; 0 is empty */
+    unsigned mask_n[DCEN_MASKS];
+    unsigned mask_other;
+    uint16_t ro_addr[DCEN_RO];
+    unsigned ro_n[DCEN_RO], ro_other;
+} dcen = { .on = -1 };
+
+static void drawcensus_init_groups(void)
+{
+    /* Later entries win where ranges overlap (ZCLIP spans ZOFFSET, EYEVEC) */
+    static const struct {
+        unsigned lo, hi;
+        uint8_t g;
+    } ranges[] = {
+        { NV_PGRAPH_ANTIALIASING, NV_PGRAPH_BLENDCOLOR, DCEN_B_RB },
+        { NV_PGRAPH_CONTROL_0, NV_PGRAPH_CONTROL_3, DCEN_B_RB },
+        { NV_PGRAPH_SETUPRASTER, NV_PGRAPH_SETUPRASTER, DCEN_B_RB },
+        { NV_PGRAPH_SHADOWCTL, NV_PGRAPH_SHADOWZSLOPETHRESHOLD, DCEN_B_RB },
+        { NV_PGRAPH_ZCOMPRESSOCCLUDE, NV_PGRAPH_ZCOMPRESSOCCLUDE, DCEN_B_RB },
+        { NV_PGRAPH_ZCLIPMIN, NV_PGRAPH_ZCLIPMAX, DCEN_B_RB },
+        { NV_PGRAPH_BORDERCOLOR0, NV_PGRAPH_BORDERCOLOR3, DCEN_B_RT },
+        { NV_PGRAPH_TEXADDRESS0, NV_PGRAPH_TEXPALETTE3, DCEN_B_RT },
+        { NV_PGRAPH_BUMPMAT00, NV_PGRAPH_CLEARRECTX - 4, DCEN_B_RF },
+        { NV_PGRAPH_COLORKEYCOLOR0, NV_PGRAPH_COLORKEYCOLOR3, DCEN_B_RF },
+        { NV_PGRAPH_COMBINEFACTOR0, NV_PGRAPH_COMBINEALPHAI0 - 4, DCEN_B_RF },
+        { NV_PGRAPH_FOGCOLOR, NV_PGRAPH_FOGPARAM1, DCEN_B_RF },
+        { NV_PGRAPH_SPECFOGFACTOR0, NV_PGRAPH_SPECFOGFACTOR1, DCEN_B_RF },
+        { NV_PGRAPH_EYEVEC0, NV_PGRAPH_EYEVEC2, DCEN_B_RF },
+        { NV_PGRAPH_COMBINEALPHAI0, NV_PGRAPH_COMBINESPECFOG1, DCEN_B_RC },
+        { NV_PGRAPH_SHADERCLIPMODE, NV_PGRAPH_SHADERPROG, DCEN_B_RC },
+        { NV_PGRAPH_CSV0_D, NV_PGRAPH_CSV1_A, DCEN_B_RL },
+        { NV_PGRAPH_POINTSIZE, NV_PGRAPH_POINTSIZE, DCEN_B_RL },
+        { NV_PGRAPH_WINDOWCLIPX0, NV_PGRAPH_WINDOWCLIPY7, DCEN_B_RW },
+    };
+    memset(dcen.group, DCEN_B_RO, sizeof(dcen.group));
+    for (int i = 0; i < ARRAY_SIZE(ranges); i++) {
+        for (unsigned a = ranges[i].lo; a <= ranges[i].hi; a += 4) {
+            dcen.group[a / 4] = ranges[i].g;
+        }
+    }
+}
+
+static bool drawcensus_on(void)
+{
+    if (unlikely(dcen.on < 0)) {
+        const char *e = getenv("HAKUX_DRAWCENSUS");
+        dcen.on = (e && e[0] && strcmp(e, "0")) ? 1 : 0;
+        if (dcen.on) {
+            drawcensus_init_groups();
+        }
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                            "[drawrec1010] census=%d", dcen.on);
+#endif
+    }
+    return dcen.on;
+}
+
+static void drawcensus_pre(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    dcen_path = DCEN_PATH_FULL;
+    dcen_cp = DCEN_CP_NONE;
+    dcen_bound_shaders = false;
+    dcen.shc_in = r->shader_bindings_changed;
+    dcen.ubo_set_in = r->push_ubo_set_index;
+    dcen.ubo_off_in[0] = r->uniform_buffer_offsets[0];
+    dcen.ubo_off_in[1] = r->uniform_buffer_offsets[1];
+}
+
+static void drawcensus_count_mask(uint32_t m)
+{
+    unsigned h = (m * 2654435761u) >> 26;
+    for (int i = 0; i < DCEN_MASKS; i++) {
+        unsigned s = (h + i) % DCEN_MASKS;
+        if (dcen.mask_key[s] == m + 1) {
+            dcen.mask_n[s]++;
+            return;
+        }
+        if (!dcen.mask_key[s]) {
+            dcen.mask_key[s] = m + 1;
+            dcen.mask_n[s] = 1;
+            return;
+        }
+    }
+    dcen.mask_other++;
+}
+
+static void drawcensus_count_ro(unsigned addr)
+{
+    for (int i = 0; i < DCEN_RO; i++) {
+        if (dcen.ro_n[i] && dcen.ro_addr[i] == addr) {
+            dcen.ro_n[i]++;
+            return;
+        }
+        if (!dcen.ro_n[i]) {
+            dcen.ro_addr[i] = addr;
+            dcen.ro_n[i] = 1;
+            return;
+        }
+    }
+    dcen.ro_other++;
+}
+
+static uint64_t drawcensus_light_hash(PGRAPHState *pg)
+{
+    uint64_t h = fast_hash((void *)pg->ltctxa, sizeof(pg->ltctxa));
+    h = h * 31 + fast_hash((void *)pg->ltctxb, sizeof(pg->ltctxb));
+    h = h * 31 + fast_hash((void *)pg->ltc1, sizeof(pg->ltc1));
+    h = h * 31 + fast_hash((void *)pg->light_infinite_half_vector,
+                           sizeof(pg->light_infinite_half_vector));
+    h = h * 31 + fast_hash((void *)pg->light_infinite_direction,
+                           sizeof(pg->light_infinite_direction));
+    h = h * 31 + fast_hash((void *)pg->light_local_position,
+                           sizeof(pg->light_local_position));
+    h = h * 31 + fast_hash((void *)pg->light_local_attenuation,
+                           sizeof(pg->light_local_attenuation));
+    float ma[2] = { pg->material_alpha, pg->material_alpha_back };
+    return h * 31 + fast_hash((void *)ma, sizeof(ma));
+}
+
+static void drawcensus_post(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    ShaderBinding *sb = r->shader_binding;
+
+    if (pg->clearing) {
+        dcen.clears++;
+        return;
+    }
+#if OPT_ASYNC_COMPILE
+    if (r->async_draw_skip || !sb || !qatomic_read(&sb->ready)) {
+        dcen.skips++;
+        return;
+    }
+#endif
+    if (!sb || !r->pipeline_binding || !sb->vsh.upload_info ||
+        !sb->psh.module_info) {
+        dcen.skips++;
+        return;
+    }
+
+    uint32_t m = 0;
+
+    /* Registers, by group; the copy is the previous draw's. regs_ is indexed
+     * by byte address, a word at every fourth entry, so it is compared word
+     * by word; a run of 16 equal words is skipped on one test. */
+    for (int i = 0; i < DCEN_REGS; i++) {
+        if (!(i & 15)) {
+            uint32_t acc = 0;
+            for (int j = 0; j < 16; j++) {
+                acc |= pg->regs_[(i + j) * 4] ^ dcen.regs[i + j];
+            }
+            if (!acc) {
+                i += 15;
+                continue;
+            }
+        }
+        uint32_t v = pg->regs_[i * 4];
+        uint32_t x = v ^ dcen.regs[i];
+        if (!x) {
+            continue;
+        }
+        dcen.regs[i] = v;
+        uint32_t dyn = pgraph_reg_dynamic_mask_table[i];
+        if (x & dyn) {
+            m |= 1u << DCEN_B_RD;
+        }
+        if (x & ~dyn) {
+            m |= 1u << dcen.group[i];
+            if (dcen.group[i] == DCEN_B_RO && dcen.have_prev) {
+                drawcensus_count_ro(i * 4);
+            }
+        }
+    }
+
+    /* Transform constants, by row */
+    int rows = 0;
+    unsigned row_groups = 0;
+    for (int i = 0; i < NV2A_VERTEXSHADER_CONSTANTS; i++) {
+        if (memcmp(pg->vsh_constants[i], dcen.c[i], sizeof(dcen.c[i]))) {
+            memcpy(dcen.c[i], pg->vsh_constants[i], sizeof(dcen.c[i]));
+            rows++;
+            row_groups |= 1u << (i / 16);
+        }
+    }
+    if (rows) {
+        m |= 1u << DCEN_B_UC;
+    }
+
+    uint64_t lh = drawcensus_light_hash(pg);
+    if (lh != dcen.light_hash) {
+        m |= 1u << DCEN_B_UL;
+    }
+
+    /* The bytes uploaded: refreshed on every path but the super-fast one,
+     * which is taken only when they are unchanged */
+    uint64_t uh = dcen.uni_hash;
+    if (dcen_path != DCEN_PATH_SFP) {
+        ShaderUniformLayout *vl = &sb->vsh.upload_info->uniforms;
+        ShaderUniformLayout *fl = &sb->psh.module_info->uniforms;
+        uh = fast_hash(vl->allocation, vl->total_size) * 31 +
+             fast_hash(fl->allocation, fl->total_size);
+    }
+    if (uh != dcen.uni_hash) {
+        m |= 1u << DCEN_B_UB;
+    }
+
+    if (sb != dcen.sb) {
+        m |= 1u << DCEN_B_SB;
+    }
+    if (r->pipeline_binding != dcen.pb) {
+        m |= 1u << DCEN_B_PB;
+    }
+    if (r->num_active_vertex_attribute_descriptions != dcen.n_attr ||
+        r->num_active_vertex_binding_descriptions != dcen.n_bind ||
+        memcmp(r->vertex_attribute_descriptions, dcen.attr,
+               dcen.n_attr * sizeof(dcen.attr[0])) ||
+        memcmp(r->vertex_binding_descriptions, dcen.bind,
+               dcen.n_bind * sizeof(dcen.bind[0]))) {
+        m |= 1u << DCEN_B_VA;
+    }
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        VkImageView dv =
+            r->tex_surface_direct[i] ? r->tex_surface_direct_views[i]
+                                     : VK_NULL_HANDLE;
+        if (r->texture_bindings[i] != dcen.tex[i] || dv != dcen.direct[i]) {
+            m |= 1u << DCEN_B_TX;
+        }
+        dcen.tex[i] = r->texture_bindings[i];
+        dcen.direct[i] = dv;
+    }
+    if (r->color_binding != dcen.color || r->zeta_binding != dcen.zeta) {
+        m |= 1u << DCEN_B_SF;
+    }
+    if (pg->primitive_mode != dcen.prim) {
+        m |= 1u << DCEN_B_PM;
+    }
+
+    bool sb_same = !(m & (1u << DCEN_B_SB));
+    bool ubo_set = r->push_ubo_set_index != dcen.ubo_set_in;
+    bool upload = r->uniform_buffer_offsets[0] != dcen.ubo_off_in[0] ||
+                  r->uniform_buffer_offsets[1] != dcen.ubo_off_in[1];
+
+    if (dcen.have_prev) {
+        int c;
+        if (m & (1u << DCEN_B_SF)) {
+            c = DCEN_C_SURF;
+        } else if (m & (1u << DCEN_B_SB)) {
+            c = DCEN_C_SHADER;
+        } else if (m & ((1u << DCEN_B_PB) | (1u << DCEN_B_VA) |
+                        (1u << DCEN_B_PM))) {
+            c = DCEN_C_PIPE;
+        } else if (m & ((1u << DCEN_B_TX) | (1u << DCEN_B_RT))) {
+            c = DCEN_C_TEX;
+        } else if (m & ((1u << DCEN_B_RC) | (1u << DCEN_B_RL) |
+                        (1u << DCEN_B_RB) | (1u << DCEN_B_RW) |
+                        (1u << DCEN_B_RO))) {
+            c = DCEN_C_REG;
+        } else if (m & ((1u << DCEN_B_UC) | (1u << DCEN_B_UL) |
+                        (1u << DCEN_B_UB) | (1u << DCEN_B_RF))) {
+            c = DCEN_C_UNI;
+        } else if (m & (1u << DCEN_B_RD)) {
+            c = DCEN_C_DYN;
+        } else {
+            c = DCEN_C_SAME;
+        }
+
+        dcen.draws++;
+        dcen.cls[c]++;
+        for (int b = 0; b < DCEN_B__COUNT; b++) {
+            if (m & (1u << b)) {
+                dcen.bit[b]++;
+            }
+        }
+        drawcensus_count_mask(m);
+        dcen.path[dcen_path]++;
+        dcen.cp[dcen_cp]++;
+        dcen.bound_shaders += dcen_bound_shaders;
+        dcen.pbind += r->pipeline_binding_changed;
+        if (dcen.shc_in) {
+            dcen.shc_in_n++;
+            if (sb_same) {
+                dcen.shc_stale++;
+                dcen.shc_stale_full += dcen_path == DCEN_PATH_FULL;
+            }
+        }
+        if (ubo_set) {
+            dcen.ubo_sets++;
+            dcen.ubo_sets_samesb += sb_same;
+        }
+        if (upload) {
+            dcen.uploads++;
+            dcen.uploads_same += sb_same && uh == dcen.uni_hash;
+        }
+        if (c <= DCEN_C_UNI && dcen_path == DCEN_PATH_FULL) {
+            dcen.reuse_full++;
+        }
+        if (c == DCEN_C_SAME && dcen_path != DCEN_PATH_SFP) {
+            dcen.same_notsfp++;
+        }
+        for (int g = 0; g < ARRAY_SIZE(dcen.crow); g++) {
+            if (row_groups & (1u << g)) {
+                dcen.crow[g]++;
+            }
+        }
+        dcen.nrows[rows == 0 ? 0 : rows <= 4 ? 1 : rows <= 8 ? 2 :
+                   rows <= 16 ? 3 : rows <= 32 ? 4 : 5]++;
+    }
+
+    dcen.have_prev = true;
+    dcen.sb = sb;
+    dcen.pb = r->pipeline_binding;
+    dcen.color = r->color_binding;
+    dcen.zeta = r->zeta_binding;
+    dcen.n_attr = r->num_active_vertex_attribute_descriptions;
+    dcen.n_bind = r->num_active_vertex_binding_descriptions;
+    memcpy(dcen.attr, r->vertex_attribute_descriptions,
+           dcen.n_attr * sizeof(dcen.attr[0]));
+    memcpy(dcen.bind, r->vertex_binding_descriptions,
+           dcen.n_bind * sizeof(dcen.bind[0]));
+    dcen.prim = pg->primitive_mode;
+    dcen.light_hash = lh;
+    dcen.uni_hash = uh;
+}
+
+#ifdef __ANDROID__
+#define DCEN_LOG(...) \
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall", __VA_ARGS__)
+#else
+#define DCEN_LOG(...) \
+    do { fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+/* Once a frame, from pgraph_vk_finish() beside opt_stats_log_and_reset() */
+static void drawcensus_frame(void)
+{
+    if (!dcen.on || ++dcen.frames % 60) {
+        return;
+    }
+    unsigned w = dcen.window++;
+
+    DCEN_LOG("census w=%u draws=%u clr=%u skip=%u cls same=%u dyn=%u "
+             "uni=%u reg=%u tex=%u pipe=%u shader=%u surf=%u",
+             w, dcen.draws, dcen.clears, dcen.skips, dcen.cls[DCEN_C_SAME],
+             dcen.cls[DCEN_C_DYN], dcen.cls[DCEN_C_UNI], dcen.cls[DCEN_C_REG],
+             dcen.cls[DCEN_C_TEX], dcen.cls[DCEN_C_PIPE],
+             dcen.cls[DCEN_C_SHADER], dcen.cls[DCEN_C_SURF]);
+    DCEN_LOG("census-bits w=%u sb=%u pb=%u va=%u tx=%u sf=%u pm=%u uc=%u "
+             "ul=%u ub=%u rc=%u rt=%u rl=%u rb=%u rd=%u rf=%u rw=%u ro=%u",
+             w, dcen.bit[DCEN_B_SB], dcen.bit[DCEN_B_PB], dcen.bit[DCEN_B_VA],
+             dcen.bit[DCEN_B_TX], dcen.bit[DCEN_B_SF], dcen.bit[DCEN_B_PM],
+             dcen.bit[DCEN_B_UC], dcen.bit[DCEN_B_UL], dcen.bit[DCEN_B_UB],
+             dcen.bit[DCEN_B_RC], dcen.bit[DCEN_B_RT], dcen.bit[DCEN_B_RL],
+             dcen.bit[DCEN_B_RB], dcen.bit[DCEN_B_RD], dcen.bit[DCEN_B_RF],
+             dcen.bit[DCEN_B_RW], dcen.bit[DCEN_B_RO]);
+    DCEN_LOG("census-path w=%u sfp=%u mfp=%u full=%u cp none=%u early=%u "
+             "notdirty=%u samekey=%u lru=%u pend=%u miss=%u lrufull=%u "
+             "bs=%u pbind=%u",
+             w, dcen.path[DCEN_PATH_SFP], dcen.path[DCEN_PATH_MFP],
+             dcen.path[DCEN_PATH_FULL], dcen.cp[DCEN_CP_NONE],
+             dcen.cp[DCEN_CP_EARLY], dcen.cp[DCEN_CP_NOTDIRTY],
+             dcen.cp[DCEN_CP_SAMEKEY], dcen.cp[DCEN_CP_LRU],
+             dcen.cp[DCEN_CP_PENDING], dcen.cp[DCEN_CP_MISS],
+             dcen.cp[DCEN_CP_LRUFULL], dcen.bound_shaders, dcen.pbind);
+    DCEN_LOG("census-cost w=%u shc_in=%u shc_stale=%u shc_stale_full=%u "
+             "ubo_sets=%u ubo_sets_samesb=%u uploads=%u uploads_same=%u "
+             "reuse_full=%u same_notsfp=%u",
+             w, dcen.shc_in_n, dcen.shc_stale, dcen.shc_stale_full,
+             dcen.ubo_sets, dcen.ubo_sets_samesb, dcen.uploads,
+             dcen.uploads_same, dcen.reuse_full, dcen.same_notsfp);
+    DCEN_LOG("census-crow w=%u rows 0=%u 1-4=%u 5-8=%u 9-16=%u 17-32=%u "
+             "33+=%u by16 %u %u %u %u %u %u %u %u %u %u %u %u",
+             w, dcen.nrows[0], dcen.nrows[1], dcen.nrows[2], dcen.nrows[3],
+             dcen.nrows[4], dcen.nrows[5], dcen.crow[0], dcen.crow[1],
+             dcen.crow[2], dcen.crow[3], dcen.crow[4], dcen.crow[5],
+             dcen.crow[6], dcen.crow[7], dcen.crow[8], dcen.crow[9],
+             dcen.crow[10], dcen.crow[11]);
+
+    /* The 24 commonest masks, then the other registers that moved */
+    char buf[640];
+    int o = snprintf(buf, sizeof(buf), "census-mask w=%u other=%u", w,
+                     dcen.mask_other);
+    bool used[DCEN_MASKS] = { false };
+    for (int k = 0; k < 24; k++) {
+        int best = -1;
+        for (int i = 0; i < DCEN_MASKS; i++) {
+            if (dcen.mask_key[i] && !used[i] &&
+                (best < 0 || dcen.mask_n[i] > dcen.mask_n[best])) {
+                best = i;
+            }
+        }
+        if (best < 0) {
+            break;
+        }
+        used[best] = true;
+        o += snprintf(buf + o, sizeof(buf) - o, " %x:%u",
+                      dcen.mask_key[best] - 1, dcen.mask_n[best]);
+    }
+    unsigned rest = 0;
+    for (int i = 0; i < DCEN_MASKS; i++) {
+        if (dcen.mask_key[i] && !used[i]) {
+            rest += dcen.mask_n[i];
+        }
+    }
+    snprintf(buf + o, sizeof(buf) - o, " rest=%u", rest);
+    DCEN_LOG("%s", buf);
+
+    o = snprintf(buf, sizeof(buf), "census-ro w=%u other=%u", w,
+                 dcen.ro_other);
+    for (int i = 0; i < DCEN_RO && dcen.ro_n[i]; i++) {
+        o += snprintf(buf + o, sizeof(buf) - o, " %x:%u", dcen.ro_addr[i],
+                      dcen.ro_n[i]);
+    }
+    DCEN_LOG("%s", buf);
+
+    dcen.draws = dcen.clears = dcen.skips = 0;
+    memset(dcen.bit, 0, sizeof(dcen.bit));
+    memset(dcen.cls, 0, sizeof(dcen.cls));
+    memset(dcen.path, 0, sizeof(dcen.path));
+    memset(dcen.cp, 0, sizeof(dcen.cp));
+    dcen.bound_shaders = dcen.pbind = 0;
+    dcen.shc_in_n = dcen.shc_stale = dcen.shc_stale_full = 0;
+    dcen.ubo_sets = dcen.ubo_sets_samesb = 0;
+    dcen.uploads = dcen.uploads_same = 0;
+    dcen.reuse_full = dcen.same_notsfp = 0;
+    memset(dcen.crow, 0, sizeof(dcen.crow));
+    memset(dcen.nrows, 0, sizeof(dcen.nrows));
+    memset(dcen.mask_key, 0, sizeof(dcen.mask_key));
+    memset(dcen.mask_n, 0, sizeof(dcen.mask_n));
+    dcen.mask_other = 0;
+    memset(dcen.ro_n, 0, sizeof(dcen.ro_n));
+    dcen.ro_other = 0;
+}
+
+static void begin_pre_draw_probe(PGRAPHState *pg);
+
 static void begin_pre_draw(PGRAPHState *pg)
+{
+    if (unlikely(drawcensus_on())) {
+        drawcensus_pre(pg);
+        begin_pre_draw_probe(pg);
+        drawcensus_post(pg);
+        return;
+    }
+    begin_pre_draw_probe(pg);
+}
+
+static void begin_pre_draw_probe(PGRAPHState *pg)
 {
 #if HAKUX_VRAM_RACE_PROBE
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -5181,6 +7166,18 @@ static void begin_draw(PGRAPHState *pg)
     if (!r->in_render_pass) {
         begin_render_pass(pg);
         must_bind_pipeline = true;
+    }
+    if (!pg->clearing && xfr.cur >= 0) {
+        uint32_t c0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);
+        uint32_t c1 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1);
+        xfr_census_draw(
+            r,
+            c0 & (NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE |
+                  NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE |
+                  NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE |
+                  NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE),
+            (c0 & NV_PGRAPH_CONTROL_0_ZENABLE) ||
+                (c1 & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE));
     }
 
     if (must_bind_pipeline) {
@@ -5643,6 +7640,9 @@ static bool upload_draw_uniforms(PGRAPHState *pg, size_t offsets_out[2])
             pg, BUFFER_UNIFORM_STAGING, &data, &size, 1,
             r->device_props.limits.minUniformBufferOffsetAlignment);
     }
+#if NV2A_PERF_LOG
+    pgraph_vk_ubosz_note_upload(pg, 1);
+#endif
 
     return true;
 }
@@ -5909,6 +7909,10 @@ static void rebind_ubo_dynamic_offsets(PGRAPHState *pg, uint32_t off0,
         r->pipeline_binding->layout, 1, 1,
         &r->push_ubo_sets[r->push_ubo_set_index - 1],
         2, dyn_off);
+#if NV2A_PERF_LOG
+    pgraph_vk_ubosz_note_bind(r->push_ubo_sets[r->push_ubo_set_index - 1],
+                              dyn_off);
+#endif
 }
 
 /*
@@ -6462,9 +8466,136 @@ static bool vertex_range_gpu_stale(PGRAPHVkState *r, hwaddr addr, hwaddr size,
     return false;
 }
 
+/* Pages of [addr, addr + size) in VRAM, as bitmap indices. */
+static inline void drawrec_pages(hwaddr addr, hwaddr size, unsigned long *p0,
+                                 unsigned long *p1)
+{
+    *p0 = addr >> TARGET_PAGE_BITS;
+    *p1 = MIN(ROUND_UP(addr + size, TARGET_PAGE_SIZE) >> TARGET_PAGE_BITS,
+              drawrec.npages);
+}
+
+static bool drawrec_vtx_redo_any(hwaddr addr, hwaddr size)
+{
+    unsigned long p0, p1;
+    drawrec_pages(addr, size, &p0, &p1);
+    return p0 < p1 && find_next_bit(drawrec.redo, p1, p0) < p1;
+}
+
+/* Re-arm every OWED page: one walk per run, runs closer than the gap merged. */
+static void drawrec_vtx_walk(PGRAPHVkState *r, bool at_flip)
+{
+    unsigned long lo = drawrec.lo, hi = drawrec.hi;
+    unsigned int runs = 0;
+
+    drawrec.redo_n = 0;
+    drawrec.redo_b = 0;
+    if (lo >= hi) {
+        return;
+    }
+    unsigned long s = find_next_bit(drawrec.owed, hi, lo);
+    while (s < hi) {
+        unsigned long e = find_next_zero_bit(drawrec.owed, hi, s);
+        for (;;) {
+            unsigned long n = find_next_bit(drawrec.owed, hi, e);
+            if (n >= hi || (n - e > DRAWREC_VTX_GAP &&
+                            runs + 1 < DRAWREC_VTX_MAX_RUNS)) {
+                break;
+            }
+            e = find_next_zero_bit(drawrec.owed, hi, n);
+        }
+        physical_memory_dirty_bits_cleared(
+            r->vram_ram_addr + ((ram_addr_t)s << TARGET_PAGE_BITS),
+            (ram_addr_t)(e - s) << TARGET_PAGE_BITS);
+        runs++;
+        drawrec.n_pages += e - s;
+        s = e < hi ? find_next_bit(drawrec.owed, hi, e) : hi;
+    }
+    bitmap_clear(drawrec.owed, lo, hi - lo);
+    drawrec.lo = drawrec.npages;
+    drawrec.hi = 0;
+    drawrec.n_runs += runs;
+    if (at_flip) {
+        drawrec.n_walk_flip++;
+    } else {
+        drawrec.n_walk_budget++;
+    }
+}
+
+/*
+ * After a range was copied: cpu_dirty is whether its NV2A bits were set (and
+ * so have just been cleared, leaving the walk owed).
+ */
+static void drawrec_vtx_copied(hwaddr addr, hwaddr size, bool cpu_dirty)
+{
+    unsigned long p0, p1;
+    drawrec_pages(addr, size, &p0, &p1);
+    if (p0 >= p1) {
+        return;
+    }
+    if (cpu_dirty) {
+        bitmap_set(drawrec.owed, p0, p1 - p0);
+        bitmap_set(drawrec.redo, p0, p1 - p0);
+        drawrec.lo = MIN(drawrec.lo, p0);
+        drawrec.hi = MAX(drawrec.hi, p1);
+        drawrec.n_dirty++;
+        return;
+    }
+    /* Copied for REDO alone: a page already walked is current from here on. */
+    for (unsigned long p = find_next_bit(drawrec.redo, p1, p0); p < p1;
+         p = find_next_bit(drawrec.redo, p1, p + 1)) {
+        if (!test_bit(p, drawrec.owed)) {
+            clear_bit(p, drawrec.redo);
+        }
+    }
+    drawrec.redo_n++;
+    drawrec.redo_b += size;
+    drawrec.n_redo++;
+    drawrec.b_redo += size;
+}
+
+/* Once per flip: walk what is owed, and log the counters every 60 flips. */
+static void drawrec_tick(PGRAPHVkState *r)
+{
+    unsigned int f = g_nv2a_stats.frame_count;
+    if (f == drawrec.frame) {
+        return;
+    }
+    drawrec.log_frames += f - drawrec.frame;
+    drawrec.frame = f;
+    if (drawrec.vtx) {
+        drawrec_vtx_walk(r, true);
+    }
+    if (drawrec.log_frames >= 60) {
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+            "[drawrec] f=%u vtx dirty=%" PRIu64 " redo=%" PRIu64
+            " redoKB=%" PRIu64 " walks=%" PRIu64 "+%" PRIu64
+            " runs=%" PRIu64 " pages=%" PRIu64 " shc=%" PRIu64,
+            drawrec.log_frames, drawrec.n_dirty, drawrec.n_redo,
+            drawrec.b_redo >> 10, drawrec.n_walk_flip,
+            drawrec.n_walk_budget, drawrec.n_runs, drawrec.n_pages,
+            drawrec.n_shc);
+#endif
+        drawrec.log_frames = 0;
+        drawrec.n_dirty = drawrec.n_redo = drawrec.b_redo = 0;
+        drawrec.n_walk_flip = drawrec.n_walk_budget = 0;
+        drawrec.n_runs = drawrec.n_pages = drawrec.n_shc = 0;
+    }
+}
+
 static inline bool has_dirty_vertex_pages(PGRAPHVkState *r)
 {
     ram_addr_t ram_base = r->vram_ram_addr;
+
+    if (drawrec_vtx_on(r)) {
+        for (int i = 0; i < r->num_vertex_ram_buffer_syncs; i++) {
+            if (drawrec_vtx_redo_any(r->vertex_ram_buffer_syncs[i].addr,
+                                     r->vertex_ram_buffer_syncs[i].size)) {
+                return true;
+            }
+        }
+    }
 
     for (int i = 0; i < r->num_vertex_ram_buffer_syncs; i++) {
         if (vertex_range_gpu_stale(r, r->vertex_ram_buffer_syncs[i].addr,
@@ -6795,6 +8926,7 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
         begin_render_pass(pg);
         pipeline_changed = true;
     }
+    xfr_census_draw(r, e->color_write, e->depth_test || e->stencil_test);
 
     if (pipeline_changed) {
         if (!e->pipeline_binding || e->pipeline_binding->pipeline == VK_NULL_HANDLE) {
@@ -7000,6 +9132,9 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 e->layout, 1, 1, &e->descriptor_set,
                                 2, e->dynamic_offsets);
+#if NV2A_PERF_LOG
+        pgraph_vk_ubosz_note_bind(e->descriptor_set, e->dynamic_offsets);
+#endif
     }
 
     /* Bind texture set (set 0) */
@@ -7175,6 +9310,13 @@ void pgraph_vk_draw_end(NV2AState *d)
     if (is_nop_draw) {
         NV2A_VK_DPRINTF("nop draw!\n");
         return;
+    }
+
+    if (unlikely(probe_on())) {
+        probe1010.draws++;
+        if (probe1010.snapq) {
+            probe_snapq(d);
+        }
     }
 
     if (g_xemu_draw_reorder &&
@@ -7394,6 +9536,10 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
         return;
     }
 
+    if (unlikely(drawrec_on(r))) {
+        drawrec_tick(r);
+    }
+
     {
         unsigned long *bmp = get_uploaded_bitmap(r);
         bool all_uploaded = true;
@@ -7472,6 +9618,8 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
 
     vw->merged += num_syncs;
 
+    bool vtx_owe = drawrec_vtx_on(r);
+
     {
         ram_addr_t ram_base = r->vram_ram_addr;
 
@@ -7490,17 +9638,20 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
             unsigned long end_page = (start + size) >> TARGET_PAGE_BITS;
             /* #262: GPU writes the bitmap below cannot see */
             bool gpu_stale = vertex_range_gpu_stale(r, addr, size, false);
-            bool dirty = gpu_stale;
+            bool cpu_dirty = false;
+            /* lane.drawrec1010: a page whose walk is owed or just paid */
+            bool redo = vtx_owe && drawrec_vtx_redo_any(addr, size);
 
             while (page < end_page) {
                 unsigned long idx = page / DIRTY_MEMORY_BLOCK_SIZE;
                 unsigned long ofs = page % DIRTY_MEMORY_BLOCK_SIZE;
                 unsigned long num = MIN(end_page - page,
                                         DIRTY_MEMORY_BLOCK_SIZE - ofs);
-                dirty |= bitmap_test_and_clear_atomic(
+                cpu_dirty |= bitmap_test_and_clear_atomic(
                     blocks->blocks[idx], ofs, num);
                 page += num;
             }
+            bool dirty = gpu_stale || cpu_dirty || redo;
 
             if (gpu_stale) {
                 NV2A_VK_DPRINTF("Range overlaps GPU-written surface data. "
@@ -7509,13 +9660,18 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
 
             if (dirty) {
                 NV2A_VK_DPRINTF("Memory dirty. Synchronizing...");
-                physical_memory_dirty_bits_cleared(start, size);
+                if (!vtx_owe) {
+                    physical_memory_dirty_bits_cleared(start, size);
+                }
                 vw->dirty_count++;
                 vw->bytes_copied += size;
                 pgraph_vk_update_vertex_ram_buffer(pg, addr,
                                                    d->vram_ptr + addr, size);
                 /* the update downloaded any draw_dirty overlap first */
                 vertex_range_gpu_stale(r, addr, size, true);
+                if (vtx_owe && (cpu_dirty || redo)) {
+                    drawrec_vtx_copied(addr, size, cpu_dirty);
+                }
 #if HAKUX_VRAM_RACE_PROBE
                 /*
                  * #54 probe. The bits for this range were consumed by the
@@ -7535,6 +9691,11 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
 #endif
             }
         }
+    }
+
+    if (vtx_owe && (drawrec.redo_n >= DRAWREC_VTX_REDO_N ||
+                    drawrec.redo_b >= DRAWREC_VTX_REDO_B)) {
+        drawrec_vtx_walk(r, false);
     }
 
     r->num_vertex_ram_buffer_syncs = 0;
@@ -8005,6 +10166,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
                 };
             }
 
+            xfr_census_clear(pg, parameter, write_color, write_zeta);
             if (num_attachments) {
                 vkCmdClearAttachments(r->command_buffer, num_attachments,
                                       clear_attachments, 1, &clear_rect);
@@ -8029,6 +10191,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
         RGBA_BLUE, "Clear %08" HWADDR_PRIx,
         binding->vram_addr);
     begin_draw(pg);
+    xfr_census_clear(pg, parameter, write_color, write_zeta);
 
     // FIXME: What does hardware do when min >= max?
     // FIXME: What does hardware do when min >= surface size?
@@ -8382,7 +10545,10 @@ static void flush_draw_one_pass(NV2AState *d)
         return;
     }
 
-    if (!r->pipeline_binding) {
+    /* NULLREC binds no pipeline, so it does not need one */
+    bool nullrec = probe_nullrec_on();
+
+    if (!r->pipeline_binding && !nullrec) {
         /* Pipeline not available (cache exhausted or async compile pending).
          * Skip this draw to avoid crashing in begin_pre_draw/begin_draw. */
         OPT_STAT_INC(draws_skipped_no_pipeline);
@@ -8401,6 +10567,12 @@ static void flush_draw_one_pass(NV2AState *d)
          */
         NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
         return;
+    }
+
+    if (nullrec) {
+        /* begin_pre_draw() would; a buffer-space finish below then submits
+         * and resets the staging the copies need, as with the switch off */
+        pgraph_vk_ensure_command_buffer(pg);
     }
 
     r->num_vertex_ram_buffer_syncs = 0;
@@ -8485,6 +10657,17 @@ static void flush_draw_one_pass(NV2AState *d)
         }
         NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
+        if (nullrec) {
+            probe_nullrec_pre(pg);
+            copy_remapped_attributes_to_inline_buffer(pg, remap, 0,
+                                                      max_element);
+            if (prim_rw.num_indices > 0) {
+                pgraph_vk_update_index_buffer(
+                    pg, prim_rw.indices,
+                    prim_rw.num_indices * sizeof(uint32_t));
+            }
+            goto draw_arrays_done;
+        }
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto draw_arrays_done;
@@ -8594,6 +10777,13 @@ draw_arrays_done:
         VertexBufferRemap remap = remap_unaligned_attributes(pg, max_element + 1);
         NV2A_PHASE_TIMER_END_EXCL(draw_vtx_sync);
 
+        if (nullrec) {
+            probe_nullrec_pre(pg);
+            copy_remapped_attributes_to_inline_buffer(pg, remap, 0,
+                                                      max_element + 1);
+            pgraph_vk_update_index_buffer(pg, draw_indices, index_data_size);
+            goto inline_elements_done;
+        }
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto inline_elements_done;
@@ -8658,6 +10848,17 @@ inline_elements_done:
         }
         NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
+        if (nullrec) {
+            probe_nullrec_pre(pg);
+            pgraph_vk_update_vertex_inline_buffer(
+                pg, data, sizes, r->num_active_vertex_attribute_descriptions);
+            if (prim_rw.num_indices > 0) {
+                pgraph_vk_update_index_buffer(
+                    pg, prim_rw.indices,
+                    prim_rw.num_indices * sizeof(uint32_t));
+            }
+            goto inline_buffer_done;
+        }
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto inline_buffer_done;
@@ -8737,6 +10938,18 @@ inline_buffer_done:
         }
         NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
+        if (nullrec) {
+            probe_nullrec_pre(pg);
+            void *ia_data = pg->inline_array;
+            pgraph_vk_update_vertex_inline_buffer(pg, &ia_data,
+                                                  &inline_array_data_size, 1);
+            if (prim_rw.num_indices > 0) {
+                pgraph_vk_update_index_buffer(
+                    pg, prim_rw.indices,
+                    prim_rw.num_indices * sizeof(uint32_t));
+            }
+            goto inline_array_done;
+        }
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto inline_array_done;

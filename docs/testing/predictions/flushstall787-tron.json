@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-10-04T00:11:04Z",
+  "who": "lane.flushstall787",
+  "issue": "787",
+  "title": "Tron 2.0 - Killer App (USA, Europe).iso",
+  "device": "nova",
+  "seconds": 750,
+  "route": "../../../lanes/vcpuwait433/tron-newgame-anystate",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "1fe520a7092cfda559233429bb94f4e21fed4e37",
+  "b_ref": "1fe520a7092cfda559233429bb94f4e21fed4e37",
+  "a_env": [],
+  "b_env": [],
+  "queue_order": "ONE measurement run, not an A/B, queued with the Kabuki run (predictions/flushstall787-kabuki.json) on the same ref: request.sh --who lane.flushstall787 --title 'Tron 2.0 - Killer App (USA, Europe).iso' --route ../../../lanes/vcpuwait433/tron-newgame-anystate --seconds 750 --perflog --device nova --ref 1fe520a709 --issue 787 --expect docs/testing/predictions/flushstall787-tron.json, release tier. 750 s, not 840: the two runs together stay inside the 30-min pilot allowance (930 + 840 s with setup); the on-disk run's stalls fall at 56-490 s of its log. Same route and env as 1-1791057797-lanelocal-2547673. A run that fails V is re-queued once; never scored.",
+  "judge": "python3 docs/lanes/flushstall787/fs_judge.py <result_dir> --all  (every stall >= 400 ms after the first 30 s of log, burst or not)",
+  "prediction": "#787's third title answers differently from Kabuki: Tron's stalls ARE translation, and not because of a TLB flush. On disk (1-1791057797-lanelocal-2547673), the 120-frame hakuX-pages line holding each of Tron's eight stalls >= 400 ms after boot reads 15,785 to 48,572 blocks generated for seven of them and 2,186 for the eighth (the 1,375 ms stall at ~56 s of log) (Kabuki's: 20 to 861), and [rr425]'s sampled loop-gap time, which contains every tb_gen_code call, is 0.75 to 5.1 s over the stall windows (Kabuki's 698 ms stall: 64 ms). The 1,762 ms stall coincides with a jump-cache wipe that neither a TLB flush nor a TB invalidation made (jc - jct - jci = 1 at w=72), the trace a tb_flush() leaves: the whole code cache was thrown away and rebuilt (48,572 generated). The others carry 1.7k to 8.3k blocks discarded by code-page writes per line: code loaded into pages that held code. The 2,186-block stall is the one this prediction does not cover; it is reported, not forced into either reading. So: tb_gen_code time >= 400 ms in at least one stall, and the trigger is a code-cache flush or code loading, which [tcg787]'s tbf and disc name.",
+  "legs": {
+    "V (validity)": "As the Kabuki prediction's V1-V4 (tcg787 present with pl=1; the timer moves with translation; summed gus <= 1.5 x summed [rr425] gapus; gc / hakuX-pages calls 0.85-1.10), and V5: at least one stall >= 400 ms after the first 30 s of log. The route must reach the in-engine intro (route-frame menu-down on New Game, as in 990012); a run that does not is re-queued, not scored.",
+    "G (re-translation)": "Over all stalls >= 400 ms (--all): FAIL of the guest-side reading, i.e. this prediction holds, when at least one stall reads gus >= 400 ms. PASS (guest-side) when every stall reads < 100 ms, which refutes this prediction. BETWEEN otherwise.",
+    "T (trigger, reported)": "For each stall with gus >= 400 ms: tbf (whole code-cache flushes) and disc (blocks discarded by code-page writes) over its windows, and ff/pf from [tlb68]. Predicted: tbf >= 1 in at least one such stall; disc >= 5,000 in the rest. A stall with gus >= 400 ms, tbf = 0 and disc < 1,000 would be first-time translation of code never seen before, which no invalidation change can remove.",
+    "F (the TLB flush's own fallout)": "tfus + ffus + pfus per stall, reported: predicted < 150 ms in every stall, i.e. the TLB flush is not Tron's stall either."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. Legs are read off [tcg787], [tlb68], [rr425], [tpc787], hakuX-pages and hakuX-pace by fs_judge.py."
+}

@@ -1,0 +1,47 @@
+pathfind: Guilty Gear XX Reload The Midnight Carnival (53410002) on nova: /storage/E6C6-D7AA/Games/XBox/53410002-Guilty_Gear_XX_Reload_The_Midnight_Carnival.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 53410002 any, loaded golden 6f0d8fc26eb7
+[   5.5s] #  1 publisher_logo    replay  A                        replay step 0: Early boot (0.1 min) showing a logo animation with no title or menu yet; sk
+[   9.6s] #  2 black             black   wait                     black frame
+[  17.7s] #  3 publisher_logo    fast    A                        Publisher logo is still up; per hints, skip with A once and re-read rather than mashing or
+[  24.7s] #  4 publisher_logo    fast    A                        Publisher logo still up, no title or menu yet. Per hints, skip with A once and re-read rat
+[  32.1s] #  5 black             fast    wait                     Looks like a static backdrop, likely a logo or title fade-in and not a menu. Per hints, on
+[  41.5s] #  6 cutscene          fast    wait                     Static title or intro artwork with no prompt or menu visible. The screen is still changing
+[  50.8s] #  7 cutscene          fast    START                    Static opening art with letterbox bars and no prompt or menu, so it is a cutscene or title
+[  55.4s] #  8 title_screen      replay  START                    replay step 4: Title screen with a 'PRESS START' prompt; START is the prompt's required in
+[  59.8s] #  9 main_menu         replay  A                        replay step 5: Main menu with ARCADE highlighted (center, brightest). Arcade is the fastes
+[  64.3s] # 10 main_menu         replay  A                        replay step 6: Character select grid (a menu, not gameplay); the hint says accept the defa
+[  68.5s] # 11 title_screen      replay  START                    replay step 7: Title screen with 'PRESS START' prompt; START is the required input per the
+[  78.0s] # 12 main_menu         fast    A                        Character select menu, not gameplay. The recorded path says accept the default with A; the
+[  91.0s] # 13 gameplay          fast    wait                     Player-controlled fighter on a live arena with the full HUD and no menu or letterbox. Not 
+[ 110.7s] # 14 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.694, under input 0.720
+[ 119.2s] # 15 gameplay          fast    wait                     Live round with the full HUD and a counting timer (95 earlier, now 74), so the round is ru
+[ 136.6s] # 16 probe             probe   STICK:left:1.2 STICK:left:1.2 STICK:right:1.2 control 0.212, under input 0.613
+[ 149.7s] # 17 unknown           fast    wait                     The 'PLEASE WAIT' text and the SLASH banner mean the round is not under player control yet
+[ 160.4s] # 18 gameplay          fast    wait                     The full HUD is up and the timer is counting (91, down from earlier readings) with no bann
+[ 177.1s] # 19 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.722, under input 0.253
+[ 195.5s] # 20 gameplay          fast    wait                     Full fighting HUD with a counting timer (66, down from 74 and 67 earlier) and no banner or
+[ 210.5s] # 21 probe             probe   B STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.130, under input 0.130
+[ 214.9s] # 22 results           fast    wait                     A WINNER banner is a round-end result, not player control; not gameplay per hints (CPU WIN
+[ 226.2s] # 23 unknown           fast    A                        Continue prompt with a countdown, not gameplay. Accepting Continue with A is the fastest r
+[ 238.2s] # 24 unknown           fast    A                        Continue countdown, not gameplay. The last A on this prompt led to a changed screen, so A 
+[ 242.3s] # 25 black             black   wait                     black frame
+[ 245.6s] # 26 title_screen      replay  START                    replay step 8: Title screen with a 'PRESS START' prompt, the prompt wants START; history s
+[ 259.2s] # 27 title_screen      fast    START                    Arcade high-score attract screen with a PRESS START prompt, not gameplay. Per the recorded
+[ 266.5s] # 28 publisher_logo    fast    A                        Publisher/copyright logo screen before the title; per hints, skip with A once and re-read 
+[ 273.8s] # 29 main_menu         fast    A                        Main menu with ARCADE highlighted (brightest, center). Arcade is the fastest route to play
+[ 282.1s] # 30 submenu           fast    A                        Character select is a menu, not gameplay. Recorded path and hint say accept the default wi
+[ 293.6s] # 31 submenu           fast    A                        Character select with Sol highlighted as the default; this is a menu, not gameplay. Accept
+[ 302.9s] # 32 title_screen      fast    START                    Arcade-style 'PRESS START' prompt for 1P. The recorded path for this title uses START at t
+[ 313.6s] # 33 title_screen      fast    START                    This is an attract/join prompt inside the fight, not live play: both fighters are idle, th
+[ 323.5s] # 34 pause             fast    A                        This is a pause menu over the match, not live play. RETURN is the highlighted item, so A r
+[ 334.5s] # 35 gameplay          fast    wait                     Round is live: timer is counting down and Sol is mid-air with the HUD up. The PRESS START 
+[ 355.1s] # 36 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.582, under input 0.094
+hold-play: genre attack, need 600 s of play
+hold-play: fps at 182 s: median 59.0, share>=30 1.0 over 183 samples
+hold-play: not held 97/600 s of play; off play for 13 steps: menu (Shows 'PLAYER 1P 0 / PRESS START' over a character portrait with no fighters in the arena, so it is a menu or select prompt, not live fighting.)
+held Guilty Gear XX Reload The Midnight Carnival for 194s
+VERDICT Guilty Gear XX Reload The Midnight Carnival ? FAIL(duration: 193 s of gameplay < 600 s confirmation) gameplay=192.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.5187 fps_excluded=94.1s
+{"name": "Guilty Gear XX Reload The Midnight Carnival", "device": "nova", "result": "gameplay", "minutes": 5.92, "model_calls": 46, "steps": 36, "replayed": 6, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/hold/frames/035-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

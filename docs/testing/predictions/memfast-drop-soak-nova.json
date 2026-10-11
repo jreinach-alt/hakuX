@@ -1,0 +1,45 @@
+{
+ "registered_utc": "2026-09-29T19:20:00Z",
+ "who": "lane.memfast",
+ "issue": "507",
+ "titles": {
+  "gta": {
+   "title": "54540082-Grand_Theft_Auto_San_Andreas.xiso.iso",
+   "route": "gta-sa",
+   "device": "nova",
+   "runs_per_arm": 2,
+   "role": "J/frame + fps pair; census",
+   "note": "queued once the Nova copy lands (hardware/titlepush/listing-nova.txt). The Thor pilot pair (1718274/1718333) is not pooled with these for J: J is compared within one device."
+  },
+  "crimson": {
+   "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+   "route": "crimson-skies",
+   "device": "nova",
+   "runs_per_arm": 1,
+   "role": "gameplay reach on B; census on A"
+  }
+ },
+ "seconds": 300,
+ "perflog": true,
+ "frames_every": 0,
+ "a_ref": "31515f9751b4b4d5bbea2a0b0e62201b897c3a41",
+ "b_ref": "82e0ef1fa95cd223c682d1238d80f2a4357016f1",
+ "queue_order": "Crimson B1 A1 (Nova), then GTA B1 A1 B2 A2 (Nova) once its copy lands. Each: env HAKUX_RELEASE_PRIO=1 docs/testing/request.sh --who lane.memfast --issue 507 --title <title> --route <route> --seconds 300 --perflog --device nova --ref <a_ref|b_ref> --expect docs/testing/predictions/memfast-drop-soak-nova.json. On battery.",
+ "window": "title_verdict.py's own scored window (from the route's `mark gameplay`); [mf0] lines over the whole run, split at act=1",
+ "judge": "python3 docs/testing/title_verdict.py on a COPY of each result dir (it writes verdict.json) for j_per_frame, gfps and reach; docs/lanes/memfast/mf0_read.py <result dir> for the census legs; logcat hakuX-crash for crashes.",
+ "prediction": "#507 phase 1. b_ref deletes the XBOX load fast path: the five-instruction per-TB preamble (load xbox_ram_fp.active and cb_count, cache host_base in X26) and the per-load CBZ X26 + RAM/VRAM-window test ahead of the softmmu compare, and returns X26/X27 to the allocator. lane.vcpuplan measured the preamble plus test at 8.5% of GTA's vCPU thread with the armed leg never taken (PR #589 section 1.3), so B does the same guest work in fewer host instructions. a_ref differs from master only by the [mf0] census (instrumentation), which b_ref keeps.",
+ "legs": {
+  "V (validity)": "Per run: the route logs `mark gameplay`; title_verdict.py reports power.measured true (on battery); >= 20 [mf0] lines. A run whose thermal record shows cpu3-7 paused inside the scored window is VOID for fps and J/frame (#507), not a zero, and is re-queued once. A run failing V is reported and re-queued once.",
+  "J (J/frame, the point)": "GTA (two Nova pairs) and Nightfire (two Nova pairs, under memfast-drop-soak.json): mean over pairs of j_per_frame B/A <= 0.98 per title. Refuted if B/A >= 1.00 on both titles. Pairs on different devices are never pooled.",
+  "F (fps)": "GTA and Nightfire: gfps B/A >= 1.02 where A runs below 95% of target_fps (GTA 30, Nightfire 60); where A is at its cap the fps leg is VOID and J carries the claim.",
+  "G (gameplay reach, exactness)": "B reaches `mark gameplay` on GTA, Nightfire and Crimson, with no hakuX-crash line and no hang (hakuX-perf lines continue to the end of the run) in any B run.",
+  "M (census, A runs; decides nothing about B, reported for phase 0)": "Per title from a_ref's [mf0] lines: the share of wall time after act=1 with cb=0 (armed); li/ln/lo and vi/vn/vo install counts; lnd/vnd distinct non-identity pages; the `[mf0] first` samples. Prediction, a guess labelled as one: armed share ~0 on GTA (vcpuplan saw the armed leg 0 times), and ln > 0 on every title (the XBE is mapped at VA 0x10000 onto kernel-allocated pages).",
+  "S (vCPU share)": "Read and PASSED on the Thor b_ref capture (NOTES, Leg S); not repeated.",
+  "pixels": "docs/testing/predictions/memfast-drop-pixels.json: all 100 golden suites bit-identical per capture (queued by the arms job)."
+ },
+ "must_not_move": [],
+ "expect": {},
+ "expect_counts": {},
+ "expect_note": "EMPTY ON PURPOSE: a soak writes no captures; the pixel half is memfast-drop-pixels.json",
+ "supersedes_for": "memfast-drop-soak.json, for the titles it put on the Thor (GTA SA, Crimson Skies): lane.local 2026-09-29 12:00 PDT moved fps, J/frame and confirmation runs to the Nova. The Nova runs queued under the old file (Nightfire, AUF) and the finished GTA pilot pair (Thor) are still judged under it."
+}

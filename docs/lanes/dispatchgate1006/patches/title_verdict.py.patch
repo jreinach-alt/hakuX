@@ -1,0 +1,15 @@
+--- a/docs/testing/title_verdict.py
++++ b/docs/testing/title_verdict.py
+@@ -829,6 +829,12 @@
+     v["pass"] = not fails
+     v["failing"] = fails[0] if fails else None
+     v["failures"] = fails
++    # EVERY failed gate by name (dispatchgate1006, owner order 2026-10-06 ~16:50).
++    # `failing` is the FIRST only: DOA3's read "menu time" and hid its fps miss
++    # (fps_ok_share 0.4394) from a plan that copied it. A reader that decides on
++    # a verdict reads this list, never `failing`.
++    v["failing_all"] = [re.split(r"[:(]", f, 1)[0].strip().replace(" ", "_") for f in fails]
++    v.setdefault("fps_ok_share", None)   # always present: None = no perf line inside play
+     v["rating_candidate"] = None
+     if v["pass"]:
+         v["rating_candidate"] = {1: "Playable", 2: "Playable (2x)"}.get(scale)

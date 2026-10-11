@@ -27,6 +27,12 @@ object PerGameSettingsManager {
         "draw_reorder",
         "draw_merge",
         "async_compile",
+        // #569: on by default; MainActivity sets HAKUX_GPL=0 when it is off.
+        "ubershader",
+        // #433: on by default; MainActivity sets HAKUX_SURFGPU accordingly.
+        "surfgpu",
+        // #433: on by default; MainActivity sets the six fastpaths vars accordingly.
+        "fastpaths",
         "submit_frames",
         "tier1_threshold",
         "simple_vblank",

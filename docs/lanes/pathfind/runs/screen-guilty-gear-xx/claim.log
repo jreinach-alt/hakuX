@@ -1,0 +1,19 @@
+pathfind: Guilty Gear XX Reload The Midnight Carnival (53410002) on nova: /storage/E6C6-D7AA/Games/XBox/53410002-Guilty_Gear_XX_Reload_The_Midnight_Carnival.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 53410002 first-run, loaded none
+[   8.8s] #  1 publisher_logo    fast    A                        Early boot (0.1 min) showing a logo animation with no title or menu yet; skip attempt with
+[  16.4s] #  2 publisher_logo    fast    A                        Publisher logo animation still playing, no title or menu yet; per hints, skip with A once 
+[  21.4s] #  3 black             black   wait                     black frame
+[  29.4s] #  4 publisher_logo    fast    A                        Arc System Works publisher logo still playing, no title or menu yet; per hints, skip with 
+[  37.1s] #  5 title_screen      fast    START                    Title screen with a 'PRESS START' prompt; START is the prompt's required input and is the 
+[  44.5s] #  6 main_menu         fast    A                        Main menu with ARCADE highlighted (center, brightest). Arcade is the fastest route to play
+[  52.1s] #  7 main_menu         fast    A                        Character select grid (a menu, not gameplay); the hint says accept the default with A. The
+[  59.5s] #  8 title_screen      fast    START                    Title screen with 'PRESS START' prompt; START is the required input per the hint for this 
+[  68.6s] #  9 title_screen      fast    START                    Title screen with a 'PRESS START' prompt, the prompt wants START; history shows START was 
+[  76.6s] # 10 gameplay          fast    wait                     Fighting-game HUD (health, timer 99, TENSION, BURST) is up with the two fighters in the ar
+[  91.4s] # 11 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.822, under input 0.816
+[ 100.9s] # 12 gameplay          fast    wait                     The round intro is over: the timer is running and a 5-hit combo is landing, so the round i
+[ 112.0s] # 13 probe             probe   STICK:right:1.5          control 0.104, under input 0.172
+{"name": "Guilty Gear XX Reload The Midnight Carnival", "device": "nova", "result": "gameplay", "minutes": 1.87, "model_calls": 13, "steps": 13, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-guilty-gear-xx/claim/frames/012-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

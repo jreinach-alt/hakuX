@@ -1,0 +1,109 @@
+== /home/justin/hakux-work/perf/2026-09-28-ibcache-r1/logcat.txt
+  span: from 14:18:35 to 14:19:44
+  windows=35 wall=70.8s vCPU cpu=88.1% of wall
+  ff=36.1/s  by cause: cr3n=0.0  cr3s=33.9  cr0=0.0  cr4=0.0  a20=0.0  fo=2.2
+     share: cr3n=0%  cr3s=94%  cr0=0%  cr4=0%  a20=0%  fo=6%
+  watch inserts=1.2/s over 66 s (each insert and each remove is one `fo` flush); live 7..21
+  pf=560.5/s  rd=384.5/s  rdh=384.3/s  rdo=825.8/s  sd=4298.7/s
+  inst: no [mf0] line (a build without the census)
+  kill line 51.1 ms per wall second (a third of 17.4% of the vCPU's 881 ms)
+  sd alone reaches it at 11.9 us per event
+== /home/justin/hakux-work/perf/2026-09-29-memfast-bref/logcat.txt
+  span: from 04:46:27 to 04:47:37
+  windows=35 wall=70.1s vCPU cpu=85.8% of wall
+  ff=58.7/s  by cause: cr3n=0.0  cr3s=57.5  cr0=0.0  cr4=0.0  a20=0.0  fo=1.1
+     share: cr3n=0%  cr3s=98%  cr0=0%  cr4=0%  a20=0%  fo=2%
+  watch inserts=0.6/s over 65 s (each insert and each remove is one `fo` flush); live 7..11
+  pf=927.1/s  rd=394.1/s  rdh=394.0/s  rdo=1085.3/s  sd=6308.9/s
+  inst=44926/s (census windows only)  per full flush=766
+  kill line 49.8 ms per wall second (a third of 17.4% of the vCPU's 858 ms)
+  sd alone reaches it at 7.9 us per event
+== /home/justin/hakux-work/wt/memfast/.scratch/1-1790629267-lane.memfast-1718274/logcat.txt
+  span: from 01:08:02 to the last line (the route's mark)
+  windows=52 wall=104.2s vCPU cpu=92.3% of wall
+  ff=24.9/s  by cause: cr3n=0.0  cr3s=24.0  cr0=0.0  cr4=0.0  a20=0.0  fo=0.9
+     share: cr3n=0%  cr3s=96%  cr0=0%  cr4=0%  a20=0%  fo=4%
+  watch inserts=0.5/s over 100 s (each insert and each remove is one `fo` flush); live 7..15
+  pf=416.2/s  rd=409.4/s  rdh=409.1/s  rdo=1019.2/s  sd=5846.6/s
+  inst=31911/s (census windows only)  per full flush=1282
+  kill line 53.6 ms per wall second (a third of 17.4% of the vCPU's 923 ms)
+  sd alone reaches it at 9.2 us per event
+== /home/justin/hakux-work/wt/memfast/.scratch/1-1790629267-lane.memfast-1718333/logcat.txt
+  span: from 01:16:26 to the last line (the route's mark)
+  windows=51 wall=102.4s vCPU cpu=91.8% of wall
+  ff=28.5/s  by cause: cr3n=0.0  cr3s=28.2  cr0=0.0  cr4=0.0  a20=0.0  fo=0.3
+     share: cr3n=0%  cr3s=99%  cr0=0%  cr4=0%  a20=0%  fo=1%
+  watch inserts=0.2/s over 95 s (each insert and each remove is one `fo` flush); live 7..13
+  pf=492.9/s  rd=464.9/s  rdh=464.7/s  rdo=942.5/s  sd=4937.3/s
+  inst=37846/s (census windows only)  per full flush=1329
+  kill line 53.3 ms per wall second (a third of 17.4% of the vCPU's 918 ms)
+  sd alone reaches it at 10.8 us per event
+== /home/justin/hakux-work/dispatch/results/0-0-y-1790395182-rtdbench-3/logcat.txt
+  span: from the first line to the last line; NO MARK, so boot and menus are in the rates
+  windows=129 wall=258.8s vCPU cpu=88.6% of wall
+  ff=286.6/s  by cause: cr3n=0.0  cr3s=0.4  cr0=0.0  cr4=0.0  a20=0.0  fo=286.3
+     share: cr3n=0%  cr3s=0%  cr0=0%  cr4=0%  a20=0%  fo=100%
+  watch inserts=144.7/s over 255 s (each insert and each remove is one `fo` flush); live 0..46
+  pf=127.5/s  rd=1275.6/s  rdh=1272.8/s  rdo=636.7/s  sd=6091.1/s
+  inst: no [mf0] line (a build without the census)
+  kill line 51.4 ms per wall second (a third of 17.4% of the vCPU's 886 ms)
+  sd alone reaches it at 8.4 us per event
+== /home/justin/hakux-work/dispatch/results/0-0-x-1-1790634702-lane.idlehaltdefault-3052521/logcat.txt
+  span: from the first line to the last line; NO MARK, so boot and menus are in the rates
+  windows=108 wall=216.6s vCPU cpu=93.5% of wall
+  ff=37.7/s  by cause: cr3n=0.0  cr3s=0.7  cr0=0.0  cr4=0.0  a20=0.0  fo=37.0
+     share: cr3n=0%  cr3s=2%  cr0=0%  cr4=0%  a20=0%  fo=98%
+  watch inserts=22.3/s over 215 s (each insert and each remove is one `fo` flush); live 0..1943
+  pf=211.9/s  rd=469.0/s  rdh=465.3/s  rdo=60.7/s  sd=765.1/s
+  inst: no [mf0] line (a build without the census)
+  kill line 54.2 ms per wall second (a third of 17.4% of the vCPU's 935 ms)
+  sd alone reaches it at 70.9 us per event
+== /home/justin/hakux-work/dispatch/results/0-0-x-1-1790651075-lane.energymap507-1227971-r1/logcat.txt
+  span: from 04:17:42 to the last line (the route's mark)
+  windows=100 wall=201.1s vCPU cpu=73.3% of wall
+  ff=0.6/s  by cause: cr3n=0.0  cr3s=0.6  cr0=0.0  cr4=0.0  a20=0.0  fo=0.0
+     share: cr3n=0%  cr3s=100%  cr0=0%  cr4=0%  a20=0%  fo=0%
+  watch inserts=0.0/s over 192 s (each insert and each remove is one `fo` flush); live 6..6
+  pf=30.9/s  rd=499.3/s  rdh=499.3/s  rdo=331.7/s  sd=1231.4/s
+  inst: no [mf0] line (a build without the census)
+  kill line 42.5 ms per wall second (a third of 17.4% of the vCPU's 733 ms)
+  sd alone reaches it at 34.5 us per event
+== /home/justin/hakux-work/dispatch/results/0-0-x-1-1790651075-lane.idlehaltdefault-2875478/logcat.txt
+  span: from 04:32:26 to the last line (the route's mark)
+  windows=105 wall=210.1s vCPU cpu=93.5% of wall
+  ff=57.7/s  by cause: cr3n=0.0  cr3s=0.0  cr0=0.0  cr4=0.0  a20=0.0  fo=57.7
+     share: cr3n=0%  cr3s=0%  cr0=0%  cr4=0%  a20=0%  fo=100%
+  watch inserts=28.9/s over 205 s (each insert and each remove is one `fo` flush); live 8..8
+  pf=0.0/s  rd=426.6/s  rdh=426.6/s  rdo=2231.7/s  sd=2668.9/s
+  inst: no [mf0] line (a build without the census)
+  kill line 54.2 ms per wall second (a third of 17.4% of the vCPU's 935 ms)
+  sd alone reaches it at 20.3 us per event
+== /home/justin/hakux-work/dispatch/results/1-1790639274-lane.gmem474-126215/logcat.txt
+  span: from 05:01:57 to the last line (the route's mark)
+  windows=132 wall=264.6s vCPU cpu=90.6% of wall
+  ff=3.6/s  by cause: cr3n=0.0  cr3s=0.0  cr0=0.0  cr4=0.0  a20=0.0  fo=3.6
+     share: cr3n=0%  cr3s=0%  cr0=0%  cr4=0%  a20=0%  fo=100%
+  watch inserts=1.8/s over 260 s (each insert and each remove is one `fo` flush); live 5..6
+  pf=0.0/s  rd=6514.7/s  rdh=6514.7/s  rdo=5499.4/s  sd=13860.2/s
+  inst: no [mf0] line (a build without the census)
+  kill line 52.5 ms per wall second (a third of 17.4% of the vCPU's 906 ms)
+  sd alone reaches it at 3.8 us per event
+== /home/justin/hakux-work/dispatch/results/1-1790563604-titleroutes-373432/logcat.txt
+  span: from 10:32:45 to the last line (the route's mark)
+  windows=200 wall=400.7s vCPU cpu=76.8% of wall
+  ff=0.4/s  by cause: cr3n=0.0  cr3s=0.3  cr0=0.0  cr4=0.0  a20=0.0  fo=0.1
+     share: cr3n=0%  cr3s=82%  cr0=0%  cr4=0%  a20=0%  fo=18%
+  watch inserts=0.0/s over 400 s (each insert and each remove is one `fo` flush); live 5..16
+  pf=1.0/s  rd=435.9/s  rdh=435.9/s  rdo=9637.4/s  sd=13162.8/s
+  inst: no [mf0] line (a build without the census)
+  kill line 44.5 ms per wall second (a third of 17.4% of the vCPU's 768 ms)
+  sd alone reaches it at 3.4 us per event
+== /home/justin/hakux-work/dispatch/results/1-1790582079-idlehalt-2124199/logcat.txt
+  span: from 10:08:19 to the last line (the route's mark)
+  windows=100 wall=200.8s vCPU cpu=60.5% of wall
+  ff=0.0/s  by cause: cr3n=0.0  cr3s=0.0  cr0=0.0  cr4=0.0  a20=0.0  fo=0.0
+  watch inserts=0.0/s over 195 s (each insert and each remove is one `fo` flush); live 3..3
+  pf=0.0/s  rd=282.4/s  rdh=282.4/s  rdo=5.9/s  sd=282.4/s
+  inst: no [mf0] line (a build without the census)
+  kill line 35.1 ms per wall second (a third of 17.4% of the vCPU's 605 ms)
+  sd alone reaches it at 124.3 us per event

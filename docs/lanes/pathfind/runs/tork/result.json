@@ -1,0 +1,45 @@
+{
+ "title_id": "55530040",
+ "name": "Tork: Prehistoric Punk",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Tork - Prehistoric Punk (USA).iso",
+ "result": "gameplay",
+ "tool": "3cfb3e56a8",
+ "started": "2026-10-02 11:44:41 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/025-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/025-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/025-probe-c.jpg"
+ ],
+ "reason": "four probes refused",
+ "minutes": 4.41,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/024-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/031-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/032-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/033-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5553.md"
+ ],
+ "model_calls": 19,
+ "calls_by_model": {
+  "claude-sonnet-5": 15,
+  "claude-opus-5-5": 4
+ },
+ "steps": 25,
+ "seconds": 302.1,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/frames/024-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 3,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/tork/strip.jpg"
+}

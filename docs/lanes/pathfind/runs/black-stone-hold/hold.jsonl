@@ -1,0 +1,7 @@
+{"n": 106, "hold_s": 1.0, "play_s": 9.3, "changed": null, "off": false, "src": "genre", "action": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"], "kept": true}
+{"n": 107, "hold_s": 10.3, "play_s": 18.5, "changed": 0.2344, "off": false, "src": "genre", "action": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"], "kept": false}
+{"n": 108, "hold_s": 19.5, "play_s": 27.8, "changed": 0.1917, "off": false, "src": "genre", "action": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"], "kept": false}
+{"n": 109, "hold_s": 28.8, "play_s": 37.1, "changed": 0.1589, "off": false, "src": "genre", "action": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"], "kept": false}
+{"n": 110, "hold_s": 38.1, "play_s": 46.6, "changed": 0.0782, "off": false, "src": "genre", "action": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"], "kept": true}
+{"n": 111, "hold_s": 47.6, "play_s": 55.8, "changed": 0.0614, "off": false, "src": "genre", "action": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"], "kept": false}
+{"n": 112, "hold_s": 56.8, "play_s": 65.1, "changed": 0.0757, "off": false, "src": "genre", "action": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"], "kept": false}

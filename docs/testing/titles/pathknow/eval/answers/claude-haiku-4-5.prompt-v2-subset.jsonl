@@ -1,0 +1,14 @@
+{"state": "gameplay", "why": "Buffy standing in dark dungeon with purple health bar visible; TIP control instructions shown; player is in control of character in game world", "action": "LSTICK_UP", "wait_s": 2, "frame": "f015.jpg"}
+{"state": "gameplay", "why": "Red character with compass HUD visible in 3D game world; player actively controlling ToeJam in the environment", "action": "wait", "wait_s": 2, "frame": "f033.jpg"}
+{"state": "gameplay", "why": "Player character Aradin visible in dungeon with HUD stats displayed", "action": "LSTICK_RIGHT", "wait_s": 2, "frame": "f038.jpg"}
+{"state": "gameplay", "why": "Multiple Sonic characters in jungle environment with visible HUD, actively in control", "action": "wait", "wait_s": 3, "frame": "f039.jpg"}
+{"state": "gameplay", "why": "player flying aircraft with HUD (compass, money, mission objective 'Recover the Pandora')", "action": "wait", "wait_s": 3, "frame": "f047.jpg"}
+{"state": "gameplay", "why": "Player controlling blue car during race with lap counter, race timer, position display, and RPM gauge visible", "action": "wait", "wait_s": 3, "frame": "f056.jpg"}
+{"state": "gameplay", "why": "Mech in urban combat with HUD minimap; tutorial instruction overlay", "action": "RT", "wait_s": 2, "frame": "f057.jpg"}
+{"state": "cutscene", "why": "In-game story scene with alien characters and glowing objects; no player control", "action": "A", "wait_s": 3, "frame": "f068.jpg"}
+{"state": "gameplay", "why": "blue car on street, LAP -/4 counter, speed 0 mph, HUD with minimap visible, player steering a street race in 187 Ride or Die", "action": "wait", "wait_s": 2, "frame": "f093.jpg"}
+{"state": "gameplay", "why": "Two characters fighting in arena with Bloody Roar extreme logo; player actively controlling character", "action": "A", "wait_s": 2, "frame": "f110.jpg"}
+{"state": "gameplay", "why": "Master Chief in game world with motion tracker HUD; profile update complete", "action": "wait", "wait_s": 2, "frame": "f111.jpg"}
+{"state": "gameplay", "why": "Racing game in progress with visible track, vehicles and HUD; player actively steering", "action": "wait", "wait_s": 2, "frame": "f116.jpg"}
+{"state": "gameplay", "why": "Character Rayne in night environment with HUD visible (inventory and status on sides); player can control movement", "action": "wait", "wait_s": 3, "frame": "f118.jpg"}
+{"state": "gameplay", "why": "Yellow sports car racing through city streets at night, player actively steering", "action": "wait", "wait_s": 5, "frame": "f119.jpg"}

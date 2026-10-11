@@ -1,0 +1,248 @@
+== status.sh dashboard
+  ok   status_html.py renders a fixture
+  ok   the page refreshes itself every 60 s
+  ok   the page has a dark variant
+  ok   the page is phone-width aware
+  ok   the page loads no external script or stylesheet
+  ok   the page says how long ago it was updated
+  ok   the machines answer names the Thor's run
+  ok   a hold names its holder and its end
+  ok   what needs a person is on the page
+  ok   ...with who acts
+  ok   the release blockers are on the page
+  ok   at a glance, then the four questions in order, then the details
+  ok   a Markdown table becomes an HTML table
+  ok   the page's own title block is not repeated below the fold
+  ok   no email address reaches the public page
+  ok   no token reaches the public page
+  ok   no credential path reaches the public page
+  ok   no home directory reaches the public page (fenced blocks too)
+  ok   a page that differs only in its clock has the same key
+  ok   a page whose queue moved has a new key
+  ok   the first tick publishes gh-pages
+  ok   gh-pages holds index.html
+  ok   gh-pages holds .nojekyll
+  ok   a second tick with nothing changed does not republish
+  ok   ...so two ticks make one commit
+  ok   a change inside the ten-minute gap waits
+  ok   the change is published once the gap has passed
+  ok   gh-pages is still exactly one commit
+  ok   the republished page carries the change
+  ok   (the heartbeat case starts from an unchanged page)
+  ok   an unchanged page is republished at the heartbeat
+  ok   without a named remote, a test repository is never pushed
+  ok   the dashboard JSON is written for other readers
+  ok   before Pages is enabled, #107's legacy roll-up continues
+  ok   once Pages serves it, #107's body becomes the pointer
+  ok   ...naming the URL
+  ok   ...one last rename, to a title without a clock
+  ok   ...the old roll-up comment says where it went
+  ok   ...the issue is kept pinned
+  ok   ...and locked
+  ok   after the switch a tick never writes to #107
+  ok   ...so it can never rename it again
+  ok   ...and says so
+  ok   a CONFLICTING fold-ready PR is named in NEEDS ATTENTION
+  ok   a mergeable one with no CI run says CI never ran
+  ok   panel: titles on the handhelds are counted from the json
+  ok   panel: a missing staging manifest is 'no source', naming the file
+  ok   panel: a title with a verdict on either handheld is tested
+  ok   panel: Playable needs a pass on every handheld tested
+  ok   panel: the gate reads the newest Ghoulies soak WITH gfps, median over 90-240 s, and counts the newer one passed over
+  ok   panel: a handheld with no soak has an empty row
+  ok   panel: no count against a quota (the counts are the title table's)
+  ok   panel: one handheld with no readable soak is NOT MET, and says which
+  ok   panel: ...and names the soak it passed over
+  ok   panel: the lane on each 0.5 issue
+  ok   panel: the page carries the gate's readings
+selftest: 64-status-html.sh took 93s
+== status.sh objective (the 16:24 fixture)
+  ok   the fixture renders (status.sh --print exits 0)
+  ok   ...and writes the page
+  ok   no bare 'held': each device is running, in use by a named holder with purpose and end, or idle
+  ok   'what needs a person' is exactly the six owner decisions and the stranded perfregimen
+  ok   lane.xbox and lane.remote are rows of the lanes table
+  ok   'never' is not a value on the page, nor on its first screen
+  ok   every latest-result cell is a whole sentence
+  ok   the 0.5 table carries pass 1's 17 titles
+  ok   lanes.json keeps its old keys and gains the first screen
+  ok   status.json carries the four answers
+  ok   the #107 body header's idle list names the stranded lane
+  ok   STATUS.md keeps the running-units table for #107
+  ok   a file wait reads as one, with the path and its holder
+  ok   ...waiting on hw/xbox/nv2a/pgraph/vk/surface.c, held by lane.doa413b
+  ok   parked work is one line with its gate
+  ok   a merged lane is finished, not blocked
+  ok   a path in an issue's history is not a file wait
+  ok   a hold.sh .why names its holder, purpose, start and end
+selftest: 65-status-objective.sh took 15s
+== status.sh 0.5 title table (#433)
+  ok   the fixture renders (status.sh --print exits 0)
+  ok   ...and writes the page
+  ok   every row carries exactly one status word from the scale, and each stage renders as itself
+  ok   Benchmarked N / 145 and Playable M / 50 are the rows' counts
+  ok   fixed columns: no title or next step past two lines at 360 or 400 px; short tokens never wrap
+  ok   nothing in the 0.5 section is shortened (no ellipsis; every title and next step in full)
+  ok   the pipeline is four labelled columns (Copied, Inputs, Save, Bench) with a legend; one-route titles count
+  ok   the target line says 145 and 50 and carries no date
+  ok   '~2026-09-28' is not on the page
+  ok   the 'not copied' tail folds after 10 rows, with its count
+  ok   a verdict with no name or title_id lands in its title's row, by the ISO's title-ID prefix
+  ok   red first, then from the most advanced stage down
+  ok   the header forecasts from the last 48 h rate
+  ok   each issue shows its state and what is in flight; an unowned open one is an alarm
+  ok   Q4 shows the device watchdog's word and last hour; a stale watchdog is lane.local's alarm
+  ok   a no-save record stands in for a save, with its reason; without it the save is still asked for
+  ok   title_verdict.py finds a title by its ISO's title-ID prefix, and only a registered one
+  ok   release-0.5.toml at docs/testing is the default and states 145 and 50
+selftest: 66-status-titles.sh took 11s
+== status.sh Measured N / 145 and the progress chart (#433)
+  ok   the fixture renders (status.sh --print exits 0)
+  ok   the 0.5 line leads with 'Measured N / 145', N the fixture's titles with any fps reading
+  ok   Measured >= Benchmarked >= Playable, and a soak alone makes a title Measured
+  ok   How close shows a Measured bar first, above Benchmarked and Playable
+  ok   the chart is inline SVG under the bars; its Measured line ends at N; three dashes
+  ok   status.json carries the three series
+  ok   Copied is a tick on one handheld, never a half, and nothing says 'copied to both handhelds'
+  ok   every measured row shows its median and share at its bar with no tap, one row per title, no fps in a status cell
+  ok   release-0.5.toml asks for one handheld, not both
+  ok   a 30 fps verdict reads 30.0 and 85% at 28.5+, and a soak of gfps=29 lines reads 30.0 and 100%, not 0%
+  ok   ...and the bar is targets.toml's playable_fps x fps_tolerance, not a constant (tolerance 0.9: at 27+)
+  ok   a build on a truncated facts.tsv finishes
+  ok   a build on a truncated lanes.json finishes
+  ok   a build on a STATUS.md cut before its last table's separator finishes
+  ok   md_to_html finishes on a table header with nothing after it
+  ok   status.sh bounds the build with a timeout that it logs
+selftest: 67-status-measured.sh took 12s
+== savestate: a title run's disk is its golden profile, or none on a first-run
+  ok   a returning run is prepared from the seeded golden (rc=0)
+  ok     ... the seed proposed hdd.img's save as Crimson Skies' golden
+  ok     ... hdd.json records title, state and the golden loaded (got: golden 7d1496b774d3)
+  ok     ... and the device's disk carries Nathan
+  ok   after the run, its save is harvested to latest
+  ok     ... and the golden is still Nathan
+  ok   VOID REPRODUCED: the device registry names the run's bare save, what the old disk carried next
+  ok   the next returning run rebuilds (rc=0, plans: build keep)
+  ok     GUARD: onto Nathan again, not the bare state the last run left
+  ok   a first-run of the same title is prepared (rc=0)
+  ok     ... its disk carries no Crimson Skies save
+  ok     ... and hdd.json says so (loaded: none)
+  ok   a returning run of a title with no golden is refused, rc 3 (got 3)
+  ok     ... with the reason in hdd.refused
+  ok     ... before any push, and hddPath never moved
+  ok   a first-run that reached mark profile-saved makes the title's golden
+  ok     ... and a returning run of it is now prepared, not refused
+== savestate: request.sh refuses a route whose state the disk cannot match
+  ok   VOID REPRODUCED + GUARD: a returning route with no golden is refused at the prompt
+  ok     ... and nothing was queued
+  ok   with Crimson Skies' golden it is queued, title_id and state in the request
+  ok   a variant family resolves to .first-run for a title with no golden (route: burnout3 -> burnout3.first-run (4541005B has no golden profile))
+  ok     ... and to .returning once it has one
+  ok   serve_one passes the request's title_id and title_state to the prepare
+  ok     ... and a refusal ends the request before the soak, with its reason
+== savestate: a soak whose route dies stops, instead of holding blind
+  ok   a route that dies (rc 2) stops a 30 s soak early (rc=6, 1s)
+  ok     ... and says route-died in run.log
+  ok   a route that ends cleanly (rc 0) holds the soak's window (rc=0, 4s)
+selftest: 85-savestate.sh took 22s
+== hdd split: a title run boots the titles disk; hdd.img stays the discs'
+  ok   fixtures: a device hdd.img with two titles' saves
+  ok   the first title run's disk is prepared (rc=0)
+  ok     ... by seed, build, keep (got: seed build keep)
+  ok     ... hddPath now names titles.qcow2 (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2)
+  ok     ... the device's titles.qcow2 is the pushed image (registry sha256)
+  ok     ... result's sha256_at_start is the device file's
+  ok     ... and it is mode 660, not the 0644 a push leaves (got: 660)
+  ok     ... no titles.qcow2.new is left behind
+  ok     ... the seed carried both of hdd.img's saves onto it
+  ok     ... hdd.img itself was not changed
+  ok     ... the marker holds the hddPath it replaced
+  ok   after the run: the new title's save is harvested into the store
+  ok     ... the registry knows the device file's new sha256
+  ok     ... hddPath is back on hdd.img (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img)
+  ok     ... the prefs file is byte-identical to before the run
+  ok     ... the marker is gone
+  ok   a request with no marker makes no adb call for hddPath
+  ok   the second run rebuilds from the store: build, keep (got: build keep)
+  ok     ... its disk carries the two seeded goldens
+  ok     ... and not the save the last run made
+  ok     ... which is in the store as Ghoulies' latest, not its golden
+  ok     ... and is the image the registry says was pushed
+  ok     ... mode 660 (got: 660)
+  ok     ... an untouched disk is not pulled after the run
+== hdd split: a kept 0644 titles disk is made 660 before the run
+  ok   a 0644 disk the store still matches is kept (rc=0, plans: keep)
+  ok     ... and made 660 (got: 660)
+  ok     ... its bytes untouched
+  ok     ... hdd.json records the mode it found
+  ok   a disk that cannot be made 660 fails the prepare, not the run (rc=1)
+  ok     ... before hddPath is pointed at it (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img)
+== hdd split: a failed hddPath read-back still leaves the way back
+  ok   a lost read-back fails the prepare (rc=1)
+  ok     ... the write did land: hddPath names titles.qcow2 (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2)
+  ok     ... and the marker already holds hdd.img
+  ok     ... so the next request's restore puts hdd.img back (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img)
+  ok     ... byte for byte
+  ok   hddPath found on titles.qcow2 is never recorded as the one to put back
+  ok     ... the run after it ends on hdd.img (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img)
+  ok   a marker naming titles.qcow2 restores hdd.img (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img)
+== hdd split: plan() never rebuilds over an unharvested disk
+  ok   a changed disk is harvested before anything else
+  ok   a disk whose last harvest failed is preserved whole, not kept and booted
+  ok     ... at any size
+  ok   a clean disk past the cap is rebuilt
+  ok   a clean disk under the cap is kept
+  ok   a disk missing from the device is rebuilt
+  ok   HAKUX_TITLES_DISK=0: the split is off, recorded, and no adb call is made
+  ok   a request's env HAKUX_TITLES_DISK=1 beats the worker's 0
+  ok     ... and a request that names none stays off
+  ok     ... a request's 0 beats a worker with the split on
+== hdd split: hdd.img past its limit is reset through saves.py reset
+  ok   under the limit the guard does nothing
+  ok   over the limit hdd.img is reset
+  ok     ... the original is kept on the device as hdd.img.bak-auto
+  ok     ... the new hdd.img is mode 660, or the disc runs die as #622's title runs did
+  ok     ... the new hdd.img is not the old one
+  ok     ... and every save on it survived
+== hdd split: a failed reset is not retried on the same disk
+  ok   no room for the backup: an alert
+  ok     ... and the partial hdd.img.bak-auto is removed
+  ok     ... the failure is recorded against the disk
+  ok     ... the next request writes the alert again, marked repeat
+  ok     ... without pulling or hashing the disk
+  ok   a disk saves.py refuses: an alert
+  ok     ... not retried while the disk is unchanged
+  ok     ... a write to hdd.img re-arms the guard
+== hdd split: serve_one calls it where the runs are
+  ok   restore, prepare, soak, after, then guard before the disc runs (got: restore_hdd_pref titles_disk_prepare restore_hdd_pref soak_title.sh titles_disk_after hdd_img_guard run_disc.sh )
+selftest: 99-hdd-split.sh took 14s
+== status.sh refuses a degraded render (#507)
+  ok   real scripts: setup
+  ok   real scripts: refuse
+  ok   real scripts: atonce
+  ok   real scripts: decrease
+  ok   real scripts: why
+  ok   mutant: no guard -> refuse goes red
+  ok   mutant: no bypass of the gap after a refusal -> atonce goes red
+  ok   mutant: any decrease refused -> decrease goes red
+  ok   mutant: no render record -> why goes red
+selftest: 99-status-degraded.sh took 65s
+== status page: an escalation is its '- ' line plus its continuation lines
+  ok   (a) an item RESOLVED only on a continuation line is not listed
+  ok   (b) an open item with an UPDATE continuation is listed once; the UPDATE line is no item
+  ok   (c) an item re-checked 30 min ago shows 're-checked 11:30' and is not unverified
+  ok   (d) an item unchecked for 3 h stays listed, marked UNVERIFIED
+  ok   (f) an unbulleted 'OWNER ONLY ... (meta): text' line is still an item
+  ok   (e) needs-hands.txt: an ask RESOLVED on its indented line is not listed
+selftest: 99-status-escalation-items.sh took 0s
+== status page: one owner escalation is one item, not one per line (#433)
+  ok   (real) the 09-29 escalations.md shape yields 3 open items, never 32 or 0
+  ok   (heading) a '## ' block's unindented paragraphs are one item; a second heading or bullet opens the next
+  ok   (resolved) RESOLVED closes only as a marker: a substring (incl. hard-wrapped) never does
+  ok   (timer) 'no next run' fires only when the paired .service reads inactive or failed
+selftest: 99-status-escalations.sh took 0s
+== status_html.py: the title table reads the full gameplay window, not a 90-240 s slice (#433)
+  ok   the full-window run scores its real share (not the 90-240 s slice) and never reads as a Playable candidate; the route-less run is plainly labelled a slice
+selftest: 99-status-fullwindow.sh took 1s
+
+selftest: 218 passed, 0 failed, PARTIAL: 10 of 123 fragments (fake host in /tmp/hakux-selftest.zojjC7)

@@ -1,0 +1,37 @@
+{
+ "title_id": "56550016",
+ "name": "Bruce Lee: Quest of the Dragon",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/56550016-Bruce_Lee_Quest_of_the_Dragon.xiso.iso",
+ "result": "gameplay",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/004-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/004-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/004-probe-c.jpg"
+ ],
+ "minutes": 0.93,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/003-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/005-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/006-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/007-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/008-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/009-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/010-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/011-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/012-after.jpg"
+ ],
+ "model_calls": 4,
+ "calls_by_model": {
+  "claude-sonnet-5": 3,
+  "claude-opus-5-5": 1
+ },
+ "steps": 4,
+ "seconds": 88.4,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/frames/003-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/bruce-lee/strip.jpg"
+}

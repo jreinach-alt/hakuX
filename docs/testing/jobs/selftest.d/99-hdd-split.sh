@@ -39,8 +39,9 @@ case "$1" in
     shell) shift; c="$*"
         case "$c" in
             "am force-stop"*) ;;
-            "chmod "*)   # nochmod: a device that refuses the chmod
+            "chmod "*)   # nochmod: a device that refuses the chmod; chmodnoop: it says yes and ignores it
                 [ -f "$HS_DEV/nochmod" ] && exit 1
+                [ -f "$HS_DEV/chmodnoop" ] && exit 0
                 sh -c "$(map "$c")" ;;
             *"cat > shared_prefs/x1box_prefs.xml"*) cat > "$HS_DEV/prefs.xml"
                 [ -f "$HS_DEV/drop_readback" ] && touch "$HS_DEV/drop_next" ;;
@@ -153,7 +154,16 @@ mkdir -p "$HS/r2"
 hs_env 'titles_disk_prepare req2 "$HS/r2"' > "$HS/r2.log" 2>&1
 plans=$(python3 -c 'import json,sys; print(" ".join(p["action"] for p in json.load(open(sys.argv[1]))["plans"]))' "$HS/r2/hdd.json" 2>/dev/null)
 check "the second run rebuilds from the store: build, keep (got: $plans)" [ "$plans" = "build keep" ]
-check "  ... its disk carries all three saves" verify_on "$HS/dev/fs/titles.qcow2" 4D530021 4541005B 4D530053
+# Its disk is the GOLDENS (lane.savestate433), not what the last run left:
+# until 10-02 it carried the run's new Ghoulies save too, and a title's menus
+# changed from run to run. The seed proposed hdd.img's two as goldens; the
+# run's harvest went to Ghoulies' `latest`, which nobody promoted.
+check "  ... its disk carries the two seeded goldens" verify_on "$HS/dev/fs/titles.qcow2" 4D530021 4541005B
+check "  ... and not the save the last run made" \
+      eval '! python3 "$TESTING/titles/saves.py" list "$HS/dev/fs/titles.qcow2" 2>/dev/null | grep -q 4D530053'
+check "  ... which is in the store as Ghoulies' latest, not its golden" \
+      python3 -c 'import json,sys; g=json.load(open(sys.argv[1]))["titles"]["4D530053"]; sys.exit(0 if g.get("latest") and not g.get("golden") else 1)' \
+      "$HS/dispatch/titlestate/golden.json"
 check "  ... and is the image the registry says was pushed" \
       [ "$(sha256sum "$HS/dev/fs/titles.qcow2" | cut -d' ' -f1)" = "$(reg "st['image']['sha256']")" ]
 check "  ... mode 660 (got: $(stat -c %a "$HS/dev/fs/titles.qcow2"))" [ "$(stat -c %a "$HS/dev/fs/titles.qcow2")" = 660 ]
@@ -218,10 +228,12 @@ plan_on() {   # <registry json> <bytes> <sha> -> action
 IMG='"image": {"sha256": "aa", "device_sha256": "aa", "built_from": {}'
 check "a changed disk is harvested before anything else" \
       [ "$(plan_on "{\"titles\": {}, $IMG}}" 10 bb)" = harvest ]
-check "a disk whose last harvest failed is kept, stale or not" \
-      [ "$(plan_on "{\"titles\": {\"4D530021\": {\"profile\": true, \"save\": \"x\"}}, $IMG, \"last_pull\": {\"sha256\": \"bb\", \"errors\": {\"4D530021\": \"short\"}}}}" 4000 bb)" = keep ]
-check "  ... unless it is past the ceiling" \
-      [ "$(plan_on "{\"titles\": {}, $IMG, \"last_pull\": {\"sha256\": \"bb\", \"errors\": {\"4D530021\": \"short\"}}}}" 6000 bb)" = build ]
+# Until 10-02 such a disk was KEPT and booted: the next run met the last
+# run's writes (lane.savestate433). Now it is pulled whole, then rebuilt.
+check "a disk whose last harvest failed is preserved whole, not kept and booted" \
+      [ "$(plan_on "{\"titles\": {\"4D530021\": {\"profile\": true, \"save\": \"x\"}}, $IMG, \"last_pull\": {\"sha256\": \"bb\", \"errors\": {\"4D530021\": \"short\"}}}}" 4000 bb)" = preserve ]
+check "  ... at any size" \
+      [ "$(plan_on "{\"titles\": {}, $IMG, \"last_pull\": {\"sha256\": \"bb\", \"errors\": {\"4D530021\": \"short\"}}}}" 6000 bb)" = preserve ]
 check "a clean disk past the cap is rebuilt" [ "$(plan_on "{\"titles\": {}, $IMG}}" 2000 aa)" = build ]
 check "a clean disk under the cap is kept" [ "$(plan_on "{\"titles\": {}, $IMG}}" 900 aa)" = keep ]
 check "a disk missing from the device is rebuilt" [ "$(plan_on "{\"titles\": {}, $IMG}}" -1 "")" = build ]
@@ -263,6 +275,25 @@ check "  ... the new hdd.img is not the old one" \
       [ "$(sha256sum "$HS/dev/fs/hdd.img" | cut -d' ' -f1)" != "$osha" ]
 check "  ... and every save on it survived" \
       eval 'for t in 4D530021 4541005B; do python3 "$TESTING/titles/saves.py" verify "$HS/dev/fs/hdd.img" "$HS/fix/$t" >/dev/null || exit 1; done'
+
+# (lane.hddperm.) A push whose mode cannot be set fails before the rename: the
+# disk in place is the one it was, mode and all, and <path>.new is gone.
+echo "== hdd split: a push whose mode cannot be set fails and replaces nothing"
+# -p: a plain cp masks the mode by the runner's umask (022 on CI).
+cp -p "$HS/dev/fs/hdd.img" "$HS/hdd.before"; bmode=$(stat -c %a "$HS/hdd.before")
+head -c 4096 /dev/urandom > "$HS/other.img"
+for how in nochmod chmodnoop; do
+    touch "$HS/dev/$how"
+    hs_env 'dev_push "$HS/other.img" "$X/hdd.img"' > "$HS/$how.log" 2>&1; rc=$?
+    rm -f "$HS/dev/$how"
+    check "$how: dev_push fails (rc=$rc)" [ "$rc" != 0 ]
+    check "  ... hdd.img is the disk it was" cmp -s "$HS/hdd.before" "$HS/dev/fs/hdd.img"
+    check "  ... and its mode is unchanged (got: $(stat -c %a "$HS/dev/fs/hdd.img"), was $bmode)" \
+          [ "$(stat -c %a "$HS/dev/fs/hdd.img")" = "$bmode" ]
+    check "  ... hdd.img.new is removed" test ! -e "$HS/dev/fs/hdd.img.new"
+    rm -f "$HS/dev/fs/hdd.img.new"; cp -p "$HS/hdd.before" "$HS/dev/fs/hdd.img"   # so a red leg does not redden the next
+done
+check "  ... the log names the mode the chmod left" grep -q 'mode 644 after chmod 660' "$HS/chmodnoop.log"
 
 # (pass-1 M2.) A reset that cannot succeed on this disk is paid for once.
 echo "== hdd split: a failed reset is not retried on the same disk"

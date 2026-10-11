@@ -1,3 +1,4 @@
+# state: any   (serves every title; never marks gameplay; lane.savestate433)
 # The route for a title that has none of its own.
 #
 # It cannot know when gameplay starts, so it never writes `mark gameplay`.

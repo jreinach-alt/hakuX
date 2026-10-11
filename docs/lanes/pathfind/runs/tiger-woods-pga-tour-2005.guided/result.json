@@ -1,0 +1,70 @@
+{
+ "title_id": "45410054",
+ "name": "Tiger Woods PGA Tour 2005",
+ "device": "thor",
+ "iso": "/storage/emulated/0/ROMS/xbox/45410054-Tiger_Woods_PGA_Tour_2005.xiso.iso",
+ "result": "heat-stop",
+ "tool": "3cfb3e56a8",
+ "started": "2026-10-02 11:42:59 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2005.guided/frames/021-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2005.guided/frames/021-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2005.guided/frames/021-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2005.guided/frames/021-probe-right.jpg"
+ ],
+ "reason": "Thor xo 71.439 C",
+ "model_calls": 20,
+ "calls_by_model": {
+  "claude-sonnet-5": 19,
+  "claude-opus-5-5": 1
+ },
+ "steps": 21,
+ "seconds": 289.3,
+ "last_frame": null,
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [
+  "4541003A"
+ ],
+ "cheap": 1,
+ "thermal": [
+  [
+   1.6,
+   47.897
+  ],
+  [
+   40.9,
+   53.697
+  ],
+  [
+   80.2,
+   58.411
+  ],
+  [
+   112.1,
+   61.137
+  ],
+  [
+   143.0,
+   63.392
+  ],
+  [
+   183.6,
+   66.645
+  ],
+  [
+   226.0,
+   68.548
+  ],
+  [
+   255.6,
+   69.857
+  ],
+  [
+   288.9,
+   71.439
+  ]
+ ],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2005.guided/strip.jpg"
+}

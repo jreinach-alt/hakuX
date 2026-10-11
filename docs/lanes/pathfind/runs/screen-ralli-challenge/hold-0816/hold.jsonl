@@ -1,0 +1,66 @@
+{"n": 25, "hold_s": 0.9, "play_s": 6.9, "changed": null, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": true}
+{"n": 26, "hold_s": 7.8, "play_s": 13.9, "changed": 0.7207, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 27, "hold_s": 14.8, "play_s": 20.9, "changed": 0.7572, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 28, "hold_s": 21.8, "play_s": 29.2, "changed": 0.6038, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 29, "hold_s": 30.1, "play_s": 36.1, "changed": 0.6724, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 30, "hold_s": 37.0, "play_s": 43.1, "changed": 0.5793, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.54, "kept": true}
+{"n": 31, "hold_s": 44.0, "play_s": 50.1, "changed": 0.268, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 32, "hold_s": 51.0, "play_s": 57.1, "changed": 0.0857, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 33, "hold_s": 58.1, "play_s": 65.5, "changed": 0.1218, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 34, "hold_s": 66.3, "play_s": 72.3, "changed": 0.1084, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 35, "hold_s": 73.2, "play_s": 79.2, "changed": 0.125, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.2956, "kept": true}
+{"n": 36, "hold_s": 80.1, "play_s": 85.9, "changed": 0.0333, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 37, "hold_s": 86.9, "play_s": 94.4, "changed": 0.0467, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 38, "hold_s": 95.3, "play_s": 103.9, "changed": 0.0959, "off": false, "src": "check", "state": "gameplay", "why": "Car is driving through the desert with the race timer running (02:49.77), position HUD and speedometer visible, no menu or pause overlay.", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 39, "hold_s": 104.9, "play_s": 110.9, "changed": 0.1173, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.0635, "kept": true}
+{"n": 40, "hold_s": 111.8, "play_s": 118.0, "changed": 0.1314, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 41, "hold_s": 119.0, "play_s": 124.9, "changed": 0.1342, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 42, "hold_s": 127.1, "play_s": 133.5, "changed": 0.1424, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 43, "hold_s": 134.5, "play_s": 140.6, "changed": 0.1378, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 44, "hold_s": 141.6, "play_s": 147.7, "changed": 0.1171, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1152, "kept": true}
+{"n": 45, "hold_s": 148.6, "play_s": 154.7, "changed": 0.0374, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 46, "hold_s": 155.7, "play_s": 163.3, "changed": 0.0938, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 47, "hold_s": 164.2, "play_s": 170.7, "changed": 0.0746, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 48, "hold_s": 171.6, "play_s": 177.7, "changed": 0.1152, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1202, "kept": true}
+{"n": 49, "hold_s": 178.7, "play_s": 185.0, "changed": 0.1188, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 50, "hold_s": 186.0, "play_s": 197.7, "changed": 0.0465, "off": false, "src": "check", "state": "gameplay", "why": "In-world desert track view with HUD (POS 4 of 4, race timer running at 04:21.20, speedometer), so the car is live in the race.", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 51, "hold_s": 198.6, "play_s": 204.7, "changed": 0.047, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 52, "hold_s": 205.7, "play_s": 211.7, "changed": 0.1214, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.0613, "kept": true}
+{"n": 53, "hold_s": 212.7, "play_s": 218.8, "changed": 0.1153, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 54, "hold_s": 219.8, "play_s": 225.9, "changed": 0.1061, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 55, "hold_s": 228.3, "play_s": 234.5, "changed": 0.1636, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 56, "hold_s": 235.4, "play_s": 241.6, "changed": 0.1083, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 57, "hold_s": 242.7, "play_s": 248.8, "changed": 0.083, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.0947, "kept": true}
+{"n": 58, "hold_s": 249.8, "play_s": 256.1, "changed": 0.0852, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 59, "hold_s": 257.2, "play_s": 265.0, "changed": 0.1309, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 60, "hold_s": 266.1, "play_s": 272.3, "changed": 0.0364, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 61, "hold_s": 273.4, "play_s": 279.6, "changed": 0.0577, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1477, "kept": true}
+{"n": 62, "hold_s": 280.6, "play_s": 290.0, "changed": 0.0536, "off": false, "src": "check", "state": "gameplay", "why": "Car is on the desert track with HUD showing position, race time and speedometer, and the game world is rendering.", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 63, "hold_s": 291.0, "play_s": 298.7, "changed": 0.1497, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 64, "hold_s": 299.8, "play_s": 306.7, "changed": 0.1159, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 65, "hold_s": 307.7, "play_s": 314.2, "changed": 0.1199, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.1435, "kept": true}
+{"n": 66, "hold_s": 315.2, "play_s": 321.4, "changed": 0.1746, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 67, "hold_s": 322.4, "play_s": 330.1, "changed": 0.067, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 68, "hold_s": 331.1, "play_s": 337.2, "changed": 0.0365, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 69, "hold_s": 338.2, "play_s": 344.3, "changed": 0.1433, "off": false, "src": "genre", "action": ["RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.0222, "kept": true}
+{"n": 70, "hold_s": 345.4, "play_s": 344.3, "changed": 0.134, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 71, "hold_s": 360.4, "play_s": 344.3, "changed": 0.6188, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 72, "hold_s": 376.9, "play_s": 344.3, "changed": 0.3799, "off": false, "src": "check", "state": "gameplay", "why": "Car is on a desert course in the game world with the HUD showing position, race time and speedometer, and no menu or pause overlay.", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.6708, "kept": true}
+{"n": 73, "hold_s": 397.1, "play_s": 360.0, "changed": 0.5855, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 74, "hold_s": 413.0, "play_s": 375.5, "changed": 0.4993, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.5724, "kept": true}
+{"n": 75, "hold_s": 429.6, "play_s": 392.2, "changed": 0.5295, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 76, "hold_s": 444.9, "play_s": 408.0, "changed": 0.5053, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.5789, "kept": true}
+{"n": 77, "hold_s": 460.7, "play_s": 425.1, "changed": 0.8157, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 78, "hold_s": 477.9, "play_s": 445.3, "changed": 0.3707, "off": false, "src": "check", "state": "gameplay", "why": "Car is in the open desert course with HUD showing position 4 of 4, race time, speedometer and gear 2; no menu or pause overlay visible.", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.7601, "kept": true}
+{"n": 79, "hold_s": 497.7, "play_s": 460.4, "changed": 0.9784, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 80, "hold_s": 513.2, "play_s": 475.7, "changed": 0.9034, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.5587, "kept": true}
+{"n": 81, "hold_s": 528.4, "play_s": 492.3, "changed": 0.6329, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 82, "hold_s": 545.0, "play_s": 507.2, "changed": 0.5733, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.701, "kept": true}
+{"n": 83, "hold_s": 559.5, "play_s": 507.2, "changed": 0.995, "off": false, "src": "check", "state": "black", "why": "Screen is fully black with only the FPS overlay; no game world, HUD, or menu is visible.", "action": ["START"], "kept": false}
+{"n": 84, "hold_s": 568.5, "play_s": 507.2, "changed": 0.9881, "off": true, "src": "check", "state": "pause", "why": "PAUSE menu is open over the Safari SS-1 race with 'continue race' highlighted; the game is not in live play.", "action": ["A"], "kept": false}
+{"n": 85, "hold_s": 574.8, "play_s": 525.3, "changed": 0.5319, "off": true, "src": "check", "state": "gameplay", "why": "Car is on the desert track with the race HUD (POS 4 of 4, race timer, speedometer) visible and the world rendering, so the game is live.", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 86, "hold_s": 592.9, "play_s": 541.3, "changed": 0.7881, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.5189, "kept": true}
+{"n": 87, "hold_s": 608.9, "play_s": 556.1, "changed": 0.45, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 88, "hold_s": 623.7, "play_s": 572.9, "changed": 0.6151, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.6967, "kept": true}
+{"n": 89, "hold_s": 640.5, "play_s": 587.8, "changed": 0.4779, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "kept": false}
+{"n": 90, "hold_s": 655.4, "play_s": 604.3, "changed": 0.4231, "off": false, "src": "genre", "action": ["LT+left:3", "RT+right:3", "RT:2", "RT+left:0.8", "RT+right:0.8"], "window": 0.301, "kept": true}

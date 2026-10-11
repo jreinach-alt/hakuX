@@ -1,0 +1,63 @@
+| title | id | golden | save dirs | route | state | request.sh today |
+|---|---|---|---|---|---|---|
+| 007: Nightfire | 45410026 | faf449621348 prop | 0 | nightfire | first-run | queued |
+| 187: Ride or Die | 55530036 | fa079adf42d5 prop | 1 | 187-ride-or-die | first-run | queued |
+| 50 Cent: Bulletproof | 56550042 | 51cba413d999 prop | 0 | 50cent | first-run | queued |
+| Alias | 41430016 | 5db249c6ee24 prop | 0 | alias | first-run | queued |
+| Alien Hominid | 5A440004 | c50c0ad5b571 prop | 1 | alien-hominid | first-run | queued |
+| Arctic Thunder | 4D570002 | 493866247e6b prop | 0 | arctic-thunder | first-run | queued |
+| Azurik: Rise of Perathia | 4D530007 | 3a92dca37ccf prop | 0 | azurik | first-run | queued |
+| Baldur's Gate: Dark Alliance | 5655001A | e2bd57a63be3 prop | 0 | baldurs-gate-da | first-run | queued |
+| Battlefield 2: Modern Combat | 45410062 | dcf7307455f0 prop | 0 | bf2mc | first-run | queued |
+| Black | 45410083 | 46308c8d9a70 prop | 0 | black.first-run | first-run | queued |
+| Blood Wake | 4D530010 | 2cf342919521 prop | 1 | blood-wake | first-run | queued |
+| BloodRayne | 4D4A0001 | 208af578e883 prop | 0 | bloodrayne | first-run | queued |
+| Bruce Lee: Quest of the Dragon | 56550016 | 71080c6c5dec prop | 0 | bruce-lee | first-run | queued |
+| Brute Force | 4D53001E | 6e97d00a8a46 prop | 1 | brute-force | first-run | queued |
+| Buffy the Vampire Slayer | 45410012 | c6b6ec3cb8be prop | 1 | buffy | first-run | queued |
+| Burnout | 41430006 | bc52aa2f6fd8 prop | 1 | burnout | first-run | queued |
+| Burnout 3: Takedown | 4541005B | 3853ca5a2387 prop | 1 | burnout3.returning | returning | queued |
+| Burnout Revenge | 45410076 | a9e935480605 prop | 1 | burnout-revenge.returning | returning | queued |
+| Capcom Classics Collection Vol | 43430019 | ebc9d653fa70 prop | 0 | capcom-classics2 | first-run | queued |
+| Castlevania: Curse of Darkness | 4B4E002D | 20235e93867b prop | 1 | castlevania-cod.returning | returning | queued |
+| Crash Bandicoot: The Wrath of  | 56550003 | a0b01ac26bf6 prop | 0 | crash-wrath-of-cortex | first-run | queued |
+| Crash Twinsanity | 56550036 | e089ebabfb72 prop | 0 | crash-twinsanity | first-run | queued |
+| Crimson Skies: High Road to Re | 4D530021 | 42b0f68410a3 prop | 1 | crimson-skies | returning | queued |
+| Dead or Alive 3 | 4D53002D | 220536a66fe2 prop | 0 | doa3 | first-run | queued |
+| Dead or Alive Xtreme Beach Vol | 54430007 | b292dbfed04f prop | 1 | doax | first-run | queued |
+| Dino Crisis 3 | 43430003 | f4e2e40a70a8 prop | 0 | dino-crisis-3 | first-run | queued |
+| Dungeons & Dragons Heroes | 49470013 | 8cb83326dc54 prop | 0 | dnd-heroes | first-run | queued |
+| Family Guy: Video Game! | 545400B0 | fc1555366ead prop | 1 | family-guy | first-run | queued |
+| Fuzion Frenzy | 4D530002 | 294eef288a16 prop | 0 | fuzion-frenzy | first-run | queued |
+| Galleon | 41540004 | 169dc045ed29 prop | 2 | galleon | first-run | queued |
+| Gauntlet: Dark Legacy | 4D57000E | f393e74eb225 prop | 0 | gauntlet | first-run | queued |
+| GoldenEye: Rogue Agent | 4541005D | e7c6806bb0a9 prop | 0 | goldeneye-ra.first-run | first-run | queued |
+| Grabbed by the Ghoulies | 4D530053 | 55758513a9e3 prop | 1 | ghoulies | first-run | queued |
+| Grand Theft Auto: San Andreas | 54540082 | 7da19befd45b prop | 0 | gta-sa | first-run | queued |
+| JSRF: Jet Set Radio Future | 49470018 | 8552a01fbd57 prop | 0 | jsrf | first-run | queued |
+| KOF: Maximum Impact - Maniax | 534E0007 | 97bb36646cf1 prop | 1 | kof-mi.returning | returning | queued |
+| Kabuki Warriors | 43560001 | bbb88f4302f6 prop | 0 | kabuki-warriors | first-run | queued |
+| MechAssault 2: Lone Wolf | 4D53006B | aeffd81ffd76 prop | 1 | mechassault-2 | first-run | queued |
+| Midnight Club 3: DUB Edition | 54540079 | c2242a6c8c70 prop | 2 | midnight-club-3.returning | returning | queued |
+| Midtown Madness 3 | 4D53002A | 424a68037d87 prop | 1 | midtown-madness-3.returning | returning | queued |
+| Otogi: Myth of Demons | 46530002 | 247ba69fcbc2 prop | 1 | otogi | first-run | queued |
+| Project Gotham Racing | 4D530003 | c151b9a02c1b prop | 1 | pgr.returning | returning | queued |
+| Project Gotham Racing 2 | 4D53004B | 7e22330b1935 prop | 1 | pgr2 | first-run | queued |
+| RalliSport Challenge 2 | 4D530039 | e84d24bb437c prop | 1 | rallisport-2.returning | returning | queued |
+| Shin Megami Tensei: NINE | 41540002 | 2b6c57485f1e prop | 0 | smt-nine | first-run | queued |
+| Sonic Heroes | 5345002B | 7077776b9746 prop | 1 | sonic-heroes | returning | queued |
+| Spikeout: Battle Street | 53450029 | c714fbc41e16 prop | 1 | spikeout.returning | returning | queued |
+| Super Monkey Ball Deluxe | 53450038 | 291732127556 prop | 1 | super-monkey-ball-deluxe | first-run | queued |
+| Tony Hawk's Pro Skater 2x | 41560001 | eb5a77c99ffd prop | 0 | thps2x | first-run | queued |
+| Tony Hawk's Pro Skater 3 | 41560004 | 02ceef03a100 prop | 0 | thps3 | first-run | queued |
+| Tork: Prehistoric Punk | 55530040 | 6cb2e3c07c9e prop | 1 | tork | first-run | queued |
+| WWE Raw 2 | 5451000D | 9616810a4c85 prop | 1 | wwe-raw-2 | first-run | queued |
+
+Titles whose harvests differ in carrying a profile (a save directory):
+- 42560001 Tron 2.0 : KIller App: 7 of 9 harvests carry a save dir; route -
+- 45410012 Buffy the Vampire Slayer: 4 of 5 harvests carry a save dir; route buffy
+- 45410076 Burnout Revenge: 1 of 2 harvests carry a save dir; route burnout-revenge.returning
+- 4B4E002D Castlevania: Curse of Darkness: 1 of 2 harvests carry a save dir; route castlevania-cod
+- 53450029 Spikeout: Battle Street: 1 of 2 harvests carry a save dir; route spikeout.returning
+- 55530036 187: Ride or Die: 1 of 2 harvests carry a save dir; route 187-ride-or-die
+- 55530040 Tork: Prehistoric Punk: 1 of 2 harvests carry a save dir; route tork

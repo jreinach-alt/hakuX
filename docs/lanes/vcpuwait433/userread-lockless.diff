@@ -1,0 +1,98 @@
+--- a/hw/xbox/nv2a/user.c	2026-10-02 21:01:36.781626295 -0700
++++ b/hw/xbox/nv2a/user.c	2026-10-02 21:01:54.613396199 -0700
+@@ -21,7 +21,21 @@
+ 
+ #include "nv2a_int.h"
+ 
+-/* USER - PFIFO MMIO and DMA submission area */
++/* USER - PFIFO MMIO and DMA submission area
++ *
++ * The read takes no lock (#433). Each register it returns is one word with
++ * one writer on the other side: DMA_PUT and REF are written only by the guest
++ * (user_write), DMA_GET only by the guest and the pusher, which stores it with
++ * release after the methods it covers have run (pfifo_run_pusher). The read
++ * acquires, so a guest that sees GET past a word also sees everything the
++ * pusher did before advancing it -- the ordering the lock gave.
++ *
++ * What the lock cost: the PFIFO thread holds pfifo.lock across
++ * pgraph_process_pending_reports(), whose STALLED finish waits for the render
++ * thread to submit the open command buffer (wait_frame_submitted). That runs
++ * exactly when DMA_GET == DMA_PUT, so a guest polling GET waited out the GPU
++ * batch to read a value that was already final. In Tron 2.0's slow window
++ * that was 65% of the vCPU's sleep (docs/lanes/vcpuwait433/NOTES.md). */
+ uint64_t user_read(void *opaque, hwaddr addr, unsigned int size)
+ {
+     NV2AState *d = (NV2AState *)opaque;
+@@ -29,28 +43,26 @@
+     unsigned int channel_id = addr >> 16;
+     assert(channel_id < NV2A_NUM_CHANNELS);
+ 
+-    qemu_mutex_lock(&d->pfifo.lock);
+-
+-    uint32_t channel_modes = d->pfifo.regs[NV_PFIFO_MODE];
++    uint32_t channel_modes = qatomic_read(&d->pfifo.regs[NV_PFIFO_MODE]);
+ 
+     uint64_t r = 0;
+     if (channel_modes & (1 << channel_id)) {
+         /* DMA Mode */
+ 
+         unsigned int cur_channel_id =
+-            GET_MASK(d->pfifo.regs[NV_PFIFO_CACHE1_PUSH1],
++            GET_MASK(qatomic_read(&d->pfifo.regs[NV_PFIFO_CACHE1_PUSH1]),
+                      NV_PFIFO_CACHE1_PUSH1_CHID);
+ 
+         if (channel_id == cur_channel_id) {
+             switch (addr & 0xFFFF) {
+             case NV_USER_DMA_PUT:
+-                r = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT];
++                r = qatomic_load_acquire(&d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT]);
+                 break;
+             case NV_USER_DMA_GET:
+-                r = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET];
++                r = qatomic_load_acquire(&d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET]);
+                 break;
+             case NV_USER_REF:
+-                r = d->pfifo.regs[NV_PFIFO_CACHE1_REF];
++                r = qatomic_load_acquire(&d->pfifo.regs[NV_PFIFO_CACHE1_REF]);
+                 break;
+             default:
+                 break;
+@@ -64,8 +76,6 @@
+         assert(false);
+     }
+ 
+-    qemu_mutex_unlock(&d->pfifo.lock);
+-
+     nv2a_reg_log_read(NV_USER, addr, size, r);
+     return r;
+ }
+@@ -94,14 +104,14 @@
+         if (channel_id == cur_channel_id) {
+             switch (addr & 0xFFFF) {
+             case NV_USER_DMA_PUT:
+-                d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT] = val;
++                qatomic_store_release(&d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT], val);
+                 g_nv2a_stats.cpu_working.kick_count++;
+                 break;
+             case NV_USER_DMA_GET:
+-                d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET] = val;
++                qatomic_store_release(&d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET], val);
+                 break;
+             case NV_USER_REF:
+-                d->pfifo.regs[NV_PFIFO_CACHE1_REF] = val;
++                qatomic_store_release(&d->pfifo.regs[NV_PFIFO_CACHE1_REF], val);
+                 break;
+             default:
+                 assert(false);
+--- a/hw/xbox/nv2a/pfifo.c	2026-10-02 21:01:36.781626295 -0700
++++ b/hw/xbox/nv2a/pfifo.c	2026-10-02 21:01:56.262196199 -0700
+@@ -2068,7 +2068,8 @@
+             }
+         }
+ 
+-        *dma_get = dma_get_v;
++        /* release: user_read() returns GET without pfifo.lock (#433) */
++        qatomic_store_release(dma_get, dma_get_v);
+         cbl_note_advance(cbl_before, dma_get_v, cbl_jumped);
+ 
+         if (GET_MASK(*dma_state, NV_PFIFO_CACHE1_DMA_STATE_ERROR)) {

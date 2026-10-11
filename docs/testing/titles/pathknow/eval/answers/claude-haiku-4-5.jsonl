@@ -1,0 +1,120 @@
+{"state": "intro_video", "why": "Attract demo with PRESS START overlay visible over gameplay scene", "action": "START", "wait_s": 2, "frame": "f000.jpg"}
+{"state": "black", "why": "Nearly black screen with only FPS counter visible", "action": "wait", "wait_s": 5, "frame": "f001.jpg"}
+{"state": "publisher_logo", "why": "Legal and copyright warning text screen for Dead or Alive Ultimate", "action": "START", "wait_s": 2, "frame": "f002.jpg"}
+{"state": "black", "why": "Black screen during loading", "action": "wait", "wait_s": 5, "frame": "f003.jpg"}
+{"state": "intro_video", "why": "James Bond gun barrel intro sequence", "action": "wait", "wait_s": 5, "frame": "f004.jpg"}
+{"state": "save_load_prompt", "why": "Dialog indicating no saved settings data with continue prompt", "action": "A", "wait_s": 2, "frame": "f005.jpg"}
+{"state": "submenu", "why": "Character select screen with Alba Meira highlighted", "action": "A", "wait_s": 2, "frame": "f006.jpg"}
+{"state": "pause", "why": "Game paused menu with resume, restart, and return to main menu options", "action": "A", "wait_s": 2, "frame": "f007.jpg"}
+{"state": "black", "why": "Black screen during loading or transition", "action": "wait", "wait_s": 5, "frame": "f008.jpg"}
+{"state": "name_entry", "why": "On-screen keyboard for text entry in 50 Cent Bulletproof", "action": "A", "wait_s": 2, "frame": "f009.jpg"}
+{"state": "pause", "why": "Forza pause menu with resume, restart, and options visible", "action": "A", "wait_s": 2, "frame": "f010.jpg"}
+{"state": "name_entry", "why": "On-screen keyboard for campaign name entry in Battlefield 2", "action": "A", "wait_s": 2, "frame": "f011.jpg"}
+{"state": "loading", "why": "Gunvalkyrie loading screen with 'now loading' text and character models", "action": "wait", "wait_s": 3, "frame": "f012.jpg"}
+{"state": "name_entry", "why": "Castlevania name entry with on-screen keyboard, letter grid, and Delete/Accept buttons", "action": "A", "wait_s": 1, "frame": "f013.jpg"}
+{"state": "submenu", "why": "Grabbed by the Ghoulies game select menu with 3 game options and Back/Select controls", "action": "A", "wait_s": 2, "frame": "f014.jpg"}
+{"state": "gameplay", "why": "Buffy in game world with health HUD, camera control tip visible at bottom", "action": "LSTICK_UP", "wait_s": 5, "frame": "f015.jpg"}
+{"state": "submenu", "why": "Gauntlet Dark Legacy audio options menu with Music Volume and SFX Volume sliders", "action": "B", "wait_s": 2, "frame": "f016.jpg"}
+{"state": "loading", "why": "Crash Bandicoot loading screen with 'LOADING' text on black background", "action": "wait", "wait_s": 3, "frame": "f017.jpg"}
+{"state": "loading", "why": "WWE Raw 2 loading screen with 'Now loading Player Settings' message", "action": "wait", "wait_s": 3, "frame": "f018.jpg"}
+{"state": "gameplay", "why": "Grand Theft Auto San Andreas gameplay with character in alley, HUD visible (minimap, money, health)", "action": "LSTICK_UP", "wait_s": 5, "frame": "f019.jpg"}
+{"state": "main_menu", "why": "Project Gotham Racing main menu with race mode options and SELECT/BACK/HELP buttons", "action": "A", "wait_s": 2, "frame": "f020.jpg"}
+{"state": "black", "why": "Screen is nearly entirely black with minimal visual content", "action": "wait", "wait_s": 3, "frame": "f021.jpg"}
+{"state": "name_entry", "why": "Castlevania Curse of Darkness name entry keyboard with letter grid and Delete/Accept buttons", "action": "A", "wait_s": 1, "frame": "f022.jpg"}
+{"state": "intro_video", "why": "Tony Hawk's Pro Skater 3 opening animation with 'NEVER GET' logo text and animated character on skateboard", "action": "START", "wait_s": 2, "frame": "f023.jpg"}
+{"state": "gameplay", "why": "First-person view with HUD showing 'Use X to exit the cryo-tube' and active control indicators", "action": "X", "wait_s": 2, "frame": "f024.jpg"}
+{"state": "cutscene", "why": "Letterboxed scene with character in environment, non-interactive story sequence", "action": "wait", "wait_s": 3, "frame": "f025.jpg"}
+{"state": "results", "why": "Race completed, car visible on road with Continue prompt and A button icon", "action": "A", "wait_s": 2, "frame": "f026.jpg"}
+{"state": "save_load_prompt", "why": "Dialog asking whether to load option data from hard disk with YES/NO choices", "action": "A", "wait_s": 2, "frame": "f027.jpg"}
+{"state": "gameplay", "why": "Two fighters in combat with health bars, character names, and round indicators visible", "action": "A", "wait_s": 1, "frame": "f028.jpg"}
+{"state": "title_screen", "why": "Game logo and title 'TRON 2.0 KILLER APP' displayed with 'PRESS START' prompt at bottom", "action": "START", "wait_s": 2, "frame": "f029.jpg"}
+{"state": "pause", "why": "Pause menu overlay showing 'RESUME GAME', 'REVERT TO SAVED', 'RESTART LEVEL', 'SAVE AND QUIT' options", "action": "A", "wait_s": 1, "frame": "f030.jpg"}
+{"state": "controller_prompt", "why": "Player entry screen showing controller port assignments with 'Press A' instructions for each port", "action": "A", "wait_s": 1, "frame": "f031.jpg"}
+{"state": "title_screen", "why": "Game title 'GRABBED BY THE GHOULIES' displayed as main screen with 'Press START' prompt", "action": "START", "wait_s": 2, "frame": "f032.jpg"}
+{"state": "gameplay", "why": "Character in outdoor environment with HUD compass/radar in upper left corner, active gameplay", "action": "LSTICK_UP", "wait_s": 1, "frame": "f033.jpg"}
+{"state": "gameplay", "why": "Character in cave environment with health bar at top left, player in control of character movement", "action": "A", "wait_s": 1, "frame": "f034.jpg"}
+{"state": "black", "why": "Screen is completely black", "action": "wait", "wait_s": 2, "frame": "f035.jpg"}
+{"state": "gameplay", "why": "Female character in tavern interior with FPS counter visible; in-game environment without cutscene markers", "action": "wait", "wait_s": 3, "frame": "f036.jpg"}
+{"state": "submenu", "why": "Arctic Thunder game mode selection menu with Race, Points, Battle, Training, Arcade, Upgrade options displayed", "action": "A", "wait_s": 2, "frame": "f037.jpg"}
+{"state": "gameplay", "why": "Character Aradin in dungeon with HUD status bar visible, actively in game world", "action": "wait", "wait_s": 3, "frame": "f038.jpg"}
+{"state": "gameplay", "why": "Player is controlling Team Sonic on a tropical level with characters actively positioned and FPS counter visible", "action": "A", "wait_s": 2, "frame": "f039.jpg"}
+{"state": "save_load_prompt", "why": "Dialog asking to confirm continuing without saving progress with Continue/No options", "action": "A", "wait_s": 2, "frame": "f040.jpg"}
+{"state": "pause", "why": "Pause menu with Resume, Quit Level, Options, Load Game, Moves, Objectives displayed over paused game", "action": "A", "wait_s": 2, "frame": "f041.jpg"}
+{"state": "submenu", "why": "Project Gotham Racing driver selection menu showing player stats (cars available, kudos, time played)", "action": "A", "wait_s": 2, "frame": "f042.jpg"}
+{"state": "name_entry", "why": "On-screen keyboard for character name entry with character preview and accept button visible", "action": "A", "wait_s": 2, "frame": "f043.jpg"}
+{"state": "loading", "why": "Loading... text displayed on black screen indicating game assets are loading", "action": "wait", "wait_s": 3, "frame": "f044.jpg"}
+{"state": "unknown", "why": "RetroAchievements widget interface showing game library, not an Xbox game screen", "action": "wait", "wait_s": 1, "frame": "f045.jpg"}
+{"state": "main_menu", "why": "Halo Combat Evolved main menu showing Campaign, Multiplayer, Settings, Game Demos top-level options", "action": "A", "wait_s": 2, "frame": "f046.jpg"}
+{"state": "gameplay", "why": "Crimson Skies aircraft in flight with mission objective 'Recover the Pandora' and HUD elements visible", "action": "wait", "wait_s": 3, "frame": "f047.jpg"}
+{"state": "black", "why": "Black screen with FPS indicator, likely post-loading or transition", "action": "START", "wait_s": 2, "frame": "f048.jpg"}
+{"state": "gameplay", "why": "Player character in urban environment with HUD showing stats, minimap, and timer", "action": "wait", "wait_s": 5, "frame": "f049.jpg"}
+{"state": "title_screen", "why": "Title screen with neon red NINJA GAIDEN BLACK logo and PRESS START BUTTON text", "action": "START", "wait_s": 1, "frame": "f050.jpg"}
+{"state": "loading", "why": "Level name overlay SUNSHINE KEYS visible over gameplay scene during transition", "action": "START", "wait_s": 3, "frame": "f051.jpg"}
+{"state": "submenu", "why": "Stage select map screen showing TOKAIDO MAP with CONTINUE and MODE END menu options", "action": "A", "wait_s": 1, "frame": "f052.jpg"}
+{"state": "save_load_prompt", "why": "Dialog box asking Do you want to save with Yes and No options available", "action": "A", "wait_s": 1, "frame": "f053.jpg"}
+{"state": "save_load_prompt", "why": "Storage device selection screen asking to select storage and game slot for save", "action": "A", "wait_s": 2, "frame": "f054.jpg"}
+{"state": "gameplay", "why": "First-person vehicle/weapon view with targeting reticle and fire instruction on screen", "action": "wait", "wait_s": 5, "frame": "f055.jpg"}
+{"state": "gameplay", "why": "Race in progress with car, lap counter 0/2, time 00:10.667, place 8/8, and speedometer visible", "action": "wait", "wait_s": 5, "frame": "f056.jpg"}
+{"state": "gameplay", "why": "Mech in urban environment with radar minimap and fire instruction text visible", "action": "wait", "wait_s": 5, "frame": "f057.jpg"}
+{"state": "cutscene", "why": "Character in vehicle interior with dialogue subtitle at bottom, not player controlled scene", "action": "START", "wait_s": 3, "frame": "f058.jpg"}
+{"state": "publisher_logo", "why": "Dark loading screen with faint publisher/developer logos during game boot", "action": "wait", "wait_s": 5, "frame": "f059.jpg"}
+{"state": "loading", "why": "Now Loading text with spinner animation", "action": "wait", "wait_s": 3, "frame": "f060.jpg"}
+{"state": "submenu", "why": "Player Info screen showing life points, hit power, enemies beaten, moves learned, and items", "action": "B", "wait_s": 2, "frame": "f061.jpg"}
+{"state": "main_menu", "why": "Game main menu with Stage, Equip, Shop, Cleared Stages, Options", "action": "A", "wait_s": 2, "frame": "f062.jpg"}
+{"state": "main_menu", "why": "Battlefield 2 main menu with Play Campaign selected", "action": "A", "wait_s": 3, "frame": "f063.jpg"}
+{"state": "publisher_logo", "why": "Legal warning screen with federal law copyright text", "action": "A", "wait_s": 1, "frame": "f064.jpg"}
+{"state": "controller_prompt", "why": "Assign controllers to human or CPU players setup screen", "action": "A", "wait_s": 2, "frame": "f065.jpg"}
+{"state": "publisher_logo", "why": "Full legal warning screen with federal law and copyright restrictions", "action": "A", "wait_s": 1, "frame": "f066.jpg"}
+{"state": "pause", "why": "Pause menu over gameplay with Continue, Retry, Return to Briefing options", "action": "A", "wait_s": 2, "frame": "f067.jpg"}
+{"state": "gameplay", "why": "Player controlling character in-game with HUD (FPS counter), glowing interactive environment with portal or power-up mechanism, no menus or overlays", "action": "wait", "wait_s": 2, "frame": "f068.jpg"}
+{"state": "main_menu", "why": "Main menu with circular design showing Campaign, Splitscreen, System Link, Xbox Live options", "action": "A", "wait_s": 2, "frame": "f069.jpg"}
+{"state": "main_menu", "why": "Single Player menu with New Game, Continue, and Chapter Select options", "action": "A", "wait_s": 2, "frame": "f070.jpg"}
+{"state": "publisher_logo", "why": "FOX Interactive publisher logo animation", "action": "wait", "wait_s": 2, "frame": "f071.jpg"}
+{"state": "intro_video", "why": "Ninja Gaiden cinematic intro sequence with golden ninja character", "action": "START", "wait_s": 5, "frame": "f072.jpg"}
+{"state": "controller_prompt", "why": "Tron 2.0 sign in screen with disconnected controller message, press A to sign in", "action": "A", "wait_s": 2, "frame": "f073.jpg"}
+{"state": "publisher_logo", "why": "Artoon splash logo screen", "action": "START", "wait_s": 2, "frame": "f074.jpg"}
+{"state": "submenu", "why": "Conker Xbox Live System Link menu with Dumbots and Profiles options", "action": "A", "wait_s": 2, "frame": "f075.jpg"}
+{"state": "title_screen", "why": "Black game title screen with PRESS START prompt", "action": "START", "wait_s": 1, "frame": "f076.jpg"}
+{"state": "pause", "why": "007 Nightfire pause menu with Continue, Restart, Quit options", "action": "A", "wait_s": 2, "frame": "f077.jpg"}
+{"state": "name_entry", "why": "187 Ride or Die player profile on-screen keyboard for name entry", "action": "A", "wait_s": 2, "frame": "f078.jpg"}
+{"state": "black", "why": "Dead or Alive 3 black screen, likely loading", "action": "wait", "wait_s": 4, "frame": "f079.jpg"}
+{"state": "loading", "why": "Loading screen with progress indicator and navigation arrows", "action": "wait", "wait_s": 3, "frame": "f080.jpg"}
+{"state": "submenu", "why": "Dino Crisis 3 control configuration menu showing TYPE A button mapping", "action": "BACK", "wait_s": 2, "frame": "f081.jpg"}
+{"state": "pause", "why": "Pause menu with Continue/Restart/Quit options over active Sonic Heroes gameplay", "action": "A", "wait_s": 2, "frame": "f082.jpg"}
+{"state": "profile_creation", "why": "Deathrow user profile selection screen with sports arena background", "action": "A", "wait_s": 2, "frame": "f083.jpg"}
+{"state": "results", "why": "PERFECT victory screen showing match end with fighter portraits and health status", "action": "START", "wait_s": 3, "frame": "f084.jpg"}
+{"state": "title_screen", "why": "Sonic Heroes logo with Press START text visible on sky background", "action": "START", "wait_s": 2, "frame": "f085.jpg"}
+{"state": "publisher_logo", "why": "Federal Warning legal/copyright text screen for Dead or Alive Xtreme Beach Volleyball", "action": "A", "wait_s": 1, "frame": "f086.jpg"}
+{"state": "cutscene", "why": "Dark industrial/cinematic scene with dramatic lighting, appears to be in-game story sequence", "action": "A", "wait_s": 2, "frame": "f087.jpg"}
+{"state": "loading", "why": "Dungeons & Dragons Heroes logo with Loading text and progress bar visible", "action": "wait", "wait_s": 3, "frame": "f088.jpg"}
+{"state": "pause", "why": "Sonic Heroes gameplay with pause menu overlay showing Continue, Restart, Quit options", "action": "A", "wait_s": 2, "frame": "f089.jpg"}
+{"state": "main_menu", "why": "Capcom Classics Collection start menu with options Start Game, Load Game, Game Settings, Exit Game", "action": "A", "wait_s": 2, "frame": "f090.jpg"}
+{"state": "cutscene", "why": "BloodRayne dark indoor scene with letterbox cinematic framing", "action": "wait", "wait_s": 3, "frame": "f091.jpg"}
+{"state": "controller_prompt", "why": "Tron 2.0 Sign In screen with account selection and Controller Disconnected messages", "action": "A", "wait_s": 2, "frame": "f092.jpg"}
+{"state": "gameplay", "why": "187 Ride or Die racing game with car on street, lap counter and speedometer HUD visible", "action": "wait", "wait_s": 2, "frame": "f093.jpg"}
+{"state": "submenu", "why": "BloodRayne submenu showing New Game and Training options with character image and Select/Back buttons", "action": "A", "wait_s": 2, "frame": "f094.jpg"}
+{"state": "cutscene", "why": "Alias indoor scene with pool table and characters, cinematic presentation without visible HUD or gameplay controls", "action": "wait", "wait_s": 2, "frame": "f095.jpg"}
+{"state": "title_screen", "why": "Halo 2 logo with PRESS START TO CONTINUE", "action": "START", "wait_s": 2, "frame": "f096.jpg"}
+{"state": "main_menu", "why": "Midnight Club 3 main menu with player profile options", "action": "A", "wait_s": 1, "frame": "f097.jpg"}
+{"state": "unknown", "why": "Star Wars Episode III showing corrupted green glitch graphics", "action": "wait", "wait_s": 3, "frame": "f098.jpg"}
+{"state": "gameplay", "why": "Halo Combat Evolved in-game with HUD and controller hint text", "action": "wait", "wait_s": 3, "frame": "f099.jpg"}
+{"state": "results", "why": "Burnout Game Over screen at end of race", "action": "wait", "wait_s": 2, "frame": "f100.jpg"}
+{"state": "submenu", "why": "Conker Live & Reloaded character profile customization screen", "action": "A", "wait_s": 1, "frame": "f101.jpg"}
+{"state": "cutscene", "why": "Gauntlet Dark Legacy story dialog with Press A to continue", "action": "A", "wait_s": 1, "frame": "f102.jpg"}
+{"state": "black", "why": "SSX Tricky nearly black screen", "action": "wait", "wait_s": 3, "frame": "f103.jpg"}
+{"state": "save_load_prompt", "why": "Burnout Revenge save/load dialog no profiles to load", "action": "A", "wait_s": 1, "frame": "f104.jpg"}
+{"state": "cutscene", "why": "Ornate stone relief carving in close-up; architectural detail suggesting story world introduction", "action": "wait", "wait_s": 4, "frame": "f105.jpg"}
+{"state": "submenu", "why": "Super Monkey Ball Deluxe stage select menu Jungle Island", "action": "A", "wait_s": 1, "frame": "f106.jpg"}
+{"state": "save_load_prompt", "why": "Crash Twinsanity create save game dialog YES/NO", "action": "A", "wait_s": 1, "frame": "f107.jpg"}
+{"state": "title_screen", "why": "Dead or Alive 3 logo on white background", "action": "START", "wait_s": 2, "frame": "f108.jpg"}
+{"state": "unknown", "why": "Android home screen with apps and robot mascot, not a game", "action": "wait", "wait_s": 1, "frame": "f109.jpg"}
+{"state": "gameplay", "why": "Two characters fighting in urban arena with active combat animation", "action": "wait", "wait_s": 2, "frame": "f110.jpg"}
+{"state": "gameplay", "why": "Halo 2 gameplay with Master Chief in interior level with HUD visible", "action": "wait", "wait_s": 2, "frame": "f111.jpg"}
+{"state": "profile_creation", "why": "Profile selection menu with character stats", "action": "A", "wait_s": 2, "frame": "f112.jpg"}
+{"state": "name_entry", "why": "Japanese on-screen character grid keyboard for name input", "action": "A", "wait_s": 2, "frame": "f113.jpg"}
+{"state": "title_screen", "why": "Phantom Dust title logo with PRESS START BUTTON text", "action": "START", "wait_s": 2, "frame": "f114.jpg"}
+{"state": "name_entry", "why": "On-screen keyboard with text already entered", "action": "A", "wait_s": 2, "frame": "f115.jpg"}
+{"state": "gameplay", "why": "Racing on a road with lane markings and vehicle ahead; FPS counter visible in HUD", "action": "wait", "wait_s": 2, "frame": "f116.jpg"}
+{"state": "game_over", "why": "TIME IS UP message in red over game environment", "action": "START", "wait_s": 2, "frame": "f117.jpg"}
+{"state": "gameplay", "why": "Female character in outdoor environment with portrait and compass HUD", "action": "A", "wait_s": 2, "frame": "f118.jpg"}
+{"state": "gameplay", "why": "Yellow car racing through city street intersection; player actively steering with FPS: 29", "action": "wait", "wait_s": 2, "frame": "f119.jpg"}

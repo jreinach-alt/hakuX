@@ -1,0 +1,328 @@
+results read (memfast excluded, aliases folded): 1370
+captures run twice or more on one build: 5324
+of those, more than one differing value on one build: 325
+  Antialiasing_tests/AAOnThenOffCPUWrite                                 unstable on   1 of   9 builds  {'0': 2, '1': 1}
+  Antialiasing_tests/CPUWriteIgnoresSurfaceConfig                        unstable on   2 of   9 builds  {'0': 5, '8448': 1, '4560': 1}
+  Antialiasing_tests/FramebufferNotModifiedBySurfaceState                unstable on   5 of   9 builds  {'0': 10, '1': 5}
+  Antialiasing_tests/GPUAAWriteAfterCPUWrite                             unstable on   3 of   9 builds  {'134': 7, '2950': 2, '138': 1, '1036': 1}
+  Blend_surface/X_O1RGB5_Add_SrcA_DstA                                   unstable on   1 of  20 builds  {'12274': 1, '15016': 1}
+  Blend_surface/X_Z1RGB5_Add_SrcA_DstA                                   unstable on   2 of  20 builds  {'15016': 5, '12274': 2}
+  Blend_tests/#spot_0_ADD                                                unstable on   3 of  26 builds  {'0': 5, '16384': 3, '10509': 1}
+  Blend_tests/1-cRGB_SADD_1-dstA                                         unstable on   1 of   1 builds  {'76032': 4, '75008': 1}
+  Blend_tests/1-dstA_SADD_1-srcRGB                                       unstable on   1 of   1 builds  {'76032': 4, '98304': 1}
+  Blend_tests/1-dstA_SUB_1-cRGB                                          unstable on   1 of   1 builds  {'16384': 4, '27136': 1, '12512': 1}
+  Blend_tests/1-dstRGB_MIN_1                                             unstable on   1 of   1 builds  {'8192': 5, '23552': 1}
+  Blend_tests/1-srcRGB_SADD_0                                            unstable on   1 of   1 builds  {'76032': 7, '98304': 1}
+  Blend_tests/1_ADD_1                                                    unstable on   1 of   1 builds  {'16384': 4, '26624': 1}
+  Blend_tests/1_REVSUB_cRGB                                              unstable on   1 of   1 builds  {'16384': 4, '25392': 1}
+  Blend_tests/cA_MIN_srcRGB                                              unstable on   1 of   1 builds  {'8192': 5, '66375': 1}
+  Blend_tests/srcA_MAX_cA                                                unstable on   1 of   1 builds  {'16384': 4, '47808': 1}
+  Blend_tests/srcA_REVSUB_1-cA                                           unstable on   1 of   1 builds  {'16384': 5, '23552': 1}
+  Bump_map/BumpMap_A1R5G5B5                                              unstable on   1 of   6 builds  {'2784': 2, '3184': 1}
+  Bump_map/BumpMap_A1R5G5B5_L                                            unstable on   1 of   6 builds  {'2784': 2, '3184': 1}
+  Bump_map/BumpMap_A4R4G4B4                                              unstable on   1 of   6 builds  {'2852': 2, '2964': 1}
+  Bump_map/BumpMap_A4R4G4B4_L                                            unstable on   1 of   6 builds  {'2852': 2, '2964': 1}
+  Bump_map/BumpMap_A8                                                    unstable on   1 of   6 builds  {'1576': 2, '1688': 1}
+  Bump_map/BumpMap_A8B8G8R8                                              unstable on   1 of   6 builds  {'3895': 2, '4111': 1}
+  Bump_map/BumpMap_A8B8G8R8_L                                            unstable on   1 of   6 builds  {'3895': 2, '4111': 1}
+  Bump_map/BumpMap_A8R8G8B8                                              unstable on   1 of   6 builds  {'3895': 2, '4111': 1}
+  Bump_map/BumpMap_A8R8G8B8_L                                            unstable on   1 of   6 builds  {'3895': 2, '4111': 1}
+  Bump_map/BumpMap_A8Y8                                                  unstable on   1 of   6 builds  {'1576': 2, '1688': 1}
+  Bump_map/BumpMap_A8_L                                                  unstable on   1 of   6 builds  {'1576': 2, '1688': 1}
+  Bump_map/BumpMap_AY8                                                   unstable on   1 of   6 builds  {'1576': 2, '1688': 1}
+  Bump_map/BumpMap_AY8_L                                                 unstable on   1 of   6 builds  {'1576': 2, '1688': 1}
+  Bump_map/BumpMap_B8G8R8A8                                              unstable on   1 of   6 builds  {'3895': 2, '4111': 1}
+  Bump_map/BumpMap_B8G8R8A8_L                                            unstable on   1 of   6 builds  {'3895': 2, '4111': 1}
+  Bump_map/BumpMap_DXT1                                                  unstable on   1 of   6 builds  {'1924': 2, '1688': 1}
+  Bump_map/BumpMap_G8B8                                                  unstable on   1 of   6 builds  {'3895': 2, '4111': 1}
+  Bump_map/BumpMap_G8B8_B                                                unstable on   1 of   6 builds  {'2860': 2, '3055': 1}
+  Bump_map/BumpMap_G8B8_B_R90                                            unstable on   1 of   6 builds  {'1998': 2, '1615': 1}
+  Bump_map/BumpMap_G8B8_L                                                unstable on   1 of   6 builds  {'3895': 2, '4111': 1}
+  Bump_map/BumpMap_G8B8_R90                                              unstable on   1 of   6 builds  {'1845': 2, '1578': 1}
+  Bump_map/BumpMap_R16B16                                                unstable on   1 of   6 builds  {'668': 2, '1600': 1}
+  Bump_map/BumpMap_R16B16_B                                              unstable on   1 of   6 builds  {'711': 2, '789': 1}
+  Bump_map/BumpMap_R16B16_L                                              unstable on   1 of   6 builds  {'1576': 2, '1688': 1}
+  Bump_map/BumpMap_R5G6B5                                                unstable on   1 of   6 builds  {'3416': 2, '3612': 1}
+  Bump_map/BumpMap_R5G6B5_L                                              unstable on   1 of   6 builds  {'3416': 2, '3612': 1}
+  Bump_map/BumpMap_R6G5B5                                                unstable on   1 of   6 builds  {'2784': 2, '3184': 1}
+  Bump_map/BumpMap_R8B8                                                  unstable on   1 of   6 builds  {'1576': 2, '1688': 1}
+  Bump_map/BumpMap_R8G8B8A8                                              unstable on   1 of   6 builds  {'3895': 2, '4111': 1}
+  Bump_map/BumpMap_R8G8B8A8_L                                            unstable on   1 of   6 builds  {'3895': 2, '4111': 1}
+  Bump_map/BumpMap_X1R5G5B5                                              unstable on   1 of   6 builds  {'2784': 2, '3184': 1}
+  Bump_map/BumpMap_X1R5G5B5_L                                            unstable on   1 of   6 builds  {'2784': 2, '3184': 1}
+  Bump_map/BumpMap_X8R8G8B8                                              unstable on   1 of   6 builds  {'3895': 2, '4111': 1}
+  Bump_map/BumpMap_X8R8G8B8_L                                            unstable on   1 of   6 builds  {'3895': 2, '4111': 1}
+  Bump_map/BumpMap_Y16                                                   unstable on   2 of   7 builds  {'22374': 6, '22416': 1, '35838': 1}
+  Bump_map/BumpMap_Y16_L                                                 unstable on   2 of   7 builds  {'22374': 4, '22416': 1, '35838': 1}
+  Bump_map/BumpMap_Y8                                                    unstable on   2 of   7 builds  {'1576': 6, '1688': 1, '28908': 1}
+  Bump_map/BumpMap_Y8_L                                                  unstable on   2 of   7 builds  {'1576': 4, '1688': 1, '28908': 1}
+  Color_zeta_overlap/Swap                                                unstable on   1 of  16 builds  {'165447': 1, '304750': 1}
+  Color_zeta_overlap/Swap_ZB                                             unstable on   1 of  16 builds  {'141125': 9, '0': 6}
+  Depth_buffer/DepthFmt_z24_Cn_FZn_Mffffff_ZB                            unstable on   1 of  21 builds  {'0': 1, '6770': 1}
+  Fog_gen/FogGen_VS-exp-radial                                           unstable on   1 of  16 builds  {'0': 3, '181016': 1}
+  Fog_gen/FogGen_VS-exp2-radial                                          unstable on   1 of  16 builds  {'0': 3, '181016': 1}
+  Fog_gen/FogGen_VS-exp2_abs-radial                                      unstable on   1 of  16 builds  {'0': 3, '181016': 1}
+  Fog_gen/FogGen_VS-exp_abs-radial                                       unstable on   1 of  16 builds  {'0': 3, '181016': 1}
+  Fog_gen/FogGen_VS-linear-radial                                        unstable on   1 of  16 builds  {'0': 3, '181016': 1}
+  Fog_gen/FogGen_VS-linear_abs-radial                                    unstable on   1 of  16 builds  {'0': 3, '181016': 1}
+  Stencil/Stencil_REPLACE                                                unstable on   5 of  15 builds  {'40000': 8, '0': 7}
+  Stencil/Stencil_REPLACE_DT                                             unstable on   6 of  15 builds  {'0': 11, '40000': 8}
+  Stencil/Stencil_REPLACE_ST                                             unstable on   8 of  15 builds  {'30000': 12, '0': 11, '10000': 1}
+  Stencil/Stencil_REPLACE_ST_DT                                          unstable on   8 of  15 builds  {'30000': 12, '0': 12}
+  Stencil/Stencil_REPLACE_ST_DT_ZB                                       unstable on   7 of  15 builds  {'30000': 10, '0': 10}
+  Stencil/Stencil_REPLACE_ST_ZB                                          unstable on   8 of  15 builds  {'0': 11, '30000': 10, '10000': 1}
+  Stencil/Stencil_ZERO                                                   unstable on   8 of  15 builds  {'0': 17, '40000': 7, '5000': 1}
+  Stencil/Stencil_ZERO_DT                                                unstable on   7 of  15 builds  {'40000': 10, '0': 9}
+  Stencil/Stencil_ZERO_ST                                                unstable on   7 of  15 builds  {'30000': 12, '0': 10, '34950': 1}
+  Stencil/Stencil_ZERO_ST_DT                                             unstable on   8 of  15 builds  {'30000': 14, '0': 10, '20000': 1}
+  Stencil/Stencil_ZERO_ST_DT_ZB                                          unstable on   9 of  15 builds  {'0': 16, '30000': 10, '2500': 1, '20000': 1}
+  Stencil/Stencil_ZERO_ST_ZB                                             unstable on   6 of  15 builds  {'0': 10, '30000': 7, '20000': 1}
+  Surface_pitch/Swizzle                                                  unstable on   3 of   9 builds  {'0': 2, '5607': 1, '6144': 1, '2464': 1, '732': 1}
+  Texgen/Disabled                                                        unstable on   1 of   7 builds  {'114': 3, '403': 1}
+  Texture_3D_as_2D/Cubemap_as_2D                                         unstable on   1 of   6 builds  {'729': 2, '0': 1}
+  Texture_3D_as_2D/Volumetric_as_2D                                      unstable on   1 of   6 builds  {'2308': 2, '0': 1}
+  Texture_Matrix/Half                                                    unstable on   1 of   6 builds  {'0': 2, '289': 1}
+  Texture_Matrix/Identity                                                unstable on   1 of   6 builds  {'0': 2, '289': 1}
+  Texture_Matrix/RotateX                                                 unstable on   1 of   6 builds  {'0': 2, '289': 1}
+  Texture_Matrix/ShiftHMinus                                             unstable on   1 of   6 builds  {'43': 2, '530': 1}
+  Texture_Matrix/ShiftHPlus                                              unstable on   1 of   6 builds  {'58': 2, '624': 1}
+  Texture_Matrix/ShiftVMinus                                             unstable on   1 of   6 builds  {'91': 2, '287': 1}
+  Texture_Matrix/ShiftVPlus                                              unstable on   1 of   6 builds  {'134': 2, '825': 1}
+  Texture_border/2D_BorderTex_SZ                                         unstable on   1 of   7 builds  {'2069': 1, '0': 1}
+  Texture_border/Cube_BorderTex_SZ_16x16                                 unstable on   1 of   7 builds  {'37': 2, '488': 1}
+  Texture_border/Cube_BorderTex_SZ_1x1                                   unstable on   1 of   7 builds  {'0': 2, '329': 1}
+  Texture_border/Cube_BorderTex_SZ_2x2                                   unstable on   1 of   7 builds  {'0': 2, '437': 1}
+  Texture_border/Cube_BorderTex_SZ_32x32                                 unstable on   1 of   7 builds  {'4504': 2, '4911': 1}
+  Texture_border/Cube_BorderTex_SZ_4x4                                   unstable on   1 of   7 builds  {'0': 2, '450': 1}
+  Texture_border/Cube_BorderTex_SZ_8x8                                   unstable on   1 of   7 builds  {'0': 2, '413': 1}
+  Texture_cubemap/Cubemap_q-0.0                                          unstable on   1 of   8 builds  {'0': 2, '50': 1}
+  Texture_cubemap/Cubemap_q-1.0                                          unstable on   1 of   8 builds  {'0': 2, '50': 1}
+  Texture_cubemap/Cubemap_q-inf                                          unstable on   1 of   8 builds  {'0': 2, '50': 1}
+  Texture_cubemap/Cubemap_q0.0                                           unstable on   1 of   8 builds  {'0': 2, '50': 1}
+  Texture_cubemap/Cubemap_q1.0                                           unstable on   1 of   8 builds  {'0': 2, '50': 1}
+  Texture_cubemap/Cubemap_qinf                                           unstable on   1 of   8 builds  {'0': 2, '50': 1}
+  Texture_cubemap/DotReflectConst_0_-1to1                                unstable on   1 of   8 builds  {'32': 2, '200': 1}
+  Texture_cubemap/DotReflectConst_0_-1to1D3D                             unstable on   1 of   8 builds  {'27': 2, '223': 1}
+  Texture_cubemap/DotReflectConst_0_-1to1GL                              unstable on   1 of   8 builds  {'28': 2, '165': 1}
+  Texture_cubemap/DotReflectConst_0_0to1                                 unstable on   1 of   8 builds  {'8': 2, '84': 1}
+  Texture_cubemap/DotReflectConst_0_HiLoHemi                             unstable on   1 of   8 builds  {'34': 2, '121': 1}
+  Texture_cubemap/DotReflectConst_0_HiLo_1                               unstable on   1 of   8 builds  {'8': 2, '74': 1}
+  Texture_cubemap/DotReflectConst_1_-1to1                                unstable on   1 of   8 builds  {'41': 2, '263': 1}
+  Texture_cubemap/DotReflectConst_1_-1to1D3D                             unstable on   1 of   8 builds  {'28': 2, '217': 1}
+  Texture_cubemap/DotReflectConst_1_-1to1GL                              unstable on   1 of   8 builds  {'30': 2, '260': 1}
+  Texture_cubemap/DotReflectConst_1_0to1                                 unstable on   1 of   8 builds  {'20': 2, '319': 1}
+  Texture_cubemap/DotReflectConst_1_HiLoHemi                             unstable on   1 of   8 builds  {'30': 2, '109': 1}
+  Texture_cubemap/DotReflectConst_1_HiLo_1                               unstable on   1 of   8 builds  {'7': 2, '537': 1}
+  Texture_cubemap/DotReflectConst_2_-1to1                                unstable on   1 of   8 builds  {'19': 2, '176': 1}
+  Texture_cubemap/DotReflectConst_2_-1to1D3D                             unstable on   1 of   8 builds  {'9': 2, '159': 1}
+  Texture_cubemap/DotReflectConst_2_-1to1GL                              unstable on   1 of   8 builds  {'7': 2, '192': 1}
+  Texture_cubemap/DotReflectConst_2_0to1                                 unstable on   1 of   8 builds  {'11': 2, '265': 1}
+  Texture_cubemap/DotReflectConst_2_HiLoHemi                             unstable on   1 of   8 builds  {'6': 2, '39': 1}
+  Texture_cubemap/DotReflectConst_2_HiLo_1                               unstable on   1 of   8 builds  {'1': 2, '508': 1}
+  Texture_cubemap/DotReflectDiffuse_-1to1                                unstable on   1 of   8 builds  {'22': 2, '123': 1}
+  Texture_cubemap/DotReflectDiffuse_-1to1D3D                             unstable on   1 of   8 builds  {'23': 2, '142': 1}
+  Texture_cubemap/DotReflectDiffuse_-1to1GL                              unstable on   1 of   8 builds  {'90': 2, '195': 1}
+  Texture_cubemap/DotReflectDiffuse_0to1                                 unstable on   1 of   8 builds  {'12': 2, '99': 1}
+  Texture_cubemap/DotReflectDiffuse_HiLoHemi                             unstable on   1 of   8 builds  {'22': 2, '64': 1}
+  Texture_cubemap/DotReflectDiffuse_HiLo_1                               unstable on   1 of   8 builds  {'5': 2, '89': 1}
+  Texture_cubemap/DotReflectSpecConst_-1to1                              unstable on   1 of   8 builds  {'22': 2, '230': 1}
+  Texture_cubemap/DotReflectSpecConst_-1to1D3D                           unstable on   1 of   8 builds  {'36': 2, '271': 1}
+  Texture_cubemap/DotReflectSpecConst_-1to1GL                            unstable on   1 of   8 builds  {'23': 2, '267': 1}
+  Texture_cubemap/DotReflectSpecConst_0to1                               unstable on   1 of   8 builds  {'5': 2, '185': 1}
+  Texture_cubemap/DotReflectSpecConst_HiLoHemi                           unstable on   1 of   8 builds  {'18': 2, '114': 1}
+  Texture_cubemap/DotReflectSpecConst_HiLo_1                             unstable on   1 of   8 builds  {'1': 2, '71': 1}
+  Texture_cubemap/DotReflectSpec_-1to1                                   unstable on   1 of   8 builds  {'63': 2, '425': 1}
+  Texture_cubemap/DotReflectSpec_-1to1D3D                                unstable on   1 of   8 builds  {'67': 2, '448': 1}
+  Texture_cubemap/DotReflectSpec_-1to1GL                                 unstable on   1 of   8 builds  {'63': 2, '482': 1}
+  Texture_cubemap/DotReflectSpec_0_-1to1                                 unstable on   1 of   8 builds  {'64': 2, '430': 1}
+  Texture_cubemap/DotReflectSpec_0_-1to1D3D                              unstable on   1 of   8 builds  {'65': 2, '456': 1}
+  Texture_cubemap/DotReflectSpec_0_-1to1GL                               unstable on   1 of   8 builds  {'62': 2, '402': 1}
+  Texture_cubemap/DotReflectSpec_0_0to1                                  unstable on   1 of   8 builds  {'46': 2, '315': 1}
+  Texture_cubemap/DotReflectSpec_0_HiLoHemi                              unstable on   1 of   8 builds  {'103': 2, '366': 1}
+  Texture_cubemap/DotReflectSpec_0_HiLo_1                                unstable on   1 of   8 builds  {'16': 2, '210': 1}
+  Texture_cubemap/DotReflectSpec_0to1                                    unstable on   1 of   8 builds  {'52': 2, '362': 1}
+  Texture_cubemap/DotReflectSpec_1_-1to1                                 unstable on   1 of   8 builds  {'67': 2, '435': 1}
+  Texture_cubemap/DotReflectSpec_1_-1to1D3D                              unstable on   1 of   8 builds  {'67': 2, '457': 1}
+  Texture_cubemap/DotReflectSpec_1_-1to1GL                               unstable on   1 of   8 builds  {'60': 2, '450': 1}
+  Texture_cubemap/DotReflectSpec_1_0to1                                  unstable on   1 of   8 builds  {'48': 2, '344': 1}
+  Texture_cubemap/DotReflectSpec_1_HiLoHemi                              unstable on   1 of   8 builds  {'111': 2, '399': 1}
+  Texture_cubemap/DotReflectSpec_1_HiLo_1                                unstable on   1 of   8 builds  {'16': 2, '164': 1}
+  Texture_cubemap/DotReflectSpec_2_-1to1                                 unstable on   1 of   8 builds  {'22': 2, '233': 1}
+  Texture_cubemap/DotReflectSpec_2_-1to1D3D                              unstable on   1 of   8 builds  {'33': 2, '280': 1}
+  Texture_cubemap/DotReflectSpec_2_-1to1GL                               unstable on   1 of   8 builds  {'23': 2, '265': 1}
+  Texture_cubemap/DotReflectSpec_2_0to1                                  unstable on   1 of   8 builds  {'5': 2, '171': 1}
+  Texture_cubemap/DotReflectSpec_2_HiLoHemi                              unstable on   1 of   8 builds  {'18': 2, '148': 1}
+  Texture_cubemap/DotReflectSpec_2_HiLo_1                                unstable on   1 of   8 builds  {'1': 2, '71': 1}
+  Texture_cubemap/DotReflectSpec_HiLoHemi                                unstable on   1 of   8 builds  {'98': 2, '369': 1}
+  Texture_cubemap/DotReflectSpec_HiLo_1                                  unstable on   1 of   8 builds  {'20': 2, '320': 1}
+  Texture_cubemap/DotSTR3D_-1to1                                         unstable on   1 of   8 builds  {'73': 2, '83': 1}
+  Texture_cubemap/DotSTR3D_-1to1D3D                                      unstable on   1 of   8 builds  {'0': 2, '7': 1}
+  Texture_cubemap/DotSTR3D_-1to1GL                                       unstable on   1 of   8 builds  {'4': 2, '15': 1}
+  Texture_cubemap/DotSTR3D_0to1                                          unstable on   1 of   8 builds  {'70': 2, '73': 1}
+  Texture_cubemap/DotSTR3D_HiLoHemi                                      unstable on   1 of   8 builds  {'2': 2, '3': 1}
+  Texture_cubemap/DotSTR3D_HiLo_1                                        unstable on   1 of   8 builds  {'1': 2, '3': 1}
+  Texture_cubemap/DotSTRCube_-1to1                                       unstable on   1 of   8 builds  {'58': 2, '373': 1}
+  Texture_cubemap/DotSTRCube_-1to1D3D                                    unstable on   1 of   8 builds  {'57': 2, '397': 1}
+  Texture_cubemap/DotSTRCube_-1to1GL                                     unstable on   1 of   8 builds  {'127': 2, '432': 1}
+  Texture_cubemap/DotSTRCube_0to1                                        unstable on   1 of   8 builds  {'29': 2, '267': 1}
+  Texture_cubemap/DotSTRCube_HiLoHemi                                    unstable on   1 of   8 builds  {'43': 2, '175': 1}
+  Texture_cubemap/DotSTRCube_HiLo_1                                      unstable on   1 of   8 builds  {'8': 2, '102': 1}
+  Texture_perspective/tex_tex_pers_n_bitri                               unstable on   1 of   7 builds  {'28': 3, '84': 1}
+  Texture_perspective/tex_tex_pers_n_quad                                unstable on   1 of   7 builds  {'15': 3, '44': 1}
+  Texture_perspective/tex_tex_pers_y_bitri                               unstable on   1 of   7 builds  {'47': 3, '133': 1}
+  Texture_perspective/tex_tex_pers_y_quad                                unstable on   1 of   7 builds  {'22': 3, '73': 1}
+  Texture_perspective_enable/TexPerspective_Textured                     unstable on   1 of   7 builds  {'1': 2, '5': 1}
+  Texture_render_target/TexFmt_A1R5G5B5                                  unstable on   1 of  14 builds  {'81225': 2, '0': 1}
+  Texture_render_target/TexFmt_A1R5G5B5_L                                unstable on   1 of  14 builds  {'81225': 2, '0': 1}
+  Texture_render_target/TexFmt_A4R4G4B4                                  unstable on   1 of  14 builds  {'81225': 2, '0': 1}
+  Texture_render_target/TexFmt_A4R4G4B4_L                                unstable on   1 of  14 builds  {'81225': 2, '0': 1}
+  Texture_render_target/TexFmt_A8                                        unstable on   1 of  14 builds  {'81225': 2, '0': 1}
+  Texture_render_target/TexFmt_A8B8G8R8                                  unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_A8B8G8R8_L                                unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_A8R8G8B8                                  unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_A8R8G8B8_L                                unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_A8Y8                                      unstable on   1 of  14 builds  {'81225': 2, '12': 1}
+  Texture_render_target/TexFmt_A8_L                                      unstable on   1 of  14 builds  {'81225': 2, '0': 1}
+  Texture_render_target/TexFmt_AY8                                       unstable on   1 of  14 builds  {'81225': 2, '12': 1}
+  Texture_render_target/TexFmt_AY8_L                                     unstable on   1 of  14 builds  {'81225': 2, '12': 1}
+  Texture_render_target/TexFmt_B8G8R8A8                                  unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_B8G8R8A8_L                                unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_DXT1                                      unstable on   1 of  14 builds  {'41859': 2, '2762': 1}
+  Texture_render_target/TexFmt_G8B8                                      unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_G8B8_L                                    unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_R16B16                                    unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_R16B16_L                                  unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_R5G6B5                                    unstable on   1 of  14 builds  {'81225': 2, '0': 1}
+  Texture_render_target/TexFmt_R5G6B5_L                                  unstable on   1 of  14 builds  {'81225': 2, '0': 1}
+  Texture_render_target/TexFmt_R6G5B5                                    unstable on   1 of  14 builds  {'81225': 2, '0': 1}
+  Texture_render_target/TexFmt_R8B8                                      unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_R8G8B8A8                                  unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_R8G8B8A8_L                                unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_SZ_Index8_p128                            unstable on   1 of  14 builds  {'81225': 2, '53': 1}
+  Texture_render_target/TexFmt_SZ_Index8_p256                            unstable on   1 of  14 builds  {'81225': 2, '53': 1}
+  Texture_render_target/TexFmt_SZ_Index8_p32                             unstable on   1 of  14 builds  {'81225': 2, '53': 1}
+  Texture_render_target/TexFmt_SZ_Index8_p64                             unstable on   1 of  14 builds  {'81225': 2, '53': 1}
+  Texture_render_target/TexFmt_UYVY_L                                    unstable on   1 of  14 builds  {'81225': 2, '56': 1}
+  Texture_render_target/TexFmt_X1R5G5B5                                  unstable on   1 of  14 builds  {'81225': 2, '0': 1}
+  Texture_render_target/TexFmt_X1R5G5B5_L                                unstable on   1 of  14 builds  {'81225': 2, '0': 1}
+  Texture_render_target/TexFmt_X8R8G8B8                                  unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_X8R8G8B8_L                                unstable on   1 of  14 builds  {'81225': 2, '71': 1}
+  Texture_render_target/TexFmt_Y16                                       unstable on   1 of  14 builds  {'81225': 2, '12': 1}
+  Texture_render_target/TexFmt_Y16_L                                     unstable on   1 of  14 builds  {'81225': 2, '12': 1}
+  Texture_render_target/TexFmt_Y8                                        unstable on   1 of  14 builds  {'81225': 2, '12': 1}
+  Texture_render_target/TexFmt_Y8_L                                      unstable on   1 of  14 builds  {'81225': 2, '12': 1}
+  Texture_render_target/TexFmt_YUY2_L                                    unstable on   1 of  14 builds  {'81225': 2, '56': 1}
+  Vertex_shader_rounding_tests/GeometrySubscreen_0.5625                  unstable on   1 of  15 builds  {'0': 3, '84': 1}
+  Vertex_shader_rounding_tests/GeometrySubscreen_1.0000                  unstable on   1 of  15 builds  {'0': 2, '93': 1}
+  Vertex_shader_rounding_tests/GeometrySuperscreen_0.0010                unstable on   1 of  15 builds  {'0': 1, '800': 1}
+  Vertex_shader_rounding_tests/GeometrySuperscreen_0.4999                unstable on   6 of  15 builds  {'0': 8, '1': 2, '400': 2, '800': 2}
+  Vertex_shader_rounding_tests/GeometrySuperscreen_0.5000                unstable on   3 of  15 builds  {'0': 4, '400': 3, '800': 1, '2': 1}
+  Vertex_shader_rounding_tests/GeometrySuperscreen_0.5624                unstable on   7 of  15 builds  {'0': 9, '400': 4, '800': 2, '401': 1, '1': 1}
+  Vertex_shader_rounding_tests/GeometrySuperscreen_0.5626                unstable on   3 of  15 builds  {'0': 4, '285': 2, '570': 1}
+  Vertex_shader_rounding_tests/GeometrySuperscreen_0.9990                unstable on   4 of  15 builds  {'0': 5, '285': 3, '570': 1}
+  Vertex_shader_rounding_tests/GeometrySuperscreen_1.0000                unstable on   5 of  15 builds  {'285': 5, '0': 4, '570': 2}
+  Volume_texture/A1R5G5B5                                                unstable on   1 of   8 builds  {'22': 2, '18': 1}
+  Volume_texture/A4R4G4B4                                                unstable on   1 of   8 builds  {'222': 2, '178': 1}
+  Volume_texture/A8                                                      unstable on   1 of   8 builds  {'3463': 2, '2859': 1}
+  Volume_texture/A8B8G8R8                                                unstable on   1 of   8 builds  {'2734': 2, '2245': 1}
+  Volume_texture/A8R8G8B8                                                unstable on   1 of   8 builds  {'2734': 2, '2245': 1}
+  Volume_texture/A8Y8                                                    unstable on   1 of   8 builds  {'710': 2, '564': 1}
+  Volume_texture/AY8                                                     unstable on   1 of   8 builds  {'2084': 2, '1850': 1}
+  Volume_texture/B8G8R8A8                                                unstable on   1 of   8 builds  {'2734': 2, '2245': 1}
+  Volume_texture/DXT1                                                    unstable on   1 of   8 builds  {'3496': 2, '2924': 1}
+  Volume_texture/G8B8                                                    unstable on   1 of   8 builds  {'710': 2, '564': 1}
+  Volume_texture/R6G5B5                                                  unstable on   1 of   8 builds  {'22': 2, '18': 1}
+  Volume_texture/R8B8                                                    unstable on   1 of   8 builds  {'710': 2, '564': 1}
+  Volume_texture/R8G8B8A8                                                unstable on   1 of   8 builds  {'2734': 2, '2245': 1}
+  Volume_texture/SZ_Index8                                               unstable on   1 of   8 builds  {'3496': 2, '2772': 1}
+  Volume_texture/X8R8G8B8                                                unstable on   1 of   8 builds  {'2529': 2, '2160': 1}
+  Volume_texture/Y16                                                     unstable on   1 of   8 builds  {'65819': 2, '65899': 1}
+  Volume_texture/Y8                                                      unstable on   1 of   8 builds  {'2084': 2, '1850': 1}
+  W_param/ff_w_zero_inf__bitri_w-7.52e-37                                unstable on   1 of  13 builds  {'0': 1, '146504': 1}
+  W_param/ff_w_zero_inf__bitri_w0.00                                     unstable on   1 of  12 builds  {'0': 1, '68132': 1}
+  W_param/ff_w_zero_inf__bitri_w0.25                                     unstable on   1 of  12 builds  {'0': 1, '343': 1}
+  W_param/ff_w_zero_inf__bitri_w0.50                                     unstable on   1 of  12 builds  {'0': 1, '320': 1}
+  W_param/ff_w_zero_inf__bitri_w1.00                                     unstable on   1 of  12 builds  {'0': 1, '240': 1}
+  W_param/ff_w_zero_inf__bitri_w2.00                                     unstable on   2 of  12 builds  {'240': 3, '0': 2}
+  W_param/ff_w_zero_inf__bitri_w4.00                                     unstable on   2 of  12 builds  {'240': 3, '0': 2}
+  W_param/ff_w_zero_inf__quad_w-0.25                                     unstable on   2 of  12 builds  {'128': 3, '0': 2}
+  W_param/ff_w_zero_inf__quad_w-0.96e-34                                 unstable on   2 of  12 builds  {'314': 3, '0': 2}
+  W_param/ff_w_zero_inf__quad_w-3.08e-33                                 unstable on   2 of  12 builds  {'314': 3, '0': 2}
+  W_param/ff_w_zero_inf__quad_w0.25                                      unstable on   2 of  12 builds  {'52': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w-0.25                                  unstable on   2 of  12 builds  {'178': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w-0.50                                  unstable on   2 of  12 builds  {'339': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w-0.96e-34                              unstable on   2 of  12 builds  {'743': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w-1.00                                  unstable on   2 of  12 builds  {'666': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w-1.50e-36                              unstable on   2 of  12 builds  {'742': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w-1.88e-37                              unstable on   2 of  12 builds  {'143546': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w-2.00                                  unstable on   2 of  12 builds  {'666': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w-3.08e-33                              unstable on   2 of  12 builds  {'743': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w-3.76e-37                              unstable on   2 of  12 builds  {'143494': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w-4.00                                  unstable on   2 of  12 builds  {'666': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w-7.52e-37                              unstable on   2 of  12 builds  {'4768': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w-inf                                   unstable on   2 of  12 builds  {'670': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w0.00                                   unstable on   2 of  12 builds  {'800': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w0.25                                   unstable on   2 of  12 builds  {'130': 3, '0': 2}
+  W_param/prog_w_zero_inf__bitri_w0.50                                   unstable on   2 of  12 builds  {'238': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-0.00                                         unstable on   2 of  12 builds  {'152117': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-0.25                                         unstable on   2 of  12 builds  {'146996': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-0.50                                         unstable on   2 of  12 builds  {'139893': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-0.96e-34                                     unstable on   2 of  12 builds  {'117166': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-1.00                                         unstable on   2 of  12 builds  {'79415': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-1.50e-36                                     unstable on   2 of  12 builds  {'152502': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-1.88e-37                                     unstable on   2 of  12 builds  {'152525': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-2.00                                         unstable on   2 of  12 builds  {'79415': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-3.08e-33                                     unstable on   2 of  12 builds  {'117180': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-3.76e-37                                     unstable on   2 of  12 builds  {'152488': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-4.00                                         unstable on   2 of  12 builds  {'79415': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-7.52e-37                                     unstable on   2 of  12 builds  {'152648': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z-inf                                          unstable on   2 of  12 builds  {'79415': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z0.00                                          unstable on   2 of  12 builds  {'152167': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z0.25                                          unstable on   2 of  12 builds  {'147035': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z0.50                                          unstable on   2 of  12 builds  {'139851': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z1.00                                          unstable on   2 of  12 builds  {'79415': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z2.00                                          unstable on   2 of  12 builds  {'79415': 3, '0': 2}
+  W_param/rcc_w_zero_inf__z4.00                                          unstable on   2 of  12 builds  {'79415': 3, '0': 2}
+  W_param/rcc_w_zero_inf__zinf                                           unstable on   2 of  12 builds  {'79415': 3, '0': 2}
+  W_param/w_gaps                                                         unstable on   2 of  12 builds  {'145687': 3, '0': 2}
+  W_param/w_gaps_tex_persp                                               unstable on   2 of  12 builds  {'145687': 3, '0': 2}
+  W_param/w_neg_strip                                                    unstable on   2 of  12 builds  {'37444': 3, '0': 2}
+  W_param/w_neg_strip_tex_persp                                          unstable on   2 of  12 builds  {'37444': 3, '0': 2}
+  W_param/w_pos_strip                                                    unstable on   2 of  12 builds  {'102924': 3, '0': 2}
+  W_param/w_pos_strip_tex_persp                                          unstable on   2 of  12 builds  {'78763': 3, '0': 2}
+  ZPass_pixel_count/ZPass                                                unstable on   3 of  11 builds  {'1202': 5, '1008': 2, '1998': 1, '1750': 1, '1238': 1}
+  ZPass_pixel_count/ZPassLineWidth-0x0000                                unstable on   3 of  11 builds  {'320': 5, '250': 2, '1588': 1, '1240': 1, '276': 1}
+  ZPass_pixel_count/ZPassLineWidth-0x0001                                unstable on   3 of  11 builds  {'386': 5, '324': 2, '1570': 1, '1310': 1, '326': 1}
+  ZPass_pixel_count/ZPassLineWidth-0x0004                                unstable on   3 of  11 builds  {'386': 5, '324': 2, '1570': 1, '1310': 1, '326': 1}
+  ZPass_pixel_count/ZPassLineWidth-0x0008                                unstable on   3 of  11 builds  {'386': 5, '324': 2, '1570': 1, '1310': 1, '326': 1}
+  ZPass_pixel_count/ZPassLineWidth-0x000F                                unstable on   3 of  11 builds  {'450': 4, '324': 2, '386': 1, '1570': 1, '1310': 1}
+  ZPass_pixel_count/ZPassLineWidth-0x0010                                unstable on   3 of  11 builds  {'292': 4, '404': 2, '418': 1, '1614': 1, '1334': 1}
+  ZPass_pixel_count/ZPassLineWidth-0x0040                                unstable on   3 of  11 builds  {'342': 4, '406': 2, '468': 1, '1660': 1, '1348': 1}
+  ZPass_pixel_count/ZPassLineWidth-0x00FF                                unstable on   3 of  11 builds  {'454': 4, '316': 2, '390': 1, '1490': 1, '1310': 1}
+  ZPass_pixel_count/ZPassLineWidth-0x01F8                                unstable on   3 of  11 builds  {'500': 5, '430': 2, '1632': 1, '1512': 1, '436': 1}
+  ZPass_pixel_count/ZPassPointSize-0x0000                                unstable on   3 of  11 builds  {'342': 5, '276': 2, '1558': 1, '1238': 1, '298': 1}
+  ZPass_pixel_count/ZPassPointSize-0x0001                                unstable on   3 of  11 builds  {'342': 5, '276': 2, '1558': 1, '1238': 1, '298': 1}
+  ZPass_pixel_count/ZPassPointSize-0x0004                                unstable on   3 of  11 builds  {'342': 5, '276': 2, '1558': 1, '1238': 1, '298': 1}
+  ZPass_pixel_count/ZPassPointSize-0x0007                                unstable on   3 of  11 builds  {'342': 5, '276': 2, '1558': 1, '1238': 1, '298': 1}
+  ZPass_pixel_count/ZPassPointSize-0x0008                                unstable on   3 of  11 builds  {'342': 5, '276': 2, '1558': 1, '1238': 1, '298': 1}
+  ZPass_pixel_count/ZPassPointSize-0x0009                                unstable on   3 of  11 builds  {'342': 5, '276': 2, '1558': 1, '1238': 1, '298': 1}
+  ZPass_pixel_count/ZPassPointSize-0x000F                                unstable on   3 of  11 builds  {'342': 5, '276': 2, '1558': 1, '1238': 1, '298': 1}
+  ZPass_pixel_count/ZPassPointSize-0x0010                                unstable on   3 of  11 builds  {'330': 5, '256': 2, '1542': 1, '1218': 1, '274': 1}
+  ZPass_pixel_count/ZPassPointSize-0x0040                                unstable on   3 of  11 builds  {'384': 5, '322': 2, '1568': 1, '1308': 1, '324': 1}
+  ZPass_pixel_count/ZPassPointSize-0x00FF                                unstable on   3 of  11 builds  {'418': 5, '372': 2, '1622': 1, '1442': 1, '366': 1}
+  ZPass_pixel_count/ZPassPointSize-0x0100                                unstable on   3 of  11 builds  {'380': 5, '322': 2, '1584': 1, '1376': 1, '296': 1}
+  ZPass_pixel_count/ZPassPointSize-0x01F8                                unstable on   3 of  11 builds  {'332': 5, '306': 2, '1508': 1, '1260': 1, '324': 1}
+  ZPass_pixel_count/ZPassPointSize-0x01FF                                unstable on   3 of  11 builds  {'332': 5, '306': 2, '1508': 1, '1260': 1, '324': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x0000                              unstable on   3 of  11 builds  {'344': 5, '278': 2, '1560': 1, '1240': 1, '300': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x0001                              unstable on   3 of  11 builds  {'320': 5, '250': 2, '1588': 1, '1240': 1, '276': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x0004                              unstable on   3 of  11 builds  {'320': 5, '250': 2, '1588': 1, '1240': 1, '276': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x0007                              unstable on   3 of  11 builds  {'320': 5, '250': 2, '1588': 1, '1240': 1, '276': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x0008                              unstable on   3 of  11 builds  {'342': 5, '276': 2, '1558': 1, '1238': 1, '298': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x0009                              unstable on   3 of  11 builds  {'330': 5, '256': 2, '1542': 1, '1218': 1, '274': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x000F                              unstable on   3 of  11 builds  {'330': 5, '256': 2, '1542': 1, '1218': 1, '274': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x0010                              unstable on   3 of  11 builds  {'330': 5, '256': 2, '1542': 1, '1218': 1, '274': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x0040                              unstable on   3 of  11 builds  {'384': 5, '322': 2, '1568': 1, '1308': 1, '324': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x00FF                              unstable on   3 of  11 builds  {'380': 5, '322': 2, '1584': 1, '1376': 1, '296': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x0100                              unstable on   3 of  11 builds  {'380': 5, '322': 2, '1584': 1, '1376': 1, '296': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x01F8                              unstable on   3 of  11 builds  {'415': 5, '345': 2, '1659': 1, '1371': 1, '343': 1}
+  ZPass_pixel_count/ZPassPointSizeVS-0x01FF                              unstable on   3 of  11 builds  {'288': 5, '218': 2, '1532': 1, '1244': 1, '216': 1}

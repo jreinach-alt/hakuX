@@ -1,0 +1,110 @@
+pathfind: The Simpsons Road Rage (45410013) on nova: /storage/E6C6-D7AA/Games/XBox/45410013-The_Simpsons_Road_Rage.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 45410013 first-run, loaded none
+[   9.3s] #  1 publisher_logo    fast    A                        Boot-time logo or intro animation with no title or menu yet. Skip with A per the intro hin
+[  16.1s] #  2 publisher_logo    fast    A                        Publisher logo still up; hint says Fox/EA logos skip with A, then re-read. No title or men
+[  21.7s] #  3 black             black   wait                     black frame
+[  27.9s] #  4 publisher_logo    fast    wait                     Title logo is up, not yet a title screen or menu. Hint says a logo or intro with no input 
+[  35.5s] #  5 gameplay          fast    wait                     Player-controlled character (Bart) in a 3D room, but it is not clear there is a HUD and th
+[  48.2s] #  6 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.187, under input 0.848
+[  51.9s] #  7 cutscene          fast    START                    This is a news broadcast cutscene with a name caption and a LIVE banner, not player-contro
+[  60.1s] #  8 title_screen      fast    START                    Title screen with a 'PRESS START' prompt; hint says press START on this publisher's titles
+[  68.4s] #  9 main_menu         fast    A                        Main menu reached; Road Rage is the first item, a quick route into driving. Pressing A acc
+[  77.0s] # 10 submenu           fast    A                        Character/car select screen; the hint is to accept the default with A. Homer is highlighte
+[  85.8s] # 11 submenu           fast    A                        Starting-location select screen. The top item is the default, and the rule is to accept th
+[  95.5s] # 12 loading           fast    wait                     Game is loading after the title/menu sequence; no input needed, wait for the load to finis
+[ 106.2s] # 13 gameplay          fast    wait                     Game HUD (countdown timer, $ counter, minimap) is up during a Road Rage drive, so this is 
+[ 118.4s] # 14 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.043, under input 0.033
+[ 125.8s] # 15 gameplay          fast    wait                     Player-controlled car in the open world with HUD (timer, $ counter, minimap), not a menu, 
+[ 138.0s] # 16 probe             probe   RT:3 RT:3 RT:3           control 0.044, under input 0.049
+[ 141.6s] # 17 gameplay          fast    wait                     Player-controlled car with HUD (timer, $ counter, minimap) in the open world, not a menu o
+[ 155.5s] # 18 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.031, under input 0.022
+[ 159.4s] # 19 gameplay          fast    wait                     Player-controlled car with HUD (timer, $ counter, minimap) in the open world, not a menu o
+[ 177.0s] # 20 probe             probe   RT:1.5 RT:1.5 RT:1.5 RT:1.5 RT:1.5 control 0.020, under input 0.023
+[ 180.7s] # 21 gameplay          fast    wait                     Player-controlled car with HUD (timer, $ counter, minimap) in the open world, not a menu o
+[ 194.5s] # 22 probe             probe   RT:3 RT:3 RT:3           control 0.020, under input 0.023
+[ 201.2s] # 23 gameplay          fast    wait                     Player-controlled car in the open world with timer, $ counter and minimap HUD, no menu or 
+[ 213.8s] # 24 probe             probe   RT+left:2 RT+left:2 RT+left:2 control 0.019, under input 0.016
+[ 217.7s] # 25 gameplay          fast    wait                     Player-controlled car with HUD (timer, $ counter, minimap) in the open world, not a menu o
+[ 231.5s] # 26 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.014, under input 0.019
+[ 235.1s] # 27 gameplay          fast    wait                     Player-controlled car with HUD (timer, $ counter, minimap) in the open world, not a menu o
+[ 247.3s] # 28 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.018, under input 0.018
+[ 251.0s] # 29 gameplay          fast    wait                     Player-controlled car in the open world with timer, $ counter and minimap HUD, no menu, le
+[ 264.6s] # 30 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.021, under input 0.021
+[ 268.6s] # 31 gameplay          fast    wait                     Player-controlled car with HUD (counter, $ counter, minimap) in the open world, no menu, l
+[ 280.7s] # 32 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.014, under input 0.019
+[ 284.7s] # 33 game_over         fast    wait                     The screen shows a GAME OVER banner over a dimmed scene, which is not player-controlled pl
+[ 301.5s] # 34 results           fast    A                        After GAME OVER the game moved to a RATING panel over an attract-style scene, not player-c
+[ 309.3s] # 35 results           fast    A                        Post-race progress/reward summary, not player-controlled play. No menu cursor is visible; 
+[ 316.8s] # 36 save_load_prompt  fast    START                    A save-name keyboard; the cursor sits on letter A. Accept the default name with START (jum
+[ 331.0s] # 37 name_entry        fast    DOWN DOWN DOWN RIGHT A   Save-name keyboard, START had no effect, cursor on A at top-left. Walk the cursor down to 
+[ 339.3s] # 38 save_load_prompt  fast    wait                     A save is in progress after the save-name keyboard; the game is writing data, so no input 
+[ 347.5s] # 39 save_load_prompt  fast    A                        Save finished successfully; the only control is the A Accept button, so press A to dismiss
+[ 355.4s] # 40 main_menu         fast    A                        Main menu with no visible cursor; the fastest route to play is Road Rage (top item). Press
+[ 366.0s] # 41 submenu           fast    A                        Character/car select with a default already highlighted; accept the default with A to reac
+[ 375.0s] # 42 submenu           fast    A                        Location select is the last step before play. Accept the default (first item, Evergreen Te
+[ 384.0s] # 43 loading           fast    wait                     Game is loading after the save-and-menu flow; no input should be sent during a loading scr
+[ 394.4s] # 44 gameplay          fast    wait                     HUD with timer and money plus the player's car in the world; this is the Simpsons Road Rag
+[ 406.2s] # 45 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.024, under input 0.019
+[ 409.8s] # 46 gameplay          fast    wait                     HUD (timer, money, minimap) with player's car in the world, no menu or cutscene. Previous 
+[ 421.7s] # 47 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.046, under input 0.061
+[ 426.7s] # 48 gameplay          fast    wait                     HUD (timer, money, minimap) with the player's car in the open world and no menu or cutscen
+[ 438.5s] # 49 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.031, under input 0.021
+[ 442.4s] # 50 gameplay          fast    wait                     HUD (timer, money, minimap) with the player's car in the world and no menu or cutscene. Pr
+[ 454.2s] # 51 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.037, under input 0.029
+[ 459.4s] # 52 gameplay          fast    wait                     HUD (timer, money, minimap) with the player's car in the open world and no menu or cutscen
+[ 471.3s] # 53 probe             probe   STICK:left:1.5 STICK:left:1.5 STICK:left:1.5 control 0.032, under input 0.042
+[ 475.2s] # 54 gameplay          fast    wait                     HUD (timer, money, minimap) is up with the player's car in the open world and no menu or c
+[ 487.4s] # 55 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.024, under input 0.020
+[ 492.9s] # 56 gameplay          fast    wait                     Player's car is in the open world with HUD (timer, money, minimap) and no menu, cutscene, 
+[ 505.0s] # 57 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.018, under input 0.020
+[ 508.5s] # 58 gameplay          fast    wait                     Player's car is in the open world with timer, money and minimap HUD, no menu, cutscene or 
+[ 520.4s] # 59 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.020, under input 0.022
+[ 523.9s] # 60 gameplay          fast    wait                     HUD up with the player's car in the open world and no menu or cutscene; the car is at spee
+[ 537.5s] # 61 probe             probe   STICK:up:1.5 STICK:up:1.5 STICK:up:1.5 control 0.023, under input 0.016
+[ 541.8s] # 62 gameplay          fast    wait                     Player's car is in the open world with timer/money HUD and minimap, no menu or cutscene. P
+[ 553.7s] # 63 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.020, under input 0.022
+[ 557.6s] # 64 gameplay          fast    wait                     Player's car is in the open world with HUD and minimap, no menu or cutscene. Previous prob
+[ 571.6s] # 65 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.546, under input 0.435
+[ 574.7s] # 66 loading           fast    wait                     Game is loading its title/boot sequence; spinner text is present and nothing to press. Wai
+[ 583.9s] # 67 results           fast    A                        A post-run rating screen ('Loser') with no player control, not gameplay. Nothing is highli
+[ 591.8s] # 68 results           fast    A                        A post-mission progress/tally screen with no player control and no HUD. Not gameplay. Noth
+[ 600.5s] # 69 cutscene          fast    START                    Dialogue cutscene with Burns talking at his desk; no player control. Skip with START first
+[ 607.4s] # 70 submenu           fast    A                        A save-confirmation dialog with a single Accept option; not gameplay. Cursor/highlight is 
+[ 614.8s] # 71 main_menu         fast    A                        Main menu with the cursor not visibly on any item; Road Rage is the first listed quick-pla
+[ 623.3s] # 72 submenu           fast    A                        Driver select is a submenu; accepting the default highlighted driver (Homer, Family Sedan)
+[ 632.3s] # 73 submenu           fast    A                        Starting location select is a submenu; accepting the default starting location with A move
+[ 640.1s] # 74 loading           fast    wait                     Game is loading after the title/logo; no input needed, wait for the load to finish.
+[ 649.8s] # 75 gameplay          fast    wait                     Game HUD (timer, money, minimap) is up and a player-driven car is on the road. Probing wit
+[ 663.2s] # 76 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.017, under input 0.021
+[ 666.8s] # 77 gameplay          fast    wait                     Game HUD (timer, money, minimap) is up with the player's car on the road; probing with thr
+[ 678.7s] # 78 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.031, under input 0.032
+[ 684.2s] # 79 gameplay          fast    wait                     Timer, money and minimap HUD are up and the player's car is on the road. Earlier 1.5 s thr
+[ 697.8s] # 80 probe             probe   RT:3 RT:3 RT:3           control 0.030, under input 0.025
+[ 701.6s] # 81 gameplay          fast    wait                     Game HUD (timer, money, minimap) is up and the player's car is on the road, with the camer
+[ 713.8s] # 82 probe             probe   RT:3 RT:3 RT:3           control 0.036, under input 0.033
+[ 717.7s] # 83 gameplay          fast    wait                     Timer, money and minimap HUD are up and the player's pink car is on the road with the came
+[ 731.0s] # 84 probe             probe   RT:3 RT:3 RT:3           control 0.067, under input 0.062
+[ 734.8s] # 85 gameplay          fast    wait                     Game HUD (timer, money, minimap) is up and the player's pink car is on the road with the c
+[ 746.6s] # 86 probe             probe   RT:3 RT:3 RT:3           control 0.023, under input 0.023
+[ 750.6s] # 87 gameplay          fast    wait                     Game HUD up and the player's pink car is on the road with the camera behind it; the previo
+[ 763.9s] # 88 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.019, under input 0.020
+[ 768.0s] # 89 gameplay          fast    wait                     Timer, money and minimap HUD are up and the player's pink car sits on the road with the ca
+[ 779.8s] # 90 probe             probe   RT:3 RT:3 RT:3           control 0.019, under input 0.018
+[ 783.6s] # 91 gameplay          fast    wait                     HUD (timer, money, minimap) is up and the player's pink car sits on the road with the came
+[ 797.1s] # 92 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.017, under input 0.018
+[ 800.8s] # 93 gameplay          fast    wait                     Timer, money and minimap HUD are up and the player's pink car sits on the road with the ca
+[ 812.6s] # 94 probe             probe   RT:1.5 RT:1.5 RT:1.5     control 0.016, under input 0.023
+[ 819.3s] # 95 gameplay          fast    wait                     A HUD with timer, money and minimap is up, and the player's car is on the road with the ca
+[ 833.7s] # 96 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.263, under input 0.141
+[ 839.1s] # 97 main_menu         fast    A                        No player-controlled play is visible: a blank TV and a single 'RATING' sign look like a fr
+[ 846.3s] # 98 results           fast    A                        This is a post-race/progress tally screen, not gameplay. The previous step's game-over ban
+[ 854.4s] # 99 cutscene          fast    A                        Character close-up with no HUD or player-controlled element; this is a dialogue or story s
+[ 861.5s] #100 save_load_prompt  fast    A                        A save-confirmation dialog reading 'Save Successful' with Accept highlighted; pressing A a
+[ 870.4s] #101 main_menu         fast    A                        Front-end menu, no player-controlled play yet. Road Rage is the fastest route to a playabl
+[ 878.8s] #102 submenu           fast    A                        Driver select with default Homer highlighted; accept the default with A to reach the race.
+[ 887.2s] #103 submenu           fast    A                        Location select submenu; the default first item Evergreen Terrace is highlighted, so accep
+[ 895.0s] #104 loading           fast    wait                     Game is in a loading screen after the save/menu flow; no input is needed, so wait for it t
+{"name": "The Simpsons Road Rage", "device": "nova", "result": "gave-up", "minutes": null, "model_calls": 74, "steps": 104, "replayed": 0, "reason": "budget 15 min", "gameplay_frame": null}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

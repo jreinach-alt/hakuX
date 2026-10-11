@@ -1,0 +1,25 @@
+{
+ "title_id": "4D530051",
+ "name": "Conker: Live & Reloaded",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Conker Live & Reloaded.iso",
+ "result": "gave-up",
+ "tool": "6f416f84f8",
+ "started": "2026-10-02 11:26:35 PDT",
+ "reason": "budget 15 min",
+ "last_state": "black",
+ "model_calls": 23,
+ "calls_by_model": {
+  "claude-sonnet-5": 19,
+  "claude-opus-5-5": 4
+ },
+ "steps": 123,
+ "seconds": 905.0,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/conker/frames/123-black.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 100,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/conker/strip.jpg"
+}

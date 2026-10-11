@@ -1,0 +1,30 @@
+{
+ "title_id": "4B4E0001",
+ "name": "Whiteout",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4B4E0001-Whiteout.xiso.iso",
+ "result": "hang",
+ "tool": "e9336e3857",
+ "started": "2026-10-04 14:49:36 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/hangwatch/docs/lanes/hangwatch/runs/whiteout/frames/009-probe-a.jpg",
+  "/home/justin/hakux-work/wt/hangwatch/docs/lanes/hangwatch/runs/whiteout/frames/009-probe-b.jpg",
+  "/home/justin/hakux-work/wt/hangwatch/docs/lanes/hangwatch/runs/whiteout/frames/009-probe-left.jpg",
+  "/home/justin/hakux-work/wt/hangwatch/docs/lanes/hangwatch/runs/whiteout/frames/009-probe-right.jpg"
+ ],
+ "reason": "HANG: frames still, audio quiet and the vCPU pinned for 95 s; one A press changed nothing (frame change 0.000)",
+ "model_calls": 21,
+ "calls_by_model": {
+  "claude-sonnet-5": 21
+ },
+ "steps": 32,
+ "seconds": 286.7,
+ "last_frame": "/home/justin/hakux-work/wt/hangwatch/docs/lanes/hangwatch/runs/whiteout/frames/033-look.jpg",
+ "last_state": "loading",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 13,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/hangwatch/docs/lanes/hangwatch/runs/whiteout/strip.jpg"
+}

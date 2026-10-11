@@ -1,0 +1,59 @@
+{
+ "title_id": "4947002B",
+ "name": "Panzer Dragoon Orta",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Panzer Dragoon Orta (Europe).iso",
+ "result": "gameplay",
+ "tool": "7fc1007c53",
+ "started": "2026-10-03 11:02:30 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/022-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/022-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/022-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/022-probe-right.jpg"
+ ],
+ "minutes": 3.19,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/021-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/031-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4947.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "The player controls a dragon in flight with a targeting reticle and health/energy gauges, fighting enemies in a dark cave-like space, so it's a character fighti",
+  "ok": true,
+  "play_s": 601.3,
+  "need_s": 600.0,
+  "hold_s": 717.3,
+  "model_navs": 9,
+  "frames": 20,
+  "reason": "",
+  "verdict": "VERDICT Panzer Dragoon Orta ? FAIL(menu time: 83.6% of the scored window in `play` (bar 90%; play 600 s, cutscene 74 s, menu 21 s, black 14 s)) gameplay=717.6s fps_ok=0.9123 crash=False hang=False audio_short=6e-05 hitches=22/2.007pm worst_ms=1185.8 static_frac=unmeasured play_share=0.8364 fps_excluded=118.8s"
+ },
+ "model_calls": 30,
+ "calls_by_model": {
+  "claude-sonnet-5": 30
+ },
+ "steps": 22,
+ "seconds": 954.8,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/frames/108-hold.jpg",
+ "last_state": "probe",
+ "replayed": 7,
+ "sib_replayed": 0,
+ "guide": [
+  "4947002B"
+ ],
+ "cheap": 2,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/panzer-dragoon-hold2/strip.jpg"
+}

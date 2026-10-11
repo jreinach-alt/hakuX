@@ -518,7 +518,18 @@ python3 "$J/status_html.py" facts "$S/status.json" > "$S/render-facts.json" 2>/d
 # drives this path with GH_REPO=example/hakux and must never reach the network.
 PAGES_DIR="${STATUS_PAGES_DIR:-$S/pages}"
 PAGES_REMOTE="${STATUS_PAGES_REMOTE-}"
-[ -z "$PAGES_REMOTE" ] && [ "$GH_REPO" = jreinach-alt/hakuX ] && [ $have_gh = 1 ] && PAGES_REMOTE="https://github.com/$GH_REPO.git"
+# The web base for the links this job writes: the forge while HAKUX_FORGE=1, else
+# github.com. HAKUX_WEB_URL overrides both. A bare run must not link to github.com
+# from a forge-only host (lane.localforge, 2026-10-03).
+if [ "${HAKUX_FORGE:-0}" = 1 ]; then WEB_DEFAULT=http://127.0.0.1:3330; else WEB_DEFAULT=https://github.com; fi
+# Never github.com while `gh` is the local forge shim (HAKUX_FORGE=1), for three
+# reasons:
+#   - the forge has no Pages;
+#   - the account is suspended;
+#   - nothing is to touch github.com until it returns (lane.localforge, 2026-10-02).
+# The page is still rendered and committed locally.
+[ -z "$PAGES_REMOTE" ] && [ "$GH_REPO" = jreinach-alt/hakuX ] && [ $have_gh = 1 ] && [ "${HAKUX_FORGE:-0}" != 1 ] \
+    && PAGES_REMOTE="https://github.com/$GH_REPO.git"
 PAGES_MIN_GAP="${STATUS_PAGES_MIN_GAP:-600}"; case "$PAGES_MIN_GAP" in ''|*[!0-9]*) PAGES_MIN_GAP=600 ;; esac
 PSTATE="$S/pages-state"          # "<epoch of the last publish> <its content key>"
 # THE DEGRADED-RENDER GUARD (#507, 2026-09-28 17:42 PDT: a page of zeros, "no
@@ -599,7 +610,14 @@ publish_pages
 # touches the issue at all (no `renamed` rows, no edits). Until both hold, the
 # legacy roll-up below keeps #107 current, so the owner is never left with
 # neither.
-POINTER="$S/issue-pointer"
+# THE LOCAL FORGE KEEPS ITS OWN ISSUE STATE (lane.localforge, 2026-10-02).
+# The pointer and the comment id below name GitHub's #107. In the forge that
+# number is an imported issue, and a GitHub comment id means nothing there.
+# Under HAKUX_FORGE=1 both files live in $S/forge/ instead. The forge then gets
+# its own live-status issue, found by its `harness-status` label and created
+# once, and GitHub's files stay as they are for when it returns.
+IS="$S"; [ "${HAKUX_FORGE:-0}" = 1 ] && { IS="$S/forge"; mkdir -p "$IS"; }
+POINTER="$IS/issue-pointer"
 if [ -s "$POINTER" ]; then
     echo "#$(cut -d' ' -f1 "$POINTER") points at the dashboard; not touched"
     exit 0
@@ -635,7 +653,7 @@ if [ -n "$pages_url" ]; then
         # would otherwise read as current forever.
         [ "$cur_title" = "harness: live status -- moved to $pages_url" ] \
             || gh api -X PATCH "repos/$GH_REPO/issues/$issue" -f title="harness: live status -- moved to $pages_url" --silent >/dev/null 2>&1
-        cid=$(cat "$S/comment-id" 2>/dev/null)
+        cid=$(cat "$IS/comment-id" 2>/dev/null)
         [ -n "$cid" ] && gh api -X PATCH "repos/$GH_REPO/issues/comments/$cid" \
             -f body="The roll-up moved to **$pages_url**. This comment is no longer updated." --silent >/dev/null 2>&1
         gh issue pin "$issue" --repo "$GH_REPO" >/dev/null 2>&1       # already pinned is an error, and fine
@@ -655,16 +673,16 @@ if [ -z "$issue" ]; then
         --body "Rewritten by \`docs/testing/jobs/status.sh\` at the end of every job tick and every 30 minutes. Pin this issue. Do not comment here; the roll-up is the only content, and it is regenerated from the host each time." 2>/dev/null | grep -o '[0-9]*$')
     [ -n "$issue" ] || { echo "could not create the status issue"; exit 0; }
     cur_title=""
-    rm -f "$S/comment-id"
+    rm -f "$IS/comment-id"
 fi
-cid=$(cat "$S/comment-id" 2>/dev/null)
+cid=$(cat "$IS/comment-id" 2>/dev/null)
 posted=""
 if [ -n "$cid" ] && gh api "repos/$GH_REPO/issues/comments/$cid" --silent >/dev/null 2>&1; then
     gh api -X PATCH "repos/$GH_REPO/issues/comments/$cid" -F body=@"$OUT" --silent >/dev/null 2>&1 && posted="updated #$issue comment $cid"
 fi
 if [ -z "$posted" ]; then       # no id, a deleted comment, or a PATCH that failed
     cid=$(gh api -X POST "repos/$GH_REPO/issues/$issue/comments" -F body=@"$OUT" --jq .id 2>/dev/null)
-    [ -n "$cid" ] && { echo "$cid" > "$S/comment-id"; posted="created #$issue comment $cid"; }
+    [ -n "$cid" ] && { echo "$cid" > "$IS/comment-id"; posted="created #$issue comment $cid"; }
 fi
 echo "${posted:-could not write the #$issue comment}"
 
@@ -690,7 +708,7 @@ if [ "$lapse" -gt 0 ]; then
     echo "> **The roll-up lapsed for $(ago "$prev_run" | sed 's/ ago$//') before this one** (previous tick $(local_ts "@$prev_run")). The state below is current; nothing was observed across that window."
 fi
 echo
-[ -n "$cid" ] && echo "The full roll-up is [in the comment below](https://github.com/$GH_REPO/issues/$issue#issuecomment-$cid), rewritten in place every tick."
+[ -n "$cid" ] && echo "The full roll-up is [in the comment below](${HAKUX_WEB_URL:-$WEB_DEFAULT}/$GH_REPO/issues/$issue#issuecomment-$cid), rewritten in place every tick."
 echo "GitHub shows a comment's *posted* time, not its edited time, and never moves an edited comment -- so read the clock in this body and in the title above it, never the timestamp beside the comment."
 echo
 # Carried forward from the body this header replaces. It is the page's only

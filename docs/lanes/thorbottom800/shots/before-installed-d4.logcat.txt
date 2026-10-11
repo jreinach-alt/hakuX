@@ -1,0 +1,339 @@
+--------- beginning of main
+10-04 08:26:12.334  8095  8095 V SDL     : Device: kalama
+10-04 08:26:12.334  8095  8095 V SDL     : Model: AYN Thor
+10-04 08:26:12.334  8095  8095 V SDL     : onCreate()
+10-04 08:26:12.342  8095  8095 I hakuX   : Loading custom Vulkan driver: vulkan.purple.so from /data/user/0/com.jreinach.hakux.debug/files/gpu_driver/
+10-04 08:26:12.343  8095  8095 I hakuX   : Custom Vulkan driver loaded successfully via adrenotools
+10-04 08:26:12.343  8095  8095 V SDL     : nativeSetupJNI()
+10-04 08:26:12.343  8095  8095 V SDL     : AUDIO nativeSetupJNI()
+10-04 08:26:12.343  8095  8095 V SDL     : CONTROLLER nativeSetupJNI()
+10-04 08:26:12.361  8095  8095 V SDL     : onStart()
+10-04 08:26:12.362  8095  8095 V SDL     : onResume()
+10-04 08:26:12.393  8095  8095 V SDL     : surfaceCreated()
+10-04 08:26:12.393  8095  8095 V SDL     : surfaceChanged()
+10-04 08:26:12.393  8095  8095 V SDL     : Window size: 1240x1080
+10-04 08:26:12.393  8095  8095 V SDL     : Device size: 1240x1080
+10-04 08:26:12.394  8095  8095 I hakuX-lane: [rate526] before how=(unset) display=4 mode=4 1080x1240 mode_hz=60.00 display_hz=60.00 min_refresh_rate=60.0 peak_refresh_rate=60.0 modes=[ 3:1080x1240@120.00 4:1080x1240@60.00 ]
+10-04 08:26:12.399  8095  8135 V SDL     : Running main function SDL_main from library /data/app/~~WTglVCxJ9djXd1EGM21evQ==/com.jreinach.hakux.debug-UKU7ZkJYBOMAmW7iBNP9ZA==/lib/arm64/libxemu.so
+10-04 08:26:12.399  8095  8135 V SDL     : nativeRunMain()
+10-04 08:26:12.399  8095  8135 I hakuX   : SDL_main: start
+10-04 08:26:12.405  8095  8135 I hakuX   : Controller mappings loaded from assets: 250
+10-04 08:26:12.405  8095  8135 I hakuX   : SyncSetupFiles: start
+10-04 08:26:12.406  8095  8135 I SDL     : external storage state: mounted
+10-04 08:26:12.408  8095  8135 I hakuX   : SyncSetupFiles: base path /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files
+10-04 08:26:12.408  8095  8135 I hakuX   : Prefs mcpxPath=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/mcpx.bin
+10-04 08:26:12.408  8095  8135 I hakuX   : Prefs flashPath=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/flash.bin
+10-04 08:26:12.408  8095  8135 I hakuX   : Prefs hddPath=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img
+10-04 08:26:12.408  8095  8135 I hakuX   : Prefs dvdPath=
+10-04 08:26:12.408  8095  8135 I hakuX   : Prefs mcpxUri=
+10-04 08:26:12.408  8095  8135 I hakuX   : Prefs flashUri=
+10-04 08:26:12.408  8095  8135 I hakuX   : Prefs hddUri=
+10-04 08:26:12.408  8095  8135 I hakuX   : Prefs dvdUri=file:///storage/388C-68F7/ROMS/xbox/4D530005-Amped_Freestyle_Snowboarding.xiso.iso
+10-04 08:26:12.408  8095  8135 I hakuX   : HDD from pref: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img  size=1054015488
+10-04 08:26:12.408  8095  8135 I hakuX   : HDD resolved: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img  size=1054015488
+10-04 08:26:12.408  8095  8135 I hakuX   : QCOW2: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img  virtual_size=8589934592 (8.0 GB)  file_size=1054015488
+10-04 08:26:12.409  8095  8135 I hakuX   : DVD image opened via fd 95 (zero-copy, fdset)
+10-04 08:26:12.411  8095  8135 I hakuX   : surface_scale=1 (override=)
+10-04 08:26:12.412  8095  8135 I hakuX   : FP safe (native arithmetic): ON
+10-04 08:26:12.412  8095  8135 I hakuX   : FP JIT (native storage + inline ops): ON
+10-04 08:26:12.412  8095  8135 I hakuX   : fast fences: OFF
+10-04 08:26:12.412  8095  8135 I hakuX   : skip occlusion queries: OFF
+10-04 08:26:12.412  8095  8135 I hakuX   : texture cache size: 0 (0=auto)
+10-04 08:26:12.412  8095  8135 I hakuX   : draw reorder: OFF
+10-04 08:26:12.412  8095  8135 I hakuX   : draw merge: OFF
+10-04 08:26:12.412  8095  8135 I hakuX   : async compile: OFF
+10-04 08:26:12.412  8095  8135 I hakuX   : frame skip: OFF
+10-04 08:26:12.412  8095  8135 I hakuX   : submit frames: 2
+10-04 08:26:12.412  8095  8135 I hakuX   : tier1 threshold: 64
+10-04 08:26:12.412  8095  8135 I hakuX   : simple vblank: off
+10-04 08:26:12.413  8095  8135 I hakuX   : SyncSetupFiles: config /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/xemu.toml
+10-04 08:26:12.413  8095  8135 I hakuX   : Resolved mcpx=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/mcpx.bin
+10-04 08:26:12.413  8095  8135 I hakuX   : Resolved flash=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/flash.bin
+10-04 08:26:12.413  8095  8135 I hakuX   : Resolved hdd=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img
+10-04 08:26:12.413  8095  8135 I hakuX   : Resolved dvd=/dev/fdset/0
+10-04 08:26:12.413  8095  8135 I hakuX   : Resolved eeprom=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/eeprom.bin
+10-04 08:26:12.413  8095  8135 I hakuX   : SyncSetupFiles took 7 ms
+10-04 08:26:12.413  8095  8135 I hakuX   : XEMU_ANDROID_INLINE_AIO=1
+10-04 08:26:12.413  8095  8135 I hakuX   : SDL_main: loading config
+10-04 08:26:12.413  8095  8135 I hakuX   : Config display.renderer=vulkan (using Vulkan)
+10-04 08:26:12.413  8095  8135 I hakuX   : SDL_main: config loaded
+10-04 08:26:12.413  8095  8135 I hakuX   : Config show_welcome=0
+10-04 08:26:12.413  8095  8135 I hakuX   : Config bootrom=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/mcpx.bin
+10-04 08:26:12.413  8095  8135 I hakuX   : Config flashrom=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/flash.bin
+10-04 08:26:12.413  8095  8135 I hakuX   : Config hdd=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img
+10-04 08:26:12.413  8095  8135 I hakuX   : Config dvd=/dev/fdset/0
+10-04 08:26:12.413  8095  8135 I hakuX   : Config eeprom=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/eeprom.bin
+10-04 08:26:12.413  8095  8135 I hakuX   : Config final show_welcome=0
+10-04 08:26:12.413  8095  8135 I hakuX   : Config final cache_shaders=1
+10-04 08:26:12.413  8095  8135 I hakuX   : Config final renderer=2
+10-04 08:26:12.413  8095  8135 I hakuX   : Config final bootrom=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/mcpx.bin
+10-04 08:26:12.413  8095  8135 I hakuX   : Config final flashrom=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/flash.bin
+10-04 08:26:12.413  8095  8135 I hakuX   : Config final hdd=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img
+10-04 08:26:12.413  8095  8135 I hakuX   : Config final dvd=/dev/fdset/0
+10-04 08:26:12.413  8095  8135 I hakuX   : Config final eeprom=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/eeprom.bin
+10-04 08:26:12.413  8095  8135 I hakuX   : SDL_main: using accel tcg,thread=multi,tb-size=128
+10-04 08:26:12.413  8095  8135 I hakuX   : SDL_main: passing DVD fd 95 via -add-fd
+10-04 08:26:12.413  8095  8135 I hakuX   : SDL_main: launching xemu core
+10-04 08:26:12.413  8095  8135 I hakuX   : sdl2_display_very_early_init: start
+10-04 08:26:12.413  8095  8135 I hakuX   : SDL_AUDIODRIVER=aaudio
+10-04 08:26:12.414  8095  8135 V SDL     : setOrientation() requestedOrientation=6 width=1280 height=720 resizable=true hint=LandscapeLeft LandscapeRight
+10-04 08:26:12.415  8095  8135 I hakuX   : sdl2_display_very_early_init: GL context current
+10-04 08:26:12.415  8095  8135 I hakuX   : GL_VENDOR=Qualcomm
+10-04 08:26:12.415  8095  8135 I hakuX   : GL_RENDERER=Adreno (TM) 740
+10-04 08:26:12.415  8095  8135 I hakuX   : GL_VERSION=OpenGL ES 3.2 V@0676.53 (GIT@69e13475cb, I1df7ad3aa9, 1703680572) (Date:12/27/23)
+10-04 08:26:12.415  8095  8135 I hakuX   : GLSL_VERSION=OpenGL ES GLSL ES 3.20
+10-04 08:26:12.415  8095  8135 I hakuX   : GL_EXT_texture_format_BGRA8888=yes
+10-04 08:26:12.415  8095  8135 I hakuX   : sdl2_display_very_early_init: done
+10-04 08:26:12.415  8095  8135 I hakuX   : xemu_android_display_preinit: cached EGL state
+10-04 08:26:12.415  8095  8135 I hakuX   : nv2a_android_early_context_init: renderer=2
+10-04 08:26:12.415  8095  8135 I hakuX   : SDL_main: qemu thread started
+10-04 08:26:12.415  8095  8135 I hakuX   : xemu_android_display_wait_ready: waiting
+10-04 08:26:12.415  8095  8136 I hakuX   : QemuThreadMain: show_welcome=0
+10-04 08:26:12.415  8095  8136 I hakuX   : QemuThreadMain: bootrom=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/mcpx.bin
+10-04 08:26:12.415  8095  8136 I hakuX   : QemuThreadMain: starting
+10-04 08:26:12.415  8095  8136 I hakuX   : stderr redirected to logcat (tag hakuX-stderr)
+10-04 08:26:12.415  8095  8136 I hakuX   : xemu_android_main: qemu_init
+10-04 08:26:12.417  8095  8136 I hakuX   : sdl2_display_early_init
+10-04 08:26:12.427  8095  8137 E hakuX-stderr: INFO: Adding input device with name 18
+10-04 08:26:12.428  8095  8137 E hakuX-stderr: INFO: Adding input device with name 19
+10-04 08:26:12.428  8095  8137 E hakuX-stderr: INFO: Adding input device with name 20
+10-04 08:26:12.428  8095  8137 E hakuX-stderr: INFO: Adding input device with name 31
+10-04 08:26:12.428  8095  8137 E hakuX-stderr: INFO: Adding input device with name 21
+10-04 08:26:12.428  8095  8137 E hakuX-stderr: INFO: Adding input device with name 22
+10-04 08:26:12.428  8095  8137 E hakuX-stderr: INFO: Adding output device with name 2
+10-04 08:26:12.428  8095  8137 E hakuX-stderr: INFO: Adding output device with name 11
+10-04 08:26:12.436  8095  8095 V SDL     : onWindowFocusChanged(): true
+10-04 08:26:12.436  8095  8095 V SDL     : nativeFocusChanged()
+10-04 08:26:12.449  8095  8148 I hakuX   : attempt_renderer_init: renderer=2 name=Vulkan
+10-04 08:26:12.453  8095  8148 I hakuX   : vk init stage: create_instance
+10-04 08:26:12.458  8095  8137 E hakuX-stderr: Enabled instance extensions:
+10-04 08:26:12.462  8095  8148 I hakuX   : vk init stage: select_physical_device
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Available physical devices:
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - PurpleVK-public Adreno (TM) 740 (git-62ac221a33)/unknown
+10-04 08:26:12.465  8095  8148 I hakuX   : vk init stage: create_logical_device
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Selected physical device: PurpleVK-public Adreno (TM) 740 (git-62ac221a33)/unknown
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - Vendor: 5143, Device: 43050a01
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - API Version: 1.4.359
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - Driver: PurpleVK public driver (PurpleVK 26.3.0-devel (git-62ac221a33))
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - Driver Version: 26.2.99
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Enabled device extensions:
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - VK_ANDROID_external_memory_android_hardware_buffer
+10-04 08:26:12.465  8095  8148 I hakuX   : vk feature depthClamp: available
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - VK_KHR_external_memory
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - VK_EXT_queue_family_foreign
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - VK_KHR_external_semaphore_fd
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - VK_EXT_custom_border_color
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - VK_EXT_memory_budget
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - VK_EXT_extended_dynamic_state3
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - VK_KHR_push_descriptor
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - VK_KHR_pipeline_library
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: - VK_EXT_graphics_pipeline_library
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Vulkan feature depthClamp                           : available
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Vulkan feature fillModeNonSolid                     : available
+10-04 08:26:12.465  8095  8148 I hakuX   : vk feature fillModeNonSolid: available
+10-04 08:26:12.465  8095  8148 I hakuX   : vk feature geometryShader: available (required)
+10-04 08:26:12.465  8095  8148 I hakuX   : vk feature occlusionQueryPrecise: available
+10-04 08:26:12.465  8095  8148 I hakuX   : vk feature samplerAnisotropy: available
+10-04 08:26:12.465  8095  8148 I hakuX   : vk feature shaderClipDistance: available
+10-04 08:26:12.465  8095  8148 I hakuX   : vk feature shaderTessellationAndGeometryPointSize: available
+10-04 08:26:12.465  8095  8148 I hakuX   : vk feature wideLines: available
+10-04 08:26:12.465  8095  8148 I hakuX   : vk feature textureCompressionBC: available
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Vulkan feature geometryShader                       : available (required)
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Vulkan feature occlusionQueryPrecise                : available
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Vulkan feature samplerAnisotropy                    : available
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Vulkan feature shaderClipDistance                   : available
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Vulkan feature shaderTessellationAndGeometryPointSize : available
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Vulkan feature wideLines                            : available
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Vulkan feature textureCompressionBC                 : available
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: Vulkan feature dualSrcBlend                         : enabled (maxFragmentDualSrcAttachments=1, #59)
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: geom limits: inComp=64/53 outComp=128/53 outVerts=256/18 totalOutComp=1024/954 -> ok (query only, #13)
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: line raster: ext=1 rect=1 bresenham=1 smooth=0 width[1.000,127.500] gran=0.500 wide=1 strictLines=1
+10-04 08:26:12.465  8095  8148 I hakuX   : vk init stage: vkCreateDevice
+10-04 08:26:12.465  8095  8137 E hakuX-stderr: [gpl569] ext=1 lib=1 fast=1 interp=1 requested=3 mode=3
+10-04 08:26:12.469  8095  8148 I hakuX   : vk init stage: vkCreateDevice done
+10-04 08:26:12.469  8095  8148 I hakuX   : vk init stage: init_allocator
+10-04 08:26:12.469  8095  8148 I hakuX   : vk init stage: vmaCreateAllocator
+10-04 08:26:12.469  8095  8148 I hakuX   : vk init stage: vmaCreateAllocator done
+10-04 08:26:12.469  8095  8148 I hakuX   : vk init stage: complete
+10-04 08:26:12.469  8095  8148 I hakuX   : pgraph_vk_init: external memory interop=enabled
+10-04 08:26:12.592  8095  8137 E hakuX-stderr: nv2a: Z24S8 host format 0x82, depth stored as float
+10-04 08:26:12.628  8095  8148 I hakuX   : textureCompressionBC: enabled
+10-04 08:26:12.660  8095  8136 I hakuX   : sdl2_display_init: begin
+10-04 08:26:12.660  8095  8136 I hakuX   : sdl2_display_init: posted display_init_sem
+10-04 08:26:12.660  8095  8135 I hakuX   : xemu_android_display_wait_ready: ready
+10-04 08:26:12.660  8095  8136 I hakuX   : qemu_init took 245 ms
+10-04 08:26:12.660  8095  8135 I hakuX   : SDL_main: display ready, entering render loop
+10-04 08:26:12.660  8095  8135 I hakuX   : xemu_android_display_loop: start
+10-04 08:26:12.660  8095  8135 I hakuX-lane: [pace526] swap interval=0 pref=0 env=(unset) rc=0
+10-04 08:26:12.662  8095  8136 I SDL     : external storage state: mounted
+10-04 08:26:12.662  8095  8136 I hakuX   : frame dump: marker /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/frame_dump.on
+10-04 08:26:12.662  8095  8136 I SDL     : external storage state: mounted
+10-04 08:26:12.665  8095  8136 I hakuX   : TB cache: loaded 0 hints from /data/data/com.jreinach.hakux.debug/files/x1box/tb_cache.bin
+10-04 08:26:12.665  8095  8136 I hakuX   : xemu_android_main: qemu_main
+10-04 08:26:12.666  8095  8135 I hakuX   : refresh: CPU blit disabled via env
+10-04 08:26:12.666  8095  8139 W hakuX   : [ibc507] on=0 layout=ok count=0 HAKUX_IBC=(unset)
+10-04 08:26:12.668  8095  8137 E hakuX-stderr: [xemu] Connected 'Odin Controller' to port 1
+10-04 08:26:12.673  8095  8135 I hakuX-lane: [pace526] limiter mode=sleep env=(unset) rt_clock=1
+10-04 08:26:12.753  8095  8139 W hakuX   : [mf0] first nid va=0x10000 pa=0xbf000 win=l idx=5 cb=0 act=0
+10-04 08:26:12.773  8095  8139 W hakuX   : [mf0] first nid va=0xfb000 pa=0x1aa000 win=l idx=5 cb=0 act=0
+10-04 08:26:12.773  8095  8139 W hakuX   : [mf0] first nid va=0x11000 pa=0xe0000 win=l idx=5 cb=0 act=0
+10-04 08:26:12.774  8095  8139 W hakuX   : [mf0] first nid va=0x12000 pa=0xc1000 win=l idx=5 cb=0 act=0
+10-04 08:26:12.774  8095  8139 W hakuX   : [mf0] first nid va=0x13000 pa=0xc2000 win=l idx=5 cb=0 act=0
+10-04 08:26:12.774  8095  8139 W hakuX   : [mf0] first nid va=0x14000 pa=0xc3000 win=l idx=5 cb=0 act=0
+10-04 08:26:12.774  8095  8139 W hakuX   : [mf0] first nid va=0x15000 pa=0xc4000 win=l idx=5 cb=0 act=0
+10-04 08:26:12.774  8095  8139 W hakuX   : [mf0] first nid va=0x16000 pa=0xc5000 win=l idx=5 cb=0 act=0
+10-04 08:26:12.810  8095  8148 I hakuX   : [watch311] live=0 inserts=0 cb_count=0 active=0 shelved=0 invalid=0
+10-04 08:26:12.810  8095  8148 I hakuX   : [surfwatch382] suspended=0 suspends=0 rearms=0 gap_writes=0 lost_writes=0
+10-04 08:26:12.810  8095  8148 I hakuX   : [evict372] dirty/clean by mask (1role 2fmt 4pitch 8small 10swz 20ovl 40zdim): overflow=0 handoffs=0 fallbacks=0
+10-04 08:26:12.812  8095  8148 I hakuX-lane: [rwait526] render wait mode=block env=(unset) spin_us=30
+10-04 08:26:12.849  8095  8151 I hakuX   : AHB interop: available
+10-04 08:26:12.850  8095  8151 I hakuX   : glo_context_create: context creation test PASSED
+10-04 08:26:12.850  8095  8151 I hakuX   : glo_context_create: created EGL offscreen ctx=0xb4000074e2b2bab0 surf=0xb4000074e2b27d60
+10-04 08:26:12.851  8095  8151 I hakuX   : display: AHB image created 640x480 tex=2
+10-04 08:26:12.851  8095  8151 I hakuX   : display: AHB image created 640x480 tex=3
+10-04 08:26:12.851  8095  8151 I hakuX   : display: render_display done #0 disp_idx=0 render_idx=1 tex=2
+10-04 08:26:12.866  8095  8151 I hakuX   : display: render_display done #1 disp_idx=1 render_idx=0 tex=3
+10-04 08:26:12.883  8095  8151 I hakuX   : display: render_display done #2 disp_idx=0 render_idx=1 tex=2
+10-04 08:26:12.899  8095  8151 I hakuX   : display: render_display done #3 disp_idx=1 render_idx=0 tex=3
+10-04 08:26:12.916  8095  8151 I hakuX   : display: render_display done #4 disp_idx=0 render_idx=1 tex=2
+10-04 08:26:13.023  8095  8148 I hakuX   : [surf92] updates=2048 shapedirty=3(per-surface_update) addrchg=0 missed=0 zeta fbdirty=0 gate=0 held=0x02814000 want=0x02814000
+10-04 08:26:13.032  8095  8148 I hakuX   : [surf92] updates=4096 shapedirty=3(per-surface_update) addrchg=0 missed=0 zeta fbdirty=0 gate=0 held=0x02814000 want=0x02814000
+10-04 08:26:13.400  8095  8137 E hakuX-stderr: [xemu] Connected 'Xbox 360 Controller' to port 2
+10-04 08:26:14.420  8095  8139 W hakuX   : [idlehalt] w=0 on=0 span_us=2000395 run_us=1540140 rq_us=32844 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:14.649  8095  8135 I hakuX   : refresh frame=120 tex=3 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:14.683  8095  8139 W hakuX   : [tlb68] w=0 dt=2009 cpu=1763 ff=411 ffe=275 cr3n=0 cr3s=85 cr0=2 cr4=1 a20=0 fo=323 pf=10447 pfl=0 jc=413 jct=411 jci=0 jcx=2233 jcus=740 rd=1354 rdc=1354 rde=992080 rdm=2706 rdh=1195 rdus=1900 rdo=100 rdoe=52032 rdous=183 sd=2385 dm=0x60 sz=5:1024,6:64 tw=1044112 tn=1024 rs=9 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:14.683  8095  8139 W hakuX   : [mf0] w=0 dt=2009 act=1 cb=3 cb0ms=-1 up=1 dn=0 li=563 ln=1748 lo=0 vi=0 vn=0 vo=0 lnd=595 vnd=0 vb=0xf0000000
+10-04 08:26:14.683  8095  8139 W hakuX   : [jc425] w=0 dt=2009 jc=1 ih=15453430 ie=13852 ip=872384 is=13 ik=4727 if=883449 in=7527 lh=7316756 le=13258 lp=18063 ls=10011 lk=8540 lf=25408 ln=24464 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:14.683  8095  8139 W hakuX   : [rr425] w=0 dt=2009 it=7366628 e=7161153 en=3585512 es=3564568 eo=6483 et=0 ej=4590 esh=3564568 m=7527 o=0 r=1970 g=185766 gs=161124 gi=8382 ga=15976 x=10212 d=10212 hc=16344406 hm=7527 ip=4415 iq=3110 xr=2743 gapus=825062 tbus=1318626 sn=114862 tbn=114819 pcdrop=179003
+10-04 08:26:14.683  8095  8139 W hakuX   : [rr425pc] w=0 e:8001b02f:9090fa:3556614 e:8001b02e:fb9090:3556614 g:80031ffa:8bb424:25226 e:80014385:9dc390:12093 e:8001440b:cf8b5c:3259 g:00402fff:000000:2746 e:80014f32:c39004:1861 e:80014f31:fbc390:1861 e:80018e04:ff464c:1440 e:80018e03:fbff46:1440 e:80018e13:9d33c0:1408 e:80014158:9dc38b:1309 e:8001b0b4:fbffd1:1258 e:8001b0b5:ffd1fa:1258 e:8001b04a:8b732c:668 e:8001b049:fb8b73:668
+10-04 08:26:14.683  8095  8139 W hakuX   : [rr425w] w=0 idlepc=8001b02e idle_us=226065 busy_us=1748695 n=879 nb=1974 drop=0 33.02:14:7634:726857:1/13/0/0:0/8/4/2:92 33.44:4:1127:628303:1/3/0/0:0/0/1/2:72 30.00:235:187898:162005:34/152/49/0:191/26/12/6:1455 3e.02:441:11909:145072:428/13/0/0:0/367/67/7:63 3e.00:127:5409:71851:124/3/0/0:0/98/22/7:102 30.02:47:2198:10946:43/4/0/0:0/32/15/0:116 31.00:10:8416:3585:0/10/0/0:1/4/4/1:67 30.44:1:1470:72:0/0/1/0:0/1/0/0:6 30.14:0:0:0:0/0/0/0:0/0/0/0:1
+10-04 08:26:16.421  8095  8139 W hakuX   : [idlehalt] w=1 on=0 span_us=2000994 run_us=1825641 rq_us=45688 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:16.649  8095  8135 I hakuX   : refresh frame=240 tex=3 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:16.693  8095  8139 W hakuX   : [tlb68] w=1 dt=2010 cpu=1863 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 pf=66 pfl=0 jc=0 jct=0 jci=0 jcx=1085 jcus=0 rd=1086 rdc=1086 rde=1198944 rdm=2172 rdh=1085 rdus=2867 rdo=9 rdoe=9936 rdous=36 sd=1821 dm=0x60 sz=5:1024,6:64 tw=1208880 tn=1024 rs=0 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:16.693  8095  8139 W hakuX   : [mf0] w=1 dt=2010 act=1 cb=3 cb0ms=-1 up=0 dn=0 li=1 ln=310 lo=0 vi=0 vn=0 vo=0 lnd=595 vnd=0 vb=0xf0000000
+10-04 08:26:16.693  8095  8139 W hakuX   : [jc425] w=1 dt=2010 jc=1 ih=4486376 ie=770 ip=315287 is=0 ik=5084 if=320334 in=807 lh=124359 le=800 lp=6140 ls=6241 lk=3419 lf=13040 ln=3560 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:16.693  8095  8139 W hakuX   : [rr425] w=1 dt=2010 it=140959 e=129420 en=62574 es=55085 eo=6276 et=0 ej=5485 esh=55085 m=807 o=0 r=2219 g=5794 gs=2391 gi=1580 ga=1822 x=2719 d=2719 hc=4807517 hm=807 ip=4069 iq=2892 xr=2675 gapus=45811 tbus=1957779 sn=2090 tbn=2079 pcdrop=4120
+10-04 08:26:16.693  8095  8139 W hakuX   : [rr425pc] w=1 e:8001b02e:fb9090:46140 e:8001b02f:9090fa:46140 e:80014385:9dc390:10122 e:8001440b:cf8b5c:3101 e:80014f32:c39004:1997 e:80014f31:fbc390:1997 g:00156ffd:b90400:1806 e:80018e03:fbff46:1749 e:80018e04:ff464c:1749 e:80018e13:9d33c0:1749 g:8001dffc:3dffff:1530 e:80014158:9dc38b:1142 e:8001b0b5:ffd1fa:1063 e:8001b0b4:fbffd1:1063 e:80014f3d:c38bff:765 e:80014f3c:fbc38b:765
+10-04 08:26:16.693  8095  8139 W hakuX   : [rr425w] w=1 idlepc=8001b02e idle_us=28886 busy_us=1981614 n=630 nb=2140 drop=0 3e.00:473:19880:1728047:412/61/0/0:0/237/232/3:280 33.44:0:0:205108:0/0/0/0:0/0/0/1:9 30.00:149:8678:45524:124/25/0/0:0/110/36/3:1833 3e.02:6:288:2581:5/1/0/0:0/3/3/0:5 30.02:2:39:351:2/0/0/0:0/2/0/0:13
+10-04 08:26:17.899  8095  8148 I hakuX   : [watch311] live=3 inserts=15 cb_count=3 active=3 shelved=0 invalid=10
+10-04 08:26:17.900  8095  8148 I hakuX   : [surfwatch382] suspended=0 suspends=0 rearms=0 gap_writes=0 lost_writes=0
+10-04 08:26:17.900  8095  8148 I hakuX   : [evict372] dirty/clean by mask (1role 2fmt 4pitch 8small 10swz 20ovl 40zdim): overflow=0 handoffs=0 fallbacks=0
+10-04 08:26:18.421  8095  8139 W hakuX   : [idlehalt] w=2 on=0 span_us=2000121 run_us=1969156 rq_us=486 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:18.649  8095  8135 I hakuX   : refresh frame=360 tex=3 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:18.750  8095  8139 W hakuX   : [tlb68] w=2 dt=2057 cpu=2023 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 pf=0 pfl=0 jc=0 jct=0 jci=0 jcx=125 jcus=0 rd=125 rdc=125 rde=138000 rdm=250 rdh=125 rdus=210 rdo=2 rdoe=2208 rdous=76 sd=127 dm=0x60 sz=5:1024,6:64 tw=140208 tn=1024 rs=0 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:18.750  8095  8139 W hakuX   : [mf0] w=2 dt=2057 act=1 cb=3 cb0ms=-1 up=0 dn=0 li=0 ln=24 lo=0 vi=0 vn=0 vo=0 lnd=595 vnd=0 vb=0xf0000000
+10-04 08:26:18.750  8095  8139 W hakuX   : [jc425] w=2 dt=2057 jc=1 ih=65696 ie=0 ip=2226 is=0 ik=3850 if=6076 in=0 lh=11408 le=1 lp=342 ls=4835 lk=1093 lf=6143 ln=128 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:18.750  8095  8139 W hakuX   : [rr425] w=2 dt=2057 it=17679 e=14197 en=2986 es=3899 eo=4798 et=0 ej=2514 esh=3899 m=0 o=0 r=2179 g=8 gs=6 gi=0 ga=2 x=1295 d=1295 hc=71772 hm=0 ip=2196 iq=2182 xr=2175 gapus=2121 tbus=2031405 sn=216 tbn=211 pcdrop=0
+10-04 08:26:18.750  8095  8139 W hakuX   : [rr425pc] w=2 e:8001440b:cf8b5c:2186 r:00013ad0:8a8424:2169 e:00013ad9:75f56a:2169 e:80014f32:c39004:2057 e:80014f31:fbc390:2057 e:80014385:9dc390:1074 e:80014158:9dc38b:436 e:80018d58:fb837b:434 e:80018d59:837b60:434 e:800141af:fbe87b:433 e:800141b0:e87b4b:433 e:8001b0b5:ffd1fa:332 e:8001b0b4:fbffd1:332 e:80018e04:ff464c:309 e:80018e03:fbff46:309 e:80018e13:9d33c0:309
+10-04 08:26:18.750  8095  8139 W hakuX   : [rr425w] w=2 idlepc=8001b02e idle_us=0 busy_us=2057051 n=0 nb=2182 drop=0 3e.00:0:0:2057051:0/0/0/0:0/0/0/0:0 30.00:0:0:0:0/0/0/0:0/0/0/0:2048 33.02:0:0:0:0/0/0/0:0/0/0/0:123 30.02:0:0:0:0/0/0/0:0/0/0/0:9 33.44:0:0:0:0/0/0/0:0/0/0/0:2
+10-04 08:26:20.422  8095  8139 W hakuX   : [idlehalt] w=3 on=0 span_us=2000874 run_us=1967625 rq_us=572 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:20.649  8095  8135 I hakuX   : refresh frame=480 tex=3 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:20.806  8095  8139 W hakuX   : [tlb68] w=3 dt=2055 cpu=2023 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 pf=0 pfl=0 jc=0 jct=0 jci=0 jcx=125 jcus=0 rd=125 rdc=125 rde=138000 rdm=250 rdh=125 rdus=208 rdo=2 rdoe=2208 rdous=16 sd=127 dm=0x60 sz=5:1024,6:64 tw=140208 tn=1024 rs=0 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:20.806  8095  8139 W hakuX   : [mf0] w=3 dt=2055 act=1 cb=3 cb0ms=-1 up=0 dn=0 li=0 ln=24 lo=0 vi=0 vn=0 vo=0 lnd=595 vnd=0 vb=0xf0000000
+10-04 08:26:20.806  8095  8139 W hakuX   : [jc425] w=3 dt=2055 jc=1 ih=65773 ie=0 ip=2214 is=0 ik=3810 if=6024 in=0 lh=11446 le=2 lp=339 ls=4830 lk=1067 lf=6112 ln=126 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:20.806  8095  8139 W hakuX   : [rr425] w=3 dt=2055 it=17684 e=14198 en=2984 es=3897 eo=4804 et=0 ej=2513 esh=3897 m=0 o=0 r=2180 g=6 gs=6 gi=0 ga=0 x=1300 d=1300 hc=71797 hm=0 ip=2200 iq=2180 xr=2170 gapus=6985 tbus=2322032 sn=218 tbn=212 pcdrop=0
+10-04 08:26:20.806  8095  8139 W hakuX   : [rr425pc] w=3 e:8001440b:cf8b5c:2190 e:00013ad9:75f56a:2166 r:00013ad0:8a8424:2166 e:80014f32:c39004:2055 e:80014f31:fbc390:2055 e:80014385:9dc390:1076 e:80014158:9dc38b:435 e:80018d59:837b60:434 e:800141b0:e87b4b:434 e:800141af:fbe87b:434 e:80018d58:fb837b:434 e:8001b0b4:fbffd1:333 e:8001b0b5:ffd1fa:333 e:80018e04:ff464c:309 e:80018e03:fbff46:309 e:80018e13:9d33c0:309
+10-04 08:26:20.806  8095  8139 W hakuX   : [rr425w] w=3 idlepc=8001b02e idle_us=0 busy_us=2055959 n=0 nb=2180 drop=0 3e.00:0:0:2055959:0/0/0/0:0/0/0/0:0 30.00:0:0:0:0/0/0/0:0/0/0/0:2044 30.02:0:0:0:0/0/0/0:0/0/0/0:11 33.02:0:0:0:0/0/0/0:0/0/0/0:123 33.44:0:0:0:0/0/0/0:0/0/0/0:2
+10-04 08:26:22.422  8095  8139 W hakuX   : [idlehalt] w=4 on=0 span_us=2000000 run_us=1932579 rq_us=26663 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:22.649  8095  8135 I hakuX   : refresh frame=600 tex=2 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:22.666  8095  8135 I hakuX-lane: [pace526] mode=sleep s=10.00 rel=600 waited=598 late_p50_us=100 late_p99_us=150 late_max_us=262 late_gt1ms=0 thr_cpu_ms=325.5 wait_cpu_ms=8.8 proc_cpu_ms=13155.0 flips=95 pres=599 pres_1ms=589
+10-04 08:26:22.816  8095  8139 W hakuX   : [tlb68] w=4 dt=2010 cpu=1909 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 pf=16 pfl=0 jc=0 jct=0 jci=0 jcx=158 jcus=0 rd=158 rdc=158 rde=174432 rdm=316 rdh=158 rdus=349 rdo=29 rdoe=32016 rdous=122 sd=2073 dm=0x60 sz=5:1024,6:64 tw=206448 tn=1024 rs=0 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:22.816  8095  8139 W hakuX   : [mf0] w=4 dt=2010 act=1 cb=3 cb0ms=-1 up=0 dn=0 li=0 ln=748 lo=0 vi=0 vn=0 vo=0 lnd=595 vnd=0 vb=0xf0000000
+10-04 08:26:22.816  8095  8139 W hakuX   : [jc425] w=4 dt=2010 jc=1 ih=17359915 ie=96 ip=1197126 is=0 ik=3122 if=1200189 in=155 lh=1917476 le=118 lp=1732 ls=11084 lk=2151 lf=14490 ln=595 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:22.816  8095  8139 W hakuX   : [rr425] w=4 dt=2010 it=1932561 e=1916214 en=954210 es=955103 eo=4459 et=0 ej=2442 esh=955103 m=155 o=0 r=2055 g=7720 gs=218 gi=7200 ga=300 x=6417 d=6417 hc=18560259 hm=155 ip=2265 iq=2127 xr=2103 gapus=170065 tbus=1459083 sn=30061 tbn=30048 pcdrop=1
+10-04 08:26:22.816  8095  8139 W hakuX   : [rr425pc] w=4 e:8001b02e:fb9090:951440 e:8001b02f:9090fa:951440 g:00156ffd:b90400:7099 e:8001440b:cf8b5c:2151 e:80014f31:fbc390:1971 e:80014f32:c39004:1971 e:00013ad9:75f56a:1178 r:00013ad0:8a8424:1177 e:80014385:9dc390:924 e:80014158:9dc38b:410 e:80018d58:fb837b:388 e:80018d59:837b60:388 e:800141af:fbe87b:386 e:800141b0:e87b4b:386 e:8001b0b4:fbffd1:315 e:8001b0b5:ffd1fa:315
+10-04 08:26:22.816  8095  8139 W hakuX   : [rr425w] w=4 idlepc=8001b02e idle_us=55502 busy_us=1954523 n=67 nb=2033 drop=0 3e.00:3:390:1182650:2/1/0/0:0/1/1/2:2 33.44:3:2400:714812:0/3/0/0:0/0/0/2:27 30.00:56:49840:5060:3/44/9/0:50/4/1/1:1887 30.44:1:1015:51813:0/0/1/0:0/0/0/1:3 33.02:4:1854:186:1/3/0/0:0/4/0/0:114
+10-04 08:26:22.840  8095  8148 I hakuX-lane: [rwait526] mode=block s=10.03 flips=100 tid=8148 thr_s=10.03 thr_flips=100 thr_cpu_ms=1712.0 wait_cpu_ms=4.82 | deferred calls=101 waits=101 spun=2 blocked=99 wakes=98 wait_ms=23.44 p50_us=170 p99_us=730 max_us=754 | rotate calls=47 waits=0 spun=0 blocked=0 wakes=0 wait_ms=0.00 p50_us=-1 p99_us=-1 max_us=0
+10-04 08:26:22.901  8095  8148 I hakuX   : [watch311] live=3 inserts=15 cb_count=3 active=3 shelved=0 invalid=10
+10-04 08:26:22.901  8095  8148 I hakuX   : [surfwatch382] suspended=0 suspends=0 rearms=0 gap_writes=0 lost_writes=0
+10-04 08:26:22.901  8095  8148 I hakuX   : [evict372] dirty/clean by mask (1role 2fmt 4pitch 8small 10swz 20ovl 40zdim): overflow=0 handoffs=0 fallbacks=0
+10-04 08:26:24.423  8095  8139 W hakuX   : [idlehalt] w=5 on=0 span_us=2000964 run_us=1933505 rq_us=34466 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:24.649  8095  8135 I hakuX   : refresh frame=720 tex=2 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:24.817  8095  8139 W hakuX   : [tlb68] w=5 dt=2000 cpu=1966 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 pf=0 pfl=0 jc=0 jct=0 jci=0 jcx=605 jcus=0 rd=605 rdc=605 rde=667920 rdm=1210 rdh=605 rdus=967 rdo=5 rdoe=5520 rdous=13 sd=1032 dm=0x60 sz=5:1024,6:64 tw=673440 tn=1024 rs=0 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:24.817  8095  8139 W hakuX   : [mf0] w=5 dt=2000 act=1 cb=3 cb0ms=-1 up=0 dn=0 li=0 ln=194 lo=0 vi=0 vn=0 vo=0 lnd=595 vnd=0 vb=0xf0000000
+10-04 08:26:24.817  8095  8139 W hakuX   : [jc425] w=5 dt=2000 jc=1 ih=42203871 ie=88 ip=1020336 is=256487 ik=1651 if=1278491 in=71 lh=1192101 le=134 lp=2139 ls=3855 lk=3862 lf=9079 ln=911 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:24.817  8095  8139 W hakuX   : [rr425] w=5 dt=2000 it=1202091 e=1189994 en=1029971 es=151382 eo=5333 et=0 ej=3308 esh=151381 m=71 o=0 r=2232 g=1687 gs=509 gi=1032 ga=145 x=8107 d=8107 hc=43482433 hm=71 ip=3004 iq=2604 xr=2437 gapus=108188 tbus=1924547 sn=18608 tbn=18584 pcdrop=0
+10-04 08:26:24.817  8095  8139 W hakuX   : [rr425pc] w=5 e:80014385:9dc390:881408 e:8001b02e:fb9090:146177 e:8001b02f:9090fa:146177 e:8001440b:cf8b5c:2763 e:80014f31:fbc390:2001 e:80014f32:c39004:2000 g:8001dffc:3dffff:956 e:80014158:9dc38b:801 e:80018d58:fb837b:791 e:80018d59:837b60:791 e:800141b0:e87b4b:767 e:800141af:fbe87b:767 e:8001b0b5:ffd1fa:705 e:8001b0b4:fbffd1:705 e:80014fb3:fbc38d:601 e:80014fb4:c38d49:601
+10-04 08:26:24.817  8095  8139 W hakuX   : [rr425w] w=5 idlepc=8001b02e idle_us=9241 busy_us=1991741 n=13 nb=2576 drop=0 31.00:2:1123:1893363:0/2/0/0:0/0/1/0:471 33.44:1:14:97504:1/0/0/0:0/0/0/2:5 30.00:7:6277:50:0/5/2/0:6/1/0/0:1980 33.02:2:842:768:0/2/0/0:0/1/1/0:118 30.44:1:983:54:0/1/0/0:0/1/0/0:2
+10-04 08:26:26.423  8095  8139 W hakuX   : [idlehalt] w=6 on=0 span_us=2000036 run_us=1969032 rq_us=296 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:26.649  8095  8135 I hakuX   : refresh frame=840 tex=2 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:26.818  8095  8139 W hakuX   : [tlb68] w=6 dt=2000 cpu=1970 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 pf=0 pfl=0 jc=0 jct=0 jci=0 jcx=622 jcus=0 rd=622 rdc=622 rde=686688 rdm=1244 rdh=622 rdus=967 rdo=2 rdoe=2208 rdous=6 sd=624 dm=0x60 sz=5:1024,6:64 tw=688896 tn=1024 rs=0 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:26.818  8095  8139 W hakuX   : [mf0] w=6 dt=2000 act=1 cb=3 cb0ms=-1 up=0 dn=0 li=0 ln=70 lo=0 vi=0 vn=0 vo=0 lnd=595 vnd=0 vb=0xf0000000
+10-04 08:26:26.818  8095  8139 W hakuX   : [jc425] w=6 dt=2000 jc=1 ih=39152432 ie=0 ip=895965 is=1844202 ik=1070 if=2741237 in=0 lh=909757 le=1 lp=1915 ls=3699 lk=3667 lf=8656 ln=626 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:26.818  8095  8139 W hakuX   : [rr425] w=6 dt=2000 it=919039 e=908125 en=894140 es=5290 eo=5348 et=0 ej=3347 esh=5291 m=0 o=0 r=2227 g=1008 gs=503 gi=505 ga=0 x=7679 d=7679 hc=41893669 hm=0 ip=3007 iq=2622 xr=2461 gapus=80875 tbus=2011776 sn=14191 tbn=14164 pcdrop=0
+10-04 08:26:26.818  8095  8139 W hakuX   : [rr425pc] w=6 e:80014385:9dc390:891724 e:8001440b:cf8b5c:2772 e:80014f32:c39004:2001 e:80014f31:fbc390:2000 g:8001dffc:3dffff:1000 e:80018d59:837b60:821 e:80018d58:fb837b:821 e:80014158:9dc38b:821 e:800141b0:e87b4b:789 e:800141af:fbe87b:789 e:8001b0b4:fbffd1:724 e:8001b0b5:ffd1fa:724 e:80014fb4:c38d49:622 e:80014fb3:fbc38d:622 e:80018e04:ff464c:200 e:80018e27:0f22c1:200
+10-04 08:26:26.818  8095  8139 W hakuX   : [rr425w] w=6 idlepc=8001b02e idle_us=0 busy_us=2000964 n=0 nb=2622 drop=0 31.00:0:0:2000964:0/0/0/0:0/0/0/0:498 30.00:0:0:0:0/0/0/0:0/0/0/0:1993 33.02:0:0:0:0/0/0/0:0/0/0/0:120 33.44:0:0:0:0/0/0/0:0/0/0/0:2 30.02:0:0:0:0/0/0/0:0/0/0/0:7 31.02:0:0:0:0/0/0/0:0/0/0/0:2
+10-04 08:26:27.906  8095  8148 I hakuX   : [watch311] live=3 inserts=15 cb_count=3 active=3 shelved=0 invalid=10
+10-04 08:26:27.906  8095  8148 I hakuX   : [surfwatch382] suspended=0 suspends=0 rearms=0 gap_writes=0 lost_writes=0
+10-04 08:26:27.906  8095  8148 I hakuX   : [evict372] dirty/clean by mask (1role 2fmt 4pitch 8small 10swz 20ovl 40zdim): overflow=0 handoffs=0 fallbacks=0
+10-04 08:26:28.423  8095  8139 W hakuX   : [idlehalt] w=7 on=0 span_us=2000056 run_us=1961482 rq_us=279 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:28.649  8095  8135 I hakuX   : refresh frame=960 tex=2 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:28.819  8095  8139 W hakuX   : [tlb68] w=7 dt=2000 cpu=1960 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 pf=0 pfl=0 jc=0 jct=0 jci=0 jcx=621 jcus=0 rd=621 rdc=621 rde=685584 rdm=1242 rdh=621 rdus=976 rdo=2 rdoe=2208 rdous=8 sd=623 dm=0x60 sz=5:1024,6:64 tw=687792 tn=1024 rs=0 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:28.819  8095  8139 W hakuX   : [mf0] w=7 dt=2000 act=1 cb=3 cb0ms=-1 up=0 dn=0 li=0 ln=67 lo=0 vi=0 vn=0 vo=0 lnd=595 vnd=0 vb=0xf0000000
+10-04 08:26:28.819  8095  8139 W hakuX   : [jc425] w=7 dt=2000 jc=1 ih=32457154 ie=0 ip=821489 is=5110066 ik=844 if=5932399 in=0 lh=833974 le=2 lp=2006 ls=4356 lk=3788 lf=9530 ln=622 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:28.819  8095  8139 W hakuX   : [rr425] w=7 dt=2000 it=844126 e=833498 en=819532 es=5214 eo=5408 et=0 ej=3344 esh=5214 m=0 o=0 r=2102 g=1008 gs=502 gi=506 ga=0 x=7518 d=7518 hc=38389553 hm=0 ip=3281 iq=2621 xr=2328 gapus=70906 tbus=1985384 sn=13027 tbn=12999 pcdrop=0
+10-04 08:26:28.819  8095  8139 W hakuX   : [rr425pc] w=7 e:80014385:9dc390:817166 e:8001440b:cf8b5c:2899 e:80014f31:fbc390:2000 e:80014f32:c39004:2000 g:8001dffc:3dffff:1000 e:80014158:9dc38b:820 e:80018d58:fb837b:784 e:80018d59:837b60:784 e:800141b0:e87b4b:758 e:800141af:fbe87b:758 e:8001b0b4:fbffd1:723 e:8001b0b5:ffd1fa:723 e:80014fb3:fbc38d:621 e:80014fb4:c38d49:621 r:80014f31:fbc390:278 e:80030ef1:743e3b:278
+10-04 08:26:28.819  8095  8139 W hakuX   : [rr425w] w=7 idlepc=8001b02e idle_us=0 busy_us=2000907 n=0 nb=2621 drop=0 31.00:0:0:2000907:0/0/0/0:0/0/0/0:498 30.00:0:0:0:0/0/0/0:0/0/0/0:1989 33.02:0:0:0:0/0/0/0:0/0/0/0:119 33.44:0:0:0:0/0/0/0:0/0/0/0:2 30.02:0:0:0:0/0/0/0:0/0/0/0:11 31.02:0:0:0:0/0/0/0:0/0/0/0:2
+10-04 08:26:30.424  8095  8139 W hakuX   : [idlehalt] w=8 on=0 span_us=2000555 run_us=1828282 rq_us=4903 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:30.649  8095  8135 I hakuX   : refresh frame=1080 tex=2 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:30.821  8095  8139 W hakuX   : [tlb68] w=8 dt=2002 cpu=1665 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 pf=1090 pfl=0 jc=0 jct=0 jci=0 jcx=3284 jcus=0 rd=3312 rdc=3312 rde=3656448 rdm=6624 rdh=3284 rdus=8318 rdo=15 rdoe=16560 rdous=54 sd=4166 dm=0x60 sz=5:1024,6:64 tw=3673008 tn=1024 rs=0 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:30.821  8095  8139 W hakuX   : [mf0] w=8 dt=2002 act=1 cb=3 cb0ms=-1 up=0 dn=0 li=0 ln=689 lo=0 vi=0 vn=0 vo=0 lnd=595 vnd=0 vb=0xf0000000
+10-04 08:26:30.821  8095  8139 W hakuX   : [jc425] w=8 dt=2002 jc=1 ih=20792462 ie=7737 ip=779518 is=3272087 ik=15015 if=4072309 in=2048 lh=785255 le=2297 lp=19043 ls=7958 lk=13654 lf=34723 ln=8229 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:30.821  8095  8139 W hakuX   : [rr425] w=8 dt=2002 it=828207 e=803115 en=623008 es=157149 eo=10352 et=0 ej=12606 esh=157148 m=2048 o=0 r=2749 g=13336 gs=7440 gi=2661 ga=3231 x=6959 d=6959 hc=24866819 hm=2048 ip=8978 iq=4847 xr=3962 gapus=144936 tbus=1990181 sn=12685 tbn=12648 pcdrop=14943
+10-04 08:26:30.821  8095  8139 W hakuX   : [rr425pc] w=8 e:80014385:9dc390:469111 e:8001b02e:fb9090:136201 e:8001b02f:9090fa:136200 e:8001440b:cf8b5c:5583 g:8001dffc:3dffff:5443 e:80018e04:ff464c:4588 e:80018e03:fbff46:4588 e:80018e13:9d33c0:4588 e:8001b0b4:fbffd1:3023 e:8001b0b5:ffd1fa:3023 e:80014158:9dc38b:2912 e:80014f3d:c38bff:2221 e:80014f3c:fbc38b:2221 g:00156ffd:b90400:2110 e:80014f31:fbc390:1990 e:80014f32:c39004:1990
+10-04 08:26:30.821  8095  8139 W hakuX   : [rr425w] w=8 idlepc=8001b02e idle_us=71852 busy_us=1930182 n=1893 nb=2832 drop=0 31.00:19:720:1099394:18/1/0/0:0/7/12/1:472 3e.00:1377:49877:626462:1297/80/0/0:4/618/732/23:800 30.00:470:20406:191460:446/24/0/0:0/257/200/13:1496 3e.02:9:196:4668:9/0/0/0:0/2/7/0:24 30.02:12:456:2788:12/0/0/0:0/5/7/0:9 3e.44:3:107:2413:3/0/0/0:0/0/3/0:8 30.44:1:44:1700:1/0/0/0:0/0/1/0:2 31.02:1:37:664:1/0/0/0:0/0/1/0:7 33.44:1:6:629:1/0/0/0:0/0/1/0:14
+10-04 08:26:32.173  8095  8148 I hakuX   : [surf92] updates=6144 shapedirty=71(per-surface_update) addrchg=0 missed=0 color fbdirty=0 gate=0 held=0x00748000 want=0x00748000
+10-04 08:26:32.424  8095  8139 W hakuX   : [idlehalt] w=9 on=0 span_us=2000621 run_us=1580653 rq_us=105989 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:32.649  8095  8135 I hakuX   : refresh frame=1200 tex=2 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:32.666  8095  8135 I hakuX-lane: [pace526] mode=sleep s=10.00 rel=600 waited=600 late_p50_us=100 late_p99_us=200 late_max_us=365 late_gt1ms=0 thr_cpu_ms=361.1 wait_cpu_ms=9.8 proc_cpu_ms=15667.5 flips=75 pres=600 pres_1ms=600
+10-04 08:26:32.741  8095  8148 I hakuX   : [surf92] updates=8192 shapedirty=71(per-surface_update) addrchg=0 missed=0 color fbdirty=0 gate=0 held=0x00748000 want=0x00748000
+10-04 08:26:32.841  8095  8148 I hakuX-lane: [rwait526] mode=block s=10.00 flips=80 tid=8148 thr_s=10.00 thr_flips=80 thr_cpu_ms=2869.7 wait_cpu_ms=3.55 | deferred calls=80 waits=80 spun=1 blocked=79 wakes=79 wait_ms=27.22 p50_us=150 p99_us=1760 max_us=1752 | rotate calls=67 waits=0 spun=0 blocked=0 wakes=0 wait_ms=0.00 p50_us=-1 p99_us=-1 max_us=0
+10-04 08:26:32.849  8095  8139 W hakuX   : [tlb68] w=9 dt=2028 cpu=1759 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 pf=403 pfl=0 jc=0 jct=0 jci=0 jcx=2375 jcus=0 rd=2201 rdc=2201 rde=2429904 rdm=4402 rdh=2163 rdus=7435 rdo=29 rdoe=32016 rdous=87 sd=2709 dm=0x60 sz=5:1024,6:64 tw=2461920 tn=1024 rs=0 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:32.849  8095  8139 W hakuX   : [mf0] w=9 dt=2028 act=1 cb=3 cb0ms=-1 up=0 dn=0 li=4 ln=2133 lo=0 vi=0 vn=0 vo=0 lnd=603 vnd=0 vb=0xf0000000
+10-04 08:26:32.849  8095  8139 W hakuX   : [jc425] w=9 dt=2028 jc=1 ih=6568200 ie=4481 ip=413106 is=897 ik=12189 if=426757 in=3916 lh=211676 le=2313 lp=18998 ls=4021 lk=12236 lf=26170 ln=11398 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:32.849  8095  8139 W hakuX   : [rr425] w=9 dt=2028 it=249244 e=212846 en=105819 es=89511 eo=8622 et=0 ej=8894 esh=89512 m=3916 o=0 r=2763 g=23163 gs=16734 gi=770 ga=5651 x=6556 d=6556 hc=6998873 hm=3916 ip=6423 iq=3917 xr=3486 gapus=137084 tbus=2100379 sn=3692 tbn=3655 pcdrop=20539
+10-04 08:26:32.849  8095  8139 W hakuX   : [rr425pc] w=9 e:8001b02f:9090fa:74716 e:8001b02e:fb9090:74715 e:80014385:9dc390:19634 e:8001440b:cf8b5c:4280 g:8001dffc:3dffff:3589 e:80018e04:ff464c:2793 e:80018e03:fbff46:2793 e:80018e13:9d33c0:2793 e:8001b0b4:fbffd1:2149 e:8001b0b5:ffd1fa:2149 e:80014158:9dc38b:2125 e:80014f31:fbc390:1946 e:80014f32:c39004:1946 e:80012d7d:c20400:1414 e:80012d7c:fbc204:1414 g:00100fff:f6c301:1410
+10-04 08:26:32.849  8095  8139 W hakuX   : [rr425w] w=9 idlepc=8001b02e idle_us=40420 busy_us=1987686 n=1128 nb=2578 drop=0 30.00:218:11195:1378259:205/13/0/0:0/146/63/8:1677 3e.00:884:23485:592325:855/29/0/0:1/504/351/28:381 31.00:11:1391:9242:9/2/0/0:0/8/2/1:482 30.02:6:3911:5040:5/0/1/0:0/4/1/1:18 3e.02:7:167:2023:7/0/0/0:0/4/3/0:9 3e.44:1:228:537:0/1/0/0:0/0/1/0:3 31.02:1:40:257:1/0/0/0:0/0/1/0:8
+10-04 08:26:32.907  8095  8148 I hakuX   : [watch311] live=3 inserts=15 cb_count=3 active=3 shelved=0 invalid=10
+10-04 08:26:32.907  8095  8148 I hakuX   : [surfwatch382] suspended=0 suspends=0 rearms=0 gap_writes=0 lost_writes=0
+10-04 08:26:32.907  8095  8148 I hakuX   : [evict372] dirty/clean by mask (1role 2fmt 4pitch 8small 10swz 20ovl 40zdim): overflow=0 handoffs=0 fallbacks=0
+10-04 08:26:33.291  8095  8148 I hakuX   : [surf92] updates=10240 shapedirty=71(per-surface_update) addrchg=0 missed=0 zeta fbdirty=0 gate=0 held=0x0061c000 want=0x0061c000
+10-04 08:26:33.842  8095  8148 I hakuX   : [surf92] updates=12288 shapedirty=71(per-surface_update) addrchg=0 missed=0 color fbdirty=0 gate=0 held=0x00748000 want=0x00748000
+10-04 08:26:34.392  8095  8148 I hakuX   : [surf92] updates=14336 shapedirty=71(per-surface_update) addrchg=0 missed=0 zeta fbdirty=0 gate=0 held=0x0061c000 want=0x0061c000
+10-04 08:26:34.425  8095  8139 W hakuX   : [idlehalt] w=10 on=0 span_us=2000915 run_us=1930644 rq_us=1121 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:34.649  8095  8135 I hakuX   : refresh frame=1320 tex=2 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:34.860  8095  8139 W hakuX   : [tlb68] w=10 dt=2010 cpu=1949 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 pf=0 pfl=0 jc=0 jct=0 jci=0 jcx=749 jcus=0 rd=747 rdc=747 rde=824688 rdm=1494 rdh=747 rdus=1989 rdo=1 rdoe=1104 rdous=4 sd=747 dm=0x60 sz=5:1024,6:64 tw=825792 tn=1024 rs=0 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:34.860  8095  8139 W hakuX   : [mf0] w=10 dt=2010 act=1 cb=3 cb0ms=-1 up=0 dn=0 li=0 ln=1530 lo=0 vi=0 vn=0 vo=0 lnd=603 vnd=0 vb=0xf0000000
+10-04 08:26:34.860  8095  8139 W hakuX   : [jc425] w=10 dt=2010 jc=1 ih=1170425 ie=0 ip=66625 is=2043 ik=1005 if=69668 in=5 lh=45393 le=24 lp=4921 ls=3114 lk=5904 lf=13050 ln=913 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:34.860  8095  8139 W hakuX   : [rr425] w=10 dt=2010 it=59356 e=22768 en=6388 es=6174 eo=6508 et=0 ej=3698 esh=6174 m=5 o=0 r=2733 g=25694 gs=25184 gi=482 ga=23 x=8156 d=8156 hc=1240098 hm=5 ip=3245 iq=2753 xr=2588 gapus=28550 tbus=2955097 sn=757 tbn=715 pcdrop=0
+10-04 08:26:34.860  8095  8139 W hakuX   : [rr425pc] w=10 g:0009bffe:d84108:17956 g:00100fff:f6c301:3549 e:80014385:9dc390:3280 e:8001440b:cf8b5c:2913 e:000feaec:72f65b:2064 r:000feae4:8b0a8b:2063 e:80014f32:c39004:2006 e:80014f31:fbc390:2006 g:000b2ffc:0f84cd:1572 g:000d7ffd:81e7ff:1440 e:80014158:9dc38b:1027 g:8001dffc:3dffff:1009 e:80018d58:fb837b:972 e:80018d59:837b60:972 e:800141b0:e87b4b:951 e:800141af:fbe87b:951
+10-04 08:26:34.860  8095  8139 W hakuX   : [rr425w] w=10 idlepc=8001b02e idle_us=0 busy_us=2010900 n=0 nb=2753 drop=0 30.00:0:0:2010900:0/0/0/0:0/0/0/0:1957 31.00:0:0:0:0/0/0/0:0/0/0/0:490 33.02:0:0:0:0/0/0/0:0/0/0/0:121 33.44:0:0:0:0/0/0/0:0/0/0/0:121 30.44:0:0:0:0/0/0/0:0/0/0/0:34 31.44:0:0:0:0/0/0/0:0/0/0/0:11 30.02:0:0:0:0/0/0/0:0/0/0/0:15 31.02:0:0:0:0/0/0/0:0/0/0/0:2 35.00:0:0:0:0/0/0/0:0/0/0/0:2
+10-04 08:26:34.960  8095  8148 I hakuX   : [surf92] updates=16384 shapedirty=71(per-surface_update) addrchg=0 missed=0 zeta fbdirty=0 gate=0 held=0x0061c000 want=0x0061c000
+10-04 08:26:35.109  8095  8148 I hakuX   : [clr91] frame=316 clears=512 zdrop=0 cdrop=0 f_clears=2 f_zdrop=0 f_cdrop=0 wc=0 wz=1 color=0x00748000 zeta=0x0061c000
+10-04 08:26:35.493  8095  8148 I hakuX   : [surf92] updates=18432 shapedirty=71(per-surface_update) addrchg=0 missed=0 zeta fbdirty=0 gate=0 held=0x0061c000 want=0x0061c000
+10-04 08:26:36.027  8095  8148 I hakuX   : [surf92] updates=20480 shapedirty=71(per-surface_update) addrchg=0 missed=0 zeta fbdirty=0 gate=0 held=0x0061c000 want=0x0061c000
+10-04 08:26:36.426  8095  8139 W hakuX   : [idlehalt] w=11 on=0 span_us=2000836 run_us=1948720 rq_us=577 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:36.544  8095  8148 I hakuX   : [surf92] updates=22528 shapedirty=71(per-surface_update) addrchg=0 missed=0 color fbdirty=0 gate=0 held=0x00748000 want=0x00748000
+10-04 08:26:36.649  8095  8135 I hakuX   : refresh frame=1440 tex=2 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:36.895  8095  8139 W hakuX   : [tlb68] w=11 dt=2035 cpu=1982 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 pf=0 pfl=0 jc=0 jct=0 jci=0 jcx=758 jcus=0 rd=756 rdc=756 rde=834624 rdm=1512 rdh=756 rdus=1086 rdo=0 rdoe=0 rdous=0 sd=756 dm=0x60 sz=5:1024,6:64 tw=834624 tn=1024 rs=0 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:36.895  8095  8139 W hakuX   : [mf0] w=11 dt=2035 act=1 cb=3 cb0ms=-1 up=0 dn=0 li=0 ln=1592 lo=0 vi=0 vn=0 vo=0 lnd=603 vnd=0 vb=0xf0000000
+10-04 08:26:36.895  8095  8139 W hakuX   : [jc425] w=11 dt=2035 jc=1 ih=1207020 ie=2 ip=67901 is=2077 ik=1138 if=71117 in=1 lh=47306 le=11 lp=4992 ls=3075 lk=6205 lf=13444 ln=839 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:36.895  8095  8139 W hakuX   : [rr425] w=11 dt=2035 it=61589 e=23496 en=6561 es=6363 eo=6821 et=0 ej=3751 esh=6363 m=1 o=0 r=2769 g=26982 gs=26453 gi=515 ga=4 x=8341 d=8341 hc=1278138 hm=1 ip=3353 iq=2792 xr=2527 gapus=15335 tbus=1994990 sn=787 tbn=754 pcdrop=0
+10-04 08:26:36.895  8095  8139 W hakuX   : [rr425pc] w=11 g:0009bffe:d84108:19047 g:00100fff:f6c301:3751 e:80014385:9dc390:3364 e:8001440b:cf8b5c:3046 r:000feae4:8b0a8b:2198 e:000feaec:72f65b:2198 e:80014f32:c39004:2036 e:80014f31:fbc390:2036 g:000b2ffc:0f84cd:1577 g:000d7ffd:81e7ff:1464 e:80014158:9dc38b:1054 e:80018d59:837b60:1030 e:80018d58:fb837b:1030 e:800141b0:e87b4b:1028 e:800141af:fbe87b:1028 g:8001dffc:3dffff:1022
+10-04 08:26:36.895  8095  8139 W hakuX   : [rr425w] w=11 idlepc=8001b02e idle_us=0 busy_us=2035179 n=0 nb=2792 drop=0 30.00:0:0:2035179:0/0/0/0:0/0/0/0:2012 31.00:0:0:0:0/0/0/0:0/0/0/0:503 33.02:0:0:0:0/0/0/0:0/0/0/0:122 33.44:0:0:0:0/0/0/0:0/0/0/0:122 30.44:0:0:0:0/0/0/0:0/0/0/0:15 30.02:0:0:0:0/0/0/0:0/0/0/0:9 31.44:0:0:0:0/0/0/0:0/0/0/0:3 31.02:0:0:0:0/0/0/0:0/0/0/0:3 35.00:0:0:0:0/0/0/0:0/0/0/0:2 3e.00:0:0:0:0/0/0/0:0/0/0/0:1
+10-04 08:26:37.061  8095  8148 I hakuX   : [surf92] updates=24576 shapedirty=71(per-surface_update) addrchg=0 missed=0 zeta fbdirty=0 gate=0 held=0x0061c000 want=0x0061c000
+10-04 08:26:37.596  8095  8148 I hakuX   : [surf92] updates=26624 shapedirty=71(per-surface_update) addrchg=0 missed=0 zeta fbdirty=0 gate=0 held=0x0061c000 want=0x0061c000
+10-04 08:26:37.912  8095  8148 I hakuX   : [watch311] live=3 inserts=15 cb_count=3 active=3 shelved=0 invalid=10
+10-04 08:26:37.912  8095  8148 I hakuX   : [surfwatch382] suspended=0 suspends=0 rearms=0 gap_writes=0 lost_writes=0
+10-04 08:26:37.912  8095  8148 I hakuX   : [evict372] dirty/clean by mask (1role 2fmt 4pitch 8small 10swz 20ovl 40zdim): overflow=0 handoffs=0 fallbacks=0
+10-04 08:26:38.113  8095  8148 I hakuX   : [surf92] updates=28672 shapedirty=71(per-surface_update) addrchg=0 missed=0 color fbdirty=0 gate=0 held=0x00748000 want=0x00748000
+10-04 08:26:38.246  8095  8148 I hakuX   : [clr89] clears=512 nobind=0(structural-0) diverged=0 shape_fmt=0x04 drawn_fmt=0x04 shape_pad=1 drawn_pad=1 addr=0x00748000
+10-04 08:26:38.426  8095  8139 W hakuX   : [idlehalt] w=12 on=0 span_us=2000004 run_us=1950254 rq_us=186 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 lallmax=0 spin_us=0 sh=0 spn_us=0 kpg=0/0/0/0/0/0/0
+10-04 08:26:38.649  8095  8135 I hakuX   : refresh frame=1560 tex=2 flip=0 surface=0xb4000074a2bd04d0 size=640x480 rs=9(running)
+10-04 08:26:38.681  8095  8148 I hakuX   : [surf92] updates=30720 shapedirty=71(per-surface_update) addrchg=0 missed=0 color fbdirty=0 gate=0 held=0x00748000 want=0x00748000
+10-04 08:26:38.915  8095  8139 W hakuX   : [tlb68] w=12 dt=2019 cpu=1967 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 pf=0 pfl=0 jc=0 jct=0 jci=0 jcx=750 jcus=0 rd=748 rdc=748 rde=825792 rdm=1496 rdh=748 rdus=1142 rdo=0 rdoe=0 rdous=0 sd=748 dm=0x60 sz=5:1024,6:64 tw=825792 tn=1024 rs=0 ka=0 kafb=0 fx=rd1jc1ka0tb0 rt=0 cb=0 cbb=0
+10-04 08:26:38.915  8095  8139 W hakuX   : [mf0] w=12 dt=2019 act=1 cb=3 cb0ms=-1 up=0 dn=0 li=0 ln=1552 lo=0 vi=0 vn=0 vo=0 lnd=603 vnd=0 vb=0xf0000000
+10-04 08:26:38.915  8095  8139 W hakuX   : [jc425] w=12 dt=2019 jc=1 ih=1213732 ie=0 ip=67167 is=2062 ik=1153 if=70373 in=9 lh=46433 le=4 lp=4853 ls=3055 lk=6093 lf=13163 ln=842 ah=0 ae=0 ap=0 as=0 ak=0 af=0 an=0
+10-04 08:26:38.915  8095  8139 W hakuX   : [rr425] w=12 dt=2019 it=60438 e=23179 en=6458 es=6306 eo=6700 et=0 ej=3715 esh=6306 m=9 o=0 r=2756 g=26280 gs=25735 gi=505 ga=31 x=8214 d=8214 hc=1284114 hm=9 ip=3207 iq=2767 xr=2567 gapus=16439 tbus=2123610 sn=791 tbn=748 pcdrop=0
+10-04 08:26:38.915  8095  8139 W hakuX   : [rr425pc] w=12 g:0009bffe:d84108:18422 g:00100fff:f6c301:3656 e:80014385:9dc390:3316 e:8001440b:cf8b5c:2962 r:000feae4:8b0a8b:2196 e:000feaec:72f65b:2196 e:80014f32:c39004:2019 e:80014f31:fbc390:2019 g:000b2ffc:0f84cd:1580 g:000d7ffd:81e7ff:1452 e:80014158:9dc38b:1038 e:80018d59:837b60:1026 e:80018d58:fb837b:1026 e:800141af:fbe87b:1025 e:800141b0:e87b4b:1025 g:8001dffc:3dffff:1011
+10-04 08:26:38.915  8095  8139 W hakuX   : [rr425w] w=12 idlepc=8001b02e idle_us=0 busy_us=2019256 n=0 nb=2767 drop=0 30.00:0:0:2019256:0/0/0/0:0/0/0/0:1983 31.00:0:0:0:0/0/0/0:0/0/0/0:496 33.02:0:0:0:0/0/0/0:0/0/0/0:121 33.44:0:0:0:0/0/0/0:0/0/0/0:121 30.02:0:0:0:0/0/0/0:0/0/0/0:11 31.02:0:0:0:0/0/0/0:0/0/0/0:2 30.44:0:0:0:0/0/0/0:0/0/0/0:25 31.44:0:0:0:0/0/0/0:0/0/0/0:6 35.00:0:0:0:0/0/0/0:0/0/0/0:2

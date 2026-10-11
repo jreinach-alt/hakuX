@@ -1,3 +1,4 @@
+# state: any   (screen-driven (drive.py reads each screen); lane.savestate433)
 # Sonic Heroes (5345002B), boot to Seaside Hill, screen-driven (#433,
 # lane.routedriver, brief item 6: the on-foot proof).
 #

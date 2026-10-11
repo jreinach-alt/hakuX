@@ -1,0 +1,42 @@
+{
+ "title_id": "4D530041",
+ "name": "Amped 2",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Amped 2 (USA).xiso.iso",
+ "result": "gameplay",
+ "tool": "31af1ab54f",
+ "started": "2026-10-02 09:57:45 PDT",
+ "reason": "four probes refused",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/048-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/048-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/048-probe-c.jpg"
+ ],
+ "minutes": 9.02,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/047-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/049-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/050-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/051-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/052-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/053-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/054-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/055-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/056-after.jpg"
+ ],
+ "model_calls": 34,
+ "calls_by_model": {
+  "claude-sonnet-5": 30,
+  "claude-opus-5-5": 4
+ },
+ "steps": 48,
+ "seconds": 584.3,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/frames/047-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/amped-2/strip.jpg"
+}

@@ -1,0 +1,33 @@
+pathfind: MTV Celebrity Deathmatch (5454000B) on nova: /storage/E6C6-D7AA/Games/XBox/5454000B-MTV_Celebrity_Deathmatch.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 5454000B first-run, loaded none
+[  10.8s] #  1 publisher_logo    fast    A                        A logo or splash on a white background before any title or menu; skip with A, then re-read
+[  18.6s] #  2 publisher_logo    fast    A                        Legal/copyright splash before any title screen; skip with A per the publisher_logo hint, t
+[  26.8s] #  3 cutscene          fast    A                        A close-up cinematic shot with no menu, HUD, or playable character; this is a story moment
+[  36.7s] #  4 publisher_logo    fast    A                        A legal/disclaimer splash before any title or menu is a skippable pre-title screen; per th
+[  45.1s] #  5 main_menu         fast    DOWN A                   Main menu with the cursor on EPISODE. DEATHMATCH is the quick single match, so one DOWN to
+[  53.8s] #  6 submenu           fast    A                        Deathmatch is the quick single match and its submenu is open with 1P vs CPU already highli
+[  64.3s] #  7 submenu           fast    A                        Character select with defaults already filled in (1P Mr. T vs CPU). Per the hint, accept t
+[  74.0s] #  8 submenu           fast    A                        Character select with defaults already filled in. Per the hint, accept the defaults with A
+[  82.3s] #  9 submenu           fast    START                    Character select with defaults already filled in. A did nothing on this unchanged screen, 
+[  93.4s] # 10 submenu           fast    RIGHT LEFT A             Defaults are already filled in, but A and START both did nothing on this unchanged screen.
+[ 104.5s] # 11 submenu           fast    A                        Arena select with a default already chosen (Deathmatch Arena). Accepting the default with 
+[ 113.5s] # 12 cutscene          fast    START                    This is a presentation scene with announcers, not player-controlled play; no HUD or player
+[ 123.2s] # 13 cutscene          fast    A                        A posed character in a ring with a crowd and no HUD looks like a pre-fight presentation, n
+[ 132.7s] # 14 gameplay          fast    wait                     Fight HUD with both fighters' health bars and names is up, and the arena is live with a pl
+[ 148.9s] # 15 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.540, under input 0.562
+[ 159.2s] # 16 gameplay          fast    wait                     Live fight HUD with both health bars and names, arena and fighters on screen. The earlier 
+[ 178.8s] # 17 probe             probe   A STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.160, under input 0.098
+[ 183.5s] # 18 gameplay          fast    wait                     Live fight HUD with both health bars and names is up and the arena is live; earlier probes
+[ 201.7s] # 19 probe             probe   HOLD:A:3 STICK:left:1.2 STICK:right:1.2 control 0.343, under input 0.298
+[ 209.3s] # 20 gameplay          fast    wait                     Live fight HUD with both health bars and names over a live arena. Earlier stick probes wer
+[ 226.4s] # 21 probe             probe   STICK:up:1.5 STICK:left:1.2 STICK:right:1.2 control 0.297, under input 0.258
+[ 240.7s] # 22 cutscene          fast    A                        A live-looking arena, but no HUD is visible and the fighters are posed as if in a moment o
+[ 249.1s] # 23 results           fast    RIGHT A                  A post-fight RESULTS screen, not live play; the earlier cutscene/gameplay history is stale
+[ 260.3s] # 24 gameplay          fast    wait                     Live fight HUD with both health bars and names over an active ring; no menu or results ban
+[ 276.9s] # 25 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.574, under input 0.464
+[ 284.8s] # 26 gameplay          fast    wait                     Both fighters, the ring, and the MTV health-bar HUD are live; no menu or results text. Ear
+[ 295.6s] # 27 probe             probe   HOLD:A:3                 control 0.067, under input 0.328
+{"name": "MTV Celebrity Deathmatch", "device": "nova", "result": "gameplay", "minutes": 4.93, "model_calls": 29, "steps": 27, "replayed": 0, "reason": "four probes refused", "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-mtv-celebrity-deathmatch/claim/frames/026-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

@@ -1,0 +1,24 @@
+{
+ "method": "rec",
+ "rc": 0,
+ "stderr": "",
+ "pull_rc": 0,
+ "start": 1791132298.822255,
+ "wall_s": 4.09,
+ "bytes": 361459,
+ "device": "nova",
+ "serial": "ee317437",
+ "seconds": 4,
+ "note": "4D530004 hold-play burst 2",
+ "flicker": {
+  "frames": 245,
+  "unique": 1,
+  "dup_share": 1.0,
+  "triples": 0,
+  "hits": 0,
+  "rate": null,
+  "p90": null,
+  "max": null,
+  "verdict": "unmeasured"
+ }
+}

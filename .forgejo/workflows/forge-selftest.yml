@@ -1,0 +1,53 @@
+# Local CI (lane.localforge, 2026-10-02): the jobs selftest on the local
+# forge's runner, while GitHub's CI is gone with the account.
+#
+# FOLD CANDIDATES ONLY. A forge PR is a draft ("WIP: " title) until its
+# PR.md says `State: ready` (hakux-forge-prsync keeps the two in step), and
+# a draft never runs. So CI runs on a lane's head only once the lane calls it
+# done, and again on each push after that. Runner: one host runner,
+# capacity 1 (`hakux-forge-runner.service`), so runs queue and never overlap
+# the device dispatcher's builds by more than one.
+#
+# No `uses:` actions: the forge runs offline (DEFAULT_ACTIONS_URL=self), so
+# the checkout is a shared clone of the stand-in bare repo, which every
+# forge sha comes from.
+name: forge jobs selftest
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - 'docs/testing/jobs/**'
+      - 'docs/testing/request.sh'
+      - 'docs/testing/lane.sh'
+      - 'docs/testing/nv2a_index.py'
+      - '.forgejo/workflows/forge-selftest.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: jobs-selftest-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  selftest:
+    # `edited` counts only when the title loses its WIP prefix (draft -> ready):
+    # hakux-forge-prsync rewrites PR bodies, and a body edit is not a new head.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (!startsWith(github.event.pull_request.title, 'WIP') &&
+       (github.event.action != 'edited' || startsWith(github.event.changes.title.from, 'WIP')))
+    runs-on: host
+    timeout-minutes: 120
+    steps:
+      - name: Check out the head from the stand-in bare repo
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -eu
+          rm -rf src && git clone -q --shared --no-checkout "$HOME/hakux-work/offline-git/hakuX.git" src
+          git -C src checkout -q --detach "$HEAD_SHA"
+          git -C src fetch -q origin master '+refs/heads/lane/*:refs/remotes/origin/lane/*'
+          git -C src log --oneline -1
+      - name: Run the self-test (all shards, one after another)
+        working-directory: src
+        run: bash docs/testing/jobs/selftest.sh

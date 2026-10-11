@@ -1,0 +1,51 @@
+{
+  "registered_utc": "2026-10-10T00:00:00Z",
+  "who": "lane.forzasurf1010",
+  "issue": "433",
+  "title": "4D53006E-Forza_Motorsport.xiso.iso",
+  "device": "nova",
+  "seconds": 480,
+  "route": "forza-soak1010",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "ab1acc4154579be453def92aac3a4a0d158a040d",
+  "b_ref": "ab1acc4154579be453def92aac3a4a0d158a040d",
+  "a_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_SURFGPU=0"
+  ],
+  "b_env": [
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_SURFGPU=1"
+  ],
+  "queue_order": "request.sh --who forzasurf1010 --title 4D53006E-Forza_Motorsport.xiso.iso --route forza-soak1010 --seconds 480 --perflog --device nova --env HAKUX_FRAMETRACE=1 --env HAKUX_SURFGPU=0/1 --ref ab1acc4154 --issue 433 --expect docs/testing/predictions/forzasurf1010-ab.json. Flag-off (A) queued first each pair, flag-on (B) second, 2 runs per arm.",
+  "judge": "python3 docs/lanes/surfgpu1009/sg_judge.py --expect docs/testing/predictions/forzasurf1010-ab.json --a <A id> --b <B id>  (reads result dirs only, title-agnostic: per-[sdcall]-caller ms/frame, [surfgpu] counters, decompose.py's gfps/ph_*)",
+  "window": "logcat at or after the route's 'mark gameplay' line (written by drive.py's --mark once play is confirmed, forza-soak1010.route), to the end of the run, restricted by hand to sub-windows where the hold frames show the car actually racing (speed > 0, position/track position changing), not stalled, paused or on a results screen.",
+  "prediction": "#433, Forza Motorsport, moving-car scene (unlike frametrace's invalid capture, car stalled 8th of 8). Flag off (A) reproduces a `surfupd` wait close to frametrace's named site (vk/draw.c:4319, qemu_event_wait behind the render thread's fence, caller surfupd at surface.c:5169): at least 4.0 ms/frame median, since the non-deferred SURFACE_DOWN finish frametrace found is a property of the display-surface download call site, not of whether the car is moving. Three possible outcomes for flag on (B), per the brief: (a) surfgpu removes it -- B's surfupd drops to at most 2.0 ms/frame, [surfgpu] detach/nodisp engage, ph_Fin drops and gfps rises, matching the mechanism NBA Live 05/06/07 already showed (surfgpu1009); (b) the wait MOVES -- surfupd drops per (a)'s bar but the summed [sdcall] wait per flip (P2) does not fall by a comparable ratio, meaning some other caller (reuse, record, pre, a fence rotation) picked it up; (c) the wait sits outside surfgpu's reach entirely, at `range` (surfdl1008's Midnight Club 2 caller, pgraph_vk_download_surfaces_in_range_if_dirty, texture.c) or another caller surfgpu does not touch -- `range`'s ms/frame stays materially unchanged between A and B. (b) and (c) are read from the full per-caller table sg_judge.py prints (every caller it finds, not just reuse/surfupd), not from the scored `expect` keys below, since this judge has no generic 'range' rule; PR.md names a candidate caller/fence by hand from that table and declares which of (a)/(b)/(c) happened rather than from the ratio alone. Pixels are not checked by this lane (no native code changes to verify; lane.surfgpu1009's golden3/NBA07-held already cover the mechanism's pixel safety).",
+  "legs": {
+    "V (validity)": "V1: B's logcat carries '[surfgpu] on'. V2: A's does not. V3: both arms have >= 5 post-mark [sdcall] windows. V4: no thermal pause in either arm (decompose.py's THERMAL line). A V failure voids the pair: identify why, never a blind rerun.",
+    "M (moving player, hand-read)": "Both arms' hold/route frames (ROUTE_FRAMES, --frames-every captures) show the car actually racing in the scored window -- speed > 0, track position advancing, not on the grid, a pause screen, a results screen or a replay. A window that does not is excluded from the read, same rule as #433's measured-scene memory (NFS MW's parked-car near30 misread).",
+    "P0 (the wait is there to remove)": "A, flag off, reproduces the baseline wait this fix targets: surfupd's median ms per flip post-mark is at least the registered floor. A P0 failure means this moving scene does not reproduce frametrace's named wait at a scorable magnitude; the pair is not scored on P1-P4, and PR.md reports exactly what caller/magnitude the moving scene showed instead.",
+    "P1 (the caller drops, outcome a)": "B's surfupd wait per flip is at most the registered ceiling, and the switch acted: [surfgpu] detach= (and nodisp=) per flip at least the registered floor. Detach/nodisp without surfupd dropping is not this switch removing Forza's wait.",
+    "P2 (the wait did not move, vs. outcome b)": "The SUM of every [sdcall] caller's wait per flip (median of windows), B over A, is at most the registered ratio. If surfupd drops (P1 PASS) but P2 does not fall by a comparable amount, the wait moved to another caller -- read which from the full per-caller table (outcome b).",
+    "P3 (ph_Fin)": "decompose.py's all-row ph_Fin, A minus B, is at least the registered drop in ms per frame.",
+    "P4 (gfps)": "decompose.py's all-row gfps (mark-restricted, moving-car sub-windows only), B minus A, is at least the registered gain.",
+    "R (reported, not scored)": "Every [sdcall] caller's ms/frame in both arms, by name, from sg_judge.py's own table -- specifically `range` (surfdl1008's caller, untouched by surfgpu) and `record`/`reuse`/`pre` if present. If `range` or another caller surfgpu does not touch carries a comparable wait in BOTH arms, that is outcome (c) and the follow-on (a GPU-side surface-to-texture conversion at texture.c's call site) gets this lane's ms/frame as its P x win row, per brief step 5(c)."
+  },
+  "expect": {
+    "V1.B_surfgpu_on": true,
+    "V2.A_surfgpu_on": false,
+    "V3.postmark_sdcall_windows_min": 5,
+    "V4.thermal_pause": false,
+    "P0.A_surfupd_ms_per_frame_min": 4.0,
+    "P1.B_surfupd_ms_per_frame_max": 2.0,
+    "P1.B_detach_per_frame_min": 0.3,
+    "P1.B_nodisp_per_frame_min": 0.2,
+    "P2.sdcall_wait_sum_ratio_max": 0.6,
+    "P3.ph_Fin_drop_ms_min": 3.0,
+    "P4.gfps_gain_min": 1.0
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules, not capture keys: a soak writes no captures. sg_judge.py scores each key against these thresholds and fails any key it has no reader for. Outcomes (b) and (c) from the brief are read from the full per-caller table sg_judge.py prints (every caller found), not from a scored key -- this judge has no generic 'range' or 'wait moved to X' rule, and PR.md states which of (a)/(b)/(c) the numbers show by hand, as the legs above describe."
+}

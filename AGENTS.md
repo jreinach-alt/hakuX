@@ -23,8 +23,8 @@ is being folded into it; every lane is a branch `lane/<name>` from master with
 one draft PR whose body lists its files; the board (`territory.toml`,
 `nv2a_issues.toml`, briefs) is moving to the orphan `board` branch and is
 written by the board job only; the long-lived orchestrator session is
-replaced by scheduled jobs; CI runs on every PR because it is free on this
-public repository, so `[skip ci]` is no longer required. Where a rule below
+replaced by scheduled jobs. The harness works on a self-hosted forge, and
+GitHub is its one-way mirror; see "The forge" below. Where a rule below
 names the campaign branch, read `master`. Where it says "ask the
 orchestrator", write a board request and carry on. The measurement
 discipline below -- predictions registered before the run, per-capture
@@ -34,13 +34,46 @@ queues its arms** (the arms job on the host runs every prediction whose refs
 are live and posts the verdict on your PR), and the live state of the whole
 harness is one comment on the issue labelled `harness-status`.
 
+## The forge (the working space; GitHub is a one-way mirror)
+
+The harness's issue tracker, pull requests, labels, releases and CI are a local
+Forgejo at **http://127.0.0.1:3330** (loopback only), repo `jreinach-alt/hakuX`.
+**GitHub is up.** It was suspended from 2026-09-29 to 2026-10-05. The forge stays
+the place of work by the owner's choice, to keep GitHub's transaction volume
+down, not because GitHub is unavailable. Exactly one job writes to GitHub:
+`hakux-github-gateway.timer` (`~/hakux-work/host-tools/github_gateway.sh push`)
+fast-forwards the branches every 15 minutes, and the nightly goes there as a
+prerelease. Nothing else in the harness may reach github.com.
+
+- **`gh` is a shim** (`~/hakux-work/forge/shim/bin/gh`, source
+  `docs/testing/jobs/gh-shim/gh`). It is first on PATH for every harness unit
+  and for lane sessions. It implements the `gh` operations the scripts use and
+  fails loudly otherwise: an operation it does not implement exits 64 with
+  `gh-shim: not implemented: <args>`, and every call is logged to
+  `~/hakux-work/logs/forge/shim.log`. Merges are refused; they stay with
+  `foldqueue.sh`.
+- **A lane's PR is `docs/lanes/<lane>/PR.md`** on its branch. Line 1 is the
+  title, `State: draft` or `State: ready`, and the rest is the body.
+  `hakux-forge-prsync` mirrors it to a forge PR every 5 minutes.
+- **Issues #1-#640 keep their GitHub numbers**; forge-native issues start at
+  #641. `local-only` issues created during the suspension are listed in
+  `~/hakux-work/forge-import/local-number-map.tsv`.
+- **Local CI** runs `.forgejo/workflows/forge-selftest.yml` and
+  `forge-android.yml` on a host runner (capacity 1), on ready PRs only.
+
+**The transfer to GitHub** is the gateway above: fast-forward only, throttled,
+with a safety scan before each push. Its log is
+`~/hakux-work/logs/github_gateway.log`; a last line more than about 20 minutes
+old means the mirror has stopped. GitHub Actions stays off. Do not add `gh`
+calls that target github.com.
+
 ## Start here
 
 ```bash
 # 1. What the project is trying to be, and in what order
 cat ROADMAP.md
 
-# 2. What is actually broken, with measured evidence
+# 2. What is actually broken, with measured evidence (the forge, through the gh shim)
 gh issue list --repo jreinach-alt/hakuX --limit 30
 
 # 3. How correctness is measured at all
@@ -424,7 +457,7 @@ running set in both directions -- which is how the third was found, and found
 
 **Public-facing** means anything written for people who don't run the harness:
 
-- GitHub release notes and the releases page;
+- release notes and the releases page (the forge's until the return);
 - `README.md`, `CHANGELOG.md` and `ROADMAP.md`;
 - user docs outside `docs/testing/`, `docs/lanes/`, `docs/audits/` and
   `docs/investigations/`.
@@ -449,14 +482,14 @@ rule doesn't apply to them.
 
 ## Non-negotiables
 
-**Never trigger CI to check your own work.** GitHub Actions minutes here are a
-finite monthly budget, and exhausting them means no CI when a release actually
-needs it. CI is for full build releases, run on demand when the user asks.
-Concretely: `android.yml`, `desktop.yml` and `nv2a-index.yml` fire on
-`push: branches: [master]` and on `pull_request:`, so a push costs runs only if
-the branch has an open PR. `claude/es-de-launcher-disc-error-ojnl14` has no PR
--- **do not open one for it**. Put `[skip ci]` in the commit subject for
-anything that may reach a PR-backed branch, and never use `gh workflow run`.
+**CI is the forge's, and it is not a self-check.** The only CI until the return
+is `.forgejo/workflows/forge-selftest.yml` and `forge-android.yml` on the local
+runner, which has capacity 1. They run on a ready PR (`State: ready` in PR.md),
+never on a draft and never on every push. Run the jobs selftest and the Android
+build yourself first, and name their results in PR.md. Never use `gh workflow
+run`. Do not put the retired skip-CI marker in a commit message, not even to
+explain this rule: GitHub matches it anywhere in the message, and the return
+will read it the same way.
 
 The obligation that replaces it is local: **build both Android and desktop.**
 
@@ -748,6 +781,38 @@ cd android && ./gradlew --no-daemon assembleDebug
 Debug builds install as `com.jreinach.hakux.debug`, labelled **hakuX (debug)**,
 alongside a release install. They keep separate settings, HDD images and save
 data.
+
+## Disc images live on D:, never on the Linux disk (owner, 2026-10-09)
+
+**Do not keep a title disc image (`*.iso`, `*.xiso.iso`, or a `.7z` of one) on
+the Linux filesystem: not as an archive, a cache, a copy staged for a push, or
+a title pulled off a device.** Images live on the Windows D: drive, under
+`/mnt/d/hakux-staging/<purpose>/`. The owner's collection is `D:\Xbox`.
+
+The Linux filesystem is one virtual disk file on C:. It grows as Linux writes
+and does not shrink when Linux deletes. While Windows holds restore points on
+C:, every Linux write also costs C: space for a copy of the block it replaces.
+On 2026-10-09 C: filled and the Ubuntu VM crashed, taking every lane, the
+dispatcher and an in-flight Nova run with it. Behind that growth were 38 GB of
+titles pulled off the Nova into `~/hakux-work/nova-archive-1008` on 10-08 and
+a 48 GB push cache in `~/hakux-work/shuffle-cache`. Both now live under
+`/mnt/d/hakux-staging/`.
+
+- **Push from D:.** adb is the Windows `adb.exe`. Give it the Windows path,
+  `adb push "$(wslpath -w "$f")" <device path>`; it cannot stat `/mnt/d/...`.
+- **Pull to D:.** `adb pull <device path> "$(wslpath -w /mnt/d/hakux-staging/<purpose>)"`.
+- **Extract and convert on D:.** The host's title copier
+  (`~/hakux-work/hardware/titlepush/ingest_owner_library.py` and
+  `title_push_xbox.sh`) already works this way, in `/mnt/d/hakux-staging/ingest`
+  and `/mnt/d/hakux-staging/xiso`. A one-off script follows it rather than
+  using `/tmp` or a worktree.
+- A test disc from `make_test_iso.py` or `make_isolation_discs.py` belongs to
+  one run and is not covered: build it, run it, delete it.
+- A free-space check that guards a title copy reads C: (`df /mnt/c`), not `/`.
+  The Linux disk can show hundreds of GB free while C: has none.
+
+The hourly report lists every disc image over 256 MB it finds on the Linux
+disk, and C:'s free space.
 
 ## Working with a device
 
@@ -2209,7 +2274,7 @@ recorded, arriving through a checker that said ok.
 
 **A CHECKER THAT READS LIVE STATE AND DISK STATE TOGETHER TURNS YOUR
 STALENESS INTO SOMEBODY ELSE'S FAULT.** `check_coverage.py` reads the open-issue
-list from GitHub, live, and the tracker from the working tree. So a lane four
+list from the forge, live (through the gh shim), and the tracker from the working tree. So a lane four
 commits behind sees a real issue with no tracker entry and reports, correctly
 from where it stands, that the board is broken and its push is blocked by
 shared infrastructure.
@@ -2553,8 +2618,9 @@ compare the region the test is about.
 
 ## Conventions
 
-- Defects live in GitHub issues, grouped by likely shared cause, each carrying
-  measured evidence.
+- Defects live in the forge's issues (GitHub's numbering, #1-#640; forge-native
+  from #641), grouped by likely shared cause, each carrying measured evidence.
+  A new defect found by a lane is a `NEW ISSUE:` block in its OUTBOX.
 - `docs/investigations/` holds long-form records of bugs chased in depth.
   Read the relevant one before re-deriving it.
 - `docs/archive/` is superseded material. Nothing there should inform decisions.

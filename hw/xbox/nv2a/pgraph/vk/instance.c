@@ -481,11 +481,14 @@ static StringArray *get_required_device_extension_names(void)
  * pipeline in once the worker has built it, 4 keeps the uber link (for the
  * exactness and GPU-cost arms only).
  * The environment reaches the Android app through request.sh --env.
- * Off by default: on its own, a pre-rasterization library costs more than a
- * whole monolithic pipeline on T30 (docs/lanes/gpl569/NOTES.md, "Runs").
+ * 3 by default (#569, docs/lanes/uberdefault569): on a cold cache the ladder
+ * takes the compile off the draw path (Kabuki's fight 133 s -> 27 ms of
+ * creates, uberspike569 BUILD.md 12) and Tron 2.0's first play no longer
+ * hangs (#672). The Android app sets HAKUX_GPL from its "Ubershader" setting
+ * (MainActivity.kt), so this default is for builds that set nothing.
  */
 #ifndef HAKUX_GPL_DEFAULT
-#define HAKUX_GPL_DEFAULT 0
+#define HAKUX_GPL_DEFAULT 3
 #endif
 
 static int gpl_requested_mode(void)

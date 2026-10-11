@@ -1,0 +1,30 @@
+{
+ "title_id": "454D000A",
+ "name": "Mashed Drive to Survive",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/454D000A-Mashed_Drive_to_Survive.xiso.iso",
+ "result": "gave-up",
+ "tool": "ede3ec6df5",
+ "started": "2026-10-04 12:02:31 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-mashed/claim/frames/088-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-mashed/claim/frames/088-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-mashed/claim/frames/088-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-mashed/claim/frames/088-probe-right.jpg"
+ ],
+ "reason": "budget 15 min",
+ "last_state": "cutscene",
+ "model_calls": 83,
+ "calls_by_model": {
+  "claude-sonnet-5": 83
+ },
+ "steps": 90,
+ "seconds": 903.7,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-mashed/claim/frames/090-cutscene.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-mashed/claim/strip.jpg"
+}

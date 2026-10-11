@@ -5063,11 +5063,21 @@ Halo: Combat Evolved `1790933948-titleroutes-171581`, Conker: Live & Reloaded `1
 
 ### State for a successor (this was attempt 4 of 4; the lane cannot be resumed again)
 
-**Queued, NOT yet reviewed** (Nova; items 2-3 are unreviewed, read each result's route-frames before anything else):
+**Queued in session 65, all reviewed in-session** (Nova; read each result's route-frames before anything else):
 1. (Reviewed in-session: Buffy replay 2 `1790932722-titleroutes-3976729` was stuck at a ledge; Buffy is BLOCKED on a
    path found by sight -- see above. Launch to mark ~125 s; disk state does not matter.)
-2. `1790933948-titleroutes-171581` -- Halo: Combat Evolved survey (4D530004).
-3. `1790933948-titleroutes-171701` -- Conker: Live & Reloaded survey (4D530051).
+2-3. Reviewed in-session (03:21 PDT), see below. **Nothing of this lane's is queued or unreviewed now.**
+- `1790933948-titleroutes-171581` -- **Halo: Combat Evolved (4D530004): reached the in-engine training, not free play.**
+  Campaign -> ENTER NAME accepts the default profile "New001" -> CHOOSE DIFFICULTY Normal -> loading -> Reveille
+  cutscene -> the Pillar of Autumn cryo room with live camera control ("Use RIGHT [stick] to look around"); every later
+  START/A cycle toggles the RESUME GAME pause menu, and the post-mark play frames are the same room, view tilted by the
+  loop's RX. A route needs to finish the look calibration (look up/down at the lights as asked) and walk out of cryo;
+  find that path in a held nav.py session or with routedriver's drive.py. Not a route yet.
+- `1790933948-titleroutes-171701` -- **Conker: Live & Reloaded (4D530051): NOT gameplay.** Rare logo, "Xbox Live & Co"
+  intro, loading, a profile-select pod (profiles "kk", Emily...), then the main pod menu Xbox Live / System Link / Dumbots
+  / Profiles: A picks Xbox Live -> "Connection to Xbox Live lost. Cannot sign in." -> Continue -> back, looping for the
+  whole run; it ends on a multiplayer character roster (SHC/TEDIZ). A route must pick Dumbots (offline bots) or the Bad
+  Fur Day campaign with the stick, found by sight. Not a route yet.
 
 **Routed and confirmed:** Dino Crisis 3 (`dino-crisis-3`), screening 27.16 fps median, not nominated.
 
@@ -5078,6 +5088,8 @@ Star Wars Ep. III (4C410017, `1790921690-titleroutes-1082096`), Gunvalkyrie (494
 
 **Blocked / needs closed-loop input:** Black Stone (58490004, name-entry screen; needs `waitfor` crops staged into
 dispatched runs first), Castlevania first-run (lane.routedriver's), Batman: Dark Tomorrow (combat-blocked, session 2).
+
+**Surveyed, reached play, need a sighted route:** Halo CE (cryo training), Conker (menu path); Buffy (canyon ledges).
 
 **Not yet surveyed (Nova-only backlog):** Halo 2 (4D530064), Ninja Gaiden Black (5443000D), ToeJam & Earl III
 (5345000F), Tron 2.0: Killer App (42560001). Behind them: `scratch/rank_untouched.py`'s ranked list (Doom 3,

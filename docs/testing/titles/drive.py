@@ -145,6 +145,8 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import classify  # noqa: E402
+sys.path.insert(0, os.path.join(HERE, "..", "jobs"))
+import models  # noqa: E402  (the one model table/reader, #433)
 
 PAD = os.path.join(HERE, "..", "perf", "pad.sh")
 SKIPPABLE = ("logo", "intro_video", "cutscene")
@@ -160,7 +162,7 @@ DEFAULTS = dict(
     progress_bar=0.0, progress_window_s=10.0, stall_clear_s=0.0, keep_all=0,
 )
 
-MODEL = "claude-haiku-4-5-20251001"
+MODEL = models.model_for("drive")   # a screen classifier, not reasoning -- Haiku in every mode (#433)
 # USD per million tokens, Haiku 4.5 list price when this was written. The
 # cost logged per call is tokens x these; check them against the current
 # price list before reading the dollars as a bill.

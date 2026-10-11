@@ -1,0 +1,34 @@
+pathfind: Dark Summit (54510004) on nova: /storage/E6C6-D7AA/Games/XBox/54510004-Dark_Summit.xiso.iso
+titlestate: titles disk: build (the disk carries a run's writes since it was pushed; every run starts from the goldens)
+titlestate: titles disk: keep (the disk is the composed goldens, untouched since its push)
+titlestate: hddPath -> /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2: 54510004 any, loaded golden 430384745827
+[  11.6s] #  1 publisher_logo    fast    A                        A publisher/studio logo animating in the centre, with nothing to select. Skip with A first
+[  19.9s] #  2 loading           fast    wait                     Xbox dashboard/system disk-space check in progress, no input applies; wait for it to finis
+[  28.5s] #  3 loading           fast    wait                     Abstract red ring/dot animation with no selectable items; the previous step was a dashboar
+[  39.2s] #  4 cutscene          fast    START                    Story/intro cinematic with no HUD or player control; skip with START first per the recorde
+[  47.9s] #  5 cutscene          fast    A                        Story briefing/report panel after load, not player-controlled play; the only action offere
+[  55.7s] #  6 title_screen      fast    START                    Title screen with a 'Please press START to begin' prompt; START is the prompt's input and 
+[  63.6s] #  7 main_menu         fast    A                        Main menu with cursor already on 'Play Dark Summit', the fastest route to play; A accepts.
+[  74.7s] #  8 main_menu         fast    A                        Main menu with New Game already highlighted; New Game is the fastest route to play, so A a
+[  83.7s] #  9 submenu           fast    A                        Rider select submenu; recorded path says the default rider Naya is already chosen, so A ac
+[  91.6s] # 10 submenu           fast    A                        Level/location select submenu; First Cut is already highlighted and is the fastest start, 
+[ 102.3s] # 11 submenu           fast    A                        Location confirmation after load; the only action offered is Accept, so A confirms the loc
+[ 114.8s] # 12 cutscene          fast    wait                     The character is in the world, but no HUD or evidence of player control is visible, so thi
+[ 122.6s] # 13 cutscene          fast    A                        Dialogue-style close-up in the world with no HUD or visible player control, so not gamepla
+[ 131.6s] # 14 submenu           fast    A                        Story briefing panel is up, not gameplay; the only action offered is Done on A, so A dismi
+[ 143.8s] # 15 gameplay          fast    wait                     Player-controlled snowboarder in the playfield with HUD counters and minimap, no menu or c
+[ 158.7s] # 16 probe             probe   STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.604, under input 0.511
+[ 165.0s] # 17 gameplay          fast    wait                     Player-controlled snowboarder in the game world with HUD counters and minimap, no menu, le
+[ 185.0s] # 18 probe             probe   RT:1.5 RT+left:1.2 RT+right:1.2 control 0.681, under input 0.611
+[ 192.2s] # 19 gameplay          fast    wait                     Player-controlled snowboarder in the game world with HUD counters and minimap, and no menu
+[ 210.4s] # 20 probe             probe   STICK:right:1.5 STICK:left:1.2 STICK:right:1.2 control 0.684, under input 0.807
+[ 216.8s] # 21 gameplay          fast    wait                     Player-controlled snowboarder in the game world with a HUD and no menu or cutscene. Earlie
+[ 240.3s] # 22 probe             probe   HOLD:A:1 STICK:left:1.5 STICK:left:1.2 STICK:right:1.2 control 0.751, under input 0.815
+hold-play: genre team, need 600 s of play
+hold-play: fps at 185 s: median 31.0, share>=30 0.713 over 101 samples
+hold-play: fps at 305 s: median 35.0, share>=30 0.828 over 186 samples
+hold-play: HELD 606/600 s of play; 
+held Dark Summit for 608s
+VERDICT Dark Summit ? PASS None gameplay=606.4s fps_ok=0.9318 crash=False hang=False audio_short=0.0 hitches=2/0.22pm worst_ms=127.7 static_frac=0.0 play_share=0.9998 fps_excluded=1.9s
+{"name": "Dark Summit", "device": "nova", "result": "gameplay", "minutes": 4.0, "model_calls": 30, "steps": 22, "replayed": 0, "reason": null, "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/021-gameplay.jpg"}
+titlestate: released nova: {"harvested": {"errors": {}, "harvested": {"41430006": "bc52aa2f6fd8", "41430016": "5db249c6ee24", "41510001": "8b6326b1bfc8", "41540002": "2b6c57485f1e", "41540004": "169dc045ed29", "41560001": "eb5a77c99ffd", "41560004": "02ceef03a100", "4156005D": "a1647bf6ddb4", "42530009": "1b96f2b25d76", "4256

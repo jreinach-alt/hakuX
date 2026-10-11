@@ -30,6 +30,12 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
      * game.  Exiting then returns to that frontend instead of the library.
      */
     const val EXTRA_FROM_FRONTEND = "from_frontend"
+
+    /** #433: the six switches "Fast renderer paths" sets together. */
+    val FASTPATHS_VARS = arrayOf(
+      "HAKUX_REPORT_ASYNC", "HAKUX_TEXSCAN", "HAKUX_DRAWREC",
+      "HAKUX_UNI_BULK", "HAKUX_UNI_UBERCACHE", "HAKUX_UNI_FOGCACHE"
+    )
   }
 
   private var onScreenController: OnScreenController? = null
@@ -98,6 +104,35 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
     SDLActivity.nativeSetenv("XEMU_RENDERER", rendererPref)
     SDLActivity.nativeSetenv("SDL_ANDROID_TRAP_BACK_BUTTON", "1")
 
+    // #569: the ubershader (HAKUX_GPL=3, the emulator's default) unless the
+    // setting turns it off. An HAKUX_GPL line in env_vars is applied after
+    // this by xemu_android.cpp, so it still wins for testing.
+    val ubershaderOn = ubershaderEnabled(prefs)
+    if (!ubershaderOn) {
+      SDLActivity.nativeSetenv("HAKUX_GPL", "0")
+    }
+    android.util.Log.i("hakuX-build", "ubershader: ${if (ubershaderOn) "ON" else "OFF"} (#569)")
+
+    // #433: GPU surface reuse (HAKUX_SURFGPU), on by default. An
+    // HAKUX_SURFGPU line in env_vars is applied after this by
+    // xemu_android.cpp, so it still wins for testing.
+    val surfgpuOn = surfgpuEnabled(prefs)
+    SDLActivity.nativeSetenv("HAKUX_SURFGPU", if (surfgpuOn) "1" else "0")
+    android.util.Log.i("hakuX-build", "surfgpu: ${if (surfgpuOn) "ON" else "OFF"} (#433)")
+
+    // #433: "Fast renderer paths", on by default -- the six opt-in switches
+    // folded by reportasync1010, texscan1010, drawrec1010 and perdrawon1010
+    // (HAKUX_REPORT_ASYNC, HAKUX_TEXSCAN, HAKUX_DRAWREC, HAKUX_UNI_BULK,
+    // HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE), set as one switch. A line for
+    // any one of them in env_vars is applied after this by xemu_android.cpp,
+    // so it still wins for testing.
+    val fastpathsOn = fastpathsEnabled(prefs)
+    val fastpathsVal = if (fastpathsOn) "1" else "0"
+    for (v in FASTPATHS_VARS) {
+      SDLActivity.nativeSetenv(v, fastpathsVal)
+    }
+    android.util.Log.i("hakuX-build", "fastpaths: ${if (fastpathsOn) "ON" else "OFF"} (#433)")
+
     // Texture settings: per-game override takes precedence over global
     val texDumpEnabled = prefs.getString(PerGameSettingsManager.runtimeKey("texture_dump_enabled"), null)
       ?.let { it == "true" }
@@ -127,7 +162,84 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
     setupPauseMenu()
     setupEdgeSwipe()
     setupControllerDetection()
+    if (!ubershaderOn) showUbershaderOffBanner()
     hideSystemUI()
+  }
+
+  /**
+   * Whether this launch draws with the ubershader. Mirrors what the emulator
+   * will do: an HAKUX_GPL in the env_vars pref decides (0-2 are not the uber
+   * ladder; anything else leaves vk/instance.c's default of 3), then the
+   * per-game override, then the global setting, on by default.
+   */
+  private fun ubershaderEnabled(prefs: android.content.SharedPreferences): Boolean {
+    val envGpl = prefs.getString("env_vars", "").orEmpty().lineSequence()
+      .lastOrNull { it.startsWith("HAKUX_GPL=") }
+      ?.substringAfter('=')
+    if (envGpl != null) {
+      return !(envGpl.length == 1 && envGpl[0] in '0'..'2')
+    }
+    return prefs.getString(PerGameSettingsManager.runtimeKey("ubershader"), null)
+      ?.let { it == "true" || it == "1" }
+      ?: prefs.getBoolean("ubershader", true)
+  }
+
+  /**
+   * Whether this launch asks the emulator to reuse GPU surfaces
+   * (HAKUX_SURFGPU), on by default: the per-game override, then the global
+   * setting. An HAKUX_SURFGPU line in env_vars still wins, applied after
+   * this by xemu_android.cpp.
+   */
+  private fun surfgpuEnabled(prefs: android.content.SharedPreferences): Boolean {
+    return prefs.getString(PerGameSettingsManager.runtimeKey("surfgpu"), null)
+      ?.let { it == "true" || it == "1" }
+      ?: prefs.getBoolean("surfgpu", true)
+  }
+
+  /**
+   * Whether this launch sets the "Fast renderer paths" switches
+   * (HAKUX_REPORT_ASYNC, HAKUX_TEXSCAN, HAKUX_DRAWREC, HAKUX_UNI_BULK,
+   * HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE), on by default: the per-game
+   * override, then the global setting. A line for any one of them in
+   * env_vars still wins, applied after this by xemu_android.cpp.
+   */
+  private fun fastpathsEnabled(prefs: android.content.SharedPreferences): Boolean {
+    return prefs.getString(PerGameSettingsManager.runtimeKey("fastpaths"), null)
+      ?.let { it == "true" || it == "1" }
+      ?: prefs.getBoolean("fastpaths", true)
+  }
+
+  /**
+   * #569: a brief notice at game load when the ubershader is off. It does
+   * not take touches, and it fades out on its own after a few seconds, while
+   * the title is still booting.
+   */
+  private fun showUbershaderOffBanner() {
+    val pad = (12 * resources.displayMetrics.density).toInt()
+    val banner = TextView(this).apply {
+      text = getString(R.string.ubershader_disabled_banner)
+      setTextColor(Color.WHITE)
+      setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+      setShadowLayer(2f, 1f, 1f, Color.BLACK)
+      setPadding(pad, pad / 2, pad, pad / 2)
+      setBackgroundColor(Color.argb(170, 0, 0, 0))
+      isClickable = false
+      isFocusable = false
+    }
+    val params = RelativeLayout.LayoutParams(
+      RelativeLayout.LayoutParams.WRAP_CONTENT,
+      RelativeLayout.LayoutParams.WRAP_CONTENT
+    ).apply {
+      addRule(RelativeLayout.ALIGN_PARENT_TOP)
+      addRule(RelativeLayout.CENTER_HORIZONTAL)
+      topMargin = pad * 2
+    }
+    mLayout?.addView(banner, params) ?: return
+    banner.postDelayed({
+      banner.animate().alpha(0f).setDuration(600).withEndAction {
+        (banner.parent as? android.view.ViewGroup)?.removeView(banner)
+      }.start()
+    }, 6000)
   }
 
   override fun onWindowFocusChanged(hasFocus: Boolean) {

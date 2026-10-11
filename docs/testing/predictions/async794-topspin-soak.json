@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-10-04T15:33:09Z",
+  "who": "lane.async794",
+  "issue": "796",
+  "title": "4D530035-Top_Spin.xiso.iso",
+  "device": "nova",
+  "seconds": 990,
+  "route": "async794-topspin",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "5e4196fefd",
+  "b_ref": "c825e4b24f",
+  "judge": "python3 docs/lanes/fps20786/decompose.py <dir> (the mark is the route's `mark gameplay`) for F, Ri, rcpu, rblk, ph_Fin, ph_GPU, lockw, v_blk and the 2-s fps rows; python3 docs/lanes/async794/sdcallers.py <results> <id> for the per-caller waits; play shots by eye; the same on both arms",
+  "prediction": "Top Spin, exhibition rally (route fixed: no START after step 24). Premise (2538884): ~26 texture-bind downloads a frame each wait for the GPU with pgraph.lock held; the vCPU waits 13.6 ms/frame for that lock on reads of PGRAPH 0xb10, rd_unl 0; share at 30 is 0.89. B releases the lock across those waits (#796), and 0xb10 is not one of the two reads held to the method end. Claim: the vCPU's lock wait falls to <= 3 ms/frame and its frame shortens. P(lock wait <= 3 ms) 0.7; P(share >= 0.90) 0.6.",
+  "legs": {
+    "M0 (instrument)": ">= 100 hakuX-phase lines and >= 100 [sdcall] lines after the gameplay mark in each arm, all parse, and the play shots show play. Otherwise that arm is VOID, not a zero.",
+    "F2 (no corruption)": "B's play shots show no stale, torn, black or one-frame-behind surfaces that A's do not (render targets, reflections, HUD), and B's logcat has no Vulkan validation error, device-lost, assert or crash. FAILS in the world where a completion wrote VRAM out of record order or a reader read around a detached entry; then the change is wrong, not slow.",
+    "P0 (premise, re-measured in A)": "A's [lock474] rd_wait_ms >= 8 ms per frame with 0xb10 leading, and A's rd_unl = 0.",
+    "F1 (the mover)": "B's [lock474] rd_unl > 0 (reads served across a released wait).",
+    "P1 (the claim)": "B's [lock474] read wait <= 3 ms/frame, and B's v_blk falls by >= 8 ms/frame from A's.",
+    "P2 (fps)": "B's share of 2-s rows >= 28.5 is >= 0.90 and not below A's.",
+    "X1 (falsifier)": "FIRES if B's read wait stays above 8 ms/frame with rd_unl > 0 (the reads are served unlocked but the vCPU still waits: the wait is not the lock), or B's fps median falls by more than 1.0. Reported as such; no second theory is stacked on it."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off hakuX-phase, [sdcall], [lock474] and txr lines, and the shots by eye."
+}

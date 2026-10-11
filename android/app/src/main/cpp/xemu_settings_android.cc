@@ -71,8 +71,15 @@ static void xemu_settings_apply_defaults(void)
     g_config.display.quality.surface_scale = 1;
     g_config.display.window.fullscreen_on_startup = false;
     g_config.display.window.fullscreen_exclusive = false;
+    /*
+     * #800: the smallest size. SDL's Android window always takes the size of
+     * the surface, so on Android this value is read only by the check in
+     * xemu.c that shrinks the window to 640x480 when the display is smaller
+     * than it. At 1280x720 that check fired on the Thor's 1240x1080 bottom
+     * screen, and the game was blitted into a 640x480 corner of the panel.
+     */
     g_config.display.window.startup_size =
-        CONFIG_DISPLAY_WINDOW_STARTUP_SIZE_1280X720;
+        CONFIG_DISPLAY_WINDOW_STARTUP_SIZE_640X480;
     g_config.display.window.last_width = 640;
     g_config.display.window.last_height = 480;
     g_config.display.window.vsync = true;

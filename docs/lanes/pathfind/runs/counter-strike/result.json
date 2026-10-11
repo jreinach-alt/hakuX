@@ -1,0 +1,41 @@
+{
+ "title_id": "4D530036",
+ "name": "Counter Strike",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D530036-Counter_Strike.xiso.iso",
+ "result": "gameplay",
+ "tool": "4c74d6e2b0",
+ "started": "2026-10-02 10:07:31 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/014-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/014-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/014-probe-c.jpg"
+ ],
+ "minutes": 3.12,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/013-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/022-after.jpg"
+ ],
+ "model_calls": 14,
+ "calls_by_model": {
+  "claude-sonnet-5": 11,
+  "claude-opus-5-5": 3
+ },
+ "steps": 14,
+ "seconds": 227.3,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/frames/013-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/counter-strike/strip.jpg"
+}

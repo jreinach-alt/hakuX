@@ -140,6 +140,25 @@ check "after the repair the same push goes through (exit 0, gate PASS)" \
 check "...and the remote's \`board\` is the repaired commit" \
     bash -c '[ "$(git -C "$1" rev-parse refs/heads/board)" = "$(git -C "$2" rev-parse HEAD)" ]' _ "$BP/remote.git" "$BP/bt"
 
+# GIT_DIR, EXPORTED TO THE HOOK BY GIT ITSELF on every real push (not a
+# simulated copy of it): the PASS just above already ran the gate as a
+# pre-push hook INSIDE $BP/bt, with git's own GIT_DIR (and the rest of its
+# "local" env vars) pointed at $BP/bt's own git dir -- that is what a pre-push
+# hook always gets, on any git. Before this script cleared those vars,
+# `git -C "$S" checkout -q "$base_sha" -- docs/testing` (the gate's scratch
+# tree) used GIT_DIR to reach $BP/bt's OWN index instead of the scratch
+# tree's: $BP/bt's orphan board branch carries no docs/testing at all, so
+# origin/master's copy landed staged in $BP/bt's index while the gate still
+# reported PASS (the scratch checkout had what the checkers needed). This is
+# the 2026-10-09 board.sh defect, and a PASS/FAIL verdict alone never catches
+# it -- only the pushing tree's own index does.
+check "...and the push did NOT stage origin/master's docs/testing into \$BP/bt's own index" \
+    bash -c '[ -z "$(git -C "$1" diff --cached --name-only -- docs/testing)" ]' _ "$BP/bt"
+check "...nor leave it on \$BP/bt's disk (the board tree still has no docs/testing at all)" \
+    bash -c '[ ! -e "$1/docs/testing" ]' _ "$BP/bt"
+check "...and \$BP/bt is otherwise clean: only the two board files, nothing extra staged" \
+    bash -c '[ -z "$(git -C "$1" status --porcelain)" ]' _ "$BP/bt"
+
 # A hook whose gate has gone missing refuses, rather than waving pushes by.
 out=$(bash "$HERE/board.sh" install-hook "$BP/bt" "$BP/no-such-gate.sh" 2>&1)
 out=$(bpush "$BP/bt" "$BP/remote.git" "$CLEAN:refs/heads/board-old"); rc0=$?

@@ -1,0 +1,31 @@
+# state: any   (a proof route: it only frames Tron 2.0's Single Player menu; lane.savestate433)
+# Tron 2.0: Killer App (42560001) from boot to the Single Player menu, the
+# first lines of lane.vcpuwait433's tron-newgame.route (v5), unchanged, then
+# stop. `menu-cursor` is the frame that tells the two disk states apart:
+# Auto Load and Load Game enabled with a save, greyed with none (tron1,
+# route-frame 185013).
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 15
+repeat 5 {
+    press START
+    wait 7
+    shot boot-start
+}
+shot signin
+press B
+wait 5
+shot skip
+press START
+wait 5
+shot menu-start
+press A
+wait 5
+shot menu-a
+press START
+wait 5
+shot menu-start
+wait 2
+shot menu-cursor

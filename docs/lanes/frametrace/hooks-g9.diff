@@ -1,0 +1,70 @@
+--- a/system/memory.c
++++ b/system/memory.c
+@@ -37,6 +37,9 @@
+ #include "system/address-spaces.h"
+ 
+ #include "memory-internal.h"
++#ifdef XBOX
++#include "hw/xbox/nv2a/pgraph/profile.h"   /* #433 frametrace G9 */
++#endif
+ 
+ //#define DEBUG_UNASSIGNED
+ 
+@@ -1482,7 +1485,18 @@
+         return MEMTX_DECODE_ERROR;
+     }
+ 
++#ifdef XBOX
++    {
++        /* #433 frametrace (G9): the vCPU's time in MMIO dispatch; off, one
++         * load and a branch. */
++        HakuxFtMmio ftm;
++        hakux_ft_mmio_begin(&ftm);
++        r = memory_region_dispatch_read1(mr, addr, pval, size, attrs);
++        hakux_ft_mmio_end(&ftm, mr, mr->name);
++    }
++#else
+     r = memory_region_dispatch_read1(mr, addr, pval, size, attrs);
++#endif
+     adjust_endianness(mr, pval, op);
+     return r;
+ }
+@@ -1543,6 +1557,30 @@
+         return MEMTX_OK;
+     }
+ 
++#ifdef XBOX
++    {
++        /* #433 frametrace (G9): the vCPU's time in MMIO dispatch. */
++        HakuxFtMmio ftm;
++        MemTxResult r;
++
++        hakux_ft_mmio_begin(&ftm);
++        if (mr->ops->write) {
++            r = access_with_adjusted_size(addr, &data, size,
++                                          mr->ops->impl.min_access_size,
++                                          mr->ops->impl.max_access_size,
++                                          memory_region_write_accessor, mr,
++                                          attrs);
++        } else {
++            r = access_with_adjusted_size(addr, &data, size,
++                                          mr->ops->impl.min_access_size,
++                                          mr->ops->impl.max_access_size,
++                                          memory_region_write_with_attrs_accessor,
++                                          mr, attrs);
++        }
++        hakux_ft_mmio_end(&ftm, mr, mr->name);
++        return r;
++    }
++#else
+     if (mr->ops->write) {
+         return access_with_adjusted_size(addr, &data, size,
+                                          mr->ops->impl.min_access_size,
+@@ -1557,6 +1595,7 @@
+                                       memory_region_write_with_attrs_accessor,
+                                       mr, attrs);
+     }
++#endif
+ }
+ 
+ void memory_region_init_io(MemoryRegion *mr,

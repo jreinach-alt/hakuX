@@ -1,0 +1,59 @@
+# state: any   (the golden cc9b4ced4a0f holds pathfind's profile; lane.accuracy804, #804)
+# RalliSport Challenge (4D53000F): to the Safari SS-1 race start, then hands off the pad, so a
+# rival passes the stationary player at about race clock 8 s, the stretch where flicker801
+# recorded the rival's body on alternate frames.
+#
+# Fixed waits only. A dispatched soak gets the route's TEXT (dispatcher.sh writes route.txt in
+# the result dir), so a `waitfor` reference crop does not travel with it.
+#
+#   0-65 s: no input. The survey soak 1-1791124360-lanelocal-3022739 (Nova, 10-04 07:33) had
+#           the in-engine intro still running at +65 s, and START there gave the title by +71 s.
+#   title A -> profile select A (pathfind's replay on this golden: A here reaches the main menu)
+#   -> main menu A (Career is lit) -> SELECT EVENT A (Safari) -> SELECT CAR A -> loading ->
+#   SAFARI SS-1 OPTIONS, "start race" lit -> A at ~+127 s.
+#   Every menu input is A, so one lost press delays the race by one step instead of
+#   diverging. The second A at ~+136 s starts the race if one press was lost; in a running
+#   race A does nothing visible (survey frames 07:35:47-07:37:26).
+#   Race clock starts 7-12 s after the start-race A (pathfind replay 7 s, survey career 12 s);
+#   the rival pass is at race clock ~8 s, so about +142..+149 s.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+press START
+wait 5
+shot title
+wait 3
+press A
+wait 6
+press A
+wait 6
+press A
+wait 6
+shot event
+press A
+wait 6
+shot car
+press A
+wait 25
+shot options
+press A
+wait 8
+press A
+wait 5
+shot r1
+wait 3
+shot r2
+wait 3
+shot r3
+wait 3
+shot r4
+wait 4
+shot r5
+mark gameplay
+repeat forever {
+    wait 20
+    shot hold
+}

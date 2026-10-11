@@ -1,0 +1,45 @@
+{
+ "title_id": "4D530053",
+ "name": "Grabbed by the Ghoulies",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso",
+ "result": "gameplay",
+ "tool": "9f98822658",
+ "started": "2026-10-02 11:41:41 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/011-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/011-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/011-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/011-probe-right.jpg"
+ ],
+ "minutes": 2.35,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/010-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/019-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4D53.md"
+ ],
+ "model_calls": 11,
+ "calls_by_model": {
+  "claude-sonnet-5": 9,
+  "claude-opus-5-5": 2
+ },
+ "steps": 11,
+ "seconds": 179.0,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/frames/010-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/ghoulies/strip.jpg"
+}

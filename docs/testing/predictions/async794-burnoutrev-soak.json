@@ -1,0 +1,24 @@
+{
+  "registered_utc": "2026-10-04T15:33:09Z",
+  "who": "lane.async794",
+  "issue": "794",
+  "title": "45410076-Burnout_Revenge.xiso.iso",
+  "device": "nova",
+  "seconds": 800,
+  "route": "burnout-revenge.returning",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "5e4196fefd",
+  "b_ref": "c825e4b24f",
+  "judge": "python3 docs/lanes/fps20786/decompose.py <dir> (the mark is the route's `mark gameplay`) for F, Ri, rcpu, rblk, ph_Fin, ph_GPU, lockw, v_blk and the 2-s fps rows; python3 docs/lanes/async794/sdcallers.py <results> <id> for the per-caller waits; play shots by eye; the same on both arms",
+  "prediction": "Burnout Revenge, Traffic Attack. Already benchmarked at 0.972 of rows at 30 (targets.toml, 1790801593-titleroutes-1202186), so it cannot become a new Playable from this lane; it is in the brief's five, and it is run as the regression check on a title that already clears the bar.",
+  "legs": {
+    "M0 (instrument)": ">= 100 hakuX-phase lines and >= 100 [sdcall] lines after the gameplay mark in each arm, all parse, and the play shots show play. Otherwise that arm is VOID, not a zero.",
+    "F2 (no corruption)": "B's play shots show no stale, torn, black or one-frame-behind surfaces that A's do not (render targets, reflections, HUD), and B's logcat has no Vulkan validation error, device-lost, assert or crash. FAILS in the world where a completion wrote VRAM out of record order or a reader read around a detached entry; then the change is wrong, not slow.",
+    "P1 (not worse)": "B's share of 2-s rows >= 28.5 >= A's - 0.03, and B's fps median >= A's - 1.0."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off hakuX-phase, [sdcall], [lock474] and txr lines, and the shots by eye."
+}

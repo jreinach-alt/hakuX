@@ -1,0 +1,43 @@
+Load: 2.83 / 1.76 / 1.76
+CPU usage from 280333ms to 201532ms ago (2026-10-04 14:49:43.762 to 2026-10-04 14:51:02.563):
+  4.6% 6171/android.hardware.audio.service_64: 4.6% user + 0% kernel / faults: 19 minor
+  14% 2270/surfaceflinger: 7.5% user + 7% kernel / faults: 311 minor
+  2.1% 1303/vendor.qti.hardware.display.composer-service: 0.8% user + 1.2% kernel / faults: 189 minor
+  1.2% 6167/audioserver: 0.5% user + 0.6% kernel / faults: 5 major
+  2.5% 2348/system_server: 1% user + 1.4% kernel / faults: 15930 minor 10366 major
+  0.4% 946/crtc_commit:174: 0% user + 0.4% kernel
+  0.3% 947/crtc_event:174: 0% user + 0.3% kernel
+  0.3% 932/kgsl_hwsched: 0% user + 0.3% kernel
+  1.1% 2060/adbd: 0.1% user + 1% kernel / faults: 6896 minor
+  0.9% 4746/kworker/u16:1-memlat_wq: 0% user + 0.9% kernel / faults: 99 minor
+  0.9% 13857/kworker/u16:0-kgsl-lockless-work: 0% user + 0.9% kernel / faults: 105 minor
+  0.8% 15/rcuog/0: 0% user + 0.8% kernel
+  0.8% 2840/com.rp.mapping: 0.2% user + 0.6% kernel / faults: 23 minor
+  0.7% 3682/org.es_de.frontend: 0.5% user + 0.2% kernel / faults: 298 minor
+  0.1% 1248/android.hardware.sensors-service.multihal: 0% user + 0.1% kernel / faults: 13 minor
+  0.6% 14/rcu_preempt: 0% user + 0.6% kernel
+  0.1% 927/kgsl-events: 0% user + 0.1% kernel
+  0.1% 1372/gmu_f2h: 0% user + 0.1% kernel
+  0.5% 780/logd: 0% user + 0.4% kernel / faults: 246 minor
+  0.4% 2600/com.android.systemui: 0.3% user + 0.1% kernel / faults: 2253 minor 122 major
+  0.2% 1813/cnss_diag: 0.1% user + 0.1% kernel
+  0.1% 16/rcuop/0: 0% user + 0.1% kernel
+  0.1% 3263/com.google.android.gms: 0% user + 0.1% kernel / faults: 449 minor 15 major
+  0% 50/rcuog/4: 0% user + 0% kernel
+  0.1% 29/rcuop/1: 0% user + 0.1% kernel
+  0.1% 147/irq/40-24091000.qcom,bwmon-ddr: 0% user + 0.1% kernel
+  0.1% 36/rcuop/2: 0% user + 0.1% kernel
+  0.1% 1255/android.hardware.wifi@1.0-service: 0% user + 0.1% kernel / faults: 131 minor
+  0.1% 3893/irq/346-dwc3: 0% user + 0.1% kernel
+  0.1% 5721/com.nordvpn.android: 0% user + 0% kernel / faults: 130 minor 261 major
+  0.1% 146/irq/39-240b6400.qcom,bwmon-llcc: 0% user + 0.1% kernel
+  0% 86/kcompactd0: 0% user + 0% kernel
+  0.1% 5825/kworker/u17:3-hal_register_write_wq: 0% user + 0.1% kernel
+  0.1% 28123/kworker/1:2-kdmflush: 0% user + 0.1% kernel
+  0.1% 2730/com.rp.settings: 0% user + 0% kernel / faults: 338 minor 34 major
+  0.1% 3446/msm_irqbalance: 0% user + 0% kernel
+  0% 72/rcuop/7: 0% user + 0% kernel
+  0% 735/gpio detect: 0% user + 0% kernel
+
+u0_a145      12087  2223 19211128 734084 0                  0 S com.jreinach.hakux.debug:xemu
+

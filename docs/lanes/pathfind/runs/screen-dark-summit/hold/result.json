@@ -1,0 +1,80 @@
+{
+ "title_id": "54510004",
+ "name": "Dark Summit",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/54510004-Dark_Summit.xiso.iso",
+ "result": "gameplay",
+ "tool": "ede3ec6df5",
+ "started": "2026-10-04 13:08:26 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/022-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/022-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/022-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/022-probe-right.jpg"
+ ],
+ "minutes": 4.0,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/021-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/029-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/030-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/031-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5451.md"
+ ],
+ "hold": {
+  "genre": "team",
+  "why": "This is a snowboarding run, which is a racing/trick-style sport and not a drive, rally, or team sport, so it fits none of the listed genres well.",
+  "ok": true,
+  "play_s": 605.8,
+  "need_s": 600.0,
+  "hold_s": 605.9,
+  "model_navs": 0,
+  "frames": 18,
+  "still_windows": 0,
+  "shed": [],
+  "reason": "",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 101,
+    "median": 31.0,
+    "share": 0.713,
+    "at_s": 185.2,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 186,
+    "median": 35.0,
+    "share": 0.828,
+    "at_s": 304.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Dark Summit ? PASS None gameplay=606.4s fps_ok=0.9318 crash=False hang=False audio_short=0.0 hitches=2/0.22pm worst_ms=127.7 static_frac=0.0 play_share=0.9998 fps_excluded=1.9s"
+ },
+ "model_calls": 30,
+ "calls_by_model": {
+  "claude-sonnet-5": 30
+ },
+ "steps": 22,
+ "seconds": 891.9,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/frames/083-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [
+  "54510004"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/screen-dark-summit/hold/strip.jpg"
+}

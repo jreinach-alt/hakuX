@@ -180,15 +180,27 @@ def _frame_time(name, date_prefix):
     return ts("%s %s:%s:%s.000" % (date_prefix, *m.groups()))
 
 
-def static_window(rdir, mark_t, end_t):
-    """Whole-window liveness: the fraction of pixels that never move far
-    from the window's first sampled frame, across every route-frame taken
-    after the mark. See the module doc for why this, not a frame-to-frame
-    diff. {measured: False, ...} with fewer than FROZEN_MIN_FRAMES such
-    frames (most routes take none at all: `--frames-every 0`) or no PIL on
-    this host -- neither says anything about the title, so neither fails it."""
+def _post_mark(rdir, sub, mark_t, end_t, date_prefix):
+    """(t, name) for each frame in rdir/sub taken inside [mark_t, end_t], in time order."""
+    out = []
+    for name in sorted(glob.glob(os.path.join(rdir, sub, "*.png"))):
+        t = _frame_time(name, date_prefix)
+        if t is not None and mark_t <= t <= (end_t if end_t is not None else t):
+            out.append((t, name))
+    out.sort()
+    return out
+
+
+def window_frames(rdir, mark_t, end_t):
+    """The scored window's samples, shared by the liveness and position tests
+    so they cannot disagree about what was seen. (source, [(t, name)], None),
+    or (None, [], reason) when the window has too few frames to read.
+
+    The post-mark route-frames when there are at least FROZEN_MIN_FRAMES of
+    them (most routes take none at all: `--frames-every 0`); otherwise the
+    post-mark `frames/` samples."""
     if mark_t is None:
-        return dict(measured=False, reason="no mark", frozen_frac=None, n=0)
+        return None, [], "no mark"
     try:
         with open(os.path.join(rdir, "logcat.txt"), errors="replace") as f:
             date_prefix = None
@@ -200,23 +212,32 @@ def static_window(rdir, mark_t, end_t):
     except OSError:
         date_prefix = None
     if date_prefix is None:
-        return dict(measured=False, reason="no logcat lines", frozen_frac=None, n=0)
+        return None, [], "no logcat lines"
+    route = _post_mark(rdir, "route-frames", mark_t, end_t, date_prefix)
+    boot = _post_mark(rdir, "frames", mark_t, end_t, date_prefix)
+    if len(route) >= FROZEN_MIN_FRAMES:
+        return "route-frames", route, None
+    if len(boot) >= FROZEN_MIN_FRAMES:
+        return "frames", boot, None
+    return None, [], ("%d post-mark route-frame(s) and %d post-mark frames/ sample(s), need %d of one"
+                      % (len(route), len(boot), FROZEN_MIN_FRAMES))
 
-    frames = sorted(glob.glob(os.path.join(rdir, "route-frames", "*.png")))
-    after = []
-    for name in frames:
-        t = _frame_time(name, date_prefix)
-        if t is not None and mark_t <= t <= (end_t if end_t is not None else t):
-            after.append((t, name))
-    after.sort()
-    if len(after) < FROZEN_MIN_FRAMES:
-        return dict(measured=False, reason="%d post-mark route-frame(s), need %d"
-                    % (len(after), FROZEN_MIN_FRAMES), frozen_frac=None, n=len(after))
+
+def static_window(rdir, mark_t, end_t):
+    """Whole-window liveness: the fraction of pixels that never move far
+    from the window's first sampled frame, across every frame in
+    window_frames(). See the module doc for why this, not a frame-to-frame
+    diff. With too few frames, or no PIL on this host, the window is
+    {measured: False}. An unmeasured window is not judged by its pixels, and
+    static_window_unmeasured() fails it outright: it is not Playable-eligible."""
+    source, after, why = window_frames(rdir, mark_t, end_t)
+    if source is None:
+        return dict(measured=False, reason=why, frozen_frac=None, n=0, source=None)
     try:
         from PIL import Image
         import numpy as np
     except ImportError:
-        return dict(measured=False, reason="PIL/numpy unavailable", frozen_frac=None, n=len(after))
+        return dict(measured=False, reason="PIL/numpy unavailable", frozen_frac=None, n=len(after), source=None)
 
     arrs = [np.asarray(Image.open(name).convert("L").resize(FROZEN_RESIZE), dtype=np.int16)
             for _, name in after]
@@ -225,17 +246,78 @@ def static_window(rdir, mark_t, end_t):
     for a in arrs[1:]:
         maxdev = np.maximum(maxdev, np.abs(a - base))
     frozen_frac = float((maxdev <= FROZEN_TOL).mean())
-    return dict(measured=True, frozen_frac=round(frozen_frac, 4), n=len(after))
+    return dict(measured=True, frozen_frac=round(frozen_frac, 4), n=len(after), source=source)
 
 
 def static_window_fail(sw):
-    """(bool, reason|None) from static_window()'s dict. Unmeasured never fails."""
+    """(bool, reason|None) from static_window()'s dict. Unmeasured never fails
+    here: static_window_unmeasured() is the verdict's rule for that."""
     if not sw.get("measured"):
         return False, None
     if sw["frozen_frac"] >= FROZEN_FRAC_BAR:
         return True, ("static window: %.0f%% of pixels never moved more than %d/255 "
-                      "from the window's first frame, over %d sampled frames (bar %.0f%%)"
-                      % (100 * sw["frozen_frac"], FROZEN_TOL, sw["n"], 100 * FROZEN_FRAC_BAR))
+                      "from the window's first frame, over %d sampled frames from %s (bar %.0f%%)"
+                      % (100 * sw["frozen_frac"], FROZEN_TOL, sw["n"], sw.get("source") or "?",
+                         100 * FROZEN_FRAC_BAR))
+    return False, None
+
+
+def static_window_unmeasured(sw):
+    """(bool, reason|None): an unmeasured scored window fails the run as
+    `window unmeasured`, naming why. A window with no pixels to read is not a
+    Playable window (#433: Castlevania and Black Stone passed unmeasured)."""
+    if sw.get("measured"):
+        return False, None
+    return True, "window unmeasured: %s (a scored window the verdict cannot read is not Playable)" \
+        % sw.get("reason", "no reason recorded")
+
+
+POSITION_STILL_BAR = 0.5   # more than this share of consecutive sample pairs with no scene change: not gameplay
+
+
+def position_change(rdir, mark_t, end_t):
+    """Did the scene change across the scored window? Two zero-model checks on
+    the same samples as static_window(): the first and last sample differ, and
+    most consecutive pairs differ. The change is titles/classify.py's motion()
+    (the share of pixels that moved, FPS corner and motion masks blacked out)
+    against its own STATIC_BAR, the bar its classifier names a frame still.
+
+    This names still vs moving, not menu vs gameplay: classify names a menu
+    only through a title's drive profile, and most titles have none. A still
+    window is a menu, a pause or a load in all but name, which is what the
+    owner needs the verdict to say (#433: a Name Entry at 60 fps passed)."""
+    source, after, why = window_frames(rdir, mark_t, end_t)
+    if source is None:
+        return dict(measured=False, reason=why, source=None, samples=0, pairs=0, still=0,
+                    still_frac=None, first_last=None)
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "titles"))
+    try:
+        import classify
+    except ImportError:
+        return dict(measured=False, reason="classify unavailable (PIL/numpy)", source=None,
+                    samples=len(after), pairs=0, still=0, still_frac=None, first_last=None)
+    greys = [classify.open_grey(name) for _, name in after]
+    pairs = [classify.motion(greys[i], greys[i + 1])[0] for i in range(len(greys) - 1)]
+    still = sum(1 for c in pairs if c <= classify.STATIC_BAR)
+    return dict(measured=True, reason=None, source=source, samples=len(after), pairs=len(pairs),
+                still=still, still_frac=round(still / len(pairs), 4) if pairs else None,
+                first_last=round(classify.motion(greys[0], greys[-1])[0], 4), bar=classify.STATIC_BAR)
+
+
+def position_fail(pc):
+    """(bool, reason|None) from position_change()'s dict. Unmeasured never
+    fails here: static_window_unmeasured() already fails an unreadable window."""
+    if not pc.get("measured"):
+        return False, None
+    bar = pc["bar"]
+    if pc["first_last"] is not None and pc["first_last"] <= bar:
+        return True, ("position: the window's first and last of %d samples are the same picture "
+                      "(changed %.3f, still bar %.3f): a menu, a pause, a load or a freeze"
+                      % (pc["samples"], pc["first_last"], bar))
+    if pc["still_frac"] is not None and pc["still_frac"] > POSITION_STILL_BAR:
+        return True, ("position: %d of %d consecutive samples (%.0f%%) show no picture change "
+                      "(bar %.0f%%): a menu, a pause, a load or a freeze"
+                      % (pc["still"], pc["pairs"], 100 * pc["still_frac"], 100 * POSITION_STILL_BAR))
     return False, None
 
 

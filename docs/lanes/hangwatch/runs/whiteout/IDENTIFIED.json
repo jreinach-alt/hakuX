@@ -1,0 +1,12 @@
+{
+ "class": "hang",
+ "handoff": "crash-triage",
+ "evidence": "hang gaps None",
+ "title": "Whiteout",
+ "title_id": "4B4E0001",
+ "route": null,
+ "route_sha": "da39a3ee5e6b",
+ "golden": "-",
+ "result": "whiteout",
+ "utc": "2026-10-04T21:54:23Z"
+}
