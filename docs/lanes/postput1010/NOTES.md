@@ -353,6 +353,20 @@ thread holds the lock, so it leaves less for the posted store to remove. P2 ~10 
 is small either way: the warm countdown is near the floor, and cold start 1 is one start in twelve. It is run
 because the brief needs P2/F2/C2 for the recommendation.
 
+### 4.7 Why attempt 3 stopped (attempt 4, 2026-10-10 ~19:20 PDT)
+
+Attempt 3 did not fail. It ended on purpose, waiting on drawrec1010's fold (`WAITING` @ 5469b1175a said
+`fold drawrec1010`), because Addendum 1 said to merge origin/master once drawrec1010 had folded and never the lane
+branch. Addendum 2 (19:17 PDT) reversed that: lane.local merged master into lane/drawrec1010 (f3d0e45979) and
+asked this lane to merge `origin/lane/drawrec1010` now. drawrec1010 had still not folded at attempt 4's start
+(`git log origin/master` ends at 6052ff98d4).
+
+Attempt 4 merged `origin/lane/drawrec1010` @ f3d0e45979 at 772429156c. No conflict; drawrec1010 touches only
+`pgraph/vk/draw.c` among the emulator files. `nv2a_index.py check --tests ~/nxdk_pgraph_tests --support
+~/pbkitplusplus` passes (line drift only, 12 symbols), so the index is not regenerated and stays off `Files:`.
+Then it registered `docs/testing/predictions/postput1010-nfsall.json` on ref 772429156c and queued A2', B2', B2',
+A2' (4.8).
+
 ## 5. For the next lane
 
 - `ppread.py` cannot see motion. V's moving-car check is by eye from `route-frames/*-s*-g11.png`, and goes here.
