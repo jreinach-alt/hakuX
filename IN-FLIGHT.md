@@ -8,14 +8,15 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gtasagpu1011` | claude-opus-5-5 | 31 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
-| `nfsdefault1011` | claude-sonnet-5 | 29 min | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) |
-| `soakvideo1011` | claude-sonnet-5 | 5 min |  |
+| `gtaroutes1011` | claude-sonnet-5 | 7 min | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
+| `gtasagpu1011` | claude-opus-5-5 | 46 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
+| `nfsdefault1011` | claude-sonnet-5 | 44 min | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) |
+| `soakvideo1011` | claude-sonnet-5 | 20 min | soakvideo1011: start_soak_video/stop_soak_video + --video-seconds/--video-after (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 7 waiting, 1 running.
+- **Device queue:** 6 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -75,8 +76,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
+| `lane/gtaroutes1011` | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) | `25788f30c6` | 2026-10-11 09:54 |
 | `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `9d59724dc6` | 2026-10-11 09:24 |
 | `lane/nfsdefault1011` | nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5) | `59ddce9e12` | 2026-10-11 09:25 |
+| `lane/soakvideo1011` | soakvideo1011: start_soak_video/stop_soak_video + --video-seconds/--video-after (#433) | `2ff6639a68` | 2026-10-11 09:56 |
 
 ## Recently landed on master
 
@@ -86,4 +89,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 
-_Updated 2026-10-11 09:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 10:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
