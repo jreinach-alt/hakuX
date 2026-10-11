@@ -19,8 +19,9 @@ the same over go2 .. go12.
 Legs, the prediction's `expect` keys:
   V   every run: ppread's checks (12 marks, valid starts, no boot input failure, warm pace lines, a g11
       frame for every valid warm start, perflog as registered, arm from env, the six switches' lines), and
-      `[probe1010] waits=1`; B: `[coldstart1010] submit_frames=3` and buffer_init's `(3 frames`; A: neither
-      the first, and `(2 frames`. Motion in the g11 frames: by eye, NOTES.md.
+      `[probe1010] waits=1`, and `[postput] on` when a_env holds HAKUX_POSTED_PUT=1 (coldstart1010-stack.json);
+      B: `[coldstart1010] submit_frames=3` and buffer_init's `(3 frames`; A: neither the first, and
+      `(2 frames`. Motion in the g11 frames: by eye, NOTES.md.
   K   the brief's target: cold B <= K_b_max ms, OR cold v2 share B - A >= K_dv2_min points
   C   cold B - A <= C_d_max ms
   W   warm countdown B - A <= W_d_max ms
@@ -61,10 +62,13 @@ def pf(s, k, w=5, p=2):
     return f'{s[k]:{w}.{p}f}' if s else ' ' * (w - 1) + '-'
 
 
-def logs_ok(d, arm):
+def logs_ok(d, arm, exp):
     out = []
     seen = raread.has_log(d, LOG_PROBE)
     out.append((seen, f'/{LOG_PROBE}/ {"seen" if seen else "NOT seen"}'))
+    if 'HAKUX_POSTED_PUT=1' in (exp.get('a_env') or []):
+        seen = raread.has_log(d, ppread.LOG_B)
+        out.append((seen, f'/{ppread.LOG_B}/ {"seen" if seen else "NOT seen"}'))
     seen = raread.has_log(d, LOG_B)
     out.append((seen == (arm == 'B'), f'/{LOG_B}/ {"seen" if seen else "not seen"} on {arm}'))
     rx = LOG_B_FRAMES if arm == 'B' else LOG_A_FRAMES
@@ -108,7 +112,7 @@ def main():
         for rx in ppread.logs_always(exp):
             seen = raread.has_log(d, rx)
             legs.append(('V', seen, f'{name}: /{rx}/ {"seen" if seen else "NOT seen"}'))
-        for ok, what in logs_ok(d, arm):
+        for ok, what in logs_ok(d, arm, exp):
             legs.append(('V', ok, f'{name}: {what}'))
         legs.append(('V', len(r['marks']) >= e['V_min_marks'], f'{name}: {len(r["marks"])} marks'))
         legs.append(('V', len(r['good']) >= e['V_min_valid_starts'],

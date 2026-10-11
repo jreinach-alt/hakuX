@@ -5,6 +5,7 @@ Lane: coldstart1010     Issue: #433 (umbrella), none filed
 Base: master @ 9dc20e31f9
 Files: hw/xbox/nv2a/pgraph/vk/draw.c, docs/lanes/coldstart1010/**, docs/testing/predictions/coldstart1010-*.json
 Prediction: docs/testing/predictions/coldstart1010-depth.json @ 37d06242945828fafab2f2fd7c270ef83c05d979a6257fb45239b72be60dffad
+Prediction: docs/testing/predictions/coldstart1010-stack.json @ 4e025db7f7938c627792af7c291ee68c19564b415c255c8c429e027c8bbf60c5
 Needs device: yes (Nova)
 Needs NDK: yes
 
