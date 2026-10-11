@@ -3,7 +3,7 @@ Base: master @ 7f986f73f6
 Files: docs/testing/jobs/device_build.py, docs/testing/jobs/hold.sh, docs/testing/jobs/selftest.d/99-build-gate.sh, docs/testing/jobs/selftest.d/99-restore-priority.sh, docs/lanes/restoreprio1011/NOTES.md, docs/lanes/restoreprio1011/PR.md
 Prediction: none: harness defect, no device arm
 Needs device: no    Needs NDK: no
-State: ready
+State: draft
 
 ## What this fixes
 

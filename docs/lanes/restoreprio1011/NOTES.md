@@ -135,6 +135,89 @@ Ran `SELFTEST_ONLY="99-build-gate.sh 99-restore-priority.sh 99-hold-take.sh"
 bash docs/testing/jobs/selftest.sh` in the foreground: 111 passed, 0
 failed, PARTIAL (3 of 134 fragments, as expected for a named subset).
 
+## Why attempt 1 did not finish (addendum 1, resumed 10-11)
+
+The first attempt wrote the premise, the promote command, and the gate-side
+fix above, marked PR.md `State: ready`, and stopped there -- before
+lane.local's addendum 1 review caught a race in the `wait` loop it added.
+Everything in this file up to here is attempt 1's work and stands; this
+section and the fix below are the resumed attempt.
+
+**The race.** `dispatcher.sh`'s claim loop checks `hold/<label>` only at
+the top of its tick, before it reads the queue (`dispatcher.sh:2354`,
+comment at :2352-2353: "a hold placed mid-run takes effect after the
+current request rather than interrupting it"). So the instant the promoted
+restore finishes, nothing stops the dispatcher from claiming the very next
+`1-` release-tier request in the same tick -- seconds before attempt 1's
+`wait` loop polls again. That poll calls `build_gate`, which asks
+`device_build.py check` for the device's NEWEST result.json; the restore
+that just finished is still the newest result (the new arm has not
+finished and written one yet), so the gate reads "on master" and passes.
+`wait` then takes the hold while an off-master arm is running RIGHT NOW --
+exactly the state `HOLD_RELEASE_LABELS` exists to prevent, and worse than
+attempt 1's refusal: before this fix a stuck caller was at least refused
+honestly.
+
+**The fix: ask what is running, not only what last finished.** New
+`device_build.py running <dispatch_dir> <label>` (device_build.py:191-207
+in this revision) answers from `running/*.req` (the same files
+`_restore_path` already read for `promote`'s "already running" case) with
+one of three exit codes: 0 "restore: <id>" (the label's own restore is
+running now), 1 "other: <id>" (something else is), 2 "none" (nothing is).
+`hold.sh`'s `wait` loop (only for a gated label -- `label_gated`, the same
+membership check `build_gate` already did, extracted so `wait` can ask it
+too without duplicating the case pattern) now asks this before trusting a
+gate pass:
+
+- **running: a restore** -- take the hold now, before it finishes. The
+  dispatcher's claim loop stops right after it (the hold is now in place
+  for its next tick), and the device is left on master. `cmd_promote`
+  already special-cased this ("already running:"); this is the same
+  check, used by `wait` instead of only by a human reading `promote`'s
+  stdout.
+- **running: something else** -- do NOT call `build_gate` at all this
+  iteration (it would read the stale newest-result pass incorrectly, per
+  the race above). Keep polling. That run finishing off master is exactly
+  what `queue_master_restore` (the dispatcher's own post-run hook, run
+  with no hold or human involved) queues a fresh bare restore for; the
+  next iteration's refusal promotes it, and the "running: a restore" case
+  above then catches it.
+- **running: nothing** -- `build_gate`'s answer is current (nothing
+  finished between the check and now that it would miss); act on it as
+  attempt 1 did.
+
+For an ungated label (anything but `nova` today -- the Thor's screening
+runs vary env on purpose and must not be slowed by this), `label_gated`
+short-circuits `wait`'s loop straight to `build_gate`, which itself
+short-circuits to pass, exactly as before this addendum. Without that
+guard, calling `device_build.py running` unconditionally would make
+`wait thor ...` block on the Thor's normal running arms (which are
+routinely "other", by design) -- a regression `99-hold-take.sh`'s leg (f)
+happens not to catch only because its fixture's `running/` holds `.owner`
+marker files, not the `.req` files `device_build.py running` globs for;
+real production `running/` holds both for a live claim. Confirmed by
+reading `_restore_path`'s glob (`running/*.req`) against what
+`dispatcher.sh` actually writes there for a claimed request, and by
+tracing `99-hold-take.sh`'s leg (f) fixture at
+`docs/testing/jobs/selftest.d/99-hold-take.sh:94` (an `.owner` file only).
+
+While a promoted restore is the thing being waited for, the poll interval
+drops to 5 s (capped, never longer) so case "running: a restore" cannot be
+missed between polls (addendum 1's instruction); it starts at
+`HOLD_WAIT_INTERVAL` (default 15 s) and only drops to 5 s after the first
+refusal, matching attempt 1's unmodified behavior when nothing is starved
+yet.
+
+**Selftest.** `99-restore-priority.sh` gained legs (e) and (f) (addendum
+1's exact two conditions) and a new mutant: a one-line change forcing
+`wait`'s `rrc` to always read 2 ("nothing running"), which reproduces
+attempt 1's race exactly (gate-only, trusting a possibly-stale pass) and
+turns both new legs red. `99-build-gate.sh`'s existing hold.sh mutant
+(the `sed` pair at its "MUTANTS" section) still matches: `wait`'s gate
+call keeps the literal substring `build_gate "$label" && break` (now
+reached down two different paths -- gated and ungated -- instead of one),
+so that file needed no edit.
+
 ## Not done here
 
 - `docs/testing/request.sh` and `docs/testing/dispatcher.sh` are read-only
