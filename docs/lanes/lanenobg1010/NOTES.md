@@ -193,3 +193,18 @@ on its own if it must, and `Monitor` that exact file for an unambiguous
   will make `$CLAUDE_PROJECT_DIR`-relative hook paths resolve wrong and
   looks exactly like a path bug in the committed file. It isn't one -- always
   launch the live check from the repo root.
+
+## Why attempt 1 did not finish
+
+The work above -- the hook, the settings file, the selftest fragment, the
+Agent-reachability finding, the live check, the full selftest run -- was all
+committed (d9e521a217, c689c038df) and master was merged (dab5947903) before
+the session ended. What was missing was `docs/lanes/lanenobg1010/PR.md`
+itself: the session never wrote it, so the fold queue had nothing to read
+and the branch sat done-but-invisible, same shape as the other entries in
+[[draft-pr-is-invisible-work]]. Addendum 1 named this directly and asked for
+PR.md to be written from the existing NOTES.md content with no further
+investigation. This attempt (2) writes PR.md, re-confirms master hasn't
+moved (origin/master is still 9dc20e31f9, already an ancestor of HEAD, so
+the merge commit was a no-op), and marks ready -- no selftest re-run, since
+nothing under `docs/testing/jobs/` or `docs/testing/lane.sh` changed.
