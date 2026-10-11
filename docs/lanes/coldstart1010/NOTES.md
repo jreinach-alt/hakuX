@@ -350,8 +350,108 @@ depth A/B ran 22:41-00:11 PDT, the stack 00:11-01:32).
 The point estimate was B 35.0 (34.79 measured) and A 35.6 (36.28 measured). The posted store's gain was smaller
 on this ref than in postput1010, and depth 3's gain on top of it larger.
 
-Residual census, queued after the stack: two plain runs of the stacked configuration (six switches, posted
-store, depth 3) with `HAKUX_FRAMETRACE=1` (1-1791704357-coldstart1010-4044114, 1-1791704358-coldstart1010-4044180).
-They measure what the cold start still waits on with both on. The comparison is drawrec1010's plain depth-2 runs
-(4030728, 4034875), read by `census.py`: cold guest work 26.8 / 26.1 against 21.7 / 21.5 warm, lockw 9.4 / 8.7,
-guest idle 3.5 / 3.1.
+What the cold start still waits on with both on: section 9.
+
+## 9. Residual census: the stacked configuration against the depth-2 base
+
+Runs:
+- Stacked: two plain runs of six switches, posted store and depth 3, with `HAKUX_FRAMETRACE=1 HAKUX_PROBE_WAITS=1`
+  (1-1791704357-coldstart1010-4044114, 1-1791704358-coldstart1010-4044180; ref 786f82d4bb). Both runs are 12/12
+  valid, log `[postput] on, skew bound mode 0`, and have no boot input failure. In the g11 frames the car moves
+  (s1 39 mph in the second).
+- Base: drawrec1010's two plain runs of the same six switches with the same instruments, at depth 2 without the
+  posted store (1-1791672296-drawrec1010-4030728, 1-1791672308-drawrec1010-4034875; older ref bf43e8c4ef).
+
+All four runs are read by `census.py` with the window at `mark` -2 .. +1.5 s. Each cell is run 1 / run 2, in ms
+per frame unless marked.
+
+| | base, cold | stacked, cold | stacked, warm |
+|---|---|---|---|
+| pace, cold start 1 or warm countdown (`coldread.py`) | 39.4 / 37.9 | 34.2 / 34.5 | 33.5 / 33.5 |
+| P (frametrace, PFIFO thread's frame) | 41.96 / 40.11 | 34.85 / 35.27 | 33.31 / 33.37 |
+| PFIFO `p_run` | 19.61 / 18.94 | 19.93 / 20.02 | 17.81 / 17.81 |
+| PFIFO fence waits `p_fence` (inside process_pending_reports, pfifo.lock held: `p_c_rep`) | 6.14 / 6.27 (6.14 / 6.13) | 0.22 / 0.03 (0.19 / 0.00) | 0.16 / 0.15 (0.02 / 0.01) |
+| PFIFO busy; frames past 2 VBLANKs | 26.2 / 25.6; 19 / 15 % | 21.9 / 22.8; 0 / 1 % | 16.4 / 16.4; 0 % |
+| PFIFO idle, waiting for the guest (`pidle`) | 15.73 / 14.51 | 12.93 / 12.43 | 16.89 / 16.94 |
+| GPU busy (`gpu`) | 12.45 / 11.82 | 10.70 / 10.89 | 8.32 / 8.39 |
+| render passes (`rp`) | 61.0 / 62.1 | 52.5 / 51.4 | 26.8 / 26.8 |
+| vCPU on CPU (`v_run`) | 30.1 / 28.9 | 29.8 / 30.5 | 30.2 / 30.2 |
+| guest work | 26.8 / 26.1 | 23.6 / 23.8 | 19.9 / 19.8 |
+| guest lockw (pfifo.lock, `lock_wait_ns`) | **9.41 / 8.65** | **2.19 / 2.35** | 0.72 / 0.81 |
+| vCPU pgraph.lock waits, holder PFIFO (`vh_*`) | 0.84 / 0.81 | 0.74 / 0.76 | 0.87 / 0.79 |
+| guest idle (`gidle`) | 3.5 / 3.1 | 6.3 / 6.8 | 10.3 / 10.5 |
+| guest busy (without lockw) | 38.5 (29.1) / 37.0 (28.3) | 28.5 (26.3) / 28.5 (26.2) | 23.0 (22.3) / 22.9 (22.1) |
+| frames past 2 VBLANKs, either thread (without lockw) | 60 (24) / 52 (23) % | **24 (5) / 27 (4) %** | 3 (1) / 2 (1) % |
+
+The two stacked runs agree with each other on every row. Their cold paces, 34.2 and 34.5, are not part of the
+registered verdict; they sit inside the B arm's range of 33.8 to 35.9.
+
+What it says:
+- **The renderer no longer paces the cold frame.**
+  - The PFIFO thread runs past 2 VBLANKs on 0-1 % of cold frames, against 15-19 % in the base.
+  - The fence waits it made under pfifo.lock are gone: `p_c_rep` was 6.1, now 0.0-0.2.
+  - The GPU is busy 10.8 ms of a 33.3 ms frame.
+  - The 2x render passes (52 against 27; the rain's `srf` breaks and surface-to-texture copies, section 6) cost
+    +2.1 ms of PFIFO run and +2.4 ms of GPU, and neither is on the critical path any more.
+- **What is left is the guest waiting for pfifo.lock.**
+  - lockw is 2.2-2.35 ms a frame cold, against 0.7-0.8 warm and 8.7-9.4 in the base.
+  - Without it, the cold guest is busy 26.2 ms and only 4-5 % of frames run past 2 VBLANKs. With it, 24-27 % do.
+    Those frames are the gap between the cold start's ~34.5 and the warm countdown's 33.5.
+- **The guest's own cold work is +3.9 ms** (23.7 against 19.85). That is the scene (section 6), and it fits:
+  26.2 ms busy without lockw is under the 33.3 ms frame.
+
+**Where that lockw is counted.** `lock_wait_ns` is added in exactly two places (`git grep lock_wait_ns`):
+- `pfifo_post_kick` (pfifo.c:1646-1654). After a posted DMA_PUT store, if `parked` reads true, the vCPU takes
+  pfifo.lock to broadcast `fifo_cond`. If the PFIFO thread has woken and re-taken the lock by then, the vCPU waits
+  out whatever the PFIFO thread does next while it holds the lock.
+- `user_write`'s locked branch (user.c:108-113). Every USER store that is not a postable DMA_PUT (REF, GET) takes
+  the lock and waits for it.
+
+With the posted store on and skew bound mode 0, a DMA_PUT store never waits at its trylock. Neither site starts
+a frametrace wait, so frametrace books no holder for this lockw. Profile.h:336 calls it UNATTR. The `vh_*` split,
+0.74-0.76 ms, is a different wait, on pgraph.lock, and it is flat from cold to warm.
+
+These runs cannot say which of the two sites holds the 2.2 ms, or what the PFIFO thread was doing while it held
+the lock. Section 10 prices the remedy with that uncertainty in P.
+
+## 10. Remedies priced, and the ranked next step
+
+The expected win (E) is P x win, in ms per frame at cold start 1. They are ranked by E.
+
+| # | remedy | win | P | E | cost | evidence | files |
+|---|---|---|---|---|---|---|---|
+| 1 | posted DMA_PUT store on by default (`HAKUX_POSTED_PUT`) | 1.65 | 0.9 | 1.5 | a default flip; the switch exists | sections 7 and 8: the A arms, depth 2, -1.65, 3 runs each; postput1010's own pair -2.17 | pfifo.c, user.c (postput1010's switch) |
+| 2 | submit ring depth 3 as the Android native default | 1.5 | 0.9 | 1.35 | one line, `xemu_android.cpp:1188`, pref 2 to 3, which matches the settings screen | two registered A/Bs, -1.51 and -1.49, the second with #1 on | Android (fastpaths1010's) |
+| 3 | a pfifo.lock-free wake for the posted store, plus the same for the remaining USER stores if they hold the wait | ~1.0, from about 34.6 to the warm countdown's 33.5-33.9 | 0.5 | 0.5 | medium: the PFIFO thread parks on an event outside pfifo.lock, every `fifo_cond` waker sets it (`pfifo_kick` and its callers in pgraph.c and surface.c, `nv2a_lock_fifo`, `nv2a_exitfn`), and the no-lost-wakeup argument is written down | section 9: lockw 2.2-2.35 ms; slow cold frames 24-27 % with it and 4-5 % without. P is 0.5 because which site holds it is not measured | pfifo.c, user.c (not this lane's) |
+| 4 | the guest's cold work (rain) | - | - | 0 for the renderer | - | +3.9 ms, and it fits in the frame (section 9) | not the renderer |
+| 5 | fewer render passes at the cold start (`srf` / S2T) | < 0.2 | 0.3 | < 0.1 | large: the scene asks for them | the PFIFO thread is past 2 VBLANKs on 0-1 % of frames, and the GPU is busy 10.8 of 33.3 ms | surface.c |
+| 6 | `tlbmap.mbox` vertex walks | <= 0.2 of PFIFO run | 0.3 | ~0 | medium | it is PFIFO run, and that no longer paces (section 9) | draw.c |
+| 7 | first-use pipeline creation | 0 | - | 0 | - | `[shd413]` 0.02 creates a frame, 0.00 ms (section 6) | - |
+
+#1 and #2 add. Together they measured -3.14 ms (37.93 to 34.79), on one binary, 3 runs per configuration.
+
+**Ranked next step.**
+1. **lane.local / fastpaths1010: make #1 and #2 the player's defaults.**
+   - The native `submit_frames` default goes from 2 to 3. It is the one-line change at `xemu_android.cpp:1188`,
+     and with it the native default matches what the settings screen already shows.
+   - The posted store goes on by default. postput1010 kept it opt-in because the PFIFO thread's run did not fall.
+     Section 8 shows that with depth 3 the pair moves the cold start by -3.14 ms, and neither moves warm or
+     post-GO. Whether it is safe on the other titles is postput1010's audit, not something this lane measured.
+   - `HAKUX_SUBMIT_FRAMES` (this PR) stays as the A/B override.
+2. **A lane on pfifo.c and user.c for #3.**
+   - First a cheap step that decides which site holds the wait:
+     - give each of the two `lock_wait_ns` sites its own counter;
+     - wrap each in a frametrace wait with holder `HAKUX_FT_PFIFO`, so that `vh_*` books what the PFIFO thread
+       was doing while it held the lock;
+     - run two plain runs of the stacked configuration.
+   - If it is the post_kick site, build the lock-free wake behind a default-off switch. Register it against the
+     stacked configuration, with K at cold <= 34.5.
+   - Expected: cold start 1 at about 33.6-33.9.
+
+**What the next lane should not repeat.**
+- Do not judge depth or the posted store by the cold v2 share. The game presents a catch-up frame after one
+  VBLANK, so a pace gain moves frames from v3 to v1 (section 7).
+- Do not chase pipeline creation, texture uploads or the pass count for this window. All three were measured
+  at or near zero on the critical path (sections 6 and 9).
+- Perflog builds slow the PFIFO thread enough to change the regime (section 6). Measure lock and fence waits on
+  plain builds with `HAKUX_FRAMETRACE=1`.
