@@ -68,6 +68,75 @@ save in for a title's slot instead of its golden; refused when the save
 isn't in the store, was rejected on the device, or (returning) has no
 save directory.
 
+## selftest.d/99-profile-gate.sh (`7d70b0eac6`)
+
+Five sections. A: `request.sh` queue-time gating (R1/R2/R3, both
+overrides, `--save`'s store check and its "needs a title" guard) driven
+through the real script via fixture `DISPATCH_DIR`s. B:
+`dispatcher.sh`'s `profile_gate_check()` called directly against a
+hand-crafted `request.json` with no `request.sh` step at all, proving
+nothing is grandfathered at claim; B6 drives the full Addendum-2
+sequence (pathknow-only admits a queued find-route, a proven result then
+refuses it, `--path-broken` naming that result admits again) at this
+layer. C: the seven titlestate.py mutants (M1-M7), each a sed copy of the
+real file compared against a shared `pgcases.py` fixture harness. D: M8,
+a sed-delete of dispatcher.sh's claim-time call site, verified both
+structurally (`declare -f serve_one` no longer names
+`profile_gate_check`) and functionally (the untouched `profile_gate_check`
+still refuses on its own). E: a non-mutant positive control that
+`pathfind.py`'s own R3 check fires in `PATHFIND_DRY` mode (M4 is
+titlestate.py's `admit()`, not pathfind.py -- see below).
+
+Three bugs found while first running this file, all fixed before commit:
+
+- **M1's fixture was accidentally untestable.** Its route text had no
+  `mark profile-saved`, so disabling R1 (`if gg:`) just fell through to
+  R2's refusal instead of admitting -- both real and mutant code produced
+  `admit=False`, for different reasons, and the mutant passed unnoticed.
+  Fixed by adding `mark profile-saved` to the route text, which also
+  isolates M1 from M2: with it present, a disabled R1 now ADMITS
+  (wrongly) rather than hiding behind R2.
+- **`import-save --dir` pointed at a different path than the fixture
+  wrote `save.json` to** (`$D/import-src/<tid>` on the CLI side vs.
+  `$D/titlestate/import-src/<tid>` where the Python heredoc had written
+  it, in both the A5/A6/A7 and B2/B3 blocks) -- `import-save` raised
+  `FileNotFoundError` and both titles kept no golden, so every case that
+  depended on one (A5, A6, B2, B3) was exercising the wrong state. Fixed
+  by making the heredoc's `root` argument match the CLI's `--dir`.
+- **The isolated mutant/real copies under `$PG/<name>/` have no
+  `../../../tools/make_xbox_hdd.py` to find** -- `saves.py`'s module-level
+  `_load_mkhdd()` only has a real target when `titlestate.py` sits in the
+  actual repo tree, so every `pgcases.py` run crashed on import before
+  printing a single case. Fixed with the documented override,
+  `MAKE_XBOX_HDD=$REPO/tools/make_xbox_hdd.py`, set before `import
+  titlestate` in the harness.
+
+Two smaller test-logic bugs, also fixed: A6's helper call had a stray
+literal `--` passed as if it were a `grep` flag (the helper is a bash
+function, not `grep` itself, so it became the search pattern and the
+real text/pattern arguments shifted); and the pathfind.py "nothing known"
+dry-run check asserted `$? = 0`, but `--budget-min 0` always ends in exit
+1 ("gave-up", no budget to attempt anything) whether or not the gate
+would have blocked it -- the real discriminator is the gate's own
+message, so that case now asserts the "already has a known path"
+message is ABSENT rather than checking the exit code.
+
+Also found and worked around, not a bug in the file itself: debugging
+mutant copies by hand in a reused `/tmp` scratch directory can leave a
+stray `titlestate.py` one level up from a mutant's own directory; Python's
+`importlib.reload()` re-resolves the module's `sys.path` search at reload
+time (after the module's own `saves.py` import has already pushed a new
+entry), so a stray file one level up gets picked silently over the
+intended mutant copy. `99-profile-gate.sh` itself never leaves such a
+stray file (each mutant's own directory is the only thing under `$PG`
+with that name), so this does not affect the committed file -- recorded
+here only so a future debugging session with a dirty `/tmp` doesn't lose
+time to the same confusion.
+
+Ran standalone first (`SELFTEST_ONLY="99-profile-gate" bash
+docs/testing/jobs/selftest.sh`) to find and fix the above without
+spending the one full-suite run on it: 43 passed, 0 failed, once fixed.
+
 ## Status at end of this session
 
 See PR #933 body / `State:` line for current status; this file is kept
