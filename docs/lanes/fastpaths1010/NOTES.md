@@ -253,4 +253,43 @@ Prediction `docs/testing/predictions/fastpaths1010-screen.json` registered
 before the first screen request, `a_ref`=`b_ref`=`da07fe5140` (this lane's
 branch after the master merge).
 
+### 4.2 Pilot batch 1: Crimson Skies (gfps methodology + screen results)
+
+`gfps` (the brief's required column, "both arms' telemetry fps, reported not
+gated") has no ready-made field in `result.json`/`perf_regimen.json` for a
+route run -- those carry `perf_mode`/`fan_mode`/`display` settings, not a
+measured rate. It is in `logcat.txt`'s `hakuX-pace` lines (the same source
+`raread.py`/`fpread.py` read for NFS's race-start countdown), one line per
+~2s window: `f=<frame> v0..v4=<bucket counts> vb=<total> max=<ms> ms=<window
+ms>`. Most of this screen's titles have no discrete race start to window on
+(fpread.py's NFS-specific countdown logic doesn't apply), so `gfps` here is
+read over the whole steady-state window instead: from the route's own `mark
+gameplay` line (or, for soak titles with no route, from app-start + a fixed
+settle) to `soak end`, `gfps = sum(vb)*1000/sum(ms)` across that window's
+pace lines -- the same per-line math, just summed over a wider window than a
+single race start.
+
+Pilot pair, Crimson Skies: High Road to Revenge (route `crimson-skies`,
+refs `1-1791703775-fastpaths1010-4011126` ON / `-4011199` OFF, both 300s):
+
+| check | ON | OFF |
+|---|---|---|
+| `request.json` env | `[]` (app default) | all six `=0` |
+| on-lines (4 expected ON, 0 expected OFF) | all 4 present, 00:53:50 | 0 present |
+| fatal/crash/abort/ANR | none | none |
+| hdd state | golden, `returning`, title `4D530021` | golden, `returning`, title `4D530021` |
+| route marks | booted 00:55:25.7, gameplay 00:56:00.3, end 00:59:14.0 | booted 01:01:07.2, gameplay 01:01:42.2, end 01:04:56.1 |
+| gfps (gameplay->end window) | 59.90 | 59.94 |
+| route-frames | 3 captured (booted/gameplay/play), visually normal | 3 captured, visually normal |
+
+Verdict: **pass, no regression**. Both arms clean on every correctness
+check; gfps is a statistical wash (ON and OFF within 0.1% of each other) --
+this title isn't bottlenecked by any of the six switches either way, which
+is itself a valid outcome for a correctness screen (the claim under test is
+"no scoped title fails," not "every title gains").
+
+Pilot batch verdict written to `pilots/fastpaths1010.ok` (step-3's own
+pilot, separate from step-2's NFS pilot). Proceeding to queue the remaining
+31 of the 32 scoped titles in batches of about 10.
+
 (screen results: fill in as batches complete)
