@@ -80,8 +80,8 @@ Still open:
 | `1-1791741002-lane.gtasagpu1011-54100` | a6ee1c58fe | `HAKUX_MEASURE_NO_GEOM=1` dump | scored: the GS wedge path is refuted (2b) |
 | `1-1791742113-lane.gtasagpu1011-176610` | a6ee1c58fe | schema 5 dump, switch off | scored (2c) |
 | `1-1791742114-lane.gtasagpu1011-177443` | a6ee1c58fe | schema 5 dump, `HAKUX_VTX_HAZARD=1` | scored (2c) |
-| `1-1791744746-lane.gtasagpu1011-651566` | 8e40300c6c | schema 6 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | queued on the Nova |
-| `1-1791745550-lane.gtasagpu1011-818197` | 50a389ef2b | schema 7 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | queued on the Nova after 651566 |
+| `1-1791744746-lane.gtasagpu1011-651566` | 8e40300c6c | schema 6 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | scored: the shadow texture is right (outcome A, NOTES 2d) |
+| `1-1791748627-lane.gtasagpu1011-844241` | 50a389ef2b | schema 7 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | queued on the Nova (re-queue of a void run) |
 
 ## Step 3
 

@@ -558,5 +558,18 @@ them.
   orientation) maps to (343,448). `on_f004.png` shows plain dirt there. That frame is the
   clearest case of the shadow's pixels being lost.
 
-**What is left inside A** is what the schema-7 run (818197) separates: A1 depth, A2 raster, A3
-a later write.
+**What is left inside A** is what the schema-7 run separates: A1 depth, A2 raster, A3 a later
+write.
+
+## Attempt 3 (resumed 2026-10-11 ~13:00 PDT)
+
+**Why attempt 2 did not finish.** It ended on the turn cap (301 turns) at 11:30 PDT, right
+after queueing the schema-7 run `1-1791745550-lane.gtasagpu1011-818197`, again with no
+`waiting:` note: the lesson written at the top of attempt 2 was not applied. That run came back
+void: hakuX lost the foreground to `com.android.settings` for 90 s or more (12:40-12:41 PDT), so
+the route's input went to Settings. hostops re-queued it unchanged as
+`1-1791748627-lane.gtasagpu1011-844241` (ref 50a389ef2b). 818197 is not scored or used anywhere
+in these notes.
+
+This session writes a `waiting:` note before it queues anything, and keeps the turn count low
+while it waits.
