@@ -304,6 +304,25 @@ case "$op" in
         # straight to build_gate, which itself passes at once for it) -- the
         # Thor's screening runs are routinely "other" by design and must not
         # make wait sit there waiting for them to finish.
+        #
+        # THE FED-QUEUE GAP (addendum 2, #433, 10-11). On a queue that is
+        # actually fed (the brief's own starting point: a release-tier
+        # stream reclaiming the device within seconds of each run ending),
+        # "something else is running" is what rrc reads on almost every
+        # poll -- rrc=2, and therefore build_gate, and therefore promote, is
+        # only reached in the rare instant between one run ending and the
+        # next being claimed. Left as comment-and-sleep, this branch never
+        # promotes anything, and wait times out with the restore still bare
+        # -- worse than before this lane, when a human promoted it by hand.
+        # So promote from here too, forced: the pending-restore and
+        # running-restore checks in cmd_promote still run first and still
+        # win (no duplicate), but when neither is true, --force skips the
+        # "is a restore even needed" read (it would see whatever ran before
+        # this in-flight request, which on a fed queue is often another
+        # master run, and wrongly decline to queue one for the request
+        # that is CURRENTLY running and WILL leave the device off master).
+        # Once promoted, drop to the 5 s cap so the restore's transition
+        # into running/ -- the rrc=0 case above -- is not missed either.
         interval="$HOLD_WAIT_INTERVAL"
         while :; do
             if label_gated "$label"; then
@@ -321,6 +340,9 @@ case "$op" in
                 interval=5
             else
                 echo "hold.sh: $label: $rout is running (not the restore) -- waiting for it to finish" >&2
+                pout=$(python3 "$(dirname "$0")/device_build.py" promote "$D" "$label" --force 2>&1)
+                echo "hold.sh: $pout" >&2
+                interval=5
             fi
             if [ "$(date +%s)" -ge "$deadline" ]; then
                 echo "hold.sh: timed out after $4 s waiting for $label's master restore" >&2

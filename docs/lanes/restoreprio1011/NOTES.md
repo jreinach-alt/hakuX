@@ -326,5 +326,18 @@ pending, other running, last result on master" case queues nothing, same
 as the defect this addendum fixes.
 
 Ran `SELFTEST_ONLY="99-build-gate.sh 99-restore-priority.sh 99-hold-take.sh"
-bash docs/testing/jobs/selftest.sh` in the foreground after the fix: see
-the final count below.
+bash docs/testing/jobs/selftest.sh` in the foreground after the fix: 135
+passed, 0 failed, PARTIAL (3 of 134 fragments, as expected for a named
+subset). `99-build-gate.sh` and `99-hold-take.sh` needed no edits for this
+addendum -- confirmed by running them unmodified alongside the new legs.
+
+One detail worth recording for the next reader: `restore_needed()`
+(device_build.py:146-150) returns `False` unconditionally whenever the
+record's own `requester` is `dispatch.restore`, regardless of `force`.
+That is correct and unrelated to this addendum -- `force` only skips the
+`rec is None` / `not restore_needed(rec)` SHORT-CIRCUIT RETURNS in
+`cmd_promote`, which happen `if not force`; the `restore_needed()`
+function itself is unchanged and is also what `cmd_restore` (the
+dispatcher's own post-run hook) still calls un-forced, which is exactly
+how leg (g) confirms no duplicate gets queued once the in-flight run's own
+result lands.

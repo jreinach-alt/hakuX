@@ -15,7 +15,7 @@
         already queued or running. The dispatcher calls this after each
         run's result.json is written.
 
-    device_build.py promote <dispatch_dir> <label>
+    device_build.py promote <dispatch_dir> <label> [--force]
         called by jobs/hold.sh's build gate on a refusal: gives the label's
         queued dispatch.restore request the top queue tier (id prefix "0-"),
         or queues one (at the same tier) when none is pending. Always exits
@@ -23,6 +23,17 @@
         this command's. restore_request's own id stays bare either way, so
         the dispatcher's own after-every-off-master-run restores still wait
         their ASCII-ordered turn.
+
+        --force: also called by jobs/hold.sh's wait loop while some OTHER
+        request is running for the label (device_build.py running's "other"
+        case) -- the in-flight request has not written a result.json yet,
+        so the device's newest recorded run can still read as master even
+        though the device will be off master the moment this run ends.
+        Without --force, that stale "on master" reading makes the no-
+        restore-needed check below refuse to queue anything. --force skips
+        only that check; the pending- and running-restore short-circuits
+        above it still run first and still win, so a restore already
+        queued or in flight is never duplicated.
 
     device_build.py running <dispatch_dir> <label>
         exit 0 "restore: <id>": the label's own dispatch.restore request is
@@ -201,7 +212,7 @@ def _promote(path):
     return os.path.basename(dst)
 
 
-def cmd_promote(dispatch_dir, label):
+def cmd_promote(dispatch_dir, label, force=False):
     pending = _restore_path(dispatch_dir, label, "queue")
     if pending is not None:
         print("promoted: %s" % _promote(pending))
@@ -211,13 +222,14 @@ def cmd_promote(dispatch_dir, label):
         print("already running: %s" % os.path.basename(running))
         return 0
     rec, run_id = last_run(dispatch_dir, label)
-    if rec is None:
-        print("no run recorded for %s; nothing to restore from" % label)
-        return 0
-    if not restore_needed(rec):
-        print("%s already on master; no restore needed" % label)
-        return 0
-    req = restore_request(run_id, label)
+    if not force:
+        if rec is None:
+            print("no run recorded for %s; nothing to restore from" % label)
+            return 0
+        if not restore_needed(rec):
+            print("%s already on master; no restore needed" % label)
+            return 0
+    req = restore_request(run_id or "pending", label)
     queue = os.path.join(dispatch_dir, "queue")
     tmp = os.path.join(queue, "." + req["id"] + ".req.tmp")
     with open(tmp, "w") as f:
@@ -281,6 +293,8 @@ def main(argv):
         return cmd_restore(argv[2], argv[3], argv[4])
     if len(argv) == 4 and argv[1] == "promote":
         return cmd_promote(argv[2], argv[3])
+    if len(argv) == 5 and argv[1] == "promote" and argv[4] == "--force":
+        return cmd_promote(argv[2], argv[3], force=True)
     if len(argv) == 4 and argv[1] == "running":
         return cmd_running(argv[2], argv[3])
     sys.stderr.write(__doc__)

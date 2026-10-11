@@ -3,7 +3,7 @@ Base: master @ 7f986f73f6
 Files: docs/testing/jobs/device_build.py, docs/testing/jobs/hold.sh, docs/testing/jobs/selftest.d/99-build-gate.sh, docs/testing/jobs/selftest.d/99-restore-priority.sh, docs/lanes/restoreprio1011/NOTES.md, docs/lanes/restoreprio1011/PR.md
 Prediction: none: harness defect, no device arm
 Needs device: no    Needs NDK: no
-State: draft
+State: ready
 
 ## What this fixes
 
@@ -72,6 +72,57 @@ on them). The poll interval drops to 5 s (from `HOLD_WAIT_INTERVAL`,
 default 15 s) once a restore has been promoted, so the "restore running"
 case cannot be missed between polls.
 
+## Addendum 2 (lane.local, 10-11): the "other is running" branch starved on a fed queue
+
+Addendum 1's fix is right and stays. But on a queue that is actually fed
+(the brief's own starting point: a release-tier stream reclaiming the
+device within seconds of each run ending), `wait`'s "something else is
+running" branch (`rrc=1`) is where almost every poll lands -- `build_gate`,
+and its own promote-on-refusal, is only reached in the rare instant
+between one run ending and the next being claimed. Left as comment-and-
+sleep, that branch never promoted anything, so `wait` timed out with the
+restore still bare -- worse than before this lane, when hostops at least
+promoted it by hand. The live dispatch dir had exactly this case while
+this addendum was being written: a hand-promoted
+`0-1791706988-dispatch.restore--4043569.req`.
+
+**Fix.** Before sleeping in the `rrc=1` branch, `wait` now also calls
+`device_build.py promote <dispatch_dir> <label> --force`, so the
+dispatcher's very next claim -- the moment the in-flight "other" request
+ends -- is the restore, caught immediately by the `rrc=0` branch addendum
+1 already fixed. `promote`'s existing pending/running short-circuits still
+run first and still win (no duplicate either way); `--force` only skips
+the final "is a restore even needed" read, which is reading stale state
+by construction here -- it would see whatever ran before the in-flight
+request, often another master run on a healthy queue, and wrongly decline
+to queue one for the request that is CURRENTLY running and WILL leave the
+device off master. The poll interval also drops to the same 5 s cap
+addendum 1 uses, once this branch has promoted something, so the restore's
+move into `running/` is not missed either.
+
+`device_build.py`'s `promote` command (device_build.py:204, `main` at
+:282-283) gained the `--force` flag. `restore_pending()` and `restore_
+needed()` are unchanged -- confirmed (leg (g)) that a "0-"-prefixed file
+still satisfies `restore_pending()`'s no-prefix-filter glob, so the
+in-flight run's own eventual `queue_master_restore` call queues nothing
+extra once its result lands.
+
+**Selftest.** `99-restore-priority.sh` leg (f) is extended with checks
+that `wait`'s own forced promote leaves exactly one `0-`-prefixed restore
+queued even though the newest result on disk reads master (stale); a new
+leg (g) confirms that queue is not duplicated once the in-flight run's
+result lands; a new leg (f2) confirms a bare restore already queued gets
+promoted in place instead of a second one. A new mutant (`device_build.
+py`'s `if not force:` hardcoded to `if True:`, so the no-restore-needed
+check runs unconditionally) turns (f) and (f2) red: it reproduces this
+addendum's exact starvation (printing "already on master; no restore
+needed" and queuing nothing). `99-build-gate.sh` and `99-hold-take.sh`
+needed no changes.
+
+Re-ran `SELFTEST_ONLY="99-build-gate.sh 99-restore-priority.sh
+99-hold-take.sh" bash docs/testing/jobs/selftest.sh` in the foreground:
+135 passed, 0 failed, PARTIAL (3 of 134 fragments, as expected).
+
 ## Mutant results
 
 `device_build.py`'s `promote` command, with its `_promote()` rename calls
@@ -87,6 +138,13 @@ says -- and turns both new legs red: (e) a running restore is no longer
 taken early (times out instead of exiting 0), and (f) a non-restore
 request running for the label is missed and the hold is taken anyway
 (exits 0 instead of timing out). Both verified directly.
+
+`device_build.py`'s `if not force:` guard (addendum 2), hardcoded to
+`if True:` so the no-restore-needed check runs regardless of the flag,
+turns leg (f)'s and leg (f2)'s own forced-queue checks red: with the
+newest result reading master (stale), it prints "already on master; no
+restore needed" and queues nothing -- the exact starvation addendum 2
+fixes. Verified directly.
 
 ## Testing
 
