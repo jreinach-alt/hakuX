@@ -332,3 +332,67 @@ explains the 1-in-7 blue frames.
    it is close to the submits a frame already make (1-6, mean 2.4, over the 29 frame gaps of
    3571105, from the draw records' `submits`). Above 50 it needs option (D): give the
    rewritten range a private copy instead of a submit. P(≤ 10) = 0.5.
+
+## Attempt 2 (resumed 2026-10-11 11:30 PDT)
+
+**Why attempt 1 did not finish.** It ended on the 300-turn cap at 11:08 PDT with two schema-5
+dumps (`1-1791742113-lane.gtasagpu1011-176610`, switch off, and `...-177443`, switch on) queued
+and not yet run, and no `waiting:` note. Nothing was left to read them. The lesson for the next
+session: write NOTES and a waiting note before queueing the last run of a session, not after.
+
+### 2c scored: the switch-off and switch-on dumps
+
+Both at a6ee1c58fe, `XEMU_FRAME_DUMP=30,after250,cap512,vtx64`, the gta-sa route, 320 s.
+
+- off: `1-1791742113-lane.gtasagpu1011-176610`, `pulled/framedump_1791742961.jsonl`, 29
+  images (f005 not pulled). In-game 08:30, CJ running past a house, so the sky is partly behind
+  the eave and the tree.
+- on: `1-1791742114-lane.gtasagpu1011-177443`, `pulled/framedump_1791743353.jsonl`, 30
+  images, logcat `env: HAKUX_VTX_HAZARD=1`. In-game 08:36, CJ running along an alley wall.
+
+The two views differ, so the old sky-top box (180,0)-(480,20) does not read sky in either
+(the eave and the wall cover it). The measure used here instead counts pixels in the top 160
+rows, HUD box excluded: "white" is r > 200, g > 200 and b <= r + 10 (the ramp's
+yellow-white, which no morning sky pixel has); "blue" is b > 200 and b - r > 50. Counts are in
+hundreds of pixels, white/blue; `r` marks an `img_sync -1` image. `fdread.py DUMP vhaz 12f336cc`
+gives the sky draw n11's state.
+
+| dump | sky draw n11 hit by a later upload in its command buffer | frames with white pixels |
+|---|---|---|
+| 3571105 (a6ee1c58fe's parent, switch absent) | not recorded (schema 4) | 23 of 30 |
+| 176610, off | 15 of 30: f2, f5-f8, f12-f16, f18, f24, f26, f27, f29 | f8 (7/4), f15 (8/11), f16 (21/13), f18 (15/12), f26 (7/13), and their `r` repeats f9, f17, f19, f27 |
+| 177443, on | 0 of 30 | 0 of 30 (blue 45-403 in every frame) |
+
+**Prediction 1 (off): holds in its first half, not its second.**
+
+- Every frame with white sky pixels is a hit frame, or an `r` repeat of one.
+- No clean frame shows white: f0, f4, f10, f20, f22 and f28 are clean and imaged, with blue
+  between 52 and 368 and zero white.
+- But 7 hit frames show a blue sky (f2, f6, f12, f13, f14, f24, f29). So a hit is necessary for
+  the white sky in this dump, not sufficient. That fits a hit that rewrites only part of the
+  band: n11 draws 10 triangles all round the camera, and the rewritten bytes can be vertices of
+  triangles that are off screen. The dump does not log the rewritten bytes, only their span, so
+  this is not shown.
+
+**Prediction 2 (on): holds.**
+
+- Every image has blue sky and none has a white pixel.
+- logcat has 22 `vtx_hazard` lines, 2806 finishes by 11:30:26.
+- 29 of 30 frames carry a `vup` with `"hzf":1`.
+
+The view differs from the off dump (the alley wall covers most of the sky after f15), so the
+image half rests on f0-f15, where 268-403 hundred blue pixels are visible. The run's own
+stills agree: 22 sunny post-mark stills (f00041-f00062, 07:52-09:51), all with a blue sky and
+no hard-edged polygon in it. Per addendum 1 that is a floor on the defect, not proof it is gone.
+
+**Prediction 3 (cost): holds.** In gameplay the switch finishes 100-370 times per 10 s, about 1
+a frame at 25-30 fps, and the dump's `hzf` records say 1 a frame (2 in f17). So the cost is
+one extra submit a frame. Option (D), a private copy for the rewritten range, is not needed
+for cost.
+
+**The shadow is not this.** In the off dump the hit draws are n10-n15 (the shadow chain's border
+strip, the sky, the three LINES draws and the sun) and three others (n326, n382, n619). The
+stored-shadow draws (n5xx) are never hit. With the switch on, CJ has no shadow in any of the 22
+sunny post-mark stills (f00044 at 08:03, CJ running on the road beside a parked car, read at
+full size: the car has a shadow, CJ has none). So the sky and the shadow are two defects. The
+shadow is next (2d).

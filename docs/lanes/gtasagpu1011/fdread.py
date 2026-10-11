@@ -1,11 +1,25 @@
 #!/usr/bin/env python3
-"""Read a schema-4 live frame dump (framedump_<id>.jsonl) by draw.
+"""Read a schema-4/5 live frame dump (framedump_<id>.jsonl) by draw.
 
   fdread.py DUMP targets            colour targets per frame, draws on each
   fdread.py DUMP draws F [A [B]]    frame F's draws A..B, state decoded
   fdread.py DUMP rtt                draws sampling a rendered surface, and
                                     draws sampling their own colour target
   fdread.py DUMP shader HASH        one shader record (combiners + GLSL)
+  fdread.py DUMP vhaz [SHADER]      schema 5: per frame, the draws whose
+                                    vertex RAM a later upload in the same
+                                    command buffer ("rot") changed; with
+                                    SHADER (a hash prefix), that shader's
+                                    draws only, hit or not
+  fdread.py DUMP means [X0 Y0 X1 Y1]  mean RGB of a region of each frame's
+                                    image (default the sky top, 180,0-480,20)
+
+vhaz: an upload record ("vup") carries the draw it synced for in "n" (the
+draw record is written after its sync) and the first and last changed byte
+("clo", "chi"). A draw is hit when a vup with the same "rot" and a larger "n"
+has a changed span overlapping one of its "vr" ranges. The span is first to
+last changed byte, so an overlap can be a false hit where bytes in between
+did not change; the "v" words (guest RAM at the draw) settle a doubtful one.
 
 The registers are written raw by fdump_log_draw_state (vk/renderer.c); the
 decode here follows nv2a_regs.h and nv2a_diag_log_draw_call.
@@ -25,6 +39,9 @@ def h(v):
     return int(v, 16) if isinstance(v, str) else v
 
 
+VUPS = []
+
+
 def load(path):
     session, draws, frames, shaders = None, [], [], {}
     with open(path) as f:
@@ -42,6 +59,8 @@ def load(path):
                 frames.append(r)
             elif t == "shader":
                 shaders[r["shader"]] = r
+            elif t == "vup":
+                VUPS.append(r)
     return session, draws, frames, shaders
 
 
@@ -151,6 +170,61 @@ def main(argv):
                     d["f"], d["n"], t[0] if t else "-", t[1] if t else "",
                     t[2] if t else "", " FEEDBACK" if own else "",
                     state(d), texs(d)))
+    elif cmd == "vhaz":
+        only = argv[3] if len(argv) > 3 else None
+        ups = defaultdict(list)
+        for u in VUPS:
+            ups[(u["f"], u["rot"])].append(u)
+        per = defaultdict(list)
+        for d in draws:
+            per[d["f"]].append(d)
+        for f in sorted(per):
+            hits, shown = [], []
+            nup = sum(len(v) for k, v in ups.items() if k[0] == f)
+            hzf = sum(1 for u in VUPS if u["f"] == f and u.get("hzf"))
+            rots = sorted({d.get("rot") for d in per[f]})
+            for d in per[f]:
+                if "rot" not in d:
+                    continue
+                vr = [(h(x[1]), h(x[2])) for x in d.get("vr", [])]
+                by = []
+                for u in ups.get((f, d["rot"]), []):
+                    if u["n"] <= d["n"]:
+                        continue
+                    clo, chi = h(u["clo"]), h(u["chi"])
+                    if any(clo < hi and chi > lo for lo, hi in vr):
+                        by.append(u["n"])
+                if by:
+                    hits.append(d["n"])
+                if only and d["shader"].startswith(only):
+                    shown.append("n%d rot%d %s" % (
+                        d["n"], d["rot"],
+                        "HIT by n%s" % ",".join(map(str, by[:6])) if by
+                        else "clean"))
+            print("f%d rots %s vups %d hzf %d hit draws %d%s%s" % (
+                f, ",".join(map(str, rots)), nup, hzf, len(hits),
+                " (n%s)" % ",".join(map(str, hits[:12])) if hits else "",
+                " | " + "; ".join(shown) if shown else ""))
+    elif cmd == "means":
+        import os
+        from PIL import Image
+        box = tuple(int(x) for x in argv[3:7]) if len(argv) > 6 else (
+            180, 0, 480, 20)
+        base = os.path.dirname(argv[1])
+        for fr in frames:
+            if not fr.get("image"):
+                print("f%d no image (img_sync %s)" % (fr["f"],
+                                                      fr.get("img_sync")))
+                continue
+            path = os.path.join(base, fr["image"])
+            if not os.path.exists(path):
+                print("f%d %s not pulled" % (fr["f"], fr["image"]))
+                continue
+            im = Image.open(path).convert("RGB")
+            px = list(im.crop(box).get_flattened_data())
+            m = [round(sum(p[i] for p in px) / len(px)) for i in range(3)]
+            print("f%d %s %d,%d,%d img_sync %s" % (
+                fr["f"], fr["image"], m[0], m[1], m[2], fr.get("img_sync")))
     elif cmd == "shader":
         s = shaders.get(argv[3]) or next(
             (v for k, v in shaders.items() if k.startswith(argv[3])), None)
