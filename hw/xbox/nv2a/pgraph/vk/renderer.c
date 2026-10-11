@@ -1828,8 +1828,19 @@ extern char g_vulkan_driver_info[256];
  *    of at most NN indices also logs its elements' raw position, diffuse and
  *    texcoord0 words ("v") and the composite matrix and viewport offset
  *    ("cm"), so its screen coverage can be recomputed offline.
+ * 6: as 5, plus, with the `rtt` token, readbacks of small render targets. A
+ *    draw that renders to a colour target of at most FDUMP_RTT_MAX_TEXELS, or
+ *    samples a colour surface that small, FINISHES the command buffer after
+ *    its record's other fields and adds "rb": one entry per image read, as
+ *    the GPU left it after this draw. "k" is "color" (the draw's own
+ *    target), "srf" (the image of the surface at stage "s"'s address) or
+ *    "tex" (the texture image stage "s" sampled, when that is a copy of the
+ *    surface and not the surface itself, "s2t":0). "file" is level 0 raw:
+ *    row-major, unswizzled, w*h texels in the host format "vkfmt" (44 is
+ *    B8G8R8A8_UNORM), or null when it was not written. The finishes change
+ *    the schedule the dump is measuring; see per_draw_finish in the header.
  */
-#define FDUMP_SCHEMA          5
+#define FDUMP_SCHEMA          6
 
 /* `img_sync` on a frame record: >= 0 is the fence slot the image waited on
  * before the display surface came back clean, and these two are the cases
@@ -1855,6 +1866,9 @@ static struct {
     /* Schema 5's `vtxNN`: draws of at most this many indices log their
      * vertex words. 0 is off. */
     int vtx_max;
+    /* Schema 6's `rtt`: read back small colour targets and the textures
+     * drawn from small surfaces; see fdump_log_rtt. */
+    bool rtt;
     int frames_remaining;
     int frame_index;
     int draw_index;
@@ -2060,10 +2074,13 @@ static void fdump_clear_previous(const char *dir, const char *keep)
  *               file on the device mid-run.
  *   vtxNN       schema 5: a draw of at most NN indices (capped at 256) logs
  *               its vertices' raw words; see FDUMP_SCHEMA.
+ *   rtt         schema 6: read back small render targets and the textures
+ *               sampled from them, per draw; see FDUMP_SCHEMA. This one
+ *               FINISHES the command buffer at each such draw.
  */
 static void fdump_parse_spec(const char *spec, int *frames, bool *images,
                              int *cap_mb, bool *also_diag, int *after_s,
-                             int *vtx_max)
+                             int *vtx_max, bool *rtt)
 {
     char buf[160];
     snprintf(buf, sizeof(buf), "%s", spec ? spec : "");
@@ -2077,6 +2094,8 @@ static void fdump_parse_spec(const char *spec, int *frames, bool *images,
             *images = false;
         } else if (!strcmp(tok, "diag")) {
             *also_diag = true;
+        } else if (!strcmp(tok, "rtt")) {
+            *rtt = true;
         } else if (!strncmp(tok, "after", 5)) {
             long v = strtol(tok + 5, NULL, 10);
             if (v >= 0 && v <= 3600) {
@@ -2113,8 +2132,9 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     bool also_diag = false;
     int after_s = 0;
     int vtx_max = 0;
+    bool rtt = false;
     fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s,
-                     &vtx_max);
+                     &vtx_max, &rtt);
 
     const char *base = fdump_base_dir();
     if (!base || !base[0]) {
@@ -2138,6 +2158,7 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     fdump.stale_warned = false;
     fdump.shaders_n = 0;
     fdump.vtx_max = vtx_max;
+    fdump.rtt = rtt;
 
     char self[64];
     snprintf(self, sizeof(self), "%s%u.jsonl", FDUMP_PREFIX, fdump.session);
@@ -2164,9 +2185,10 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
      * spectral finding on this very issue.
      *
      * `per_draw_finish` says whether a finish is forced between draws in THIS
-     * run, and it is `also_diag` because that is the only thing that forces
-     * one here: this path issues no Vulkan call at all, and the `diag` token
-     * arms the old capture alongside, which does. It was a bare `false`
+     * run, and it is `also_diag || rtt` because those are the only things
+     * that force one here: the `diag` token arms the old capture alongside,
+     * and the `rtt` token (schema 6) finishes at each draw it reads back.
+     * Without them this path issues no Vulkan call at all. It was a bare `false`
      * literal until it was caught -- which would have printed "no finish" on
      * the control arm, the one run where a finish is forced on purpose. A
      * field that cannot say the thing it exists to detect is not a check.
@@ -2179,18 +2201,18 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
         fp,
         "{\"t\":\"session\",\"schema\":%d,\"id\":%u,\"armed_by\":\"%s\","
         "\"spec\":\"%s\",\"frames\":%d,\"images\":%s,\"cap_mb\":%d,"
-        "\"after_s\":%d,\"vtx\":%d,"
+        "\"after_s\":%d,\"vtx\":%d,\"rtt\":%s,"
         "\"wall\":%lld,\"uptime_ms\":%lld,\"draw_merge\":%s,"
         "\"draw_reorder\":%s,\"surface_scale\":%d,\"submit_frames\":%d,"
         "\"per_draw_finish\":%s,\"also_diag\":%s,\"driver\":\"%s\"}\n",
         FDUMP_SCHEMA, fdump.session, armed_by, spec ? spec : "", frames,
         images ? "true" : "false", cap_mb, after_s, vtx_max,
-        (long long)time(NULL),
+        rtt ? "true" : "false", (long long)time(NULL),
         (long long)(qemu_clock_get_ns(QEMU_CLOCK_REALTIME) / 1000000),
         xemu_get_draw_merge() ? "true" : "false",
         xemu_get_draw_reorder() ? "true" : "false",
         pg->surface_scale_factor, r->num_active_frames,
-        also_diag ? "true" : "false",
+        (also_diag || rtt) ? "true" : "false",
         also_diag ? "true" : "false", g_vulkan_driver_info);
 
     FDUMP_LOG("framedump: armed by %s, %d frames, images=%d, cap=%d MB -> %s\n",
@@ -2226,8 +2248,9 @@ static void fdump_arm(NV2AState *d, const char *armed_by, const char *spec,
     bool also_diag = false;
     int after_s = 0;
     int vtx_max = 0;
+    bool rtt = false;
     fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s,
-                     &vtx_max);
+                     &vtx_max, &rtt);
 
     if (after_s <= 0) {
         fdump_begin(d, armed_by, spec);
@@ -2732,7 +2755,221 @@ void pgraph_vk_fdump_vertex_upload(PGRAPHVkState *r, hwaddr offset,
     }
 }
 
-/* Per draw. No Vulkan call, no allocation, one buffered fprintf. */
+/* Schema 6 (`rtt`): render targets of at most this many texels are read
+ * back. GTA San Andreas draws CJ's shadow through 64x64 and 32x32 targets
+ * (docs/lanes/gtasagpu1011/NOTES.md); a 640x480 frame is never read here. */
+#define FDUMP_RTT_MAX_TEXELS  (64 * 64)
+
+static void fdump_rtt_barrier(VkCommandBuffer cmd, VkImage image,
+                              VkImageLayout from, VkImageLayout to)
+{
+    VkImageMemoryBarrier b = {
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT,
+        .oldLayout = from,
+        .newLayout = to,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = image,
+        .subresourceRange = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .levelCount = VK_REMAINING_MIP_LEVELS,
+            .layerCount = VK_REMAINING_ARRAY_LAYERS,
+        },
+    };
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, NULL, 0,
+                         NULL, 1, &b);
+}
+
+/*
+ * Schema 6: copy level 0 of a 4-byte colour image to BUFFER_STAGING_DST and
+ * write it raw to the dump directory as `name`. True if the file was written.
+ *
+ * The caller has finished the command buffer, so the draw just recorded and
+ * everything before it have executed, and this reads the image as that draw
+ * left it. The image goes back to `layout`. The barriers are full ones
+ * because the shared transition helper has no SHADER_READ_ONLY ->
+ * TRANSFER_SRC, and a dump does not need the narrow masks.
+ */
+static bool fdump_read_image(NV2AState *d, PGRAPHState *pg, VkImage image,
+                             VkImageLayout layout, uint32_t w, uint32_t h,
+                             const char *name)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    StorageBuffer *staging = &r->storage_buffers[BUFFER_STAGING_DST];
+    size_t size = (size_t)w * h * 4;
+
+    if (image == VK_NULL_HANDLE || !w || !h ||
+        layout == VK_IMAGE_LAYOUT_UNDEFINED || size > staging->buffer_size) {
+        return false;
+    }
+
+    /* As diag_download_surface: retire a download batch still pending in the
+     * staging buffer before this overwrites it. */
+    pgraph_vk_download_surface_complete_deferred(d);
+
+    VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
+    fdump_rtt_barrier(cmd, image, layout,
+                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    VkBufferImageCopy region = {
+        .bufferRowLength = w,
+        .bufferImageHeight = h,
+        .imageSubresource = {
+            .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            .layerCount = 1,
+        },
+        .imageExtent = { w, h, 1 },
+    };
+    vkCmdCopyImageToBuffer(cmd, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           staging->buffer, 1, &region);
+    fdump_rtt_barrier(cmd, image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                      layout);
+    VkBufferMemoryBarrier hb = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_HOST_READ_BIT,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .buffer = staging->buffer,
+        .size = size,
+    };
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                         VK_PIPELINE_STAGE_HOST_BIT, 0, 0, NULL, 1, &hb, 0,
+                         NULL);
+    pgraph_vk_end_single_time_commands(pg, cmd);
+    vmaInvalidateAllocation(r->allocator, staging->allocation, 0, size);
+
+    char path[800];
+    snprintf(path, sizeof(path), "%s/%s", fdump.base, name);
+    FILE *fp = fopen(path, "wb");
+    if (!fp) {
+        return false;
+    }
+    bool ok = fwrite(staging->mapped, 1, size, fp) == size;
+    ok = (fclose(fp) == 0) && ok;
+    if (ok) {
+        fdump.bytes_written += size;
+    }
+    return ok;
+}
+
+static bool fdump_rtt_small(const SurfaceBinding *s)
+{
+    return s && s->color &&
+           (uint64_t)s->width * s->height <= FDUMP_RTT_MAX_TEXELS;
+}
+
+/* Schema 6's "rb", last in the draw record: after the vertex fields, because
+ * they read "rot" and the finish below advances it. See FDUMP_SCHEMA. */
+static bool fdump_log_draw_readbacks(NV2AState *d, PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    struct {
+        const char *k;
+        int s;
+        hwaddr addr;
+        VkImage image;
+        VkImageLayout layout;
+        uint32_t w, h;
+        VkFormat fmt;
+    } rb[2 * NV2A_MAX_TEXTURES + 1];
+    int nrb = 0;
+
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if (!pgraph_is_texture_enabled(pg, i)) {
+            continue;
+        }
+        SurfaceBinding *ts =
+            pgraph_vk_surface_get(d, pgraph_get_texture_phys_addr(pg, i));
+        if (!fdump_rtt_small(ts)) {
+            continue;
+        }
+        TextureBinding *tb = r->texture_bindings[i];
+        if (tb && !r->tex_surface_direct[i]) {
+            rb[nrb].k = "tex";
+            rb[nrb].s = i;
+            rb[nrb].addr = ts->vram_addr;
+            rb[nrb].image = tb->image;
+            rb[nrb].layout = tb->current_layout;
+            rb[nrb].w = tb->image_config.width;
+            rb[nrb].h = tb->image_config.height;
+            rb[nrb].fmt = tb->image_config.format;
+            nrb++;
+        }
+        rb[nrb].k = "srf";
+        rb[nrb].s = i;
+        rb[nrb].addr = ts->vram_addr;
+        rb[nrb].image = ts->image;
+        rb[nrb].layout = ts->image_layout;
+        rb[nrb].w = ts->width;
+        rb[nrb].h = ts->height;
+        pgraph_apply_scaling_factor(pg, &rb[nrb].w, &rb[nrb].h);
+        rb[nrb].fmt = ts->host_fmt.vk_format;
+        nrb++;
+    }
+    SurfaceBinding *c = r->color_binding;
+    if (fdump_rtt_small(c)) {
+        rb[nrb].k = "color";
+        rb[nrb].s = -1;
+        rb[nrb].addr = c->vram_addr;
+        rb[nrb].image = c->image;
+        rb[nrb].layout = c->image_layout;
+        rb[nrb].w = c->width;
+        rb[nrb].h = c->height;
+        pgraph_apply_scaling_factor(pg, &rb[nrb].w, &rb[nrb].h);
+        rb[nrb].fmt = c->host_fmt.vk_format;
+        nrb++;
+    }
+    if (!nrb) {
+        return true;
+    }
+
+    pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
+
+    int n = fprintf(fdump.fp, ",\"rb\":[");
+    if (n < 0) {
+        goto fail;
+    }
+    fdump.bytes_written += n;
+
+    for (int j = 0; j < nrb; j++) {
+        char name[128];
+        snprintf(name, sizeof(name), "%s%u_f%03d_n%04d_%s%d.bin",
+                 FDUMP_PREFIX, fdump.session, fdump.frame_index,
+                 fdump.draw_index - 1, rb[j].k, rb[j].s < 0 ? 0 : rb[j].s);
+        bool four = rb[j].fmt == VK_FORMAT_B8G8R8A8_UNORM ||
+                    rb[j].fmt == VK_FORMAT_R8G8B8A8_UNORM;
+        bool ok = four && fdump_read_image(d, pg, rb[j].image, rb[j].layout,
+                                           rb[j].w, rb[j].h, name);
+        n = fprintf(fdump.fp,
+                    "%s{\"k\":\"%s\",\"s\":%d,\"addr\":\"0x%" HWADDR_PRIx
+                    "\",\"w\":%u,\"h\":%u,\"vkfmt\":%d,\"layout\":%d,"
+                    "\"file\":%s%s%s}",
+                    j ? "," : "", rb[j].k, rb[j].s, rb[j].addr, rb[j].w,
+                    rb[j].h, (int)rb[j].fmt, (int)rb[j].layout,
+                    ok ? "\"" : "null", ok ? name : "", ok ? "\"" : "");
+        if (n < 0) {
+            goto fail;
+        }
+        fdump.bytes_written += n;
+    }
+
+    n = fprintf(fdump.fp, "]");
+    if (n < 0) {
+        goto fail;
+    }
+    fdump.bytes_written += n;
+    return true;
+
+fail:
+    fdump_close("write error");
+    return false;
+}
+
+/* Per draw. One buffered fprintf and, without `rtt`, no Vulkan call and no
+ * allocation. */
 static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
                            int count)
 {
@@ -2877,6 +3114,10 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
     fdump.bytes_written += n;
 
     if (!fdump_log_draw_vertices(d, pg, type)) {
+        return;
+    }
+
+    if (fdump.rtt && !fdump_log_draw_readbacks(d, pg)) {
         return;
     }
 

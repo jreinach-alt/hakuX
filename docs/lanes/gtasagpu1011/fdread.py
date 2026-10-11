@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Read a schema-4/5 live frame dump (framedump_<id>.jsonl) by draw.
+"""Read a schema-4/5/6 live frame dump (framedump_<id>.jsonl) by draw.
 
   fdread.py DUMP targets            colour targets per frame, draws on each
   fdread.py DUMP draws F [A [B]]    frame F's draws A..B, state decoded
@@ -13,6 +13,11 @@
                                     draws only, hit or not
   fdread.py DUMP means [X0 Y0 X1 Y1]  mean RGB of a region of each frame's
                                     image (default the sky top, 180,0-480,20)
+  fdread.py DUMP rb [F [OUTDIR]]    schema 6 (`rtt`): each readback ("rb") of
+                                    frame F (default all): texels with any
+                                    channel above 32 ("lit"), mean RGBA; with
+                                    OUTDIR, one PNG per readback (x4) and a
+                                    sheet per frame, f<F>_sheet.png
 
 vhaz: an upload record ("vup") carries the draw it synced for in "n" (the
 draw record is written after its sync) and the first and last changed byte
@@ -225,6 +230,56 @@ def main(argv):
             m = [round(sum(p[i] for p in px) / len(px)) for i in range(3)]
             print("f%d %s %d,%d,%d img_sync %s" % (
                 fr["f"], fr["image"], m[0], m[1], m[2], fr.get("img_sync")))
+    elif cmd == "rb":
+        import os
+        from PIL import Image, ImageDraw
+        only = int(argv[3]) if len(argv) > 3 else None
+        out = argv[4] if len(argv) > 4 else None
+        base = os.path.dirname(argv[1])
+        if out:
+            os.makedirs(out, exist_ok=True)
+        sheets = defaultdict(list)
+        for d in draws:
+            if "rb" not in d or (only is not None and d["f"] != only):
+                continue
+            for e in d["rb"]:
+                tag = "f%d n%d %s %s%s %s %dx%d" % (
+                    d["f"], d["n"], d["shader"][:8], e["k"],
+                    "" if e["s"] < 0 else e["s"], e["addr"], e["w"], e["h"])
+                if not e.get("file"):
+                    print(tag, "no file (vkfmt %s layout %s)" % (
+                        e["vkfmt"], e["layout"]))
+                    continue
+                path = os.path.join(base, e["file"])
+                if not os.path.exists(path):
+                    print(tag, "not pulled")
+                    continue
+                raw = open(path, "rb").read()
+                mode = "BGRA" if e["vkfmt"] == 44 else "RGBA"
+                im = Image.frombytes("RGBA", (e["w"], e["h"]), raw, "raw",
+                                     mode)
+                px = list(im.get_flattened_data())
+                lit = sum(1 for p in px if max(p[:3]) > 32)
+                m = [round(sum(p[i] for p in px) / len(px)) for i in range(4)]
+                print("%s lit %d/%d mean %d,%d,%d a %d" % (
+                    tag, lit, len(px), m[0], m[1], m[2], m[3]))
+                if out:
+                    big = im.convert("RGB").resize((e["w"] * 4, e["h"] * 4),
+                                                   Image.NEAREST)
+                    big.save(os.path.join(out, "f%03d_n%04d_%s%d.png" % (
+                        d["f"], d["n"], e["k"], max(e["s"], 0))))
+                    sheets[d["f"]].append((tag, im.convert("RGB")))
+        for f, items in sheets.items():
+            cols = 8
+            rows = (len(items) + cols - 1) // cols
+            sheet = Image.new("RGB", (cols * 136, rows * 150), (40, 0, 40))
+            dr = ImageDraw.Draw(sheet)
+            for i, (tag, im) in enumerate(items):
+                x, y = (i % cols) * 136 + 4, (i // cols) * 150 + 4
+                sheet.paste(im.resize((128, 128), Image.NEAREST), (x, y))
+                dr.text((x, y + 129), " ".join(tag.split()[1:5]),
+                        fill=(255, 255, 0))
+            sheet.save(os.path.join(out, "f%03d_sheet.png" % f))
     elif cmd == "shader":
         s = shaders.get(argv[3]) or next(
             (v for k, v in shaders.items() if k.startswith(argv[3])), None)

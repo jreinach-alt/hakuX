@@ -359,7 +359,7 @@ gives the sky draw n11's state.
 
 | dump | sky draw n11 hit by a later upload in its command buffer | frames with white pixels |
 |---|---|---|
-| 3571105 (a6ee1c58fe's parent, switch absent) | not recorded (schema 4) | 23 of 30 |
+| 3571105 (33ceb415ca, schema 4, no switch) | not recorded (schema 4) | 23 of 30 |
 | 176610, off | 15 of 30: f2, f5-f8, f12-f16, f18, f24, f26, f27, f29 | f8 (7/4), f15 (8/11), f16 (21/13), f18 (15/12), f26 (7/13), and their `r` repeats f9, f17, f19, f27 |
 | 177443, on | 0 of 30 | 0 of 30 (blue 45-403 in every frame) |
 
@@ -396,3 +396,91 @@ stored-shadow draws (n5xx) are never hit. With the switch on, CJ has no shadow i
 sunny post-mark stills (f00044 at 08:03, CJ running on the road beside a parked car, read at
 full size: the car has a shadow, CJ has none). So the sky and the shadow are two defects. The
 shadow is next (2d).
+
+### 2d. The shadow: what the schema-5 dumps show, and the next discriminator
+
+Read from the on dump (177443), frame 4, with `fdread.py DUMP draws 4 0 11` and the
+`v`/`cm` words. Frame 0 has the same chain (the projected draw is n554 there).
+
+**The chain.** Every frame starts with it:
+
+| draw | target | what it does |
+|---|---|---|
+| n0-n4 | 0x3513980, 64x64, fmt 4 (X8R8G8B8_Z8R8G8B8), swizzled, no zeta | CJ's meshes (shader 60cf0c75), blend SA*S + (1-SA)*D, alpha test GT 0 |
+| n5 | 0x3513980 | a quad, blend (1-DC)*S + 0*D: inverts the target |
+| n6 | 0x3517a00, 32x32 | samples 0x3513980 (SZ_X8R8G8B8, copy path: `s2t:0`, the surface `dirty`) |
+| n7 | 0x34e7480, 32x32 | samples 0x3517a00 |
+| n8 | 0x3517a00 | samples 0x34e7480 |
+| n9 | 0x3517a00 | blend 0*S + SC*D with the static texture 0x034e8500: a falloff mask |
+| n10 | 0x3517a00 | an 8-index LINE_STRIP: the border, so the clamp reads black |
+
+**The projected shadow, n522.**
+
+- Shader 7f12c419cf0057eb, 9 indices, TRIANGLES.
+- Blend 0*S + (1-SC)*D: it darkens the frame by the texture.
+- Depth test on, LEQUAL, no depth write. Alpha test GT 0.
+- t0 is 0x03517a00, SZ_X8R8G8B8 32x32, clamp, through the copy path (`s2t:0`).
+- Diffuse 0x8f8f8f8f.
+
+All of it is drawn, every frame, in both dumps. The car shadows are stencil volumes and do show.
+
+**Ruled out by reading:**
+
+- **The vertex RAM hazard.** No n5xx draw is ever hit (2c).
+- **The pad-alpha override.** The Nova has dualSrcBlend (logcat), so `surface_sampled_pad_alpha`
+  (vk/texture.c) returns IDENTITY. SZ_X8R8G8B8's own map then gives alpha ONE, and the alpha
+  test cannot be what removes the shadow on the texture's account.
+- **A VRAM read of the texture.** The stage takes `copy_surface_to_texture`, a GPU copy of the
+  surface image, recorded in order in the main command buffer
+  (`pgraph_vk_begin_nondraw_commands` returns `r->command_buffer` since OPT_SURF_TO_TEX_INLINE).
+- **`draw_time` bookkeeping.** draw.c sets the target's `draw_time` on every path (the reorder
+  path, `post_draw` and `mark_clear_drawn`), so the copy is not skipped as up to date.
+- **The geometry.** Recomputed from n522's `v` and `cm` words, the quad lands under CJ. The
+  texture centre maps to screen (373,510), below the 640x480 frame. So part of the shadow
+  should show near CJ's feet (y 390-430 in `on_f004.png`) and part falls off screen. The centre
+  triangle has two vertices with w < 0. The geometry shader's wedge path handles exactly one
+  negative w, so that triangle goes to the host clipper.
+
+**Still open.** The dumps cannot tell these apart, because the shadow's texture is never seen:
+
+1. **The texture is empty.** The silhouette is not in 0x3517a00 when n522 samples it. Either
+   n0-n4 draw nothing into 0x3513980, or a step from n5 to n10 loses it.
+2. **The texture is right, and n522's pixels are lost.** The depth test against the ground
+   fails, or the host clipper drops the two-negative-w triangle and the other triangles fall
+   off screen.
+3. **A timing hazard.** The copy reads the surface before the chain's draws land. Nothing in
+   the source shows one. It is included because a finish between draws would hide it.
+
+**Schema 6 (`rtt` token) decides between them.**
+
+- **What it does.** A draw whose colour target is at most 64x64, or that samples a colour
+  surface that small, finishes the command buffer after its record. It then reads back, as the
+  GPU left them after this draw:
+  - its colour target (`"k":"color"`);
+  - each such stage's surface image (`"srf"`);
+  - the texture copy the stage actually sampled (`"tex"`).
+  
+  Each is written raw, as `framedump_<id>_fFFF_nNNNN_<k><s>.bin`, and listed in the draw
+  record's `"rb"`. `fdread.py DUMP rb F OUTDIR` prints each image's lit-texel count and writes
+  PNGs and a sheet per frame.
+- **What it does not see:** depth. If n522's own pixels are the question (outcome A below),
+  the next instrument is a per-draw occlusion query or a depth readback.
+
+**Predictions** (written before queueing). The run: the gta-sa route, 320 s,
+`XEMU_FRAME_DUMP=30,after250,cap512,vtx64,rtt`, with `HAKUX_VTX_HAZARD=1` so the sky is clean.
+
+A texture holds "a silhouette" when 2% to 80% of its texels differ from its most common texel
+by more than 32 in any channel. A flat image does not, whatever its colour.
+
+- **A. The texture is right (P = 0.5).** The `tex0` readback at n522 holds a silhouette in most
+  frames that have one. Hypothesis 2 stands, and the defect is in n522's raster.
+- **B. The copy is wrong (P = 0.15).** The `srf` readback at n522 holds a silhouette and the
+  `tex` readback does not. The copy or the binding loses it (`copy_surface_to_texture`, or a
+  stale node chosen for the stage).
+- **C. CJ is never drawn into the target (P = 0.25).** The `color` readback after n4 has no
+  silhouette. The cause is in n0-n4's state.
+- **D. A chain step loses it (P = 0.1).** There is a silhouette after n4 and none at n10. The
+  first readback without one names the step.
+- **Separately, timing (P = 0.15).** The finishes `rtt` adds put CJ's shadow into the dump's
+  display images, which no earlier dump showed (feet visible in f0-f15 of 177443). That points
+  at hypothesis 3, whatever A-D say.
