@@ -22,8 +22,8 @@ window is sum(ms) / (60 x lines); an arm's is the MEAN OF ITS RUNS' periods.
 
 Legs:
   V  every run: >= V_min_marks marks, >= V_min_valid_starts valid starts, no
-     input failed or hung before `mark gameplay`, each arm >= V_min_warm_lines
-     warm pace lines, the run's arm read unambiguously from its env, and:
+     input failed or hung before `mark gameplay`, each arm >= V_min_cold_lines
+     cold pace lines, the run's arm read unambiguously from its env, and:
        ON  logs `[postput] on`, `[lockwake] on` and `submit frames: 3`
        OFF logs none of `[postput]`/`[lockwake]`, and `submit frames: 2`
   K  ON's cold start 1 period <= K_max ms (lockwake1011's own K bound).
@@ -125,7 +125,7 @@ def main():
 
     for arm in ('ON', 'OFF'):
         n = len(arms[arm]['cold'])
-        legs.append(('V', n >= e['V_min_warm_lines'], f'{arm}: {n} cold pace lines'))
+        legs.append(('V', n >= e['V_min_cold_lines'], f'{arm}: {n} cold pace lines'))
 
     c_on, c_off = raread.period(arms['ON']['cold']), raread.period(arms['OFF']['cold'])
     for leg, ok, what in legs:
