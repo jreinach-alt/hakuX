@@ -119,6 +119,23 @@ the sizing.
 If depth 3 wins, the player-facing change is the pref default in `xemu_android.cpp` (2 to 3). That file is
 fastpaths1010's, so this lane does not touch it.
 
+**The app disagrees with itself about the default.** Three places hold one:
+- the settings screen's: 3 (`SettingsActivity.kt`: `intDefaults` `"submit_frames" to 3`, and the picker's
+  `setupIntPicker(..., "submit_frames", 3, ...)`);
+- the native one: 2 (`xemu_android.cpp:1188`, `GetPrefInt(..., "submit_frames", 2)`);
+- the per-game screen's: 2 (`PerGameSettingsActivity.kt`, `globalValue("submit_frames", "2", ...)`).
+
+History:
+- 5a047fd645 (2026-03-23) set all of them to 2, with the comment "Triple buffering tanks performance" and no
+  measurement.
+- Two days later, f534b0bb51 ("vk: triple-buffer frame slots and batch redundant stalls") raised
+  `NUM_SUBMIT_FRAMES` to 3 "to reduce fence back-pressure during scene transitions". It restored 3 as the
+  settings UI's default, but not the native `GetPrefInt` default.
+
+So a player who never saves the setting runs depth 2, the depth the later commit meant to replace. The settings
+screen still shows "Triple (3)" for that player: `setupIntPicker` labels the button from `pgInt(key, 3)` when the
+pref is unset.
+
 On desktop the setter is never called, and the default there is already 3.
 
 ## 5. The A/B, registered
