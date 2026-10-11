@@ -849,7 +849,7 @@ note = "RETIRED (hostops 20:49 PDT): PR folded 87aefa1358 (crashattr: a title ve
 [lane.failgate]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/failgate/**", "docs/testing/hitch_report.py", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/*-failgate.sh", "docs/testing/jobs/selftest.d/89-title-verdict.sh", "docs/testing/jobs/selftest.d/99-play-share.sh", "docs/testing/jobs/selftest.d/99-verdict-10min.sh"]
+files = ["docs/lanes/failgate/**", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/*-failgate.sh", "docs/testing/jobs/selftest.d/89-title-verdict.sh", "docs/testing/jobs/selftest.d/99-play-share.sh", "docs/testing/jobs/selftest.d/99-verdict-10min.sh"]
 note = "ROW ADDED (hostops jam duty 2026-10-03 PDT): hakux-lane-failgate RUNNING with no row (briefs/failgate.md). title_verdict.py from [free] (verdict10min is done); request.sh LENT from [lane.localforge] for one hunk at the admission gate near the submit call (localforge ADDENDUM 10); the selftest fragment is NN-failgate.sh with two-digit NN. GRANTED 89-title-verdict.sh (hostops 18:3x PDT): the fold refused it at 18:23 as outside this row; the branch edits it, and its previous holder lane.savestate433 folded (1b40b9253a is on master). GRANTED 99-play-share.sh and 99-verdict-10min.sh (hostops 21:1x PDT): the fold refused both at 20:51 (FAILED @ 8f728257c7); no row claimed them, so they were free."
 
 [lane.issuesweep]
@@ -2322,8 +2322,8 @@ note = "RETIRED (lane.local 2026-10-11 02:54 PDT): folded as 72b4b07b77 (02:53 P
 [lane.soakvideo1011]
 issues = ["433"]
 standing = false
-files = ["docs/testing/dispatcher.sh", "docs/testing/request.sh", "docs/testing/jobs/selftest.d/*-soakvideo1011.sh", "AGENTS.md", "docs/lanes/soakvideo1011/**", "docs/testing/predictions/soakvideo1011-*"]
-note = "STARTED lane.local 2026-10-11 09:39 PDT (Sonnet): request.sh --video-seconds N / --video-after S; the dispatcher records screenrecord segments during a routed soak from the route mark, pulls them to results/<id>/video/ and deletes them from the device (burst_capture.py's temp-mp4 write, no new kind). Owner 10-11: stills may miss surface dropouts that show for a few frames (GTA San Andreas). dispatcher.sh and AGENTS.md from [free]; request.sh from [lane.failgate] (no unit, fully folded). Brief: briefs/soakvideo1011.md."
+files = ["docs/testing/dispatcher.sh", "docs/testing/request.sh", "docs/testing/hitch_report.py", "docs/testing/jobs/selftest.d/*-soakvideo1011.sh", "AGENTS.md", "docs/lanes/soakvideo1011/**", "docs/testing/predictions/soakvideo1011-*"]
+note = "STARTED lane.local 2026-10-11 09:39 PDT (Sonnet): request.sh --video-seconds N / --video-after S; the dispatcher records screenrecord segments during a routed soak from the route mark, pulls them to results/<id>/video/ and deletes them from the device (burst_capture.py's temp-mp4 write, no new kind). Owner 10-11: stills may miss surface dropouts that show for a few frames (GTA San Andreas). dispatcher.sh and AGENTS.md from [free]; request.sh from [lane.failgate] (no unit, fully folded). Brief: briefs/soakvideo1011.md. || GRANTED (lane.local 2026-10-11 09:55 PDT): docs/testing/hitch_report.py from [lane.failgate] (no unit, fully folded) for Addendum 1: window_frames() never counts the dispatcher's frames/fNNNNN.png as post-mark (FRAME_NAME wants HHMMSS-), so every frames-every soak without post-mark route shots is window-unmeasured."
 
 [lane.nfsdefault1011]
 issues = ["433"]
