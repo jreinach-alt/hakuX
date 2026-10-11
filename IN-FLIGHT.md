@@ -8,16 +8,15 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gtaroutes1011` | claude-sonnet-5 | 1h 27m | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
-| `gtasagpu1011` | claude-opus-5-5 | 47 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
-| `pathclass` | claude-sonnet-5 | 32 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
-| `snapshot1011` | claude-opus-5-5 | 15 min |  |
-| `soakvideo1011` | claude-sonnet-5 | 2h 39m | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request |
+| `gtaroutes1011` | claude-sonnet-5 | 1h 43m | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
+| `gtasagpu1011` | claude-opus-5-5 | 1h 2m | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
+| `pathclass` | claude-sonnet-5 | 47 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `snapshot1011` | claude-opus-5-5 | 30 min | snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 24 waiting, 1 running.
+- **Device queue:** 22 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -78,9 +77,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/gtaroutes1011` | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) | `a117f85735` | 2026-10-11 13:36 |
-| `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `d2b6d51d6f` | 2026-10-11 13:03 |
+| `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `3e0d3f2912` | 2026-10-11 13:56 |
 | `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `f442726741` | 2026-10-11 13:21 |
-| `lane/soakvideo1011` | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request (#433, 0. | `bee8b76571` | 2026-10-11 13:34 |
+| `lane/snapshot1011` | snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433) | `5c5fc9393d` | 2026-10-11 13:47 |
 
 ## Recently landed on master
 
@@ -90,4 +89,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 
-_Updated 2026-10-11 13:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 14:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
