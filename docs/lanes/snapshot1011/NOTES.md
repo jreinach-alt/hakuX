@@ -46,6 +46,24 @@ BQL held) that starts that many seconds after the GPU is created. Every step log
   `reason=controller-layout`, still running, and the region hash moves over the next 5 s.
 - `done`: slots `a` and `b` deleted; the remaining snapshot count is logged (0 expected).
 
+A hash taken while the game runs (scene B, c2, c4, c5) pauses the machine for the write-back and starts it
+again. The write-back (`nv2a_lock_fifo`) releases the BQL to wait for the GPU and retakes it while holding the
+FIFO lock, and a vCPU in a PFIFO register access holds the BQL while it waits for the FIFO lock; with the vCPUs
+stopped that cannot happen. Every other caller of `nv2a_lock_fifo` (reset, the run-state handlers, pre_load)
+already runs with the vCPUs stopped. The VBLANK timer has no run-state gate (`nv2a_vblank_timer_cb`), so a pause
+does not strand a flip wait.
+
+The state goes into the hard-disk image: the CD-ROM drive is read-only (`media=cdrom`), and the hard disk is
+attached as `index=0,media=disk` with its format probed (`system/vl.c:3078-3090`), so on a title run the snapshot
+lives in `titles.qcow2`. The 187 route has no `mark profile-saved`, so the run cannot make a golden from its
+harvest (`titles_first_run_golden`, `dispatcher.sh`).
+
 ## 3. Runs
 
-(Filled in as results arrive.)
+Reference for the disk checks: 1-1791713584-fastpaths1010-1525919 (187: Ride or Die, Nova, first-run):
+`hdd.json` sha256_at_start `40b403228897...`, bytes_at_start 18808832; `hdd.after.json` harvests 55530036 as
+`fa079adf42d5`.
+
+| Run | Ref | Result |
+|---|---|---|
+| 1-1791753422-snapshot1011-2350466 | a8c3031263 | queued |

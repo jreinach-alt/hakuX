@@ -15,4 +15,6 @@ Phase 0 of save states: internal snapshots in the HDD's qcow2, written by
 of the stub, with the device state and versioning a load needs to come back
 to the same scene.
 
-(In progress.)
+The test sequence (`HAKUX_SNAPSHOT_TEST=<seconds>`) runs the five phase-0
+criteria on a main-loop timer and logs one `[snap]` line per step; see
+`docs/lanes/snapshot1011/NOTES.md` sections 1 and 2. Results go in section 3.
