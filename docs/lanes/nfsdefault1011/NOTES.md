@@ -122,3 +122,74 @@ wrong); `route.sh --check` and `titlestate.py resolve-route --route simpsons-hit
 --device nova` both pass (`"state": "any", "refuse": null`). No new route-writing session was needed: the
 proven blind entry (rounds of START/A through every cutscene/menu, then a walk-and-turn loop with
 periodic jump) already does what step 3 asks for.
+
+**Resume, attempt 2 (this session).** The previous session's last commit was the prediction registration
+(`859815ff21`); its uncommitted `PR.md` diff (step 3 section written, not yet merged into the committed
+file) shows it had gone on to queue OFF1 (`...429629`) and ON1 (`...430174`) and then ended its turn --
+Addendum 2 is lane.local catching that same mid-wait ending and resuming this lane with instructions to
+read the two results in the foreground. Both runs finished clean on the device side (`DONE`, `result.json`
+present, no crash) by the time this session started, so no device time was lost, only a session's worth of
+wall clock. Addendum 2 said "queue ON2/OFF2 if both are clean" -- they are not: read below.
+
+**OFF1/ON1 read: VOID, both runs. Not a reader bug -- Homer is physically wedged in a corner of the
+house for the entire scored window, in both arms.** `simpread.py` on the two: B legs pass (booted,
+reached_gameplay, no crash, arm read correctly from env), but V fails both --
+`still_frac` 0.57 (OFF1) and 0.625 (ON1), both over the 0.5 bar (`hitch_report.position_fail`,
+`classify.motion` pixel-diff). Visual check of the route-frames confirms it: OFF1's `113705-gameplay.png`
+(the `mark gameplay` frame, Homer facing a wall corner, grass patch, Marge-portrait HUD) and
+`113828-play.png` (123 s later, last frame of the run) are pixel-identical -- he never left the corner the
+pre-mark walk drove him into. `first_last` is non-zero (0.178 OFF1, 0.044 ON1) because of incidental
+lighting/shadow flicker, not movement; `still_frac` is the leg that actually catches a parked character,
+and this is why NOTES.md section 2's earlier HUD check (built for NFS MW's desync, a different failure
+shape) would not have caught this one -- the race HUD check doesn't apply to Simpsons, and a static_window/
+position check is the right instrument for "right title, right screen, not moving," which is what this is.
+
+**This is not new to this lane's copy of the route -- the same wall-corner wedge is in frametrace's own
+"proven" run.** Re-ran `hitch_report.py` cold against `1-1791245535-lane.frametrace-680559` (the exact run
+NOTES.md section 3 and `simpsons-frametrace.route`'s own header cite as proof the route "reached and
+sustained free roam," "no dialog," `position.first_last: 0.59`): `liveness verdict: FAIL static window: 94%
+of pixels never moved more than 10/255 from the window's first frame, over 20 sampled frames`. Its own
+`175055-gameplay.png` and `175208-play.png` (113 s apart) are the same corner, same wall, same pose as this
+lane's OFF1/ON1. The `position.first_last: 0.59` figure frametrace's NOTES.md and this lane's own step-3
+writeup (above) leaned on was pathfind's **held, interactively-driven** confirmation session
+(`docs/lanes/pathfind/runs/screen-simpsons-hit-run/hold/`) -- a human/screen-gated run that actually walked
+around -- not a re-measurement of this blind scripted route's own replay. frametrace wrote the route to
+mimic that session's *entry* (the cutscene/menu taps), and that part reproduces faithfully; the free-roam
+*play* loop it then bolted on (walk forward, turn, forward, turn) was never independently checked against
+this instrument, and it drives Homer into the same dead-end every time -- fully deterministic, reproduced
+identically across three separate runs (OFF1, ON1, and frametrace's original) on three different builds and
+two different submit_frames arms, so this is route geometry, not timing jitter or this lane's switches.
+
+**Fix: one change to the play loop, not the entry.** The pre-mark `repeat 3` walk (`axis LY min` x3, ~4.5s
+of forward motion with no turn) is what drives Homer into the corner before `mark gameplay` even fires --
+changing it risks moving the mark's own position (and this lane does not have a reference for where `mark
+gameplay` should land, only that the entry sequence up to it is shared and correct). Left that alone.
+Changed the `repeat forever` play loop instead, to back out of whatever he's pressed against *before*
+resuming the forward-and-turn pattern, every iteration -- self-correcting rather than a one-shot escape, so
+a re-wedge later in a 300s window (turning into a different wall) also clears on the next lap:
+`axis LY max` (reverse) 1.5s, a wider turn (1.2s instead of 0.8s) while still reversing, then the original
+forward-and-turn body. This is the cheapest plausible fix (reverse-to-unstick is the standard escape for a
+concave-corner trap in a third-person walker, and costs one device-time pilot to check rather than several
+rounds of blind geometry guessing) -- not a rewrite of the entry sequence, which is correct and shared
+with other lanes' use of this route file. Queuing one OFF+ON pilot pair (2 runs, (300+90)*2=780s=13min,
+under the always-goes-through bar and covered by `pilots/nfsdefault1011.ok` regardless) to check the fix
+before committing to the full 4-run A/B this step needs.
+
+**Validation pilot: fix confirmed.** OFF (`1-1791744545-nfsdefault1011-620311`) and ON
+(`1-1791744548-nfsdefault1011-620739`), run on the same route (new play loop) against the same save.
+`simpread.py`: both B and V PASS on both runs now -- `still_frac` 0.1667 (OFF) and 0.0 (ON), both well under
+the 0.5 bar; `first_last` 0.65/0.66, an order of magnitude above the old stuck runs' 0.04-0.18. Visual
+check: OFF's `120148-gameplay.png` starts in the same corner as every prior run (confirming the pre-mark
+approach is unchanged, as intended), and `120320-play.png` (92s later) shows Homer has walked clear of the
+yard entirely and is standing at the house's front door with hedges and a "press Y" prompt visible --
+genuine free roam, not a different static spot. `W` also PASSED on this single-run-per-arm read (ON 59.29
+>= OFF 46.72 - 1.0), but that is 1 run per arm against the prediction's `runs_per_arm: 2`, not yet the full
+verdict. Queued the second pair to complete it: ON2 `1-1791745784-nfsdefault1011-874556`, OFF2
+`1-1791745785-nfsdefault1011-877404`.
+
+Both arms' gfps readings here (ON ~59, OFF ~42-47) are well above postput1010/vcpusleep-simpsons.json's
+~40 fps figure for this title. Not investigated further yet -- `title_verdict.judge()`'s
+`g_fps_mean_reported_not_judged` is the same instrument pathfind's own hold verdict used, and the fix
+changed where Homer walks (now covers open yard and a paved path, not wedged against one wall's texture),
+which is plausibly just a different, more open piece of geometry than the corner nook. Revisit once all 4
+runs are in and W's full verdict reads one way or the other.
