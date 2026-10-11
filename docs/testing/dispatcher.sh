@@ -962,6 +962,37 @@ dev_push() {
     [ "$(dev_sha256 "$dst")" = "$want" ] && [ "$(dev_mode "$dst")" = 660 ]
 }
 
+# profile_gate_check <request.json path> <rdir> [<title id>]: titlestate.py
+# admit(), re-run at claim (lane.profilegate1011, #433) exactly as request.sh
+# ran it at queue time -- nothing here is grandfathered, so a request written
+# straight into dispatch/queue (no request.sh) is gated the same way. TITLE_ID
+# defaults to the request's own title_id field when not given. On refusal,
+# writes the one-line reason to <rdir>/profile.refused and returns 3; the
+# caller decides how to report it (ERROR/log) and whether to restore hddPath,
+# same division as titles_disk_prepare/hdd.refused.
+profile_gate_check() {
+    local req="$1" rdir="$2" ttid="${3:-}" route find reason remake broken out rc textfile
+    [ -n "$ttid" ] || ttid=$(jq_get "$req" title_id "")
+    route=$(jq_get "$req" route_name "")
+    find=$(jq_get "$req" find_route "")
+    remake=$(jq_get "$req" remake_profile "")
+    broken=$(jq_get "$req" path_broken "")
+    textfile=$(mktemp)
+    python3 -c 'import json,sys; r=json.load(open(sys.argv[1])).get("route") or ""; open(sys.argv[2],"w").write(r)' \
+        "$req" "$textfile"
+    out=$(python3 "$TITLESTATE" admit ${ttid:+--title-id "$ttid"} ${route:+--route "$route"} \
+          --route-text-file "$textfile" ${DEVICE_LABEL:+--device "$DEVICE_LABEL"} \
+          ${find:+--find-route "$find"} ${remake:+--remake-profile "$remake"} \
+          ${broken:+--path-broken "$broken"} 2>&1)
+    rc=$?
+    rm -f "$textfile"
+    [ "$rc" = 0 ] && return 0
+    reason=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or sys.argv[1])' "$out" 2>/dev/null) \
+        || reason="titlestate.py admit failed: $out"
+    printf '%s\n' "$reason" > "$rdir/profile.refused"
+    return 3
+}
+
 # titles_disk_prepare <id> <rdir> [<request env json>] [<title id>] [<state>] [<save>]:
 # make the device's titles disk the composed goldens for this title and state
 # (titlestate.py, GOLDENS: every title's golden profile, minus this title's on
@@ -1715,25 +1746,9 @@ PYEOF
         # grandfathered here: a request written straight into dispatch/queue
         # (no request.sh) is checked exactly like any other. Before
         # titles_disk_prepare, so a refused run never touches the disk.
-        local gt_route gt_find gt_remake gt_broken gt_out gt_rc gt_reason gt_textfile
-        gt_route=$(jq_get "$req" route_name "")
-        gt_find=$(jq_get "$req" find_route "")
-        gt_remake=$(jq_get "$req" remake_profile "")
-        gt_broken=$(jq_get "$req" path_broken "")
-        gt_textfile=$(mktemp)
-        python3 -c 'import json,sys; r=json.load(open(sys.argv[1])).get("route") or ""; open(sys.argv[2],"w").write(r)' \
-            "$req" "$gt_textfile"
-        gt_out=$(python3 "$TITLESTATE" admit ${ttid:+--title-id "$ttid"} ${gt_route:+--route "$gt_route"} \
-                 --route-text-file "$gt_textfile" ${DEVICE_LABEL:+--device "$DEVICE_LABEL"} \
-                 ${gt_find:+--find-route "$gt_find"} ${gt_remake:+--remake-profile "$gt_remake"} \
-                 ${gt_broken:+--path-broken "$gt_broken"} 2>&1)
-        gt_rc=$?
-        rm -f "$gt_textfile"
-        if [ "$gt_rc" != 0 ]; then
-            gt_reason=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or sys.argv[1])' "$gt_out" 2>/dev/null) \
-                || gt_reason="titlestate.py admit failed: $gt_out"
-            printf '%s%s\n' "refused before the soak: no profile: " "$gt_reason" > "$rdir/ERROR"
-            log "  PROFILE GATE REFUSED: $gt_reason"
+        if ! profile_gate_check "$req" "$rdir" "$ttid"; then
+            log "  PROFILE GATE REFUSED: $(cat "$rdir/profile.refused" 2>/dev/null)"
+            printf 'refused before the soak: no profile: %s\n' "$(cat "$rdir/profile.refused" 2>/dev/null)" > "$rdir/ERROR"
             restore_hdd_pref
             mv "$req" "$rdir/request.json"; return 0
         fi
