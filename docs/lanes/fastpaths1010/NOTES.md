@@ -353,10 +353,12 @@ pilot-gate's own ~102 min estimate for route titles alone plus the soaks.
 | Crimson Skies: High Road to Revenge | ON/OFF | none/none | normal/normal | 59.90/59.94 | pass (4.2) |
 | Spikeout: Battle Street | ON/OFF | none/none | not yet reviewed by eye (route-frames pulled, not diffed) | 59.94/59.94 | pass (env/on-lines/hdd/marks all clean both arms) |
 | Jet Set Radio Future | ON/OFF | none/none | not yet reviewed by eye | 59.93/59.94 | pass (env/on-lines/hdd both arms clean; hdd golden_status None is expected for a first-run-state title, not a defect) |
+| Tork: Prehistoric Punk | ON/OFF | none/none | not yet reviewed by eye | 59.81/59.81 | pass (env/on-lines/hdd clean both arms) |
 
-Remaining in batch 2 (queued, awaiting device time): Tork, ToeJam & Earl
-III, Halo: Combat Evolved, Panzer Dragoon Orta, Call of Duty 3, Capcom vs.
-SNK 2 EO, The Simpsons Hit & Run, Dark Summit (ON/OFF each).
+All 4 route titles (Crimson Skies, Spikeout, JSRF, Tork) now screened:
+**pass**. Remaining in batch 2 (queued, awaiting device time): ToeJam &
+Earl III, Halo: Combat Evolved, Panzer Dragoon Orta, Call of Duty 3, Capcom
+vs. SNK 2 EO, The Simpsons Hit & Run, Dark Summit (ON/OFF each, soak).
 
 Batch 3 (queued after batch 2 drains): the 7 titles restored in 4.3 --
 Kabuki Warriors, Gunvalkyrie, 187: Ride or Die, Tony Hawk's Pro Skater 2x,
