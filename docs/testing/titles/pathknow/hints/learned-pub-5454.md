@@ -2,3 +2,4 @@
 - Midnight Club 3: DUB Edition (54540079, nova, pathfind 2026-10-02): gameplay in 6.2 min via publisher_logo START A -> title_screen START -> profile_creation A -> main_menu A -> name_entry START -> cutscene START A -> submenu B -> submenu B B B -> submenu LEFT A -> submenu B B B -> submenu UP A -> cutscene START B -> cutscene START A -> submenu DOWN A
 - MTV Celebrity Deathmatch (5454000B, nova, pathfind 2026-10-04): gameplay in 7.8 min via publisher_logo A -> cutscene A -> publisher_logo A -> title_screen START -> main_menu DOWN A -> submenu A -> submenu HOLD:A:1.5 -> submenu A -> cutscene START -> cutscene A -> unknown A -> unknown X -> unknown B -> unknown Y -> cutscene A
 - Grand Theft Auto III (5454000E, nova, pathfind 2026-10-11): gameplay in 2.2 min via intro_video A -> title_screen START -> cutscene A
+- Grand Theft Auto Vice City (5454000F, nova, pathfind 2026-10-11): gameplay in 1.4 min via publisher_logo A -> cutscene A
