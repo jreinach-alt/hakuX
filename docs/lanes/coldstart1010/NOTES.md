@@ -143,3 +143,91 @@ a prediction:
 |---|---|---|---|---|---|---|---|---|
 | 4030728 | 39.4 | 34.3 | 33.5 | 62 % | 3.78 | 1.22 | 4.16 | 1.42 |
 | 4034875 | 37.9 | 34.1 | 33.6 | 50 % | 3.92 | 1.23 | 4.39 | 1.28 |
+
+## 6. Step 1 census: cold start 1 against the warm countdown (six switches, ref 786f82d4bb)
+
+Runs: 1-1791695413-coldstart1010-2905497 and 1-1791695414-coldstart1010-2905728. Configuration:
+- perflog build, six switches, `HAKUX_FRAMETRACE=1 HAKUX_PROBE_WAITS=1`;
+- read with `census.py` (this directory), window `mark` -2 .. +1.5 s; `[probe1010]` -4 .. +3.5 s.
+
+Validity:
+- 12/12 marks in both runs; 12 and 11 valid starts (run 2 dropped go3: `pad.sh axis HATX` timed out);
+- no boot input failure;
+- the g11 frames show the car moving (s1 33 mph, s12 66 mph);
+- `submit frames: 2` and `(2 frames` logged.
+
+Pace: cold start 1 42.0 / 43.4 ms, warm 34.6 / 34.4. Values are the mean of the two runs.
+
+**PFIFO thread, ms per frame.** Schedstat (frametrace) and the phase timers. `busy` = P - pidle.
+
+| | cold | warm | cold - warm |
+|---|---|---|---|
+| recording (phase Draw) | 11.53 | 9.14 | +2.39 |
+| finishes (phase Fin) | 2.03 | 2.21 | -0.18 |
+| ... of which fence waits (Fen) / submit (Sub) | 1.85 / 0.13 | 2.00 / 0.15 | |
+| ring fence waits: rotation, `[probe1010]` ms blocked (inside Fen) | 0.83 | 0.30 | +0.53 |
+| ring fence waits inside process_pending_reports, pfifo.lock held (`p_c_rep`) | 0.96 | 0.41 | +0.55 |
+| lock waits on this thread (hakuX-cpu Pull Lk) | 0.02 | 0.01 | 0 |
+| pipeline and shader creation (phase Shd; `[shd413]` 0.02 creates/frame, 0.00 ms) | 0.00 | 0.00 | 0 |
+| texture uploads (phase Tex; xemu-work TexU 0) | 0.00 | 0.00 | 0 |
+| surface uploads, downloads and S2T (phase Surf) | 2.53 | 1.67 | +0.86 |
+| untimed (busy - Draw - Fin - Surf - Tex - Shd) | 14.94 | 10.73 | +4.21 |
+| busy (p_run 27.64 / 22.40 + p_rq 1.16 / 0.73 + fence and other blocking 2.22 / 0.61) | 31.02 | 23.74 | +7.28 |
+| idle, waiting for the guest (pidle) | 13.23 | 11.25 | +1.98 |
+| **P, the frame (= busy + idle)** | **44.25** | **34.99** | **+9.26** |
+
+**Alongside, per frame.**
+
+| | cold | warm |
+|---|---|---|
+| GPU busy (frametrace `gpu`) | 16.35 | 12.83 |
+| render passes (frametrace `rp`; rpbrk 60-flip count) | 51.8 (70.3) | 27.0 (26.9) |
+| ... `srf` breaks (surface switch) / `clr` / `qry` / `fin` / `nd` | 57.1 / 6.5 / 2.0 / 1.7 / 3.0 | 14.9 / 5.6 / 2.0 / 1.4 / 3.1 |
+| S2T (surface-to-texture) / PGen / SGen / TexU / Clr (xemu-work) | 48 / 0 / 0 / 0 / 7.0 | 8.1 / 0 / 0 / 0 / 6.1 |
+| draws (`[probe1010]`) | 1713 | 1339 |
+| vCPU on CPU (`v_run`) | 36.25 | 30.15 |
+| guest work (ftbuckets) | 27.55 | 21.70 |
+| guest lockw (DMA_PUT store waiting on pfifo.lock) | 4.41 | 1.95 |
+| guest busy (work + all v_blk) | 34.25 | 26.0 |
+| frames past 2 VBLANKs, either thread (without lockw) | 59 % (33 %) | 9 % (5 %) |
+
+**What sums and what does not.**
+- The frametrace rows sum to P exactly: they are the PFIFO thread's schedstat.
+- The phase timers cover 16.1 ms of the cold 31.0 busy, and 13.0 of the warm 23.7.
+- The untimed rest (14.9 cold, 10.7 warm) is code outside every phase timer: the pusher's pushbuffer fetch,
+  method dispatch for state methods (transform constants, inline data) and report handling, plus the perflog
+  build's own counters. It scales with the draw count: 1.28x the draws cold, 1.39x the untimed.
+- The two fence rows overlap Fen and each other: a rotation wait inside a STALLED finish counts in all three.
+
+**Instrument cost.** This build is perflog. The PFIFO thread's `p_run` is 27.6 cold and 22.4 warm here,
+against 19.3 and 16.8 in drawrec1010's plain probe base (section 1; older ref bf43e8c4ef). The cold pace is 42-43
+ms here against 37.9-39.4 plain.
+
+The slower PFIFO thread changes the regime this lane is about:
+- it catches up with the guest less often, so it takes 1.2-1.3 rotations a frame instead of 3.8, and blocks
+  0.8 ms a frame instead of 4.2;
+- `p_c_rep` is 1.0 instead of 6.1, and the guest's lockw is 4.4 instead of 9.0.
+
+So the perflog census says where the PFIFO thread's time goes. Only the plain runs (section 1, and the A arm
+of the A/B) measure the lock waits a player gets. The A arm runs plain on this ref, so it also gives the
+instrument's cost on the pace.
+
+**Where the cold excess is, in the plain build** (section 1). Cold start 1 runs 38.7 ms against 34.2 warm.
+The guest's busy time is 38.5 against 28.2:
+- guest work is +5.1 ms. This is the guest's own cold work, and the renderer cannot remove it.
+- lockw is +5.35 ms. This is the renderer's share: fence waits and a longer parse under pfifo.lock.
+
+Without lockw the cold guest is busy 29.1 ms, under 33.3. The share of frames past 2 VBLANKs falls from 60 % to
+24 %. So the renderer's share is the larger lever at the cold start, and step 2 goes ahead.
+
+**Why the cold start runs 2.6x the render passes.**
+- The extra passes are `srf` breaks: 57 against 15 a frame. Each is a render-target switch, with 48 against 8
+  surface-to-texture copies a frame (S2T: the guest renders to a surface, then samples it).
+- No pipeline or shader is created (PGen, SGen and `[shd413]` all 0), no texture is uploaded (TexU 0), and
+  no surface is created. Clears are +0.9 a frame.
+- The frames say why. At `mark gameplay` in both runs (`route-frames/*-gameplay.png`), the first race runs in
+  rain, with streaks and a wet, reflective road. The restart at `go2` is dry, with the same street, cars and
+  camera.
+- So the 2.6x passes, the 1.28x draws and most of the +5 ms of guest work are the game's weather on the first
+  start. That is the scene, not a renderer first-use cost. The renderer pays for it through recording (+2.4),
+  Surf (+0.9), untimed method work (+4.2) and the GPU (+3.5, still well under the frame).
