@@ -239,3 +239,92 @@ the fix: 121 passed, 0 failed.
   command.
 - The idlewatch patch (outside this repo) is written out in PR.md for
   lane.local to apply at fold, not applied here.
+
+## Why attempt 2 did not finish (addendum 2, resumed 10-11, attempt 3)
+
+Attempt 2 (the resumed session above, "addendum 1") fixed the race between
+the promoted restore finishing and the dispatcher's next claim, set PR.md
+`State: ready`, and stopped there -- before lane.local's addendum 2 review
+found that the `wait` loop still starves on a fed queue, which is the exact
+case this lane exists for. Everything above this section stands; this
+section and the fix below are the resumed (third) attempt.
+
+**What goes wrong.** In `wait`'s `rrc=1` branch ("other" is running,
+hold.sh:322-324 before this fix), the loop only echoes a message and
+sleeps -- it never calls `promote`. Promotion only happens inside
+`build_gate`'s refusal (hold.sh:213-225), and that is only reached from the
+`rrc=2` branch ("nothing running"). On a queue that is actually fed (the
+case the brief opens with: 15:36-10-10's 7+ starvations, every night this
+weekend's fastpaths/coldstart streams), the dispatcher reclaims within
+seconds of any run ending (`dispatcher.sh:2354-2363`, same race addendum 1
+described), so `running/` holds something for the label almost every time
+`wait` polls. `rrc` reads 1 almost every poll; `rrc=2` (and therefore
+`build_gate`, and therefore `promote`) is reached only in the rare instant
+between one run ending and the next being claimed. So on a fed queue
+`wait` times out at `rrc=1` without ever promoting anything -- worse than
+before this lane, when hostops at least promoted it by hand. The live
+dispatch dir has exactly this case right now: `0-1791706988-dispatch.restore--4043569.req`
+already promoted by hand again, per the addendum.
+
+**The fix: promote from the `rrc=1` branch too, not only from `build_gate`'s
+refusal.** Before sleeping in that branch, make sure a `0-`-prefixed
+restore for the label is in `queue/`, so the dispatcher's very next claim
+-- the moment the in-flight "other" request ends -- is the restore, and
+the `rrc=0` branch (already fixed by addendum 1) catches it immediately.
+Two sub-cases, both handled by one new `device_build.py promote ... --force`
+call:
+
+- **A bare restore is already pending** (the usual steady state:
+  `queue_master_restore`, the dispatcher's own post-run hook, leaves one
+  after every off-master run, deduped to one by `restore_pending()`) --
+  `cmd_promote`'s existing pending-check (`_restore_path(..., "queue")`)
+  finds it and promotes it exactly as before; `--force` changes nothing
+  here, since that branch runs before the force-skippable check.
+- **None is pending**, because the in-flight "other" request has not
+  finished and written its result.json yet, so `last_run()` still reads
+  whatever ran before it -- which, on a fed release-tier queue, is
+  typically another master run, so `restore_needed()` reads false and
+  plain `promote` would print "already on master; no restore needed" and
+  queue nothing (confirmed by reading `cmd_promote`, device_build.py:213-
+  219: the `rec is None` and `not restore_needed(rec)` returns both happen
+  before any queuing). `--force` skips both of those checks and queues +
+  promotes unconditionally.
+
+`--force` is a new keyword arg on `cmd_promote` (device_build.py:204),
+threaded from a `--force` CLI flag in `main` (device_build.py:282-283).
+It changes nothing about the pending/running short-circuits (they still
+run first and return early either way) -- it only removes the "is a
+restore even needed" guard on the final queue-a-new-one path, since that
+guard is reading stale state by construction in this call site.
+
+**Confirmed `restore_pending()` matches the `0-` file, so no duplicate.**
+`restore_pending()` (device_build.py:153-172) globs `queue/*.req` and
+`running/*.req` with no prefix filter, matching on `requester ==
+"dispatch.restore"` and `device == label` alone -- a `0-`-prefixed file
+satisfies that exactly as a bare one would. So when the in-flight "other"
+request finishes and the dispatcher's own `queue_master_restore` hook runs
+for it, `restore_pending()` sees the already-promoted `0-...` file and
+queues nothing more. Verified with leg (g) below, not just read.
+
+**Poll interval.** The `rrc=1` branch now also drops `interval` to 5 (the
+same cap addendum 1 uses in the `rrc=2` branch once a restore is promoted
+there), since once this branch has promoted a restore, missing its
+transition to `running/` for up to 15 s is exactly the gap addendum 1
+closed for the other path -- a promoted restore waiting in `queue/` should
+always be polled at the 5 s cap, regardless of which branch did the
+promoting.
+
+**Selftest.** `99-restore-priority.sh` leg (f) is extended with two more
+checks in the same fixture (a bare restore already queued gets promoted in
+place; none queued gets exactly one new `0-`-prefixed one), and a new leg
+(g) confirms the forced queue does not get a duplicate from
+`device_build.py restore` once the in-flight run's result lands. A new
+mutant (the `--force` branch's queuing call replaced with the unforced
+`cmd_promote` path, i.e. `force=False` hardcoded) turns both of (f)'s new
+checks red: with the master-reading guard back in place, the "none
+pending, other running, last result on master" case queues nothing, same
+as the defect this addendum fixes.
+
+Ran `SELFTEST_ONLY="99-build-gate.sh 99-restore-priority.sh 99-hold-take.sh"
+bash docs/testing/jobs/selftest.sh` in the foreground after the fix: see
+the final count below.
