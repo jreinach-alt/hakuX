@@ -901,7 +901,7 @@ files = ["docs/lanes/usage24h1009/**"]
 note = "RETIRED (lane.local 2026-10-10 14:41 PDT): folded as c271f515b4 (14:40 PDT); unit gone. Held now by other rows: docs/testing/jobs/usage/**, docs/testing/jobs/selftest.d/89-usage-mode.sh."
 
 [free]
-# TAKEN (lane.local 2026-10-11 09:41 PDT) by lane.soakvideo1011: dispatcher.sh and AGENTS.md from [free]; request.sh from [lane.failgate] (no unit; lane/failgate fully folded, 51305b71dd).
+# TAKEN (lane.local 2026-10-11 09:39 PDT) by lane.soakvideo1011: dispatcher.sh and AGENTS.md from [free]; request.sh from [lane.failgate] (no unit; lane/failgate fully folded, 51305b71dd).
 # RELEASED (lane.local 2026-10-11 09:17 PDT) by retiring lane.fastpaths1010 (folded 6d8947bb47): SettingsActivity.kt, PerGameSettingsManager.kt, activity_settings.xml. MainActivity.kt, PerGameSettingsActivity.kt, strings.xml -> lane.nfsdefault1011; xemu_android.cpp TAKEN from [free] by lane.nfsdefault1011.
 # RELEASED (lane.local 2026-10-11 05:41 PDT) by retiring lane.lockwake1011 (folded 4d321a761b): pfifo.c, user.c, nv2a_int.h, nv2a.c, profile.h, profile.c, nv2a_index.json. debug.h back to lane.remote, which lent it.
 # RELEASED (lane.local 2026-10-11 03:10 PDT) by retiring lane.coldstart1010 (folded b9212b3462): vk/draw.c, renderer.h, renderer.c, buffer.c, vk/surface.c, reports.c, pgraph.c. nv2a_index.json -> lane.lockwake1011.
@@ -2323,7 +2323,7 @@ note = "RETIRED (lane.local 2026-10-11 02:54 PDT): folded as 72b4b07b77 (02:53 P
 issues = ["433"]
 standing = false
 files = ["docs/testing/dispatcher.sh", "docs/testing/request.sh", "docs/testing/jobs/selftest.d/*-soakvideo1011.sh", "AGENTS.md", "docs/lanes/soakvideo1011/**", "docs/testing/predictions/soakvideo1011-*"]
-note = "STARTED lane.local 2026-10-11 09:41 PDT (Sonnet): request.sh --video-seconds N / --video-after S; the dispatcher records screenrecord segments during a routed soak from the route mark, pulls them to results/<id>/video/ and deletes them from the device (burst_capture.py's temp-mp4 write, no new kind). Owner 10-11: stills may miss surface dropouts that show for a few frames (GTA San Andreas). dispatcher.sh and AGENTS.md from [free]; request.sh from [lane.failgate] (no unit, fully folded). Brief: briefs/soakvideo1011.md."
+note = "STARTED lane.local 2026-10-11 09:39 PDT (Sonnet): request.sh --video-seconds N / --video-after S; the dispatcher records screenrecord segments during a routed soak from the route mark, pulls them to results/<id>/video/ and deletes them from the device (burst_capture.py's temp-mp4 write, no new kind). Owner 10-11: stills may miss surface dropouts that show for a few frames (GTA San Andreas). dispatcher.sh and AGENTS.md from [free]; request.sh from [lane.failgate] (no unit, fully folded). Brief: briefs/soakvideo1011.md."
 
 [lane.nfsdefault1011]
 issues = ["433"]
