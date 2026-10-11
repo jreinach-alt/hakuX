@@ -70,7 +70,26 @@ apart.
 
 ## 1. Which site holds the cold wait
 
-(pending: two plain runs of the stacked configuration with `HAKUX_FRAMETRACE=1` at this lane's head)
+Pending: two plain runs of the stacked configuration with `HAKUX_FRAMETRACE=1` at ee62b4edb5, queued
+2026-10-11 03:25 PDT as 1-1791714330-lockwake1011-1625482 and 1-1791714331-lockwake1011-1625531 (500 s each,
+release tier). At queue time they sat behind 54 fastpaths1010 screen requests, about 4.3 h of Nova time.
+
+What a reading has to tell apart, written before the data. With `HAKUX_POSTED_PUT=1` a DMA_PUT store that finds
+the lock busy does not wait for it. It takes the lock (`kick`) only when it reads `parked` set, and the PFIFO thread
+holds the lock with `parked` set only for the instructions on either side of its condition wait. So:
+- **A long `kick` wait** means the store read `parked` while the PFIFO thread was in its wait, and then lost the
+  lock: to a third thread that kicked, or to the PFIFO thread itself, woken by that kick and now running its loop.
+  Once the PFIFO thread is awake, the store no longer needs the lock at all, so the wait is pure waste and
+  a lock-free wake removes it. Expected signature: `vhp_run` high, `lw_parked` low.
+- **A long `put` wait** means `pfifo_dma_put_may_post()` refused the store, which in this configuration should only
+  happen on a channel switch. A non-zero `put` is a finding in itself.
+- **A long `get`, `ref` or `oth` wait** is a register the XDK writes that no lane has looked at. Name it, and price
+  posting it against shortening what PFIFO does under the lock.
+- **`lw_parked` high with `vhp_run` low**: the waits ended while the PFIFO thread was parked, so another thread held
+  the lock. The pfifo.lock takers off the PFIFO thread are the Vulkan display path
+  (`pgraph_vk_get_framebuffer_surface`, which can wait on a fence under the lock when external memory is used),
+  the surface download waits (`vk/surface.c`, kick and release), and PGRAPH MMIO writes from the vCPU
+  (`pgraph.c`, not counted in `lockw`).
 
 ## 2. Decision
 
