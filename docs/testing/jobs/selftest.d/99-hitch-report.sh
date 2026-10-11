@@ -183,6 +183,96 @@ hr_mutant "ignore the big-stall bar" "$HF/big_stall_fail.logcat" "False" \
 hr_mutant "ignore the per-minute bar" "$HF/rate_fail.logcat" "False" \
     'if rep["per_min_after_warmup"] is not None and rep["per_min_after_warmup"] > HITCHES_PER_MIN_BAR:' \
     'if False:'
+
+echo "== hitch_report: window_frames() reads the dispatcher's own frames/ names (#433 Addendum 1)"
+# This fixture's names, mark, and soak-end line are copied from a real
+# dispatcher run, 1-1791733228-lane.local-3377455 (docs/lanes/soakvideo1011/
+# NOTES.md): the mark at 09:26:13.399, soak end at 09:36:55.822, and five of
+# its real frames/ names (f00008..f00012.png). The dispatcher names its
+# stills f00001.png, f00002.png, ... -- no HHMMSS- prefix at all -- so
+# FRAME_NAME (above) never matches one, and before this fix window_frames()
+# always read 0 post-mark frames/ samples regardless of when they were
+# taken. That is the real defect found in 6 verdicts on 10-10/10-11: every
+# --frames-every soak whose route took no route-frames shots after mark
+# failed screening as "window unmeasured", 3377455 included (29 stills, mark
+# 09:26:10-ish, fps_ok 0.948 -- a passing run otherwise). dispatcher.sh's
+# start_frame_capture now writes frames/index.tsv, one device-clock HH:MM:SS
+# reading per still, and _frame_time reads it before falling back to
+# FRAME_NAME. The five mtimes below (09:26:01, :32, 09:27:03, :34, 09:28:04)
+# are 3377455's own real frames/f00008..f00012.png mtimes.
+HW="$T/hitchwin433"; rm -rf "$HW"; mkdir -p "$HW/frames"
+echo '10-11 09:26:13.399 I/hakuX-route(26528): mark gameplay' > "$HW/logcat.txt"
+echo '10-11 09:36:55.822 I/hakuX-route(12257): soak end' >> "$HW/logcat.txt"
+for n in 08 09 10 11 12; do : > "$HW/frames/f000$n.png"; done
+cat > "$HW/frames/index.tsv" <<'TSV'
+f00008.png	09:26:01
+f00009.png	09:26:32
+f00010.png	09:27:03
+f00011.png	09:27:34
+f00012.png	09:28:04
+TSV
+
+check "window_frames() measures 3377455's real post-mark frames/ stills with index.tsv present" \
+    python3 -c '
+import sys
+sys.path.insert(0, sys.argv[2])
+import hitch_report as hr
+mark_t = hr.ts("10-11 09:26:13.399")
+end_t = hr.ts("10-11 09:36:55.822")
+source, after, why = hr.window_frames(sys.argv[1], mark_t, end_t)
+assert source == "frames" and len(after) == 4 and why is None, (source, len(after), why)
+' "$HW" "$TESTING"
+
+rm -f "$HW/frames/index.tsv"
+check "window_frames() is unmeasured on the same stills with no index.tsv (the pre-fix shape: f00001.png names alone carry no time)" \
+    python3 -c '
+import sys
+sys.path.insert(0, sys.argv[2])
+import hitch_report as hr
+mark_t = hr.ts("10-11 09:26:13.399")
+end_t = hr.ts("10-11 09:36:55.822")
+source, after, why = hr.window_frames(sys.argv[1], mark_t, end_t)
+assert source is None and after == [] and why == "0 post-mark route-frame(s) and 0 post-mark frames/ sample(s), need 3 of one", (source, after, why)
+' "$HW" "$TESTING"
+
+cat > "$HW/frames/index.tsv" <<'TSV'
+f00008.png	09:26:01
+f00009.png	09:26:32
+f00010.png	09:27:03
+f00011.png	09:27:34
+f00012.png	09:28:04
+TSV
+hr_mutant_window() {   # <name> <want: measured True|False> <old> <new>
+    local name="$1" want="$2" old="$3" new="$4"
+    python3 - "$TESTING/hitch_report.py" "$T/hr_mutant.py" "$old" "$new" <<'PY'
+import sys
+src, dst, old, new = sys.argv[1:5]
+s = open(src).read()
+if s.count(old) != 1:
+    sys.exit("anchor not found once: %r" % old)
+open(dst, "w").write(s.replace(old, new))
+PY
+    if [ $? != 0 ]; then bad "mutant '$name': its anchor is gone from hitch_report.py -- update the mutant"; return; fi
+    out=$(python3 -c '
+import sys
+sys.path.insert(0, sys.argv[2])
+import hr_mutant as hr
+mark_t = hr.ts("10-11 09:26:13.399")
+end_t = hr.ts("10-11 09:36:55.822")
+source, after, why = hr.window_frames(sys.argv[1], mark_t, end_t)
+print(source == "frames" and len(after) == 4)
+' "$HW" "$T")
+    rm -f "$T/hr_mutant.py"
+    case "$out" in
+        "$want") ok "mutant caught: $name" ;;
+        *) bad "mutant SURVIVED (got $out, want $want): $name" ;;
+    esac
+}
+hr_mutant_window "revert the fix: ignore index.tsv and the window goes back to unmeasured" "False" \
+    'if index and base in index:' 'if False:'
+rm -rf "$HW"
+unset HW
+
 rm -rf "$HF"
 unset HF SONIC_PACE SONIC_SHD AZURIK_BIG_PACE AZURIK_BIG_SHD ALIEN_PACE rate_lines t n \
       AZURIK_BOTH_PACE AZURIK_BOTH_SHD AZURIK_BOTH_RDC
