@@ -524,6 +524,24 @@ On the resume: `git fetch && git merge origin/master` (it should be clean, since
 here), check that `git diff --stat origin/master...HEAD` shows only this lane's files, run preflight, set
 `State: ready` in PR.md, push, and remove `WAITING`. No device time is needed.
 
+### 4.12 Why attempt 5 stopped, and the merge (attempt 6, 2026-10-10 21:01 PDT)
+
+Attempt 5 did not fail. It ended on purpose, waiting on an outside event: drawrec1010's fold (`WAITING` @
+015da20eaf said `fold drawrec1010`). That fold landed at 20:58 as 9b26a9647c, and Addendum 3 (20:59) said to merge
+master and go ready, with no new device runs.
+
+Attempt 6 merged origin/master @ 9b26a9647c at 864d86338f. The merge was clean. Besides drawrec1010's commits,
+which were already here, it brought in only usagerule1010's docs and job files, and nothing under `hw/`. It
+removed `WAITING` at 7809d6f9cc. On the merged head:
+- `git diff --stat origin/master...HEAD` shows only this lane's files: the three nv2a files,
+  `docs/lanes/postput1010/**` and the three predictions;
+- `nv2a_index.py check` passes, with line drift only (12 symbols), so the index is not regenerated and is not on
+  `Files:`;
+- `preflight.sh` passes, including the index, territory and board-files gates;
+- `selftest_postput.sh` passes, with the switch on and off and all five mutants red.
+
+The verdict stands: keep `HAKUX_POSTED_PUT` default-off. PR.md is `State: ready`.
+
 ## 5. For the next lane
 
 - `ppread.py` cannot see motion. V's moving-car check is by eye from `route-frames/*-s*-g11.png`, and goes here.

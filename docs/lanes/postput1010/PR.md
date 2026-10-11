@@ -1,8 +1,8 @@
 postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5)
-State: not ready (all runs read; waiting on drawrec1010's fold, then one merge of origin/master, then ready; see WAITING)
+State: ready
 
 Lane: postput1010       Issue: #433 (umbrella), none filed
-Base: master @ 6052ff98d4 (merged in at b9b36d655c; reportasync1010 is folded), + origin/lane/drawrec1010 @ f3d0e45979 merged at 772429156c (Addendum 2; not folded yet). The first A/B ran on c63ec9774f, the full-switch pair on 772429156c.
+Base: master @ 9b26a9647c (merged in at 864d86338f; reportasync1010 and drawrec1010 are both folded). The first A/B ran on c63ec9774f, the full-switch pair on 772429156c (origin/lane/drawrec1010 @ f3d0e45979 merged in, per Addendum 2).
 Files: hw/xbox/nv2a/user.c, hw/xbox/nv2a/nv2a_int.h, hw/xbox/nv2a/pfifo.c, docs/lanes/postput1010/**, docs/testing/predictions/postput1010-*.json
 Prediction: docs/testing/predictions/postput1010-nfs.json @ 1987085cd7bf0642c4678302bef5b9b9f9157bad3d9a6a341b318fec7446d7a5 (race start, A/B/B/A, plain build, ref c63ec9774f): FAIL (P, T, G fail; C passes)
 Prediction: docs/testing/predictions/postput1010-ftpair.json @ 45cb51e232b56881d4eb20f03dc5214f05db490463f6f8adea009865377849de (race-start frametrace pair, perflog, ref c63ec9774f): FAIL (L, Q fail on A's side: the wait is not on this base)
@@ -99,5 +99,8 @@ default-on, two checks, neither run here: (1) a GPU-paced title, The Simpsons Hi
 A/B with the store, because it lost 40.05 -> 36.22 fps with `c2dfca18a1`; (2) NFS race start 1 measured cold,
 several boots per arm, on the full-switch base, to put a size on C2. The pixel leg (brief step 5) was gated on P
 and is not run.
+
+On the merged head (864d86338f), preflight passes and the selftest passes, with the switch on and off and
+all five mutants red. `nv2a_index.py check` shows line drift only, so the index is not regenerated.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
