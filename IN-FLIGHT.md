@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `coldstart1010` | claude-opus-5-5 | 1h 4m | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) |
-| `fastpaths1010` | claude-sonnet-5 | 2h 1m | fastpaths1010: register step-3 screen prediction; scope to 20 of 44 (#433, 0.5) |
+| `coldstart1010` | claude-opus-5-5 | 1h 19m | coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5) |
+| `fastpaths1010` | claude-sonnet-5 | 2h 16m | fastpaths1010: register step-3 screen prediction; scope to 20 of 44 (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lanelocal-shuffle`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 8 waiting, 0 running.
+- **Device queue:** 7 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -90,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 lane.fgrace1010 -- the display guard's "guest exit mid-route" leg loses a race and fails folds (#433, 0.5)
 - 2026-10-10 lane.fleetflush1010 -- fleet.py's FAIL lines land mid-line when stdout and stderr share a file (#433, 0.5)
 
-_Updated 2026-10-10 23:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 23:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
