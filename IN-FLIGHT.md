@@ -8,9 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gtaroutes1011` | claude-sonnet-5 | 3 min | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
-| `nfsroute1011` | claude-sonnet-5 | 1h 28m | nfsroute1011: status -- Step 3 offline work done, waiting on ref-staging fix |
-| `soakvideo1011` | claude-sonnet-5 | 1h 28m | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request |
+| `gtaroutes1011` | claude-sonnet-5 | 18 min | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
+| `soakvideo1011` | claude-sonnet-5 | 1h 43m | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `owner-nfs-play`
@@ -76,7 +75,6 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/gtaroutes1011` | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) | `91b58dbc48` | 2026-10-11 16:28 |
-| `lane/nfsroute1011` | nfsroute1011: status -- Step 3 offline work done, waiting on ref-staging fix | `95d0893061` | 2026-10-11 12:33 |
 | `lane/soakvideo1011` | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request (#433, 0. | `ff1bcface2` | 2026-10-11 13:56 |
 
 ## Recently landed on master
@@ -88,4 +86,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 
-_Updated 2026-10-11 16:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 16:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
