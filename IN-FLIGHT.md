@@ -6,14 +6,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 5h 14m | fastpaths1010: MLB SlugFest 2003, Ratatouille pass (batch 4) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 2 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -71,9 +69,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/fastpaths1010` | fastpaths1010: MLB SlugFest 2003, Ratatouille pass (batch 4) | `24604fab69` | 2026-10-11 08:10 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -88,4 +84,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 lane.usagerule1010: usage Low enters only at 80% of the week used AND a projection over 100% (#433, 0.5)
 - 2026-10-10 reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5)
 
-_Updated 2026-10-11 08:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 08:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
