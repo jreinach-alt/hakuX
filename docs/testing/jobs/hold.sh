@@ -195,12 +195,32 @@ PY
 # the labels in HOLD_RELEASE_LABELS are gated (nova); the Thor's screening
 # runs deliberately vary their env. HOLD_RELEASE_LABELS="" turns it off.
 HOLD_RELEASE_LABELS="${HOLD_RELEASE_LABELS-nova}"
+label_gated() { case " $HOLD_RELEASE_LABELS " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+# ON A REFUSAL, PROMOTE THE RESTORE (#433, 10-11). The dispatcher's own
+# off-master restore (queue_master_restore) names its request with a bare
+# id, so it serves in ASCII order behind every release-tier request -- which
+# is every request a lane queues on a night like 15:36-10-10's, so the lone
+# restore starved for hours and a human renamed it by hand each time. Every
+# served request installs its own apk and writes its own env before any
+# soak starts (serve_one, dispatcher.sh:1375 build_ref, :1410 adb install,
+# :1425 apply_env_pref, ahead of the restore exit at :1445 and the title/suite
+# paths after it) -- so the bare id costs nothing to a served measurement.
+# It only matters here, to a caller about to run something BY HAND on
+# whatever the hold leaves installed. So the gate itself promotes: it finds
+# the device's pending restore and gives it the file a "0-" prefix, queuing
+# one first if none is pending. device_build.py's own restore_request stays
+# bare; only the promote command's rename adds the prefix.
 build_gate() {   # $1 label ; 0 pass, 4 refused (named on stderr)
-    case " $HOLD_RELEASE_LABELS " in *" $1 "*) ;; *) return 0 ;; esac
+    label_gated "$1" || return 0
     local out rc
     out=$(python3 "$(dirname "$0")/device_build.py" check "$D" "$1" 2>&1); rc=$?
     [ "$rc" -eq 0 ] && return 0
     echo "hold.sh: refusing $1: $out" >&2
+    if [ "$rc" -eq 4 ]; then
+        local pout
+        pout=$(python3 "$(dirname "$0")/device_build.py" promote "$D" "$1" 2>&1)
+        echo "hold.sh: $pout" >&2
+    fi
     return "$rc"
 }
 
@@ -254,7 +274,82 @@ case "$op" in
         valid tag "$3"
         [[ "$4" =~ ^[0-9]+$ ]] || { echo "hold.sh: timeout '$4' is not whole seconds" >&2; exit 2; }
         deadline=$(( $(date +%s) + $4 ))
-        build_gate "$label" || exit $?
+        # A build-gate refusal (4) promoted the restore (build_gate's own
+        # side effect); keep polling the gate, not exit at once, so a caller
+        # already willing to wait gets to run once the ~60 s restore lands.
+        # Any other refusal (gate off, or device_build.py itself erroring)
+        # is not something waiting fixes.
+        #
+        # THE RACE (addendum 1, #433, 10-11). The dispatcher claims its next
+        # request the instant the promoted restore finishes -- it checks
+        # hold/<label> only at the top of its tick, before the queue
+        # (dispatcher.sh:2354-2363) -- which can land seconds before this
+        # loop's next poll. A poll that trusted build_gate alone would read
+        # the restore's own result.json (still the newest; the new request
+        # has not finished and written one yet), pass, and take the hold
+        # while a fresh off-master request is running RIGHT NOW: exactly
+        # what the gate exists to prevent. So for a gated label, ask what is
+        # in running/ before trusting a pass:
+        #   - the label's OWN restore is running: take the hold now, before
+        #     it finishes, so the dispatcher's claim loop stops right after
+        #     it and the device is left on master.
+        #   - anything else is running: that run will leave the device off
+        #     master when it ends. Do not even ask build_gate (its answer
+        #     would be the stale pass above) -- keep polling. Its own
+        #     completion re-queues a bare restore (device_build.py's
+        #     restore hook), the next refusal promotes it, and the
+        #     "restore running" case above then catches it.
+        #   - nothing is running: build_gate's answer is current; act on it.
+        # An ungated label skips the running check entirely (forced rrc=2,
+        # straight to build_gate, which itself passes at once for it) -- the
+        # Thor's screening runs are routinely "other" by design and must not
+        # make wait sit there waiting for them to finish.
+        #
+        # THE FED-QUEUE GAP (addendum 2, #433, 10-11). On a queue that is
+        # actually fed (the brief's own starting point: a release-tier
+        # stream reclaiming the device within seconds of each run ending),
+        # "something else is running" is what rrc reads on almost every
+        # poll -- rrc=2, and therefore build_gate, and therefore promote, is
+        # only reached in the rare instant between one run ending and the
+        # next being claimed. Left as comment-and-sleep, this branch never
+        # promotes anything, and wait times out with the restore still bare
+        # -- worse than before this lane, when a human promoted it by hand.
+        # So promote from here too, forced: the pending-restore and
+        # running-restore checks in cmd_promote still run first and still
+        # win (no duplicate), but when neither is true, --force skips the
+        # "is a restore even needed" read (it would see whatever ran before
+        # this in-flight request, which on a fed queue is often another
+        # master run, and wrongly decline to queue one for the request
+        # that is CURRENTLY running and WILL leave the device off master).
+        # Once promoted, drop to the 5 s cap so the restore's transition
+        # into running/ -- the rrc=0 case above -- is not missed either.
+        interval="$HOLD_WAIT_INTERVAL"
+        while :; do
+            if label_gated "$label"; then
+                rout=$(python3 "$(dirname "$0")/device_build.py" running "$D" "$label"); rrc=$?
+            else
+                rrc=2
+            fi
+            if [ "$rrc" -eq 0 ]; then
+                echo "hold.sh: $label: $rout -- taking the hold before it finishes" >&2
+                break
+            elif [ "$rrc" -eq 2 ]; then
+                build_gate "$label" && break
+                rc=$?
+                [ "$rc" -eq 4 ] || exit "$rc"
+                interval=5
+            else
+                echo "hold.sh: $label: $rout is running (not the restore) -- waiting for it to finish" >&2
+                pout=$(python3 "$(dirname "$0")/device_build.py" promote "$D" "$label" --force 2>&1)
+                echo "hold.sh: $pout" >&2
+                interval=5
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+                echo "hold.sh: timed out after $4 s waiting for $label's master restore" >&2
+                exit 4
+            fi
+            sleep "$interval"
+        done
         while :; do
             hold_py take "$label" "$3" "${*:5}" 2>/dev/null && { notice_idle; exit 0; }
             rc=$?
