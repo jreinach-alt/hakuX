@@ -1,0 +1,143 @@
+# state: first-run
+# Need for Speed: Most Wanted (4541007B), lane.nfsroute1011 (10-11, #433 step 3): a profile
+# route, not a measurement. Boots, creates and SAVES an alias ("ABCR"), leaves autosave on,
+# reaches the main menu, then `mark profile-saved` and `flush` -- the only route this title's
+# incoming dispatcher-level profile gate admits with no saved profile (brief addendum 2,
+# lane.local 10-11 12:17 PDT: a `# state: first-run` route with no `mark profile-saved` is
+# refused). No `mark gameplay`: this route never races.
+#
+# Boot timing (s01-s03) and the alias-create / autosave-notice dialogs (s04-s06) are the same
+# screens nfs-mw-quickrace.route's own gated steps already cover, so this route reuses its refs
+# (routes/refs/nfs-mw-quickrace/{alias-prompt,autosave-notice1,autosave-notice2,main-menu}.png)
+# rather than duplicating them -- all four are name-independent and pass waitfor_match.py
+# against this route's own frames at the same region/threshold (NOTES.md has the score table).
+#
+# What differs from nfs-mw-quickrace: that route's s07 (4x DOWN + 2x RIGHT from the keyboard's
+# default cursor on "A") never types a letter, it only navigates straight to the footer's
+# "Done" and submits the untouched "NAME" placeholder, which its s08 then DECLINES -- the
+# owner's bug report ("stuck in a profile creation screen scrolling through keys and buttons")
+# is this route never finishing the keyboard. This route's own s07 types a real name instead,
+# letter by letter (A types the highlighted cell and the cursor stays on it; RIGHT/DOWN move
+# exactly one grid cell, DOWN preserving the column until a narrower row -- Space, then the
+# 3-cell footer -- collapses it), then s08 selects YES on the resulting save prompt. Both
+# mechanics came from reading raw frames of a held pathfind.py session one at a time (not from
+# guessing, per the brief's "find out from frames" on this exact keyboard):
+# docs/lanes/nfsroute1011/scratch/pathfind-keyboard/frames/007-look.png is the keyboard's true
+# default state (cursor on "A", field still reading the "NAME" placeholder); 008/009-look.png
+# show A-types-and-stays plus DOWN-preserves-column, after actions "A RIGHT A RIGHT A" and
+# "DOWN RIGHT RIGHT A" respectively; 010-look.png is the resulting "Do you want to save the
+# alias ABCR?" prompt (No still default, same as nfs-mw-quickrace's s08); 012-look.png is the
+# main menu reached afterward with the saved alias "ABCR" shown. This route's s07/s08 replay
+# that exact, frame-verified action sequence (see NOTES.md for the full trace).
+wait 13.3
+shot s01-publisher_logo
+press START 120
+wait 0.6
+wait 11.0
+shot s02-intro_video
+press START 120
+wait 0.6
+press A 120
+wait 0.6
+wait 10.4
+shot s03-intro_video
+press START 120
+wait 0.6
+wait 6.8
+shot s04-alias_prompt
+waitfor alias-prompt 20 160,195,970,460 5
+# "Create a new alias?", No default (bracket box). One DOWN selects Yes.
+axis HATY max
+wait 0.12
+axis HATY mid
+wait 0.6
+press A 120
+wait 0.6
+wait 7.9
+shot s05-autosave_notice1
+waitfor autosave-notice1 20 160,195,970,460 5
+# Autosave-feature notice, single OK button.
+press A 120
+wait 0.6
+wait 7.3
+shot s06-autosave_notice2
+waitfor autosave-notice2 20 160,195,970,460 5
+# "Do not remove controller..." notice, single OK button.
+press A 120
+wait 0.6
+wait 11.0
+shot s07-name_entry
+waitfor name-entry-cursor 30 230,345,230,60 5
+# Keyboard opens on the "NAME" placeholder, cursor on letter A (row0,col0). Type "ABC":
+# A (types A, cursor stays on it), RIGHT, A (types B), RIGHT, A (types C). Cursor now row0,col2.
+press A 120
+wait 0.6
+axis HATX max
+wait 0.12
+axis HATX mid
+wait 0.6
+press A 120
+wait 0.6
+axis HATX max
+wait 0.12
+axis HATX mid
+wait 0.6
+press A 120
+wait 0.6
+# DOWN to row1,col2 ("P"), RIGHT RIGHT to row1,col4 ("R"); A types it. Field now "ABCR".
+axis HATY max
+wait 0.12
+axis HATY mid
+wait 0.6
+axis HATX max
+wait 0.12
+axis HATX mid
+wait 0.6
+axis HATX max
+wait 0.12
+axis HATX mid
+wait 0.6
+press A 120
+wait 0.6
+# DOWN x3 from row1,col4: digit row, Space (one wide cell), footer col0 ("Lowercase").
+# RIGHT RIGHT to "Done" (footer col2). A submits "ABCR".
+axis HATY max
+wait 0.12
+axis HATY mid
+wait 0.6
+axis HATY max
+wait 0.12
+axis HATY mid
+wait 0.6
+axis HATY max
+wait 0.12
+axis HATY mid
+wait 0.6
+axis HATX max
+wait 0.12
+axis HATX mid
+wait 0.6
+axis HATX max
+wait 0.12
+axis HATX mid
+wait 0.6
+press A 120
+wait 0.6
+wait 11.6
+shot s08-alias_save_prompt
+waitfor alias-save-prompt 30 160,195,970,460 10
+# "Do you want to save the alias ABCR?", No still default (unlike nfs-mw-quickrace's s08,
+# which declines here since its name was never typed). One DOWN selects Yes.
+axis HATY max
+wait 0.12
+axis HATY mid
+wait 0.6
+press A 120
+wait 0.6
+wait 8.6
+shot s09-saving
+wait 11.5
+shot s10-main_menu
+waitfor main-menu 20 500,650,680,300 0.6
+mark profile-saved
+flush 20

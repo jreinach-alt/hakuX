@@ -288,3 +288,130 @@ drain, per lane.local's addendum, and is capped at 20 minutes, aimed specificall
 and save-confirmation screens (e.g. `--goal` text telling the model explicitly that a dialog's
 selected option is marked by a bracket-cornered highlight box, not by text brightness, since that
 is the exact blind spot that produced this run's loop).
+
+## Addendum 2: lane.local (12:17 PDT) -- profile gate coming, step 2's proof is moot
+
+The owner ruled title runs need the title's profile unless they are finding a route. The incoming
+scheduler-level profile gate (lane.profilegate1011) refuses any `# state: first-run` route with no
+`mark profile-saved`, nfs-mw-quickrace included. Consequences for this lane:
+- Step 2's device proof is **dropped**, not just blocked -- it would be refused once the gate
+  lands regardless of the ref-staging fix. Its route edit (commit `22f63bc5bb`) and crops stay as
+  they are; nothing to undo.
+- Step 3 (this route) is now the **only** first-run route the gate will admit for 4541007B, which
+  makes its result the golden (`first-run-saved`) automatically.
+- Step 4 (`nfs-mw-race.returning.route`) is repurposed: it becomes lane.nfsdefault1011's actual
+  measurement route, not a nice-to-have. It must reach the same Fiat Punto race nfs-mw-quickrace
+  does, and it reuses nfs-mw-quickrace's crops for that part (same screens, Step 2 already gated
+  them).
+- Held pathfind/nav sessions stay ungated (route-finding, not a title run).
+
+Still true from Addendum 1: no route containing `waitfor`/`press-until` may be queued on the
+dispatcher until `grep -q route_refs /home/justin/hakuX/docs/testing/dispatcher.sh` passes AND this
+worktree has merged past that point. That includes this route. lane.local said it would message
+when it is live.
+
+## Step 3: the profile route -- keyboard mechanics from frames, route written and offline-checked
+
+### Keyboard mechanics, read frame by frame (not guessed)
+
+Took a second Nova hold once the first pathfind-profile queue drained, this time budgeted and
+briefed specifically at the keyboard: `pathfind.py --state first-run --budget-min 15 --hold-s 120
+--out docs/lanes/nfsroute1011/scratch/pathfind-keyboard/` (scratch, uncommitted), with a `--goal`
+that spelled out the bracket-box-vs-brightness blind spot up front. This run reached the main menu
+with a saved alias in under 170 s with no loop (the earlier `pathfind-profile` run never got past
+the alias dialog reliably in 400+ s) -- the explicit goal text alone fixed it.
+
+`steps.jsonl`'s `n`, `t` (session seconds), `state`, `action`, `wait_s`:
+
+```
+ 4  38.7 save_load_prompt ['DOWN', 'A']                      -- alias-create Yes/No, DOWN then A
+ 5  46.9 save_load_prompt ['A']                               -- autosave notice 1, OK
+ 6  54.8 save_load_prompt ['A']                               -- autosave notice 2, OK
+ 7  70.4 name_entry       ['A','RIGHT','A','RIGHT','A']       -- types "ABC"
+ 8  85.4 name_entry       ['DOWN','RIGHT','RIGHT','A']        -- types "R", field "ABCR"
+ 9 128.1 name_entry       ['DOWN','DOWN','DOWN','RIGHT','RIGHT','A'] -- navigates to Done, submits
+10 139.1 save_load_prompt ['DOWN','A']                        -- alias-save Yes/No, DOWN then A
+11 147.7 loading           []                                  -- saving
+12 159.2 main_menu         ['A']                               -- alias "ABCR" shown, saved
+```
+
+Reading the raw frames this sequence produced settles the mechanics the brief asked for ("find out
+from frames; do not guess"):
+- `004-look.png`: "Create a new alias? If you do not create a new alias, changes may be lost." No
+  is bracket-boxed (default); Yes is brighter text only (the same blind spot as the first pathfind
+  run, documented above). One DOWN moves the box to Yes.
+- `005-look.png` / `006-look.png`: two distinct single-button "OK" notices -- "...uses an autosave
+  feature..." and "Do not remove controller or switch off the Xbox console...". Different body
+  text, same layout; A confirms either.
+- `007-look.png`: the keyboard's **true default state** -- name field reads the literal placeholder
+  "NAME" (not empty), cursor (bracket box) on letter "A", the grid's first cell (row0,col0). Rows:
+  A-M (13 cols), N-Z (13 cols, N..Z in cols 0-12), digits 1-0 (10 cols), Space (one cell spanning
+  the row), footer (Lowercase | Backspace | Done, 3 cells).
+- `008-look.png`, after `A RIGHT A RIGHT A` from frame 007: field reads "ABC", cursor on "C"
+  (row0,col2). **A types the highlighted letter and appends it to the field; the cursor stays on
+  that cell** (does not auto-advance) -- the field only reads "ABC" instead of "AAA" because RIGHT
+  was pressed between each A.
+- `009-look.png`, after `DOWN RIGHT RIGHT A` from frame 008 (cursor on C, row0,col2): field reads
+  "ABCR", cursor on "R" (row1,col4). **DOWN moves exactly one row, preserving the column**: C is
+  row0,col2; DOWN lands on row1,col2 = "P" (row1 is N,O,P,Q,R,...); two RIGHTs reach col4 = "R".
+  This is ordinary grid navigation, not a snap/jump -- it also explains nfs-mw-quickrace's existing
+  (unfixed) s07: 4x DOWN + 2x RIGHT from the default A (row0,col0) lands on row4 (footer),col2 =
+  "Done" without ever pressing A to type a letter, submitting the untouched "NAME" placeholder.
+  That dialog's own ref (`alias-save-prompt.png`) already showed "Do you want to save the alias
+  NAME?", which this now fully explains.
+- `010-look.png`: "Do you want to save the alias ABCR? This will save the alias ABCR to the Xbox
+  hard disk." No still bracket-boxed by default -- same convention as the alias-create dialog, and
+  as quickrace's s08 comment already noted, this dialog loops back to the keyboard if Yes is chosen
+  while the name is still the unedited "NAME" placeholder. This is the mechanical reason Step 3 has
+  to type a real name before saving; navigating straight to Done without typing (the cheap path)
+  would not satisfy "saves".
+- `012-look.png`: main menu, "ABCR" shown bottom-left, "A Accept / Y Game Stats" footer -- the
+  saved-profile main menu.
+
+### `nfs-mw-race.first-run.route`: written, offline-checked, not yet run
+
+`docs/testing/titles/routes/nfs-mw-race.first-run.route` replays the exact action sequence above
+(steps 4, 7, 8, 9, 10 from `pathfind-keyboard`'s log verbatim -- not a fresh guess at a shorter
+path), converting each zero-hold d-pad tap to the `axis HAT{X,Y} max|min` / `wait 0.12` / `mid` /
+`wait 0.6` pattern nfs-mw-quickrace.route already established (Step 0: NFS reads the hat axis, not
+`BTN_DPAD_*`). It types "ABCR", selects Yes on both Yes/No dialogs, reaches the main menu, then
+`mark profile-saved` and `flush 20` as the last step. No `mark gameplay`.
+
+Five of its six `waitfor` gates reuse nfs-mw-quickrace's existing refs (`alias-prompt`,
+`autosave-notice1`, `autosave-notice2`, `main-menu`, `name-entry-cursor`) rather than re-cutting
+them -- all five are name-independent screens, so they are **byte-identical copies** (sha256
+verified) into `routes/refs/nfs-mw-race.first-run/`, not fresh crops (`route.sh` resolves refs
+per-route-stem, so a cross-route reference is not possible; copying is the only way to reuse one).
+The sixth, `alias-save-prompt`, is a fresh crop cut from `010-look.png` because its text names the
+alias ("...alias ABCR...") and would not match quickrace's own "...alias NAME..." version of the
+same dialog.
+
+Score table (`waitfor_match.py <frame> <ref> <region> <threshold>`, all against this route's own
+`refs/nfs-mw-race.first-run/`, frames from `pathfind-keyboard/frames/`):
+
+| ref                  | region (x,y,w,h)   | thr | 004   | 005    | 006    | 007    | 008    | 009   | 010   | 012   |
+|----------------------|--------------------|----:|------:|-------:|-------:|-------:|-------:|------:|------:|------:|
+| alias-prompt         | 160,195,970,460    |  5  | 0.007 MATCH | 32.028 | 38.429 | 31.822 | -      | -     | 4.398 MATCH | - |
+| autosave-notice1     | 160,195,970,460    |  5  | 32.638 | 0.682 MATCH | 25.569 | -  | -      | -     | -     | -     |
+| autosave-notice2     | 160,195,970,460    |  5  | 37.644 | 25.574 | 0.928 MATCH | - | -      | -     | -     | -     |
+| name-entry-cursor    | 230,345,230,60     |  5  | -     | -      | -      | 0.000 MATCH | 17.208 | 8.542 | -  | -     |
+| alias-save-prompt    | 160,195,970,460    | 10  | 4.391 MATCH | -  | -      | 31.145 | -      | -     | 0.000 MATCH | - |
+| main-menu            | 500,650,680,300    | 0.6 | 19.965 | -  | -      | 21.311 | -      | -     | 19.965 | 0.456 MATCH |
+
+Every gate matches its own target frame and rejects the surrounding ones, **except**
+`alias-prompt` and `alias-save-prompt` also match each other's target frame (004⇄010, scores 4.398
+and 4.391, both under their thresholds) -- the two dialogs share chrome, box layout and similar
+text density, and the 64x48 grayscale downscale `waitfor_match.py` uses loses the fine text that
+would separate them. This is not a live problem: each gate only polls after its own route step is
+reached, in sequence, and the two screens never coexist at the same point in the route (the whole
+keyboard sits between them). nfs-mw-quickrace.route accepts the same ambiguity on its own s08
+(threshold 10, the most forgiving of any gate in that route) -- this route's threshold on the newly
+cut `alias-save-prompt` crop matches that precedent rather than tightening it, since tightening
+would gain nothing a route proof could show (the two screens are already unreachable at the same
+step) and risks a NOMATCH on legitimate frame noise instead.
+
+`route.sh --check` passes (143 lines, `ROUTE_DRY=1` not run -- no device access from offline
+analysis). Per Addendum 1, **this route is not queued**: it has new `waitfor` steps, so it waits on
+the same `route_refs` / merge signal as Step 2. Next: wait for lane.local's "live" message, merge
+origin/master past that point, then run the Step 3 proof (`request.sh --route nfs-mw-race`, which
+resolves to `.first-run` since 4541007B has no golden yet).
