@@ -355,6 +355,7 @@ pilot-gate's own ~102 min estimate for route titles alone plus the soaks.
 | Jet Set Radio Future | ON/OFF | none/none | not yet reviewed by eye | 59.93/59.94 | pass (env/on-lines/hdd both arms clean; hdd golden_status None is expected for a first-run-state title, not a defect) |
 | Tork: Prehistoric Punk | ON/OFF | none/none | not yet reviewed by eye | 59.81/59.81 | pass (env/on-lines/hdd clean both arms) |
 | ToeJam & Earl III: Mission to Earth | ON/OFF | none/none | not yet reviewed by eye | 59.99/59.96 | pass (env/on-lines/hdd clean both arms, golden/any) |
+| Halo: Combat Evolved | ON/OFF | none/none | not yet reviewed by eye | 59.98/59.98 | pass (env/on-lines/hdd clean both arms, golden/any) |
 
 All 4 route titles (Crimson Skies, Spikeout, JSRF, Tork) now screened:
 **pass**. Soak titles (no route) have no `mark gameplay` line, so their
