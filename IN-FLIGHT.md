@@ -8,8 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 14 min | fastpaths1010: queue batches 3 (7 restored titles) and 4 (21 remaining soak titles), 56 runs |
-| `lockwake1011` | claude-opus-5-5 | 12 min | lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lo |
+| `fastpaths1010` | claude-sonnet-5 | 29 min | fastpaths1010: Kabuki Warriors pass (batch 3); merge origin/master |
+| `lockwake1011` | claude-opus-5-5 | 27 min | lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lo |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -74,8 +74,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fastpaths1010` | fastpaths1010: queue batches 3 (7 restored titles) and 4 (21 remaining soak titles), 56 runs | `79ef37590f` | 2026-10-11 03:15 |
-| `lane/lockwake1011` | lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lock-free wa | `4c0d184051` | 2026-10-11 03:08 |
+| `lane/fastpaths1010` | fastpaths1010: Kabuki Warriors pass (batch 3); merge origin/master | `d09f31e39d` | 2026-10-11 03:28 |
+| `lane/lockwake1011` | lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lock-free wa | `11595be39f` | 2026-10-11 03:29 |
 
 ## Recently landed on master
 
@@ -91,4 +91,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly)
 - 2026-10-10 gpupass1010: NFS Most Wanted's GPU frame -- render mode A/B and the cold-start pass count (#433, 0.5)
 
-_Updated 2026-10-11 03:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 03:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
