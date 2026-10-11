@@ -31,6 +31,8 @@ object PerGameSettingsManager {
         "ubershader",
         // #433: on by default; MainActivity sets HAKUX_SURFGPU accordingly.
         "surfgpu",
+        // #433: on by default; MainActivity sets the six fastpaths vars accordingly.
+        "fastpaths",
         "submit_frames",
         "tier1_threshold",
         "simple_vblank",
