@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 3h 14m | fastpaths1010: Fight Club pass (batch 4) |
+| `fastpaths1010` | claude-sonnet-5 | 3h 29m | fastpaths1010: Legacy of Kain: Defiance pass (batch 4) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 35 waiting, 1 running.
+- **Device queue:** 30 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -73,7 +73,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fastpaths1010` | fastpaths1010: Fight Club pass (batch 4) | `7d5e211d15` | 2026-10-11 06:11 |
+| `lane/fastpaths1010` | fastpaths1010: Legacy of Kain: Defiance pass (batch 4) | `0b3517a416` | 2026-10-11 06:29 |
 
 ## Recently landed on master
 
@@ -88,4 +88,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 lane.usagerule1010: usage Low enters only at 80% of the week used AND a projection over 100% (#433, 0.5)
 - 2026-10-10 reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5)
 
-_Updated 2026-10-11 06:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 06:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
