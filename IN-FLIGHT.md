@@ -8,7 +8,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `meterfit1010` | claude-sonnet-5 | 33 min | lane.meterfit1010: price transcript tokens, not modelUsage tokens (#433, 0.5) |
+| `fastpaths1010` | claude-sonnet-5 | 1 min |  |
+| `lanenobg1010` | claude-sonnet-5 | 2 min |  |
+| `postput1010` | claude-opus-5-5 | 1 min | postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -73,10 +75,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/meterfit1010` | lane.meterfit1010: price transcript tokens, not modelUsage tokens (#433, 0.5) | `7fe7799485` | 2026-10-10 19:43 |
+| `lane/postput1010` | postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5) | `015da20eaf` | 2026-10-10 20:42 |
 
 ## Recently landed on master
 
+- 2026-10-10 drawrec1010: HAKUX_DRAWREC=1 (default off) cuts NFS race-start recording 21%/draw
 - 2026-10-10 lane.usagerule1010: usage Low enters only at 80% of the week used AND a projection over 100% (#433, 0.5)
 - 2026-10-10 reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5)
 - 2026-10-10 Lane: modelpolicy1010       Issue: #433 (umbrella, dispatched directly)
@@ -87,7 +90,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-10 lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download, behind HAKUX_TEXSCAN=1 (#433, 0.5)
 - 2026-10-10 pfifowait1009: stop holding pfifo.lock across the report-processing fence waits (#433, 0.5)
 - 2026-10-10 lane.forzasurf1010 -- does the default-on surfgpu route remove Forza's surface-download wait? (#433, 0.5)
-- 2026-10-10 NFS Most Wanted race start: where the rest of the frame goes (#433, 0.5)
-- 2026-10-10 lane.nfs30plan1010: what has to be reworked for NFS Most Wanted's race start to hold 30 fps -- analysis and remediation plan (#433, 0.5)
 
-_Updated 2026-10-10 20:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 21:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
