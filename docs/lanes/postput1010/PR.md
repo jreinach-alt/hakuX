@@ -1,5 +1,5 @@
 postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5)
-State: not ready (Addendum 1's full-switch pair is queued on the Nova; see WAITING)
+State: not ready (all runs read; waiting on drawrec1010's fold, then one merge of origin/master, then ready; see WAITING)
 
 Lane: postput1010       Issue: #433 (umbrella), none filed
 Base: master @ 6052ff98d4 (merged in at b9b36d655c; reportasync1010 is folded), + origin/lane/drawrec1010 @ f3d0e45979 merged at 772429156c (Addendum 2; not folded yet). The first A/B ran on c63ec9774f, the full-switch pair on 772429156c.

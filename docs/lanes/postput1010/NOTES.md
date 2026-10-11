@@ -510,6 +510,20 @@ estimate of 590 s each, about 108 min of the 3 h.
 The selftest re-run on 713cd67a8a (drawrec1010 merged in) passes: switch on and off, the static checks, and all five
 mutants red.
 
+### 4.11 Waiting on drawrec1010's fold (attempt 5 stops, 2026-10-10 20:43 PDT)
+
+Everything the brief asks of this lane is done: every run is read, the verdicts and the recommendation are in 4.10
+and PR.md, the selftest and preflight pass on 7cac3e5b90. One step is left. Addendum 2 says to merge origin/master
+once drawrec1010 has folded, and only then to mark ready, because until then this branch's diff carries
+drawrec1010's commits. Its fold has not failed. At 20:10 the foldqueue found no device run built from its head
+f3d0e45979 and queued a gate boot check (`1791688241-foldqueue-506278`) and a restore run
+(`1791688242-foldqueue-506327`). Both have run. The next tick started at 20:25 and had not folded it by 20:42.
+`WAITING` says `fold drawrec1010`.
+
+On the resume: `git fetch && git merge origin/master` (it should be clean, since drawrec's commits are already
+here), check that `git diff --stat origin/master...HEAD` shows only this lane's files, run preflight, set
+`State: ready` in PR.md, push, and remove `WAITING`. No device time is needed.
+
 ## 5. For the next lane
 
 - `ppread.py` cannot see motion. V's moving-car check is by eye from `route-frames/*-s*-g11.png`, and goes here.
