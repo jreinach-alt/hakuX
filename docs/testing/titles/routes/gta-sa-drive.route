@@ -1,0 +1,84 @@
+# state: any   (golden 7da19befd45b; lane.savestate433 / lane.profileconv1011)
+# Grand Theft Auto: San Andreas (54540082, USA): a DRIVING route, not the
+# on-foot measurement gta-sa.route takes. Same boot (do not edit gta-sa.route
+# for this -- today's A/B depends on it; this file copies its beats through
+# the point CJ is moved down the Jefferson alley, then diverges): Rockstar
+# logos -> intro credits FMV (A skips it) -> title "Press START" (START) ->
+# loading screens (~55 s) -> airport cutscene (A skips it) -> police-stop
+# cutscene (A skips it) -> Jefferson alley, CJ on foot, HUD (clock, $350,
+# radar), "Use the left thumbstick to move Carl".
+#
+# The two cutscene skips are a train of A presses 5 s apart (as gta-sa.route):
+# loading time differs between runs, and an A that lands on a loading screen
+# does nothing.
+#
+# gta-sa.route's own header records the alley prompt this route uses: moving
+# CJ down the alley (LY min, 2.2 s) surfaces "Press Y to jump on the bike" --
+# the BMX marked with a blue cone, per the brief (step 4). One Y press mounts
+# it; `mark gameplay` is set after the mount is on screen, not before, so the
+# scored window is riding, not the on-foot walk gta-sa.route already covers.
+# Player control once mounted: LY min pedals forward; LX alternated steers
+# left/right. Never Y, START or BACK after the mount (another Y would
+# dismount).
+#
+wait 26.7
+shot boot
+wait 36.7
+press A 300
+wait 6.1
+shot skA
+wait 8.6
+press START 300
+wait 9.8
+shot menu
+wait 30.0
+shot load
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+shot cut1
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+shot cut2
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+shot cut3
+wait 10
+axis LY min
+wait 2.2
+axis LY mid
+shot moved
+wait 1
+press Y 300
+wait 2.5
+shot mounted
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 1.5
+    axis LX max
+    wait 1
+    axis LX mid
+    wait 1.5
+    axis LX min
+    wait 1
+    axis LX mid
+    wait 1.5
+}

@@ -359,6 +359,18 @@ route = "gta-sa"
 target_fps = 30
 notes = "#431 (09-28; documented, not measured here): high confidence, from the game's own code: its frame limiter (default.xbe 0x273678) waits 2 vblanks per frame, a 30 fps cap at 60 Hz (#482 comment 5872722950)."
 
+[titles."5454000E"]
+name = "Grand Theft Auto III"
+iso = { nova = "5454000E-Grand_Theft_Auto_III.xiso.iso" }
+route = "gta-3"
+notes = "lane.gtaroutes1011 (#433, 2026-10-11): own target not sourced -- no documented cap and no #482-style disassembly done this session, so the 30 default applies. Route pathfound and proved on the Nova (golden 9153c63300da): gameplay=453.6s, fps_ok=0.9804."
+
+[titles."5454000F"]
+name = "Grand Theft Auto: Vice City"
+iso = { nova = "5454000F-Grand_Theft_Auto_Vice_City.xiso.iso" }
+route = "gta-vc"
+notes = "lane.gtaroutes1011 (#433, 2026-10-11): own target not sourced -- no documented cap and no #482-style disassembly done this session, so the 30 default applies. Route pathfound on the Nova (golden 77a5f0908dce); proof soak result pending."
+
 [titles."5A440004"]
 name = "Alien Hominid"
 iso = { thor = "5A440004-Alien_Hominid.xiso.iso" }
