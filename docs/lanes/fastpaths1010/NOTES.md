@@ -130,7 +130,38 @@ they can be screened. Named here so lane.local (or the owner) can action it;
 the 24 are listed in `fastpaths1010-screen.json`'s `blocked_titles`, not
 claimed pass or fail.
 
-20 scoped (ISO confirmed present on Nova), with route/soak plan:
+### 4.1.1 Addendum (lane.local, 10-10 22:46 PDT): shuffle in progress, scope now 21
+
+The brief itself picked this up before any action was needed here: the
+Oct-3/Oct-4 Nova listing this lane checked was stale by one title --
+Capcom vs. SNK 2 EO (`43430008`) is already on the Nova as
+`43430008-Capcom_vs_SNK_2_EO.xiso.iso`, making the Nova-resident scope **21**,
+not 20. lane.local is shuffling the other 23 onto the Nova overnight itself
+(unit `lanelocal-shuffle1010b`, log
+`/home/justin/hakux-work/lanelocal-scratch/shuffle1010.log`), confirming
+this lane's own read that shuffling is not this lane's grant. The addendum's
+plan, followed here:
+
+1. Screen the 21 Nova-resident titles first, in batches.
+2. Screen each shuffled title once its log line reads `<TID> on Nova,
+   verified <bytes> bytes: <filename>` (lines before that batch's own
+   `start (b: ...)` don't count), using the exact filename the log names.
+3. Do not mark ready while `shuffle1010.log` still lacks a `done` line after
+   its last `start (b: ...)`. A title whose push failed gets a row in the
+   screen table saying so, not a run.
+
+As of this note (23:38 PDT), the shuffle has verified 17 of the 23 onto the
+Nova already (the six cached + NFL Blitz 2002, then eleven of the sixteen
+pulled from the Thor); it holds the Nova device (`dispatch/hold/nova`,
+`lanelocal-shuffle`, retaken 23:35:54 PDT) while it finishes, which is why
+this lane's own queued requests are not yet running -- expected, not a
+blocker, per the addendum. `fastpaths1010-screen.json` updated in place
+(new commit, not a re-registration on a new ref -- no device run has yet
+used the old 20-title scope) to move Capcom vs. SNK 2 EO from
+`blocked_titles` to the scoped list.
+
+21 scoped (ISO confirmed present on Nova as of the addendum), with
+route/soak plan:
 
 | title | nova iso | route | plan |
 |---|---|---|---|
@@ -154,6 +185,7 @@ claimed pass or fail.
 | Tork: Prehistoric Punk | `Tork - Prehistoric Punk (USA).iso` | `tork` | route |
 | NBA Live 2004 | `45410038-NBA_Live_2004.xiso.iso` | none | soak, 180s, `--frames-every 15` |
 | Call of Duty 3 | `4156005D-Call_of_Duty_3.xiso.iso` | none | soak, 180s, `--frames-every 15` |
+| Capcom vs. SNK 2 EO | `43430008-Capcom_vs_SNK_2_EO.xiso.iso` | none (no `targets.toml` entry) | soak, 180s, `--frames-every 15` |
 
 Route runs: 300s, no `--frames-every` (named routes carry their own
 `mark`/`shot` frames, per titlerun's own convention -- `--frames-every` is
