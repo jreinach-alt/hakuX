@@ -56,11 +56,13 @@ Ruled out by reading the dump and the code:
 - `draw_time` bookkeeping;
 - the projection geometry. The UV centre maps on screen at (373,510), but the centre triangle has two negative-w vertices, so it goes to the host clipper.
 
-Still open:
+Still open after 651566 (schema 6, below), which showed the texture is right:
 
-1. the render-target texture is empty (the chain loses CJ's silhouette);
-2. n522's raster is lost (depth or the clipper);
-3. a timing hazard.
+1. the projection's pixels fail the depth test;
+2. its raster is lost before depth (the clipper, or the fragment shader's depth rebuild and `clipRange` discard);
+3. it is drawn, and a later draw covers it.
+
+The projection draws whole ground collision triangles with UVs far outside [0,1]. Only the UV [0,1] square shows shadow, because the clamp border is black. In 844241 that square was off screen in all 60 dumped consumers, so that run decides nothing. In 176610 it is fully in frame round CJ's legs (f14-f18), and the display image shows no shadow there.
 
 **Schema 6 (8e40300c6c)** adds an `rtt` token to `XEMU_FRAME_DUMP`. For each draw that binds or samples a colour target of 64x64 or smaller, it reads back:
 
@@ -81,7 +83,8 @@ Still open:
 | `1-1791742113-lane.gtasagpu1011-176610` | a6ee1c58fe | schema 5 dump, switch off | scored (2c) |
 | `1-1791742114-lane.gtasagpu1011-177443` | a6ee1c58fe | schema 5 dump, `HAKUX_VTX_HAZARD=1` | scored (2c) |
 | `1-1791744746-lane.gtasagpu1011-651566` | 8e40300c6c | schema 6 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | scored: the shadow texture is right (outcome A, NOTES 2d) |
-| `1-1791748627-lane.gtasagpu1011-844241` | 50a389ef2b | schema 7 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | queued on the Nova (re-queue of a void run) |
+| `1-1791748627-lane.gtasagpu1011-844241` | 50a389ef2b | schema 7 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | scored: the shadow's UV square is off screen in all 60 consumers; A1-A4 undecided (NOTES 2d) |
+| `1-1791752181-lane.gtasagpu1011-2027680` | 50a389ef2b | the same, dump at `after160` (CJ standing in the alley) | queued on the Nova |
 
 ## Step 3
 

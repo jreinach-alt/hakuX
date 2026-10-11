@@ -573,3 +573,65 @@ in these notes.
 
 This session writes a `waiting:` note before it queues anything, and keeps the turn count low
 while it waits.
+
+### 2d result: 844241 (schema 7) -- the shadow is off screen in every dumped frame; A1-A4 undecided
+
+`1-1791748627-lane.gtasagpu1011-844241`, build 50a389ef2b, 30 dumped frames, 2 consumers a frame
+(60 draws, all shader 7f12c419, all with `pre`, `zpre` and `post`).
+
+**What the projection draws are.** They are not a quad. Each one draws whole ground collision
+triangles, with texture coordinates far outside [0,1]. Only the [0,1] square of UV space can show
+shadow; everywhere else the clamp reads the black border that n10 draws, and `(1-SC)*D` leaves
+the frame as it was. So "the draw changed no pixel" means something only for the pixels inside
+the square.
+
+**Where the square was.** For each consumer, the affine map from UV to world XY was solved from
+its flat triangle (z spread under 0.05), and a 41x41 grid over the square was projected with the
+draw's `cm` words. In all 60 consumers, **0 of 1681** grid points land in front of the eye and
+inside 640x480: the square's centre is next to the camera, and half of it is behind the eye. The
+stills at the dump's time (f00049-f00050) show why: CJ is in a dark spot with his feet out of
+frame. The consumers' zero changed pixels are what a working renderer would also show. **This
+run cannot decide A1-A4**, and is not evidence for any of them.
+
+**Why the dump missed.** Every `after250` dump fires 42-45 s after the route's `mark`, and the
+route is random-walking by then (`repeat forever`), so where CJ stands is chance. Six runs'
+route stamps give arm-to-`cut1` 140-142 s, `cut2` about 163 s, `cut3` about 186 s, `moved` about
+200 s and `mark` 205.1-207.9 s. From `cut1` to `cut3` CJ stands still in the Jefferson alley
+with the camera behind him and his feet in frame, the same picture in the four runs checked (game
+clock 06:44-07:35).
+
+**The defect is in a dump already.** In 176610 (schema 5, no `pre`/`zpre`/`post`) the square is on
+screen in f0-f10 (1312-1353 of 1681 points) and wholly in frame in f14-f18 (f14 n602: box
+50,305-590,443), round CJ's legs on sunlit grass, and the frame's display image has no shadow
+there. So the next run only has to put a schema-7 dump on such a frame.
+
+**Alpha, rechecked.** `tex0` and `srf0` hold alpha 0 (X8R8G8B8's pad byte), with 214 texels above
+8 in RGB. On the Nova (`vk dualSrcBlend: enabled (maxFragmentDualSrcAttachments=1, #59)` in
+logcat), `surface_sampled_pad_alpha` returns IDENTITY, the copy path's view keeps
+SZ_X8R8G8B8's {ID, ID, ID, ONE} swizzle (vk/constants.h:225), and the sampled alpha is 1. With
+diffuse alpha 0x8c, `alpha GT 0` passes. The alpha test is not the cause.
+
+**Next run: the same request, dump at `after160`.** That lands the dump about 20 s after `cut1`
+and 26 s before `cut3`, with CJ standing in the alley. Everything else is 844241's request
+(ref 50a389ef2b, 320 s, frames every 5, `HAKUX_VTX_HAZARD=1`, `--pull 'framedump_*'`). Queued as
+`1-1791752181-lane.gtasagpu1011-2027680` at 13:58 PDT, behind about 3 h of Nova work.
+
+**Predictions** (written before queueing). A consumer *qualifies* when the square scan puts at
+least 400 of 1681 points on screen and `fdread.py DUMP cover` finds at least 200 covered pixels
+that sample a texel above 8 ("lit"). The readings are over the lit pixels of qualifying
+consumers, pooled.
+
+- **Q. No consumer qualifies (P = 0.15).** The alley picture differs, or the game does not draw
+  the projection before `mark`. The run decides nothing; the next run uses 176610's timing with
+  `after250` and accepts the chance.
+- Given at least one qualifies:
+  - **A1. Depth rejects it (P = 0.35).** Under 10% of lit pixels pass LEQUAL against `zpre`
+    (cover's `draw z - zpre` median above 0), and pre/post change under 5% of them.
+  - **A2. The raster is lost before depth (P = 0.35).** At least 50% of lit pixels pass LEQUAL,
+    and pre/post change under 5% of the passing ones. This includes the fragment shader's own
+    depth disagreeing with cover's (cover models ideal rasterization; the shader rebuilds depth
+    from `vtxPos0..2` and discards outside `clipRange`), so the next step is to run that shader
+    arithmetic offline on the dumped vertices.
+  - **A3. Drawn, then covered (P = 0.2).** At least 50% of the lit, passing pixels change in
+    pre/post (darker), and the frame's display image at those pixels does not show the darkening.
+  - **A4. Something else (P = 0.1).** A reading between these, or changes outside the coverage.
