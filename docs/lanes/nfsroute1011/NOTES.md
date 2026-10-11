@@ -220,3 +220,71 @@ can be proven pre-merge. Until that lands, `nfs-mw-quickrace.route`'s Step 2 gat
 locally validated but not device-proven, and the same will be true of Steps 3 and 4's new routes.**
 
 No `QUICKRACE-GATED:` line follows, because the required proof did not run.
+
+## Addendum: lane.local (11:58 PDT) -- crop fix owned by soakvideo1011; hold the proof runs
+
+lane.local confirmed the ref-staging gap above is real and is being fixed in
+`request.sh`/`dispatcher.sh` by lane.soakvideo1011 (its brief's Addendum 3): `request.sh` will
+carry the crops a route names as `route_refs` and stage them; `dispatcher.sh` will write them to
+`<result dir>/refs/route.txt/`. This lane does not touch either file. Until it is live (both
+`grep -q route_refs /home/justin/hakuX/docs/testing/dispatcher.sh` passes and this worktree has
+merged origin/master past that point), **no run of a route with `waitfor`/`press-until` may be
+queued.** Steps 2 and 3's device proofs stay blocked on that signal; lane.local said it would
+message when it is live. Meanwhile: settle the alias dialog from frames (below), write Step 3's
+route and validate its crops offline, and let the Nova queue drain before taking another hold.
+
+## Step 3: the profile route -- alias dialog settled, pathfind exploration
+
+### Alias-creation Yes/No dialog: default and highlight, settled from raw frames
+
+Took the Nova hold and ran `pathfind.py` with `--state first-run --budget-min 15 --hold-s 120`
+into `docs/lanes/nfsroute1011/scratch/pathfind-profile/` (scratch, uncommitted). The model's own
+per-step narration misread this exact dialog repeatedly -- at least 6 of its ~14 encounters
+(steps 6, 8, 14, 21, 23 in `calls.jsonl`) it called "Yes" the highlighted/selected option because
+the word renders in bold white text, and pressed `A` directly, which **declines** alias creation
+and loops back to the Career Main Menu. Reading the raw `NNN-look.png` frames directly (not the
+model's "see"/"why" fields) settles it:
+
+- `006-look.png`, `025-look.png`, `026-look.png` (same dialog, 3 separate encounters): the "Xbox
+  hard disk" alias-creation prompt has two stacked rows, "No" above "Yes". **"No" carries a
+  bracket-cornered highlight box; "Yes" does not.** "Yes" only renders in brighter/bolder text,
+  which is a style choice, not a selection indicator, and is what fooled the model's narration
+  repeatedly.
+- `007-look.png` (captured right after step 6's bare `A` on frame 006): back at the Career Main
+  Menu with Start Career highlighted -- confirms `A` on the as-shown ("No" boxed) state declined,
+  it did not create an alias.
+- Step 26's action (`DOWN`, `A` -- i.e. `press DOWN` then `press A`, not `axis HATY`) on the same
+  dialog (frame 026) produced `027-look.png`: the "Need for Speed Most Wanted uses an autosave
+  feature..." info dialog with a single "OK" button, layered over the Career Main Menu. This is
+  the autosave notice mentioned in cause #1 of the brief, and its appearance means `DOWN A`
+  **did** move the selection off "No" and onto "Yes" and confirmed it -- alias creation succeeded.
+
+**This matches the already-established Step 0 finding and `nfs-mw-quickrace.route`'s own existing
+`s04` input** (`axis HATY max` / `wait 0.12` / `axis HATY mid` / `wait 0.6` / `press A 120`): one
+down-tap selects "Yes" from the "No" default, then confirm. Step 26 used a `press DOWN` (BTN code)
+rather than an axis tap and it still worked, which is further (independent) evidence for Step 0's
+finding that NFS reads the D-pad `press` the same as an `axis HAT` tap on this dialog family (both
+move the dialog's cursor).
+
+**Caution for whoever later touches `pathfind.py`'s vision prompting**: this dialog is a
+reproducible blind spot -- the model fixates on text brightness over the bracket-box selection
+indicator, with no self-correction across many repeats of the identical screen, and the resulting
+loop (~400 s, 20+ steps) closely resembles the owner's original report ("stuck in a profile
+creation screen that's scrolling through keys and buttons"). Not this lane's territory to fix, but
+worth a line in whatever picks up pathfind.py's prompt next.
+
+### Still missing: keyboard and save-confirmation frames
+
+The pathfind run ended (exited on its own, apparently its `--hold-s 120` session timeout, right
+after emitting frame 027/step 26 with no further step) before reaching the name keyboard or the
+save-confirmation dialog. `027-look.png` is the last frame captured. Pressing `A` on the
+autosave-notice "OK" (frame 027) should be the next input, expected to lead into the name keyboard
+-- not yet confirmed from a frame.
+
+Per the brief's Rules ("Use request.sh, pathfind.py and hold.sh only"), the Nova hold was released
+immediately once this pathfind session ended (three runs were queued behind it: two nfsdefault1011,
+one gtasagpu1011 -- `ls /home/justin/hakux-work/dispatch/queue`). Next hold waits for that queue to
+drain, per lane.local's addendum, and is capped at 20 minutes, aimed specifically at the keyboard
+and save-confirmation screens (e.g. `--goal` text telling the model explicitly that a dialog's
+selected option is marked by a bracket-cornered highlight box, not by text brightness, since that
+is the exact blind spot that produced this run's loop).
