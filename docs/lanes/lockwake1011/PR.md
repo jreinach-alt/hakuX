@@ -4,7 +4,7 @@ State: draft
 Lane: lockwake1011      Issue: #433 (umbrella), none filed
 Base: master @ b9212b3462 (coldstart1010 folded; merged into the lane at b110cb4e90)
 Files: hw/xbox/nv2a/pfifo.c, hw/xbox/nv2a/user.c, hw/xbox/nv2a/nv2a_int.h, hw/xbox/nv2a/nv2a.c, hw/xbox/nv2a/debug.h, hw/xbox/nv2a/pgraph/profile.h, hw/xbox/nv2a/pgraph/profile.c, docs/lanes/lockwake1011/**, docs/testing/predictions/lockwake1011-*
-Prediction: none yet (registered before the A/B is queued)
+Prediction: docs/testing/predictions/lockwake1011-lockfree_wake.json @ 83d720359997fcf9e6d79682047912da7bb6ccb9604f6691ef62c66c181f2ead
 Needs device: yes (Nova)
 Needs NDK: yes
 
@@ -33,6 +33,13 @@ configuration plus `HAKUX_FRAMETRACE=1`, at ee62b4edb5, 12/12 marks each):
 
 Decision (NOTES.md section 2): `HAKUX_LOCKFREE_WAKE=1`, default off. The PFIFO thread parks on a QemuEvent and a
 posted store wakes it without pfifo.lock.
+
+Built and checked at 39c6dacc5e (NOTES.md section 2): `selftest_wake.sh` passes in all three modes and its
+falsifiers fail, the NDK compile adds no warning, and check_android_guards.py is ok.
+
+A/B registered 2026-10-11T11:17:26Z (`lockwake1011-lockfree_wake.json`; reader `wakeread.py`). It is one binary at
+39c6dacc5e with 3 runs per arm, queued A B B A A B. A is the stacked configuration and B adds
+`HAKUX_LOCKFREE_WAKE=1`. K requires cold B <= 34.5 and B - A <= -0.5.
 
 Release note (none): instrumentation, and an opt-in switch that is off by default.
 
