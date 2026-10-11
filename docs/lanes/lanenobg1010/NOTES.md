@@ -141,10 +141,36 @@ Both shown going red in the selftest fragment's own output (see run below).
 Fragment in isolation (`SELFTEST_ONLY=99-lane-no-background`):
 **24 passed, 0 failed.**
 
-Full suite, foreground, no sharding (`bash selftest.sh`, no
-`SELFTEST_SHARD` set): see the run logged in this NOTES file's last commit
-message / PR body -- recorded there once the run (kicked off before this
-file was written, polled via Monitor without ending the turn) finished.
+Full suite, foreground, one `SELFTEST_SHARD=N/4` per Bash call (all four
+launched as separate foreground calls, each auto-backgrounded by the tool's
+own timeout once it ran past ~590s, then waited out with `Monitor` on each
+call's own task-output file -- never by ending the turn):
+
+| shard | passed | failed | fragments |
+|-------|--------|--------|-----------|
+| 0/4   | 284    | 0      | 13        |
+| 1/4   | 1006   | 0      | 42        |
+| 2/4   | 1084   | 0      | 39        |
+| 3/4   | 905    | 0      | 38        |
+| **total** | **3279** | **0** | **132 of 132** |
+
+First attempt at this cost a redundant hour: an earlier session (before
+compaction) had started shard 0/4 twice with `run_in_background: true`
+directly on the Bash tool, both of which got silently terminated without
+producing a pass/fail count (one by its own inner `timeout`, one by the
+harness) and both left orphaned `bash selftest.sh` processes running
+_after_ their wrapping task reported "terminated" -- `timeout`'s SIGTERM
+reached the wrapper but not every process it had piped through. Hunting
+those down by `ps`/`kill` later very nearly cost a third: elapsed-time
+columns for an old orphan and a new deliberate foreground run (also
+auto-backgrounded by the Bash tool's own cap, which looks identical to a
+manual `run_in_background: true` from the process-table side) were close
+enough to misread, and `kill` on the wrong PID took out the real run
+mid-flight (caught via its `Monitor`'s partial output, re-run cleanly
+after). The eventual safe pattern: never hunt orphans by broad `ps`/`kill`;
+redirect each shard's own output to a file, let the Bash tool background it
+on its own if it must, and `Monitor` that exact file for an unambiguous
+"done" marker instead of touching any PID.
 
 ## What the next lane should not repeat
 
