@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gtasagpu1011` | claude-opus-5-5 | 1h 47m | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
-| `pathclass` | claude-sonnet-5 | 1h 32m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `gtasagpu1011` | claude-opus-5-5 | 2h 2m | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
+| `pathclass` | claude-sonnet-5 | 1h 47m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `2026-10-11T21:55:57Z`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 17 waiting, 1 running.
+- **Device queue:** 16 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -74,15 +74,16 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `2a0d3a328e` | 2026-10-11 14:30 |
+| `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `0c6da187e9` | 2026-10-11 14:50 |
 | `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `f442726741` | 2026-10-11 13:21 |
 
 ## Recently landed on master
 
+- 2026-10-11 soakvideo1011: screen video during a routed soak, from the dispatcher
 - 2026-10-11 fastpaths1010: the six renderer switches as one Graphics toggle, on by default (#433, 0.5)
 - 2026-10-11 lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lock-free wake (#433, 0.5)
 - 2026-10-11 coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5)
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 
-_Updated 2026-10-11 14:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 15:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
