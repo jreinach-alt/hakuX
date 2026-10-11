@@ -1849,8 +1849,23 @@ extern char g_vulkan_driver_info[256];
  *    target after it). pre and post differ exactly where the draw wrote.
  *    zpre's texels are 4 bytes for D24_UNORM_S8_UINT (129: depth in the low
  *    24 bits) and D32_SFLOAT_S8_UINT (130: a float), 2 for D16_UNORM (124).
+ * 8: as 7, plus three things for a texture a small target is drawn FROM that
+ *    was never a render surface (GTA San Andreas's 32x32 shadow gradient).
+ *    With `rtt`, a draw into a small colour target also reads back the
+ *    texture image of each enabled stage that has no surface at its address
+ *    ("k":"tex", "addr" the stage's texture address), up to
+ *    FDUMP_TEX_MAX_TEXELS. With `vtxNN`, an inline_array draw of at most NN
+ *    vertices logs "ia": its vertex size in bytes ("vs"), each enabled
+ *    attribute as [index, byte offset in the vertex, size, count, format]
+ *    ("attrs"), and the raw words ("w"). And the `watchNN` token: from the
+ *    arm, only draws into a small colour target are logged (each with its
+ *    `rtt` readbacks), "n" still counts every draw in the frame, a frame with
+ *    none writes no record and does not count against the frame number, no
+ *    image, no consumer readbacks and no vup records are written, and the dump
+ *    closes after NN logged draws. Armed at startup, it records how a texture
+ *    made by draws at the title's start was made.
  */
-#define FDUMP_SCHEMA          7
+#define FDUMP_SCHEMA          8
 
 /* `img_sync` on a frame record: >= 0 is the fence slot the image waited on
  * before the display surface came back clean, and these two are the cases
@@ -1896,6 +1911,11 @@ static struct {
         bool ok;
         char file[96];
     } cons_rb[2];
+    /* Schema 8's `watchNN`: log only draws into a small colour target, and
+     * close after this many (0 is off). watch_in_frame: logged this frame. */
+    int watch_max;
+    int watch_n;
+    int watch_in_frame;
     int frames_remaining;
     int frame_index;
     int draw_index;
@@ -2106,10 +2126,12 @@ static void fdump_clear_previous(const char *dir, const char *keep)
  *               target and depth around a draw that samples one; see
  *               FDUMP_SCHEMA. This one FINISHES the command buffer at each
  *               such draw.
+ *   watchNN     schema 8: log only draws into a small colour target, until NN
+ *               (capped at 4096) are logged; no images. See FDUMP_SCHEMA.
  */
 static void fdump_parse_spec(const char *spec, int *frames, bool *images,
                              int *cap_mb, bool *also_diag, int *after_s,
-                             int *vtx_max, bool *rtt)
+                             int *vtx_max, bool *rtt, int *watch_max)
 {
     char buf[160];
     snprintf(buf, sizeof(buf), "%s", spec ? spec : "");
@@ -2140,6 +2162,11 @@ static void fdump_parse_spec(const char *spec, int *frames, bool *images,
             if (v >= 0) {
                 *vtx_max = (int)MIN(v, 256L);
             }
+        } else if (!strncmp(tok, "watch", 5)) {
+            long v = strtol(tok + 5, NULL, 10);
+            if (v >= 0) {
+                *watch_max = (int)MIN(v, 4096L);
+            }
         } else {
             char *end = NULL;
             long v = strtol(tok, &end, 10);
@@ -2162,8 +2189,12 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     int after_s = 0;
     int vtx_max = 0;
     bool rtt = false;
+    int watch_max = 0;
     fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s,
-                     &vtx_max, &rtt);
+                     &vtx_max, &rtt, &watch_max);
+    if (watch_max) {
+        images = false;
+    }
 
     const char *base = fdump_base_dir();
     if (!base || !base[0]) {
@@ -2193,6 +2224,9 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     fdump.cons_in_frame = 0;
     fdump.cons_total = 0;
     fdump.cons_nrb = 0;
+    fdump.watch_max = watch_max;
+    fdump.watch_n = 0;
+    fdump.watch_in_frame = 0;
 
     char self[64];
     snprintf(self, sizeof(self), "%s%u.jsonl", FDUMP_PREFIX, fdump.session);
@@ -2235,13 +2269,13 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
         fp,
         "{\"t\":\"session\",\"schema\":%d,\"id\":%u,\"armed_by\":\"%s\","
         "\"spec\":\"%s\",\"frames\":%d,\"images\":%s,\"cap_mb\":%d,"
-        "\"after_s\":%d,\"vtx\":%d,\"rtt\":%s,"
+        "\"after_s\":%d,\"vtx\":%d,\"rtt\":%s,\"watch\":%d,"
         "\"wall\":%lld,\"uptime_ms\":%lld,\"draw_merge\":%s,"
         "\"draw_reorder\":%s,\"surface_scale\":%d,\"submit_frames\":%d,"
         "\"per_draw_finish\":%s,\"also_diag\":%s,\"driver\":\"%s\"}\n",
         FDUMP_SCHEMA, fdump.session, armed_by, spec ? spec : "", frames,
         images ? "true" : "false", cap_mb, after_s, vtx_max,
-        rtt ? "true" : "false", (long long)time(NULL),
+        rtt ? "true" : "false", watch_max, (long long)time(NULL),
         (long long)(qemu_clock_get_ns(QEMU_CLOCK_REALTIME) / 1000000),
         xemu_get_draw_merge() ? "true" : "false",
         xemu_get_draw_reorder() ? "true" : "false",
@@ -2283,8 +2317,9 @@ static void fdump_arm(NV2AState *d, const char *armed_by, const char *spec,
     int after_s = 0;
     int vtx_max = 0;
     bool rtt = false;
+    int watch_max = 0;
     fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s,
-                     &vtx_max, &rtt);
+                     &vtx_max, &rtt, &watch_max);
 
     if (after_s <= 0) {
         fdump_begin(d, armed_by, spec);
@@ -2679,6 +2714,63 @@ static bool fdump_log_draw_vertices(NV2AState *d, PGRAPHState *pg,
     }
     fdump.bytes_written += n;
 
+    /* Schema 8's "ia": an inline_array's vertices are in the pushbuffer, not
+     * VRAM. The layout is the one flush_draw computed for this draw (vk/
+     * draw.c sets inline_array_offset just before it), so recomputing the
+     * vertex size the same way reads the same words. */
+    if (!arrays && fdump.vtx_max && !strcmp(type, "inline_array")) {
+        unsigned vs = 0;
+        for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+            const VertexAttribute *attr = &pg->vertex_attributes[i];
+            if (attr->count) {
+                vs = ROUND_UP(vs, attr->size);
+                vs += attr->size * attr->count;
+                vs = ROUND_UP(vs, attr->size);
+            }
+        }
+        unsigned len = pg->inline_array_length;
+        if (vs && len * 4 / vs <= (unsigned)fdump.vtx_max) {
+            n = fprintf(fdump.fp, ",\"ia\":{\"vs\":%u,\"attrs\":[", vs);
+            if (n < 0) {
+                goto fail;
+            }
+            fdump.bytes_written += n;
+            bool afirst = true;
+            for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+                const VertexAttribute *attr = &pg->vertex_attributes[i];
+                if (!attr->count) {
+                    continue;
+                }
+                n = fprintf(fdump.fp, "%s[%d,%u,%u,%u,%u]", afirst ? "" : ",",
+                            i, attr->inline_array_offset, attr->size,
+                            attr->count, attr->format);
+                if (n < 0) {
+                    goto fail;
+                }
+                fdump.bytes_written += n;
+                afirst = false;
+            }
+            n = fprintf(fdump.fp, "],\"w\":\"");
+            if (n < 0) {
+                goto fail;
+            }
+            fdump.bytes_written += n;
+            for (unsigned j = 0; j < len; j++) {
+                n = fprintf(fdump.fp, "%s%08x", j ? " " : "",
+                            pg->inline_array[j]);
+                if (n < 0) {
+                    goto fail;
+                }
+                fdump.bytes_written += n;
+            }
+            n = fprintf(fdump.fp, "\"}");
+            if (n < 0) {
+                goto fail;
+            }
+            fdump.bytes_written += n;
+        }
+    }
+
     if (!arrays || !fdump.vtx_max || total > (unsigned)fdump.vtx_max) {
         return true;
     }
@@ -2760,7 +2852,8 @@ void pgraph_vk_fdump_vertex_upload(PGRAPHVkState *r, hwaddr offset,
                                    const uint8_t *old, const uint8_t *data,
                                    size_t size, bool hazard_finished)
 {
-    if (!fdump.fp || fdump.bytes_written >= fdump.byte_limit) {
+    if (!fdump.fp || fdump.watch_max ||
+        fdump.bytes_written >= fdump.byte_limit) {
         return;
     }
     bool same = !memcmp(old, data, size);
@@ -2793,6 +2886,10 @@ void pgraph_vk_fdump_vertex_upload(PGRAPHVkState *r, hwaddr offset,
  * back. GTA San Andreas draws CJ's shadow through 64x64 and 32x32 targets
  * (docs/lanes/gtasagpu1011/NOTES.md); a 640x480 frame is never read here. */
 #define FDUMP_RTT_MAX_TEXELS  (64 * 64)
+
+/* Schema 8: the largest non-surface texture read back for a small-target
+ * draw (1 MB at 4 bytes a texel). */
+#define FDUMP_TEX_MAX_TEXELS  (512 * 512)
 
 /* Schema 7: at most this many consumer draws a frame, and a dump, get the
  * full-size "pre", "zpre" and "post" readbacks (3 x 1.2 MB at 640x480 1x). */
@@ -2962,7 +3059,8 @@ void pgraph_vk_fdump_pre_draw(NV2AState *d)
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
 
-    if (!fdump.fp || !fdump.rtt || fdump.bytes_written >= fdump.byte_limit ||
+    if (!fdump.fp || !fdump.rtt || fdump.watch_max ||
+        fdump.bytes_written >= fdump.byte_limit ||
         fdump.cons_total >= FDUMP_CONS_MAX) {
         return;
     }
@@ -3030,10 +3128,28 @@ static bool fdump_log_draw_readbacks(NV2AState *d, PGRAPHState *pg)
         }
         SurfaceBinding *ts =
             pgraph_vk_surface_get(d, pgraph_get_texture_phys_addr(pg, i));
+        TextureBinding *tb = r->texture_bindings[i];
+        if (!ts) {
+            /* Schema 8: a texture that was never a surface, drawn from into
+             * a small target. */
+            if (tb && fdump_rtt_small(r->color_binding) &&
+                (uint64_t)tb->image_config.width * tb->image_config.height <=
+                    FDUMP_TEX_MAX_TEXELS) {
+                rb[nrb].k = "tex";
+                rb[nrb].s = i;
+                rb[nrb].addr = pgraph_get_texture_phys_addr(pg, i);
+                rb[nrb].image = tb->image;
+                rb[nrb].layout = tb->current_layout;
+                rb[nrb].w = tb->image_config.width;
+                rb[nrb].h = tb->image_config.height;
+                rb[nrb].fmt = tb->image_config.format;
+                nrb++;
+            }
+            continue;
+        }
         if (!fdump_rtt_small(ts)) {
             continue;
         }
-        TextureBinding *tb = r->texture_bindings[i];
         if (tb && !r->tex_surface_direct[i]) {
             rb[nrb].k = "tex";
             rb[nrb].s = i;
@@ -3152,6 +3268,12 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
 
     if (fdump.bytes_written >= fdump.byte_limit) {
         fdump_close("byte cap reached");
+        return;
+    }
+
+    /* Schema 8's `watchNN`: "n" counts this draw, the record is skipped. */
+    if (fdump.watch_max && !fdump_rtt_small(r->color_binding)) {
+        fdump.draw_index++;
         return;
     }
 
@@ -3302,6 +3424,13 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
         return;
     }
     fdump.bytes_written += n;
+
+    if (fdump.watch_max) {
+        fdump.watch_in_frame++;
+        if (++fdump.watch_n >= fdump.watch_max) {
+            fdump_close("watch count reached");
+        }
+    }
 }
 
 /* End of a dumped frame. Runs at flip_stall, after the flip's own
@@ -3363,6 +3492,15 @@ static void fdump_end_frame(NV2AState *d)
     char image[128] = "";
     unsigned int iw = 0, ih = 0;
     int img_sync = FDUMP_IMG_NO_WAIT;
+
+    /* Schema 8's `watchNN`: a frame that logged no draw writes nothing and
+     * does not count; "f" still advances, so it numbers flips. */
+    if (fdump.watch_max && !fdump.watch_in_frame) {
+        fdump.submit_at_frame_start = qatomic_read(&r->submit_count);
+        fdump.frame_index++;
+        fdump.draw_index = 0;
+        return;
+    }
 
     if (fdump.images) {
         if (r->num_deferred_downloads > 0) {
@@ -3438,7 +3576,11 @@ static void fdump_end_frame(NV2AState *d)
     fdump.frame_index++;
     fdump.draw_index = 0;
     fdump.cons_draw = -1;
-    fdump.frames_remaining--;
+    if (fdump.watch_max) {
+        fdump.watch_in_frame = 0;
+    } else {
+        fdump.frames_remaining--;
+    }
 
     if (fdump.frames_remaining <= 0) {
         fdump_close("all frames dumped");

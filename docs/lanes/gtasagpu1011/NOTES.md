@@ -774,3 +774,53 @@ for "the shadow dropping out":
 
 2027680 separates them. If its alley consumers pass and change their lit pixels like 818197's,
 reading 2 stands, and the question becomes the gradient texture made at start.
+
+### 2f: the gradient n9 multiplies by, and how it was made (schema 8)
+
+**n9's multiplier, re-read on 651566.** Over every texel where n8 (the blurred silhouette) is above
+40, 5269 texels in 30 frames, n9's output is exactly `round(n8 * (129 - 2y) / 255)`, where y is
+the row. There are zero mismatches, and the multiplier does not depend on the column. The
+alternative, texels `255 - 4y` with diffuse 0x81, misses 1227 of them by one. So the factor
+n9 applies is 129/255 at row 0, falling by 2/255 a row. That is tex0 times diffuse, and the
+combiner has no scale, so it is either texels `129 - 2y` with a white diffuse or another product
+with the same value. Either way the per-frame chain does what its inputs say. The open question
+is whether the 32x32 texture at 0x034e8500 holds on the Nova what it would hold on an Xbox.
+
+**Why no dump so far can say.** The texture has no render surface in any dump, so it was made
+before every dump window (at the title's start, by the look of it: it is the same in every
+frame of four runs). If the game makes it by drawing into it, those draws ran on the emulator,
+and a wrong draw there would halve every shadow for the whole session and leave the per-frame
+chain looking faithful, which is what is measured.
+
+**Schema 8** (this commit) adds three things to `XEMU_FRAME_DUMP`:
+
+- with `rtt`, a draw into a small target also reads back the texture image of each stage that
+  has no surface (n9's gradient, `"k":"tex"`);
+- with `vtxNN`, an inline_array draw logs its raw vertex words and layout (`"ia"`), so n9's
+  diffuse and any line draw's colours are on record;
+- `watchNN`, armed at startup, logs only draws into small targets, from the first flip, until NN
+  are logged. That covers the title's start, where the gradient is made, and the first frames of
+  the shadow chain.
+
+`gradwatch.py DUMP [ADDR]` prints each logged draw, its decoded vertices and its readbacks as
+per-row channel means.
+
+**The run.** gta-sa route, 320 s, `XEMU_FRAME_DUMP=watch600,cap512,vtx64,rtt`,
+`HAKUX_VTX_HAZARD=1`, `--pull 'framedump_*'`. About 7 min of device time.
+
+**Predictions** (written before queueing):
+
+- **G0. No logged draw targets 0x034e8500 before the first draw that samples it (P = 0.35).** The
+  game writes the gradient from the CPU, or makes it before the first flip. Then the texels are
+  the game's own. n9's `"tex"` readback and `"ia"` diffuse say which product gives 129 - 2y, and
+  the gradient is ruled out as a defect.
+- **G1. Draws into a 32x32 target at 0x034e8500 make it, and the readback after the last one
+  matches their vertex colours row by row, within 2 (P = 0.45).** The emulator renders the
+  gradient as asked; the gradient is ruled out.
+- **G2. Draws make it, and some row of the readback differs from the colour drawn on that row by
+  more than 2 (P = 0.20).** For example, half the value, a row off, or a row never written. That
+  is a renderer defect, and it would dim every ped shadow. Its draw state names the code path.
+
+In every case, n9's own `"tex"` readback must show the same rows as the multiplier above (129 - 2y
+if the diffuse is white). If it does not, the readback or the fit is wrong, and the run decides
+nothing until that is explained.
