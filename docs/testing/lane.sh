@@ -345,7 +345,7 @@ case "$cmd" in
         --working-directory="$wt" \
         bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')
 
-$LANE_SESSION_FOOTER\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
+$LANE_SESSION_FOOTER\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" --settings '$JOBS/lane-settings.json' > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
     echo "started hakux-lane-$name in $wt on $branch; attempt $ATTEMPT on $MODEL; log $log"
     [ -n "$issue" ] && echo "issue #$issue -- the lane opens its draft PR; the board job labels it lane:$name"
     ;;
@@ -378,7 +378,7 @@ $LANE_SESSION_FOOTER\" --model '$MODEL' --max-turns $TURNS --output-format json 
         --working-directory="$wt" \
         bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')
 
-$LANE_SESSION_FOOTER\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
+$LANE_SESSION_FOOTER\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" --settings '$JOBS/lane-settings.json' > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
     echo "resumed hakux-lane-$name in $wt; attempt $ATTEMPT on $MODEL; log $log"
     ;;
   rm)
