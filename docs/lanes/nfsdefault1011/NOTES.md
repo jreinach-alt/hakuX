@@ -237,6 +237,17 @@ raw capture count for me to review by eye, gfps is the same raw `g_fps_mean_repo
 `fpread.py`/`simpread.py` already read. There is no automated per-title pass/fail leg -- the brief's own
 screen has no single numeric threshold that works across 38 different titles, same as fastpaths1010's.
 
+Batch 1 queued (10 route titles, 20 runs, ON then OFF per title, `HAKUX_RELEASE_PRIO=1`): Crimson Skies
+(`...1478599`/`...1479231`), Spikeout (`...1482768`/`...1483299`, route resolved to `spikeout.returning`),
+Jet Set Radio Future (`...1484105`/`...1484526`), Tork (`...1484691`/`...1484875`), Kabuki Warriors
+(`...1485413`/`...1485861`), 187: Ride or Die (`...1486398`/`...1486778`), Tony Hawk's Pro Skater 2x
+(`...1492482`/`...1492811`), KOF: Maximum Impact - Maniax (`...1493417`/`...1494854`, route resolved to
+`kof-mi.returning`), Alien Hominid (`...1495590`/`...1495950`), WWE Raw 2 (`...1496167`/`...1496518`). The
+pilot gate logged cumulative device time rising past 30 min as the batch queued but admitted every request
+on the existing reviewed pilot (2.2 h old at queue time), as it should. Nova was already running
+profileconv1011's job with gtaroutes1011/gtasagpu1011 queued ahead of this batch, so these 20 will wait
+their turn behind other lanes' release-priority requests.
+
 Prediction registered: `nfsdefault1011-screen.json` @ `821fb0af67fc791541c771cc3b7b845cca178e04019c1e9bde77d59b4b1607a0`,
 same ref as steps 2/3 (`7002282149`, unchanged since step 1 -- no code has moved). Device presence is
 not re-verified by a live listing before queuing (none exists, confirmed by searching for one); a
