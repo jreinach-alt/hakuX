@@ -6,12 +6,15 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `gtasagpu1011` | claude-opus-5-5 | 1 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
+| `nfsdefault1011` | claude-sonnet-5 | 0 min |  |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `2026-10-11T16:13:31Z`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 5 waiting, 1 running.
+- **Device queue:** 4 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -69,19 +72,16 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `d00d6fcb8a` | 2026-10-11 09:13 |
 
 ## Recently landed on master
 
+- 2026-10-11 fastpaths1010: the six renderer switches as one Graphics toggle, on by default (#433, 0.5)
 - 2026-10-11 lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lock-free wake (#433, 0.5)
 - 2026-10-11 coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5)
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
-- 2026-10-10 lane.lanenobg1010 -- lane sessions refuse background commands with a hook, not a footer (#433, 0.5)
-- 2026-10-10 postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5)
-- 2026-10-10 lane.meterfit1010: price transcript tokens, not modelUsage tokens (#433, 0.5)
-- 2026-10-10 drawrec1010: HAKUX_DRAWREC=1 (default off) cuts NFS race-start recording 21%/draw
-- 2026-10-10 lane.usagerule1010: usage Low enters only at 80% of the week used AND a projection over 100% (#433, 0.5)
-- 2026-10-10 reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5)
 
-_Updated 2026-10-11 09:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 09:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
