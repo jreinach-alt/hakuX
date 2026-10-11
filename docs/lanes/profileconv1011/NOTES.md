@@ -199,3 +199,25 @@ the 12 genre-loop `hold` frames) against the baseline
 section 6/7. If it confirms: write `TRANSITION-DONE: gta-sa amped2` here and
 set PR.md `State: ready` with both run ids, both `hdd.json` lines, and the
 frame-pair evidence (step 6 of the brief).
+
+## 9. Attempt 2 (hostops addendum 1): why attempt 1 did not finish, and the fix
+
+Attempt 1 ended correctly on the wait itself (the Amped 2 re-run really was
+queued ~130 min behind other Nova work, per section 8 above -- not a bug, not
+a thing a few more foreground polls would have cleared), but it stopped
+without writing `docs/lanes/profileconv1011/WAITING`. OUTBOX.md's
+`[lane.profileconv1011] waiting:` line is the human-readable half of that
+pattern; `lanewaker.py`'s 5-min stranding/orphan-runs check (host-tools/
+lanewaker.py:8, :59, :134) only treats a lane as legitimately waiting if it
+finds a `WAITING` file with a `run <id>` line on `origin/lane/profileconv1011`
+-- without one, the branch would eventually show "no commit for >=90 min, no
+WAITING file" and get reported stranded, or the queued request would show up
+in the orphan-runs pass, even though nothing was actually stuck.
+
+This session (per Addendum 1): wrote `docs/lanes/profileconv1011/WAITING`
+with `run 1-1791749881-profileconv1011-1652106` (the exact run id format
+`lanewaker.py`'s `satisfied()` regex expects), committing and pushing it
+without starting a new device run or polling further. `WAITING`'s condition
+is satisfied the moment `dispatch/results/1-1791749881-profileconv1011-1652106/`
+has a `DONE` or `WITHDRAWN.txt`; at that point `lanewaker.py` resumes this
+lane itself. The next session picks up exactly where section 8 left off.
