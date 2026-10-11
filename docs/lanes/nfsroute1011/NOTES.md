@@ -81,6 +81,63 @@ press in the route is blind and compounds the drift -- exactly cause #3 (no step
 This is why Step 2 gates every screen-dependent press with `waitfor`, not just the d-pad holds:
 holding longer fixes dropped taps, but only a screen check catches a run that drifts anyway.
 
+## Step 1: gates that tell good from bad
+
+Crops cut from `1-1791735965-nfsdefault1011-3581025` (good run 1) into
+`docs/testing/titles/routes/refs/nfs-mw-quickrace/`, each sized exactly to its box's `w x h`
+(route.sh's `validate()` requires the ref file to exist; `waitfor_match.py` resizes both crop and
+ref to a fixed 64x48 internally, so box/ref dimensions only need to match each other for the repo
+convention, which these do). Scored with `waitfor_match.py`'s `region_score()` against: good run 1
+(the source, always 0.00), good run 2 (`3581205`), and the two void runs (`87778`, `87617`) at the
+matching shot filename -- which carries the route's step label regardless of what is actually on
+screen, so e.g. bad run `mm-quickrace.png` is scored against the `mm-quickrace` ref even though it
+shows a different screen.
+
+| gate | box (x,y,w,h) | good1 | good2 | bad1 (87778) | bad2 (87617) | threshold | margin (good max / bad min) |
+|---|---|---|---|---|---|---|---|
+| alias-prompt | 160,195,970,460 | 0.00 | 0.01 | 0.01 | 0.00 | 5 | n/a -- see note below |
+| autosave-notice1 | 160,195,970,460 | 0.00 | 0.14 | 0.48 | 0.17 | 5 | n/a -- see note below |
+| autosave-notice2 | 160,195,970,460 | 0.00 | 0.55 | 0.25 | 0.57 | 5 | n/a -- see note below |
+| name-entry-cursor | 230,345,230,60 | 0.00 | 0.00 | 17.02 | 17.39 | 5 | 0.00 / 17.02 |
+| alias-save-prompt | 160,195,970,460 | 0.00 | 0.02 | 30.00 | 31.47 | 10 | 0.02 / 30.00 |
+| autosave-disabled (s09/s10/s11, one ref reused 3x) | 160,195,970,460 | 0.00-0.06 | 0.00-0.09 | 13.62-32.90 | 15.22-15.23 | 5 | 0.09 / 13.62 |
+| main-menu | 500,650,680,300 | 0.00 | 0.20 | 1.12 | 19.88 | 0.6 | 0.20 / 1.12 (tight -- see note) |
+| mm-quickrace | 500,650,680,300 | 0.00 | 0.62 | 9.83 | 22.78 | 3 | 0.62 / 9.83 |
+| qr-custom | 500,650,680,300 | 0.00 | 0.67 | 15.30 | 21.89 | 3 | 0.67 / 15.30 |
+| cr-sprint | 500,650,680,300 | 0.00 | 0.37 | 19.99 | 16.87 | 3 | 0.37 / 16.87 |
+| cr-track | 0,60,1180,140 | 0.00 | 0.07 | 48.13 | 33.70 | 5 | 0.07 / 33.70 |
+| cr-opp2 | 130,300,1020,200 | 0.00 | 0.24 | 29.77 | 51.24 | 5 | 0.24 / 29.77 |
+| cr-punto | 0,60,1180,160 | 0.00 | 0.06 | 33.39 | 61.93 | 5 | 0.06 / 33.39 |
+| cr-auto | 150,290,980,380 | 0.00 | 0.00 | 27.64 | 45.59 | 5 | 0.00 / 27.64 |
+| restart-ok (reused 11x) | 190,265,900,420 | 0.00 | see note | n/a | n/a | 5 | see note |
+
+**alias-prompt / autosave-notice1 / autosave-notice2 do not discriminate bad from good**: both void
+runs match pixel-for-pixel with the good runs through s04-s06 (confirmed in Step 0 -- divergence
+starts at s07). Scores stay low (<0.6) for both good and bad frames at these three steps. These
+three gates are kept anyway because a `waitfor` still does its primary job here -- it absorbs a
+slow load before the press instead of firing on a fixed timer -- even though at this point in the
+route it cannot yet catch a run that has not diverged yet. Threshold 5 is generous (not meant to
+reject, since there is nothing to reject yet); it still rejects a genuinely wrong screen (e.g. a
+black loading frame) if one occurred.
+
+**main-menu's margin is tight** (good2 0.20 vs bad1 1.12, factor ~5.6x, versus 15-100x+ margins on
+every other gate): the icon-carousel crop box is shared across main-menu/mm-quickrace/qr-custom/
+cr-sprint for convenience, and main-menu's "Career" icon sits in a less text-dense part of that box
+than the others' highlighted labels. threshold 0.6 sits roughly in the middle of the two bounds
+measured here (2 good runs, 2 bad runs) and correctly separates all four, but a third bad run that
+landed closer to Career than `87778` did could slip through. Flagging rather than reworking the
+box, since the box already separates every sample available.
+
+**restart-ok's bad-run columns are n/a**: neither void run reached the race loop in a form where
+"the frame at this shot label" is a meaningful comparison (both diverged long before `r2-ok`).
+Instead, scoring restart-ok against every `r<N>-ok` frame in both good runs (22 samples) turned up
+one real divergence inside a run already called "good": good run 2's `r7-ok` scores **46.18**,
+because that frame is not the restart-confirmation dialog at all -- it is mid-race gameplay HUD (7%
+complete, 18.40s elapsed). The other 21 samples score 0.00-0.72. This means the existing route's
+restart loop has already produced at least one silently-wrong `r*-ok`/`go<N>` pair in a run that
+`title_verdict.py` presumably scored as a normal frame-rate measurement -- direct evidence for why
+step 2 gates the restart loop too, not just the first-run prompts and the pre-race menus.
+
 ### Reference-crop sizing/orientation check (for Step 1)
 
 Full device screencaps used by route.sh's `shot`/`mark`/`waitfor_step` are 1280x960 PNG (confirmed
