@@ -1209,20 +1209,79 @@ if [ -n "$ROUTE" ]; then
     ROUTE="$RNAME"
     [ -f "$ROUTE_PATH" ] || { echo "refusing to queue: no route '$ROUTE' ($ROUTE_PATH)" >&2; exit 2; }
     bash "$(dirname "$0")/titles/route.sh" --check "$ROUTE_PATH" >/dev/null || exit 2
+
+    # ROUTE CROPS TRAVEL WITH THE REQUEST (Addendum 3, #433). A `waitfor` or
+    # `press-until` step names a reference crop committed next to the route,
+    # at refs/<route-stem>/<name>.png (route.sh's ref_path). dispatcher.sh
+    # writes each one into <result dir>/refs/route.txt/ before the soak, so
+    # the worker's route.sh finds what it needs. Read the crop names the same
+    # way route.sh's own grammar does -- first word `waitfor` -> name in
+    # field 1, `press-until` -> field 2, `#` to end of line a comment -- and
+    # carry them base64'd as "route_refs". The result goes to a FILE, not a
+    # shell variable: a base64'd crop can be comfortably under Linux's
+    # ~128 KiB single argv/envp string limit on its own, but the route.sh
+    # --check "$ROUTE_PATH" above already proved every named crop exists, so
+    # nothing here is skipped for size -- only the total, against a cap
+    # (crops are a few KB each; a route needing megabytes of them is wrong,
+    # not merely large).
+    ROUTE_REFS_CAP=2000000
+    ROUTE_REFS_FILE=$(mktemp)
+    trap 'rm -f "${ROUTE_REFS_FILE:-}"' EXIT
+    python3 - "$ROUTE_PATH" "$ROUTE_REFS_CAP" > "$ROUTE_REFS_FILE" <<'PY'
+import base64, json, os, sys
+route_path, cap = sys.argv[1], int(sys.argv[2])
+base = os.path.basename(route_path)
+base = base[:-len(".route")] if base.endswith(".route") else base
+refdir = os.path.join(os.path.dirname(route_path), "refs", base)
+names, seen = [], set()
+with open(route_path) as f:
+    for line in f:
+        w = line.split("#", 1)[0].split()
+        if not w:
+            continue
+        if w[0] == "waitfor" and len(w) > 1:
+            name = w[1]
+        elif w[0] == "press-until" and len(w) > 2:
+            name = w[2]
+        else:
+            continue
+        if name not in seen:
+            seen.add(name); names.append(name)
+refs, total = {}, 0
+for name in names:
+    data = open(os.path.join(refdir, name + ".png"), "rb").read()
+    total += len(data)
+    if total > cap:
+        json.dump({"refuse": "route '%s': reference crops total %d bytes,"
+                              " over the %d-byte cap" % (route_path, total, cap)}, sys.stdout)
+        raise SystemExit(0)
+    refs[name + ".png"] = base64.b64encode(data).decode("ascii")
+json.dump({"refs": refs}, sys.stdout)
+PY
+    RREFUSE2=$(python3 -c 'import json,sys; print(json.loads(open(sys.argv[1]).read()).get("refuse") or "")' "$ROUTE_REFS_FILE")
+    [ -z "$RREFUSE2" ] || { echo "refusing to queue: $RREFUSE2" >&2; exit 2; }
+
     # AND AS THE RUN WILL SEE IT. The run does not play this file: the
     # dispatcher writes the text to <result dir>/route.txt and the worker
     # plays it with the SNAPSHOT's route.sh. A `drive` profile resolves
-    # against the snapshot's titles/drive-profiles/, and a `waitfor` or
-    # `press-until` crop against <result dir>/refs/route.txt/, which nothing
-    # writes. A route that fails there exits at its first line and the soak
-    # runs on with no input (lane.routedriver), so the check above passing on
-    # this tree said nothing about the run. Check the copy the run gets, with
-    # the serving snapshot's route.sh; failing that, with the serving tree's,
-    # which a worker re-snapshots from before it claims anything (src_hash
-    # covers the profiles, and a worker snapshots at startup).
+    # against the snapshot's titles/drive-profiles/. A `waitfor` or
+    # `press-until` crop now travels in "route_refs" above and dispatcher.sh
+    # writes it into <result dir>/refs/route.txt/ before the soak -- reproduce
+    # that here too, so the check below passes exactly when the run would.
+    # Check the copy the run gets, with the serving snapshot's route.sh;
+    # failing that, with the serving tree's, which a worker re-snapshots from
+    # before it claims anything (src_hash covers the profiles, and a worker
+    # snapshots at startup).
     SNAPBIN="${DISPATCH_DIR:-$D}/bin"
     SERVER="${DISPATCH_TREE:-/home/justin/hakuX}/docs/testing"
     RCHK=$(mktemp -d); cp "$ROUTE_PATH" "$RCHK/route.txt"
+    mkdir -p "$RCHK/refs/route.txt"
+    python3 -c '
+import base64, json, os, sys
+refs = json.loads(open(sys.argv[1]).read())["refs"]
+for name, b64 in refs.items():
+    open(os.path.join(sys.argv[2], name), "wb").write(base64.b64decode(b64))
+' "$ROUTE_REFS_FILE" "$RCHK/refs/route.txt"
     rmsg=""; rok=""; rsh=""
     for rsh in "$SNAPBIN/titles/route.sh" "$SERVER/titles/route.sh"; do
         [ -f "$rsh" ] || continue
@@ -1232,7 +1291,7 @@ if [ -n "$ROUTE" ]; then
         rmsg="$rmsg$(printf '\n  %s: %s' "$rsh" "$out")"
     done
     # Neither exists (a private DISPATCH_DIR, a host with no serving tree):
-    # this tree's route.sh on the copy still sees the crops that do not travel.
+    # this tree's route.sh on the copy still sees the crops that travel.
     if [ -z "$rok" ] && [ -z "$rmsg" ]; then
         out=$(bash "$(dirname "$0")/titles/route.sh" --check "$RCHK/route.txt" 2>&1) && rok=1 \
             || rmsg=$(printf '\n  %s' "$out")
@@ -1242,10 +1301,13 @@ if [ -n "$ROUTE" ]; then
         cat >&2 <<MSG
 refusing to queue: route '$ROUTE' parses here but would not run in the dispatched soak:$rmsg
 
-A 'waitfor' or 'press-until' crop does not travel with the request: the run
-plays <result dir>/route.txt, and nothing writes its refs/. A 'drive' profile
-must be in the serving snapshot ($SNAPBIN/titles/drive-profiles/) or on the
-serving tree's master. The soak would run with no input after the first line.
+A 'drive' profile must be in the serving snapshot
+($SNAPBIN/titles/drive-profiles/) or on the serving tree's master; a missing
+one still runs with no input after that line. A 'waitfor'/'press-until' crop
+travels with the request (route_refs) and is written into
+<result dir>/refs/route.txt/ before the soak, so a missing reference crop
+here means the file next to the route itself ($ROUTE_PATH's refs/) is
+missing or unreadable.
 MSG
         exit 2
     fi
@@ -1284,7 +1346,7 @@ fi
 # `env` goes LAST and as the remaining argv, because it is the only repeatable
 # option here and packing it into one comma-joined string -- the shape every
 # other list option uses -- would make a value containing a comma unqueueable.
-ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" PRIORITY="$PRIORITY" PIN="$PIN" \
+ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" ROUTE_REFS_FILE="${ROUTE_REFS_FILE:-}" PRIORITY="$PRIORITY" PIN="$PIN" \
 TITLE_ID="$TITLE_ID" TITLE_STATE="$TITLE_STATE" IDENTIFIED="$IDENTIFIED" \
 VIDEO_SECONDS="$VIDEO_SECONDS" VIDEO_AFTER="$VIDEO_AFTER" \
 python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" "$PROGRAM" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
@@ -1323,6 +1385,11 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            # The route's name and its full text as queued; see --route.
            "route_name": __import__("os").environ.get("ROUTE", ""),
            "route": __import__("os").environ.get("ROUTE_TEXT", ""),
+           # The route's reference crops (waitfor/press-until), base64'd;
+           # see --route above and dispatcher.sh's write_route_refs. {} when
+           # there is no route, or the route names no crop.
+           "route_refs": (lambda _p: json.load(open(_p)).get("refs", {}) if _p else {})(
+               __import__("os").environ.get("ROUTE_REFS_FILE", "")),
            # The title (its targets.toml id) and the disk state its route
            # declares: the dispatcher composes the titles disk to match.
            "title_id": __import__("os").environ.get("TITLE_ID", ""),

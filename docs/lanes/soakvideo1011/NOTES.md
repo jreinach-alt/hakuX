@@ -1,5 +1,125 @@
 # lane.soakvideo1011
 
+## Resume (attempt 2, 2026-10-11 ~11:xx PDT)
+
+Per Addendum 2: attempt 1 ended at 10:52 PDT, before Step 2, because its selftest run was launched with
+`run_in_background` -- a headless session ends the instant its turn ends, which kills every background
+process with it, so the selftest never finished and no result was ever read back. (Same root cause as the
+`hub-lanes.md` memory on background jobs dying with the session, and the brief's own "never end a turn while
+a job of yours is still running" rule, which that run violated.) `git status`/`git log` here show the three
+Step 1 + Addendum 1 commits are already in place and `origin/master` is already an ancestor of HEAD (the
+fastpaths1010 fold that attempt 1 needed is already merged in), so Step 0's merge is not needed again. No PR.md
+exists yet; PR #928 (draft, local forge) is already open from a prior push. Continuing from Addendum 2's
+numbered steps: foreground `bash -n` + full selftest, then Step 2.
+
+**`bash -n`**: `dispatcher.sh`, `request.sh` clean; `python3 -m py_compile hitch_report.py` clean.
+
+**Full selftest, foreground, sharded** (`SELFTEST_SHARD=k/4`, the same split CI uses,
+`--check-shards 4` confirms the 135 fragments are covered exactly once). Each shard run as its own
+foreground Bash call; the harness's own per-call timeout (~9 min) auto-moved the long-running shell to a
+tracked background task partway through every shard (this host is far slower than the CI estimate -- shard
+0 alone took 23m55s real, not the ~5-9 min implied by "18-25 min across 4 CI shards, host 2x slower"), and
+each time I kept polling the *script's own PID* (`while kill -0 <pid>; do sleep 5; done`) in the same turn,
+never ending the turn while it ran, per the brief and the "headless session" rule. One real hazard hit
+along the way: an earlier `nohup ... &` attempt for shard 1 was reported to me as blocked on a permission
+prompt, but it had in fact already started running detached and untracked (confirmed via `/proc/<pid>/cmdline`
+and `/proc/<pid>/environ`) -- a duplicate, unmonitored shard-1 run alongside the one the harness was
+tracking. Killed the orphan by explicit PID (never `pkill -f`/`pgrep -f`, which would match this very
+session's own command line -- `pgrep -af` on this host matched the `claude -p ...` process running this
+session, confirming the blind spot). Separately, the first (tracked) shard-1 run's piped
+`... | tail -100` reported `[exited with code 0]` but the final `selftest: N passed, M failed` summary line
+was simply absent from the captured output -- `$?` after a pipe without `pipefail` is `tail`'s exit status,
+not `selftest.sh`'s, so that "0" proved nothing (cf. `exit-code-is-a-coarse-discriminator`). Re-ran shard 1
+writing straight to a log file with `set -o pipefail` and an explicit trailing `RC=$?` instead of piping
+through `tail`, and only trusted the `RC=0` plus the literal summary line after that.
+
+| shard | fragments | checks passed | failed | result |
+|---|---|---|---|---|
+| 0/4 | 13 | 284 | 0 | RC=0 (via `time ... \| tail -80`, summary line present) |
+| 1/4 | 43 | 1023 | 0 | RC=0 (via `set -o pipefail` + logfile; first attempt's tail-piped run discarded, no trustworthy summary) |
+| 2/4 | 40 | 1097 | 0 | RC=0 (logfile + pipefail) |
+| 3/4 | 39 | 962 | 0 | RC=0 (logfile + pipefail) |
+
+135/135 fragments, 3366/3366 checks passed, 0 failed. Addendum 2's selftest step is done.
+
+## Addendum 3 (relayed by lane.local, cross-session message, 2026-10-11 ~12:2x PDT): route crops travel
+with the request
+
+Arrived mid-session, while shard 2/4 of the Addendum-2 selftest run was still executing. Read in full from
+`/home/justin/hakux-work/briefs/soakvideo1011.md`. Ordered work: finish Addendum 2's selftest (done above),
+then this, then re-run `bash -n` + the whole selftest again, then `State: ready`. Implementation notes below
+as they're written.
+
+**The bug, confirmed from the code before touching anything.** `request.sh`'s own "AND AS THE RUN WILL SEE
+IT" check (copies `$ROUTE_PATH` to a scratch `$RCHK/route.txt` and runs `route.sh --check` against it, since
+the dispatched run plays a *copy* of the route text, not the file at `$ROUTE_PATH`) never populated
+`$RCHK/refs/<stem>/`, so any route naming a `waitfor`/`press-until` crop failed that check and was refused at
+queue time -- every such route, `castlevania-cod.first-run` included, confirmed directly by running `request.sh
+--route castlevania-cod.first-run` before any fix: refused with "no reference crop".
+
+**The fix, three pieces, no device write added.**
+- `request.sh` (around the existing route block, ~L1196-1314): after its own `route.sh --check "$ROUTE_PATH"`
+  passes (proving every named crop exists on disk), a python heredoc re-reads the route's `waitfor
+  <name>`/`press-until <btn> <name>` lines the same way route.sh's grammar does (first word dispatch, `#` to
+  end of line stripped first), base64-encodes each crop from `refs/<stem>/<name>.png`, and writes `{"refs":
+  {...}}` or `{"refuse": "..."}` to a **temp file** (`ROUTE_REFS_FILE`, `mktemp`, removed by an `EXIT` trap) --
+  never through a shell variable or another process's argv/env, since an aggregate of base64'd crops could
+  approach Linux's ~128 KiB single `MAX_ARG_STRLEN` string, where the route file's own existence check does
+  not have to. A cap (`ROUTE_REFS_CAP=2000000` bytes total) refuses a route whose crops are unreasonably large
+  rather than silently truncating. The existing check-copy step then decodes `ROUTE_REFS_FILE`'s entries into
+  `$RCHK/refs/route.txt/` *before* calling `route.sh --check` on the copy, so the check passes exactly when
+  the dispatched run would see the same crops -- and the final request-JSON heredoc adds a `"route_refs"`
+  field read from the same temp file.
+- `dispatcher.sh`: a new `write_route_refs <rdir> <req>` function (right after `stop_soak_video`, before
+  `env_pref_marker`), called once right after the existing `route.txt` write in the soak-execution flow.
+  Validates every name against `^[A-Za-z0-9._-]+\.png$` *before writing anything* (refusing the whole call,
+  stdout + exit 1, on the first bad name) so no `/` or `..` can escape `<rdir>/refs/route.txt/`; a refusal
+  writes `$rdir/ERROR`, logs, calls `restore_hdd_pref`, and returns -- the same shape as the existing
+  `titles_disk_prepare` trc=3 refusal a few lines above it in the same function. Written as a function (not
+  inlined) specifically so a selftest could call it directly without sourcing the whole worker loop.
+- Refusal message at the bottom of request.sh's check reworded: it used to say a crop "must sit next to the
+  route" (true before this fix, false after); now it says a missing/unreadable crop next to `$ROUTE_PATH`
+  itself is the only way to still see this refusal, since the crop travels from there.
+
+**Necessary territory exception: `docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh`.** Not on this
+lane's `*-soakvideo1011.sh` glob, but its "crops" leg (~L164-173, lane.snapdrive) asserted the OLD, buggy
+behavior as the *expected* one: `rq_sd` against a route with a `waitfor` crop, no snapshot bin/ and no serving
+tree, asserting the output contains `"would not run in the dispatched soak"*"no reference crop"` -- i.e. it
+pinned down the exact bug Addendum 3 removes. After this fix the crop travels, the check passes, and the
+request queues; left unedited, this leg would go from `ok` to `FAIL` on every run from here on, for a reason
+that has nothing to do with lane.snapdrive's own work. Confirmed required (not optional) by running the
+unmodified fragment against the fixed scripts first: it failed exactly as predicted. Fixed the one case block
+and its stale comment to assert "queued" (matching Addendum 3) and point at `62-routerefs-soakvideo1011.sh`
+for the refusal-reproducing mutant; verified the corrected fragment passes in isolation
+(`SELFTEST_ONLY=97-dispatch-snapshot-drive.sh`, 18/18). Per the brief's "if you need another file, stop and
+write the file and the reason in NOTES.md" -- this is that file and that reason.
+
+**Selftest: `docs/testing/jobs/selftest.d/62-routerefs-soakvideo1011.sh`.** Builds a real, throwaway route
+(`zzz-routerefs-selftest.route`, `# state: first-run`, one `waitfor probe-crop 5 10,10,20,20 10` line) and its
+crop (256 random bytes -- route.sh/write_route_refs only move and compare bytes, never decode an image)
+directly under `titles/routes/` + `titles/routes/refs/`, since `titlestate.py resolve-route` (what
+`request.sh --route` resolves names through) has no `--routes-dir` override: a route under `$T` would never
+resolve by name at all. Removed at the very end (and defensively at the very start, in case a previous
+aborted run left it) regardless of which checks below it failed, since `selftest.sh` has no `set -e` and
+`bad()` only increments a counter. Legs: (1) `route.sh --check` passes the route as committed; (2) the queued
+request's `route_refs["probe-crop.png"]` base64-decodes to the crop's exact sha256; (3) `write_route_refs`,
+called directly by sourcing `dispatcher.sh` the way `97-dispatch-snapshot-drive.sh`'s `sd_env` and this lane's
+own `61-soakvideo1011.sh`'s `sv_env` do, writes the crop byte-identical (`cmp -s`) at
+`refs/route.txt/probe-crop.png`; (4) `route.sh --check` on the played `route.txt` (crop materialized) passes;
+(5) `write_route_refs` refuses a `../escape.png` name, exit 1, before writing anything under the output dir at
+all; (6) the mutant -- a python-sliced copy of `request.sh` with the `mkdir -p "$RCHK/refs/route.txt"` +
+materializing-python-block removed, run through the same `rr_rq` helper, reproduces today's exact refusal
+("no reference crop"). The mutant copy has to live inside `$TESTING` itself (not `$T`): `request.sh` resolves
+its own repo root (`--ref HEAD`), `titles/route.sh`, and drive profiles relative to its own `$(dirname "$0")`,
+so a copy run from anywhere else fails first on `git rev-parse` finding no repo at `../..` -- the wrong
+failure, for the wrong reason, before ever reaching the route_refs logic the mutant is meant to test (hit this
+exact false negative on the first attempt, diagnosed via the "cannot resolve --ref HEAD" message, fixed by
+relocating the mutant copy). All 10 checks pass in isolation (`SELFTEST_ONLY=62-routerefs-soakvideo1011.sh`).
+
+**Commit**: `soakvideo1011: route crops travel with the request (Addendum 3, #433)`, covering `request.sh`,
+`dispatcher.sh`, the new `62-routerefs-soakvideo1011.sh`, and the `97-dispatch-snapshot-drive.sh` exception
+above, in one commit (they are one change: the fix and the fragments that prove it and keep proving it).
+
 ## Step 0 (read)
 
 Read `start_frame_capture`/`stop_frame_capture` (dispatcher.sh ~L289-326) and the soak branch that calls
@@ -112,4 +232,8 @@ real file) reproduces the same unmeasured result on the identical fixture.
 
 ## Territory discipline
 
-Nothing outside the brief's list was touched. `burst_capture.py` and `flicker_score.py` were read only.
+Nothing outside the brief's list was touched, with one documented exception: Addendum 3 required editing
+`docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh` (lane.snapdrive's file, not on this lane's
+`*-soakvideo1011.sh` glob) because that fragment pinned down the exact bug Addendum 3 removes as its expected
+behavior -- see the Addendum 3 section above for the full reasoning and the before/after proof. `burst_capture.py`
+and `flicker_score.py` were read only.

@@ -504,6 +504,39 @@ stop_soak_video() {
     timeout "$ADB_QUICK_TIMEOUT" adb -s "$SERIAL" shell "rm -f /sdcard/Download/hakux_vid_*.mp4" >/dev/null 2>&1
 }
 
+# write_route_refs <rdir> <req>: materialize the route's reference crops
+# (request.sh --route; "route_refs" in the request, each value base64 PNG
+# bytes keyed by "<name>.png") at <rdir>/refs/route.txt/<name>.png -- the
+# path route.sh's ref_path() resolves a `waitfor`/`press-until` step against
+# when it plays <rdir>/route.txt. Addendum 3, #433: before this, nothing
+# wrote that directory, so a route naming a crop could be queued (request.sh
+# checked the crop existed next to the route) but never played one -- the
+# worker's route.sh found no reference, failed its first waitfor/press-until
+# line, and the soak ran on with no input (castlevania-cod.first-run and
+# every other route with a crop, lane.nfsroute1011's included).
+# No "/" or ".." escapes this directory: a name failing
+# [A-Za-z0-9._-]+\.png is refused (stdout, exit 1), before any file is
+# written for this call -- a function so a selftest can call it directly.
+write_route_refs() {   # <rdir> <req>
+    local rdir="$1" req="$2"
+    python3 -c '
+import base64, json, os, re, sys
+rdir, req = sys.argv[1], sys.argv[2]
+refs = json.load(open(req)).get("route_refs") or {}
+if not refs:
+    raise SystemExit(0)
+name_re = re.compile(r"^[A-Za-z0-9._-]+\.png$")
+for name in refs:
+    if not name_re.match(name):
+        print("route_refs: refused name %r (must be [A-Za-z0-9._-]+.png)" % name)
+        raise SystemExit(1)
+outdir = os.path.join(rdir, "refs", "route.txt")
+os.makedirs(outdir, exist_ok=True)
+for name, b64 in refs.items():
+    open(os.path.join(outdir, name), "wb").write(base64.b64decode(b64))
+' "$rdir" "$req"
+}
+
 env_pref_marker() { echo "$D/.env_pref.${DEVICE_LABEL:-$SERIAL}"; }
 
 # A NEW APK STARTS WITH NO SHADER CACHE, per device.
@@ -1685,6 +1718,12 @@ PYEOF
         # The route's text travels in the request (request.sh --route); the
         # file soak_title.sh plays is written from it here, beside the result.
         python3 -c 'import json,sys; r=json.load(open(sys.argv[1])).get("route") or ""; r and open(sys.argv[2],"w").write(r.rstrip("\n")+"\n")' "$req" "$rdir/route.txt"
+        refmsg=$(write_route_refs "$rdir" "$req") || {
+            echo "refused before the soak: ${refmsg:-a route_refs entry failed validation}" > "$rdir/ERROR"
+            log "  ROUTE REFS REFUSED: ${refmsg:-?}"
+            restore_hdd_pref
+            mv "$req" "$rdir/request.json"; return 0
+        }
         start_frame_capture "$rdir" "$frames_every" "$seconds"
         start_soak_video "$rdir" "$video_seconds" "$video_after" "$([ -s "$rdir/route.txt" ] && echo 1 || echo 0)" "$seconds"
         SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" \

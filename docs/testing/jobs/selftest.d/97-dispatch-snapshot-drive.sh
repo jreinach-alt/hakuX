@@ -143,10 +143,14 @@ echo "== request.sh --route: a route is checked as the run will see it"
 # THE LEGS (each in a private dispatch dir, so nothing reaches the harness's
 # queue; DISPATCH_TREE named, so the host's serving tree is never read):
 #   drive     a .drive.route against a snapshot holding its profile: queued.
-#   crops     a route with `waitfor` crops: refused. The run plays
-#             <result dir>/route.txt and nothing writes its refs/, so it
-#             would die at line 1 with the soak running on. Fails if the
-#             check reads the route where it sits in this tree.
+#   crops     a route with `waitfor` crops: queued. The crop travels with the
+#             request (route_refs, Addendum 3 #433 lane.soakvideo1011) and
+#             request.sh stages it into the check-copy's refs/route.txt/
+#             before this same check, so the crop no longer has to sit where
+#             this tree's route.sh would find it on its own. Before that fix
+#             this leg was refused (the run plays <result dir>/route.txt,
+#             and nothing wrote its refs/); 62-routerefs-soakvideo1011.sh
+#             carries the refusal-reproducing mutant now.
 #   noprof    a .drive.route against a snapshot with no drive-profiles/ and
 #             no serving tree: refused, "no profile".
 #   server    the same snapshot, but a serving tree whose dispatcher ships
@@ -164,12 +168,13 @@ else bad "a drive route was refused against a snapshot holding its profile: $out
 crop=$(cd "$TESTING/titles/routes" && grep -l '^[[:space:]]*\(waitfor\|press-until\)' *.route | head -1)
 if [ -n "$crop" ]; then
     out=$(rq_sd "$SD/q2" "$SD/no-tree" "${crop%.route}")
-    case "$out" in
-        *"would not run in the dispatched soak"*"no reference crop"*) ok "a route with waitfor crops is refused: they do not travel (${crop%.route})" ;;
-        *) bad "a route with waitfor crops was not refused (${crop%.route}): $out" ;;
-    esac
+    if ls "$SD/q2/queue/"*.req >/dev/null 2>&1; then
+        ok "a route with waitfor crops is queued: the crop travels in route_refs (${crop%.route}, Addendum 3 #433)"
+    else
+        bad "a route with waitfor crops was refused even though the crop travels (${crop%.route}): $out"
+    fi
 else
-    bad "no route under titles/routes/ has a waitfor or press-until step to check the refusal with"
+    bad "no route under titles/routes/ has a waitfor or press-until step to check this with"
 fi
 mkdir -p "$SD/q3/bin"; cp -r "$SD/d/bin/." "$SD/q3/bin/"; rm -rf "$SD/q3/bin/titles/drive-profiles"
 out=$(rq_sd "$SD/q3" "$SD/no-tree" sonic-heroes.drive)
