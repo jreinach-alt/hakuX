@@ -136,6 +136,29 @@ above -- this run now includes `62-routerefs-soakvideo1011.sh`, so 136 fragments
 both touched `selftest.d/*.sh` files (re-checked after the Addendum 3 commit, not just before it). Addendum 3's
 own rerun step is done; `State: ready` next, per Addendum 2's ordering.
 
+## Readied, waiting on the fold (2026-10-11 ~13:3x PDT)
+
+`docs/lanes/soakvideo1011/PR.md` created (first commit put `State: ready` at the end and opened with the
+`Lane:`/`Issue:` block; a second commit, `bee8b76571`, fixed it to the forge protocol's actual convention --
+line 1 a markdown title, line 2 a literal `State: ready`, confirmed against other lanes' PR.md files like
+`dispatchguard`, `fps20786` -- `lane-protocol/forge.md` is the doc, found only because `State: ready` at the
+end rendered the Role-template's `gh pr ready` path and this repo's forge-sync path inconsistent with each
+other; did both to be safe). Pushed `bee8b76571`; `gh pr ready 928` succeeded (was draft, now ready, OPEN).
+`docs/testing/preflight.sh` passes (territory ok, coverage ok, board files ok). `git diff --stat
+origin/master...HEAD` matches PR.md's `Files:` line exactly (minus the not-yet-registered prediction file,
+called out as pending).
+
+Step 2 needs `bee8b76571` to be an ancestor of `/home/justin/hakuX` HEAD first (lane.local folds ready PRs;
+foldqueue moves that tree). Polled `git -C /home/justin/hakuX merge-base --is-ancestor bee8b76571 HEAD` via a
+60s-interval background Monitor for two 10-minute windows (20 min total); still false both times, hakuX HEAD
+unchanged at `6d8947bb47` (the fastpaths1010 fold). Per the role's own rule against polling a background wait
+until the turn cap cuts the session off, posted `[lane.soakvideo1011] waiting:` on PR #928
+(http://127.0.0.1:3330/jreinach-alt/hakuX/issues/928#issuecomment-17962) naming exactly this condition, and
+stopped rather than re-arming indefinitely. Next session: re-check the merge-base ancestry first; if it now
+succeeds, proceed straight to Step 2 (register `docs/testing/predictions/soakvideo1011-gtasa.json` or state a
+`--no-expect` reason, queue the GTA San Andreas soak, verify the stated legs, write gfps + both mp4 paths into
+PR.md).
+
 ## Step 0 (read)
 
 Read `start_frame_capture`/`stop_frame_capture` (dispatcher.sh ~L289-326) and the soak branch that calls
