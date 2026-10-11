@@ -144,15 +144,39 @@ typedef struct NV2AState {
          * spin window to every submission the guest makes.
          */
         QemuCond fifo_drained_cond;
+        /* With HAKUX_POSTED_PUT=1 a posted DMA_PUT store sets this without
+         * pfifo.lock, so the PFIFO thread then clears it with xchg; see
+         * pfifo_park() in pfifo.c. */
         bool fifo_kick;
         bool halt;
+        /*
+         * HAKUX_POSTED_PUT=1 only (#433). The PFIFO thread is in (or about to
+         * enter) its wait on `fifo_cond`, where it does not hold pfifo.lock.
+         * A posted DMA_PUT store reads this to decide whether it must take
+         * the lock to wake it.
+         */
+        bool parked;
+        /*
+         * HAKUX_POSTED_PUT=1 only. The DMA_PUT the PFIFO thread read when it
+         * last cleared the kick, under pfifo.lock. pfifo_park() does not wait
+         * while DMA_PUT differs from it.
+         */
+        uint32_t put_seen;
+        /*
+         * HAKUX_POSTED_PUT=1 only. When the oldest posted DMA_PUT store not
+         * yet taken up by the PFIFO thread was made (nv2a_clock_ns), or 0.
+         * The PFIFO thread reads and clears it under pfifo.lock and records
+         * the submission for the `fifoskew` line as the locked store would.
+         */
+        int64_t posted_ts;
         /*
          * The last DMA_PUT the guest was seen to publish. pfifo_kick() is
          * called from several places on several threads; this is how the one
          * call that is a SUBMISSION -- the guest advancing DMA_PUT -- is told
          * apart from a kick that merely re-wakes the thread. Only the guest
-         * CPU writes DMA_PUT, and it does so with pfifo.lock held, so this
-         * needs no atomics of its own.
+         * CPU writes DMA_PUT. This is read and written only with pfifo.lock
+         * held: by the guest's locked store, and, with HAKUX_POSTED_PUT=1, by
+         * the PFIFO thread when it takes up a posted one.
          */
         uint32_t skew_last_put;
     } pfifo;
@@ -249,6 +273,8 @@ DEFINE_PROTO(pmc)
 void pmc_reset(NV2AState *d);
 DEFINE_PROTO(pbus)
 DEFINE_PROTO(pfifo)
+bool pfifo_dma_put_may_post(NV2AState *d, unsigned int channel_id);
+void pfifo_post_dma_put(NV2AState *d, uint32_t val);
 DEFINE_PROTO(prma)
 DEFINE_PROTO(pvideo)
 DEFINE_PROTO(ptimer)
