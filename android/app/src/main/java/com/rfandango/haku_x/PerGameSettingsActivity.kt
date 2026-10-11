@@ -106,6 +106,8 @@ class PerGameSettingsActivity : AppCompatActivity() {
             globalDefault = true)
         addBoolPicker(container, "surfgpu", getString(R.string.settings_surfgpu), "surfgpu",
             globalDefault = true)
+        addBoolPicker(container, "fastpaths", getString(R.string.settings_fastpaths), "fastpaths",
+            globalDefault = true)
         addBoolPicker(container, "texture_dump_enabled", "Dump Textures", "texture_dump_enabled")
         // addBoolPicker(container, "texture_replace_enabled", "Custom Textures", "texture_replace_enabled")  // hidden for now
     }

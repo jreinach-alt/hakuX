@@ -67,6 +67,7 @@ class SettingsActivity : AppCompatActivity() {
     "fast_fences" to false, "skip_occlusion_queries" to false,
     "draw_reorder" to false, "draw_merge" to false,
     "async_compile" to false, "frame_skip" to false, "ubershader" to true, "surfgpu" to true,
+    "fastpaths" to true,
     "use_dsp" to false,
     "skip_boot_anim" to true,
     "texture_dump_enabled" to false,
@@ -547,6 +548,8 @@ class SettingsActivity : AppCompatActivity() {
     setupSwitch(R.id.switch_ubershader, "ubershader", true)
     // Read at the next launch (MainActivity.surfgpuEnabled); no native setter.
     setupSwitch(R.id.switch_surfgpu, "surfgpu", true)
+    // Read at the next launch (MainActivity.fastpathsEnabled); no native setter.
+    setupSwitch(R.id.switch_fastpaths, "fastpaths", true)
 
     setupIntPicker(R.id.btn_texture_cache, "texture_cache_size", 0,
       R.string.settings_texture_cache, arrayOf("Auto (0)", "512", "1024", "2048"), intArrayOf(0, 512, 1024, 2048))
