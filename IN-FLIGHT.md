@@ -8,13 +8,15 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gtasagpu1011` | claude-opus-5-5 | 2h 2m | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
-| `pathclass` | claude-sonnet-5 | 1h 47m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `nfsroute1011` | claude-sonnet-5 | 13 min | nfsroute1011: status -- Step 3 offline work done, waiting on ref-staging fix |
+| `pathclass` | claude-sonnet-5 | 2h 2m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `profilegate1011` | claude-sonnet-5 | 13 min | profilegate1011: wire the profile gate into request.sh and the dispatcher's claim (#433) |
+| `soakvideo1011` | claude-sonnet-5 | 13 min | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `2026-10-11T21:55:57Z`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 16 waiting, 1 running.
+- **Device queue:** 15 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -74,8 +76,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `0c6da187e9` | 2026-10-11 14:50 |
+| `lane/nfsroute1011` | nfsroute1011: status -- Step 3 offline work done, waiting on ref-staging fix | `95d0893061` | 2026-10-11 12:33 |
 | `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `f442726741` | 2026-10-11 13:21 |
+| `lane/profilegate1011` | profilegate1011: wire the profile gate into request.sh and the dispatcher's claim (#433) | `952e25afa0` | 2026-10-11 15:09 |
+| `lane/soakvideo1011` | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request (#433, 0. | `ff1bcface2` | 2026-10-11 13:56 |
 
 ## Recently landed on master
 
@@ -86,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
 
-_Updated 2026-10-11 15:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 15:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
