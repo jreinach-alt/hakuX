@@ -3,7 +3,7 @@ State: draft
 
 Lane: gtasagpu1011      Issue: none (dispatched directly by lane.local, #433 umbrella)
 Base: master @ 6d8947bb47
-Files: docs/lanes/gtasagpu1011/NOTES.md, docs/lanes/gtasagpu1011/PR.md, docs/lanes/gtasagpu1011/WAITING, docs/lanes/gtasagpu1011/dispcmp.py, docs/lanes/gtasagpu1011/fdread.py, docs/lanes/gtasagpu1011/fsz.py, docs/lanes/gtasagpu1011/litfail.py, docs/lanes/gtasagpu1011/sqscan.py, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/vertex.c
+Files: docs/lanes/gtasagpu1011/NOTES.md, docs/lanes/gtasagpu1011/PR.md, docs/lanes/gtasagpu1011/WAITING, docs/lanes/gtasagpu1011/dispcmp.py, docs/lanes/gtasagpu1011/fdread.py, docs/lanes/gtasagpu1011/fsz.py, docs/lanes/gtasagpu1011/gradwatch.py, docs/lanes/gtasagpu1011/litfail.py, docs/lanes/gtasagpu1011/sqscan.py, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/vertex.c
 Prediction: none: switch screens and frame dumps, read by hand; each run's prediction is written in NOTES.md (sections 1, 2b, 2c, 2d) before it was queued
 Needs device: yes (Nova)    Needs NDK: yes
 
@@ -92,6 +92,8 @@ That leaves two readings:
 
 **Schema 7 (50a389ef2b)** extends `rtt` to the draw that projects the shadow. Before that draw is recorded, it reads the full colour target (`pre`) and its depth (`zpre`). After the draw, it reads the colour target again (`post`). `fdread.py DUMP cons` reports how many pixels the draw changed, where they are, and the depth under them. Predictions A1-A4 are in NOTES 2d.
 
+**Schema 8 (e53b9fa918)** reads back the texture a small-target draw samples when it was never a render surface, logs an inline-array draw's raw vertex words, and adds `watchNN`: from startup, only draws into small targets, until NN are logged. n9 multiplies the shadow by exactly (129 - 2y)/255 per row (651566, 5269 texels, no mismatch). That factor comes from a 32x32 gradient made at the title's start, outside every earlier dump. Predictions G0-G2 are in NOTES 2f.
+
 ## Runs
 
 | run | build | what | state |
@@ -104,6 +106,7 @@ That leaves two readings:
 | `1-1791748627-lane.gtasagpu1011-844241` | 50a389ef2b | schema 7 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s | scored: the shadow's UV square is off screen in all 60 consumers; A1-A4 undecided (NOTES 2d) |
 | `1-1791745550-lane.gtasagpu1011-818197` | 50a389ef2b | schema 7 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s (valid per lane.local, 14:04 PDT) | scored: drawn, passes depth where nothing stands in front, reaches the display; A4 by the letter (NOTES 2e) |
 | `1-1791752181-lane.gtasagpu1011-2027680` | 50a389ef2b | the same, dump at `after160` (CJ standing in the alley) | queued on the Nova |
+| `1-1791755383-lane.gtasagpu1011-2946023` | e53b9fa918 | schema 8 `watch600` dump from startup: how the 32x32 shadow gradient is made, and n9's texels and diffuse | queued on the Nova |
 
 ## Step 3
 
