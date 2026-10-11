@@ -279,3 +279,63 @@ Unchanged from Addendum 4's own count one minute earlier, confirming the batch i
 gtaroutes1011/gtasagpu1011's work, not stuck. Writing `WAITING` with these 6 ids now and ending per
 Addendum 4's instruction, rather than polling in the foreground for however long the rest of the batch
 takes -- lanewaker checks every 5 min and will resume this lane once all 20 are DONE or WITHDRAWN.
+
+**Attempt 3 (this session).** Attempt 2 ended correctly per Addendum 4's instruction (WAITING written and
+pushed at `b5ff4c8d27`, naming the 6 still-running/queued ids); it did not finish the brief because that
+was the whole point of ending there -- the remaining 6 of batch 1's 20 runs were still on the Nova behind
+gtaroutes1011/gtasagpu1011's work, and the lane's own rule is not to poll a long device drain in the
+foreground. lanewaker resumed this session once all 20 reached a terminal state, as designed. All 6
+WAITING ids read DONE in `$DISPATCH_DIR/results/` (the real dispatch dir is
+`/home/justin/hakux-work/dispatch`, not a path under this worktree -- `docs/lanes/.../WAITING`'s run ids
+are looked up there, not relative to the lane directory).
+
+While reading batch 1 with `screenread.py`, found its `frame_count()` globbed `d/*.png` directly; every
+capture actually lands in `route-frames/*.png` (route titles) or `frames/*.png` (soak `--frames-every`
+titles, per `request.sh`'s own frames-every help text), so the script would have printed `frames` as 0 for
+every one of the 38 titles regardless of how many stills a run actually captured -- silently useless for
+the "frames is a raw capture count for me to review by eye" column the brief asks for. Fixed to glob both
+subdirectories; not a behavior change to any other lane's reader, since `screenread.py` is new to this one.
+
+**Batch 1 read (10 route titles, 20 runs), all DONE, all pass:**
+
+| title | arm | fatal | frames | gfps | verdict |
+|---|---|---|---|---|---|
+| Crimson Skies: High Road to Revenge | ON/OFF | none/none | 3/3 | 29.97/30.01 | pass |
+| Spikeout: Battle Street | ON/OFF | none/none | 8/8 | 60.03/60.01 | pass |
+| Jet Set Radio Future | ON/OFF | none/none | 4/4 | 59.87/59.76 | pass |
+| Tork: Prehistoric Punk | ON/OFF | none/none | 16/15 | 30.37/29.21 | pass |
+| Kabuki Warriors | ON/OFF | none/none | 16/16 | 52.65/59.37 | gap 11.3%, wider than fastpaths1010's own noted-but-not-escalated 6% on this same title -- rerun queued, see below rather than called here |
+| 187: Ride or Die | ON/OFF | none/none | 21/21 | 60.02/60.09 | pass |
+| Tony Hawk's Pro Skater 2x | ON/OFF | none/none | 13/13 | 59.40/59.48 | pass |
+| KOF: Maximum Impact - Maniax | ON/OFF | none/none | 11/11 | 59.76/59.98 | pass |
+| Alien Hominid | ON/OFF | none/none | 1/1 | 59.96/59.87 | pass (route has one `shot`, at `mark gameplay`; 1 frame is this route's own design, not a capture failure) |
+| WWE Raw 2 | ON/OFF | none/none | 15/15 | 59.07/59.94 | pass (1.5% gap, in line with the rest of the screen) |
+
+No ON-only fatal anywhere in batch 1. Frame-by-frame visual check on Kabuki Warriors' `gameplay` shot
+(the only title with a gap worth a closer look): ON's frame shows a mid-combo clash with a particle-glow
+effect and a `50` round timer; OFF's frame shows a downed-opponent pose against a plain striped curtain
+background and a `40` timer -- different points in a CPU-vs-CPU-random-opponent fight (the route's own
+header: "The CPU's fighters are random, so the arena differs run to run"), not a shared static scene a
+pixel diff could call corrupted either side. This is consistent with route-level gfps noise from scene
+complexity, same shape as fastpaths1010's own 6% Kabuki gap, but this lane's gap is nearly double that
+precedent and the screen's own prediction (`nfsdefault1011-screen.json`'s `prediction` field) explicitly
+named "wider than fastpaths1010's typical <1%... not Kabuki Warriors' noted 6% gap" as a possible
+refutation signal -- so rather than wave this one through on the fastpaths1010 precedent alone, queued one
+rerun pair before calling it, per the brief's "a title that fails gets two reruns before anything is
+attributed to a switch" (not treating this as a confirmed fail yet, just not confirming pass on one sample
+when the prediction itself flagged this exact comparison): ON `1-1791758946-nfsdefault1011-3829286`, OFF
+`1-1791758950-nfsdefault1011-3829494`.
+
+**Batch 2 queued (10 soak titles, 20 runs, ON then OFF per title, 180s, `--frames-every 15`,
+`HAKUX_RELEASE_PRIO=1`):** ToeJam & Earl III (`...3830698`/`...3832157`), Halo: Combat Evolved
+(`...3832362`/`...3832563`), Panzer Dragoon Orta (`...3833185`/`...3833645`), Capcom vs. SNK 2 EO
+(`...3833892`/`...3834202`), The Simpsons Hit & Run (`...3834333`/`...3834604`), Dark Summit
+(`...3835673`/`...3837409`), Gunvalkyrie (`...3838236`/`...3838429`, title id resolved to `49470017`),
+Indigo Prophecy (`...3838682`/`...3838907`), NFL Blitz 2002 (`...3839085`/`...3839302`), Fight Club
+(`...3839952`/`...3840421`). Pilot gate admitted every request on the existing reviewed pilot (`
+pilots/nfsdefault1011.ok`, 4.9 h old at queue time), cumulative device time climbing from ~27 min to
+~103 min as the batch queued, same shape as batch 1. Combined with the Kabuki rerun pair, this session
+queued 22 runs total.
+
+Writing `WAITING` with all 22 ids (the 2 Kabuki reruns + batch 2's 20) before ending, per Addendum 4's
+instruction not to end a session with runs in flight and no file naming them.

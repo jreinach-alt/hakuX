@@ -54,7 +54,10 @@ def arm_of(d, off_env):
 
 
 def frame_count(d):
-    return len(glob.glob(os.path.join(d, '*.png')))
+    # Route captures land in route-frames/, soak --frames-every stills in
+    # frames/ (request.sh); neither writes a *.png directly under d.
+    return (len(glob.glob(os.path.join(d, 'route-frames', '*.png'))) +
+            len(glob.glob(os.path.join(d, 'frames', '*.png'))))
 
 
 def main():
