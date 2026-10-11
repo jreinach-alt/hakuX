@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 31 min |  |
-| `lanenobg1010` | claude-sonnet-5 | 32 min |  |
+| `fastpaths1010` | claude-sonnet-5 | 46 min | fastpaths1010: register the NFS MW step-2 prediction (#433, 0.5) |
+| `lanenobg1010` | claude-sonnet-5 | 47 min | lanenobg1010: refuse backgrounded Bash and Agent calls in a lane session (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-10`, build `7d574ece8b`.
 
 ## 0.5 release: Playable titles
@@ -72,10 +72,15 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/fastpaths1010` | fastpaths1010: register the NFS MW step-2 prediction (#433, 0.5) | `11109b0086` | 2026-10-10 21:39 |
+| `lane/lanenobg1010` | lanenobg1010: refuse backgrounded Bash and Agent calls in a lane session (#433, 0.5) | `d9e521a217` | 2026-10-10 21:36 |
 
 ## Recently landed on master
 
+- 2026-10-10 postput1010: post the guest's DMA_PUT store when pfifo.lock is busy, behind HAKUX_POSTED_PUT=1 (#433, 0.5)
+- 2026-10-10 lane.meterfit1010: price transcript tokens, not modelUsage tokens (#433, 0.5)
 - 2026-10-10 drawrec1010: HAKUX_DRAWREC=1 (default off) cuts NFS race-start recording 21%/draw
 - 2026-10-10 lane.usagerule1010: usage Low enters only at 80% of the week used AND a projection over 100% (#433, 0.5)
 - 2026-10-10 reportasync1010: write the occlusion report after the GPU is done, off the PFIFO thread (#433, 0.5)
@@ -84,8 +89,5 @@ No branch is being worked right now.
 - 2026-10-10 lane.usage24h1009: project the week's usage from the trailing 24h burn rate, not the trailing 6h (#433)
 - 2026-10-10 lane.fgrace1010 -- the display guard's "guest exit mid-route" leg loses a race and fails folds (#433, 0.5)
 - 2026-10-10 lane.fleetflush1010 -- fleet.py's FAIL lines land mid-line when stdout and stderr share a file (#433, 0.5)
-- 2026-10-10 lane.texscan1010 -- create_texture()'s surface-range scan: a GPU-side copy instead of the synchronous download, behind HAKUX_TEXSCAN=1 (#433, 0.5)
-- 2026-10-10 pfifowait1009: stop holding pfifo.lock across the report-processing fence waits (#433, 0.5)
-- 2026-10-10 lane.forzasurf1010 -- does the default-on surfgpu route remove Forza's surface-download wait? (#433, 0.5)
 
-_Updated 2026-10-10 21:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 21:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
