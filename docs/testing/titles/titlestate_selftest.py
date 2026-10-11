@@ -740,6 +740,110 @@ def test_admit(tmp):
         os.environ.pop(k, None)
 
 
+def test_admit2(tmp):
+    """R3 (known_path/proven_route/pathknow_success), readiness(), title_saves,
+    --remake-profile, --path-broken, and Addendum 2's pathknow-vs-proven split:
+    a queued find-route is admitted on a title with only a pathknow success
+    (its route's own first proof soak still needs --find-route), but
+    pathfind.py's broader known_path test (broad=True) already calls it
+    known."""
+    print("== titlestate.py admit: R3, readiness, title_saves, Addendum 2")
+    os.environ["TITLESTATE_DIR"] = os.path.join(tmp, "ts")
+    os.environ["DISPATCH_DIR"] = os.path.join(tmp, "dispatch")
+    os.environ["TITLE_ROUTES"] = os.path.join(tmp, "routes")
+    os.environ["TITLE_TARGETS"] = os.path.join(tmp, "targets.toml")
+    os.makedirs(os.environ["DISPATCH_DIR"])
+    os.makedirs(os.environ["TITLE_ROUTES"])
+    import importlib
+    import titlestate as ts
+    importlib.reload(ts)
+
+    RM, KN, PK = "41560005", "41560006", "41560007"
+
+    with open(os.environ["TITLE_TARGETS"], "w") as fh:
+        fh.write('[titles.41560005]\n\n'
+                 '[titles.41560006]\nroute = "known-route"\n\n'
+                 '[titles.41560007]\nroute = "pk-route"\n')
+    with open(os.path.join(os.environ["TITLE_ROUTES"], "known-route.route"), "w") as fh:
+        fh.write("mark gameplay\nstep 1\n")
+    with open(os.path.join(os.environ["TITLE_ROUTES"], "pk-route.route"), "w") as fh:
+        fh.write("mark gameplay\nstep 1\n")
+
+    fix = os.path.join(tmp, "fix")
+    rm_d, rm_m = make_save(os.path.join(fix, "rm"), RM, {
+        f"UDATA/{RM}/TitleMeta.xbx": b"RM", f"UDATA/{RM}/3CE27F2A2215/SaveMeta.xbx": b"save"})
+    ts.import_save(rm_d)
+    ts.set_golden(RM, rm_m["save_id"], by="selftest", how="seed")
+
+    MARKED = "# state: first-run\nmark profile-saved\n"
+    r = ts.admit(RM, route_text=MARKED, remake_profile="rebuilding after a bad profile")
+    check("remake-profile: a first-run route overridden on a title with a kept profile",
+          r["admit"] and r["clause"] == "remake-profile", str(r))
+    r = ts.admit(RM, route_text=MARKED, remake_profile="  ")
+    check("  ... a blank --remake-profile is the same as none (still R1 refused)",
+          not r["admit"] and "kept profile" in r["refuse"], str(r))
+
+    r = ts.admit(KN, find_route="finding KN's first route")
+    check("R3: a title with no known path at all admits a queued find-route",
+          r["admit"] and r["clause"] == "find-route", str(r))
+    check("  ... known_path(broad=False) agrees: nothing known yet",
+          not ts.known_path(KN, broad=False)["known"])
+    check("  ... known_path(broad=True) agrees too", not ts.known_path(KN, broad=True)["known"])
+
+    results = os.path.join(os.environ["DISPATCH_DIR"], "results")
+    rdir = os.path.join(results, "1-1700000000-known-1")
+    os.makedirs(rdir)
+    json.dump({"title": f"{KN}-Known.iso", "route_name": "known-route", "requester": "t"},
+              open(os.path.join(rdir, "request.json"), "w"))
+    json.dump({"reached_gameplay": True}, open(os.path.join(rdir, "verdict.json"), "w"))
+
+    kp = ts.known_path(KN, broad=False)
+    check("proven_route: a route with `mark gameplay` and a reached_gameplay result is proven",
+          kp["known"] and kp["route_name"] == "known-route" and kp["source"] == "proven", str(kp))
+    r = ts.admit(KN, find_route="finding it again, blind")
+    check("REFUSE: R3 blocks a queued find-route once the route is proven",
+          not r["admit"] and "already has a proven route" in r["refuse"], str(r))
+    r = ts.admit(KN, find_route="it broke somehow", path_broken="1-1700000000-known-1")
+    check("path-broken: overrides R3 when it names a real run of the proven route",
+          r["admit"] and r["clause"] == "path-broken", str(r))
+    r = ts.admit(KN, find_route="wrong result", path_broken="1-1700000000-nonexistent-9")
+    check("REFUSE: --path-broken naming a result that does not exist",
+          not r["admit"] and "does not name a run on record" in r["refuse"], str(r))
+
+    know_dir = os.path.join(tmp, "pathknow")
+    os.makedirs(os.path.join(know_dir, "paths"))
+    os.environ["PATHFIND_KNOW"] = know_dir
+    json.dump({"complete": True, "result": "gameplay"},
+              open(os.path.join(know_dir, "paths", f"{PK}.json"), "w"))
+    check("pathknow_success: a complete/gameplay record reads back true", ts.pathknow_success(PK))
+    r = ts.admit(PK, find_route="proving pk-route for the first time")
+    check("ADDENDUM 2: a queued find-route is admitted on a pathknow-only title "
+          "(its route's own first proof soak still needs --find-route)",
+          r["admit"] and r["clause"] == "find-route", str(r))
+    pk_broad = ts.known_path(PK, broad=True)
+    check("  ... but pathfind.py's broader known_path (broad=True) calls it known",
+          pk_broad["known"] and pk_broad["source"] == "pathknow", str(pk_broad))
+    pk_narrow = ts.known_path(PK, broad=False)
+    check("  ... while the narrower, queue-time test does not", not pk_narrow["known"], str(pk_narrow))
+
+    print("== titlestate.py readiness/title_saves")
+    rows = {row["title_id"]: row for row in ts.readiness()}
+    check("readiness: KN shows its proven route and result",
+          rows[KN]["known_path"] == "known-route" and rows[KN]["known_path_result"] == "1-1700000000-known-1",
+          str(rows.get(KN)))
+    check("  ... RM shows a kept profile",
+          rows[RM]["profile"] == "profile" and rows[RM]["golden_save"] == rm_m["save_id"], str(rows.get(RM)))
+    check("  ... PK shows pathknow true but no known_path yet (not proven)",
+          rows[PK]["pathknow"] and rows[PK]["known_path"] is None, str(rows.get(PK)))
+
+    s = ts.title_saves(RM)
+    check("title_saves: the golden save is listed and marked golden",
+          any(x["save"] == rm_m["save_id"] and x["golden"] and x["has_save_dir"] for x in s), str(s))
+
+    for k in ("TITLESTATE_DIR", "DISPATCH_DIR", "TITLE_ROUTES", "TITLE_TARGETS", "PATHFIND_KNOW"):
+        os.environ.pop(k, None)
+
+
 def test_nav_disk(tmp):
     """A held nav.py session on a device never starts on whatever hdd.img
     holds without saying so (gap 3: held sessions bypassed the titles disk)."""
@@ -764,6 +868,8 @@ def main():
         test_goldens(tmp)
     with tempfile.TemporaryDirectory() as tmp:
         test_admit(tmp)
+    with tempfile.TemporaryDirectory() as tmp:
+        test_admit2(tmp)
     with tempfile.TemporaryDirectory() as tmp:
         test_nav_disk(tmp)
     test_route_headers()
