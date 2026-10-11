@@ -194,7 +194,9 @@ The split is still taken, because:
 - What is left is 1.55 ms per frame. That is 70 % of section 9's figure, and above the brief's 1.0 stop line.
 - It is all one site, in both runs. A share of 100 % does not depend on the level.
 
-The A/B below runs without `HAKUX_FRAMETRACE`. Its arm A gives the uninstrumented level the switch acts on.
+The A/B below runs without `HAKUX_FRAMETRACE`. Its arm A gives the uninstrumented cold frame the switch acts on.
+A plain build prints no `lockw`, because the `Lw:` line is perflog-only, so the A/B reads the frame and not the
+wait.
 
 ## 2. Decision
 

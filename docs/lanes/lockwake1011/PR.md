@@ -28,8 +28,12 @@ configuration plus `HAKUX_FRAMETRACE=1`, at ee62b4edb5, 12/12 marks each):
   frames.
 - The lock is held by a third thread: inferred to be the display refresh's `vkWaitForFences` under pfifo.lock in
   `pgraph_vk_get_framebuffer_surface()`.
-- Cold `lockw` came in 0.65-0.8 below section 9's 2.19 / 2.35 (outside the brief's 0.3). The cold frame did not
-  move. NOTES.md says so.
+- **Caveat on this table:** cold `lockw` came in 0.65-0.8 below section 9's 2.19 / 2.35. That is outside the
+  brief's 0.3, so the instrument may have changed the regime, and two runs a side cannot rule it out. The cold frame
+  did not move (census `P` 34.67 / 34.96 against 34.85 / 35.27).
+  - The split was taken anyway (NOTES.md section 1). What is left, 1.55 ms a frame, is above the 1.0 stop line.
+  - The 100 % share is one site in both runs, and a share does not depend on the level.
+  - Read the levels in this table as the instrumented run's, not section 9's.
 
 Decision (NOTES.md section 2): `HAKUX_LOCKFREE_WAKE=1`, default off. The PFIFO thread parks on a QemuEvent and a
 posted store wakes it without pfifo.lock.
