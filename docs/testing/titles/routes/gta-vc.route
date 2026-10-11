@@ -1,6 +1,6 @@
-# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
-# Grand Theft Auto: Vice City (5454000F): one route for the first run (no
-# save on the disk). PATHFOUND by pathfind.py on the Nova, 2026-10-11
+# state: any   (golden 77a5f0908dce promoted 2026-10-11; lane.savestate433)
+# Grand Theft Auto: Vice City (5454000F): one route, first-run or on the
+# golden. PATHFOUND by pathfind.py on the Nova, 2026-10-11
 # (lane.gtaroutes1011 session 1056194; path recorded to
 # pathknow/paths/5454000F.json, gameplay reached in 1.5 min / 9 steps).
 #

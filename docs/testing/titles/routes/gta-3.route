@@ -1,10 +1,10 @@
-# state: first-run   (recorded on a disk with no save for the title (NOTES.md E); lane.savestate433)
-# Grand Theft Auto III (5454000E): one route for the first run (no save on
-# the disk, so START at the title begins a new game; the game saves only
-# at a safehouse, so every first-run attempt boots the same way).
-# PATHFOUND by pathfind.py on the Nova, 2026-10-11 (lane.gtaroutes1011
-# session 1034707; path recorded to pathknow/paths/5454000E.json, gameplay
-# reached in 2.2 min / 14 steps).
+# state: any   (golden 9153c63300da promoted 2026-10-11; lane.savestate433)
+# Grand Theft Auto III (5454000E): one route, first-run or on the golden
+# (START at the title begins a new game either way; the game saves only
+# at a safehouse, so the boot sequence does not change once a golden
+# exists). PATHFOUND by pathfind.py on the Nova, 2026-10-11
+# (lane.gtaroutes1011 session 1034707; path recorded to
+# pathknow/paths/5454000E.json, gameplay reached in 2.2 min / 14 steps).
 #
 #   Loading icon -> several Rockstar/publisher-logo screens and a black
 #   frame (~50 s, non-interactive) -> intro credits video (A skips it) ->
