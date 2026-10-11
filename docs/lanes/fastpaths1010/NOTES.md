@@ -385,9 +385,8 @@ Batch 3 complete: all 7 restored titles pass. 38-title scope now stands at 29 sc
 | World Soccer Winning Eleven 9 | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.88/59.96 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1533941`/`...1534054`) |
 | SpongeBob SquarePants: Battle for Bikini Bottom | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.97/59.98 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1534148`/`...1534225`) |
 
-Rogue Trooper ON landed (rid `...1534318`, fatal=False, on_lines=4/4, golden=None,
-state=any, gfps=59.97); its OFF counterpart is still queued, row to follow once
-both arms are in.
+| Rogue Trooper | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.97/59.97 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1534318`/`...1534409`) |
+| Blade II | ON/OFF | none/none | not yet reviewed by eye (soak, `--frames-every 15`) | 59.97/59.96 | pass (env/on-lines/hdd clean both arms, golden=None, state=any; refs `...1534509`/`...1534648`) |
 
 **Call of Duty 3 is not on the Nova**, discovered live (same failure mode as
 the Alien Hominid pilot in 4.1.2) despite being in the "8 of the original 20
