@@ -2,8 +2,9 @@
 # the shims on PATH, ok/bad/check. Not executable, no shebang, no exit --
 # `fail` is shared and is the run's verdict.
 #
-# usage/meter.py and usage/mode.sh (#433, owner 2026-10-02 10:10 PDT: 80% of
-# the week used drops the harness into Low; back to Normal at the reset).
+# usage/meter.py and usage/mode.sh (#433, owner 2026-10-10 ~10:30 PDT: Low
+# needs 80% of the week used AND a projection over 100%, not either alone;
+# back to Normal when either clears).
 # NO LIVE TRANSCRIPTS: every ~/.claude/projects file this fragment reads is
 # one it wrote itself, under its own $UM/projects (HAKUX_CLAUDE_PROJECTS),
 # with its own $UM/work (HAKUX_WORK) so nothing here can read, or leave
@@ -287,7 +288,7 @@ check "normal removes the hostops drop-in" \
 check "normal removes the low-active file" bash -c '! test -e "$1"' _ "$MM/work/usage/low-active"
 check "the mode file says normal" grep -q '^mode=normal$' "$MM/work/usage/mode"
 
-echo "== mode.sh: every tick re-evaluates against the meter; no latch, hysteresis, manual lock"
+echo "== mode.sh: AND to enter Low, OR to exit, no latch, manual lock (#433, owner 2026-10-10: no low on a projection alone)"
 mkdir -p "$MM/work/usage"
 um_state() {   # <estimated pct> <projected pct or "">
     python3 - "$MM/work/usage/state.json" "$1" "${2:-}" <<'PY'
@@ -304,47 +305,59 @@ um_mode() { sed -n 's/^mode=//p' "$MM/work/usage/mode"; }
 um_lines() { wc -l < "$MM/work/usage/switches.log"; }
 
 bash "$HERE/usage/mode.sh" normal > /dev/null 2>&1    # known starting state, source=manual
-um_state 85 90
+um_state 85 101
 um_tick t1
 check "tick is a no-op while a manual lock is held" grep -qi 'manual override' "$MM/t1.out"
 check "...and does not flip the mode" [ "$(um_mode)" = normal ]
 
 bash "$HERE/usage/mode.sh" auto > /dev/null 2>&1
-check "auto clears the manual lock and evaluates: 85% used is low" [ "$(um_mode)" = low ]
+check "auto clears the manual lock and evaluates: 85% used AND 101% projected (> 100) goes low" [ "$(um_mode)" = low ]
 check "...and source=auto" grep -q '^source=auto$' "$MM/work/usage/mode"
-check "...and the switch names the reading that caused it" grep -q -- '-> low (auto): estimated 85' "$MM/work/usage/switches.log"
+check "...and the switch names both numbers and both lines" \
+    grep -q -- '-> low (auto): 85% used >= 80 and 101% projected > 100' "$MM/work/usage/switches.log"
 
 n=$(um_lines); um_tick t2
 check "a tick that changes nothing logs nothing" [ "$(um_lines)" = "$n" ]
 
-um_state 10 80; um_tick t3
-check "hysteresis: under 80% used but still 80% projected (>= 75) stays low" [ "$(um_mode)" = low ]
+um_state 85 97; um_tick t3
+check "already low: 85% used, 97% projected (>= 95) stays low -- hysteresis" [ "$(um_mode)" = low ]
 
-um_state 10 50; um_tick t4
-check "no latch: 10% used and 50% projected brings it back to normal mid-week" [ "$(um_mode)" = normal ]
+um_state 85 94; um_tick t4
+check "already low: 85% used, 94% projected (< 95) exits to normal -- OR on the way out" [ "$(um_mode)" = normal ]
 check "...and removes low-active" bash -c '! test -e "$1"' _ "$MM/work/usage/low-active"
 
-um_state 40 80; um_tick t5
-check "hysteresis the other way: 80% projected from normal (< 90) stays normal" [ "$(um_mode)" = normal ]
+um_state 40 95; um_tick t5
+check "40% used (< 80) stays normal even at 95% projected -- pct alone cannot enter" [ "$(um_mode)" = normal ]
 
-um_state 40 95; um_tick t6
-check "projected over: 40% used but 95% projected (>= 90) goes low" [ "$(um_mode)" = low ]
+um_state 19 134; um_tick t6
+check "today's case (10-10 09:30): 19% used, 134% projected stays normal -- projection alone is not a reason" \
+    [ "$(um_mode)" = normal ]
 
-um_state 2 ""; um_tick t7
+um_state 85 100; um_tick t7
+check "85% used, 100% projected stays normal -- the projection line is strict (over, not at)" [ "$(um_mode)" = normal ]
+
+um_state 85 101; um_tick t8
+check "85% used, 101% projected goes low -- both lines true" [ "$(um_mode)" = low ]
+
+um_state 10 50; um_tick t9
+check "no latch: 10% used, 50% projected brings it back to normal mid-week" [ "$(um_mode)" = normal ]
+
+um_state 2 ""; um_tick t10
 check "the week rolling over (2% used, no projection yet) is just a low reading: normal" [ "$(um_mode)" = normal ]
 
 # No limits.env override remains for this dial (#433) -- the only way to
 # move the entry line now is models.toml itself, via $HAKUX_MODELS_TOML.
 cp "$HERE/models.toml" "$MM/models-lowproj60.toml"
-sed -i 's/^low_proj = 90.*/low_proj = 60/' "$MM/models-lowproj60.toml"
+sed -i 's/^low_proj = 100.*/low_proj = 60/' "$MM/models-lowproj60.toml"
 grep -q '^low_proj = 60$' "$MM/models-lowproj60.toml" || bad "fixture: low_proj edit did not take"
-um_state 10 65
+um_state 85 65    # pct >= 80 held; only the projection half of the dial moves
 export HAKUX_MODELS_TOML="$MM/models-lowproj60.toml"
-um_tick t8
+um_tick t11
 unset HAKUX_MODELS_TOML
-check "the entry line is a models.toml dial: low_proj=60 makes 65% projected low" [ "$(um_mode)" = low ]
+check "the projection half of the entry line is a models.toml dial: low_proj=60 makes 65% projected low (pct held >= 80)" \
+    [ "$(um_mode)" = low ]
 
-rm -f "$MM/work/usage/low-active"; um_state 10 80; um_tick t9
+rm -f "$MM/work/usage/low-active"; um_state 85 97; um_tick t12
 check "a mode file saying low with low-active missing heals: the file comes back" test -s "$MM/work/usage/low-active"
 
 unset -f um_dump um_state um_tick um_mode um_lines

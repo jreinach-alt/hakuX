@@ -54,8 +54,12 @@ low = "sonnet"
 # the table's single point. No limits.env override remains for these --
 # that was the point.
 [usage]
-low_pct = 80          # enter Low when estimated% >= this
-low_proj = 90         # or when projected-at-reset% >= this
-normal_proj = 75      # back to Normal when projected-at-reset% < this (gap
-                       # keeps it from flapping on one busy hour)
+# Owner, 2026-10-10 ~10:30 PDT: "It only should trigger when we're at 80
+# percent for the week AND projected to go over 100." Both lines below are
+# ANDed on entry, ORed on the way back (either one clearing is enough).
+low_pct = 80           # enter Low needs estimated% >= this (AND, not alone)
+low_proj = 100         # ...AND projected-at-reset% > this (strict: "go over")
+normal_proj = 95       # back to Normal when estimated% < low_pct, OR
+                       # projected-at-reset% < this (the 5-point gap keeps a
+                       # Low that just started from flapping on one quiet hour)
 low_lane_max = 3       # LANE_MAX is capped to this while Low

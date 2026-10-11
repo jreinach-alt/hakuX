@@ -44,14 +44,20 @@
 # so it never came back on its own.
 #
 # WHEN. Re-evaluated on every tick, no latch (dial names are models.toml's
-# [usage] keys, read through models.sh dial <name>):
+# [usage] keys, read through models.sh dial <name>). Owner, 2026-10-10
+# ~10:30 PDT, after a 19%-used morning with a hot trailing rate tripped Low
+# on the projection alone: "I do not want low enabled at all this weekend.
+# Bad call there. It only should trigger when we're at 80 percent for the
+# week and projected to go over 100."
 #   enter Low   when estimated% >= low_pct (80)
-#               or projected-at-reset >= low_proj (90)
-#   back Normal when estimated% <  low_pct
-#               and projected-at-reset < normal_proj (75)
-# The gap between 90 and 75 keeps it from flapping on one busy hour. The week
-# rolling over needs no special case: the estimate drops, and so does Low.
-# A tick that changes nothing logs nothing.
+#               AND projected-at-reset%  > low_proj (100, strict: "over")
+#   back Normal when estimated% <  low_pct (80)
+#               OR  projected-at-reset%  < normal_proj (95)
+# The entry line needs BOTH; the exit line needs EITHER. The 5-point gap
+# between low_proj (100) and normal_proj (95) is the only hysteresis: it
+# keeps a Low that has just started from flapping on one quiet hour. The
+# week rolling over needs no special case: the estimate drops, and so does
+# Low. A tick that changes nothing logs nothing.
 set -u
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 SYSTEMD_DIR="${HAKUX_SYSTEMD_USER_DIR:-$HOME/.config/systemd/user}"
@@ -134,13 +140,18 @@ if pct is None:
     print("ERR no estimate (no calibration capacity yet)"); sys.exit(0)
 low_pct, low_proj, normal_proj = (float(os.environ[k]) for k in ("LOW_PCT", "LOW_PROJ", "NORMAL_PROJ"))
 p = proj if proj is not None else pct
-reading = "estimated %s%%, projected %s%% at reset" % (pct, "?" if proj is None else proj)
-if pct >= low_pct or p >= low_proj:
-    print("low %s >= %g%% used or %g%% projected" % (reading, low_pct, low_proj))
-elif os.environ["CUR"] == "low" and p >= normal_proj:
-    print("low %s: under the entry line, not yet under %g%% projected" % (reading, normal_proj))
+proj_str = "?" if proj is None else "%g" % p
+cur = os.environ["CUR"]
+# Entry needs BOTH lines; exit needs EITHER (owner, 2026-10-10).
+entering = pct >= low_pct and p > low_proj
+leaving = pct < low_pct or p < normal_proj
+if cur == "low" and not leaving:
+    print("low %g%% used >= %g and %s%% projected >= %g (hysteresis, not yet under %g)"
+          % (pct, low_pct, proj_str, normal_proj, normal_proj))
+elif cur != "low" and entering:
+    print("low %g%% used >= %g and %s%% projected > %g" % (pct, low_pct, proj_str, low_proj))
 else:
-    print("normal %s" % reading)
+    print("normal %g%% used, %s%% projected" % (pct, proj_str))
 PY
 )
     # Holding still re-checks the one file, so a mode file and a low-active
