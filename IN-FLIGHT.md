@@ -8,8 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fastpaths1010` | claude-sonnet-5 | 16 min |  |
-| `lanenobg1010` | claude-sonnet-5 | 17 min |  |
+| `fastpaths1010` | claude-sonnet-5 | 31 min |  |
+| `lanenobg1010` | claude-sonnet-5 | 32 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -88,4 +88,4 @@ No branch is being worked right now.
 - 2026-10-10 pfifowait1009: stop holding pfifo.lock across the report-processing fence waits (#433, 0.5)
 - 2026-10-10 lane.forzasurf1010 -- does the default-on surfgpu route remove Forza's surface-download wait? (#433, 0.5)
 
-_Updated 2026-10-10 21:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-10 21:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
