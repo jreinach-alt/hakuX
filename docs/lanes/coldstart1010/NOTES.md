@@ -248,3 +248,46 @@ Without lockw the cold guest is busy 29.1 ms, under 33.3. The share of frames pa
 - So the 2.6x passes, the 1.28x draws and most of the +5 ms of guest work are the game's weather on the first
   start. That is the scene, not a renderer first-use cost. The renderer pays for it through recording (+2.4),
   Surf (+0.9), untimed method work (+4.2) and the GPU (+3.5, still well under the frame).
+
+## 7. Depth A/B verdict: FAIL on K, C/W/G/M pass (coldstart1010-depth.json)
+
+Runs, in queue order A B B A A B. B1 (1-1791697259-coldstart1010-3142391) was void: a boot `press A 120`
+took 10.3 s before `mark gameplay` on a host adb liveness failure (WSL `accept4` 110), so it was replaced by
+one rerun, 1-1791698423-coldstart1010-3252234.
+
+| run | arm | cold 1 | warm | post-GO | cold v2 | cold rot/f | blk/f | cold ms blk/f | warm ms blk/f | shader cache |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 1-1791697258-coldstart1010-3142274 | A | 38.3 | 33.8 | 33.4 | 57 % | 3.84 | 1.29 | 3.01 | 0.63 | cleared |
+| 1-1791698423-coldstart1010-3252234 | B | 36.4 | 33.6 | 33.4 | 62 % | 1.83 | 0.18 | 0.69 | 0.09 | cleared |
+| 1-1791697260-coldstart1010-3142465 | B | 37.0 | 33.7 | 33.4 | 47 % | 2.22 | 0.31 | 1.06 | 0.06 | kept |
+| 1-1791697260-coldstart1010-3142523 | A | 37.7 | 33.8 | 33.4 | 60 % | 2.61 | 0.67 | 2.84 | 0.44 | kept |
+| 1-1791697261-coldstart1010-3142581 | A | 37.8 | 33.7 | 33.4 | 62 % | 2.16 | 0.60 | 2.90 | 0.38 | cleared |
+| 1-1791697262-coldstart1010-3142647 | B | 35.8 | 33.6 | 33.4 | 63 % | 2.12 | 0.23 | 0.99 | 0.16 | kept |
+| **mean A** | | **37.93** | **33.75** | **33.40** | 59.4 % | | | **2.91** | | |
+| **mean B** | | **36.42** | **33.63** | **33.39** | 57.5 % | | | **0.92** | | |
+
+| leg | rule | measured | |
+|---|---|---|---|
+| V | every run valid, switch lines, depth lines, 12 marks, g11 frames | all six; the car moves in every g11 frame (24-96 mph, by eye) | PASS |
+| K | cold B <= 34.5, or cold v2 B - A >= +15 | 36.42; v2 -1.9 points | **FAIL** |
+| C | cold B - A <= -1.0 | **-1.51** | PASS |
+| W | warm B - A <= +0.3 | -0.12 | PASS |
+| G | post-GO B - A <= +0.3 | -0.01 | PASS |
+| M | cold ms/f blocked in rotation, B <= 0.5 x A | 0.92 against 2.91 (0.32 x) | PASS |
+
+What it says:
+- Depth 3 does what the mechanism said. Blocking rotations at the cold start fall from 0.85 to 0.24 a frame,
+  and ms blocked from 2.91 to 0.92. The cold start is 1.5 ms faster, and the warm countdown and post-GO do not
+  move (both arms are at the 33.4 floor after GO).
+- It does not reach the brief's target alone: 36.4 against 34.5.
+- The v2 share is the wrong instrument for this gain. The cold window holds one or two 60-flip pace lines, and
+  the game presents a catch-up frame after one VBLANK when a frame runs long. Depth 3 moves frames from three
+  VBLANKs to one: v3 18.8 to 16.3 a line, v1 4.8 to 7.3. The v2 count does not change (A 28-40, B 28-38).
+  So K's v2 leg cannot see a pace gain of this shape.
+- The shader cache does not confound the result. It was cleared before A1, A3 and B1' (each followed a
+  different APK on the device) and kept before the rest. A cleared 38.3 / 37.8 against kept 37.7; B cleared
+  36.4 against kept 37.0 / 35.8.
+
+The player-facing change is the native pref default (`xemu_android.cpp:1188`, 2 to 3), which makes the native
+default match the settings screen's. That file is fastpaths1010's (section 4). A pixel leg is not needed:
+depth changes only which slot's command buffer and staging a finish records into, not what any draw draws.
