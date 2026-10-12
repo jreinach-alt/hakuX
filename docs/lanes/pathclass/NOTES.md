@@ -217,3 +217,21 @@ holds `pathclass.py`; the snapshot carries `head.npz`) and two mutants (`mutant_
 rewrite of a fresh copy of `dispatcher.sh` that removes one word from `SCRIPT_DEPS=` or `SNAPSHOT_GLOBS=`
 and re-snapshots against it) that must turn red when either entry is missing -- proof the two checks are
 not vacuous, matching the existing `startup` mutant's shape in the same file.
+
+## Landing (2026-10-12): the merge the session-start hook flagged
+
+Committed the step 1-3 + Addendum 1 6a/6b work (685b2b3796) before touching the merge, so the merge has a
+clean tree. The session-start hook had already said this checkout was 147 commits behind `origin/master`
+("merge it first: your branch is from 10-02" -- stale by one restart, but the instruction still applied).
+`git merge origin/master --no-edit` (5bff89a7b6) was clean, no conflicts, across 96 changed files including
+other lanes' work on `dispatcher.sh` itself (GTA routes, profile-gate, snapshot1011) -- confirmed both of
+`dispatcher.sh`'s `SCRIPT_DEPS` lists still carried `titles/pathclass.py` afterward (`grep -n pathclass.py`).
+Re-ran the targeted dispatch/model-literal fragments first (all green), then the full `selftest.sh` a third
+time end-to-end against the merged head: **3435 passed, 0 failed, all 137 fragments** (137, not 136 --
+`99-profile-gate.sh` landed from another lane in the same merge). Pushed `lane/pathclass`
+(f442726741..5bff89a7b6). `PR.md`'s `Files:` line needed three more entries (`distill.py`, `jepa_probe.py`,
+`pick.py`) that `git diff --stat origin/master...HEAD` showed were already part of the branch from an
+earlier attempt but never listed.
+
+Step 6c (benchmark new titles) now waits on the fold to master -- external to this session, not a
+background task of mine, so this is a stopping point rather than something to poll for.

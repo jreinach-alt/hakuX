@@ -3,8 +3,8 @@
 State: ready
 
 Lane: pathclass              Issue: #433 (0.5: 50 Playable)
-Base: master @ b73d50a070
-Files: docs/lanes/pathclass/PR.md, docs/lanes/pathclass/NOTES.md, docs/lanes/pathclass/OUTBOX.md, docs/lanes/pathclass/simpsons-hit-run.save.route, docs/testing/titles/pathclass.py, docs/testing/titles/pathclass_selftest.py, docs/testing/titles/classify.py, docs/testing/titles/drive.py, docs/testing/titles/drive-profiles/generic.toml, docs/testing/titles/pathknow/classifier/pool.py, docs/testing/titles/pathknow/classifier/label.py, docs/testing/titles/pathknow/classifier/embed.py, docs/testing/titles/pathknow/classifier/prompts.py, docs/testing/titles/pathknow/classifier/zeroshot_eval.py, docs/testing/titles/pathknow/classifier/ocr_eval.py, docs/testing/titles/pathknow/classifier/train.py, docs/testing/titles/pathknow/classifier/head.npz, docs/testing/dispatcher.sh, docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh
+Base: master @ c03e17b8a0 (merged in 2026-10-12; this checkout was found 147 commits behind at the start of attempt 3)
+Files: docs/lanes/pathclass/PR.md, docs/lanes/pathclass/NOTES.md, docs/lanes/pathclass/OUTBOX.md, docs/lanes/pathclass/simpsons-hit-run.save.route, docs/testing/titles/pathclass.py, docs/testing/titles/pathclass_selftest.py, docs/testing/titles/classify.py, docs/testing/titles/drive.py, docs/testing/titles/drive-profiles/generic.toml, docs/testing/titles/pathknow/classifier/pool.py, docs/testing/titles/pathknow/classifier/label.py, docs/testing/titles/pathknow/classifier/embed.py, docs/testing/titles/pathknow/classifier/prompts.py, docs/testing/titles/pathknow/classifier/zeroshot_eval.py, docs/testing/titles/pathknow/classifier/ocr_eval.py, docs/testing/titles/pathknow/classifier/train.py, docs/testing/titles/pathknow/classifier/distill.py, docs/testing/titles/pathknow/classifier/jepa_probe.py, docs/testing/titles/pathknow/classifier/pick.py, docs/testing/titles/pathknow/classifier/head.npz, docs/testing/dispatcher.sh, docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh
 Prediction: none: no arm. Host-side test tooling + a drive-profile/classify.py wiring change; no device run yet.
 Needs device: no    Needs NDK: no
 
@@ -53,3 +53,10 @@ second run, **3381 passed, 0 failed, all 136 fragments**.
 
 Step 6c (benchmark new titles on the classifier path) follows once this folds to master; see OUTBOX.md /
 the PR comment for that wait.
+
+This checkout was 147 commits behind `origin/master` at the start of attempt 3 (merged, not rebased, per
+the lane rule against rewriting history after a prediction names refs -- there is no prediction here, but
+the same merge-not-rebase habit applies). Merge was clean, no conflicts; `dispatcher.sh`'s two SCRIPT_DEPS
+lists still both carried `titles/pathclass.py` afterward. `selftest.sh` run a third time in full against the
+merged head: **3435 passed, 0 failed, all 137 fragments** (one more fragment than before the merge,
+`99-profile-gate.sh`, from another lane's landed work).
