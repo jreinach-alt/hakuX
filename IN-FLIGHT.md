@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `zetaroutes1012` | claude-sonnet-5 | 9 min | zetaroutes1012: returning gameplay routes for Buffy, DOA3 and NG Black, then HAKUX_ZETA_D24=1 runs (#433, 0.5) |
+| `zetaroutes1012` | claude-sonnet-5 | 23 min | zetaroutes1012: returning gameplay routes for Buffy, DOA3 and NG Black, then HAKUX_ZETA_D24=1 runs (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -78,10 +78,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/zetaroutes1012` | zetaroutes1012: returning gameplay routes for Buffy, DOA3 and NG Black, then HAKUX_ZETA_D24=1 runs (#433, 0.5) | `52e1570ad4` | 2026-10-12 07:40 |
+| `lane/zetaroutes1012` | zetaroutes1012: returning gameplay routes for Buffy, DOA3 and NG Black, then HAKUX_ZETA_D24=1 runs (#433, 0.5) | `70ffcd7986` | 2026-10-12 07:57 |
 
 ## Recently landed on master
 
+- 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
 - 2026-10-12 fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5)
 - 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
 - 2026-10-12 burnoutunlock1012: Burnout Revenge's play loop can't get back into a race after a medal (#433, 0.5)
@@ -90,4 +91,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-12 burnoutbrief1012: press Continue (A) after Retry so a run on the event brief keeps racing (#433, 0.5)
 - 2026-10-12 burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5)
 
-_Updated 2026-10-12 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 08:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
