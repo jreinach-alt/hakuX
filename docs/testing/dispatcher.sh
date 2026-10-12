@@ -90,7 +90,7 @@ SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
 make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
 battery_admit.py titles/titlestate.py titles/saves.py titles/drive.py \
-titles/classify.py titles/waitfor_match.py jobs/device_build.py \
+titles/classify.py titles/waitfor_match.py titles/pathclass.py jobs/device_build.py \
 jobs/models.py jobs/models.toml"
 # DATA A SHIPPED SCRIPT PICKS AT RUN TIME, shipped by glob, never by name.
 #
@@ -103,7 +103,14 @@ jobs/models.py jobs/models.toml"
 # go stale with the next title; the globs pick up a new one at the next
 # re-exec, and src_hash covers what they match, so adding one IS a re-exec.
 # drive-profiles/selftest/ is classify's fixtures, not data a run reads.
-SNAPSHOT_GLOBS="titles/drive-profiles/*.toml titles/drive-profiles/*/*.png"
+#
+# A profile with `classifier = "pathclass"` (drive-profiles/generic.toml, #433) makes
+# classify.py load titles/pathclass.py's trained head at runtime -- a single fixed file,
+# not one per title, but still data a shipped script picks up rather than imports, so it
+# is listed here rather than in SCRIPT_DEPS: without it every dispatched `drive generic`
+# step would fail closed with `pathclass unavailable` for a reason that is purely a
+# snapshot omission, not a real unavailability.
+SNAPSHOT_GLOBS="titles/drive-profiles/*.toml titles/drive-profiles/*/*.png titles/pathknow/classifier/head.npz"
 snapshot_globbed() {   # every file SNAPSHOT_GLOBS matches in $SRC, relative to it
     ( cd "$SRC" 2>/dev/null || exit 0
       local f
@@ -143,7 +150,7 @@ snapshot_scripts() {
              sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
              titles/route.sh perf/pad.sh battery_admit.py titles/titlestate.py \
              titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py \
-             jobs/device_build.py jobs/models.py jobs/models.toml; do
+             titles/pathclass.py jobs/device_build.py jobs/models.py jobs/models.toml; do
         snapshot_one "$f"
     done
     for g in $(snapshot_globbed); do

@@ -19,6 +19,10 @@ import subprocess
 import sys
 import time
 
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "..", "..", "..", "jobs"))
+import models  # noqa: E402  (the one model table/reader, #433; no model id literal outside models.toml)
+
 STATES = ["intro_video", "publisher_logo", "title_screen", "main_menu", "submenu", "profile_creation",
           "name_entry", "save_load_prompt", "controller_prompt", "loading", "cutscene", "pause", "gameplay",
           "results", "game_over", "black", "unknown"]
@@ -103,7 +107,7 @@ def main():
     ap.add_argument("--n", type=int, default=600)
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--per-call", type=int, default=10)
-    ap.add_argument("--model", default="claude-haiku-4-5-20251001")
+    ap.add_argument("--model", default=models.model_for("drive"))  # Haiku in every mode (#433)
     ap.add_argument("--heldout", action="store_true", help="label held-out-title frames instead (a test set)")
     ap.add_argument("--paths", help="label exactly these pool paths (one per line), e.g. to adjudicate")
     a = ap.parse_args()
