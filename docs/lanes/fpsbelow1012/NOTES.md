@@ -3,8 +3,8 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **3** run (the pilot: 2 read, 1 void before input), **4** queued
-(the A/B's first arms). Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **3** run (the pilot: 2 read, 1 void before input), **5** queued
+or running (the A/B's first four arms, then MC3's `[sdrange]` run). Ledger in section 4.
 
 ## 0. Attempt 2 (10-12 ~02:30 PDT): why attempt 1 did not finish
 
@@ -153,6 +153,7 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 | 6 | z-1791797928-fpsbelow1012-1779675 | Dead or Alive 3 | survey | 480 | queued, same ref, **A** | A/B key DOA3; also DOA3's telemetry at master |
 | - | (refused at queue time) | ToeJam & Earl III | uberdefault569's `toejam-earl-3` | 540 | request.sh refused it: the route declares no `# state:` line, and the file is uberdefault569's, not this lane's to edit | not counted; Buffy takes its slot, as the prediction names |
 | 7 | z-1791798044-fpsbelow1012-1807480 | Buffy the Vampire Slayer | survey | 480 | queued, same ref, **A** | A/B key Buffy; also Buffy's telemetry at master |
+| 8 | z-1791799077-fpsbelow1012-2104673 | Midnight Club 3 | midnight-club-3.returning | 540 | queued 10-12 ~02:55 PDT, ref dbf9dd40cc, `--env HAKUX_RANGELOG=1` (+ the telemetry env) | section 10: which caller, which surfaces, exact or rounded overlap |
 
 Planned next, after the pilot verdict (`pilots/fpsbelow1012.ok`): the depth-exactness pgraph pair, registered as
 `docs/testing/predictions/fpsbelow1012-zetad24-pixels.json` (sha256 c543e6ac..., refs c1112f2c1a both arms, B with
@@ -291,7 +292,8 @@ master telemetry of that title.
 | L1 | `HAKUX_ZETA_D24` (section 5) | every 32-bit 640/720x480 GMEM title; it shows in frames where the GPU is the wait. Two-tile on disk (5a): DOA3, NG Black, NBA Live 06/07, Buffy, LOTR, Fantastic 4, MechAssault 2, ToeJam, Spider-Man 2 (mixed); named by gpunonrender: Otogi, Black | up to sysmem's matched-scene gain without its costs: DOA3 34 -> ~59, NG Black 32.5 -> ~59; NBA Live 06/07 47-49 at G ~20 ms with SURFGPU, where the replay is the next cost | 0.6 | For: the mechanism is read from the driver source and agrees with four measured numbers (two bins; last tile ~ whole sysmem pass; 9 B/px; out = 2 x in in the fight, 5a). Against: a one-tile GMEM pass still loads and stores colour and depth, which sysmem does not; the autotune may then pick sysmem for some passes; and the D24 round trip is a unit off near z = 2^23 on Adreno (section 7), which a title that reads depth back may show |
 | L2 | profiled autotune by default (`kAutotuneProfiledDefault`) | GMEM titles where the GPU is the wait | Fuzion 38.7 -> 58.0 | 0.45 | Forza loses 28.9 -> 26.6 with no named cause (profileddefault1008); lane.local's decision. If L1 holds, L2's gain shrinks: it was choosing sysmem to escape the replay |
 | L3 | DOA3, NG Black to `sysmem` in `kTitleRenderModes` | one title each | DOA3 34 -> 59; NG Black 32.5 -> 59 | 0.85 / 0.75 | measured on matched scenes; one-offs, the owner's rule ranks them below a lever that reaches several |
-| L4 | surface-download remnants (`range`, `tobuf`) | Forza runnable here; MC II, Counter-Strike, Spider-Man 2, NHL 2K3 unroutable | unknown at master | 0.3 | needs the Forza telemetry first |
+| L4a | NOSCAN `range`: surface downloads from the vertex-RAM sync or a blit, no texture scan (section 10) | MC3, Forza runnable; Nightfire unroutable | MC3 up to 12.3 ms/frame of render wait at 0.08 under the bar; Forza 2.8-9.3 ms/frame | 0.45 x the fix's own P | the `[sdrange]` run (`-2104673`) says H1/H2/H3. Only H1 (false overlap from page rounding) is a cheap, safe fix; it needs draw.c and vertex.c granted |
+| L4b | SCAN `range` and `tobuf` (TEXSCAN's caller on non-cube textures) | NFS MW, Spider-Man 2, MC II, Burnout, PGR; most unroutable | unknown at master | 0.2 | TEXSCAN already covers cube faces; nothing runnable here reads this as the top cost |
 | L5 | guest vCPU / PFIFO | Amped 2 runnable; Pilot Down, Hulk, NFS MW, NHL 2K3, LOTR unroutable | small per prior lanes after POSTED_PUT | 0.2 here | vcpuplan/memfast/ibcache own it; Amped 2 pilot says what is left |
 
 L1 goes first: it reaches the most titles, it keeps GMEM's semantics (no Kabuki stall, no ZPASS change), and its
@@ -409,9 +411,11 @@ decompose.py over the scored window:
 | below-bar p10 8 | 18.7 | 53.4 | 23.5 | 30.0 (23.2) | 9.1 | 12.8 | 15.4 | 40.1 |
 
 and postmark_sdsurvey: **14.0 surface downloads per flip, all from the `range` caller, 14.1 finishes per frame,
-11.9 ms per frame of render-thread wait**; `reuse` 0. So MC3 is the surface-download class that SURFGPU and TEXSCAN
-did not reach: `range` on non-cube textures, the same caller as Forza (9.7 ms/flip on 10-10), Midnight Club II
-(8.0 ms) and Counter-Strike (fps20786). The render thread spends 28.4 of 34.1 ms per frame in its phases, 12.8 of
+11.9 ms per frame of render-thread wait**; `reuse` 0. So MC3 is a surface-download class that SURFGPU and TEXSCAN
+did not reach. **Corrected 10-12 (section 10):** an earlier version of this paragraph said "`range` on non-cube
+textures, the same caller as Forza, Midnight Club II and Counter-Strike". That is wrong. MC3's texture-scan
+downloads read 0 (`scdl0`, `[tsc] dl0`), so its `range` comes from the vertex-RAM sync or a blit. Forza's
+pre-SURFGPU runs share that signature; Midnight Club II's is the scan. The render thread spends 28.4 of 34.1 ms per frame in its phases, 12.8 of
 them finishing for downloads; the guest paces itself on a timer at 30. MC3 is now 0.08 under the bar, with the
 render thread the closest resource to the frame budget.
 
@@ -441,3 +445,80 @@ no profile, but adding the header is uberdefault569's edit, not this lane's. Toe
 confirm (`1790951866-titleroutes2-46925`), so it was the weakest of the three as a below-bar title. Buffy, the
 substitute the prediction names, takes its slot (`-1807480`). DOA3 B and Buffy B are queued only after their A arms
 read IN THE CLASS. The lane's last request is a no-switch run, so the Nova is not left with the switch set.
+
+## 10. MC3's `range` is not the texture scan: the vertex-RAM sync or a blit (offline, 10-12 ~03:00 PDT)
+
+**Correction to section 8**, which called MC3's downloads "`range` on non-cube textures, the same caller as Forza".
+The census says otherwise: on the pilot run (`-2551411`) hakuX-stall's `txr[... scdl0]` and the frametrace's
+`[tsc] dl0` read zero texture-scan downloads in every window, while `[sdcall] range=` reads 927 per 60 frames. So
+these downloads come from one of the function's other callers, `pgraph_vk_download_surfaces_in_range_if_dirty()`
+(surface.c:922): the vertex-RAM sync (vertex.c:173, the first statement of `pgraph_vk_update_vertex_ram_buffer`, called
+from draw.c's `sync_vertex_ram_buffer`), or blit.c's image blit (558, 560) and solid line (900). The census cannot split
+those: `dif blt` counts only blits whose source starts at a surface base.
+
+**Which runs on disk carry the same signature** (`tools/vtxrange.py`, `tools/vtxrange.out`: medians over the busy
+half of each run's windows, per 60 frames; NOSCAN = `range` downloads with scan downloads under 10% of them):
+
+| title | runs | range dl | range fin | wait ms | scan dl | reading |
+|---|---|---|---|---|---|---|
+| Midnight Club 3, 10-03 (fps20786) | `-2878057` | 60 | 60 | 430 | 0 | one download per frame, 7.2 ms each |
+| Midnight Club 3, master (this lane) | `-2551411` | 927 | 927 | 736 | 0 | 15.5 per frame, each its own finish, 0.79 ms each, 12.3 ms/frame |
+| Forza (forzadecay414, gpunonrender, profileddefault1008, ibcache) | 7 | 60-78 | 60 | 166-555 | 0-6 | one per frame, 2.8-9.3 ms/frame |
+| Nightfire (memfast) | 5 | 556-699 | 60 | 95-488 | 0 | ~10 surfaces per call, one call per frame |
+
+The SCAN rows (scan dl at least half of `range`) are NFS MW, Spider-Man 2, Midnight Club II, Burnout Revenge, PGR
+and the early Forza runs (forza414): TEXSCAN's caller, not this one. Forza's SURFGPU arms (forzasurf1010) read
+MIXED, ~150 of ~430.
+
+**What changed for MC3 between 10-03 and master.** The count went from 1 per frame to 15.5, and total wait from
+7.2 to 12.3 ms/frame. Already ruled out by reading the code: SURFGPU's reuse path (`reuse` 0), HAKUX_VTX_HAZARD (it
+narrows the hazard test, not the sync) and #262's `vertex_range_gpu_stale` (74ac01608d, in both builds). What did
+change is the number of vertex syncs that pass `has_dirty_vertex_pages`. With DRAWREC VTX on (fastpaths, 10-11), a
+sync passes when an owed page needs it re-copied: `[drawrec]` reads redo 8347 and dirty 2501 per 60 frames, against
+5334 dirty syncs on 10-03. That is about 2x, not the 15x of the downloads.
+
+**Correction to my own first reading.** `[rdc] vtx=` (1067 per 60 frames at master) is not a sync count. It counts
+DIRECT TLB walks from `physical_memory_dirty_bits_cleared`: one per dirty sync without DRAWREC VTX, one per owed run
+in `drawrec_vtx_walk` with it (1045 runs in the same window). That it lands near the 927 range downloads is a
+coincidence. vtxrange.py's vtx column is labelled as walks.
+
+**Where the vertex sync can download a surface the draw never reads.** The early exit and the loop test different
+ranges:
+- `has_dirty_vertex_pages` (draw.c ~8598) tests DRAWREC redo, `vertex_range_gpu_stale` and the CPU dirty bits on
+  the draw's ranges.
+- `sync_vertex_ram_buffer` (draw.c 9540) then rounds each range out to whole pages (9586-9599) and merges ranges
+  that overlap or abut (9605-9620).
+- The loop tests `gpu_stale || cpu_dirty || redo` on the ROUNDED, MERGED range (9651-9667). A dirty range calls
+  `pgraph_vk_update_vertex_ram_buffer`, which first downloads every draw_dirty surface overlapping that whole range
+  (vertex.c:173).
+- So a surface that shares a page with a vertex buffer, but none of its bytes, is downloaded whenever anything
+  else in the merged range is CPU-dirty or owed. That is every guest write to the vertex buffer, and every owed
+  page DRAWREC re-arms.
+- The generation is then recorded (9682), so the same surface is not stale again until the GPU writes it again: once
+  per render pass, which is the "each with its own finish" shape.
+
+**Three hypotheses, and what the instrument shows for each.** `HAKUX_RANGELOG=1` (surface.c, perf builds,
+committed dbf9dd40cc, off by default) prints an `[sdrange]` line every perflog period: per surface downloaded, its
+dims, pitch, size, colour or zeta, whether it is bound, the caller (`by=vtx`, or the return offset into the range
+function's caller), `n`, and two counts. `ex` is how many of those downloads overlap the draw's EXACT vertex byte
+ranges (`vtxhz_cur`, HAKUX_VTX_HAZARD's list). `edge` is how many lie only in the first or last page of the
+requested range.
+
+| outcome | hypothesis | fix | where |
+|---|---|---|---|
+| `by=vtx`, `ex` << `n`, `edge` ~ `n - ex` | H1: false overlap from page rounding or merging | download and test gpu_stale only over the exact ranges; copy the rounded pages as now | draw.c, vertex.c (not granted) |
+| `by=vtx`, `ex` ~ `n` | H2: the draw really reads bytes a surface wrote (render to vertex buffer), or the surface's recorded size overstates what it covers (dims tell which) | a GPU-side surface-to-vertex-buffer copy, no CPU round trip; or the size fix | draw.c, vertex.c, surface.c |
+| `by=<offset>` (not vtx) | H3: blits or lines | per call site | blit.c (not granted) |
+
+P(H1) 0.45: the 10-03 to master jump tracks the extra syncs, which only matters if the downloads are not tied to the
+bytes. H2 0.35, H3 0.2. The instrument run is `z-1791799077-fpsbelow1012-2104673` (MC3, ref dbf9dd40cc,
+`--env HAKUX_RANGELOG=1`, sweep).
+
+**What the lever would reach, if H1.**
+- MC3: up to 12.3 ms/frame of render-thread wait, at 0.08 under the bar, with the render thread its closest resource.
+- Forza: one per frame, 2.8-9.3 ms/frame.
+- Nightfire: one call per frame of ~10 surfaces; it has no route here.
+
+That is a multi-title lever behind L1. Section 6's L4 row is split on this reading. If H1 holds, the fix is a
+default-off switch in draw.c and vertex.c. Both files need a grant, so the next step is a `WAITING:` line, a
+registered prediction, and an A/B on MC3, Forza and one more NOSCAN title.

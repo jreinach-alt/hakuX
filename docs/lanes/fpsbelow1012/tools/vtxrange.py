@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Which runs on disk carry the vertex-path `range` signature (lane.fpsbelow1012, NOTES.md section 10).
+"""Which runs on disk carry a `range` download that is not the texture scan (lane.fpsbelow1012, NOTES.md section 10).
 
 `[sdcall] range=` counts every caller of pgraph_vk_download_surfaces_in_range_if_dirty() under one name:
 create_texture's scan (texture.c), the vertex-RAM sync (vertex.c, via draw.c's gpu_stale test), image blits and
-lines (blit.c). Two other lines split them without new code: `txr[... scdl<n>]` (hakuX-stall) is the scan's own
-share, and `[rdc] vtx=<calls>/...` counts vertex-RAM dirty syncs. A window whose `range` downloads track `vtx`
-calls while `scdl` is 0 is the vertex path.
+lines (blit.c). `txr[... scdl<n>]` (hakuX-stall) is the scan's own share, so a window whose `range` downloads come
+with `scdl` near 0 is the vertex sync or a blit (NOSCAN). The census cannot split those two; HAKUX_RANGELOG's
+[sdrange] line can (surface.c). The vtx column is `[rdc] vtx=<calls>`: DIRECT TLB walks, one per dirty vertex sync
+without HAKUX_DRAWREC, one per run of owed pages with it. It says vertex syncs ran, not how many.
 
 Usage: vtxrange.py [results dir] [--since <id prefix>]   Prints one row per run: title, windows, medians per
-60 frames of range dl, range fin, range wait ms, scan dl, vtx calls; and the class guess.
+60 frames of range dl, range fin, range wait ms, scan dl, vtx walks; and the class guess.
 """
 import json, os, re, statistics, sys
 
@@ -73,8 +74,8 @@ def main():
             continue
         cls = '?'
         if s['scdl'] is not None and s['vtx'] is not None:
-            if s['scdl'] < 0.1 * s['dl'] and s['vtx'] >= 0.5 * s['dl']:
-                cls = 'VTX'
+            if s['scdl'] < 0.1 * s['dl']:
+                cls = 'NOSCAN'
             elif s['scdl'] >= 0.5 * s['dl']:
                 cls = 'SCAN'
             else:
