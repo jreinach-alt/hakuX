@@ -1,0 +1,20 @@
+# state: any   (classifier-path benchmark opening; #433 step 6c)
+# Mortal Kombat: Shaolin Monks (4D570029), classifier-path benchmark
+# (#433): drive generic replaces the blind opening and marks gameplay
+# itself once play is confirmed. Unlike the other MK titles here, Shaolin
+# Monks is a 3D beat-'em-up (not 1-on-1): run forward, turn, attack -- never
+# START.
+drive generic 300 mark
+repeat forever {
+    axis LY min
+    wait 2.0
+    axis LX max
+    wait 1.0
+    axis LX mid
+    wait 1.0
+    axis LX min
+    wait 1.0
+    axis LX mid
+    mash A 2 0.3
+    wait 1.5
+}

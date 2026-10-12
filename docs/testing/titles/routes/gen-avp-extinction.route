@@ -1,0 +1,20 @@
+# state: any   (classifier-path benchmark opening; #433 step 6c)
+# Aliens Versus Predator: Extinction (56550022), classifier-path benchmark
+# (#433): drive generic replaces the blind opening and marks gameplay itself
+# once play is confirmed. AvP:E puts the player in direct third-person
+# control of one creature at a time (no base-building cursor), so the loop
+# below walks it forward, turns, and attacks -- never START.
+drive generic 300 mark
+repeat forever {
+    axis LY min
+    wait 2.5
+    axis LX max
+    wait 1.0
+    axis LX mid
+    wait 2.0
+    axis LX min
+    wait 1.0
+    axis LX mid
+    mash A 3 0.3
+    wait 1.5
+}

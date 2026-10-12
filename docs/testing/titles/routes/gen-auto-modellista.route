@@ -1,0 +1,16 @@
+# state: any   (classifier-path benchmark opening; #433 step 6c)
+# Auto Modellista (4343000E), classifier-path benchmark (#433): drive
+# generic replaces the blind opening and marks gameplay itself once play is
+# confirmed. A racer: hold the throttle, steer with LX -- never START.
+# Loop shape from burnout.route's proven racer pattern.
+drive generic 300 mark
+axis RT max
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}

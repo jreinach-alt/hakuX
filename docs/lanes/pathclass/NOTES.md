@@ -18,6 +18,30 @@ requests are withdrawn, and `simpsons-hit-run.save.route` moves out of `routes/`
 there. This attempt applies that reordering before committing anything, so attempt 2's uncommitted step
 4/5 artifacts do not land in their original, now-superseded form.
 
+## Restart, attempt 4 (2026-10-12 03:45 PDT): why attempt 3 did not finish
+
+Attempt 3 finished steps 1-3 and Addendum 1's 6a/6b cleanly: committed (685b2b3796), merged origin/master
+(5bff89a7b6), ran `docs/testing/jobs/selftest.sh` end-to-end green (3435/3435, all 137 fragments), pushed
+`lane/pathclass`, and set `PR.md`'s `State: ready`. It did not finish because step 6c (benchmark new titles)
+has a hard precondition the attempt correctly identified and then stopped at: the dispatcher's SNAPSHOT
+contents (6b's fix) have to actually be live in `/home/justin/hakuX`, the tree queued workers snapshot from,
+before any `drive generic` route can be queued without failing closed on every worker. That precondition was
+still false when attempt 3 ended -- `/home/justin/hakuX` was 147 commits behind -- so there was nothing left
+to do in-session except stop and let the fold happen outside it. That is a correct stopping point per the
+brief ("Step 6c ... now waits on the fold to master -- external to this session, not a background task of
+mine"), not a failure.
+
+Addendum 3 (2026-10-12 03:44 PDT) confirms the fold landed on `origin/master` as `a13a2f52db`, but
+`/home/justin/hakuX` was still at `75c07c25a7` (its update window was said to open ~04:01, after the Nova's
+run in flight), and directs this attempt to merge and start 6c's OFFLINE part now, queuing nothing until both
+6c checks pass against `/home/justin/hakuX`. This session's worktree was already sitting exactly on
+`origin/master` (`git rev-parse HEAD origin/master` both `a13a2f52db...`) -- the merge Addendum 3 asks for was
+already a no-op by the time this session started. Re-checked both 6c gates directly (03:45, 03:54, 03:58
+PDT): `git -C /home/justin/hakuX log --oneline -1 -- docs/testing/titles/pathclass.py` empty and
+`grep -c pathclass.py /home/justin/hakuX/docs/testing/dispatcher.sh` is `0` at all three checks -- the
+`/home/justin/hakuX` deploy has not happened yet. Proceeding with 6c's offline part (title list, routes,
+targets.toml rows) as directed, queuing nothing.
+
 ## Restart, attempt 2 (2026-10-11)
 
 Attempt 1 of this restart left no trace: zero commits past `9f9106cbd0` (reflog confirms), and the branch was
@@ -235,3 +259,192 @@ earlier attempt but never listed.
 
 Step 6c (benchmark new titles) now waits on the fold to master -- external to this session, not a
 background task of mine, so this is a stopping point rather than something to poll for.
+
+## Step 6c, offline part (2026-10-12, attempt 4)
+
+**Title list.** `status.json`'s `first.titles.rows` with `stage == "copied"` is 80 rows today (the brief's "77
+rows" is one tick stale -- status.json updates live; close enough that the same selection logic applies).
+Cross-referenced against the Nova's actual ISO listing (`adb -s ee317437 shell ls
+/storage/E6C6-D7AA/Games/XBox`, 194 files) by title id prefix: **35 titles are both `copied` and present on
+the Nova**. Ordered gameplay-first (a title whose `measured` list already has one `reached: yes` entry sorts
+before one that does not), ties broken alphabetically:
+
+- **4 excluded** (owner-held or `pm/owner-holds.tsv` row blocks the class a benchmark run falls under):
+  - RalliSport Challenge (4D53000F): `ralli-flicker-804`, kind=exclude, classes include SCREEN/TELEMETRY/
+    VALIDATION -- a generic-drive benchmark is squarely one of those.
+  - Cel Damage (45410011), Arx Fatalis (44430002), Fantastic 4 (4156001A): each `below_bar`, `classes=ALL`,
+    `release=never`. Each row's own note asks for exactly the kind of fix this lane makes ("needs a drive
+    route", "needs a route that walks the corridors") -- but `classes=ALL`/`release=never` means only
+    lane.local can lift it, and I am not lane.local. Named here as a strong candidate for a future lane/brief
+    that IS lane.local or has the hold lifted first, not quietly skipped.
+  - Checked every other owner-holds.tsv row that matches one of the 35 ids (Marvel Nemesis `pending`, Spider-
+    Man 2 `below_bar`, DOA1 Ultimate `below_bar`, Area 51 `below_bar`, BG&E `below_bar`, Forza's
+    `build_floor`): all of these are `classes=PLAYABLE_ATTEMPT` only (or, for Forza, a build-floor rule, not a
+    block) -- a benchmark fps read is not a Playable attempt, so none of these block step 6c. Kept in the
+    list, with a one-line pointer in each targets.toml note so a later Playable-attempt pass sees the hold.
+  - No targets.toml entry among the 35 carries a BLOCKED/WITHDRAWN note (checked all 35 by regex over the
+    file; only Galleon, not in this list, has one).
+- **1 skipped, already covered**: Forza Motorsport (4D53006E) already has a hand-made `drive-profiles/
+  forza.toml` and `routes/forza.drive.route` from lane.routedriver (one of the brief's "4 use drive, each
+  with a hand-made profile"). It needs its `targets.toml` route field wired to that existing route, not a new
+  `gen-*` one -- out of this step's charter (the generic fallback), and not touched here.
+- **1 skipped, held by another lane**: Need for Speed: Most Wanted (4541007B) is exactly the title the
+  brief's own "Why" section used as the motivating example, and its fixed-opening route (`nfs-mw*.route`) is
+  held by lane.nfsroute1011 for the step-4 conversion (deferred, not abandoned, per Addendum 1). Writing a
+  second, `gen-`-named route for the same title while that conversion is in flight would double the work and
+  risk two lanes writing `targets.toml`'s `route =` field for the same id. Left to lane.nfsroute1011's own
+  channel.
+- **29 titles get a new `gen-<slug>.route` + targets.toml row** (all written and `route.sh --check`ed clean;
+  none run yet -- no device run happens until both of Addendum 3's 6c gates pass against
+  `/home/justin/hakuX`, per its own instruction "queue nothing until both 6c checks pass"):
+
+  | Order | Title | tid | route | genre pattern |
+  |---|---|---|---|---|
+  | 1 | Aliens Versus Predator: Extinction | 56550022 | gen-avp-extinction | direct-avatar action (walk/turn/attack) |
+  | 2 | Amped: Freestyle Snowboarding | 4D530005 | gen-amped-snowboarding | downhill (lean/steer/trick) |
+  | 3 | Area 51 | 4D570005 | gen-area51 | FPS (look/fire) |
+  | 4 | Auto Modellista | 4343000E | gen-auto-modellista | racer (throttle/steer) |
+  | 5 | Batman Begins | 45410389 | gen-batman-begins | action/stealth (walk/turn/attack) |
+  | 6 | Beyond Good & Evil | 55530018 | gen-bge | action-adventure (walk/turn/attack) |
+  | 7 | Blinx 2: Battle of Time & Space | 4D530065 | gen-blinx2 | 3D platformer (run/turn/jump) |
+  | 8 | Blinx: The Time Sweeper | 4D530013 | gen-blinx1 | 3D platformer (run/turn/jump) |
+  | 9 | Bloody Roar: Extreme | 48550001 | gen-bloody-roar-extreme | 1v1 fighter (close/attack) |
+  | 10 | Counter-Strike | 4D530036 | gen-counter-strike | FPS (look/fire) |
+  | 11 | Dead or Alive 1 Ultimate | 54430006 | gen-doa1-ultimate | 1v1 fighter (close/attack) |
+  | 12 | Guilty Gear XX #Reload | 53410002 | gen-guilty-gear-xx | 2D fighter (close/attack) |
+  | 13 | LEGO Star Wars: The Video Game | 4553001D | gen-lego-star-wars | action-platformer (run/turn/attack) |
+  | 14 | Marvel Nemesis: Rise of the Imperfects | 4541038A | gen-marvel-nemesis | 1v1 fighter (close/attack) |
+  | 15 | Midnight Club II | 54540008 | gen-midnight-club-2 | racer (throttle/steer) |
+  | 16 | Mortal Kombat: Deadly Alliance | 4D57000C | gen-mk-deadly-alliance | 1v1 fighter (close/attack) |
+  | 17 | NBA Live 06 | 4541007A | gen-nba-live-06 | basketball (move/shoot) |
+  | 18 | NBA Live 07 | 454100A1 | gen-nba-live-07 | basketball (move/shoot) |
+  | 19 | NBA Live 2005 | 45410050 | gen-nba-live-2005 | basketball (move/shoot) |
+  | 20 | Mortal Kombat: Shaolin Monks | 4D570029 | gen-mk-shaolin-monks | 3D beat-'em-up (walk/turn/attack), NOT the 1v1 pattern -- a different game than the other MK titles |
+  | 21 | Spider-Man 2 | 4156002B | gen-spiderman2 | open-world action (walk/turn/attack) |
+  | 22 | Star Wars Episode III: Revenge of the Sith | 4C410017 | gen-sw-ep3-rots | lightsaber action (walk/turn/attack) |
+  | 23 | Tecmo Classic Arcade | 5443000E | gen-tecmo-classic-arcade | unknown (compilation) -- direction + main action only |
+  | 24 | The Incredible Hulk: Ultimate Destruction | 56550039 | gen-hulk-ultimate-destruction | open-world brawler (walk/turn/attack) |
+  | 25 | LOTR: The Return of the King | 4541003E | gen-lotr-rotk | hack-and-slash (walk/turn/attack) |
+  | 26 | Top Spin | 4D530035 | gen-top-spin | tennis (move/swing) |
+  | 27 | 007: Agent Under Fire | 4541000D | gen-007-auf | FPS (look/fire) |
+  | 28 | Black Stone: Magic & Steel | 58490004 | gen-black-stone | action-RPG (walk/turn/attack) |
+  | 29 | Phantom Crash | 504C0001 | gen-phantom-crash | mech combat (move/turn/fire) |
+
+  27-29 are the three titles whose `measured` list shows no past `reached: yes`, correctly sorted last per
+  the brief's ordering rule.
+
+  **Every play loop here is a guess from the title's known genre, not from this title's own captured
+  frames** -- there is no device run yet to check against. That is consistent with the brief's own allowance
+  ("a failed title gets one fix from its frames and one re-run, then NOTES.md and the next title"): the fix
+  cycle is expected to happen once real frames exist, not before. The racer loop (Auto Modellista, Midnight
+  Club II) copies `burnout.route`'s already-proven `axis RT max` / `axis LX` pattern; the FPS loop (Area 51,
+  Counter-Strike, 007) and the fighter loop (Bloody Roar, DOA1, Guilty Gear, Marvel Nemesis, both MK 1v1
+  titles) are each one shared template reused across titles of that genre, named so in each route's own
+  header comment.
+
+  Each `targets.toml` row adds `iso.nova` (missing on three pre-existing rows -- Area 51, Blinx 2, Blinx 1 --
+  which had only a `thor` entry) and a `route =` pointing at its new file, plus a one-line note. Validated
+  the whole file parses (`python3 -c 'import tomllib; tomllib.load(...)'`, 106 titles total, up from 88) and
+  every new/changed route passes `route.sh --check`.
+
+  Not yet done: targets.toml rows/routes for the other below_bar titles not in this batch of 29 (there were
+  none left in the 35 after the exclusions above -- this batch covers every eligible title in the current
+  `copied`+Nova set).
+
+**Still queued: nothing.** Re-checked both of Addendum 3's gates after finishing this batch (03:58 PDT):
+`git -C /home/justin/hakuX log --oneline -1 -- docs/testing/titles/pathclass.py` is still empty and
+`grep -c pathclass.py /home/justin/hakuX/docs/testing/dispatcher.sh` is still `0`. `/home/justin/hakuX` has
+not taken the fold yet. Per Addendum 2, this is also not a reason to wait idle: the Nova itself is held by
+lane.local's overnight chain until the Playable ledger reaches 50, so even once the dispatcher-tree gate
+passes, queued runs here wait their turn behind that chain, not ahead of it. Neither condition is a failure;
+both are outside this session's control. Committing and pushing this offline batch now, then re-checking once
+more before deciding whether to queue anything or stop for this session.
+
+## Restart, attempt 5 (2026-10-12 ~04:06 PDT): both named gates passed, a second fold gate found
+
+New session; checkout was 28 commits behind `origin/master` (unrelated fold, `lane/savestate1011`). Merged
+cleanly, no conflicts. Re-checked Addendum 3's two gates against `/home/justin/hakuX`:
+
+- `git -C /home/justin/hakuX log --oneline -1 -- docs/testing/titles/pathclass.py` -> `08cd5249d3 ...`
+  (non-empty)
+- `grep -c pathclass.py /home/justin/hakuX/docs/testing/dispatcher.sh` -> `3`
+
+Both pass; `/home/justin/hakuX` head is `e318ae70b5`. Also checked the Playable ledger (Addendum 2):
+`status.json` shows 51 titles at `stage == "playable"`, past the 50 the owner named, and the most recent
+`dispatch/results/` entries are `fpsbelow1012`'s, not `lane.local`'s -- the overnight chain's last run was
+03:27:34 PDT, so it has stopped. No `pm/.chain-stop` touched; this is just reading the ledger and the
+results directory.
+
+Picked the first 3 titles off the 29-row table (AvP Extinction, Amped: Freestyle Snowboarding, Area 51).
+AvP Extinction and Amped already carry a `golden` (both from `lane.pathfind`, 10-04) -- no profile-gate
+action needed, straight to the measured run. Area 51 had a `latest` harvest but no `golden`; promoted it
+(`titlestate.py promote --title-id 4D570005 --latest --by lane.pathclass --note "..."`, host-side, no
+device touched) per the profile gate's rule 1.
+
+Queued the first request (`--title 56550022-Aliens_Versus_Predator_Extinction.xiso.iso --route
+gen-avp-extinction --seconds 480 --frames-every 60 --device nova`). `request.sh` refused it:
+
+    refusing to queue: no route 'gen-avp-extinction' (/home/justin/hakuX/docs/testing/titles/routes/gen-avp-extinction.route)
+
+Checked why: the 29 `gen-*.route` files and the `targets.toml` rows (commits `254d4690ce`, `1b6e58cc18`)
+are pushed to `origin/lane/pathclass` but **not yet folded into `origin/master`** --
+`git merge-base --is-ancestor 254d4690ce origin/master` says "NOT yet folded". Only the first fold
+(`a13a2f52db`, steps 1-3/6a/6b) has landed and reached `/home/justin/hakuX`; the offline-prep commits are a
+second, later fold lane.local has not run yet. This is a real precondition Addendum 3 did not name (it only
+named the classifier/dispatcher-snapshot gate, which has now passed) -- a route file has to exist on
+`/home/justin/hakuX`'s own tree for `request.sh` to resolve and queue it, same reasoning as 6b's snapshot
+fix, one fold cycle later.
+
+This is external to this session (only lane.local folds master) and is the same class of thing as
+"another PR's fold" the lane rules name as a legitimate `waiting:` reason -- not a background task of mine.
+Posted `[lane.pathclass] waiting:` on PR #946 naming the exact fold and the exact check
+(`git -C /home/justin/hakuX log --oneline -1 -- docs/testing/titles/routes/gen-avp-extinction.route`
+returning non-empty) that resolves it. No device run queued, no Nova hold taken.
+
+**Next lane/session should not repeat:** re-deriving the Playable count or the fold status from scratch --
+read this section first. Once the second fold lands, resume at "queue the first batch of 3" above (AvP
+Extinction, Amped: Freestyle Snowboarding, Area 51 -- Area 51's golden is already promoted, nothing further
+needed there before its measured run).
+
+## Step 6d, offline part (2026-10-12, attempt 5)
+
+Per Addendum 2 ("do offline work (step 6d conversions...) meanwhile"), did 6d's non-device half while
+waiting on the second fold above. All five routes granted for 6d:
+
+- **`bf2mc.route`, `dnd-heroes.route`, `mechassault-2.route`** (first-run routes; the profile gate refuses
+  a repeat first-run on a title that already has a kept profile, R1). Confirmed each of the three titles
+  does carry a golden with a real save directory (`titlestate.py golden --title-id <T>`:
+  `45410062` -> `dcf7307455f0`, `49470013` -> `8cb83326dc54`, `4D53006B` -> `aeffd81ffd76`, all
+  `lane.local`-promoted 10-02). Wrote `bf2mc.returning.route`, `dnd-heroes.returning.route`,
+  `mechassault-2.returning.route`: each opens `drive generic 300 mark` (replacing the first-run file's
+  blind boot-to-create-campaign/name-entry/mission-select sequence) and keeps that file's own play pattern
+  unchanged after the mark. All three pass `route.sh --check`.
+
+  **Important for whoever queues these:** `titlestate.resolve_route()`'s family auto-pick
+  (`<base>.returning` vs `<base>.first-run`) only fires when the bare `<base>.route` does NOT exist
+  (titlestate.py:1070-1072, `single = routes/<name>.route`; if it exists, that's what's returned,
+  unconditionally). All three titles already have a bare `bf2mc.route` / `dnd-heroes.route` /
+  `mechassault-2.route` on disk (the original first-run files, not renamed -- renaming them was not asked
+  and would be its own, separate change). So `--route bf2mc` would still resolve to the first-run file and
+  get refused by R1 again. **Queue the returning variant by its own full name**: `--route bf2mc.returning`,
+  `--route dnd-heroes.returning`, `--route mechassault-2.returning`. Documented the same in each
+  `targets.toml` note so the next session does not re-discover this.
+
+  All three titles' targets.toml rows only had a `thor` iso entry; confirmed via `adb -s ee317437 shell ls
+  /storage/E6C6-D7AA/Games/XBox` that the exact same filename is present on the Nova for all three
+  (`45410062-...`, `49470013-...`, `4D53006B-...`), and added the `nova` key to each row (this lane is
+  Nova-only; a `.returning` run cannot be queued with `--device nova` without it).
+
+- **`crash-wrath-of-cortex.route`, `doax.route`** (mark lands on a menu). Both already had a `nova` iso
+  entry, nothing to add there. Confirmed each mark-audit finding from targets.toml's existing notes
+  (session 46): crash's mark frame (`1-1790757193-lane.hddcrash-1697566`, 101704) is the LOAD/SAVE menu, not
+  the warp room hub; doax's mark frame (`y-1790481308-titlebench-2893458`, 011218-gameplay.png) is an
+  in-game shop list, not the rally. Replaced each route's entire fixed-timing boot-to-mark opening with
+  `drive generic 300 mark`, keeping the rest of the file (the play loop after the mark) byte-for-byte the
+  same -- crash's loop already had its own comment explaining why it avoids walking into the LOAD/SAVE
+  monitor (stick toward the camera, not up+A), which still applies after the mark moves. Both pass
+  `route.sh --check`.
+
+**Still not run.** Per the brief, 6d's runs ("One MAX run of each... frames reviewed") come after 6c is
+actually running, and 6c itself is still waiting on the second fold (see the section above). No device run
+queued for any of these five; no golden touched beyond the read-only `titlestate.py golden` checks above.
