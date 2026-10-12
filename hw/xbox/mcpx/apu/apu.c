@@ -116,12 +116,14 @@ static int monitor_num_used_bytes(MCPXAPUState *d)
 #include <android/log.h>
 
 /*
- * HAKUX_APU_PACE=1 keeps the low-watermark pacing below on Android (#433,
- * off by default while it is measured). Without it the VP runs a whole device
- * period of frames back to back after each drain and then stands still, so a
- * voice's position moves by ~2048 samples within a few ms of host time instead
- * of 32 samples every 0.67 ms as on the hardware. Read once, on the APU
- * thread, and said once in logcat so a run shows the switch reached it.
+ * HAKUX_APU_PACE keeps the low-watermark pacing below on Android (#433). On
+ * by default since defaulton1011: unset means on, and any value but "1"
+ * (HAKUX_APU_PACE=0) turns it off for an A/B. Without it the VP runs a whole
+ * device period of frames back to back after each drain and then stands
+ * still, so a voice's position moves by ~2048 samples within a few ms of host
+ * time instead of 32 samples every 0.67 ms as on the hardware. Read once, on
+ * the APU thread, and said once in logcat so a run shows the switch reached
+ * it.
  */
 static bool apu_pace_on(void)
 {
@@ -129,9 +131,10 @@ static bool apu_pace_on(void)
 
     if (on < 0) {
         const char *e = getenv("HAKUX_APU_PACE");
-        on = e && e[0] == '1' && e[1] == '\0';
+        on = e ? e[0] == '1' && e[1] == '\0' : 1;
         __android_log_print(ANDROID_LOG_INFO, "hakuX-audio",
-                            "apu_pace: %s (HAKUX_APU_PACE)", on ? "on" : "off");
+                            "apu_pace: %s (HAKUX_APU_PACE%s)", on ? "on" : "off",
+                            e ? "" : ", default");
     }
     return on;
 }
