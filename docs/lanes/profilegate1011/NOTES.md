@@ -160,3 +160,27 @@ being applied here.
 
 See PR #933 body / `State:` line for current status; this file is kept
 up to date as work proceeds in this session.
+
+## Attempt 2: why it did not finish
+
+Attempt 2 did the "After the grant" steps 1-4 (merge, admit()/gate_report/
+readiness/saves in titlestate.py, the request.sh/dispatcher.sh wiring and
+`profile_gate_check()` extraction, the full `99-profile-gate.sh` selftest
+file with all 8 mutants, and the readers audit/OUTBOX.md patch) across six
+commits, ending at `0b68bb2b82`. It ran out of turns at the cap before
+pushing that last commit: the branch sat one commit ahead of
+`origin/lane/profilegate1011`, and before stopping it had not yet run the
+full `selftest.sh` suite once (only the standalone `99-profile-gate.sh`
+run, noted above), had not written `PR.md`, and had not re-merged
+`origin/master` (26 commits ahead by the time attempt 3 started). Nothing
+was lost -- the work was committed, just not pushed or finished -- but per
+Addendum 4 the unpushed commit had to be pushed first before continuing.
+
+## Attempt 3
+
+Starting from `0b68bb2b82` (6 commits ahead of the grant merge, 1 commit
+ahead of `origin/lane/profilegate1011`). Pushed first, per Addendum 4.
+Remaining before `State: ready`: the bare-8-hex-TitleID defect fix in
+request.sh (Addendum 4), its selftest cases + mutant, merging
+`origin/master` (26 commits behind), the one full `selftest.sh` run, and
+`PR.md`.
