@@ -45,21 +45,38 @@ shot cutscenes
 wait 5
 mark gameplay
 repeat forever {
-    axis LY min
-    press A 200
-    wait 1.5
-    axis LX max
-    wait 1
-    axis LX mid
-    press A 200
-    wait 1.5
-    axis LX min
-    wait 1
-    axis LX mid
+    repeat 4 {
+        axis LY min
+        press A 200
+        wait 1.5
+        axis LX max
+        wait 1
+        axis LX mid
+        press A 200
+        wait 1.5
+        axis LX min
+        wait 1
+        axis LX mid
+        axis RX max
+        wait 0.5
+        axis RX mid
+        wait 1
+        axis LY mid
+        wait 0.5
+    }
+    # wedge escape (gtawedge1012): the loop above only drifts heading right
+    # 0.5s of RX max per ~10s cycle, which does not turn far enough to clear
+    # a recess once Tommy is run face-first into one (confirmation
+    # 1-1791785130-lane.local-2108844 wedged in a garage-door alcove at
+    # 23:41:54 and never moved again for the rest of the run). Back off
+    # first -- LY max is camera-relative, so it runs him toward the camera
+    # and away from whatever he is pressed against -- then swing the camera
+    # hard before the next run-forward leg picks a new heading.
+    axis LY max
+    wait 2
     axis RX max
-    wait 0.5
-    axis RX mid
-    wait 1
+    wait 1.5
+    axis LX mid
     axis LY mid
-    wait 0.5
+    axis RX mid
 }
