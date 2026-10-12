@@ -3,16 +3,17 @@ State: ready
 
 Lane: nfsaudio1011      Issue: #433 (umbrella), none filed
 Base: master @ 13e0590809
-Files: hw/xbox/mcpx/apu/vp/vp.c, docs/lanes/nfsaudio1011/NOTES.md, docs/lanes/nfsaudio1011/PR.md, docs/lanes/nfsaudio1011/apu.c.patch, docs/lanes/nfsaudio1011/tools/content_align.py, docs/lanes/nfsaudio1011/tools/fixjudge.py, docs/lanes/nfsaudio1011/tools/replay_share.py, docs/lanes/nfsaudio1011/tools/voiceread.py, docs/lanes/nfsaudio1011/tools/wake_by_vector.py, docs/testing/predictions/nfsaudio1011-identify.json, docs/testing/predictions/nfsaudio1011-fix.json, docs/testing/predictions/nfsaudio1011-fix-titles.json
+Files: hw/xbox/mcpx/apu/apu.c, hw/xbox/mcpx/apu/vp/vp.c, docs/lanes/nfsaudio1011/NOTES.md, docs/lanes/nfsaudio1011/OUTBOX.md, docs/lanes/nfsaudio1011/PR.md, docs/lanes/nfsaudio1011/apu.c.patch, docs/lanes/nfsaudio1011/tools/content_align.py, docs/lanes/nfsaudio1011/tools/fixjudge.py, docs/lanes/nfsaudio1011/tools/replay_share.py, docs/lanes/nfsaudio1011/tools/voiceread.py, docs/lanes/nfsaudio1011/tools/wake_by_vector.py, docs/testing/predictions/nfsaudio1011-identify.json, docs/testing/predictions/nfsaudio1011-fix.json, docs/testing/predictions/nfsaudio1011-fix-titles.json
 Prediction: docs/testing/predictions/nfsaudio1011-fix.json @ daa1d9f2c147153a1c2f28ce53ce901db11ecb5dfb2194bb90ce9fa849b5c588; docs/testing/predictions/nfsaudio1011-fix-titles.json @ 546962020bb6a16aa078efd64d118fb2b4dc961ad995f747f5aee6cb935727d1; docs/testing/predictions/nfsaudio1011-identify.json @ 4a986123485b7c1b7a83e95542f89e655be1e8487a56a70e665c1d9d9170475d
 Needs device: yes (Nova)    Needs NDK: yes
-Release note (none): the code here is an APU voice log that is off unless HAKUX_APU_VOICELOG=1. The fix is in apu.c.patch (NEED: apu.c below); once it lands and is on by default, its note is "Need for Speed Most Wanted: fixed stuttering audio in movies and speech".
+Release note (none): the fix is HAKUX_APU_PACE in apu.c and the rest is an APU voice log (HAKUX_APU_VOICELOG); both are off by default. Once the pacing is on by default, its note is "Need for Speed Most Wanted: fixed stuttering audio in movies and speech".
 
-NEED: apu.c -- `docs/lanes/nfsaudio1011/apu.c.patch` wraps the Android early return in `throttle()` (apu.c ~137-145)
-in `if (!apu_pace_on())`. With `HAKUX_APU_PACE=1`, Android runs the low-watermark pacing that every other build already
-runs. It is off by default, so the shipped path is unchanged. apu.c belongs to lane.snapshot1011, so this branch does
-not commit it. The patch applies to master (`git apply --check`), and every arm below ran it from scratch commit
-`9c054c1714` (this lane's head plus the patch, on no branch).
+**The fix.** `HAKUX_APU_PACE=1` (apu.c, `throttle()`) wraps the Android early return in `if (!apu_pace_on())`, so
+Android runs the low-watermark pacing that every other build already runs. It is off by default, so the shipped path is
+unchanged. The switch is read once and logged once (`hakuX-audio: apu_pace: on|off`). The committed apu.c is
+byte-identical to the one in scratch commit `9c054c1714` (this lane's head plus `docs/lanes/nfsaudio1011/apu.c.patch`),
+which every arm below ran. Compile check: apu.c alone with NDK 29 clang and the host Release build's arm64-v8a flags,
+`-Wall`, clean but for target_page.h's existing warning. The new code is all under `#ifdef __ANDROID__`.
 
 **What goes wrong.** NFS MW plays its movie and PSA audio from a looping 2400-sample (50 ms) 5.1 PCM ring. Three stereo
 voices move together: v=244/245/246, `buf loop=1 ebo=2399`. The game keeps its write head **exactly 992 samples ahead
@@ -99,9 +100,9 @@ titles.
 - an NFS run in the slow-content mode (2 of the 5 captures before the arms; none of the 4 OFF arms);
 - the career cutscenes.
 
-**What is left:** making the pacing the default is apu.c's owner's change. It is default-on for every title, so it
-belongs in the one screen for every default-on in flight. This lane did not run a cross-title screen, as the brief
-says.
+**What is left:** making the pacing the default (deleting the early return). That is default-on for every title, so it
+belongs in the one screen for every default-on in flight, which lane.local runs. This lane did not run a cross-title
+screen, as the brief says.
 
 The vp.c code in this PR is the `HAKUX_APU_VOICELOG` instrument, and it is off by default. The four NFS arms ran with
 it compiled in and off, and they reproduce lane.local's shipped figures: 15.7% and 15.9% against 15.1%, and level

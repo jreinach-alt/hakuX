@@ -112,6 +112,31 @@ static int monitor_num_used_bytes(MCPXAPUState *d)
     return queued_bytes;
 }
 
+#ifdef __ANDROID__
+#include <android/log.h>
+
+/*
+ * HAKUX_APU_PACE=1 keeps the low-watermark pacing below on Android (#433,
+ * off by default while it is measured). Without it the VP runs a whole device
+ * period of frames back to back after each drain and then stands still, so a
+ * voice's position moves by ~2048 samples within a few ms of host time instead
+ * of 32 samples every 0.67 ms as on the hardware. Read once, on the APU
+ * thread, and said once in logcat so a run shows the switch reached it.
+ */
+static bool apu_pace_on(void)
+{
+    static int on = -1;
+
+    if (on < 0) {
+        const char *e = getenv("HAKUX_APU_PACE");
+        on = e && e[0] == '1' && e[1] == '\0';
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-audio",
+                            "apu_pace: %s (HAKUX_APU_PACE)", on ? "on" : "off");
+    }
+    return on;
+}
+#endif
+
 static void throttle(MCPXAPUState *d)
 {
     if (d->ep_frame_div % 8) {
@@ -139,9 +164,11 @@ static void throttle(MCPXAPUState *d)
      * low-watermark pacing below and can make speech sound dragged out.
      * Keep FIFO backpressure, but let the output callback set the pace.
      */
-    d->next_frame_time_us = 0;
-    d->sleep_acc_us += qemu_clock_get_us(QEMU_CLOCK_REALTIME) - start_us;
-    return;
+    if (!apu_pace_on()) {
+        d->next_frame_time_us = 0;
+        d->sleep_acc_us += qemu_clock_get_us(QEMU_CLOCK_REALTIME) - start_us;
+        return;
+    }
 #endif
 
     if (queued_bytes > d->monitor.queued_bytes_low) {
