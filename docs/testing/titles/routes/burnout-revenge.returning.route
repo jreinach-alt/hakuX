@@ -124,14 +124,33 @@ mark gameplay
 # Traffic Attack (the event this route lands in) is a short timed event:
 # the frames that found this route show it ends well under a minute after
 # the mark (docs/lanes/burnoutloop1012/NOTES.md). Once it ends, Burnout
-# Revenge holds on a RESULTS screen (Retry B / More details Y / Continue A)
-# until a button is pressed -- the drive pattern below never pressed one,
-# so a run that reached RESULTS sat there, replay moving behind the panel,
-# for the rest of the confirmation. `press B` (Retry) below restarts the
-# same event; it is a no-op if the race is still running and B does
-# nothing there, so the cadence is chosen to bound the alternative: if B
-# turns out to be a live race control (e.g. a handbrake), it can only ever
-# land once per 18s of driving, never every loop.
+# Revenge holds on a RESULTS screen until a button is pressed -- the drive
+# pattern below never pressed one, so a run that reached RESULTS sat
+# there, replay moving behind the panel, for the rest of the confirmation.
+# `press B` (Retry) below restarts the same event; it is a no-op if the
+# race is still running and B does nothing there, so the cadence is
+# chosen to bound the alternative: if B turns out to be a live race
+# control (e.g. a handbrake), it can only ever land once per 18s of
+# driving, never every loop.
+#
+# RESULTS is not one screen with three prompts -- it is at least two,
+# and no frame on disk shows all three together (that claim, in an
+# earlier draft of this comment, was never supported by a frame; fixed
+# here, lane.burnoutunlock1012, #433):
+#   - no medal earned: Retry (B) / More details (Y) only (confirmation 1,
+#     `frames/f00016.png`, run `1-1791793410-lane.local-336876`).
+#   - a medal earned: More details (Y) / Continue (A) only, **no Retry**
+#     (confirmation 2, `frames/f00044.png`, run
+#     `1-1791800854-lane.local-2819291`, device time 03:56:35 -- "MEDAL
+#     AWARDED BRONZE", "NEW EVENT UNLOCKED!").
+# `press B` is a no-op on the medal variant (no Retry to press); the
+# `press A` 0.3s later is still Continue there, same as on the no-medal
+# brief-dismiss case this pair was built for -- but Continue off a
+# medalled RESULTS leaves the event for WORLD TOUR, not back into a race,
+# and nothing below this comment can tell those two Continues apart to
+# press differently. See docs/lanes/burnoutunlock1012/NOTES.md for the
+# full state table, why confirmation 2 got stuck there, and why no fix
+# is applied here.
 #
 # A Retry that lands reaches the next screen within at most 14.3s (measured
 # in docs/lanes/burnoutbrief1012/NOTES.md; nothing on disk gives a lower
