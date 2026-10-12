@@ -66,4 +66,37 @@ Reference for the disk checks: 1-1791713584-fastpaths1010-1525919 (187: Ride or 
 
 | Run | Ref | Result |
 |---|---|---|
-| 1-1791753422-snapshot1011-2350466 | a8c3031263 | queued |
+| 1-1791753422-snapshot1011-2350466 | a8c3031263 | 187: Ride or Die, `HAKUX_SNAPSHOT_TEST=120`, 600 s. Every step passed in logcat; the frames do not show a scene change for c1 (below). |
+
+The first session ended at its turn limit right after queueing run 1, before the run started; the second session
+picks up from its result.
+
+### Run 1 (1-1791753422-snapshot1011-2350466)
+
+Logcat (`hakuX-lane`, `[snap]` lines 96-11655):
+
+| Step | Result |
+|---|---|
+| start | 17:12:10.6, snapshots=0, controllers `usb-xbox-gamepad,0,0;usb-xbox-gamepad,0,0;-;-` |
+| c1 | save `a` 263 ms, 59,018,555 B, hash `cfa6aa04b442993c`; scene B `3cc306e84e841b48`; load `a` 116 ms (header check 3 ms), after-load `cfa6aa04b442993c`: match |
+| c2 | 6/6 distinct hashes over 60 s after the load, running throughout |
+| c3 | 20 cycles, 40/40 ok. save_ms min 190, median 307, max 489; load_ms min 101, median 107, max 116; state 59.07-59.09 MB |
+| c4 | paused, save 296 ms (paused after), load 107 ms, paused 1 s later, resumed; hash moved 10 s later |
+| c5 | header written with layout `-;-;-;-`: `refuse reason=controller-layout` after a 5 ms header check, load 0 ms, machine running, hash moved over 5 s |
+| done | slots `a`, `b` deleted, snapshots=0 |
+
+No `hakuX-crash`, `libc` or `DEBUG` line. Frames continue to the end of the run (224 frames, 600 s).
+
+The frames do not prove c1. The route fell one screen behind: where it expected the race
+(`171134-race-start.png`) the game showed the mission briefing ("Press A to continue"), and from the race start
+on (f00048, 11 s before the sequence began) the car sat on the start line at 0 mph with its rear wheels smoking
+for the rest of the run. Scenes A and B are the same place: the hashes differ (smoke, opponents leaving), and
+the frame after the load (f00060) looks like the frames before it. Every load in the run went back to that same
+spot. The after-load hash reads guest RAM at PCRTC_START right after `load_snapshot`, before the machine
+restarts, so it shows that RAM and the scanout address came back, not that the renderer drew A again. Run 2
+saves A on a different screen.
+
+Disk: `hdd.json` plan build/keep, 19,070,976 B at start (the same size as the day's other built disks:
+nfsdefault1011 and gtasagpu1011 runs; the sha256 differs per build). `hdd.after.json`: no errors, 94 titles
+harvested; the 92 titles the reference run harvested have identical hashes, including 55530036 `fa079adf42d5`.
+The other two (5454000E, 5454000F) are goldens added to the store since the reference.
