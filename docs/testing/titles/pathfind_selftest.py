@@ -64,6 +64,13 @@ os.environ["PATHFIND_DRY"] = "1"
 os.environ["PATHFIND_KNOW"] = os.path.join(TMP, "know")
 os.environ["PATHFIND_AFTER_S"] = "0"
 os.makedirs(os.path.join(TMP, "know", "hints"))
+# The profile gate's R3 (#433) refuses a second session on a title whose path is known, and `happy` below records
+# one for 00000000. Every later case names this fake failed run with --path-broken; DISPATCH_DIR keeps R3's
+# proven-route lookup off the live dispatch results.
+os.environ["DISPATCH_DIR"] = os.path.join(TMP, "dispatch")
+BROKEN = "sim-pathbroken"
+os.makedirs(os.path.join(TMP, "dispatch", "results", BROKEN))
+json.dump({"title": "00000000-Sim.xiso.iso"}, open(os.path.join(TMP, "dispatch", "results", BROKEN, "request.json"), "w"))
 sys.path.insert(0, HERE)
 import pathfind  # noqa: E402
 # The fake device has no logcat for title_verdict.py, so the validity check would find no verdict and hold on. The
@@ -73,6 +80,11 @@ pathfind.Agent.hold_check = lambda self, play_s, log: ("pass", 0.0, "")
 # the selftest's claim budgets are seconds long and run on real time: a 300-s confirm grace would let every
 # budget-ended case wait out its sim. The grace is a production setting; its path is the next real claim's test.
 pathfind.CONFIRM_GRACE_S = 0
+# The hold legs test the hold loop's own rules (unstick ladder, still windows, play credit) on sim scenes that end in a
+# repeated frame, which the stuck detector (10-07) rightly ends as stuck_abort after 6 samples. It is off for them and
+# on for its own leg, 'sdstuck'.
+SD = pathfind.stuckdetect
+pathfind.stuckdetect = None
 
 # the escalation cases need a stronger model than FAST; the default is Sonnet for both today (10-03), so pin Opus
 pathfind.STRONG = "claude-opus-5-5"
@@ -129,7 +141,7 @@ def run(name, frames, answers, extra=()):
     json.dump(answers, open(ans, "w"))
     out = os.path.join(TMP, name, "out")
     rc = pathfind.main(["00000000", "--device", "nova", "--budget-min", "0.05", "--out", out, "--sim", fd,
-                        "--sim-answers", ans] + list(extra))
+                        "--sim-answers", ans, "--path-broken", BROKEN] + list(extra))
     res = json.load(open(os.path.join(out, "result.json")))
     steps = [json.loads(l) for l in open(os.path.join(out, "steps.jsonl"))]
     calls = [json.loads(l) for l in open(os.path.join(out, "calls.jsonl"))] if os.path.exists(
@@ -160,6 +172,15 @@ check("happy", os.path.exists(path), "the path was recorded")
 lp = os.path.join(TMP, "know", "hints", "learned-pub-0000.md")
 check("happy", os.path.exists(lp) and "(00000000," in open(lp).read() and "main_menu A" in open(lp).read(),
       "one learned line was appended to learned-pub-0000.md")
+
+# r3: with that path recorded, a second session that names no failed run of it is refused before any step
+try:
+    pathfind.main(["00000000", "--device", "nova", "--out", os.path.join(TMP, "r3", "out"), "--sim", TMP])
+    r3 = "not refused"
+except SystemExit as e:
+    r3 = str(e.code)
+check("r3", "already has a known path" in r3 and not os.path.exists(os.path.join(TMP, "r3", "out", "steps.jsonl")),
+      f"a known path refuses a blind session: {r3[:90]}")
 
 # repeat: a dialogue the model answered with one A that advanced it: A again unlooked, CLAIM_REPEAT times, then a look
 # (Phantom Crash, 10-04: 62 model calls on a ClubWired dialogue)
@@ -382,6 +403,18 @@ check("holdstuck", res["result"] == "gameplay" and hold.get("ok") is False
       f"the claim stands but the hold gives up at the end of its budget: {hold.get('reason', '')[:80]}")
 check("holdstuck", sum(1 for c in calls if c["purpose"] == "hold-check") > pathfind.HOLD_NAV_MAX + 1,
       "the hold runs past the nav cap while budget remains, with ladder rounds, instead of stopping at it")
+
+# sdstuck: the same stuck pause with the stuck detector on: a few unstick rungs, then the hold ends as stuck_abort
+# with the claim standing, well inside the budget the ladder would otherwise spend
+pathfind.stuckdetect = SD
+rc, res, steps, calls = run("sdstuck", PREFIX + [("menu", 0)] * 30,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE]
+                            + [PAUSED] * 16, ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
+pathfind.stuckdetect = None
+hold = res.get("hold", {})
+check("sdstuck", SD is not None and res["result"] == "gameplay" and hold.get("ok") is False
+      and hold.get("stuck_abort") is True and hold.get("reason", "").startswith("stuck_abort:"),
+      f"the detector ends a stuck hold with a reason: {hold.get('reason', '')[:80]}")
 
 # holdrepeat: a cutscene that asks for A (an episode card) is answered once; its A is repeated HOLD_REPEAT times
 # with no model call, then the screen is read again, and the play resumes (Panzer, 10-03: 4 looks per death)
