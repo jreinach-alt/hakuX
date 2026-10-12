@@ -51,6 +51,21 @@ create one across directories neither lane owns outright. Kept honest by
 selftest.d/89-usage-mode.sh, which sources window.sh and asserts the two
 compute the identical week start for several fixed instants -- the same
 cross-check jobs/localtime.sh and localtime.py use for the display zone.
+
+THE FIT (#433, meterfit1010). fit_prices() above prices a modelUsage token
+against that SAME run's modelUsage cost -- so a billed model call that never
+makes it into a transcript (it happens; see NOTES.md) is invisible to both
+sides of that ratio, and the 14-day window it averages over lags a week
+whose price mix is still moving. fit_prices_transcripts() instead prices
+each run's own TRANSCRIPT token sum (transcript_eq) against that run's own
+costUSD: the missing calls now show up as a gap between the two totals, not
+a wash, and a short trailing window (SHORT_WINDOW_HOURS) tracks this week
+instead of the last two. combined_price_map() is what scan_transcripts()
+actually prices events with: fit_prices_transcripts()'s number for a model
+when it has enough recent data (SHORT_MIN_RUNS, SHORT_MIN_COST) or any data
+at all within the fit window, else fit_prices()'s -- so a model the
+transcript fit never saw keeps today's behaviour exactly. See
+selftest.d/88-usage-meterfit.sh and docs/lanes/meterfit1010/NOTES.md.
 """
 import glob
 import json
@@ -159,6 +174,158 @@ def price_for(price_map, model):
         if base and base in k:
             return v
     return None
+
+
+# ------------------------------------------------------- transcript pricing
+SHORT_WINDOW_HOURS = 72   # chosen from the 10-10 audit (NOTES.md): long
+                          # enough to hold >= SHORT_MIN_RUNS for every model
+                          # that runs daily, short enough to track a week
+                          # whose price mix is still moving
+SHORT_MIN_RUNS = 5
+SHORT_MIN_COST = 5.0      # either floor failing drops a model to the 14-day
+                          # window below, same as fit_prices()'s max_age_days
+
+
+def _norm_model(model):
+    """Collapse the billing-only suffixes a modelUsage key can carry (the
+    1M-context tag, a dated snapshot) that the transcript's own
+    message.model never does -- "claude-opus-5[1m]" bills separately from
+    "claude-opus-5" but is the same model logged the same way in the
+    transcript."""
+    m = re.sub(r"\[1m\]$", "", model)
+    m = re.sub(r"-\d{8}$", "", m)
+    return m
+
+
+def transcript_eq(projects_dir, session_id):
+    """-> {model: eq} summing ONE run's own transcript -- its main session
+    jsonl plus any subagents/*.jsonl beside it -- or None if no transcript
+    file exists at all for this session_id (the run is skipped by every
+    caller, on both sides of the fit; see module docstring). Dedups by
+    assistant message id: the FIRST line holding a given id counts, the same
+    rule scan_transcripts applies tick over tick, applied here in one pass
+    over however many lines this one run wrote."""
+    paths = (glob.glob(os.path.join(projects_dir, "*", session_id + ".jsonl"))
+              + glob.glob(os.path.join(projects_dir, "*", session_id, "subagents", "*.jsonl")))
+    if not paths:
+        return None
+    seen = set()
+    eq = collections.Counter()
+    for path in paths:
+        try:
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                lines = fh.read().splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            try:
+                e = json.loads(line)
+            except Exception:
+                continue
+            if e.get("type") != "assistant":
+                continue
+            m = e.get("message") or {}
+            mid = m.get("id")
+            if mid:
+                if mid in seen:
+                    continue
+                seen.add(mid)
+            model = m.get("model")
+            if not model:
+                continue
+            u = m.get("usage") or {}
+            eq[model] += (u.get("input_tokens", 0) + 1.25 * u.get("cache_creation_input_tokens", 0)
+                          + 0.1 * u.get("cache_read_input_tokens", 0) + 5 * u.get("output_tokens", 0))
+    return eq
+
+
+def _eq_for_billing_model(eq_by_model, model):
+    """-> transcript eq attributed to one modelUsage billing key, matching
+    through _norm_model since the transcript never carries that key's
+    billing-only suffixes."""
+    if model in eq_by_model:
+        return eq_by_model[model]
+    base = _norm_model(model)
+    total = 0.0
+    for k, v in eq_by_model.items():
+        if _norm_model(k) == base:
+            total += v
+    return total
+
+
+def collect_fit_samples(work_dir, projects_dir, max_age_days=14):
+    """-> [(mtime, model, costUSD, transcript_eq), ...], one tuple per
+    billed model entry of every headless run under work_dir/logs whose run
+    log carries a session_id AND a transcript (transcript_eq() found at
+    least one file). A run missing either contributes nothing -- same
+    silence on both sides of the ratio fit_prices_transcripts() fits, which
+    is why a run with no transcript cannot skew it."""
+    cutoff = time.time() - max_age_days * 86400
+    samples = []
+    for f in glob.glob(os.path.join(work_dir, "logs", "**", "*.json"), recursive=True):
+        try:
+            mtime = os.path.getmtime(f)
+            if mtime < cutoff:
+                continue
+            r = json.load(open(f))
+        except Exception:
+            continue
+        if not isinstance(r, dict):
+            continue
+        mu = r.get("modelUsage") or {}
+        sid = r.get("session_id")
+        if not mu or not sid:
+            continue
+        eq_by_model = transcript_eq(projects_dir, sid)
+        if eq_by_model is None:
+            continue
+        for model, u in mu.items():
+            cost = u.get("costUSD")
+            eq = _eq_for_billing_model(eq_by_model, model)
+            if cost and eq:
+                samples.append((mtime, model, cost, eq))
+    return samples
+
+
+def fit_prices_transcripts(samples, now, short_hours=SHORT_WINDOW_HOURS,
+                            min_runs=SHORT_MIN_RUNS, min_cost=SHORT_MIN_COST):
+    """Per-model $/eq-token, fit against each run's own TRANSCRIPT token sum
+    instead of its modelUsage token count (see collect_fit_samples and the
+    module docstring's "THE FIT"). Prefers the trailing short_hours window;
+    falls back per model to the full `samples` window when short_hours holds
+    fewer than min_runs runs or less than min_cost dollars for that model --
+    e.g. a model this fleet barely used this week. A model absent from
+    `samples` entirely is simply absent from the returned map."""
+    short_floor = now - short_hours * 3600
+    num_s = collections.Counter(); den_s = collections.Counter()
+    n_s = collections.Counter(); cost_s = collections.Counter()
+    num_l = collections.Counter(); den_l = collections.Counter()
+    for mtime, model, cost, eq in samples:
+        num_l[model] += cost
+        den_l[model] += eq
+        if mtime >= short_floor:
+            num_s[model] += cost
+            den_s[model] += eq
+            n_s[model] += 1
+            cost_s[model] += cost
+    prices = {}
+    for model in den_l:
+        if n_s.get(model, 0) >= min_runs and cost_s.get(model, 0) >= min_cost:
+            prices[model] = num_s[model] / den_s[model]
+        elif den_l[model]:
+            prices[model] = num_l[model] / den_l[model]
+    return prices
+
+
+def combined_price_map(work_dir, projects_dir, now, max_age_days=14):
+    """The price map scan_transcripts() actually uses: fit_prices_transcripts()'s
+    number for a model it has data for, else fit_prices()'s -- "a model with
+    no fit at all keeps today's behaviour" (the brief's words)."""
+    base = fit_prices(work_dir, max_age_days=max_age_days)
+    samples = collect_fit_samples(work_dir, projects_dir, max_age_days=max_age_days)
+    merged = dict(base)
+    merged.update(fit_prices_transcripts(samples, now))
+    return merged
 
 
 # ------------------------------------------------------------- actor rules
@@ -298,7 +465,8 @@ def scan_transcripts(state, projects_dir, price_map):
                 continue
             if mid:
                 seen_ids.add(mid)
-            events.append({"ts": tt, "actor": actor, "cost": price * eq, "id": mid})
+            events.append({"ts": tt, "actor": actor, "cost": price * eq, "id": mid,
+                           "model": model, "eq": eq})
         offsets[path] = {"size": start_byte + last_nl + 1, "mtime": st.st_mtime, "actor": actor}
     return state
 
@@ -306,6 +474,45 @@ def scan_transcripts(state, projects_dir, price_map):
 def trim_events(state, now, keep_days=KEEP_DAYS):
     floor = now - keep_days * 86400
     state["events"] = [e for e in state["events"] if e["ts"] >= floor]
+
+
+def reprice_events(events, price_map):
+    """Recompute "cost" in place for every event that carries "model" and
+    "eq" (#433: re-pricing without a re-read). An event still in the
+    pre-#433 format -- cost only, from before this fit existed -- is left
+    exactly as it is; migrate_events() is what clears those out of the
+    KEEP_DAYS window so the next scan_transcripts() rebuilds them WITH the
+    two fields, which is the only thing that makes them re-priceable."""
+    for e in events:
+        model, eq = e.get("model"), e.get("eq")
+        if model is None or eq is None:
+            continue
+        price = price_for(price_map, model)
+        if price is not None:
+            e["cost"] = price * eq
+
+
+def migrate_events(state, now, keep_days=KEEP_DAYS):
+    """One-time upgrade from the pre-#433 state format to the current one.
+    A no-op once every event already carries "model" and "eq" (the normal
+    case, every tick after the first). Otherwise: drop every event inside
+    the keep window -- after trim_events this is ALL of them, so in
+    practice this clears the whole list -- and clear the byte offset of
+    every transcript file touched inside that window, so the very next
+    scan_transcripts() call re-reads those files from byte 0 and rebuilds
+    the same events with the two new fields. This is the "re-read the
+    transcripts for the KEEP_DAYS window once" the brief asks for: bounded
+    to files that could hold something inside the window, not a full-fleet
+    re-read."""
+    events = state.get("events", [])
+    if events and all(("model" in e and "eq" in e) for e in events):
+        return
+    floor = now - keep_days * 86400
+    state["events"] = [e for e in events if e.get("ts", 0) < floor]
+    offsets = state.get("offsets", {})
+    for path, rec in list(offsets.items()):
+        if rec.get("mtime", 0) >= floor:
+            del offsets[path]
 
 
 # --------------------------------------------------------------- reporting
@@ -354,19 +561,46 @@ def calibrate(state, percent, now):
     })
 
 
+def reprice_calibration_capacity(state):
+    """Recompute the LATEST calibration point's capacity from the
+    just-repriced events (#433: the Low trigger reads this number, and a
+    short fit window can move it every tick as runs roll in and out of the
+    window). utc and percent are the owner's reading and are never touched.
+    Every OLDER point is left exactly as it is -- it was an owner reading
+    already baked in at the time it was taken, not something this tick's
+    price belongs to."""
+    cal = state.get("calibration") or []
+    if not cal:
+        return
+    latest = cal[-1]
+    pct = latest.get("percent")
+    reading_epoch = iso_to_epoch(latest.get("utc", ""))
+    if not pct or not reading_epoch:
+        return
+    wk_start, _ = week_bounds(reading_epoch)
+    spend = sum(e["cost"] for e in state["events"] if wk_start <= e["ts"] <= reading_epoch)
+    latest["spend_at_time"] = round(spend, 2)
+    if spend:
+        latest["capacity"] = round(spend / (pct / 100.0), 2)
+
+
 def build_report(state, now):
     wk_start, wk_end = week_bounds(now)
     spend_week = spend_in(state["events"], wk_start)
     spend_1h = spend_in(state["events"], now - 3600)
     spend_6h = spend_in(state["events"], now - 6 * 3600)
+    spend_24h = spend_in(state["events"], now - 24 * 3600)
     total_week = sum(spend_week.values())
     rate_1h = sum(spend_1h.values())              # $/h: a 1h window IS an hourly rate
-    rate_6h = sum(spend_6h.values()) / 6.0        # $/h: averaged over the 6h window,
-                                                    # not the window's raw 6h total -- the
-                                                    # two must be the same UNIT or "burn
-                                                    # rate over the last 1h and 6h" would
-                                                    # print one figure six times the other
-                                                    # for a perfectly flat burn
+    rate_6h = sum(spend_6h.values()) / 6.0        # $/h: averaged over the window,
+    rate_24h = sum(spend_24h.values()) / 24.0     # not the window's raw total -- all
+                                                    # three must be the same UNIT or
+                                                    # "burn rate over the last 1h, 6h,
+                                                    # 24h" would print one figure N
+                                                    # times the others for a flat burn.
+                                                    # KEEP_DAYS=8 keeps a full 24h of
+                                                    # events on hand at every tick, even
+                                                    # the first one right after a reset.
     cal = state.get("calibration") or []
     capacity = None
     for c in cal:                                 # most recent point wins; see docstring
@@ -376,7 +610,12 @@ def build_report(state, now):
     hours_left = max(0.0, (wk_end - now) / 3600.0)
     projected_pct = None
     if capacity and estimated_pct is not None:
-        projected_pct = estimated_pct + (rate_6h * hours_left / capacity * 100.0)
+        # Project from the 24h rate, not the 6h rate: a day/night cycle, so a
+        # single busy evening (bursty lanes, an interactive session) does not
+        # get extrapolated over the quiet overnight hours still to come. A
+        # 24h window still catches a real sustained ramp, just not a 3-6h
+        # spike -- see 89-usage-mode.sh's "burst after quiet" case.
+        projected_pct = estimated_pct + (rate_24h * hours_left / capacity * 100.0)
     top3 = sorted(spend_week.items(), key=lambda kv: -kv[1])[:3]
     return {
         "generated_utc": datetime.datetime.fromtimestamp(now, datetime.timezone.utc)
@@ -384,6 +623,7 @@ def build_report(state, now):
         "week_start_epoch": wk_start, "week_end_epoch": wk_end,
         "spend_by_actor": dict(spend_week), "spend_since_reset": round(total_week, 2),
         "rate_1h": round(rate_1h, 2), "rate_6h": round(rate_6h, 2),
+        "rate_24h": round(rate_24h, 2),
         "capacity_dollars_per_week": capacity,
         "estimated_percent": round(estimated_pct, 1) if estimated_pct is not None else None,
         "projected_percent_at_reset": round(projected_pct, 1) if projected_pct is not None else None,
@@ -396,9 +636,9 @@ def summary_line(report, mode="unknown"):
     proj = report["projected_percent_at_reset"]
     top3 = ", ".join("%s $%.0f" % (a, c) for a, c in report["top3"]) or "none"
     return ("mode=%s estimated_week=%s%% spend_since_reset=$%.0f top3=[%s] "
-            "rate_6h=$%.1f/h projected_at_reset=%s%%" % (
+            "rate_24h=$%.1f/h projected_at_reset=%s%%" % (
                 mode, ("%.0f" % pct) if pct is not None else "?",
-                report["spend_since_reset"], top3, report["rate_6h"],
+                report["spend_since_reset"], top3, report["rate_24h"],
                 ("%.0f" % proj) if proj is not None else "?"))
 
 
@@ -416,8 +656,10 @@ def current_mode():
 def main(argv):
     now = float(os.environ.get("HAKUX_NOW", "") or time.time())
     state = load_state()
-    price_map = fit_prices(WORK)
+    migrate_events(state, now)
+    price_map = combined_price_map(WORK, PROJECTS_DIR, now)
     scan_transcripts(state, PROJECTS_DIR, price_map)
+    reprice_events(state["events"], price_map)
     ensure_calibration(state)
     trim_events(state, now)
 
@@ -427,6 +669,7 @@ def main(argv):
             return 2
         calibrate(state, float(argv[2]), now)
 
+    reprice_calibration_capacity(state)
     report = build_report(state, now)
     state["last_report"] = report
     save_state(state)

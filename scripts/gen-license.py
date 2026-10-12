@@ -130,15 +130,14 @@ class Lib:
         if os.path.exists(self.license_path):
             with open(self.license_path, "r", encoding="utf-8") as f:
                 return f.read()
-        import requests
-
-        d = requests.get(self.license_url).content.decode("utf-8")
-        if self.license_lines:
-            start, end = self.license_lines
-            d = "\n".join(d.splitlines()[start - 1 : end + 1])
-        with open(fname, "w") as f:
-            f.write(d)
-        return d
+        # No fetch here. Every shipped library's text is committed under licenses/
+        # (or at its license_path), so a release build never reaches the upstream
+        # URL. A missing text is a repo change: copy it from the mirror
+        # (docs/lanes/selfdeps/mirror_sources.py) and commit it.
+        raise FileNotFoundError(
+            "no license text at %s; copy it from the mirror of %s and commit it"
+            % (self.license_path, self.license_url)
+        )
 
     @property
     def is_active(self):

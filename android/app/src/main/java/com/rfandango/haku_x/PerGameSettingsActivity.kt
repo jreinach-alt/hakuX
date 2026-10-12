@@ -91,7 +91,7 @@ class PerGameSettingsActivity : AppCompatActivity() {
         addPicker(container, "submit_frames", getString(R.string.settings_submit_frames),
             arrayOf("Use Global", "Single", "Double", "Triple"),
             arrayOf(null, "1", "2", "3"),
-            globalValue("submit_frames", "2", mapOf("1" to "Single", "2" to "Double", "3" to "Triple")))
+            globalValue("submit_frames", "3", mapOf("1" to "Single", "2" to "Double", "3" to "Triple")))
 
         addBoolPicker(container, "frame_skip", getString(R.string.settings_frame_skip), "frame_skip")
         addBoolPicker(container, "unlock_framerate", getString(R.string.settings_unlock_framerate), "unlock_framerate")
@@ -103,6 +103,10 @@ class PerGameSettingsActivity : AppCompatActivity() {
         addBoolPicker(container, "draw_merge", getString(R.string.settings_draw_merge), "draw_merge")
         addBoolPicker(container, "async_compile", getString(R.string.settings_async_compile), "async_compile")
         addBoolPicker(container, "ubershader", getString(R.string.settings_ubershader), "ubershader",
+            globalDefault = true)
+        addBoolPicker(container, "surfgpu", getString(R.string.settings_surfgpu), "surfgpu",
+            globalDefault = true)
+        addBoolPicker(container, "fastpaths", getString(R.string.settings_fastpaths), "fastpaths",
             globalDefault = true)
         addBoolPicker(container, "texture_dump_enabled", "Dump Textures", "texture_dump_enabled")
         // addBoolPicker(container, "texture_replace_enabled", "Custom Textures", "texture_replace_enabled")  // hidden for now

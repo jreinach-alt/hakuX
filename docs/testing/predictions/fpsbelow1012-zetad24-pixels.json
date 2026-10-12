@@ -1,0 +1,31 @@
+{
+  "registered_utc": "2026-10-12T07:10:36Z",
+  "who": "lane.fpsbelow1012",
+  "issue": "433",
+  "prediction": "#433 HAKUX_ZETA_D24: what storing Z24S8 as D24_UNORM_S8_UINT costs in depth exactness on the Nova (lane.fpsbelow1012 NOTES.md section 7, lane.local's grant condition 3). Same binary c1112f2c1a; A without the env (Z24S8 as D32_SFLOAT_S8_UINT, logcat 'nv2a: Z24S8 host format 0x82'), B with --env HAKUX_ZETA_D24=1 (logcat 'host format 0x81 ... (HAKUX_ZETA_D24)'; an arm without its line is VOID). One run per arm: drawrec1010's two runs (1-1791670443-drawrec1010-3709316) agree on every capture of Clear, Color_zeta_overlap, Depth_buffer, Stencil, Stencil_func and ZPass_pixel_count. Queued B first, A last (the shipped setting stays on the device). MACHINE LEG: every Depth_buffer z16 capture holds its score (D16_UNORM on both arms; F16 lives on a Z16 surface and never asks the Z24S8 scale). HAND-READ LEGS, B against A, from the two scores TSVs: (1) Depth_buffer/DepthFmt_z24_Cn_FZn_M800007_ZB and DepthFmt_z24_Cy_FZn_M800007_ZB each read >= 250,000 differing px (A: 654 each): the test clears depth to its M value, and a D24 clear of 0x800007 reads back 0x800008 over the surface on Adreno (docs/investigations/depth-readback-scale.md: 304,284 of 307,200 px on 09-10); (2) no other Depth_buffer z24 FZn capture with M >= 0xc00003 or M < 0x800000 moves by more than 20,000 px (the quantiser's phase error is ~0.25 unit at 0xc00003 and 0 below 2^23); (3) the summed Depth_buffer z24 FZn _ZB rows land between 300,000 and 1,500,000 px (A at b10dcdb737: 43,690); (4) no capture in any suite becomes blank (differing == pixels) that is not blank in A: the pre-#16 blanks were the float formats' fall-through, fixed independently of the host format. WHAT REFUTES WHAT: a z16 move, or any new blank, means the switch reaches past the Z24S8 map, a defect in the switch; (1) failing while (2)-(4) hold means the quantiser does not hit this clear on today's driver, and the cost is smaller than section 7 says; (2) or (3) failing high means the scale pairing costs drawn pixels well beyond the clears, and the switch carries a wider depth cost than stated, which the cross-title screen must weigh.",
+  "a_ref": "c1112f2c1a",
+  "b_ref": "c1112f2c1a",
+  "must_not_move": [
+    "Depth_buffer/DepthFmt_z16_*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Color zeta overlap",
+      "Depth Clamp",
+      "Depth buffer",
+      "Depth buffer fixed function",
+      "Depth function",
+      "Stencil",
+      "Stencil func",
+      "W buffering",
+      "ZPass pixel count"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

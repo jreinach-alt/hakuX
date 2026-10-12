@@ -202,6 +202,10 @@
   <string name="settings_ubershader">Ubershader</string>
   <string name="settings_ubershader_desc">Draw new scenes at once with a general shader while the exact one builds, instead of pausing to compile. Frame rate can dip briefly the first time a scene is seen. Turn off only if a game shows problems with it on.</string>
   <string name="ubershader_disabled_banner">Ubershader is disabled. Loading some scenes may be delayed.</string>
+  <string name="settings_surfgpu">GPU surface reuse</string>
+  <string name="settings_surfgpu_desc">Reuse GPU surfaces across frames instead of recreating them each time, for faster rendering. Turn off only if a game shows stale or flickering images with it on.</string>
+  <string name="settings_fastpaths">Fast renderer paths</string>
+  <string name="settings_fastpaths_desc">Use faster code paths for report queries, texture scans, draw recording, shader uniform updates, and the hand-off of GPU commands from the emulated CPU. No change in what is drawn. Turn off only if a game shows problems with it on.</string>
 
   <string name="settings_frame_skip">Frame skip</string>
   <string name="settings_frame_skip_desc">Skip rendering when running behind to maintain game speed. May cause visible stuttering.</string>
@@ -415,4 +419,23 @@
   <string name="library_per_game_settings_option">Game Settings</string>
   <string name="per_game_settings_revert">Revert to Global Settings</string>
   <string name="library_game_context_title">%1$s</string>
+
+  <!-- Save states (#433) -->
+  <string name="settings_savestate_title">Save States</string>
+  <string name="settings_index_savestates_desc">Compression, auto-load last state and auto-save on quit for this game.</string>
+  <string name="settings_savestate_desc">Ten slots per game (0 to 9) and an auto slot, saved and loaded from the pause menu. They are files on this device, outside the Xbox hard disk image.</string>
+  <string name="settings_savestate_folder">Folder</string>
+  <string name="settings_savestate_folder_default_note">The default folder is deleted when the app is uninstalled.</string>
+  <string name="settings_savestate_folder_picked_note">A folder you picked stays when the app is uninstalled.</string>
+  <string name="settings_savestate_pick_folder">Choose Folder</string>
+  <string name="settings_savestate_reset_folder">Reset to Default</string>
+  <string name="settings_savestate_folder_reset_done">Save states go to the default folder from the next game.</string>
+  <string name="settings_savestate_folder_set">Save states go to this folder from the next game.</string>
+  <string name="settings_savestate_compression">Save state compression</string>
+  <string name="settings_savestate_compression_desc">On: each state takes about a quarter of the space (about 10 MB instead of 42 MB), the game pauses about 10 ms longer to save, and the file is safely written sooner. Off: states are stored as they are.</string>
+  <string name="settings_savestate_auto_load">Auto-load last state</string>
+  <string name="settings_savestate_auto_load_desc">When a game starts, load its newest state from the auto slot or slots 0 to 9.</string>
+  <string name="settings_savestate_auto_save">Auto-save on quit</string>
+  <string name="settings_savestate_auto_save_desc">Save the auto slot when you exit a game. It also tries when the game leaves the screen, but swiping the app away from recent apps may close it before the save finishes.</string>
+  <string name="settings_savestate_rewind_note">Loading a state also returns the Xbox hard disk to that moment: game saves made after the state was saved are rolled back.</string>
 </resources>

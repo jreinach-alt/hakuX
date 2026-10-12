@@ -99,9 +99,40 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from waitfor_match import CMP_SIZE  # noqa: E402  -- one comparator for waitfor and drive
+import pathclass  # noqa: E402  -- the generic fallback (#433); module-level imports there are light
+
+Unavailable = pathclass.Unavailable
 
 STATES = ("boot", "logo", "intro_video", "title", "main_menu", "profile", "loading",
           "cutscene", "ingame_menu", "paused", "play", "stalled", "black", "unknown")
+
+# pathclass.STATES -> classify.py's STATES, for a profile with `classifier = "pathclass"`
+# and no crops of its own (#433 step 3). `submenu`/`results`/`game_over` all land on
+# ingame_menu: the generic fallback has no [[cursor]]/[[crop]] table to do better than
+# "press through it". `save_load_prompt` has no equivalent here and is a trap (pathclass's
+# own RULES: prompts default to No, read the options) -- mapped to `unknown` so drive.py
+# waits (and eventually ROUTE FAILs) instead of guessing at a prompt that can discard a save.
+PATHCLASS_MAP = {
+    "intro_video": "intro_video", "publisher_logo": "logo", "title_screen": "title",
+    "main_menu": "main_menu", "submenu": "ingame_menu", "profile_creation": "profile",
+    "name_entry": "profile", "save_load_prompt": "unknown", "controller_prompt": "title",
+    "loading": "loading", "cutscene": "cutscene", "pause": "paused", "gameplay": "play",
+    "results": "ingame_menu", "game_over": "ingame_menu", "black": "black", "unknown": "unknown",
+}
+_PATHCLASS_CLIENT = None
+
+
+def pathclass_client():
+    """One `pathclass.py serve` process per classify.py process, i.e. per `drive` step
+    (route.sh's drive_step runs one drive.py per step). Raises pathclass.Unavailable on
+    the first call if the venv/GPU/serve process is missing; the caller does not catch it
+    here -- drive.py turns it into a ROUTE FAIL (never a blind-press or model fallback)."""
+    global _PATHCLASS_CLIENT
+    if _PATHCLASS_CLIENT is None:
+        _PATHCLASS_CLIENT = pathclass.Client()
+    return _PATHCLASS_CLIENT
+
+
 REF_W, REF_H = 1280, 960
 FPS_CORNER = (0, 0, 130, 50)     # the FPS: overlay TextView (MainActivity.kt), top-left
 BLACK_LUMA = 8.0
@@ -362,6 +393,32 @@ def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_stat
     hud, hscore, hscores = match_crop(im, [c for c in crops if c["state"] == "play"], profile)
     out["scores"].update(hscores)
 
+    after_title = bool(seen & {"title", "main_menu", "profile", "ingame_menu", "play", "paused", "loading"})
+    if profile.get("classifier") == "pathclass" and not hud:
+        # A second naming mechanism, not the liveness guess below: pathclass is a trained
+        # classifier (+OCR), strong enough evidence to say `play` on its own. This does not
+        # reopen ADDENDUM 2 item 6 (no crop matched -> never play by motion alone) -- that
+        # rule is about the moving/static heuristic a few lines down, which still never says
+        # play. `classifier_confidence` (profile, default 0) is the floor from the #433 step 2
+        # eval: below it the answer is `unknown`, which drive.py waits on rather than acts on.
+        # A SECOND, lower floor (`classifier_confidence_menu`, #433 Addendum 6) gates every other
+        # answer: a menu-class miscall risks an input on the wrong menu (recoverable -- the ladder
+        # or the next capture corrects it), never the gameplay claim a false `play` would make, so
+        # it does not need the same floor. Falls back to `classifier_confidence` when a profile sets
+        # only the one knob, so a hand-tuned profile's existing single floor still behaves as before.
+        ans = pathclass_client().classify(frame, prev, {"menu_seen": after_title})
+        gameplay_floor = profile.get("classifier_confidence", 0.0)
+        floor = gameplay_floor if ans["state"] == "gameplay" else \
+            profile.get("classifier_confidence_menu", gameplay_floor)
+        if ans["confidence"] < floor:
+            out.update(state="unknown", source="pathclass:low-confidence", pathclass=ans)
+            return out
+        st = PATHCLASS_MAP.get(ans["state"], "unknown")
+        out.update(state=st, source="pathclass:" + ans["state"], changed=ans.get("diff"), pathclass=ans)
+        if st == "play" and not ans.get("moving"):
+            out.update(state="stalled", source=out["source"] + "+static")
+        return out
+
     if prev is None:
         out["source"] = "no-prev" + (" hud:" + hud["name"] if hud else "")
         return out
@@ -394,7 +451,6 @@ def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_stat
             out.update(state="unknown", source="hud:%s+between" % hud["name"])
         return out
 
-    after_title = bool(seen & {"title", "main_menu", "profile", "ingame_menu", "play", "paused", "loading"})
     after_menu = bool(seen & {"main_menu", "profile", "ingame_menu", "play", "paused"})
     played = bool(seen & {"play", "stalled", "paused"})
     if moving:

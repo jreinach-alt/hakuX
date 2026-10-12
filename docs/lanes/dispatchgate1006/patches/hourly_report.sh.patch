@@ -1,0 +1,12 @@
+--- a/host-tools/hourly_report.sh
++++ b/host-tools/hourly_report.sh
+@@ -31,6 +31,9 @@
+   python3 -c "import json,time; d=json.load(open('$H/host-tools/.idlewatch.json')); [print('  JAM', k, 'since', time.strftime('%H:%M', time.localtime(v))) for k,v in sorted(d.items())] or print('  none')" 2>/dev/null
+   tail -5 $H/logs/lanewaker.log 2>/dev/null | sed 's/^/  /' 
+   echo "--- PLAYABLE (pm/playable-accepted.tsv, the one count)"; python3 -c "import time;L=[l.split(chr(9)) for l in open('$H/pm/playable-accepted.tsv').read().splitlines()[1:] if l.strip()];d=time.strftime('%Y-%m-%d');t=[x[1] for x in L if x[0].startswith(d)];w=open('$H/pm/.wall-synced').read().split();print('  total %d of 50; today %d (%s)' % (len(L),len(t),', '.join(t) or 'none'));print('  wall: in sync (%s, %s rows)' % (w[2],w[0]) if int(w[0])==len(L) else '  WALL OUT OF SYNC: ledger %d rows, wall %s rows (%s) -- lane.local republishes it' % (len(L),w[0],w[2]))" 2>/dev/null || echo "  ledger unreadable"
++  echo "--- DISPATCH GATE (dispatch_audit.py, last 24 h: ungated title runs, refusals, Nova min on flagged titles)"
++  timeout 120 python3 $R/docs/testing/dispatch_audit.py --hours 24 --max-lines 12 2>&1 | cut -c1-240 \
++      || echo "  dispatch_audit.py unavailable (lane dispatchgate1006 not folded, or it failed)"
+   echo "--- harness_health (restored 10-03: the 08:32 edit dropped it from this report)"; timeout 120 python3 $H/host-tools/harness_health.py 2>&1 | grep -v '^$' 2>/dev/null | head -3 | cut -c1-220
+   echo "--- JAMS (driver ledger pm/jams.tsv: every 5 min; opened/cleared since the last report, open rows with age, owner, last action)"
+   python3 - "$since" <<'PYJ' 2>/dev/null || echo "  driver ledger unreadable: the driver is down"

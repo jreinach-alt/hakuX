@@ -1,0 +1,74 @@
+
+=== 0-1791714330-lockwake1011-1625482: 12 marks, csv frametrace_20261011-033216.csv, dropped none
+  per frame                              cold     warm     post
+  frames                                  101     1158     3455
+  lockw ms                               1.53     0.64     0.31
+  sum of sites ms                        1.53     0.64     0.31
+  kick ms                                1.53     0.64     0.31
+  kick waits (n)                         0.28     0.23     0.11
+  kick waits >= 10 us                    0.28     0.22     0.10
+  kick us per wait                     5501.1   2832.9   2703.2
+  put ms                                 0.00     0.00     0.00
+  put waits (n)                          0.00     0.00     0.00
+  put waits >= 10 us                     0.00     0.00     0.00
+  put us per wait                         nan      nan      nan
+  get ms                                 0.00     0.00     0.00
+  get waits (n)                          0.00     0.00     0.00
+  get waits >= 10 us                     0.00     0.00     0.00
+  get us per wait                         nan      nan      nan
+  ref ms                                 0.00     0.00     0.00
+  ref waits (n)                          0.00     0.00     0.00
+  ref waits >= 10 us                     0.00     0.00     0.00
+  ref us per wait                         nan      nan      nan
+  oth ms                                 0.00     0.00     0.00
+  oth waits (n)                          0.00     0.00     0.00
+  oth waits >= 10 us                     0.00     0.00     0.00
+  oth us per wait                         nan      nan      nan
+  parked ms (ended with PFIFO parked)     1.49     0.63     0.30
+  vhp_run ms (PFIFO in, while waited)     1.52     0.64     0.31
+  vhp_gpu ms (PFIFO in, while waited)     0.00     0.00     0.00
+  vhp_rnd ms (PFIFO in, while waited)     0.00     0.00     0.00
+  vhp_idle ms (PFIFO in, while waited)     0.00     0.00     0.00
+  vhp_wait ms (PFIFO in, while waited)     0.00     0.00     0.00
+  vhp_unk ms (PFIFO in, while waited)     0.00     0.00     0.00
+  % of lockw in frames >= 1 ms            100       98       99
+  % of lockw in frames >= 4 ms             87       44       65
+  perf lockw cold (3 lines): lw=1.35 kick=1.35/0.2 put=0.00/0.0 get=0.00/0.0 ref=0.00/0.0 oth=0.00/0.0 parked=1.33
+  perf lockw warm (20 lines): lw=0.42 kick=0.42/0.2 put=0.00/0.0 get=0.00/0.0 ref=0.00/0.0 oth=0.00/0.0 parked=0.42
+
+=== 0-1791714331-lockwake1011-1625531: 12 marks, csv frametrace_20261011-034116.csv, dropped none
+  per frame                              cold     warm     post
+  frames                                  100     1156     3465
+  lockw ms                               1.57     0.81     0.19
+  sum of sites ms                        1.57     0.81     0.19
+  kick ms                                1.57     0.81     0.19
+  kick waits (n)                         0.29     0.25     0.10
+  kick waits >= 10 us                    0.29     0.24     0.09
+  kick us per wait                     5423.1   3268.1   1880.3
+  put ms                                 0.00     0.00     0.00
+  put waits (n)                          0.00     0.00     0.00
+  put waits >= 10 us                     0.00     0.00     0.00
+  put us per wait                         nan      nan      nan
+  get ms                                 0.00     0.00     0.00
+  get waits (n)                          0.00     0.00     0.00
+  get waits >= 10 us                     0.00     0.00     0.00
+  get us per wait                         nan      nan      nan
+  ref ms                                 0.00     0.00     0.00
+  ref waits (n)                          0.00     0.00     0.00
+  ref waits >= 10 us                     0.00     0.00     0.00
+  ref us per wait                         nan      nan      nan
+  oth ms                                 0.00     0.00     0.00
+  oth waits (n)                          0.00     0.00     0.00
+  oth waits >= 10 us                     0.00     0.00     0.00
+  oth us per wait                         nan      nan      nan
+  parked ms (ended with PFIFO parked)     1.57     0.80     0.19
+  vhp_run ms (PFIFO in, while waited)     1.57     0.81     0.19
+  vhp_gpu ms (PFIFO in, while waited)     0.00     0.00     0.00
+  vhp_rnd ms (PFIFO in, while waited)     0.00     0.00     0.00
+  vhp_idle ms (PFIFO in, while waited)     0.00     0.00     0.00
+  vhp_wait ms (PFIFO in, while waited)     0.00     0.00     0.00
+  vhp_unk ms (PFIFO in, while waited)     0.00     0.00     0.00
+  % of lockw in frames >= 1 ms             99       99       95
+  % of lockw in frames >= 4 ms             87       57       41
+  perf lockw cold (3 lines): lw=1.21 kick=1.21/0.2 put=0.00/0.0 get=0.00/0.0 ref=0.00/0.0 oth=0.00/0.0 parked=1.21
+  perf lockw warm (19 lines): lw=0.61 kick=0.61/0.2 put=0.00/0.0 get=0.00/0.0 ref=0.00/0.0 oth=0.00/0.0 parked=0.60

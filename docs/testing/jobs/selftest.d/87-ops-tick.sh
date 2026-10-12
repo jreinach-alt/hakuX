@@ -236,6 +236,39 @@ check "(l) a draft lane whose head is in origin/master is not stranded" bash -c 
 check "(l) with no grace, the plain draft lane is still named" grep -qx terrgap "$OT/l-zero.txt"
 check "(l) a lane that committed minutes ago is inside the 90-min grace" bash -c '! grep -qx terrgap "'"$OT/l-grace.txt"'"'
 
+# ------------------------------- (addendum 1) a clock step must not hide a stranded lane
+# The host clock steps backward about every 32s (WSL/Hyper-V time sync); it stamped a commit
+# AFTER the NOW read in usage24h1009's fold (06:42 PDT 10-10), so _lane_idle_min() went negative
+# and, under grace 0, idle_min < 0 skipped a genuinely stranded lane. A commit a few seconds
+# ahead of wall-clock NOW is the same shape: without the max(0.0, ...) clamp this lane is wrongly
+# skipped under grade 0.
+git -C "$OT/repo" checkout -q -b lane/futuredraft master
+mkdir -p "$OT/repo/docs/lanes/futuredraft"
+printf '# lane.futuredraft\nState: draft\n' > "$OT/repo/docs/lanes/futuredraft/PR.md"
+git -C "$OT/repo" add docs/lanes/futuredraft >/dev/null
+OT_FUTURE=$(date -u -d '+5 seconds' +%FT%TZ)
+GIT_AUTHOR_DATE="$OT_FUTURE" GIT_COMMITTER_DATE="$OT_FUTURE" \
+    git -C "$OT/repo" -c user.email=t@t -c user.name=t commit -q -m "lane.futuredraft draft"
+git -C "$OT/repo" checkout -q master
+git -C "$OT/repo" push -q origin lane/futuredraft
+git -C "$OT/repo" fetch -q origin
+ot_stranded "$OT/proc-empty" > "$OT/addendum1-real.txt"
+check "(addendum 1) a commit a few seconds ahead of NOW is still named under grace 0" \
+    grep -qx futuredraft "$OT/addendum1-real.txt"
+
+OT_NOCLAMP_PY="$OT/ops_tick.noclamp.py"
+sed 's/return max(0\.0, (NOW - max(marks)) \/ 60) if marks else None/return (NOW - max(marks)) \/ 60 if marks else None/' \
+    "$OT_PY" > "$OT_NOCLAMP_PY"
+check "(addendum 1) the mutant text actually differs from ops_tick.py (the sed matched)" \
+    bash -c '! cmp -s "'"$OT_PY"'" "'"$OT_NOCLAMP_PY"'"'
+ot_stranded_py() { # (proc root) (py path) -> same as ot_stranded, against an arbitrary ops_tick.py
+    env OPS_PROC="$1" OPS_SYSTEMCTL="$OT/bin/systemctl" HAKUX_WORK="$OT/work" OPS_STRANDED_GRACE_MIN="${OT_GRACE:-0}" \
+        HAKUX_REPO_DIR="$OT/repo" OPS_BRIEFS="$OT/work/briefs" python3 -c "$LIVE_PY" "$2"
+}
+ot_stranded_py "$OT/proc-empty" "$OT_NOCLAMP_PY" > "$OT/addendum1-mutant.txt"
+check "(addendum 1) without the clamp, the mutant wrongly skips futuredraft under grace 0" \
+    bash -c '! grep -qx futuredraft "'"$OT/addendum1-mutant.txt"'"'
+
 # ------------------------------------------------------- (c) fold failures
 FF="$OT/work/offline-git/fold-failures.log"
 cat > "$FF" <<EOF

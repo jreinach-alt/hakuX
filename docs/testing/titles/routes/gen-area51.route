@@ -1,0 +1,20 @@
+# state: any   (classifier-path benchmark opening; #433 step 6c)
+# Area 51 (4D570005), classifier-path benchmark (#433): drive generic
+# replaces the blind opening and marks gameplay itself once play is
+# confirmed. FPS play: hold forward, sweep the look stick, fire -- never
+# START.
+drive generic 300 mark
+axis LY min
+repeat forever {
+    axis RX max
+    wait 1.0
+    axis RX mid
+    wait 1.0
+    axis RX min
+    wait 1.0
+    axis RX mid
+    axis RT max
+    wait 0.6
+    axis RT min
+    wait 1.0
+}

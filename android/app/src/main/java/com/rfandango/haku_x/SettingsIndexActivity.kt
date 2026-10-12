@@ -62,6 +62,11 @@ class SettingsIndexActivity : AppCompatActivity() {
           getString(R.string.settings_index_debug),
           getString(R.string.settings_index_debug_desc),
           "debug"
+        ),
+        SettingsSection(
+          getString(R.string.settings_savestate_title),
+          getString(R.string.settings_index_savestates_desc),
+          "savestates"
         )
       )
     } else {
@@ -141,6 +146,7 @@ class SettingsIndexActivity : AppCompatActivity() {
         "submit_frames")
       "audio" -> setOf("use_dsp")
       "debug" -> setOf("fp_safe", "fp_jit", "tier1_threshold", "simple_vblank")
+      "savestates" -> setOf("savestate_compression", "savestate_auto_load", "savestate_auto_save")
       else -> emptySet()
     }
     return overrides.keys.any { it in sectionKeys }

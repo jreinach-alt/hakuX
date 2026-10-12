@@ -29,6 +29,7 @@
 
 #include "xemu-settings.h"
 #include "hw/xbox/nv2a/debug.h"
+#include "savestate/hxs_jni.h"
 
 extern "C" void xemu_set_fp_safe(bool enable);
 extern "C" bool xemu_get_fp_safe(void);
@@ -871,6 +872,7 @@ struct TitleRenderMode {
 constexpr TitleRenderMode kTitleRenderModes[] = {
     {0x4541000D, "sysmem"},  // 007: Agent Under Fire
     {0x54430006, "sysmem"},  // Dead or Alive 1 Ultimate
+    {0x4541007B, "sysmem"},  // Need for Speed: Most Wanted (#433, lane.gpupass1010 A/B)
 };
 
 static bool HasCsvToken(const std::string& list, const char* token) {
@@ -881,6 +883,22 @@ static bool HasCsvToken(const std::string& list, const char* token) {
   }
   return false;
 }
+
+// Titles the `profiled` TU_AUTOTUNE_ALGO must not reach by default: Blinx
+// reads ZPASS reports that change value under non-bandwidth binning (#527),
+// and Kabuki Warriors' fight stalls under sysmem-like binning (gmem474). An
+// explicit `autotune` override still reaches them -- the A/B needs to run
+// `profiled` on Kabuki on purpose to confirm the stall -- the guard only
+// protects the no-override default path.
+constexpr uint32_t kAutotuneGuardTitles[] = {
+    0x4D530013,  // Blinx: The Time Sweeper
+    0x43560001,  // Kabuki Warriors
+};
+
+// Flips to true only once the fleet A/B (#433, #474) clears the win rule in
+// docs/lanes/profileddefault1008/NOTES.md. Until then the app default is
+// whatever TU_AUTOTUNE_ALGO defaults to with no env (bandwidth).
+constexpr bool kAutotuneProfiledDefault = false;
 
 /*
  * Choose the Turnip render mode for this launch and put it in TU_DEBUG
@@ -894,8 +912,13 @@ static bool HasCsvToken(const std::string& list, const char* token) {
  * any TU_DEBUG the env_vars pref already set, never replacing it. A table
  * default also yields to an env TU_DEBUG that already names a render mode.
  * The line is on hakuX-build, which every harness logcat spec keeps.
+ *
+ * TU_AUTOTUNE_ALGO follows the same per-game `autotune` override (bandwidth
+ * or profiled); absent an override, the guard list above forces bandwidth
+ * and every other title gets kAutotuneProfiledDefault. Either way it is
+ * never set over an env_vars TU_AUTOTUNE_ALGO a request already placed.
  */
-static void ApplyRenderMode(JNIEnv* env, jobject activity, const std::string& dvd) {
+static uint32_t ApplyRenderMode(JNIEnv* env, jobject activity, const std::string& dvd) {
   uint32_t title_id = 0;
   if (dvd == "/dev/fdset/0" && g_dvd_fd >= 0) {
     title_id = ReadDiscTitleId(g_dvd_fd);
@@ -932,9 +955,32 @@ static void ApplyRenderMode(JNIEnv* env, jobject activity, const std::string& dv
   }
 
   const char* now = getenv("TU_DEBUG");
+
+  std::string autotune = GetRuntimeOverride(env, activity, "autotune");
+  const char* autotune_source = "per-game";
+  if (autotune != "bandwidth" && autotune != "profiled") {
+    autotune = kAutotuneProfiledDefault ? "profiled" : "bandwidth";
+    autotune_source = "default";
+    for (uint32_t t : kAutotuneGuardTitles) {
+      if (title_id != 0 && t == title_id) {
+        autotune = "bandwidth";
+        autotune_source = "guard";
+        break;
+      }
+    }
+  }
+  if (autotune == "profiled") {
+    setenv("TU_AUTOTUNE_ALGO", "profiled", 0);
+  }
+  const char* autotune_now = getenv("TU_AUTOTUNE_ALGO");
+
   __android_log_print(ANDROID_LOG_INFO, "hakuX-build",
-                      "render_mode: %s (%s) title=%08X TU_DEBUG=%s (#474)",
-                      mode.c_str(), source, title_id, now ? now : "(unset)");
+                      "render_mode: %s (%s) title=%08X TU_DEBUG=%s "
+                      "autotune=%s (%s) TU_AUTOTUNE_ALGO=%s (#474)",
+                      mode.c_str(), source, title_id, now ? now : "(unset)",
+                      autotune.c_str(), autotune_source,
+                      autotune_now ? autotune_now : "(unset)");
+  return title_id;
 }
 
 static SetupFiles SyncSetupFiles() {
@@ -1074,7 +1120,12 @@ static SetupFiles SyncSetupFiles() {
     }
   }
 
-  ApplyRenderMode(env, activity, out.dvd);
+  const uint32_t title_id = ApplyRenderMode(env, activity, out.dvd);
+  hxs_android_configure(env, activity, base.c_str(),
+                        GetPrefString(env, activity, "savestate_tree_uri").c_str(),
+                        GetPrefBool(env, activity, "savestate_compression", true),
+                        GetPrefBool(env, activity, "savestate_auto_load", false),
+                        title_id);
 
   out.config_path = base + "/xemu.toml";
   int tbSize = GetPrefInt(env, activity, "tcg_tb_size", 128);
@@ -1141,7 +1192,7 @@ static SetupFiles SyncSetupFiles() {
   __android_log_print(ANDROID_LOG_INFO, "hakuX",
                       "frame skip: %s", frame_skip ? "ON" : "OFF");
 
-  int submit_frames = GetPrefInt(env, activity, "submit_frames", 2);
+  int submit_frames = GetPrefInt(env, activity, "submit_frames", 3);
   xemu_set_submit_frames(submit_frames);
   __android_log_print(ANDROID_LOG_INFO, "hakuX",
                       "submit frames: %d", submit_frames);

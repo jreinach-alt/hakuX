@@ -1,0 +1,105 @@
+# state: any   (golden 7da19befd45b; lane.savestate433 / lane.profileconv1011)
+# NOT PROVEN -- do not read a frame rate off this route. Two proofs on the
+# golden (1-1791761288-gtaroutes1011-284417, 1-1791768457-gtaroutes1011-1576234)
+# both mount the BMX, then leave CJ in one spot by the alley wall for the whole
+# scored window. Neither LY nor A (held or tapped), X or LX moved the bike.
+# The input that pedals it on this Xbox port is unknown; see
+# docs/lanes/gtaroutes1011/NOTES.md section 10.
+# Grand Theft Auto: San Andreas (54540082, USA): a DRIVING route, not the
+# on-foot measurement gta-sa.route takes. Same boot (do not edit gta-sa.route
+# for this -- today's A/B depends on it; this file copies its beats through
+# the point CJ is moved down the Jefferson alley, then diverges): Rockstar
+# logos -> intro credits FMV (A skips it) -> title "Press START" (START) ->
+# loading screens (~55 s) -> airport cutscene (A skips it) -> police-stop
+# cutscene (A skips it) -> Jefferson alley, CJ on foot, HUD (clock, $350,
+# radar), "Use the left thumbstick to move Carl".
+#
+# The two cutscene skips are a train of A presses 5 s apart (as gta-sa.route):
+# loading time differs between runs, and an A that lands on a loading screen
+# does nothing.
+#
+# gta-sa.route's own header records the alley prompt this route uses: moving
+# CJ down the alley (LY min, 2.2 s) surfaces "Press Y to jump on the bike" --
+# the BMX marked with a blue cone, per the brief (step 4). One Y press mounts
+# it; `mark gameplay` is set after the mount is on screen, not before, so the
+# scored window is riding, not the on-foot walk gta-sa.route already covers.
+#
+# Player control once mounted: A pedals; the left stick does NOT. The first
+# proof (1-1791761288-gtaroutes1011-284417) rode LY min and sat still: the
+# mount worked ("BMX" on screen) and the game's own help said "Push up or
+# down on the left thumbstick to shift your weight on the bike", and f00009-
+# f00020 show CJ on the bike in one spot by the alley wall, radar unchanged.
+# So the loop holds A (steady pedalling) and, once a cycle, taps it (the
+# faster pedal stroke, and the input that moves the bike if a held A only
+# coasts), steers with LX on the pedal, and lets go of A for a short X
+# (brake/back) with the bar turned so a wall it rides into cannot hold it.
+# Never Y, START or BACK after the mount (another Y would dismount).
+#
+wait 26.7
+shot boot
+wait 36.7
+press A 300
+wait 6.1
+shot skA
+wait 8.6
+press START 300
+wait 9.8
+shot menu
+wait 30.0
+shot load
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+shot cut1
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+shot cut2
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+shot cut3
+wait 10
+axis LY min
+wait 2.2
+axis LY mid
+shot moved
+wait 1
+press Y 300
+wait 2.5
+shot mounted
+mark gameplay
+hold A
+repeat forever {
+    wait 3
+    axis LX max
+    wait 1.2
+    axis LX mid
+    wait 3
+    axis LX min
+    wait 1.2
+    axis LX mid
+    release A
+    mash A 8 0.25
+    axis LX max
+    hold X
+    wait 1
+    release X
+    axis LX mid
+    hold A
+}

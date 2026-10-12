@@ -23,8 +23,8 @@ is being folded into it; every lane is a branch `lane/<name>` from master with
 one draft PR whose body lists its files; the board (`territory.toml`,
 `nv2a_issues.toml`, briefs) is moving to the orphan `board` branch and is
 written by the board job only; the long-lived orchestrator session is
-replaced by scheduled jobs. GitHub is suspended (since 2026-09-29), so the
-harness runs on a self-hosted forge; see "The forge" below. Where a rule below
+replaced by scheduled jobs. The harness works on a self-hosted forge, and
+GitHub is its one-way mirror; see "The forge" below. Where a rule below
 names the campaign branch, read `master`. Where it says "ask the
 orchestrator", write a board request and carry on. The measurement
 discipline below -- predictions registered before the run, per-capture
@@ -34,11 +34,16 @@ queues its arms** (the arms job on the host runs every prediction whose refs
 are live and posts the verdict on your PR), and the live state of the whole
 harness is one comment on the issue labelled `harness-status`.
 
-## The forge (GitHub suspended since 2026-09-29)
+## The forge (the working space; GitHub is a one-way mirror)
 
 The harness's issue tracker, pull requests, labels, releases and CI are a local
 Forgejo at **http://127.0.0.1:3330** (loopback only), repo `jreinach-alt/hakuX`.
-Nothing in the harness may reach github.com.
+**GitHub is up.** It was suspended from 2026-09-29 to 2026-10-05. The forge stays
+the place of work by the owner's choice, to keep GitHub's transaction volume
+down, not because GitHub is unavailable. Exactly one job writes to GitHub:
+`hakux-github-gateway.timer` (`~/hakux-work/host-tools/github_gateway.sh push`)
+fast-forwards the branches every 15 minutes, and the nightly goes there as a
+prerelease. Nothing else in the harness may reach github.com.
 
 - **`gh` is a shim** (`~/hakux-work/forge/shim/bin/gh`, source
   `docs/testing/jobs/gh-shim/gh`). It is first on PATH for every harness unit
@@ -56,10 +61,11 @@ Nothing in the harness may reach github.com.
 - **Local CI** runs `.forgejo/workflows/forge-selftest.yml` and
   `forge-android.yml` on a host runner (capacity 1), on ready PRs only.
 
-**After the return.** When GitHub is restored, completed work transfers in
-throttled batches; the procedure, and what changes for CI, is in
-[`docs/lanes/localforge/RETURN.md`](docs/lanes/localforge/RETURN.md). Until
-that runs, do not reintroduce `gh` calls that target github.com.
+**The transfer to GitHub** is the gateway above: fast-forward only, throttled,
+with a safety scan before each push. Its log is
+`~/hakux-work/logs/github_gateway.log`; a last line more than about 20 minutes
+old means the mirror has stopped. GitHub Actions stays off. Do not add `gh`
+calls that target github.com.
 
 ## Start here
 
@@ -776,6 +782,38 @@ Debug builds install as `com.jreinach.hakux.debug`, labelled **hakuX (debug)**,
 alongside a release install. They keep separate settings, HDD images and save
 data.
 
+## Disc images live on D:, never on the Linux disk (owner, 2026-10-09)
+
+**Do not keep a title disc image (`*.iso`, `*.xiso.iso`, or a `.7z` of one) on
+the Linux filesystem: not as an archive, a cache, a copy staged for a push, or
+a title pulled off a device.** Images live on the Windows D: drive, under
+`/mnt/d/hakux-staging/<purpose>/`. The owner's collection is `D:\Xbox`.
+
+The Linux filesystem is one virtual disk file on C:. It grows as Linux writes
+and does not shrink when Linux deletes. While Windows holds restore points on
+C:, every Linux write also costs C: space for a copy of the block it replaces.
+On 2026-10-09 C: filled and the Ubuntu VM crashed, taking every lane, the
+dispatcher and an in-flight Nova run with it. Behind that growth were 38 GB of
+titles pulled off the Nova into `~/hakux-work/nova-archive-1008` on 10-08 and
+a 48 GB push cache in `~/hakux-work/shuffle-cache`. Both now live under
+`/mnt/d/hakux-staging/`.
+
+- **Push from D:.** adb is the Windows `adb.exe`. Give it the Windows path,
+  `adb push "$(wslpath -w "$f")" <device path>`; it cannot stat `/mnt/d/...`.
+- **Pull to D:.** `adb pull <device path> "$(wslpath -w /mnt/d/hakux-staging/<purpose>)"`.
+- **Extract and convert on D:.** The host's title copier
+  (`~/hakux-work/hardware/titlepush/ingest_owner_library.py` and
+  `title_push_xbox.sh`) already works this way, in `/mnt/d/hakux-staging/ingest`
+  and `/mnt/d/hakux-staging/xiso`. A one-off script follows it rather than
+  using `/tmp` or a worktree.
+- A test disc from `make_test_iso.py` or `make_isolation_discs.py` belongs to
+  one run and is not covered: build it, run it, delete it.
+- A free-space check that guards a title copy reads C: (`df /mnt/c`), not `/`.
+  The Linux disk can show hundreds of GB free while C: has none.
+
+The hourly report lists every disc image over 256 MB it finds on the Linux
+disk, and C:'s free space.
+
 ## Working with a device
 
 **Nothing holds a device for more than 30 minutes without a reviewed pilot**
@@ -945,6 +983,22 @@ general form is in this file already -- *establish what your instrument cannot
 see* -- with the half that is easy to miss: a guard written on a proxy for
 ambiguity refuses the cases the proxy happens to cover, not the ambiguous ones.
 
+**A queued soak can also record video of the screen, not just stills.**
+`request.sh --video-seconds N` (default 0, off) and `--video-after S` (default
+30, seconds after the route's `mark` line, or after soak start with no route)
+ask the dispatcher for `screenrecord` segments during a `--title` soak, the
+way `--frames-every` asks for `screencap` stills -- for a defect like GTA San
+Andreas's surface dropouts that a 1-in-150-frames still can miss entirely.
+Files land under `results/<id>/video/v00001.mp4`, `v00002.mp4`, ... (each
+`HAKUX_SOAK_VIDEO_SEG` s, default 60, up to `HAKUX_SOAK_VIDEO_CAP` s, default
+300) and `result.json`'s `video` dict records `seconds`/`after`/`mark_wall`
+plus each segment's `start_wall`/`bytes`/`duration_s`/`samples` (read from the
+mp4's own `moov` atom with a stdlib box reader -- there is no ffmpeg or
+ffprobe on this host). The mp4s are for a person to watch: no lane here can
+decode video, so a frame dump (above) or `--frames-every` stills remain the
+lane-readable path for anything that needs to be measured in-session rather
+than looked at by the owner.
+
 **Dedupe frame records on `nv2a_frame` before treating them as independent
 samples.** A frame record is one `flip_stall`, not one guest frame, and the
 two come apart exactly when something has stalled the guest: the `diag`
@@ -955,6 +1009,16 @@ stall factor. (That the old capture stops the title advancing at all, rather
 than merely serialising its draws, is measured in
 `docs/lanes/diagdump77/NOTES.md` -- it is the sharpest reason not to hunt an
 intermittent artifact under the button path.)
+
+**A `--title` run is refused unless it meets a kept profile/path, or is
+building one (THE PROFILE GATE, lane.profilegate1011, #433).**
+`titlestate.py admit()`, run by `request.sh` at queue time and again by
+`dispatcher.sh` at claim, refuses: **R1** `first-run` remaking a profile
+already on disk (override `--remake-profile "<why>"`); **R2** `first-run`
+with no `mark profile-saved` on a title with none (make the golden first);
+**R3** finding a route blind (`--find-route`/`pathfind.py`) for a title
+with a proven route (override `--path-broken <result id>`). See
+`titlestate.py`'s "THE PROFILE GATE" docstring for the recipe.
 
 ## Sharing one device between a long sweep and active work
 

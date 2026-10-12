@@ -1,0 +1,19 @@
+# state: any   (classifier-path benchmark opening; #433 step 6c)
+# Phantom Crash (504C0001), classifier-path benchmark (#433): drive generic
+# replaces the blind opening and marks gameplay itself once play is
+# confirmed. Mech combat: move forward, turn, fire -- never START.
+drive generic 300 mark
+axis LY min
+repeat forever {
+    axis LX max
+    wait 1.0
+    axis LX mid
+    wait 1.0
+    axis LX min
+    wait 1.0
+    axis LX mid
+    axis RT max
+    wait 0.6
+    axis RT min
+    wait 1.0
+}

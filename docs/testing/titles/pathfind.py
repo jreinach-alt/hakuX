@@ -63,6 +63,9 @@ try:
     import stuckdetect  # noqa: E402  (10-07: a hold stuck at a wall or in a menu is unstuck, then ended with a reason)
 except Exception:   # the detector is optional: a missing or broken copy leaves the hold exactly as it was
     stuckdetect = None
+sys.path.insert(0, os.path.join(HERE, "..", "jobs"))
+import models  # noqa: E402  (the one model table/reader, #433)
+import titlestate  # noqa: E402  (the profile gate, #433: known_path/_path_broken_bad; also prepare/release below)
 
 PAD = os.path.join(HERE, "..", "perf", "pad.sh")
 KNOW = os.environ.get("PATHFIND_KNOW") or os.path.join(HERE, "pathknow")
@@ -81,11 +84,17 @@ LOGCAT_SPEC = ("hakuX-crash:V hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX
 VERDICT = os.path.join(HERE, "..", "title_verdict.py")
 # Sonnet 5 per step, not Haiku: measured 10-02 on the same ESPN frame with the image inline, Sonnet 5
 # answered in 3.5-3.9 s (70-80 output tokens), Haiku 4.5 in 6.4-9.1 s (430-500, most of it thinking),
-# and Haiku had looped 8 times on a Yes/No dialog in Midnight Club 3. Opus 5.5 when stuck.
-FAST = os.environ.get("PATHFIND_FAST", "claude-sonnet-5")
-# Opus 5.5 is the stronger step model, but the owner held Opus for token burn on 10-02 and navigation resumed on
-# Sonnet only for 10-03 (lane.local addendum 2: Sonnet only, <= $25). Restore Opus when that hold lifts.
-STRONG = os.environ.get("PATHFIND_STRONG", "claude-sonnet-5")
+# and Haiku had looped 8 times on a Yes/No dialog in Midnight Club 3.
+#
+# The owner's models.toml table (#433, 2026-10-10) gives "pathfind" ONE model per mode for both the
+# fast step and the stuck/confirm step -- route building and pathfinding are "effectively a
+# classifier for game inputs", Sonnet or Haiku, never Opus. FAST and STRONG stay as two names (the
+# stuck/confirm call sites and the fast/strong telemetry label at calls.jsonl are real distinctions
+# worth keeping) but both read the same kind, so they hold the same value until the table says
+# otherwise. PATHFIND_FAST/PATHFIND_STRONG env overrides are gone with models.env; HAKUX_MODELS_TOML
+# (models.py) is the override point now.
+FAST = models.model_for("pathfind")
+STRONG = FAST
 STATES = ("intro_video", "publisher_logo", "title_screen", "main_menu", "submenu", "profile_creation",
           "name_entry", "save_load_prompt", "controller_prompt", "loading", "cutscene", "pause",
           "gameplay", "results", "game_over", "continue", "period_break", "black", "fatal_error", "unknown")
@@ -2347,6 +2356,9 @@ def main(argv=None):
                          "(e.g. the longest quarter length, so one quarter covers the hold)")
     ap.add_argument("--sim", help="PATHFIND_DRY: frames dir to play back")
     ap.add_argument("--sim-answers", help="PATHFIND_DRY: JSON list of canned model answers")
+    ap.add_argument("--path-broken", default=None,
+                    help="override the profile gate's R3 (#433): a dispatch/results id naming a run of "
+                         "this title's known path that failed")
     a = ap.parse_args(argv)
     os.makedirs(a.out, exist_ok=True)
     a.out = os.path.abspath(a.out)
@@ -2366,6 +2378,19 @@ def main(argv=None):
     below = below_bar_refusal(tid, name)
     if below:
         sys.exit(f"pathfind: refused, below the bar (owner order 10-06 16:45): {below}")
+    # The profile gate's R3 (#433 addendum 2): a pathfind.py session is blind navigation, same as a
+    # queued --find-route request, but its OWN "known path" test is broader (a pathknow success counts
+    # too, not just a proven route) -- a session that already reached gameplay once has nothing left to
+    # find blind, even before any route built from it has its own proof soak.
+    if tid:
+        kp = titlestate.known_path(tid, broad=True)
+        if kp["known"]:
+            bad = titlestate._path_broken_bad(a.path_broken, tid, kp["route_name"]) if a.path_broken else (
+                "a known path exists; pass --path-broken \"<result id>\" naming a run of it that failed")
+            if bad:
+                via = f" ({kp['source']}" + (f" via {kp['route_name']}, result {kp['result_id']})" if kp["route_name"]
+                                              else ")")
+                sys.exit(f"pathfind: {name} ({tid}) already has a known path{via}: {bad}")
     if a.hold_s and dev.label == "thor":
         sys.exit("pathfind: --hold-s is Nova only: the Thor's fan is dead and it stops within 30 s of a claim")
     print(f"pathfind: {name} ({tid}) on {dev.label}: {iso}", flush=True)
@@ -2380,7 +2405,6 @@ def main(argv=None):
     # the path found is only replayable from the state it was found in.
     hdd = None
     if not dry() and not a.hdd_img:
-        import titlestate
         hdd = titlestate.prepare(dev.label, tid, a.state, log=lambda m: print(m, flush=True))
         json.dump(hdd, open(os.path.join(a.out, "hdd.json"), "w"), indent=1)
     try:

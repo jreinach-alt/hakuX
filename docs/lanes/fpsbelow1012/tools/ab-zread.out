@@ -1,0 +1,27 @@
+=== NGB
+class window: 270 s of A's 30-s buckets with in/out <= 0.60 and >= 100 draws/cb: 240-270 270-300 300-330 330-360 360-390 390-420 420-450 450-480 480-510
+A z-1791797927-fpsbelow1012-1778929      zfmt 0x82  perf  163 gfps med 40 (>=55: 0.20) G med 25.6 ms in/out 0.53 out 21.54 ms draws/cb 308 (164 rp lines)
+B z-1791797921-fpsbelow1012-1777822      zfmt 0x81  perf  225 gfps med 59 (>=55: 0.68) G med 16.9 ms in/out 0.99 out 12.34 ms draws/cb 325 (227 rp lines)
+V PASS  zfmt A 0x82 B 0x81, perf lines 163/225, draws/cb A 308 B 325 (band 30%)
+M PASS  in/out A 0.53 B 0.99
+P PASS  outer span A 21.54 B 12.34 ms (x0.57)
+W PASS  G 25.6 -> 16.9 ms (x0.66), gfps 40 -> 59
+exit 0
+=== DOA3
+class window: 240 s of A's 30-s buckets with in/out <= 0.60 and >= 100 draws/cb: 60-90 90-120 300-330 330-360 360-390 390-420 420-450 480-510
+A z-1791797928-fpsbelow1012-1779675      zfmt 0x82  perf  148 gfps med 58 (>=55: 0.55) G med 16.9 ms in/out 0.51 out 15.98 ms draws/cb 263 (168 rp lines)
+B z-1791803606-fpsbelow1012-3255578      zfmt 0x81  perf  186 gfps med 59 (>=55: 0.68) G med 16.7 ms in/out 0.97 out 10.16 ms draws/cb 302 (223 rp lines)
+V PASS  zfmt A 0x82 B 0x81, perf lines 148/186, draws/cb A 263 B 302 (band 30%)
+M PASS  in/out A 0.51 B 0.97
+P PASS  outer span A 15.98 B 10.16 ms (x0.64)
+W FAIL  G 16.9 -> 16.7 ms (x0.99), gfps 58 -> 59
+exit 1
+=== Buffy
+class window: 450 s of A's 30-s buckets with in/out <= 0.60 and >= 100 draws/cb: 60-90 90-120 120-150 150-180 180-210 210-240 240-270 270-300 300-330 330-360 360-390 390-420 420-450 450-480 480-510
+A z-1791798044-fpsbelow1012-1807480      zfmt 0x82  perf  202 gfps med 29 (>=55: 0.00) G med 33.4 ms in/out 0.49 out 21.29 ms draws/cb 1037 (205 rp lines)
+B z-1791804165-fpsbelow1012-3514899      zfmt 0x81  perf  213 gfps med 29 (>=55: 0.00) G med 33.4 ms in/out 1.00 out 12.58 ms draws/cb 1125 (217 rp lines)
+V PASS  zfmt A 0x82 B 0x81, perf lines 202/213, draws/cb A 1037 B 1125 (band 30%)
+M PASS  in/out A 0.49 B 1.00
+P PASS  outer span A 21.29 B 12.58 ms (x0.59)
+W FAIL  G 33.4 -> 33.4 ms (x1.00), gfps 29 -> 29
+exit 1

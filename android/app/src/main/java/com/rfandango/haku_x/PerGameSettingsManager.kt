@@ -29,6 +29,10 @@ object PerGameSettingsManager {
         "async_compile",
         // #569: on by default; MainActivity sets HAKUX_GPL=0 when it is off.
         "ubershader",
+        // #433: on by default; MainActivity sets HAKUX_SURFGPU accordingly.
+        "surfgpu",
+        // #433: on by default; MainActivity sets the six fastpaths vars accordingly.
+        "fastpaths",
         "submit_frames",
         "tier1_threshold",
         "simple_vblank",
@@ -38,6 +42,11 @@ object PerGameSettingsManager {
         // "auto", "sysmem" or "gmem". Unset falls back to the title table in
         // xemu_android.cpp (ApplyRenderMode), which reads the disc's title ID.
         "render_mode",
+        // #433: save states. The folder stays global; MainActivity and
+        // xemu_android.cpp read these through the runtime override.
+        "savestate_compression",
+        "savestate_auto_load",
+        "savestate_auto_save",
     )
 
     fun hasOverrides(context: Context, relativePath: String): Boolean {

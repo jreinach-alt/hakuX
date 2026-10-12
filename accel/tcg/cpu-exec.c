@@ -1069,6 +1069,15 @@ static void jc425_tick(void)
 #define JC425_COUNT(c, o) do { } while (0)
 #endif
 
+/* #433 [pmu433]: the CPU's own counters on this thread; HAKUX_PMU=1 only. */
+#if defined(XBOX) && defined(__linux__)
+#include "hw/xbox/nv2a/debug.h"
+#include "hakux-pmu.c.inc"
+#define PMU433_TICK() pmu433_tick()
+#else
+#define PMU433_TICK() do { } while (0)
+#endif
+
 /*
  * #425 / #412: WHY A TB RETURNS TO cpu_exec_loop. One [rr425] line and one
  * [rr425pc] line every 2 s at [jc425]'s gate, tag hakuX at WARN.
@@ -2550,6 +2559,7 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
                     hakux_tlb68_tick(cpu);
                     jc425_tick();
                     rr425_tick(cpu);
+                    PMU433_TICK();
                 }
             }
 #endif

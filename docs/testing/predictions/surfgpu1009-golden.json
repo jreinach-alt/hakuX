@@ -1,0 +1,56 @@
+{
+  "registered_utc": "2026-10-09T22:44:41Z",
+  "who": "lane.surfgpu1009",
+  "issue": "433",
+  "prediction": "Golden arm for HAKUX_SURFGPU=1 (lane.surfgpu1009, one binary, env A/B: a_env none, b_env HAKUX_SURFGPU=1). The switch changes WHEN pending surface downloads complete, not what they copy: a reuse of a shelved struct still named by a pending download detaches it instead of completing it, the stale binding's upload splices the pending bytes from their staging on the GPU (HAKUX_SURFSPLICE's byte-exact route), and a flip batch with no display surface stays pending past the next surface_update. Every guest read of the range still waits for the download (the rebound binding's CPU-access watch covers the same range), and every emulator reader still completes overlapping pending downloads first. So no capture in the ten suites that read surfaces back may move. What would move one: a splice that took the wrong bytes or the wrong order (Depth_buffer_fixed_function, Surface_format, Color_zeta_overlap: Z24 and colour round trips), a detached entry that a reader read around (Texture_render_target, Texture_CPU_Update, Texture_Framebuffer_Blit), or a flip batch left pending that a readback did not wait for (Surface_clip, Clear). What this arm cannot see: whether the suites reach the detach or the flip-batch mark at all; B's [surfgpu] detach= and nodisp= counts say so, and a count of 0 makes this a regression check of the switch's other paths only.",
+  "a_ref": "1e5b1af818",
+  "b_ref": "1e5b1af818",
+  "must_not_move": [
+    "Surface_clip/*",
+    "Surface_format/*",
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/*",
+    "Texture_render_target/*",
+    "Texture_render_update_in_place/*",
+    "Texture_Framebuffer_Blit/*",
+    "Image_blit/*",
+    "Texture_CPU_Update/*",
+    "Clear/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Color zeta overlap",
+      "Depth buffer fixed function",
+      "Image blit",
+      "Surface clip",
+      "Surface format",
+      "Texture CPU Update",
+      "Texture Framebuffer Blit",
+      "Texture render target",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "device": "nova",
+  "perflog": true,
+  "runs_per_arm": 1,
+  "a_env": [
+    "HAKUX_GPUXFR=1",
+    "HAKUX_FRAMETRACE=1"
+  ],
+  "b_env": [
+    "HAKUX_GPUXFR=1",
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_SURFGPU=1"
+  ],
+  "queue_order": "Hand-queued (the arms job skips a_ref == b_ref): B first (flag on, cache cleared for a new apk), then A (flag off, cache kept), both request.sh --who surfgpu1009 --suites <the ten disc suites> --ref 1e5b1af818 --perflog --device nova --env HAKUX_GPUXFR=1 --env HAKUX_FRAMETRACE=1 [--env HAKUX_SURFGPU=1 on B] --issue 433 --expect docs/testing/predictions/surfgpu1009-golden.json.",
+  "judge": "python3 docs/testing/ab_compare.py --a <A dir> --b <B dir> --expect docs/testing/predictions/surfgpu1009-golden.json; plus grep '[surfgpu]' in B's logcat1.txt for detach=/nodisp= (whether the suites reached the switch's paths)"
+}

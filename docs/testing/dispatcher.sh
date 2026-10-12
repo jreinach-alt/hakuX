@@ -90,7 +90,8 @@ SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
 make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
 battery_admit.py titles/titlestate.py titles/saves.py titles/drive.py \
-titles/classify.py titles/waitfor_match.py"
+titles/classify.py titles/waitfor_match.py titles/pathclass.py jobs/device_build.py \
+jobs/models.py jobs/models.toml"
 # DATA A SHIPPED SCRIPT PICKS AT RUN TIME, shipped by glob, never by name.
 #
 # route.sh's `drive <profile>` step runs drive.py on
@@ -102,7 +103,14 @@ titles/classify.py titles/waitfor_match.py"
 # go stale with the next title; the globs pick up a new one at the next
 # re-exec, and src_hash covers what they match, so adding one IS a re-exec.
 # drive-profiles/selftest/ is classify's fixtures, not data a run reads.
-SNAPSHOT_GLOBS="titles/drive-profiles/*.toml titles/drive-profiles/*/*.png"
+#
+# A profile with `classifier = "pathclass"` (drive-profiles/generic.toml, #433) makes
+# classify.py load titles/pathclass.py's trained head at runtime -- a single fixed file,
+# not one per title, but still data a shipped script picks up rather than imports, so it
+# is listed here rather than in SCRIPT_DEPS: without it every dispatched `drive generic`
+# step would fail closed with `pathclass unavailable` for a reason that is purely a
+# snapshot omission, not a real unavailability.
+SNAPSHOT_GLOBS="titles/drive-profiles/*.toml titles/drive-profiles/*/*.png titles/pathknow/classifier/head.npz"
 snapshot_globbed() {   # every file SNAPSHOT_GLOBS matches in $SRC, relative to it
     ( cd "$SRC" 2>/dev/null || exit 0
       local f
@@ -141,7 +149,8 @@ snapshot_scripts() {
              affinity.py captures.py make_test_iso.py extract_results.py \
              sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
              titles/route.sh perf/pad.sh battery_admit.py titles/titlestate.py \
-             titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py; do
+             titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py \
+             titles/pathclass.py jobs/device_build.py jobs/models.py jobs/models.toml; do
         snapshot_one "$f"
     done
     for g in $(snapshot_globbed); do
@@ -301,16 +310,26 @@ start_frame_capture() {   # <rdir> <interval-seconds> <hold-seconds>
         n=0
         while [ "$n" -lt "$cap" ]; do
             n=$((n+1))
+            local f="$rdir/frames/$(printf 'f%05d' "$n").png"
             # exec-out, not `shell`, so the PNG is not mangled by the tty line
             # discipline -- `adb shell screencap -p` corrupts every 0x0a on
             # some transports and the file opens as a truncated image.
-            timeout 30 adb -s "$SERIAL" exec-out screencap -p \
-                > "$rdir/frames/$(printf 'f%05d' "$n").png" 2>/dev/null
+            timeout 30 adb -s "$SERIAL" exec-out screencap -p > "$f" 2>/dev/null
             # An empty or tiny file is a failed capture, not a black frame.
             # Delete it: a 0-byte PNG in a frame set is an image tool's crash
             # later on, and a count that includes it is a lie about coverage.
-            [ -s "$rdir/frames/$(printf 'f%05d' "$n").png" ] \
-                || rm -f "$rdir/frames/$(printf 'f%05d' "$n").png"
+            if [ -s "$f" ]; then
+                # THE DEVICE CLOCK, not the host's: hitch_report.py's mark
+                # comes from a logcat line stamped by the device (#433
+                # Addendum 1), and the host clock on this machine steps
+                # backward periodically and cannot be trusted to agree with
+                # it. One extra cheap call per frame, appended to a sidecar
+                # so the f%05d names stay what every reader already cites.
+                local devt; devt=$(timeout "$ADB_QUICK_TIMEOUT" adb -s "$SERIAL" shell date +%H:%M:%S 2>/dev/null | tr -d '\r\n')
+                [ -n "$devt" ] && printf '%s\t%s\n' "$(basename "$f")" "$devt" >> "$rdir/frames/index.tsv"
+            else
+                rm -f "$f"
+            fi
             sleep "$every"
         done
     ) &
@@ -321,6 +340,208 @@ stop_frame_capture() {
     kill "$FRAME_PID" 2>/dev/null
     wait "$FRAME_PID" 2>/dev/null
     FRAME_PID=""
+}
+
+# start_soak_video / stop_soak_video: a video of the screen during a soak,
+# the way start_frame_capture gives one screencap every N seconds -- for the
+# class of defect a still only catches by luck (#433, lane.soakvideo1011; see
+# the "Why" table in docs/lanes/soakvideo1011/NOTES.md). OPT-IN for the same
+# cost reason frames are: `video` goes into result.json whether it ran or
+# not, so a reader pooling a video soak with a clean one has to see it.
+#
+# <rdir>/video/.stop IS THE ONLY SIGNAL stop_soak_video has to the background
+# loop below, and it is host-side, never on the device: the brief's rule is
+# no device write but the temporary hakux_vid_*.mp4 files, which rules out a
+# remote marker (a PID file) for coordinating the stop. The loop checks it at
+# every wait point -- the mark wait, the `after` wait, between segments -- so
+# an external stop is noticed within about a second from any of them.
+#
+# STOPPING `screenrecord` EARLY NEEDS A SIGNAL TO THE REMOTE PROCESS, NOT THE
+# LOCAL `adb` CLIENT. `adb shell screenrecord ...` run non-interactively (no
+# pty, which is what a backgrounded non-tty call is) does not reliably
+# forward a signal delivered to the local adb process across to the remote
+# command -- that forwarding is a pty behaviour (interactive `adb shell`,
+# Ctrl-C). `adb shell pkill -2 screenrecord` sends SIGINT directly to the
+# remote process instead: no new device file, and it is the documented way
+# to stop `screenrecord` so it finalizes its `moov` atom and the mp4 plays,
+# rather than leaving a container a reader cannot open. (GNU `timeout`, which
+# wraps the local call below so a hung adb cannot wedge the loop, does
+# forward an externally-delivered SIGINT to ITS child -- verified separately
+# -- but that signal is never used here: the remote stop is this independent
+# `pkill` call, not a signal to the `timeout` wrapper.)
+# mark_wall / start_wall are read from the DEVICE clock (#433 Addendum 1),
+# the same one the hakuX-route mark line and frames/index.tsv are on, so a
+# moment in the video lines up with the stills and logcat without any
+# host/device conversion -- and so the host clock's periodic backward step
+# (docs/lanes/soakvideo1011/NOTES.md) cannot put a segment's own start
+# before its predecessor's.
+# Retried: a single adb flake here must not read as "the mark never came"
+# (see docs/testing/jobs/selftest.d and the device-run-flakes lesson).
+_device_epoch() {
+    local t try
+    for try in 1 2 3; do
+        t=$(timeout "$ADB_QUICK_TIMEOUT" adb -s "$SERIAL" shell date +%s 2>/dev/null | tr -dc 0-9)
+        [ -n "$t" ] && { printf '%s' "$t"; return 0; }
+    done
+    return 1
+}
+VIDEO_PID=""
+VIDEO_RDIR=""
+_soak_video_meta() {   # <rdir> <seconds> <after> <mark_wall|""> <skip reason|"">
+    python3 - "$1" "$2" "$3" "$4" "$5" <<'PYEOF'
+import json, sys
+rdir, secs, after, mark_wall, reason = sys.argv[1:6]
+d = dict(seconds=int(secs), after=int(after),
+          mark_wall=(float(mark_wall) if mark_wall else None),
+          segments=[], bytes=0)
+if reason:
+    d["skipped"] = reason
+json.dump(d, open(rdir + "/video/meta.json", "w"), indent=2)
+PYEOF
+}
+start_soak_video() {   # <rdir> <seconds> <after> <has-route 0|1> <hold-seconds>
+    local rdir="$1" secs="$2" after="$3" has_route="$4" hold="$5"
+    VIDEO_PID=""; VIDEO_RDIR="$rdir"
+    mkdir -p "$rdir/video"
+    rm -f "$rdir/video/.stop"
+    # Cleared before the first segment too (not only at stop), so a run that
+    # crashed mid-recording cannot leave files on the device for long.
+    timeout "$ADB_QUICK_TIMEOUT" adb -s "$SERIAL" shell "rm -f /sdcard/Download/hakux_vid_*.mp4" >/dev/null 2>&1
+    if ! [ "${secs:-0}" -gt 0 ] 2>/dev/null; then
+        _soak_video_meta "$rdir" 0 "$after" "" "off"
+        return 0
+    fi
+    (
+        local waited=0 mark_wall="" mark_seen=0
+        if [ "$has_route" = 1 ]; then
+            # The route player writes "ROUTE HH:MM:SS.mmm mark <name>" to
+            # run.log (titles/route.sh's log(), the "mark" step). Watched
+            # here, not in logcat, because this is the same file the
+            # dispatcher is already writing the soak into.
+            while [ "$waited" -lt "$hold" ]; do
+                [ -f "$rdir/video/.stop" ] && break
+                if grep -q ' mark ' "$rdir/run.log" 2>/dev/null; then
+                    mark_seen=1; mark_wall=$(_device_epoch); break
+                fi
+                sleep 1; waited=$((waited + 1))
+            done
+        else
+            mark_seen=1; mark_wall=$(_device_epoch)
+        fi
+        if [ -z "$mark_wall" ]; then
+            if [ "$mark_seen" = 1 ]; then
+                _soak_video_meta "$rdir" "$secs" "$after" "" "mark seen, but the device clock could not be read"
+            else
+                _soak_video_meta "$rdir" "$secs" "$after" "" "no mark line seen in run.log before the soak ended"
+            fi
+            exit 0
+        fi
+        local a=0
+        while [ "$a" -lt "$after" ]; do
+            [ -f "$rdir/video/.stop" ] && break
+            sleep 1; a=$((a + 1))
+        done
+        if [ -f "$rdir/video/.stop" ]; then
+            _soak_video_meta "$rdir" "$secs" "$after" "$mark_wall" "stopped before recording started"
+            exit 0
+        fi
+        local seg="${HAKUX_SOAK_VIDEO_SEG:-60}"
+        # screenrecord v1.3's own per-call maximum (brief, and the Nova's).
+        [ "$seg" -gt 180 ] && seg=180
+        local remaining="$secs" k=0 pull_pid="" segs="$rdir/video/.segs"
+        : > "$segs"
+        while [ "$remaining" -gt 0 ]; do
+            [ -f "$rdir/video/.stop" ] && break
+            k=$((k + 1))
+            local this="$seg"
+            [ "$this" -gt "$remaining" ] && this="$remaining"
+            local remote="/sdcard/Download/hakux_vid_${k}.mp4"
+            local start_wall; start_wall=$(_device_epoch)
+            # Blocks until the segment's own time-limit elapses, OR until
+            # stop_soak_video's `pkill -2 screenrecord` reaches the device --
+            # either way screenrecord has already finalized the file by the
+            # time this returns.
+            timeout $((this + 30)) adb -s "$SERIAL" shell screenrecord --time-limit "$this" --bit-rate 10000000 "$remote" >/dev/null 2>&1
+            # Segment k+1 starts as soon as k's recording ends; k's pull runs
+            # in the background so the gap between segments stays short. The
+            # PREVIOUS segment's pull is waited on here (not at loop end
+            # only), so a pull never overlaps the next segment's own pull.
+            [ -n "$pull_pid" ] && wait "$pull_pid" 2>/dev/null
+            (
+                local v="$rdir/video/$(printf 'v%05d.mp4' "$k")"
+                local rsize; rsize=$(timeout "$ADB_QUICK_TIMEOUT" adb -s "$SERIAL" shell "stat -c %s '$remote' 2>/dev/null" 2>/dev/null | tr -d '\r\n')
+                timeout 120 adb -s "$SERIAL" pull "$remote" "$v" >/dev/null 2>&1
+                local lsize; lsize=$(stat -c %s "$v" 2>/dev/null || echo -1)
+                # Deleted only once the pull is verified by size -- the
+                # pull-verify lesson (58-pull-verify.sh) applies here too.
+                if [ -n "$rsize" ] && [ "$lsize" != -1 ] && [ "$rsize" = "$lsize" ]; then
+                    timeout "$ADB_QUICK_TIMEOUT" adb -s "$SERIAL" shell rm -f "$remote" >/dev/null 2>&1
+                fi
+                printf '%s\t%s\t%s\n' "$(basename "$v")" "$start_wall" "$lsize" >> "$segs"
+            ) &
+            pull_pid=$!
+            remaining=$((remaining - this))
+        done
+        [ -n "$pull_pid" ] && wait "$pull_pid" 2>/dev/null
+        python3 - "$rdir" "$secs" "$after" "$mark_wall" <<'PYEOF'
+import json, os, sys
+rdir, secs, after, mark_wall = sys.argv[1:5]
+segs, p = [], rdir + "/video/.segs"
+if os.path.exists(p):
+    for line in open(p):
+        f, sw, sz = line.rstrip("\n").split("\t")
+        sz = int(sz) if sz not in ("", "-1") else 0
+        segs.append(dict(file=f, start_wall=float(sw), bytes=sz))
+    os.remove(p)
+json.dump(dict(seconds=int(secs), after=int(after), mark_wall=float(mark_wall),
+               segments=segs, bytes=sum(s["bytes"] for s in segs)),
+          open(rdir + "/video/meta.json", "w"), indent=2)
+PYEOF
+    ) &
+    VIDEO_PID=$!
+}
+stop_soak_video() {
+    [ -n "$VIDEO_PID" ] || return 0
+    : > "$VIDEO_RDIR/video/.stop" 2>/dev/null
+    timeout "$ADB_QUICK_TIMEOUT" adb -s "$SERIAL" shell pkill -2 screenrecord >/dev/null 2>&1
+    wait "$VIDEO_PID" 2>/dev/null
+    VIDEO_PID=""
+    # Unconditionally, like the clear at start: an early exit must not leave
+    # a segment's temporary file on the device.
+    timeout "$ADB_QUICK_TIMEOUT" adb -s "$SERIAL" shell "rm -f /sdcard/Download/hakux_vid_*.mp4" >/dev/null 2>&1
+}
+
+# write_route_refs <rdir> <req>: materialize the route's reference crops
+# (request.sh --route; "route_refs" in the request, each value base64 PNG
+# bytes keyed by "<name>.png") at <rdir>/refs/route.txt/<name>.png -- the
+# path route.sh's ref_path() resolves a `waitfor`/`press-until` step against
+# when it plays <rdir>/route.txt. Addendum 3, #433: before this, nothing
+# wrote that directory, so a route naming a crop could be queued (request.sh
+# checked the crop existed next to the route) but never played one -- the
+# worker's route.sh found no reference, failed its first waitfor/press-until
+# line, and the soak ran on with no input (castlevania-cod.first-run and
+# every other route with a crop, lane.nfsroute1011's included).
+# No "/" or ".." escapes this directory: a name failing
+# [A-Za-z0-9._-]+\.png is refused (stdout, exit 1), before any file is
+# written for this call -- a function so a selftest can call it directly.
+write_route_refs() {   # <rdir> <req>
+    local rdir="$1" req="$2"
+    python3 -c '
+import base64, json, os, re, sys
+rdir, req = sys.argv[1], sys.argv[2]
+refs = json.load(open(req)).get("route_refs") or {}
+if not refs:
+    raise SystemExit(0)
+name_re = re.compile(r"^[A-Za-z0-9._-]+\.png$")
+for name in refs:
+    if not name_re.match(name):
+        print("route_refs: refused name %r (must be [A-Za-z0-9._-]+.png)" % name)
+        raise SystemExit(1)
+outdir = os.path.join(rdir, "refs", "route.txt")
+os.makedirs(outdir, exist_ok=True)
+for name, b64 in refs.items():
+    open(os.path.join(outdir, name), "wb").write(base64.b64decode(b64))
+' "$rdir" "$req"
 }
 
 env_pref_marker() { echo "$D/.env_pref.${DEVICE_LABEL:-$SERIAL}"; }
@@ -748,18 +969,54 @@ dev_push() {
     [ "$(dev_sha256 "$dst")" = "$want" ] && [ "$(dev_mode "$dst")" = 660 ]
 }
 
-# titles_disk_prepare <id> <rdir> [<request env json>] [<title id>] [<state>]:
+# profile_gate_check <request.json path> <rdir> [<title id>]: titlestate.py
+# admit(), re-run at claim (lane.profilegate1011, #433) exactly as request.sh
+# ran it at queue time -- nothing here is grandfathered, so a request written
+# straight into dispatch/queue (no request.sh) is gated the same way. TITLE_ID
+# defaults to the request's own title_id field when not given. On refusal,
+# writes the one-line reason to <rdir>/profile.refused and returns 3; the
+# caller decides how to report it (ERROR/log) and whether to restore hddPath,
+# same division as titles_disk_prepare/hdd.refused.
+profile_gate_check() {
+    local req="$1" rdir="$2" ttid="${3:-}" route find reason remake broken out rc textfile
+    [ -n "$ttid" ] || ttid=$(jq_get "$req" title_id "")
+    route=$(jq_get "$req" route_name "")
+    find=$(jq_get "$req" find_route "")
+    remake=$(jq_get "$req" remake_profile "")
+    broken=$(jq_get "$req" path_broken "")
+    textfile=$(mktemp)
+    python3 -c 'import json,sys; r=json.load(open(sys.argv[1])).get("route") or ""; open(sys.argv[2],"w").write(r)' \
+        "$req" "$textfile"
+    out=$(python3 "$TITLESTATE" admit ${ttid:+--title-id "$ttid"} ${route:+--route "$route"} \
+          --route-text-file "$textfile" ${DEVICE_LABEL:+--device "$DEVICE_LABEL"} \
+          ${find:+--find-route "$find"} ${remake:+--remake-profile "$remake"} \
+          ${broken:+--path-broken "$broken"} 2>&1)
+    rc=$?
+    rm -f "$textfile"
+    [ "$rc" = 0 ] && return 0
+    reason=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or sys.argv[1])' "$out" 2>/dev/null) \
+        || reason="titlestate.py admit failed: $out"
+    printf '%s\n' "$reason" > "$rdir/profile.refused"
+    return 3
+}
+
+# titles_disk_prepare <id> <rdir> [<request env json>] [<title id>] [<state>] [<save>]:
 # make the device's titles disk the composed goldens for this title and state
 # (titlestate.py, GOLDENS: every title's golden profile, minus this title's on
-# a first-run) and point hddPath at it. Writes <rdir>/hdd.json, which records
+# a first-run) and point hddPath at it. SAVE (the request's --save; lane.
+# profilegate1011, #433), when given, swaps that stored save in for this
+# title's slot instead of its golden. Writes <rdir>/hdd.json, which records
 # what was loaded: title, save, golden or none. Non-zero fails the request;
-# 3 is a refusal (a returning state with no golden), written to
-# <rdir>/hdd.refused, before any disk is touched.
+# 3 is a refusal (a returning state with no golden, or a --save that is not
+# in the store / was rejected on this device / carries no save directory on
+# a returning route), written to <rdir>/hdd.refused, before any disk is
+# touched.
 titles_disk_prepare() {
-    local id="$1" rdir="$2" renv="${3:-[]}" tid="${4:-}" tstate="${5:-any}" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
+    local id="$1" rdir="$2" renv="${3:-[]}" tid="${4:-}" tstate="${5:-any}" tsave="${6:-}" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
     local split="${HAKUX_TITLES_DISK:-1}" from=worker rsplit mode0 targs=()
     [ -n "$tid" ] && targs=(--title-id "$tid")
     targs+=(--state "$tstate")
+    [ -n "$tsave" ] && targs+=(--save "$tsave")
     [ -n "${HAKUX_TITLES_DISK:-}" ] || from=default
     # The request's own HAKUX_TITLES_DISK, when it names one, wins.
     rsplit=$(python3 -c '
@@ -1164,6 +1421,24 @@ PY
 # closes it without having to prove it was the one.
 lane_file() { echo "$D/lanes/$DEVICE_LABEL"; }
 
+# THE MASTER RESTORE (10-06). A run that left its handheld on a test build (a
+# branch ref, an env_vars A/B) is followed by a 60 s master run queued here, so
+# the next measurement does not start on that build. device_build.py decides
+# whether this run needs one and writes the request into queue/; it writes
+# nothing for a run already on master, or for a restore itself. A failure here
+# is logged and never fails the run it follows.
+queue_master_restore() {   # $1 = run id (results/<id>)
+    local out
+    # DISPATCH_REPO: $HERE is the snapshot in a worker ($HERE *is* $SNAP
+    # there, see the comment above SRC), which has no .git above it, so
+    # device_build.py's own ancestry check needs the real repo named
+    # explicitly rather than guessed from its own path.
+    out=$(DISPATCH_REPO="$REPO" python3 "$HERE/jobs/device_build.py" restore "$D" "$DEVICE_LABEL" "$1" 2>&1) \
+        && { [ -z "$out" ] || log "  master restore queued: $out"; } \
+        || log "  master restore NOT queued for $1: $out"
+    return 0
+}
+
 lane_claim() {
     local f; f="$(lane_file)"
     # Cheap enough to call every tick: one read, and a write only when the
@@ -1325,13 +1600,17 @@ serve_one() {
     ref=$(jq_get "$req" ref HEAD)
     arm=$(jq_get "$req" arm company)
     runs=$(jq_get "$req" runs 1)
-    local title seconds pull_glob audio_capture frames_every
+    local title seconds pull_glob audio_capture frames_every video_seconds video_after
     title=$(jq_get "$req" title "")
     seconds=$(jq_get "$req" seconds 60)
     pull_glob=$(jq_get "$req" pull_glob "")
     # Screen frames during a soak, off unless the request asks. See
     # start_frame_capture.
     frames_every=$(jq_get "$req" frames_every 0)
+    # A video of the screen during a soak, off unless the request asks. See
+    # start_soak_video.
+    video_seconds=$(jq_get "$req" video_seconds 0)
+    video_after=$(jq_get "$req" video_after 30)
     # Arming the APU PCM capture is per REQUEST, not device state left lying
     # around. See arm_audio in soak_title.sh for the two ways the persistent
     # marker went wrong on 2026-09-12 -- in both directions, on the same day.
@@ -1416,6 +1695,28 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
         mv "$req" "$rdir/request.json"; return 0
     fi
 
+    # THE MASTER RESTORE ENDS HERE. device_build.py queues it after a run off
+    # master: no title and no suites. Its build, install and env reset above are
+    # the whole job. The disc path refuses a request with no suites ("NO SUITES"),
+    # so without this exit the restore is refused and the device keeps the test
+    # build. The result.json written here is what device_build.py reads as the
+    # device's newest run, so a restore that ran shows master and env [] there.
+    if [ "$requester" = dispatch.restore ]; then
+        python3 - "$rdir" "$sha" "$ref" "$requester" "$req_env" "$purpose" <<'PYEOF'
+import json, os, sys
+rdir, sha, ref, who, env, purpose = sys.argv[1:7]
+json.dump(dict(kind="restore", apk_sha=sha, ref=ref, env=json.loads(env),
+               requester=who, purpose=purpose, seconds=0,
+               device_label=os.environ.get("DEVICE_LABEL", "")),
+          open(os.path.join(rdir, "result.json"), "w"), indent=2)
+PYEOF
+        log "  master restore done: ref $ref binary $sha, env $req_env"
+        mv "$req" "$rdir/request.json"
+        rm -f "$D/running/$id.owner"
+        touch "$rdir/DONE"
+        return 0
+    fi
+
     # A soak request runs a real title and keeps its log, instead of running a
     # test disc and scoring captures. It exists because some questions have no
     # golden framebuffer: the audio path is silent on the pgraph discs, so
@@ -1441,11 +1742,25 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
         # Which title, and the state its route was written for (request.sh
         # --route, titlestate.py resolve-route). A request queued before that
         # carries neither: its title from the ISO name, state `any`.
-        local ttid tstate trc
+        local ttid tstate tsave trc
         ttid=$(jq_get "$req" title_id "")
         [ -n "$ttid" ] || ttid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
         tstate=$(jq_get "$req" title_state any)
-        titles_disk_prepare "$id" "$rdir" "$req_env" "$ttid" "$tstate"; trc=$?
+        tsave=$(jq_get "$req" save "")
+
+        # THE PROFILE GATE, RE-CHECKED AT CLAIM (lane.profilegate1011, #433).
+        # request.sh already ran this at queue time, but nothing is
+        # grandfathered here: a request written straight into dispatch/queue
+        # (no request.sh) is checked exactly like any other. Before
+        # titles_disk_prepare, so a refused run never touches the disk.
+        if ! profile_gate_check "$req" "$rdir" "$ttid"; then
+            log "  PROFILE GATE REFUSED: $(cat "$rdir/profile.refused" 2>/dev/null)"
+            printf 'refused before the soak: no profile: %s\n' "$(cat "$rdir/profile.refused" 2>/dev/null)" > "$rdir/ERROR"
+            restore_hdd_pref
+            mv "$req" "$rdir/request.json"; return 0
+        fi
+
+        titles_disk_prepare "$id" "$rdir" "$req_env" "$ttid" "$tstate" "$tsave"; trc=$?
         if [ "$trc" = 3 ]; then
             echo "refused before the soak: the titles disk cannot carry what the route assumes: $(cat "$rdir/hdd.refused" 2>/dev/null)" > "$rdir/ERROR"
             log "  TITLES DISK REFUSED"
@@ -1460,7 +1775,14 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
         # The route's text travels in the request (request.sh --route); the
         # file soak_title.sh plays is written from it here, beside the result.
         python3 -c 'import json,sys; r=json.load(open(sys.argv[1])).get("route") or ""; r and open(sys.argv[2],"w").write(r.rstrip("\n")+"\n")' "$req" "$rdir/route.txt"
+        refmsg=$(write_route_refs "$rdir" "$req") || {
+            echo "refused before the soak: ${refmsg:-a route_refs entry failed validation}" > "$rdir/ERROR"
+            log "  ROUTE REFS REFUSED: ${refmsg:-?}"
+            restore_hdd_pref
+            mv "$req" "$rdir/request.json"; return 0
+        }
         start_frame_capture "$rdir" "$frames_every" "$seconds"
+        start_soak_video "$rdir" "$video_seconds" "$video_after" "$([ -s "$rdir/route.txt" ] && echo 1 || echo 0)" "$seconds"
         SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" \
             PULL_GLOB="$pull_glob" PULL_DEST="$rdir/pulled" \
             AUDIO_CAPTURE_MB="$audio_capture" \
@@ -1470,6 +1792,7 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
         # and unconditionally, so an early guest exit does not leave a
         # screencap loop running against the next request's title.
         stop_frame_capture
+        stop_soak_video
         titles_disk_after "$id" "$rdir"
         local lines; lines=$(wc -l < "$rdir/logcat.txt" 2>/dev/null || echo 0)
         python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" "$req_env" "$frames_every" <<'PYEOF'
@@ -1515,6 +1838,72 @@ def _hdd(rdir):
     except (OSError, ValueError):
         pass
     return h
+# THE SCREEN VIDEO, read straight from the mp4: there is no ffmpeg or
+# ffprobe on this host and none is installed. `mvhd` (inside `moov`) gives
+# the movie's timescale and duration; `stsz` (moov/trak/mdia/minf/stbl)
+# gives the sample count in its fourth 4-byte field regardless of whether
+# samples are constant-size (its own third field nonzero, no per-sample
+# table after it) or not -- both forms carry sample_count at that offset.
+def _mp4_info(path):
+    try:
+        data = open(path, "rb").read()
+    except OSError:
+        return 0.0, 0
+    def boxes(start, end):
+        pos, out = start, []
+        while pos + 8 <= end:
+            size = int.from_bytes(data[pos:pos + 4], "big")
+            typ = data[pos + 4:pos + 8].decode("latin1", "replace")
+            hdr = 8
+            if size == 1 and pos + 16 <= end:
+                size = int.from_bytes(data[pos + 8:pos + 16], "big"); hdr = 16
+            elif size == 0:
+                size = end - pos
+            if size < hdr:
+                break
+            out.append((typ, pos + hdr, pos + size))
+            pos += size
+        return out
+    def find(start, end, path):
+        for typ, s, e in boxes(start, end):
+            if typ == path[0]:
+                if len(path) == 1:
+                    return s, e
+                sub = find(s, e, path[1:])
+                if sub:
+                    return sub
+        return None
+    duration_s, samples = 0.0, 0
+    mvhd = find(0, len(data), ["moov", "mvhd"])
+    if mvhd:
+        s, _ = mvhd
+        if data[s] == 1:   # version 1: 64-bit times
+            timescale = int.from_bytes(data[s + 20:s + 24], "big")
+            duration = int.from_bytes(data[s + 24:s + 32], "big")
+        else:
+            timescale = int.from_bytes(data[s + 12:s + 16], "big")
+            duration = int.from_bytes(data[s + 16:s + 20], "big")
+        duration_s = round(duration / timescale, 3) if timescale else 0.0
+    stsz = find(0, len(data), ["moov", "trak", "mdia", "minf", "stbl", "stsz"])
+    if stsz:
+        s, _ = stsz
+        samples = int.from_bytes(data[s + 8:s + 12], "big")
+    return duration_s, samples
+# THE VIDEO, written even when it was off (video/meta.json always exists --
+# see start_soak_video / _soak_video_meta), for the same cost reason as
+# `frames`: a video soak costs encoder and GPU time a clean soak does not,
+# so a reader pooling the two has to see this field to do it.
+def _video(rdir):
+    try:
+        v = json.load(open(os.path.join(rdir, "video", "meta.json")))
+    except (OSError, ValueError):
+        return dict(seconds=0, after=0, mark_wall=None, segments=[], bytes=0,
+                    skipped="video/meta.json missing (video capture did not run)")
+    for seg in v.get("segments", []):
+        d, n = _mp4_info(os.path.join(rdir, "video", seg["file"]))
+        seg["duration_s"] = d
+        seg["samples"] = n
+    return v
 json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                hdd=_hdd(rdir),
                requester=who, purpose=purpose, ref=ref,
@@ -1545,6 +1934,7 @@ json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                            bytes=sum(os.path.getsize(os.path.join(_fdir, f))
                                      for f in _frames),
                            dir="frames" if _frames else None),
+               video=_video(rdir),
                # What admitted it (battery_admit.py): battery_start, need,
                # rate. None when the run predates admission or it was off.
                battery=_battery(rdir)),
@@ -1555,6 +1945,7 @@ PYEOF
             [ -d "$rdir/frames" ] && printf ', %s frames' "$(ls "$rdir/frames" | wc -l)")"
         mv "$req" "$rdir/request.json"
         rm -f "$D/running/$id.owner"
+    queue_master_restore "$id"
     touch "$rdir/DONE"
         return 0
     fi
@@ -2013,6 +2404,7 @@ PYEOF
         return 0
     fi
     rm -f "$D/running/$id.owner"
+    queue_master_restore "$id"
     touch "$rdir/DONE"
     log "  done -> $rdir"
     adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (after run)" shell am force-stop com.jreinach.hakux.debug >/dev/null 2>&1

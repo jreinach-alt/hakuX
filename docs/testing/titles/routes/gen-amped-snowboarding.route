@@ -1,0 +1,19 @@
+# state: any   (classifier-path benchmark opening; #433 step 6c)
+# Amped: Freestyle Snowboarding (4D530005), classifier-path benchmark
+# (#433): drive generic replaces the blind opening and marks gameplay itself
+# once play is confirmed. Downhill play: hold forward lean down the slope,
+# steer with LX, trick/jump on A -- never START.
+drive generic 300 mark
+axis LY min
+repeat forever {
+    axis LX max
+    wait 1.2
+    axis LX mid
+    wait 1.5
+    axis LX min
+    wait 1.2
+    axis LX mid
+    wait 1.0
+    press A 300
+    wait 2.0
+}

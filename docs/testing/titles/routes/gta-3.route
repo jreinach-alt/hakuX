@@ -1,0 +1,82 @@
+# state: any   (golden 9153c63300da promoted 2026-10-11; lane.savestate433)
+# Grand Theft Auto III (5454000E): one route, first-run or on the golden.
+# PATHFOUND by pathfind.py on the Nova, 2026-10-11 (lane.gtaroutes1011
+# session 1034707; path recorded to pathknow/paths/5454000E.json, gameplay
+# reached in 2.2 min / 14 steps).
+#
+#   Loading icon -> several Rockstar/publisher-logo screens and a black
+#   frame (non-interactive) -> intro credits video (A skips it) -> title
+#   screen (A starts a new game here too, same as START) -> betrayal/
+#   bridge-explosion cutscene (A skips it) -> second cutscene (A skips it)
+#   -> Portland street, Claude on foot, full HUD (health, money, radar,
+#   wanted level, weapon icon).
+#
+# gtawedge1012 (2026-10-12): confirmation 1-1791785131-lane.local-2109239
+# booted faster than this route assumed -- its first 4 A presses (55-70s)
+# already reached the street with no HUD up yet (route-frames/
+# 234745-introskip.png). The blind `press START` that followed landed
+# in-game and opened the PAUSE menu instead of the title screen; the next
+# A-trains then answered "start a new game? / Cancel" over and over
+# (route-frames/234826-cut1.png, 234849-cut2.png, 234855-gameplay.png all
+# show that same dialog). `mark gameplay` fired into that dialog at
+# 23:48:55; real play did not begin until ~23:51:56, once the regular play
+# loop's own LX/A presses happened to land on OK. So: no START (A alone
+# both skips and starts, as the run above proves), and the mark is gated
+# on a `waitfor` of the in-play weapon icon -- a region that is a hand/fist
+# box only once Claude is actually on foot under control, never during the
+# loading/logo/title/cutscene/pause-menu states (scored 65-106 on those
+# frames vs 0-10 on real gameplay frames from that same run; see NOTES.md).
+# A timeout here aborts the route, which is correct: a run that never
+# reached play must not score.
+#
+# The A-train is a press 5 s apart (as gta-sa.route): loading time differs
+# between runs, and an A that lands on a loading/logo screen is a no-op.
+# Player control: pathfind's probe step moved the player with LY up. The
+# play pattern runs, sprints, steers and turns the camera; it never
+# presses Y, START or BACK.
+#
+wait 55
+repeat 4 {
+    press A 300
+    wait 5
+}
+shot introskip
+repeat 12 {
+    press A 300
+    wait 5
+}
+shot pregameplay
+waitfor fist-hud 60 1020,88,140,130 20
+mark gameplay
+repeat forever {
+    repeat 4 {
+        axis LY min
+        press A 200
+        wait 1.5
+        axis LX max
+        wait 1
+        axis LX mid
+        press A 200
+        wait 1.5
+        axis LX min
+        wait 1
+        axis LX mid
+        axis RX max
+        wait 0.5
+        axis RX mid
+        wait 1
+        axis LY mid
+        wait 0.5
+    }
+    # wedge escape (gtawedge1012): identical loop to gta-vc.route. The
+    # inner body alone drifts heading right only 0.5s of RX max per ~10s
+    # cycle (see that route's comment for the Vice City wedge this fixes);
+    # this title runs the same body, so it gets the same escape.
+    axis LY max
+    wait 2
+    axis RX max
+    wait 1.5
+    axis LX mid
+    axis LY mid
+    axis RX mid
+}

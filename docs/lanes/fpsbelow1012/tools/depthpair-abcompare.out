@@ -1,0 +1,157 @@
+==============================================================================
+A/B comparison, per capture
+==============================================================================
+A (baseline)  z-1791809107-fpsbelow1012-286943
+    ref c1112f2c1a   apk c8ce9a771091   classifier 37a5cc7ff3
+    1 run(s), 941 captures, progress-log proof yes
+B (candidate)  z-1791809103-fpsbelow1012-286227
+    ref c1112f2c1a   apk c8ce9a771091   classifier 37a5cc7ff3
+    1 run(s), 941 captures, progress-log proof yes
+disc  10-suites:c446ab4d:Clear,Color zeta overlap,Depth Clamp,Dep
+      identical in both arms, so the arms are comparable
+
+WARNING: SAME BINARY, DIFFERENT ENVIRONMENT, which is what an --env A/B is: one build, one disc, and the environment as the independent variable.
+    A env: (none)
+    B env: HAKUX_ZETA_D24=1
+  apk_sha is identical by design here and is NOT evidence that the arms are the same experiment. What this pair cannot show is anything the environment does not reach: if the variable is read once at startup, a delta is attributable; if nothing in the build reads that name at all, BOTH ARMS ARE THE CONTROL and will agree perfectly. Check the `env: KEY=VALUE` line the app logs at startup under tag `hakuX` in each arm's logcat before reading the numbers below.
+WARNING: both arms name ref c1112f2c1a and the ENVIRONMENT is what differs; see the same-binary note above.
+WARNING: A: Depth_buffer scored 144 of 784 goldens -- that suite's numbers are a FLOOR, not a score.
+WARNING: A: ZPass_pixel_count scored 72 of 78 goldens -- that suite's numbers are a FLOOR, not a score.
+WARNING: B: Depth_buffer scored 144 of 784 goldens -- that suite's numbers are a FLOOR, not a score.
+WARNING: B: ZPass_pixel_count scored 72 of 78 goldens -- that suite's numbers are a FLOOR, not a score.
+
+------------------------------------------------------------------------------
+movers
+------------------------------------------------------------------------------
+  worse  Depth_buffer             DepthFmt_z24_Cn_FZn_M800007_ZB       654 ->   271,662    +271,008
+  worse  Depth_buffer             DepthFmt_z24_Cn_FZn_Mc00003_ZB     1,221 ->     5,307      +4,086
+  worse  Depth_buffer             DepthFmt_z24_Cn_FZn_Mf55555_ZB     6,177 ->    10,263      +4,086
+  worse  Depth_buffer             DepthFmt_z24_Cn_FZn_Mfaaaaa_ZB     6,770 ->    10,856      +4,086
+  worse  Depth_buffer             DepthFmt_z24_Cn_FZn_Mffffff_ZB     6,770 ->    10,856      +4,086
+  worse  Depth_buffer             DepthFmt_z24_Cn_FZy_Mbf400b_ZB       876 ->     4,876      +4,000
+  worse  Depth_buffer             DepthFmt_z24_Cn_FZy_Mf46001_ZB       876 ->     4,876      +4,000
+  worse  Depth_buffer             DepthFmt_z24_Cn_FZy_Mf9b000_ZB       876 ->     4,876      +4,000
+  worse  Depth_buffer             DepthFmt_z24_Cn_FZy_Mfeffff_ZB       876 ->     4,876      +4,000
+  worse  Depth_buffer             DepthFmt_z24_Cy_FZn_M800007_ZB       654 ->   271,662    +271,008
+  worse  Depth_buffer             DepthFmt_z24_Cy_FZn_Mc00003_ZB     1,221 ->     5,307      +4,086
+  worse  Depth_buffer             DepthFmt_z24_Cy_FZn_Mf55555_ZB     6,177 ->    10,263      +4,086
+  worse  Depth_buffer             DepthFmt_z24_Cy_FZn_Mfaaaaa_ZB     6,770 ->    10,856      +4,086
+  worse  Depth_buffer             DepthFmt_z24_Cy_FZn_Mffffff_ZB     6,770 ->    10,856      +4,086
+  worse  Depth_buffer             DepthFmt_z24_Cy_FZy_Mbf400b_ZB       876 ->     4,876      +4,000
+  worse  Depth_buffer             DepthFmt_z24_Cy_FZy_Mf46001_ZB       876 ->     4,876      +4,000
+  worse  Depth_buffer             DepthFmt_z24_Cy_FZy_Mf9b000_ZB       876 ->     4,876      +4,000
+  worse  Depth_buffer             DepthFmt_z24_Cy_FZy_Mfeffff_ZB       876 ->     4,876      +4,000
+  worse  Depth_buffer_fixed_function z24_Cn_FZn_M800001_ZB                520 ->   304,804    +304,284
+  worse  Depth_buffer_fixed_function z24_Cn_FZn_Mc00000_ZB                989 ->     1,156        +167
+  worse  Depth_buffer_fixed_function z24_Cn_FZn_Mffffff_ZB             47,935 ->    48,102        +167
+  worse  Depth_buffer_fixed_function z24_Cy_FZn_M800001_ZB                520 ->   304,804    +304,284
+  worse  Depth_buffer_fixed_function z24_Cy_FZn_Mc00000_ZB                989 ->     1,156        +167
+  worse  Depth_buffer_fixed_function z24_Cy_FZn_Mffffff_ZB             47,935 ->    48,102        +167
+  worse  W_buffering              WBuf24F_FloorQuad_V0_ZB0_ZS0         681 ->       811        +130  [status white-content -> label-differs]
+  worse  W_buffering              WBuf24F_FloorQuad_V0_ZB0_ZS0_Z   163,425 ->   225,558     +62,133
+  worse  W_buffering              WBuf24F_FloorQuad_V0_ZB1_ZS0         664 ->       810        +146  [status white-content -> label-differs]
+  worse  W_buffering              WBuf24F_FloorQuad_V0_ZB1_ZS0_Z   160,898 ->   226,969     +66,071
+  worse  W_buffering              WBuf24F_FloorQuad_V1_ZB0_ZS0          37 ->       451        +414  [status ok -> label-differs]
+  worse  W_buffering              WBuf24F_FloorQuad_V1_ZB0_ZS0_Z     6,111 ->   221,942    +215,831
+  worse  W_buffering              WBuf24F_FloorQuad_V1_ZB0_ZS1         375 ->       603        +228  [status white-content -> label-differs]
+  worse  W_buffering              WBuf24F_FloorQuad_V1_ZB0_ZS1_Z   124,615 ->   221,970     +97,355
+  worse  W_buffering              WBuf24F_FloorQuad_V1_ZB1_ZS0          37 ->       505        +468  [status ok -> label-differs]
+  worse  W_buffering              WBuf24F_FloorQuad_V1_ZB1_ZS0_Z     5,615 ->   221,950    +216,335
+  worse  W_buffering              WBuf24F_FloorQuad_V1_ZB1_ZS1         343 ->       609        +266  [status white-content -> label-differs]
+  worse  W_buffering              WBuf24F_FloorQuad_V1_ZB1_ZS1_Z   124,615 ->   221,970     +97,355
+  worse  W_buffering              WBuf24F_LineStrip_V1_ZB0_ZS0         312 ->       796        +484  [status white-content -> label-differs]
+  worse  W_buffering              WBuf24F_LineStrip_V1_ZB0_ZS0_Z        11 ->       769        +758
+  worse  W_buffering              WBuf24F_LineStrip_V1_ZB0_ZS1         312 ->       796        +484  [status white-content -> label-differs]
+  worse  W_buffering              WBuf24F_LineStrip_V1_ZB0_ZS1_Z        11 ->       769        +758
+  worse  W_buffering              WBuf24F_LineStrip_V1_ZB1_ZS0         312 ->       796        +484  [status white-content -> label-differs]
+  worse  W_buffering              WBuf24F_LineStrip_V1_ZB1_ZS0_Z        11 ->       769        +758
+  worse  W_buffering              WBuf24F_LineStrip_V1_ZB1_ZS1         312 ->       796        +484  [status white-content -> label-differs]
+  worse  W_buffering              WBuf24F_LineStrip_V1_ZB1_ZS1_Z        11 ->       769        +758
+  worse  W_buffering              WBuf24F_RoofQuad_V1_ZB0_ZS0           38 ->       648        +610  [status ok -> label-differs]
+  worse  W_buffering              WBuf24F_RoofQuad_V1_ZB0_ZS0_ZB     2,371 ->   234,535    +232,164
+  worse  W_buffering              WBuf24F_RoofQuad_V1_ZB0_ZS1          146 ->       422        +276  [status white-content -> label-differs]
+  worse  W_buffering              WBuf24F_RoofQuad_V1_ZB0_ZS1_ZB    27,522 ->   234,955    +207,433
+  worse  W_buffering              WBuf24F_RoofQuad_V1_ZB1_ZS0           38 ->       488        +450  [status ok -> label-differs]
+  worse  W_buffering              WBuf24F_RoofQuad_V1_ZB1_ZS0_ZB     1,988 ->   234,535    +232,547
+  worse  W_buffering              WBuf24F_RoofQuad_V1_ZB1_ZS1          178 ->       454        +276  [status white-content -> label-differs]
+  worse  W_buffering              WBuf24F_RoofQuad_V1_ZB1_ZS1_ZB    27,522 ->   234,955    +207,433
+  worse  W_buffering              WBuf24F_TriH_V1_ZB0_ZS0               23 ->       623        +600  [status ok -> label-differs]
+  worse  W_buffering              WBuf24F_TriH_V1_ZB0_ZS0_ZB           456 ->    26,400     +25,944
+  worse  W_buffering              WBuf24F_TriH_V1_ZB1_ZS0               23 ->       623        +600  [status ok -> label-differs]
+  worse  W_buffering              WBuf24F_TriH_V1_ZB1_ZS0_ZB           456 ->    26,400     +25,944
+  worse  W_buffering              WBuf24F_TriV_V1_ZB0_ZS0                7 ->       607        +600  [status ok -> label-differs]
+  worse  W_buffering              WBuf24F_TriV_V1_ZB0_ZS0_ZB           648 ->    26,352     +25,704
+  worse  W_buffering              WBuf24F_TriV_V1_ZB1_ZS0                7 ->       607        +600  [status ok -> label-differs]
+  worse  W_buffering              WBuf24F_TriV_V1_ZB1_ZS0_ZB           648 ->    26,352     +25,704
+  worse  W_buffering              WBuf24F_WallQuad_V1_ZB0_ZS0           83 ->       673        +590  [status white-content -> label-differs]
+  worse  W_buffering              WBuf24F_WallQuad_V1_ZB0_ZS0_ZB     6,209 ->   233,735    +227,526
+  worse  W_buffering              WBuf24F_WallQuad_V1_ZB0_ZS1           65 ->       509        +444  [status ok -> label-differs]
+  worse  W_buffering              WBuf24F_WallQuad_V1_ZB0_ZS1_ZB     3,100 ->   195,786    +192,686
+  worse  W_buffering              WBuf24F_WallQuad_V1_ZB1_ZS0           83 ->       633        +550  [status white-content -> label-differs]
+  worse  W_buffering              WBuf24F_WallQuad_V1_ZB1_ZS0_ZB     5,721 ->   233,741    +228,020
+  worse  W_buffering              WBuf24F_WallQuad_V1_ZB1_ZS1           65 ->       509        +444  [status ok -> label-differs]
+  worse  W_buffering              WBuf24F_WallQuad_V1_ZB1_ZS1_ZB     3,100 ->   195,786    +192,686
+  worse  W_buffering              ZBuf24F_TriH_V1_ZB0_ZS0               23 ->       623        +600  [status ok -> label-differs]
+  worse  W_buffering              ZBuf24F_TriH_V1_ZB0_ZS0_ZB            96 ->    26,400     +26,304
+  worse  W_buffering              ZBuf24F_TriH_V1_ZB0_ZS1               23 ->       563        +540  [status ok -> label-differs]
+  worse  W_buffering              ZBuf24F_TriH_V1_ZB0_ZS1_ZB         1,242 ->    26,004     +24,762
+  worse  W_buffering              ZBuf24F_TriH_V1_ZB1_ZS0               23 ->       623        +600  [status ok -> label-differs]
+  worse  W_buffering              ZBuf24F_TriH_V1_ZB1_ZS0_ZB            96 ->    26,400     +26,304
+  worse  W_buffering              ZBuf24F_TriH_V1_ZB1_ZS1               23 ->       563        +540  [status ok -> label-differs]
+  worse  W_buffering              ZBuf24F_TriH_V1_ZB1_ZS1_ZB         1,224 ->    26,076     +24,852
+  worse  W_buffering              ZBuf24F_TriV_V1_ZB0_ZS0                7 ->       607        +600  [status ok -> label-differs]
+  worse  W_buffering              ZBuf24F_TriV_V1_ZB0_ZS0_ZB            96 ->    26,400     +26,304
+  worse  W_buffering              ZBuf24F_TriV_V1_ZB0_ZS1                7 ->       547        +540  [status ok -> label-differs]
+  worse  W_buffering              ZBuf24F_TriV_V1_ZB0_ZS1_ZB           360 ->    26,400     +26,040
+  worse  W_buffering              ZBuf24F_TriV_V1_ZB1_ZS0                7 ->       607        +600  [status ok -> label-differs]
+  worse  W_buffering              ZBuf24F_TriV_V1_ZB1_ZS0_ZB            96 ->    26,400     +26,304
+  worse  W_buffering              ZBuf24F_TriV_V1_ZB1_ZS1                7 ->       547        +540  [status ok -> label-differs]
+  worse  W_buffering              ZBuf24F_TriV_V1_ZB1_ZS1_ZB           432 ->    26,400     +25,968
+
+------------------------------------------------------------------------------
+counts, per capture -- the only valid unit
+------------------------------------------------------------------------------
+  better 0     worse 84    same 857   noise 0       (941 compared)
+  exact  266   ->    266    (+0)
+  regressed from exact 0        repaired to exact 0  
+
+------------------------------------------------------------------------------
+byte-level check -- what a score count cannot see
+------------------------------------------------------------------------------
+  hashed 941 of 941 shared captures (1 run-dir(s) A, 1 B)
+  84 capture(s) differ BYTE FOR BYTE between the arms.
+
+  NOT ATTRIBUTABLE: one run per arm cannot tell a change from device
+  nondeterminism -- both have this signature. Requeue with --runs 3 to
+  separate them; sweep_agreement.py measures the same thing within one ref.
+
+------------------------------------------------------------------------------
+per suite
+------------------------------------------------------------------------------
+  suite                       caps better worse  same noise  differing A  differing B
+  Clear                         32      0     0    32     0            0            0
+  Color_zeta_overlap             9      0     0     9     0       82,429       82,429
+  Depth_Clamp                   40      0     0    40     0        1,756        1,756
+  Depth_buffer                 144      0    18   126     0    1,325,892    1,932,596
+  Depth_buffer_fixed_function    80      0     6    74     0      373,070      982,306
+  Depth_function                 2      0     0     2     0            0            0
+  Stencil                       16      0     0    16     0      360,000      360,000
+  Stencil_func                  16      0     0    16     0            0            0
+  W_buffering                  530      0    60   470     0    2,718,388    5,521,317
+  ZPass_pixel_count             72      0     0    72     0       12,124       12,124
+
+------------------------------------------------------------------------------
+totals -- ADVISORY ONLY: a total can hide a regression
+------------------------------------------------------------------------------
+  differing       4,873,659 ->      8,892,528  (+4,018,869)
+  structural        934,114 ->      1,339,073  (+404,959)
+  structural is differing minus off-by-one; the two never overlap, so the subtraction is safe.
+
+==============================================================================
+PRE-REGISTERED: arm B was queued at 2026-10-12T12:45:03Z naming /home/justin/hakux-work/wt/fpsbelow1012/docs/testing/predictions/fpsbelow1012-zetad24-pixels.json, and its content still hashes to the sha recorded then. The prediction existed before the device ran and has not been edited since.
+  bound sha256 c543e6ac7e76b4bc73d102c1140b9f59b7816cce469b47086a950e0ad1e9caee
+  verify with: sha256sum /home/justin/hakux-work/wt/fpsbelow1012/docs/testing/predictions/fpsbelow1012-zetad24-pixels.json
+prediction (registered 2026-10-12T07:10:36Z): #433 HAKUX_ZETA_D24: what storing Z24S8 as D24_UNORM_S8_UINT costs in depth exactness on the Nova (lane.fpsbelow1012 NOTES.md section 7, lane.local's grant condition 3). Same binary c1112f2c1a; A without the env (Z24S8 as D32_SFLOAT_S8_UINT, logcat 'nv2a: Z24S8 host format 0x82'), B with --env HAKUX_ZETA_D24=1 (logcat 'host format 0x81 ... (HAKUX_ZETA_D24)'; an arm without its line is VOID). One run per arm: drawrec1010's two runs (1-1791670443-drawrec1010-3709316) agree on every capture of Clear, Color_zeta_overlap, Depth_buffer, Stencil, Stencil_func and ZPass_pixel_count. Queued B first, A last (the shipped setting stays on the device). MACHINE LEG: every Depth_buffer z16 capture holds its score (D16_UNORM on both arms; F16 lives on a Z16 surface and never asks the Z24S8 scale). HAND-READ LEGS, B against A, from the two scores TSVs: (1) Depth_buffer/DepthFmt_z24_Cn_FZn_M800007_ZB and DepthFmt_z24_Cy_FZn_M800007_ZB each read >= 250,000 differing px (A: 654 each): the test clears depth to its M value, and a D24 clear of 0x800007 reads back 0x800008 over the surface on Adreno (docs/investigations/depth-readback-scale.md: 304,284 of 307,200 px on 09-10); (2) no other Depth_buffer z24 FZn capture with M >= 0xc00003 or M < 0x800000 moves by more than 20,000 px (the quantiser's phase error is ~0.25 unit at 0xc00003 and 0 below 2^23); (3) the summed Depth_buffer z24 FZn _ZB rows land between 300,000 and 1,500,000 px (A at b10dcdb737: 43,690); (4) no capture in any suite becomes blank (differing == pixels) that is not blank in A: the pre-#16 blanks were the float formats' fall-through, fixed independently of the host format. WHAT REFUTES WHAT: a z16 move, or any new blank, means the switch reaches past the Z24S8 map, a defect in the switch; (1) failing while (2)-(4) hold means the quantiser does not hit this clear on today's driver, and the cost is smaller than section 7 says; (2) or (3) failing high means the scale pairing costs drawn pixels well beyond the clears, and the switch carries a wider depth cost than stated, which the cross-title screen must weigh.
+VERDICT: PASS -- all 72 registered checks hold.
+    Note: 84 capture(s) worse and 0 regressed from exact. The prediction allowed for them; the regressions are still real.
+==============================================================================

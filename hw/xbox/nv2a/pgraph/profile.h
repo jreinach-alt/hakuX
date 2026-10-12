@@ -22,7 +22,7 @@
  *     A was blocked; a wait the holder spent half in a fence is booked half
  *     GPU, half RUN. A holder that never registered is UNK;
  *   - guest idle (the kernel idle loop, spun or halted), PFIFO idle, the
- *     DMA_PUT pfifo.lock wait (user.c's lock_wait_ns), GPU execution time from
+ *     vCPU's pfifo.lock wait (lock_wait_ns, by site), GPU execution time from
  *     the timestamp queries (gpu_ts_readback, read back when the frame's fence
  *     is waited, so about one frame late) and the GPU clock.
  *
@@ -65,7 +65,7 @@ enum {
 /* Wait reasons: what a thread is blocked in. */
 enum {
     HAKUX_FT_W_BQL,          /* BQL acquire (system/cpus.c) */
-    HAKUX_FT_W_PFIFO_LOCK,   /* pfifo.lock acquire (the DMA_PUT store) */
+    HAKUX_FT_W_PFIFO_LOCK,   /* pfifo.lock acquire (pfifo_lock_timed) */
     HAKUX_FT_W_PGRAPH_LOCK,  /* pgraph.lock acquire in PGRAPH MMIO */
     HAKUX_FT_W_HALT,         /* vCPU halted (idle halt or hlt) */
     HAKUX_FT_W_IDLE,         /* PFIFO thread waiting for a kick */
@@ -116,6 +116,16 @@ enum {
 
 #define HAKUX_FT_NA 0xffffffffu   /* a field this build cannot measure */
 
+/* The vCPU's pfifo.lock sites, as debug.h's NV2A_LOCKW_* (lockwake1011). */
+enum {
+    HAKUX_FT_LWS_KICK,      /* pfifo_post_kick(): the posted DMA_PUT's wake */
+    HAKUX_FT_LWS_PUT,       /* a DMA_PUT store that may not be posted */
+    HAKUX_FT_LWS_GET,
+    HAKUX_FT_LWS_REF,
+    HAKUX_FT_LWS_OTHER,
+    HAKUX_FT_NLWS,
+};
+
 typedef struct HakuxFtRow {
     uint32_t run, rq, blk;          /* schedstat on-CPU, run queue, the rest */
     uint32_t w[HAKUX_FT_NW];        /* instrumented waits, by reason */
@@ -138,7 +148,14 @@ typedef struct HakuxFtFrame {
     uint16_t nw[HAKUX_FT_NROLE];    /* waits that ended, per row */
     uint32_t gidle;                 /* guest idle (HAKUX_FT_NA if unhooked) */
     uint32_t pidle;                 /* PFIFO waiting for work (always on) */
-    uint32_t lockw;                 /* DMA_PUT pfifo.lock wait (user.c) */
+    uint32_t lockw;                 /* the vCPU's pfifo.lock wait (lock_wait_ns) */
+    /* ... by site, HAKUX_FT_LWS_* (lockwake1011): us, acquisitions, those
+     * of 10 us or more; and the part that ended with the PFIFO thread still
+     * parked (posted put on only) */
+    uint32_t lws[HAKUX_FT_NLWS];
+    uint16_t lwn[HAKUX_FT_NLWS], lwb[HAKUX_FT_NLWS];
+    uint32_t lwp;
+    uint32_t vhp[HAKUX_FT_NH];      /* vh[], the vCPU's pfifo.lock waits only */
     uint32_t gpu;                   /* GPU execution read back this frame */
     uint32_t mmio, nmmio;           /* vCPU in MMIO dispatch: us, accesses
                                      * (HAKUX_FT_NA / 0 if unhooked: G9) */
@@ -160,6 +177,10 @@ typedef struct HakuxFtMmio {
  * accumulators it names are reset. */
 typedef struct HakuxFtExt {
     int64_t lockw_ns;       /* g_nv2a_stats.cpu_working.lock_wait_ns */
+    int64_t lws_ns[HAKUX_FT_NLWS];  /* ... lockw_site_ns */
+    uint32_t lws_n[HAKUX_FT_NLWS];  /* ... lockw_site_n */
+    uint32_t lws_nb[HAKUX_FT_NLWS]; /* ... lockw_site_nb */
+    int64_t lwp_ns;                 /* ... lockw_parked_ns */
     int64_t pidle_ns;       /* g_nv2a_stats.pacing.renderer_idle_acc_ns */
     int64_t gpu_ns;         /* g_nv2a_stats.phase_working.gpu_total_ns */
     int rp;                 /* g_nv2a_stats.phase_working.gpu_rp_count */
@@ -333,7 +354,9 @@ static inline uint32_t hakux_ft_sub0(uint32_t a, uint32_t b)
  *       lock wait, holder in a render/submit wait ........ RSUBMIT
  *       vCPU's own submit or render-thread wait .......... RSUBMIT
  *       lock wait, holder UNK or IDLE .................... UNATTR
- *       the DMA_PUT wait seen only by lock_wait_ns ....... UNATTR (no holder)
+ *       lock_wait_ns not seen as a pfifo.lock wait ....... UNATTR (no holder)
+ *         (both of its sites are frametrace waits with holder PFIFO since
+ *         lockwake1011, so this is clock skew between the two counters)
  *       blocked in no named wait ......................... UNATTR
  *       guest idle (the guest itself waited):
  *         GPU busy >= 90% of P ........................... GPU
@@ -454,6 +477,9 @@ static const char *const hakux_ft_row_name[HAKUX_FT_NROW] __attribute__((unused)
 static const char *const hakux_ft_ctx_name[HAKUX_FT_NCTX] __attribute__((unused)) = {
     "none", "rep", "pend"
 };
+static const char *const hakux_ft_lws_name[HAKUX_FT_NLWS] __attribute__((unused)) = {
+    "kick", "put", "get", "ref", "oth"
+};
 
 #ifdef HAKUX_FT_IMPLEMENTATION
 /* ------------------------------------------------------------------------ */
@@ -507,6 +533,7 @@ typedef struct FtRole {
     uint64_t cacc[HAKUX_FT_NCTX];   /* ... by context */
     uint64_t hold[HAKUX_FT_NH];     /* booked lock-wait ns by holder class */
     uint64_t hrole[HAKUX_FT_NROLE + 1]; /* ... by holder role, last: none */
+    uint64_t hpfl[HAKUX_FT_NH];     /* hold[], pfifo.lock waits only */
     uint64_t nwait;                 /* waits ended */
     uint64_t gacc;                  /* guest idle ns booked (vCPU) */
     int64_t gt0;                    /* guest idle in progress since, 0 none */
@@ -849,6 +876,11 @@ void hakux_ft_wait_end_slow(HakuxFtWait *w)
             for (int k = 0; k < HAKUX_FT_NH; k++) {
                 FT_ST(&r->hold[k], r->hold[k] + hold[k]);
             }
+            if (w->reason == HAKUX_FT_W_PFIFO_LOCK) {
+                for (int k = 0; k < HAKUX_FT_NH; k++) {
+                    FT_ST(&r->hpfl[k], r->hpfl[k] + hold[k]);
+                }
+            }
             FT_ST(&r->hrole[hr], r->hrole[hr] + (uint64_t)dur);
         }
         FT_ST(&r->nwait, r->nwait + 1);
@@ -1001,6 +1033,7 @@ typedef struct FtSnap {
     uint64_t cacc[HAKUX_FT_NROLE][HAKUX_FT_NCTX];
     uint64_t hold[HAKUX_FT_NH];     /* vCPU only */
     uint64_t hrole[HAKUX_FT_NROLE + 1]; /* vCPU only */
+    uint64_t hpfl[HAKUX_FT_NH];     /* vCPU only */
     uint64_t nwait[HAKUX_FT_NROLE];
     uint64_t gidle;
     uint64_t mmio_ns, mmio_n;
@@ -1055,6 +1088,9 @@ static void ft_snap_role(int i, int64_t now, FtSnap *s)
             for (int k = 0; k <= HAKUX_FT_NROLE; k++) {
                 s->hrole[k] = FT_LD(&r->hrole[k]);
             }
+            for (int k = 0; k < HAKUX_FT_NH; k++) {
+                s->hpfl[k] = FT_LD(&r->hpfl[k]);
+            }
             s->gidle = FT_LD(&r->gacc);
             gt0 = FT_LD(&r->gt0);
         } else {
@@ -1075,12 +1111,19 @@ static void ft_snap_role(int i, int64_t now, FtSnap *s)
                 s->cacc[i][wctx] += (uint64_t)(now - wt0);
             }
             if (i == HAKUX_FT_VCPU && wreason <= HAKUX_FT_W_PGRAPH_LOCK) {
+                uint64_t hp[HAKUX_FT_NH] = { 0 };
                 if (wholder >= 0 && wholder < HAKUX_FT_NROLE) {
-                    ft_holder_split(wholder, wt0, now, s->hold);
+                    ft_holder_split(wholder, wt0, now, hp);
                     s->hrole[wholder] += (uint64_t)(now - wt0);
                 } else {
-                    s->hold[HAKUX_FT_H_UNK] += (uint64_t)(now - wt0);
+                    hp[HAKUX_FT_H_UNK] = (uint64_t)(now - wt0);
                     s->hrole[HAKUX_FT_NROLE] += (uint64_t)(now - wt0);
+                }
+                for (int k = 0; k < HAKUX_FT_NH; k++) {
+                    s->hold[k] += hp[k];
+                    if (wreason == HAKUX_FT_W_PFIFO_LOCK) {
+                        s->hpfl[k] += hp[k];
+                    }
                 }
             }
         }
@@ -1242,6 +1285,9 @@ void hakux_ft_flip(const HakuxFtExt *x)
     for (int k = 0; k <= HAKUX_FT_NROLE; k++) {
         fr->vho[k] = ft_us(s.hrole[k], ft.snap.hrole[k]);
     }
+    for (int k = 0; k < HAKUX_FT_NH; k++) {
+        fr->vhp[k] = ft_us(s.hpfl[k], ft.snap.hpfl[k]);
+    }
     for (int k = 0; k < HAKUX_FT_NROLE; k++) {
         uint64_t d = s.nwait[k] - ft.snap.nwait[k];
         fr->nw[k] = (uint16_t)(d > 65535 ? 65535 : d);
@@ -1265,6 +1311,12 @@ void hakux_ft_flip(const HakuxFtExt *x)
     }
     fr->pidle = (uint32_t)(x->pidle_ns > 0 ? x->pidle_ns / 1000 : 0);
     fr->lockw = (uint32_t)(x->lockw_ns > 0 ? x->lockw_ns / 1000 : 0);
+    for (int k = 0; k < HAKUX_FT_NLWS; k++) {
+        fr->lws[k] = (uint32_t)(x->lws_ns[k] > 0 ? x->lws_ns[k] / 1000 : 0);
+        fr->lwn[k] = (uint16_t)(x->lws_n[k] > 65535 ? 65535 : x->lws_n[k]);
+        fr->lwb[k] = (uint16_t)(x->lws_nb[k] > 65535 ? 65535 : x->lws_nb[k]);
+    }
+    fr->lwp = (uint32_t)(x->lwp_ns > 0 ? x->lwp_ns / 1000 : 0);
     fr->gpu = (uint32_t)(x->gpu_ns > 0 ? x->gpu_ns / 1000 : 0);
     fr->rp = (uint16_t)(x->rp > 65535 ? 65535 : x->rp < 0 ? 0 : x->rp);
     if (ft_mhz_fd >= 0) {
@@ -1309,6 +1361,8 @@ typedef struct FtWriter {
     uint64_t vrun, vrq, vblk, vgi, vgw, vw[HAKUX_FT_NW], vh[HAKUX_FT_NH];
     uint64_t vho[HAKUX_FT_NROLE + 1], nw[HAKUX_FT_NROLE];
     uint64_t prun, prq, pblk, pidle, pw[HAKUX_FT_NW], lockw, rrun, rblk;
+    uint64_t lws[HAKUX_FT_NLWS], lwn[HAKUX_FT_NLWS], lwb[HAKUX_FT_NLWS];
+    uint64_t lwp, vhp[HAKUX_FT_NH];
     uint64_t pc[HAKUX_FT_NCTX];
     uint64_t site_ns[FT_SITE_SLOTS], site_n[FT_SITE_SLOTS]; /* at the last
                                                             * summary */
@@ -1657,6 +1711,22 @@ static void ft_summary(FtWriter *w, int64_t now)
         w->rrun / 1e3 / n, w->rblk / 1e3 / n, s50 / 1e3, s05 / 1e3,
         w->vbd[0], w->vbd[1], w->vbd[2], w->vbd[3], w->vbd[4],
         (double)w->ins_sum / n, w->max_ins, (unsigned long long)wcpu);
+    /* lockwake1011: lw= by site, site:ms/acquisitions/acquisitions of
+     * 10 us or more, per frame; the part that ended with the PFIFO thread
+     * parked; and vh= for the pfifo.lock waits alone. */
+    o += snprintf(line + o, sizeof(line) - o, " lws=");
+    for (int k = 0; k < HAKUX_FT_NLWS; k++) {
+        o += snprintf(line + o, sizeof(line) - o,
+                      k ? ",%s:%.2f/%.1f/%.1f" : "%s:%.2f/%.1f/%.1f",
+                      hakux_ft_lws_name[k], w->lws[k] / 1e3 / n,
+                      (double)w->lwn[k] / n, (double)w->lwb[k] / n);
+    }
+    o += snprintf(line + o, sizeof(line) - o, " lwp=%.2f vhp=",
+                  w->lwp / 1e3 / n);
+    for (int k = 0; k < HAKUX_FT_NH; k++) {
+        o += snprintf(line + o, sizeof(line) - o, k ? ",%.2f" : "%.2f",
+                      w->vhp[k] / 1e3 / n);
+    }
     if (w->mmio_frames) {
         /* MMIO (G9): us per frame, accesses per frame, and the six regions
          * with the most time since the last summary, us per frame. */
@@ -1704,6 +1774,11 @@ static void ft_summary(FtWriter *w, int64_t now)
         memset(w->vho, 0, sizeof(w->vho));
         memset(w->nw, 0, sizeof(w->nw));
         w->prun = w->prq = w->pblk = w->pidle = w->lockw = 0;
+        memset(w->lws, 0, sizeof(w->lws));
+        memset(w->lwn, 0, sizeof(w->lwn));
+        memset(w->lwb, 0, sizeof(w->lwb));
+        memset(w->vhp, 0, sizeof(w->vhp));
+        w->lwp = 0;
         memset(w->pw, 0, sizeof(w->pw));
         memset(w->pc, 0, sizeof(w->pc));
         w->rrun = w->rblk = w->mhz_sum = w->ins_sum = w->crit_sum = 0;
@@ -1750,7 +1825,21 @@ static void ft_csv_open(FtWriter *w)
             fprintf(w->csv, ",o_%s", hakux_ft_w_name[k]);
         }
         fprintf(w->csv, ",gpu,rp,mhz,tp_ns,rel_ns,slack,ins,mmio,nmmio"
-                        ",p_c_none,p_c_rep,p_c_pend\n");
+                        ",p_c_none,p_c_rep,p_c_pend");
+        for (int k = 0; k < HAKUX_FT_NLWS; k++) {
+            fprintf(w->csv, ",lw_%s", hakux_ft_lws_name[k]);
+        }
+        for (int k = 0; k < HAKUX_FT_NLWS; k++) {
+            fprintf(w->csv, ",ln_%s", hakux_ft_lws_name[k]);
+        }
+        for (int k = 0; k < HAKUX_FT_NLWS; k++) {
+            fprintf(w->csv, ",lb_%s", hakux_ft_lws_name[k]);
+        }
+        fprintf(w->csv, ",lw_parked");
+        for (int k = 0; k < HAKUX_FT_NH; k++) {
+            fprintf(w->csv, ",vhp_%s", hakux_ft_h_name[k]);
+        }
+        fprintf(w->csv, "\n");
     }
     {
         char line[400];
@@ -1803,9 +1892,23 @@ static void ft_csv_row(FtWriter *w, const HakuxFtFrame *fr, int64_t rel,
     if (has_slack) {
         fprintf(c, "%lld", (long long)(slack / 1000));
     }
-    fprintf(c, ",%u,%d,%u,%u,%u,%u\n", fr->ins,
+    fprintf(c, ",%u,%d,%u,%u,%u,%u", fr->ins,
             fr->mmio == HAKUX_FT_NA ? -1 : (int)fr->mmio, fr->nmmio,
             fr->r[1].c[0], fr->r[1].c[1], fr->r[1].c[2]);
+    for (int k = 0; k < HAKUX_FT_NLWS; k++) {
+        fprintf(c, ",%u", fr->lws[k]);
+    }
+    for (int k = 0; k < HAKUX_FT_NLWS; k++) {
+        fprintf(c, ",%u", fr->lwn[k]);
+    }
+    for (int k = 0; k < HAKUX_FT_NLWS; k++) {
+        fprintf(c, ",%u", fr->lwb[k]);
+    }
+    fprintf(c, ",%u", fr->lwp);
+    for (int k = 0; k < HAKUX_FT_NH; k++) {
+        fprintf(c, ",%u", fr->vhp[k]);
+    }
+    fprintf(c, "\n");
 }
 
 /* One frame, in order. Exposed for the selftest. */
@@ -1889,6 +1992,15 @@ void hakux_ft_writer_frame(FtWriter *w, const HakuxFtFrame *in, int64_t now)
     w->pblk += p->blk;
     w->pidle += fr->pidle;
     w->lockw += fr->lockw;
+    for (int k = 0; k < HAKUX_FT_NLWS; k++) {
+        w->lws[k] += fr->lws[k];
+        w->lwn[k] += fr->lwn[k];
+        w->lwb[k] += fr->lwb[k];
+    }
+    w->lwp += fr->lwp;
+    for (int k = 0; k < HAKUX_FT_NH; k++) {
+        w->vhp[k] += fr->vhp[k];
+    }
     w->rrun += fr->r[HAKUX_FT_RENDER].run;
     w->rblk += fr->r[HAKUX_FT_RENDER].blk;
     if (fr->mhz) {

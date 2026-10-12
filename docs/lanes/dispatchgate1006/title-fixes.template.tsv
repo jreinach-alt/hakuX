@@ -1,0 +1,11 @@
+# pm/title-fixes.tsv -- lane.local's record that a commit ANSWERS a failed gate of a title.
+# dispatch_gate.py counts a fix for a PLAYABLE_ATTEMPT only from a row here (or from a commit that
+# changes the title's own pathknow/paths/<TID>.json); a commit that is merely newer than the
+# verdict is never a fix (fix:6cef37f426, an unrelated fold, admitted DOA3 on 10-06).
+# Columns: title_id (8 hex) | gate: one or more of menu_time reached_gameplay duration static
+# position void crash hang window_unmeasured hitch_unreadable, '+'-joined, or `route` for the first
+# five | fix_commit (sha, 10+ hex) | set_by: lane.local or owner (any other value does not count)
+# | date (PDT) | why: how this commit answers that gate for this title (required).
+# A perf gate (fps, hitch, audio) row is recorded but admits no Playable attempt: the title needs a
+# verdict after the fix that clears the bar, from a TELEMETRY or VALIDATION run.
+title_id	gate	fix_commit	set_by	date	why

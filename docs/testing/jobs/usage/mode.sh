@@ -1,55 +1,69 @@
 #!/usr/bin/env bash
 #
-# mode.sh normal|low|auto|status -- the harness's two operating modes,
-# switched by the usage meter (meter.py) rather than by a person watching a
-# dashboard (owner, 2026-10-02 10:10 PDT: 80% of the week used drops the
-# harness into Low; back to Normal at the reset).
+# mode.sh normal|low|auto|status|tick -- the harness's two operating modes,
+# switched by the usage meter (meter.py) so that nobody has to watch it
+# (owner, 2026-10-09: "if we're projecting over on usage for the week, dial
+# down the number of Opus lanes and defer for later, or run it on Sonnet").
 #
-#   mode.sh low      force Low now; locked (manual) until `auto` or the reset
-#   mode.sh normal   force Normal now; locked (manual) until `auto` or the reset
-#   mode.sh auto     release any manual lock and evaluate immediately -- the
-#                    default state: periodic ticks may switch the mode
+#   mode.sh low      force Low now; locked (manual) until `auto`
+#   mode.sh normal   force Normal now; locked (manual) until `auto`
+#   mode.sh auto     release any manual lock and evaluate immediately
 #   mode.sh status   print the current mode, source, since, and the last
-#                    meter reading, and exit 0 regardless (a status command
-#                    that can fail is a status command nobody trusts)
-#   mode.sh tick     THE TIMER'S OWN ENTRYPOINT, not one of the four above.
-#                    units/hakux-usage-meter.service runs `meter.py && mode.sh
-#                    tick` every 30 min. A no-op whenever a manual lock is
-#                    held -- the brief's "never flaps: once Low, stay Low
-#                    until the reset or a manual mode.sh normal" would not
-#                    hold if the next tick just called the same evaluation
-#                    `auto` does and silently cleared the lock.
+#                    meter reading, and exit 0 regardless
+#   mode.sh tick     THE TIMER'S ENTRYPOINT: units/hakux-usage-meter.service
+#                    runs `meter.py && mode.sh tick` every 30 min. A no-op
+#                    while a manual lock is held.
 #
-# WHAT LOW CHANGES, AND WHY EACH ONE IS REVERSIBLE. Every dial Low touches is
-# saved to $WORK/usage/saved/ the FIRST time it is touched (not re-saved on a
-# second `mode.sh low` while already low, which would overwrite the real
-# original with Low's own value) and restored byte-for-byte by `normal`:
+# LOW IS ONE FILE. Low creates $WORK/usage/low-active (one line, the reason);
+# Normal removes it. Everything Low does is read from that file at the moment
+# it matters, by the reader, so switching rewrites nothing that a later switch
+# would have to put back:
 #
-#   LANE_MAX=3                         (was whatever limits.env had)
-#   MODEL_LANE_ESCALATED=claude-sonnet-5
-#   PATHFIND_MODEL_CALLS_MAX=20        (new dial; lane.pathfind's navigation
-#                                       agent reads it from limits.env itself)
-#   every $WORK/briefs/*.model -> claude-sonnet-5   (an OPUS LANE KEEPS ITS
-#      RUNNING SESSION; a .model file is read fresh on the lane's NEXT
-#      resume -- see selftest.d/99-lane-model-file.sh -- so this changes
-#      what the next resume launches, not what is running right now)
-#   hostops heartbeat 2h -> 4h, via a systemd timer drop-in (the same
-#      technique host-tools/overnight_mode.sh already uses for its own
-#      schedule change)
+#   lane.sh, at every start and resume: LANE_MAX capped at models.toml's
+#     [usage].low_lane_max (3), and any escalated-above-Sonnet model -- a
+#     brief's .model, or the escalation model -- comes back down to Sonnet
+#     instead (models.py's cap_at_sonnet(), #433). An explicit HAKUX_MODEL
+#     still wins. A RUNNING session keeps its model; the cap applies from its
+#     next resume.
+#   hostops heartbeat 2h -> 4h, via a systemd timer drop-in.
 #
-# NOT TOUCHED, ON PURPOSE: device work, the dispatcher, autoverdict, the
-# check-in report, foldqueue. And NOT IMPLEMENTED HERE, because the files
-# that would enforce it are outside this lane's territory: "no new lanes
-# started by anything but lane.local." Low writes $WORK/usage/low-active (one
-# line, the reason) as the signal; board.sh's capacity gate does not read it
-# yet. See docs/lanes/usagemode/NOTES.md and OUTBOX.md for the exact patch
-# board.sh needs.
+# #433 (2026-10-10): the three thresholds below (USAGE_LOW_PCT etc.) moved
+# into models.toml's [usage] table, models.sh's single point; limits.env
+# carries no usage lines any more, so there is no per-host override left to
+# read. PATHFIND_MODEL_CALLS_MAX, which this script used to write into
+# limits.env while Low, is gone with it: grepping the repo and host-tools
+# found no reader anywhere for it -- lane.pathfind's own navigation agent
+# never consulted the dial it was supposedly for -- so it was deleted rather
+# than wired to something that does nothing today.
+#
+# The first version of this script saved every dial and every .model file on
+# the way into Low and restored them on the way out. The snapshot was taken
+# once and never refreshed, so a week later "normal" would have restored
+# Opus pins the owner had since removed; and Low latched until a week_end
+# crossing that meter.py had always already moved past by the time this ran,
+# so it never came back on its own.
+#
+# WHEN. Re-evaluated on every tick, no latch (dial names are models.toml's
+# [usage] keys, read through models.sh dial <name>). Owner, 2026-10-10
+# ~10:30 PDT, after a 19%-used morning with a hot trailing rate tripped Low
+# on the projection alone: "I do not want low enabled at all this weekend.
+# Bad call there. It only should trigger when we're at 80 percent for the
+# week and projected to go over 100."
+#   enter Low   when estimated% >= low_pct (80)
+#               AND projected-at-reset%  > low_proj (100, strict: "over")
+#   back Normal when estimated% <  low_pct (80)
+#               OR  projected-at-reset%  < normal_proj (95)
+# The entry line needs BOTH; the exit line needs EITHER. The 5-point gap
+# between low_proj (100) and normal_proj (95) is the only hysteresis: it
+# keeps a Low that has just started from flapping on one quiet hour. The
+# week rolling over needs no special case: the estimate drops, and so does
+# Low. A tick that changes nothing logs nothing.
 set -u
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 SYSTEMD_DIR="${HAKUX_SYSTEMD_USER_DIR:-$HOME/.config/systemd/user}"
-LIM="$WORK/limits.env"
+MODELS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/models.sh"
 MODE_FILE="$WORK/usage/mode"
-SAVE_DIR="$WORK/usage/saved"
+LOW_FILE="$WORK/usage/low-active"
 SWITCH_LOG="$WORK/usage/switches.log"
 STATE_JSON="$WORK/usage/state.json"
 DROPIN_DIR="$SYSTEMD_DIR/hakux-hostops.timer.d"
@@ -64,55 +78,7 @@ now_iso() {
 }
 now_epoch() { echo "${HAKUX_NOW:-$(date -u +%s)}"; }
 
-mkdir -p "$WORK/usage" "$SAVE_DIR"
-[ -e "$LIM" ] || : > "$LIM"
-
-# -------------------------------------------------------------- limits.env
-get_kv() { sed -n "s/^$2=//p" "$1" | tail -1; }
-set_kv() {   # <file> <key> <value>
-    local f=$1 k=$2 v=$3
-    if grep -q "^$k=" "$f" 2>/dev/null; then
-        sed -i "s/^$k=.*/$k=$v/" "$f"
-    else
-        printf '%s=%s\n' "$k" "$v" >> "$f"
-    fi
-}
-unset_kv() { sed -i "/^$2=/d" "$1" 2>/dev/null; }   # <file> <key>
-restore_kv() {   # <file> <key> <saved value, "" meaning "was absent">
-    local f=$1 k=$2 v=$3
-    if [ -n "$v" ]; then set_kv "$f" "$k" "$v"; else unset_kv "$f" "$k"; fi
-}
-
-# ------------------------------------------------------------- .model files
-model_save_dir() { echo "$SAVE_DIR/models"; }
-save_models_once() {
-    local d; d=$(model_save_dir)
-    [ -d "$d" ] && return 0     # already captured this Low episode
-    mkdir -p "$d"
-    for f in "$WORK"/briefs/*.model; do
-        [ -e "$f" ] || continue
-        cp "$f" "$d/$(basename "$f")"
-    done
-}
-apply_models_low() {
-    for f in "$WORK"/briefs/*.model; do
-        [ -e "$f" ] || continue
-        echo claude-sonnet-5 > "$f"
-    done
-}
-restore_models() {
-    local d; d=$(model_save_dir)
-    [ -d "$d" ] || return 0
-    for f in "$WORK"/briefs/*.model; do
-        [ -e "$f" ] || continue
-        [ -e "$d/$(basename "$f")" ] || rm -f "$f"   # did not exist pre-Low
-    done
-    for f in "$d"/*.model; do
-        [ -e "$f" ] || continue
-        cp "$f" "$WORK/briefs/$(basename "$f")"
-    done
-    rm -rf "$d"
-}
+mkdir -p "$WORK/usage"
 
 # ------------------------------------------------------------ hostops timer
 hostops_low() {
@@ -123,6 +89,7 @@ hostops_low() {
         || systemctl --user restart hakux-hostops.timer 2>/dev/null || true
 }
 hostops_normal() {
+    [ -e "$DROPIN" ] || return 0
     rm -f "$DROPIN"
     rmdir "$DROPIN_DIR" 2>/dev/null
     systemctl --user daemon-reload 2>/dev/null
@@ -139,85 +106,66 @@ write_mode() {   # <mode> <source> <reason>
 log_switch() { printf '%s\t%s\n' "$(now_iso)" "$1" >> "$SWITCH_LOG"; }
 
 apply_low() {   # <source> <reason>
-    local src=$1 reason=$2
-    local already; already=$(read_mode)
-    if [ "$already" != low ]; then
-        : > "$SAVE_DIR/limits.snapshot"
-        printf 'LANE_MAX=%s\n' "$(get_kv "$LIM" LANE_MAX)" >> "$SAVE_DIR/limits.snapshot"
-        printf 'MODEL_LANE_ESCALATED=%s\n' "$(get_kv "$LIM" MODEL_LANE_ESCALATED)" >> "$SAVE_DIR/limits.snapshot"
-        printf 'PATHFIND_MODEL_CALLS_MAX=%s\n' "$(get_kv "$LIM" PATHFIND_MODEL_CALLS_MAX)" >> "$SAVE_DIR/limits.snapshot"
-        save_models_once
-        hostops_low
-    fi
-    set_kv "$LIM" LANE_MAX 3
-    set_kv "$LIM" MODEL_LANE_ESCALATED claude-sonnet-5
-    set_kv "$LIM" PATHFIND_MODEL_CALLS_MAX 20
-    apply_models_low
-    echo "$reason" > "$WORK/usage/low-active"
-    write_mode low "$src" "$reason"
-    log_switch "-> low ($src): $reason"
-    echo "mode: low ($reason)"
+    echo "$2" > "$LOW_FILE"
+    hostops_low
+    write_mode low "$1" "$2"
+    log_switch "-> low ($1): $2"
+    echo "mode: low ($2)"
 }
 
 apply_normal() {   # <source> <reason>
-    local src=$1 reason=$2
-    if [ -e "$SAVE_DIR/limits.snapshot" ]; then
-        restore_kv "$LIM" LANE_MAX "$(get_kv "$SAVE_DIR/limits.snapshot" LANE_MAX)"
-        restore_kv "$LIM" MODEL_LANE_ESCALATED "$(get_kv "$SAVE_DIR/limits.snapshot" MODEL_LANE_ESCALATED)"
-        restore_kv "$LIM" PATHFIND_MODEL_CALLS_MAX "$(get_kv "$SAVE_DIR/limits.snapshot" PATHFIND_MODEL_CALLS_MAX)"
-        rm -f "$SAVE_DIR/limits.snapshot"
-    fi
-    restore_models
+    rm -f "$LOW_FILE"
     hostops_normal
-    rm -f "$WORK/usage/low-active"
-    write_mode normal "$src" "$reason"
-    log_switch "-> normal ($src): $reason"
-    echo "mode: normal ($reason)"
+    write_mode normal "$1" "$2"
+    log_switch "-> normal ($1): $2"
+    echo "mode: normal ($2)"
 }
 
 # ------------------------------------------------------------- evaluation
 # Reads meter.py's last report (state.json's "last_report"); never runs the
-# meter itself -- the timer's unit runs meter.py first, in its own step, so a
-# `mode.sh auto|tick` with stale or absent data fails open (no switch) rather
-# than guessing.
-evaluate() {   # <source: auto|manual> -> 0 always; prints what it decided
-    local src=$1
+# meter itself. Stale or absent data fails open: no switch.
+evaluate() {   # <source> -> 0 always; prints what it decided
+    local src=$1 cur out
     [ -e "$STATE_JSON" ] || { echo "mode: no meter data yet ($STATE_JSON absent); no change"; return 0; }
-    local now; now=$(now_epoch)
-    local out
-    out=$(HAKUX_NOW="$now" python3 - "$STATE_JSON" <<'PY'
-import json, sys
+    cur=$(read_mode); cur=${cur:-normal}
+    out=$(CUR="$cur" LOW_PCT="$(bash "$MODELS" dial low_pct)" LOW_PROJ="$(bash "$MODELS" dial low_proj)" \
+          NORMAL_PROJ="$(bash "$MODELS" dial normal_proj)" python3 - "$STATE_JSON" <<'PY'
+import json, os, sys
 try:
-    state = json.load(open(sys.argv[1]))
+    r = json.load(open(sys.argv[1])).get("last_report") or {}
 except Exception:
-    print("ERR no state"); sys.exit(0)
-r = state.get("last_report") or {}
-end = r.get("week_end_epoch")
-pct = r.get("estimated_percent")
-proj = r.get("projected_percent_at_reset")
-import os
-now = float(os.environ.get("HAKUX_NOW", "0"))
-if end is not None and now >= end:
-    print("RESET")
-elif pct is None:
-    print("ERR no estimate (no calibration capacity yet)")
+    print("ERR unreadable meter state"); sys.exit(0)
+pct, proj = r.get("estimated_percent"), r.get("projected_percent_at_reset")
+if pct is None:
+    print("ERR no estimate (no calibration capacity yet)"); sys.exit(0)
+low_pct, low_proj, normal_proj = (float(os.environ[k]) for k in ("LOW_PCT", "LOW_PROJ", "NORMAL_PROJ"))
+p = proj if proj is not None else pct
+proj_str = "?" if proj is None else "%g" % p
+cur = os.environ["CUR"]
+# Entry needs BOTH lines; exit needs EITHER (owner, 2026-10-10).
+entering = pct >= low_pct and p > low_proj
+leaving = pct < low_pct or p < normal_proj
+if cur == "low" and not leaving:
+    print("low %g%% used >= %g and %s%% projected >= %g (hysteresis, not yet under %g)"
+          % (pct, low_pct, proj_str, normal_proj, normal_proj))
+elif cur != "low" and entering:
+    print("low %g%% used >= %g and %s%% projected > %g" % (pct, low_pct, proj_str, low_proj))
 else:
-    trig = (pct >= 80) or (proj is not None and proj >= 100)
-    print("TRIGGER %s %s" % (pct, proj if proj is not None else "?") if trig
-          else "HOLD %s %s" % (pct, proj if proj is not None else "?"))
+    print("normal %g%% used, %s%% projected" % (pct, proj_str))
 PY
 )
+    # Holding still re-checks the one file, so a mode file and a low-active
+    # that disagree (a hand edit, a crash between the two writes) heal here.
     case "$out" in
-        RESET)
-            apply_normal "$src" "the account's weekly window has rolled over" ;;
-        TRIGGER\ *)
-            apply_low "$src" "estimated week usage ${out#TRIGGER } (pct, projected-at-reset) >= threshold (80% / 100%)" ;;
-        HOLD\ *)
-            echo "mode: holding at $(read_mode) (${out#HOLD } = pct, projected-at-reset; below threshold)" ;;
-        ERR\ *)
-            echo "mode: ${out#ERR }; no change" ;;
-        *)
-            echo "mode: unreadable meter state; no change" ;;
+        "low "*)    [ "$cur" = low ] && [ -e "$LOW_FILE" ] && out="hold $out" ;;
+        "normal "*) [ "$cur" = normal ] && [ ! -e "$LOW_FILE" ] && out="hold $out" ;;
+    esac
+    case "$out" in
+        hold\ *)   echo "mode: $cur (${out#hold * })" ;;
+        low\ *)    apply_low "$src" "${out#low }" ;;
+        normal\ *) apply_normal "$src" "${out#normal }" ;;
+        ERR\ *)    echo "mode: ${out#ERR }; no change" ;;
+        *)         echo "mode: unreadable evaluation; no change" ;;
     esac
 }
 
@@ -243,6 +191,6 @@ case "$cmd" in
         [ -e "$WORK/usage/summary.txt" ] && cat "$WORK/usage/summary.txt"
         ;;
     *)
-        echo "usage: mode.sh normal|low|auto|status" >&2
+        echo "usage: mode.sh normal|low|auto|status|tick" >&2
         exit 2 ;;
 esac

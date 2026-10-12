@@ -1,0 +1,9 @@
+title_verdict.judge(write_contact_sheet=False), whole run unless the route marks gameplay
+NGB A         z-1791797927-fpsbelow1012-1778929 fps_ok 0.8472 own 0.1461 wmed 43.67 wmin 10.44 J/frame 0.1916 late/100 33.62 worst_stall 865.4
+NGB B         z-1791797921-fpsbelow1012-1777822 fps_ok 0.9602 own 0.5422 wmed 58.59 wmin 13.4 J/frame 0.1636 late/100 7.94 worst_stall 862.3
+DOA3 A        z-1791797928-fpsbelow1012-1779675 fps_ok 0.6975 own 0.6975 wmed 46.05 wmin 13.19 J/frame 0.2099 late/100 11.98 worst_stall 600.7
+DOA3 B        z-1791803606-fpsbelow1012-3255578 fps_ok 0.9607 own 0.9607 wmed 59.88 wmin 21.07 J/frame 0.1699 late/100 1.21 worst_stall 624.3
+Buffy A       z-1791798044-fpsbelow1012-1807480 fps_ok 0.7931 own 0.7931 wmed 29.94 wmin 24.48 J/frame 0.2779 late/100 11.53 worst_stall 116.6
+Buffy B       z-1791804165-fpsbelow1012-3514899 fps_ok 1.0 own 1.0 wmed 29.97 wmin 29.17 J/frame 0.2609 late/100 3.99 worst_stall 97.6
+Forza master  z-1791801220-fpsbelow1012-2906178 fps_ok 0.5055 own 0.5055 wmed 29.14 wmin 18.93 J/frame 0.3041 late/100 23.56 worst_stall 1851.8
+MC3 rangelog  z-1791799077-fpsbelow1012-2104673 fps_ok 0.0 own 0.0 wmed 22.96 wmin 18.83 J/frame 0.3566 late/100 60.55 worst_stall 164.3

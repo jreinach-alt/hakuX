@@ -12,22 +12,25 @@ Requires the GitHub CLI (gh) to be installed and authenticated.
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
 from collections import defaultdict
-from urllib.request import urlopen
-from urllib.error import URLError
 
 
 REPO_NAME = "xemu-project/xemu"
 XEMU_TITLE_URL_BASE = "https://xemu.app/titles/"
-XDB_RAW_URL_BASE = "https://raw.githubusercontent.com/xemu-project/xdb/main/titles"
+# xemu-project/xdb is read from the local mirror (docs/lanes/selfdeps/mirror_sources.py),
+# never from raw.githubusercontent.com. A missing mirror is an error, not an empty name.
+XDB_MIRROR = os.path.join(
+    os.environ.get("HAKUX_MIRRORS", os.path.join(os.path.expanduser("~"), "hakux-work", "mirrors")),
+    "git", "github.com", "xemu-project", "xdb")
 
 
 def get_title_name(title_id: str) -> str | None:
     """
-    Fetch title name from xemu-project/xdb for a specific title ID.
+    Fetch title name from the xemu-project/xdb mirror for a specific title ID.
     Title IDs are 8 hex chars: first 2 bytes are publisher code (ASCII), last 2 bytes are title number.
     """
     title_id = title_id.lower()
@@ -40,12 +43,14 @@ def get_title_name(title_id: str) -> str | None:
     except (ValueError, UnicodeDecodeError):
         return None
 
-    info_url = f"{XDB_RAW_URL_BASE}/{pub_code}/{title_num:03d}/info.json"
+    if not os.path.isdir(XDB_MIRROR):
+        sys.exit(f"gen-changelog: xdb mirror missing at {XDB_MIRROR}; run mirror_sources.py")
+    info_path = f"main:titles/{pub_code}/{title_num:03d}/info.json"
     try:
-        with urlopen(info_url, timeout=5) as response:
-            info = json.loads(response.read().decode("utf-8"))
-            return info.get("name")
-    except (URLError, json.JSONDecodeError, TimeoutError):
+        out = subprocess.run(["git", "--git-dir", XDB_MIRROR, "show", info_path],
+                             capture_output=True, check=True, timeout=5)
+        return json.loads(out.stdout.decode("utf-8")).get("name")
+    except (subprocess.SubprocessError, OSError, json.JSONDecodeError, UnicodeDecodeError):
         return None
 
 

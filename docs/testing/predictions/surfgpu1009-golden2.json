@@ -1,0 +1,56 @@
+{
+  "registered_utc": "2026-10-10T01:10:13Z",
+  "who": "lane.surfgpu1009",
+  "issue": "433",
+  "prediction": "Golden re-check for HAKUX_SURFGPU=1 after the record dedupe (lane.surfgpu1009 NOTES 9; one binary c663a91697, env A/B: a_env none, b_env HAKUX_SURFGPU=1). The first golden (surfgpu1009-golden.json, B 1-1791588861-surfgpu1009-610569 / A -610665) moved exactly one of 266 captures: Image_blit/Overlap_TR_Outside 1 -> 16384 px, the subsurface's 128x128 gradient replaced by the backbuffer's clear. Read from the code: a record does not retire the generation, so the backbuffer whose download the splice left pending stayed draw_dirty in the invalid list, and the blit's range lookup recorded it again behind the subsurface's download; record-order completion put the clear over the gradient. c663a91697 skips a record whose full download at the surface's current generation is already in the batch, under the splice switches only. Prediction: no capture in the ten suites moves between the arms, Overlap_TR_Outside included (back to A's 1 px at (176,180)); worse = 0. B's [surfgpu] line carries dedup= > 0 summed over the run (the skip fired). What would move one: a dedupe that skipped bytes the batch did not hold (a later generation, a partial entry, another destination), which the generation, partial and dest_ptr checks exclude. What this arm cannot see: why only TR_Outside of the six tests whose blit pixel lies in the subsurface's range failed (no per-test markers in the log), so a pass here says the order is right in these 41 tests, not that the race is closed for every timing.",
+  "a_ref": "c663a91697",
+  "b_ref": "c663a91697",
+  "must_not_move": [
+    "Surface_clip/*",
+    "Surface_format/*",
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/*",
+    "Texture_render_target/*",
+    "Texture_render_update_in_place/*",
+    "Texture_Framebuffer_Blit/*",
+    "Image_blit/*",
+    "Texture_CPU_Update/*",
+    "Clear/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Color zeta overlap",
+      "Depth buffer fixed function",
+      "Image blit",
+      "Surface clip",
+      "Surface format",
+      "Texture CPU Update",
+      "Texture Framebuffer Blit",
+      "Texture render target",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "device": "nova",
+  "perflog": true,
+  "runs_per_arm": 1,
+  "a_env": [
+    "HAKUX_GPUXFR=1",
+    "HAKUX_FRAMETRACE=1"
+  ],
+  "b_env": [
+    "HAKUX_GPUXFR=1",
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_SURFGPU=1"
+  ],
+  "queue_order": "Hand-queued (the arms job skips a_ref == b_ref): B first (flag on, cache cleared for a new apk), then A (flag off, cache kept), both request.sh --who surfgpu1009 --suites <the ten disc suites> --ref c663a91697 --perflog --device nova --env HAKUX_GPUXFR=1 --env HAKUX_FRAMETRACE=1 [--env HAKUX_SURFGPU=1 on B] --issue 433 --expect docs/testing/predictions/surfgpu1009-golden2.json.",
+  "judge": "python3 docs/testing/ab_compare.py --a <A dir> --b <B dir> --expect docs/testing/predictions/surfgpu1009-golden2.json --allow-same-binary; plus the sum of dedup= over B's [surfgpu] lines in logcat1.txt"
+}

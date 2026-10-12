@@ -45,6 +45,8 @@ REPO = os.environ.get("HAKUX_REPO_DIR", "/home/justin/hakuX")
 D = os.environ.get("DISPATCH_DIR", W + "/dispatch")
 JOBS = os.path.dirname(os.path.abspath(__file__))  # .../docs/testing/jobs/ops
 TESTING = os.path.dirname(JOBS)                     # .../docs/testing/jobs -> jobs
+sys.path.insert(0, TESTING)
+import models  # the one model table/reader (#433); TESTING is jobs/, where models.py lives
 STATE_DIR = os.environ.get("OPS_STATE_DIR", W + "/host-tools/ops-state")
 INBOX = os.environ.get("OPS_INBOX", W + "/host-tools/hostops-inbox.md")
 BRIEFS = os.environ.get("OPS_BRIEFS", W + "/briefs")
@@ -174,7 +176,10 @@ def _lane_session_live(name):
 
 def _lane_idle_min(name, ref):
     """Minutes since the lane last did anything we can see: its branch's last commit, or its
-    unit's last stop, whichever is later. None if neither can be read."""
+    unit's last stop, whichever is later. None if neither can be read. Clamped at 0: the host
+    clock steps backward every ~32s (WSL/Hyper-V time sync), which can stamp a commit after NOW
+    was read; a last commit "in the future" is a clock step, not a reason to skip a stranded lane
+    (usage24h1009's fold, 2026-10-10 06:42 PDT, see addendum 1)."""
     marks = []
     out, rc = sh("git -C %s log -1 --format=%%ct %s" % (REPO, ref))
     if rc == 0 and out.strip().isdigit():
@@ -184,7 +189,7 @@ def _lane_idle_min(name, ref):
         ep, rc2 = sh("date -d %s +%%s" % _shq(out.strip()))
         if rc2 == 0 and ep.strip().isdigit():
             marks.append(int(ep.strip()))
-    return (NOW - max(marks)) / 60 if marks else None
+    return max(0.0, (NOW - max(marks)) / 60) if marks else None
 
 
 def _shq(s):
@@ -719,7 +724,7 @@ def run(shadow):
                     say("ESCALATION CAP %s %s: %d session(s) did not clear it; left OPEN for lane.local and the PM"
                         % (jam.cls, jam.subject, esc["inst_count"]))
             elif NOW - last_ts >= ESCALATE_AFTER_MIN * 60:
-                model = "claude-opus-5-5" if esc["count"] >= 1 else "claude-sonnet-5"
+                model = models.model_for("bookkeeping", escalate=esc["count"] >= 1, work=W)
                 if shadow:
                     cost = 0.0
                     actions.append("[shadow] would escalate %s %s on %s (count would become %d)" % (jam.cls, jam.subject, model, esc["count"] + 1))

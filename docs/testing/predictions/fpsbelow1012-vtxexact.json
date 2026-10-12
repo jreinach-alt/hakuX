@@ -1,0 +1,34 @@
+{
+  "registered_utc": "2026-10-12T13:10:03Z",
+  "who": "lane.fpsbelow1012",
+  "issue": "433",
+  "device": "nova",
+  "a_ref": "67e3fcf745",
+  "b_ref": "67e3fcf745",
+  "runs_per_arm": 1,
+  "arms": {
+    "MC3": {
+      "title": "54540079-Midnight_Club_3_DUB_Edition.xiso.iso",
+      "route": "midnight-club-3.returning",
+      "seconds": 540,
+      "A": "request.sh --ref 67e3fcf745 --perflog --env HAKUX_GPUXFR=1 --env HAKUX_FRAMETRACE=1 --priority sweep",
+      "B": "the same plus --env HAKUX_VTX_EXACT=1, queued before A"
+    }
+  },
+  "order": "MC3 B, then MC3 A, so the device is left without the switch. Forza's [sdrfin] run on the same ref (NOTES.md 13) is a measurement queued after them, not an arm of this prediction.",
+  "judge": "python3 docs/lanes/fpsbelow1012/tools/rfread.py <A> <B> --expect docs/testing/predictions/fpsbelow1012-vtxexact.json --key MC3. Exit 0 every leg passes, 1 a leg fails, 2 VOID, 3 NOT IN THE CLASS.",
+  "expect": {
+    "MC3": {
+      "a_vtx_exact": 0,
+      "b_vtx_exact": 1,
+      "min_periods": 40,
+      "a_dl_min": 300,
+      "dl_ratio_max": 0.05,
+      "wait_ratio_max": 0.25
+    }
+  },
+  "must_not_move": [],
+  "must_not_regress": [],
+  "expect_counts": {},
+  "prediction": "#433 HAKUX_VTX_EXACT (lane.fpsbelow1012 NOTES.md sections 10, 10a and 13): sync_vertex_ram_buffer rounds each vertex range out to whole pages and merges neighbours, then tests gpu_stale and downloads draw_dirty surfaces over that ROUNDED range. Midnight Club 3 keeps a dynamic vertex buffer at 0x2fe4000-0x2fe597f and renders a 256x256 swizzled colour target at 0x02fe5980, mid-page right after it; every vertex sync after the target was drawn rounds into its first 0x680 bytes and downloads it, with a finish, mid-pass. The [sdrange] run z-1791799077-fpsbelow1012-2104673 read 973 such downloads per 60 frames after the gameplay mark, ex 0 (no draw's exact vertex range reaches the target), edge 973, and no other caller downloading. With the switch, gpu_stale, the download and the generation record cover only the parts of the merged range inside the draw's exact ranges; the copy still covers the rounded pages. Same binary 67e3fcf745 on both arms (master 117dafa327 plus this lane's switches, all off by default); A without the env, B with --env HAKUX_VTX_EXACT=1; both perflog with HAKUX_GPUXFR=1 and HAKUX_FRAMETRACE=1, route midnight-club-3.returning, 540 s, sweep tier. THE WINDOW is every [sdcall] period after the route's `mark gameplay`, in each arm. MC3's route is blind throttle with no steering, so the scene after the mark differs run to run and its fps varies 23-29 at one ref (10a): no leg rides on fps. LEGS (tools/rfread.py): V A's init line reads HAKUX_VTX_EXACT=0 and B's =1, both arms have the mark and >= 40 periods after it (else VOID); C A's median `range` downloads per 60 frames >= 300 (else NOT IN THE CLASS, not judged; master read 927-1020); M B's median `range` downloads per 60 frames <= 0.05 x A's; P B's median `range` wait per 60 frames <= 0.25 x A's. FIGURES stated before any run: A range dl 900-1020 and wait 740-980 ms per 60 frames (12-16 ms/frame); B range dl <= 30 and wait <= 120 ms per 60 frames. Hand-read beside the legs, not judged: title_verdict fps_ok and window median for each arm (P 0.55 that B reads fps_ok >= 0.9), decompose.py ph_Fin per frame (A 12.8-17.0 ms; B expected <= A - 8 ms), B's [sdrfin] split (own should fall to near zero), and B's route frames after the mark for torn or exploded geometry. WHAT REFUTES WHAT: B reads =1 and range dl does not fall -> the downloads are not the rounding's (10a's reading is wrong, or the draw's own ranges reach the target: H2); M passes and P fails -> the wait moved to another range completion (B's [sdrfin] clean or dest rises: the eviction batches the vertex sync used to complete are now completed by texture lookups); M and P pass and ph_Fin does not fall -> the finish moved to the next finish instead of going; torn geometry in B -> a draw reads bytes outside the ranges it declares, and the switch is unsafe as written. The lever is judged a win when MC3 passes every leg. It is the one title of the class with a route (Nightfire's NOSCAN calls have no route; Forza reads not H1, section 11), so the three-title rule of step 4 applies to L1, not here; lane.local's cross-title screen judges the switch for default-on."
+}
