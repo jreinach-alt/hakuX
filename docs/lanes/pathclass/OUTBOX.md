@@ -88,3 +88,11 @@ fragments**. `State: ready`.
 Step 6c (benchmark new titles on the classifier path) follows once this folds to master -- see the PR
 comment for that wait. This checkout was found 147 commits behind `origin/master` at the start of this
 attempt; merging it in before pushing.
+
+## #433 -- 2026-10-12 04:00 PDT
+
+Step 6c's fold landed on `origin/master` (`a13a2f52db`, per Addendum 3). Did 6c's offline part while
+`/home/justin/hakuX` catches up: 29 `gen-<slug>.route` files + `targets.toml` rows for every eligible title
+(35 `copied`+Nova titles, minus 4 owner-held, minus Forza (already hand-tuned) and NFS MW (held by
+lane.nfsroute1011) -- full list in NOTES.md), each passing `route.sh --check`. No device run yet: both of
+Addendum 3's dispatcher-tree gates against `/home/justin/hakuX` still read empty/zero as of 03:58 PDT.

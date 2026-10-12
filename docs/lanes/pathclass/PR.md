@@ -4,7 +4,7 @@ State: ready
 
 Lane: pathclass              Issue: #433 (0.5: 50 Playable)
 Base: master @ c03e17b8a0 (merged in 2026-10-12; this checkout was found 147 commits behind at the start of attempt 3)
-Files: docs/lanes/pathclass/PR.md, docs/lanes/pathclass/NOTES.md, docs/lanes/pathclass/OUTBOX.md, docs/lanes/pathclass/simpsons-hit-run.save.route, docs/testing/titles/pathclass.py, docs/testing/titles/pathclass_selftest.py, docs/testing/titles/classify.py, docs/testing/titles/drive.py, docs/testing/titles/drive-profiles/generic.toml, docs/testing/titles/pathknow/classifier/pool.py, docs/testing/titles/pathknow/classifier/label.py, docs/testing/titles/pathknow/classifier/embed.py, docs/testing/titles/pathknow/classifier/prompts.py, docs/testing/titles/pathknow/classifier/zeroshot_eval.py, docs/testing/titles/pathknow/classifier/ocr_eval.py, docs/testing/titles/pathknow/classifier/train.py, docs/testing/titles/pathknow/classifier/distill.py, docs/testing/titles/pathknow/classifier/jepa_probe.py, docs/testing/titles/pathknow/classifier/pick.py, docs/testing/titles/pathknow/classifier/head.npz, docs/testing/dispatcher.sh, docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh
+Files: docs/lanes/pathclass/PR.md, docs/lanes/pathclass/NOTES.md, docs/lanes/pathclass/OUTBOX.md, docs/lanes/pathclass/simpsons-hit-run.save.route, docs/testing/titles/pathclass.py, docs/testing/titles/pathclass_selftest.py, docs/testing/titles/classify.py, docs/testing/titles/drive.py, docs/testing/titles/drive-profiles/generic.toml, docs/testing/titles/pathknow/classifier/pool.py, docs/testing/titles/pathknow/classifier/label.py, docs/testing/titles/pathknow/classifier/embed.py, docs/testing/titles/pathknow/classifier/prompts.py, docs/testing/titles/pathknow/classifier/zeroshot_eval.py, docs/testing/titles/pathknow/classifier/ocr_eval.py, docs/testing/titles/pathknow/classifier/train.py, docs/testing/titles/pathknow/classifier/distill.py, docs/testing/titles/pathknow/classifier/jepa_probe.py, docs/testing/titles/pathknow/classifier/pick.py, docs/testing/titles/pathknow/classifier/head.npz, docs/testing/dispatcher.sh, docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh, docs/testing/titles/targets.toml, docs/testing/titles/routes/gen-*.route
 Prediction: none: no arm. Host-side test tooling + a drive-profile/classify.py wiring change; no device run yet.
 Needs device: no    Needs NDK: no
 
@@ -53,6 +53,15 @@ second run, **3381 passed, 0 failed, all 136 fragments**.
 
 Step 6c (benchmark new titles on the classifier path) follows once this folds to master; see OUTBOX.md /
 the PR comment for that wait.
+
+**Step 6c, offline part (attempt 4, 2026-10-12):** the fold landed on `origin/master` as `a13a2f52db`
+(Addendum 3). Ordered the 35 titles both `copied` (status.json) and present on the Nova gameplay-first,
+excluded 4 held by `pm/owner-holds.tsv` (RalliSport exclude; Cel Damage/Arx Fatalis/Fantastic 4
+below_bar+ALL+never), skipped Forza (already hand-tuned) and NFS Most Wanted (route held by
+lane.nfsroute1011), and wrote `gen-<slug>.route` + a `targets.toml` row for the remaining 29 (full table in
+NOTES.md). All 29 routes pass `route.sh --check`; none run yet. Device runs wait on both of Addendum 3's
+dispatcher-tree gates against `/home/justin/hakuX` (still failing as of 03:58 PDT) and, per Addendum 2, on
+the Nova itself (held by lane.local's overnight chain until Playable reaches 50).
 
 This checkout was 147 commits behind `origin/master` at the start of attempt 3 (merged, not rebased, per
 the lane rule against rewriting history after a prediction names refs -- there is no prediction here, but
