@@ -1,13 +1,13 @@
 gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5)
-State: draft
+State: ready
 
 Lane: gtasagpu1011      Issue: none (dispatched directly by lane.local, #433 umbrella)
 Base: master @ 6d8947bb47
-Files: docs/lanes/gtasagpu1011/NOTES.md, docs/lanes/gtasagpu1011/PR.md, docs/lanes/gtasagpu1011/WAITING, docs/lanes/gtasagpu1011/dispcmp.py, docs/lanes/gtasagpu1011/dispcmp_lib.py, docs/lanes/gtasagpu1011/fdread.py, docs/lanes/gtasagpu1011/fsz.py, docs/lanes/gtasagpu1011/gradwatch.py, docs/lanes/gtasagpu1011/litfail.py, docs/lanes/gtasagpu1011/scrread.py, docs/lanes/gtasagpu1011/sqscan.py, docs/lanes/gtasagpu1011/stillcmp.py, docs/testing/predictions/gtasagpu1011-screen.json, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/vertex.c
+Files: docs/lanes/gtasagpu1011/NOTES.md, docs/lanes/gtasagpu1011/PR.md, docs/lanes/gtasagpu1011/dispcmp.py, docs/lanes/gtasagpu1011/dispcmp_lib.py, docs/lanes/gtasagpu1011/fdread.py, docs/lanes/gtasagpu1011/fsz.py, docs/lanes/gtasagpu1011/gradwatch.py, docs/lanes/gtasagpu1011/litfail.py, docs/lanes/gtasagpu1011/scrread.py, docs/lanes/gtasagpu1011/sqscan.py, docs/lanes/gtasagpu1011/stillcmp.py, docs/testing/predictions/gtasagpu1011-screen.json, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/vertex.c
 Prediction: docs/testing/predictions/gtasagpu1011-screen.json @ 70a4f2feb46e81ef45e0035e898a015daac96ac562ce91fb107ef4c93041ef07 (the title screen, self-judged by scrread.py); the switch screens, frame dumps and proof soaks are read by hand, each run's prediction written in NOTES.md (sections 1, 2b-2f, step 3) before it was queued
 Needs device: yes (Nova)    Needs NDK: yes
 
-Work in progress. The sky defect is found and fixed behind `HAKUX_VTX_HAZARD=1`, which is off by default. The shadow has no renderer defect: it is drawn as the game asks and it is in the stills, but it is faint (11-24% darker than the ground). Step 3's proof runs are next.
+The sky defect is found and fixed behind `HAKUX_VTX_HAZARD=1`, which is off by default. Two proof soaks with the switch show no sky defect in 136 post-mark stills or 240 one-a-second video frames. The current build shows 5 in 67 stills and 7 in 120 video frames. The shadow has no renderer defect: it is drawn as the game asks and it is in the stills, but it is faint (11-24% darker than the ground). It measures the same with and without the switch. The cross-title screen is lane.local's, combined with lane.nfsaudio1011's switch.
 
 ## Step 1: switch discriminators
 
@@ -101,12 +101,44 @@ The owner's "shadow dropping out" in play: the vertex hazard rewrote a shadow-ch
 | `1-1791745550-lane.gtasagpu1011-818197` | 50a389ef2b | schema 7 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s (valid per lane.local, 14:04 PDT) | scored: drawn, passes depth where nothing stands in front, reaches the display; A4 by the letter (NOTES 2e) |
 | `1-1791752181-lane.gtasagpu1011-2027680` | 50a389ef2b | the same, dump at `after160` (CJ standing in the alley) | scored: drawn, passes depth, reaches the display; A4, no defect (NOTES 2e) |
 | `1-1791755383-lane.gtasagpu1011-2946023` | e53b9fa918 | schema 8 `watch600` dump from startup: how the 32x32 shadow gradient is made, and n9's texels and diffuse | scored: G1, the gradient is drawn exactly as asked (NOTES 2f) |
-| `1-1791766181-lane.gtasagpu1011-1063190` | d50bf5c47c | step 3 proof 1: gta-sa 600 s, `HAKUX_VTX_HAZARD=1`, frames every 5, video 120 s | queued on the Nova |
-| `1-1791766181-lane.gtasagpu1011-1063583` | d50bf5c47c | step 3 proof 2, the same | queued on the Nova |
+| `1-1791766181-lane.gtasagpu1011-1063190` | d50bf5c47c | step 3 proof 1: gta-sa 600 s, `HAKUX_VTX_HAZARD=1`, frames every 5, video 120 s | scored: S and H hold, C fails by the letter (NOTES, step 3 result) |
+| `1-1791766181-lane.gtasagpu1011-1063583` | d50bf5c47c | step 3 proof 2, the same | scored: the same |
+| `1-1791756360-lane.soakvideo1011-3149619` | b73d50a070 | soakvideo1011's gta-sa video soak, no switch: the current build for the side-by-side | read: 5 of 67 post-mark stills with the sky defect |
 
-## Step 3
+## Step 3: proof
 
-Video is live: `request.sh` in `/home/justin/hakuX` (3f1eace130) has `--video-seconds`. The proof runs are two `gta-sa` soaks at d50bf5c47c with `HAKUX_VTX_HAZARD=1`, 600 s, frames every 5, `--video-seconds 120`. Predictions S (sky), H (shadow) and C (cost) are in NOTES, step 3.
+The proof runs are two `gta-sa` soaks on the Nova at d50bf5c47c with `HAKUX_VTX_HAZARD=1`: 600 s, frames every 5 s, and 120 s of video from 30 s after the mark. Neither has a BugCheck. Predictions S, H and C were written before queueing (NOTES, step 3).
+
+| run | sky polygons, post-mark stills | sky defects, video at 1 frame/s | shadow share, alley stills (`stillcmp.py`) | `vtx_hazard` finishes per 10 s, gameplay |
+|---|---|---|---|---|
+| `1063190`, switch on | 0 of 67 | 0 of 120 | 0.77-1.11 (13) | 69-395, median 260 |
+| `1063583`, switch on | 0 of 69 | 0 of 120 | 0.78-1.11 (14) | 126-437, median 314 |
+| `3149619`, current build | 5 of 67 | 7 of 120, plus a magenta quad on the road | (not measured) | (switch off) |
+
+- **S (sky, P 0.85): holds.** 0 of 136 pooled stills. The current build runs at about 4 per 144, so zero by chance is about 1-3%.
+- **H (shadow, P 0.95): holds.** Every alley still is at 0.7 or more. By eye, on open sunny ground, the shadow is no easier to see in either arm. That fits a faint shadow, not a missing one. The video check is the owner's.
+- **C (cost, P 0.8): fails by the letter.** 11 of 79 lines are outside 100-370, between 69 and 437. That is about one extra submit a frame, and up to 1.5. No frame-rate claim is made from these runs; the screen reads gfps.
+
+### For the owner: stills and video
+
+The results are in `/home/justin/hakux-work/dispatch/results/<run>/`, with stills at `frames/fNNNNN.png` and video at `video/v00001.mp4` and `video/v00002.mp4`. The pairs are matched by time after the route's mark.
+
+| current build (3149619) | what is there | switch on (1063190) | switch on (1063583) |
+|---|---|---|---|
+| f00041, 07:55 | the alley: sky white, treetops and a crane smeared | f00041, clean sky | **f00040, 07:52: the same spot, clean blue sky** |
+| f00070, 10:45 | a saturated blue rectangle over the upper right sky | f00070, clean | f00069, clean |
+| f00076, 11:19 | sky blown out yellow-white with rays, a tree smeared | f00076, clean | f00075, clean |
+| f00081, 11:48 | a pale white wedge from the top edge of the sky | f00081, clean | f00080, clean |
+| f00107, 14:18 | sky white, trees smeared | f00107, clean | f00106, clean |
+
+Video, seconds into each mp4 (within about 1 s):
+
+| run | mp4 | where to look |
+|---|---|---|
+| `1-1791756360-lane.soakvideo1011-3149619` (current) | `video/v00001.mp4` | +33 s pale wedges from the top edge; +55 s a red wedge over the upper right sky |
+| | `video/v00002.mp4` | +4 s sky blown out, trees smeared; +32 s a magenta quad on the road (a ground polygon); +46 s a pale rectangle in the sky |
+| `1-1791766181-lane.gtasagpu1011-1063190` (switch on) | `video/v00001.mp4`, `video/v00002.mp4` | no sky defect at 1 frame/s. For the shadow: CJ runs on open, sunny road and sidewalk through most of both segments |
+| `1-1791766181-lane.gtasagpu1011-1063583` (switch on) | `video/v00001.mp4`, `video/v00002.mp4` | no sky defect at 1 frame/s |
 
 **Regression:** The cross-title screen runs combined with lane.nfsaudio1011's switch (lane.local); prediction `gtasagpu1011-screen.json`. `HAKUX_VTX_HAZARD` stays off by default in this PR.
 

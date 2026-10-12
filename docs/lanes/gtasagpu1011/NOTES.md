@@ -1079,3 +1079,66 @@ at 960 px. Five show the sky defect:
 
 So the current build, without the switch, shows it in 5 of 67 stills here, against the brief's
 2 of 72 a run. These five are the "current build" stills in PR.md's owner table.
+
+### Step 3 result: both proof soaks scored
+
+Both soaks ran on the Nova at d50bf5c47c (apk be0e06b4ef4d) with `HAKUX_VTX_HAZARD=1` (logcat:
+`env: HAKUX_VTX_HAZARD=1`). Each has 0 BugCheck in logcat. Both reached the route's mark and ran to the end.
+
+| run | cut1 | mark | end | post-mark stills | video |
+|---|---|---|---|---|---|
+| `1-1791766181-lane.gtasagpu1011-1063190` | 18:30:25 | 18:31:31 | 18:38:04 | f00041-f00107 (67; f00108 is the Settings screen from the pull, skipped) | `video/v00001.mp4`, `v00002.mp4` |
+| `1-1791766181-lane.gtasagpu1011-1063583` | 18:40:59 | 18:42:04 | 18:48:41 | f00040-f00108 (69) | `video/v00001.mp4`, `v00002.mp4` |
+
+**S (sky): holds.** 0 of 136 pooled post-mark stills show a hard-edged sky polygon or a white
+sky. I read them on 320-px sheets and on 640-px crops of the top 55% of each still. These are
+not defects: the black boxes in 1063190 f00057/f00058 (a sign on a pole), the haze in 1063583
+f00072/f00073 (distance fog) and the thin streaks in f00092 (power lines). The current build
+shows 5 of 67 in 3149619 and about 4 per 144 in the brief's runs, so zero here by chance is
+about 1-3%.
+
+The videos agree. I sampled each mp4 at 1 frame a second (`ffmpeg -vf fps=1`, 60 per segment) and
+read them on sheets:
+
+| video (120 s from 30 s after the mark) | sampled | sky defect | other |
+|---|---|---|---|
+| 3149619, current build, no switch | 120 | 4 hard-edged: v00001 +33 s (pale wedges from the top edge), +55 s (a saturated red wedge over the upper right sky), v00002 +4 s (sky blown out yellow-white, trees smeared), +46 s (a pale rectangle, straight edges). 3 more with the sky white behind the trees: v00001 +39 s, v00002 +48 s, +49 s | v00002 +32 s: a flat magenta quad on the road, hard edges (a ground polygon, not the sky) |
+| 1063190, `HAKUX_VTX_HAZARD=1` | 120 | 0 | v00001 +21 s: a black shape at the right edge, irregular, a tree trunk next to the camera |
+| 1063583, `HAKUX_VTX_HAZARD=1` | 120 | 0 | none |
+
+The offsets are seconds into each mp4, within about 1 s. The magenta road quad is the "poly
+surface dropout" the owner described, on the ground. The fix's 240 samples show no polygon of
+that kind.
+
+**H (shadow): holds.** `stillcmp.py` against 2027680 f5 n529:
+
+| run | alley stills | share of the shadow |
+|---|---|---|
+| 1063190 | f00028-f00037 and cut1/cut2/cut3 | 0.77-1.11, all 0.7 or more |
+| 1063583 | f00028-f00038 and the cuts | 0.78-1.11, all 0.7 or more |
+
+By eye, in the open sunny post-mark stills, the shadow is no easier to see in either arm. ON:
+1063190 f00044/f00057/f00066. OFF: 3149619 f00052/f00059/f00087. That fits a faint shadow
+(step 2), not a missing one. The brief's "visible in the sunny post-mark frames" is met by
+measurement in the alley, not by eye on open ground. The owner's video check decides that part.
+
+**C (cost): fails by the letter.** The predicted range was 100-370 finishes per 10 s in
+gameplay, and 11 of 79 lines fall outside it:
+
+| run | lines (gameplay) | range | median | in 100-370 |
+|---|---|---|---|---|
+| 1063190 | 39 | 69-395 | 260 | 36 |
+| 1063583 | 40 | 126-437 | 314 | 32 |
+
+The 9 lines before gameplay in each run (boot, menus, load) read 1-119. At about 29 fps, that is
+roughly one extra submit a frame, and up to 1.5 at the peak. The on-screen FPS counter reads 29 in
+most stills of both arms; this is an observation, not a measurement, and no gfps claim is made.
+The combined screen reads gfps.
+
+**For the owner.** The table in PR.md pairs the fix's frames with the current build's by run id
+and frame number, with the mp4 paths beside them. The closest pair is 3149619 f00041 (07:55, the
+alley, sky white, treetops and a crane smeared, counter 21) against 1063583 f00040 (07:52, the
+same spot, clean blue sky, counter 29).
+
+**Pilot file.** Not written. It gates this requester's next batch, and per addendum 6 this lane
+queues no screen. lane.local runs the combined screen under its own requester.
