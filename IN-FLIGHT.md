@@ -8,21 +8,23 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pathclass` | claude-sonnet-5 | 2h 16m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
-| `savestate1011` | claude-opus-5-5 | 25 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
+| `pathclass` | claude-sonnet-5 | 2h 31m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `savestate1011` | claude-opus-5-5 | 40 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 4 waiting, 1 running.
+- **Device queue:** 3 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
 
-**45 titles are confirmed Playable** (1 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**47 titles are confirmed Playable** (3 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-12 | Grand Theft Auto III | Playable, 10-minute run |
+| 2026-10-12 | Mercenaries: Playground of Destruction | Playable, 10-minute run |
 | 2026-10-12 | X-Men: The Official Game (Europe) | Playable, 10-minute run |
 | 2026-10-08 | Max Payne 2: The Fall of Max Payne | Playable, 10-minute run |
 | 2026-10-07 | Legacy of Kain: Defiance | Playable, 10-minute run |
@@ -69,7 +71,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-29 of these still await the owner's flicker check.
+31 of these still await the owner's flicker check.
 
 ## Work in progress
 
@@ -90,4 +92,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 - 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
 
-_Updated 2026-10-12 01:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 01:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
