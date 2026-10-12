@@ -401,8 +401,16 @@ def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_stat
         # rule is about the moving/static heuristic a few lines down, which still never says
         # play. `classifier_confidence` (profile, default 0) is the floor from the #433 step 2
         # eval: below it the answer is `unknown`, which drive.py waits on rather than acts on.
+        # A SECOND, lower floor (`classifier_confidence_menu`, #433 Addendum 6) gates every other
+        # answer: a menu-class miscall risks an input on the wrong menu (recoverable -- the ladder
+        # or the next capture corrects it), never the gameplay claim a false `play` would make, so
+        # it does not need the same floor. Falls back to `classifier_confidence` when a profile sets
+        # only the one knob, so a hand-tuned profile's existing single floor still behaves as before.
         ans = pathclass_client().classify(frame, prev, {"menu_seen": after_title})
-        if ans["confidence"] < profile.get("classifier_confidence", 0.0):
+        gameplay_floor = profile.get("classifier_confidence", 0.0)
+        floor = gameplay_floor if ans["state"] == "gameplay" else \
+            profile.get("classifier_confidence_menu", gameplay_floor)
+        if ans["confidence"] < floor:
             out.update(state="unknown", source="pathclass:low-confidence", pathclass=ans)
             return out
         st = PATHCLASS_MAP.get(ans["state"], "unknown")

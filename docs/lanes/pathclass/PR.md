@@ -93,3 +93,23 @@ noted in each that the returning variant must be requested by its own full name
 (`--route bf2mc.returning`, etc.) since the bare `<name>.route` already exists and the family auto-pick in
 `titlestate.resolve_route()` only applies when it doesn't. No device run queued for any of the five; 6d's
 own device runs wait on 6c actually running, per the brief's own ordering.
+
+**Attempt 7 (2026-10-12): the first 6c run's own failure, fixed.** AvP Extinction (one of attempt 6's queued
+batch) hit `ROUTE FAIL drive generic: unknown: unknown screen for 91 s` at its own title screen: the image
+head read `title_screen` at 0.697, OCR's "Press START" agreed but `text_state()`'s confidence bump only fired
+when OCR *overrides* the image model, not when it merely confirms -- so the agreeing case never moved the
+number, and both stayed under the single 0.85 floor every answer shared. Two changes: (1) `pathclass.py` now
+bumps confidence the same way when OCR confirms the image model's own answer, not only when it overrides it
+(raises this frame to 0.8); (2) `classify.py`/`generic.toml` split the one floor in two --
+`classifier_confidence` (0.85, unchanged) gates only a `gameplay` answer, a new `classifier_confidence_menu`
+(0.7) gates every other answer, since a wrong menu-class answer risks a recoverable wrong input, never the
+false-completion claim a wrong `gameplay` would. Chose 0.7 by sweeping the same 120-frame held-out eval set
+(full `classify()` pipeline, `menu_seen=True`): it is the first floor with zero errant presses on
+true-gameplay frames and zero wrong presses on any other non-gameplay truth, nearly doubling what the
+classifier can act on (66/120 vs the old 43/120), right on 63/66 (95.5%) -- full sweep table in NOTES.md
+"Addendum 6". Added a `pathclass_selftest.py` case replaying this run's own 10 frames end to end (uncovered
+and fixed a harness-only bug along the way: the hand-built stub answer table was positional and didn't
+account for real black frames bypassing the stub, same as production does -- see NOTES.md for the fix).
+`docs/testing/jobs/selftest.sh` run in full again: **3467 passed, 0 failed, all 137 fragments**. Per
+Addendum 6, nothing queued this session; the withdrawn Amped/Area 51 runs and a re-queued AvP wait on
+lane.local to requeue once this folds.

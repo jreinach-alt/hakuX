@@ -122,3 +122,16 @@ Snowboarding `1-1791808261-lane.pathclass-216134`, Area 51 `1-1791808267-lane.pa
 queued clean, pinned to nova; they wait behind the Nova's current holder (`lane.pathfind`'s chain hold), not
 a failure. Stopping per Addendum 5 ("record the request ids ... and stop once they are queued: lane.local
 reads the results").
+
+## #433 -- 2026-10-12 07:10 PDT
+
+The first of the three queued runs, AvP Extinction, came back failed: stalled 91 s at its own title screen,
+stuck on `unknown` because the single 0.85 confidence floor gated every answer alike, and this frame's own
+answer (title screen, OCR agreeing) landed at 0.8. Fixed in two parts: OCR agreement now bumps confidence the
+same way OCR override already did, and the one floor is now two -- 0.85 still gates a `gameplay` answer
+(the claim that matters), a new, lower 0.7 floor gates every other answer (a wrong menu-class input is
+recoverable; a false `gameplay` is not). Chose 0.7 by sweeping the same held-out eval set the step-2 bar
+used; it is the first floor with no added risk on either count, and lets the classifier act on roughly half
+again as many frames as before. Added a selftest replaying this run's own frames end to end. Full
+`docs/testing/jobs/selftest.sh` gate: 3467 passed, 0 failed. Nothing queued this session; the fix waits on
+the next fold before any of the withdrawn or new runs go back on the Nova.
