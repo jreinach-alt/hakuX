@@ -2367,8 +2367,8 @@ note = "STARTED lane.local 2026-10-11 23:2x PDT (Opus, emulator engineering; own
 issues = ["433"]
 standing = false
 files = ["docs/lanes/defaulton1011/**", "hw/xbox/mcpx/apu/apu.c", "hw/xbox/nv2a/pgraph/vk/vertex.c"]
-released = []
-note = "STARTED lane.local 2026-10-11 22:3x PDT (Opus): HAKUX_VTX_HAZARD and HAKUX_APU_PACE on by default at their readers (unset = on; =0 turns either off for an A/B). Owner 10-11 22:3x, after a hands-on test of 10 titles on the Nova with both on: no concerns folding; only defects were Halo CE's, pre-existing (#938, #939). apu.c from lane.nfsaudio1011 (folded); vertex.c released by lane.gtasagpu1011."
+released = ["docs/lanes/defaulton1011/**", "hw/xbox/mcpx/apu/apu.c", "hw/xbox/nv2a/pgraph/vk/vertex.c"]
+note = "RELEASED all files 2026-10-11 23:35 PDT: folded as 00fde8afb3, unit inactive. STARTED lane.local 2026-10-11 22:3x PDT (Opus): HAKUX_VTX_HAZARD and HAKUX_APU_PACE on by default at their readers (unset = on; =0 turns either off for an A/B). Owner 10-11 22:3x, after a hands-on test of 10 titles on the Nova with both on: no concerns folding; only defects were Halo CE's, pre-existing (#938, #939). apu.c from lane.nfsaudio1011 (folded); vertex.c released by lane.gtasagpu1011."
 
 [lane.soakvideo1011]
 issues = ["433"]
