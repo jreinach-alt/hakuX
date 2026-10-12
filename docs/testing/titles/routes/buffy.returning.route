@@ -18,12 +18,24 @@
 #     Sunday 11:53PM".
 #   052538 (START): live play, canyon, HUD, "Move the R thumbstick..." tip.
 # So the menu path below is buffy.route's own (screen-identical on this
-# kept-profile disk), and the play loop below is buffy.route's own
-# run-and-jump pattern: the survey's late frame 053139-play.png (reached by
-# its blind generic loop, ~140s after this route's own mark would land)
-# shows Buffy crouched at a ledge under "Run and press B to jump between
-# ledges" -- the same tip buffy.route's play loop is built around -- so
-# that loop, not the survey's camera-swinging one, is reused here.
+# kept-profile disk).
+#
+# The play loop below is NOT buffy.route's own run-and-jump pattern. A run
+# of this route with that pattern (z-1791817586-lane.zetaroutes1012-2316443,
+# switch on) reached the mark cleanly (fps_ok=1.0, gameplay=777.6s) but
+# failed title_verdict.py's static-window check (static_frac=0.229, bar
+# 0.20): route-frames show Buffy running face-first into the canyon's wall
+# within ~20s of the mark (083219-play.png on) and pinned there, still
+# running in place, through the run's last frame (084448-play.png).
+# buffy.route's loop holds LY min continuously for 7+ seconds before its
+# first turn (axis LX max at the 8.1s mark) -- too long a straight run for
+# this canyon's geometry. spikeout.returning.route's confirmed-working loop
+# (nav.py, Thor, 2026-09-27) instead pulses LY for 1s at a time between
+# turns and backs off (axis LY max) rather than holding forward through a
+# collision. The loop below uses that same pulse-and-vary pattern: a 1s
+# forward pulse, a turn or a backward pulse, repeated with the turn
+# direction and jump/attack presses varied every cycle so no single
+# direction is held long enough to pin Buffy against one piece of geometry.
 wait 20
 shot boot20
 wait 20
@@ -43,28 +55,32 @@ shot pre-mark
 mark gameplay               # CHECK: the canyon with the HUD, no PAUSE panel
 repeat forever {
     axis LY min
-    wait 2
-    press B
-    wait 1.5
-    press B
-    wait 2
-    press A
-    wait 0.6
-    press X
     wait 1
+    axis LY mid
+    press B
+    wait 0.5
     axis LX max
-    wait 1.5
+    wait 1
     axis LX mid
-    wait 2
+    axis LY min
+    wait 1
+    axis LY mid
     press B
-    wait 2
+    wait 0.5
     press A
-    wait 0.6
-    press A
-    wait 1
+    wait 0.3
     axis LX min
-    wait 1.5
-    axis LX mid
     wait 1
+    axis LX mid
+    axis LY min
+    wait 1
+    axis LY mid
+    press X
+    wait 0.3
+    axis LY max
+    wait 0.8
+    axis LY mid
+    press B
+    wait 0.5
     shot play
 }

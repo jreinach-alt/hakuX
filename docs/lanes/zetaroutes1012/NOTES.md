@@ -212,3 +212,75 @@ held overnight by the Playable chain (sweep runs start only when it is idle) and
 force at session start (`lane.pathfind`, 600s, from 2026-10-12T14:43:16Z). Once it is read: write the pilot
 verdict to `dispatch/pilots/lane.zetaroutes1012.ok` (Buffy's result id, what the frames/verdict showed, the
 date), then send the DOA3 and NG Black commands above.
+
+Attempt 1 ended there, correctly: the Buffy run was queued and the session stopped rather than poll a
+device run from inside its own turn. It did not fail -- it reached the WAITING state the lane role asks for.
+This is attempt 2, resumed once that run's `DONE` file existed.
+
+## 6. Buffy's first returning run: reached play, failed on a route defect (not the switch)
+
+`z-1791817586-lane.zetaroutes1012-2316443` ran to completion (`DONE` present). `title_verdict.py --require
+confirmation --reviewed-gameplay yes`:
+
+```
+VERDICT Buffy the Vampire Slayer nova FAIL(static window: 23% of pixels never moved more than 10/255 from
+the window's first frame, over 36 sampled frames from route-frames (bar 20%)) gameplay=777.6s fps_ok=1.0
+crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.229 timeline: none
+battery_w=+0.51 net_w=7.04 j_per_frame=0.2349
+```
+
+Everything the switch itself is responsible for passed: `fps_ok=1.0`, `gameplay=777.6s` (over the 600s bar),
+no crash, no hang. The FAIL is `static_frac=0.229` against the 0.20 bar -- a movement failure, i.e. exactly
+the brief's "parked or menu-bound window is not a confirmation" case, not a `HAKUX_ZETA_D24` finding.
+
+Reading `route-frames/` confirms it directly: `083157-gameplay.png` (the mark) and `083219-play.png` (one
+loop iteration later, ~21s after the mark) already show Buffy pressed face-first into a canyon wall/rock
+corner. Every later play shot through the run's end (`084448-play.png`, the last one, ~13 minutes later) is
+the same framing -- a running-in-place animation (legs/arms cycling, enough per-pixel motion to keep
+`static_frac` just under 1.0 but not enough to clear the 0.20 bar) with no translation. `run.log`'s ROUTE
+lines confirm the loop ran as written: `axis LY min` at 08:31:58.223 (immediately after mark) holds forward
+for the next 7.1s (through `press B`, `press B`, `press A`, `press X`) before the loop's first turn (`axis
+LX max` at 08:32:06.862) -- i.e. she is run forward, unsteered, for over 7 seconds straight into whatever is
+ahead. That pattern is `buffy.route`'s own play loop, reused verbatim per the brief's step 2 -- but
+`buffy.route`'s header says this exact loop was never device-confirmed: it is itself a guess ("Replay ...
+sat 4 min on one frame ... the first loop never pressed B. So: run forward and jump (B) twice per cycle, and
+turn for longer") written after a DIFFERENT stuck replay, and the file is still headed `DRAFT until a
+dispatch run replays it and its frames from the mark on are reviewed`. Reusing an unconfirmed loop verbatim
+reproduced the same failure mode (stuck against geometry) in a different spot of the same canyon.
+
+Wrote the pilot verdict (`dispatch/pilots/lane.zetaroutes1012.ok`, naming this run, what it showed, and the
+fix below) so the gate would admit the DOA3/NG Black requests already prepared in section 5.
+
+## 7. Route fix: pulse-and-turn instead of a long held run
+
+`spikeout.returning.route` (in the same routes directory, confirmed working: nav.py, Thor, 2026-09-27) plays
+its post-mark loop very differently from `buffy.route`'s: `axis LY min; wait 1; axis LY mid` -- a 1-second
+forward pulse that returns to neutral -- interleaved with turns in both directions (`axis LX max` / `axis LX
+min`) AND a backward pulse (`axis LY max`), never holding one direction long enough to pin the character
+against one piece of geometry.
+
+`buffy.returning.route`'s play loop (only; the boot/menu steps above the mark are unchanged, since those
+worked -- `fps_ok=1.0`, mark reached on schedule) now uses that same pattern: 1s forward pulses back to
+`mid`, a turn or a backward pulse between them, and jump/attack presses (B / A / X) varied every cycle. The
+route's header now says what the first run showed and why the loop changed (not the brief's literal `buffy.
+route`-verbatim text) -- public text, no process narration. `route.sh --check` passes (86 lines); `titlestate.
+py resolve-route --route buffy.returning --title-id 45410012 --device nova` still gives `refuse: null,
+state: returning`, unaffected by the play-loop change.
+
+This is run 2 of the "at most 2 more runs" the brief allows for a route defect; 1 more remains if it still
+does not reach 600s of moving play.
+
+## 8. Queued: fixed Buffy re-run, DOA3, NG Black
+
+```
+z-1791820250-lane.zetaroutes1012-2510625   Buffy (fixed buffy.returning.route), switch on
+z-1791820275-lane.zetaroutes1012-2514338   DOA3 (54430001-Dead_or_Alive_3.xiso.iso), doa3.returning, switch on
+z-1791820279-lane.zetaroutes1012-2514939   NG Black (Ninja Gaiden Black.iso), ninja-gaiden-black.returning, switch on
+```
+
+DOA3 and NG Black's requests both printed `pilot gate: ... reviewed pilot .../lane.zetaroutes1012.ok (0.0 h
+old) admits it` -- the gate is working as designed, not held this time. Run count so far: 1 (read) + 3
+(queued) = 4 of the 12-run budget.
+
+WAITING: on all three result dirs' `DONE` files, same reason as before (overnight Playable-chain hold on the
+Nova; sweep tier starts only when it is idle). Nothing further to do until they land.
