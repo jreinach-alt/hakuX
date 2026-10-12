@@ -120,6 +120,14 @@ Reader: `tools/voiceread.py`, leg W. It prints:
 - the lock stall and gapx totals;
 - for stale starts, `32*boff − ahead`. H-A' predicts about 0: the run starts where the VP passes the guest's head.
 
+## Fix-shaped arm (Addendum 2): pacing at the low watermark on Android
+
+NEED: apu.c -- the pacing lives in `throttle()` (apu.c ~115-175), which lane.snapshot1011 holds. `apu.c.patch` (here)
+wraps the Android early return in `if (!apu_pace_on())`, so `HAKUX_APU_PACE=1` runs the low-watermark pacing that
+non-Android builds always run. Off by default: the shipped path is unchanged. The switch is read once and logged once
+(`hakuX-audio: apu_pace: on|off`). It applies to master (`git apply --check`) and compiles clean with the NDK. It is
+built from a scratch tree, never committed to apu.c on this branch.
+
 ## Log
 
 - 10-11, attempt 2: merged origin/master (aa04c62915). Wake analysis above. Instrument reviewed and compile-checked.
