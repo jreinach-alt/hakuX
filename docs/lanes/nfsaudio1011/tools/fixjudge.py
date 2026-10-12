@@ -148,7 +148,9 @@ def run(label, rid, ref, psa):
         psa_share = 100 * rep[lo:hi].sum() / max(loud[lo:hi].sum(), 1)
     g, gn = gfps(d)
     lev = measure(d)
+    starve = [float(v) for v in re.findall(r"= ([\d.]+)% of output", lc)]
     r = dict(label=label, id=os.path.basename(d.rstrip("/")), switch=",".join(sw) or "NONE", env=env,
+             starve_after_30s=max(starve[1:], default=float("nan")),
              secs=len(x) / SR, share=share, psa_share=psa_share, fit=fit, fitw=fitw, gfps=g, gfps_n=gn, level=lev,
              p2048=resultant(starts[starts >= 12 * SR], 2048), p256=resultant(starts[starts >= 12 * SR], 256),
              nstarts=len(starts))
@@ -157,6 +159,8 @@ def run(label, rid, ref, psa):
     print(f"    lag-2400 share {share:5.1f}%  PSA {psa_share:5.1f}%  slope 0-25 s {f(fit)}  12-95 s {f(fitw)}")
     print(f"    level {lev:6.2f} dBFS ac-rms (mean L/R)  gfps median {g:.1f} (n {gn})  "
           f"replay starts {len(starts)}: lock P2048 {r['p2048']:.2f} P256 {r['p256']:.2f}")
+    print(f"    starvation per 30 s window: {' '.join('%g' % v for v in starve)} (worst past the first: "
+          f"{r['starve_after_30s']:g}%)")
     return r
 
 
