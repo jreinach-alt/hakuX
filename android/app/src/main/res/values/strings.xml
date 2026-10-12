@@ -205,7 +205,7 @@
   <string name="settings_surfgpu">GPU surface reuse</string>
   <string name="settings_surfgpu_desc">Reuse GPU surfaces across frames instead of recreating them each time, for faster rendering. Turn off only if a game shows stale or flickering images with it on.</string>
   <string name="settings_fastpaths">Fast renderer paths</string>
-  <string name="settings_fastpaths_desc">Use faster code paths for report queries, texture scans, draw recording and shader uniform updates. No change in what is drawn. Turn off only if a game shows problems with it on.</string>
+  <string name="settings_fastpaths_desc">Use faster code paths for report queries, texture scans, draw recording, shader uniform updates, and the hand-off of GPU commands from the emulated CPU. No change in what is drawn. Turn off only if a game shows problems with it on.</string>
 
   <string name="settings_frame_skip">Frame skip</string>
   <string name="settings_frame_skip_desc">Skip rendering when running behind to maintain game speed. May cause visible stuttering.</string>
