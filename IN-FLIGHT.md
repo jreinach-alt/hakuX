@@ -8,15 +8,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `burnoutloop1012` | claude-sonnet-5 | 10 min | burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5) |
-| `fpsbelow1012` | claude-opus-5-5 | 1h 24m | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) |
-| `pathclass` | claude-sonnet-5 | 1h 31m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `burnoutloop1012` | claude-sonnet-5 | 13 min | burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5) |
+| `pathclass` | claude-sonnet-5 | 1h 46m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 2 waiting, 1 running.
-- **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
+- **Device queue:** 3 waiting, 0 running.
+- **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
 
@@ -76,7 +75,6 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/burnoutloop1012` | burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5) | `8a4df3d1ab` | 2026-10-12 00:45 |
-| `lane/fpsbelow1012` | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) | `8b186d382c` | 2026-10-12 00:11 |
 | `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `f442726741` | 2026-10-11 13:21 |
 
 ## Recently landed on master
@@ -90,4 +88,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 - 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
 
-_Updated 2026-10-12 00:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 01:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
