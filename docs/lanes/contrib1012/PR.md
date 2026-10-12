@@ -1,6 +1,6 @@
 # contrib1012: structured bug reports and a contributor guide (#433, 0.5)
 
-State: draft
+State: ready
 
 Lane: contrib1012          Issue: none (#433 umbrella)
 Base: master @ 1ed3ac8f39

@@ -39,9 +39,8 @@ Toolchain (see [`android/README.md`](android/README.md) for the full list):
 - **meson** and **ninja on `PATH`** -- the native build compiles glib with
   meson, and meson needs ninja, which Gradle does not put on `PATH` for it.
   `$ANDROID_SDK_ROOT/cmake/3.30.3/bin` has a `ninja` that works.
-- A Rust toolchain (`cargo`), for the ISO -> XISO converter. Without Rust,
-  pass `-Pandroid.experimental.cmake.arguments=-DXEMU_ENABLE_XISO_CONVERTER=OFF`
-  to Gradle instead of installing it.
+- Nothing else: the ISO -> XISO converter builds from
+  `android/third_party/extract-xiso` with the same toolchain.
 
 ```bash
 export JAVA_HOME=/path/to/jdk21          # must contain bin/javac
