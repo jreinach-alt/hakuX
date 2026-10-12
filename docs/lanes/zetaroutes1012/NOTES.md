@@ -371,3 +371,93 @@ queued = 6 of the 12-run budget. DOA3 needs no further run (section 11).
 
 WAITING: on both result dirs' `DONE` files, same overnight Nova-hold reason as before. Nothing further to do
 until they land.
+
+## 14. Why attempt 3 did not finish (resuming as attempt 4)
+
+Attempt 3 ended in the WAITING state section 13 names: two device runs queued on the Nova (Buffy's switch-off
+arm, NG Black's re-run), both outside the session, with nothing else open. That is a finished state, the same
+as attempts 1 and 2, not a failure. Both `DONE` files exist now (read 2026-10-12 17:31 UTC). This attempt reads
+them, judges Buffy's pair, and registers NG Black's.
+
+Before any new registration, `origin/master` (755ac97c96, 119 commits ahead) was merged in (`ede8663c9c`).
+`git diff 76a2c15333 origin/master` touches only `docs/`: the emulator code every run in this lane used is
+master's.
+
+## 15. Buffy's pair, judged as registered: LOSS
+
+| arm | run | switch (logcat init line) | verdict | fps_ok | min window fps | G median | gameplay | static_frac |
+|---|---|---|---|---|---|---|---|---|
+| A (off) | `z-1791823924-lane.zetaroutes1012-3538464` | `0x82, depth stored as float` | FAIL (static window) | 0.9973 | 28.37 | 33.4 ms | 782.4 s | 0.354 |
+| B (on) | `z-1791820250-lane.zetaroutes1012-2510625` | `0x81, depth stored as unorm` | PASS | 1.0 | 29.24 | 33.4 ms | 774.9 s | 0.039 |
+
+(G median and the init lines from fpsbelow1012's `tools/zread.py <A> <B>`; no `XFR rp` lines, since neither
+arm set `HAKUX_GPUXFR`, so the GPU in/out and outer-span columns cannot be read.)
+
+Legs of `zetaroutes1012-buffy.json`:
+- **V passes.** Route start to `mark gameplay`: A 127.9 s, B 129.0 s. Both over 600 s of gameplay, no crash or
+  hang.
+- **F fails.** A's fps_ok is 0.9973, not under 0.90.
+- **G fails.** B - A = 0.0027, not >= 0.10.
+
+So the pair is a **LOSS**: on this gameplay route, Buffy runs at its 30-fps cap without the switch. Per
+60-s bucket from the mark, A reads 1.00 in every bucket but one (60-120 s: 0.96), median 30 in all of them.
+
+What the pair does NOT show. The two arms left the same opening canyon within ~25 s of the mark and then
+played different stretches. B at +26 s (`085625-play.png`) is past the opening, under the tip "Push into low
+ledges to climb onto them", and spends the rest of the run at the ledges ("Run and press B to jump between
+ledges", then "While on a ledge, move left or right to shimmy"). A at +35 s (`095543-play.png`) is still in the
+opening stretch under its first tip ("Move the R thumbstick to move the camera around"), and that tip is on
+screen until the run's last shot (`100806-play.png`). The camera spends most of A's window pressed into dark
+canyon walls. That is why A fails the static-window check. So A never measured the ledge stretch B ran. The
+pair cannot say what the switch does there.
+
+Two readings still stand. The opening stretch is at the cap without the switch: A's first 60 s read 1.00
+at a median of 30. And the survey's slow buckets (A 90-120 and 210-270 s, G 37-38 ms; fpsbelow1012 section 9c)
+did not appear in either arm of this route. The prediction is not re-registered on these arms, and the A arm
+is not re-run: a timing-only route has no way to make A follow B's path, so a second A would differ in the same
+way.
+
+For lane.local's cross-title screen: Buffy is Playable with the switch on this route (B, PASS), and at master
+without it this route reads fps_ok 0.997 with no hitches. The A arm's FAIL is its route (static window), not
+its frame rate. So Buffy is not evidence that the switch is needed. It is evidence that the switch costs Buffy
+nothing on gameplay: no hitch, and the minimum window rises from 28.37 to 29.24.
+
+## 16. NG Black's re-run: PASS
+
+`z-1791823930-lane.zetaroutes1012-3542868` (repeat 15, `--seconds 1020`, switch on; init line `0x81, depth
+stored as unorm (HAKUX_ZETA_D24)` at 10:08:54):
+
+```
+VERDICT Ninja Gaiden Black nova PASS Playable gameplay=714.4s fps_ok=0.9964 crash=False hang=False
+audio_short=6.1e-05 hitches=2/0.183pm worst_ms=273.6 static_frac=0.0292 timeline: none below_own_target
+```
+
+Its own target is 60 (`targets.toml`): `own_target_share` 0.5307, window median 58.0, min 23.35. Per 60-s
+bucket from the mark, the share at the 30 bar is 0.96 in the first minute and 1.00 after it. The share at 57
+fps is 0.00-0.02 for the first 180 s (median 51-52), then 0.30-0.96 (median 57-60). All five hitches are
+classified `shader`, the worst 273.6 ms at +2.9 s, under the 500 ms bar.
+
+Section 12's fix is confirmed: with 15 repeats the loop covers the window, and the duration shortfall is
+gone. Hitches: the first run had 19 (15 `unexplained`), 13 of them after warm-up (1.47/min). This run has
+5, all `shader`, and 2 after warm-up (0.18/min). That is one run each, so it is reported, not judged.
+
+## 17. NG Black's pair registered
+
+The switch-on run is at the bar, so step 6 applies. Before registering, the survey's switch-off arm
+(`z-1791797927-fpsbelow1012-1778929`) was read from its `mark play` on, with Ryu in the same gorge and cliff
+walls the survey's B shows. Over that window the share at the 30 bar is 0.847 and at 57 fps it is 0.146
+(B: 0.960 and 0.542). At the bar, A's 30-s buckets read 0.45-0.85 at 270, 390, 450 and 480 s from the first
+perf line, where B's read 0.91-1.00. The 240-s bucket dips in both arms (0.70 / 0.73).
+Frame `032917-play.png` (A, overlay 38 fps) shows Ryu facing the gorge; `033100-play.png` (A, overlay 59) shows
+a wall filling the frame.
+
+`docs/testing/predictions/zetaroutes1012-ninja-gaiden-black.json`, hand-written like `zetaroutes1012-buffy.json`
+(section 13 says why `ab_compare.py --register` refuses a soak). Both refs are `76a2c15333`, the build B ran.
+The legs:
+- V: validity as Buffy's, plus both init lines and A moving (static_frac <= 0.20).
+- F: A's fps_ok < 0.90, the brief's share at the Playable bar.
+- G: B - A >= 0.05 at the bar.
+- H: B - A >= 0.20 in the share at the 60 target.
+
+WIN is V, F and G. H is reported on its own. P(F) is about 0.5, given Buffy (section 15), and the file says
+so. P(H) is about 0.85.
