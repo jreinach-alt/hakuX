@@ -1,0 +1,10 @@
+MI hold window: 153 [rr425w] windows, 308.6 s; vCPU idle 27.9% busy 72.1%
+wake keys (vector.units: n wakes, idle s, busy s, busy share of wall):
+  33.44: n 2656  idle 1.2 s  busy 160.9 s  (52.1% of wall)
+  33.02: n 5387  idle 2.5 s  busy 36.2 s  (11.7% of wall)
+  30.44: n 183  idle 0.3 s  busy 10.3 s  (3.3% of wall)
+  30.02: n 700  idle 1.0 s  busy 5.4 s  (1.8% of wall)
+  30.00: n 84214  idle 75.1 s  busy 3.4 s  (1.1% of wall)
+  30.46: n 33  idle 0.1 s  busy 2.5 s  (0.8% of wall)
+[rdc] 35 lines: 2100 frames over 313.0 s = 6.71 fps; render-thread CPU 86.9 s = 27.8% of wall, 41.4 ms per frame of 149.0
+[shd413] pipeline lookups 9314765, misses 7 in the window

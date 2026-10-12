@@ -1,0 +1,15 @@
+z-1791810682-fpsbelow1012-567963: mark 10-12 06:40:14.217, HAKUX_VTX_EXACT=0, 149 periods, 8940 frames
+  range per 60 frames, median: n 431, dl 431, wait 539 ms;  window total: n 465, dl 465, wait 612 ms (10.2 ms/frame)
+  [sdrfin] per 60 frames over 8940 frames: recorded by own lookups 465
+    own   n    465  dl    465  dl/n   1.0     612 ms  (10.2 ms/frame, 100% of the split's time)
+    dest  n      0  dl      0  dl/n   0.0       0 ms  ( 0.0 ms/frame,   0% of the split's time)
+    clean n      0  dl      0  dl/n   0.0       0 ms  ( 0.0 ms/frame,   0% of the split's time)
+    tscan n      0  dl      0  dl/n   0.0       0 ms  ( 0.0 ms/frame,   0% of the split's time)
+z-1791810680-fpsbelow1012-567845: mark 10-12 06:27:24.945, HAKUX_VTX_EXACT=1, 185 periods, 11100 frames
+  range per 60 frames, median: n 0, dl 0, wait 0 ms;  window total: n 0, dl 0, wait 0 ms (0.0 ms/frame)
+  [sdrfin]: none in the window
+V pass
+C pass: A's median range dl 431 >= 300
+M pass: B/A 0.000 (B 0, A 431; limit 0.05)
+P pass: B/A 0.000 (B 0, A 539; limit 0.25)
+rc=0
