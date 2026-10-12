@@ -8,12 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pathclass` | claude-sonnet-5 | 54 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `pathclass` | claude-sonnet-5 | 1h 9m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `zetaroutes1012` | claude-sonnet-5 | 1 min | zetaroutes1012: returning gameplay routes for Buffy, DOA3 and NG Black, then HAKUX_ZETA_D24=1 runs (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 1 running.
+- **Device queue:** 1 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -80,6 +81,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `3a438399f4` | 2026-10-12 07:10 |
+| `lane/zetaroutes1012` | zetaroutes1012: returning gameplay routes for Buffy, DOA3 and NG Black, then HAKUX_ZETA_D24=1 runs (#433, 0.5) | `7cbd788e00` | 2026-10-12 08:52 |
 
 ## Recently landed on master
 
@@ -93,4 +95,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-12 burnoutbrief1012: press Continue (A) after Retry so a run on the event brief keeps racing (#433, 0.5)
 - 2026-10-12 burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5)
 
-_Updated 2026-10-12 09:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 09:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
