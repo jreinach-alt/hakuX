@@ -3,8 +3,8 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **7** run (the pilot: 2 read, 1 void before input; NGB's A/B pair;
-DOA3 A, Buffy A), **4** queued (MC3's and Forza's `[sdrange]` runs, DOA3 B, Buffy B). Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **8** run (the pilot: 2 read, 1 void before input; NGB's A/B pair;
+DOA3 A, Buffy A; MC3's `[sdrange]` run), **3** queued (Forza's `[sdrange]` run, DOA3 B, Buffy B). Ledger in section 4.
 
 ## 0. Attempt 2 (10-12 ~02:30 PDT): why attempt 1 did not finish
 
@@ -153,7 +153,7 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 | 6 | z-1791797928-fpsbelow1012-1779675 | Dead or Alive 3 | survey | 480 | done 10-12 04:12, same ref, **A** | section 9b: IN THE CLASS (240 s); fps_ok 0.70 |
 | - | (refused at queue time) | ToeJam & Earl III | uberdefault569's `toejam-earl-3` | 540 | request.sh refused it: the route declares no `# state:` line, and the file is uberdefault569's, not this lane's to edit | not counted; Buffy takes its slot, as the prediction names |
 | 7 | z-1791798044-fpsbelow1012-1807480 | Buffy the Vampire Slayer | survey | 480 | done 10-12 04:22, same ref, **A** | section 9c: IN THE CLASS (450 s); fps_ok 0.79; a 30-fps title |
-| 8 | z-1791799077-fpsbelow1012-2104673 | Midnight Club 3 | midnight-club-3.returning | 540 | queued 10-12 ~02:55 PDT, ref dbf9dd40cc, `--env HAKUX_RANGELOG=1` (+ the telemetry env) | section 10: which caller, which surfaces, exact or rounded overlap |
+| 8 | z-1791799077-fpsbelow1012-2104673 | Midnight Club 3 | midnight-club-3.returning | 540 | done 10-12 04:32, ref dbf9dd40cc, `--env HAKUX_RANGELOG=1` (+ the telemetry env), gameplay marked 04:25:44 | section 10a: **H1**, one surface, ex 0 |
 | 9 | z-1791801220-fpsbelow1012-2906178 | Forza Motorsport | forza-soak1010 | 480 | queued 10-12 03:35 PDT, ref dbf9dd40cc, `--env HAKUX_RANGELOG=1` (+ the telemetry env) | Forza's telemetry at master (step 2) and its `[sdrange]` reading (section 10) |
 | 10 | z-1791803606-fpsbelow1012-3255578 | Dead or Alive 3 | survey | 480 | queued 10-12 04:15 PDT, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`) | A/B key DOA3 (section 9b) |
 | 11 | z-1791804165-fpsbelow1012-3514899 | Buffy the Vampire Slayer | survey | 480 | queued 10-12 04:24 PDT, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`) | A/B key Buffy (section 9c) |
@@ -625,3 +625,36 @@ flags). It adds `HAKUX_VTX_EXACT=1`, off by default.
   never recorded) over its own exact range, and re-fetches.
 - Files it needs granted: hw/xbox/nv2a/pgraph/vk/draw.c, vertex.c, renderer.h. It is requested only once the
   `[sdrange]` run reads H1.
+
+### 10a. MC3's `[sdrange]` run reads H1: one render target, caught by the page rounding (read 10-12 04:33 PDT)
+
+`tools/sdrange.py z-1791799077-fpsbelow1012-2104673 --after 04:25:44` (the gameplay mark), 142 periods, 8520 frames,
+`hz=1` throughout (HAKUX_VTX_HAZARD on, its default, so `ex` is measured):
+
+| per 60 frames | value |
+|---|---|
+| range-function calls from the vertex sync / from other callers | 24,676 / 25,463 |
+| downloads, by=vtx | **973** |
+| of them `ex` (the draw's exact vertex ranges overlap the surface) | **0** |
+| of them `edge` (overlap inside the requested range's first or last page) | **973** |
+| downloads by any other caller; shelved; invalidated; slot overflow | 0; 0; 0; 0 |
+
+Every download is the same surface: **0x02fe5980, 256x256 swizzled colour, pitch 1024, 262,144 bytes, bound** (the
+current colour target when the download is asked). It starts mid-page, one of the six section 10 listed. The
+requested range is `0x2fe4000+0x2000` in every period: the vertex sync's two pages, rounded and merged. The overlap
+is the surface's first 0x680 bytes, the tail of page 0x2fe5000. The game keeps a dynamic vertex buffer in
+0x2fe4000-0x2fe597f and renders to a 256x256 target that starts right after it. Every vertex sync after the target
+was drawn to rounds into that page and downloads the target, with a finish, mid-pass. No draw reads those 0x680
+bytes as vertices (`ex` 0 in 8520 frames). The whole run reads the same (648 per 60 frames over 13,140 frames,
+ex 0, edge 648). **H1 holds on MC3**, and the drafted `HAKUX_VTX_EXACT` removes exactly this download.
+
+**This run's frame rate is not a baseline.** fps_ok **0.0**, window median 23.0, against the pilot's 0.815 and 29.4 on
+the same route and the same scene at the mark (frames 022124 and 042543 match: the same street, FPS 18-19 at the
+mark). decompose.py: the render thread's phases rose together (ph_Draw 5.4 -> 8.8, ph_GPU 6.8 -> 9.9, ph_Fin 12.8 ->
+17.0 ms per frame), and so did BE (453 -> 682). That is a heavier view, not the instrument. RANGELOG adds a branch per
+range call and a 12-slot scan per download, ~16 a frame. The route's play is blind throttle with no steering
+(`axis RT max` 2.5 s, release 1 s, forever), so where the car ends up after the mark differs run to run, and with it
+the scene. **So MC3's fps varies 23-29 between runs at one ref.** An A/B on it needs legs that do not ride on the
+scene: `range` downloads and finishes per 60 frames, and ph_Fin per frame. fps_ok is hand-read beside them, not
+judged.
+
