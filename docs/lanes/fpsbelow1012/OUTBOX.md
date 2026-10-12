@@ -14,3 +14,13 @@
   ede7c891c5, index regenerated c29c31ea5e. Runs on disk widen the class: NBA Live 06/07, Buffy, LOTR, Fantastic 4
   read two-tile; MechAssault 2 and ToeJam mostly (NOTES.md 5a). Depth-exactness cost written (NOTES.md section 7)
   before any screen. Pilots (DOA3, NGB, MC3) queued at sweep tier, ref 00fde8afb3; 0 runs so far.
+- 2026-10-12 pilot read (3 runs; NOTES.md section 8). NG Black at master is still the two-tile class (in/out 0.52-0.54,
+  29-19 ms of GPU per command buffer at 270-480 s) and reads fps_ok 0.913 on the survey route. That is near the bar,
+  but the survey never marks gameplay, so it is no lane.local candidate yet. Midnight Club 3 went from 0.006 to
+  **0.815** (window median 29.4). It is not the GMEM class: it does 14 synchronous `range` surface downloads per
+  flip, 11.9 ms/frame of render-thread wait, the caller SURFGPU/TEXSCAN did not reach (shared with Forza, MC II, CS).
+  The DOA3 run was void before input (com.android.settings held the display), not a title failure.
+- 2026-10-12 prediction registered: `docs/testing/predictions/fpsbelow1012-zetad24.json` (sha256 ec352c20..., one
+  binary be0239bac8 both arms, B `HAKUX_ZETA_D24=1`). The window is A's two-tile buckets, fixed before B is read. NG
+  Black B+A, DOA3 A and Buffy A are queued at sweep tier (ToeJam's route was refused: no `# state:` line, not this
+  lane's file). Runs: 3 done, 4 queued, cap 30.

@@ -3,7 +3,8 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **3** run (the pilot: 2 read, 1 void before input). Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **3** run (the pilot: 2 read, 1 void before input), **4** queued
+(the A/B's first arms). Ledger in section 4.
 
 ## 0. Attempt 2 (10-12 ~02:30 PDT): why attempt 1 did not finish
 
@@ -147,6 +148,11 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 | 1 | z-1791787896-fpsbelow1012-2551124 | Dead or Alive 3 | survey | 480 | VOID 10-12 00:46: not-foreground before the route's first input (`com.android.settings` held display 0; `am start` re-issued, then no focused window); 8 logcat lines | none: the harness's foreground guard, not the title |
 | 2 | z-1791787896-fpsbelow1012-2551219 | Ninja Gaiden Black | survey | 480 | done 10-12 01:01, ref 00fde8afb3 | section 8: two-tile class at 240-510 s |
 | 3 | z-1791787897-fpsbelow1012-2551411 | Midnight Club 3 | midnight-club-3.returning | 540 | done 10-12 02:18, ref 00fde8afb3, gameplay marked | section 8: share 0.006 -> 0.81; `range` downloads 14/frame |
+| 4 | z-1791797921-fpsbelow1012-1777822 | Ninja Gaiden Black | survey | 480 | queued 10-12 ~02:40 PDT, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`) | A/B, `fpsbelow1012-zetad24.json` key NGB |
+| 5 | z-1791797927-fpsbelow1012-1778929 | Ninja Gaiden Black | survey | 480 | queued, same ref, **A** (no switch) | A/B key NGB |
+| 6 | z-1791797928-fpsbelow1012-1779675 | Dead or Alive 3 | survey | 480 | queued, same ref, **A** | A/B key DOA3; also DOA3's telemetry at master |
+| - | (refused at queue time) | ToeJam & Earl III | uberdefault569's `toejam-earl-3` | 540 | request.sh refused it: the route declares no `# state:` line, and the file is uberdefault569's, not this lane's to edit | not counted; Buffy takes its slot, as the prediction names |
+| 7 | z-1791798044-fpsbelow1012-1807480 | Buffy the Vampire Slayer | survey | 480 | queued, same ref, **A** | A/B key Buffy; also Buffy's telemetry at master |
 
 Planned next, after the pilot verdict (`pilots/fpsbelow1012.ok`): the depth-exactness pgraph pair, registered as
 `docs/testing/predictions/fpsbelow1012-zetad24-pixels.json` (sha256 c543e6ac..., refs c1112f2c1a both arms, B with
@@ -415,3 +421,23 @@ telemetry at master.
 What the pilot changes in the ranking (section 6): L1 is confirmed at master on NG Black, with no folded switch
 having touched it. L4 (`range`) is no longer a single runnable title: MC3 and Forza are both runnable here, and MC3
 now sits within 0.08 of the bar with `range` as its largest render-thread cost.
+
+## 9. The A/B: `fpsbelow1012-zetad24.json` (registered 2026-10-12T09:38:07Z, sha256 ec352c20...)
+
+One binary on both arms, be0239bac8 (master 00fde8afb3's emulator code plus the switch, off by default). A has no
+switch; B adds `--env HAKUX_ZETA_D24=1`. Both arms run perflog with `HAKUX_GPUXFR=1` and `HAKUX_FRAMETRACE=1`, sweep
+tier, one run each. The arms job skips a pair whose two refs are the same (`a_ref == b_ref`), so this lane queues the
+arms itself with `--expect` naming the prediction.
+
+**The window is fixed before B is read.** A survey route never marks gameplay, and "gameplay" in these titles is
+whatever the attract or demo loop shows when the pass reaches the scene. So `zread.py` takes the window from the A arm
+alone: the 30-s buckets where A reads census in/out <= 0.60 with >= 100 draws per command buffer, at least 60 s of
+them. It reads B over the same seconds. An A arm under 60 s of such buckets reads NOT IN THE CLASS (exit 3), and that
+title is not judged. On the pilot's NG Black run this picks 240-510 s (270 s), the stretch section 8 shows by hand.
+
+**Order and substitutes.** NGB B, then NGB A, DOA3 A, ToeJam A. request.sh refused ToeJam's route (uberdefault569's
+`toejam-earl-3`) because it declares no `# state:` line. The route starts a new story from the title screen, so it needs
+no profile, but adding the header is uberdefault569's edit, not this lane's. ToeJam also read 98.8% at 30+ on its
+confirm (`1790951866-titleroutes2-46925`), so it was the weakest of the three as a below-bar title. Buffy, the
+substitute the prediction names, takes its slot (`-1807480`). DOA3 B and Buffy B are queued only after their A arms
+read IN THE CLASS. The lane's last request is a no-switch run, so the Nova is not left with the switch set.
