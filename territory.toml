@@ -29,7 +29,7 @@
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
 wave = 308
-updated_utc = "2026-10-11T08:19:00Z"
+updated_utc = '2026-10-12T23:51:59Z'
 
 [lane.alwaystelemetry]
 issues = ["433"]
@@ -56,6 +56,7 @@ note = "STEP 6 GRANTED lane.local 2026-10-11 23:1x PDT (owner 10-11 ~22:4x: \"me
 
 
 [lane.savestate1011]
+released = ['android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt', 'android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt', 'android/app/src/main/res/values/strings.xml']
 issues = ["433"]
 standing = false
 files = ["docs/lanes/savestate1011/**", "docs/testing/predictions/savestate1011-*", "ui/xemu-snapshots.c", "ui/xemu-snapshots.h", "migration/savevm.c", "migration/savevm.h", "android/app/src/main/cpp/CMakeLists.txt", "android/app/src/main/cpp/xemu_snapshots_stub.c", "android/app/src/main/cpp/xemu_android.cpp", "android/app/src/main/cpp/savestate/**", "android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/PauseMenuOverlay.kt", "android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt", "android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/SaveState*.kt", "android/app/src/main/res/values/strings.xml", "android/app/src/main/res/layout/savestate_*", "android/app/src/main/java/com/rfandango/haku_x/SettingsIndexActivity.kt"]
@@ -919,6 +920,30 @@ issues = ["433"]
 standing = false
 files = ["docs/testing/jobs/selftest.sh", "docs/testing/jobs/selftest.d/*-selftestclean1011.sh", "docs/lanes/selftestclean1011/**", "docs/testing/predictions/selftestclean1011-*"]
 note = "STARTED lane.local 2026-10-11 15:5x PDT (Sonnet, owner OK 15:4x): selftest.sh removes its mktemp fake host on a pass and keeps it on a failure; 256 leaked dirs, 27.7 GB in /tmp since the 10-09 boot. docs/testing/jobs/selftest.sh moved here from [free]."
+
+[lane.contrib1012]
+issues = ['433']
+standing = false
+files = ['docs/lanes/contrib1012/**', '.github/ISSUE_TEMPLATE/**', '.github/pull_request_template.md', 'CONTRIBUTING.md', 'docs/reporting-bugs.md']
+note = 'STARTED lane.local 2026-10-12 16:51 PDT (Sonnet): community intake and onboarding before 0.5 goes public (owner 10-12: ’structured bug reports capturing device, game, version, reproduction steps, and diagnostics’; ’concise instructions for building the project and submitting PRs’). Issue forms (bug, title/compatibility, feature), PR template, CONTRIBUTING.md, docs/reporting-bugs.md. No emulator change.'
+
+[lane.pubdocs1012]
+issues = ['433']
+standing = false
+files = ['docs/lanes/pubdocs1012/**', 'README.md', 'KNOWN_ISSUES.md', 'ROADMAP.md', 'CHANGELOG.md', 'android/README.md', 'docs/COMPATIBILITY.md', 'PRIVACY.md']
+note = 'STARTED lane.local 2026-10-12 16:51 PDT (Sonnet): public docs pass for 0.5 (owner 10-12: ’ensure it accurately describes the current build, installation, compatibility, limitations, and upstream attribution’). No emulator change.'
+
+[lane.debugcap1012]
+issues = ['433']
+standing = false
+files = ['docs/lanes/debugcap1012/**', 'android/app/build.gradle.kts', 'android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt', 'android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt', 'android/app/src/main/res/values/strings.xml', 'docs/releases/README.md', 'docs/testing/release_build.sh', 'docs/testing/release_build_selftest.sh', 'docs/testing/jobs/selftest.d/*-release-build.sh']
+note = 'STARTED lane.local 2026-10-12 16:51 PDT (Sonnet): Debug Capture defaults off in versioned releases only (owner 10-12: ’disable Debug Capture from the start menu by default in the RC build ... stays on/enabled in dailies and our working builds’); -PversionedRelease=<v> and docs/testing/release_build.sh; About links name this repository. build.gradle.kts GRANTED from [lane.release05]; MainActivity.kt, SettingsActivity.kt, strings.xml RELEASED by [lane.savestate1011] (folded 9d71e0cfbc).'
+
+[lane.housekeep1012]
+issues = ['433']
+standing = false
+files = ['docs/lanes/housekeep1012/**', 'AGENTS.md']
+note = 'STARTED lane.local 2026-10-12 16:51 PDT (Sonnet): harness housekeeping before 0.5 goes public (owner 10-12: ’Remove clearly obsolete or conflicting instructions left by previous rebuilds. Do not redesign the harness.’). AGENTS.md RELEASED by [lane.profilegate1011] (folded 2b85d3d209). Files grow when the lane’s diff is known.'
 
 [free]
 # CLAIMED (lane.local 2026-10-12 15:50 PDT): docs/testing/release-0.5.toml, docs/testing/jobs/status_html.py, docs/testing/jobs/selftest.d/64-status-html.sh -> lane.release05 (the owner, 10-12 ~15:0x PDT: '0.5 can ship on the Nova test results alone'; the gate and the status page name the Nova only). Back here when it retires.
@@ -2430,7 +2455,7 @@ note = "RETIRED (lane.local 2026-10-12 01:17 PDT): folded as 9fe1e198ad (01:07 P
 issues = ["433"]
 standing = false
 files = ["docs/lanes/profilegate1011/**", "docs/testing/titles/titlestate.py", "docs/testing/titles/titlestate_selftest.py", "docs/testing/titles/profile-transition.toml", "docs/testing/jobs/selftest.d/99-profile-gate.sh", "docs/testing/request.sh", "docs/testing/dispatcher.sh", "AGENTS.md", "docs/testing/jobs/selftest.d/61-soakvideo1011.sh", "docs/testing/jobs/selftest.d/62-routerefs-soakvideo1011.sh", "docs/testing/jobs/selftest.d/89-title-verdict.sh", "docs/testing/jobs/selftest.d/96-failgate.sh", "docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh", "docs/testing/jobs/selftest.d/99-pilot-gate.sh"]
-released = ["docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh"]
+released = ['docs/testing/dispatcher.sh', 'docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh', 'AGENTS.md']
 note = "pathfind.py -> [lane.pathfind] for the #822 fold (lane.local 2026-10-12 09:22 PDT). RELEASED dispatcher.sh and 97-dispatch-snapshot-drive.sh 2026-10-11 23:1x PDT: folded as 53e6de6ef2, unit inactive; both to lane.pathclass (step 6: pathclass.py and its head into the worker snapshot). GRANTED lane.local 2026-10-11 20:31 PDT: six selftest fragments its gate edits (61-/62-soakvideo1011, 89-title-verdict, 96-failgate, 97-dispatch-snapshot-drive, 99-pilot-gate), released by the folded [lane.soakvideo1011] and [lane.failgate] and from [free]; foldqueue refused 2b85d3d209 on them at 20:29. GRANTED lane.local 2026-10-11 14:57 PDT: docs/testing/request.sh, docs/testing/dispatcher.sh and AGENTS.md, released by [lane.soakvideo1011] after it folded. GRANTED lane.local 2026-10-11 12:35 PDT: docs/testing/titles/pathfind.py, released by the folded [lane.hangwatch] (0d44dc6cf7 on master), for the owner's 12:3x clarification (no repeat blind navigation on a title with a known path). STARTED lane.local 2026-10-11 12:1x PDT (Sonnet, harness; no device): the profile gate. Owner 10-11 12:0x: runs only execute when the title has a profile; the scheduler rejects them otherwise, unless the run is finding a route. titlestate.py admit() with four clauses (profile / make-profile / find-route / transition), called by request.sh at queue time and dispatcher.sh at claim; profile-transition.toml holds gta-sa and amped2 until 10-14 00:00 PDT. titlestate.py, titlestate_selftest.py and profile-transition.toml are carve-outs inside [free]'s docs/testing/titles/** (exact-string check, as [lane.gtaroutes1011]); 99-profile-gate.sh is new. docs/testing/request.sh, docs/testing/dispatcher.sh and AGENTS.md are held by [lane.soakvideo1011] and are granted here when it folds. Brief: briefs/profilegate1011.md."
 
 [lane.profileconv1011]
@@ -2479,7 +2504,7 @@ note = "RETIRED (lane.local 2026-10-09 23:45 PDT): folded as 96852d8144 (23:32 P
 [lane.release05]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/release05/**", "android/app/build.gradle.kts", "docs/testing/version_stamp.sh", "docs/testing/jobs/selftest.d/86-build-stamp.sh", "docs/testing/titles/routes/ghoulies.classifier.route", "docs/releases/**", "docs/testing/release-0.5.toml", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/64-status-html.sh", "docs/testing/jobs/status.sh"]
+files = ['docs/lanes/release05/**', 'docs/testing/version_stamp.sh', 'docs/testing/jobs/selftest.d/86-build-stamp.sh', 'docs/testing/titles/routes/ghoulies.classifier.route', 'docs/testing/release-0.5.toml', 'docs/testing/jobs/status_html.py', 'docs/testing/jobs/selftest.d/64-status-html.sh', 'docs/testing/jobs/status.sh', 'docs/releases/v0.5.0.md']
 note = "SECOND PR STARTED lane.local 2026-10-12 15:50 PDT on lane/release05-ship: the owner, 10-12 ~15:0x PDT, '0.5 can ship on the Nova test results alone. The Thor hardware is identical.' release-0.5.toml gate_devices = ['nova']; status_html.py gathers and states the gate on those handhelds; status.sh stops writing its own copy of the gate's text. Then the v0.5.0 tag and docs/releases/v0.5.0.md. || FOLDED 1ed3ac8f39 (14:06 PDT); v0.5.0-rc1 tagged on cf628f179f (forge pre-release 27). Gate: Ghoulies 29.0 gfps median (n=73) over 90-240 s on the Nova, run 1-1791837328 (1801 s, ghoulies.returning; the classifier stops at the slot menu, ghoulies.classifier.route header). Thor half open (fan dead). A framed 1800-s rerun (1-1791839268) reads the full-soak verdict. Release notes in docs/releases/ wait for the final 0.5.0. Row kept for them; updated 2026-10-12 14:10 PDT."
 
 [lane.pathfindhold1012]
