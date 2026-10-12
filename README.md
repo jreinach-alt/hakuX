@@ -5,15 +5,23 @@ An original Xbox emulator for Android, forked from
 
 ## State of the project
 
-**Rough.** A handful of games boot; the ones that do have visible graphical
-faults. This is not a daily driver, and it is not trying to be one yet.
+**Early, but some games are genuinely playable.** This project rates a title
+**Playable** once it boots, reaches real gameplay, and holds it for a timed
+run with no crash, hang, audio dropout or hitch — see
+[`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) for exactly what that means
+and the current list of titles that clear it. Plenty more boot and run with
+visible graphical faults, and some have not been tried yet; see
+[`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for known limitations. This is not a
+daily driver, and it is not trying to be one yet.
 
 That assessment is measured rather than impressionistic. The
-[`nxdk_pgraph_tests`](docs/testing/pgraph-harness.md) suite runs against
-framebuffers captured from real NV2A silicon, and on the current build **1,110
-of 2,702 colour tests match the hardware exactly**. The remaining divergences
-are catalogued in the [issue tracker](https://github.com/jreinach-alt/hakuX/issues),
-grouped by likely cause, each carrying the suites affected and the pixel deltas.
+[`nxdk_pgraph_tests`](docs/testing/pgraph-harness.md) suite checks rendering
+output against framebuffers captured from real NV2A silicon, test by test,
+rather than relying on how a game looks in play. The divergences it finds are
+catalogued in the [issue tracker](https://github.com/jreinach-alt/hakuX/issues),
+grouped by likely cause, each carrying the suites affected and the pixel
+deltas; current pass/fail figures move as that work closes them out, so they
+are tracked there rather than quoted here.
 
 Two things worth understanding before reading that list:
 
@@ -49,32 +57,30 @@ precision, invisible in play; a smaller number are catastrophic and worth all
 the attention. `ROADMAP.md` explains that split and the sprint order that
 follows from it.
 
-## Contributing, with or without an agent
+## Compatibility
 
-The repository is set up so a coding agent can be pointed at it and be useful
-without a briefing. [`AGENTS.md`](AGENTS.md) is the canonical brief —
-`CLAUDE.md` points at it so the two cannot drift.
+See [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) for the titles that pass
+this project's Playable bar, and [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for
+known limitations.
 
-```bash
-git clone https://github.com/jreinach-alt/hakuX && cd hakuX
+## Building
 
-# Point your agent at the repository and give it this:
-#
-#   Read AGENTS.md, then ROADMAP.md. List the open issues with
-#   `gh issue list`. Pick one labelled `needs-triage`, reproduce its
-#   measurement with the pgraph harness before reading any source, and
-#   report what you find before changing anything.
-```
+Android build prerequisites and build steps are in
+[`android/README.md`](android/README.md).
 
+## Privacy
+
+See [`PRIVACY.md`](PRIVACY.md) for what the app does and does not send over
+the network.
+
+## Contributing
+
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for how to contribute, and
+[`docs/reporting-bugs.md`](docs/reporting-bugs.md) for how to file a bug.
 Issues carry their evidence — which suites fail, how many tests, median pixel
 delta, and what has already been ruled out — so work can start from a
 reproduction rather than from a guess. `docs/investigations/` records ground
 already covered; read the relevant file before re-deriving it.
-
-Two things that will save you an afternoon, both documented in `AGENTS.md`: the
-build needs **meson** and **ninja on `PATH`** beyond the documented toolchain,
-and `adb shell input keyevent` **terminates the emulator** rather than pressing
-a button.
 
 ## Lineage
 
@@ -100,6 +106,9 @@ Android. hakuX tuned that port for Adreno devices.
   a machine other than its author's.
 
 ## Installing
+
+The current release is **0.5.0**; see [`docs/releases/`](docs/releases/) for
+what changed in this and earlier versions.
 
 Download the APK from [Releases](../../releases). It installs beside an
 official hakuX build and appears as **hakuX (fork)**.
@@ -129,14 +138,20 @@ The emulator ships no copyrighted content. You supply, from hardware you own:
 
 | | |
 |---|---|
+| [`docs/releases/`](docs/releases/) | Release notes, version by version |
 | [`CHANGELOG.md`](CHANGELOG.md) | What changed, per release |
+| [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) | Titles that pass this project's Playable bar |
+| [`PRIVACY.md`](PRIVACY.md) | What data stays on the device, and what little leaves it |
 | [`ROADMAP.md`](ROADMAP.md) | Where this is going, and what is deliberately out of scope |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to contribute |
+| [`docs/reporting-bugs.md`](docs/reporting-bugs.md) | How to file a bug |
 | [`AGENTS.md`](AGENTS.md) | Canonical brief for coding agents and new contributors |
 | [Issues](https://github.com/jreinach-alt/hakuX/issues) | Open defects, grouped by cause, with measured evidence |
 | [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) | User-facing behaviour worth knowing before filing a bug |
 | [`docs/investigations/`](docs/investigations/) | Long-form records of bugs chased in depth |
 | [`docs/es-de/`](docs/es-de/) | ES-DE configuration files and instructions |
 | [`docs/testing/pgraph-harness.md`](docs/testing/pgraph-harness.md) | Measuring rendering accuracy against real-hardware captures |
+| [`android/README.md`](android/README.md) | Android build prerequisites and build steps |
 | [`android/MIGRATING.md`](android/MIGRATING.md) | Moving saves from an official build |
 | [`android/RELEASING.md`](android/RELEASING.md) | Signing and publishing a build |
 
