@@ -6,15 +6,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `burnoutunlock1012` | claude-sonnet-5 | 21 min | fold: lane/savestate1011 (offline) -- savestate1011: save states as files -- slots 0-9, compression, undo, aut |
-| `fpsbelow1012` | claude-opus-5-5 | 1h 59m | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 3 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -77,10 +74,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/burnoutunlock1012` | fold: lane/savestate1011 (offline) -- savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and | `e318ae70b5` | 2026-10-12 03:54 |
-| `lane/fpsbelow1012` | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) | `d619605e80` | 2026-10-12 04:23 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -96,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5)
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 
-_Updated 2026-10-12 04:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 04:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
