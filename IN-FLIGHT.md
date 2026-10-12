@@ -8,13 +8,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `snapshot1011` | claude-opus-5-5 | 8 min | snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433) |
-| `soakvideo1011` | claude-sonnet-5 | 2h 28m | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request |
+| `gtasagpu1011` | claude-opus-5-5 | 12 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
+| `snapshot1011` | claude-opus-5-5 | 23 min | snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433) |
+| `soakvideo1011` | claude-sonnet-5 | 2h 43m | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 10 waiting, 1 running.
+- **Device queue:** 5 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -74,7 +75,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/snapshot1011` | snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433) | `4c4e5f98a9` | 2026-10-11 17:26 |
+| `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `0c6da187e9` | 2026-10-11 14:50 |
+| `lane/snapshot1011` | snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433) | `eca8db5c9d` | 2026-10-11 17:37 |
 | `lane/soakvideo1011` | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request (#433, 0. | `ff1bcface2` | 2026-10-11 13:56 |
 
 ## Recently landed on master
@@ -85,4 +87,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 fastpaths1010: the six renderer switches as one Graphics toggle, on by default (#433, 0.5)
 - 2026-10-11 lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lock-free wake (#433, 0.5)
 
-_Updated 2026-10-11 17:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 17:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
