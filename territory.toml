@@ -913,6 +913,7 @@ files = ["docs/testing/jobs/selftest.sh", "docs/testing/jobs/selftest.d/*-selfte
 note = "STARTED lane.local 2026-10-11 15:5x PDT (Sonnet, owner OK 15:4x): selftest.sh removes its mktemp fake host on a pass and keeps it on a failure; 256 leaked dirs, 27.7 GB in /tmp since the 10-09 boot. docs/testing/jobs/selftest.sh moved here from [free]."
 
 [free]
+# TAKEN (lane.local 2026-10-11 18:0x PDT) by lane.nfsaudio1011, claimed directly under hw/xbox/mcpx/**: hw/xbox/mcpx/apu/vp/**, apu_int.h, apu_regs.h (see its row).
 # TAKEN (lane.local 2026-10-11 13:5x PDT) from [free] by lane.soakvideo1011 (brief Addendum 3, its fold FAILED on it 13:45): docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh.
 # TAKEN (lane.local 2026-10-11 13:3x PDT) from [free] by lane.snapshot1011 (save states phase 0, owner 10-11): hw/xbox/nv2a/nv2a.c, system/cpus.c.
 # TAKEN (lane.local 2026-10-11 13:1x PDT) from [free] by lane.pathclass (restarted on Sonnet, owner 10-11): docs/testing/titles/drive.py, docs/testing/titles/classify.py, docs/testing/titles/classify_selftest.py, docs/testing/titles/drive-profiles/**. The generic `drive` fallback.
@@ -2337,6 +2338,12 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/restoreprio1011/**"]
 note = "RETIRED (lane.local 2026-10-11 02:54 PDT): folded as 72b4b07b77 (02:53 PDT; attempt 1 had folded first as dc06489606, 02:12), no unit. hold.sh, device_build.py, 99-build-gate.sh, 99-restore-priority.sh and 99-hold-take.sh RELEASED to [free]."
+
+[lane.nfsaudio1011]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/nfsaudio1011/**", "docs/testing/predictions/nfsaudio1011-*", "hw/xbox/mcpx/apu/vp/**", "hw/xbox/mcpx/apu/apu_int.h", "hw/xbox/mcpx/apu/apu_regs.h"]
+note = "STARTED lane.local 2026-10-11 18:0x PDT (Opus, emulator engineering): NFS Most Wanted audio stutter (owner 10-11: heard in the intro, career cutscene voice, and in lane.local's APU capture). ~15-20% of the APU's loud output is a bit-exact replay of the output 50 ms earlier (runs 0-1791764924-lane.local-836907/-836989/-837057); the replays replace audio and lock to the APU's mixing schedule; buffer size ruled out. Instrument the VP voice path, name the mechanism, fix behind a switch, NFS A/B. Claimed directly under [free]'s hw/xbox/mcpx/** glob, as snapshot1011 did apu.c. apu.c stays with lane.snapshot1011: an apu.c part goes in docs/lanes/nfsaudio1011/apu.c.patch with a NEED line. Brief: briefs/nfsaudio1011.md."
 
 [lane.soakvideo1011]
 issues = ["433"]
