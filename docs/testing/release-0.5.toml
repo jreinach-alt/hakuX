@@ -11,13 +11,14 @@ tracking_issue = 433
 
 # The target in one sentence, and where it was decided. No date: the owner set
 # none, and the page forecasts one from the measured rate.
-target = "0.5 ships when 145 titles are benchmarked and 50 of them are Playable on the Thor/Nova handhelds (#433)."
-decided = "owner, 2026-09-26 17:15 PDT: https://github.com/jreinach-alt/hakuX/issues/433#issuecomment-5851419837"
+target = "0.5 ships when 145 titles are measured and 50 are Playable on the Thor/Nova handhelds (#433)."
+decided = "owner, 2026-10-12: the count is 145 measured, not 145 benchmarked (restating 2026-09-26 21:55 PDT, when Measured joined the header); 50 Playable unchanged from 2026-09-26 17:15 PDT: https://github.com/jreinach-alt/hakuX/issues/433#issuecomment-5851419837"
 
-# The two numbers the header's progress bars count against.
+# The numbers the header's progress bars count against. The release counts
+# measured and playable (the owner, 2026-10-12); benchmarked is shown as
+# progress toward routes and saves, and is not a ship criterion.
 #   measured:    any gameplay-window fps reading on either handheld, at any
-#                build and mode (the owner, 21:55 PDT); counted against the
-#                benchmarked target, shown first so progress shows.
+#                build and mode (the owner, 2026-09-26 21:55 PDT).
 #   benchmarked: copied to a handheld, profile setup and gameplay inputs
 #                programmed (the first-run and returning routes), the profile
 #                save extracted, and gameplay fps measured at MAX performance on
@@ -25,12 +26,13 @@ decided = "owner, 2026-09-26 17:15 PDT: https://github.com/jreinach-alt/hakuX/is
 #                and we previously ruled only one device needs to be measured").
 #   playable:    every criterion of title_verdict.py's bar met on the handheld
 #                it was measured on, including the 20-minute soak.
+measured_target = 145
 benchmarked_target = 145
 playable_target = 50
 # How many handhelds a benchmarked title must be on. One: the owner, 18:10 PDT,
 # https://github.com/jreinach-alt/hakuX/issues/433#issuecomment-5851512534
 benchmark_copies = 1
-# The forecast's window: titles benchmarked (or made Playable) in the last N hours.
+# The forecast's window: titles measured (or made Playable) in the last N hours.
 rate_hours = 48
 
 # The release gate. The page keeps status.sh's measurement (the newest soak per
