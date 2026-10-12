@@ -48,46 +48,56 @@ than the survey's blind generic loop.
 ### Dead or Alive 3 (4D53002D)
 
 Source: `z-1791803606-fpsbelow1012-3255578` (survey.route, kept profile golden `220536a66fe2`, switch ON).
-Screens read from `route-frames/`, presses from `run.log` ROUTE lines.
+`survey.route` presses START/A alternately every 5s, 14 cycles (pairs), then a generic play loop. Every press
+below is recorded at minimum by its `run.log` ROUTE line (exact device time); a shot column of "-" means the
+press is logged but its resulting screen was not individually read -- still a recorded row, just not a
+visually-confirmed one. Cycle numbers below are the pair's position in that 14-cycle loop, recounted directly
+from the frame filenames and `run.log` (the first draft of this table had the numbering off by a few and is
+superseded by this one).
 
-| t (host) | press (from) | shot | screen | recorded? |
+| t (host) | press | shot | screen | recorded? |
 |---|---|---|---|---|
-| 04:49:37.173 (+60s) | (none, boot wait) | `044937-booted.png` | Title card, "PRESS START BUTTON" | recorded |
-| 04:49:37.528 (cycle1 START) | press START (title) | `044942-menu-start.png` | still title-ish (dark castle wall, different attract frame) | recorded |
-| cycles 2-6 (04:49:43-04:50:01) | press A / START (attract/menu) | not individually read | not read | unrecorded |
-| 04:50:01.268 (cycle7 START, ~04:50:08) | press START | `045007-menu-start.png` | STORY MODE, CHARACTER SELECT, Kasumi highlighted (PLAYER-1 / COS.1) | recorded |
-| cycles 8-10 (04:50:08-04:51:02) | press A / START | not individually read | not read | unrecorded |
-| 04:51:02.765 (cycle11 START, ~04:51:08) | press START | `045108-menu-start.png` | Live fight already resolved: Kasumi down, Hitomi standing, **PAUSED / PLAYER-1 / CONTINUE** menu up | recorded |
-| cycles 12-13 | press A / START | `045159-menu-start.png` (cycle ~13) | same PAUSED/CONTINUE menu, Kasumi down (one frame shows a fresh round mid-fight, both standing, full-ish bars, at 04:52:06-ish) | recorded |
-| 04:52:18.352 (cycle14 START) | press START | `045217-menu-a.png` | fresh round: Kasumi and Hitomi both standing, Kasumi's bar ~55%, no pause overlay | recorded |
-| 04:52:31.591 | mark play (survey's own, not `mark gameplay`) | `045231-play.png` | **PAUSED / PLAYER-1 / CONTINUE**, Kasumi down again, taken ~1s after mark | recorded |
-| 04:56:35.922 (last play shot) | generic play loop (press A only, 3s cadence) | `045635-play.png` | `CONTINUE? 8 ... Hayate...` KO/continue countdown | recorded |
+| 04:49:37.173 (+60s) | (none, boot wait) | `044937-booted.png` | Title card, "PRESS START BUTTON" | recorded (shot) |
+| 04:49:37.528 (cycle1 START) | press START | `044942-menu-start.png` | dark castle-wall attract frame, faint "DEAD OR ALIVE 3" | recorded (shot) |
+| 04:49:43.354 (cycle1 A) | press A | `044948-menu-a.png` | title card again, "PRESS START BUTTON" | recorded (shot) |
+| 04:49:49.293 (cycle2 START) | press START | `044954-menu-start.png` | MODE SELECT, STORY MODE icon highlighted | recorded (shot) |
+| 04:49:55.336 (cycle2 A) | press A | - | not individually read | recorded (ROUTE line only) |
+| 04:50:01.268 (cycle3 START) | press START | `045007-menu-start.png` | STORY MODE CHARACTER SELECT, Kasumi (PLAYER-1 / COS.1) | recorded (shot) |
+| 04:50:08.139 (cycle3 A) | press A | `045013-menu-a.png` | "STORY MODE" loading transition (black) | recorded (shot) |
+| 04:50:13.696 (cycle4 START) | press START | `045019-menu-start.png` | pre-fight close-up, opponent line "Please do not block my way" | recorded (shot) |
+| 04:50:19.725 (cycle4 A) | press A | `045025-menu-a.png` | fight intro: Kasumi falling through fog, health bars already on screen | recorded (shot) |
+| 04:50:25.801 (cycle5 START) | press START | `045031-menu-start.png` | **PAUSED / PLAYER-1 / CONTINUE**, Kasumi already down, Hitomi standing | recorded (shot) |
+| cycles 6-11 | press A / START | `045108`, `045159`, `045211`, `045217` (sampled) | PAUSED/CONTINUE repeating; one sampled frame (`045159-menu-start.png`, cycle12) shows a fresh round live (both standing, bars near full) | recorded (ROUTE lines; 4 of the ~14 shots sampled) |
+| 04:52:12.147 (cycle13 A) | press A | `045217-menu-a.png` | Kasumi down again (fresh KO, no pause overlay yet), Hitomi's bar full | recorded (shot) |
+| 04:52:31.591 | mark play (survey's own, not `mark gameplay`) | `045231-play.png` | **PAUSED / PLAYER-1 / CONTINUE**, Kasumi down, ~1s after mark | recorded (shot) |
+| 04:56:35.922 (last play shot) | generic play loop (press A only, 3s cadence) | `045635-play.png` | `CONTINUE? 8 ... Hayate...` KO/continue countdown | recorded (shot) |
 
-The menu path through cycle 7 (title -> attract/menu cycling -> STORY MODE character select, Kasumi) matches
-`doa3.route`'s own comment exactly: "START twice from t~75 ... then A to walk STORY -> character select ->
-costume -> fight intro," and its header's claim that DOA3 has no profile gate on this path (confirmed: the
-kept-profile disk shows the identical character-select screen, no load/continue prompt, no save name). So the
-boot and menu cadence below is `doa3.route`'s own, unchanged.
+So the real menu path is title -> MODE SELECT (Story Mode) -> CHARACTER SELECT (Kasumi) -> a loading transition
+-> a pre-fight voice line -> the fight's falling/landing intro (health bars appear) -- four START/A cycles after
+boot, not `doa3.route`'s guessed "2 STARTs then up to 7 A's." `doa3.route`'s own step sequence was never device
+-tested (its header says "NOT YET REPLAYED"); this survey is the first real evidence of the kept-profile path,
+and it is a *different* (but equally screen-reaching) press pattern. What matters for the gate (every screen on
+the kept-profile's way to a fight matches what `doa3.route`'s comment and NOTES.md E describe -- no profile
+gate, no load prompt, no save name -- just reached by alternating START/A instead of a fixed 2+7 split) still
+holds, so the route below uses the survey's own recorded cadence rather than `doa3.route`'s untested one.
 
-Between cycle 7 (character select, 04:50:08) and cycle 11 (04:51:08) -- four more blind START/A pairs, ~60s --
-the survey's blind A-presses (which `doa3.route`'s own comment says read as attacks once in a fight: "Extra A
-presses in the fight are attacks, so over-pressing is safe") carried the run all the way through costume select,
-fight intro, and a full round, ending with Kasumi KO'd and the post-KO **PAUSED/PLAYER-1/CONTINUE** menu already
-on screen by cycle 11's shot. That menu's "CONTINUE" entry is what the survey's bare `press A` (in both the
-cycle loop and the later generic play loop) selects -- it resumes a fresh round, but a single blind A-press has
-no attack timing or guard behind it, so the next round is lost just as fast: cycle 14's shot (`045217-menu-a.png`)
-catches one fresh round standing, but by the first play-loop shot one second into `mark play` (`045231-play.png`)
-Kasumi is down and paused again. Every later play shot through the end of the run (`045635-play.png`, the last
-one, ~4 minutes later) is the same PAUSED/CONTINUE menu or the `CONTINUE? 8 ... Hayate...` countdown that follows
-once continues run out -- the survey's generic play loop (bare `press A` every 3s, no directional input) never
-produces one second of moving fight play after the mark.
+The fast-KO finding is now tightly bounded: the fight's falling-intro frame (`045025-menu-a.png`, 04:50:19.725 +
+5s wait) already shows health bars on screen, and the very next cycle's shot, only 6 seconds of real device time
+later (`045031-menu-start.png`, 04:50:25.801 + 5s wait), is already the post-KO PAUSED/CONTINUE menu with Kasumi
+down. A full DOA3 round -- intro, fight, KO -- fits inside that one ~6s survey cycle. The survey's own bare
+`press A` (selecting CONTINUE) starts a fresh round, but with no attack timing behind it that round is lost just
+as fast: cycle13's shot (`045217-menu-a.png`) is a fresh KO, and the first play-loop shot one second after `mark
+play` (`045231-play.png`) is PAUSED/CONTINUE again. Every later play shot through the run's end (`045635-play.png`,
+~4 minutes later) is the same pause menu or the `CONTINUE? 8 ... Hayate...` countdown once continues run out --
+the survey's generic play loop (bare `press A` every 3s, no directional input) never produces a second of moving
+fight play after the mark.
 
 `doa3.route`'s own play loop is built for exactly this failure mode: it is not bare A-presses but a timed combo
 (`axis LX max/mid`, `press X`, `press Y`, `press X`, `press B`, `press A`) whose trailing `press A` is commented
 "also leaves a KO / continue screen" -- i.e. it was written already expecting a KO/continue cycle and clearing it
-as part of the loop, rather than parking on it. So the returning route below reuses `doa3.route`'s menu cadence
-(steps 1-7, screen-identical on this kept-profile disk per the table above) and its combo play loop verbatim,
-never the survey's bare-A generic loop.
+as part of the loop, rather than parking on it. Given the ~6s fast-KO window above, the returning route below
+gets into that combo loop immediately on the fight's falling-intro frame (no extra blind cycle once health bars
+appear), reusing `doa3.route`'s combo loop verbatim; it never uses the survey's bare-A generic loop.
 
 ### Ninja Gaiden Black (5443000D)
 
