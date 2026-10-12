@@ -2464,3 +2464,8 @@ standing = false
 files = ["docs/lanes/nightlynotes1009/**"]
 note = "RETIRED (lane.local 2026-10-09 23:45 PDT): folded as 96852d8144 (23:32 PDT), no unit. nightly_build.sh and 86-nightly-notes.sh RELEASED to [free]."
 
+[lane.zetaroutes1012]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/zetaroutes1012/**", "docs/testing/predictions/zetaroutes1012-*", "docs/testing/titles/routes/buffy.returning.route", "docs/testing/titles/routes/doa3.returning.route", "docs/testing/titles/routes/ninja-gaiden-black.returning.route"]
+note = "STARTED lane.local 2026-10-12 07:35 PDT (Sonnet, route building per the 10-10 table): lane.fpsbelow1012 (folded 78cd417e9d) left HAKUX_ZETA_D24 off by default with survey-route gains on Buffy (0.79 -> 1.00), NG Black (0.85 -> 0.96) and DOA3; their gameplay routes are first-run and R1 refuses them over the kept profiles. This lane composes a returning route per title from the kept profile's survey shots, then runs each with HAKUX_ZETA_D24=1 in the sweep tier (no holds, no Nova deletes, no --remake-profile, at most 12 runs). Brief: briefs/zetaroutes1012.md."
