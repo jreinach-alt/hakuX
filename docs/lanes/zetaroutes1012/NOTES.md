@@ -697,3 +697,21 @@ choose them, so this lane does not re-run the arm. A like-for-like DOA3 reading 
 picked, which needs recorded menu rows this lane does not have.
 
 Run count: 10 of 12. Nothing is queued.
+
+## 23. Finish
+
+- **Preflight.** `docs/testing/preflight.sh --allow-tracker` passes at 6e3c00689d: psh_differ, aci_vmstate,
+  nv2a index, territory and board files all read `ok`. The coverage gate reads `DID NOT RUN`. It reaches
+  GitHub through `gh`, and this lane runs with no GitHub, so it was run with a `gh` stub that exits 1 and the
+  gate failed open.
+- **Diff against master.** `git diff --stat origin/master...HEAD` lists the nine files on PR.md's `Files:`
+  line.
+- **State.** OUTBOX.md is final for all three titles, and PR.md says `State: ready`. Runs used: 10 of 12.
+  Nothing is queued and nothing of this lane's is on a device.
+
+For the next lane:
+- **DOA3.** The arcade draws the opponent and stage on each boot, so a timing-only route cannot pair DOA3's
+  arms like for like. That needs a mode where the stage is chosen, from recorded menu rows.
+- **Buffy.** It needs a screen-read path past the shimmy ledge, not another timed loop (section 19).
+- **NG Black.** The route holds Ryu in the opening riverbed or gorge. A path through the level needs the same
+  screen-read approach.
