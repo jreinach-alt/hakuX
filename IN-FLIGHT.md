@@ -6,20 +6,23 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `pathclass` | claude-sonnet-5 | 9 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lanelocal-shuffle`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 1 running.
+- **Device queue:** 2 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
 
-**49 titles are confirmed Playable** (5 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**50 titles are confirmed Playable** (6 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-12 | Scooby-Doo! Mystery Mayhem (Europe) | Playable, 10-minute run, median 29.0 fps |
 | 2026-10-12 | Conan (Europe) | Playable, 10-minute run |
 | 2026-10-12 | Grand Theft Auto: Vice City | Playable, 10-minute run |
 | 2026-10-12 | Grand Theft Auto III | Playable, 10-minute run |
@@ -70,11 +73,13 @@ No lane session is running.
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-33 of these still await the owner's flicker check.
+34 of these still await the owner's flicker check.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `3a438399f4` | 2026-10-12 07:10 |
 
 ## Recently landed on master
 
@@ -88,4 +93,4 @@ No branch is being worked right now.
 - 2026-10-12 burnoutbrief1012: press Continue (A) after Retry so a run on the event brief keeps racing (#433, 0.5)
 - 2026-10-12 burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5)
 
-_Updated 2026-10-12 08:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 08:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
