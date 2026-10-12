@@ -969,18 +969,54 @@ dev_push() {
     [ "$(dev_sha256 "$dst")" = "$want" ] && [ "$(dev_mode "$dst")" = 660 ]
 }
 
-# titles_disk_prepare <id> <rdir> [<request env json>] [<title id>] [<state>]:
+# profile_gate_check <request.json path> <rdir> [<title id>]: titlestate.py
+# admit(), re-run at claim (lane.profilegate1011, #433) exactly as request.sh
+# ran it at queue time -- nothing here is grandfathered, so a request written
+# straight into dispatch/queue (no request.sh) is gated the same way. TITLE_ID
+# defaults to the request's own title_id field when not given. On refusal,
+# writes the one-line reason to <rdir>/profile.refused and returns 3; the
+# caller decides how to report it (ERROR/log) and whether to restore hddPath,
+# same division as titles_disk_prepare/hdd.refused.
+profile_gate_check() {
+    local req="$1" rdir="$2" ttid="${3:-}" route find reason remake broken out rc textfile
+    [ -n "$ttid" ] || ttid=$(jq_get "$req" title_id "")
+    route=$(jq_get "$req" route_name "")
+    find=$(jq_get "$req" find_route "")
+    remake=$(jq_get "$req" remake_profile "")
+    broken=$(jq_get "$req" path_broken "")
+    textfile=$(mktemp)
+    python3 -c 'import json,sys; r=json.load(open(sys.argv[1])).get("route") or ""; open(sys.argv[2],"w").write(r)' \
+        "$req" "$textfile"
+    out=$(python3 "$TITLESTATE" admit ${ttid:+--title-id "$ttid"} ${route:+--route "$route"} \
+          --route-text-file "$textfile" ${DEVICE_LABEL:+--device "$DEVICE_LABEL"} \
+          ${find:+--find-route "$find"} ${remake:+--remake-profile "$remake"} \
+          ${broken:+--path-broken "$broken"} 2>&1)
+    rc=$?
+    rm -f "$textfile"
+    [ "$rc" = 0 ] && return 0
+    reason=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or sys.argv[1])' "$out" 2>/dev/null) \
+        || reason="titlestate.py admit failed: $out"
+    printf '%s\n' "$reason" > "$rdir/profile.refused"
+    return 3
+}
+
+# titles_disk_prepare <id> <rdir> [<request env json>] [<title id>] [<state>] [<save>]:
 # make the device's titles disk the composed goldens for this title and state
 # (titlestate.py, GOLDENS: every title's golden profile, minus this title's on
-# a first-run) and point hddPath at it. Writes <rdir>/hdd.json, which records
+# a first-run) and point hddPath at it. SAVE (the request's --save; lane.
+# profilegate1011, #433), when given, swaps that stored save in for this
+# title's slot instead of its golden. Writes <rdir>/hdd.json, which records
 # what was loaded: title, save, golden or none. Non-zero fails the request;
-# 3 is a refusal (a returning state with no golden), written to
-# <rdir>/hdd.refused, before any disk is touched.
+# 3 is a refusal (a returning state with no golden, or a --save that is not
+# in the store / was rejected on this device / carries no save directory on
+# a returning route), written to <rdir>/hdd.refused, before any disk is
+# touched.
 titles_disk_prepare() {
-    local id="$1" rdir="$2" renv="${3:-[]}" tid="${4:-}" tstate="${5:-any}" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
+    local id="$1" rdir="$2" renv="${3:-[]}" tid="${4:-}" tstate="${5:-any}" tsave="${6:-}" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
     local split="${HAKUX_TITLES_DISK:-1}" from=worker rsplit mode0 targs=()
     [ -n "$tid" ] && targs=(--title-id "$tid")
     targs+=(--state "$tstate")
+    [ -n "$tsave" ] && targs+=(--save "$tsave")
     [ -n "${HAKUX_TITLES_DISK:-}" ] || from=default
     # The request's own HAKUX_TITLES_DISK, when it names one, wins.
     rsplit=$(python3 -c '
@@ -1706,11 +1742,25 @@ PYEOF
         # Which title, and the state its route was written for (request.sh
         # --route, titlestate.py resolve-route). A request queued before that
         # carries neither: its title from the ISO name, state `any`.
-        local ttid tstate trc
+        local ttid tstate tsave trc
         ttid=$(jq_get "$req" title_id "")
         [ -n "$ttid" ] || ttid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
         tstate=$(jq_get "$req" title_state any)
-        titles_disk_prepare "$id" "$rdir" "$req_env" "$ttid" "$tstate"; trc=$?
+        tsave=$(jq_get "$req" save "")
+
+        # THE PROFILE GATE, RE-CHECKED AT CLAIM (lane.profilegate1011, #433).
+        # request.sh already ran this at queue time, but nothing is
+        # grandfathered here: a request written straight into dispatch/queue
+        # (no request.sh) is checked exactly like any other. Before
+        # titles_disk_prepare, so a refused run never touches the disk.
+        if ! profile_gate_check "$req" "$rdir" "$ttid"; then
+            log "  PROFILE GATE REFUSED: $(cat "$rdir/profile.refused" 2>/dev/null)"
+            printf 'refused before the soak: no profile: %s\n' "$(cat "$rdir/profile.refused" 2>/dev/null)" > "$rdir/ERROR"
+            restore_hdd_pref
+            mv "$req" "$rdir/request.json"; return 0
+        fi
+
+        titles_disk_prepare "$id" "$rdir" "$req_env" "$ttid" "$tstate" "$tsave"; trc=$?
         if [ "$trc" = 3 ]; then
             echo "refused before the soak: the titles disk cannot carry what the route assumes: $(cat "$rdir/hdd.refused" 2>/dev/null)" > "$rdir/ERROR"
             log "  TITLES DISK REFUSED"

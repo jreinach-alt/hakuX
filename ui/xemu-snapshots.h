@@ -33,7 +33,13 @@ typedef unsigned int GLuint;
 #endif
 
 #define XEMU_SNAPSHOT_DATA_MAGIC 0x78656d75 // 'xemu'
-#define XEMU_SNAPSHOT_DATA_VERSION 1
+/*
+ * Version 2 (#433) appends a list of identity fields to version 1's disc
+ * path, title name and thumbnail: the device-state schema, the build, the
+ * title ID, the disc and the controller layout. A load is refused, before the
+ * machine is reset, when any of them differs from the running machine's.
+ */
+#define XEMU_SNAPSHOT_DATA_VERSION 2
 
 #define XEMU_SNAPSHOT_THUMBNAIL_WIDTH 160
 #define XEMU_SNAPSHOT_THUMBNAIL_HEIGHT 120
@@ -57,6 +63,16 @@ void xemu_snapshots_delete(const char *vm_name, Error **err);
 void xemu_snapshots_save_extra_data(QEMUFile *f);
 bool xemu_snapshots_offset_extra_data(QEMUFile *f);
 void xemu_snapshots_mark_dirty(void);
+
+/* The HAKUX_SNAPSHOT_TEST sequence; does nothing without the variable. */
+void xemu_snapshots_test_init(void);
+
+// Implemented in migration/savevm.c
+char *xemu_savevm_schema_fingerprint(void);
+
+// Implemented in hw/xbox/nv2a/nv2a.c
+uint64_t nv2a_display_region_hash(bool download);
+void nv2a_get_wait_flags(bool *flip, bool *nop, bool *context_switch);
 
 // Implemented in xemu-thumbnail.cc
 void xemu_snapshots_set_framebuffer_texture(GLuint tex, bool flip);

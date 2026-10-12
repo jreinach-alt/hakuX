@@ -269,7 +269,12 @@ case "$out" in
     *"--video-after 100 + --video-seconds 50 is more than the 120s soak can hold"*) ok "refused: --video-after + --video-seconds cannot fit even with the mark at t=0" ;;
     *) bad "hold-too-small refusal: $out" ;;
 esac
-out=$(rq_video "$RQ/f" --title "Sonic Heroes.iso" --video-seconds 60 --video-after 30)
+# --find-route: this is a video-option fit check, not a profile-gate one, and
+# "Sonic Heroes.iso" (unlike the real on-device file name) resolves to no
+# TitleID at all -- the profile gate (lane.profilegate1011, #433) refuses an
+# unidentifiable title outright unless the run is finding a route.
+out=$(rq_video "$RQ/f" --title "Sonic Heroes.iso" --find-route "selftest: video fit, not a profile check" \
+      --video-seconds 60 --video-after 30)
 if ls "$RQ/f/queue/"*.req >/dev/null 2>&1; then
     ok "a fitting --video-seconds/--video-after is queued"
     vs=$(python3 -c 'import json,glob,sys; print(json.load(open(glob.glob(sys.argv[1]+"/queue/*.req")[0]))["video_seconds"])' "$RQ/f" 2>/dev/null)
