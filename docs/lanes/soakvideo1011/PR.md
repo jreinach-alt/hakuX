@@ -2,8 +2,10 @@
 State: ready
 
 Lane: soakvideo1011            Issue: none (#433 umbrella)
-Base: master @ b73d50a070 (the lane/soakvideo1011 fold)
-Files: NONE (device-proof only; no source edit)
+Base: master @ 3f1eace130 (merged up from this branch's original base, the
+lane/soakvideo1011 fold b73d50a070, after the device run below -- no
+functional change for this PR; see "Merge note")
+Files: docs/lanes/soakvideo1011/NOTES.md, docs/lanes/soakvideo1011/PR.md
 Prediction: none: survey run, not an A/B arm (see below)
 Needs device: yes (Nova, one soak)    Needs NDK: no
 
@@ -104,5 +106,16 @@ For the owner to watch (lanes cannot decode video here):
 
 Release note (none): device-proof only, no emulator/harness code changed in
 this PR.
+
+## Merge note
+
+This branch was cut from `origin/master` at `b73d50a070` per Addendum 4,
+before the device run. By the time this PR was opened, `origin/master` had
+moved 26 commits ahead (other lanes' folds); this branch merged up to
+`3f1eace130` to stay current, per the session-start check. The only route
+touched by that gap, `gta-sa.route`, changed by a header-comment re-head
+(`state: first-run` -> `state: any`, `profileconv1011` #433) with no
+functional lines touched -- the run below used the route as it stood at
+`b73d50a070`, and nothing in the merge changes what that run proves.
 
 Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>

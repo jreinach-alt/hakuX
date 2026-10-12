@@ -343,3 +343,11 @@ that `--frames-every` and `--video-seconds` both cost frame rate, so it is not c
 soak's gfps either.
 
 Step 2 is complete. `State: ready` set below; no further device work anticipated for this PR.
+
+**Merge before opening the PR:** the session-start check reported this branch 26 commits behind
+`origin/master` (it was cut from `b73d50a070`, the fold, before the device run; other lanes folded
+since). Merged `origin/master` (now `3f1eace130`) into this branch -- 18 files, all additions from other
+lanes (`nfsdefault1011`, `profileconv1011`) plus a header-only re-head of `gta-sa.route`'s `state:`
+comment (no functional route line changed). `git diff --stat origin/master...HEAD` now shows only this
+lane's own two files, as it should. Fixed `PR.md`'s `Files:` line to match (was wrongly `NONE`; this
+lane's own NOTES.md/PR.md edits are of course in the diff) and added a "Merge note" section there.
