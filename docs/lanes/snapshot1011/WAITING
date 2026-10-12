@@ -1,2 +1,1 @@
-# lane.local 2026-10-11 14:3x PDT: the session hit its 300-turn cap after queueing the first sequence run; resume on its result.
-run 1-1791753422-snapshot1011-2350466
+run 1-1791764800-snapshot1011-813455 (ref 4c4e5f98a9, HAKUX_SNAPSHOT_TEST=76: save A on the mission briefing, scene B in the race)
