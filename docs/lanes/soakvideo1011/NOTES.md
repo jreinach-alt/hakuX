@@ -276,3 +276,78 @@ Nothing outside the brief's list was touched, with one documented exception: Add
 `*-soakvideo1011.sh` glob) because that fragment pinned down the exact bug Addendum 3 removes as its expected
 behavior -- see the Addendum 3 section above for the full reasoning and the before/after proof. `burst_capture.py`
 and `flicker_score.py` were read only.
+
+## Resume (attempt 2 of this thread, 2026-10-11 ~15:1x PDT): new branch per Addendum 4
+
+Why the prior session did not finish: it ended at the point recorded just above in "Readied, waiting on the
+fold" -- `bee8b76571` was pushed, PR #928 marked ready, and the session then polled
+`git -C /home/justin/hakuX merge-base --is-ancestor bee8b76571 HEAD` for two 10-minute windows without it
+turning true, posted a `[lane.soakvideo1011] waiting:` comment per the role's own rule against polling past
+the turn cap, and stopped. That was correct per the rules in force at the time (never end a session on a
+live background wait; a draft/pending-fold PR is not something a lane can force). The fold itself happened
+later, outside that session: `/home/justin/hakuX` HEAD is now `b73d50a070`
+("fold: lane/soakvideo1011 (offline) -- ... (#433, 0.5)"), confirmed an ancestor of itself trivially and
+`origin/master` at the same sha. lane.local's Addendum 4 (15:0x PDT) is what actually un-blocks Step 2, and
+it changes where Step 2's work goes.
+
+Per Addendum 4: `lane/soakvideo1011` (this worktree's branch) is folded and must not take further commits --
+`request.sh`, `dispatcher.sh` and `AGENTS.md` are released to `lane.profilegate1011` now. Step 2 goes on a
+new branch, `lane/soakvideo1011-step2`, from `origin/master`. Created it in this same worktree
+(`git checkout -b lane/soakvideo1011-step2 origin/master`, confirmed at `b73d50a070`, matching
+`origin/master`) rather than opening a second worktree, since the brief names no new territory and this
+worktree is otherwise idle. No `request.sh`/`dispatcher.sh`/`AGENTS.md` edits are anticipated for Step 2 per
+Addendum 4 ("Step 2 needs no change to them"); if the device proof surfaces a dispatcher defect, it goes in
+this file plus a `grant docs/testing/dispatcher.sh` line in WAITING, not a direct edit.
+
+Leftover from the prior attempt: `docs/lanes/soakvideo1011/scratch/` (49M, the 3377455 proof copy for
+Addendum 1, untracked) is left in place -- it is already fully consumed and cited in the Addendum 1 section
+above, and removing it is not needed for Step 2.
+
+Budget per Addendum 4 (owner, frugal agent usage): one device run, plus one re-run only for a device/infra
+flake the logs show; no Agent/subagents/WebSearch/WebFetch; never `cd`.
+
+## Step 2 device proof (2026-10-11, queued ~16:26 PDT, ran ~17:47-17:57 PDT)
+
+Queued `docs/testing/request.sh --who lane.soakvideo1011 --issue 433 --title
+"54540082-Grand_Theft_Auto_San_Andreas.xiso.iso" --route gta-sa --seconds 600 --frames-every 5
+--video-seconds 120 --video-after 30 --device nova --no-expect "..."` (full line and reason in PR.md).
+`--ref HEAD` resolved to `b73d50a070`, matching `origin/master` exactly -- no rebuild drift. Needed one
+run only: no device/infra flake, so the budget's re-run allowance was not used.
+
+The Nova had a long backlog ahead of this request from unrelated lanes (nfsdefault1011, profileconv1011,
+lane.local, gtaroutes1011 x2, lane.gtasagpu1011 x2, snapshot1011, nfsroute1011, two blocker-tier
+lane.local jobs) -- polled in foreground chunks (30s sleeps, ~8-9 min per Bash call, per the brief's own
+rule) for about 90 minutes of real wall-clock queue time before this request was claimed. Nothing of mine
+was touched to speed that up (no hold, no queue reordering); it is simply what a shared, busy Nova costs
+right now. The queue count rose and fell as other lanes added and completed work; watched for our own id
+in `dispatch/running/` rather than assuming FIFO position was stable.
+
+**Result:** `dispatch/results/1-1791756360-lane.soakvideo1011-3149619/`. All four Step-2 legs pass (table
+in PR.md): two mp4s at 60.026s/60.014s duration (ffprobe cross-check, owner-approved in Addendum 2, agrees
+to five decimal places), 3640 samples each, a 0.974s gap between segment 1's end and segment 2's start,
+no `hakux_vid_*` left on the device (`adb -s ee317437 shell ls /sdcard/Download/`, read-only check), and
+`frames/` still holds its 108 stills.
+
+**The Addendum 1 fix is confirmed live on a real run, not just the selftest fixture:** this result's
+`frames/index.tsv` exists (device-clock `HH:MM:SS` per still, written by the folded dispatcher code), and
+running `title_verdict.py` on a scratch copy
+(`docs/lanes/soakvideo1011/scratch/step2-1-1791756360-lane.soakvideo1011-3149619/`, never the original)
+reads `static_window: {measured: true, n: 67, source: "frames"}` -- the exact window that was
+`unmeasured` before the fix. Copied rather than run on the original per the same practice as the Addendum
+1 proof (a result dir other lanes/nightly tooling may read is not mutated by a verdict-reading experiment).
+
+**gfps:** `g_fps_mean_reported_not_judged: 29.7` (target 30.0, 193 post-mark windows) from the same
+`title_verdict.py` run. First figure for this route -- `fastpaths1010`'s two prior `gta-sa` runs recorded
+only the surface-dropout stills, no gfps. Reported as a bare measured figure in PR.md, with the caveat
+that `--frames-every` and `--video-seconds` both cost frame rate, so it is not comparable to a clean
+soak's gfps either.
+
+Step 2 is complete. `State: ready` set below; no further device work anticipated for this PR.
+
+**Merge before opening the PR:** the session-start check reported this branch 26 commits behind
+`origin/master` (it was cut from `b73d50a070`, the fold, before the device run; other lanes folded
+since). Merged `origin/master` (now `3f1eace130`) into this branch -- 18 files, all additions from other
+lanes (`nfsdefault1011`, `profileconv1011`) plus a header-only re-head of `gta-sa.route`'s `state:`
+comment (no functional route line changed). `git diff --stat origin/master...HEAD` now shows only this
+lane's own two files, as it should. Fixed `PR.md`'s `Files:` line to match (was wrongly `NONE`; this
+lane's own NOTES.md/PR.md edits are of course in the diff) and added a "Merge note" section there.
