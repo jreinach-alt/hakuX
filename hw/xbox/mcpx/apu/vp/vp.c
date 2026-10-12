@@ -30,9 +30,247 @@ static const struct {
     { NV_PAPU_TVLMP, NV_PAPU_CVLMP, NV_PAPU_NVLMP }, // MP
 };
 
+/*
+ * HAKUX_APU_VOICELOG=1: a source-side log of what the VP reads, written for
+ * the NFS Most Wanted stutter (docs/lanes/nfsaudio1011/NOTES.md). Off by
+ * default. Off, every hook below is one test of a bool read once at init.
+ *
+ * The symptom is at the output: about 15% of NFS MW's loud output is a
+ * bit-exact copy of the output 2400 frames (50 ms) earlier. The candidate
+ * explanations predict different things at the source, and these lines are
+ * built to tell them apart:
+ *
+ *   - the VP runs ahead of a guest writer in bursts: stale blocks come at the
+ *     end of a VP burst while the guest's own writes stay regular;
+ *   - the VP reads the wrong place: an SSL entered again without having been
+ *     reprogrammed, or CBO moving where the guest did not put it;
+ *   - the guest writer stalls: gaps in its writes while the VP runs steadily.
+ *
+ * "Stale" is measured where it happens: every 32-sample block the VP reads is
+ * hashed, keyed by its source address, and a loud block whose hash equals the
+ * one read from that address on the previous lap is stale. A static looped
+ * effect is stale by design, so shares are per voice, and the ring share in
+ * the summary counts only voices that also read fresh blocks.
+ *
+ * A scanner thread (created only when this is on) follows one looping ring
+ * voice and hashes its blocks every millisecond, which times the guest's
+ * writes in host time independently of when the VP reads.
+ *
+ * Lines go to logcat under hakuX-audio, prefixed "apuvoice": the dispatcher's
+ * LOGCAT_SPEC is an exact tag list and carries no other audio tag. Each line
+ * has the APU frame counter (f=) and host monotonic microseconds since init
+ * (t=). Event lines draw on per-second budgets; the summary reports drops.
+ */
+#define VL_TBL_BITS 11 /* blocks remembered per voice: 2048, 64k samples */
+#define VL_TBL (1 << VL_TBL_BITS)
+#define VL_SCAN_MAX_BLKS 1024 /* largest ring the scanner follows */
+#define VL_SEG_PAGES (MCPX_HW_MAX_SSL_PRDS * 8 + 64)
+#define VL_LOUD (200.0f / 32768.0f) /* same threshold as replay_share.py */
+
+enum { VL_B_EVENT, VL_B_PIO, VL_B_SCAN, VL_B_COUNT };
+static const uint32_t vl_budget[VL_B_COUNT] = { 30, 20, 12 };
+
+typedef struct VoiceLogBlock {
+    uint64_t key;
+    uint64_t hash;
+    int64_t read_us;
+} VoiceLogBlock;
+
+typedef struct VoiceLogVoice {
+    /* Written by the vCPU thread in fe_method, read with qatomic. */
+    int64_t pio_us;
+    int64_t on_us;
+    uint32_t on_gen;
+    uint32_t pio_n, notify_n;
+    uint32_t ssl_gen[2];
+    int64_t ssl_write_us[2];
+    bool loud_recent; /* set by the APU thread each summary */
+
+    /* Owned by the worker that processes this voice. */
+    VoiceLogBlock *tbl;
+    uint64_t cur_key, cur_hash, cur_region;
+    uint32_t cur_n, cur_cbo;
+    bool cur_loud;
+    uint32_t on_seen;
+    bool ssl_entered[2];
+    uint32_t ssl_seen[2];
+    uint32_t cfg_sig;
+    uint32_t run_n, run_cbo;
+    uint64_t run_region;
+    int run_f, run_ssl, run_seg;
+    int64_t run_t, run_lap_us, run_pio_age_us;
+    int run_wr_head;
+    int64_t run_wr_age, run_blk_wr_age;
+
+    /* Window counters, worker-owned; read and reset by the APU thread once
+     * voice_work_dispatch has returned. */
+    uint32_t w_samples, w_blocks, w_loud, w_fresh, w_stale, w_first;
+    uint32_t w_sslsw, w_sslrep, w_sslempty;
+} VoiceLogVoice;
+
+static bool vl_on;
+static int64_t vl_t0;
+static VoiceLogVoice *vl_voice;
+static uint32_t *vl_seg_gen;
+static uint32_t vl_lines[VL_B_COUNT], vl_dropped[VL_B_COUNT];
+
+static struct {
+    int focus; /* voice the scanner follows, -1 for none */
+    uint32_t ba, ebo, bps, gen;
+    int64_t wr_us[VL_SCAN_MAX_BLKS]; /* last time each block changed */
+    int head; /* newest block the guest was seen writing */
+    int64_t head_us;
+} vl_scan = { .focus = -1, .head = -1 };
+
+#ifdef __ANDROID__
+extern int __android_log_print(int prio, const char *tag, const char *fmt, ...);
+#define VL_PRINT(fmt, ...) \
+    __android_log_print(4, "hakuX-audio", "apuvoice " fmt, ##__VA_ARGS__)
+#else
+#define VL_PRINT(fmt, ...) \
+    fprintf(stderr, "apuvoice " fmt "\n", ##__VA_ARGS__)
+#endif
+
+static int64_t vl_now(void)
+{
+    return qemu_clock_get_us(QEMU_CLOCK_REALTIME) - vl_t0;
+}
+
+static bool vl_take(int budget)
+{
+    if (qatomic_fetch_inc(&vl_lines[budget]) < vl_budget[budget]) {
+        return true;
+    }
+    qatomic_inc(&vl_dropped[budget]);
+    return false;
+}
+
+static inline uint64_t vl_mix(uint64_t h, uint32_t x)
+{
+    return (h ^ x) * 0x100000001b3ULL;
+}
+
+/* Lines only for a voice that sounded in the last window or was started in
+ * the last second, so a busy effects mixer cannot spend the budget. */
+static bool vl_voice_of_interest(VoiceLogVoice *vv, int64_t now)
+{
+    return qatomic_read(&vv->loud_recent) ||
+           now - qatomic_read(&vv->on_us) < 1000000;
+}
+
+static void voicelog_notify(MCPXAPUState *d, uint32_t v, int notifier,
+                            int status)
+{
+    if (v >= MCPX_HW_MAX_VOICES) {
+        return;
+    }
+    VoiceLogVoice *vv = &vl_voice[v];
+    int64_t now = vl_now();
+    qatomic_inc(&vv->notify_n);
+    if (!vl_voice_of_interest(vv, now) || !vl_take(VL_B_PIO)) {
+        return;
+    }
+    VL_PRINT("notify v=%u n=%d status=%d ssl=%c%d f=%d t=%" PRId64, v,
+             notifier, status, 'A' + d->vp.ssl[v].ssl_index,
+             d->vp.ssl[v].ssl_seg, qatomic_read(&d->ep_frame_div), now);
+}
+
+/* Called from fe_method after the method has taken effect. */
+static void voicelog_pio(MCPXAPUState *d, uint32_t method, uint32_t argument)
+{
+    const char *name;
+    uint32_t v = d->regs[NV_PAPU_FECV];
+
+    switch (method) {
+    case NV1BA0_PIO_VOICE_ON:
+        v = argument & NV1BA0_PIO_VOICE_ON_HANDLE;
+        name = "ON";
+        break;
+    case NV1BA0_PIO_VOICE_RELEASE:
+        v = argument & NV1BA0_PIO_VOICE_ON_HANDLE;
+        name = "RELEASE";
+        break;
+    case NV1BA0_PIO_VOICE_OFF:
+        v = argument & NV1BA0_PIO_VOICE_OFF_HANDLE;
+        name = "OFF";
+        break;
+    case NV1BA0_PIO_VOICE_PAUSE:
+        v = argument & NV1BA0_PIO_VOICE_PAUSE_HANDLE;
+        name = (argument & NV1BA0_PIO_VOICE_PAUSE_ACTION) ? "PAUSE" : "RESUME";
+        break;
+    case NV1BA0_PIO_SET_VOICE_BUF_CBO:
+        name = "CBO";
+        break;
+    case NV1BA0_PIO_SET_VOICE_CFG_BUF_EBO:
+        name = "EBO";
+        break;
+    case NV1BA0_PIO_SET_VOICE_CFG_BUF_LBO:
+        name = "LBO";
+        break;
+    case NV1BA0_PIO_SET_VOICE_CFG_BUF_BASE:
+        name = "BASE";
+        break;
+    case NV1BA0_PIO_SET_VOICE_CFG_FMT:
+        name = "FMT";
+        break;
+    case NV1BA0_PIO_SET_VOICE_SSL_A:
+        name = "SSLA";
+        break;
+    case NV1BA0_PIO_SET_VOICE_SSL_B:
+        name = "SSLB";
+        break;
+    case NV1BA0_PIO_SET_SSL_SEGMENT_OFFSET ...
+         NV1BA0_PIO_SET_SSL_SEGMENT_LENGTH + 8 * 64 - 1: {
+        /* Counted per SSL page so an SSL reprogrammed by rewriting its
+         * segments in place, without a new SSL_A/B, still reads as new. */
+        uint32_t page = d->vp.ssl_base_page +
+                        (method - NV1BA0_PIO_SET_SSL_SEGMENT_OFFSET) / 8;
+        qatomic_inc(&vl_seg_gen[page % VL_SEG_PAGES]);
+        return;
+    }
+    default:
+        return;
+    }
+    if (v >= MCPX_HW_MAX_VOICES) {
+        return;
+    }
+
+    VoiceLogVoice *vv = &vl_voice[v];
+    int64_t now = vl_now();
+    qatomic_set(&vv->pio_us, now);
+    qatomic_inc(&vv->pio_n);
+    if (method == NV1BA0_PIO_VOICE_ON) {
+        qatomic_set(&vv->on_us, now);
+        qatomic_inc(&vv->on_gen);
+    } else if (method == NV1BA0_PIO_SET_VOICE_SSL_A ||
+               method == NV1BA0_PIO_SET_VOICE_SSL_B) {
+        int i = method == NV1BA0_PIO_SET_VOICE_SSL_B;
+        qatomic_inc(&vv->ssl_gen[i]);
+        qatomic_set(&vv->ssl_write_us[i], now);
+    }
+
+    if (!vl_voice_of_interest(vv, now) || !vl_take(VL_B_PIO)) {
+        return;
+    }
+    int f = qatomic_read(&d->ep_frame_div);
+    if (method == NV1BA0_PIO_SET_VOICE_SSL_A ||
+        method == NV1BA0_PIO_SET_VOICE_SSL_B) {
+        VL_PRINT("pio v=%u %s base=%u count=%u f=%d t=%" PRId64, v, name,
+                 GET_MASK(argument, NV1BA0_PIO_SET_VOICE_SSL_A_BASE),
+                 GET_MASK(argument, NV1BA0_PIO_SET_VOICE_SSL_A_COUNT), f, now);
+    } else {
+        VL_PRINT("pio v=%u %s 0x%x f=%d t=%" PRId64, v, name, argument, f,
+                 now);
+    }
+}
+
 static void set_notify_status(MCPXAPUState *d, uint32_t v, int notifier,
                               int status)
 {
+    if (unlikely(vl_on)) {
+        voicelog_notify(d, v, notifier, status);
+    }
+
     hwaddr notify_offset = d->regs[NV_PAPU_FENADDR];
     notify_offset += 16 * (MCPX_HW_NOTIFIER_BASE_OFFSET +
                            v * MCPX_HW_NOTIFIER_COUNT + notifier);
@@ -606,6 +844,10 @@ static void fe_method(MCPXAPUState *d, uint32_t method, uint32_t argument)
         assert(false);
         break;
     }
+
+    if (unlikely(vl_on)) {
+        voicelog_pio(d, method, argument);
+    }
 }
 
 static uint64_t vp_read(void *opaque, hwaddr addr, unsigned int size)
@@ -865,6 +1107,210 @@ static float voice_step_envelope(MCPXAPUState *d, uint16_t v, uint32_t reg_0,
     }
 }
 
+/* The rest of the HAKUX_APU_VOICELOG hooks run on the worker processing the
+ * voice, which is the only thread touching that voice's worker-owned state. */
+
+static void voicelog_cfg(MCPXAPUState *d, uint16_t v, bool stream, bool loop,
+                         unsigned int cs, unsigned int ss, bool stereo,
+                         unsigned int spb, uint32_t ba, uint32_t lbo,
+                         uint32_t ebo, uint32_t cbo)
+{
+    VoiceLogVoice *vv = &vl_voice[v];
+    /* A stream's EBO and base follow its current segment, so they are logged
+     * at SSL switches instead and kept out of the signature. */
+    uint64_t sig = 0xcbf29ce484222325ULL;
+    sig = vl_mix(sig, stream | loop << 1 | cs << 2 | ss << 4 | stereo << 6 |
+                          spb << 8);
+    if (!stream) {
+        sig = vl_mix(vl_mix(vl_mix(sig, ba), lbo), ebo);
+    }
+    if ((uint32_t)sig == vv->cfg_sig) {
+        return;
+    }
+    vv->cfg_sig = (uint32_t)sig;
+    int64_t now = vl_now();
+    if (!vl_voice_of_interest(vv, now) || !vl_take(VL_B_PIO)) {
+        return;
+    }
+    VL_PRINT("cfg v=%u %s loop=%d cs=%u ss=%u st=%d spb=%u ba=0x%x lbo=%u "
+             "ebo=%u cbo=%u f=%d t=%" PRId64,
+             v, stream ? "stream" : "buf", loop, cs, ss, stereo, spb, ba, lbo,
+             ebo, cbo, qatomic_read(&d->ep_frame_div), now);
+}
+
+/* An SSL's signature changes when it is reprogrammed by SSL_A/B or when any of
+ * its segment entries is rewritten. */
+static uint32_t vl_ssl_sig(MCPXAPUState *d, uint16_t v, int i)
+{
+    uint32_t sig = qatomic_read(&vl_voice[v].ssl_gen[i]);
+    uint32_t base = d->vp.ssl[v].base[i];
+    for (int p = 0; p < d->vp.ssl[v].count[i]; p++) {
+        sig += qatomic_read(&vl_seg_gen[(base + p) % VL_SEG_PAGES]) * 0x9E37u;
+    }
+    return sig;
+}
+
+static void voicelog_stream_enter(MCPXAPUState *d, uint16_t v)
+{
+    VoiceLogVoice *vv = &vl_voice[v];
+    uint32_t on_gen = qatomic_read(&vv->on_gen);
+    if (on_gen == vv->on_seen) {
+        return;
+    }
+    /* VOICE_ON since we last looked: it restarts at SSL A (fe_method). */
+    vv->on_seen = on_gen;
+    vv->ssl_entered[0] = true;
+    vv->ssl_seen[0] = vl_ssl_sig(d, v, 0);
+    vv->ssl_entered[1] = false;
+}
+
+static void voicelog_ssl_switch(MCPXAPUState *d, uint16_t v, int from, int to)
+{
+    VoiceLogVoice *vv = &vl_voice[v];
+    int64_t now = vl_now();
+    uint32_t sig = vl_ssl_sig(d, v, to);
+    /* Entered before and neither SSL_x nor any of its segments written since:
+     * the VP is about to play what it played the last time it was here. */
+    bool replay = vv->ssl_entered[to] && sig == vv->ssl_seen[to];
+    vv->ssl_entered[to] = true;
+    vv->ssl_seen[to] = sig;
+    vv->w_sslsw++;
+    if (replay) {
+        vv->w_sslrep++;
+    }
+    if (!vl_take(replay ? VL_B_EVENT : VL_B_PIO)) {
+        return;
+    }
+    VL_PRINT("sslsw v=%u %c->%c base=%u count=%u replay=%d ssl_wr_age=%" PRId64
+             " pio_age=%" PRId64 " f=%d t=%" PRId64,
+             v, 'A' + from, 'A' + to, d->vp.ssl[v].base[to],
+             d->vp.ssl[v].count[to], replay,
+             now - qatomic_read(&vv->ssl_write_us[to]),
+             now - qatomic_read(&vv->pio_us), qatomic_read(&d->ep_frame_div),
+             now);
+}
+
+static void voicelog_ssl_empty(MCPXAPUState *d, uint16_t v, int idx)
+{
+    VoiceLogVoice *vv = &vl_voice[v];
+    vv->w_sslempty++;
+    if (!vl_take(VL_B_EVENT)) {
+        return;
+    }
+    int64_t now = vl_now();
+    VL_PRINT("sslempty v=%u ssl=%c ssl_wr_age=%" PRId64 " f=%d t=%" PRId64, v,
+             'A' + idx, now - qatomic_read(&vv->ssl_write_us[idx]),
+             qatomic_read(&d->ep_frame_div), now);
+}
+
+static void voicelog_run_end(MCPXAPUState *d, uint16_t v, VoiceLogVoice *vv)
+{
+    if (vl_take(VL_B_EVENT)) {
+        VL_PRINT("stale v=%u region=0x%" PRIx64 " cbo=%u blocks=%u ssl=%c%d "
+                 "f=%d t=%" PRId64 " lap=%" PRId64 " pio_age=%" PRId64
+                 " wr_head=%d wr_age=%" PRId64 " blk_wr_age=%" PRId64,
+                 v, vv->run_region, vv->run_cbo, vv->run_n, 'A' + vv->run_ssl,
+                 vv->run_seg, vv->run_f, vv->run_t, vv->run_lap_us,
+                 vv->run_pio_age_us, vv->run_wr_head, vv->run_wr_age,
+                 vv->run_blk_wr_age);
+    }
+    vv->run_n = 0;
+}
+
+static void voicelog_block_end(MCPXAPUState *d, uint16_t v, VoiceLogVoice *vv,
+                               int64_t now)
+{
+    if (!vv->cur_n) {
+        return;
+    }
+    uint64_t key = vv->cur_key;
+    uint64_t h = vl_mix(vv->cur_hash, vv->cur_n);
+    VoiceLogBlock *b =
+        &vv->tbl[(key * 0x9E3779B97F4A7C15ULL) >> (64 - VL_TBL_BITS)];
+    bool stale = false;
+
+    vv->w_blocks++;
+    if (vv->cur_loud) {
+        vv->w_loud++;
+        if (b->key != key) {
+            vv->w_first++;
+        } else if (b->hash == h) {
+            vv->w_stale++;
+            stale = true;
+        } else {
+            vv->w_fresh++;
+        }
+    }
+
+    if (stale) {
+        if (!vv->run_n) {
+            vv->run_region = vv->cur_region;
+            vv->run_cbo = vv->cur_cbo;
+            vv->run_ssl = d->vp.ssl[v].ssl_index;
+            vv->run_seg = d->vp.ssl[v].ssl_seg;
+            vv->run_f = qatomic_read(&d->ep_frame_div);
+            vv->run_t = now;
+            vv->run_lap_us = now - b->read_us;
+            vv->run_pio_age_us = now - qatomic_read(&vv->pio_us);
+            vv->run_wr_head = -1;
+            vv->run_wr_age = -1;
+            vv->run_blk_wr_age = -1;
+            if (qatomic_read(&vl_scan.focus) == v) {
+                int blk = vv->cur_cbo / 32;
+                vv->run_wr_head = qatomic_read(&vl_scan.head);
+                vv->run_wr_age = now - qatomic_read(&vl_scan.head_us);
+                if (blk < VL_SCAN_MAX_BLKS) {
+                    vv->run_blk_wr_age =
+                        now - qatomic_read(&vl_scan.wr_us[blk]);
+                }
+            }
+        }
+        vv->run_n++;
+    } else if (vv->run_n) {
+        voicelog_run_end(d, v, vv);
+    }
+
+    b->key = key;
+    b->hash = h;
+    b->read_us = now;
+    vv->cur_n = 0;
+}
+
+/* The n samples just read, from source sample index cbo0 on, of the buffer or
+ * segment at `region`. Hashes them into 32-sample blocks aligned to the
+ * source, so a block split across two calls is still one block. */
+static void voicelog_read(MCPXAPUState *d, uint16_t v, uint64_t region,
+                          uint32_t cbo0, float samples[][2], int n)
+{
+    VoiceLogVoice *vv = &vl_voice[v];
+    int64_t now = vl_now();
+
+    if (!vv->tbl) {
+        vv->tbl = g_new0(VoiceLogBlock, VL_TBL);
+    }
+    vv->w_samples += n;
+    for (int i = 0; i < n; i++) {
+        uint32_t c = cbo0 + i;
+        uint64_t key = (1ULL << 63) | (region << 24) | (c >> 5);
+        if (key != vv->cur_key || !vv->cur_n) {
+            voicelog_block_end(d, v, vv, now);
+            vv->cur_key = key;
+            vv->cur_region = region;
+            vv->cur_cbo = c;
+            vv->cur_hash = 0xcbf29ce484222325ULL;
+            vv->cur_loud = false;
+        }
+        uint32_t l, r;
+        memcpy(&l, &samples[i][0], sizeof(l));
+        memcpy(&r, &samples[i][1], sizeof(r));
+        vv->cur_hash = vl_mix(vl_mix(vv->cur_hash, l), r);
+        if (fabsf(samples[i][0]) > VL_LOUD || fabsf(samples[i][1]) > VL_LOUD) {
+            vv->cur_loud = true;
+        }
+        vv->cur_n++;
+    }
+}
+
 static int voice_get_samples(MCPXAPUState *d, uint32_t v, float samples[][2],
                        int num_samples_requested)
 {
@@ -935,6 +1381,11 @@ static int voice_get_samples(MCPXAPUState *d, uint32_t v, float samples[][2],
     dbg->multipass = multipass;
     dbg->linked = linked;
 
+    if (unlikely(vl_on)) {
+        voicelog_cfg(d, v, stream, loop, container_size_index, sample_size,
+                     stereo, samples_per_block, ba, lbo, ebo, cbo);
+    }
+
     // This is probably cleared when the first sample is played
     // FIXME: How will this behave if CBO > EBO on first play?
     // FIXME: How will this behave if paused?
@@ -963,6 +1414,10 @@ static int voice_get_samples(MCPXAPUState *d, uint32_t v, float samples[][2],
         DPRINTF("**** STREAMING (%d) ****\n", v);
         assert(!loop);
 
+        if (unlikely(vl_on)) {
+            voicelog_stream_enter(d, v);
+        }
+
         ssl_index = d->vp.ssl[v].ssl_index;
         ssl_seg = d->vp.ssl[v].ssl_seg;
         page = d->vp.ssl[v].base[ssl_index] + ssl_seg;
@@ -971,6 +1426,9 @@ static int voice_get_samples(MCPXAPUState *d, uint32_t v, float samples[][2],
         // Check to see if the stream has ended
         if (count == 0) {
             DPRINTF("Stream has ended\n");
+            if (unlikely(vl_on)) {
+                voicelog_ssl_empty(d, v, ssl_index);
+            }
             voice_set_mask(d, v, NV_PAVS_VOICE_PAR_OFFSET,
                            NV_PAVS_VOICE_PAR_OFFSET_CBO, 0);
             d->vp.ssl[v].ssl_seg = 0;
@@ -1039,6 +1497,7 @@ static int voice_get_samples(MCPXAPUState *d, uint32_t v, float samples[][2],
     block_size *= samples_per_block;
 
     // FIXME: Restructure this loop
+    uint32_t cbo_start = cbo;
     int sample_count = 0;
     for (; (sample_count < num_samples_requested) && (cbo <= ebo);
          sample_count++, cbo++) {
@@ -1120,6 +1579,11 @@ static int voice_get_samples(MCPXAPUState *d, uint32_t v, float samples[][2],
         }
     }
 
+    if (unlikely(vl_on) && sample_count > 0) {
+        voicelog_read(d, v, stream ? segment_offset : ba, cbo_start, samples,
+                      sample_count);
+    }
+
     if (cbo >= ebo) {
         if (stream) {
             d->vp.ssl[v].ssl_seg += 1;
@@ -1133,6 +1597,9 @@ static int voice_get_samples(MCPXAPUState *d, uint32_t v, float samples[][2],
                 d->vp.ssl[v].ssl_seg = 0;
                 set_notify_status(d, v, MCPX_HW_NOTIFIER_SSLA_DONE + ssl_index,
                                   NV1BA0_NOTIFICATION_STATUS_DONE_SUCCESS);
+                if (unlikely(vl_on)) {
+                    voicelog_ssl_switch(d, v, ssl_index, next_index);
+                }
             }
         } else {
             if (loop) {
@@ -2149,8 +2616,359 @@ static void mon_acc_report(void)
 }
 #endif /* __ANDROID__ */
 
+/* HAKUX_APU_VOICELOG: VP frame pacing and the per-second summary, on the APU
+ * thread.
+ *
+ * Pacing is reported as the VP's lead over real time: 32 samples per frame
+ * against 48 samples per host millisecond, from the start of the window. A
+ * VP paced like the hardware moves that lead by one frame at a time; one that
+ * runs in bursts swings it by the burst. */
+static int64_t vl_win_t, vl_last_frame_t;
+static uint32_t vl_frames_w, vl_run, vl_maxrun_w, vl_bursts_w;
+static int64_t vl_maxgap_w, vl_lead_min_w, vl_lead_max_w;
+
+static void voicelog_frame_begin(void)
+{
+    int64_t now = vl_now();
+    int64_t gap = now - vl_last_frame_t;
+
+    if (gap < 300) {
+        vl_run++;
+    } else {
+        if (vl_run >= 8) {
+            vl_bursts_w++;
+        }
+        vl_run = 1;
+    }
+    vl_maxrun_w = MAX(vl_maxrun_w, vl_run);
+    if (vl_frames_w) {
+        vl_maxgap_w = MAX(vl_maxgap_w, gap);
+    }
+    vl_last_frame_t = now;
+
+    int64_t lead = (int64_t)vl_frames_w * NUM_SAMPLES_PER_FRAME -
+                   (now - vl_win_t) * 48 / 1000;
+    if (!vl_frames_w) {
+        vl_lead_min_w = vl_lead_max_w = lead;
+    }
+    vl_lead_min_w = MIN(vl_lead_min_w, lead);
+    vl_lead_max_w = MAX(vl_lead_max_w, lead);
+    vl_frames_w++;
+}
+
+static void voicelog_publish_focus(int v, uint32_t ba, uint32_t ebo,
+                                   uint32_t bps)
+{
+    if (v == qatomic_read(&vl_scan.focus) && ba == vl_scan.ba &&
+        ebo == vl_scan.ebo && bps == vl_scan.bps) {
+        return;
+    }
+    qatomic_set(&vl_scan.ba, ba);
+    qatomic_set(&vl_scan.ebo, ebo);
+    qatomic_set(&vl_scan.bps, bps);
+    qatomic_set(&vl_scan.focus, v);
+    smp_wmb();
+    qatomic_inc(&vl_scan.gen);
+}
+
+static void voicelog_summary(MCPXAPUState *d, int64_t now)
+{
+    int top[3] = { -1, -1, -1 };
+    uint32_t ring_stale = 0, ring_both = 0, pio = 0, notify = 0;
+    int focus = -1;
+    uint32_t focus_score = 0, focus_ba = 0, focus_ebo = 0, focus_bps = 0;
+
+    for (int v = 0; v < MCPX_HW_MAX_VOICES; v++) {
+        VoiceLogVoice *vv = &vl_voice[v];
+        pio += qatomic_read(&vv->pio_n);
+        notify += qatomic_read(&vv->notify_n);
+        qatomic_set(&vv->loud_recent, vv->w_loud > 0);
+        if (!vv->w_loud) {
+            continue;
+        }
+        if (vv->w_fresh) {
+            ring_stale += vv->w_stale;
+            ring_both += vv->w_stale + vv->w_fresh;
+        }
+        for (int i = 0; i < 3; i++) {
+            if (top[i] < 0 || vv->w_loud > vl_voice[top[i]].w_loud) {
+                for (int j = 2; j > i; j--) {
+                    top[j] = top[j - 1];
+                }
+                top[i] = v;
+                break;
+            }
+        }
+
+        /* The scanner follows the busiest looping PCM ring the guest is
+         * writing into, if one fits. */
+        bool stream = voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT,
+                                     NV_PAVS_VOICE_CFG_FMT_DATA_TYPE);
+        bool loop = voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT,
+                                   NV_PAVS_VOICE_CFG_FMT_LOOP);
+        unsigned int csi = voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT,
+                                          NV_PAVS_VOICE_CFG_FMT_CONTAINER_SIZE);
+        /* Bytes per sample frame, as voice_get_samples addresses them. */
+        unsigned int spb = 1 + voice_get_mask(
+                                   d, v, NV_PAVS_VOICE_CFG_FMT,
+                                   NV_PAVS_VOICE_CFG_FMT_SAMPLES_PER_BLOCK);
+        uint32_t ebo = voice_get_mask(d, v, NV_PAVS_VOICE_PAR_NEXT,
+                                      NV_PAVS_VOICE_PAR_NEXT_EBO);
+        static const unsigned int cs_bytes[4] = { 1, 2, 0, 4 };
+        uint32_t score = vv->w_fresh + vv->w_stale;
+        if (!stream && loop && vv->w_fresh && cs_bytes[csi] &&
+            ebo + 1 <= VL_SCAN_MAX_BLKS * 32 && score > focus_score) {
+            focus = v;
+            focus_score = score;
+            focus_ba = voice_get_mask(d, v, NV_PAVS_VOICE_CUR_PSL_START,
+                                      NV_PAVS_VOICE_CUR_PSL_START_BA);
+            focus_ebo = ebo;
+            focus_bps = cs_bytes[csi] * spb;
+        }
+    }
+
+    uint32_t drop[VL_B_COUNT];
+    for (int b = 0; b < VL_B_COUNT; b++) {
+        drop[b] = qatomic_xchg(&vl_dropped[b], 0);
+    }
+    VL_PRINT("sec f=%d t=%" PRId64 " vpframes=%u lead=%" PRId64 "..%" PRId64
+             " maxgap=%" PRId64 " bursts=%u maxrun=%u ring_stale=%u/%u "
+             "(%.1f%%) pio=%u notify=%u focus=%d dropped=%u/%u/%u",
+             d->ep_frame_div, now, vl_frames_w, vl_lead_min_w, vl_lead_max_w,
+             vl_maxgap_w, vl_bursts_w, vl_maxrun_w, ring_stale, ring_both,
+             ring_both ? 100.0 * ring_stale / ring_both : 0.0, pio, notify,
+             focus, drop[0], drop[1], drop[2]);
+
+    for (int i = 0; i < 3 && top[i] >= 0; i++) {
+        int v = top[i];
+        VoiceLogVoice *vv = &vl_voice[v];
+        uint32_t judged = vv->w_fresh + vv->w_stale;
+        VL_PRINT("voice v=%d %s loop=%u cs=%u st=%u ba=0x%x lbo=%u ebo=%u "
+                 "cbo=%u ssl=%c%d A=%u/%u B=%u/%u samples=%u blocks=%u "
+                 "loud=%u fresh=%u stale=%u first=%u share=%.1f%% sslsw=%u "
+                 "sslrep=%u sslempty=%u pio=%u notify=%u",
+                 v,
+                 voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT,
+                                NV_PAVS_VOICE_CFG_FMT_DATA_TYPE) ? "stream"
+                                                                 : "buf",
+                 voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT,
+                                NV_PAVS_VOICE_CFG_FMT_LOOP),
+                 voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT,
+                                NV_PAVS_VOICE_CFG_FMT_CONTAINER_SIZE),
+                 voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT,
+                                NV_PAVS_VOICE_CFG_FMT_STEREO),
+                 voice_get_mask(d, v, NV_PAVS_VOICE_CUR_PSL_START,
+                                NV_PAVS_VOICE_CUR_PSL_START_BA),
+                 voice_get_mask(d, v, NV_PAVS_VOICE_CUR_PSH_SAMPLE,
+                                NV_PAVS_VOICE_CUR_PSH_SAMPLE_LBO),
+                 voice_get_mask(d, v, NV_PAVS_VOICE_PAR_NEXT,
+                                NV_PAVS_VOICE_PAR_NEXT_EBO),
+                 voice_get_mask(d, v, NV_PAVS_VOICE_PAR_OFFSET,
+                                NV_PAVS_VOICE_PAR_OFFSET_CBO),
+                 'A' + d->vp.ssl[v].ssl_index, d->vp.ssl[v].ssl_seg,
+                 d->vp.ssl[v].base[0], d->vp.ssl[v].count[0],
+                 d->vp.ssl[v].base[1], d->vp.ssl[v].count[1], vv->w_samples,
+                 vv->w_blocks, vv->w_loud, vv->w_fresh, vv->w_stale,
+                 vv->w_first, judged ? 100.0 * vv->w_stale / judged : 0.0,
+                 vv->w_sslsw, vv->w_sslrep, vv->w_sslempty,
+                 qatomic_read(&vv->pio_n), qatomic_read(&vv->notify_n));
+    }
+
+    for (int v = 0; v < MCPX_HW_MAX_VOICES; v++) {
+        VoiceLogVoice *vv = &vl_voice[v];
+        qatomic_set(&vv->pio_n, 0);
+        qatomic_set(&vv->notify_n, 0);
+        vv->w_samples = vv->w_blocks = vv->w_loud = 0;
+        vv->w_fresh = vv->w_stale = vv->w_first = 0;
+        vv->w_sslsw = vv->w_sslrep = vv->w_sslempty = 0;
+    }
+    if (focus >= 0) {
+        voicelog_publish_focus(focus, focus_ba, focus_ebo, focus_bps);
+    } else if (qatomic_read(&vl_scan.focus) >= 0) {
+        voicelog_publish_focus(-1, 0, 0, 0);
+    }
+    for (int b = 0; b < VL_B_COUNT; b++) {
+        qatomic_set(&vl_lines[b], 0);
+    }
+}
+
+static void voicelog_frame_end(MCPXAPUState *d)
+{
+    int64_t now = vl_now();
+    if (now - vl_win_t < 1000000) {
+        return;
+    }
+    voicelog_summary(d, now);
+    vl_win_t = now;
+    vl_frames_w = vl_maxrun_w = vl_bursts_w = 0;
+    vl_maxgap_w = 0;
+}
+
+/* Hashes one 32-sample block of a buffer voice straight from guest RAM,
+ * translating through the SGE table the way get_data_ptr does, but bounded:
+ * this runs on its own thread, and a table the guest is rewriting must not
+ * send it outside RAM. */
+static bool vl_scan_hash(MCPXAPUState *d, uint32_t ba, uint32_t blk,
+                         uint32_t bps, uint64_t *out)
+{
+    uint64_t ram_size = memory_region_size(d->ram);
+    uint32_t lin = ba + blk * 32 * bps;
+    uint32_t len = 32 * bps;
+    uint64_t h = 0xcbf29ce484222325ULL;
+
+    while (len) {
+        uint32_t n = MIN(len, TARGET_PAGE_SIZE - lin % TARGET_PAGE_SIZE);
+        hwaddr e = (hwaddr)d->regs[NV_PAPU_VPSGEADDR] +
+                   (lin / TARGET_PAGE_SIZE) * 8;
+        if (e + 4 > ram_size) {
+            return false;
+        }
+        hwaddr a = ldl_le_p(&d->ram_ptr[e]) + lin % TARGET_PAGE_SIZE;
+        if (a + n > ram_size) {
+            return false;
+        }
+        uint32_t i = 0;
+        for (; i + 4 <= n; i += 4) {
+            h = vl_mix(h, ldl_le_p(&d->ram_ptr[a + i]));
+        }
+        for (; i < n; i++) {
+            h = vl_mix(h, d->ram_ptr[a + i]);
+        }
+        lin += n;
+        len -= n;
+    }
+    *out = h;
+    return true;
+}
+
+/* Follows the focus voice's ring every millisecond and logs, ten lines a
+ * second, when the guest wrote which blocks (w<first>+<count>) and where the
+ * VP's CBO was (c<block>), in tenths of a millisecond from the line's t=. */
+static void *voicelog_scan_thread(void *arg)
+{
+    MCPXAPUState *d = arg;
+    static uint64_t hash[VL_SCAN_MAX_BLKS];
+    static bool chg[VL_SCAN_MAX_BLKS];
+    uint32_t gen_seen = 0, nblk = 0, ba = 0, bps = 0;
+    int v = -1;
+    char line[1024];
+    int len = 0;
+    int64_t line_t = 0, cursor_t = 0;
+
+    while (!qatomic_read(&d->exiting)) {
+        g_usleep(1000);
+
+        uint32_t gen = qatomic_read(&vl_scan.gen);
+        if (gen != gen_seen) {
+            smp_rmb();
+            gen_seen = gen;
+            v = qatomic_read(&vl_scan.focus);
+            ba = qatomic_read(&vl_scan.ba);
+            bps = qatomic_read(&vl_scan.bps);
+            nblk = v < 0 ? 0 : MIN((qatomic_read(&vl_scan.ebo) + 1) / 32,
+                                   VL_SCAN_MAX_BLKS);
+            for (uint32_t b = 0; b < nblk; b++) {
+                if (!vl_scan_hash(d, ba, b, bps, &hash[b])) {
+                    nblk = 0;
+                    break;
+                }
+                qatomic_set(&vl_scan.wr_us[b], 0);
+            }
+            qatomic_set(&vl_scan.head, -1);
+            len = 0;
+            continue;
+        }
+        if (!nblk) {
+            continue;
+        }
+
+        int64_t now = vl_now();
+        int nchg = 0;
+        bool ok = true;
+        for (uint32_t b = 0; b < nblk; b++) {
+            uint64_t h;
+            if (!vl_scan_hash(d, ba, b, bps, &h)) {
+                ok = false;
+                break;
+            }
+            chg[b] = h != hash[b];
+            if (chg[b]) {
+                hash[b] = h;
+                qatomic_set(&vl_scan.wr_us[b], now);
+                nchg++;
+            }
+        }
+        if (!ok) {
+            continue;
+        }
+
+        /* The first changed block whose predecessor did not change starts
+         * the guest's write, in ring order. */
+        int start = 0;
+        if (nchg && nchg < (int)nblk) {
+            for (uint32_t b = 0; b < nblk; b++) {
+                if (chg[b] && !chg[(b + nblk - 1) % nblk]) {
+                    start = b;
+                    break;
+                }
+            }
+        }
+        if (nchg) {
+            qatomic_set(&vl_scan.head, (start + nchg - 1) % nblk);
+            qatomic_set(&vl_scan.head_us, now);
+        }
+
+        hwaddr va = (hwaddr)d->regs[NV_PAPU_VPVADDR] + v * NV_PAVS_SIZE +
+                    NV_PAVS_VOICE_PAR_OFFSET;
+        uint32_t cbo = 0;
+        if (va + 4 <= memory_region_size(d->ram)) {
+            cbo = GET_MASK(ldl_le_p(&d->ram_ptr[va]),
+                           NV_PAVS_VOICE_PAR_OFFSET_CBO);
+        }
+
+        if (!len) {
+            line_t = now;
+            len = snprintf(line, sizeof(line), "scan v=%d nblk=%u t=%" PRId64
+                           ":", v, nblk, now);
+        }
+        int dt = (int)((now - line_t) / 100);
+        if (nchg) {
+            len += snprintf(line + len, sizeof(line) - len, " %d:c%u,w%d+%d",
+                            dt, cbo / 32, start, nchg);
+        } else if (now - cursor_t >= 4000) {
+            len += snprintf(line + len, sizeof(line) - len, " %d:c%u", dt,
+                            cbo / 32);
+            cursor_t = now;
+        }
+        if (now - line_t >= 100000 || len > (int)sizeof(line) - 40) {
+            if (vl_take(VL_B_SCAN)) {
+                VL_PRINT("%s", line);
+            }
+            len = 0;
+        }
+    }
+    return NULL;
+}
+
+static void voicelog_init(MCPXAPUState *d)
+{
+    QemuThread thread;
+
+    vl_t0 = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
+    vl_voice = g_new0(VoiceLogVoice, MCPX_HW_MAX_VOICES);
+    vl_seg_gen = g_new0(uint32_t, VL_SEG_PAGES);
+    qemu_thread_create(&thread, "mcpx.voicelog", voicelog_scan_thread, d,
+                       QEMU_THREAD_DETACHED);
+    VL_PRINT("on: per-voice source log, stale-read detector (32-sample "
+             "blocks, loud > %d), ring scanner at 1 ms; t= is host us",
+             (int)(VL_LOUD * 32768.0f + 0.5f));
+}
+
 void mcpx_apu_vp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_PER_FRAME])
 {
+    if (unlikely(vl_on)) {
+        voicelog_frame_begin();
+    }
 #ifdef __ANDROID__
     mon_acc_begin(d);
 #endif
@@ -2193,6 +3011,9 @@ void mcpx_apu_vp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_P
     mon_acc_report();
 #endif
     voice_work_dispatch(d, mixbins);
+    if (unlikely(vl_on)) {
+        voicelog_frame_end(d);
+    }
 
     if (d->monitor.point == MCPX_APU_DEBUG_MON_VP) {
         /* Mix all voices together to hear any audible voice */
@@ -2246,6 +3067,12 @@ void mcpx_apu_vp_init(MCPXAPUState *d)
 {
     for (int i = 0; i < MCPX_HW_MAX_VOICES; i++) {
         qemu_spin_init(&d->vp.voice_spinlocks[i]);
+    }
+
+    const char *voicelog = getenv("HAKUX_APU_VOICELOG");
+    vl_on = voicelog && voicelog[0] == '1';
+    if (vl_on) {
+        voicelog_init(d);
     }
 
     voice_work_init(d);
