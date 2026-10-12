@@ -177,6 +177,20 @@ among auto and 0-9. It skips any state saved before another title ran.
 - It never uses `-loadvm`.
 - A refusal shows as a toast with the reason.
 
+### Per-game settings (stretch, half done)
+
+- Compression, auto-load and auto-save on quit are per-game overridable
+  (`PerGameSettingsManager.overridablePreferenceKeys`). MainActivity and
+  `xemu_android.cpp` already read them through the runtime override first.
+- The folder stays global. Settings opened per game shows the card without
+  the folder controls, under the section key `savestates`.
+- Not reachable yet. The per-game settings index lists only graphics, audio
+  and debug. It needs a "Save States" entry that opens `savestates`, and
+  `sectionHasOverrides` needs the three keys. That is
+  `SettingsIndexActivity.kt`, outside this lane's files, so `WAITING` asks
+  for the grant.
+- Thumbnails are not done.
+
 ## Runs
 
 | Result id | What | Outcome |

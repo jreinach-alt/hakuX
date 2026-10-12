@@ -1,0 +1,6 @@
+# Per-game save-state switches (#433 step 4 stretch). SettingsActivity takes
+# section "savestates" and the three keys are overridable; the per-game
+# settings index needs an entry that opens it, and sectionHasOverrides needs
+# the three keys. About 8 lines in SettingsIndexActivity.kt, which is outside
+# this lane's files.
+grant android/app/src/main/java/com/rfandango/haku_x/SettingsIndexActivity.kt

@@ -769,6 +769,9 @@ class SettingsActivity : AppCompatActivity() {
       "data" -> getString(R.string.settings_index_data) to
         setOf(R.id.section_games_folder, R.id.section_system_files, R.id.section_hard_disk,
           R.id.section_save_states)
+      // #433: the per-game entry; the "data" section is global only.
+      "savestates" -> getString(R.string.settings_savestate_title) to
+        setOf(R.id.section_save_states)
       "graphics" -> getString(R.string.settings_index_graphics) to
         setOf(R.id.section_display, R.id.card_gpu_driver, R.id.section_env_vars)
       "audio" -> getString(R.string.settings_index_audio) to
@@ -1228,10 +1231,12 @@ class SettingsActivity : AppCompatActivity() {
     val card = layoutInflater.inflate(R.layout.savestate_settings, parent, false)
     parent.addView(card, parent.indexOfChild(hdd) + 1)
 
-    // The folder is global; the switches are too (MainActivity and the native
-    // side read them through the per-game override first, so one can be added).
+    setupSwitch(R.id.switch_savestate_compression, "savestate_compression", true)
+    setupSwitch(R.id.switch_savestate_auto_load, "savestate_auto_load", false)
+    setupSwitch(R.id.switch_savestate_auto_save, "savestate_auto_save", false)
+    // The folder is global; the switches can be set per game.
     if (isPerGameMode) {
-      card.visibility = View.GONE
+      findViewById<View>(R.id.group_savestate_folder)?.visibility = View.GONE
       return
     }
     updateSaveStateFolder()
@@ -1244,9 +1249,6 @@ class SettingsActivity : AppCompatActivity() {
       updateSaveStateFolder()
       Toast.makeText(this, R.string.settings_savestate_folder_reset_done, Toast.LENGTH_SHORT).show()
     }
-    setupSwitch(R.id.switch_savestate_compression, "savestate_compression", true)
-    setupSwitch(R.id.switch_savestate_auto_load, "savestate_auto_load", false)
-    setupSwitch(R.id.switch_savestate_auto_save, "savestate_auto_save", false)
   }
 
   private fun updateSaveStateFolder() {

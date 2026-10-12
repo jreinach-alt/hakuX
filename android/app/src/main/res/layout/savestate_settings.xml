@@ -32,6 +32,13 @@
       android:textAppearance="@style/TextAppearance.Material3.BodySmall"
       android:textColor="@color/xemu_text_muted" />
 
+    <!-- The folder is global: hidden in per-game settings. -->
+    <LinearLayout
+      android:id="@+id/group_savestate_folder"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical">
+
     <TextView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
@@ -70,6 +77,8 @@
       android:layout_height="wrap_content"
       android:layout_marginTop="4dp"
       android:text="@string/settings_savestate_reset_folder" />
+
+    </LinearLayout>
 
     <com.google.android.material.materialswitch.MaterialSwitch
       android:id="@+id/switch_savestate_compression"
