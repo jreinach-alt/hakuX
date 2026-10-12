@@ -1,0 +1,41 @@
+# state: first-run
+# The Simpsons Hit & Run (56550015), FIRST RUN: no profile exists for this title yet (#433 step 5,
+# lane.pathclass). Opens with the generic `drive` fallback this lane built in step 3 -- the same
+# path lane.nfsdefault1011's blind `repeat 30 { press START; wait 2.5; press A; wait 2.5 }` loop
+# covers on this title (route.txt of 1-1791745785-nfsdefault1011-877404: logos, intro cinematic,
+# title "PRESS START", sky cutscene, main menu NEW GAME, five character cutscenes, loading,
+# tutorial boxes A=Continue, free control at ~152 s) -- but screen-aware instead of blind, so it
+# cannot repeat that run's ~2-minute post-arrival START/A survey loop (owner, 2026-10-11).
+# `find` (not `mark`): this step only needs to KNOW play was reached, not drive it for the whole
+# window -- see forza-soak1010.route's comment on find vs mark. 240 s budgets ~90 s over the known
+# 152 s path.
+#
+# EXPLORATORY TAIL (not yet proven on this title): the pause-menu Save Game sequence below is
+# written from the pause menu's documented layout (Continue / Level Progress / Options / Save Game
+# / Quit to Main Menu -- strategywiki/sierrachest walkthroughs, not this lane's own frames) and from
+# midnight-club-3.returning.route's proven convention on this pad (`axis HATY max` / `axis HATY mid`,
+# no wait between the pair, moves the highlight down exactly one row). Three pulses: Continue ->
+# Level Progress -> Options -> Save Game. Shots at every stage so one run's frames can confirm or
+# correct this before it is trusted -- this route ends `mark save-attempted`, not `mark
+# profile-saved`, until a captured frame actually shows the save completing (NOTES.md "Step 5").
+drive generic 240 find
+wait 2.0
+shot free-roam
+press START
+wait 2.0
+shot pause-menu
+axis HATY max
+axis HATY mid
+axis HATY max
+axis HATY mid
+axis HATY max
+axis HATY mid
+wait 1.0
+shot pause-save-highlighted
+press A
+wait 3.0
+shot after-select-save
+press A
+wait 2.0
+shot after-confirm
+mark save-attempted
