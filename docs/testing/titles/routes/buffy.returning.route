@@ -1,0 +1,70 @@
+# state: returning   (composed from the kept profile's survey shots; lane.zetaroutes1012)
+# Buffy the Vampire Slayer (45410012), Nova, kept profile golden c6b6ec3cb8be.
+# Boot and menu cadence read from the survey run z-1791804165-fpsbelow1012-3514899
+# (survey.route, HAKUX_ZETA_D24=1); table in docs/lanes/zetaroutes1012/NOTES.md
+# section 1. That run's own START/A spam (5s cadence, the same cadence
+# buffy.route's first-run menu already uses) produced this screen sequence:
+#   052457-booted: title card, "Press START".
+#   052502 (START): in-engine cutscene (Giles + fog, ghostly Buffy).
+#   052509 (A): main menu (Start Game / Load Game / Options / Extras).
+#   052515 (START, Start Game highlighted): "Launch a New Game ... called
+#     Buffy 2" / Free Blocks / CONFIRM -- the same confirm screen
+#     buffy.route's own comment documents for "Buffy 1" on an empty disk;
+#     only the save-slot number differs, because this disk already holds a
+#     save. Nothing on the disk is remade or deleted by it.
+#   052521 (A): Difficulty select, Easy highlighted.
+#   052527 (START): "Summoning" (loading).
+#   052532 (A): mission card, "Spanish Mission, Outskirts of Sunnydale,
+#     Sunday 11:53PM".
+#   052538 (START): live play, canyon, HUD, "Move the R thumbstick..." tip.
+# So the menu path below is buffy.route's own (screen-identical on this
+# kept-profile disk), and the play loop below is buffy.route's own
+# run-and-jump pattern: the survey's late frame 053139-play.png (reached by
+# its blind generic loop, ~140s after this route's own mark would land)
+# shows Buffy crouched at a ledge under "Run and press B to jump between
+# ledges" -- the same tip buffy.route's play loop is built around -- so
+# that loop, not the survey's camera-swinging one, is reused here.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+repeat 5 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+wait 3
+shot pre-mark
+mark gameplay               # CHECK: the canyon with the HUD, no PAUSE panel
+repeat forever {
+    axis LY min
+    wait 2
+    press B
+    wait 1.5
+    press B
+    wait 2
+    press A
+    wait 0.6
+    press X
+    wait 1
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 2
+    press B
+    wait 2
+    press A
+    wait 0.6
+    press A
+    wait 1
+    axis LX min
+    wait 1.5
+    axis LX mid
+    wait 1
+    shot play
+}

@@ -134,3 +134,32 @@ playthrough) is the one that produced real movement; the survey's cruder loop di
 below reuses `bb-ngb.route`'s steps 1-32 menu/cutscene cadence (screen- and text-identical on this kept-profile
 disk per the table above, so NEW GAME is the correct and only recorded path -- LOAD GAME is unrecorded and not
 used) and its genre-loop play pattern verbatim, never the survey's generic loop.
+
+## 4. Routes composed, and a gate finding on DOA3 / NG Black
+
+`docs/testing/titles/routes/buffy.returning.route`, `doa3.returning.route` and `ninja-gaiden-black.returning.route`
+are written (and copied into both this worktree and the live `/home/justin/hakuX` checkout `route.sh`/`request.sh`
+read from). Each parses clean: `bash route.sh --check routes/<name>.route` -> `route ok` for all three.
+
+`titlestate.admit()` (the same call `request.sh` makes) does not agree with the brief's literal `# state:
+returning` header for two of the three:
+
+| title | tid | route_name | header state | admit() |
+|---|---|---|---|---|
+| Buffy | 45410012 | buffy.returning | returning | `admit=True clause=profile` |
+| DOA3 | 4D53002D | doa3.returning | returning (as first written) | `admit=False`: "4D53002D's golden 220536a66fe2 is title data only, no save directory; a returning route would meet no profile. If the route was confirmed on this golden as it is, head it `# state: any`..." |
+| NG Black | 5443000D | ninja-gaiden-black.returning | returning (as first written) | same refusal, golden ab037a065b15 |
+
+This matches this lane's own boot tables above: Buffy's kept-profile menu shows a save-name confirm screen
+("Buffy 2"), evidence of an actual save directory; DOA3 and NG Black's kept-profile boots never show a
+load/continue/save-name screen at all -- DOA3 goes straight through MODE SELECT with no continue prompt, NG
+Black's MAIN MENU still defaults to NEW GAME highlighted. Their "kept profile" is the disk/title data only, no
+save directory -- exactly what `admit()`'s refusal says. So both files' line-1 header was changed from `# state:
+returning` to `# state: any` (the gate's own suggested fix for a route confirmed on a data-only golden as-is);
+the filenames stay exactly as the brief names them (`doa3.returning.route`, `ninja-gaiden-black.returning.route`),
+only the internal `# state:` tag differs from the brief's literal text, and each file's header says why. Re-run
+after the fix: `admit=True clause=profile state=any` for both.
+
+Every press before each route's `mark gameplay` is backed by a recorded row in the boot tables above (sections
+1-3); none is filled from memory of the game. Not yet done: queuing the switch-on sweep runs (step 4 of the
+brief) -- next step.
