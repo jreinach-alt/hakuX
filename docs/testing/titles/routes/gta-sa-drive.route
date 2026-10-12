@@ -17,9 +17,17 @@
 # the BMX marked with a blue cone, per the brief (step 4). One Y press mounts
 # it; `mark gameplay` is set after the mount is on screen, not before, so the
 # scored window is riding, not the on-foot walk gta-sa.route already covers.
-# Player control once mounted: LY min pedals forward; LX alternated steers
-# left/right. Never Y, START or BACK after the mount (another Y would
-# dismount).
+#
+# Player control once mounted: A pedals; the left stick does NOT. The first
+# proof (1-1791761288-gtaroutes1011-284417) rode LY min and sat still: the
+# mount worked ("BMX" on screen) and the game's own help said "Push up or
+# down on the left thumbstick to shift your weight on the bike", and f00009-
+# f00020 show CJ on the bike in one spot by the alley wall, radar unchanged.
+# So the loop holds A (steady pedalling) and, once a cycle, taps it (the
+# faster pedal stroke, and the input that moves the bike if a held A only
+# coasts), steers with LX on the pedal, and lets go of A for a short X
+# (brake/back) with the bar turned so a wall it rides into cannot hold it.
+# Never Y, START or BACK after the mount (another Y would dismount).
 #
 wait 26.7
 shot boot
@@ -70,15 +78,22 @@ press Y 300
 wait 2.5
 shot mounted
 mark gameplay
+hold A
 repeat forever {
-    axis LY min
-    wait 1.5
+    wait 3
     axis LX max
-    wait 1
+    wait 1.2
     axis LX mid
-    wait 1.5
+    wait 3
     axis LX min
-    wait 1
+    wait 1.2
     axis LX mid
-    wait 1.5
+    release A
+    mash A 8 0.25
+    axis LX max
+    hold X
+    wait 1
+    release X
+    axis LX mid
+    hold A
 }
