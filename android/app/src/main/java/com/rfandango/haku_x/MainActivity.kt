@@ -31,10 +31,11 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
      */
     const val EXTRA_FROM_FRONTEND = "from_frontend"
 
-    /** #433: the six switches "Fast renderer paths" sets together. */
+    /** #433: the eight switches "Fast renderer paths" sets together. */
     val FASTPATHS_VARS = arrayOf(
       "HAKUX_REPORT_ASYNC", "HAKUX_TEXSCAN", "HAKUX_DRAWREC",
-      "HAKUX_UNI_BULK", "HAKUX_UNI_UBERCACHE", "HAKUX_UNI_FOGCACHE"
+      "HAKUX_UNI_BULK", "HAKUX_UNI_UBERCACHE", "HAKUX_UNI_FOGCACHE",
+      "HAKUX_POSTED_PUT", "HAKUX_LOCKFREE_WAKE"
     )
   }
 
@@ -120,10 +121,11 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
     SDLActivity.nativeSetenv("HAKUX_SURFGPU", if (surfgpuOn) "1" else "0")
     android.util.Log.i("hakuX-build", "surfgpu: ${if (surfgpuOn) "ON" else "OFF"} (#433)")
 
-    // #433: "Fast renderer paths", on by default -- the six opt-in switches
-    // folded by reportasync1010, texscan1010, drawrec1010 and perdrawon1010
-    // (HAKUX_REPORT_ASYNC, HAKUX_TEXSCAN, HAKUX_DRAWREC, HAKUX_UNI_BULK,
-    // HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE), set as one switch. A line for
+    // #433: "Fast renderer paths", on by default -- the eight opt-in switches
+    // folded by reportasync1010, texscan1010, drawrec1010, perdrawon1010,
+    // postput1010 and lockwake1011 (HAKUX_REPORT_ASYNC, HAKUX_TEXSCAN,
+    // HAKUX_DRAWREC, HAKUX_UNI_BULK, HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE,
+    // HAKUX_POSTED_PUT, HAKUX_LOCKFREE_WAKE), set as one switch. A line for
     // any one of them in env_vars is applied after this by xemu_android.cpp,
     // so it still wins for testing.
     val fastpathsOn = fastpathsEnabled(prefs)
@@ -131,7 +133,8 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
     for (v in FASTPATHS_VARS) {
       SDLActivity.nativeSetenv(v, fastpathsVal)
     }
-    android.util.Log.i("hakuX-build", "fastpaths: ${if (fastpathsOn) "ON" else "OFF"} (#433)")
+    android.util.Log.i("hakuX-build",
+      "fastpaths: ${if (fastpathsOn) "ON" else "OFF"} (${FASTPATHS_VARS.joinToString(",")}) (#433)")
 
     // Texture settings: per-game override takes precedence over global
     val texDumpEnabled = prefs.getString(PerGameSettingsManager.runtimeKey("texture_dump_enabled"), null)
@@ -199,9 +202,10 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
   /**
    * Whether this launch sets the "Fast renderer paths" switches
    * (HAKUX_REPORT_ASYNC, HAKUX_TEXSCAN, HAKUX_DRAWREC, HAKUX_UNI_BULK,
-   * HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE), on by default: the per-game
-   * override, then the global setting. A line for any one of them in
-   * env_vars still wins, applied after this by xemu_android.cpp.
+   * HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE, HAKUX_POSTED_PUT,
+   * HAKUX_LOCKFREE_WAKE), on by default: the per-game override, then the
+   * global setting. A line for any one of them in env_vars still wins,
+   * applied after this by xemu_android.cpp.
    */
   private fun fastpathsEnabled(prefs: android.content.SharedPreferences): Boolean {
     return prefs.getString(PerGameSettingsManager.runtimeKey("fastpaths"), null)

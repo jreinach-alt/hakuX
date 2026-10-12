@@ -1,0 +1,57 @@
+# state: any
+# The Simpsons Hit & Run (56550015), lane.nfsdefault1011 step 3 (#433): free roam, blind.
+# Copied from lane.frametrace's simpsons-frametrace.route (docs/lanes/frametrace/), proven to reach free
+# roam on the Nova (golden bcc71e970cff; 1-1791245535-lane.frametrace-680559, NOTES.md section 8): "every
+# route frame from `mark gameplay` to the end has Homer on foot in the world with the Marge portrait and
+# the minimap, no dialog." Written from pathfind's held confirmation session (docs/lanes/pathfind/runs/
+# screen-simpsons-hit-run/hold.log): logos (A x3, A), intro cinematic (START), title "PRESS START"
+# (START), sky cutscene (START), main menu with NEW GAME the only item (A), five character cutscenes
+# (START / A alternately), loading, tutorial boxes (A = Continue), free control at 152 s.
+# Every screen on that path yields to START or A, so the entry is rounds of START then A: a press that
+# lands early on a transition is repeated by the next round. In free control START pauses and the A after
+# it takes the pause menu's first item (continue), so a round that lands in play costs one pause.
+# Play: walk (LY min) with turns, A (jump; also Continue on a tutorial box).
+# The play loop backs up before every forward-and-turn lap (lane.nfsdefault1011, 2026-10-11): the
+# pre-mark approach walks blind into a concave corner of the house at this save's spawn point, and a
+# turn alone does not clear it (confirmed in this lane's own OFF1/ON1 runs and, re-checked with
+# hitch_report.py, in this route's original proving run 1-1791245535-lane.frametrace-680559 too --
+# "reached free roam" was true, "stayed moving" was not, in all three). Reversing first before
+# resuming forward motion is self-correcting against a re-wedge later in the window, not just the
+# first one.
+wait 10
+repeat 30 {
+    press START
+    wait 2.5
+    press A
+    wait 2.5
+    shot entry
+}
+repeat 3 {
+    axis LY min
+    wait 1.5
+    axis LY mid
+    press A
+    wait 2
+}
+shot gameplay
+mark gameplay
+repeat forever {
+    axis LY max
+    axis LX min
+    wait 1.5
+    axis LX mid
+    wait 0.5
+    axis LY min
+    wait 3
+    axis LX min
+    wait 0.8
+    axis LX mid
+    wait 3
+    axis LX max
+    wait 0.8
+    axis LX mid
+    axis LY mid
+    press A
+    wait 1
+    shot play
+}

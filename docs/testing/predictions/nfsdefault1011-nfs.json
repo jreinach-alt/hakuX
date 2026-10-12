@@ -1,0 +1,35 @@
+{
+  "registered_utc": "2026-10-11T16:23:08Z",
+  "who": "lane.nfsdefault1011",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "device": "nova",
+  "seconds": 500,
+  "route": "nfs-mw-quickrace",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "7002282149",
+  "b_ref": "7002282149",
+  "a_env": [
+    "HAKUX_POSTED_PUT=0",
+    "HAKUX_LOCKFREE_WAKE=0",
+    "HAKUX_SUBMIT_FRAMES=2"
+  ],
+  "b_env": [],
+  "queue_order": "Queued by the lane (an env A/B on one binary; arms.sh skips a_ref == b_ref, so this is not left for the automatic arms job): four requests of one run each, OFF, ON, ON, OFF (request.sh --who nfsdefault1011 --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw-quickrace --seconds 500 --perflog --device nova --ref 7002282149 [--env HAKUX_POSTED_PUT=0 --env HAKUX_LOCKFREE_WAKE=0 --env HAKUX_SUBMIT_FRAMES=2 for OFF, no --env for ON] --issue 433 --expect this file), HAKUX_RELEASE_PRIO=1. ON queues with no --env: this lane's step 1 makes the app default carry all three switches (the two pfifo vars folded into the existing 'Fast renderer paths' toggle, submit_frames defaulted to 3 in all three places), so the request proves the SHIPPED default, not a hand-set env. OFF's --env overrides the switches back to the pre-lane shipped values (both pfifo vars off, submit_frames=2), applied after MainActivity by xemu_android.cpp. The pilot gate (30 min of device time; no pilots/nfsdefault1011.ok on file) is covered in two batches of two: OFF+ON first, pilots/nfsdefault1011.ok written from their read, then ON+OFF.",
+  "judge": "python3 docs/lanes/nfsdefault1011/nfsread.py <OFF1> <ON1> <ON2> <OFF2> --expect docs/testing/predictions/nfsdefault1011-nfs.json",
+  "baseline": "lockwake1011-lockfree_wake.json's B arm (the stacked configuration + HAKUX_LOCKFREE_WAKE=1, six fastpaths switches + HAKUX_PROBE_WAITS=1 + HAKUX_POSTED_PUT=1 + HAKUX_SUBMIT_FRAMES=3 + HAKUX_LOCKFREE_WAKE=1, instrumented, ref 39c6dacc5e): cold start 1 mean 33.58 ms (33.8/33.5/33.4). Its A arm (same minus LOCKFREE_WAKE): cold 34.54 ms. fastpaths1010-nfs.json's ON arm (the six fastpaths switches only, no POSTED_PUT/LOCKFREE_WAKE/SUBMIT_FRAMES, ref 1ca4a6bd12) read warm countdown, not cold; its OFF arm is the nearest same-route, same-binary-family reading with the fastpaths switches off (41.9-46.6 ms warm band, several lanes). This run differs from both: fastpaths ON (inherited, unconditional in this build) plus the three new switches, uninstrumented (no HAKUX_PROBE_WAITS/HAKUX_FRAMETRACE), and reading cold start 1, not warm.",
+  "prediction": "#433 the app's shipped default after this lane's step 1 (fastpaths six + HAKUX_POSTED_PUT=1 + HAKUX_LOCKFREE_WAKE=1 + HAKUX_SUBMIT_FRAMES=3, no --env) against the pre-lane shipped default (fastpaths six + both pfifo vars off + HAKUX_SUBMIT_FRAMES=2, forced by --env) at NFS MW's cold race start, same binary, uninstrumented. The three switches add no new mechanism beyond what lockwake1011 and coldstart1010 already measured instrumented and plain; this run's purpose is to confirm the Settings/env plumbing actually reaches native code with the new defaults, not to re-measure the win. Point estimate: ON cold 33.6 ms (+-1.0, lockwake1011's own instrumented B figure, uninstrumented runs read close to it per that lane's own cross-check); OFF cold in the band earlier plain OFF runs of this route have shown at the race start (the switches-off C default), expected higher than ON by at least the 0.96 ms lockwake1011's own A-vs-B found, likely more once SUBMIT_FRAMES=2 vs 3 and POSTED_PUT are both reverted. K (ON <= 34.5 ms): probability ~80%, since lockwake1011's own B arm cleared it with margin (33.58 vs 34.5) under heavier instrumentation overhead than this plain run carries. N (ON not slower than OFF): probability ~90%, since every prior lane that measured any one of these three switches alone found it not a regression. What refutes it: K failing with the on/off log lines all present and the valid-start/pace-line counts fine -- the device or session has more cold-start variance than lockwake1011's own runs saw, worth a rerun before anything is attributed to a switch; N failing -- the switches reach native (logs present) but one of the three regresses this device/session's cold start, which step 4's screen would need to isolate per-switch.",
+  "expect": {
+    "V_min_marks": 12,
+    "V_min_valid_starts": 10,
+    "V_min_cold_lines": 3,
+    "K_max": 34.5,
+    "N_d_max": 0.0
+  },
+  "expect_note": "Named rules read by docs/lanes/nfsdefault1011/nfsread.py --expect (legs V, K, N, in that order); a soak writes no captures. V: each run 12 marks, >= 10 valid starts (a start whose route input failed or hung > 3 s is left out, raread.bad_starts), >= 3 cold pace lines per arm pooled across its two runs (the cold window is one mark, -2..+1.5 s, so each run yields only a few hakuX-pace lines -- unlike the warm countdown's 11 marks, this is not a line-count floor that needs double digits), the arm read from request.json env, and the on/off log lines exactly as this file's queue_order states. K and N are read as the mean of each arm's two runs' cold start 1 periods.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}
