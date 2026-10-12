@@ -6,12 +6,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `pathclass` | claude-sonnet-5 | 1 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 2 waiting, 1 running.
+- **Device queue:** 0 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -74,10 +76,13 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `08f8fb7bec` | 2026-10-12 04:15 |
 
 ## Recently landed on master
 
+- 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
 - 2026-10-12 burnoutunlock1012: Burnout Revenge's play loop can't get back into a race after a medal (#433, 0.5)
 - 2026-10-12 savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433)
 - 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
@@ -89,6 +94,5 @@ No branch is being worked right now.
 - 2026-10-11 profilegate1011: the profile gate -- a title run needs the title's profile, unless it is finding a route (#433)
 - 2026-10-11 nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer
 - 2026-10-11 gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5)
-- 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 
-_Updated 2026-10-12 05:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 05:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
