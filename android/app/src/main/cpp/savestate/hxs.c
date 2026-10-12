@@ -3260,34 +3260,29 @@ static void auto_load_run(void)
     }
     g_free(prev);
 
-    HxsSlotInfo all[HXS_SLOT_COUNT];
+    HxsSlotInfo pick, all[HXS_SLOT_COUNT];
     char *msg;
-    if (hxs_slot_list(all) < 0) {
+    int best = hxs_newest_loadable(&pick);
+    if (best >= 0) {
+        HxsStats st;
+        if (hxs_load(best, &st) == 0) {
+            msg = g_strdup_printf("ok\t%d\t%" PRId64 "\t%.0f", best,
+                                  pick.saved_at, st.pause_us / 1000.0);
+        } else {
+            msg = g_strdup_printf("refused\t%d\t%s", best, st.reason);
+        }
+    } else if (hxs_slot_list(all) < 0) {
         msg = g_strdup("none");
     } else {
-        int best = -1, newest = -1;
+        /* Nothing loadable: name why the newest state is not. */
+        int newest = -1;
         for (int s = 0; s <= HXS_SLOT_AUTO; s++) {
-            if (!all[s].exists) {
-                continue;
-            }
-            if (newest < 0 || all[s].saved_at > all[newest].saved_at) {
+            if (all[s].exists &&
+                (newest < 0 || all[s].saved_at > all[newest].saved_at)) {
                 newest = s;
             }
-            if (all[s].loadable && !all[s].other_title_since &&
-                (best < 0 || all[s].saved_at > all[best].saved_at)) {
-                best = s;
-            }
         }
-        if (best >= 0) {
-            HxsStats st;
-            if (hxs_load(best, &st) == 0) {
-                msg = g_strdup_printf("ok\t%d\t%" PRId64 "\t%.0f", best,
-                                      all[best].saved_at,
-                                      st.pause_us / 1000.0);
-            } else {
-                msg = g_strdup_printf("refused\t%d\t%s", best, st.reason);
-            }
-        } else if (newest >= 0) {
+        if (newest >= 0) {
             msg = g_strdup_printf("refused\t%d\t%s", newest,
                                   all[newest].other_title_since &&
                                           all[newest].loadable
@@ -3677,6 +3672,14 @@ static void test_func(void)
               "(across runs: owner check)",
               mode_name(a.mode), a.total_us / 1000.0, pick,
               b.region == a.region);
+
+    /* F5b: the function a boot with auto-load on runs; auto is the newest. */
+    auto_load_run();
+    g_autofree char *al = g_strdup(hxs_auto_load_message());
+    g_autofree char *al_want = g_strdup_printf("ok\t%d\t", HXS_SLOT_AUTO);
+    bool al_ok = al && g_str_has_prefix(al, al_want);
+    test_step("F5b", al_ok, "auto_load_result=\"%s\"",
+              al ? g_strdelimit(al, "\t", ' ') : "-");
 
     /* F6: a state from a different device-state schema is refused. */
     hxs_save(2, HXS_MODE_RAW, 0, 0, true, &a);
