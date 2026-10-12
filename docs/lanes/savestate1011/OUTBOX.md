@@ -161,3 +161,39 @@ Step 1, the hard-disk rewind test, re-run
   layout), a state from another build loading, delete and the slot list.
 - **Clean-up:** all 8 disk snapshots were deleted and the scratch folder
   is gone.
+
+## #433 -- 2026-10-12 01:37 PDT
+
+What the hard-disk rewind costs in image size, and where the lane stands.
+
+**Image growth** (`hdd.img` size, logged once a second):
+
+- One disk snapshot adds 64 KB.
+- 34 min of the 187 attract race with 160 saves, 160 loads and their
+  snapshots added 0.38 MB (1-1791781811-savestate1011-1461611).
+- A game that rewrites data while a state holds the old copy keeps one old
+  copy per live state. In the disk test, 187's boot cache is 73.5 MB, and it
+  was rewritten after a load, so the image grew by 73.8 MB
+  (1-1791783647-savestate1011-1797227). There are at most 13 live states
+  (0-9, auto, undo-save, undo-load).
+- The image file never shrinks. Space freed by a deleted state is reused by
+  later writes.
+
+**Done:** files in internal storage or a picked folder; slots 0-9 and auto;
+compression Off / On (On by default); undo load and undo save; auto-save on
+quit; auto-load at boot; the pause menu and Settings. Every functional and
+disk check passes on the Nova.
+
+**For you to check by hand:** the list under "Owner checks" in `PR.md`. It
+covers the pause menu with the gamepad and with touch, the folder picker,
+and auto-save then auto-load across two starts of a title. The harness
+cannot test across two starts, because it rebuilds the title disk every
+run.
+
+**Not done:**
+
+- The per-game save-state page needs one entry in the per-game settings
+  index, a file outside this lane.
+- Thumbnails.
+- "Start without auto-load" in the game list. Undo load after an auto-load
+  goes back to the fresh boot.

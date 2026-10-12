@@ -2,7 +2,7 @@
 
 Lane: savestate1011           Issue: #433 (0.5)
 Base: master @ 00fde8afb3 (merged at 399f819d82; contains lane/snapshot1011)
-State: draft
+State: ready
 Files: ui/xemu-snapshots.c, ui/xemu-snapshots.h, migration/savevm.c, android/app/src/main/cpp/CMakeLists.txt, android/app/src/main/cpp/xemu_android.cpp, android/app/src/main/cpp/savestate/**, android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt, android/app/src/main/java/com/rfandango/haku_x/PauseMenuOverlay.kt, android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt, android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt, android/app/src/main/java/com/rfandango/haku_x/SaveState*.kt, android/app/src/main/res/values/strings.xml, android/app/src/main/res/layout/savestate_*, docs/lanes/savestate1011/**, docs/testing/nv2a_index.json
 Prediction: none: no arm (the evidence is an env-driven test sequence's logcat and frames on the Nova)
 Needs device: yes (Nova only)    Needs NDK: yes
@@ -139,6 +139,12 @@ also has no hands on the pause menu.
   done. After an auto-load, Undo load returns to the fresh boot.
 - **A setting to skip the undo-load copy:** not done. The copy is 60 ms of
   the 128 ms load pause.
+
+## Checks
+
+- `docs/testing/preflight.sh --allow-tracker`: passed on 3cd2bec334.
+- `docs/testing/jobs/selftest.sh`, four shards, on 3cd2bec334: 137 of 137
+  fragments, 3430 passed, 0 failed.
 
 Details: `docs/lanes/savestate1011/NOTES.md`.
 

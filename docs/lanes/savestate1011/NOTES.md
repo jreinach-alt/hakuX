@@ -518,6 +518,15 @@ hands on the pause menu.
 7. **Compression.** With On, a slot file is about 10 MB. With Off it is
    about 42 MB (187: Ride or Die).
 
+## Checks
+
+- `docs/testing/preflight.sh --allow-tracker` passed on 3cd2bec334, after
+  origin/master (00fde8afb3) was merged in.
+- `docs/testing/jobs/selftest.sh` ran on the same commit as four shards
+  (`SELFTEST_SHARD=k/4`): 137 of 137 fragments, 3430 passed, 0 failed. Run
+  whole, it does not fit in one 10-minute call: the arms chain alone took
+  about 30 min on the host.
+
 ## Do not repeat
 
 - Do not queue a save-state run with route `187-ride-or-die`. It is
