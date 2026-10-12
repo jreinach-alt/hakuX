@@ -184,3 +184,46 @@ Remaining before `State: ready`: the bare-8-hex-TitleID defect fix in
 request.sh (Addendum 4), its selftest cases + mutant, merging
 `origin/master` (26 commits behind), the one full `selftest.sh` run, and
 `PR.md`.
+
+Merged `origin/master` (26 commits: nfsdefault1011's fold, profileconv1011's
+route conversions touching `amped2.route`/`gta-sa.route`, Android files) --
+clean, no conflicts with anything this lane wrote.
+
+Added `iso_for_tid(title_id, device=None)` to titlestate.py (targets.toml's
+`iso.<device>`, else the newest `dispatch/results/*/request.json` resolving
+to that title_id whose own `title` isn't itself another bare TitleID) and
+its CLI (`iso-for-tid`), then the queue-time refusal in request.sh, right
+before `tid_for_iso()` is first called on `--title` (so it fires before
+`tid_for_iso`'s own 8-hex-head fallback can turn the bare TitleID into a
+seemingly-valid title_id). Selftest: A8 (known replacement named), A9 (no
+known name -- names `devices.sh`), A10 (a real file name is unaffected),
+M9 (sed-drops the check; needs `--find-route` on the request to isolate it
+from the unrelated finding below, since the title used for A8-A10 has no
+golden and the plain admit() path refuses that regardless of the new check).
+
+## Finding: admit()'s `any`/no-route branch may not match Addendum 1 -- NOT fixed here
+
+While building M9's fixture I found that a title with NO golden and NO
+route (or an `any` route) is REFUSED by the committed `admit()`
+(titlestate.py ~1392-1402, "has no profile (no golden) and no
+route-finding"), and A1's own existing test (committed in attempt 1/2,
+`7d70b0eac6`) asserts that refusal as CORRECT. Addendum 1's own "Admitted"
+list says the opposite in as many words: "`any`, and runs with no route,
+whether or not the title has a golden." This looks like leftover logic
+from the ORIGINAL "The rule" (before Addendum 1 replaced it -- that
+original text's 3rd/4th bullets under "Everything else is refused" are
+exactly this case) that Addendum 1's R1/R2/R3 rewrite never revisited for
+this one branch, while NOTES.md's own "Rule actually implemented" summary
+(above, "Admitted unconditionally: ... on a title with a profile") already
+silently matches the stricter, pre-Addendum-1 reading rather than the
+addendum's literal text -- so this is not a regression introduced this
+session, it predates attempt 3.
+
+Not fixed here: Addendum 4 scoped this session to the bare-TitleID defect
+and the "After the grant" wrap-up, not a re-audit of admit()'s other
+branches, and resolving it needs an owner/lane.local call on which reading
+is intended (the owner's 10-11 12:3x clarification reads to me like the
+addendum's literal text -- a plain boot screen "redoes nothing" regardless
+of profile -- but that is a reading, not a measurement) before touching
+code three attempts have already built and tested against the stricter
+rule. Flagging it in the PR body for lane.local.
