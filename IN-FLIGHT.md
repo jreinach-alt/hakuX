@@ -8,8 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `nfsaudio1011` | claude-opus-5-5 | 57 min | nfsaudio1011: NFS Most Wanted audio stutter -- the APU plays 50 ms-old audio in place of ~15% of the sound (#4 |
-| `profilegate1011` | claude-sonnet-5 | 1h 11m | Merge remote-tracking branch 'origin/master' into lane/profilegate1011 |
+| `nfsaudio1011` | claude-opus-5-5 | 1h 12m | nfsaudio1011: NFS Most Wanted audio stutter -- the APU plays 50 ms-old audio in place of ~15% of the sound (#4 |
+| `profilegate1011` | claude-sonnet-5 | 1h 26m | Merge remote-tracking branch 'origin/master' into lane/profilegate1011 |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -74,7 +74,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/nfsaudio1011` | nfsaudio1011: NFS Most Wanted audio stutter -- the APU plays 50 ms-old audio in place of ~15% of the sound (#433, 0.5) | `73ac1f72f3` | 2026-10-11 19:12 |
+| `lane/nfsaudio1011` | nfsaudio1011: NFS Most Wanted audio stutter -- the APU plays 50 ms-old audio in place of ~15% of the sound (#433, 0.5) | `6594bfe22c` | 2026-10-11 19:28 |
 | `lane/profilegate1011` | Merge remote-tracking branch 'origin/master' into lane/profilegate1011 | `d322306813` | 2026-10-11 18:18 |
 
 ## Recently landed on master
@@ -85,4 +85,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 soakvideo1011: screen video during a routed soak, from the dispatcher
 - 2026-10-11 fastpaths1010: the six renderer switches as one Graphics toggle, on by default (#433, 0.5)
 
-_Updated 2026-10-11 19:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 19:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
