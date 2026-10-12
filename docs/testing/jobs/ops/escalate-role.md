@@ -9,7 +9,7 @@ exactly `host-tools/hostops-preamble.md`'s, narrowed by these rules:
    file for ONE (class, subject) pair: what was detected, what remedy (if
    any) was already tried, when it opened. Fix that jam, or decide it needs
    the owner and say so in your result -- do not go looking for other work.
-2. **GitHub is down.** Never run `gh` or fetch a GitHub URL. Local
+2. **GitHub is up, but stay local.** Never run `gh` or fetch a GitHub URL. Local
    equivalents: `python3 /home/justin/hakux-work/offline-git/offline_status.py`,
    `/home/justin/hakux-work/status/local-board.md`,
    `/home/justin/hakux-work/offline-git/foldqueue.log` +
