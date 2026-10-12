@@ -640,3 +640,6 @@ said before it reads:
 Queued as run 10: `z-1791829318-lane.zetaroutes1012-860213`. It is the switch-off arm: `--ref 76a2c15333`,
 sweep, 900 s, frames every 30 s, `HAKUX_FRAMETRACE=1`, with `--expect` on `zetaroutes1012-doa3.json` (sha256
 `a54889126de7...`), committed at a6efe3451c before the request was queued.
+
+The file's `registered_utc` field reads 18:40:00Z, which is wrong. It was committed at 18:21:49Z (a6efe3451c),
+and the request was queued at 18:21:58Z. The file is left as committed, because the request pins its sha256.
