@@ -17,6 +17,16 @@
 #   request.sh --who audio --purpose "baseline" --title "Galleon (USA).xiso.iso" \
 #              --seconds 90 --pull 'apu_monitor.s16le48k2ch.pcm*' \
 #              --device nova --no-expect "survey, not an A/B arm"
+#
+# THE PROFILE GATE (#433): a --title request is refused unless it meets a
+# title's kept profile/path, or is building one. --find-route "<why>" (12+
+# chars) queues a route-finding run instead -- never scored -- refused only
+# when the title already has a PROVEN route; --remake-profile "<why>"
+# overrides a refused repeat profile creation; --path-broken <result id>
+# overrides a refused --find-route by naming a run of the known route that
+# failed. --save <save_id> swaps a specific stored save in for the title's
+# slot instead of its golden. See titlestate.py's "THE PROFILE GATE"
+# docstring for the refusal clauses and the recipe for a title with none.
 
 #   request.sh --who skew44 --purpose "mode 2" --title "Crimson Skies.iso" \
 #              --env HAKUX_FIFO_SKEW_BOUND=2 --seconds 120 \
@@ -114,6 +124,8 @@ ROUTE=""; ROUTE_TEXT=""
 ISSUE=""
 IDENTIFIED=""
 PIN=""
+# THE PROFILE GATE (lane.profilegate1011, #433; see --find-route's help below).
+FIND_ROUTE=""; REMAKE_PROFILE=""; PATH_BROKEN=""; SAVE=""; PROFILE_CLAUSE=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -173,6 +185,10 @@ while [ $# -gt 0 ]; do
         --video-seconds) VIDEO_SECONDS="$2"; shift 2;;
         --video-after) VIDEO_AFTER="$2"; shift 2;;
         --route) ROUTE="$2"; shift 2;;
+        --find-route) FIND_ROUTE="$2"; shift 2;;
+        --remake-profile) REMAKE_PROFILE="$2"; shift 2;;
+        --path-broken) PATH_BROKEN="$2"; shift 2;;
+        --save) SAVE="$2"; shift 2;;
         --expect) EXPECT="$2"; shift 2;;
         --no-expect) NO_EXPECT="$2"; shift 2;;
         --wait) WAIT=1; shift;;
@@ -1192,6 +1208,24 @@ fi
 TITLE_ID=""; TITLE_STATE="any"
 TS_PY="$(dirname "$0")/titles/titlestate.py"
 export TITLESTATE_DIR="${TITLESTATE_DIR:-$D/titlestate}"
+
+# A BARE TITLEID IS NOT A FILE NAME (Addendum 4, #433). tid_for_iso() takes
+# the 8-hex HEAD of any name it is given, so a bare TitleID typed as --title
+# (e.g. "5454000F") is its own head and passes straight through -- the
+# dispatcher then looks for a literal file of that name under the device's
+# ISO roots (devices.sh) and fails mid-claim with "title not on device".
+# Refuse it here, at queue time, and name the real file to use instead.
+if [ -n "$TITLE" ] && [[ "$(basename "$TITLE")" =~ ^[0-9A-Fa-f]{8}$ ]]; then
+    BARE_TID="$(basename "$TITLE" | tr '[:lower:]' '[:upper:]')"
+    REPL=$(python3 "$TS_PY" iso-for-tid --title-id "$BARE_TID" ${DEVICE:+--device "$DEVICE"} 2>/dev/null)
+    if [ -n "$REPL" ]; then
+        echo "refusing to queue: --title $TITLE is a bare TitleID, not a file name; use $REPL" >&2
+    else
+        echo "refusing to queue: --title $TITLE is a bare TitleID, not a file name, and no on-device" >&2
+        echo "  name for it is known; list the device's titles with devices.sh" >&2
+    fi
+    exit 2
+fi
 [ -z "$TITLE" ] || TITLE_ID=$(python3 "$TS_PY" tid-for-iso "$TITLE" 2>/dev/null)
 if [ -n "$ROUTE" ]; then
     [ -n "$TITLE" ] || { echo "--route only means anything on a soak (--title)" >&2; exit 2; }
@@ -1314,6 +1348,64 @@ MSG
     ROUTE_TEXT=$(cat "$ROUTE_PATH")
 fi
 
+# THE PROFILE GATE (lane.profilegate1011, #433; owner 10-11, addenda 1-2). A
+# title run is refused only when it would redo work already kept: R1 (a
+# first-run route remaking a profile that is already on disk), R2 (a
+# first-run route that keeps nothing), R3 (finding a route blind for a title
+# that already has a proven one). The way around each is named in the
+# refusal; --find-route/--remake-profile/--path-broken (below) are the
+# overrides, and profile-transition.toml is the grandfather for routes not
+# yet converted. See titlestate.py's "THE PROFILE GATE" docstring for the
+# recipe that makes a title's first golden.
+#
+#   --find-route "<why>"       this run is finding a route into play, not
+#                               measuring one; never scored (no fps row, no
+#                               verdict). Refused when the title already has
+#                               a PROVEN route (one with `mark gameplay` that
+#                               some past result actually reached).
+#   --remake-profile "<why>"   overrides R1: the title's kept profile is lost
+#                               or rejected, so this first-run route may
+#                               remake it.
+#   --path-broken <result id>  overrides R3: names a run of the title's known
+#                               route that failed, so --find-route may look
+#                               for another one despite the known route.
+if [ -n "$TITLE" ]; then
+    GT_TEXT_FILE=""
+    if [ -n "$ROUTE_TEXT" ]; then
+        GT_TEXT_FILE=$(mktemp)
+        printf '%s' "$ROUTE_TEXT" > "$GT_TEXT_FILE"
+    fi
+    GT_OUT=$(python3 "$TS_PY" admit ${TITLE_ID:+--title-id "$TITLE_ID"} ${ROUTE:+--route "$ROUTE"} \
+             ${GT_TEXT_FILE:+--route-text-file "$GT_TEXT_FILE"} ${DEVICE:+--device "$DEVICE"} \
+             ${FIND_ROUTE:+--find-route "$FIND_ROUTE"} ${REMAKE_PROFILE:+--remake-profile "$REMAKE_PROFILE"} \
+             ${PATH_BROKEN:+--path-broken "$PATH_BROKEN"} 2>&1)
+    GT_RC=$?
+    [ -z "$GT_TEXT_FILE" ] || rm -f "$GT_TEXT_FILE"
+    if [ "$GT_RC" != 0 ]; then
+        GT_REFUSE=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or sys.argv[1])' "$GT_OUT" 2>/dev/null) \
+            || GT_REFUSE="titlestate.py admit failed: $GT_OUT"
+        echo "refusing to queue: no profile: $GT_REFUSE" >&2
+        exit 2
+    fi
+    PROFILE_CLAUSE=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["clause"])' "$GT_OUT")
+fi
+
+# --save <save_id>: swap a specific stored save in for this title's slot
+# instead of its golden (titlestate.py compose/plan/rebuild/prepare). Checked
+# here only for "is it in the store at all" -- a cheap, device-independent
+# question; "was it rejected on THIS device" and "returning with no save
+# directory" depend on the device the dispatcher actually claims onto, and
+# are refused there the same way a `returning` route with no golden always
+# has been (titles_disk_prepare's own refuse path).
+if [ -n "$SAVE" ]; then
+    [ -n "$TITLE_ID" ] || { echo "refusing to queue: --save needs a title the gate can identify (--title)" >&2; exit 2; }
+    SV_HAS=$(python3 "$TS_PY" saves --title-id "$TITLE_ID" --json 2>/dev/null \
+             | python3 -c 'import json,sys
+saves = json.load(sys.stdin)
+print("yes" if any(s["save"] == sys.argv[1] for s in saves) else "no")' "$SAVE")
+    [ "$SV_HAS" = yes ] || { echo "refusing to queue: --save $SAVE is not in the store for $TITLE_ID" >&2; exit 2; }
+fi
+
 # THE FAILURE GATE (lane.failgate, #433, 2026-10-03). A failed or unproven run
 # goes for identification before its title is queued again: host-tools/
 # failure_intake.py writes an IDENTIFIED record for each scored failure, and
@@ -1349,6 +1441,8 @@ fi
 ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" ROUTE_REFS_FILE="${ROUTE_REFS_FILE:-}" PRIORITY="$PRIORITY" PIN="$PIN" \
 TITLE_ID="$TITLE_ID" TITLE_STATE="$TITLE_STATE" IDENTIFIED="$IDENTIFIED" \
 VIDEO_SECONDS="$VIDEO_SECONDS" VIDEO_AFTER="$VIDEO_AFTER" \
+FIND_ROUTE="$FIND_ROUTE" REMAKE_PROFILE="$REMAKE_PROFILE" PATH_BROKEN="$PATH_BROKEN" SAVE="$SAVE" \
+PROFILE_CLAUSE="$PROFILE_CLAUSE" \
 python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" "$PROGRAM" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
@@ -1394,6 +1488,17 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            # declares: the dispatcher composes the titles disk to match.
            "title_id": __import__("os").environ.get("TITLE_ID", ""),
            "title_state": __import__("os").environ.get("TITLE_STATE", "any") or "any",
+           # THE PROFILE GATE (lane.profilegate1011, #433): --find-route/
+           # --remake-profile/--path-broken, and the clause admit() admitted
+           # this request under (titlestate.py readers skip a run that
+           # carries find_route: it is never scored). --save swaps a
+           # specific stored save in for this title's slot (titlestate.py
+           # compose), instead of the golden.
+           "find_route": __import__("os").environ.get("FIND_ROUTE", ""),
+           "remake_profile": __import__("os").environ.get("REMAKE_PROFILE", ""),
+           "path_broken": __import__("os").environ.get("PATH_BROKEN", ""),
+           "profile_clause": __import__("os").environ.get("PROFILE_CLAUSE", ""),
+           "save": __import__("os").environ.get("SAVE", ""),
            # The failure identified before a held title was queued again
            # (--identified; see the failure gate above). Empty when none.
            "identified": __import__("os").environ.get("IDENTIFIED", ""),

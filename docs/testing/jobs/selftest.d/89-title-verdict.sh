@@ -527,7 +527,12 @@ rq() { DISPATCH_DIR="$RQ" bash "$TESTING/request.sh" --who rt --purpose "route s
 # gta-sa: a `# state: first-run` route, which any disk can be built for. A
 # `returning` one (crimson-skies) needs a golden profile this private
 # dispatch dir has none of, and is refused (85-savestate.sh).
-if rq --title "Crimson Skies.iso" --seconds 900 --route gta-sa >/dev/null 2>&1; then
+# --find-route: "Crimson Skies.iso" matches no targets.toml iso entry and no
+# 8-hex prefix, so the profile gate (lane.profilegate1011, #433) refuses it
+# outright unless the run is finding a route -- this test is about the
+# queued record carrying the route's name/text, not profile state.
+if rq --title "Crimson Skies.iso" --seconds 900 --route gta-sa \
+      --find-route "selftest: route text travels, not a profile check" >/dev/null 2>&1; then
     check "the queued request carries the route's name and full text" \
         python3 -c 'import json,glob,sys; r=json.load(open(glob.glob(sys.argv[1]+"/queue/*.req")[0])); src=open(sys.argv[2]).read(); assert r["route_name"]=="gta-sa" and r["route"].strip()==src.strip()' \
         "$RQ" "$TESTING/titles/routes/gta-sa.route"

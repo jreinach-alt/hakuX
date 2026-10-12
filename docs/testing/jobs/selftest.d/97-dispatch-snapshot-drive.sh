@@ -157,8 +157,13 @@ echo "== request.sh --route: a route is checked as the run will see it"
 #             profiles: queued (a worker re-snapshots before it claims).
 rq_sd() {   # <dispatch dir> <serving tree> <route> -> request.sh's output
     mkdir -p "$1"/queue "$1"/running "$1"/results "$1"/expect
+    # --find-route: "Sonic Heroes.iso" matches no targets.toml iso entry and
+    # no 8-hex prefix, so the profile gate (lane.profilegate1011, #433)
+    # refuses it outright unless the run is finding a route -- this test is
+    # about drive-profile/snapshot resolution, not profile state.
     env DISPATCH_DIR="$1" DISPATCH_TREE="$2" bash "$TESTING/request.sh" --who sd --purpose "snapdrive selftest" \
-        --no-expect "selftest" --title "Sonic Heroes.iso" --seconds 600 --route "$3" 2>&1
+        --no-expect "selftest" --title "Sonic Heroes.iso" --seconds 600 --route "$3" \
+        --find-route "selftest: drive/snapshot resolution, not a profile check" 2>&1
 }
 cp -r "$SD/d/bin" "$SD/q1-bin"
 mkdir -p "$SD/q1"; mv "$SD/q1-bin" "$SD/q1/bin"
