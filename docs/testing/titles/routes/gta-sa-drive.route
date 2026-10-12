@@ -1,4 +1,10 @@
 # state: any   (golden 7da19befd45b; lane.savestate433 / lane.profileconv1011)
+# NOT PROVEN -- do not read a frame rate off this route. Two proofs on the
+# golden (1-1791761288-gtaroutes1011-284417, 1-1791768457-gtaroutes1011-1576234)
+# both mount the BMX, then leave CJ in one spot by the alley wall for the whole
+# scored window. Neither LY nor A (held or tapped), X or LX moved the bike.
+# The input that pedals it on this Xbox port is unknown; see
+# docs/lanes/gtaroutes1011/NOTES.md section 10.
 # Grand Theft Auto: San Andreas (54540082, USA): a DRIVING route, not the
 # on-foot measurement gta-sa.route takes. Same boot (do not edit gta-sa.route
 # for this -- today's A/B depends on it; this file copies its beats through

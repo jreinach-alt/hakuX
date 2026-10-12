@@ -292,3 +292,39 @@ The one fix (`3d81b1c788`) leaves the boot and mount untouched. The loop now:
 A as the pedal is the Xbox port's accelerate. It is not read off a frame. The help text that names it scrolled
 by between the 30 s samples. The rerun is the test. Rerun `1-1791768457-gtaroutes1011-1576234` on the same
 build (`--ref def393be25`) as the failed run, so the route is the only change.
+
+## 10. SA-drive rerun fails too: stopping on SA-drive (the brief's one fix and one rerun are spent)
+
+The rerun `1-1791768457-gtaroutes1011-1576234` ran 18:49-18:59 PDT on golden 7da19befd45b, build `def393be25`:
+- gameplay_s 380.0, fps_ok_share 0.9831, median 29.96 fps (min 27.97);
+- static_frac 0.5819, 2 hitches.
+
+The boot and mount repeated exactly (route frame `185258-mounted`). All twelve post-mark frames, f00009-f00020
+(18:53:15-18:58:58), show CJ on the BMX in the same spot by the alley wall. The radar is unchanged in all
+twelve, and the game clock runs 08:07 -> 13:46. The run log shows every step of the new loop sent: 25 cycles,
+each of hold A, steering on the pedal, a burst of 8 tapped A presses, and X held with the bar turned. None of
+them moved the bike.
+
+**What blocks it.** The input that pedals the BMX on this Xbox port is unknown.
+- Tried across the two proofs: LY min (lean only, per the game's help text), A held, A tapped about twice a
+  second, X held, LX both ways.
+- A reaches the game. The same run's A train skips every cutscene, so this is not a dead pad.
+- The bike is not a hidden mover. The background and radar are identical across 5.5 min.
+- The car alternative in the brief needs the same accelerate input, so it is blocked on the same unknown.
+
+**What would unblock it, cheapest first.** Both need verified input before another soak:
+1. A held `pathfind.py` session on the golden, from the mount. Probe one input at a time, with a frame after
+   each: RT held 3 s (pathfind's racing throttle), then LT, then B. That names the input that moves the bike in
+   one session.
+2. Or read the in-game Options > Controller Setup screen, which lists the in-vehicle mapping for this port.
+
+Then change only the loop of `gta-sa-drive.route` and run one 600 s proof. I did not take a third device run on a
+guess: the brief allows one fix and one rerun, and a run without verified input is the blind re-run the rules
+forbid. `gta-sa-drive.route`'s header now says NOT PROVEN, so nobody reads a frame rate off it. It is not in
+`targets.toml`.
+
+**What the next lane should not repeat.**
+- `LY` on the BMX: the game's help text says it only shifts CJ's weight.
+- `A` and `X`, held or tapped: tried in rerun 1576234, with no movement.
+
+The two passing routes (GTA III, Vice City) stand on their own proofs in sections 4 and 9.

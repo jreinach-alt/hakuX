@@ -1,8 +1,0 @@
-# lane.gtaroutes1011 (#433): the SA-drive proof rerun (the one fix the brief
-# allows), queued 2026-10-11 18:3x PDT on nova, release tier, ref def393be25.
-# The VC proof (282177) passed; the first SA-drive proof (284417) sat still on
-# the BMX (LY only shifts weight), so gta-sa-drive.route now pedals with A.
-# On arrival: hdd.json "loaded":"golden"; title_verdict.py; >=3 post-mark
-# frames with CJ on the bike in different places. Pass: write the SA-drive
-# row in PR.md and mark ready. Fail: write up what blocks it, stop on SA-drive.
-run 1-1791768457-gtaroutes1011-1576234
