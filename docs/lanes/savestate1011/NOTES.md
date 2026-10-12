@@ -184,6 +184,8 @@ among auto and 0-9. It skips any state saved before another title ran.
 | 1-1791778350-savestate1011-727262 | pilot, route `187-ride-or-die` | refused by the profile gate (first-run route, kept profile) |
 | 1-1791778805-savestate1011-904197 | pilot: `func+measure`, 2 cycles, 187 attract race, ref 121cde1e09 | F1-F11 pass; done ok=1, 10 snapshots deleted, 0 left, scratch dir gone |
 | 1-1791779971-savestate1011-1240876 | `measure`, 20 cycles x 9 options, ref 121cde1e09 | stopped at ~150 s by the owner's hold on the Nova; 6 saves, not used |
+| 1-1791781810-savestate1011-1461488 | `disk+func` (`HAKUX_SAVESTATE_DISK=8,40,60`), 200 s, ref fefe83e884 | queued |
+| 1-1791781811-savestate1011-1461611 | `measure`, 20 cycles x 8 options (no d-none), 2600 s, frames every 10 s, ref fefe83e884 | queued |
 
 All runs:
 
@@ -202,6 +204,7 @@ All runs:
 | F3 | undo load returns to the kept state | pass; undo kept in 55.6 ms |
 | F4 | undo save puts the replaced state back; again = redo | pass |
 | F5 | auto slot: save 198.6 ms, picked as newest | pass |
+| F5b | `auto_load_run()`, the function a boot with auto-load on runs, picks and loads auto (added after the pilot) | in 1461488 |
 | F6 | schema mutant (nv2a.parent_obj): refused, machine never stopped | pass |
 | F7 | build "build-A-test", same schema: loads | pass |
 | F8 | controller layout, title, disc: each refused | pass |
@@ -242,7 +245,41 @@ Pending.
 
 ## Owner checks
 
-Pending.
+The harness cannot prove these. The dispatcher rebuilds the title disk on
+every run, so a state's disk snapshot never survives into the next run (the
+state is then refused as `disk-snapshot-missing`). The harness also has no
+hands on the pause menu.
+
+1. **Pause menu, gamepad.** Open the pause menu during play.
+   - Save state: the slot list opens. D-pad to slot 0 and press A.
+   - The toast says "Saved to slot 0 (paused N ms)" and the game resumes.
+   - Play on, then Load state, slot 0: the game is back at that moment.
+   - B closes the slot list without doing anything.
+2. **Pause menu, touch.** The same, with taps.
+3. **Undo.**
+   - Undo load returns to the moment before the load.
+   - Undo save after saving over slot 0 puts its previous state back.
+     Undo save again redoes the save.
+   - Each item is greyed when there is nothing to undo.
+4. **Folder.**
+   - Settings, Save states: the folder shows
+     `/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/states`
+     on the debug build (`com.jreinach.hakux` on release).
+   - Change folder: pick a folder. The path is shown, and a new save
+     appears there as `<title_id>/slot0.hxs`.
+   - Reset to default goes back.
+5. **Auto-save on quit, then auto-load.**
+   - Turn both on and play a title.
+   - Pause menu, Exit. This writes `auto.hxs`.
+   - Start the same title again. Within about 2 s of the game appearing, it
+     jumps to where you quit, with the toast "Loaded the auto slot (N ms)".
+6. **Swipe-away.**
+   - With auto-save on, swipe the app away from recents during play.
+   - On the next start, auto-load restores that moment if Android gave the
+     save time to finish. That is best effort: `onStop` starts the save, and
+     Android may end the process first.
+7. **Compression.** With On, a slot file is about 10 MB. With Off it is
+   about 42 MB (187: Ride or Die).
 
 ## Do not repeat
 
