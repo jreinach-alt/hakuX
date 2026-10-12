@@ -2,7 +2,7 @@
 
 Lane: snapshot1011           Issue: #433 (0.5)
 Base: master @ 6d8947bb47 (origin/master merged at ff47c466c1)
-State: draft
+State: ready
 Files: android/app/src/main/cpp/CMakeLists.txt, android/app/src/main/cpp/xemu_snapshots_stub.c, ui/xemu-snapshots.c, ui/xemu-snapshots.h, hw/xbox/nv2a/nv2a.c, hw/xbox/mcpx/apu/apu.c, migration/savevm.c, docs/testing/nv2a_index.json, docs/lanes/snapshot1011/**
 Prediction: none: no arm (the evidence is an env-driven test sequence's logcat and frames on the Nova)
 Needs device: yes (Nova only)    Needs NDK: yes
@@ -62,6 +62,9 @@ the title's previous run (55530036 `fa079adf42d5`).
   have no thumbnail.
 - A load rewinds the game but not `route.sh`; a route verb that loads a state
   and resumes from the mark is phase 1's.
+
+Checks: `docs/testing/preflight.sh --allow-tracker` passes; `docs/testing/jobs/selftest.sh`
+3377 passed, 0 failed, all 136 fragments.
 
 Details: `docs/lanes/snapshot1011/NOTES.md`.
 
