@@ -1,5 +1,5 @@
 {
-  "registered_utc": "2026-10-12T03:10:00Z",
+  "registered_utc": "2026-10-12T01:57:53Z",
   "who": "lane.nfsaudio1011",
   "issue": "433",
   "kind": "identify (one diagnosis run, not an A/B arm; the arms job skips it)",
@@ -9,26 +9,37 @@
   "frames_every": 5,
   "audio_capture": "40",
   "pull_glob": "apu_monitor.s16le48k2ch.pcm*",
-  "ref": "89667f015c",
-  "env": ["HAKUX_APU_VOICELOG=1"],
-  "queue_order": "HAKUX_RELEASE_PRIO=1 request.sh --who lane.nfsaudio1011 --title <title> --seconds 180 --device nova --ref 89667f015c --env HAKUX_APU_VOICELOG=1 --audio-capture 40 --pull 'apu_monitor.s16le48k2ch.pcm*' --frames-every 5 --issue 433 --no-expect <this file, judged by voiceread.py>",
+  "ref": "234b269b99",
+  "env": [
+    "HAKUX_APU_VOICELOG=1"
+  ],
+  "queue_order": "HAKUX_RELEASE_PRIO=1 request.sh --who lane.nfsaudio1011 --title <title> --seconds 180 --device nova --ref 234b269b99 --env HAKUX_APU_VOICELOG=1 --audio-capture 40 --pull 'apu_monitor.s16le48k2ch.pcm*' --frames-every 5 --issue 433 --no-expect <this file, judged by voiceread.py>",
   "judge": "python3 docs/lanes/nfsaudio1011/tools/replay_share.py <result dir>; python3 docs/lanes/nfsaudio1011/tools/voiceread.py <result dir>",
   "baseline": "Output side, lane.local 10-11, same title, 180 s from boot, no route: lag-2400 share of loud output 30.6% (651467, first capture, CPU-bound intro), 20.0% (836907, 256-sample device buffer), 16.4% (836989, 512), 15.1% (837057, default, ref c975179b51). Lags 1200/2048/4096 0%. Wake keys (NOTES.md): APU vector 0x35 never wakes the guest (0 of 54,596 wakes from idle in 837057), so the game's writer is not paced by APU notifications.",
-  "prediction": "One NFS MW run at 89667f015c with HAKUX_APU_VOICELOG=1 (source-side log in vp.c, off by default). The instrument hashes every 32-sample source block the VP reads, keyed by its address, and calls a loud block stale when its hash equals that address's on the previous read. Claim A (the brief's): the VP-side stale share of the sounding voice(s) agrees with the output-side lag-2400 share of the same run within 5 points. Agreement places the replay at the VP's read of guest memory: the VP read a block the guest had not rewritten since its previous lap. Disagreement (VP share near 0 while the output shows >= 5%) places it upstream, in content the guest itself repeated into fresh memory, and then the fix is not in the VP. Claim M (the mechanism, one of): H-A' (P 0.5): the music voice is a looping buffer of 2400 samples (EBO 2399, or a multiple), the scanner shows the guest's writes arriving at a steady cadence, stale runs begin during VP bursts (the c<block> column jumps by tens of blocks within a few ms) with blk_wr_age about one lap (40-60 ms) and sslrep 0; H-B (P 0.25): sslrep > 0 or sslempty on the sounding voice, or stale runs while the scanner's write head is well ahead of the CBO, or CBO moves no PIO wrote; H-C/guest repeat (P 0.2): A fails as above, or gaps in the guest's scan writes line up with stale runs while the VP runs steadily; other (P 0.05). Expected output share 8-30% (the build now carries nfsdefault1011's NFS switches, so 15.1% is not assumed). P(A) 0.6.",
+  "prediction": "One NFS MW run at 234b269b99 with HAKUX_APU_VOICELOG=1 (source-side log in vp.c, off by default). The instrument hashes every 32-sample source block the VP reads, keyed by its address, and calls a loud block stale when its hash equals that address's on the previous read. Claim A (the brief's): the VP-side stale share of the sounding voice(s) agrees with the output-side lag-2400 share of the same run within 5 points. Agreement places the replay at the VP's read of guest memory: the VP read a block the guest had not rewritten since its previous lap. Disagreement (VP share near 0 while the output shows >= 5%) places it upstream, in content the guest itself repeated into fresh memory, and then the fix is not in the VP. Claim M (the mechanism, one of): H-A' (P 0.5): the music voice is a looping buffer of 2400 samples (EBO 2399, or a multiple), the scanner shows the guest's writes arriving at a steady cadence, stale runs begin during VP bursts (the c<block> column jumps by tens of blocks within a few ms) with blk_wr_age about one lap (40-60 ms) and sslrep 0; H-B (P 0.25): sslrep > 0 or sslempty on the sounding voice, or stale runs while the scanner's write head is well ahead of the CBO, or CBO moves no PIO wrote; H-C/guest repeat (P 0.2): A fails as above, or gaps in the guest's scan writes line up with stale runs while the VP runs steadily; other (P 0.05). Expected output share 8-30% (the build now carries nfsdefault1011's NFS switches, so 15.1% is not assumed). P(A) 0.6. Claim W (Addendum 2, lane.local's): replay starts coincide with a guest voice update in the wait before the VP burst they start in. Read from the sec lines' bx table (loudest voice; 'update' = any guest FE method on it, VOICE_LOCK included, between the end of the last VP frame and the burst's first): W holds if >= 80% of bursts with a stale start followed an update AND that share exceeds the share for bursts without a stale start by >= 20 points. P(W) 0.25: a game that sets volume or polls position under VOICE_LOCK each video frame addresses the voice in nearly every ~40 ms wait, which makes 'coincide' near 100% in both rows and the lift near 0; that outcome is reported as 'not separated', not as support. Claim B (bql): the APU thread's non-throttle wait (gapx, an upper bound on bql_lock) is < 2 ms per second median, so bql is not where the wait goes, P 0.7. Claim O (H-A' at the source): for stale starts on the loudest voice, 32*boff - ahead (VP samples into the burst minus the guest's lead at the burst's start) is within +/-256 samples in >= 60% of paired bursts, P 0.45.",
   "legs": {
     "V (instrument, else VOID)": "logcat carries 'apuvoice on:' once, >= 150 'apuvoice sec' lines, and the pulled capture is >= 150 s of 48 kHz stereo. Dropped counts are reported; > 20% of event lines dropped in the loud windows makes leg M's timing read 'partial', not void.",
     "A (agreement)": "|VP stale share (pooled stale/(stale+fresh) over the voice lines of the top voice by loud blocks, all seconds) - output lag-2400 share (replay_share.py)| <= 5 points. Reported per 30 s window too; judged on the whole run.",
     "M (mechanism)": "Named in NOTES.md with the stale, scan, voice and sslsw lines that show it, per the claim's table. Not a number.",
-    "P (pacing, reported)": "vpframes per second (1500 is real time), the lead range, bursts and maxgap from the sec lines."
+    "P (pacing, reported)": "vpframes per second (1500 is real time), the lead range, bursts and maxgap from the sec lines.",
+    "W (Addendum 2, update in the wait)": "voiceread.py leg W, 'top voice' row: share of stale-start bursts after an update >= 80% and lift >= 20 points. Also reported: the any-voice VOICE_LOCK row, the voice-lock stall totals, and wfe/wlock/wlockall on stale lines.",
+    "B (bql bound)": "voiceread.py leg W, 'APU wait outside throttle' median < 2 ms/s. If not, the bound is too loose to clear bql and an apu.c.patch build times bql_lock directly.",
+    "O (outrun)": "voiceread.py leg W, 'stale start vs guest head': |32*boff - ahead| <= 256 for >= 60% of pairs (pairs need both burst lines; the budget drops some)."
   },
   "expect": {
     "V_min_sec_lines": 150,
     "A_max_abs_diff_points": 5.0,
     "output_share_min": 8.0,
-    "output_share_max": 30.0
+    "output_share_max": 30.0,
+    "W_min_share_after_update": 80.0,
+    "W_min_lift_points": 20.0,
+    "B_max_gapx_ms_per_s_median": 2.0,
+    "O_window_samples": 256,
+    "O_min_share": 60.0
   },
   "expect_note": "EMPTY of captures ON PURPOSE: a soak writes none. Legs are read off apuvoice lines and the pulled PCM.",
   "expect_counts": {},
   "must_not_move": [],
-  "must_not_regress": []
+  "must_not_regress": [],
+  "superseded": "First registered at b5cfe2c1b5 on ref 89667f015c; that request (1-1791768531-nfsaudio1011-1598447) was withdrawn unclaimed because Addendum 2 asked for the wait fields first. Re-registered here on 234b269b99, which adds them, before any device run."
 }
