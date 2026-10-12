@@ -1,0 +1,30 @@
+title	title_id	fps_ok_share	verdict	judged_utc	cause	fix_commit
+Amped 2		0.4423	docs/lanes/pathfind/runs/retro-amped2/verdict.json	2026-10-05T04:18:48Z	retro fps 0.44; guest busy in the vCPU (Amped perflog: 31.6 ms/frame); belowbar1005 owns it	
+Black Stone Magic Steel		1.0000	docs/lanes/pathfind/runs/black-stone-hold3/verdict.json	2026-10-04T05:25:16Z		
+Blowout		1.0000	docs/lanes/pathfind/runs/blowout-val2/verdict.json	2026-10-07T01:00:53Z		
+Buffy the Vampire Slayer		0.5516	docs/lanes/pathfind/runs/retro-buffy/verdict.json	2026-10-05T04:48:49Z	retro fps 0.55; the earlier abort was a channel_valid/save-slot limit (owner 10-04); fps cause not named	
+Dead or Alive 3		0.4394	docs/lanes/pathfind/runs/retro-doa3/verdict.json	2026-10-05T04:00:04Z	retro fps 0.44 (per-title slowdown, #413); doa3-rev replay diverged at step 0 (NEW ISSUE in OUTBOX)	
+Dino Crisis 3		0.3793	docs/lanes/pathfind/runs/dino-crisis-3-hold/verdict.json	2026-10-04T04:44:52Z	hold fps 0.38 (10-03); slowdown not named; telemetry owed, not a retest	
+Disney Pixar Ratatouille		1.0000	docs/lanes/pathfind/runs/sweep-54510109/verdict.json	2026-10-06T08:55:26Z		
+Fight Club		0.9372	docs/lanes/pathfind/runs/fightclub-1006/verdict.json	2026-10-07T00:39:19Z		
+Guilty Gear XX Reload The Midnight Carnival		1.0000	docs/lanes/pathfind/runs/guiltygear-1006/verdict.json	2026-10-06T23:09:19Z		
+JSRF - Jet Set Radio Future (USA)		1.0000	docs/lanes/pathfind/runs/retro-jsrf/verdict.json	2026-10-05T03:19:43Z		
+Marvel Nemesis Rise of the Imperfects		0.9888	docs/lanes/pathfind/runs/marvel-1006/verdict.json	2026-10-06T22:50:27Z		
+Midnight Club II		0.0000	docs/lanes/pathfind/runs/sweep-54540008/verdict.json	2026-10-06T04:42:12Z	sweep verdict 0.00: no valid gameplay window measured; needs a screen before any hold	
+Mortal Kombat: Armageddon		1.0000	docs/lanes/pathfind/runs/armageddon1006d/verdict.json	2026-10-06T21:08:37Z		
+Mortal Kombat Deadly Alliance		0.9955	docs/lanes/pathfind/runs/deadly-alliance-1006/verdict.json	2026-10-06T21:39:31Z		
+Mortal Kombat Shaolin Monks		0.4912	docs/lanes/pathfind/runs/shaolin-1006/verdict.json	2026-10-06T21:54:16Z	fps 0.49 at the bar on a valid window (10-06 14:55); perflog void; NEW ISSUE in OUTBOX	
+NBA Live 2005		0.0000	docs/lanes/pathfind/runs/nba-live-2005-hold/verdict.json	2026-10-03T23:47:14Z	about 25 fps after the surface-download fix, below 28.5 (NBA Live family; telemetry owed)	
+Need for Speed Most Wanted		0.1937	docs/lanes/pathfind/runs/sweep-4541007B/verdict.json	2026-10-06T04:28:23Z	sweep verdict 0.19: no gameplay window measured	
+Ninja Gaiden Black		0.2495	docs/lanes/pathfind/runs/retro-ngb/verdict.json	2026-10-05T04:35:03Z	retro fps 0.25; cause not named; telemetry owed	
+Panzer Dragoon Orta		0.9962	docs/lanes/pathfind/runs/panzer-dragoon-hold3/verdict.json	2026-10-04T06:33:57Z		
+Rogue Trooper		1.0000	docs/lanes/pathfind/runs/sweep-5343000E/verdict.json	2026-10-06T08:40:59Z		
+Spider Man 2		0.2895	docs/lanes/pathfind/runs/sweep-4156002B/verdict.json	2026-10-06T04:03:26Z	sweep verdict 0.29: no gameplay window measured	
+Spikeout: Battle Street		1.0000	docs/lanes/pathfind/runs/spikeout-hold/verdict.json	2026-10-03T21:38:49Z		
+Tecmo Classic Arcade		1.0000	docs/lanes/pathfind/runs/tecmo-1006/verdict.json	2026-10-07T00:21:00Z		
+The Incredible Hulk Ultimate Destruction		0.6433	docs/lanes/pathfind/runs/sweep-56550039/verdict.json	2026-10-06T05:12:15Z	sweep verdict 0.64: below bar, cause not named	
+The Lord of the Rings The Return of the King		0.3329	docs/lanes/pathfind/runs/sweep-4541003E/verdict.json	2026-10-06T04:59:24Z	sweep verdict 0.33: no gameplay window measured	
+ToeJam & Earl III: Mission to Earth		0.7278	docs/lanes/pathfind/runs/toejam-earl-3-hold/verdict.json	2026-10-03T21:13:34Z	hold verdict 0.73 (10-03): cause not named	
+Tork: Prehistoric Punk		1.0000	docs/lanes/pathfind/runs/tork-rerun4/verdict.json	2026-10-05T14:55:08Z		
+Tron 2.0 - Killer App (USA, Europe)		0.9777	docs/lanes/pathfind/runs/retro-tron/verdict.json	2026-10-05T05:09:51Z		
+World Soccer Winning Eleven 9		1.0000	docs/lanes/pathfind/runs/sweep-4B4E002F/verdict.json	2026-10-06T09:13:11Z		

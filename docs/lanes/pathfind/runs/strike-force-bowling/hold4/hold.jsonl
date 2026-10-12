@@ -1,0 +1,54 @@
+{"n": 26, "hold_s": 0.8, "play_s": 6.3, "changed": null, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": true}
+{"n": 27, "hold_s": 7.2, "play_s": 12.8, "changed": 0.7557, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 28, "hold_s": 13.7, "play_s": 19.1, "changed": 0.7889, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 29, "hold_s": 19.9, "play_s": 26.3, "changed": 0.7266, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 30, "hold_s": 27.1, "play_s": 32.7, "changed": 0.823, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 31, "hold_s": 33.5, "play_s": 39.3, "changed": 0.8107, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.7023, "kept": true}
+{"n": 32, "hold_s": 40.2, "play_s": 45.7, "changed": 0.7538, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 33, "hold_s": 46.6, "play_s": 52.1, "changed": 0.7856, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 34, "hold_s": 52.9, "play_s": 59.4, "changed": 0.8177, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 35, "hold_s": 60.3, "play_s": 65.7, "changed": 0.7176, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 36, "hold_s": 66.5, "play_s": 71.9, "changed": 0.7376, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.7252, "kept": true}
+{"n": 37, "hold_s": 72.7, "play_s": 78.3, "changed": 0.7342, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 38, "hold_s": 78.9, "play_s": 84.4, "changed": 0.8981, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 39, "hold_s": 85.2, "play_s": 92.1, "changed": 0.8752, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 40, "hold_s": 93.0, "play_s": 102.3, "changed": 0.8372, "off": false, "src": "check", "state": "gameplay", "why": "Bowling lanes with pins standing and the ball visible at upper-left, no pause, menu, or replay footer; the game is in live play.", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 41, "hold_s": 103.3, "play_s": 108.9, "changed": 0.8849, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.7585, "kept": true}
+{"n": 42, "hold_s": 109.8, "play_s": 115.5, "changed": 0.7664, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 43, "hold_s": 116.4, "play_s": 123.3, "changed": 0.8519, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 44, "hold_s": 124.2, "play_s": 129.8, "changed": 0.8071, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 45, "hold_s": 130.7, "play_s": 136.6, "changed": 0.7357, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 46, "hold_s": 137.6, "play_s": 143.3, "changed": 0.8261, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.7936, "kept": true}
+{"n": 47, "hold_s": 144.3, "play_s": 150.0, "changed": 0.8434, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 48, "hold_s": 151.0, "play_s": 157.4, "changed": 0.7535, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 49, "hold_s": 158.3, "play_s": 163.9, "changed": 0.8195, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 50, "hold_s": 164.9, "play_s": 170.6, "changed": 0.8436, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 51, "hold_s": 171.5, "play_s": 177.1, "changed": 0.7675, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.8367, "kept": true}
+{"n": 52, "hold_s": 178.1, "play_s": 183.9, "changed": 0.8462, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 53, "hold_s": 184.8, "play_s": 195.0, "changed": 0.8195, "off": false, "src": "check", "state": "gameplay", "why": "Bowling aim and power meters are up over the lane with the bowler holding the ball; the game is live, so no input is needed.", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 54, "hold_s": 196.1, "play_s": 201.8, "changed": 0.7167, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 55, "hold_s": 202.8, "play_s": 208.5, "changed": 0.6977, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.0745, "kept": true}
+{"n": 56, "hold_s": 209.4, "play_s": 215.2, "changed": 0.8403, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 57, "hold_s": 216.0, "play_s": 222.5, "changed": 0.81, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 58, "hold_s": 223.1, "play_s": 228.7, "changed": 0.5566, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 59, "hold_s": 229.3, "play_s": 235.1, "changed": 0.1745, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 60, "hold_s": 235.7, "play_s": 241.2, "changed": 0.0823, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.8748, "kept": true}
+{"n": 61, "hold_s": 241.8, "play_s": 247.6, "changed": 0.1701, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 62, "hold_s": 248.1, "play_s": 254.7, "changed": 0.1234, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 63, "hold_s": 255.4, "play_s": 260.7, "changed": 0.1472, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 64, "hold_s": 261.3, "play_s": 266.5, "changed": 0.1578, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 65, "hold_s": 267.1, "play_s": 272.7, "changed": 0.1151, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "window": 0.1632, "kept": true}
+{"n": 66, "hold_s": 273.5, "play_s": 279.2, "changed": 0.1562, "off": false, "src": "genre", "action": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"], "kept": false}
+{"n": 67, "hold_s": 279.9, "play_s": 279.2, "changed": 0.0213, "off": false, "src": "check", "state": "menu", "why": "Name Entry screen with letter grid and Done button; not live play.", "name": 1, "action": ["START"], "kept": false}
+{"n": 68, "hold_s": 285.2, "play_s": 279.2, "changed": 0.1685, "off": true, "src": "check", "state": "name_entry", "why": "Name Entry screen with a menu dialog over the title art; no bowling action is live.", "name": 2, "action": ["A"], "kept": false}
+{"n": 69, "hold_s": 292.0, "play_s": 279.2, "changed": 0.1523, "off": true, "src": "check", "state": "menu", "why": "Name Entry screen for a high score (Name ..AA..AA, Strength/Accuracy/Curve meters), not live bowling.", "name": 3, "action": ["START"], "kept": false}
+{"n": 70, "hold_s": 297.4, "play_s": 279.2, "changed": 0.1561, "off": true, "src": "check", "state": "name_entry", "why": "Name Entry screen (Strength/Accuracy/Curve panel) is a menu, not live bowling play.", "name": 4, "action": ["A"], "kept": true}
+{"n": 71, "hold_s": 303.4, "play_s": 279.2, "changed": 0.1619, "off": true, "src": "check", "state": "menu", "why": "Name Entry screen with a partly typed name and the Strength/Accuracy/Curve panel; no bowling in progress.", "name": 5, "action": ["START"], "kept": false}
+{"n": 72, "hold_s": 310.5, "play_s": 279.2, "changed": 0.154, "off": true, "src": "check", "state": "name_entry", "why": "Name Entry screen (letter picker over a menu backdrop) is shown, not live bowling play.", "name": 6, "action": ["A"], "kept": false}
+{"n": 73, "hold_s": 316.3, "play_s": 279.2, "changed": 0.1222, "off": true, "src": "check", "state": "name_entry", "why": "Name Entry screen for the bowler's name is open; no ball or lane is in play.", "action": ["B"], "kept": false}
+{"n": 74, "hold_s": 322.3, "play_s": 279.2, "changed": 0.1829, "off": true, "src": "check", "state": "name_entry", "why": "Name Entry screen for Player 2 is over the menu background, not live bowling play.", "action": ["B"], "kept": false}
+{"n": 75, "hold_s": 327.3, "play_s": 279.2, "changed": 0.5461, "off": true, "src": "check", "state": "menu", "why": "PlayerSelect menu for Strike Force Bowling; player is choosing a bowler, not in live play.", "action": ["A"], "kept": false}
+{"n": 76, "hold_s": 333.2, "play_s": 279.2, "changed": 0.5506, "off": true, "src": "check", "state": "menu", "why": "Name Entry screen for Player 3 with Strength/Accuracy/Curve bars and a Done option; no bowling action is on screen.", "action": ["B"], "kept": true}
+{"n": 77, "hold_s": 338.3, "play_s": 279.2, "changed": 0.553, "off": true, "src": "check", "state": "menu", "why": "PlayerSelect screen with Mary Anne chosen; no bowling in progress", "action": ["A"], "kept": false}
+{"n": 78, "hold_s": 344.0, "play_s": 279.2, "changed": 0.4658, "off": true, "src": "check", "state": "menu", "why": "Name Entry screen for Player 4 with stat bars and Done option; no bowling in progress.", "action": ["B"], "kept": false}
+{"n": 79, "hold_s": 349.9, "play_s": 279.2, "changed": 0.5604, "off": true, "src": "check", "state": "menu", "why": "PlayerSelect screen with a profile chooser; no bowling lane or ball in play yet.", "action": []}

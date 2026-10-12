@@ -1,0 +1,76 @@
+{
+ "title_id": "4541007B",
+ "name": "Need for Speed Most Wanted",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+ "result": "gameplay",
+ "tool": "9dff62f2fa",
+ "started": "2026-10-05 21:18:40 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/021-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/021-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/021-probe-c.jpg"
+ ],
+ "minutes": 3.91,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/020-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/026-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/027-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/028-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/029-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4541.md"
+ ],
+ "hold": {
+  "genre": "drive",
+  "why": "A car seen from behind is driving down a city road, with a speedometer, minimap, and race progress HUD.",
+  "ok": false,
+  "play_s": 304.8,
+  "need_s": 600.0,
+  "hold_s": 306.8,
+  "model_navs": 0,
+  "frames": 9,
+  "still_windows": 0,
+  "shed": [],
+  "reason": "fps gate at 5:06: median 26 < 27, 20% of 127 samples at >= 28.5",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 77,
+    "median": 26.0,
+    "share": 0.143,
+    "at_s": 185.5,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 127,
+    "median": 26.0,
+    "share": 0.205,
+    "at_s": 306.8,
+    "floor": 27.0,
+    "stop": true
+   }
+  ],
+  "verdict": "VERDICT Need for Speed Most Wanted ? FAIL(duration: 306 s of gameplay < 600 s confirmation) gameplay=306.4s fps_ok=0.1937 crash=False hang=False audio_short=0.0 hitches=1/0.244pm worst_ms=108.9 static_frac=0.0302 play_share=0.9994 fps_excluded=0.0s"
+ },
+ "model_calls": 27,
+ "calls_by_model": {
+  "claude-sonnet-5": 27
+ },
+ "steps": 21,
+ "seconds": 583.8,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/frames/068-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4541007B/strip.jpg"
+}

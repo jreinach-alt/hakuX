@@ -1,0 +1,81 @@
+{
+ "title_id": "4D570034",
+ "name": "Mortal Kombat: Armageddon",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D570034-Mortal_Kombat_Armageddon.xiso.iso",
+ "result": "gameplay",
+ "tool": "f6101e1ee6",
+ "started": "2026-10-06 06:32:40 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/014-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/014-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/014-probe-c.jpg"
+ ],
+ "minutes": 2.02,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/013-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/022-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4D57.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Two Scorpion characters are fighting in close melee in an arena, with a health bar and round timer, which is a fighting game.",
+  "ok": false,
+  "play_s": 469.0,
+  "need_s": 600.0,
+  "hold_s": 587.0,
+  "model_navs": 17,
+  "frames": 17,
+  "still_windows": 1,
+  "shed": [
+   "B",
+   "X"
+  ],
+  "reason": "off play for 13 steps: menu (Character select grid is showing with Scorpion highlighted; no live round is running.)",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 179,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 187.7,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 295,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 304.7,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Mortal Kombat: Armageddon ? FAIL(duration: 589 s of gameplay < 600 s confirmation) gameplay=588.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.7982 fps_excluded=120.3s"
+ },
+ "model_calls": 32,
+ "calls_by_model": {
+  "claude-sonnet-5": 32
+ },
+ "steps": 14,
+ "seconds": 753.9,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/frames/087-hold.jpg",
+ "last_state": "probe",
+ "replayed": 4,
+ "sib_replayed": 0,
+ "guide": [
+  "4D570034"
+ ],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D570034/strip.jpg"
+}

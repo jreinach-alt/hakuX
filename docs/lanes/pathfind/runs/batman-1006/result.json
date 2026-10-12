@@ -1,0 +1,85 @@
+{
+ "title_id": "45410389",
+ "name": "Batman Begins",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/45410389-Batman_Begins.xiso.iso",
+ "result": "gameplay",
+ "tool": "2cce4a963b",
+ "started": "2026-10-06 19:08:56 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/045-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/045-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/045-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/045-probe-right.jpg"
+ ],
+ "reason": "four probes refused",
+ "claim_live_selfmove": 3,
+ "minutes": 6.35,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/044-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/046-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/047-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/048-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/049-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/050-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/051-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/052-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4541.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "Batman is in melee combat with a thug, with a health bar and on-screen prompts to press Y for a kick.",
+  "ok": false,
+  "play_s": 416.0,
+  "need_s": 600.0,
+  "hold_s": 1927.2,
+  "model_navs": 21,
+  "frames": 55,
+  "still_windows": 37,
+  "shed": [
+   "B",
+   "X",
+   "Y"
+  ],
+  "reversals": 13,
+  "reason": "hakuX left the foreground during the hold",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 93,
+    "median": 29.0,
+    "share": 0.935,
+    "at_s": 184.5,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 158,
+    "median": 29.0,
+    "share": 0.962,
+    "at_s": 314.9,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Batman Begins ? FAIL(menu time: 21.4% of the scored window in `play` (bar 90%; still 1334 s, play 413 s, black 46 s, cutscene 44 s)) gameplay=1927.6s fps_ok=0.8329 crash=False hang=False audio_short=0.0 hitches=8/0.257pm worst_ms=450.8 static_frac=0.0 play_share=0.2141 fps_excluded=1507.6s"
+ },
+ "model_calls": 135,
+ "calls_by_model": {
+  "claude-sonnet-5": 135
+ },
+ "steps": 45,
+ "seconds": 2356.1,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/frames/247-hold.jpg",
+ "last_state": "probe",
+ "replayed": 4,
+ "sib_replayed": 0,
+ "guide": [
+  "45410389"
+ ],
+ "cheap": 7,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/batman-1006/strip.jpg"
+}

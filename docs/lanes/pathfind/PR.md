@@ -3,10 +3,33 @@
 State: ready
 
 Lane: pathfind            Issue: #433
-Base: master @ 425ffe1ad1 (origin/master merged into lane/pathfind 10-04 08:15 PDT)
-Files: docs/lanes/pathfind/NOTES.md, docs/lanes/pathfind/OUTBOX.md, docs/lanes/pathfind/PR.md, docs/lanes/pathfind/runs/, docs/testing/titles/pathknow/hints/learned-pub-5451.md, docs/testing/titles/pathknow/hints/learned-pub-5454.md, docs/testing/titles/pathknow/paths/
+Base: master @ 76a2c15333 (origin/master merged into lane/pathfind 10-12)
+Files: docs/lanes/pathfind/**, docs/testing/titles/pathfind.py, docs/testing/titles/pathfind_selftest.py, docs/testing/titles/pathknow/hints/**, docs/testing/titles/pathknow/paths/**, docs/testing/jobs/selftest.d/95-stuckdetect.sh
 Prediction: none: no arm (tooling and a probe measure; no emulator code)
 Needs device: yes (held, direct driving; no dispatcher requests)    Needs NDK: no
+
+10-05 to 10-12, the held-run chain on the Nova. Tool changes in `pathfind.py`:
+- **A stuck detector on the hold** (`docs/lanes/stuckdetect1007/stuckdetect.py`, imported only if present). A hold
+  stuck at a wall or in a menu first gets unstick rungs: the genre's own unstick moves, then the first three unlock
+  buttons. It then ends as `stuck_abort` with a reason instead of spending the rest of its budget. Selftest leg `sdstuck`.
+- **Weekly-limit answers** from the model end the session as void-limit, not as a path failure.
+- **Two refusals before any step.** Football titles go last (owner order 10-05). A title whose latest verdict is
+  below the bar with no recorded fix is refused (owner order 10-06; `docs/lanes/pathfind/below-bar.tsv`).
+- **A fighter's counter prompt** (Press X/Y now) is answered on play looks.
+
+Merged with master's profile gate. The football and below-bar refusals run first, then R3: a title with a known path
+is refused unless `--path-broken` names a failed run of it. Master's `models.model_for("pathfind")` replaces the
+FAST/STRONG env dials. `pathknow/paths/` gains 54 recorded paths and `pathknow/hints/` gains 30 learned-hint files,
+all from the held runs since 10-07. The held runs' folders are under `runs/`, and they are the evidence for the
+Playable ledger rows that cite them.
+
+Local checks (no CI), 10-12, at the head after merging origin/master 76a2c15333:
+- `python3 docs/testing/titles/pathfind_selftest.py` -> all ok, 105 checks. It had been red on master since R3 (4 ok,
+  then the refusal at the second case). It had also been red on the lane since the stuck detector, which ended 7 hold
+  legs' sim scenes early. The selftest now names a fake failed run for R3 and keeps a private dispatch dir. The
+  detector is off for the hold-loop legs and on for its own leg. A new leg, `r3`, checks the refusal.
+- `python3 docs/testing/titles/titlestate_selftest.py` -> all checks passed.
+- `python3 docs/lanes/stuckdetect1007/stuckdetect.py selftest` -> all ok.
 
 10-04, the owner's screening (`pm/screen-1004.tsv`): each title is pathed first-run, its profile promoted, then a 600-s
 held measurement against the 30 fps bar. Per-title lines are in OUTBOX.md and the scoreboard is at the top of NOTES.md.

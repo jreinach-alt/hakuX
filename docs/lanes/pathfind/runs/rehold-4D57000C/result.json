@@ -1,0 +1,46 @@
+{
+ "title_id": "4D57000C",
+ "name": "Mortal Kombat Deadly Alliance",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso",
+ "result": "gave-up",
+ "tool": "f6101e1ee6",
+ "started": "2026-10-06 07:00:41 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/095-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/095-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/095-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/095-probe-right.jpg"
+ ],
+ "reason": "budget 15 min",
+ "minutes": null,
+ "gameplay_frame": null,
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/045-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/046-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/047-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/048-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/049-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/050-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/051-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/052-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/053-after.jpg"
+ ],
+ "retracted": 2,
+ "last_state": "probe",
+ "model_calls": 71,
+ "calls_by_model": {
+  "claude-sonnet-5": 71
+ },
+ "steps": 80,
+ "seconds": 908.3,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/frames/094-gameplay.jpg",
+ "replayed": 8,
+ "sib_replayed": 0,
+ "guide": [
+  "4D57000C"
+ ],
+ "cheap": 2,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/rehold-4D57000C/strip.jpg"
+}
