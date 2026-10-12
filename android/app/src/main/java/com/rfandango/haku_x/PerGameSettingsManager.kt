@@ -42,6 +42,11 @@ object PerGameSettingsManager {
         // "auto", "sysmem" or "gmem". Unset falls back to the title table in
         // xemu_android.cpp (ApplyRenderMode), which reads the disc's title ID.
         "render_mode",
+        // #433: save states. The folder stays global; MainActivity and
+        // xemu_android.cpp read these through the runtime override.
+        "savestate_compression",
+        "savestate_auto_load",
+        "savestate_auto_save",
     )
 
     fun hasOverrides(context: Context, relativePath: String): Boolean {

@@ -29,6 +29,7 @@
 
 #include "xemu-settings.h"
 #include "hw/xbox/nv2a/debug.h"
+#include "savestate/hxs_jni.h"
 
 extern "C" void xemu_set_fp_safe(bool enable);
 extern "C" bool xemu_get_fp_safe(void);
@@ -917,7 +918,7 @@ constexpr bool kAutotuneProfiledDefault = false;
  * and every other title gets kAutotuneProfiledDefault. Either way it is
  * never set over an env_vars TU_AUTOTUNE_ALGO a request already placed.
  */
-static void ApplyRenderMode(JNIEnv* env, jobject activity, const std::string& dvd) {
+static uint32_t ApplyRenderMode(JNIEnv* env, jobject activity, const std::string& dvd) {
   uint32_t title_id = 0;
   if (dvd == "/dev/fdset/0" && g_dvd_fd >= 0) {
     title_id = ReadDiscTitleId(g_dvd_fd);
@@ -979,6 +980,7 @@ static void ApplyRenderMode(JNIEnv* env, jobject activity, const std::string& dv
                       mode.c_str(), source, title_id, now ? now : "(unset)",
                       autotune.c_str(), autotune_source,
                       autotune_now ? autotune_now : "(unset)");
+  return title_id;
 }
 
 static SetupFiles SyncSetupFiles() {
@@ -1118,7 +1120,12 @@ static SetupFiles SyncSetupFiles() {
     }
   }
 
-  ApplyRenderMode(env, activity, out.dvd);
+  const uint32_t title_id = ApplyRenderMode(env, activity, out.dvd);
+  hxs_android_configure(env, activity, base.c_str(),
+                        GetPrefString(env, activity, "savestate_tree_uri").c_str(),
+                        GetPrefBool(env, activity, "savestate_compression", true),
+                        GetPrefBool(env, activity, "savestate_auto_load", false),
+                        title_id);
 
   out.config_path = base + "/xemu.toml";
   int tbSize = GetPrefInt(env, activity, "tcg_tb_size", 128);

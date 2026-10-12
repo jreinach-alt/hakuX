@@ -26,6 +26,7 @@
 #if defined(ANDROID) || defined(__ANDROID__)
 #define XEMU_SNAPSHOTS_GL 0
 #include <android/log.h>
+#include "savestate/hxs.h"
 #else
 #define XEMU_SNAPSHOTS_GL 1
 #include <SDL2/SDL.h>
@@ -93,8 +94,9 @@ const char **g_snapshot_shortcut_index_key_map[] = {
 static char *snap_disc_path;
 static char *snap_disc_sha;
 
-/* A layout written in place of the real one; the test sequence uses it. */
+/* A layout and build written in place of the real ones; tests use them. */
 static char *snap_layout_override;
+static char *snap_build_override;
 
 /* What the last save and load measured; the test sequence logs them. */
 static int64_t snap_last_save_us;
@@ -171,6 +173,9 @@ static char *xemu_snapshots_build(void)
 {
     static char *build;
 
+    if (snap_build_override) {
+        return g_strdup(snap_build_override);
+    }
     if (!build) {
         GString *s = g_string_new(xemu_commit);
         xemu_snapshots_append_build_id(s);
@@ -596,13 +601,16 @@ static bool xemu_snapshots_check(const char *vm_name, Error **err)
         return xemu_snapshots_refuse("header", err, v, "2");
     }
 
+    /*
+     * The build is recorded but not compared: a state loads into any build
+     * whose device-state schema matches the one that wrote it.
+     */
     xemu_snapshots_update_disc_sha();
     struct {
         const char *key;
         const char *reason;
         char *running;
     } checks[] = {
-        { SNAP_KEY_BUILD, "build", xemu_snapshots_build() },
         { SNAP_KEY_TITLE_ID, "title", xemu_snapshots_title_id() },
         { SNAP_KEY_DISC, "disc", xemu_snapshots_disc_sha() },
         { SNAP_KEY_CONTROLLERS, "controller-layout",
@@ -812,6 +820,53 @@ bool xemu_snapshots_offset_extra_data(QEMUFile *f)
 void xemu_snapshots_mark_dirty(void)
 {
     xemu_snapshots_dirty = true;
+}
+
+char *xemu_snapshots_running_build(void)
+{
+    return xemu_snapshots_build();
+}
+
+char *xemu_snapshots_running_title_id(void)
+{
+    return xemu_snapshots_title_id();
+}
+
+char *xemu_snapshots_running_title_name(void)
+{
+    struct xbe *xbe_data = xemu_get_xbe_info();
+    char *name = NULL;
+
+    if (xbe_data && xbe_data->cert) {
+        name = g_utf16_to_utf8(xbe_data->cert->m_title_name, 40, NULL, NULL,
+                               NULL);
+    }
+    return name ? name : g_strdup("");
+}
+
+char *xemu_snapshots_running_disc(void)
+{
+    xemu_snapshots_update_disc_sha();
+    return xemu_snapshots_disc_sha();
+}
+
+char *xemu_snapshots_running_controllers(void)
+{
+    return xemu_snapshots_controller_layout();
+}
+
+uint64_t xemu_snapshots_last_save_region(void)
+{
+    return snap_last_save_region;
+}
+
+void xemu_snapshots_set_test_overrides(const char *controllers,
+                                       const char *build)
+{
+    g_free(snap_layout_override);
+    snap_layout_override = g_strdup(controllers);
+    g_free(snap_build_override);
+    snap_build_override = g_strdup(build);
 }
 
 /*
@@ -1162,6 +1217,9 @@ void xemu_snapshots_test_init(void)
     const char *env = getenv("HAKUX_SNAPSHOT_TEST");
     int start_s = env ? atoi(env) : 0;
 
+#if defined(ANDROID) || defined(__ANDROID__)
+    hxs_init();
+#endif
     if (start_s <= 0 || snap_test.timer) {
         return;
     }

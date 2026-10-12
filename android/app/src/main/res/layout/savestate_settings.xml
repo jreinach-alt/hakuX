@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- #433: the "Save states" section, inserted after the hard disk section. -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:id="@+id/section_save_states"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:layout_marginTop="16dp"
+  app:cardBackgroundColor="@color/xemu_surface"
+  app:cardCornerRadius="28dp"
+  app:cardElevation="0dp"
+  app:strokeColor="@color/xemu_outline_variant"
+  app:strokeWidth="1dp">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/settings_savestate_title"
+      android:textAppearance="@style/TextAppearance.Material3.TitleLarge" />
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:text="@string/settings_savestate_desc"
+      android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+      android:textColor="@color/xemu_text_muted" />
+
+    <!-- The folder is global: hidden in per-game settings. -->
+    <LinearLayout
+      android:id="@+id/group_savestate_folder"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical">
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:text="@string/settings_savestate_folder"
+      android:textAppearance="@style/TextAppearance.Material3.TitleSmall" />
+
+    <TextView
+      android:id="@+id/txt_savestate_folder"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:textAppearance="@style/TextAppearance.Material3.BodyMedium"
+      android:textIsSelectable="true" />
+
+    <TextView
+      android:id="@+id/txt_savestate_folder_note"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="2dp"
+      android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+      android:textColor="@color/xemu_text_muted" />
+
+    <com.google.android.material.button.MaterialButton
+      android:id="@+id/btn_savestate_folder"
+      style="?attr/materialButtonOutlinedStyle"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:text="@string/settings_savestate_pick_folder" />
+
+    <com.google.android.material.button.MaterialButton
+      android:id="@+id/btn_savestate_folder_reset"
+      style="?attr/materialButtonOutlinedStyle"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:text="@string/settings_savestate_reset_folder" />
+
+    </LinearLayout>
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+      android:id="@+id/switch_savestate_compression"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="20dp"
+      android:text="@string/settings_savestate_compression"
+      android:textColor="@color/xemu_text_muted" />
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="4dp"
+      android:layout_marginTop="2dp"
+      android:text="@string/settings_savestate_compression_desc"
+      android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+      android:textColor="@color/xemu_text_muted" />
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+      android:id="@+id/switch_savestate_auto_load"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:text="@string/settings_savestate_auto_load"
+      android:textColor="@color/xemu_text_muted" />
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="4dp"
+      android:layout_marginTop="2dp"
+      android:text="@string/settings_savestate_auto_load_desc"
+      android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+      android:textColor="@color/xemu_text_muted" />
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+      android:id="@+id/switch_savestate_auto_save"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:text="@string/settings_savestate_auto_save"
+      android:textColor="@color/xemu_text_muted" />
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="4dp"
+      android:layout_marginTop="2dp"
+      android:text="@string/settings_savestate_auto_save_desc"
+      android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+      android:textColor="@color/xemu_text_muted" />
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:text="@string/settings_savestate_rewind_note"
+      android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+      android:textColor="@color/xemu_text_muted" />
+
+  </LinearLayout>
+</com.google.android.material.card.MaterialCardView>
