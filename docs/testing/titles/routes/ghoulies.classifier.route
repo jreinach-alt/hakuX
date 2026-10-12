@@ -1,0 +1,37 @@
+# state: returning   (classifier-path opening on the kept profile; the 0.5 release soak, #433)
+# Grabbed by the Ghoulies (4D530053), classifier path: `drive generic`
+# replaces ghoulies.returning.route's blind opening (the book, the title
+# page, slot 1 "My Game", Play, the storybook cards) and marks gameplay
+# itself once play is confirmed in the Grand Hallway. The classifier has a
+# recorded path for this title on the Nova (pathknow/paths/4D530053.json,
+# 2026-10-02: gameplay in 2.35 min). drive never presses START in live
+# play, which matters here: START in the hallway opens the pause menu.
+#
+# The play loop is ghoulies.route's, unchanged: walk with the left stick,
+# hold the right stick to attack in four directions, A for tutorial cards.
+drive generic 480 mark
+repeat forever {
+    axis LY min
+    wait 1.5
+    axis LY mid
+    axis RX max
+    wait 1
+    axis RX mid
+    axis LX max
+    wait 1.5
+    axis LX mid
+    axis RY min
+    wait 1
+    axis RY mid
+    axis LY max
+    wait 1.5
+    axis LY mid
+    axis RX min
+    wait 1
+    axis RX mid
+    axis LX min
+    wait 1.5
+    axis LX mid
+    press A 200
+    wait 0.5
+}
