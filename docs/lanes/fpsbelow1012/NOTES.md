@@ -3,9 +3,15 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **11** run (the pilot: 2 read, 1 void before input; the A/B's six
-arms on NGB, DOA3 and Buffy; the `[sdrange]` runs on MC3 and Forza), **2** queued (the depth-pixels pair, section 7).
-13 of 30. Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **12** run (the pilot: 2 read, 1 void before input; the A/B's six
+arms on NGB, DOA3 and Buffy; the `[sdrange]` runs on MC3 and Forza; the depth pair's B), **1** running (the depth
+pair's A), **3** queued (the L4a pair on MC3 and Forza's `[sdrfin]` run, section 13). 16 of 30. Ledger in section 4.
+
+## 0c. Attempt 3, after Addendum 2 (10-12 05:57 PDT): the grants landed
+
+Board db57d68da6 granted draw.c, vertex.c and renderer.h for L4a, and widened surface.c to L4c's split counter
+(perf builds). Both are built at 67e3fcf745, the L4a prediction is registered, and the three runs that read them are
+queued behind L1's depth pair (section 13).
 
 ## 0b. Attempt 3 (10-12 ~05:40 PDT): why attempt 2 did not finish
 
@@ -833,14 +839,69 @@ runs on disk show.
 
 That is at most 13 + 2 + 1 + 2 = 18 of the 30-run cap.
 
-WAITING: grant for hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/vertex.c, hw/xbox/nv2a/pgraph/vk/renderer.h
--- L4a `HAKUX_VTX_EXACT` as drafted in `drafts/vtxexact.diff`, default off (MC3 H1, section 10a).
+Resolved (Addendum 2, board db57d68da6): the grant for draw.c, vertex.c and renderer.h (L4a), and surface.c widened
+to the split counter. Both are built at 67e3fcf745 (section 13). `HAKUX_RANGE_EXACT` itself is not granted, and it
+is requested only if Forza's counter reads rule (1) dominant.
 
-WAITING: grant extension for hw/xbox/nv2a/pgraph/vk/surface.c beyond `HAKUX_ZETA_D24` -- a perf-build counter of
-which condition completed each `range` batch (section 11), then `HAKUX_RANGE_EXACT`, default off, only if rule (1)
-dominates.
+The depth pair's waiting line moved to section 13, with the runs queued since.
 
-WAITING: z-1791809103-fpsbelow1012-286227 (B) and z-1791809107-fpsbelow1012-286943 (A), the depth-pixels pair,
-sweep tier, queued 05:45 PDT behind the overnight Playable chain. Read it with `ab_compare.py --a <A> --b <B>
---expect docs/testing/predictions/fpsbelow1012-zetad24-pixels.json`, plus legs (1)-(4) of the prediction by hand.
+## 13. L4a and L4c built; checks; the runs that read them (10-12 06:10 PDT)
+
+**L4a, `HAKUX_VTX_EXACT=1`** (draw.c, vertex.c, renderer.h; off by default) is `drafts/vtxexact.diff` applied
+unchanged at 67e3fcf745. Section 10 describes it. It prints `HAKUX_VTX_EXACT=0|1` at the first vertex sync, so each
+arm's init line says which arm it ran.
+
+**L4c's counter, `[sdrfin]`** (surface.c, perf builds only, always on, no env) is one line per `[sdcall]` period. It
+is printed only when a `range` completion happened in that period. Each completion is counted under why it
+completed the batch:
+- `own`: the lookup recorded a download of its own. A precise rule completes these too.
+- `dest`: it recorded none, but the range overlaps a pending download's destination (rule 2). The reader needs the
+  bytes.
+- `clean`: it recorded none and overlaps no pending destination, only a live surface with nothing to download. Only
+  rule (1) completes it, and `HAKUX_RANGE_EXACT` would not.
+- `tscan`: `pgraph_vk_texscan_complete_range`, which is always dest.
+
+For each class the line gives the completions, the downloads retired, and the wall time. For `own` it also gives how
+many downloads the lookups recorded (`rec`). The time covers the whole completion, the copies into VRAM included,
+so it reads a little above `[sdcall] range=...ms`. The cost is one overlap test per completion: about 100 per 60
+frames on Forza.
+
+`tools/rfread.py` reads both after the gameplay mark. On the runs at master it reproduces the `range` figures:
+- MC3 `-2104673`: 1,020 downloads, 979 ms median per 60 frames (16.2 ms/frame over the window);
+- Forza `-2906178`: 101 completions, 710 downloads, 799 ms.
+
+Neither run has `[sdrfin]` lines: they predate the counter.
+
+**Checks on 67e3fcf745:**
+- `docs/testing/preflight.sh --allow-tracker`: passed (nv2a index ok, territory ok, board files ok).
+- `check_android_guards.py`: ok.
+- `tools/ndkcheck.py` on draw.c, vertex.c and surface.c compiles each file `-fsyntax-only` with its NDK clang line
+  from the newest Release `compile_commands.json`, as a release build and as a perf build (`-DNV2A_PERF_LOG=1`).
+  All six compiles return rc 0. The only warnings are the existing `TARGET_PAGE_MASK` shift on lines this change does
+  not touch. renderer.h is compiled through all of them.
+- `docs/testing/jobs/selftest.sh`: stopped by me after 5 of 137 fragments (10-50, every check `ok`, 0 FAIL, ~10 min).
+  The forge-selftest workflow runs only on `docs/testing/jobs/**`, `request.sh`, `lane.sh` and `nv2a_index.py`. This
+  lane touches none of those, and the full run is 1-2 h. Its tmpdir `/tmp/hakux-selftest.ORd4sH` is left behind,
+  because the sandbox refused the `rm`.
+- Not built here: the APK, which the dispatcher builds for the first run on the ref, and the desktop target.
+
+**The runs** (`--ref 67e3fcf745 --device nova --priority sweep --perflog --env HAKUX_GPUXFR=1 --env
+HAKUX_FRAMETRACE=1`), queued behind the depth pair's A in this order:
+1. MC3 B, `--env HAKUX_VTX_EXACT=1`, route `midnight-club-3.returning`, 540 s. An arm of
+   `fpsbelow1012-vtxexact.json` (registered 13:10:03Z, sha256 eb30dbad...).
+2. MC3 A, no switch. The other arm. Judge: `tools/rfread.py <A> <B> --expect
+   docs/testing/predictions/fpsbelow1012-vtxexact.json --key MC3`.
+3. Forza, route `forza-soak1010`, 480 s, no switch. This is a measurement, not an arm. Its `[sdrfin]` split decides
+   L4c.
+
+**What the Forza run decides, written before it runs.** Each class's share of the split's time, after the mark:
+- `clean` >= 50%: rule (1) is the cost. Request `HAKUX_RANGE_EXACT` (surface.c), register a Forza pair. The gain is
+  at most `clean`'s ms per frame.
+- `dest` >= 50%: the readers need the evicted bytes. A precise rule saves little. The lever becomes a GPU-side path
+  for the reader, as SURFSPLICE does for uploads, a larger change, and L4c drops below L2.
+- `own` >= 50%: the lookups record their own downloads, and the evictions' batch rides along at no extra finish.
+  L4c drops, and the next question is why Forza's lookups record so many.
+- No class reaches 50%: report the split, and act on `clean`'s ms per frame only if it is at least 4.
+
+Section 11 put P 0.4 on rule (1) dominating.
 
