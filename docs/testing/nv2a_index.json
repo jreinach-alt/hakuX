@@ -50,25 +50,25 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/apu.c:1084",
+   "loc": "hw/xbox/mcpx/apu/apu.c:1114",
    "symbols": [],
    "text": "assert(!\"SDL_OpenAudioDevice failed\");"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/apu.c:1141",
+   "loc": "hw/xbox/mcpx/apu/apu.c:1171",
    "symbols": [],
    "text": "qemu_mutex_lock(&d->lock); // FIXME: Can fail if thread is pegged, add flag"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/apu.c:1146",
+   "loc": "hw/xbox/mcpx/apu/apu.c:1176",
    "symbols": [],
    "text": "// FIXME: Reset DSP state"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/apu.c:1224",
+   "loc": "hw/xbox/mcpx/apu/apu.c:1254",
    "symbols": [],
    "text": "// FIXME: Remove unnecessary fields"
   },
@@ -2994,13 +2994,13 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6053",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6071",
    "symbols": [],
    "text": "pgraph_vk_reload_surface_scale_factor(pg); // FIXME: Move internal"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6088",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6106",
    "symbols": [],
    "text": "// FIXME: We should download all surfaces to ram, but need to"
   },
@@ -3176,7 +3176,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:442",
+   "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:446",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -4652,10 +4652,10 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "e9f29e0a5e57b976eb37211f66a4bcf0e9fc8e87",
+  "emulator_commit": "ede7c891c5790ac22e12562df0dae8e47a6d2a05",
   "gaps": 497,
   "resolved_tables": 1,
-  "sites": 3065,
+  "sites": 3066,
   "suites": 104,
   "support_dirs": [
    "/home/justin/hakux-work/fold-pins/pbkitplusplus"
@@ -8625,7 +8625,7 @@
     "text": "[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = { 2 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6010",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6020",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = zeta_d16;"
    }
@@ -8667,22 +8667,27 @@
     "text": "// Pack depth+stencil into NV097_SET_SURFACE_FORMAT_ZETA_Z24S8"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6013",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6025",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6020",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6030",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6027",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6037",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6031",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6044",
+    "role": "TABLE-ENTRY",
+    "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
+   },
+   {
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:6048",
     "role": "REF",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8]"
    }
@@ -11572,12 +11577,12 @@
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_CMP: {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:285",
+    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:289",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_CMP] = \"CMP\","
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:433",
+    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:437",
     "role": "DISPATCH",
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_CMP:"
    }
@@ -11604,12 +11609,12 @@
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_F:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:283",
+    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:287",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_F] = \"F\","
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:425",
+    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:429",
     "role": "DISPATCH",
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_F:"
    }
@@ -11631,12 +11636,12 @@
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_S1: {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:282",
+    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:286",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_S1] = \"S1\","
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:421",
+    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:425",
     "role": "DISPATCH",
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_S1:"
    }
@@ -11658,12 +11663,12 @@
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_S32K: {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:284",
+    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:288",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_S32K] = \"S32K\","
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:429",
+    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:433",
     "role": "DISPATCH",
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_S32K:"
    }
@@ -11685,12 +11690,12 @@
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_UB_D3D:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:280",
+    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:284",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_UB_D3D] = \"UB_D3D\","
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:413",
+    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:417",
     "role": "DISPATCH",
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_UB_D3D:"
    }
@@ -11712,12 +11717,12 @@
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_UB_OGL:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:281",
+    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:285",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_UB_OGL] = \"UB_OGL\","
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:417",
+    "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:421",
     "role": "DISPATCH",
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_UB_OGL:"
    }

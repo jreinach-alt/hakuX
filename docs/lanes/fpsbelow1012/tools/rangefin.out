@@ -1,0 +1,48 @@
+z-1791801220-fpsbelow1012-2906178: 205 periods, 12300 frames, hz=[1]
+per 60 frames: calls vtx 209 oth 38722 | downloads by=vtx 0 (ex 0, edge 0) by=oth 0 | shv 0 inv 53 full 0
+surface   dims       pitch  size      cz bound  by           n/60f   ex/60f edge/60f  overlap (offset into surface)
+02ad0e00  768x768    3072   2359296   z         vtx            0.0      0.0      0.0  0-200  (starts mid-page)
+02babc00  128x128    512    65536     cs        vtx            0.0      0.0      0.0  0-400  (starts mid-page)
+02c64c00  128x128    512    65536     cs        vtx            0.0      0.0      0.0  0-400  (starts mid-page)
+most frequent last ranges (by, start, size): vtx 2ad0000+1000 x2, vtx 2bab000+1000 x1, vtx 2c64000+1000 x1
+by=vtx: ex/n 0.00, edge/(n-ex) 1.00
+reading: H1 (false overlap: the draw's exact ranges miss most surfaces downloaded)
+
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791549076-fpstelemetry1008b-1823645           n391  fin60     dl240    dl/fin 4.0   wait    205 ms  scdl 240   su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791612289-perdraw1009-1529147                 n226  fin60     dl240    dl/fin 4.0   wait    142 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791614081-perdraw1009-2018875                 n235  fin60     dl240    dl/fin 4.0   wait    164 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791614116-perdraw1009-2019230                 n232  fin60     dl240    dl/fin 4.0   wait    167 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791638052-perdrawon1010-3286571               n247  fin60     dl240    dl/fin 4.0   wait    130 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791638067-perdrawon1010-3287113               n245  fin60     dl240    dl/fin 4.0   wait    176 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791638073-perdrawon1010-3290290               n244  fin60     dl240    dl/fin 4.0   wait    178 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791639780-perdrawon1010-3615994               n242  fin60     dl240    dl/fin 4.0   wait    176 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791639787-perdrawon1010-3618156               n251  fin60     dl240    dl/fin 4.0   wait    129 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791639788-perdrawon1010-3619271               n244  fin60     dl240    dl/fin 4.0   wait    180 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791643217-perdrawon1010-95991                 n275  fin60     dl240    dl/fin 4.0   wait    241 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791644404-perdrawon1010-362940                n312  fin60     dl240    dl/fin 4.0   wait    214 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791644405-perdrawon1010-365120                n309  fin60     dl240    dl/fin 4.0   wait    201 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791645060-perdrawon1010-726861                n314  fin60     dl240    dl/fin 4.0   wait    203 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791645061-perdrawon1010-727551                n316  fin60     dl240    dl/fin 4.0   wait    188 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791645062-perdrawon1010-728073                n315  fin60     dl240    dl/fin 4.0   wait    191 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791645063-perdrawon1010-728778                n315  fin60     dl240    dl/fin 4.0   wait    189 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791645064-perdrawon1010-729270                n311  fin60     dl240    dl/fin 4.0   wait    209 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791648919-texscan1010-2004607                 n307  fin60     dl240    dl/fin 4.0   wait    190 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791649387-nfs30plan1010-2138210               n303  fin60     dl240    dl/fin 4.0   wait    208 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791649388-nfs30plan1010-2138879               n307  fin60     dl240    dl/fin 4.0   wait    200 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791650940-texscan1010-2621346                 n304  fin60     dl240    dl/fin 4.0   wait    193 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791656193-drawrec1010-4097387                 n311  fin60     dl240    dl/fin 4.0   wait    208 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791660793-gpupass1010-760340                  n317  fin60     dl240    dl/fin 4.0   wait    215 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791660794-gpupass1010-761330                  n315  fin60     dl240    dl/fin 4.0   wait    191 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791661643-drawrec1010-951926                  n319  fin60     dl240    dl/fin 4.0   wait    212 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791661644-drawrec1010-952014                  n320  fin60     dl240    dl/fin 4.0   wait    195 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791671433-reportasync1010-3857080             n310  fin60     dl240    dl/fin 4.0   wait    204 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791693697-fastpaths1010-2485559               n310  fin60     dl240    dl/fin 4.0   wait    203 ms  scdl 0     su_def 0
+4541007B-Need_for_Speed_Most_Wanted.xi 1-1791695102-fastpaths1010-2836733               n314  fin60     dl240    dl/fin 4.0   wait    195 ms  scdl 0     su_def 0
+4D53006E-Forza_Motorsport.xiso.iso     1-1791525066-lane.profileddefault1008-4023363    n261  fin60     dl60     dl/fin 1.0   wait    293 ms  scdl 0     su_def 13214
+4D53006E-Forza_Motorsport.xiso.iso     1-1791647638-forzasurf1010-1663010               n189  fin60     dl62     dl/fin 1.0   wait    385 ms  scdl 3     su_def 13525
+4D53006E-Forza_Motorsport.xiso.iso     1-1791647642-forzasurf1010-1663501               n201  fin93     dl427    dl/fin 4.6   wait    718 ms  scdl 123   su_def 42273
+4D53006E-Forza_Motorsport.xiso.iso     1-1791649862-forzasurf1010-2253823               n182  fin60     dl61     dl/fin 1.0   wait    397 ms  scdl 3     su_def 13553
+4D53006E-Forza_Motorsport.xiso.iso     1-1791649867-forzasurf1010-2254415               n198  fin93     dl428    dl/fin 4.6   wait    788 ms  scdl 118   su_def 42738
+4D53006E-Forza_Motorsport.xiso.iso     z-1791801220-fpsbelow1012-2906178                n205  fin114    dl785    dl/fin 6.9   wait    995 ms  scdl 46    su_def 41528
+54540079-Midnight_Club_3_DUB_Edition.x z-1791787897-fpsbelow1012-2551411                n259  fin927    dl927    dl/fin 1.0   wait    745 ms  scdl 0     su_def 26624
+54540079-Midnight_Club_3_DUB_Edition.x z-1791799077-fpsbelow1012-2104673                n219  fin1020   dl1020   dl/fin 1.0   wait    983 ms  scdl 0     su_def 42701

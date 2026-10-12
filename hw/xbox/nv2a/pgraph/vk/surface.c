@@ -794,6 +794,184 @@ static int surfsplice_record(NV2AState *d, VkCommandBuffer cmd,
     return spliced;
 }
 
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+/*
+ * lane.fpsbelow1012 (#433), HAKUX_RANGELOG=1: what the `range` downloads
+ * download. Each draw_dirty surface the lookup below downloads is counted by
+ * its address and its caller, with the range that reached it, and
+ * sdcall_log() prints one [sdrange] line per surface and caller every 60
+ * guest frames. The vertex RAM sync (caller pgraph_vk_update_vertex_ram_buffer,
+ * by=vtx) passes a draw's ranges rounded out to pages and merged; for it, ex=
+ * counts the downloads where one of the draw's exact byte ranges (vtxhz_cur,
+ * kept while HAKUX_VTX_HAZARD is on, hz=1) overlaps the surface, so n - ex
+ * were reached only through the rounding or the merge. edge= counts the
+ * downloads whose overlap lies inside the range's first or last page. Off by
+ * default; perf builds only.
+ */
+#define SDR_SLOTS 12
+
+typedef struct SdrSlot {
+    hwaddr saddr;
+    intptr_t ra;
+    bool vtx, color, swizzle, bound;
+    unsigned long n, ex, edge;
+    hwaddr lo_min, hi_max;    /* the overlap, as offsets into the surface */
+    hwaddr r_start, r_size;   /* the last range that reached it */
+    unsigned int w, h, pitch;
+    size_t ssize;
+} SdrSlot;
+
+static struct {
+    unsigned long calls_vtx, calls_oth, full, shv, inv;
+    SdrSlot s[SDR_SLOTS];
+} g_sdr;
+
+static int sdr_state = -1;
+
+static bool sdr_on(void)
+{
+    if (sdr_state < 0) {
+        const char *e = getenv("HAKUX_RANGELOG");
+        sdr_state = e && e[0] == '1';
+        if (sdr_state) {
+            SURF92_LOG("[sdrange] on");
+        }
+    }
+    return sdr_state;
+}
+
+static void sdr_note(PGRAPHVkState *r, const SurfaceBinding *s, intptr_t ra,
+                     bool vtx, hwaddr start, hwaddr size)
+{
+    SdrSlot *e = NULL, *empty = NULL;
+    for (int i = 0; i < SDR_SLOTS && !e; i++) {
+        SdrSlot *t = &g_sdr.s[i];
+        if (!t->n) {
+            empty = empty ? empty : t;
+        } else if (t->saddr == s->vram_addr && t->ra == ra) {
+            e = t;
+        }
+    }
+    if (!e) {
+        if (!empty) {
+            g_sdr.full++;
+            return;
+        }
+        e = empty;
+        *e = (SdrSlot){
+            .saddr = s->vram_addr, .ra = ra, .vtx = vtx, .color = s->color,
+            .swizzle = s->swizzle, .lo_min = (hwaddr)-1, .w = s->width,
+            .h = s->height, .pitch = s->pitch, .ssize = s->size,
+        };
+    }
+    hwaddr lo = MAX(start, s->vram_addr);
+    hwaddr hi = MIN(start + size, s->vram_addr + s->size);
+    e->n++;
+    e->lo_min = MIN(e->lo_min, lo - s->vram_addr);
+    e->hi_max = MAX(e->hi_max, hi - s->vram_addr);
+    e->r_start = start;
+    e->r_size = size;
+    e->bound |= s == r->color_binding || s == r->zeta_binding;
+    if (hi <= start + TARGET_PAGE_SIZE ||
+        lo + TARGET_PAGE_SIZE >= start + size) {
+        e->edge++;
+    }
+    if (vtx && r->vtxhz_on) {
+        for (size_t i = 0; i < r->vtxhz_cur_n; i++) {
+            hwaddr a = r->vtxhz_cur[i].addr;
+            hwaddr b = a + r->vtxhz_cur[i].size;
+            if (a < s->vram_addr + s->size && s->vram_addr < b) {
+                e->ex++;
+                break;
+            }
+        }
+    }
+}
+
+static void sdr_log(PGRAPHVkState *r, int frames)
+{
+    if (sdr_state <= 0) {
+        return;
+    }
+    SURF92_LOG("[sdrange] frames=%d calls=vtx%lu/oth%lu shv=%lu inv=%lu "
+               "full=%lu hz=%d", frames, g_sdr.calls_vtx, g_sdr.calls_oth,
+               g_sdr.shv, g_sdr.inv, g_sdr.full, r->vtxhz_on);
+    for (int i = 0; i < SDR_SLOTS; i++) {
+        SdrSlot *e = &g_sdr.s[i];
+        if (!e->n) {
+            continue;
+        }
+        char by[24];
+        if (e->vtx) {
+            snprintf(by, sizeof(by), "vtx");
+        } else {
+            snprintf(by, sizeof(by), "%+ld", (long)e->ra);
+        }
+        SURF92_LOG("[sdrange] s=%08" HWADDR_PRIx " %ux%u p%u sz%zu %s%s%s "
+                   "by=%s n=%lu ex=%lu edge=%lu ovl=%" HWADDR_PRIx "-%"
+                   HWADDR_PRIx " last=%08" HWADDR_PRIx "+%" HWADDR_PRIx,
+                   e->saddr, e->w, e->h, e->pitch, e->ssize,
+                   e->color ? "c" : "z", e->swizzle ? " sw" : "",
+                   e->bound ? " bound" : "", by, e->n, e->ex, e->edge,
+                   e->lo_min, e->hi_max, e->r_start, e->r_size);
+    }
+    memset(&g_sdr, 0, sizeof(g_sdr));
+}
+
+/*
+ * lane.fpsbelow1012 (#433), [sdrfin]: why each `range` completion below
+ * completed its batch. Since forza414 an eviction's downloads wait for the
+ * next finish, and the lookup completes the pending batch when the range
+ * overlaps any surface, draw_dirty or not, or a pending download's
+ * destination. own: this lookup recorded a download of its own. dest: it
+ * recorded none, and the range overlaps a pending destination (the reader
+ * needs those bytes). clean: it recorded none, and the range overlaps no
+ * pending destination, only a surface with nothing to download (a precise
+ * rule would not complete). tscan: pgraph_vk_texscan_complete_range (always
+ * dest). Per class, per 60 guest frames: completions, the downloads they
+ * retired, for own those the lookups recorded, and the wall time of the
+ * whole completion (the fence or finish and the copies into VRAM, so a
+ * little more than [sdcall] range=...ms). Perf builds only, always on.
+ */
+enum { RF_OWN, RF_DEST, RF_CLEAN, RF_TSCAN, RF__COUNT };
+
+static struct {
+    unsigned long n[RF__COUNT], dl[RF__COUNT], rec;
+    int64_t ns[RF__COUNT];
+} g_rfin;
+
+static void rfin_count(int rf, unsigned long dl, int rec, int64_t ns)
+{
+    g_rfin.n[rf]++;
+    g_rfin.dl[rf] += dl;
+    g_rfin.rec += rec;
+    g_rfin.ns[rf] += ns;
+}
+
+static void rfin_log(int frames)
+{
+    static const char *const names[RF__COUNT] = {
+        "own", "dest", "clean", "tscan",
+    };
+    unsigned long any = 0;
+    for (int i = 0; i < RF__COUNT; i++) {
+        any += g_rfin.n[i];
+    }
+    if (any) {
+        char buf[400];
+        int n = snprintf(buf, sizeof(buf), "[sdrfin] frames=%d rec=%lu",
+                         frames, g_rfin.rec);
+        for (int i = 0; i < RF__COUNT && n < (int)sizeof(buf); i++) {
+            n += snprintf(buf + n, sizeof(buf) - n, " %s=n%lu/dl%lu/%.1fms",
+                          names[i], g_rfin.n[i], g_rfin.dl[i],
+                          (double)g_rfin.ns[i] / 1e6);
+        }
+        SURF92_LOG("%s", buf);
+    }
+    memset(&g_rfin, 0, sizeof(g_rfin));
+}
+#endif
+
 bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
                                                    hwaddr start, hwaddr size)
 {
@@ -801,6 +979,24 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
     PGRAPHVkState *r = pg->vk_renderer_state;
     SurfaceBinding *surface;
     bool found_overlap = false;
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+    intptr_t sdr_ra = 0;
+    bool sdr_vtx = false;
+    int rf_rec = 0;
+    if (unlikely(sdr_on())) {
+        /* The caller, as an offset from this function (ASLR moves both). */
+        uintptr_t ra = (uintptr_t)__builtin_return_address(0);
+        uintptr_t vf = (uintptr_t)&pgraph_vk_update_vertex_ram_buffer;
+        sdr_ra = (intptr_t)(ra -
+            (uintptr_t)&pgraph_vk_download_surfaces_in_range_if_dirty);
+        sdr_vtx = ra > vf && ra - vf < 0x400;
+        if (sdr_vtx) {
+            g_sdr.calls_vtx++;
+        } else {
+            g_sdr.calls_oth++;
+        }
+    }
+#endif
 
     /* A batch a previous finish submitted completes only if a new download
      * is recorded below (complete_submitted_downloads) or if it overlaps the
@@ -810,6 +1006,12 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
             found_overlap = true;
             if (surface->draw_dirty) {
                 OPT_STAT_INC(dif_other);
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+                if (unlikely(sdr_state > 0)) {
+                    sdr_note(r, surface, sdr_ra, sdr_vtx, start, size);
+                }
+                rf_rec++;
+#endif
                 download_surface_deferred(d, surface);
             }
         }
@@ -821,6 +1023,10 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
         if (!surface->width || !surface->height) continue;
         if (check_surface_overlaps_range(surface, start, size)) {
             OPT_STAT_INC(sd_shelved_lazy_dl);
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+            g_sdr.shv += sdr_state > 0;
+            rf_rec++;
+#endif
             download_surface_deferred(d, surface);
             surface->shelved_dirty = false;
             found_overlap = true;
@@ -833,6 +1039,10 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
         if (!surface->width || !surface->height) continue;
         if (check_surface_overlaps_range(surface, start, size)) {
             OPT_STAT_INC(sd_shelved_lazy_dl);
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+            g_sdr.inv += sdr_state > 0;
+            rf_rec++;
+#endif
             download_surface_deferred(d, surface);
             found_overlap = true;
         }
@@ -846,7 +1056,17 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
          * now since the caller needs the data in VRAM. That includes ones
          * an earlier surface_update left pending for a surface it evicted,
          * which is shelved clean and so is not found above. */
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+        int rf = rf_rec ? RF_OWN :
+                 deferred_downloads_overlap_range(d, start, size) ? RF_DEST :
+                 RF_CLEAN;
+        unsigned long rf_dl = r->num_deferred_downloads + g_sg_held.n;
+        int64_t rf_t0 = nv2a_clock_ns();
+#endif
         download_surface_complete_deferred(d, SDC_RANGE);
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+        rfin_count(rf, rf_dl, rf_rec, nv2a_clock_ns() - rf_t0);
+#endif
     }
 
     return found_overlap;
@@ -873,7 +1093,14 @@ bool pgraph_vk_texscan_complete_range(PGRAPHState *pg, hwaddr start,
         !deferred_downloads_overlap_range(d, start, size)) {
         return false;
     }
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+    unsigned long rf_dl = r->num_deferred_downloads + g_sg_held.n;
+    int64_t rf_t0 = nv2a_clock_ns();
+#endif
     download_surface_complete_deferred(d, SDC_RANGE);
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+    rfin_count(RF_TSCAN, rf_dl, 0, nv2a_clock_ns() - rf_t0);
+#endif
     return true;
 }
 
@@ -1747,6 +1974,7 @@ static void sdcall_log(PGRAPHState *pg)
                  g_sdcall.spl_dl, g_sdcall.spl_kb, g_sdcall.spl_cmpl);
     }
     SURF92_LOG("%s", buf);
+    rfin_log(frames);
     if (surfgpu_enabled()) {
         SURF92_LOG("[surfgpu] frames=%d detach=%lu nodisp=%lu dedup=%lu "
                    "hold=%lu hwait=%lu hrot=%lu wrap=%lu",
@@ -1754,6 +1982,7 @@ static void sdcall_log(PGRAPHState *pg)
                    g_spl_dedup, g_sdcall.sg_hold, g_sdcall.sg_hwait,
                    g_sdcall.sg_hrot, g_sg_wrap);
     }
+    sdr_log(pg->vk_renderer_state, frames);
     g_spl_dedup = 0;
     g_sg_wrap = 0;
     memset(&g_sdcall, 0, sizeof(g_sdcall));
@@ -6006,10 +6235,27 @@ void pgraph_vk_init_surfaces(PGRAPHState *pg)
      *
      * D24_UNORM_S8_UINT remains the fallback for devices without the float
      * format, still writing through the ULP nudge that the unorm scale needs.
+     *
+     * #433, HAKUX_ZETA_D24=1 (off by default) takes the fallback first, for
+     * speed on a tiler (lane.fpsbelow1012, NOTES section 5). Turnip keeps
+     * D32_SFLOAT_S8_UINT's stencil as a separate cpp-1 plane in GMEM, and a
+     * cpp-1 attachment doubles its tile width alignment (96 -> 192 on the
+     * Adreno 740, tu_pass.cc). A 640x480 or 720x480 pass with 4-byte colour
+     * then needs two tiles, and two tiles get no HW binning (tu_util.cc,
+     * binning_useful is tiles > 2), so each tile replays the whole draw
+     * stream. As D24_UNORM_S8_UINT the same pass fits one tile. The cost is
+     * the round trip above: a depth word may come back a unit off.
      */
     r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = zeta_d16;
-    if (check_surface_internal_formats_supported(r, &zeta_d32_sfloat_s8_uint,
-                                                 1)) {
+    const char *zeta_d24_env = getenv("HAKUX_ZETA_D24");
+    bool zeta_d24_first = zeta_d24_env && zeta_d24_env[0] == '1' &&
+        check_surface_internal_formats_supported(r, &zeta_d24_unorm_s8_uint, 1);
+    if (zeta_d24_first) {
+        r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
+            zeta_d24_unorm_s8_uint;
+        pg->zeta_stored_as_float = false;
+    } else if (check_surface_internal_formats_supported(
+                   r, &zeta_d32_sfloat_s8_uint, 1)) {
         r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
             zeta_d32_sfloat_s8_uint;
         /* Every writer and reader of a Z24S8 surface has to know this; see
@@ -6027,10 +6273,11 @@ void pgraph_vk_init_surfaces(PGRAPHState *pg)
         r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
             zeta_d16;
     }
-    fprintf(stderr, "nv2a: Z24S8 host format 0x%x, depth stored as %s\n",
+    fprintf(stderr, "nv2a: Z24S8 host format 0x%x, depth stored as %s%s\n",
             r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8]
                 .vk_format,
-            pg->zeta_stored_as_float ? "float" : "unorm");
+            pg->zeta_stored_as_float ? "float" : "unorm",
+            zeta_d24_first ? " (HAKUX_ZETA_D24)" : "");
 
     QTAILQ_INIT(&r->surfaces);
     QTAILQ_INIT(&r->invalid_surfaces);

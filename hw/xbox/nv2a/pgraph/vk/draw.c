@@ -8477,6 +8477,64 @@ static bool vertex_range_gpu_stale(PGRAPHVkState *r, hwaddr addr, hwaddr size,
     return false;
 }
 
+/*
+ * #433 HAKUX_VTX_EXACT (lane.fpsbelow1012, docs/lanes/fpsbelow1012/NOTES.md
+ * section 10; off by default). sync_vertex_ram_buffer rounds each range out
+ * to whole pages and merges neighbours before it copies, and it tested
+ * gpu_stale and downloaded surfaces over that rounded, merged range, though
+ * has_dirty_vertex_pages tests the draw's own bytes. A surface sharing a page
+ * with a vertex array but none of its bytes (a render target being drawn,
+ * say) was then downloaded, with a finish, each time anything else in the
+ * range was CPU-dirty or owed. With the switch, gpu_stale, the download and
+ * the generation record cover the parts of the range the draw reads; the
+ * copy still covers the rounded pages. A skipped surface's bytes go into the
+ * buffer stale, where this draw does not read them, and stay unrecorded, so
+ * the first draw that does read them finds gpu_stale over its own range and
+ * re-fetches.
+ */
+static int vtx_exact_state = -1;
+
+static bool vtx_exact_on(void)
+{
+    if (unlikely(vtx_exact_state < 0)) {
+        const char *e = getenv("HAKUX_VTX_EXACT");
+        vtx_exact_state = e && e[0] == '1';
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                            "HAKUX_VTX_EXACT=%d (vertex sync downloads only "
+                            "what the draw reads)", vtx_exact_state);
+#endif
+    }
+    return vtx_exact_state;
+}
+
+enum { VTX_EXACT_TEST, VTX_EXACT_DOWNLOAD, VTX_EXACT_RECORD };
+
+/* op over the parts of [addr, addr + size) inside the draw's exact ranges */
+static bool vtx_exact_pieces(PGRAPHState *pg, const MemorySyncRequirement *ex,
+                             int n, hwaddr addr, hwaddr size, int op)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    for (int i = 0; i < n; i++) {
+        hwaddr lo = MAX(ex[i].addr, addr);
+        hwaddr hi = MIN(ex[i].addr + ex[i].size, addr + size);
+        if (lo >= hi) {
+            continue;
+        }
+        if (op == VTX_EXACT_TEST) {
+            if (vertex_range_gpu_stale(r, lo, hi - lo, false)) {
+                return true;
+            }
+        } else if (op == VTX_EXACT_DOWNLOAD) {
+            pgraph_vk_download_surfaces_in_range_if_dirty(pg, lo, hi - lo);
+        } else {
+            vertex_range_gpu_stale(r, lo, hi - lo, true);
+        }
+    }
+    return false;
+}
+
 /* Pages of [addr, addr + size) in VRAM, as bitmap indices. */
 static inline void drawrec_pages(hwaddr addr, hwaddr size, unsigned long *p0,
                                  unsigned long *p1)
@@ -9576,6 +9634,14 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
     vw->calls++;
     vw->reqs += r->num_vertex_ram_buffer_syncs;
 
+    /* HAKUX_VTX_EXACT: the draw's own ranges, before they are rounded */
+    MemorySyncRequirement exact[NV2A_VERTEXSHADER_ATTRIBUTES];
+    int num_exact = 0;
+    if (unlikely(vtx_exact_on())) {
+        num_exact = r->num_vertex_ram_buffer_syncs;
+        memcpy(exact, r->vertex_ram_buffer_syncs, num_exact * sizeof(exact[0]));
+    }
+
     NV2A_VK_DGROUP_BEGIN("Sync vertex RAM buffer");
 
     for (int i = 0; i < r->num_vertex_ram_buffer_syncs; i++) {
@@ -9648,7 +9714,10 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
             unsigned long page = start >> TARGET_PAGE_BITS;
             unsigned long end_page = (start + size) >> TARGET_PAGE_BITS;
             /* #262: GPU writes the bitmap below cannot see */
-            bool gpu_stale = vertex_range_gpu_stale(r, addr, size, false);
+            bool gpu_stale = num_exact ?
+                vtx_exact_pieces(pg, exact, num_exact, addr, size,
+                                 VTX_EXACT_TEST) :
+                vertex_range_gpu_stale(r, addr, size, false);
             bool cpu_dirty = false;
             /* lane.drawrec1010: a page whose walk is owed or just paid */
             bool redo = vtx_owe && drawrec_vtx_redo_any(addr, size);
@@ -9676,10 +9745,20 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
                 }
                 vw->dirty_count++;
                 vw->bytes_copied += size;
+                if (num_exact) {
+                    vtx_exact_pieces(pg, exact, num_exact, addr, size,
+                                     VTX_EXACT_DOWNLOAD);
+                    r->vtx_exact_downloaded = true;
+                }
                 pgraph_vk_update_vertex_ram_buffer(pg, addr,
                                                    d->vram_ptr + addr, size);
                 /* the update downloaded any draw_dirty overlap first */
-                vertex_range_gpu_stale(r, addr, size, true);
+                if (num_exact) {
+                    vtx_exact_pieces(pg, exact, num_exact, addr, size,
+                                     VTX_EXACT_RECORD);
+                } else {
+                    vertex_range_gpu_stale(r, addr, size, true);
+                }
                 if (vtx_owe && (cpu_dirty || redo)) {
                     drawrec_vtx_copied(addr, size, cpu_dirty);
                 }
