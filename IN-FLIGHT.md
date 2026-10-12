@@ -8,8 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsbelow1012` | claude-opus-5-5 | 1h 14m | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) |
-| `pathclass` | claude-sonnet-5 | 0 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `fpsbelow1012` | claude-opus-5-5 | 1h 29m | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) |
+| `pathclass` | claude-sonnet-5 | 15 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `2026-10-12T10:38:04Z`
@@ -79,11 +79,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fpsbelow1012` | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) | `4758e7028d` | 2026-10-12 03:34 |
+| `lane/fpsbelow1012` | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) | `47da867805` | 2026-10-12 03:47 |
 | `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `4dca3d5820` | 2026-10-12 03:11 |
 
 ## Recently landed on master
 
+- 2026-10-12 savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433)
 - 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
 - 2026-10-12 burnoutbrief1012: press Continue (A) after Retry so a run on the event brief keeps racing (#433, 0.5)
 - 2026-10-12 burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5)
@@ -94,6 +95,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer
 - 2026-10-11 gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5)
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
-- 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
 
-_Updated 2026-10-12 03:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 04:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
