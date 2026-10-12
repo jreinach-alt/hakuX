@@ -3,7 +3,18 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **0** run, 3 queued (the pilot). Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **3** run (the pilot: 2 read, 1 void before input). Ledger in section 4.
+
+## 0. Attempt 2 (10-12 ~02:30 PDT): why attempt 1 did not finish
+
+Attempt 1 wrote the table, found L1 offline, got the surface.c grant, committed `HAKUX_ZETA_D24`, registered the
+depth-pixels pair and queued the three-run pilot at sweep tier, then its session ended with the pilot still
+queued behind lane.local's chain. It did not write a `waiting:` line naming the pilot ids, so it came back as an
+idle resume (attempt 2), not as a resolved wait. Two things it left unresolved, found on resuming:
+
+- The depth-pixels prediction never ran: the arms job refuses a pair with `a_ref == b_ref` ("nothing to compare",
+  `arms/skipped/c543e6ac...`), so an env-only pair on one binary is queued by the lane itself, with `--expect`.
+- The pilot ran overnight (00:45-02:30 PDT); its readings are section 8.
 
 ## 1. Which titles a run can reach at all (the profile gate, read before the table)
 
@@ -133,9 +144,9 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 | - | z-1791786704-fpsbelow1012-2329507 | Amped 2 | amped2 | 900 | withdrawn, same reason | not counted |
 | - | z-1791787431-fpsbelow1012-2456548 | Midnight Club 3 | midnight-club-3.returning | 600 | withdrawn before it started: the pilot was re-cut so its first runs decide L1 (section 5) | not counted |
 | - | z-1791787432-fpsbelow1012-2456706 | Amped 2 | amped2 | 900 | withdrawn, same reason (Amped 2 reads in/out 0.87, not the class; it waits for batch 2) | not counted |
-| 1 | z-1791787896-fpsbelow1012-2551124 | Dead or Alive 3 | survey | 480 | queued (pilot), ref 00fde8afb3 | |
-| 2 | z-1791787896-fpsbelow1012-2551219 | Ninja Gaiden Black | survey | 480 | queued (pilot), ref 00fde8afb3 | |
-| 3 | z-1791787897-fpsbelow1012-2551411 | Midnight Club 3 | midnight-club-3.returning | 540 | queued (pilot), ref 00fde8afb3 | |
+| 1 | z-1791787896-fpsbelow1012-2551124 | Dead or Alive 3 | survey | 480 | VOID 10-12 00:46: not-foreground before the route's first input (`com.android.settings` held display 0; `am start` re-issued, then no focused window); 8 logcat lines | none: the harness's foreground guard, not the title |
+| 2 | z-1791787896-fpsbelow1012-2551219 | Ninja Gaiden Black | survey | 480 | done 10-12 01:01, ref 00fde8afb3 | section 8: two-tile class at 240-510 s |
+| 3 | z-1791787897-fpsbelow1012-2551411 | Midnight Club 3 | midnight-club-3.returning | 540 | done 10-12 02:18, ref 00fde8afb3, gameplay marked | section 8: share 0.006 -> 0.81; `range` downloads 14/frame |
 
 Planned next, after the pilot verdict (`pilots/fpsbelow1012.ok`): the depth-exactness pgraph pair, registered as
 `docs/testing/predictions/fpsbelow1012-zetad24-pixels.json` (sha256 c543e6ac..., refs c1112f2c1a both arms, B with
@@ -359,3 +370,48 @@ function, Clear, Color zeta overlap, W buffering, ZPass pixel count, Stencil, St
 clamp): about a minute of device time each, judged by `ab_compare.py --a --b` (which treats an `--env` pair on one
 binary as the design). It is planned after the pilot verdict and counted in the cap (section 4). Until it is read,
 the cost above is a bound and a mechanism, and the switch should not reach the cross-title screen on speed alone.
+
+## 8. Telemetry at master: the pilot (00fde8afb3, perflog + `HAKUX_GPUXFR=1` + `HAKUX_FRAMETRACE=1`)
+
+Readers: `tools/zread.py --buckets` (census, gfps, G), `title_verdict.judge()` called read-only (no verdict.json
+written), `near30/decompose.py`, `surfdl1008/postmark_sdsurvey.py`.
+
+**Ninja Gaiden Black** (`-2551219`, survey route; the survey never marks gameplay, so the verdict reads the whole
+run). fps_ok share at the 30-fps bar **0.913** (was 0.75 on 10-02), own target 60: **0.169**; window median 44.4.
+The class is plain in 30-s buckets:
+
+| s after first perf line | gfps med | G med (ms) | in/out | out (ms/cb) | draws/cb |
+|---|---|---|---|---|---|
+| 0-30, 150-240 (menus, attract) | 59 | 16.6-16.7 | 0.95-0.98 | 0.9-1.2 | 230-450 |
+| 240-270 | 59 | 16.7 | 0.57 | 11.3 | 445 |
+| 270-300 | 32 | 30.1 | 0.54 | 29.2 | 365 |
+| 300-480 | 36-46 | 21.3-26.9 | 0.52-0.53 | 18.8-20.9 | 211-260 |
+
+The scene pass is two-tile (in/out ~0.53) and its outer span (18.8-29 ms per command buffer) is longer than a
+60-fps frame: the GPU is the wait, and the replay is half of it. No surface downloads after the start (sd/flip 0).
+Over the class window zread.py reads gfps 42, G 24.1 ms, out 19.6 ms. **NG Black is the A/B's first title.**
+
+**Midnight Club 3** (`-2551411`, `midnight-club-3.returning`, gameplay marked 02:21:24). fps_ok share **0.815**
+(0.006 on 10-03 at fps20786), window median 29.4, min 17.7: fastpaths/SURFGPU took it from 25 fps to a 30-fps pin.
+Not the GMEM class (in/out 0.92-0.95 in play, ~30 draws per command buffer, ~250 command buffers per 30 s).
+decompose.py over the scored window:
+
+| rows | fps | F (ms) | guest busy | guest idle (timer) | Ri | ph_Draw | ph_Fin | ph_Tot |
+|---|---|---|---|---|---|---|---|---|
+| all 191 | 29.3 | 34.1 | 15.6 | 18.8 (13.1) | 8.8 | 5.4 | 12.8 | 28.4 |
+| below bar 31 | 27.7 | 36.1 | 16.2 | 20.4 (14.7) | 9.2 | 5.7 | 14.4 | 30.9 |
+| below-bar p10 8 | 18.7 | 53.4 | 23.5 | 30.0 (23.2) | 9.1 | 12.8 | 15.4 | 40.1 |
+
+and postmark_sdsurvey: **14.0 surface downloads per flip, all from the `range` caller, 14.1 finishes per frame,
+11.9 ms per frame of render-thread wait**; `reuse` 0. So MC3 is the surface-download class that SURFGPU and TEXSCAN
+did not reach: `range` on non-cube textures, the same caller as Forza (9.7 ms/flip on 10-10), Midnight Club II
+(8.0 ms) and Counter-Strike (fps20786). The render thread spends 28.4 of 34.1 ms per frame in its phases, 12.8 of
+them finishing for downloads; the guest paces itself on a timer at 30. MC3 is now 0.08 under the bar, with the
+render thread the closest resource to the frame budget.
+
+**Dead or Alive 3** (`-2551124`): VOID before any input (section 4). Re-run as the A/B's DOA3 A arm, which is its
+telemetry at master.
+
+What the pilot changes in the ranking (section 6): L1 is confirmed at master on NG Black, with no folded switch
+having touched it. L4 (`range`) is no longer a single runnable title: MC3 and Forza are both runnable here, and MC3
+now sits within 0.08 of the bar with `range` as its largest render-thread cost.

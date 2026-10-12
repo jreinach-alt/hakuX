@@ -24,6 +24,15 @@ arms of one route are read over the same stretch of it. With --expect the
 window is the registered one (`from`, `until` under the key); a command-line
 window that differs from it is refused.
 
+THE CLASS WINDOW (`"window": "class"` under the key, fixed before any run).
+The A arm is the title's telemetry at master, so the stretch where the class
+shows is read off A by a rule, not chosen after seeing B: every `bucket`-s
+bucket (from A's first perf line) whose census reads in/out <= a_inout_max
+with >= min_draws draws per command buffer. Both arms are read over the
+union of those buckets. Fewer than min_class_s seconds of them and the
+title is NOT IN THE CLASS at master: the pair is not judged and the title
+does not count towards the A/B's three (exit 3).
+
 With --expect, applies prediction["expect"][key]:
   V  both arms' zfmt as named (a_zfmt, b_zfmt), >= min_perf perf lines, and
      B's draws per command buffer within draws_band (a fraction) of A's
@@ -48,7 +57,9 @@ def opt(name, conv=str, default=None):
     return default
 
 
-def read(rid, t_from, t_until):
+def read(rid, t_from, t_until, spans=None):
+    """spans, if given, is a list of (from, until) seconds after the first
+    perf line; a line counts when it falls in any of them."""
     zfmt = None
     perf = []      # (t, gfps, G)
     rp = []        # (t, in_mean, out_mean)
@@ -83,11 +94,12 @@ def read(rid, t_from, t_until):
                 rpc.append((t, float(d.group(1))))
     if t0 is None:
         return {"rid": rid, "zfmt": zfmt, "n": 0}
-    lo = t0 + (t_from or 0)
-    hi = t0 + t_until if t_until is not None else 1e9
-    perf = [p for p in perf if lo <= p[0] <= hi]
-    rp = [r for r in rp if lo <= r[0] <= hi]
-    rpc = [r for r in rpc if lo <= r[0] <= hi]
+    if spans is None:
+        spans = [(t_from or 0, t_until if t_until is not None else 1e9)]
+    inside = lambda t: any(t0 + a <= t < t0 + b for a, b in spans)
+    perf = [p for p in perf if inside(p[0])]
+    rp = [r for r in rp if inside(r[0])]
+    rpc = [r for r in rpc if inside(r[0])]
     gf = [p[1] for p in perf]
     G = [p[2] for p in perf if p[2] is not None]
     out_sum = sum(r[2] for r in rp)
@@ -110,6 +122,21 @@ def show(tag, r):
               tag, r["rid"], r["zfmt"] or "-", r["n"], f(r.get("gfps_med"), "%.0f"),
               f(r.get("gfps55")), f(r.get("G_med"), "%.1f"), f(r.get("inout")), f(r.get("out_ms")),
               f(r.get("draws"), "%.0f"), r.get("rp_lines", 0)))
+
+
+def class_spans(rid, e):
+    """The A arm's buckets that read as the class (see THE CLASS WINDOW)."""
+    width = e.get("bucket", 30)
+    spans, t = [], 0
+    while True:
+        b = read(rid, t, t + width)
+        if not b["n"]:
+            break
+        if b.get("inout") is not None and b["inout"] <= e["a_inout_max"] and \
+                (b.get("draws") or 0) >= e["min_draws"]:
+            spans.append((t, t + width))
+        t += width
+    return spans
 
 
 def buckets(rid, width):
@@ -136,14 +163,28 @@ def main():
     t_from, t_until = opt("--from", float), opt("--until", float)
     exp_path, key = opt("--expect"), opt("--key")
     e = json.load(open(exp_path))["expect"][key] if exp_path else None
-    if e is not None:
+    spans = None
+    if e is not None and e.get("window") == "class":
+        if t_from is not None or t_until is not None:
+            sys.exit("--from/--until with a class window: the window is A's class buckets, not the reader's")
+        spans = class_spans(a_id, e)
+        secs = sum(b - a for a, b in spans)
+        print("class window: %d s of A's %s-s buckets with in/out <= %.2f and >= %d draws/cb: %s" % (
+            secs, e.get("bucket", 30), e["a_inout_max"], e["min_draws"],
+            " ".join("%d-%d" % sp for sp in spans) or "none"))
+        if secs < e["min_class_s"]:
+            print("NOT IN THE CLASS at master: %d s < min_class_s %d; the pair is not judged" % (
+                secs, e["min_class_s"]))
+            show("A", read(a_id, None, None))
+            return 3
+    elif e is not None:
         for name, cli in (("from", t_from), ("until", t_until)):
             if cli is not None and cli != e.get(name):
                 sys.exit("--%s %s differs from the registered window (%s); the window is the "
                          "prediction's, not the reader's" % (name, cli, e.get(name)))
         t_from, t_until = e.get("from"), e.get("until")
         print("window %s .. %s s after the first perf line (registered under %r)" % (t_from, t_until, key))
-    A, B = read(a_id, t_from, t_until), read(b_id, t_from, t_until)
+    A, B = read(a_id, t_from, t_until, spans), read(b_id, t_from, t_until, spans)
     show("A", A)
     show("B", B)
     if e is None:
