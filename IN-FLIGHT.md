@@ -6,12 +6,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `savestate1011` | claude-opus-5-5 | 11 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.local-ownerplay`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 1 running.
+- **Device queue:** 1 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -69,16 +71,18 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `38a81c664b` | 2026-10-11 21:44 |
 
 ## Recently landed on master
 
+- 2026-10-11 nfsaudio1011: HAKUX_APU_PACE in apu.c, off by default -- pacing at the low watermark removes NFS Most Wanted's audio replays (#433, 0.5)
+- 2026-10-11 snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433)
 - 2026-10-11 profilegate1011: the profile gate -- a title run needs the title's profile, unless it is finding a route (#433)
 - 2026-10-11 nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer
 - 2026-10-11 gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5)
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 - 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
-- 2026-10-11 nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5)
-- 2026-10-11 profileconv1011: gta-sa and amped2 measure on their golden profiles (#433)
 
-_Updated 2026-10-11 21:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 21:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
