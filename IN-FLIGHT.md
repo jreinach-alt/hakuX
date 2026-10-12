@@ -6,9 +6,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `pathclass` | claude-sonnet-5 | 1h 24m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -77,12 +75,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `3a438399f4` | 2026-10-12 07:10 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-12 pathfind: a screen-reading agent that drives a title from boot into gameplay
 - 2026-10-12 fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5)
 - 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
 - 2026-10-12 fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5)
@@ -93,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-12 burnoutbrief1012: press Continue (A) after Retry so a run on the event brief keeps racing (#433, 0.5)
 - 2026-10-12 burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5)
 
-_Updated 2026-10-12 10:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 10:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
