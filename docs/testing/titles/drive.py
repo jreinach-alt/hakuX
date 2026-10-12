@@ -1027,7 +1027,13 @@ class Driver:
                     self.sleep(1.0)
                     continue
                 cap_fail_since = None
-                r = self.classify(cur)
+                try:
+                    r = self.classify(cur)
+                except classify.Unavailable as e:
+                    # #433 step 3: the generic fallback fails closed. Never a blind
+                    # press, never a model call (no ANTHROPIC_API_KEY on this host).
+                    self.result = "ROUTE FAIL drive %s: pathclass unavailable (%s)" % (self.p.get("name"), e)
+                    return 1
                 st = r["state"]
                 self.sources[r["source"].split(":")[0]] = self.sources.get(r["source"].split(":")[0], 0) + 1
                 changed = st != self.state

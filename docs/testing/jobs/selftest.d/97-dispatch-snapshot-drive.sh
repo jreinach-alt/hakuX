@@ -28,6 +28,14 @@
 #             copied the new dispatcher.sh but not the files the new lists
 #             add -- has those files in bin/ once it has started. Fails
 #             without the worker's startup snapshot_scripts (the mutant).
+#   classifier  a profile with `classifier = "pathclass"` (drive-profiles/
+#             generic.toml, #433) makes classify.py import titles/pathclass.py
+#             and load titles/pathknow/classifier/head.npz at runtime. Neither
+#             was in SCRIPT_DEPS/SNAPSHOT_GLOBS, so a dispatched `drive
+#             generic` step failed closed with `pathclass unavailable` for a
+#             reason that was purely a snapshot omission (lane.pathclass
+#             restart, Addendum 1 6b). Fails if either drops out of the list
+#             (the two mutants).
 
 echo "== dispatch snapshot: a dispatched run can play a drive route"
 SD="$T/snapdrive"; rm -rf "$SD"; mkdir -p "$SD"
@@ -77,6 +85,54 @@ if python3 -c 'import PIL, numpy' 2>/dev/null; then
         "$BIN/titles"
 else
     echo "  --   no PIL/numpy here: the full import of drive.py from the snapshot is not run (find_spec above is)"
+fi
+
+# classifier: SCRIPT_DEPS carries titles/pathclass.py, SNAPSHOT_GLOBS carries
+# its trained head -- both named in BIN by the sd_env snapshot_scripts call above.
+check "the snapshot's titles/ holds pathclass.py (SCRIPT_DEPS)" test -f "$BIN/titles/pathclass.py"
+check "the snapshot carries pathclass's trained head (SNAPSHOT_GLOBS)" \
+    test -f "$BIN/titles/pathknow/classifier/head.npz"
+
+# The mutants: a dispatcher.sh that drops one entry from its own list. Each
+# gets its own dispatch dir so the two checks cannot mask each other.
+mutant_drop() {   # <key: SCRIPT_DEPS|SNAPSHOT_GLOBS> <word to drop> <dst>
+    python3 - "$TESTING/dispatcher.sh" "$1" "$2" "$3" <<'PY'
+import sys
+src, key, word, dst = sys.argv[1:]
+s = open(src).read()
+anchor = key + '="'
+start = s.index(anchor) + len(anchor)
+end = s.index('"', start)
+block = s[start:end]
+assert (" " + word) in block or block.startswith(word + " "), \
+    "mutant word %r not found in %s block" % (word, key)
+new = block.replace(" " + word, "", 1) if (" " + word) in block else block.replace(word + " ", "", 1)
+open(dst, "w").write(s[:start] + new + s[end:])
+PY
+}
+mutant_drop "SCRIPT_DEPS" "titles/pathclass.py" "$SD/no-pathclass.sh"
+if [ -f "$SD/no-pathclass.sh" ]; then
+    sd_env_at() { ( export DISPATCH_DIR="$2" DISPATCH_SRC="$3" SERIAL=ee317437 DISPATCH_TREE="$REPO" DISPATCH_REPO="$REPO"
+                     . "$1" selftest-not-a-subcommand >/dev/null 2>&1; eval "$4" ); }
+    sd_env_at "$SD/no-pathclass.sh" "$SD/dnp" "$TESTING" snapshot_scripts
+    if [ -f "$SD/dnp/bin/titles/pathclass.py" ]; then
+        bad "  mutant 'drop titles/pathclass.py from SCRIPT_DEPS' still shipped it -- the leg above checks nothing"
+    else
+        ok "  mutant 'drop titles/pathclass.py from SCRIPT_DEPS' leaves it out (red, as it must be)"
+    fi
+else
+    bad "  mutant anchor for SCRIPT_DEPS no longer matches dispatcher.sh"
+fi
+mutant_drop "SNAPSHOT_GLOBS" "titles/pathknow/classifier/head.npz" "$SD/no-head.sh"
+if [ -f "$SD/no-head.sh" ]; then
+    sd_env_at "$SD/no-head.sh" "$SD/dnh" "$TESTING" snapshot_scripts
+    if [ -f "$SD/dnh/bin/titles/pathknow/classifier/head.npz" ]; then
+        bad "  mutant 'drop head.npz from SNAPSHOT_GLOBS' still shipped it -- the leg above checks nothing"
+    else
+        ok "  mutant 'drop head.npz from SNAPSHOT_GLOBS' leaves it out (red, as it must be)"
+    fi
+else
+    bad "  mutant anchor for SNAPSHOT_GLOBS no longer matches dispatcher.sh"
 fi
 
 # newprof: a scratch source tree holding what the snapshot ships.
