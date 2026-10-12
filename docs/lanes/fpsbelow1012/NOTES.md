@@ -516,8 +516,14 @@ requested range.
 | `by=vtx`, `ex` ~ `n` | H2: the draw really reads bytes a surface wrote (render to vertex buffer), or the surface's recorded size overstates what it covers (dims tell which) | a GPU-side surface-to-vertex-buffer copy, no CPU round trip; or the size fix | draw.c, vertex.c, surface.c |
 | `by=<offset>` (not vtx) | H3: blits or lines | per call site | blit.c (not granted) |
 
-P(H1) 0.45: the 10-03 to master jump tracks the extra syncs, which only matters if the downloads are not tied to the
-bytes. H2 0.35, H3 0.2. The instrument run is `z-1791799077-fpsbelow1012-2104673` (MC3, ref dbf9dd40cc,
+**A hint already on disk.** In MC3's play window (`-2551411`, `[surf92]` `held=`, after 02:21:24), 6 of the 9
+non-zero surfaces it binds start mid-page: 0x026bdc00, 0x02fe5980, 0x02e16e00, 0x02dd6d80, 0x026fdc80 and
+0x02f32780. The main colour and depth targets are page-aligned (0x03cb0000, 0x03b84000, 0x03a58000). A surface that
+starts mid-page shares its first page with whatever the game allocated just before it. If that is a dynamic vertex
+buffer, every write to the buffer rounds into the surface.
+
+P(H1) 0.5: the 10-03 to master jump tracks the extra syncs, which only matters if the downloads are not tied to the
+bytes, and the mid-page surfaces give the rounding something to catch. H2 0.3, H3 0.15, H4 0.05. The instrument run is `z-1791799077-fpsbelow1012-2104673` (MC3, ref dbf9dd40cc,
 `--env HAKUX_RANGELOG=1`, sweep).
 
 **What the lever would reach, if H1.**
