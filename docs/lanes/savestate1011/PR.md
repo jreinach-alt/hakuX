@@ -25,7 +25,8 @@ hard disk back to match the RAM it loads.
   - compression, Off / On;
   - Auto-load last state;
   - Auto-save on quit.
-- The three switches can be overridden per game (the folder cannot).
+- The three switches can be overridden per game, under Save States in the
+  game's settings (long-press the game in the library). The folder cannot.
 
 ## Disk design
 
@@ -103,6 +104,7 @@ recommended.
 | 1-1791781811-savestate1011-1461611 | measure, 20 cycles x 8 options | 160 saves, 160 loads ok; the table above |
 | 1-1791781810-savestate1011-1461488 | disk + functional | disk checks pass; 4 checks read a still title screen as stopped; fixed in a7d713effe |
 | 1-1791783647-savestate1011-1797227 | disk + functional, a7d713effe | every step passes (D1, D2, F1-F11, F5b) |
+| 1-1791795179-savestate1011-996104 | functional, 40a885d0e1 (this head's code) | every step passes (F1-F11, F5b); F2's first load read the raw file while the compression job ran |
 
 Every run used a scratch state folder and deleted every `hxs-` snapshot
 before it ended (0 left), and E: was unchanged.
@@ -126,15 +128,12 @@ also has no hands on the pause menu.
 6. Swipe-away with auto-save on: best effort only (`onStop` starts the save;
    Android may end the process first).
 7. With On a slot file is about 10 MB, with Off about 42 MB (187).
+8. Per game: long-press a game, Game settings, Save States. It has the
+   three switches and no folder. Auto-load turned on there applies to that
+   game only.
 
 ## What is left
 
-- **Per-game save-state section:** not reachable yet. It needs an entry in
-  `SettingsIndexActivity.kt`, outside this lane's files. `WAITING` asks for
-  the grant.
-- **Loading during background compression:** untested on the device. Both
-  runs' compression finished before the test's load at 1 s. Background mode
-  is reachable only from the test driver, because On is inline.
 - **Thumbnails** and **"start without auto-load"** in the game list are not
   done. After an auto-load, Undo load returns to the fresh boot.
 - **A setting to skip the undo-load copy:** not done. The copy is 60 ms of

@@ -253,6 +253,7 @@ among auto and 0-9. It skips any state saved before another title ran.
 | 1-1791781810-savestate1011-1461488 | `disk+func` (`HAKUX_SAVESTATE_DISK=8,40,60`), 200 s, ref fefe83e884 | D1 pass. D2: disk pass, `game_runs=0`. F1, F3, F4 fail. All three ran on the still title screen (see "Disk test"). F2, F5-F11 and F5b pass. 8 snapshots deleted, 0 left, scratch dir gone |
 | 1-1791781811-savestate1011-1461611 | `measure`, 20 cycles x 8 options (no d-none), 2600 s, frames every 10 s, ref fefe83e884 | done ok=1: 160 saves and 160 loads ok, 3 snapshots deleted, 0 left, scratch dir gone. Table in "Measurement" |
 | 1-1791783647-savestate1011-1797227 | `disk+func` again, same request, ref a7d713effe (waits for a moving scene) | D1, D2 (`game_runs=1`), F1-F11 and F5b pass; E: untouched; 8 snapshots deleted, 0 left, scratch dir gone (see "Disk test") |
+| 1-1791795179-savestate1011-996104 | `func`, 200 s, ref 40a885d0e1 (the final head's code; F2 loads during the job) | F1-F11 and F5b pass; F2's first load ran during the job; E: untouched; 7 snapshots deleted, 0 left, scratch dir gone (see "A load during background compression") |
 
 All runs:
 
@@ -479,17 +480,38 @@ A state saved at t=8 is from before that burst.
 - **Clean-up:** `done ok=1`, 8 snapshots deleted, 0 left, scratch folder
   gone.
 
-**What F2 does not cover.** F2 saves in background mode, waits 1 s, then
-loads, expecting a load during compression to read the complete raw file.
-In both runs the job had already finished:
+## A load during background compression (996104)
 
-- the compressed file was in place 790 ms (1461488) and 856 ms (1797227)
-  after the stop;
+**What earlier F2 runs missed.** F2 saved in background mode, waited 1 s,
+then loaded, to show that a load during compression reads the complete raw
+file. In 1461488 and 1797227 the job had already finished by then:
+
+- the compressed file was in place 790 ms and 856 ms after the stop;
 - so the first load read zstd (`first_load_codec=zstd job_running=0`).
 
-A load during the job is therefore untested on the device. Background mode
-is reachable only from the test driver (On is inline). If On ever becomes
-background, shorten F2's wait to about 200 ms first.
+**The new F2 (40a885d0e1).** F2 now waits until the worker is running the
+slot's job, then loads. It passes only if:
+
+- that load opened the slot while the job ran;
+- it read the raw file;
+- a second load, after the job, reads zstd.
+
+**1-1791795179-savestate1011-996104** (ref 40a885d0e1, 187 attract race):
+
+| When, from the save's stop | What |
+|---|---|
+| 0-72 ms | the save's pause; the raw file is safe at 210 ms |
+| about 213 ms | the job is already running (`waited_ms=0.0`) |
+| about 213-403 ms | the first load: raw file, 41.6 MB, `job_running=1`, read 18 ms, pause 135 ms, region = the save's |
+| 945 ms | the job is done: zstd 3 on cpu1 at `SCHED_IDLE`, 626 ms of CPU; 9.5 MB renamed over the raw file |
+| after 2 s | the second load reads zstd: read 3 ms, decompress 18 ms, pause 139 ms, region = the save's |
+
+- Every other step passes too: F1, F3-F11 and F5b.
+- `done ok=1`: 7 snapshots deleted, 0 left, the scratch folder gone.
+- E: is untouched: `hdd.json` save `fa079adf42d5`, harvested
+  `fa079adf42d5`, no harvest errors.
+- Background mode is still reachable only from the test driver: On is
+  inline, and only a background save marks a file `compress_later`.
 
 ## Owner checks
 
@@ -530,6 +552,12 @@ hands on the pause menu.
      Android may end the process first.
 7. **Compression.** With On, a slot file is about 10 MB. With Off it is
    about 42 MB (187: Ride or Die).
+8. **Per game.**
+   - Long-press a game in the library, then Game settings: the list ends
+     with Save States.
+   - It shows compression, auto-load and auto-save on quit, but no folder.
+   - Turn auto-load on there only: that game auto-loads, and the others do
+     not. The Save States entry is marked as overridden.
 
 ## Checks
 

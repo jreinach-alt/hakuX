@@ -197,3 +197,32 @@ run.
 - Thumbnails.
 - "Start without auto-load" in the game list. Undo load after an auto-load
   goes back to the fresh boot.
+
+## #433 -- 2026-10-12 02:18 PDT
+
+The per-game save-state settings can now be reached, and a load during
+background compression has been tested on the Nova.
+
+**Per game.** Long-press a game in the library and open Game settings. The
+list now ends with Save States: compression, auto-load and auto-save on quit
+for that game alone. The folder stays global. The entry is marked when the
+game overrides any of the three.
+
+**A load while a compression job runs**
+(1-1791795179-savestate1011-996104, 187: Ride or Die, this head's code):
+
+- The save wrote the raw 41.6 MB file in its 72 ms pause; the file was safe
+  at 210 ms.
+- A load started at once, while zstd 3 ran on an idle little core. It read
+  the raw file (read 18 ms, pause 135 ms) and brought the scene back.
+- The job finished at 945 ms (626 ms of CPU) and put the 9.5 MB file in the
+  raw file's place. The next load read it (decompress 18 ms, pause 139 ms).
+- Every other functional step passed as well. E: was unchanged, and every
+  test snapshot and the test folder were removed.
+
+This mode is still reachable only from the test driver. On compresses inside
+the pause.
+
+**Still not done:** thumbnails; "start without auto-load" in the game list
+(Undo load after an auto-load goes back to the fresh boot); a switch to skip
+the undo-load copy (60 ms of a load's 128 ms pause).
