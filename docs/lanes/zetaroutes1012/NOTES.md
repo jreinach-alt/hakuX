@@ -531,3 +531,47 @@ since both arms play the same stretch. As a Playable confirmation it covers one 
 Queued as run 8: `z-1791827119-lane.zetaroutes1012-335115`. Same request as the first DOA3 run (`--ref
 76a2c15333`, sweep, 900 s, frames every 30 s, `HAKUX_ZETA_D24=1 HAKUX_FRAMETRACE=1`) on the fixed route. The
 pilot gate admitted it (`.ok` 1.9 h old).
+
+## 20. NG Black's pair, judged as registered: not a WIN (F and G fail, H passes)
+
+| arm | run | init line | verdict | fps_ok | share at 57 | window median / min | gameplay | static_frac | hitches after warm-up |
+|---|---|---|---|---|---|---|---|---|---|
+| A (off) | `z-1791826706-lane.zetaroutes1012-104008` | `0x82, depth stored as float` | PASS | 0.97 | 0.0819 | 38.05 / 16.28 | 715.5 s | 0.0085 | 7 (0.64/min), worst 304.7 ms, 4 `unexplained` |
+| B (on) | `z-1791823930-lane.zetaroutes1012-3542868` | `0x81, depth stored as unorm` | PASS | 0.9964 | 0.5307 | 58.03 / 23.35 | 714.4 s | 0.0292 | 2 (0.18/min), worst 273.6 ms, all `shader` |
+
+Both arms ran ref `76a2c15333`.
+
+Legs of `zetaroutes1012-ninja-gaiden-black.json`:
+- **V passes.** Route start to `mark gameplay` is A 308.5 s and B 305.4 s. Both arms have over 600 s of
+  gameplay, with no crash or hang. The init lines are 0x82 and 0x81, and A's static_frac is 0.0085.
+- **F fails.** A's fps_ok is 0.97, not under 0.90.
+- **G fails.** B - A = 0.0264, under 0.05.
+- **H passes.** B - A = 0.4488 in the share at 57 fps (bar 0.20).
+
+By the file's rule this is not a WIN. NG Black is over the 30 bar at master on this route, and the switch's
+gain is towards the 60 target.
+
+**The arms did not play the same scene for the whole window.**
+- **Together until +41 s.** At +41 s both are at the riverbed by the waterfall, with the same fallen enemy
+  in frame: A `104649-hold.png` (overlay 26 fps), B `101439-hold.png` (overlay 50).
+- **Apart by +80 s.** A has walked up the gorge against its walls (`104728-hold.png`, overlay 46), while B is
+  still by the waterfall (`101517-hold.png`, overlay 52). A stays in the gorge to the end (`105241-hold.png`
+  faces a rock wall). B stays by the waterfall to the end.
+
+| slice | A share at 30 / at 57 / median | B share at 30 / at 57 / median |
+|---|---|---|
+| 0-45 s (same scene) | 0.518 / 0.000 / 28.7 | 0.944 / 0.022 / 50.9 |
+| 45 s to end (A gorge, B waterfall) | 1.000 / 0.087 / 38.2 | 1.000 / 0.565 / 58.3 |
+
+So H's 0.45 gain mixes the switch with a change of scene. The like-for-like evidence is the first 45 s:
+- on the same waterfall scene, the median goes from 28.7 to 50.9 fps;
+- the share at the bar goes from 0.52 to 0.94.
+
+That slice is 21 windows against 36, not a 600-s reading. The rest of A's window (the gorge, at master) is
+over the bar at a 38 median. The survey's A, in the same gorge, read 0.847 at 30 (section 17). This
+route's A reads 1.000 there. The difference is reported here, not explained.
+
+For lane.local: on this route NG Black is Playable at master by the bar (A PASS, 0.97), and with the switch
+(B PASS, 0.9964). The switch's measured effect is towards the 60 target. A Playable confirmation from either
+arm covers the opening riverbed and gorge only (section 19). The pair is not re-registered and A is not
+re-run: a timing-only route cannot hold Ryu at the waterfall in one arm and not the other.
