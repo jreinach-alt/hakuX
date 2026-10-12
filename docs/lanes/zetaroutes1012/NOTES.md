@@ -527,3 +527,7 @@ waterfall from 10:13:56 to 10:23:17. He steps forward and back and swings his sw
 but he never travels through the level. `f00033` near the end shows "Ryu has not yet found the map to this
 area". So the run is 714 s of moving play (static_frac 0.029) in one area. That suits the like-for-like pair,
 since both arms play the same stretch. As a Playable confirmation it covers one scene only.
+
+Queued as run 8: `z-1791827119-lane.zetaroutes1012-335115`. Same request as the first DOA3 run (`--ref
+76a2c15333`, sweep, 900 s, frames every 30 s, `HAKUX_ZETA_D24=1 HAKUX_FRAMETRACE=1`) on the fixed route. The
+pilot gate admitted it (`.ok` 1.9 h old).
