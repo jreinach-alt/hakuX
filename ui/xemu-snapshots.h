@@ -67,8 +67,30 @@ void xemu_snapshots_mark_dirty(void);
 /* The HAKUX_SNAPSHOT_TEST sequence; does nothing without the variable. */
 void xemu_snapshots_test_init(void);
 
+/*
+ * The running machine's identity, as a version 2 header records it. Main
+ * loop only; the caller frees each string. The disc hash is recomputed when
+ * the disc changed, which reads the disc, so it is never called inside a
+ * drained section.
+ */
+char *xemu_snapshots_running_build(void);
+char *xemu_snapshots_running_title_id(void);
+char *xemu_snapshots_running_title_name(void);
+char *xemu_snapshots_running_disc(void);
+char *xemu_snapshots_running_controllers(void);
+/* The display region hash taken while the last state was written. */
+uint64_t xemu_snapshots_last_save_region(void);
+/* Test sequences: write these in place of the real values (NULL: real). */
+void xemu_snapshots_set_test_overrides(const char *controllers,
+                                       const char *build);
+
 // Implemented in migration/savevm.c
 char *xemu_savevm_schema_fingerprint(void);
+void xemu_savevm_schema_test_mutate(const char *section);
+const char *xemu_savevm_schema_test_mutated_field(void);
+bool xemu_savevm_can_save(Error **errp);
+int xemu_savevm_write(QEMUFile *f, Error **errp);
+int xemu_loadvm_read(QEMUFile *f, Error **errp);
 
 // Implemented in hw/xbox/nv2a/nv2a.c
 uint64_t nv2a_display_region_hash(bool download);
