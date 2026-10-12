@@ -3,8 +3,8 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **6** run (the pilot: 2 read, 1 void before input; NGB's A/B pair;
-DOA3 A), **4** queued (Buffy A, MC3's and Forza's `[sdrange]` runs, DOA3 B). Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **7** run (the pilot: 2 read, 1 void before input; NGB's A/B pair;
+DOA3 A, Buffy A), **4** queued (MC3's and Forza's `[sdrange]` runs, DOA3 B, Buffy B). Ledger in section 4.
 
 ## 0. Attempt 2 (10-12 ~02:30 PDT): why attempt 1 did not finish
 
@@ -152,10 +152,11 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 | 5 | z-1791797927-fpsbelow1012-1778929 | Ninja Gaiden Black | survey | 480 | done 10-12 03:33, same ref, **A** (no switch) | section 9: class window 240-510 s |
 | 6 | z-1791797928-fpsbelow1012-1779675 | Dead or Alive 3 | survey | 480 | done 10-12 04:12, same ref, **A** | section 9b: IN THE CLASS (240 s); fps_ok 0.70 |
 | - | (refused at queue time) | ToeJam & Earl III | uberdefault569's `toejam-earl-3` | 540 | request.sh refused it: the route declares no `# state:` line, and the file is uberdefault569's, not this lane's to edit | not counted; Buffy takes its slot, as the prediction names |
-| 7 | z-1791798044-fpsbelow1012-1807480 | Buffy the Vampire Slayer | survey | 480 | queued, same ref, **A** | A/B key Buffy; also Buffy's telemetry at master |
+| 7 | z-1791798044-fpsbelow1012-1807480 | Buffy the Vampire Slayer | survey | 480 | done 10-12 04:22, same ref, **A** | section 9c: IN THE CLASS (450 s); fps_ok 0.79; a 30-fps title |
 | 8 | z-1791799077-fpsbelow1012-2104673 | Midnight Club 3 | midnight-club-3.returning | 540 | queued 10-12 ~02:55 PDT, ref dbf9dd40cc, `--env HAKUX_RANGELOG=1` (+ the telemetry env) | section 10: which caller, which surfaces, exact or rounded overlap |
 | 9 | z-1791801220-fpsbelow1012-2906178 | Forza Motorsport | forza-soak1010 | 480 | queued 10-12 03:35 PDT, ref dbf9dd40cc, `--env HAKUX_RANGELOG=1` (+ the telemetry env) | Forza's telemetry at master (step 2) and its `[sdrange]` reading (section 10) |
 | 10 | z-1791803606-fpsbelow1012-3255578 | Dead or Alive 3 | survey | 480 | queued 10-12 04:15 PDT, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`) | A/B key DOA3 (section 9b) |
+| 11 | z-1791804165-fpsbelow1012-3514899 | Buffy the Vampire Slayer | survey | 480 | queued 10-12 04:24 PDT, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`) | A/B key Buffy (section 9c) |
 
 Planned next, after the pilot verdict (`pilots/fpsbelow1012.ok`): the depth-exactness pgraph pair, registered as
 `docs/testing/predictions/fpsbelow1012-zetad24-pixels.json` (sha256 c543e6ac..., refs c1112f2c1a both arms, B with
@@ -498,6 +499,27 @@ overlay at 14 fps. It is a 3-vblank period with a 13-15 ms outer span, so the GP
 the class and outside this lever, and it is not gameplay. From 233 s on, the survey's play loop sits on the title
 screen and its attract demo (frame 040916, "PRESS START BUTTON", overlay 21 fps). So the class window is a fight
 before the pause (60-120 s) and the attract stretch. B on the same route reaches the same scenes.
+
+### 9c. Buffy A: in the class for the whole run, and a 30-fps title (read 10-12 04:23 PDT)
+
+`zread.py -1807480 -1807480 --expect ... --key Buffy`: **450 s in the class** (every bucket from 60 s), in/out 0.49,
+outer span 21.3 ms per command buffer at ~1000 draws, gfps median 29, G 33.4 ms. Whole run (title_verdict read-only):
+fps_ok **0.79**, window median 29.9, min 24.5, 0.278 J/frame. Frames: real play from the pause menu on (Spanish
+Mission, Canyon, frame 041937), overlay 29.
+
+Buffy paces itself at 30: G is 33.4 ms in every bucket, including 60-90 s where the outer span is 7 ms. So the
+registered W leg (median G <= 28.4 ms, or median gfps >= 37) can only pass if the title is not capped, which
+this reading says it is. The buckets where Buffy drops (90-120, 210-270 s: G 37-38 ms, outer span 28-30 ms) are the
+frames this lever reaches. Buffy B is queued as registered (`z-1791804165-fpsbelow1012-3514899`).
+
+**What this does to the A/B, said before either B arm reads.** Two of the three counted titles (DOA3, Buffy) sit
+at a frame cap for most of their class window, and the W leg is a median against that cap. Both will likely read
+W FAIL even if M and P pass and the slow buckets lift. If so, the registered judgement (2 of 3 pass every leg) is a
+**loss**, and it is reported as one. What the B arms can still show, hand-read beside the legs and not judged:
+M and P (the mechanism on a 720x480 and a ~1000-draw pass), the slow buckets, fps_ok share, and J/frame. The
+prediction is not re-registered on the same arms. The W leg should have been a share, not a median (fps_ok share,
+or share of frames at the title's own cap). A title that is below the bar only in its slow buckets needs a
+share-based leg, registered before a new pair.
 
 ## 10. MC3's `range` is not the texture scan: the vertex-RAM sync or a blit (offline, 10-12 ~03:00 PDT)
 
