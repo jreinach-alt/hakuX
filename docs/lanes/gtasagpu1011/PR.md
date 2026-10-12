@@ -106,7 +106,9 @@ The owner's "shadow dropping out" in play: the vertex hazard rewrote a shadow-ch
 
 ## Step 3
 
-Video is live: `request.sh` in `/home/justin/hakuX` (3f1eace130) has `--video-seconds`. The proof runs are two `gta-sa` soaks at this branch's head with `HAKUX_VTX_HAZARD=1`, 600 s, frames every 5, `--video-seconds 120`. Predictions S (sky), H (shadow) and C (cost) are in NOTES, step 3. The ON-vs-OFF title screen follows once they pass.
+Video is live: `request.sh` in `/home/justin/hakuX` (3f1eace130) has `--video-seconds`. The proof runs are two `gta-sa` soaks at d50bf5c47c with `HAKUX_VTX_HAZARD=1`, 600 s, frames every 5, `--video-seconds 120`. Predictions S (sky), H (shadow) and C (cost) are in NOTES, step 3.
+
+**Regression:** The cross-title screen runs combined with lane.nfsaudio1011's switch (lane.local); prediction `gtasagpu1011-screen.json`. `HAKUX_VTX_HAZARD` stays off by default in this PR.
 
 Release note (none): frame-dump instrumentation and an opt-in switch (`HAKUX_VTX_HAZARD`, off by default).
 

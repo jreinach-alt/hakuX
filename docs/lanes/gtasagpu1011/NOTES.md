@@ -1046,3 +1046,22 @@ carries this switch alone.
 
 Order: the proof soaks are this lane's pilot. Their verdict goes to `pilots/lane.gtasagpu1011.ok`,
 then batch 1 (the 10 route titles, 20 runs, about 130 min of Nova time), read before batch 2.
+(Superseded by addendum 6, attempt 5: this lane queues no screen run.)
+
+## Attempt 5 (resumed 2026-10-11 18:13 PDT)
+
+**Why attempt 4 did not finish.** It was not cut off and did not fail. It was waiting on the two
+proof soaks (1063190, 1063583, still queued on the Nova behind gtaroutes1011 and snapshot1011),
+with both ids in `WAITING`, when lane.local stopped it at 18:06 PDT to change one step
+(addendum 6). lane.nfsaudio1011 started at 17:59 with a switch headed for default-on, and the
+owner's rule is one cross-title screen for every such switch. So this lane queues **no screen
+run**. lane.local runs the combined screen from `gtasagpu1011-screen.json` and `scrread.py`:
+master with both switches folded default-off, the ON arm carrying `HAKUX_VTX_HAZARD=1` and
+nfsaudio1011's switch. `HAKUX_VTX_HAZARD` stays off by default in this PR.
+
+origin/master (13e0590809, soakvideo1011-step2's fold) merged as fb6a92ed26. The proof runs' ref
+stays d50bf5c47c; the merge brings only soakvideo1011's notes.
+
+**The current build's video, for the owner's side-by-side.** soakvideo1011's own gta-sa soak,
+`1-1791756360-lane.soakvideo1011-3149619` (ref b73d50a070, no `HAKUX_VTX_HAZARD`, 600 s, frames
+every 5), recorded `video/v00001.mp4` and `v00002.mp4`, 120 s from 30 s after the mark.
