@@ -345,8 +345,9 @@ the obvious next step if loads should be faster.
 
 ### Recommendation: On = inline zstd 1 on four threads
 
-This is `HXS_ON_*` in `hxs.c`, the code's setting since e7be0b7c4f. Against
-Off it:
+This is `HXS_ON_*` in `hxs.c`, the code's setting since e7be0b7c4f. **On is
+the default** (`savestate_compression` defaults to true in
+`SettingsActivity.kt` and `xemu_android.cpp`). Against Off it:
 
 - pauses 9 ms longer at the median (76 vs 67) and 10 ms longer at p95. That
   is less than one frame at 60 fps.

@@ -116,8 +116,8 @@ Step 2, compression: what each option costs. Measured on the Nova in
   - Of that, undo load's copy of the running machine is 60 ms.
   - Decompressing is 8-13 ms; reading a compressed file saves 11-13 ms.
 
-**Recommendation: On = zstd 1 on four threads, inside the pause.** Against
-Off it:
+**Recommendation: On = zstd 1 on four threads, inside the pause. On is the
+default.** Against Off it:
 
 - pauses 9 ms longer (under one frame);
 - has the file safe on disk sooner;
