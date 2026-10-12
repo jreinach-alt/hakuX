@@ -67,6 +67,7 @@ Reference for the disk checks: 1-1791713584-fastpaths1010-1525919 (187: Ride or 
 | Run | Ref | Result |
 |---|---|---|
 | 1-1791753422-snapshot1011-2350466 | a8c3031263 | 187: Ride or Die, `HAKUX_SNAPSHOT_TEST=120`, 600 s. Every step passed in logcat; the frames do not show a scene change for c1 (below). |
+| 1-1791764800-snapshot1011-813455 | 4c4e5f98a9 (master merged) | 187: Ride or Die, `HAKUX_SNAPSHOT_TEST=76`, 360 s. Every step passed; A is the pre-race cutscene, B the race, and the first frame after the load is the cutscene again. |
 
 The first session ended at its turn limit right after queueing run 1, before the run started; the second session
 picks up from its result.
@@ -100,3 +101,83 @@ Disk: `hdd.json` plan build/keep, 19,070,976 B at start (the same size as the da
 nfsdefault1011 and gtasagpu1011 runs; the sha256 differs per build). `hdd.after.json`: no errors, 94 titles
 harvested; the 92 titles the reference run harvested have identical hashes, including 55530036 `fa079adf42d5`.
 The other two (5454000E, 5454000F) are goldens added to the store since the reference.
+
+### Run 2 (1-1791764800-snapshot1011-813455)
+
+The branch with master merged (4c4e5f98a9; master's only emulator change in the merge is the `submit_frames`
+default, 2 to 3, in `xemu_android.cpp`). The sequence starts 76 s after the GPU, 44 s earlier than run 1, so A
+falls before the race.
+
+c1 in the frames (`frames/index.tsv` times, which agree with the logcat clock):
+
+| Frame | Time | Shows |
+|---|---|---|
+| f00034 | 18:22:17 | LOADING screen |
+| (save `a`) | 18:22:17.8 | |
+| f00035 | 18:22:20 | pre-race cutscene: the convertible outside BODY PAINT |
+| f00036-37 | 18:22:23-25 | the grid, countdown "1" |
+| f00038-41 | 18:22:28-37 | scene B: the race, HUD up, opponents gone up the road, the car on the line at 0 mph |
+| (load `a`) | 18:22:38.1 | |
+| f00042 | 18:22:39 | the BODY PAINT cutscene again |
+| f00043-45 | 18:22:42-48 | the grid with the opponents, countdown "2", the race |
+
+The renderer drew A's scene on the first frame captured after a load from a different 3D scene, with no black
+frame (xemu #1500 not seen). No renderer fix was needed, so no grant was asked for. Then 60 s of play: the
+countdown and race run again, six distinct hashes, and frames continue to the end of the run (f00134 at 18:27:09,
+94 s after the sequence ended). Logcat at 18:27:08 shows VBLANK at 59.94 Hz. No `hakuX-crash`, `libc` or `DEBUG`
+line.
+
+| Step | Result |
+|---|---|
+| c1 | save `a` 338 ms, 58,387,943 B, hash `13a044252d30e57b`; scene B `a6e7a9412f954f47`; load 123 ms (check 3 ms), after-load `13a044252d30e57b`: match |
+| c2 | 6/6 distinct, running |
+| c3 | 20 cycles, 40/40 ok. save_ms 270 / 291 / 443 (min / median / max); load_ms 93 / 98 / 114 |
+| c4 | paused, save 261 ms, still paused; load 98 ms (check 2 ms), paused again 250 ms later; resumed, hash moved |
+| c5 | `refuse reason=controller-layout` after a 5 ms check, no reset, running, hash moved |
+| done | snapshots=0 |
+
+Disk: plan build/keep, 19,070,976 B at start; `hdd.after.json` no errors, 94 titles harvested, identical to run 1's
+harvest and, on the 92 titles it shares, to the reference run's (55530036 `fa079adf42d5` in all three). The
+deleted snapshots leave nothing in the harvest.
+
+## 4. Phase 0 criteria on the Nova
+
+| # | Criterion | Run 1 (2350466) | Run 2 (813455) |
+|---|---|---|---|
+| 1 | save A, play to B, load A: hashes match, frames show A | hashes match; frames cannot tell (same spot) | pass: hashes match, frames A = cutscene, B = race, after load = cutscene |
+| 2 | 60 s after the load, no hang or crash, moving frames | pass (6/6) | pass (6/6, countdown and race replay) |
+| 3 | 20 cycles in one run | pass, 40/40 | pass, 40/40 |
+| 4 | save and load while paused | pass | pass |
+| 5 | different controller layout refused before reset, game runs | pass | pass |
+
+Across both runs (46 saves, 44 loads):
+
+| | save_ms | load_ms | header check | state size |
+|---|---|---|---|---|
+| c1 | 263, 338 | 116, 123 | 3 ms | 59.02 MB, 58.39 MB |
+| c3 (20 cycles each) | median 307, 291; max 489 | median 107, 98; max 116 | 2-12 ms | 58.4-59.1 MB |
+| c4 (paused) | 296, 261 | 107, 98 | 10, 2 ms | 59.09, 58.85 MB |
+| c5 | 294, 466 | refused, 0 ms load | 5 ms | 59.08, 58.83 MB |
+
+A state is 58.4-59.1 MB in this title (the `bytes` the `[snap]` lines report: the vmstate written into the
+image). save_ms includes the GPU write-back of dirty surfaces that every save starts with.
+
+## 5. For phase 1
+
+- **The build field refuses every other APK.** `build` is the commit plus the native library's build ID, and a
+  mismatch is refused. A state made with one APK cannot be loaded by any other build, so a harness that wants to
+  skip a route's first ~200 s with a stored state has to make the state with the same APK in the same install,
+  or decide which fields may differ (the schema fingerprint is the field that decides whether the stream parses).
+- **Where states live.** On a title run the state is inside `titles.qcow2`, which the dispatcher rebuilds from the
+  goldens before every run (plan `build`). Nothing survives from one run to the next. Keeping a state across runs
+  needs its own image, or phase 3's raw-disk work.
+- **Controller layout is identity.** The harness must attach the same controllers when loading as when saving
+  (the dispatcher's runs show `usb-xbox-gamepad` on ports 1 and 2).
+- **Not saved:** the inline vertex buffer between BEGIN and END (one batch's vertices lost if a save lands
+  there), and thumbnails on Android.
+- **The route keeps going.** A load rewinds the game but not `route.sh`, which keeps sending its inputs on its own
+  clock. Phase 1 needs a route verb that loads a state and starts the route's steps from the mark.
+- **The 187 route.** In both runs the car never left the start line (rear wheels smoking, 0 mph, from the race
+  start until the run ended, before and after any load); run 1 also met a mission briefing where the route
+  expected the race. The reference run (1-1791713584-fastpaths1010-1525919) drove at 35 mph. This is the
+  route's input timing in the race, not save states, and it is a weak scene for a test that needs movement.

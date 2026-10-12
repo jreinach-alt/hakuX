@@ -17,3 +17,12 @@ paused; a state naming a different controller layout is refused after a 5 ms hea
 and the game keeps running. Both slots were deleted, and the disk harvest matches the title's previous run.
 The race in this run never moved off its start line, so the frames cannot show a scene change for the first
 criterion; a second run saves on the mission briefing and loads it back from the race.
+
+## #433 -- 2026-10-11 18:29 PDT
+
+All five phase-0 criteria hold on the Nova. Second run (1-1791764800-snapshot1011-813455, master merged): the
+state saved during the pre-race cutscene and loaded from the race brings the cutscene back on the first frame
+after the load, then the countdown and race play again. Save 338 ms, load 123 ms, 58.4 MB; 20 cycles 40/40 (save
+median 291 ms, load median 98 ms); the paused save and load and the controller-layout refusal pass again. No
+black screen and no renderer change needed. Left for phase 1: a state loads only into the APK that made it, the
+title disk is rebuilt every run, and the route does not rewind with a load.
