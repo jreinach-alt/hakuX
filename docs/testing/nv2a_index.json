@@ -50,25 +50,25 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/apu.c:1111",
+   "loc": "hw/xbox/mcpx/apu/apu.c:1084",
    "symbols": [],
    "text": "assert(!\"SDL_OpenAudioDevice failed\");"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/apu.c:1168",
+   "loc": "hw/xbox/mcpx/apu/apu.c:1141",
    "symbols": [],
    "text": "qemu_mutex_lock(&d->lock); // FIXME: Can fail if thread is pegged, add flag"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/apu.c:1173",
+   "loc": "hw/xbox/mcpx/apu/apu.c:1146",
    "symbols": [],
    "text": "// FIXME: Reset DSP state"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/apu.c:1251",
+   "loc": "hw/xbox/mcpx/apu/apu.c:1224",
    "symbols": [],
    "text": "// FIXME: Remove unnecessary fields"
   },
@@ -4652,7 +4652,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "28b525c7beff908d8f6fb10b5090b7ec23af75e0",
+  "emulator_commit": "e9f29e0a5e57b976eb37211f66a4bcf0e9fc8e87",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 3065,
