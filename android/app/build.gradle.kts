@@ -36,9 +36,9 @@ fun stampedVersionName(): String {
       .redirectErrorStream(true)
       .start()
     val out = proc.inputStream.bufferedReader().readText().trim()
-    if (proc.waitFor() == 0 && out.isNotEmpty()) out else "0.4.1-unknown"
+    if (proc.waitFor() == 0 && out.isNotEmpty()) out else "0.5.0-unknown"
   } catch (e: Exception) {
-    "0.4.1-unknown"
+    "0.5.0-unknown"
   }
 }
 
@@ -56,7 +56,7 @@ android {
     minSdk = 29
     targetSdk = 36
 
-    versionCode = 8
+    versionCode = 9
     versionName = stampedVersionName()
 
     ndk {
