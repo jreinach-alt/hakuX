@@ -2409,7 +2409,8 @@ note = "RELEASED dispatcher.sh and 97-dispatch-snapshot-drive.sh 2026-10-11 23:1
 issues = ["433"]
 standing = false
 files = ["docs/lanes/profileconv1011/**", "docs/testing/titles/routes/amped2.route", "docs/testing/titles/routes/gta-sa.route"]
-note = "STARTED lane.local 2026-10-11 12:2x PDT (Sonnet, route work; Nova, queued runs only, at most 4): gta-sa and amped2 re-headed `# state: any` and confirmed on their data-only goldens (7da19befd45b, f90786b6e0f5), so they leave profile-transition.toml before the profile gate (lane.profilegate1011) refuses first-run measurement routes. amped2.route taken from [free]; gta-sa.route is a carve-out inside [free]'s docs/testing/titles/** (exact-string check). Brief: briefs/profileconv1011.md."
+released = ["docs/lanes/profileconv1011/**", "docs/testing/titles/routes/amped2.route", "docs/testing/titles/routes/gta-sa.route"]
+note = "RELEASED all files 2026-10-11 23:2x PDT: folded as c975179b51, unit inactive. STARTED lane.local 2026-10-11 12:2x PDT (Sonnet, route work; Nova, queued runs only, at most 4): gta-sa and amped2 re-headed `# state: any` and confirmed on their data-only goldens (7da19befd45b, f90786b6e0f5), so they leave profile-transition.toml before the profile gate (lane.profilegate1011) refuses first-run measurement routes. amped2.route taken from [free]; gta-sa.route is a carve-out inside [free]'s docs/testing/titles/** (exact-string check). Brief: briefs/profileconv1011.md."
 
 [lane.nfsroute1011]
 issues = ["433"]
