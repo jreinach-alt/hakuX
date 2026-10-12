@@ -59,6 +59,74 @@ def pct(a, q):
     return float(np.percentile(a, q)) if len(a) else float('nan')
 
 
+def tab(sec, key):
+    """Sum a sec-line 2x2 burst table: stale&upd, stale&!upd, !stale&upd, !stale&!upd."""
+    t = [0, 0, 0, 0]
+    for s in sec:
+        if key in s:
+            for i, v in enumerate(s[key].split('/')):
+                t[i] += int(v)
+    return t
+
+
+def waits(sec, st, bursts):
+    """Leg W (Addendum 2): does a guest voice update in the wait before a VP burst
+    go with a stale run starting in that burst? And where in the burst do stale
+    runs start, against how far ahead the guest's write head was?"""
+    if not any('bx' in s for s in sec):
+        return
+    for key, what in (('bx', 'top voice, any FE method on it in the wait'),
+                      ('bxl', 'any voice, any VOICE_LOCK in the wait')):
+        a, b, c, e = tab(sec, key)
+        p_st = a / max(a + b, 1)
+        p_no = c / max(c + e, 1)
+        print('W  %-44s bursts with a stale start: %d, %.0f%% after an update; without: %d, %.0f%%; lift %+.0f pts'
+              % (what, a + b, 100 * p_st, c + e, 100 * p_no, 100 * (p_st - p_no)))
+    lw = [s['lockwait'].split('/') for s in sec if 'lockwait' in s]
+    gx = [s['gapx'].split('/') for s in sec if 'gapx' in s]
+    print('   voice-lock stall: %d stalls, %.1f ms total, max %.2f ms, worst second %.2f ms; guest lock ops %d,'
+          ' held %.1f ms total' % (
+              sum(int(x[0]) for x in lw), sum(int(x[1]) for x in lw) / 1e3, max(int(x[2]) for x in lw) / 1e3,
+              max(int(x[1]) for x in lw) / 1e3, sum(int(s.get('lockops', 0)) for s in sec),
+              sum(int(s.get('locked', 0)) for s in sec) / 1e3))
+    print('   APU wait outside throttle (bounds bql_lock): %.1f ms/s median, worst second %.1f ms, max single %.2f ms;'
+          ' throttle %.0f ms/s median; unsplit waits %d' % (
+              pct([int(x[0]) / 1e3 for x in gx], 50), max(int(x[0]) for x in gx) / 1e3,
+              max(int(x[1]) for x in gx) / 1e3, pct([num(s.get('throttle'), 0) / 1e3 for s in sec], 50),
+              sum(int(x[2]) for x in gx)))
+    if st:
+        top = [s for s in st if 'boff' in s]
+        boff = [int(s['boff']) for s in top]
+        print('   stale run starts: boff (VP frames into the burst) p10/50/90 %.0f/%.0f/%.0f; wait p50 %.1f ms;'
+              ' wfe>0 %.0f%%, wlock>0 %.0f%%, wlockall>0 %.0f%% (n %d)' % (
+                  pct(boff, 10), pct(boff, 50), pct(boff, 90), pct([num(s['wait']) for s in top], 50) / 1e3,
+                  100 * sum(int(s['wfe']) > 0 for s in top) / max(len(top), 1),
+                  100 * sum(int(s['wlock']) > 0 for s in top) / max(len(top), 1),
+                  100 * sum(int(s['wlockall']) > 0 for s in top) / max(len(top), 1), len(top)))
+    if bursts:
+        by_n = {int(b['n']): b for b in bursts}
+        frames = [int(b['prev'].split('/')[0]) for b in bursts]
+        print('   burst lines %d: wait p10/50/90 %.1f/%.1f/%.1f ms; frames per burst p50 %.0f; ahead at start'
+              ' p10/50/90 %.0f/%.0f/%.0f samples (n %d)' % (
+                  len(bursts), *(pct([num(b['wait']) for b in bursts], q) / 1e3 for q in (10, 50, 90)),
+                  pct(frames, 50), *(pct([int(b['ahead']) for b in bursts if int(b['head']) >= 0], q)
+                                     for q in (10, 50, 90)),
+                  sum(int(b['head']) >= 0 for b in bursts)))
+        # H-A' says a stale run starts where the VP passes the guest's head:
+        # 32 * (frames into the burst) ~ ahead at the burst's start.
+        pairs = []
+        for b in bursts:
+            n = int(b['n'])
+            off = int(b['prev'].split('/')[1])
+            p = by_n.get(n - 1)
+            if off >= 0 and p is not None and int(p['head']) >= 0:
+                pairs.append((int(p['ahead']), off * 32))
+        if pairs:
+            d = [o - a for a, o in pairs]
+            print('   stale start vs guest head (bursts with both lines, n %d): (32*boff - ahead) p10/50/90'
+                  ' %.0f/%.0f/%.0f samples' % (len(pairs), pct(d, 10), pct(d, 50), pct(d, 90)))
+
+
 def main():
     args = sys.argv[1:]
     nstale = nscan = 12
@@ -83,7 +151,7 @@ def main():
         drops = Counter()
         for s in sec:
             for i, v in enumerate(s.get('dropped', '0/0/0').split('/')):
-                drops[('event', 'pio', 'scan')[i]] += int(v)
+                drops[('event', 'pio', 'scan', 'burst')[i]] += int(v)
         if vpf:
             print('P  vpframes/s median %.0f (p10 %.0f, p90 %.0f; 1500 = real time); lead min %d max %d samples;'
                   ' maxgap p50 %.0f p90 %.0f us; bursts/s median %.0f' % (
@@ -154,7 +222,9 @@ def main():
                       pct(col('pio_age'), 50) / 1e3, pct(col('blk_wr_age'), 50) / 1e3, len(col('blk_wr_age')),
                       pct(col('wr_age'), 50) / 1e3))
             print('   by voice:', dict(Counter(s.get('v') for s in st)))
-        for kind, n in (('stale ', nstale), ('sslsw ', nstale), ('sslempty ', 4), ('cfg ', 8), ('scan ', nscan)):
+        waits(sec, st, [kv(ln) for ln in lines if ln.startswith('burst ')])
+        for kind, n in (('stale ', nstale), ('sslsw ', nstale), ('sslempty ', 4), ('cfg ', 8), ('scan ', nscan),
+                        ('burst ', nstale)):
             sel = [ln for ln in lines if ln.startswith(kind)]
             if sel:
                 print('   first %d of %d %s lines:' % (min(n, len(sel)), len(sel), kind.strip()))

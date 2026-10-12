@@ -67,8 +67,8 @@ static const struct {
 #define VL_SEG_PAGES (MCPX_HW_MAX_SSL_PRDS * 8 + 64)
 #define VL_LOUD (200.0f / 32768.0f) /* same threshold as replay_share.py */
 
-enum { VL_B_EVENT, VL_B_PIO, VL_B_SCAN, VL_B_COUNT };
-static const uint32_t vl_budget[VL_B_COUNT] = { 30, 20, 12 };
+enum { VL_B_EVENT, VL_B_PIO, VL_B_SCAN, VL_B_BURST, VL_B_COUNT };
+static const uint32_t vl_budget[VL_B_COUNT] = { 30, 20, 12, 25 };
 
 typedef struct VoiceLogBlock {
     uint64_t key;
@@ -84,7 +84,18 @@ typedef struct VoiceLogVoice {
     uint32_t pio_n, notify_n;
     uint32_t ssl_gen[2];
     int64_t ssl_write_us[2];
+    /* Guest FE methods addressing this voice (VOICE_LOCK included) and the
+     * VOICE_LOCK methods alone, never reset: the APU thread takes their
+     * growth over each wait between VP bursts. */
+    uint32_t fe_all, lock_ops;
+    int64_t lock_t;       /* vCPU only: when the guest last locked it */
+    uint32_t locked_us_w; /* how long the guest held it locked, window */
     bool loud_recent; /* set by the APU thread each summary */
+
+    /* APU thread: the counters at the end of the last VP frame, and how much
+     * they grew in the wait before the current burst. Workers read wait_*. */
+    uint32_t snap_fe, snap_lock;
+    uint32_t wait_fe, wait_lock;
 
     /* Owned by the worker that processes this voice. */
     VoiceLogBlock *tbl;
@@ -101,6 +112,13 @@ typedef struct VoiceLogVoice {
     int64_t run_t, run_lap_us, run_pio_age_us;
     int run_wr_head;
     int64_t run_wr_age, run_blk_wr_age;
+    uint32_t run_burst, run_wait_fe, run_wait_lock, run_wait_lockall;
+    int run_boff;
+    int64_t run_wait_us;
+    /* The burst in which this voice's last stale run began, and how many VP
+     * frames into it the first one of that burst did. */
+    uint32_t stale_burst;
+    int stale_off;
 
     /* Window counters, worker-owned; read and reset by the APU thread once
      * voice_work_dispatch has returned. */
@@ -113,6 +131,27 @@ static int64_t vl_t0;
 static VoiceLogVoice *vl_voice;
 static uint32_t *vl_seg_gen;
 static uint32_t vl_lines[VL_B_COUNT], vl_dropped[VL_B_COUNT];
+
+/* Guest FE methods on any voice, and VOICE_LOCK methods: vCPU, never reset. */
+static uint32_t vl_fe_ops, vl_lock_ops;
+
+/* The VP burst in progress: a run of VP frames with less than 300 us between
+ * the end of one and the start of the next. Written by the APU thread at its
+ * first frame, read by the workers. The wait is the host time before that
+ * frame, in throttle() and elsewhere in the APU thread. */
+static struct {
+    uint32_t id;
+    int f0;
+    int64_t t0, wait_us;
+    uint32_t wait_lockall, wait_feall;
+} vl_burst;
+static uint32_t vl_stale_any; /* last burst in which any voice went stale */
+
+/* The VP's wait for a voice the guest holds locked
+ * (voice_work_acquire_voice_lock_for_processing). APU thread. */
+static uint32_t vl_lockwait_n_w;
+static int64_t vl_lockwait_us_w, vl_lockwait_max_w, vl_lockwait_burst;
+static int vl_lockwait_v = -1;
 
 static struct {
     int focus; /* voice the scanner follows, -1 for none */
@@ -175,12 +214,59 @@ static void voicelog_notify(MCPXAPUState *d, uint32_t v, int notifier,
              d->vp.ssl[v].ssl_seg, qatomic_read(&d->ep_frame_div), now);
 }
 
+/* Counts every guest FE method that addresses a voice, and the time each
+ * voice is held with VOICE_LOCK. SE2FE_IDLE_VOICE, which the APU thread
+ * issues itself, is not counted. */
+static void voicelog_fe_count(MCPXAPUState *d, uint32_t method,
+                              uint32_t argument)
+{
+    uint32_t v;
+
+    switch (method) {
+    case NV1BA0_PIO_VOICE_ON:
+    case NV1BA0_PIO_VOICE_RELEASE:
+        v = argument & NV1BA0_PIO_VOICE_ON_HANDLE;
+        break;
+    case NV1BA0_PIO_VOICE_OFF:
+        v = argument & NV1BA0_PIO_VOICE_OFF_HANDLE;
+        break;
+    case NV1BA0_PIO_VOICE_PAUSE:
+        v = argument & NV1BA0_PIO_VOICE_PAUSE_HANDLE;
+        break;
+    case NV1BA0_PIO_VOICE_LOCK:
+    case NV1BA0_PIO_SET_VOICE_CFG_VBIN ... NV1BA0_PIO_SET_HRIR - 1:
+        v = d->regs[NV_PAPU_FECV];
+        break;
+    default:
+        return;
+    }
+    if (v >= MCPX_HW_MAX_VOICES) {
+        return;
+    }
+    VoiceLogVoice *vv = &vl_voice[v];
+    qatomic_inc(&vl_fe_ops);
+    qatomic_inc(&vv->fe_all);
+    if (method == NV1BA0_PIO_VOICE_LOCK) {
+        int64_t now = vl_now();
+        qatomic_inc(&vl_lock_ops);
+        qatomic_inc(&vv->lock_ops);
+        if (argument & 1) {
+            vv->lock_t = now;
+        } else if (vv->lock_t) {
+            qatomic_add(&vv->locked_us_w,
+                        (uint32_t)MIN(now - vv->lock_t, UINT32_MAX));
+            vv->lock_t = 0;
+        }
+    }
+}
+
 /* Called from fe_method after the method has taken effect. */
 static void voicelog_pio(MCPXAPUState *d, uint32_t method, uint32_t argument)
 {
     const char *name;
     uint32_t v = d->regs[NV_PAPU_FECV];
 
+    voicelog_fe_count(d, method, argument);
     switch (method) {
     case NV1BA0_PIO_VOICE_ON:
         v = argument & NV1BA0_PIO_VOICE_ON_HANDLE;
@@ -1208,11 +1294,15 @@ static void voicelog_run_end(MCPXAPUState *d, uint16_t v, VoiceLogVoice *vv)
     if (vl_take(VL_B_EVENT)) {
         VL_PRINT("stale v=%u region=0x%" PRIx64 " cbo=%u blocks=%u ssl=%c%d "
                  "f=%d t=%" PRId64 " lap=%" PRId64 " pio_age=%" PRId64
-                 " wr_head=%d wr_age=%" PRId64 " blk_wr_age=%" PRId64,
+                 " wr_head=%d wr_age=%" PRId64 " blk_wr_age=%" PRId64
+                 " burst=%u boff=%d wait=%" PRId64 " wfe=%u wlock=%u"
+                 " wlockall=%u",
                  v, vv->run_region, vv->run_cbo, vv->run_n, 'A' + vv->run_ssl,
                  vv->run_seg, vv->run_f, vv->run_t, vv->run_lap_us,
                  vv->run_pio_age_us, vv->run_wr_head, vv->run_wr_age,
-                 vv->run_blk_wr_age);
+                 vv->run_blk_wr_age, vv->run_burst, vv->run_boff,
+                 vv->run_wait_us, vv->run_wait_fe, vv->run_wait_lock,
+                 vv->run_wait_lockall);
     }
     vv->run_n = 0;
 }
@@ -1264,6 +1354,19 @@ static void voicelog_block_end(MCPXAPUState *d, uint16_t v, VoiceLogVoice *vv,
                         now - qatomic_read(&vl_scan.wr_us[blk]);
                 }
             }
+            /* Where in the VP burst the run began, and what the guest did to
+             * this voice (and to the voice locks) in the wait before it. */
+            vv->run_burst = vl_burst.id;
+            vv->run_boff = vv->run_f - vl_burst.f0;
+            vv->run_wait_us = vl_burst.wait_us;
+            vv->run_wait_fe = vv->wait_fe;
+            vv->run_wait_lock = vv->wait_lock;
+            vv->run_wait_lockall = vl_burst.wait_lockall;
+            if (vv->stale_burst != vl_burst.id) {
+                vv->stale_burst = vl_burst.id;
+                vv->stale_off = vv->run_boff;
+            }
+            qatomic_set(&vl_stale_any, vl_burst.id);
         }
         vv->run_n++;
     } else if (vv->run_n) {
@@ -2195,12 +2298,25 @@ static void *voice_worker_thread(void *arg)
 
 static void voice_work_acquire_voice_lock_for_processing(MCPXAPUState *d, int v)
 {
+    int64_t stall_t = -1;
+
     qemu_spin_lock(&d->vp.voice_spinlocks[v]);
     while (is_voice_locked(d, v)) {
+        if (unlikely(vl_on) && stall_t < 0) {
+            stall_t = vl_now();
+        }
         /* Stall until voice is available */
         qemu_spin_unlock(&d->vp.voice_spinlocks[v]);
         qemu_cond_wait(&d->cond, &d->lock);
         qemu_spin_lock(&d->vp.voice_spinlocks[v]);
+    }
+    if (unlikely(stall_t >= 0)) {
+        int64_t us = vl_now() - stall_t;
+        vl_lockwait_n_w++;
+        vl_lockwait_us_w += us;
+        vl_lockwait_max_w = MAX(vl_lockwait_max_w, us);
+        vl_lockwait_burst += us;
+        vl_lockwait_v = v;
     }
 }
 
@@ -2627,10 +2743,118 @@ static int64_t vl_win_t, vl_last_frame_t;
 static uint32_t vl_frames_w, vl_run, vl_maxrun_w, vl_bursts_w;
 static int64_t vl_maxgap_w, vl_lead_min_w, vl_lead_max_w;
 
-static void voicelog_frame_begin(void)
+/* The wait between VP frames, split by what apu.c's throttle() added to
+ * sleep_acc_us. The rest (gapx) is the APU thread's other work between two
+ * VP frames: bql_lock() and update_irq() when a frame raised an interrupt,
+ * the DSP frame and the FIFO push. So gapx bounds the time blocked in
+ * bql_lock() from above. A wait across se_frame's once-a-second reset of
+ * sleep_acc_us cannot be split, and is counted in gapx_skip. */
+static int64_t vl_last_end_t, vl_sleep_prev;
+static int64_t vl_throttle_w, vl_gapx_w, vl_gapx_max_w;
+static uint32_t vl_gapx_skip_w;
+static uint32_t vl_snap_lockall, vl_snap_feall, vl_lock_ops_sec;
+static int vl_top = -1; /* the loudest voice of the last summary */
+/* Bursts, by whether a stale run began in them and whether the guest
+ * addressed the voice in the wait before: [stale&upd, stale&!upd,
+ * !stale&upd, !stale&!upd]. bx is for vl_top and any FE method on it; bxl
+ * for any voice and any VOICE_LOCK. */
+static uint32_t vl_bx_w[4], vl_bxl_w[4];
+
+static void voicelog_burst_start(MCPXAPUState *d, int64_t now, int64_t wait,
+                                 int64_t th, int64_t x)
+{
+    int tv = vl_top;
+    int f = d->ep_frame_div;
+    int prev_frames = f - vl_burst.f0, prev_off = -1;
+
+    if (vl_burst.id) {
+        bool st = false, up = false;
+        if (tv >= 0) {
+            VoiceLogVoice *tvv = &vl_voice[tv];
+            st = tvv->stale_burst == vl_burst.id;
+            up = tvv->wait_fe > 0;
+            prev_off = st ? tvv->stale_off : -1;
+        }
+        vl_bx_w[!st * 2 + !up]++;
+        bool sta = qatomic_read(&vl_stale_any) == vl_burst.id;
+        bool upa = vl_burst.wait_lockall > 0;
+        vl_bxl_w[!sta * 2 + !upa]++;
+    }
+
+    uint32_t lockall = qatomic_read(&vl_lock_ops);
+    uint32_t feall = qatomic_read(&vl_fe_ops);
+    vl_burst.id++;
+    vl_burst.f0 = f;
+    vl_burst.t0 = now;
+    vl_burst.wait_us = wait;
+    vl_burst.wait_lockall = lockall - vl_snap_lockall;
+    vl_burst.wait_feall = feall - vl_snap_feall;
+    for (int v = 0; v < MCPX_HW_MAX_VOICES; v++) {
+        VoiceLogVoice *vv = &vl_voice[v];
+        vv->wait_fe = qatomic_read(&vv->fe_all) - vv->snap_fe;
+        vv->wait_lock = qatomic_read(&vv->lock_ops) - vv->snap_lock;
+    }
+    int64_t lockwait_prev = vl_lockwait_burst;
+    vl_lockwait_burst = 0;
+
+    if (tv < 0 || !vl_take(VL_B_BURST)) {
+        return;
+    }
+    /* Where the VP will start reading the loudest voice, against the
+     * newest block the scanner saw the guest write, in samples; negative
+     * when the guest's head is behind the VP's position. */
+    uint32_t cbo = voice_get_mask(d, tv, NV_PAVS_VOICE_PAR_OFFSET,
+                                  NV_PAVS_VOICE_PAR_OFFSET_CBO);
+    uint32_t ebo = voice_get_mask(d, tv, NV_PAVS_VOICE_PAR_NEXT,
+                                  NV_PAVS_VOICE_PAR_NEXT_EBO);
+    int head = -1, ahead = 0;
+    int64_t hd_age = -1;
+    if (qatomic_read(&vl_scan.focus) == tv) {
+        head = qatomic_read(&vl_scan.head);
+        if (head >= 0) {
+            int ring = (int)ebo + 1;
+            ahead = (int)((((int64_t)head + 1) * 32 - cbo) % ring);
+            if (ahead < 0) {
+                ahead += ring;
+            }
+            if (ahead > ring / 2) {
+                ahead -= ring;
+            }
+            hd_age = now - qatomic_read(&vl_scan.head_us);
+        }
+    }
+    VoiceLogVoice *tvv = &vl_voice[tv];
+    VL_PRINT("burst n=%u f=%d t=%" PRId64 " wait=%" PRId64 " th=%" PRId64
+             " x=%" PRId64 " v=%d fe=%u lock=%u lockall=%u feall=%u cbo=%u "
+             "ebo=%u head=%d ahead=%d hd_age=%" PRId64 " prev=%d/%d "
+             "lockwait_prev=%" PRId64,
+             vl_burst.id, f, now, wait, th, x, tv, tvv->wait_fe,
+             tvv->wait_lock, vl_burst.wait_lockall, vl_burst.wait_feall, cbo,
+             ebo, head, ahead, hd_age, prev_frames, prev_off, lockwait_prev);
+}
+
+static void voicelog_frame_begin(MCPXAPUState *d)
 {
     int64_t now = vl_now();
     int64_t gap = now - vl_last_frame_t;
+
+    if (vl_last_end_t) {
+        int64_t wait = now - vl_last_end_t;
+        int64_t sleep = d->sleep_acc_us;
+        int64_t th = -1, x = -1;
+        if (sleep >= vl_sleep_prev) {
+            th = sleep - vl_sleep_prev;
+            x = MAX(wait - th, 0);
+            vl_throttle_w += th;
+            vl_gapx_w += x;
+            vl_gapx_max_w = MAX(vl_gapx_max_w, x);
+        } else {
+            vl_gapx_skip_w++;
+        }
+        if (wait >= 300) {
+            voicelog_burst_start(d, now, wait, th, x);
+        }
+    }
 
     if (gap < 300) {
         vl_run++;
@@ -2731,13 +2955,28 @@ static void voicelog_summary(MCPXAPUState *d, int64_t now)
     for (int b = 0; b < VL_B_COUNT; b++) {
         drop[b] = qatomic_xchg(&vl_dropped[b], 0);
     }
+    uint32_t locked = 0;
+    for (int v = 0; v < MCPX_HW_MAX_VOICES; v++) {
+        locked += qatomic_xchg(&vl_voice[v].locked_us_w, 0);
+    }
+    uint32_t lock_ops = qatomic_read(&vl_lock_ops);
     VL_PRINT("sec f=%d t=%" PRId64 " vpframes=%u lead=%" PRId64 "..%" PRId64
              " maxgap=%" PRId64 " bursts=%u maxrun=%u ring_stale=%u/%u "
-             "(%.1f%%) pio=%u notify=%u focus=%d dropped=%u/%u/%u",
+             "(%.1f%%) pio=%u notify=%u focus=%d dropped=%u/%u/%u/%u "
+             "top=%d bx=%u/%u/%u/%u bxl=%u/%u/%u/%u lockwait=%u/%" PRId64
+             "/%" PRId64 " lockwait_v=%d locked=%u lockops=%u throttle=%"
+             PRId64 " gapx=%" PRId64 "/%" PRId64 "/%u",
              d->ep_frame_div, now, vl_frames_w, vl_lead_min_w, vl_lead_max_w,
              vl_maxgap_w, vl_bursts_w, vl_maxrun_w, ring_stale, ring_both,
              ring_both ? 100.0 * ring_stale / ring_both : 0.0, pio, notify,
-             focus, drop[0], drop[1], drop[2]);
+             focus, drop[0], drop[1], drop[2], drop[3], vl_top, vl_bx_w[0],
+             vl_bx_w[1], vl_bx_w[2], vl_bx_w[3], vl_bxl_w[0], vl_bxl_w[1],
+             vl_bxl_w[2], vl_bxl_w[3], vl_lockwait_n_w, vl_lockwait_us_w,
+             vl_lockwait_max_w, vl_lockwait_v, locked,
+             lock_ops - vl_lock_ops_sec, vl_throttle_w, vl_gapx_w,
+             vl_gapx_max_w, vl_gapx_skip_w);
+    vl_lock_ops_sec = lock_ops;
+    vl_top = top[0];
 
     for (int i = 0; i < 3 && top[i] >= 0; i++) {
         int v = top[i];
@@ -2795,13 +3034,32 @@ static void voicelog_summary(MCPXAPUState *d, int64_t now)
 static void voicelog_frame_end(MCPXAPUState *d)
 {
     int64_t now = vl_now();
-    if (now - vl_win_t < 1000000) {
-        return;
+
+    /* What the guest has done so far, so the next burst can tell what it did
+     * in the wait. */
+    vl_snap_lockall = qatomic_read(&vl_lock_ops);
+    vl_snap_feall = qatomic_read(&vl_fe_ops);
+    for (int v = 0; v < MCPX_HW_MAX_VOICES; v++) {
+        VoiceLogVoice *vv = &vl_voice[v];
+        vv->snap_fe = qatomic_read(&vv->fe_all);
+        vv->snap_lock = qatomic_read(&vv->lock_ops);
     }
-    voicelog_summary(d, now);
-    vl_win_t = now;
-    vl_frames_w = vl_maxrun_w = vl_bursts_w = 0;
-    vl_maxgap_w = 0;
+
+    if (now - vl_win_t >= 1000000) {
+        voicelog_summary(d, now);
+        vl_win_t = now;
+        vl_frames_w = vl_maxrun_w = vl_bursts_w = 0;
+        vl_maxgap_w = 0;
+        vl_lockwait_n_w = 0;
+        vl_lockwait_us_w = vl_lockwait_max_w = 0;
+        vl_lockwait_v = -1;
+        vl_throttle_w = vl_gapx_w = vl_gapx_max_w = 0;
+        vl_gapx_skip_w = 0;
+        memset(vl_bx_w, 0, sizeof(vl_bx_w));
+        memset(vl_bxl_w, 0, sizeof(vl_bxl_w));
+    }
+    vl_sleep_prev = d->sleep_acc_us;
+    vl_last_end_t = vl_now();
 }
 
 /* Hashes one 32-sample block of a buffer voice straight from guest RAM,
@@ -2967,7 +3225,7 @@ static void voicelog_init(MCPXAPUState *d)
 void mcpx_apu_vp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_PER_FRAME])
 {
     if (unlikely(vl_on)) {
-        voicelog_frame_begin();
+        voicelog_frame_begin(d);
     }
 #ifdef __ANDROID__
     mon_acc_begin(d);

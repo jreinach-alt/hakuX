@@ -60,11 +60,72 @@ Discriminators:
 | H-B (VP plays the wrong place) | `sslrep`>0 or `sslempty` on the music voice; CBO jumps nobody wrote; stale with the guest's write head well ahead |
 | H-C (guest writer stalls) | gaps in the scan writes that line up with stale runs while the VP runs steadily |
 
+## Where replays sit in the drain cycle (no device time)
+
+Stale output (lag-2400 copies, runs ≥ 16 frames, loud) by phase of the output sample index, from the three
+lane.local captures. Depth is (max − min) / max of the stale share across 16 phase bins.
+
+| run | setting | strongest period | depth | next |
+|---|---|---|---|---|
+| 837057 | default (2048) | 2048 | 0.75 | 4096: 0.73 |
+| 836907 | 256 samples | 3840 | 0.41 | 1920: 0.37, 960: 0.18 |
+| 836989 | 512 samples | 3840 | 0.23 | 1920: 0.20, 960: 0.18 |
+
+837057, stale share of loud output by phase within the 2048 cycle (16 bins of 128 samples, %):
+`2 0 0 0 0 0 0 0 70 75 60 16 10 9 6 5`. Half the cycle is clean; the stale part starts abruptly and fades.
+
+So the replays follow the device's real drain cycle. At 256 and 512 that cycle is 1920 samples (two 960-sample HAL
+periods, 40 ms), not 256 or 512: the setting changed the requested buffer, not how much the device takes per
+callback, and so not how far the VP runs per burst. **This corrects the brief's reading of the 256 run**: "a 256
+burst is 5 ms against a 50 ms ring" assumed the burst shrank, and it did not. A burst that outruns the writer
+(H-A') is not refuted by that run. The lock at P256 that Addendum 2 measures in all three runs is structural:
+`throttle()` only looks at the fifo every 8th VP frame (`ep_frame_div % 8`), so every burst starts on a 256-sample
+boundary at any setting.
+
+## Attempt 2: the first identify request was withdrawn
+
+I queued `1-1791768531-nfsaudio1011-1598447` (ref 89667f015c) before I had read Addendum 2, which asks for more in the
+instrument before the identify run. I withdrew it from the queue (`queue/withdrawn/`) before it was claimed. No
+device time was spent.
+
+## Addendum 2 instrument: what the guest did in the APU's wait
+
+Added to `HAKUX_APU_VOICELOG` (vp.c only):
+
+- **Bursts.** A burst starts at a VP frame that began ≥ 300 µs after the previous one ended. At each start:
+  - the guest FE methods (VOICE_LOCK included) on every voice since the last frame ended, and VOICE_LOCK methods on
+    any voice;
+  - a `burst` line (25/s budget) for the loudest voice. It gives the wait, split into `th` (what throttle() added to
+    `sleep_acc_us`) and `x` (the rest), the FE and lock counts in the wait, the CBO, and the scanner's guest write
+    head. `ahead` is how far the guest's newest write is past the CBO, in samples. `prev=frames/off` is the previous
+    burst's length and how many VP frames into it that voice's first stale run started (−1: none).
+- **Stale lines** gain `burst boff wait wfe wlock wlockall`: the burst the run started in, the VP frames into it, the
+  wait before it, and the guest's FE and lock methods in that wait (on this voice, and locks on any voice).
+- **Sec lines** gain:
+  - `bx=a/b/c/d`: bursts of the loudest voice, split by "a stale run started in it" and "the guest addressed the voice
+    in the wait before it". The order is stale&upd, stale&!upd, !stale&upd, !stale&!upd. `bxl` is the same for any
+    voice and any VOICE_LOCK.
+  - `lockwait=n/us/max`: the VP stalled in `voice_work_acquire_voice_lock_for_processing` on a voice the guest held.
+  - `locked=` (µs the guest held voices locked) and `lockops=`.
+  - `throttle=` and `gapx=sum/max/unsplit`.
+- **bql_lock is bounded, not timed.** `bql_lock()` is in apu.c, which this lane does not hold. `gapx` is the APU
+  thread's time between VP frames that throttle() did not account for: bql_lock + update_irq, the DSP frame, and the
+  FIFO push. It is an upper bound on time blocked in bql_lock. If it comes back small, bql is ruled out. If not, an
+  apu.c.patch build times bql_lock itself.
+
+Reader: `tools/voiceread.py`, leg W. It prints:
+
+- the two 2×2 tables as "share of bursts with a stale start that followed an update" against the same share for
+  bursts without one, and the lift;
+- the lock stall and gapx totals;
+- for stale starts, `32*boff − ahead`. H-A' predicts about 0: the run starts where the VP passes the guest's head.
+
 ## Log
 
 - 10-11, attempt 2: merged origin/master (aa04c62915). Wake analysis above. Instrument reviewed and compile-checked.
 - Identify prediction `docs/testing/predictions/nfsaudio1011-identify.json` committed at b5cfe2c1b5, before any device
   run. Reader: `tools/voiceread.py <result>`; its output-side share reproduces 837057's 15.1% exactly.
-- Queued identify run `1-1791768531-nfsaudio1011-1598447` (ref 89667f015c, `HAKUX_APU_VOICELOG=1`, release tier,
-  Nova). Its env stays in the Nova's env_vars pref until the next request; on a build without the instrument the
-  variable means nothing.
+- Queued, then withdrew, `1-1791768531-nfsaudio1011-1598447` (above).
+- Addendum 2 instrument added and compile-checked (NDK clang, aarch64, `-Wall`: clean but for target_page.h's existing
+  warning). Reader tested on synthetic lines. The prediction is re-registered on the new ref with Addendum 2's claim
+  as leg W.
