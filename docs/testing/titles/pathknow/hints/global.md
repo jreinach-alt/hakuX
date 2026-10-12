@@ -37,3 +37,10 @@ Inputs: UP/DOWN/LEFT/RIGHT are the D-pad, one row per press; STICK:<dir>:<s> hol
 - Driving: RT throttle, LT brake/reverse (PGR, Forza, Midnight Club 3, Burnout, Midtown Madness 3 4D53002A); A is the throttle in Arctic Thunder and 187.
 - On-screen tips name the input to send (Halo CE "Use X to exit the cryo-tube"; Gauntlet "Press A Button when done").
 - One unchanged frame for a minute with the HUD up is stuck but still gameplay: back off and turn (Sonic Heroes, Gunvalkyrie, 007: Agent Under Fire 4541000D); LT re-centres Buffy's camera from the sky.
+
+## Sports (team and individual sports; the owner's 10-05 rule)
+- Set the period length before the first whistle: in the options or game settings, the quarter, period, half, inning or game length to the LONGEST value offered, and the game clock to the slowest or real-time setting if offered. One period must outlast the hold, or the hold meets an end-of-period menu (owner rule, 10-05; a run that shows the defect gets a rerun with the period maxed).
+- Choose a team a human controls: the controller icon under one team on team select (a team with no controller is CPU, and a match between two CPU teams is not play).
+- A quarter, period, half or inning break, halftime, end-of-period stats, a replay card or a next-period prompt is period_break: START, then A to continue. Do not wait it out.
+- ESPN / Sega Sports 2K team select (NBA 2K2/2K3, NHL 2K3, NFL 2K2/2K3): controller 1 is the top controller in the middle column. ONE RIGHT (or LEFT) moves it one notch into the side column next to the HOME (or AWAY) team, and a "User Name" plate appears above it with an arrow on one side only: that IS assigned. It does not travel under the team logo. Then START (no more LEFT/RIGHT, which undo it). (NBA 2K3, 10-05, frames 019 -> 020 of runs/nba-2k3: RIGHT assigned it, and 60 more presses undid and redid it.)
+- Kickoff, tip-off, faceoff, serve or pre-snap play-call screens are menus until one press starts the play: A (American football: A to pick the play, then A to snap).

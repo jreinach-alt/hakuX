@@ -1,0 +1,30 @@
+{
+ "title_id": "45410389",
+ "name": "Batman Begins",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/45410389-Batman_Begins.xiso.iso",
+ "result": "gave-up",
+ "tool": "9dff62f2fa",
+ "started": "2026-10-05 21:03:29 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-45410389/frames/089-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-45410389/frames/089-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-45410389/frames/089-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-45410389/frames/089-probe-right.jpg"
+ ],
+ "reason": "budget 15 min",
+ "last_state": "cutscene",
+ "model_calls": 75,
+ "calls_by_model": {
+  "claude-sonnet-5": 75
+ },
+ "steps": 100,
+ "seconds": 907.8,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-45410389/frames/100-cutscene.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 17,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-45410389/strip.jpg"
+}

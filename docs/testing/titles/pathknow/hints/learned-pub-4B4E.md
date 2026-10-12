@@ -1,0 +1,2 @@
+# Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
+- World Soccer Winning Eleven 9 (4B4E002F, nova, pathfind 2026-10-06): gameplay in 6.3 min via publisher_logo A -> cutscene START A -> submenu DOWN A -> submenu A -> main_menu A -> submenu START -> submenu A -> submenu RIGHT A -> submenu DOWN DOWN DOWN DOWN DOWN DOWN DOWN DOWN -> submenu DOWN DOWN A -> submenu A -> cutscene A -> cutscene START

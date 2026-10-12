@@ -1,0 +1,2 @@
+# Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
+- Arx Fatalis (44430002, nova, pathfind 2026-10-07): gameplay in 4.8 min via publisher_logo START A -> cutscene START A -> title_screen START -> main_menu A -> submenu START -> submenu A -> submenu START -> submenu A -> submenu A START -> submenu A -> submenu Y START -> submenu A -> cutscene START -> cutscene START A

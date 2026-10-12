@@ -1,0 +1,80 @@
+{
+ "title_id": null,
+ "name": "AMF Bowling 2004",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/AMF_Bowling_2004.xiso.iso",
+ "result": "gameplay",
+ "tool": "edaa811084",
+ "started": "2026-10-05 12:33:30 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/015-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/015-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/015-probe-c.jpg"
+ ],
+ "minutes": 2.46,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/014-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/023-after.jpg"
+ ],
+ "learned": [],
+ "hold": {
+  "genre": "team",
+  "why": "This is a bowling lane with a bowler in view; bowling is a sport played on a lane, so the closest category is team, though it is not a true team sport.",
+  "sports": {
+   "clock": "none",
+   "period": "none",
+   "human_controlled": false,
+   "why": "Bowling has no game clock or period; the view shows a bowler from behind at the lane with a ball, but no controller icon or marker identifies a human-controlled"
+  },
+  "ok": false,
+  "play_s": 282.6,
+  "need_s": 600.0,
+  "hold_s": 389.7,
+  "model_navs": 15,
+  "frames": 11,
+  "still_windows": 0,
+  "shed": [],
+  "reason": "off play for 13 steps: period_break (End-of-game/frame scorecard for Lane 8 (Hooty D., one frame in) with a replay prompt, not live bowling play.)",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 183,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 191.2,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 288,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 301.4,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT AMF Bowling 2004 ? FAIL(duration: 390 s of gameplay < 600 s confirmation) gameplay=389.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.7324 fps_excluded=105.4s"
+ },
+ "model_calls": 35,
+ "calls_by_model": {
+  "claude-sonnet-5": 35
+ },
+ "steps": 15,
+ "seconds": 584.1,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/frames/059-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-bowling-2004/hold/strip.jpg"
+}

@@ -1,0 +1,84 @@
+{
+ "title_id": null,
+ "name": "NHL 2K3",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/NHL_2K3.xiso.iso",
+ "result": "gameplay",
+ "tool": "78fc90aecb",
+ "started": "2026-10-05 18:15:28 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/058-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/058-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/058-probe-c.jpg"
+ ],
+ "reason": "four probes refused",
+ "minutes": 11.22,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/057-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/059-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/060-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/061-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/062-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/063-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/064-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/065-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/066-after.jpg"
+ ],
+ "learned": [],
+ "hold": {
+  "genre": "team",
+  "why": "A hockey rink with a goalie in the crease and team jerseys, so this is a team sport played on a rink.",
+  "sports": {
+   "clock": "none",
+   "period": "none",
+   "human_controlled": false,
+   "why": "The frame shows only a close-up of the rink, net, and goalie #35 with no HUD, scoreboard, clock, period text, or controller icon."
+  },
+  "ok": true,
+  "play_s": 601.2,
+  "need_s": 600.0,
+  "hold_s": 621.1,
+  "model_navs": 2,
+  "frames": 17,
+  "still_windows": 0,
+  "shed": [
+   "B",
+   "X"
+  ],
+  "reason": "",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 96,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 189.1,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 155,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 306.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT NHL 2K3 ? PASS None gameplay=622.2s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.053 play_share=0.9732 fps_excluded=16.0s"
+ },
+ "model_calls": 73,
+ "calls_by_model": {
+  "claude-sonnet-5": 73
+ },
+ "steps": 58,
+ "seconds": 1342.0,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/frames/115-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/nhl-2k3/hold2/strip.jpg"
+}

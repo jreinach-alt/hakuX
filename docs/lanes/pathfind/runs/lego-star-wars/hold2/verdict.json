@@ -1,0 +1,161 @@
+{
+  "title": "LEGO Star Wars The Video Game",
+  "title_id": null,
+  "name": null,
+  "device": "",
+  "ref": null,
+  "apk_sha": null,
+  "request_id": "hold2",
+  "route": null,
+  "surface_scale": null,
+  "adb_failures": null,
+  "thermal": {
+    "measured": false,
+    "samples": 0,
+    "unread": 0,
+    "pauses": [],
+    "in_window": false,
+    "window_covered": null,
+    "gap": null,
+    "first_pause_s": null,
+    "regimen": null,
+    "failed_sustained": null,
+    "still_heating": null
+  },
+  "human_review": "",
+  "booted": true,
+  "reached_gameplay": true,
+  "gameplay_by": "route",
+  "crash": false,
+  "crash_detail": [],
+  "crash_warnings": 0,
+  "gameplay_s": 727.2,
+  "timeline": {
+    "play_s": 610.9,
+    "scored_s": 727.2,
+    "play_share": 0.8401,
+    "by_state": {
+      "play": 610.9,
+      "still": 74.1,
+      "cutscene": 42.0,
+      "no-timeline": 0.2
+    },
+    "play_spans": 4,
+    "changes": 7,
+    "fps_excluded_s": 117.4,
+    "fps_excluded_windows": 105
+  },
+  "capture_gaps_s": [],
+  "capture_lost_s": 0,
+  "capture_truncated": false,
+  "capture_truncated_s": null,
+  "hang": false,
+  "hang_gaps_s": [],
+  "fps_windows": 588,
+  "fps_bar": 30.0,
+  "fps_ok_share": 0.9762,
+  "fps_ok_window_share": 0.9915,
+  "fps_window_median": 59.88,
+  "fps_window_min": 16.77,
+  "g_fps_mean_reported_not_judged": 58.46,
+  "target_fps": 30.0,
+  "own_target_share": 0.9762,
+  "confirmation_need_s": 600.0,
+  "below_own_target": false,
+  "power": {
+    "measured": false,
+    "samples": 0,
+    "sign": "battery_w: + discharging, - charging; net_w = battery_w + usb_w",
+    "battery_w": null,
+    "usb_w": null,
+    "usb_from": null,
+    "usb_bound": null,
+    "net_w": null,
+    "sign_suspect": 0,
+    "thermal_status_max": null,
+    "scored_s": 610.7,
+    "flips": 35280,
+    "j_per_frame": null,
+    "j_per_frame_battery": null
+  },
+  "audio_measured": true,
+  "audio_starve_share": 0.0,
+  "audio_empty_calls": 0,
+  "pace": {
+    "lines": 694,
+    "nominal_vblanks": 2,
+    "late_per_100": 0.72,
+    "worst_stall": 156.8,
+    "last": "f=52560 v0=0 v1=57 v2=3 v3=0 v4=0 vb=63 max=19.5 ms=1049.0"
+  },
+  "hitches": {
+    "n": 3,
+    "n_after_warmup": 3,
+    "per_min_after_warmup": 0.27,
+    "worst_ms": 156.8,
+    "n_big_after_warmup": 0,
+    "classification": {
+      "shader": 3,
+      "texture": 0,
+      "both": 0,
+      "unexplained": 0
+    },
+    "worst5": [
+      {
+        "off_s": 297.4,
+        "max_ms": 156.8,
+        "dsm": 3,
+        "dpc_ms": 0.1,
+        "shader_stage_ms": 0.0,
+        "tex_us": 25,
+        "cls": "shader"
+      },
+      {
+        "off_s": 311.9,
+        "max_ms": 125.2,
+        "dsm": 5,
+        "dpc_ms": 31.4,
+        "shader_stage_ms": 31.1,
+        "tex_us": 278,
+        "cls": "shader"
+      },
+      {
+        "off_s": 287.6,
+        "max_ms": 106.3,
+        "dsm": 11,
+        "dpc_ms": 23.4,
+        "shader_stage_ms": 22.9,
+        "tex_us": 14,
+        "cls": "shader"
+      }
+    ]
+  },
+  "hitch_allowance": null,
+  "static_window": {
+    "measured": true,
+    "frozen_frac": 0.0001,
+    "n": 21,
+    "source": "route-frames"
+  },
+  "position": {
+    "measured": true,
+    "reason": null,
+    "source": "route-frames",
+    "samples": 21,
+    "pairs": 20,
+    "still": 1,
+    "still_frac": 0.05,
+    "first_last": 0.7852,
+    "bar": 0.025
+  },
+  "pass_kind": "confirmation",
+  "void": null,
+  "pass": false,
+  "failing": "menu time: 84.0% of the scored window in `play` (bar 90%; play 611 s, still 74 s, cutscene 42 s, no-timeline 0 s)",
+  "failures": [
+    "menu time: 84.0% of the scored window in `play` (bar 90%; play 611 s, still 74 s, cutscene 42 s, no-timeline 0 s)"
+  ],
+  "rating_candidate": null,
+  "contact_sheet": "contact.png",
+  "judged_utc": "2026-10-06T02:41:49Z"
+}

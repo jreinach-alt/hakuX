@@ -1,0 +1,77 @@
+{
+ "title_id": "4D4A0008",
+ "name": "Blowout",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D4A0008-Blowout.xiso.iso",
+ "result": "gameplay",
+ "tool": "9318c9f1de",
+ "started": "2026-10-06 02:13:14 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/008-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/008-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/008-probe-c.jpg"
+ ],
+ "minutes": 1.81,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/007-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/009-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/010-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/011-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/012-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/017-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4D4A.md"
+ ],
+ "hold": {
+  "genre": "shooter",
+  "why": "A dark industrial corridor with a third-person character walking through a level, armed with a gun, which fits a walk-and-fire shooter.",
+  "ok": true,
+  "play_s": 604.2,
+  "need_s": 600.0,
+  "hold_s": 778.8,
+  "model_navs": 0,
+  "frames": 23,
+  "still_windows": 5,
+  "shed": [],
+  "reason": "",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 93,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 185.0,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 158,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 314.9,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Blowout ? FAIL(menu time: 77.6% of the scored window in `play` (bar 90%; play 605 s, still 175 s, no-timeline 0 s)) gameplay=779.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.3564 play_share=0.7759 fps_excluded=176.2s"
+ },
+ "model_calls": 25,
+ "calls_by_model": {
+  "claude-sonnet-5": 25
+ },
+ "steps": 8,
+ "seconds": 937.4,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/frames/065-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/sweep-4D4A0008/strip.jpg"
+}
