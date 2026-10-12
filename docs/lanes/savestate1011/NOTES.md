@@ -203,8 +203,9 @@ among auto and 0-9. It skips any state saved before another title ran.
 | 1-1791778350-savestate1011-727262 | pilot, route `187-ride-or-die` | refused by the profile gate (first-run route, kept profile) |
 | 1-1791778805-savestate1011-904197 | pilot: `func+measure`, 2 cycles, 187 attract race, ref 121cde1e09 | F1-F11 pass; done ok=1, 10 snapshots deleted, 0 left, scratch dir gone |
 | 1-1791779971-savestate1011-1240876 | `measure`, 20 cycles x 9 options, ref 121cde1e09 | stopped at ~150 s by the owner's hold on the Nova; 6 saves, not used |
-| 1-1791781810-savestate1011-1461488 | `disk+func` (`HAKUX_SAVESTATE_DISK=8,40,60`), 200 s, ref fefe83e884 | queued |
-| 1-1791781811-savestate1011-1461611 | `measure`, 20 cycles x 8 options (no d-none), 2600 s, frames every 10 s, ref fefe83e884 | queued |
+| 1-1791781810-savestate1011-1461488 | `disk+func` (`HAKUX_SAVESTATE_DISK=8,40,60`), 200 s, ref fefe83e884 | D1 pass. D2: disk pass, `game_runs=0`. F1, F3, F4 fail. All three ran on the still title screen (see "Disk test"). F2, F5-F11 and F5b pass. 8 snapshots deleted, 0 left, scratch dir gone |
+| 1-1791781811-savestate1011-1461611 | `measure`, 20 cycles x 8 options (no d-none), 2600 s, frames every 10 s, ref fefe83e884 | running |
+| 1-1791783647-savestate1011-1797227 | `disk+func` again, same request, ref a7d713effe (waits for a moving scene) | queued |
 
 All runs:
 
@@ -260,7 +261,52 @@ The 20-cycle run decides it.
 
 ## Disk test
 
-Pending.
+The title is 187: Ride or Die (55530036), on the dispatcher's titles disk
+(qcow2), with no input.
+
+**How I know the game writes the hard disk:** the test hashes each partition
+(X, Y, Z, C, E and the rest) at the save, before the load and after it. It
+also counts the guest's write ops. 187 writes the hard disk at boot:
+
+- about 30 ops at t=3 s;
+- 670 ops (73.5 MB) between t=16 and t=18 s, which take partition Z (a
+  cache) from 24 KB to 73.5 MB of data.
+
+A state saved at t=8 is from before that burst.
+
+**1461488** (ref fefe83e884): save at t=8, load at t=40, undo load at t=60.
+
+| Hash | When | wr_ops | Z | E | Other partitions |
+|---|---|---|---|---|---|
+| H0 | the save, t=8 | 30 | `954c6cb5…`, 24 KB | `4c00bcd6…` | - |
+| H1 | before the load, t=40 | 700 | `7da57b0d…`, 73.5 MB | same | same |
+| H2 | after the load, t=40.2 | 700 | `954c6cb5…` = H0 | same | same |
+| H3 | after the undo load, t=60.2 | 1370 | `7da57b0d…` = H1 | same | same |
+
+- **D1 passes.** The game wrote Z between the save and the load
+  (670 ops). After the load, every partition hashes as at the save, and
+  every partition still has its FATX magic.
+- **The game ran after the load.** It replays its boot from t=8: the frames
+  show the Xbox logo, Ubisoft and the ESRB notice (f00021-f00026). The
+  replay wrote Z again, so wr_ops went from 700 to 1370 by t=60.
+- **E: is untouched.** The game save is the same file before and after
+  the run (`hdd.json` save `fa079adf42d5`, harvested `fa079adf42d5`). The
+  harvest read all 94 titles' saves with no errors.
+- **D2's disk check passes:** after the undo load the disk is H1 again,
+  and every partition has its FATX magic.
+- **D2's `game_runs` failed, and so did F1, F3 and F4.** They ran on 187's
+  title screen, "Please press START to begin" (f00027-f00036). That screen
+  is still in the 32 rows the region hash reads: only the prompt lower
+  down blinks. The game was running all along:
+  - the pace lines hold 60 flips/s;
+  - the prompt blinks (f00031, f00035, f00036 without it);
+  - the attract sequence starts at 22:35:37 (f00037-f00042).
+- **The fix (a7d713effe):**
+  - D1 and D2 wait up to 30 s and 60 s for the region to change, instead
+    of one 5 s look.
+  - After the disk test, func waits for its start time and a moving
+    scene.
+  - 1797227 re-runs it.
 
 ## Owner checks
 
