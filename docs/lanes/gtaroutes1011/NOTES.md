@@ -251,3 +251,44 @@ from the hold's 16:23:38 timestamp, i.e. UTC 23:23:38 -> PDT 16:23:38). Posted `
 PR #927 naming the two new ids and this cause. Stopping here per the role file ("if you are waiting, that is a
 finished session too") rather than burning further bounded polls against a hold with a known, bounded end that
 this session cannot hasten.
+
+## 9. Why attempt 3 did not finish, and the two proofs' results
+
+Attempt 3 ended on a real external wait: both re-queued proofs sat behind `dispatch/hold/nova` (`owner-nfs-play`,
+the owner playing NFS MW on the Nova), with `WAITING` naming both ids in the `run <id>` form. The hold cleared
+and both ran: VC at 17:57 PDT, SA-drive at 18:08 PDT. Attempt 4 resumed at 18:23 PDT, merged origin/master
+(38 commits, no conflicts) and read both.
+
+Both loaded the golden (`hdd.json`: `"loaded": "golden"`, saves `77a5f0908dce` and `7da19befd45b`).
+`title_verdict.py --require confirmation` reports FAIL on both. That is the confirmation tier's 600 s gameplay
+bar. The brief's route-proof bar is 300 s.
+
+| Run | gameplay_s | fps_ok_share | median fps (min) | static_frac | post-mark frames |
+|---|---|---|---|---|---|
+| VC `1-1791761282-gtaroutes1011-282177` | 492.1 | 0.9908 | 29.97 (24.74) | 0.0132 | 16 |
+| SA-drive `1-1791761288-gtaroutes1011-284417` | 402.1 | 0.9895 | 29.97 (28.13) | 0.6186 | 13 |
+
+**Vice City passes.** Mark at 17:59:38. f00005-f00014 (17:59:43-18:04:24) show Tommy running through Ocean Beach
+in ten different places: by a parked car, an alley, past the "Ocean Beach" neon, along the beachfront road, a
+sidewalk at night, a pink storefront street, grass by a palm, a chain-link fence. The minimap turns each time.
+From f00015 (18:04:55) to f00020 (18:07:32) he is wedged against the same fence corner, running in place. The
+clock still advances and the animation still runs, which is why static_frac stays low. The bar is
+"a different place in >= 3 post-mark frames", and it is met ten times over. A later lane that wants all 492 s
+moving should add a periodic camera/heading change to `gta-vc.route`'s loop. I did not spend a device run on it.
+
+**SA-drive fails as written.** Mark at 18:12:23. The mount worked: the route frame `181223-mounted` shows CJ on
+the bike with "BMX" captioned. f00009's help text reads "Push up or down on the left thumbstick to shift your
+weight on the bike". The route's `axis LY min` only leaned CJ forward. f00009-f00020 show him on the BMX in
+the same spot by the alley wall, with the radar unchanged; static_frac 0.62 is that.
+
+The one fix (`3d81b1c788`) leaves the boot and mount untouched. The loop now:
+- holds A to pedal;
+- once per cycle, releases A and taps it 8 times. That is the faster stroke, and it still moves the bike if a
+  held A only coasts;
+- steers with LX while pedalling;
+- once per cycle, holds X (brake/back) for 1 s with the bar turned, so a wall cannot pin the bike for the rest of
+  the window.
+
+A as the pedal is the Xbox port's accelerate. It is not read off a frame. The help text that names it scrolled
+by between the 30 s samples. The rerun is the test. Rerun `1-1791768457-gtaroutes1011-1576234` on the same
+build (`--ref def393be25`) as the failed run, so the route is the only change.

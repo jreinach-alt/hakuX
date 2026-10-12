@@ -1,16 +1,8 @@
-# lane.gtaroutes1011 (#433): two re-queued Nova proof soaks, release tier.
-# Previous ids (1901311, 2255243) ERRORed on the bare-tid --title bug
-# (Addendum 3); these are the corrected re-queues, same routes/goldens.
-# Both still queued as of 2026-10-11 16:28-16:46 PDT, NOT backlog drain:
-# dispatch/hold/nova = owner-nfs-play (owner playing NFS MW on the Nova,
-# lane.local's hold, 90 min cap from 16:23:38 PDT, i.e. until ~17:53 PDT
-# or whenever the owner says done). Do not take/release this hold; just
-# wait for it to clear and the queue to resume draining.
-# VC: write the Vice City row in PR.md -- check hdd.json "loaded":"golden",
-# title_verdict.py --require confirmation, >=3 post-mark frames showing
-# Tommy moved.
-run 1-1791761282-gtaroutes1011-282177
-# SA-drive: write the SA-drive row in PR.md -- check hdd.json
-# "loaded":"golden", title_verdict.py --require confirmation, >=3
-# post-mark frames showing CJ on the BMX/vehicle moved.
-run 1-1791761288-gtaroutes1011-284417
+# lane.gtaroutes1011 (#433): the SA-drive proof rerun (the one fix the brief
+# allows), queued 2026-10-11 18:3x PDT on nova, release tier, ref def393be25.
+# The VC proof (282177) passed; the first SA-drive proof (284417) sat still on
+# the BMX (LY only shifts weight), so gta-sa-drive.route now pedals with A.
+# On arrival: hdd.json "loaded":"golden"; title_verdict.py; >=3 post-mark
+# frames with CJ on the bike in different places. Pass: write the SA-drive
+# row in PR.md and mark ready. Fail: write up what blocks it, stop on SA-drive.
+run 1-1791768457-gtaroutes1011-1576234
