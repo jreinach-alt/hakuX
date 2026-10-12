@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pathclass` | claude-sonnet-5 | 1h 6m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `pathclass` | claude-sonnet-5 | 1h 21m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.pathfind`
+  - Nova: held by `lanelocal-shuffle`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 0 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -95,4 +95,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer
 - 2026-10-11 gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5)
 
-_Updated 2026-10-12 06:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 07:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
