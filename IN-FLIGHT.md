@@ -8,13 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gtaroutes1011` | claude-sonnet-5 | 18 min | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
-| `soakvideo1011` | claude-sonnet-5 | 1h 43m | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request |
+| `soakvideo1011` | claude-sonnet-5 | 1h 58m | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `owner-nfs-play`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 9 waiting, 0 running.
+- **Device queue:** 9 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -74,16 +73,15 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gtaroutes1011` | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) | `91b58dbc48` | 2026-10-11 16:28 |
 | `lane/soakvideo1011` | soakvideo1011: screen video during a routed soak, from the dispatcher; route crops now travel with the request (#433, 0. | `ff1bcface2` | 2026-10-11 13:56 |
 
 ## Recently landed on master
 
+- 2026-10-11 profileconv1011: gta-sa and amped2 measure on their golden profiles (#433)
 - 2026-10-11 soakvideo1011: screen video during a routed soak, from the dispatcher
 - 2026-10-11 fastpaths1010: the six renderer switches as one Graphics toggle, on by default (#433, 0.5)
 - 2026-10-11 lockwake1011: NFS Most Wanted's cold race start, which pfifo.lock site holds the guest's last 2.2 ms, and a lock-free wake (#433, 0.5)
 - 2026-10-11 coldstart1010: NFS Most Wanted's first race start after loading, census and largest fix (#433, 0.5)
 - 2026-10-11 Lane: restoreprio1011            Issue: #433
-- 2026-10-11 Lane: restoreprio1011            Issue: #433
 
-_Updated 2026-10-11 16:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 17:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
