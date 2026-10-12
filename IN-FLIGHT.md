@@ -8,8 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `nfsaudio1011` | claude-opus-5-5 | 56 min | nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer; pacing at the low wa |
-| `savestate1011` | claude-opus-5-5 | 1h 11m | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
+| `nfsaudio1011` | claude-opus-5-5 | 1h 11m | nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer; pacing at the low wa |
+| `savestate1011` | claude-opus-5-5 | 1h 26m | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -87,4 +87,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 profileconv1011: gta-sa and amped2 measure on their golden profiles (#433)
 - 2026-10-11 soakvideo1011: screen video during a routed soak, from the dispatcher
 
-_Updated 2026-10-11 20:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 21:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
