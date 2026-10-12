@@ -1,33 +1,36 @@
-# release05: version 0.5.0 and a classifier route for the Ghoulies release soak (#433, 0.5)
+# release05: the 0.5 gate is measured on the Nova (#433, 0.5)
 
 State: ready
 
 Lane: release05          Issue: none (#433 umbrella)
-Base: master @ 1f317671b7
-Files: android/app/build.gradle.kts, docs/testing/version_stamp.sh, docs/testing/jobs/selftest.d/86-build-stamp.sh,
-docs/testing/titles/routes/ghoulies.classifier.route, docs/lanes/release05/PR.md
+Base: master @ 1ed3ac8f39
+Files: docs/testing/release-0.5.toml, docs/testing/jobs/status_html.py, docs/testing/jobs/status.sh,
+docs/testing/jobs/selftest.d/64-status-html.sh, docs/lanes/release05/PR.md
 Prediction: none (no emulator change)
-Needs device: no (the release soak runs on the tagged fold)    Needs NDK: no
+Needs device: no    Needs NDK: no
 
-The 0.5 targets are met: 175 titles measured (target 145) and 50 Playable
-(target 50). This change prepares the candidate.
+The owner, 2026-10-12: "0.5 can ship on the Nova test results alone. The
+Thor hardware is identical." The gate was "both handhelds", so the status
+page could not read MET with only the Thor's older soak (17.5 gfps on
+6bfce4a685) beside the Nova's 29.0 on v0.5.0-rc1.
 
-- Version 0.5.0. `version_stamp.sh` now stamps builds `0.5.0-<MMDD>-<sha>`,
-  `versionCode` goes from 8 to 9, and the build's fallback name (no git) is
-  `0.5.0-unknown`. The build-stamp selftest expects the new base.
-- `ghoulies.classifier.route`: Grabbed by the Ghoulies opened by the
-  classifier (`drive generic 480 mark`) on the kept profile, followed by
-  `ghoulies.route`'s play loop. It does not reach play yet: on the Nova the
-  classifier named the title screen, then stopped on the "Choose A Game"
-  slot menu (main_menu 0.67, under the 0.70 menu floor). Offline, the Grand
-  Hallway's play reads 0.58-0.75 `gameplay`, under the 0.85 floor. The
-  route header records both; `ghoulies.returning.route` stays the gate's
-  route.
+- `release-0.5.toml`: `gate` ends "on the Nova", and a new `gate_devices =
+  ["nova"]` names the handhelds the gate is measured on, with the owner's
+  words.
+- `status_html.py release05` writes one `r05gate` row per `gate_devices`
+  handheld (both when the field is unset), so `_gate` judges only those.
+  The panel line names the handhelds from the rows ("on the Nova", or "both
+  handhelds" for the pair) instead of a fixed "both handhelds".
+- `status.sh` no longer writes its own copy of the gate's text; the page
+  reads `release-0.5.toml`'s, and `STATUS_RELEASE_GATE` in limits.env still
+  overrides it.
 
-Checks: `SELFTEST_ONLY=86-build-stamp selftest.sh` passes (10 of 10);
-`route.sh --check` passes; `titlestate.py resolve-route --route
-ghoulies.classifier --title-id 4D530053` resolves to state `returning` with
-no refusal.
+Checks: `64-status-html` gains six: with `gate_devices = ["nova"]` there is
+no Thor row, the Nova's newest soak is read, a Nova soak on the candidate's
+ref is "MET on the candidate", the panel says "on the Nova" and never "both
+handhelds", and the repository's `release-0.5.toml` names the Nova only. The
+existing panel checks run against a conf with no `gate_devices` and still
+read both handhelds.
 
 Release note: none
 
