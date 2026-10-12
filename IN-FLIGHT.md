@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pathclass` | claude-sonnet-5 | 1h 21m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `fpsbelow1012` | claude-opus-5-5 | 4 min | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lanelocal-shuffle`
+  - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -78,21 +78,16 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `d5f8e3eedb` | 2026-10-12 05:32 |
+| `lane/fpsbelow1012` | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) | `c59ad280fd` | 2026-10-12 06:17 |
 
 ## Recently landed on master
 
+- 2026-10-12 fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5)
 - 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
 - 2026-10-12 burnoutunlock1012: Burnout Revenge's play loop can't get back into a race after a medal (#433, 0.5)
 - 2026-10-12 savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433)
 - 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
 - 2026-10-12 burnoutbrief1012: press Continue (A) after Retry so a run on the event brief keeps racing (#433, 0.5)
 - 2026-10-12 burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5)
-- 2026-10-11 defaulton1011: HAKUX_VTX_HAZARD and HAKUX_APU_PACE on by default -- GTA San Andreas sky, NFS Most Wanted audio (#433, 0.5)
-- 2026-10-11 nfsaudio1011: HAKUX_APU_PACE in apu.c, off by default -- pacing at the low watermark removes NFS Most Wanted's audio replays (#433, 0.5)
-- 2026-10-11 snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433)
-- 2026-10-11 profilegate1011: the profile gate -- a title run needs the title's profile, unless it is finding a route (#433)
-- 2026-10-11 nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer
-- 2026-10-11 gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5)
 
-_Updated 2026-10-12 07:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 07:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
