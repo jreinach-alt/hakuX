@@ -32,3 +32,20 @@
   MC3's `range` cost (12.3 ms/frame) is not the texture scan (NOTES.md section 10). It is the vertex-RAM sync or a
   blit, and Forza with SURFGPU shares it. The `[sdrange]` instrument runs on both are queued (`-2104673`,
   `-2906178`). Runs: 5 done, 4 queued, cap 30.
+- 2026-10-12 A/B judged (NOTES.md 9d): **`fpsbelow1012-zetad24.json` is a LOSS by its own rule.** One of three
+  titles (NG Black) passes every leg; DOA3 and Buffy fail W, a median of G against a frame cap (60 Hz, and Buffy's
+  own 30), as 9b/9c wrote before their B arms ran. V, M and P pass on all three: the scene pass is one tile with the
+  switch (in/out 0.49-0.53 -> 0.97-1.00), GPU outer span x0.57-0.64. Hand-read, not judged: NG Black fps_ok 0.847 ->
+  0.960 and Buffy 0.793 -> 1.000 (like for like); DOA3 0.698 -> 0.961, but the arms fought different opponents on
+  different stages. Candidates *with* `HAKUX_ZETA_D24=1`, survey route only (no gameplay mark), so each needs a
+  gameplay-route confirmation, and the switch's depth pair is read first: Buffy, NG Black, DOA3.
+- 2026-10-12 11 runs done, 2 queued, cap 30 (NOTES.md section 4). Forza at master (section 11): fps_ok 0.506, not
+  H1 (the vertex sync downloads nothing). Its `range` wait (16.6 ms/frame, 785 downloads in 114 finishes per 60
+  frames) is range lookups completing the batch of eviction downloads forza414 defers. The rule that does it,
+  `found_overlap && num_deferred > 0`, predates forza414. NFS MW's `range` is TEXSCAN's (4 per finish), not this.
+- 2026-10-12 ranking (NOTES.md section 12), expected impact = titles x gain x P: **L1 `HAKUX_ZETA_D24`** (3 titles
+  measured, ~9 more two-tile on disk; P 0.7); **L4a `HAKUX_VTX_EXACT`** (MC3, H1 measured to the byte; P 0.85 the
+  downloads go, 0.55 MC3 crosses); **L4c precise range completion** (Forza, at most half its range wait; ~0.15);
+  then L2, L4b, L5; L3 dropped (L1 supersedes it). Queued: the depth-pixels pair `-286227` (B) and `-286943` (A),
+  sweep tier. WAITING: grants for draw.c, vertex.c, renderer.h (L4a) and an extension on surface.c (L4c's split
+  counter).

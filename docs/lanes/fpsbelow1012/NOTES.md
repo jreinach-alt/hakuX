@@ -3,8 +3,18 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **8** run (the pilot: 2 read, 1 void before input; NGB's A/B pair;
-DOA3 A, Buffy A; MC3's `[sdrange]` run), **3** queued (Forza's `[sdrange]` run, DOA3 B, Buffy B). Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **11** run (the pilot: 2 read, 1 void before input; the A/B's six
+arms on NGB, DOA3 and Buffy; the `[sdrange]` runs on MC3 and Forza), **2** queued (the depth-pixels pair, section 7).
+13 of 30. Ledger in section 4.
+
+## 0b. Attempt 3 (10-12 ~05:40 PDT): why attempt 2 did not finish
+
+Attempt 2 read the pilot, judged NG Black, read MC3's `[sdrange]` run, and queued DOA3 B, Buffy B and Forza's
+`[sdrange]` run. Its last commit was c788bb3c3c (04:33 PDT). Its session then ended with those three queued.
+Attempt 1 had ended the same way: no `waiting:` line named the queued ids, so the lane came back as an idle resume
+and not a resolved wait. All three runs landed by 05:32 (Addendum 1). Attempt 3 judges the A/B (9d), reads Forza
+(section 11), writes the ranking (section 12) and queues the one pair the ranking still needs. It ends on a
+`WAITING:` line that names the pair's ids and the grants.
 
 ## 0. Attempt 2 (10-12 ~02:30 PDT): why attempt 1 did not finish
 
@@ -154,13 +164,20 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 | - | (refused at queue time) | ToeJam & Earl III | uberdefault569's `toejam-earl-3` | 540 | request.sh refused it: the route declares no `# state:` line, and the file is uberdefault569's, not this lane's to edit | not counted; Buffy takes its slot, as the prediction names |
 | 7 | z-1791798044-fpsbelow1012-1807480 | Buffy the Vampire Slayer | survey | 480 | done 10-12 04:22, same ref, **A** | section 9c: IN THE CLASS (450 s); fps_ok 0.79; a 30-fps title |
 | 8 | z-1791799077-fpsbelow1012-2104673 | Midnight Club 3 | midnight-club-3.returning | 540 | done 10-12 04:32, ref dbf9dd40cc, `--env HAKUX_RANGELOG=1` (+ the telemetry env), gameplay marked 04:25:44 | section 10a: **H1**, one surface, ex 0 |
-| 9 | z-1791801220-fpsbelow1012-2906178 | Forza Motorsport | forza-soak1010 | 480 | queued 10-12 03:35 PDT, ref dbf9dd40cc, `--env HAKUX_RANGELOG=1` (+ the telemetry env) | Forza's telemetry at master (step 2) and its `[sdrange]` reading (section 10) |
-| 10 | z-1791803606-fpsbelow1012-3255578 | Dead or Alive 3 | survey | 480 | queued 10-12 04:15 PDT, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`) | A/B key DOA3 (section 9b) |
-| 11 | z-1791804165-fpsbelow1012-3514899 | Buffy the Vampire Slayer | survey | 480 | queued 10-12 04:24 PDT, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`) | A/B key Buffy (section 9c) |
+| 9 | z-1791801220-fpsbelow1012-2906178 | Forza Motorsport | forza-soak1010 | 480 | done 10-12 04:40, ref dbf9dd40cc (apk 64dbb3082354), `--env HAKUX_RANGELOG=1` (+ the telemetry env) | section 11: not H1; fps_ok 0.51; `range` 16.6 ms/frame is batch completion of eviction downloads |
+| 10 | z-1791803606-fpsbelow1012-3255578 | Dead or Alive 3 | survey | 480 | done 10-12 04:57, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`; init line 0x81) | section 9d: V M P pass, W fails (as 9b said); a different fight from A |
+| 11 | z-1791804165-fpsbelow1012-3514899 | Buffy the Vampire Slayer | survey | 480 | done 10-12 05:32, ref be0239bac8 (apk 47e99f5db99c), **B** (`HAKUX_ZETA_D24=1`; 0x81) | section 9d: V M P pass, W fails at the 30 cap (as 9c said); fps_ok 0.79 -> 1.00 |
+| 12 | z-1791809103-fpsbelow1012-286227 | pgraph: 10 depth suites | - | - | queued 10-12 05:45 PDT, ref c1112f2c1a, **B** (`HAKUX_ZETA_D24=1`), `--expect fpsbelow1012-zetad24-pixels.json` | section 7's cost, measured |
+| 13 | z-1791809107-fpsbelow1012-286943 | pgraph: 10 depth suites | - | - | queued 10-12 05:45 PDT, same ref, **A** (no env), queued last | the same pair |
 
-Planned next, after the pilot verdict (`pilots/fpsbelow1012.ok`): the depth-exactness pgraph pair, registered as
-`docs/testing/predictions/fpsbelow1012-zetad24-pixels.json` (sha256 c543e6ac..., refs c1112f2c1a both arms, B with
-`HAKUX_ZETA_D24=1` queued first), 10 depth suites, one run per arm: 2 runs.
+The depth-exactness pair (rows 12-13) is the one registered as `docs/testing/predictions/fpsbelow1012-zetad24-pixels.json`
+(sha256 c543e6ac..., refs c1112f2c1a on both arms, B queued first), 10 depth suites, one run per arm. It was planned
+after the pilot verdict and queued in attempt 3, because the ranking (section 12) puts L1 first and section 7 says the
+switch should not reach the cross-title screen until this pair is read. It is not a retest: nothing has measured
+the switch's pixels yet. The master commits since c1112f2c1a change no file under `hw/xbox/nv2a`
+(`git diff --stat HEAD...origin/master -- hw/xbox/nv2a` is empty on 10-12), so the pair measures master's renderer
+with and without the switch. The queue output is in `tools/queue-pixels.log`, which is untracked because *.log is
+ignored.
 
 The pilot is 3 x (seconds + 90 s) = 29.5 min, under the 30 min gate. DOA3 and NGB are the two titles whose GMEM
 replay was measured before (section 5); at master they say whether the class is still there after fastpaths1010,
@@ -289,6 +306,9 @@ without sysmem's bandwidth). That puts B's out at 0.5-0.65x of A's in the two-ti
 master telemetry of that title.
 
 ## 6. Lever ranking (draft: titles x win x P; the telemetry in section 3 firms up the titles column)
+
+Superseded by section 12, which is the ranking after the A/B and the two `[sdrange]` runs. The draft is kept as it
+was written before any run.
 
 | # | lever | titles it reaches | win where it acts | P | why that P |
 |---|---|---|---|---|---|
@@ -521,6 +541,58 @@ prediction is not re-registered on the same arms. The W leg should have been a s
 or share of frames at the title's own cap). A title that is below the bar only in its slow buckets needs a
 share-based leg, registered before a new pair.
 
+### 9d. The A/B judged: a LOSS by its own rule, and the mechanism holds on all three titles (10-12 05:50 PDT)
+
+`zread.py <A> <B> --expect docs/testing/predictions/fpsbelow1012-zetad24.json --key <title>`, one run per title,
+full output in `tools/ab-zread.out`. Each class window is read off its A arm alone (section 9):
+
+| title | A / B | window | V | M: in/out A -> B | P: outer span per cb A -> B | W: G median, gfps median A -> B | legs |
+|---|---|---|---|---|---|---|---|
+| Ninja Gaiden Black | `-1778929` / `-1777822` | 270 s | PASS | 0.53 -> 0.99 | 21.54 -> 12.34 ms (x0.57) | 25.6 -> 16.9 ms (x0.66), 40 -> 59 | **every leg passes** |
+| Dead or Alive 3 | `-1779675` / `-3255578` | 240 s | PASS | 0.51 -> 0.97 | 15.98 -> 10.16 ms (x0.64) | 16.9 -> 16.7 ms (x0.99), 58 -> 59 | W FAIL |
+| Buffy | `-1807480` / `-3514899` | 450 s | PASS | 0.49 -> 1.00 | 21.29 -> 12.58 ms (x0.59) | 33.4 -> 33.4 ms (x1.00), 29 -> 29 | W FAIL |
+
+**The registered verdict is a LOSS.** The prediction's rule is a win when at least two of the three counted titles
+pass every leg. One does (NG Black), so the switch did not win its A/B, and it is reported that way. The prediction
+is not re-registered on these arms.
+
+Both failures are the W leg, and both were written down before their B arms ran (9b, 9c). W tests a median of G
+against A's, and on DOA3 and Buffy that median already sits at a frame cap: the 60-Hz flip for DOA3, the title's own
+30 for Buffy.
+
+**The three legs that read the mechanism pass on every title.** With the switch the scene pass is one tile on a
+640x480 pass (NG Black), a 720x480 pass (DOA3) and a ~1000-draw pass (Buffy), and the GPU's outer span per command
+buffer falls to x0.57-0.64. That is inside the 0.5-0.65 that section 5 derived before any run. The outcome that
+would have refuted it, B's in/out staying near 0.5 or the outer span not falling, did not happen on any title.
+
+**Hand-read beside the legs, not judged.** `title_verdict.judge()` was called read-only over the whole run, since a
+survey route never marks gameplay; output in `tools/ab-handread.out`. The B buckets are in `tools/ab-bbuckets.out`.
+
+| title (bar) | fps_ok A -> B | window median | window min | J/frame | late/100 | like for like? |
+|---|---|---|---|---|---|---|
+| NG Black (30) | 0.847 -> **0.960** | 43.7 -> 58.6 | 10.4 -> 13.4 | 0.192 -> 0.164 | 33.6 -> 7.9 | yes: both arms show Ryu at the same cliff walls |
+| Buffy (30) | 0.793 -> **1.000** | 29.94 -> 29.97 | 24.5 -> 29.2 | 0.278 -> 0.261 | 11.5 -> 4.0 | yes: the same level. A's slow buckets (90-120 and 210-270 s, G 37-38 ms, outer span 28-30 ms) read G 33.2-33.4 in B, and every B bucket is 33.2-33.6 |
+| DOA3 (60) | 0.698 -> 0.961 | 46.1 -> 59.9 | 13.2 -> 21.1 | 0.210 -> 0.170 | 12.0 -> 1.2 | **no**. The arcade draws the opponent: A fought Bayman in the dojo, B fought Hitomi on the cliff (frames 040600 and 045121, both on the PAUSED menu). A's paused stretch was one tile at 19 gfps, outside the class; B's was 45-59 |
+
+DOA3's share gain is a different fight, so DOA3 contributes M and P and nothing more.
+
+NG Black and Buffy are like for like. Buffy is the case the W median could not see: every 30-s bucket at the
+30 cap, and the drops gone. NG Black rises to 59 gfps in its scene. Energy per frame falls on all three
+(x0.81-0.94), which is what removing one replay of the draw stream should do. These are readings, not a judged
+result.
+
+**What this leaves for the switch.**
+- The lane's case for it rests on M and P (3 of 3) and on two like-for-like shares.
+- The leg that failed was the wrong instrument for capped titles. A later prediction on this switch should judge a
+  share, registered before its pair: fps_ok share at the title's bar, or the share of class-window buckets at the
+  title's own cap. That pair is lane.local's cross-title screen, not this lane's.
+- The depth-pixels pair (section 4, rows 12-13) is read first.
+
+**Candidates for lane.local, with `HAKUX_ZETA_D24=1`.**
+- Buffy 1.000, NG Black 0.960, DOA3 0.961 (confounded).
+- All three are on the survey route, which never marks gameplay, so each needs a gameplay-route confirmation with
+  the switch.
+
 ## 10. MC3's `range` is not the texture scan: the vertex-RAM sync or a blit (offline, 10-12 ~03:00 PDT)
 
 **Correction to section 8**, which called MC3's downloads "`range` on non-cube textures, the same caller as Forza".
@@ -657,4 +729,118 @@ range call and a 12-slot scan per download, ~16 a frame. The route's play is bli
 the scene. **So MC3's fps varies 23-29 between runs at one ref.** An A/B on it needs legs that do not ride on the
 scene: `range` downloads and finishes per 60 frames, and ph_Fin per frame. fps_ok is hand-read beside them, not
 judged.
+
+## 11. Forza at master: not H1. Its `range` wait is batch completion of downloads the lookups did not record (10-12 05:55 PDT)
+
+Run `z-1791801220-fpsbelow1012-2906178`: `forza-soak1010`, ref dbf9dd40cc, 480 s, perflog with `HAKUX_GPUXFR=1`,
+`HAKUX_FRAMETRACE=1` and `HAKUX_RANGELOG=1`, gameplay marked 04:33:55. This is Forza's step-2 telemetry at master.
+title_verdict (read-only): fps_ok **0.506** (0.45 on 09-30), window median 29.14, min 18.9, late/100 23.6, worst
+stall 1.85 s, 0.304 J/frame. It is 0.39 under the bar.
+
+**The `[sdrange]` reading** (`tools/sdrange.py`, in `tools/rangefin.out`), over 205 periods and 12,300 frames. Per 60
+frames:
+- range-function calls: 209 from the vertex sync, 38,722 from other callers;
+- downloads the lookups recorded on live surfaces: 0 (`by=vtx` 0, `by=oth` 0);
+- shelved: 0;
+- invalidated-surface downloads: 53.
+
+The tool's last line says "reading: H1", but that comes from three surfaces seen about four times in the whole run
+(each 0.0 per 60 frames), and it is not reported as H1. The vertex sync downloads nothing on Forza, so
+`HAKUX_VTX_EXACT` does nothing for it.
+
+**The `range` line itself**, read with `tools/rangefin.py`. Each value is the median over the busy half of a run's
+periods, per 60 frames. The full survey is in `tools/rangefin-all.out`.
+
+| run | SURFGPU | range fin | range dl | dl/fin | wait ms | scan dl | su_deferred |
+|---|---|---|---|---|---|---|---|
+| profileddefault1008 `-4023363` (10-08) | off | 60 | 60 | 1.0 | 293 | 0 | 13,214 |
+| forzasurf1010 A `-1663010`, `-2253823` (10-10) | off | 60 | 61-62 | 1.0 | 385-397 | 3 | ~13,500 |
+| forzasurf1010 B `-1663501`, `-2254415` (10-10) | on | 93 | 427-428 | 4.6 | 718-788 | 118-123 | ~42,500 |
+| **master, `-2906178`** | on (default) | **114** | **785** | **6.9** | **995 (16.6 ms/frame)** | 46 | 41,528 |
+| Midnight Club 3 at master `-2551411`, for contrast | on | 927 | 927 | 1.0 | 745 | 0 | 26,624 |
+
+**The mechanism.** At master the range lookups complete 785 downloads per 60 frames in 114 finishes. They record
+no more than about 100 of those themselves: the 53 invalidated surfaces and the 46 the texture scan counts. So at
+least ~690 were recorded somewhere else.
+
+The recorder is the eviction path. Since forza414 (94f002d309), `pgraph_vk_surface_update` leaves an evicted
+binding's download pending until the next finish. `su_deferred` counts about 41,500 updates per 60 frames that did
+so, three times what it counted before SURFGPU. A range lookup then completes the whole pending batch
+(`download_surface_complete_deferred(d, SDC_RANGE)`, surface.c:995-1003) on either of two conditions:
+
+1. `found_overlap && r->num_deferred_downloads > 0`. The looked-up range overlaps any surface on the live list, or
+   a dirty one on the shelved or invalidated list, whether or not it is draw_dirty. This rule predates forza414
+   (59729d180a): then, the only pending downloads were the ones the lookup had just recorded. Since forza414 it
+   also completes the evictions' batch whenever a texture or vertex range touches a *clean* live surface.
+2. `deferred_downloads_overlap_range`. The range overlaps a pending download's destination, so the reader really
+   needs those bytes.
+
+The instrument cannot tell which condition fires, and that split decides the lever.
+
+**If (1) dominates**, a precise rule removes those finishes without changing what any reader sees: complete only when
+this lookup recorded a download, or when the range overlaps a pending destination. This is L4c,
+`HAKUX_RANGE_EXACT`.
+
+**If (2) dominates**, the readers do read the evicted bytes. Forza's race evicts its zeta binding twice a frame
+between 640x480 and 1280x480 at one address (forza414 NOTES 29). The fix would then be a SURFSPLICE-like GPU path for
+the reader, a larger change.
+
+**The bound, even if (1) is all of it.** The 53 lookups per 60 frames that record an invalidated surface's download
+must finish, and each completes the batch. So finishes fall from 114 to no fewer than ~53 per 60 frames, which is at
+most about half of the 16.6 ms/frame. Forza has other costs:
+- the GPU clock in the slow half (vcpu60);
+- a 1.85 s worst stall;
+- `tobuf` and `prerec` waits.
+
+**The cheap step that decides.** A counter in the range function: per 60 frames, which condition completed the
+batch, and how many of the completed downloads the lookup recorded itself. It is surface.c instrumentation beyond
+the `HAKUX_ZETA_D24` grant, so it is requested in section 12, not written. One Forza run reads it.
+
+**No other title on disk shows this.** The only other runs whose range batches complete more than 1.5 downloads per
+finish are Spider-Man 2 (2.0, all of them scan downloads), one pre-SURFGPU Forza run (2.0, 90 of 120 scan) and NFS
+MW. NFS MW reads 240 downloads in 60 finishes per 60 frames and `su_deferred` 0. Over the 30 runs from
+fpstelemetry1008b to fastpaths1010 with at least 120 ms of wait, the wait is 129-241 ms (2.2-4.0 ms/frame). On the one run with texture-scan counts (fpstelemetry1008b
+`-1823645`) scan downloads equal range downloads (240). So NFS MW is TEXSCAN's caller recording four surfaces per
+lookup (L4b), not an eviction batch.
+
+## 12. Ranking (step 3, final for this lane): expected impact = titles x gain x P
+
+| order | lever | titles: measured here; on disk | gain where it acts | P | state, and the next step |
+|---|---|---|---|---|---|
+| 1 | **L1 `HAKUX_ZETA_D24`** (section 5) | measured: NG Black, Buffy, DOA3 (one tile on all three). On disk, two-tile: NBA Live 06/07, LOTR, MechAssault 2, ToeJam, Fantastic 4, Spider-Man 2 (mixed). Named by gpunonrender: Otogi, Black | GPU outer span x0.57-0.64 in the class. Hand-read: NG Black fps_ok 0.85 -> 0.96, Buffy 0.79 -> 1.00, 6-19% less energy per frame | 0.7 that it takes the measured titles over the bar on gameplay routes. The open risk is the depth cost (section 7) | committed, off by default. Registered A/B: **LOSS** on its W leg (9d). The depth pair is queued (rows 12-13). Then lane.local's cross-title screen, judged on a share leg |
+| 2 | **L4a `HAKUX_VTX_EXACT`** (10, 10a) | measured: Midnight Club 3 (H1: ex 0 of 973 downloads per 60 frames). On disk: Nightfire's NOSCAN calls, with no route and its H unread | MC3 up to 12.3 ms/frame of render-thread wait (ph_Fin 12.8 of 34.1 ms). MC3 is 0.08 under the bar at 0.815 | 0.85 that the downloads go; 0.55 that MC3 then reads >= 0.9 on its route (its fps varies 23-29 run to run, 10a) | drafted (`drafts/vtxexact.diff`); **WAITING** on draw.c, vertex.c, renderer.h |
+| 3 | **L4c `HAKUX_RANGE_EXACT`** (11) | measured: Forza. No other run on disk shows eviction batches | at most ~half of 16.6 ms/frame. Forza is 0.39 under the bar | 0.4 that rule (1) is most of the batches; ~0.15 that Forza reaches 0.9 by this alone | **WAITING** on surface.c for the split counter, then one Forza run. A switch and a pair follow only if (1) dominates |
+| 4 | L2 profiled autotune by default | GMEM titles where the GPU is the wait | Fuzion 38.7 -> 58.0 | 0.45 before, lower now: L1 removes the replay that profiled was escaping by choosing sysmem | lane.local's decision; nothing here |
+| 5 | L4b TEXSCAN's caller on non-cube textures | NFS MW (4 per finish, 2.2-4.0 ms/frame), Spider-Man 2, MC II | a few ms per frame | 0.2 | none runnable here; NFS MW is lane.local's chain |
+| 6 | L5 guest vCPU / PFIFO | Amped 2 runnable; Pilot Down, Hulk, NFS MW, NHL 2K3, LOTR unroutable | small after POSTED_PUT | 0.2 here | vcpuplan's lanes own it; not run here |
+| - | L3 `sysmem` for DOA3 and NG Black in `kTitleRenderModes` | 2 one-offs | 59 gfps | superseded | L1 takes NG Black to 59 gfps in GMEM, without sysmem's Kabuki stall or its ZPASS change (#527). Dropped |
+
+**Why L4a is above L4c, when each reaches one title:**
+- L4a's cause is measured to the byte (ex 0, `edge` = n), and its fix removes exactly that download.
+- L4a's win is the whole 12.3 ms, on a title 0.08 from the bar.
+- L4c's mechanism is not split yet, its win is at most half, and Forza is 0.39 from the bar.
+
+**Why L1 stays first after a LOSS.** The loss is the W leg's median against a frame cap, and both failures were
+foreseen before their B arms ran (9b, 9c). The legs that read the mechanism passed 3 of 3, on the widest class the
+runs on disk show.
+
+**Runs the ranking still needs (nothing else is queued, and nothing is a retest):**
+- The depth pair, 2 runs, queued.
+- L4a, after its grant: register `fpsbelow1012-vtxexact.json` on a ref past the master merge, with scene-robust
+  legs (B's `by=vtx` range downloads per 60 frames <= 5% of A's; B's `range` wait per frame <= 25% of A's; fps_ok
+  hand-read). One MC3 pair, 2 runs.
+- L4c, after its grant: one Forza run with the split counter, then a pair only if rule (1) dominates.
+
+That is at most 13 + 2 + 1 + 2 = 18 of the 30-run cap.
+
+WAITING: grant for hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/vertex.c, hw/xbox/nv2a/pgraph/vk/renderer.h
+-- L4a `HAKUX_VTX_EXACT` as drafted in `drafts/vtxexact.diff`, default off (MC3 H1, section 10a).
+
+WAITING: grant extension for hw/xbox/nv2a/pgraph/vk/surface.c beyond `HAKUX_ZETA_D24` -- a perf-build counter of
+which condition completed each `range` batch (section 11), then `HAKUX_RANGE_EXACT`, default off, only if rule (1)
+dominates.
+
+WAITING: z-1791809103-fpsbelow1012-286227 (B) and z-1791809107-fpsbelow1012-286943 (A), the depth-pixels pair,
+sweep tier, queued 05:45 PDT behind the overnight Playable chain. Read it with `ab_compare.py --a <A> --b <B>
+--expect docs/testing/predictions/fpsbelow1012-zetad24-pixels.json`, plus legs (1)-(4) of the prediction by hand.
 
