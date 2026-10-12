@@ -74,9 +74,10 @@
  * What "On" stands for, chosen from the measurements in
  * docs/lanes/savestate1011/NOTES.md.
  */
-#define HXS_ON_MODE HXS_MODE_BACKGROUND
+#define HXS_ON_MODE HXS_MODE_INLINE
 #define HXS_ON_CODEC HXS_CODEC_ZSTD
-#define HXS_ON_LEVEL 3
+#define HXS_ON_LEVEL 1
+#define HXS_ON_THREADS 4
 
 static const char *const mode_names[] = { "raw", "inline", "background",
                                           "deferred" };
@@ -131,7 +132,7 @@ static bool cfg_auto_load;
 static char *cfg_boot_title;
 static bool cfg_testing;
 static char *auto_load_msg;
-static int inline_threads = 1;
+static int inline_threads = HXS_ON_THREADS;
 
 /* The title the last identity check saw, for the cheap can-undo queries. */
 static char *last_title;
@@ -3873,7 +3874,7 @@ static void test_measure(void)
             uint64_t seq0 = last_job_seq;
             pthread_mutex_unlock(&hxs_mu);
             hxs_save(8, o->mode, o->codec, o->level, false, &st);
-            inline_threads = 1;
+            inline_threads = HXS_ON_THREADS;
             HXS_LOG("[savestate] measure save opt=%s cycle=%d ok=%d "
                     "pause_ms=%.1f durable_ms=%.1f raw=%" PRIu64
                     " bytes=%" PRIu64 " cpu_ms=%.1f",

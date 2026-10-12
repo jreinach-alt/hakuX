@@ -26,6 +26,13 @@ Attempt 2 read the pilot (all 11 functional steps pass; numbers below). It
 queued the 20-cycle measurement, merged origin/master, and finished the
 frontend.
 
+The 20-cycle measurement (1240876) stopped about 150 s into its 2600 s.
+lane.local put a hold on the Nova at 04:42:41Z (21:42:41 PDT) for the
+owner's hands-on test (`lane.local-ownerplay`), and the logcat ends at
+21:42:49 with the game running normally at 59 fps. It recorded only 6 saves
+of cycle 0, so it measures nothing. It was queued again on the final ref,
+to run after the hold.
+
 ## Design
 
 ### Where states live
@@ -151,8 +158,9 @@ directions:
 
 **Auto-save on quit** (off by default) writes only the `auto` slot.
 
-- It is a raw, synchronous save: under "On" the slot is compressed on the
-  next boot.
+- It is a synchronous save with the setting's own mode: raw under Off,
+  inline zstd under On. Nothing is left to a worker that the exit would
+  kill.
 - It runs before `nativeExitEmulation`/`killProcess` on the pause menu's
   Exit and Back-to-library paths.
 - A swipe-away from recents gives the app `onStop`, but no time is promised
@@ -175,7 +183,7 @@ among auto and 0-9. It skips any state saved before another title ran.
 |---|---|---|
 | 1-1791778350-savestate1011-727262 | pilot, route `187-ride-or-die` | refused by the profile gate (first-run route, kept profile) |
 | 1-1791778805-savestate1011-904197 | pilot: `func+measure`, 2 cycles, 187 attract race, ref 121cde1e09 | F1-F11 pass; done ok=1, 10 snapshots deleted, 0 left, scratch dir gone |
-| 1-1791779971-savestate1011-1240876 | `measure`, 20 cycles x 9 options, ref 121cde1e09 | running |
+| 1-1791779971-savestate1011-1240876 | `measure`, 20 cycles x 9 options, ref 121cde1e09 | stopped at ~150 s by the owner's hold on the Nova; 6 saves, not used |
 
 All runs:
 
@@ -213,9 +221,20 @@ All runs:
 **Undo load adds about 55 ms to every load.** That is about 40% of the
 load's pause.
 
-## Measurement (1240876)
+## Measurement
 
-Pending: the run is on the Nova.
+Pending: queued on the Nova behind the owner's hold.
+
+The code sets "On" to b-zstd1x4: inline zstd level 1, four threads over the
+1 MiB chunks (`HXS_ON_*` in `hxs.c`). That was the best option in the
+pilot's 2 cycles:
+
+- its pause was 77 ms, against 66-89 ms for raw;
+- the file was durable at 128 ms, against about 205 ms for raw;
+- the file was 10.5 MB, against 41.6 MB;
+- no work is left to run after the game resumes.
+
+The 20-cycle run decides it.
 
 ## Disk test
 
