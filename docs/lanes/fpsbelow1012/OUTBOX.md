@@ -49,3 +49,20 @@
   then L2, L4b, L5; L3 dropped (L1 supersedes it). Queued: the depth-pixels pair `-286227` (B) and `-286943` (A),
   sweep tier. WAITING: grants for draw.c, vertex.c, renderer.h (L4a) and an extension on surface.c (L4c's split
   counter).
+- 2026-10-12 06:11 PDT, grants used (board db57d68da6), at 67e3fcf745:
+  - **L4a `HAKUX_VTX_EXACT`** (draw.c, vertex.c, renderer.h; off by default) is built. It makes the vertex sync
+    stale-test and download only the bytes a draw reads, not the page-rounded range.
+  - **L4c's `[sdrfin]` counter** (surface.c, perf builds) is built.
+  - Registered `fpsbelow1012-vtxexact.json` (eb30dbad...).
+  - Queued at sweep tier: MC3 B `-567845`, MC3 A `-567963`, Forza `-568864`. Forza's split decides L4c, by a rule
+    written before the run (NOTES.md section 13).
+  - Runs: 16 of the 30 cap.
+- 2026-10-12 06:20 PDT, depth pair judged (NOTES.md section 14).
+  - **`fpsbelow1012-zetad24-pixels.json` PASS on every leg.** z16 72/72 unchanged. The two 0x800007 clears read
+    271,662 px each. The z24 FZn `_ZB` sum is 618,394 px. No new blank. No colour pixel moved outside a label in any
+    of 941 captures.
+  - **Cost found outside the legs:** W_buffering's F24 rows (60 captures) read back one unit high on every drawn
+    pixel (labels `0x84d36f` -> `0x84d370`). Drawn colour is identical. The fixed-D24 and 16-bit rows are unchanged.
+  - L1 is ready for lane.local's cross-title screen, judged on a share leg, with that cost weighed.
+  - Candidates for gameplay-route confirmation with `HAKUX_ZETA_D24=1`: Buffy, NG Black, DOA3. Each is survey-route
+    only, so lane.local's.

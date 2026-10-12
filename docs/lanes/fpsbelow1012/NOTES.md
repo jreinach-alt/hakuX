@@ -3,15 +3,16 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **12** run (the pilot: 2 read, 1 void before input; the A/B's six
-arms on NGB, DOA3 and Buffy; the `[sdrange]` runs on MC3 and Forza; the depth pair's B), **1** running (the depth
-pair's A), **3** queued (the L4a pair on MC3 and Forza's `[sdrfin]` run, section 13). 16 of 30. Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **13** run (the pilot: 2 read, 1 void before input; the A/B's six
+arms on NGB, DOA3 and Buffy; the `[sdrange]` runs on MC3 and Forza; the depth pair, section 14), **3** queued (the
+L4a pair on MC3 and Forza's `[sdrfin]` run, section 13). 16 of 30. Ledger in section 4.
 
 ## 0c. Attempt 3, after Addendum 2 (10-12 05:57 PDT): the grants landed
 
 Board db57d68da6 granted draw.c, vertex.c and renderer.h for L4a, and widened surface.c to L4c's split counter
 (perf builds). Both are built at 67e3fcf745, the L4a prediction is registered, and the three runs that read them are
-queued behind L1's depth pair (section 13).
+queued behind L1's depth pair (section 13). The depth pair landed at 06:08 PDT and is judged in section 14: it
+passes every registered leg.
 
 ## 0b. Attempt 3 (10-12 ~05:40 PDT): why attempt 2 did not finish
 
@@ -173,8 +174,11 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 | 9 | z-1791801220-fpsbelow1012-2906178 | Forza Motorsport | forza-soak1010 | 480 | done 10-12 04:40, ref dbf9dd40cc (apk 64dbb3082354), `--env HAKUX_RANGELOG=1` (+ the telemetry env) | section 11: not H1; fps_ok 0.51; `range` 16.6 ms/frame is batch completion of eviction downloads |
 | 10 | z-1791803606-fpsbelow1012-3255578 | Dead or Alive 3 | survey | 480 | done 10-12 04:57, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`; init line 0x81) | section 9d: V M P pass, W fails (as 9b said); a different fight from A |
 | 11 | z-1791804165-fpsbelow1012-3514899 | Buffy the Vampire Slayer | survey | 480 | done 10-12 05:32, ref be0239bac8 (apk 47e99f5db99c), **B** (`HAKUX_ZETA_D24=1`; 0x81) | section 9d: V M P pass, W fails at the 30 cap (as 9c said); fps_ok 0.79 -> 1.00 |
-| 12 | z-1791809103-fpsbelow1012-286227 | pgraph: 10 depth suites | - | - | queued 10-12 05:45 PDT, ref c1112f2c1a, **B** (`HAKUX_ZETA_D24=1`), `--expect fpsbelow1012-zetad24-pixels.json` | section 7's cost, measured |
-| 13 | z-1791809107-fpsbelow1012-286943 | pgraph: 10 depth suites | - | - | queued 10-12 05:45 PDT, same ref, **A** (no env), queued last | the same pair |
+| 12 | z-1791809103-fpsbelow1012-286227 | pgraph: 10 depth suites | - | - | done 10-12 05:58 PDT, ref c1112f2c1a (apk c8ce9a771091), **B** (`HAKUX_ZETA_D24=1`; init line 0x81), `--expect fpsbelow1012-zetad24-pixels.json` | section 14: every leg passes |
+| 13 | z-1791809107-fpsbelow1012-286943 | pgraph: 10 depth suites | - | - | done 10-12 06:08 PDT, same ref and apk, **A** (no env; 0x82), queued last | the same pair |
+| 14 | z-1791810680-fpsbelow1012-567845 | Midnight Club 3 | midnight-club-3.returning | 540 | queued 10-12 06:11 PDT, ref 67e3fcf745, **B** (`HAKUX_VTX_EXACT=1`), `--expect fpsbelow1012-vtxexact.json` | section 13 |
+| 15 | z-1791810682-fpsbelow1012-567963 | Midnight Club 3 | midnight-club-3.returning | 540 | queued 10-12 06:11 PDT, same ref, **A** (no switch) | the same pair |
+| 16 | z-1791810687-fpsbelow1012-568864 | Forza Motorsport | forza-soak1010 | 480 | queued 10-12 06:11 PDT, same ref, no switch, queued last | section 13: the `[sdrfin]` split decides L4c |
 
 The depth-exactness pair (rows 12-13) is the one registered as `docs/testing/predictions/fpsbelow1012-zetad24-pixels.json`
 (sha256 c543e6ac..., refs c1112f2c1a on both arms, B queued first), 10 depth suites, one run per arm. It was planned
@@ -394,6 +398,10 @@ earlier draft of this paragraph said the switch kept the one-scale fix, which is
 So the size is of the order of 10^5 to 10^6 differing px on the z24 FZn rows, most of it in two whole-surface
 clears, and not the pre-#16 11.7M (which included the blanks). That is a reading of the code and of the 09-10
 measurement, not a measurement of the switch.
+
+**Measured 10-12, section 14:** the z16, z24 FZn and blank bullets above held. The W_buffering bullets did not:
+none of its fixed-Z24 (`*Buf24D*`) rows moved, and its F24 rows (`WBuf24F`, `ZBuf24F`) moved, with every drawn
+pixel's depth reading back one unit high and drawn colour unchanged. That is not "small".
 
 **What a title sees.** One unit in 2^24 of depth. A title that redraws geometry with depth EQUAL quantises both
 passes the same way and is unaffected. A title that clears to a mid-range value and then tests a draw against it
@@ -813,9 +821,9 @@ lookup (L4b), not an eviction batch.
 
 | order | lever | titles: measured here; on disk | gain where it acts | P | state, and the next step |
 |---|---|---|---|---|---|
-| 1 | **L1 `HAKUX_ZETA_D24`** (section 5) | measured: NG Black, Buffy, DOA3 (one tile on all three). On disk, two-tile: NBA Live 06/07, LOTR, MechAssault 2, ToeJam, Fantastic 4, Spider-Man 2 (mixed). Named by gpunonrender: Otogi, Black | GPU outer span x0.57-0.64 in the class. Hand-read: NG Black fps_ok 0.85 -> 0.96, Buffy 0.79 -> 1.00, 6-19% less energy per frame | 0.7 that it takes the measured titles over the bar on gameplay routes. The open risk is the depth cost (section 7) | committed, off by default. Registered A/B: **LOSS** on its W leg (9d). The depth pair is queued (rows 12-13). Then lane.local's cross-title screen, judged on a share leg |
-| 2 | **L4a `HAKUX_VTX_EXACT`** (10, 10a) | measured: Midnight Club 3 (H1: ex 0 of 973 downloads per 60 frames). On disk: Nightfire's NOSCAN calls, with no route and its H unread | MC3 up to 12.3 ms/frame of render-thread wait (ph_Fin 12.8 of 34.1 ms). MC3 is 0.08 under the bar at 0.815 | 0.85 that the downloads go; 0.55 that MC3 then reads >= 0.9 on its route (its fps varies 23-29 run to run, 10a) | drafted (`drafts/vtxexact.diff`); **WAITING** on draw.c, vertex.c, renderer.h |
-| 3 | **L4c `HAKUX_RANGE_EXACT`** (11) | measured: Forza. No other run on disk shows eviction batches | at most ~half of 16.6 ms/frame. Forza is 0.39 under the bar | 0.4 that rule (1) is most of the batches; ~0.15 that Forza reaches 0.9 by this alone | **WAITING** on surface.c for the split counter, then one Forza run. A switch and a pair follow only if (1) dominates |
+| 1 | **L1 `HAKUX_ZETA_D24`** (section 5) | measured: NG Black, Buffy, DOA3 (one tile on all three). On disk, two-tile: NBA Live 06/07, LOTR, MechAssault 2, ToeJam, Fantastic 4, Spider-Man 2 (mixed). Named by gpunonrender: Otogi, Black | GPU outer span x0.57-0.64 in the class. Hand-read: NG Black fps_ok 0.85 -> 0.96, Buffy 0.79 -> 1.00, 6-19% less energy per frame | 0.7 that it takes the measured titles over the bar on gameplay routes. The open risk is the depth cost (section 7) | committed, off by default. Registered A/B: **LOSS** on its W leg (9d). Depth pair: **PASS** on every leg; the cost is a +1 LSB read-back of Z24 depth, drawn colour unchanged (section 14). Next: lane.local's cross-title screen, judged on a share leg |
+| 2 | **L4a `HAKUX_VTX_EXACT`** (10, 10a) | measured: Midnight Club 3 (H1: ex 0 of 973 downloads per 60 frames). On disk: Nightfire's NOSCAN calls, with no route and its H unread | MC3 up to 12.3 ms/frame of render-thread wait (ph_Fin 12.8 of 34.1 ms). MC3 is 0.08 under the bar at 0.815 | 0.85 that the downloads go; 0.55 that MC3 then reads >= 0.9 on its route (its fps varies 23-29 run to run, 10a) | built at 67e3fcf745, off by default; `fpsbelow1012-vtxexact.json` registered; the MC3 pair is queued (rows 14-15, section 13) |
+| 3 | **L4c `HAKUX_RANGE_EXACT`** (11) | measured: Forza. No other run on disk shows eviction batches | at most ~half of 16.6 ms/frame. Forza is 0.39 under the bar | 0.4 that rule (1) is most of the batches; ~0.15 that Forza reaches 0.9 by this alone | the `[sdrfin]` split counter is built at 67e3fcf745 (perf builds); one Forza run is queued (row 16). A switch and a pair follow only if (1) dominates (rule in section 13) |
 | 4 | L2 profiled autotune by default | GMEM titles where the GPU is the wait | Fuzion 38.7 -> 58.0 | 0.45 before, lower now: L1 removes the replay that profiled was escaping by choosing sysmem | lane.local's decision; nothing here |
 | 5 | L4b TEXSCAN's caller on non-cube textures | NFS MW (4 per finish, 2.2-4.0 ms/frame), Spider-Man 2, MC II | a few ms per frame | 0.2 | none runnable here; NFS MW is lane.local's chain |
 | 6 | L5 guest vCPU / PFIFO | Amped 2 runnable; Pilot Down, Hulk, NFS MW, NHL 2K3, LOTR unroutable | small after POSTED_PUT | 0.2 here | vcpuplan's lanes own it; not run here |
@@ -831,11 +839,11 @@ foreseen before their B arms ran (9b, 9c). The legs that read the mechanism pass
 runs on disk show.
 
 **Runs the ranking still needs (nothing else is queued, and nothing is a retest):**
-- The depth pair, 2 runs, queued.
-- L4a, after its grant: register `fpsbelow1012-vtxexact.json` on a ref past the master merge, with scene-robust
+- The depth pair, 2 runs: done, section 14.
+- L4a (granted, built, registered, queued as rows 14-15): register `fpsbelow1012-vtxexact.json` on a ref past the master merge, with scene-robust
   legs (B's `by=vtx` range downloads per 60 frames <= 5% of A's; B's `range` wait per frame <= 25% of A's; fps_ok
   hand-read). One MC3 pair, 2 runs.
-- L4c, after its grant: one Forza run with the split counter, then a pair only if rule (1) dominates.
+- L4c (counter granted and built, queued as row 16): one Forza run with the split counter, then a pair only if rule (1) dominates.
 
 That is at most 13 + 2 + 1 + 2 = 18 of the 30-run cap.
 
@@ -905,3 +913,96 @@ HAKUX_FRAMETRACE=1`), queued behind the depth pair's A in this order:
 
 Section 11 put P 0.4 on rule (1) dominating.
 
+
+## 14. The depth pair judged: every leg passes; the cost is one unit of read-back depth (10-12 06:20 PDT)
+
+The pair is `fpsbelow1012-zetad24-pixels.json`: B `z-1791809103-fpsbelow1012-286227` and A
+`z-1791809107-fpsbelow1012-286943`. Both arms ran ref c1112f2c1a (apk c8ce9a771091), one run per arm, 941
+captures each, on the same disc.
+- B's init line reads `Z24S8 host format 0x81, depth stored as unorm (HAKUX_ZETA_D24)`.
+- A's reads `0x82, depth stored as float`.
+
+`ab_compare.py` (output in `tools/depthpair-abcompare.out`) finds the prediction pre-registered, still hashing to
+c543e6ac.... Its verdict is **PASS: all 72 registered checks hold**, which is the machine leg. The hand-read legs come
+from the two `scores1.tsv`:
+
+| leg | registered | read, B (A) | |
+|---|---|---|---|
+| machine | every Depth_buffer z16 capture holds | 72 of 72 unchanged | pass |
+| 1 | `DepthFmt_z24_C{n,y}_FZn_M800007_ZB` each >= 250,000 px | 271,662 each (654) | pass |
+| 2 | no other z24 FZn capture with M >= 0xc00003 or M < 0x800000 moves more than 20,000 px | largest +4,086 (Mc00003, Mf55555, Mfaaaaa, Mffffff, both C). M00000f, M055564, M0aaab9 and M40000b unchanged | pass |
+| 3 | the 18 z24 FZn `_ZB` rows sum to 300,000-1,500,000 px | 618,394 (43,690) | pass |
+| 4 | no capture newly blank (differing == pixels) | none (A has none either) | pass |
+
+Depth_buffer_fixed_function moved the same way:
+- `z24_C{n,y}_FZn_M800001_ZB`: 520 -> 304,804 each. That is +304,284, the very count of 0x800008 pixels that
+  `docs/investigations/depth-readback-scale.md` measured on 09-10.
+- Mc00000 and Mffffff: +167 each.
+- Depth_buffer z24 FZy `_ZB`: +4,000 on each of 8 rows.
+
+**No colour capture moved in Depth_buffer or Depth_buffer_fixed_function.** Only depth read-back (`_ZB`) rows moved.
+
+**What the registered legs did not cover: W_buffering's F24 rows.** That is 60 of the 84 worse captures, and
+section 7 got it wrong.
+
+Rows that moved, by format family:
+
+| family | moved |
+|---|---|
+| `WBuf24F` | 44 of 64 |
+| `ZBuf24F` | 16 of 64 |
+| `WBuf24D`, `ZBuf24D` | 0 of 146 |
+| any 16-bit family | 0 of 256 |
+
+- **Colour.** 30 colour captures moved, each by 130-610 px, and each changed status from ok or white-content to
+  label-differs. All 30 differ from A only inside the left label column (the bounding box of A vs B ends at
+  x < 150). The test prints the depth it read back in that column. In B every printed value is one unit higher, e.g.
+  RoofQuad WBuf24F `Z:0x84d36f` -> `0x84d370`, through `0x86dd6d` -> `0x86dd6e`. The drawn geometry is identical
+  between the arms.
+- **Depth read-back.** 30 `_Z`/`_ZB` captures moved: +758 px on each LineStrip row, +25k to +26k on each Tri row,
+  and +62k to +232k on each quad row. Their
+  images look the same; the values are one unit off.
+- **The pixel split.** On these 60 rows:
+
+  | | A | B |
+  |---|---|---|
+  | differing | 672,967 | 3,475,896 |
+  | off-by-one | 466,526 | 2,864,908 |
+  | structural | 206,441 | 610,988 |
+
+  I did not decode the read-back colour encoding. A uniform +1 that carries into the next byte would read as
+  structural, but that is an inference.
+
+A's labels match the goldens: A's status was ok or white-content, and only the label changed in B. So B's F24 depth
+reads back one unit above silicon, on every drawn pixel of these draws. Their W values sit just above 2^23
+(0x84xxxx-0x86xxxx), where the unorm quantiser's phase error is largest. The fixed D24 W-buffer rows did not move.
+
+**What it means for the switch.**
+- The registered verdict is PASS. Read by the prediction's own clauses:
+  - no z16 move and no new blank, so the switch reaches nothing outside the Z24S8 map;
+  - (1) holds, so the quantiser still hits the 0x800007 clear on today's driver;
+  - (2) and (3) hold, so Depth_buffer's z24 cost stays at the clears and the existing off-by-one.
+- **The W_buffering finding is a wider cost than section 7 stated, measured outside the legs.** A title that uses an
+  F24 depth format and reads depth back (lock, or depth as a texture) sees values one F24 unit high wherever its
+  depth sits near 2^23.
+- No depth test result changed in any of the 941 captures: no colour pixel moved outside a label.
+
+lane.local's cross-title screen should weigh that cost with the speed: one tile on NG Black, Buffy and DOA3,
+section 9d.
+
+**Next for L1.** The pair is not a reason to hold L1 back, and it is not a reason to queue more runs here:
+- the gameplay-route confirmations of Buffy, NG Black and DOA3 are lane.local's (OUTBOX.md). None of the three has a
+  gameplay route that the profile gate admits (section 1), and pathing is not this lane's work;
+- the cross-title screen is lane.local's;
+- turning the switch on by default is lane.local's.
+
+**WAITING** (10-12 06:20 PDT) on rows 14-16, all queued at sweep tier behind lane.local's Playable chain, ref
+67e3fcf745. The Nova held lane.pathfind's 600 s hold at 13:08Z.
+- MC3 pair, B `z-1791810680-fpsbelow1012-567845` and A `z-1791810682-fpsbelow1012-567963`. Read with
+  `docs/lanes/fpsbelow1012/tools/rfread.py z-1791810682-fpsbelow1012-567963 z-1791810680-fpsbelow1012-567845
+  --expect docs/testing/predictions/fpsbelow1012-vtxexact.json --key MC3`, plus the hand-read legs in the
+  prediction (fps_ok, ph_Fin, torn geometry in B's frames).
+- Forza `z-1791810687-fpsbelow1012-568864`. Read with `tools/rfread.py z-1791810687-fpsbelow1012-568864`, then apply
+  section 13's rule.
+
+Nothing of this session's is running.
