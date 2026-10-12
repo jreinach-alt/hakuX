@@ -917,6 +917,59 @@ static void sdr_log(PGRAPHVkState *r, int frames)
     }
     memset(&g_sdr, 0, sizeof(g_sdr));
 }
+
+/*
+ * lane.fpsbelow1012 (#433), [sdrfin]: why each `range` completion below
+ * completed its batch. Since forza414 an eviction's downloads wait for the
+ * next finish, and the lookup completes the pending batch when the range
+ * overlaps any surface, draw_dirty or not, or a pending download's
+ * destination. own: this lookup recorded a download of its own. dest: it
+ * recorded none, and the range overlaps a pending destination (the reader
+ * needs those bytes). clean: it recorded none, and the range overlaps no
+ * pending destination, only a surface with nothing to download (a precise
+ * rule would not complete). tscan: pgraph_vk_texscan_complete_range (always
+ * dest). Per class, per 60 guest frames: completions, the downloads they
+ * retired, for own those the lookups recorded, and the wall time of the
+ * whole completion (the fence or finish and the copies into VRAM, so a
+ * little more than [sdcall] range=...ms). Perf builds only, always on.
+ */
+enum { RF_OWN, RF_DEST, RF_CLEAN, RF_TSCAN, RF__COUNT };
+
+static struct {
+    unsigned long n[RF__COUNT], dl[RF__COUNT], rec;
+    int64_t ns[RF__COUNT];
+} g_rfin;
+
+static void rfin_count(int rf, unsigned long dl, int rec, int64_t ns)
+{
+    g_rfin.n[rf]++;
+    g_rfin.dl[rf] += dl;
+    g_rfin.rec += rec;
+    g_rfin.ns[rf] += ns;
+}
+
+static void rfin_log(int frames)
+{
+    static const char *const names[RF__COUNT] = {
+        "own", "dest", "clean", "tscan",
+    };
+    unsigned long any = 0;
+    for (int i = 0; i < RF__COUNT; i++) {
+        any += g_rfin.n[i];
+    }
+    if (any) {
+        char buf[400];
+        int n = snprintf(buf, sizeof(buf), "[sdrfin] frames=%d rec=%lu",
+                         frames, g_rfin.rec);
+        for (int i = 0; i < RF__COUNT && n < (int)sizeof(buf); i++) {
+            n += snprintf(buf + n, sizeof(buf) - n, " %s=n%lu/dl%lu/%.1fms",
+                          names[i], g_rfin.n[i], g_rfin.dl[i],
+                          (double)g_rfin.ns[i] / 1e6);
+        }
+        SURF92_LOG("%s", buf);
+    }
+    memset(&g_rfin, 0, sizeof(g_rfin));
+}
 #endif
 
 bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
@@ -929,6 +982,7 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
 #if NV2A_PERF_LOG && defined(__ANDROID__)
     intptr_t sdr_ra = 0;
     bool sdr_vtx = false;
+    int rf_rec = 0;
     if (unlikely(sdr_on())) {
         /* The caller, as an offset from this function (ASLR moves both). */
         uintptr_t ra = (uintptr_t)__builtin_return_address(0);
@@ -956,6 +1010,7 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
                 if (unlikely(sdr_state > 0)) {
                     sdr_note(r, surface, sdr_ra, sdr_vtx, start, size);
                 }
+                rf_rec++;
 #endif
                 download_surface_deferred(d, surface);
             }
@@ -970,6 +1025,7 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
             OPT_STAT_INC(sd_shelved_lazy_dl);
 #if NV2A_PERF_LOG && defined(__ANDROID__)
             g_sdr.shv += sdr_state > 0;
+            rf_rec++;
 #endif
             download_surface_deferred(d, surface);
             surface->shelved_dirty = false;
@@ -985,6 +1041,7 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
             OPT_STAT_INC(sd_shelved_lazy_dl);
 #if NV2A_PERF_LOG && defined(__ANDROID__)
             g_sdr.inv += sdr_state > 0;
+            rf_rec++;
 #endif
             download_surface_deferred(d, surface);
             found_overlap = true;
@@ -999,7 +1056,17 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
          * now since the caller needs the data in VRAM. That includes ones
          * an earlier surface_update left pending for a surface it evicted,
          * which is shelved clean and so is not found above. */
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+        int rf = rf_rec ? RF_OWN :
+                 deferred_downloads_overlap_range(d, start, size) ? RF_DEST :
+                 RF_CLEAN;
+        unsigned long rf_dl = r->num_deferred_downloads + g_sg_held.n;
+        int64_t rf_t0 = nv2a_clock_ns();
+#endif
         download_surface_complete_deferred(d, SDC_RANGE);
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+        rfin_count(rf, rf_dl, rf_rec, nv2a_clock_ns() - rf_t0);
+#endif
     }
 
     return found_overlap;
@@ -1026,7 +1093,14 @@ bool pgraph_vk_texscan_complete_range(PGRAPHState *pg, hwaddr start,
         !deferred_downloads_overlap_range(d, start, size)) {
         return false;
     }
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+    unsigned long rf_dl = r->num_deferred_downloads + g_sg_held.n;
+    int64_t rf_t0 = nv2a_clock_ns();
+#endif
     download_surface_complete_deferred(d, SDC_RANGE);
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+    rfin_count(RF_TSCAN, rf_dl, 0, nv2a_clock_ns() - rf_t0);
+#endif
     return true;
 }
 
@@ -1900,6 +1974,7 @@ static void sdcall_log(PGRAPHState *pg)
                  g_sdcall.spl_dl, g_sdcall.spl_kb, g_sdcall.spl_cmpl);
     }
     SURF92_LOG("%s", buf);
+    rfin_log(frames);
     if (surfgpu_enabled()) {
         SURF92_LOG("[surfgpu] frames=%d detach=%lu nodisp=%lu dedup=%lu "
                    "hold=%lu hwait=%lu hrot=%lu wrap=%lu",

@@ -1403,6 +1403,10 @@ typedef struct PGRAPHVkState {
 
     MemorySyncRequirement vertex_ram_buffer_syncs[NV2A_VERTEXSHADER_ATTRIBUTES];
     size_t num_vertex_ram_buffer_syncs;
+    /* #433 HAKUX_VTX_EXACT (vk/draw.c): the sync already downloaded what the
+     * draw reads, so the next pgraph_vk_update_vertex_ram_buffer skips its
+     * download over the rounded range. */
+    bool vtx_exact_downloaded;
 
     /* #433 HAKUX_VTX_HAZARD (vk/vertex.c): the exact vertex RAM bytes the
      * draws recorded under vtxhz_rot read ([addr, addr + size), unsorted),
