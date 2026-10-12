@@ -109,13 +109,14 @@ The owner's "shadow dropping out" in play: the vertex hazard rewrote a shadow-ch
 
 The proof runs are two `gta-sa` soaks on the Nova at d50bf5c47c with `HAKUX_VTX_HAZARD=1`: 600 s, frames every 5 s, and 120 s of video from 30 s after the mark. Neither has a BugCheck. Predictions S, H and C were written before queueing (NOTES, step 3).
 
-| run | sky polygons, post-mark stills | sky defects, video at 1 frame/s | shadow share, alley stills (`stillcmp.py`) | `vtx_hazard` finishes per 10 s, gameplay |
+| run | sky polygons, post-mark stills | video at 1 frame/s (pointers only) | shadow share, alley stills (`stillcmp.py`) | `vtx_hazard` finishes per 10 s, gameplay |
 |---|---|---|---|---|
 | `1063190`, switch on | 0 of 67 | 0 of 120 | 0.77-1.11 (13) | 69-395, median 260 |
 | `1063583`, switch on | 0 of 69 | 0 of 120 | 0.78-1.11 (14) | 126-437, median 314 |
 | `3149619`, current build | 5 of 67 | 7 of 120, plus a magenta quad on the road | (not measured) | (switch off) |
 
-- **S (sky, P 0.85): holds.** 0 of 136 pooled stills. The current build runs at about 4 per 144, so zero by chance is about 1-3%.
+- **S (sky, P 0.85): holds.** 0 of 136 pooled stills. The current build runs at about 4 per 144, so zero by chance is about 1-3%. The verdict rests on the stills alone.
+- **Video column:** the brief assumed mp4 could not be decoded here and said not to score it. `ffmpeg` in `~/.local/bin` decodes it, so I sampled each mp4 at 1 frame/s by eye. This is not a score. It tells the owner where to look, in the table below. The owner's video check decides.
 - **H (shadow, P 0.95): holds.** Every alley still is at 0.7 or more. By eye, on open sunny ground, the shadow is no easier to see in either arm. That fits a faint shadow, not a missing one. The video check is the owner's.
 - **C (cost, P 0.8): fails by the letter.** 11 of 79 lines are outside 100-370, between 69 and 437. That is about one extra submit a frame, and up to 1.5. No frame-rate claim is made from these runs; the screen reads gfps.
 

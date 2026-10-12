@@ -1097,8 +1097,10 @@ f00072/f00073 (distance fog) and the thin streaks in f00092 (power lines). The c
 shows 5 of 67 in 3149619 and about 4 per 144 in the brief's runs, so zero here by chance is
 about 1-3%.
 
-The videos agree. I sampled each mp4 at 1 frame a second (`ffmpeg -vf fps=1`, 60 per segment) and
-read them on sheets:
+**The videos, as pointers for the owner, not a score.** The brief (addendum 1) assumed mp4
+could not be decoded here and said not to score it. `ffmpeg` in `~/.local/bin` decodes it, so I
+sampled each mp4 at 1 frame a second (`ffmpeg -vf fps=1`, 60 per segment) and read the frames on
+sheets. S rests on the stills alone; the owner's video check decides. What the samples show:
 
 | video (120 s from 30 s after the mark) | sampled | sky defect | other |
 |---|---|---|---|
