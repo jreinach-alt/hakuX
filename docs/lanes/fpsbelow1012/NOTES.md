@@ -1,9 +1,9 @@
 # lane.fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5)
 
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
-43 titles copied on the Nova. Base: master @ 5326de78b2.
+43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **2** so far (queued). Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **0** run, 2 queued. Ledger in section 4.
 
 ## 1. Which titles a run can reach at all (the profile gate, read before the table)
 
@@ -129,5 +129,89 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 
 | # | request id | title | route | seconds | state | read |
 |---|---|---|---|---|---|---|
-| 1 | z-1791786704-fpsbelow1012-2329412 | Midnight Club 3 | midnight-club-3.returning | 600 | queued (pilot) | |
-| 2 | z-1791786704-fpsbelow1012-2329507 | Amped 2 | amped2 | 900 | queued (pilot) | |
+| - | z-1791786704-fpsbelow1012-2329412 | Midnight Club 3 | midnight-club-3.returning | 600 | withdrawn before it started (ref 5326de78b2; defaulton1011 folded at 00fde8afb3 while it queued) | not counted |
+| - | z-1791786704-fpsbelow1012-2329507 | Amped 2 | amped2 | 900 | withdrawn, same reason | not counted |
+| 1 | z-1791787431-fpsbelow1012-2456548 | Midnight Club 3 | midnight-club-3.returning | 600 | queued (pilot), ref 00fde8afb3 | |
+| 2 | z-1791787432-fpsbelow1012-2456706 | Amped 2 | amped2 | 900 | queued (pilot), ref 00fde8afb3 | |
+
+## 5. Why the GMEM-replay class replays: Z24S8 as D32_SFLOAT_S8_UINT (offline, before any run)
+
+gpunonrender measured the class on matched scenes: "The GMEM pass's last tile (`in`, 13.5 ms) equals the whole
+sysmem pass (13.5 ms). The pass has two bins, and each bin executes the whole draw stream" (its NOTES, DOA3 P1,
+lines 1586-1596; NG Black P2 the same at 1696-1702). Sysmem took DOA3 from 34.0 to 59.0 gfps and NG Black from 32.5
+to 59.0, but sysmem stalls Kabuki's fight and changes the ZPASS report (#527), so it went per title. Nobody asked
+why a 720x480 pass needs two bins in 3 MiB of GMEM. The answer is the depth format.
+
+**The mechanism**, read from the Turnip fork the app ships (`mesa-turnipfork/src/freedreno`):
+
+1. hakuX maps Z24S8 to `VK_FORMAT_D32_SFLOAT_S8_UINT` when the device has it (vk/surface.c, since a33fa42bc3,
+   09-10, #16). Every Nova logcat says so: `nv2a: Z24S8 host format 0x82, depth stored as float` (0x82 = 130 =
+   D32_SFLOAT_S8_UINT; seen in every recent result, e.g. `1-1791785130-lane.local-2108844`).
+2. In GMEM, Turnip keeps that format's stencil as a separate cpp-1 plane (tu_pass.cc, "take into account the
+   separate stencil"), so a pixel of a colour + Z24S8 pass costs 4 + 4 + 1 bytes.
+3. A cpp-1 allocation doubles `tile_align_w` when it is not a multiple of 64: 96 -> 192 on the A740
+   (tu_pass.cc: "texture pitch must be aligned to 64 ... for cpp==1 attachment to work as input attachment").
+   hakuX uses no input attachments.
+4. Tile widths are walked in steps of `tile_align_w` (tu_util.cc). At 192 the only widths that cover 640 or 720 are
+   768 (then 344064 px / 768 = 448 rows < 480) or 576 (two columns): **two tiles**, though 720x480 = 345600 px is
+   97% of what the pass could hold.
+5. `binning_useful = tiles > 2` (tu_util.cc). Two tiles get no HW binning, so each tile executes every draw.
+   That is the replay gpunonrender measured, and it is why the replay costs about one whole pass.
+
+`tools/tilesim.py` re-does steps 2-5 in Python (A740: 3 MiB GMEM, `tile_align` 96x32, gen2 CCU fractions):
+
+| pass (colour cpp) | zeta | align_w | gmem px | tiles | HW binning | draws executed |
+|---|---|---|---|---|---|---|
+| 640x480 (4) | D32S8 (today) | 192 | 344064 | 2 | no | whole stream x2 |
+| 640x480 (4) | D24S8 | 96 | 393216 | **1** | no | whole stream x1 |
+| 720x480 (4) | D32S8 (today) | 192 | 344064 | 2 | no | whole stream x2 |
+| 720x480 (4) | D24S8 | 96 | 393216 | **1** | no | whole stream x1 |
+| 640 or 720x480 (2, R5G6B5) | D32S8 | 192 | 442368 | 1 | no | whole stream x1 |
+
+The AVOID_CCU layout gives the same counts (D24S8 387072 px, still one tile). The census agrees on DOA3's scene
+pass: ckb 1350 + zkb 2700 KiB, that is 720x480 at 4 bytes of colour and 8 of host zeta (draw.c `xfr_census_begin`
+counts host bytes; in GMEM it is 4 + 1). The tile divisor is 1 unless `TU_AUTOTUNE_FLAGS` has PREEMPT_OPTIMIZE
+(tu_autotune.cc `get_tile_size_divisor`), which the app does not set.
+
+**So the class is most 32-bit-colour titles that render 640/720x480 in GMEM**, not a few heavy ones: the replay
+costs every such title the per-draw work once more per scene pass. It only shows as frames where the GPU is the
+wait, which is DOA3 (~700 draws/pass), NG Black (~90), Otogi and Black (gpunonrender line 484), and what is GMEM
+among LOTR, NHL 2K3 and Spider-Man 2. AUF, DOA Ultimate and NFS MW are sysmem by `kTitleRenderModes` and do not
+change; R5G6B5 titles are already one tile.
+
+**Why D24S8, and not the alternatives:**
+
+| option | what it does to a 720x480 32-bit pass | against it |
+|---|---|---|
+| **Z24S8 as D24_UNORM_S8_UINT** (`HAKUX_ZETA_D24`) | one tile, GMEM kept: no replay, no change to ZPASS or Kabuki's mode | the depth round trip of #16: on Adreno a D24 clear of 0x800007 reads back 0x800008; Depth_buffer went 11.7M -> 505k differing px with D32S8 and goes back toward 11.7M (10 blank captures before #16) |
+| fork: no 64-alignment doubling for a separate stencil that is never an input attachment | 640x480 fits one tile; **720x480 still two** (345600 > 344064 px at align 96) | misses DOA3 (720x480); a fork change |
+| fork: HW binning at 2 tiles | a binning pass plus each tile's visible draws | gmem474: forcebin never won on the Nova |
+| sysmem per title (`kTitleRenderModes`) | no tiles | one-offs; Kabuki stalls; #527 ZPASS |
+
+D24S8 is the maintained fallback, not new code: `zeta_stored_as_float=false` selects the 0xFFFFFF scale in
+glsl/common.c (a uniform), the ULP nudge in glsl/psh.c (`float_depth_storage` is in the psh key, vk/shaders.c), the
+readback in pgraph.c, and the compute pack/unpack in vk/surface-compute.c handles both formats. Before 09-10 it was
+the first choice (a33fa42bc3^ tried D24 first, as upstream xemu does), so every Nova GMEM measurement since 09-10
+(gmem474, gpunonrender, profileddefault1008) saw two tiles where the August builds saw one.
+
+The switch, drafted as `zetad24.patch` (applies to 00fde8afb3): `HAKUX_ZETA_D24=1`, read once at renderer init,
+takes D24_UNORM_S8_UINT first when the device has it; the init line becomes `nv2a: Z24S8 host format 0x81, depth
+stored as unorm (HAKUX_ZETA_D24)`, which is what proves a B arm live. Off by default; nothing changes without the
+env.
+
+WAITING: grant for `hw/xbox/nv2a/pgraph/vk/surface.c` (HAKUX_ZETA_D24, off by default: Z24S8 as D24_UNORM_S8_UINT
+so a 640/720x480 GMEM pass fits one tile; the whole change is `zetad24.patch`, two hunks at the Z24S8 format choice).
+
+## 6. Lever ranking (draft: titles x win x P; the telemetry in section 3 firms up the titles column)
+
+| # | lever | titles it reaches | win where it acts | P | why that P |
+|---|---|---|---|---|---|
+| L1 | `HAKUX_ZETA_D24` (section 5) | every 32-bit 640/720x480 GMEM title where the GPU is the wait: DOA3, NG Black, Otogi, Black; LOTR, NHL 2K3, Spider-Man 2 where GMEM | up to sysmem's matched-scene gain without its costs: DOA3 34 -> ~59, NG Black 32.5 -> ~59 (one replay is the whole pass) | 0.6 | For: the mechanism is read from the driver source and agrees with three measured numbers (two bins; last tile = whole sysmem pass; 9 B/px). Against: a one-tile GMEM pass still loads and stores colour and depth, which sysmem does not; the autotune may then pick sysmem for some passes; and depth exactness drops to the pre-#16 level, which a title that reads depth back may show |
+| L2 | profiled autotune by default (`kAutotuneProfiledDefault`) | GMEM titles where the GPU is the wait | Fuzion 38.7 -> 58.0 | 0.45 | Forza loses 28.9 -> 26.6 with no named cause (profileddefault1008); lane.local's decision. If L1 holds, L2's gain shrinks: it was choosing sysmem to escape the replay |
+| L3 | DOA3, NG Black to `sysmem` in `kTitleRenderModes` | one title each | DOA3 34 -> 59; NG Black 32.5 -> 59 | 0.85 / 0.75 | measured on matched scenes; one-offs, the owner's rule ranks them below a lever that reaches several |
+| L4 | surface-download remnants (`range`, `tobuf`) | Forza runnable here; MC II, Counter-Strike, Spider-Man 2, NHL 2K3 unroutable | unknown at master | 0.3 | needs the Forza telemetry first |
+| L5 | guest vCPU / PFIFO | Amped 2 runnable; Pilot Down, Hulk, NFS MW, NHL 2K3, LOTR unroutable | small per prior lanes after POSTED_PUT | 0.2 here | vcpuplan/memfast/ibcache own it; Amped 2 pilot says what is left |
+
+L1 goes first: it reaches the most titles, it keeps GMEM's semantics (no Kabuki stall, no ZPASS change), and its
+mechanism is in hand before any device time. What would refute it is a B arm where the scene pass's census in/out
+stays near 0.5, or gfps does not move on a title whose GPU is the wait.
