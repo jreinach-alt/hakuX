@@ -19,6 +19,9 @@ admits Buffy as `state: returning` (its kept profile has a save directory), but 
 and NG Black -- their kept-profile goldens are title data only, no save directory, which matches their own
 boot tables (neither shows a load/continue/save-name screen). Per the gate's own suggested fix, both files'
 header state is `# state: any` instead (filenames unchanged); NOTES.md section 4 has the detail. All three
-now admit=True. No device runs queued yet.
+now admit=True. Buffy's switch-on sweep run is queued (`z-1791817586-lane.zetaroutes1012-2316443`, ref
+f4a1c6df96, nova); the pilot gate correctly holds DOA3 and NG Black until that run is read and a pilot verdict
+is written (NOTES.md section 5 has the prepared queue commands -- DOA3 needs the on-disk alias id 54430001,
+not the compat-CSV id 4D53002D -- and the wait).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

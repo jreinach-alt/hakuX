@@ -161,5 +161,54 @@ only the internal `# state:` tag differs from the brief's literal text, and each
 after the fix: `admit=True clause=profile state=any` for both.
 
 Every press before each route's `mark gameplay` is backed by a recorded row in the boot tables above (sections
-1-3); none is filled from memory of the game. Not yet done: queuing the switch-on sweep runs (step 4 of the
-brief) -- next step.
+1-3); none is filled from memory of the game.
+
+Two more findings while building the queue commands, both from `--title`'s own resolution, before any device
+time:
+- DOA3's canonical compat-CSV id (4D53002D, the brief's and targets.toml's key) has no `iso.nova` entry --
+  `titlestate.iso_for_tid('4D53002D', device='nova')` returns None. The Nova copy is filed under the on-disk
+  XBE id instead, `54430001` (`disk_tid()`'s documented alias: "Dead or Alive 3 is 4D53002D [in the compat
+  CSV] and 54430001 on the disk"), which is exactly the title_id the DOA3 survey run itself used on nova
+  (`z-1791803606-fpsbelow1012-3255578`'s request.json: `"title_id": "54430001"`). Both ids load the same golden
+  (220536a66fe2). So DOA3's queue command below uses `--title 54430001-Dead_or_Alive_3.xiso.iso` (the Nova
+  iso_for_tid fallback result), not the bare id.
+- `--title` must be the on-device ISO file name, never a bare TitleID (request.sh's own check: "A BARE TITLEID
+  IS NOT A FILE NAME"). `--title` below is therefore each title's `iso.nova` name:
+  `Buffy the Vampire Slayer (USA).xiso.iso`, `54430001-Dead_or_Alive_3.xiso.iso`, `Ninja Gaiden Black.iso`.
+  `titlestate.py resolve-route` confirmed all three `--route` names resolve clean (`refuse: null`) with
+  `--title-id` set to each of these (45410012 / 54430001 / 5443000D) and `--device nova`.
+
+## 5. Queue: Buffy in, pilot gate holds DOA3 and NG Black
+
+Buffy queued first (sweep tier, switch on):
+```
+request.sh --who lane.zetaroutes1012 --purpose "returning-route test and HAKUX_ZETA_D24 gameplay confirmation (#433)" \
+    --priority sweep --device nova --title "Buffy the Vampire Slayer (USA).xiso.iso" --route buffy.returning \
+    --seconds 900 --frames-every 30 --env HAKUX_ZETA_D24=1 --env HAKUX_FRAMETRACE=1 \
+    --no-expect "returning-route test and HAKUX_ZETA_D24 gameplay confirmation (#433)"
+```
+-> `queued z-1791817586-lane.zetaroutes1012-2316443` (ref f4a1c6df96, pinned nova).
+
+Queuing DOA3 right after was refused by the pilot gate (owner 2026-09-26, `docs/lanes/zetaroutes1012/NOTES.md`
+is not the gate's source -- `request.sh` is; see its "THE PILOT GATE" section): Buffy alone estimates ~16 min
+(900s + 90s setup) and DOA3 would add ~16 more, ~33 min in all, over the 30-min unreviewed ceiling, and
+`dispatch/pilots/lane.zetaroutes1012.ok` does not exist yet. This is the correct, expected behaviour (lane-role
+"Pilot first": queue at most two, review against the batch's purpose, write the `.ok` verdict, then queue the
+rest) -- NOT a defect to work around. So DOA3 and NG Black's queue commands are prepared but not yet sent:
+```
+request.sh --who lane.zetaroutes1012 --purpose "returning-route test and HAKUX_ZETA_D24 gameplay confirmation (#433)" \
+    --priority sweep --device nova --title "54430001-Dead_or_Alive_3.xiso.iso" --route doa3.returning \
+    --seconds 900 --frames-every 30 --env HAKUX_ZETA_D24=1 --env HAKUX_FRAMETRACE=1 \
+    --no-expect "returning-route test and HAKUX_ZETA_D24 gameplay confirmation (#433)"
+
+request.sh --who lane.zetaroutes1012 --purpose "returning-route test and HAKUX_ZETA_D24 gameplay confirmation (#433)" \
+    --priority sweep --device nova --title "Ninja Gaiden Black.iso" --route ninja-gaiden-black.returning \
+    --seconds 900 --frames-every 30 --env HAKUX_ZETA_D24=1 --env HAKUX_FRAMETRACE=1 \
+    --no-expect "returning-route test and HAKUX_ZETA_D24 gameplay confirmation (#433)"
+```
+
+WAITING: on `z-1791817586-lane.zetaroutes1012-2316443` (Buffy) to clear the Nova's queue and run -- the Nova is
+held overnight by the Playable chain (sweep runs start only when it is idle) and a `nova` hold was already in
+force at session start (`lane.pathfind`, 600s, from 2026-10-12T14:43:16Z). Once it is read: write the pilot
+verdict to `dispatch/pilots/lane.zetaroutes1012.ok` (Buffy's result id, what the frames/verdict showed, the
+date), then send the DOA3 and NG Black commands above.
