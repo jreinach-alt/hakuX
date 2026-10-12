@@ -16,11 +16,17 @@ Per run:
           (vk/draw.c, the census comment).
   out     the same lines' outer render-pass span, GPU ms per command buffer
           (mean of the lines' means). This is what the replay costs the GPU.
+  draws   the `XFR rpc` line's draws per command buffer (window mean): what
+          the window drew, which the switch does not change, so it says
+          whether the two arms' windows cover the same stretch of the route.
 --from/--until are seconds after the run's first hakuX-perf line, so the two
-arms of one route are read over the same stretch of it.
+arms of one route are read over the same stretch of it. With --expect the
+window is the registered one (`from`, `until` under the key); a command-line
+window that differs from it is refused.
 
 With --expect, applies prediction["expect"][key]:
-  V  both arms' zfmt as named (a_zfmt, b_zfmt) and >= min_perf perf lines
+  V  both arms' zfmt as named (a_zfmt, b_zfmt), >= min_perf perf lines, and
+     B's draws per command buffer within draws_band (a fraction) of A's
   M  A's in/out <= a_inout_max and B's in/out >= b_inout_min (the tile count
      moved; read only when A is in the class)
   P  B's mean outer span <= A's * out_ratio_max (the GPU did less per pass)
@@ -46,6 +52,7 @@ def read(rid, t_from, t_until):
     zfmt = None
     perf = []      # (t, gfps, G)
     rp = []        # (t, in_mean, out_mean)
+    rpc = []       # (t, draws per command buffer)
     seen = set()
     t0 = None
     for line in open(os.path.join(D, rid, "logcat.txt"), errors="replace"):
@@ -70,12 +77,17 @@ def read(rid, t_from, t_until):
                 r"(?<![\w])(in|out) ([\d.-]+) ([\d.-]+) ([\d.-]+)", body))
             if "in" in v and "out" in v:
                 rp.append((t, v["in"], v["out"]))
+        elif body.startswith("xemu-xfr XFR rpc all "):
+            d = re.search(r" draws ([\d.]+)", body)
+            if d:
+                rpc.append((t, float(d.group(1))))
     if t0 is None:
         return {"rid": rid, "zfmt": zfmt, "n": 0}
     lo = t0 + (t_from or 0)
     hi = t0 + t_until if t_until is not None else 1e9
     perf = [p for p in perf if lo <= p[0] <= hi]
     rp = [r for r in rp if lo <= r[0] <= hi]
+    rpc = [r for r in rpc if lo <= r[0] <= hi]
     gf = [p[1] for p in perf]
     G = [p[2] for p in perf if p[2] is not None]
     out_sum = sum(r[2] for r in rp)
@@ -87,31 +99,64 @@ def read(rid, t_from, t_until):
         "inout": sum(r[1] for r in rp) / out_sum if out_sum else None,
         "out_ms": out_sum / len(rp) if rp else None,
         "rp_lines": len(rp),
+        "draws": sum(r[1] for r in rpc) / len(rpc) if rpc else None,
     }
 
 
 def show(tag, r):
     f = lambda v, p="%.2f": "-" if v is None else p % v
-    print("%s %-38s zfmt %-5s perf %4d gfps med %s (>=55: %s) G med %s ms in/out %s out %s ms (%d rp lines)" % (
-        tag, r["rid"], r["zfmt"] or "-", r["n"], f(r.get("gfps_med"), "%.0f"),
-        f(r.get("gfps55")), f(r.get("G_med"), "%.1f"), f(r.get("inout")), f(r.get("out_ms")),
-        r.get("rp_lines", 0)))
+    print("%s %-38s zfmt %-5s perf %4d gfps med %s (>=55: %s) G med %s ms in/out %s out %s ms "
+          "draws/cb %s (%d rp lines)" % (
+              tag, r["rid"], r["zfmt"] or "-", r["n"], f(r.get("gfps_med"), "%.0f"),
+              f(r.get("gfps55")), f(r.get("G_med"), "%.1f"), f(r.get("inout")), f(r.get("out_ms")),
+              f(r.get("draws"), "%.0f"), r.get("rp_lines", 0)))
+
+
+def buckets(rid, width):
+    """One line per `width` seconds of one run: where the two-tile stretch is."""
+    r = read(rid, 0, None)
+    if not r["n"]:
+        print("%s: no perf lines" % rid)
+        return
+    print("%s zfmt %s" % (rid, r["zfmt"]))
+    t = 0
+    while True:
+        b = read(rid, t, t + width)
+        if not b["n"]:
+            break
+        show("%4d-%-4d" % (t, t + width), b)
+        t += width
 
 
 def main():
+    if sys.argv[1] == "--buckets":
+        buckets(sys.argv[2], float(sys.argv[3]) if len(sys.argv) > 3 else 30.0)
+        return 0
     a_id, b_id = sys.argv[1], sys.argv[2]
     t_from, t_until = opt("--from", float), opt("--until", float)
+    exp_path, key = opt("--expect"), opt("--key")
+    e = json.load(open(exp_path))["expect"][key] if exp_path else None
+    if e is not None:
+        for name, cli in (("from", t_from), ("until", t_until)):
+            if cli is not None and cli != e.get(name):
+                sys.exit("--%s %s differs from the registered window (%s); the window is the "
+                         "prediction's, not the reader's" % (name, cli, e.get(name)))
+        t_from, t_until = e.get("from"), e.get("until")
+        print("window %s .. %s s after the first perf line (registered under %r)" % (t_from, t_until, key))
     A, B = read(a_id, t_from, t_until), read(b_id, t_from, t_until)
     show("A", A)
     show("B", B)
-    exp_path, key = opt("--expect"), opt("--key")
-    if not exp_path:
+    if e is None:
         return 0
-    e = json.load(open(exp_path))["expect"][key]
     legs = []
+    same = A.get("draws") and B.get("draws") is not None and \
+        abs(B["draws"] - A["draws"]) <= e["draws_band"] * A["draws"]
     v = A["zfmt"] == e["a_zfmt"] and B["zfmt"] == e["b_zfmt"] and \
-        min(A["n"], B["n"]) >= e["min_perf"]
-    legs.append(("V", v, "zfmt A %s B %s, perf lines %d/%d" % (A["zfmt"], B["zfmt"], A["n"], B["n"])))
+        min(A["n"], B["n"]) >= e["min_perf"] and bool(same)
+    legs.append(("V", v, "zfmt A %s B %s, perf lines %d/%d, draws/cb A %s B %s (band %.0f%%)" % (
+        A["zfmt"], B["zfmt"], A["n"], B["n"],
+        "-" if A.get("draws") is None else "%.0f" % A["draws"],
+        "-" if B.get("draws") is None else "%.0f" % B["draws"], 100 * e["draws_band"])))
     if A.get("inout") is not None and B.get("inout") is not None:
         m = A["inout"] <= e["a_inout_max"] and B["inout"] >= e["b_inout_min"]
         legs.append(("M", m, "in/out A %.2f B %.2f" % (A["inout"], B["inout"])))
