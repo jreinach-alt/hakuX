@@ -189,11 +189,11 @@ So the fix-shaped arm is the right next step: it removes the burst that outruns 
 
 ## Fix-shaped arm (Addendum 2): pacing at the low watermark on Android
 
-NEED: apu.c -- the pacing lives in `throttle()` (apu.c ~115-175), which lane.snapshot1011 holds. `apu.c.patch` (here)
-wraps the Android early return in `if (!apu_pace_on())`, so `HAKUX_APU_PACE=1` runs the low-watermark pacing that
-non-Android builds always run. Off by default: the shipped path is unchanged. The switch is read once and logged once
-(`hakuX-audio: apu_pace: on|off`). It applies to master (`git apply --check`) and compiles clean with the NDK. It is
-built from a scratch tree, never committed to apu.c on this branch.
+The pacing lives in `throttle()` (apu.c ~115-175). `apu.c.patch` (here) wraps the Android early return in
+`if (!apu_pace_on())`, so `HAKUX_APU_PACE=1` runs the low-watermark pacing that non-Android builds always run. Off by
+default: the shipped path is unchanged. The switch is read once and logged once (`hakuX-audio: apu_pace: on|off`).
+Until Addendum 4 apu.c was lane.snapshot1011's, so the arms ran the patch from a scratch tree. Attempt 3 commits it
+(below).
 
 ## Fix arms: the replays are gone with `HAKUX_APU_PACE=1`
 
@@ -323,3 +323,35 @@ bound slow-content NFS run under ON (none of the six runs here went slow).
   The eight fix-stage runs took ~36 min of device time (estimated at 270 s each). I queued them so that queued plus
   running time never passed the 30-min pilot gate.
 - origin/master 13e0590809 already in the branch; preflight passed; PR.md State: ready.
+
+## Attempt 3 (10-11): apu.c granted (Addendum 4)
+
+**Why attempt 2 did not finish:** it did finish the brief as written then. It pushed e19b43b94a with PR.md
+`State: ready` and the apu.c part as a patch, with a NEED line for apu.c. At 19:48 PDT lane.local granted apu.c
+(board 199b27283b; lane.snapshot1011 released it at ready) and added Addendum 4: commit the patch. That is attempt
+3's only work. No device runs.
+
+- origin/master is still 13e0590809, already in the branch. lane/snapshot1011 has not folded. Its apu.c change is
+  5 lines in `mcpx_apu_pre_load()` (~1179), well away from `throttle()`, so the two merge without conflict.
+- `git apply docs/lanes/nfsaudio1011/apu.c.patch`. The resulting apu.c is byte-identical to the one in scratch build
+  `9c054c1714`, which every fix arm and no-harm arm ran. `HAKUX_APU_PACE` stays off by default.
+- **Compile check:** apu.c alone, NDK 29 clang, the arm64-v8a compile line of the host's Release build
+  (`android/app/.cxx/Release/135r5t6d`, `-O3 -march=armv8.2-a`), with the worktree's source include paths and `-Wall`.
+  Exit 0. The one warning is target_page.h's existing `-Wshift-negative-value`. The object imports `getenv` and
+  `__android_log_print` and holds `apu_pace_on.on`. The host (non-Android) build is unchanged: all the new code is
+  under `#ifdef __ANDROID__`.
+- PR.md: the NEED line is gone, and apu.c and OUTBOX.md are in `Files:`. The release note stays `none`, because the
+  switch is off by default. Its text changed only to drop the reference to the NEED line; the future note is verbatim.
+- Committed at aa0d594a10. `docs/testing/preflight.sh` passes (territory ok with apu.c). `docs/testing/jobs/selftest.sh`,
+  run once, whole: 3377 passed, 0 failed, all 136 fragments (~70 min under host load, 19:57-21:07 PDT).
+- **While the selftest ran, lane.local folded the previous head.** e19b43b94a is master's 3ce6b6ac96 (PR #935, merged).
+  So this push is a follow-up fold of one code file (apu.c) and the lane's docs.
+- **I did not merge the newer origin/master (3ce6b6ac96) into the branch.** Addendum 4 asks for the merge only if
+  snapshot1011 has folded, and it has not. The reason not to: `offline_fold.py` folds emulator code only with a
+  finished, non-void dispatch run whose ref has the same emulator code as the branch head (`same_emulator_code`). This
+  head's emulator code is byte-identical to `9c054c1714` (`git diff 9c054c1714 HEAD` outside docs/ is empty), so the
+  fix arms `2189996` and `2190142` (ref `9c054c1714`, finished) already satisfy that gate. Merging master would bring in
+  gtasagpu1011's renderer code and require a new device run, which Addendum 4 rules out. The branch merges into
+  3ce6b6ac96 without conflict (`git merge-tree`), and the fold merges it there anyway.
+- The memory "fold's head run is the exact sha" is out of date: since 10-06 the fold accepts any run whose emulator
+  code matches the head's, not only a run at the head's own sha.
