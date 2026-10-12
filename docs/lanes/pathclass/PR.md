@@ -4,7 +4,7 @@ State: ready
 
 Lane: pathclass              Issue: #433 (0.5: 50 Playable)
 Base: master @ c03e17b8a0 (merged in 2026-10-12; this checkout was found 147 commits behind at the start of attempt 3)
-Files: docs/lanes/pathclass/PR.md, docs/lanes/pathclass/NOTES.md, docs/lanes/pathclass/OUTBOX.md, docs/lanes/pathclass/simpsons-hit-run.save.route, docs/testing/titles/pathclass.py, docs/testing/titles/pathclass_selftest.py, docs/testing/titles/classify.py, docs/testing/titles/drive.py, docs/testing/titles/drive-profiles/generic.toml, docs/testing/titles/pathknow/classifier/pool.py, docs/testing/titles/pathknow/classifier/label.py, docs/testing/titles/pathknow/classifier/embed.py, docs/testing/titles/pathknow/classifier/prompts.py, docs/testing/titles/pathknow/classifier/zeroshot_eval.py, docs/testing/titles/pathknow/classifier/ocr_eval.py, docs/testing/titles/pathknow/classifier/train.py, docs/testing/titles/pathknow/classifier/distill.py, docs/testing/titles/pathknow/classifier/jepa_probe.py, docs/testing/titles/pathknow/classifier/pick.py, docs/testing/titles/pathknow/classifier/head.npz, docs/testing/dispatcher.sh, docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh, docs/testing/titles/targets.toml, docs/testing/titles/routes/gen-*.route
+Files: docs/lanes/pathclass/PR.md, docs/lanes/pathclass/NOTES.md, docs/lanes/pathclass/OUTBOX.md, docs/lanes/pathclass/simpsons-hit-run.save.route, docs/testing/titles/pathclass.py, docs/testing/titles/pathclass_selftest.py, docs/testing/titles/classify.py, docs/testing/titles/drive.py, docs/testing/titles/drive-profiles/generic.toml, docs/testing/titles/pathknow/classifier/pool.py, docs/testing/titles/pathknow/classifier/label.py, docs/testing/titles/pathknow/classifier/embed.py, docs/testing/titles/pathknow/classifier/prompts.py, docs/testing/titles/pathknow/classifier/zeroshot_eval.py, docs/testing/titles/pathknow/classifier/ocr_eval.py, docs/testing/titles/pathknow/classifier/train.py, docs/testing/titles/pathknow/classifier/distill.py, docs/testing/titles/pathknow/classifier/jepa_probe.py, docs/testing/titles/pathknow/classifier/pick.py, docs/testing/titles/pathknow/classifier/head.npz, docs/testing/dispatcher.sh, docs/testing/jobs/selftest.d/97-dispatch-snapshot-drive.sh, docs/testing/titles/targets.toml, docs/testing/titles/routes/gen-*.route, docs/testing/titles/routes/bf2mc.returning.route, docs/testing/titles/routes/dnd-heroes.returning.route, docs/testing/titles/routes/mechassault-2.returning.route, docs/testing/titles/routes/crash-wrath-of-cortex.route, docs/testing/titles/routes/doax.route
 Prediction: none: no arm. Host-side test tooling + a drive-profile/classify.py wiring change; no device run yet.
 Needs device: no    Needs NDK: no
 
@@ -69,3 +69,27 @@ the same merge-not-rebase habit applies). Merge was clean, no conflicts; `dispat
 lists still both carried `titles/pathclass.py` afterward. `selftest.sh` run a third time in full against the
 merged head: **3435 passed, 0 failed, all 137 fragments** (one more fragment than before the merge,
 `99-profile-gate.sh`, from another lane's landed work).
+
+**Attempt 5 (2026-10-12 ~04:06 PDT):** new session, 28 commits behind on an unrelated fold; merged cleanly.
+Addendum 3's two named gates against `/home/justin/hakuX` now both pass (head `e318ae70b5`, carries
+`pathclass.py` and 3 dispatcher references). The Playable ledger is at 51 (past the owner's 50), and
+`dispatch/results/` shows lane.local's chain stopped at 03:27:34 PDT -- so Addendum 2's device-order
+condition has also cleared. Picked the first 3 titles off the 29-row table and tried to queue the first
+(AvP Extinction): `request.sh` refused it, because the 29 `gen-*.route` files and their `targets.toml` rows
+(commits `254d4690ce`, `1b6e58cc18`) are pushed to `origin/lane/pathclass` but have not yet been folded into
+`origin/master` -- a second, later fold beyond the one Addendum 3 named. Posted `[lane.pathclass] waiting:`
+on this PR naming the exact fold and the exact check that resolves it. Area 51's golden was promoted from
+its existing harvest (host-side, no device touched) in preparation.
+
+While waiting (per Addendum 2, "do offline work... meanwhile"), did step 6d's offline half: wrote
+`bf2mc.returning.route`, `dnd-heroes.returning.route`, `mechassault-2.returning.route` (the three first-run
+routes the profile gate refuses to repeat on titles that already have a kept golden -- confirmed each does),
+each opening with `drive generic 300 mark` and keeping the original file's play pattern; and fixed
+`crash-wrath-of-cortex.route` and `doax.route` in place, replacing each fixed-timing boot-to-mark opening
+(confirmed by targets.toml's own session-46 mark audits to land on a menu, not play) with
+`drive generic 300 mark`. All five pass `route.sh --check`. Added the missing `nova` iso key to the three
+`.returning` titles' targets.toml rows (confirmed present via `adb shell ls`; this lane is Nova-only) and
+noted in each that the returning variant must be requested by its own full name
+(`--route bf2mc.returning`, etc.) since the bare `<name>.route` already exists and the family auto-pick in
+`titlestate.resolve_route()` only applies when it doesn't. No device run queued for any of the five; 6d's
+own device runs wait on 6c actually running, per the brief's own ordering.

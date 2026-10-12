@@ -355,8 +355,9 @@ notes = "#431 (comment 5851536933): 30, medium confidence. ActiveXbox (2002). ro
 
 [titles."4D53006B"]
 name = "MechAssault 2: Lone Wolf"
-iso = { thor = "4D53006B-MechAssault_2_Lone_Wolf.xiso.iso" }
+iso = { thor = "4D53006B-MechAssault_2_Lone_Wolf.xiso.iso", nova = "4D53006B-MechAssault_2_Lone_Wolf.xiso.iso" }
 route = "mechassault-2"
+notes = "#433 step 6d: added nova iso (confirmed present via adb); the returning variant for a Nova run is requested by its own name, `--route mechassault-2.returning` (the family auto-pick only applies when the bare `mechassault-2.route` is absent, and it is not)."
 
 [titles."54540082"]
 name = "Grand Theft Auto: San Andreas"
@@ -419,8 +420,9 @@ notes = "#431 (09-28; documented, not measured here): medium confidence: 3rdvoic
 
 [titles."45410062"]
 name = "Battlefield 2: Modern Combat"
-iso = { thor = "45410062-Battlefield_2_Modern_Combat.xiso.iso" }
+iso = { thor = "45410062-Battlefield_2_Modern_Combat.xiso.iso", nova = "45410062-Battlefield_2_Modern_Combat.xiso.iso" }
 route = "bf2mc"
+notes = "#433 step 6d: added nova iso (confirmed present via adb); the returning variant for a Nova run is requested by its own name, `--route bf2mc.returning` (the family auto-pick only applies when the bare `bf2mc.route` is absent, and it is not)."
 
 [titles."494C0006"]
 name = "Aoi Namida"
@@ -458,8 +460,9 @@ notes = "Own target 60 from #431 (comment 5853568091): medium confidence. GameSp
 
 [titles."49470013"]
 name = "Dungeons & Dragons Heroes"
-iso = { thor = "49470013-Dungeons_Dragons_Heroes.xiso.iso" }
+iso = { thor = "49470013-Dungeons_Dragons_Heroes.xiso.iso", nova = "49470013-Dungeons_Dragons_Heroes.xiso.iso" }
 route = "dnd-heroes"
+notes = "#433 step 6d: added nova iso (confirmed present via adb); the returning variant for a Nova run is requested by its own name, `--route dnd-heroes.returning` (the family auto-pick only applies when the bare `dnd-heroes.route` is absent, and it is not)."
 
 [titles."4D4A0001"]
 name = "BloodRayne"
