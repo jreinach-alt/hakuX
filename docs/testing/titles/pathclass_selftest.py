@@ -71,6 +71,57 @@ SIM_ANSWERS = {
 }
 
 
+AVP_RUN = "1-1791808256-lane.pathclass-215913"
+# frame -> (pathclass state, confidence), recorded via pathclass.Classifier(ocr=True)
+# .classify() over this run's route-frames/, in order, context={"menu_seen": False}
+# (#433 Addendum 6): AvP Extinction's gen-avp-extinction run stalled 91 s on `unknown` at
+# the title screen -- ROUTE FAIL "unknown screen for 91 s (model unavailable)" -- because
+# the single 0.85 `classifier_confidence` floor gated this answer too. The title screen's
+# own answer, 0.8 (OCR's "Press START" confirming the image model's own title_screen call,
+# pathclass.py's "+text-confirmed" branch), was 0.05 short of it; a hand-tuned profile
+# picking a confidence anywhere above 0.8 would have stalled here regardless of the text
+# match. The fix is a second, lower floor for non-gameplay answers only
+# (`classifier_confidence_menu`, generic.toml); this replays the run's frames (unchanged)
+# to prove it.
+#
+# This run's own frames include three that are genuinely near-black (luma 0, boot/loading
+# transitions) -- classify.py's real pixel-based black check answers those directly, the
+# same way it would on a live route, without ever reaching pathclass.Client. All ten frames
+# still get replayed (AVP_FRAMES, for realistic pacing), but only the seven StubClient is
+# actually asked about are listed here, in call order, so the stub's answer queue lines up
+# with the calls classify.py really makes -- not with the frame list's own order.
+AVP_FRAMES = [
+    "053316-001-boot.png",
+    "053337-002-intro_video.png",
+    "053341-003-unknown.png",
+    "053346-006-black.png",
+    "053350-008-unknown.png",
+    "053353-010-black.png",
+    "053355-011-unknown.png",
+    "053414-015-intro_video.png",
+    "053416-016-unknown.png",
+    "053550-059-fail-unknown.png",
+]
+AVP_ANSWERS = [
+    ("publisher_logo", 0.942),  # 002-intro_video.png
+    ("loading", 0.694),  # 003-unknown.png
+    ("loading", 0.756),  # 008-unknown.png
+    ("intro_video", 0.767),  # 011-unknown.png
+    ("intro_video", 0.91),  # 015-intro_video.png
+    ("publisher_logo", 0.395),  # 016-unknown.png
+    ("title_screen", 0.8),  # 059-fail-unknown.png -- the stalled title screen
+]
+
+
+def avp_frames():
+    d = os.path.join(RESULTS, AVP_RUN, "route-frames")
+    return [os.path.join(d, f) for f in AVP_FRAMES], d
+
+
+def avp_answers_ordered():
+    return list(AVP_ANSWERS)
+
+
 class StubClient:
     """Stands in for pathclass.Client in classify.pathclass_client(): the next answer off a
     list, in call order, no subprocess, no model. In order because SimDevice.capture()
@@ -193,6 +244,22 @@ def main(argv):
     fails += not ok3
     print("%s  mutant (START forced in play) is caught by the same check  %s" %
           ("ok  " if ok3 else "FAIL", mprobs if ok3 else "NOT CAUGHT -- the check above is vacuous"))
+
+    # the title screen must lead to START, not to a wait (#433 Addendum 6): replay AvP
+    # Extinction's stalled run. Under the single 0.85 floor this never presses anything (the
+    # title screen's own 0.8 stays `unknown`); under the fixed two-floor generic.toml it
+    # does, at the last (and only non-wait-class) frame.
+    install_stub(avp_answers_ordered())
+    fl, d = avp_frames()
+    generic = classify.load_profile(os.path.join(PROF, "generic.toml"))
+    with tempfile.TemporaryDirectory() as td:
+        drv = drive.Driver(drive.SimDevice(fl, 6.0), generic, td, td, 999, mark=True, sim=True)
+        drv.run()
+    starts = [i for i in drv.inputs if i["input"] == "START"]
+    ok4 = len(starts) >= 1
+    fails += not ok4
+    print("%s  AvP Extinction title screen: generic presses START, not stuck at `unknown`  inputs=%s" %
+          ("ok  " if ok4 else "FAIL", [i["input"] for i in drv.inputs]))
 
     print("pathclass_selftest: %d failure(s)" % fails)
     return 1 if fails else 0

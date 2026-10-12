@@ -349,6 +349,18 @@ class Classifier:
         if ts and ts != state:
             state, source = ts, source + "+text"
             conf = max(conf, 0.8)
+        elif ts and ts == state and state != "gameplay":
+            # OCR confirms the image model's own answer (#433 Addendum 6: AvP Extinction's
+            # title screen named title_screen at 0.697 by the image model alone, with OCR's
+            # "Press START" agreeing rather than overriding -- text_state() only bumps
+            # confidence on the ts != state branch above, so the agreeing case never raised
+            # it). Same strength of evidence as an override, just confirming instead of
+            # correcting. Never for state == "gameplay" (unreachable today -- no TEXT_RULES
+            # entry names gameplay -- kept explicit so a future rule can't raise the one
+            # floor this classifier promises never to lower: the gameplay claim keeps the
+            # image model's own confidence, untouched by text).
+            conf = max(conf, 0.8)
+            source += "+text-confirmed"
         state = temporal(state, fc, context)
         action, esc = decide(state, menu, context)
         if esc is None and conf < CONFIDENCE_BAR:

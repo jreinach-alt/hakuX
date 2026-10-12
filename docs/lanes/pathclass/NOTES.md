@@ -369,11 +369,16 @@ cleanly, no conflicts. Re-checked Addendum 3's two gates against `/home/justin/h
   (non-empty)
 - `grep -c pathclass.py /home/justin/hakuX/docs/testing/dispatcher.sh` -> `3`
 
-Both pass; `/home/justin/hakuX` head is `e318ae70b5`. Also checked the Playable ledger (Addendum 2):
-`status.json` shows 51 titles at `stage == "playable"`, past the 50 the owner named, and the most recent
-`dispatch/results/` entries are `fpsbelow1012`'s, not `lane.local`'s -- the overnight chain's last run was
-03:27:34 PDT, so it has stopped. No `pm/.chain-stop` touched; this is just reading the ledger and the
-results directory.
+Both pass; `/home/justin/hakuX` head is `e318ae70b5`.
+
+**Correction (Addendum 4, lane.local 2026-10-12 04:17 PDT):** the two sentences this section originally had
+here were both wrong, and are struck rather than left to be acted on by a later session. The Playable count
+for the owner's order is the ledger `/home/justin/hakux-work/pm/playable-accepted.tsv`, one row per accepted
+confirmation -- not `status.json`'s own `stage` reading, which is a different count (and which double-counted
+one title under two spellings). At 04:17 the ledger had 49 rows, not past 50. Separately, the overnight
+chain's runs land in `wt/pathfind/docs/lanes/pathfind/runs/`, not `dispatch/results/`, so a quiet
+`dispatch/results/` directory does not mean the chain stopped -- at 04:12 it was waiting for the Nova. No
+`pm/.chain-stop` touched either way; that is lane.local's call, not this lane's.
 
 Picked the first 3 titles off the 29-row table (AvP Extinction, Amped: Freestyle Snowboarding, Area 51).
 AvP Extinction and Amped already carry a `golden` (both from `lane.pathfind`, 10-04) -- no profile-gate
@@ -448,3 +453,137 @@ waiting on the second fold above. All five routes granted for 6d:
 **Still not run.** Per the brief, 6d's runs ("One MAX run of each... frames reviewed") come after 6c is
 actually running, and 6c itself is still waiting on the second fold (see the section above). No device run
 queued for any of these five; no golden touched beyond the read-only `titlestate.py golden` checks above.
+
+## Restart, attempt 6 (2026-10-12 05:29 PDT): second fold confirmed, first 6c batch queued
+
+New session; branch already up to date with `origin/lane/pathclass` (no merge needed). Read Addendum 4's
+correction into attempt 5's section above first (done, see the struck/corrected paragraph), then Addendum 5:
+the second fold landed at 05:19 as `2219a61879`, carried to `/home/justin/hakuX` by its update window.
+Re-checked both gates directly rather than trusting the addendum's own numbers stale by even a few minutes:
+
+- `git -C /home/justin/hakuX log --oneline -1 -- docs/testing/titles/routes/gen-avp-extinction.route` ->
+  `254d4690ce ...` (non-empty)
+- `ls /home/justin/hakuX/docs/testing/titles/routes/gen-*.route | wc -l` -> `29` (all present)
+
+Both pass. Ledger (`pm/playable-accepted.tsv`) was 50 rows at this session's start (one past Addendum 5's 49);
+`dispatch/hold/nova` is held by `lane.pathfind` (not `lane.local`'s chain by name, but the same overnight
+Playable-chain machinery per Addendum 2/5 -- "pathfind 4156001F one run, 600 s hold"), so the Nova is still in
+use by chain work, not idle. No hold taken, `pm/.chain-stop` not touched.
+
+Confirmed all three of attempt 5's picked titles (AvP Extinction 56550022, Amped: Freestyle Snowboarding
+4D530005, Area 51 4D570005) carry a `golden` via `titlestate.py golden --title-id <T>` against
+`/home/justin/hakuX`'s own `titlestate.py` (path is `docs/testing/titles/titlestate.py` there, not
+`docs/testing/titlestate.py`) -- Area 51's is attempt 5's own promotion (`172c0efd1601`), the other two are
+`lane.pathfind`'s 10-04 goldens. No profile-gate action needed for any of the three.
+
+Queued all three with `/home/justin/hakuX/docs/testing/request.sh` (absolute path, this lane's name as
+`--who`, `--device nova`, `HAKUX_RELEASE_PRIO=1`), `--seconds 480 --frames-every 60`, `--no-expect
+"classifier-path benchmark survey (#433 step 6c), not an A/B arm"` (request.sh refuses a soak with neither
+`--expect` nor `--no-expect`; this is a survey, not an A/B arm, so `--no-expect`):
+
+| Title | tid | route | request id |
+|---|---|---|---|
+| Aliens Versus Predator: Extinction | 56550022 | gen-avp-extinction | `1-1791808256-lane.pathclass-215913` |
+| Amped: Freestyle Snowboarding | 4D530005 | gen-amped-snowboarding | `1-1791808261-lane.pathclass-216134` |
+| Area 51 | 4D570005 | gen-area51 | `1-1791808267-lane.pathclass-216447` |
+
+All three queued clean, pinned to nova, `--ref HEAD` resolved to `2219a61879`. They wait behind the Nova's
+current holder (`lane.pathfind`), which is expected per Addendum 2/5, not a failure. Per Addendum 5's own
+instruction ("Record the request ids in NOTES.md and stop once they are queued: lane.local reads the
+results"), stopping here rather than polling for results in this session.
+
+## Restart, attempt 7 (2026-10-12 ~05:50 PDT): Addendum 6 -- the single floor stalled the title screen
+
+Attempt 6 did not fail to finish; it finished exactly what Addendum 5 asked (queue the first three, record
+the ids, stop) and left the rest to lane.local. This attempt resumes because the first of those three queued
+runs came back: AvP Extinction (`1-1791808256-lane.pathclass-215913`) hit `ROUTE FAIL drive generic: unknown:
+unknown screen for 91 s (model unavailable)`, stalled at its own title screen. Addendum 6 names the cause and
+directs the fix.
+
+**Diagnosis.** The run's title-screen frame (`route-frames/053550-059-fail-unknown.png`) reads `title_screen`
+at raw confidence 0.697 from the image head alone. `pathclass.py`'s OCR layer (`text_state()`) reads "Press
+START" off the same frame and agrees with the image model's own answer -- but `text_state()`'s confidence
+bump only fired on the branch where OCR *overrides* the image model (`ts != state`); an agreeing answer
+(`ts == state`) got no bump at all, so the frame stayed at 0.697. Both numbers sit under the single
+`classifier_confidence = 0.85` floor every answer shared, so `classify_frame()` returned `unknown`, and
+`drive.py` waits on `unknown` (up to `unknown_fail_s = 90 s`) rather than acting on it -- it never presses
+anything that isn't named with enough confidence. 91 s later, `ROUTE FAIL`.
+
+**Fix, part 1 -- OCR confirmation bumps confidence too, not only OCR override.** `pathclass.py`'s
+`Classifier.classify()` already bumps confidence to `max(conf, 0.8)` when OCR's reading disagrees with and
+replaces the image model's answer. Added the mirror case: when OCR's reading *agrees* with the image model's
+own answer (`ts == state`, excluding `gameplay` -- no `TEXT_RULES` entry names `gameplay` today, and the
+floor that answer answers to should never move on text alone), that is equally strong independent evidence
+and gets the same bump. On this run's own frame this raises `title_screen` from 0.697 to 0.8 (confirmed by
+calling `pathclass.Classifier(ocr=True).classify()` directly against the real frame: `{"state":
+"title_screen", "confidence": 0.8, "source": "head+text-confirmed", ...}`).
+
+**Fix, part 2 -- a second, lower floor for menu-class answers.** 0.8 still does not clear 0.85. Rather than
+lower the one floor (which protects the claim that matters -- a false `gameplay` marks a route done when it
+is not), split it in two: `classifier_confidence` (0.85, unchanged) gates only an answer of `gameplay`;
+every other answer (title screen, menus, prompts, loading, cutscenes -- anything `MENU_LIKE`/`SKIPPABLE`/wait
+in `drive.py`'s policy) is gated by a new, lower `classifier_confidence_menu`. The asymmetry is the point: a
+wrong menu-class answer risks a wrong input on the wrong menu, and that is recoverable -- the ladder or the
+next capture corrects it -- while a false `gameplay` risks the thing this lane cannot recover from, marking a
+route complete when it is not. `classify.py`'s pathclass branch now picks the floor by the answer, not the
+profile: `floor = gameplay_floor if ans["state"] == "gameplay" else profile.get("classifier_confidence_menu",
+gameplay_floor)` (falls back to the one floor when a profile sets only that knob, so every existing hand-tuned
+profile is unaffected).
+
+**Choosing the menu floor, measured.** Re-ran the same 120-frame held-out eval set (`pathknow/eval/`, the
+step-2 bar's own set) through the full `classify()` pipeline (not just the raw head), `context={"menu_seen":
+True}` -- mid-route play, where an errant press actually costs something, as opposed to the pre-first-menu
+attract-demo case `menu_seen=False` covers (that one's ambiguity is pre-existing and already accepted; see
+"Temporal separation" above -- this measurement does not touch it). Swept candidate floors from 0.0 to 0.85,
+counting two separate costs: a non-gameplay answer at or above the floor that fires a press while the frame's
+own truth is actually `gameplay` (the dangerous case -- an errant press mid-play), and a non-gameplay answer
+that fires a press and is simply the wrong menu-class answer (recoverable, but still worth counting):
+
+| menu floor | acted on | right | errant press on true gameplay | wrong press, other non-gameplay truth |
+|---|---|---|---|---|
+| 0.0  | 109/120 | 88 | 5 | 8 |
+| 0.3  |  96/120 | 86 | 3 | 4 |
+| 0.4  |  88/120 | 82 | 1 | 2 |
+| 0.5  |  83/120 | 79 | 1 | 0 |
+| 0.6  |  77/120 | 73 | 1 | 0 |
+| 0.7  |  66/120 | 63 | 0 | 0 |
+| 0.85 (old single floor) | 43/120 | 40 | 0 | 0 |
+
+The one errant-press-on-true-gameplay case that survives down to 0.5/0.6 is a single frame: a Buffy the
+Vampire Slayer `controller_prompt` miscall at 0.65 confidence, whose truth is `gameplay` -- it clears every
+floor at or below 0.65 and disappears only at 0.7. **0.7 is the first floor with zero of both costs**, and
+very nearly doubles what the classifier can act on versus the old single floor (66/120 vs 43/120), right on
+63 of those 66 (95.5%). Chose 0.7. (The `menu_seen=False` sweep was also run, exploratorily, early in this
+investigation; its apparent extra risk turned out to be the pre-existing pre-first-menu ambiguity already
+named above, not new risk from this change, so it is not the basis for the chosen value -- `menu_seen=True`
+is.) Recorded the reasoning and both floors in `drive-profiles/generic.toml` itself, next to the knobs.
+
+Frames below even the 0.7 floor stay `unknown` as designed -- this is not meant to rescue every stall, only
+the ones a real independent signal (OCR agreement) already resolves. The AvP run's own blinking "Press START"
+frame earlier in the same route (`053416-016-unknown.png`, publisher_logo misread at 0.395, prompt actually
+hidden mid-blink) correctly stays `unknown` under the new floor too -- genuinely ambiguous, not this fix's
+target.
+
+**Selftest.** Added a new case to `pathclass_selftest.py`: replay this run's actual 10 frames
+(`route-frames/`) through a stub recording pathclass's real recorded answers, drive them through the real
+`generic.toml` via `SimDevice`, and assert a `START` press happens (not a stall). First attempt at this
+failed (`inputs=['A', 'A']`, never reaching `title`) for a harness reason, not a production one:
+`classify.py`'s real pixel-based black/flat-luma check runs *before* the pathclass branch and is not
+stubbed, so the run's three genuinely near-black frames (`001-boot`, `006-black`, `010-black`) bypass
+`StubClient` entirely and never consume an answer from the recorded table -- exactly as a live route would
+behave, since those really are black frames. But the hand-built answer table was written positionally (one
+entry per frame, in frame order), so skipping 3 stub calls without skipping their table entries shifted
+every later answer by 3, and the real title-screen frame ended up consuming the `intro_video, 0.767` entry
+instead of its own `title_screen, 0.8`. Fixed by keeping all 10 frames in the replay (for realistic pacing)
+but trimming the recorded-answer list to the 7 entries the stub is actually asked for, in call order --
+matching how the run's `StubClient` docstring already describes the "position, not filename" contract.
+`pathclass_selftest.py` now reports `pathclass_selftest: 0 failure(s)` across all five cases (fail-closed,
+Simpsons reaches-play, Simpsons no-START-while-playing, the forced-START mutant, and this new AvP case:
+`inputs=['A', 'A', 'START']`, title reached at the final frame).
+
+`docs/testing/jobs/selftest.sh` (the harness-wide gate) run in full: **3467 passed, 0 failed, all 137
+fragments**.
+
+Per Addendum 6: fix committed, `State: ready`. **Not queuing anything this session** -- the two withdrawn
+runs (Amped, Area 51) and a re-queued AvP are lane.local's to requeue once this folds to `origin/master`.
+No hold taken, `pm/.chain-stop` untouched, nothing moved in `dispatch/queue/`.
