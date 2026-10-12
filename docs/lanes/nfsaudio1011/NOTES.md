@@ -342,3 +342,16 @@ bound slow-content NFS run under ON (none of the six runs here went slow).
   under `#ifdef __ANDROID__`.
 - PR.md: the NEED line is gone, and apu.c and OUTBOX.md are in `Files:`. The release note stays `none`, because the
   switch is off by default. Its text changed only to drop the reference to the NEED line; the future note is verbatim.
+- Committed at aa0d594a10. `docs/testing/preflight.sh` passes (territory ok with apu.c). `docs/testing/jobs/selftest.sh`,
+  run once, whole: 3377 passed, 0 failed, all 136 fragments (~70 min under host load, 19:57-21:07 PDT).
+- **While the selftest ran, lane.local folded the previous head.** e19b43b94a is master's 3ce6b6ac96 (PR #935, merged).
+  So this push is a follow-up fold of one code file (apu.c) and the lane's docs.
+- **I did not merge the newer origin/master (3ce6b6ac96) into the branch.** Addendum 4 asks for the merge only if
+  snapshot1011 has folded, and it has not. The reason not to: `offline_fold.py` folds emulator code only with a
+  finished, non-void dispatch run whose ref has the same emulator code as the branch head (`same_emulator_code`). This
+  head's emulator code is byte-identical to `9c054c1714` (`git diff 9c054c1714 HEAD` outside docs/ is empty), so the
+  fix arms `2189996` and `2190142` (ref `9c054c1714`, finished) already satisfy that gate. Merging master would bring in
+  gtasagpu1011's renderer code and require a new device run, which Addendum 4 rules out. The branch merges into
+  3ce6b6ac96 without conflict (`git merge-tree`), and the fold merges it there anyway.
+- The memory "fold's head run is the exact sha" is out of date: since 10-06 the fold accepts any run whose emulator
+  code matches the head's, not only a run at the head's own sha.
