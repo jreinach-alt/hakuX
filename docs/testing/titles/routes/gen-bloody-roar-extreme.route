@@ -1,0 +1,16 @@
+# state: any   (classifier-path benchmark opening; #433 step 6c)
+# Bloody Roar: Extreme (48550001), classifier-path benchmark (#433): drive
+# generic replaces the blind opening and marks gameplay itself once play is
+# confirmed. 1-on-1 fighter: close the distance, attack -- never START.
+drive generic 300 mark
+repeat forever {
+    axis LX max
+    wait 0.8
+    axis LX min
+    wait 0.8
+    axis LX mid
+    mash A 3 0.25
+    wait 0.5
+    mash X 2 0.25
+    wait 1.0
+}

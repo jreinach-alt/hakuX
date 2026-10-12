@@ -116,13 +116,15 @@ notes = "#431 (comment 5851536933): 30, medium confidence. WorthPlaying (Xbox, 2
 name = "007: Agent Under Fire"
 iso = { nova = "4541000D-007_Agent_Under_Fire.xiso.iso" }
 target_fps = 60
-notes = "#431 (comment 5849938891): 60, medium confidence. IGN (Xbox, 2002), GameCritics (Xbox, 2002)"
+route = "gen-007-auf"
+notes = "#431 (comment 5849938891): 60, medium confidence. IGN (Xbox, 2002), GameCritics (Xbox, 2002). route = gen-007-auf: #433 step 6c classifier-path benchmark opening (drive generic), FPS play loop (sweep look, fire), not yet device-proven."
 
 [titles."4D530013"]
 name = "Blinx: The Time Sweeper"
-iso = { thor = "4D530013-Blinx_The_Time_Sweeper.xiso.iso" }
+iso = { thor = "4D530013-Blinx_The_Time_Sweeper.xiso.iso", nova = "4D530013-Blinx_The_Time_Sweeper.xiso.iso" }
 target_fps = 30
-notes = "#431 (comment 5849938891): 30, high confidence. Digital Foundry 2026"
+route = "gen-blinx1"
+notes = "#431 (comment 5849938891): 30, high confidence. Digital Foundry 2026. route = gen-blinx1: #433 step 6c classifier-path benchmark opening (drive generic), 3D-platformer play loop (run/turn/jump), not yet device-proven."
 
 [titles."54430007"]
 name = "Dead or Alive Xtreme Beach Volleyball"
@@ -213,15 +215,17 @@ notes = "#431 (comment 5849938891): 60, high confidence. Criterion to Digital Fo
 
 [titles."4D530065"]
 name = "Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space"
-iso = { thor = "4D530065-Blinx_2_Battle_of_Time_Space_Blinx_2_Masters_of_Time_Space.xiso.iso" }
-notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default. #431 (09-28; documented, not measured here): low confidence: ogxbox.co.uk (2025): \"targeting 30 frames per second, though complex sequences with multiple effects can cause noticeable slowdown\"."
+iso = { thor = "4D530065-Blinx_2_Battle_of_Time_Space_Blinx_2_Masters_of_Time_Space.xiso.iso", nova = "4D530065-Blinx_2_Battle_of_Time_Space_Blinx_2_Masters_of_Time_Space.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default. #431 (09-28; documented, not measured here): low confidence: ogxbox.co.uk (2025): \"targeting 30 frames per second, though complex sequences with multiple effects can cause noticeable slowdown\". route = gen-blinx2: #433 step 6c classifier-path benchmark opening (drive generic), 3D-platformer play loop (run/turn/jump), not yet device-proven."
 target_fps = 30
+route = "gen-blinx2"
 
 [titles."54430006"]
 name = "Dead or Alive 1 Ultimate"
 iso = { nova = "54430006-Dead_or_Alive_1_Ultimate.xiso.iso" }
 target_fps = 60
-notes = "#431 (comment 5849938891): 60 from the hakuX swap interval: reviewed gameplay 1.77"
+route = "gen-doa1-ultimate"
+notes = "#431 (comment 5849938891): 60 from the hakuX swap interval: reviewed gameplay 1.77. route = gen-doa1-ultimate: #433 step 6c classifier-path benchmark opening (drive generic), fighter play loop (close/attack), not yet device-proven. See pm/owner-holds.tsv doa1u-window-scoring (below_bar, PLAYABLE_ATTEMPT only -- does not block a benchmark fps read)."
 
 [titles."56550016"]
 name = "Bruce Lee: Quest of the Dragon"
@@ -292,7 +296,8 @@ notes = "#431 (comment 5851536933): 60, medium confidence. GMR (Dec 2003)"
 name = "Bloody Roar: Extreme"
 iso = { nova = "48550001-Bloody_Roar_Extreme.xiso.iso" }
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, medium confidence. IGN, GameSpot, TeamXbox (Xbox, 2003)"
+route = "gen-bloody-roar-extreme"
+notes = "#431 (comment 5851536933): 60, medium confidence. IGN, GameSpot, TeamXbox (Xbox, 2003). route = gen-bloody-roar-extreme: #433 step 6c classifier-path benchmark opening (drive generic), fighter play loop (close/attack), not yet device-proven."
 
 [titles."49470017"]
 name = "Gunvalkyrie"
@@ -343,14 +348,16 @@ notes = "#431 (comment 5851536933): 30, medium confidence. IGN (Xbox, 2004); cap
 
 [titles."4D530005"]
 name = "Amped: Freestyle Snowboarding"
-iso = { thor = "4D530005-Amped_Freestyle_Snowboarding.xiso.iso" }
+iso = { thor = "4D530005-Amped_Freestyle_Snowboarding.xiso.iso", nova = "4D530005-Amped_Freestyle_Snowboarding.xiso.iso" }
 target_fps = 30
-notes = "#431 (comment 5851536933): 30, medium confidence. ActiveXbox (2002)"
+route = "gen-amped-snowboarding"
+notes = "#431 (comment 5851536933): 30, medium confidence. ActiveXbox (2002). route = gen-amped-snowboarding: #433 step 6c classifier-path benchmark opening (drive generic), downhill play loop (lean/steer/trick), not yet device-proven."
 
 [titles."4D53006B"]
 name = "MechAssault 2: Lone Wolf"
-iso = { thor = "4D53006B-MechAssault_2_Lone_Wolf.xiso.iso" }
+iso = { thor = "4D53006B-MechAssault_2_Lone_Wolf.xiso.iso", nova = "4D53006B-MechAssault_2_Lone_Wolf.xiso.iso" }
 route = "mechassault-2"
+notes = "#433 step 6d: added nova iso (confirmed present via adb); the returning variant for a Nova run is requested by its own name, `--route mechassault-2.returning` (the family auto-pick only applies when the bare `mechassault-2.route` is absent, and it is not)."
 
 [titles."54540082"]
 name = "Grand Theft Auto: San Andreas"
@@ -413,8 +420,9 @@ notes = "#431 (09-28; documented, not measured here): medium confidence: 3rdvoic
 
 [titles."45410062"]
 name = "Battlefield 2: Modern Combat"
-iso = { thor = "45410062-Battlefield_2_Modern_Combat.xiso.iso" }
+iso = { thor = "45410062-Battlefield_2_Modern_Combat.xiso.iso", nova = "45410062-Battlefield_2_Modern_Combat.xiso.iso" }
 route = "bf2mc"
+notes = "#433 step 6d: added nova iso (confirmed present via adb); the returning variant for a Nova run is requested by its own name, `--route bf2mc.returning` (the family auto-pick only applies when the bare `bf2mc.route` is absent, and it is not)."
 
 [titles."494C0006"]
 name = "Aoi Namida"
@@ -445,14 +453,16 @@ notes = "Own target 60 from #431 (comment 5853568091): medium confidence. IGN Xb
 
 [titles."4D570005"]
 name = "Area 51"
-iso = { thor = "4D570005-Area_51.xiso.iso" }
+iso = { thor = "4D570005-Area_51.xiso.iso", nova = "4D570005-Area_51_USA.xiso.iso" }
 target_fps = 60
-notes = "Own target 60 from #431 (comment 5853568091): medium confidence. GameSpy Xbox preview (2004, pre-release build)."
+route = "gen-area51"
+notes = "Own target 60 from #431 (comment 5853568091): medium confidence. GameSpy Xbox preview (2004, pre-release build). route = gen-area51: #433 step 6c classifier-path benchmark opening (drive generic), FPS play loop (sweep look, fire), not yet device-proven."
 
 [titles."49470013"]
 name = "Dungeons & Dragons Heroes"
-iso = { thor = "49470013-Dungeons_Dragons_Heroes.xiso.iso" }
+iso = { thor = "49470013-Dungeons_Dragons_Heroes.xiso.iso", nova = "49470013-Dungeons_Dragons_Heroes.xiso.iso" }
 route = "dnd-heroes"
+notes = "#433 step 6d: added nova iso (confirmed present via adb); the returning variant for a Nova run is requested by its own name, `--route dnd-heroes.returning` (the family auto-pick only applies when the bare `dnd-heroes.route` is absent, and it is not)."
 
 [titles."4D4A0001"]
 name = "BloodRayne"
@@ -569,3 +579,142 @@ name = "Buffy the Vampire Slayer"
 iso = { nova = "Buffy the Vampire Slayer (USA).xiso.iso" }
 route = "buffy"
 notes = "No #431 target; the default 30 applies. xemu: Playable. Session 65 (2026-10-02): a generic survey (1790928774-titleroutes-2773088, Nova) reached live play in the Spanish Mission canyon about 42 s after boot (4 START/A cycles); later cycles only toggled PAUSE/Resume. fps_window_median 29.97, fps_ok_share 0.93, one 220 ms shader hitch, measured over a window that was partly the pause panel. routes/buffy.route: 5 START/A cycles, then a walk/attack loop with no START. DRAFT, NOT CONFIRMED: two dispatch replays (1790931264-titleroutes-3615749, 1790932722-titleroutes-3976729 with B jumps) both reach live play at the mark (~125 s after launch; Start Game just names a new save Buffy 2/3, so disk state does not change the path), then get stuck within 1-2 min at the canyon's first ledges: one frozen sky view for ~4 min under the tips 'Run and press B to jump between ledges' / 'Push into low ledges to climb onto them'. The scorer's 95-96% at 30+, no hang, is over a stuck window. Needs a path found by looking at the screen (held nav.py session or lane.routedriver's drive.py), not a third blind loop."
+
+# #433 step 6c: classifier-path benchmark rows (drive generic opening), added
+# by lane.pathclass 2026-10-12, offline (queued only after the dispatcher-tree
+# fold reaches /home/justin/hakuX -- see docs/lanes/pathclass/NOTES.md). None
+# of these routes are device-proven yet; their play loops are a best guess at
+# each title's genre, to be fixed from the first run's frames per the brief.
+
+[titles."56550022"]
+name = "Aliens Versus Predator: Extinction"
+iso = { nova = "56550022-Aliens_Versus_Predator_Extinction.xiso.iso" }
+route = "gen-avp-extinction"
+notes = "No #431 target; the default 30 applies. route = gen-avp-extinction: #433 step 6c classifier-path benchmark opening (drive generic), direct-avatar action loop (walk/turn/attack), not yet device-proven."
+
+[titles."4343000E"]
+name = "Auto Modellista"
+iso = { nova = "4343000E-Auto_Modellista.xiso.iso" }
+target_fps = 30
+route = "gen-auto-modellista"
+notes = "No #431 target; the default 30 applies. route = gen-auto-modellista: #433 step 6c classifier-path benchmark opening (drive generic), racer play loop (throttle held, steer), from burnout.route's proven pattern. Not yet device-proven."
+
+[titles."45410389"]
+name = "Batman Begins"
+iso = { nova = "45410389-Batman_Begins.xiso.iso" }
+route = "gen-batman-begins"
+notes = "No #431 target; the default 30 applies. route = gen-batman-begins: #433 step 6c classifier-path benchmark opening (drive generic), action/stealth play loop (walk/turn/attack), not yet device-proven."
+
+[titles."55530018"]
+name = "Beyond Good & Evil"
+iso = { nova = "55530018-Beyond_Good_Evil.xiso.iso" }
+route = "gen-bge"
+notes = "route = gen-bge: #433 step 6c classifier-path benchmark opening (drive generic), action-adventure play loop (walk/turn/attack), not yet device-proven. See pm/owner-holds.tsv bge-combat-below-bar (kind=below_bar, classes=PLAYABLE_ATTEMPT only -- does not block a benchmark fps read, only a Playable-attempt retest)."
+
+[titles."4D530036"]
+name = "Counter-Strike"
+iso = { nova = "4D530036-Counter_Strike.xiso.iso" }
+route = "gen-counter-strike"
+notes = "No #431 target; the default 30 applies. route = gen-counter-strike: #433 step 6c classifier-path benchmark opening (drive generic), FPS play loop (sweep look, fire), not yet device-proven."
+
+[titles."53410002"]
+name = "Guilty Gear XX #Reload: The Midnight Carnival"
+iso = { nova = "53410002-Guilty_Gear_XX_Reload_The_Midnight_Carnival.xiso.iso" }
+route = "gen-guilty-gear-xx"
+notes = "No #431 target; the default 30 applies. route = gen-guilty-gear-xx: #433 step 6c classifier-path benchmark opening (drive generic), 2D-fighter play loop (close/attack), not yet device-proven."
+
+[titles."4553001D"]
+name = "LEGO Star Wars: The Video Game"
+iso = { nova = "4553001D-LEGO_Star_Wars_The_Video_Game.xiso.iso" }
+route = "gen-lego-star-wars"
+notes = "No #431 target; the default 30 applies. route = gen-lego-star-wars: #433 step 6c classifier-path benchmark opening (drive generic), action-platformer play loop (run/turn/attack), not yet device-proven."
+
+[titles."4541038A"]
+name = "Marvel Nemesis: Rise of the Imperfects"
+iso = { nova = "4541038A-Marvel_Nemesis_Rise_of_the_Imperfects.xiso.iso" }
+route = "gen-marvel-nemesis"
+notes = "No #431 target; the default 30 applies. route = gen-marvel-nemesis: #433 step 6c classifier-path benchmark opening (drive generic), fighter play loop (close/attack), not yet device-proven. See pm/owner-holds.tsv marvel-851 (pending, PLAYABLE_ATTEMPT only -- does not block a benchmark fps read)."
+
+[titles."54540008"]
+name = "Midnight Club II"
+iso = { nova = "54540008-Midnight_Club_II.xiso.iso" }
+route = "gen-midnight-club-2"
+notes = "No #431 target; the default 30 applies. route = gen-midnight-club-2: #433 step 6c classifier-path benchmark opening (drive generic), racer play loop (throttle held, steer), from burnout.route's proven pattern. Not yet device-proven."
+
+[titles."4D57000C"]
+name = "Mortal Kombat: Deadly Alliance"
+iso = { nova = "4D57000C-Mortal_Kombat_Deadly_Alliance.xiso.iso" }
+route = "gen-mk-deadly-alliance"
+notes = "No #431 target; the default 30 applies. route = gen-mk-deadly-alliance: #433 step 6c classifier-path benchmark opening (drive generic), fighter play loop (close/attack), not yet device-proven."
+
+[titles."4541007A"]
+name = "NBA Live 06"
+iso = { nova = "4541007A-NBA_Live_06.xiso.iso" }
+route = "gen-nba-live-06"
+notes = "No #431 target; the default 30 applies. route = gen-nba-live-06: #433 step 6c classifier-path benchmark opening (drive generic), basketball play loop (move/shoot), not yet device-proven."
+
+[titles."454100A1"]
+name = "NBA Live 07"
+iso = { nova = "454100A1-NBA_Live_07.xiso.iso" }
+route = "gen-nba-live-07"
+notes = "No #431 target; the default 30 applies. route = gen-nba-live-07: #433 step 6c classifier-path benchmark opening (drive generic), basketball play loop (move/shoot), not yet device-proven."
+
+[titles."45410050"]
+name = "NBA Live 2005"
+iso = { nova = "45410050-NBA_Live_2005.xiso.iso" }
+route = "gen-nba-live-2005"
+notes = "No #431 target; the default 30 applies. route = gen-nba-live-2005: #433 step 6c classifier-path benchmark opening (drive generic), basketball play loop (move/shoot), not yet device-proven."
+
+[titles."4D570029"]
+name = "Mortal Kombat: Shaolin Monks"
+iso = { nova = "4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso" }
+route = "gen-mk-shaolin-monks"
+notes = "No #431 target; the default 30 applies. route = gen-mk-shaolin-monks: #433 step 6c classifier-path benchmark opening (drive generic); unlike the other MK titles here this is a 3D beat-'em-up, so the loop walks/turns/attacks rather than closing distance on a fixed opponent. Not yet device-proven."
+
+[titles."4156002B"]
+name = "Spider-Man 2"
+iso = { nova = "4156002B-Spider_Man_2.xiso.iso" }
+route = "gen-spiderman2"
+notes = "route = gen-spiderman2: #433 step 6c classifier-path benchmark opening (drive generic), open-world action play loop (walk/turn/attack), not yet device-proven. See pm/owner-holds.tsv spiderman2-below-bar (below_bar, PLAYABLE_ATTEMPT only -- does not block a benchmark fps read)."
+
+[titles."4C410017"]
+name = "Star Wars: Episode III: Revenge of the Sith"
+iso = { nova = "4C410017-Star_Wars_Episode_III_Revenge_of_the_Sith.xiso.iso" }
+route = "gen-sw-ep3-rots"
+notes = "No #431 target; the default 30 applies. route = gen-sw-ep3-rots: #433 step 6c classifier-path benchmark opening (drive generic), lightsaber-action play loop (walk/turn/attack), not yet device-proven."
+
+[titles."5443000E"]
+name = "Tecmo Classic Arcade"
+iso = { nova = "5443000E-Tecmo_Classic_Arcade.xiso.iso" }
+route = "gen-tecmo-classic-arcade"
+notes = "No #431 target; the default 30 applies. route = gen-tecmo-classic-arcade: #433 step 6c classifier-path benchmark opening (drive generic); a compilation title, so the loop is a direction plus the main action button (A), not a genre-specific pattern. Not yet device-proven."
+
+[titles."56550039"]
+name = "The Incredible Hulk: Ultimate Destruction"
+iso = { nova = "56550039-The_Incredible_Hulk_Ultimate_Destruction.xiso.iso" }
+route = "gen-hulk-ultimate-destruction"
+notes = "No #431 target; the default 30 applies. route = gen-hulk-ultimate-destruction: #433 step 6c classifier-path benchmark opening (drive generic), open-world brawler play loop (walk/turn/attack), not yet device-proven."
+
+[titles."4541003E"]
+name = "The Lord of the Rings: The Return of the King"
+iso = { nova = "4541003E-The_Lord_of_the_Rings_The_Return_of_the_King.xiso.iso" }
+route = "gen-lotr-rotk"
+notes = "No #431 target; the default 30 applies. route = gen-lotr-rotk: #433 step 6c classifier-path benchmark opening (drive generic), hack-and-slash play loop (walk/turn/attack), not yet device-proven."
+
+[titles."4D530035"]
+name = "Top Spin"
+iso = { nova = "4D530035-Top_Spin.xiso.iso" }
+route = "gen-top-spin"
+notes = "No #431 target; the default 30 applies. route = gen-top-spin: #433 step 6c classifier-path benchmark opening (drive generic), tennis play loop (move/swing), not yet device-proven."
+
+[titles."58490004"]
+name = "Black Stone: Magic & Steel"
+iso = { nova = "58490004-Black_Stone_Magic_Steel.xiso.iso" }
+route = "gen-black-stone"
+notes = "No #431 target; the default 30 applies. route = gen-black-stone: #433 step 6c classifier-path benchmark opening (drive generic), action-RPG play loop (walk/turn/attack), not yet device-proven."
+
+[titles."504C0001"]
+name = "Phantom Crash"
+iso = { nova = "504C0001-Phantom_Crash.xiso.iso" }
+route = "gen-phantom-crash"
+notes = "No #431 target; the default 30 applies. route = gen-phantom-crash: #433 step 6c classifier-path benchmark opening (drive generic), mech-combat play loop (move/turn/fire), not yet device-proven."
