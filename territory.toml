@@ -2392,8 +2392,14 @@ note = "RETIRED (lane.local 2026-10-11 23:5x PDT): folded as 4c9132fa17 (its las
 [lane.burnoutbrief1012]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/burnoutbrief1012/**", "docs/testing/titles/routes/burnout-revenge.returning.route"]
-note = "STARTED lane.local 2026-10-12 02:2x PDT (Sonnet, route building per the 10-10 table): Burnout Revenge's confirmation 1-1791793410-lane.local-336876 (after burnoutloop1012) held 59 fps but FAILed on position: Retry at RESULTS worked (02:00:16 RESULTS, 02:00:48 the TRAFFIC ATTACK event brief) and the run then sat on the brief (Continue (A)) to the end, B presses doing nothing there. Not accepted. The play loop gets a press A right after its press B; only the post-mark loop changes; no device runs (lane.local queues the next confirmation). Brief: briefs/burnoutbrief1012.md."
+files = ["docs/lanes/burnoutbrief1012/**"]
+note = "RETIRED (lane.local 2026-10-12 04:08 PDT): folded as 75c07c25a7 (02:56 PDT; lane head 3c0c67e21e, attempt 2), unit gone. The play loop presses A 0.3 s after its B, so a run on the event brief continues into the race. Confirmation 1-1791800854-lane.local-2819291 raced, retried and dismissed the brief for 16 minutes, then a RESULTS screen with a medal and no Retry sent it to World Tour (harness FAIL, not accepted). To lane.burnoutunlock1012: burnout-revenge.returning.route."
+
+[lane.burnoutunlock1012]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/burnoutunlock1012/**", "docs/testing/titles/routes/burnout-revenge.returning.route"]
+note = "STARTED lane.local 2026-10-12 04:08 PDT (Sonnet, route building per the 10-10 table): Burnout Revenge's confirmation 1-1791800854-lane.local-2819291 (after burnoutbrief1012) raced at ~42-50 gfps for 16 minutes, then at 03:56:35 RESULTS showed a BRONZE medal and NEW EVENT UNLOCKED with prompts More details (Y) and Continue (A), no Retry; the loop's A was Continue and the run sat in WORLD TOUR [SELECT A LOCATION] (18-27 fps) to the end: harness FAIL, fps_ok 0.8172. Not accepted. The play loop must get back into a race from the screens after Continue; only the post-mark loop changes; no device runs (lane.local queues the next confirmation). Brief: briefs/burnoutunlock1012.md."
 
 [lane.burnoutloop1012]
 issues = ["433"]
