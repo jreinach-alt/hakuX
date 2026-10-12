@@ -1,6 +1,6 @@
 # pubdocs1012: public docs pass for 0.5 (README, compatibility, limitations, attribution) (#433, 0.5)
 
-State: draft
+State: ready
 
 Lane: pubdocs1012            Issue: none (#433 umbrella)
 Base: master @ 1ed3ac8f39

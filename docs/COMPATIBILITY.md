@@ -19,6 +19,11 @@ shows no hitches or flicker — checked by reviewing the captured frames
 themselves, not just the frame-rate counter (**frame review**). The rating is
 tied to the handheld it was measured on, an AYN Thor or a Retroid Pocket Nova.
 
+A few titles were rated by a person playing them rather than by the timed
+run alone, where the timed run cannot hold a representative scene. Need for
+Speed: Most Wanted, for one, is rated on a full race played by hand; its
+automated run covers race starts only.
+
 A Playable rating means a title clears that bar. It is not a claim that the
 title is free of bugs, and a title's absence from this list is not a claim
 that it fails to run — only that it has not cleared this bar yet.

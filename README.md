@@ -102,6 +102,12 @@ Android. hakuX tuned that port for Adreno devices.
   the in-app library.
 - **It installs alongside an official build.** The fork ships under its own
   application id, so nothing is uninstalled and no saves are at risk.
+- **Save states.** Ten slots per game plus an auto slot, saved and loaded from
+  the pause menu, with optional auto-save on quit and auto-load on launch
+  (Settings, then Save States).
+- **A tested Playable list.** [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md)
+  lists the titles that reached gameplay and held it on a Snapdragon
+  handheld, not just booted.
 - Smaller download, working crash diagnostics, and a build that configures on
   a machine other than its author's.
 
