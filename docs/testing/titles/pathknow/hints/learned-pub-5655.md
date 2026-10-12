@@ -4,3 +4,5 @@
 - Aliens Versus Predator Extinction (56550022, nova, pathfind 2026-10-05): gameplay in 2.0 min via publisher_logo A -> title_screen START -> main_menu DOWN A -> main_menu A -> submenu A -> cutscene START -> cutscene A
 - The Incredible Hulk Ultimate Destruction (56550039, nova, pathfind 2026-10-05): gameplay in 2.0 min via publisher_logo A -> cutscene A -> publisher_logo A -> cutscene A -> main_menu A -> submenu A -> title_screen START -> cutscene START
 - Fight Club (5655002F, nova, pathfind 2026-10-06): gameplay in 3.0 min via publisher_logo A -> title_screen START -> save_load_prompt A -> main_menu A -> profile_creation A -> cutscene START
+- Crash Bandicoot: The Wrath of Cortex (56550003, nova, pathfind 2026-10-07): gameplay in 1.9 min via publisher_logo A -> profile_creation A -> cutscene START
+- Lord of the Rings The The Fellowship of the Ring USA (56550004, nova, pathfind 2026-10-07): gameplay in 1.4 min via publisher_logo A -> publisher_logo A START A -> cutscene START A -> cutscene A

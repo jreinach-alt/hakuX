@@ -6,3 +6,4 @@
 - RalliSport Challenge (4D53000F, nova, pathfind 2026-10-04): gameplay in 2.0 min via publisher_logo A -> title_screen A -> submenu A -> main_menu RIGHT A -> submenu A -> main_menu A -> submenu A
 - Amped: Freestyle Snowboarding (4D530005, nova, pathfind 2026-10-04): gameplay in 4.8 min via publisher_logo A -> title_screen START -> main_menu A -> submenu A -> name_entry A -> save_load_prompt LEFT A -> submenu DOWN RIGHT RIGHT RIGHT -> submenu UP RIGHT -> submenu A -> submenu DOWN DOWN RIGHT -> submenu DOWN DOWN RIGHT A -> submenu A
 - Amped 2 (4D530041, nova, pathfind 2026-10-04): gameplay in 4.4 min via publisher_logo START A -> intro_video START A -> title_screen START -> submenu A -> name_entry A -> main_menu A -> submenu A
+- RalliSport Challenge 2 (4D530039, nova, pathfind 2026-10-07): gameplay in 6.2 min via intro_video START A -> cutscene START -> title_screen START -> submenu A -> main_menu LEFT A -> submenu RIGHT A -> submenu A
