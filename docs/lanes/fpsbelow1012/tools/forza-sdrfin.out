@@ -1,0 +1,8 @@
+z-1791810687-fpsbelow1012-568864: mark 10-12 06:56:02.010, HAKUX_VTX_EXACT=0, 185 periods, 11100 frames
+  range per 60 frames, median: n 93, dl 653, wait 790 ms;  window total: n 99, dl 686, wait 815 ms (13.6 ms/frame)
+  [sdrfin] per 60 frames over 11100 frames: recorded by own lookups 60
+    own   n     60  dl    116  dl/n   1.9     571 ms  ( 9.5 ms/frame,  70% of the split's time)
+    dest  n      0  dl      0  dl/n   0.0       0 ms  ( 0.0 ms/frame,   0% of the split's time)
+    clean n      0  dl      0  dl/n   1.0       0 ms  ( 0.0 ms/frame,   0% of the split's time)
+    tscan n     39  dl    570  dl/n  14.7     244 ms  ( 4.1 ms/frame,  30% of the split's time)
+rc=0
