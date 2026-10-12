@@ -33,6 +33,19 @@ owner's hands-on test (`lane.local-ownerplay`), and the logcat ends at
 of cycle 0, so it measures nothing. It was queued again on the final ref,
 to run after the hold.
 
+## Attempt 2: why it did not finish
+
+Attempt 2 ran out of turns: the session hit its 300-turn cap at 23:27:58
+PDT. By then it had:
+
+- finished the frontend and the per-game switches;
+- queued and read the 20-cycle measurement (1461611);
+- run the disk test twice (1461488, then 1797227).
+
+The write-up of 1797227 and the step 2 OUTBOX entry were still uncommitted.
+The PR was still a draft. Attempt 3 committed them, added the image-growth
+numbers, merged origin/master, ran the selftest and marked the PR ready.
+
 ## Design
 
 ### Where states live
@@ -87,11 +100,29 @@ raw file, and only then is the raw file gone.
   state are rolled back.
 - When a slot is overwritten or deleted, its snapshot is deleted. A startup
   pass also deletes snapshots that no file names.
-- In the pilot, the disk snapshot took 18-29 ms inside the pause.
-- Image growth: the qcow2 file only grows by clusters the guest rewrites
-  while a snapshot holds the old copy. Without a disk write, a snapshot
-  costs only its L1 table and refcount updates (hdd file_bytes are in the
-  `[savestate] hdd` lines).
+- In the pilot, the disk snapshot took 18-29 ms inside the pause. In
+  1797227 it took 18-27 ms.
+- **Image growth.** The qcow2 file grows only by the clusters the guest
+  rewrites while a snapshot still holds the old copy. The rest is a small
+  amount of metadata. The `file_bytes` in the `[savestate] hdd` lines, once a
+  second, show it:
+
+| Run | What happened | hdd.img growth |
+|---|---|---|
+| 1797227 | the first disk snapshot (L1 copy, refcounts, snapshot table) | +64 KB (19,202,048 to 19,267,682) |
+| 1797227 | 187 writes 73.5 MB to Z, which was empty at the save (new clusters, no copy) | +73.9 MB, as without a snapshot |
+| 1797227 | a load, which goes to the save's snapshot and keeps an undo-load snapshot | +64 KB |
+| 1797227 | the replayed boot writes Z's 73.5 MB again while the undo-load snapshot holds the first copy | +73.8 MB |
+| 1461611 | 34 min of the attract race with 160 saves, 160 loads and their disk snapshots (t=76 to 2121 s) | +0.38 MB (92,798,976 to 93,192,723) |
+
+- So during play that does not rewrite the disk, the snapshots cost about
+  0.4 MB in 34 min. Where a game rewrites data, each live snapshot can hold
+  one old copy of what was rewritten. 187's boot cache is the case seen
+  here: one copy is 73.5 MB.
+- There are at most 13 live snapshots: 0-9, auto, undo-save and undo-load.
+- A qcow2 file never shrinks. Clusters freed when a snapshot is deleted are
+  reused by later writes, so the file stays at its high-water mark (167 MB
+  at the end of 1797227, after all 8 snapshots were deleted).
 
 **Non-qcow2 HDD: refused.** Save and load both refuse with
 `hdd-not-qcow2`, and the pause menu shows why. With a raw image, a loaded
@@ -208,7 +239,7 @@ among auto and 0-9. It skips any state saved before another title ran.
 | 1-1791779971-savestate1011-1240876 | `measure`, 20 cycles x 9 options, ref 121cde1e09 | stopped at ~150 s by the owner's hold on the Nova; 6 saves, not used |
 | 1-1791781810-savestate1011-1461488 | `disk+func` (`HAKUX_SAVESTATE_DISK=8,40,60`), 200 s, ref fefe83e884 | D1 pass. D2: disk pass, `game_runs=0`. F1, F3, F4 fail. All three ran on the still title screen (see "Disk test"). F2, F5-F11 and F5b pass. 8 snapshots deleted, 0 left, scratch dir gone |
 | 1-1791781811-savestate1011-1461611 | `measure`, 20 cycles x 8 options (no d-none), 2600 s, frames every 10 s, ref fefe83e884 | done ok=1: 160 saves and 160 loads ok, 3 snapshots deleted, 0 left, scratch dir gone. Table in "Measurement" |
-| 1-1791783647-savestate1011-1797227 | `disk+func` again, same request, ref a7d713effe (waits for a moving scene) | queued |
+| 1-1791783647-savestate1011-1797227 | `disk+func` again, same request, ref a7d713effe (waits for a moving scene) | D1, D2 (`game_runs=1`), F1-F11 and F5b pass; E: untouched; 8 snapshots deleted, 0 left, scratch dir gone (see "Disk test") |
 
 All runs:
 
@@ -227,7 +258,7 @@ All runs:
 | F3 | undo load returns to the kept state | pass; undo kept in 55.6 ms |
 | F4 | undo save puts the replaced state back; again = redo | pass |
 | F5 | auto slot: save 198.6 ms, picked as newest | pass |
-| F5b | `auto_load_run()`, the function a boot with auto-load on runs, picks and loads auto (added after the pilot) | in 1461488 |
+| F5b | `auto_load_run()`, the function a boot with auto-load on runs, picks and loads auto (added after the pilot) | pass in 1461488 and 1797227 |
 | F6 | schema mutant (nv2a.parent_obj): refused, machine never stopped | pass |
 | F7 | build "build-A-test", same schema: loads | pass |
 | F8 | controller layout, title, disc: each refused | pass |
@@ -402,7 +433,49 @@ A state saved at t=8 is from before that burst.
     of one 5 s look.
   - After the disk test, func waits for its start time and a moving
     scene.
-  - 1797227 re-runs it.
+
+**1797227** (ref a7d713effe, the same request): every step passes.
+
+| Hash | When | wr_ops | Z | E | Other partitions |
+|---|---|---|---|---|---|
+| H0 | the save, t=8 | 30 | `2bf281d7…`, 24 KB | `e0b69c86…` | - |
+| H1 | before the load, t=40 | 700 | `ea19a5bb…`, 73.5 MB | same | same |
+| H2 | after the load, t=40.2 | 700 | `2bf281d7…` = H0 | same | same |
+| H3 | after the undo load, t=60.2 | 1370 | `ea19a5bb…` = H1 | same | same |
+
+- **D1 passes:**
+  - the game wrote Z (670 ops) between the save and the load;
+  - after the load every partition hashes as at the save and has its FATX
+    magic;
+  - the scene moved 1.0 s after the load (`game_runs=1 moved_ms=1002`).
+- **The frames show the replay after the load at 23:23:28:**
+  - the title screen at f00022 (23:23:27);
+  - then Ubisoft (f00024) and the ESRB notice (f00026);
+  - then the title screen again at f00028 (23:23:42).
+- **D2 passes:**
+  - after the undo load the disk is H1 again, with every partition's FATX
+    magic;
+  - the scene moved 12.0 s later (`game_runs=1 moved_ms=12016`): the undo
+    load put the game back on the title screen it had left at t=40, and
+    the attract race started at 23:24:00 (f00034 title, f00036 race).
+- **F1-F11 and F5b pass,** after `func waits for a moving scene
+  moved_ms=1002`. They ran during the attract race (f00036-f00048).
+- **E: is untouched.** `hdd.json` save `fa079adf42d5`, harvested
+  `fa079adf42d5`; no harvest errors.
+- **Clean-up:** `done ok=1`, 8 snapshots deleted, 0 left, scratch folder
+  gone.
+
+**What F2 does not cover.** F2 saves in background mode, waits 1 s, then
+loads, expecting a load during compression to read the complete raw file.
+In both runs the job had already finished:
+
+- the compressed file was in place 790 ms (1461488) and 856 ms (1797227)
+  after the stop;
+- so the first load read zstd (`first_load_codec=zstd job_running=0`).
+
+A load during the job is therefore untested on the device. Background mode
+is reachable only from the test driver (On is inline). If On ever becomes
+background, shorten F2's wait to about 200 ms first.
 
 ## Owner checks
 
@@ -453,5 +526,5 @@ hands on the pause menu.
 - No harvest so far shows the game writing E: during unattended play.
   `hdd.json` vs `hdd.after.json` changed in no run searched. The HDD writes
   in a 187 boot (the `[savestate] hdd` lines: about 700 ops, 74 MB at
-  t=17-19 s) are the dashboard/title cache and the profile load, not a game
+  t=16-18 s) are the dashboard/title cache and the profile load, not a game
   save.

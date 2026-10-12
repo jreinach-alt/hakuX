@@ -90,3 +90,74 @@ test saved at t=8, let the game write, and loaded at t=40:
 The check that the game runs after the undo load is being re-run. The game
 was on its title screen, which does not move, and a single 5 s look read it
 as stopped. The frames show it running.
+
+## #433 -- 2026-10-11 23:27 PDT
+
+Step 2, compression: what each option costs. Measured on the Nova in
+1-1791781811-savestate1011-1461611.
+
+- **Scene:** 20 save/load cycles per option on 187: Ride or Die's attract
+  race, 60 fps.
+- **Volume:** 160 saves and 160 loads, all ok.
+
+| Option | Pause, median / p95 | File safe on disk | Size | CPU |
+|---|---|---|---|---|
+| Off (raw) | 67 / 75 ms | 202 ms | 41.6 MB | 0 |
+| **On: zstd 1, 4 threads, inside the pause** | **76 / 86 ms** | **127 ms** | **10.1 MB** | 59 ms |
+| LZ4, 1 thread, inside the pause | 89 / 94 ms | 154 ms | 14.1 MB | 32 ms |
+| zstd 3, 1 thread, inside the pause | 139 / 148 ms | 186 ms | 9.5 MB | 82 ms |
+| Save raw, compress on an idle core, then swap (zstd 3) | 69 / 77 ms | raw 202 ms, compressed 844 ms | 9.5 MB | 598 ms |
+| Dolphin's: copy in the pause, write after (zstd 3) | 59 / 63 ms | 714 ms | 9.5 MB | 585 ms |
+
+- **No hitches.** No option caused a frame of 100 ms or more in the 10 s
+  after a save. The worst frame was 33-47 ms, against 32 ms with no save.
+- **Loads cost the same with or without compression:** 127-129 ms paused,
+  about 176 ms in all.
+  - Of that, undo load's copy of the running machine is 60 ms.
+  - Decompressing is 8-13 ms; reading a compressed file saves 11-13 ms.
+
+**Recommendation: On = zstd 1 on four threads, inside the pause.** Against
+Off it:
+
+- pauses 9 ms longer (under one frame);
+- has the file safe on disk sooner;
+- uses a quarter of the space;
+- leaves no work behind after the game resumes.
+
+**Saving raw, then compressing on an idle core** saves 7 ms of pause
+against On. The cost:
+
+- the 42 MB file stays for most of a second;
+- each save writes 51 MB of flash instead of 10;
+- it takes ten times the CPU, on a little core.
+
+It is not recommended.
+
+**Dolphin's way** pauses 17 ms less than On. A quit in the 0.7 s before its
+file is written loses the save.
+
+**No third setting.** The options pause within about one frame of each
+other; size and safety decide, and On wins both.
+
+**Where it runs.** The compression worker pins itself to the least-used
+core (a 2.0 GHz little core on the Nova) at the lowest scheduling priority.
+The game's CPU thread is on the 3.2 GHz core.
+
+## #433 -- 2026-10-11 23:27 PDT
+
+Step 1, the hard-disk rewind test, re-run
+(1-1791783647-savestate1011-1797227). Every check passes.
+
+- **The game wrote, and the load rolled it back.** As before, the game
+  wrote 73.5 MB to Z between the save and the load. After the load every
+  partition matched the save, with FATX intact.
+- **The game ran after the load.** The scene moved 1 s later, and the
+  frames show the boot replaying: Ubisoft, ESRB, then the title screen.
+- **The undo load put the disk back** as it was before the load. The game
+  ran on into its attract race 12 s later.
+- **E: (game saves) was untouched.**
+- **Every other check passed:** save/load, undo load, undo save, the auto
+  slot, auto-load, the four refusals (schema, title, disc, controller
+  layout), a state from another build loading, delete and the slot list.
+- **Clean-up:** all 8 disk snapshots were deleted and the scratch folder
+  is gone.
