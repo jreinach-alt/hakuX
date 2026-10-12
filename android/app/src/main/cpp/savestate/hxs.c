@@ -3476,6 +3476,21 @@ static void test_step(const char *step, bool pass, const char *fmt, ...)
     g_free(d);
 }
 
+/* True once the worker is compressing the slot of the last title used. */
+static bool wait_job_running(int slot, int timeout_ms)
+{
+    int64_t end = now_us() + timeout_ms * 1000LL;
+    for (;;) {
+        pthread_mutex_lock(&hxs_mu);
+        bool running = last_title && job_running_for(last_title, slot);
+        pthread_mutex_unlock(&hxs_mu);
+        if (running || now_us() >= end) {
+            return running;
+        }
+        sleep_ms(2);
+    }
+}
+
 typedef struct RegionCall {
     uint64_t h;
     char state[32];
@@ -3613,19 +3628,27 @@ static void test_func(void)
               " after_load=%016" PRIx64 " scene_moved=%d",
               a.region, before, b.region, before != a.region);
 
-    /* F2: background compression; a load while it runs reads a complete file. */
+    /*
+     * F2: background compression. The first load starts once the worker is
+     * compressing the slot, so it must read the complete raw file while the
+     * job runs; the second, after the job, reads the compressed file.
+     */
     hxs_save(1, HXS_MODE_BACKGROUND, HXS_CODEC_ZSTD, 3, false, &a);
-    sleep_ms(1000);
+    int64_t t_wait = now_us();
+    bool started = wait_job_running(1, 2000);
+    double waited_ms = (now_us() - t_wait) / 1000.0;
     hxs_load(1, &b);
     bool idle = hxs_wait_idle(60000);
     sleep_ms(1000);
     hxs_load(1, &c);
-    test_step("F2", a.ok && b.ok && c.ok && idle && b.region == a.region &&
-                        c.region == a.region &&
+    test_step("F2", a.ok && b.ok && c.ok && idle && started &&
+                        b.job_running && b.file_codec == HXS_CODEC_NONE &&
+                        b.region == a.region && c.region == a.region &&
                         c.file_codec == HXS_CODEC_ZSTD,
-              "first_load_codec=%s job_running=%d second_load_codec=%s "
+              "job_started=%d waited_ms=%.1f first_load_codec=%s "
+              "job_running=%d second_load_codec=%s "
               "raw_bytes=%" PRIu64 " zstd_bytes=%" PRIu64,
-              codec_name(b.file_codec), b.job_running,
+              started, waited_ms, codec_name(b.file_codec), b.job_running,
               codec_name(c.file_codec), b.file_bytes, c.file_bytes);
 
     /* F3: undo load returns to the machine before the last load. */

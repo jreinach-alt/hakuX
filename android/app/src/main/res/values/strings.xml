@@ -422,6 +422,7 @@
 
   <!-- Save states (#433) -->
   <string name="settings_savestate_title">Save States</string>
+  <string name="settings_index_savestates_desc">Compression, auto-load last state and auto-save on quit for this game.</string>
   <string name="settings_savestate_desc">Ten slots per game (0 to 9) and an auto slot, saved and loaded from the pause menu. They are files on this device, outside the Xbox hard disk image.</string>
   <string name="settings_savestate_folder">Folder</string>
   <string name="settings_savestate_folder_default_note">The default folder is deleted when the app is uninstalled.</string>

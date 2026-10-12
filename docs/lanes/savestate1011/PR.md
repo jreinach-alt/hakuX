@@ -1,9 +1,9 @@
 # savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433)
 
 Lane: savestate1011           Issue: #433 (0.5)
-Base: master @ 00fde8afb3 (merged at 399f819d82; contains lane/snapshot1011)
-State: ready
-Files: ui/xemu-snapshots.c, ui/xemu-snapshots.h, migration/savevm.c, android/app/src/main/cpp/CMakeLists.txt, android/app/src/main/cpp/xemu_android.cpp, android/app/src/main/cpp/savestate/**, android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt, android/app/src/main/java/com/rfandango/haku_x/PauseMenuOverlay.kt, android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt, android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt, android/app/src/main/java/com/rfandango/haku_x/SaveState*.kt, android/app/src/main/res/values/strings.xml, android/app/src/main/res/layout/savestate_*, docs/lanes/savestate1011/**, docs/testing/nv2a_index.json
+Base: master @ c03e17b8a0 (merged at 223f4f256e; contains lane/snapshot1011)
+State: draft
+Files: ui/xemu-snapshots.c, ui/xemu-snapshots.h, migration/savevm.c, android/app/src/main/cpp/CMakeLists.txt, android/app/src/main/cpp/xemu_android.cpp, android/app/src/main/cpp/savestate/**, android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt, android/app/src/main/java/com/rfandango/haku_x/PauseMenuOverlay.kt, android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt, android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt, android/app/src/main/java/com/rfandango/haku_x/SaveState*.kt, android/app/src/main/java/com/rfandango/haku_x/SettingsIndexActivity.kt, android/app/src/main/res/values/strings.xml, android/app/src/main/res/layout/savestate_*, docs/lanes/savestate1011/**, docs/testing/nv2a_index.json
 Prediction: none: no arm (the evidence is an env-driven test sequence's logcat and frames on the Nova)
 Needs device: yes (Nova only)    Needs NDK: yes
 Release note (other): save states in the pause menu: ten slots per game stored as files on the device, optional compression, undo save and undo load, auto-save on quit and auto-load at boot.

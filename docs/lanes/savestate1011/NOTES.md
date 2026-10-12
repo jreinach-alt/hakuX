@@ -46,6 +46,21 @@ The write-up of 1797227 and the step 2 OUTBOX entry were still uncommitted.
 The PR was still a draft. Attempt 3 committed them, added the image-growth
 numbers, merged origin/master, ran the selftest and marked the PR ready.
 
+## Attempt 3: why it did not finish
+
+Attempt 3 ended normally at 01:47 PDT with the PR marked ready, but one item
+was left undone. Hostops had granted `SettingsIndexActivity.kt` (the
+`grant` line in `WAITING`), and that grant is why the lane was resumed at
+01:04. Attempt 3 still read the grant as pending: it left `WAITING` in place
+and reported the per-game section as unreachable. The lane was resumed again
+at 01:48 on its new head, with the grant still in place.
+
+Attempt 4:
+
+- adds the per-game "Save States" entry and removes `WAITING`;
+- makes F2 load while the compression job is running, which no earlier run
+  did, and runs the functional sequence once more on the final head.
+
 ## Design
 
 ### Where states live
@@ -216,18 +231,16 @@ among auto and 0-9. It skips any state saved before another title ran.
   says so. A "start without auto-load" entry in the game list would need
   `GameLibraryActivity.kt`, outside this lane's files; it is not done.
 
-### Per-game settings (stretch, half done)
+### Per-game settings (stretch)
 
 - Compression, auto-load and auto-save on quit are per-game overridable
   (`PerGameSettingsManager.overridablePreferenceKeys`). MainActivity and
   `xemu_android.cpp` already read them through the runtime override first.
 - The folder stays global. Settings opened per game shows the card without
   the folder controls, under the section key `savestates`.
-- Not reachable yet. The per-game settings index lists only graphics, audio
-  and debug. It needs a "Save States" entry that opens `savestates`, and
-  `sectionHasOverrides` needs the three keys. That is
-  `SettingsIndexActivity.kt`, outside this lane's files, so `WAITING` asks
-  for the grant.
+- The per-game settings index (`SettingsIndexActivity.kt`) has a
+  "Save States" entry after Debug that opens it. The entry is marked as
+  overridden when any of the three keys is set for the game.
 - Thumbnails are not done.
 
 ## Runs
