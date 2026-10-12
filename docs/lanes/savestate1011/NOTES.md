@@ -561,12 +561,14 @@ hands on the pause menu.
 
 ## Checks
 
-- `docs/testing/preflight.sh --allow-tracker` passed on 399f819d82, the
-  merge of origin/master (00fde8afb3).
-- `docs/testing/jobs/selftest.sh` ran on the same commit as four shards
-  (`SELFTEST_SHARD=k/4`): 137 of 137 fragments, 3430 passed, 0 failed. Run
-  whole, it does not fit in one 10-minute call: the arms chain alone took
-  about 30 min on the host.
+- `docs/testing/preflight.sh --allow-tracker` passed on 40a885d0e1, after
+  the merge of origin/master (c03e17b8a0).
+- `docs/testing/jobs/selftest.sh` passed on the same commit: 137 of 137
+  fragments, 3430 passed, 0 failed.
+  - It took 64 min whole. One shard of four (`SELFTEST_SHARD=1/4`) did not
+    finish in a 10-minute call.
+  - It was run detached (`setsid nohup`), with its log polled.
+- Later commits change only `docs/lanes/savestate1011/`.
 
 ## Do not repeat
 
