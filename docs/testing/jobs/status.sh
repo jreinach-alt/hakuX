@@ -452,9 +452,11 @@ if [ $have_gh = 1 ]; then
               | "\(.workflowName) \(.conclusion) on master at \(.headSha[0:10])"' 2>/dev/null \
         | while IFS= read -r l; do [ -n "$l" ] && attn ci "CI red: $l"; done
     # The release gate. Blockers are open issues carrying the label; the gate's
-    # text is the owner's (hostops-poll item 10) and overridable in limits.env.
+    # text is the owner's, release-0.5.toml's `gate`, which the page reads. A
+    # copy here went stale when the owner made the gate the Nova's (2026-10-12),
+    # so this writes one only when limits.env overrides it.
     fact release_name "${STATUS_RELEASE_NAME:-0.5}"
-    fact release_gate "${STATUS_RELEASE_GATE:-Ghoulies median >= 25 gfps over 90-240 s on the candidate APK, both handhelds}"
+    [ -n "${STATUS_RELEASE_GATE:-}" ] && fact release_gate "$STATUS_RELEASE_GATE"
     rc=$(gh release list --repo "$GH_REPO" --limit 30 --json tagName --jq ".[] | .tagName | select(startswith(\"${STATUS_RELEASE_TAG:-v0.5}\"))" 2>/dev/null | head -1)
     fact release_candidate "${rc:-none cut yet}"
     # Whether a gate soak ran the candidate is a ref comparison, so the page needs the tag's commit.

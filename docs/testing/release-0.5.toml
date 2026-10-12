@@ -36,10 +36,14 @@ benchmark_copies = 1
 rate_hours = 48
 
 # The release gate. The page keeps status.sh's measurement (the newest soak per
-# handheld whose request names the title, median gfps over 90-240 s from the
-# first perf line) and compares its ref with the candidate's.
-gate = "Ghoulies median >= 25 gfps over 90-240 s on the candidate APK, both handhelds"
+# gate handheld whose request names the title, median gfps over 90-240 s from
+# the first perf line) and compares its ref with the candidate's.
+gate = "Ghoulies median >= 25 gfps over 90-240 s on the candidate APK, on the Nova"
 gate_min = 25
+# The handhelds the gate is measured on. The Nova only: the owner, 2026-10-12
+# ~15:0x PDT, "0.5 can ship on the Nova test results alone. The Thor hardware
+# is identical." (Until then: both handhelds.)
+gate_devices = ["nova"]
 candidate_tag_prefix = "v0.5"
 
 # The 0.5 title list: every title on either handheld, every title staged for
