@@ -1,5 +1,23 @@
 # lane.burnoutloop1012
 
+## Resume (attempt 2): why attempt 1 did not finish
+
+Attempt 1 pushed 8a4df3d1ab with `State: ready`. It did not finish clean: lane.local's review of
+the diff before folding found two defects that this resume fixes, not redoes:
+
+1. **Wrong release value for a trigger axis.** The fix released `RT` with `axis RT mid`. On the
+   Nova, `ABS_GAS` (the trigger `pad.sh` maps `RT` to) reports range `0,32767`, so `pad.sh` resolves
+   `mid` as `(lo+hi)/2 = 16383` -- half throttle, not a release. A trigger's rest position is its
+   `min`. Changed to `axis RT min` below (see "The fix"). This was the brief's own error ("every
+   axis is back at mid"), not something attempt 1 should have caught from the route grammar alone,
+   but it needed fixing regardless.
+2. **The new comment block landed above `mark gameplay`**, not after it, so the diff touched a
+   line above the mark -- the one thing the brief said must stay byte-identical. Moved the comment
+   block to immediately after `mark gameplay` and before `repeat forever {`.
+
+Both are fixed in "The fix" and reverified in "Checks" below; nothing else about attempt 1's
+reasoning (frame reading, cadence, cost analysis) changed.
+
 ## What the frames show
 
 Run `1-1791785532-lane.local-2130848` (route `burnout-revenge.returning`, 840 s requested).
@@ -35,8 +53,10 @@ on disk, so I'm not asserting it either way.
 
 ## The fix
 
-Only the play loop after `mark gameplay` changed (`git diff` shows no change above it, verified
-below). The old loop:
+Only the play loop after `mark gameplay` changed, and the comment block explaining it sits after
+the mark too (moved there in this resume -- see "Resume" above). `git diff origin/master` shows the
+first changed line is the one right after `mark gameplay`; the mark line itself, and everything
+above it, is untouched (verified below). The old loop:
 
 ```
 repeat forever {
@@ -66,7 +86,7 @@ repeat forever {
         axis LX mid
         wait 1.5
     }
-    axis RT mid
+    axis RT min
     wait 0.3
     press B
     wait 1.0
@@ -75,11 +95,16 @@ repeat forever {
 
 - The inner `repeat 3` is the same 6 s drive block as before, unmodified, run three times (18 s),
   so the race inputs are unchanged whenever the race is actually live.
-- `axis RT mid` releases the trigger and `axis LX mid` is already the last step of the inner
-  block, so every axis is back at mid before `press B` -- I chose to release RT before B because
-  I have no frame evidence either way on whether a held trigger changes what B does on this
-  screen, and releasing first is the cheaper assumption to be wrong about (worst case: a wasted
-  B press that does nothing).
+- `axis RT min` releases the trigger. `axis RT mid` does NOT: on the Nova, `pad.sh` resolves an
+  axis's `mid` as `(lo+hi)/2`, and the trigger's range is `0,32767` (not the stick's symmetric
+  `-32767,32767`), so `mid` there is 16383 -- half throttle, not a release. A trigger's rest is its
+  `min`. (This is a correction from this resume; attempt 1 used `mid` here, following the brief's
+  own "every axis is back at mid" line, which does not hold for a trigger axis.) `axis LX mid` is
+  already the last step of the inner block, so `LX` (a stick, where `mid` genuinely is center/rest)
+  is back at rest before `press B` too. I chose to release RT before B because I have no frame
+  evidence either way on whether a held trigger changes what B does on this screen, and releasing
+  first is the cheaper assumption to be wrong about (worst case: a wasted B press that does
+  nothing).
   - a 0.3 s wait after releasing RT and before pressing B, to give the pad state time to land
     ahead of the press rather than racing the same `sendevent` batch.
 - `press B` (Retry) then runs once per 19.3 s outer iteration. On RESULTS, this dismisses the
@@ -94,30 +119,43 @@ loop as a naive "add press B to the existing 6 s loop" would have done. If B doe
 racing (the more likely case, since Retry/More details/Continue read as the RESULTS screen's own
 UI row, not a HUD control), the extra presses are free.
 
-## Checks
+## Checks (rerun in this resume, after both fixes)
 
 ```
 $ bash docs/testing/titles/route.sh --check docs/testing/titles/routes/burnout-revenge.returning.route
-route ok: .../burnout-revenge.returning.route (150 lines)
+route ok: docs/testing/titles/routes/burnout-revenge.returning.route (150 lines)
 $ echo $?
 0
 
-$ ROUTE_DRY=1 SERIAL=dryrun timeout 400 bash docs/testing/titles/route.sh docs/testing/titles/routes/burnout-revenge.returning.route
-...
-ROUTE 00:42:45.903 mark gameplay
-...
-ROUTE 00:43:04.539 press B      # mark + 18.6s
-...
-ROUTE 00:43:25.088 press B      # + 20.5s
+$ ROUTE_DRY=1 SERIAL=dryrun timeout 400 bash docs/testing/titles/route.sh docs/testing/titles/routes/burnout-revenge.returning.route > out 2>&1
 $ echo $?
 124   # timeout, expected: the loop is `forever`
+
+$ grep -n "mark gameplay\|axis RT min\|press B" out | head -8
+116:ROUTE 01:12:18.303 mark gameplay
+118:ROUTE 01:12:18.309 axis RT max
+154:ROUTE 01:12:37.473 axis RT min      # released before the first press B
+157:ROUTE 01:12:37.791 press B          # mark + 19.5s
+197:ROUTE 01:12:57.056 axis RT min      # released before the second press B
+200:ROUTE 01:12:57.374 press B          # mark + 39.1s (19.6s gap)
+
+$ sed -n '154,158p' out     # confirms axis RT min actually resolves to the trigger's rest, not mid
+ROUTE 01:12:37.473 axis RT min
+DRY adb shell sendevent /dev/input/event-dry 3 5 -32767; sendevent /dev/input/event-dry 0 0 0
+ROUTE 01:12:37.488 wait 0.3
+ROUTE 01:12:37.791 press B
+DRY adb shell sendevent /dev/input/event-dry 1 305 1; sendevent /dev/input/event-dry 0 0 0
 ```
 
-Both ran against the worktree's own copy of the files.
+Both commands ran against this worktree's own copy. (The first dry-run attempt in this resume was
+cut short by an unrelated signal from stopping a monitoring task of mine partway through the wait
+-- not a route or script problem; rerunning to a plain redirected file, uninterrupted, gave the
+output above.)
 
-`git diff` confirms nothing above `mark gameplay` changed (verified by inspection of the diff
-hunk -- the only changed lines are the new comment block and the loop body after `mark
-gameplay`).
+`git diff origin/master -- docs/testing/titles/routes/burnout-revenge.returning.route` now shows
+its first changed/added line immediately after the `mark gameplay` context line, confirming the
+mark line and everything above it is unchanged -- fixing attempt 1, where the comment block sat
+above the mark and so appeared in the diff above it.
 
 ## A process note, not a route defect
 
@@ -131,6 +169,14 @@ committed.
 
 ## What a later lane should not repeat
 
+- `mid` is not a trigger's rest. `pad.sh` resolves `mid` as `(lo+hi)/2` against whatever range
+  `detect` reports for that axis; a stick's range is symmetric around 0 so `mid` lands at rest, but
+  a trigger's range (`ABS_GAS=0,32767` on the Nova) is not, so `mid` is half-pressed. Use `min` to
+  release a trigger. The brief's own "every axis is back at mid" line does not hold for RT/LT; this
+  cost attempt 1 a redo.
+- A route change that must land after a marker (here, `mark gameplay`) means the new lines too,
+  not just the loop body -- a comment explaining the new lines placed before the marker still
+  shows up in `git diff` as a change above it.
 - Don't guess Burnout Revenge's control map from the Burnout 3 routes or from memory -- the
   frames available here never show B pressed during a live race, so "what B does mid-race" is
   still genuinely unknown. If a future confirmation run's frames show a B press landing during

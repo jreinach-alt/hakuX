@@ -120,6 +120,7 @@ shot steer-right
 wait 0.8
 axis LX mid
 wait 5.6
+mark gameplay
 # Traffic Attack (the event this route lands in) is a short timed event:
 # the frames that found this route show it ends well under a minute after
 # the mark (docs/lanes/burnoutloop1012/NOTES.md). Once it ends, Burnout
@@ -131,7 +132,6 @@ wait 5.6
 # nothing there, so the cadence is chosen to bound the alternative: if B
 # turns out to be a live race control (e.g. a handbrake), it can only ever
 # land once per 18s of driving, never every loop.
-mark gameplay
 repeat forever {
     repeat 3 {
         axis RT max
@@ -143,7 +143,7 @@ repeat forever {
         axis LX mid
         wait 1.5
     }
-    axis RT mid
+    axis RT min
     wait 0.3
     press B
     wait 1.0

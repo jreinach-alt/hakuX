@@ -27,12 +27,18 @@ can't be confirmed either way there), is in `NOTES.md`.
 
 ## What changed
 
-Only the play loop after `mark gameplay` (verified: `git diff` shows no change above it). The
-inner drive pattern (`RT max` / `LX min` / `LX max` / `LX mid`, 1.5 s steps) is unchanged and now
-runs three times (18 s) per outer iteration; then `RT` is released to `mid`, a short 0.3 s
-settle, and `press B` (Retry) -- restarting the same event if the run is sitting on RESULTS, a
-no-op otherwise. Cadence: ~19.3 s per outer iteration, so a run on RESULTS restarts within "about
-20 s" as the brief asked.
+Only the play loop after `mark gameplay`, and the comment explaining it sits after the mark too
+(verified: `git diff origin/master` shows its first changed line immediately after the `mark
+gameplay` context line; nothing above it changed). The inner drive pattern (`RT max` / `LX min` /
+`LX max` / `LX mid`, 1.5 s steps) is unchanged and now runs three times (18 s) per outer iteration;
+then `RT` is released to `min` (a trigger's rest -- `mid` on a trigger is `(lo+hi)/2`, i.e. half
+throttle on the Nova's `ABS_GAS=0,32767`, not a release), a short 0.3 s settle, and `press B`
+(Retry) -- restarting the same event if the run is sitting on RESULTS, a no-op otherwise. Cadence:
+~19.3 s per outer iteration, so a run on RESULTS restarts within "about 20 s" as the brief asked.
+
+This is attempt 2 of this lane. Attempt 1 (8a4df3d1ab) used `axis RT mid` for the release and put
+the comment block above `mark gameplay`; lane.local's review caught both before folding. Fixed
+here; see `NOTES.md`'s "Resume" section.
 
 There is no frame evidence in either run of what B does during a live race (it was never pressed).
 Since that's unknown, the fix is built to bound the downside: at most one `press B` can land per
@@ -40,7 +46,7 @@ Since that's unknown, the fix is built to bound the downside: at most one `press
 frames, so at most one stray press per race if B does turn out to be a live control (e.g. a
 handbrake). `NOTES.md` has the full reasoning.
 
-## Checks
+## Checks (rerun after both fixes above)
 
 ```
 $ bash docs/testing/titles/route.sh --check docs/testing/titles/routes/burnout-revenge.returning.route
@@ -48,20 +54,20 @@ route ok: docs/testing/titles/routes/burnout-revenge.returning.route (150 lines)
 $ echo $?
 0
 
-$ ROUTE_DRY=1 SERIAL=dryrun timeout 400 bash docs/testing/titles/route.sh docs/testing/titles/routes/burnout-revenge.returning.route
-...
-ROUTE 00:42:45.903 mark gameplay
-...
-ROUTE 00:43:04.539 press B        # mark + 18.6 s
-...
-ROUTE 00:43:25.088 press B        # mark + 39.1 s (20.5 s gap)
+$ ROUTE_DRY=1 SERIAL=dryrun timeout 400 bash docs/testing/titles/route.sh docs/testing/titles/routes/burnout-revenge.returning.route > out 2>&1
 $ echo $?
 124   # timeout, expected: the loop is `forever`
+$ grep -n "mark gameplay\|axis RT min\|press B" out | head -6
+116:ROUTE 01:12:18.303 mark gameplay
+154:ROUTE 01:12:37.473 axis RT min      # released before the first press B
+157:ROUTE 01:12:37.791 press B          # mark + 19.5 s
+197:ROUTE 01:12:57.056 axis RT min      # released before the second press B
+200:ROUTE 01:12:57.374 press B          # mark + 39.1 s (19.6 s gap)
 ```
 
 Both ran against this worktree's own copy. No device run: per the brief, lane.local queues the
 next confirmation after the fold, and that run's frames are the proof this actually clears
-RESULTS in play.
+RESULTS in play. Full account, including this resume's two fixes, is in `NOTES.md`.
 
 Full account in `docs/lanes/burnoutloop1012/NOTES.md`.
 
