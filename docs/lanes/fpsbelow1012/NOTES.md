@@ -467,8 +467,14 @@ half of each run's windows, per 60 frames; NOSCAN = `range` downloads with scan 
 | Nightfire (memfast) | 5 | 556-699 | 60 | 95-488 | 0 | ~10 surfaces per call, one call per frame |
 
 The SCAN rows (scan dl at least half of `range`) are NFS MW, Spider-Man 2, Midnight Club II, Burnout Revenge, PGR
-and the early Forza runs (forza414): TEXSCAN's caller, not this one. Forza's SURFGPU arms (forzasurf1010) read
-MIXED, ~150 of ~430.
+and the early Forza runs (forza414): TEXSCAN's caller, not this one.
+
+**Forza with SURFGPU on**, as master runs it since fastpaths: its forzasurf1010 B arms (`-1663501`, `-2254415`) read
+`range` 429-430 downloads per 60 frames, but only 93-94 finishes, and 713-753 ms of wait (11.9-12.6 ms/frame).
+Scan downloads are 147-164 of those, so ~280 per 60 frames come from another caller. The A arms of the same pairs
+read 68-73 downloads and 4.5-5.4 ms/frame. SURFGPU roughly sextupled Forza's `range` downloads, and two-thirds of
+the added ones are not the scan. That makes Forza at master likely the second title of the NOSCAN class, at about
+MC3's cost. Forza's master telemetry (step 2) will say so directly.
 
 **What changed for MC3 between 10-03 and master.** The count went from 1 per frame to 15.5, and total wait from
 7.2 to 12.3 ms/frame. Already ruled out by reading the code: SURFGPU's reuse path (`reuse` 0), HAKUX_VTX_HAZARD (it
@@ -519,6 +525,22 @@ bytes. H2 0.35, H3 0.2. The instrument run is `z-1791799077-fpsbelow1012-2104673
 - Forza: one per frame, 2.8-9.3 ms/frame.
 - Nightfire: one call per frame of ~10 surfaces; it has no route here.
 
-That is a multi-title lever behind L1. Section 6's L4 row is split on this reading. If H1 holds, the fix is a
-default-off switch in draw.c and vertex.c. Both files need a grant, so the next step is a `WAITING:` line, a
-registered prediction, and an A/B on MC3, Forza and one more NOSCAN title.
+That is a multi-title lever behind L1. Section 6's L4 row is split on this reading.
+
+**A fourth outcome, from the same line.** `pgraph_vk_update_vertex_ram_buffer` is also called over the whole of
+VRAM, by the render thread's RCMD_FLUSH and pending-flush paths (render_thread.c 279, 322). A download from there
+also reads `by=vtx`, but `last=0+<VRAM size>` and `edge` 0. That would be H4, a PGRAPH flush per download, a
+different fix again.
+
+**The H1 fix, drafted and not applied** (`drafts/vtxexact.diff`; it compiles clean against the desktop build's
+flags). It adds `HAKUX_VTX_EXACT=1`, off by default.
+- draw.c: `sync_vertex_ram_buffer` keeps the draw's exact ranges before rounding. For each merged range it tests
+  gpu_stale, downloads and records generations only over the parts inside them. The copy still covers the rounded
+  pages, and the CPU dirty bits are still cleared there.
+- vertex.c: `pgraph_vk_update_vertex_ram_buffer` skips its own download when the sync has done it
+  (`r->vtx_exact_downloaded`, one bool added in renderer.h).
+- Why it is safe: a skipped surface's bytes go into the buffer stale, but this draw does not read them. They also
+  stay unrecorded, so the first draw that does read them sees `vtx_surface_stale` (draw_dirty, or a generation
+  never recorded) over its own exact range, and re-fetches.
+- Files it needs granted: hw/xbox/nv2a/pgraph/vk/draw.c, vertex.c, renderer.h. It is requested only once the
+  `[sdrange]` run reads H1.
