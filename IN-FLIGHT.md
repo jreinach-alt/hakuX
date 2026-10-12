@@ -8,14 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsbelow1012` | claude-opus-5-5 | 29 min | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) |
-| `pathclass` | claude-sonnet-5 | 3h 46m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
-| `savestate1011` | claude-opus-5-5 | 1h 11m | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
+| `fpsbelow1012` | claude-opus-5-5 | 44 min | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lanelocal-shuffle`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 4 waiting, 1 running.
+- **Device queue:** 5 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -80,9 +78,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fpsbelow1012` | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) | `dbf9dd40cc` | 2026-10-12 02:57 |
-| `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `f442726741` | 2026-10-11 13:21 |
-| `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `74d5576414` | 2026-10-12 02:19 |
+| `lane/fpsbelow1012` | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) | `b84062d167` | 2026-10-12 03:07 |
 
 ## Recently landed on master
 
@@ -97,4 +93,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 - 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
 
-_Updated 2026-10-12 03:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 03:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
