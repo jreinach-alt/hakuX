@@ -8,8 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pathclass` | claude-sonnet-5 | 2h 31m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
-| `savestate1011` | claude-opus-5-5 | 40 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
+| `pathclass` | claude-sonnet-5 | 2h 46m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `savestate1011` | claude-opus-5-5 | 11 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -19,10 +19,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## 0.5 release: Playable titles
 
-**47 titles are confirmed Playable** (3 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**48 titles are confirmed Playable** (4 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-12 | Grand Theft Auto: Vice City | Playable, 10-minute run |
 | 2026-10-12 | Grand Theft Auto III | Playable, 10-minute run |
 | 2026-10-12 | Mercenaries: Playground of Destruction | Playable, 10-minute run |
 | 2026-10-12 | X-Men: The Official Game (Europe) | Playable, 10-minute run |
@@ -71,14 +72,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-31 of these still await the owner's flicker check.
+32 of these still await the owner's flicker check.
 
 ## Work in progress
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `f442726741` | 2026-10-11 13:21 |
-| `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `65f27889e3` | 2026-10-12 01:28 |
+| `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `40a885d0e1` | 2026-10-12 01:52 |
 
 ## Recently landed on master
 
@@ -92,4 +93,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 - 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
 
-_Updated 2026-10-12 01:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 02:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
