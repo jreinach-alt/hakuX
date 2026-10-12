@@ -16,10 +16,11 @@ No lane session is running.
 
 ## 0.5 release: Playable titles
 
-**51 titles are confirmed Playable** (7 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**52 titles are confirmed Playable** (8 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-12 | Need for Speed: Most Wanted | Playable, 10-minute run on the Nova |
 | 2026-10-12 | Grabbed by the Ghoulies | Playable, 10-minute run, median 29.0 fps |
 | 2026-10-12 | Scooby-Doo! Mystery Mayhem (Europe) | Playable, 10-minute run, median 29.0 fps |
 | 2026-10-12 | Conan (Europe) | Playable, 10-minute run |
@@ -91,4 +92,4 @@ No branch is being worked right now.
 - 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
 - 2026-10-12 burnoutunlock1012: Burnout Revenge's play loop can't get back into a race after a medal (#433, 0.5)
 
-_Updated 2026-10-12 16:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 16:40 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
