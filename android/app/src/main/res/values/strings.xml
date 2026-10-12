@@ -431,10 +431,10 @@
   <string name="settings_savestate_folder_reset_done">Save states go to the default folder from the next game.</string>
   <string name="settings_savestate_folder_set">Save states go to this folder from the next game.</string>
   <string name="settings_savestate_compression">Save state compression</string>
-  <string name="settings_savestate_compression_desc">On: each state takes about a quarter of the space (about 10 MB instead of 42 MB) and the game pauses no longer than with Off. Off: states are stored as they are.</string>
+  <string name="settings_savestate_compression_desc">On: each state takes about a quarter of the space (about 10 MB instead of 42 MB), the game pauses about 10 ms longer to save, and the file is safely written sooner. Off: states are stored as they are.</string>
   <string name="settings_savestate_auto_load">Auto-load last state</string>
   <string name="settings_savestate_auto_load_desc">When a game starts, load its newest state from the auto slot or slots 0 to 9.</string>
   <string name="settings_savestate_auto_save">Auto-save on quit</string>
-  <string name="settings_savestate_auto_save_desc">Save the auto slot when you exit a game, and whenever the game leaves the screen, so swiping it away from recent apps keeps your place.</string>
+  <string name="settings_savestate_auto_save_desc">Save the auto slot when you exit a game. It also tries when the game leaves the screen, but swiping the app away from recent apps may close it before the save finishes.</string>
   <string name="settings_savestate_rewind_note">Loading a state also returns the Xbox hard disk to that moment: game saves made after the state was saved are rolled back.</string>
 </resources>

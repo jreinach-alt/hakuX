@@ -129,8 +129,11 @@ directions:
 
 - At startup it reads `/proc/stat` for one second, then pins itself to the
   core the emulator uses least.
-- On the Nova that is cpu0, 84% idle. The emulator's threads have
-  `mask=ff` and the vCPU runs on cpu5/7.
+- It probes and re-pins again after any two minutes with no job.
+- On the Nova it picks a 2.0 GHz little core, about 80-87% idle:
+  - in 1461611 it picked cpu0 at startup and cpu2 two minutes later;
+  - the emulator's threads have `mask=ff`;
+  - the vCPU thread sits on cpu7 (cpu5 in 1461488) at 91-92%.
 - It runs at `SCHED_IDLE`.
 - A `[savestate] cpu` line logs the topology, each core's idle share, every
   emulator thread's core and mask, and the pick.
@@ -204,7 +207,7 @@ among auto and 0-9. It skips any state saved before another title ran.
 | 1-1791778805-savestate1011-904197 | pilot: `func+measure`, 2 cycles, 187 attract race, ref 121cde1e09 | F1-F11 pass; done ok=1, 10 snapshots deleted, 0 left, scratch dir gone |
 | 1-1791779971-savestate1011-1240876 | `measure`, 20 cycles x 9 options, ref 121cde1e09 | stopped at ~150 s by the owner's hold on the Nova; 6 saves, not used |
 | 1-1791781810-savestate1011-1461488 | `disk+func` (`HAKUX_SAVESTATE_DISK=8,40,60`), 200 s, ref fefe83e884 | D1 pass. D2: disk pass, `game_runs=0`. F1, F3, F4 fail. All three ran on the still title screen (see "Disk test"). F2, F5-F11 and F5b pass. 8 snapshots deleted, 0 left, scratch dir gone |
-| 1-1791781811-savestate1011-1461611 | `measure`, 20 cycles x 8 options (no d-none), 2600 s, frames every 10 s, ref fefe83e884 | running |
+| 1-1791781811-savestate1011-1461611 | `measure`, 20 cycles x 8 options (no d-none), 2600 s, frames every 10 s, ref fefe83e884 | done ok=1: 160 saves and 160 loads ok, 3 snapshots deleted, 0 left, scratch dir gone. Table in "Measurement" |
 | 1-1791783647-savestate1011-1797227 | `disk+func` again, same request, ref a7d713effe (waits for a moving scene) | queued |
 
 All runs:
@@ -244,20 +247,113 @@ All runs:
 **Undo load adds about 55 ms to every load.** That is about 40% of the
 load's pause.
 
-## Measurement
+## Measurement (1461611)
 
-Pending: queued on the Nova behind the owner's hold.
+- **Scene:** 187: Ride or Die's attract race at 60 fps (frames
+  f00009-f00240), ref fefe83e884.
+- **Volume:** 20 cycles of each option; 160 saves and 160 loads, all ok.
+- **One cycle:** load a base state, save to the option's slot, watch 10 s,
+  load that save back.
+- **Order:** the options take turns cycle by cycle, so drift (heat, the
+  race's scene) falls on all of them alike.
+- **Run end:** `done ok=1`, all disk snapshots deleted, 0 left, the scratch
+  folder gone.
 
-The code sets "On" to b-zstd1x4: inline zstd level 1, four threads over the
-1 MiB chunks (`HXS_ON_*` in `hxs.c`). That was the best option in the
-pilot's 2 cycles:
+Report: `docs/lanes/savestate1011/measure_report.py <result dir>`.
 
-- its pause was 77 ms, against 66-89 ms for raw;
-- the file was durable at 128 ms, against about 205 ms for raw;
-- the file was 10.5 MB, against 41.6 MB;
-- no work is left to run after the game resumes.
+| Option | Pause med / p95 ms | File safe med / p95 ms | MB | Compress CPU ms | Load pause / whole ms | Lag in the next 10 s, med / p95 ms | Hitches |
+|---|---|---|---|---|---|---|---|
+| a, raw (Off) | 67.0 / 75.3 | 202 / 212 | 41.6 | 0 | 127 / 176 | 21 / 35 | 0 |
+| b, LZ4 | 88.5 / 93.7 | 154 / 340 | 14.1 | 32 | 129 / 175 | 26 / 48 | 0 |
+| b, zstd 1 | 104.7 / 111.6 | 159 / 166 | 10.1 | 47 | 128 / 177 | 7 / 58 | 0 |
+| b, zstd 3 | 139.0 / 147.8 | 186 / 195 | 9.5 | 82 | 128 / 177 | 32 / 54 | 0 |
+| **b, zstd 1 on 4 threads (On)** | **76.1 / 85.7** | **127 / 139** | **10.1** | 59 | 127 / 176 | 31 / 51 | 0 |
+| c, zstd 3 (the owner's idea) | 68.7 / 77.2 | raw 202; compressed 844 / 1027 | 9.5 | 598 | 128 / 178 | 22 / 39 | 0 |
+| c, LZ4 | 68.5 / 73.4 | raw 204; compressed 405 / 607 | 14.1 | 185 | 128 / 174 | 25 / 50 | 0 |
+| d, zstd 3 (Dolphin's) | 59.3 / 63.0 | 714 / 736 | 9.5 | 585 | 128 / 177 | 12 / 33 | 0 |
+| no save (3 windows) | | | | | | 11 / 27 | 0 |
 
-The 20-cycle run decides it.
+**What the columns mean:**
+
+- **Pause:** the time the machine is stopped.
+- **File safe:** from the stop until the final file is fsynced and renamed
+  into place.
+- **Lag:** frame time lost in the 10 s after the save beyond 60 fps, not
+  counting the save's own pause. It is 7-32 ms at the median in every row,
+  with no pattern by mode: inline zstd 1 shows 7 and inline zstd 1 x4 shows
+  31, and neither leaves anything running after the resume. That is noise:
+  well under two frames over 10 s.
+- **Hitches:** a flip of 100 ms or more (`hitch_report.HITCH_MS`) in
+  those windows. There were none. The worst flip in any window was 33-47 ms;
+  with no save it was 32 ms.
+
+**CPU.**
+
+- The Nova has 8 cores: cpu0-2 at 2.0 GHz, cpu3-6 at 2.8 GHz and cpu7 at
+  3.2 GHz.
+- The vCPU thread runs on cpu7, which is 97-99% busy.
+- The worker pinned itself to cpu0 or cpu2 at `SCHED_IDLE` (`worker_cpu=2
+  idle=1` on the jobs).
+- c and d compress there, on a little core, which is why their CPU is ten
+  times b's.
+
+**Loads** are the same in every row: 127-129 ms paused and 174-178 ms in
+all. The medians break down as:
+
+- reading the file: 17 ms raw, 4-6 ms compressed;
+- decompressing: 8-13 ms;
+- keeping the undo-load state: 59-60 ms;
+- going to the disk snapshot: 40 ms;
+- restoring the machine: 23 ms.
+
+Compression does not slow a load.
+
+**Undo load costs 60 ms of every load's 128 ms pause.** Without it a load
+would pause about 68 ms. It is always on now; a setting to turn it off is
+the obvious next step if loads should be faster.
+
+### Recommendation: On = inline zstd 1 on four threads
+
+This is `HXS_ON_*` in `hxs.c`, the code's setting since e7be0b7c4f. Against
+Off it:
+
+- pauses 9 ms longer at the median (76 vs 67) and 10 ms longer at p95. That
+  is less than one frame at 60 fps.
+- has the file safe 75 ms sooner (127 vs 202 ms), because it writes 10 MB
+  instead of 42.
+- is a quarter of the size: 10.1 MB instead of 41.6 MB.
+- leaves nothing to run after the game resumes. A quit right after a save
+  loses nothing, and auto-save on quit waits only for the save itself
+  (F5 in 1461488: 199 ms).
+
+**The owner's idea (c): save raw, compress on an idle core, then swap.** It
+works:
+
+- the pause is the raw pause (68.7 ms);
+- no frame cost shows in the 10 s after (0 hitches; lag inside the no-save
+  spread);
+- the raw file is safe at 202 ms, as with Off.
+
+Against On, though, it:
+
+- saves 7 ms of pause (68.7 vs 76.1 at the median), under half a frame;
+- leaves the 42 MB raw file in place for 0.8-1.0 s with zstd 3, or
+  0.4-0.6 s with LZ4;
+- writes 51 MB of flash per save instead of 10: the raw file, then the
+  compressed one;
+- spends ten times the CPU (598 vs 59 ms), on a 2.0 GHz core.
+
+It is not recommended. On gets the size and the early safe file for 7 ms
+more pause.
+
+**Dolphin's way (d)** has the shortest pause, 59 ms, because the pause only
+copies the state into memory. The file is not safe until 714 ms, and a kill
+in that window loses the save. Its pause is 17 ms (one frame) shorter than
+On's.
+
+**No third choice.** The reasonable options (a, b x4, c, d) all pause
+59-76 ms, about one frame apart. Size and safety are the only real
+differences, and On wins both.
 
 ## Disk test
 
