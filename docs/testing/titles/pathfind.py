@@ -60,6 +60,7 @@ sys.path.insert(0, os.path.join(HERE, ".."))
 import hangwatch  # noqa: E402  (a HANG: frames, audio and the vCPU all still for HANG_S; stopped with telemetry)
 sys.path.insert(0, os.path.join(HERE, "..", "jobs"))
 import models  # noqa: E402  (the one model table/reader, #433)
+import titlestate  # noqa: E402  (the profile gate, #433: known_path/_path_broken_bad; also prepare/release below)
 
 PAD = os.path.join(HERE, "..", "perf", "pad.sh")
 KNOW = os.environ.get("PATHFIND_KNOW") or os.path.join(HERE, "pathknow")
@@ -1723,6 +1724,9 @@ def main(argv=None):
                          "(e.g. the longest quarter length, so one quarter covers the hold)")
     ap.add_argument("--sim", help="PATHFIND_DRY: frames dir to play back")
     ap.add_argument("--sim-answers", help="PATHFIND_DRY: JSON list of canned model answers")
+    ap.add_argument("--path-broken", default=None,
+                    help="override the profile gate's R3 (#433): a dispatch/results id naming a run of "
+                         "this title's known path that failed")
     a = ap.parse_args(argv)
     os.makedirs(a.out, exist_ok=True)
     a.out = os.path.abspath(a.out)
@@ -1736,6 +1740,19 @@ def main(argv=None):
     why = blocked(tid, name)
     if why:
         sys.exit(f"pathfind: {name} is owner-blocked: {why}")
+    # The profile gate's R3 (#433 addendum 2): a pathfind.py session is blind navigation, same as a
+    # queued --find-route request, but its OWN "known path" test is broader (a pathknow success counts
+    # too, not just a proven route) -- a session that already reached gameplay once has nothing left to
+    # find blind, even before any route built from it has its own proof soak.
+    if tid:
+        kp = titlestate.known_path(tid, broad=True)
+        if kp["known"]:
+            bad = titlestate._path_broken_bad(a.path_broken, tid, kp["route_name"]) if a.path_broken else (
+                "a known path exists; pass --path-broken \"<result id>\" naming a run of it that failed")
+            if bad:
+                via = f" ({kp['source']}" + (f" via {kp['route_name']}, result {kp['result_id']})" if kp["route_name"]
+                                              else ")")
+                sys.exit(f"pathfind: {name} ({tid}) already has a known path{via}: {bad}")
     if a.hold_s and dev.label == "thor":
         sys.exit("pathfind: --hold-s is Nova only: the Thor's fan is dead and it stops within 30 s of a claim")
     print(f"pathfind: {name} ({tid}) on {dev.label}: {iso}", flush=True)
@@ -1750,7 +1767,6 @@ def main(argv=None):
     # the path found is only replayable from the state it was found in.
     hdd = None
     if not dry() and not a.hdd_img:
-        import titlestate
         hdd = titlestate.prepare(dev.label, tid, a.state, log=lambda m: print(m, flush=True))
         json.dump(hdd, open(os.path.join(a.out, "hdd.json"), "w"), indent=1)
     try:
