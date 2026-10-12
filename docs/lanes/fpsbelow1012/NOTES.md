@@ -3,8 +3,8 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **5** run (the pilot: 2 read, 1 void before input; NGB's A/B pair),
-**4** queued (DOA3 A, Buffy A, MC3's and Forza's `[sdrange]` runs). Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **6** run (the pilot: 2 read, 1 void before input; NGB's A/B pair;
+DOA3 A), **4** queued (Buffy A, MC3's and Forza's `[sdrange]` runs, DOA3 B). Ledger in section 4.
 
 ## 0. Attempt 2 (10-12 ~02:30 PDT): why attempt 1 did not finish
 
@@ -150,11 +150,12 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 | 3 | z-1791787897-fpsbelow1012-2551411 | Midnight Club 3 | midnight-club-3.returning | 540 | done 10-12 02:18, ref 00fde8afb3, gameplay marked | section 8: share 0.006 -> 0.81; `range` downloads 14/frame |
 | 4 | z-1791797921-fpsbelow1012-1777822 | Ninja Gaiden Black | survey | 480 | done 10-12 03:01, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`; init line reads 0x81) | section 9: NGB passes every leg |
 | 5 | z-1791797927-fpsbelow1012-1778929 | Ninja Gaiden Black | survey | 480 | done 10-12 03:33, same ref, **A** (no switch) | section 9: class window 240-510 s |
-| 6 | z-1791797928-fpsbelow1012-1779675 | Dead or Alive 3 | survey | 480 | queued, same ref, **A** | A/B key DOA3; also DOA3's telemetry at master |
+| 6 | z-1791797928-fpsbelow1012-1779675 | Dead or Alive 3 | survey | 480 | done 10-12 04:12, same ref, **A** | section 9b: IN THE CLASS (240 s); fps_ok 0.70 |
 | - | (refused at queue time) | ToeJam & Earl III | uberdefault569's `toejam-earl-3` | 540 | request.sh refused it: the route declares no `# state:` line, and the file is uberdefault569's, not this lane's to edit | not counted; Buffy takes its slot, as the prediction names |
 | 7 | z-1791798044-fpsbelow1012-1807480 | Buffy the Vampire Slayer | survey | 480 | queued, same ref, **A** | A/B key Buffy; also Buffy's telemetry at master |
 | 8 | z-1791799077-fpsbelow1012-2104673 | Midnight Club 3 | midnight-club-3.returning | 540 | queued 10-12 ~02:55 PDT, ref dbf9dd40cc, `--env HAKUX_RANGELOG=1` (+ the telemetry env) | section 10: which caller, which surfaces, exact or rounded overlap |
 | 9 | z-1791801220-fpsbelow1012-2906178 | Forza Motorsport | forza-soak1010 | 480 | queued 10-12 03:35 PDT, ref dbf9dd40cc, `--env HAKUX_RANGELOG=1` (+ the telemetry env) | Forza's telemetry at master (step 2) and its `[sdrange]` reading (section 10) |
+| 10 | z-1791803606-fpsbelow1012-3255578 | Dead or Alive 3 | survey | 480 | queued 10-12 04:15 PDT, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`) | A/B key DOA3 (section 9b) |
 
 Planned next, after the pilot verdict (`pilots/fpsbelow1012.ok`): the depth-exactness pgraph pair, registered as
 `docs/testing/predictions/fpsbelow1012-zetad24-pixels.json` (sha256 c543e6ac..., refs c1112f2c1a both arms, B with
@@ -465,6 +466,38 @@ Hand-read, not judged (title_verdict, whole run, generic route): fps_ok 0.847 ->
 0.192 -> 0.164 J. Both arms' frames show Ryu's HUD at the same cliff walls, with no visible depth fault in B. The
 switch takes NG Black over the 30-fps bar on this route, and to 59 gfps in the scene that was 40. Not a Playable
 reading: the survey never marks gameplay, so lane.local would need a confirmation on a gameplay route.
+
+### 9b. DOA3 A: in the class, and why its W leg cannot pass (read 10-12 04:14 PDT)
+
+`zread.py -1779675 -1779675 --expect ... --key DOA3` (A against itself, to read the class rule before queueing B):
+**240 s in the class** (buckets 60-120, 300-450, 480-510 s), so DOA3 counts toward the A/B and B is queued
+(`z-1791803606-fpsbelow1012-3255578`). Whole run, title_verdict read-only: fps_ok share **0.70** (0.44 on 10-04),
+window median 46.1, min 13.2. Not at the bar, so it is not an OUTBOX candidate.
+
+| s after first perf line | gfps med | G med (ms) | in/out | out (ms/cb) | draws/cb |
+|---|---|---|---|---|---|
+| 60-120 | 59 | 16.7 | 0.47-0.57 | 8.3-23.2 | 176-197 |
+| 120-240 (one-tile, 19 gfps at G 50 ms: not this class) | 19 | 50.0 | 0.89-0.95 | 12.8-14.6 | 328-365 |
+| 300-330, 390-450 | 59 | 16.7 | 0.50-0.52 | 12.1-14.2 | 239-262 |
+| 330-360 | 32 | 31.6 | 0.51 | 31.6 | 360 |
+| 360-390 | 46 | 22.7 | 0.50 | 23.1 | 404 |
+| 480-510 | 38 | 26.8 | 0.51 | 27.6 | 417 |
+
+Over the class window zread reads gfps median 58 (share >= 55: 0.55), G 16.9 ms, in/out 0.51, out 15.98 ms. **The
+registered W leg cannot pass on this title**: it asks B's median G <= 0.85 x 16.9 = 14.4 ms, or median gfps >= 66,
+and both are past the 60-Hz flip cap. The class window is half buckets already at 59 (two-tile, but the GPU fits
+in the frame) and half where the outer span is 23-32 ms and gfps 32-46. The lever acts on the second half, and the
+median does not see it. This is a limit of the registered threshold, found before B ran. The prediction is not
+re-registered: B runs as registered, and DOA3 will be reported as W FAIL with M and P read as the mechanism at
+720x480. B's share >= 55 and its slow buckets (330-390, 480-510 s) will be hand-read beside it, not judged. The A/B's
+win now needs Buffy to pass every leg, as well as NG Black.
+
+What the scenes are (route-frames; the first perf line is 04:03:15). 120-240 s, the one-tile stretch at 19 gfps
+and G 50 ms, is the fight's PAUSED menu: the survey's START/A presses opened it, and frame 040600 shows it with the
+overlay at 14 fps. It is a 3-vblank period with a 13-15 ms outer span, so the GPU is not the wait there. It is outside
+the class and outside this lever, and it is not gameplay. From 233 s on, the survey's play loop sits on the title
+screen and its attract demo (frame 040916, "PRESS START BUTTON", overlay 21 fps). So the class window is a fight
+before the pause (60-120 s) and the attract stretch. B on the same route reaches the same scenes.
 
 ## 10. MC3's `range` is not the texture scan: the vertex-RAM sync or a blit (offline, 10-12 ~03:00 PDT)
 
