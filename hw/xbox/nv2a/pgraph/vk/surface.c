@@ -6006,10 +6006,27 @@ void pgraph_vk_init_surfaces(PGRAPHState *pg)
      *
      * D24_UNORM_S8_UINT remains the fallback for devices without the float
      * format, still writing through the ULP nudge that the unorm scale needs.
+     *
+     * #433, HAKUX_ZETA_D24=1 (off by default) takes the fallback first, for
+     * speed on a tiler (lane.fpsbelow1012, NOTES section 5). Turnip keeps
+     * D32_SFLOAT_S8_UINT's stencil as a separate cpp-1 plane in GMEM, and a
+     * cpp-1 attachment doubles its tile width alignment (96 -> 192 on the
+     * Adreno 740, tu_pass.cc). A 640x480 or 720x480 pass with 4-byte colour
+     * then needs two tiles, and two tiles get no HW binning (tu_util.cc,
+     * binning_useful is tiles > 2), so each tile replays the whole draw
+     * stream. As D24_UNORM_S8_UINT the same pass fits one tile. The cost is
+     * the round trip above: a depth word may come back a unit off.
      */
     r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = zeta_d16;
-    if (check_surface_internal_formats_supported(r, &zeta_d32_sfloat_s8_uint,
-                                                 1)) {
+    const char *zeta_d24_env = getenv("HAKUX_ZETA_D24");
+    bool zeta_d24_first = zeta_d24_env && zeta_d24_env[0] == '1' &&
+        check_surface_internal_formats_supported(r, &zeta_d24_unorm_s8_uint, 1);
+    if (zeta_d24_first) {
+        r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
+            zeta_d24_unorm_s8_uint;
+        pg->zeta_stored_as_float = false;
+    } else if (check_surface_internal_formats_supported(
+                   r, &zeta_d32_sfloat_s8_uint, 1)) {
         r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
             zeta_d32_sfloat_s8_uint;
         /* Every writer and reader of a Z24S8 surface has to know this; see
@@ -6027,10 +6044,11 @@ void pgraph_vk_init_surfaces(PGRAPHState *pg)
         r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
             zeta_d16;
     }
-    fprintf(stderr, "nv2a: Z24S8 host format 0x%x, depth stored as %s\n",
+    fprintf(stderr, "nv2a: Z24S8 host format 0x%x, depth stored as %s%s\n",
             r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8]
                 .vk_format,
-            pg->zeta_stored_as_float ? "float" : "unorm");
+            pg->zeta_stored_as_float ? "float" : "unorm",
+            zeta_d24_first ? " (HAKUX_ZETA_D24)" : "");
 
     QTAILQ_INIT(&r->surfaces);
     QTAILQ_INIT(&r->invalid_surfaces);
