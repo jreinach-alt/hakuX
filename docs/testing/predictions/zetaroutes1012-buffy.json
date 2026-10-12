@@ -1,0 +1,31 @@
+{
+  "registered_utc": "2026-10-12T18:00:00Z",
+  "who": "lane.zetaroutes1012",
+  "issue": "433",
+  "device": "nova",
+  "a_ref": "7cbd788e00",
+  "b_ref": "76a2c15333",
+  "runs_per_arm": 1,
+  "arms": {
+    "Buffy": {
+      "title": "Buffy the Vampire Slayer (USA).xiso.iso",
+      "route": "buffy.returning",
+      "seconds": 900,
+      "B": "already run: z-1791820250-lane.zetaroutes1012-2510625, ref 76a2c15333, --env HAKUX_ZETA_D24=1 --env HAKUX_FRAMETRACE=1",
+      "A": "request.sh --ref 7cbd788e00 --priority sweep --device nova --title \"Buffy the Vampire Slayer (USA).xiso.iso\" --route buffy.returning --seconds 900 --frames-every 30 --env HAKUX_FRAMETRACE=1 --expect docs/testing/predictions/zetaroutes1012-buffy.json, queued after this file is registered"
+    }
+  },
+  "order": "B already on disk (section 6-7 of docs/lanes/zetaroutes1012/NOTES.md, the fixed pulse-and-turn play loop). A queued after this registration, same route/loop, same seconds, no HAKUX_ZETA_D24.",
+  "judge": "python3 docs/testing/title_verdict.py <dir> --require confirmation --reviewed-gameplay yes on each arm; compare the printed fps_ok field directly. No captures: a soak writes none.",
+  "prediction": "Buffy the Vampire Slayer (45410012), Nova, buffy.returning.route's fixed pulse-and-turn play loop (docs/lanes/zetaroutes1012/NOTES.md section 7), 900s sweep. B already read PASS: fps_ok=1.0, gameplay=774.9s, static_frac=0.0394 -- a clean confirmation at this 30-fps title's bar. fpsbelow1012's survey (a different, non-gameplay route) read this title's fps_ok at 0.79 without the switch and 1.00 with it, on the same canyon scene (HAKUX_ZETA_D24 removes a one-tile vs two-tile GMEM pass that is a property of the scene's surface formats, not of which route walks through it). Predicted for A, same route and loop, switch off: fps_ok_share < 0.90 (below this title's own bar), and B's fps_ok_share (1.0, already measured) at least 0.10 ahead of A's -- half of the survey's measured 0.21 gain, a conservative floor for a different route's draw mix.",
+  "legs": {
+    "V (validity)": "both arms reach `mark gameplay` within 30s of each other's route-relative time, >= 600s gameplay after the mark, no crash or hang. A VOID arm (route defect, not the switch) scores nothing.",
+    "F (share)": "A's fps_ok_share < 0.90. FAILS in the world where this canyon scene is not GMEM-tile-bound on the gameplay route the way the survey route was -- e.g. if the route's slower, more varied movement spends more time off the two-tile hot path than the survey's generic loop did.",
+    "G (gain)": "B's fps_ok_share (1.0) - A's fps_ok_share >= 0.10. FAILS in the world where the switch's lift is route-specific and smaller on real gameplay movement than on the survey's loop."
+  },
+  "expect": {},
+  "must_not_move": [],
+  "must_not_regress": [],
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. F and G are read off title_verdict.py's fps_ok field on each arm, by hand."
+}

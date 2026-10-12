@@ -1,0 +1,36 @@
+{
+  "registered_utc": "2026-10-12T18:40:00Z",
+  "who": "lane.zetaroutes1012",
+  "issue": "433",
+  "device": "nova",
+  "a_ref": "76a2c15333",
+  "b_ref": "76a2c15333",
+  "refs_note": "Both arms run the same build; the only difference is --env HAKUX_ZETA_D24=1 on B. `git diff 76a2c15333 origin/master` (4ee94db999) touches no emulator code (hw target accel android tcg ui audio include util subprojects meson.build configure), so this build is master's emulator code.",
+  "runs_per_arm": 1,
+  "arms": {
+    "DeadOrAlive3": {
+      "title": "54430001-Dead_or_Alive_3.xiso.iso",
+      "route": "doa3.returning",
+      "seconds": 900,
+      "B": "already run: z-1791827119-lane.zetaroutes1012-335115, ref 76a2c15333, --env HAKUX_ZETA_D24=1 --env HAKUX_FRAMETRACE=1 (init line: Z24S8 host format 0x81, depth stored as unorm)",
+      "A": "request.sh --ref 76a2c15333 --priority sweep --device nova --title 54430001-Dead_or_Alive_3.xiso.iso --route doa3.returning --seconds 900 --frames-every 30 --env HAKUX_FRAMETRACE=1 --expect docs/testing/predictions/zetaroutes1012-doa3.json, queued after this file is committed"
+    }
+  },
+  "order": "B already on disk (docs/lanes/zetaroutes1012/NOTES.md section 21). A queued after this registration: same route, same seconds, same ref, no HAKUX_ZETA_D24.",
+  "judge": "python3 docs/testing/title_verdict.py <dir> --require confirmation --reviewed-gameplay yes on each arm; read fps_ok (share of the scored window at >= 30 x 0.95 fps, the Playable bar) from the VERDICT line. The share at 57 is own_target_share from title_verdict.judge(dir, require='confirmation', reviewed='yes', targets_path=T), where T is a copy of docs/testing/titles/targets.toml whose 4D53002D `iso` map adds nova = \"54430001-Dead_or_Alive_3.xiso.iso\" (the shipped map lists the Thor's file only, so the Nova's disc reads target 30). The scene is read from each arm's route-frames. No captures: a soak writes none.",
+  "prediction": "Dead or Alive 3 (4D53002D, disc 54430001), Nova, doa3.returning.route (the survey's four START/A cycles to the fight, then the X/Y/X/B/A combo with START/A every ~7 s), 900 s sweep. B already read: fps_ok=1.0, share at 57 0.1884, window median 50.13, min 37.45, gameplay=775.2s, still_frac 0.0, Kasumi against Zack on the beach stage; FAIL only on a 621 ms stall between a lost round and the next round's intro. Predicted for A: fps_ok below the 0.90 bar and at least 0.05 under B's, and its share at 57 at least 0.10 under B's. Evidence: gpunonrender measured DOA3 at 31-34 gfps in a two-tile GMEM pass against 59 in sysmem, and on NG Black's like-for-like 45 s this lane read the window median 28.7 -> 50.9 with the switch; B's 50 median scaled back by that much sits at the 28.5 line. Against: fpsbelow1012's A (Bayman, dojo) ran a 46.1 median at master. Probability F holds: about 0.4. Probability S holds (the same fight as B): low, about 0.1, since four boots of this disc drew four different fights.",
+  "legs": {
+    "V (validity)": "both arms reach `mark gameplay` within 30 s of each other's route-relative time (route start to mark; B 126.2 s), >= 600 s gameplay after the mark, no crash or hang; A's logcat shows `Z24S8 host format 0x82` and B's `0x81`; A's route-frames show fights (health bars on screen), not the title or GAME OVER, after the first 60 s of gameplay. A VOID arm scores nothing and the pair is not judged.",
+    "S (same scene)": "A's first fight after the mark is Kasumi against Zack on the beach stage, as B's (110115-gameplay.png, 110121-play.png). FAILS in the world where the game draws A a different opponent or stage; the pair is then reported as confounded and F, G, H are read and reported but not judged.",
+    "F (share at the Playable bar)": "A's fps_ok < 0.90. FAILS in the world where DOA3's gameplay is over the 30 bar without the switch.",
+    "G (gain at the bar)": "B's fps_ok (1.0) - A's fps_ok >= 0.05. FAILS in the world where A already sits within 0.05 of B at the 30 bar.",
+    "H (gain at the title's own 60 target)": "B's share at 57 (0.1884) - A's share at 57 >= 0.10. FAILS in the world where the switch's one-tile pass does not raise DOA3's frame rate in a fight.",
+    "K (stall, reported only)": "whether A has a stall > 500 ms after the first 60 s of gameplay, and between which shots. A stall at a round change in A as well says the 621 ms stall in B does not come with the switch."
+  },
+  "rule": "WIN (the switch carries DOA3 over the Playable bar on gameplay) = V, S, F and G pass. LOSS = V and S pass, and F or G fails. V passing with S failing = confounded: no WIN or LOSS. H and K are judged and reported on their own.",
+  "expect": {},
+  "must_not_move": [],
+  "must_not_regress": [],
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. V, S, F, G, H and K are read off title_verdict.py and the route-frames of each arm, by hand."
+}
