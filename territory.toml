@@ -921,6 +921,7 @@ files = ["docs/testing/jobs/selftest.sh", "docs/testing/jobs/selftest.d/*-selfte
 note = "STARTED lane.local 2026-10-11 15:5x PDT (Sonnet, owner OK 15:4x): selftest.sh removes its mktemp fake host on a pass and keeps it on a failure; 256 leaked dirs, 27.7 GB in /tmp since the 10-09 boot. docs/testing/jobs/selftest.sh moved here from [free]."
 
 [free]
+# RELEASED (lane.local 2026-10-11 23:5x PDT) by retiring lane.gtaroutes1011 (folded 4c9132fa17): docs/testing/titles/routes/gta-sa-drive.route, pathknow/paths/5454000E.json, 5454000F.json, pathknow/hints/learned-pub-5454.md, learned-series-grand-theft-auto.md. gta-3.route and gta-vc.route went straight to lane.gtawedge1012.
 # CLAIMED (lane.local 2026-10-11 20:31 PDT): docs/testing/jobs/selftest.d/99-pilot-gate.sh -> lane.profilegate1011. Back here when it retires.
 # CLAIMED (lane.local 2026-10-11 19:33 PDT): SettingsActivity.kt, PerGameSettingsManager.kt -> lane.savestate1011.
 # CLAIMED (lane.local 2026-10-11 19:31 PDT): docs/testing/nv2a_index.json -> lane.snapshot1011 and lane.gtasagpu1011 (both PRs ready, both released at ready; the generated index is repaired at fold). Back here when both retire.
@@ -2394,9 +2395,14 @@ note = "STARTED lane.local 2026-10-11 09:14 PDT (Opus, renderer engineering): GT
 [lane.gtaroutes1011]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/gtaroutes1011/**", "docs/testing/titles/routes/gta-3.route", "docs/testing/titles/routes/gta-vc.route", "docs/testing/titles/routes/gta-sa-drive.route", "docs/testing/titles/targets.toml", "docs/testing/titles/pathknow/paths/5454000E.json", "docs/testing/titles/pathknow/paths/5454000F.json", "docs/testing/titles/pathknow/hints/learned-pub-5454.md", "docs/testing/titles/pathknow/hints/learned-series-grand-theft-auto.md"]
-released = ["docs/testing/titles/targets.toml"]
-note = "RELEASED targets.toml 2026-10-11 23:1x PDT: folded as 4c9132fa17, unit inactive; targets.toml to lane.pathclass (step 6). STARTED lane.local 2026-10-11 08:42 PDT (Sonnet, route building): routes into play for GTA III (5454000E) and Vice City (5454000F) on the Nova (copied 08:40 by lanelocal shuffle1011b), their targets.toml rows, and a San Andreas driving route gta-sa-drive (gta-sa.route untouched: the gtasa1011 A/B uses it). targets.toml taken from [free]; the two pathknow path files are a carve-out inside [free]'s docs/testing/titles/pathknow/** (exact-string check, same pattern as [lane.pathclass]). Brief: briefs/gtaroutes1011.md. 2026-10-11 19:27 PDT lane.local: the two pathknow hints files (learned-pub-5454.md, learned-series-grand-theft-auto.md) granted from [free]'s pathknow/** (fold 19:06 refused them)."
+files = ["docs/lanes/gtaroutes1011/**"]
+note = "RETIRED (lane.local 2026-10-11 23:5x PDT): folded as 4c9132fa17 (its last commit 35abaf6e16 is on master); unit gone; 4 attempts used. To lane.gtawedge1012: gta-3.route, gta-vc.route. To [free]: gta-sa-drive.route (SA-drive stopped on unknown pedal input), pathknow/paths/5454000E.json, 5454000F.json, pathknow/hints/learned-pub-5454.md, learned-series-grand-theft-auto.md (back inside [free]'s pathknow/**). targets.toml went to lane.pathclass at 23:1x."
+
+[lane.gtawedge1012]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/gtawedge1012/**", "docs/testing/titles/routes/gta-3.route", "docs/testing/titles/routes/gta-vc.route"]
+note = "STARTED lane.local 2026-10-11 23:5x PDT (Sonnet, route building per the 10-10 table): a wedge escape in the GTA III and Vice City play loops. Vice City's confirmation 1-1791785130-lane.local-2108844 read fps_ok 0.9937 over 695.9 s, but Tommy ran into a recessed garage door at 23:41:54 and stayed there to the end (~216 s), so moving play was ~484 s, under the 600 s a Playable needs; not accepted. GTA III runs the same loop. Only the post-mark loop changes; no device runs (lane.local queues the next confirmation). Brief: briefs/gtawedge1012.md."
 
 [lane.profilegate1011]
 issues = ["433"]
