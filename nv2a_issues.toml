@@ -6155,3 +6155,23 @@ disposition = "defect"
 status = "open"
 dispatch_state = "blocked"
 blocked_on = "OWNER DEFERRED 2026-10-09 22:3x PDT (\"Defer the BG&E flicker but log an issue for it so we dont lose sight of it\"): the weekend is performance-only (through Sun 10-11). Not identified: also flickers with HAKUX_SURFGPU=0, and 0.4.0-j1 runs the title at ~1 fps with stray black frames, so it predates the current build. Unblocks when the owner lifts the deferral; first measurement then is an 8 s adb screenrecord of gameplay to classify the bad frames. Blocks BG&E as a Playable title."
+
+[issue.938]
+title = "Halo: Combat Evolved (4D530004): speech is much quieter than music and effects on the Nova"
+suites = []
+no_suites = "An audio level defect in a commercial title (APU voice/submix gain); no pgraph suite applies and no APU suite measures per-voice level yet."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed by lane.local 2026-10-11 22:3x PDT from the owner's hands-on test (owner: known in emulation, not ours; \"Worth logging an issue so we correct it\"). Not HAKUX_APU_PACE (timing only, never level). First step: an audio_capture of a dialogue cutscene, speech vs music level against a hardware reference."
+
+[issue.939]
+title = "Halo: Combat Evolved (4D530004): the ring world on the main menu flickers in and out on the Nova"
+suites = []
+no_suites = "A visual defect in a commercial title, not yet identified, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed by lane.local 2026-10-11 22:3x PDT from the owner's hands-on test. Not HAKUX_VTX_HAZARD: zero vtx_hazard finishes in two menu sessions with it on (22:24, 22:26), so it predates the switch. First step: an 8 s adb screenrecord of the menu to classify the bad frames."
