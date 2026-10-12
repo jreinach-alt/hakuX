@@ -258,6 +258,48 @@ hits are at lag 2400. `fixjudge.py --other --ref <the title's OFF run>`.
 - **Crimson Skies: High Road to Revenge** (4D530021), for music. Its first loud audio is at 6.2-8.1 s. Its route
   waits 75 s for the intro before any input. It uses a third engine (FASA), and the game paces itself to 30 fps.
 
+**Correction to the Simpsons reason.** The run's frames show that with no input the game never reaches the intro
+cinematic. The route's START press is what leads there. Without it the game cycles through the publisher and studio
+logos (with the 20th Century Fox fanfare), the PRESS START title and its theme, and gameplay demos, then repeats. So
+this check covers music and the demos' in-game sound, not verified dialogue. The registered amendment keeps the wrong
+reason as registered. Speech is still covered on NFS itself: the PSA is a spoken announcement, and ON plays it with
+0.0% replays.
+
+| title | arm | result id | switch | lag-2400 | any-lag | slope 0-25 s (vs its OFF) | level dBFS | gfps | starve after 30 s |
+|---|---|---|---|---|---|---|---|---|---|
+| Simpsons | OFF | `1-1791771680-lane.nfsaudio1011-2270853` | off | 0.0% | 0.0% | (reference) | -24.40 | 59.0 | 0% |
+| Simpsons | ON | `1-1791771681-lane.nfsaudio1011-2270912` | on | 0.0% | 0.0% | 0.999 (198/198 inliers) | -24.34 | 59.0 | 0% |
+
+| Crimson Skies | ON | `1-1791772129-lane.nfsaudio1011-2350844` | on | 0.0% | 0.0% | 1.004 (205/248 inliers) | -15.24 | 29.0 | 0% |
+| Crimson Skies | OFF | `1-1791772130-lane.nfsaudio1011-2351431` | off | 0.0% | 0.0% | (reference) | -15.25 | 29.0 | 0% |
+
+- **Simpsons:** V yes. S +0.0 / +0.0. T 0.999. L +0.06 dB. F 59.0 vs 59.0. Z 0 vs 0. Every leg passes.
+- **Crimson Skies:** V yes. S +0.0 / +0.0. T 1.004. L +0.01 dB. F 29.0 vs 29.0. Z 0 vs 0. Every leg passes.
+- **Content:** the Crimson Skies frames show the Xbox and Microsoft Game Studios logos, the intro movie (newsreel-style
+  footage), the title screen, and the movie again. Its first-window starvation is boot (44.5% OFF, 54.3% ON) and is
+  not judged.
+- **Neither title replays at any lag in either arm,** so neither title's writer is outrun even in shipped behaviour.
+  The fix changes nothing there that these legs can see.
+
+**The Android early return's own reason, checked.** apu.c says the pacing is skipped on Android because "scheduler
+granularity is often too coarse for the extra low-watermark pacing below and can make speech sound dragged out". Dragged
+out would show here in two ways: content slower than real time (a slope below 1 against an unpaced run) and starvation
+gaps in the device output. Neither appears in any of the four ON runs across three titles on the Nova. All four have
+slopes 0.996-1.004, and none starves after the boot window. Not tested: the Thor, which is out of service, and a CPU-
+bound slow-content NFS run under ON (none of the six runs here went slow).
+
+## For the next lane
+
+- **The fix is proven on NFS and harmless on two others. The next step is apu.c's owner making it the default.** On
+  Android that means deleting the early return (the patch's `if (!apu_pace_on())`). That is a default-on change for
+  every title. Per the owner's 10-11 rule, it goes in the one screen for every default-on in flight, not in a screen
+  of its own. The brief forbids a cross-title screen in this lane.
+- **Do not re-derive the mechanism.** The identify run's burst and stale lines above name it.
+- `fixjudge.py` judges any title. `--other --ref <OFF dir>` gives the no-increase form. Its any-lag share sees replays
+  at any ring size up to 0.5 s.
+- **Not done:** a slow-content NFS run under ON; the career cutscenes (the owner's other report: no route reaches them
+  in this lane); and the Thor.
+
 ## Log
 
 - 10-11, attempt 2: merged origin/master (aa04c62915). Wake analysis above. Instrument reviewed and compile-checked.
@@ -276,4 +318,8 @@ hits are at lag 2400. `fixjudge.py --other --ref <the title's OFF run>`.
 - All four done and judged: every leg PASSES (table above). `fixjudge.py` gained an any-lag share, `--other` and a Z
   line at 6726d994c5. That commit also registered the two-title amendment.
 - No-harm arms queued on the Nova: 1 Simpsons OFF `1-1791771680-lane.nfsaudio1011-2270853`, 2 Simpsons ON
-  `1-1791771681-lane.nfsaudio1011-2270912`. Crimson Skies ON then OFF follow once these are under the pilot gate.
+  `1-1791771681-lane.nfsaudio1011-2270912`. Crimson Skies 3 ON `1-1791772129-lane.nfsaudio1011-2350844`, 4 OFF
+  `1-1791772130-lane.nfsaudio1011-2351431` (shipped value last). All four are judged, and every leg passes (above).
+  The eight fix-stage runs took ~36 min of device time (estimated at 270 s each). I queued them so that queued plus
+  running time never passed the 30-min pilot gate.
+- origin/master 13e0590809 already in the branch; preflight passed; PR.md State: ready.
