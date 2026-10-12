@@ -9,9 +9,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 No lane session is running.
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.pathfind`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 1 waiting, 0 running.
+- **Device queue:** 0 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -88,4 +88,4 @@ No branch is being worked right now.
 - 2026-10-12 burnoutbrief1012: press Continue (A) after Retry so a run on the event brief keeps racing (#433, 0.5)
 - 2026-10-12 burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5)
 
-_Updated 2026-10-12 08:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 08:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
