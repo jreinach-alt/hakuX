@@ -129,8 +129,10 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
             val slot = f.getOrNull(1)?.toIntOrNull()
             val name = if (slot == SaveStateSlot.AUTO) "the auto slot" else "slot $slot"
             val ms = f.getOrNull(3)?.toDoubleOrNull()?.toLong() ?: 0
+            // The load kept the fresh boot as its undo-load state.
             android.widget.Toast.makeText(this@MainActivity,
-              "Loaded $name (${SaveStateText.ms(ms)})", android.widget.Toast.LENGTH_SHORT).show()
+              "Loaded $name (${SaveStateText.ms(ms)}). Undo load in the pause menu goes back to a fresh boot.",
+              android.widget.Toast.LENGTH_LONG).show()
             return
           }
           "refused" -> {

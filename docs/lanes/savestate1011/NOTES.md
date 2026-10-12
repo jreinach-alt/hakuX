@@ -176,6 +176,11 @@ among auto and 0-9. It skips any state saved before another title ran.
   guest did in those seconds survives.
 - It never uses `-loadvm`.
 - A refusal shows as a toast with the reason.
+- **Boot without auto-load (stretch).** Every load keeps the machine it
+  replaced as the undo-load state, so after an auto-load, Undo load in the
+  pause menu goes back to the fresh boot, about 1-2 s in. The success toast
+  says so. A "start without auto-load" entry in the game list would need
+  `GameLibraryActivity.kt`, outside this lane's files; it is not done.
 
 ### Per-game settings (stretch, half done)
 
@@ -286,7 +291,9 @@ hands on the pause menu.
    - Turn both on and play a title.
    - Pause menu, Exit. This writes `auto.hxs`.
    - Start the same title again. Within about 2 s of the game appearing, it
-     jumps to where you quit, with the toast "Loaded the auto slot (N ms)".
+     jumps to where you quit, with the toast "Loaded the auto slot (N ms).
+     Undo load in the pause menu goes back to a fresh boot."
+   - Pause menu, Undo load: the game is back at the start of the boot.
 6. **Swipe-away.**
    - With auto-save on, swipe the app away from recents during play.
    - On the next start, auto-load restores that moment if Android gave the
