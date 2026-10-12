@@ -2400,6 +2400,12 @@ standing = false
 files = ["docs/lanes/gtaroutes1011/**"]
 note = "RETIRED (lane.local 2026-10-11 23:5x PDT): folded as 4c9132fa17 (its last commit 35abaf6e16 is on master); unit gone; 4 attempts used. To lane.gtawedge1012: gta-3.route, gta-vc.route. To [free]: gta-sa-drive.route (SA-drive stopped on unknown pedal input), pathknow/paths/5454000E.json, 5454000F.json, pathknow/hints/learned-pub-5454.md, learned-series-grand-theft-auto.md (back inside [free]'s pathknow/**). targets.toml went to lane.pathclass at 23:1x."
 
+[lane.burnoutbrief1012]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/burnoutbrief1012/**", "docs/testing/titles/routes/burnout-revenge.returning.route"]
+note = "STARTED lane.local 2026-10-12 02:2x PDT (Sonnet, route building per the 10-10 table): Burnout Revenge's confirmation 1-1791793410-lane.local-336876 (after burnoutloop1012) held 59 fps but FAILed on position: Retry at RESULTS worked (02:00:16 RESULTS, 02:00:48 the TRAFFIC ATTACK event brief) and the run then sat on the brief (Continue (A)) to the end, B presses doing nothing there. Not accepted. The play loop gets a press A right after its press B; only the post-mark loop changes; no device runs (lane.local queues the next confirmation). Brief: briefs/burnoutbrief1012.md."
+
 [lane.burnoutloop1012]
 issues = ["433"]
 standing = false
