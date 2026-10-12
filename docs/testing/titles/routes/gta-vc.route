@@ -1,0 +1,65 @@
+# state: any   (golden 77a5f0908dce promoted 2026-10-11; lane.savestate433)
+# Grand Theft Auto: Vice City (5454000F): one route, first-run or on the
+# golden. PATHFOUND by pathfind.py on the Nova, 2026-10-11
+# (lane.gtaroutes1011 session 1056194; path recorded to
+# pathknow/paths/5454000F.json, gameplay reached in 1.5 min / 9 steps).
+#
+# NOT what the brief expected: there is no "Start Game" / "New Game" menu
+# and no title-screen START press on this disk's first run. The two
+# Rockstar publisher-logo screens (A skips each) lead straight into the
+# "In the Beginning..." cutscene (three segments, A skips each), then
+# Tommy on foot at the Ocean View Hotel, full HUD (health, money, radar,
+# wanted level). Recorded twice by the pathfind session (gameplay and a
+# follow-up probe); no menu state was ever seen.
+#
+# The logo and cutscene skips are trains of A presses 5 s apart (as
+# gta-sa.route): loading time differs between runs, and an A that lands on
+# a loading screen is a no-op. The play pattern runs, sprints, steers and
+# turns the camera; it never presses Y, START or BACK.
+#
+wait 40
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+shot logoskip
+wait 10
+shot loading
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+shot cutscenes
+wait 5
+mark gameplay
+repeat forever {
+    axis LY min
+    press A 200
+    wait 1.5
+    axis LX max
+    wait 1
+    axis LX mid
+    press A 200
+    wait 1.5
+    axis LX min
+    wait 1
+    axis LX mid
+    axis RX max
+    wait 0.5
+    axis RX mid
+    wait 1
+    axis LY mid
+    wait 0.5
+}
