@@ -8,9 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `nfsaudio1011` | claude-opus-5-5 | 11 min | nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer; pacing at the low wa |
-| `profilegate1011` | claude-sonnet-5 | 1h 56m | Merge remote-tracking branch 'origin/master' into lane/profilegate1011 |
-| `savestate1011` | claude-opus-5-5 | 26 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
+| `nfsaudio1011` | claude-opus-5-5 | 26 min | nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer; pacing at the low wa |
+| `savestate1011` | claude-opus-5-5 | 41 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -76,15 +75,15 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
 | `lane/nfsaudio1011` | nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer; pacing at the low watermark re | `e19b43b94a` | 2026-10-11 19:42 |
-| `lane/profilegate1011` | Merge remote-tracking branch 'origin/master' into lane/profilegate1011 | `d322306813` | 2026-10-11 18:18 |
 | `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `d34573d957` | 2026-10-11 19:35 |
 
 ## Recently landed on master
 
+- 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 - 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
 - 2026-10-11 nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5)
 - 2026-10-11 profileconv1011: gta-sa and amped2 measure on their golden profiles (#433)
 - 2026-10-11 soakvideo1011: screen video during a routed soak, from the dispatcher
 - 2026-10-11 fastpaths1010: the six renderer switches as one Graphics toggle, on by default (#433, 0.5)
 
-_Updated 2026-10-11 20:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 20:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
