@@ -2398,6 +2398,12 @@ standing = false
 files = ["docs/lanes/gtaroutes1011/**"]
 note = "RETIRED (lane.local 2026-10-11 23:5x PDT): folded as 4c9132fa17 (its last commit 35abaf6e16 is on master); unit gone; 4 attempts used. To lane.gtawedge1012: gta-3.route, gta-vc.route. To [free]: gta-sa-drive.route (SA-drive stopped on unknown pedal input), pathknow/paths/5454000E.json, 5454000F.json, pathknow/hints/learned-pub-5454.md, learned-series-grand-theft-auto.md (back inside [free]'s pathknow/**). targets.toml went to lane.pathclass at 23:1x."
 
+[lane.burnoutloop1012]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/burnoutloop1012/**", "docs/testing/titles/routes/burnout-revenge.returning.route"]
+note = "STARTED lane.local 2026-10-12 00:3x PDT (Sonnet, route building per the 10-10 table): Burnout Revenge's confirmation 1-1791785532-lane.local-2130848 read fps_ok 0.9956 but 475.6 s of gameplay; the Traffic Attack event ended ~46 s after the mark and the run sat on the RESULTS screen (Retry (B) / More details (Y) / Continue (A)) to the end, a replay moving behind it. Not accepted. The play loop gets a periodic Retry press; only the post-mark loop changes; no device runs (lane.local queues the next confirmation). Brief: briefs/burnoutloop1012.md."
+
 [lane.gtawedge1012]
 issues = ["433"]
 standing = false
