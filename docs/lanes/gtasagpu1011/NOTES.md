@@ -1065,3 +1065,17 @@ stays d50bf5c47c; the merge brings only soakvideo1011's notes.
 **The current build's video, for the owner's side-by-side.** soakvideo1011's own gta-sa soak,
 `1-1791756360-lane.soakvideo1011-3149619` (ref b73d50a070, no `HAKUX_VTX_HAZARD`, 600 s, frames
 every 5), recorded `video/v00001.mp4` and `v00002.mp4`, 120 s from 30 s after the mark.
+
+Its 67 post-mark stills (f00041-f00107; mark 17:50:39), read on 320-px sheets and the candidates
+at 960 px. Five show the sky defect:
+
+| still | clock | what is there |
+|---|---|---|
+| f00041 | 07:55 | the sky white, the treetops and a crane smeared into streaks (the church symptom) |
+| f00070 | 10:45 | a flat, saturated blue rectangle over the upper right sky, straight edges |
+| f00076 | 11:19 | the sky blown out yellow-white with radial rays; a tree smeared |
+| f00081 | 11:48 | a pale white wedge hanging from the top edge of the sky |
+| f00107 | 14:18 | the sky white, the trees smeared |
+
+So the current build, without the switch, shows it in 5 of 67 stills here, against the brief's
+2 of 72 a run. These five are the "current build" stills in PR.md's owner table.
