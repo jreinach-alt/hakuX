@@ -8,21 +8,23 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `burnoutloop1012` | claude-sonnet-5 | 13 min | burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5) |
-| `pathclass` | claude-sonnet-5 | 1h 46m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `burnoutloop1012` | claude-sonnet-5 | 28 min | burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5) |
+| `pathclass` | claude-sonnet-5 | 2h 1m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `savestate1011` | claude-opus-5-5 | 10 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 3 waiting, 0 running.
+- **Device queue:** 4 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
 
-**44 titles are confirmed Playable** (0 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**45 titles are confirmed Playable** (1 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-12 | X-Men: The Official Game (Europe) | Playable, 10-minute run |
 | 2026-10-08 | Max Payne 2: The Fall of Max Payne | Playable, 10-minute run |
 | 2026-10-07 | Legacy of Kain: Defiance | Playable, 10-minute run |
 | 2026-10-07 | The Lord of the Rings: The Fellowship of the Ring | Playable, 10-minute run |
@@ -68,7 +70,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-28 of these still await the owner's flicker check.
+29 of these still await the owner's flicker check.
 
 ## Work in progress
 
@@ -76,6 +78,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 |---|---|---|---|
 | `lane/burnoutloop1012` | burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5) | `8a4df3d1ab` | 2026-10-12 00:45 |
 | `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `f442726741` | 2026-10-11 13:21 |
+| `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `399f819d82` | 2026-10-12 01:06 |
 
 ## Recently landed on master
 
@@ -88,4 +91,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 - 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
 
-_Updated 2026-10-12 01:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 01:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
