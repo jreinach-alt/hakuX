@@ -3,9 +3,34 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **13** run (the pilot: 2 read, 1 void before input; the A/B's six
-arms on NGB, DOA3 and Buffy; the `[sdrange]` runs on MC3 and Forza; the depth pair, section 14), **3** queued (the
-L4a pair on MC3 and Forza's `[sdrfin]` run, section 13). 16 of 30. Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **16** run, **0** queued, 16 of 30. They are:
+- the pilot: 2 read, 1 void before input;
+- the A/B's six arms on NGB, DOA3 and Buffy;
+- the `[sdrange]` runs on MC3 and Forza;
+- the depth pair (section 14);
+- the L4a pair on MC3 (section 15);
+- Forza's `[sdrfin]` run (section 16).
+
+Ledger in section 4.
+
+## 0d. Attempt 4 (10-12 ~07:15 PDT, after Addendum 4): why attempt 3 did not finish
+
+Attempt 3 did finish what it could. It ended on section 14's `WAITING:` line, which named rows 14-16, queued at
+sweep tier behind lane.local's Playable chain. All three runs landed by 07:03. The branch folded at 07:08 as
+78cd417e9d, and this resume reads those runs. Per Addendum 4:
+- PR.md went to `State: draft` before the first commit;
+- `git merge origin/master` was a no-op (origin/master is 78cd417e9d, this branch's head).
+
+This attempt:
+- judges the L4a pair (section 15);
+- applies section 13's rule to Forza (section 16);
+- reads Mission: Impossible (Addendum 3, section 17);
+- checks L1's gameplay-route confirmations against the gate (section 18);
+- updates the ranking in section 12.
+
+It queues no run, for these reasons:
+- every run the ranking still names is lane.local's or needs a route this lane may not make;
+- an MC3 re-run on the same route would be a retest of a reading already on disk.
 
 ## 0c. Attempt 3, after Addendum 2 (10-12 05:57 PDT): the grants landed
 
@@ -176,9 +201,9 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 | 11 | z-1791804165-fpsbelow1012-3514899 | Buffy the Vampire Slayer | survey | 480 | done 10-12 05:32, ref be0239bac8 (apk 47e99f5db99c), **B** (`HAKUX_ZETA_D24=1`; 0x81) | section 9d: V M P pass, W fails at the 30 cap (as 9c said); fps_ok 0.79 -> 1.00 |
 | 12 | z-1791809103-fpsbelow1012-286227 | pgraph: 10 depth suites | - | - | done 10-12 05:58 PDT, ref c1112f2c1a (apk c8ce9a771091), **B** (`HAKUX_ZETA_D24=1`; init line 0x81), `--expect fpsbelow1012-zetad24-pixels.json` | section 14: every leg passes |
 | 13 | z-1791809107-fpsbelow1012-286943 | pgraph: 10 depth suites | - | - | done 10-12 06:08 PDT, same ref and apk, **A** (no env; 0x82), queued last | the same pair |
-| 14 | z-1791810680-fpsbelow1012-567845 | Midnight Club 3 | midnight-club-3.returning | 540 | queued 10-12 06:11 PDT, ref 67e3fcf745, **B** (`HAKUX_VTX_EXACT=1`), `--expect fpsbelow1012-vtxexact.json` | section 13 |
-| 15 | z-1791810682-fpsbelow1012-567963 | Midnight Club 3 | midnight-club-3.returning | 540 | queued 10-12 06:11 PDT, same ref, **A** (no switch) | the same pair |
-| 16 | z-1791810687-fpsbelow1012-568864 | Forza Motorsport | forza-soak1010 | 480 | queued 10-12 06:11 PDT, same ref, no switch, queued last | section 13: the `[sdrfin]` split decides L4c |
+| 14 | z-1791810680-fpsbelow1012-567845 | Midnight Club 3 | midnight-club-3.returning | 540 | done 10-12 06:33 PDT, ref 67e3fcf745, **B** (`HAKUX_VTX_EXACT=1`; init line =1), gameplay marked 06:27:23 | section 15: every leg passes; parked from ~34 s after the mark |
+| 15 | z-1791810682-fpsbelow1012-567963 | Midnight Club 3 | midnight-club-3.returning | 540 | done 10-12 06:46 PDT, same ref, **A** (no switch; =0), gameplay marked 06:40:12 | the same pair; fps_ok 0.40 |
+| 16 | z-1791810687-fpsbelow1012-568864 | Forza Motorsport | forza-soak1010 | 480 | done 10-12 07:02 PDT, same ref, no switch, the drive marked from 06:54:25 | section 16: `own` 70%, `clean` 0: L4c drops |
 
 The depth-exactness pair (rows 12-13) is the one registered as `docs/testing/predictions/fpsbelow1012-zetad24-pixels.json`
 (sha256 c543e6ac..., refs c1112f2c1a on both arms, B queued first), 10 depth suites, one run per arm. It was planned
@@ -746,6 +771,11 @@ judged.
 
 ## 11. Forza at master: not H1. Its `range` wait is batch completion of downloads the lookups did not record (10-12 05:55 PDT)
 
+> **Corrected by section 16 (10-12 07:2x PDT).** By download count the heading holds: most of the bytes are
+> downloads the lookups did not record. By time it does not. 70% of the `range` wait is completions where the lookup
+> recorded a download of its own: one invalidated surface per frame. The other 30% is the texture scan's, which needs
+> the bytes. Rule (1) completes none of them (`clean` 0), so the precise rule below (L4c) removes nothing.
+
 Run `z-1791801220-fpsbelow1012-2906178`: `forza-soak1010`, ref dbf9dd40cc, 480 s, perflog with `HAKUX_GPUXFR=1`,
 `HAKUX_FRAMETRACE=1` and `HAKUX_RANGELOG=1`, gameplay marked 04:33:55. This is Forza's step-2 telemetry at master.
 title_verdict (read-only): fps_ok **0.506** (0.45 on 09-30), window median 29.14, min 18.9, late/100 23.6, worst
@@ -822,30 +852,43 @@ lookup (L4b), not an eviction batch.
 | order | lever | titles: measured here; on disk | gain where it acts | P | state, and the next step |
 |---|---|---|---|---|---|
 | 1 | **L1 `HAKUX_ZETA_D24`** (section 5) | measured: NG Black, Buffy, DOA3 (one tile on all three). On disk, two-tile: NBA Live 06/07, LOTR, MechAssault 2, ToeJam, Fantastic 4, Spider-Man 2 (mixed). Named by gpunonrender: Otogi, Black | GPU outer span x0.57-0.64 in the class. Hand-read: NG Black fps_ok 0.85 -> 0.96, Buffy 0.79 -> 1.00, 6-19% less energy per frame | 0.7 that it takes the measured titles over the bar on gameplay routes. The open risk is the depth cost (section 7) | committed, off by default. Registered A/B: **LOSS** on its W leg (9d). Depth pair: **PASS** on every leg; the cost is a +1 LSB read-back of Z24 depth, drawn colour unchanged (section 14). Next: lane.local's cross-title screen, judged on a share leg |
-| 2 | **L4a `HAKUX_VTX_EXACT`** (10, 10a) | measured: Midnight Club 3 (H1: ex 0 of 973 downloads per 60 frames). On disk: Nightfire's NOSCAN calls, with no route and its H unread | MC3 up to 12.3 ms/frame of render-thread wait (ph_Fin 12.8 of 34.1 ms). MC3 is 0.08 under the bar at 0.815 | 0.85 that the downloads go; 0.55 that MC3 then reads >= 0.9 on its route (its fps varies 23-29 run to run, 10a) | built at 67e3fcf745, off by default; `fpsbelow1012-vtxexact.json` registered; the MC3 pair is queued (rows 14-15, section 13) |
-| 3 | **L4c `HAKUX_RANGE_EXACT`** (11) | measured: Forza. No other run on disk shows eviction batches | at most ~half of 16.6 ms/frame. Forza is 0.39 under the bar | 0.4 that rule (1) is most of the batches; ~0.15 that Forza reaches 0.9 by this alone | the `[sdrfin]` split counter is built at 67e3fcf745 (perf builds); one Forza run is queued (row 16). A switch and a pair follow only if (1) dominates (rule in section 13) |
-| 4 | L2 profiled autotune by default | GMEM titles where the GPU is the wait | Fuzion 38.7 -> 58.0 | 0.45 before, lower now: L1 removes the replay that profiled was escaping by choosing sysmem | lane.local's decision; nothing here |
-| 5 | L4b TEXSCAN's caller on non-cube textures | NFS MW (4 per finish, 2.2-4.0 ms/frame), Spider-Man 2, MC II | a few ms per frame | 0.2 | none runnable here; NFS MW is lane.local's chain |
-| 6 | L5 guest vCPU / PFIFO | Amped 2 runnable; Pilot Down, Hulk, NFS MW, NHL 2K3, LOTR unroutable | small after POSTED_PUT | 0.2 here | vcpuplan's lanes own it; not run here |
+| 2 | **L4a `HAKUX_VTX_EXACT`** (10, 10a, 15) | measured: Midnight Club 3 (H1: ex 0 of 973 downloads per 60 frames). On disk: Nightfire's NOSCAN calls, with no route and its H unread | measured with the switch: `range` downloads 431 -> 0 and wait 539 -> 0 ms per 60 frames; ph_Fin 9.6 -> 4.0 ms/frame over the window, 17.6 -> 4.2 over the ~34 s where both arms moved | **the downloads go: measured, every registered leg passes (15)**. 0.3 (was 0.55) that MC3 then reads >= 0.9 on a moving route: B's moving stretch read a median of 26.1 fps | pair judged, a win by its own rule (section 15). B parked ~34 s after the mark, so its fps_ok 0.935 is not credited. Next: lane.local's. MC3's route needs steering before an fps reading of the switch means anything; then the cross-title screen |
+| 3 | L2 profiled autotune by default | GMEM titles where the GPU is the wait | Fuzion 38.7 -> 58.0 | 0.45 before, lower now: L1 removes the replay that profiled was escaping by choosing sysmem | lane.local's decision; nothing here |
+| 4 | L4b TEXSCAN's caller on non-cube textures | NFS MW (4 per finish, 2.2-4.0 ms/frame), Spider-Man 2, MC II | a few ms per frame | 0.2 | none runnable here; NFS MW is lane.local's chain |
+| 5 | L4d: a GPU-side reader for Forza's invalidated surface (16) | measured: Forza only | up to 9.5 ms/frame (`own`, one completion per frame). Forza reads 0.60, 0.30 under the bar | 0.15: it is the larger change section 13 named for `dest`, on one title | not started. Its first step is an instrument that names the surface and the caller (section 16); it needs a surface.c grant past the counter's |
+| 6 | L5 guest vCPU / PFIFO | Amped 2 runnable. Pilot Down, Hulk, NFS MW, NHL 2K3, LOTR unroutable. **Mission: Impossible** (17): vCPU 72% busy in play, render thread 28% | small after POSTED_PUT. On MI, the frame is the guest's | 0.2 here | vcpuplan's lanes own it; not run here |
+| - | L4c `HAKUX_RANGE_EXACT` (11, 16) | Forza | **none**: `clean`, the only class it removes, is 0 of 99 completions per 60 frames | measured 0 | **dropped** by section 13's rule (`own` 70%, `tscan` 30%) |
 | - | L3 `sysmem` for DOA3 and NG Black in `kTitleRenderModes` | 2 one-offs | 59 gfps | superseded | L1 takes NG Black to 59 gfps in GMEM, without sysmem's Kabuki stall or its ZPASS change (#527). Dropped |
 
-**Why L4a is above L4c, when each reaches one title:**
+**Why L4a was above L4c, when each reaches one title** (written before rows 14-16):
 - L4a's cause is measured to the byte (ex 0, `edge` = n), and its fix removes exactly that download.
 - L4a's win is the whole 12.3 ms, on a title 0.08 from the bar.
-- L4c's mechanism is not split yet, its win is at most half, and Forza is 0.39 from the bar.
+- L4c's mechanism was not split yet, its win was at most half, and Forza is 0.39 from the bar.
+
+The split then put L4c's win at zero (section 16).
+
+**Why L4a's P fell, when every leg passed** (section 15):
+- The mechanism is confirmed.
+- MC3's route is blind throttle. Its two arms spawned on different streets.
+- A read 0.40 this time, against 0.815 on 10-12 02:18. That run-to-run spread is wider than the switch's effect on
+  fps_ok.
+- B's only moving stretch read 20-29 fps (median 26.1) with ph_Fin already at 4.2 ms, and the render thread still
+  waited 8.4 ms/frame for work. So removing the finish alone did not hold 30 there.
 
 **Why L1 stays first after a LOSS.** The loss is the W leg's median against a frame cap, and both failures were
 foreseen before their B arms ran (9b, 9c). The legs that read the mechanism passed 3 of 3, on the widest class the
 runs on disk show.
 
-**Runs the ranking still needs (nothing else is queued, and nothing is a retest):**
-- The depth pair, 2 runs: done, section 14.
-- L4a (granted, built, registered, queued as rows 14-15): register `fpsbelow1012-vtxexact.json` on a ref past the master merge, with scene-robust
-  legs (B's `by=vtx` range downloads per 60 frames <= 5% of A's; B's `range` wait per frame <= 25% of A's; fps_ok
-  hand-read). One MC3 pair, 2 runs.
-- L4c (counter granted and built, queued as row 16): one Forza run with the split counter, then a pair only if rule (1) dominates.
-
-That is at most 13 + 2 + 1 + 2 = 18 of the 30-run cap.
+**Runs the ranking still needs (updated 10-12 07:2x PDT, attempt 4).** This lane has none left to queue. 16 of 30
+are used.
+- The depth pair, 2 runs: done (section 14).
+- L4a, MC3 pair, 2 runs: done (section 15).
+- L4c, one Forza run: done (section 16). Its rule dropped L4c, so no pair follows.
+- What remains belongs to lane.local:
+  - L1's gameplay-route confirmations: no route the gate admits (section 18);
+  - MC3 on a steered route;
+  - Mission: Impossible, which has no golden (section 17);
+  - the cross-title screens of L1 and L4a.
 
 Resolved (Addendum 2, board db57d68da6): the grant for draw.c, vertex.c and renderer.h (L4a), and surface.c widened
 to the split counter. Both are built at 67e3fcf745 (section 13). `HAKUX_RANGE_EXACT` itself is not granted, and it
@@ -996,6 +1039,8 @@ section 9d.
 - the cross-title screen is lane.local's;
 - turning the switch on by default is lane.local's.
 
+**Resolved 10-12 07:03 PDT:** all three runs landed. They are read in sections 15 and 16. Kept as written:
+
 **WAITING** (10-12 06:20 PDT) on rows 14-16, all queued at sweep tier behind lane.local's Playable chain, ref
 67e3fcf745. The Nova held lane.pathfind's 600 s hold at 13:08Z.
 - MC3 pair, B `z-1791810680-fpsbelow1012-567845` and A `z-1791810682-fpsbelow1012-567963`. Read with
@@ -1006,3 +1051,217 @@ section 9d.
   section 13's rule.
 
 Nothing of this session's is running.
+
+## 15. The L4a pair judged: every leg passes; MC3's downloads are gone, and its fps is not read (10-12 07:2x PDT)
+
+**The pair.** It is `fpsbelow1012-vtxexact.json` (eb30dbad...): B `z-1791810680-fpsbelow1012-567845`, A
+`z-1791810682-fpsbelow1012-567963`.
+- Both arms ran ref 67e3fcf745 with perflog, `HAKUX_GPUXFR=1` and `HAKUX_FRAMETRACE=1`, on route
+  `midnight-club-3.returning` for 540 s, sweep tier.
+- The route marked gameplay at 06:27:23 (B) and 06:40:12 (A).
+- `tools/rfread.py` exits 0. Its output is `tools/vtxexact-pair.out`.
+
+| | A (=0) | B (=1) |
+|---|---|---|
+| periods / frames after the mark | 149 / 8,940 | 185 / 11,100 |
+| `range` per 60 frames, median: completions, downloads, wait | 431, 431, 539 ms | 0, 0, 0 ms |
+| `range` over the window | 465 dl per 60 frames, 10.2 ms/frame | 0 |
+| `[sdrfin]` | `own` 465 per 60 frames, dl/n 1.0, 100% of the split | no line in the window: no `range` completion of any class |
+
+| leg | registered | read | |
+|---|---|---|---|
+| V | A's init line =0, B's =1, each >= 40 periods | =0, =1; 149 and 185 | pass |
+| C | A's median `range` dl >= 300 | 431 | pass |
+| M | B/A median `range` dl <= 0.05 | 0.000 | pass |
+| P | B/A median `range` wait <= 0.25 | 0.000 | pass |
+
+**Registered verdict: WIN.** The prediction reads: "The lever is judged a win when MC3 passes every leg."
+
+**The stated figures.**
+- A came in at half the downloads the figures named: 431 per 60 frames, against 900-1,020. Its wait was 539 ms,
+  against 740-980.
+- C's floor of 300 was set for exactly that spread, and it held.
+- B's figures held: downloads <= 30 and wait <= 120 ms per 60 frames; it read 0 and 0.
+
+**Hand-read beside the legs, not judged.** The first four rows are title_verdict (`tools/l4-verdicts.out`). The rest
+are decompose.py medians per frame; "moving" is the first ~34 s after the mark, 17 periods each.
+
+| | A | B |
+|---|---|---|
+| fps_ok, window median, min | 0.402, 28.87, 14.41 | 0.935, 29.97, 20.07 |
+| late/100 | 59.3 | 10.1 |
+| J/frame | 0.318 | 0.262 |
+| ph_Fin, whole window | 9.6 ms | 4.0 ms |
+| ph_Fin, moving | 17.6 ms | 4.2 ms |
+| fps, moving | 20.0 | 26.1 |
+| ph_GPU / ph_Draw / ph_Idle, moving | 11.9 / 11.1 / 9.7 ms | 11.5 / 10.8 / 8.4 ms |
+| BE pstdev after the first 34 s | 581 | 28.6 |
+
+**B's fps_ok is a parked car's, and it is not credited** (the "moving player" rule).
+- The arms spawned on different streets. B's gameplay shot (`062723-gameplay.png`) is at 0 mph, facing the
+  six-one-nine customs garage. A's (`064012-gameplay.png`) is on an avenue at about 95 mph in 4th.
+- The route is blind throttle with no steering.
+- B moved for about 34 s, then sat. From there:
+  - its fps reads 29.5-30.0 in every period;
+  - its draw batches per frame (BE) hardly vary: pstdev 28.6, against A's 581.
+
+**ph_Fin.** The hand-read figure was B <= A - 8 ms.
+- Over the whole window it fell 5.6 ms, 9.6 -> 4.0. That is short of the figure, because A's whole-window ph_Fin was
+  already below the 12.8-17.0 stated for it: half the downloads.
+- Over the stretch where both arms moved, on different streets, it fell 13.4 ms, 17.6 -> 4.2.
+- B's ph_Fin is flat whether the car is moving or parked: medians 4.2 and 4.0. A's moves with the scene: 17.6 in
+  its first 34 s, 9.1 after. So what the switch leaves of the finish is not the scene's.
+
+**What would have refuted it, read against the prediction's own list:**
+- "M and P pass and ph_Fin does not fall": ph_Fin fell.
+- "M passes and P fails": P passed, and B has no `[sdrfin]` line at all, so no texture lookup took over the batch.
+- "B reads =1 and range dl does not fall": dl fell to 0.
+
+**Torn geometry.**
+- B ran with the switch from boot, so all 14 of its route frames were drawn with it, from the menus to the gameplay
+  shot.
+- The gameplay frame shows the car, the street, the buildings and the HUD intact.
+- That is one gameplay frame at 0 mph. The run has no video and no frame after the mark, so the check is thin, and no
+  frame shows a fault.
+
+**What it means for L4a.**
+- The switch removes MC3's `range` downloads completely. The mechanism (10a) is confirmed to the count.
+- The pair does not answer whether MC3 then reads >= 0.9. B's only moving stretch read 20-29 fps (median 26.1), with
+  the finish already down to 4.2 ms, and the render thread still waited 8.4 ms per frame for work. P that L4a alone
+  takes MC3 over the bar on a moving route: 0.3, down from 0.55.
+- An fps reading of this switch needs a route that keeps the car moving on one road. That is pathing, and it is
+  lane.local's (OUTBOX).
+- A second pair on the same blind route would draw another random scene, and it would be a retest of a reading on
+  disk. Not queued.
+- Turning the switch on by default is lane.local's cross-title screen.
+
+## 16. Forza's `[sdrfin]` split: `own` 70%, `tscan` 30%, `clean` 0. L4c drops (10-12 07:2x PDT)
+
+**The run.** `z-1791810687-fpsbelow1012-568864`:
+- ref 67e3fcf745, `forza-soak1010`, 480 s, perflog with `HAKUX_GPUXFR=1` and `HAKUX_FRAMETRACE=1`, no switch;
+- the drive marked from 06:54:25, and `rfread.py` takes the first `[sdcall]` period after it, at 06:56:02;
+- title_verdict: fps_ok 0.602, window median 29.75, min 17.28, late/100 22.1, 0.295 J/frame.
+
+The run before it (`-2906178`, ref dbf9dd40cc) read 0.506. That is one run each, and the difference is not
+attributed.
+
+`tools/rfread.py` (output `tools/forza-sdrfin.out`) covers 185 periods and 11,100 frames. `range` per 60 frames:
+- median: 93 completions, 653 downloads, 790 ms;
+- over the window: 99 completions, 686 downloads, 815 ms (13.6 ms/frame).
+
+| class (per 60 frames, whole window) | completions | downloads retired | per completion | time | ms/frame | share |
+|---|---|---|---|---|---|---|
+| `own` (rec 60) | 60 | 116 | 1.9 | 571 ms | 9.5 | 70% |
+| `dest` | 0 | 0 | - | 0 | 0 | 0% |
+| `clean` | 0 | 0 | - | 0 | 0 | 0% |
+| `tscan` | 39 | 570 | 14.7 | 244 ms | 4.1 | 30% |
+
+**Section 13's rule.** It was written before the run: "`own` >= 50%: the lookups record their own downloads, and the
+evictions' batch rides along at no extra finish. L4c drops, and the next question is why Forza's lookups record so
+many." `own` is 70%. Beyond the rule, `clean` (the only class `HAKUX_RANGE_EXACT` would remove) is **zero**: the
+precise rule would remove no completion at all. Section 11 had put P 0.4 on rule (1) dominating; it does not occur.
+**L4c is dropped.** No switch is requested and no pair is queued.
+
+**Why so many, from what is on disk.**
+- It is not many. The lookups record about one download per frame (rec 60 per 60 frames, one per completion).
+- But each of those completions costs 9.5 ms: it waits for the GPU on the frame's work so far.
+- The copies are a small part of it. A texture-scan completion retires 14.7 downloads in 6.3 ms; an `own` completion
+  retires 1.9 in 9.5 ms.
+- The recorded download is an invalidated surface's. Section 11's `[sdrange]` run counted 53 invalidated-surface
+  downloads per 60 frames and none on live or shelved surfaces. `[sdrange]` names surfaces only on the live list
+  (`sdr_note`, surface.c:1011), so which surface it is is not on disk.
+- The reader is not the vertex sync: it recorded 0 on Forza (section 11). So the reader is a texture lookup or a
+  blit.
+- forza414 NOTES 29 gives a candidate: the race rebinds its zeta surface twice a frame at one address, between
+  640x480 and 1280x480. That is an inference, not a reading.
+
+**What would remove it (L4d in section 12).**
+- The reader would take the replaced surface's bytes on the GPU, from its image, instead of downloading them with a
+  finish. SURFSPLICE does this for a binding's upload (surface.c:488).
+- It reaches one title, and it is the larger change section 13 described for `dest`. P 0.15, below L4b.
+- Its first step is an instrument: `sdr_note` on the invalidated list, naming the surface and the caller. That is a
+  surface.c change beyond the counter's grant.
+- It is not requested here: it is one title, and the brief puts multi-title fixes first.
+
+## 17. Mission: Impossible - Operation Surma (4947001F, Addendum 3): the guest's frame; no lever of this lane's; no route (10-12 07:2x PDT)
+
+**The held run.** `/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/n-4947001F-1011/` is lane.pathfind's
+run, not perflog.
+- verdict.json: reached gameplay by route, 305 s of play, fps_ok 0.0, window median 6.94, min 5.88.
+- It flags a hang: five gaps of 10.0-10.2 s, not read here.
+- Its logcat covers the hold, and carries only the always-on lines: `[rdc]`, `[rr425w]`, `[rr425]`, `[tlb68]`,
+  `[shd413]`, `[idlehalt]`.
+- There is no pacing line and no `[sdcall]` or phase split.
+
+Summed over the hold's 153 two-second `[rr425w]` windows, 308.6 s (`tools/mi-vcpu.out`):
+
+| | read |
+|---|---|
+| vCPU busy / idle (kernel idle loop at 0x8001b02e) | **72.1%** / 27.9% of wall |
+| busy after wakes keyed `33.44` (the nv2a IRQ with PGRAPH's ERROR bit pending: the guest's NV097_NO_OPERATION software callback, pgraph.c:2567) | 52.1% of wall: 2,656 wakes, 8.6 a second, about 1.3 a frame, ~61 ms of busy each |
+| busy after vblank wakes (`33.02`) | 11.7% (5,387 wakes) |
+| idle ended by the 1 kHz timer (`30.00`) | 75 s over 84,214 ticks: the guest idles until a tick and goes back |
+| render thread (`[rdc]` tcpu, 35 lines, 2,100 frames over 313 s = 6.71 fps) | 86.9 s of CPU, **27.8%** of wall, 41.4 ms of each 149 ms frame |
+| `[shd413]` pipelines | 9.3 M lookups, 7 misses: not shader compiles |
+| MMIO reads (`[tlb68]` rd) | 657 per 2 s: the guest is not polling registers |
+
+**Reading.** The frame is the guest's.
+- The vCPU does about 107 ms of work per 149 ms frame, most of it after each software callback.
+- The render thread is on CPU 41 ms of the frame.
+- The most frequent non-idle return PCs in `[rr425pc]` sit on SSE float loads (`f3 0f 10`) in game code. That reads
+  as computation, not a poll; I did not decode that instrument further.
+- This is the opposite of the AUF/Blinx callback class (#474, pfifo.c:743). Their vCPU sat idle waiting for the
+  callback; MI's is idle 28% of the time at most.
+- The 4x cliff at the switch into play fits a guest whose menus are light work and whose play is not.
+
+**Against the cause table.** None of this lane's levers covers MI:
+- L1 acts on the GPU's GMEM replay.
+- L4a and L4d act on render-thread waits.
+- With the render thread at 28% CPU and the vCPU at 72% busy, removing a renderer wait cannot lift a frame the guest
+  sets. P that a renderer lever covers it: about 0.1. A GPU wait the guest's numbers hide is not excluded without a
+  pacing line, but the guest is busy, not waiting.
+- The class is L5, guest vCPU, which vcpuplan's lanes own (the owner's vCPU JIT direction, 09-28). MI is a clean
+  example for them: a 4x cliff with the vCPU busy and the renderer mostly idle.
+
+**The one telemetry run Addendum 3 allows is not queued: MI has no route this lane may run** (`tools/mi-gate.out`).
+`admit()` refuses every route, survey included: "4947001F has no profile (no golden) and no route-finding; pass
+--find-route ... to find one blind". `--find-route` is refused to this lane. MI is "no route" here.
+
+For whoever gets it a golden, a perflog run would add two things:
+- the pacing line (G, Ri);
+- the kick-to-callback latency split (pfifo.c:743).
+
+Together they say whether the guest's post-callback work is pure CPU or stretched by PFIFO latency. The always-on
+lines already say vCPU-bound.
+
+## 18. L1's gameplay-route confirmations: no route the gate admits (10-12 07:2x PDT)
+
+Addendum 4 put these next in ranking order: Buffy, NG Black and DOA3 with `HAKUX_ZETA_D24=1` on gameplay routes.
+`admit()` (`tools/l1-gate.out`) reads:
+
+| title | its gameplay route | gate | survey route |
+|---|---|---|---|
+| Buffy (45410012, golden c6b6ec3cb8be) | `buffy.route`, `# state: first-run` | refused, R1: "first-run, and 45410012 already has a kept profile ... play a returning or any route on it" | admitted; never marks gameplay |
+| DOA3 (4D53002D, golden 220536a66fe2) | `doa3.route`, first-run | refused, R1 | admitted |
+| NG Black (5443000D, golden ab037a065b15) | belowbar1005's `bb-ngb`, first-run | refused, R1 | admitted |
+
+No returning or `any` route for the three titles exists on disk. The only other way past the gate is
+`--remake-profile`, which the owner's profile gate (10-11) rules out: keep profile, path and saves.
+
+The survey route is what the A/B ran on, so a survey-route B run would be a retest of section 9.
+
+**The confirmations are lane.local's.** Each needs a route recorded from the kept profile (`# state: returning`)
+that reaches play. OUTBOX.md names them.
+
+This lane's L1 work is done:
+- the switch is committed, off by default;
+- the A/B is judged: a LOSS on W, with V, M and P passing 3 of 3;
+- the depth pair is judged: PASS, with the F24 read-back cost;
+- the next step is lane.local's: the cross-title screen and the confirmations.
+
+**This lane is finished for #433 at 16 of 30 runs.**
+- The two switches are committed, off by default.
+- All three predictions are judged: zetad24 LOSS, zetad24-pixels PASS, vtxexact WIN.
+- L4c is dropped by its own rule.
+- MI is read.
+- The open items are lane.local's (OUTBOX.md).

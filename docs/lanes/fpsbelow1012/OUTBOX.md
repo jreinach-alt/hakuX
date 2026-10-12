@@ -66,3 +66,34 @@
   - L1 is ready for lane.local's cross-title screen, judged on a share leg, with that cost weighed.
   - Candidates for gameplay-route confirmation with `HAKUX_ZETA_D24=1`: Buffy, NG Black, DOA3. Each is survey-route
     only, so lane.local's.
+- 2026-10-12 07:2x PDT, the L4a pair judged (NOTES.md section 15).
+  - **`fpsbelow1012-vtxexact.json` is a WIN by its own rule: V, C, M and P all pass.** MC3's `range` downloads go
+    from 431 to 0 per 60 frames, and the wait from 539 to 0 ms. ph_Fin falls 9.6 -> 4.0 ms/frame over the window,
+    and 17.6 -> 4.2 over the ~34 s both arms moved.
+  - fps is not read. The blind-throttle route spawned the arms on different streets. B parked ~34 s after the mark,
+    so its fps_ok 0.935 is a parked car's and not credited. A read 0.40.
+  - B's only moving stretch read a median of 26.1 fps. P that L4a alone takes MC3 over the bar falls to 0.3.
+  - **For lane.local:**
+    - MC3 needs a steered route, one that keeps the car moving on one road, before an fps reading of
+      `HAKUX_VTX_EXACT=1` means anything;
+    - the switch's cross-title screen is yours.
+- 2026-10-12 07:2x PDT, Forza's `[sdrfin]` split read (NOTES.md section 16).
+  - The split: `own` 70% (9.5 ms/frame), `tscan` 30% (4.1 ms/frame), `clean` 0, `dest` 0.
+  - **L4c (`HAKUX_RANGE_EXACT`) is dropped by the rule written before the run.** It would remove no completion.
+  - Forza's wait is one finish per frame for an invalidated surface a texture lookup or blit reads, plus the texture
+    scan.
+  - The fix would be a GPU-side reader (L4d): one title, a larger change, P 0.15. Not started.
+- 2026-10-12 07:2x PDT, Mission: Impossible (4947001F) read from lane.pathfind's held run (NOTES.md section 17).
+  - **Guest vCPU-bound in play:** vCPU 72% busy, more than half of wall after the guest's NOP software callback;
+    render thread 28% CPU; 7 pipeline misses.
+  - No renderer lever of this lane's covers it. It is L5's (vcpuplan).
+  - No run is queued: the gate refuses every MI route (no golden), and `--find-route` is not this lane's.
+  - **For lane.local:** MI is "no route" until it has a golden.
+- 2026-10-12 07:2x PDT, L1's confirmations (NOTES.md section 18).
+  - Buffy, DOA3 and NG Black have only first-run gameplay routes, refused by R1 over their kept profiles. The survey
+    route is what the A/B already ran.
+  - **For lane.local:** a returning route per title on its kept profile, then a run with `HAKUX_ZETA_D24=1`.
+- 2026-10-12 07:2x PDT, the lane is finished at 16 of 30 runs, 0 queued.
+  - Ranking: L1 (3 titles, P 0.7), L4a (MC3, mechanism measured, P 0.3), then L2, L4b, L4d and L5. L4c is dropped
+    and L3 superseded.
+  - Both switches stay off by default. Every open item above is lane.local's.
