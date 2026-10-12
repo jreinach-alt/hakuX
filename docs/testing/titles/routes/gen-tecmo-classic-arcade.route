@@ -1,0 +1,17 @@
+# state: any   (classifier-path benchmark opening; #433 step 6c)
+# Tecmo Classic Arcade (5443000E), classifier-path benchmark (#433): drive
+# generic replaces the blind opening and marks gameplay itself once play is
+# confirmed. A compilation of 2D arcade titles; without knowing which game
+# the menu lands on, the loop presses a direction and the main action
+# button -- safe for a side-scroller, a maze game or a shooter alike -- and
+# never START.
+drive generic 300 mark
+repeat forever {
+    axis LX max
+    wait 1.0
+    axis LX min
+    wait 1.0
+    axis LX mid
+    mash A 3 0.3
+    wait 1.0
+}

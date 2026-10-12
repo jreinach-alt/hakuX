@@ -1,0 +1,16 @@
+# state: any   (classifier-path benchmark opening; #433 step 6c)
+# Top Spin (4D530035), classifier-path benchmark (#433): drive generic
+# replaces the blind opening and marks gameplay itself once play is
+# confirmed. Tennis: move to the ball, swing -- never START.
+drive generic 300 mark
+repeat forever {
+    axis LX max
+    wait 0.8
+    axis LX min
+    wait 0.8
+    axis LX mid
+    press A 300
+    wait 1.5
+    press X 300
+    wait 1.5
+}
