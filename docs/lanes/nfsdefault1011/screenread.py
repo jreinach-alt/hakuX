@@ -66,6 +66,13 @@ def main():
     ap.add_argument('--expect')
     a = ap.parse_args()
 
+    # A bare request id is not a path: judge() would read nothing and the row
+    # would print ?/0/n/a as if the run had captured nothing.
+    missing = [d for d in a.dirs if not os.path.isfile(os.path.join(d, 'request.json'))]
+    if missing:
+        sys.exit(f"not a run directory (no request.json): {', '.join(missing)}; "
+                 f"pass $DISPATCH_DIR/results/<id>")
+
     exp = json.load(open(a.expect)) if a.expect else {}
     off_env = exp.get('a_env') or []
 

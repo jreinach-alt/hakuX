@@ -1,5 +1,15 @@
 # lane.nfsdefault1011 -- the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5)
 
+**Final state (attempt 4, 2026-10-11 ~17:15 PDT): ready.** All three switches are in the default. The owner
+made three scope changes:
+- Step 2's NFS re-run was dropped (Addendum 6). The release-note figure comes from coldstart1010 and lockwake1011
+  (section 2, "Attempt 4").
+- Step 4 was cut to batch 1's 10 route titles (Addendum 5). Batch 2's 20 runs were withdrawn and never ran.
+- Kabuki Warriors does not gate the fold (Addendum 7). Its rerun pair is recorded as telemetry.
+
+Proof that the defaults reach native without env is in section 2, "Attempt 4". Sections below that say "held",
+"queued" or "waiting" are the record of the time; each one is marked where the final state differs.
+
 ## 0. Base
 
 Base is `origin/master` at `6d8947bb47` (fold of lane/fastpaths1010), already checked out for this worktree.
@@ -90,6 +100,9 @@ start is excluded either way), so the V leg's cold-pace-line floor also fails on
 VOID. This is scoped to `nfsread.py`, not `raread.py` (reportasync1010's shared module): it is this
 route's and this title's screens, not the pace/mark protocol every other lane's reader shares.
 
+**SUPERSEDED (Addendum 6, owner 16:55 PDT):** the hold below ended with step 2's re-run dropped, not run. See
+"Attempt 4" at the end of this section.
+
 **lane.local's direction (2026-10-11, 11:17 PDT):** do not requeue step 2's two voided arms yet. A new
 lane, nfsroute1011, is building a saved profile and a screen-gated version of this route (`waitfor` aborts
 on a mismatch instead of plowing ahead on a stale assumption); wait for its addendum to this lane's brief
@@ -105,6 +118,66 @@ near-the-edge good frame as a reason to look at the frame by eye, not to retune 
 runs' worth of evidence. `nfsroute1011` started 11:22 PDT (Sonnet): first deliverable is a screen-gated
 `nfs-mw-quickrace.route` (same path, same race timing, so ON2/OFF2's eventual re-runs pool with OFF1/ON1).
 Addendum 2 lands when it proves.
+
+### Attempt 4: step 2 dropped by the owner; proof the defaults reach native without env
+
+**Step 2's NFS re-run was dropped (Addendum 6, owner, 16:55 PDT).** Between 16:26 and 16:39 the owner played a
+full NFS MW race on the Nova with all three switches on and called the frame rate "SO good". They asked for the
+switches to be folded now. No NFS run was queued on `nfs-mw-race.returning`, and this lane did not wait for
+nfsroute1011. Earlier step-2 evidence:
+- Pilot pair (OFF1 `...3581025`, ON1 `...3581205`): both passed every V leg.
+- Second pair (`...87617`, `...87778`): VOID, route desync (above).
+
+`nfsdefault1011-nfs.json` stays registered and unjudged. Do not read K or N from these four runs: only one run
+per arm is valid, and the K/N cold-pace floor needs two.
+
+**Switch lines on step 3's two no-env ON runs (Addendum 6 item 3).** Both runs (`1-1791744548-nfsdefault1011-620739`
+and `1-1791745784-nfsdefault1011-874556`) have `request.json` `env: []`. Neither logcat has an `env: HAKUX_` line,
+so no override was applied.
+
+| line | `...620739` | `...874556` |
+|---|---|---|
+| `[postput] on` | 185: `I/hakuX-lane( 8443): [postput] on, skew bound mode 0` | 183: `I/hakuX-lane(28383): [postput] on, skew bound mode 0` |
+| `[lockwake] on` | 186: `I/hakuX-lane( 8443): [lockwake] on` | 184: `I/hakuX-lane(28383): [lockwake] on` |
+| `submit frames: 3` (xemu_android.cpp:1191, the pref passed to `xemu_set_submit_frames`) | 36: `I/hakuX   ( 8443): submit frames: 3` | 36: `I/hakuX   (28383): submit frames: 3` |
+| `per-frame staging created (3 frames` (buffer.c:518, from `xemu_get_submit_frames()` at runtime) | 169: `E/hakuX-vk( 8443): buffer_init: per-frame staging created (3 frames, ...)` | 169: `E/hakuX-vk(28383): buffer_init: per-frame staging created (3 frames, ...)` |
+| draw.c `[coldstart1010] submit_frames=3` | absent, by design (see below) | absent, by design |
+| fastpaths build line | 7: `fastpaths: ON (...,HAKUX_POSTED_PUT,HAKUX_LOCKFREE_WAKE) (#433)` | 7: same |
+
+**draw.c's `[coldstart1010] submit_frames=N` line cannot print on a no-env run.** Addendum 6 named it as one of the
+three lines. But `xemu_set_submit_frames()` (draw.c:1265-1279) prints it only inside `if (e)`, where `e` is
+`HAKUX_SUBMIT_FRAMES` read from the environment. With no env, `e` is 0 and the pref value (3) passes straight
+through to `g_xemu_submit_frames`.
+
+Section 2's OFF1 read called draw.c's line authoritative only "when an env override is in play". The addendum
+dropped that qualifier. So the line's absence on these runs is what the code does with no override; it is not a
+missing default.
+
+The runtime value is proven by buffer.c's `per-frame staging created (3 frames` line. `buffer_init` sizes its
+staging from `xemu_get_submit_frames()`, the live `g_xemu_submit_frames`. The two OFF runs (`...620311`,
+`...877404`) show the contrast: `[coldstart1010] submit_frames=2 (HAKUX_SUBMIT_FRAMES; pref 3)` and
+`per-frame staging created (2 frames`. lockwake1011's `wakeread.py` used the same staging line as its depth
+check. The Kabuki ON rerun (`...3829286`, no env) shows `(3 frames` too, and its OFF (`...3829494`) shows
+`(2 frames`. Every check this item asks for is met, so this lane proceeds to fold. It is not a stop.
+
+**The NFS figure for the release note (Addendum 6 item 4).** It is the cold start of NFS MW's first race
+(start 1, the rain scene in coldstart1010 section 6), measured in two lanes:
+- Before: 37.93 ms, 26.4 fps. This is the shipped default, the six fastpaths switches at depth 2.
+  - Lane coldstart1010, `coldstart1010-depth.json` arm A.
+  - Runs `1-1791697258-coldstart1010-3142274` (38.3), `1-1791697260-coldstart1010-3142523` (37.7) and
+    `1-1791697261-coldstart1010-3142581` (37.8), at 786f82d4bb.
+- After: 33.58 ms, 29.8 fps. This is all three switches on top of the six.
+  - Lane lockwake1011, `lockwake1011-lockfree_wake.json` arm B.
+  - Runs `0-1791717604-lockwake1011-1989057` (33.8), `0-1791717605-lockwake1011-1989154` (33.5) and
+    `0-1791717611-lockwake1011-1989918` (33.4), at 39c6dacc5e.
+
+The two ends are different binaries on different days, so the figure is a chain of two measurements, not one
+A/B. The overlap between them is consistent:
+- coldstart1010's posted store with depth 3 measured 34.79 at 786f82d4bb.
+- lockwake1011's arm A, the same configuration, measured 34.54 at 39c6dacc5e.
+
+The warm countdown and post-GO frames were 33.4-33.75 ms (about 30 fps, the game's cap) in every configuration.
+The win is at the race start, which is what the owner plays first.
 
 ## 3. The Simpsons Hit & Run in free roam
 
@@ -304,7 +377,7 @@ subdirectories; not a behavior change to any other lane's reader, since `screenr
 | Spikeout: Battle Street | ON/OFF | none/none | 8/8 | 60.03/60.01 | pass |
 | Jet Set Radio Future | ON/OFF | none/none | 4/4 | 59.87/59.76 | pass |
 | Tork: Prehistoric Punk | ON/OFF | none/none | 16/15 | 30.37/29.21 | pass |
-| Kabuki Warriors | ON/OFF | none/none | 16/16 | 52.65/59.37 | gap 11.3%, wider than fastpaths1010's own noted-but-not-escalated 6% on this same title -- rerun queued, see below rather than called here |
+| Kabuki Warriors | ON/OFF | none/none | 16/16 | 52.65/59.37 | not judged: #787 stall placement (Addendum 7, owner). A rerun was queued below; it is telemetry only, see "Attempt 4" |
 | 187: Ride or Die | ON/OFF | none/none | 21/21 | 60.02/60.09 | pass |
 | Tony Hawk's Pro Skater 2x | ON/OFF | none/none | 13/13 | 59.40/59.48 | pass |
 | KOF: Maximum Impact - Maniax | ON/OFF | none/none | 11/11 | 59.76/59.98 | pass |
@@ -326,6 +399,9 @@ attributed to a switch" (not treating this as a confirmed fail yet, just not con
 when the prediction itself flagged this exact comparison): ON `1-1791758946-nfsdefault1011-3829286`, OFF
 `1-1791758950-nfsdefault1011-3829494`.
 
+**WITHDRAWN by the owner (Addendum 5, 16:13 PDT):** none of batch 2's 20 runs ran. Each has `WITHDRAWN.txt` and no
+DONE. They are not results.
+
 **Batch 2 queued (10 soak titles, 20 runs, ON then OFF per title, 180s, `--frames-every 15`,
 `HAKUX_RELEASE_PRIO=1`):** ToeJam & Earl III (`...3830698`/`...3832157`), Halo: Combat Evolved
 (`...3832362`/`...3832563`), Panzer Dragoon Orta (`...3833185`/`...3833645`), Capcom vs. SNK 2 EO
@@ -339,3 +415,42 @@ queued 22 runs total.
 
 Writing `WAITING` with all 22 ids (the 2 Kabuki reruns + batch 2's 20) before ending, per Addendum 4's
 instruction not to end a session with runs in flight and no file naming them.
+
+**Attempt 4 (this session): why attempt 3 did not finish.** Attempt 3 ended on purpose, at `2aa65c0930`. It had
+22 runs on the Nova queue: the Kabuki rerun pair and batch 2's 20 title-screen runs. `WAITING` named all 22, as
+Addendum 4 requires, so lanewaker could resume the lane when they finished. The plan changed while the lane was
+waiting:
+- 16:13 PDT, Addendum 5: the owner cancelled the rest of the screen, and batch 2's 20 runs were withdrawn.
+- 16:55 PDT, Addendum 6: the owner dropped step 2's NFS re-run and asked for a fold after the Kabuki pair.
+- 17:00 PDT, Addendum 7: the owner ruled that Kabuki does not gate the fold.
+
+lanewaker resumed this session when all 22 ids were terminal: 2 DONE and 20 WITHDRAWN (checked on disk, 20 of 20
+carry `WITHDRAWN.txt` and none has DONE). Nothing is left to wait on, so this session deleted `WAITING`.
+
+**Scope change against `nfsdefault1011-screen.json` (Addendum 5, owner).** 10 of the 38 registered titles were
+screened: batch 1's 10 route titles, one ON and one OFF each. The other 28 were withdrawn by the owner:
+- Batch 2's 10 titles were queued and withdrawn before they ran.
+- The other 18 were never queued.
+
+Against the prediction's `expect.fail_titles: []`, the 10 screened titles have no ON-only fatal and no fail. The
+other 28 are unscreened by this lane; this is not a pass for them. The prediction file is unchanged.
+
+**Kabuki Warriors rerun pair: telemetry, not judged (Addendum 7, owner).** Kabuki has been on the Playable Wall
+since 09-30. Its stall #787 (0.4-0.7 s pauses at scene changes; flushstall787, 10-03) is carried on the Wall as a
+watch. Where those pauses fall in a short route run moves the run's mean, and batch 1's 11.3% gap is that
+placement, not the switches. The pair had already run when the owner ruled. `screenread.py` read:
+
+| run | arm | fatal | frames | gfps | depth line |
+|---|---|---|---|---|---|
+| `1-1791758946-nfsdefault1011-3829286` | ON | no | 16 | 54.16 | `per-frame staging created (3 frames` |
+| `1-1791758950-nfsdefault1011-3829494` | OFF | no | 16 | 58.11 | `[coldstart1010] submit_frames=2`, `(2 frames` |
+
+The figures are recorded as #787 stall placement and are not judged. No more Kabuki runs were queued.
+
+**What the next lane should not repeat.**
+- `screenread.py` takes run directories, not bare ids. Before this session, a bare `<id>` read nothing and printed
+  `?`/0/`n/a` with exit 0. It now exits 1 and names the argument. Pass `$DISPATCH_DIR/results/<id>`.
+- draw.c's `[coldstart1010] submit_frames=` line proves an env override, not the default. On a no-env run, use
+  buffer.c's `per-frame staging created (N frames` line. It is the runtime ring depth on both paths.
+- The Simpsons route's original play loop parks Homer in a corner (section 3). The fixed loop in
+  `simpsons-hit-run.route` is the one to copy.
