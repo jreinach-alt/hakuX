@@ -2148,8 +2148,8 @@ note = "RETIRED (lane.local 2026-10-09 23:30 PDT): folded (origin/lane/libfolder
 
 [lane.pathfind]
 issues = ["433", "848", "849", "850", "851", "852", "853", "854", "855", "856", "857", "859", "868", "869", "870"]
-files = ["docs/lanes/pathfind/**", "docs/testing/titles/pathfind.py", "docs/testing/titles/pathfind_selftest.py", "docs/testing/titles/pathknow/hints/**", "docs/testing/titles/pathknow/paths/**", "docs/testing/jobs/selftest.d/95-stuckdetect.sh"]
-note = "FOLD #822 (lane.local 2026-10-12 09:22 PDT): pathfind.py moved here from [lane.hangwatch] (folded 10-04) and [lane.profilegate1011] (folded 53e6de6ef2), both inactive; pathfind_selftest.py, pathknow hints/** and paths/** (the chain's recorded paths, profile-gate record) and selftest.d/95-stuckdetect.sh (no owner) added for the fold. After the fold pathfind.py goes to lane.pathfindhold1012. REACTIVATED (lane.local 2026-10-04 22:3x PDT, offline): hakux-lane-pathfind has been RUNNING since 2026-10-04 19:42 PDT (attempt 2, briefs/pathfind.md, Sonnet) with NO territory row -- the fleet FAIL. Owner 10-04: screening and Playable runs overnight to 07:00 PDT for 6 Playables on 10-05. Files: its runs/notes dir only. docs/testing/titles/pathfind.py stays with [lane.hangwatch] (patch it under docs/lanes/pathfind/ and lane.local folds); pathknow hints stay with [lane.pathknow]. PRIOR: RETIRED (hostops 2026-10-04 14:32 PDT): folded as 3fe51047d8 (lane/pathfind, 14:00 PDT, offline fold; verified ancestor of origin/master), no unit running. docs/lanes/pathfind/** -> [free]. docs/testing/titles/pathfind.py -> [lane.hangwatch] (lane.local 14:18). docs/testing/titles/pathknow/hints/** and paths/** stay with [lane.pathknow]."
+files = ["docs/lanes/pathfind/**", "docs/testing/titles/pathknow/hints/**", "docs/testing/titles/pathknow/paths/**", "docs/testing/jobs/selftest.d/95-stuckdetect.sh"]
+note = "FOLDED 755ac97c96 (lane.local 2026-10-12 10:02 PDT): pathfind.py and pathfind_selftest.py -> [lane.pathfindhold1012]. FOLD #822 (lane.local 2026-10-12 09:22 PDT): pathfind.py moved here from [lane.hangwatch] (folded 10-04) and [lane.profilegate1011] (folded 53e6de6ef2), both inactive; pathfind_selftest.py, pathknow hints/** and paths/** (the chain's recorded paths, profile-gate record) and selftest.d/95-stuckdetect.sh (no owner) added for the fold. After the fold pathfind.py goes to lane.pathfindhold1012. REACTIVATED (lane.local 2026-10-04 22:3x PDT, offline): hakux-lane-pathfind has been RUNNING since 2026-10-04 19:42 PDT (attempt 2, briefs/pathfind.md, Sonnet) with NO territory row -- the fleet FAIL. Owner 10-04: screening and Playable runs overnight to 07:00 PDT for 6 Playables on 10-05. Files: its runs/notes dir only. docs/testing/titles/pathfind.py stays with [lane.hangwatch] (patch it under docs/lanes/pathfind/ and lane.local folds); pathknow hints stay with [lane.pathknow]. PRIOR: RETIRED (hostops 2026-10-04 14:32 PDT): folded as 3fe51047d8 (lane/pathfind, 14:00 PDT, offline fold; verified ancestor of origin/master), no unit running. docs/lanes/pathfind/** -> [free]. docs/testing/titles/pathfind.py -> [lane.hangwatch] (lane.local 14:18). docs/testing/titles/pathknow/hints/** and paths/** stay with [lane.pathknow]."
 
 [lane.belowbar1005]
 issues = ["433"]
@@ -2469,3 +2469,15 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/zetaroutes1012/**", "docs/testing/predictions/zetaroutes1012-*", "docs/testing/titles/routes/buffy.returning.route", "docs/testing/titles/routes/doa3.returning.route", "docs/testing/titles/routes/ninja-gaiden-black.returning.route"]
 note = "STARTED lane.local 2026-10-12 07:35 PDT (Sonnet, route building per the 10-10 table): lane.fpsbelow1012 (folded 78cd417e9d) left HAKUX_ZETA_D24 off by default with survey-route gains on Buffy (0.79 -> 1.00), NG Black (0.85 -> 0.96) and DOA3; their gameplay routes are first-run and R1 refuses them over the kept profiles. This lane composes a returning route per title from the kept profile's survey shots, then runs each with HAKUX_ZETA_D24=1 in the sweep tier (no holds, no Nova deletes, no --remake-profile, at most 12 runs). Brief: briefs/zetaroutes1012.md."
+
+[lane.pathfindhold1012]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/pathfindhold1012/**", "docs/testing/titles/pathfind.py", "docs/testing/titles/pathfind_selftest.py"]
+note = "STARTED lane.local 2026-10-12 10:02 PDT (Sonnet, harness per the 10-10 table; no device): pathfind's hold_check runs title_verdict on a provisional folder with no frames/, so every hold stops at its first check (X-Men n-41560046-1011: provisional 'window unmeasured', final PASS). Gives the provisional folder the run's frames; offline tests on runs on disk. pathfind.py came from [lane.pathfind] after the #822 fold (755ac97c96); lane.pathvoid1012 takes it next. Brief: briefs/pathfindhold1012.md."
+
+[lane.pathvoid1012]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/pathvoid1012/**"]
+note = "QUEUED lane.local 2026-10-12 10:02 PDT (Sonnet, harness; no device): a partial path whose steps the model never answered makes the next run diverge at step 0 (LotR Third Age n-4541005F-1011). Cuts such steps in write_path and the loader. Gets pathfind.py when lane.pathfindhold1012 folds (both edit it). Brief: briefs/pathvoid1012.md."
