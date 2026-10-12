@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `savestate1011` | claude-opus-5-5 | 11 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
+| `savestate1011` | claude-opus-5-5 | 26 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lane.local-ownerplay`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 1 waiting, 0 running.
+- **Device queue:** 3 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -73,7 +73,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `38a81c664b` | 2026-10-11 21:44 |
+| `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `b701d223d0` | 2026-10-11 21:57 |
 
 ## Recently landed on master
 
@@ -85,4 +85,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 - 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
 
-_Updated 2026-10-11 21:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 22:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
