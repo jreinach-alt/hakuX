@@ -3,7 +3,7 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **0** run, 2 queued. Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **0** run, 3 queued (the pilot). Ledger in section 4.
 
 ## 1. Which titles a run can reach at all (the profile gate, read before the table)
 
@@ -131,8 +131,15 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 |---|---|---|---|---|---|---|
 | - | z-1791786704-fpsbelow1012-2329412 | Midnight Club 3 | midnight-club-3.returning | 600 | withdrawn before it started (ref 5326de78b2; defaulton1011 folded at 00fde8afb3 while it queued) | not counted |
 | - | z-1791786704-fpsbelow1012-2329507 | Amped 2 | amped2 | 900 | withdrawn, same reason | not counted |
-| 1 | z-1791787431-fpsbelow1012-2456548 | Midnight Club 3 | midnight-club-3.returning | 600 | queued (pilot), ref 00fde8afb3 | |
-| 2 | z-1791787432-fpsbelow1012-2456706 | Amped 2 | amped2 | 900 | queued (pilot), ref 00fde8afb3 | |
+| - | z-1791787431-fpsbelow1012-2456548 | Midnight Club 3 | midnight-club-3.returning | 600 | withdrawn before it started: the pilot was re-cut so its first runs decide L1 (section 5) | not counted |
+| - | z-1791787432-fpsbelow1012-2456706 | Amped 2 | amped2 | 900 | withdrawn, same reason (Amped 2 reads in/out 0.87, not the class; it waits for batch 2) | not counted |
+| 1 | z-1791787896-fpsbelow1012-2551124 | Dead or Alive 3 | survey | 480 | queued (pilot), ref 00fde8afb3 | |
+| 2 | z-1791787896-fpsbelow1012-2551219 | Ninja Gaiden Black | survey | 480 | queued (pilot), ref 00fde8afb3 | |
+| 3 | z-1791787897-fpsbelow1012-2551411 | Midnight Club 3 | midnight-club-3.returning | 540 | queued (pilot), ref 00fde8afb3 | |
+
+The pilot is 3 x (seconds + 90 s) = 29.5 min, under the 30 min gate. DOA3 and NGB are the two titles whose GMEM
+replay was measured before (section 5); at master they say whether the class is still there after fastpaths1010,
+nfsdefault1011 and defaulton1011. MC3 is the biggest unknown with a gameplay route.
 
 ## 5. Why the GMEM-replay class replays: Z24S8 as D32_SFLOAT_S8_UINT (offline, before any run)
 
@@ -199,14 +206,68 @@ takes D24_UNORM_S8_UINT first when the device has it; the init line becomes `nv2
 stored as unorm (HAKUX_ZETA_D24)`, which is what proves a B arm live. Off by default; nothing changes without the
 env.
 
-WAITING: grant for `hw/xbox/nv2a/pgraph/vk/surface.c` (HAKUX_ZETA_D24, off by default: Z24S8 as D24_UNORM_S8_UINT
-so a 640/720x480 GMEM pass fits one tile; the whole change is `zetad24.patch`, two hunks at the Z24S8 format choice).
+GRANTED: `hw/xbox/nv2a/pgraph/vk/surface.c`, by lane.local on origin/board 9dbc5b2242, default off. Its conditions:
+(1) the A/B titles come from this lane's own telemetry at master 00fde8afb3 showing the signature, not from pre-fix
+readings; (2) the prediction is registered before the first A/B run, with per-title figures and what refutes the
+mechanism; (3) the depth-exactness cost is named here (section 7) before the switch goes near the cross-title
+screen; (4) A/B arms count in the 30-run cap, all sweep tier. The switch is committed at ede7c891c5 (`zetad24.patch`
+applied as drafted), with `nv2a_index.json` regenerated in c29c31ea5e from the fold-pins trees (tests 6743b6ab16,
+104 suites, as on master).
+
+Checked on the committed state: surface.c compiles with the NDK clang line from `compile_commands.json` (rc 0;
+two warnings on lines the switch does not touch), `check_android_guards.py` is clean, `preflight.sh` passes.
+Not built: a full APK on this host (the dispatcher builds the ref for its first run) and the desktop target.
+
+### 5a. The class in runs already on disk (D32S8 throughout, read with `tools/zread.py`)
+
+Every past Nova run with `HAKUX_GPUXFR=1` on disk, read the same way: the scene pass's census in/out (mean in-pass
+span over mean outer span) and the perf lines' median gfps and G. All of them say `Z24S8 host format 0x82`.
+
+| title | route | ref | gfps med | G med (ms) | in/out | reading |
+|---|---|---|---|---|---|---|
+| Dead or Alive 3 | bb-doa3 / doa3 | d946e1ba44 .. 4ea49d12e7 (4 runs) | 49-54 | 17.7-19.7 | 0.51-0.62 | two tiles |
+| Ninja Gaiden Black | bb-ngb / ngb | d946e1ba44 .. 4ea49d12e7 (4 runs) | 42-59 | 17.0-22.9 | 0.54-0.57 | two tiles |
+| NBA Live 06 / 07 | nbalive06/07 | 93fbc525fc, 1e5b1af818, 1b1fec978d | 22.5-26 (47-49 with SURFGPU) | 20.1-43.9 | 0.50-0.52 | two tiles |
+| Buffy | buffy | 7960e78e20 | 29 | 34.1 | 0.50 | two tiles |
+| LOTR: Return of the King | lotr-rotk | 4ea49d12e7 | 29 | 33.4 | 0.51 | two tiles |
+| Fantastic 4 | fantastic4 | 37543ff004 | 59 | 16.9 | 0.52 | two tiles, GPU not the wait |
+| MechAssault 2 | mechassault-2 | 7960e78e20 | 29 | 33.4 | 0.63 | mostly two tiles |
+| ToeJam & Earl III | gnr-toejam | d946e1ba44, 5c35880d0a | 27 | 35.7-35.9 | 0.65-0.67 | mostly two tiles |
+| Spider-Man 2 | spiderman2 | 4ea49d12e7 | 29 | 33.5 | 0.69 | mixed |
+| DOA1 Ultimate, `TU_DEBUG=gmem` | survey | bf85412b88 | 33 | 29.8 | 0.48 | two tiles when forced to GMEM |
+| DOA3 / NGB, `TU_DEBUG=sysmem` or autotune `prof` | bb-doa3, bb-ngb | bf85412b88 | 59 | 16.7-16.8 | 0.97-1.0 | sysmem: no tiles |
+| Amped 2, NHL 2K3, NFS MW, Pilot Down, Hulk, Shaolin, Arctic Thunder | own routes | various | 29-59 | 16.7-34.5 | 0.78-0.99 | one tile or sysmem: not the class |
+
+So the class is wider than the four titles gpunonrender named: NBA Live 06 and 07 (which SURFGPU took to 47-49 gfps),
+Buffy, LOTR and MechAssault 2 are two-tile passes too. `G` is the guest's flip-to-flip interval (profile.c
+`game_frame_ms`), so it is frame time, not GPU time; where a title already runs at its own period (Fantastic 4 at
+59, Buffy and LOTR at 29) the replay costs GPU time that the frame rate does not show.
+
+**Read it over the stretch where the class shows, not the whole run.** The census's `out` is the GPU span of the
+render passes per command buffer, which is what the replay costs. Over whole runs DOA3 reads out 8.90 ms on GMEM
+against 8.33 on sysmem (gpunonrender `-1511854` / `-1511368`, bf85412b88), because the menus are one-tile on
+both. In 30 s buckets the fight is plain:
+
+| DOA3, seconds after the first perf line | GMEM in / out (ms) | in/out | gfps | sysmem out (ms) | gfps |
+|---|---|---|---|---|---|
+| 0-60 (boot, menus) | 1.24 / 1.26, 0.76 / 0.79 | 0.97-0.99 | 37, 59 | 1.23, 0.69 | 39, 59 |
+| 150-210 | 6.31 / 6.96, 6.31 / 6.76 | 0.91-0.93 | 37-39 | 10.88, 10.69 | 42-47 |
+| 240-270 (fight) | 13.09 / 26.07 | 0.50 | 33 | 16.86 | 59 |
+| 270-300 | 9.87 / 19.72 | 0.50 | 54 | 11.27 | 59 |
+| 300-330 | 7.38 / 14.84 | 0.50 | 59 | 9.85 | 59 |
+
+In the two-tile stretch, out is twice in (two tiles, each the whole draw stream) and 1.5-1.75x sysmem's whole
+pass. A one-tile pass runs the draw stream once over the whole screen: no less than the last tile's `in` (the
+same draws over half the screen) and about sysmem's whole pass (the same draws, plus tile loads and stores but
+without sysmem's bandwidth). That puts B's out at 0.5-0.65x of A's in the two-tile stretch, which is what
+`zread.py`'s P leg tests. So each title's A/B is judged over a window where its A arm reads in/out <= 0.6, taken from this lane's
+master telemetry of that title.
 
 ## 6. Lever ranking (draft: titles x win x P; the telemetry in section 3 firms up the titles column)
 
 | # | lever | titles it reaches | win where it acts | P | why that P |
 |---|---|---|---|---|---|
-| L1 | `HAKUX_ZETA_D24` (section 5) | every 32-bit 640/720x480 GMEM title where the GPU is the wait: DOA3, NG Black, Otogi, Black; LOTR, NHL 2K3, Spider-Man 2 where GMEM | up to sysmem's matched-scene gain without its costs: DOA3 34 -> ~59, NG Black 32.5 -> ~59 (one replay is the whole pass) | 0.6 | For: the mechanism is read from the driver source and agrees with three measured numbers (two bins; last tile = whole sysmem pass; 9 B/px). Against: a one-tile GMEM pass still loads and stores colour and depth, which sysmem does not; the autotune may then pick sysmem for some passes; and depth exactness drops to the pre-#16 level, which a title that reads depth back may show |
+| L1 | `HAKUX_ZETA_D24` (section 5) | every 32-bit 640/720x480 GMEM title; it shows in frames where the GPU is the wait. Two-tile on disk (5a): DOA3, NG Black, NBA Live 06/07, Buffy, LOTR, Fantastic 4, MechAssault 2, ToeJam, Spider-Man 2 (mixed); named by gpunonrender: Otogi, Black | up to sysmem's matched-scene gain without its costs: DOA3 34 -> ~59, NG Black 32.5 -> ~59; NBA Live 06/07 47-49 at G ~20 ms with SURFGPU, where the replay is the next cost | 0.6 | For: the mechanism is read from the driver source and agrees with four measured numbers (two bins; last tile ~ whole sysmem pass; 9 B/px; out = 2 x in in the fight, 5a). Against: a one-tile GMEM pass still loads and stores colour and depth, which sysmem does not; the autotune may then pick sysmem for some passes; and the D24 round trip is a unit off near z = 2^23 on Adreno (section 7), which a title that reads depth back may show |
 | L2 | profiled autotune by default (`kAutotuneProfiledDefault`) | GMEM titles where the GPU is the wait | Fuzion 38.7 -> 58.0 | 0.45 | Forza loses 28.9 -> 26.6 with no named cause (profileddefault1008); lane.local's decision. If L1 holds, L2's gain shrinks: it was choosing sysmem to escape the replay |
 | L3 | DOA3, NG Black to `sysmem` in `kTitleRenderModes` | one title each | DOA3 34 -> 59; NG Black 32.5 -> 59 | 0.85 / 0.75 | measured on matched scenes; one-offs, the owner's rule ranks them below a lever that reaches several |
 | L4 | surface-download remnants (`range`, `tobuf`) | Forza runnable here; MC II, Counter-Strike, Spider-Man 2, NHL 2K3 unroutable | unknown at master | 0.3 | needs the Forza telemetry first |
@@ -215,3 +276,59 @@ so a 640/720x480 GMEM pass fits one tile; the whole change is `zetad24.patch`, t
 L1 goes first: it reaches the most titles, it keeps GMEM's semantics (no Kabuki stall, no ZPASS change), and its
 mechanism is in hand before any device time. What would refute it is a B arm where the scene pass's census in/out
 stays near 0.5, or gfps does not move on a title whose GPU is the wait.
+
+## 7. What D24 costs in depth exactness (lane.local's condition 3; offline, before any run of the switch)
+
+**Where it can show at all.** Only where a Z24S8 word is read back or compared at one unit. Z16 is D16_UNORM
+either way; stencil is 8 bits either way (D24S8 packs it in the same texel; the compute pack/unpack handles both,
+surface-compute.c). So every z16 row is a control: the switch moves only the Z24S8 map.
+
+**What the switch does not bring back.** a33fa42bc3's before -> after (Depth_buffer 11,721,972 -> 505,280
+differing px, 10 blanks -> 0; Depth_buffer_ff 6,746,610 -> 317,130) is D24 *with four disagreeing scales* (shader
+2^24 with a ULP nudge, vertex 0xFFFFFF, clear 0xFFFFFF, readback 0xFFFFFF) against D32 with one. The switch keeps
+the one-scale fix: `zeta_stored_as_float=false` sends all four through 0xFFFFFF, the path a device without the
+float format takes today. So the pre-#16 figure is an upper bound on the switch's cost, not its expected value; the
+blanks came from the scales disagreeing, and nothing in the D24 branch reintroduces that.
+
+**What it does bring back: the unorm quantiser.** On a D24 image the driver converts the float depth to 24-bit
+unorm, and in the top octave (z >= 2^23) the float grid (2^-24) and the unorm grid (1/(2^24-1)) are half a unit out
+of phase. Correctly rounded, the round trip is exact; Adreno rounds the half up, so a clear of 0x800007 reads back
+0x800008 (a33fa42bc3; z24 fixed clears 16/18 on D24 against 18/18 on D32). The error is one unit, and only near
+the middle of the depth range, where a value sits close to the half.
+
+**Today's baseline on the Nova (D32S8)**, the rows the switch can move:
+
+| suite / rows (run) | captures | differing px today | nonzero |
+|---|---|---|---|
+| Depth_buffer z24 FZn `_ZB` (drawrec1010 `-3709316`, b10dcdb737) | 18 | 43,690 (all off-by-one) | 16 |
+| Depth_buffer z24 FZy `_ZB` | 18 | 12,816 | 16 |
+| Depth_buffer z24 FZn colour | 18 | 437,740 (equal to z16 FZn colour: not depth-format) | 16 |
+| Depth_buffer z24 FZy colour | 18 | 26,176 | 10 |
+| Depth_buffer_fixed_function z24 FZn `_ZB` (surfgpu1009 `-2098499`, 1b1fec978d) | 10 | 99,114 | 8 |
+| Depth_buffer_fixed_function z24 FZn colour | 10 | 93,086 | 8 |
+| Depth_buffer_fixed_function z24 FZy `_ZB` / colour | 10 / 10 | 240 / 240 | 10 / 10 |
+| Clear `C*_Depth_y_ZB` (depth clear read back) | 6 | 0 | 0 |
+| Color_zeta_overlap `ZetaIntoColor`, `ColorIntoZeta_ZB`, `Swap_ZB` | 3 | 71,663, 10,766, 0 | 2 |
+| controls: Depth_buffer z16 `_ZB` FZn / FZy | 18 / 18 | 0 / 1,436 | 0 / 12 |
+
+Depth_buffer's z24 FZn `_ZB` rows grow with the depth cutoff (M055564 5 px, M40000b 227, M800007 654, Mc00003 1,221,
+Mf55555 6,177, Mffffff 6,770), all off-by-one: that is the float32 interpolation a33fa42bc3 named as what still
+differs, and it is the floor D24 starts from.
+
+**Expected cost, stated before measuring:** the z16 rows do not move. The Depth_buffer and DBFF z24 `_ZB` rows get
+worse by off-by-one pixels where the stored depth is near 2^23 and the driver rounds the half up, so the rows whose
+range crosses the middle (M800007 and above, and the DBFF FZn rows) move most. A z24 colour row moves only where a
+depth test compares two values a unit apart. A Clear `_ZB` row moves if its clear value lands on a half, as
+0x800007 does. No row goes blank. An upper bound is the pre-#16 total; a likely size is of the order of today's
+z24 `_ZB` totals (tens of thousands of px), not millions. That is a guess from the mechanism, not a measurement.
+
+**What a title sees.** One unit in 2^24 of depth. A title that redraws geometry with depth EQUAL quantises both
+passes the same way and is unaffected. A title that clears to a mid-range value and then tests a draw against it
+with EQUAL or LEQUAL at that exact value could flip a pixel, which is the case the clear rows test. Every title the
+Nova ran before 09-10 ran on D24 (a33fa42bc3 changed the order); a33fa42bc3 cites test captures, not a title.
+
+**Measuring it exactly** is one pgraph env pair at the A/B ref on the depth suites (Depth buffer, Depth buffer fixed
+function, Clear, Color zeta overlap, W buffering, ZPass pixel count, Stencil, Stencil func, Depth function, Depth
+clamp): about a minute of device time each, judged by `ab_compare.py --a --b` (which treats an `--env` pair on one
+binary as the design). It is planned after the pilot verdict and counted in the cap (section 4). Until it is read,
+the cost above is a bound and a mechanism, and the switch should not reach the cross-title screen on speed alone.

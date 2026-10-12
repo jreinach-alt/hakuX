@@ -8,11 +8,14 @@ Per run:
   zfmt    the renderer's init line `nv2a: Z24S8 host format 0x..`: 0x82 is
           D32_SFLOAT_S8_UINT (master), 0x81 D24_UNORM_S8_UINT (the switch).
   gfps    hakuX-perf `gfps=` lines (one a second): median and share >= 55.
-  G       the same lines' `G:` (GPU ms a guest frame): median.
+  G       the same lines' `G:`, the guest's smoothed flip-to-flip interval in
+          ms (profile.c game_frame_ms): median. Frame time, not GPU time.
   in/out  xemu-xfr `XFR rp` lines (HAKUX_GPUXFR=1): the window's mean in-pass
           span over its mean outer span. A two-tile GMEM pass stamps only its
           last tile in-pass, so it reads ~0.5; one tile or sysmem reads >= 0.8
           (vk/draw.c, the census comment).
+  out     the same lines' outer render-pass span, GPU ms per command buffer
+          (mean of the lines' means). This is what the replay costs the GPU.
 --from/--until are seconds after the run's first hakuX-perf line, so the two
 arms of one route are read over the same stretch of it.
 
@@ -20,6 +23,7 @@ With --expect, applies prediction["expect"][key]:
   V  both arms' zfmt as named (a_zfmt, b_zfmt) and >= min_perf perf lines
   M  A's in/out <= a_inout_max and B's in/out >= b_inout_min (the tile count
      moved; read only when A is in the class)
+  P  B's mean outer span <= A's * out_ratio_max (the GPU did less per pass)
   W  B's median G <= A's * g_ratio_max, or B's median gfps >= A's + gfps_gain_min
 """
 import json
@@ -81,15 +85,17 @@ def read(rid, t_from, t_until):
         "gfps55": sum(1 for x in gf if x >= 55) / len(gf) if gf else None,
         "G_med": st.median(G) if G else None,
         "inout": sum(r[1] for r in rp) / out_sum if out_sum else None,
+        "out_ms": out_sum / len(rp) if rp else None,
         "rp_lines": len(rp),
     }
 
 
 def show(tag, r):
     f = lambda v, p="%.2f": "-" if v is None else p % v
-    print("%s %-38s zfmt %-5s perf %4d gfps med %s (>=55: %s) G med %s ms in/out %s (%d rp lines)" % (
+    print("%s %-38s zfmt %-5s perf %4d gfps med %s (>=55: %s) G med %s ms in/out %s out %s ms (%d rp lines)" % (
         tag, r["rid"], r["zfmt"] or "-", r["n"], f(r.get("gfps_med"), "%.0f"),
-        f(r.get("gfps55")), f(r.get("G_med"), "%.1f"), f(r.get("inout")), r.get("rp_lines", 0)))
+        f(r.get("gfps55")), f(r.get("G_med"), "%.1f"), f(r.get("inout")), f(r.get("out_ms")),
+        r.get("rp_lines", 0)))
 
 
 def main():
@@ -111,6 +117,11 @@ def main():
         legs.append(("M", m, "in/out A %.2f B %.2f" % (A["inout"], B["inout"])))
     else:
         legs.append(("M", False, "no census in one arm"))
+    if A.get("out_ms") and B.get("out_ms") is not None:
+        legs.append(("P", B["out_ms"] <= A["out_ms"] * e["out_ratio_max"],
+                     "outer span A %.2f B %.2f ms (x%.2f)" % (A["out_ms"], B["out_ms"], B["out_ms"] / A["out_ms"])))
+    else:
+        legs.append(("P", False, "no census in one arm"))
     w = False
     why = []
     if A.get("G_med") and B.get("G_med"):
