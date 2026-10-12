@@ -1,6 +1,6 @@
 # housekeep1012: remove obsolete and conflicting agent instructions (#433, 0.5)
 
-State: draft
+State: ready
 
 Lane: housekeep1012          Issue: none (#433 umbrella)
 Base: master @ 1ed3ac8f39
