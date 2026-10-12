@@ -227,3 +227,38 @@ addendum's literal text -- a plain boot screen "redoes nothing" regardless
 of profile -- but that is a reading, not a measurement) before touching
 code three attempts have already built and tested against the stricter
 rule. Flagging it in the PR body for lane.local.
+
+## The full selftest suite, run once (Addendum 4)
+
+Merged origin/master first (clean, no conflicts, 34 commits ahead of
+origin/lane after; `git merge --no-edit`), then ran all 137 fragments once,
+sharded 0-3/4 (the suite's own comment: a single run takes 18-25 min on CI,
+over this tool's 10-min-per-call cap, so each shard ran in the foreground
+across several calls, polling the shard's PID with `kill -0` in a loop --
+never left running across a turn boundary). Totals after the fixes below:
+shard 0 (13/137 frags) 284/0, shard 1 (44/137) 971+1-then-fixed, shard 2
+(39/137) 1079/0, shard 3 (41/137) 1091/0 -- ~3426 checks, 0 failed, every
+fragment covered exactly once.
+
+Three of the six fragments the merge brought in from origin/master (the
+soakvideo1011-step2 fold) or already carried (`96-failgate.sh`,
+`89-title-verdict.sh`, `97-dispatch-snapshot-drive.sh`) failed on first run,
+all with the SAME root cause: a fixture queued a request with a
+human-readable or fictitious `--title` ("Sonic Heroes.iso", "Crimson
+Skies.iso", "RouteRefs Selftest.iso") or a real TitleID with no golden in
+its isolated TITLESTATE_DIR, and no `--route`/`--find-route` -- harmless
+before this lane's gate existed (an unidentified or profile-less title just
+meant no golden to compose against), but `admit()` now runs unconditionally
+for any `--title` and refuses exactly that. None of the six fragments were
+testing profile semantics (video-option fit, route-crop transport, drive
+snapshot resolution, pilot budget, failure-gate held/identified/released
+logic) -- `--find-route "<reason>"` is the honest, minimal way past a check
+they were never exercising, and is what each fix adds, with a comment
+naming why. Fixed and reconfirmed (standalone fragment reruns, and shards
+2-3 reran clean in full) in:
+`61-soakvideo1011.sh`, `62-routerefs-soakvideo1011.sh`,
+`89-title-verdict.sh`, `97-dispatch-snapshot-drive.sh`, `99-pilot-gate.sh`,
+`96-failgate.sh`. This is the predictable fallout of a gate this lane made
+unconditional landing in the same window as five other lanes' fixtures on
+#433 that never anticipated it; lane.local should expect more of the same
+from any fragment not yet merged against this branch.
