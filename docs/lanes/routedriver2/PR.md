@@ -1,6 +1,12 @@
 # routedriver2 session 2: Buffy's menus made robust, the ledge gap diagnosed (#433)
 
-State: ready
+State: draft
+
+Parked (lane.local 2026-10-12): sessions 1 and 2 are folded (b71f92a12a, 66bce0c222). The five session-3 commits
+from 10-02 (68d01a0acd, d7a0e38831, 8053c5090e, 80f8dd317c, 98d3146c78:
+the Buffy controller map, classify `off_view`, drive `[[aim]]` and `[level]`,
+the Halo CE profile) are not on master. They edit drive.py and classify.py, which lane.pathclass now changes, so
+they are not foldable as they stand. Fold or drop them after pathclass folds. Buffy stays parked.
 
 Lane: routedriver2            Issue: #433 (0.5: 50 Playable)
 Base: master @ d949607b2d (merged)
