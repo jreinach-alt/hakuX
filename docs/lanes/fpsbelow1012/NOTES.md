@@ -3,8 +3,8 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2, merged to 00fde8afb3 (defaulton1011) on 10-12.
 
-Device-run count (cap 30, A/B arms included): **3** run (the pilot: 2 read, 1 void before input), **5** queued
-or running (the A/B's first four arms, then MC3's `[sdrange]` run). Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **5** run (the pilot: 2 read, 1 void before input; NGB's A/B pair),
+**4** queued (DOA3 A, Buffy A, MC3's and Forza's `[sdrange]` runs). Ledger in section 4.
 
 ## 0. Attempt 2 (10-12 ~02:30 PDT): why attempt 1 did not finish
 
@@ -148,12 +148,13 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 | 1 | z-1791787896-fpsbelow1012-2551124 | Dead or Alive 3 | survey | 480 | VOID 10-12 00:46: not-foreground before the route's first input (`com.android.settings` held display 0; `am start` re-issued, then no focused window); 8 logcat lines | none: the harness's foreground guard, not the title |
 | 2 | z-1791787896-fpsbelow1012-2551219 | Ninja Gaiden Black | survey | 480 | done 10-12 01:01, ref 00fde8afb3 | section 8: two-tile class at 240-510 s |
 | 3 | z-1791787897-fpsbelow1012-2551411 | Midnight Club 3 | midnight-club-3.returning | 540 | done 10-12 02:18, ref 00fde8afb3, gameplay marked | section 8: share 0.006 -> 0.81; `range` downloads 14/frame |
-| 4 | z-1791797921-fpsbelow1012-1777822 | Ninja Gaiden Black | survey | 480 | queued 10-12 ~02:40 PDT, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`) | A/B, `fpsbelow1012-zetad24.json` key NGB |
-| 5 | z-1791797927-fpsbelow1012-1778929 | Ninja Gaiden Black | survey | 480 | queued, same ref, **A** (no switch) | A/B key NGB |
+| 4 | z-1791797921-fpsbelow1012-1777822 | Ninja Gaiden Black | survey | 480 | done 10-12 03:01, ref be0239bac8, **B** (`HAKUX_ZETA_D24=1`; init line reads 0x81) | section 9: NGB passes every leg |
+| 5 | z-1791797927-fpsbelow1012-1778929 | Ninja Gaiden Black | survey | 480 | done 10-12 03:33, same ref, **A** (no switch) | section 9: class window 240-510 s |
 | 6 | z-1791797928-fpsbelow1012-1779675 | Dead or Alive 3 | survey | 480 | queued, same ref, **A** | A/B key DOA3; also DOA3's telemetry at master |
 | - | (refused at queue time) | ToeJam & Earl III | uberdefault569's `toejam-earl-3` | 540 | request.sh refused it: the route declares no `# state:` line, and the file is uberdefault569's, not this lane's to edit | not counted; Buffy takes its slot, as the prediction names |
 | 7 | z-1791798044-fpsbelow1012-1807480 | Buffy the Vampire Slayer | survey | 480 | queued, same ref, **A** | A/B key Buffy; also Buffy's telemetry at master |
 | 8 | z-1791799077-fpsbelow1012-2104673 | Midnight Club 3 | midnight-club-3.returning | 540 | queued 10-12 ~02:55 PDT, ref dbf9dd40cc, `--env HAKUX_RANGELOG=1` (+ the telemetry env) | section 10: which caller, which surfaces, exact or rounded overlap |
+| 9 | z-1791801220-fpsbelow1012-2906178 | Forza Motorsport | forza-soak1010 | 480 | queued 10-12 03:35 PDT, ref dbf9dd40cc, `--env HAKUX_RANGELOG=1` (+ the telemetry env) | Forza's telemetry at master (step 2) and its `[sdrange]` reading (section 10) |
 
 Planned next, after the pilot verdict (`pilots/fpsbelow1012.ok`): the depth-exactness pgraph pair, registered as
 `docs/testing/predictions/fpsbelow1012-zetad24-pixels.json` (sha256 c543e6ac..., refs c1112f2c1a both arms, B with
@@ -444,7 +445,26 @@ title is not judged. On the pilot's NG Black run this picks 240-510 s (270 s), t
 no profile, but adding the header is uberdefault569's edit, not this lane's. ToeJam also read 98.8% at 30+ on its
 confirm (`1790951866-titleroutes2-46925`), so it was the weakest of the three as a below-bar title. Buffy, the
 substitute the prediction names, takes its slot (`-1807480`). DOA3 B and Buffy B are queued only after their A arms
-read IN THE CLASS. The lane's last request is a no-switch run, so the Nova is not left with the switch set.
+read IN THE CLASS. The lane's last request is a no-switch run, so the Nova is not left with the switch set. (The
+dispatcher also queues its own `dispatch.restore` run at master after an env arm: `1791799321-dispatch.restore--1777822`
+followed NGB B.)
+
+### 9a. NG Black: every leg passes (judged 10-12 03:34 PDT)
+
+`zread.py z-1791797927-fpsbelow1012-1778929 z-1791797921-fpsbelow1012-1777822 --expect ... --key NGB`, exit 0.
+The class window read off A is 240-510 s, 270 s, the same stretch the pilot showed.
+
+| arm | zfmt | gfps median (share >= 55) | G median | in/out | outer span per cb | draws/cb |
+|---|---|---|---|---|---|---|
+| A `-1778929` | 0x82 | 40 (0.20) | 25.6 ms | 0.53 | 21.54 ms | 308 |
+| B `-1777822` | 0x81 | 59 (0.68) | 16.9 ms | 0.99 | 12.34 ms | 325 |
+
+V passes (draws within 6%). M passes: the pass is one tile. P passes: x0.57, inside section 5's 0.5-0.65. W passes:
+G x0.66, gfps +19. The figures stated before the run were gfps >= 50 and outer span <= 13 ms; B read 59 and 12.34.
+Hand-read, not judged (title_verdict, whole run, generic route): fps_ok 0.847 -> **0.960**, energy per frame
+0.192 -> 0.164 J. Both arms' frames show Ryu's HUD at the same cliff walls, with no visible depth fault in B. The
+switch takes NG Black over the 30-fps bar on this route, and to 59 gfps in the scene that was 40. Not a Playable
+reading: the survey never marks gameplay, so lane.local would need a confirmation on a gameplay route.
 
 ## 10. MC3's `range` is not the texture scan: the vertex-RAM sync or a blit (offline, 10-12 ~03:00 PDT)
 

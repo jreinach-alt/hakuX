@@ -24,3 +24,11 @@
   binary be0239bac8 both arms, B `HAKUX_ZETA_D24=1`). The window is A's two-tile buckets, fixed before B is read. NG
   Black B+A, DOA3 A and Buffy A are queued at sweep tier (ToeJam's route was refused: no `# state:` line, not this
   lane's file). Runs: 3 done, 4 queued, cap 30.
+- 2026-10-12 A/B first title judged (NOTES.md 9a): **NG Black passes every leg of `fpsbelow1012-zetad24.json`**.
+  With `HAKUX_ZETA_D24=1` the scene pass is one tile (census in/out 0.53 -> 0.99), the GPU's outer span per command
+  buffer drops 21.5 -> 12.3 ms (x0.57), gfps 40 -> 59, and G 25.6 -> 16.9 ms over the 270-s class window. Whole-run
+  fps_ok is 0.847 -> 0.960 on the survey route: a lane.local candidate *with the switch*, which needs a gameplay
+  route to confirm. DOA3 A and Buffy A are queued; their B arms follow if they read in the class. Separately,
+  MC3's `range` cost (12.3 ms/frame) is not the texture scan (NOTES.md section 10). It is the vertex-RAM sync or a
+  blit, and Forza with SURFGPU shares it. The `[sdrange]` instrument runs on both are queued (`-2104673`,
+  `-2906178`). Runs: 5 done, 4 queued, cap 30.
