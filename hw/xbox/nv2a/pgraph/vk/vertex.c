@@ -66,19 +66,23 @@ VkDeviceSize pgraph_vk_update_vertex_inline_buffer(PGRAPHState *pg, void **data,
  * Bookkeeping: pgraph_vk_bind_vertex_attributes notes the draw's exact byte
  * ranges in vtxhz_cur; pgraph_vk_vtxhz_commit (end of begin_pre_draw and
  * begin_draw, vk/draw.c) adds them to vtxhz_read for the rotation the draw is
- * recorded in. A rotation empties vtxhz_read. Off by default: one load per
+ * recorded in. A rotation empties vtxhz_read. Off, it costs one load per
  * bind, upload and commit.
+ *
+ * On by default (#433, defaulton1011): unset means on; HAKUX_VTX_HAZARD=0
+ * turns it off for an A/B.
  */
 static bool vtxhz_env(void)
 {
     static int v = -1;
     if (v < 0) {
         const char *e = getenv("HAKUX_VTX_HAZARD");
-        v = e && atoi(e) > 0;
+        v = e ? atoi(e) > 0 : 1;
 #ifdef __ANDROID__
         __android_log_print(ANDROID_LOG_INFO, "hakuX",
                             "HAKUX_VTX_HAZARD=%d (finish before an upload "
-                            "that rewrites an earlier draw's vertices)", v);
+                            "that rewrites an earlier draw's vertices)%s", v,
+                            e ? "" : " (default)");
 #endif
     }
     return v;
