@@ -3,8 +3,8 @@ State: draft
 
 Lane: gtasagpu1011      Issue: none (dispatched directly by lane.local, #433 umbrella)
 Base: master @ 6d8947bb47
-Files: docs/lanes/gtasagpu1011/NOTES.md, docs/lanes/gtasagpu1011/PR.md, docs/lanes/gtasagpu1011/WAITING, docs/lanes/gtasagpu1011/dispcmp.py, docs/lanes/gtasagpu1011/dispcmp_lib.py, docs/lanes/gtasagpu1011/fdread.py, docs/lanes/gtasagpu1011/fsz.py, docs/lanes/gtasagpu1011/gradwatch.py, docs/lanes/gtasagpu1011/litfail.py, docs/lanes/gtasagpu1011/sqscan.py, docs/lanes/gtasagpu1011/stillcmp.py, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/vertex.c
-Prediction: none: switch screens and frame dumps, read by hand; each run's prediction is written in NOTES.md (sections 1, 2b-2f, step 3) before it was queued
+Files: docs/lanes/gtasagpu1011/NOTES.md, docs/lanes/gtasagpu1011/PR.md, docs/lanes/gtasagpu1011/WAITING, docs/lanes/gtasagpu1011/dispcmp.py, docs/lanes/gtasagpu1011/dispcmp_lib.py, docs/lanes/gtasagpu1011/fdread.py, docs/lanes/gtasagpu1011/fsz.py, docs/lanes/gtasagpu1011/gradwatch.py, docs/lanes/gtasagpu1011/litfail.py, docs/lanes/gtasagpu1011/scrread.py, docs/lanes/gtasagpu1011/sqscan.py, docs/lanes/gtasagpu1011/stillcmp.py, docs/testing/predictions/gtasagpu1011-screen.json, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/vertex.c
+Prediction: docs/testing/predictions/gtasagpu1011-screen.json @ 70a4f2feb46e81ef45e0035e898a015daac96ac562ce91fb107ef4c93041ef07 (the title screen, self-judged by scrread.py); the switch screens, frame dumps and proof soaks are read by hand, each run's prediction written in NOTES.md (sections 1, 2b-2f, step 3) before it was queued
 Needs device: yes (Nova)    Needs NDK: yes
 
 Work in progress. The sky defect is found and fixed behind `HAKUX_VTX_HAZARD=1`, which is off by default. The shadow has no renderer defect: it is drawn as the game asks and it is in the stills, but it is faint (11-24% darker than the ground). Step 3's proof runs are next.

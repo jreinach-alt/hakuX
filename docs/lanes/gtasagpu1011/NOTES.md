@@ -1017,3 +1017,32 @@ Predictions:
 Queued 17:56 PDT as `1-1791766181-lane.gtasagpu1011-1063190` and `1-1791766181-lane.gtasagpu1011-1063583`
 (ref d50bf5c47c, release priority), behind about 45 min of Nova work (nfsroute1011 running, then soakvideo1011's
 gta-sa video soak, two gtaroutes1011 soaks and a snapshot1011 run).
+
+### A guest BugCheck in 176610, not recorded before
+
+`scrread.py`'s fatal column, run over this lane's GTA SA runs, flags one: 176610 (a6ee1c58fe, the
+switch-off dump run). Logcat at 11:23:02 shows `XBOX KERNEL CRASH (BugCheck)`, code 0x1e, an access
+violation with CR2=0x20646572, which is ASCII text used as a pointer. That was 20 s after the frame
+dump closed (11:22:42, 30 frames) and about 245 s after launch. None of the other GTA SA runs on
+disk (about 40, 2026-09-26 to today, eight of them frame dumps, six with the switch on) has one.
+The vertex hazard changes what the GPU draws, not guest memory, and the only guest writes the
+renderer makes are surface downloads into the surface's own range, so the hazard is not a
+mechanism for a stray pointer. One in 40, in the switch-off arm, is recorded and not chased. It
+matters for the screen in one way: an OFF-only fatal is not a regression of the switch.
+
+### The screen: prediction registered before the runs
+
+`docs/testing/predictions/gtasagpu1011-screen.json` (written 2026-10-12 01:0x UTC, before any
+screen run is queued). One binary (d50bf5c47c, the proof runs' ref), env-only: ON = `--env
+HAKUX_VTX_HAZARD=1`, OFF = no env. The 38 titles of fastpaths1010's screen, with the request
+shapes nfsdefault1011-screen.json copied from it. Prediction: none fail (P 0.85). Reader:
+`scrread.py` (fatal, on-line, finishes, hdd, gfps, frames). `finishes` is the column the other
+screens did not have: the switch acts only when an upload changes bytes an earlier draw in the
+same command buffer reads, so a title with 0 finishes in its ON run drew exactly what OFF draws.
+
+No other default-off switch is headed for default-on in an active lane (the running
+`hakux-lane-*` units at 18:00 PDT are snapshot1011, soakvideo1011 and this one), so the ON arm
+carries this switch alone.
+
+Order: the proof soaks are this lane's pilot. Their verdict goes to `pilots/lane.gtasagpu1011.ok`,
+then batch 1 (the 10 route titles, 20 runs, about 130 min of Nova time), read before batch 2.
