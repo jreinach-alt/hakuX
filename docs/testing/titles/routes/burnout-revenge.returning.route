@@ -121,13 +121,30 @@ wait 0.8
 axis LX mid
 wait 5.6
 mark gameplay
+# Traffic Attack (the event this route lands in) is a short timed event:
+# the frames that found this route show it ends well under a minute after
+# the mark (docs/lanes/burnoutloop1012/NOTES.md). Once it ends, Burnout
+# Revenge holds on a RESULTS screen (Retry B / More details Y / Continue A)
+# until a button is pressed -- the drive pattern below never pressed one,
+# so a run that reached RESULTS sat there, replay moving behind the panel,
+# for the rest of the confirmation. `press B` (Retry) below restarts the
+# same event; it is a no-op if the race is still running and B does
+# nothing there, so the cadence is chosen to bound the alternative: if B
+# turns out to be a live race control (e.g. a handbrake), it can only ever
+# land once per 18s of driving, never every loop.
 repeat forever {
-    axis RT max
-    wait 1.5
-    axis LX min
-    wait 1.5
-    axis LX max
-    wait 1.5
-    axis LX mid
-    wait 1.5
+    repeat 3 {
+        axis RT max
+        wait 1.5
+        axis LX min
+        wait 1.5
+        axis LX max
+        wait 1.5
+        axis LX mid
+        wait 1.5
+    }
+    axis RT min
+    wait 0.3
+    press B
+    wait 1.0
 }
