@@ -7,6 +7,16 @@
 # 2026-10-02: gameplay in 2.35 min). drive never presses START in live
 # play, which matters here: START in the hallway opens the pause menu.
 #
+# DOES NOT REACH PLAY YET (Nova, 2026-10-12, run 1-1791836906-lane.local-2003337):
+# the title is named at 33.7 s and START pressed, then the "Choose A Game"
+# slot menu reads main_menu 0.67, under the generic profile's 0.70 menu
+# floor, for 91 s: ROUTE FAIL unknown. Over ghoulies.returning's 17 frames
+# of the same opening (1-1791826297-lane.local-4125680) pathclass reads the
+# slot menu at 0.57-0.82 and the Grand Hallway's play at 0.58-0.75
+# `gameplay`, under the 0.85 gameplay floor, so even past the menus drive
+# would never mark play. Use ghoulies.returning.route until pathclass names
+# this title's menus and play above those floors.
+#
 # The play loop is ghoulies.route's, unchanged: walk with the left stick,
 # hold the right stick to attack in four directions, A for tutorial cards.
 drive generic 480 mark

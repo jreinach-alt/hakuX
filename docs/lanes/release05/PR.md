@@ -17,8 +17,12 @@ The 0.5 targets are met: 175 titles measured (target 145) and 50 Playable
   `0.5.0-unknown`. The build-stamp selftest expects the new base.
 - `ghoulies.classifier.route`: Grabbed by the Ghoulies opened by the
   classifier (`drive generic 480 mark`) on the kept profile, followed by
-  `ghoulies.route`'s play loop. This is the route for the release gate:
-  median gfps >= 25 over 90-240 s of play on the candidate APK.
+  `ghoulies.route`'s play loop. It does not reach play yet: on the Nova the
+  classifier named the title screen, then stopped on the "Choose A Game"
+  slot menu (main_menu 0.67, under the 0.70 menu floor). Offline, the Grand
+  Hallway's play reads 0.58-0.75 `gameplay`, under the 0.85 floor. The
+  route header records both; `ghoulies.returning.route` stays the gate's
+  route.
 
 Checks: `SELFTEST_ONLY=86-build-stamp selftest.sh` passes (10 of 10);
 `route.sh --check` passes; `titlestate.py resolve-route --route
