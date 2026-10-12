@@ -8,16 +8,15 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `gtaroutes1011` | claude-opus-5-5 | 6 min | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
-| `gtasagpu1011` | claude-opus-5-5 | 17 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
-| `nfsaudio1011` | claude-opus-5-5 | 12 min | nfsaudio1011: NFS Most Wanted audio stutter -- the APU plays 50 ms-old audio in place of ~15% of the sound (#4 |
-| `profilegate1011` | claude-sonnet-5 | 26 min | Merge remote-tracking branch 'origin/master' into lane/profilegate1011 |
-| `snapshot1011` | claude-opus-5-5 | 1h 8m | snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433) |
+| `gtaroutes1011` | claude-opus-5-5 | 21 min | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) |
+| `gtasagpu1011` | claude-opus-5-5 | 31 min | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) |
+| `nfsaudio1011` | claude-opus-5-5 | 27 min | nfsaudio1011: NFS Most Wanted audio stutter -- the APU plays 50 ms-old audio in place of ~15% of the sound (#4 |
+| `profilegate1011` | claude-sonnet-5 | 41 min | Merge remote-tracking branch 'origin/master' into lane/profilegate1011 |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 4 waiting, 1 running.
+- **Device queue:** 3 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -77,11 +76,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/gtaroutes1011` | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) | `ab41bcf04d` | 2026-10-11 18:28 |
-| `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `71c112273b` | 2026-10-11 18:14 |
+| `lane/gtaroutes1011` | gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5) | `24ee7c55b4` | 2026-10-11 18:38 |
+| `lane/gtasagpu1011` | gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5) | `5234687472` | 2026-10-11 18:33 |
 | `lane/nfsaudio1011` | nfsaudio1011: NFS Most Wanted audio stutter -- the APU plays 50 ms-old audio in place of ~15% of the sound (#433, 0.5) | `3f2496ac1b` | 2026-10-11 18:29 |
 | `lane/profilegate1011` | Merge remote-tracking branch 'origin/master' into lane/profilegate1011 | `d322306813` | 2026-10-11 18:18 |
-| `lane/snapshot1011` | snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433) | `43c94dd297` | 2026-10-11 18:30 |
 
 ## Recently landed on master
 
@@ -91,4 +89,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 soakvideo1011: screen video during a routed soak, from the dispatcher
 - 2026-10-11 fastpaths1010: the six renderer switches as one Graphics toggle, on by default (#433, 0.5)
 
-_Updated 2026-10-11 18:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 18:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
