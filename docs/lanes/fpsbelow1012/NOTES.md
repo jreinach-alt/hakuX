@@ -201,7 +201,7 @@ readback in pgraph.c, and the compute pack/unpack in vk/surface-compute.c handle
 the first choice (a33fa42bc3^ tried D24 first, as upstream xemu does), so every Nova GMEM measurement since 09-10
 (gmem474, gpunonrender, profileddefault1008) saw two tiles where the August builds saw one.
 
-The switch, drafted as `zetad24.patch` (applies to 00fde8afb3): `HAKUX_ZETA_D24=1`, read once at renderer init,
+The switch (commit ede7c891c5, on 00fde8afb3): `HAKUX_ZETA_D24=1`, read once at renderer init,
 takes D24_UNORM_S8_UINT first when the device has it; the init line becomes `nv2a: Z24S8 host format 0x81, depth
 stored as unorm (HAKUX_ZETA_D24)`, which is what proves a B arm live. Off by default; nothing changes without the
 env.
@@ -210,8 +210,8 @@ GRANTED: `hw/xbox/nv2a/pgraph/vk/surface.c`, by lane.local on origin/board 9dbc5
 (1) the A/B titles come from this lane's own telemetry at master 00fde8afb3 showing the signature, not from pre-fix
 readings; (2) the prediction is registered before the first A/B run, with per-title figures and what refutes the
 mechanism; (3) the depth-exactness cost is named here (section 7) before the switch goes near the cross-title
-screen; (4) A/B arms count in the 30-run cap, all sweep tier. The switch is committed at ede7c891c5 (`zetad24.patch`
-applied as drafted), with `nv2a_index.json` regenerated in c29c31ea5e from the fold-pins trees (tests 6743b6ab16,
+screen; (4) A/B arms count in the 30-run cap, all sweep tier. The switch is committed at ede7c891c5 (the draft
+unchanged), with `nv2a_index.json` regenerated in c29c31ea5e from the fold-pins trees (tests 6743b6ab16,
 104 suites, as on master).
 
 Checked on the committed state: surface.c compiles with the NDK clang line from `compile_commands.json` (rc 0;
