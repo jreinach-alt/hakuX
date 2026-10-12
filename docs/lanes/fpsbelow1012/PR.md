@@ -4,8 +4,8 @@ State: in progress
 
 Lane: fpsbelow1012          Issue: none (dispatched directly by lane.local, #433 umbrella)
 Base: master @ 5326de78b2, merged 00fde8afb3
-Files: docs/lanes/fpsbelow1012/NOTES.md, docs/lanes/fpsbelow1012/OUTBOX.md, docs/lanes/fpsbelow1012/PR.md, docs/lanes/fpsbelow1012/tools/routecheck.py, docs/lanes/fpsbelow1012/tools/routecheck.tsv, docs/lanes/fpsbelow1012/tools/tilesim.py, docs/lanes/fpsbelow1012/tools/zread.py, docs/testing/nv2a_index.json, hw/xbox/nv2a/pgraph/vk/surface.c
-Prediction: none yet (registered before the A/B, at docs/testing/predictions/fpsbelow1012-<lever>.json)
+Files: docs/lanes/fpsbelow1012/NOTES.md, docs/lanes/fpsbelow1012/OUTBOX.md, docs/lanes/fpsbelow1012/PR.md, docs/lanes/fpsbelow1012/tools/routecheck.py, docs/lanes/fpsbelow1012/tools/routecheck.tsv, docs/lanes/fpsbelow1012/tools/tilesim.py, docs/lanes/fpsbelow1012/tools/zread.py, docs/testing/nv2a_index.json, docs/testing/predictions/fpsbelow1012-zetad24-pixels.json, hw/xbox/nv2a/pgraph/vk/surface.c
+Prediction: docs/testing/predictions/fpsbelow1012-zetad24-pixels.json @ c543e6ac7e76b4bc73d102c1140b9f59b7816cce469b47086a950e0ad1e9caee (depth cost); the title A/B (fpsbelow1012-zetad24.json) is registered after the master telemetry picks its titles
 Needs device: yes (Nova, sweep tier)    Needs NDK: yes
 
 Step 1 done: the offline table of the 43 Nova titles is in NOTES.md section 2. Telemetry at master: the three pilot

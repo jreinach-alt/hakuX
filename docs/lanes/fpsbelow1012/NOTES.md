@@ -137,6 +137,10 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 | 2 | z-1791787896-fpsbelow1012-2551219 | Ninja Gaiden Black | survey | 480 | queued (pilot), ref 00fde8afb3 | |
 | 3 | z-1791787897-fpsbelow1012-2551411 | Midnight Club 3 | midnight-club-3.returning | 540 | queued (pilot), ref 00fde8afb3 | |
 
+Planned next, after the pilot verdict (`pilots/fpsbelow1012.ok`): the depth-exactness pgraph pair, registered as
+`docs/testing/predictions/fpsbelow1012-zetad24-pixels.json` (sha256 c543e6ac..., refs c1112f2c1a both arms, B with
+`HAKUX_ZETA_D24=1` queued first), 10 depth suites, one run per arm: 2 runs.
+
 The pilot is 3 x (seconds + 90 s) = 29.5 min, under the 30 min gate. DOA3 and NGB are the two titles whose GMEM
 replay was measured before (section 5); at master they say whether the class is still there after fastpaths1010,
 nfsdefault1011 and defaulton1011. MC3 is the biggest unknown with a gameplay route.
