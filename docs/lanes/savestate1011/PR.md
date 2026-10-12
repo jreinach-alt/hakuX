@@ -142,8 +142,8 @@ also has no hands on the pause menu.
 
 ## Checks
 
-- `docs/testing/preflight.sh --allow-tracker`: passed on 3cd2bec334.
-- `docs/testing/jobs/selftest.sh`, four shards, on 3cd2bec334: 137 of 137
+- `docs/testing/preflight.sh --allow-tracker`: passed on 399f819d82.
+- `docs/testing/jobs/selftest.sh`, four shards, on 399f819d82: 137 of 137
   fragments, 3430 passed, 0 failed.
 
 Details: `docs/lanes/savestate1011/NOTES.md`.
