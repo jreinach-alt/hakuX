@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsbelow1012` | claude-opus-5-5 | 9 min |  |
-| `pathclass` | claude-sonnet-5 | 16 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `fpsbelow1012` | claude-opus-5-5 | 24 min | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) |
+| `pathclass` | claude-sonnet-5 | 31 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `2026-10-12T06:34:55Z`
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 6 waiting, 1 running.
+- **Device queue:** 7 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -74,10 +74,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
+| `lane/fpsbelow1012` | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) | `4efd83d4ce` | 2026-10-11 23:34 |
 | `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `f442726741` | 2026-10-11 13:21 |
 
 ## Recently landed on master
 
+- 2026-10-11 defaulton1011: HAKUX_VTX_HAZARD and HAKUX_APU_PACE on by default -- GTA San Andreas sky, NFS Most Wanted audio (#433, 0.5)
 - 2026-10-11 nfsaudio1011: HAKUX_APU_PACE in apu.c, off by default -- pacing at the low watermark removes NFS Most Wanted's audio replays (#433, 0.5)
 - 2026-10-11 snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433)
 - 2026-10-11 profilegate1011: the profile gate -- a title run needs the title's profile, unless it is finding a route (#433)
@@ -86,4 +88,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 - 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
 
-_Updated 2026-10-11 23:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 23:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
