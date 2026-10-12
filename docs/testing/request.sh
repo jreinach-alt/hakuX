@@ -1208,6 +1208,24 @@ fi
 TITLE_ID=""; TITLE_STATE="any"
 TS_PY="$(dirname "$0")/titles/titlestate.py"
 export TITLESTATE_DIR="${TITLESTATE_DIR:-$D/titlestate}"
+
+# A BARE TITLEID IS NOT A FILE NAME (Addendum 4, #433). tid_for_iso() takes
+# the 8-hex HEAD of any name it is given, so a bare TitleID typed as --title
+# (e.g. "5454000F") is its own head and passes straight through -- the
+# dispatcher then looks for a literal file of that name under the device's
+# ISO roots (devices.sh) and fails mid-claim with "title not on device".
+# Refuse it here, at queue time, and name the real file to use instead.
+if [ -n "$TITLE" ] && [[ "$(basename "$TITLE")" =~ ^[0-9A-Fa-f]{8}$ ]]; then
+    BARE_TID="$(basename "$TITLE" | tr '[:lower:]' '[:upper:]')"
+    REPL=$(python3 "$TS_PY" iso-for-tid --title-id "$BARE_TID" ${DEVICE:+--device "$DEVICE"} 2>/dev/null)
+    if [ -n "$REPL" ]; then
+        echo "refusing to queue: --title $TITLE is a bare TitleID, not a file name; use $REPL" >&2
+    else
+        echo "refusing to queue: --title $TITLE is a bare TitleID, not a file name, and no on-device" >&2
+        echo "  name for it is known; list the device's titles with devices.sh" >&2
+    fi
+    exit 2
+fi
 [ -z "$TITLE" ] || TITLE_ID=$(python3 "$TS_PY" tid-for-iso "$TITLE" 2>/dev/null)
 if [ -n "$ROUTE" ]; then
     [ -n "$TITLE" ] || { echo "--route only means anything on a soak (--title)" >&2; exit 2; }

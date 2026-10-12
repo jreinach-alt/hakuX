@@ -988,6 +988,46 @@ def tid_for_iso(name):
     return None
 
 
+_BARE_TID_RE = re.compile(r"^[0-9A-Fa-f]{8}$")
+
+
+def iso_for_tid(title_id, device=None):
+    """The on-device ISO file name for TITLE_ID -- the replacement for a
+    bare TitleID passed as --title (request.sh refuses those before they
+    reach the dispatcher's literal file lookup, Addendum 4 #433).
+
+    targets.toml's `iso.<device>` entry first (DEVICE's if given, else
+    any device's); failing that, the `title` field of the newest
+    dispatch/results/*/request.json that resolved to TITLE_ID (and, when
+    DEVICE is given, was queued for it) and is itself a real file name,
+    not another bare TitleID. None when neither has one."""
+    tid = tid_norm(title_id)
+    iso = (targets().get(tid) or {}).get("iso") or {}
+    if device:
+        if iso.get(device):
+            return iso[device]
+    else:
+        for name in iso.values():
+            if name:
+                return name
+    results = os.path.join(dispatch_dir(), "results")
+    for f in sorted(glob.glob(os.path.join(results, "*", "request.json")), reverse=True):
+        try:
+            with open(f) as fh:
+                r = json.load(fh)
+        except (OSError, ValueError):
+            continue
+        title = r.get("title") or ""
+        if not title or _BARE_TID_RE.match(os.path.basename(title)):
+            continue
+        if r.get("title_id") != tid:
+            continue
+        if device and r.get("device") != device:
+            continue
+        return title
+    return None
+
+
 def route_state_text(text):
     """Like `route_state`, over a route's TEXT (a request's own `route`
     field, not necessarily today's file) rather than a path."""
@@ -1918,6 +1958,8 @@ def main(argv=None):
     s = sub.add_parser("resolve-route"); s.add_argument("--route", required=True)
     s.add_argument("--title-id"); s.add_argument("--iso"); s.add_argument("--device")
     s = sub.add_parser("tid-for-iso"); s.add_argument("name")
+    s = sub.add_parser("iso-for-tid"); s.add_argument("--title-id", required=True)
+    s.add_argument("--device")
     s = sub.add_parser("admit")
     s.add_argument("--title-id"); s.add_argument("--iso"); s.add_argument("--route")
     s.add_argument("--route-text-file"); s.add_argument("--device"); s.add_argument("--find-route")
@@ -2023,6 +2065,8 @@ def main(argv=None):
         return 3 if r["refuse"] else 0
     elif a.cmd == "tid-for-iso":
         print(tid_for_iso(a.name) or "")
+    elif a.cmd == "iso-for-tid":
+        print(iso_for_tid(a.title_id, a.device) or "")
     elif a.cmd == "admit":
         tid = tid_norm(a.title_id) if a.title_id else (tid_for_iso(a.iso) if a.iso else None)
         rtext = open(a.route_text_file).read() if a.route_text_file else None

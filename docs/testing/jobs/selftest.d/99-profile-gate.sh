@@ -12,14 +12,17 @@
 # pathknow success), because a route's own first proof soak still needs
 # --find-route even after pathknow already reached gameplay once.
 #
-# A. request.sh, queue time (the public CLI). B. dispatcher.sh's
-# profile_gate_check(), claim time -- called directly, proving nothing is
-# grandfathered there: a request dropped straight into dispatch/queue (no
-# request.sh step) is gated the same way. C. the canonical mutants M1-M7
-# (titlestate.py: admit()/compose()/live_transition(), sed-copy-and-compare,
-# same technique as 83-blank-rule.sh) and D. M8 (dispatcher.sh's claim-time
-# call site itself). E. pathfind.py's own dry-mode R3 check (real code only;
-# M4 is titlestate.py's admit(), not pathfind.py -- see C).
+# A. request.sh, queue time (the public CLI) -- including A8-A10, Addendum 4's
+# bare-TitleID defect fix (--title 5454000F passed queue-time checks and
+# failed mid-claim; request.sh now refuses it and names the real file).
+# B. dispatcher.sh's profile_gate_check(), claim time -- called directly,
+# proving nothing is grandfathered there: a request dropped straight into
+# dispatch/queue (no request.sh step) is gated the same way. C. the canonical
+# mutants M1-M7 (titlestate.py: admit()/compose()/live_transition(),
+# sed-copy-and-compare, same technique as 83-blank-rule.sh), D. M8
+# (dispatcher.sh's claim-time call site itself), and F. M9 (request.sh's
+# bare-TitleID check itself). E. pathfind.py's own dry-mode R3 check (real
+# code only; M4 is titlestate.py's admit(), not pathfind.py -- see C).
 
 echo "== profile gate: R1/R2/R3, overrides, Addendum 2, nothing grandfathered at claim"
 PG="$T/profilegate"; rm -rf "$PG"; mkdir -p "$PG"
@@ -31,6 +34,7 @@ mkdir -p "$PG/a-routes"
 cat > "$PG/a-targets.toml" <<'TOML'
 [titles.AAAA1003]
 route = "a3-route"
+iso = { nova = "A3 Title (USA).xiso.iso" }
 TOML
 cat > "$PG/a-routes/a3-route.route" <<'ROUTE'
 mark gameplay
@@ -128,6 +132,26 @@ out=$(DISPATCH_DIR="$D" TITLESTATE_DIR="$D/titlestate" bash "$TESTING/request.sh
 if [ "$rc" = 2 ] && pg_has 'need --suites, or --title for a soak' "$out"; then
     ok "A7: --save with neither --title nor --suites is refused before the gate even runs"
 else bad "A7: exit $rc, $(tail -3 <<< "$out" | tr '\n' ' ')"; fi
+
+# A8/A9/A10: a bare 8-hex TitleID is not a file name (Addendum 4). tid_for_iso()
+# takes the 8-hex HEAD of any name it is given, so a bare TitleID typed as
+# --title is its own head and would otherwise pass straight through to the
+# dispatcher's literal ISO-root file lookup, which then fails mid-claim.
+D=$(pg_dir a8910)
+out=$(pg_rq "$D" pga8 "AAAA1003"); rc=$?
+if [ "$rc" = 2 ] && pg_has 'bare TitleID' "$out" && pg_has 'A3 Title \(USA\)\.xiso\.iso' "$out"; then
+    ok "A8: a bare TitleID with a targets.toml iso entry -- refused, names the file"
+else bad "A8: exit $rc, $(tail -3 <<< "$out" | tr '\n' ' ')"; fi
+check "A8: nothing was queued" [ "$(pg_n "$D")" -eq 0 ]
+
+out=$(pg_rq "$D" pga9 "FFFF9999"); rc=$?
+if [ "$rc" = 2 ] && pg_has 'bare TitleID' "$out" && pg_has 'devices\.sh' "$out"; then
+    ok "A9: a bare TitleID with no known on-device name -- refused, names devices.sh"
+else bad "A9: exit $rc, $(tail -3 <<< "$out" | tr '\n' ' ')"; fi
+
+out=$(pg_rq "$D" pga10 "AAAA1003-A3.iso" --find-route "selftest: a real file name still queues (Addendum 4)")
+if pg_ok pga10 "$out"; then ok "A10: a full file name (not a bare TitleID) still queues normally"
+else bad "A10: $(tail -3 <<< "$out" | tr '\n' ' ')"; fi
 
 unset -f pg_rq pg_dir pg_n pg_ok pg_field
 
@@ -461,6 +485,42 @@ if [ "$rc8" = 3 ] && pg_has 'no profile \(no golden\) and no route-finding' "$(c
 else bad "M8: rc=$rc8, $(cat "$PG/m8dd/r8/profile.refused" 2>/dev/null)"; fi
 echo "  (so M8's defect is specifically the missing call in serve_one, not a broken profile_gate_check)"
 unset -f pg_src8
+
+# ----------------------------- F. M9: request.sh's bare-TitleID check (Addendum 4)
+# itself, sed-deleted -- proves A8's refusal actually depends on the check
+# added for the "--title 5454000F passes queue-time checks and fails at serve
+# time" defect, not some other refusal firing for an unrelated reason.
+#
+# request.sh resolves sibling scripts AND its queue-time --ref via
+# $(dirname "$0") (titles/titlestate.py, devices.sh, and `git -C
+# $(dirname "$0")/../.. rev-parse`), so the mutated copy cannot simply live
+# in a scratch directory: it needs real siblings (symlinked -- the mutation
+# is to request.sh alone) and SOME git repo two levels up for the ref check,
+# which a fresh throwaway `git init` satisfies without touching this lane's
+# own tree.
+RQSRC="$TESTING/request.sh"
+mkdir -p "$PG/m9root/docs/testing"
+for f in "$TESTING"/*; do
+    b="$(basename "$f")"; [ "$b" = "request.sh" ] || ln -s "$f" "$PG/m9root/docs/testing/$b"
+done
+git -C "$PG/m9root" init -q
+git -C "$PG/m9root" -c user.email=pg@selftest -c user.name=pg commit -q --allow-empty -m seed
+sed '/# A BARE TITLEID IS NOT A FILE NAME/,/^fi$/d' "$RQSRC" > "$PG/m9root/docs/testing/request.sh"
+check "M9: the sed mutation actually changed request.sh" \
+      bash -c "! cmp -s '$RQSRC' '$PG/m9root/docs/testing/request.sh'"
+
+mkdir -p "$PG/m9dd"/{queue,running,results,pilots}
+out=$(DISPATCH_DIR="$PG/m9dd" TITLESTATE_DIR="$PG/m9dd/titlestate" TITLE_TARGETS="$PG/a-targets.toml" \
+      TITLE_ROUTES="$PG/a-routes" MAKE_XBOX_HDD="$REPO/tools/make_xbox_hdd.py" \
+      bash "$PG/m9root/docs/testing/request.sh" --who pgm9 --purpose "profile gate selftest" --no-expect selftest \
+      --title "AAAA1003" --seconds 60 \
+      --find-route "selftest: proving the bare-TitleID check itself matters, M9" 2>&1); rc9=$?
+if [ "$rc9" = 0 ] && pg_hasnt 'bare TitleID' "$out"; then
+    ok "M9 mutant: dropping the check wrongly queues A8's bare TitleID (no refusal at all)"
+else bad "M9: exit $rc9, $(tail -3 <<< "$out" | tr '\n' ' ')"; fi
+check "and the bare TitleID was actually written to the queue, wrongly, under M9" \
+      [ "$(ls "$PG/m9dd"/queue/*.req 2>/dev/null | wc -l)" -eq 1 ]
+unset RQSRC out rc9
 
 # ------------------------- E. pathfind.py's own dry-mode R3 check (real code only).
 # M4 is titlestate.py's admit() (section C); pathfind.py's own gate uses the
