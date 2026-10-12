@@ -63,3 +63,8 @@ Discriminators:
 ## Log
 
 - 10-11, attempt 2: merged origin/master (aa04c62915). Wake analysis above. Instrument reviewed and compile-checked.
+- Identify prediction `docs/testing/predictions/nfsaudio1011-identify.json` committed at b5cfe2c1b5, before any device
+  run. Reader: `tools/voiceread.py <result>`; its output-side share reproduces 837057's 15.1% exactly.
+- Queued identify run `1-1791768531-nfsaudio1011-1598447` (ref 89667f015c, `HAKUX_APU_VOICELOG=1`, release tier,
+  Nova). Its env stays in the Nova's env_vars pref until the next request; on a build without the instrument the
+  variable means nothing.
