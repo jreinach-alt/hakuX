@@ -42,6 +42,34 @@ fun stampedVersionName(): String {
   }
 }
 
+// -PversionedRelease=<X.Y.Z[-suffix]> marks THIS build as the one versioned
+// release artifact, as opposed to a nightly, an owner build or a dispatcher/
+// working debug build -- every one of which runs plain assembleRelease or
+// assembleDebug with this property unset (#433). Unset is the default this
+// whole repo builds under, so unset must mean "Debug Capture is on", not the
+// other way around: a build type can't make this distinction (nightlies and
+// owner builds are both assembleRelease -- docs/testing/nightly_build.sh,
+// docs/testing/owner_build.sh), so it has to be this explicit flag, passed
+// only by docs/testing/release_build.sh.
+//
+// When set: versionName becomes exactly this string (the stamped
+// <base>-<MMDD>-<sha> is for builds nobody tagged) and Debug Capture
+// defaults OFF. When unset: versionName is unchanged and Debug Capture
+// defaults ON, as it always has. Settings > Debug Tools still overrides
+// either default, so a contributor running a release build can switch it
+// back on.
+val versionedRelease: String? = (project.findProperty("versionedRelease") as String?)?.trim()?.ifEmpty { null }
+if (versionedRelease != null) {
+  val versionPattern = Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(-[A-Za-z0-9.]+)?\$")
+  if (!versionPattern.matches(versionedRelease)) {
+    error(
+      "versionedRelease='$versionedRelease' is not a version (want X.Y.Z or " +
+        "X.Y.Z-suffix); docs/testing/release_build.sh is the normal caller"
+    )
+  }
+}
+val debugToolsDefault = versionedRelease == null
+
 android {
   namespace = "com.rfandango.haku_x"
   compileSdk = 36
@@ -57,7 +85,16 @@ android {
     targetSdk = 36
 
     versionCode = 9
-    versionName = stampedVersionName()
+    versionName = versionedRelease ?: stampedVersionName()
+
+    // The checkable marker on the artifact itself: release_build.sh verifies
+    // this resource with aapt2 after the build rather than trusting that the
+    // property it passed in actually took effect. PauseMenuOverlay's "Debug
+    // Capture" button reads debug_tools via MainActivity/SettingsActivity's
+    // `resources.getBoolean(R.bool.debug_tools_default)` default -- a stored
+    // preference always wins, so Settings > Debug Tools still turns this on
+    // in a versioned release.
+    resValue("bool", "debug_tools_default", debugToolsDefault.toString())
 
     ndk {
       abiFilters += listOf("arm64-v8a")

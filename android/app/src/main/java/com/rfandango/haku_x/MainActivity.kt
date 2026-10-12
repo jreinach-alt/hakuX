@@ -533,7 +533,7 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
         nativeDumpDiagFrames(numFrames)
       }
       isDebugToolsEnabled = {
-        prefs.getBoolean("debug_tools", false)
+        prefs.getBoolean("debug_tools", resources.getBoolean(R.bool.debug_tools_default))
       }
     }
     val overlayParams = RelativeLayout.LayoutParams(
