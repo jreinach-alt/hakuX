@@ -120,6 +120,73 @@ Reader: `tools/voiceread.py`, leg W. It prints:
 - the lock stall and gapx totals;
 - for stale starts, `32*boff − ahead`. H-A' predicts about 0: the run starts where the VP passes the guest's head.
 
+## Identify run `1-1791770282-lane.nfsaudio1011-2057093`: the mechanism is H-A'
+
+Ref 234b269b99, `HAKUX_APU_VOICELOG=1`, Nova, 180 s, apk 0b953f53f9a3. Readers: `tools/voiceread.py`,
+`tools/replay_share.py`, `tools/fixjudge.py` (slope and PSA window).
+
+**The VP runs ahead of the game's writer inside each burst.** The PSA's audio is a 5.1 PCM ring of 2400 frames, played
+by three stereo voices that move together: v=244, 245 and 246, `buf loop=1 ebo=2399 spb=6`, at BA 0x1f40, 0x1f44 and
+0x1f48. It is a looping buffer, not a stream, so the scanner covers it (Addendum 3's question). The game keeps its
+write head **exactly 992 samples ahead of the CBO it last read**: `ahead=992` at 2937 of 2950 burst starts. On the
+hardware the CBO moves 32 samples every 0.67 ms, so a 992-sample lead (21 ms) is ample. Here, after each drain, the VP
+runs 64 VP frames (2048 samples, 60% of bursts) or 128 (4096, 40%) back to back, in a few ms of host time, and then
+waits 45-52 ms. A burst passes the guest's head 992 samples in. From there to the burst's end the VP reads the ring as
+the guest left it a lap (50 ms) earlier, which is the replay. A 128-frame burst also passes its own start (2400 samples
+in) and reads that stretch a second time within ~9 ms (`lap=8853`).
+
+```
+apuvoice burst n=74 f=4928 t=6932987 wait=44244 th=44228 x=16 v=244 fe=10 lock=10 lockall=10 feall=10 cbo=1440 ebo=2399 head=0 ahead=992 hd_age=40928 prev=128/32 lockwait_prev=0
+apuvoice burst n=75 f=4992 t=6993056 wait=51735 th=51710 x=25 v=244 fe=10 lock=10 lockall=10 feall=10 cbo=1088 ebo=2399 head=64 ahead=992 hd_age=50944 prev=64/32 lockwait_prev=0
+apuvoice stale v=244 region=0x1f40 cbo=32 blocks=23 ssl=A0 f=4960 t=6937751 lap=54384 pio_age=3064873 wr_head=0 wr_age=45692 blk_wr_age=6937751 burst=74 boff=32 wait=44244 wfe=10 wlock=10 wlockall=10
+apuvoice stale v=244 region=0x1f40 cbo=864 blocks=13 ssl=A0 f=4236 t=6462361 lap=8853 pio_age=2589483 wr_head=-1 wr_age=-1 blk_wr_age=-1 burst=66 boff=76 wait=51153 wfe=12 wlock=12 wlockall=12
+apuvoice voice v=244 buf loop=1 cs=1 st=1 ba=0x1f40 lbo=0 ebo=2399 cbo=2176 ssl=A0 A=0/0 B=0/0 samples=49152 blocks=1536 loud=618 fresh=404 stale=214 first=0 share=34.6% sslsw=0 sslrep=0 sslempty=0 pio=0 notify=0
+```
+
+Burst 74 starts with the head at block 0 and the CBO at 1440: (0+1)×32 − 1440 mod 2400 = 992. Its first stale run
+starts at `boff=32`, which is 1024 samples in, the first block past the head. `hd_age` ≈ `wait`, and `wait − hd_age`
+has p50 5.8 ms: the guest writes within a few ms after each burst moves the CBO, then has nothing to do while the CBO
+stands still. Over the run, the paired `32*boff − ahead` is exactly +32 in 1587 of 2828 bursts (56%), within ±256 in
+67.9%. `sslrep=0` and `sslempty=0` on every voice line, so the VP reads the right place (not H-B). The lead is constant
+at 992 at every burst start, so the writer is never behind when a burst begins (not H-C).
+
+| leg | registered | measured | verdict |
+|---|---|---|---|
+| V | `on` once, ≥ 150 sec lines, ≥ 150 s PCM | 1, 178, 180.2 s; event lines 63% dropped by the 30/s budget (burst lines 0 dropped) | PASS; M's timing from stale lines is "partial" per the leg, burst lines are complete |
+| A | \|VP − output\| ≤ 5 pts | VP 32.6% (v=244; 245: 32.8%, 246: 32.7%), output 31.2% | PASS (1.4) |
+| output range | 8-30% | 31.2% | MISS by 1.2: a slow-content run (below) |
+| M | H-A' P 0.5 | H-A' | named above |
+| W | ≥ 80% after an update and lift ≥ 20 pts | top voice 90% vs 45%, +46 | PASS on its letter, **refuted as a cause** (below) |
+| B | gapx median < 2 ms/s | 28.2 ms/s | FAIL as registered; the sum was the wrong statistic (below) |
+| O | \|32·boff − ahead\| ≤ 256 in ≥ 60% | 67.9% (n 2828), mode +32 | PASS |
+| P | reported | vpframes 1536 per sec line (~1.02-1.04 s, so real time), bursts 39/s, maxgap p50 54 ms | |
+
+**W, why the coincidence is not the cause.** The guest addresses v=244 with VOICE_LOCK pairs 10-12 times in every
+wait (lockops ~200/s), and never addresses v=245 or v=246. Those two replay just as much: 32.8% and 32.7% against
+32.6%. Every one of their 2771 stale lines has `wfe=0 wlock=0`. And a guest update in the wait would make the replay
+start at the burst's first frame. Only 102 of 5061 stale runs (2%) start in the first 32 frames of a burst. My reading
+of W's lift on the top voice (not measured): the guest updates v=244 while it is sounding, and a quiet voice has
+neither updates nor loud stale blocks. The any-voice VOICE_LOCK row is 100% vs 89% (+11): not separated, as the
+prediction allowed.
+
+**B.** The per-second sum of non-throttle time is the per-frame work: ~18 µs per VP frame for the DSP frame, the FIFO
+push, and bql_lock + update_irq. It is not a wait. At burst starts, which are what Addendum 2 asked about, `x = wait −
+th` has p50 19 µs and max 97 µs over 2950 bursts. The voice-lock stall is 23 stalls and 0.2 ms over the run. So
+neither bql_lock nor the voice lock is where the APU waits before a replay. The wait is throttle(), all of it. No
+apu.c build timing bql_lock is needed.
+
+**Slow-content run.** This run's content slope against 837057 is 0.754 over 0-25 s (RANSAC, 75/196 inliers), like
+651467 (0.707). In 836907, 836989 and 837057 it is 0.996-1.000. With the VP at real time, a slope of ~0.75 means the
+writer's stream was delayed by the replays rather than cut by them: content that should have played took ~1.3× as long
+to come out. 1 − slope (0.25) is the same order as the share (31%), but I have not shown the one accounts for the
+other. Two of the five NFS captures so far behaved this way, and both ran at ~31%. This changes how much is replayed, not where the replay starts or why. The fix arm's T leg reports each
+run's slope.
+
+**PSA window (Addendum 3).** Output 2.97-22.3 s (837057's 2.27-17.27 s through this run's 0.775 fit): 28.5% replayed
+on the output side; v=244 is 33.1% stale on the VP side. 837057's PSA by the same window is 11.2%.
+
+So the fix-shaped arm is the right next step: it removes the burst that outruns a 992-sample lead.
+
 ## Fix-shaped arm (Addendum 2): pacing at the low watermark on Android
 
 NEED: apu.c -- the pacing lives in `throttle()` (apu.c ~115-175), which lane.snapshot1011 holds. `apu.c.patch` (here)
@@ -137,3 +204,5 @@ built from a scratch tree, never committed to apu.c on this branch.
 - Addendum 2 instrument added and compile-checked (NDK clang, aarch64, `-Wall`: clean but for target_page.h's existing
   warning). Reader tested on synthetic lines. The prediction is re-registered on the new ref with Addendum 2's claim
   as leg W.
+- Identify run `1-1791770282-lane.nfsaudio1011-2057093` (queued 01:58Z, done 02:03Z): mechanism H-A', legs above.
+  `apu.c.patch` committed at 1fd570f434. Fix-arm judge `tools/fixjudge.py`, dry-run on 836907/836989/837057/651467/2057093.
