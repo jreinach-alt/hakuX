@@ -8,14 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `burnoutloop1012` | claude-sonnet-5 | 28 min | burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5) |
-| `pathclass` | claude-sonnet-5 | 2h 1m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
-| `savestate1011` | claude-opus-5-5 | 10 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
+| `pathclass` | claude-sonnet-5 | 2h 16m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `savestate1011` | claude-opus-5-5 | 25 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.pathfind`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 4 waiting, 0 running.
+- **Device queue:** 4 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -76,12 +75,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/burnoutloop1012` | burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5) | `8a4df3d1ab` | 2026-10-12 00:45 |
 | `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `f442726741` | 2026-10-11 13:21 |
-| `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `399f819d82` | 2026-10-12 01:06 |
+| `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `65f27889e3` | 2026-10-12 01:28 |
 
 ## Recently landed on master
 
+- 2026-10-12 burnoutloop1012: Burnout Revenge's play loop presses Retry so a run stuck on RESULTS keeps racing (#433, 0.5)
 - 2026-10-11 defaulton1011: HAKUX_VTX_HAZARD and HAKUX_APU_PACE on by default -- GTA San Andreas sky, NFS Most Wanted audio (#433, 0.5)
 - 2026-10-11 nfsaudio1011: HAKUX_APU_PACE in apu.c, off by default -- pacing at the low watermark removes NFS Most Wanted's audio replays (#433, 0.5)
 - 2026-10-11 snapshot1011: save states phase 0 -- a save and a load that survive a scene change (#433)
@@ -91,4 +90,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 - 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
 
-_Updated 2026-10-12 01:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 01:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
