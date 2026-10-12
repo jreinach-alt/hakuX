@@ -2479,7 +2479,7 @@ note = "RETIRED (lane.local 2026-10-09 23:45 PDT): folded as 96852d8144 (23:32 P
 issues = ["433"]
 standing = false
 files = ["docs/lanes/release05/**", "android/app/build.gradle.kts", "docs/testing/version_stamp.sh", "docs/testing/jobs/selftest.d/86-build-stamp.sh", "docs/testing/titles/routes/ghoulies.classifier.route", "docs/releases/**"]
-note = "STARTED lane.local 2026-10-12 12:52 PDT (no unit; the owner, 10-12: 'let's get a 0.5 candidate going, and run it against Grabbed by the Ghoulies. Full soak, use the classifier to navigate the game'): version 0.5.0 (version_stamp.sh BASE_VERSION, versionCode 9), ghoulies.classifier.route (drive generic), then the v0.5.0-rc1 tag on the fold and a 1200-s Nova soak. Release notes in docs/releases/ follow the gate."
+note = "FOLDED 1ed3ac8f39 (14:06 PDT); v0.5.0-rc1 tagged on cf628f179f (forge pre-release 27). Gate: Ghoulies 29.0 gfps median (n=73) over 90-240 s on the Nova, run 1-1791837328 (1801 s, ghoulies.returning; the classifier stops at the slot menu, ghoulies.classifier.route header). Thor half open (fan dead). A framed 1800-s rerun (1-1791839268) reads the full-soak verdict. Release notes in docs/releases/ wait for the final 0.5.0. Row kept for them; updated 2026-10-12 14:10 PDT."
 
 [lane.pathfindhold1012]
 issues = ["433"]
