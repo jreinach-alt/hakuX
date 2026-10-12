@@ -65,3 +65,28 @@ and committed.
   app without an Exit.
 - **Auto-load** picks the newest loadable state among `auto` and 0-9, about
   1-2 s after the game starts. A refusal shows as a toast.
+
+## #433 -- 2026-10-11 22:41 PDT
+
+Step 1, the hard-disk rewind test on the Nova (1-1791781810-savestate1011-1461488,
+187: Ride or Die, no input). It passes.
+
+187 writes 73.5 MB to its cache partition (Z) at t=16-18 s of every boot. The
+test saved at t=8, let the game write, and loaded at t=40:
+
+| Partition | At the save | Before the load | After the load |
+|---|---|---|---|
+| Z (cache) | 24 KB of data | 73.5 MB, new hash | the save's hash |
+| E (game saves) | hash A | A | A |
+| X, Y, C | unchanged | unchanged | unchanged |
+
+- Every partition kept its FATX magic.
+- The game ran on after the load. It replayed its boot from t=8 (Xbox logo,
+  Ubisoft, ESRB, title).
+- E: was untouched: 187's save file is the same before and after the run.
+- An undo load 20 s later put the disk back exactly as it was before the
+  load.
+
+The check that the game runs after the undo load is being re-run. The game
+was on its title screen, which does not move, and a single 5 s look read it
+as stopped. The frames show it running.
