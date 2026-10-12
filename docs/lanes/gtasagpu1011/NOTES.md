@@ -14,7 +14,9 @@ The six frames named in the brief, read at 1280x960:
 | 3377243 | f00107 | 13:47 | a black band, about 30 px wide, runs from the top of the frame down and to the right, from behind the palms to the hill |
 
 CJ has no shadow in any of these frames, and in none of the sunny frames on the contact sheets either.
-Neither do the other peds.
+Neither do the other peds. (Attempt 4: this was read by eye. Measured against a dump's mask, the shadow
+is in every aligned alley still of every run, 11-18% darker than the ground. See "The shadow in the
+stills".)
 
 **A third symptom, from lane.local's later A/B** (frames every 30 s; read here at full size).
 At the A-frame church, 60-90 s after the mark, two runs show the same frame:
@@ -395,7 +397,8 @@ strip, the sky, the three LINES draws and the sun) and three others (n326, n382,
 stored-shadow draws (n5xx) are never hit. With the switch on, CJ has no shadow in any of the 22
 sunny post-mark stills (f00044 at 08:03, CJ running on the road beside a parked car, read at
 full size: the car has a shadow, CJ has none). So the sky and the shadow are two defects. The
-shadow is next (2d).
+shadow is next (2d). (Attempt 4: "CJ has none" was by eye. The shadow is faint and was missed; see
+"The shadow in the stills".)
 
 ### 2d. The shadow: what the schema-5 dumps show, and the next discriminator
 
@@ -604,7 +607,9 @@ clock 06:44-07:35).
 **The defect is in a dump already.** In 176610 (schema 5, no `pre`/`zpre`/`post`) the square is on
 screen in f0-f10 (1312-1353 of 1681 points) and wholly in frame in f14-f18 (f14 n602: box
 50,305-590,443), round CJ's legs on sunlit grass, and the frame's display image has no shadow
-there. So the next run only has to put a schema-7 dump on such a frame.
+there. So the next run only has to put a schema-7 dump on such a frame. (Attempt 4: "no shadow
+there" was by eye on a schema-5 image with no `pre`/`post`, so it was never measured. 176610's alley
+stills carry 0.88-1.11 of the shadow.)
 
 **Alpha, rechecked.** `tex0` and `srf0` hold alpha 0 (X8R8G8B8's pad byte), with 214 texels above
 8 in RGB. On the Nova (`vk dualSrcBlend: enabled (maxFragmentDualSrcAttachments=1, #59)` in
@@ -825,3 +830,186 @@ Queued as `1-1791755383-lane.gtasagpu1011-2946023` at 14:49 PDT (release priorit
 In every case, n9's own `"tex"` readback must show the same rows as the multiplier above (129 - 2y
 if the diffuse is white). If it does not, the readback or the fit is wrong, and the run decides
 nothing until that is explained.
+
+## Attempt 4 (resumed 2026-10-11 ~17:00 PDT)
+
+**Why attempt 3 did not finish.** It stopped on purpose at 14:50 PDT. It had queued 2027680
+(13:58) and 2946023 (14:49), written both ids into `WAITING`, and had nothing left to do until they
+ran. That was a wait on two dispatch requests outside the session, so the lesson from attempts 1
+and 2 was applied this time. Both runs came back DONE, 2027680 at 16:19 and 2946023 after it.
+Then origin/master (3f1eace130, with nfsdefault1011's three default-on switches) was merged in as
+4caff4a413.
+
+### 2f result: 2946023 (schema 8) -- G1, the gradient is drawn as asked
+
+`1-1791755383-lane.gtasagpu1011-2946023`, build e53b9fa918, `watch600` from startup: 600 logged
+draws, all into targets of 64x64 or smaller.
+
+- **How it is made.** In f1318, 32 inline-array LINES draws (prim 2, two vertices each) go into a
+  32x32 X8R8G8B8 target at 0x034e8500, using shader a0ed69c2. Draw k runs from (0,k) to (31,k) in
+  colour `128 - 2k` (grey, all four bytes equal), so it is one line per row.
+- **What it holds.** The readback after the last line: columns 0-30 equal the colour drawn on
+  their row in every row, with R, G and B all equal (maximum difference 0). Column 31 is each
+  line's end vertex, which a line does not draw, so it keeps the 2-10 that was there before.
+- **What reads it.** From f1455, each shadow chain's n9 (shader faa9d5fc) samples 0x034e8500. Its
+  `"tex"` readback has the same rows: row means 124, 122, ..., 64, which is the 31 drawn texels
+  averaged with column 31. The `"ia"` words give n9's diffuse as 255,255,255,255.
+- **n9's combiner.** Stage 0 is `tex0 * diffuse` with output mapping NOSHIFT (OCW op bits 15-17
+  are 0), so no scale is dropped.
+
+Score: **G1 holds** (P = 0.45). G0 fails, because draws make the texture. G2 fails, because no row
+differs from its colour.
+
+The cross-check holds too. n9's texture rows are the lines' rows. 2f's fit of `129 - 2y` is one
+step above the lines' `128 - 2y`. That is what bilinear sampling halfway between rows y-1 and y
+would give, `((130 - 2y) + (128 - 2y)) / 2`. This was not checked further: one step in 255 does
+not bear on how faint the shadow is.
+
+So the fade along the shadow's length is the game's own. The game builds a 32x32 gradient at
+start with 32 line draws, and the emulator draws it exactly. Together with 2e, every input to
+the shadow's strength is now on record and matches what the game asked for: the silhouette, the
+gradient, and the projection's diffuse (0x8c-0x8f).
+
+### 2e result: 2027680 (schema 7) -- the alley: drawn, passes depth, reaches the display; A4
+
+`1-1791752181-lane.gtasagpu1011-2027680`, build 50a389ef2b, `HAKUX_VTX_HAZARD=1`, dump at
+`after160`. All 30 dumped frames are CJ standing in the Jefferson alley, with one projection
+consumer a frame (n529). `pre`/`zpre`/`post` are on f0-f23 (FDUMP_CONS_MAX is 24).
+
+**Every consumer qualifies.** The square has 779-780 of 1681 points on screen in all 30
+(`sqscan.py`). Each consumer has 5333-5557 lit covered pixels (`fdread.py DUMP cover F 529`).
+
+| frames | lit px | lit and passing LEQUAL | changed px (all darker, all inside the coverage) | changed / lit passing |
+|---|---|---|---|---|
+| f0-f23, each | 5333-5557 | 4908-5129 (92%) | 3772-3860 | 75-77% |
+| pooled, 24 | 130,970 | 120,690 (92.2%) | 91,768 | 76.0% |
+
+The depth under the projection: draw z minus `zpre` has median -0.0013 and minimum -0.0020, so
+the projection lies just in front of the ground it covers. Of the 93,805 covered pixels, 85.4k
+pass.
+
+**The display images carry it.** Running `dispcmp.py`, each of f0-f24's images pairs with a
+consumer's `post` (mean absolute error 16.7-16.9). Each carries **1.01-1.03 of the shadow** on
+the pre (0) to post (1) scale. f25-f29 have no consumer readback near them.
+
+**Score as written** (2d's predictions for this run):
+
+- Q fails: all qualify.
+- A1 fails: 92% pass, not under 10%.
+- A2 fails: 76% of the passing pixels change, not under 5%.
+- A3 fails: the image carries the darkening.
+
+That leaves **A4** by the letter. As in 818197, it means **no defect**: the alley case behaves
+exactly like the road case.
+
+**How dark it is.** In f5, post/pre over the changed pixels has minimum 0.82 and median 0.89, so
+the shadow is 11-18% darker than the ground beside it. CJ stands on mid-grey asphalt in a shaded
+alley.
+
+### The shadow in the stills: present in every alley still of every run
+
+The step 1 reading, "no shadow in 0 of 66 stills" (and section 0's "none of the sunny frames"),
+was by eye. 2027680 gives a measured mask to test that reading with: the pixels its projection
+darkened in f5. From the route's `cut1` to `cut3` shots (about 46 s), CJ stands still in the
+alley with the camera fixed, and the picture is the same in every run. So every run's stills
+from that window can be compared with the same mask.
+
+`stillcmp.py DUMP F N STILL...` takes the consumer's pre-to-post mask and a ring 4-12 px around
+it. It box-downscales each 1280x960 still to 640x480, then aligns it to the dump's display image
+by an integer shift of up to 8 px (best mean absolute error over the lower half, HUD excluded).
+It then sets the still's mask/ring luminance ratio on the same pre (0) to post (1) scale as
+`dispcmp.py`. f5's mask is 3859 px, ring 1670 px, with ratios pre 1.170 and post 1.052.
+
+| run | build / switch | stills in the window | share of the shadow |
+|---|---|---|---|
+| 2027680 | 50a389ef2b, `HAKUX_VTX_HAZARD=1` | f00028-f00038 (no f00033), cut2, cut3 | 0.86-1.17 |
+| 3377194 | fa45851449, fastpaths six OFF | f00031-f00038, cut3 | 0.88-1.10 |
+| 3377243 | fa45851449, fastpaths ON | f00033-f00040, cut3 | 0.87-1.07 |
+| 3545202 | 6d8947bb47, `HAKUX_SURFGPU=0` | f00031-f00038, cut3 | 0.81-1.08 |
+| 3545543 | 6d8947bb47, `HAKUX_GPL=0` | f00031-f00038, cut3 | 0.89-1.07 |
+| 176610 | a6ee1c58fe, switch off | f00031-f00038, cut3 | 0.88-1.11 |
+| 3293496 (pilot) | fa45851449, fastpaths ON | f00007 | 1.02 |
+
+The pilot's f00008 and its cut3 do not align (error 42, against 1-11 for every other still). Its
+window is shorter, and those are a different picture, so they are left out. Every aligned still
+had a shift of 0,0.
+
+**Control.** The same mask moved 120-250 px onto other ground, with no overlap with the shadow,
+gives pre = post by construction (0.958-1.022). The four stills tested (2027680 f00031, f00032,
+f00034 and cut3) sit within 0.02 of that value at every offset. At the real mask, pre and post
+are 0.118 apart, about six times that spread. So the measure sees the shadow, and a still
+without it would read near 0.
+
+**What this says.**
+
+- CJ's shadow is in every aligned alley still of all seven runs, across every build and switch,
+  with or without the vertex-hazard fix.
+- "Absent in every still" was a faint shadow, 11-18% darker than its surround, missed by eye at
+  still scale.
+- These stills are not a frame-exact dump with a fence wait, so they test the timing case
+  addendum 1 raised. No race shows: a still taken at any moment in the window carries the
+  shadow.
+- The road case is 818197's: its display images carry 0.99-1.43 of the shadow.
+
+Sunny post-mark stills cannot be compared this way, because CJ and the camera move and no dump
+mask matches them.
+
+Earlier by-eye readings of a missing shadow are marked where they appear: section 0, 2c, and
+2d's 176610 f14-f18.
+
+### Step 2 conclusion
+
+1. **Sky: a renderer defect, found and fixed behind a switch.** Vertex RAM is rewritten inside
+   one command buffer (2c). `HAKUX_VTX_HAZARD=1` removes every hit: 176610 had 15 of 30 frames
+   hit and white sky only in hit frames; 177443 had 0 of 30 hit and 0 white.
+2. **Shadow: no renderer defect.**
+   - Each link of the chain does what its inputs say.
+   - The inputs are the game's own, and each is drawn as asked: the silhouette (2d), the
+     gradient (2f, G1), and the diffuse (2e).
+   - The result passes depth wherever nothing stands in front.
+   - It reaches the display and the stills, in the alley and on the road.
+   - It is faint by design: at most 18-24% darker than the ground.
+3. **"The shadow dropping out"**, as the owner saw it in play, is not explained by anything
+   measured here except one case. The vertex hazard rewrote a shadow-chain draw, n10 (the border
+   strip), in 176610. The fix removes that, together with the sky.
+
+   The rest fits what the dumps show the game doing:
+   - the shadow fails depth under an occluder (818197: the truck, CJ's foot);
+   - the game fades a shadow's diffuse (844241's second ped, 0x8e to 0x28);
+   - a shadow at most 24% darker is lost on dark or busy ground.
+
+   The video run is the owner's check of that.
+
+**Not to repeat:** judging this shadow by eye in a still. Measure it against a dump's mask
+(`stillcmp.py`), or read it in video.
+
+### Step 3: the fix's proof runs (predictions written before queueing)
+
+No other default-off switch is headed for default-on right now. The running lanes are
+gtasagpu1011, snapshot1011 (an `HAKUX_SNAPSHOT_TEST` test sequence only) and soakvideo1011, and
+nfsdefault1011's three switches are already in the default on master. So the ON arm of every
+step 3 run is `HAKUX_VTX_HAZARD=1` alone, at this branch's head, which carries master's defaults.
+
+**Video is live.** `request.sh` in `/home/justin/hakuX` (3f1eace130) has `--video-seconds` and
+`--video-after`, and the dispatcher writes `video/meta.json` (`"skipped": "off"` on 2027680).
+No result has recorded a video yet. soakvideo1011's own gta-sa video soak (3149619, ref
+b73d50a070, no `HAKUX_VTX_HAZARD`) is queued on the Nova, and it is also the current build's
+video for the owner's side-by-side.
+
+**The runs.** Two `gta-sa` soaks, 600 s, `--frames-every 5`, `--video-seconds 120` (the default
+`--video-after 30` after the route's mark), `--env HAKUX_VTX_HAZARD=1`, at this branch's head,
+Nova, `--no-expect` (a soak has no golden; the brief judges stills by eye). That is 2 x (600 + 90)
+s = 23 min, inside the 30-minute pilot allowance, so they are also this lane's pilot.
+
+Predictions:
+
+- **S. Sky: no hard-edged sky polygon in the pooled sunny post-mark stills of both runs (P = 0.85).**
+  The current build shows about 4 per 144, so zero by chance is about 2%. The 0.15 is for a second
+  cause the dumps did not catch. The church frames' smeared sky (section 0) was never dumped.
+- **H. Shadow: the alley stills of both runs carry the shadow at 0.7 or more (`stillcmp.py`
+  against 2027680 f5 n529) (P = 0.95).** It is in every run so far, with or without the switch.
+  The sunny post-mark stills where CJ stands on open, sunlit ground go to the owner by frame
+  number. The video goes to the owner as is.
+- **C. Cost: logcat's `vtx_hazard` lines show 100-370 finishes per 10 s in gameplay (P = 0.8),
+  as in 177443.** This run has frames and video, so its gfps is not read against anything. The
+  screen reads gfps.
