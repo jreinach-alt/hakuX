@@ -592,7 +592,7 @@ hang=False hitches=3/0.252pm worst_ms=621.3 static_frac=0.0`. The position check
 |---|---|
 | fps_ok at 30 (Playable bar) | 1.0 over 659 windows; every 60-s bucket 1.00 |
 | window median / min | 50.13 / 37.45 fps; 60-s bucket medians 46-54 |
-| share at 57 (`targets.toml` 4D53002D, `target_fps = 60`) | 0.1884; 60-s buckets 0.12-0.25 |
+| share at 57 (`targets.toml` 4D53002D, `target_fps = 60`) | 0.1884; 60-s buckets 0.12-0.28 (section 22) |
 | hitches | 4 in all, 3 after warm-up: 621.3 ms at +522.8 s (`unexplained`), 318.1 ms at +286.5 s (`shader`), 117.3 ms at +328.5 s; 151.0 ms at +16.1 s is in warm-up |
 
 `title_verdict.py` reads this disc's target as 30, not 60. The request's ISO
@@ -643,3 +643,57 @@ sweep, 900 s, frames every 30 s, `HAKUX_FRAMETRACE=1`, with `--expect` on `zetar
 
 The file's `registered_utc` field reads 18:40:00Z, which is wrong. It was committed at 18:21:49Z (a6efe3451c),
 and the request was queued at 18:21:58Z. The file is left as committed, because the request pins its sha256.
+
+## 22. DOA3's pair, judged as registered: confounded (S fails); F fails, G and H pass
+
+Both arms ran ref `76a2c15333` on `doa3.returning`, 900 s. Both were judged with the scratch `targets.toml`
+copy from section 21.
+
+| arm | run | init line | fight | verdict | fps_ok | share at 57 | window median / min | gameplay | still_frac | hitches after warm-up |
+|---|---|---|---|---|---|---|---|---|---|---|
+| A (off) | `z-1791829318-lane.zetaroutes1012-860213` | `0x82, depth stored as float` | Jann Lee, waterfall cliff | FAIL (one 623 ms stall) | 0.9353 | 0.0749 | 34.05 / 25.52 | 754.6 s | 0.0 | 9 (0.78/min), worst 622.6 ms, 8 `unexplained` |
+| B (on) | `z-1791827119-lane.zetaroutes1012-335115` | `0x81, depth stored as unorm` | Zack, beach | FAIL (one 621 ms stall) | 1.0 | 0.1884 | 50.13 / 37.45 | 775.2 s | 0.0 | 3 (0.25/min), worst 621.3 ms, 2 `unexplained` |
+
+Legs of `zetaroutes1012-doa3.json`:
+- **V passes.**
+  - Route start to mark: A 147.4 s, B 126.2 s.
+  - Both arms have over 600 s of gameplay, with no crash or hang.
+  - The init lines are 0x82 (A) and 0x81 (B).
+  - A's contact sheet shows a fight in every shot after the mark: rounds, YOU LOSE (`115459`, `115602`,
+    `115827`, `120253`), the next round, and a REPLAY at `120034`, through the last shot at `120541`.
+- **S fails.** A's first fight is Kasumi against Jann Lee on the waterfall cliff (`115314-gameplay.png`). B's is
+  Zack on the beach.
+- **F fails.** A's fps_ok is 0.9353, not under 0.90.
+- **G passes.** B - A = 0.0647, at least 0.05.
+- **H passes.** B - A = 0.1135 in the share at 57 (bar 0.10).
+- **K: both arms stall at the same kind of moment.** A's 622.6 ms stall (perf line 12:03:02.528, logcat clock,
+  `G:19.7(5.7-622.6)`, `dpc_ms=0.0`, `dsm=0`, `tex_us=250`) falls between YOU LOSE (`120253-play.png`, Jann Lee:
+  "You'll have to hit me harder than that") and the next round's intro (`120301-play.png`). That matches B's
+  621 ms stall (section 21). The stall comes at a round change with or without the switch, so it is not the
+  switch's.
+
+By the file's rule, a V pass with an S fail is **confounded: no WIN or LOSS.** The arms played different
+fights on different stages, so G and H mix the switch with the stage.
+
+Hand-bucketed per 60 s after the mark. Each cell is share at 30 / share at 57 / median. These counts differ
+from `title_verdict`'s by a few windows (468 and 654 against 471 and 659), because the hand count ignores
+capture gaps.
+
+| arm | 0-60 | 60-120 | 120-180 | 180-240 | 240-300 | 300-360 | 360-420 | 420-480 | 480-540 | 540-600 | 600-660 | 660-720 | 720-780 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| A | .82/.08/39.6 | 1.00/.10/30.8 | .81/.08/45.0 | 1.00/.02/30.5 | 1.00/.08/41.3 | 1.00/.07/31.3 | 1.00/.10/31.2 | .96/.07/34.2 | .96/.08/30.9 | .92/.08/43.0 | .89/.05/39.8 | .93/.12/33.1 | .87/.00/38.3 |
+| B | 1.00/.19/53.9 | 1.00/.18/49.9 | 1.00/.20/49.3 | 1.00/.20/49.1 | 1.00/.17/46.2 | 1.00/.16/49.3 | 1.00/.17/49.3 | 1.00/.20/52.2 | 1.00/.12/51.3 | 1.00/.20/51.5 | 1.00/.22/49.6 | 1.00/.18/48.6 | 1.00/.28/53.1 |
+
+What this run measured:
+- **DOA3 at master, Jann Lee's waterfall stage.** It passes the 30 bar over the window (0.9353), with several
+  60-s medians at 30.5-31.3. Two buckets fall under 0.90: 0-60 at 0.82 and 120-180 at 0.81.
+- **DOA3 with the switch, Zack's beach stage.** Every bucket is at 1.00 at the 30 bar, with medians 46-54.
+- **Neither arm reaches its 60 target.** Both are under 0.20 at 57.
+- **The stall is not the switch's.** Both arms FAIL Playable on the same kind of 620 ms stall at a round
+  change.
+
+No stage is paired here. The game draws the opponent and stage on each boot, and a timing-only route cannot
+choose them, so this lane does not re-run the arm. A like-for-like DOA3 reading needs a mode where the stage is
+picked, which needs recorded menu rows this lane does not have.
+
+Run count: 10 of 12. Nothing is queued.

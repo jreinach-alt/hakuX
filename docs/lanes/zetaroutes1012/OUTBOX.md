@@ -1,17 +1,43 @@
 # zetaroutes1012 OUTBOX
 
-(filled in per title once each route's device run is read; see brief step 7)
+## Dead or Alive 3 (4D53002D / disk 54430001) -- final
 
-## Dead or Alive 3 (4D53002D / disk 54430001) -- pending the fixed route's run
+Route: `doa3.returning.route` (any). It takes the survey's four START/A cycles to the fight, then loops
+the X/Y/X/B/A combo with START/A after each, about every 7 s (NOTES.md sections 18 and 21).
 
-Route: `doa3.returning.route` (any). First switch-on run: `z-1791820275-lane.zetaroutes1012-2514338`,
-verdict FAIL (one 632 ms hitch), `fps_ok=0.9773 gameplay=781.2s static_frac=0.0`. It is **not a gameplay
-reading**. Its frames show the first fight lost at +30 s (YOU LOSE), the CONTINUE countdown running out
-(GAME OVER at +45 s), and title attract mode from +55 s to the end. The combo loop never pressed START. The
-hitch is at the change to attract mode. `static_frac=0.0` because attract mode keeps changing stages, which
-the static-window check cannot tell from play. The route now adds START/A after every combo: START pauses
-mid-fight and continues at the countdown, and A closes the pause. Each of those screens is recorded in the
-survey run. The re-run is queued (NOTES.md section 18).
+| run | id | fight | verdict | fps_ok | share at 57 | median | gameplay | still_frac |
+|---|---|---|---|---|---|---|---|---|
+| first switch-on | `z-1791820275-lane.zetaroutes1012-2514338` | Jann Lee, snow | not a gameplay reading | | | | | |
+| switch-on | `z-1791827119-lane.zetaroutes1012-335115` | Zack, beach | FAIL (one 621 ms stall) | **1.0** | 0.1884 | 50.13 | 775.2 s | 0.0 |
+| switch-off | `z-1791829318-lane.zetaroutes1012-860213` | Jann Lee, waterfall cliff | FAIL (one 623 ms stall) | 0.9353 | 0.0749 | 34.05 | 754.6 s | 0.0 |
+
+- **First run: not a gameplay reading.** The fight was lost at +30 s and the route never pressed START, so
+  the CONTINUE countdown ran out and the run sat on the title's attract mode from +55 s.
+- **Fixed route: moving.** Both later runs fight for the whole window. Kasumi loses rounds, the next round
+  starts, and a REPLAY plays. No contact-sheet shot shows the title or GAME OVER. A pause overlay is on screen
+  for about 1 s of each 7-s cycle.
+- **The 620 ms stall.** Each of the two runs fails on one stall of about 620 ms between YOU LOSE and the next
+  round's intro. Neither window has pipeline creates or texture time. It happens with and without the switch.
+  A Playable review refuses on this stall, not on frame rate.
+
+Pair (`zetaroutes1012-doa3.json`): **confounded, no WIN or LOSS.** The game draws the opponent and stage on
+each boot, so the two arms fought different fights on different stages. Read as registered:
+- V passes.
+- S (same fight) fails.
+- F fails: A reads 0.9353, not under 0.90.
+- G passes: +0.0647.
+- H passes: +0.1135 at 57.
+
+Each arm, on its own stage:
+- **At master,** Jann Lee's stage passes the 30 bar (0.9353), with 60-s medians as low as 30.5. Two 60-s
+  buckets fall under 0.90.
+- **With the switch,** Zack's stage is at 1.00 in every bucket, with medians 46-54.
+- **Neither** reaches the 60 target in `targets.toml`.
+
+`title_verdict.py` reads this disc's target as 30, because the 4D53002D entry's `iso` map lists only the
+Thor's file. The shares at 57 come from a copy of the map with the Nova's file added.
+
+For a Playable review: at contact-sheet size, neither arm's shots show dropouts, flicker or wrong surfaces.
 
 ## Buffy the Vampire Slayer (45410012) -- final
 
