@@ -8,13 +8,13 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `nfsaudio1011` | claude-opus-5-5 | 1h 12m | nfsaudio1011: NFS Most Wanted audio stutter -- the APU plays 50 ms-old audio in place of ~15% of the sound (#4 |
-| `profilegate1011` | claude-sonnet-5 | 1h 26m | Merge remote-tracking branch 'origin/master' into lane/profilegate1011 |
+| `profilegate1011` | claude-sonnet-5 | 1h 41m | Merge remote-tracking branch 'origin/master' into lane/profilegate1011 |
+| `savestate1011` | claude-opus-5-5 | 11 min | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -74,8 +74,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/nfsaudio1011` | nfsaudio1011: NFS Most Wanted audio stutter -- the APU plays 50 ms-old audio in place of ~15% of the sound (#433, 0.5) | `6594bfe22c` | 2026-10-11 19:28 |
 | `lane/profilegate1011` | Merge remote-tracking branch 'origin/master' into lane/profilegate1011 | `d322306813` | 2026-10-11 18:18 |
+| `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `d34573d957` | 2026-10-11 19:35 |
 
 ## Recently landed on master
 
@@ -85,4 +85,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 soakvideo1011: screen video during a routed soak, from the dispatcher
 - 2026-10-11 fastpaths1010: the six renderer switches as one Graphics toggle, on by default (#433, 0.5)
 
-_Updated 2026-10-11 19:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 19:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
