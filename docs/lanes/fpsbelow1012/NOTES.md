@@ -3,7 +3,7 @@
 Brief: `/home/justin/hakux-work/briefs/fpsbelow1012.md`. Input: `belowbar1012.tsv` (lane.local, 10-11 23:1x),
 43 titles copied on the Nova. Base: master @ 5326de78b2.
 
-Device-run count (cap 30, A/B arms included): **0** so far. Ledger in section 4.
+Device-run count (cap 30, A/B arms included): **2** so far (queued). Ledger in section 4.
 
 ## 1. Which titles a run can reach at all (the profile gate, read before the table)
 
@@ -129,3 +129,5 @@ perflog costs ~1.2 ms/frame of render thread (alwaystelemetry), so fps from thes
 
 | # | request id | title | route | seconds | state | read |
 |---|---|---|---|---|---|---|
+| 1 | z-1791786704-fpsbelow1012-2329412 | Midnight Club 3 | midnight-club-3.returning | 600 | queued (pilot) | |
+| 2 | z-1791786704-fpsbelow1012-2329507 | Amped 2 | amped2 | 900 | queued (pilot) | |
