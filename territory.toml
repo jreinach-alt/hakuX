@@ -921,6 +921,7 @@ files = ["docs/testing/jobs/selftest.sh", "docs/testing/jobs/selftest.d/*-selfte
 note = "STARTED lane.local 2026-10-11 15:5x PDT (Sonnet, owner OK 15:4x): selftest.sh removes its mktemp fake host on a pass and keeps it on a failure; 256 leaked dirs, 27.7 GB in /tmp since the 10-09 boot. docs/testing/jobs/selftest.sh moved here from [free]."
 
 [free]
+# RELEASED (lane.local 2026-10-12 01:23 PDT) by retiring lane.burnoutloop1012 (folded c03e17b8a0): docs/testing/titles/routes/burnout-revenge.returning.route (back inside docs/testing/titles/**).
 # RELEASED (lane.local 2026-10-12 01:17 PDT) by retiring lane.gtawedge1012 (folded 9fe1e198ad): docs/testing/titles/routes/gta-3.route, gta-vc.route, routes/refs/gta-3/** (back inside docs/testing/titles/**).
 # RELEASED (lane.local 2026-10-11 23:5x PDT) by retiring lane.gtaroutes1011 (folded 4c9132fa17): docs/testing/titles/routes/gta-sa-drive.route, pathknow/paths/5454000E.json, 5454000F.json, pathknow/hints/learned-pub-5454.md, learned-series-grand-theft-auto.md. gta-3.route and gta-vc.route went straight to lane.gtawedge1012.
 # CLAIMED (lane.local 2026-10-11 20:31 PDT): docs/testing/jobs/selftest.d/99-pilot-gate.sh -> lane.profilegate1011. Back here when it retires.
@@ -2402,8 +2403,8 @@ note = "RETIRED (lane.local 2026-10-11 23:5x PDT): folded as 4c9132fa17 (its las
 [lane.burnoutloop1012]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/burnoutloop1012/**", "docs/testing/titles/routes/burnout-revenge.returning.route"]
-note = "STARTED lane.local 2026-10-12 00:3x PDT (Sonnet, route building per the 10-10 table): Burnout Revenge's confirmation 1-1791785532-lane.local-2130848 read fps_ok 0.9956 but 475.6 s of gameplay; the Traffic Attack event ended ~46 s after the mark and the run sat on the RESULTS screen (Retry (B) / More details (Y) / Continue (A)) to the end, a replay moving behind it. Not accepted. The play loop gets a periodic Retry press; only the post-mark loop changes; no device runs (lane.local queues the next confirmation). Brief: briefs/burnoutloop1012.md."
+files = ["docs/lanes/burnoutloop1012/**"]
+note = "RETIRED (lane.local 2026-10-12 01:23 PDT): folded as c03e17b8a0 (01:23 PDT; lane head 6bf37f2614, attempt 2), unit gone. Burnout Revenge's play loop releases RT (min) and presses Retry every 18 s so a run on RESULTS keeps racing; attempt 1 (8a4df3d1ab: RT mid, comment above the mark) was kept off the fold queue. Confirmation 1-1791793410-lane.local-336876 queued 01:23. To [free] (inside docs/testing/titles/**): burnout-revenge.returning.route."
 
 [lane.gtawedge1012]
 issues = ["433"]
