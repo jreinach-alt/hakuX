@@ -2401,8 +2401,8 @@ note = "RETIRED (lane.local 2026-10-11 23:5x PDT): folded as 4c9132fa17 (its las
 [lane.gtawedge1012]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/gtawedge1012/**", "docs/testing/titles/routes/gta-3.route", "docs/testing/titles/routes/gta-vc.route"]
-note = "STARTED lane.local 2026-10-11 23:5x PDT (Sonnet, route building per the 10-10 table): a wedge escape in the GTA III and Vice City play loops. Vice City's confirmation 1-1791785130-lane.local-2108844 read fps_ok 0.9937 over 695.9 s, but Tommy ran into a recessed garage door at 23:41:54 and stayed there to the end (~216 s), so moving play was ~484 s, under the 600 s a Playable needs; not accepted. GTA III runs the same loop. Only the post-mark loop changes; no device runs (lane.local queues the next confirmation). Brief: briefs/gtawedge1012.md."
+files = ["docs/lanes/gtawedge1012/**", "docs/testing/titles/routes/gta-3.route", "docs/testing/titles/routes/gta-vc.route", "docs/testing/titles/routes/refs/gta-3/**"]
+note = "STARTED lane.local 2026-10-11 23:5x PDT (Sonnet, route building per the 10-10 table): a wedge escape in the GTA III and Vice City play loops. Vice City's confirmation 1-1791785130-lane.local-2108844 read fps_ok 0.9937 over 695.9 s, but Tommy ran into a recessed garage door at 23:41:54 and stayed there to the end (~216 s), so moving play was ~484 s, under the 600 s a Playable needs; not accepted. GTA III runs the same loop. Only the post-mark loop changes; no device runs (lane.local queues the next confirmation). Brief: briefs/gtawedge1012.md. 2026-10-12 00:0x PDT: GTA III's confirmation 1-1791785131-lane.local-2109239 marked gameplay at 23:48:55 in the pause menu (the A train reached the street early; the blind START opened the pause menu; the New Game dialog was Cancelled) and play began ~23:51:56, ~480 s of moving play: not accepted. Scope widened to GTA III's pre-mark steps; docs/testing/titles/routes/refs/gta-3/** taken from [free] for waitfor reference crops."
 
 [lane.profilegate1011]
 issues = ["433"]
