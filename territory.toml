@@ -2398,8 +2398,8 @@ note = "RETIRED (lane.local 2026-10-12 04:08 PDT): folded as 75c07c25a7 (02:56 P
 [lane.burnoutunlock1012]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/burnoutunlock1012/**", "docs/testing/titles/routes/burnout-revenge.returning.route"]
-note = "STARTED lane.local 2026-10-12 04:08 PDT (Sonnet, route building per the 10-10 table): Burnout Revenge's confirmation 1-1791800854-lane.local-2819291 (after burnoutbrief1012) raced at ~42-50 gfps for 16 minutes, then at 03:56:35 RESULTS showed a BRONZE medal and NEW EVENT UNLOCKED with prompts More details (Y) and Continue (A), no Retry; the loop's A was Continue and the run sat in WORLD TOUR [SELECT A LOCATION] (18-27 fps) to the end: harness FAIL, fps_ok 0.8172. Not accepted. The play loop must get back into a race from the screens after Continue; only the post-mark loop changes; no device runs (lane.local queues the next confirmation). Brief: briefs/burnoutunlock1012.md."
+files = ["docs/lanes/burnoutunlock1012/**"]
+note = "RETIRED (lane.local 2026-10-12 05:29 PDT): folded as 79f3c4dea8 (04:52 PDT; lane head 4eb55a8610, attempt 1), unit gone. Comments and NOTES only: no route can safely get back into a race from World Tour after a medal (the route language has no branch that does not abort the run, and the post-medal screens were never recorded); the RESULTS comment now says Retry, More details and Continue show together on a no-medal RESULTS once the tally finishes. Confirmation 1-1791805955-lane.local-3804748 (1300 s) raced to the end with no medal but is not accepted (about 480 s of moving play; a 30 s white playfield). Burnout Revenge parked. To [free] (inside docs/testing/titles/**): burnout-revenge.returning.route."
 
 [lane.burnoutloop1012]
 issues = ["433"]
