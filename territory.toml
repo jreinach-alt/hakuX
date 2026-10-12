@@ -881,8 +881,8 @@ note = "FOLDED 22aa0df5d9 (10-05); status_html.py passed to [lane.zerofive1012] 
 [lane.zerofive1012]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/zerofive1012/**", "docs/testing/release-0.5.toml", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/66-status-titles.sh"]
-note = "STARTED lane.local 2026-10-12 10:22 PDT (the owner, 10-12: 0.5 counts 145 measured, not 145 benchmarked): release-0.5.toml's target and measured_target, the status page's forecast on measured. lane.local's own branch, folded by lane.local; no unit."
+files = ["docs/lanes/zerofive1012/**", "docs/testing/release-0.5.toml", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/testing/titles/routes/ghoulies.returning.route"]
+note = "FOLDED f6cd2bee82 (145 measured); second PR 2026-10-12 10:59 PDT: ghoulies.returning.route for the 0.5 release gate (verified 1-1791826297-lane.local-4125680). STARTED lane.local 2026-10-12 10:22 PDT (the owner, 10-12: 0.5 counts 145 measured, not 145 benchmarked): release-0.5.toml's target and measured_target, the status page's forecast on measured. lane.local's own branch, folded by lane.local; no unit."
 
 [lane.boardgateenv1009]
 issues = ["433"]
@@ -921,6 +921,7 @@ files = ["docs/testing/jobs/selftest.sh", "docs/testing/jobs/selftest.d/*-selfte
 note = "STARTED lane.local 2026-10-11 15:5x PDT (Sonnet, owner OK 15:4x): selftest.sh removes its mktemp fake host on a pass and keeps it on a failure; 256 leaked dirs, 27.7 GB in /tmp since the 10-09 boot. docs/testing/jobs/selftest.sh moved here from [free]."
 
 [free]
+# CLAIMED (lane.local 2026-10-12 10:59 PDT): docs/testing/titles/routes/ghoulies.returning.route (new, inside docs/testing/titles/**) -> lane.zerofive1012. Back here when it retires.
 # CLAIMED (lane.local 2026-10-12 10:22 PDT): docs/testing/release-0.5.toml -> lane.zerofive1012 (the owner, 10-12: 0.5 counts 145 measured). Back here when it retires.
 # GRANTED (lane.local 2026-10-12 05:56 PDT) to [lane.fpsbelow1012]: hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.h (its WAITING line for L4a HAKUX_VTX_EXACT). vertex.c came from [lane.defaulton1011]'s released list.
 # RETIRED (hostops 03:45 PDT): lane.gtasagpu1011 (folded as 597df4af82) and lane.snapshot1011 (folded as b25eeffaab), both ancestors of origin/master, no running unit. gtasagpu1011's 44 pgraph/vk files + docs/lanes/gtasagpu1011/** + predictions glob RELEASED to [free] (below). snapshot1011's overlapping files (CMakeLists.txt, xemu_snapshots_stub.c, ui/xemu-snapshots.c/.h, migration/savevm.c) already held by [lane.savestate1011] (release-at-ready overlap, not a conflict) -- not re-added. docs/testing/nv2a_index.json (held jointly by both since 19:31 PDT, "back here when both retire") GRANTED DIRECTLY to [lane.savestate1011] instead of [free]: its 03:38 PDT fold refused on exactly this file (index-regen collision, same recurring pattern as soakvideo1011/snapshot1011/gtasagpu1011 earlier today) and nobody else currently needs it.
