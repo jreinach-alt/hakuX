@@ -28,7 +28,7 @@
 #   - HEAD is exactly v<version>^{commit} (so <version> names a real,
 #     reviewed tag rather than whatever the checkout happens to be on)
 #
-# and REFUSES after building unless the produced APK's own aapt2 dump agrees
+# and REFUSES after building unless the APK is signed and its own aapt2 dump agrees
 # that versionName is exactly <version> and bool/debug_tools_default is
 # exactly "false" -- so a defect in the Gradle wiring is caught here, against
 # the actual artifact, rather than discovered after it ships.
@@ -79,6 +79,14 @@ fi
 
 APK=$(find "$REPO/android/app/build/outputs/apk/release" -name '*.apk' | head -1)
 [ -n "$APK" ] || { echo "${0##*/}: build succeeded but produced no apk" >&2; exit 4; }
+# Gradle signs a release only when android/key.properties names a keystore
+# (android/app/build.gradle.kts); without one it writes app-release-unsigned.apk,
+# which Android refuses to install.
+case "$APK" in
+    *-unsigned.apk)
+        echo "${0##*/}: refusing -- $APK is unsigned (android/key.properties has no release keystore here); Android will not install it" >&2
+        exit 8 ;;
+esac
 
 SDK_ROOT="${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}"
 AAPT2="$SDK_ROOT/build-tools/36.1.0/aapt2"

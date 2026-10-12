@@ -58,7 +58,7 @@ check() {   # <description> <command...>
 # committed -- so an UNcommitted copy of the script itself never reads as
 # the "dirty tree" the refusal is about. android/gradlew is a stub that
 # records whether it ran and, when $GRADLE_OK is set in its environment,
-# writes a fake unsigned APK; aapt2 is a stub that prints canned badging/
+# writes a fake APK (unsigned when $APK_UNSIGNED is set); aapt2 is a stub that prints canned badging/
 # resources output driven by files the test writes into $T/aapt2-answers.
 new_repo() {   # -> prints the repo path
     local r="$T/repo-$$-$RANDOM"
@@ -74,7 +74,8 @@ new_repo() {   # -> prints the repo path
 echo "ran" > "$STUB_RAN"
 [ -n "${GRADLE_OK:-}" ] || exit 1
 mkdir -p app/build/outputs/apk/release
-: > app/build/outputs/apk/release/app-release-unsigned.apk
+if [ -n "${APK_UNSIGNED:-}" ]; then : > app/build/outputs/apk/release/app-release-unsigned.apk
+else : > app/build/outputs/apk/release/app-release.apk; fi
 STUB
     chmod +x "$r/android/gradlew"
     git -C "$r" init -q
@@ -137,7 +138,7 @@ SDK="$T/sdk-good"; mk_aapt2 "$SDK" 1.2.3 false
 out=$(STUB_RAN="$T/ran-good" GRADLE_OK=1 ANDROID_SDK_ROOT="$SDK" bash "$R/docs/testing/release_build.sh" 1.2.3 2>&1); rc=$?
 check "clean + tagged: reached gradlew" [ -e "$T/ran-good" ]
 check "clean + tagged: exit 0" [ "$rc" -eq 0 ]
-check "clean + tagged: prints the apk path" grep -q "app-release-unsigned.apk" <<<"$out"
+check "clean + tagged: prints the apk path" grep -q "app-release.apk" <<<"$out"
 
 echo "== release_build.sh: refuses when the built APK's versionName disagrees"
 SDK="$T/sdk-wrongver"; mk_aapt2 "$SDK" 9.9.9 false
@@ -156,6 +157,13 @@ out=$(STUB_RAN="$T/ran-buildfail" bash "$R/docs/testing/release_build.sh" 1.2.3 
 check "gradle failure: exit 3" [ "$rc" -eq 3 ]
 check "gradle failure: ran gradlew" [ -e "$T/ran-buildfail" ]
 check "gradle failure: message says build failed" grep -q "build failed" <<<"$out"
+
+echo "== release_build.sh: refuses an unsigned APK"
+R2=$(new_repo); git -C "$R2" tag v1.2.3
+SDK="$T/sdk-unsigned"; mk_aapt2 "$SDK" 1.2.3 false
+out=$(STUB_RAN="$T/ran-unsigned" GRADLE_OK=1 APK_UNSIGNED=1 ANDROID_SDK_ROOT="$SDK" bash "$R2/docs/testing/release_build.sh" 1.2.3 2>&1); rc=$?
+check "unsigned apk: exit 8" [ "$rc" -eq 8 ]
+check "unsigned apk: message says unsigned" grep -q "is unsigned" <<<"$out"
 
 [ "$FAIL" -eq 0 ] && echo "release_build_selftest: all checks passed" || echo "release_build_selftest: FAILURES ABOVE"
 exit "$FAIL"

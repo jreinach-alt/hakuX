@@ -55,7 +55,8 @@ fun stampedVersionName(): String {
 // When set: versionName becomes exactly this string (the stamped
 // <base>-<MMDD>-<sha> is for builds nobody tagged) and Debug Capture
 // defaults OFF. When unset: versionName is unchanged and Debug Capture
-// defaults ON, as it always has. Settings > Debug Tools still overrides
+// defaults ON (before 0.5.0 it defaulted off in every build, and showed only
+// where Settings > Debug Tools had been switched on). Settings > Debug Tools still overrides
 // either default, so a contributor running a release build can switch it
 // back on.
 val versionedRelease: String? = (project.findProperty("versionedRelease") as String?)?.trim()?.ifEmpty { null }

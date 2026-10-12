@@ -1,10 +1,10 @@
 # debugcap1012: Debug Capture is off by default in versioned releases (#433, 0.5)
 
-State: draft
+State: ready
 
 Lane: debugcap1012          Issue: none (#433 umbrella)
 Base: master @ 1ed3ac8f39
-Files: android/app/build.gradle.kts, android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt, android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt, android/app/src/main/res/values/strings.xml, docs/testing/release_build.sh, docs/testing/release_build_selftest.sh, docs/releases/README.md, docs/lanes/debugcap1012/PR.md
+Files: android/app/build.gradle.kts, android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt, android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt, android/app/src/main/res/values/strings.xml, docs/testing/release_build.sh, docs/testing/release_build_selftest.sh, docs/testing/jobs/selftest.d/86-release-build.sh, docs/releases/README.md, docs/lanes/debugcap1012/PR.md
 Prediction: none (UI default only; no emulator change)
 Needs device: no    Needs NDK: yes
 
@@ -40,15 +40,17 @@ it. So this adds one new, explicit signal:
 - **`docs/testing/release_build.sh <version>`**: the new, only normal
   caller of `-PversionedRelease`. Refuses before building unless the tree
   is clean and `HEAD` is exactly `v<version>^{commit}`; after building,
-  refuses unless the produced APK's own `aapt2 dump badging`/`dump
+  refuses an unsigned APK (no keystore in `android/key.properties`; Android
+  will not install it), then refuses unless the APK's own `aapt2 dump badging`/`dump
   resources` agree that `versionName == <version>` and
   `bool/debug_tools_default == false`. Prints the APK path on success.
 - **`docs/testing/release_build_selftest.sh`**: fixtures for every refusal
   (bad version string, dirty tree, no such tag, HEAD not at the tag, wrong
   versionName in the built APK, wrong `debug_tools_default` in the built
-  APK, a real Gradle failure) plus the one path that must reach the build,
+  APK, an unsigned APK, a real Gradle failure) plus the one path that must reach the build,
   all against a throwaway git repo with stub `gradlew`/`aapt2` -- no SDK,
-  no network, sub-second. `bash docs/testing/release_build_selftest.sh`.
+  no network, sub-second. `bash docs/testing/release_build_selftest.sh`;
+  `selftest.d/86-release-build.sh` runs it in the selftest.
 - **`docs/releases/README.md`**: five-line pointer to `release_build.sh` as
   how a versioned release is built, for anyone landing in the directory.
 
