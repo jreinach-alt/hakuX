@@ -8,9 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `burnoutunlock1012` | claude-sonnet-5 | 6 min |  |
-| `fpsbelow1012` | claude-opus-5-5 | 1h 44m | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) |
-| `pathclass` | claude-sonnet-5 | 30 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `burnoutunlock1012` | claude-sonnet-5 | 21 min | fold: lane/savestate1011 (offline) -- savestate1011: save states as files -- slots 0-9, compression, undo, aut |
+| `fpsbelow1012` | claude-opus-5-5 | 1h 59m | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -80,8 +79,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fpsbelow1012` | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) | `c8a945cab9` | 2026-10-12 04:14 |
-| `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `1b6e58cc18` | 2026-10-12 04:01 |
+| `lane/burnoutunlock1012` | fold: lane/savestate1011 (offline) -- savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and | `e318ae70b5` | 2026-10-12 03:54 |
+| `lane/fpsbelow1012` | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) | `d619605e80` | 2026-10-12 04:23 |
 
 ## Recently landed on master
 
@@ -97,4 +96,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5)
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 
-_Updated 2026-10-12 04:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 04:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
