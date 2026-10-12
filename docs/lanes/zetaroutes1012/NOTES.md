@@ -575,3 +575,64 @@ For lane.local: on this route NG Black is Playable at master by the bar (A PASS,
 (B PASS, 0.9964). The switch's measured effect is towards the 60 target. A Playable confirmation from either
 arm covers the opening riverbed and gorge only (section 19). The pair is not re-registered and A is not
 re-run: a timing-only route cannot hold Ryu at the waterfall in one arm and not the other.
+
+## 21. DOA3's fixed route (run 8): live fights for 775 s, fps_ok 1.0; FAIL on one 621 ms stall at a scene change
+
+`z-1791827119-lane.zetaroutes1012-335115`, ref `76a2c15333`, `doa3.returning`, 900 s.
+- **Switch live.** The init line at 10:59:09.265 reads `nv2a: Z24S8 host format 0x81, depth stored as unorm
+  (HAKUX_ZETA_D24)`.
+- **Mark.** Route start (10:59:08.664 host) to `mark gameplay` (11:01:14.861 host, 11:01:17.114 in logcat) is
+  126.2 s.
+
+`VERDICT FAIL(hitches: a 621 ms stall after the first 60 s (bar 500 ms)) gameplay=775.2s fps_ok=1.0 crash=False
+hang=False hitches=3/0.252pm worst_ms=621.3 static_frac=0.0`. The position check reads `still_frac=0.0` over
+112 shots.
+
+| measure | value |
+|---|---|
+| fps_ok at 30 (Playable bar) | 1.0 over 659 windows; every 60-s bucket 1.00 |
+| window median / min | 50.13 / 37.45 fps; 60-s bucket medians 46-54 |
+| share at 57 (`targets.toml` 4D53002D, `target_fps = 60`) | 0.1884; 60-s buckets 0.12-0.25 |
+| hitches | 4 in all, 3 after warm-up: 621.3 ms at +522.8 s (`unexplained`), 318.1 ms at +286.5 s (`shader`), 117.3 ms at +328.5 s; 151.0 ms at +16.1 s is in warm-up |
+
+`title_verdict.py` reads this disc's target as 30, not 60. The request's ISO
+(`54430001-Dead_or_Alive_3.xiso.iso`) is not in the 4D53002D entry's `iso` map, which lists the Thor's file
+only, and 54430001 is not a title key. The share at 57 above is `title_verdict.judge()` run with a scratch
+copy of `targets.toml` whose 4D53002D `iso` map adds `nova = "54430001-Dead_or_Alive_3.xiso.iso"`. The
+copy reads `target_fps 60.0`, `own_target_share 0.1884` and `below_own_target True`.
+
+**The route played the whole window.**
+- Kasumi fights Zack on the beach stage from the mark (`110115-gameplay.png`, `110121-play.png`) to the end
+  (`111359`).
+- She loses rounds (YOU LOSE at `110456`, `110749`, `110848`, `111202`), and each time the next round starts.
+- A REPLAY plays at `111059`.
+- None of the contact sheet's 29 route shots shows the title, GAME OVER or a menu. The pause overlay is on
+  screen for about 1 s of each 7-s cycle (section 18).
+
+**The 621 ms stall is at a change of scene.** It is the perf line at 11:09:59.869 (logcat clock):
+`gfps=8 G:25.1(11.9-621.3)`, with `[shd413] dpc_ms=0.0 dpn=0`, `tex_us=361` and `dsm=0`, so there is no
+pipeline create and no texture upload in that window. The windows on either side read 59 fps.
+- **The shots around it.** `110951-play.png` shows YOU LOSE (Zack: "It's bitchin'"). `110959-play.png` shows
+  Zack's pre-fight line "I'm going to kick your butt". So the stall falls between a lost round and the next
+  round's intro, not inside a fight.
+- **The first run's stall was the same kind.** Its 632 ms hitch was at the GAME OVER to attract-mode change
+  (section 18).
+- **The host's input lagged at the same time.** A `wait 0.8` at 11:09:56.571 (host clock) took 2.2 s. A
+  `press X` at 11:10:01.067 took 10.3 s, beside a WSL `UtilAcceptVsock: accept4 failed 110` line in `run.log`.
+
+This is not a route defect: the route reached play and kept fighting for 775 s. Under the brief, a failed run
+goes for identification, not a re-run, so DOA3's third run is not spent on this route.
+
+**The pair (step 6) runs.** The switch-on run is at the bar (fps_ok 1.0 at 30), so the switch-off arm is
+registered as `docs/testing/predictions/zetaroutes1012-doa3.json` and queued with `--expect`. Two things are
+said before it reads:
+- **The fight may differ.** The game draws the opponent and stage on each boot. Four boots of this disc have
+  drawn four different fights:
+  - fpsbelow1012's A, Bayman in the dojo;
+  - its B, Hitomi on the cliff;
+  - this lane's first run, Jann Lee in the snow (`091147-play.png`);
+  - run 8, Zack on the beach.
+
+  The file therefore has a scene leg (S). Without S the pair is reported as confounded, not judged WIN or LOSS.
+- **The stall is reported, not judged.** Leg K reports whether the switch-off arm also stalls more than 500
+  ms at a round change, which says whether the 621 ms stall comes with the switch.
