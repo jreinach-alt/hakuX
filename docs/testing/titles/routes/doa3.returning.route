@@ -25,10 +25,21 @@
 #     attack behind the input, so this route engages the combo loop the instant
 #     health bars appear, no extra blind cycle.
 # So the menu path below is the survey's own recorded cadence (four START/A
-# cycles from boot to the fight intro), and the play loop below is doa3.route's
-# own combo loop, reused verbatim because its trailing `press A` is already
-# built to clear a KO/continue screen rather than park on it (see NOTES.md
-# section 2 for why the survey's bare-A loop never produces moving play).
+# cycles from boot to the fight intro).
+#
+# Play loop: doa3.route's combo (LX forward, X/Y/X, B, A), then a START/A pair
+# every combo, about every 7 s. What each press does, from recorded shots:
+#   - mid-fight, START opens PAUSED (CONTINUE highlighted, "SELECT (A)") and A
+#     closes it: survey 045031-menu-start / 045037-menu-a (fight live again).
+#   - at "CONTINUE ? n / Press start to continue", A does nothing (survey
+#     045152-menu-a, countdown at 3) and START starts a fresh round within 5 s
+#     with no character select (survey 045159-menu-start, both bars full).
+# z-1791820275-lane.zetaroutes1012-2514338 ran the combo with no START: the
+# first fight was lost about 30 s after the mark (091212 YOU LOSE), the
+# countdown ran out (091217 CONTINUE ? 7, 091227 GAME OVER), and from 091237 to
+# the end the title's attract mode played under PRESS START BUTTON. The
+# countdown lasts about 10 s, so a START every 7 s lands inside it. The pause
+# shows for about 1 s of each 7 s cycle.
 wait 60
 shot boot60
 wait 15
@@ -70,7 +81,11 @@ repeat forever {
     axis LX mid
     press B
     wait 0.3
-    press A               # also leaves a KO / continue screen
+    press A
+    wait 0.3
+    press START           # mid-fight: PAUSED; at CONTINUE ? n: a fresh round
+    wait 0.8
+    press A               # PAUSED: selects CONTINUE (back to the fight)
     wait 0.3
     shot play
 }

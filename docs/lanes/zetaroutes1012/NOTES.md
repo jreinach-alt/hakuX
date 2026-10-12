@@ -307,9 +307,13 @@ python3 docs/testing/title_verdict.py <dir> --require confirmation --reviewed-ga
 
 The fixed pulse-and-turn play loop (section 7) worked: Buffy is a clean confirmation, and the other two
 titles' failures are not movement failures (both read static_frac well under the 0.20 bar) -- they are a
-real stall and a timing shortfall respectively.
+real stall and a timing shortfall respectively. (DOA3's reading is wrong: its frames show attract mode
+from +55 s, section 18.)
 
 ## 11. DOA3's hitch is a shader pipeline-create stall, not a route defect
+
+**WRONG, superseded by section 18:** the frames show the fight lost at +30 s and attract mode from +55 s to
+the end. This was a route defect, and the hitch is at the change to attract mode.
 
 `result.json`'s own fields read fine (`fps_ok=0.9773`, no crash/hang, `static_frac=0.0`), and the FAIL is
 entirely the 632ms hitch. Reading `logcat.txt` around the stall (mark at 09:11:42.610; the hitch bar is "after
@@ -405,7 +409,8 @@ So the pair is a **LOSS**: on this gameplay route, Buffy runs at its 30-fps cap 
 What the pair does NOT show. The two arms left the same opening canyon within ~25 s of the mark and then
 played different stretches. B at +26 s (`085625-play.png`) is past the opening, under the tip "Push into low
 ledges to climb onto them", and spends the rest of the run at the ledges ("Run and press B to jump between
-ledges", then "While on a ledge, move left or right to shimmy"). A at +35 s (`095543-play.png`) is still in the
+ledges", then "While on a ledge, move left or right to shimmy"; from about +4.6 min she stays at that one
+ledge, section 19). A at +35 s (`095543-play.png`) is still in the
 opening stretch under its first tip ("Move the R thumbstick to move the camera around"), and that tip is on
 screen until the run's last shot (`100806-play.png`). The camera spends most of A's window pressed into dark
 canyon walls. That is why A fails the static-window check. So A never measured the ledge stretch B ran. The
@@ -461,3 +466,64 @@ The legs:
 
 WIN is V, F and G. H is reported on its own. P(F) is about 0.5, given Buffy (section 15), and the file says
 so. P(H) is about 0.85.
+
+## 18. Correction: DOA3's first run did not play for 781 s (section 11 is wrong)
+
+Section 11 read DOA3's run from `result.json` and `logcat.txt` alone. Its frames say otherwise.
+`z-1791820275-lane.zetaroutes1012-2514338`, mark at 09:11:42.610:
+
+| shot | screen |
+|---|---|
+| `091147-play.png` (+5 s) | Kasumi down, "COUNTER BLOW" |
+| `091212-play.png` (+30 s) | YOU LOSE |
+| `091217-play.png` (+35 s) | "CONTINUE ? 7 / Press start to continue / Hayate..." |
+| `091227-play.png` (+45 s) | GAME OVER |
+| `091237-play.png` (+55 s) to the end (09:24:28) | title attract mode under "PRESS START BUTTON", stages cycling |
+
+The combo loop (X/Y/X/B/A) never presses START, so the countdown ran out and the run spent its last ~12.5
+minutes on the title. That is a route defect under step 5, not a confirmation. The 632 ms hitch at 09:12:40
+(`pc_ms=559.6`) is at the GAME OVER to attract-mode change, not a combo move. `static_frac=0.0` because the
+attract mode keeps changing stages: the static-window check compares each window against its first frame,
+so it cannot tell attract mode from play. For lane.local: the run's `fps_ok=0.9773` is mostly attract mode.
+
+The fix (run 8, DOA3's second of three) keeps the menu path and the combo and adds `press START; wait 0.8;
+press A` after every combo, so a START comes about every 7 s. The recorded screens behind it:
+- **START mid-fight pauses.** `045031-menu-start.png` shows PAUSED with CONTINUE highlighted and "SELECT (A)".
+  The A after it brings the fight back (`045037-menu-a.png`: no overlay, Hitomi in stance).
+- **A at the countdown does nothing.** `045152-menu-a.png` shows "CONTINUE ? 3".
+- **START at the countdown continues.** 5 s later, `045159-menu-start.png` shows a fresh round, both bars full,
+  with no character select.
+
+The countdown lasts about 10 s (7 at +35 s, GAME OVER by +45 s), so a 7-s START always lands in it. The cost
+is a pause overlay for about 1 s of each 7-s cycle. `route.sh --check` passes (91 lines), and
+`titlestate.py resolve-route --route doa3.returning --title-id 54430001 --device nova` reads `refuse: null,
+state: any`. The live copy in `/home/justin/hakuX` is identical.
+
+What this route cannot do: if a match is ever won through to the story's end, or the countdown is missed,
+it falls back to the title. From there the combo's LX/X/Y/B presses in the menus are unrecorded.
+
+## 19. Corrections to the Buffy and NG Black readings
+
+**Buffy (section 15 and OUTBOX).** B's contact sheet does not show "the rest of the run at the ledges" as
+travel:
+- **Moving at first.** Buffy moves through four tutorial tips: the opening, "Push into low ledges", "Run and
+  press B to jump between ledges" and "jump and grab hold of the ledge". That lasts until about 09:00:43
+  (+4.6 min).
+- **Then stuck at one spot.** From there to the end (09:08:38), she stays at one spot under the "While on a
+  ledge, move left or right to shimmy" tip, jumping and swinging the camera in place.
+
+The static-window check passed (0.039) because the camera keeps moving. So B is about 4.6 min of travel and
+then about 8 min stuck at one ledge. That is not a moving-player confirmation for a Playable review. The
+pair's LOSS stands: it is about frame rate, and both arms are at the cap.
+
+Buffy has one fix run left. **It is not spent on another timed loop.** The owner's profile gate (10-11) bars
+repeat blind navigation, and Buffy's `targets.toml` note asks for "a path found by looking at the screen".
+The pulse-and-turn loop has already played out what timing alone can do. The next step is a screen-read
+path past the shimmy ledge (lane.pathfind's agent, folded at 755ac97c96). That is lane.local's call, not a
+third blind run.
+
+**NG Black (sections 12, 16 and OUTBOX).** The 15-repeat run's frames show Ryu in the opening riverbed by the
+waterfall from 10:13:56 to 10:23:17. He steps forward and back and swings his sword, and the camera swings,
+but he never travels through the level. `f00033` near the end shows "Ryu has not yet found the map to this
+area". So the run is 714 s of moving play (static_frac 0.029) in one area. That suits the like-for-like pair,
+since both arms play the same stretch. As a Playable confirmation it covers one scene only.
