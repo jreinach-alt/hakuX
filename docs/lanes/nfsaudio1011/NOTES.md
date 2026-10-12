@@ -195,6 +195,69 @@ non-Android builds always run. Off by default: the shipped path is unchanged. Th
 (`hakuX-audio: apu_pace: on|off`). It applies to master (`git apply --check`) and compiles clean with the NDK. It is
 built from a scratch tree, never committed to apu.c on this branch.
 
+## Fix arms: the replays are gone with `HAKUX_APU_PACE=1`
+
+One binary, scratch build `9c054c1714` (lane head 39760cebf5 + `apu.c.patch`), apk c2254f79408a. Nova, NFS MW, 180 s from
+boot, no route, no VOICELOG. The env is the only difference. Prediction `docs/testing/predictions/nfsaudio1011-fix.json`
+(registered before any arm). Judge: `tools/fixjudge.py`, which compares against 837057 for slope and the PSA window.
+
+| arm | result id | switch | lag-2400 share | PSA window | any-lag share | slope 0-25 s | level dBFS | gfps | starve after 30 s |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 OFF | `1-1791771146-lane.nfsaudio1011-2189879` | off | 15.7% | 15.4% | 15.0% (all at lag 2400) | 0.997 | -22.99 | 59.0 | 0% |
+| 2 ON | `1-1791771148-lane.nfsaudio1011-2189996` | on | **0.0%** | **0.0%** | 0.0% | 0.996 | -23.03 | 59.0 | 0% |
+| 3 ON | `1-1791771149-lane.nfsaudio1011-2190142` | on | **0.0%** | **0.0%** | 0.0% | 0.996 | -23.00 | 59.0 | 0% |
+| 4 OFF | `1-1791771151-lane.nfsaudio1011-2190384` | off | 15.9% | 13.4% | 15.2% (all at lag 2400) | 0.997 | -23.01 | 59.0 | 0% |
+
+| leg | registered | measured | verdict |
+|---|---|---|---|
+| V | `apu_pace: on/off` as labelled | all four | PASS |
+| S | each ON ≤ 2% | 0.0, 0.0 (OFF 15.7, 15.9) | PASS |
+| S-PSA | each ON ≤ 2% | 0.0, 0.0 (OFF 15.4, 13.4) | PASS |
+| T | each ON 1.00 ± 0.02 | 0.996, 0.996 (OFF 0.997, 0.997) | PASS |
+| L | \|ON − OFF\| < 0.5 dB | −0.01 dB | PASS |
+| F | ON ≥ OFF − 1.0 | 59.0 vs 59.0 | PASS |
+| Z | ON 0% past the first 30 s | 0, 0 | PASS |
+| phase | P2048 lock < 0.2 if ≥ 100 ON starts | 0 ON starts (OFF 0.75, 0.81) | not applicable |
+
+None of the four ran slow (all slopes 0.996-0.997), so this pair does not test whether the fix also removes the
+slow-content mode. In both slow runs (651467, 2057093) the replays were what delayed the content, so I expect it does,
+but no slow run happened here. The first 30 s window's starvation (boot, before the first loud audio) is 19.1% in both
+ON runs and 44.2% / 16.7% in OFF. It is not judged.
+
+**What the share cannot see, checked.** A VP that ran slower than the writer would read blocks the guest had already
+overwritten. That shows as forward skips, not replays, and the lag-2400 share would be blind to it. So I aligned ON arm
+3, and the OFF arms, against ON arm 2 window by window: bit-exact 32-frame windows with the replay mask off, the
+offset mode per 5 s segment, and the share of loud windows at that mode.
+
+- **ON3:** 97-100% of windows sit at one offset in every segment. The offset steps by 16 ms, one video frame, twice: at
+  5 s and at 80 s, the boundaries between the logo, the PSA and the attract loop. Then it wraps by the attract loop's
+  45.8 s period. Inside a segment there is no skip and no replay.
+- **OFF1 and OFF4:** only 31-80% of windows sit at the mode, and the rest sit 50 ms (one ring lap) away. Seen from the
+  clean side, that is the replay.
+
+**Why it works** (H-A', above). Paced, the VP moves the CBO 256 samples per 5.33 ms instead of 2048-4096 in a few ms.
+The game's 992-sample lead is never overrun, so the VP never reaches blocks the writer has not refilled.
+
+**Device time choice.** Addendum 3 says `--seconds 40` covers the PSA at a quarter of the device time. I kept 180 s
+because the brief's step 3 asks for the arms in step 2's shape. Legs S, T and F are defined over the whole capture and
+the 12-95 s window, and the slow-content mode in 2057093 showed over the whole run. The PSA window is judged inside the
+same runs (S-PSA).
+
+## No-harm check on two other titles
+
+Amendment `docs/testing/predictions/nfsaudio1011-fix-titles.json`, registered after NFS arms 1-2 and before any run of
+these titles. Same binary and run shape. S becomes "no increase": ON at most 1 point above OFF on the lag-2400 share
+and on an any-lag share. The any-lag share counts bit-exact 32-frame windows that repeat at 32-24000 frames, so it sees
+a ring of any size. On the NFS arms it agrees with the lag-2400 share (15.0 vs 15.7, 15.2 vs 15.9), and 100% of its
+hits are at lag 2400. `fixjudge.py --other --ref <the title's OFF run>`.
+
+- **The Simpsons Hit & Run** (56550015), for speech. With no input it plays its logos and then an intro cinematic with
+  dialogue. Its first loud audio is at 4.56 s or 8.9 s in today's Nova runs (hakuX-audio level lines). Speech is
+  where the owner hears the NFS stutter. Android skips the pacing in the first place because speech sounded dragged
+  out, so a speech title is where the fix's known risk would be heard. It also uses a different engine (Radical).
+- **Crimson Skies: High Road to Revenge** (4D530021), for music. Its first loud audio is at 6.2-8.1 s. Its route
+  waits 75 s for the intro before any input. It uses a third engine (FASA), and the game paces itself to 30 fps.
+
 ## Log
 
 - 10-11, attempt 2: merged origin/master (aa04c62915). Wake analysis above. Instrument reviewed and compile-checked.
@@ -210,3 +273,7 @@ built from a scratch tree, never committed to apu.c on this branch.
   build 9c054c1714 (lane head 39760cebf5 + apu.c.patch, commit-tree, on no branch). Arms queued 02:19Z on the Nova:
   1 OFF `1-1791771146-lane.nfsaudio1011-2189879`, 2 ON `1-1791771148-lane.nfsaudio1011-2189996`,
   3 ON `1-1791771149-lane.nfsaudio1011-2190142`, 4 OFF `1-1791771151-lane.nfsaudio1011-2190384`.
+- All four done and judged: every leg PASSES (table above). `fixjudge.py` gained an any-lag share, `--other` and a Z
+  line at 6726d994c5. That commit also registered the two-title amendment.
+- No-harm arms queued on the Nova: 1 Simpsons OFF `1-1791771680-lane.nfsaudio1011-2270853`, 2 Simpsons ON
+  `1-1791771681-lane.nfsaudio1011-2270912`. Crimson Skies ON then OFF follow once these are under the pilot gate.
