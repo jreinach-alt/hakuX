@@ -8,13 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `nfsaudio1011` | claude-opus-5-5 | 1h 11m | nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer; pacing at the low wa |
-| `savestate1011` | claude-opus-5-5 | 1h 26m | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
+| `savestate1011` | claude-opus-5-5 | 1h 41m | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -74,17 +73,16 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/nfsaudio1011` | nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer; pacing at the low watermark re | `e19b43b94a` | 2026-10-11 19:42 |
-| `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `d34573d957` | 2026-10-11 19:35 |
+| `lane/savestate1011` | savestate1011: save states as files -- slots 0-9, compression, undo, auto-save and auto-load (#433) | `121cde1e09` | 2026-10-11 21:11 |
 
 ## Recently landed on master
 
+- 2026-10-11 profilegate1011: the profile gate -- a title run needs the title's profile, unless it is finding a route (#433)
 - 2026-10-11 nfsaudio1011: NFS Most Wanted audio stutter -- the APU's bursts outrun the game's writer
 - 2026-10-11 gtasagpu1011: GTA San Andreas, hard-edged sky polygons and no shadow under CJ (#433, 0.5)
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 - 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
 - 2026-10-11 nfsdefault1011: the three NFS switches on by default, and "Submit frame buffering" honoured (#433, 0.5)
 - 2026-10-11 profileconv1011: gta-sa and amped2 measure on their golden profiles (#433)
-- 2026-10-11 soakvideo1011: screen video during a routed soak, from the dispatcher
 
-_Updated 2026-10-11 21:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-11 21:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
