@@ -8,14 +8,14 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fpsbelow1012` | claude-opus-5-5 | 39 min | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) |
-| `gtawedge1012` | claude-sonnet-5 | 6 min |  |
-| `pathclass` | claude-sonnet-5 | 46 min | pathclass: a local GPU screen-state classifier for pathfind (#433) |
+| `fpsbelow1012` | claude-opus-5-5 | 54 min | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) |
+| `gtawedge1012` | claude-sonnet-5 | 21 min |  |
+| `pathclass` | claude-sonnet-5 | 1h 1m | pathclass: a local GPU screen-state classifier for pathfind (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 6 waiting, 1 running.
+- **Device queue:** 5 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-11`, build `7f986f73f6`.
 
 ## 0.5 release: Playable titles
@@ -75,7 +75,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fpsbelow1012` | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) | `c29c31ea5e` | 2026-10-11 23:55 |
+| `lane/fpsbelow1012` | fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5) | `8b186d382c` | 2026-10-12 00:11 |
 | `lane/pathclass` | pathclass: a local GPU screen-state classifier for pathfind (#433) | `f442726741` | 2026-10-11 13:21 |
 
 ## Recently landed on master
@@ -89,4 +89,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-11 gtaroutes1011: routes into play for GTA III, Vice City, and a San Andreas driving route (#433, 0.5)
 - 2026-10-11 soakvideo1011-step2: device proof of the dispatcher's soak video capture (#433, 0.5)
 
-_Updated 2026-10-12 00:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 00:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
