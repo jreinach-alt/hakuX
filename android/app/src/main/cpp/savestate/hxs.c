@@ -4086,6 +4086,24 @@ static bool all_fatx(const DiskHash *d)
     return true;
 }
 
+/*
+ * Milliseconds until the display region changes, sampled once a second, or
+ * -1 after limit_ms. A title screen holds the region still for half a minute
+ * (187's, 1461488), so a single 5 s look reads a running game as stopped.
+ */
+static int64_t wait_moving(int64_t limit_ms)
+{
+    int64_t t0 = now_us();
+    uint64_t r0 = region_now();
+    while ((now_us() - t0) / 1000 < limit_ms) {
+        sleep_ms(1000);
+        if (region_now() != r0) {
+            return (now_us() - t0) / 1000;
+        }
+    }
+    return -1;
+}
+
 static void test_disk(void)
 {
     const char *env = getenv("HAKUX_SAVESTATE_DISK");
@@ -4103,18 +4121,16 @@ static void test_disk(void)
     DiskHash h1 = disk_hash("H1-before-load");
     hxs_load(7, &b);
     DiskHash h2 = disk_hash("H2-after-load");
-    uint64_t r1 = region_now();
-    sleep_ms(5000);
-    uint64_t r2 = region_now();
+    int64_t moved = wait_moving(30000);
     GString *d01 = g_string_new(NULL), *d02 = g_string_new(NULL);
     disk_diff(&h0, &h1, d01);
     disk_diff(&h0, &h2, d02);
     test_step("D1", a.ok && b.ok && !disk_same(&h0, &h1) &&
-                        disk_same(&h0, &h2) && all_fatx(&h2) && r1 != r2,
+                        disk_same(&h0, &h2) && all_fatx(&h2) && moved >= 0,
               "game_wrote=%s writes_between=%" PRIu64
-              " after_load_differs=%s fatx=%d game_runs=%d",
+              " after_load_differs=%s fatx=%d game_runs=%d moved_ms=%" PRId64,
               d01->str, h1.wr_ops - h0.wr_ops, d02->str, all_fatx(&h2),
-              r1 != r2);
+              moved >= 0, moved);
     g_string_free(d01, true);
     g_string_free(d02, true);
     if (undo_s > 0) {
@@ -4123,13 +4139,12 @@ static void test_disk(void)
         DiskHash h3 = disk_hash("H3-after-undo-load");
         GString *d13 = g_string_new(NULL);
         disk_diff(&h1, &h3, d13);
-        r1 = region_now();
-        sleep_ms(5000);
-        r2 = region_now();
+        moved = wait_moving(60000);
         test_step("D2", c.ok && disk_same(&h1, &h3) && all_fatx(&h3) &&
-                            r1 != r2,
-                  "after_undo_differs_from_H1=%s fatx=%d game_runs=%d",
-                  d13->str, all_fatx(&h3), r1 != r2);
+                            moved >= 0,
+                  "after_undo_differs_from_H1=%s fatx=%d game_runs=%d "
+                  "moved_ms=%" PRId64,
+                  d13->str, all_fatx(&h3), moved >= 0, moved);
         g_string_free(d13, true);
     }
 }
@@ -4158,6 +4173,7 @@ static void test_main(void)
         HXS_LOG("[savestate] done ok=0 reason=unsafe");
         return;
     }
+    double func_s = start_s;
     if (strstr(plans, "disk")) {
         double save_s = 0;
         const char *d = getenv("HAKUX_SAVESTATE_DISK");
@@ -4174,6 +4190,17 @@ static void test_main(void)
         test_disk();
     }
     if (strstr(plans, "func")) {
+        /*
+         * F1, F3 and F4 tell states apart by the region, so they need a
+         * moving scene: the disk test's loads leave the game on its title
+         * screen, which F1-F4 read as still in 1461488.
+         */
+        if (strstr(plans, "disk")) {
+            sleep_until(func_s);
+            int64_t moved = wait_moving(60000);
+            HXS_LOG("[savestate] func waits for a moving scene t=%.1f "
+                    "moved_ms=%" PRId64, t_now(), moved);
+        }
         test_func();
     }
     if (strstr(plans, "measure")) {
