@@ -1,0 +1,73 @@
+{
+  "registered_utc": "2026-10-12T02:12:16Z",
+  "who": "lane.nfsaudio1011",
+  "issue": "433",
+  "kind": "env A/B on one binary, hand-queued title soaks (the arms job skips title soaks)",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "device": "nova",
+  "seconds": 180,
+  "frames_every": 5,
+  "audio_capture": "40",
+  "pull_glob": "apu_monitor.s16le48k2ch.pcm*",
+  "ref": "9c054c1714",
+  "ref_note": "9c054c1714 is a scratch commit on no branch: the lane head 39760cebf5 plus docs/lanes/nfsaudio1011/apu.c.patch, made with commit-tree from a temporary index. It is in the shared object store, so the dispatcher's repo resolves it. apu.c belongs to lane.snapshot1011 and is not committed on lane/nfsaudio1011 (NEED: apu.c in NOTES.md). The VOICELOG instrument in vp.c is in the binary but off (no HAKUX_APU_VOICELOG in any arm's env).",
+  "arms": [
+    {
+      "order": 1,
+      "label": "OFF",
+      "env": [
+        "HAKUX_APU_PACE=0"
+      ]
+    },
+    {
+      "order": 2,
+      "label": "ON",
+      "env": [
+        "HAKUX_APU_PACE=1"
+      ]
+    },
+    {
+      "order": 3,
+      "label": "ON",
+      "env": [
+        "HAKUX_APU_PACE=1"
+      ]
+    },
+    {
+      "order": 4,
+      "label": "OFF",
+      "env": [
+        "HAKUX_APU_PACE=0"
+      ]
+    }
+  ],
+  "arms_note": "OFF last: request env persists in the device's env_vars pref until the next request, and HAKUX_APU_PACE=0 is the shipped behaviour. OFF is explicit (=0) rather than absent so every arm records an env.",
+  "queue_order": "HAKUX_RELEASE_PRIO=1 request.sh --who lane.nfsaudio1011 --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --seconds 180 --device nova --ref 9c054c1714 --env HAKUX_APU_PACE=<0|1> --audio-capture 40 --pull 'apu_monitor.s16le48k2ch.pcm*' --frames-every 5 --issue 433 --no-expect <this file, judged by fixjudge.py>",
+  "judge": "python3 docs/lanes/nfsaudio1011/tools/fixjudge.py OFF:<1> ON:<2> ON:<3> OFF:<4>  (reference 0-1791764924-lane.local-837057 for the content slope; PSA window 2.27-17.27 s of 837057's output)",
+  "baseline": "Identify run 1-1791770282-lane.nfsaudio1011-2057093 (NOTES.md): the game keeps its write head 992 samples past the CBO at every burst start (2937 of 2950) and writes once per burst, 1.7/5.8/9.5 ms (p10/50/90) after it; the VP runs 64 or 128 VP frames (2048 or 4096 samples) per burst after each drain, so it passes the head 1024 samples in (32*boff - ahead = +32 in 56% of bursts, within +/-256 in 67.9%). Output lag-2400 share in shipped behaviour: 15.1% (837057), 16.4% (836989), 20.0% (836907), 30.6% (651467), 31.2% (2057093). Content slope 0-25 s: 1.000, 0.997, 0.996, 0.707, 0.754. gfps median 59.0 in all. Level -22.96..-23.13 dBFS ac-rms.",
+  "prediction": "HAKUX_APU_PACE=1 runs throttle()'s low-watermark pacing on Android: one EP frame (8 VP frames, 256 samples) per 5.33 ms once the monitor fifo is above the low watermark, instead of a drain period's worth of VP frames back to back. The VP then moves the CBO 256 samples at a time, under the game's 992-sample lead, and the game's writer (cadence ~10 ms by the spread above) refills behind it before the VP reaches its head. Claim S (P 0.6): each ON run's output lag-2400 share is <= 2%. The risks: Android's millisecond-granularity cond_timedwait oversleeping so the fifo falls below the low watermark and the VP refills in free-running bursts again (shows as starvation and as replays locked to P2048 in ON), or a writer cadence near 16.7 ms (an 800-sample step plus a 256-sample VP step passes a 992 lead by 64). Claim S-PSA (P 0.6): the same <= 2% in the PSA window. Claim T-ON (P 0.7): both ON runs' content slope over 0-25 s is 1.00 +/- 0.02, because in the slow-content runs the replays are what delayed the stream; OFF runs may be either mode (2 of 5 NFS captures so far were slow) and are reported, not judged. Claim L (P 0.85): mean ON level is within 0.5 dB of mean OFF. Claim F (P 0.9): ON gfps median >= OFF - 1.0. Claim Z (P 0.75): ON's starvation past the first 30 s window stays 0% (the original reason for the Android early return was speech sounding dragged out; that would show as starvation and a slope < 1). Lane.local's phase claim: if an ON run keeps >= 100 replay starts past 12 s, their lock at P2048 is < 0.2 (it is 0.78 in 837057).",
+  "legs": {
+    "V (switch reached the app, else VOID)": "logcat carries 'apu_pace: on' in each ON run and 'apu_pace: off' in each OFF run, and request.json env matches the arm. A run without the line is void and is re-queued once, not judged.",
+    "S (replays gone)": "fixjudge.py 'S': each ON lag-2400 share <= 2.0%. OFF expected 15-31%.",
+    "S-PSA": "fixjudge.py per-run PSA share: each ON <= 2.0%.",
+    "T (content slope)": "fixjudge.py 'slope 0-25 s': each ON within 1.00 +/- 0.02; every run reported, and per the brief a slow intro does not count against S.",
+    "L (level)": "fixjudge.py 'L': |mean ON - mean OFF| < 0.5 dB (audio_measure.py ac-rms, mean of L and R).",
+    "F (frame rate)": "fixjudge.py 'F': mean of ON gfps medians >= mean of OFF gfps medians - 1.0 (hakuX-perf lines past 20 s).",
+    "Z (starvation)": "fixjudge.py 'starvation per 30 s window', worst past the first window: 0% in each ON run.",
+    "phase (reported)": "lock P2048 and P256 of replay starts past 12 s, per run."
+  },
+  "expect": {
+    "S_max_on_share": 2.0,
+    "S_psa_max_on_share": 2.0,
+    "T_slope_tolerance": 0.02,
+    "L_max_abs_db": 0.5,
+    "F_max_gfps_drop": 1.0,
+    "Z_max_on_starve_after_first_window": 0.0,
+    "phase_max_on_p2048_lock_if_100_starts": 0.2
+  },
+  "expect_note": "EMPTY of captures ON PURPOSE: a soak writes none. Legs are read off the pulled PCM and the logcat.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": [],
+  "other_titles": "After the NFS arms are judged: two Playable titles with music or speech in their first 180 s, OFF then ON once each on the same ref, legs V/T/L/F/Z and S as 'ON share no higher than OFF'. Registered as an amendment here before they are queued."
+}

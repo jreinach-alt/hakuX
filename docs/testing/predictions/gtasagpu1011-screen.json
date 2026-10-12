@@ -1,0 +1,303 @@
+{
+  "registered_utc": "2026-10-12T00:55:12Z",
+  "who": "lane.gtasagpu1011",
+  "issue": "433",
+  "title": "playable-screen-vtx-hazard-on-vs-off",
+  "device": "nova",
+  "a_ref": "d50bf5c47c",
+  "b_ref": "d50bf5c47c",
+  "a_env": [],
+  "b_env": [
+    "HAKUX_VTX_HAZARD=1"
+  ],
+  "queue_order": "One binary, d50bf5c47c (the step 3 proof runs' ref; master's defaults merged at 4caff4a413, so the three NFS switches are on in both arms). Env-only A/B per title: ON queues --env HAKUX_VTX_HAZARD=1, OFF queues no --env. Scope and request shapes are fastpaths1010's screen as nfsdefault1011-screen.json lists it: 38 titles, 10 with a named route (300 s, no --frames-every) and 28 as a soak to the title screen (180 s, --frames-every 15). Call of Duty 3 is not on the Nova; the five owner-deferred titles and RalliSport stay off. One run per arm per title. Batch 1 is the 10 route titles (they reach play, where draws are densest); batches 2 and 3 are the soak titles, about 10 titles each. Each batch is read before the next is queued. HAKUX_RELEASE_PRIO=1, ON then OFF per title. No other default-off switch is headed for default-on in an active lane (hakux-lane-* units at 18:00 PDT: snapshot1011, soakvideo1011, this one), so the ON arm carries this switch alone.",
+  "judge": "per title, docs/lanes/gtasagpu1011/scrread.py <run dirs>: fatal (title_verdict.judge crash/void), on-line (the 'HAKUX_VTX_HAZARD=<v>' logcat line: 1 ON, 0 OFF), finishes (the last 'vtx_hazard: N finishes' line, ON only), hdd (golden_status/state/loaded, errors flagged), gfps (g_fps_mean_reported_not_judged), frames (stills, read by eye ON against OFF). A title fails on an ON-only fatal, an ON-only hdd error, an ON-only visual defect in the stills, or an ON gfps more than 3% below OFF where finishes > 0. A failing title is rerun twice (one pair each) before anything is attributed to the switch. A title with finishes = 0 drew exactly what OFF draws (the switch only adds a finish before an upload that changes bytes an earlier draw reads), so a gap there is the run, not the switch.",
+  "baseline": "fastpaths1010's screen passed all 38 with its toggle; nfsdefault1011 screened the 10 route titles with the NFS switches (all pass; Kabuki Warriors not judged, #787 stall placement, owner). Both arms here run those defaults.",
+  "prediction": "None of the 38 fail (P 0.85). The switch changes nothing but the submit points: byte-exact with a deferred finish in the dumps (NOTES 2c), and five ON-arm GTA SA dump runs plus the two proof soaks ran without a fatal. Most titles show finishes = 0 or a few: GTA SA's 100-370 per 10 s comes from rewriting one vertex buffer for several immediate-mode draws a frame, which is a pattern, not the rule. What would refute it: an ON-only crash/hang/abort, an ON-only hdd error, an ON-only visual defect, or an ON gfps more than 3% below OFF in a title where the switch acted.",
+  "expect": {
+    "fail_titles": [],
+    "not_run": [
+      "Call of Duty 3"
+    ],
+    "blocked_titles": [
+      "Azurik: Rise of Perathia",
+      "Baldur's Gate: Dark Alliance",
+      "NBA Live 2004",
+      "Castlevania: Curse of Darkness",
+      "50 Cent: Bulletproof",
+      "RalliSport"
+    ]
+  },
+  "expect_note": "fail_titles starts empty: the claim is that no scoped title fails. A 'title not on device' moves a title to not_run. A confirmed failure gets a 'WIDEN: <reason>' line in docs/lanes/gtasagpu1011/NOTES.md naming the title, the column and the result ids.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": [],
+  "titles": [
+    {
+      "title": "Crimson Skies: High Road to Revenge",
+      "iso": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+      "route": "crimson-skies",
+      "seconds": 300,
+      "frames_every": 0
+    },
+    {
+      "title": "Spikeout: Battle Street",
+      "iso": "Spikeout - Battle Street (Europe).iso",
+      "route": "spikeout",
+      "seconds": 300,
+      "frames_every": 0
+    },
+    {
+      "title": "Jet Set Radio Future",
+      "iso": "JSRF - Jet Set Radio Future (USA).xiso.iso",
+      "route": "jsrf",
+      "seconds": 300,
+      "frames_every": 0
+    },
+    {
+      "title": "Tork: Prehistoric Punk",
+      "iso": "Tork - Prehistoric Punk (USA).iso",
+      "route": "tork",
+      "seconds": 300,
+      "frames_every": 0
+    },
+    {
+      "title": "Kabuki Warriors",
+      "iso": "43560001-Kabuki_Warriors.xiso.iso",
+      "route": "kabuki-warriors",
+      "seconds": 300,
+      "frames_every": 0
+    },
+    {
+      "title": "187: Ride or Die",
+      "iso": "55530036-187_Ride_or_Die.xiso.iso",
+      "route": "187-ride-or-die",
+      "seconds": 300,
+      "frames_every": 0
+    },
+    {
+      "title": "Tony Hawk's Pro Skater 2x",
+      "iso": "41560001-Tony_Hawk_s_Pro_Skater_2x.xiso.iso",
+      "route": "thps2x",
+      "seconds": 300,
+      "frames_every": 0
+    },
+    {
+      "title": "KOF: Maximum Impact - Maniax",
+      "iso": "534E0007-KOF_Maximum_Impact_Maniax.xiso.iso",
+      "route": "kof-mi",
+      "seconds": 300,
+      "frames_every": 0
+    },
+    {
+      "title": "Alien Hominid",
+      "iso": "5A440004-Alien_Hominid.xiso.iso",
+      "route": "alien-hominid",
+      "seconds": 300,
+      "frames_every": 0
+    },
+    {
+      "title": "WWE Raw 2",
+      "iso": "5451000D-WWE_Raw_2.xiso.iso",
+      "route": "wwe-raw-2",
+      "seconds": 300,
+      "frames_every": 0
+    },
+    {
+      "title": "ToeJam & Earl III: Mission to Earth",
+      "iso": "ToeJam & Earl III - Mission to Earth (USA).iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Halo: Combat Evolved",
+      "iso": "Halo Combat Evolved.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Panzer Dragoon Orta",
+      "iso": "Panzer Dragoon Orta (Europe).iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Capcom vs. SNK 2 EO",
+      "iso": "43430008-Capcom_vs_SNK_2_EO.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "The Simpsons Hit & Run",
+      "iso": "56550015-The_Simpsons_Hit_Run.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Dark Summit",
+      "iso": "54510004-Dark_Summit.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Gunvalkyrie",
+      "iso": "5345000B-Gunvalkyrie.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Indigo Prophecy",
+      "iso": "4947007B-Indigo_Prophecy_USA.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "NFL Blitz 2002",
+      "iso": "4D570001-NFL_Blitz_2002_USA.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Fight Club",
+      "iso": "5655002F-Fight_Club.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Future Tactics: The Uprising",
+      "iso": "43560007-Future_Tactics_The_Uprising.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Legacy of Kain: Defiance",
+      "iso": "4553000F-Legacy_of_Kain_Defiance_USA.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "The Lord of the Rings: The Fellowship of the Ring",
+      "iso": "56550004-Lord_of_the_Rings_The_The_Fellowship_of_the_Ring_USA.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "NBA 2K3",
+      "iso": "53450013-NBA_2K3.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "NBA 2K2",
+      "iso": "53450002-NBA_2K2.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "MLB SlugFest - Loaded",
+      "iso": "4D57001D-MLB_SlugFest_Loaded.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Max Payne 2: The Fall of Max Payne",
+      "iso": "5454000C-Max_Payne_2_The_Fall_of_Max_Payne.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "MTV Celebrity Deathmatch",
+      "iso": "5454000B-MTV_Celebrity_Deathmatch.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "World Soccer Winning Eleven 9",
+      "iso": "4B4E002F-World_Soccer_Winning_Eleven_9.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "SpongeBob SquarePants: Battle for Bikini Bottom",
+      "iso": "5451001A-Nickelodeon_SpongeBob_SquarePants_Battle_for_Bikini_Bottom_USA.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Rogue Trooper",
+      "iso": "5343000E-Rogue_Trooper.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Blade II",
+      "iso": "41560005-Blade_II.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Mortal Kombat: Armageddon",
+      "iso": "4D570034-Mortal_Kombat_Armageddon.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Blowout",
+      "iso": "4D4A0008-Blowout.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "MLB SlugFest 2004",
+      "iso": "4D570009-MLB_SlugFest_2004.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "MLB SlugFest 2003",
+      "iso": "4D570008-MLB_SlugFest_2003.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "Ratatouille",
+      "iso": "54510109-Disney_Pixar_Ratatouille.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    },
+    {
+      "title": "AMF Bowling 2004",
+      "iso": "42530009-AMF_Bowling_2004.xiso.iso",
+      "route": null,
+      "seconds": 180,
+      "frames_every": 15
+    }
+  ]
+}
