@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Judge the HAKUX_APU_PACE arms: legs S, T, L, F of docs/testing/predictions/nfsaudio1011-fix.json.
 
-Usage: fixjudge.py [--ref <837057 dir>] [--psa a-b] LABEL:<result id or dir> [...]
+Usage: fixjudge.py [--ref <837057 dir>] [--psa a-b] [--other] LABEL:<result id or dir> [...]
+--other judges a title that is not NFS: pass its OFF run as --ref, and S becomes 'no increase' on the lag-2400 and
+any-lag shares (the PSA window and the phase lock mean nothing there).
 LABEL is OFF or ON. Per run: the switch line the app logged, the lag-2400 share (whole capture and the PSA window),
 the content slope against the reference (RANSAC over bit-exact 32-frame windows, so the attract loop's repeats do not
 pull the fit), the output level (audio_measure.py), gfps (hakuX-perf lines past 20 s), and where replays start in the
@@ -15,6 +17,7 @@ R = "/home/justin/hakux-work/dispatch/results/"
 HERE = os.path.dirname(os.path.abspath(__file__))
 MEASURE = os.path.join(HERE, "../../../testing/audio_measure.py")
 LAG, MIN_RUN, LOUD, SR, W = 2400, 16, 200, 48000, 32
+NO_INCREASE = 1.0   # --other (a title that is not NFS): S is 'ON share no more than 1 point above OFF'
 
 
 def pcm_of(d):
@@ -48,6 +51,29 @@ def hashes(x):
         h = S[W:] - S[:-W]
         ipw = np.cumprod(np.full(len(h), np.uint64(pow(int(Q), -1, 1 << 64)), dtype=np.uint64))
         return h * ipw
+
+
+def anylag(x, loud, minlag=W, maxlag=SR // 2):
+    """Share of loud output inside a 32-frame window that is a bit-exact copy of the window minlag..maxlag frames
+    before it (its nearest earlier equal window), and the lags that carry the most. Another title's ring need not
+    be 2400 frames, so 'no increase' at lag 2400 alone could not see its replays. Content that repeats on its own
+    (a looped sample at pitch 1.0) counts here too, the same in both arms."""
+    h = hashes(x)
+    order = np.argsort(h, kind="stable")
+    eq = h[order][1:] == h[order][:-1]
+    prev = np.full(len(h), -1, np.int64)
+    prev[order[1:][eq]] = order[:-1][eq]
+    lag = np.arange(len(h)) - prev
+    cl = np.concatenate(([0], np.cumsum(loud)))
+    win_loud = (cl[W:] - cl[:-W]) == W
+    hit = (prev >= 0) & (lag >= minlag) & (lag <= maxlag) & win_loud[:len(h)]
+    cov = np.zeros(len(x) + 1, np.int64)
+    np.add.at(cov, np.flatnonzero(hit), 1)
+    np.add.at(cov, np.flatnonzero(hit) + W, -1)
+    m = np.cumsum(cov)[:len(x)] > 0
+    lags, cnt = np.unique(lag[hit], return_counts=True)
+    top = [(int(l), round(float(100 * c / max(hit.sum(), 1)), 1)) for l, c in sorted(zip(lags, cnt), key=lambda t: -t[1])[:4]]
+    return 100 * (m & loud).sum() / max(loud.sum(), 1), top
 
 
 class Ref:
@@ -138,6 +164,7 @@ def run(label, rid, ref, psa):
     loud = np.abs(x).max(axis=1) > LOUD
     rep, starts = replays(x, loud)
     share = 100 * rep.sum() / max(loud.sum(), 1)
+    any_share, any_top = anylag(x, loud)
     pts = ref.points(x, rep, loud)
     fit = ransac(pts, 0, 25)            # the intro: EA logo and the PSA
     fitw = ransac(pts, 12, 95)          # lane.local's window for the slope-1.000 runs
@@ -151,12 +178,13 @@ def run(label, rid, ref, psa):
     starve = [float(v) for v in re.findall(r"= ([\d.]+)% of output", lc)]
     r = dict(label=label, id=os.path.basename(d.rstrip("/")), switch=",".join(sw) or "NONE", env=env,
              starve_after_30s=max(starve[1:], default=float("nan")),
-             secs=len(x) / SR, share=share, psa_share=psa_share, fit=fit, fitw=fitw, gfps=g, gfps_n=gn, level=lev,
+             secs=len(x) / SR, share=share, any_share=any_share, any_top=any_top, psa_share=psa_share, fit=fit, fitw=fitw, gfps=g, gfps_n=gn, level=lev,
              p2048=resultant(starts[starts >= 12 * SR], 2048), p256=resultant(starts[starts >= 12 * SR], 256),
              nstarts=len(starts))
     f = lambda t: "%.3f (%d/%d inliers)" % (t[0], t[2], t[3]) if t else "n/a"
     print(f"{label:3s} {r['id']}: switch={r['switch']} env={env} {r['secs']:.0f} s")
     print(f"    lag-2400 share {share:5.1f}%  PSA {psa_share:5.1f}%  slope 0-25 s {f(fit)}  12-95 s {f(fitw)}")
+    print(f"    any-lag (32..24000) share {any_share:5.1f}%  top lags (lag, % of hit windows) {any_top}")
     print(f"    level {lev:6.2f} dBFS ac-rms (mean L/R)  gfps median {g:.1f} (n {gn})  "
           f"replay starts {len(starts)}: lock P2048 {r['p2048']:.2f} P256 {r['p256']:.2f}")
     print(f"    starvation per 30 s window: {' '.join('%g' % v for v in starve)} (worst past the first: "
@@ -171,13 +199,21 @@ def main():
         i = args.index("--ref"); refd = args[i + 1]; del args[i:i + 2]
     if "--psa" in args:
         i = args.index("--psa"); psa = tuple(float(v) for v in args[i + 1].split("-")); del args[i:i + 2]
+    other = "--other" in args
+    if other:
+        args.remove("--other")
     ref = Ref(refd)
     rows = [run(*a.split(":", 1), ref, psa) for a in args]
     on = [r for r in rows if r["label"] == "ON"]
     off = [r for r in rows if r["label"] == "OFF"]
     bad = [r["id"] for r in rows if r["switch"] != r["label"].lower()]
     print("V  switch reached the app as labelled:", "yes" if not bad else "NO: %s (VOID)" % bad)
-    if on:
+    if other and on and off:
+        mo = lambda k: max(r[k] for r in on) - max(r[k] for r in off)
+        print("S  no increase, ON - OFF <= %.1f point: %s  (lag-2400 %+.1f, any-lag %+.1f)" % (
+            NO_INCREASE, "PASS" if mo("share") <= NO_INCREASE and mo("any_share") <= NO_INCREASE else "FAIL",
+            mo("share"), mo("any_share")))
+    elif on:
         print("S  ON lag-2400 share <= 2%%: %s  (ON %s; OFF %s)" % (
             "PASS" if all(r["share"] <= 2.0 for r in on) else "FAIL",
             " ".join("%.1f" % r["share"] for r in on), " ".join("%.1f" % r["share"] for r in off)))
@@ -190,6 +226,11 @@ def main():
         print("L  level ON - OFF %+.2f dB: %s" % (dl, "PASS" if abs(dl) < 0.5 else "FAIL"))
         go, gf = np.mean([r["gfps"] for r in on]), np.mean([r["gfps"] for r in off])
         print("F  gfps ON %.1f vs OFF %.1f: %s" % (go, gf, "PASS" if go >= gf - 1.0 else "FAIL"))
+        zon = [r["starve_after_30s"] for r in on]
+        zmax = max(r["starve_after_30s"] for r in off) if other else 0.0
+        print("Z  ON starvation past the first window <= %g%%: %s  (ON %s; OFF %s)" % (
+            zmax, "PASS" if all(z <= zmax for z in zon) else "FAIL", " ".join("%g" % z for z in zon),
+            " ".join("%g" % r["starve_after_30s"] for r in off)))
 
 
 if __name__ == "__main__":
