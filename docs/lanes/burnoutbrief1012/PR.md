@@ -35,18 +35,20 @@ run).
 
 A 0.3s gap between B and A: short enough that RESULTS appearing new in that exact slice (the one
 case where A landing on RESULTS instead of the brief would wrongly Continue off the event) is
-~1.3% of one outer loop (~22-23s observed), but non-zero so the two presses are distinct inputs
+~1.4% of one outer loop (~22s observed), but non-zero so the two presses are distinct inputs
 (`perf/pad.sh`'s `press()` holds for 60ms by default and is synchronous, so 0.3s is several
-multiples of that). The measured RESULTS -> brief load time (up to 14.3s, from this run's frames)
-outlasts the 0.3s gap, so the ordinary case costs one extra loop iteration (A's first attempt lands
-mid-load and does nothing; the next iteration's A, ~22s later, lands on the settled brief). Full
-reasoning, including the cost if A turns out to be a live race control, is in NOTES.md.
+multiples of that). The frames give only an upper bound on the RESULTS -> brief load time (at most
+14.3s), not a lower one, but the fix doesn't need a lower bound: either this iteration's A lands
+mid-load (a no-op there) and the next iteration's A, ~22s later, lands on the settled brief, or the
+brief is already up and this iteration's A dismisses it directly. Either way the brief clears
+within one extra loop iteration at most. Full reasoning, including the cost if A turns out to be a
+live race control, is in NOTES.md.
 
 ## Checks
 
 ```
 $ bash docs/testing/titles/route.sh --check docs/testing/titles/routes/burnout-revenge.returning.route
-route ok: docs/testing/titles/routes/burnout-revenge.returning.route (171 lines)
+route ok: docs/testing/titles/routes/burnout-revenge.returning.route (173 lines)
 exit 0
 
 $ ROUTE_DRY=1 SERIAL=dryrun timeout 400 bash docs/testing/titles/route.sh docs/testing/titles/routes/burnout-revenge.returning.route

@@ -1,5 +1,19 @@
 # lane.burnoutbrief1012
 
+## Why attempt 1 did not finish (attempt 2, resuming)
+
+Attempt 1 wrote this NOTES.md and PR.md with the corrected framing (upper bound only, "at most
+14.3s", no claimed lower bound) and a consistent `1.3%` figure in both, and committed/pushed that
+as `1b02ba781f` -- but the route comment it was supposed to fix to match
+(`docs/testing/titles/routes/burnout-revenge.returning.route`) still has the pre-addendum text:
+"A Retry that lands can take over 14s" and "Since the Retry-to-brief transition (>14s) outlasts
+the 0.3s gap" (both assert a lower bound nothing on disk supports -- one frame every ~31s cannot
+pin a lower bound), plus a `~1.4%` exposed-fraction figure that disagrees with NOTES.md/PR.md's
+`1.3%`. Addendum 1 named the route comment first and explicitly as the thing to fix; attempt 1
+fixed everything else and left that file untouched. Fixing it now, and standardizing on the
+addendum's own worked figure (`0.3 / ~22s is ~1.4%`) everywhere instead of `1.3%`, since that's
+the number Addendum 1 computed when it posed the problem.
+
 ## What the frames and log show (run `1-1791793410-lane.local-336876`, ref c03e17b8a0)
 
 `index.tsv` (device clock, one frame about every 31s) and the `ROUTE` lines of `run.log` together:
@@ -71,9 +85,10 @@ New:
   of each outer loop is exposed to that: at 0.3s against this run's observed outer-loop period of
   roughly 21.4-22.7s (the `press B` cadence measured above, before this run's press A existed; the
   new loop adds about 0.3-0.4s of overhead per iteration for the extra press, so call the period
-  ~22-23s now), the exposed fraction is about `0.3 / 22.5 ≈ 1.3%` of each iteration. Since a given
-  race only ends once, this is a roughly 1-in-75 chance per race-end that it lands in the trap
-  window, not a per-loop-tick risk.
+  ~22s now), the exposed fraction is about `0.3 / ~22 ≈ 1.4%` of each iteration (the figure used
+  consistently in the route comment, this file, and PR.md). Since a given race only ends once,
+  this is a roughly 1-in-70 chance per race-end that it lands in the trap window, not a
+  per-loop-tick risk.
 - **Is 0.3s still long enough to register as two separate presses?** Yes, by a wide margin.
   `perf/pad.sh`'s `press()` sends button-down, sleeps the hold (default 60ms), then sends
   button-up, and returns only after that -- it is synchronous, so B's button-up is already done
@@ -81,15 +96,15 @@ New:
   landing at ~0.38s wall time (0.3s explicit wait plus the adb/bash overhead already visible
   elsewhere in this route's timings), several multiples of the 60ms hold -- nowhere close to being
   read as one merged input.
-- **Does the 0.3s gap hold against the measured load time?** Yes. Section above bounds the
-  RESULTS -> brief transition at up to 14.3s, far longer than the 0.3s gap. So the ordinary case is:
-  this iteration's B lands on RESULTS and starts the reload; this iteration's A, 0.3s later, is
-  still mid-load (a load screen takes input the way RESULTS/brief take B -- as a no-op) and does
-  nothing; the *next* iteration's A, ~22s later -- well past the load -- lands on the now-settled
-  brief and dismisses it via Continue. So in practice this costs one extra loop iteration (~22s),
-  not the "within one loop cycle" best case, whenever B's Retry windows up needing the full load
-  time. That's still well inside the brief's own description of the problem it fixes (a run that
-  previously sat on the brief for 12+ minutes, per the frames above).
+- **Does the 0.3s gap hold against the measured load time?** The fix does not need a lower bound
+  on the transition, and nothing on disk gives one (one frame every ~31s cannot pin a lower bound,
+  only the at-most-14.3s upper bound from the section above). Either way is fine: if the brief is
+  still loading 0.3s after B's Retry, this iteration's A lands on the load screen (a no-op there,
+  same as B would be) and the *next* iteration's A, ~22s later, lands on the now-settled brief and
+  dismisses it via Continue; if the brief is already up by 0.3s, this iteration's A dismisses it
+  directly. So the brief clears within at most one extra loop iteration beyond the one that
+  Retried it (~22s), never the 12+ minutes it sat for before this fix. The order that matters is
+  B before A on RESULTS, which the 0.3s gap (not a load-time estimate) is what bounds.
 - Race inputs (`RT max`, `LX` steering) are unchanged; `RT` is still released with `axis RT min`
   (a trigger's rest, not `mid` -- `mid` is half throttle on the Nova, per burnoutloop1012's fix)
   before the B/A presses.
@@ -105,7 +120,7 @@ New:
 
 ```
 $ bash docs/testing/titles/route.sh --check docs/testing/titles/routes/burnout-revenge.returning.route
-route ok: docs/testing/titles/routes/burnout-revenge.returning.route (171 lines)
+route ok: docs/testing/titles/routes/burnout-revenge.returning.route (173 lines)
 $ echo $?
 0
 
@@ -113,18 +128,20 @@ $ ROUTE_DRY=1 SERIAL=dryrun timeout 400 bash docs/testing/titles/route.sh docs/t
 $ echo $?
 124   # timeout, expected: the loop is `forever`
 
-$ grep -n "mark gameplay\|axis RT min\|press B\|press A" out | head -8
-116:ROUTE 02:26:35.635 mark gameplay
-154:ROUTE 02:26:53.823 axis RT min
-157:ROUTE 02:26:54.141 press B
-161:ROUTE 02:26:54.516 press A      # B-to-A gap: 0.375s
-201:ROUTE 02:27:14.687 axis RT min
-204:ROUTE 02:27:15.004 press B
-208:ROUTE 02:27:15.377 press A      # B-to-A gap: 0.373s
+$ grep -n "mark gameplay" out
+116:ROUTE 02:39:20.536 mark gameplay
+$ awk '/mark gameplay/{f=1} f' out | grep -n "press B\|press A\|axis RT min" | head -6
+39:ROUTE 02:39:39.708 axis RT min
+42:ROUTE 02:39:40.028 press B
+46:ROUTE 02:39:40.403 press A      # B-to-A gap: 0.375s
+86:ROUTE 02:39:59.689 axis RT min
+89:ROUTE 02:40:00.008 press B
+93:ROUTE 02:40:00.382 press A      # B-to-A gap: 0.374s
 ```
 
 Both commands ran against this worktree's own copy
-(`/home/justin/hakux-work/wt/burnoutbrief1012`). The dry run stepped past the mark and through
+(`/home/justin/hakux-work/wt/burnoutbrief1012`), re-run after the Addendum 1 correction above (the
+route gained 2 lines of comment, 171 -> 173). The dry run stepped past the mark and through
 multiple `press B` / `press A` pairs before the 400s timeout cut it, as expected for a `forever`
 loop.
 
