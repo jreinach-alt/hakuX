@@ -108,3 +108,30 @@ did step 6d's offline half: a `returning` variant for three routes the profile g
 (bf2mc, D&D Heroes, MechAssault 2), and an opening fix for two routes whose mark lands on a menu instead of
 play (Crash: Wrath of Cortex, DOAX), all five via the same `drive generic ... mark` pattern. No device run
 yet for any of this session's work.
+
+## #433 -- 2026-10-12 05:31 PDT
+
+Correction to the 04:15 entry above (lane.local's Addendum 4, 04:17 PDT): the Playable count is the ledger
+`pm/playable-accepted.tsv`, not `status.json`'s own `stage` reading, and it had not reached 50 at 04:17; the
+overnight chain had not stopped either (its runs land outside `dispatch/results/`). See NOTES.md's
+corrected attempt-5 section. The second fold Addendum 5 named did land (`2219a61879`, reached
+`/home/justin/hakuX`); re-checked directly this session (`gen-avp-extinction.route` resolves there, all 29
+`gen-*.route` files present). Queued step 6c's first batch of 3 with `request.sh` (`--device nova
+--no-expect`, release priority): AvP Extinction `1-1791808256-lane.pathclass-215913`, Amped: Freestyle
+Snowboarding `1-1791808261-lane.pathclass-216134`, Area 51 `1-1791808267-lane.pathclass-216447`. All three
+queued clean, pinned to nova; they wait behind the Nova's current holder (`lane.pathfind`'s chain hold), not
+a failure. Stopping per Addendum 5 ("record the request ids ... and stop once they are queued: lane.local
+reads the results").
+
+## #433 -- 2026-10-12 07:10 PDT
+
+The first of the three queued runs, AvP Extinction, came back failed: stalled 91 s at its own title screen,
+stuck on `unknown` because the single 0.85 confidence floor gated every answer alike, and this frame's own
+answer (title screen, OCR agreeing) landed at 0.8. Fixed in two parts: OCR agreement now bumps confidence the
+same way OCR override already did, and the one floor is now two -- 0.85 still gates a `gameplay` answer
+(the claim that matters), a new, lower 0.7 floor gates every other answer (a wrong menu-class input is
+recoverable; a false `gameplay` is not). Chose 0.7 by sweeping the same held-out eval set the step-2 bar
+used; it is the first floor with no added risk on either count, and lets the classifier act on roughly half
+again as many frames as before. Added a selftest replaying this run's own frames end to end. Full
+`docs/testing/jobs/selftest.sh` gate: 3467 passed, 0 failed. Nothing queued this session; the fix waits on
+the next fold before any of the withdrawn or new runs go back on the Nova.

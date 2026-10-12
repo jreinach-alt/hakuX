@@ -20,11 +20,34 @@
 # frames the head actually answers are 100% right with 0% false "gameplay"
 # (39/120 answered; the rest come back `unknown`, which drive.py waits on
 # rather than acting on). No crop or hand tuning can do better for a title
-# this profile has never seen.
+# this profile has never seen. This floor applies only to a `gameplay`
+# answer (the claim that matters): a false `play` would mark a route done
+# when it is not.
+#
+# classifier_confidence_menu 0.7 (#433 Addendum 6): AvP Extinction's
+# gen-avp-extinction run stalled 91 s at its title screen -- pathclass named
+# it title_screen at 0.8 (OCR's "Press START" confirming the image model),
+# still short of 0.85 -- because every answer shared one floor. A menu-class
+# miscall risks a wrong input on a menu (recoverable: the ladder or the next
+# capture corrects it), never the gameplay claim, so it does not need the
+# same floor. Measured against the held-out set (same 120 frames, full
+# classify() pipeline, context menu_seen=True -- matching mid-route play,
+# where an errant press would actually cost something): at 0.7, answers rise
+# from 43/120 (the old single floor) to 66/120, right 63/66 (95.5%), with
+# ZERO cases where a non-gameplay answer at or above the floor fires a press
+# on a frame whose truth is actually `gameplay` (checked down to 0.3; the one
+# such case in the set, a Buffy `controller_prompt` miscall at 0.65, sits
+# below 0.7) and zero wrong presses on any other non-gameplay truth. Below
+# 0.7 both risks appear (0.6: 1 errant gameplay press; 0.3: 3 errant, 4 wrong
+# -- docs/lanes/pathclass/NOTES.md "Addendum 6" has the full sweep). Frames
+# below even this floor (the AvP run's blinking "Press START" at 0.395 with
+# the prompt hidden) correctly stay `unknown` -- genuinely ambiguous, not a
+# case this floor is meant to rescue.
 
 name = "generic"
 classifier = "pathclass"
 classifier_confidence = 0.85
+classifier_confidence_menu = 0.7
 order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "loading", "cutscene", "play"]
 
 [drive]
