@@ -206,3 +206,7 @@ built from a scratch tree, never committed to apu.c on this branch.
   as leg W.
 - Identify run `1-1791770282-lane.nfsaudio1011-2057093` (queued 01:58Z, done 02:03Z): mechanism H-A', legs above.
   `apu.c.patch` committed at 1fd570f434. Fix-arm judge `tools/fixjudge.py`, dry-run on 836907/836989/837057/651467/2057093.
+- Fix prediction `docs/testing/predictions/nfsaudio1011-fix.json` registered 02:12Z at 1cd5a7c434, before any arm. Scratch
+  build 9c054c1714 (lane head 39760cebf5 + apu.c.patch, commit-tree, on no branch). Arms queued 02:19Z on the Nova:
+  1 OFF `1-1791771146-lane.nfsaudio1011-2189879`, 2 ON `1-1791771148-lane.nfsaudio1011-2189996`,
+  3 ON `1-1791771149-lane.nfsaudio1011-2190142`, 4 OFF `1-1791771151-lane.nfsaudio1011-2190384`.
