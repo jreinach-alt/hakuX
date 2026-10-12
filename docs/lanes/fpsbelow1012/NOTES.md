@@ -190,7 +190,7 @@ change; R5G6B5 titles are already one tile.
 
 | option | what it does to a 720x480 32-bit pass | against it |
 |---|---|---|
-| **Z24S8 as D24_UNORM_S8_UINT** (`HAKUX_ZETA_D24`) | one tile, GMEM kept: no replay, no change to ZPASS or Kabuki's mode | the depth round trip of #16: on Adreno a D24 clear of 0x800007 reads back 0x800008; Depth_buffer went 11.7M -> 505k differing px with D32S8 and goes back toward 11.7M (10 blank captures before #16) |
+| **Z24S8 as D24_UNORM_S8_UINT** (`HAKUX_ZETA_D24`) | one tile, GMEM kept: no replay, no change to ZPASS or Kabuki's mode | the depth round trip of #16 for fixed Z24: on Adreno a D24 clear of 0x800007 reads back 0x800008 over the whole surface (2 of 18 z24 clears on 09-10); the float formats' fix, which removed #16's blanks, stays (section 7) |
 | fork: no 64-alignment doubling for a separate stencil that is never an input attachment | 640x480 fits one tile; **720x480 still two** (345600 > 344064 px at align 96) | misses DOA3 (720x480); a fork change |
 | fork: HW binning at 2 tiles | a binning pass plus each tile's visible draws | gmem474: forcebin never won on the Nova |
 | sysmem per title (`kTitleRenderModes`) | no tiles | one-offs; Kabuki stalls; #527 ZPASS |
@@ -283,18 +283,26 @@ stays near 0.5, or gfps does not move on a title whose GPU is the wait.
 either way; stencil is 8 bits either way (D24S8 packs it in the same texel; the compute pack/unpack handles both,
 surface-compute.c). So every z16 row is a control: the switch moves only the Z24S8 map.
 
-**What the switch does not bring back.** a33fa42bc3's before -> after (Depth_buffer 11,721,972 -> 505,280
-differing px, 10 blanks -> 0; Depth_buffer_ff 6,746,610 -> 317,130) is D24 *with four disagreeing scales* (shader
-2^24 with a ULP nudge, vertex 0xFFFFFF, clear 0xFFFFFF, readback 0xFFFFFF) against D32 with one. The switch keeps
-the one-scale fix: `zeta_stored_as_float=false` sends all four through 0xFFFFFF, the path a device without the
-float format takes today. So the pre-#16 figure is an upper bound on the switch's cost, not its expected value; the
-blanks came from the scales disagreeing, and nothing in the D24 branch reintroduces that.
+**What #16 fixed, and which half of it the switch undoes.** a33fa42bc3 (`docs/investigations/
+depth-readback-scale.md`, scores in `docs/testing/run-2026-09-10-depth-scores.tsv`) did two separate things:
 
-**What it does bring back: the unorm quantiser.** On a D24 image the driver converts the float depth to 24-bit
-unorm, and in the top octave (z >= 2^23) the float grid (2^-24) and the unorm grid (1/(2^24-1)) are half a unit out
-of phase. Correctly rounded, the round trip is exact; Adreno rounds the half up, so a clear of 0x800007 reads back
-0x800008 (a33fa42bc3; z24 fixed clears 16/18 on D24 against 18/18 on D32). The error is one unit, and only near
-the middle of the depth range, where a value sits close to the half.
+1. **Fixed Z24 (FZn) moved to D32_SFLOAT_S8_UINT with one 2^24 scale.** On D24 the four places keep their old
+   pairing, which is what `zeta_stored_as_float=false` selects and what the switch brings back unchanged: the
+   fragment shader divides by 2^24 and adds one ULP (psh.c `z24_open`/`z24_close`), the vertex clip range, the
+   clear (pgraph.c) and the readback (surface-compute.c) use 0xFFFFFF. The commit says it in as many words: "D24
+   stays as the fallback, still with the ULP nudge that the unorm scale needs, so nothing changes for a device
+   without the float format." So for fixed Z24 the switch is the pre-#16 behaviour, not a bound on it.
+2. **The float zeta formats (F24, F16) store their encoding.** Before, F24 fell through to `zvalue / f24_max`
+   and every drawn pixel read back zero: those were the 10 Depth_buffer blanks and the 24 W_buffering blanks. That
+   fix lives in the shader's F24/F16 cases and does not depend on the host format, so **the switch does not bring
+   the blanks back.**
+
+**What the D24 half costs: the unorm quantiser.** In the top octave (z >= 2^23) the float32 grid (2^-24) and the
+unorm grid (1/(2^24-1)) are half a unit out of phase, and no float32 lands safer (the investigation's derivation:
+the nearest float to Z decodes to Z + 1 - (Z+1)/2^24, which tends to Z + 0.5 as Z tends to 2^23). Correctly
+rounded the round trip is exact; Adreno rounds the half up, so a buffer cleared to 0x800007 read back 0x800008 on
+304,284 of 307,200 pixels. On 09-10 that was 2 of the 18 z24 fixed clears (16/18 exact before, 18/18 after).
+Near 0xFFFFFF the phase error goes to zero, so a far-plane clear, which is what titles mostly clear to, is exact.
 
 **Today's baseline on the Nova (D32S8)**, the rows the switch can move:
 
@@ -315,17 +323,32 @@ Depth_buffer's z24 FZn `_ZB` rows grow with the depth cutoff (M055564 5 px, M400
 Mf55555 6,177, Mffffff 6,770), all off-by-one: that is the float32 interpolation a33fa42bc3 named as what still
 differs, and it is the floor D24 starts from.
 
-**Expected cost, stated before measuring:** the z16 rows do not move. The Depth_buffer and DBFF z24 `_ZB` rows get
-worse by off-by-one pixels where the stored depth is near 2^23 and the driver rounds the half up, so the rows whose
-range crosses the middle (M800007 and above, and the DBFF FZn rows) move most. A z24 colour row moves only where a
-depth test compares two values a unit apart. A Clear `_ZB` row moves if its clear value lands on a half, as
-0x800007 does. No row goes blank. An upper bound is the pre-#16 total; a likely size is of the order of today's
-z24 `_ZB` totals (tens of thousands of px), not millions. That is a guess from the mechanism, not a measurement.
+**Expected cost, stated before measuring** (corrected 10-12 after reading a33fa42bc3 and the investigation: an
+earlier draft of this paragraph said the switch kept the one-scale fix, which is true only of the float formats):
+
+- the z16 rows do not move (D16 on both arms, and F16 on a Z16 surface never asks the Z24S8 scale);
+- **two Depth_buffer z24 FZn `_ZB` captures go off by one over nearly the whole surface**, the ones whose clear
+  lands on the half as 0x800007 does: about 300,000 px each, so ~0.6M px on that row group against 43,690 today.
+  This is the dominant term, and it is a return to the 09-10 "before" for those clears, not a new defect;
+- the other z24 FZn `_ZB` rows move by off-by-one pixels where drawn depth sits near 2^23 (the shader's ULP nudge
+  and the unorm rounding against the 0xFFFFFF readback), and the float32 interpolation error that remains today
+  (`UNRESOLVED` in the investigation) stays on both arms;
+- z24 FZy (F24) rows: the encoding is now quantised through unorm too, so a unit of F24 encoding can flip near
+  2^23; small;
+- a colour row moves only where a depth test compares two values a unit apart (a draw at exactly the cleared
+  value); DBFF and W_buffering move the same way as Depth_buffer, on their fixed-Z24 rows;
+- **no row goes blank**: the blanks were the float formats' fall-through, fixed independently of the host format.
+
+So the size is of the order of 10^5 to 10^6 differing px on the z24 FZn rows, most of it in two whole-surface
+clears, and not the pre-#16 11.7M (which included the blanks). That is a reading of the code and of the 09-10
+measurement, not a measurement of the switch.
 
 **What a title sees.** One unit in 2^24 of depth. A title that redraws geometry with depth EQUAL quantises both
 passes the same way and is unaffected. A title that clears to a mid-range value and then tests a draw against it
-with EQUAL or LEQUAL at that exact value could flip a pixel, which is the case the clear rows test. Every title the
-Nova ran before 09-10 ran on D24 (a33fa42bc3 changed the order); a33fa42bc3 cites test captures, not a title.
+with EQUAL or LEQUAL at that exact value could flip a pixel, which is the case the clear rows test; a far-plane
+clear is exact. A title that reads its depth buffer back as a texture sees a unit near the middle of the range.
+Every title the Nova ran before 09-10 ran on D24 (a33fa42bc3 changed the order); a33fa42bc3 cites test captures,
+not a title.
 
 **Measuring it exactly** is one pgraph env pair at the A/B ref on the depth suites (Depth buffer, Depth buffer fixed
 function, Clear, Color zeta overlap, W buffering, ZPass pixel count, Stencil, Stencil func, Depth function, Depth
