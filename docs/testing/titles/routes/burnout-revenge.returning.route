@@ -132,6 +132,25 @@ mark gameplay
 # nothing there, so the cadence is chosen to bound the alternative: if B
 # turns out to be a live race control (e.g. a handbrake), it can only ever
 # land once per 18s of driving, never every loop.
+#
+# A Retry that lands can take over 14s to reach the next screen (confirmed
+# in docs/lanes/burnoutbrief1012/NOTES.md), past which the loop sat on the
+# event brief for "TRAFFIC ATTACK -- Check traffic to beat the Score
+# Targets!" with no prompt but Continue (A) -- B does nothing there, so a
+# run that reached the brief this way never left it. `press A` below,
+# right after `press B`, dismisses that brief. The 0.3s gap between the two
+# presses is short on purpose: B must reach RESULTS before A can, since A
+# on RESULTS is Continue, which leaves the event for screens no route here
+# has recorded. A 0.3s gap leaves that only ~1.4% of this ~22s loop (0.3 /
+# ~22) exposed to a race ending in that exact slice between the two
+# presses, and is still many multiples of the 60ms a press is held
+# (perf/pad.sh) -- long enough for the game to see two separate inputs,
+# not one. Since the Retry-to-brief transition (>14s) outlasts the 0.3s
+# gap, the A that follows a B landing on RESULTS falls during that load and
+# does nothing there; the next loop's A, ~22s later, is what dismisses the
+# brief once it has actually appeared. If A turns out to be a live race
+# control, it is bound by the same cadence already accepted for B: at most
+# once per ~22s outer iteration, not every 6s inner-loop tick.
 repeat forever {
     repeat 3 {
         axis RT max
@@ -146,5 +165,7 @@ repeat forever {
     axis RT min
     wait 0.3
     press B
+    wait 0.3
+    press A
     wait 1.0
 }
