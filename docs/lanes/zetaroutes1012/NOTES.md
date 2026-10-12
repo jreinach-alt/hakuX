@@ -284,3 +284,90 @@ old) admits it` -- the gate is working as designed, not held this time. Run coun
 
 WAITING: on all three result dirs' `DONE` files, same reason as before (overnight Playable-chain hold on the
 Nova; sweep tier starts only when it is idle). Nothing further to do until they land.
+
+## 9. Why attempt 2 did not finish (resuming as attempt 3)
+
+Attempt 2 picked up at the WAITING state section 8 left: three runs queued (fixed Buffy, DOA3, NG Black),
+nothing left for that turn to do but wait on the Nova's overnight Playable-chain hold to clear. It ended the
+turn there rather than poll a device run from inside its own turn, per the lane role's "never end a session
+waiting on your own background task" -- that is a correct, finished state, not a failure. All three `DONE`
+files exist now; this attempt reads them.
+
+## 10. Reading the three queued runs
+
+```
+python3 docs/testing/title_verdict.py <dir> --require confirmation --reviewed-gameplay yes
+```
+
+| title | run | verdict |
+|---|---|---|
+| Buffy | `z-1791820250-lane.zetaroutes1012-2510625` | **PASS** Playable, `gameplay=774.9s fps_ok=1.0 static_frac=0.0394` |
+| DOA3 | `z-1791820275-lane.zetaroutes1012-2514338` | FAIL(hitches: a 632ms stall after the first 60s, bar 500ms), `gameplay=781.2s fps_ok=0.9773 static_frac=0.0` |
+| NG Black | `z-1791820279-lane.zetaroutes1012-2514939` | FAIL(duration: 590s of gameplay < 600s confirmation), `gameplay=589.7s fps_ok=0.9956 static_frac=0.0216` |
+
+The fixed pulse-and-turn play loop (section 7) worked: Buffy is a clean confirmation, and the other two
+titles' failures are not movement failures (both read static_frac well under the 0.20 bar) -- they are a
+real stall and a timing shortfall respectively.
+
+## 11. DOA3's hitch is a shader pipeline-create stall, not a route defect
+
+`result.json`'s own fields read fine (`fps_ok=0.9773`, no crash/hang, `static_frac=0.0`), and the FAIL is
+entirely the 632ms hitch. Reading `logcat.txt` around the stall (mark at 09:11:42.610; the hitch bar is "after
+the first 60s", i.e. ~09:12:42): the `[shd413]` perf line at 09:12:40.546 reads `pc_ms=559.6` (pipeline-create
+milliseconds for that frame) with `dpc_ms=0.0 dpn=1` -- one new pipeline created, taking over half a second,
+exactly the shape of the hitch (632ms worst_ms). This is a first-use shader/pipeline compile on this route's
+particular combat move (DOA3's combo loop presses X/Y/X/B/A in a pattern the survey's generic bare-A loop
+never produced), not a `HAKUX_ZETA_D24` effect and not a route construction defect: the route reached 781.2s
+of moving fight play with `fps_ok=0.9773`, well inside the bar, and the brief's step 5 "whatever its fps"
+clause is about the route having done its job once it reaches 600s of moving play, which it did.
+
+No re-run: a route fix cannot remove a first-use pipeline-create stall (that is the ubershader-class problem
+`docs/lanes/shaderplan569/NOTES.md` describes), and re-running the same route+golden pair would very likely
+just hit the same first-use compile again since nothing clears the shader cache between runs on this disk.
+This is reported as a finding for the cross-title screen (OUTBOX.md), not chased further -- the switch and
+the route are each doing their job; the stall is a different, known class of problem.
+
+## 12. NG Black: a route-timing shortfall, fixed by extending the loop
+
+`title_verdict.py`'s `gameplay_s` is `end_t - mark_t` (session end minus the mark), not time spent inside the
+route script's own loop. This run's own `run.log` ROUTE lines show why 589.7s fell short of 600s: mark at
+09:32:31.005, the route's 11-repeat genre loop (each outer repeat ~43-44s by the `shot hold` timestamps) ran
+to its own `done`/`end` at 09:40:31.831 (~480.8s of scripted movement), then the run held without further
+input for the rest of the 900s request. The ~314.5s the boot/menu/cutscene cadence (section 3, screen- and
+text-identical to `bb-ngb.route`, all recorded) takes before the mark left only ~590s before the 900s request
+ran out -- 10s short of the bar, not a movement failure (`static_frac=0.0216`, `fps_ok=0.9956`).
+
+Fix: raised the loop's outer `repeat` from 11 to 15 (~650s of scripted movement, so the loop itself covers the
+whole required window instead of leaning on an idle post-script hold) and the request's `--seconds` from 900
+to 1020 to match. `route.sh --check` passes (205 lines); `titlestate.py resolve-route` still gives
+`refuse: null, state: any`. Edited in both the worktree (`docs/testing/titles/routes/
+ninja-gaiden-black.returning.route`, committed) and the live `/home/justin/hakuX` checkout `request.sh` reads
+from, kept in sync. This is run 1 of the "at most 2 more runs" the brief allows for NG Black's route defect.
+
+## 13. Buffy's pair registered and queued; NG Black's fix queued
+
+Buffy's switch-on run is at the bar (section 10), so its pair is registered before the off run, per step 6.
+`ab_compare.py --register` refuses this shape outright (`REFUSED: a registration with nothing falsifiable in
+it is not a prediction` -- it requires a `--must-not-move`/`--expect-value`/`--expect-count`, all of which are
+capture-bound checks, and this is a soak with no captures). This matches what fpsbelow1012's NOTES.md section
+9d already found: `ab_compare.py` has no capture-based oracle for an fps_ok-share leg, and the soak
+predictions already on disk (`fpsbelow1012-zetad24.json`, `uberdefault569-soaks.json`,
+`async794-mc3-soak.json`) are all hand-written JSON with `expect: {}` and an `expect_note` saying so, not
+`ab_compare.py --register` output -- `request.sh`'s own `--expect` check (its soak branch) only requires the
+file to exist, be readable JSON, and not bind any `expect` key to a real golden capture, which an empty
+`expect: {}` satisfies. `docs/testing/predictions/zetaroutes1012-buffy.json` is written the same way: `a_ref
+7cbd788e00` / `b_ref 76a2c15333` (no emulator-code diff between them -- `git diff --stat` over `hw/ target/
+accel/ android/ tcg/ ui/ audio/` between the two refs is empty, only this lane's own route/NOTES commits), leg
+F (A's `fps_ok_share < 0.90`) and leg G (B's `fps_ok_share` >= A's + 0.10, a conservative half of the survey's
+measured 0.79->1.00 gain on the same canyon scene).
+
+Queued:
+```
+z-1791823924-lane.zetaroutes1012-3538464   Buffy, buffy.returning, --ref 7cbd788e00, no HAKUX_ZETA_D24 (the A leg of the pair, --expect zetaroutes1012-buffy.json)
+z-1791823930-lane.zetaroutes1012-3542868   NG Black, ninja-gaiden-black.returning (repeat 15, --seconds 1020), HAKUX_ZETA_D24=1 (re-run of the route-timing fix)
+```
+Pilot gate admitted both (`.ok` file read 1.0h old at the second request). Run count: 4 read (section 10) + 2
+queued = 6 of the 12-run budget. DOA3 needs no further run (section 11).
+
+WAITING: on both result dirs' `DONE` files, same overnight Nova-hold reason as before. Nothing further to do
+until they land.

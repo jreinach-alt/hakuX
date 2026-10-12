@@ -35,6 +35,15 @@
 #     is bb-ngb.route's own "genre loop" (its lines 184-212, built from an
 #     actual recorded playthrough alternating LY min/max with X/A/B presses and
 #     RX swings), not the survey's loop.
+# First run (z-1791820279-lane.zetaroutes1012-2514939, --seconds 900) reached
+# moving play cleanly (fps_ok=0.9956, static_frac=0.0216) but FAILed on
+# duration alone: 11 outer repeats of the genre loop run ~43s each (~481s of
+# scripted movement), and the ~314s of boot/menu/cutscene cadence above the
+# mark left only ~590s before the 900s request ran out -- 10s short of the
+# 600s confirmation bar. The outer repeat count below is raised from 11 to 15
+# (~650s of scripted movement) so the loop itself, not an idle post-script
+# hold, covers the whole required window; the request's --seconds is raised
+# to match.
 wait 20
 shot boot20
 wait 20
@@ -165,7 +174,7 @@ wait 7.1
 shot pre-mark               # CHECK: Ryu's world rendered, no menu or subtitle
 wait 3
 mark gameplay
-repeat 11 {
+repeat 15 {
     shot hold
     repeat 4 {
         axis LY min
