@@ -1013,3 +1013,7 @@ Predictions:
 - **C. Cost: logcat's `vtx_hazard` lines show 100-370 finishes per 10 s in gameplay (P = 0.8),
   as in 177443.** This run has frames and video, so its gfps is not read against anything. The
   screen reads gfps.
+
+Queued 17:56 PDT as `1-1791766181-lane.gtasagpu1011-1063190` and `1-1791766181-lane.gtasagpu1011-1063583`
+(ref d50bf5c47c, release priority), behind about 45 min of Nova work (nfsroute1011 running, then soakvideo1011's
+gta-sa video soak, two gtaroutes1011 soaks and a snapshot1011 run).

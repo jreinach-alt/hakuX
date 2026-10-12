@@ -1,2 +1,1 @@
-run 1-1791752181-lane.gtasagpu1011-2027680
-run 1-1791755383-lane.gtasagpu1011-2946023
+lane.gtasagpu1011 waiting: step 3 proof soaks 1-1791766181-lane.gtasagpu1011-1063190 and 1-1791766181-lane.gtasagpu1011-1063583 (Nova, 600 s each, HAKUX_VTX_HAZARD=1, ref d50bf5c47c), queued 17:56 PDT; resolved by dispatch/results/<id>/result.json for each. Then: score S/H/C (NOTES step 3), write pilots/lane.gtasagpu1011.ok, queue the ON-vs-OFF title screen.

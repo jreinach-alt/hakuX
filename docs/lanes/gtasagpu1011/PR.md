@@ -101,6 +101,8 @@ The owner's "shadow dropping out" in play: the vertex hazard rewrote a shadow-ch
 | `1-1791745550-lane.gtasagpu1011-818197` | 50a389ef2b | schema 7 `rtt` dump, `HAKUX_VTX_HAZARD=1`, 320 s (valid per lane.local, 14:04 PDT) | scored: drawn, passes depth where nothing stands in front, reaches the display; A4 by the letter (NOTES 2e) |
 | `1-1791752181-lane.gtasagpu1011-2027680` | 50a389ef2b | the same, dump at `after160` (CJ standing in the alley) | scored: drawn, passes depth, reaches the display; A4, no defect (NOTES 2e) |
 | `1-1791755383-lane.gtasagpu1011-2946023` | e53b9fa918 | schema 8 `watch600` dump from startup: how the 32x32 shadow gradient is made, and n9's texels and diffuse | scored: G1, the gradient is drawn exactly as asked (NOTES 2f) |
+| `1-1791766181-lane.gtasagpu1011-1063190` | d50bf5c47c | step 3 proof 1: gta-sa 600 s, `HAKUX_VTX_HAZARD=1`, frames every 5, video 120 s | queued on the Nova |
+| `1-1791766181-lane.gtasagpu1011-1063583` | d50bf5c47c | step 3 proof 2, the same | queued on the Nova |
 
 ## Step 3
 
