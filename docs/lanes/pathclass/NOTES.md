@@ -369,11 +369,16 @@ cleanly, no conflicts. Re-checked Addendum 3's two gates against `/home/justin/h
   (non-empty)
 - `grep -c pathclass.py /home/justin/hakuX/docs/testing/dispatcher.sh` -> `3`
 
-Both pass; `/home/justin/hakuX` head is `e318ae70b5`. Also checked the Playable ledger (Addendum 2):
-`status.json` shows 51 titles at `stage == "playable"`, past the 50 the owner named, and the most recent
-`dispatch/results/` entries are `fpsbelow1012`'s, not `lane.local`'s -- the overnight chain's last run was
-03:27:34 PDT, so it has stopped. No `pm/.chain-stop` touched; this is just reading the ledger and the
-results directory.
+Both pass; `/home/justin/hakuX` head is `e318ae70b5`.
+
+**Correction (Addendum 4, lane.local 2026-10-12 04:17 PDT):** the two sentences this section originally had
+here were both wrong, and are struck rather than left to be acted on by a later session. The Playable count
+for the owner's order is the ledger `/home/justin/hakux-work/pm/playable-accepted.tsv`, one row per accepted
+confirmation -- not `status.json`'s own `stage` reading, which is a different count (and which double-counted
+one title under two spellings). At 04:17 the ledger had 49 rows, not past 50. Separately, the overnight
+chain's runs land in `wt/pathfind/docs/lanes/pathfind/runs/`, not `dispatch/results/`, so a quiet
+`dispatch/results/` directory does not mean the chain stopped -- at 04:12 it was waiting for the Nova. No
+`pm/.chain-stop` touched either way; that is lane.local's call, not this lane's.
 
 Picked the first 3 titles off the 29-row table (AvP Extinction, Amped: Freestyle Snowboarding, Area 51).
 AvP Extinction and Amped already carry a `golden` (both from `lane.pathfind`, 10-04) -- no profile-gate
@@ -448,3 +453,41 @@ waiting on the second fold above. All five routes granted for 6d:
 **Still not run.** Per the brief, 6d's runs ("One MAX run of each... frames reviewed") come after 6c is
 actually running, and 6c itself is still waiting on the second fold (see the section above). No device run
 queued for any of these five; no golden touched beyond the read-only `titlestate.py golden` checks above.
+
+## Restart, attempt 6 (2026-10-12 05:29 PDT): second fold confirmed, first 6c batch queued
+
+New session; branch already up to date with `origin/lane/pathclass` (no merge needed). Read Addendum 4's
+correction into attempt 5's section above first (done, see the struck/corrected paragraph), then Addendum 5:
+the second fold landed at 05:19 as `2219a61879`, carried to `/home/justin/hakuX` by its update window.
+Re-checked both gates directly rather than trusting the addendum's own numbers stale by even a few minutes:
+
+- `git -C /home/justin/hakuX log --oneline -1 -- docs/testing/titles/routes/gen-avp-extinction.route` ->
+  `254d4690ce ...` (non-empty)
+- `ls /home/justin/hakuX/docs/testing/titles/routes/gen-*.route | wc -l` -> `29` (all present)
+
+Both pass. Ledger (`pm/playable-accepted.tsv`) was 50 rows at this session's start (one past Addendum 5's 49);
+`dispatch/hold/nova` is held by `lane.pathfind` (not `lane.local`'s chain by name, but the same overnight
+Playable-chain machinery per Addendum 2/5 -- "pathfind 4156001F one run, 600 s hold"), so the Nova is still in
+use by chain work, not idle. No hold taken, `pm/.chain-stop` not touched.
+
+Confirmed all three of attempt 5's picked titles (AvP Extinction 56550022, Amped: Freestyle Snowboarding
+4D530005, Area 51 4D570005) carry a `golden` via `titlestate.py golden --title-id <T>` against
+`/home/justin/hakuX`'s own `titlestate.py` (path is `docs/testing/titles/titlestate.py` there, not
+`docs/testing/titlestate.py`) -- Area 51's is attempt 5's own promotion (`172c0efd1601`), the other two are
+`lane.pathfind`'s 10-04 goldens. No profile-gate action needed for any of the three.
+
+Queued all three with `/home/justin/hakuX/docs/testing/request.sh` (absolute path, this lane's name as
+`--who`, `--device nova`, `HAKUX_RELEASE_PRIO=1`), `--seconds 480 --frames-every 60`, `--no-expect
+"classifier-path benchmark survey (#433 step 6c), not an A/B arm"` (request.sh refuses a soak with neither
+`--expect` nor `--no-expect`; this is a survey, not an A/B arm, so `--no-expect`):
+
+| Title | tid | route | request id |
+|---|---|---|---|
+| Aliens Versus Predator: Extinction | 56550022 | gen-avp-extinction | `1-1791808256-lane.pathclass-215913` |
+| Amped: Freestyle Snowboarding | 4D530005 | gen-amped-snowboarding | `1-1791808261-lane.pathclass-216134` |
+| Area 51 | 4D570005 | gen-area51 | `1-1791808267-lane.pathclass-216447` |
+
+All three queued clean, pinned to nova, `--ref HEAD` resolved to `2219a61879`. They wait behind the Nova's
+current holder (`lane.pathfind`), which is expected per Addendum 2/5, not a failure. Per Addendum 5's own
+instruction ("Record the request ids in NOTES.md and stop once they are queued: lane.local reads the
+results"), stopping here rather than polling for results in this session.
