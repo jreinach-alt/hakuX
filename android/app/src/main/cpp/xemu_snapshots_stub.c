@@ -1,64 +1,9 @@
+/*
+ * Stand-ins for ui/xemu-thumbnail.cc, which the Android build leaves out:
+ * it renders snapshot thumbnails with desktop GL. ui/xemu-snapshots.c itself
+ * is built (#433); on Android it writes and reads no thumbnail.
+ */
 #include "ui/xemu-snapshots.h"
-#include "qapi/error.h"
-
-const char **g_snapshot_shortcut_index_key_map[] = { NULL };
-
-char *xemu_get_currently_loaded_disc_path(void)
-{
-    return NULL;
-}
-
-int xemu_snapshots_list(QEMUSnapshotInfo **info, XemuSnapshotData **extra_data,
-                        Error **err)
-{
-    (void)err;
-    if (info) {
-        *info = NULL;
-    }
-    if (extra_data) {
-        *extra_data = NULL;
-    }
-    return 0;
-}
-
-void xemu_snapshots_load(const char *vm_name, Error **err)
-{
-    (void)vm_name;
-    if (err) {
-        *err = NULL;
-    }
-}
-
-void xemu_snapshots_save(const char *vm_name, Error **err)
-{
-    (void)vm_name;
-    if (err) {
-        *err = NULL;
-    }
-}
-
-void xemu_snapshots_delete(const char *vm_name, Error **err)
-{
-    (void)vm_name;
-    if (err) {
-        *err = NULL;
-    }
-}
-
-void xemu_snapshots_save_extra_data(QEMUFile *f)
-{
-    (void)f;
-}
-
-bool xemu_snapshots_offset_extra_data(QEMUFile *f)
-{
-    (void)f;
-    return false;
-}
-
-void xemu_snapshots_mark_dirty(void)
-{
-}
 
 void xemu_snapshots_set_framebuffer_texture(GLuint tex, bool flip)
 {
