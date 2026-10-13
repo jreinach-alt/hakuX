@@ -9,9 +9,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 No lane session is running.
 
 - **Handhelds:** 1 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -98,4 +98,4 @@ No branch is being worked right now.
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 release05: v0.5.0 release notes (#433, 0.5)
 
-_Updated 2026-10-13 09:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 10:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
