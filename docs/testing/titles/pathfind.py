@@ -1771,6 +1771,47 @@ class Agent:
         self.hold_capture("B", "recover-pause-back")   # back out without confirming anything in the menu
         return False
 
+    def prompt_rung(self, log, jpg):
+        """Before the genre's unstick ladder fires on a still window (#433 Part C: Darkwatch, frame 038, "USE X
+        TO MELEE ATTACK THE DOOR LOCK" -- a shooter-genre still window, and HOLD_UNSTICK["shooter"]'s two rungs
+        have no X). One model look for an on-screen instruction naming a button; the caller fires this only once
+        per still window (its own prompt_tried flag), so a prompt this cannot clear in 3 tries falls through to
+        the existing ladder. If the instruction needs the player to face or aim at something first, a stick step
+        is sent before each press. Logged under "prompt_try" (not "action"), same reason confirm_gas uses
+        "gas_try". Returns True once the scene changes, else False."""
+        base_png, base_jpg = self.frame("prompt-a")
+        if not base_png:
+            return False
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game. The screen has not changed for a while. Is there an "
+            'on-screen instruction telling the player to press a button, such as "USE X TO ..." or "PRESS A TO '
+            '...". Xbox buttons: A green, B red, X blue, Y yellow, plus BACK/START/black/white -- the glyph\'s '
+            "colour names the button. If pressing it needs the player to face or aim at something first, name "
+            'which way to turn with a stick. Answer JSON only: {"prompt": true|false, "button": "<button or '
+            'none>", "turn": "<stick:left|stick:right|rstick:left|rstick:right|none>", "why": "<one line>"}'
+        ), "prompt-rung", [base_jpg]) or {}
+        btn = str(ans.get("button", "")).strip().upper()
+        if not ans.get("prompt") or btn not in BUTTONS:
+            return False
+        turn = str(ans.get("turn", "none")).strip().lower()
+        turn_tok = None
+        if turn in ("stick:left", "stick:right", "rstick:left", "rstick:right"):
+            kind, dirn = turn.split(":")
+            turn_tok = f"{kind.upper()}:{dirn}:1"
+        for _ in range(3):
+            if turn_tok:
+                self.send([turn_tok])
+            c_png, c_jpg = self.hold_capture(btn, "prompt-press")
+            if not c_png:
+                return False
+            ok = window_change(base_png, c_png) >= HOLD_STILL
+            self.hold_note(log, {"prompt_try": btn, "turn": turn, "changed": ok})
+            print(f"hold-play: prompt {btn} (turn {turn}): {'changed' if ok else 'no change'}", flush=True)
+            if ok:
+                return True
+            base_png, base_jpg = c_png, c_jpg
+        return False
+
     def team_sport(self):
         """A team sport on a court, field or rink: the run's goal names a period setting or a team select, or the
         title's name is a team-sports league (the claim has no genre look yet; the hold's genre comes after it)."""
@@ -2233,7 +2274,7 @@ class Agent:
         sd_ladder = HOLD_UNSTICK.get(genre)
         sd_watch = stuckdetect.StuckWatch(genre, HOLD_SHED_STATES, sd_ladder, UNLOCK_LADDER[:3],
                                            max_rungs=len(sd_ladder) if sd_ladder else 3) if stuckdetect else None
-        sd_abort, last_st, sd_rungs, drive_recovered = "", "play", 0, False
+        sd_abort, last_st, sd_rungs, drive_recovered, prompt_tried = "", "play", 0, False, False
         low_run, flipped, rev_row, reversals = 0, False, 0, 0   # the reverse rule (16:08): looks still in a row, walk turned round
         patrol_looks = 0   # play looks on the shooter loop, for the patrol backstop (patrol_due)
         while not held_ok and not reason and self.el() < self.budget_s:
@@ -2478,11 +2519,22 @@ class Agent:
                             elif d["abort"]:
                                 sd_abort = f"stuck_abort: {d['reason']}; {sd_rungs} unstick rung(s) tried, still stuck"
                             else:
-                                sd_rungs += 1
-                                print(f"hold-play: stuck ({d['reason']}): unstick {' '.join(d['action'])} at {hold_el:.0f} s", flush=True)
-                                self.send(d["action"])
+                                cleared = False
+                                if not prompt_tried:
+                                    # before the genre's own ladder rung, one model look for an on-screen
+                                    # instruction naming a button (#433 Part C): a still window may be a prompt
+                                    # the ladder's static tokens never cover, not a dead end the ladder must walk
+                                    prompt_tried = True
+                                    print(f"hold-play: stuck ({d['reason']}): prompt look at {hold_el:.0f} s", flush=True)
+                                    cleared = self.prompt_rung(log, jpg)
+                                if cleared:
+                                    sd_rungs = 0
+                                else:
+                                    sd_rungs += 1
+                                    print(f"hold-play: stuck ({d['reason']}): unstick {' '.join(d['action'])} at {hold_el:.0f} s", flush=True)
+                                    self.send(d["action"])
                         else:
-                            sd_rungs, drive_recovered = 0, False
+                            sd_rungs, drive_recovered, prompt_tried = 0, False, False
                     except Exception as e:   # never let the detector end a hold it cannot read
                         sd_watch = None
                         look["stuck_error"] = repr(e)[:120]

@@ -565,6 +565,75 @@ if SD and len(f4x4) >= 8:
 else:
     check("driverecover-4x4evo2", False, f"fixture frames missing or stuckdetect unavailable: {f4x4}")
 
+
+# promptrung (#433 Part C): Agent.prompt_rung's own parsing, called directly (not a full Sim/Agent run -- the
+# brief's test bar is the parser on Darkwatch's real prompt frame plus a no-prompt negative on a real still
+# frame) against the real recorded frames, with a fixture model answer standing in for a real model call.
+class PromptFakeAgent:
+    def __init__(self, frames, answers):
+        self.name = "Sim"
+        self._frames = [(p, p) for p in frames]   # (png, jpg): prompt_rung reads window_change off these paths
+        self.model = FakeModel(answers)
+        self.captured = []
+
+    def frame(self, tag):
+        return self._frames.pop(0) if self._frames else (None, None)
+
+    def hold_capture(self, tok, tag):
+        self.captured.append(tok)
+        return self._frames.pop(0) if self._frames else (None, None)
+
+    def hold_note(self, log, rec):
+        pass
+
+    def send(self, action):
+        self.captured.extend(action)
+
+
+PR_FIX = os.path.join(HERE, "..", "..", "lanes", "holdinput1013", "fixtures", "promptrung")
+DARKWATCH_PROMPT = os.path.join(PR_FIX, "darkwatch-038-hold.jpg")
+# n-4947001F-1011 frame 099: a shooter-genre hold that went still (scene unchanged for 4 samples) and recovered
+# via the ordinary ladder (STICK:left:2 RT:1) with no on-screen prompt anywhere in frame -- the negative case.
+NOPROMPT_STILL = os.path.join(PR_FIX, "n-4947001F-099-hold-noprompt.jpg")
+
+# 1. Darkwatch frame 038's "USE X TO MELEE ATTACK THE DOOR LOCK" (blue X glyph): the rung picks X and presses it
+if os.path.exists(DARKWATCH_PROMPT) and os.path.exists(NOPROMPT_STILL):
+    fa = PromptFakeAgent([DARKWATCH_PROMPT, NOPROMPT_STILL], [{"prompt": True, "button": "X", "turn": "none"}])
+    ok = pathfind.Agent.prompt_rung(fa, [], None)
+    check("promptrung-darkwatch", ok is True and fa.captured == ["X"],
+          f"Darkwatch's melee prompt (hold frame 038) is parsed and X is pressed: {fa.captured}")
+else:
+    check("promptrung-darkwatch", False, f"fixture frame(s) missing: {DARKWATCH_PROMPT}, {NOPROMPT_STILL}")
+
+# 2. a plain still frame with no on-screen prompt never fires the rung: nothing is pressed, falling straight
+# through to the existing ladder (the caller's own fallback, unaffected by this rung)
+if os.path.exists(NOPROMPT_STILL):
+    fa = PromptFakeAgent([NOPROMPT_STILL], [{"prompt": False, "button": "none", "turn": "none"}])
+    ok = pathfind.Agent.prompt_rung(fa, [], None)
+    check("promptrung-noprompt", ok is False and fa.captured == [],
+          f"a still frame with no on-screen prompt presses nothing: {fa.captured}")
+else:
+    check("promptrung-noprompt", False, f"fixture frame missing: {NOPROMPT_STILL}")
+
+# 3. extra coverage: a prompt that needs a target faced first turns (STICK or RSTICK) before each press, rather
+# than pressing blind
+PR_DIR = os.path.join(TMP, "promptrung")
+os.makedirs(PR_DIR)
+_pr_n = [0]
+
+
+def pr_frame(shift):
+    _pr_n[0] += 1
+    p = os.path.join(PR_DIR, f"{_pr_n[0]:03d}.png")
+    frame(p, "game", shift)
+    return p
+
+
+fa = PromptFakeAgent([pr_frame(0), pr_frame(47)], [{"prompt": True, "button": "A", "turn": "rstick:right"}])
+ok = pathfind.Agent.prompt_rung(fa, [], None)
+check("promptrung-turn", ok is True and fa.captured == ["RSTICK:right:1", "A"],
+      f"a prompt needing a target turns with the model's own named stick before the press: {fa.captured}")
+
 # holdrepeat: a cutscene that asks for A (an episode card) is answered once; its A is repeated HOLD_REPEAT times
 # with no model call, then the screen is read again, and the play resumes (Panzer, 10-03: 4 looks per death)
 CUT = {"state": "cutscene", "in_play": False, "why": "episode card", "action": ["A"], "wait_s": 1}

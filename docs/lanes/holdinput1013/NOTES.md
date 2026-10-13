@@ -128,13 +128,62 @@ carry over when the same logic is transcribed into a permanent test -- re-check 
 dict access against the function's own documented return shape, not just against what
 happened to work in the one-off script.
 
-## Part C -- on-screen button-prompt detection before the shooter genre's unstick rungs
+## Part C -- on-screen button-prompt detection before the genre's unstick rungs (COMPLETE)
 
-Not started. Darkwatch, `$R/n-43430016-1013r/`: X is a melee prompt that should be acted
-on before `HOLD_UNSTICK["shooter"]`'s rungs fire. Likely reuses `drive_recover`'s
-prompt-detection pattern (one model look, JSON button-or-none answer) but wired in ahead
-of the shooter ladder rather than after it exhausts -- the opposite order from Part B,
-since here the prompt is the *first* thing to try, not a last resort.
+Darkwatch, `$R/n-43430016-1013r/`: from hold frame 026, every frame shows "USE (X) TO
+MELEE ATTACK THE DOOR LOCK" (blue X glyph), but `HOLD_UNSTICK["shooter"]`'s two rungs
+(strafe + fire) have no X -- `stuck_abort` at 432 s of play, failing on duration.
+
+Fix: `Agent.prompt_rung()`, wired into `hold_play()`'s `sd_watch` non-abort branch
+(the `else` that used to go straight to `self.send(d["action"])`), gated by a
+`prompt_tried` flag reset the same place `drive_recovered` is (so it fires once per
+still-window episode, before the first ladder rung, not once per rung): one model look
+for an on-screen instruction naming a button (the prompt's text, and the glyph's
+colour -- A green, B red, X blue, Y yellow); if the instruction needs the player to
+face or aim at something first, the model also names a stick turn (`stick:left` etc.,
+walk, or `rstick:left` etc., look/aim), sent via the real `self.send()` before each of
+up to 3 presses. A prompt the rung cannot clear in 3 tries falls through to the
+existing ladder for that stuck sample (`cleared` stays `False`, so `self.send(d["action"])`
+still runs); not gated by genre or `th`, since an on-screen prompt can appear in any
+genre's still window and `sd_watch`'s own ladder branch already runs unconditionally
+of `th` (only Part B's drive-recovery branch is `th`-gated, because that one duplicates
+a mechanism `TITLE_HOLD` can already have its own fallback for).
+
+Logged under `"prompt_try"` (not `"action"`), matching `confirm_gas`/`drive_recover`'s
+`"gas_try"`/`"recover_try"` convention.
+
+**Why this can't reuse `drive_recover`'s own flow wholesale**: `drive_recover` fires
+once, *after* the genre's static ladder is fully exhausted (last resort, Part B).
+Part C's prompt is the *opposite* order -- tried *before* the ladder's first rung, on
+the *first* stuck sample of an episode, since an on-screen prompt is an instruction,
+not a fallback. Both share the same one-look-then-try-the-named-button shape, so
+`prompt_rung` is still a short, separate method (not a flag passed into
+`drive_recover`) -- the trigger condition and the thing it falls through to on failure
+differ enough that sharing one function would need a branch at nearly every line.
+
+**A reuse trap avoided**: the shared `self.sim` canned-answer queue in
+`pathfind_selftest.py`'s dry-mode `Model.ask()` is a flat list popped in call order,
+with no purpose-based routing. Before writing this, checked whether `prompt_rung`'s
+new `model.ask(..., "prompt-rung", ...)` call (fired once per stuck episode, inside
+the existing `sdstuck` selftest leg, which already runs the real `stuckdetect` module
+against 16 canned `PAUSED` answers) would shift that queue and break `sdstuck`'s
+assertions. It doesn't: `sdstuck`'s screen never changes, so there is exactly one
+continuous stuck episode, `prompt_tried` gates `prompt_rung` to a single extra call
+across the whole test, and all 16 `PAUSED` answers are identical in content, so a
+one-answer shift changes nothing the test checks. Confirmed by running the full
+selftest suite after wiring this in: `sdstuck` and every other leg still passes.
+
+New selftest (`promptrung-*`) calls `pathfind.Agent.prompt_rung` directly (same
+duck-typed-stub pattern as `driverecover-*`, extended with a `send()` stub) against two
+real recorded frames, copied into `docs/lanes/holdinput1013/fixtures/promptrung/`:
+Darkwatch's own hold frame 038 (the melee prompt) with a fixture model answer naming
+X -- the rung presses X; and n-4947001F-1011's hold frame 099 (a shooter-genre run
+that went still -- "scene unchanged for 4 consecutive samples" -- and recovered via
+the ordinary ladder with no on-screen prompt anywhere in frame, the brief's asked-for
+"hold that went still and recovered") with a fixture answer naming no prompt -- the
+rung presses nothing, falling straight through. A third leg (`promptrung-turn`, extra
+coverage beyond the brief's two-case bar) confirms a prompt whose answer needs a
+target sends the model's own named stick turn before the button.
 
 ## Part D -- a scored window whose scene never travels must fail like menu/pause/load
 
