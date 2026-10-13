@@ -8,7 +8,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `holdinput1013` | claude-sonnet-5 | 30 min | pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every  |
+| `holdinput1013` | claude-sonnet-5 | 45 min | pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every  |
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
@@ -87,7 +87,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/holdinput1013` | pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every unstick ru | `a8ea45d1a3` | 2026-10-13 14:44 |
+| `lane/holdinput1013` | pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every unstick ru | `2202cb01cd` | 2026-10-13 14:44 |
 
 ## Recently landed on master
 
@@ -104,4 +104,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-13 compatpage1012: the compatibility page in three sections, with regions and a CSV (#433, 0.5)
 - 2026-10-12 issuemirror1012: the issue mirror on a timer: one lock, incremental sync, budget-true pre-check (#433, 0.5)
 
-_Updated 2026-10-13 14:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 15:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
