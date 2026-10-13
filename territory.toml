@@ -67,6 +67,12 @@ standing = false
 files = ['docs/lanes/issuemirror1012/**']
 note = 'STARTED lane.local 2026-10-12 22:06 PDT (Sonnet, harness): the live issue mirror (host-tools/issue_mirror.py, lane.issuesync1012) cannot go on a timer yet: only new takes the state lock (a sync overlapping a backfill can roll the cursor back and spend GitHub numbers twice), every sync lists all of GitHub (~10 reads; a 10-min timer would need ~2,900/day vs the 600 cap), and the backfill pre-check compares against the whole day cap. Stages fixes, a 10-min timer and an hourly report section under hakux-work/lanes/issuemirror1012; no live calls. Brief: briefs/issuemirror1012.md.'
 
+[lane.issuemirror1013]
+issues = ['433']
+standing = false
+files = ['docs/lanes/issuemirror1013/**']
+note = 'STARTED lane.local 2026-10-13 00:28 PDT (Sonnet, harness): round 2 of the issue mirror: gateway exit 75 (lock held, nothing ran) becomes a bounded wait-and-retry, a cap refusal gets its own exit code and an hourly ALARM, and `budget` runs without the lock. Stages under hakux-work/lanes/issuemirror1013; no live calls. Brief: briefs/issuemirror1013.md.'
+
 [retired.issuerecon]
 issues = ["433"]
 retired_utc = "2026-10-03T16:11:41Z"
