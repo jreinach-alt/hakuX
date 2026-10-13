@@ -77,6 +77,16 @@ import pathfind  # noqa: E402
 # existing hold legs test the loop, so their check passes; the validity rule itself is tested by the 'validity' legs
 # below (hold_shortfall on fake verdicts), and on the device by every held run's validity lines in hold.jsonl.
 pathfind.Agent.hold_check = lambda self, play_s, log: ("pass", 0.0, "")
+# saved before the monkeypatch below replaces it, so the 'unsalvageable' leg can still call the real
+# arithmetic directly (its own provisional_verdict stubbed in, not the subprocess-calling original)
+REAL_HOLD_UNSALVAGEABLE = pathfind.Agent.hold_unsalvageable
+# Same reason, for the budget-left rule (#433 Part B): hold_unsalvageable calls provisional_verdict, which
+# shells out to title_verdict.py on the sim's (nonexistent) logcat. Unmocked, every long sim hold (holdstuck's
+# ladder rounds run for most of a 3600-s budget) pays a real subprocess every HOLD_VERDICT_S -- harmless
+# (title_verdict reads no route-state lines and returns timeline "none", so hold_unsalvageable's own
+# isinstance(tl, dict) guard already keeps it from firing) but slow. Faked here the same way hold_check is;
+# the rule's arithmetic is tested directly below ('unsalvageable') and confirmed against real run data in NOTES.md.
+pathfind.Agent.hold_unsalvageable = lambda self, play_s, budget_left_s, log: None
 # the selftest's claim budgets are seconds long and run on real time: a 300-s confirm grace would let every
 # budget-ended case wait out its sim. The grace is a production setting; its path is the next real claim's test.
 pathfind.CONFIRM_GRACE_S = 0
@@ -748,6 +758,64 @@ hitch_fail = dict(short_dur, failing="hitch: 3 stalls over 500 ms after warm-up"
 check("validity", pathfind.hold_shortfall(fps_fail, 600)[0] == "stop" and pathfind.hold_shortfall(hitch_fail, 600)[0] == "stop"
       and pathfind.hold_shortfall({"pass": True}, 600)[0] == "pass" and pathfind.hold_shortfall(None, 600)[0] == "stop",
       "an fps fail and a hitch stop the hold at once; a pass ends it; no verdict stops it")
+# unsalvageable (#433 Part B, 10-13): a hold ends early once no amount of budget left could bring off play
+# under the 10% bar -- distinct from the ladder/step-cap rule above, which the 10-06 order keeps from ending
+# a hold while budget remains. hold_bar_unreachable is the cheap trigger (the hold's own numbers: play so far,
+# window so far, budget left); hold_unsalvageable confirms it against a verdict's own timeline before ending.
+# PoP: Sands of Time (5553001D, 10-13d) was off play near hold 400 s of a 2400-s budget (197 s of play by the
+# end, a 0.10ish share throughout) -- the numbers below scale that down.
+check("unsalvageable", pathfind.hold_bar_unreachable(play_s=40, window_s=400, budget_left_s=2000),
+      "PoP-scale: 360 s off of a 400 s window, 2000 s budget left -- 360 > 10% of 2400, already unreachable")
+check("unsalvageable", not pathfind.hold_bar_unreachable(play_s=399.8, window_s=400, budget_left_s=0),
+      "25 to Life (play share 0.9996): 0.2 s off is nowhere near 10% of even a 0-s budget left")
+check("unsalvageable", not pathfind.hold_bar_unreachable(play_s=0, window_s=100, budget_left_s=2000),
+      "early in a hold, budget left dwarfs window so far: 100 s off is not > 10% of 2100 s (210 s)")
+check("unsalvageable", not pathfind.hold_bar_unreachable(play_s=10, window_s=100, budget_left_s=800),
+      "boundary: 90 s off == 10% of 900 s exactly -- not strictly past the bar, so not yet unreachable")
+
+
+class _FakeAgent:
+    def __init__(self, verdict):
+        self._verdict = verdict
+        self.notes = []
+
+    def provisional_verdict(self, play_s, log):
+        return self._verdict
+
+    def hold_note(self, log, look):
+        self.notes.append(look)
+
+
+no_tl = {"pass": False, "timeline": "none"}
+share_tl = {"pass": False, "timeline": {"play_s": 40.0, "scored_s": 400.0}}
+share_tl_ok = {"pass": False, "timeline": {"play_s": 399.8, "scored_s": 400.0}}
+check("unsalvageable", REAL_HOLD_UNSALVAGEABLE(_FakeAgent(None), 40, 2000, "log") is None,
+      "no verdict yet: unknown, not a failure -- the hold keeps going")
+check("unsalvageable", REAL_HOLD_UNSALVAGEABLE(_FakeAgent(no_tl), 40, 2000, "log") is None,
+      "a verdict with timeline \"none\" (no drive step) has nothing to confirm against: unknown, not a failure")
+reason = REAL_HOLD_UNSALVAGEABLE(_FakeAgent(share_tl), 40, 2000, "log")
+check("unsalvageable", reason and "360" in reason and "400" in reason and "2000" in reason,
+      f"confirmed against the verdict's own timeline: reason names off play, window and budget left: {reason!r}")
+check("unsalvageable", REAL_HOLD_UNSALVAGEABLE(_FakeAgent(share_tl_ok), 399.8, 0, "log") is None,
+      "a verdict confirming a healthy play share never ends the hold")
+
+# a hold that went off play (ladder rounds), recovered, and passed: no real example has both a ladder_round
+# entry and hold.ok true (every hold.jsonl with a ladder_round that was found -- crashwoc-1006/-1007,
+# doaultimate-1006b, marvel-1006, n-43430008-1007, n-434D0029-1007, n-46530005-1011, n-53430006-1013,
+# n-5343000C-1013, n-53450004-1013, n-55530009-1007, n-58500001-1007, rehold2-4D570034, rehold2b-4D570034 --
+# ended hold.ok false), so this is a built fixture: a budget large enough that off play during the stuck
+# stretch never crosses the bar (same shape as PoP, scaled up), recovering by t=240 and reaching a genuine
+# 0.9167 play share at the need_s=600 checkpoint.
+RECOVERED = [(60, 10), (120, 20), (180, 35), (240, 130), (600, 550)]
+for window_s, play_s in RECOVERED:
+    v = {"pass": None, "timeline": {"play_s": float(play_s), "scored_s": float(window_s)}}
+    budget_left = 3000 - window_s
+    r = REAL_HOLD_UNSALVAGEABLE(_FakeAgent(v), play_s, budget_left, "log")
+    check("unsalvageable", r is None,
+          f"recovered hold: window {window_s}s, play {play_s}s, budget left {budget_left}s never looks unreachable: {r!r}")
+kind, _ = pathfind.hold_shortfall({"pass": True, "timeline": {"play_s": 550.0, "scored_s": 600.0, "play_share": 550 / 600}}, 600)
+check("unsalvageable", kind == "pass", "the recovered hold's own final checkpoint (0.9167 share) is a real pass")
+
 # the ladder (10-06): off play past the cap runs its rounds, one press per look, cycling A, START, A, A, B, START
 check("ladder", pathfind.HOLD_LADDER[0] == "A" and pathfind.HOLD_LADDER[1] == "START" and "B" in pathfind.HOLD_LADDER
       and pathfind.HOLD_LADDER_ROUNDS >= 1 and pathfind.HOLD_LADDER_ROUNDS * pathfind.HOLD_NAV_MAX >= 60,

@@ -210,7 +210,23 @@ def hold_shortfall(v, need_s=600.0):
     off = max(0.0, scored - float(tl.get("play_s") or 0))
     more = off / 0.10 - scored
     return ("share", more) if more > 0 else ("stop", 0.0)
-CONFIRM_GRACE_S = 300                # seconds the claim budget is extended once a gameplay read starts its confirm (10-05)
+
+
+def hold_bar_unreachable(play_s, window_s, budget_left_s, bar=0.10):
+    """Cheap pre-filter, from the hold's own numbers (play so far, window so far = elapsed hold
+    time, budget left): true once off play already cannot drop to `bar` of the scored window even
+    if every second of budget left were spent on play. Never ends a hold by itself -- confirmed
+    against the provisional verdict's own timeline first (Agent.hold_unsalvageable). PoP: Sands of
+    Time (5553001D, 10-13d) was certain to FAIL this way near hold 400 s, 27 min before its 2013-s
+    budget ran out (owner's 10-06 order keeps the step cap from ending a hold while budget remains;
+    this is a different rule -- it ends the hold only once budget remaining cannot buy a pass)."""
+    window_s = max(0.0, window_s)
+    budget_left_s = max(0.0, budget_left_s)
+    off = max(0.0, window_s - play_s)
+    return off > bar * (window_s + budget_left_s)
+
+
+CONFIRM_GRACE_S = 300               # seconds the claim budget is extended once a gameplay read starts its confirm (10-05)
 # live gameplay reads whose probe was refused on a self-moving scene before a --hold-s claim enters the hold (10-06: NFL
 # Blitz Pro read live football from ~610 s, every probe refused on the moving camera, and the claim-live rule only entered
 # the hold at the 25-min budget; the hold's verdict decides either way, so the wait was ~13 min of Nova time)
@@ -2337,6 +2353,18 @@ class Agent:
                 else:
                     print(f"hold-play: verdict short on {kind} by {s:.0f} s; holding on (budget {self.budget_s - self.el():.0f} s left)",
                           flush=True)
+            elif play_s < self.hold_s and (last_v is None or now() - last_v >= HOLD_VERDICT_S) and \
+                    hold_bar_unreachable(play_s, hold_el, self.budget_s - self.el()):
+                # the budget-left rule (#433 Part B, 10-13): off play already too large for the share bar
+                # to pass in the time left, confirmed against the provisional verdict's own timeline. Fills
+                # the gap the check above leaves: hold_check never runs before play_s reaches self.hold_s,
+                # so a hold stuck off play before then got no validity check at all (PoP: Sands of Time,
+                # 5553001D, 10-13d: 27 min of budget spent after the point this rule would have ended it).
+                last_v = now()
+                unreachable = self.hold_unsalvageable(play_s, self.budget_s - self.el(), log)
+                if unreachable:
+                    reason = unreachable
+                    break
             last_png = png
         for p in drop:
             os.remove(p)
@@ -2357,10 +2385,10 @@ class Agent:
             held["verdict"] = self.hold_verdict(now() - t_hold)
         return self.finish(last=kept[-1] if kept else jpg, post=kept)
 
-    def hold_check(self, play_s, log):
-        """The hold's own validity check (10-06): title_verdict.py on the logcat so far, in a provisional folder whose logcat
-        ends with a `soak end` at its last logged time. Returns (kind, seconds, why) from hold_shortfall. The hold's play and
-        the verdict's play are both logged; the verdict's is trusted when they disagree."""
+    def provisional_verdict(self, play_s, log):
+        """title_verdict.py on the hold's logcat so far, in a provisional folder (shared by hold_check and
+        hold_unsalvageable) whose logcat ends with a `soak end` at its last logged time. Returns the verdict
+        dict, or None when title_verdict did not produce one -- an unknown, not a failure."""
         pdir = os.path.join(self.out, "provisional")
         os.makedirs(pdir, exist_ok=True)
         try:
@@ -2377,13 +2405,18 @@ class Agent:
                        "iso": os.path.basename(self.iso or "")}, f)
         with open(os.path.join(pdir, "run.log"), "w") as f:
             f.write(f"held {self.name} for {int(play_s)}s\n")
-        v = None
         try:
             subprocess.run([sys.executable, VERDICT, pdir, "--require", "confirmation"],
                            capture_output=True, text=True, timeout=120)
-            v = json.load(open(os.path.join(pdir, "verdict.json")))
+            return json.load(open(os.path.join(pdir, "verdict.json")))
         except (subprocess.TimeoutExpired, OSError, ValueError):
-            v = None
+            return None
+
+    def hold_check(self, play_s, log):
+        """The hold's own validity check (10-06): the provisional verdict's hold_shortfall read. Returns
+        (kind, seconds, why). The hold's play and the verdict's play are both logged; the verdict's is
+        trusted when they disagree."""
+        v = self.provisional_verdict(play_s, log)
         # no verdict is an unknown, not a failure: the hold checks again at the next interval, and ends at the budget
         kind, s = ("retry", 0.0) if v is None else hold_shortfall(v, self.hold_s)
         tl = (v or {}).get("timeline")
@@ -2398,6 +2431,28 @@ class Agent:
                              "verdict_play_s": vplay, "gameplay_s": (v or {}).get("gameplay_s")})
         print(f"hold-play: validity check {kind} {s:.0f} s (hold {play_s:.0f} s of play, verdict {vplay})", flush=True)
         return kind, s, why
+
+    def hold_unsalvageable(self, play_s, budget_left_s, log):
+        """Confirms hold_bar_unreachable's cheap trigger against the provisional verdict's own timeline
+        (play_s, scored_s), read directly -- not through hold_shortfall, which returns 'duration' before the
+        window reaches need_s and so never reaches the share rule this early (#433 Part B: PoP: Sands of
+        Time, 5553001D, 10-13d, certain to FAIL on menu time near hold 400 s, 27 min before its budget ran
+        out). None when there is no verdict yet, or its timeline lacks these fields: an unknown, not a
+        failure, same convention as hold_check -- the hold keeps going and checks again at HOLD_VERDICT_S."""
+        v = self.provisional_verdict(play_s, log)
+        tl = (v or {}).get("timeline")
+        if not isinstance(tl, dict) or tl.get("play_s") is None or tl.get("scored_s") is None:
+            return None
+        scored = float(tl["scored_s"])
+        off = max(0.0, scored - float(tl["play_s"]))
+        if off <= 0.10 * (scored + max(0.0, budget_left_s)):
+            return None
+        reason = (f"off play {off:.0f} s of a {scored:.0f} s scored window cannot drop to 10% with "
+                  f"{budget_left_s:.0f} s of budget left: no amount of further play can pass")
+        self.hold_note(log, {"check": "unsalvageable", "off_s": round(off, 1), "window_s": round(scored, 1),
+                             "budget_left_s": round(budget_left_s, 1)})
+        print(f"hold-play: {reason}", flush=True)
+        return reason
 
     def hold_verdict(self, secs):
         """title_verdict.py on the hold's logcat: its one VERDICT line (verdict.json beside it)."""
