@@ -10,3 +10,7 @@
 - 2026-10-13: A7 committed, d4d292c9ca: staging flushed before its copy (X1 BOX 3d3515faad); fragment stage added to the UBO barrier (ours).
 - 2026-10-13: A8 committed, d88374737c: HRTF normalisation skips one channel, not both (ours; X1 BOX has the same bug).
 - 2026-10-13: A9 committed, 172d94de1f (pipeline-cache retry, X1 BOX 1d10f6cb2a/67fe8d7b2e) and 4f0111232c (DMA_VERTEX gen bump, X1 BOX b4999f2e97).
+- 2026-10-13: Phase A smoke runs 1-2 (Halo, GTA VC) queued; PR #965 opened (draft) for `lane/x1port1012`.
+- 2026-10-13: Phase B (#939) leads committed on `lane/x1port1012-halo`: f3acdd0912 (`HAKUX_XVSS`), 18fb351588 (`HAKUX_S2TSHELF`), 223f216d7c (staging-buffer memory-properties log). Attempt 1 ended without pushing the branch or updating these docs; see NOTES.md "Attempt 2 resume".
+- 2026-10-13 (attempt 2): Phase A smoke runs 1-2 judged PASS (Halo gfps 59.93 vs 59.98; GTA VC fps_ok 0.9859 vs ledger 0.9872). Run 3 (Crimson Skies) queued, 1791897193-x1port1012-336185.
+- 2026-10-13 (attempt 2): `lane/x1port1012-halo` pushed; PR opened (draft) for Phase B-D, stacked on #965. #939 triage-video arm 1/3 (`HAKUX_SURFGPU=0`) queued, 1791897357-x1port1012-341157; arms 2/3 and 3/3 (fastpaths off, shipped defaults) written up in NOTES.md to queue next as the queue has room. WAITING: owner judgment of the triage video once all three arms have results.

@@ -3,13 +3,35 @@
 Brief: `/home/justin/hakux-work/briefs/x1port1012.md`. Base `dd5e3cb3c6`. X1 BOX tip `dadced00ce`
 (`refs/remotes/x1box/master`), common base `fce5a8d19f`.
 
+## Attempt 2 resume: why attempt 1 did not finish
+
+Attempt 1 (Opus) did real work past where this file stops: `git log` on `lane/x1port1012-halo` (this
+worktree's branch, built on top of `lane/x1port1012`) shows three Phase B commits made after the last
+entry below -- f3acdd0912 (`HAKUX_XVSS` switch, the v0-hash skip lead), 18fb351588 (`HAKUX_S2TSHELF`
+switch, the shelf lookup lead), 223f216d7c (per-frame staging-buffer memory-properties log, the staging-
+coherence lead) -- all three credited `Co-Authored-By: Claude Opus 5.5`. None of that is recorded here or
+in OUTBOX.md, the branch was never pushed (`git branch -a` shows only `lane/x1port1012` on `origin`, not
+`-halo`), no PR exists for it, and Phase B step 1 (the triage video, which the leads in step 2 exist to be
+candidates for) was never queued. The session ended mid-brief with no docs, no push, no PR, nothing
+WAITING. Treating that as unfinished rather than complete: the definition of done needs a pushed branch,
+an open PR and NOTES/OUTBOX that match the commits, and none of those existed for this branch.
+
+This attempt (Sonnet, automatic resume while usage is Low) picks up: Phase A's two already-queued smoke
+runs had in fact completed (results existed under `dispatch/results/`, just never read back into this
+file), so they are judged below; the third Phase A smoke title is queued; Phase B's triage video (step 1)
+is queued next, now that the three leads from step 2 exist as switches to test against.
+
 ## Device-run count (cap 24, all attempts, video arms included)
 
 | # | request id | ref | arm | result |
 |---|---|---|---|---|
-| 1 | 1791876038-x1port1012-2539778 | 310ad08d5b | Phase A smoke: Halo, no route, 180 s, frames 15 | queued 2026-10-13 |
-| 2 | 1791876042-x1port1012-2540227 | 310ad08d5b | Phase A smoke: GTA VC, route gta-vc, 420 s | queued 2026-10-13 |
-| 3 | (not yet queued: queue limit 2) | 310ad08d5b | Phase A smoke: Crimson Skies, route crimson-skies, 300 s | queue when 1 or 2 finishes |
+| 1 | 0-1791876038-x1port1012-2539778 | 310ad08d5b | Phase A smoke: Halo, no route, 180 s, frames 15 | PASS, gfps 59.93 vs 59.98 baseline |
+| 2 | 0-1791876042-x1port1012-2540227 | 310ad08d5b | Phase A smoke: GTA VC, route gta-vc, 420 s | PASS, fps_ok_share 0.9859 vs ledger 0.9872 |
+| 3 | 1791897193-x1port1012-336185 | 310ad08d5b | Phase A smoke: Crimson Skies, route crimson-skies, 300 s | queued 2026-10-13, attempt 2 |
+| 4 | 1791897357-x1port1012-341157 | 223f216d7c | #939 triage video 1/3: Halo menu, 8s @ +20s, `HAKUX_SURFGPU=0` | queued 2026-10-13, attempt 2 |
+
+4 device runs used of the 24 cap (runs 1-2 dispatched in attempt 1, judged in attempt 2; runs 3-4 queued
+in attempt 2). Two more triage-video arms (fastpaths-off, shipped-defaults-last) still to queue.
 
 ## Phase A -- ports (branch `lane/x1port1012`)
 
@@ -76,3 +98,88 @@ Judge each result (`/home/justin/hakux-work/dispatch/results/<id>/`):
    `soak end` (fastpaths1010 NOTES 4.2's method); compare with 59.98. Look at the frames: menu, ring.
 4. Write the row into the run table above and a line in OUTBOX.md. If all three hold: set PR.md
    `State: ready`, commit, push.
+
+### Phase A smoke judged (attempt 2, runs 1-2; run 3 queued)
+
+Both results existed on disk already (attempt 1 dispatched them but the session ended before reading them
+back): `0-1791876038-x1port1012-2539778` (Halo) and `0-1791876042-x1port1012-2540227` (GTA VC).
+
+- **No crash, no hang** (both): `grep -iE "FATAL|Abort|assert|SIGSEGV" logcat.txt` is empty in both;
+  `run.log` ends with the normal `held <iso> for <n>s` / `PERF: restored=...` tail. Port log lines (`vp:
+  bad`, `outside VRAM`, `pipeline cache`) do not fire -- expected, nothing in either run's content reaches
+  those paths. `hakuX-audio` lines are the routine `submix_headroom` startup log, already in master, not a
+  Phase A finding.
+- **Halo** (no route, menu/ring only): `hakuX-pace` sums from app start + 30 s (logcat begins right at
+  `soak start`, 00:50:40.062, so +30 s = 00:51:10) to `soak end` (00:53:41.411): sum(vb)=9131,
+  sum(ms)=152351.9, gfps = 9131*1000/152351.9 = **59.93**, against the 59.98 baseline
+  (`1-1791706605-fastpaths1010-4193827`, same shape). PASS, well inside noise.
+- **GTA Vice City** (route `gta-vc`): `title_verdict.py` reports `fps_ok=0.9859 crash=False hang=False`
+  against the ledger's `fps_ok_share=0.9872` -- diff 0.0013, under the ~0.02 flag. The verdict line also
+  says `FAIL(duration: 310 s of gameplay < 600 s screening)`; that is `title_verdict.py`'s own screening
+  gate for a full ledger-length run, not this smoke run's bar (the brief: "no crash, no hang, fps within
+  the run's own noise" at the smoke's own --seconds). Read as a smoke PASS, not a screening FAIL.
+- Both rows are filled in the run table above. Run 3 (Crimson Skies) is queued; judge it the same way
+  (route title, `title_verdict.py`) when it lands, then set PR.md `State: ready` on `lane/x1port1012` if
+  it also passes, commit, push -- that PR already exists and is pushed (`origin/lane/x1port1012`).
+
+## Phase B -- #939, the Halo ring world
+
+Attempt 1 wrote three default-off leads as switches (git log on this branch, Phase B leads from the
+brief's step 2), each already carrying its own commit message rationale:
+
+| switch | commit | what it changes | ref for `--ref` |
+|---|---|---|---|
+| `HAKUX_XVSS` | f3acdd0912 | `noskip` runs every `LAUNCH_TRANSFORM_PROGRAM` (X1 BOX removed the v0-hash skip, cf92edbbba); `audit` logs how often the skip's output would have differed (`[xvss]`, hakuX-perf) | f3acdd0912 |
+| `HAKUX_S2TSHELF` | 18fb351588 | `0` turns off the shelved-surface lookup in `create_texture` (texture reads VRAM after the range scan instead); `audit` logs each hit's state (`[s2tshelf]`, hakuX-perf) | 18fb351588 |
+| (logging only) | 223f216d7c | one line per per-frame staging buffer at init, saying HOST_COHERENT or not (next to the existing create line) | 223f216d7c (current HEAD) |
+
+Step 0 (owner logs) was not attempted this session -- the brief says skip it after a few minutes if not
+found quickly, and finding them is a search through session logs outside this worktree; left for whichever
+session does step 3's owner review to check if convenient, not a blocker.
+
+Step 1, the triage video (3 arms: shipped defaults, `HAKUX_SURFGPU=0`, all eight fast paths off), was not
+queued by attempt 1 despite the leads existing to test. Queuing it now:
+
+- Halo has no route (confirmed again this session: no `halo-ce.route` under `docs/testing/routes/`), so
+  all three arms use the no-route soak, matching Phase A smoke run 1's shape.
+- The ring + HUD-overlay scene the owner described is on screen early: Phase A smoke run 1's captured
+  frame `f00003.png` (soak start + 17 s) already shows the ring curvature with a clock-style overlay
+  (`19:18:18:06`, a circular icon) drawn on top of it -- this is very likely the menu backdrop the owner
+  means. `--video-after 20` lands just past that, with margin for the pace lines to have reached steady
+  state (by +11 s in run 1).
+- Fast-path switch names, from `MainActivity.kt`'s `FASTPATHS_VARS` (the eight the "Fast renderer paths"
+  setting sets together): `HAKUX_REPORT_ASYNC`, `HAKUX_TEXSCAN`, `HAKUX_DRAWREC`, `HAKUX_UNI_BULK`,
+  `HAKUX_UNI_UBERCACHE`, `HAKUX_UNI_FOGCACHE`, `HAKUX_POSTED_PUT`, `HAKUX_LOCKFREE_WAKE`.
+- `--env` writes the app's `env_vars` pref and outlives the run until the next dispatched request clears
+  or replaces it (checked `apply_env_pref` in `dispatch/bin/dispatcher.sh`: a request with no `--env` DOES
+  clear a previous dispatcher-set env, via the `.env_pref.<dev>` marker, so queuing shipped-defaults with
+  no `--env` last is sufficient, not just cosmetic). Order: SURFGPU=0, then fastpaths-off, then shipped
+  defaults last.
+- Queued so far (queue cap 2 of ours at once; run 3 above already holds one slot):
+  - **Arm 1, `HAKUX_SURFGPU=0`**: `1791897357-x1port1012-341157`, queued attempt 2. Verbatim:
+
+        HAKUX_RELEASE_PRIO=0 docs/testing/request.sh --who x1port1012 --purpose "x1port1012 #939 triage video arm 1/3: Halo ring-world menu, HAKUX_SURFGPU=0 (surface-GPU reuse off), 8s video 20s after soak start, no route. Looking for the ring/overlay reset the owner described." --title "Halo Combat Evolved.iso" --seconds 60 --video-seconds 8 --video-after 20 --env HAKUX_SURFGPU=0 --device nova --ref 223f216d7c --issue 939 --no-expect "triage video, owner-judged, not an automated A/B"
+
+  - **Arm 2, fastpaths off** (queue once the queue has room -- after run 3 or arm 1 lands): verbatim,
+    ref `223f216d7c`:
+
+        HAKUX_RELEASE_PRIO=0 docs/testing/request.sh --who x1port1012 --purpose "x1port1012 #939 triage video arm 2/3: Halo ring-world menu, all eight fast renderer paths off, 8s video 20s after soak start, no route." --title "Halo Combat Evolved.iso" --seconds 60 --video-seconds 8 --video-after 20 --env HAKUX_REPORT_ASYNC=0 --env HAKUX_TEXSCAN=0 --env HAKUX_DRAWREC=0 --env HAKUX_UNI_BULK=0 --env HAKUX_UNI_UBERCACHE=0 --env HAKUX_UNI_FOGCACHE=0 --env HAKUX_POSTED_PUT=0 --env HAKUX_LOCKFREE_WAKE=0 --device nova --ref 223f216d7c --issue 939 --no-expect "triage video, owner-judged, not an automated A/B"
+
+  - **Arm 3, shipped defaults** (queue LAST -- after arm 2, no `--env` at all, so the dispatcher clears the
+    env pref back to shipped): verbatim, ref `223f216d7c`:
+
+        HAKUX_RELEASE_PRIO=0 docs/testing/request.sh --who x1port1012 --purpose "x1port1012 #939 triage video arm 3/3: Halo ring-world menu, shipped defaults, 8s video 20s after soak start, no route." --title "Halo Combat Evolved.iso" --seconds 60 --video-seconds 8 --video-after 20 --device nova --ref 223f216d7c --issue 939 --no-expect "triage video, owner-judged, not an automated A/B"
+
+Not done this session: the `HAKUX_XVSS=audit` and `HAKUX_S2TSHELF=audit` runs that would say whether Halo's
+ring scene reaches either lead's changed-output case at all (the brief's leads table calls these out as
+the way to size P before a fix, not just a switch existing). Candidate next queue items once the triage
+video is judged, same no-route Halo shape, `--env HAKUX_XVSS=audit` / `--env HAKUX_S2TSHELF=audit`
+separately.
+
+**WAITING**: once the triage video's three arms and the audit-mode runs have results, judging which arm
+(if any) removes the ring/overlay glitch -- and whether to call a lead confirmed -- is an owner-reviewed
+call per the brief ("Do not call any arm fixed on your own reading of the frames", "the owner judges the
+videos"). That is also the kind of cause call the brief reserves for an Opus resume. This session queues
+and documents; it does not judge the videos. `owner resume x1port1012 on Opus: judge #939 triage video
+arms (ids above) once run, and decide whether XVSS/S2TSHELF audit runs are worth queuing before or after
+that judgment.`
