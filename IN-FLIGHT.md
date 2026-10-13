@@ -6,7 +6,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `holdinput1013` | claude-sonnet-5 | 12 min | pathrules1013: State ready (pathtele1013 folded as 08f1fb4a90; master merged, pathfind_selftest all ok) |
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
@@ -82,7 +84,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/holdinput1013` | pathrules1013: State ready (pathtele1013 folded as 08f1fb4a90; master merged, pathfind_selftest all ok) | `d2bcaacd22` | 2026-10-13 12:44 |
 
 ## Recently landed on master
 
@@ -99,4 +103,4 @@ No branch is being worked right now.
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 changelog1012: changelog to 0.5.0, version numbers for official-build users, credits (#433, 0.5)
 
-_Updated 2026-10-13 13:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 13:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
