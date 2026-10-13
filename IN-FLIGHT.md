@@ -6,20 +6,23 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `x1port1012` | claude-sonnet-5 | 0 min | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
 
 - **Handhelds:** 1 connected.
-  - Nova: held by `lane.pathfind`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
 
-**54 titles are confirmed Playable** (2 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**55 titles are confirmed Playable** (3 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-13 | Shadow of Memories (Europe) | Playable, 10-minute run |
 | 2026-10-13 | Scooby-Doo! Unmasked (Europe) | Playable, 10-minute run |
 | 2026-10-13 | Tony Hawk's Underground 2 | Playable, 10-minute run, median 59.7 fps |
 | 2026-10-12 | Need for Speed: Most Wanted | Playable, 10-minute run on the Nova |
@@ -75,11 +78,13 @@ No lane session is running.
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-37 of these still await the owner's flicker check.
+38 of these still await the owner's flicker check.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/x1port1012` | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) | `2c61d75ac8` | 2026-10-13 00:20 |
 
 ## Recently landed on master
 
@@ -96,4 +101,4 @@ No branch is being worked right now.
 - 2026-10-12 release05: v0.5.0 release notes (#433, 0.5)
 - 2026-10-12 pubdocs1012: public docs pass for 0.5 (README, compatibility, limitations, attribution) (#433, 0.5)
 
-_Updated 2026-10-13 07:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 07:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
