@@ -7,7 +7,7 @@ Prediction: none: offline/analysis-only, no device arm of mine
 Needs device: no    Needs NDK: no
 Release note (none): harness-only -- fixes pathfind's path recording/replay and hold bookkeeping, and makes
 title_verdict.py never read a perflog telemetry build as a Playable candidate; nothing a player sees change.
-State: waiting-on-pathtele1013
+State: ready
 
 ## What this is
 
@@ -55,13 +55,11 @@ fragment itself along the way (not in `title_verdict.py`): a mutant copy run out
 `89-verdict-perflog.sh` fragment standalone (minimal harness replicating `selftest.sh`'s scaffolding, to avoid
 its unrelated gh/systemd/dispatch weight) -- `pass=6 fail=0`.
 
-## Why `State: waiting-on-pathtele1013`, not `ready`
+## Order with pathtele1013
 
-Part C builds on pathtele1013's `--perflog` flag and its suggested `title_verdict.py` patch (PR #433,
-`docs/lanes/pathtele1013/PR.md`). `git merge-base --is-ancestor <pathtele1013's fold head> origin/master` still
-returns exit 1 as of this check (re-fetched and re-checked at the end of this session) -- its fold has not
-landed on `origin/master` yet. This branch already has its commits merged in (see `git log`), so the code here
-is consistent and tested against what's actually on disk; the `State:` line is about the *other* PR's landing
-status, not a defect in this one.
+Part C builds on pathtele1013's `--perflog` flag and its suggested `title_verdict.py` patch
+(`docs/lanes/pathtele1013/PR.md`). pathtele1013 folded as 08f1fb4a90; this branch merged that master cleanly
+(no conflicts; the merge brought only forgealloc1013's files, none of this lane's) and
+`python3 docs/testing/titles/pathfind_selftest.py` still ends `pathfind_selftest: all ok` on the merged tree.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
