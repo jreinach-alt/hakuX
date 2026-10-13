@@ -54,8 +54,9 @@ one thing cannot:
 `prefs.getBoolean("library_box_art_lookup", false)` in `onCreate`, before any
 of `loadGames()` / `renderGames()` / `renderCoverGrid()` run, so a freshly
 installed or freshly upgraded instance can't race its way into a fetch before
-that line executes. The field's class-body initializer (`= true`) is
-overwritten unconditionally on this path and is never read before it is.
+that line executes. The field's class-body initializer is `false` too (fixed
+in review — it read `true` before `onCreate` ever ran), so nothing can read a
+`true` value before the pref does.
 
 `SetupWizardActivity.kt` makes no network call anywhere; its new switch only
 ever writes a `Boolean` into `SharedPreferences`.
@@ -65,12 +66,22 @@ ever writes a `Boolean` into `SharedPreferences`.
 An install that finished the wizard before this question existed
 (v0.4.1-j1 and earlier) has `setup_complete = true` but never wrote
 `library_box_art_lookup` — under the new default that would now silently
-turn off box art it had been fetching. `GameLibraryActivity.onCreate()` calls
-`maybeAskAboutExistingBoxArtLookup()`, which asks once with a
-non-cancelable `MaterialAlertDialogBuilder` dialog, gated on
+turn off box art it had been fetching. `maybeAskAboutExistingBoxArtLookup()`
+asks once with a non-cancelable `MaterialAlertDialogBuilder` dialog, gated on
 `!prefs.contains("library_box_art_lookup") && prefs.getBoolean("setup_complete", false)`
 — `setup_complete` is the same flag `SetupWizardActivity` already uses to
 decide whether to skip straight to the library, reused rather than invented.
+
+**Fixed in review:** this call is now reached only when the cover grid is
+the thing on screen — from `onCreate` when `useCoverGrid` is already true,
+and from the view-mode toggle's handler when the user switches to the grid
+— not unconditionally from `onCreate` as in the first pass. List mode
+fetches nothing and also hides `switchBoxArtLookup` (`syncDisplayModeUi()`
+only shows it when `useCoverGrid`), so asking there was both pointless and
+pointed at a switch the user couldn't see. The `prefs.contains` check still
+keeps the dialog to one time total, however many times the user flips
+between list and grid.
+
 Either button ("Keep it on" / "Turn it off") writes the key through
 `setBoxArtLookupEnabled(...)`, so the dialog never fires again for that
 install. A fresh install with the key absent and `setup_complete` still
@@ -98,22 +109,27 @@ the wizard's new page can appear on an automated title-launch run.
 `JAVA_HOME=/home/justin/toolchains/jdk21 ./gradlew -p android --no-daemon :app:compileDebugKotlin`
 against all five edited files:
 
+First pass:
+
 ```
 BUILD SUCCESSFUL in 1m 46s
 16 actionable tasks: 16 executed
 ```
 
-All five source edits (latest at 18:10:52, `PRIVACY.md`) were in place before
-this run started (~18:11:12, computed from the log's final write at 18:12:58
-minus the reported 1m 46s), so this result reflects the final edits; no
-further Kotlin file changed after it. The only compiler warnings in the log
-are pre-existing (`GpuDriverHelper.kt`, one deprecated call in
-`MainActivity.kt`), in files this lane did not touch.
+Second pass, after the review fixes above (grid-gated upgrade ask, the
+`boxArtLookupEnabled` initializer, and the PRIVACY.md/release-note wording):
 
-Release note: Box art lookup is now off until you turn it on. The setup
-wizard asks once, and if you set up hakuX before this existed, the library
-asks the same way the first time you open it; either way you can change your
-answer later with the switch in the library.
+```
+BUILD SUCCESSFUL in 23s
+16 actionable tasks: 6 executed, 10 up-to-date
+```
+
+The only compiler warnings in the log are pre-existing (`GpuDriverHelper.kt`,
+one deprecated call in `MainActivity.kt`), in files this lane did not touch.
+
+Release note: Box art lookup is now off until you turn it on. New installs
+are asked during setup; if you set up hakuX earlier, the cover grid asks
+once. You can change it later with the switch in the library.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 

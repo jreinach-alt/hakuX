@@ -21,9 +21,10 @@ visible and both optional:
   recognises by matching the file name against a list bundled in the app —
   that matching never leaves the device — then fetching the matching image
   from `raw.githubusercontent.com/izzy2lost/X1_Covers`. It is off until you
-  choose it: the setup wizard asks once, unchecked by default, and an
+  choose it: the setup wizard asks once, with an unchecked switch, and an
   existing install that finished setup before this question existed is asked
-  the same way the first time its library opens. Turning it on means each
+  once with a plain yes/no question the first time it switches the library to
+  the cover grid. Turning it on means each
   cover fetched sends GitHub a request naming that game, so GitHub sees your
   device's address and which titles you look up. Change your answer any time
   with **Look up box art online** in the library — with it off, the app makes

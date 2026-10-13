@@ -81,7 +81,7 @@ class GameLibraryActivity : AppCompatActivity() {
   private var currentGames: List<GameEntry> = emptyList()
   private var searchFilter = ""
   private var useCoverGrid = false
-  private var boxArtLookupEnabled = true
+  private var boxArtLookupEnabled = false
   @Volatile private var isConvertingIso = false
   @Volatile private var convertCancelled = false
   private var convertThread: Thread? = null
@@ -123,6 +123,12 @@ class GameLibraryActivity : AppCompatActivity() {
     switchBoxArtLookup.isChecked = boxArtLookupEnabled
     viewModeToggle.check(if (useCoverGrid) R.id.btn_view_grid else R.id.btn_view_list)
     syncDisplayModeUi()
+    // Ask about the upgrade case only when the cover grid is actually on
+    // screen: that's the only mode anything fetches in, and the only mode
+    // where the switch this dialog points to ("the switch above") is visible.
+    if (useCoverGrid) {
+      maybeAskAboutExistingBoxArtLookup()
+    }
 
     btnBootDashboard.setOnClickListener {
       if (isConvertingIso) {
@@ -152,6 +158,9 @@ class GameLibraryActivity : AppCompatActivity() {
       prefs.edit().putBoolean("library_cover_grid", useCoverGrid).apply()
       syncDisplayModeUi()
       renderGames()
+      if (useCoverGrid) {
+        maybeAskAboutExistingBoxArtLookup()
+      }
     }
     switchBoxArtLookup.setOnCheckedChangeListener { _, checked ->
       boxArtLookupEnabled = checked
@@ -160,7 +169,6 @@ class GameLibraryActivity : AppCompatActivity() {
         renderGames()
       }
     }
-    maybeAskAboutExistingBoxArtLookup()
     findViewById<com.google.android.material.textfield.TextInputEditText>(R.id.library_search)
       .addTextChangedListener(object : TextWatcher {
         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -219,7 +227,10 @@ class GameLibraryActivity : AppCompatActivity() {
    * An install that finished the setup wizard before it asked about box art
    * (v0.4.1-j1 and earlier) has `setup_complete` but never wrote
    * `library_box_art_lookup`; the plain default-false read above would
-   * silently drop box art they had been getting. Ask once instead. Once
+   * silently drop box art they had been getting. Ask once instead. Called
+   * only when the cover grid is on screen (from `onCreate` and from the
+   * view-mode toggle) — list mode fetches nothing and hides the switch this
+   * dialog points to, so asking there would be pointless and confusing. Once
    * either button below writes the key, this never fires again for this
    * install: the `prefs.contains` check only sees an absent key.
    */
