@@ -1,5 +1,5 @@
 --- /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py.orig	2026-10-12 18:12:52.463674439 -0700
-+++ /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py	2026-10-12 18:36:12.272811366 -0700
++++ /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py	2026-10-12 20:28:30.454677887 -0700
 @@ -9,7 +9,20 @@
    unrelease [--yes] tag...  delete nightly-* releases whose sync row is marked 'withdrawn' (owner 2026-10-09)
    renote [--yes] tag...     replace a published nightly-*'s notes with nightly/<date>.notes.corrected.md (owner 2026-10-09)
@@ -21,8 +21,12 @@
  
  Rules it enforces (it cannot be talked out of them): fast-forward only, never --force, never a delete, heads only (no tags);
  a head that diverged from GitHub's, or whose GitHub tip is unknown locally, is skipped and reported; a head that touches
-@@ -151,7 +164,11 @@
- GET_OK = ('/actions/permissions', '/actions/runs', '/pages', '/branches/gh-pages', '/deployments', '/actions/workflows', '/releases', '/branches/status', '/contents/STATUS.md', '/issues', '/pulls', '/contents/LICENSE', '/community/profile')   # /issues, /pulls: read-only listings for the 0.5 issue-log audit (lane.local 10-12)
+@@ -148,10 +161,14 @@
+         close_window()
+ 
+ 
+-GET_OK = ('/actions/permissions', '/actions/runs', '/pages', '/branches/gh-pages', '/deployments', '/actions/workflows', '/releases', '/branches/status', '/contents/STATUS.md', '/issues', '/pulls', '/contents/LICENSE', '/community/profile')   # /issues, /pulls: read-only listings for the 0.5 issue-log audit (lane.local 10-12)
++GET_OK = ('/actions/permissions', '/actions/runs', '/pages', '/branches/gh-pages', '/deployments', '/actions/workflows', '/releases', '/branches/status', '/contents/STATUS.md', '/issues', '/pulls', '/contents/LICENSE', '/community/profile', '/labels', '/interaction-limits')   # /issues, /pulls: read-only listings for the 0.5 issue-log audit (lane.local 10-12); /labels: round 3's shared label vocabulary (lane.issuesync1012 round 3) -- one cached read of the repo's own label list, read-only; /interaction-limits: round 4 addendum -- backfill's pre-flight check, read-only, repo-scoped (lapses in 24h-6mo, so it is read fresh every run, never trusted from memory)
  
  
 -def cmd_get(path):
@@ -34,7 +38,7 @@
      if not any(path == g or path.startswith(g + '?') or path.startswith(g + '/') for g in GET_OK):
          print('REFUSED: read-only paths only: ' + ' '.join(GET_OK)); return 3
      s = load_state(); read_budget(s)
-@@ -162,7 +179,15 @@
+@@ -162,14 +179,223 @@
      try:
          try:
              with urllib.request.urlopen(req, timeout=30) as r:
@@ -49,9 +53,14 @@
 +                else:
 +                    print(body[:600000])
          except urllib.error.HTTPError as e:
++            # Round 4 addendum: a caller (GH.interaction_limits()) needs to tell "403, no permission" apart from
++            # "200, parsed fine" to decide whether the limit is active -- falling through to `return 0` here (the
++            # old behavior) let a failed read look identical to a successful empty one. No --out file is written
++            # on this path; the caller must not assume one exists when the exit code is non-zero.
              print('HTTP %d %s' % (e.code, e.read()[:400].decode('utf8', 'replace').replace(tok, '<token>')))
++            return e.code
      finally:
-@@ -170,6 +195,185 @@
+         close_window()
      return 0
  
  
@@ -59,10 +68,15 @@
 +# Dry run unless --yes, exactly like release/unrelease/renote/pointer above. Every one of these goes through
 +# open_window()/close_window() and token() like the existing calls; every outgoing title/body/comment is scanned for
 +# secrets before it leaves the process (refuses tokens, private keys, and anything that looks like key.properties).
-+# A per-run cap (--max-writes, default MAX_WRITES_RUN_DEFAULT) bounds how many of these one invocation will do, on top
-+# of the existing per-day read cap; issue_mirror.py is the thing that paces calls across a backfill run, not this file.
++# A per-run cap (--max-writes, default MAX_WRITES_RUN_DEFAULT) bounds how many of these one invocation will do;
++# issue_mirror.py is the thing that paces calls across a backfill run, not this file. Separately, MAX_WRITES_DAY
++# (round 4) bounds the persisted per-day `writes` total across every invocation of the day, the way MAX_READS_DAY
++# already bounds reads -- these are two different caps, tracked two different ways (see _write_budget below).
 +# NOT WIRED TO LIVE WRITES BY THE LANE: lane.issuesync1012 never passes --yes. lane.local decides when that changes.
 +MAX_WRITES_RUN_DEFAULT = 20
++# Round 4, defect 1: sized for one full backfill run (487 writes: 332 creates + 155 follow-up closes) with
++# headroom for the day's other gateway invocations (seed, sync, new, mirror-down, and any retried pending closes).
++MAX_WRITES_DAY = 600
 +MIRROR_MARKER = '<!-- hakux-mirror:v1 src=%s#%s -->'   # appended to every mirrored body/comment; sync must skip echoes of its own marker
 +
 +
@@ -103,13 +117,25 @@
 +    pass
 +
 +
++# Round 4, defect 1: this is a MODULE GLOBAL, not a persisted-state field. issue_mirror.py starts one gateway
++# process per write (never passing --max-writes), so each invocation is a fresh `python3 github_gateway.py ...`
++# interpreter start -- this counter is naturally 0 at the top of every one of those, with no reset logic needed.
++# The old code instead kept this same count in the persisted per-day state dict (day_counts(s)['run_writes']),
++# so it never reset between invocations and became a de facto day cap of MAX_WRITES_RUN_DEFAULT (20) across
++# EVERY invocation of the UTC day -- not a per-run cap at all. Write 21 of the day, from any caller, was REFUSED.
++_RUN_WRITES = 0
++
++
 +def _write_budget(s, cap):
++    global _RUN_WRITES
++    if _RUN_WRITES >= cap:
++        raise _WriteCapExceeded('%d writes this run exceeds --max-writes %d' % (_RUN_WRITES, cap))
 +    c = day_counts(s)
 +    c.setdefault('writes', 0)
-+    if c.get('run_writes', 0) >= cap:
-+        raise _WriteCapExceeded('%d writes this run exceeds --max-writes %d' % (c.get('run_writes', 0), cap))
++    if c['writes'] >= MAX_WRITES_DAY:
++        raise _WriteCapExceeded('%d writes today exceeds the day cap %d' % (c['writes'], MAX_WRITES_DAY))
 +    c['writes'] += 1
-+    c['run_writes'] = c.get('run_writes', 0) + 1
++    _RUN_WRITES += 1
 +    save_state(s)
 +
 +
@@ -237,7 +263,7 @@
  def cmd_prheads():
      """read-only: the head branch of every open PR on GitHub, one per line (prune_worktrees.sh, owner 2026-10-09).
      Parsed here, not through `get`, whose output is cut at 600 kB. Any failure prints nothing on stdout and exits 1,
-@@ -582,9 +786,18 @@
+@@ -582,9 +808,18 @@
      os.system('tail -5 %s 2>/dev/null' % LOG)
  
  
@@ -257,7 +283,7 @@
          print(__doc__); return 64
      lk = open(H + '/.gateway.lock', 'w')
      try:
-@@ -600,11 +813,22 @@
+@@ -600,11 +835,22 @@
      if a[0] == 'pages':
          cmd_pages(); return 0
      if a[0] == 'get':
@@ -281,3 +307,13 @@
      if a[0] == 'release':
          return cmd_release(yes='--yes' in a, only=[x for x in a[1:] if release_tag(x)] or None)
      if a[0] == 'unrelease':
+@@ -613,4 +859,8 @@
+         return cmd_renote([x for x in a[1:] if x.startswith('nightly-')], yes='--yes' in a)
+     return cmd_plan(push=(a[0] == 'push'), yes='--yes' in a, max_new=opt('--max-new', MAX_NEW_REFS_DEFAULT), max_commits=opt('--max-commits', MAX_COMMITS_DEFAULT))
+ 
+-sys.exit(main())
++if __name__ == '__main__':
++    # Round 4: guarded so github_gateway_selftest.py can import this module and call its real functions
++    # directly (per the brief: "test against the real gateway functions, not the fake"). No behavior change for
++    # the only real caller -- `python3 github_gateway.py ...` always runs with __name__ == '__main__'.
++    sys.exit(main())

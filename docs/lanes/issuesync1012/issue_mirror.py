@@ -54,6 +54,7 @@ token (forge side). Every mirrored body/comment this tool creates carries a mark
 mistakes its own echo for a real edit on the other side. Every write (either side) is secret-scanned first.
 """
 import argparse
+import calendar
 import fcntl
 import json
 import os
@@ -78,11 +79,35 @@ LOG = W + '/logs/issue_mirror.log'
 MIRROR_MARKER_RE = re.compile(r'<!-- hakux-mirror:v1 src=(forge|github)#(\d+) -->')
 COMMENT_MARKER_RE = re.compile(r'<!-- hakux-mirror:v1 src=(forge|github)#(\d+)/c(\S+) -->')
 
+# Round 4, gap 3: GitHub's own body field tops out at 65536 characters. #785, the largest forge body today, is
+# 63,476 -- today's backfill fits -- but nothing guards a longer one, and a body that is too long fails with a
+# 422 on EVERY run forever (nothing about an oversized body shrinks on its own). The forge is not public, so the
+# truncation notice never names it.
+GITHUB_BODY_LIMIT = 65536
+GITHUB_BODY_TRUNCATE_SUFFIX = '\n\n(truncated)'
+
+# Round 4, gap 4: forge items 1-629 start with this header block (the original forge importer's own marker, not
+# this tool's MIRROR_MARKER). A GitHub-side body edit must keep it and replace only the rest -- see
+# apply_forge_body() below, used only on the github-changed -> write-to-forge path in apply_sync_actions.
+FORGE_IMPORT_HEADER_RE = re.compile(r'\A<!-- forge-import:github#\d+ -->\n*')
+
 PACE_PER_MIN_DEFAULT = 4     # 4/min = 240/hr: ~5% of GitHub's 80/min secondary limit, ~48% of its 500/hr limit
 
 NEVER_SYNC = {107}   # GitHub's static STATUS.md pointer vs. the forge's own live status board -- see PR.md
 STATE_CONFLICT_NUMS = [16, 34, 66, 71, 74, 81, 87, 89, 90, 92, 99, 439, 513, 557, 583, 591, 592, 598, 605, 607, 618, 627]
 CONTENT_FIX_NUMS = [1, 161, 568]   # forge import never recovered these; GitHub has the real content
+
+# Round 3, gap 2: the shared label vocabulary. Forge pipeline/tool labels (github-import, github-pr,
+# reserved-number, fold-ready, folded, needs-audit-*, needs-remediation, this tool's own "backfill" tag, and --
+# by construction of compute_shared_vocab below -- every other forge-only process label GitHub's repo label list
+# does not already have, e.g. local-only/0.5/lane:*/claimed:*/blocked:*) must never reach GitHub. The rule (stated
+# in PR.md): shared = GitHub's repo labels (one read) minus this explicit denylist. Writing TO the forge keeps
+# its local-only labels; only the shared subset is ever replaced there.
+TOOL_LABELS_DENY = {'github-import', 'github-pr', 'reserved-number', 'fold-ready', 'folded', 'needs-remediation',
+                     'backfill'}
+NEEDS_AUDIT_RE = re.compile(r'^needs-audit-\d+$')
+
+GITHUB_READ_BUDGET_DAY = int(os.environ.get('ISSUE_MIRROR_READ_BUDGET', '300'))  # github_gateway.py MAX_READS_DAY
 
 
 def log(msg):
@@ -150,6 +175,7 @@ class GH:
     def __init__(self, gateway=None):
         self.gateway = gateway or GATEWAY
         self._ctr = 0
+        self._label_cache = None
 
     def _get_raw(self, path):
         self._ctr += 1
@@ -190,7 +216,71 @@ class GH:
     def comments(self, number):
         return json.loads(self._get_raw('/issues/%d/comments' % number))
 
+    def repo_labels(self):
+        """One-time (cached) read of the repo's label list -- gap 2's shared vocabulary is GitHub's own labels
+        minus TOOL_LABELS_DENY; see compute_shared_vocab(). GET_OK must include '/labels' (staged gateway diff)."""
+        if self._label_cache is None:
+            items, page = [], 1
+            while True:
+                rows = json.loads(self._get_raw('/labels?per_page=100&page=%d' % page))
+                if not isinstance(rows, list):
+                    raise RuntimeError('github /labels page %d is not a list' % page)
+                items.extend(rows)
+                if len(rows) < 100:
+                    break
+                page += 1
+            self._label_cache = items
+        return self._label_cache
+
+    def max_number(self):
+        """Round 3, optional race-window shrink: the cheapest possible read of GitHub's current max issue/PR
+        number -- the single most-recently-created item, sorted server side, one request, no pagination."""
+        rows = json.loads(self._get_raw('/issues?state=all&sort=created&direction=desc&per_page=1&page=1'))
+        if not isinstance(rows, list) or not rows:
+            return 0
+        return rows[0]['number']
+
+    def interaction_limits(self):
+        """Round 4 addendum: GET /repos/{owner}/{repo}/interaction-limits, read fresh every backfill run rather
+        than trusted from memory -- these limits lapse (24h to 6mo) on their own. Returns one of:
+          ('active', limit, expires_at)  -- a limit is set; GitHub returned it as JSON (200)
+          ('absent', None, None)         -- no limit is set; GitHub returned 204 No Content (empty body)
+          ('forbidden', None, None)      -- the token lacks permission to read this (403); genuinely unknown
+        Never raises for a 403 specifically -- the caller (cmd_backfill) must be able to tell "no limit" apart
+        from "can't tell," and decide what to do with "can't tell" itself, rather than this method guessing."""
+        self._ctr += 1
+        out = H + '/.issue-mirror-get-%d-%d.json' % (os.getpid(), self._ctr)
+        r = subprocess.run([sys.executable, self.gateway, 'get', '/interaction-limits', '--out', out],
+                            capture_output=True, text=True)
+        if r.returncode == 403:
+            return 'forbidden', None, None
+        if r.returncode != 0:
+            raise RuntimeError('gateway get /interaction-limits: rc=%d %s' % (r.returncode, (r.stdout + r.stderr)[:300]))
+        try:
+            with open(out) as f:
+                text = f.read()
+        finally:
+            try:
+                os.unlink(out)
+            except OSError:
+                pass
+        if not text.strip():
+            return 'absent', None, None
+        d = json.loads(text)
+        if not d:
+            return 'absent', None, None
+        return 'active', d.get('limit'), d.get('expires_at')
+
     def create(self, title, body='', labels=(), state=None):
+        """Returns (number, close_err). Round 4, defect 2: for a closed-kind item, the gateway's own
+        cmd_issue_create POSTs /issues (printing 'CREATED #N') and then, in the SAME invocation, calls
+        cmd_issue_patch to close it. If that follow-up close fails (a write-budget refusal, a network error, a
+        5xx), the gateway process exits non-zero even though 'CREATED #N' is really in stdout -- the number was
+        genuinely spent on GitHub. The old code raised RuntimeError whenever returncode != 0, discarding N and
+        losing track of a real, open GitHub record. Now: whenever 'CREATED #N' is in stdout, N is returned
+        no matter the exit code; a non-zero code just means close_err is set instead of None, so the caller can
+        record GitHub's actual (open) state and queue the close for a retry, rather than stopping and leaking
+        the number off the cursor entirely."""
         prob = secret_scan(title, body)
         if prob:
             raise MirrorStop('REFUSED: %s -- GitHub create blocked' % prob)
@@ -201,9 +291,12 @@ class GH:
             args += ['--state', 'closed']
         r = subprocess.run(args, capture_output=True, text=True)
         m = re.search(r'CREATED #(\d+)', r.stdout)
-        if r.returncode != 0 or not m:
+        if not m:
             raise RuntimeError((r.stdout.strip() or r.stderr.strip())[:300])
-        return int(m.group(1))
+        n = int(m.group(1))
+        if r.returncode != 0:
+            return n, (r.stdout.strip() or r.stderr.strip())[:300]
+        return n, None
 
     def patch(self, number, title=None, body=None, state=None, labels=None):
         prob = secret_scan(title or '', body or '')
@@ -244,6 +337,7 @@ class FG:
     def __init__(self, read_token_path=None, write_token_path=None):
         self.read_token_path = read_token_path or READ_TOKEN
         self.write_token_path = write_token_path or WRITE_TOKEN_DEFAULT
+        self._label_cache = None
 
     def _curl(self, method, path, body=None, query=None, write=False):
         import urllib.parse
@@ -282,10 +376,37 @@ class FG:
     def pull_detail(self, number):
         return json.loads(self._curl('GET', '/pulls/%d' % number))
 
+    def repo_labels(self):
+        """One-time (cached) read of the forge's label list -> name/id map. Needed because this forge's
+        CreateIssueOption/CreatePullRequestOption.labels is typed as a list of int64 label IDs (confirmed against
+        /swagger.v1.json), not names -- a plain name string in that field would be the wrong type on a live POST."""
+        if self._label_cache is None:
+            rows = json.loads(self._curl('GET', '/labels', query={'limit': 100}))
+            if not isinstance(rows, list):
+                raise RuntimeError('forge /labels is not a list')
+            self._label_cache = {r['name']: r['id'] for r in rows}
+        return self._label_cache
+
+    def label_ids(self, names):
+        cache = self.repo_labels()
+        ids, missing = [], []
+        for n in names:
+            if n in cache:
+                ids.append(cache[n])
+            else:
+                missing.append(n)
+        return ids, missing
+
     def create(self, payload, is_pr=False):
         prob = secret_scan(payload.get('title', ''), payload.get('body', ''))
         if prob:
             raise MirrorStop('REFUSED: %s -- forge create blocked' % prob)
+        payload = dict(payload)
+        if payload.get('labels'):
+            ids, missing = self.label_ids(payload['labels'])
+            if missing:
+                log('forge create: label name(s) not found on the forge, dropped: %s' % missing)
+            payload['labels'] = ids
         d = json.loads(self._curl('POST', '/pulls' if is_pr else '/issues', body=payload, write=True))
         if 'number' not in d:
             raise RuntimeError('forge create did not return a number: %r' % str(d)[:300])
@@ -295,7 +416,29 @@ class FG:
         prob = secret_scan(payload.get('title', ''), payload.get('body', ''))
         if prob:
             raise MirrorStop('REFUSED: %s -- forge patch #%d blocked' % (prob, number))
+        if 'labels' in payload:
+            # Gap 5: Forgejo's issue PATCH (EditIssueOption, per /swagger.v1.json) carries no 'labels' property at
+            # all -- it is silently dropped, never applied. Labels go through set_labels() (PUT
+            # /issues/{n}/labels) instead. Fail loud here rather than silently matching that no-op, so a caller
+            # that still tries it is caught immediately instead of shipping a label write that never happened.
+            raise RuntimeError("forge patch #%d: 'labels' must go through set_labels(), not patch() -- Forgejo's "
+                                "issue PATCH silently ignores a 'labels' key (gap 5)" % number)
         self._curl('PATCH', ('/pulls/%d' if is_pr else '/issues/%d') % number, body=payload, write=True)
+        return True
+
+    def set_labels(self, number, names, is_pr=False):
+        """Gap 5. Confirmed against this forge's own API (read-only: GET /api/v1/version ->
+        16.0.5+gitea-1.22.0; /swagger.v1.json): EditIssueOption (PATCH /issues/{n}'s body) has no 'labels'
+        field, so a labels key in a PATCH payload is silently ignored -- never an error, never applied. Labels
+        instead go through PUT /issues/{n}/labels (IssueLabelsOption.labels: "a list of integers representing
+        label IDs or a list of strings representing label names"); this sends IDs, resolved from one cached read
+        of the repo's label list, which both forms this forge's version accepts. The same endpoint serves PRs too
+        (Forgejo PRs are issues under the hood; there is no separate /pulls/{n}/labels in the swagger). A PUT
+        replaces the full set, so callers must pass every label the issue should end up with."""
+        ids, missing = self.label_ids(names)
+        if missing:
+            log('forge set_labels #%d: label name(s) not found on the forge, dropped: %s' % (number, missing))
+        self._curl('PUT', '/issues/%d/labels' % number, body={'labels': ids}, write=True)
         return True
 
     def comment(self, number, body):
@@ -332,6 +475,23 @@ def strip_pr_prefix(t):
     return t[len('[PR] '):] if t.startswith('[PR] ') else t
 
 
+def is_tool_or_pipeline_label(name):
+    return name in TOOL_LABELS_DENY or bool(NEEDS_AUDIT_RE.match(name))
+
+
+def compute_shared_vocab(gh_repo_labels):
+    """Gap 2: the shared label vocabulary is GitHub's existing repo label list, minus this tool's own/forge
+    pipeline labels (the explicit denylist above). Every forge-only process label that is NOT already a GitHub
+    repo label (local-only, 0.5, lane:*, claimed:*, blocked:*, decision-needed, ...) is excluded automatically --
+    there is no need to enumerate the forge's full vocabulary by hand, only the handful that must never cross
+    even if they somehow did exist as a GitHub label."""
+    return {l['name'] for l in gh_repo_labels if not is_tool_or_pipeline_label(l['name'])}
+
+
+def shared_label_names(names, shared_vocab):
+    return sorted(set(n for n in names if n in shared_vocab))
+
+
 def mirror_marker(side, number):
     return '<!-- hakux-mirror:v1 src=%s#%d -->' % (side, number)
 
@@ -342,6 +502,40 @@ def comment_marker(side, number, cid):
 
 def strip_marker(text):
     return MIRROR_MARKER_RE.sub('', text or '').rstrip()
+
+
+def truncate_for_github(body):
+    """Round 4, gap 3: cut an outgoing GitHub body to GITHUB_BODY_LIMIT characters, marker and status line
+    counted like everything else (no part of the body is exempt from the count). Every caller that sends a body
+    to GitHub must route it through this and then record the RETURNED text (not the original) as that side's
+    baseline -- otherwise the truncation itself would look like drift on every later sync."""
+    body = body or ''
+    if len(body) <= GITHUB_BODY_LIMIT:
+        return body
+    keep = GITHUB_BODY_LIMIT - len(GITHUB_BODY_TRUNCATE_SUFFIX)
+    return body[:keep] + GITHUB_BODY_TRUNCATE_SUFFIX
+
+
+def forge_import_header(body):
+    """Round 4, gap 4: the forge-import header block `body` currently starts with, if any (items 1-629), else
+    None. Only ever checked against the forge's CURRENT body, never the incoming one."""
+    if not body:
+        return None
+    m = FORGE_IMPORT_HEADER_RE.match(body)
+    return m.group(0) if m else None
+
+
+def apply_forge_body(current_fg_body, new_body):
+    """Round 4, gap 4: when writing a body to the forge, keep the forge's existing import-header block (if its
+    CURRENT body starts with one) and replace only the rest. Without this, a GitHub-side body edit silently
+    replaced the whole forge body and dropped that header -- and, worse, recorded the header-less text as the
+    forge's own baseline, so the header's mere presence (once the forge was re-read) looked like drift forever
+    after. A pair whose forge body has no such header (outside 1-629, or already edited away from it) is
+    unaffected: the new body replaces the whole thing exactly as before."""
+    header = forge_import_header(current_fg_body)
+    if header is None:
+        return new_body
+    return header + (new_body or '')
 
 
 def has_marker(item):
@@ -434,21 +628,23 @@ def backfill_kind_counts(fg, backfill):
     return counts
 
 
-def build_backfill_body(fg_item, number, fg):
+def build_backfill_body(fg_item, number, fg, shared_vocab):
     """What backfill --yes would actually POST for one forge-only item. PRs, open or closed, ALWAYS get the one
     unified shape (gap 3): a closed GitHub issue titled "[PR] <title>" whose body states branch + status. Plain
-    forge issues keep their title/body/state/labels."""
+    forge issues keep their title/body/state; labels are the shared-vocabulary subset only (gap 2 -- forge
+    pipeline/process labels like fold-ready or needs-audit-2 are process commentary and must never land on a
+    public GitHub issue), plus this tool's own 'backfill' tag."""
     if kind_of(fg_item) == 'PR':
         detail = fg.pull_detail(number)
         title = pr_twin_title(detail.get('title', fg_item['title']))
         body = build_pr_twin_body(detail, number)
         return title, body, 'closed', ['backfill']
     body = ((fg_item.get('body') or '').strip() or '(no body)') + '\n\n' + mirror_marker('forge', number)
-    labels = [l['name'] for l in fg_item.get('labels', [])] + ['backfill']
+    labels = shared_label_names((l['name'] for l in fg_item.get('labels', [])), shared_vocab) + ['backfill']
     return fg_item['title'], body, fg_item['state'], labels
 
 
-def three_sample_bodies(fg, backfill, fg_client):
+def three_sample_bodies(fg, backfill, fg_client, shared_vocab):
     samples = []
     seen_kinds = set()
     for n in backfill:
@@ -456,13 +652,13 @@ def three_sample_bodies(fg, backfill, fg_client):
         if k in seen_kinds:
             continue
         seen_kinds.add(k)
-        title, body, state, labels = build_backfill_body(fg[n], n, fg_client)
+        title, body, state, labels = build_backfill_body(fg[n], n, fg_client, shared_vocab)
         samples.append((n, title, body, state, labels))
         if len(samples) == 3:
             break
     while len(samples) < 3 and backfill:
         n = backfill[len(samples) % len(backfill)]
-        title, body, state, labels = build_backfill_body(fg[n], n, fg_client)
+        title, body, state, labels = build_backfill_body(fg[n], n, fg_client, shared_vocab)
         samples.append((n, title, body, state, labels))
     return samples
 
@@ -490,7 +686,9 @@ def cmd_plan(gh, fg, report_path, pace_per_min=PACE_PER_MIN_DEFAULT):
     req_with_comments, _ = estimate_requests(fgd, d['backfill'], mirror_comments=True)
     hours_no_comments = req_no_comments / pace_per_min / 60
     hours_with_comments = req_with_comments / pace_per_min / 60
-    samples = three_sample_bodies(fgd, d['backfill'], fg)
+    gh_repo_labels = gh.repo_labels()
+    shared_vocab = compute_shared_vocab(gh_repo_labels)
+    samples = three_sample_bodies(fgd, d['backfill'], fg, shared_vocab)
 
     lines = []
 
@@ -500,6 +698,8 @@ def cmd_plan(gh, fg, report_path, pace_per_min=PACE_PER_MIN_DEFAULT):
     p('issue_mirror plan -- %s' % time.strftime('%F %T %Z'))
     p('GitHub: %d items (min %d max %d)' % (len(ghd), min(ghd), max(ghd)))
     p('Forge:  %d items (min %d max %d)' % (len(fgd), min(fgd), max(fgd)))
+    p('shared label vocabulary (gap 2): %d of GitHub\'s %d repo label(s) are shared; denylist (never cross to '
+      'GitHub): %s' % (len(shared_vocab), len(gh_repo_labels), sorted(TOOL_LABELS_DENY) + ['needs-audit-*']))
     p('')
     p('=== 0. Mirror-down: GitHub-only numbers needing a forge twin ===')
     p('count: %d%s' % (len(d['only_gh']), (' (%s)' % d['only_gh'][:10]) if d['only_gh'] else ''))
@@ -568,20 +768,64 @@ def save_state(s):
     os.replace(tmp, STATE)
 
 
-def record_baseline(st, n, fg_item, gh_item=None):
-    """backfill/new/mirror-down call this right after successfully creating a pair, so the very first `sync`
-    never reports it as a conflict for lack of a baseline (gap 5)."""
+def extract_side(item, shared_vocab):
+    """Round 3, gap 1: this side's OWN current state/title/body/labels, to be recorded as ITS baseline (never the
+    other side's). 'title' has the forge's "[GitHub PR] " import-population prefix stripped so GH and forge
+    titles compare like-for-like; 'labels' is restricted to the shared vocabulary (gap 2) so forge-only
+    pipeline/process labels are never part of the cross-side comparison at all -- they stay on the forge,
+    unconditionally, regardless of what either side's baseline says."""
+    if item is None:
+        return None
+    return {
+        'state': item.get('state'),
+        'title': strip_gh_pr_prefix(item.get('title') or ''),
+        'body': strip_marker(item.get('body')),
+        'labels': shared_label_names((l['name'] for l in item.get('labels', [])), shared_vocab),
+    }
+
+
+def record_baseline(st, n, fg_item, gh_item, shared_vocab):
+    """backfill/new/mirror-down/seed call this right after a pair's two sides are both known to hold the values
+    being recorded -- gap 1: a SEPARATE baseline per side (gh_last/fg_last), each extracted from that side's own
+    current item, never one side's value used as "the" baseline for both. That is what let a representational
+    difference (the forge's import header, its pipeline labels) look like "GitHub changed" on the very first real
+    sync. fg_item is required; gh_item may be None (e.g. mirroring down a GitHub-sequence gap with no real GitHub
+    record) -- such numbers never appear in build_diff's 'common' set, so a missing gh-side baseline for them is
+    harmless (sync_normal_pair/sync_pr_twin are never called for them)."""
     last = st.setdefault('last_synced', {})
-    entry = {'gh_comments': (gh_item or {}).get('comments', 0), 'fg_comments': fg_item.get('comments', 0)}
+    entry = last.setdefault(str(n), {})
+    entry['gh_comments'] = (gh_item or {}).get('comments', 0)
+    entry['fg_comments'] = fg_item.get('comments', 0)
     if is_pr_twin_pair(fg_item):
         entry['pr_status_signal'] = pr_status_signal(fg_item)
         entry['pr_title'] = fg_item['title']
     else:
-        entry['state'] = fg_item['state']
-        entry['title'] = fg_item['title']
-        entry['body'] = strip_marker(fg_item.get('body') or '')
-        entry['labels'] = sorted(l['name'] for l in fg_item.get('labels', []))
+        entry['gh'] = extract_side(gh_item, shared_vocab)
+        entry['fg'] = extract_side(fg_item, shared_vocab)
     last[str(n)] = entry
+
+
+def retry_pending_closes(gh_client, st):
+    """Round 4, defect 2: a create whose follow-up close failed leaves a real, spent GitHub number open, with N
+    queued in st['pending_close'] (by GH.create's close_err path). Every backfill and sync run retries each of
+    these -- exactly once per run, before it spends anything new -- and clears whichever ones succeed; anything
+    that fails again simply stays queued for the next run. Returns (retried, cleared) counts."""
+    pending = st.get('pending_close') or []
+    if not pending:
+        return 0, 0
+    cleared = []
+    for n in list(pending):
+        try:
+            gh_client.patch(n, state='closed')
+        except (MirrorStop, RuntimeError) as e:
+            print('pending-close #%d: retry failed, still pending: %s' % (n, e))
+            continue
+        cleared.append(n)
+        print('pending-close #%d: retried and cleared' % n)
+    if cleared:
+        st['pending_close'] = [n for n in pending if n not in cleared]
+        save_state(st)
+    return len(pending), len(cleared)
 
 
 # --------------------------------------------------------------------------------------------------------------
@@ -645,6 +889,7 @@ def do_mirror_down(gh_client, fg_client, yes, gh=None, fg=None, st=None):
         print('DRY RUN: would mirror down %d number(s): #%d..#%d' % (len(targets), targets[0], targets[-1]))
         return 0, fg
     st = st if st is not None else load_state()
+    shared_vocab = compute_shared_vocab(gh_client.repo_labels())
     for i, n in enumerate(targets):
         try:
             created = mirror_down_one(fg_client, n, gh)
@@ -653,7 +898,7 @@ def do_mirror_down(gh_client, fg_client, yes, gh=None, fg=None, st=None):
             save_state(st)
             return 2, fg
         fg[n] = created
-        record_baseline(st, n, created, gh.get(n))
+        record_baseline(st, n, created, gh.get(n), shared_vocab)
         print('mirrored down #%d (%d/%d)' % (n, i + 1, len(targets)))
         log('mirror-down #%d done' % n)
     save_state(st)
@@ -671,11 +916,53 @@ def cmd_mirror_down(gh_client, fg_client, yes):
     return rc
 
 
+def _parse_github_ts(ts):
+    """GitHub's timestamps are '2026-10-20T00:00:00Z'. Returns epoch seconds, or raises on anything else."""
+    return calendar.timegm(time.strptime(ts, '%Y-%m-%dT%H:%M:%SZ'))
+
+
+def interaction_limit_preflight(gh_client, no_check, estimated_end):
+    """Round 4 addendum: the owner says the repo's GitHub interaction limit is on. These limits are temporary
+    (24h to 6 months) and lapse on their own, so this reads the setting fresh every run rather than trusting
+    memory of "it's on" -- a stale belief either way (on when it has lapsed, or off when it is still active)
+    is exactly the kind of drift the rest of this round exists to close. Refuses (nothing spent) unless an
+    active limit is read AND its expires_at is after this run's own estimated end; --no-interaction-limit skips
+    the whole check, at the owner's explicit choice. Returns None to proceed, or a REFUSED string to stop."""
+    if no_check:
+        print('interaction-limits: SKIPPED (--no-interaction-limit)')
+        return None
+    try:
+        status, limit, expires_at = gh_client.interaction_limits()
+    except RuntimeError as e:
+        print('interaction-limits: read failed: %s -- treated as unknown' % e)
+        status, limit, expires_at = 'forbidden', None, None
+    if status == 'forbidden':
+        print('interaction-limits: HTTP 403 -- this token cannot read the setting; treated as unknown')
+        return ('REFUSED: interaction-limits unknown (403) -- nothing spent. Pass --no-interaction-limit if '
+                'the owner wants to proceed anyway.')
+    if status == 'absent':
+        print('interaction-limits: no limit is currently active')
+        return ('REFUSED: no GitHub interaction limit is active -- nothing spent. Pass --no-interaction-limit '
+                'if the owner wants to proceed anyway.')
+    try:
+        exp_s = _parse_github_ts(expires_at)
+    except Exception:
+        exp_s = None
+    long_enough = exp_s is not None and exp_s > estimated_end
+    print('interaction-limits: active, limit=%r, expires_at=%s -- %s the run\'s estimated end (%s)' %
+          (limit, expires_at, 'after' if long_enough else 'NOT after',
+           time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(estimated_end))))
+    if not long_enough:
+        return ('REFUSED: the active interaction limit expires before this run\'s estimated end -- nothing '
+                'spent. Pass --no-interaction-limit if the owner wants to proceed anyway.')
+    return None
+
+
 # --------------------------------------------------------------------------------------------------------------
 # backfill --yes
 # --------------------------------------------------------------------------------------------------------------
 
-def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments):
+def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments, no_interaction_limit=False):
     gh = gh_client.all_issues()
     fg = fg_client.all_issues()
     d = build_diff(gh, fg)
@@ -687,11 +974,25 @@ def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments
         todo = todo[:max_n]
     if not todo:
         print('nothing to backfill (resume cursor at #%d)' % resume_after)
+        if yes:
+            # Round 4, defect 2: a resume with nothing left to create must still retry any pending closes --
+            # "every backfill ... run retries the pending closes before it creates anything" holds even when
+            # there turns out to be nothing to create.
+            retried, cleared = retry_pending_closes(gh_client, st)
+            if retried:
+                print('backfill: %d pending close(s), %d cleared' % (retried, cleared))
         return 0
     if not yes:
-        print('DRY RUN: would create %d GitHub twins, forge #%d..#%d, at %d/min (resuming after #%d)' %
-              (len(todo), todo[0], todo[-1], pace_per_min, resume_after))
+        pending = st.get('pending_close') or []
+        print('DRY RUN: would create %d GitHub twins, forge #%d..#%d, at %d/min (resuming after #%d)%s' %
+              (len(todo), todo[0], todo[-1], pace_per_min, resume_after,
+               (' -- %d pending close(s) would be retried first: %s' % (len(pending), pending)) if pending else ''))
         return 0
+    # Round 4, defect 2: retry any closes left over from a previous create-then-close failure before spending
+    # anything new this run.
+    retried, cleared = retry_pending_closes(gh_client, st)
+    if retried:
+        print('backfill: %d pending close(s), %d cleared' % (retried, cleared))
     # gap 2: check the sides are level before spending anything, fresh on every invocation (so a resume after a
     # stop/restart re-checks too, not just the very first call ever made).
     gh_max = max(gh) if gh else 0
@@ -700,16 +1001,45 @@ def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments
               'not level. Nothing spent. (Someone likely filed a GitHub issue since the last plan/backfill; run '
               '`mirror-down` or `sync` first.)' % (gh_max + 1, todo[0]))
         return 3
+    # Round 4 addendum: read-only interaction-limit check, after the level check (nothing spent yet either way)
+    # and before the first create.
+    estimated_end = time.time() + len(todo) * (60.0 / pace_per_min)
+    refusal = interaction_limit_preflight(gh_client, no_interaction_limit, estimated_end)
+    if refusal:
+        print(refusal)
+        return 3
+    shared_vocab = compute_shared_vocab(gh_client.repo_labels())
+
+    # Optional (brief, round 3): shrink the race window. Today's only protection is the post-create mismatch
+    # STOP below -- a GitHub issue filed mid-run costs one misnumbered item before it's caught. Re-checking
+    # GitHub's max right before each create catches it with nothing spent instead, at the cost of one extra
+    # cheap GitHub read per item. Only enable it when the gateway's daily read budget can absorb that; report
+    # the figure either way, as asked.
+    listing_reads_estimate = 12   # ~10 for this run's two all_issues() paginations (gh+fg costs 0 against GH's
+                                   # budget; gh's own all_issues() here is ~10 pages at 100/page) + margin
+    needed = listing_reads_estimate + len(todo)
+    precheck = needed <= GITHUB_READ_BUDGET_DAY
+    print('backfill: per-item race-window pre-check %s (est. %d GitHub read(s) this run vs. a %d/day budget)' %
+          ('enabled' if precheck else 'DISABLED -- would exceed the daily budget', needed, GITHUB_READ_BUDGET_DAY))
+
     gap = 60.0 / pace_per_min
     for i, n in enumerate(todo):
-        title, body, state, labels = build_backfill_body(fg[n], n, fg_client)
+        if precheck:
+            live_max = gh_client.max_number()
+            if live_max != gh_max:
+                print('REFUSED: GitHub\'s max moved from #%d to #%d since this run started (forge #%d was next) '
+                      '-- STOP, nothing spent on this item. Re-run `mirror-down` or `sync` first.' %
+                      (gh_max, live_max, n))
+                return 3
+        title, body, state, labels = build_backfill_body(fg[n], n, fg_client, shared_vocab)
         if mirror_comments and fg[n].get('comments', 0):
             comments = fg_client.comments(n)
             body += '\n\n--- %d forge comment(s) follow ---\n' % len(comments)
             for c in comments:
                 body += '\n> %s (%s): %s' % ((c.get('user') or {}).get('login', '?'), c.get('created_at'), (c.get('body') or '')[:2000])
+        body_sent = truncate_for_github(body)   # gap 3: never send more than GitHub's 65536-char body limit
         try:
-            got = gh_client.create(title, body, labels, state)
+            got, close_err = gh_client.create(title, body_sent, labels, state)
         except MirrorStop as e:
             print(str(e))
             return 3
@@ -722,8 +1052,24 @@ def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments
                   'Nothing after this ran.' % (n, got))
             log('backfill MISMATCH forge=%d github=%d -- STOPPED' % (n, got))
             return 3
+        gh_max = n   # gap: optional pre-check compares against GitHub's max AS OF this run, including our own creates
         st['backfill_last_done'] = n
-        record_baseline(st, n, fg[n], {'comments': 0})
+        actual_state = state
+        if close_err is not None:
+            # Round 4, defect 2: the number is spent and real; only the follow-up close failed. Record GitHub's
+            # actual state (open, not the closed state we asked for) and queue the close for a later retry --
+            # advancing the cursor either way, so this item is never re-attempted (which would spend a second
+            # GitHub number on the same forge item).
+            actual_state = 'open'
+            pending = st.setdefault('pending_close', [])
+            if got not in pending:
+                pending.append(got)
+            print('backfill #%d: created as #%d but the follow-up close failed, queued to retry: %s' %
+                  (n, got, close_err))
+            log('backfill #%d: close failed, pending_close += %d: %s' % (n, got, close_err))
+        gh_side = {'number': got, 'title': title, 'body': body_sent, 'state': actual_state,
+                   'labels': [{'name': l} for l in labels], 'comments': 0}
+        record_baseline(st, n, fg[n], gh_side, shared_vocab)
         save_state(st)
         print('backfilled #%d (%d/%d)' % (n, i + 1, len(todo)))
         log('backfill #%d done' % n)
@@ -737,19 +1083,31 @@ def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments
 # sync --yes (mirror-down, then 2-way field sync + comments)
 # --------------------------------------------------------------------------------------------------------------
 
-def three_way_merge(last, gh_val, fg_val):
-    """last: value at the previous sync (or None, first run). Returns (result, conflict)."""
-    if gh_val == fg_val:
-        return gh_val, False
-    if last is None:
-        return None, True       # no baseline yet: every differing pair is a conflict the first time through
-    gh_changed = gh_val != last
-    fg_changed = fg_val != last
+def three_way_merge(gh_last, fg_last, gh_val, fg_val):
+    """Round 3, gap 1: per-side baseline. A side has "changed" only if its current value differs from ITS OWN
+    last-recorded value -- never by comparing the two sides' raw values to each other, which is what made a
+    representational difference (the forge's import header, its pipeline labels) look like "the other side
+    changed" on the very first real sync. Returns (result, direction, conflict): direction is 'github' or
+    'forge' naming the side whose NEW value should be written to the other, or None if nothing needs writing
+    (settled, or both sides independently landed on the same value)."""
+    if gh_last is None and fg_last is None:
+        # Truly no baseline on either side yet (a pair sync has never seen before seed/backfill/new/mirror-down
+        # recorded one): equal values settle quietly; otherwise it is a conflict, same as the original "first
+        # run" rule -- a human (seed) must resolve it, this function never guesses.
+        if gh_val == fg_val:
+            return gh_val, None, False
+        return None, None, True
+    gh_changed = gh_val != (gh_last if gh_last is not None else gh_val)
+    fg_changed = fg_val != (fg_last if fg_last is not None else fg_val)
+    if not gh_changed and not fg_changed:
+        return None, None, False
     if gh_changed and not fg_changed:
-        return gh_val, False
+        return gh_val, 'github', False
     if fg_changed and not gh_changed:
-        return fg_val, False
-    return None, True           # both changed differently
+        return fg_val, 'forge', False
+    if gh_val == fg_val:
+        return gh_val, None, False   # both changed, but landed on the same value -- not a conflict
+    return None, None, True          # both changed, differently
 
 
 def sync_pr_twin(gh_client, fg_client, n, gh_item, fg_item, last, actions):
@@ -761,35 +1119,63 @@ def sync_pr_twin(gh_client, fg_client, n, gh_item, fg_item, last, actions):
     detail = fg_client.pull_detail(n)
     new_body = build_pr_twin_body(detail, n)
     new_title = pr_twin_title(title_now)
-    gh_client.patch(n, title=new_title, body=new_body)
+    try:
+        gh_client.patch(n, title=new_title, body=new_body)
+    except (MirrorStop, RuntimeError) as e:
+        # Gap 4's principle applied here too: do not touch the baseline on a failed write, or the next run would
+        # think this status was already applied and never retry it.
+        actions.append((n, 'pr-status', 'FAILED: %s' % e, 'forge'))
+        return
     base['pr_status_signal'] = sig
     base['pr_title'] = title_now
     actions.append((n, 'pr-status', sig, 'forge'))
 
 
-def sync_normal_pair(n, gh_item, fg_item, last, actions, conflicts):
-    base = last.setdefault(str(n), {})
+def sync_normal_pair(n, gh_item, fg_item, last, shared_vocab, actions, conflicts):
+    """Three-way merge per field, per-side baseline (gap 1), shared-vocabulary labels (gap 2). Does NOT touch
+    `last[str(n)]` at all -- gap 4: a pair's baseline advances only once its write has actually succeeded, which
+    happens later, in apply_sync_actions, after the real gh_client.patch/fg_client.patch/set_labels call returns
+    without raising. A dry run (this function runs either way, to report what WOULD happen) never reaches that
+    apply step, so it can never advance a baseline either."""
+    entry = last.setdefault(str(n), {})
+    bgh = entry.setdefault('gh', {})
+    bfg = entry.setdefault('fg', {})
+    gh_title = strip_gh_pr_prefix(gh_item['title'])
+    fg_title = strip_gh_pr_prefix(fg_item['title'])
+    gh_labels = shared_label_names((l['name'] for l in gh_item.get('labels', [])), shared_vocab)
+    fg_labels = shared_label_names((l['name'] for l in fg_item.get('labels', [])), shared_vocab)
     fields = [
         ('state', gh_item['state'], fg_item['state']),
-        ('title', gh_item['title'], strip_gh_pr_prefix(fg_item['title'])),
+        ('title', gh_title, fg_title),
         ('body', strip_marker(gh_item.get('body')), strip_marker(fg_item.get('body'))),
-        ('labels', tuple(sorted(l['name'] for l in gh_item.get('labels', []))),
-         tuple(sorted(l['name'] for l in fg_item.get('labels', [])))),
+        ('labels', gh_labels, fg_labels),
     ]
     this_pair_conflicts = []
     for field, gv, fv in fields:
-        result, conflict = three_way_merge(base.get(field), gv, fv)
+        result, direction, conflict = three_way_merge(bgh.get(field), bfg.get(field), gv, fv)
         if conflict:
             conflicts.append((n, field, gv, fv))
             this_pair_conflicts.append(field)
+        elif direction is not None:
+            actions.append((n, field, result, direction))
+            # A write is needed -- gap 4: do NOT touch bgh/bfg here. The baseline advances only in
+            # apply_sync_actions, after the real write succeeds.
         else:
-            if gv != result or fv != result:
-                actions.append((n, field, result, 'github' if result == gv else 'forge'))
-            base[field] = result
+            # Settled: neither side changed from its own last baseline (or there was no baseline yet and the two
+            # sides already agree). Nothing will be written, so there is nothing to defer -- record the current,
+            # agreed values now. This is what lets a first-ever, already-equal pair establish a baseline at all
+            # (gap 1): without it, every later one-sided change would find bgh/bfg still empty and misreport a
+            # same-run "both sides changed" conflict against a baseline that was simply never written.
+            bgh[field] = gv
+            bfg[field] = fv
     return this_pair_conflicts
 
 
-def sync_comments(gh_client, fg_client, n, gh_item, fg_item, last, mirrored):
+def sync_comments(gh_client, fg_client, n, gh_item, fg_item, last, mirrored, yes):
+    """Gap 3: every write here is gated on `yes`. A dry run still detects and reports new comments on either
+    side (so `plan`/dry-run `sync` output stays informative) but calls neither fg_client.comment nor
+    gh_client.comment, and never advances gh_comments/fg_comments -- matching gap 4's "advance only after a
+    write succeeds" for the comment counters too."""
     base = last.setdefault(str(n), {})
     cur_gh = gh_item.get('comments', 0)
     cur_fg = fg_item.get('comments', 0)
@@ -800,30 +1186,133 @@ def sync_comments(gh_client, fg_client, n, gh_item, fg_item, last, mirrored):
         for c in gh_client.comments(n)[prev_gh:]:
             if COMMENT_MARKER_RE.search(c.get('body') or ''):
                 continue   # our own echo -- never re-mirror a comment that already carries a marker
+            if not yes:
+                mirrored.append((n, 'github->forge', c['id'], '(dry run, not written)'))
+                continue
             author = (c.get('user') or {}).get('login', '?')
             mbody = '**%s** (GitHub, %s):\n\n%s\n\n%s' % (author, c.get('created_at', ''), c.get('body') or '',
                                                             comment_marker('github', n, c['id']))
-            new_id = fg_client.comment(n, mbody)
+            try:
+                new_id = fg_client.comment(n, mbody)
+            except (MirrorStop, RuntimeError) as e:
+                mirrored.append((n, 'github->forge', c['id'], 'FAILED: %s' % e))
+                break
             mirrored.append((n, 'github->forge', c['id'], new_id))
             added_fg += 1
     if cur_fg > prev_fg:
         for c in fg_client.comments(n)[prev_fg:]:
             if COMMENT_MARKER_RE.search(c.get('body') or ''):
                 continue
+            if not yes:
+                mirrored.append((n, 'forge->github', c['id'], '(dry run, not written)'))
+                continue
             author = (c.get('user') or {}).get('login', '?')
             mbody = '**%s** (forge, %s):\n\n%s\n\n%s' % (author, c.get('created_at', ''), c.get('body') or '',
                                                             comment_marker('forge', n, c['id']))
-            new_id = gh_client.comment(n, mbody)
+            try:
+                new_id = gh_client.comment(n, mbody)
+            except (MirrorStop, RuntimeError) as e:
+                mirrored.append((n, 'forge->github', c['id'], 'FAILED: %s' % e))
+                break
             mirrored.append((n, 'forge->github', c['id'], new_id))
             added_gh += 1
-    base['gh_comments'] = cur_gh + added_gh
-    base['fg_comments'] = cur_fg + added_fg
+    if yes:
+        # Round 3 rehearsal finding: this must advance to cur_gh/cur_fg (this run's own already-detected new
+        # comment count), not prev_gh/prev_fg (last run's). A comment just mirrored FROM github TO the forge
+        # bumps the forge's real count by added_fg, on top of whatever cur_fg already was -- not on top of
+        # prev_fg, which would silently forget the very github-side comment(s) that triggered this branch and
+        # re-mirror them every subsequent run. Likewise gh_comments must land on cur_gh + added_gh.
+        base['gh_comments'] = cur_gh + added_gh
+        base['fg_comments'] = cur_fg + added_fg
+
+
+def apply_sync_actions(gh_client, fg_client, actions, last, fg, shared_vocab):
+    """Gap 4: a pair's baseline advances only AFTER its write actually succeeds -- never before, so a failed
+    write is retried in the same direction on the next run instead of being silently reverted. Gap 2: a labels
+    write to the forge keeps its current local-only labels (anything outside shared_vocab) and only replaces
+    the shared subset; a labels write to GitHub sends the shared subset only, through FG.set_labels (gap 5),
+    never through FG.patch's 'labels' key."""
+    by_num = {}
+    for n, field, result, direction in actions:
+        if field == 'pr-status':
+            continue
+        by_num.setdefault(n, []).append((field, result, direction))
+    applied = failed = 0
+    for n, fields in by_num.items():
+        entry = last.setdefault(str(n), {})
+        entry.setdefault('gh', {})
+        entry.setdefault('fg', {})
+        to_github = {f: v for f, v, d in fields if d == 'forge'}    # forge changed -> write to GitHub
+        to_forge = {f: v for f, v, d in fields if d == 'github'}    # GitHub changed -> write to forge
+        if to_github:
+            try:
+                # Round 4, gap 3: never send more than GitHub's 65536-char body limit. The truncated text, not
+                # the forge's full value, is what actually lands on GitHub -- so it, not `v`, becomes GitHub's
+                # own baseline below (the forge's baseline is untouched: its full value is still what is there).
+                body_sent = truncate_for_github(to_github['body']) if 'body' in to_github else None
+                gh_client.patch(n, title=to_github.get('title'), body=body_sent,
+                                 state=to_github.get('state'),
+                                 labels=list(to_github['labels']) if 'labels' in to_github else None)
+                for f, v in to_github.items():
+                    if f == 'body':
+                        entry['gh']['body'] = body_sent
+                        entry['fg']['body'] = v
+                    else:
+                        entry['gh'][f] = v
+                        entry['fg'][f] = v
+                print('  #%d github <- forge: applied (%s)' % (n, ', '.join(sorted(to_github))))
+                applied += 1
+            except (MirrorStop, RuntimeError) as e:
+                print('  #%d github <- forge: FAILED: %s -- baseline left unchanged, will retry next run' % (n, e))
+                failed += 1
+        if to_forge:
+            try:
+                patch_payload = {}
+                if 'title' in to_forge:
+                    patch_payload['title'] = to_forge['title']
+                if 'state' in to_forge:
+                    patch_payload['state'] = to_forge['state']
+                body_applied = None
+                if 'body' in to_forge:
+                    # Round 4, gap 4: a pair whose CURRENT forge body starts with the forge-import header keeps
+                    # that header block; only the rest is replaced. The combined text, not the bare GitHub value,
+                    # is what actually lands on the forge -- so it becomes the forge's own baseline below (and
+                    # GitHub's baseline stays the plain, header-less value, since nothing was written to GitHub).
+                    current_fg_body = (fg.get(n) or {}).get('body')
+                    body_applied = apply_forge_body(current_fg_body, to_forge['body'])
+                    patch_payload['body'] = body_applied
+                if patch_payload:
+                    fg_client.patch(n, patch_payload)
+                if 'labels' in to_forge:
+                    current_fg_labels = [l['name'] for l in fg.get(n, {}).get('labels', [])]
+                    local_only = [name for name in current_fg_labels if name not in shared_vocab]
+                    final_labels = sorted(set(local_only) | set(to_forge['labels']))
+                    fg_client.set_labels(n, final_labels)
+                for f, v in to_forge.items():
+                    if f == 'body':
+                        entry['fg']['body'] = strip_marker(body_applied)
+                        entry['gh']['body'] = v
+                    else:
+                        entry['gh'][f] = v
+                        entry['fg'][f] = v
+                print('  #%d forge <- github: applied (%s)' % (n, ', '.join(sorted(to_forge))))
+                applied += 1
+            except (MirrorStop, RuntimeError) as e:
+                print('  #%d forge <- github: FAILED: %s -- baseline left unchanged, will retry next run' % (n, e))
+                failed += 1
+    return applied, failed
 
 
 def cmd_sync(gh_client, fg_client, yes):
     gh = gh_client.all_issues()
     fg = fg_client.all_issues()
     st = load_state()
+    if yes:
+        # Round 4, defect 2: retry any closes left over from a previous create-then-close failure before this
+        # run writes anything of its own -- same rule as cmd_backfill.
+        retried, cleared = retry_pending_closes(gh_client, st)
+        if retried:
+            print('sync: %d pending close(s), %d cleared' % (retried, cleared))
     # gap 1: level the sides first, so common pairs grow to include anything GitHub-only before the field sync runs.
     mrc, fg = do_mirror_down(gh_client, fg_client, yes, gh=gh, fg=fg, st=st)
     if mrc != 0:
@@ -833,6 +1322,7 @@ def cmd_sync(gh_client, fg_client, yes):
         fg = fg_client.all_issues()
     d = build_diff(gh, fg)
     last = st.setdefault('last_synced', {})
+    shared_vocab = compute_shared_vocab(gh_client.repo_labels())
     actions, conflicts, mirrored = [], [], []
     for n in d['common']:
         if n in NEVER_SYNC:
@@ -841,65 +1331,21 @@ def cmd_sync(gh_client, fg_client, yes):
             if yes:
                 sync_pr_twin(gh_client, fg_client, n, gh[n], fg[n], last, actions)
             continue
-        sync_normal_pair(n, gh[n], fg[n], last, actions, conflicts)
-        sync_comments(gh_client, fg_client, n, gh[n], fg[n], last, mirrored)
+        sync_normal_pair(n, gh[n], fg[n], last, shared_vocab, actions, conflicts)
+        sync_comments(gh_client, fg_client, n, gh[n], fg[n], last, mirrored, yes)
 
-    print('sync: %d pairs, %d field actions, %d conflicts, %d comment(s) mirrored' %
-          (len(d['common']), len(actions), len(conflicts), len(mirrored)))
-    for n, field, result, src in actions:
+    print('sync: %d pairs, %d field actions, %d conflicts, %d comment(s) mirrored%s' %
+          (len(d['common']), len(actions), len(conflicts), len(mirrored), '' if yes else ' (dry run)'))
+    for n, field, result, direction in actions:
         disp = result[:60] if isinstance(result, str) else result
-        print('  #%d %s <- %s: %r' % (n, field, src, disp))
+        print('  #%d %s <- %s: %r' % (n, field, direction, disp))
     for n, field, gv, fv in conflicts:
         print('  CONFLICT #%d %s: github=%r forge=%r (no baseline or both changed)' % (n, field, gv, fv))
     for n, direction, src_id, dst_id in mirrored:
         print('  #%d comment %s (src %s -> new %s)' % (n, direction, src_id, dst_id))
     if not yes:
         return 0
-    # Apply non-PR-twin field actions (PR-twin status/title was already patched live above, inside sync_pr_twin).
-    failed = 0
-    by_num = {}
-    for n, field, result, src in actions:
-        if field == 'pr-status':
-            continue
-        by_num.setdefault(n, []).append((field, result, src))
-    for n, fields in by_num.items():
-        gh_fields = {f: v for f, v, src in fields if src == 'github'}
-        fg_fields = {f: v for f, v, src in fields if src == 'forge'}
-        if fg_fields:
-            try:
-                payload = {}
-                if 'title' in fg_fields:
-                    payload['title'] = fg_fields['title']
-                if 'state' in fg_fields:
-                    payload['state'] = fg_fields['state']
-                if 'body' in fg_fields:
-                    payload['body'] = fg_fields['body']
-                if 'labels' in fg_fields:
-                    payload['labels'] = list(fg_fields['labels'])
-                gh_client.patch(n, title=payload.get('title'), body=payload.get('body'),
-                                 state=payload.get('state'), labels=payload.get('labels'))
-                print('  #%d github <- forge: applied' % n)
-            except (MirrorStop, RuntimeError) as e:
-                print('  #%d github <- forge: FAILED: %s' % (n, e))
-                failed += 1
-                continue
-        if gh_fields:
-            try:
-                payload = {}
-                if 'title' in gh_fields:
-                    payload['title'] = gh_fields['title']
-                if 'state' in gh_fields:
-                    payload['state'] = gh_fields['state']
-                if 'body' in gh_fields:
-                    payload['body'] = gh_fields['body']
-                if 'labels' in gh_fields:
-                    payload['labels'] = [{'name': l} for l in gh_fields['labels']]
-                fg_client.patch(n, payload)
-                print('  #%d forge <- github: applied' % n)
-            except (MirrorStop, RuntimeError) as e:
-                print('  #%d forge <- github: FAILED: %s' % (n, e))
-                failed += 1
-                continue
+    applied, failed = apply_sync_actions(gh_client, fg_client, actions, last, fg, shared_vocab)
     save_state(st)
     return 2 if failed else 0
 
@@ -941,19 +1387,20 @@ def cmd_seed(gh_client, fg_client, yes):
             print('seed: FAILED copying onto forge #%d: %s' % (n, e))
     st = load_state()
     last = st.setdefault('last_synced', {})
+    shared_vocab = compute_shared_vocab(gh_client.repo_labels())
     d = build_diff(gh, fg)
     seeded = 0
     for n in d['common']:
         if n in NEVER_SYNC or n in failed:
             continue
         if is_pr_twin_pair(fg[n]):
-            record_baseline(st, n, fg[n], gh[n])
+            record_baseline(st, n, fg[n], gh[n], shared_vocab)
             seeded += 1
             continue
         gt, ft = gh[n]['state'], fg[n]['state']
         if gt != ft:
             continue   # still unequal (a failed fix, or an unjudged conflict) -- leave unseeded, sync will report it
-        record_baseline(st, n, fg[n], gh[n])
+        record_baseline(st, n, fg[n], gh[n], shared_vocab)
         seeded += 1
     save_state(st)
     print('seed: baseline written for %d/%d common pair(s)%s' %
@@ -967,7 +1414,8 @@ def cmd_seed(gh_client, fg_client, yes):
 # --------------------------------------------------------------------------------------------------------------
 
 def _new_issue(gh_client, fg_client, title, body, forge_user_token_path):
-    n = gh_client.create(title, body)
+    n, close_err = gh_client.create(title, body)   # state=None here: no follow-up close is ever requested,
+    assert close_err is None                        # so close_err must always be None -- a bug if it is not.
     marker = mirror_marker('github', n)
     fc = FG(write_token_path=forge_user_token_path) if isinstance(fg_client, FG) else fg_client
     got = fc.create({'title': title, 'body': (body or '') + ('\n\n' if body else '') + marker})
@@ -982,7 +1430,17 @@ def _new_pr(gh_client, fg_client, title, body, head, base, forge_user_token_path
     if not head:
         raise MirrorStop('REFUSED: --kind pr needs --head <lane-branch>')
     gh_title = pr_twin_title(title)
-    n = gh_client.create(gh_title, '(pending -- forge PR not yet created)', state='closed')
+    n, close_err = gh_client.create(gh_title, '(pending -- forge PR not yet created)', state='closed')
+    if close_err is not None:
+        # Round 4, defect 2: the number is real and spent; only the follow-up close failed. cmd_new re-fetches
+        # GitHub's live state right after this returns and records it as the baseline, so #n's baseline will
+        # correctly show it open -- queue the close itself for the next backfill/sync run to retry.
+        st = load_state()
+        pending = st.setdefault('pending_close', [])
+        if n not in pending:
+            pending.append(n)
+        save_state(st)
+        print('new: #%d created but the follow-up close failed, queued to retry: %s' % (n, close_err))
     synth = {'head': {'ref': head}, 'body': body, 'state': 'open', 'merged': False, 'labels': []}
     gh_client.patch(n, body=build_pr_twin_body(synth, n))
     fc = FG(write_token_path=forge_user_token_path) if isinstance(fg_client, FG) else fg_client
@@ -1045,7 +1503,8 @@ def cmd_new(gh_client, fg_client, kind, title, body, forge_user, yes, head=None,
         fg2 = fg_client.all_issues()
         gh2 = gh_client.all_issues()
         if n in fg2:
-            record_baseline(st, n, fg2[n], gh2.get(n))
+            shared_vocab = compute_shared_vocab(gh_client.repo_labels())
+            record_baseline(st, n, fg2[n], gh2.get(n), shared_vocab)
             save_state(st)
         print('CREATED #%d on both sides' % n)
         return 0
@@ -1122,6 +1581,10 @@ def main():
     p_bf.add_argument('--max', type=int, default=0)
     p_bf.add_argument('--pace-per-min', type=int, default=PACE_PER_MIN_DEFAULT)
     p_bf.add_argument('--comments', choices=['now', 'later'], default='later')
+    p_bf.add_argument('--no-interaction-limit', action='store_true',
+                       help='Round 4 addendum: skip the read-only GitHub interaction-limit pre-check. The owner '
+                            'decides whether to use this -- backfill refuses by default unless an active limit '
+                            'covers the whole run.')
 
     p_sync = sub.add_parser('sync')
     p_sync.add_argument('--yes', action='store_true')
@@ -1152,7 +1615,8 @@ def main():
     if a.cmd == 'mirror-down':
         return cmd_mirror_down(gh_client, fg_client, a.yes)
     if a.cmd == 'backfill':
-        return cmd_backfill(gh_client, fg_client, a.yes, a.max, a.pace_per_min, a.comments == 'now')
+        return cmd_backfill(gh_client, fg_client, a.yes, a.max, a.pace_per_min, a.comments == 'now',
+                             no_interaction_limit=a.no_interaction_limit)
     if a.cmd == 'sync':
         return cmd_sync(gh_client, fg_client, a.yes)
     if a.cmd == 'seed':
