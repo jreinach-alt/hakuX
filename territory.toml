@@ -52,14 +52,14 @@ note = 'STARTED lane.local 2026-10-12 23:41 PDT (Sonnet, docs tooling; no device
 [lane.docsrewrite1012]
 issues = ['433']
 standing = false
-files = ['README.md', 'KNOWN_ISSUES.md', 'ROADMAP.md', 'CONTRIBUTING.md', 'PRIVACY.md', 'docs/reporting-bugs.md', 'docs/es-de/README.md', 'docs/releases/README.md', 'android/README.md', 'android/MIGRATING.md', 'docs/images/**', 'docs/lanes/docsrewrite1012/**']
-note = 'STARTED lane.local 2026-10-12 23:35 PDT (Opus, interactive; no unit): owner 10-12 ~23:35 PDT: the README is verbose, leaky, full of process notes and not written for someone deciding whether to try the build; same for the linked docs (known issues, roadmap...), which are stale from the pgraph era and carry no last-updated date. lane.local rewrites them in wt/docsrewrite1012 for a handheld player, each with a Last updated line. No code change.'
+files = ["KNOWN_ISSUES.md", "ROADMAP.md", "CONTRIBUTING.md", "PRIVACY.md", "docs/reporting-bugs.md", "docs/es-de/README.md", "docs/releases/README.md", "android/README.md", "android/MIGRATING.md", "docs/images/**", "docs/lanes/docsrewrite1012/**"]
+note = 'README.md MOVED to [lane.driverline1013] (lane.local 2026-10-13 09:05 PDT): the owner 10-13 ~08:05 asked that the pages name the GPU driver the ratings were measured on. || STARTED lane.local 2026-10-12 23:35 PDT (Opus, interactive; no unit): owner 10-12 ~23:35 PDT: the README is verbose, leaky, full of process notes and not written for someone deciding whether to try the build; same for the linked docs (known issues, roadmap...), which are stale from the pgraph era and carry no last-updated date. lane.local rewrites them in wt/docsrewrite1012 for a handheld player, each with a Last updated line. No code change.'
 
 [lane.compatpage1012]
 issues = ['433']
 standing = false
-files = ['docs/COMPATIBILITY.md', 'docs/compatibility.csv', 'docs/testing/compat_page.py', 'docs/testing/compat_page_selftest.py', 'docs/testing/compat_notes.tsv', 'docs/lanes/compatpage1012/**']
-note = 'README.md MOVED to [lane.docsrewrite1012] (lane.local 2026-10-12 23:35 PDT): the owner asked for a full README rewrite; any README wording this lane writes is folded by hand into the rewrite. || STARTED lane.local 2026-10-12 23:28 PDT (Sonnet, docs): owner 10-12 ~23:15 PDT: the compatibility page in three sections (Playable; runs below 30 fps; not playable), the region tested instead of the title ID, no Rated-by column, reds with title ID, tested date and a short reason; generated from the ledger and registry, plus docs/compatibility.csv. README.md is wording only, in the lines that describe COMPATIBILITY.md. No device, no emulator change. Brief: briefs/compatpage1012.md.'
+files = ["docs/testing/compat_notes.tsv", "docs/lanes/compatpage1012/**"]
+note = 'docs/COMPATIBILITY.md, docs/compatibility.csv, docs/testing/compat_page.py, docs/testing/compat_page_selftest.py MOVED to [lane.driverline1013] (lane.local 2026-10-13 09:05 PDT): the owner 10-13 ~08:05 asked that the pages name the GPU driver the ratings were measured on. || README.md MOVED to [lane.docsrewrite1012] (lane.local 2026-10-12 23:35 PDT): the owner asked for a full README rewrite; any README wording this lane writes is folded by hand into the rewrite. || STARTED lane.local 2026-10-12 23:28 PDT (Sonnet, docs): owner 10-12 ~23:15 PDT: the compatibility page in three sections (Playable; runs below 30 fps; not playable), the region tested instead of the title ID, no Rated-by column, reds with title ID, tested date and a short reason; generated from the ledger and registry, plus docs/compatibility.csv. README.md is wording only, in the lines that describe COMPATIBILITY.md. No device, no emulator change. Brief: briefs/compatpage1012.md.'
 
 [lane.issuemirror1012]
 issues = ['433']
@@ -2605,6 +2605,12 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/pathtele1013/**", "docs/testing/titles/pathfind.py", "docs/testing/titles/pathfind_selftest.py"]
 note = "STARTED lane.local 2026-10-13 08:58 PDT (Sonnet, harness; no device): the owner 10-13 ~08:05 asked for telemetry on the FPS failures. A: offline attribution of KOTOR II (n-4C410014-1011) and SC Double Agent (n-5553005E-1011) from the always-on lines, as fpsbelow1012 NOTES 17 read M:I. B: pathfind.py --perflog (master perflog APK via the dispatcher cache, install -r, restore in finally, refuse a scored run on a leftover perflog APK, --env, never banked). lane.local runs the three telemetry holds after the fold. pathfind.py and pathfind_selftest.py from the parked [lane.pathfindhold1012]. Brief: briefs/pathtele1013.md."
+
+[lane.driverline1013]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/driverline1013/**", "docs/COMPATIBILITY.md", "docs/compatibility.csv", "docs/testing/compat_page.py", "docs/testing/compat_page_selftest.py", "README.md"]
+note = "STARTED lane.local 2026-10-13 09:05 PDT (Opus, interactive; no unit; docs only): the owner 10-13 ~08:05 PDT: \"Yes name the driver we tested on. That's important.\" The compatibility page and the README name the handhelds' GPU and driver (Adreno 740, Turnip T30 by MrPurple666, Mesa 26.3.0-devel git-62ac221a33, loaded through Settings, GPU Driver). The page is regenerated from the ledger and registry. No emulator change."
 
 [lane.rootclean1013]
 issues = ['433']
