@@ -1,0 +1,380 @@
+--- /home/justin/hakux-work/host-tools/issue_mirror.py	2026-10-12 21:46:45.991905896 -0700
++++ /home/justin/hakux-work/lanes/issuemirror1012/issue_mirror.py.new	2026-10-12 22:42:27.495591050 -0700
+@@ -55,6 +55,7 @@
+ """
+ import argparse
+ import calendar
++import contextlib
+ import fcntl
+ import json
+ import os
+@@ -107,7 +108,35 @@
+                      'backfill'}
+ NEEDS_AUDIT_RE = re.compile(r'^needs-audit-\d+$')
+ 
+-GITHUB_READ_BUDGET_DAY = int(os.environ.get('ISSUE_MIRROR_READ_BUDGET', '300'))  # github_gateway.py MAX_READS_DAY
++# issuemirror1012 gap 2: an incremental sync lists only items updated since the last sync's start, minus this
++# overlap, so a write that lands right at the boundary (clock skew between here and GitHub/forge, or an update
++# whose timestamp is stamped slightly before the request that caused it completes) is never missed.
++OVERLAP_S = 600
++
++
++def iso8601(epoch):
++    return time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(epoch))
++
++
++class StateLockHeld(Exception):
++    pass
++
++
++@contextlib.contextmanager
++def state_lock():
++    """issuemirror1012 gap 1: the lock cmd_new already took, now shared by every command that writes
++    .issue-mirror.json. Acquire in a top-level cmd_* dispatch function only -- a nested call (do_mirror_down,
++    sync_normal_pair, etc.) must trust the lock is already held, since a second flock() on the same path from
++    the SAME process (a second fd) conflicts with the first and would deadlock/refuse itself."""
++    fd = os.open(LOCK, os.O_CREAT | os.O_RDWR, 0o644)
++    try:
++        try:
++            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
++        except OSError:
++            raise StateLockHeld()
++        yield
++    finally:
++        os.close(fd)
+ 
+ 
+ def log(msg):
+@@ -216,6 +245,40 @@
+     def comments(self, number):
+         return json.loads(self._get_raw('/issues/%d/comments' % number))
+ 
++    def changed_issues(self, since_iso, per_page=100, max_pages=40):
++        """issuemirror1012 gap 2: the incremental listing. GitHub's /issues accepts since=<ISO 8601> (items
++        updated at or after that time) with sort=updated, so a steady-state sync (nothing changed since the
++        last pass minus the overlap) costs one page, not the full paginated scan all_issues() needs."""
++        items = {}
++        page = 1
++        while page <= max_pages:
++            rows = json.loads(self._get_raw(
++                '/issues?state=all&since=%s&sort=updated&direction=asc&per_page=%d&page=%d'
++                % (since_iso, per_page, page)))
++            if not isinstance(rows, list):
++                raise RuntimeError('github changed-issues page %d is not a list' % page)
++            for x in rows:
++                items[x['number']] = x
++            if len(rows) < per_page:
++                return items
++            page += 1
++        raise RuntimeError('more than %d pages of changed GitHub issues' % max_pages)
++
++    def get_issue(self, number):
++        return json.loads(self._get_raw('/issues/%d' % number))
++
++    def budget_remaining(self):
++        """issuemirror1012 gap 3: today's remaining GitHub reads, read from the gateway's own state file --
++        no network call, so calling this never spends a read itself. Replaces the stale GITHUB_READ_BUDGET_DAY
++        constant, which compared a per-run estimate against the whole day's cap instead of what is left today."""
++        r = subprocess.run([sys.executable, self.gateway, 'budget'], capture_output=True, text=True)
++        if r.returncode != 0:
++            raise RuntimeError('gateway budget: rc=%d %s' % (r.returncode, (r.stdout + r.stderr)[:300]))
++        m = re.search(r'reads_remaining=(\d+)', r.stdout)
++        if not m:
++            raise RuntimeError('gateway budget: no reads_remaining= line in %r' % r.stdout[:300])
++        return int(m.group(1))
++
+     def repo_labels(self):
+         """One-time (cached) read of the repo's label list -- gap 2's shared vocabulary is GitHub's own labels
+         minus TOOL_LABELS_DENY; see compute_shared_vocab(). GET_OK must include '/labels' (staged gateway diff)."""
+@@ -378,6 +441,27 @@
+     def comments(self, number):
+         return json.loads(self._curl('GET', '/issues/%d/comments' % number))
+ 
++    def changed_issues(self, since_iso, limit=100, max_pages=40):
++        """issuemirror1012 gap 2: the forge's incremental listing. Confirmed against the cached Forgejo swagger
++        spec (zero network cost) that GET /issues takes since=<RFC 3339> and sort -- its 'by update time' value
++        is recentupdate, not GitHub's 'updated'."""
++        items = {}
++        page = 1
++        while page <= max_pages:
++            rows = json.loads(self._curl('GET', '/issues', query={
++                'state': 'all', 'since': since_iso, 'sort': 'recentupdate', 'page': page, 'limit': limit}))
++            if not isinstance(rows, list):
++                raise RuntimeError('forge changed-issues page %d is not a list' % page)
++            for x in rows:
++                items[x['number']] = x
++            if len(rows) < limit:
++                return items
++            page += 1
++        raise RuntimeError('more than %d pages of changed forge issues' % max_pages)
++
++    def get_issue(self, number):
++        return json.loads(self._curl('GET', '/issues/%d' % number))
++
+     def pull_detail(self, number):
+         return json.loads(self._curl('GET', '/pulls/%d' % number))
+ 
+@@ -911,6 +995,15 @@
+ 
+ 
+ def cmd_mirror_down(gh_client, fg_client, yes):
++    try:
++        with state_lock():
++            return _cmd_mirror_down_locked(gh_client, fg_client, yes)
++    except StateLockHeld:
++        print('REFUSED: another run holds the lock')
++        return 75
++
++
++def _cmd_mirror_down_locked(gh_client, fg_client, yes):
+     rc, _ = do_mirror_down(gh_client, fg_client, yes)
+     if rc == 0 and yes:
+         print('mirror-down: done')
+@@ -968,6 +1061,19 @@
+ # --------------------------------------------------------------------------------------------------------------
+ 
+ def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments, no_interaction_limit=False):
++    """issuemirror1012 gap 1: the lock wrapper. backfill's own load_state()/save_state() calls (several, across
++    the per-item loop) must all see the same, uninterrupted lock a concurrent sync/seed/mirror-down also takes --
++    see state_lock()."""
++    try:
++        with state_lock():
++            return _cmd_backfill_locked(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments,
++                                         no_interaction_limit)
++    except StateLockHeld:
++        print('REFUSED: another run holds the lock')
++        return 75
++
++
++def _cmd_backfill_locked(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments, no_interaction_limit=False):
+     gh = gh_client.all_issues()
+     fg = fg_client.all_issues()
+     d = build_diff(gh, fg)
+@@ -1023,9 +1129,13 @@
+     listing_reads_estimate = 12   # ~10 for this run's two all_issues() paginations (gh+fg costs 0 against GH's
+                                    # budget; gh's own all_issues() here is ~10 pages at 100/page) + margin
+     needed = listing_reads_estimate + len(todo)
+-    precheck = needed <= GITHUB_READ_BUDGET_DAY
+-    print('backfill: per-item race-window pre-check %s (est. %d GitHub read(s) this run vs. a %d/day budget)' %
+-          ('enabled' if precheck else 'DISABLED -- would exceed the daily budget', needed, GITHUB_READ_BUDGET_DAY))
++    # issuemirror1012 gap 3: compare against what is actually left of today's budget (read from the gateway's own
++    # state, no network call), not the whole day's cap -- a backfill that starts late in the day, after the push
++    # timer and any syncs have already spent most of it, must not assume the full 600 are still there.
++    remaining = gh_client.budget_remaining()
++    precheck = needed <= remaining
++    print('backfill: per-item race-window pre-check %s (est. %d GitHub read(s) this run vs. %d remaining today)' %
++          ('enabled' if precheck else 'DISABLED -- would exceed today\'s remaining budget', needed, remaining))
+ 
+     gap = 60.0 / pace_per_min
+     for i, n in enumerate(todo):
+@@ -1308,7 +1418,27 @@
+     return applied, failed
+ 
+ 
+-def cmd_sync(gh_client, fg_client, yes):
++def cmd_sync(gh_client, fg_client, yes, full=True):
++    """issuemirror1012 gaps 1+2: the lock wrapper, and the full/incremental split. `full` defaults to True so
++    every pre-existing direct call (the 24 selftests, the rehearsal) keeps the exact original full-listing
++    behavior unless it opts in to the incremental path explicitly. The CLI's own default is the other way --
++    `main()` passes full=a.full, and argparse's --full defaults to False, matching the brief ("the service runs
++    `sync --yes` (incremental); once a day it runs `sync --yes --full` instead")."""
++    try:
++        with state_lock():
++            if full:
++                return _cmd_sync_full(gh_client, fg_client, yes)
++            return _cmd_sync_incremental(gh_client, fg_client, yes)
++    except StateLockHeld:
++        if yes:
++            print('skipped: another run holds the lock')
++        else:
++            print('REFUSED: another run holds the lock')
++        return 75
++
++
++def _cmd_sync_full(gh_client, fg_client, yes):
++    started = time.time()
+     gh = gh_client.all_issues()
+     fg = fg_client.all_issues()
+     st = load_state()
+@@ -1339,7 +1469,7 @@
+         sync_normal_pair(n, gh[n], fg[n], last, shared_vocab, actions, conflicts)
+         sync_comments(gh_client, fg_client, n, gh[n], fg[n], last, mirrored, yes)
+ 
+-    print('sync: %d pairs, %d field actions, %d conflicts, %d comment(s) mirrored%s' %
++    print('sync (full): %d pairs, %d field actions, %d conflicts, %d comment(s) mirrored%s' %
+           (len(d['common']), len(actions), len(conflicts), len(mirrored), '' if yes else ' (dry run)'))
+     for n, field, result, direction in actions:
+         disp = result[:60] if isinstance(result, str) else result
+@@ -1348,11 +1478,87 @@
+         print('  CONFLICT #%d %s: github=%r forge=%r (no baseline or both changed)' % (n, field, gv, fv))
+     for n, direction, src_id, dst_id in mirrored:
+         print('  #%d comment %s (src %s -> new %s)' % (n, direction, src_id, dst_id))
++    # issuemirror1012 gap 2: fold `check` into `sync` -- one command per tick, one listing. Reuses the gh/fg
++    # already fetched above instead of paying for a second one. check_report's own text (only_gh, the backlog
++    # ceiling, a raw state/content scan) is still printed every tick for visibility -- the same text cmd_check
++    # would print standalone -- but the exit code below is driven by `conflicts` instead: check_report's raw
++    # scan compares gh/fg as fetched BEFORE apply_sync_actions runs, so a title/state difference this very run
++    # is about to fix would otherwise flag as DRIFT for one tick every time, which is not a real failure.
++    check_line, _ = check_report(gh, fg, st)
++    print(check_line)
+     if not yes:
+         return 0
+     applied, failed = apply_sync_actions(gh_client, fg_client, actions, last, fg, shared_vocab)
++    st['last_sync_started_utc'] = started
+     save_state(st)
+-    return 2 if failed else 0
++    return 2 if failed else (1 if conflicts else 0)
++
++
++def _cmd_sync_incremental(gh_client, fg_client, yes):
++    """issuemirror1012 gap 2: lists only what changed since the last sync's start (minus OVERLAP_S), not every
++    issue on both sides. Scope, stated in PR.md: this pass only updates pairs ALREADY KNOWN to both sides
++    (st['last_synced'] already has a baseline for them) -- a brand-new GitHub issue is picked up by the next
++    daily `sync --full` (or a manual mirror-down), not by this pass. That is the one thing a full listing would
++    catch that this does not, traded for cutting a steady-state tick from ~10 GitHub reads to ~1-2."""
++    st = load_state()
++    prev_started = st.get('last_sync_started_utc')
++    if prev_started is None:
++        print('sync: no prior sync timestamp -- running a full sync instead')
++        return _cmd_sync_full(gh_client, fg_client, yes)
++    started = time.time()
++    since_iso = iso8601(prev_started - OVERLAP_S)
++    if yes:
++        retried, cleared = retry_pending_closes(gh_client, st)
++        if retried:
++            print('sync: %d pending close(s), %d cleared' % (retried, cleared))
++    gh_changed = gh_client.changed_issues(since_iso)
++    fg_changed = fg_client.changed_issues(since_iso)
++    known = {int(k) for k in st.get('last_synced', {})}
++    nums = sorted((set(gh_changed) | set(fg_changed)) & known)
++    last = st.setdefault('last_synced', {})
++    shared_vocab = compute_shared_vocab(gh_client.repo_labels())
++    actions, conflicts, mirrored = [], [], []
++    fg_fetched = {}
++    for n in nums:
++        if n in NEVER_SYNC:
++            continue
++        gh_item = gh_changed.get(n) or gh_client.get_issue(n)
++        fg_item = fg_changed.get(n) or fg_client.get_issue(n)
++        fg_fetched[n] = fg_item
++        if is_pr_twin_pair(fg_item):
++            if yes:
++                sync_pr_twin(gh_client, fg_client, n, gh_item, fg_item, last, actions)
++            continue
++        sync_normal_pair(n, gh_item, fg_item, last, shared_vocab, actions, conflicts)
++        sync_comments(gh_client, fg_client, n, gh_item, fg_item, last, mirrored, yes)
++
++    print('sync (incremental): %d changed pair(s) of %d known, %d field actions, %d conflicts, %d comment(s) '
++          'mirrored%s' % (len(nums), len(known), len(actions), len(conflicts), len(mirrored),
++                           '' if yes else ' (dry run)'))
++    for n, field, result, direction in actions:
++        disp = result[:60] if isinstance(result, str) else result
++        print('  #%d %s <- %s: %r' % (n, field, direction, disp))
++    for n, field, gv, fv in conflicts:
++        print('  CONFLICT #%d %s: github=%r forge=%r (no baseline or both changed)' % (n, field, gv, fv))
++    for n, direction, src_id, dst_id in mirrored:
++        print('  #%d comment %s (src %s -> new %s)' % (n, direction, src_id, dst_id))
++    # A lite check: this pass only ever looked at `nums`, not every item on both sides, so it can only report
++    # conflicts actually seen in what it processed this tick -- not check_report's full drift coverage (only_gh,
++    # the backlog ceiling, a full state/content conflict scan). That full coverage runs once a day, folded into
++    # `sync --full`.
++    if conflicts:
++        print('CHECK (incremental, partial): %d conflict(s) in this tick\'s %d changed pair(s)' %
++              (len(conflicts), len(nums)))
++        check_rc = 1
++    else:
++        print('CHECK (incremental, partial): OK for this tick\'s %d changed pair(s)' % len(nums))
++        check_rc = 0
++    if not yes:
++        return 0
++    applied, failed = apply_sync_actions(gh_client, fg_client, actions, last, fg_fetched, shared_vocab)
++    st['last_sync_started_utc'] = started
++    save_state(st)
++    return 2 if failed else check_rc
+ 
+ 
+ # --------------------------------------------------------------------------------------------------------------
+@@ -1360,6 +1566,15 @@
+ # --------------------------------------------------------------------------------------------------------------
+ 
+ def cmd_seed(gh_client, fg_client, yes):
++    try:
++        with state_lock():
++            return _cmd_seed_locked(gh_client, fg_client, yes)
++    except StateLockHeld:
++        print('REFUSED: another run holds the lock')
++        return 75
++
++
++def _cmd_seed_locked(gh_client, fg_client, yes):
+     gh = gh_client.all_issues()
+     fg = fg_client.all_issues()
+     if not yes:
+@@ -1530,16 +1745,16 @@
+ # check -- gap 7
+ # --------------------------------------------------------------------------------------------------------------
+ 
+-def cmd_check(gh_client, fg_client):
+-    gh = gh_client.all_issues()
+-    fg = fg_client.all_issues()
++def check_report(gh, fg, st):
++    """issuemirror1012 gap 2: the drift check, as a pure(ish) function over already-fetched gh/fg listings,
++    so `sync --full` can fold it in at zero extra listing cost -- the only state mutation is setting
++    st['backlog_ceiling'] on first use (in memory; the caller saves it if it wants that persisted). Returns
++    (line, rc). Extracted unchanged from the original standalone cmd_check body."""
+     d = build_diff(gh, fg)
+-    st = load_state()
+     ceiling = st.get('backlog_ceiling')
+     if ceiling is None:
+         ceiling = d['fg_max']   # first run ever: treat the current backlog as fully acknowledged, not drift
+         st['backlog_ceiling'] = ceiling
+-        save_state(st)
+     problems = []
+     if d['only_gh']:
+         problems.append('%d GitHub-only number(s) not yet mirrored down: %s' % (len(d['only_gh']), d['only_gh'][:5]))
+@@ -1557,10 +1772,21 @@
+     if d['content_conflicts']:
+         problems.append('%d content conflict(s)' % len(d['content_conflicts']))
+     if problems:
+-        print('DRIFT: ' + '; '.join(problems))
+-        return 1
+-    print('OK: github max=%d forge max=%d, %d backfill-pending, no conflicts' % (d['gh_max'], d['fg_max'], len(d['backfill'])))
+-    return 0
++        return 'DRIFT: ' + '; '.join(problems), 1
++    return ('OK: github max=%d forge max=%d, %d backfill-pending, no conflicts' %
++            (d['gh_max'], d['fg_max'], len(d['backfill']))), 0
++
++
++def cmd_check(gh_client, fg_client):
++    gh = gh_client.all_issues()
++    fg = fg_client.all_issues()
++    st = load_state()
++    had_ceiling = 'backlog_ceiling' in st
++    line, rc = check_report(gh, fg, st)
++    if not had_ceiling:
++        save_state(st)
++    print(line)
++    return rc
+ 
+ 
+ # --------------------------------------------------------------------------------------------------------------
+@@ -1602,6 +1828,10 @@
+ 
+     p_sync = sub.add_parser('sync')
+     p_sync.add_argument('--yes', action='store_true')
++    p_sync.add_argument('--full', action='store_true',
++                         help='issuemirror1012 gap 2: list every issue on both sides (the original behavior) '
++                              'instead of only what changed since the last sync. The timer runs this once a day; '
++                              'every other tick omits it and gets the incremental pass.')
+ 
+     p_seed = sub.add_parser('seed')
+     p_seed.add_argument('--yes', action='store_true')
+@@ -1632,7 +1862,7 @@
+         return cmd_backfill(gh_client, fg_client, a.yes, a.max, a.pace_per_min, a.comments == 'now',
+                              no_interaction_limit=a.no_interaction_limit)
+     if a.cmd == 'sync':
+-        return cmd_sync(gh_client, fg_client, a.yes)
++        return cmd_sync(gh_client, fg_client, a.yes, full=a.full)
+     if a.cmd == 'seed':
+         return cmd_seed(gh_client, fg_client, a.yes)
+     if a.cmd == 'new':

@@ -1,0 +1,44 @@
+--- /home/justin/hakux-work/host-tools/github_gateway.py	2026-10-12 21:49:03.020136194 -0700
++++ /home/justin/hakux-work/lanes/issuemirror1012/github_gateway.py.new	2026-10-12 22:38:20.207311866 -0700
+@@ -818,6 +818,23 @@
+     os.system('tail -5 %s 2>/dev/null' % LOG)
+ 
+ 
++def cmd_budget():
++    """issuemirror1012 gap 3: today's UTC reads/writes/pushes against their caps, read from .gateway-state.json
++    with no network call of any kind -- read_budget()/_write_budget() are never called here, so running this
++    never spends a read itself. A caller that needs "how many reads are left today" (cmd_backfill's per-item
++    pre-check) parses the reads_remaining= line rather than re-deriving it, so there is exactly one place that
++    does the subtraction."""
++    s = load_state()
++    c = day_counts(s)
++    reads, writes, pushes = c.get('reads', 0), c.get('writes', 0), c.get('pushes', 0)
++    print('reads=%d/%d writes=%d/%d pushes=%d/%d' %
++          (reads, MAX_READS_DAY, writes, MAX_WRITES_DAY, pushes, MAX_PUSHES_DAY))
++    print('reads_remaining=%d' % max(0, MAX_READS_DAY - reads))
++    print('writes_remaining=%d' % max(0, MAX_WRITES_DAY - writes))
++    print('pushes_remaining=%d' % max(0, MAX_PUSHES_DAY - pushes))
++    return 0
++
++
+ def _strs(a, name):
+     return [a[i + 1] for i in range(len(a)) if a[i] == name]
+ 
+@@ -828,7 +845,7 @@
+ 
+ def main():
+     a = sys.argv[1:]
+-    if not a or a[0] not in ('check', 'plan', 'push', 'status', 'pages', 'get', 'prheads', 'release', 'unrelease', 'renote', 'pointer',
++    if not a or a[0] not in ('check', 'plan', 'push', 'status', 'budget', 'pages', 'get', 'prheads', 'release', 'unrelease', 'renote', 'pointer',
+                               'issue-create', 'issue-patch', 'issue-comment', 'pr-patch'):
+         print(__doc__); return 64
+     lk = open(H + '/.gateway.lock', 'w')
+@@ -842,6 +859,8 @@
+         cmd_check(); return 0
+     if a[0] == 'status':
+         cmd_status(); return 0
++    if a[0] == 'budget':
++        return cmd_budget()
+     if a[0] == 'pages':
+         cmd_pages(); return 0
+     if a[0] == 'get':

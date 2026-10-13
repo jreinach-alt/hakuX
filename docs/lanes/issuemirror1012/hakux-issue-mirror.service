@@ -1,0 +1,8 @@
+[Unit]
+Description=hakuX issue mirror: incremental sync every tick, full sync once a day
+
+[Service]
+Type=oneshot
+ExecStart=/home/justin/hakux-work/host-tools/hakux-issue-mirror-tick.sh
+# exit 75 = another run (new/backfill/sync) holds the state lock -- skipped, not a failure.
+SuccessExitStatus=75
