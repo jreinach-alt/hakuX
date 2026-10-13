@@ -210,7 +210,23 @@ def hold_shortfall(v, need_s=600.0):
     off = max(0.0, scored - float(tl.get("play_s") or 0))
     more = off / 0.10 - scored
     return ("share", more) if more > 0 else ("stop", 0.0)
-CONFIRM_GRACE_S = 300                # seconds the claim budget is extended once a gameplay read starts its confirm (10-05)
+
+
+def hold_bar_unreachable(play_s, window_s, budget_left_s, bar=0.10):
+    """Cheap pre-filter, from the hold's own numbers (play so far, window so far = elapsed hold
+    time, budget left): true once off play already cannot drop to `bar` of the scored window even
+    if every second of budget left were spent on play. Never ends a hold by itself -- confirmed
+    against the provisional verdict's own timeline first (Agent.hold_unsalvageable). PoP: Sands of
+    Time (5553001D, 10-13d) was certain to FAIL this way near hold 400 s, 27 min before its 2013-s
+    budget ran out (owner's 10-06 order keeps the step cap from ending a hold while budget remains;
+    this is a different rule -- it ends the hold only once budget remaining cannot buy a pass)."""
+    window_s = max(0.0, window_s)
+    budget_left_s = max(0.0, budget_left_s)
+    off = max(0.0, window_s - play_s)
+    return off > bar * (window_s + budget_left_s)
+
+
+CONFIRM_GRACE_S = 300               # seconds the claim budget is extended once a gameplay read starts its confirm (10-05)
 # live gameplay reads whose probe was refused on a self-moving scene before a --hold-s claim enters the hold (10-06: NFL
 # Blitz Pro read live football from ~610 s, every probe refused on the moving camera, and the claim-live rule only entered
 # the hold at the 25-min budget; the hold's verdict decides either way, so the wait was ~13 min of Nova time)
@@ -1067,6 +1083,23 @@ def name_words(name):
     return {w for w in norm(name).split() if len(w) >= 3 and w not in STOP and not re.fullmatch(r"[0-9a-f]{8}", w)}
 
 
+def no_answer_step(s):
+    """True for a step recorded when the model gave no answer at all (pathfind.py's own
+    `state="unknown", why="model gave no answer"`, src="none" while live -- but a step loaded back
+    from pathknow/paths/*.json carries no `src` (write_path's `keep` never saves it), so this matches
+    on state+why alone, the only fields a recorded step and a live one share)."""
+    return s.get("state") == "unknown" and s.get("why") == "model gave no answer"
+
+
+def cut_no_answer(steps):
+    """A path's steps, cut before the first the model never answered (#433, lane.pathrules1013 Part
+    A): that step was never a decision, so it is not a screen the next run should wait to match."""
+    for i, s in enumerate(steps):
+        if no_answer_step(s):
+            return steps[:i]
+    return steps
+
+
 def load_paths(tid, name):
     """(own path or None, [sibling paths]) from pathknow/paths/*.json. A
     sibling is a recorded title whose name shares a series hint file with
@@ -1080,6 +1113,7 @@ def load_paths(tid, name):
             d = json.load(open(p))
         except (OSError, ValueError):
             continue
+        d["steps"] = cut_no_answer(d.get("steps") or [])
         if tid and d.get("title_id", "").upper() == tid.upper():
             own = d
         elif mine and mine & set(os.path.basename(f) for f in series_files(d.get("name", ""))):
@@ -2319,6 +2353,18 @@ class Agent:
                 else:
                     print(f"hold-play: verdict short on {kind} by {s:.0f} s; holding on (budget {self.budget_s - self.el():.0f} s left)",
                           flush=True)
+            elif play_s < self.hold_s and (last_v is None or now() - last_v >= HOLD_VERDICT_S) and \
+                    hold_bar_unreachable(play_s, hold_el, self.budget_s - self.el()):
+                # the budget-left rule (#433 Part B, 10-13): off play already too large for the share bar
+                # to pass in the time left, confirmed against the provisional verdict's own timeline. Fills
+                # the gap the check above leaves: hold_check never runs before play_s reaches self.hold_s,
+                # so a hold stuck off play before then got no validity check at all (PoP: Sands of Time,
+                # 5553001D, 10-13d: 27 min of budget spent after the point this rule would have ended it).
+                last_v = now()
+                unreachable = self.hold_unsalvageable(play_s, self.budget_s - self.el(), log)
+                if unreachable:
+                    reason = unreachable
+                    break
             last_png = png
         for p in drop:
             os.remove(p)
@@ -2339,10 +2385,12 @@ class Agent:
             held["verdict"] = self.hold_verdict(now() - t_hold)
         return self.finish(last=kept[-1] if kept else jpg, post=kept)
 
-    def hold_check(self, play_s, log):
-        """The hold's own validity check (10-06): title_verdict.py on the logcat so far, in a provisional folder whose logcat
-        ends with a `soak end` at its last logged time. Returns (kind, seconds, why) from hold_shortfall. The hold's play and
-        the verdict's play are both logged; the verdict's is trusted when they disagree."""
+    def provisional_verdict(self, play_s, log):
+        """title_verdict.py on the hold's logcat so far, in a provisional folder (shared by hold_check and
+        hold_unsalvageable) whose logcat ends with a `soak end` at its last logged time. Returns the verdict
+        dict, or None when title_verdict did not produce one -- an unknown, not a failure. The request.json
+        written here carries a perflog hold's build/env too (#433 Part C): hold_verdict's own request.json
+        is the final judge's, this one the provisional judge's, and both must void a perflog run the same way."""
         pdir = os.path.join(self.out, "provisional")
         os.makedirs(pdir, exist_ok=True)
         try:
@@ -2356,16 +2404,22 @@ class Agent:
                 f.write(f"{stamp} I/hakuX-route(    0): soak end\n")
         with open(os.path.join(pdir, "request.json"), "w") as f:
             json.dump({"title": self.name, "title_id": self.tid, "device": self.dev.label,
-                       "iso": os.path.basename(self.iso or "")}, f)
+                       "iso": os.path.basename(self.iso or ""),
+                       "build": self.result.get("build"), "env": self.result.get("env")}, f)
         with open(os.path.join(pdir, "run.log"), "w") as f:
             f.write(f"held {self.name} for {int(play_s)}s\n")
-        v = None
         try:
             subprocess.run([sys.executable, VERDICT, pdir, "--require", "confirmation"],
                            capture_output=True, text=True, timeout=120)
-            v = json.load(open(os.path.join(pdir, "verdict.json")))
+            return json.load(open(os.path.join(pdir, "verdict.json")))
         except (subprocess.TimeoutExpired, OSError, ValueError):
-            v = None
+            return None
+
+    def hold_check(self, play_s, log):
+        """The hold's own validity check (10-06): the provisional verdict's hold_shortfall read. Returns
+        (kind, seconds, why). The hold's play and the verdict's play are both logged; the verdict's is
+        trusted when they disagree."""
+        v = self.provisional_verdict(play_s, log)
         # no verdict is an unknown, not a failure: the hold checks again at the next interval, and ends at the budget
         kind, s = ("retry", 0.0) if v is None else hold_shortfall(v, self.hold_s)
         tl = (v or {}).get("timeline")
@@ -2381,12 +2435,36 @@ class Agent:
         print(f"hold-play: validity check {kind} {s:.0f} s (hold {play_s:.0f} s of play, verdict {vplay})", flush=True)
         return kind, s, why
 
+    def hold_unsalvageable(self, play_s, budget_left_s, log):
+        """Confirms hold_bar_unreachable's cheap trigger against the provisional verdict's own timeline
+        (play_s, scored_s), read directly -- not through hold_shortfall, which returns 'duration' before the
+        window reaches need_s and so never reaches the share rule this early (#433 Part B: PoP: Sands of
+        Time, 5553001D, 10-13d, certain to FAIL on menu time near hold 400 s, 27 min before its budget ran
+        out). None when there is no verdict yet, or its timeline lacks these fields: an unknown, not a
+        failure, same convention as hold_check -- the hold keeps going and checks again at HOLD_VERDICT_S."""
+        v = self.provisional_verdict(play_s, log)
+        tl = (v or {}).get("timeline")
+        if not isinstance(tl, dict) or tl.get("play_s") is None or tl.get("scored_s") is None:
+            return None
+        scored = float(tl["scored_s"])
+        off = max(0.0, scored - float(tl["play_s"]))
+        if off <= 0.10 * (scored + max(0.0, budget_left_s)):
+            return None
+        reason = (f"off play {off:.0f} s of a {scored:.0f} s scored window cannot drop to 10% with "
+                  f"{budget_left_s:.0f} s of budget left: no amount of further play can pass")
+        self.hold_note(log, {"check": "unsalvageable", "off_s": round(off, 1), "window_s": round(scored, 1),
+                             "budget_left_s": round(budget_left_s, 1)})
+        print(f"hold-play: {reason}", flush=True)
+        return reason
+
     def hold_verdict(self, secs):
         """title_verdict.py on the hold's logcat: its one VERDICT line (verdict.json beside it)."""
-        # title_verdict resolves the title by the ISO's basename (targets.toml `iso` map), not by the display name
+        # title_verdict resolves the title by the ISO's basename (targets.toml `iso` map), not by the display name.
+        # "build"/"env" let title_verdict void a perflog hold even before finish() writes them to result.json (#433).
         with open(os.path.join(self.out, "request.json"), "w") as f:
             json.dump({"title": self.name, "title_id": self.tid, "device": self.dev.label,
-                       "iso": os.path.basename(self.iso or "")}, f)
+                       "iso": os.path.basename(self.iso or ""),
+                       "build": self.result.get("build"), "env": self.result.get("env")}, f)
         # title_verdict reads `held <title> for <n>s` from run.log; append it there (stdout is not run.log)
         with open(os.path.join(self.out, "run.log"), "a") as f:
             f.write(f"held {self.name} for {int(secs)}s\n")
@@ -2424,6 +2502,10 @@ class Agent:
         for s in self.steps:
             if s.get("src") in ("probe", "check"):
                 continue
+            if no_answer_step(s):
+                # a step the model never answered is not a decision: never recorded, and nothing
+                # after it either, the same way the loop cut below never records a repeat (#433)
+                break
             if not complete and s.get("sig") is not None:
                 if any(sig_dist(s["sig"], o) <= SIG_MATCH for o in seen) and s.get("state") not in (
                         "black", "loading"):
@@ -2433,6 +2515,8 @@ class Agent:
             keep.append({"state": s.get("state"), "why": s.get("why", "")[:160], "action": s.get("action", []),
                          "wait_s": s.get("wait_s", 2), "useful": useful or s.get("state") == "gameplay",
                          "sig": [[round(v) for v in row] for row in s["sig"]] if s.get("sig") else None})
+        if not keep:
+            return
         d = {"title_id": self.tid, "name": self.name, "device": self.dev.label,
              "recorded": time.strftime("%Y-%m-%d %H:%M %Z"), "minutes": self.result.get("minutes"),
              "model_calls": self.model.calls, "complete": complete, "result": self.result.get("result"),
