@@ -1,0 +1,21 @@
+--- /home/justin/hakux-work/host-tools/hourly_report.sh	2026-10-11 15:45:12.522786201 -0700
++++ /home/justin/hakux-work/lanes/issuemirror1012/hourly_report.sh.new	2026-10-12 22:47:12.429652905 -0700
+@@ -88,6 +88,18 @@
+ PYPF
+   echo "--- verdicts since last report"
+   awk -v s="$(date -d @$since '+%F %T')" '$1" "$2>=s' $H/logs/verdicts.log | cut -c1-220 | tail -10
++  echo "--- issue mirror (hakux-issue-mirror.timer; status file + age; adds 0 GitHub reads)"
++  IMS=$H/status/issue-mirror.txt
++  if [ -f "$IMS" ]; then
++    im_age=$(( $(date +%s) - $(stat -c %Y "$IMS") ))
++    im_ec=$(grep -o 'exit=[0-9]*' "$IMS" | tail -1 | cut -d= -f2)
++    sed 's/^/  /' "$IMS"
++    if [ "$im_age" -gt 1800 ] || { [ -n "$im_ec" ] && [ "$im_ec" != 0 ] && [ "$im_ec" != 75 ]; }; then
++      echo "  ALARM: issue-mirror status is ${im_age}s old (cap 1800s) or exit=$im_ec (want 0 or 75)"
++    fi
++  else
++    echo "  status file missing: $IMS"
++  fi
+ } > $tmp 2>&1
+ # next-step rule (owner 10-02 17:25): flag OUTBOX entries in this report whose "Next" has no probability
+ python3 - "$tmp" >> "$tmp" 2>/dev/null <<'PYNS'

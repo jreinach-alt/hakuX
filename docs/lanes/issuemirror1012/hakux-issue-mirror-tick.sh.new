@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# hakux-issue-mirror-tick.sh -- run by hakux-issue-mirror.timer every 10 minutes.
+# Incremental sync each tick; once a day (first tick after local midnight) runs a full sync instead,
+# tracked by the date stamp in $MARK so a lock refusal (exit 75) on the day's first tick doesn't skip
+# that day's full pass -- the mark only advances once a full sync actually exits 0.
+set -u
+export PATH=/home/justin/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+H=/home/justin/hakux-work
+TOOL=$H/host-tools/issue_mirror.py
+S=$H/status/issue-mirror.txt
+MARK=$H/status/.issue-mirror-last-full
+tmp=$S.tmp
+
+today=$(date +%Y-%m-%d)
+last_full=$(cat "$MARK" 2>/dev/null || echo "")
+args=(sync --yes)
+[ "$today" != "$last_full" ] && args=(sync --yes --full)
+
+{
+  date
+  python3 "$TOOL" "${args[@]}"
+  echo "exit=$?"
+} > "$tmp" 2>&1
+ec=$(grep -o 'exit=[0-9]*' "$tmp" | tail -1 | cut -d= -f2)
+mv "$tmp" "$S"
+
+if [ "$today" != "$last_full" ] && [ "${ec:-1}" = 0 ]; then
+  echo "$today" > "$MARK"
+fi
+exit "${ec:-1}"

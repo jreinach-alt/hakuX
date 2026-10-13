@@ -1,0 +1,281 @@
+--- /home/justin/hakux-work/host-tools/issue_mirror_selftest.py	2026-10-12 21:46:45.995692031 -0700
++++ /home/justin/hakux-work/lanes/issuemirror1012/issue_mirror_selftest.py.new	2026-10-12 22:40:43.081446834 -0700
+@@ -19,11 +19,16 @@
+ import os
+ import sys
+ import tempfile
++import time
+ 
+ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+ import issue_mirror as im
+ 
+ 
++def _now_iso():
++    return time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
++
++
+ # --------------------------------------------------------------------------------------------------------------
+ # Fakes -- same interface as im.GH / im.FG, backed by plain dicts, no I/O at all.
+ # --------------------------------------------------------------------------------------------------------------
+@@ -44,17 +49,40 @@
+         # Round 4 addendum: defaults to "active, far enough out" so every pre-existing backfill test keeps
+         # passing without having to know this check exists. Tests of the check itself set this directly.
+         self.interaction_limits_result = ('active', 100, '2099-01-01T00:00:00Z')
++        # issuemirror1012 gap 2/3: updated_at tracking for changed_issues(), a read counter so a test can
++        # measure "how many GitHub reads did this sync cost", and a settable remaining-budget figure for gap 3's
++        # backfill pre-check. mk_pair() below writes gh.items[n] directly (never through create()), so a
++        # pre-existing pair's updated_at defaults to "never changed" unless a test calls touch() explicitly.
++        self.updated_at = {}
++        self.read_calls = 0
++        self._budget_remaining = 600
+ 
+     def reachable(self):
+         return self._reachable
+ 
++    def touch(self, number):
++        self.updated_at[number] = _now_iso()
++
+     def all_issues(self, **kw):
++        self.read_calls += 1
+         return dict(self.items)
+ 
++    def changed_issues(self, since_iso, **kw):
++        self.read_calls += 1
++        return {n: dict(it) for n, it in self.items.items() if self.updated_at.get(n, '0000') >= since_iso}
++
++    def get_issue(self, number):
++        self.read_calls += 1
++        return dict(self.items[number])
++
++    def budget_remaining(self):
++        return self._budget_remaining
++
+     def comments(self, number):
+         return list(self.comments_store.get(number, []))
+ 
+     def repo_labels(self):
++        self.read_calls += 1
+         return list(self.repo_labels_list)
+ 
+     def interaction_limits(self):
+@@ -90,6 +118,7 @@
+             close_err = 'simulated transient GitHub close failure (the create itself succeeded)'
+         self.items[n] = {'number': n, 'title': title, 'body': body, 'state': actual_state,
+                           'labels': [{'name': l} for l in labels], 'comments': 0}
++        self.touch(n)
+         return n, close_err
+ 
+     def patch(self, number, title=None, body=None, state=None, labels=None):
+@@ -109,6 +138,7 @@
+             it['state'] = state
+         if labels is not None:
+             it['labels'] = [{'name': l} for l in labels]
++        self.touch(number)
+         return True
+ 
+     def comment(self, number, body):
+@@ -121,6 +151,7 @@
+         self.comments_store.setdefault(number, []).append(
+             {'id': cid, 'user': {'login': 'gh-user'}, 'created_at': '2026-10-12T00:00:00Z', 'body': body})
+         self.items[number]['comments'] = self.items[number].get('comments', 0) + 1
++        self.touch(number)
+         return str(cid)
+ 
+ 
+@@ -135,10 +166,24 @@
+         self.force_set_labels_failure_once = False
+         self.create_calls = 0
+         self.write_calls = 0                      # round 3, gap 3/4: every real create/patch/comment/set_labels
++        self.updated_at = {}    # issuemirror1012 gap 2: same contract as FakeGH.updated_at/touch()
++        self.read_calls = 0
++
++    def touch(self, number):
++        self.updated_at[number] = _now_iso()
+ 
+     def all_issues(self, **kw):
++        self.read_calls += 1
+         return dict(self.items)
+ 
++    def changed_issues(self, since_iso, **kw):
++        self.read_calls += 1
++        return {n: dict(it) for n, it in self.items.items() if self.updated_at.get(n, '0000') >= since_iso}
++
++    def get_issue(self, number):
++        self.read_calls += 1
++        return dict(self.items[number])
++
+     def comments(self, number):
+         return list(self.comments_store.get(number, []))
+ 
+@@ -164,6 +209,7 @@
+                               'state': 'open', 'merged': False, 'merge_commit_sha': None,
+                               'head': {'ref': payload.get('head', '?')}, 'labels': labels}
+         self.items[n] = item
++        self.touch(n)
+         return n
+ 
+     def patch(self, number, payload, is_pr=False):
+@@ -195,6 +241,7 @@
+             for k in ('title', 'state', 'merged', 'merge_commit_sha'):
+                 if k in payload:
+                     pd[k] = payload[k]
++        self.touch(number)
+         return True
+ 
+     def set_labels(self, number, names, is_pr=False):
+@@ -208,6 +255,7 @@
+             self.items[number]['labels'] = labels
+         if number in self.pulls:
+             self.pulls[number]['labels'] = labels
++        self.touch(number)
+         return True
+ 
+     def comment(self, number, body):
+@@ -220,6 +268,7 @@
+         self.comments_store.setdefault(number, []).append(
+             {'id': cid, 'user': {'login': 'forge-user'}, 'created_at': '2026-10-12T00:00:00Z', 'body': body})
+         self.items[number]['comments'] = self.items[number].get('comments', 0) + 1
++        self.touch(number)
+         return cid
+ 
+ 
+@@ -770,6 +819,127 @@
+         return 'interaction-limits forbidden (403): REFUSED and 0 spent; --no-interaction-limit overrides and #2 is created'
+ 
+ 
++# --------------------------------------------------------------------------------------------------------------
++# issuemirror1012: gap 1 (one shared lock), gap 2 (incremental sync), gap 3 (budget-true pre-check)
++# --------------------------------------------------------------------------------------------------------------
++
++def test_lock_refuses_concurrent_sync_during_backfill():
++    """issuemirror1012 gap 1, test a: a fake backfill holding .issue-mirror.lock makes a concurrent `sync --yes`
++    refuse (exit 75, 'skipped: another run holds the lock'), with nothing written to state."""
++    import fcntl
++    with isolated():
++        gh, fg = FakeGH(), FakeFG()
++        mk_pair(gh, fg, 1)
++        rc0, out0 = silent(im.cmd_sync, gh, fg, True)
++        assert rc0 == 0, out0
++        before = open(im.STATE, 'rb').read()
++        fd = os.open(im.LOCK, os.O_CREAT | os.O_RDWR, 0o644)
++        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
++        try:
++            rc, out = silent(im.cmd_sync, gh, fg, True)
++            assert rc == 75, out
++            assert 'skipped: another run holds the lock' in out, out
++            after = open(im.STATE, 'rb').read()
++            assert after == before, 'state file was written while a concurrent run held the lock'
++        finally:
++            fcntl.flock(fd, fcntl.LOCK_UN)
++            os.close(fd)
++        rc2, out2 = silent(im.cmd_sync, gh, fg, True)
++        assert rc2 == 0, 'sync did not recover once the lock was released: %s' % out2
++        return 'sync --yes refuses (75, "skipped") while another run holds the lock; recovers once released'
++
++
++def test_sync_cannot_reverse_backfill_cursor_while_locked():
++    """issuemirror1012 gap 1, test b: a sync overlapping a backfill can no longer load a stale copy of the state
++    and save backfill_last_done backwards over the backfill's own progress -- the two now share one lock."""
++    import fcntl
++    with isolated():
++        gh, fg = FakeGH(), FakeFG()
++        mk_pair(gh, fg, 1)
++        fd = os.open(im.LOCK, os.O_CREAT | os.O_RDWR, 0o644)
++        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
++        try:
++            # The backfill's own in-progress state write, made while it holds the lock.
++            st = im.load_state()
++            st['backfill_last_done'] = 5
++            im.save_state(st)
++            rc, out = silent(im.cmd_sync, gh, fg, True)
++            assert rc == 75, out
++            assert im.load_state().get('backfill_last_done') == 5, \
++                'a concurrent sync moved backfill_last_done backwards while the backfill held the lock'
++        finally:
++            fcntl.flock(fd, fcntl.LOCK_UN)
++            os.close(fd)
++        rc2, out2 = silent(im.cmd_sync, gh, fg, True)
++        assert rc2 == 0, out2
++        assert im.load_state().get('backfill_last_done') == 5, \
++            'backfill_last_done was lost once the real sync ran with the lock free'
++        return 'a sync overlapping a backfill cannot move backfill_last_done backwards; preserved once run for real'
++
++
++def test_incremental_sync_steady_state_reads_at_most_two():
++    """issuemirror1012 gap 2: once a full sync has established last_sync_started_utc, an incremental sync with
++    nothing changed costs at most 2 GitHub reads (vs. ~10 for a full paginated listing) -- the brief's explicit
++    target, measured here against the fakes."""
++    with isolated():
++        gh, fg = FakeGH(), FakeFG()
++        for n in range(1, 6):
++            mk_pair(gh, fg, n, title='item %d' % n)
++        rc0, out0 = silent(im.cmd_sync, gh, fg, True, full=True)
++        assert rc0 == 0, out0
++        gh.read_calls = 0
++        rc, out = silent(im.cmd_sync, gh, fg, True, full=False)
++        assert rc == 0, out
++        assert 'sync (incremental)' in out, out
++        assert gh.read_calls <= 2, \
++            'steady-state incremental sync cost %d GitHub read(s), want <= 2: %s' % (gh.read_calls, out)
++        return 'steady-state incremental sync costs %d GitHub read(s) (target <= 2)' % gh.read_calls
++
++
++def test_incremental_sync_applies_changed_forge_pair():
++    """issuemirror1012 gap 2: a forge-only field change, made after the baseline full sync, is picked up and
++    applied to GitHub by the incremental pass -- proving the cheap pass is still correct, not just cheap."""
++    with isolated():
++        gh, fg = FakeGH(), FakeFG()
++        mk_pair(gh, fg, 1, title='original')
++        rc0, out0 = silent(im.cmd_sync, gh, fg, True, full=True)
++        assert rc0 == 0, out0
++        fg.items[1]['title'] = 'changed on the forge'
++        fg.touch(1)
++        rc, out = silent(im.cmd_sync, gh, fg, True, full=False)
++        assert rc == 0, out
++        assert gh.items[1]['title'] == 'changed on the forge', \
++            'incremental sync did not carry the forge-only title change to GitHub: %s' % out
++        return 'incremental sync carries a forge-only field change to GitHub'
++
++
++def test_budget_true_precheck_uses_remaining_not_stale_cap():
++    """issuemirror1012 gap 3: the backfill pre-check now compares against what github_gateway.py budget says is
++    actually left today, not a stale 300/day constant -- a small remaining budget disables the optional
++    per-item race-window re-check even though the old stale default would have allowed it."""
++    with isolated():
++        gh, fg = FakeGH(), FakeFG()
++        mk_pair(gh, fg, 1)
++        for n in range(2, 12):
++            fg.items[n] = {'number': n, 'title': 'new %d' % n, 'body': 'b', 'state': 'open', 'labels': [], 'comments': 0}
++        gh._budget_remaining = 15
++        rc, out = silent(im.cmd_backfill, gh, fg, True, 0, 6000, False)
++        assert rc == 0, out
++        assert 'DISABLED' in out, 'a small remaining budget (15 vs. 10 items) should disable the pre-check: %s' % out
++        assert not hasattr(im, 'GITHUB_READ_BUDGET_DAY'), 'the stale GITHUB_READ_BUDGET_DAY default must be removed'
++
++    with isolated():
++        gh2, fg2 = FakeGH(), FakeFG()
++        mk_pair(gh2, fg2, 1)
++        fg2.items[2] = {'number': 2, 'title': 'new', 'body': 'b', 'state': 'open', 'labels': [], 'comments': 0}
++        gh2._budget_remaining = 600
++        rc2, out2 = silent(im.cmd_backfill, gh2, fg2, True, 0, 6000, False)
++        assert rc2 == 0, out2
++        assert 'pre-check enabled' in out2, 'a healthy remaining budget (600) should enable the pre-check: %s' % out2
++        return ('backfill pre-check reads the gateway\'s remaining budget: DISABLED at 15 remaining for 10 items, '
++                'enabled at 600 remaining for 1 item')
++
++
+ TESTS = [
+     test_backfill_happy_path,
+     test_pre_create_mismatch_refusal,
+@@ -795,6 +965,11 @@
+     test_interaction_limit_forbidden_refuses_backfill,
+     test_new_pr_close_failure_queues_and_resume_clears_pending,
+     test_new_issue_truncates_long_body_for_github_only,
++    test_lock_refuses_concurrent_sync_during_backfill,
++    test_sync_cannot_reverse_backfill_cursor_while_locked,
++    test_incremental_sync_steady_state_reads_at_most_two,
++    test_incremental_sync_applies_changed_forge_pair,
++    test_budget_true_precheck_uses_remaining_not_stale_cap,
+ ]
+ 
+ 
