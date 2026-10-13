@@ -86,6 +86,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
 - 2026-10-13 lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
@@ -97,6 +98,5 @@ No branch is being worked right now.
 - 2026-10-12 issuemirror1012: the issue mirror on a timer: one lock, incremental sync, budget-true pre-check (#433, 0.5)
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 changelog1012: changelog to 0.5.0, version numbers for official-build users, credits (#433, 0.5)
-- 2026-10-12 boxart1012: box-art lookup is opt-in, asked at setup (#433, 0.5)
 
-_Updated 2026-10-13 12:32 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 12:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
