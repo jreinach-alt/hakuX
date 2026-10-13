@@ -1,8 +1,13 @@
 --- /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py.orig	2026-10-12 18:12:52.463674439 -0700
-+++ /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py	2026-10-12 18:14:13.122400166 -0700
-@@ -10,6 +10,15 @@
++++ /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py	2026-10-12 18:36:12.272811366 -0700
+@@ -9,7 +9,20 @@
+   unrelease [--yes] tag...  delete nightly-* releases whose sync row is marked 'withdrawn' (owner 2026-10-09)
    renote [--yes] tag...     replace a published nightly-*'s notes with nightly/<date>.notes.corrected.md (owner 2026-10-09)
    prheads            read-only: the head branch of every open PR on GitHub, one per line; any failure exits 1 with nothing on stdout
++  get PATH [--out FILE]  read-only, GET_OK paths only. Without --out, prints the body (truncated at 600000 chars --
++                     a real limitation for a large listing, kept for existing callers). With --out, writes the
++                     complete token-redacted body to FILE and prints one confirmation line. STAGED round 2
++                     (lane.issuesync1012, 2026-10-12): issue_mirror.py always uses --out now.
    status             today's counters and the last result
 +  issue-create --title T [--body B] [--label L ...] [--state closed] [--yes] [--max-writes N]
 +                     POST /issues (then PATCH to close, if --state closed). Dry run without --yes. STAGED for
@@ -16,7 +21,37 @@
  
  Rules it enforces (it cannot be talked out of them): fast-forward only, never --force, never a delete, heads only (no tags);
  a head that diverged from GitHub's, or whose GitHub tip is unknown locally, is skipped and reported; a head that touches
-@@ -170,6 +179,185 @@
+@@ -151,7 +164,11 @@
+ GET_OK = ('/actions/permissions', '/actions/runs', '/pages', '/branches/gh-pages', '/deployments', '/actions/workflows', '/releases', '/branches/status', '/contents/STATUS.md', '/issues', '/pulls', '/contents/LICENSE', '/community/profile')   # /issues, /pulls: read-only listings for the 0.5 issue-log audit (lane.local 10-12)
+ 
+ 
+-def cmd_get(path):
++def cmd_get(path, out=None):
++    """STAGED (lane.issuesync1012 round 2, 2026-10-12): `--out FILE` writes the complete, token-redacted response
++    body to FILE and prints only a one-line confirmation, instead of the old `print(...[:600000])`, which silently
++    truncated (and so corrupted the JSON of) any listing page whose body ran past 600000 characters. Without
++    --out the old truncated-print behavior is unchanged, for any existing caller that relies on it."""
+     if not any(path == g or path.startswith(g + '?') or path.startswith(g + '/') for g in GET_OK):
+         print('REFUSED: read-only paths only: ' + ' '.join(GET_OK)); return 3
+     s = load_state(); read_budget(s)
+@@ -162,7 +179,15 @@
+     try:
+         try:
+             with urllib.request.urlopen(req, timeout=30) as r:
+-                print(r.read().decode('utf8', 'replace').replace(tok, '<token>')[:600000])
++                body = r.read().decode('utf8', 'replace').replace(tok, '<token>')
++                if out:
++                    tmp = out + '.tmp'
++                    with open(tmp, 'w') as f:
++                        f.write(body)
++                    os.replace(tmp, out)
++                    print('wrote %d bytes to %s' % (len(body), out))
++                else:
++                    print(body[:600000])
+         except urllib.error.HTTPError as e:
+             print('HTTP %d %s' % (e.code, e.read()[:400].decode('utf8', 'replace').replace(tok, '<token>')))
+     finally:
+@@ -170,6 +195,185 @@
      return 0
  
  
@@ -202,7 +237,7 @@
  def cmd_prheads():
      """read-only: the head branch of every open PR on GitHub, one per line (prune_worktrees.sh, owner 2026-10-09).
      Parsed here, not through `get`, whose output is cut at 600 kB. Any failure prints nothing on stdout and exits 1,
-@@ -582,9 +770,18 @@
+@@ -582,9 +786,18 @@
      os.system('tail -5 %s 2>/dev/null' % LOG)
  
  
@@ -222,7 +257,13 @@
          print(__doc__); return 64
      lk = open(H + '/.gateway.lock', 'w')
      try:
-@@ -605,6 +802,17 @@
+@@ -600,11 +813,22 @@
+     if a[0] == 'pages':
+         cmd_pages(); return 0
+     if a[0] == 'get':
+-        return cmd_get(a[1])
++        return cmd_get(a[1], out=_str_opt(a, '--out'))
+     if a[0] == 'prheads':
          return cmd_prheads()
      if a[0] == 'pointer':
          return cmd_pointer(yes='--yes' in a)

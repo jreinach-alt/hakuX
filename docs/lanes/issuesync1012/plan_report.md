@@ -1,63 +1,57 @@
-issue_mirror plan -- 2026-10-12 18:23:20 PDT
+issue_mirror plan -- 2026-10-12 19:02:54 PDT
 GitHub: 626 items (min 1 max 629)
-Forge:  958 items (min 1 max 958)
+Forge:  960 items (min 1 max 960)
 
-=== 1. Backfill: forge-only numbers >= 630 that need a GitHub twin ===
-count: 329 (range 630-958)
-  PR    closed: 122
-  PR    open  : 16
+=== 0. Mirror-down: GitHub-only numbers needing a forge twin ===
+count: 0
+
+=== 1. Backfill: forge-only numbers beyond GitHub max (629) ===
+count: 331 (range 630-960)
+  PR    closed: 123
+  PR    open  : 17
   issue closed: 14
   issue open  : 177
-  skipped (deleted on GitHub, number kept as a placeholder, never recreated): [119, 120, 121]
 
 estimated GitHub requests at 4/min (240/hr) pacing:
-  without historical comments: 481 requests, ~2.0 hours
-  with historical comments:    649 requests (168 comments), ~2.7 hours
-  historical-comment recommendation: mirror going forward only. 67 of 329 backfill items have >=1 comment (max 11 on one item, 168 total) -- mirroring them now adds 0.7 hours for comments nobody is waiting on; `sync` picks up any comment posted after the backfill cutover.
+  without historical comments: 471 requests, ~2.0 hours
+  with historical comments:    639 requests (168 comments), ~2.7 hours
+  historical-comment recommendation: mirror going forward only (`sync` picks up any comment posted after
+  the backfill cutover); backfilling 168 historical comments now costs ~0.7 extra hours nobody is waiting on.
 
-=== 2. State conflicts on common numbers (1-629): 22 ===
-  #16   gh=closed  fg=open    kind=issue winner=github(closed) -- Depth surface readback converts incorrectly
-  #34   gh=closed  fg=open    kind=issue winner=github(closed) -- Vulkan validation layer: four open findings from the desktop lane
-  #66   gh=closed  fg=open    kind=issue winner=github(closed) -- GL renderer: one stale GL_INVALID_FRAMEBUFFER_OPERATION aborts the des
-  #71   gh=closed  fg=open    kind=issue winner=github(closed) -- GL surface-to-texture fast path is wrong for every format that exercis
-  #74   gh=closed  fg=open    kind=issue winner=github(closed) -- Android FP JIT: FIST/FISTP truncate where x86 rounds per the control w
-  #81   gh=closed  fg=open    kind=issue winner=github(closed) -- tcg tier-1: promotion requests multiply instead of occupying a slot, a
-  #87   gh=closed  fg=open    kind=issue winner=github(closed) -- Surface_pitch::Swizzle: with the race out, the 10,240-px residual is t
-  #89   gh=closed  fg=open    kind=issue winner=github(closed) -- Color_zeta_overlap/Swap_ZB: 141,125 px on the desktop lane, exactly 0 
-  #90   gh=closed  fg=open    kind=issue winner=github(closed) -- tcg tier-1: the anti-churn tier-hint restore is compiled out on Androi
-  #92   gh=closed  fg=open    kind=issue winner=github(closed) -- SurfaceShape carries no address, so framebuffer_dirty() cannot see a D
-  #99   gh=closed  fg=open    kind=issue winner=github(closed) -- Stencil: three ZERO captures regressed 0 -> 100,000 px between 2501f35
-  #439  gh=closed  fg=open    kind=PR    winner=github(closed) -- lane.fmv303c: #303 surface write-back probe for Spikeout's FMV green
-  #513  gh=closed  fg=open    kind=issue winner=github(closed) -- Foreground guard reads dumpsys input's stale ANR block: every Thor tit
-  #557  gh=closed  fg=open    kind=issue winner=github(closed) -- Thermal adaptation: step quality down before the 78 °C thermal pause (
-  #583  gh=closed  fg=open    kind=PR    winner=github(closed) -- lane.forzadecay414: clear an invalidation stamp when its slot's fence 
-  #591  gh=closed  fg=open    kind=PR    winner=github(closed) -- lane.ibcache: inline indirect-branch cache + return-address stack (#50
-  #592  gh=closed  fg=open    kind=issue winner=github(closed) -- Soak foreground watch voids runs when a dumpsys read hangs (adb timeou
-  #598  gh=closed  fg=open    kind=issue winner=github(closed) -- thor dispatch worker is dead: 17 requests stuck, oldest 21h
-  #605  gh=closed  fg=open    kind=PR    winner=github(closed) -- tcg: #424 range test on by default (tcg424flip)
-  #607  gh=closed  fg=open    kind=PR    winner=github(closed) -- lane.litcompile569: #569 B1 gate 4, the cold DOA soak read
-  #618  gh=closed  fg=open    kind=PR    winner=github(closed) -- lane.uberspike569: uber libraries under GPL, a first draw with no crea
-  #627  gh=closed  fg=open    kind=PR    winner=github(closed) -- hddperm: dev_push sets 660 on what it pushes (titles.qcow2 crash-loop)
-  reasoning: every one of these is closed on GitHub and open on the forge, with no forge comment or edit
-  after the 2026-10-02..10-09 import/bulk-edit window that would indicate a deliberate forge-side reopen.
-  For #16,34,66,71,74,81,87,89,90,92,99 GitHub closed them in September, before the forge import ever ran --
-  the forge "open" state is an import artifact, not a later edit. For the rest (439,513,557,583,591,592,598,
-  605,607,618,627 -- the "[GitHub PR]" imported issues) GitHub closed the real PR on/around 2026-10-05 and
-  the forge was simply never told; that is exactly the gap this tool closes going forward. #583 is the one
-  item whose forge updated_at (10-09) is newer than GitHub's (10-05) close -- its comments show no post-close
-  activity either, but it is the closest call here and worth a human glance before taking GitHub's state.
+=== 2. State conflicts on common numbers: 22 ===
+  #16   gh=closed  fg=open    kind=issue -- Depth surface readback converts incorrectly
+  #34   gh=closed  fg=open    kind=issue -- Vulkan validation layer: four open findings from the desktop lane
+  #66   gh=closed  fg=open    kind=issue -- GL renderer: one stale GL_INVALID_FRAMEBUFFER_OPERATION aborts the des
+  #71   gh=closed  fg=open    kind=issue -- GL surface-to-texture fast path is wrong for every format that exercis
+  #74   gh=closed  fg=open    kind=issue -- Android FP JIT: FIST/FISTP truncate where x86 rounds per the control w
+  #81   gh=closed  fg=open    kind=issue -- tcg tier-1: promotion requests multiply instead of occupying a slot, a
+  #87   gh=closed  fg=open    kind=issue -- Surface_pitch::Swizzle: with the race out, the 10,240-px residual is t
+  #89   gh=closed  fg=open    kind=issue -- Color_zeta_overlap/Swap_ZB: 141,125 px on the desktop lane, exactly 0 
+  #90   gh=closed  fg=open    kind=issue -- tcg tier-1: the anti-churn tier-hint restore is compiled out on Androi
+  #92   gh=closed  fg=open    kind=issue -- SurfaceShape carries no address, so framebuffer_dirty() cannot see a D
+  #99   gh=closed  fg=open    kind=issue -- Stencil: three ZERO captures regressed 0 -> 100,000 px between 2501f35
+  #439  gh=closed  fg=open    kind=PR    -- lane.fmv303c: #303 surface write-back probe for Spikeout's FMV green
+  #513  gh=closed  fg=open    kind=issue -- Foreground guard reads dumpsys input's stale ANR block: every Thor tit
+  #557  gh=closed  fg=open    kind=issue -- Thermal adaptation: step quality down before the 78 °C thermal pause (
+  #583  gh=closed  fg=open    kind=PR    -- lane.forzadecay414: clear an invalidation stamp when its slot's fence 
+  #591  gh=closed  fg=open    kind=PR    -- lane.ibcache: inline indirect-branch cache + return-address stack (#50
+  #592  gh=closed  fg=open    kind=issue -- Soak foreground watch voids runs when a dumpsys read hangs (adb timeou
+  #598  gh=closed  fg=open    kind=issue -- thor dispatch worker is dead: 17 requests stuck, oldest 21h
+  #605  gh=closed  fg=open    kind=PR    -- tcg: #424 range test on by default (tcg424flip)
+  #607  gh=closed  fg=open    kind=PR    -- lane.litcompile569: #569 B1 gate 4, the cold DOA soak read
+  #618  gh=closed  fg=open    kind=PR    -- lane.uberspike569: uber libraries under GPL, a first draw with no crea
+  #627  gh=closed  fg=open    kind=PR    -- hddperm: dev_push sets 660 on what it pushes (titles.qcow2 crash-loop)
+  resolution (round 2, applied by `seed`): close all 22 on the forge to match GitHub, including #583 --
+  lane.local read it: it is forzadecay414's PR, last comment 09-30, the fix shipped; the 10-12 updated_at
+  is metadata churn, not activity.
 
-=== 3. Content divergences on common numbers: 4 ===
+=== 3. Content divergences on common numbers: 3 ===
   #1: gh='Fix launching and exiting a game from an external frontend, and ship v' fg='#1: not recovered'
-  #107: gh='harness: live status -- STATUS.md on the status branch' fg='harness: live status -- 17:30 PDT+, 0 lanes running, 0 arms on a devic'
   #161: gh='territory.toml lists hw/xbox/nv2a/nv2a.c as both [free] and [lane.vbla' fg='#161: not recovered'
   #568: gh='lane.remote: #557 audit LOWs fixed ahead of the hook' fg='#568: not recovered'
-  #1, #161, #568: the forge import never recovered the original content ("#N: not recovered"); GitHub has the
-  real item. Winner: copy GitHub's title/body onto the forge record (GitHub is the original in all three).
-  #107: NOT a winner-take-all conflict. GitHub #107 is the gateway's deliberate static pointer at STATUS.md
-  (cmd_pointer, owner-approved 2026-10-05); the forge's #107 is a different, independently-useful live status
-  board updated every few minutes by a separate job. Forcing either side onto the other destroys the one it
-  overwrites. Recommendation: carry #107 on an explicit never-sync exception list, not a merge rule.
+  resolution (round 2, applied by `seed`): #1/#161/#568 copy GitHub's title+body onto the forge (the forge
+  import never recovered the original content there). #107 stays in NEVER_SYNC (two independently-useful
+  things at the same number, not a conflict).
 
 === 4. Three sample backfill bodies, exactly as they would be posted ===
 --- forge #630 -> POST /issues (kind=issue, state=closed, labels=['github-import', 'reserved-number', 'backfill']) ---
@@ -70,9 +64,10 @@ body:
   (then PATCH /issues/<returned-N> {"state": "closed"})
 
 --- forge #641 -> POST /issues (kind=PR, state=closed, labels=['backfill']) ---
-title: bf2ubosize433: size Battlefield 2's per-draw uniform-block churn before the push-constant fix (#433)
+title: [PR] bf2ubosize433: size Battlefield 2's per-draw uniform-block churn before the push-constant fix (#433)
 body:
-  Backfilled from forge PR #641 (bf2ubosize433: size Battlefield 2's per-draw uniform-block churn before the push-constant fix (#433)), closed on the forge.
+  Forge PR #641, branch `lane/bf2ubosize433`.
+  Status: merged into master @ e602b6f684.
   
   # bf2ubosize433: size Battlefield 2's per-draw uniform-block churn before the push-constant fix (#433)
   
@@ -112,12 +107,12 @@ body:
   🤖 Generated with [Claude Code](https://claude.com/claude-code)
   
   <!-- hakux-mirror:v1 src=forge#641 -->
-  (then PATCH /issues/<returned-N> {"state": "closed"})
 
 --- forge #643 -> POST /issues (kind=PR, state=closed, labels=['backfill']) ---
-title: hddcrash: titles disk mode 660; a request's HAKUX_TITLES_DISK wins (#397)
+title: [PR] hddcrash: titles disk mode 660; a request's HAKUX_TITLES_DISK wins (#397)
 body:
-  Backfilled from forge PR #643 (hddcrash: titles disk mode 660; a request's HAKUX_TITLES_DISK wins (#397)), folded into master.
+  Forge PR #643, branch `lane/hddcrash`.
+  Status: labeled `folded` on the forge, but the forge has not recorded it as merged yet (state is still open, unmerged) -- a pre-existing forge-side inconsistency, not something this tool invented.
   
   # hddcrash: titles disk mode 660; a request's HAKUX_TITLES_DISK wins (#397)
   
@@ -184,7 +179,6 @@ body:
   🤖 Generated with [Claude Code](https://claude.com/claude-code)
   
   <!-- hakux-mirror:v1 src=forge#643 -->
-  (then PATCH /issues/<returned-N> {"state": "closed"})
 
-=== 5. check-style summary (also see `check`) ===
-max numbers: github=629 forge=958 (forge ahead by 329, all accounted for by the backfill above)
+=== 5. check-style summary ===
+max numbers: github=629 forge=960 (forge ahead by 331, accounted for by backfill above)
