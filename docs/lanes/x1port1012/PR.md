@@ -31,8 +31,9 @@ All three are gated leads from `batchC.md`/`batchD.md`, not fixes: none is claim
 ## What is not here
 
 - The triage video (brief Phase B step 1, three arms: shipped defaults, `HAKUX_SURFGPU=0`, fast paths
-  off) is fully dispatched (arm 1 landed, arms 2-3 queued) but not yet judged -- see NOTES.md, `WAITING`.
-  Judging frame content for #939 is reserved for the owner, not this lane.
+  off) is fully dispatched and all three arms have landed (no crash/hang, logcat clean) but are not yet
+  judged -- see NOTES.md and OUTBOX.md, `WAITING`. Judging frame content for #939 is reserved for the
+  owner, not this lane.
 - Phase C (#938, speech level) and Phase D (Fable, fp_jit) have not started.
 - Phase E (`HAKUX_PATTFENCE`) is explicitly not before Thursday's reset per the brief.
 
