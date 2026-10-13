@@ -11,7 +11,7 @@ No lane session is running.
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -84,6 +84,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-13 x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
 - 2026-10-13 issuemirror1013: the issue mirror waits out the gateway lock
 - 2026-10-13 docsrewrite1012: the public docs rewritten for players, each with a Last updated line (#433, 0.5)
 - 2026-10-13 docsfresh1012: a freshness check for the public docs, an hourly alarm and a release step (#433, 0.5)
@@ -95,6 +96,5 @@ No branch is being worked right now.
 - 2026-10-12 ownersign1012: owner builds are signed again, and refuse an unsigned apk (#433, 0.5)
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 release05: v0.5.0 release notes (#433, 0.5)
-- 2026-10-12 pubdocs1012: public docs pass for 0.5 (README, compatibility, limitations, attribution) (#433, 0.5)
 
-_Updated 2026-10-13 07:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
