@@ -797,5 +797,125 @@ check("below-bar", len(_seeded) == 1 and _seeded[0]["fps_ok_share"] == "0.9500" 
       "seeding keeps the latest verdict per title and the cause already recorded on its row")
 shutil.rmtree(_bb)
 
+# --perflog (#433, pathtele1013 Part B): no adb, no dispatcher.sh -- a fake device, and
+# pathfind._dispatcher_call faked to stand in for dispatcher.sh's build_ref/apply_env_pref, prove
+# pathfind.py's OWN orchestration: install order, restore on an exception, the refusal on a
+# leftover perflog APK, and --env pass-through.
+_pl = tempfile.mkdtemp(prefix="pf_perflog_")
+
+
+class _FakeDevice:
+    """Records install_apk/installed_version_name in call order; installed_version_name reflects
+    whichever apk install_apk last 'installed' (no real adb)."""
+
+    def __init__(self, calls, start_version="0.5.0-1012-abc1234"):
+        self.label, self.serial = "nova", "FAKESER"
+        self.calls = calls
+        self.installed = start_version
+
+    def install_apk(self, apk_path):
+        self.calls.append(("install", apk_path))
+        self.installed = ("0.5.0-1013-def5678-perflog" if "-perflog" in os.path.basename(apk_path)
+                          else "0.5.0-1013-def5678")
+        return True
+
+    def installed_version_name(self):
+        self.calls.append(("version", self.installed))
+        return self.installed
+
+
+def _fake_dispatcher_call(calls, fail_fn=None):
+    def _fake(label, serial, fn, args, timeout):
+        calls.append((fn, tuple(args)))
+        if fn == fail_fn:
+            return types.SimpleNamespace(returncode=1, stdout="", stderr=f"{fn}: fake failure")
+        if fn == "build_ref":
+            ref, variant = args
+            apk = os.path.join(_pl, f"{ref}{'-' + variant if variant else ''}.apk")
+            open(apk, "w").close()
+            return types.SimpleNamespace(returncode=0, stdout=apk + "\n", stderr="")
+        if fn == "apply_env_pref":
+            calls.append(("env_pref_json", json.load(open(args[0]))))
+            return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+        return types.SimpleNamespace(returncode=1, stdout="", stderr=f"unknown fn {fn}")
+    return _fake
+
+
+_real_dispatcher_call = pathfind._dispatcher_call
+
+# is_perflog_version: the version_stamp.sh convention, dirty or not
+check("perflog-version", pathfind._is_perflog_version("0.5.0-1013-59a4b42-perflog"), "a plain perflog build")
+check("perflog-version", pathfind._is_perflog_version("0.5.0-1013-59a4b42-perflog-dirty"),
+      "a dirty perflog build still reads as perflog")
+check("perflog-version", not pathfind._is_perflog_version("0.5.0-1013-59a4b42"), "master is not perflog")
+check("perflog-version", not pathfind._is_perflog_version("0.5.0-1013-59a4b42-dirty"), "dirty master is not perflog")
+check("perflog-version", not pathfind._is_perflog_version(""), "an unread versionName is not perflog")
+
+# the refusal on a leftover perflog APK: perflog_start exits without --perflog if the installed
+# build already reads as perflog; --perflog itself is never blocked by it
+_c = []
+try:
+    pathfind.perflog_start(_FakeDevice(_c, start_version="0.5.0-1012-abc1234-perflog"), False)
+    _r = "not refused"
+except SystemExit as e:
+    _r = str(e.code)
+check("perflog-guard", "leftover" in _r or "perflog hold" in _r, f"a leftover perflog build refuses a non-perflog run: {_r[:90]}")
+check("perflog-guard", pathfind.perflog_start(_FakeDevice([], start_version="0.5.0-1012-abc1234"), False) is None,
+      "master installed: no refusal")
+check("perflog-guard", pathfind.perflog_start(_FakeDevice([], start_version="0.5.0-1012-abc1234-perflog"), True) is None,
+      "--perflog itself is never refused by a leftover perflog build")
+
+# install order: build (via build_ref) before install, install before the verify read, verify
+# before --env (apply_env_pref) -- the sequence a telemetry hold's APK and env must land in
+_c = []
+pathfind._dispatcher_call = _fake_dispatcher_call(_c)
+try:
+    _dev = _FakeDevice(_c)
+    pathfind.perflog_setup(_dev, ["HAKUX_GPUXFR=1", "HAKUX_FRAMETRACE=1"])
+finally:
+    pathfind._dispatcher_call = _real_dispatcher_call
+_order = [c[0] for c in _c if c[0] != "env_pref_json"]
+check("perflog-order", _order == ["build_ref", "install", "version", "apply_env_pref"],
+      f"build, install, verify, then env, in that order: {_order}")
+check("perflog-order", "-perflog" in _c[1][1], f"build_ref's apk is installed: {_c[1][1]}")
+check("perflog-order", _dev.installed.endswith("-perflog"), "the installed build reads as perflog after setup")
+_envj = next(c[1] for c in _c if c[0] == "env_pref_json")
+check("perflog-order", _envj == {"env": ["HAKUX_GPUXFR=1", "HAKUX_FRAMETRACE=1"]},
+      f"--env passed through apply_env_pref's own request-shaped JSON unchanged: {_envj}")
+
+# a bad install (build_ref never returns a build that reads as perflog) is refused, not silently run
+_c = []
+pathfind._dispatcher_call = _fake_dispatcher_call(_c, fail_fn="apply_env_pref")
+try:
+    pathfind.perflog_setup(_FakeDevice(_c), ["X=1"])
+    _r = "not refused"
+except SystemExit as e:
+    _r = str(e.code)
+finally:
+    pathfind._dispatcher_call = _real_dispatcher_call
+check("perflog-setup-fail", "could not write --env" in _r, f"apply_env_pref's failure exits, not a silent run: {_r[:90]}")
+
+# restore on an exception: restore_master runs in the caller's own finally even when the hold raised,
+# and it is what the guard above depends on to clear the leftover build on the NEXT run
+_c = []
+pathfind._dispatcher_call = _fake_dispatcher_call(_c)
+_dev = _FakeDevice(_c, start_version="0.5.0-1012-abc1234-perflog")
+_raised = False
+try:
+    try:
+        raise RuntimeError("the hold crashed mid-run")
+    finally:
+        _ok, _msg = pathfind.restore_master(_dev)
+except RuntimeError:
+    _raised = True
+finally:
+    pathfind._dispatcher_call = _real_dispatcher_call
+check("perflog-restore", _raised, "the original exception still propagates past the finally")
+check("perflog-restore", _ok and not _dev.installed.endswith("-perflog"), f"master restored despite the exception: {_msg}")
+check("perflog-restore", pathfind.perflog_start(_FakeDevice([], start_version=_dev.installed), False) is None,
+      "the guard sees a clean (non-perflog) install after restore, so the next ordinary run is not refused")
+
+shutil.rmtree(_pl)
+
 print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))
 sys.exit(1 if fails else 0)
