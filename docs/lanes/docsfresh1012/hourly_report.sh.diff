@@ -1,0 +1,20 @@
+--- /home/justin/hakux-work/host-tools/hourly_report.sh	2026-10-11 15:45:12.522786201 -0700
++++ /home/justin/hakux-work/lanes/docsfresh1012/hourly_report.sh.new	2026-10-12 23:48:19.454197291 -0700
+@@ -65,6 +65,17 @@
+   fi
+   echo "--- usage / mode"; cat $H/usage/summary.txt 2>/dev/null || echo "(usage meter not built yet: lane.usagemode)"
+   echo "--- ops (jams)"; cat $H/ops/summary.txt 2>/dev/null || echo "(ops layer not built yet: lane.opsrebuild; hostops interim gate 2 in force)"
++  echo "--- public docs (docs_freshness.py; a docs pass every release and every 14 days)"
++  docs_out=$(timeout 30 python3 $R/docs/testing/docs_freshness.py --repo $R 2>&1); docs_rc=$?
++  if [ $docs_rc -eq 0 ]; then
++    echo "  $(tail -1 <<<"$docs_out")"
++  else
++    docs_summary=$(tail -1 <<<"$docs_out")
++    docs_bad=${docs_summary#*not: }
++    [ "$docs_bad" = "$docs_summary" ] && docs_bad="(see below)"
++    echo "  ALARM: public docs stale: $docs_bad"
++    grep -v '^OK \|^public docs:' <<<"$docs_out" | sed 's/^/  /'
++  fi
+   echo "--- pathfind / screening verdicts since last report (held runs: wt/pathfind runs/*/verdict.json and runs/*/*/verdict.json)"
+   python3 - "$since" "$H" <<'PYPF'
+ import glob, json, os, sys, time
