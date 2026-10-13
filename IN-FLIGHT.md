@@ -8,10 +8,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `pathrules1013` | claude-sonnet-5 | 32 min | pathtele1013: PR.md carries its title line |
+| `pathrules1013` | claude-sonnet-5 | 47 min | pathtele1013: PR.md carries its title line |
 
 - **Handhelds:** 1 connected.
-  - Nova: held by `lanelocal-shuffle`
+  - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -90,6 +90,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Recently landed on master
 
+- 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 - 2026-10-13 x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
 - 2026-10-13 issuemirror1013: the issue mirror waits out the gateway lock
@@ -101,6 +102,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-12 changelog1012: changelog to 0.5.0, version numbers for official-build users, credits (#433, 0.5)
 - 2026-10-12 boxart1012: box-art lookup is opt-in, asked at setup (#433, 0.5)
 - 2026-10-12 ownersign1012: owner builds are signed again, and refuse an unsigned apk (#433, 0.5)
-- 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 
-_Updated 2026-10-13 11:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 11:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
