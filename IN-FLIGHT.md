@@ -81,6 +81,9 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
+- 2026-10-12 changelog1012: changelog to 0.5.0, version numbers for official-build users, credits (#433, 0.5)
+- 2026-10-12 boxart1012: box-art lookup is opt-in, asked at setup (#433, 0.5)
 - 2026-10-12 ownersign1012: owner builds are signed again, and refuse an unsigned apk (#433, 0.5)
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 release05: v0.5.0 release notes (#433, 0.5)
@@ -90,8 +93,5 @@ No branch is being worked right now.
 - 2026-10-12 debugcap1012: Debug Capture is off by default in versioned releases (#433, 0.5)
 - 2026-10-12 contrib1012: structured bug reports and a contributor guide (#433, 0.5)
 - 2026-10-12 housekeep1012: remove obsolete and conflicting agent instructions (#433, 0.5)
-- 2026-10-12 release05: the 0.5 gate is measured on the Nova (#433, 0.5)
-- 2026-10-12 release05: version 0.5.0 and a classifier route for the Ghoulies release soak (#433, 0.5)
-- 2026-10-12 zetaroutes1012: returning gameplay routes for Buffy, DOA3 and NG Black, then HAKUX_ZETA_D24=1 runs (#433, 0.5)
 
-_Updated 2026-10-12 21:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 21:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
