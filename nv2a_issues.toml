@@ -6175,3 +6175,43 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "Filed by lane.local 2026-10-11 22:3x PDT from the owner's hands-on test. Not HAKUX_VTX_HAZARD: zero vtx_hazard finishes in two menu sessions with it on (22:24, 22:26), so it predates the switch. First step: an 8 s adb screenrecord of the menu to classify the bad frames."
+
+[issue.973]
+title = "Die Hard: Vendetta (Europe) (56560029): the game freezes about a minute into the first level on the Nova"
+suites = []
+no_suites = "A guest freeze in a commercial title (busy loop, GPU no longer fed), not yet identified, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed by lane.local 2026-10-13 from held run n-56560029-1011 (Nova 10-12 06:47-06:53, apk 9da8a664fc93 = master 2219a61879). Play at 102 s, picture frozen ~1 min later; kicks 0 in all 115 windows, idle_us 0, hot pcs kernel 80014385/8001440b/80014f31 + title 00166100/00166129. Not re-run (failure goes for identification). First step: what 00166100 polls and which device should change it."
+
+[issue.974]
+title = "Tenchu 3: Kaiki no Shou (Japan) (46530005): a loading screen after a cutscene never finishes on the Nova"
+suites = []
+no_suites = "A load that never completes in a commercial title, not yet identified, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed by lane.local 2026-10-13 from held run n-46530005-1011 (Nova 10-12 07:43-08:06, apk 9da8a664fc93 = master 2219a61879). Loading screen ~3.7 min to the stuck-abort; guest ~57% idle at idlepc 8001b02e, kicks ~1660/window, stores to va 38a1a0 ~600/window. Different class from #973. First step: trace disc/HDD requests and completions across the cutscene-to-load transition."
+
+[issue.975]
+title = "Lemony Snicket's A Series of Unfortunate Events (USA) (4156001F): the player character is not drawn during gameplay on the Nova"
+suites = []
+no_suites = "A missing-draw defect in a commercial title, not yet identified, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed by lane.local 2026-10-13 from held run n-4156001F-1011 (Nova 10-12 05:38-05:48, apk 9da8a664fc93 = master 2219a61879). Violet absent from all 17 hold frames (e.g. 054632-hold.png), Klaus drawn; she draws in the scripted shot frames/008-gameplay.jpg. fps fine (median 59.88). Not Playable on fps alone. First step: one gameplay frame's draw list, issued-and-rejected vs never issued."
+
+[issue.976]
+title = "Mission: Impossible - Operation Surma (USA) (4947001F): gameplay runs at 6-7 fps on the Nova (menus run at 30)"
+suites = []
+no_suites = "A below-bar frame rate in a commercial title; no pgraph suite measures a title's gameplay frame rate."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed by lane.local 2026-10-13 from held run n-4947001F-1011 (Nova 10-12 06:08-06:22, apk 9da8a664fc93 = master 2219a61879). Gameplay median 6.94 (min 5.88), menus 28-31; the verdict's hang flag is the 60-flips-in-10-s rule tripping at ~6 fps, position never still: a slowdown. Telemetry: a 3-min --perflog hold (HAKUX_GPUXFR + HAKUX_FRAMETRACE) once lane/pathtele1013 folds."
