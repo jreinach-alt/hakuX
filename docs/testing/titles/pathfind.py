@@ -2162,8 +2162,13 @@ class Agent:
         held_ok, last_v, ladder_rounds, ladder_i = False, None, 0, 0   # validity (10-06): the hold ends on a verdict, not on hold_s alone
         charsel_i = 0   # the fighting select's cycle presses on this off-play episode (charsel_press)
         # the stuck detector (10-07, stuckdetect1007): the last STUCK_MIN_SAMPLES kept frames all near-identical = stuck;
-        # an unstick rung per kept frame, then the hold ends with a reason (stuck_abort), not a Playable
-        sd_watch = stuckdetect.StuckWatch(genre, HOLD_SHED_STATES, HOLD_UNSTICK.get(genre), UNLOCK_LADDER[:3]) if stuckdetect else None
+        # an unstick rung per kept frame, then the hold ends with a reason (stuck_abort), not a Playable.
+        # max_rungs must match the genre's own ladder length, not stuck_step's default of 3 (#433 Part E: attack has
+        # 4 rungs -- STICK:right:2+A, STICK:up:2+A, STICK:left:2+A, STICK:down:2+A -- and the default silently
+        # dropped the last one, so Genma Onimusha's run never tried it before stuck_abort).
+        sd_ladder = HOLD_UNSTICK.get(genre)
+        sd_watch = stuckdetect.StuckWatch(genre, HOLD_SHED_STATES, sd_ladder, UNLOCK_LADDER[:3],
+                                           max_rungs=len(sd_ladder) if sd_ladder else 3) if stuckdetect else None
         sd_abort, last_st, sd_rungs = "", "play", 0
         low_run, flipped, rev_row, reversals = 0, False, 0, 0   # the reverse rule (16:08): looks still in a row, walk turned round
         patrol_looks = 0   # play looks on the shooter loop, for the patrol backstop (patrol_due)

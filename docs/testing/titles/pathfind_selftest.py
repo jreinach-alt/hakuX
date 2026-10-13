@@ -432,6 +432,46 @@ check("sdstuck", SD is not None and res["result"] == "gameplay" and hold.get("ok
       and hold.get("stuck_abort") is True and hold.get("reason", "").startswith("stuck_abort:"),
       f"the detector ends a stuck hold with a reason: {hold.get('reason', '')[:80]}")
 
+
+# maxrungs (#433 Part E): pathfind.py builds each StuckWatch with max_rungs = len(the genre's own HOLD_UNSTICK
+# ladder) -- not stuck_step's own default of 3, which silently dropped the 4th rung of a 4-rung ladder (Genma
+# Onimusha, 10-13: attack's STICK:down:2 + A never tried before stuck_abort). Exercises stuckdetect directly
+# (stdlib-only synthetic signatures, same shape as stuckdetect.py's own selftest), with no Sim/Agent needed.
+def _sig(v):
+    n = SD.GRID[0] * SD.GRID[1]
+    bucket = min(SD.HIST_BINS - 1, int(v / 256 * SD.HIST_BINS))
+    return SD.Signature(grid=tuple(float(v) for _ in range(n)),
+                         hist=tuple(1.0 if i == bucket else 0.0 for i in range(SD.HIST_BINS)))
+
+
+def walk_ladder(genre, ladder, max_rungs):
+    """Feed one still (near-identical) signature until stuck_abort fires; return the actions sent in order."""
+    watch = SD.StuckWatch(genre, (), ladder, (), max_rungs=max_rungs)
+    sig = _sig(100)
+    actions, d = [], {"abort": False}
+    for _ in range(SD.STUCK_MIN_SAMPLES):
+        d = watch.sample(sig)
+    while not d["abort"]:
+        actions.append(d["action"])
+        d = watch.sample(sig)
+    return actions
+
+
+for genre, ladder in pathfind.HOLD_UNSTICK.items():
+    actions = walk_ladder(genre, ladder, len(ladder))
+    check(f"maxrungs-{genre}", actions == list(ladder),
+          f"{genre}'s full {len(ladder)}-rung ladder is walked in order before stuck_abort: {actions}")
+
+check("maxrungs-attack-4th", pathfind.HOLD_UNSTICK["attack"][3] == ["STICK:down:2", "A"],
+      f"attack's fourth rung is STICK:down:2 + A: {pathfind.HOLD_UNSTICK['attack'][3]}")
+
+# mutant: a StuckWatch built with the old default max_rungs=3 (as if pathfind.py's fix were reverted) drops
+# attack's 4th rung -- this must NOT match the full ladder, or the test above would not have caught the bug
+mutant = walk_ladder("attack", pathfind.HOLD_UNSTICK["attack"], 3)
+check("maxrungs-mutant", mutant == list(pathfind.HOLD_UNSTICK["attack"])[:3]
+      and mutant != list(pathfind.HOLD_UNSTICK["attack"]),
+      f"a mutant max_rungs=3 drops attack's 4th rung, confirming the walk above exercises the real fix: {mutant}")
+
 # holdrepeat: a cutscene that asks for A (an episode card) is answered once; its A is repeated HOLD_REPEAT times
 # with no model call, then the screen is read again, and the play resumes (Panzer, 10-03: 4 looks per death)
 CUT = {"state": "cutscene", "in_play": False, "why": "episode card", "action": ["A"], "wait_s": 1}
