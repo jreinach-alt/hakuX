@@ -94,4 +94,4 @@ No branch is being worked right now.
 - 2026-10-12 fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5)
 - 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
 
-_Updated 2026-10-12 20:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 20:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
