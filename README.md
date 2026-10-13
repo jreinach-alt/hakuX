@@ -9,8 +9,7 @@ An original Xbox emulator for Android, forked from
 **Playable** once it boots, reaches real gameplay, and holds it for a timed
 run with no crash, hang, audio dropout or hitch — see
 [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) for exactly what that means
-and the current list of titles that clear it, titles that run but fall short
-of it, and titles that do not yet play. Plenty more boot and run with
+and the current list of titles that clear it. Plenty more boot and run with
 visible graphical faults, and some have not been tried yet; see
 [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for known limitations. This is not a
 daily driver, and it is not trying to be one yet.
@@ -61,9 +60,8 @@ follows from it.
 ## Compatibility
 
 See [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) for the titles that pass
-this project's Playable bar, the titles that run below it, and the titles
-that do not yet play, and [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for known
-limitations.
+this project's Playable bar, and [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) for
+known limitations.
 
 ## Building
 
@@ -122,10 +120,9 @@ from ItsRetroPup/hakuX.
 - **Save states.** Ten slots per game plus an auto slot, saved and loaded from
   the pause menu, with optional auto-save on quit and auto-load on launch
   (Settings, then Save States).
-- **A tested compatibility page.** [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md)
-  lists titles that reached gameplay and held it on a Snapdragon handheld,
-  titles that run but fall short of the fps bar, and titles that do not yet
-  play, not just what booted.
+- **A tested Playable list.** [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md)
+  lists the titles that reached gameplay and held it on a Snapdragon
+  handheld, not just booted.
 - Smaller download, working crash diagnostics, and a build that configures on
   a machine other than its author's.
 
@@ -170,7 +167,7 @@ The emulator ships no copyrighted content. You supply, from hardware you own:
 |---|---|
 | [`docs/releases/`](docs/releases/) | Release notes, version by version |
 | [`CHANGELOG.md`](CHANGELOG.md) | What changed, per release |
-| [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) | Titles tested: Playable, below the fps bar, or not yet playing |
+| [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) | Titles that pass this project's Playable bar |
 | [`PRIVACY.md`](PRIVACY.md) | What data stays on the device, and what little leaves it |
 | [`ROADMAP.md`](ROADMAP.md) | Where this is going, and what is deliberately out of scope |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to contribute |

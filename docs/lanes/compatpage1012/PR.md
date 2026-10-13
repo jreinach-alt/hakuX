@@ -4,7 +4,7 @@ State: ready
 
 Lane: compatpage1012          Issue: #433
 Base: master @ dd5e3cb3c6
-Files: docs/COMPATIBILITY.md, docs/compatibility.csv, docs/testing/compat_page.py, docs/testing/compat_page_selftest.py, docs/testing/compat_notes.tsv, README.md (wording), docs/lanes/compatpage1012/**
+Files: docs/COMPATIBILITY.md, docs/compatibility.csv, docs/testing/compat_page.py, docs/testing/compat_page_selftest.py, docs/testing/compat_notes.tsv, docs/lanes/compatpage1012/**
 Prediction: none (docs)
 Needs device: no    Needs NDK: no
 
@@ -29,6 +29,17 @@ python3 docs/testing/compat_page.py \
 would produce; `docs/testing/compat_page_selftest.py` covers tier assignment,
 ledger-wins, the NFS override, the "?" region fallback, and `--check` on a
 stale page. Both pass.
+
+The page opens with the `_Last updated <date>, for version <X.Y.Z>._` line
+that docsfresh1012's `docs_freshness.py` reads from every public doc. The
+generator writes it: the date is the newest Tested date on the page, and the
+version is the `0.5.0-unknown` fallback in `android/app/build.gradle.kts`, so
+`--check` does not go stale overnight while the data stands still. A selftest
+case covers its placement and date.
+
+README.md is left to docsrewrite1012, whose rewrite links this page as every
+tested game and how it ran. An earlier commit here reworded four README
+passages; they are reverted so the two lanes do not conflict.
 
 ## Counts
 

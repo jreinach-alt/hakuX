@@ -153,6 +153,18 @@ class UnknownRegionFallback(unittest.TestCase):
         self.assertIn("| Mystery Game | ? |", md)
 
 
+class DateLine(unittest.TestCase):
+    def test_date_line_follows_h1_and_carries_newest_tested_date(self):
+        older = notes_row("playable", "", "Older", region="USA", device="Nova",
+                          fps_median="60", time_at_bar="1.0", tested="2026-10-01")
+        newer = notes_row("below_bar", "FFFF0006", "Newer", region="USA", device="Nova",
+                          fps_median="25", time_at_bar="0.5", tested="2026-10-09")
+        lines = cp.render_md([older], [newer], []).splitlines()
+        self.assertEqual(lines[0], "# Compatibility")
+        self.assertEqual(lines[1], "")
+        self.assertRegex(lines[2], r"^_Last updated 2026-10-09, for version \d+\.\d+\.\d+\._$")
+
+
 class CheckFailsOnStalePage(unittest.TestCase):
     def test_check_exits_nonzero_when_md_is_stale(self):
         with tempfile.TemporaryDirectory() as td:

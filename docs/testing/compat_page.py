@@ -9,16 +9,24 @@ playable ledger, the title registry, and the hand-written notes file.
 
 Add --check to verify the committed files are up to date instead of
 writing them (exits non-zero on any difference).
+
+The page's "Last updated" line (read by docs_freshness.py) carries the
+newest Tested date on the page, so it moves only when the data does, and
+--check stays stable from one day to the next.
 """
 import argparse
 import csv
 import io
 import os
+import re
 import sys
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_MD = os.path.join(REPO_ROOT, "docs", "COMPATIBILITY.md")
 DEFAULT_CSV = os.path.join(REPO_ROOT, "docs", "compatibility.csv")
+GRADLE = os.path.join(REPO_ROOT, "android", "app", "build.gradle.kts")
+# the "0.5.0-unknown" fallback literal, the same base version docs_freshness.py reads
+GRADLE_VERSION_RE = re.compile(r'"(\d+\.\d+\.\d+)(?:-[A-Za-z0-9.]+)?"')
 
 NOTES_COLS = ["section", "title_id", "title", "region", "region_source",
               "device", "fps_median", "time_at_bar", "gameplay_s", "tested", "notes"]
@@ -199,9 +207,24 @@ an inconclusive test run are left off rather than guessed at.
 """
 
 
+def app_version():
+    with open(GRADLE) as f:
+        m = GRADLE_VERSION_RE.search(f.read())
+    if not m:
+        sys.exit("compat_page.py: no X.Y.Z version literal in %s" % GRADLE)
+    return m.group(1)
+
+
+def date_line(playable, below_bar, not_playable):
+    tested = [r["tested"] for r in playable + below_bar + not_playable if r["tested"]]
+    return "_Last updated %s, for version %s._" % (max(tested) if tested else "-", app_version())
+
+
 def render_md(playable, below_bar, not_playable):
     lines = []
     lines.append("# Compatibility")
+    lines.append("")
+    lines.append(date_line(playable, below_bar, not_playable))
     lines.append("")
     lines.append(
         "This lists Xbox titles tried on this project's test devices, split "
