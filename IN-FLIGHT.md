@@ -8,8 +8,8 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `forgealloc1013` | claude-sonnet-5 | 37 min | lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5) |
-| `pathrules1013` | claude-sonnet-5 | 2 min | pathtele1013: PR.md carries its title line |
+| `forgealloc1013` | claude-sonnet-5 | 52 min | lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5) |
+| `pathrules1013` | claude-sonnet-5 | 17 min | pathtele1013: PR.md carries its title line |
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
@@ -87,7 +87,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/forgealloc1013` | lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5) | `a3f7bd4706` | 2026-10-13 10:29 |
+| `lane/forgealloc1013` | lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5) | `852eae0eea` | 2026-10-13 10:50 |
 | `lane/pathrules1013` | pathtele1013: PR.md carries its title line | `21df2a276f` | 2026-10-13 10:19 |
 
 ## Recently landed on master
@@ -105,4 +105,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-12 ownersign1012: owner builds are signed again, and refuse an unsigned apk (#433, 0.5)
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 
-_Updated 2026-10-13 10:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 11:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
