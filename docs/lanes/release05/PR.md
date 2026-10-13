@@ -1,6 +1,6 @@
 # release05: v0.5.0 release notes (#433, 0.5)
 
-State: ready
+State: draft
 
 Lane: release05          Issue: none (#433 umbrella)
 Base: master @ c6e0a63852
