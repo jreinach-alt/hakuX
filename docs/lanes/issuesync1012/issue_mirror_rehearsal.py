@@ -20,6 +20,7 @@ Exit 0 if every required count held; exit 1, with FAIL lines, otherwise.
 import contextlib
 import copy
 import io
+import json
 import os
 import re
 import sys
@@ -30,6 +31,11 @@ from issue_mirror_selftest import FakeGH, FakeFG, isolated, silent
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STAGED_GATEWAY = os.path.join(HERE, 'github_gateway.py')
+
+# Round 4 addendum ("prefer a saved snapshot for the rehearsal re-run"): a default cache location outside the
+# repo, so repeated reruns while iterating cost 0 GitHub reads. --refresh-snapshot forces exactly one fresh
+# live read, which this round's final report states the cost of.
+DEFAULT_SNAPSHOT_CACHE = '/tmp/claude-1000/-home-justin-hakuX/8d26cd5d-d9c7-47ca-af52-b7e9a6cb2bb9/scratchpad/issuesync1012-rehearsal-snapshot.json'
 
 FAILURES = []
 
@@ -48,18 +54,48 @@ class RehearsalGH(FakeGH):
     the rehearsal counts that faithfully; the unit selftest doesn't need this fidelity and FakeGH
     itself stays simple."""
     def create(self, title, body='', labels=(), state=None):
-        n = FakeGH.create(self, title, body, labels, state=None)
+        n, close_err = FakeGH.create(self, title, body, labels, state=None)
         if state == 'closed':
-            self.patch(n, state='closed')
-        return n
+            try:
+                self.patch(n, state='closed')
+            except Exception as e:
+                return n, str(e)
+        return n, close_err
 
 
-def snapshot_live():
-    """Read-only. GitHub via the staged gateway copy (carries the /labels GET_OK fix this round
-    added); the forge via FG() directly. No --yes anywhere, no write call of any kind. Only GitHub
-    reads count against the gateway's daily budget; the forge is a local Forgejo instance with no
-    such budget, so pull_detail is fetched for every backfill-range PR-kind forge item without
-    worrying about cost."""
+def _save_snapshot_cache(path, gh, gh_labels, fg, pulls):
+    payload = {'gh': {str(k): v for k, v in gh.items()}, 'gh_labels': gh_labels,
+               'fg': {str(k): v for k, v in fg.items()}, 'pulls': {str(k): v for k, v in pulls.items()}}
+    d = os.path.dirname(path)
+    if d and not os.path.isdir(d):
+        os.makedirs(d, exist_ok=True)
+    tmp = path + '.tmp'
+    with open(tmp, 'w') as f:
+        json.dump(payload, f)
+    os.replace(tmp, path)
+
+
+def _load_snapshot_cache(path):
+    with open(path) as f:
+        payload = json.load(f)
+    gh = {int(k): v for k, v in payload['gh'].items()}
+    fg = {int(k): v for k, v in payload['fg'].items()}
+    pulls = {int(k): v for k, v in payload['pulls'].items()}
+    return gh, payload['gh_labels'], fg, pulls
+
+
+def snapshot_live(cache_path=DEFAULT_SNAPSHOT_CACHE, refresh=False):
+    """Read-only. GitHub via the staged gateway copy (carries the /labels and /interaction-limits GET_OK fixes
+    this round added); the forge via FG() directly. No --yes anywhere, no write call of any kind. Only GitHub
+    reads count against the gateway's daily budget; the forge is a local Forgejo instance with no such budget,
+    so pull_detail is fetched for every backfill-range PR-kind forge item without worrying about cost.
+
+    Round 4 addendum: with a cache_path and refresh=False, a snapshot already on disk is loaded instead (0
+    GitHub reads) -- "prefer a saved snapshot for the rehearsal re-run." Pass refresh=True (or delete the
+    cache file) to force exactly one fresh live read, which is then saved for the NEXT rerun."""
+    if cache_path and not refresh and os.path.exists(cache_path):
+        print('snapshot: loading cached snapshot from %s (0 GitHub reads)' % cache_path)
+        return _load_snapshot_cache(cache_path)
     gh_client = im.GH(gateway=STAGED_GATEWAY)
     fg_client = im.FG()
     print('snapshot: reading live GitHub (read-only, staged gateway copy)...')
@@ -74,6 +110,9 @@ def snapshot_live():
     print('snapshot: reading pull_detail for %d backfill-range forge PR(s) (read-only, local forge)...' %
           len(pr_backfill_nums))
     pulls = {n: fg_client.pull_detail(n) for n in pr_backfill_nums}
+    if cache_path:
+        _save_snapshot_cache(cache_path, gh, gh_labels, fg, pulls)
+        print('snapshot: cached to %s for future reruns' % cache_path)
     return gh, gh_labels, fg, pulls
 
 
@@ -99,30 +138,47 @@ def closed_kind_count(fg_f, todo):
     return n
 
 
-def pick_plain_pairs(gh_f, fg_f, n_generic, n_zero_comment_gh, n_zero_comment_fg):
+def pick_plain_pairs(gh_f, fg_f, n_generic, n_zero_comment_gh, n_zero_comment_fg, body_gh_header=False):
     """Picks n_generic distinct plain (non-PR-kind) common pairs for the title/body/state/labels edits, plus
     separate pairs for the comment edits. The comment-edit pairs specifically need comments==0 on the relevant
     side at snapshot time: the fake's comments_store is seeded fresh (it never carries the live snapshot's real
     historical comment bodies, only the one synthetic comment this script adds), so sync_comments' `[prev_gh:]`
     slice only lines up when prev_gh (the live comment COUNT at snapshot time) is 0 -- otherwise it would slice
-    past the one synthetic entry and see nothing, which is a rehearsal-harness artifact, not a tool defect."""
+    past the one synthetic entry and see nothing, which is a rehearsal-harness artifact, not a tool defect.
+
+    Round 4, gap 4: with body_gh_header=True, the body-edit slot that normally gets a GitHub-side edit
+    (generic[1], i.e. p_body_gh) is forced onto a pair whose CURRENT forge body starts with the forge-import
+    header (items 1-629) when one exists among the candidates -- this is exactly the shape that gap 4's fix
+    needs to be exercised against: a GitHub-side body edit, synced TO the forge, on a pair the header is on.
+    Returns (generic, zero_gh, zero_fg, header_n) -- header_n is None if no such pair was found."""
     d = im.build_diff(gh_f.items, fg_f.items)
     excluded = set(im.NEVER_SYNC) | set(im.STATE_CONFLICT_NUMS) | set(im.CONTENT_FIX_NUMS)
     cands = [n for n in d['common'] if n not in excluded and im.kind_of(fg_f.items[n]) != 'PR']
-    used = set()
-    generic = cands[:n_generic]
-    used.update(generic)
+    header_n = None
+    if body_gh_header:
+        header_n = next((n for n in cands if im.forge_import_header(fg_f.items[n].get('body'))), None)
+    if header_n is not None:
+        pool = [n for n in cands if n != header_n]
+        generic = pool[:n_generic]
+        if len(generic) >= 2:
+            generic[1] = header_n
+        else:
+            generic = ([header_n] + generic)[:n_generic]
+    else:
+        generic = cands[:n_generic]
+    used = set(generic)
+    used.add(header_n) if header_n is not None else None
     zero_gh = [n for n in cands if n not in used and gh_f.items[n].get('comments', 0) == 0][:n_zero_comment_gh]
     used.update(zero_gh)
     zero_fg = [n for n in cands if n not in used and fg_f.items[n].get('comments', 0) == 0][:n_zero_comment_fg]
     used.update(zero_fg)
-    return generic, zero_gh, zero_fg
+    return generic, zero_gh, zero_fg, header_n
 
 
-def run():
+def run(cache_path=DEFAULT_SNAPSHOT_CACHE, refresh=False):
     with isolated():
         print('=== snapshot (live, read-only) ===')
-        gh, gh_labels, fg, pulls = snapshot_live()
+        gh, gh_labels, fg, pulls = snapshot_live(cache_path=cache_path, refresh=refresh)
         gh_f, fg_f = load_into_fakes(gh, gh_labels, fg, pulls)
 
         old_sleep = im.time.sleep
@@ -216,13 +272,16 @@ def run():
 
             # --- synthetic edits: one per field, per side, on ten distinct plain pairs ---
             print('\n=== step: synthetic edits (one field each, 5 on GitHub, 5 on the forge) ===')
-            generic, zero_gh, zero_fg = pick_plain_pairs(gh_f, fg_f, 8, 1, 1)
+            generic, zero_gh, zero_fg, header_n = pick_plain_pairs(gh_f, fg_f, 8, 1, 1, body_gh_header=True)
             require(len(generic) == 8, 'found 8 distinct plain common pairs for title/body/state/labels (got %d)' % len(generic))
             require(len(zero_gh) == 1, 'found a plain pair with 0 GitHub comments for the GitHub-side comment edit (got %d)' % len(zero_gh))
             require(len(zero_fg) == 1, 'found a plain pair with 0 forge comments for the forge-side comment edit (got %d)' % len(zero_fg))
+            require(header_n is not None,
+                    'gap 4: found a 1-629 pair whose forge body starts with the forge-import header, for the body-edit slot')
             gh_shared = im.compute_shared_vocab(gh_f.repo_labels_list)
             p_title_gh, p_body_gh, p_state_gh, p_labels_gh, \
                 p_title_fg, p_body_fg, p_state_fg, p_labels_fg = generic
+            header_text = im.forge_import_header(fg_f.items[header_n]['body']) if header_n is not None else None
             p_comment_gh = zero_gh[0]
             p_comment_fg = zero_fg[0]
 
@@ -268,6 +327,12 @@ def run():
                     'forge-side title edit landed on GitHub #%d' % p_title_fg)
             require('edited on GitHub' in (fg_f.items.get(p_title_gh) or {}).get('title', ''),
                     'GitHub-side title edit landed on the forge #%d' % p_title_gh)
+            if header_n is not None:
+                fg_body_now = fg_f.items[header_n].get('body') or ''
+                require(fg_body_now.startswith(header_text),
+                        'gap 4: forge-import header on #%d survived a GitHub-side body edit synced to the forge' % header_n)
+                require('edited on GitHub' in fg_body_now,
+                        'gap 4: #%d\'s forge body also carries the actual GitHub-side body edit, not just the header' % header_n)
 
             print('\n=== step: sync --yes (settle, after the edit-sync) ===')
             before_gh, before_fg = gh_f.write_calls, fg_f.write_calls
@@ -293,4 +358,4 @@ def run():
 
 
 if __name__ == '__main__':
-    sys.exit(run())
+    sys.exit(run(refresh='--refresh-snapshot' in sys.argv))

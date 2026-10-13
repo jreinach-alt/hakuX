@@ -54,6 +54,7 @@ token (forge side). Every mirrored body/comment this tool creates carries a mark
 mistakes its own echo for a real edit on the other side. Every write (either side) is secret-scanned first.
 """
 import argparse
+import calendar
 import fcntl
 import json
 import os
@@ -77,6 +78,18 @@ LOG = W + '/logs/issue_mirror.log'
 
 MIRROR_MARKER_RE = re.compile(r'<!-- hakux-mirror:v1 src=(forge|github)#(\d+) -->')
 COMMENT_MARKER_RE = re.compile(r'<!-- hakux-mirror:v1 src=(forge|github)#(\d+)/c(\S+) -->')
+
+# Round 4, gap 3: GitHub's own body field tops out at 65536 characters. #785, the largest forge body today, is
+# 63,476 -- today's backfill fits -- but nothing guards a longer one, and a body that is too long fails with a
+# 422 on EVERY run forever (nothing about an oversized body shrinks on its own). The forge is not public, so the
+# truncation notice never names it.
+GITHUB_BODY_LIMIT = 65536
+GITHUB_BODY_TRUNCATE_SUFFIX = '\n\n(truncated)'
+
+# Round 4, gap 4: forge items 1-629 start with this header block (the original forge importer's own marker, not
+# this tool's MIRROR_MARKER). A GitHub-side body edit must keep it and replace only the rest -- see
+# apply_forge_body() below, used only on the github-changed -> write-to-forge path in apply_sync_actions.
+FORGE_IMPORT_HEADER_RE = re.compile(r'\A<!-- forge-import:github#\d+ -->\n*')
 
 PACE_PER_MIN_DEFAULT = 4     # 4/min = 240/hr: ~5% of GitHub's 80/min secondary limit, ~48% of its 500/hr limit
 
@@ -227,7 +240,47 @@ class GH:
             return 0
         return rows[0]['number']
 
+    def interaction_limits(self):
+        """Round 4 addendum: GET /repos/{owner}/{repo}/interaction-limits, read fresh every backfill run rather
+        than trusted from memory -- these limits lapse (24h to 6mo) on their own. Returns one of:
+          ('active', limit, expires_at)  -- a limit is set; GitHub returned it as JSON (200)
+          ('absent', None, None)         -- no limit is set; GitHub returned 204 No Content (empty body)
+          ('forbidden', None, None)      -- the token lacks permission to read this (403); genuinely unknown
+        Never raises for a 403 specifically -- the caller (cmd_backfill) must be able to tell "no limit" apart
+        from "can't tell," and decide what to do with "can't tell" itself, rather than this method guessing."""
+        self._ctr += 1
+        out = H + '/.issue-mirror-get-%d-%d.json' % (os.getpid(), self._ctr)
+        r = subprocess.run([sys.executable, self.gateway, 'get', '/interaction-limits', '--out', out],
+                            capture_output=True, text=True)
+        if r.returncode == 403:
+            return 'forbidden', None, None
+        if r.returncode != 0:
+            raise RuntimeError('gateway get /interaction-limits: rc=%d %s' % (r.returncode, (r.stdout + r.stderr)[:300]))
+        try:
+            with open(out) as f:
+                text = f.read()
+        finally:
+            try:
+                os.unlink(out)
+            except OSError:
+                pass
+        if not text.strip():
+            return 'absent', None, None
+        d = json.loads(text)
+        if not d:
+            return 'absent', None, None
+        return 'active', d.get('limit'), d.get('expires_at')
+
     def create(self, title, body='', labels=(), state=None):
+        """Returns (number, close_err). Round 4, defect 2: for a closed-kind item, the gateway's own
+        cmd_issue_create POSTs /issues (printing 'CREATED #N') and then, in the SAME invocation, calls
+        cmd_issue_patch to close it. If that follow-up close fails (a write-budget refusal, a network error, a
+        5xx), the gateway process exits non-zero even though 'CREATED #N' is really in stdout -- the number was
+        genuinely spent on GitHub. The old code raised RuntimeError whenever returncode != 0, discarding N and
+        losing track of a real, open GitHub record. Now: whenever 'CREATED #N' is in stdout, N is returned
+        no matter the exit code; a non-zero code just means close_err is set instead of None, so the caller can
+        record GitHub's actual (open) state and queue the close for a retry, rather than stopping and leaking
+        the number off the cursor entirely."""
         prob = secret_scan(title, body)
         if prob:
             raise MirrorStop('REFUSED: %s -- GitHub create blocked' % prob)
@@ -238,9 +291,12 @@ class GH:
             args += ['--state', 'closed']
         r = subprocess.run(args, capture_output=True, text=True)
         m = re.search(r'CREATED #(\d+)', r.stdout)
-        if r.returncode != 0 or not m:
+        if not m:
             raise RuntimeError((r.stdout.strip() or r.stderr.strip())[:300])
-        return int(m.group(1))
+        n = int(m.group(1))
+        if r.returncode != 0:
+            return n, (r.stdout.strip() or r.stderr.strip())[:300]
+        return n, None
 
     def patch(self, number, title=None, body=None, state=None, labels=None):
         prob = secret_scan(title or '', body or '')
@@ -446,6 +502,40 @@ def comment_marker(side, number, cid):
 
 def strip_marker(text):
     return MIRROR_MARKER_RE.sub('', text or '').rstrip()
+
+
+def truncate_for_github(body):
+    """Round 4, gap 3: cut an outgoing GitHub body to GITHUB_BODY_LIMIT characters, marker and status line
+    counted like everything else (no part of the body is exempt from the count). Every caller that sends a body
+    to GitHub must route it through this and then record the RETURNED text (not the original) as that side's
+    baseline -- otherwise the truncation itself would look like drift on every later sync."""
+    body = body or ''
+    if len(body) <= GITHUB_BODY_LIMIT:
+        return body
+    keep = GITHUB_BODY_LIMIT - len(GITHUB_BODY_TRUNCATE_SUFFIX)
+    return body[:keep] + GITHUB_BODY_TRUNCATE_SUFFIX
+
+
+def forge_import_header(body):
+    """Round 4, gap 4: the forge-import header block `body` currently starts with, if any (items 1-629), else
+    None. Only ever checked against the forge's CURRENT body, never the incoming one."""
+    if not body:
+        return None
+    m = FORGE_IMPORT_HEADER_RE.match(body)
+    return m.group(0) if m else None
+
+
+def apply_forge_body(current_fg_body, new_body):
+    """Round 4, gap 4: when writing a body to the forge, keep the forge's existing import-header block (if its
+    CURRENT body starts with one) and replace only the rest. Without this, a GitHub-side body edit silently
+    replaced the whole forge body and dropped that header -- and, worse, recorded the header-less text as the
+    forge's own baseline, so the header's mere presence (once the forge was re-read) looked like drift forever
+    after. A pair whose forge body has no such header (outside 1-629, or already edited away from it) is
+    unaffected: the new body replaces the whole thing exactly as before."""
+    header = forge_import_header(current_fg_body)
+    if header is None:
+        return new_body
+    return header + (new_body or '')
 
 
 def has_marker(item):
@@ -715,6 +805,29 @@ def record_baseline(st, n, fg_item, gh_item, shared_vocab):
     last[str(n)] = entry
 
 
+def retry_pending_closes(gh_client, st):
+    """Round 4, defect 2: a create whose follow-up close failed leaves a real, spent GitHub number open, with N
+    queued in st['pending_close'] (by GH.create's close_err path). Every backfill and sync run retries each of
+    these -- exactly once per run, before it spends anything new -- and clears whichever ones succeed; anything
+    that fails again simply stays queued for the next run. Returns (retried, cleared) counts."""
+    pending = st.get('pending_close') or []
+    if not pending:
+        return 0, 0
+    cleared = []
+    for n in list(pending):
+        try:
+            gh_client.patch(n, state='closed')
+        except (MirrorStop, RuntimeError) as e:
+            print('pending-close #%d: retry failed, still pending: %s' % (n, e))
+            continue
+        cleared.append(n)
+        print('pending-close #%d: retried and cleared' % n)
+    if cleared:
+        st['pending_close'] = [n for n in pending if n not in cleared]
+        save_state(st)
+    return len(pending), len(cleared)
+
+
 # --------------------------------------------------------------------------------------------------------------
 # Level check (gap 2) + mirror-down (gap 1)
 # --------------------------------------------------------------------------------------------------------------
@@ -803,11 +916,53 @@ def cmd_mirror_down(gh_client, fg_client, yes):
     return rc
 
 
+def _parse_github_ts(ts):
+    """GitHub's timestamps are '2026-10-20T00:00:00Z'. Returns epoch seconds, or raises on anything else."""
+    return calendar.timegm(time.strptime(ts, '%Y-%m-%dT%H:%M:%SZ'))
+
+
+def interaction_limit_preflight(gh_client, no_check, estimated_end):
+    """Round 4 addendum: the owner says the repo's GitHub interaction limit is on. These limits are temporary
+    (24h to 6 months) and lapse on their own, so this reads the setting fresh every run rather than trusting
+    memory of "it's on" -- a stale belief either way (on when it has lapsed, or off when it is still active)
+    is exactly the kind of drift the rest of this round exists to close. Refuses (nothing spent) unless an
+    active limit is read AND its expires_at is after this run's own estimated end; --no-interaction-limit skips
+    the whole check, at the owner's explicit choice. Returns None to proceed, or a REFUSED string to stop."""
+    if no_check:
+        print('interaction-limits: SKIPPED (--no-interaction-limit)')
+        return None
+    try:
+        status, limit, expires_at = gh_client.interaction_limits()
+    except RuntimeError as e:
+        print('interaction-limits: read failed: %s -- treated as unknown' % e)
+        status, limit, expires_at = 'forbidden', None, None
+    if status == 'forbidden':
+        print('interaction-limits: HTTP 403 -- this token cannot read the setting; treated as unknown')
+        return ('REFUSED: interaction-limits unknown (403) -- nothing spent. Pass --no-interaction-limit if '
+                'the owner wants to proceed anyway.')
+    if status == 'absent':
+        print('interaction-limits: no limit is currently active')
+        return ('REFUSED: no GitHub interaction limit is active -- nothing spent. Pass --no-interaction-limit '
+                'if the owner wants to proceed anyway.')
+    try:
+        exp_s = _parse_github_ts(expires_at)
+    except Exception:
+        exp_s = None
+    long_enough = exp_s is not None and exp_s > estimated_end
+    print('interaction-limits: active, limit=%r, expires_at=%s -- %s the run\'s estimated end (%s)' %
+          (limit, expires_at, 'after' if long_enough else 'NOT after',
+           time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(estimated_end))))
+    if not long_enough:
+        return ('REFUSED: the active interaction limit expires before this run\'s estimated end -- nothing '
+                'spent. Pass --no-interaction-limit if the owner wants to proceed anyway.')
+    return None
+
+
 # --------------------------------------------------------------------------------------------------------------
 # backfill --yes
 # --------------------------------------------------------------------------------------------------------------
 
-def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments):
+def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments, no_interaction_limit=False):
     gh = gh_client.all_issues()
     fg = fg_client.all_issues()
     d = build_diff(gh, fg)
@@ -819,11 +974,25 @@ def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments
         todo = todo[:max_n]
     if not todo:
         print('nothing to backfill (resume cursor at #%d)' % resume_after)
+        if yes:
+            # Round 4, defect 2: a resume with nothing left to create must still retry any pending closes --
+            # "every backfill ... run retries the pending closes before it creates anything" holds even when
+            # there turns out to be nothing to create.
+            retried, cleared = retry_pending_closes(gh_client, st)
+            if retried:
+                print('backfill: %d pending close(s), %d cleared' % (retried, cleared))
         return 0
     if not yes:
-        print('DRY RUN: would create %d GitHub twins, forge #%d..#%d, at %d/min (resuming after #%d)' %
-              (len(todo), todo[0], todo[-1], pace_per_min, resume_after))
+        pending = st.get('pending_close') or []
+        print('DRY RUN: would create %d GitHub twins, forge #%d..#%d, at %d/min (resuming after #%d)%s' %
+              (len(todo), todo[0], todo[-1], pace_per_min, resume_after,
+               (' -- %d pending close(s) would be retried first: %s' % (len(pending), pending)) if pending else ''))
         return 0
+    # Round 4, defect 2: retry any closes left over from a previous create-then-close failure before spending
+    # anything new this run.
+    retried, cleared = retry_pending_closes(gh_client, st)
+    if retried:
+        print('backfill: %d pending close(s), %d cleared' % (retried, cleared))
     # gap 2: check the sides are level before spending anything, fresh on every invocation (so a resume after a
     # stop/restart re-checks too, not just the very first call ever made).
     gh_max = max(gh) if gh else 0
@@ -831,6 +1000,13 @@ def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments
         print('REFUSED: GitHub\'s next number is #%d but the next backfill target is forge #%d -- the sides are '
               'not level. Nothing spent. (Someone likely filed a GitHub issue since the last plan/backfill; run '
               '`mirror-down` or `sync` first.)' % (gh_max + 1, todo[0]))
+        return 3
+    # Round 4 addendum: read-only interaction-limit check, after the level check (nothing spent yet either way)
+    # and before the first create.
+    estimated_end = time.time() + len(todo) * (60.0 / pace_per_min)
+    refusal = interaction_limit_preflight(gh_client, no_interaction_limit, estimated_end)
+    if refusal:
+        print(refusal)
         return 3
     shared_vocab = compute_shared_vocab(gh_client.repo_labels())
 
@@ -861,8 +1037,9 @@ def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments
             body += '\n\n--- %d forge comment(s) follow ---\n' % len(comments)
             for c in comments:
                 body += '\n> %s (%s): %s' % ((c.get('user') or {}).get('login', '?'), c.get('created_at'), (c.get('body') or '')[:2000])
+        body_sent = truncate_for_github(body)   # gap 3: never send more than GitHub's 65536-char body limit
         try:
-            got = gh_client.create(title, body, labels, state)
+            got, close_err = gh_client.create(title, body_sent, labels, state)
         except MirrorStop as e:
             print(str(e))
             return 3
@@ -877,7 +1054,20 @@ def cmd_backfill(gh_client, fg_client, yes, max_n, pace_per_min, mirror_comments
             return 3
         gh_max = n   # gap: optional pre-check compares against GitHub's max AS OF this run, including our own creates
         st['backfill_last_done'] = n
-        gh_side = {'number': got, 'title': title, 'body': body, 'state': state,
+        actual_state = state
+        if close_err is not None:
+            # Round 4, defect 2: the number is spent and real; only the follow-up close failed. Record GitHub's
+            # actual state (open, not the closed state we asked for) and queue the close for a later retry --
+            # advancing the cursor either way, so this item is never re-attempted (which would spend a second
+            # GitHub number on the same forge item).
+            actual_state = 'open'
+            pending = st.setdefault('pending_close', [])
+            if got not in pending:
+                pending.append(got)
+            print('backfill #%d: created as #%d but the follow-up close failed, queued to retry: %s' %
+                  (n, got, close_err))
+            log('backfill #%d: close failed, pending_close += %d: %s' % (n, got, close_err))
+        gh_side = {'number': got, 'title': title, 'body': body_sent, 'state': actual_state,
                    'labels': [{'name': l} for l in labels], 'comments': 0}
         record_baseline(st, n, fg[n], gh_side, shared_vocab)
         save_state(st)
@@ -1056,12 +1246,20 @@ def apply_sync_actions(gh_client, fg_client, actions, last, fg, shared_vocab):
         to_forge = {f: v for f, v, d in fields if d == 'github'}    # GitHub changed -> write to forge
         if to_github:
             try:
-                gh_client.patch(n, title=to_github.get('title'), body=to_github.get('body'),
+                # Round 4, gap 3: never send more than GitHub's 65536-char body limit. The truncated text, not
+                # the forge's full value, is what actually lands on GitHub -- so it, not `v`, becomes GitHub's
+                # own baseline below (the forge's baseline is untouched: its full value is still what is there).
+                body_sent = truncate_for_github(to_github['body']) if 'body' in to_github else None
+                gh_client.patch(n, title=to_github.get('title'), body=body_sent,
                                  state=to_github.get('state'),
                                  labels=list(to_github['labels']) if 'labels' in to_github else None)
                 for f, v in to_github.items():
-                    entry['gh'][f] = v
-                    entry['fg'][f] = v
+                    if f == 'body':
+                        entry['gh']['body'] = body_sent
+                        entry['fg']['body'] = v
+                    else:
+                        entry['gh'][f] = v
+                        entry['fg'][f] = v
                 print('  #%d github <- forge: applied (%s)' % (n, ', '.join(sorted(to_github))))
                 applied += 1
             except (MirrorStop, RuntimeError) as e:
@@ -1074,8 +1272,15 @@ def apply_sync_actions(gh_client, fg_client, actions, last, fg, shared_vocab):
                     patch_payload['title'] = to_forge['title']
                 if 'state' in to_forge:
                     patch_payload['state'] = to_forge['state']
+                body_applied = None
                 if 'body' in to_forge:
-                    patch_payload['body'] = to_forge['body']
+                    # Round 4, gap 4: a pair whose CURRENT forge body starts with the forge-import header keeps
+                    # that header block; only the rest is replaced. The combined text, not the bare GitHub value,
+                    # is what actually lands on the forge -- so it becomes the forge's own baseline below (and
+                    # GitHub's baseline stays the plain, header-less value, since nothing was written to GitHub).
+                    current_fg_body = (fg.get(n) or {}).get('body')
+                    body_applied = apply_forge_body(current_fg_body, to_forge['body'])
+                    patch_payload['body'] = body_applied
                 if patch_payload:
                     fg_client.patch(n, patch_payload)
                 if 'labels' in to_forge:
@@ -1084,8 +1289,12 @@ def apply_sync_actions(gh_client, fg_client, actions, last, fg, shared_vocab):
                     final_labels = sorted(set(local_only) | set(to_forge['labels']))
                     fg_client.set_labels(n, final_labels)
                 for f, v in to_forge.items():
-                    entry['gh'][f] = v
-                    entry['fg'][f] = v
+                    if f == 'body':
+                        entry['fg']['body'] = strip_marker(body_applied)
+                        entry['gh']['body'] = v
+                    else:
+                        entry['gh'][f] = v
+                        entry['fg'][f] = v
                 print('  #%d forge <- github: applied (%s)' % (n, ', '.join(sorted(to_forge))))
                 applied += 1
             except (MirrorStop, RuntimeError) as e:
@@ -1098,6 +1307,12 @@ def cmd_sync(gh_client, fg_client, yes):
     gh = gh_client.all_issues()
     fg = fg_client.all_issues()
     st = load_state()
+    if yes:
+        # Round 4, defect 2: retry any closes left over from a previous create-then-close failure before this
+        # run writes anything of its own -- same rule as cmd_backfill.
+        retried, cleared = retry_pending_closes(gh_client, st)
+        if retried:
+            print('sync: %d pending close(s), %d cleared' % (retried, cleared))
     # gap 1: level the sides first, so common pairs grow to include anything GitHub-only before the field sync runs.
     mrc, fg = do_mirror_down(gh_client, fg_client, yes, gh=gh, fg=fg, st=st)
     if mrc != 0:
@@ -1199,7 +1414,8 @@ def cmd_seed(gh_client, fg_client, yes):
 # --------------------------------------------------------------------------------------------------------------
 
 def _new_issue(gh_client, fg_client, title, body, forge_user_token_path):
-    n = gh_client.create(title, body)
+    n, close_err = gh_client.create(title, body)   # state=None here: no follow-up close is ever requested,
+    assert close_err is None                        # so close_err must always be None -- a bug if it is not.
     marker = mirror_marker('github', n)
     fc = FG(write_token_path=forge_user_token_path) if isinstance(fg_client, FG) else fg_client
     got = fc.create({'title': title, 'body': (body or '') + ('\n\n' if body else '') + marker})
@@ -1214,7 +1430,17 @@ def _new_pr(gh_client, fg_client, title, body, head, base, forge_user_token_path
     if not head:
         raise MirrorStop('REFUSED: --kind pr needs --head <lane-branch>')
     gh_title = pr_twin_title(title)
-    n = gh_client.create(gh_title, '(pending -- forge PR not yet created)', state='closed')
+    n, close_err = gh_client.create(gh_title, '(pending -- forge PR not yet created)', state='closed')
+    if close_err is not None:
+        # Round 4, defect 2: the number is real and spent; only the follow-up close failed. cmd_new re-fetches
+        # GitHub's live state right after this returns and records it as the baseline, so #n's baseline will
+        # correctly show it open -- queue the close itself for the next backfill/sync run to retry.
+        st = load_state()
+        pending = st.setdefault('pending_close', [])
+        if n not in pending:
+            pending.append(n)
+        save_state(st)
+        print('new: #%d created but the follow-up close failed, queued to retry: %s' % (n, close_err))
     synth = {'head': {'ref': head}, 'body': body, 'state': 'open', 'merged': False, 'labels': []}
     gh_client.patch(n, body=build_pr_twin_body(synth, n))
     fc = FG(write_token_path=forge_user_token_path) if isinstance(fg_client, FG) else fg_client
@@ -1355,6 +1581,10 @@ def main():
     p_bf.add_argument('--max', type=int, default=0)
     p_bf.add_argument('--pace-per-min', type=int, default=PACE_PER_MIN_DEFAULT)
     p_bf.add_argument('--comments', choices=['now', 'later'], default='later')
+    p_bf.add_argument('--no-interaction-limit', action='store_true',
+                       help='Round 4 addendum: skip the read-only GitHub interaction-limit pre-check. The owner '
+                            'decides whether to use this -- backfill refuses by default unless an active limit '
+                            'covers the whole run.')
 
     p_sync = sub.add_parser('sync')
     p_sync.add_argument('--yes', action='store_true')
@@ -1385,7 +1615,8 @@ def main():
     if a.cmd == 'mirror-down':
         return cmd_mirror_down(gh_client, fg_client, a.yes)
     if a.cmd == 'backfill':
-        return cmd_backfill(gh_client, fg_client, a.yes, a.max, a.pace_per_min, a.comments == 'now')
+        return cmd_backfill(gh_client, fg_client, a.yes, a.max, a.pace_per_min, a.comments == 'now',
+                             no_interaction_limit=a.no_interaction_limit)
     if a.cmd == 'sync':
         return cmd_sync(gh_client, fg_client, a.yes)
     if a.cmd == 'seed':

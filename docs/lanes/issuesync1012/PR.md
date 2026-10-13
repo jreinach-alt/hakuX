@@ -310,6 +310,50 @@ code change.
   explicit scope (the five numbered defects), and is called out here rather
   than silently left for a future round to rediscover.
 
+## Round 4 (2026-10-12/13): two write-safety defects, a size limit, a header, and a read-only preflight
+
+Four numbered items from the round 4 brief, plus one addendum delivered mid-round. None of these change what round 1-3 already decided; all are write-path hardening found by reading the staged gateway/tool against real constraints (GitHub's actual per-run/per-day limits, its 65536-char body cap, the forge import header) rather than by the fakes, which couldn't see any of them.
+
+1. **The gateway's "per-run" write cap was actually a per-day cap of 20.** `_write_budget()` stored `run_writes` inside the same persistent day bucket as the day total, so two separate invocations of the real tool (for example, a stopped-and-resumed backfill) sharing one day would hit the old cap at the day's 21st write, not each invocation's 21st. **Fix:** the run cap now lives in a process-local global (`_RUN_WRITES` in `github_gateway.py`, naturally 0 at every fresh `python3 github_gateway.py ...` process start — no reset logic needed); the day total is now its own persisted field (`day_counts(s)['writes']`) checked against a new, separate `MAX_WRITES_DAY = 600` (sized for the ~487-write backfill with headroom for sync/new/mirror-down the same day). Tested against the **real** gateway functions, not the issue_mirror.py fakes — `github_gateway_selftest.py` (new file) stubs only `token()` and the HTTP call, and redirects state/window/log to a temp dir, then calls `cmd_issue_create` directly: two invocations of 15 writes each (run cap 20 each) both complete in full (30 total — the old bug would have refused the 2nd invocation's 6th write); one invocation over a run cap of 3 refuses on the 4th write; a day cap of 5, already at 5, refuses write #1 of a brand-new invocation whose run cap is nowhere close to being hit.
+
+2. **A create whose follow-up close fails lost the spent GitHub number.** The old `GH.create()` only looked at the subprocess's exit code; a successful `POST /issues` (which actually spends GitHub's next number) followed by a failing `PATCH` to close it made the whole call raise, so backfill never recorded the number, never advanced its cursor, and the next run would try to create it again — desyncing GitHub's counter from the forge's permanently. **Fix:** `GH.create()` now parses `CREATED #N` out of stdout via regex regardless of the subprocess's return code; it returns `(n, close_err)` — `close_err=None` on full success, or the failure text when create succeeded but the follow-up close didn't — and only raises when no `CREATED #N` appears at all (a genuine create failure, nothing spent). Callers (`_new_issue`, `_new_pr`, `cmd_backfill`'s create loop) advance the cursor and record GitHub's actual (open) state on a close failure, and append the number to a new `st['pending_close']` list. Every `backfill --yes` and `sync --yes` run now retries any queued pending closes first, before creating or syncing anything of its own, clearing each on success. Tests: `test_create_close_failure_then_resume_clears_pending` (forces one close failure mid-backfill, asserts the cursor still advanced and nothing was REFUSED, then resumes with an empty todo list and confirms the retry fires, clears the pending entry, and costs the following `sync --yes` exactly 0 writes) plus two gateway-level unit tests of `GH.create`'s stdout parsing (`test_gh_create_parses_created_number_even_when_close_fails`, `test_gh_create_raises_when_no_created_number_at_all`). Also fixed in the same pass: `cmd_backfill`'s "nothing to backfill, resume cursor at #N" early-return previously skipped the pending-close retry entirely on a no-op resume — moved the retry call inside that branch too.
+
+3. **GitHub's 65,536-character body limit.** Nothing in round 1-3 bounded an outgoing body; a sufficiently long forge body (or a long comment thread folded into one) would have had the write refused by GitHub outright with no useful message. **Fix:** `truncate_for_github(body)` cuts to `GITHUB_BODY_LIMIT` (including the marker/status line already appended) and appends a plain `\n\n(truncated)` line — never mentioning the forge, since that's not public. The truncated text, not the original, is recorded as GitHub's own baseline (`entry['gh']['body']`), so a later sync never sees a spurious "GitHub changed" diff against text it never actually stored; the forge's own baseline still records the untruncated value it actually has. Covered by `test_truncate_for_github_caps_at_body_limit` (length/suffix/no-forge-mention checks on the function directly, then an end-to-end backfill+sync confirming the truncated text settles as the baseline with no drift on the next run).
+
+4. **A forge-import header must survive a GitHub-side body edit.** 629 forge items carry a `<!-- forge-import:github#N -->` header block (plus a `> **GitHub issue #N**...` line) that round 1's import wrote; nothing in round 1-3 protected it once `sync` started propagating GitHub-side body edits onto the forge — the old code would have overwritten the whole body, including the header, with GitHub's new text verbatim, destroying the import provenance on the first such edit (this was called out as a known, out-of-scope gap in round 3's "Not closed" section above). **Fix:** `apply_forge_body(current_fg_body, new_body)` reads the *forge's own current body*, extracts its header via `forge_import_header()`, and prepends it onto the new content before writing — the header is never sourced from GitHub, only preserved from what the forge already had. `apply_sync_actions()`'s `to_forge` path now calls this instead of writing GitHub's body straight through; the forge-side baseline records the header-preserved text, GitHub's own baseline still records its own (truncated-if-needed) value. One rehearsal addition: `pick_plain_pairs(..., body_gh_header=True)` now forces the GitHub-side body-edit synthetic edit onto a real header-bearing 1-629 pair found in the live snapshot (pair #2 in the rehearsal run below) instead of a random pick; `run()` asserts the header block is still present after the sync and that the new body still contains the actual edited content, and that the **next** sync after that is 0 actions / 0 writes.
+
+**Addendum, same round (owner, mid-round): a read-only GitHub interaction-limit preflight before backfill.** The owner noted the repo's GitHub interaction limit is currently on, that these limits are temporary (24 hours to 6 months) and lapse, and that the tool should read the live setting rather than trust memory. Added `/interaction-limits` to the gateway's `GET_OK`; `cmd_backfill`, after the existing level check and before its first create, calls `GH.interaction_limits()` (one `GET /repos/{owner}/{repo}/interaction-limits`) and prints one line: the limit, its `expires_at`, and whether that's after the run's estimated end (`len(todo) * 60/pace_per_min` seconds out). Three outcomes: **active and long enough** → proceeds; **absent** (GitHub returns an empty body when no limit is set) or **expires before the run would finish** → `REFUSED`, nothing spent; **403** (token lacks permission to read the setting) → printed plainly, treated as unknown, also `REFUSED`. A new `--no-interaction-limit` flag skips the check entirely — the owner's call, not this tool's. Tested against `FakeGH` for all three outcomes (`test_interaction_limit_active_and_long_enough_allows_backfill`, `test_interaction_limit_absent_refuses_backfill`, `test_interaction_limit_forbidden_refuses_backfill`), including confirming `--no-interaction-limit` overrides each refusal. **No live call was made to the real endpoint this round** — per the brief's own instruction not to spend read budget on it unless the rehearsal's dry path already covered it for free, and this round's one live read was spent on refreshing the rehearsal snapshot instead (see below); the endpoint's real shape (200 with a body vs. 204 empty vs. 403) is inferred from GitHub's documented REST conventions, not independently observed, and is listed under "Not closed" below.
+
+**`issue_mirror_selftest.py`**, run just before this report:
+
+```
+issue_mirror_selftest: 22/22 passed
+```
+
+**`github_gateway_selftest.py`** (new file, round 4 — tests the real `github_gateway.py` functions directly, not the issue_mirror.py fakes, since the fakes never exercise the gateway's own subprocess/state-file path at all):
+
+```
+github_gateway_selftest: 5/5 passed
+```
+
+### The rehearsal, re-run against the round 4 changes
+
+`issue_mirror_rehearsal.py` now caches its live snapshot (`--refresh-snapshot` to force a fresh read; otherwise it loads the cached JSON, 0 GitHub reads) so repeated reruns during this round's development didn't keep spending the read budget. Re-run in full, once with a fresh snapshot and once from cache, both producing the same result:
+
+```
+issue_mirror_rehearsal: all required counts held
+```
+
+with the gap-4 header check now part of the synthetic-edit phase: the forced GitHub-side body edit landed on a real header-bearing pair, the header block was confirmed present after the sync, the edited content was confirmed present too, and the following sync was 0 actions / 0 writes.
+
+**Read budget this round:** the gateway's `.gateway-state.json` showed 208 GitHub reads used today (UTC 2026-10-13) before this round's one live snapshot refresh, 217 after — 9 reads for the rehearsal's `all_issues()`/`repo_labels()` pagination, well inside the round's 40-read cap and the day's 300-read cap (83 left today outside this round's spend). No other live GitHub call was made this round, including for the interaction-limits addendum — see above.
+
+**Day write cap chosen:** `MAX_WRITES_DAY = 600` (gateway, replacing the old de-facto per-run-counted-as-per-day cap of 20) — sized for the ~487-write real backfill (333 creates + 156 closes per the latest rehearsal count) with headroom for sync/new/mirror-down traffic the same day, while the per-run cap (unchanged default, still caller-supplied) now actually resets every invocation as intended.
+
+### Not closed
+
+- The real GitHub `/interaction-limits` endpoint's response shape (active-with-body vs. absent-with-empty-body vs. 403) was never observed live this round; the three-outcome contract in `GH.interaction_limits()` is inferred from GitHub's documented REST conventions and exercised only against `FakeGH` in the selftest. The first live `backfill` run (without `--no-interaction-limit`) will be the first real observation of it.
+
 ## The decision (owner 10-12)
 
 One number per item, GitHub allocates. The forge is never renumbered — that
@@ -336,33 +380,55 @@ rewritten.
 
 In `/home/justin/hakux-work/lanes/issuesync1012/` (copied here as the record):
 
-- `issue_mirror.py` — the tool, round 3. Subcommands: `plan`, `mirror-down
+- `issue_mirror.py` — the tool, round 4. Subcommands: `plan`, `mirror-down
   [--yes]`, `backfill --yes [--max N] [--pace-per-min N] [--comments
-  now|later]`, `sync --yes`, `seed [--yes]`, `new --kind issue|pr ...`,
-  `check`, `close-pr N --comment TEXT`.
-- `issue_mirror_selftest.py` — round 3. Runs every write path against
+  now|later] [--no-interaction-limit]`, `sync --yes`, `seed [--yes]`,
+  `new --kind issue|pr ...`, `check`, `close-pr N --comment TEXT`. Round 4
+  adds: `GH.create()` returning `(number, close_err)` instead of raising on a
+  failed follow-up close; a `pending_close` retry at the top of every
+  `backfill --yes`/`sync --yes`; `truncate_for_github()` applied to every
+  outgoing GitHub body with a per-side baseline split; `apply_forge_body()`
+  preserving a forge-import header on a GitHub-side body edit;
+  `GH.interaction_limits()` and the `interaction_limit_preflight()` gate in
+  `cmd_backfill`.
+- `issue_mirror_selftest.py` — round 4. Runs every write path against
   in-memory fakes implementing the real `GH`/`FG` client interface; no
-  network calls. `issue_mirror_selftest: 17/17 passed` (quoted in full
-  above, in the round 3 section).
-- `issue_mirror_rehearsal.py` — round 3, new. The live-snapshot rehearsal
-  described above: read-only GitHub/forge reads only, then every write path
-  replayed in memory against write-counting fakes loaded from that snapshot.
-  No GitHub or forge write, ever; no `--yes` against a live service.
+  network calls. `issue_mirror_selftest: 22/22 passed` (quoted in full
+  above, in the round 4 section).
+- `issue_mirror_rehearsal.py` — round 3, extended round 4. The live-snapshot
+  rehearsal described above: read-only GitHub/forge reads only, then every
+  write path replayed in memory against write-counting fakes loaded from
+  that snapshot. No GitHub or forge write, ever; no `--yes` against a live
+  service. Round 4 adds a JSON snapshot cache (`--refresh-snapshot` to force
+  a live re-read; otherwise 0 GitHub reads) and forces one synthetic edit
+  onto a real forge-import-header pair to exercise gap 4.
+- `github_gateway_selftest.py` — round 4, new. Tests the real
+  `github_gateway.py` functions directly (run cap, day cap,
+  `GH.create`'s stdout parsing) against a temp state file with `token()`/the
+  HTTP call stubbed — no network call, nothing written to the real
+  `host-tools/.gateway-state.json`. `github_gateway_selftest: 5/5 passed`
+  (quoted in full above, in the round 4 section).
 - `github_gateway.py.diff` — the gateway additions `issue_mirror.py` needs,
   as a diff against the live `host-tools/github_gateway.py`: four new
   subcommands (`issue-create`, `issue-patch`, `issue-comment`, `pr-patch`),
   each going through the existing `open_window()`/`close_window()`/`token()`
-  machinery, a per-run write cap, and a secret scan (the existing
-  `SECRET_RES` patterns plus new `key.properties`-content patterns and a scan
-  of `forge/tokens/*.token` contents) that refuses any outgoing body
-  containing one; round 3 adds `/labels` to `GET_OK` (a cached read of
-  GitHub's own repo label list, read-only, for the shared label vocabulary).
+  machinery, a write cap, and a secret scan (the existing `SECRET_RES`
+  patterns plus new `key.properties`-content patterns and a scan of
+  `forge/tokens/*.token` contents) that refuses any outgoing body containing
+  one; round 3 added `/labels` to `GET_OK`; round 4 adds `/interaction-limits`
+  to `GET_OK`, splits the write cap into a process-local per-run counter and
+  a separate persisted `MAX_WRITES_DAY = 600`, and fixes `cmd_get`'s
+  HTTPError path to return the real HTTP status instead of falling through
+  to success, plus the `if __name__ == '__main__':` guard needed so
+  `github_gateway_selftest.py` can import this module directly.
   The staged, already-patched copy (not just the diff) is at
   `/home/justin/hakux-work/lanes/issuesync1012/github_gateway.py` if a
   side-by-side read is easier than applying the diff. The **installed**
-  copy at `host-tools/github_gateway.py` still lacks the `/labels` entry —
-  confirmed via `diff -q` — so step 1 below must still be done before any
-  live `GH.repo_labels()` call works against the installed gateway.
+  copy at `host-tools/github_gateway.py` still lacks the `/labels` and
+  `/interaction-limits` entries, the run/day cap split, and the `cmd_get`/
+  `__main__` fixes — confirmed via `diff -q` — so step 1 below must still be
+  done before any of this round's live calls work against the installed
+  gateway.
 - `issue_sync.py.new` + `issue_sync.py.diff` — `issue_sync.py` now files a
   lane's `NEW ISSUE:` OUTBOX.md block through `issue_mirror.py new` instead of
   the forge shim directly, so a lane-filed issue can never again land on the
@@ -500,15 +566,20 @@ exists under that title and renaming it would just be churn.
    live file after a final read) — `issue_mirror.py backfill/sync/new/
    mirror-down/seed/close-pr` all call the four new subcommands (now
    including `get --out FILE`, gap 6) and do nothing useful without them.
-2. Install `issue_mirror.py` (and `issue_mirror_selftest.py`, for future
-   re-verification) at `host-tools/`.
+2. Install `issue_mirror.py` (and `issue_mirror_selftest.py`,
+   `github_gateway_selftest.py`, for future re-verification) at
+   `host-tools/`.
 3. Run `issue_mirror_selftest.py` once against the newly-installed copy —
    it only touches its own in-memory fakes, so this is safe before any live
-   call — and confirm it still reports 17/17 passed in this environment.
-   Then run `issue_mirror_rehearsal.py` once against the newly-installed
-   gateway: it makes read-only GitHub/forge calls only (no `--yes`, no write
-   of any kind) and replays seed/backfill/sync/check in memory against a
-   live-shaped snapshot; confirm it prints `issue_mirror_rehearsal: all
+   call — and confirm it still reports 22/22 passed in this environment.
+   Run `github_gateway_selftest.py` too — it stubs the token/HTTP call and
+   redirects state to a temp dir, so it is equally safe before any live
+   call — and confirm 5/5 passed. Then run `issue_mirror_rehearsal.py` once
+   against the newly-installed gateway: it makes read-only GitHub/forge
+   calls only (no `--yes`, no write of any kind) and replays
+   seed/backfill/sync/check in memory against a live-shaped snapshot
+   (`--refresh-snapshot` to force a fresh read; omit it to reuse a cached
+   one at 0 GitHub reads); confirm it prints `issue_mirror_rehearsal: all
    required counts held` before trusting the next steps against live data.
 4. Create `forge/tokens/jobs.token` readability for the gateway user running
    this if it does not already exist with write scope (it should — `jobs` is
@@ -529,7 +600,11 @@ exists under that title and renaming it would just be churn.
    every returned number matches the forge number before raising `--max` or
    dropping it. The resume cursor lives in `host-tools/.issue-mirror.json`
    (`backfill_last_done`); a stopped run restarts after it, re-checking the
-   level invariant (gap 2) before its next create.
+   level invariant (gap 2) before its next create. Round 4: this is also the
+   first live call to `GET /interaction-limits` — if the token can't read it
+   (403) or no limit is active, `backfill` now refuses before creating
+   anything; the owner decides whether `--no-interaction-limit` is
+   warranted, not this tool.
 9. Wire `check`'s exit code into whatever reads the hourly report.
 
 ## What would make the identical-number backfill unsafe

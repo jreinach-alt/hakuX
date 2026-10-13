@@ -37,9 +37,13 @@ class FakeGH:
         self.force_wrong_number = None
         self.force_failure_once = False
         self.force_patch_failure_once = False
+        self.force_close_failure_once = False   # round 4, defect 2's regression test
         self.create_calls = 0
         self.write_calls = 0            # round 3, gap 3/4: every real create/patch/comment counts here
         self.repo_labels_list = []      # round 3, gap 2: configurable; compute_shared_vocab() reads this
+        # Round 4 addendum: defaults to "active, far enough out" so every pre-existing backfill test keeps
+        # passing without having to know this check exists. Tests of the check itself set this directly.
+        self.interaction_limits_result = ('active', 100, '2099-01-01T00:00:00Z')
 
     def reachable(self):
         return self._reachable
@@ -53,11 +57,19 @@ class FakeGH:
     def repo_labels(self):
         return list(self.repo_labels_list)
 
+    def interaction_limits(self):
+        """Round 4 addendum: mirrors GH.interaction_limits()'s (status, limit, expires_at) contract."""
+        return self.interaction_limits_result
+
     def max_number(self):
         """Round 3, optional race-window shrink: mirrors GH.max_number()'s cheapest-read contract."""
         return max(self.items) if self.items else 0
 
     def create(self, title, body='', labels=(), state=None):
+        """Returns (number, close_err), matching GH.create()'s real round-4 contract (defect 2): a number is
+        always spent and returned once this gets as far as assigning `n`; close_err is None unless the caller
+        set force_close_failure_once AND asked for a closed-kind create, in which case the number is still
+        spent (and returned) but the item is left open, with a close_err string instead of a raise."""
         prob = im.secret_scan(title, body)
         if prob:
             raise im.MirrorStop('REFUSED: %s -- GitHub create blocked' % prob)
@@ -70,9 +82,15 @@ class FakeGH:
             n, self.force_wrong_number = self.force_wrong_number, None
         else:
             n = (max(self.items) + 1) if self.items else 1
-        self.items[n] = {'number': n, 'title': title, 'body': body, 'state': state or 'open',
+        close_err = None
+        actual_state = state or 'open'
+        if state == 'closed' and self.force_close_failure_once:
+            self.force_close_failure_once = False
+            actual_state = 'open'
+            close_err = 'simulated transient GitHub close failure (the create itself succeeded)'
+        self.items[n] = {'number': n, 'title': title, 'body': body, 'state': actual_state,
                           'labels': [{'name': l} for l in labels], 'comments': 0}
-        return n
+        return n, close_err
 
     def patch(self, number, title=None, body=None, state=None, labels=None):
         prob = im.secret_scan(title or '', body or '')
@@ -571,6 +589,121 @@ def test_label_sync_keeps_forge_local_only_labels():
         return 'label sync: GitHub-added shared label reaches the forge via set_labels, local-only label preserved'
 
 
+def test_create_close_failure_then_resume_clears_pending():
+    """Round 4, defect 2: a PR-twin create whose follow-up close fails must not lose the spent GitHub number.
+    Requires all of: the cursor advanced; no REFUSED; the close retried exactly once and cleared on resume;
+    0 writes on the following sync (so nothing re-detects the already-settled pair as drift)."""
+    with isolated():
+        gh, fg = FakeGH(), FakeFG()
+        for n in range(1, 6):
+            mk_pair(gh, fg, n)
+        fg.items[6] = {'number': 6, 'title': 'pr-twin', 'body': 'desc', 'state': 'open', 'labels': [], 'comments': 0,
+                       'pull_request': {'merged': False, 'merged_at': None}}
+        fg.pulls[6] = {'number': 6, 'title': 'pr-twin', 'body': 'desc', 'state': 'open', 'merged': False,
+                       'merge_commit_sha': None, 'head': {'ref': 'lane/x'}, 'labels': []}
+        gh.force_close_failure_once = True
+        rc, out = silent(im.cmd_backfill, gh, fg, True, 0, 6000, False)
+        assert rc == 0 and 'REFUSED' not in out, out
+        assert 6 in gh.items and gh.items[6]['state'] == 'open', \
+            'the spent number was lost, or its state was not recorded as GitHub actually left it: %s' % gh.items.get(6)
+        st = im.load_state()
+        assert st.get('backfill_last_done') == 6, 'cursor did not advance past the close-failed item: %s' % st
+        assert st.get('pending_close') == [6], 'pending_close not queued: %s' % st
+
+        # Resume: nothing left to backfill, but the pending close must still be retried up front.
+        rc2, out2 = silent(im.cmd_backfill, gh, fg, True, 0, 6000, False)
+        assert rc2 == 0, out2
+        assert out2.count('retried and cleared') == 1, 'close retried more or less than exactly once: %s' % out2
+        assert gh.items[6]['state'] == 'closed', gh.items[6]
+        st2 = im.load_state()
+        assert not st2.get('pending_close'), 'pending_close not cleared after a successful retry: %s' % st2
+
+        writes_before = gh.write_calls
+        rc3, out3 = silent(im.cmd_sync, gh, fg, True)
+        assert rc3 == 0, out3
+        assert gh.write_calls == writes_before, \
+            'the following sync wrote to GitHub (%d writes) when the pair was already settled: %s' % \
+            (gh.write_calls - writes_before, out3)
+        return ('create-close-failure then resume: cursor advanced to #6, no REFUSED, close retried exactly '
+                'once and cleared, 0 GitHub writes on the following sync')
+
+
+def test_truncate_for_github_caps_at_body_limit():
+    """Round 4, gap 3: an outgoing GitHub body longer than GITHUB_BODY_LIMIT is cut to the limit and ends with a
+    plain '(truncated)' line that never mentions the forge. Also checks the end-to-end backfill path: the
+    TRUNCATED text, not the original, must become GitHub's own baseline, or the truncation itself would look
+    like drift on the very next sync."""
+    with isolated():
+        long_body = 'x' * (im.GITHUB_BODY_LIMIT + 5000)
+        out = im.truncate_for_github(long_body)
+        assert len(out) == im.GITHUB_BODY_LIMIT, 'truncated length=%d, limit=%d' % (len(out), im.GITHUB_BODY_LIMIT)
+        assert out.endswith('(truncated)'), out[-40:]
+        assert 'forge' not in out.lower(), 'the forge is not public -- it must never be mentioned in a GitHub body'
+        short_body = 'short body, well under the limit'
+        assert im.truncate_for_github(short_body) == short_body, 'a body under the limit must pass through untouched'
+
+        gh, fg = FakeGH(), FakeFG()
+        mk_pair(gh, fg, 1)
+        fg.items[2] = {'number': 2, 'title': 'big', 'body': long_body, 'state': 'open', 'labels': [], 'comments': 0}
+        rc, out_log = silent(im.cmd_backfill, gh, fg, True, 0, 6000, False)
+        assert rc == 0, out_log
+        assert len(gh.items[2]['body']) == im.GITHUB_BODY_LIMIT, \
+            'backfill sent an over-limit body to GitHub: %d chars' % len(gh.items[2]['body'])
+        writes_before = gh.write_calls
+        rc2, out2 = silent(im.cmd_sync, gh, fg, True)
+        assert rc2 == 0 and gh.write_calls == writes_before and 'CONFLICT' not in out2, \
+            'the truncated body was not recorded as its own baseline -- looked like drift on the next sync: %s' % out2
+        return 'truncate_for_github: caps at the limit, ends "(truncated)", no forge mention; truncated text is the baseline'
+
+
+def test_interaction_limit_active_and_long_enough_allows_backfill():
+    """Round 4 addendum, outcome 1 of 3: an active limit whose expires_at is well after the run's estimated end
+    lets backfill proceed exactly as if the check did not exist."""
+    with isolated():
+        gh, fg = FakeGH(), FakeFG()
+        mk_pair(gh, fg, 1)
+        fg.items[2] = {'number': 2, 'title': 'new', 'body': 'b', 'state': 'open', 'labels': [], 'comments': 0}
+        gh.interaction_limits_result = ('active', 100, '2099-01-01T00:00:00Z')
+        rc, out = silent(im.cmd_backfill, gh, fg, True, 0, 6000, False)
+        assert rc == 0, out
+        assert 2 in gh.items, 'backfill did not create #2 despite a long-enough active limit: %s' % out
+        assert 'interaction-limits: active' in out
+        return 'interaction-limits active+long-enough: backfill proceeds, #2 created'
+
+
+def test_interaction_limit_absent_refuses_backfill():
+    """Round 4 addendum, outcome 2 of 3: no limit active at all -- refuse, spend nothing, unless overridden."""
+    with isolated():
+        gh, fg = FakeGH(), FakeFG()
+        mk_pair(gh, fg, 1)
+        fg.items[2] = {'number': 2, 'title': 'new', 'body': 'b', 'state': 'open', 'labels': [], 'comments': 0}
+        gh.interaction_limits_result = ('absent', None, None)
+        rc, out = silent(im.cmd_backfill, gh, fg, True, 0, 6000, False)
+        assert rc == 3, out
+        assert 'REFUSED' in out and 'no GitHub interaction limit is active' in out, out
+        assert gh.create_calls == 0, 'a number was spent despite no active interaction limit'
+        rc2, out2 = silent(im.cmd_backfill, gh, fg, True, 0, 6000, False, no_interaction_limit=True)
+        assert rc2 == 0 and 2 in gh.items, 'the --no-interaction-limit override did not let backfill proceed: %s' % out2
+        return 'interaction-limits absent: REFUSED and 0 spent; --no-interaction-limit overrides and #2 is created'
+
+
+def test_interaction_limit_forbidden_refuses_backfill():
+    """Round 4 addendum, outcome 3 of 3: a 403 (token lacks permission) is treated as unknown, not as "off" --
+    refuse, spend nothing, unless overridden."""
+    with isolated():
+        gh, fg = FakeGH(), FakeFG()
+        mk_pair(gh, fg, 1)
+        fg.items[2] = {'number': 2, 'title': 'new', 'body': 'b', 'state': 'open', 'labels': [], 'comments': 0}
+        gh.interaction_limits_result = ('forbidden', None, None)
+        rc, out = silent(im.cmd_backfill, gh, fg, True, 0, 6000, False)
+        assert rc == 3, out
+        assert 'REFUSED' in out and '403' in out, out
+        assert gh.create_calls == 0, 'a number was spent despite an unreadable (403) interaction limit'
+        rc2, out2 = silent(im.cmd_backfill, gh, fg, True, 0, 6000, False, no_interaction_limit=True)
+        assert rc2 == 0 and 2 in gh.items, 'the --no-interaction-limit override did not let backfill proceed: %s' % out2
+        return 'interaction-limits forbidden (403): REFUSED and 0 spent; --no-interaction-limit overrides and #2 is created'
+
+
 TESTS = [
     test_backfill_happy_path,
     test_pre_create_mismatch_refusal,
@@ -589,6 +722,11 @@ TESTS = [
     test_failed_forge_write_then_retry_never_reverses,
     test_forgejo_label_api_contract_enforced_in_fake,
     test_label_sync_keeps_forge_local_only_labels,
+    test_create_close_failure_then_resume_clears_pending,
+    test_truncate_for_github_caps_at_body_limit,
+    test_interaction_limit_active_and_long_enough_allows_backfill,
+    test_interaction_limit_absent_refuses_backfill,
+    test_interaction_limit_forbidden_refuses_backfill,
 ]
 
 
