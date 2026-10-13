@@ -1,9 +1,11 @@
-# xemu Android bootstrap
+# hakuX Android build
 
-This directory mirrors Super3's Android setup (AGP, NDK, SDK levels) and wires
-up SDL2 for an Android-native entry point. It currently builds a minimal SDL2
-bootstrap (see `app/src/main/cpp/xemu_android.cpp`) that opens an ES context and
-runs an event loop. The xemu core is not yet wired.
+This directory is the Android port: a Gradle/CMake project that builds the
+xemu/QEMU core as native libraries and wraps them in a Kotlin app (SDL2 for
+the native entry point, SAF-based file pickers for BIOS/HDD/game images, and
+the setup, settings and game-library screens). See the top-level
+[`README.md`](../README.md) for what the app does; this file covers building
+it.
 
 ## Toolchain expectations
 - Android SDK 36
@@ -21,13 +23,11 @@ runs an event loop. The xemu core is not yet wired.
 
 Both of the last two are installed explicitly by `.github/workflows/android.yml`.
 A clean checkout does not build from the list above alone.
-- Rust toolchain (`cargo`) for ISO->XISO converter
-  - On Windows, this project uses `stable-x86_64-pc-windows-gnu` (to avoid MSVC `link.exe`)
-  - Install once:
-    - `rustup toolchain install stable-x86_64-pc-windows-gnu`
-    - `rustup target add aarch64-linux-android --toolchain stable-x86_64-pc-windows-gnu`
 
-If Rust is not available, configure CMake with `-DXEMU_ENABLE_XISO_CONVERTER=OFF`.
+The ISO→XISO converter (`-DXEMU_ENABLE_XISO_CONVERTER=ON`, the default) builds
+`extract-xiso` from `android/third_party/extract-xiso`; it needs no toolchain
+beyond the one above. Build without it with
+`-DXEMU_ENABLE_XISO_CONVERTER=OFF`.
 
 ## Build
 From this directory:
@@ -36,14 +36,15 @@ From this directory:
 ./gradlew assembleDebug
 ```
 
+`./gradlew assembleRelease` builds the release variant; see
+[`RELEASING.md`](RELEASING.md) for signing it so it can upgrade in place
+instead of costing users their saves.
+
 ## SDL2
-SDL2 is fetched via CMake (default `release-2.32.10`). To use a local checkout:
+SDL2 is fetched via CMake (default `release-2.32.10`). Mainline xemu moved to
+SDL3 upstream; this port stays on SDL2. To use a local checkout instead of the
+fetched one:
 
 ```
 ./gradlew assembleDebug -Pandroid.experimental.cmake.arguments=-DSDL2_LOCAL_DIR=/path/to/SDL
 ```
-
-## Core integration note
-Mainline xemu moved to SDL3 on 2026-01-21. The last SDL2-based tag is `v0.8.133`.
-If you plan to wire the core into Android with SDL2, start from that tag or
-cherry-pick the SDL2-based frontend changes.
