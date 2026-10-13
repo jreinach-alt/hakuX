@@ -978,10 +978,11 @@ files = ['docs/lanes/issuesync1012/**']
 note = 'STARTED lane.local 2026-10-12 18:01 PDT (Sonnet): the owner, 10-12 ~17:5x PDT: the GitHub and forge issue logs drifted (forge 630-957 have no GitHub twin; 22 closed on GitHub, open on the forge) and must sync both ways with no number collisions. The tool lives outside the repo (host-tools/issue_mirror.py, the gateway); this row holds its record only. Builds and dry-runs; the live backfill waits for the owner.'
 
 [lane.ownersign1012]
+released = ['docs/lanes/ownersign1012/**', 'docs/testing/owner_build.sh', 'docs/testing/jobs/selftest.d/*-ownersign1012.sh']
 issues = ['433']
 standing = false
 files = ['docs/lanes/ownersign1012/**', 'docs/testing/owner_build.sh', 'docs/testing/jobs/selftest.d/*-ownersign1012.sh']
-note = 'STARTED lane.local 2026-10-12 19:00 PDT (Sonnet): owner_build.sh builds assembleRelease in its private worktree with no android/key.properties, so the release apk is unsigned and adb install fails (exit 6); the owner stable channel cannot be installed from a ref. Same cause nightlysign1012 fixes for nightlies. Symlink key.properties in when present, apksigner verify before install.'
+note = 'READY 2ace3dec01 (lane.local 2026-10-12 19:29 PDT; also maps nova/thor to serials before device_env, which exited 2 on every real run). STARTED lane.local 2026-10-12 19:00 PDT (Sonnet): owner_build.sh builds assembleRelease in its private worktree with no android/key.properties, so the release apk is unsigned and adb install fails (exit 6); the owner stable channel cannot be installed from a ref. Same cause nightlysign1012 fixes for nightlies. Symlink key.properties in when present, apksigner verify before install.'
 
 [free]
 # CLAIMED (lane.local 2026-10-12 19:00 PDT): docs/testing/owner_build.sh -> lane.ownersign1012 (owner builds unsigned). Back here when it retires.
