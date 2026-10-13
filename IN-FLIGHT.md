@@ -11,7 +11,7 @@ No lane session is running.
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 2 waiting, 0 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -96,4 +96,4 @@ No branch is being worked right now.
 - 2026-10-12 release05: v0.5.0 release notes (#433, 0.5)
 - 2026-10-12 pubdocs1012: public docs pass for 0.5 (README, compatibility, limitations, attribution) (#433, 0.5)
 
-_Updated 2026-10-13 06:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 06:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
