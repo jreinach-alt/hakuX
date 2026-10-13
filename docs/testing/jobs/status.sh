@@ -668,14 +668,13 @@ if [ -n "$pages_url" ]; then
     exit 0
 fi
 if [ -z "$issue" ]; then
-    # Only a query that SUCCEEDED and found nothing licenses a second status
-    # issue. A network blip must not fork the one page the owner reads.
-    [ $ilrc -eq 0 ] || { echo "the harness-status query failed; not creating a second status issue"; exit 0; }
-    issue=$(gh issue create --repo "$GH_REPO" --title "harness: live status (auto-updated)" --label harness-status --label harness \
-        --body "Rewritten by \`docs/testing/jobs/status.sh\` at the end of every job tick and every 30 minutes. Pin this issue. Do not comment here; the roll-up is the only content, and it is regenerated from the host each time." 2>/dev/null | grep -o '[0-9]*$')
-    [ -n "$issue" ] || { echo "could not create the status issue"; exit 0; }
-    cur_title=""
-    rm -f "$IS/comment-id"
+    # No open status issue, and this script does not open one. The gh shim
+    # refuses `gh issue create` (lane.forgealloc1013): a number taken on the
+    # forge can run ahead of GitHub's and block every later issue. A new issue
+    # goes through the allocator, issue_mirror.py new, which lane.local runs.
+    [ $ilrc -eq 0 ] || { echo "the harness-status query failed; retrying next tick"; exit 0; }
+    echo "no open harness-status issue; not creating one (a new issue goes through issue_mirror.py new, run by lane.local)"
+    exit 0
 fi
 cid=$(cat "$IS/comment-id" 2>/dev/null)
 posted=""
