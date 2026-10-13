@@ -1,6 +1,6 @@
 # release05: v0.5.0 release notes (#433, 0.5)
 
-State: draft
+State: ready
 
 Lane: release05          Issue: none (#433 umbrella)
 Base: master @ c6e0a63852
@@ -13,6 +13,10 @@ v0.4.1-j1..master:
 
 - Three install notes: the Android 10 / ARMv8.2 LSE floor (#427, minSdk
   26 -> 29, the "Unsupported CPU" gate), alongside-install, ES-DE files.
+- Box art lookup is now opt-in (boxart1012; the owner, 10-12: ships in
+  0.5.0, with notes on it): where covers come from, the setup page, the
+  one-time question for earlier installs, the library switch, and what each
+  lookup sends.
 - New: save states, several games folders, ubershader, pipeline pre-build,
   Fast renderer paths, GPU surface reuse, the Thor bottom screen.
 - Fixed: NFS Most Wanted audio and race start, GTA San Andreas sky,
