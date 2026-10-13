@@ -1,6 +1,6 @@
 # hakuX (fork)
 
-_Last updated 2026-10-12, for version 0.5.0._
+_Last updated 2026-10-13, for version 0.5.0._
 
 **Original Xbox games on your Android handheld.** An independent build of the
 hakuX emulator, tested game by game on Snapdragon handhelds.
@@ -39,7 +39,10 @@ hakuX emulator, tested game by game on Snapdragon handhelds.
   as the Snapdragon 835, 660, 665 and 460 are not supported; on them the app
   says so and exits.
 - Ratings come from a Retroid Pocket Nova and an AYN Thor, both Snapdragon 8
-  Gen 2 class. On a slower chip, expect fewer games at full speed.
+  Gen 2 (Adreno 740) on Android 13, using the **Turnip Adreno Driver T30
+  (@Mr_Purple_666)** GPU driver, installed under Settings → Graphics → GPU
+  Driver. On a slower chip, expect fewer games at full speed; with another
+  driver, results may differ.
 
 ## What you need
 
