@@ -49,7 +49,7 @@ each a direct `FakeAgent`/`FakeModel` unit test (`driverecover-prompt`, `drivere
 ladder for `genre=="drive"`) still passes unchanged -- Part B only touches the `sd_watch` abort path, not the
 still-window rotation.
 
-## Part C -- COMPLETE (next commit)
+## Part C -- COMPLETE (41a9bbbd32)
 Darkwatch: on-screen button-prompt detection (X = melee a door lock) now fires before the shooter genre's
 unstick ladder gets a rung. Added `Agent.prompt_rung()`, wired into `hold_play()`'s `sd_watch` non-abort
 branch -- the opposite side of Part B's injection point: this fires on the *first* stuck sample, before any
