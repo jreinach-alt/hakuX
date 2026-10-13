@@ -8,18 +8,18 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `compatpage1012` | claude-sonnet-5 | 16 min |  |
-| `docsfresh1012` | claude-sonnet-5 | 3 min |  |
+| `compatpage1012` | claude-sonnet-5 | 30 min |  |
+| `x1port1012` | claude-opus-5-5 | 1 min | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
 
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
-  - Thor: held by `lanelocal-fanwait`
+  - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
 
-**52 titles are confirmed Playable** (8 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**52 titles are confirmed Playable** (0 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
@@ -80,7 +80,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/x1port1012` | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) | `f763fe6d40` | 2026-10-12 23:59 |
 
 ## Recently landed on master
 
@@ -97,4 +99,4 @@ No branch is being worked right now.
 - 2026-10-12 debugcap1012: Debug Capture is off by default in versioned releases (#433, 0.5)
 - 2026-10-12 contrib1012: structured bug reports and a contributor guide (#433, 0.5)
 
-_Updated 2026-10-12 23:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 00:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
