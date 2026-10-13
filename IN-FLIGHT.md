@@ -8,10 +8,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `holdinput1013` | claude-sonnet-5 | 0 min | holdinput1013 Part E: StuckWatch's max_rungs must match the genre's ladder (#433) |
+| `holdinput1013` | claude-sonnet-5 | 15 min | pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every  |
 
 - **Handhelds:** 1 connected.
-  - Nova: held by `lanelocal-shuffle`
+  - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -87,7 +87,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/holdinput1013` | holdinput1013 Part E: StuckWatch's max_rungs must match the genre's ladder (#433) | `9fbdec7bea` | 2026-10-13 13:48 |
+| `lane/holdinput1013` | pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every unstick ru | `4cd1307df7` | 2026-10-13 14:25 |
 
 ## Recently landed on master
 
@@ -104,4 +104,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-12 issuemirror1012: the issue mirror on a timer: one lock, incremental sync, budget-true pre-check (#433, 0.5)
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 
-_Updated 2026-10-13 14:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 14:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
