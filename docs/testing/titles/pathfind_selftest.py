@@ -983,6 +983,22 @@ check("perflog-restore", _ok and not _dev.installed.endswith("-perflog"), f"mast
 check("perflog-restore", pathfind.perflog_start(_FakeDevice([], start_version=_dev.installed), False) is None,
       "the guard sees a clean (non-perflog) install after restore, so the next ordinary run is not refused")
 
+# hold_verdict's own request.json (#433 Part C): it runs before finish() writes result.json, so a perflog
+# hold's "build"/"env" must reach title_verdict some other way -- hold_verdict writes them into the
+# request.json it already makes just before calling title_verdict.py, the same file title_verdict.py now
+# falls back to when result.json has no "build" of its own (judge()'s req.get("build") fallback).
+_hv_out = os.path.join(TMP, "holdverdict", "out")
+os.makedirs(_hv_out)
+_hv_agent = type("A", (), {})()
+_hv_agent.name, _hv_agent.tid, _hv_agent.iso = "Sim", "00000000", "/sim/00000000-Sim.iso"
+_hv_agent.dev = type("D", (), {"label": "nova"})()
+_hv_agent.out = _hv_out
+_hv_agent.result = {"build": "perflog", "env": ["HAKUX_GPUXFR=1"]}
+pathfind.Agent.hold_verdict(_hv_agent, 12)
+_hv_req = json.load(open(os.path.join(_hv_out, "request.json")))
+check("perflog-holdverdict", _hv_req.get("build") == "perflog" and _hv_req.get("env") == ["HAKUX_GPUXFR=1"],
+      f"hold_verdict's own request.json carries the perflog build/env before result.json exists: {_hv_req}")
+
 shutil.rmtree(_pl)
 
 print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))

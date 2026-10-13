@@ -2388,7 +2388,9 @@ class Agent:
     def provisional_verdict(self, play_s, log):
         """title_verdict.py on the hold's logcat so far, in a provisional folder (shared by hold_check and
         hold_unsalvageable) whose logcat ends with a `soak end` at its last logged time. Returns the verdict
-        dict, or None when title_verdict did not produce one -- an unknown, not a failure."""
+        dict, or None when title_verdict did not produce one -- an unknown, not a failure. The request.json
+        written here carries a perflog hold's build/env too (#433 Part C): hold_verdict's own request.json
+        is the final judge's, this one the provisional judge's, and both must void a perflog run the same way."""
         pdir = os.path.join(self.out, "provisional")
         os.makedirs(pdir, exist_ok=True)
         try:
@@ -2402,7 +2404,8 @@ class Agent:
                 f.write(f"{stamp} I/hakuX-route(    0): soak end\n")
         with open(os.path.join(pdir, "request.json"), "w") as f:
             json.dump({"title": self.name, "title_id": self.tid, "device": self.dev.label,
-                       "iso": os.path.basename(self.iso or "")}, f)
+                       "iso": os.path.basename(self.iso or ""),
+                       "build": self.result.get("build"), "env": self.result.get("env")}, f)
         with open(os.path.join(pdir, "run.log"), "w") as f:
             f.write(f"held {self.name} for {int(play_s)}s\n")
         try:
@@ -2456,10 +2459,12 @@ class Agent:
 
     def hold_verdict(self, secs):
         """title_verdict.py on the hold's logcat: its one VERDICT line (verdict.json beside it)."""
-        # title_verdict resolves the title by the ISO's basename (targets.toml `iso` map), not by the display name
+        # title_verdict resolves the title by the ISO's basename (targets.toml `iso` map), not by the display name.
+        # "build"/"env" let title_verdict void a perflog hold even before finish() writes them to result.json (#433).
         with open(os.path.join(self.out, "request.json"), "w") as f:
             json.dump({"title": self.name, "title_id": self.tid, "device": self.dev.label,
-                       "iso": os.path.basename(self.iso or "")}, f)
+                       "iso": os.path.basename(self.iso or ""),
+                       "build": self.result.get("build"), "env": self.result.get("env")}, f)
         # title_verdict reads `held <title> for <n>s` from run.log; append it there (stdout is not run.log)
         with open(os.path.join(self.out, "run.log"), "a") as f:
             f.write(f"held {self.name} for {int(secs)}s\n")

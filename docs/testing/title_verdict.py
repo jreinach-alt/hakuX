@@ -498,6 +498,12 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
         pass    # black frames, display 0 clear and hakuX focused: hakuX's own failure
     elif rframes and all(os.path.getsize(f) < BLACK_FRAME_B for f in rframes):
         void = "display-black: all %d route frames under %d B" % (len(rframes), BLACK_FRAME_B)
+    elif res.get("build") == "perflog" or req.get("build") == "perflog":
+        # #433 Part C: a perflog build carries ~1.2 ms/frame of render-thread telemetry overhead
+        # (lane.pathtele1013) -- never a Playable candidate. hold_verdict's own request.json has
+        # "build" by the time the run ends; a provisional (mid-hold) verdict reads it from either
+        # file, since hold_check's provisional folder is written before result.json exists.
+        void = "build: perflog APK (~1.2 ms/frame render-thread overhead) -- a telemetry hold, never a Playable candidate"
 
     held = re.search(r"^(?:held \S.* for|guest exited after) (\d+)s", runlog, re.M)
     pids = []
@@ -586,7 +592,8 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
              device=res.get("device_label") or "", ref=res.get("ref") or req.get("ref"),
              apk_sha=res.get("apk_sha"), request_id=req.get("id") or os.path.basename(rdir.rstrip("/")),
              route=req.get("route_name") or None, surface_scale=scale,
-             adb_failures=adb_failures, thermal=thermal, human_review="")
+             adb_failures=adb_failures, thermal=thermal, human_review="",
+             build=res.get("build") or req.get("build"), env=res.get("env") or req.get("env"))
     v["booted"] = (not never) and bool(perf) and bool(lc)
     after = [(t, p) for t, p in perf if mark_t is not None and t >= mark_t]
     flipped_after = bool(after)
