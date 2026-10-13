@@ -81,6 +81,8 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
+- 2026-10-12 debugcap1012: Debug Capture is off by default in versioned releases (#433, 0.5)
 - 2026-10-12 contrib1012: structured bug reports and a contributor guide (#433, 0.5)
 - 2026-10-12 housekeep1012: remove obsolete and conflicting agent instructions (#433, 0.5)
 - 2026-10-12 release05: the 0.5 gate is measured on the Nova (#433, 0.5)
@@ -91,7 +93,5 @@ No branch is being worked right now.
 - 2026-10-12 pathfind: a screen-reading agent that drives a title from boot into gameplay
 - 2026-10-12 fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5)
 - 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
-- 2026-10-12 fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5)
-- 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
 
-_Updated 2026-10-12 19:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 20:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
