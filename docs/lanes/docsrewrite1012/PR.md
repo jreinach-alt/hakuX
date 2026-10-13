@@ -40,7 +40,7 @@ ES-DE activity, and the HDD skip-copy behaviour in xemu_android.cpp.
 
 Each page carries `_Last updated <date>, for version 0.5.0._` as the first
 line after its title. docsfresh1012's `docs_freshness.py`, taken from its
-branch and run against this worktree on 2026-10-13 00:2x PDT:
+branch and run against this worktree on 2026-10-13 00:1x PDT:
 
 ```
 OK           README.md                        2026-10-12   0.5.0      (1 d)
