@@ -6,7 +6,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `pathtele1013` | claude-sonnet-5 | 1 min |  |
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
@@ -98,4 +100,4 @@ No branch is being worked right now.
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 release05: v0.5.0 release notes (#433, 0.5)
 
-_Updated 2026-10-13 08:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 09:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
