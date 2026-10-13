@@ -335,6 +335,8 @@ to be run on demand. Otherwise, never run it."*
   Recorded as a correction rather than quietly fixed, because the original
   claim is exactly the kind of near-true generalisation this harness keeps
   producing: I checked the common case, found it uniform, and wrote "every".
+  (Since 2026-10-13 that workflow and `ubuntu-win64-cross/` are gone:
+  rootclean1013 removed them as unused upstream files.)
 - **All four release workflows are `workflow_dispatch:`** —
   `release-on-tag.yml`, `release-on-dispatch.yml`, `prerelease.yml`, and
   `release.yml` (`workflow_call`). **Manual only.** Nothing in this harness
