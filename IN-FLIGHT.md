@@ -81,6 +81,9 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-12 release05: v0.5.0 release notes (#433, 0.5)
+- 2026-10-12 pubdocs1012: public docs pass for 0.5 (README, compatibility, limitations, attribution) (#433, 0.5)
+- 2026-10-12 nightlysign1012: the nightly refuses to publish an unsigned or unnamed apk (#433, 0.5)
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 debugcap1012: Debug Capture is off by default in versioned releases (#433, 0.5)
 - 2026-10-12 contrib1012: structured bug reports and a contributor guide (#433, 0.5)
@@ -90,8 +93,5 @@ No branch is being worked right now.
 - 2026-10-12 zetaroutes1012: returning gameplay routes for Buffy, DOA3 and NG Black, then HAKUX_ZETA_D24=1 runs (#433, 0.5)
 - 2026-10-12 zerofive1012 (2): a returning route for Ghoulies, so the 0.5 release gate can be queued (#433)
 - 2026-10-12 zerofive1012: 0.5 counts 145 measured titles, not 145 benchmarked (#433)
-- 2026-10-12 pathfind: a screen-reading agent that drives a title from boot into gameplay
-- 2026-10-12 fpsbelow1012: the below-bar titles on the Nova at master, and one fix that lifts several (#433, 0.5)
-- 2026-10-12 pathclass: a local GPU screen-state classifier for pathfind (#433)
 
-_Updated 2026-10-12 20:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 20:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
