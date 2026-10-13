@@ -3964,6 +3964,18 @@ static void sync_staging_buffer(PGRAPHState *pg, VkCommandBuffer cmd,
         return;
     }
 
+    /*
+     * The staging buffers are persistently mapped with HOST_ACCESS_RANDOM,
+     * which lets VMA pick a HOST_CACHED type that is not HOST_COHERENT.
+     * Make the CPU writes available before the copy reads them, as
+     * flush_memory_buffer() and the texture/surface uploads already do; on a
+     * coherent type VMA returns without doing anything. The submit's
+     * implicit host-write dependency covers the rest, so no HOST barrier.
+     * From X1 BOX 3d3515faad.
+     */
+    VK_CHECK(vmaFlushAllocation(r->allocator, b_src->allocation, 0,
+                                b_src->buffer_offset));
+
     VkBufferCopy copy_region = { .size = b_src->buffer_offset };
     vkCmdCopyBuffer(cmd, b_src->buffer, b_dst->buffer, 1, &copy_region);
 
@@ -3982,8 +3994,10 @@ static void sync_staging_buffer(PGRAPHState *pg, VkCommandBuffer cmd,
         dst_stage_mask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
         break;
     case BUFFER_UNIFORM:
+        /* Binding 1 of the UBO set is the fragment shader's (shaders.c). */
         dst_access_mask = VK_ACCESS_UNIFORM_READ_BIT;
-        dst_stage_mask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+        dst_stage_mask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         break;
     default:
         assert(0);
