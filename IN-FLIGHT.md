@@ -9,7 +9,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 No lane session is running.
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lane.local.ownerplay`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -94,4 +94,4 @@ No branch is being worked right now.
 - 2026-10-12 debugcap1012: Debug Capture is off by default in versioned releases (#433, 0.5)
 - 2026-10-12 contrib1012: structured bug reports and a contributor guide (#433, 0.5)
 
-_Updated 2026-10-12 23:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 23:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
