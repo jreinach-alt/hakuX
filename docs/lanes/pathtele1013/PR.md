@@ -1,3 +1,5 @@
+# pathtele1013: an opt-in perflog telemetry hold for pathfind; KOTOR II and Splinter Cell Double Agent read as guest-vCPU-bound (#433)
+
 Lane: pathtele1013      Issue: #433
 Base: master @ 3c2338eb2b
 Files: docs/lanes/pathtele1013/**, docs/testing/titles/pathfind.py, docs/testing/titles/pathfind_selftest.py
