@@ -96,4 +96,4 @@ No branch is being worked right now.
 - 2026-10-12 release05: v0.5.0 release notes (#433, 0.5)
 - 2026-10-12 pubdocs1012: public docs pass for 0.5 (README, compatibility, limitations, attribution) (#433, 0.5)
 
-_Updated 2026-10-13 05:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 05:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
