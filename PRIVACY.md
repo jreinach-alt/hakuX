@@ -1,46 +1,36 @@
 # Privacy
 
-This app is a local emulator. It does not have an account system, and it does
-not collect or transmit analytics, crash reports, or usage data — there is no
-such code in it.
+_Last updated 2026-10-13, for version 0.5.0._
 
-## What stays on the device
+hakuX (fork) runs on your device. It has no account, and it collects and sends
+no analytics, crash reports or usage data. There is no code in it that does.
 
-Your BIOS/MCPX files, HDD image, game images, save data, settings, and any
-captures or diagnostic exports you create stay in storage you chose (picked
-through the Android file picker) or in the app's own storage. None of it is
-uploaded anywhere by the app. If you share a capture or export, that is
-something you do yourself, outside the app.
+## What stays on your device
 
-## Network use
+Your boot ROM, BIOS, hard disk image, games, saves, save states, settings and
+screenshots stay where you put them: in folders you picked, or in the app's
+own storage. The app uploads none of it. If you share a file, you do that
+yourself, outside the app.
 
-The app requests Android's `INTERNET` permission for two features, both
-visible and both optional:
+## When the app goes online
 
-- **Box art lookup.** The game library can show cover art for games it
-  recognises by matching the file name against a list bundled in the app —
-  that matching never leaves the device — then fetching the matching image
-  from `raw.githubusercontent.com/izzy2lost/X1_Covers`. It is off until you
-  choose it: the setup wizard asks once, with an unchecked switch, and an
-  existing install that finished setup before this question existed is asked
-  once with a plain yes/no question the first time it switches the library to
-  the cover grid. Turning it on means each
-  cover fetched sends GitHub a request naming that game, so GitHub sees your
-  device's address and which titles you look up. Change your answer any time
-  with **Look up box art online** in the library — with it off, the app makes
-  no request for a game's art.
-- **Insignia / online networking.** The emulator can give the emulated Xbox a
-  network connection, for guest software that expects one (including
-  Insignia's Xbox-Live replacement). This is off by default and only takes
-  effect if you turn it on in Settings → Online / Insignia. The sign-up and
-  guide links in that screen open in your browser; the app does not call out
-  to them itself.
+Only for these two features, and both are off until you turn them on.
 
-Nothing else in the app makes a network request.
+- **Box art.** Setup asks whether to look up cover art online; the switch
+  starts off. With it on, the app matches your game files against a list
+  built into the app, on the device. For each match it then downloads that
+  game's cover from GitHub
+  (`raw.githubusercontent.com/izzy2lost/X1_Covers`). GitHub sees your
+  device's address and which covers you fetch. You can turn it off at any
+  time with **Look up box art online** in the library.
+- **Online play (Insignia).** This gives the emulated Xbox a network
+  connection, for games that use one, including Insignia's replacement for
+  Xbox Live. Turn it on under Settings → Online / Insignia. The sign-up and
+  guide links on that screen open in your browser.
 
-## Upstream
+The app makes no other network requests.
 
-This is a fork of [rfandango/hakuX](https://github.com/rfandango/hakuX),
-itself descended from izzy2lost's Android port of
-[xemu](https://github.com/xemu-project/xemu). This file describes this fork's
-code as it stands; it is not a statement about other builds.
+## Other builds
+
+This page describes this build only. It is not a statement about the official
+hakuX or any other build.
