@@ -1,0 +1,242 @@
+--- /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py.orig	2026-10-12 18:12:52.463674439 -0700
++++ /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py	2026-10-12 18:14:13.122400166 -0700
+@@ -10,6 +10,15 @@
+   renote [--yes] tag...     replace a published nightly-*'s notes with nightly/<date>.notes.corrected.md (owner 2026-10-09)
+   prheads            read-only: the head branch of every open PR on GitHub, one per line; any failure exits 1 with nothing on stdout
+   status             today's counters and the last result
++  issue-create --title T [--body B] [--label L ...] [--state closed] [--yes] [--max-writes N]
++                     POST /issues (then PATCH to close, if --state closed). Dry run without --yes. STAGED for
++                     lane.issuesync1012 (2026-10-12): issue_mirror.py's backfill/new use this; nothing else calls it yet.
++  issue-patch N [--title T] [--body B] [--state open|closed] [--label L ...] [--yes] [--max-writes N]
++                     PATCH /issues/N, only the fields given. STAGED for lane.issuesync1012.
++  issue-comment N --body B [--yes] [--max-writes N]
++                     POST /issues/N/comments. STAGED for lane.issuesync1012.
++  pr-patch N --state closed [--title T] [--body B] [--yes] [--max-writes N]
++                     PATCH /pulls/N; state is only ever 'closed' (never reopen, never merge). STAGED for lane.issuesync1012.
+ 
+ Rules it enforces (it cannot be talked out of them): fast-forward only, never --force, never a delete, heads only (no tags);
+ a head that diverged from GitHub's, or whose GitHub tip is unknown locally, is skipped and reported; a head that touches
+@@ -170,6 +179,185 @@
+     return 0
+ 
+ 
++# --- staged for lane.issuesync1012 (2026-10-12): the narrowest write paths issue_mirror.py needs. -------------------
++# Dry run unless --yes, exactly like release/unrelease/renote/pointer above. Every one of these goes through
++# open_window()/close_window() and token() like the existing calls; every outgoing title/body/comment is scanned for
++# secrets before it leaves the process (refuses tokens, private keys, and anything that looks like key.properties).
++# A per-run cap (--max-writes, default MAX_WRITES_RUN_DEFAULT) bounds how many of these one invocation will do, on top
++# of the existing per-day read cap; issue_mirror.py is the thing that paces calls across a backfill run, not this file.
++# NOT WIRED TO LIVE WRITES BY THE LANE: lane.issuesync1012 never passes --yes. lane.local decides when that changes.
++MAX_WRITES_RUN_DEFAULT = 20
++MIRROR_MARKER = '<!-- hakux-mirror:v1 src=%s#%s -->'   # appended to every mirrored body/comment; sync must skip echoes of its own marker
++
++
++def mirror_marker(side, number):
++    return MIRROR_MARKER % (side, number)
++
++
++KEY_PROPERTIES_RES = [re.compile(rb'storePassword\s*='), re.compile(rb'keyPassword\s*='), re.compile(rb'keyAlias\s*=.*key0', re.I)]
++
++
++def secret_scan_text(*texts):
++    """Refuses tokens, private keys and key.properties contents in any outgoing body. Returns a problem string or None."""
++    blob = ('\n'.join(t for t in texts if t)).encode('utf8', 'replace')
++    for rx in SECRET_RES:
++        if rx.search(blob):
++            return 'outgoing text matches a token/private-key pattern'
++    for rx in KEY_PROPERTIES_RES:
++        if rx.search(blob):
++            return 'outgoing text looks like android/key.properties contents'
++    for f in os.listdir(W + '/forge/tokens'):
++        if f.endswith('.token') or f == 'github-gateway':
++            try:
++                v = open(W + '/forge/tokens/' + f).read().strip()
++                if len(v) >= 20 and v.encode() in blob:
++                    return 'outgoing text contains one of our own tokens (%s)' % f
++            except Exception:
++                pass
++    try:
++        kp = open(os.path.expanduser('~/hakuX/android/key.properties')).read().strip()
++        if kp and kp.encode() in blob:
++            return 'outgoing text contains android/key.properties verbatim'
++    except Exception:
++        pass
++    return None
++
++
++class _WriteCapExceeded(Exception):
++    pass
++
++
++def _write_budget(s, cap):
++    c = day_counts(s)
++    c.setdefault('writes', 0)
++    if c.get('run_writes', 0) >= cap:
++        raise _WriteCapExceeded('%d writes this run exceeds --max-writes %d' % (c.get('run_writes', 0), cap))
++    c['writes'] += 1
++    c['run_writes'] = c.get('run_writes', 0) + 1
++    save_state(s)
++
++
++def cmd_issue_create(title, body, labels=(), state=None, yes=False, max_writes=MAX_WRITES_RUN_DEFAULT):
++    """POST /issues. GitHub's create API has no state field; a caller wanting it closed must follow with issue-patch."""
++    prob = secret_scan_text(title, body)
++    if prob:
++        print('REFUSED: %s' % prob); return 3
++    if not yes:
++        print('WOULD POST /issues title=%r labels=%s (%d body chars)' % (title, list(labels), len(body or ''))); return 0
++    s = load_state()
++    try:
++        _write_budget(s, max_writes)
++    except _WriteCapExceeded as e:
++        print('REFUSED: %s' % e); return 3
++    tok = token()
++    base = 'https://api.github.com/repos/' + OWNER_REPO
++    payload = {'title': title, 'body': body or ''}
++    if labels:
++        payload['labels'] = list(labels)
++    open_window()
++    try:
++        code, d = _api('POST', base + '/issues', tok, json.dumps(payload).encode())
++    finally:
++        close_window()
++    if code != 201:
++        print('STOP: create HTTP', code, d); return 2
++    print('CREATED #%d %s' % (d['number'], d.get('html_url')))
++    log('issue-create #%d (%d body chars, labels %s)' % (d['number'], len(body or ''), ','.join(labels)))
++    if state == 'closed':
++        return cmd_issue_patch(d['number'], state='closed', yes=True, max_writes=max_writes)
++    return 0
++
++
++def cmd_issue_patch(number, title=None, body=None, state=None, labels=None, yes=False, max_writes=MAX_WRITES_RUN_DEFAULT):
++    """PATCH /issues/N. Only the fields passed are changed; works for issues and for the issue side of a PR."""
++    prob = secret_scan_text(title, body)
++    if prob:
++        print('REFUSED: %s' % prob); return 3
++    fields = {k: v for k, v in (('title', title), ('body', body), ('state', state)) if v is not None}
++    if labels is not None:
++        fields['labels'] = list(labels)
++    if not fields:
++        print('nothing to patch'); return 0
++    if not yes:
++        print('WOULD PATCH /issues/%d %s' % (number, sorted(fields))); return 0
++    s = load_state()
++    try:
++        _write_budget(s, max_writes)
++    except _WriteCapExceeded as e:
++        print('REFUSED: %s' % e); return 3
++    tok = token()
++    base = 'https://api.github.com/repos/' + OWNER_REPO
++    open_window()
++    try:
++        code, d = _api('PATCH', base + '/issues/%d' % number, tok, json.dumps(fields).encode())
++    finally:
++        close_window()
++    if code != 200:
++        print('STOP: patch HTTP', code, d); return 2
++    print('PATCHED #%d %s' % (number, sorted(fields)))
++    log('issue-patch #%d %s' % (number, sorted(fields)))
++    return 0
++
++
++def cmd_issue_comment(number, body, yes=False, max_writes=MAX_WRITES_RUN_DEFAULT):
++    """POST /issues/N/comments."""
++    prob = secret_scan_text(body)
++    if prob:
++        print('REFUSED: %s' % prob); return 3
++    if not yes:
++        print('WOULD POST /issues/%d/comments (%d body chars)' % (number, len(body or ''))); return 0
++    s = load_state()
++    try:
++        _write_budget(s, max_writes)
++    except _WriteCapExceeded as e:
++        print('REFUSED: %s' % e); return 3
++    tok = token()
++    base = 'https://api.github.com/repos/' + OWNER_REPO
++    open_window()
++    try:
++        code, d = _api('POST', base + '/issues/%d/comments' % number, tok, json.dumps({'body': body}).encode())
++    finally:
++        close_window()
++    if code != 201:
++        print('STOP: comment HTTP', code, d); return 2
++    print('COMMENTED #%d comment %d' % (number, d.get('id', 0)))
++    log('issue-comment #%d comment %s (%d chars)' % (number, d.get('id'), len(body or '')))
++    return 0
++
++
++def cmd_pr_patch(number, state=None, title=None, body=None, yes=False, max_writes=MAX_WRITES_RUN_DEFAULT):
++    """PATCH /pulls/N. Used by close-pr; state='closed' is the only state transition the mirror ever asks for (never
++    reopen, never merge: this gateway pushes heads, it does not decide what is mergeable)."""
++    if state not in (None, 'closed'):
++        print('REFUSED: pr-patch only ever sets state=closed'); return 3
++    prob = secret_scan_text(title, body)
++    if prob:
++        print('REFUSED: %s' % prob); return 3
++    fields = {k: v for k, v in (('title', title), ('body', body), ('state', state)) if v is not None}
++    if not fields:
++        print('nothing to patch'); return 0
++    if not yes:
++        print('WOULD PATCH /pulls/%d %s' % (number, sorted(fields))); return 0
++    s = load_state()
++    try:
++        _write_budget(s, max_writes)
++    except _WriteCapExceeded as e:
++        print('REFUSED: %s' % e); return 3
++    tok = token()
++    base = 'https://api.github.com/repos/' + OWNER_REPO
++    open_window()
++    try:
++        code, d = _api('PATCH', base + '/pulls/%d' % number, tok, json.dumps(fields).encode())
++    finally:
++        close_window()
++    if code != 200:
++        print('STOP: pr-patch HTTP', code, d); return 2
++    print('PR-PATCHED #%d %s' % (number, sorted(fields)))
++    log('pr-patch #%d %s' % (number, sorted(fields)))
++    return 0
++# --- end lane.issuesync1012 staged additions --------------------------------------------------------------------
++
++
+ def cmd_prheads():
+     """read-only: the head branch of every open PR on GitHub, one per line (prune_worktrees.sh, owner 2026-10-09).
+     Parsed here, not through `get`, whose output is cut at 600 kB. Any failure prints nothing on stdout and exits 1,
+@@ -582,9 +770,18 @@
+     os.system('tail -5 %s 2>/dev/null' % LOG)
+ 
+ 
++def _strs(a, name):
++    return [a[i + 1] for i in range(len(a)) if a[i] == name]
++
++
++def _str_opt(a, name, d=None):
++    return a[a.index(name) + 1] if name in a else d
++
++
+ def main():
+     a = sys.argv[1:]
+-    if not a or a[0] not in ('check', 'plan', 'push', 'status', 'pages', 'get', 'prheads', 'release', 'unrelease', 'renote', 'pointer'):
++    if not a or a[0] not in ('check', 'plan', 'push', 'status', 'pages', 'get', 'prheads', 'release', 'unrelease', 'renote', 'pointer',
++                              'issue-create', 'issue-patch', 'issue-comment', 'pr-patch'):
+         print(__doc__); return 64
+     lk = open(H + '/.gateway.lock', 'w')
+     try:
+@@ -605,6 +802,17 @@
+         return cmd_prheads()
+     if a[0] == 'pointer':
+         return cmd_pointer(yes='--yes' in a)
++    if a[0] == 'issue-create':
++        return cmd_issue_create(_str_opt(a, '--title', ''), _str_opt(a, '--body', ''), labels=_strs(a, '--label'),
++                                 state=_str_opt(a, '--state'), yes='--yes' in a, max_writes=opt('--max-writes', MAX_WRITES_RUN_DEFAULT))
++    if a[0] == 'issue-patch':
++        return cmd_issue_patch(int(a[1]), title=_str_opt(a, '--title'), body=_str_opt(a, '--body'), state=_str_opt(a, '--state'),
++                                labels=_strs(a, '--label') or None, yes='--yes' in a, max_writes=opt('--max-writes', MAX_WRITES_RUN_DEFAULT))
++    if a[0] == 'issue-comment':
++        return cmd_issue_comment(int(a[1]), _str_opt(a, '--body', ''), yes='--yes' in a, max_writes=opt('--max-writes', MAX_WRITES_RUN_DEFAULT))
++    if a[0] == 'pr-patch':
++        return cmd_pr_patch(int(a[1]), state=_str_opt(a, '--state'), title=_str_opt(a, '--title'), body=_str_opt(a, '--body'),
++                             yes='--yes' in a, max_writes=opt('--max-writes', MAX_WRITES_RUN_DEFAULT))
+     if a[0] == 'release':
+         return cmd_release(yes='--yes' in a, only=[x for x in a[1:] if release_tag(x)] or None)
+     if a[0] == 'unrelease':
