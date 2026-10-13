@@ -1141,6 +1141,39 @@ def cmd_release(argv):
     raise NotImpl()
 
 
+# ---------------------------------------------------------------- repo
+
+REPO_FIELDS = {"name", "nameWithOwner", "owner", "url", "description", "defaultBranchRef"}
+
+
+def repo_obj(repo, r, fields):
+    m = dict(name=r.get("name"), nameWithOwner=repo, owner=dict(login=r.get("owner", {}).get("login")),
+             url=r.get("html_url"), description=r.get("description") or "",
+             defaultBranchRef=dict(name=r.get("default_branch")))
+    return {k: m[k] for k in fields}
+
+
+def cmd_repo(argv):
+    if not argv:
+        raise NotImpl()
+    sub, rest = argv[0], argv[1:]
+    op = "repo " + sub
+    if sub == "view":
+        a = Args(rest, spec(JSONFLAGS, **{"--web": ((), "bool")}))
+        if a.get("--web"):
+            raise NotImpl()
+        # `gh repo view [<repository>]` takes the repo as a positional, not --repo.
+        repo = repo_of(Args(["--repo", a.pos[0]], spec()) if a.pos else a)
+        fg = Forge(repo, op)
+        data = fg.get(fg.r())
+        fields = fields_of(a, REPO_FIELDS, op)
+        if fields:
+            return output(a, repo_obj(repo, data, fields), op)
+        emit(f"{repo}\n{data.get('description') or ''}\n{data.get('html_url')}")
+        return 0
+    raise NotImpl()
+
+
 # ---------------------------------------------------------------- run
 
 RUN_FIELDS = {"workflowName", "status", "conclusion", "headSha", "createdAt", "updatedAt", "databaseId",
@@ -1522,7 +1555,7 @@ def main(argv):
         return 0
     cmd = argv[0]
     table = dict(pr=cmd_pr, issue=cmd_issue, label=cmd_label, release=cmd_release, run=cmd_run, api=cmd_api,
-                 auth=cmd_auth)
+                 auth=cmd_auth, repo=cmd_repo)
     if cmd not in table:
         raise NotImpl()
     if any(x in ("--help", "-h") for x in argv[1:]) and cmd != "api":
