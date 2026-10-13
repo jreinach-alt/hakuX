@@ -1,38 +1,42 @@
-# release05: the 0.5 gate is measured on the Nova (#433, 0.5)
+# release05: v0.5.0 release notes (#433, 0.5)
 
 State: ready
 
 Lane: release05          Issue: none (#433 umbrella)
-Base: master @ 1ed3ac8f39
-Files: docs/testing/release-0.5.toml, docs/testing/jobs/status_html.py, docs/testing/jobs/status.sh,
-docs/testing/jobs/selftest.d/64-status-html.sh, docs/lanes/release05/PR.md
-Prediction: none (no emulator change)
+Base: master @ c6e0a63852
+Files: docs/releases/v0.5.0.md, docs/lanes/release05/PR.md
+Prediction: none (release notes only)
 Needs device: no    Needs NDK: no
 
-The owner, 2026-10-12: "0.5 can ship on the Nova test results alone. The
-Thor hardware is identical." The gate was "both handhelds", so the status
-page could not read MET with only the Thor's older soak (17.5 gfps on
-6bfce4a685) beside the Nova's 29.0 on v0.5.0-rc1.
+`docs/releases/v0.5.0.md`, in the v0.4.0-j1 / v0.4.1-j1 format, covering
+v0.4.1-j1..master:
 
-- `release-0.5.toml`: `gate` ends "on the Nova", and a new `gate_devices =
-  ["nova"]` names the handhelds the gate is measured on, with the owner's
-  words.
-- `status_html.py release05` writes one `r05gate` row per `gate_devices`
-  handheld (both when the field is unset), so `_gate` judges only those.
-  The panel line names the handhelds from the rows ("on the Nova", or "both
-  handhelds" for the pair) instead of a fixed "both handhelds".
-- `status.sh` no longer writes its own copy of the gate's text; the page
-  reads `release-0.5.toml`'s, and `STATUS_RELEASE_GATE` in limits.env still
-  overrides it.
+- Three install notes: the Android 10 / ARMv8.2 LSE floor (#427, minSdk
+  26 -> 29, the "Unsupported CPU" gate), alongside-install, ES-DE files.
+- Box art lookup is now opt-in (boxart1012; the owner, 10-12: ships in
+  0.5.0, with notes on it): where covers come from, the setup page, the
+  one-time question for earlier installs, the library switch, and what each
+  lookup sends.
+- New: save states, several games folders, ubershader, pipeline pre-build,
+  Fast renderer paths, GPU surface reuse, the Thor bottom screen.
+- Fixed: NFS Most Wanted audio and race start, GTA San Andreas sky,
+  RalliSport Challenge's rival cars (#804), Forza's in-race slowdown (#414),
+  the per-title sysmem render mode (AUF, DOA Ultimate), VBLANK rate (#65)
+  and HD-mode PAL detection, three crashes, FRNDINT.
+- Speed and Rendering: default-on changes only, each checked present at
+  cf628f179f; figures only where the commit body carries them.
+- Reporting a bug: the issue forms, Debug Capture off in this release and
+  how to switch it on, the About links (contrib1012, pubdocs1012,
+  debugcap1012).
 
-Checks: `64-status-html` gains six: with `gate_devices = ["nova"]` there is
-no Thor row, the Nova's newest soak is read, a Nova soak on the candidate's
-ref is "MET on the candidate", the panel says "on the Nova" and never "both
-handhelds", and the repository's `release-0.5.toml` names the Nova only. The
-existing panel checks run against a conf with no `gate_devices` and still
-read both handhelds.
+Left out: opt-in switches that stay off (`HAKUX_IDLE_HALT`,
+`HAKUX_PFIFOWAIT`, `HAKUX_ZETA_D24` and the rest), instrumentation, harness
+and status-page work, the #44 skew bound (reset to a per-title override
+before cf628f179f), the OpenGL ES renderer's parity work (Vulkan is the
+Android default), and two audio changes not yet confirmed by ear. #311 is
+not re-announced; v0.4.1-j1 carried it.
 
-Release note: none
+Release note (none): this is the release note.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
