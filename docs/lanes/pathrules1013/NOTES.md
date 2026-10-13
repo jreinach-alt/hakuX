@@ -165,3 +165,18 @@ zero FAIL).
   `thermal_state.py`/`hitch_report.py`) -- a silent-until-tested `ModuleNotFoundError` otherwise.
 - `hold_verdict` and `hold_check`'s provisional folder are two separate `request.json` writers; a `build`/`env`
   fix to one without the other leaves a gap (this is exactly the gap Part C's "deeper problem" closed).
+
+## Waiting
+
+This lane's own work (Parts A, B, C, D) is done, committed and tested; PR #979 is pushed and marked ready.
+It cannot fold until lane.pathtele1013's fold head (`21df2a276f`) lands on `origin/master` -- re-checked after
+merging the latest `origin/master` (which brought in driverline1013's fold, unrelated) and still
+`git merge-base --is-ancestor 21df2a276f origin/master` returns exit 1. `State: waiting-on-pathtele1013` in
+PR.md reflects this; nothing in this lane's own territory is left to do until that other fold lands.
+
+Also noted in passing: `lane/forgealloc1013` (PR #977, its own `State: ready`) proposes replacing `gh pr
+create` with a PR.md-push + `forge_prsync.py` flow, including a rewrite of `docs/testing/jobs/roles/lane.md`
+itself (commit `48f2e07b26`, visible on its branch) -- but that branch has not folded either (same
+ancestor check, exit 1), so the *live* `roles/lane.md` on this branch still says `gh pr create --draft
+--base master`, which is what this lane used for #979. Not this lane's territory to act on; flagging so the
+next lane doesn't assume the new process is already in effect.
