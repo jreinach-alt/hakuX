@@ -1,35 +1,42 @@
-# release05: version 0.5.0 and a classifier route for the Ghoulies release soak (#433, 0.5)
+# release05: v0.5.0 release notes (#433, 0.5)
 
 State: ready
 
 Lane: release05          Issue: none (#433 umbrella)
-Base: master @ 1f317671b7
-Files: android/app/build.gradle.kts, docs/testing/version_stamp.sh, docs/testing/jobs/selftest.d/86-build-stamp.sh,
-docs/testing/titles/routes/ghoulies.classifier.route, docs/lanes/release05/PR.md
-Prediction: none (no emulator change)
-Needs device: no (the release soak runs on the tagged fold)    Needs NDK: no
+Base: master @ c6e0a63852
+Files: docs/releases/v0.5.0.md, docs/lanes/release05/PR.md
+Prediction: none (release notes only)
+Needs device: no    Needs NDK: no
 
-The 0.5 targets are met: 175 titles measured (target 145) and 50 Playable
-(target 50). This change prepares the candidate.
+`docs/releases/v0.5.0.md`, in the v0.4.0-j1 / v0.4.1-j1 format, covering
+v0.4.1-j1..master:
 
-- Version 0.5.0. `version_stamp.sh` now stamps builds `0.5.0-<MMDD>-<sha>`,
-  `versionCode` goes from 8 to 9, and the build's fallback name (no git) is
-  `0.5.0-unknown`. The build-stamp selftest expects the new base.
-- `ghoulies.classifier.route`: Grabbed by the Ghoulies opened by the
-  classifier (`drive generic 480 mark`) on the kept profile, followed by
-  `ghoulies.route`'s play loop. It does not reach play yet: on the Nova the
-  classifier named the title screen, then stopped on the "Choose A Game"
-  slot menu (main_menu 0.67, under the 0.70 menu floor). Offline, the Grand
-  Hallway's play reads 0.58-0.75 `gameplay`, under the 0.85 floor. The
-  route header records both; `ghoulies.returning.route` stays the gate's
-  route.
+- Three install notes: the Android 10 / ARMv8.2 LSE floor (#427, minSdk
+  26 -> 29, the "Unsupported CPU" gate), alongside-install, ES-DE files.
+- Box art lookup is now opt-in (boxart1012; the owner, 10-12: ships in
+  0.5.0, with notes on it): where covers come from, the setup page, the
+  one-time question for earlier installs, the library switch, and what each
+  lookup sends.
+- New: save states, several games folders, ubershader, pipeline pre-build,
+  Fast renderer paths, GPU surface reuse, the Thor bottom screen.
+- Fixed: NFS Most Wanted audio and race start, GTA San Andreas sky,
+  RalliSport Challenge's rival cars (#804), Forza's in-race slowdown (#414),
+  the per-title sysmem render mode (AUF, DOA Ultimate), VBLANK rate (#65)
+  and HD-mode PAL detection, three crashes, FRNDINT.
+- Speed and Rendering: default-on changes only, each checked present at
+  cf628f179f; figures only where the commit body carries them.
+- Reporting a bug: the issue forms, Debug Capture off in this release and
+  how to switch it on, the About links (contrib1012, pubdocs1012,
+  debugcap1012).
 
-Checks: `SELFTEST_ONLY=86-build-stamp selftest.sh` passes (10 of 10);
-`route.sh --check` passes; `titlestate.py resolve-route --route
-ghoulies.classifier --title-id 4D530053` resolves to state `returning` with
-no refusal.
+Left out: opt-in switches that stay off (`HAKUX_IDLE_HALT`,
+`HAKUX_PFIFOWAIT`, `HAKUX_ZETA_D24` and the rest), instrumentation, harness
+and status-page work, the #44 skew bound (reset to a per-title override
+before cf628f179f), the OpenGL ES renderer's parity work (Vulkan is the
+Android default), and two audio changes not yet confirmed by ear. #311 is
+not re-announced; v0.4.1-j1 carried it.
 
-Release note: none
+Release note (none): this is the release note.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 

@@ -39,6 +39,20 @@
 # its whole subject contains the word "lane". The owner's standing order
 # (2026-10-09) is to take such a night down rather than publish a no-op
 # release under a fresh date.
+#
+# Exit codes (build mode only -- `notes` mode always exits 0 and publishes
+# nothing):
+#   1   no tree at $TREE, or it is not a git checkout
+#   2   `./gradlew assembleRelease` failed
+#   3   the build produced no apk
+#   4   `gh release create` and the upload-to-existing-tag retry both failed
+#   5   HEAD is behind origin/$TIP -- the nightly publishes the trunk or nothing
+#   6   HEAD moved under us while the build ran
+#   7   a tracked file is modified, so the binary would not be exactly $SHA
+#   8   origin was unreachable, so this tree cannot be confirmed as the trunk
+#   9   built and logged, but nothing player-facing to publish (not a failure)
+#   10  no version found -- version_stamp.sh's BASE_VERSION is unreadable
+#   11  the built apk does not verify (apksigner); an unsigned apk is not published
 set -u
 
 REPO="${NIGHTLY_REPO:-jreinach-alt/hakuX}"
@@ -563,7 +577,20 @@ fi
 
 APK=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
 [ -n "$APK" ] || { say "no APK produced"; exit 3; }
-VER=$(grep -oP 'versionName = "\K[^"]+' android/app/build.gradle.kts | head -1)
+# versionName is no longer a literal in build.gradle.kts -- it is
+# stampedVersionName(), which shells out to THIS version_stamp.sh and prints
+# <base>-<MMDD>-<shortsha>[-variant][-dirty] (#433). Re-running that script
+# here would just paste today's own MMDD and SHA onto the filename a second
+# time (nightly_build.sh already appends $DAY-$SHA below), so the piece this
+# filename actually wants is BASE_VERSION, the one literal version_stamp.sh
+# defines -- the single place the human-facing version lives, by that file's
+# own header. Same grep idiom as the line this replaces, just pointed at the
+# file that is still true.
+VER=$(grep -oP 'BASE_VERSION="\K[^"]+' docs/testing/version_stamp.sh 2>/dev/null | head -1)
+if [ -z "$VER" ]; then
+    say "REFUSING: no version found (docs/testing/version_stamp.sh's BASE_VERSION is unreadable); nothing published"
+    exit 10
+fi
 NAME="hakuX-${VER}-nightly-${DAY}-${SHA}.apk"
 cp "$APK" "$OUT/$NAME"
 say "built $NAME ($(du -h "$OUT/$NAME" | cut -f1)), sha256 $(sha256sum "$OUT/$NAME" | cut -c1-16)"
@@ -592,6 +619,33 @@ if [ -n "$PUBLISH_WHY" ]; then
     say "not published: $PUBLISH_WHY"
     exit 9
 fi
+
+# THE OTHER HALF OF #433 (measured 2026-10-12): every nightly from 2026-10-03
+# through 2026-10-12 built and published an apk `apksigner verify` rejects
+# ("Missing META-INF/MANIFEST.MF"), because jobs/run-nightly.sh's private
+# worktree has no android/key.properties -- so build.gradle.kts's
+# hasReleaseKeystore is false and the release build type signs with nothing.
+# An apk nobody can install is worse than no nightly, so this checks before
+# `gh` ever sees the file, in the same spot SHA_NOW above already checks the
+# binary is really $SHA.
+#
+# apksigner lives under the SDK's build-tools, resolved from local.properties'
+# sdk.dir -- the same file JAVA_HOME/the cmake PATH above stand in for, and
+# how Gradle itself finds the SDK -- rather than a hardcoded build-tools
+# version, so a toolchain bump does not silently stop this from checking
+# anything. Newest installed version wins.
+SDK_DIR=$(sed -n 's/^sdk\.dir=//p' android/local.properties 2>/dev/null | tail -1)
+APKSIGNER=""
+[ -n "$SDK_DIR" ] && APKSIGNER=$(find "$SDK_DIR/build-tools" -maxdepth 2 -name apksigner -type f 2>/dev/null | sort -V | tail -1)
+if [ -z "$APKSIGNER" ]; then
+    say "PUBLISH REFUSED: no apksigner under ${SDK_DIR:-<no sdk.dir>}/build-tools; cannot confirm $NAME is signed"
+    exit 11
+fi
+if ! "$APKSIGNER" verify "$OUT/$NAME" >>"$LOG" 2>&1; then
+    say "PUBLISH REFUSED: $NAME does not verify (apksigner) -- an unsigned apk is not published"
+    exit 11
+fi
+say "verified: $NAME is signed"
 
 if gh release create "$TAG" "$OUT/$NAME" --repo "$REPO" --prerelease \
         --title "hakuX nightly $DAY ($SHA)" --notes-file "$BODY" >>"$LOG" 2>&1; then

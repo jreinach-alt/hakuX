@@ -547,6 +547,12 @@ echo "fake apk for $*" > app/build/outputs/apk/release/app-release.apk
 GRADLEW
 chmod +x "$FIX5/android/gradlew"
 echo 'versionName = "0.9-selftest"' > "$FIX5/android/app/build.gradle.kts"
+# nightly_build.sh now reads the filename's version from BASE_VERSION here,
+# not from the (now-stale) line above (#433) -- see 88-nightly-sign.sh for
+# the check that pins that read; this file only needs the read to succeed so
+# this fixture's own exit-9 check is not masked by the new exit-10 refusal.
+mkdir -p "$FIX5/docs/testing"
+echo 'BASE_VERSION="0.9-selftest"' > "$FIX5/docs/testing/version_stamp.sh"
 git -C "$FIX5" add -A
 GIT_AUTHOR_DATE="$OLD5" GIT_COMMITTER_DATE="$OLD5" git -C "$FIX5" commit -q -m "base: the android stub"
 

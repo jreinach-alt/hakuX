@@ -84,11 +84,11 @@
   <string name="library_about_link_fork">Forked From (xemu)</string>
   <string name="library_about_link_license">License (LICENSE)</string>
   <string name="library_about_link_disclaimer">License Disclaimer (COPYING)</string>
-  <string name="library_about_url_source" translatable="false">https://github.com/izzy2lost/xemu</string>
-  <string name="library_about_url_privacy" translatable="false">https://www.izzy2lost.com/x1box-privacy</string>
+  <string name="library_about_url_source" translatable="false">https://github.com/jreinach-alt/hakuX</string>
+  <string name="library_about_url_privacy" translatable="false">https://github.com/jreinach-alt/hakuX/blob/master/PRIVACY.md</string>
   <string name="library_about_url_fork" translatable="false">https://github.com/xemu-project/xemu</string>
-  <string name="library_about_url_license" translatable="false">https://github.com/izzy2lost/xemu/blob/master/LICENSE</string>
-  <string name="library_about_url_disclaimer" translatable="false">https://github.com/izzy2lost/xemu/blob/master/COPYING</string>
+  <string name="library_about_url_license" translatable="false">https://github.com/jreinach-alt/hakuX/blob/master/LICENSE</string>
+  <string name="library_about_url_disclaimer" translatable="false">https://github.com/jreinach-alt/hakuX/blob/master/COPYING</string>
 
   <string name="settings_title">Settings</string>
   <string name="settings_back">Back</string>

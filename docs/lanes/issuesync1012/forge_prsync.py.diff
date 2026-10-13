@@ -1,0 +1,71 @@
+--- /home/justin/hakux-work/lanes/issuesync1012/forge_prsync.py.orig	2026-10-12 18:12:52.482632676 -0700
++++ /home/justin/hakux-work/lanes/issuesync1012/forge_prsync.py.new	2026-10-12 18:29:32.855250685 -0700
+@@ -12,8 +12,11 @@
+ lanes keep writing it and change nothing else:
+ 
+   * Branch lane/<x> has docs/lanes/<x>/PR.md and holds commits master lacks,
+-    and has no open forge PR: open one, as the `lanes` user, head lane/<x>,
+-    base master.
++    and has no open forge PR: allocate a number through issue_mirror.py new
++    (GitHub gets a closed record issue, see its docstring and
++    docs/lanes/issuesync1012/PR.md for why that and not a live GitHub PR),
++    then open the forge PR at that number, as the `lanes` user, head
++    lane/<x>, base master.
+   * The open PR's title, body or draft state differs from PR.md: update it.
+     Draft is Forgejo's "WIP: " title prefix.
+   * The branch is folded (its head is an ancestor of master) and the PR is
+@@ -26,6 +29,12 @@
+ yet is skipped and picked up on the next run.
+ 
+ Dry run by default. Exit 1 if any forge call failed.
++
++STAGED by lane.issuesync1012 (2026-10-12): this is the `.new` replacement for the direct-forge-POST version. It is
++not installed; it is reviewed in docs/lanes/issuesync1012/ alongside a diff against the live file. The only change
++from the live script is *how a brand-new PR gets its number* -- updates to an existing PR, folding, and the
++PR.md-gone case are unchanged. The allocator (issue_mirror.py new --kind pr) is what guarantees the forge PR's
++number was reserved on GitHub first, so a forge-only PR number can never again appear.
+ """
+ import argparse
+ import json
+@@ -39,6 +48,7 @@
+ 
+ FORGE = os.environ.get("FORGE_URL", "http://127.0.0.1:3330")
+ TOKENS = os.environ.get("FORGE_TOKENS", os.path.expanduser("~/hakux-work/forge/tokens"))
++MIRROR = os.environ.get("ISSUE_MIRROR", os.path.expanduser("~/hakux-work/host-tools/issue_mirror.py"))
+ WIP = "WIP: "
+ 
+ 
+@@ -84,6 +94,16 @@
+     return title, (m.group(1).lower() if m else "draft"), text
+ 
+ 
++def allocate_pr(branch, base, want_title, body):
++    """Through the allocator: GitHub first (a closed record issue), then the forge PR at the same number. Returns
++    the parsed `new` stdout; the caller checks for 'CREATED #N' to get the number, same as a direct forge POST
++    would have returned a PR object with 'number' in it."""
++    r = subprocess.run(["python3", MIRROR, "new", "--kind", "pr", "--title", want_title, "--body", body,
++                        "--head", branch, "--base", base, "--forge-user", "lanes", "--yes"],
++                       capture_output=True, text=True)
++    return r
++
++
+ def main():
+     ap = argparse.ArgumentParser()
+     ap.add_argument("--repo", default=os.environ.get("GH_REPO", "jreinach-alt/hakuX"))
+@@ -135,10 +155,13 @@
+                 if lanes.call("GET", "/branches/" + urllib.parse.quote(br, safe=""), ok404=True) is None:
+                     print(f"{br}: not in the forge yet (hakux-forge-sync lag); next run")
+                     continue
+-                print(f"{br}: opening a forge PR ({state}): {title[:90]}")
++                print(f"{br}: opening a forge PR through the allocator ({state}): {title[:90]}")
+                 if a.execute:
+-                    p = lanes.call("POST", "/pulls", dict(head=br, base=a.base, title=want_title, body=body))
+-                    print(f"  -> #{p['number']} {p['html_url']}")
++                    r = allocate_pr(br, a.base, want_title, body)
++                    m = re.search(r"CREATED #(\d+)", r.stdout)
++                    if r.returncode != 0 or not m:
++                        raise RuntimeError(f"allocator refused: {(r.stdout or r.stderr).strip()[:300]}")
++                    print(f"  -> #{m.group(1)}")
+                 continue
+             if (pr["title"], pr.get("body") or "") != (want_title, body):
+                 what = [w for w, c in (("title/draft", pr["title"] != want_title), ("body", (pr.get("body") or "") != body)) if c]

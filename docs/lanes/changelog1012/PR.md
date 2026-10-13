@@ -3,7 +3,7 @@
 State: ready
 
 Lane: changelog1012          Issue: none (#433 umbrella)
-Base: lane/pubdocs1012 @ 13756ce96a
+Base: master @ 3d41440129 (merged; was lane/pubdocs1012 @ 13756ce96a)
 Files: CHANGELOG.md, README.md, android/MIGRATING.md, docs/lanes/changelog1012/PR.md
 Prediction: none (docs only)
 Needs device: no    Needs NDK: no
@@ -37,6 +37,13 @@ list came from the brief and already appear in README's existing Installing
 text.
 
 Release note (none): docs only.
+
+Master merge (lane.local, 10-12): pubdocs1012 folded, so master is merged in
+and this branch changes only its own PR.md. The v0.5.0 entry gains one
+paragraph for the box art opt-in that ships in 0.5.0 (owner 10-12): off until
+turned on, asked at setup on new installs and once on an existing install.
+The wording follows docs/releases/v0.5.0.md's "Box art lookup is now opt-in"
+section.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 

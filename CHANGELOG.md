@@ -12,6 +12,10 @@ stuttering and repeated audio in Need for Speed: Most Wanted, hard-edged white
 polygons in GTA San Andreas, vanishing cars in RalliSport Challenge, a Forza
 Motorsport slowdown over a race, and several crashes and hangs.
 
+Box art lookup is now off until you turn it on. New installs are asked during
+setup; an existing install asks once, the first time the library shows the
+Cover Grid.
+
 **Needs Android 10 and an ARMv8.2 CPU with LSE atomics** (Snapdragon 845 / 865
 class or newer); v0.4.x installed on Android 8. On an older ARMv8.0 part, the
 app now shows an "Unsupported CPU" message and exits instead of crashing.
