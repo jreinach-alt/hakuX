@@ -1,6 +1,6 @@
 # pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every unstick rung; the verdict does not read a parked vehicle as travel (#433, 0.5)
 
-State: draft
+State: ready
 
 Lane: holdinput1013            Issue: #433
 Base: master @ d2bcaacd22
@@ -98,5 +98,8 @@ for "stationary-camera games must pass" -- a drive-gated rule never runs on it a
 `max_rungs=len(sd_ladder)` from the genre's own `HOLD_UNSTICK` entry. New selftest walks every genre's full
 ladder to `stuck_abort` and confirms a mutant reinstating the old default-3 cap drops attack's 4th rung.
 
-## Part F
-Will mark this `State: ready` once A-E (or D-as-not-separable) land, selftest passes clean on the merged tree.
+## Part F -- COMPLETE
+Merged `origin/master` (`2202cb01cd`, no conflicts) before marking ready, never rebased. `python3
+docs/testing/titles/pathfind_selftest.py` passes clean on the merged tree. Full `docs/testing/jobs/selftest.sh`
+re-run after Part D's commit: 143 fragments, 3533 passed, 0 failed, including the new
+`88-position-travel.sh`.
