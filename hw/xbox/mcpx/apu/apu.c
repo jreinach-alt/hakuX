@@ -810,12 +810,16 @@ static void se_frame(MCPXAPUState *d)
          * worth having. */
         apu_level_observe(d->monitor.frame_buf, 256);
 
-        qemu_spin_lock(&d->monitor.fifo_lock);
-        int num_bytes_free = (int)fifo8_num_free(&d->monitor.fifo);
-        assert(num_bytes_free >= sizeof(d->monitor.frame_buf));
-        fifo8_push_all(&d->monitor.fifo, (uint8_t *)d->monitor.frame_buf,
-                       sizeof(d->monitor.frame_buf));
-        qemu_spin_unlock(&d->monitor.fifo_lock);
+        /* No device (monitor_init() failed): nothing drains the FIFO, so
+         * pushing would fill it and trip the assert. */
+        if (d->monitor.fifo_capacity_bytes > 0) {
+            qemu_spin_lock(&d->monitor.fifo_lock);
+            int num_bytes_free = (int)fifo8_num_free(&d->monitor.fifo);
+            assert(num_bytes_free >= sizeof(d->monitor.frame_buf));
+            fifo8_push_all(&d->monitor.fifo, (uint8_t *)d->monitor.frame_buf,
+                           sizeof(d->monitor.frame_buf));
+            qemu_spin_unlock(&d->monitor.fifo_lock);
+        }
         memset(d->monitor.frame_buf, 0, sizeof(d->monitor.frame_buf));
     }
 
@@ -1097,10 +1101,18 @@ static void monitor_init(MCPXAPUState *d)
         .userdata = d,
     };
 
+    /* No audio device is not fatal: the APU keeps running with no output.
+     * fifo_capacity_bytes stays 0, which throttle() and se_frame() read as
+     * "no device". From X1 BOX 55262dde6d. */
     if (SDL_Init(SDL_INIT_AUDIO) < 0)  {
-        fprintf(stderr, "Failed to initialize SDL audio subsystem: %s\n",
-                SDL_GetError());
-        exit(1);
+        fprintf(stderr, "WARNING: Failed to initialize SDL audio subsystem: "
+                "%s; running without audio output\n", SDL_GetError());
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_WARN, "hakuX-audio",
+                            "SDL audio init failed: %s; no audio output",
+                            SDL_GetError());
+#endif
+        return;
     }
 
     SDL_AudioDeviceID sdl_audio_dev;
@@ -1109,10 +1121,14 @@ static void monitor_init(MCPXAPUState *d)
                                         &obtained_audio_spec,
                                         SDL_AUDIO_ALLOW_FORMAT_CHANGE);
     if (sdl_audio_dev == 0) {
-        fprintf(stderr, "SDL_OpenAudioDevice failed: %s\n",
-                SDL_GetError());
-        assert(!"SDL_OpenAudioDevice failed");
-        exit(1);
+        fprintf(stderr, "WARNING: SDL_OpenAudioDevice failed: %s; "
+                "running without audio output\n", SDL_GetError());
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_WARN, "hakuX-audio",
+                            "SDL_OpenAudioDevice failed: %s; no audio output",
+                            SDL_GetError());
+#endif
+        return;
     }
 
     int fifo_frame_bytes = sizeof(d->monitor.frame_buf);

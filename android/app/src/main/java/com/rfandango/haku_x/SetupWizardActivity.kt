@@ -56,6 +56,9 @@ class SetupWizardActivity : AppCompatActivity() {
   private val flashExts = setOf("bin", "rom", "img")
   private val hddExts = setOf("qcow2", "img")
 
+  /* Xbox flash/BIOS dumps are 256 KB, 512 KB or 1 MB. */
+  private val validFlashSizes = setOf(262144L, 524288L, 1048576L)
+
   private val pickMcpx =
     registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
       if (uri != null) {
@@ -86,11 +89,27 @@ class SetupWizardActivity : AppCompatActivity() {
           showExtensionError(flashExts)
           return@registerForActivityResult
         }
+        // A real flash image is 256 KB, 512 KB or 1 MB. Without this check any
+        // .bin passes -- an eeprom.bin (256 bytes) picked here boots to a black
+        // screen with no error. From X1 BOX a7765290d1.
+        val size = sourceSizeOf(uri)
+        if (size > 0L && size !in validFlashSizes) {
+          showFlashSizeError(uri, size)
+          return@registerForActivityResult
+        }
         persistUriPermission(uri)
         flashUri = uri
         prefs.edit().putString("flashUri", uri.toString()).apply()
         copyUriAsync(uri, "flash.bin") { path ->
-          if (path != null) {
+          val copied = if (path != null) File(path).length() else -1L
+          if (path != null && copied !in validFlashSizes) {
+            // The provider reported no size; the copy has one.
+            showFlashSizeError(uri, copied)
+            File(path).delete()
+            flashPath = null
+            flashUri = null
+            prefs.edit().remove("flashPath").remove("flashUri").apply()
+          } else if (path != null) {
             flashPath = path
             prefs.edit().putString("flashPath", path).apply()
           } else {
@@ -491,5 +510,15 @@ class SetupWizardActivity : AppCompatActivity() {
   private fun showExtensionError(allowed: Set<String>) {
     val pretty = allowed.sorted().joinToString(separator = ", ") { ".$it" }
     Toast.makeText(this, "Please pick a file with one of: $pretty", Toast.LENGTH_LONG).show()
+  }
+
+  private fun showFlashSizeError(uri: Uri, sizeBytes: Long) {
+    val name = DocumentFile.fromSingleUri(this, uri)?.name ?: uri.lastPathSegment ?: "This file"
+    val message = getString(
+      R.string.setup_flash_invalid_size,
+      name,
+      android.text.format.Formatter.formatShortFileSize(this, sizeBytes),
+    )
+    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
   }
 }

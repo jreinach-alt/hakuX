@@ -1525,8 +1525,22 @@ static void init_pipeline_cache(PGRAPHState *pg)
         .pInitialData = initial_data,
         .pNext = NULL,
     };
-    VK_CHECK(vkCreatePipelineCache(r->device, &cache_info, NULL,
-                                   &r->vk_pipeline_cache));
+    /* A driver may refuse saved data (a truncated file, or one written by
+     * another driver build) rather than ignore it; start empty instead of
+     * aborting on every launch until the file is deleted. From X1 BOX
+     * 1d10f6cb2a / 67fe8d7b2e. */
+    VkResult cache_result = vkCreatePipelineCache(r->device, &cache_info, NULL,
+                                                  &r->vk_pipeline_cache);
+    if (cache_result != VK_SUCCESS && initial_size > 0) {
+        warn_report("Vulkan rejected the saved pipeline cache (%d); "
+                    "starting with an empty one", cache_result);
+        g_nv2a_stats.shader_stats.pipeline_cache_disk_loaded = 0;
+        cache_info.initialDataSize = 0;
+        cache_info.pInitialData = NULL;
+        cache_result = vkCreatePipelineCache(r->device, &cache_info, NULL,
+                                             &r->vk_pipeline_cache);
+    }
+    VK_CHECK(cache_result);
     g_free(initial_data);
 
     const size_t pipeline_cache_size = 2048;
@@ -3964,6 +3978,18 @@ static void sync_staging_buffer(PGRAPHState *pg, VkCommandBuffer cmd,
         return;
     }
 
+    /*
+     * The staging buffers are persistently mapped with HOST_ACCESS_RANDOM,
+     * which lets VMA pick a HOST_CACHED type that is not HOST_COHERENT.
+     * Make the CPU writes available before the copy reads them, as
+     * flush_memory_buffer() and the texture/surface uploads already do; on a
+     * coherent type VMA returns without doing anything. The submit's
+     * implicit host-write dependency covers the rest, so no HOST barrier.
+     * From X1 BOX 3d3515faad.
+     */
+    VK_CHECK(vmaFlushAllocation(r->allocator, b_src->allocation, 0,
+                                b_src->buffer_offset));
+
     VkBufferCopy copy_region = { .size = b_src->buffer_offset };
     vkCmdCopyBuffer(cmd, b_src->buffer, b_dst->buffer, 1, &copy_region);
 
@@ -3982,8 +4008,10 @@ static void sync_staging_buffer(PGRAPHState *pg, VkCommandBuffer cmd,
         dst_stage_mask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
         break;
     case BUFFER_UNIFORM:
+        /* Binding 1 of the UBO set is the fragment shader's (shaders.c). */
         dst_access_mask = VK_ACCESS_UNIFORM_READ_BIT;
-        dst_stage_mask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+        dst_stage_mask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         break;
     default:
         assert(0);

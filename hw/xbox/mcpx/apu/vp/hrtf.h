@@ -48,6 +48,14 @@ static inline void hrtf_filter_init(HrtfFilter *f)
     memset(f, 0, sizeof(*f));
 }
 
+/* The sample history only; the coefficients and ITD keep their targets. */
+static inline void hrtf_filter_clear_history(HrtfFilter *f)
+{
+    f->buf_pos = 0;
+    memset(f->ch[0].buf, 0, sizeof(f->ch[0].buf));
+    memset(f->ch[1].buf, 0, sizeof(f->ch[1].buf));
+}
+
 static inline void
 hrtf_filter_set_target_params(HrtfFilter *f, float hrir_coeff[2][HRTF_NUM_TAPS],
                               float itd)
@@ -65,7 +73,7 @@ hrtf_filter_set_target_params(HrtfFilter *f, float hrir_coeff[2][HRTF_NUM_TAPS],
             s += fabsf(coeff[k]);
         }
         if (s == 0.0f || s == 1.0f) {
-            break;
+            continue; /* this channel only: the other is still to normalise */
         }
         for (int k = 0; k < HRTF_NUM_TAPS; k++) {
             coeff[k] /= s;
