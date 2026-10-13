@@ -1,0 +1,31 @@
+--- /home/justin/hakux-work/host-tools/hourly_report.sh	2026-10-11 15:45:12.522786201 -0700
++++ /home/justin/hakux-work/lanes/issuemirror1013/hourly_report.sh.new	2026-10-13 00:48:26.538185139 -0700
+@@ -88,6 +88,28 @@
+ PYPF
+   echo "--- verdicts since last report"
+   awk -v s="$(date -d @$since '+%F %T')" '$1" "$2>=s' $H/logs/verdicts.log | cut -c1-220 | tail -10
++  echo "--- issue mirror (hakux-issue-mirror.timer; status file + age; adds 0 GitHub reads)"
++  IMS=$H/status/issue-mirror.txt
++  if [ -f "$IMS" ]; then
++    im_age=$(( $(date +%s) - $(stat -c %Y "$IMS") ))
++    im_ec=$(grep -o 'exit=[0-9]*' "$IMS" | tail -1 | cut -d= -f2)
++    sed 's/^/  /' "$IMS"
++    if [ "$im_age" -gt 1800 ]; then
++      echo "  ALARM: issue-mirror status is ${im_age}s old (cap 1800s)"
++    fi
++    # issuemirror1013: exit=76 is the gateway's day-cap refusal (reads or writes), a real condition the owner
++    # should hear about but not a crash -- it is never retried within the day and clears on its own at 00:00
++    # UTC, so it gets its own named line instead of falling into the generic "exit code neither 0 nor 75" one.
++    # The cap itself (reads/writes) and the reset time are already in the status text above, from the tool's
++    # own "ALARM: hit the GitHub <cap> cap..." line (see issue_mirror.py's _gateway_outcome_rc).
++    if [ -n "$im_ec" ] && [ "$im_ec" = 76 ]; then
++      echo "  ALARM: issue-mirror hit a GitHub day cap today (see the status line above for which one); resets 00:00 UTC, not retried until then"
++    elif [ -n "$im_ec" ] && [ "$im_ec" != 0 ] && [ "$im_ec" != 75 ]; then
++      echo "  ALARM: issue-mirror exit=$im_ec (want 0 or 75)"
++    fi
++  else
++    echo "  status file missing: $IMS"
++  fi
+ } > $tmp 2>&1
+ # next-step rule (owner 10-02 17:25): flag OUTBOX entries in this report whose "Next" has no probability
+ python3 - "$tmp" >> "$tmp" 2>/dev/null <<'PYNS'
