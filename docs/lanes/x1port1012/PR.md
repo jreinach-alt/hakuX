@@ -1,5 +1,5 @@
 # x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
-State: draft
+State: ready
 
 Lane: x1port1012          Issue: #939 [#938]
 Base: master @ dd5e3cb3c6
@@ -28,7 +28,8 @@ commit message, so any one can be dropped at the 0.5.1 cut.
 What each port took and left out, and the regression check, are in `docs/lanes/x1port1012/NOTES.md`.
 nv2a_index.json is not in this PR: `check` passes and `check --exact` shows only moved lines.
 
-Smoke batch on the Nova (Halo, GTA: Vice City, Crimson Skies against their ledger readings): queued,
-results in NOTES.md when judged. Phases B to D (#939, #938, Fable) continue on `lane/x1port1012-halo`.
+Smoke batch on the Nova (Halo, GTA: Vice City, Crimson Skies against their ledger readings): all three
+PASS (no crash, no hang, fps within noise of each title's ledger reading). Detail in NOTES.md. Phases B
+to D (#939, #938, Fable) continue on `lane/x1port1012-halo`.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

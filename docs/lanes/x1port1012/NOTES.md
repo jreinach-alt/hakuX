@@ -7,9 +7,13 @@ Brief: `/home/justin/hakux-work/briefs/x1port1012.md`. Base `dd5e3cb3c6`. X1 BOX
 
 | # | request id | ref | arm | result |
 |---|---|---|---|---|
-| 1 | 1791876038-x1port1012-2539778 | 310ad08d5b | Phase A smoke: Halo, no route, 180 s, frames 15 | queued 2026-10-13 |
-| 2 | 1791876042-x1port1012-2540227 | 310ad08d5b | Phase A smoke: GTA VC, route gta-vc, 420 s | queued 2026-10-13 |
-| 3 | (not yet queued: queue limit 2) | 310ad08d5b | Phase A smoke: Crimson Skies, route crimson-skies, 300 s | queue when 1 or 2 finishes |
+| 1 | 0-1791876038-x1port1012-2539778 | 310ad08d5b | Phase A smoke: Halo, no route, 180 s, frames 15 | PASS, gfps 59.93 vs 59.98 baseline |
+| 2 | 0-1791876042-x1port1012-2540227 | 310ad08d5b | Phase A smoke: GTA VC, route gta-vc, 420 s | PASS, fps_ok_share 0.9859 vs ledger 0.9872 |
+| 3 | 1791897193-x1port1012-336185 | 310ad08d5b | Phase A smoke: Crimson Skies, route crimson-skies, 300 s | PASS, fps_ok=1.0 vs ledger 0.95 |
+
+Phase A smoke batch complete, all three PASS. Phases B-D (#939, #938, Fable) continue on the second
+branch `lane/x1port1012-halo` (suffixed-branch convention); its own NOTES.md carries the rest of the
+device-run count (runs 4+, the #939 triage video).
 
 ## Phase A -- ports (branch `lane/x1port1012`)
 
@@ -76,3 +80,24 @@ Judge each result (`/home/justin/hakux-work/dispatch/results/<id>/`):
    `soak end` (fastpaths1010 NOTES 4.2's method); compare with 59.98. Look at the frames: menu, ring.
 4. Write the row into the run table above and a line in OUTBOX.md. If all three hold: set PR.md
    `State: ready`, commit, push.
+
+### Phase A smoke judged -- all three PASS
+
+- **No crash, no hang** (all three): `grep -iE "FATAL|Abort|assert|SIGSEGV" logcat.txt` is empty in all
+  three; `run.log` ends with the normal `held <iso> for <n>s` / `PERF: restored=...` tail. Port log lines
+  (`vp: bad`, `outside VRAM`, `pipeline cache`) do not fire in any of the three -- expected, nothing in
+  these runs' content reaches those paths. `hakuX-audio` lines are the routine `submix_headroom` startup
+  log, already in master, not a Phase A finding.
+- **Halo** (no route, menu/ring only): `hakuX-pace` sums from app start + 30 s to `soak end`: sum(vb)=9131,
+  sum(ms)=152351.9, gfps = 9131*1000/152351.9 = **59.93**, against the 59.98 baseline
+  (`1-1791706605-fastpaths1010-4193827`, same shape). PASS, well inside noise.
+- **GTA Vice City** (route `gta-vc`): `title_verdict.py` reports `fps_ok=0.9859 crash=False hang=False`
+  against the ledger's `fps_ok_share=0.9872` -- diff 0.0013, under the ~0.02 flag. `title_verdict.py`'s own
+  line also says `FAIL(duration: 310 s of gameplay < 600 s screening)`; that is its screening gate for a
+  full ledger-length run, not this smoke run's bar (the brief's bar is this run's own --seconds). Read as a
+  smoke PASS, not a screening FAIL.
+- **Crimson Skies** (route `crimson-skies`): `title_verdict.py` reports `fps_ok=1.0 crash=False hang=False`,
+  `gameplay=194 s` (the smoke's own 300 s run, not the ledger's 709 s), against the ledger's `fps_ok=0.95`
+  -- better than the ledger run, well inside noise. Same screening-gate caveat as GTA VC: the duration FAIL
+  is the 600 s screening bar, not this smoke run's bar.
+- All three rows filled in above. PR.md set `State: ready`.

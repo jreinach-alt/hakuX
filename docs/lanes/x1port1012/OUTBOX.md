@@ -10,3 +10,4 @@
 - 2026-10-13: A7 committed, d4d292c9ca: staging flushed before its copy (X1 BOX 3d3515faad); fragment stage added to the UBO barrier (ours).
 - 2026-10-13: A8 committed, d88374737c: HRTF normalisation skips one channel, not both (ours; X1 BOX has the same bug).
 - 2026-10-13: A9 committed, 172d94de1f (pipeline-cache retry, X1 BOX 1d10f6cb2a/67fe8d7b2e) and 4f0111232c (DMA_VERTEX gen bump, X1 BOX b4999f2e97).
+- 2026-10-13: Phase A smoke runs 1-3 (Halo, GTA VC, Crimson Skies) all PASS (no crash/hang, fps within noise of each ledger reading). PR.md set `State: ready`.
