@@ -7,7 +7,9 @@ Brief: `/home/justin/hakux-work/briefs/x1port1012.md`. Base `dd5e3cb3c6`. X1 BOX
 
 | # | request id | ref | arm | result |
 |---|---|---|---|---|
-| - | - | - | none yet | - |
+| 1 | 1791876038-x1port1012-2539778 | 310ad08d5b | Phase A smoke: Halo, no route, 180 s, frames 15 | queued 2026-10-13 |
+| 2 | 1791876042-x1port1012-2540227 | 310ad08d5b | Phase A smoke: GTA VC, route gta-vc, 420 s | queued 2026-10-13 |
+| 3 | (not yet queued: queue limit 2) | 310ad08d5b | Phase A smoke: Crimson Skies, route crimson-skies, 300 s | queue when 1 or 2 finishes |
 
 ## Phase A -- ports (branch `lane/x1port1012`)
 
@@ -56,6 +58,10 @@ At most 2 queued at once.
 | Halo: Combat Evolved (4D530004) | no route (master has no `halo-ce.route`; profile gate admits it, clause `profile`, golden 90ebd6a27bd1), `--seconds 180 --frames-every 15` | 0-1791083791-lanelocal-3030989 PASS, 29.97 median in play (that run used the unfolded `halo-ce` route) | 1-1791706605-fastpaths1010-4193827: 180 s no-route, gfps 59.98 (menu) |
 | Grand Theft Auto: Vice City (5454000F), the audio-heavy one (radio) | `--route gta-vc --seconds 420` (mark at ~116 s, so ~300 s of play) | 1-1791792688-lane.local-32790 PASS, fps_ok_share 0.9872, 684 s play | same |
 | Crimson Skies (4D530021), the Vulkan texture path one | `--route crimson-skies --seconds 300` | 1-1790804473-lane.verdict433-1767161 | 1-1791703775-fastpaths1010-4011126: gfps 59.90 |
+
+The third smoke request, verbatim (queue it only when the queue holds fewer than 2 of ours):
+
+    HAKUX_RELEASE_PRIO=0 docs/testing/request.sh --who x1port1012 --purpose "x1port1012 Phase A smoke (#939): Crimson Skies (Vulkan texture path), route crimson-skies, 300 s, ports A1-A9 at shipped defaults. Expect: no crash/hang, fps within noise of the ledger (1-1790804473-lane.verdict433-1767161) and of 59.90 (1-1791703775-fastpaths1010-4011126)" --title "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso" --route crimson-skies --seconds 300 --device nova --ref 310ad08d5b --issue 939 --no-expect "smoke: crash/hang and fps against the ledger run, not an A/B"
 
 JSRF was the first audio pick and is refused by the profile gate (`jsrf.route` is first-run and the title
 has a kept profile); do not retry it.
