@@ -9,9 +9,9 @@ The harness dashboard is [STATUS.md](STATUS.md).
 No lane session is running.
 
 - **Handhelds:** 1 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 2 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -81,6 +81,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-13 compatpage1012: the compatibility page in three sections, with regions and a CSV (#433, 0.5)
 - 2026-10-12 issuemirror1012: the issue mirror on a timer: one lock, incremental sync, budget-true pre-check (#433, 0.5)
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 changelog1012: changelog to 0.5.0, version numbers for official-build users, credits (#433, 0.5)
@@ -92,6 +93,5 @@ No branch is being worked right now.
 - 2026-10-12 nightlysign1012: the nightly refuses to publish an unsigned or unnamed apk (#433, 0.5)
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 debugcap1012: Debug Capture is off by default in versioned releases (#433, 0.5)
-- 2026-10-12 contrib1012: structured bug reports and a contributor guide (#433, 0.5)
 
-_Updated 2026-10-13 01:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 01:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
