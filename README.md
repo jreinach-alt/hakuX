@@ -85,11 +85,26 @@ already covered; read the relevant file before re-deriving it.
 ## Lineage
 
 ```
-xemu-project/xemu  →  izzy2lost/xemu (X1 BOX)  →  rfandango/hakuX  →  this fork
+xemu-project/xemu  →  izzy2lost/xemu (X1 BOX)  →  rfandango/hakuX  →  ItsRetroPup/hakuX  →  this fork
 ```
 
 xemu is a low-level original Xbox emulator built on QEMU. X1 BOX carried it to
-Android. hakuX tuned that port for Adreno devices.
+Android. hakuX tuned that port for Adreno devices. This repository was forked
+from ItsRetroPup/hakuX.
+
+## Credits
+
+- **xemu** — built by Matt Borgerson (mborgerson) and the xemu contributors,
+  on top of QEMU. If you want to support the person behind the emulator this
+  all runs on: [patreon.com/mborgerson](https://www.patreon.com/mborgerson).
+- **X1 BOX** — izzy2lost. Carried xemu to Android.
+- **hakuX** — rfandango. Tuned that port for Adreno devices.
+- **ItsRetroPup** — this repository was forked from
+  [ItsRetroPup/hakuX](https://github.com/ItsRetroPup/hakuX); its fix for
+  stale game launches from an external frontend is in this tree.
+- **nxdk_pgraph_tests** — [abaire](https://github.com/abaire), whose
+  [real-hardware framebuffer captures](https://github.com/abaire/nxdk_pgraph_tests_golden_results)
+  this project's rendering work is measured against.
 
 ## What this fork changes
 
@@ -127,6 +142,12 @@ Snapdragon 835, 660, 665 and 460 are not supported; on them the app shows an
 To launch it from ES-DE, two configuration files are needed —
 see [`docs/es-de/`](docs/es-de/). Without them ES-DE has no way to find this
 build, since its bundled rules target the official package.
+
+**Version numbers.** The official hakuX line's latest release is 0.3.1. This
+fork numbered its own builds v0.3.3-j1, v0.4.0-j1 and v0.4.1-j1, where the
+`-jN` suffix marked a fork build on top of that base version. From 0.5.0 this
+fork uses plain numbers of its own, so "hakuX 0.5.0" here is not an official
+hakuX release, and a later official release could reuse the same number.
 
 Already using an official build? Nothing is at risk, and moving saves across is
 optional: [`android/MIGRATING.md`](android/MIGRATING.md).
