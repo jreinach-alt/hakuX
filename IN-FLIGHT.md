@@ -8,12 +8,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `holdinput1013` | claude-sonnet-5 | 42 min | pathrules1013: State ready (pathtele1013 folded as 08f1fb4a90; master merged, pathfind_selftest all ok) |
+| `holdinput1013` | claude-sonnet-5 | 57 min | holdinput1013 Part E: StuckWatch's max_rungs must match the genre's ladder (#433) |
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 2 waiting, 0 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -87,7 +87,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/holdinput1013` | pathrules1013: State ready (pathtele1013 folded as 08f1fb4a90; master merged, pathfind_selftest all ok) | `d2bcaacd22` | 2026-10-13 12:44 |
+| `lane/holdinput1013` | holdinput1013 Part E: StuckWatch's max_rungs must match the genre's ladder (#433) | `9fbdec7bea` | 2026-10-13 13:48 |
 
 ## Recently landed on master
 
@@ -104,4 +104,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 changelog1012: changelog to 0.5.0, version numbers for official-build users, credits (#433, 0.5)
 
-_Updated 2026-10-13 13:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 14:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
