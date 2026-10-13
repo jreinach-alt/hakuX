@@ -14,6 +14,7 @@ Exit 0 and a line "issue_mirror_selftest: N/N passed" if every case passed; exit
 naming which case(s) broke.
 """
 import contextlib
+import copy
 import io
 import os
 import sys
@@ -35,7 +36,10 @@ class FakeGH:
         self._reachable = True
         self.force_wrong_number = None
         self.force_failure_once = False
+        self.force_patch_failure_once = False
         self.create_calls = 0
+        self.write_calls = 0            # round 3, gap 3/4: every real create/patch/comment counts here
+        self.repo_labels_list = []      # round 3, gap 2: configurable; compute_shared_vocab() reads this
 
     def reachable(self):
         return self._reachable
@@ -46,6 +50,13 @@ class FakeGH:
     def comments(self, number):
         return list(self.comments_store.get(number, []))
 
+    def repo_labels(self):
+        return list(self.repo_labels_list)
+
+    def max_number(self):
+        """Round 3, optional race-window shrink: mirrors GH.max_number()'s cheapest-read contract."""
+        return max(self.items) if self.items else 0
+
     def create(self, title, body='', labels=(), state=None):
         prob = im.secret_scan(title, body)
         if prob:
@@ -54,6 +65,7 @@ class FakeGH:
             self.force_failure_once = False
             raise RuntimeError('simulated transient GitHub failure (nothing was spent)')
         self.create_calls += 1
+        self.write_calls += 1
         if self.force_wrong_number is not None:
             n, self.force_wrong_number = self.force_wrong_number, None
         else:
@@ -66,6 +78,10 @@ class FakeGH:
         prob = im.secret_scan(title or '', body or '')
         if prob:
             raise im.MirrorStop('REFUSED: %s -- GitHub patch #%d blocked' % (prob, number))
+        if self.force_patch_failure_once:
+            self.force_patch_failure_once = False
+            raise RuntimeError('simulated transient GitHub patch failure (nothing was spent)')
+        self.write_calls += 1
         it = self.items[number]
         if title is not None:
             it['title'] = title
@@ -81,6 +97,7 @@ class FakeGH:
         prob = im.secret_scan(body)
         if prob:
             raise im.MirrorStop('REFUSED: %s -- GitHub comment on #%d blocked' % (prob, number))
+        self.write_calls += 1
         cid = self._next_comment_id
         self._next_comment_id += 1
         self.comments_store.setdefault(number, []).append(
@@ -96,7 +113,10 @@ class FakeFG:
         self.pulls = {}
         self._next_comment_id = 2000
         self.force_wrong_number = None
+        self.force_patch_failure_once = False    # round 3, gap 4's retry test
+        self.force_set_labels_failure_once = False
         self.create_calls = 0
+        self.write_calls = 0                      # round 3, gap 3/4: every real create/patch/comment/set_labels
 
     def all_issues(self, **kw):
         return dict(self.items)
@@ -112,6 +132,7 @@ class FakeFG:
         if prob:
             raise im.MirrorStop('REFUSED: %s -- forge create blocked' % prob)
         self.create_calls += 1
+        self.write_calls += 1
         if self.force_wrong_number is not None:
             n, self.force_wrong_number = self.force_wrong_number, None
         else:
@@ -128,9 +149,21 @@ class FakeFG:
         return n
 
     def patch(self, number, payload, is_pr=False):
+        """Round 3, gap 5: mirrors the real forge's confirmed contract -- EditIssueOption (PATCH's body, per
+        /swagger.v1.json) has no 'labels' property; the real API silently drops it. Rather than reproduce that
+        silent no-op (which would let a caller's mistake pass the test unnoticed), the fake raises, matching
+        issue_mirror.py's own FG.patch, which raises for the same reason. A caller that wants to change labels
+        must use set_labels() (PUT /issues/{n}/labels), below."""
+        if 'labels' in payload:
+            raise RuntimeError("forge patch #%d: 'labels' must go through set_labels(), not patch() -- Forgejo's "
+                                "issue PATCH silently ignores a 'labels' key (gap 5)" % number)
         prob = im.secret_scan(payload.get('title', '') or '', payload.get('body', '') if isinstance(payload.get('body'), str) else '')
         if prob:
             raise im.MirrorStop('REFUSED: %s -- forge patch #%d blocked' % (prob, number))
+        if self.force_patch_failure_once:
+            self.force_patch_failure_once = False
+            raise RuntimeError('simulated transient forge patch failure (nothing was spent)')
+        self.write_calls += 1
         it = self.items.get(number)
         if it:
             if 'title' in payload:
@@ -139,21 +172,31 @@ class FakeFG:
                 it['body'] = payload['body']
             if 'state' in payload:
                 it['state'] = payload['state']
-            if 'labels' in payload:
-                it['labels'] = [l if isinstance(l, dict) else {'name': l} for l in payload['labels']]
         if number in self.pulls:
             pd = self.pulls[number]
             for k in ('title', 'state', 'merged', 'merge_commit_sha'):
                 if k in payload:
                     pd[k] = payload[k]
-            if 'labels' in payload:
-                pd['labels'] = [l if isinstance(l, dict) else {'name': l} for l in payload['labels']]
+        return True
+
+    def set_labels(self, number, names, is_pr=False):
+        """Round 3, gap 5: mirrors FG.set_labels() -- PUT /issues/{n}/labels, a full replace of the label set."""
+        if self.force_set_labels_failure_once:
+            self.force_set_labels_failure_once = False
+            raise RuntimeError('simulated transient forge set_labels failure (nothing was spent)')
+        self.write_calls += 1
+        labels = [{'name': n2} for n2 in names]
+        if number in self.items:
+            self.items[number]['labels'] = labels
+        if number in self.pulls:
+            self.pulls[number]['labels'] = labels
         return True
 
     def comment(self, number, body):
         prob = im.secret_scan(body)
         if prob:
             raise im.MirrorStop('REFUSED: %s -- forge comment on #%d blocked' % (prob, number))
+        self.write_calls += 1
         cid = self._next_comment_id
         self._next_comment_id += 1
         self.comments_store.setdefault(number, []).append(
@@ -373,6 +416,33 @@ def test_comment_mirroring_both_ways_once_each():
         return 'comment mirroring: one each way, marker-tagged, no echo on the next run'
 
 
+def test_comment_baseline_advances_past_cur_not_prev():
+    """Round 3 rehearsal finding: sync_comments() used to advance the baseline to prev_gh/prev_fg + added_gh/
+    added_fg instead of cur_gh/cur_fg + added_gh/added_fg. The existing both-ways test above never caught this
+    because it adds exactly one comment on EACH side, which makes added_gh/added_fg numerically coincide with
+    cur_gh-prev_gh/cur_fg-prev_fg -- the bug is invisible under that symmetry. This test breaks the symmetry: a
+    comment appears on only ONE side first, gets mirrored, and a second (then third) sync must never re-mirror
+    it -- with the buggy formula, the un-touched side's baseline is advanced but the touched side's baseline is
+    not, and the mirrored copy keeps getting re-mirrored forever."""
+    with isolated():
+        gh, fg = FakeGH(), FakeFG()
+        mk_pair(gh, fg, 1, title='t', body='b', state='open', labels=[])
+        rc0, _ = silent(im.cmd_sync, gh, fg, True)
+        assert rc0 == 0
+        gh.comment(1, 'only a github comment this time')
+        rc1, out1 = silent(im.cmd_sync, gh, fg, True)
+        assert rc1 == 0, out1
+        assert len(fg.comments_store[1]) == 1, fg.comments_store[1]   # the one mirrored copy
+        assert len(gh.comments_store[1]) == 1, gh.comments_store[1]   # the original, never touched
+        rc2, out2 = silent(im.cmd_sync, gh, fg, True)
+        assert rc2 == 0, out2
+        assert len(fg.comments_store[1]) == 1, 'an asymmetric comment was re-mirrored on the next run: %r' % fg.comments_store[1]
+        rc3, out3 = silent(im.cmd_sync, gh, fg, True)
+        assert rc3 == 0, out3
+        assert len(fg.comments_store[1]) == 1, 'an asymmetric comment was re-mirrored two runs later: %r' % fg.comments_store[1]
+        return 'an asymmetric comment mirror settles after one write and never repeats'
+
+
 def test_seed_then_quiet_sync():
     with isolated():
         gh, fg = FakeGH(), FakeFG()
@@ -404,6 +474,103 @@ def test_secret_scan_refuses_token_body():
     return 'secret scan: refuses a token-shaped body before GitHub create spends a number'
 
 
+def test_dry_run_sync_writes_nothing_with_new_comments():
+    """Round 3, gap 3: sync_comments() must never write on a dry run. Set up a new, unmirrored comment on each
+    side (posted directly on the fakes, bypassing cmd_sync, the way a real new GitHub/forge comment would arrive),
+    then run a dry-run sync and assert zero writes on either fake and zero state change anywhere."""
+    with isolated():
+        gh, fg = FakeGH(), FakeFG()
+        mk_pair(gh, fg, 1, title='t', body='b', state='open', labels=[])
+        rc0, out0 = silent(im.cmd_sync, gh, fg, True)   # establish the baseline (comments=0,0 both sides)
+        assert rc0 == 0, out0
+        gh.comment(1, 'a new github comment, not yet mirrored')
+        fg.comment(1, 'a new forge comment, not yet mirrored')
+        gh.write_calls = 0
+        fg.write_calls = 0   # only the DRY RUN sync below is under test
+        gh_items_before, fg_items_before = copy.deepcopy(gh.items), copy.deepcopy(fg.items)
+        gh_comments_before, fg_comments_before = copy.deepcopy(gh.comments_store), copy.deepcopy(fg.comments_store)
+        rc1, out1 = silent(im.cmd_sync, gh, fg, False)
+        assert rc1 == 0, out1
+        assert gh.write_calls == 0 and fg.write_calls == 0, \
+            'dry-run sync made a write (gh=%d fg=%d writes): %s' % (gh.write_calls, fg.write_calls, out1)
+        assert gh.items == gh_items_before and fg.items == fg_items_before, 'dry-run sync mutated an item'
+        assert gh.comments_store == gh_comments_before and fg.comments_store == fg_comments_before, \
+            'dry-run sync mutated a comment store'
+        assert 'dry run' in out1
+        return 'dry-run sync with a new comment on each side: 0 writes, 0 state change either side'
+
+
+def test_failed_forge_write_then_retry_never_reverses():
+    """Round 3, gap 4: a failed forge write must not advance the baseline, or the next run would see the forge as
+    unexpectedly "still changed from its old value" and copy that old value right back over the real GitHub edit --
+    reverting it. The retry (no forced failure) must apply the SAME pending github->forge write, never reverse."""
+    with isolated():
+        gh, fg = FakeGH(), FakeFG()
+        mk_pair(gh, fg, 1, title='original', body='b', state='open', labels=[])
+        rc0, out0 = silent(im.cmd_sync, gh, fg, True)
+        assert rc0 == 0, out0
+        gh.items[1]['title'] = 'new title from github'
+        fg.force_patch_failure_once = True
+        rc1, out1 = silent(im.cmd_sync, gh, fg, True)
+        assert rc1 == 2, out1
+        assert fg.items[1]['title'] == 'original', \
+            'forge title changed despite the simulated failed write: %s' % out1
+        assert gh.items[1]['title'] == 'new title from github', 'the real GitHub edit was reverted after the failure'
+        rc2, out2 = silent(im.cmd_sync, gh, fg, True)
+        assert rc2 == 0, out2
+        assert fg.items[1]['title'] == 'new title from github', \
+            'retry did not apply the pending github->forge title write: %s' % out2
+        rc3, out3 = silent(im.cmd_sync, gh, fg, True)
+        assert rc3 == 0, out3
+        assert '0 field actions' in out3, 'baseline not settled after the retry succeeded: %s' % out3
+        return ('failed forge write then retry: sync #1 fails without reverting the GitHub edit, sync #2 retries '
+                'the same github->forge direction and applies it, sync #3 settles at 0 actions')
+
+
+def test_forgejo_label_api_contract_enforced_in_fake():
+    """Round 3, gap 5, confirmed live and read-only against this forge (GET /api/v1/version ->
+    16.0.5+gitea-1.22.0; /swagger.v1.json): EditIssueOption (PATCH /issues/{n}'s body) has no 'labels' property at
+    all, so the real API silently drops a labels key in a PATCH payload -- never an error, never applied. A fake
+    that accepted it would let that production bug pass every test silently. This fake instead raises, matching
+    FG.patch's own real-code fix; the only path that actually changes labels is set_labels() (PUT
+    /issues/{n}/labels), which IssueLabelsOption accepts as a list of names or ids."""
+    with isolated():
+        fg = FakeFG()
+        fg.items[1] = {'number': 1, 'title': 't', 'body': 'b', 'state': 'open', 'labels': [], 'comments': 0}
+        try:
+            fg.patch(1, {'labels': ['bug']})
+            assert False, ('the fake silently accepted a labels key in patch() -- the real Forgejo PATCH ignores '
+                            'it; a test against this fake would never have caught that production bug')
+        except RuntimeError as e:
+            assert 'set_labels' in str(e), e
+        assert fg.items[1]['labels'] == [], 'patch() must not touch labels even on its raise path'
+        ok = fg.set_labels(1, ['bug', 'docs'])
+        assert ok and sorted(l['name'] for l in fg.items[1]['labels']) == ['bug', 'docs']
+        return ("Forgejo label API contract: patch({'labels': ...}) raises (real PATCH silently ignores labels); "
+                "set_labels() (PUT /issues/{n}/labels) is the only path that actually works")
+
+
+def test_label_sync_keeps_forge_local_only_labels():
+    """Round 3, gap 2 + gap 5 together: a shared label GitHub adds must reach the forge (through set_labels, per
+    gap 5), while the forge's own local-only/pipeline label (never in GitHub's repo label list, so never in the
+    shared vocabulary) must survive that write untouched -- set_labels is a full replace, so apply_sync_actions
+    must merge the forge's current local-only labels into the payload itself."""
+    with isolated():
+        gh, fg = FakeGH(), FakeFG()
+        gh.repo_labels_list = [{'name': 'bug'}, {'name': 'docs'}]
+        mk_pair(gh, fg, 1, title='t', body='b', state='open', labels=[])
+        fg.items[1]['labels'] = [{'name': 'local-only'}]   # a forge-only pipeline/process label, never shared
+        rc0, out0 = silent(im.cmd_sync, gh, fg, True)   # baseline: shared view is [] both sides ('local-only' excluded)
+        assert rc0 == 0, out0
+        gh.items[1]['labels'] = [{'name': 'bug'}]   # GitHub adds a label that IS in the shared vocabulary
+        rc1, out1 = silent(im.cmd_sync, gh, fg, True)
+        assert rc1 == 0, out1
+        fg_names = sorted(l['name'] for l in fg.items[1]['labels'])
+        assert fg_names == ['bug', 'local-only'], \
+            'forge lost its local-only label, or never picked up the shared one: %s (%s)' % (fg_names, out1)
+        return 'label sync: GitHub-added shared label reaches the forge via set_labels, local-only label preserved'
+
+
 TESTS = [
     test_backfill_happy_path,
     test_pre_create_mismatch_refusal,
@@ -415,8 +582,13 @@ TESTS = [
     test_three_way_sync_echo_suppression,
     test_pr_twin_status_rewrite_on_fold,
     test_comment_mirroring_both_ways_once_each,
+    test_comment_baseline_advances_past_cur_not_prev,
     test_seed_then_quiet_sync,
     test_secret_scan_refuses_token_body,
+    test_dry_run_sync_writes_nothing_with_new_comments,
+    test_failed_forge_write_then_retry_never_reverses,
+    test_forgejo_label_api_contract_enforced_in_fake,
+    test_label_sync_keeps_forge_local_only_labels,
 ]
 
 

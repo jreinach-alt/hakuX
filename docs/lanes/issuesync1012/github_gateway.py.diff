@@ -1,5 +1,5 @@
 --- /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py.orig	2026-10-12 18:12:52.463674439 -0700
-+++ /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py	2026-10-12 18:36:12.272811366 -0700
++++ /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py	2026-10-12 19:32:35.793199220 -0700
 @@ -9,7 +9,20 @@
    unrelease [--yes] tag...  delete nightly-* releases whose sync row is marked 'withdrawn' (owner 2026-10-09)
    renote [--yes] tag...     replace a published nightly-*'s notes with nightly/<date>.notes.corrected.md (owner 2026-10-09)
@@ -21,8 +21,12 @@
  
  Rules it enforces (it cannot be talked out of them): fast-forward only, never --force, never a delete, heads only (no tags);
  a head that diverged from GitHub's, or whose GitHub tip is unknown locally, is skipped and reported; a head that touches
-@@ -151,7 +164,11 @@
- GET_OK = ('/actions/permissions', '/actions/runs', '/pages', '/branches/gh-pages', '/deployments', '/actions/workflows', '/releases', '/branches/status', '/contents/STATUS.md', '/issues', '/pulls', '/contents/LICENSE', '/community/profile')   # /issues, /pulls: read-only listings for the 0.5 issue-log audit (lane.local 10-12)
+@@ -148,10 +161,14 @@
+         close_window()
+ 
+ 
+-GET_OK = ('/actions/permissions', '/actions/runs', '/pages', '/branches/gh-pages', '/deployments', '/actions/workflows', '/releases', '/branches/status', '/contents/STATUS.md', '/issues', '/pulls', '/contents/LICENSE', '/community/profile')   # /issues, /pulls: read-only listings for the 0.5 issue-log audit (lane.local 10-12)
++GET_OK = ('/actions/permissions', '/actions/runs', '/pages', '/branches/gh-pages', '/deployments', '/actions/workflows', '/releases', '/branches/status', '/contents/STATUS.md', '/issues', '/pulls', '/contents/LICENSE', '/community/profile', '/labels')   # /issues, /pulls: read-only listings for the 0.5 issue-log audit (lane.local 10-12); /labels: round 3's shared label vocabulary (lane.issuesync1012 round 3) -- one cached read of the repo's own label list, read-only
  
  
 -def cmd_get(path):
