@@ -11,7 +11,7 @@ No lane session is running.
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 1 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -94,4 +94,4 @@ No branch is being worked right now.
 - 2026-10-12 zerofive1012 (2): a returning route for Ghoulies, so the 0.5 release gate can be queued (#433)
 - 2026-10-12 zerofive1012: 0.5 counts 145 measured titles, not 145 benchmarked (#433)
 
-_Updated 2026-10-12 20:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 20:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
