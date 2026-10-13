@@ -10,6 +10,14 @@ Xbox HDD, its EEPROM and all of its settings, untouched, whatever you do here.
 Nothing on this page is required. Set the fork up from scratch and you lose
 nothing; the only cost is doing the setup wizard again.
 
+## If your device can't run this fork
+
+This fork needs Android 10 and an ARMv8.2 CPU with LSE atomics (Snapdragon
+845 / 865 class or newer). On an older ARMv8.0 part — a Snapdragon 835, 660,
+665 or 460 — it shows an "Unsupported CPU" message and exits. The official
+build runs on Android 8 and those older chips. If that is your device, there
+is nothing to migrate: keep using the official build.
+
 ## Telling them apart
 
 The fork appears in the launcher as **hakuX (fork)**.

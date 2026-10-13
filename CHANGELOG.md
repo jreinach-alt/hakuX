@@ -1,5 +1,46 @@
 # Changelog
 
+## v0.5.0 — 2026-10-12
+
+The first release rated by play rather than by pixel counts alone: 52 titles
+reach gameplay and hold it, with no crash, hang, audio dropout or hitch, at
+30 fps or better for at least 90% of a timed run, on a Retroid Pocket Nova or
+an AYN Thor. Adds save states, several games folders, an Ubershader option
+that avoids freezing while an exact shader compiles, pipelines pre-built from
+a previous play, faster renderer paths, and GPU surface reuse. Fixes
+stuttering and repeated audio in Need for Speed: Most Wanted, hard-edged white
+polygons in GTA San Andreas, vanishing cars in RalliSport Challenge, a Forza
+Motorsport slowdown over a race, and several crashes and hangs.
+
+**Needs Android 10 and an ARMv8.2 CPU with LSE atomics** (Snapdragon 845 / 865
+class or newer); v0.4.x installed on Android 8. On an older ARMv8.0 part, the
+app now shows an "Unsupported CPU" message and exits instead of crashing.
+
+See [`docs/releases/v0.5.0.md`](docs/releases/v0.5.0.md).
+
+## v0.4.1-j1 — 2026-09-26
+
+A frame-rate fix for v0.4.0-j1. Each time the renderer reused a render-target
+slot, it dropped the slot's guest-memory access watch without releasing it,
+so frame rate collapsed to 1-3 fps after a few minutes in Grabbed by the
+Ghoulies, RalliSport Challenge 2 and Conker; the watch is now released before
+the slot is reused.
+
+See [`docs/releases/v0.4.1-j1.md`](docs/releases/v0.4.1-j1.md).
+
+## v0.4.0-j1 — 2026-09-10
+
+A rendering-accuracy release, every change measured against framebuffers
+captured from a real Xbox (the `nxdk_pgraph_tests` golden results): texture
+borders and border colour, wrap modes, cylinder wrap, texture perspective,
+signed texture channels, textures the CPU rewrites in place, cube maps, more
+texture formats, render targets, depth, fog and fixed-function lighting all
+move closer to the hardware. Several emulator aborts and Vulkan
+resource-lifetime bugs are fixed, and Android gets a clean exit on guest
+power-off, a separate debug build id, and emulator stderr reaching logcat.
+
+See [`docs/releases/v0.4.0-j1.md`](docs/releases/v0.4.0-j1.md).
+
 ## v0.3.3-j1
 
 The first release of this fork. It fixes launching a game from an external
