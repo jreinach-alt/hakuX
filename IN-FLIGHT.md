@@ -11,7 +11,7 @@ No lane session is running.
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 2 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -81,6 +81,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-13 docsfresh1012: a freshness check for the public docs, an hourly alarm and a release step (#433, 0.5)
 - 2026-10-13 compatpage1012: the compatibility page in three sections, with regions and a CSV (#433, 0.5)
 - 2026-10-12 issuemirror1012: the issue mirror on a timer: one lock, incremental sync, budget-true pre-check (#433, 0.5)
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
@@ -92,6 +93,5 @@ No branch is being worked right now.
 - 2026-10-12 pubdocs1012: public docs pass for 0.5 (README, compatibility, limitations, attribution) (#433, 0.5)
 - 2026-10-12 nightlysign1012: the nightly refuses to publish an unsigned or unnamed apk (#433, 0.5)
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
-- 2026-10-12 debugcap1012: Debug Capture is off by default in versioned releases (#433, 0.5)
 
-_Updated 2026-10-13 01:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 01:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
