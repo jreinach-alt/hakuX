@@ -3,7 +3,7 @@
 # executable, no shebang, no exit -- `fail` is shared and is the run's verdict.
 #
 # status.sh + status_html.py: the 0.5 section is a title table against the
-# owner's goals, 145 benchmarked and 50 Playable (#433).
+# owner's goals, 145 measured and 50 Playable (#433).
 #
 # WHY THIS EXISTS. The owner, 2026-09-26 ~17:50 PDT: "On the status page, the
 # 0.5 goals is a wall of text ... It should have a list of the titles and
@@ -75,9 +75,16 @@ c = V.find_title(tg, "5A5A0010-Zz_Other.xiso.iso")
 sys.exit(0 if a[0] == b[0] == "5A5A0009" and a[1]["name"] == "Zz Nameless" and c == (None, {}) else 1)' "$HERE/.."
 
 # The config's new home is the default, and it is the owner's two numbers.
-check "release-0.5.toml at docs/testing is the default and states 145 and 50" python3 -c '
+check "release-0.5.toml at docs/testing is the default and states 145 measured and 50 Playable" python3 -c '
 import os, sys
 sys.path.insert(0, sys.argv[1]); import status_html as S
 os.environ.pop("STATUS_RELEASE_CONF", None)
 c, p = S._conf({})
-sys.exit(0 if p.endswith("docs/testing/release-0.5.toml") and c.get("benchmarked_target") == 145 and c.get("playable_target") == 50 else 1)' "$HERE"
+sys.exit(0 if p.endswith("docs/testing/release-0.5.toml") and S._measured_target(c) == 145 and c.get("playable_target") == 50 else 1)' "$HERE"
+# The release counts measured titles (the owner, 2026-10-12): the Measured bar and
+# the forecast read measured_target, and a file without it falls back to the old field.
+check "the Measured target is measured_target, else benchmarked_target" python3 -c '
+import sys
+sys.path.insert(0, sys.argv[1]); import status_html as S
+sys.exit(0 if S._measured_target({"measured_target": 120, "benchmarked_target": 145}) == 120
+         and S._measured_target({"benchmarked_target": 140}) == 140 else 1)' "$HERE"

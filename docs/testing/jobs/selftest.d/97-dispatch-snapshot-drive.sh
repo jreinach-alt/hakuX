@@ -28,6 +28,14 @@
 #             copied the new dispatcher.sh but not the files the new lists
 #             add -- has those files in bin/ once it has started. Fails
 #             without the worker's startup snapshot_scripts (the mutant).
+#   classifier  a profile with `classifier = "pathclass"` (drive-profiles/
+#             generic.toml, #433) makes classify.py import titles/pathclass.py
+#             and load titles/pathknow/classifier/head.npz at runtime. Neither
+#             was in SCRIPT_DEPS/SNAPSHOT_GLOBS, so a dispatched `drive
+#             generic` step failed closed with `pathclass unavailable` for a
+#             reason that was purely a snapshot omission (lane.pathclass
+#             restart, Addendum 1 6b). Fails if either drops out of the list
+#             (the two mutants).
 
 echo "== dispatch snapshot: a dispatched run can play a drive route"
 SD="$T/snapdrive"; rm -rf "$SD"; mkdir -p "$SD"
@@ -77,6 +85,54 @@ if python3 -c 'import PIL, numpy' 2>/dev/null; then
         "$BIN/titles"
 else
     echo "  --   no PIL/numpy here: the full import of drive.py from the snapshot is not run (find_spec above is)"
+fi
+
+# classifier: SCRIPT_DEPS carries titles/pathclass.py, SNAPSHOT_GLOBS carries
+# its trained head -- both named in BIN by the sd_env snapshot_scripts call above.
+check "the snapshot's titles/ holds pathclass.py (SCRIPT_DEPS)" test -f "$BIN/titles/pathclass.py"
+check "the snapshot carries pathclass's trained head (SNAPSHOT_GLOBS)" \
+    test -f "$BIN/titles/pathknow/classifier/head.npz"
+
+# The mutants: a dispatcher.sh that drops one entry from its own list. Each
+# gets its own dispatch dir so the two checks cannot mask each other.
+mutant_drop() {   # <key: SCRIPT_DEPS|SNAPSHOT_GLOBS> <word to drop> <dst>
+    python3 - "$TESTING/dispatcher.sh" "$1" "$2" "$3" <<'PY'
+import sys
+src, key, word, dst = sys.argv[1:]
+s = open(src).read()
+anchor = key + '="'
+start = s.index(anchor) + len(anchor)
+end = s.index('"', start)
+block = s[start:end]
+assert (" " + word) in block or block.startswith(word + " "), \
+    "mutant word %r not found in %s block" % (word, key)
+new = block.replace(" " + word, "", 1) if (" " + word) in block else block.replace(word + " ", "", 1)
+open(dst, "w").write(s[:start] + new + s[end:])
+PY
+}
+mutant_drop "SCRIPT_DEPS" "titles/pathclass.py" "$SD/no-pathclass.sh"
+if [ -f "$SD/no-pathclass.sh" ]; then
+    sd_env_at() { ( export DISPATCH_DIR="$2" DISPATCH_SRC="$3" SERIAL=ee317437 DISPATCH_TREE="$REPO" DISPATCH_REPO="$REPO"
+                     . "$1" selftest-not-a-subcommand >/dev/null 2>&1; eval "$4" ); }
+    sd_env_at "$SD/no-pathclass.sh" "$SD/dnp" "$TESTING" snapshot_scripts
+    if [ -f "$SD/dnp/bin/titles/pathclass.py" ]; then
+        bad "  mutant 'drop titles/pathclass.py from SCRIPT_DEPS' still shipped it -- the leg above checks nothing"
+    else
+        ok "  mutant 'drop titles/pathclass.py from SCRIPT_DEPS' leaves it out (red, as it must be)"
+    fi
+else
+    bad "  mutant anchor for SCRIPT_DEPS no longer matches dispatcher.sh"
+fi
+mutant_drop "SNAPSHOT_GLOBS" "titles/pathknow/classifier/head.npz" "$SD/no-head.sh"
+if [ -f "$SD/no-head.sh" ]; then
+    sd_env_at "$SD/no-head.sh" "$SD/dnh" "$TESTING" snapshot_scripts
+    if [ -f "$SD/dnh/bin/titles/pathknow/classifier/head.npz" ]; then
+        bad "  mutant 'drop head.npz from SNAPSHOT_GLOBS' still shipped it -- the leg above checks nothing"
+    else
+        ok "  mutant 'drop head.npz from SNAPSHOT_GLOBS' leaves it out (red, as it must be)"
+    fi
+else
+    bad "  mutant anchor for SNAPSHOT_GLOBS no longer matches dispatcher.sh"
 fi
 
 # newprof: a scratch source tree holding what the snapshot ships.
@@ -143,18 +199,27 @@ echo "== request.sh --route: a route is checked as the run will see it"
 # THE LEGS (each in a private dispatch dir, so nothing reaches the harness's
 # queue; DISPATCH_TREE named, so the host's serving tree is never read):
 #   drive     a .drive.route against a snapshot holding its profile: queued.
-#   crops     a route with `waitfor` crops: refused. The run plays
-#             <result dir>/route.txt and nothing writes its refs/, so it
-#             would die at line 1 with the soak running on. Fails if the
-#             check reads the route where it sits in this tree.
+#   crops     a route with `waitfor` crops: queued. The crop travels with the
+#             request (route_refs, Addendum 3 #433 lane.soakvideo1011) and
+#             request.sh stages it into the check-copy's refs/route.txt/
+#             before this same check, so the crop no longer has to sit where
+#             this tree's route.sh would find it on its own. Before that fix
+#             this leg was refused (the run plays <result dir>/route.txt,
+#             and nothing wrote its refs/); 62-routerefs-soakvideo1011.sh
+#             carries the refusal-reproducing mutant now.
 #   noprof    a .drive.route against a snapshot with no drive-profiles/ and
 #             no serving tree: refused, "no profile".
 #   server    the same snapshot, but a serving tree whose dispatcher ships
 #             profiles: queued (a worker re-snapshots before it claims).
 rq_sd() {   # <dispatch dir> <serving tree> <route> -> request.sh's output
     mkdir -p "$1"/queue "$1"/running "$1"/results "$1"/expect
+    # --find-route: "Sonic Heroes.iso" matches no targets.toml iso entry and
+    # no 8-hex prefix, so the profile gate (lane.profilegate1011, #433)
+    # refuses it outright unless the run is finding a route -- this test is
+    # about drive-profile/snapshot resolution, not profile state.
     env DISPATCH_DIR="$1" DISPATCH_TREE="$2" bash "$TESTING/request.sh" --who sd --purpose "snapdrive selftest" \
-        --no-expect "selftest" --title "Sonic Heroes.iso" --seconds 600 --route "$3" 2>&1
+        --no-expect "selftest" --title "Sonic Heroes.iso" --seconds 600 --route "$3" \
+        --find-route "selftest: drive/snapshot resolution, not a profile check" 2>&1
 }
 cp -r "$SD/d/bin" "$SD/q1-bin"
 mkdir -p "$SD/q1"; mv "$SD/q1-bin" "$SD/q1/bin"
@@ -164,12 +229,13 @@ else bad "a drive route was refused against a snapshot holding its profile: $out
 crop=$(cd "$TESTING/titles/routes" && grep -l '^[[:space:]]*\(waitfor\|press-until\)' *.route | head -1)
 if [ -n "$crop" ]; then
     out=$(rq_sd "$SD/q2" "$SD/no-tree" "${crop%.route}")
-    case "$out" in
-        *"would not run in the dispatched soak"*"no reference crop"*) ok "a route with waitfor crops is refused: they do not travel (${crop%.route})" ;;
-        *) bad "a route with waitfor crops was not refused (${crop%.route}): $out" ;;
-    esac
+    if ls "$SD/q2/queue/"*.req >/dev/null 2>&1; then
+        ok "a route with waitfor crops is queued: the crop travels in route_refs (${crop%.route}, Addendum 3 #433)"
+    else
+        bad "a route with waitfor crops was refused even though the crop travels (${crop%.route}): $out"
+    fi
 else
-    bad "no route under titles/routes/ has a waitfor or press-until step to check the refusal with"
+    bad "no route under titles/routes/ has a waitfor or press-until step to check this with"
 fi
 mkdir -p "$SD/q3/bin"; cp -r "$SD/d/bin/." "$SD/q3/bin/"; rm -rf "$SD/q3/bin/titles/drive-profiles"
 out=$(rq_sd "$SD/q3" "$SD/no-tree" sonic-heroes.drive)

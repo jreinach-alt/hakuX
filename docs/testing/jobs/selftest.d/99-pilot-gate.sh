@@ -18,8 +18,13 @@ PG="$T/pilot-gate"; rm -rf "$PG"; mkdir -p "$PG"/{queue,running,results,pilots}
 pg_fix() {  # <dir> <name> <requester> <seconds> [runs]
     printf '{"id": "%s", "requester": "%s", "seconds": %s, "runs": %s}\n' "$2" "$3" "$4" "${5:-1}" > "$PG/$1/$2.req"; }
 pg_rq() {   # <requester>: a 420 s soak, the titleplay shape: ~8.5 min
+    # --find-route: "Crimson Skies.iso" matches no targets.toml iso entry and
+    # no 8-hex prefix, so the profile gate (lane.profilegate1011, #433) would
+    # refuse it before the pilot gate below is ever reached -- this fixture
+    # is about pilot budget, not profile state.
     DISPATCH_DIR="$PG" bash "$TESTING/request.sh" --who "$1" --purpose "pilot gate selftest" \
-        --no-expect selftest --title "Crimson Skies.iso" --seconds 420 2>&1; }
+        --no-expect selftest --title "Crimson Skies.iso" --seconds 420 \
+        --find-route "selftest: pilot gate budget, not a profile check" 2>&1; }
 pg_n() { ls "$PG"/queue/*"-$1-"*.req 2>/dev/null | wc -l; }   # requests request.sh queued for <requester>
 # An admission is the anchored "queued <id>" LINE. The refusal's own prose says
 # "queued or running", so a bare *"queued "* pattern reads a refusal as an
@@ -81,7 +86,8 @@ else bad "D: exactly 30 min was refused: $(tail -3 <<< "$out" | tr '\n' ' ')"; f
 # and a plan split over several invocations queues any amount (#397's shape).
 PGS="$T/pilot-gate-stage"; rm -rf "$PGS"; mkdir -p "$PGS"/{queue,running,results,pilots}
 out=$(DISPATCH_DIR="$PGS" PILOT_DISPATCH_DIR="$PG" bash "$TESTING/request.sh" --who pg \
-        --purpose "pilot gate selftest" --no-expect selftest --title "Crimson Skies.iso" --seconds 420 2>&1)
+        --purpose "pilot gate selftest" --no-expect selftest --title "Crimson Skies.iso" --seconds 420 \
+        --find-route "selftest: pilot gate budget, not a profile check" 2>&1)
 case "$out" in
     *"refusing to queue: the pilot gate"*"~30 min in all"*"$PG/pilots/pg.ok"*)
         ok "F: a staged enqueue is judged against PILOT_DISPATCH_DIR's queue and pilots" ;;

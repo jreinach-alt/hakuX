@@ -96,9 +96,10 @@ def _hm(epoch):
 #             reads them): a title with a verdict on either handheld.
 #   Playable  the same, the latest verdict per (title, device) passing with a
 #             Playable rating, on every handheld that has one.
-#   Ghoulies  the newest finished soak per handheld whose request names
-#             Grabbed by the Ghoulies: the median of its hakuX-perf gfps over
-#             90-240 s from the first perf line (fix311/read_soak.py's clock).
+#   Ghoulies  the newest finished soak per gate handheld (release-0.5.toml's
+#             gate_devices; both when unset) whose request names Grabbed by
+#             the Ghoulies: the median of its hakuX-perf gfps over 90-240 s
+#             from the first perf line (fix311/read_soak.py's clock).
 # Printed as facts.tsv rows: `r05<TAB>key<TAB>value` and
 # `r05gate<TAB>device<TAB>median<TAB>n<TAB>result id<TAB>ref<TAB>epoch`.
 
@@ -1769,8 +1770,8 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
     # the forecast: titles that reached each goal in the last `rate_hours`
     hrs = float(conf.get("rate_hours") or 48)
     fc = {}
-    for goal, tgt, when in (("benchmarked", int(conf.get("benchmarked_target") or 145),
-                             [bm_at(r) for r in out if r["stage"] in BENCHMARKED]),
+    for goal, tgt, when in (("measured", _measured_target(conf),
+                             [r["measured_at"] for r in out if r["fps_read"]]),
                             ("playable", int(conf.get("playable_target") or 50),
                              [pl_at(r) for r in out if r["stage"] == "playable"])):
         have = counts[goal]
@@ -1784,6 +1785,13 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
     return {"rows": out, "counts": counts, "forecast": fc, "rate_hours": hrs, "series": series,
             "sources": srcs + ([os.path.basename(bf_path)] if bf else []) + ["dispatch results/*/verdict.json", "soaks (results/*/logcat, 60-flip windows 90-240 s)"],
             "registry_src": reg_src, "backfill": prov, "list_rule": conf.get("test_list", "")}
+
+
+def _measured_target(conf):
+    """The Measured count's target. The release counts measured titles, not
+    benchmarked ones (the owner, 2026-10-12); a file from before that decision
+    has only benchmarked_target, which was the same 145."""
+    return int(conf.get("measured_target") or conf.get("benchmarked_target") or 145)
 
 
 def _fold_stuck(F, prs, now):
@@ -2239,7 +2247,7 @@ def panel_lines(p, name, now):
         gmin = 25.0
     gate = p.get("gate", [])
     if not gate:
-        lines.append("Ghoulies gate (median gfps 90-240 s >= %g, both handhelds): not gathered this tick" % gmin)
+        lines.append("Ghoulies gate (median gfps 90-240 s >= %g): not gathered this tick" % gmin)
     else:
         bits, verdict = [], True
         for g in gate:
@@ -2258,8 +2266,11 @@ def panel_lines(p, name, now):
             bits.append("%s %g (n=%s; %s, ref %s, %s%s)" % (dev, med, g.get("n"), g.get("id"), g.get("ref") or "?",
                                                            _ago(now, at) if now else _local(at), skipped))
             verdict = verdict and med >= gmin
-        lines.append("Ghoulies gate (median gfps 90-240 s >= %g, both handhelds): %s -- %s" % (
-            gmin, "met on these soaks (check the ref is the candidate's)" if verdict else "NOT MET", "; ".join(bits)))
+        # One row per gate handheld (release05 writes an empty row for one with no soak).
+        devs = [g.get("device", "?") for g in gate]
+        where = "both handhelds" if sorted(devs) == ["nova", "thor"] else "on the " + ", ".join(d.capitalize() for d in devs)
+        lines.append("Ghoulies gate (median gfps 90-240 s >= %g, %s): %s -- %s" % (
+            gmin, where, "met on these soaks (check the ref is the candidate's)" if verdict else "NOT MET", "; ".join(bits)))
     iss = p.get("issues", [])
     if not p.get("issues_known"):
         lines.append("%s issues: could not be read" % name)
@@ -2528,24 +2539,25 @@ def _q1(j, now):
     out = ['<section class="q" id="q1"><h2>1. How close is %s?</h2>' % esc(name)]
     # the header: three bars, counted from the table below, the chart, and one line
     bt, pt = int(conf.get("benchmarked_target") or 145), int(conf.get("playable_target") or 50)
+    mt = _measured_target(conf)
     nm = sum(1 for x in rows if x.get("fps_read"))
     nb = sum(1 for x in rows if x.get("stage") in BENCHMARKED)
     npl = sum(1 for x in rows if x.get("stage") == "playable")
-    for label, n, tg, col in (("Measured", nm, bt, "var(--link)"), ("Benchmarked", nb, bt, "var(--amb)"), ("Playable", npl, pt, "var(--grn)")):
+    for label, n, tg, col in (("Measured", nm, mt, "var(--link)"), ("Benchmarked", nb, bt, "var(--amb)"), ("Playable", npl, pt, "var(--grn)")):
         out.append('<div class="goal"><span class="gl">%s <b>%d</b> / %d</span><span class="bar"><i style="width:%.1f%%;background:%s"></i></span></div>' % (
             label, n, tg, min(100.0, 100.0 * n / tg) if tg else 0, col))
-    out.append(_chart(t.get("series") or {}, now, bt, pt))
+    out.append(_chart(t.get("series") or {}, now, mt, pt))
     out.append('<p class="src">Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. '
                'Each title is plotted at its first reading (a soak\'s finish, a verdict, a held run, or the pass-1 review\'s date). '
                'Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed).</p>')
     fc = t.get("forecast") or {}
     hrs = int(t.get("rate_hours") or 48)
-    etas = [fc.get(k, {}).get("eta") for k in ("benchmarked", "playable")]
+    etas = [fc.get(k, {}).get("eta") for k in ("measured", "playable")]
     if fc and all(etas):
         when = max(etas)
         say = "met" if when <= now else "about %s" % _lt(when, "full")[:10]
     else:
-        miss = [k for k in ("benchmarked", "playable") if not fc.get(k, {}).get("eta")]
+        miss = [k for k in ("measured", "playable") if not fc.get(k, {}).get("eta")]
         say = "no rate yet (nothing %s in the last %d h)" % (" or ".join("made Playable" if k == "playable" else k for k in miss), hrs)
     out.append('<p class="fc">Ships when both are met. At the last %d h rate: %s.</p>' % (hrs, esc(say)))
     if conf.get("target"):
@@ -2744,7 +2756,7 @@ def _glance(j, now):
                      for d in fs.get("devices") or [])
     lines = [
         '<a href="#q1">%s</a>: Measured %d / %d &middot; Benchmarked %d / %d &middot; Playable %d / %d; gate %s.' % (
-            esc(name), sum(1 for x in trows if x.get("fps_read")), int(conf.get("benchmarked_target") or 145),
+            esc(name), sum(1 for x in trows if x.get("fps_read")), _measured_target(conf),
             sum(1 for x in trows if x.get("stage") in BENCHMARKED), int(conf.get("benchmarked_target") or 145),
             sum(1 for x in trows if x.get("stage") == "playable"), int(conf.get("playable_target") or 50),
             esc("met on the newest soaks, no candidate yet" if g.get("met") and g.get("candidate") == "none cut yet" else (g.get("verdict") or "not measured"))),
@@ -3015,7 +3027,8 @@ def main(argv):
         return 0
     if len(argv) >= 2 and argv[1] == "release05":
         a = dict(zip(argv[2::2], argv[3::2]))
-        for row in release05(a.get("--titles", ""), a.get("--results", ""), a.get("--xiso", "")):
+        devs = _conf(os.environ)[0].get("gate_devices") or ["thor", "nova"]
+        for row in release05(a.get("--titles", ""), a.get("--results", ""), a.get("--xiso", ""), tuple(devs)):
             print("\t".join(str(x).replace("\t", " ").replace("\n", " ") for x in row))
         return 0
     if len(argv) >= 2 and argv[1] == "panel":

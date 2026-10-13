@@ -1,0 +1,9 @@
+# Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
+- Spider Man 2 (4156002B, nova, pathfind 2026-10-05): gameplay in 1.8 min via publisher_logo A -> title_screen START -> profile_creation START -> submenu A -> cutscene A
+- Call of Duty 3 (4156005D, nova, pathfind 2026-10-06): gameplay in 3.4 min via publisher_logo START -> title_screen START -> main_menu A -> save_load_prompt UP A -> submenu A -> cutscene START
+- Ultimate Spider Man (41560035, nova, pathfind 2026-10-07): gameplay in 3.0 min via cutscene A -> publisher_logo A -> title_screen START -> name_entry START -> name_entry A -> cutscene START A -> cutscene A
+- Blade II (41560005, nova, pathfind 2026-10-07): gameplay in 2.3 min via title_screen START -> main_menu A -> submenu A -> cutscene A
+- Fantastic 4 (4156001A, nova, pathfind 2026-10-07): gameplay in 3.1 min via cutscene START A -> title_screen START -> main_menu A -> save_load_prompt A -> submenu A -> cutscene A
+- Ty the Tasmanian Tiger Night of the Quinkan USA Australia (41560055, nova, pathfind 2026-10-07): gameplay in 5.5 min via publisher_logo START A -> cutscene START A -> submenu B -> main_menu DOWN A -> submenu A -> loading A -> cutscene START A -> submenu R1 B -> cutscene A -> cutscene A A -> cutscene A A A
+- X Men The Official Game Europe (41560046, nova, pathfind 2026-10-12): gameplay in 3.1 min via publisher_logo START A -> title_screen START -> profile_creation A -> name_entry START -> name_entry A -> name_entry A DOWN DOWN DOWN DOWN RIGHT A -> name_entry RIGHT A -> save_load_prompt A -> cutscene A START -> submenu A -> cutscene A START
+- Lemony Snicket s A Series of Unfortunate Events USA (4156001F, nova, pathfind 2026-10-12): gameplay in 1.4 min via black START A -> title_screen START -> main_menu A -> save_load_prompt A -> cutscene A START A -> cutscene START A START

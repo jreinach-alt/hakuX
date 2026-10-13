@@ -2,8 +2,9 @@
 # the shims on PATH, ok/bad/check. Not executable, no shebang, no exit --
 # `fail` is shared and is the run's verdict.
 #
-# usage/meter.py and usage/mode.sh (#433, owner 2026-10-02 10:10 PDT: 80% of
-# the week used drops the harness into Low; back to Normal at the reset).
+# usage/meter.py and usage/mode.sh (#433, owner 2026-10-10 ~10:30 PDT: Low
+# needs 80% of the week used AND a projection over 100%, not either alone;
+# back to Normal when either clears).
 # NO LIVE TRANSCRIPTS: every ~/.claude/projects file this fragment reads is
 # one it wrote itself, under its own $UM/projects (HAKUX_CLAUDE_PROJECTS),
 # with its own $UM/work (HAKUX_WORK) so nothing here can read, or leave
@@ -16,6 +17,14 @@
 echo "== meter.py: actor classification, the week window, and incremental reads"
 UM="$T/usagemode"; rm -rf "$UM"
 mkdir -p "$UM/work/briefs" "$UM/work/logs/pricefit" "$UM/projects" "$UM/systemd"
+# Save the harness's own values (if any) before this fragment's isolation
+# overrides them, so they can be put back exactly -- not just unset. A bare
+# `unset` here (the earlier version of this fix) left 97-board-priority.sh
+# with no $HAKUX_WORK at all, since selftest.sh only ever sets it once, at
+# the top of the whole run, and fragments are sourced into that one shell.
+UM_SAVED_WORK_SET=${HAKUX_WORK+1}; UM_SAVED_WORK=${HAKUX_WORK-}
+UM_SAVED_PROJECTS_SET=${HAKUX_CLAUDE_PROJECTS+1}; UM_SAVED_PROJECTS=${HAKUX_CLAUDE_PROJECTS-}
+UM_SAVED_SYSTEMD_SET=${HAKUX_SYSTEMD_USER_DIR+1}; UM_SAVED_SYSTEMD=${HAKUX_SYSTEMD_USER_DIR-}
 export HAKUX_WORK="$UM/work" HAKUX_CLAUDE_PROJECTS="$UM/projects" HAKUX_SYSTEMD_USER_DIR="$UM/systemd"
 UM_NOW_ISO='2026-10-02T17:10:00Z'
 UM_NOW=$(date -u -d "$UM_NOW_ISO" +%s)
@@ -56,9 +65,14 @@ def write(dirname, filename, ages, first_user=None):
                             "usage": {"input_tokens": 1000, "cache_creation_input_tokens": 0,
                                       "cache_read_input_tokens": 0, "output_tokens": 0}}}) + "\n")
 
-# lane:fixlane -- one event in each of 1h / 6h / week-but-not-6h / before-the-
-# week-start, so the three report windows (1h, 6h, week) are each provable
-# against a DIFFERENT subset rather than all moving together.
+# lane:fixlane -- one event in each of 1h / 6h / 24h-but-not-6h /
+# before-the-week-start-but-still-inside-24h, so the four report windows
+# (1h, 6h, 24h, week) are each provable against a DIFFERENT subset rather
+# than all moving together. The last age (72000s = 20h) is before this
+# fixture's week start (13h10m before UM_NOW) but still inside the 24h rate
+# window: it must count toward rate_24h and must NOT count toward
+# spend_since_reset -- the rate window is wall-clock, not week-relative (see
+# meter.py's KEEP_DAYS comment).
 write("-home-justin-hakux-work-wt-fixlane", "s.jsonl", [600, 10800, 36000, 72000])
 write("-home-justin-hakux-work-board-wt", "s.jsonl", [600])
 write("-home-justin-hakux-work-wt-cloud-audit1-42", "s.jsonl", [600])
@@ -84,6 +98,7 @@ print("n_actors=%d" % len(r["spend_by_actor"]))
 print("spend_since_reset=%.2f" % r["spend_since_reset"])
 print("rate_1h=%.2f" % r["rate_1h"])
 print("rate_6h=%.2f" % r["rate_6h"])
+print("rate_24h=%.2f" % r["rate_24h"])
 print("estimated_percent=%s" % r["estimated_percent"])
 print("capacity=%s" % r["capacity_dollars_per_week"])
 print("week_start_epoch=%s" % r["week_start_epoch"])
@@ -109,6 +124,8 @@ check "rate_1h counts only the five events inside the last hour (one dollar each
     grep -q '^rate_1h=5.00$' "$UM/report.txt"
 check "rate_6h is a PER-HOUR figure (6 dollars over 6h), not the window's raw total" \
     grep -q '^rate_6h=1.00$' "$UM/report.txt"
+check "rate_24h is a PER-HOUR figure (8 dollars over 24h -- the 4 fixlane events plus 4 others, including the one 20h ago that is before the week start) / 24" \
+    grep -q '^rate_24h=0.33$' "$UM/report.txt"
 check "the two seeded calibration points are there" grep -q '^n_calibration=2$' "$UM/report.txt"
 # The 16% seed's own reading instant is UM_NOW itself (2026-10-02T10:10 PDT =
 # 17:10Z), so its spend-at-reading equals this run's whole-week total, and
@@ -147,19 +164,77 @@ check "...and it is the one now driving estimated_percent (50, not 16)" \
     grep -q '^estimated_percent=50.0$' "$UM/report.txt"
 
 echo "== meter.py: the projection formula, recomputed independently from the report"
-check "projected_percent_at_reset matches estimated% + rate_6h*hours_left/capacity*100" \
+check "projected_percent_at_reset matches estimated% + rate_24h*hours_left/capacity*100 (NOT rate_6h -- #433, 24h window)" \
     python3 -c "
 import json
 r = json.load(open('$UM/work/usage/state.json'))['last_report']
 hours_left = max(0.0, (r['week_end_epoch'] - $UM_NOW) / 3600.0)
-want = r['estimated_percent'] + r['rate_6h'] * hours_left / r['capacity_dollars_per_week'] * 100.0
+want = r['estimated_percent'] + r['rate_24h'] * hours_left / r['capacity_dollars_per_week'] * 100.0
 got = r['projected_percent_at_reset']
-# r['rate_6h'] is already rounded to 2dp for display, and hours_left/capacity*100
+# r['rate_24h'] is already rounded to 2dp for display, and hours_left/capacity*100
 # here is a ~960x multiplier on it -- a formula bug (wrong rate, missing
 # hours_left, inverted capacity) misses by far more than the rounding noise
 # that amplification alone can produce, so a loose-looking tolerance still
 # catches it.
 assert abs(want - got) < 6.0, (want, got)
+"
+
+echo "== meter.py: the 24h projection ignores a 6h burst that the old rate_6h rule did not (#433)"
+# Hand-built state, not scanned transcripts: build_report() is pure given a
+# state dict, so this constructs exactly the two scenarios the brief asks
+# for and skips writing+scanning fixture files to get there. Round dollar
+# figures throughout so every number below is hand-checkable.
+check "a 6h burst after 18h quiet stays Normal under rate_24h; the OLD rule (project from rate_6h -- the mutant this guards against) would have gone Low on the identical report" \
+    python3 -c "
+import sys
+sys.path.insert(0, '$HERE/usage')
+import meter
+
+wk_end = meter.week_bounds(meter.iso_to_epoch('2026-10-02T17:10:00+00:00'))[1]
+now = wk_end - 48 * 3600              # hours_left = 48, regardless of the real anchor
+capacity = 200.0                      # \$/week
+background_ts = now - 72 * 3600       # 3 days ago: in-week, outside every rate window
+burst_ts = now - 3 * 3600             # 3h ago: inside the 6h window AND the 24h window
+
+state = {
+    'events': [
+        {'ts': background_ts, 'actor': 'lane:x', 'cost': 20.0},
+        {'ts': burst_ts, 'actor': 'lane:x', 'cost': 20.0},
+    ],
+    'calibration': [{'utc': '2026-01-01T00:00:00+00:00', 'percent': 1.0, 'capacity': capacity}],
+    'offsets': {},
+}
+r = meter.build_report(state, now)
+proj_new = r['projected_percent_at_reset']
+# The mutant: reinstate the pre-#433 formula (project from rate_6h) on this
+# SAME report, so the only thing that differs is which rate window is used --
+# not the data, not the capacity, not hours_left.
+proj_old_mutant = r['estimated_percent'] + r['rate_6h'] * 48.0 / capacity * 100.0
+assert proj_new < 90, ('24h rule should stay under the Low line', proj_new)
+assert proj_old_mutant >= 90, ('mutant must actually cross the line to prove the burst drove it, not something else', proj_old_mutant)
+"
+check "the same \$/h rate sustained for the full 24h (not just a 6h burst) still goes Low under rate_24h" \
+    python3 -c "
+import sys
+sys.path.insert(0, '$HERE/usage')
+import meter
+
+wk_end = meter.week_bounds(meter.iso_to_epoch('2026-10-02T17:10:00+00:00'))[1]
+now = wk_end - 48 * 3600
+capacity = 200.0
+background_ts = now - 72 * 3600
+sustained_ts = now - 12 * 3600        # mid-window: not a recent burst, spread over the day
+
+state = {
+    'events': [
+        {'ts': background_ts, 'actor': 'lane:x', 'cost': 20.0},
+        {'ts': sustained_ts, 'actor': 'lane:x', 'cost': 80.0},   # same \$3.33/h as the burst, x4 the duration
+    ],
+    'calibration': [{'utc': '2026-01-01T00:00:00+00:00', 'percent': 1.0, 'capacity': capacity}],
+    'offsets': {},
+}
+r = meter.build_report(state, now)
+assert r['projected_percent_at_reset'] >= 90, ('a genuinely sustained ramp must still trip Low', r)
 "
 
 echo "== meter.py: its week anchor agrees with window.sh's, several instants, across a DST change"
@@ -193,8 +268,8 @@ cp "$MM/work/limits.env" "$MM/limits.before"; cp "$MM/work/briefs/alpha.model" "
 
 bash "$HERE/usage/mode.sh" low > "$MM/low.out" 2>&1
 check "low writes the low-active file lane.sh reads" test -s "$MM/work/usage/low-active"
-check "low adds the navigation agent's call cap" \
-    grep -q '^PATHFIND_MODEL_CALLS_MAX=20$' "$MM/work/limits.env"
+check "low writes no pathfind call cap (dead dial, deleted #433)" \
+    bash -c '! grep -q PATHFIND_MODEL_CALLS_MAX "$1"' _ "$MM/work/limits.env"
 check "low leaves LANE_MAX alone (lane.sh caps it at read time)" grep -q '^LANE_MAX=10$' "$MM/work/limits.env"
 check "low leaves the escalation model alone" \
     grep -q '^MODEL_LANE_ESCALATED=claude-fable-5-1$' "$MM/work/limits.env"
@@ -213,7 +288,7 @@ check "normal removes the hostops drop-in" \
 check "normal removes the low-active file" bash -c '! test -e "$1"' _ "$MM/work/usage/low-active"
 check "the mode file says normal" grep -q '^mode=normal$' "$MM/work/usage/mode"
 
-echo "== mode.sh: every tick re-evaluates against the meter; no latch, hysteresis, manual lock"
+echo "== mode.sh: AND to enter Low, OR to exit, no latch, manual lock (#433, owner 2026-10-10: no low on a projection alone)"
 mkdir -p "$MM/work/usage"
 um_state() {   # <estimated pct> <projected pct or "">
     python3 - "$MM/work/usage/state.json" "$1" "${2:-}" <<'PY'
@@ -230,43 +305,73 @@ um_mode() { sed -n 's/^mode=//p' "$MM/work/usage/mode"; }
 um_lines() { wc -l < "$MM/work/usage/switches.log"; }
 
 bash "$HERE/usage/mode.sh" normal > /dev/null 2>&1    # known starting state, source=manual
-um_state 85 90
+um_state 85 101
 um_tick t1
 check "tick is a no-op while a manual lock is held" grep -qi 'manual override' "$MM/t1.out"
 check "...and does not flip the mode" [ "$(um_mode)" = normal ]
 
 bash "$HERE/usage/mode.sh" auto > /dev/null 2>&1
-check "auto clears the manual lock and evaluates: 85% used is low" [ "$(um_mode)" = low ]
+check "auto clears the manual lock and evaluates: 85% used AND 101% projected (> 100) goes low" [ "$(um_mode)" = low ]
 check "...and source=auto" grep -q '^source=auto$' "$MM/work/usage/mode"
-check "...and the switch names the reading that caused it" grep -q -- '-> low (auto): estimated 85' "$MM/work/usage/switches.log"
+check "...and the switch names both numbers and both lines" \
+    grep -q -- '-> low (auto): 85% used >= 80 and 101% projected > 100' "$MM/work/usage/switches.log"
 
 n=$(um_lines); um_tick t2
 check "a tick that changes nothing logs nothing" [ "$(um_lines)" = "$n" ]
 
-um_state 10 80; um_tick t3
-check "hysteresis: under 80% used but still 80% projected (>= 75) stays low" [ "$(um_mode)" = low ]
+um_state 85 97; um_tick t3
+check "already low: 85% used, 97% projected (>= 95) stays low -- hysteresis" [ "$(um_mode)" = low ]
 
-um_state 10 50; um_tick t4
-check "no latch: 10% used and 50% projected brings it back to normal mid-week" [ "$(um_mode)" = normal ]
+um_state 85 94; um_tick t4
+check "already low: 85% used, 94% projected (< 95) exits to normal -- OR on the way out" [ "$(um_mode)" = normal ]
 check "...and removes low-active" bash -c '! test -e "$1"' _ "$MM/work/usage/low-active"
 
-um_state 40 80; um_tick t5
-check "hysteresis the other way: 80% projected from normal (< 90) stays normal" [ "$(um_mode)" = normal ]
+um_state 40 95; um_tick t5
+check "40% used (< 80) stays normal even at 95% projected -- pct alone cannot enter" [ "$(um_mode)" = normal ]
 
-um_state 40 95; um_tick t6
-check "projected over: 40% used but 95% projected (>= 90) goes low" [ "$(um_mode)" = low ]
+um_state 19 134; um_tick t6
+check "today's case (10-10 09:30): 19% used, 134% projected stays normal -- projection alone is not a reason" \
+    [ "$(um_mode)" = normal ]
 
-um_state 2 ""; um_tick t7
+um_state 85 100; um_tick t7
+check "85% used, 100% projected stays normal -- the projection line is strict (over, not at)" [ "$(um_mode)" = normal ]
+
+um_state 85 101; um_tick t8
+check "85% used, 101% projected goes low -- both lines true" [ "$(um_mode)" = low ]
+
+um_state 10 50; um_tick t9
+check "no latch: 10% used, 50% projected brings it back to normal mid-week" [ "$(um_mode)" = normal ]
+
+um_state 2 ""; um_tick t10
 check "the week rolling over (2% used, no projection yet) is just a low reading: normal" [ "$(um_mode)" = normal ]
 
-printf 'USAGE_LOW_PROJ=60\n' >> "$MM/work/limits.env"
-um_state 10 65; um_tick t8
-check "the entry line is a limits.env dial: USAGE_LOW_PROJ=60 makes 65% projected low" [ "$(um_mode)" = low ]
-sed -i '/^USAGE_LOW_PROJ=/d' "$MM/work/limits.env"
+# No limits.env override remains for this dial (#433) -- the only way to
+# move the entry line now is models.toml itself, via $HAKUX_MODELS_TOML.
+cp "$HERE/models.toml" "$MM/models-lowproj60.toml"
+sed -i 's/^low_proj = 100.*/low_proj = 60/' "$MM/models-lowproj60.toml"
+grep -q '^low_proj = 60$' "$MM/models-lowproj60.toml" || bad "fixture: low_proj edit did not take"
+um_state 85 65    # pct >= 80 held; only the projection half of the dial moves
+export HAKUX_MODELS_TOML="$MM/models-lowproj60.toml"
+um_tick t11
+unset HAKUX_MODELS_TOML
+check "the projection half of the entry line is a models.toml dial: low_proj=60 makes 65% projected low (pct held >= 80)" \
+    [ "$(um_mode)" = low ]
 
-rm -f "$MM/work/usage/low-active"; um_state 10 80; um_tick t9
+rm -f "$MM/work/usage/low-active"; um_state 85 97; um_tick t12
 check "a mode file saying low with low-active missing heals: the file comes back" test -s "$MM/work/usage/low-active"
 
 unset -f um_dump um_state um_tick um_mode um_lines
 unset UM MM UM_NOW UM_NOW_ISO far_future um_instant
 unset HAKUX_NOW
+
+# Restore exactly what was there before (addendum 2, fold selftest
+# 2026-10-10 15:49): re-export the harness's own value if it had one,
+# unset only if it did not, so a later fragment sourced into this same
+# shell (97, 98, 99) sees the real $HAKUX_WORK, not this one's, and sees it
+# as a value, not a missing variable under `set -u`.
+if [ -n "$UM_SAVED_WORK_SET" ]; then export HAKUX_WORK="$UM_SAVED_WORK"; else unset HAKUX_WORK; fi
+if [ -n "$UM_SAVED_PROJECTS_SET" ]; then export HAKUX_CLAUDE_PROJECTS="$UM_SAVED_PROJECTS"; else unset HAKUX_CLAUDE_PROJECTS; fi
+if [ -n "$UM_SAVED_SYSTEMD_SET" ]; then export HAKUX_SYSTEMD_USER_DIR="$UM_SAVED_SYSTEMD"; else unset HAKUX_SYSTEMD_USER_DIR; fi
+unset UM_SAVED_WORK_SET UM_SAVED_WORK UM_SAVED_PROJECTS_SET UM_SAVED_PROJECTS UM_SAVED_SYSTEMD_SET UM_SAVED_SYSTEMD
+check "HAKUX_WORK is restored to the harness's own value after this fragment" \
+    [ "${HAKUX_WORK-}" = "$T/work" ]

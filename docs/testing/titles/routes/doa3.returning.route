@@ -1,0 +1,91 @@
+# state: any   (composed from the kept profile's survey shots; lane.zetaroutes1012)
+# titlestate.admit() refuses `returning` for this golden: 220536a66fe2 is
+# title data only, no save directory (confirmed by the boot table below --
+# no load/continue/save-name screen on the way to the fight, just the same
+# menu path a fresh disk would show). `any` is what the gate names for a
+# route confirmed on a data-only golden as-is; this file keeps its required
+# name (doa3.returning.route) but is loaded with `# state: any`.
+# Dead or Alive 3 (4D53002D), Nova, kept profile golden 220536a66fe2.
+# Boot and menu cadence read from the survey run z-1791803606-fpsbelow1012-3255578
+# (survey.route, HAKUX_ZETA_D24=1); table in docs/lanes/zetaroutes1012/NOTES.md
+# section 2. That run's own START/A spam (5s cadence) produced this screen
+# sequence on the kept-profile disk (no load prompt, no save name, no profile
+# gate -- same as doa3.route's own header says for this title):
+#   044937-booted: title card, "PRESS START BUTTON".
+#   044942 (START): attract (dark castle-wall frame).
+#   044948 (A): title card again, "PRESS START BUTTON".
+#   044954 (START): MODE SELECT, STORY MODE icon highlighted.
+#   045000 (A): (unread; logged).
+#   045007 (START): STORY MODE CHARACTER SELECT, Kasumi (PLAYER-1 / COS.1).
+#   045013 (A): "STORY MODE" loading transition.
+#   045019 (START): pre-fight close-up, "Please do not block my way".
+#   045025 (A): fight intro -- Kasumi falling through fog, health bars already
+#     on screen. The very next survey cycle (045031, 6s later) was already
+#     PAUSED/CONTINUE with Kasumi KO'd -- a full round fits in about 6s with no
+#     attack behind the input, so this route engages the combo loop the instant
+#     health bars appear, no extra blind cycle.
+# So the menu path below is the survey's own recorded cadence (four START/A
+# cycles from boot to the fight intro).
+#
+# Play loop: doa3.route's combo (LX forward, X/Y/X, B, A), then a START/A pair
+# every combo, about every 7 s. What each press does, from recorded shots:
+#   - mid-fight, START opens PAUSED (CONTINUE highlighted, "SELECT (A)") and A
+#     closes it: survey 045031-menu-start / 045037-menu-a (fight live again).
+#   - at "CONTINUE ? n / Press start to continue", A does nothing (survey
+#     045152-menu-a, countdown at 3) and START starts a fresh round within 5 s
+#     with no character select (survey 045159-menu-start, both bars full).
+# z-1791820275-lane.zetaroutes1012-2514338 ran the combo with no START: the
+# first fight was lost about 30 s after the mark (091212 YOU LOSE), the
+# countdown ran out (091217 CONTINUE ? 7, 091227 GAME OVER), and from 091237 to
+# the end the title's attract mode played under PRESS START BUTTON. The
+# countdown lasts about 10 s, so a START every 7 s lands inside it. The pause
+# shows for about 1 s of each 7 s cycle.
+wait 60
+shot boot60
+wait 15
+shot boot75
+press START
+wait 5
+shot menu-start1
+press A
+wait 5
+shot menu-a1
+press START
+wait 5
+shot menu-start2
+press A
+wait 5
+shot menu-a2
+press START
+wait 5
+shot menu-start3
+press A
+wait 5
+shot menu-a3
+press START
+wait 5
+shot menu-start4
+press A
+wait 2
+shot pre-mark
+mark gameplay               # CHECK: Kasumi falling through fog, health bars on screen, no PAUSE overlay
+repeat forever {
+    axis LX max
+    wait 0.6
+    press X
+    wait 0.3
+    press Y
+    wait 0.3
+    press X
+    wait 0.3
+    axis LX mid
+    press B
+    wait 0.3
+    press A
+    wait 0.3
+    press START           # mid-fight: PAUSED; at CONTINUE ? n: a fresh round
+    wait 0.8
+    press A               # PAUSED: selects CONTINUE (back to the fight)
+    wait 0.3
+    shot play
+}

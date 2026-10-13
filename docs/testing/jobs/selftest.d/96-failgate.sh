@@ -130,8 +130,14 @@ sys.exit(0)
 PY
 fg_rq() {  # <dir> <who> [extra args...]: a soak of Crimson Skies (4D530021), the pilot gate's shape
     local d="$1" who="$2"; shift 2
+    # --find-route: this fixture's TITLESTATE_DIR has no golden for 4D530021,
+    # and the request carries no --route at all, so the profile gate
+    # (lane.profilegate1011, #433) would refuse it before the failure gate
+    # below is ever reached -- these cases are about the failure gate, not
+    # profile state.
     DISPATCH_DIR="$d" HAKUX_FAILURE_INTAKE="$FG/intake_stub.py" bash "$TESTING/request.sh" --who "$who" \
-        --purpose "failgate selftest" --no-expect selftest --title "4D530021-Crimson Skies.iso" --seconds 60 "$@" 2>&1; }
+        --purpose "failgate selftest" --no-expect selftest --title "4D530021-Crimson Skies.iso" --seconds 60 \
+        --find-route "selftest: failure gate, not a profile check" "$@" 2>&1; }
 fg_dir() { local d="$FG/$1"; rm -rf "$d"; mkdir -p "$d"/{queue,running,results,pilots}; echo "$d"; }
 fg_n() { ls "$1"/queue/*.req 2>/dev/null | wc -l; }
 fg_ok() { grep -qE "^queued [0-9]+-$1-[0-9]+$" <<< "$2"; }
@@ -177,7 +183,7 @@ else bad "3D: broken gate: exit $rc, $(tail -3 <<< "$out" | tr '\n' ' ')"; fi
 D=$(fg_dir absent)
 out=$(DISPATCH_DIR="$D" HAKUX_FAILURE_INTAKE="$FG/nope/failure_intake.py" bash "$TESTING/request.sh" \
         --who fgabs --purpose "failgate selftest" --no-expect selftest --title "4D530021-Crimson Skies.iso" \
-        --seconds 60 2>&1)
+        --seconds 60 --find-route "selftest: failure gate, not a profile check" 2>&1)
 if fg_ok fgabs "$out"; then ok "3E: with no failure_intake.py the request queues as before"
 else bad "3E: absent tool blocked the request: $(tail -3 <<< "$out" | tr '\n' ' ')"; fi
 

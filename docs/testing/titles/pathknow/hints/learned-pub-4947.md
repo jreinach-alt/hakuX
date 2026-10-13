@@ -1,2 +1,6 @@
 # Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
 - Panzer Dragoon Orta (4947002B, nova, pathfind 2026-10-03): gameplay in 2.6 min via publisher_logo START A -> publisher_logo A -> title_screen START -> main_menu A -> submenu UP A -> cutscene START A
+- Indigo Prophecy USA (4947007B, nova, pathfind 2026-10-07): gameplay in 11.5 min via title_screen START -> profile_creation A -> name_entry A DOWN DOWN DOWN RIGHT RIGHT A -> save_load_prompt A -> main_menu A -> main_menu DOWN A -> publisher_logo START A -> cutscene START A -> cutscene A -> cutscene B X Y -> cutscene A
+- Dragon Ball Z Sagas (4947007A, nova, pathfind 2026-10-07): gameplay in 1.8 min via publisher_logo START A -> title_screen START -> main_menu A -> submenu A -> cutscene A
+- Forgotten Realms Demon Stone USA (49470074, nova, pathfind 2026-10-08): gameplay in 2.6 min via publisher_logo START A -> submenu A -> publisher_logo START A -> cutscene START A
+- Mission Impossible Operation Surma USA (4947001F, nova, pathfind 2026-10-12): gameplay in 8.1 min via publisher_logo START A -> cutscene START A -> title_screen START -> main_menu A -> submenu A -> save_load_prompt A -> submenu A -> save_load_prompt A -> cutscene START A -> cutscene A -> cutscene A START A -> cutscene A A

@@ -1,0 +1,31 @@
+{
+  "registered_utc": "2026-10-10T13:15:00Z",
+  "who": "lane.perdrawon1010",
+  "issue": "433",
+  "title": "4541007B-Need_for_Speed_Most_Wanted.xiso.iso",
+  "route": "nfs-mw",
+  "device": "nova",
+  "seconds": 360,
+  "a_ref": "4ad1154e5528eb51455f8de1a597575a543216fb",
+  "b_ref": "4ad1154e5528eb51455f8de1a597575a543216fb",
+  "a_env": [
+    "HAKUX_UNI_TOGGLE=4"
+  ],
+  "b_env": [
+    "HAKUX_UNI_TOGGLE=4"
+  ],
+  "runs_per_arm": 1,
+  "queue_order": "three identical requests (not an A/B pair: both states are read from inside each run) -- request.sh --title 4541007B-Need_for_Speed_Most_Wanted.xiso.iso --route nfs-mw --seconds 360 --ref 4ad1154e5528eb51455f8de1a597575a543216fb --perflog --device nova --env HAKUX_UNI_TOGGLE=4, three times, giving three runs to pool and a run-to-run band per job item 2. Not the owner's 1v1 circuit or 3-racer sprint (no scripted route reaches either; building one is a route job this lane's territory does not cover) -- nfs-mw.route's existing RT-held MOTION window (0,24] device seconds after the mark), the one portion of any scripted NFS route that is NOT a fixed parked scene. perdraw1009's own separate-arm sample of this window (NOTES.md section 4, section 9) ran 350-1025 draws/frame as the car accelerates from a standing start, well short of the owner's profiled 3-racer-sprint ~1650 draws/frame, but the only part of this window where gfps has ever moved in either lane's data (pair 2: 26.4 -> 28.4 fps at 801-855 draws/frame). A period of 4 s (6 flips across the 24 s window) interleaves both phases across the draws/frame ramp instead of letting one phase own the light end and the other the heavy end, which a longer period would do -- at the cost of roughly half of each run's twelve 2-s rows being dropped for straddling a flip (perdraw1009's togread.py pure-row rule). This window may be too short to settle the question with device-run-flakes-sized margins; that is reported honestly (M4), not hidden.",
+  "judge": "python3 docs/lanes/perdrawon1010/motionread.py <RUN> <RUN> <RUN> --expect docs/testing/predictions/perdrawon1010-nfs-motion.json; reads perdraw1009's togread.py/armread.py functions at a_ref via `git show`, not a copy, and pools pure rows across every run given rather than asserting a per-run minimum (the 24 s window caps any one run at 12 rows before pure-row filtering).",
+  "prediction": "The same per-draw uniform cut perdraw1009 measured on the parked STATIC scene (-1.70 us/draw, -15.2%), read instead over the RT-held MOTION window and binned by draws/frame (BE) into lo (<700) and hi (>=700), the split perdraw1009's own two separate-arm MOTION pairs straddle (350-855 vs 855-1025). MODEL: the per-draw cost removed by the three switches should not depend on how many draws/frame are in flight (it is a fixed per-call saving along uniform_copy/the vsh uber-cache/the fog-write cache), so us/draw on-off should be roughly the same magnitude as STATIC's -1.70 in both bins; what changes with BE is whether that saving is large enough, at that draws/frame level, to move gfps off a value below the 30 fps cap -- which perdraw1009's own hi-BE pair (26.4->28.4) suggests it can. LEGS. V (validity): every run is marked, finishes its route, has no fatal line, logs toggle_ms 4000 (V_toggle_ms), and has no thermal pause from 60 s before the mark to the end of MOTION. M1 (the claim, all BE pooled): MOTION Draw us/draw on-off, pooled over every run's pure rows, in [-3.0, +0.2] -- the upper bound is not 0 because a single short window with few pooled rows can read a small positive value on noise alone (device-run-flakes); a confirmed positive would still be reported, just outside this band. M2: |on-off| exceeds 2x the pooled rows' SE (M2_sep_over_se; the lower bar than togread.py's 3-4x reflects MOTION's much smaller row count against STATIC's 90 s window). M3: in the hi-BE bin alone (>=700 draws/frame, the closest this route reaches to the owner's profiled high-draw racing), gfps on-off is at least -1.0 (M3_hi_gfps_min: no regression required, a gain is not asserted since perdraw1009's own hi pair is a single uncontrolled sample). M4 (honesty leg, not a claim about the switches): every phase x BE-bin pooled cell has at least 3 rows (M4_min_cell_n); if it does not, M1-M3's numbers are reported but the window is declared too short for this question, per the brief's own fallback (\"that window may be enough ... or you may need a longer-driving route\").",
+  "must_not_move": [],
+  "expect": {
+    "V_toggle_ms": 4000,
+    "M1_us_per_draw_min": -3.0,
+    "M1_us_per_draw_max": 0.2,
+    "M2_sep_over_se": 2.0,
+    "M3_hi_gfps_min": -1.0,
+    "M4_min_cell_n": 3
+  },
+  "expect_counts": {}
+}

@@ -30,16 +30,15 @@ WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 # script, which board.sh runs out of the fetched trunk worktree -- never
 # from the owner's checkout, whose branch is nobody's business here.
 JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Model by role (jobs/models.env, overridden by $WORK/limits.env): the board
-# tick and triage are bookkeeping and run on the bookkeeping model; an audit
-# reads code for defects and runs on the audit model.
-. "$JOBS/models.env"
+# Model by role, from the one table (models.toml, #433): the board tick and
+# triage are bookkeeping and run on the bookkeeping kind; an audit reads code
+# for defects and runs on the audit kind. HAKUX_MODEL still wins outright.
 . "$JOBS/window.sh"          # window_limit_hit / window_note_limit
-[ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 case "$job" in
-    audit*) MODEL="${HAKUX_MODEL:-$MODEL_AUDIT}" ;;
-    *)      MODEL="${HAKUX_MODEL:-$MODEL_BOOKKEEPING}" ;;
+    audit*) kind=audit ;;
+    *)      kind=bookkeeping ;;
 esac
+MODEL="${HAKUX_MODEL:-$(bash "$JOBS/models.sh" model "$kind")}"
 log="$WORK/logs/$job/$(date -u +%Y%m%dT%H%M%SZ).json"
 mkdir -p "$(dirname "$log")"
 cd "$wt" || exit 2

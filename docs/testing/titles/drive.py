@@ -145,6 +145,8 @@ import urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import classify  # noqa: E402
+sys.path.insert(0, os.path.join(HERE, "..", "jobs"))
+import models  # noqa: E402  (the one model table/reader, #433)
 
 PAD = os.path.join(HERE, "..", "perf", "pad.sh")
 SKIPPABLE = ("logo", "intro_video", "cutscene")
@@ -160,7 +162,7 @@ DEFAULTS = dict(
     progress_bar=0.0, progress_window_s=10.0, stall_clear_s=0.0, keep_all=0,
 )
 
-MODEL = "claude-haiku-4-5-20251001"
+MODEL = models.model_for("drive")   # a screen classifier, not reasoning -- Haiku in every mode (#433)
 # USD per million tokens, Haiku 4.5 list price when this was written. The
 # cost logged per call is tokens x these; check them against the current
 # price list before reading the dollars as a bill.
@@ -1025,7 +1027,13 @@ class Driver:
                     self.sleep(1.0)
                     continue
                 cap_fail_since = None
-                r = self.classify(cur)
+                try:
+                    r = self.classify(cur)
+                except classify.Unavailable as e:
+                    # #433 step 3: the generic fallback fails closed. Never a blind
+                    # press, never a model call (no ANTHROPIC_API_KEY on this host).
+                    self.result = "ROUTE FAIL drive %s: pathclass unavailable (%s)" % (self.p.get("name"), e)
+                    return 1
                 st = r["state"]
                 self.sources[r["source"].split(":")[0]] = self.sources.get(r["source"].split(":")[0], 0) + 1
                 changed = st != self.state

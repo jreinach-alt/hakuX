@@ -54,6 +54,7 @@ import os
 import shutil
 import sys
 import tempfile
+import types
 
 from PIL import Image, ImageDraw
 
@@ -63,8 +64,27 @@ os.environ["PATHFIND_DRY"] = "1"
 os.environ["PATHFIND_KNOW"] = os.path.join(TMP, "know")
 os.environ["PATHFIND_AFTER_S"] = "0"
 os.makedirs(os.path.join(TMP, "know", "hints"))
+# The profile gate's R3 (#433) refuses a second session on a title whose path is known, and `happy` below records
+# one for 00000000. Every later case names this fake failed run with --path-broken; DISPATCH_DIR keeps R3's
+# proven-route lookup off the live dispatch results.
+os.environ["DISPATCH_DIR"] = os.path.join(TMP, "dispatch")
+BROKEN = "sim-pathbroken"
+os.makedirs(os.path.join(TMP, "dispatch", "results", BROKEN))
+json.dump({"title": "00000000-Sim.xiso.iso"}, open(os.path.join(TMP, "dispatch", "results", BROKEN, "request.json"), "w"))
 sys.path.insert(0, HERE)
 import pathfind  # noqa: E402
+# The fake device has no logcat for title_verdict.py, so the validity check would find no verdict and hold on. The
+# existing hold legs test the loop, so their check passes; the validity rule itself is tested by the 'validity' legs
+# below (hold_shortfall on fake verdicts), and on the device by every held run's validity lines in hold.jsonl.
+pathfind.Agent.hold_check = lambda self, play_s, log: ("pass", 0.0, "")
+# the selftest's claim budgets are seconds long and run on real time: a 300-s confirm grace would let every
+# budget-ended case wait out its sim. The grace is a production setting; its path is the next real claim's test.
+pathfind.CONFIRM_GRACE_S = 0
+# The hold legs test the hold loop's own rules (unstick ladder, still windows, play credit) on sim scenes that end in a
+# repeated frame, which the stuck detector (10-07) rightly ends as stuck_abort after 6 samples. It is off for them and
+# on for its own leg, 'sdstuck'.
+SD = pathfind.stuckdetect
+pathfind.stuckdetect = None
 
 # the escalation cases need a stronger model than FAST; the default is Sonnet for both today (10-03), so pin Opus
 pathfind.STRONG = "claude-opus-5-5"
@@ -121,7 +141,7 @@ def run(name, frames, answers, extra=()):
     json.dump(answers, open(ans, "w"))
     out = os.path.join(TMP, name, "out")
     rc = pathfind.main(["00000000", "--device", "nova", "--budget-min", "0.05", "--out", out, "--sim", fd,
-                        "--sim-answers", ans] + list(extra))
+                        "--sim-answers", ans, "--path-broken", BROKEN] + list(extra))
     res = json.load(open(os.path.join(out, "result.json")))
     steps = [json.loads(l) for l in open(os.path.join(out, "steps.jsonl"))]
     calls = [json.loads(l) for l in open(os.path.join(out, "calls.jsonl"))] if os.path.exists(
@@ -153,6 +173,15 @@ lp = os.path.join(TMP, "know", "hints", "learned-pub-0000.md")
 check("happy", os.path.exists(lp) and "(00000000," in open(lp).read() and "main_menu A" in open(lp).read(),
       "one learned line was appended to learned-pub-0000.md")
 
+# r3: with that path recorded, a second session that names no failed run of it is refused before any step
+try:
+    pathfind.main(["00000000", "--device", "nova", "--out", os.path.join(TMP, "r3", "out"), "--sim", TMP])
+    r3 = "not refused"
+except SystemExit as e:
+    r3 = str(e.code)
+check("r3", "already has a known path" in r3 and not os.path.exists(os.path.join(TMP, "r3", "out", "steps.jsonl")),
+      f"a known path refuses a blind session: {r3[:90]}")
+
 # repeat: a dialogue the model answered with one A that advanced it: A again unlooked, CLAIM_REPEAT times, then a look
 # (Phantom Crash, 10-04: 62 model calls on a ClubWired dialogue)
 rc, res, steps, calls = run("dialogue", [("cine", 0), ("cine", 40), ("cine", 80), ("cine", 120), ("cine", 160),
@@ -161,9 +190,9 @@ rc, res, steps, calls = run("dialogue", [("cine", 0), ("cine", 40), ("cine", 80)
                              {"state": "cutscene", "why": "dialogue box", "action": ["A"], "wait_s": 2},
                              {"state": "main_menu", "why": "menu", "action": ["A"], "wait_s": 2}], ["--no-record"])
 src = [s.get("src") for s in steps]
-check("dialogue", src[:5] == ["fast", "repeat", "repeat", "repeat", "fast"],
-      f"one look, three unlooked repeats, then a look (not the stronger model): {src}")
-check("dialogue", all(s.get("action") == ["A"] for s in steps[:5]), "the repeats send the look's own press")
+check("dialogue", src[:6] == ["fast"] + ["repeat"] * 5,
+      f"one look, five unlooked repeats (CLAIM_REPEAT_BOX on a letterboxed cutscene), then the next step: {src}")
+check("dialogue", all(s.get("action") == ["A"] for s in steps[:6]), "the repeats send the look's own press")
 
 # proberot: a live HUD whose probe input never moves anything (Road Rage's RT, 10-04): the third probe is not RT
 check("proberot", [pathfind.probe_key(t) for t in ("RT:1.5", "RT:3", "HOLD:A:3", "STICK:up:2", "RT+left:1.2", "A")]
@@ -363,15 +392,29 @@ check("hold", ROUTE_LOG[:2] == ["mark gameplay", "soak start"] and ROUTE_LOG[-1]
 kept_left = [f for f in os.listdir(os.path.join(TMP, "hold", "out", "frames")) if "hold" in f and f.endswith(".jpg")]
 check("hold", len(kept_left) == hold.get("frames"), f"the other hold frames were deleted ({len(kept_left)} left)")
 
-# hold stuck: the screen stays a pause and START never gets back to play: the hold gives up after the nav cap
+# hold stuck: the screen stays a pause and START never gets back to play. The step cap no longer ends the hold while budget
+# remains (10-06 owner order): it runs ladder rounds, and the hold stops only when the ladder has run out and the budget is gone
 rc, res, steps, calls = run("holdstuck", PREFIX + [("menu", 0)] * 30,
                             [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE]
                             + [PAUSED] * 16, ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
 hold = res.get("hold", {})
-check("holdstuck", res["result"] == "gameplay" and hold.get("ok") is False and "off play" in hold.get("reason", ""),
-      f"the claim stands but the hold gives up: {hold.get('reason', '')[:80]}")
-check("holdstuck", sum(1 for c in calls if c["purpose"] == "hold-check") <= pathfind.HOLD_NAV_MAX + 1,
-      "no more than the nav cap of model steps")
+check("holdstuck", res["result"] == "gameplay" and hold.get("ok") is False
+      and ("off play" in hold.get("reason", "") or "budget" in hold.get("reason", "")),
+      f"the claim stands but the hold gives up at the end of its budget: {hold.get('reason', '')[:80]}")
+check("holdstuck", sum(1 for c in calls if c["purpose"] == "hold-check") > pathfind.HOLD_NAV_MAX + 1,
+      "the hold runs past the nav cap while budget remains, with ladder rounds, instead of stopping at it")
+
+# sdstuck: the same stuck pause with the stuck detector on: a few unstick rungs, then the hold ends as stuck_abort
+# with the claim standing, well inside the budget the ladder would otherwise spend
+pathfind.stuckdetect = SD
+rc, res, steps, calls = run("sdstuck", PREFIX + [("menu", 0)] * 30,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE]
+                            + [PAUSED] * 16, ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
+pathfind.stuckdetect = None
+hold = res.get("hold", {})
+check("sdstuck", SD is not None and res["result"] == "gameplay" and hold.get("ok") is False
+      and hold.get("stuck_abort") is True and hold.get("reason", "").startswith("stuck_abort:"),
+      f"the detector ends a stuck hold with a reason: {hold.get('reason', '')[:80]}")
 
 # holdrepeat: a cutscene that asks for A (an episode card) is answered once; its A is repeated HOLD_REPEAT times
 # with no model call, then the screen is read again, and the play resumes (Panzer, 10-03: 4 looks per death)
@@ -446,7 +489,152 @@ check("titlehold", not any(t in pathfind.TITLE_HOLD_FORBID for t in flat),
 check("titlehold", [a for a in acts if "X" in a] == [["X"]] * flat.count("X") and flat.count("X") >= 2,
       f"X is pressed alone again after still windows: {flat.count('X')} presses")
 walk = pathfind.TITLE_HOLD["58490004"]["walk"]
-check("titlehold", all(a in (walk, ["X"]) for a in acts), f"every other cycle is the walk: {acts[:6]}")
+# the walk may be turned round (16:08 reverse rule): each walk and move, in either direction
+moves = [m + walk for m in pathfind.TITLE_UNSTICK]
+moves = moves + [pathfind.flip_walk(a, True) for a in moves] + [pathfind.flip_walk(walk, True)]
+check("titlehold", all(a in (walk, ["X"]) or a in moves for a in acts),
+      f"every other cycle is the walk or a stand-still move before it: {acts[:6]}")
+check("titlehold", any(l.get("unstick") for l in look),
+      "two still windows in a row send a stand-still move (the detector fires on a still scene)")
+
+# continue: a CONTINUE countdown in a non-title hold gets START, then A, unlooked (Guilty Gear XX, 10-04: three A presses
+# did not continue, and the countdown ran out to GAME OVER). The count restarts once play is back.
+CONT = {"state": "continue", "in_play": False, "why": "CONTINUE countdown after a lost round", "action": ["A"], "wait_s": 1}
+ROUTE_LOG.clear()
+rc, res, steps, calls = run("continue", PREFIX + [("game", 0)] * 120 + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, {"genre": "attack"}]
+                            + [CONT] * 3 + [PLAYING] * 160,
+                            ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
+look = [json.loads(l) for l in open(os.path.join(TMP, "continue", "out", "hold.jsonl"))]
+cont = [l for l in look if l.get("continue")]
+check("continue", [l["action"] for l in cont[:3]] == [["START"], ["A"], ["START"]],
+      f"the continue looks press START, A, START: {[l.get('action') for l in cont[:3]]}")
+check("continue", all(l.get("state") == "continue" for l in cont[:3]) and cont and cont[0]["continue"] == 1,
+      f"the continue count is recorded per look: {[l.get('continue') for l in cont[:3]]}")
+
+# sports (10-05 owner rule): a team hold reads the clock and period once before it starts (held["sports"], purpose
+# "sports"), and a quarter/period break is its own state: START, then A, unlooked, like a CONTINUE countdown.
+PB = {"state": "period_break", "in_play": False, "why": "end of the first quarter, stats card", "action": ["A"], "wait_s": 1}
+SPORTS = {"clock": "0:00", "period": "Q1", "human_controlled": True, "why": "Q1 clock, a controller under the home team"}
+ROUTE_LOG.clear()
+rc, res, steps, calls = run("sports", PREFIX + [("game", 0)] * 120 + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, {"genre": "team"}, SPORTS]
+                            + [PB] * 2 + [PLAYING] * 160,
+                            ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
+hold = res.get("hold", {})
+look = [json.loads(l) for l in open(os.path.join(TMP, "sports", "out", "hold.jsonl"))]
+sp = hold.get("sports", {})
+check("sports", any(c["purpose"] == "sports" for c in calls) and sp.get("human_controlled") is True
+      and sp.get("period") == "Q1", f"the team hold reads the clock and period before it starts: {sp}")
+pb = [l for l in look if l.get("state") == "period_break"]
+check("sports", [l["action"] for l in pb[:2]] == [["START"], ["A"]],
+      f"a period break gets START, then A, unlooked: {[l.get('action') for l in pb[:2]]}")
+check("sports", "period_break" in pathfind.STATES and "LONGEST" in pathfind.RULES
+      and "period_break" in pathfind.RULES,
+      "the state list names period_break, and the claim prompt sets the period to the longest value")
+# replay (10-05, NHL 2K3 hold2): the hold's look prompt names the instant-replay footer as period_break, not play. The fake
+# model cannot read a prompt, so this checks the rule's text and that the look sends it (the frame test is the device run).
+import inspect  # noqa: E402
+rp = pathfind.HOLD_REPLAY
+check("replay", all(w in rp for w in ("Rewind", "Play/Pause", "Back", "period_break", "START"))
+      and "HOLD_REPLAY" in inspect.getsource(pathfind.Agent.hold_look),
+      "the hold look sends the replay footer rule: a replay is period_break, input START")
+# name entry (10-05, Strike Force Bowling hold4): a title's own name sequence is pressed at a name entry in the hold; any
+# other title gets START, then A, in turn. The high-score entry at a game end walked the hold off the lanes.
+check("nameseq", pathfind.name_press("Strike Force Bowling", 0) == ["DOWN", "DOWN", "DOWN", "DOWN", "A"]
+      and pathfind.name_press("Strike_Force_Bowling", 3) == ["DOWN", "DOWN", "DOWN", "DOWN", "A"]
+      and pathfind.name_press("NBA 2K3", 0) == ["START"] and pathfind.name_press("NBA 2K3", 1) == ["A"],
+      "a title's name sequence is used at a name entry; other titles keep START, then A")
+# REMATCH (10-06, Marvel Nemesis, runs/sweep-4541038A and -r2): A on a panel that reads REMATCH highlighted, else one UP (the menu
+# wraps); the confirm dialog (which opens on NO) goes DOWN to YES and A; a RETURN confirm gets A (NO cancels). Other menus get no rule.
+check("rematch", pathfind.rematch_press("END OF MATCH results: REMATCH highlighted", "results") == ["A"]
+      and pathfind.rematch_press("END OF MATCH: RETURN TO CHARACTER SELECT highlighted, REMATCH below", "results") == ["UP"]
+      and pathfind.rematch_press("Are you sure you want to REMATCH? NO highlighted", "menu") == ["DOWN", "A"]
+      and pathfind.rematch_press("Are you sure you want to RETURN TO CHARACTER SELECT? NO highlighted", "menu") == ["A"]
+      and pathfind.rematch_press("pause menu, resume", "pause") is None,
+      "REMATCH: A on the highlighted REMATCH row else UP; DOWN and A on the REMATCH confirm; A cancels a RETURN confirm")
+# fighting select (10-06, MK Armageddon rehold, rehold2, rehold2b): a grid look plays A, B, START from the first look
+check("counter", pathfind.counter_press("Batman fights a Crane Thug with a 'Press Y now' QTE prompt; live round") == ["Y"]
+      and pathfind.counter_press("Batman in combat, 'Press X now' over live play") == ["X"]
+      and pathfind.counter_press("Batman with a 'To kick press Y' context prompt") is None
+      and pathfind.counter_press("pause menu, resume") is None,
+      "a counter prompt names its button; a context prompt does not")
+check("charsel", pathfind.charsel_press("Character select grid is showing with STRYKER highlighted; not live play.", "menu", 0) == ["A"]
+      and pathfind.charsel_press("Character select grid, handicap panel open", "menu", 1) == ["B"]
+      and pathfind.charsel_press("Character select grid", "menu", 2) == ["START"]
+      and pathfind.charsel_press("Character select grid", "menu", 3) == ["A"]
+      and pathfind.charsel_press("Character select grid", "menu", pathfind.CHARSEL_TRIES) is None
+      and pathfind.charsel_press("Character select grid", "gameplay", 0) is None
+      and pathfind.charsel_press("title screen with PRESS START", "menu", 0) is None
+      and pathfind.charsel_press("Fight HUD, round timer 90", "other", 0) is None,
+      "the select cycle is A, B, START; a grid look only, not a title, not play, CHARSEL_TRIES presses at most")
+# still by the scene's shift for title and fighting holds (10-06, Shaolin Monks: effects in place read as moving on pixels)
+check("still-shift", pathfind.still_window(True, 0.2, 0.0) and not pathfind.still_window(True, 0.0, 2.0)
+      and pathfind.still_window(False, 0.01, 50.0) and not pathfind.still_window(False, 0.2, 0.0),
+      "a title or fighting window is still on the shift (effect in place: still); other genres on the pixel change")
+# the reverse rule (16:08 owner order, Blowout's corner): REVERSE_N looks in a row at or under UNCHANGED turn the walk round;
+# a moving look resets the count; two flips with no movement between stop flipping (the still unstick takes over)
+_lr, _fl, _rv, _flips = 0, False, 0, []
+for _ch in [0.2, 0.004, 0.005, 0.006, 0.005, 0.2, 0.003, 0.004, 0.002, 0.001, 0.002, 0.003]:
+    _lr, _fl, _rv, _now = pathfind.reverse_trigger(_ch, _lr, _fl, _rv)
+    if _now:
+        _flips.append(_fl)
+_lr, _fl, _rv, _stuck = 0, False, 0, []
+for _ch in [0.004] * 9:
+    _lr, _fl, _rv, _now = pathfind.reverse_trigger(_ch, _lr, _fl, _rv)
+    if _now:
+        _stuck.append(_fl)
+check("reverse-stop", _stuck == [True, False] and _rv == 2,
+      f"nine still looks flip twice then stop: the still unstick takes the hold from there: {_stuck}")
+# the patrol backstop (lane.local 17:4x): the shooter walk turns round every PATROL_EVERY play looks, and two turns bring
+# the walk back to where it started. A mutant that drops the periodic turn fails the cadence and the round trip.
+_due = [n for n in range(1, 13) if pathfind.patrol_due(n)]
+_walk = pathfind.HOLD_GENRES["shooter"]
+_fl, _seen = False, []
+for _n in range(1, 9):
+    if pathfind.patrol_due(_n):
+        _fl = not _fl
+    _seen.append(pathfind.flip_walk(_walk, _fl))
+check("patrol", _due == [4, 8, 12] and _seen[3] != _walk and _seen[7] == _walk,
+      f"the shooter walk turns at looks {_due}, is reversed at look 4 and back to the start at look 8")
+check("reverse-trigger", _flips == [True, False, True]
+      and pathfind.flip_walk(["STICK:up:1", "A", "STICK:left:2.5", "RSTICK:right:0.6"], True)
+          == ["STICK:down:1", "A", "STICK:right:2.5", "RSTICK:right:0.6"]
+      and pathfind.flip_walk(["STICK:up:1", "A"], False) == ["STICK:up:1", "A"],
+      f"three still looks flip the walk, a moving look resets, two flips with no movement stop, the stick tokens turn round: {_flips}")
+# bowling (10-05, AMF Bowling 2004): a bowl hold loops aim and throw with no B, X or Y, and each frame's scorecard
+# (a period_break) gets START, then A, on its own budget (PERIOD_TRIES), not the shared CONTINUE budget.
+ROUTE_LOG.clear()
+rc, res, steps, calls = run("bowl", PREFIX + [("game", 0)] * 120 + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, {"genre": "bowl"}]
+                            + [PB] * 10 + [PLAYING] * 160,
+                            ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
+hold = res.get("hold", {})
+look = [json.loads(l) for l in open(os.path.join(TMP, "bowl", "out", "hold.jsonl"))]
+loop = pathfind.HOLD_GENRES["bowl"]
+check("bowl", hold.get("genre") == "bowl" and not any(t in ("B", "X", "Y") for t in loop),
+      f"the bowl loop is aim and throw, no B, X or Y: {loop}")
+pb = [l for l in look if l.get("state") == "period_break"]
+check("bowl", [l.get("action") for l in pb[:2]] == [["START"], ["A"]] and all("continue" not in l for l in pb)
+      and [l.get("period") for l in pb[:3]] == [1, 2, 3],
+      f"scorecards press START, then A, counted as period looks: {[(l.get('action'), l.get('period')) for l in pb[:3]]}")
+check("bowl", any(l.get("action") == loop for l in look) and hold.get("ok") is True,
+      f"the hold runs the bowl loop and holds play after the scorecards: ok {hold.get('ok')}")
+# name entry (10-05, Strike Force Bowling): a high-score keyboard during a hold gets START, then A, on its own budget
+# (NAME_TRIES), and a bowling still window never sends X (the unlock ladder's button that opened the entry).
+NE = {"state": "name_entry", "in_play": False, "why": "high-score name entry with a keyboard", "action": ["A"], "wait_s": 1}
+ROUTE_LOG.clear()
+rc, res, steps, calls = run("nameent", PREFIX + [("game", 0)] * 120 + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, {"genre": "bowl"}]
+                            + [NE] * 8 + [PLAYING] * 160,
+                            ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
+hold = res.get("hold", {})
+look = [json.loads(l) for l in open(os.path.join(TMP, "nameent", "out", "hold.jsonl"))]
+ne = [l for l in look if l.get("state") == "name_entry"]
+check("nameent", [l.get("action") for l in ne[:2]] == [["START"], ["A"]] and all("continue" not in l for l in ne),
+      f"a name entry gets START, then A, unlooked: {[l.get('action') for l in ne[:2]]}")
+check("nameent", all("X" not in m for m in sum(pathfind.HOLD_UNSTICK["bowl"], [])),
+      f"a bowling still window moves the aim, not X: {pathfind.HOLD_UNSTICK['bowl']}")
 pathfind.now, pathfind.time.sleep = real_now, real_sleep
 
 # actions
@@ -491,6 +679,123 @@ check("fpsgate", locked["share"] > 0.99 and not pathfind.fps_gate_fails(locked, 
 check("fpsgate", not pathfind.fps_gate_fails(_course([10] * 10), 22) and _course([])["n"] == 0,
       "under 30 s of gfps lines is no evidence either way")
 
+# teamsport (10-05): a team sport's self-moving confirm judges the marked player; bowling, baseball and racing do not
+_ts = lambda goal, name: pathfind.Agent.team_sport(types.SimpleNamespace(goal=goal, name=name))
+check("teamsport", _ts("", "NBA 2K3") and _ts("Set the period length to the LONGEST", "NHL 2K3")
+      and _ts("", "ESPN College Hoops 2K5") and _ts("On TEAM SELECT: press RIGHT", "Some Title"),
+      "NBA/NHL names, a period goal and a team-select goal are team sports")
+check("teamsport", not _ts("Set the game length to the LONGEST (10 frames)", "AMF Xtreme Bowling")
+      and not _ts("Set innings to the longest", "MLB SlugFest 2004") and not _ts("", "RalliSport Challenge"),
+      "bowling, baseball and racing keep the both-ways steering test")
+
+# claim (10-06 owner order): the budget ends on live play with refused probes, so the run enters the hold instead of giving up
+# On the fake clock: on real time the hold's budget (claim + 1.75 x hold + 300) is ~11 min of wall time. One confirm refusal
+# (the PREFIX probe moves), then every look reads play: a refusal-shaped answer taken by a look reads unknown, not play.
+CLOCK = [1000.0]
+pathfind.now = lambda: CLOCK[0]
+pathfind.time.sleep = lambda s: CLOCK.__setitem__(0, CLOCK[0] + s)
+rc, res, steps, calls = run("claimlive", PREFIX + [("game", 0)] * 400,
+                            [GAME, {"gameplay": True, "responded": False, "why": "the probe did not move the scene"}]
+                            + [GAME] * 600,
+                            ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "2"])
+res_budget = res
+# self-moving live play (10-06, NFL Blitz Pro: live football from ~610 s, every probe refused on the moving camera): the
+# third live read whose probe was refused on a self-moving scene enters the hold, not the 25-min budget. One answer serves
+# the look (state, probe), the confirm (refused), the genre and the hold looks (in_play), so call order cannot shift it.
+SELFMOVE = [("game", 0), ("game", 0), ("game", 80), ("game", 160), ("game", 0), ("game", 0)]   # look, a b c, left, right
+LIVE = dict(GAME, gameplay=True, responded=False, in_play=True, genre="drive")
+rc, res, steps, calls = run("selfmove", SELFMOVE * 4 + [("game", (i * 47) % 160) for i in range(400)], [LIVE] * 300,
+                            ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
+nprobe = sum(1 for s in steps if s.get("state") == "probe")
+check("selfmove", res.get("claim_live_selfmove") == pathfind.LIVE_SELFMOVE_TO_HOLD and res.get("result") == "gameplay"
+      and res.get("hold") is not None and nprobe == pathfind.LIVE_SELFMOVE_TO_HOLD and CLOCK[0] - 1000 < 1800,
+      f"3 refused self-moving probes of live play enter the hold ({res.get('result')}, {nprobe} probes, "
+      f"live {res.get('claim_live_selfmove')}, hold {bool(res.get('hold'))})")
+CLOCK[0] = 1000.0
+rc, res, steps, calls = run("selfmove0", SELFMOVE * 4 + [("game", 0)] * 40, [LIVE] * 300,
+                            ["--no-record", "--no-replay", "--budget-min", "1"])
+check("selfmove", res.get("claim_live_selfmove") is None and res.get("result") != "gameplay",
+      f"with no --hold-s the refusals stand: no claim ({res.get('result')})")
+pathfind.now, pathfind.time.sleep = real_now, real_sleep
+res = res_budget
+check("claimlive", res.get("claim_budget_live") is True and res.get("result") == "gameplay"
+      and res.get("hold") is not None,
+      f"the claim budget ran out on live play: the run enters the hold ({res.get('result')}, hold {bool(res.get('hold'))})")
+check("claimlive", pathfind.TEAM_CLAIM_EXTRA_S == 600 and pathfind.hold_budget_s(0, 600) == 1050 + 300,
+      "a team claim gets 600 s more budget; the hold budget formula is unchanged")
+
+# replay abort (10-06 owner order): a path that no longer matches, past its recorded time to gameplay + 3 min, stops the run
+dpath = {"minutes": 4.44, "steps": [{"state": "menu"}]}
+check("diverge", pathfind.replay_diverged(dpath, 7.5 * 60 + 1, False) and not pathfind.replay_diverged(dpath, 6 * 60, False)
+      and not pathfind.replay_diverged(dpath, 7.5 * 60 + 1, True) and not pathfind.replay_diverged(None, 9999, False)
+      and not pathfind.replay_diverged({"minutes": 4.44, "steps": []}, 9999, False),
+      "Deadly Alliance (4.44 min recorded): aborts past 7.5 min on a non-matching screen, not before, not on a match, not without a path")
+
+# validity (10-06 owner order): the hold ends on a passing verdict; a shortfall is extended only when more play can fix it
+short_dur = {"pass": False, "failing": "duration: 589 s of gameplay < 600 s confirmation", "crash": False, "hang": False,
+             "fps_ok_share": 1.0, "gameplay_s": 589, "timeline": {"play_share": 0.99, "play_s": 589, "scored_s": 589}}
+kind, s = pathfind.hold_shortfall(short_dur, 600)
+check("validity", kind == "duration" and abs(s - 26) < 0.01,
+      f"11 s short on duration is extended by 11 + 15 = 26 s: {kind} {s}")
+menu94 = {"pass": False, "failing": "menu time: 0.84 of the scored window in play (bar 90%)", "crash": False, "hang": False,
+          "fps_ok_share": 1.0, "gameplay_s": 600, "timeline": {"play_share": 0.84, "play_s": 506, "scored_s": 600}}
+kind, s = pathfind.hold_shortfall(menu94, 600)
+check("validity", kind == "share" and abs(s - 340) < 0.01,
+      f"94 s of menu in a 600-s window needs 94 / 0.10 - 600 = 340 s more: {kind} {s}")
+fps_fail = {"pass": False, "failing": "fps: 40% of gameplay at >= 28.5 fps (bar 90%)", "crash": False, "hang": False,
+            "fps_ok_share": 0.4, "gameplay_s": 600, "timeline": {"play_share": 0.99, "play_s": 600, "scored_s": 600}}
+hitch_fail = dict(short_dur, failing="hitch: 3 stalls over 500 ms after warm-up")
+check("validity", pathfind.hold_shortfall(fps_fail, 600)[0] == "stop" and pathfind.hold_shortfall(hitch_fail, 600)[0] == "stop"
+      and pathfind.hold_shortfall({"pass": True}, 600)[0] == "pass" and pathfind.hold_shortfall(None, 600)[0] == "stop",
+      "an fps fail and a hitch stop the hold at once; a pass ends it; no verdict stops it")
+# the ladder (10-06): off play past the cap runs its rounds, one press per look, cycling A, START, A, A, B, START
+check("ladder", pathfind.HOLD_LADDER[0] == "A" and pathfind.HOLD_LADDER[1] == "START" and "B" in pathfind.HOLD_LADDER
+      and pathfind.HOLD_LADDER_ROUNDS >= 1 and pathfind.HOLD_LADDER_ROUNDS * pathfind.HOLD_NAV_MAX >= 60,
+      f"A then START on the select, B out of a menu; {pathfind.HOLD_LADDER_ROUNDS} rounds x {pathfind.HOLD_NAV_MAX} steps")
+# budget: a 600-s hold with a 15-min claim gets 900 + 1050 + 300 s, not the old 900 + 900 + 300
+check("budget", pathfind.hold_budget_s(900, 600) == 900 + 1050 + 300, f"claim + 1.75 x hold + 300: {pathfind.hold_budget_s(900, 600)}")
+
 shutil.rmtree(TMP)
+# football goes last (owner order 10-05 12:35): football titles are refused, every other sport is not, and the env lifts it
+_fb = [("NFL Blitz Pro", "NFL_Blitz_Pro.xiso.iso"), ("ESPN NFL 2K5", "ESPN_NFL_2K5.iso"), ("Madden NFL 2005", "x.iso"),
+       ("NCAA College Football 2K3", "NCAA_College_Football_2K3.xiso.iso")]
+_ok = [("NHL Hitz Pro", "NHL_Hitz_Pro.xiso.iso"), ("NBA 2K2", "NBA_2K2.xiso.iso"), ("AMF Bowling 2004", "AMF_Bowling_2004.xiso.iso"),
+       ("NCAA March Madness 2005", "NCAA_March_Madness_2005.iso"), ("MLB SlugFest 2003", "MLB_SlugFest_2003.xiso.iso")]
+os.environ.pop("PATHFIND_FOOTBALL", None)
+check("football", all(pathfind.football_deferred(n, f) for n, f in _fb) and not any(pathfind.football_deferred(n, f) for n, f in _ok),
+      "NFL Blitz Pro, NFL 2K5, Madden and NCAA Football are deferred; hockey, basketball, bowling, baseball and March Madness are not")
+os.environ["PATHFIND_FOOTBALL"] = "1"
+check("football", not any(pathfind.football_deferred(n, f) for n, f in _fb), "PATHFIND_FOOTBALL=1 lifts the deferral")
+os.environ.pop("PATHFIND_FOOTBALL", None)
+# below the bar (owner order 10-06 16:45): a title whose latest verdict is under 0.9 with no fix is refused in code,
+# a committed fix or PATHFIND_BELOW_BAR=1 lifts it, and seeding keeps the cause and fix of a row it already has
+_bb = tempfile.mkdtemp(prefix="pf_belowbar_")
+_tsv = os.path.join(_bb, "below-bar.tsv")
+with open(_tsv, "w") as f:
+    f.write("\t".join(pathfind.BELOW_BAR_COLS) + "\n")
+    f.write("\t".join(["Dino Crisis 3", "", "0.3793", "runs/dino/verdict.json", "2026-10-04T04:44", "slowdown", ""]) + "\n")
+    f.write("\t".join(["Blowout", "4D4A0008", "0.9000", "runs/b/verdict.json", "2026-10-06", "", "abc123"]) + "\n")
+    f.write("\t".join(["Tork: Prehistoric Punk", "", "1.0000", "runs/t/verdict.json", "2026-10-05", "", ""]) + "\n")
+os.environ.pop("PATHFIND_BELOW_BAR", None)
+check("below-bar", pathfind.below_bar_refusal(None, "Dino Crisis 3", _tsv) is not None,
+      "a row under 0.9 with no fix refuses its title, and the refusal names the cause")
+check("below-bar", pathfind.below_bar_refusal("4D4A0008", "Blowout", _tsv) is None,
+      "a fix commit lifts the refusal, and a share at the bar is not below it")
+check("below-bar", pathfind.below_bar_refusal(None, "Tork Prehistoric Punk", _tsv) is None,
+      "a title whose latest verdict clears the bar is not refused")
+check("below-bar", pathfind.below_bar_refusal(None, "Mario Kart", _tsv) is None,
+      "a title with no row is not refused")
+os.environ["PATHFIND_BELOW_BAR"] = "1"
+check("below-bar", pathfind.below_bar_refusal(None, "Dino Crisis 3", _tsv) is None, "PATHFIND_BELOW_BAR=1 lifts it for telemetry")
+os.environ.pop("PATHFIND_BELOW_BAR", None)
+_runs = os.path.join(_bb, "runs")
+for _d, _j, _s in [("old", "2026-10-03T10:00Z", 0.3), ("new", "2026-10-04T10:00Z", 0.95)]:
+    os.makedirs(os.path.join(_runs, _d))
+    json.dump({"title": "Dino Crisis 3", "fps_ok_share": _s, "judged_utc": _j}, open(os.path.join(_runs, _d, "verdict.json"), "w"))
+_seeded = pathfind.seed_below_bar(_runs, _tsv)
+check("below-bar", len(_seeded) == 1 and _seeded[0]["fps_ok_share"] == "0.9500" and _seeded[0]["cause"] == "slowdown",
+      "seeding keeps the latest verdict per title and the cause already recorded on its row")
+shutil.rmtree(_bb)
+
 print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))
 sys.exit(1 if fails else 0)

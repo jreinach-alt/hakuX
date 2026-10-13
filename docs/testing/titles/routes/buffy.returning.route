@@ -1,0 +1,86 @@
+# state: returning   (composed from the kept profile's survey shots; lane.zetaroutes1012)
+# Buffy the Vampire Slayer (45410012), Nova, kept profile golden c6b6ec3cb8be.
+# Boot and menu cadence read from the survey run z-1791804165-fpsbelow1012-3514899
+# (survey.route, HAKUX_ZETA_D24=1); table in docs/lanes/zetaroutes1012/NOTES.md
+# section 1. That run's own START/A spam (5s cadence, the same cadence
+# buffy.route's first-run menu already uses) produced this screen sequence:
+#   052457-booted: title card, "Press START".
+#   052502 (START): in-engine cutscene (Giles + fog, ghostly Buffy).
+#   052509 (A): main menu (Start Game / Load Game / Options / Extras).
+#   052515 (START, Start Game highlighted): "Launch a New Game ... called
+#     Buffy 2" / Free Blocks / CONFIRM -- the same confirm screen
+#     buffy.route's own comment documents for "Buffy 1" on an empty disk;
+#     only the save-slot number differs, because this disk already holds a
+#     save. Nothing on the disk is remade or deleted by it.
+#   052521 (A): Difficulty select, Easy highlighted.
+#   052527 (START): "Summoning" (loading).
+#   052532 (A): mission card, "Spanish Mission, Outskirts of Sunnydale,
+#     Sunday 11:53PM".
+#   052538 (START): live play, canyon, HUD, "Move the R thumbstick..." tip.
+# So the menu path below is buffy.route's own (screen-identical on this
+# kept-profile disk).
+#
+# The play loop below is NOT buffy.route's own run-and-jump pattern. A run
+# of this route with that pattern (z-1791817586-lane.zetaroutes1012-2316443,
+# switch on) reached the mark cleanly (fps_ok=1.0, gameplay=777.6s) but
+# failed title_verdict.py's static-window check (static_frac=0.229, bar
+# 0.20): route-frames show Buffy running face-first into the canyon's wall
+# within ~20s of the mark (083219-play.png on) and pinned there, still
+# running in place, through the run's last frame (084448-play.png).
+# buffy.route's loop holds LY min continuously for 7+ seconds before its
+# first turn (axis LX max at the 8.1s mark) -- too long a straight run for
+# this canyon's geometry. spikeout.returning.route's confirmed-working loop
+# (nav.py, Thor, 2026-09-27) instead pulses LY for 1s at a time between
+# turns and backs off (axis LY max) rather than holding forward through a
+# collision. The loop below uses that same pulse-and-vary pattern: a 1s
+# forward pulse, a turn or a backward pulse, repeated with the turn
+# direction and jump/attack presses varied every cycle so no single
+# direction is held long enough to pin Buffy against one piece of geometry.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+repeat 5 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+wait 3
+shot pre-mark
+mark gameplay               # CHECK: the canyon with the HUD, no PAUSE panel
+repeat forever {
+    axis LY min
+    wait 1
+    axis LY mid
+    press B
+    wait 0.5
+    axis LX max
+    wait 1
+    axis LX mid
+    axis LY min
+    wait 1
+    axis LY mid
+    press B
+    wait 0.5
+    press A
+    wait 0.3
+    axis LX min
+    wait 1
+    axis LX mid
+    axis LY min
+    wait 1
+    axis LY mid
+    press X
+    wait 0.3
+    axis LY max
+    wait 0.8
+    axis LY mid
+    press B
+    wait 0.5
+    shot play
+}

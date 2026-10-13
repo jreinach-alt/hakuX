@@ -58,6 +58,14 @@ sys.path.insert(0, HERE)
 import classify  # noqa: E402  (content(), motion(), FPS_CORNER: the cheap checks)
 sys.path.insert(0, os.path.join(HERE, ".."))
 import hangwatch  # noqa: E402  (a HANG: frames, audio and the vCPU all still for HANG_S; stopped with telemetry)
+sys.path.insert(0, os.path.join(HERE, "..", "..", "lanes", "stuckdetect1007"))
+try:
+    import stuckdetect  # noqa: E402  (10-07: a hold stuck at a wall or in a menu is unstuck, then ended with a reason)
+except Exception:   # the detector is optional: a missing or broken copy leaves the hold exactly as it was
+    stuckdetect = None
+sys.path.insert(0, os.path.join(HERE, "..", "jobs"))
+import models  # noqa: E402  (the one model table/reader, #433)
+import titlestate  # noqa: E402  (the profile gate, #433: known_path/_path_broken_bad; also prepare/release below)
 
 PAD = os.path.join(HERE, "..", "perf", "pad.sh")
 KNOW = os.environ.get("PATHFIND_KNOW") or os.path.join(HERE, "pathknow")
@@ -76,14 +84,20 @@ LOGCAT_SPEC = ("hakuX-crash:V hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX
 VERDICT = os.path.join(HERE, "..", "title_verdict.py")
 # Sonnet 5 per step, not Haiku: measured 10-02 on the same ESPN frame with the image inline, Sonnet 5
 # answered in 3.5-3.9 s (70-80 output tokens), Haiku 4.5 in 6.4-9.1 s (430-500, most of it thinking),
-# and Haiku had looped 8 times on a Yes/No dialog in Midnight Club 3. Opus 5.5 when stuck.
-FAST = os.environ.get("PATHFIND_FAST", "claude-sonnet-5")
-# Opus 5.5 is the stronger step model, but the owner held Opus for token burn on 10-02 and navigation resumed on
-# Sonnet only for 10-03 (lane.local addendum 2: Sonnet only, <= $25). Restore Opus when that hold lifts.
-STRONG = os.environ.get("PATHFIND_STRONG", "claude-sonnet-5")
+# and Haiku had looped 8 times on a Yes/No dialog in Midnight Club 3.
+#
+# The owner's models.toml table (#433, 2026-10-10) gives "pathfind" ONE model per mode for both the
+# fast step and the stuck/confirm step -- route building and pathfinding are "effectively a
+# classifier for game inputs", Sonnet or Haiku, never Opus. FAST and STRONG stay as two names (the
+# stuck/confirm call sites and the fast/strong telemetry label at calls.jsonl are real distinctions
+# worth keeping) but both read the same kind, so they hold the same value until the table says
+# otherwise. PATHFIND_FAST/PATHFIND_STRONG env overrides are gone with models.env; HAKUX_MODELS_TOML
+# (models.py) is the override point now.
+FAST = models.model_for("pathfind")
+STRONG = FAST
 STATES = ("intro_video", "publisher_logo", "title_screen", "main_menu", "submenu", "profile_creation",
           "name_entry", "save_load_prompt", "controller_prompt", "loading", "cutscene", "pause",
-          "gameplay", "results", "game_over", "black", "fatal_error", "unknown")
+          "gameplay", "results", "game_over", "continue", "period_break", "black", "fatal_error", "unknown")
 BUTTONS = ("A", "B", "X", "Y", "START", "BACK", "UP", "DOWN", "LEFT", "RIGHT", "L1", "R1", "L3", "R3")
 STICK = {"up": (("LY", "min"),), "down": (("LY", "max"),), "left": (("LX", "min"),),
          "right": (("LX", "max"),), "upleft": (("LY", "min"), ("LX", "min")),
@@ -121,12 +135,79 @@ HOLD_CHECK_S = 90                    # the model reads the screen at least this 
 HOLD_NAV_MAX = 12                    # model-steered steps back to play in one episode before the hold gives up
 HOLD_REPEAT = 3                      # a cutscene or game over that asked for one button: that press, unlooked, this often
 HOLD_REPEAT_STATES = ("cutscene", "game_over")
+# A CONTINUE countdown after a lost round (fighting games, 10-04): Guilty Gear XX's A did not continue (three presses,
+# the countdown ran out to GAME OVER). Non-title holds try START, then A, unlooked, up to CONTINUE_TRIES presses per
+# episode, then ask the model again. The hold log's `continue` look says which press took.
+CONTINUE_PRESS = ("START", "A")
+CONTINUE_TRIES = 4
+# Off play past the step cap (owner order 10-06): the cap no longer ends the hold while budget remains. Each cap trip runs one
+# ladder round, one press per look: a fighting select takes A on the highlighted fighter, START or A on a confirm, B out of a
+# menu (MK Armageddon's Character Select held the hold 10 min, 10-06). The hold stops for off play only when the ladder has
+# run its rounds AND the budget is gone.
+HOLD_LADDER = ("A", "START", "A", "A", "B", "START")
+HOLD_LADDER_ROUNDS = 6
+TEAM_CLAIM_EXTRA_S = 600         # a team sport's claim gets this much more budget for its setup (10-06)
+HOLD_VERDICT_S = 60              # once play has reached hold_s, the hold re-judges its validity this often
+HOLD_PLAY_AGREE_S = 5.0          # the hold's play_s and the verdict's play time may differ by this much; the verdict's is trusted
+
+
+def replay_diverged(own, el_s, matched):
+    """A title with a recorded path (10-06 owner order): the screen matches no step of it, and the claim has run past the
+    path's recorded time to gameplay plus 3 min. Then the run stops and reports the divergence step; it does not fall back to
+    a 15-min model claim."""
+    if not own or not own.get("steps") or matched:
+        return False
+    return el_s > (float(own.get("minutes") or 0) + 3) * 60
+
+
+LIMIT_STREAK_STOP = 4   # consecutive usage-limit answers that end a run as void-limit
+
+
+def hold_budget_s(claim_s, hold_s):
+    """The budget the hold runs under (10-06): the claim's time, then hold_s x 1.75 for the extensions a validity check can
+    ask for, and 300 s for the rest."""
+    return claim_s + hold_s * 1.75 + 300
+
+
+def hold_shortfall(v, need_s=600.0):
+    """What more play could fix in a confirmation verdict (title_verdict.py's dict): ('pass', 0), ('duration', s),
+    ('share', s), or ('stop', 0) for a failure more play cannot fix. Duration: the need less the gameplay so far, plus a
+    15 s margin. Share: the window that more play must add so that off play stays at most 10 % of it (off / 0.10 - window).
+    Crash, hang, an fps share under 0.90, or no timeline stop the hold at once."""
+    if not v:
+        return "stop", 0.0
+    if v.get("pass"):
+        return "pass", 0.0
+    if v.get("crash") or v.get("hang") or (v.get("fps_ok_share") or 0) < 0.9:
+        return "stop", 0.0
+    # title_verdict reports its first failure only: a duration or menu-time failure is one more play can fix; anything else
+    # (a hitch, audio, the heat, a void) is not, so the hold stops on it
+    if not str(v.get("failing") or "").startswith(("duration", "menu time")):
+        return "stop", 0.0
+    tl = v.get("timeline")
+    if not isinstance(tl, dict) or tl.get("play_share") is None:
+        return "stop", 0.0
+    gameplay = float(v.get("gameplay_s") or 0)
+    if gameplay < need_s:
+        return "duration", need_s - gameplay + 15.0
+    scored = float(tl.get("scored_s") or gameplay)
+    off = max(0.0, scored - float(tl.get("play_s") or 0))
+    more = off / 0.10 - scored
+    return ("share", more) if more > 0 else ("stop", 0.0)
+CONFIRM_GRACE_S = 300                # seconds the claim budget is extended once a gameplay read starts its confirm (10-05)
+# live gameplay reads whose probe was refused on a self-moving scene before a --hold-s claim enters the hold (10-06: NFL
+# Blitz Pro read live football from ~610 s, every probe refused on the moving camera, and the claim-live rule only entered
+# the hold at the 25-min budget; the hold's verdict decides either way, so the wait was ~13 min of Nova time)
+LIVE_SELFMOVE_TO_HOLD = 3
 CLAIM_REPEAT = 3                     # the claim's unlooked repeats of a single press that advanced a cutscene
 CLAIM_REPEAT_STATES = ("cutscene", "intro_video", "publisher_logo")
+CLAIM_REPEAT_BOX = 6                 # the same, on a frame the letterbox check says is a cutscene
+INTRO_STATES = ("cutscene", "intro_video", "publisher_logo")
 # Two kept frames (HOLD_FRAME_S apart) that change less than this at the probe's contrast step: the player did not
 # move in that window. 10-03, scratch/posprobe.py on the held runs: Black Stone standing on its octagon for 600 s
 # (sword swinging, verdict PASS) 0.002-0.013 per 30-s pair; Panzer Dragoon Orta flying 0.31-0.92.
 HOLD_STILL = 0.03
+SHIFT_STILL = 1.5                    # a title hold's still window: the scene moved under this many pixels (scene_shift)
 # "should we continue?" (owner 10-04 ~08:10): at 3 and 5 min of a hold longer than 5 min, read the gfps lines the
 # hold's logcat has so far. A title on course for clear/close has >= 60% of seconds at >= 30 fps or a median >= 27;
 # median < 22 at 3 min, or < 27 at 5 min (and the share under 60%), will not get there: stop the hold, so the
@@ -143,11 +224,20 @@ HOLD_UNSTICK = {
     # a fighter that stands on its arena (Black Stone, 10-03: the attack loop's up and down cancel, 600 s on one spot,
     # window change 0.002-0.013). Each still window walks a square: the four legs are not undone by the next one.
     "attack": (["STICK:right:2", "A"], ["STICK:up:2", "A"], ["STICK:left:2", "A"], ["STICK:down:2", "A"]),
+    # a bowling lane that stands still (10-05, Strike Force Bowling: the still rotation sent X and opened a high-score
+    # name entry): step the aim left and right and throw, no X, B or Y
+    "bowl": (["STICK:up:0.5", "A"], ["STICK:down:0.5", "A"]),
 }
 # play that drops into a menu right after a loop cycle: a loop button opened it (ToeJam & Earl III, 10-03: the
 # "Presents" inventory in 13 of 19 kept frames). Each such drop sheds the next of these from the loop.
 HOLD_SHED = ("B", "X", "Y", "BACK", "R1", "L1")
 HOLD_SHED_STATES = ("menu", "pause", "other")
+# an instant-replay viewer (NHL 2K3 hold2, 10-05 18:3x): the game picture keeps moving, so it reads as live play, but a
+# footer along the bottom ("L Rewind, R Forward, A Play/Pause, X Zoom In, B Zoom Out, Y Hide, START Back") marks it. The
+# hold read 300 s of replay as gameplay and the verdict passed it. START returns to the game.
+HOLD_REPLAY = (" An instant-replay viewer is NOT play, whatever the camera shows: a footer along the bottom of the picture "
+               "reads Rewind, Forward, Play/Pause, Zoom In, Zoom Out, Hide, Back. That is state period_break, in_play false, "
+               "and its input is START (Back returns to the game).")
 HOLD_GENRES = {
     "drive": ["RT:2", "RT+left:0.8", "RT+right:0.8"],
     "attack": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"],
@@ -160,7 +250,128 @@ HOLD_GENRES = {
     # shoot; on defence the same buttons switch player and steal (NBA Live family, addendum 3, 10-03)
     "team": ["RT:1", "STICK:up:1", "A", "STICK:right:1", "X", "STICK:left:1", "B", "STICK:down:1", "Y"],
     "other": ["STICK:up:1", "A", "RSTICK:right:0.6", "X", "STICK:down:1", "STICK:left:1", "B"],
+    # bowling (10-05, AMF Bowling 2004: the team loop stood the bowler at the foul line and its B and Y opened the pause
+    # menu): aim with the stick, throw with A (press to start the meter, press to release). No B, X or Y here.
+    "bowl": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"],
 }
+# a period break (a quarter, half, inning, or a bowling frame's scorecard) has its own START/A budget per episode, so a
+# scorecard does not spend the shared CONTINUE budget (lane.local 12:52: each frame's scorecard is a per-frame continue)
+PERIOD_TRIES = 8
+# a name entry (a high-score or profile keyboard) during a hold: START jumps to Done on some keyboards, then A confirms.
+# A alone types a letter (the RULES warning), so an entry that A never closes ended Strike Force Bowling at 266 s (10-05).
+NAME_TRIES = 6
+NAME_PRESS = ("START", "A")
+# a title's own name-entry input, when the frames have shown one (10-05, Strike Force Bowling: the claim accepted the
+# default name with DOWN x4 then A, Done being the last panel row; the hold's high-score entry at a game end never got it,
+# and START did nothing there). Keyed by the title's name, upper case with runs of other characters as "_".
+NAME_SEQ = {"STRIKE_FORCE_BOWLING": ["DOWN", "DOWN", "DOWN", "DOWN", "A"]}
+
+
+def name_press(name, tries):
+    """The inputs for one name-entry press: the title's own sequence, else NAME_PRESS in turn."""
+    seq = NAME_SEQ.get(re.sub(r"[^A-Z0-9]+", "_", (name or "").upper()).strip("_"))
+    return list(seq) if seq else [NAME_PRESS[tries % len(NAME_PRESS)]]
+
+
+# an end-of-match REMATCH (10-06, Marvel Nemesis, runs/sweep-4541038A and -r2): the panel's rows are REMATCH, RETURN TO CHARACTER
+# SELECT, QUIT TO MAIN MENU, and its cursor is NOT reset on each open: the look reads REMATCH highlighted and two UP taps still
+# opened RETURN (the menu wraps: UP from the top row goes to QUIT). So the rule acts on what the look reads: A only when REMATCH is
+# highlighted, else one UP and read again. The REMATCH confirm opens on NO: DOWN to YES, then A. The RETURN confirm also opens on
+# NO, so A there cancels back to the panel (B did not reliably close it).
+REMATCH_HL = re.compile(r"rematch (is )?highlight")
+
+
+def rematch_press(why, st):
+    """The inputs for one REMATCH step of an end-of-match panel or its confirm dialog, else None."""
+    why = (why or "").lower()
+    if "sure" in why:
+        if "rematch" in why:
+            return ["DOWN", "A"]
+        if "return to character select" in why:
+            return ["A"]
+        return None
+    if "rematch" not in why or st not in ("results", "menu"):
+        return None
+    return ["A"] if REMATCH_HL.search(why) else ["UP"]
+# A fighter's counter prompt is a quick-time press that must land within a second or so (Batman Begins, 10-06 19:08 run:
+# "Press Y now" over looks 61-86, "Press X now" from look ~141). The attack loop never sent Y, so the counter passed
+# unanswered and the frames stayed still. A play look that reads one of these names its button, which goes first.
+COUNTER_RE = re.compile(r"press ([xy]) now")
+
+
+def counter_press(why):
+    """The button a fighter's counter prompt asks for ("Press Y now"), else None. A context prompt ("To kick press Y") is not one."""
+    m = COUNTER_RE.search((why or "").lower())
+    return [m.group(1).upper()] if m else None
+
+
+# The fighting Character Select grid (10-06, MK Armageddon in three re-holds: rehold, rehold2, rehold2b). A on the
+# highlighted fighter opens the handicap panel and does not start the round. The presses that did start it were B (close
+# the panel) then START: rehold2 looks 77-79 and rehold2b looks 57-59, the round's black frame and fight intro one look
+# after. The ladder reached that pair only after ~30 looks on the grid, because it waits for the off-play cap. So a grid
+# look plays the cycle at once, unlooked, CHARSEL_TRIES presses (four cycles); then the ladder takes over.
+CHARSEL = ("A", "B", "START")
+CHARSEL_TRIES = 12
+CHARSEL_RE = re.compile(r"character select|select grid|fighter select|select screen|fighter grid")
+
+
+def charsel_press(why, st, i):
+    """The next press of the fighting select's cycle for a Character Select grid look, else None (i presses so far)."""
+    why = (why or "").lower()
+    if st not in ("menu", "other") or i >= CHARSEL_TRIES or not CHARSEL_RE.search(why):
+        return None
+    if any(w in why for w in ("title", "attract")):
+        return None
+    return [CHARSEL[i % len(CHARSEL)]]
+
+
+def still_window(shift_test, mv, sh):
+    """Whether a hold window is still. A title hold and a fighting hold judge it by the scene's shift: an effect in place
+    (blood, sparks, a hit flash) changes pixels, not the scene. Shaolin Monks (10-06, rehold-4D570029): a melee on one spot
+    read 0.13-0.21 pixel change with 0 px shift on four windows in a row, so the pixel test never sent the unstick. Other
+    genres keep the pixel test, which their windows were tuned on (not re-measured with the shift)."""
+    return sh < SHIFT_STILL if shift_test else mv < HOLD_STILL
+
+
+REVERSE_N = 3                        # owner 10-06 16:08: looks in a row at or under UNCHANGED before the walk turns round
+PATROL_EVERY = 4                     # lane.local 10-06 17:4x: the shooter loop turns round every 4 looks (~50 s), stall or not
+REVERSE_SWAP = {"up": "down", "down": "up", "left": "right", "right": "left"}
+
+
+def patrol_due(looks):
+    """Whether the patrol backstop turns the shooter walk round on this play look (the count of play looks so far)."""
+    return looks > 0 and looks % PATROL_EVERY == 0
+
+
+def reverse_trigger(ch, low_run, flipped, rev_row):
+    """One look's step of the reverse rule (16:08, Blowout: 22 min in one hangar corner, looks at 0.003-0.007 change).
+    Returns (low_run, flipped, rev_row, flip_now). REVERSE_N looks in a row at or under UNCHANGED flip the walk. Two flips
+    with no moving look between them stop flipping: the still-window unstick rotation takes the hold from there."""
+    if ch is None:
+        return low_run, flipped, rev_row, False
+    if ch > UNCHANGED:
+        return 0, flipped, 0, False
+    low_run += 1
+    if low_run < REVERSE_N or rev_row >= 2:
+        return low_run, flipped, rev_row, False
+    return 0, not flipped, rev_row + 1, True
+
+
+def flip_walk(toks, flipped):
+    """The loop's stick tokens with their direction turned round (STICK:up:1 -> STICK:down:1) while the walk is reversed."""
+    if not flipped:
+        return toks
+    out = []
+    for t in toks:
+        head, _, rest = t.partition(":")
+        if head == "STICK":
+            name, _, amount = rest.partition(":")
+            out.append(f"STICK:{REVERSE_SWAP.get(name, name)}:{amount}" if amount else f"STICK:{REVERSE_SWAP.get(name, name)}")
+        else:
+            out.append(t)
+    return out
+
+
 # Title-specific hold loops (10-03 addendum, the owner's Black Stone design). They replace the genre's loop and its
 # unlock rotation for these title ids. The walk moves the player with the left stick only, in long strokes that
 # change direction. X is pressed once, alone: at the start of the hold and after two still windows in a row. Y, R1,
@@ -174,8 +385,24 @@ TITLE_HOLD = {
     "4947002B": {"walk": ["STICK:up:2", "RT:1", "HOLD:A:0.4", "STICK:right:2", "RT:1", "HOLD:A:0.4",
                           "STICK:down:2", "RT:1", "HOLD:A:0.4", "STICK:left:2"],
                  "x": False, "continue": ["DOWN", "A"]},
+    # Tork: Prehistoric Punk (10-04 retro-tork): the "other" loop's up and down cancel; 600 s on one spot, the attack
+    # effect firing in place. A long climb forward with a hop, bending right and left so the path's turns are taken.
+    # the stand-still move for Tork is a hop up the stair: the stick forward, A held through the climb (10-05)
+    "55530040": {"walk": ["STICK:up:4", "A", "STICK:up:3", "STICK:right:1.5", "STICK:up:4", "A", "STICK:up:3",
+                          "STICK:left:1.5"],
+                 "unstick": [["STICK:up:2", "HOLD:A:0.6", "STICK:up:2"]]},
+    # AvP: Extinction (10-04 screen hold, play share 70.7%): an RTS. The generic loop's 1-s strokes left the map camera
+    # on one dark patch for 239 s; the scene changed only after L1 (select all) or X then RT. Select the squad, then long
+    # cursor strokes that scroll the map, each ended by A (an order to move there), so the squad and the camera travel.
+    "56550022": {"walk": ["L1", "STICK:up:3", "A", "STICK:right:3", "A", "L1", "STICK:down:3", "A",
+                          "STICK:left:3", "A"],
+                 "x": False},
 }
 TITLE_HOLD_FORBID = ("Y", "R1", "BACK", "START", "B")
+# the stand-still detector for title holds (10-05): a stretch of two still windows gets the next of these moves, then the
+# walk again. Generic: a hop forward, a turn of the camera, a back-out and a sidestep. A title's own list comes first.
+TITLE_UNSTICK = [["STICK:up:1.5", "HOLD:A:0.6"], ["RSTICK:left:1", "STICK:up:2"],
+                 ["STICK:down:1.5", "STICK:left:1.5"], ["RSTICK:right:1", "STICK:up:2"]]
 
 
 def now():
@@ -377,6 +604,25 @@ def window_change(a, b):
     return classify.motion(ga, grey(b), pixel=probe_step(ga))[0]
 
 
+def scene_shift(a, b):
+    """How far the scene moved between two hold frames, in pixels at 160x120 (phase correlation of the grey frames).
+    A camera that follows the player moves the scene when the player walks; an attack flash or an effect in place
+    does not. Tork (10-05, runs/tork-rerun3): window change 0.17-0.26 on every 30-s window of a stand-still stair, shift
+    0 px on each; the walk out of the village shifted 36 px."""
+    fa = np.asarray(grey(a).resize(classify.MOTION_SIZE, Image.BILINEAR), dtype=np.float64)
+    fb = np.asarray(grey(b).resize(classify.MOTION_SIZE, Image.BILINEAR), dtype=np.float64)
+    fa -= fa.mean()
+    fb -= fb.mean()
+    h, w = fa.shape
+    win = np.outer(np.hanning(h), np.hanning(w))
+    peak = np.abs(np.fft.ifft2(np.fft.fft2(fa * win) * np.conj(np.fft.fft2(fb * win)) /
+                               (np.abs(np.fft.fft2(fa * win) * np.conj(np.fft.fft2(fb * win))) + 1e-9)))
+    iy, ix = np.unravel_index(np.argmax(peak), peak.shape)
+    dy = iy - h if iy > h // 2 else iy
+    dx = ix - w if ix > w // 2 else ix
+    return float(np.hypot(dx, dy))
+
+
 def probe_key(tok):
     """A probe input without its seconds: RT:1.5 and RT:3 are one input (RT), HOLD:A:3 is HOLD:A."""
     head, _, tail = tok.rpartition(":")
@@ -483,6 +729,84 @@ def targets():
             for k, v in re.findall(r'(\w+)\s*=\s*"((?:[^"\\]|\\.)*)"', m.group(1)):
                 cur["iso"][k] = v
     return out
+
+
+FOOTBALL = re.compile(r"\b(nfl|madden|football|gridiron)\b")
+
+
+def football_deferred(name, iso):
+    """Owner order 10-05 12:35: every football title runs after every other sport. PATHFIND_FOOTBALL=1 lifts it."""
+    if os.environ.get("PATHFIND_FOOTBALL") == "1":
+        return False
+    text = (str(name) + " " + os.path.basename(str(iso))).lower().replace("_", " ").replace(".", " ")
+    return bool(FOOTBALL.search(text))
+
+
+# Owner order 10-06 16:45 (lane.local): a title whose latest verdict is below the bar with no committed fix is refused,
+# not hand-listed. The TSV is the record: one row per title (latest verdict by judged_utc), with the cause and the
+# fix commit that lifts the refusal. seed_below_bar() rewrites the verdict columns from runs/*/verdict.json and keeps
+# the cause and fix columns of every row it already has.
+LANE_DIR = os.path.join(HERE, "..", "..", "lanes", "pathfind")
+BELOW_BAR_TSV = os.path.join(LANE_DIR, "below-bar.tsv")
+BELOW_BAR_RUNS = os.path.join(LANE_DIR, "runs")
+BELOW_BAR_SHARE = 0.9
+BELOW_BAR_COLS = ["title", "title_id", "fps_ok_share", "verdict", "judged_utc", "cause", "fix_commit"]
+
+
+def below_bar_rows(path=BELOW_BAR_TSV):
+    try:
+        lines = [ln.rstrip("\n") for ln in open(path) if ln.strip() and not ln.startswith("#")]
+    except OSError:
+        return []
+    head = lines[0].split("\t") if lines else []
+    return [dict(zip(head, ln.split("\t"))) for ln in lines[1:]] if head == BELOW_BAR_COLS else []
+
+
+def below_bar_refusal(tid, name, path=BELOW_BAR_TSV):
+    """Why a title is refused for a below-bar latest verdict with no fix, or None. PATHFIND_BELOW_BAR=1 lifts it for a
+    telemetry run (owner rule: one 3-min perflog run on a title that has shown it will not clear)."""
+    if os.environ.get("PATHFIND_BELOW_BAR") == "1":
+        return None
+    want = norm(name)
+    for r in below_bar_rows(path):
+        key = norm(r.get("title", ""))
+        same_id = bool(tid) and r.get("title_id") == tid
+        if not (same_id or (key and want and (key in want or want in key))):
+            continue
+        share = float(r.get("fps_ok_share") or 1.0)
+        if share >= BELOW_BAR_SHARE or r.get("fix_commit"):
+            return None
+        return (f"{r['title']}: latest verdict {r['verdict']} reads fps_ok_share {share:.3f} (bar {BELOW_BAR_SHARE}); "
+                f"cause: {r.get('cause') or 'none recorded yet'}. No fix is committed; PATHFIND_BELOW_BAR=1 is for a telemetry run only")
+    return None
+
+
+def seed_below_bar(runs=BELOW_BAR_RUNS, path=BELOW_BAR_TSV):
+    """Rewrite the TSV from the latest runs/*/verdict.json per title, keeping cause and fix_commit already recorded."""
+    kept = {r.get("title", ""): r for r in below_bar_rows(path)}
+    latest = {}
+    for vp in glob.glob(os.path.join(runs, "*", "verdict.json")):
+        try:
+            v = json.load(open(vp))
+        except (OSError, ValueError):
+            continue
+        title = v.get("title") or v.get("name") or os.path.basename(os.path.dirname(vp))
+        k = norm(title)
+        if k not in latest or str(v.get("judged_utc") or "") > latest[k][1]:
+            latest[k] = (v, str(v.get("judged_utc") or ""), vp, title)
+    rows = []
+    for k, (v, judged, vp, title) in sorted(latest.items()):
+        old = kept.get(title, {})
+        share = v.get("fps_ok_share")
+        rows.append({"title": title, "title_id": v.get("title_id") or old.get("title_id", ""),
+                     "fps_ok_share": "" if share is None else f"{share:.4f}",
+                     "verdict": os.path.relpath(vp, os.path.join(LANE_DIR, "..", "..", "..")),
+                     "judged_utc": judged, "cause": old.get("cause", ""), "fix_commit": old.get("fix_commit", "")})
+    with open(path, "w") as f:
+        f.write("\t".join(BELOW_BAR_COLS) + "\n")
+        for r in rows:
+            f.write("\t".join(str(r[c]).replace("\t", " ") for c in BELOW_BAR_COLS) + "\n")
+    return rows
 
 
 def blocked(tid, name):
@@ -654,10 +978,23 @@ How to act:
   Exhibition, Quick Race, Arcade, New Game, Start Game, Play Now, Story/Campaign start. Avoid Options,
   Online/Xbox Live, Extras, Load. Read where the cursor/highlight IS before moving it; send the moves and the
   confirm together, e.g. ["DOWN","DOWN","A"].
-- Team/character/car/course select: accept the default with A (or START), repeatedly if several confirms.
+- Team/character/car/course select: accept the default with A, repeatedly if several confirms. Never START on a
+  select screen: a "PRESS START" over an empty player slot on a fighting character select did not start the match
+  (Guilty Gear XX, 10-04); A on the highlighted character did (the claim's steps). START is for title/attract prompts.
+- A CONTINUE countdown after a lost round (fighting games; "continue" with a countdown and credits): one START,
+  then A if it stays. Do not wait it out: the countdown ends in GAME OVER, then the title, then the menus again.
+  Guilty Gear XX, 10-04: START on the CONTINUE led to the character select, A on the highlighted fighter then
+  resumed the round; A on the CONTINUE ran the countdown out.
+- A live fighting round: "PRESS START" over an EMPTY player-2 slot in the HUD is a join prompt, not a title or a
+  menu. Do not press START there: it opens the pause menu (Guilty Gear XX, 10-04). A round with the HUD and a
+  counting timer is gameplay: probe with the stick. A "PLEASE WAIT" or a round-start banner (3, 2, 1, FIGHT, the
+  round title) is not yet live: wait 2 s and look again before probing.
 - Sports controller/team-select screens: if controller icons sit in the MIDDLE column between the two teams,
   nobody is assigned and the CPU plays both sides (a match that looks live but ignores the stick: ESPN NHL
   2K5, 10-02). First move controller 1 under a team with LEFT or RIGHT (or STICK:left:0.3), then A.
+  On ESPN / Sega Sports 2K screens ONE RIGHT or LEFT moves it a single notch into the side column next to that
+  team, a "User Name" plate appears above it and its outer arrow goes: that IS assigned (it never travels under
+  the logo). Then START; more LEFT/RIGHT undoes it (NBA 2K3, 10-05).
 - Profile creation / name entry: on a keyboard, A TYPES the highlighted letter. Prefer START, which usually
   jumps to Done/Accept; then A on Done/OK. Accept defaults.
 - Save/load prompts: "no storage device / continue without saving": choose continue. Prompts that create a
@@ -679,7 +1016,15 @@ How to act:
 - Sports: a kickoff, tip-off, faceoff, serve or pre-snap play-call screen waits for you: pick a play / press
   A to start the play, then the player can be moved. American football: a play-call screen is a MENU; press
   A to pick the play (sometimes twice: formation, then play), then A again to snap; only after the snap is it
-  gameplay: then probe ["A", "STICK:up:1.5"] (snap and run).
+  gameplay: then probe ["A", "STICK:up:1.5"] (snap and run). A formation with the HUD and clock up but no menu, before
+  the snap, is still NOT gameplay (NFL Blitz 2002, 10-05: the probe there moved nothing and the claim spent 15 min on it):
+  press A to snap, and count play only once the players are running.
+- Sports SETUP (owner rule, 10-05): before the first whistle, tip-off or kickoff, open the game or options screen that
+  sets the period length (quarter, period, half, inning, game length) and choose the LONGEST value offered. If there is a
+  game-clock speed or accelerated-clock option, choose the slowest or real-time setting. Choose a team a human controls
+  (a controller icon under that team on team select). Take the defaults elsewhere. One period must outlast the hold.
+- Sports breaks: a quarter, period, half or inning break, halftime, end-of-period stats, a replay card or a next-period
+  prompt is state period_break, not gameplay: its input is START, then A to continue.
 
 Inputs (the "action" list, up to 8 tokens, sent in order ~0.4 s apart):
   A B X Y START BACK UP DOWN LEFT RIGHT L1 R1 L3 R3   one press (UP/DOWN/LEFT/RIGHT are the d-pad)
@@ -694,7 +1039,7 @@ An empty list [] means wait and look again.
 
 States (pick exactly one): intro_video, publisher_logo, title_screen, main_menu, submenu, profile_creation,
 name_entry, save_load_prompt, controller_prompt, loading, cutscene, pause, gameplay, results, game_over,
-black, fatal_error, unknown. fatal_error is a screen no input can clear: "there is a problem with the disc /
+continue, period_break, black, fatal_error, unknown. period_break: a sports period, quarter, half or inning break. fatal_error is a screen no input can clear: "there is a problem with the disc /
 dirty or damaged", "an error has occurred", a crash or dashboard error screen.
 
 Say "gameplay" only when you see player-controlled play (a HUD, a playfield with the player's character or
@@ -743,6 +1088,7 @@ class Model:
         self.sim = sim               # PATHFIND_DRY: a list of canned answers
         self.calls = 0
         self.by_model = {}
+        self.limit_streak = 0        # consecutive answers that were the plan's usage-limit notice (10-08)
 
     def ask(self, model, prompt, purpose, images=()):
         """One call; `images` (JPEG paths) go INLINE in a stream-json user
@@ -786,6 +1132,7 @@ class Model:
                     "cache_read": u.get("cache_read_input_tokens"),
                     "cache_write": u.get("cache_creation_input_tokens"),
                     "cost_usd": meta.get("total_cost_usd") if isinstance(meta, dict) else None})
+        self.limit_streak = self.limit_streak + 1 if "hit your weekly limit" in (text or "") else 0
         ans = parse_json(text) if text else None
         rec["answer"] = ans if ans is not None else (text or "")[:300]
         self.calls += 1
@@ -840,6 +1187,9 @@ class Agent:
         self.plan = []               # the model's planned next screens (from a guide), sent without a call
         self.hints = knowledge(tid, name)
         self.probes = 0
+        self.grace_used = False          # the claim's one confirm grace (CONFIRM_GRACE_S), see run()
+        self.probe_selfmove = False      # the newest probe saw the scene move with no input (ctrl > SELF_MOVING)
+        self.live_selfmove = 0           # gameplay reads whose probe was refused on a self-moving scene (LIVE_SELFMOVE_TO_HOLD)
         self.dead_probes = 0         # probes in a row whose input moved nothing at all (UNLOCK_LADDER)
         self.probe_tries = {}        # probe_key -> confirms that used it (PROBE_LADDER past PROBE_REFUSED_MAX)
         self.black_since = None
@@ -1017,6 +1367,7 @@ class Agent:
     # -- gameplay confirmation (brief rule 5)
     def confirm(self, probe, why):
         self.probes += 1
+        self.probe_selfmove = False
         toks = clean_action(probe if isinstance(probe, list) else [probe]) or ["STICK:up:1.5"]
         pre, probe = toks[:-1], toks[-1]
         if self.dead_probes >= 2:
@@ -1048,6 +1399,7 @@ class Agent:
         rec = {"state": "probe", "action": pre + [probe], "why": f"control {ctrl:.3f}, under input {moved:.3f}",
                "src": "probe", "changed": moved}
         selfmove = ctrl > SELF_MOVING
+        self.probe_selfmove = selfmove
         self.dead_probes = self.dead_probes + 1 if moved < PROBE_MOVED and ctrl < PROBE_MOVED else 0
         won = False
         if not selfmove and ctrl >= PROBE_MOVED and moved < 1.5 * ctrl:
@@ -1096,10 +1448,22 @@ class Agent:
             if not (l_png and r_png):
                 return False, "screencap failed"
             rec["action"] = rec["action"] + [left, right]
-            q = head + ("A, then B (1 s after A, no input): the scene moves on its own. Then C taken while holding "
-                        "the stick LEFT, then D taken while holding it RIGHT. Is this real player-controlled "
-                        "gameplay (not a menu, cutscene, attract/demo or replay), AND did the player's character, "
-                        "vehicle, aim reticle or camera steer LEFT in C and RIGHT in D? Both are needed. " + tail)
+            if self.team_sport():
+                # a team sport (NBA 2K3, NHL 2K3, 10-05): the broadcast camera, foul banners and replays move the whole
+                # frame, so whole-scene steering was refused on every probe (15 in NBA 2K3). Judge the marked player only.
+                q = head + ("This is a team sport: the broadcast camera, banners and replays move by themselves, so "
+                            "judge ONLY the human-controlled player, the one with a marker (a ring, arrow, star, "
+                            "highlight or name label under or over him). A, then B (1 s after A, no input). Then C "
+                            "taken while holding the stick LEFT, then D taken while holding it RIGHT. Is this live play "
+                            "(not a replay, cutscene, stoppage banner or menu) with a marked controlled player, AND did "
+                            "that marked player move LEFT between B and C, or RIGHT between C and D, measured against "
+                            "the court, field or rink markings (not the screen edge)? One of the two is enough; a camera "
+                            "cut alone is not a response. " + tail)
+            else:
+                q = head + ("A, then B (1 s after A, no input): the scene moves on its own. Then C taken while holding "
+                            "the stick LEFT, then D taken while holding it RIGHT. Is this real player-controlled "
+                            "gameplay (not a menu, cutscene, attract/demo or replay), AND did the player's character, "
+                            "vehicle, aim reticle or camera steer LEFT in C and RIGHT in D? Both are needed. " + tail)
             imgs = [a_jpg, b_jpg, l_jpg, r_jpg]
         else:
             q = head + (f"A, then B (1 s after A, no input), then C (taken while holding {probe}, ~1 s after B). "
@@ -1114,6 +1478,13 @@ class Agent:
         self.write_step(rec)
         self.result["probe_frames"] = imgs
         return ok, rec["verdict"]
+
+    def team_sport(self):
+        """A team sport on a court, field or rink: the run's goal names a period setting or a team select, or the
+        title's name is a team-sports league (the claim has no genre look yet; the hold's genre comes after it)."""
+        text = f"{self.goal} {self.name}".lower()
+        return bool(re.search(r"\b(quarter|period length|halves|team select|nba|nhl|nfl|ncaa|fifa|"
+                              r"basketball|hockey|football|soccer|hoops)\b", text))
 
     def hold_capture(self, tok, tag):
         """Hold one input token, take a frame ~0.8 s into the hold, release."""
@@ -1164,8 +1535,14 @@ class Agent:
         self.dev.launch(self.iso)
         self.launched_at = now()
         self.watch = hangwatch.start(self.dev, self.out)
+        if self.team_sport():
+            # team setup (team select, the period setting, the controller pick) needs its own allowance (10-06: NBA 2K3 reached
+            # team select at about 12 of 15 min)
+            self.budget_s += TEAM_CLAIM_EXTRA_S
+            self.result.update(team_claim_extra_s=TEAM_CLAIM_EXTRA_S)
         relaunches = 0
         last_png = None
+        last_look, last_live = None, None   # the newest look's state, and the newest gameplay look's frame (10-06 claim rule)
         last_therm = now()
         while self.el() < self.budget_s:
             if now() - last_therm > 30:
@@ -1173,6 +1550,9 @@ class Agent:
                 if not self.thermal_ok():
                     self.result.update(result="heat-stop", reason=f"Thor xo {self.thermal[-1][1]} C")
                     return self.finish()
+            if self.model.limit_streak >= LIMIT_STREAK_STOP:
+                self.result.update(result="void-limit", reason=f"model weekly limit hit ({self.model.limit_streak} answers in a row); not a title verdict")
+                return self.finish()
             self.n += 1
             png, jpg = self.frame("look")
             if not png:
@@ -1212,8 +1592,16 @@ class Agent:
             os.replace(jpg, jpg.replace("-look.jpg", f"-{dec['state']}.jpg"))
             jpg = jpg.replace("-look.jpg", f"-{dec['state']}.jpg")
             dec["frame"] = os.path.relpath(jpg, self.out)
+            last_look = dec["state"] if dec.get("src") != "black" else None
+            if last_look == "gameplay":
+                last_live = dec["frame"]
             if dec["state"] == "gameplay" and dec.get("src") != "black":
                 self.write_step(dec)
+                # play is live: the claim budget does not end the confirm (19:40 rule; MTV rerun 10-05 gave up at step 89
+                # on a probe of play it had reached at step 88). Once per claim: refused probes must still end it.
+                if not self.grace_used:
+                    self.grace_used = True
+                    self.budget_s = max(self.budget_s, self.el() + CONFIRM_GRACE_S)
                 probe = dec.get("probe") or ["STICK:up:1.5"]
                 probe = (probe if isinstance(probe, list) else [probe])
                 # the model's own action first (ESPN NFL 2K5, 10-02: "gameplay" on the kickoff play-call
@@ -1228,7 +1616,24 @@ class Agent:
                     self.result.update(reason="four probes refused")
                 self.steps[-1]["why"] += f" | probe: {why}"
                 last_png = None
+                if self.probe_selfmove and not why.startswith("retracted"):
+                    self.live_selfmove += 1
+                    if self.hold_s and self.live_selfmove >= LIVE_SELFMOVE_TO_HOLD:
+                        # the scene moves on its own, so the probe cannot say who moved it; play has been read live this
+                        # many times, and the budget's end would enter the hold on the same read (claim-live rule)
+                        print(f"claim: {self.live_selfmove} live reads with self-moving refused probes: entering the hold",
+                              flush=True)
+                        self.result.update(claim_live_selfmove=self.live_selfmove)
+                        r = self.success(os.path.join(self.out, last_live))
+                        if r is not None:
+                            return r
+                        self.live_selfmove = 0      # retracted 30 s on: the scene left play; read again from scratch
                 continue
+            if dec.get("src") == "diverged":
+                self.write_step(dec)
+                self.result.update(result="diverged", reason=dec["why"][:200], step=dec.get("step"),
+                                   minutes=round(self.el() / 60, 2), frame=dec["frame"])
+                return self.finish(last=jpg)
             if dec["state"] == "fatal_error" and self.steps and self.steps[-1].get("state") == "fatal_error":
                 # twice in a row: the title cannot go on (ESPN NBA 2K5 on the Thor, 10-02: "disc is dirty or
                 # damaged" after team select; four more inputs changed nothing)
@@ -1239,8 +1644,15 @@ class Agent:
             self.send(dec["action"])
             time.sleep(min(max(float(dec.get("wait_s") or 2), 0.5), 12))
             last_png = png
+        last = self.steps[-1] if self.steps else None
+        if self.hold_s and last_look == "gameplay" and last_live:
+            # the budget ran out with the newest look reading live play (10-06 owner order): a refused or inconclusive probe is
+            # not a stop; the hold's verdict decides (play share, fps, frames). Only menu, loading, crash or black ends the claim.
+            print(f"claim: budget ran out on live play (step {len(self.steps)}): entering the hold", flush=True)
+            self.result.update(claim_budget_live=True)
+            return self.success(os.path.join(self.out, last_live))
         self.result.update(result="gave-up", reason=f"budget {self.budget_s / 60:.0f} min",
-                           last_state=self.steps[-1].get("state") if self.steps else None)
+                           last_state=last.get("state") if last else None)
         return self.finish(last=jpg if self.steps else None)
 
     def decide(self, png, jpg, sig):
@@ -1273,6 +1685,12 @@ class Agent:
             self.cursor = j + 1
             return dict(base, state=s["state"], why=f"replay step {j}: {s['why']}", action=list(s["action"]),
                         wait_s=s.get("wait_s", 2), src="replay")
+        if not (tried or seen) and replay_diverged(self.own, self.el(), False) and self.cursor < len(self.own["steps"]):
+            # the path is no longer on screen past its recorded time (10-06 owner order): report the step, do not guess
+            j = self.cursor
+            exp = self.own["steps"][j]
+            return dict(base, state="diverged", why=f"replay diverged at recorded step {j} "
+                        f"({exp.get('state')}: {str(exp.get('why', ''))[:120]})", action=[], wait_s=2, src="diverged", step=j)
         sp = self.sib_replay(sig) if not (tried or seen or self.own) else None
         if sp:
             k, j, s = sp
@@ -1295,10 +1713,14 @@ class Agent:
         # 92 calls ($6.7 of the claim) were one look per line of a ClubWired dialogue that A advanced every time.
         # Only on the SAME screen (its signature still matches: the box stayed, its text moved on). A press that
         # led somewhere new (a logo's START to a menu) gets a look: a repeat there would choose a menu item.
-        if prev and prev.get("state") in CLAIM_REPEAT_STATES and len(prev.get("action") or []) == 1 \
+        # A letterboxed frame after a letterboxed cutscene step is a cutscene by the local check alone (owner 10-04:
+        # Tork's claim spent 10 looks on START+A over a run of staged close-ups, ~9 s each, Tron 48 looks): the
+        # press that advanced it goes again unlooked, one or two buttons, up to CLAIM_REPEAT_BOX times.
+        boxed = bool(prev and prev.get("state") == "cutscene" and letterboxed(png))
+        if prev and prev.get("state") in CLAIM_REPEAT_STATES and 1 <= len(prev.get("action") or []) <= (2 if boxed else 1) \
                 and prev.get("src") in ("fast", "strong", "repeat") and (prev.get("changed") or 0) > UNCHANGED \
-                and prev.get("sig") is not None and sig_dist(prev["sig"], sig) <= SIG_MATCH \
-                and not tried and self.repeat_run() < CLAIM_REPEAT:
+                and prev.get("sig") is not None and (boxed or sig_dist(prev["sig"], sig) <= SIG_MATCH) \
+                and not tried and self.repeat_run() < (CLAIM_REPEAT_BOX if boxed else CLAIM_REPEAT):
             return dict(base, state=prev["state"], why=f"repeat {prev['action'][0]}: it advanced the {prev['state']}",
                         action=list(prev["action"]), wait_s=prev.get("wait_s", 2), src="repeat")
         # 5. the model; the stronger one when stuck or unsure
@@ -1320,6 +1742,14 @@ class Agent:
             return dict(base, state="unknown", why="model gave no answer", action=[], wait_s=2, src="none")
         state = ans.get("state") if ans.get("state") in STATES else "unknown"
         action = clean_action(ans.get("action"))
+        # an intro, logo or cutscene is never waited out while a skip button is untried here (owner 10-04: Dino Crisis
+        # 3 waited 9 looks on a video its hint says START skips; Halo 2 and DOA3 "did not mash"). A press at a
+        # video nothing skips costs nothing; the wait comes back once START, A and B have each had a go.
+        if not action and state in INTRO_STATES:
+            fresh = [b for b in ("START", "A", "B") if b not in tried]
+            if fresh:
+                action = [fresh[0]]
+                ans["why"] = str(ans.get("why", "")) + f" [override: {state} is skipped, not waited out -> {action[0]}]"
         # never the same input a 4th time on the same unchanged screen
         if action and (tried.count(" ".join(action)) >= 3 or seen.count(" ".join(action)) >= 4):
             fresh = [b for b in SKIP_LADDER if b not in tried]
@@ -1386,13 +1816,29 @@ class Agent:
     # -- hold-play: keep the player in play, then judge the frames
     def hold_look(self, jpg, genre):
         """The model reads the screen: is the player in live play, and if not, what gets back to it?"""
+        # fighting games (10-05, Guilty Gear XX): a CONTINUE countdown is its own state (the hold's CONTINUE_PRESS
+        # runs on it; the model had called it cutscene and the count ran out), and a select screen takes A, not START
+        fight = (
+            " A fighting game: a CONTINUE countdown is state continue, and its input is START, then A. A character, "
+            "stage or mode select takes A on the highlighted entry (the default is fine); START is for the title or "
+            "attract screen's PRESS START only. In a live round do not press START." if genre == "attack" else "")
+        # sports (10-05 owner rule): a period, quarter, half or inning break is its own state, with its own input
+        sports = (" A sports game: a quarter, period, half or inning break, halftime, end-of-period stats, a replay card "
+                  "or a next-period prompt is state period_break, and its input is START, then A. A kickoff, tip-off or "
+                  "faceoff screen takes A to start the play." if genre == "team" else "")
         return self.model.ask(FAST, (
             f"Screenshot of {self.name}, an Xbox game. The 'FPS: NN' text at the top-left is the emulator's "
             f"overlay, not the game's HUD. An agent is keeping the player playing (genre: {genre}). Read the "
             "screen. Is the player in live play right now (the player's character, vehicle or ball in the game "
             "world, the game running)? A menu cursor, a pause screen, a cutscene, a loading screen, a results or "
-            "game-over screen, or a black screen is NOT play. If it is not play, which input gets back to it? "
-            'Answer JSON only: {"state": "gameplay|pause|game_over|results|menu|cutscene|loading|black|other", '
+            "game-over screen, or a black screen is NOT play. If it is not play, which input gets back to it?"
+            # a co-op join prompt over live play (LEGO Star Wars 10-04: the hub's "Press START" read as a cutscene, and
+            # START opened the pause menu twice; Guilty Gear XX's empty player-2 slot): play, and START is never its input
+            " A 'PRESS START' or 'Player 2 press START' prompt shown over the game world while the player's "
+            "character is on screen is a second player's join prompt: that is live play (in_play true), and START "
+            "there opens the pause menu, so never answer START for it." + HOLD_REPLAY + fight +
+            sports +
+            ' Answer JSON only: {"state": "gameplay|pause|game_over|results|menu|continue|period_break|cutscene|loading|black|other", '
             '"in_play": true|false, "why": "<one line>", "action": [inputs, e.g. "START", "A", '
             '"STICK:down:0.5"], "wait_s": <number>}'), "hold-check", [jpg]) or {}
 
@@ -1401,13 +1847,27 @@ class Agent:
         ans = self.model.ask(FAST, (
             f"Screenshot of {self.name}, an Xbox game, in gameplay. The 'FPS: NN' text at the top-left is the "
             "emulator's overlay, not the game's HUD. What kind of play is this? Answer JSON only: "
-            '{"genre": "drive|attack|shooter|rally|team|onrails|other", "why": "<one line>"}. drive: a car, bike, '
+            '{"genre": "drive|attack|shooter|rally|team|bowl|onrails|other", "why": "<one line>"}. drive: a car, bike, '
             "boat or plane moving through a world; attack: a character fighting in melee or with magic; shooter: "
             "a gun game, first or third person, walking through a level and firing a weapon; rally: a ball or "
             "shuttle played back and forth over a net (tennis, volleyball); team: a team sport on a court, "
-            "field or rink (basketball, football, hockey, soccer); onrails: the scene moves on its own and the "
+            "field or rink (basketball, football, hockey, soccer); bowl: a bowling lane, the bowler aims and throws "
+            "at pins; onrails: the scene moves on its own and the "
             "player only aims; other: anything else."), "genre", [jpg]) or {}
         return ans.get("genre") if ans.get("genre") in HOLD_GENRES else "other", str(ans.get("why", ""))[:160]
+
+    def sports_check(self, jpg):
+        """One look before a team hold (10-05 owner rule): the game clock and the period on screen, and whether a human
+        controls a team. The period length is set in the claim; this records what the hold actually got, so a period
+        that ends inside the hold shows in the record (and a period_break is named when it arrives)."""
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, a sports game in play. Read the screen. What does the game clock show, and "
+            "which period, quarter, half or inning is it? Is a team controlled by a human (a controller icon under "
+            'one team, or the controlled player marked)? Answer JSON only: {"clock": "<clock text or none>", '
+            '"period": "<period text or none>", "human_controlled": true|false, "why": "<one line>"}'),
+            "sports", [jpg]) or {}
+        return {"clock": str(ans.get("clock", ""))[:40], "period": str(ans.get("period", ""))[:40],
+                "human_controlled": ans.get("human_controlled") is True, "why": str(ans.get("why", ""))[:160]}
 
     def hold_play(self, jpg):
         """Keep play going for self.hold_s seconds of play, judged from the frames.
@@ -1424,6 +1884,9 @@ class Agent:
         tokens = th["walk"] if th else HOLD_GENRES[genre]
         log = os.path.join(self.out, "hold.jsonl")
         held = {"genre": genre, "why": genre_why}
+        if genre == "team" and not th:
+            held["sports"] = self.sports_check(jpg)
+            print(f"hold-play: sports look {held['sports']}", flush=True)
         print(f"hold-play: genre {genre}, need {self.hold_s:.0f} s of play", flush=True)
         kept, play_s, navs, nav = [], 0.0, 0, 0
         still, off, reason = 0, False, ""
@@ -1436,6 +1899,9 @@ class Agent:
         shed_set = set()                 # loop buttons that opened a menu (HOLD_SHED): never sent again this hold
         order = [genre] + [g for g in HOLD_GENRES if g not in (genre, "onrails")]
         rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
+        cont_tries = 0                   # CONTINUE presses in this off-play episode (CONTINUE_PRESS, CONTINUE_TRIES)
+        pb_tries = 0                     # period-break presses in this episode (CONTINUE_PRESS, PERIOD_TRIES), own budget
+        name_tries = 0                   # name-entry presses in this episode (NAME_PRESS, NAME_TRIES), own budget
         last_png, last_check, last_kept, drop = None, now(), None, []
         fps_seen, fps_checks = set(), []  # the FPS_GATES passed so far, and what each read
         # the perflog: logcat from the mark to `soak end`, with a state line at every change of play, so
@@ -1448,8 +1914,16 @@ class Agent:
         t_hold = now()
         # claim and hold get separate clocks (addendum 4, 10-03): the claim used the budget, the hold is owed its
         # seconds of play. A claim at 13 min used to leave the 600-s hold 2 min of budget (Black Stone, 10-03).
-        self.budget_s = max(self.budget_s, self.el() + self.hold_s * 1.5 + 300)
-        while play_s < self.hold_s and self.el() < self.budget_s:
+        self.budget_s = max(self.budget_s, hold_budget_s(self.el(), self.hold_s))
+        held_ok, last_v, ladder_rounds, ladder_i = False, None, 0, 0   # validity (10-06): the hold ends on a verdict, not on hold_s alone
+        charsel_i = 0   # the fighting select's cycle presses on this off-play episode (charsel_press)
+        # the stuck detector (10-07, stuckdetect1007): the last STUCK_MIN_SAMPLES kept frames all near-identical = stuck;
+        # an unstick rung per kept frame, then the hold ends with a reason (stuck_abort), not a Playable
+        sd_watch = stuckdetect.StuckWatch(genre, HOLD_SHED_STATES, HOLD_UNSTICK.get(genre), UNLOCK_LADDER[:3]) if stuckdetect else None
+        sd_abort, last_st, sd_rungs = "", "play", 0
+        low_run, flipped, rev_row, reversals = 0, False, 0, 0   # the reverse rule (16:08): looks still in a row, walk turned round
+        patrol_looks = 0   # play looks on the shooter loop, for the patrol backstop (patrol_due)
+        while not held_ok and self.el() < self.budget_s:
             self.n += 1
             t_cycle = now()
             png, jp = self.frame("hold")
@@ -1485,6 +1959,16 @@ class Agent:
             suspect = is_black(png) or still >= 1
             look = {"n": self.n, "hold_s": round(hold_el, 1), "play_s": round(play_s, 1),
                     "changed": None if ch is None else round(ch, 4), "off": off}
+            low_run, flipped, rev_row, flip_now = reverse_trigger(ch, low_run, flipped, rev_row)
+            if flip_now:
+                reversals += 1
+                look["reverse"] = True   # the walk turns round from this look (flip_walk); the verdict reader sees it here
+                print(f"hold-play: {REVERSE_N} still looks: walk reversed ({'back' if flipped else 'forward'}) at {hold_el:.0f} s",
+                      flush=True)
+            if last_png:
+                # the structural still per look (lane.local 10-06 17:4x): replayable against `changed` on the next run
+                look["shift_look"] = round(scene_shift(last_png, png), 2)
+            counter = None   # this cycle's counter-prompt button (counter_press), set by a play check look
             if rep_left and off:
                 # model-free recovery (Panzer, 10-03: each death cost 4 model looks at ~9 s, one per A of an episode
                 # card): repeat the last look's single press, unlooked, then look again
@@ -1497,8 +1981,11 @@ class Agent:
                 a = self.hold_look(jp, genre)
                 was_play = not off
                 off = a.get("in_play") is not True
+                if genre == "attack" and not th and not off:
+                    counter = counter_press(a.get("why"))
                 st = ("still" if parked else "play") if not off else \
                     re.sub(r"[^a-z_]", "", str(a.get("state") or "other").lower()) or "other"
+                last_st = st
                 if off and was_play and st in HOLD_SHED_STATES:
                     shed = next((b for b in HOLD_SHED if b in tokens and b not in shed_set), None)
                     if shed:
@@ -1508,19 +1995,66 @@ class Agent:
                     self.dev.route_log(f"state={st} t={int(hold_el)}")
                     logged = st
                 look.update(src="check", state=a.get("state"), why=str(a.get("why", ""))[:160])
+                if off and st in ("menu", "other") and re.search(r"name entry|high.score", str(a.get("why", "")).lower()):
+                    # the model calls a name entry "menu" or "other" as often as "name_entry" (Strike Force, 10-05): its reason decides
+                    st = "name_entry"
                 if off:
                     nav += 1
                     navs += 1
                     if nav > HOLD_NAV_MAX:
-                        reason = f"off play for {nav} steps: {a.get('state')} ({a.get('why', '')})"[:240]
-                        self.hold_note(log, dict(look, action=[]))
-                        break
+                        if ladder_rounds >= HOLD_LADDER_ROUNDS and self.el() + 60 >= self.budget_s:
+                            # the ladder has run its rounds AND the budget is gone: only now does off play end the hold
+                            reason = f"off play for {nav} steps: {a.get('state')} ({a.get('why', '')})"[:240]
+                            self.hold_note(log, dict(look, action=[]))
+                            break
+                        ladder_rounds, nav, ladder_i = ladder_rounds + 1, 0, 0
+                        look["ladder_round"] = ladder_rounds
+                        print(f"hold-play: off play for {HOLD_NAV_MAX} steps ({a.get('state')}): ladder round {ladder_rounds}",
+                              flush=True)
                     action = clean_action(a.get("action"))
+                    if genre == "attack" and not th and st == "menu" and action == ["START"]:
+                        # a fighting select screen takes A on the highlighted entry, not START (10-04 rule; the GG rerun
+                        # 6 look still said START on "PRESS START" over an empty slot, 35 s per game over)
+                        why = str(a.get("why", "")).lower()
+                        if (any(w in why for w in ("select", "character", "stage", "arcade", "mode"))
+                                and not any(w in why for w in ("title", "attract"))):
+                            action = ["A"]
+                            look["select"] = True
                     try:
                         wait_s = min(max(float(a.get("wait_s") or 2), 0.5), 8)
                     except (TypeError, ValueError):
                         wait_s = 2.0
-                    if th:
+                    rm = rematch_press(a.get("why"), st) if not th else None
+                    if rm:
+                        action, wait_s = rm, 2.0
+                        look["rematch"] = True
+                    elif st == "continue" and not th and cont_tries < CONTINUE_TRIES:
+                        # a CONTINUE countdown (fighting games): START, then A, unlooked; the look after each says which took
+                        action, wait_s = [CONTINUE_PRESS[cont_tries % len(CONTINUE_PRESS)]], 1.5
+                        cont_tries += 1
+                        look["continue"] = cont_tries
+                    elif st == "period_break" and not th and pb_tries < PERIOD_TRIES:
+                        # a sports period break or a bowling frame's scorecard (10-05): START, then A, unlooked, on its own
+                        # budget (PERIOD_TRIES), reset once play is back
+                        action, wait_s = [CONTINUE_PRESS[pb_tries % len(CONTINUE_PRESS)]], 1.5
+                        pb_tries += 1
+                        look["period"] = pb_tries
+                    elif st == "name_entry" and not th and name_tries < NAME_TRIES:
+                        # a name entry (10-05): START to Done, then A to confirm, unlooked; its own budget
+                        action, wait_s = name_press(self.name, name_tries), 1.5
+                        name_tries += 1
+                        look["name"] = name_tries
+                    elif genre == "attack" and not th and charsel_press(a.get("why"), st, charsel_i):
+                        # the fighting select's cycle (10-06): A, B, START, one press per look, from the first grid look
+                        action, wait_s = charsel_press(a.get("why"), st, charsel_i), 2.0
+                        charsel_i += 1
+                        look["charsel"] = charsel_i
+                    elif ladder_rounds and not th:
+                        # the ladder (10-06): one press per look, unlooked, cycling the fighting select's inputs
+                        action, wait_s = [HOLD_LADDER[ladder_i % len(HOLD_LADDER)]], 2.0
+                        ladder_i += 1
+                        look["ladder"] = ladder_i
+                    elif th:
                         # title hold: a menu is closed with one B and X follows; anything else keeps the model's press
                         # minus the forbidden buttons (a cutscene's A)
                         if st == "title_screen" and th.get("continue") and cont_left:
@@ -1540,12 +2074,28 @@ class Agent:
                 else:
                     nav = 0
                     rep_left = 0
+                    cont_tries = 0
+                    pb_tries = 0
+                    name_tries = 0
+                    ladder_i = 0
+                    charsel_i = 0
             if not off and look.get("action") is None:
                 # play: the genre loop (a check look that said play sends it too). The time credited is this
                 # cycle's own, from its frame to its inputs: the look before may have been off play.
-                loop = [t for t in tokens if t not in shed_set]
+                if genre == "shooter" and not th:
+                    # the patrol backstop (17:4x): a walk that turns round every PATROL_EVERY looks is gameplay even when
+                    # the picture barely moves; the reverse trigger above is the first line, this is the floor under it
+                    patrol_looks += 1
+                    if patrol_due(patrol_looks):
+                        flipped = not flipped
+                        reversals += 1
+                        look["reverse"] = "patrol"
+                loop = flip_walk([t for t in tokens if t not in shed_set], flipped)
                 if th and press_x:
                     loop, press_x = ["X"], False
+                if counter:
+                    loop = counter + loop
+                    look["counter"] = counter[0]
                 look.update(src=look.get("src", "genre"), action=loop)
                 self.send(loop)
                 if not parked:
@@ -1555,13 +2105,26 @@ class Agent:
                 if kept and not off:
                     mv = window_change(kept[-1], jp)
                     look["window"] = round(mv, 4)
-                    if mv < HOLD_STILL:
+                    # a title hold judges still by the scene's shift (an effect in place changes pixels, not the scene)
+                    shift_test = bool(th) or genre == "attack"
+                    if shift_test:
+                        sh = scene_shift(kept[-1], jp)
+                        look["shift"] = round(sh, 1)
+                    still_now = still_window(shift_test, mv, sh if shift_test else 0)
+                    if still_now:
                         still_windows += 1
                         if th:
-                            # two still windows in a row: X once, then the walk goes on (no unlock rotation)
+                            # two still windows in a row (60 s): X once, then a different move for the next 30 s
+                            # (10-05, Tork: 500 s on one stair with the same walk; the stair needs a hop). Each
+                            # still stretch gets the next move in the list; a moving window puts the walk back.
                             still_row += 1
                             if still_row >= 2:
                                 press_x, still_row = th_x, 0
+                                rot += 1
+                                moves = th.get("unstick", []) + TITLE_UNSTICK
+                                move = moves[(rot - 1) % len(moves)]
+                                tokens = move + th["walk"]
+                                look["unstick"] = " ".join(move)
                         else:
                             rot += 1
                             unstick = HOLD_UNSTICK.get(genre)
@@ -1573,6 +2136,8 @@ class Agent:
                         parked = True
                     else:
                         still_row, parked = 0, False
+                        if th:
+                            tokens = th["walk"]
                     want = "still" if parked else "play"
                     if logged in ("play", "still") and want != logged:
                         self.dev.route_log(f"state={want} t={int(hold_el)}")
@@ -1580,21 +2145,55 @@ class Agent:
                 last_kept = hold_el
                 kept.append(jp)
                 route_frame(self.out, png)
+                if sd_watch:
+                    try:
+                        d = sd_watch.sample(stuckdetect.frame_signature(png), last_st if off else "play")
+                        if d.get("stuck"):
+                            look["stuck"] = {k: d.get(k) for k in ("menu", "run", "reason", "action", "abort")}
+                            if d["abort"]:
+                                sd_abort = f"stuck_abort: {d['reason']}; {sd_rungs} unstick rung(s) tried, still stuck"
+                            else:
+                                sd_rungs += 1
+                                print(f"hold-play: stuck ({d['reason']}): unstick {' '.join(d['action'])} at {hold_el:.0f} s", flush=True)
+                                self.send(d["action"])
+                        else:
+                            sd_rungs = 0
+                    except Exception as e:   # never let the detector end a hold it cannot read
+                        sd_watch = None
+                        look["stuck_error"] = repr(e)[:120]
             # the previous look's frame is spent now: this look has been measured against it
             for p in drop:
                 os.remove(p)
             drop = [] if keep else [png, jp]
             look.update(play_s=round(play_s, 1), kept=keep)
             self.hold_note(log, look)
+            if sd_abort:
+                reason = sd_abort
+                print(f"hold-play: {reason}", flush=True)
+                break
+            if play_s >= self.hold_s and (last_v is None or now() - last_v >= HOLD_VERDICT_S):
+                # the validity check (10-06 owner order): the hold ends on a verdict that passes, not on hold_s alone
+                last_v = now()
+                kind, s, why = self.hold_check(play_s, log)
+                if kind == "pass":
+                    held_ok = True
+                elif kind == "retry":
+                    print("hold-play: no verdict this check; checking again", flush=True)
+                elif kind == "stop" or self.el() + s > self.budget_s:
+                    reason = why or f"{kind} short by {s:.0f} s with no budget left"
+                    break
+                else:
+                    print(f"hold-play: verdict short on {kind} by {s:.0f} s; holding on (budget {self.budget_s - self.el():.0f} s left)",
+                          flush=True)
             last_png = png
         for p in drop:
             os.remove(p)
-        ok = play_s >= self.hold_s
+        ok = held_ok
         if not ok and not reason:
             reason = f"budget {self.budget_s / 60:.0f} min with {play_s:.0f} s of play"
         held.update(ok=ok, play_s=round(play_s, 1), need_s=self.hold_s, hold_s=round(now() - t_hold, 1),
-                    model_navs=navs, frames=len(kept), still_windows=still_windows, shed=sorted(shed_set),
-                    reason=reason, title_hold=bool(th), fps_checks=fps_checks)
+                    model_navs=navs, frames=len(kept), still_windows=still_windows, shed=sorted(shed_set), reversals=reversals,
+                    reason=reason, title_hold=bool(th), fps_checks=fps_checks, stuck_abort=bool(sd_abort))
         self.result["hold"] = held
         print(f"hold-play: {'HELD' if ok else 'not held'} {play_s:.0f}/{self.hold_s:.0f} s of play; {reason}",
               flush=True)
@@ -1605,6 +2204,48 @@ class Agent:
             cat.terminate()
             held["verdict"] = self.hold_verdict(now() - t_hold)
         return self.finish(last=kept[-1] if kept else jpg, post=kept)
+
+    def hold_check(self, play_s, log):
+        """The hold's own validity check (10-06): title_verdict.py on the logcat so far, in a provisional folder whose logcat
+        ends with a `soak end` at its last logged time. Returns (kind, seconds, why) from hold_shortfall. The hold's play and
+        the verdict's play are both logged; the verdict's is trusted when they disagree."""
+        pdir = os.path.join(self.out, "provisional")
+        os.makedirs(pdir, exist_ok=True)
+        try:
+            lines = open(os.path.join(self.out, "logcat.txt"), errors="replace").read().splitlines()
+        except OSError:
+            lines = []
+        stamp = next((l[:18] for l in reversed(lines) if re.match(r"^\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}\s", l)), None)
+        with open(os.path.join(pdir, "logcat.txt"), "w") as f:
+            f.write("\n".join(lines) + "\n")
+            if stamp:
+                f.write(f"{stamp} I/hakuX-route(    0): soak end\n")
+        with open(os.path.join(pdir, "request.json"), "w") as f:
+            json.dump({"title": self.name, "title_id": self.tid, "device": self.dev.label,
+                       "iso": os.path.basename(self.iso or "")}, f)
+        with open(os.path.join(pdir, "run.log"), "w") as f:
+            f.write(f"held {self.name} for {int(play_s)}s\n")
+        v = None
+        try:
+            subprocess.run([sys.executable, VERDICT, pdir, "--require", "confirmation"],
+                           capture_output=True, text=True, timeout=120)
+            v = json.load(open(os.path.join(pdir, "verdict.json")))
+        except (subprocess.TimeoutExpired, OSError, ValueError):
+            v = None
+        # no verdict is an unknown, not a failure: the hold checks again at the next interval, and ends at the budget
+        kind, s = ("retry", 0.0) if v is None else hold_shortfall(v, self.hold_s)
+        tl = (v or {}).get("timeline")
+        vplay = tl.get("play_s") if isinstance(tl, dict) else None
+        if vplay is not None and abs(float(vplay) - play_s) > HOLD_PLAY_AGREE_S:
+            print(f"hold-play: play disagrees: hold {play_s:.1f} s, verdict {float(vplay):.1f} s (verdict trusted)", flush=True)
+        why = ""
+        if kind == "stop":
+            why = ("no verdict" if v is None else
+                   f"verdict stops the hold: fps_ok {v.get('fps_ok_share')}, crash {v.get('crash')}, hang {v.get('hang')}")
+        self.hold_note(log, {"check": kind, "short_s": round(s, 1), "hold_play_s": round(play_s, 1),
+                             "verdict_play_s": vplay, "gameplay_s": (v or {}).get("gameplay_s")})
+        print(f"hold-play: validity check {kind} {s:.0f} s (hold {play_s:.0f} s of play, verdict {vplay})", flush=True)
+        return kind, s, why
 
     def hold_verdict(self, secs):
         """title_verdict.py on the hold's logcat: its one VERDICT line (verdict.json beside it)."""
@@ -1715,6 +2356,9 @@ def main(argv=None):
                          "(e.g. the longest quarter length, so one quarter covers the hold)")
     ap.add_argument("--sim", help="PATHFIND_DRY: frames dir to play back")
     ap.add_argument("--sim-answers", help="PATHFIND_DRY: JSON list of canned model answers")
+    ap.add_argument("--path-broken", default=None,
+                    help="override the profile gate's R3 (#433): a dispatch/results id naming a run of "
+                         "this title's known path that failed")
     a = ap.parse_args(argv)
     os.makedirs(a.out, exist_ok=True)
     a.out = os.path.abspath(a.out)
@@ -1728,6 +2372,25 @@ def main(argv=None):
     why = blocked(tid, name)
     if why:
         sys.exit(f"pathfind: {name} is owner-blocked: {why}")
+    if football_deferred(name, iso):
+        sys.exit(f"pathfind: {name} is a football title and football goes last (owner order 10-05 12:35); "
+                 "take the next non-football title in briefs/pathfind.md, or set PATHFIND_FOOTBALL=1 when lane.local lifts it")
+    below = below_bar_refusal(tid, name)
+    if below:
+        sys.exit(f"pathfind: refused, below the bar (owner order 10-06 16:45): {below}")
+    # The profile gate's R3 (#433 addendum 2): a pathfind.py session is blind navigation, same as a
+    # queued --find-route request, but its OWN "known path" test is broader (a pathknow success counts
+    # too, not just a proven route) -- a session that already reached gameplay once has nothing left to
+    # find blind, even before any route built from it has its own proof soak.
+    if tid:
+        kp = titlestate.known_path(tid, broad=True)
+        if kp["known"]:
+            bad = titlestate._path_broken_bad(a.path_broken, tid, kp["route_name"]) if a.path_broken else (
+                "a known path exists; pass --path-broken \"<result id>\" naming a run of it that failed")
+            if bad:
+                via = f" ({kp['source']}" + (f" via {kp['route_name']}, result {kp['result_id']})" if kp["route_name"]
+                                              else ")")
+                sys.exit(f"pathfind: {name} ({tid}) already has a known path{via}: {bad}")
     if a.hold_s and dev.label == "thor":
         sys.exit("pathfind: --hold-s is Nova only: the Thor's fan is dead and it stops within 30 s of a claim")
     print(f"pathfind: {name} ({tid}) on {dev.label}: {iso}", flush=True)
@@ -1742,7 +2405,6 @@ def main(argv=None):
     # the path found is only replayable from the state it was found in.
     hdd = None
     if not dry() and not a.hdd_img:
-        import titlestate
         hdd = titlestate.prepare(dev.label, tid, a.state, log=lambda m: print(m, flush=True))
         json.dump(hdd, open(os.path.join(a.out, "hdd.json"), "w"), indent=1)
     try:

@@ -1,0 +1,31 @@
+# state: returning   (classifier-path reopen using the kept golden profile; #433 step 6d)
+# Battlefield 2: Modern Combat (45410062): a `returning` variant of
+# bf2mc.route (first-run) for a disk that already has the kept profile/save.
+# The profile gate refuses a repeat first-run creation (R1: the title already
+# has a kept profile); this route opens with `drive generic` instead of the
+# first-run's blind boot-to-create-campaign-to-name-entry sequence, replaying
+# whatever title/menu screens a returning disk shows with the trained
+# classifier until play is confirmed, then marks. Player control is
+# unchanged from the first-run route: LY min walked forward, RX turned, RT
+# fired.
+drive generic 300 mark
+repeat forever {
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX max
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX min
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+}

@@ -37,6 +37,12 @@ files = ["docs/lanes/alwaystelemetry/**", "docs/testing/predictions/alwaysteleme
 note = "GRANTED 2026-10-03 10:14 PDT (hostops jam duty, lane.local inbox 10:01): telemetry with every run (#433). PR #704 on lane/alwaystelemetry had no row, so nothing read its runs."
 
 
+[lane.compatpage1012]
+issues = ['433']
+standing = false
+files = ['docs/COMPATIBILITY.md', 'docs/compatibility.csv', 'docs/testing/compat_page.py', 'docs/testing/compat_page_selftest.py', 'docs/testing/compat_notes.tsv', 'README.md', 'docs/lanes/compatpage1012/**']
+note = 'STARTED lane.local 2026-10-12 23:28 PDT (Sonnet, docs): owner 10-12 ~23:15 PDT: the compatibility page in three sections (Playable; runs below 30 fps; not playable), the region tested instead of the title ID, no Rated-by column, reds with title ID, tested date and a short reason; generated from the ledger and registry, plus docs/compatibility.csv. README.md is wording only, in the lines that describe COMPATIBILITY.md. No device, no emulator change. Brief: briefs/compatpage1012.md.'
+
 [lane.issuemirror1012]
 issues = ['433']
 standing = false

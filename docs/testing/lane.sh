@@ -42,6 +42,36 @@ WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"      # the object store only
 TIP="${HAKUX_TIP:-master}"
 JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")/jobs" && pwd)"   # allowlist, summariser: this tree's
+
+# THE LANE'S PATH. A transient unit's PATH comes from whatever the systemd
+# --user manager holds at the moment it spawns (see jobs/gh-shim/route.sh's
+# environment.d drop-in), not from this script's own. On 2026-10-09 a WSL
+# crash restarted the manager without the forge shim on it, and two live
+# lanes (surfgpu1009, nightlynotes1009) spent part of their session with
+# `gh` resolving to the real GitHub CLI instead of the shim that talks to the
+# local forge. --setenv=PATH here makes the unit's PATH independent of
+# whatever the manager happens to hold. BUILT ONCE, used by both the start
+# and resume systemd-run blocks below: a PATH computed twice is a PATH that
+# drifts the moment one copy is edited and the other is not.
+LANE_SHIM_BIN="${HAKUX_SHIM_BIN:-$WORK/forge/shim/bin}"
+LANE_PATH_TAIL="/home/justin/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin"
+lane_path() {   # sets LANE_PATH for the caller, or refuses (exit 78) -- never the caller's own $PATH
+    if [ ! -d "$LANE_SHIM_BIN" ]; then
+        echo "REFUSED: no forge shim at $LANE_SHIM_BIN; starting a lane without it can resolve \`gh\` to the real GitHub CLI on whatever PATH the systemd --user manager happens to hold, not the one this host chose. Install the shim (jobs/gh-shim/install.sh) or fix \$WORK before starting lanes." >&2
+        exit 78
+    fi
+    LANE_PATH="$LANE_SHIM_BIN:$LANE_PATH_TAIL"
+}
+
+# THE STRANDED-SESSION FOOTER. Appended to every lane's prompt (start and
+# resume alike, from this one string) after two Sonnet lanes on 2026-10-09
+# (surfgpudefault1009, restoreleak1009) started a long job in the background
+# and ended their turn to "report back when it finishes": under `claude -p`
+# the session ends with the turn, the unit's cgroup kills the job with it,
+# and the notification never comes. A lane that does not know it is headless
+# cannot avoid that shape.
+LANE_SESSION_FOOTER="This is a headless session: it ends the moment this turn ends, and anything still running then -- a background command, a detached process -- is killed along with it, so a notification you are waiting for will never arrive. Run long commands in the foreground, within this turn, in chunks that fit; never end a turn while a job of yours is still running."
+
 # THE CAP. Every lane is a model session drawing on the account's shared
 # five-hour and weekly windows (docs/ORCHESTRATION-DESIGN.md §9.1), and the
 # first board tick found eleven dispatchable issues. Nothing else stops a
@@ -49,7 +79,7 @@ JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")/jobs" && pwd)"   # allowlist, summari
 # without a commit; the board role file tells the job to stop dispatching
 # when this script refuses.
 LANE_MAX=2
-. "$JOBS/models.env"
+MODELS="$JOBS/models.sh"
 # THE WINDOW IS NOT THE CAP. LANE_MAX only ever binds when there IS work, so
 # it throttles the days with a backlog and does nothing on a day the account's
 # window is already spent; it stays what its comment says it is, a runaway
@@ -87,15 +117,22 @@ LANE_MAX=2
 # environment and from systemd-run's --setenv, not from this file.
 #
 # PRECEDENCE, now that it works: the file wins over the process environment,
-# which is what it already did for LANE_MAX and for every name in models.env.
-# `$WORK/limits.env is the host's dial` (jobs/window.sh) means one dial.
+# which is what it already did for LANE_MAX. `$WORK/limits.env is the host's
+# dial` (jobs/window.sh) means one dial.
 TURNS="${LANE_TURNS:-150}"
+# The first LANE_ESCALATE_AFTER attempts run on the kind's (or the brief's
+# .model file's) own model; the next on one step up the ladder; after
+# LANE_MAX_ATTEMPTS the script refuses. Not in models.toml: LANE_MAX itself
+# is the precedent (a bash default here, limits.env overrides it, cloud.sh
+# reads it out of this file rather than repeating it -- see cloud.sh).
+LANE_ESCALATE_AFTER="${LANE_ESCALATE_AFTER:-3}"
+LANE_MAX_ATTEMPTS="${LANE_MAX_ATTEMPTS:-4}"
 # USAGE LOW IS READ HERE, AT EVERY START AND RESUME. jobs/usage/mode.sh only
 # creates or removes $WORK/usage/low-active; it rewrites no dial and no .model
 # file, so there is no snapshot to restore and nothing to go stale. While the
-# file exists, fewer lanes run and an expensive model runs on LOW_MODEL.
-LOW_LANE_MAX="${USAGE_LOW_LANE_MAX:-3}"
-LOW_MODEL="${USAGE_LOW_MODEL:-claude-sonnet-5}"
+# file exists, fewer lanes run (models.toml's [usage].low_lane_max) and the
+# model models.sh picks for any kind is capped at Sonnet.
+LOW_LANE_MAX=$(bash "$MODELS" dial low_lane_max)
 usage_low() { [ -e "$WORK/usage/low-active" ]; }
 if usage_low && [ "$LANE_MAX" -gt "$LOW_LANE_MAX" ]; then LANE_MAX=$LOW_LANE_MAX; fi
 
@@ -197,41 +234,38 @@ PYFLEET
 }
 
 # ATTEMPTS AND ESCALATION. Every start or resume of a lane is one attempt at
-# its issue, counted in $WORK/attempts/<name>. The first LANE_ESCALATE_AFTER
-# attempts run on MODEL_LANE, or on $WORK/briefs/<name>.model when the board
-# wrote one -- a lane doing docs, measurement or harness work costs the same
-# Opus session as JIT or shader engineering otherwise, on every start AND
-# EVERY RESUME, because job.handback resumes a lane whenever its results land
-# and a lane started on the cheaper model was running on Opus again from its
-# first resume. HAKUX_MODEL still overrides either, for one start. The next
-# attempt after LANE_ESCALATE_AFTER runs on MODEL_LANE_ESCALATED regardless of
-# the per-lane file: three failed passes is the signal that the problem needs
-# more reasoning, not the cheaper model. After LANE_MAX_ATTEMPTS the script
-# refuses: the board opens a decision-needed issue instead of spending a fifth
-# session. `lane.sh attempts <name>` shows the count; `lane.sh reset <name>`
-# clears it when the brief itself was the problem.
+# its issue, counted in $WORK/attempts/<name>. A brief names its KIND of work
+# (e.g. "engineering"), looked up in models.toml; $WORK/briefs/<name>.model,
+# when the board wrote one, is read first -- either a kind name, or (77
+# legacy files) a bare model id, both handled by `models.sh resolve`. HAKUX_MODEL
+# overrides either, for one start. The next attempt after LANE_ESCALATE_AFTER
+# runs one step up the ladder regardless of the per-lane file: three failed
+# passes is the signal that the problem needs more reasoning, not the cheaper
+# model. After LANE_MAX_ATTEMPTS the script refuses: the board opens a
+# decision-needed issue instead of spending a fifth session. `lane.sh
+# attempts <name>` shows the count; `lane.sh reset <name>` clears it when the
+# brief itself was the problem.
+#
+# A RESUME AFTER A WAIT IS NOT A FAILED ATTEMPT. This counter still advances
+# on every resume -- handback.sh is what tells a stranded/CI/device-wait
+# resume apart from a genuine failure, by saving and restoring THIS file's
+# count around the resume it issues for a wait, so this script never needs
+# to know which kind of resume it is.
 next_attempt() {   # prints the attempt number this start will be, and the model for it
-    local f="$WORK/attempts/$1" mf="$WORK/briefs/$1.model" n lane_model=""
+    local f="$WORK/attempts/$1" mf="$WORK/briefs/$1.model" n token="engineering"
     mkdir -p "$WORK/attempts"
     n=$(( $(cat "$f" 2>/dev/null || echo 0) + 1 ))
     if [ "$n" -gt "$LANE_MAX_ATTEMPTS" ]; then
-        echo "REFUSED: lane $1 has had $(( n - 1 )) attempts (LANE_MAX_ATTEMPTS=$LANE_MAX_ATTEMPTS), the last on $MODEL_LANE_ESCALATED. Open a decision-needed issue; do not start it again." >&2
+        echo "REFUSED: lane $1 has had $(( n - 1 )) attempts (LANE_MAX_ATTEMPTS=$LANE_MAX_ATTEMPTS), the last already escalated. Open a decision-needed issue; do not start it again." >&2
         return 75
     fi
-    [ -f "$mf" ] && lane_model=$(head -1 "$mf")
-    if [ "$n" -gt "$LANE_ESCALATE_AFTER" ]; then
-        MODEL="${HAKUX_MODEL:-$MODEL_LANE_ESCALATED}"
+    [ -f "$mf" ] && token=$(head -1 "$mf")
+    if [ -n "${HAKUX_MODEL:-}" ]; then
+        MODEL="$HAKUX_MODEL"
+    elif [ "$n" -gt "$LANE_ESCALATE_AFTER" ]; then
+        MODEL=$(bash "$MODELS" resolve "$token" --escalate)
     else
-        MODEL="${HAKUX_MODEL:-${lane_model:-$MODEL_LANE}}"
-    fi
-    # An explicit HAKUX_MODEL is a person's choice for this one start; Low
-    # caps only what the brief or the escalation rule picked.
-    if usage_low && [ -z "${HAKUX_MODEL:-}" ]; then
-        case "$MODEL" in
-            "$LOW_MODEL"|*sonnet*|*haiku*) ;;
-            *) echo "usage Low: lane $1 starts on $LOW_MODEL, not $MODEL ($WORK/usage/low-active)" >&2
-               MODEL=$LOW_MODEL ;;
-        esac
+        MODEL=$(bash "$MODELS" resolve "$token")
     fi
     echo "$n" > "$f"
     ATTEMPT=$n
@@ -283,6 +317,7 @@ case "$cmd" in
         echo "REFUSED: $active lane(s) already running and LANE_MAX=$LANE_MAX ($WORK/limits.env). Dispatch nothing more this tick." >&2
         exit 75
     fi
+    lane_path
     git -C "$REPO" fetch -q origin "$TIP" || { echo "fetch of origin/$TIP failed" >&2; exit 4; }
     if git -C "$REPO" rev-parse --verify --quiet "refs/remotes/origin/$branch" >/dev/null; then
         # A lane resuming after a wind-down or a crash continues its own branch.
@@ -302,12 +337,15 @@ case "$cmd" in
     [ -f "$REPO/android/local.properties" ] && cp "$REPO/android/local.properties" "$wt/android/local.properties"
     log="$WORK/logs/lane/$name.$(date -u +%Y%m%dT%H%M%SZ).json"
     systemd-run --user --unit "hakux-lane-$name" --collect \
+        --setenv=PATH="$LANE_PATH" \
         --setenv=HAKUX_ROLE=lane --setenv=HAKUX_BRIEF="$WORK/briefs/$name.md" \
         --setenv=HAKUX_BRANCH="$branch" --setenv=HAKUX_TIP="$TIP" \
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
+        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')
+
+$LANE_SESSION_FOOTER\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" --settings '$JOBS/lane-settings.json' > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
     echo "started hakux-lane-$name in $wt on $branch; attempt $ATTEMPT on $MODEL; log $log"
     [ -n "$issue" ] && echo "issue #$issue -- the lane opens its draft PR; the board job labels it lane:$name"
     ;;
@@ -326,17 +364,21 @@ case "$cmd" in
         echo "REFUSED: $active lane(s) already running and LANE_MAX=$LANE_MAX ($WORK/limits.env)." >&2
         exit 75
     fi
+    lane_path
     next_attempt "$name" || exit 75
     fleet_write "$name" "$branch" "$wt" "$WORK/briefs/$name.md" \
                 "$(cat "$WORK/briefs/$name.issue" 2>/dev/null)" "$ATTEMPT" "$MODEL"
     log="$WORK/logs/lane/$name.$(date -u +%Y%m%dT%H%M%SZ).json"
     systemd-run --user --unit "hakux-lane-$name" --collect \
+        --setenv=PATH="$LANE_PATH" \
         --setenv=HAKUX_ROLE=lane --setenv=HAKUX_BRIEF="$WORK/briefs/$name.md" \
         --setenv=HAKUX_BRANCH="$branch" --setenv=HAKUX_TIP="$TIP" \
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
+        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')
+
+$LANE_SESSION_FOOTER\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" --settings '$JOBS/lane-settings.json' > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
     echo "resumed hakux-lane-$name in $wt; attempt $ATTEMPT on $MODEL; log $log"
     ;;
   rm)

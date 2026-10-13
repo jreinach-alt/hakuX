@@ -1,0 +1,55 @@
+{
+  "registered_utc": "2026-10-09T22:47:26Z",
+  "who": "lane.surfgpu1009",
+  "issue": "433",
+  "title": "454100A1-NBA_Live_07.xiso.iso",
+  "device": "nova",
+  "seconds": 480,
+  "route": "nbalive07",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "1e5b1af818a369fb5fa5d2e0a6f71bdb81d7324a",
+  "b_ref": "1e5b1af818a369fb5fa5d2e0a6f71bdb81d7324a",
+  "a_env": [
+    "HAKUX_GPUXFR=1",
+    "HAKUX_FRAMETRACE=1"
+  ],
+  "b_env": [
+    "HAKUX_GPUXFR=1",
+    "HAKUX_FRAMETRACE=1",
+    "HAKUX_SURFGPU=1"
+  ],
+  "queue_order": "Hand-queued (arms.sh skips title soaks and a_ref == b_ref): B first, then A, one build. request.sh --who surfgpu1009 --title 454100A1-NBA_Live_07.xiso.iso --route nbalive07 --seconds 480 --perflog --device nova --env HAKUX_GPUXFR=1 --env HAKUX_FRAMETRACE=1 [--env HAKUX_SURFGPU=1 on B] --ref 1e5b1af818 --issue 433 --expect docs/testing/predictions/surfgpu1009-nba07-soak.json. The flag-off arm goes last so its env is the one left behind.",
+  "judge": "python3 docs/lanes/surfgpu1009/sg_judge.py --expect docs/testing/predictions/surfgpu1009-nba07-soak.json --a <A id> --b <B id> --floor 1-1791525340-surfdl1008-4043345  (reads result dirs only); cross-read with docs/lanes/surfdl1008/postmark_sdsurvey.py and docs/lanes/near30/decompose.py",
+  "window": "logcat at or after the route's 'mark gameplay' line, to the end of the run. 480 s from boot, surfdl1008's route.",
+  "prediction": "#433, NBA Live 07. Flag off (A) reproduces surfdl1008's 1-1791525340 baseline: `reuse` 10.70 ms/flip (fin 0.5/flip) and `surfupd` 8.74 ms/flip (fence 0.5/flip) on alternating flips, all callers 19.33 ms/flip median, ph_Fin 13.8, ph_GPU 21.3, ph_Tot 36.6, gfps 22.17. Flag on (B): the reuse rebind detaches (reuse <= 1.0 ms/flip, detach >= 0.4 per flip), and a flip batch that carries no display surface is marked pending at the flip (nodisp >= 0.3 per flip) so the surfupd rebind that follows leaves it pending, as #474 does for the display pre-download, instead of waiting its fence; a rebinding upload that reads the batch's bytes still waits (counted `pre`), so the ceiling also tests that NBA 07's surfupd uploads mostly do not overlap the flip batch (surfupd <= 2.0 ms/flip); the sum of all [sdcall] waits per flip at most half of A's; ph_Fin down at least 6.0 ms/frame; gfps up at least 2.0 (ph_GPU 21.3 stays, so the ceiling is the GPU, not 30). Pixels unchanged, as for NBA 2005.",
+  "legs": {
+    "V (validity)": "V1: B's logcat carries '[surfgpu] on' (the env reached the process). V2: A's does not. V3: both arms have >= 5 post-mark [sdcall] windows. V4: no thermal pause in either arm (decompose.py's THERMAL line). A V failure voids the pair: it goes to identification (what failed and why), never a blind rerun.",
+    "P0 (the wait is there to remove)": "A, flag off, reproduces the baseline wait this fix targets: the named caller's median ms per flip post-mark is at least the registered floor. A P0 failure means the scene did not reach the measured state; the pair is not scored on P1-P4.",
+    "P1 (the caller drops)": "B's `reuse` wait (and, where registered, `surfupd`) per flip is at most the registered ceiling, and the switch acted: [surfgpu] detach= (and nodisp=) per flip at least the registered floor. If reuse drops but detach does not, the drop is not this switch's.",
+    "P2 (the wait did not move)": "The SUM of every [sdcall] caller's wait per flip (median of windows), B over A, is at most the registered ratio. A wait that moved from reuse to surfupd, rotation `pre` or a new caller is counted here, which is the async794 failure mode.",
+    "P3 (ph_Fin)": "decompose.py's all-row ph_Fin, A minus B, is at least the registered drop in ms per frame.",
+    "P4 (gfps)": "decompose.py's all-row gfps (mark-restricted), B minus A, is at least the registered gain. Read only after the hold frames show a game in play with players moving in both arms.",
+    "M (moving player, hand-read)": "The hold frames of both arms, minutes apart, show live gameplay (score/clock advancing, players in different positions), not a menu, replay or paused state. If either arm's hold frames do not, its fps is not read.",
+    "X (pixels, hand-read)": "sg_judge.py --floor prints route-frame regions (gpunonrender/regioncheck.py: 4x4 grid, tol 8, FPS overlay masked) for B vs A and for A vs the older flag-off run on the same route. PASS: B vs A differs in no more regions than the floor's 2x, and every differing region is an animated panel (crowd, scoreboard, clock) on inspection; any region showing missing, stale or garbled surface content (a black/old court, wrong depth occlusion, a stale HUD) is a correctness FAIL regardless of count. The disc leg is surfgpu1009-golden.json.",
+    "R (reported, not scored)": "B's residual: record ms per flip, spl= up/dl/cmpl per flip (cmpl > 0 means the splice could not cover and completed on the CPU at SDC_SURF_UPDATE), defer_full, shader_cache of both arms (B runs first on a new apk and starts cold, so B's cold-cache compiles bias AGAINST this prediction)."
+  },
+  "expect": {
+    "V1.B_surfgpu_on": true,
+    "V2.A_surfgpu_on": false,
+    "V3.postmark_sdcall_windows_min": 5,
+    "V4.thermal_pause": false,
+    "P0.A_reuse_ms_per_frame_min": 6.0,
+    "P0.A_surfupd_ms_per_frame_min": 5.0,
+    "P1.B_reuse_ms_per_frame_max": 1.0,
+    "P1.B_detach_per_frame_min": 0.4,
+    "P1.B_surfupd_ms_per_frame_max": 2.0,
+    "P1.B_nodisp_per_frame_min": 0.3,
+    "P2.sdcall_wait_sum_ratio_max": 0.5,
+    "P3.ph_Fin_drop_ms_min": 6.0,
+    "P4.gfps_gain_min": 2.0
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules, not capture keys: a soak writes no captures. sg_judge.py scores each key against these thresholds and fails any key it has no reader for."
+}

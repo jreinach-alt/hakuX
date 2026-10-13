@@ -1,0 +1,51 @@
+{
+  "registered_utc": "2026-10-12T09:38:07Z",
+  "who": "lane.fpsbelow1012",
+  "issue": "433",
+  "device": "nova",
+  "a_ref": "be0239bac8",
+  "b_ref": "be0239bac8",
+  "runs_per_arm": 1,
+  "arms": {
+    "NGB": {
+      "title": "Ninja Gaiden Black.iso",
+      "route": "survey",
+      "seconds": 480,
+      "A": "request.sh --ref be0239bac8 --perflog --env HAKUX_GPUXFR=1 --env HAKUX_FRAMETRACE=1 --priority sweep",
+      "B": "the same plus --env HAKUX_ZETA_D24=1, queued before A"
+    },
+    "DOA3": {
+      "title": "54430001-Dead_or_Alive_3.xiso.iso",
+      "route": "survey",
+      "seconds": 480,
+      "A": "as NGB's A, queued first: it is also the title's telemetry at master (the pilot's DOA3 run, z-1791787896-fpsbelow1012-2551124, voided not-foreground before any input)",
+      "B": "as NGB's B, queued only after A reads IN THE CLASS"
+    },
+    "ToeJam": {
+      "title": "ToeJam & Earl III - Mission to Earth (USA).iso",
+      "route": "../../../lanes/uberdefault569/routes/toejam-earl-3",
+      "seconds": 540,
+      "A": "as DOA3's A",
+      "B": "as DOA3's B"
+    },
+    "Buffy": {
+      "title": "Buffy the Vampire Slayer (USA).xiso.iso",
+      "route": "survey",
+      "seconds": 480,
+      "A": "substitute, run only if DOA3 or ToeJam reads NOT IN THE CLASS: as DOA3's A",
+      "B": "as DOA3's B"
+    }
+  },
+  "order": "NGB B, NGB A, DOA3 A, ToeJam A (four queued, the brief's cap). Then DOA3 B and ToeJam B, each only once its A reads IN THE CLASS; Buffy A then B for the first that does not. A no-env run of this lane's goes last, so the device is left without the switch.",
+  "judge": "python3 docs/lanes/fpsbelow1012/tools/zread.py <A> <B> --expect docs/testing/predictions/fpsbelow1012-zetad24.json --key <NGB|DOA3|ToeJam|Buffy>. Exit 0 every leg passes, 1 a leg fails, 3 NOT IN THE CLASS (A shows < min_class_s of two-tile buckets: the pair is not judged and the title does not count).",
+  "expect": {
+    "NGB": {"window": "class", "bucket": 30, "a_inout_max": 0.6, "min_draws": 100, "min_class_s": 60, "a_zfmt": "0x82", "b_zfmt": "0x81", "min_perf": 45, "draws_band": 0.3, "b_inout_min": 0.8, "out_ratio_max": 0.65, "g_ratio_max": 0.85, "gfps_gain_min": 8},
+    "DOA3": {"window": "class", "bucket": 30, "a_inout_max": 0.6, "min_draws": 100, "min_class_s": 60, "a_zfmt": "0x82", "b_zfmt": "0x81", "min_perf": 45, "draws_band": 0.3, "b_inout_min": 0.8, "out_ratio_max": 0.65, "g_ratio_max": 0.85, "gfps_gain_min": 8},
+    "ToeJam": {"window": "class", "bucket": 30, "a_inout_max": 0.6, "min_draws": 100, "min_class_s": 60, "a_zfmt": "0x82", "b_zfmt": "0x81", "min_perf": 45, "draws_band": 0.3, "b_inout_min": 0.8, "out_ratio_max": 0.65, "g_ratio_max": 0.85, "gfps_gain_min": 8},
+    "Buffy": {"window": "class", "bucket": 30, "a_inout_max": 0.6, "min_draws": 100, "min_class_s": 60, "a_zfmt": "0x82", "b_zfmt": "0x81", "min_perf": 45, "draws_band": 0.3, "b_inout_min": 0.8, "out_ratio_max": 0.65, "g_ratio_max": 0.85, "gfps_gain_min": 8}
+  },
+  "must_not_move": [],
+  "must_not_regress": [],
+  "expect_counts": {},
+  "prediction": "#433 HAKUX_ZETA_D24 (lane.fpsbelow1012 NOTES.md section 5): storing Z24S8 as D24_UNORM_S8_UINT instead of D32_SFLOAT_S8_UINT removes the separate 1-byte stencil plane that doubles the A740's GMEM tile alignment (96 -> 192), so a 640/720x480 pass with 32-bit colour fits ONE tile instead of two; two tiles get no HW binning, so today each tile executes the whole draw stream. Same binary be0239bac8 on both arms (emulator code identical to master 00fde8afb3 plus the switch, off by default); A without the env, B with --env HAKUX_ZETA_D24=1; both perflog with HAKUX_GPUXFR=1 and HAKUX_FRAMETRACE=1, sweep tier. THE WINDOW is the A arm's class buckets (zread.py, THE CLASS WINDOW): 30-s buckets reading census in/out <= 0.60 with >= 100 draws per command buffer, >= 60 s of them, read identically in B. Titles: NG Black, whose master telemetry (the pilot, z-1791787896-fpsbelow1012-2551219, 00fde8afb3) shows the class at 270-480 s: in/out 0.52-0.54, outer span 18.8-29.2 ms per command buffer, gfps 32-46, G 21-30 ms; DOA3 and ToeJam, whose A arms are their telemetry at master (their runs on disk, all pre-fastpaths, read two-tile: DOA3 fight in/out 0.50 with out 14.8-26.1 ms, ToeJam in/out 0.65-0.67 at G ~36 ms); Buffy substitutes for one that reads NOT IN THE CLASS. LEGS per title, B against A in the window: V both zfmt as named (an arm without its init line is VOID), >= 45 perf lines each, B's draws per command buffer within 30% of A's (the two arms played the same stretch); M B's in/out >= 0.80 (one tile: the in-pass span is the whole pass); P B's mean outer span <= 0.65 x A's (the draw stream runs once, not twice; section 5 puts it at 0.5-0.65x); W B's median G <= 0.85 x A's, or B's median gfps >= A's + 8. PER-TITLE FIGURES, stated before any run (B in the window): NG Black gfps median >= 50 (A ~42), outer span <= 13 ms (A ~20); DOA3 gfps median >= 50, outer span <= 0.6 x A; ToeJam gfps median >= A + 8. Hand-read beside the legs, not judged: title_verdict's own_target_share (60 fps) and fps_ok_share (30-fps bar) for each arm. WHAT REFUTES WHAT: B reads 0x81 but in/out stays <= 0.6 -> the tile count did not move, the mechanism (the stencil plane's alignment) is wrong; M passes but P fails -> one tile costs about what two did (loads/stores or bandwidth), the replay was not the GPU's cost; P passes but W fails -> the GPU was not the frame's wait in that window, and the lever saves GPU time without frames. The lever is judged a win when at least two of the three counted titles pass every leg."
+}
