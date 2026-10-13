@@ -1,0 +1,15 @@
+# The public docs (#433): read by someone deciding whether to try this build,
+# or who already has and wants help. See AGENTS.md, "Public docs".
+# One repo-relative path per line.
+
+README.md
+KNOWN_ISSUES.md
+ROADMAP.md
+CONTRIBUTING.md
+PRIVACY.md
+docs/COMPATIBILITY.md
+docs/reporting-bugs.md
+docs/es-de/README.md
+docs/releases/README.md
+android/README.md
+android/MIGRATING.md
