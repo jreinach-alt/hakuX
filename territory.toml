@@ -37,6 +37,12 @@ files = ["docs/lanes/alwaystelemetry/**", "docs/testing/predictions/alwaysteleme
 note = "GRANTED 2026-10-03 10:14 PDT (hostops jam duty, lane.local inbox 10:01): telemetry with every run (#433). PR #704 on lane/alwaystelemetry had no row, so nothing read its runs."
 
 
+[lane.docsfresh1012]
+issues = ['433']
+standing = false
+files = ['docs/testing/docs_freshness.py', 'docs/testing/docs_freshness_selftest.py', 'docs/testing/public_docs.txt', 'android/RELEASING.md', 'AGENTS.md', 'docs/lanes/docsfresh1012/**']
+note = 'STARTED lane.local 2026-10-12 23:41 PDT (Sonnet, docs tooling; no device): owner 10-12 ~23:40 PDT asked for last-updated dates on the docs and more frequent docs passes. A checker (a date line under the H1 of each public doc, max age 14 days, version = the release), an hourly-report section staged as lanes/docsfresh1012/hourly_report.sh.new for lane.local to install, a RELEASING.md step and an AGENTS.md Public docs section. AGENTS.md and RELEASING.md from [free]. Brief: briefs/docsfresh1012.md.'
+
 [lane.docsrewrite1012]
 issues = ['433']
 standing = false
