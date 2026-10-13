@@ -778,8 +778,8 @@ export PATH="$JAVA_HOME/bin:$ANDROID_SDK_ROOT/cmake/3.30.3/bin:$HOME/.local/bin:
 cd android && ./gradlew --no-daemon assembleDebug
 ```
 
-Debug builds install as `com.jreinach.hakux.debug`, labelled **hakuX (debug)**,
-alongside a release install. They keep separate settings, HDD images and save
+Debug builds install as `com.jreinach.hakux.debug`, labelled
+**hakuX (test builds)**, alongside a release install. They keep separate settings, HDD images and save
 data.
 
 ## Disc images live on D:, never on the Linux disk (owner, 2026-10-09)
@@ -833,6 +833,9 @@ are exempt (arms.sh records a refusal as permanent and pools lanes under one
 name); a caller staging records in a private `DISPATCH_DIR` sets
 `PILOT_DISPATCH_DIR` to the real one so the gate counts the real queue.
 
+> *Superseded again: the Ayn Thor's fan has since failed (owner 2026-09-29)
+> and the device is out of service; titles run on the Nova only.*
+>
 > **LIFTED 2026-09-18. Both devices are online.** The Nova `ee317437` and the
 > Ayn Thor `bdc158a5` are available; both hold files were moved to
 > `$DISPATCH_DIR/hold/lifted/` at 11:08 and the fleet has run over forty arms

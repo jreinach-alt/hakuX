@@ -156,8 +156,8 @@ The source is the owner, as project manager, on 2026-09-28:
   check rollup comes back empty, and the fold job cannot fold a head that
   nothing has built -- so the PR waits, silently, until a person pushes over
   it. That is what stalled #101, #123, #129 and #139. `AGENTS.md`'s transition
-  note retired the marker; CI is free on this public repository and now runs
-  on every PR, and it is the gate of record.
+  note retired the marker; CI is the forge's and now runs on a ready PR, and
+  it is the gate of record.
 - **Quote** that marker, in a commit message, for any reason -- including
   explaining this rule. GitHub matches it anywhere in the message, body
   included, so the empty commit pushed to restore a missing run suppressed
