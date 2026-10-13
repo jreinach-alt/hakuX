@@ -8,8 +8,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `hangstall1013` | claude-sonnet-5 | 7 min |  |
-| `holdinput1013` | claude-sonnet-5 | 1h 0m | pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every  |
+| `holdinput1013` | claude-sonnet-5 | 1h 15m | pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every  |
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
@@ -92,6 +91,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Recently landed on master
 
+- 2026-10-13 compatrefresh1013: the compatibility page and README move to 57 Playable
 - 2026-10-13 statusalloc1013: status.sh no longer opens a status issue the gh shim would refuse (#433, 0.5)
 - 2026-10-13 pathrules1013: pathfind no-answer steps never become a path, a hold that can't pass ends early, a perflog run never banks (#433, 0.5)
 - 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
@@ -103,6 +103,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-13 docsrewrite1012: the public docs rewritten for players, each with a Last updated line (#433, 0.5)
 - 2026-10-13 docsfresh1012: a freshness check for the public docs, an hourly alarm and a release step (#433, 0.5)
 - 2026-10-13 compatpage1012: the compatibility page in three sections, with regions and a CSV (#433, 0.5)
-- 2026-10-12 issuemirror1012: the issue mirror on a timer: one lock, incremental sync, budget-true pre-check (#433, 0.5)
 
-_Updated 2026-10-13 15:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 15:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
