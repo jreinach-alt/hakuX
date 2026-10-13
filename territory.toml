@@ -2603,17 +2603,18 @@ standing = false
 files = []
 note = "RETIRED (lane.local 2026-10-13 10:42 PDT): never started (no worktree, no unit, no branch). Its work is Part A of [lane.pathrules1013] (brief moved to briefs/pathvoid1012.md.SUPERSEDED-1013-by-pathrules1013-part-A). docs/lanes/pathvoid1012/** released. || Was: QUEUED lane.local 2026-10-12 10:02 PDT (Sonnet, harness; no device): a partial path whose steps the model never answered makes the next run diverge at step 0 (LotR Third Age n-4541005F-1011). Cuts such steps in write_path and the loader. Gets pathfind.py when lane.pathfindhold1012 folds (both edit it). Brief: briefs/pathvoid1012.md."
 
-[lane.pathtele1013]
+[retired.pathtele1013]
 issues = ["433"]
+retired_utc = "2026-10-13T19:34:30Z"
 standing = false
-files = ["docs/lanes/pathtele1013/**", "docs/testing/titles/pathfind.py", "docs/testing/titles/pathfind_selftest.py"]
-note = "STARTED lane.local 2026-10-13 08:58 PDT (Sonnet, harness; no device): the owner 10-13 ~08:05 asked for telemetry on the FPS failures. A: offline attribution of KOTOR II (n-4C410014-1011) and SC Double Agent (n-5553005E-1011) from the always-on lines, as fpsbelow1012 NOTES 17 read M:I. B: pathfind.py --perflog (master perflog APK via the dispatcher cache, install -r, restore in finally, refuse a scored run on a leftover perflog APK, --env, never banked). lane.local runs the three telemetry holds after the fold. pathfind.py and pathfind_selftest.py from the parked [lane.pathfindhold1012]. Brief: briefs/pathtele1013.md."
+files = []
+note = "RETIRED (lane.local 2026-10-13 12:34 PDT): folded as 08f1fb4a90 (12:33 PDT); no unit. docs/testing/titles/pathfind.py and pathfind_selftest.py MOVED to [lane.pathrules1013] (seeded at this lane's head). Released: docs/lanes/pathtele1013/**. lane.local runs the perflog telemetry holds (4C410014, 5553005E, 4947001F, 4D4A0014, 45410091) between chain titles. || Was: STARTED lane.local 2026-10-13 08:58 PDT (Sonnet, harness; no device): the owner 10-13 ~08:05 asked for telemetry on the FPS failures. A: offline attribution of KOTOR II (n-4C410014-1011) and SC Double Agent (n-5553005E-1011) from the always-on lines, as fpsbelow1012 NOTES 17 read M:I. B: pathfind.py --perflog (master perflog APK via the dispatcher cache, install -r, restore in finally, refuse a scored run on a leftover perflog APK, --env, never banked). lane.local runs the three telemetry holds after the fold. pathfind.py and pathfind_selftest.py from the parked [lane.pathfindhold1012]. Brief: briefs/pathtele1013.md."
 
 [lane.pathrules1013]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/pathrules1013/**", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/89-verdict-perflog.sh"]
-note = "STARTED lane.local 2026-10-13 10:42 PDT (Sonnet, harness; no device): A, a step the model never answered is never written or loaded as a path (pathvoid1012's work; LotR n-4541005F-1011); B, a hold ends once off play exceeds 10% of the window it can still reach in the budget left (PoP n-5553001D-1013d spent ~27 Nova minutes after its FAIL was certain); C, a --perflog run voids in title_verdict, including at hold_verdict time before result.json exists. Branch seeded at lane/pathtele1013's ready head 21df2a276f; docs/testing/titles/pathfind.py and pathfind_selftest.py stay on [lane.pathtele1013] until it folds, then move here. title_verdict.py released by the folded [lane.failgate]; 89-verdict-perflog.sh is new. Brief: briefs/pathrules1013.md."
+files = ["docs/lanes/pathrules1013/**", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/89-verdict-perflog.sh", "docs/testing/titles/pathfind.py", "docs/testing/titles/pathfind_selftest.py"]
+note = "MOVED IN (lane.local 2026-10-13 12:34 PDT): pathfind.py and pathfind_selftest.py from [lane.pathtele1013], folded 08f1fb4a90 || STARTED lane.local 2026-10-13 10:42 PDT (Sonnet, harness; no device): A, a step the model never answered is never written or loaded as a path (pathvoid1012's work; LotR n-4541005F-1011); B, a hold ends once off play exceeds 10% of the window it can still reach in the budget left (PoP n-5553001D-1013d spent ~27 Nova minutes after its FAIL was certain); C, a --perflog run voids in title_verdict, including at hold_verdict time before result.json exists. Branch seeded at lane/pathtele1013's ready head 21df2a276f; docs/testing/titles/pathfind.py and pathfind_selftest.py stay on [lane.pathtele1013] until it folds, then move here. title_verdict.py released by the folded [lane.failgate]; 89-verdict-perflog.sh is new. Brief: briefs/pathrules1013.md."
 
 [retired.driverline1013]
 issues = ["433"]
