@@ -3,6 +3,24 @@
 Brief: `/home/justin/hakux-work/briefs/x1port1012.md`. Base `dd5e3cb3c6`. X1 BOX tip `dadced00ce`
 (`refs/remotes/x1box/master`), common base `fce5a8d19f`.
 
+## Attempt 3 resume: why attempt 2 did not finish
+
+Attempt 2 (Sonnet, automatic resume while usage is Low) ended the session with two of this requester's
+two queue slots full (Crimson Skies smoke run 3, triage-video arm 1) and nothing else to do until one
+landed, per `investigate-the-wait-not-the-clock`/this lane's own device-run discipline: it posted
+`[lane.x1port1012] waiting:` on both PRs and stopped rather than poll. That is a finished, correct
+session per this file's own "End of this session" note below -- not a failure to pick up.
+
+This attempt found both queued runs had completed (`dispatch/results/1791897193-x1port1012-336185` and
+`.../1791897357-x1port1012-341157`), merged 11 commits of `origin/master` that had landed since this
+branch's base (none touched this lane's territory files -- checked with `git log --oneline HEAD..origin/master
+-- <territory paths>` before merging, per the startup hook's instruction to merge before concluding
+anything from this tree), judged run 3 (PASS) on the `lane/x1port1012` branch via a second worktree at
+`/home/justin/hakux-work/wt/x1port1012-base` (removed after pushing -- NOTES.md/OUTBOX.md/PR.md are
+per-branch files, not shared, so updating the base PR needed its own checkout), set that PR's
+`State: ready`, and queued triage-video arms 2 and 3 (ref `c838d62772`, the merge commit -- the actual
+tree that will build, though none of the merged commits touch this lane's files).
+
 ## Attempt 2 resume: why attempt 1 did not finish
 
 Attempt 1 (Opus) did real work past where this file stops: `git log` on `lane/x1port1012-halo` (this
@@ -27,11 +45,13 @@ is queued next, now that the three leads from step 2 exist as switches to test a
 |---|---|---|---|---|
 | 1 | 0-1791876038-x1port1012-2539778 | 310ad08d5b | Phase A smoke: Halo, no route, 180 s, frames 15 | PASS, gfps 59.93 vs 59.98 baseline |
 | 2 | 0-1791876042-x1port1012-2540227 | 310ad08d5b | Phase A smoke: GTA VC, route gta-vc, 420 s | PASS, fps_ok_share 0.9859 vs ledger 0.9872 |
-| 3 | 1791897193-x1port1012-336185 | 310ad08d5b | Phase A smoke: Crimson Skies, route crimson-skies, 300 s | queued 2026-10-13, attempt 2 |
-| 4 | 1791897357-x1port1012-341157 | 223f216d7c | #939 triage video 1/3: Halo menu, 8s @ +20s, `HAKUX_SURFGPU=0` | queued 2026-10-13, attempt 2 |
+| 3 | 1791897193-x1port1012-336185 | 310ad08d5b | Phase A smoke: Crimson Skies, route crimson-skies, 300 s | PASS, fps_ok=1.0 vs ledger 0.95 (judged attempt 3) |
+| 4 | 1791897357-x1port1012-341157 | 223f216d7c | #939 triage video 1/3: Halo menu, 8s @ +20s, `HAKUX_SURFGPU=0` | landed clean (no crash/hang); owner-judged, not scored here |
+| 5 | 1791900988-x1port1012-549369 | c838d62772 | #939 triage video 2/3: Halo menu, 8s @ +20s, fastpaths off | queued 2026-10-13, attempt 3 |
+| 6 | 1791900994-x1port1012-549623 | c838d62772 | #939 triage video 3/3: Halo menu, 8s @ +20s, shipped defaults | queued 2026-10-13, attempt 3 |
 
-4 device runs used of the 24 cap (runs 1-2 dispatched in attempt 1, judged in attempt 2; runs 3-4 queued
-in attempt 2). Two more triage-video arms (fastpaths-off, shipped-defaults-last) still to queue.
+6 device runs used of the 24 cap. Phase A smoke batch complete (all three PASS). All three #939 triage
+video arms now dispatched; arm 1 has landed, arms 2-3 are in flight.
 
 ## Phase A -- ports (branch `lane/x1port1012`)
 
@@ -118,9 +138,21 @@ back): `0-1791876038-x1port1012-2539778` (Halo) and `0-1791876042-x1port1012-254
   says `FAIL(duration: 310 s of gameplay < 600 s screening)`; that is `title_verdict.py`'s own screening
   gate for a full ledger-length run, not this smoke run's bar (the brief: "no crash, no hang, fps within
   the run's own noise" at the smoke's own --seconds). Read as a smoke PASS, not a screening FAIL.
-- Both rows are filled in the run table above. Run 3 (Crimson Skies) is queued; judge it the same way
-  (route title, `title_verdict.py`) when it lands, then set PR.md `State: ready` on `lane/x1port1012` if
-  it also passes, commit, push -- that PR already exists and is pushed (`origin/lane/x1port1012`).
+- Both rows are filled in the run table above.
+
+### Phase A smoke judged (attempt 3, run 3): all three now PASS
+
+`1791897193-x1port1012-336185` (Crimson Skies, route `crimson-skies`): `grep -iE "FATAL|Abort|assert|SIGSEGV"
+logcat.txt` empty; port log lines (`vp: bad`, `outside VRAM`, `pipeline cache`) do not fire.
+`title_verdict.py` reports `fps_ok=1.0 crash=False hang=False` against the ledger's `fps_ok=0.95`
+(`1-1790804473-lane.verdict433-1767161`) -- better than the ledger run, well inside noise. The
+`FAIL(duration: 194 s of gameplay < 600 s screening)` on that same verdict line is `title_verdict.py`'s
+own screening gate for a full ledger-length run, same caveat as GTA VC's smoke judgment above, not this
+smoke run's bar. PASS.
+
+All three Phase A smoke titles now PASS. Judged and pushed on `lane/x1port1012` itself (via a second
+worktree, see "Attempt 3 resume" above, since NOTES/OUTBOX/PR.md are per-branch): commit `5dfea123a3`,
+PR.md `State: ready`, pushed to `origin/lane/x1port1012`.
 
 ## Phase B -- #939, the Halo ring world
 
@@ -155,20 +187,21 @@ queued by attempt 1 despite the leads existing to test. Queuing it now:
   clear a previous dispatcher-set env, via the `.env_pref.<dev>` marker, so queuing shipped-defaults with
   no `--env` last is sufficient, not just cosmetic). Order: SURFGPU=0, then fastpaths-off, then shipped
   defaults last.
-- Queued so far (queue cap 2 of ours at once; run 3 above already holds one slot):
-  - **Arm 1, `HAKUX_SURFGPU=0`**: `1791897357-x1port1012-341157`, queued attempt 2. Verbatim:
+All three arms are now dispatched:
+  - **Arm 1, `HAKUX_SURFGPU=0`**: `1791897357-x1port1012-341157`, queued attempt 2, landed attempt 3.
+    `grep -iE "FATAL|Abort|assert|SIGSEGV" logcat.txt` empty; `video/v00001.mp4` captured (8.0 s, 1.50 MB).
+    Not judged for content here -- the brief reserves that for the owner.
+  - **Arm 2, fastpaths off**: `1791900988-x1port1012-549369`, queued attempt 3, ref `c838d62772`
+    (current HEAD after the origin/master merge -- none of the merged commits touch this lane's files).
+    Verbatim as sent:
 
-        HAKUX_RELEASE_PRIO=0 docs/testing/request.sh --who x1port1012 --purpose "x1port1012 #939 triage video arm 1/3: Halo ring-world menu, HAKUX_SURFGPU=0 (surface-GPU reuse off), 8s video 20s after soak start, no route. Looking for the ring/overlay reset the owner described." --title "Halo Combat Evolved.iso" --seconds 60 --video-seconds 8 --video-after 20 --env HAKUX_SURFGPU=0 --device nova --ref 223f216d7c --issue 939 --no-expect "triage video, owner-judged, not an automated A/B"
+        HAKUX_RELEASE_PRIO=0 docs/testing/request.sh --who x1port1012 --purpose "x1port1012 #939 triage video arm 2/3: Halo ring-world menu, all eight fast renderer paths off, 8s video 20s after soak start, no route." --title "Halo Combat Evolved.iso" --seconds 60 --video-seconds 8 --video-after 20 --env HAKUX_REPORT_ASYNC=0 --env HAKUX_TEXSCAN=0 --env HAKUX_DRAWREC=0 --env HAKUX_UNI_BULK=0 --env HAKUX_UNI_UBERCACHE=0 --env HAKUX_UNI_FOGCACHE=0 --env HAKUX_POSTED_PUT=0 --env HAKUX_LOCKFREE_WAKE=0 --device nova --ref c838d62772 --issue 939 --no-expect "triage video, owner-judged, not an automated A/B"
 
-  - **Arm 2, fastpaths off** (queue once the queue has room -- after run 3 or arm 1 lands): verbatim,
-    ref `223f216d7c`:
+  - **Arm 3, shipped defaults** (queued LAST, after arm 2, no `--env` at all, so the dispatcher clears the
+    env pref back to shipped): `1791900994-x1port1012-549623`, queued attempt 3, ref `c838d62772`.
+    Verbatim as sent:
 
-        HAKUX_RELEASE_PRIO=0 docs/testing/request.sh --who x1port1012 --purpose "x1port1012 #939 triage video arm 2/3: Halo ring-world menu, all eight fast renderer paths off, 8s video 20s after soak start, no route." --title "Halo Combat Evolved.iso" --seconds 60 --video-seconds 8 --video-after 20 --env HAKUX_REPORT_ASYNC=0 --env HAKUX_TEXSCAN=0 --env HAKUX_DRAWREC=0 --env HAKUX_UNI_BULK=0 --env HAKUX_UNI_UBERCACHE=0 --env HAKUX_UNI_FOGCACHE=0 --env HAKUX_POSTED_PUT=0 --env HAKUX_LOCKFREE_WAKE=0 --device nova --ref 223f216d7c --issue 939 --no-expect "triage video, owner-judged, not an automated A/B"
-
-  - **Arm 3, shipped defaults** (queue LAST -- after arm 2, no `--env` at all, so the dispatcher clears the
-    env pref back to shipped): verbatim, ref `223f216d7c`:
-
-        HAKUX_RELEASE_PRIO=0 docs/testing/request.sh --who x1port1012 --purpose "x1port1012 #939 triage video arm 3/3: Halo ring-world menu, shipped defaults, 8s video 20s after soak start, no route." --title "Halo Combat Evolved.iso" --seconds 60 --video-seconds 8 --video-after 20 --device nova --ref 223f216d7c --issue 939 --no-expect "triage video, owner-judged, not an automated A/B"
+        HAKUX_RELEASE_PRIO=0 docs/testing/request.sh --who x1port1012 --purpose "x1port1012 #939 triage video arm 3/3: Halo ring-world menu, shipped defaults, 8s video 20s after soak start, no route." --title "Halo Combat Evolved.iso" --seconds 60 --video-seconds 8 --video-after 20 --device nova --ref c838d62772 --issue 939 --no-expect "triage video, owner-judged, not an automated A/B"
 
 Not done this session: the `HAKUX_XVSS=audit` and `HAKUX_S2TSHELF=audit` runs that would say whether Halo's
 ring scene reaches either lead's changed-output case at all (the brief's leads table calls these out as
@@ -176,22 +209,21 @@ the way to size P before a fix, not just a switch existing). Candidate next queu
 video is judged, same no-route Halo shape, `--env HAKUX_XVSS=audit` / `--env HAKUX_S2TSHELF=audit`
 separately.
 
-**WAITING**: once the triage video's three arms and the audit-mode runs have results, judging which arm
-(if any) removes the ring/overlay glitch -- and whether to call a lead confirmed -- is an owner-reviewed
-call per the brief ("Do not call any arm fixed on your own reading of the frames", "the owner judges the
-videos"). That is also the kind of cause call the brief reserves for an Opus resume. This session queues
-and documents; it does not judge the videos. `owner resume x1port1012 on Opus: judge #939 triage video
-arms (ids above) once run, and decide whether XVSS/S2TSHELF audit runs are worth queuing before or after
-that judgment.`
+**WAITING**: once all three triage-video arms have results, judging which arm (if any) removes the
+ring/overlay glitch -- and whether to call a lead confirmed -- is an owner-reviewed call per the brief
+("Do not call any arm fixed on your own reading of the frames", "the owner judges the videos"). That is
+also the kind of cause call the brief reserves for an Opus resume. This session queues and documents; it
+does not judge the videos. `owner resume x1port1012 on Opus: judge #939 triage video arms (ids: run 4
+HAKUX_SURFGPU=0 landed, run 5 fastpaths-off and run 6 shipped-defaults queued) once all three have
+landed, and decide whether XVSS/S2TSHELF audit runs are worth queuing before or after that judgment.`
 
-## End of this session: waiting on the queue
+## End of this session (attempt 3): waiting on the queue
 
-Both of this requester's two queue slots are full (`1791897193-x1port1012-336185` Crimson Skies smoke,
-`1791897357-x1port1012-341157` triage arm 1) and neither has started running yet (checked
-`dispatch/running/` and `dispatch/queue/` before stopping). Nothing to do in-session until one finishes:
-- Crimson Skies landing lets Phase A's smoke batch be judged complete and PR #965 set `State: ready`.
-- Triage arm 1 landing frees a slot to queue arm 2 (fastpaths off); arm 3 (shipped defaults) queues last,
-  after arm 2, per `request-env-outlives-the-run`.
-Posted `[lane.x1port1012] waiting:` on both #965 and #969 naming these request ids as the signal. A future
-resume (Sonnet is fine for this part: judging smoke PASS/FAIL is mechanical, queuing the next arm is
-mechanical) should re-check `dispatch/results/` for these ids first.
+Both of this requester's two queue slots are now full again (run 5 fastpaths-off, run 6 shipped-defaults)
+and neither has started running yet (checked `dispatch/running/` and `dispatch/queue/` before stopping).
+Nothing to do in-session until one finishes -- arm 1 already landed and arm 2/3 landing completes the
+triage-video set, at which point the three video paths go in OUTBOX.md and the owner review is the next
+step (Opus, per the WAITING line above). Posted `[lane.x1port1012] waiting:` on both PRs naming run ids
+5 and 6 as the signal. A future resume should re-check `dispatch/results/` for
+`1791900988-x1port1012-549369` and `1791900994-x1port1012-549623` first; if both have landed, list all
+three video paths in OUTBOX.md and leave the WAITING line above for an Opus resume to judge.
