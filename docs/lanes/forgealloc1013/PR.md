@@ -4,7 +4,7 @@ State: draft
 
 Lane: forgealloc1013            Issue: #433
 Base: master @ 3c2338eb2b
-Files: docs/testing/jobs/roles/lane.md, docs/testing/jobs/handback.sh, docs/testing/jobs/gh-shim/gh, docs/testing/jobs/gh-shim/forge_prsync.py, docs/testing/jobs/gh-shim/smoke_live.py, docs/testing/jobs/gh-shim/create_refusal_test.py, docs/lanes/forgealloc1013/NOTES.md, docs/lanes/forgealloc1013/PR.md (still to add: docs/lanes/forgealloc1013/idlewatch.py.new, docs/lanes/forgealloc1013/idlewatch.py.diff, docs/testing/jobs/selftest.d/99-forge-alloc.sh, docs/testing/fleet.py, docs/testing/jobs/selftest.d/96-fleet-registry.sh, docs/testing/jobs/selftest.d/98-lane-shape.sh)
+Files: docs/testing/jobs/roles/lane.md, docs/testing/jobs/handback.sh, docs/testing/jobs/gh-shim/gh, docs/testing/jobs/gh-shim/forge_prsync.py, docs/testing/jobs/gh-shim/smoke_live.py, docs/testing/jobs/gh-shim/create_refusal_test.py, docs/lanes/forgealloc1013/NOTES.md, docs/lanes/forgealloc1013/PR.md, docs/lanes/forgealloc1013/idlewatch.py.new, docs/lanes/forgealloc1013/idlewatch.py.diff, docs/lanes/forgealloc1013/forge_alloc_selftest.py (still to add: docs/testing/fleet.py, docs/testing/jobs/selftest.d/96-fleet-registry.sh, docs/testing/jobs/selftest.d/98-lane-shape.sh)
 Prediction: none: harness
 Needs device: no    Needs NDK: no
 Release note (none): harness
@@ -35,11 +35,16 @@ issue if it's ever deleted; that call will now be refused by the shim.
 Needs a small fix from whoever owns `status.sh` next (an `ISSUE-REQUEST:`
 line, or a narrow exemption) -- `status.sh` is explicitly not my territory.
 
-Still to do, in this lane: Task 4 (a zero-GitHub-read forge-ahead alarm in
-`~/hakux-work/host-tools/idlewatch.py`, staged as `.new`+`.diff`) and
-Task 5 (`fleet.py`'s stale "READY with no pipeline label" FAIL, replaced
-with a foldqueue.log-based staleness/refusal/timer check, plus the two
-selftests that assert the old text).
+Task 4 (a zero-GitHub-read forge-ahead alarm in
+`~/hakux-work/host-tools/idlewatch.py`, staged as `.new`+`.diff`, with its
+own selftest) is now done too; see `NOTES.md` for the two detection
+candidates considered and why the installed `.issue-mirror.json`/
+`status/issue-mirror.txt` route was rejected (up to a 24 h blind spot).
+
+Still to do, in this lane: Task 5 (`fleet.py`'s stale "READY with no
+pipeline label" FAIL, replaced with a foldqueue.log-based
+staleness/refusal/timer check, plus the two selftests that assert the old
+text).
 
 ## Install, once `State: ready`
 

@@ -134,10 +134,105 @@ just the two touched branches). 14 passed, 0 failed.
 `route_test.py` (tests `route.sh`/systemd routing, unrelated) re-run
 unchanged for regression: 83 passed, 0 failed.
 
-## Tasks 4 and 5
+## Task 4: forge-ahead alarm in `idlewatch.py`
 
-Not started yet in this session. Task 4: a zero-GitHub-read forge-ahead
-alarm in `idlewatch.py`. Task 5: replace `fleet.py`'s stale "READY with no
+Staged as `docs/lanes/forgealloc1013/idlewatch.py.new` (a full copy of the
+installed 239-line file, one new jam-class block added) plus
+`idlewatch.py.diff` (unified diff against the installed copy, relabeled
+`a/idlewatch.py` / `b/idlewatch.py.new` so it reads clean without leaking
+host paths). Not installed by this lane -- `idlewatch.py` is a running
+host-tools script I must never edit in place; PR.md's install section
+has the `.bak`/`.new`/`mv` sequence for lane.local to run after fold.
+
+### Candidates considered
+
+Two ways to detect "forge ahead of GitHub" with zero GitHub reads of my
+own, since `cmd_new` in `issue_mirror.py` always pays that read itself and
+prints the result:
+
+1. **The mirror's own state/pair data.** Ruled out two ways in:
+   - Raw `.issue-mirror.json`: PR-shaped `last_synced` entries never carry
+     `gh`/`fg` sub-keys at all (by design, confirmed by inspecting several
+     paired vs. unpaired entries) -- there's no field here that means
+     "unpaired", so this file can't answer the question directly.
+   - `check_report`'s real drift classification, surfaced via
+     `status/issue-mirror.txt`: this only runs on a FULL sync
+     (`_cmd_sync_full`), which the 10-minute tick
+     (`hakux-issue-mirror-tick.sh`) only does once a day -- every other
+     tick is `_cmd_sync_incremental`, which only re-checks pairs already
+     in `last_synced` and would miss a brand-new forge-only number for up
+     to 24 h. Too slow next to the other jam classes in this file (all
+     10-minute-tick latency).
+2. **The two existing allocator callers' own logs** (chosen): both
+   `forge_prsync.py` (PRs, `logs/forge/prsync.log`, 5-min timer) and
+   `issue_sync.py` (issues, logged into `pm/lanelocal-log.md` on failure,
+   10-min timer) call the same `cmd_new`/`level_check` and get the exact
+   same fixed REFUSED line verbatim regardless of kind. Reading their logs
+   costs no GitHub read of my own (already paid), catches an
+   issue-flavored refusal and not just a PR-flavored one (the brief's
+   stated preference), and has 5-10 min latency, not 24 h.
+
+### Design
+
+`FORGE_AHEAD_RE` matches the fixed `forge is ahead of GitHub (forge max
+#N, GitHub max #M)` substring. `_latest_run_lines(path, boundary)` bounds
+the read to "since the run before last" using `prsync.log`'s own
+`EXECUTED: ...` summary lines as run boundaries (a run's FAILED lines
+print before that run's own `EXECUTED:`, confirmed from a live
+`tail -100` of the real log) -- this is what makes an old, already-
+resolved REFUSED line stop mattering within one run (5 min), with no
+timestamp parsing needed, matching the file's existing model-free style.
+`pm/lanelocal-log.md` has no such per-run marker, so that side just takes
+the last 200 lines. `prsync.log` is checked first (cheaper, 5-min vs.
+10-min granularity); `pm/lanelocal-log.md` is the fallback, so a
+PR-shaped refusal that already shows in `prsync.log` doesn't need the
+second read.
+
+For "forge user" and "creating branch" in the jam message: live,
+read-only curl tests against the real local forge (`http://127.0.0.1:3330`,
+`jobs` token) showed `GET /pulls/{n}` has both `user.login` and
+`head.ref`, while `GET /issues/{n}` has `user.login` only (no branch
+concept for a plain issue) -- confirmed on real forge PR #970
+(`user='lanes'`, `head.ref='lane/rootclean1013'`). The new code tries
+`/pulls/{n}` first, falls back to `/issues/{n}` on 404, and on any other
+failure just prints `?` rather than raising -- this alarm must never
+itself become the jam.
+
+### Selftest
+
+`idlewatch.py` has no `__main__` guard (every jam check is top-level code
+against hardcoded `/home/justin/hakux-work` paths) and makes live
+systemctl/forge/network calls on import, so it can't be unit-tested by
+importing it, and it doesn't fit `selftest.sh`'s `$T`-fixture harness
+(built for `jobs/*.sh`'s relocatable paths, not a host-tools script's
+hardcoded ones). Wrote `docs/lanes/forgealloc1013/forge_alloc_selftest.py`
+instead: pulls just the three new pure nodes (`FORGE_AHEAD_RE`,
+`_latest_run_lines`, `_forge_ahead_in` -- none of which touch `W`, the
+forge API, or anything else in the file) out of the staged `.new` file via
+`ast`, execs them into a throwaway namespace, and feeds them fixture
+files built to match the real log's line order. Covers: a bare match, last-
+match-wins across several lines, the latest-run window excluding an
+older already-resolved run's forge-ahead line, the latest-run window
+including the newest run's own line, a fully-resolved log not firing, the
+`pm/lanelocal-log.md` tail-window shape, and a missing file returning `[]`
+rather than raising.
+
+```
+python3 docs/lanes/forgealloc1013/forge_alloc_selftest.py
+```
+
+11 passed, 0 failed. The per-number forge lookup (the `/pulls`/`/issues`
+urllib calls) isn't covered by this selftest -- it needs a live forge, and
+was instead exercised with the same live read-only curl calls used to
+confirm the field shapes above; its own failure modes already degrade to
+`?` rather than raising. Also ran the whole detector read-only against
+the real installed `prsync.log` and `pm/lanelocal-log.md` (no jam
+currently live, since the 10-13 incident was already resolved by hand
+before this lane started) to confirm it doesn't fire on real, clean data.
+
+## Task 5
+
+Not started yet in this session: replace `fleet.py`'s stale "READY with no
 pipeline label" FAIL with a foldqueue.log-based staleness/refusal/timer
 check, and update the two selftests that assert the old text.
 
