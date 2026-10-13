@@ -115,11 +115,15 @@ rc, out, err = gh("label", "create", "fold-ready", "--repo", R, "--color", "0000
 check("label create existing without --force fails", rc == 1 and "already exists" in err, (rc, err))
 
 # ------------------------------------------------------------------ issues (status.sh forms)
-rc, out, err = gh("issue", "create", "--repo", R, "--title", "harness: live status (auto-updated)",
-                  "--label", "harness-status", "--label", "harness", "--body", "status body")
-m = re.search(r"([0-9]+)$", out.strip())
-check("issue create prints URL ending in number", rc == 0 and m, (rc, out, err))
-inum = int(m.group(1)) if m else 0
+# `gh issue create` is refused (lane.forgealloc1013, #433: a direct forge issue takes a number GitHub has
+# not allocated). The fixture issue is made with a raw API POST instead, same as repo/content setup above.
+rc, out, err = gh("issue", "create", "--repo", R, "--title", "should be refused")
+check("issue create refused", rc == 1 and "ISSUE-REQUEST:" in err and "OUTBOX.md" in err, (rc, out, err))
+labs = {l["name"]: l["id"] for l in api("GET", f"/repos/{R}/labels")[1]}
+st, j = api("POST", f"/repos/{R}/issues", dict(title="harness: live status (auto-updated)", body="status body",
+                                              labels=[labs["harness-status"], labs["harness"]]))
+check("issue create fixture (direct api)", st == 201, (st, j))
+inum = j["number"]
 rc, out, err = gh("issue", "list", "--repo", R, "--label", "harness-status", "--state", "open", "--json", "number",
                   "--jq", ".[0].number")
 check("issue list --label --jq .[0].number (comment_sweep)", rc == 0 and out.strip() == str(inum), (rc, out, err))
@@ -188,19 +192,20 @@ rc, out, err = gh("api", "-X", "DELETE", f"repos/{R}/issues/{inum}/labels/claime
 check("DELETE label not on issue fails", rc == 1, (rc, err))
 
 # ------------------------------------------------------------------ PRs
-body = tmpfile("Lane: smoke\nFiles: b.txt\n\nCloses #%d\n" % inum)
-rc, out, err = gh("pr", "create", "--draft", "--base", "master", "--head", "lane/smoke", "--title", "smoke PR",
-                  "--body-file", body)
-m = re.search(r"/pulls/(\d+)$", out.strip())
-check("pr create --draft", rc == 0 and m, (rc, out, err))
-pn = int(m.group(1)) if m else 0
-rc, out, err = gh("pr", "create", "--draft", "--base", "master", "--head", "lane/smoke", "--title", "dup", "--body", "x")
-check("pr create duplicate refused", rc == 1 and "already exists" in err, (rc, err))
-rc, out, err = gh("pr", "create", "--base", "master", "--head", "lane/conflict", "--title", "conflict PR", "--body", "c")
-pc = int(re.search(r"(\d+)$", out.strip()).group(1)) if rc == 0 else 0
-check("pr create (non-draft)", rc == 0, err)
-rc, out, err = gh("pr", "create", "--base", "master", "--head", "lane/closed", "--title", "to close", "--body", "c")
-pz = int(re.search(r"(\d+)$", out.strip()).group(1)) if rc == 0 else 0
+# `gh pr create` is refused too (same jam: a direct forge PR takes a number GitHub has not allocated).
+# The fixtures below go in with a raw API POST; the shim's "WIP: " title prefix is what makes isDraft true.
+rc, out, err = gh("pr", "create", "--draft", "--base", "master", "--head", "lane/smoke", "--title", "should be refused")
+check("pr create refused", rc == 1 and "PR.md" in err and "forge_prsync.py" in err, (rc, out, err))
+body = "Lane: smoke\nFiles: b.txt\n\nCloses #%d\n" % inum
+st, j = api("POST", f"/repos/{R}/pulls", dict(head="lane/smoke", base="master", title="WIP: smoke PR", body=body))
+check("pr create fixture (direct api, draft)", st == 201, (st, j))
+pn = j["number"]
+st, j = api("POST", f"/repos/{R}/pulls", dict(head="lane/conflict", base="master", title="conflict PR", body="c"))
+check("pr create fixture (conflict branch)", st == 201, (st, j))
+pc = j["number"]
+st, j = api("POST", f"/repos/{R}/pulls", dict(head="lane/closed", base="master", title="to close", body="c"))
+check("pr create fixture (to close)", st == 201, (st, j))
+pz = j["number"]
 rc, out, err = gh("pr", "close", str(pz))
 check("pr close", rc == 0, err)
 
@@ -368,8 +373,8 @@ check("release download is not implemented: exits 64, loud", rc == 64 and "not i
 # loud failures
 rc, out, err = gh("pr", "merge", str(pn))
 check("pr merge refused", rc == 2 and "foldqueue" in err, (rc, err))
-rc, out, err = gh("repo", "view")
-check("unknown op exits 64", rc == 64 and err.startswith("gh-shim: not implemented: repo view"), (rc, err))
+rc, out, err = gh("frobnicate")
+check("unknown op exits 64", rc == 64 and err.startswith("gh-shim: not implemented: frobnicate"), (rc, err))
 rc, out, err = gh("pr", "list", "--app", "dependabot")
 check("unknown flag exits 64", rc == 64, (rc, err))
 rc, out, err = gh("api", "graphql", "-f", "query={viewer{login}}")
