@@ -15,12 +15,10 @@
 # Driven directly, with no SDK, no gradle and no device: a throwaway git
 # repo stands in for $REPO (android/gradlew faked to produce the one
 # artifact assembleRelease produces, same shape as nightlysign1012's own
-# fixture), android/local.properties names a fixture build-tools/apksigner,
-# and OWNER_BUILD_DEVICES_SH stands in for devices.sh -- the real one keys
-# device_env on a SERIAL and has no row for the labels "nova"/"thor" this
-# script takes on its command line, so a selftest with no device needs its
-# own. That mismatch is pre-existing and out of scope here; this fragment
-# only works around it to reach the code under test.
+# fixture), and android/local.properties names a fixture build-tools/apksigner.
+# The real devices.sh is sourced, not a stand-in: owner_build.sh used to pass
+# device_env the label "nova" where it takes a serial, and exited 2 on every
+# real run; a fixture device_env that took labels hid that.
 
 echo "== owner_build.sh: key.properties brought in + apksigner verify before adb (#433)"
 OS="$T/ownersign"
@@ -28,17 +26,6 @@ OWNER_BUILD="$TESTING/owner_build.sh"
 rm -rf "$OS"; mkdir -p "$OS/bin"
 
 check "owner_build.sh parses (bash -n)" bash -n "$OWNER_BUILD"
-
-# A fixture devices.sh: device_env takes the LABEL this script passes, not a
-# serial, and always succeeds -- the point under test is the signing gate,
-# not the device table.
-cat > "$OS/devices.sh" <<'DEVSH'
-device_env() {
-    export SERIAL="fake-serial"
-    export DEVICE_LABEL="$1"
-    return 0
-}
-DEVSH
 
 # A keystore file that actually exists, so the storeFile check below prints
 # the same shape the owner's real key.properties has today (absolute,
@@ -107,7 +94,7 @@ os_run() {   # <repo> <sdkline-or-empty> <name> -> runs owner_build.sh; $? is it
     OS_ADB_LOG="$OS/$name.adb.log"; : > "$OS_ADB_LOG"
     PATH="$OS/bin:$PATH" OS_ADB_LOG="$OS_ADB_LOG" \
         DISPATCH_REPO="$repo" DISPATCH_DIR="$OS/dispatch-$name" \
-        OWNER_BUILD_WT="$OS/wt-$name" OWNER_BUILD_DEVICES_SH="$OS/devices.sh" \
+        OWNER_BUILD_WT="$OS/wt-$name" \
         bash "$OWNER_BUILD" master nova >"$OS/$name.out" 2>"$OS/$name.err"
 }
 
@@ -165,4 +152,6 @@ rc=$?
 check "(d) a signed apk installs (exit 0), not vacuous against (b) and (c)" [ "$rc" = 0 ]
 check "(d) apksigner ran before adb" grep -qE 'verify .*/app-release\.apk' "$OS/sdk-accept/calls.log"
 check "(d) and the fake adb WAS asked to install" grep -q install "$OS/accept.adb.log"
+check "(d) on the Nova's serial: the label nova reaches devices.sh as ee317437" \
+    grep -qE '^adb -s ee317437 install ' "$OS/accept.adb.log"
 check "(d) the stamped version was printed" [ -s "$OS/accept.out" ]

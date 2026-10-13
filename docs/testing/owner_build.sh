@@ -44,11 +44,7 @@
 # covers both "apksigner is missing" and "apksigner rejects it".
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# Overridable only so a selftest fragment can stand in a fixture device_env
-# (device_env takes a serial, not a label, and this repo's real devices.sh
-# has none named "nova"/"thor" to drive a selftest with no device at all);
-# the default is today's own devices.sh, unchanged.
-. "${OWNER_BUILD_DEVICES_SH:-$HERE/devices.sh}"
+. "$HERE/devices.sh"
 
 REPO="${DISPATCH_REPO:-${DISPATCH_TREE:-/home/justin/hakuX}}"
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
@@ -77,11 +73,14 @@ while [ "$#" -gt 1 ]; do
     esac
 done
 LABEL="$1"
+# device_env keys on a serial, not a label: passed "nova" it answers "unknown
+# device" and this exited 2 before building anything.
 case "$LABEL" in
-    nova|thor) ;;
+    nova) LABEL_SERIAL=ee317437 ;;
+    thor) LABEL_SERIAL=bdc158a5 ;;
     *) usage ;;
 esac
-device_env "$LABEL" || { echo "${0##*/}: unknown device $LABEL" >&2; exit 2; }
+device_env "$LABEL_SERIAL" || { echo "${0##*/}: unknown device $LABEL" >&2; exit 2; }
 
 # Refuse, don't queue: a run in dispatch/running/ owns the device until it
 # ends, and this script has no slot to wait in behind it.

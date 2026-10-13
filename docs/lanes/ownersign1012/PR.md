@@ -36,32 +36,32 @@ the nightly build; this carries the same two-part fix into owner_build.sh:
    ("no key.properties") -- `adb install` is never reached either way. The
    header's exit-code list documents 7 alongside the existing 1-6.
 
-Self-test: `docs/testing/jobs/selftest.d/88-ownersign1012.sh`, driven
-directly with `SELFTEST_ONLY`, no real device/gradle/SDK/network -- a
-throwaway git repo stands in for `$REPO` (gradlew stubbed to produce the one
-artifact assembleRelease produces; key.properties written AFTER the repo's
-commit so it stays untracked, same as the real gitignored file), a fake
-apksigner on a fixture `build-tools/9.9.9/`, and a fake adb that logs every
-call. `OWNER_BUILD_DEVICES_SH` is one added override, defaulting to today's
-own devices.sh unchanged -- needed only because the real devices.sh keys
-`device_env` on an ADB serial and has no row for the labels "nova"/"thor"
-this script takes on its command line, so a selftest with no device at all
-needs its own stand-in; that mismatch is pre-existing, out of scope for this
-lane, and is not touched here. Four cases: (a) key.properties present ->
-linked into the tree, storeFile reported absolute/exists, build completes;
-(b) apksigner rejects -> refuses with exit 7, names the cause, fake adb
-never asked to install; (c) apksigner missing -> refuses with exit 7, fake
-adb never asked to install; (d) apksigner accepts -> exit 0 and the fake adb
-WAS asked to install (the control, proving (b) and (c) aren't passing by
-refusing unconditionally). `bash -n` was run on both touched scripts.
-Result: `selftest: 16 passed, 0 failed, PARTIAL: 1 of 139 fragments`.
+3. The device lookup. owner_build.sh passed `device_env` the label it takes
+   on its command line ("nova"), but `device_env` in devices.sh keys on an
+   ADB serial and answers "unknown device nova", so the script exited 2
+   before building anything on either device. It now maps nova to ee317437
+   and thor to bdc158a5 before the call; devices.sh is unchanged.
 
-Found but out of scope (not fixed, not edited): docs/testing/devices.sh's
-`device_env` matches only literal ADB serials, never the "nova"/"thor"
-labels owner_build.sh passes it -- `device_env nova` prints
-"unknown device nova -- add it to devices.sh rather than guessing" and
-returns 2. This is a real pre-existing gap but devices.sh is not in this
-lane's file list, so it is reported here rather than touched.
+Self-test: `docs/testing/jobs/selftest.d/88-ownersign1012.sh`, driven with
+`SELFTEST_ONLY`, with no real device, gradle, SDK or network. A throwaway git
+repo stands in for `$REPO`: gradlew is stubbed to produce the one artifact
+assembleRelease produces, and key.properties is written after the repo's
+commit so it stays untracked, like the real gitignored file. A fake apksigner
+sits on a fixture `build-tools/9.9.9/`, and a fake adb logs every call. The
+real devices.sh is sourced, so the device lookup is under test too. Cases:
+
+- (a) key.properties present: linked into the tree, storeFile reported as
+  absolute and existing, and the build completes;
+- (b) apksigner rejects: exit 7, the cause named, and adb never asked to
+  install;
+- (c) apksigner missing: exit 7, and adb never asked to install;
+- (d) apksigner accepts: exit 0, and adb asked to install on `-s ee317437`
+  for the label `nova`. This is the control for (b) and (c).
+
+Result: `selftest: 17 passed, 0 failed, PARTIAL: 1 of 139 fragments`. With
+the previous label-passing lookup put back, the same fragment reports 4
+passed and 13 failed, with a failure in every case: each run exits 2 before
+building.
 
 Release note (none): harness only.
 
