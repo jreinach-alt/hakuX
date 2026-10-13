@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """github_gateway_selftest.py: round 4, defect 1 + defect 2's GH.create parsing, tested against the REAL
 github_gateway.py functions (not the issue_mirror.py fakes, which never exercise this subprocess path at all).
+Round 5, item 3 adds a real-subprocess test for cmd_get's HTTP-error exit-code mapping.
 
-Everything here runs against a temp state file, with token() and the HTTP call (_api) stubbed, so nothing ever
-leaves this process: no network call, no token read from the real file, no write to the real
-host-tools/.gateway-state.json. Never touches the real host-tools/ state this lane is staged under.
+Everything here runs against a temp state file, with token() and the HTTP call (_api / urlopen) stubbed, so
+nothing ever leaves this process: no network call, no token read from the real file, no write to the real
+host-tools/.gateway-state.json. Never touches the real host-tools/ state this lane is staged under. The one
+exception, by necessity (see item 3 below), spawns an actual `python3 -c ...` subprocess -- still with
+token()/urlopen stubbed inside it and STATE/WINDOW/LOG redirected to a temp dir, so the same "nothing real is
+touched" guarantee holds, just enforced inside the child instead of this process.
 
 Covers:
   - two separate invocations, each under the run cap, both succeed (defect 1)
@@ -12,10 +16,14 @@ Covers:
   - the day cap refuses at its count (defect 1)
   - GH.create (issue_mirror.py) parses CREATED #N even when the gateway's exit code is non-zero (defect 2)
   - GH.create raises when no CREATED #N appears at all (a genuine create failure, defect 2)
+  - cmd_get's HTTPError path exits with the mapped code (3 for 403, 1 for anything else), not the raw HTTP
+    status, which sys.exit() would truncate to 8 bits at the real OS boundary (round 5, item 3) -- the only
+    test here that spawns a real subprocess, because that truncation cannot be observed any other way
 """
 import contextlib
 import io
 import os
+import subprocess
 import sys
 import tempfile
 
@@ -173,12 +181,57 @@ def test_gh_create_raises_when_no_created_number_at_all():
         im.subprocess.run = old_run
 
 
+_SUBPROCESS_403_SCRIPT = """
+import io, os, sys, urllib.error, urllib.request
+sys.path.insert(0, os.environ['GATEWAY_DIR'])
+import github_gateway as gw
+
+tmpdir = os.environ['GATEWAY_TMPDIR']
+gw.STATE = os.path.join(tmpdir, 'state.json')
+gw.WINDOW = os.path.join(tmpdir, 'window')
+gw.LOG = os.path.join(tmpdir, 'log')
+gw.token = lambda: 'stub-token-never-real'
+
+
+def fake_urlopen(req, timeout=30):
+    raise urllib.error.HTTPError(req.full_url, 403, 'Forbidden', {}, io.BytesIO(b'{"message":"Forbidden"}'))
+
+
+urllib.request.urlopen = fake_urlopen
+sys.argv = ['github_gateway.py', 'get', '/interaction-limits']
+sys.exit(gw.main())
+"""
+
+
+def test_cmd_get_403_exit_status_is_the_mapped_code_not_the_raw_http_status():
+    """Round 5, item 3: `sys.exit(main())` truncates a process's real OS exit status to 8 bits, so the old
+    `return e.code` in cmd_get's HTTPError branch was silently wrong -- a 403 subprocess actually exits 147
+    (403 & 0xFF), not 403, and GH.interaction_limits()'s `r.returncode == 403` check could never match. A test
+    that calls cmd_get() directly in-process (like the other tests in this file) sees Python's raw int return
+    value and would never show this: the truncation only happens at the real OS exit boundary. This test
+    spawns an actual subprocess -- `python3 -c <script>` importing the real github_gateway.py, with token()
+    and urllib.request.urlopen stubbed (no network, no real token read, no HTTP call) and STATE/WINDOW/LOG
+    redirected to a temp dir (never touches the real host-tools/.gateway-state.json) -- and reads back the
+    real OS-level exit status."""
+    tmpdir = tempfile.mkdtemp(prefix='github-gateway-selftest-subproc-')
+    env = dict(os.environ)
+    env['GATEWAY_DIR'] = os.path.dirname(os.path.abspath(__file__))
+    env['GATEWAY_TMPDIR'] = tmpdir
+    r = subprocess.run([sys.executable, '-c', _SUBPROCESS_403_SCRIPT], capture_output=True, text=True, env=env)
+    assert r.returncode == 3, ('real subprocess exit status for a stubbed 403: got %d (403 & 0xFF == 147 is '
+                                'exactly the bug this guards against) -- stdout=%r stderr=%r' %
+                                (r.returncode, r.stdout, r.stderr))
+    assert 'HTTP 403' in r.stdout, r.stdout
+    return 'real subprocess, stubbed 403: OS exit status is 3 (the mapped code), not 147 (403 & 0xFF truncated)'
+
+
 TESTS = [
     test_two_invocations_each_under_run_cap_both_succeed,
     test_one_invocation_over_run_cap_refuses,
     test_day_cap_refuses_at_its_count,
     test_gh_create_parses_created_number_even_when_close_fails,
     test_gh_create_raises_when_no_created_number_at_all,
+    test_cmd_get_403_exit_status_is_the_mapped_code_not_the_raw_http_status,
 ]
 
 

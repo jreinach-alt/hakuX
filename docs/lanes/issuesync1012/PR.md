@@ -354,6 +354,36 @@ with the gap-4 header check now part of the synthetic-edit phase: the forced Git
 
 - The real GitHub `/interaction-limits` endpoint's response shape (active-with-body vs. absent-with-empty-body vs. 403) was never observed live this round; the three-outcome contract in `GH.interaction_limits()` is inferred from GitHub's documented REST conventions and exercised only against `FakeGH` in the selftest. The first live `backfill` run (without `--no-interaction-limit`) will be the first real observation of it.
 
+## Round 5 (2026-10-12/13): three fixes from lane.local's review of ae2cf78e90
+
+No GitHub reads needed for this round; all three were found and fixed by reading the round 4 code, not by a live call.
+
+1. **`new --kind pr` could lose a queued close.** `cmd_new` called `st = load_state()` *before* calling `_new_pr`; `_new_pr`'s close-failure path does its own `load_state()`/append-to-`pending_close`/`save_state()` when the follow-up close fails. `cmd_new` then called `record_baseline(st, ...)` and `save_state(st)` using that stale, pre-call `st` — silently overwriting the file without the `pending_close` entry `_new_pr` had just written. The twin stayed open on GitHub with nothing queued to close it. **Fix: reload after `_new_*` returns**, not a single object threaded through — `cmd_new` now calls `load_state()` fresh, right before `record_baseline`/`save_state`, instead of before the `_new_pr`/`_new_issue` call. Test: `test_new_pr_close_failure_queues_and_resume_clears_pending` — forces the close failure during `new --kind pr`, confirms `pending_close == [6]` survives `cmd_new`'s own save, then runs `sync --yes` and requires the close is retried exactly once and cleared, and that a following `sync --yes` makes 0 writes.
+
+2. **`new` didn't truncate long bodies.** Round 4's gap 3 (`truncate_for_github`) only ever ran on the backfill/sync write paths. `_new_issue` passed `body` straight to `gh_client.create`; `_new_pr`'s `gh_client.patch(n, body=build_pr_twin_body(...))` was unguarded too — either would have had GitHub refuse the write outright on a body over 65536 characters. **Fix:** both now route their GitHub-bound body through `truncate_for_github()`; the forge side still gets the full, untruncated body in both cases. Since `cmd_new` always re-reads both sides (`gh2 = gh_client.all_issues()`) before recording the baseline, no special-casing was needed there — the baseline naturally reflects whatever GitHub actually ended up storing. Test: `test_new_issue_truncates_long_body_for_github_only` — a body 5000 chars over the limit; confirms GitHub's copy is capped at exactly `GITHUB_BODY_LIMIT` with the plain `(truncated)` suffix (no mention of the forge), the forge's copy keeps the full length, and both recorded baselines match what each side actually holds.
+
+3. **An exit status is 8 bits.** The staged gateway's `cmd_get` returned the raw HTTP status (`e.code`) on an `HTTPError`, but `sys.exit()` truncates a process's real exit status to its low 8 bits — `sys.exit(403)` actually exits `147` (`403 & 0xFF`), `404` exits `148`. `GH.interaction_limits()`'s `r.returncode == 403` check could therefore never match a real 403; it still ended up refusing, but only by falling through to the generic `RuntimeError` branch (treated as "unknown" the same way), not by the explicit check it was written to use. **Fix:** `cmd_get`'s `HTTPError` branch now maps the status to a small, documented exit code instead of passing it through raw — **3 for 403** (matching this file's own existing "REFUSED" convention, used elsewhere for a refused read/write), **1 for every other HTTP error**. `GH.interaction_limits()` now checks `r.returncode == 3`, with its docstring updated to say why. No other caller uses the gateway's `get` (lane.local checked host-tools, docs/testing and jobs), so this is contained to this one path. Test: `test_cmd_get_403_exit_status_is_the_mapped_code_not_the_raw_http_status` in `github_gateway_selftest.py` — spawns a **real subprocess** (`python3 -c ...` importing the actual `github_gateway.py`, with `token()` and `urllib.request.urlopen` stubbed and `STATE`/`WINDOW`/`LOG` redirected to a temp dir — no network, no real token, no write to the real gateway state) and asserts the real OS-level exit status is `3`, not `147`. This had to be a real subprocess: a test that calls `cmd_get()` directly in-process sees Python's raw `int` return value and would never show the 8-bit truncation, which only happens at the actual OS exit boundary — confirmed by temporarily reverting the fix and watching this specific test fail with "got 147", then restoring it and re-confirming green.
+
+**`issue_mirror_selftest.py`**, run just before this report:
+
+```
+issue_mirror_selftest: 24/24 passed
+```
+
+**`github_gateway_selftest.py`**, run just before this report (now including the subprocess-based test for item 3):
+
+```
+github_gateway_selftest: 6/6 passed
+```
+
+**Rehearsal**, re-run from the cached snapshot (0 GitHub reads — none of this round's three fixes touch anything the rehearsal exercises; `cmd_new`/`_new_issue`/`_new_pr` are not part of its replayed path):
+
+```
+issue_mirror_rehearsal: all required counts held
+```
+
+**GitHub reads used this round: 0.** All three fixes were found by reading round 4's own code (per lane.local's review), not by any live call; every test above runs against fakes or a subprocess with `token()`/the HTTP call stubbed and state redirected to a temp directory — none of it touches the real `host-tools/.gateway-state.json`.
+
 ## The decision (owner 10-12)
 
 One number per item, GitHub allocates. The forge is never renumbered — that
@@ -380,34 +410,43 @@ rewritten.
 
 In `/home/justin/hakux-work/lanes/issuesync1012/` (copied here as the record):
 
-- `issue_mirror.py` — the tool, round 4. Subcommands: `plan`, `mirror-down
+- `issue_mirror.py` — the tool, round 5. Subcommands: `plan`, `mirror-down
   [--yes]`, `backfill --yes [--max N] [--pace-per-min N] [--comments
   now|later] [--no-interaction-limit]`, `sync --yes`, `seed [--yes]`,
   `new --kind issue|pr ...`, `check`, `close-pr N --comment TEXT`. Round 4
-  adds: `GH.create()` returning `(number, close_err)` instead of raising on a
-  failed follow-up close; a `pending_close` retry at the top of every
+  added: `GH.create()` returning `(number, close_err)` instead of raising on
+  a failed follow-up close; a `pending_close` retry at the top of every
   `backfill --yes`/`sync --yes`; `truncate_for_github()` applied to every
   outgoing GitHub body with a per-side baseline split; `apply_forge_body()`
   preserving a forge-import header on a GitHub-side body edit;
   `GH.interaction_limits()` and the `interaction_limit_preflight()` gate in
-  `cmd_backfill`.
-- `issue_mirror_selftest.py` — round 4. Runs every write path against
+  `cmd_backfill`. Round 5 fixes three gaps in `new` that round 4 only closed
+  for backfill/sync: `cmd_new` now reloads state after `_new_pr`/`_new_issue`
+  return instead of saving a copy loaded before they ran (losing a queued
+  pending close); both `_new_issue` and `_new_pr` route their GitHub-bound
+  body through `truncate_for_github()` too.
+- `issue_mirror_selftest.py` — round 5. Runs every write path against
   in-memory fakes implementing the real `GH`/`FG` client interface; no
-  network calls. `issue_mirror_selftest: 22/22 passed` (quoted in full
-  above, in the round 4 section).
+  network calls. `issue_mirror_selftest: 24/24 passed` (quoted in full
+  above, in the round 5 section).
 - `issue_mirror_rehearsal.py` — round 3, extended round 4. The live-snapshot
   rehearsal described above: read-only GitHub/forge reads only, then every
   write path replayed in memory against write-counting fakes loaded from
   that snapshot. No GitHub or forge write, ever; no `--yes` against a live
   service. Round 4 adds a JSON snapshot cache (`--refresh-snapshot` to force
   a live re-read; otherwise 0 GitHub reads) and forces one synthetic edit
-  onto a real forge-import-header pair to exercise gap 4.
-- `github_gateway_selftest.py` — round 4, new. Tests the real
-  `github_gateway.py` functions directly (run cap, day cap,
-  `GH.create`'s stdout parsing) against a temp state file with `token()`/the
-  HTTP call stubbed — no network call, nothing written to the real
-  `host-tools/.gateway-state.json`. `github_gateway_selftest: 5/5 passed`
-  (quoted in full above, in the round 4 section).
+  onto a real forge-import-header pair to exercise gap 4. Unchanged in round
+  5 (`cmd_new` is not part of its replayed path) — re-run from cache as a
+  confirmation, still "all required counts held".
+- `github_gateway_selftest.py` — round 4, extended round 5. Tests the real
+  `github_gateway.py` functions directly (run cap, day cap, `GH.create`'s
+  stdout parsing) against a temp state file with `token()`/the HTTP call
+  stubbed — no network call, nothing written to the real
+  `host-tools/.gateway-state.json`. Round 5 adds a real-subprocess test for
+  `cmd_get`'s HTTP-error exit-code mapping (item 3 above) — the one case in
+  this file that cannot be caught by calling the function directly in-process.
+  `github_gateway_selftest: 6/6 passed` (quoted in full above, in the round 5
+  section).
 - `github_gateway.py.diff` — the gateway additions `issue_mirror.py` needs,
   as a diff against the live `host-tools/github_gateway.py`: four new
   subcommands (`issue-create`, `issue-patch`, `issue-comment`, `pr-patch`),
@@ -571,10 +610,10 @@ exists under that title and renaming it would just be churn.
    `host-tools/`.
 3. Run `issue_mirror_selftest.py` once against the newly-installed copy —
    it only touches its own in-memory fakes, so this is safe before any live
-   call — and confirm it still reports 22/22 passed in this environment.
+   call — and confirm it still reports 24/24 passed in this environment.
    Run `github_gateway_selftest.py` too — it stubs the token/HTTP call and
    redirects state to a temp dir, so it is equally safe before any live
-   call — and confirm 5/5 passed. Then run `issue_mirror_rehearsal.py` once
+   call — and confirm 6/6 passed. Then run `issue_mirror_rehearsal.py` once
    against the newly-installed gateway: it makes read-only GitHub/forge
    calls only (no `--yes`, no write of any kind) and replays
    seed/backfill/sync/check in memory against a live-shaped snapshot
