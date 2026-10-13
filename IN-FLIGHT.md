@@ -8,7 +8,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `holdinput1013` | claude-sonnet-5 | 27 min | pathrules1013: State ready (pathtele1013 folded as 08f1fb4a90; master merged, pathfind_selftest all ok) |
+| `holdinput1013` | claude-sonnet-5 | 42 min | pathrules1013: State ready (pathtele1013 folded as 08f1fb4a90; master merged, pathfind_selftest all ok) |
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
@@ -104,4 +104,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 changelog1012: changelog to 0.5.0, version numbers for official-build users, credits (#433, 0.5)
 
-_Updated 2026-10-13 13:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 13:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
