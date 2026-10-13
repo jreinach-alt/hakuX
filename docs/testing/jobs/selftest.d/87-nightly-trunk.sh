@@ -78,6 +78,16 @@ echo "fake apk for $*" > app/build/outputs/apk/release/app-release.apk
 GRADLEW
 chmod +x "$SEED/android/gradlew"
 echo 'versionName = "0.9-selftest"' > "$SEED/android/app/build.gradle.kts"
+# The (now-stale) line above is no longer where nightly_build.sh reads the
+# filename's version from (#433: versionName is stampedVersionName(), not a
+# literal, since master moved to version_stamp.sh) -- it reads BASE_VERSION
+# from here instead. 88-nightly-sign.sh pins that read directly; this
+# fixture only needs it to succeed so the checks below, which are about the
+# trunk gate and not about versioning, are not tripped by the no-version
+# refusal (exit 10). Committed with the rest of the base stub, so BEHIND and
+# CURRENT (cloned later from this same history) both carry it.
+mkdir -p "$SEED/docs/testing"
+echo 'BASE_VERSION="0.9-selftest"' > "$SEED/docs/testing/version_stamp.sh"
 nt_commit "$SEED" "base: the android stub" "$OLD" README.md
 
 # What the pinned checkout knows about: old, and nothing in a one-day window.
@@ -102,6 +112,22 @@ git -C "$SEED" push -q origin master
 
 CURRENT="$NT/current"        # a tree at the tip, for the control
 git clone -q "$ORIGIN" "$CURRENT"
+# local.properties is gitignored on the owner's real tree, so the clone above
+# does not carry it (jobs/run-nightly.sh is what symlinks one in; this fixture
+# only has to stand in for it). CURRENT is the one tree below that reaches the
+# apksigner gate (#433), so it alone gets a fake sdk.dir: a stub apksigner
+# under a fake build-tools dir that always verifies, so "build mode on a tree
+# AT the tip publishes" stays a check about the trunk gate, not one that
+# happens to also need a real SDK.
+mkdir -p "$NT/fakesdk-current/build-tools/9.9.9"
+NT_APKSIGNER_LOG="$NT/apksigner-current.log"; : > "$NT_APKSIGNER_LOG"
+cat > "$NT/fakesdk-current/build-tools/9.9.9/apksigner" <<APKSIGNER
+#!/usr/bin/env bash
+echo "\$*" >> "$NT_APKSIGNER_LOG"
+exit 0
+APKSIGNER
+chmod +x "$NT/fakesdk-current/build-tools/9.9.9/apksigner"
+echo "sdk.dir=$NT/fakesdk-current" > "$CURRENT/android/local.properties"
 TRUNK=$(git -C "$SEED" rev-parse --short HEAD)
 STALE=$(git -C "$BEHIND" rev-parse --short HEAD)
 DAY_L=$(TZ="${HAKUX_TZ:-America/Los_Angeles}" date '+%F' 2>/dev/null || date '+%F')

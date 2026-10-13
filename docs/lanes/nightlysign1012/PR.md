@@ -4,7 +4,7 @@ State: ready
 
 Lane: nightlysign1012          Issue: #433 umbrella
 Base: master @ c6e0a63852
-Files: docs/testing/nightly_build.sh, docs/testing/jobs/run-nightly.sh, docs/testing/jobs/selftest.d/86-nightly-notes.sh, docs/testing/jobs/selftest.d/88-nightly-sign.sh
+Files: docs/testing/nightly_build.sh, docs/testing/jobs/run-nightly.sh, docs/testing/jobs/selftest.d/86-nightly-notes.sh, docs/testing/jobs/selftest.d/87-nightly-trunk.sh, docs/testing/jobs/selftest.d/88-nightly-sign.sh
 Prediction: none (a build/publish fix, not a measured arm)
 Needs device: no    Needs NDK: no
 
@@ -45,16 +45,11 @@ pass. `selftest.d/86-nightly-notes.sh`'s own build-mode fixture needed a stub
 `version_stamp.sh` so the new version read doesn't mask its exit-9 check;
 with that, its full file passes (69 checks).
 
-`selftest.d/87-nightly-trunk.sh` is not in this lane's file grant and was
-left untouched, but it has its own build-mode fixture (a tree "at the tip"
-that expects to publish) with no `local.properties`/apksigner stub of its
-own, so it now hits the new signing gate and refuses instead of publishing.
-Confirmed by running it: 3 of its checks fail (the publish, the apk's name,
-the release title), all in that one fixture, nothing else in the file is
-affected. Fixing it needs an edit to a file this lane cannot touch — a
-follow-up lane with access to `selftest.d/87-nightly-trunk.sh` should give
-its "at the tip" fixture the same fake `sdk.dir`/apksigner stub
-`88-nightly-sign.sh` already shows the shape of.
+`selftest.d/87-nightly-trunk.sh`'s own build-mode "at the tip" fixture also
+needed a stub `docs/testing/version_stamp.sh` (committed to its `$SEED`, so
+`$BEHIND` and `$CURRENT` both carry it) and, on `$CURRENT` alone, a fake
+`sdk.dir`/apksigner that verifies, the same shape `88-nightly-sign.sh`
+already stubs. With both, its full file passes.
 
 Release note: none.
 
