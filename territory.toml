@@ -958,12 +958,14 @@ files = ['docs/lanes/nightlysign1012/**', 'docs/testing/nightly_build.sh', 'docs
 note = 'STARTED lane.local 2026-10-12 17:14 PDT (Sonnet): nightlies are unsigned since 2026-10-03 (apksigner: DOES NOT VERIFY on all ten 10-03..10-12; signed through 10-02) because run-nightly.sh builds in its private nightly-wt, which has no android/key.properties; and nightly_build.sh names them hakuX--nightly-... because its versionName grep finds no literal since buildstamp. Fix: give nightly-wt the signing config, name from the stamp, refuse an unsigned APK as release_build.sh does. Before 0.5 goes public. || GRANTED lane.local 2026-10-12 17:33 PDT: docs/testing/jobs/selftest.d/87-nightly-trunk.sh (unowned): its at-the-tip build fixture reaches the new signing gate and needs the same stub SDK as 88-nightly-sign.sh.'
 
 [lane.boxart1012]
+released = ['docs/lanes/boxart1012/**', 'android/app/src/main/java/com/rfandango/haku_x/GameLibraryActivity.kt', 'android/app/src/main/java/com/rfandango/haku_x/SetupWizardActivity.kt', 'android/app/src/main/res/layout/activity_setup_wizard.xml', 'android/app/src/main/res/values/strings.xml', 'PRIVACY.md']
 issues = ['433']
 standing = false
 files = ['docs/lanes/boxart1012/**', 'android/app/src/main/java/com/rfandango/haku_x/GameLibraryActivity.kt', 'android/app/src/main/java/com/rfandango/haku_x/SetupWizardActivity.kt', 'android/app/src/main/res/layout/activity_setup_wizard.xml', 'android/app/src/main/res/values/strings.xml', 'PRIVACY.md']
 note = 'STARTED lane.local 2026-10-12 18:01 PDT (Sonnet): the owner, 10-12 ~17:5x PDT: box-art lookup becomes opt-in as part of initial setup. Today library_box_art_lookup defaults true and fetches from raw.githubusercontent.com/izzy2lost/X1_Covers with no prompt. strings.xml and PRIVACY.md come from the ready rows debugcap1012 and pubdocs1012 (released at ready); the branch is built on both heads.'
 
 [lane.changelog1012]
+released = ['docs/lanes/changelog1012/**', 'CHANGELOG.md', 'README.md', 'android/MIGRATING.md']
 issues = ['433']
 standing = false
 files = ['docs/lanes/changelog1012/**', 'CHANGELOG.md', 'README.md', 'android/MIGRATING.md']
