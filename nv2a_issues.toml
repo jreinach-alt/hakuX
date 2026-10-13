@@ -4818,98 +4818,98 @@ status_note = "Forge issue, open; the tracker had no row for it when the coverag
 [issue.629]
 title = "[GitHub PR] lane.hddcrash: built titles disk crashes hakuX at start-up (#397)"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub PR #629 closed as out of date on the owner 10-12 word (close the old PRs); issue_mirror sync carried the close to this forge record. || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.627]
 title = "[GitHub PR] hddperm: dev_push sets 660 on what it pushes (titles.qcow2 crash-loop) (#397)"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub had #627 closed; issue_mirror seed closed the forge record to match (one number space, owner 10-12). || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.618]
 title = "[GitHub PR] lane.uberspike569: uber libraries under GPL, a first draw with no create (#569)"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub had #618 closed; issue_mirror seed closed the forge record to match (one number space, owner 10-12). || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.610]
 title = "[GitHub PR] lane.verdict433: Playable measurement pass (#433)"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub PR #610 closed as out of date on the owner 10-12 word (close the old PRs); issue_mirror sync carried the close to this forge record. || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.607]
 title = "[GitHub PR] lane.litcompile569: #569 B1 gate 4, the cold DOA soak read"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub had #607 closed; issue_mirror seed closed the forge record to match (one number space, owner 10-12). || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.605]
 title = "[GitHub PR] tcg: #424 range test on by default (tcg424flip)"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub had #605 closed; issue_mirror seed closed the forge record to match (one number space, owner 10-12). || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.591]
 title = "[GitHub PR] lane.ibcache: inline indirect-branch cache + return-address stack (#507)"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub had #591 closed; issue_mirror seed closed the forge record to match (one number space, owner 10-12). || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.590]
 title = "[GitHub PR] lane.memfast: vCPU memory path -- census, drop the dead XBOX load fast path, fastmem design (#507)"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub PR #590 closed as out of date on the owner 10-12 word (close the old PRs); issue_mirror sync carried the close to this forge record. || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.583]
 title = "[GitHub PR] lane.forzadecay414: clear an invalidation stamp when its slot's fence is waited (Forza decay, #414)"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub had #583 closed; issue_mirror seed closed the forge record to match (one number space, owner 10-12). || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.535]
 title = "[GitHub PR] cloud-527: ZPASS_PIXEL_CNT constant on the handhelds -- runs read, report path read (#527)"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub PR #535 closed as out of date on the owner 10-12 word (close the old PRs); issue_mirror sync carried the close to this forge record. || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.439]
 title = "[GitHub PR] lane.fmv303c: #303 surface write-back probe for Spikeout's FMV green"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub had #439 closed; issue_mirror seed closed the forge record to match (one number space, owner 10-12). || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.436]
 title = "[GitHub PR] lane.visual404: #404 reference-free visual scoring of scripted-play frames"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub PR #436 closed as out of date on the owner 10-12 word (close the old PRs); issue_mirror sync carried the close to this forge record. || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.121]
 title = "arms: a structural skip is recorded only on the host, so the lane never learns its prediction will not run"
@@ -4938,10 +4938,10 @@ status_note = "Forge issue, open; the tracker had no row for it when the coverag
 [issue.99]
 title = "Stencil: three ZERO captures regressed 0 -> 100,000 px between 2501f35211 and 0026f00534"
 component = "triage"
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
-status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+status_note = 'CLOSED 2026-10-12 22:07 PDT (lane.local): GitHub had #99 closed; issue_mirror seed closed the forge record to match (one number space, owner 10-12). || Was: Forge issue, open; the tracker had no row for it when the coverage gate was run.'
 
 [issue.697]
 title = "status page reads \"no save\" for titles whose saves are stored under an alternate path"

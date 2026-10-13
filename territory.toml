@@ -36,6 +36,13 @@ issues = ["433"]
 files = ["docs/lanes/alwaystelemetry/**", "docs/testing/predictions/alwaystelemetry-*.json"]
 note = "GRANTED 2026-10-03 10:14 PDT (hostops jam duty, lane.local inbox 10:01): telemetry with every run (#433). PR #704 on lane/alwaystelemetry had no row, so nothing read its runs."
 
+
+[lane.issuemirror1012]
+issues = ['433']
+standing = false
+files = ['docs/lanes/issuemirror1012/**']
+note = 'STARTED lane.local 2026-10-12 22:06 PDT (Sonnet, harness): the live issue mirror (host-tools/issue_mirror.py, lane.issuesync1012) cannot go on a timer yet: only new takes the state lock (a sync overlapping a backfill can roll the cursor back and spend GitHub numbers twice), every sync lists all of GitHub (~10 reads; a 10-min timer would need ~2,900/day vs the 600 cap), and the backfill pre-check compares against the whole day cap. Stages fixes, a 10-min timer and an hourly report section under hakux-work/lanes/issuemirror1012; no live calls. Brief: briefs/issuemirror1012.md.'
+
 [retired.issuerecon]
 issues = ["433"]
 retired_utc = "2026-10-03T16:11:41Z"
