@@ -724,34 +724,13 @@ def cmd_pr(argv):
         pr = find_pr(fg, a.pos[0] if a.pos else None, op)
         return post_comment(fg, pr["number"], a, op)
     if sub == "create":
-        a = Args(rest, spec(**{"--title": (("-t",), "val"), "--body": (("-b",), "val"),
-                               "--body-file": (("-F",), "val"), "--base": (("-B",), "val"),
-                               "--head": (("-H",), "val"), "--draft": (("-d",), "bool"),
-                               "--label": (("-l",), "multi"), "--fill": (("-f",), "bool")}))
-        fg = Forge(repo_of(a), op)
-        head = a.get("--head") or subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                                                 capture_output=True, text=True).stdout.strip()
-        if not head or head == "HEAD":
-            raise Fail(1, f"{op}: no --head and not on a branch")
-        base = a.get("--base") or "master"
-        body = read_body_file(a.get("--body-file")) if a.get("--body-file") else (a.get("--body") or "")
-        title = a.get("--title")
-        if not title:
-            if not a.get("--fill"):
-                raise Fail(1, f"{op}: --title required (the shim does not prompt)")
-            title = subprocess.run(["git", "log", "-1", "--format=%s", head], capture_output=True,
-                                   text=True).stdout.strip() or head
-        for p in fg.all(fg.r("/pulls"), dict(state="open")):
-            if (p.get("head") or {}).get("ref") == head and (p.get("base") or {}).get("ref") == base:
-                raise Fail(1, f"{op}: a pull request for branch \"{head}\" into branch \"{base}\" already exists:\n"
-                              f"{p.get('html_url')}")
-        ensure_branch(fg, head, op)
-        if a.get("--draft"):
-            title = "WIP: " + clean_title(title)
-        lab = Labels(fg).ids(a.get("--label") or []) if a.get("--label") else []
-        pr = fg.json("POST", fg.r("/pulls"), body=dict(head=head, base=base, title=title, body=body, labels=lab))
-        emit(pr.get("html_url"))
-        return 0
+        # A direct POST takes a forge PR number GitHub has not allocated (#433, lane.forgealloc1013): the
+        # next allocator call then refuses every new issue and PR with "forge is ahead of GitHub" until
+        # someone runs the backfill by hand. Write docs/lanes/<lane>/PR.md (title, `State: draft|ready`,
+        # body) and push; forge_prsync.py opens the forge PR through the allocator on its next run.
+        raise Fail(1, f"{op}: refused by the forge shim: write docs/lanes/<lane>/PR.md "
+                      f"(`# <title>` on line 1, a `State: draft` or `State: ready` line, then the body) "
+                      f"and push -- forge_prsync.py opens the forge PR at a GitHub-allocated number")
     if sub == "ready":
         a = Args(rest, spec(**{"--undo": ((), "bool")}))
         fg = Forge(repo_of(a), op)
@@ -946,16 +925,12 @@ def cmd_issue(argv):
                 emit(f"--\nauthor:\t{c['author']['login']}\ncreated:\t{c['createdAt']}\n--\n{c['body']}")
         return 0
     if sub == "create":
-        a = Args(rest, spec(**{"--title": (("-t",), "val"), "--body": (("-b",), "val"),
-                               "--body-file": (("-F",), "val"), "--label": (("-l",), "multi")}))
-        fg = Forge(repo_of(a), op)
-        if not a.get("--title"):
-            raise Fail(2, f"{op}: --title required (the shim does not prompt)")
-        body = read_body_file(a.get("--body-file")) if a.get("--body-file") else (a.get("--body") or "")
-        lab = Labels(fg).ids(a.get("--label") or []) if a.get("--label") else []
-        it = fg.json("POST", fg.r("/issues"), body=dict(title=a.get("--title"), body=body, labels=lab))
-        emit(it.get("html_url"))
-        return 0
+        # A direct POST takes a forge issue number GitHub has not allocated (#433, lane.forgealloc1013),
+        # the same jam as a direct `pr create`. A lane cannot file issues itself (no issue_mirror.py access);
+        # write an `ISSUE-REQUEST:` line instead and let lane.local run the allocator and add the tracker row.
+        raise Fail(1, f"{op}: refused by the forge shim: write a line starting `ISSUE-REQUEST:` in "
+                      f"docs/lanes/<lane>/OUTBOX.md, with the title and the evidence path -- "
+                      f"lane.local files it through the allocator and adds the tracker row")
     if sub == "comment":
         a = Args(rest, spec(**{"--body": (("-b",), "val"), "--body-file": (("-F",), "val")}))
         fg = Forge(repo_of(a), op)
