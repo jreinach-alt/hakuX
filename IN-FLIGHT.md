@@ -6,14 +6,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `issuemirror1013` | claude-sonnet-5 | 16 min |  |
+No lane session is running.
 
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 3 waiting, 1 running.
+- **Device queue:** 2 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -96,4 +94,4 @@ No branch is being worked right now.
 - 2026-10-12 debugcap1012: Debug Capture is off by default in versioned releases (#433, 0.5)
 - 2026-10-12 contrib1012: structured bug reports and a contributor guide (#433, 0.5)
 
-_Updated 2026-10-13 00:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 01:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
