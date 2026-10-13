@@ -48,6 +48,22 @@ by `docs/testing/extract_results.py`.
 
 ---
 
+## Audio DSP processing is off by default
+
+**Symptom:** Games that lean on the Xbox APU's DSP effects may sound thin,
+missing reverb or other processing.
+
+**Cause:** The Xbox APU pairs a voice processor with two Motorola DSP56K-family
+cores; xemu emulates them by adapting Hatari's DSP56001 core. Settings →
+Audio has a "Real-time DSP processing" switch, but it ships **off**. Why it
+defaults off (correctness, performance, or stability) is not yet established;
+see `ROADMAP.md`.
+
+**What to do:** Try enabling it in Settings → Audio if a game sounds wrong;
+it may cost performance on slower devices.
+
+---
+
 ## Two builds can install side by side and are easy to confuse
 
 **Symptom:** Settings changed in one build appear to have no effect.
