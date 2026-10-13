@@ -1,14 +1,36 @@
-# Contributing to hakuX
+# Contributing
 
-hakuX is an original Xbox emulator for Android
-(`xemu -> izzy2lost/xemu (X1 BOX) -> rfandango/hakuX -> this fork`). This
-page covers building, testing titles, and submitting pull requests.
+_Last updated 2026-10-13, for version 0.5.0._
 
-## Building
+hakuX is an original Xbox emulator for Android. Its lineage is xemu, then
+X1 BOX (izzy2lost), then hakuX (rfandango), then this fork. This page covers
+building it, testing games and sending pull requests.
 
-### Desktop (Linux)
+## Building for Android
 
-Dependencies (Debian/Ubuntu):
+You need:
+
+- Android SDK 36, Build Tools 36.1.0, NDK 29.0.14206865 and CMake 3.30.3
+- JDK 21, a full JDK with `bin/javac` (JDK 25 does not work)
+- `meson`, and `ninja` on your `PATH`. The SDK's
+  `cmake/3.30.3/bin/ninja` works.
+
+```bash
+export JAVA_HOME=/path/to/jdk21
+export ANDROID_SDK_ROOT=$HOME/Android/Sdk
+export PATH="$JAVA_HOME/bin:$ANDROID_SDK_ROOT/cmake/3.30.3/bin:$PATH"
+cd android
+./gradlew assembleDebug
+```
+
+The APK is `android/app/build/outputs/apk/debug/app-debug.apk`. It installs
+as **hakuX (test builds)** with its own settings, hard disk image and saves,
+next to any release install. [android/README.md](android/README.md) has the
+details.
+
+## Building for desktop (Linux)
+
+Dependencies on Debian or Ubuntu:
 
 ```bash
 sudo apt-get install -y ninja-build ccache python3-venv pkg-config \
@@ -21,66 +43,32 @@ sudo apt-get install -y ninja-build ccache python3-venv pkg-config \
   nlohmann-json3-dev libcurl4-openssl-dev
 ```
 
-Then, from the repository root:
+From the repository root:
 
 ```bash
 ./configure --target-list=i386-softmmu --extra-cflags=-DXBOX=1
 make -j"$(nproc)"
 ```
 
-The resulting binary is `build/qemu-system-i386`.
+The binary is `build/qemu-system-i386`.
 
-### Android
+## Testing games
 
-Toolchain (see [`android/README.md`](android/README.md) for the full list):
+1. Install a build, then add your games folder from the library.
+2. Play. Check [Known issues](KNOWN_ISSUES.md) and the
+   [issue tracker](https://github.com/jreinach-alt/hakuX/issues) for what you
+   find.
+3. If it is new, file it with the **Title / Compatibility Report** form.
+   [Reporting a bug](docs/reporting-bugs.md) lists what to include.
 
-- Android SDK 36, Build Tools 36.1.0, NDK 29.0.14206865, CMake 3.30.3
-- JDK 21 (not 25 -- check for `bin/javac`, a plain `java` binary is not enough)
-- **meson** and **ninja on `PATH`** -- the native build compiles glib with
-  meson, and meson needs ninja, which Gradle does not put on `PATH` for it.
-  `$ANDROID_SDK_ROOT/cmake/3.30.3/bin` has a `ninja` that works.
-- Nothing else: the ISO -> XISO converter builds from
-  `android/third_party/extract-xiso` with the same toolchain.
-
-```bash
-export JAVA_HOME=/path/to/jdk21          # must contain bin/javac
-export ANDROID_SDK_ROOT=$HOME/Android/Sdk
-export PATH="$JAVA_HOME/bin:$ANDROID_SDK_ROOT/cmake/3.30.3/bin:$PATH"
-cd android
-./gradlew assembleDebug
-```
-
-The APK lands at `android/app/build/outputs/apk/debug/app-debug.apk`. It
-installs as `com.jreinach.hakux.debug` ("hakuX (test builds)"), alongside a
-release install rather than replacing it -- separate settings, HDD image
-and saves.
-
-## Testing titles
-
-1. Build and install the debug APK (above), or `./gradlew installDebug`.
-2. Add games: grant a games folder through the in-app library (this needs
-   real UI interaction; it's a Storage Access Framework grant).
-3. Play, and if something is worth reporting, use the **Title /
-   Compatibility Report** issue form. A useful report has what's in
-   [`docs/reporting-bugs.md`](docs/reporting-bugs.md) -- device, hakuX
-   version, what you saw, and a logcat or Debug Capture if it's a rendering
-   problem.
-4. Check [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) and the
-   [issue tracker](https://github.com/jreinach-alt/hakuX/issues) first --
-   someone may have already filed what you found.
-
-## Submitting PRs
+## Pull requests
 
 1. Fork the repository and branch from `master`.
-2. Keep one logical change per PR -- a fix and an unrelated refactor belong
-   in separate PRs, even if you touched both while working.
-3. Describe what you tested and on which device (or, for a desktop-only
-   change, which platform) in the PR description. Hosted CI does not
-   currently run against this repository, so this description is the only
-   record that the change was actually exercised -- state it plainly rather
-   than leaving it implied.
-4. Use [`.github/pull_request_template.md`](.github/pull_request_template.md)
-   (it's filled in for you when you open a PR) as the checklist.
-5. Contributions are under the project's license, GPL-2.0 -- see
-   [`COPYING`](COPYING), [`COPYING.LIB`](COPYING.LIB) and
-   [`LICENSE`](LICENSE). No sign-off line is required.
+2. One change per pull request. Put an unrelated cleanup in its own PR.
+3. Say what you tested and on which device. No hosted CI runs on pull
+   requests, so your description is the record that the change was tried.
+4. The [pull request template](.github/pull_request_template.md) is the
+   checklist.
+5. Contributions are under the project's licence, GPL-2.0. See
+   [LICENSE](LICENSE), [COPYING](COPYING) and [COPYING.LIB](COPYING.LIB). No
+   sign-off line is needed.
