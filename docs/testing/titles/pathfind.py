@@ -271,6 +271,11 @@ HOLD_UNSTICK = {
     # name entry): step the aim left and right and throw, no X, B or Y
     "bowl": (["STICK:up:0.5", "A"], ["STICK:down:0.5", "A"]),
 }
+# the drive genre's recovery rung, after both reverse rungs above have failed (#433 Part B: 4x4 Evo 2 drove nose-first
+# into a tree, then fully submerged in a lake, 511 s of stuck_abort with both reverse rungs tried and no recovery
+# ever attempted). Not a HOLD_UNSTICK entry: it needs a model look (for an on-screen reset/respawn prompt, and later
+# to read the pause menu), which stuck_step's static token ladder cannot do -- see Agent.drive_recover.
+DRIVE_RECOVER = ("BACK", "Y")
 # play that drops into a menu right after a loop cycle: a loop button opened it (ToeJam & Earl III, 10-03: the
 # "Presents" inventory in 13 of 19 kept frames). Each such drop sheds the next of these from the loop.
 HOLD_SHED = ("B", "X", "Y", "BACK", "R1", "L1")
@@ -1707,6 +1712,65 @@ class Agent:
             base_png, base_jpg = c_png, c_jpg
         return None, tried
 
+    def drive_recover(self, log, jpg):
+        """Drive genre only, after both HOLD_UNSTICK["drive"] reverse rungs have failed to free the vehicle (#433
+        Part B). One model look for an on-screen reset/respawn/recover prompt naming a button, then BACK and Y
+        alone, then -- last, because it risks the main menu -- the pause menu, opened with START and READ before
+        anything in it is pressed, so a wrong guess never quits to the main menu or exits the game. Each candidate
+        is kept only if the scene actually changes (window_change past HOLD_STILL); a kept pause-menu restart
+        counts as still-play, not a Playable-ending state. Logged under "recover_try" (not "action"), same reason
+        confirm_gas uses "gas_try". Returns True once something changes the scene, else False (stuck_abort stands)."""
+        base_png, base_jpg = self.frame("recover-a")
+        if not base_png:
+            return False
+
+        def changed(a_png, b_png):
+            return window_change(a_png, b_png) >= HOLD_STILL
+
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game. The vehicle is stuck and has not moved for a while. Is "
+            "there an on-screen prompt telling the player how to reset, respawn or recover the vehicle (for "
+            'example "press Y to reset" or "press BACK to respawn")? Xbox buttons: A green, B red, X blue, Y '
+            'yellow, plus BACK/START/black/white. Answer JSON only: {"prompt": true|false, "button": '
+            '"<button or none>", "why": "<one line>"}'), "recover-prompt", [base_jpg]) or {}
+        btn = str(ans.get("button", "")).strip().upper()
+        cands = [btn] if ans.get("prompt") and (btn in BUTTONS or btn == "BACK") else []
+        cands += [c for c in DRIVE_RECOVER if c not in cands]
+        for cand in cands:
+            c_png, c_jpg = self.hold_capture(cand, f"recover-{cand}")
+            if not c_png:
+                break
+            ok = changed(base_png, c_png)
+            self.hold_note(log, {"recover_try": cand, "changed": ok})
+            print(f"hold-play: recover {cand}: {'changed' if ok else 'no change'}", flush=True)
+            if ok:
+                return True
+            base_png, base_jpg = c_png, c_jpg
+        # last, and only after a look: the pause menu. Opened with START, then read before anything in it is
+        # pressed -- a restart/reset entry is taken, never a guess that could quit to the main menu or dashboard.
+        m_png, m_jpg = self.hold_capture("START", "recover-pause")
+        if not m_png:
+            return False
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game, possibly a pause menu. Is this a pause menu? If so, is "
+            "there a Restart, Reset or Retry entry, and which single input selects it? Never name an input that "
+            "quits to the main menu, exits to the dashboard, or loads a different save -- answer none for those. "
+            'Xbox buttons: A green, B red, X blue, Y yellow. Answer JSON only: {"pause_menu": true|false, '
+            '"restart_input": "<input or none>", "why": "<one line>"}'), "recover-pause", [m_jpg]) or {}
+        restart = str(ans.get("restart_input", "")).strip()
+        if ans.get("pause_menu") and restart.upper() not in ("", "NONE"):
+            tok = clean_action(restart)
+            if tok:
+                r_png, r_jpg = self.hold_capture(tok[0], "recover-restart")
+                if r_png:
+                    ok = changed(m_png, r_png)
+                    self.hold_note(log, {"recover_try": f"pause:{tok[0]}", "changed": ok})
+                    print(f"hold-play: recover pause {tok[0]}: {'changed' if ok else 'no change'}", flush=True)
+                    if ok:
+                        return True
+        self.hold_capture("B", "recover-pause-back")   # back out without confirming anything in the menu
+        return False
+
     def team_sport(self):
         """A team sport on a court, field or rink: the run's goal names a period setting or a team select, or the
         title's name is a team-sports league (the claim has no genre look yet; the hold's genre comes after it)."""
@@ -2169,7 +2233,7 @@ class Agent:
         sd_ladder = HOLD_UNSTICK.get(genre)
         sd_watch = stuckdetect.StuckWatch(genre, HOLD_SHED_STATES, sd_ladder, UNLOCK_LADDER[:3],
                                            max_rungs=len(sd_ladder) if sd_ladder else 3) if stuckdetect else None
-        sd_abort, last_st, sd_rungs = "", "play", 0
+        sd_abort, last_st, sd_rungs, drive_recovered = "", "play", 0, False
         low_run, flipped, rev_row, reversals = 0, False, 0, 0   # the reverse rule (16:08): looks still in a row, walk turned round
         patrol_looks = 0   # play looks on the shooter loop, for the patrol backstop (patrol_due)
         while not held_ok and not reason and self.el() < self.budget_s:
@@ -2401,14 +2465,24 @@ class Agent:
                         d = sd_watch.sample(stuckdetect.frame_signature(png), last_st if off else "play")
                         if d.get("stuck"):
                             look["stuck"] = {k: d.get(k) for k in ("menu", "run", "reason", "action", "abort")}
-                            if d["abort"]:
+                            if d["abort"] and genre == "drive" and not th and not drive_recovered:
+                                # both HOLD_UNSTICK["drive"] reverse rungs are exhausted (#433 Part B): one more
+                                # try, a model-led recovery, before the hold ends on a parked/stuck vehicle
+                                drive_recovered = True
+                                print(f"hold-play: stuck ({d['reason']}): drive recovery at {hold_el:.0f} s", flush=True)
+                                if self.drive_recover(log, jpg):
+                                    sd_rungs = 0
+                                else:
+                                    sd_abort = (f"stuck_abort: {d['reason']}; {sd_rungs} unstick rung(s) tried, "
+                                                "drive recovery tried, still stuck")
+                            elif d["abort"]:
                                 sd_abort = f"stuck_abort: {d['reason']}; {sd_rungs} unstick rung(s) tried, still stuck"
                             else:
                                 sd_rungs += 1
                                 print(f"hold-play: stuck ({d['reason']}): unstick {' '.join(d['action'])} at {hold_el:.0f} s", flush=True)
                                 self.send(d["action"])
                         else:
-                            sd_rungs = 0
+                            sd_rungs, drive_recovered = 0, False
                     except Exception as e:   # never let the detector end a hold it cannot read
                         sd_watch = None
                         look["stuck_error"] = repr(e)[:120]

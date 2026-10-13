@@ -49,6 +49,7 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
   actions   clean_action keeps valid tokens and drops the rest (RSTICK too).
 """
 
+import glob
 import json
 import os
 import shutil
@@ -471,6 +472,98 @@ mutant = walk_ladder("attack", pathfind.HOLD_UNSTICK["attack"], 3)
 check("maxrungs-mutant", mutant == list(pathfind.HOLD_UNSTICK["attack"])[:3]
       and mutant != list(pathfind.HOLD_UNSTICK["attack"]),
       f"a mutant max_rungs=3 drops attack's 4th rung, confirming the walk above exercises the real fix: {mutant}")
+
+
+# driverecover (#433 Part B): Agent.drive_recover's own branching, called directly against a minimal duck-typed
+# stub (not a full Sim/Agent run -- the brief's test bar for Part B is the static-ladder replay below plus the
+# pre-existing holdstill regression; this is extra coverage of the model-interaction logic drive_recover adds).
+DR_DIR = os.path.join(TMP, "driverecover")
+os.makedirs(DR_DIR)
+_dr_n = [0]
+
+
+def dr_frame(shift):
+    _dr_n[0] += 1
+    p = os.path.join(DR_DIR, f"{_dr_n[0]:03d}.png")
+    frame(p, "game", shift)
+    return p, p   # (png, jpg): drive_recover never reads the jpg's content, only passes it to model.ask
+
+
+class FakeModel:
+    def __init__(self, answers):
+        self.answers = list(answers)
+        self.purposes = []
+
+    def ask(self, model, prompt, purpose, images=()):
+        self.purposes.append(purpose)
+        return self.answers.pop(0) if self.answers else {}
+
+
+class FakeAgent:
+    def __init__(self, shifts, answers):
+        self.name = "Sim"
+        self._frames = [dr_frame(s) for s in shifts]
+        self.model = FakeModel(answers)
+        self.captured = []
+
+    def frame(self, tag):
+        return self._frames.pop(0) if self._frames else (None, None)
+
+    def hold_capture(self, tok, tag):
+        self.captured.append(tok)
+        return self._frames.pop(0) if self._frames else (None, None)
+
+    def hold_note(self, log, rec):
+        pass
+
+
+# 1. a named on-screen prompt succeeds on the first try: never reaches BACK/Y or the pause menu
+fa = FakeAgent([0, 47], [{"prompt": True, "button": "Y"}])
+ok = pathfind.Agent.drive_recover(fa, [], None)
+check("driverecover-prompt", ok is True and fa.captured == ["Y"],
+      f"a named prompt button is tried first and, once it moves the scene, nothing else is pressed: {fa.captured}")
+
+# 2. no prompt; BACK and Y both fail; the pause menu is opened, READ, and its model-named restart input succeeds
+fa = FakeAgent([0, 0, 0, 0, 47], [{"prompt": False, "button": "none"},
+                                  {"pause_menu": True, "restart_input": "A"}])
+ok = pathfind.Agent.drive_recover(fa, [], None)
+check("driverecover-pause", ok is True and fa.captured == ["BACK", "Y", "START", "A"],
+      f"BACK and Y are tried before the pause menu, which is read before anything in it is pressed: {fa.captured}")
+
+# 3. nothing works: the model explicitly refuses every pause-menu entry as unsafe (restart_input: none) --
+# drive_recover must never press an unconfirmed input, only a plain B to back out
+fa = FakeAgent([0, 0, 0, 0], [{"prompt": False, "button": "none"},
+                              {"pause_menu": True, "restart_input": "none"}])
+ok = pathfind.Agent.drive_recover(fa, [], None)
+check("driverecover-unsafe", ok is False and fa.captured == ["BACK", "Y", "START", "B"],
+      f"with no safe restart input named, only a plain B backs out of the pause menu: {fa.captured}")
+
+
+# driverecover-4x4evo2 (#433 Part B): 4x4 Evo 2's own recorded hold frames (truck noses into a tree, then sinks
+# in a lake, 2026-10-13) replayed through the real HOLD_UNSTICK["drive"] ladder via StuckWatch directly -- the
+# static-ladder mechanism drive_recover is called from once this exhausts, and the brief's explicit "replay 4x4
+# hold frames 050-062 ... showing which rung fires and when" requirement.
+FIX4X4 = os.path.join(HERE, "..", "..", "lanes", "holdinput1013", "fixtures", "4x4evo2")
+f4x4 = sorted(glob.glob(os.path.join(FIX4X4, "*-hold.jpg")))
+if SD and len(f4x4) >= 8:
+    watch4x4 = SD.StuckWatch("drive", (), pathfind.HOLD_UNSTICK["drive"], (), max_rungs=2)
+    seen = []
+    for p in f4x4:
+        d = watch4x4.sample(SD.frame_signature(p))
+        seen.append((os.path.basename(p), d["stuck"], d.get("abort"), tuple(d["action"]) if d.get("action") else None))
+    # frames 047-058: the crash-then-sink sequence is still genuinely changing, not yet "stuck" by
+    # STUCK_MIN_SAMPLES; 060 fires reverse rung 1, 061 fires reverse rung 2, 062 is stuck_abort -- exactly where
+    # drive_recover now gets a try instead of the hold ending on a parked vehicle
+    want = [("047-hold.jpg", False, None, None), ("051-hold.jpg", False, None, None),
+            ("054-hold.jpg", False, None, None), ("056-hold.jpg", False, None, None),
+            ("058-hold.jpg", False, None, None),
+            ("060-hold.jpg", True, False, tuple(pathfind.HOLD_UNSTICK["drive"][0])),
+            ("061-hold.jpg", True, False, tuple(pathfind.HOLD_UNSTICK["drive"][1])),
+            ("062-hold.jpg", True, True, None)]
+    check("driverecover-4x4evo2", seen == want,
+          f"4x4 Evo 2's recorded hold frames walk both reverse rungs before stuck_abort: {seen}")
+else:
+    check("driverecover-4x4evo2", False, f"fixture frames missing or stuckdetect unavailable: {f4x4}")
 
 # holdrepeat: a cutscene that asks for A (an episode card) is answered once; its A is repeated HOLD_REPEAT times
 # with no model call, then the screen is read again, and the play resumes (Panzer, 10-03: 4 looks per death)
