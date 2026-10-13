@@ -185,17 +185,84 @@ rung presses nothing, falling straight through. A third leg (`promptrung-turn`, 
 coverage beyond the brief's two-case bar) confirms a prompt whose answer needs a
 target sends the model's own named stick turn before the button.
 
-## Part D -- a scored window whose scene never travels must fail like menu/pause/load
+## Part D -- a scored window whose scene never travels must fail like menu/pause/load (NEGATIVE RESULT, COMPLETE)
 
-Not started this session; carried forward from a prior session's analysis. Measured (see
-Part A's table above, plus route-frame series over several runs' `route-frames/`
-directories): no tested measure at route-frame cadence robustly separates ATV's
-parked-quad case from confirmed-real drives -- window_change and scene_shift both move
-on camera/physics jitter alone, with no clean threshold that fails ATV without also
-failing at least one banked-real drive. This is a candidate "not separable" finding, not
-yet finalized with full supporting numbers; if it stands, the right outcome may be to
-document the limit in `hitch_report.py` rather than force a fragile threshold, per the
-brief's allowance for an explicit negative result.
+**Finalized this session: no measure separates the cases. `hitch_report.py` is unchanged.**
+The brief allows this explicitly: "Change, only if a measure separates the cases" / "If a
+banked Playable fails the rule, report it and do not change the verdict."
+
+### Falsifier run: every `genre=="drive"` run on disk, not a sample
+
+Zero ledger-banked Playable run is `genre=="drive"` today (same finding as Part A), so the
+brief's falsifier ("must still PASS every banked Playable's own run") holds on the banked
+set vacuously -- there is nothing in it to fail. The honest test is against the strongest
+available substitute: runs this lane and the prior one confirmed are *actually driving*
+(Part A's `gas_change` table, or direct frame inspection). Ran three candidate measures --
+full-frame `classify.motion()` (what `position_change()` uses today), the same band-masked
+by `GAS_MOVE_BAND` (Part A's own fix, the obvious next thing to try), and `scene_shift`
+(phase correlation) -- over every `route-frames/` pair of every `genre=="drive"` run found
+on disk (12 runs):
+
+| run | genre confirmed driving? | full-frame first_last | band-masked first_last | scene_shift mean (px) |
+|---|---|---|---|---|
+| ATV Quad Power Racing 2 (n-4143000A-1013r) | **no -- parked, the target case** | 0.6862 | 0.3475 | 3.82 |
+| Auto Modellista (automodellista-1006) | yes (Part A) | 0.2686 | 0.1804 | 4.69 |
+| Cel Damage (n-45410011-1007) | yes (frame review) | 0.7913 | 0.4861 | 11.65 |
+| RalliSport Challenge 2 (rallisport2-1006) | yes (Part A) | 0.6491 | 0.3748 | 0.09 |
+| Star Wars The Clone Wars (n-4C410004-1007) | unconfirmed | 0.6934 | 0.3738 | 9.78 |
+| Conflict Desert Storm II (n-53430006-1013) | yes (Part A) | 0.6742 | 0.3431 | 9.06 |
+| Crazy Taxi 3 High Roller (n-53450004-1013) | unconfirmed | 0.9031 | 0.4907 | 4.12 |
+| 4x4 Evo 2 (n-54540001-1013r, Part B's stuck-in-lake run) | no (confirmed stuck) | 0.9200 | 0.5301 | 0.00 |
+| Battlestar Galactica (n-5655000F-1013) | unconfirmed | 0.2561 | 0.0477 | 2.57 |
+| Need for Speed Most Wanted (sweep-4541007B, banked *title*, this run not) | unconfirmed | 0.6682 | 0.4330 | 0.00 |
+| Midnight Club II (sweep-54540008) | unconfirmed | 0.1663 | 0.1476 | 2.88 |
+| Panzer Elite Action Fields of Glory (n-4A570009-1007) | yes (Part A) | 0.5307 | 0.2855 | 0.12 |
+
+ATV's band-masked value (0.3475) sits in the middle of the confirmed-driving distribution
+(0.1804 to 0.4861), not below it. `scene_shift` is worse: RalliSport (confirmed real) means
+0.09 px, 4x4 Evo 2 stuck in a lake (confirmed NOT moving) means 0.00 px -- the "real drive"
+reads lower than both the parked and the stuck case. Crazy Taxi 3 (genre `drive`, not
+confirmed either way but presumably in motion given the title) FAILs a still-fraction bar
+under both full-frame and band-masked motion -- a second failure mode, false positives on
+the "pass" side, not just false negatives on ATV.
+
+### Minimal falsifier, committed as a selftest fragment
+
+`docs/testing/jobs/selftest.d/88-position-travel.sh` reproduces the table's core finding
+with 10 real (recompressed-to-JPEG) frames under
+`docs/lanes/holdinput1013/fixtures/positiontravel/`: ATV's own lowest- and highest-change
+route-frame pairs, Cel Damage's (confirmed real drive) own lowest- and highest-change
+pairs, and one Mortal Kombat: Armageddon pair (banked fighter, stand-in for "stationary-
+camera games must pass"). Two assertions falsify the band-masked candidate directly:
+- ATV's stillest pair (band 0.0457) reads **more** change than Cel Damage's stillest real-
+  driving pair (band 0.0148) -- a bar between them fails real driving before it fails the
+  parked quad.
+- ATV's busiest pair (band 0.4606) reads **more** change than Cel Damage's own busiest
+  real-driving pair (band 0.4547) -- no bar passes real driving without also passing ATV.
+
+Armageddon's pair clears `classify.STATIC_BAR` easily on its own merits (it is an active
+fighting match, not a frozen screen), and its genre is `attack`, not `drive` -- a rule
+gated to the drive genre (the brief's explicit allowance: "A rule limited to the drive
+genre is acceptable if the genre is on record for the run") never runs on it at all, so
+"stationary-camera games (fighters, bowling, sports) must pass" holds by construction, not
+by a threshold that happens to clear them today.
+
+### Why not separable, in one line
+
+ATV's screen changes for reasons that have nothing to do with the vehicle moving (rider
+pose, preload gauge, countdown overlay, camera) at a rate indistinguishable from how much a
+real drive's own screen changes frame to frame; masking the vehicle/HUD band removes the
+rider pose and gauge but not the camera or the overlay, and the camera/overlay share is
+already enough to land ATV inside the real-drive range on every measure tried.
+
+### Scratch analysis scripts
+
+`scratch_band.py`, `scratch_find_drive.py`, `scratch_find_genre.py`, `scratch_frac.py`,
+`scratch_ledger_genre.py`, `scratch_measure.py`, `scratch_banked_all.py` and
+`scratch_part_d.py` (this session) are the raw tools behind the table above. Deleted after
+this writeup: the table, the committed fixtures and the selftest fragment are the durable
+record; the scripts are reproducible from `GAS_MOVE_BAND`/`classify.motion`/`pf.scene_shift`
+if anyone needs to re-run the survey against new runs.
 
 ## Part E -- StuckWatch's max_rungs must match the genre's ladder (COMPLETE, 9fbdec7bea)
 
@@ -214,13 +281,10 @@ mutant (`max_rungs=3` as if the fix were reverted) that correctly drops attack's
 
 ## Outstanding
 
-- Part B: commit once the full selftest suite passes clean (in progress as of this
-  writing; the first full run after adding Part B's tests hit the `KeyError` above and is
-  being rerun).
-- Parts C and D: not started.
-- Six scratch analysis scripts in this directory (`scratch_band.py`,
-  `scratch_find_drive.py`, `scratch_find_genre.py`, `scratch_frac.py`,
-  `scratch_ledger_genre.py`, `scratch_measure.py`) are the raw measurement tools behind
-  Part A's table and Part D's "not separable" finding -- kept for now as working notes,
-  not wired into the selftest suite; worth a decision before Part F whether any earn a
-  permanent home or should be deleted.
+Parts A-E are all complete (A `cd55eafedf`, B `4cd1307df7`, C `41a9bbbd32`, D this
+session's commit, E `9fbdec7bea`). `origin/master` merged clean into this branch
+(`2202cb01cd`); `pathfind_selftest.py` passes clean on the merged tree. The eight scratch
+analysis scripts in this directory were working notes for Part A's and Part D's
+measurement tables; deleted in Part D's commit now that their findings are captured
+durably in this file, in the committed fixtures, and in `88-position-travel.sh`. Next:
+Part F -- flip `State: ready` in `PR.md` and push.

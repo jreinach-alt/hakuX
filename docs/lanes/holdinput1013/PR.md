@@ -4,9 +4,10 @@ State: draft
 
 Lane: holdinput1013            Issue: #433
 Base: master @ d2bcaacd22
-Files: docs/testing/titles/pathfind.py, docs/testing/titles/pathfind_selftest.py, docs/lanes/holdinput1013/fixtures/4x4evo2/*, docs/lanes/holdinput1013/fixtures/promptrung/*
+Files: docs/testing/titles/pathfind.py, docs/testing/titles/pathfind_selftest.py, docs/testing/jobs/selftest.d/88-position-travel.sh, docs/lanes/holdinput1013/fixtures/4x4evo2/*, docs/lanes/holdinput1013/fixtures/promptrung/*, docs/lanes/holdinput1013/fixtures/positiontravel/*
 Prediction: none: analysis-only (test-harness input/measurement logic only, not emulator code; no pixel-moving claim)
 Needs device: no    Needs NDK: no
+Release note (none): harness-only (pathfind hold-loop input handling and verdict scoring logic; not emulator code, no player-visible change).
 
 Fixes five input-handling defects behind four failed/misjudged Nova hold runs on 2026-10-13 (ATV Quad Power
 Racing 2, 4x4 Evo 2, Darkwatch, Genma Onimusha). Parts A-C and E are in `pathfind.py`; Part D is in
@@ -68,11 +69,28 @@ negative), both copied from existing read-only run folders. Three new selftest l
 `promptrung-noprompt`, `promptrung-turn`. Full suite re-run clean after the change (`pathfind_selftest: all
 ok`, 0 FAIL).
 
-## Part D -- not started
-`hitch_report.py`: a scored window whose scene never travels must fail like menu/pause/load. Prior analysis
-(this lane, measurements in Part A's list plus route-frame series) found no tested measure at route-frame
-cadence robustly separates ATV's parked-quad case from confirmed-real drives; this is a candidate "not
-separable" finding, not yet finalized or written up with full supporting data.
+## Part D -- COMPLETE, NEGATIVE RESULT (no code change)
+`hitch_report.py`'s `position_change()`/`position_fail()` never flagged ATV: the quad never left the start
+line for its whole 649 s hold, but the rider's pose, the preload gauge, the countdown overlay and the camera
+all change the full-frame screen enough to clear `position_fail()`'s bar regardless. The brief's own band-mask
+candidate (Part A's `GAS_MOVE_BAND`) was tried and falsified: measured over every `genre=="drive"` run on disk
+(12 runs, not a sample), ATV's band-restricted per-pair motion ranges 0.046-0.460; Cel Damage
+(`n-45410011-1007`, a confirmed real drive) ranges 0.015-0.455 on the same measure -- ATV's own stillest moment
+reads *more* change than Cel Damage's own stillest moment, and ATV's own busiest moment reads more than Cel
+Damage's own busiest moment. No single threshold can separate them. `scene_shift` (phase correlation) is
+worse: ATV reads 0-28 px while RalliSport Challenge 2 (confirmed real drive) reads 0-1.4 px -- lower than the
+parked quad.
+
+Zero ledger-banked Playable run is `genre=="drive"` today, so the brief's falsifier ("must still PASS every
+banked Playable's own run") holds on the banked set vacuously; the stronger, more honest test run here is
+against a confirmed-real (though unbanked) drive. Per the brief's explicit allowance ("If a banked Playable
+fails the rule, report it and do not change the verdict" / "Change, only if a measure separates the cases"):
+**no change made to `hitch_report.py`**. New selftest fragment `docs/testing/jobs/selftest.d/88-position-travel.sh`
+encodes the falsifier with real (JPEG-recompressed) route-frames under
+`docs/lanes/holdinput1013/fixtures/positiontravel/`: ATV's own lowest/highest-change pairs, Cel Damage's own
+lowest/highest-change pairs, and one Mortal Kombat: Armageddon pair (banked fighter, `attack` genre, stands in
+for "stationary-camera games must pass" -- a drive-gated rule never runs on it at all). Full 12-run table in
+`docs/lanes/holdinput1013/NOTES.md`.
 
 ## Part E -- COMPLETE (9fbdec7bea)
 `StuckWatch` was built without `max_rungs`, defaulting to 3 and silently dropping the 4th rung of the 4-rung
