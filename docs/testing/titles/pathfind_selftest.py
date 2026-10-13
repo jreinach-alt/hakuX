@@ -404,8 +404,12 @@ check("hold", len(kept_left) == hold.get("frames"), f"the other hold frames were
 
 # hold stuck: the screen stays a pause and START never gets back to play. The step cap no longer ends the hold while budget
 # remains (10-06 owner order): it runs ladder rounds, and the hold stops only when the ladder has run out and the budget is gone
+# genre attack, not GENRE's drive (#433 Part A): the gas-confirmation probe runs before this loop even starts, and
+# every frame here is the same still "menu" image, so a drive genre would refuse all 3 gas candidates and end the
+# hold before the stuck/off-play behaviour this leg actually tests ever ran.
 rc, res, steps, calls = run("holdstuck", PREFIX + [("menu", 0)] * 30,
-                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE]
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"},
+                             {"genre": "attack", "why": "a fighter"}]
                             + [PAUSED] * 16, ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
 hold = res.get("hold", {})
 check("holdstuck", res["result"] == "gameplay" and hold.get("ok") is False
@@ -417,8 +421,10 @@ check("holdstuck", sum(1 for c in calls if c["purpose"] == "hold-check") > pathf
 # sdstuck: the same stuck pause with the stuck detector on: a few unstick rungs, then the hold ends as stuck_abort
 # with the claim standing, well inside the budget the ladder would otherwise spend
 pathfind.stuckdetect = SD
+# genre attack here too (#433 Part A), for the same reason as holdstuck above
 rc, res, steps, calls = run("sdstuck", PREFIX + [("menu", 0)] * 30,
-                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE]
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"},
+                             {"genre": "attack", "why": "a fighter"}]
                             + [PAUSED] * 16, ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
 pathfind.stuckdetect = None
 hold = res.get("hold", {})
@@ -445,7 +451,9 @@ check("holdrepeat", hold.get("ok") is True, f"play resumed and held: {hold.get('
 # one octagon, verdict PASS). Still windows are not play: the perflog says state=still, the loop is led by an unlock
 # button, and play is credited again only once the kept frames move.
 ROUTE_LOG.clear()
-rc, res, steps, calls = run("holdstill", PREFIX + [("game", 0)] * 60 + PLAY2,
+# one shifted frame up front (#433 Part A) so the drive genre's gas-confirmation probe (RT, before this loop even
+# starts) has real travel to confirm against; the rest stays the identical still scene this leg is testing
+rc, res, steps, calls = run("holdstill", PREFIX + [("game", 0), ("game", 47)] + [("game", 0)] * 58 + PLAY2,
                             [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE]
                             + [PLAYING] * 80, ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
 hold = res.get("hold", {})

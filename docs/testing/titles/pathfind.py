@@ -249,6 +249,17 @@ FPS_BAR, FPS_SHARE_OK = 30, 0.60
 FPS_TOL = 0.95   # title_verdict's fps_tolerance (targets.toml): a locked-30 title's 29s are on the bar (AvP, 10-04)
 # a still window in the drive genre: a car against a wall (Forza, 10-03). Reverse while turning, then drive out the
 # other way, alternating sides per still window, before the generic unlock rotation.
+GAS_CANDIDATES = ("RT", "A", "X")
+# the drive genre's gas-confirmation band (10-13, #433 Part A), in the 1280x960 reference space: the bottom ~45%,
+# where a chase-cam's vehicle body and HUD gauges/speedometer sit. A rider's pose, a gauge needle or a dashboard
+# digit changes there whether or not the vehicle moves (ATV Quad Power Racing 2: RT is a jump-preload button, not
+# the gas -- it ping-pongs the rider and fills a gauge, speedometer pinned at 0, for the whole 649-s hold).
+GAS_MOVE_BAND = (0, 528, 1280, 432)
+# measured 10-13 on real probe triplets (docs/lanes/holdinput1013/NOTES.md): parked/not-really-moving readings
+# (ATV's RT 0.0226, Auto Modellista stalled at 0 mph 0.0018) sit well under real travel (Panzer Elite's tank
+# 0.0591, RalliSport Challenge 2's confirmed gas 0.1246, Conflict Desert Storm II's confirmed gas 0.1656).
+GAS_MOVE_BAR = 0.035
+
 HOLD_UNSTICK = {
     "drive": (["LT+left:3", "RT+right:3"], ["LT+right:3", "RT+left:3"]),
     # a gun game that stands still at a wall (Halo 2, 10-03: 31% static in one room): strafe out, firing, the other way
@@ -286,6 +297,15 @@ HOLD_GENRES = {
     # menu): aim with the stick, throw with A (press to start the meter, press to release). No B, X or Y here.
     "bowl": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"],
 }
+
+
+def drive_tokens(gas):
+    """Build the drive loop from a confirmed gas candidate (#433 Part A), instead of the hard-coded RT. A digital
+    gas button (A, X) cannot combine with a steer direction in one token -- send()'s "+" syntax is trigger-axis
+    only -- so it steers in a separate step, the same shape as the existing "rally" loop."""
+    if gas in ("RT", "LT"):
+        return [f"{gas}:2", f"{gas}+left:0.8", f"{gas}+right:0.8"]
+    return [gas, "STICK:left:0.6", gas, "STICK:right:0.6"]
 # a period break (a quarter, half, inning, or a bowling frame's scorecard) has its own START/A budget per episode, so a
 # scorecard does not spend the shared CONTINUE budget (lane.local 12:52: each frame's scorecard is a per-frame continue)
 PERIOD_TRIES = 8
@@ -752,6 +772,15 @@ def window_change(a, b):
     """Change between two kept hold frames at the probe's contrast step: did the player or camera move?"""
     ga = grey(a)
     return classify.motion(ga, grey(b), pixel=probe_step(ga))[0]
+
+
+def gas_change(a, b):
+    """Change between two drive-probe frames with the vehicle/HUD band (GAS_MOVE_BAND) masked out too: did the
+    world move past the vehicle, rather than the rider's pose, a gauge needle or a dashboard digit changing in
+    place? Measured 10-13 (#433 Part A) on real probe triplets: a vehicle that is not actually going anywhere
+    reads under GAS_MOVE_BAR here even when the full-frame window_change is well above it."""
+    ga = grey(a)
+    return classify.motion(ga, grey(b), mask_boxes=[GAS_MOVE_BAND], pixel=probe_step(ga))[0]
 
 
 def scene_shift(a, b):
@@ -1647,6 +1676,37 @@ class Agent:
         self.result["probe_frames"] = imgs
         return ok, rec["verdict"]
 
+    def confirm_gas(self, jpg):
+        """Drive genre only (#433 Part A): find the input that actually moves the vehicle, tried in order RT, A, X,
+        then a TITLE_HOLD entry's own "gas" key (the fallback, not the first answer). Each candidate is held
+        alone and judged by gas_change: the band outside the vehicle/HUD must move past GAS_MOVE_BAR, so a rider's
+        pose or a gauge filling (ATV Quad Power Racing 2's RT, a jump preload) does not count as gas. Logged under
+        "gas_try" (not "action"), so the per-cycle hold.jsonl readers that scan for an "action" field never see
+        these pre-loop probes. Returns (gas or None, candidates tried)."""
+        cands = list(GAS_CANDIDATES)
+        title_gas = TITLE_HOLD.get((self.tid or "").upper(), {}).get("gas")
+        if title_gas and title_gas not in cands:
+            cands.append(title_gas)
+        log = os.path.join(self.out, "hold.jsonl")
+        base_png, base_jpg = self.frame("gas-a")
+        tried = []
+        for cand in cands:
+            if not base_png:
+                break
+            tried.append(cand)
+            c_png, c_jpg = self.hold_capture(cand, f"gas-{cand}")
+            if not c_png:
+                break
+            chg = gas_change(base_png, c_png)
+            ok = chg >= GAS_MOVE_BAR
+            self.hold_note(log, {"gas_try": cand, "changed": round(chg, 3), "ok": ok})
+            print(f"hold-play: gas probe {cand}: band change {chg:.3f} ({'confirmed' if ok else 'refused'})",
+                  flush=True)
+            if ok:
+                return cand, tried
+            base_png, base_jpg = c_png, c_jpg
+        return None, tried
+
     def team_sport(self):
         """A team sport on a court, field or rink: the run's goal names a period setting or a team select, or the
         title's name is a team-sports league (the claim has no genre look yet; the hold's genre comes after it)."""
@@ -2058,6 +2118,22 @@ class Agent:
         print(f"hold-play: genre {genre}, need {self.hold_s:.0f} s of play", flush=True)
         kept, play_s, navs, nav = [], 0.0, 0, 0
         still, off, reason = 0, False, ""
+        # drive's loop sends whatever candidate actually moved the vehicle, confirmed now, once (#433 Part A): RT
+        # is a jump preload in some titles (ATV Quad Power Racing 2, rider crouching, PRELOAD gauge filling, 0 mph
+        # for the whole hold), so RT is tried first and not trusted on its own. A, then X, then a TITLE_HOLD entry's
+        # own "gas" key, is the fallback (th forces the attack-genre walk loop when truthy, so this only ever runs
+        # with th falsy today; the "gas" key is read straight from TITLE_HOLD so a future title can carry one
+        # without a full walk override needing to exist first). If nothing moves the vehicle the hold ends now,
+        # not after 600 s parked (RACE AGAIN twice).
+        if genre == "drive" and not th:
+            gas, gas_tried = self.confirm_gas(jpg)
+            if gas:
+                tokens = drive_tokens(gas)
+                held["gas"] = gas
+                print(f"hold-play: drive gas confirmed {gas} (tried {gas_tried})", flush=True)
+            else:
+                reason = f"drive gas: no input moved the vehicle (tried {', '.join(gas_tried)})"
+                print(f"hold-play: {reason}", flush=True)
         # position test (10-03): a 30-s window whose kept frames barely differ is not play, however live the HUD
         # looks (Black Stone stood 600 s on one octagon and passed the verdict). Then rotate the inputs: an unlock
         # button and the next genre's loop, until the scene moves again.
@@ -2091,7 +2167,7 @@ class Agent:
         sd_abort, last_st, sd_rungs = "", "play", 0
         low_run, flipped, rev_row, reversals = 0, False, 0, 0   # the reverse rule (16:08): looks still in a row, walk turned round
         patrol_looks = 0   # play looks on the shooter loop, for the patrol backstop (patrol_due)
-        while not held_ok and self.el() < self.budget_s:
+        while not held_ok and not reason and self.el() < self.budget_s:
             self.n += 1
             t_cycle = now()
             png, jp = self.frame("hold")
@@ -2297,7 +2373,9 @@ class Agent:
                             rot += 1
                             unstick = HOLD_UNSTICK.get(genre)
                             if unstick and rot <= 2 * len(unstick):
-                                tokens = unstick[(rot - 1) % len(unstick)] + HOLD_GENRES[genre]
+                                # the confirmed gas, not the hard-coded RT loop (#433 Part A requirement 3)
+                                loop = drive_tokens(gas) if genre == "drive" else HOLD_GENRES[genre]
+                                tokens = unstick[(rot - 1) % len(unstick)] + loop
                             else:
                                 tokens = [UNLOCK_LADDER[(rot - 1) % len(UNLOCK_LADDER)]] + \
                                     HOLD_GENRES[order[rot % len(order)]]
