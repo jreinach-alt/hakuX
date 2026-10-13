@@ -2591,14 +2591,20 @@ note = 'RETIRED (lane.local 2026-10-12 21:38 PDT): folded as 1ed3ac8f39 (lane/re
 [lane.pathfindhold1012]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/pathfindhold1012/**", "docs/testing/titles/pathfind.py", "docs/testing/titles/pathfind_selftest.py"]
-note = "STARTED lane.local 2026-10-12 10:02 PDT (Sonnet, harness per the 10-10 table; no device): pathfind's hold_check runs title_verdict on a provisional folder with no frames/, so every hold stops at its first check (X-Men n-41560046-1011: provisional 'window unmeasured', final PASS). Gives the provisional folder the run's frames; offline tests on runs on disk. pathfind.py came from [lane.pathfind] after the #822 fold (755ac97c96); lane.pathvoid1012 takes it next. Brief: briefs/pathfindhold1012.md."
+files = ["docs/lanes/pathfindhold1012/**"]
+note = "GRANTED (lane.local 2026-10-13 08:58 PDT): docs/testing/titles/pathfind.py and pathfind_selftest.py -> [lane.pathtele1013]. This lane is parked (STOPPED-1012, no unit); its uncommitted 10-line hold_check edit stays in its worktree, and whoever resumes it merges. || STARTED lane.local 2026-10-12 10:02 PDT (Sonnet, harness per the 10-10 table; no device): pathfind's hold_check runs title_verdict on a provisional folder with no frames/, so every hold stops at its first check (X-Men n-41560046-1011: provisional 'window unmeasured', final PASS). Gives the provisional folder the run's frames; offline tests on runs on disk. pathfind.py came from [lane.pathfind] after the #822 fold (755ac97c96); lane.pathvoid1012 takes it next. Brief: briefs/pathfindhold1012.md."
 
 [lane.pathvoid1012]
 issues = ["433"]
 standing = false
 files = ["docs/lanes/pathvoid1012/**"]
 note = "QUEUED lane.local 2026-10-12 10:02 PDT (Sonnet, harness; no device): a partial path whose steps the model never answered makes the next run diverge at step 0 (LotR Third Age n-4541005F-1011). Cuts such steps in write_path and the loader. Gets pathfind.py when lane.pathfindhold1012 folds (both edit it). Brief: briefs/pathvoid1012.md."
+
+[lane.pathtele1013]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/pathtele1013/**", "docs/testing/titles/pathfind.py", "docs/testing/titles/pathfind_selftest.py"]
+note = "STARTED lane.local 2026-10-13 08:58 PDT (Sonnet, harness; no device): the owner 10-13 ~08:05 asked for telemetry on the FPS failures. A: offline attribution of KOTOR II (n-4C410014-1011) and SC Double Agent (n-5553005E-1011) from the always-on lines, as fpsbelow1012 NOTES 17 read M:I. B: pathfind.py --perflog (master perflog APK via the dispatcher cache, install -r, restore in finally, refuse a scored run on a leftover perflog APK, --env, never banked). lane.local runs the three telemetry holds after the fold. pathfind.py and pathfind_selftest.py from the parked [lane.pathfindhold1012]. Brief: briefs/pathtele1013.md."
 
 [lane.rootclean1013]
 issues = ['433']
