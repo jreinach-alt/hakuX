@@ -8,9 +8,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `compatpage1012` | claude-sonnet-5 | 1 min |  |
+| `compatpage1012` | claude-sonnet-5 | 16 min |  |
+| `docsfresh1012` | claude-sonnet-5 | 3 min |  |
 
-- **Handhelds:** 2 connected.
+- **Handhelds:** 1 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-fanwait`
 - **Device queue:** 0 waiting, 0 running.
@@ -96,4 +97,4 @@ No branch is being worked right now.
 - 2026-10-12 debugcap1012: Debug Capture is off by default in versioned releases (#433, 0.5)
 - 2026-10-12 contrib1012: structured bug reports and a contributor guide (#433, 0.5)
 
-_Updated 2026-10-12 23:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 23:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
