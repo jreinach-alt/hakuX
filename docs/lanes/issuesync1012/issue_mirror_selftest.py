@@ -362,6 +362,72 @@ def test_new_refuses_when_forge_ahead():
         return 'new refuses when forge is ahead: REFUSED, nothing spent on either side'
 
 
+def test_new_pr_close_failure_queues_and_resume_clears_pending():
+    """Round 5, item 1: cmd_new loaded its own `st = load_state()` BEFORE calling _new_pr, so when _new_pr's
+    close-failure path did its own load_state()/append-to-pending_close/save_state(), cmd_new's later
+    save_state(st) -- using the stale `st` it loaded before _new_pr ever ran -- silently clobbered that entry
+    right back out of the file. The twin stayed open on GitHub with nothing queued to retry it. Exercises
+    `new --kind pr` with a forced close failure, then a sync: requires the close is retried exactly once and
+    cleared, and that a following sync makes 0 writes once settled."""
+    with isolated():
+        gh, fg = FakeGH(), FakeFG()
+        for n in range(1, 6):
+            mk_pair(gh, fg, n)
+        gh.force_close_failure_once = True
+        rc, out = silent(im.cmd_new, gh, fg, 'pr', 'new pr title', 'pr body', 'jobs', True, head='lane/x')
+        assert rc == 0, 'rc=%r out=%s' % (rc, out)
+        assert 6 in gh.items and gh.items[6]['state'] == 'open', gh.items.get(6)
+        assert 6 in fg.items, fg.items
+        st = im.load_state()
+        assert st.get('pending_close') == [6], \
+            'pending_close must survive cmd_new\'s own save_state -- got %r (out=%s)' % (st.get('pending_close'), out)
+        rc2, out2 = silent(im.cmd_sync, gh, fg, True)
+        assert rc2 == 0, out2
+        assert 'pending close(s)' in out2 and 'cleared' in out2, out2
+        assert gh.items[6]['state'] == 'closed', gh.items.get(6)
+        st2 = im.load_state()
+        assert not st2.get('pending_close'), st2.get('pending_close')
+        gh.write_calls = 0
+        fg.write_calls = 0
+        rc3, out3 = silent(im.cmd_sync, gh, fg, True)
+        assert rc3 == 0, out3
+        assert gh.write_calls == 0 and fg.write_calls == 0, \
+            'expected 0 writes once settled: gh=%d fg=%d (out=%s)' % (gh.write_calls, fg.write_calls, out3)
+        return ('new --kind pr close failure: pending_close survives cmd_new\'s save, retried exactly once by '
+                'sync and cleared, 0 writes on the following sync')
+
+
+def test_new_issue_truncates_long_body_for_github_only():
+    """Round 5, item 2: gap 3 (truncate_for_github) only ever ran on the backfill/sync write paths -- `new`
+    passed an arbitrarily long body straight to GitHub, which would refuse any body over 65536 characters
+    outright. Exercises `new --kind issue` with a body well over the limit: GitHub's side must be capped (with
+    the plain, non-forge-mentioning truncation suffix) while the forge keeps the full, untruncated body; the
+    baseline cmd_new records for each side must match what that side actually ended up holding."""
+    with isolated():
+        gh, fg = FakeGH(), FakeFG()
+        for n in range(1, 6):
+            mk_pair(gh, fg, n)
+        long_body = 'x' * (im.GITHUB_BODY_LIMIT + 5000)
+        rc, out = silent(im.cmd_new, gh, fg, 'issue', 'long body issue', long_body, 'jobs', True)
+        assert rc == 0, 'rc=%r out=%s' % (rc, out)
+        n = 6
+        assert n in gh.items and n in fg.items
+        assert len(gh.items[n]['body']) == im.GITHUB_BODY_LIMIT, len(gh.items[n]['body'])
+        assert gh.items[n]['body'].endswith(im.GITHUB_BODY_TRUNCATE_SUFFIX), gh.items[n]['body'][-40:]
+        assert '(truncated)' in gh.items[n]['body'] and 'forge' not in gh.items[n]['body'].lower()
+        assert fg.items[n]['body'].startswith(long_body), 'the forge side must keep the full body untruncated'
+        assert len(fg.items[n]['body']) > im.GITHUB_BODY_LIMIT
+        st = im.load_state()
+        entry = st['last_synced'][str(n)]
+        assert entry['gh']['body'] == gh.items[n]['body'], \
+            'recorded GitHub baseline must equal what GitHub actually ended up holding (the truncated text)'
+        assert entry['fg']['body'] == long_body, \
+            'recorded forge baseline must equal the full body (marker stripped)'
+        return ('new --kind issue: a long body is capped on GitHub only (%d chars, "(truncated)" suffix); the '
+                'forge keeps the full %d-char body; both baselines match what each side actually holds' %
+                (len(gh.items[n]['body']), len(fg.items[n]['body'])))
+
+
 def test_new_mirrors_down_first_when_github_ahead():
     with isolated():
         gh, fg = FakeGH(), FakeFG()
@@ -727,6 +793,8 @@ TESTS = [
     test_interaction_limit_active_and_long_enough_allows_backfill,
     test_interaction_limit_absent_refuses_backfill,
     test_interaction_limit_forbidden_refuses_backfill,
+    test_new_pr_close_failure_queues_and_resume_clears_pending,
+    test_new_issue_truncates_long_body_for_github_only,
 ]
 
 

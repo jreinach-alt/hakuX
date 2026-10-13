@@ -1,5 +1,5 @@
 --- /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py.orig	2026-10-12 18:12:52.463674439 -0700
-+++ /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py	2026-10-12 20:28:30.454677887 -0700
++++ /home/justin/hakux-work/lanes/issuesync1012/github_gateway.py	2026-10-12 20:46:44.143940347 -0700
 @@ -9,7 +9,20 @@
    unrelease [--yes] tag...  delete nightly-* releases whose sync row is marked 'withdrawn' (owner 2026-10-09)
    renote [--yes] tag...     replace a published nightly-*'s notes with nightly/<date>.notes.corrected.md (owner 2026-10-09)
@@ -38,7 +38,7 @@
      if not any(path == g or path.startswith(g + '?') or path.startswith(g + '/') for g in GET_OK):
          print('REFUSED: read-only paths only: ' + ' '.join(GET_OK)); return 3
      s = load_state(); read_budget(s)
-@@ -162,14 +179,223 @@
+@@ -162,14 +179,231 @@
      try:
          try:
              with urllib.request.urlopen(req, timeout=30) as r:
@@ -57,8 +57,16 @@
 +            # "200, parsed fine" to decide whether the limit is active -- falling through to `return 0` here (the
 +            # old behavior) let a failed read look identical to a successful empty one. No --out file is written
 +            # on this path; the caller must not assume one exists when the exit code is non-zero.
++            #
++            # Round 5, item 3: `sys.exit(main())` truncates to the low 8 bits of the process exit status, so
++            # returning the raw HTTP status here was silently wrong for any code >= 256 and ambiguous even below
++            # that (403 & 0xFF == 147, 404 & 0xFF == 148 -- neither is the real HTTP code once observed from the
++            # shell). Documented, small exit codes instead, chosen to match this file's own REFUSED convention:
++            # 3 for 403 (refused -- a token that can't read this), 1 for every other HTTP error. A caller that
++            # needs the actual numeric status must read it out of the printed "HTTP %d ..." line, not the exit
++            # code.
              print('HTTP %d %s' % (e.code, e.read()[:400].decode('utf8', 'replace').replace(tok, '<token>')))
-+            return e.code
++            return 3 if e.code == 403 else 1
      finally:
          close_window()
      return 0
@@ -263,7 +271,7 @@
  def cmd_prheads():
      """read-only: the head branch of every open PR on GitHub, one per line (prune_worktrees.sh, owner 2026-10-09).
      Parsed here, not through `get`, whose output is cut at 600 kB. Any failure prints nothing on stdout and exits 1,
-@@ -582,9 +808,18 @@
+@@ -582,9 +816,18 @@
      os.system('tail -5 %s 2>/dev/null' % LOG)
  
  
@@ -283,7 +291,7 @@
          print(__doc__); return 64
      lk = open(H + '/.gateway.lock', 'w')
      try:
-@@ -600,11 +835,22 @@
+@@ -600,11 +843,22 @@
      if a[0] == 'pages':
          cmd_pages(); return 0
      if a[0] == 'get':
@@ -307,7 +315,7 @@
      if a[0] == 'release':
          return cmd_release(yes='--yes' in a, only=[x for x in a[1:] if release_tag(x)] or None)
      if a[0] == 'unrelease':
-@@ -613,4 +859,8 @@
+@@ -613,4 +867,8 @@
          return cmd_renote([x for x in a[1:] if x.startswith('nightly-')], yes='--yes' in a)
      return cmd_plan(push=(a[0] == 'push'), yes='--yes' in a, max_new=opt('--max-new', MAX_NEW_REFS_DEFAULT), max_commits=opt('--max-commits', MAX_COMMITS_DEFAULT))
  

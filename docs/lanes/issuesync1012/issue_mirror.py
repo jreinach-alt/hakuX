@@ -247,12 +247,17 @@ class GH:
           ('absent', None, None)         -- no limit is set; GitHub returned 204 No Content (empty body)
           ('forbidden', None, None)      -- the token lacks permission to read this (403); genuinely unknown
         Never raises for a 403 specifically -- the caller (cmd_backfill) must be able to tell "no limit" apart
-        from "can't tell," and decide what to do with "can't tell" itself, rather than this method guessing."""
+        from "can't tell," and decide what to do with "can't tell" itself, rather than this method guessing.
+
+        Round 5, item 3: the gateway's `get` maps an HTTPError to a small, documented exit code -- 3 for 403,
+        1 for anything else -- rather than the raw HTTP status, because `sys.exit()` truncates to 8 bits (403
+        & 0xFF == 147; checking for 403 here could never have matched). Check for the gateway's exit code (3),
+        not the HTTP status."""
         self._ctr += 1
         out = H + '/.issue-mirror-get-%d-%d.json' % (os.getpid(), self._ctr)
         r = subprocess.run([sys.executable, self.gateway, 'get', '/interaction-limits', '--out', out],
                             capture_output=True, text=True)
-        if r.returncode == 403:
+        if r.returncode == 3:
             return 'forbidden', None, None
         if r.returncode != 0:
             raise RuntimeError('gateway get /interaction-limits: rc=%d %s' % (r.returncode, (r.stdout + r.stderr)[:300]))
@@ -1414,8 +1419,11 @@ def cmd_seed(gh_client, fg_client, yes):
 # --------------------------------------------------------------------------------------------------------------
 
 def _new_issue(gh_client, fg_client, title, body, forge_user_token_path):
-    n, close_err = gh_client.create(title, body)   # state=None here: no follow-up close is ever requested,
-    assert close_err is None                        # so close_err must always be None -- a bug if it is not.
+    # Round 5, item 2: gap 3 (truncate_for_github) only ever ran on the backfill/sync paths -- route the
+    # GitHub-bound body through it here too. The forge twin below still gets the full, untruncated `body`.
+    gh_body = truncate_for_github(body) if body else body
+    n, close_err = gh_client.create(title, gh_body)   # state=None here: no follow-up close is ever requested,
+    assert close_err is None                           # so close_err must always be None -- a bug if it is not.
     marker = mirror_marker('github', n)
     fc = FG(write_token_path=forge_user_token_path) if isinstance(fg_client, FG) else fg_client
     got = fc.create({'title': title, 'body': (body or '') + ('\n\n' if body else '') + marker})
@@ -1442,7 +1450,9 @@ def _new_pr(gh_client, fg_client, title, body, head, base, forge_user_token_path
         save_state(st)
         print('new: #%d created but the follow-up close failed, queued to retry: %s' % (n, close_err))
     synth = {'head': {'ref': head}, 'body': body, 'state': 'open', 'merged': False, 'labels': []}
-    gh_client.patch(n, body=build_pr_twin_body(synth, n))
+    # Round 5, item 2: same gap as _new_issue -- the twin's body is GitHub-bound and must be capped too. The
+    # forge PR created just below still gets the full, untruncated `body`.
+    gh_client.patch(n, body=truncate_for_github(build_pr_twin_body(synth, n)))
     fc = FG(write_token_path=forge_user_token_path) if isinstance(fg_client, FG) else fg_client
     got = fc.create({'head': head, 'base': base, 'title': title, 'body': body}, is_pr=True)
     if got != n:
@@ -1491,7 +1501,6 @@ def cmd_new(gh_client, fg_client, kind, title, body, forge_user, yes, head=None,
                   '(forge-first user: %s), refusing unless the forge number equals GitHub\'s N.' % (kind, title, forge_user))
             return 0
         write_tok = W + '/forge/tokens/%s.token' % forge_user
-        st = load_state()
         try:
             if kind == 'pr':
                 n = _new_pr(gh_client, fg_client, title, body, head, base, write_tok)
@@ -1504,6 +1513,11 @@ def cmd_new(gh_client, fg_client, kind, title, body, forge_user, yes, head=None,
         gh2 = gh_client.all_issues()
         if n in fg2:
             shared_vocab = compute_shared_vocab(gh_client.repo_labels())
+            # Round 5, item 1: load fresh here, AFTER _new_* returns, not before it ran. _new_pr's
+            # close-failure path does its own load_state()/save_state() to append to pending_close; a `st`
+            # loaded before that call would be stale, and save_state(st) below would silently overwrite the
+            # pending_close entry right back out of the file.
+            st = load_state()
             record_baseline(st, n, fg2[n], gh2.get(n), shared_vocab)
             save_state(st)
         print('CREATED #%d on both sides' % n)
