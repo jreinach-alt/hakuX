@@ -183,3 +183,15 @@ videos"). That is also the kind of cause call the brief reserves for an Opus res
 and documents; it does not judge the videos. `owner resume x1port1012 on Opus: judge #939 triage video
 arms (ids above) once run, and decide whether XVSS/S2TSHELF audit runs are worth queuing before or after
 that judgment.`
+
+## End of this session: waiting on the queue
+
+Both of this requester's two queue slots are full (`1791897193-x1port1012-336185` Crimson Skies smoke,
+`1791897357-x1port1012-341157` triage arm 1) and neither has started running yet (checked
+`dispatch/running/` and `dispatch/queue/` before stopping). Nothing to do in-session until one finishes:
+- Crimson Skies landing lets Phase A's smoke batch be judged complete and PR #965 set `State: ready`.
+- Triage arm 1 landing frees a slot to queue arm 2 (fastpaths off); arm 3 (shipped defaults) queues last,
+  after arm 2, per `request-env-outlives-the-run`.
+Posted `[lane.x1port1012] waiting:` on both #965 and #969 naming these request ids as the signal. A future
+resume (Sonnet is fine for this part: judging smoke PASS/FAIL is mechanical, queuing the next arm is
+mechanical) should re-check `dispatch/results/` for these ids first.
