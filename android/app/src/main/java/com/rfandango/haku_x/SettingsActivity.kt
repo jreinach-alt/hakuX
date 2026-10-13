@@ -586,7 +586,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     val switchDebugTools = findViewById<MaterialSwitch>(R.id.switch_debug_tools)
-    switchDebugTools.isChecked = prefs.getBoolean("debug_tools", false)
+    switchDebugTools.isChecked = prefs.getBoolean("debug_tools", resources.getBoolean(R.bool.debug_tools_default))
     switchDebugTools.setOnCheckedChangeListener { _, checked ->
       prefs.edit().putBoolean("debug_tools", checked).apply()
     }
