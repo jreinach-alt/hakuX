@@ -1,9 +1,9 @@
 # hangwatch: catch a frozen title that starves the GPU, spins the vCPU and silences the disc, even with non-flat audio
 
-State: draft
+State: ready
 
 Lane: hangstall1013            Issue: #433
-Base: master @ 8f347ed3184c9276c8d186a2386b2e4f8fef3a93
+Base: master @ 93cd7ca1be (merged into lane/hangstall1013, no rebase)
 Files: docs/testing/hangwatch.py, docs/lanes/hangstall1013/**
 Prediction: none: analysis-only
 Needs device: no    Needs NDK: no

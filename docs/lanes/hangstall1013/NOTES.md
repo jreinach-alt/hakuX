@@ -119,6 +119,12 @@ Only `docs/testing/hangwatch.py`, `docs/testing/jobs/selftest.d/59-hangwatch.sh`
 `hangwatch.py selftest`), and `docs/lanes/hangstall1013/**` were touched. `pathfind.py` was read, not edited, per
 the brief; its three `hangwatch.look`/`start`/`close` call sites still match the unchanged signatures.
 
+## Merge
+
+Merged `origin/master` (brought in `93cd7ca1be`, compatrefresh1013's docs-only compatibility-page update; clean,
+no conflicts, nothing in my territory) and reran both `python3 docs/testing/hangwatch.py selftest` (27/27 ok) and
+`SELFTEST_ONLY=59-hangwatch docs/testing/jobs/selftest.sh` (1 passed, 0 failed) on the merged tree. No rebase.
+
 ## Waiting
 
-Nothing. The merge-and-rerun step (base: origin/master) is still to do before `State: ready`.
+Nothing. PR set to ready.
