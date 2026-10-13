@@ -12,8 +12,11 @@ This script turns that file into a forge PR. Only the PR.md file is read, so
 lanes keep writing it and change nothing else:
 
   * Branch lane/<x> has docs/lanes/<x>/PR.md and holds commits master lacks,
-    and has no open forge PR: open one, as the `lanes` user, head lane/<x>,
-    base master.
+    and has no open forge PR: allocate a number through issue_mirror.py new
+    (GitHub gets a closed record issue, see its docstring and
+    docs/lanes/issuesync1012/PR.md for why that and not a live GitHub PR),
+    then open the forge PR at that number, as the `lanes` user, head
+    lane/<x>, base master.
   * The open PR's title, body or draft state differs from PR.md: update it.
     Draft is Forgejo's "WIP: " title prefix.
   * The branch is folded (its head is an ancestor of master) and the PR is
@@ -26,6 +29,10 @@ The forge copy lags it by about a minute. A branch the forge does not have
 yet is skipped and picked up on the next run.
 
 Dry run by default. Exit 1 if any forge call failed.
+
+Installed by lane.local 2026-10-12 after the issue-number backfill (lane.issuesync1012). The allocator
+(issue_mirror.py new --kind pr) reserves the forge PR's number on GitHub first, so a forge-only PR number
+cannot appear.
 """
 import argparse
 import json
@@ -39,6 +46,7 @@ import urllib.request
 
 FORGE = os.environ.get("FORGE_URL", "http://127.0.0.1:3330")
 TOKENS = os.environ.get("FORGE_TOKENS", os.path.expanduser("~/hakux-work/forge/tokens"))
+MIRROR = os.environ.get("ISSUE_MIRROR", os.path.expanduser("~/hakux-work/host-tools/issue_mirror.py"))
 WIP = "WIP: "
 
 
@@ -84,6 +92,16 @@ def parse_prmd(text):
     return title, (m.group(1).lower() if m else "draft"), text
 
 
+def allocate_pr(branch, base, want_title, body):
+    """Through the allocator: GitHub first (a closed record issue), then the forge PR at the same number. Returns
+    the parsed `new` stdout; the caller checks for 'CREATED #N' to get the number, same as a direct forge POST
+    would have returned a PR object with 'number' in it."""
+    r = subprocess.run(["python3", MIRROR, "new", "--kind", "pr", "--title", want_title, "--body", body,
+                        "--head", branch, "--base", base, "--forge-user", "lanes", "--yes"],
+                       capture_output=True, text=True)
+    return r
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", default=os.environ.get("GH_REPO", "jreinach-alt/hakuX"))
@@ -124,16 +142,32 @@ def main():
                         jobs.call("POST", f"/issues/{pr['number']}/comments", dict(
                             body=f"[job.forge-prsync] {br} @ {sha[:10]} is in {a.base} @ {master[:10]} "
                                  f"(folded by offline-git/foldqueue.sh); closing."))
-                        jobs.call("PATCH", f"/pulls/{pr['number']}", dict(state="closed"))
+                        try:
+                            jobs.call("PATCH", f"/pulls/{pr['number']}", dict(state="closed"))
+                        except RuntimeError as e:
+                            # the forge already merged it on the fold: nothing left to close (412 "already merged")
+                            if "already merged" not in str(e):
+                                raise
                 continue
             if pr is None:
                 if lanes.call("GET", "/branches/" + urllib.parse.quote(br, safe=""), ok404=True) is None:
                     print(f"{br}: not in the forge yet (hakux-forge-sync lag); next run")
                     continue
-                print(f"{br}: opening a forge PR ({state}): {title[:90]}")
+                print(f"{br}: opening a forge PR through the allocator ({state}): {title[:90]}")
                 if a.execute:
-                    p = lanes.call("POST", "/pulls", dict(head=br, base=a.base, title=want_title, body=body))
-                    print(f"  -> #{p['number']} {p['html_url']}")
+                    r = allocate_pr(br, a.base, want_title, body)
+                    m = re.search(r"CREATED #(\d+)", r.stdout)
+                    if r.returncode != 0 or not m:
+                        out = (r.stdout or r.stderr).strip()
+                        if "forge is ahead of GitHub" in out:
+                            # A lane created a forge PR directly (gh pr create), skipping the GitHub-first
+                            # allocator -- no timer runs `issue_mirror.py backfill` to close that gap on its
+                            # own, so this is an expected, recoverable wait, not a run-failing error: it must
+                            # not fail this service every tick until someone runs backfill by hand.
+                            print(f"{br}: waiting on backfill (forge ahead of GitHub): {out[:300]}", file=sys.stderr)
+                            continue
+                        raise RuntimeError(f"allocator refused: {out[:300]}")
+                    print(f"  -> #{m.group(1)}")
                 continue
             if (pr["title"], pr.get("body") or "") != (want_title, body):
                 what = [w for w, c in (("title/draft", pr["title"] != want_title), ("body", (pr.get("body") or "") != body)) if c]

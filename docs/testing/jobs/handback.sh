@@ -836,10 +836,12 @@ EOF
     cat <<EOF
 
 Bring \`origin/$TIP\` into your branch with \`git merge\` (your merged work is
-there), open the next batch's draft PR (\`gh pr create --draft --base $TIP\`
-with the lane template) before anything else, then carry on with the brief.
-If the brief is finished, say so in \`NOTES.md\` and stop. **This is not
-counted as a failed attempt.**
+there), write the next batch's \`docs/lanes/$4/PR.md\` (\`State: draft\`, the
+lane template body) and push, before anything else -- forge_prsync.py opens
+the forge PR through the allocator; do not run \`gh pr create\`, it has no
+allocator and can take a number GitHub has not given out yet -- then carry
+on with the brief. If the brief is finished, say so in \`NOTES.md\` and stop.
+**This is not counted as a failed attempt.**
 EOF
 }
 # The idle cause's own paragraph, shared by the draft brief above and the
@@ -878,10 +880,12 @@ EOF
     idle_text "$4"
     cat <<EOF
 
-\`roles/lane.md\` asks for a draft PR within your first few actions: open it
-(\`gh pr create --draft --base $TIP\` with the lane template) before anything
-else, so the board and this job can see the work. **This is not counted as a
-failed attempt.**
+\`roles/lane.md\` asks for a draft PR within your first few actions: write
+\`docs/lanes/$4/PR.md\` (\`State: draft\`, the lane template body) and push,
+before anything else, so forge_prsync.py can open it through the allocator
+and the board and this job can see the work. Do not run \`gh pr create\`; it
+has no allocator and can take a PR number GitHub has not given out yet.
+**This is not counted as a failed attempt.**
 EOF
 }
 

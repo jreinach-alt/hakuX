@@ -456,6 +456,26 @@ check "  and the READY-with-no-label FAIL names it" \
 check "  while a head that only shares the prefix is no lane's PR" \
     bash -c '! grep -q "#780" <<< "$1"' _ "$flt_sfx"
 
+# foldqueue.sh folds by branch name alone, with no concept of "remote lane" or
+# "suffixed head" -- so the same suppression that 96-fleet-registry.sh proves
+# for a plain lane/* branch must also hold for a suffixed one named only by
+# its headRefName (#433, Task 5). Appends to the shared foldqueue.log fixture
+# (HAKUX_WORK is exported once, globally, for the whole selftest run) rather
+# than replacing it, since 96-fleet-registry.sh's own branches are still in it.
+mkdir -p "$HAKUX_WORK/offline-git"
+echo "$(date '+%F %T') PDT FOLDED claude/elsewhere-u1-782p4: 1 lane branches with PR.md; 1 open forge PRs before this run; 0 error(s)" \
+    >> "$HAKUX_WORK/offline-git/foldqueue.log"
+cat > "$LS/lsprs-sfx2.json" <<'EOF'
+[{"number":779,"headRefName":"claude/elsewhere-u1-461p2","isDraft":false,"labels":[],"updatedAt":"2026-09-29T00:00:00Z","title":"the remote lane's next PR, still unaddressed"},
+ {"number":782,"headRefName":"claude/elsewhere-u1-782p4","isDraft":false,"labels":[],"updatedAt":"2026-09-29T00:00:00Z","title":"foldqueue.sh already folded this one"}]
+EOF
+flt_sfx2=$( ( export PATH="$LS/bin2:$PATH" LS_PRS="$LS/lsprs-sfx2.json"; cd "$LSF" && HAKUX_BOARD_REF= DISPATCH_DIR="$LS/fleetdisp" \
+             python3 "$LSF/fleet.py" ) 2>&1 )
+check "  a suffixed branch foldqueue.log already shows FOLDED does not FAIL" \
+    bash -c '! grep -qE "FAIL:.*#782\b" <<< "$1"' _ "$flt_sfx2"
+check "  while its sibling PR with no foldqueue.log entry still FAILs as unaddressed" \
+    grep -q "READY and carry no pipeline label: .*#779\b" <<< "$flt_sfx2"
+
 # --------------------------------------------------------------- handback.sh
 # `needs-rebase` on a remote lane's PR. The old `*)` arm told it "whoever owns
 # this branch merges origin/master into it by hand" -- true of a person's
