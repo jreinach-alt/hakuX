@@ -3,7 +3,7 @@
 State: ready
 
 Lane: boxart1012          Issue: none (#433 umbrella)
-Base: lane/debugcap1012 @ 151c06cb47 + lane/pubdocs1012 @ 13756ce96a
+Base: master @ 3d41440129 (merged; was lane/debugcap1012 @ 151c06cb47 + lane/pubdocs1012 @ 13756ce96a)
 Files: android/app/src/main/java/com/rfandango/haku_x/GameLibraryActivity.kt, android/app/src/main/java/com/rfandango/haku_x/SetupWizardActivity.kt, android/app/src/main/res/layout/activity_setup_wizard.xml, android/app/src/main/res/values/strings.xml, PRIVACY.md, docs/lanes/boxart1012/PR.md
 Prediction: none (UI and default change; no measurement)
 Needs device: no (the fold's boot gate)    Needs NDK: no
@@ -134,3 +134,9 @@ once. You can change it later with the switch in the library.
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
 https://claude.ai/code/session_01QjK9KDoS6St9aU1269xDrG
+
+## Master merge (lane.local, 10-12)
+
+debugcap1012 and pubdocs1012 folded, so master is merged in and this branch
+changes only its own files. No conflicts; no code change in the merge. The
+new head needs the fold's Nova boot gate.

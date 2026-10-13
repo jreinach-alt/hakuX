@@ -1,0 +1,56 @@
+#!/usr/bin/env python3
+"""issue_sync.py: lanes file new issues without GitHub (owner 2026-10-03: "Are new issues being logged and tracked locally
+or is that just being done ad hoc?"). Model-free; hakux-issue-sync.timer, 10 min.
+
+A lane reports a new defect or finding by writing, in its docs/lanes/<lane>/OUTBOX.md (pushed):
+    NEW ISSUE: <one-line title>
+    <body lines: evidence, run ids, frames, what it blocks>   (until a blank line)
+This script files each such block once, through the allocator (issue_mirror.py new), so a forge-only number can never
+collide with a GitHub one (owner 2026-10-12: "Any new issues logged in Forge must check GitHub first to ensure the
+numbers do not collide."), and records it in host-tools/.issue-sync.json (by lane + title hash) and in
+pm/lanelocal-log.md, so the PM tracks it.
+
+STAGED by lane.issuesync1012 (2026-10-12): this is the `.new` replacement for the forge-shim-direct version. It is not
+installed; it is reviewed in docs/lanes/issuesync1012/ alongside a diff against the live file. The only change from the
+live script is *what creates the issue* -- everything about discovering OUTBOX.md blocks, de-duplication and logging
+is unchanged.
+"""
+import hashlib, json, os, re, subprocess, time
+
+W = '/home/justin/hakux-work'; R = '/home/justin/hakuX'; ST = W + '/host-tools/.issue-sync.json'
+MIRROR = W + '/host-tools/issue_mirror.py'; PMLOG = W + '/pm/lanelocal-log.md'
+def sh(c):
+    return subprocess.run(c, shell=True, capture_output=True, text=True).stdout
+try: st = json.load(open(ST))
+except Exception: st = {}
+sh('git -C %s fetch -q origin' % R)
+filed = []
+for b in sh("git -C %s for-each-ref --format='%%(refname:short)' refs/remotes/origin/lane/" % R).split():
+    lane = b.split('/', 2)[-1]
+    ob = sh('git -C %s show %s:docs/lanes/%s/OUTBOX.md 2>/dev/null' % (R, b, lane))
+    for m in re.finditer(r'^NEW ISSUE:\s*(.+)\n((?:.+\n?)*)', ob, re.M):
+        title = m.group(1).strip()[:200]; body = m.group(2).strip()
+        key = lane + ':' + hashlib.sha1(title.encode()).hexdigest()[:12]
+        if key in st: continue
+        r = subprocess.run(['python3', MIRROR, 'new', '--kind', 'issue', '--title', title, '--body',
+                            body + '\n\nFiled by issue_sync from lane.%s OUTBOX.md (branch %s).' % (lane, b),
+                            '--forge-user', 'jobs', '--yes'],
+                           capture_output=True, text=True)
+        m2 = re.search(r'CREATED #(\d+)', r.stdout)
+        if r.returncode == 0 and m2:
+            n = int(m2.group(1))
+            url = 'http://127.0.0.1:3330/jreinach-alt/hakuX/issues/%d' % n
+            st[key] = {'url': url, 'title': title, 'number': n, 'at': time.time()}; filed.append((lane, url, title))
+        else:
+            # `new` refuses loudly (GitHub unreachable, a mismatch, no write path for this kind) rather than
+            # silently filing a forge-only issue the old script would have. That is by design: a request this
+            # script cannot allocate for stays unfiled (and un-deduped, so it retries next timer tick) instead of
+            # becoming exactly the kind of forge-only number this tool exists to stop creating.
+            with open(PMLOG, 'a') as f:
+                f.write('\n- issue_sync: lane.%s NEW ISSUE %r not filed: %s\n' % (lane, title, (r.stdout or r.stderr).strip()[:300]))
+json.dump(st, open(ST, 'w'))
+if filed:
+    stamp = subprocess.run(['date', '+%F %H:%M %Z'], capture_output=True, text=True, env=dict(os.environ, TZ='America/Los_Angeles')).stdout.strip()
+    with open(PMLOG, 'a') as f:
+        f.write('\n## %s [issue_sync]\n' % stamp + ''.join('- lane.%s filed %s: %s\n' % x for x in filed))
+print('filed', len(filed))

@@ -96,9 +96,10 @@ def _hm(epoch):
 #             reads them): a title with a verdict on either handheld.
 #   Playable  the same, the latest verdict per (title, device) passing with a
 #             Playable rating, on every handheld that has one.
-#   Ghoulies  the newest finished soak per handheld whose request names
-#             Grabbed by the Ghoulies: the median of its hakuX-perf gfps over
-#             90-240 s from the first perf line (fix311/read_soak.py's clock).
+#   Ghoulies  the newest finished soak per gate handheld (release-0.5.toml's
+#             gate_devices; both when unset) whose request names Grabbed by
+#             the Ghoulies: the median of its hakuX-perf gfps over 90-240 s
+#             from the first perf line (fix311/read_soak.py's clock).
 # Printed as facts.tsv rows: `r05<TAB>key<TAB>value` and
 # `r05gate<TAB>device<TAB>median<TAB>n<TAB>result id<TAB>ref<TAB>epoch`.
 
@@ -2246,7 +2247,7 @@ def panel_lines(p, name, now):
         gmin = 25.0
     gate = p.get("gate", [])
     if not gate:
-        lines.append("Ghoulies gate (median gfps 90-240 s >= %g, both handhelds): not gathered this tick" % gmin)
+        lines.append("Ghoulies gate (median gfps 90-240 s >= %g): not gathered this tick" % gmin)
     else:
         bits, verdict = [], True
         for g in gate:
@@ -2265,8 +2266,11 @@ def panel_lines(p, name, now):
             bits.append("%s %g (n=%s; %s, ref %s, %s%s)" % (dev, med, g.get("n"), g.get("id"), g.get("ref") or "?",
                                                            _ago(now, at) if now else _local(at), skipped))
             verdict = verdict and med >= gmin
-        lines.append("Ghoulies gate (median gfps 90-240 s >= %g, both handhelds): %s -- %s" % (
-            gmin, "met on these soaks (check the ref is the candidate's)" if verdict else "NOT MET", "; ".join(bits)))
+        # One row per gate handheld (release05 writes an empty row for one with no soak).
+        devs = [g.get("device", "?") for g in gate]
+        where = "both handhelds" if sorted(devs) == ["nova", "thor"] else "on the " + ", ".join(d.capitalize() for d in devs)
+        lines.append("Ghoulies gate (median gfps 90-240 s >= %g, %s): %s -- %s" % (
+            gmin, where, "met on these soaks (check the ref is the candidate's)" if verdict else "NOT MET", "; ".join(bits)))
     iss = p.get("issues", [])
     if not p.get("issues_known"):
         lines.append("%s issues: could not be read" % name)
@@ -3023,7 +3027,8 @@ def main(argv):
         return 0
     if len(argv) >= 2 and argv[1] == "release05":
         a = dict(zip(argv[2::2], argv[3::2]))
-        for row in release05(a.get("--titles", ""), a.get("--results", ""), a.get("--xiso", "")):
+        devs = _conf(os.environ)[0].get("gate_devices") or ["thor", "nova"]
+        for row in release05(a.get("--titles", ""), a.get("--results", ""), a.get("--xiso", ""), tuple(devs)):
             print("\t".join(str(x).replace("\t", " ").replace("\n", " ") for x in row))
         return 0
     if len(argv) >= 2 and argv[1] == "panel":
