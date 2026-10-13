@@ -38,6 +38,13 @@ Inputs go ONLY through perf/pad.sh: `input keyevent` to the app kills the
 emulator (AGENTS.md "Working with a device"). The only keyevents sent are
 KEYCODE_WAKEUP before launch and 223 (sleep) after the force-stop at the end.
 PATHFIND_DRY=1 with --sim <frames dir> touches no device (the selftest).
+
+--perflog (#433): one telemetry hold on master's -Pperflog=true build for a title with no golden
+profile (so request.sh/titlestate.admit() can never route to it). Installs that build from
+dispatcher.sh's own build_ref cache/build (adb install -r only, never a wipe), restores master in a
+finally, and refuses to even start a run without --perflog while a perflog build is still installed.
+--env K=V (repeatable, with --perflog only) goes through dispatcher.sh's own apply_env_pref. Never
+banked: result.json/verdict.json record "build": "perflog" and title_verdict.py voids the run.
 """
 
 import argparse
@@ -48,6 +55,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 
 import numpy as np
@@ -82,6 +90,14 @@ ACT = PKG + "/com.rfandango.haku_x.LauncherActivity"
 LOGCAT_SPEC = ("hakuX-crash:V hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:W "
                "hakuX-route:I hakuX-pace:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W libc:F DEBUG:F *:S")
 VERDICT = os.path.join(HERE, "..", "title_verdict.py")
+# --perflog (#433, pathtele1013 Part B): one telemetry hold on master's -Pperflog=true build, for a
+# title pathfind reaches but request.sh never can (no golden profile, so titlestate.admit() refuses
+# every route). Reuses dispatcher.sh's own build_ref (so the cache key, <sha>-perflog.apk, and the
+# build itself stay the dispatcher's, never a second build path) and its apply_env_pref (--env, the
+# same shared-prefs-XML mechanism request.sh's own --env uses).
+DISPATCHER_SH = os.path.join(HERE, "..", "dispatcher.sh")
+PERFLOG_REF = os.environ.get("PATHFIND_PERFLOG_REF", "master")
+PERFLOG_BUILD_TIMEOUT_S = int(os.environ.get("PATHFIND_PERFLOG_BUILD_TIMEOUT_S", "1200"))
 # Sonnet 5 per step, not Haiku: measured 10-02 on the same ESPN frame with the image inline, Sonnet 5
 # answered in 3.5-3.9 s (70-80 output tokens), Haiku 4.5 in 6.4-9.1 s (430-500, most of it thinking),
 # and Haiku had looped 8 times on a Yes/No dialog in Midnight Club 3.
@@ -415,6 +431,108 @@ def dry():
 
 # ------------------------------------------------------------------ device
 
+def _is_perflog_version(version_name):
+    """True if an installed versionName (version_stamp.sh's <base>-<MMDD>-<sha>[-perflog][-dirty])
+    is a perflog build, dirty or not."""
+    v = (version_name or "").strip()
+    if v.endswith("-dirty"):
+        v = v[: -len("-dirty")]
+    return v.endswith("-perflog")
+
+
+def _dispatcher_call(label, serial, fn, args, timeout):
+    """Call one function from dispatcher.sh (build_ref, apply_env_pref) without going through its
+    serve/worker/status CLI: `source`'s positional parameters apply only for the sourced script's own
+    execution (bash semantics), so `source dispatcher.sh <marker>` never reaches its own `case "$1"`
+    dispatch at the bottom of the file. Everything the two functions need (log, adb_call, $D, $REPO,
+    device_env via devices.sh) is top-level and side-effect-free to source."""
+    script = 'set -u\nsource "$1" __pathfind_source__ >/dev/null 2>&1\nshift\n"$@"\n'
+    env = dict(os.environ, SERIAL=serial, DEVICE_LABEL=label)
+    try:
+        return subprocess.run(["bash", "-c", script, "pathfind-dispatch", DISPATCHER_SH, fn] + list(args),
+                              capture_output=True, text=True, timeout=timeout, env=env)
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess([fn], 124, stdout="", stderr=f"{fn}: timed out after {timeout}s")
+
+
+def build_apk(dev, ref, variant=""):
+    """(apk path, None) from dispatcher.sh's own build_ref -- its cache (<sha>[-perflog].apk) or a
+    build through it, never a second build path -- or (None, error). `variant` is "perflog" or ""."""
+    r = _dispatcher_call(dev.label, dev.serial, "build_ref", [ref, variant], timeout=PERFLOG_BUILD_TIMEOUT_S)
+    apk = (r.stdout or "").strip()
+    if r.returncode != 0 or not apk or not os.path.isfile(apk):
+        return None, ((r.stderr or "").strip()[-400:] or f"build_ref exited {r.returncode}")
+    return apk, None
+
+
+def set_env_pref(dev, env_kvs):
+    """Write --env K=V pairs to the app's shared prefs through dispatcher.sh's own apply_env_pref (the
+    same shared_prefs/x1box_prefs.xml via `run-as` that request.sh's --env uses), by handing it a
+    request-shaped JSON file on disk, same as a dispatched request."""
+    fd, path = tempfile.mkstemp(prefix="pathfind-envreq-", suffix=".json")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump({"env": list(env_kvs)}, f)
+        r = _dispatcher_call(dev.label, dev.serial, "apply_env_pref", [path], timeout=60)
+        return r.returncode == 0, (r.stderr or "").strip()[-400:]
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+def restore_master(dev):
+    """Put plain master back on the device after a --perflog hold, in a `finally` so a crash during
+    the hold can't leave it installed. Verifies the installed versionName no longer reads as perflog;
+    the guard at the top of main() is the real safety net if this fails (it refuses the NEXT run
+    outright), since pathfind runs are not dispatcher results and the dispatcher's own restore never
+    sees them (#433, pathtele1013 Part B)."""
+    apk, err = build_apk(dev, PERFLOG_REF, variant="")
+    if not apk:
+        return False, f"could not rebuild master: {err}"
+    if not dev.install_apk(apk):
+        return False, "adb install -r of master failed"
+    installed = dev.installed_version_name()
+    if _is_perflog_version(installed):
+        return False, f"installed versionName '{installed}' still reads as perflog after restore"
+    return True, f"master restored, versionName {installed}"
+
+
+def perflog_start(dev, allow_perflog):
+    """The guard (#433): called before anything else on a real device. Without --perflog, refuse to
+    start while a perflog build is installed -- a pathfind run is not a dispatcher result, so the
+    dispatcher's own restore never sees it, and this is what stops a crash between an earlier
+    --perflog's install and its restore from silently poisoning the next scored run."""
+    installed = dev.installed_version_name()
+    if _is_perflog_version(installed) and not allow_perflog:
+        sys.exit(f"pathfind: refusing to start: the installed build ({installed or 'unread'}) reads "
+                 "as a perflog build left over from an earlier --perflog hold; pass --perflog, or "
+                 "restore master first")
+
+
+def perflog_setup(dev, env_kvs):
+    """--perflog's install: master's perflog APK (build_apk, dispatcher.sh's own cache/build),
+    installed and verified, then --env through dispatcher.sh's own apply_env_pref. Exits on any
+    failure, same as the rest of main()'s preflight checks (#433)."""
+    print(f"pathfind: --perflog: building/fetching master's perflog APK ({PERFLOG_REF})...", flush=True)
+    apk, err = build_apk(dev, PERFLOG_REF, variant="perflog")
+    if not apk:
+        sys.exit(f"pathfind: --perflog: could not get a perflog APK: {err}")
+    if not dev.install_apk(apk):
+        sys.exit(f"pathfind: --perflog: adb install -r of {apk} failed")
+    installed = dev.installed_version_name()
+    if not _is_perflog_version(installed):
+        sys.exit(f"pathfind: --perflog: installed versionName '{installed or 'unread'}' does not "
+                 "read as a perflog build after install; refusing to run a telemetry hold on the "
+                 "wrong binary")
+    print(f"pathfind: --perflog: installed {installed}", flush=True)
+    if env_kvs:
+        ok, err = set_env_pref(dev, env_kvs)
+        if not ok:
+            sys.exit(f"pathfind: --perflog: could not write --env {env_kvs} to the app's prefs: {err}")
+
+
 class Device:
     def __init__(self, label):
         self.label = label
@@ -504,6 +622,22 @@ class Device:
             return v / 1000 if v > 200 else v
         except (IndexError, ValueError):
             return None
+
+    def install_apk(self, apk_path):
+        """adb install -r only (--perflog, #433): debug and perflog variants share a signing key, so
+        this never uninstalls and never clears data."""
+        try:
+            r = subprocess.run(["adb", "-s", self.serial, "install", "-r", apk_path],
+                               capture_output=True, text=True, timeout=300)
+            return "Success" in (r.stdout or "")
+        except subprocess.TimeoutExpired:
+            return False
+
+    def installed_version_name(self):
+        """The installed app's versionName (version_stamp.sh's convention), or "" unread."""
+        out = self.sh(f"dumpsys package {PKG} | grep versionName", timeout=20)
+        m = re.search(r"versionName=(\S+)", out)
+        return m.group(1) if m else ""
 
 
 class SimDevice:
@@ -2359,15 +2493,30 @@ def main(argv=None):
     ap.add_argument("--path-broken", default=None,
                     help="override the profile gate's R3 (#433): a dispatch/results id naming a run of "
                          "this title's known path that failed")
+    ap.add_argument("--perflog", action="store_true",
+                    help="one telemetry hold on master's -Pperflog=true build (#433): installs it from "
+                         "dispatcher.sh's own cache/build before the run, restores master after. For a "
+                         "title that has already shown it will not clear (pair with PATHFIND_BELOW_BAR=1 "
+                         "and a short --hold-s). Never banked: verdict.json/result.json record "
+                         "\"build\": \"perflog\", and title_verdict.py voids it.")
+    ap.add_argument("--env", action="append", default=[], metavar="K=V",
+                    help="with --perflog: an env var for the app, via dispatcher.sh's own apply_env_pref "
+                         "(repeatable). Telemetry wants HAKUX_GPUXFR=1 and HAKUX_FRAMETRACE=1.")
     a = ap.parse_args(argv)
     os.makedirs(a.out, exist_ok=True)
     a.out = os.path.abspath(a.out)
+    if a.env and not a.perflog:
+        sys.exit("pathfind: --env needs --perflog (it is only wired through the dispatcher's own "
+                 "apply_env_pref during a perflog telemetry hold)")
     if dry():
+        if a.perflog:
+            sys.exit("pathfind: --perflog needs a real device, not PATHFIND_DRY")
         dev = SimDevice(a.device, a.sim)
         model = Model(a.out, sim=json.load(open(a.sim_answers)) if a.sim_answers else [])
     else:
         dev = Device(a.device)
         model = Model(a.out)
+        perflog_start(dev, a.perflog)
     tid, name, iso = resolve(dev, a.title)
     why = blocked(tid, name)
     if why:
@@ -2401,6 +2550,12 @@ def main(argv=None):
         agent.own = None
     if a.no_guide:
         agent.sibs = []
+    if a.perflog:
+        perflog_setup(dev, a.env)
+        # Never banked (#433): a perflog run's fps is pessimistic (~1.2 ms/frame), so it must not read
+        # as a Playable candidate. title_verdict.py voids any run whose result.json carries this.
+        agent.result["build"] = "perflog"
+        agent.result["env"] = list(a.env)
     # The titles disk a dispatched run of the path would boot (lane.savestate433):
     # the path found is only replayable from the state it was found in.
     hdd = None
@@ -2412,6 +2567,9 @@ def main(argv=None):
     finally:
         if hdd:
             titlestate.release(dev.label, hdd.get("run"), log=lambda m: print(m, flush=True))
+        if a.perflog:
+            ok, msg = restore_master(dev)
+            print(f"pathfind: --perflog: restore master: {msg}", flush=True)
 
 
 if __name__ == "__main__":
