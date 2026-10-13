@@ -170,6 +170,36 @@ extern int __android_log_print(int prio, const char *tag, const char *fmt, ...);
     fprintf(stderr, "apuvoice " fmt "\n", ##__VA_ARGS__)
 #endif
 
+/*
+ * Guest voice data the VP cannot use -- an SSL entry the guest has not filled
+ * in yet, a segment whose format disagrees with its voice, an idle-voice
+ * method with no trap requested -- used to assert, which takes the app down.
+ * Each is now skipped, and the first of each kind in a run is logged under
+ * hakuX-audio so a title that hits one still shows it. Ported from X1 BOX
+ * c59b1a7ba7 and 51e16997ff.
+ */
+enum {
+    VP_BAD_IDLE_VOICE,
+    VP_BAD_SSL_ENTRY,
+    VP_BAD_SEG_LAYOUT,
+    VP_BAD_SEG_FORMAT,
+};
+static uint32_t vp_bad_seen;
+
+#ifdef __ANDROID__
+#define VP_BAD(kind, fmt, ...) do { \
+    if (!(qatomic_fetch_or(&vp_bad_seen, 1u << (kind)) & (1u << (kind)))) { \
+        __android_log_print(5, "hakuX-audio", "vp: " fmt, ##__VA_ARGS__); \
+    } \
+} while (0)
+#else
+#define VP_BAD(kind, fmt, ...) do { \
+    if (!(qatomic_fetch_or(&vp_bad_seen, 1u << (kind)) & (1u << (kind)))) { \
+        fprintf(stderr, "vp: " fmt "\n", ##__VA_ARGS__); \
+    } \
+} while (0)
+#endif
+
 static int64_t vl_now(void)
 {
     return qemu_clock_get_us(QEMU_CLOCK_REALTIME) - vl_t0;
@@ -923,7 +953,9 @@ static void fe_method(MCPXAPUState *d, uint32_t method, uint32_t argument)
             DPRINTF("idle voice %d\n", argument);
             d->set_irq = true;
         } else {
-            assert(false);
+            VP_BAD(VP_BAD_IDLE_VOICE,
+                   "idle voice %u with no FETFORCE1 trap requested; ignored",
+                   argument);
         }
         break;
     default:
@@ -1549,21 +1581,46 @@ static int voice_get_samples(MCPXAPUState *d, uint32_t v, float samples[][2],
         hwaddr addr = d->regs[NV_PAPU_VPSSLADDR] + page * 8;
         segment_offset = ldl_le_phys(&address_space_memory, addr);
         segment_length = ldl_le_phys(&address_space_memory, addr + 4);
-        assert(segment_offset != 0);
-        assert(segment_length != 0);
         seg_len = (segment_length >> 0) & 0xffff;
         seg_cs = (segment_length >> 16) & 3;
         seg_spb = (segment_length >> 18) & 0x1f;
         seg_s = (segment_length >> 23) & 1;
-        assert(seg_cs == container_size_index);
-        assert((seg_spb + 1) == samples_per_block);
-        assert(seg_s == stereo);
+        if (segment_offset == 0 || seg_len == 0) {
+            /* The guest has not filled this SSL entry in yet, a race with its
+             * own writer: play nothing this frame and read the entry again on
+             * the next. xemu-project/xemu#380 (Advent Rising, Dead Man's
+             * Hand, Top Spin, Dave Mirra Freestyle BMX 2). */
+            VP_BAD(VP_BAD_SSL_ENTRY,
+                   "voice %u: SSL page %d not filled in (offset 0x%" HWADDR_PRIx
+                   " length 0x%x); voice skipped until it is",
+                   v, page, segment_offset, segment_length);
+            return -1;
+        }
+        if (seg_cs != container_size_index ||
+            (seg_spb + 1) != samples_per_block) {
+            /* The block size and sample decode above come from the voice; a
+             * segment in another format cannot be read with them. */
+            VP_BAD(VP_BAD_SEG_FORMAT,
+                   "voice %u: segment cs=%d spb=%d, voice cs=%u spb=%u; "
+                   "voice skipped",
+                   v, seg_cs, seg_spb + 1, container_size_index,
+                   samples_per_block);
+            return -1;
+        }
+        if (seg_s != stereo) {
+            /* Surround-configured audio can give a segment a channel layout
+             * its voice does not have, and the APU has no surround support:
+             * keep the voice's layout. xemu-project/xemu#1581. */
+            VP_BAD(VP_BAD_SEG_LAYOUT,
+                   "voice %u: segment stereo=%d, voice stereo=%d; "
+                   "voice layout kept", v, seg_s, stereo);
+            seg_s = stereo;
+        }
         container_size_index = seg_cs;
         if (seg_cs == NV_PAVS_VOICE_CFG_FMT_CONTAINER_SIZE_ADPCM) {
             sample_size = NV_PAVS_VOICE_CFG_FMT_SAMPLE_SIZE_S24;
         }
 
-        assert(seg_len > 0);
         ebo = seg_len - 1; // FIXME: Confirm seg_len-1 is last valid sample index
 
         DPRINTF("Segment: SSL%c[%d]\n", 'A' + ssl_index, ssl_seg);
