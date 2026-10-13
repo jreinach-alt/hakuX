@@ -1067,6 +1067,23 @@ def name_words(name):
     return {w for w in norm(name).split() if len(w) >= 3 and w not in STOP and not re.fullmatch(r"[0-9a-f]{8}", w)}
 
 
+def no_answer_step(s):
+    """True for a step recorded when the model gave no answer at all (pathfind.py's own
+    `state="unknown", why="model gave no answer"`, src="none" while live -- but a step loaded back
+    from pathknow/paths/*.json carries no `src` (write_path's `keep` never saves it), so this matches
+    on state+why alone, the only fields a recorded step and a live one share)."""
+    return s.get("state") == "unknown" and s.get("why") == "model gave no answer"
+
+
+def cut_no_answer(steps):
+    """A path's steps, cut before the first the model never answered (#433, lane.pathrules1013 Part
+    A): that step was never a decision, so it is not a screen the next run should wait to match."""
+    for i, s in enumerate(steps):
+        if no_answer_step(s):
+            return steps[:i]
+    return steps
+
+
 def load_paths(tid, name):
     """(own path or None, [sibling paths]) from pathknow/paths/*.json. A
     sibling is a recorded title whose name shares a series hint file with
@@ -1080,6 +1097,7 @@ def load_paths(tid, name):
             d = json.load(open(p))
         except (OSError, ValueError):
             continue
+        d["steps"] = cut_no_answer(d.get("steps") or [])
         if tid and d.get("title_id", "").upper() == tid.upper():
             own = d
         elif mine and mine & set(os.path.basename(f) for f in series_files(d.get("name", ""))):
@@ -2424,6 +2442,10 @@ class Agent:
         for s in self.steps:
             if s.get("src") in ("probe", "check"):
                 continue
+            if no_answer_step(s):
+                # a step the model never answered is not a decision: never recorded, and nothing
+                # after it either, the same way the loop cut below never records a repeat (#433)
+                break
             if not complete and s.get("sig") is not None:
                 if any(sig_dist(s["sig"], o) <= SIG_MATCH for o in seen) and s.get("state") not in (
                         "black", "loading"):
@@ -2433,6 +2455,8 @@ class Agent:
             keep.append({"state": s.get("state"), "why": s.get("why", "")[:160], "action": s.get("action", []),
                          "wait_s": s.get("wait_s", 2), "useful": useful or s.get("state") == "gameplay",
                          "sig": [[round(v) for v in row] for row in s["sig"]] if s.get("sig") else None})
+        if not keep:
+            return
         d = {"title_id": self.tid, "name": self.name, "device": self.dev.label,
              "recorded": time.strftime("%Y-%m-%d %H:%M %Z"), "minutes": self.result.get("minutes"),
              "model_calls": self.model.calls, "complete": complete, "result": self.result.get("result"),
