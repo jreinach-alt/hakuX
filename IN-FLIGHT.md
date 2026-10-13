@@ -8,10 +8,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `holdinput1013` | claude-sonnet-5 | 57 min | holdinput1013 Part E: StuckWatch's max_rungs must match the genre's ladder (#433) |
+| `holdinput1013` | claude-sonnet-5 | 0 min | holdinput1013 Part E: StuckWatch's max_rungs must match the genre's ladder (#433) |
 
 - **Handhelds:** 1 connected.
-  - Nova: held by `lane.pathfind`
+  - Nova: held by `lanelocal-shuffle`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -91,6 +91,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Recently landed on master
 
+- 2026-10-13 pathrules1013: pathfind no-answer steps never become a path, a hold that can't pass ends early, a perflog run never banks (#433, 0.5)
 - 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
 - 2026-10-13 lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
@@ -102,6 +103,5 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-13 compatpage1012: the compatibility page in three sections, with regions and a CSV (#433, 0.5)
 - 2026-10-12 issuemirror1012: the issue mirror on a timer: one lock, incremental sync, budget-true pre-check (#433, 0.5)
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
-- 2026-10-12 changelog1012: changelog to 0.5.0, version numbers for official-build users, credits (#433, 0.5)
 
-_Updated 2026-10-13 14:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 14:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
