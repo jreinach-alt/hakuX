@@ -1358,6 +1358,51 @@ static bool create_logical_device(PGRAPHState *pg, Error **errp)
 #endif
 
     /*
+     * Extended dynamic state is called by its Vulkan 1.3 core names. On a
+     * 1.1/1.2 device that has VK_EXT_extended_dynamic_state, volk loads the
+     * EXT names and leaves the core ones NULL, so point the core names at
+     * them. Then advertise EDS1 to the renderer only if every depth/stencil
+     * command it emits is callable: some Android loaders, injected drivers
+     * especially, expose the extension and return NULL for a name.
+     * Cull mode and front face are dynamic in every pipeline here
+     * (OPT_DYNAMIC_STATES), so without them the first draw would jump to
+     * NULL; refuse the device with a message instead.
+     * From X1 BOX d5d64b9dc3 (aliases) and e3c1927bdf (guard).
+     */
+#define PATCH_EDS1(core, ext) do { if (!(core)) (core) = (ext); } while (0)
+    PATCH_EDS1(vkCmdSetCullMode,           vkCmdSetCullModeEXT);
+    PATCH_EDS1(vkCmdSetFrontFace,          vkCmdSetFrontFaceEXT);
+    PATCH_EDS1(vkCmdSetDepthTestEnable,    vkCmdSetDepthTestEnableEXT);
+    PATCH_EDS1(vkCmdSetDepthWriteEnable,   vkCmdSetDepthWriteEnableEXT);
+    PATCH_EDS1(vkCmdSetDepthCompareOp,     vkCmdSetDepthCompareOpEXT);
+    PATCH_EDS1(vkCmdSetStencilTestEnable,  vkCmdSetStencilTestEnableEXT);
+    PATCH_EDS1(vkCmdSetStencilOp,          vkCmdSetStencilOpEXT);
+#undef PATCH_EDS1
+
+    if (r->extended_dynamic_state_supported &&
+        (!vkCmdSetDepthTestEnable || !vkCmdSetDepthWriteEnable ||
+         !vkCmdSetDepthCompareOp || !vkCmdSetStencilTestEnable ||
+         !vkCmdSetStencilOp)) {
+        r->extended_dynamic_state_supported = false;
+#ifdef __ANDROID__
+        __android_log_print(
+            ANDROID_LOG_WARN, "hakuX",
+            "extended dynamic state disabled: required command unavailable "
+            "(depth=%d/%d/%d stencil=%d/%d)",
+            vkCmdSetDepthTestEnable != NULL, vkCmdSetDepthWriteEnable != NULL,
+            vkCmdSetDepthCompareOp != NULL,
+            vkCmdSetStencilTestEnable != NULL, vkCmdSetStencilOp != NULL);
+#endif
+    }
+
+    if (OPT_DYNAMIC_STATES && (!vkCmdSetCullMode || !vkCmdSetFrontFace)) {
+        error_setg(errp, "Vulkan device has no vkCmdSetCullMode/"
+                         "vkCmdSetFrontFace (needs Vulkan 1.3 or "
+                         "VK_EXT_extended_dynamic_state)");
+        return false;
+    }
+
+    /*
      * #59. Tell the shader generator the second source output is legal only
      * once the device that grants it actually EXISTS.
      *
