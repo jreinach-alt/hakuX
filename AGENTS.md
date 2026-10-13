@@ -480,6 +480,32 @@ Text there says what a build or the project IS, not how the harness produced it.
 Issues and PR threads are public too, but they're the work record, and this
 rule doesn't apply to them.
 
+## Public docs
+
+**The public docs** are the files listed in `docs/testing/public_docs.txt` --
+README.md, KNOWN_ISSUES.md, ROADMAP.md and the rest of the set a new
+contributor or player actually reads.
+
+- **Their reader** is someone deciding whether to try this build on an
+  Android handheld, or someone who already has and wants help.
+- **What they leave out** follows the rule above: no process commentary.
+  That means no lane names, run ids, board or harness vocabulary, owner
+  quotes, or investigation narratives.
+- **Style:** concise. Measured numbers only, and only when the source is in
+  the repo.
+- **The date line:** every public doc carries, as the first non-blank line
+  after its H1, `_Last updated YYYY-MM-DD, for version X.Y.Z._`. Bump the
+  date only after reviewing the *whole* doc, not just the section you
+  touched, and set the version to the release it describes.
+- **Same PR:** a change to a feature a public doc describes updates that doc
+  in the same PR. A doc that falls behind the code it describes is a second
+  bug riding the first.
+- **Cadence:** a docs pass on every release (`android/RELEASING.md`'s step
+  before tagging) and at least every 14 days otherwise.
+  `docs/testing/docs_freshness.py` is the check; the hourly report runs it
+  and raises an alarm when a doc goes stale, and lane.local starts a docs
+  pass from that alarm.
+
 ## Non-negotiables
 
 **CI is the forge's, and it is not a self-check.** The only CI until the return

@@ -1,13 +1,18 @@
-# Releases
+# Release notes
 
-This directory holds the notes published with each versioned release (see
-`v0.4.0-j1.md` and `v0.4.1-j1.md` for examples).
+_Last updated 2026-10-13, for version 0.5.0._
 
-## How a versioned release is built
+| Version | Highlights |
+|---|---|
+| [0.5.0](v0.5.0.md) | 52 games rated Playable, save states, less shader stutter, several games folders, launching from ES-DE |
+| [0.4.1-j1](v0.4.1-j1.md) | A frame-rate fix for 0.4.0-j1 |
+| [0.4.0-j1](v0.4.0-j1.md) | Rendering accuracy measured against a real Xbox |
 
-A versioned release is built from a tagged commit with
-`docs/testing/release_build.sh <version>`, which checks out tag `v<version>`
-and produces the APK for that release. Unlike a nightly or a working build,
-a versioned release ships with the pause menu's Debug Capture tool turned
-off by default, since it is meant for players rather than contributors.
-Anyone who wants it can still turn it on from **Settings > Debug Tools**.
+Downloads are on the
+[Releases page](https://github.com/jreinach-alt/hakuX/releases).
+
+## About release builds
+
+A release is built from its version tag. In a release build the pause menu's
+**Debug Capture** is off by default; turn it on with Settings → Debug → Debug
+Tools if you want to [send a graphics capture](../reporting-bugs.md).

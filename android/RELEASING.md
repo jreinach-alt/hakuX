@@ -54,6 +54,19 @@ Fill in the absolute path to the keystore, the store password, the alias
 signing config when all four values are present. With the file absent, a
 release build is simply unsigned — which is the current behavior.
 
+## Before tagging a release
+
+A tagged release is also whatever the public docs say it is — README.md,
+KNOWN_ISSUES.md, and the rest of `docs/testing/public_docs.txt` — so tag
+only after both of these pass for the version you are about to tag:
+
+1. Read every public doc start to finish and bump its date line to today,
+   in Pacific time, with the version it now describes.
+2. `python3 docs/testing/docs_freshness.py --release X.Y.Z`
+
+A doc the checker calls stale is a doc nobody has reviewed for this release;
+fix the doc, not the check.
+
 ## Building and verifying
 
 ```bash

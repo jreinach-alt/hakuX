@@ -1,76 +1,47 @@
-# Known Issues
+# Known issues
 
-**Defect tracking has moved to [GitHub issues](https://github.com/jreinach-alt/hakuX/issues).**
+_Last updated 2026-10-12, for version 0.5.0._
 
-This file previously served as the tracker. It is kept for the handful of items
-that are user-facing behaviour rather than defects to be fixed — things worth
-knowing before you file a bug.
+What to expect from 0.5.0 before you report a bug. How each tested game runs
+is on the [compatibility page](docs/COMPATIBILITY.md); open bugs are in the
+[issue tracker](https://github.com/jreinach-alt/hakuX/issues).
 
-Everything else that lived here is now an issue, classified by whether it is
-inherited from upstream or introduced by this fork. See
-[#18](https://github.com/jreinach-alt/hakuX/issues/18) for the re-confirmation
-pass over the older entries.
+## Games
 
-That pass is done, and its results are in
-[`docs/investigations/known-issues-reverified-2026-09-12.md`](docs/investigations/known-issues-reverified-2026-09-12.md):
-six of the seven older entries no longer reproduce. The two that are not
-settled are the Vulkan texture-cache exhaustion path — the abort is gone, the
-handling is not safe — and the guest-kernel BugCheck freeze, whose disc is not
-on any machine here. The three entries below were re-checked and are accurate.
+- **Most games are not rated yet.** Many start but show graphical faults, and
+  many have not been tried. A game missing from the compatibility page has not
+  been rated; it may still run.
+- **Some games run below 30 fps** on a Snapdragon 8 Gen 2-class handheld, and
+  slower chips run them slower still.
+- **Need for Speed: Most Wanted** is Playable, but its frame rate still dips
+  in places.
+- **A short pause the first time a scene appears**, while its shaders are
+  built. The ubershader (Settings → Graphics, on by default) hides most of it,
+  and a game you have played before reuses what it built last time.
+- **The ubershader can cost frame rate in some games.** ToeJam & Earl III ran
+  at 54 fps instead of 60 with it on. It can be turned off for one game.
 
----
+## Audio
 
-## Setup Wizard appears to freeze while copying the HDD image
+- **Audio effects processing is off by default.** Games that use the Xbox's
+  audio effects may sound thin, without reverb. Turn on Settings → Audio →
+  Real-time DSP processing; it can cost speed on slower devices.
 
-**Fixed.** The wizard shows a progress dialog for the duration of the copy now —
-determinate when the provider reports a size, indeterminate when it does not —
-and says so rather than silently dropping a second selection while a copy runs.
+## Setup and storage
 
-Kept here because the symptom is memorable and the old builds are still out
-there: on those, importing a retail image off an exFAT card left the screen
-apparently frozen with Next dead, for minutes, and re-selecting the file did
-nothing. It was progressing. If you see it, update.
+- **This build and the official hakuX are separate apps.** Settings, saves
+  and the hard disk image in one do not appear in the other.
+  [Moving your saves across](android/MIGRATING.md) is optional.
+- **Save states are kept outside the Xbox hard disk image.** The default
+  folder is removed when you uninstall the app. To keep your states, choose
+  your own folder in Settings → Save States.
+- **ES-DE needs two config files** to launch this build. See
+  [ES-DE setup](docs/es-de/README.md).
+- **Online play is off by default.** Turn it on in Settings → Online /
+  Insignia.
 
----
+## Reporting a bug
 
-## Networking must be enabled for anything that uses the guest network
-
-**Symptom:** A guest program that expects a network hangs indefinitely rather
-than failing — the pgraph suite's FTP upload sits at "Initializing network..."
-forever.
-
-**Cause:** The emulator's networking switch is off by default. The guest waits
-on DHCP that will never complete.
-
-**What to do:** Settings → Online / Insignia → enable online networking. Note the
-pgraph harness no longer needs this; results are read out of `hdd.img` directly
-by `docs/testing/extract_results.py`.
-
----
-
-## Audio DSP processing is off by default
-
-**Symptom:** Games that lean on the Xbox APU's DSP effects may sound thin,
-missing reverb or other processing.
-
-**Cause:** The Xbox APU pairs a voice processor with two Motorola DSP56K-family
-cores; xemu emulates them by adapting Hatari's DSP56001 core. Settings →
-Audio has a "Real-time DSP processing" switch, but it ships **off**. Why it
-defaults off (correctness, performance, or stability) is not yet established;
-see `ROADMAP.md`.
-
-**What to do:** Try enabling it in Settings → Audio if a game sounds wrong;
-it may cost performance on slower devices.
-
----
-
-## Two builds can install side by side and are easy to confuse
-
-**Symptom:** Settings changed in one build appear to have no effect.
-
-**Cause:** Debug and release builds now use distinct application IDs and labels
-(`hakuX (debug)` vs `hakuX (fork)`). Older builds shared a label, so two installs
-were indistinguishable in the launcher.
-
-**What to do:** Check which one you opened. Their save data, HDD images and
-settings are entirely separate.
+See [Reporting a bug](docs/reporting-bugs.md) for what to include. To attach a
+frame capture, turn on Settings → Debug → Debug Tools; the pause menu then
+shows Debug Capture.
