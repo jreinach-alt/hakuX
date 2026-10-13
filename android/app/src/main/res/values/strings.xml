@@ -27,6 +27,10 @@
   <string name="setup_pick_disc">Choose Games Folder</string>
   <string name="setup_disc_value">Games Folder: %1$s</string>
 
+  <string name="setup_boxart_title">Box Art</string>
+  <string name="setup_boxart_body">Look up cover art for your games online? Off by default. Turning it on sends a request to raw.githubusercontent.com for each game, naming the game by its cover file — GitHub sees your device\'s address and which titles you look up.</string>
+  <string name="setup_boxart_note">You can change this later in the library.</string>
+
   <string name="library_title">Game Library</string>
   <string name="library_boot_dashboard">Boot Dashboard</string>
   <string name="library_boot_dashboard_note">Requires a hard drive image with the Microsoft dashboard installed.</string>
@@ -39,6 +43,10 @@
   <string name="library_view_cover_grid">Cover Grid</string>
   <string name="library_search_hint">Search games</string>
   <string name="library_box_art_lookup">Look up box art online</string>
+  <string name="library_box_art_upgrade_title">Box art lookup</string>
+  <string name="library_box_art_upgrade_message">hakuX now asks about box art lookup during setup, and it starts off for anyone new. Your install already had it on — keep looking it up online? Each lookup sends a request to raw.githubusercontent.com naming the game. You can change this later with the switch above.</string>
+  <string name="library_box_art_upgrade_keep_on">Keep it on</string>
+  <string name="library_box_art_upgrade_turn_off">Turn it off</string>
   <string name="library_folder_value">Folder: %1$s</string>
   <string name="library_no_folder">No folder selected</string>
   <string name="library_loading_games">Scanning games...</string>

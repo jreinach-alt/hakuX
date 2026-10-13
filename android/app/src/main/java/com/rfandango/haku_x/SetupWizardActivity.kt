@@ -14,6 +14,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.materialswitch.MaterialSwitch
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -25,17 +26,20 @@ class SetupWizardActivity : AppCompatActivity() {
   private lateinit var pageFlash: View
   private lateinit var pageHdd: View
   private lateinit var pageDisc: View
+  private lateinit var pageBoxArt: View
   private lateinit var pages: List<View>
   private lateinit var mcpxPathText: TextView
   private lateinit var flashPathText: TextView
   private lateinit var hddPathText: TextView
   private lateinit var discPathText: TextView
+  private lateinit var switchBoxArtLookup: MaterialSwitch
   private lateinit var btnBack: MaterialButton
   private lateinit var btnNext: MaterialButton
   private lateinit var indicatorMcpx: View
   private lateinit var indicatorFlash: View
   private lateinit var indicatorHdd: View
   private lateinit var indicatorDisc: View
+  private lateinit var indicatorBoxArt: View
   private lateinit var indicators: List<View>
 
   private var mcpxUri: Uri? = null
@@ -165,18 +169,21 @@ class SetupWizardActivity : AppCompatActivity() {
     pageFlash = findViewById(R.id.page_flash)
     pageHdd = findViewById(R.id.page_hdd)
     pageDisc = findViewById(R.id.page_disc)
-    pages = listOf(pageMcpx, pageFlash, pageHdd, pageDisc)
+    pageBoxArt = findViewById(R.id.page_boxart)
+    pages = listOf(pageMcpx, pageFlash, pageHdd, pageDisc, pageBoxArt)
     mcpxPathText = findViewById(R.id.mcpx_path_text)
     flashPathText = findViewById(R.id.flash_path_text)
     hddPathText = findViewById(R.id.hdd_path_text)
     discPathText = findViewById(R.id.disc_path_text)
+    switchBoxArtLookup = findViewById(R.id.switch_setup_box_art_lookup)
     btnBack = findViewById(R.id.btn_wizard_back)
     btnNext = findViewById(R.id.btn_wizard_next)
     indicatorMcpx = findViewById(R.id.step_indicator_mcpx)
     indicatorFlash = findViewById(R.id.step_indicator_flash)
     indicatorHdd = findViewById(R.id.step_indicator_hdd)
     indicatorDisc = findViewById(R.id.step_indicator_disc)
-    indicators = listOf(indicatorMcpx, indicatorFlash, indicatorHdd, indicatorDisc)
+    indicatorBoxArt = findViewById(R.id.step_indicator_boxart)
+    indicators = listOf(indicatorMcpx, indicatorFlash, indicatorHdd, indicatorDisc, indicatorBoxArt)
 
     val btnPickMcpx: MaterialButton = findViewById(R.id.btn_pick_mcpx)
     val btnPickFlash: MaterialButton = findViewById(R.id.btn_pick_flash)
@@ -215,7 +222,10 @@ class SetupWizardActivity : AppCompatActivity() {
     updateHddSelection()
     updateDiscSelection()
 
-    val startStep = if (coreReady && !gamesFolderReady) pages.size - 1 else 0
+    // Jump straight to the disc step, not the last page (box art) — this is
+    // a returning user who already set up the three core files and just
+    // needs a games folder.
+    val startStep = if (coreReady && !gamesFolderReady) pages.indexOf(pageDisc) else 0
     showStep(startStep)
   }
 
@@ -253,7 +263,8 @@ class SetupWizardActivity : AppCompatActivity() {
         0 -> isFileReady(mcpxPath)
         1 -> isFileReady(flashPath)
         2 -> isFileReady(hddPath)
-        else -> hasGamesFolderReady()
+        3 -> hasGamesFolderReady()
+        else -> true
       }
   }
 
@@ -283,6 +294,7 @@ class SetupWizardActivity : AppCompatActivity() {
     prefs.edit()
       .putBoolean("setup_complete", true)
       .putBoolean("skip_game_picker", false)
+      .putBoolean("library_box_art_lookup", switchBoxArtLookup.isChecked)
       .apply()
     goToLibrary()
   }

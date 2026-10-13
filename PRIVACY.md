@@ -18,12 +18,17 @@ The app requests Android's `INTERNET` permission for two features, both
 visible and both optional:
 
 - **Box art lookup.** The game library can show cover art for games it
-  recognises by matching the file name against a bundled list, then fetching
-  the matching image from `raw.githubusercontent.com/izzy2lost/X1_Covers`.
-  This is on by default; each request reveals, to that host, which game you
-  have in your library (as a file name in the request). Turn it off with
-  **Look up box art online** in settings — with it off, the app makes no
-  request for a game's art.
+  recognises by matching the file name against a list bundled in the app —
+  that matching never leaves the device — then fetching the matching image
+  from `raw.githubusercontent.com/izzy2lost/X1_Covers`. It is off until you
+  choose it: the setup wizard asks once, with an unchecked switch, and an
+  existing install that finished setup before this question existed is asked
+  once with a plain yes/no question the first time it switches the library to
+  the cover grid. Turning it on means each
+  cover fetched sends GitHub a request naming that game, so GitHub sees your
+  device's address and which titles you look up. Change your answer any time
+  with **Look up box art online** in the library — with it off, the app makes
+  no request for a game's art.
 - **Insignia / online networking.** The emulator can give the emulated Xbox a
   network connection, for guest software that expects one (including
   Insignia's Xbox-Live replacement). This is off by default and only takes

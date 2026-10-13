@@ -81,7 +81,7 @@ class GameLibraryActivity : AppCompatActivity() {
   private var currentGames: List<GameEntry> = emptyList()
   private var searchFilter = ""
   private var useCoverGrid = false
-  private var boxArtLookupEnabled = true
+  private var boxArtLookupEnabled = false
   @Volatile private var isConvertingIso = false
   @Volatile private var convertCancelled = false
   private var convertThread: Thread? = null
@@ -116,11 +116,19 @@ class GameLibraryActivity : AppCompatActivity() {
 
     gamesFolders = GamesFolders.read(prefs)
     useCoverGrid = prefs.getBoolean("library_cover_grid", false)
-    boxArtLookupEnabled = prefs.getBoolean("library_box_art_lookup", true)
+    // Off by default (#433): nothing reaches raw.githubusercontent.com until
+    // the setup wizard's choice, or this screen's own switch, turns it on.
+    boxArtLookupEnabled = prefs.getBoolean("library_box_art_lookup", false)
 
     switchBoxArtLookup.isChecked = boxArtLookupEnabled
     viewModeToggle.check(if (useCoverGrid) R.id.btn_view_grid else R.id.btn_view_list)
     syncDisplayModeUi()
+    // Ask about the upgrade case only when the cover grid is actually on
+    // screen: that's the only mode anything fetches in, and the only mode
+    // where the switch this dialog points to ("the switch above") is visible.
+    if (useCoverGrid) {
+      maybeAskAboutExistingBoxArtLookup()
+    }
 
     btnBootDashboard.setOnClickListener {
       if (isConvertingIso) {
@@ -150,6 +158,9 @@ class GameLibraryActivity : AppCompatActivity() {
       prefs.edit().putBoolean("library_cover_grid", useCoverGrid).apply()
       syncDisplayModeUi()
       renderGames()
+      if (useCoverGrid) {
+        maybeAskAboutExistingBoxArtLookup()
+      }
     }
     switchBoxArtLookup.setOnCheckedChangeListener { _, checked ->
       boxArtLookupEnabled = checked
@@ -210,6 +221,46 @@ class GameLibraryActivity : AppCompatActivity() {
         renderGames()
       }
     }.start()
+  }
+
+  /**
+   * An install that finished the setup wizard before it asked about box art
+   * (v0.4.1-j1 and earlier) has `setup_complete` but never wrote
+   * `library_box_art_lookup`; the plain default-false read above would
+   * silently drop box art they had been getting. Ask once instead. Called
+   * only when the cover grid is on screen (from `onCreate` and from the
+   * view-mode toggle) — list mode fetches nothing and hides the switch this
+   * dialog points to, so asking there would be pointless and confusing. Once
+   * either button below writes the key, this never fires again for this
+   * install: the `prefs.contains` check only sees an absent key.
+   */
+  private fun maybeAskAboutExistingBoxArtLookup() {
+    if (prefs.contains("library_box_art_lookup")) {
+      return
+    }
+    if (!prefs.getBoolean("setup_complete", false)) {
+      return
+    }
+    MaterialAlertDialogBuilder(this)
+      .setTitle(getString(R.string.library_box_art_upgrade_title))
+      .setMessage(getString(R.string.library_box_art_upgrade_message))
+      .setCancelable(false)
+      .setPositiveButton(getString(R.string.library_box_art_upgrade_keep_on)) { _, _ ->
+        setBoxArtLookupEnabled(true)
+      }
+      .setNegativeButton(getString(R.string.library_box_art_upgrade_turn_off)) { _, _ ->
+        setBoxArtLookupEnabled(false)
+      }
+      .show()
+  }
+
+  private fun setBoxArtLookupEnabled(enabled: Boolean) {
+    boxArtLookupEnabled = enabled
+    prefs.edit().putBoolean("library_box_art_lookup", enabled).apply()
+    switchBoxArtLookup.isChecked = enabled
+    if (useCoverGrid) {
+      renderGames()
+    }
   }
 
   private fun syncDisplayModeUi() {
