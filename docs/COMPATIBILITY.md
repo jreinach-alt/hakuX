@@ -1,10 +1,10 @@
 # Compatibility
 
-_Last updated 2026-10-12, for version 0.5.0._
+_Last updated 2026-10-13, for version 0.5.0._
 
 This lists Xbox titles tried on this project's test devices, split into three groups: titles that clear the **Playable** bar, titles that run but fall short of 30 fps, and titles that do not yet play. It is not a full compatibility list: plenty of other titles have simply not been tried yet. See [`KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) and the [issue tracker](https://github.com/jreinach-alt/hakuX/issues) for what is tracked about titles not on this page.
 
-52 Playable · 13 run below 30 fps · 11 not playable
+57 Playable · 15 run below 30 fps · 11 not playable
 
 ## What "Playable" means
 
@@ -47,6 +47,7 @@ with another Turnip build, may differ.
 | Title | Region | Device | Median fps | Time at bar | Tested | Notes |
 |---|---|---|---|---|---|---|
 | 187: Ride or Die | ? | Nova | 37.2 | 100% | 2026-10-01 |  |
+| 25 to Life | ? | Nova | 59.9 | 97% | 2026-10-13 |  |
 | 50 Cent: Bulletproof | ? | Nova | 30.0 | 99% | 2026-09-30 |  |
 | Alien Hominid | Europe | Thor | 59.9 | 100% | 2026-09-26 |  |
 | AMF Bowling 2004 | USA | Nova | 59.9 | 100% | 2026-10-05 |  |
@@ -88,12 +89,16 @@ with another Turnip build, may differ.
 | Ratatouille | USA | Nova | 52.8 | 100% | 2026-10-06 |  |
 | Rogue Trooper | ? | Nova | 58.9 | 100% | 2026-10-06 |  |
 | Scooby-Doo! Mystery Mayhem (Europe) | Europe | Nova | 29.0 | 100% | 2026-10-12 |  |
+| Scooby-Doo! Unmasked (Europe) | Europe | Nova | 59.9 | 99% | 2026-10-13 |  |
+| Shadow of Memories (Europe) | Europe | Nova | 30.0 | 100% | 2026-10-13 |  |
 | Spikeout: Battle Street | Europe | Nova | 59.9 | 100% | 2026-10-03 |  |
 | SpongeBob SquarePants: Battle for Bikini Bottom | USA | Nova | 59.9 | 100% | 2026-10-07 |  |
 | The Lord of the Rings: The Fellowship of the Ring | USA | Nova | 30.0 | 100% | 2026-10-07 |  |
 | The Simpsons Hit & Run | ? | Nova | 37.9 | 100% | 2026-10-04 |  |
 | ToeJam & Earl III: Mission to Earth | USA | Nova | 59.9 | 99% | 2026-10-02 |  |
 | Tony Hawk's Pro Skater 2x | ? | Nova | 59.8 | 100% | 2026-10-01 |  |
+| Tony Hawk's Pro Skater 4 | ? | Nova | 56.6 | 98% | 2026-10-13 |  |
+| Tony Hawk's Underground 2 | USA, Europe | Nova | 59.7 | 100% | 2026-10-13 |  |
 | Tork: Prehistoric Punk | USA | Nova | 30.0 | 100% | 2026-10-04 |  |
 | World Soccer Winning Eleven 9 | ? | Nova | 59.9 | 100% | 2026-10-06 |  |
 | WWE Raw 2 | ? | Nova | 59.9 | 100% | 2026-09-30 |  |
@@ -103,10 +108,12 @@ with another Turnip build, may differ.
 
 | Title | Region | Device | Median fps | Time at bar | Tested | Notes |
 |---|---|---|---|---|---|---|
+| Aeon Flux | ? | Nova | 30.0 | 85% | 2026-10-13 |  |
 | Amped 2 | USA | Nova | 28.4 | 44% | 2026-10-05 |  |
 | Arctic Thunder | USA | Nova | 30.2 | 64% | 2026-09-30 |  |
 | Area 51 | USA | Nova | 30.0 | 73% | 2026-10-09 |  |
 | Forza Motorsport | ? | Nova | 29.0 | 45% | 2026-10-01 |  |
+| Half-Life 2 | ? | Nova | 29.8 | 74% | 2026-10-13 |  |
 | Medal of Honor: Frontline | USA | Nova | 59.9 | 86% | 2026-10-08 |  |
 | NHL 2K3 | USA | Nova | 35.0 | 69% | 2026-10-06 |  |
 | Panzer Elite Action: Fields of Glory | Europe | Nova | 30.4 | 90% | 2026-10-07 |  |
