@@ -499,6 +499,16 @@ bool pgraph_vk_init_buffers(NV2AState *d, Error **errp)
             if (!create_buffer(pg, bufs[j], name, errp)) {
                 goto fail;
             }
+            /* #939 (lane.x1port1012): HOST_ACCESS_RANDOM prefers cached
+             * memory, which need not be coherent; without coherent, a CPU
+             * write reaches the GPU only through vmaFlushAllocation. */
+            VkMemoryPropertyFlags mem_props = 0;
+            vmaGetAllocationMemoryProperties(r->allocator,
+                                             bufs[j]->allocation, &mem_props);
+            VK_LOG_ERROR("buffer_init: %s memprops=0x%x coherent=%d cached=%d",
+                         name, mem_props,
+                         !!(mem_props & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                         !!(mem_props & VK_MEMORY_PROPERTY_HOST_CACHED_BIT));
             VkResult res = vmaMapMemory(r->allocator, bufs[j]->allocation,
                                         (void **)&bufs[j]->mapped);
             if (res != VK_SUCCESS) {
