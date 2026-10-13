@@ -1525,8 +1525,22 @@ static void init_pipeline_cache(PGRAPHState *pg)
         .pInitialData = initial_data,
         .pNext = NULL,
     };
-    VK_CHECK(vkCreatePipelineCache(r->device, &cache_info, NULL,
-                                   &r->vk_pipeline_cache));
+    /* A driver may refuse saved data (a truncated file, or one written by
+     * another driver build) rather than ignore it; start empty instead of
+     * aborting on every launch until the file is deleted. From X1 BOX
+     * 1d10f6cb2a / 67fe8d7b2e. */
+    VkResult cache_result = vkCreatePipelineCache(r->device, &cache_info, NULL,
+                                                  &r->vk_pipeline_cache);
+    if (cache_result != VK_SUCCESS && initial_size > 0) {
+        warn_report("Vulkan rejected the saved pipeline cache (%d); "
+                    "starting with an empty one", cache_result);
+        g_nv2a_stats.shader_stats.pipeline_cache_disk_loaded = 0;
+        cache_info.initialDataSize = 0;
+        cache_info.pInitialData = NULL;
+        cache_result = vkCreatePipelineCache(r->device, &cache_info, NULL,
+                                             &r->vk_pipeline_cache);
+    }
+    VK_CHECK(cache_result);
     g_free(initial_data);
 
     const size_t pipeline_cache_size = 2048;
