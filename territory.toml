@@ -2649,8 +2649,9 @@ standing = false
 files = ["docs/lanes/statusalloc1013/**", "docs/testing/jobs/status.sh"]
 note = "STARTED lane.local 2026-10-13 12:01 PDT (Opus, interactive; no unit; harness): forgealloc1013 WAITING line. status.sh line ~674 recreates the harness-status issue with gh issue create when none is open; the shim now refuses that call, so the path can only fail. It is replaced by a message naming the replacement (a new issue goes through issue_mirror.py new, run by lane.local) and a clean exit. status.sh has no live trigger (hakux-status.service has none) and is never run by hand: it publishes. status.sh from the retired [lane.forgealloc1013]."
 
-[lane.rootclean1013]
-issues = ['433']
+[retired.rootclean1013]
+issues = ["433"]
+retired_utc = "2026-10-13T20:37:22Z"
 standing = false
-files = ['README.rst', 'ubuntu-win64-cross/**', '.github/workflows/build-xemu-win64-toolchain.yml', 'docs/ORCHESTRATION-AS-BUILT.md', 'docs/lanes/rootclean1013/**']
-note = 'STARTED lane.local 2026-10-13 08:40 PDT (lane.local by hand, no device): owner 10-13 ~08:05 PDT asked what the stray upstream files are and, if safe, to remove them. Deletes README.rst (QEMU readme), ubuntu-win64-cross/ and build-xemu-win64-toolchain.yml; build.sh win64-cross reads CROSSPREFIX, not the directory. Head fba2c45b8d, PR.md State: ready.'
+files = []
+note = "RETIRED (lane.local 2026-10-13 13:37 PDT): folded as 02ba73b86a (10:38 PDT); no unit. README.rst, ubuntu-win64-cross/** and .github/workflows/build-xemu-win64-toolchain.yml are deleted on master (the workflow file was granted from the inactive [lane.localforge]; nothing to return). Released: docs/ORCHESTRATION-AS-BUILT.md, docs/lanes/rootclean1013/**. Retirement was missed at the fold and is done now. || Was: STARTED lane.local 2026-10-13 08:40 PDT (lane.local by hand, no device): owner 10-13 ~08:05 PDT asked what the stray upstream files are and, if safe, to remove them. Deletes README.rst (QEMU readme), ubuntu-win64-cross/ and build-xemu-win64-toolchain.yml; build.sh win64-cross reads CROSSPREFIX, not the directory. Head fba2c45b8d, PR.md State: ready."
