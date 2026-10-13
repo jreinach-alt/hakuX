@@ -6,14 +6,12 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `x1port1012` | claude-sonnet-5 | 4 min | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
+No lane session is running.
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 1 waiting, 0 running.
+- **Device queue:** 2 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
@@ -81,9 +79,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/x1port1012` | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) | `2c61d75ac8` | 2026-10-13 00:20 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -100,4 +96,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-12 release05: v0.5.0 release notes (#433, 0.5)
 - 2026-10-12 pubdocs1012: public docs pass for 0.5 (README, compatibility, limitations, attribution) (#433, 0.5)
 
-_Updated 2026-10-13 06:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 06:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
