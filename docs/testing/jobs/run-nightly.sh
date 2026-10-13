@@ -42,6 +42,26 @@ if [ ! -e "$WT/.git" ]; then
         || { echo "run-nightly: cannot create $WT" >&2; exit 1; }
 fi
 
+# android/key.properties and local.properties are both gitignored, so a
+# worktree `git worktree add` makes starts with neither -- and with no
+# key.properties,
+# build.gradle.kts's hasReleaseKeystore is false and the release build type
+# signs with nothing (#433: every nightly from 2026-10-03 through 2026-10-12
+# failed `apksigner verify`, "Missing META-INF/MANIFEST.MF"; the owner's own
+# checkout at $REPO has always had one). owner_build.sh carries
+# local.properties into ITS private worktree the same way, for the same
+# reason (see its comment there); this carries both, a symlink rather than a
+# copy so the worktree never holds a second copy of the signing secret.
+# Checked and made every run, not just on first creation, so a worktree made
+# before this fix still gets one -- and `[ ! -e ... ]` first so a real file
+# (or an existing symlink) already there is never replaced.
+if [ -f "$REPO/android/key.properties" ] && [ ! -e "$WT/android/key.properties" ]; then
+    ln -s "$REPO/android/key.properties" "$WT/android/key.properties"
+fi
+if [ -f "$REPO/android/local.properties" ] && [ ! -e "$WT/android/local.properties" ]; then
+    ln -s "$REPO/android/local.properties" "$WT/android/local.properties"
+fi
+
 # -n, not a blocking wait. Two nightlies are not worth queueing: the second
 # would build the same tip half an hour later and race the first for the tag.
 # -E 75 so a lock conflict is distinguishable from the job's own exit 1 --
