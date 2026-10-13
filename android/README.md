@@ -1,50 +1,46 @@
-# hakuX Android build
+# Building the Android app
 
-This directory is the Android port: a Gradle/CMake project that builds the
-xemu/QEMU core as native libraries and wraps them in a Kotlin app (SDL2 for
-the native entry point, SAF-based file pickers for BIOS/HDD/game images, and
-the setup, settings and game-library screens). See the top-level
-[`README.md`](../README.md) for what the app does; this file covers building
-it.
+_Last updated 2026-10-13, for version 0.5.0._
 
-## Toolchain expectations
-- Android SDK 36
-- Build Tools 36.1.0
-- NDK r29+ (configured to 29.0.14206865 in Gradle)
+This folder is the Android app: a Gradle and CMake project that builds the
+xemu core as native libraries, wrapped in a Kotlin app with setup, settings
+and the game library. The [main README](../README.md) describes what the app
+does. This page covers building it.
+
+## Toolchain
+
+- Android SDK 36 and Build Tools 36.1.0
+- NDK 29.0.14206865
 - CMake 3.30.3
-- JDK 21 (**not** 25 — the build targets Java 21 and will not configure on 25)
-- **meson** — the native build compiles glib with it. Without meson the build
-  fails late inside CMake with `meson not found in PATH; required to build glib
-  for Android`, not at configure time.
-- **ninja on `PATH`** — meson needs it. One ships with the SDK at
-  `$ANDROID_SDK_ROOT/cmake/3.30.3/bin/ninja`, but Gradle passes it to CMake via
-  `-DCMAKE_MAKE_PROGRAM` only, so meson cannot see it. Add that directory to
-  `PATH` or the build fails with `Could not detect Ninja v1.8.2 or newer`.
+- JDK 21. JDK 25 does not work.
+- **meson.** The native build uses it to compile glib. Without it the build
+  fails late, with `meson not found in PATH; required to build glib for
+  Android`.
+- **ninja on your `PATH`.** meson needs it. The SDK ships one at
+  `$ANDROID_SDK_ROOT/cmake/3.30.3/bin/ninja`, but Gradle hands it only to
+  CMake. Without it on `PATH` the build fails with
+  `Could not detect Ninja v1.8.2 or newer`.
 
-Both of the last two are installed explicitly by `.github/workflows/android.yml`.
-A clean checkout does not build from the list above alone.
-
-The ISO→XISO converter (`-DXEMU_ENABLE_XISO_CONVERTER=ON`, the default) builds
-`extract-xiso` from `android/third_party/extract-xiso`; it needs no toolchain
-beyond the one above. Build without it with
-`-DXEMU_ENABLE_XISO_CONVERTER=OFF`.
+The ISO-to-XISO converter builds from `android/third_party/extract-xiso` with
+the same toolchain. Leave it out with `-DXEMU_ENABLE_XISO_CONVERTER=OFF`.
 
 ## Build
-From this directory:
 
-```
-./gradlew assembleDebug
+From this folder:
+
+```bash
+./gradlew assembleDebug      # installs as "hakuX (test builds)"
+./gradlew assembleRelease    # installs as "hakuX (fork)"
 ```
 
-`./gradlew assembleRelease` builds the release variant; see
-[`RELEASING.md`](RELEASING.md) for signing it so it can upgrade in place
-instead of costing users their saves.
+A release build has to be signed with the same key every time, or it cannot
+update an existing install. [RELEASING.md](RELEASING.md) explains signing.
 
 ## SDL2
-SDL2 is fetched via CMake (default `release-2.32.10`). Mainline xemu moved to
-SDL3 upstream; this port stays on SDL2. To use a local checkout instead of the
-fetched one:
 
-```
+CMake fetches SDL2 (`release-2.32.10` by default). To build against your own
+checkout:
+
+```bash
 ./gradlew assembleDebug -Pandroid.experimental.cmake.arguments=-DSDL2_LOCAL_DIR=/path/to/SDL
 ```
