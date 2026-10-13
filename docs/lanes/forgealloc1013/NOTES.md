@@ -230,11 +230,95 @@ the real installed `prsync.log` and `pm/lanelocal-log.md` (no jam
 currently live, since the 10-13 incident was already resolved by hand
 before this lane started) to confirm it doesn't fire on real, clean data.
 
-## Task 5
+## Task 5: `fleet.py`'s "READY with no pipeline label" FAIL
 
-Not started yet in this session: replace `fleet.py`'s stale "READY with no
-pipeline label" FAIL with a foldqueue.log-based staleness/refusal/timer
-check, and update the two selftests that assert the old text.
+### Root cause
+
+`fleet.py`'s FAIL fired on any non-draft PR whose labels missed the whole
+`IN_FLIGHT` set (`needs-audit-1/2`, `needs-remediation`, `fold-ready`,
+`folded`, `needs-rebase`, `claimed:cloud`), reasoning "nothing else will
+pick it up." That's false: `foldqueue.sh`
+(`~/hakux-work/offline-git/foldqueue.sh`, run by `hakux-foldqueue.timer`
+every 15 min) folds a `lane/*` branch straight off its own
+`docs/lanes/<lane>/PR.md` `State: ready`, reading git/territory.toml/PR.md
+state directly -- it never calls `gh`, never touches a label, and doesn't
+know `IN_FLIGHT` exists. A PR mid-fold, already folded (but not yet closed
+on GitHub), or already FAILED-and-routed-to-`hostops-inbox.md` by
+`foldqueue.sh` itself can sit with zero labels indefinitely while
+`fleet.py` FAILs on it every 20-minute board poll for something no label
+fix can ever clear -- the exact kind of "FAIL that cannot be cleared by
+the board" the file's own comment above `fold_watch()` warns against. The
+Task 4 allocator hop (`forge_prsync.py`, also every 5 min) adds one more
+tick of normal propagation delay in front of this, making stale false
+positives more likely, not less.
+
+### Design
+
+Added `foldqueue_status(branch)` (right after the existing `FOLD_STUCK_S`
+constant): reads `FOLDQUEUE_LOG` (`$HAKUX_WORK/offline-git/foldqueue.log`,
+honoring the file's existing `HAKUX_WORK`-env-with-production-default
+convention, already used at `branch_lane()` and already globally
+test-isolated to `$T/work` by `selftest.sh`) and returns the newest
+`(verb, age_s)` for lines naming that branch, regardless of verb -- the
+same branch can show `FAILED` then, after a push, `WAITING` again. The old
+`unfolded` list (still used unchanged for the informational "READY, NOT
+FOLDED" display section) now feeds a new `unaddressed` filter before the
+FAIL fires:
+- no foldqueue.log entry at all -> still unaddressed (genuinely nobody's).
+- `FOLDED` or `FAILED` (a terminal state; `FAILED` is already routed to
+  `hostops-inbox.md`/`fold-failures.log`, already lane.local's job) ->
+  suppressed.
+- any other verb (`WAITING`, `GATE QUEUED`, `MOVED`, `RACED`,
+  `SELFTEST-RETRY` -- all actively retried every tick) younger than
+  `FOLDQUEUE_STALE_S` -> suppressed, an active retry within grace.
+- the same non-terminal verbs, but older than `FOLDQUEUE_STALE_S` -> still
+  unaddressed: foldqueue.sh itself has stopped making progress on it.
+
+`FOLDQUEUE_STALE_S = 3 * FOLDQUEUE_TICK_S` (45 min = three missed 15-min
+ticks) rather than one tick, since `FOLDQUEUE_TICK_S` is the timer's
+*interval*, not a latency bound -- a branch that moved just after one tick
+started waits almost a full extra interval for the next, and the Task 4
+allocator hop stacks one more normal delay in front of it; three ticks
+absorbs that without hiding a real stall for too long against the board's
+own 20-minute poll.
+
+### Selftest
+
+`96-fleet-registry.sh`: added three more PRs to the existing fixture
+(`#9507` foldqueue.log says `FOLDED`, `#9508` a fresh `WAITING` inside
+grace, `#9509` a `WAITING` 61 minutes old, past `FOLDQUEUE_STALE_S`) and a
+matching `foldqueue.log` fixture under `$HAKUX_WORK/offline-git/` (built
+with `date`/`date -d '... ago'`, the suite's existing relative-timestamp
+convention). New checks: `#9507` and `#9508` do not appear in the FAIL
+line, `#9509` still does. Updated the pre-existing `#9502` check's count
+from "1 lane PR(s)" to "2 lane PR(s): #9502, #9509" since the fixture now
+has two genuinely-unaddressed PRs, not one -- the only change to a
+prior-passing assertion, and it's a count/list update, not a logic
+reversal.
+
+`98-lane-shape.sh`: `foldqueue.sh` folds by branch name alone, with no
+concept of "remote lane" or "suffixed head," so the suppression needs to
+hold there too. Appended one more line to the *same* shared
+`foldqueue.log` (HAKUX_WORK is exported once, globally, for the whole
+selftest run, so 96's fixture lines are still present when 98 runs; no
+collision since the branch names differ) marking a suffixed branch
+(`claude/elsewhere-u1-782p4`) `FOLDED`, added a PR on that branch alongside
+the pre-existing `#779` (left untouched, still on a bare `headRefName`
+with no foldqueue.log entry), and checked `#782` does not appear in the
+FAIL line while `#779` still does -- proving the pre-existing "the
+READY-with-no-label FAIL names it" check for `#779` is unchanged, and that
+suppression keys off the literal `headRefName`/branch string, not off
+`lane/*`-shaped names only.
+
+```
+SELFTEST_ONLY="96-fleet-registry.sh 98-lane-shape.sh" bash docs/testing/jobs/selftest.sh
+```
+
+123 passed, 0 failed (96: 2s, 98: 15-19s). Grepped the rest of
+`selftest.d` for `"pipeline label"`/`unfolded`/`foldqueue`: the other two
+hits (`86-fold-regressed.sh`'s `fr_unfolded` helper, about `fold.sh`'s
+`regressed` label gate; `64-status-html.sh`, an unrelated substring) are
+unrelated to this check -- nothing else needed updating.
 
 ## Why there was no PR for this branch until just now
 

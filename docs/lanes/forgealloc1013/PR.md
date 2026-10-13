@@ -1,10 +1,10 @@
 # lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
 
-State: draft
+State: ready
 
 Lane: forgealloc1013            Issue: #433
 Base: master @ 3c2338eb2b
-Files: docs/testing/jobs/roles/lane.md, docs/testing/jobs/handback.sh, docs/testing/jobs/gh-shim/gh, docs/testing/jobs/gh-shim/forge_prsync.py, docs/testing/jobs/gh-shim/smoke_live.py, docs/testing/jobs/gh-shim/create_refusal_test.py, docs/lanes/forgealloc1013/NOTES.md, docs/lanes/forgealloc1013/PR.md, docs/lanes/forgealloc1013/idlewatch.py.new, docs/lanes/forgealloc1013/idlewatch.py.diff, docs/lanes/forgealloc1013/forge_alloc_selftest.py (still to add: docs/testing/fleet.py, docs/testing/jobs/selftest.d/96-fleet-registry.sh, docs/testing/jobs/selftest.d/98-lane-shape.sh)
+Files: docs/testing/jobs/roles/lane.md, docs/testing/jobs/handback.sh, docs/testing/jobs/gh-shim/gh, docs/testing/jobs/gh-shim/forge_prsync.py, docs/testing/jobs/gh-shim/smoke_live.py, docs/testing/jobs/gh-shim/create_refusal_test.py, docs/lanes/forgealloc1013/NOTES.md, docs/lanes/forgealloc1013/PR.md, docs/lanes/forgealloc1013/idlewatch.py.new, docs/lanes/forgealloc1013/idlewatch.py.diff, docs/lanes/forgealloc1013/forge_alloc_selftest.py, docs/testing/fleet.py, docs/testing/jobs/selftest.d/96-fleet-registry.sh, docs/testing/jobs/selftest.d/98-lane-shape.sh
 Prediction: none: harness
 Needs device: no    Needs NDK: no
 Release note (none): harness
@@ -41,10 +41,18 @@ own selftest) is now done too; see `NOTES.md` for the two detection
 candidates considered and why the installed `.issue-mirror.json`/
 `status/issue-mirror.txt` route was rejected (up to a 24 h blind spot).
 
-Still to do, in this lane: Task 5 (`fleet.py`'s stale "READY with no
-pipeline label" FAIL, replaced with a foldqueue.log-based
-staleness/refusal/timer check, plus the two selftests that assert the old
-text).
+Task 5 is done too: `fleet.py`'s "READY with no pipeline label" FAIL was a
+false-positive generator against `foldqueue.sh`, which folds a `lane/*`
+branch off its own PR.md directly and never touches a GitHub label. Added
+`foldqueue_status()` (reads `foldqueue.log`) and a staleness bound
+(`FOLDQUEUE_STALE_S`, three missed 15-min ticks) so the FAIL only fires
+when foldqueue.log also has nothing recent to say. Updated both selftests
+that exercised the old text (`96-fleet-registry.sh`,
+`98-lane-shape.sh`) with new fixtures proving the suppression and the
+non-regression case side by side; 123 passed, 0 failed. Full writeup in
+`NOTES.md`.
+
+All five tasks for this lane are now done.
 
 ## Install, once `State: ready`
 
