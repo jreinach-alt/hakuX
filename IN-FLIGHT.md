@@ -81,6 +81,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-12 ownersign1012: owner builds are signed again, and refuse an unsigned apk (#433, 0.5)
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 release05: v0.5.0 release notes (#433, 0.5)
 - 2026-10-12 pubdocs1012: public docs pass for 0.5 (README, compatibility, limitations, attribution) (#433, 0.5)
@@ -92,6 +93,5 @@ No branch is being worked right now.
 - 2026-10-12 release05: the 0.5 gate is measured on the Nova (#433, 0.5)
 - 2026-10-12 release05: version 0.5.0 and a classifier route for the Ghoulies release soak (#433, 0.5)
 - 2026-10-12 zetaroutes1012: returning gameplay routes for Buffy, DOA3 and NG Black, then HAKUX_ZETA_D24=1 runs (#433, 0.5)
-- 2026-10-12 zerofive1012 (2): a returning route for Ghoulies, so the 0.5 release gate can be queued (#433)
 
-_Updated 2026-10-12 21:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-12 21:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
