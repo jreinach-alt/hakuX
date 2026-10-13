@@ -8,20 +8,21 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `holdinput1013` | claude-sonnet-5 | 12 min | pathrules1013: State ready (pathtele1013 folded as 08f1fb4a90; master merged, pathfind_selftest all ok) |
+| `holdinput1013` | claude-sonnet-5 | 27 min | pathrules1013: State ready (pathtele1013 folded as 08f1fb4a90; master merged, pathfind_selftest all ok) |
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 0 running.
+- **Device queue:** 2 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## 0.5 release: Playable titles
 
-**57 titles are confirmed Playable** (5 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**58 titles are confirmed Playable** (6 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-13 | Rayman 3 Hoodlum Havoc | Playable, 10-minute run |
 | 2026-10-13 | 25 to Life | Playable, 10-minute run |
 | 2026-10-13 | Tony Hawk's Pro Skater 4 | Playable, 10-minute run |
 | 2026-10-13 | Shadow of Memories (Europe) | Playable, 10-minute run |
@@ -80,7 +81,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-40 of these still await the owner's flicker check.
+41 of these still await the owner's flicker check.
 
 ## Work in progress
 
@@ -103,4 +104,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-12 issuesync1012: one issue number space, mirrored both ways (#433, 0.5)
 - 2026-10-12 changelog1012: changelog to 0.5.0, version numbers for official-build users, credits (#433, 0.5)
 
-_Updated 2026-10-13 13:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 13:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
