@@ -16,10 +16,12 @@ No lane session is running.
 
 ## Playable titles
 
-**72 titles are confirmed Playable** (5 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**74 titles are confirmed Playable** (7 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-14 | Alias | Playable, 10-minute run on the Nova, median 29.96 fps |
+| 2026-10-14 | Max Payne | Playable, 10-minute run on the Nova, median 51.33 fps |
 | 2026-10-14 | Conspiracy: Weapons of Mass Destruction | Playable, 10-minute run on the Nova, median 59.94 fps |
 | 2026-10-14 | Hello Kitty: Roller Rescue | Playable, 10-minute run on the Nova, median 59.94 fps |
 | 2026-10-14 | Jacked | Playable, 10-minute run on the Nova, median 46.08 fps |
@@ -93,7 +95,7 @@ No lane session is running.
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-54 of these still await the owner's flicker check.
+56 of these still await the owner's flicker check.
 
 ## Work in progress
 
@@ -114,4 +116,4 @@ No branch is being worked right now.
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 
-_Updated 2026-10-14 10:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 10:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
