@@ -6,9 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `locations1014` | claude-sonnet-5 | 26 min | A tracked listing of which title is where, keyed by title_id |
+No lane session is running.
 
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
@@ -103,9 +101,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/locations1014` | A tracked listing of which title is where, keyed by title_id | `2af68a55ca` | 2026-10-14 13:49 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -122,4 +118,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 
-_Updated 2026-10-14 14:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 14:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
