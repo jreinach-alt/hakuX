@@ -6,9 +6,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `statuspage1013` | claude-sonnet-5 | 1h 52m | status page: track 0.6, 1.0 projection chart, drop Benchmarked and C I S B |
+No lane session is running.
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lanelocal-ownerplay`
@@ -18,10 +16,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## 0.5 release: Playable titles
 
-**64 titles are confirmed Playable** (12 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**65 titles are confirmed Playable** (13 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-13 | TimeSplitters 2 | Playable, accepted on review |
 | 2026-10-13 | Guilty Gear XX #Reload | Playable, 10-minute run on the Nova |
 | 2026-10-13 | BloodRayne 2 | Playable, 10-minute run on the Nova |
 | 2026-10-13 | Harry Potter and the Philosopher's Stone | Playable, 10-minute run |
@@ -87,13 +86,11 @@ The harness dashboard is [STATUS.md](STATUS.md).
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-46 of these still await the owner's flicker check.
+47 of these still await the owner's flicker check.
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/statuspage1013` | status page: track 0.6, 1.0 projection chart, drop Benchmarked and C I S B | `dd43367319` | 2026-10-13 20:22 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -110,4 +107,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-13 issuemirror1013: the issue mirror waits out the gateway lock
 - 2026-10-13 docsrewrite1012: the public docs rewritten for players, each with a Last updated line (#433, 0.5)
 
-_Updated 2026-10-13 22:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 22:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
