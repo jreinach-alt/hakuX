@@ -1,14 +1,14 @@
 # hakuX status
 
-_updated 2026-10-14 02:25 PDT_
+_updated 2026-10-14 02:56 PDT_
 
-0.6: Measured 205 / 300 · Playable 67 / 110.
+0.6: Measured 208 / 300 · Playable 68 / 110.
 
 ## How close is 0.6?
 
-Measured **205** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
+Measured **208** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
-Playable **67** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
+Playable **68** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 
 
 ![Titles over time](chart.svg)
@@ -19,11 +19,11 @@ Playable **67** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
-| 0.6 | 300 | 2026-10-22 | 110 | 2026-10-23 |
-| 0.7 | 425 | 2026-11-02 | 185 | 2026-11-09 |
-| 0.8 | 575 | 2026-11-15 | 300 | 2026-12-05 |
-| 0.9 | 725 | 2026-11-28 | 480 | 2027-01-15 |
-| 1.0 | 876 | 2026-12-11 | 789 | 2027-03-26 |
+| 0.6 | 300 | 2026-10-21 | 110 | 2026-10-23 |
+| 0.7 | 425 | 2026-11-01 | 185 | 2026-11-08 |
+| 0.8 | 575 | 2026-11-14 | 300 | 2026-12-03 |
+| 0.9 | 725 | 2026-11-26 | 480 | 2027-01-12 |
+| 1.0 | 876 | 2026-12-09 | 789 | 2027-03-20 |
 
 Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
@@ -48,6 +48,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Bruce Lee: Quest of the Dragon**<br>**blocked: hang: 21.2 s without 60 guest flips after the mark** | 🔴 blocked | **59.9**<br>81% at 28.5+<br>Thor · 09-26 · max perf |
 | **Capcom Classics Collection Vol. 2**<br>**blocked: crash: guest exited after 390s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 09-30 · max perf |
 | **Castlevania: Curse of Darkness**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Thor · 10-01 · max perf<br>Nova 59.9 |
+| **Conspiracy Weapons of Mass Destruction Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Crazy Taxi 3 High Roller USA**<br>reach gameplay | 🔵 copied | **59.9**<br>77% at 28.5+<br>Nova · 10-13 |
 | **Darkwatch**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Future Tactics: The Uprising**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |
@@ -56,6 +57,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Gunvalkyrie**<br>done | 🟢 Playable | **59.9**<br>99% at 28.5+<br>Nova · 10-03 · default perf |
 | **Kabuki Warriors**<br>done | 🟢 Playable | **59.9**<br>95% at 28.5+<br>Nova · 10-03 · default perf |
 | **KOF: Maximum Impact - Maniax**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
+| **Largo Winch Empire Under Threat Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Manhunt USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 |
 | **Max Payne 2 The Fall of Max Payne USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 |
 | **Max Payne 2: The Fall of Max Payne**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |
@@ -236,6 +238,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Conan**<br>done | 🟢 Playable |  |
 | **Indigo Prophecy**<br>done | 🟢 Playable |  |
 | **Jet Set Radio Future**<br>done | 🟢 Playable |  |
+| **Mat Hoffman's Pro BMX 2**<br>done | 🟢 Playable |  |
 | **Mercenaries**<br>done | 🟢 Playable |  |
 | **Scooby-Doo! Mystery Mayhem**<br>done | 🟢 Playable |  |
 | **Scooby-Doo! Unmasked**<br>done | 🟢 Playable |  |
@@ -258,7 +261,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Alter Echo**<br>reach gameplay | ⚪ not copied |  |
 | **America's Army: Rise of a Soldier**<br>reach gameplay | ⚪ not copied |  |
 
-<details><summary>362 more not copied</summary>
+<details><summary>361 more not copied</summary>
 
 | Title and next step | Status | fps |
 |---|---|---|
@@ -535,7 +538,6 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Magi Death Fight!**<br>reach gameplay | ⚪ not copied |  |
 | **Manhunt**<br>reach gameplay | ⚪ not copied |  |
 | **Mashed: Drive to Survive**<br>reach gameplay | ⚪ not copied |  |
-| **Mat Hoffman's Pro BMX 2**<br>reach gameplay | ⚪ not copied |  |
 | **Max Payne**<br>reach gameplay | ⚪ not copied |  |
 | **Maximum Chase**<br>reach gameplay | ⚪ not copied |  |
 | **Medal of Honor: European Assault**<br>reach gameplay | ⚪ not copied |  |
@@ -627,7 +629,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-583 titles: 19 blocked, 67 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 72 copied, 372 not copied.
+585 titles: 19 blocked, 68 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 74 copied, 371 not copied.
 
 ---
 
