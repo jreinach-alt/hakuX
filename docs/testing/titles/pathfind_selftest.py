@@ -1064,6 +1064,17 @@ r3_bad_broken = pathfind.r3_refusal(KP_KNOWN, "00000000", "nope-no-such-result",
 check("r3", bool(r3_bad_broken) and "does not name a run on record" in r3_bad_broken,
       f"--path-broken naming no run on record is refused, as today: {r3_bad_broken!r}")
 
+# --from-state (#433 Part D, savestateconv1014): a hold started from a captured save state does no
+# navigation at all, so it is admitted on a known-path title even with none of --no-record/--no-replay/
+# --no-guide set (unlike the --no-record case, which needs --no-record to say nothing is rewritten).
+check("r3", pathfind.r3_refusal(KP_KNOWN, "00000000", None, False, False, False, from_state=True) is None,
+      "a known path with --from-state alone (no other flags) is admitted: nothing is replayed or rewritten")
+check("r3", pathfind.r3_refusal(KP_KNOWN, "00000000", None, False, True, True, from_state=True) is None,
+      "--from-state is admitted even with --no-replay/--no-guide set: there is no path to diverge from")
+check("r3", pathfind.r3_refusal(KP_UNKNOWN, "00000000", None, False, False, False, from_state=True) is None,
+      "no known path with --from-state: not refused by R3 either (a state needs a known path to exist "
+      "at all, which the state-load check itself refuses, not R3)")
+
 shutil.rmtree(TMP)
 # football goes last (owner order 10-05 12:35): football titles are refused, every other sport is not, and the env lifts it
 _fb = [("NFL Blitz Pro", "NFL_Blitz_Pro.xiso.iso"), ("ESPN NFL 2K5", "ESPN_NFL_2K5.iso"), ("Madden NFL 2005", "x.iso"),

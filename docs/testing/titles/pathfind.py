@@ -2761,7 +2761,7 @@ class Agent:
         return 0 if self.result["result"] == "gameplay" else 1
 
 
-def r3_refusal(kp, title_id, path_broken, no_record, no_replay, no_guide):
+def r3_refusal(kp, title_id, path_broken, no_record, no_replay, no_guide, from_state=False):
     """The profile gate's R3 test for a pathfind.py session (#433 Part A): None to admit, else the
     refusal text. A known-path title (`kp`, titlestate.known_path(..., broad=True)) is blind
     navigation, refused outright -- UNLESS `no_record` replays the kept path rather than finding a
@@ -2769,11 +2769,21 @@ def r3_refusal(kp, title_id, path_broken, no_record, no_replay, no_guide):
     has nothing to refuse. `no_replay`/`no_guide` drop the kept path (Agent.own = None in main()), so
     paired with `no_record` on a known-path title they are refused too -- a `--no-record` run would
     navigate blind with nothing recorded, not replay the path R3 is admitting it for.
-    `--path-broken` overrides R3 either way, same as before this admission existed."""
+    `--path-broken` overrides R3 either way, same as before this admission existed.
+
+    `from_state` (#433 Part D, savestateconv1014) is a hold started from a captured save state: it
+    does no navigation at all, so it is admitted unconditionally on a known-path title -- there is no
+    path to diverge from and nothing is rewritten, same reasoning as `no_record` but stronger (no
+    replay happens either). A title with NO known path is never refused here either way; --from-state
+    on such a title has nothing to load (a state is only ever taken on a run that already reached
+    gameplay once, so a title with no known path has no state), and that is refused by the state-load
+    check itself (Part D), not by R3."""
     if not kp["known"]:
         return None
     if path_broken:
         return titlestate._path_broken_bad(path_broken, title_id, kp["route_name"])
+    if from_state:
+        return None
     if no_record:
         if no_replay or no_guide:
             return ("a known path exists; --no-replay/--no-guide drop it, so --no-record here would "
