@@ -2,7 +2,7 @@
 
 What is in flight right now. Generated from the working tree and updated as work lands.
 
-The harness dashboard is [STATUS.md](STATUS.md).
+The harness dashboard, with each release's targets and the progress charts, is [STATUS.md](https://github.com/jreinach-alt/hakuX/blob/home/STATUS.md).
 
 ## Right now
 
@@ -14,9 +14,9 @@ No lane session is running.
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
-## 0.5 release: Playable titles
+## Playable titles
 
-**67 titles are confirmed Playable** (15 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**67 titles are confirmed Playable** (15 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
@@ -109,4 +109,4 @@ No branch is being worked right now.
 - 2026-10-13 x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
 - 2026-10-13 issuemirror1013: the issue mirror waits out the gateway lock
 
-_Updated 2026-10-13 23:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 23:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
