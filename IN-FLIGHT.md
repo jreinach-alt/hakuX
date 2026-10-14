@@ -8,10 +8,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `locations1014` | claude-sonnet-5 | 11 min | fold: lane/savestateconv1014 (offline) -- savestateconv1014: R3 admits --from-state; Part B names two blockers |
+| `locations1014` | claude-sonnet-5 | 26 min | A tracked listing of which title is where, keyed by title_id |
 
 - **Handhelds:** 1 connected.
-  - Nova: held by `lane.pathfind`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -105,7 +105,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/locations1014` | fold: lane/savestateconv1014 (offline) -- savestateconv1014: R3 admits --from-state; Part B names two blockers, with evi | `76bef8b162` | 2026-10-14 08:17 |
+| `lane/locations1014` | A tracked listing of which title is where, keyed by title_id | `2af68a55ca` | 2026-10-14 13:49 |
 
 ## Recently landed on master
 
@@ -122,4 +122,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 
-_Updated 2026-10-14 13:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 14:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
