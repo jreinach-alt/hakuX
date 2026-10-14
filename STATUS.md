@@ -1,12 +1,12 @@
 # hakuX status
 
-_updated 2026-10-14 09:18 PDT_
+_updated 2026-10-14 09:49 PDT_
 
-0.6: Measured 217 / 300 · Playable 72 / 110.
+0.6: Measured 218 / 300 · Playable 72 / 110.
 
 ## How close is 0.6?
 
-Measured **217** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
+Measured **218** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
 Playable **72** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
@@ -123,12 +123,13 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Dark Summit**<br>done | 🟢 Playable | **45.9**<br>93% at 28.5+<br>Nova · 10-04 |
 | **Mortal Kombat: Shaolin Monks**<br>reach gameplay | 🟣 inputs ready | **45.9**<br>49% at 28.5+<br>Nova · 10-06 |
 | **NFL Blitz 2002**<br>done | 🟢 Playable | **45.0**<br>100% at 28.5+<br>Nova · 10-05 |
+| **Big Mutha Truckers USA**<br>reach gameplay | 🔵 copied | **45.0**<br>89% at 28.5+<br>Nova · 10-14 |
 | **MLB SlugFest 2004**<br>done | 🟢 Playable | **44.4**<br>100% at 28.5+<br>Nova · 10-05 |
 | **Tenchu 3 Kaiki no Shou Japan**<br>reach gameplay | 🔵 copied | **44.3**<br>100% at 28.5+<br>Nova · 10-12 |
 | **Arx Fatalis**<br>reach gameplay | 🔵 copied | **43.9**<br>100% at 28.5+<br>Nova · 10-07 |
 | **Fight Club**<br>done | 🟢 Playable | **43.4**<br>94% at 28.5+<br>Nova · 10-06 |
 | **NBA 2K3**<br>done | 🟢 Playable | **42.9**<br>96% at 28.5+<br>Nova · 10-06 |
-| **ToeJam & Earl III: Mission to Earth**<br>done | 🟢 Playable | **42.1**<br>73% at 28.5+<br>Nova · 10-03 |
+| **ToeJam & Earl III: Mission to Earth**<br>done<br>queued 1-1791996401-foldqueue-3583802 #1; queued 1-1791996403-foldqueue-3583885 #2 | 🟢 Playable | **42.1**<br>73% at 28.5+<br>Nova · 10-03 |
 | **RalliSport Challenge 2**<br>reach gameplay | 🟣 inputs ready | **41.7**<br>96% at 28.5+<br>Nova · 10-07 |
 | **Harry Potter and the Philosopher's Stone**<br>done | 🟢 Playable | **41.5**<br>95% at 28.5+<br>Nova · 10-13 |
 | **Conflict Desert Storm II Back to Baghdad USA**<br>reach gameplay | 🔵 copied | **41.1**<br>93% at 28.5+<br>Nova · 10-13 |
@@ -172,6 +173,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Prince of Persia: The Sands of Time**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Shadow of Memories Europe**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Aeon Flux**<br>reach gameplay | 🔵 copied | **30.0**<br>85% at 28.5+<br>Nova · 10-13 |
+| **Alias**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Area 51**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>73% at 28.5+<br>Nova · 10-08 |
 | **Batman Begins**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>95% at 28.5+<br>Nova · 10-06 |
 | **Beyond Good & Evil**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>93% at 28.5+<br>Nova · 10-06 |
@@ -218,7 +220,6 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Psychonauts**<br>reach gameplay | 🔵 copied | **22.0**<br>0% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |
 | **Arctic Thunder**<br>below the bar | below 30 | **21.4**<br>9% at 28.5+<br>Thor · 09-27 · max perf<br>Nova 30.2 |
 | **Amped: Freestyle Snowboarding**<br>reach gameplay | 🟣 inputs ready | **20.6**<br>9% at 28.5+<br>Nova · 10-04 |
-| **Alias**<br>below the bar | below 30 | **20.4**<br>0% at 28.5+<br>Thor · 09-28 · max perf, soak |
 | **Dead or Alive Xtreme Beach Volleyball**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>12% at 28.5+<br>Nova · 09-27 · max perf, screen: 90-240 s only |
 | **NBA Live 07**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>1% at 28.5+<br>Nova · 10-06 |
 | **NBA Live 06**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>0% at 28.5+<br>Nova · 10-06 |
@@ -634,7 +635,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-590 titles: 19 blocked, 72 Playable, 6 soak pending, 11 below 30, 36 inputs ready, 79 copied, 367 not copied.
+591 titles: 19 blocked, 72 Playable, 6 soak pending, 10 below 30, 37 inputs ready, 80 copied, 367 not copied.
 
 ---
 
