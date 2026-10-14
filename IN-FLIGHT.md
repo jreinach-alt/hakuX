@@ -81,7 +81,7 @@ No lane session is running.
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-43 of these still await the owner's flicker check.
+42 of these still await the owner's flicker check.
 
 ## Work in progress
 
@@ -102,4 +102,4 @@ No branch is being worked right now.
 - 2026-10-13 docsrewrite1012: the public docs rewritten for players, each with a Last updated line (#433, 0.5)
 - 2026-10-13 docsfresh1012: a freshness check for the public docs, an hourly alarm and a release step (#433, 0.5)
 
-_Updated 2026-10-13 17:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 17:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
