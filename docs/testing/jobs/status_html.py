@@ -467,6 +467,14 @@ def _conf(E):
         return {}, os.path.normpath(p)
 
 
+def _conf_json(conf):
+    """The release conf as lanes.json carries it to the page: plain values as
+    they are, a TOML datetime as its epoch (dropping it lost the chart's
+    "0.5 published" line), tables left out."""
+    return {k: (int(v.timestamp()) if isinstance(v, datetime.datetime) else v) for k, v in conf.items()
+            if isinstance(v, (str, int, float, list, datetime.datetime))}
+
+
 def _expected_secs(r):
     """A request's expected wall time, an estimate and labelled so: a title run is
     its seconds plus ~8 min of install, boot and pull; a suite run ~5 min plus
@@ -1381,8 +1389,9 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
     push = _title_push(F, now)
     if push["pushed"]:
         srcs.append("logs/titlepipe/batch-*.tsv")
-    for x in push["pushed"]:
-        add(x["name"], x.get("tid", ""), x["device"])
+    reg_name = {tid: t["name"] for tid, t in (reg or {}).items()}
+    for x in push["pushed"]:   # the registry's name for its title id: a push log's own spelling made a second row
+        add(reg_name.get(x.get("tid", "")) or x["name"], x.get("tid", ""), x["device"])
     by_tid = {}
     if reg is not None:
         srcs.append("targets.toml")
@@ -1676,9 +1685,9 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             fps_ok = prim["fps"] >= 30
         if blocked:
             st = "blocked"
-        elif bench and fps_ok and soak:
-            st = "playable"
         elif bench and fps_ok:
+            # with or without a passing soak: a soak alone is not Playable.
+            # Playable is the ledger (below), once the soak's frames are reviewed
             st = "soak"
         elif bench:
             st = "below"
@@ -1731,14 +1740,15 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
 
         # the next step: exactly one of four words (#433) -- "reach gameplay"
         # (no qualifying fps reading yet), "below the bar" (telemetry, never
-        # "re-benchmark"), "soak for Playable", or "blocked: <reason>". Never
+        # "re-benchmark"), "soak for Playable" ("review frames for Playable"
+        # once a soak has passed), or "blocked: <reason>". Never
         # named by the old pipeline's inputs/save/MAX steps: those are gone.
         if st == "blocked":
             nxt = "blocked: " + blocker
         elif st == "below":
             nxt = "below the bar"
         elif st == "soak":
-            nxt = "soak for Playable"
+            nxt = "review frames for Playable" if soak else "soak for Playable"
         elif st == "playable":
             nxt = "done"
         else:
@@ -1857,7 +1867,7 @@ def lanes_main(E, out_json, idle_path):
     for q in queued_old:
         q.pop("_a")
     first = {k: v for k, v in g.items() if k not in ("reqs", "conf")}
-    first["conf"] = {k: v for k, v in g["conf"].items() if isinstance(v, (str, int, float, list))}
+    first["conf"] = _conf_json(g["conf"])
     doc = {"idle": g["stranded"], "blocked": [], "fold_stuck": fold_stuck, "queued_old": queued_old,
            "devices": [{"name": d["name"], "state": d["state"], "detail": _device_words(d, now)} for d in g["devices"]],
            "prs_ok": g["prs_ok"], "terr_ok": g["board_ok"], "first": first}
@@ -2478,10 +2488,27 @@ def _steplines(o, series, X, Y, t0, t1, x1):
     return last_pt
 
 
-def _chart1(series, now, mt, pt, pub_at, pub_name):
+def _reached(pts, n):
+    """The first time a cumulative step series reached n, or None."""
+    return next((t for t, v in pts or [] if v >= n), None)
+
+
+def _vline(o, X, t, y0, y1, dash, label, left=False):
+    """A labelled vertical marker. The label reads top-down beside the line
+    (text-anchor end: a rotated label anchored at its start runs up, off the
+    chart), on its left when another marker's label sits to its right."""
+    x = X(t)
+    lx = x - 3 if left else x + 11
+    o.append('<line x1="%.1f" x2="%.1f" y1="%d" y2="%d" style="stroke:var(--fg);stroke-width:1.5;stroke-dasharray:%s"/>'
+             '<text x="%.1f" y="%d" class="ax" text-anchor="end" transform="rotate(-90 %.1f %d)">%s</text>' % (
+                 x, x, y0, y1, dash, lx, y0 + 2, lx, y0 + 2, esc(label)))
+
+
+def _chart1(series, now, mt, pt, pub_at, pub_name, met_at=None):
     """Chart 1, "How close is 0.6?": cumulative Measured and Playable over
     time (no Benchmarked series, #433); dashed lines at the 0.6 targets (mt,
-    pt), and a labelled vertical line at the prior release's publish (pub_at).
+    pt), and labelled vertical lines at the prior release's publish (pub_at)
+    and at the moment both of its targets were met (met_at, the owner 10-13).
     X is the display zone (Pacific)."""
     W, H, x0, x1, y0, y1 = 400, 236, 30, 276, 14, 204
     ts = [t for k in series for t, _ in series.get(k) or []]
@@ -2509,10 +2536,12 @@ def _chart1(series, now, mt, pt, pub_at, pub_name):
             o.append('<text x="%d" y="%.1f" class="ax" text-anchor="end">%d</text>' % (x0 - 4, Y(n) + 4, n))
     _hline(o, x0, x1, Y, mt, "var(--link)", "Measured target %d" % mt)
     _hline(o, x0, x1, Y, pt, "var(--grn)", "Playable target %d" % pt)
+    day = lambda t: _pt(t).strftime("%b %d").replace(" 0", " ")
     if pub_at and t0 <= pub_at <= t1:
-        o.append('<line x1="%.1f" x2="%.1f" y1="%d" y2="%d" style="stroke:var(--fg);stroke-width:1.5;stroke-dasharray:2 2"/>'
-                 '<text x="%.1f" y="%d" class="ax" transform="rotate(-90 %.1f %d)">%s</text>' % (
-                     X(pub_at), X(pub_at), y0, y1, X(pub_at) + 11, y0 + 2, X(pub_at) + 11, y0 + 2, esc("%s published" % pub_name)))
+        _vline(o, X, pub_at, y0, y1, "2 2", "%s published %s" % (pub_name, day(pub_at)))
+    if met_at and t0 <= met_at <= t1:
+        _vline(o, X, met_at, y0, y1, "6 3", "%s targets met %s" % (pub_name, day(met_at)),
+               left=bool(pub_at) and 0 <= X(pub_at) - X(met_at) < 14)
     _axis(o, x0, x1, y0, y1, t0, t1, H)
     _steplines(o, series, X, Y, t0, t1, x1)
     o.append("</svg>")
@@ -2598,10 +2627,15 @@ def _q1(j, now):
     series = t.get("series") or {}
     fc = t.get("forecast") or {}
     pub = conf.get("prior_published")
-    pub_at = int(pub.timestamp()) if hasattr(pub, "timestamp") else None
+    pub_at = int(pub.timestamp()) if hasattr(pub, "timestamp") else (int(pub) if isinstance(pub, (int, float)) and pub else None)
     pub_name = conf.get("prior_release") or "prior release"
+    # when the prior release's targets were both met: the later of the two
+    # series' first reaching its target (none drawn until both are reached)
+    met = [_reached(series.get(k), int(conf.get("prior_%s_target" % k) or 0)) for k in ("measured", "playable")
+           if conf.get("prior_%s_target" % k)]
+    met_at = max(met) if met and all(met) else None
     out.append("<h3>How close is %s?</h3>" % esc(name))
-    out.append(_chart1(series, now, mt, pt, pub_at, pub_name))
+    out.append(_chart1(series, now, mt, pt, pub_at, pub_name, met_at))
     curve = conf.get("curve") or []
     if curve:
         out.append("<h3>How close is 1.0?</h3>")

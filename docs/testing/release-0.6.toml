@@ -65,6 +65,9 @@ levers = [424, 425, 426, 427, 428, 429]
 # it straight into an aware datetime, no zoneinfo lookup needed.
 prior_release = "0.5"
 prior_published = 2026-10-12T21:33:00-07:00
+# release-0.5.toml's targets: chart 1 marks when both were met
+prior_measured_target = 145
+prior_playable_target = 50
 
 # Eligible = the titles we hold that are on xemu's Playable+ list, minus those
 # ruled out in the Library Gaps work (system discs, demos and other Skip

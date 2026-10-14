@@ -74,15 +74,16 @@ if "<col class=\"w-f\">" not in q1:
 if bad:
     print("; ".join(bad)); sys.exit(1)' "$ST_OUT"
 
-# The next step is always exactly one of the owner'"'"'s four phrases (or "done"
-# for Playable rows) -- never "benchmark at MAX" / "re-benchmark at MAX" (#433).
-check "next step uses only reach gameplay / soak for Playable / below the bar / blocked: <reason> / done" python3 -c '
+# The next step is always exactly one of the owner'"'"'s four phrases, "review
+# frames for Playable" (a passing soak not yet in the Playable ledger), or "done"
+# for Playable rows -- never "benchmark at MAX" / "re-benchmark at MAX" (#433).
+check "next step uses only reach gameplay / soak for Playable / review frames for Playable / below the bar / blocked: <reason> / done" python3 -c '
 import re, sys
 html = open(sys.argv[1] + "/render/index.html", encoding="utf-8").read()
 m = re.search(r"(?s)<section class=\"q\" id=\"q1\">.*?</section>", html)
 q1 = m.group(0) if m else ""
 steps = [re.sub("<[^>]+>", "", s) for s in re.findall(r"<span class=\"nx[^\"]*\">(.*?)</span>", q1)]
-bad = [s for s in steps if not (s in ("reach gameplay", "soak for Playable", "below the bar", "done") or s.startswith("blocked: "))]
+bad = [s for s in steps if not (s in ("reach gameplay", "soak for Playable", "review frames for Playable", "below the bar", "done") or s.startswith("blocked: "))]
 if "benchmark at MAX" in q1.lower() or "re-benchmark" in q1.lower():
     bad.append("benchmark-at-MAX wording still present")
 if not steps:
