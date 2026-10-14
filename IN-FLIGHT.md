@@ -9,7 +9,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 No lane session is running.
 
 - **Handhelds:** 1 connected.
-  - Nova: held by `lane.pathfind`
+  - Nova: held by `lanelocal-shuffle`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -96,6 +96,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-14 status: Playable is the ledger
 - 2026-10-13 status page: track 0.6, 1.0 projection chart, drop Benchmarked and C I S B
 - 2026-10-13 pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every unstick rung
 - 2026-10-13 hangwatch: catch a frozen title that starves the GPU, spins the vCPU and silences the disc, even with non-flat audio
@@ -107,6 +108,5 @@ No branch is being worked right now.
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 - 2026-10-13 x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
-- 2026-10-13 issuemirror1013: the issue mirror waits out the gateway lock
 
-_Updated 2026-10-14 01:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 01:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
