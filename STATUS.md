@@ -1,12 +1,12 @@
 # hakuX status
 
-_updated 2026-10-14 04:00 PDT_
+_updated 2026-10-14 04:32 PDT_
 
-0.6: Measured 210 / 300 · Playable 69 / 110.
+0.6: Measured 212 / 300 · Playable 69 / 110.
 
 ## How close is 0.6?
 
-Measured **210** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
+Measured **212** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
 Playable **69** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 
@@ -21,9 +21,9 @@ Playable **69** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 |---|---|---|---|---|
 | 0.6 | 300 | 2026-10-21 | 110 | 2026-10-22 |
 | 0.7 | 425 | 2026-10-31 | 185 | 2026-11-07 |
-| 0.8 | 575 | 2026-11-13 | 300 | 2026-12-02 |
-| 0.9 | 725 | 2026-11-25 | 480 | 2027-01-09 |
-| 1.0 | 876 | 2026-12-07 | 789 | 2027-03-15 |
+| 0.8 | 575 | 2026-11-12 | 300 | 2026-12-02 |
+| 0.9 | 725 | 2026-11-24 | 480 | 2027-01-09 |
+| 1.0 | 876 | 2026-12-06 | 789 | 2027-03-15 |
 
 Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
@@ -56,6 +56,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Genma Onimusha**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Guilty Gear XX #Reload: The Midnight Carnival**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |
 | **Gunvalkyrie**<br>done | 🟢 Playable | **59.9**<br>99% at 28.5+<br>Nova · 10-03 · default perf |
+| **Hello Kitty Roller Rescue Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Kabuki Warriors**<br>done | 🟢 Playable | **59.9**<br>95% at 28.5+<br>Nova · 10-03 · default perf |
 | **KOF: Maximum Impact - Maniax**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
 | **Largo Winch Empire Under Threat Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
@@ -117,6 +118,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Ty the Tasmanian Tiger Night of the Quinkan USA Australia**<br>reach gameplay | 🔵 copied | **47.8**<br>79% at 28.5+<br>Nova · 10-07 |
 | **Legacy of Kain Defiance USA**<br>reach gameplay | 🔵 copied | **47.6**<br>97% at 28.5+<br>Nova · 10-07 |
 | **Crash Bandicoot: The Wrath of Cortex**<br>reach gameplay | 🟣 inputs ready | **46.9**<br>100% at 28.5+<br>Nova · 10-07 |
+| **Jacked Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **46.1**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Dark Summit**<br>done | 🟢 Playable | **45.9**<br>93% at 28.5+<br>Nova · 10-04 |
 | **Mortal Kombat: Shaolin Monks**<br>reach gameplay | 🟣 inputs ready | **45.9**<br>49% at 28.5+<br>Nova · 10-06 |
 | **NFL Blitz 2002**<br>done | 🟢 Playable | **45.0**<br>100% at 28.5+<br>Nova · 10-05 |
@@ -630,7 +632,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-586 titles: 19 blocked, 69 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 75 copied, 370 not copied.
+588 titles: 19 blocked, 69 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 77 copied, 370 not copied.
 
 ---
 
