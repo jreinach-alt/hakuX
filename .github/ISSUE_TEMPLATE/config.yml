@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Reporting bugs effectively
+    url: https://github.com/jreinach-alt/hakuX/blob/master/docs/reporting-bugs.md
+    about: >-
+      Read this first: how to find your hakuX version, capture a logcat, and
+      use the in-app Debug Capture, so your report has what's needed the
+      first time.

@@ -1,0 +1,146 @@
+name: Bug Report
+description: Report a problem with hakuX that is not specific to one game
+title: "[Bug]: "
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report.
+
+        Please read
+        [docs/reporting-bugs.md](https://github.com/jreinach-alt/hakuX/blob/master/docs/reporting-bugs.md)
+        first — it explains how to find your hakuX version, capture a
+        logcat, and use the in-app Debug Capture.
+
+        Before submitting, please check:
+        - [KNOWN_ISSUES.md](https://github.com/jreinach-alt/hakuX/blob/master/KNOWN_ISSUES.md)
+          for user-facing behaviour that's already known
+        - the [issue tracker](https://github.com/jreinach-alt/hakuX/issues)
+          for an existing report
+        - that you're on the latest release, if possible
+
+        If this is about how well a specific game runs, use the
+        **Title / Compatibility Report** form instead.
+  - type: input
+    id: hakux-version
+    attributes:
+      label: hakuX version
+      description: >-
+        Shown in the small label in the corner of the Game Library screen.
+        If you can't find it, check Android Settings > Apps > hakuX > App info.
+      placeholder: "0.5.0-1012-abcdef1"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-type
+    attributes:
+      label: Install type
+      description: >-
+        A test (debug) build installs as a separate app, labelled
+        "hakuX (test builds)", alongside a release install.
+      options:
+        - Release build
+        - Test build (debug)
+    validations:
+      required: true
+  - type: input
+    id: device-model
+    attributes:
+      label: Device make and model
+      placeholder: "Retroid Pocket 5, Samsung Galaxy S23, Ayn Odin 2, ..."
+    validations:
+      required: true
+  - type: input
+    id: device-chip
+    attributes:
+      label: SoC / GPU
+      placeholder: "Snapdragon 8 Gen 2 / Adreno 740"
+    validations:
+      required: true
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      placeholder: "Android 14"
+    validations:
+      required: true
+  - type: input
+    id: device-ram
+    attributes:
+      label: RAM
+      placeholder: "8 GB"
+    validations:
+      required: true
+  - type: textarea
+    id: game-info
+    attributes:
+      label: Game (if this happened while playing one)
+      description: >-
+        Title, region, title ID if known, and image format (.iso,
+        .xiso.iso, ...). Leave blank if this isn't game-specific.
+      placeholder: |
+        Halo: Combat Evolved, NTSC-U v1.01, title ID 4d530004, .xiso.iso
+    validations:
+      required: false
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: What happened
+      description: A clear description of the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does this happen?
+      options:
+        - Every time
+        - Most of the time
+        - Occasionally
+        - Happened once
+    validations:
+      required: true
+  - type: textarea
+    id: settings-changed
+    attributes:
+      label: Settings changed from default
+      description: >-
+        Anything you changed in Settings before this happened (renderer
+        options, resolution, controls, etc). Leave blank if nothing was changed.
+    validations:
+      required: false
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: >-
+        A logcat excerpt, screenshots/video, or Debug Capture output make
+        this much easier to act on. See
+        [docs/reporting-bugs.md](https://github.com/jreinach-alt/hakuX/blob/master/docs/reporting-bugs.md)
+        for how to gather each. You can attach files by dragging them into
+        this box.
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+    validations:
+      required: false

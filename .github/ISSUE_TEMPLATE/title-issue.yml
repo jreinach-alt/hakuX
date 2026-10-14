@@ -1,0 +1,157 @@
+name: Title / Compatibility Report
+description: Report how well a specific game runs, or a bug specific to one title
+title: "Title Name: Short description"
+labels: [compatibility, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form to report how a specific game runs, or a bug that only
+        shows up with one title. For a problem that isn't tied to a specific
+        game, use the **Bug Report** form instead.
+
+        Please read
+        [docs/reporting-bugs.md](https://github.com/jreinach-alt/hakuX/blob/master/docs/reporting-bugs.md)
+        first for how to find your version, capture a logcat, and use Debug
+        Capture.
+  - type: input
+    id: game-title
+    attributes:
+      label: Game title
+      placeholder: "Halo: Combat Evolved"
+    validations:
+      required: true
+  - type: input
+    id: game-region
+    attributes:
+      label: Region / version
+      placeholder: "NTSC-U, v1.01"
+    validations:
+      required: false
+  - type: input
+    id: title-id
+    attributes:
+      label: Title ID (if known)
+      placeholder: "4d530004"
+    validations:
+      required: false
+  - type: dropdown
+    id: image-format
+    attributes:
+      label: Image format
+      options:
+        - .iso (not yet converted)
+        - .xiso.iso (converted)
+        - Other / not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: compatibility
+    attributes:
+      label: How does it run?
+      options:
+        - Doesn't boot
+        - Boots to menu, doesn't start a game
+        - Starts, but unplayable (crashes / severe glitches)
+        - Playable, with noticeable issues
+        - Playable, no noticeable issues
+    validations:
+      required: true
+  - type: input
+    id: hakux-version
+    attributes:
+      label: hakuX version
+      description: >-
+        Shown in the small label in the corner of the Game Library screen.
+        If you can't find it, check Android Settings > Apps > hakuX > App info.
+      placeholder: "0.5.0-1012-abcdef1"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-type
+    attributes:
+      label: Install type
+      description: >-
+        A test (debug) build installs as a separate app, labelled
+        "hakuX (test builds)", alongside a release install.
+      options:
+        - Release build
+        - Test build (debug)
+    validations:
+      required: true
+  - type: input
+    id: device-model
+    attributes:
+      label: Device make and model
+      placeholder: "Retroid Pocket 5, Samsung Galaxy S23, Ayn Odin 2, ..."
+    validations:
+      required: true
+  - type: input
+    id: device-chip
+    attributes:
+      label: SoC / GPU
+      placeholder: "Snapdragon 8 Gen 2 / Adreno 740"
+    validations:
+      required: true
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      placeholder: "Android 14"
+    validations:
+      required: true
+  - type: input
+    id: device-ram
+    attributes:
+      label: RAM
+      placeholder: "8 GB"
+    validations:
+      required: true
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug description (if reporting a specific problem, not just a compatibility rating)
+      description: >-
+        What goes wrong, with steps to reproduce if this is a specific bug
+        rather than a general compatibility report.
+    validations:
+      required: false
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+    validations:
+      required: false
+  - type: dropdown
+    id: frequency
+    attributes:
+      label: How often does this happen?
+      options:
+        - Every time
+        - Most of the time
+        - Occasionally
+        - Happened once
+        - Not applicable (compatibility report only)
+    validations:
+      required: false
+  - type: textarea
+    id: settings-changed
+    attributes:
+      label: Settings changed from default
+    validations:
+      required: false
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: >-
+        A logcat excerpt, screenshots/video, or Debug Capture output. See
+        [docs/reporting-bugs.md](https://github.com/jreinach-alt/hakuX/blob/master/docs/reporting-bugs.md).
+    validations:
+      required: false
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+    validations:
+      required: false
