@@ -1413,10 +1413,15 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         title_id is the only join key (#433): resolve through the shared
         catalog (title_registry.py -- the same identity every other reader
         uses) first, so two spellings of one title_id always land on one
-        row, however this render first met each of them. Only when the
-        catalog places neither the hint nor the name does this fall back to
-        matching this render's own names collected so far, as before the
-        catalog existed."""
+        row, however this render first met each of them. The catalog's own
+        name wins over this render's own by_tid when both know the id --
+        by_tid is filled in progressively as this render's sources are read,
+        so preferring it would make the display name (and so the `where`/
+        `names` dict key every add() uses) depend on which source is read
+        first, reopening the duplicate-row bug it is here to close. Only
+        when the catalog places neither the hint nor the name does this
+        fall back to matching this render's own names collected so far, as
+        before the catalog existed."""
         if cat is not None:
             t = None
             if tid:
@@ -1424,7 +1429,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             if not t:
                 t, _ = cat.resolve(n)
             if t:
-                return (by_tid.get(t) or cat.names.get(t) or n), t
+                return (cat.names.get(t) or by_tid.get(t) or n), t
         k = nkey(n)
         for y in names:
             if nkey(y) == k:
