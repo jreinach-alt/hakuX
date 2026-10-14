@@ -1,14 +1,14 @@
 # hakuX status
 
-_updated 2026-10-14 03:28 PDT_
+_updated 2026-10-14 04:00 PDT_
 
-0.6: Measured 208 / 300 · Playable 68 / 110.
+0.6: Measured 210 / 300 · Playable 69 / 110.
 
 ## How close is 0.6?
 
-Measured **208** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
+Measured **210** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
-Playable **68** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
+Playable **69** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 
 
 ![Titles over time](chart.svg)
@@ -19,11 +19,11 @@ Playable **68** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
-| 0.6 | 300 | 2026-10-21 | 110 | 2026-10-23 |
-| 0.7 | 425 | 2026-11-01 | 185 | 2026-11-08 |
-| 0.8 | 575 | 2026-11-14 | 300 | 2026-12-03 |
-| 0.9 | 725 | 2026-11-26 | 480 | 2027-01-12 |
-| 1.0 | 876 | 2026-12-09 | 789 | 2027-03-20 |
+| 0.6 | 300 | 2026-10-21 | 110 | 2026-10-22 |
+| 0.7 | 425 | 2026-10-31 | 185 | 2026-11-07 |
+| 0.8 | 575 | 2026-11-13 | 300 | 2026-12-02 |
+| 0.9 | 725 | 2026-11-25 | 480 | 2027-01-09 |
+| 1.0 | 876 | 2026-12-07 | 789 | 2027-03-15 |
 
 Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
@@ -42,6 +42,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **AMF Bowling 2004**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-05 |
 | **ATV: Quad Power Racing 2**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Auto Modellista**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |
+| **Bad Boys Miami Takedown USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Baldur's Gate: Dark Alliance**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 09-30 · default perf |
 | **Battlestar Galactica USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Black Stone: Magic & Steel**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-02 · max perf |
@@ -234,6 +235,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Die Hard Vendetta Europe En Fr Es It**<br>**blocked: booted: the guest never appeared or never flipped 60 frames** | 🔴 blocked |  |
 | **SSX Tricky**<br>**blocked: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked |  |
 | **Avatar: The Last Airbender**<br>done | 🟢 Playable |  |
+| **Bad Boys: Miami Takedown**<br>done | 🟢 Playable |  |
 | **BloodRayne 2**<br>done | 🟢 Playable |  |
 | **Conan**<br>done | 🟢 Playable |  |
 | **Indigo Prophecy**<br>done | 🟢 Playable |  |
@@ -261,7 +263,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Alter Echo**<br>reach gameplay | ⚪ not copied |  |
 | **America's Army: Rise of a Soldier**<br>reach gameplay | ⚪ not copied |  |
 
-<details><summary>361 more not copied</summary>
+<details><summary>360 more not copied</summary>
 
 | Title and next step | Status | fps |
 |---|---|---|
@@ -279,7 +281,6 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Atari Anthology**<br>reach gameplay | ⚪ not copied |  |
 | **Backyard Wrestling 2: There Goes the Neighborhood**<br>reach gameplay | ⚪ not copied |  |
 | **Backyard Wrestling: Don't Try This at Home**<br>reach gameplay | ⚪ not copied |  |
-| **Bad Boys: Miami Takedown**<br>reach gameplay | ⚪ not copied |  |
 | **Baldur's Gate: Dark Alliance II**<br>reach gameplay | ⚪ not copied |  |
 | **Barbarian**<br>reach gameplay | ⚪ not copied |  |
 | **Barbie Horse Adventures: Wild Horse Rescue**<br>reach gameplay | ⚪ not copied |  |
@@ -629,7 +630,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-585 titles: 19 blocked, 68 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 74 copied, 371 not copied.
+586 titles: 19 blocked, 69 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 75 copied, 370 not copied.
 
 ---
 
