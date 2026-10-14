@@ -4,7 +4,7 @@ _Last updated 2026-10-13, for version 0.5.0._
 
 This lists Xbox titles tried on this project's test devices, split into three groups: titles that clear the **Playable** bar, titles that run but fall short of 30 fps, and titles that do not yet play. It is not a full compatibility list: plenty of other titles have simply not been tried yet. See [`KNOWN_ISSUES.md`](../KNOWN_ISSUES.md) and the [issue tracker](https://github.com/jreinach-alt/hakuX/issues) for what is tracked about titles not on this page.
 
-57 Playable · 15 run below 30 fps · 11 not playable
+72 Playable · 15 run below 30 fps · 11 not playable
 
 ## What "Playable" means
 
@@ -51,28 +51,40 @@ with another Turnip build, may differ.
 | 50 Cent: Bulletproof | ? | Nova | 30.0 | 99% | 2026-09-30 |  |
 | Alien Hominid | Europe | Thor | 59.9 | 100% | 2026-09-26 |  |
 | AMF Bowling 2004 | USA | Nova | 59.9 | 100% | 2026-10-05 |  |
+| ATV Quad Power Racing 2 | ? | Nova | 59.9 | 100% | 2026-10-13 |  |
+| Avatar: The Last Airbender | ? | Nova | 59.9 | 100% | 2026-10-13 |  |
 | Azurik: Rise of Perathia | USA | Nova | 30.0 | 95% | 2026-09-29 |  |
+| Bad Boys: Miami Takedown | ? | Nova | 59.9 | 100% | 2026-10-14 |  |
 | Baldur's Gate: Dark Alliance | USA | Nova | 59.9 | 100% | 2026-09-30 |  |
 | Blade II | ? | Nova | 30.0 | 100% | 2026-10-07 |  |
+| BloodRayne 2 | ? | Nova | 30.0 | 100% | 2026-10-13 |  |
 | Blowout | USA | Nova | 30.0 | 100% | 2026-10-06 |  |
+| Burnout Revenge | ? | Nova | 54.8 | 100% | 2026-10-13 |  |
 | Call of Duty 3 | ? | Nova | 29.4 | 100% | 2026-10-06 |  |
 | Capcom vs. SNK 2 EO | ? | Nova | 59.8 | 100% | 2026-10-07 |  |
 | Castlevania: Curse of Darkness | ? | Nova | 59.9 | 100% | 2026-10-03 |  |
 | Conan (Europe) | Europe | Nova | 30.0 | 100% | 2026-10-12 |  |
+| Conspiracy: Weapons of Mass Destruction | ? | Nova | 59.9 | 100% | 2026-10-14 |  |
 | Crimson Skies: High Road to Revenge | USA | Nova | 30.0 | 95% | 2026-09-30 |  |
 | Dark Summit | ? | Nova | 45.9 | 93% | 2026-10-04 |  |
 | Fight Club | ? | Nova | 43.4 | 94% | 2026-10-06 |  |
 | Future Tactics: The Uprising | USA | Nova | 59.9 | 100% | 2026-10-07 |  |
+| Genma Onimusha | ? | Nova | 59.9 | 100% | 2026-10-13 |  |
 | Grabbed by the Ghoulies | USA | Nova | 30.0 | 98% | 2026-10-12 |  |
 | Grand Theft Auto III | ? | Nova | 30.0 | 100% | 2026-10-12 |  |
 | Grand Theft Auto: Vice City | ? | Nova | 30.0 | 99% | 2026-10-12 |  |
+| Guilty Gear XX #Reload | ? | Nova | 59.9 | 100% | 2026-10-13 |  |
 | Gunvalkyrie | ? | Nova | 59.9 | 99% | 2026-10-03 |  |
 | Halo: Combat Evolved | ? | Nova | 30.0 | 99% | 2026-10-03 |  |
+| Harry Potter and the Philosopher's Stone | ? | Nova | 41.5 | 95% | 2026-10-13 |  |
+| Hello Kitty: Roller Rescue | ? | Nova | 59.9 | 100% | 2026-10-14 |  |
 | Indigo Prophecy | USA | Nova | 59.9 | 99% | 2026-10-07 |  |
+| Jacked | ? | Nova | 46.1 | 100% | 2026-10-14 |  |
 | Jet Set Radio Future | USA | Nova | 59.9 | 100% | 2026-10-04 |  |
 | Kabuki Warriors | ? | Nova | 59.9 | 100% | 2026-09-30 |  |
 | KOF: Maximum Impact – Maniax | USA | Nova | 52.4 | 99% | 2026-09-29 |  |
 | Legacy of Kain: Defiance | USA | Nova | 47.6 | 97% | 2026-10-07 |  |
+| Mat Hoffman's Pro BMX 2 | ? | Nova | 30.0 | 100% | 2026-10-14 |  |
 | Max Payne 2: The Fall of Max Payne | USA | Nova | 59.9 | 100% | 2026-10-08 |  |
 | Mercenaries: Playground of Destruction | USA, Europe | Nova | 53.3 | 100% | 2026-10-12 |  |
 | MLB SlugFest - Loaded | USA | Nova | 58.9 | 100% | 2026-10-05 |  |
@@ -87,14 +99,17 @@ with another Turnip build, may differ.
 | NFL Blitz 2002 | USA | Nova | 45.0 | 100% | 2026-10-05 |  |
 | Panzer Dragoon Orta | Europe | Nova | 54.1 | 100% | 2026-10-03 |  |
 | Ratatouille | USA | Nova | 52.8 | 100% | 2026-10-06 |  |
+| Rayman 3 Hoodlum Havoc | ? | Nova | 59.9 | 100% | 2026-10-13 |  |
 | Rogue Trooper | ? | Nova | 58.9 | 100% | 2026-10-06 |  |
 | Scooby-Doo! Mystery Mayhem (Europe) | Europe | Nova | 29.0 | 100% | 2026-10-12 |  |
 | Scooby-Doo! Unmasked (Europe) | Europe | Nova | 59.9 | 99% | 2026-10-13 |  |
 | Shadow of Memories (Europe) | Europe | Nova | 30.0 | 100% | 2026-10-13 |  |
+| Shrek 2 | ? | Nova | 29.8 | 92% | 2026-10-13 |  |
 | Spikeout: Battle Street | Europe | Nova | 59.9 | 100% | 2026-10-03 |  |
 | SpongeBob SquarePants: Battle for Bikini Bottom | USA | Nova | 59.9 | 100% | 2026-10-07 |  |
 | The Lord of the Rings: The Fellowship of the Ring | USA | Nova | 30.0 | 100% | 2026-10-07 |  |
 | The Simpsons Hit & Run | ? | Nova | 37.9 | 100% | 2026-10-04 |  |
+| TimeSplitters 2 | ? | Nova | 59.9 | 100% | 2026-10-13 |  |
 | ToeJam & Earl III: Mission to Earth | USA | Nova | 59.9 | 99% | 2026-10-02 |  |
 | Tony Hawk's Pro Skater 2x | ? | Nova | 59.8 | 100% | 2026-10-01 |  |
 | Tony Hawk's Pro Skater 4 | ? | Nova | 56.6 | 98% | 2026-10-13 |  |
