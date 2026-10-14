@@ -6,12 +6,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `savestateconv1014` | claude-sonnet-5 | 1h 15m | savestateconv1014: R3 admits --from-state; Nova probe of the save-state design (#433) |
+No lane session is running.
 
 - **Handhelds:** 1 connected.
-  - Nova: held by `lane.savestateconv1014`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -99,9 +97,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/savestateconv1014` | savestateconv1014: R3 admits --from-state; Nova probe of the save-state design (#433) | `708caa5a88` | 2026-10-14 06:33 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -118,4 +114,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 - 2026-10-13 x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
 
-_Updated 2026-10-14 07:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
