@@ -16,10 +16,11 @@ No lane session is running.
 
 ## Playable titles
 
-**71 titles are confirmed Playable** (4 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**72 titles are confirmed Playable** (5 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-14 | Conspiracy: Weapons of Mass Destruction | Playable, 10-minute run on the Nova, median 59.94 fps |
 | 2026-10-14 | Hello Kitty: Roller Rescue | Playable, 10-minute run on the Nova, median 59.94 fps |
 | 2026-10-14 | Jacked | Playable, 10-minute run on the Nova, median 46.08 fps |
 | 2026-10-14 | Bad Boys: Miami Takedown | Playable, 10-minute run on the Nova, median 59.94 fps |
@@ -92,7 +93,7 @@ No lane session is running.
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-53 of these still await the owner's flicker check.
+54 of these still await the owner's flicker check.
 
 ## Work in progress
 
@@ -113,4 +114,4 @@ No branch is being worked right now.
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 - 2026-10-13 x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
 
-_Updated 2026-10-14 05:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 06:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
