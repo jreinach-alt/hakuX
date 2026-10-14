@@ -6215,3 +6215,33 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "Filed by lane.local 2026-10-13 from held run n-4947001F-1011 (Nova 10-12 06:08-06:22, apk 9da8a664fc93 = master 2219a61879). Gameplay median 6.94 (min 5.88), menus 28-31; the verdict's hang flag is the 60-flips-in-10-s rule tripping at ~6 fps, position never still: a slowdown. Telemetry: a 3-min --perflog hold (HAKUX_GPUXFR + HAKUX_FRAMETRACE) once lane/pathtele1013 folds."
+
+[issue.982]
+title = "Voodoo Vince (4D53005F): the game freezes on the first frame of the first level on the Nova"
+suites = []
+no_suites = "A guest freeze in a commercial title (busy loop, GPU no longer fed), not yet identified, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed by lane.local 2026-10-13 from run n-4D53005F-1013r (Nova 10-13 14:16-14:56 PDT, apk 0d9c31f7742a = master 08f1fb4a90). Courtyard's first frame froze at 14:22:54 for the rest of the run (kicks 0 and idle_us 0 for 2035 s); kernel pc 80014385 at 99% of returns, 8001440b, 80014f31, title 001c5e1f/001c5e20; pic14 raise 0 from 14:22:58; audio non-flat at -55 to -49 dBFS; vblank 59.94 Hz; no crash. Same kernel PCs and stopped GPU as #973, loop shape differs (one PC vs spread). Kept on the Nova; not re-run (failure goes for identification). hangwatch missed it (quiet leg); lane.hangstall1013 adds the stalled arm. First step: what 001c5e1f polls, and whether #973's 00166100 polls the same thing."
+
+[issue.983]
+title = "ATV Quad Power Racing 2 (4143000A): some opponent ATV models flicker at middle distance (low priority)"
+suites = []
+no_suites = "A per-model draw flicker in a commercial title, not yet identified, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed by lane.local 2026-10-13 from the owner's hand-played session ownerplay/runs/4143000A-1013-1621 (Nova 16:21-16:34 PDT, debug 0.5.0-1013-08f1fb4a90 = master 08f1fb4a90, Turnip T30 PurpleVK git-62ac221a33). Owner: opponent ATVs flicker in race 1 (beach), not race 2 (swamp); nearby models unaffected; not distance culling; owner's first guess the ubershader. LOW PRIORITY by the owner: 'investigating it much later since it does not impact gameplay'; does not affect the Playable rating (ATV banked 10-13 16:41). Related #804 (RalliSport rival bodies on alternate frames), #801 (no flicker detector). First step: capture of the beach course, missing frames' draws issued or not."
+
+[issue.984]
+title = "Lemony Snicket (4156001F) and Shrek 2 (41560037): movie and cutscene audio far too quiet on the Nova"
+suites = []
+no_suites = "An audio level defect in movie/speech voices (APU or movie decoder path), not a pgraph behaviour, so no pgraph suite covers it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed by lane.local 2026-10-13 from the owner's hand-played sessions (owner 10-13: Lemony 'a fail for me on audio... too quiet... even with volume turned all the way up to max'; Shrek 2 'the Dreamworks animation video suffers from the same audio problem'). Lemony: release 0.5.0, pid 20260, 16:36-16:40 PDT, acrms -32.4/-31.5 dBFS over 183 s, p50 -36, peak -9.7. Shrek 2: debug 08f1fb4a90 run n-41560037-1013r, logo movie 13:51:38-13:51:52 acrms -45 to -43 dBFS, peak -27; menu music ~-20 dBFS RMS, full-scale peaks. ATV reference -12 dBFS over 874 s. Driver Turnip T30 PurpleVK git-62ac221a33. Lemony stays not Playable on this (and #975). Related #938 (Halo speech quiet), apu-voice-headroom (headroom 7 measured out as an unapplied gain). First step: per-voice capture of the Shrek 2 logo movie, volume/headroom per voice vs the menu music."
