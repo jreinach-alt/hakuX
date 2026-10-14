@@ -6,7 +6,9 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `locations1014` | claude-sonnet-5 | 3 min | fold: lane/savestateconv1014 (offline) -- savestateconv1014: R3 admits --from-state; Part B names two blockers |
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
@@ -101,7 +103,9 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/locations1014` | fold: lane/savestateconv1014 (offline) -- savestateconv1014: R3 admits --from-state; Part B names two blockers, with evi | `76bef8b162` | 2026-10-14 08:17 |
 
 ## Recently landed on master
 
@@ -118,4 +122,4 @@ No branch is being worked right now.
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 
-_Updated 2026-10-14 13:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 13:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
