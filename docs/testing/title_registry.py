@@ -101,7 +101,7 @@ class Paths:
         self.titlepush = os.path.join(root, "hardware", "titlepush")
         self.inventory = sorted(glob.glob(os.path.join(root, "titles", "console-inventory-*.csv")))
         self.xemu = sorted(glob.glob(os.path.join(root, "titles", "xemu-compat-*.csv")))
-        self.targets = os.path.join(HERE, "titles", "targets.toml")
+        self.targets = os.environ.get("TITLE_TARGETS") or os.path.join(HERE, "titles", "targets.toml")
         self.routes = os.path.join(HERE, "titles", "routes")
         self.forge_token = os.path.join(root, "forge", "tokens", FORGE_USER + ".token")
 

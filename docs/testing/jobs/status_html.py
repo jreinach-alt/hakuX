@@ -155,6 +155,37 @@ def _title_verdict_module():
             sys.path.pop(0)
 
 
+def _title_catalog(F):
+    """title_registry.py's identity Catalog (#433): every known spelling of
+    every title, by title_id, built from the same sources (targets.toml,
+    the xemu-compat and console-inventory CSVs, the staged-ISO listings,
+    owner-library-done.tsv) that produce pm/title-registry.tsv, PLUS the
+    Playable ledger's own spelling -- so a name this function has never seen
+    before still joins the row a differently-spelled ledger or ISO entry
+    already created. title_id is the join key; this is what finds it from a
+    bare name. None when title_registry.py cannot be imported (its own
+    build() guards every missing source file, so this only fails on a
+    broken python)."""
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+    try:
+        sys.path.insert(0, d)
+        import title_registry as TR
+    except Exception:
+        return None
+    finally:
+        if sys.path and sys.path[0] == d:
+            sys.path.pop(0)
+    p = TR.Paths(F.W) if F.W else TR.Paths()
+    cat = TR.build_catalog(p)
+    for r in TR.read_tsv(p.ledger):
+        tid = (r.get("title_id") or "").strip().upper()
+        if not TR.TID_RE.match(tid):
+            tid, _ = cat.resolve(r.get("title") or "")
+        if tid:
+            cat.add(tid, r.get("title"), "playable-accepted.tsv")
+    return cat
+
+
 def _soak_read(rdir, lo=90.0, hi=240.0, bar=None):
     """(median gfps over lo..hi s, n, share at the bar, fps, bar) from a result
     dir's logcat, or (None, 0, None, None, bar).
@@ -1369,10 +1400,47 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
     tdir = F.E.get("STATUS_TITLES_DIR") or os.path.join(F.W, "titles")
     reg, reg_src = _registry(F)
     names, tid_of, where, srcs, somewhere = [], {}, {}, [], set()
+    by_tid = {}
+    cat = _title_catalog(F)
+
+    def nkey(x):
+        x = re.sub(r"\([^)]*\)", "", str(x or "")).lower()
+        x = re.sub(r"[^a-z0-9]+", "", x)
+        return x[3:] if x.startswith("the") and len(x) > 6 else x
+
+    def canon(n, tid=""):
+        """(display name, title_id) for a (name, title_id hint) pair.
+        title_id is the only join key (#433): resolve through the shared
+        catalog (title_registry.py -- the same identity every other reader
+        uses) first, so two spellings of one title_id always land on one
+        row, however this render first met each of them. Only when the
+        catalog places neither the hint nor the name does this fall back to
+        matching this render's own names collected so far, as before the
+        catalog existed."""
+        if cat is not None:
+            t = None
+            if tid:
+                t, _ = cat.resolve(tid)
+            if not t:
+                t, _ = cat.resolve(n)
+            if t:
+                return (by_tid.get(t) or cat.names.get(t) or n), t
+        k = nkey(n)
+        for y in names:
+            if nkey(y) == k:
+                return y, tid_of.get(y, tid)
+        near = [y for y in names if len(k) >= 8 and len(nkey(y)) >= 8 and (nkey(y).endswith(k) or k.endswith(nkey(y)))]
+        if len(near) == 1:
+            return near[0], tid_of.get(near[0], tid)
+        return n, tid
+
+    def resolve(x, tid=""):
+        return canon(x, tid)[0]
 
     def add(n, tid="", dev=None):
         if not n:
             return
+        n, tid = canon(n, tid)
         if n not in where:
             names.append(n)
             where[n] = set()
@@ -1384,6 +1452,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
     if isinstance(oh, list):
         srcs.append("titles/already-on-handhelds.json")
         for n in oh:            # on a handheld; which one is not recorded
+            n = resolve(n)
             add(n)
             somewhere.add(n)
     push = _title_push(F, now)
@@ -1392,7 +1461,6 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
     reg_name = {tid: t["name"] for tid, t in (reg or {}).items()}
     for x in push["pushed"]:   # the registry's name for its title id: a push log's own spelling made a second row
         add(reg_name.get(x.get("tid", "")) or x["name"], x.get("tid", ""), x["device"])
-    by_tid = {}
     if reg is not None:
         srcs.append("targets.toml")
         for tid, t in reg.items():
@@ -1431,8 +1499,8 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             if at and (n not in first or at < first[n]):
                 first[n] = at
     for r in bf.get("rows", []):
-        n = r.get("title")
-        add(n, "", r.get("device"))
+        n, btid = canon(r.get("title"), "")
+        add(n, btid, r.get("device"))
         seen(n, r.get("fps_median"), _stamp(prov.get("source_utc")))
         reached = r.get("reached")
         meas.setdefault(n, {})[r.get("device") or "?"] = {
@@ -1459,6 +1527,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         m = None if tid else re.match(r"^([0-9A-Fa-f]{8})-", os.path.basename(iso))
         tid = m.group(1).upper() if m else tid
         n = v.get("name") or iso_title.get(iso) or by_tid.get(tid) or iso or "?"
+        n, tid = canon(n, tid)
         d = v.get("device") or "?"
         at = F.mtime(p) or 0
         if at > now:
@@ -1480,20 +1549,6 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
     # it counts as Measured; it is not a MAX run, so it never makes a title
     # Benchmarked on its own. A ledger row makes its title Playable (and so
     # Benchmarked, as the stage order defines) from its acceptance time.
-    def nkey(x):
-        x = re.sub(r"\([^)]*\)", "", str(x or "")).lower()
-        x = re.sub(r"[^a-z0-9]+", "", x)
-        return x[3:] if x.startswith("the") and len(x) > 6 else x
-
-    def resolve(x, tid=""):
-        if tid and tid in by_tid:
-            return by_tid[tid]
-        k = nkey(x)
-        for y in names:
-            if nkey(y) == k:
-                return y
-        near = [y for y in names if len(k) >= 8 and len(nkey(y)) >= 8 and (nkey(y).endswith(k) or k.endswith(nkey(y)))]
-        return near[0] if len(near) == 1 else x
     pf_dir = F.E.get("STATUS_PATHFIND_RUNS") or (os.path.join(F.W, "wt", "pathfind", "docs", "lanes", "pathfind", "runs") if F.W else "")
     pf = []
     for a in _glob(pf_dir, "verdict.json"):
