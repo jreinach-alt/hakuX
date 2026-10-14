@@ -1,12 +1,12 @@
 # hakuX status
 
-_updated 2026-10-14 11:56 PDT_
+_updated 2026-10-14 12:28 PDT_
 
-0.6: Measured 224 / 300 · Playable 76 / 110.
+0.6: Measured 225 / 300 · Playable 76 / 110.
 
 ## How close is 0.6?
 
-Measured **224** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
+Measured **225** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 Playable **76** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
@@ -21,7 +21,7 @@ Playable **76** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 |---|---|---|---|---|
 | 0.6 | 300 | 2026-10-20 | 110 | 2026-10-20 |
 | 0.7 | 425 | 2026-10-30 | 185 | 2026-11-04 |
-| 0.8 | 575 | 2026-11-10 | 300 | 2026-11-25 |
+| 0.8 | 575 | 2026-11-11 | 300 | 2026-11-25 |
 | 0.9 | 725 | 2026-11-22 | 480 | 2026-12-29 |
 | 1.0 | 876 | 2026-12-04 | 789 | 2027-02-26 |
 
@@ -60,6 +60,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Kabuki Warriors**<br>done | 🟢 Playable | **59.9**<br>95% at 28.5+<br>Nova · 10-03 · default perf |
 | **KOF: Maximum Impact - Maniax**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
 | **Largo Winch Empire Under Threat Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
+| **Legends of Wrestling II USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Legends of Wrestling USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Manhunt USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 |
 | **Max Payne 2 The Fall of Max Payne USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 |
@@ -638,7 +639,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-594 titles: 19 blocked, 76 Playable, 6 soak pending, 10 below 30, 36 inputs ready, 83 copied, 364 not copied.
+595 titles: 19 blocked, 76 Playable, 6 soak pending, 10 below 30, 36 inputs ready, 84 copied, 364 not copied.
 
 ---
 
