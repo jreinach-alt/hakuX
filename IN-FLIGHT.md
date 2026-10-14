@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `locations1014` | claude-sonnet-5 | 3 min | fold: lane/savestateconv1014 (offline) -- savestateconv1014: R3 admits --from-state; Part B names two blockers |
+| `locations1014` | claude-sonnet-5 | 18 min | fold: lane/savestateconv1014 (offline) -- savestateconv1014: R3 admits --from-state; Part B names two blockers |
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lane.pathfind`
@@ -122,4 +122,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 
-_Updated 2026-10-14 13:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 13:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
