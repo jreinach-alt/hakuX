@@ -6,17 +6,17 @@ _Last updated 2026-10-13, for version 0.5.0._
 hakuX emulator, tested game by game on Snapdragon handhelds.
 
 **[Download 0.5.0](https://github.com/jreinach-alt/hakuX/releases/latest)** ·
-[57 Playable games](https://github.com/jreinach-alt/hakuX/blob/master/docs/COMPATIBILITY.md) ·
+[69 Playable games](STATUS.md) ·
 [What's new](https://github.com/jreinach-alt/hakuX/blob/master/docs/releases/v0.5.0.md)
 
 ## Highlights
 
-- **57 games rated Playable.** Each one reached real gameplay on a handheld and
+- **69 games rated Playable.** Each one reached real gameplay on a handheld and
   held 30 fps (within 5%) for at least 90% of a timed run, with no crash or
   hang. Among them: Halo: Combat Evolved, Jet Set Radio Future, Panzer Dragoon
   Orta, Grand Theft Auto III and Vice City, Need for Speed: Most Wanted,
   Crimson Skies, Max Payne 2, Mercenaries, Call of Duty 3 and The Simpsons
-  Hit & Run. [See them all.](https://github.com/jreinach-alt/hakuX/blob/master/docs/COMPATIBILITY.md)
+  Hit & Run. [See them all, with the progress charts.](STATUS.md)
 - **Save states.** Ten slots per game plus an auto slot, from the pause menu,
   with undo.
 - **Less stutter.** A new scene draws straight away while its shaders compile,
@@ -85,6 +85,7 @@ this build. Coming from the official hakuX?
 
 | | |
 |---|---|
+| [Status](STATUS.md) | Every title's status, and how close the next release is, with charts |
 | [Compatibility](https://github.com/jreinach-alt/hakuX/blob/master/docs/COMPATIBILITY.md) | Every tested game and how it ran |
 | [Release notes](https://github.com/jreinach-alt/hakuX/blob/master/docs/releases/README.md) | What changed in each version |
 | [Known issues](https://github.com/jreinach-alt/hakuX/blob/master/KNOWN_ISSUES.md) | What to expect before you report a bug |
