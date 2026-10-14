@@ -9,7 +9,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 No lane session is running.
 
 - **Handhelds:** 1 connected.
-  - Nova: held by `lanelocal-shuffle`
+  - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -114,4 +114,4 @@ No branch is being worked right now.
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 
-_Updated 2026-10-14 09:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 09:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
