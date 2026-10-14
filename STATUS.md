@@ -1,14 +1,14 @@
 # hakuX status
 
-_updated 2026-10-14 04:32 PDT_
+_updated 2026-10-14 05:04 PDT_
 
-0.6: Measured 212 / 300 · Playable 69 / 110.
+0.6: Measured 214 / 300 · Playable 71 / 110.
 
 ## How close is 0.6?
 
-Measured **212** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
+Measured **214** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
-Playable **69** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
+Playable **71** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 
 
 ![Titles over time](chart.svg)
@@ -19,15 +19,15 @@ Playable **69** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
-| 0.6 | 300 | 2026-10-21 | 110 | 2026-10-22 |
-| 0.7 | 425 | 2026-10-31 | 185 | 2026-11-07 |
-| 0.8 | 575 | 2026-11-12 | 300 | 2026-12-02 |
-| 0.9 | 725 | 2026-11-24 | 480 | 2027-01-09 |
-| 1.0 | 876 | 2026-12-06 | 789 | 2027-03-15 |
+| 0.6 | 300 | 2026-10-20 | 110 | 2026-10-22 |
+| 0.7 | 425 | 2026-10-30 | 185 | 2026-11-05 |
+| 0.8 | 575 | 2026-11-11 | 300 | 2026-11-28 |
+| 0.9 | 725 | 2026-11-23 | 480 | 2027-01-03 |
+| 1.0 | 876 | 2026-12-05 | 789 | 2027-03-06 |
 
 Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
-Ships when both are met. At the last 48 h rate: about 2026-10-18.
+Ships when both are met. At the last 48 h rate: about 2026-10-17.
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds (#433).
 
@@ -240,7 +240,9 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Bad Boys: Miami Takedown**<br>done | 🟢 Playable |  |
 | **BloodRayne 2**<br>done | 🟢 Playable |  |
 | **Conan**<br>done | 🟢 Playable |  |
+| **Hello Kitty: Roller Rescue**<br>done | 🟢 Playable |  |
 | **Indigo Prophecy**<br>done | 🟢 Playable |  |
+| **Jacked**<br>done | 🟢 Playable |  |
 | **Jet Set Radio Future**<br>done | 🟢 Playable |  |
 | **Mat Hoffman's Pro BMX 2**<br>done | 🟢 Playable |  |
 | **Mercenaries**<br>done | 🟢 Playable |  |
@@ -265,7 +267,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Alter Echo**<br>reach gameplay | ⚪ not copied |  |
 | **America's Army: Rise of a Soldier**<br>reach gameplay | ⚪ not copied |  |
 
-<details><summary>360 more not copied</summary>
+<details><summary>358 more not copied</summary>
 
 | Title and next step | Status | fps |
 |---|---|---|
@@ -491,7 +493,6 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Harry Potter and the Prisoner of Azkaban**<br>reach gameplay | ⚪ not copied |  |
 | **Harry Potter: Quidditch World Cup**<br>reach gameplay | ⚪ not copied |  |
 | **Headhunter: Redemption**<br>reach gameplay | ⚪ not copied |  |
-| **Hello Kitty: Roller Rescue**<br>reach gameplay | ⚪ not copied |  |
 | **Heroes of the Pacific**<br>reach gameplay | ⚪ not copied |  |
 | **High Heat Major League Baseball 2004**<br>reach gameplay | ⚪ not copied |  |
 | **High Rollers Casino**<br>reach gameplay | ⚪ not copied |  |
@@ -514,7 +515,6 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Intellivision Lives!**<br>reach gameplay | ⚪ not copied |  |
 | **International Superstar Soccer 2**<br>reach gameplay | ⚪ not copied |  |
 | **Iron Phoenix**<br>reach gameplay | ⚪ not copied |  |
-| **Jacked**<br>reach gameplay | ⚪ not copied |  |
 | **Jade Empire**<br>reach gameplay | ⚪ not copied |  |
 | **James Cameron's Dark Angel**<br>reach gameplay | ⚪ not copied |  |
 | **Jaws Unleashed**<br>reach gameplay | ⚪ not copied |  |
@@ -632,7 +632,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-588 titles: 19 blocked, 69 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 77 copied, 370 not copied.
+588 titles: 19 blocked, 71 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 77 copied, 368 not copied.
 
 ---
 
