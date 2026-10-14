@@ -1,14 +1,14 @@
 # hakuX status
 
-_updated 2026-10-14 10:21 PDT_
+_updated 2026-10-14 10:53 PDT_
 
-0.6: Measured 218 / 300 · Playable 72 / 110.
+0.6: Measured 220 / 300 · Playable 74 / 110.
 
 ## How close is 0.6?
 
-Measured **218** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
+Measured **220** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
-Playable **72** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
+Playable **74** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
 
 ![Titles over time](chart.svg)
@@ -19,15 +19,15 @@ Playable **72** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
-| 0.6 | 300 | 2026-10-21 | 110 | 2026-10-22 |
-| 0.7 | 425 | 2026-10-31 | 185 | 2026-11-07 |
-| 0.8 | 575 | 2026-11-12 | 300 | 2026-12-01 |
-| 0.9 | 725 | 2026-11-24 | 480 | 2027-01-08 |
-| 1.0 | 876 | 2026-12-06 | 789 | 2027-03-15 |
+| 0.6 | 300 | 2026-10-20 | 110 | 2026-10-21 |
+| 0.7 | 425 | 2026-10-30 | 185 | 2026-11-05 |
+| 0.8 | 575 | 2026-11-11 | 300 | 2026-11-28 |
+| 0.9 | 725 | 2026-11-23 | 480 | 2027-01-03 |
+| 1.0 | 876 | 2026-12-05 | 789 | 2027-03-06 |
 
 Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
-Ships when both are met. At the last 48 h rate: about 2026-10-18.
+Ships when both are met. At the last 48 h rate: about 2026-10-17.
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds (#433).
 
@@ -133,6 +133,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **RalliSport Challenge 2**<br>reach gameplay | 🟣 inputs ready | **41.7**<br>96% at 28.5+<br>Nova · 10-07 |
 | **Harry Potter and the Philosopher's Stone**<br>done | 🟢 Playable | **41.5**<br>95% at 28.5+<br>Nova · 10-13 |
 | **Conflict Desert Storm II Back to Baghdad USA**<br>reach gameplay | 🔵 copied | **41.1**<br>93% at 28.5+<br>Nova · 10-13 |
+| **Backyard Wrestling 2 There Goes the Neighborhood USA**<br>reach gameplay | 🔵 copied | **40.8**<br>99% at 28.5+<br>Nova · 10-14 |
 | **Dead or Alive 1 Ultimate**<br>reach gameplay<br>#413 open · nothing in flight | 🟣 inputs ready | **40.4**<br>100% at 28.5+<br>Nova · 10-07 |
 | **007: Nightfire**<br>reach gameplay | 🟣 inputs ready | **40.0**<br>89% at 28.5+<br>Nova · 10-06 |
 | **Mortal Kombat: Deadly Alliance**<br>reach gameplay | 🟣 inputs ready | **39.9**<br>100% at 28.5+<br>Nova · 10-06 |
@@ -173,7 +174,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Prince of Persia: The Sands of Time**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Shadow of Memories Europe**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Aeon Flux**<br>reach gameplay | 🔵 copied | **30.0**<br>85% at 28.5+<br>Nova · 10-13 |
-| **Alias**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
+| **Alias**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Area 51**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>73% at 28.5+<br>Nova · 10-08 |
 | **Batman Begins**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>95% at 28.5+<br>Nova · 10-06 |
 | **Beyond Good & Evil**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>93% at 28.5+<br>Nova · 10-06 |
@@ -249,6 +250,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Jacked**<br>done | 🟢 Playable |  |
 | **Jet Set Radio Future**<br>done | 🟢 Playable |  |
 | **Mat Hoffman's Pro BMX 2**<br>done | 🟢 Playable |  |
+| **Max Payne**<br>done | 🟢 Playable |  |
 | **Mercenaries**<br>done | 🟢 Playable |  |
 | **Scooby-Doo! Mystery Mayhem**<br>done | 🟢 Playable |  |
 | **Scooby-Doo! Unmasked**<br>done | 🟢 Playable |  |
@@ -271,7 +273,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Alter Echo**<br>reach gameplay | ⚪ not copied |  |
 | **America's Army: Rise of a Soldier**<br>reach gameplay | ⚪ not copied |  |
 
-<details><summary>357 more not copied</summary>
+<details><summary>356 more not copied</summary>
 
 | Title and next step | Status | fps |
 |---|---|---|
@@ -544,7 +546,6 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Magi Death Fight!**<br>reach gameplay | ⚪ not copied |  |
 | **Manhunt**<br>reach gameplay | ⚪ not copied |  |
 | **Mashed: Drive to Survive**<br>reach gameplay | ⚪ not copied |  |
-| **Max Payne**<br>reach gameplay | ⚪ not copied |  |
 | **Maximum Chase**<br>reach gameplay | ⚪ not copied |  |
 | **Medal of Honor: European Assault**<br>reach gameplay | ⚪ not copied |  |
 | **Medal of Honor: Frontline**<br>reach gameplay | ⚪ not copied |  |
@@ -635,7 +636,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-591 titles: 19 blocked, 72 Playable, 6 soak pending, 10 below 30, 37 inputs ready, 80 copied, 367 not copied.
+592 titles: 19 blocked, 74 Playable, 6 soak pending, 10 below 30, 36 inputs ready, 81 copied, 366 not copied.
 
 ---
 
