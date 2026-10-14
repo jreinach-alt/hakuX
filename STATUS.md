@@ -1,631 +1,643 @@
 # hakuX harness
 
-_updated 2026-10-13 22:47 PDT_
+_updated 2026-10-13 23:17 PDT_
 
-1. 0.5: Measured 204 / 145 · Benchmarked 85 / 145 · Playable 68 / 50; gate the newest soaks are not on the candidate v0.5.0's ref; on them it is met.
-2. Now: 18 lanes: 14 stranded, 2 waiting on audit, 2 no word in 48 h.
+1. 0.6: Measured 204 / 300 · Playable 69 / 110; gate met on the newest soaks, no candidate yet.
+2. Now: 17 lanes: 14 stranded, 2 no word in 48 h, 1 waiting on audit.
 3. Needs a person: 34 items (20 owner decisions).
 4. Machines: thor in use by lanelocal-offline; nova in use by lanelocal-ownerplay; no queue: the devices are not the constraint.
 
-## 1. How close is 0.5?
+## 1. How close is 0.6?
 
-Measured **204** / 145&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓▓`
+Measured **204** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
-Benchmarked **85** / 145&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
+Playable **69** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 
-Playable **68** / 50&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓▓`
+### How close is 0.6?
 
 ![Titles over time](chart.svg)
 
-Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed).
+### How close is 1.0?
 
-Ships when both are met. At the last 48 h rate: met.
+![Titles over time](chart.svg)
 
-Target: 0.5 ships when 145 titles are measured and 50 are Playable on the Thor/Nova handhelds (#433).
+| release | Measured target | projected date | Playable target | projected date |
+|---|---|---|---|---|
+| 0.6 | 300 | 2026-10-22 | 110 | 2026-10-22 |
+| 0.7 | 425 | 2026-11-02 | 185 | 2026-11-07 |
+| 0.8 | 575 | 2026-11-14 | 300 | 2026-12-01 |
+| 0.9 | 725 | 2026-11-27 | 480 | 2027-01-09 |
+| 1.0 | 876 | 2026-12-11 | 789 | 2027-03-15 |
 
-Decided: owner, 2026-10-12: the count is 145 measured, not 145 benchmarked (restating 2026-09-26 21:55 PDT, when Measured joined the header); 50 Playable unchanged from 2026-09-26 17:15 PDT ([#433 comment](https://github.com/jreinach-alt/hakuX/issues/433#issuecomment-5851419837)). Read from `release-0.5.toml`.
+Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
-Pipeline: Copied, Inputs, Save, Bench. ✓ done · – not yet · n/a no profile step. The per-title detail is in index.html.
+Ships when both are met. At the last 48 h rate: about 2026-10-18.
+
+Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds (#433).
+
+Decided: owner, 2026-10-13 ~18:00 PDT: track 0.6 next, on a curve toward 1.0 (300/110, then 425/185, 575/300, 725/480, and 876/789 at 1.0) ([#433 comment](https://github.com/jreinach-alt/hakuX/issues/433)). Read from `release-0.6.toml`.
+
+Key -- fps cell: handheld, date, then its performance mode when recorded (max perf or default perf) and how the reading was made (hand-reviewed, screen: 90-240 s only, or soak).<br>Status: red blocked, green Playable, orange soak pending, yellow below 30, purple inputs ready, blue copied, grey not copied.
 
 | Title and next step | Status | fps | C I S B |
 |---|---|---|---|
-| **187: Ride or Die**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Nova · 10-11 · MAX | ✓ ✓ n/a ✓ |
-| **25 to Life**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Nova · 10-13 · unrecorded<br>Thor 35.7 | ✓ – ✓ ✓ |
-| **Alien Hominid**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · REST | ✓ ✓ n/a ✓ |
-| **AMF Bowling 2004**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – ✓ |
-| **ATV: Quad Power Racing 2**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – ✓ |
-| **Auto Modellista**<br>re-benchmark at MAX | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ ✓ n/a – |
-| **Baldur's Gate: Dark Alliance**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 09-30 · REST | ✓ ✓ n/a ✓ |
-| **Battlestar Galactica USA**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Black Stone: Magic & Steel**<br>benchmark at MAX | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-02 · MAX | ✓ ✓ n/a – |
-| **Bruce Lee: Quest of the Dragon**<br>**fix the hang**<br>**blocker: hang: 21.2 s without 60 guest flips after the mark** | 🔴 blocked | **59.9**<br>81% at 28.5+<br>Thor · 09-26 · MAX | ✓ ✓ n/a – |
-| **Capcom Classics Collection Vol. 2**<br>**fix the crash**<br>**blocker: crash: guest exited after 390s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 09-30 · MAX | ✓ ✓ n/a – |
-| **Castlevania: Curse of Darkness**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Thor · 10-01 · MAX<br>Nova 59.9 | ✓ ✓ ✓ ✓ |
-| **Crazy Taxi 3 High Roller USA**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>77% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Darkwatch**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Future Tactics: The Uprising**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – ✓ |
-| **Genma Onimusha**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Guilty Gear XX #Reload: The Midnight Carnival**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ ✓ n/a ✓ |
-| **Gunvalkyrie**<br>done | 🟢 Playable | **59.9**<br>99% at 28.5+<br>Nova · 10-03 · REST | ✓ – – ✓ |
-| **Kabuki Warriors**<br>done | 🟢 Playable | **59.9**<br>95% at 28.5+<br>Nova · 10-03 · REST | ✓ ✓ n/a ✓ |
-| **KOF: Maximum Impact - Maniax**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-12 · MAX | ✓ ✓ n/a ✓ |
-| **Manhunt USA**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 · unrecorded | ✓ – – – |
-| **Max Payne 2 The Fall of Max Payne USA**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 · unrecorded | ✓ – – – |
-| **Max Payne 2: The Fall of Max Payne**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · MAX, screen: 90-240 s only | ✓ – – ✓ |
-| **MLB SlugFest 2003**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – ✓ |
-| **NFL Blitz 2002 USA**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · MAX, screen: 90-240 s only | ✓ – – – |
-| **Nickelodeon Avatar The Last Airbender USA**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Ninja Gaiden**<br>**fix the crash**<br>**blocker: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked | **59.9**<br>64% at 28.5+<br>Thor · 09-30 · MAX, soak | ✓ – ✓ – |
-| **Pac-Man World 2**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Petit Copter**<br>needs a gameplay route | 🔵 copied | **59.9**<br>78% at 28.5+<br>Thor · 10-01 · MAX, screen: 90-240 s only | ✓ – ✓ – |
-| **Phantom Crash**<br>re-benchmark at MAX | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-04 · REST | ✓ ✓ n/a – |
-| **Plus Plumb 2**<br>needs a gameplay route | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – ✓ – |
-| **RalliSport Challenge**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-04 · unrecorded | ✓ – – – |
-| **Rayman 3: Hoodlum Havoc**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – ✓ |
-| **Rent a Hero No 1 Japan**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Scooby Doo Unmasked Europe**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>99% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Sonic Heroes**<br>**fix the crash**<br>**blocker: crash: guest exited after 247s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · MAX | ✓ ✓ n/a – |
-| **Spikeout: Battle Street**<br>done<br>#303 open · nothing in flight | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-03 · unrecorded | ✓ ✓ n/a ✓ |
-| **Strike Force Bowling**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – – |
-| **Tecmo Classic Arcade**<br>re-benchmark at MAX | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ ✓ n/a – |
-| **TimeSplitters 2**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – ✓ |
-| **Whacked!**<br>**fix the crash**<br>**blocker: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked | **59.9**<br>66% at 28.5+<br>Nova · 10-04 · REST | ✓ – – – |
-| **World Soccer Winning Eleven 9**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – – ✓ |
-| **WWE Raw 2**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · MAX, soak | ✓ ✓ n/a ✓ |
-| **XIII USA Europe En Fr De Es It**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Deathrow**<br>needs a gameplay route | 🔵 copied | **59.9**<br>100% at 28.5+<br>Thor · 09-30 · MAX, screen: 90-240 s only | ✓ – ✓ – |
-| **Fantastic 4**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>43% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Indigo Prophecy USA**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>99% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **LEGO Star Wars: The Video Game**<br>re-benchmark at MAX | 🟣 inputs ready | **59.9**<br>98% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ ✓ n/a – |
-| **Lemony Snicket s A Series of Unfortunate Events USA**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-12 · unrecorded | ✓ – – – |
-| **Medal of Honor Frontline USA**<br>needs a gameplay route and a save | 🔵 copied | **59.9**<br>86% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Tony Hawk's Pro Skater 3**<br>**fix the crash**<br>**blocker: crash: guest exited after 205s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · MAX, soak | ✓ ✓ n/a – |
-| **Tony Hawk's Pro Skater 2x**<br>done | 🟢 Playable | **59.8**<br>100% at 28.5+<br>Thor · 10-01 · MAX<br>Nova 59.8 | ✓ ✓ n/a ✓ |
-| **Capcom vs. SNK 2 EO**<br>done | 🟢 Playable | **59.8**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – ✓ |
-| **Tony Hawk s Underground 2 USA Europe En Fr De**<br>needs a gameplay route and a save | 🔵 copied | **59.7**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Mortal Kombat: Armageddon**<br>done | 🟢 Playable | **59.2**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – ✓ ✓ |
-| **MLB SlugFest: Loaded**<br>done | 🟢 Playable | **58.9**<br>100% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – ✓ |
-| **Rogue Trooper**<br>done | 🟢 Playable | **58.9**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – – ✓ |
-| **AMF Xtreme Bowling**<br>**fix the crash**<br>**blocker: crash: exiting due to SIG_DFL handler for signal 11, ucontext 0x6fcde81e20** | 🔴 blocked | **58.7**<br>100% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – – |
-| **Gui Yi Taiwan**<br>needs a gameplay route and a save | 🔵 copied | **57.7**<br>94% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Ghost Master The Gravenville Chronicles Europe En Fr De Es It**<br>needs a gameplay route and a save | 🔵 copied | **57.6**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **MTV Celebrity Deathmatch**<br>done | 🟢 Playable | **57.2**<br>99% at 28.5+<br>Nova · 10-04 · unrecorded | ✓ – – ✓ |
-| **NBA 2K2**<br>done | 🟢 Playable | **57.0**<br>100% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – ✓ |
-| **Tony Hawk's Pro Skater 4**<br>done | 🟢 Playable | **56.6**<br>98% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – ✓ |
-| **Batman: Dark Tomorrow**<br>needs a gameplay route and a save | 🔵 copied | **56.5**<br>98% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Project Gotham Racing 2**<br>**fix the hang**<br>**blocker: void: thermal-pause: thermal-pause-F8 1/1 began after +140 s and by +172 s (device 09-29 13:22:54); still paused at the last reading, relative to the mark** | 🔴 blocked | **55.7**<br>40% at 28.5+<br>Thor · 09-29 · MAX, screen: 90-240 s only | ✓ ✓ n/a – |
-| **Burnout Revenge**<br>done | 🟢 Playable | **54.8**<br>100% at 28.5+<br>Nova · 10-12 · MAX | ✓ ✓ n/a ✓ |
-| **Tron 2.0 - Killer App (USA, Europe).iso**<br>needs a gameplay route and a save | 🔵 copied | **54.8**<br>92% at 28.5+<br>Nova · 10-06 · REST | ✓ – – – |
-| **Panzer Dragoon Orta**<br>done | 🟢 Playable | **54.1**<br>100% at 28.5+<br>Nova · 10-03 · unrecorded | ✓ – ✓ ✓ |
-| **Mercenaries USA Europe**<br>needs a gameplay route and a save | 🔵 copied | **53.3**<br>100% at 28.5+<br>Nova · 10-12 · unrecorded | ✓ – – – |
-| **4x4 Evo 2**<br>needs a gameplay route and a save | 🔵 copied | **53.2**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Disney/Pixar Ratatouille**<br>done | 🟢 Playable | **52.8**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – – ✓ |
-| **Dead or Alive 3**<br>20-min soak | soak pending | **50.1**<br>100% at 28.5+<br>Nova · 10-12 · MAX<br>Thor 52.2 | ✓ ✓ ✓ ✓ |
-| **X Men The Official Game Europe**<br>needs a gameplay route and a save | 🔵 copied | **49.3**<br>100% at 28.5+<br>Nova · 10-12 · unrecorded | ✓ – – – |
-| **Super Monkey Ball Deluxe**<br>**fix the crash**<br>**blocker: crash: guest exited after 250s** | 🔴 blocked | **48.1**<br>100% at 28.5+<br>Thor · 10-01 · MAX | ✓ ✓ n/a – |
-| **Ty the Tasmanian Tiger Night of the Quinkan USA Australia**<br>needs a gameplay route and a save | 🔵 copied | **47.8**<br>79% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Legacy of Kain Defiance USA**<br>needs a gameplay route and a save | 🔵 copied | **47.6**<br>97% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Crash Bandicoot: The Wrath of Cortex**<br>re-benchmark at MAX | 🟣 inputs ready | **46.9**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ ✓ n/a – |
-| **Dark Summit**<br>done | 🟢 Playable | **45.9**<br>93% at 28.5+<br>Nova · 10-04 · unrecorded | ✓ – – ✓ |
-| **Mortal Kombat: Shaolin Monks**<br>re-benchmark at MAX | 🟣 inputs ready | **45.9**<br>49% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ ✓ n/a – |
-| **NFL Blitz 2002**<br>done | 🟢 Playable | **45.0**<br>100% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – ✓ |
-| **MLB SlugFest 2004**<br>done | 🟢 Playable | **44.4**<br>100% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – ✓ |
-| **Tenchu 3 Kaiki no Shou Japan**<br>needs a gameplay route and a save | 🔵 copied | **44.3**<br>100% at 28.5+<br>Nova · 10-12 · unrecorded | ✓ – – – |
-| **Arx Fatalis**<br>needs a gameplay route and a save | 🔵 copied | **43.9**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Fight Club**<br>done | 🟢 Playable | **43.4**<br>94% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – – ✓ |
-| **NBA 2K3**<br>done | 🟢 Playable | **42.9**<br>96% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – – ✓ |
-| **ToeJam & Earl III: Mission to Earth**<br>done | 🟢 Playable | **42.1**<br>73% at 28.5+<br>Nova · 10-03 · unrecorded | ✓ – ✓ ✓ |
-| **RalliSport Challenge 2**<br>re-benchmark at MAX | 🟣 inputs ready | **41.7**<br>96% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ ✓ n/a – |
-| **Harry Potter and the Philosopher's Stone**<br>done | 🟢 Playable | **41.5**<br>95% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – ✓ |
-| **Conflict Desert Storm II Back to Baghdad USA**<br>needs a gameplay route and a save | 🔵 copied | **41.1**<br>93% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Dead or Alive 1 Ultimate**<br>re-benchmark at MAX<br>#413 open · nothing in flight | 🟣 inputs ready | **40.4**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ ✓ n/a – |
-| **007: Nightfire**<br>re-benchmark at MAX | 🟣 inputs ready | **40.0**<br>89% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ ✓ n/a – |
-| **Mortal Kombat: Deadly Alliance**<br>re-benchmark at MAX | 🟣 inputs ready | **39.9**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ ✓ n/a – |
-| **Ninja Gaiden Black**<br>needs a gameplay route | 🔵 copied | **38.0**<br>97% at 28.5+<br>Nova · 10-12 · MAX | ✓ – ✓ – |
-| **The Simpsons: Hit & Run**<br>done | 🟢 Playable | **37.9**<br>100% at 28.5+<br>Nova · 10-04 · unrecorded | ✓ – – ✓ |
-| **NHL Hitz Pro**<br>needs a gameplay route and a save | 🔵 copied | **37.4**<br>75% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – – |
-| **Blood Wake**<br>**fix the hang**<br>**blocker: hang: 10.6 s without 60 guest flips after the mark** | 🔴 blocked | **37.4**<br>30% at 28.5+<br>Thor · 09-27 · MAX<br>Nova 59.9 | ✓ ✓ n/a – |
-| **Tron 2.0 - Killer App**<br>needs a gameplay route and a save | 🔵 copied | **37.2**<br>98% at 28.5+<br>Nova · 10-04 · unrecorded | ✓ – – – |
-| **NBA Live 2004**<br>done | 🟢 Playable | **35.5**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – – ✓ |
-| **NHL 2K3**<br>needs a gameplay route and a save | 🔵 copied | **35.0**<br>69% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – – |
-| **Bistro Cupid**<br>needs a gameplay route | 🔵 copied | **34.4**<br>87% at 28.5+<br>Thor · 09-30 · MAX, soak | ✓ – ✓ – |
-| **Top Spin**<br>20-min soak | soak pending | **32.6**<br>91% at 28.5+<br>Nova · 10-09 · MAX | ✓ ✓ n/a ✓ |
-| **Aliens Versus Predator: Extinction**<br>re-benchmark at MAX | 🟣 inputs ready | **31.0**<br>100% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ ✓ n/a – |
-| **Fuzion Frenzy**<br>**fix the hang**<br>**blocker: hang: 13.4 s without 60 guest flips after the mark** | 🔴 blocked | **30.6**<br>54% at 28.5+<br>Nova · 09-27 · MAX | ✓ ✓ n/a – |
-| **Panzer Elite Action Fields of Glory Europe**<br>needs a gameplay route and a save | 🔵 copied | **30.4**<br>90% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Crimson Skies: High Road to Revenge**<br>done | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 10-13 · REST<br>Thor **23.4** | ✓ ✓ n/a ✓ |
-| **50 Cent: Bulletproof**<br>done<br>#382 open · nothing in flight | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 09-30 · REST, soak | ✓ ✓ n/a ✓ |
-| **Azurik: Rise of Perathia**<br>done | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 09-29 · REST<br>Thor 30.0 | ✓ ✓ n/a ✓ |
-| **Blade II**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – ✓ |
-| **Blazing Angels Squadrons of WWII USA Europe En Fr De Es It**<br>needs a gameplay route and a save | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **BloodRayne 2 USA**<br>needs a gameplay route and a save | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-08 · unrecorded | ✓ – – – |
-| **Blowout**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – – ✓ |
-| **Buffy the Vampire Slayer**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-12 · MAX | ✓ ✓ ✓ ✓ |
-| **Conan Europe En Fr De Es It**<br>needs a gameplay route and a save | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-12 · unrecorded | ✓ – – – |
-| **Conflict Global Terror USA**<br>needs a gameplay route and a save | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Family Guy: Video Game!**<br>20-min soak | soak pending | **30.0**<br>98% at 28.5+<br>Thor · 10-01 · MAX | ✓ ✓ n/a ✓ |
-| **GoldenEye: Rogue Agent**<br>**reach gameplay**<br>**blocker: reached_gameplay: no `mark gameplay` in logcat** | 🔴 blocked | **30.0**<br>94% at 28.5+<br>Nova · 09-27 · MAX, screen: 90-240 s only | ✓ ✓ ✓ – |
-| **Grabbed by the Ghoulies**<br>done<br>#311 closed | 🟢 Playable | **30.0**<br>98% at 28.5+<br>Nova · 10-12 · MAX<br>Thor 30.0 | ✓ ✓ ✓ ✓ |
-| **Grand Theft Auto III**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-12 · MAX | ✓ ✓ n/a ✓ |
-| **Grand Theft Auto: Vice City**<br>done | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-13 · MAX | ✓ ✓ n/a ✓ |
-| **Halo 2**<br>needs a gameplay route | 🔵 copied | **30.0**<br>96% at 28.5+<br>Nova · 10-03 · REST | ✓ – ✓ – |
-| **Halo: Combat Evolved**<br>done | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-03 · REST | ✓ – ✓ ✓ |
-| **Marvel Nemesis: Rise of the Imperfects**<br>re-benchmark at MAX | 🟣 inputs ready | **30.0**<br>99% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ ✓ n/a – |
-| **MTV Music Generator 3 This Is the Remix USA En Es**<br>needs a gameplay route and a save | 🔵 copied | **30.0**<br>88% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Prince of Persia: The Sands of Time**<br>needs a gameplay route and a save | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Shadow of Memories Europe**<br>needs a gameplay route and a save | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Aeon Flux**<br>needs a gameplay route and a save | 🔵 copied | **30.0**<br>85% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Area 51**<br>re-benchmark at MAX | 🟣 inputs ready | **30.0**<br>73% at 28.5+<br>Nova · 10-08 · unrecorded | ✓ ✓ n/a – |
-| **Batman Begins**<br>re-benchmark at MAX | 🟣 inputs ready | **30.0**<br>95% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ ✓ n/a – |
-| **Beyond Good & Evil**<br>re-benchmark at MAX | 🟣 inputs ready | **30.0**<br>93% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ ✓ n/a – |
-| **Grand Theft Auto: San Andreas**<br>20-min soak | soak pending | **30.0**<br>98% at 28.5+<br>Nova · 10-12 · MAX | ✓ ✓ n/a ✓ |
-| **Lord of the Rings The The Fellowship of the Ring USA**<br>needs a gameplay route and a save | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **MechAssault 2: Lone Wolf**<br>benchmark at MAX | 🟣 inputs ready | **30.0**<br>89% at 28.5+<br>Nova · 10-08 · MAX, soak | ✓ ✓ ✓ – |
-| **Shin Megami Tensei: NINE**<br>20-min soak | soak pending | **30.0**<br>97% at 28.5+<br>Thor · 09-30 · MAX | ✓ ✓ n/a ✓ |
-| **Tork: Prehistoric Punk**<br>done | 🟢 Playable | **30.0**<br>59% at 28.5+<br>Thor · 09-30 · MAX<br>Nova 30.0 | ✓ ✓ n/a ✓ |
-| **Battlefield 2: Modern Combat**<br>re-benchmark at MAX | 🟣 inputs ready | **29.9**<br>67% at 28.5+<br>Nova · 10-01 · REST | ✓ ✓ ✓ – |
-| **Cel Damage**<br>needs a gameplay route and a save | 🔵 copied | **29.9**<br>98% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Star Wars Knights of the Old Republic II The Sith Lords Europe**<br>needs a gameplay route and a save | 🔵 copied | **29.9**<br>66% at 28.5+<br>Nova · 10-12 · unrecorded | ✓ – – – |
-| **Turok: Evolution**<br>needs a gameplay route and a save | 🔵 copied | **29.9**<br>84% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Half-Life 2**<br>needs a gameplay route and a save | 🔵 copied | **29.8**<br>74% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Shrek 2**<br>done | 🟢 Playable | **29.8**<br>92% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – ✓ |
-| **Call of Duty 3**<br>done | 🟢 Playable | **29.4**<br>100% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ – ✓ ✓ |
-| **Star Wars The Clone Wars USA**<br>needs a gameplay route and a save | 🔵 copied | **29.4**<br>61% at 28.5+<br>Nova · 10-08 · unrecorded | ✓ – – – |
-| **Phantom Dust**<br>needs a gameplay route | 🔵 copied | **29.4**<br>74% at 28.5+<br>Thor · 09-30 · MAX, screen: 90-240 s only | ✓ – ✓ – |
-| **Ultimate Spider-Man**<br>needs a gameplay route and a save | 🔵 copied | **29.4**<br>89% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space**<br>benchmark at MAX | 🟣 inputs ready | **29.3**<br>57% at 28.5+<br>Nova · 09-27 · MAX<br>Thor **21.7** | ✓ ✓ n/a – |
-| **The Incredible Hulk: Ultimate Destruction**<br>re-benchmark at MAX | 🟣 inputs ready | **29.2**<br>64% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ ✓ n/a – |
-| **Dragon Ball Z: Sagas**<br>needs a gameplay route and a save | 🔵 copied | **29.2**<br>57% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Forza Motorsport**<br>needs a gameplay route<br>#414 open · nothing in flight | 🔵 copied | **29.0**<br>45% at 28.5+<br>Nova · 09-30 · REST<br>Thor **16.7** | ✓ – ✓ – |
-| **Scooby Doo Mystery Mayhem Europe**<br>needs a gameplay route and a save | 🔵 copied | **29.0**<br>100% at 28.5+<br>Nova · 10-12 · unrecorded | ✓ – – – |
-| **Legacy of Kain: Defiance**<br>done | 🟢 Playable | **29.0**<br>37% at 28.5+<br>Nova · 10-11 · MAX, screen: 90-240 s only | ✓ – – ✓ |
-| **Forgotten Realms Demon Stone USA**<br>needs a gameplay route and a save | 🔵 copied | **28.9**<br>51% at 28.5+<br>Nova · 10-08 · unrecorded | ✓ – – – |
-| **Midnight Club 3: DUB Edition**<br>raise fps (40% at 28.5+) | below 30 | **28.9**<br>40% at 28.5+<br>Nova · 10-12 · MAX, soak | ✓ ✓ ✓ ✓ |
-| **Star Wars: Episode III: Revenge of the Sith**<br>re-benchmark at MAX | 🟣 inputs ready | **28.5**<br>47% at 28.5+<br>Nova · 10-06 · REST | ✓ ✓ n/a – |
-| **Amped 2**<br>needs a gameplay route | 🔵 copied | **28.4**<br>44% at 28.5+<br>Nova · 10-04 · unrecorded | ✓ – ✓ – |
-| **Otogi: Myth of Demons**<br>re-benchmark at MAX | 🟣 inputs ready | **28.1**<br>35% at 28.5+<br>Thor · 09-30 · REST | ✓ ✓ n/a – |
-| **The Lord of the Rings: The Return of the King**<br>re-benchmark at MAX | 🟣 inputs ready | **27.7**<br>33% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ ✓ n/a – |
-| **Dino Crisis 3**<br>**fix the hang**<br>**blocker: hang: 17.3 s without 60 guest flips after the mark** | 🔴 blocked | **27.2**<br>16% at 28.5+<br>Nova · 10-02 · MAX | ✓ ✓ n/a – |
-| **Oddworld: Stranger's Wrath**<br>needs a gameplay route and a save | 🔵 copied | **27.0**<br>38% at 28.5+<br>Nova · 10-13 · unrecorded | ✓ – – – |
-| **Counter-Strike**<br>raise fps (0% at 28.5+) | below 30 | **25.9**<br>0% at 28.5+<br>Nova · 10-03 · MAX, soak | ✓ ✓ n/a ✓ |
-| **Spider-Man 2**<br>re-benchmark at MAX | 🟣 inputs ready | **25.8**<br>29% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ ✓ n/a – |
-| **Need for Speed: Most Wanted**<br>done | 🟢 Playable | **25.8**<br>19% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ – – ✓ |
-| **BloodRayne**<br>raise fps (8% at 28.5+) | below 30 | **25.6**<br>8% at 28.5+<br>Thor · 09-28 · MAX, soak | ✓ ✓ n/a ✓ |
-| **Galleon**<br>raise fps (10% at 28.5+) | below 30 | **24.7**<br>10% at 28.5+<br>Thor · 09-30 · MAX | ✓ ✓ n/a ✓ |
-| **JSRF: Jet Set Radio Future**<br>raise fps (11% at 28.5+) | below 30 | **24.2**<br>11% at 28.5+<br>Thor · 09-27 · MAX<br>Nova 59.9 | ✓ ✓ n/a ✓ |
-| **Tom Clancy s Splinter Cell Double Agent USA**<br>needs a gameplay route and a save | 🔵 copied | **23.5**<br>3% at 28.5+<br>Nova · 10-12 · unrecorded | ✓ – – – |
-| **Pilot Down Behind Enemy Lines Europe**<br>needs a gameplay route and a save | 🔵 copied | **23.3**<br>23% at 28.5+<br>Nova · 10-07 · unrecorded | ✓ – – – |
-| **Midnight Club II**<br>re-benchmark at MAX | 🟣 inputs ready | **23.1**<br>0% at 28.5+<br>Nova · 10-05 · unrecorded | ✓ ✓ n/a – |
-| **007: Agent Under Fire**<br>re-benchmark at MAX<br>#412 open · nothing in flight | 🟣 inputs ready | **22.1**<br>0% at 28.5+<br>Nova · 09-30 · REST | ✓ ✓ n/a – |
-| **Burnout 3: Takedown**<br>benchmark at MAX | 🟣 inputs ready | **22.0**<br>0% at 28.5+<br>Thor · 09-28 · MAX, soak | ✓ ✓ ✓ – |
-| **Psychonauts**<br>needs a gameplay route | 🔵 copied | **22.0**<br>0% at 28.5+<br>Thor · 09-30 · MAX, screen: 90-240 s only | ✓ – ✓ – |
-| **Arctic Thunder**<br>raise fps (9% at 28.5+) | below 30 | **21.4**<br>9% at 28.5+<br>Thor · 09-27 · MAX<br>Nova 30.2 | ✓ ✓ n/a ✓ |
-| **Amped: Freestyle Snowboarding**<br>re-benchmark at MAX | 🟣 inputs ready | **20.6**<br>9% at 28.5+<br>Nova · 10-04 · unrecorded | ✓ ✓ n/a – |
-| **Alias**<br>raise fps (0% at 28.5+) | below 30 | **20.4**<br>0% at 28.5+<br>Thor · 09-28 · MAX, soak | ✓ ✓ n/a ✓ |
-| **Dead or Alive Xtreme Beach Volleyball**<br>benchmark at MAX | 🟣 inputs ready | **20.0**<br>12% at 28.5+<br>Nova · 09-27 · MAX, screen: 90-240 s only | ✓ ✓ n/a – |
-| **NBA Live 07**<br>re-benchmark at MAX | 🟣 inputs ready | **20.0**<br>1% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ ✓ n/a – |
-| **NBA Live 06**<br>re-benchmark at MAX | 🟣 inputs ready | **20.0**<br>0% at 28.5+<br>Nova · 10-06 · unrecorded | ✓ ✓ n/a – |
-| **NBA Live 2005**<br>re-benchmark at MAX | 🟣 inputs ready | **20.0**<br>0% at 28.5+<br>Nova · 10-03 · unrecorded | ✓ ✓ n/a – |
-| **Conker: Live & Reloaded**<br>needs a gameplay route | 🔵 copied | **15.8**<br>16% at 28.5+<br>Nova · 10-03 · MAX, screen: 90-240 s only | ✓ – ✓ – |
-| **Crash Twinsanity**<br>raise fps (0% at 28.5+) | below 30 | **15.7**<br>0% at 28.5+<br>Thor · 09-27 · MAX | ✓ ✓ n/a ✓ |
-| **Blinx: The Time Sweeper**<br>re-benchmark at MAX<br>#372 open · nothing in flight | 🟣 inputs ready | **14.8**<br>0% at 30+<br>Thor · 09-26 · unrecorded, hand-reviewed | ✓ ✓ n/a – |
-| **Project Gotham Racing**<br>**fix the hang**<br>**blocker: hang: 11.6 s without 60 guest flips after the mark** | 🔴 blocked | **14.3**<br>0% at 28.5+<br>Thor · 09-26 · MAX | ✓ ✓ ✓ – |
-| **Gauntlet: Dark Legacy**<br>benchmark at MAX | 🟣 inputs ready | **14.2**<br>0% at 28.5+<br>Thor · 09-30 · MAX, screen: 90-240 s only | ✓ ✓ n/a – |
-| **Brute Force**<br>raise fps (0% at 28.5+) | below 30 | **13.2**<br>0% at 28.5+<br>Thor · 09-27 · MAX | ✓ ✓ n/a ✓ |
-| **Dungeons & Dragons Heroes**<br>re-benchmark at MAX | 🟣 inputs ready | **12.5**<br>0% at 28.5+<br>Nova · 10-06 · REST | ✓ ✓ ✓ – |
-| **Burnout**<br>raise fps (7% at 28.5+) | below 30 | **10.8**<br>7% at 28.5+<br>Thor · 09-27 · MAX | ✓ ✓ n/a ✓ |
-| **Bloody Roar: Extreme**<br>raise fps (0% at 28.5+) | below 30 | **9.8**<br>0% at 28.5+<br>Nova · 10-02 · MAX | ✓ ✓ n/a ✓ |
-| **Black**<br>raise fps (0% at 28.5+) | below 30 | **7.5**<br>0% at 28.5+<br>Thor · 09-26 · MAX | ✓ ✓ ✓ ✓ |
-| **Mission Impossible Operation Surma USA**<br>**fix the hang**<br>**blocker: hang: 10.0 s without 60 guest flips after the mark** | 🔴 blocked | **6.9**<br>0% at 28.5+<br>Nova · 10-12 · unrecorded | ✓ – – – |
-| **Midtown Madness 3**<br>**fix the hang**<br>**blocker: hang: 12.0 s without 60 guest flips after the mark** | 🔴 blocked | **3.1**<br>0% at 28.5+<br>Thor · 09-27 · MAX | ✓ ✓ n/a – |
-| **54540082**<br>**needs a gameplay route**<br>**blocker: booted: the guest never appeared or never flipped 60 frames** | 🔴 blocked |  | – – – – |
-| **Die Hard Vendetta Europe En Fr Es It**<br>**needs a gameplay route**<br>**blocker: booted: the guest never appeared or never flipped 60 frames** | 🔴 blocked |  | ✓ – – – |
-| **SSX Tricky**<br>**fix the hang**<br>**blocker: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked |  | ✓ – ✓ – |
-| **Avatar: The Last Airbender**<br>done | 🟢 Playable |  | – – – ✓ |
-| **BloodRayne 2**<br>done | 🟢 Playable |  | – – – ✓ |
-| **Conan**<br>done | 🟢 Playable |  | – – – ✓ |
-| **Indigo Prophecy**<br>done | 🟢 Playable |  | – – – ✓ |
-| **Jet Set Radio Future**<br>done | 🟢 Playable |  | – – – ✓ |
-| **KOF: Maximum Impact: Maniax**<br>done | 🟢 Playable |  | – ✓ n/a ✓ |
-| **Mercenaries**<br>done | 🟢 Playable |  | – – – ✓ |
-| **Scooby-Doo! Mystery Mayhem**<br>done | 🟢 Playable |  | – – – ✓ |
-| **Scooby-Doo! Unmasked**<br>done | 🟢 Playable |  | – – – ✓ |
-| **Shadow of Memories**<br>done | 🟢 Playable |  | – – – ✓ |
-| **SpongeBob SquarePants: Battle for Bikini Bottom**<br>done | 🟢 Playable |  | – – – ✓ |
-| **The Lord of the Rings: The Fellowship of the Ring**<br>done | 🟢 Playable |  | – – – ✓ |
-| **Tony Hawk's Underground 2**<br>done | 🟢 Playable |  | – – – ✓ |
-| **X-Men: The Official Game**<br>done | 🟢 Playable |  | – – – ✓ |
-| **Dungeons & Dragons: Heroes**<br>benchmark at MAX | 🟣 inputs ready |  | ✓ ✓ ✓ – |
-| **Shin Megami Tensei: Nine**<br>benchmark at MAX | 🟣 inputs ready |  | ✓ ✓ n/a – |
-| **Antz Extreme Racing**<br>needs a gameplay route and a save | 🔵 copied |  | ✓ – – – |
-| **Aoi Namida**<br>needs a gameplay route and a save | 🔵 copied |  | ✓ – – – |
-| **MechAssault**<br>needs a gameplay route and a save | 🔵 copied |  | ✓ – – – |
-| **AFL Live 2003**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **AFL Live 2004**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **AFL Live Premiership Edition**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **AFL Premiership 2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Aggressive Inline**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **All-Star Baseball 2003 featuring Derek Jeter**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **All-Star Baseball 2004 featuring Derek Jeter**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **All-Star Baseball 2005 featuring Derek Jeter**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Alter Echo**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **America's Army: Rise of a Soldier**<br>copy to a handheld | ⚪ not copied |  | – – – – |
+| **187: Ride or Die**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Nova · 10-11 · max perf |  |
+| **25 to Life**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Nova · 10-13<br>Thor 35.7 |  |
+| **Alien Hominid**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · default perf |  |
+| **AMF Bowling 2004**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-05 |  |
+| **ATV: Quad Power Racing 2**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **Auto Modellista**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |  |
+| **Baldur's Gate: Dark Alliance**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 09-30 · default perf |  |
+| **Battlestar Galactica USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **Black Stone: Magic & Steel**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-02 · max perf |  |
+| **Bruce Lee: Quest of the Dragon**<br>**blocked: hang: 21.2 s without 60 guest flips after the mark** | 🔴 blocked | **59.9**<br>81% at 28.5+<br>Thor · 09-26 · max perf |  |
+| **Capcom Classics Collection Vol. 2**<br>**blocked: crash: guest exited after 390s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 09-30 · max perf |  |
+| **Castlevania: Curse of Darkness**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Thor · 10-01 · max perf<br>Nova 59.9 |  |
+| **Crazy Taxi 3 High Roller USA**<br>reach gameplay | 🔵 copied | **59.9**<br>77% at 28.5+<br>Nova · 10-13 |  |
+| **Darkwatch**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **Future Tactics: The Uprising**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |  |
+| **Genma Onimusha**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **Guilty Gear XX #Reload: The Midnight Carnival**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |  |
+| **Gunvalkyrie**<br>done | 🟢 Playable | **59.9**<br>99% at 28.5+<br>Nova · 10-03 · default perf |  |
+| **Kabuki Warriors**<br>done | 🟢 Playable | **59.9**<br>95% at 28.5+<br>Nova · 10-03 · default perf |  |
+| **KOF: Maximum Impact - Maniax**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-12 · max perf |  |
+| **Manhunt USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 |  |
+| **Max Payne 2 The Fall of Max Payne USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 |  |
+| **Max Payne 2: The Fall of Max Payne**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |  |
+| **MLB SlugFest 2003**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-05 |  |
+| **NFL Blitz 2002 USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |  |
+| **Nickelodeon Avatar The Last Airbender USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |  |
+| **Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |  |
+| **Ninja Gaiden**<br>**blocked: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked | **59.9**<br>64% at 28.5+<br>Thor · 09-30 · max perf, soak |  |
+| **Pac-Man World 2**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **Petit Copter**<br>reach gameplay | 🔵 copied | **59.9**<br>78% at 28.5+<br>Thor · 10-01 · max perf, screen: 90-240 s only |  |
+| **Phantom Crash**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-04 · default perf |  |
+| **Plus Plumb 2**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **RalliSport Challenge**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-04 |  |
+| **Rayman 3: Hoodlum Havoc**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **Rent a Hero No 1 Japan**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |  |
+| **Scooby Doo Unmasked Europe**<br>reach gameplay | 🔵 copied | **59.9**<br>99% at 28.5+<br>Nova · 10-13 |  |
+| **Sonic Heroes**<br>**blocked: crash: guest exited after 247s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · max perf |  |
+| **Spikeout: Battle Street**<br>done<br>#303 open · nothing in flight | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-03 |  |
+| **Strike Force Bowling**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-05 |  |
+| **Tecmo Classic Arcade**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |  |
+| **TimeSplitters 2**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **Whacked!**<br>**blocked: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked | **59.9**<br>66% at 28.5+<br>Nova · 10-04 · default perf |  |
+| **World Soccer Winning Eleven 9**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |  |
+| **WWE Raw 2**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · max perf, soak |  |
+| **XIII USA Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |  |
+| **Deathrow**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |  |
+| **Fantastic 4**<br>reach gameplay | 🔵 copied | **59.9**<br>43% at 28.5+<br>Nova · 10-07 |  |
+| **Indigo Prophecy USA**<br>reach gameplay | 🔵 copied | **59.9**<br>99% at 28.5+<br>Nova · 10-07 |  |
+| **LEGO Star Wars: The Video Game**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>98% at 28.5+<br>Nova · 10-05 |  |
+| **Lemony Snicket s A Series of Unfortunate Events USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-12 |  |
+| **Medal of Honor Frontline USA**<br>reach gameplay | 🔵 copied | **59.9**<br>86% at 28.5+<br>Nova · 10-07 |  |
+| **Tony Hawk's Pro Skater 3**<br>**blocked: crash: guest exited after 205s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · max perf, soak |  |
+| **Tony Hawk's Pro Skater 2x**<br>done | 🟢 Playable | **59.8**<br>100% at 28.5+<br>Thor · 10-01 · max perf<br>Nova 59.8 |  |
+| **Capcom vs. SNK 2 EO**<br>done | 🟢 Playable | **59.8**<br>100% at 28.5+<br>Nova · 10-07 |  |
+| **Tony Hawk s Underground 2 USA Europe En Fr De**<br>reach gameplay | 🔵 copied | **59.7**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **Mortal Kombat: Armageddon**<br>done | 🟢 Playable | **59.2**<br>100% at 28.5+<br>Nova · 10-06 |  |
+| **MLB SlugFest: Loaded**<br>done | 🟢 Playable | **58.9**<br>100% at 28.5+<br>Nova · 10-05 |  |
+| **Rogue Trooper**<br>done | 🟢 Playable | **58.9**<br>100% at 28.5+<br>Nova · 10-06 |  |
+| **AMF Xtreme Bowling**<br>**blocked: crash: exiting due to SIG_DFL handler for signal 11, ucontext 0x6fcde81e20** | 🔴 blocked | **58.7**<br>100% at 28.5+<br>Nova · 10-05 |  |
+| **Gui Yi Taiwan**<br>reach gameplay | 🔵 copied | **57.7**<br>94% at 28.5+<br>Nova · 10-07 |  |
+| **Ghost Master The Gravenville Chronicles Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **57.6**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **MTV Celebrity Deathmatch**<br>done | 🟢 Playable | **57.2**<br>99% at 28.5+<br>Nova · 10-04 |  |
+| **NBA 2K2**<br>done | 🟢 Playable | **57.0**<br>100% at 28.5+<br>Nova · 10-05 |  |
+| **Tony Hawk's Pro Skater 4**<br>done | 🟢 Playable | **56.6**<br>98% at 28.5+<br>Nova · 10-13 |  |
+| **Batman: Dark Tomorrow**<br>reach gameplay | 🔵 copied | **56.5**<br>98% at 28.5+<br>Nova · 10-07 |  |
+| **Project Gotham Racing 2**<br>**blocked: void: thermal-pause: thermal-pause-F8 1/1 began after +140 s and by +172 s (device 09-29 13:22:54); still paused at the last reading, relative to the mark** | 🔴 blocked | **55.7**<br>40% at 28.5+<br>Thor · 09-29 · max perf, screen: 90-240 s only |  |
+| **Burnout Revenge**<br>done | 🟢 Playable | **54.8**<br>100% at 28.5+<br>Nova · 10-12 · max perf |  |
+| **Tron 2.0 - Killer App (USA, Europe).iso**<br>reach gameplay | 🔵 copied | **54.8**<br>92% at 28.5+<br>Nova · 10-06 · default perf |  |
+| **Panzer Dragoon Orta**<br>done | 🟢 Playable | **54.1**<br>100% at 28.5+<br>Nova · 10-03 |  |
+| **Mercenaries USA Europe**<br>reach gameplay | 🔵 copied | **53.3**<br>100% at 28.5+<br>Nova · 10-12 |  |
+| **4x4 Evo 2**<br>reach gameplay | 🔵 copied | **53.2**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **Disney/Pixar Ratatouille**<br>done | 🟢 Playable | **52.8**<br>100% at 28.5+<br>Nova · 10-06 |  |
+| **Dead or Alive 3**<br>soak for Playable | soak pending | **50.1**<br>100% at 28.5+<br>Nova · 10-12 · max perf<br>Thor 52.2 |  |
+| **X Men The Official Game Europe**<br>reach gameplay | 🔵 copied | **49.3**<br>100% at 28.5+<br>Nova · 10-12 |  |
+| **Super Monkey Ball Deluxe**<br>**blocked: crash: guest exited after 250s** | 🔴 blocked | **48.1**<br>100% at 28.5+<br>Thor · 10-01 · max perf |  |
+| **Ty the Tasmanian Tiger Night of the Quinkan USA Australia**<br>reach gameplay | 🔵 copied | **47.8**<br>79% at 28.5+<br>Nova · 10-07 |  |
+| **Legacy of Kain Defiance USA**<br>reach gameplay | 🔵 copied | **47.6**<br>97% at 28.5+<br>Nova · 10-07 |  |
+| **Crash Bandicoot: The Wrath of Cortex**<br>reach gameplay | 🟣 inputs ready | **46.9**<br>100% at 28.5+<br>Nova · 10-07 |  |
+| **Dark Summit**<br>done | 🟢 Playable | **45.9**<br>93% at 28.5+<br>Nova · 10-04 |  |
+| **Mortal Kombat: Shaolin Monks**<br>reach gameplay | 🟣 inputs ready | **45.9**<br>49% at 28.5+<br>Nova · 10-06 |  |
+| **NFL Blitz 2002**<br>done | 🟢 Playable | **45.0**<br>100% at 28.5+<br>Nova · 10-05 |  |
+| **MLB SlugFest 2004**<br>done | 🟢 Playable | **44.4**<br>100% at 28.5+<br>Nova · 10-05 |  |
+| **Tenchu 3 Kaiki no Shou Japan**<br>reach gameplay | 🔵 copied | **44.3**<br>100% at 28.5+<br>Nova · 10-12 |  |
+| **Arx Fatalis**<br>reach gameplay | 🔵 copied | **43.9**<br>100% at 28.5+<br>Nova · 10-07 |  |
+| **Fight Club**<br>done | 🟢 Playable | **43.4**<br>94% at 28.5+<br>Nova · 10-06 |  |
+| **NBA 2K3**<br>done | 🟢 Playable | **42.9**<br>96% at 28.5+<br>Nova · 10-06 |  |
+| **ToeJam & Earl III: Mission to Earth**<br>done | 🟢 Playable | **42.1**<br>73% at 28.5+<br>Nova · 10-03 |  |
+| **RalliSport Challenge 2**<br>reach gameplay | 🟣 inputs ready | **41.7**<br>96% at 28.5+<br>Nova · 10-07 |  |
+| **Harry Potter and the Philosopher's Stone**<br>done | 🟢 Playable | **41.5**<br>95% at 28.5+<br>Nova · 10-13 |  |
+| **Conflict Desert Storm II Back to Baghdad USA**<br>reach gameplay | 🔵 copied | **41.1**<br>93% at 28.5+<br>Nova · 10-13 |  |
+| **Dead or Alive 1 Ultimate**<br>reach gameplay<br>#413 open · nothing in flight | 🟣 inputs ready | **40.4**<br>100% at 28.5+<br>Nova · 10-07 |  |
+| **007: Nightfire**<br>reach gameplay | 🟣 inputs ready | **40.0**<br>89% at 28.5+<br>Nova · 10-06 |  |
+| **Mortal Kombat: Deadly Alliance**<br>reach gameplay | 🟣 inputs ready | **39.9**<br>100% at 28.5+<br>Nova · 10-06 |  |
+| **Ninja Gaiden Black**<br>reach gameplay | 🔵 copied | **38.0**<br>97% at 28.5+<br>Nova · 10-12 · max perf |  |
+| **The Simpsons: Hit & Run**<br>done | 🟢 Playable | **37.9**<br>100% at 28.5+<br>Nova · 10-04 |  |
+| **NHL Hitz Pro**<br>reach gameplay | 🔵 copied | **37.4**<br>75% at 28.5+<br>Nova · 10-05 |  |
+| **Blood Wake**<br>**blocked: hang: 10.6 s without 60 guest flips after the mark** | 🔴 blocked | **37.4**<br>30% at 28.5+<br>Thor · 09-27 · max perf<br>Nova 59.9 |  |
+| **Tron 2.0 - Killer App**<br>reach gameplay | 🔵 copied | **37.2**<br>98% at 28.5+<br>Nova · 10-04 |  |
+| **NBA Live 2004**<br>done | 🟢 Playable | **35.5**<br>100% at 28.5+<br>Nova · 10-06 |  |
+| **NHL 2K3**<br>reach gameplay | 🔵 copied | **35.0**<br>69% at 28.5+<br>Nova · 10-05 |  |
+| **Bistro Cupid**<br>reach gameplay | 🔵 copied | **34.4**<br>87% at 28.5+<br>Thor · 09-30 · max perf, soak |  |
+| **Top Spin**<br>soak for Playable | soak pending | **32.6**<br>91% at 28.5+<br>Nova · 10-09 · max perf |  |
+| **Aliens Versus Predator: Extinction**<br>reach gameplay | 🟣 inputs ready | **31.0**<br>100% at 28.5+<br>Nova · 10-05 |  |
+| **Fuzion Frenzy**<br>**blocked: hang: 13.4 s without 60 guest flips after the mark** | 🔴 blocked | **30.6**<br>54% at 28.5+<br>Nova · 09-27 · max perf |  |
+| **Panzer Elite Action Fields of Glory Europe**<br>reach gameplay | 🔵 copied | **30.4**<br>90% at 28.5+<br>Nova · 10-07 |  |
+| **Crimson Skies: High Road to Revenge**<br>done | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 10-13 · default perf<br>Thor **23.4** |  |
+| **50 Cent: Bulletproof**<br>done<br>#382 open · nothing in flight | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 09-30 · default perf, soak |  |
+| **Azurik: Rise of Perathia**<br>done | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 09-29 · default perf<br>Thor 30.0 |  |
+| **Blade II**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-07 |  |
+| **Blazing Angels Squadrons of WWII USA Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **BloodRayne 2 USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-08 |  |
+| **Blowout**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-06 |  |
+| **Buffy the Vampire Slayer**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-12 · max perf |  |
+| **Conan Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-12 |  |
+| **Conflict Global Terror USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **Family Guy: Video Game!**<br>soak for Playable | soak pending | **30.0**<br>98% at 28.5+<br>Thor · 10-01 · max perf |  |
+| **GoldenEye: Rogue Agent**<br>**blocked: reached_gameplay: no `mark gameplay` in logcat** | 🔴 blocked | **30.0**<br>94% at 28.5+<br>Nova · 09-27 · max perf, screen: 90-240 s only |  |
+| **Grabbed by the Ghoulies**<br>done<br>#311 closed | 🟢 Playable | **30.0**<br>98% at 28.5+<br>Nova · 10-12 · max perf<br>Thor 30.0 |  |
+| **Grand Theft Auto III**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-12 · max perf |  |
+| **Grand Theft Auto: Vice City**<br>done | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-13 · max perf |  |
+| **Halo 2**<br>reach gameplay | 🔵 copied | **30.0**<br>96% at 28.5+<br>Nova · 10-03 · default perf |  |
+| **Halo: Combat Evolved**<br>done | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-03 · default perf |  |
+| **Marvel Nemesis: Rise of the Imperfects**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>99% at 28.5+<br>Nova · 10-06 |  |
+| **MTV Music Generator 3 This Is the Remix USA En Es**<br>reach gameplay | 🔵 copied | **30.0**<br>88% at 28.5+<br>Nova · 10-07 |  |
+| **Prince of Persia: The Sands of Time**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **Shadow of Memories Europe**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |  |
+| **Aeon Flux**<br>reach gameplay | 🔵 copied | **30.0**<br>85% at 28.5+<br>Nova · 10-13 |  |
+| **Area 51**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>73% at 28.5+<br>Nova · 10-08 |  |
+| **Batman Begins**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>95% at 28.5+<br>Nova · 10-06 |  |
+| **Beyond Good & Evil**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>93% at 28.5+<br>Nova · 10-06 |  |
+| **Grand Theft Auto: San Andreas**<br>soak for Playable | soak pending | **30.0**<br>98% at 28.5+<br>Nova · 10-12 · max perf |  |
+| **Lord of the Rings The The Fellowship of the Ring USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-07 |  |
+| **MechAssault 2: Lone Wolf**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>89% at 28.5+<br>Nova · 10-08 · max perf, soak |  |
+| **Shin Megami Tensei: NINE**<br>soak for Playable | soak pending | **30.0**<br>97% at 28.5+<br>Thor · 09-30 · max perf |  |
+| **Tork: Prehistoric Punk**<br>done | 🟢 Playable | **30.0**<br>59% at 28.5+<br>Thor · 09-30 · max perf<br>Nova 30.0 |  |
+| **Battlefield 2: Modern Combat**<br>reach gameplay | 🟣 inputs ready | **29.9**<br>67% at 28.5+<br>Nova · 10-01 · default perf |  |
+| **Cel Damage**<br>reach gameplay | 🔵 copied | **29.9**<br>98% at 28.5+<br>Nova · 10-07 |  |
+| **Star Wars Knights of the Old Republic II The Sith Lords Europe**<br>reach gameplay | 🔵 copied | **29.9**<br>66% at 28.5+<br>Nova · 10-12 |  |
+| **Turok: Evolution**<br>reach gameplay | 🔵 copied | **29.9**<br>84% at 28.5+<br>Nova · 10-07 |  |
+| **Half-Life 2**<br>reach gameplay | 🔵 copied | **29.8**<br>74% at 28.5+<br>Nova · 10-13 |  |
+| **Shrek 2**<br>done | 🟢 Playable | **29.8**<br>92% at 28.5+<br>Nova · 10-13 |  |
+| **Call of Duty 3**<br>done | 🟢 Playable | **29.4**<br>100% at 28.5+<br>Nova · 10-06 |  |
+| **Star Wars The Clone Wars USA**<br>reach gameplay | 🔵 copied | **29.4**<br>61% at 28.5+<br>Nova · 10-08 |  |
+| **Phantom Dust**<br>reach gameplay | 🔵 copied | **29.4**<br>74% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |  |
+| **Ultimate Spider-Man**<br>reach gameplay | 🔵 copied | **29.4**<br>89% at 28.5+<br>Nova · 10-07 |  |
+| **Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space**<br>reach gameplay | 🟣 inputs ready | **29.3**<br>57% at 28.5+<br>Nova · 09-27 · max perf<br>Thor **21.7** |  |
+| **The Incredible Hulk: Ultimate Destruction**<br>reach gameplay | 🟣 inputs ready | **29.2**<br>64% at 28.5+<br>Nova · 10-05 |  |
+| **Dragon Ball Z: Sagas**<br>reach gameplay | 🔵 copied | **29.2**<br>57% at 28.5+<br>Nova · 10-07 |  |
+| **Forza Motorsport**<br>reach gameplay<br>#414 open · nothing in flight | 🔵 copied | **29.0**<br>45% at 28.5+<br>Nova · 09-30 · default perf<br>Thor **16.7** |  |
+| **Scooby Doo Mystery Mayhem Europe**<br>reach gameplay | 🔵 copied | **29.0**<br>100% at 28.5+<br>Nova · 10-12 |  |
+| **Legacy of Kain: Defiance**<br>done | 🟢 Playable | **29.0**<br>37% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |  |
+| **Forgotten Realms Demon Stone USA**<br>reach gameplay | 🔵 copied | **28.9**<br>51% at 28.5+<br>Nova · 10-08 |  |
+| **Midnight Club 3: DUB Edition**<br>below the bar | below 30 | **28.9**<br>40% at 28.5+<br>Nova · 10-12 · max perf, soak |  |
+| **Star Wars: Episode III: Revenge of the Sith**<br>reach gameplay | 🟣 inputs ready | **28.5**<br>47% at 28.5+<br>Nova · 10-06 · default perf |  |
+| **Amped 2**<br>reach gameplay | 🔵 copied | **28.4**<br>44% at 28.5+<br>Nova · 10-04 |  |
+| **Otogi: Myth of Demons**<br>reach gameplay | 🟣 inputs ready | **28.1**<br>35% at 28.5+<br>Thor · 09-30 · default perf |  |
+| **The Lord of the Rings: The Return of the King**<br>reach gameplay | 🟣 inputs ready | **27.7**<br>33% at 28.5+<br>Nova · 10-05 |  |
+| **Dino Crisis 3**<br>**blocked: hang: 17.3 s without 60 guest flips after the mark** | 🔴 blocked | **27.2**<br>16% at 28.5+<br>Nova · 10-02 · max perf |  |
+| **Oddworld: Stranger's Wrath**<br>reach gameplay | 🔵 copied | **27.0**<br>38% at 28.5+<br>Nova · 10-13 |  |
+| **Counter-Strike**<br>below the bar | below 30 | **25.9**<br>0% at 28.5+<br>Nova · 10-03 · max perf, soak |  |
+| **Spider-Man 2**<br>reach gameplay | 🟣 inputs ready | **25.8**<br>29% at 28.5+<br>Nova · 10-05 |  |
+| **Need for Speed: Most Wanted**<br>done | 🟢 Playable | **25.8**<br>19% at 28.5+<br>Nova · 10-05 |  |
+| **BloodRayne**<br>below the bar | below 30 | **25.6**<br>8% at 28.5+<br>Thor · 09-28 · max perf, soak |  |
+| **Galleon**<br>below the bar | below 30 | **24.7**<br>10% at 28.5+<br>Thor · 09-30 · max perf |  |
+| **JSRF: Jet Set Radio Future**<br>below the bar | below 30 | **24.2**<br>11% at 28.5+<br>Thor · 09-27 · max perf<br>Nova 59.9 |  |
+| **Tom Clancy s Splinter Cell Double Agent USA**<br>reach gameplay | 🔵 copied | **23.5**<br>3% at 28.5+<br>Nova · 10-12 |  |
+| **Pilot Down Behind Enemy Lines Europe**<br>reach gameplay | 🔵 copied | **23.3**<br>23% at 28.5+<br>Nova · 10-07 |  |
+| **Midnight Club II**<br>reach gameplay | 🟣 inputs ready | **23.1**<br>0% at 28.5+<br>Nova · 10-05 |  |
+| **007: Agent Under Fire**<br>reach gameplay<br>#412 open · nothing in flight | 🟣 inputs ready | **22.1**<br>0% at 28.5+<br>Nova · 09-30 · default perf |  |
+| **Burnout 3: Takedown**<br>reach gameplay | 🟣 inputs ready | **22.0**<br>0% at 28.5+<br>Thor · 09-28 · max perf, soak |  |
+| **Psychonauts**<br>reach gameplay | 🔵 copied | **22.0**<br>0% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |  |
+| **Arctic Thunder**<br>below the bar | below 30 | **21.4**<br>9% at 28.5+<br>Thor · 09-27 · max perf<br>Nova 30.2 |  |
+| **Amped: Freestyle Snowboarding**<br>reach gameplay | 🟣 inputs ready | **20.6**<br>9% at 28.5+<br>Nova · 10-04 |  |
+| **Alias**<br>below the bar | below 30 | **20.4**<br>0% at 28.5+<br>Thor · 09-28 · max perf, soak |  |
+| **Dead or Alive Xtreme Beach Volleyball**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>12% at 28.5+<br>Nova · 09-27 · max perf, screen: 90-240 s only |  |
+| **NBA Live 07**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>1% at 28.5+<br>Nova · 10-06 |  |
+| **NBA Live 06**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>0% at 28.5+<br>Nova · 10-06 |  |
+| **NBA Live 2005**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>0% at 28.5+<br>Nova · 10-03 |  |
+| **Conker: Live & Reloaded**<br>reach gameplay | 🔵 copied | **15.8**<br>16% at 28.5+<br>Nova · 10-03 · max perf, screen: 90-240 s only |  |
+| **Crash Twinsanity**<br>below the bar | below 30 | **15.7**<br>0% at 28.5+<br>Thor · 09-27 · max perf |  |
+| **Blinx: The Time Sweeper**<br>reach gameplay<br>#372 open · nothing in flight | 🟣 inputs ready | **14.8**<br>0% at 30+<br>Thor · 09-26 · hand-reviewed |  |
+| **Project Gotham Racing**<br>**blocked: hang: 11.6 s without 60 guest flips after the mark** | 🔴 blocked | **14.3**<br>0% at 28.5+<br>Thor · 09-26 · max perf |  |
+| **Gauntlet: Dark Legacy**<br>reach gameplay | 🟣 inputs ready | **14.2**<br>0% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |  |
+| **Brute Force**<br>below the bar | below 30 | **13.2**<br>0% at 28.5+<br>Thor · 09-27 · max perf |  |
+| **Dungeons & Dragons Heroes**<br>reach gameplay | 🟣 inputs ready | **12.5**<br>0% at 28.5+<br>Nova · 10-06 · default perf |  |
+| **Burnout**<br>below the bar | below 30 | **10.8**<br>7% at 28.5+<br>Thor · 09-27 · max perf |  |
+| **Bloody Roar: Extreme**<br>below the bar | below 30 | **9.8**<br>0% at 28.5+<br>Nova · 10-02 · max perf |  |
+| **Black**<br>below the bar | below 30 | **7.5**<br>0% at 28.5+<br>Thor · 09-26 · max perf |  |
+| **Mission Impossible Operation Surma USA**<br>**blocked: hang: 10.0 s without 60 guest flips after the mark** | 🔴 blocked | **6.9**<br>0% at 28.5+<br>Nova · 10-12 |  |
+| **Midtown Madness 3**<br>**blocked: hang: 12.0 s without 60 guest flips after the mark** | 🔴 blocked | **3.1**<br>0% at 28.5+<br>Thor · 09-27 · max perf |  |
+| **54540082**<br>**blocked: booted: the guest never appeared or never flipped 60 frames** | 🔴 blocked |  |  |
+| **Die Hard Vendetta Europe En Fr Es It**<br>**blocked: booted: the guest never appeared or never flipped 60 frames** | 🔴 blocked |  |  |
+| **SSX Tricky**<br>**blocked: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked |  |  |
+| **Avatar: The Last Airbender**<br>done | 🟢 Playable |  |  |
+| **BloodRayne 2**<br>done | 🟢 Playable |  |  |
+| **Conan**<br>done | 🟢 Playable |  |  |
+| **Indigo Prophecy**<br>done | 🟢 Playable |  |  |
+| **Jet Set Radio Future**<br>done | 🟢 Playable |  |  |
+| **KOF: Maximum Impact: Maniax**<br>done | 🟢 Playable |  |  |
+| **Mercenaries**<br>done | 🟢 Playable |  |  |
+| **Scooby-Doo! Mystery Mayhem**<br>done | 🟢 Playable |  |  |
+| **Scooby-Doo! Unmasked**<br>done | 🟢 Playable |  |  |
+| **Shadow of Memories**<br>done | 🟢 Playable |  |  |
+| **SpongeBob SquarePants: Battle for Bikini Bottom**<br>done | 🟢 Playable |  |  |
+| **The Lord of the Rings: The Fellowship of the Ring**<br>done | 🟢 Playable |  |  |
+| **Tony Hawk's Underground 2**<br>done | 🟢 Playable |  |  |
+| **X-Men: The Official Game**<br>done | 🟢 Playable |  |  |
+| **Dungeons & Dragons: Heroes**<br>reach gameplay | 🟣 inputs ready |  |  |
+| **Shin Megami Tensei: Nine**<br>reach gameplay | 🟣 inputs ready |  |  |
+| **Antz Extreme Racing**<br>reach gameplay | 🔵 copied |  |  |
+| **Aoi Namida**<br>reach gameplay | 🔵 copied |  |  |
+| **MechAssault**<br>reach gameplay | 🔵 copied |  |  |
+| **AFL Live 2003**<br>reach gameplay | ⚪ not copied |  |  |
+| **AFL Live 2004**<br>reach gameplay | ⚪ not copied |  |  |
+| **AFL Live Premiership Edition**<br>reach gameplay | ⚪ not copied |  |  |
+| **AFL Premiership 2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **Aggressive Inline**<br>reach gameplay | ⚪ not copied |  |  |
+| **All-Star Baseball 2003 featuring Derek Jeter**<br>reach gameplay | ⚪ not copied |  |  |
+| **All-Star Baseball 2004 featuring Derek Jeter**<br>reach gameplay | ⚪ not copied |  |  |
+| **All-Star Baseball 2005 featuring Derek Jeter**<br>reach gameplay | ⚪ not copied |  |  |
+| **Alter Echo**<br>reach gameplay | ⚪ not copied |  |  |
+| **America's Army: Rise of a Soldier**<br>reach gameplay | ⚪ not copied |  |  |
 
 <details><summary>362 more not copied</summary>
 
 | Title and next step | Status | fps | C I S B |
 |---|---|---|---|
-| **American Chopper**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **American Chopper 2: Full Throttle**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **American McGee Presents Scrapland**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **AND 1 Streetball**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Angelic Concert**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Animaniacs: The Great Edgar Hunt**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Aquaman: Battle for Atlantis**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Arena Football**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Armed and Dangerous**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Army Men: Major Malfunction**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Army Men: Sarge's War**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Atari Anthology**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Backyard Wrestling 2: There Goes the Neighborhood**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Backyard Wrestling: Don't Try This at Home**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Bad Boys: Miami Takedown**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Baldur's Gate: Dark Alliance II**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Barbarian**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Barbie Horse Adventures: Wild Horse Rescue**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Bass Pro Shops: Trophy Bass 2007**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Bass Pro Shops: Trophy Hunter 2007**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Batman: Rise of Sin Tzu**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Batman: Vengeance**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Battle Engine Aquila**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Battlestar Galactica**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Beat Down: Fists of Vengeance**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Bicycle Casino Includes: Texas Hold'em**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Big Bumpin'**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Big Mutha Truckers**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Big Mutha Truckers 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Bionicle**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Bistro Cupid 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Blazing Angels: Squadrons of WWII**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Blitz: The League**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Blood Omen 2: The Legacy of Kain Series**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **BMX XXX**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Braveknight: Lieveland Eiyuuden**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Breakdown**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Breeders' Cup: World Thoroughbred Championships**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Brian Lara International Cricket 2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Broken Sword: The Sleeping Dragon**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Buffy the Vampire Slayer: Chaos Bleeds**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Burnout 2: Point of Impact**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **C.A.T: Cyber Attack Team**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Cabela's Big Game Hunter 2005 Adventures**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Cabela's Dangerous Hunts**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Cabela's Dangerous Hunts 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Cabela's Deer Hunt: 2004 Season**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Cabela's Deer Hunt: 2005 Season**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Cabela's Outdoor Adventures**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Call of Cthulhu: Dark Corners of the Earth**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Call of Duty 2: Big Red One**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Capcom Classics Collection Vol. 1**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Capcom Fighting Evolution ~ Capcom Fighting Jam**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Carmen Sandiego: The Secret of the Stolen Drums**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Catwoman**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **CDS II**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Championship Bowling**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Championship Manager 2006**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Championship Manager 5**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Championship Manager: Season 01/02**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Championship Manager: Season 02/03**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Charlie and the Chocolate Factory**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Chase: Hollywood Stunt Driver**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Chessmaster**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Chicago Enforcer**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Circus Maximus: Chariot Wars**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Classified: The Sentinel Crisis**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Close Combat: First to Fight: United States Marines**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Club Football**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Club Football 2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Codename: Kids Next Door: Operation: V.I.D.E.O.G.A.M.E.**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Cold Fear**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Cold War**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Colin McRae Rally 04**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Colin McRae Rally 2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Colin McRae Rally 3**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **College Hoops 2K6**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **College Hoops 2K7**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Combat Elite: WWII Paratroopers**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Commandos 2: Men of Courage**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Commandos: Strike Force**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Conflict: Desert Storm**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Conflict: Global Storm**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Conflict: Vietnam**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Conspiracy: Weapons of Mass Destruction**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Constantine**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Corvette**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Crash 'n' Burn**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Crash Tag Team Racing**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **CRAZY TAXI 3 High Roller**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Cricket 2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Crime Life: Gang Wars**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Crouching Tiger, Hidden Dragon**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Crusty Demons**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **CSI: Crime Scene Investigation**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Curious George**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Curse: The Eye of Isis**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Daisenryaku VII**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dakar 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dance Dance Revolution Ultramix**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dance Dance Revolution Ultramix 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dance Dance Revolution Ultramix 3**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dance Dance Revolution Ultramix 4**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dance:UK**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dave Mirra Freestyle BMX 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **David Beckham Soccer**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dead Man's Hand**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dead to Rights**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dead to Rights II**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Defender**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Delta Force: Black Hawk Down**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dennou Taisen: DroneZ**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Destroy All Humans!**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Destroy All Humans! 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Deus Ex: Invisible War**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Die Hard: Vendetta**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Digimon Battle Chronicle**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Digimon World X**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dinotopia: The Sunstone Odyssey**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Disney's Chicken Little**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Disney's Extreme Skate Adventure**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Disney's The Haunted Mansion**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Disney/Pixar Cars**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Disney/Pixar Finding Nemo**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Disney/Pixar The Incredibles**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Disney/Pixar The Incredibles: Rise of the Underminer**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Doom 3**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Doom 3: Resurrection of Evil**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dr. Seuss' The Cat in the Hat**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dragon's Lair 3D: Return to the Lair**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Drake of the 99 Dragons**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dreamfall: The Longest Journey**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **DreamWorks Madagascar**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **DreamWorks Shark Tale**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **DreamWorks Shrek: SuperSlam**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Drihoo**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Driver: Parallel Lines**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dynasty Warriors 4**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Dynasty Warriors 5**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Ed, Edd n Eddy: The Mis-Edventures**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Eggo Mania**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Enclave**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **England International Football: 2004 Edition**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Enter the Matrix**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Eragon**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **ESPN College Hoops**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **ESPN College Hoops 2K5**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **ESPN International Winter Sports 2002**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **ESPN Major League Baseball**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **ESPN MLS ExtraTime 2002**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **ESPN NBA 2K5**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **ESPN NBA Basketball**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **ESPN NFL 2K5**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **ESPN NFL PrimeTime 2002**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **ESPN NHL 2K5**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **ESPN NHL Hockey**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **ESPN Winter X Games Snowboarding 2002**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Evil Dead: A Fistful of Boomstick**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Evil Dead: Regeneration**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Ex-Chaser**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Exaskeleton**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **F1 2001**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **F1 Career Challenge**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Fable: The Lost Chapters**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Fallout: Brotherhood of Steel**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Far Cry Instincts**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Far Cry Instincts: Evolution**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Fatal Frame**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **FIFA 07**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **FIFA Football 2004**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **FIFA Soccer 06**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **FIFA Soccer 2003**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **FIFA Soccer 2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **FIFA Street**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **FIFA Street 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **FIFA World Cup Germany 2006**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Fight Night 2004**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Fight Night Round 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Fight Night Round 3**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **FILA World Tour Tennis**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Final Fight: Streetwise**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **FlatOut**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **FlatOut 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Flight Academy**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Ford Mustang: The Legend Lives**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Ford Racing 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Ford Racing 3**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Ford Street Racing**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Forgotten Realms: Demon Stone**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Frankie Dettori Racing**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Freaky Flyers**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Freedom Fighters**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Freestyle Metal X**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Frogger Beyond**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Frogger: Ancient Shadow**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Full Spectrum Warrior**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Full Spectrum Warrior: Ten Hammers**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Furious Karting**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Futurama**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Gauntlet: Seven Sorrows**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Gene Troopers**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Ghost Master: The Gravenville Chronicles**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Gladiator: Sword of Vengeance**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Gladius**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Goblin Commander: Unleash the Horde**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Godzilla: Destroy All Monsters Melee**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Godzilla: Save the Earth**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Gotcha!**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Gravity Games Bike: Street. Vert. Dirt.**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Greg Hastings' Tournament Paintball**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Greg Hastings' Tournament Paintball Max'd**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Grooverider: Slot Car Thunder**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Group S Challenge**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Guilty Gear Isuka**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Gun**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Gun Metal**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Gungriffon: Allied Strike**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Halo 2 Multiplayer Map Pack**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Harry Potter and the Chamber of Secrets**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Harry Potter and the Goblet of Fire**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Harry Potter and the Prisoner of Azkaban**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Harry Potter: Quidditch World Cup**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Headhunter: Redemption**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Hello Kitty: Roller Rescue**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Heroes of the Pacific**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **High Heat Major League Baseball 2004**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **High Rollers Casino**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Hitman 2: Silent Assassin**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Hot Wheels: Stunt Track Challenge**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Hulk**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Hummer Badlands**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Hunter: The Reckoning**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Hyper Sports 2002 Winter**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **I-Ninja**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Ice Age 2: The Meltdown**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **IHRA Drag Racing 2004**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **IHRA Drag Racing: Sportsman Edition**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **IHRA Professional Drag Racing 2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Indiana Jones and the Emperor's Tomb**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **IndyCar Series**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **IndyCar Series 2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Innocent Tears**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Inside Pitch 2003**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Intellivision Lives!**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **International Superstar Soccer 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Iron Phoenix**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Jacked**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Jade Empire**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **James Cameron's Dark Angel**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Jaws Unleashed**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Jikkyou World Soccer 2002**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Judge Dredd: Dredd vs. Death**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Juiced**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Jurassic Park: Operation Genesis**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Just Cause**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Justice League Heroes**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Knight's Apprentice: Memorick's Adventures**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Knights of the Temple II**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Knockout Kings 2002**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Kung Fu Chaos**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Largo Winch: Empire Under Threat**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Legends of Wrestling**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Legends of Wrestling II**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Lemony Snicket's A Series of Unfortunate Events**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **LMA Manager 2003**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Loons: The Fight for Fame**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Mace Griffin: Bounty Hunter**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Madden NFL 07**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Madden NFL 08**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Madden NFL 2002**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Magi Death Fight!**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Manhunt**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Mashed: Drive to Survive**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Mat Hoffman's Pro BMX 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Max Payne**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Maximum Chase**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Medal of Honor: European Assault**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Medal of Honor: Frontline**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Metal Arms: Glitch in the System**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Metal Dungeon**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Metal Gear Solid 2: Substance**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Micro Machines**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Midway Arcade Treasures**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Midway Arcade Treasures 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Mission: Impossible: Operation Surma**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Monopoly Party**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Monster Garage**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Motor Trend Presents Lotus Challenge**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **MVP Baseball 2003**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Namco Museum**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **NBA 2K6**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **NBA 2K7**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **NBA Inside Drive 2004**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Need for Speed: Hot Pursuit 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Neighbours from Hell**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **NFL 2K2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Psi-Ops: The Mindgate Conspiracy**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Psyvariar 2: Extend Edition**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **RAW**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Ricky Ponting International Cricket 2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **RLH: Run Like Hell**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Robotech: Invasion**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **RollerCoaster Tycoon**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Rugby League 2**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Sega GT 2002**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Sega GT 2002 + JSRF: Jet Set Radio Future**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Shadow The Hedgehog**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Shrek**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Ski Racing 2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Slam Tennis**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Spartan: Total Warrior**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Splat Magazine Renegade Paintball**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Stake**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Star Wars: Battlefront**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Star Wars: Battlefront II**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Star Wars: Knights of the Old Republic II: The Sith Lords**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Star Wars: Starfighter Special Edition**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Star Wars: The Clone Wars**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Still Life**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Super Bubble Pop**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Superman Returns**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Takahashi Junko no Mahjong Seminar**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Tetris Worlds**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **The Bard's Tale**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **The Baseball 2002: Battle Ball Park Sengen**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **The Bible Game**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **The Hustle: Detroit Streets**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **The King of Fighters 2002**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **The Lord of the Rings: The Third Age**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **The Matrix: Path of Neo**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **The Simpsons: Road Rage**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **The Urbz: Sims in the City**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **The Wild Rings**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Tiger Woods PGA Tour 06**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Tiger Woods PGA Tour 07**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Tiger Woods PGA Tour 2003**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Tiger Woods PGA Tour 2004**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Tiger Woods PGA Tour 2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **TimeSplitters: Future Perfect**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Tom Clancy's Splinter Cell: Double Agent**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Torino 2006**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Total Club Manager 2004**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Triangle Again**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Triple Play 2002**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Trivial Pursuit: Unhinged**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **TY the Tasmanian Tiger**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **UEFA Champions League 2004-2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Ultimate Pro Pinball**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Umezawa Yukari no Igo Seminar**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Unreal Championship**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Virtual Pool: Tournament Edition**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Voodoo Vince**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Whiteout**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **World Series Baseball**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **World Snooker Championship 2005**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **World Soccer Winning Eleven 8: International**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **World War II Combat: Road to Berlin**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Xbox Live Arcade**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Xiaolin Showdown**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **XIII**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Yetisports Arctic Adventures**<br>copy to a handheld | ⚪ not copied |  | – – – – |
-| **Yonenaga Kunio no Shougi Seminar**<br>copy to a handheld | ⚪ not copied |  | – – – – |
+| **American Chopper**<br>reach gameplay | ⚪ not copied |  |  |
+| **American Chopper 2: Full Throttle**<br>reach gameplay | ⚪ not copied |  |  |
+| **American McGee Presents Scrapland**<br>reach gameplay | ⚪ not copied |  |  |
+| **AND 1 Streetball**<br>reach gameplay | ⚪ not copied |  |  |
+| **Angelic Concert**<br>reach gameplay | ⚪ not copied |  |  |
+| **Animaniacs: The Great Edgar Hunt**<br>reach gameplay | ⚪ not copied |  |  |
+| **Aquaman: Battle for Atlantis**<br>reach gameplay | ⚪ not copied |  |  |
+| **Arena Football**<br>reach gameplay | ⚪ not copied |  |  |
+| **Armed and Dangerous**<br>reach gameplay | ⚪ not copied |  |  |
+| **Army Men: Major Malfunction**<br>reach gameplay | ⚪ not copied |  |  |
+| **Army Men: Sarge's War**<br>reach gameplay | ⚪ not copied |  |  |
+| **Atari Anthology**<br>reach gameplay | ⚪ not copied |  |  |
+| **Backyard Wrestling 2: There Goes the Neighborhood**<br>reach gameplay | ⚪ not copied |  |  |
+| **Backyard Wrestling: Don't Try This at Home**<br>reach gameplay | ⚪ not copied |  |  |
+| **Bad Boys: Miami Takedown**<br>reach gameplay | ⚪ not copied |  |  |
+| **Baldur's Gate: Dark Alliance II**<br>reach gameplay | ⚪ not copied |  |  |
+| **Barbarian**<br>reach gameplay | ⚪ not copied |  |  |
+| **Barbie Horse Adventures: Wild Horse Rescue**<br>reach gameplay | ⚪ not copied |  |  |
+| **Bass Pro Shops: Trophy Bass 2007**<br>reach gameplay | ⚪ not copied |  |  |
+| **Bass Pro Shops: Trophy Hunter 2007**<br>reach gameplay | ⚪ not copied |  |  |
+| **Batman: Rise of Sin Tzu**<br>reach gameplay | ⚪ not copied |  |  |
+| **Batman: Vengeance**<br>reach gameplay | ⚪ not copied |  |  |
+| **Battle Engine Aquila**<br>reach gameplay | ⚪ not copied |  |  |
+| **Battlestar Galactica**<br>reach gameplay | ⚪ not copied |  |  |
+| **Beat Down: Fists of Vengeance**<br>reach gameplay | ⚪ not copied |  |  |
+| **Bicycle Casino Includes: Texas Hold'em**<br>reach gameplay | ⚪ not copied |  |  |
+| **Big Bumpin'**<br>reach gameplay | ⚪ not copied |  |  |
+| **Big Mutha Truckers**<br>reach gameplay | ⚪ not copied |  |  |
+| **Big Mutha Truckers 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Bionicle**<br>reach gameplay | ⚪ not copied |  |  |
+| **Bistro Cupid 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Blazing Angels: Squadrons of WWII**<br>reach gameplay | ⚪ not copied |  |  |
+| **Blitz: The League**<br>reach gameplay | ⚪ not copied |  |  |
+| **Blood Omen 2: The Legacy of Kain Series**<br>reach gameplay | ⚪ not copied |  |  |
+| **BMX XXX**<br>reach gameplay | ⚪ not copied |  |  |
+| **Braveknight: Lieveland Eiyuuden**<br>reach gameplay | ⚪ not copied |  |  |
+| **Breakdown**<br>reach gameplay | ⚪ not copied |  |  |
+| **Breeders' Cup: World Thoroughbred Championships**<br>reach gameplay | ⚪ not copied |  |  |
+| **Brian Lara International Cricket 2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **Broken Sword: The Sleeping Dragon**<br>reach gameplay | ⚪ not copied |  |  |
+| **Buffy the Vampire Slayer: Chaos Bleeds**<br>reach gameplay | ⚪ not copied |  |  |
+| **Burnout 2: Point of Impact**<br>reach gameplay | ⚪ not copied |  |  |
+| **C.A.T: Cyber Attack Team**<br>reach gameplay | ⚪ not copied |  |  |
+| **Cabela's Big Game Hunter 2005 Adventures**<br>reach gameplay | ⚪ not copied |  |  |
+| **Cabela's Dangerous Hunts**<br>reach gameplay | ⚪ not copied |  |  |
+| **Cabela's Dangerous Hunts 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Cabela's Deer Hunt: 2004 Season**<br>reach gameplay | ⚪ not copied |  |  |
+| **Cabela's Deer Hunt: 2005 Season**<br>reach gameplay | ⚪ not copied |  |  |
+| **Cabela's Outdoor Adventures**<br>reach gameplay | ⚪ not copied |  |  |
+| **Call of Cthulhu: Dark Corners of the Earth**<br>reach gameplay | ⚪ not copied |  |  |
+| **Call of Duty 2: Big Red One**<br>reach gameplay | ⚪ not copied |  |  |
+| **Capcom Classics Collection Vol. 1**<br>reach gameplay | ⚪ not copied |  |  |
+| **Capcom Fighting Evolution ~ Capcom Fighting Jam**<br>reach gameplay | ⚪ not copied |  |  |
+| **Carmen Sandiego: The Secret of the Stolen Drums**<br>reach gameplay | ⚪ not copied |  |  |
+| **Catwoman**<br>reach gameplay | ⚪ not copied |  |  |
+| **CDS II**<br>reach gameplay | ⚪ not copied |  |  |
+| **Championship Bowling**<br>reach gameplay | ⚪ not copied |  |  |
+| **Championship Manager 2006**<br>reach gameplay | ⚪ not copied |  |  |
+| **Championship Manager 5**<br>reach gameplay | ⚪ not copied |  |  |
+| **Championship Manager: Season 01/02**<br>reach gameplay | ⚪ not copied |  |  |
+| **Championship Manager: Season 02/03**<br>reach gameplay | ⚪ not copied |  |  |
+| **Charlie and the Chocolate Factory**<br>reach gameplay | ⚪ not copied |  |  |
+| **Chase: Hollywood Stunt Driver**<br>reach gameplay | ⚪ not copied |  |  |
+| **Chessmaster**<br>reach gameplay | ⚪ not copied |  |  |
+| **Chicago Enforcer**<br>reach gameplay | ⚪ not copied |  |  |
+| **Circus Maximus: Chariot Wars**<br>reach gameplay | ⚪ not copied |  |  |
+| **Classified: The Sentinel Crisis**<br>reach gameplay | ⚪ not copied |  |  |
+| **Close Combat: First to Fight: United States Marines**<br>reach gameplay | ⚪ not copied |  |  |
+| **Club Football**<br>reach gameplay | ⚪ not copied |  |  |
+| **Club Football 2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **Codename: Kids Next Door: Operation: V.I.D.E.O.G.A.M.E.**<br>reach gameplay | ⚪ not copied |  |  |
+| **Cold Fear**<br>reach gameplay | ⚪ not copied |  |  |
+| **Cold War**<br>reach gameplay | ⚪ not copied |  |  |
+| **Colin McRae Rally 04**<br>reach gameplay | ⚪ not copied |  |  |
+| **Colin McRae Rally 2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **Colin McRae Rally 3**<br>reach gameplay | ⚪ not copied |  |  |
+| **College Hoops 2K6**<br>reach gameplay | ⚪ not copied |  |  |
+| **College Hoops 2K7**<br>reach gameplay | ⚪ not copied |  |  |
+| **Combat Elite: WWII Paratroopers**<br>reach gameplay | ⚪ not copied |  |  |
+| **Commandos 2: Men of Courage**<br>reach gameplay | ⚪ not copied |  |  |
+| **Commandos: Strike Force**<br>reach gameplay | ⚪ not copied |  |  |
+| **Conflict: Desert Storm**<br>reach gameplay | ⚪ not copied |  |  |
+| **Conflict: Global Storm**<br>reach gameplay | ⚪ not copied |  |  |
+| **Conflict: Vietnam**<br>reach gameplay | ⚪ not copied |  |  |
+| **Conspiracy: Weapons of Mass Destruction**<br>reach gameplay | ⚪ not copied |  |  |
+| **Constantine**<br>reach gameplay | ⚪ not copied |  |  |
+| **Corvette**<br>reach gameplay | ⚪ not copied |  |  |
+| **Crash 'n' Burn**<br>reach gameplay | ⚪ not copied |  |  |
+| **Crash Tag Team Racing**<br>reach gameplay | ⚪ not copied |  |  |
+| **CRAZY TAXI 3 High Roller**<br>reach gameplay | ⚪ not copied |  |  |
+| **Cricket 2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **Crime Life: Gang Wars**<br>reach gameplay | ⚪ not copied |  |  |
+| **Crouching Tiger, Hidden Dragon**<br>reach gameplay | ⚪ not copied |  |  |
+| **Crusty Demons**<br>reach gameplay | ⚪ not copied |  |  |
+| **CSI: Crime Scene Investigation**<br>reach gameplay | ⚪ not copied |  |  |
+| **Curious George**<br>reach gameplay | ⚪ not copied |  |  |
+| **Curse: The Eye of Isis**<br>reach gameplay | ⚪ not copied |  |  |
+| **Daisenryaku VII**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dakar 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dance Dance Revolution Ultramix**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dance Dance Revolution Ultramix 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dance Dance Revolution Ultramix 3**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dance Dance Revolution Ultramix 4**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dance:UK**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dave Mirra Freestyle BMX 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **David Beckham Soccer**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dead Man's Hand**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dead to Rights**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dead to Rights II**<br>reach gameplay | ⚪ not copied |  |  |
+| **Defender**<br>reach gameplay | ⚪ not copied |  |  |
+| **Delta Force: Black Hawk Down**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dennou Taisen: DroneZ**<br>reach gameplay | ⚪ not copied |  |  |
+| **Destroy All Humans!**<br>reach gameplay | ⚪ not copied |  |  |
+| **Destroy All Humans! 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Deus Ex: Invisible War**<br>reach gameplay | ⚪ not copied |  |  |
+| **Die Hard: Vendetta**<br>reach gameplay | ⚪ not copied |  |  |
+| **Digimon Battle Chronicle**<br>reach gameplay | ⚪ not copied |  |  |
+| **Digimon World X**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dinotopia: The Sunstone Odyssey**<br>reach gameplay | ⚪ not copied |  |  |
+| **Disney's Chicken Little**<br>reach gameplay | ⚪ not copied |  |  |
+| **Disney's Extreme Skate Adventure**<br>reach gameplay | ⚪ not copied |  |  |
+| **Disney's The Haunted Mansion**<br>reach gameplay | ⚪ not copied |  |  |
+| **Disney/Pixar Cars**<br>reach gameplay | ⚪ not copied |  |  |
+| **Disney/Pixar Finding Nemo**<br>reach gameplay | ⚪ not copied |  |  |
+| **Disney/Pixar The Incredibles**<br>reach gameplay | ⚪ not copied |  |  |
+| **Disney/Pixar The Incredibles: Rise of the Underminer**<br>reach gameplay | ⚪ not copied |  |  |
+| **Doom 3**<br>reach gameplay | ⚪ not copied |  |  |
+| **Doom 3: Resurrection of Evil**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dr. Seuss' The Cat in the Hat**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dragon's Lair 3D: Return to the Lair**<br>reach gameplay | ⚪ not copied |  |  |
+| **Drake of the 99 Dragons**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dreamfall: The Longest Journey**<br>reach gameplay | ⚪ not copied |  |  |
+| **DreamWorks Madagascar**<br>reach gameplay | ⚪ not copied |  |  |
+| **DreamWorks Shark Tale**<br>reach gameplay | ⚪ not copied |  |  |
+| **DreamWorks Shrek: SuperSlam**<br>reach gameplay | ⚪ not copied |  |  |
+| **Drihoo**<br>reach gameplay | ⚪ not copied |  |  |
+| **Driver: Parallel Lines**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dynasty Warriors 4**<br>reach gameplay | ⚪ not copied |  |  |
+| **Dynasty Warriors 5**<br>reach gameplay | ⚪ not copied |  |  |
+| **Ed, Edd n Eddy: The Mis-Edventures**<br>reach gameplay | ⚪ not copied |  |  |
+| **Eggo Mania**<br>reach gameplay | ⚪ not copied |  |  |
+| **Enclave**<br>reach gameplay | ⚪ not copied |  |  |
+| **England International Football: 2004 Edition**<br>reach gameplay | ⚪ not copied |  |  |
+| **Enter the Matrix**<br>reach gameplay | ⚪ not copied |  |  |
+| **Eragon**<br>reach gameplay | ⚪ not copied |  |  |
+| **ESPN College Hoops**<br>reach gameplay | ⚪ not copied |  |  |
+| **ESPN College Hoops 2K5**<br>reach gameplay | ⚪ not copied |  |  |
+| **ESPN International Winter Sports 2002**<br>reach gameplay | ⚪ not copied |  |  |
+| **ESPN Major League Baseball**<br>reach gameplay | ⚪ not copied |  |  |
+| **ESPN MLS ExtraTime 2002**<br>reach gameplay | ⚪ not copied |  |  |
+| **ESPN NBA 2K5**<br>reach gameplay | ⚪ not copied |  |  |
+| **ESPN NBA Basketball**<br>reach gameplay | ⚪ not copied |  |  |
+| **ESPN NFL 2K5**<br>reach gameplay | ⚪ not copied |  |  |
+| **ESPN NFL PrimeTime 2002**<br>reach gameplay | ⚪ not copied |  |  |
+| **ESPN NHL 2K5**<br>reach gameplay | ⚪ not copied |  |  |
+| **ESPN NHL Hockey**<br>reach gameplay | ⚪ not copied |  |  |
+| **ESPN Winter X Games Snowboarding 2002**<br>reach gameplay | ⚪ not copied |  |  |
+| **Evil Dead: A Fistful of Boomstick**<br>reach gameplay | ⚪ not copied |  |  |
+| **Evil Dead: Regeneration**<br>reach gameplay | ⚪ not copied |  |  |
+| **Ex-Chaser**<br>reach gameplay | ⚪ not copied |  |  |
+| **Exaskeleton**<br>reach gameplay | ⚪ not copied |  |  |
+| **F1 2001**<br>reach gameplay | ⚪ not copied |  |  |
+| **F1 Career Challenge**<br>reach gameplay | ⚪ not copied |  |  |
+| **Fable: The Lost Chapters**<br>reach gameplay | ⚪ not copied |  |  |
+| **Fallout: Brotherhood of Steel**<br>reach gameplay | ⚪ not copied |  |  |
+| **Far Cry Instincts**<br>reach gameplay | ⚪ not copied |  |  |
+| **Far Cry Instincts: Evolution**<br>reach gameplay | ⚪ not copied |  |  |
+| **Fatal Frame**<br>reach gameplay | ⚪ not copied |  |  |
+| **FIFA 07**<br>reach gameplay | ⚪ not copied |  |  |
+| **FIFA Football 2004**<br>reach gameplay | ⚪ not copied |  |  |
+| **FIFA Soccer 06**<br>reach gameplay | ⚪ not copied |  |  |
+| **FIFA Soccer 2003**<br>reach gameplay | ⚪ not copied |  |  |
+| **FIFA Soccer 2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **FIFA Street**<br>reach gameplay | ⚪ not copied |  |  |
+| **FIFA Street 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **FIFA World Cup Germany 2006**<br>reach gameplay | ⚪ not copied |  |  |
+| **Fight Night 2004**<br>reach gameplay | ⚪ not copied |  |  |
+| **Fight Night Round 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Fight Night Round 3**<br>reach gameplay | ⚪ not copied |  |  |
+| **FILA World Tour Tennis**<br>reach gameplay | ⚪ not copied |  |  |
+| **Final Fight: Streetwise**<br>reach gameplay | ⚪ not copied |  |  |
+| **FlatOut**<br>reach gameplay | ⚪ not copied |  |  |
+| **FlatOut 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Flight Academy**<br>reach gameplay | ⚪ not copied |  |  |
+| **Ford Mustang: The Legend Lives**<br>reach gameplay | ⚪ not copied |  |  |
+| **Ford Racing 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Ford Racing 3**<br>reach gameplay | ⚪ not copied |  |  |
+| **Ford Street Racing**<br>reach gameplay | ⚪ not copied |  |  |
+| **Forgotten Realms: Demon Stone**<br>reach gameplay | ⚪ not copied |  |  |
+| **Frankie Dettori Racing**<br>reach gameplay | ⚪ not copied |  |  |
+| **Freaky Flyers**<br>reach gameplay | ⚪ not copied |  |  |
+| **Freedom Fighters**<br>reach gameplay | ⚪ not copied |  |  |
+| **Freestyle Metal X**<br>reach gameplay | ⚪ not copied |  |  |
+| **Frogger Beyond**<br>reach gameplay | ⚪ not copied |  |  |
+| **Frogger: Ancient Shadow**<br>reach gameplay | ⚪ not copied |  |  |
+| **Full Spectrum Warrior**<br>reach gameplay | ⚪ not copied |  |  |
+| **Full Spectrum Warrior: Ten Hammers**<br>reach gameplay | ⚪ not copied |  |  |
+| **Furious Karting**<br>reach gameplay | ⚪ not copied |  |  |
+| **Futurama**<br>reach gameplay | ⚪ not copied |  |  |
+| **Gauntlet: Seven Sorrows**<br>reach gameplay | ⚪ not copied |  |  |
+| **Gene Troopers**<br>reach gameplay | ⚪ not copied |  |  |
+| **Ghost Master: The Gravenville Chronicles**<br>reach gameplay | ⚪ not copied |  |  |
+| **Gladiator: Sword of Vengeance**<br>reach gameplay | ⚪ not copied |  |  |
+| **Gladius**<br>reach gameplay | ⚪ not copied |  |  |
+| **Goblin Commander: Unleash the Horde**<br>reach gameplay | ⚪ not copied |  |  |
+| **Godzilla: Destroy All Monsters Melee**<br>reach gameplay | ⚪ not copied |  |  |
+| **Godzilla: Save the Earth**<br>reach gameplay | ⚪ not copied |  |  |
+| **Gotcha!**<br>reach gameplay | ⚪ not copied |  |  |
+| **Gravity Games Bike: Street. Vert. Dirt.**<br>reach gameplay | ⚪ not copied |  |  |
+| **Greg Hastings' Tournament Paintball**<br>reach gameplay | ⚪ not copied |  |  |
+| **Greg Hastings' Tournament Paintball Max'd**<br>reach gameplay | ⚪ not copied |  |  |
+| **Grooverider: Slot Car Thunder**<br>reach gameplay | ⚪ not copied |  |  |
+| **Group S Challenge**<br>reach gameplay | ⚪ not copied |  |  |
+| **Guilty Gear Isuka**<br>reach gameplay | ⚪ not copied |  |  |
+| **Gun**<br>reach gameplay | ⚪ not copied |  |  |
+| **Gun Metal**<br>reach gameplay | ⚪ not copied |  |  |
+| **Gungriffon: Allied Strike**<br>reach gameplay | ⚪ not copied |  |  |
+| **Halo 2 Multiplayer Map Pack**<br>reach gameplay | ⚪ not copied |  |  |
+| **Harry Potter and the Chamber of Secrets**<br>reach gameplay | ⚪ not copied |  |  |
+| **Harry Potter and the Goblet of Fire**<br>reach gameplay | ⚪ not copied |  |  |
+| **Harry Potter and the Prisoner of Azkaban**<br>reach gameplay | ⚪ not copied |  |  |
+| **Harry Potter: Quidditch World Cup**<br>reach gameplay | ⚪ not copied |  |  |
+| **Headhunter: Redemption**<br>reach gameplay | ⚪ not copied |  |  |
+| **Hello Kitty: Roller Rescue**<br>reach gameplay | ⚪ not copied |  |  |
+| **Heroes of the Pacific**<br>reach gameplay | ⚪ not copied |  |  |
+| **High Heat Major League Baseball 2004**<br>reach gameplay | ⚪ not copied |  |  |
+| **High Rollers Casino**<br>reach gameplay | ⚪ not copied |  |  |
+| **Hitman 2: Silent Assassin**<br>reach gameplay | ⚪ not copied |  |  |
+| **Hot Wheels: Stunt Track Challenge**<br>reach gameplay | ⚪ not copied |  |  |
+| **Hulk**<br>reach gameplay | ⚪ not copied |  |  |
+| **Hummer Badlands**<br>reach gameplay | ⚪ not copied |  |  |
+| **Hunter: The Reckoning**<br>reach gameplay | ⚪ not copied |  |  |
+| **Hyper Sports 2002 Winter**<br>reach gameplay | ⚪ not copied |  |  |
+| **I-Ninja**<br>reach gameplay | ⚪ not copied |  |  |
+| **Ice Age 2: The Meltdown**<br>reach gameplay | ⚪ not copied |  |  |
+| **IHRA Drag Racing 2004**<br>reach gameplay | ⚪ not copied |  |  |
+| **IHRA Drag Racing: Sportsman Edition**<br>reach gameplay | ⚪ not copied |  |  |
+| **IHRA Professional Drag Racing 2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **Indiana Jones and the Emperor's Tomb**<br>reach gameplay | ⚪ not copied |  |  |
+| **IndyCar Series**<br>reach gameplay | ⚪ not copied |  |  |
+| **IndyCar Series 2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **Innocent Tears**<br>reach gameplay | ⚪ not copied |  |  |
+| **Inside Pitch 2003**<br>reach gameplay | ⚪ not copied |  |  |
+| **Intellivision Lives!**<br>reach gameplay | ⚪ not copied |  |  |
+| **International Superstar Soccer 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Iron Phoenix**<br>reach gameplay | ⚪ not copied |  |  |
+| **Jacked**<br>reach gameplay | ⚪ not copied |  |  |
+| **Jade Empire**<br>reach gameplay | ⚪ not copied |  |  |
+| **James Cameron's Dark Angel**<br>reach gameplay | ⚪ not copied |  |  |
+| **Jaws Unleashed**<br>reach gameplay | ⚪ not copied |  |  |
+| **Jikkyou World Soccer 2002**<br>reach gameplay | ⚪ not copied |  |  |
+| **Judge Dredd: Dredd vs. Death**<br>reach gameplay | ⚪ not copied |  |  |
+| **Juiced**<br>reach gameplay | ⚪ not copied |  |  |
+| **Jurassic Park: Operation Genesis**<br>reach gameplay | ⚪ not copied |  |  |
+| **Just Cause**<br>reach gameplay | ⚪ not copied |  |  |
+| **Justice League Heroes**<br>reach gameplay | ⚪ not copied |  |  |
+| **Knight's Apprentice: Memorick's Adventures**<br>reach gameplay | ⚪ not copied |  |  |
+| **Knights of the Temple II**<br>reach gameplay | ⚪ not copied |  |  |
+| **Knockout Kings 2002**<br>reach gameplay | ⚪ not copied |  |  |
+| **Kung Fu Chaos**<br>reach gameplay | ⚪ not copied |  |  |
+| **Largo Winch: Empire Under Threat**<br>reach gameplay | ⚪ not copied |  |  |
+| **Legends of Wrestling**<br>reach gameplay | ⚪ not copied |  |  |
+| **Legends of Wrestling II**<br>reach gameplay | ⚪ not copied |  |  |
+| **Lemony Snicket's A Series of Unfortunate Events**<br>reach gameplay | ⚪ not copied |  |  |
+| **LMA Manager 2003**<br>reach gameplay | ⚪ not copied |  |  |
+| **Loons: The Fight for Fame**<br>reach gameplay | ⚪ not copied |  |  |
+| **Mace Griffin: Bounty Hunter**<br>reach gameplay | ⚪ not copied |  |  |
+| **Madden NFL 07**<br>reach gameplay | ⚪ not copied |  |  |
+| **Madden NFL 08**<br>reach gameplay | ⚪ not copied |  |  |
+| **Madden NFL 2002**<br>reach gameplay | ⚪ not copied |  |  |
+| **Magi Death Fight!**<br>reach gameplay | ⚪ not copied |  |  |
+| **Manhunt**<br>reach gameplay | ⚪ not copied |  |  |
+| **Mashed: Drive to Survive**<br>reach gameplay | ⚪ not copied |  |  |
+| **Mat Hoffman's Pro BMX 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Max Payne**<br>reach gameplay | ⚪ not copied |  |  |
+| **Maximum Chase**<br>reach gameplay | ⚪ not copied |  |  |
+| **Medal of Honor: European Assault**<br>reach gameplay | ⚪ not copied |  |  |
+| **Medal of Honor: Frontline**<br>reach gameplay | ⚪ not copied |  |  |
+| **Metal Arms: Glitch in the System**<br>reach gameplay | ⚪ not copied |  |  |
+| **Metal Dungeon**<br>reach gameplay | ⚪ not copied |  |  |
+| **Metal Gear Solid 2: Substance**<br>reach gameplay | ⚪ not copied |  |  |
+| **Micro Machines**<br>reach gameplay | ⚪ not copied |  |  |
+| **Midway Arcade Treasures**<br>reach gameplay | ⚪ not copied |  |  |
+| **Midway Arcade Treasures 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Mission: Impossible: Operation Surma**<br>reach gameplay | ⚪ not copied |  |  |
+| **Monopoly Party**<br>reach gameplay | ⚪ not copied |  |  |
+| **Monster Garage**<br>reach gameplay | ⚪ not copied |  |  |
+| **Motor Trend Presents Lotus Challenge**<br>reach gameplay | ⚪ not copied |  |  |
+| **MVP Baseball 2003**<br>reach gameplay | ⚪ not copied |  |  |
+| **Namco Museum**<br>reach gameplay | ⚪ not copied |  |  |
+| **NBA 2K6**<br>reach gameplay | ⚪ not copied |  |  |
+| **NBA 2K7**<br>reach gameplay | ⚪ not copied |  |  |
+| **NBA Inside Drive 2004**<br>reach gameplay | ⚪ not copied |  |  |
+| **Need for Speed: Hot Pursuit 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Neighbours from Hell**<br>reach gameplay | ⚪ not copied |  |  |
+| **NFL 2K2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Psi-Ops: The Mindgate Conspiracy**<br>reach gameplay | ⚪ not copied |  |  |
+| **Psyvariar 2: Extend Edition**<br>reach gameplay | ⚪ not copied |  |  |
+| **RAW**<br>reach gameplay | ⚪ not copied |  |  |
+| **Ricky Ponting International Cricket 2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **RLH: Run Like Hell**<br>reach gameplay | ⚪ not copied |  |  |
+| **Robotech: Invasion**<br>reach gameplay | ⚪ not copied |  |  |
+| **RollerCoaster Tycoon**<br>reach gameplay | ⚪ not copied |  |  |
+| **Rugby League 2**<br>reach gameplay | ⚪ not copied |  |  |
+| **Sega GT 2002**<br>reach gameplay | ⚪ not copied |  |  |
+| **Sega GT 2002 + JSRF: Jet Set Radio Future**<br>reach gameplay | ⚪ not copied |  |  |
+| **Shadow The Hedgehog**<br>reach gameplay | ⚪ not copied |  |  |
+| **Shrek**<br>reach gameplay | ⚪ not copied |  |  |
+| **Ski Racing 2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **Slam Tennis**<br>reach gameplay | ⚪ not copied |  |  |
+| **Spartan: Total Warrior**<br>reach gameplay | ⚪ not copied |  |  |
+| **Splat Magazine Renegade Paintball**<br>reach gameplay | ⚪ not copied |  |  |
+| **Stake**<br>reach gameplay | ⚪ not copied |  |  |
+| **Star Wars: Battlefront**<br>reach gameplay | ⚪ not copied |  |  |
+| **Star Wars: Battlefront II**<br>reach gameplay | ⚪ not copied |  |  |
+| **Star Wars: Knights of the Old Republic II: The Sith Lords**<br>reach gameplay | ⚪ not copied |  |  |
+| **Star Wars: Starfighter Special Edition**<br>reach gameplay | ⚪ not copied |  |  |
+| **Star Wars: The Clone Wars**<br>reach gameplay | ⚪ not copied |  |  |
+| **Still Life**<br>reach gameplay | ⚪ not copied |  |  |
+| **Super Bubble Pop**<br>reach gameplay | ⚪ not copied |  |  |
+| **Superman Returns**<br>reach gameplay | ⚪ not copied |  |  |
+| **Takahashi Junko no Mahjong Seminar**<br>reach gameplay | ⚪ not copied |  |  |
+| **Tetris Worlds**<br>reach gameplay | ⚪ not copied |  |  |
+| **The Bard's Tale**<br>reach gameplay | ⚪ not copied |  |  |
+| **The Baseball 2002: Battle Ball Park Sengen**<br>reach gameplay | ⚪ not copied |  |  |
+| **The Bible Game**<br>reach gameplay | ⚪ not copied |  |  |
+| **The Hustle: Detroit Streets**<br>reach gameplay | ⚪ not copied |  |  |
+| **The King of Fighters 2002**<br>reach gameplay | ⚪ not copied |  |  |
+| **The Lord of the Rings: The Third Age**<br>reach gameplay | ⚪ not copied |  |  |
+| **The Matrix: Path of Neo**<br>reach gameplay | ⚪ not copied |  |  |
+| **The Simpsons: Road Rage**<br>reach gameplay | ⚪ not copied |  |  |
+| **The Urbz: Sims in the City**<br>reach gameplay | ⚪ not copied |  |  |
+| **The Wild Rings**<br>reach gameplay | ⚪ not copied |  |  |
+| **Tiger Woods PGA Tour 06**<br>reach gameplay | ⚪ not copied |  |  |
+| **Tiger Woods PGA Tour 07**<br>reach gameplay | ⚪ not copied |  |  |
+| **Tiger Woods PGA Tour 2003**<br>reach gameplay | ⚪ not copied |  |  |
+| **Tiger Woods PGA Tour 2004**<br>reach gameplay | ⚪ not copied |  |  |
+| **Tiger Woods PGA Tour 2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **TimeSplitters: Future Perfect**<br>reach gameplay | ⚪ not copied |  |  |
+| **Tom Clancy's Splinter Cell: Double Agent**<br>reach gameplay | ⚪ not copied |  |  |
+| **Torino 2006**<br>reach gameplay | ⚪ not copied |  |  |
+| **Total Club Manager 2004**<br>reach gameplay | ⚪ not copied |  |  |
+| **Triangle Again**<br>reach gameplay | ⚪ not copied |  |  |
+| **Triple Play 2002**<br>reach gameplay | ⚪ not copied |  |  |
+| **Trivial Pursuit: Unhinged**<br>reach gameplay | ⚪ not copied |  |  |
+| **TY the Tasmanian Tiger**<br>reach gameplay | ⚪ not copied |  |  |
+| **UEFA Champions League 2004-2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **Ultimate Pro Pinball**<br>reach gameplay | ⚪ not copied |  |  |
+| **Umezawa Yukari no Igo Seminar**<br>reach gameplay | ⚪ not copied |  |  |
+| **Unreal Championship**<br>reach gameplay | ⚪ not copied |  |  |
+| **Virtual Pool: Tournament Edition**<br>reach gameplay | ⚪ not copied |  |  |
+| **Voodoo Vince**<br>reach gameplay | ⚪ not copied |  |  |
+| **Whiteout**<br>reach gameplay | ⚪ not copied |  |  |
+| **World Series Baseball**<br>reach gameplay | ⚪ not copied |  |  |
+| **World Snooker Championship 2005**<br>reach gameplay | ⚪ not copied |  |  |
+| **World Soccer Winning Eleven 8: International**<br>reach gameplay | ⚪ not copied |  |  |
+| **World War II Combat: Road to Berlin**<br>reach gameplay | ⚪ not copied |  |  |
+| **Xbox Live Arcade**<br>reach gameplay | ⚪ not copied |  |  |
+| **Xiaolin Showdown**<br>reach gameplay | ⚪ not copied |  |  |
+| **XIII**<br>reach gameplay | ⚪ not copied |  |  |
+| **Yetisports Arctic Adventures**<br>reach gameplay | ⚪ not copied |  |  |
+| **Yonenaga Kunio no Shougi Seminar**<br>reach gameplay | ⚪ not copied |  |  |
 
 </details>
 
-584 titles: 19 blocked, 68 Playable, 5 soak pending, 12 below 30, 37 inputs ready, 71 copied, 372 not copied. Benchmarked = below 30 + soak pending + Playable. Measured = any gameplay fps reading, on either handheld, any build or mode. Pipeline: Copied to a handheld; Inputs, the title's own route (profile setup and gameplay); Save, the profile save extracted (n/a when the route has no profile step); Bench, fps measured at MAX. fps: the gameplay median (at the bar green, 25 to the bar amber, under 25 red), the share of play at the bar it names (title_verdict.py's playable_fps x fps_tolerance, which a soak is scored at too), then the handheld, date and performance mode; the build is in the title's detail. Sources: titles/already-on-handhelds.json, logs/titlepipe/batch-\*.tsv, targets.toml, the xiso manifest, pathfind held runs, the Playable ledger, pass1-backfill.json, dispatch results/\*/verdict.json, soaks (results/\*/logcat, 60-flip windows 90-240 s); registry: docs/testing/titles/targets.toml, routes/ and titlestate.py's registry.
+584 titles: 19 blocked, 69 Playable, 5 soak pending, 12 below 30, 37 inputs ready, 70 copied, 372 not copied. Measured = any gameplay fps reading, on either handheld, any build or mode. fps: the gameplay median (at the bar green, 25 to the bar amber, under 25 red), the share of play at the bar it names (title_verdict.py's playable_fps x fps_tolerance, which a soak is scored at too); the build is in the title's detail. Sources: titles/already-on-handhelds.json, logs/titlepipe/batch-\*.tsv, targets.toml, the xiso manifest, pathfind held runs, the Playable ledger, pass1-backfill.json, dispatch results/\*/verdict.json, soaks (results/\*/logcat, 60-flip windows 90-240 s); registry: docs/testing/titles/targets.toml, routes/ and titlestate.py's registry.
 
 Hand-reviewed rows: pass 1 of #397 ([[lane.titleplay], 2026-09-26 12:09 PDT](https://github.com/jreinach-alt/hakuX/issues/397#issuecomment-5849041338)), performance mode unrecorded.
 
-**Gate:** Ghoulies median >= 25 gfps over 90-240 s on the candidate APK, on the Nova: the newest soaks are not on the candidate v0.5.0's ref; on them it is met; nova **29** gfps (n=74, 14:38 (32h 8m ago), ref cf628f179f).
+**Gate:** Ghoulies median >= 25 gfps over 90-240 s on the candidate APK, on the Nova: no candidate is cut yet, so no soak is on the candidate's APK; on the newest soaks it is met; nova **29** gfps (n=74, 14:38 (32h 39m ago), ref cf628f179f).
 
 | lever | owner lane | measured effect |
 |---|---|---|
@@ -638,7 +650,7 @@ Hand-reviewed rows: pass 1 of #397 ([[lane.titleplay], 2026-09-26 12:09 PDT](htt
 
 ## 2. What is happening right now?
 
-14 stranded; 2 waiting on audit; 2 no word in 48 h.
+14 stranded; 2 no word in 48 h; 1 waiting on audit.
 
 - **lane.collapse433** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: **stranded**; waiting on: no session, nothing queued or running on a device, not parked; no PR; since: 10-01 23:27; latest result: I've found why Battlefield 2 falls short on the Nova; it is not a collapse.
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
@@ -669,22 +681,21 @@ Hand-reviewed rows: pass 1 of #397 ([[lane.titleplay], 2026-09-26 12:09 PDT](htt
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
 - **lane.alwaystelemetry** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: waiting on audit; waiting on: PR #824: an audit label (the PR is ready and unlabelled); since: 10-05 07:50; latest result: Part 1 of #433 was already finished before this session: the perflog overhead is measured and the two-tier design is posted. (PR #824)
   - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
-- **lane.statuspage1013** -- kind: local lane; issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; state: waiting on audit; waiting on: PR #985: an audit label (the PR is ready and unlabelled); since: 10-13 22:20; latest result: - (PR #985)
-  - board note Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own.
-- **lane.remote** -- kind: cloud session; issue: #461 Performance: Crimson Skies re-hashes unchanged textures (6.5 ms/frame) and Blinx's texture uploads cost 3.4 ms/frame; state: no word in 48 h; waiting on: -; since: -; latest result: -
+- **lane.remote** -- kind: cloud session; issue: #426 Performance: split renderer command capture from Vulkan translation; #184 Vulkan: the Clear suite's surface-format captures are worse than GL on four of them, two of which GL gets pixel-exact -- and no arm scores that suite; state: no word in 48 h; waiting on: -; since: -; latest result: -
 - **lane.xbox** -- kind: console session; issue: #112 xbox-hardware: the experiments that need real silicon, in the order they pay; #110 PVIDEO overlay: no size cap and no pitch handling (pvideo.c is 77 lines of register stubs); state: no word in 48 h; waiting on: -; since: -; latest result: -
 
-### Finished today (15)
+### Finished today (16)
 
+- lane.statuspage1013 -- issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; PR: #985; merged: 22:58; result: -
 - lane.holdinput1013 -- issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; PR: #981; merged: 17:51; result: Lane `holdinput1013` is done and pushed.
 - lane.hangstall1013 -- issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; PR: -; merged: 16:23; result: Done. `lane/hangstall1013` is pushed and ready for `forge_prsync.py` to open the PR.
 - lane.compatrefresh1013 -- issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; PR: #978; merged: 15:20; result: -
 - lane.statusalloc1013 -- issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; PR: #980; merged: 14:31; result: -
 - lane.pathrules1013 -- issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; PR: #979; merged: 14:00; result: PR #979 is pushed, ready, and carries a `waiting:` comment naming the exact blocking condition (pathtele1013's fold landing on `origin/master`) and the resolving signal.
+
+<details><summary>10 more finished earlier today</summary>
+
 - lane.pathtele1013 -- issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; PR: #972; merged: 12:33; result: PR #972 opened, ready (both Part A and Part B complete, selftest passes, PR.md already states `State: ready`).
-
-<details><summary>9 more finished earlier today</summary>
-
 - lane.forgealloc1013 -- issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; PR: #977; merged: 11:59; result: All five tasks (#433) are now complete and pushed.
 - lane.driverline1013 -- issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; PR: #971; merged: 11:24; result: -
 - lane.pathvoid1012 -- issue: #433 0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds; PR: -; merged: 10:42; result: -
@@ -748,7 +759,7 @@ last hour: 0 running, 0 hands-on, 0 waste (idle-waiting + held-idle + overdue)
 
 last hour: 0 running, 0 hands-on, 0 waste (idle-waiting + held-idle + overdue)
 
-**Queue:** no queue: the devices are not the constraint. 0 queued, 0 of them 0.5 work; no idle-tier sweep is queued. Estimated drain: nothing to drain.
+**Queue:** no queue: the devices are not the constraint. 0 queued, 0 of them 0.6 work; no idle-tier sweep is queued. Estimated drain: nothing to drain.
 
 dispatch/queue and running; durations estimated: a title run its seconds + 8 min, a suite run 5 min + 1.5 min per suite.
 
@@ -756,42 +767,42 @@ dispatch/queue and running; durations estimated: a title run its seconds + 8 min
 
 ### Automation
 
-- arms -- last run: 10-13 22:46; next run: running now; last outcome: queue host:selftest-badkey.json: selftest #1 a=510dacff37 b=07937793af suites=[Blend surface] runs=1
-- authwatch -- last run: 10-13 22:45; next run: 10-13 22:50; last outcome: -
-- autoverdict -- last run: 10-13 22:46; next run: 10-13 23:01; last outcome: -
+- arms -- last run: 10-13 23:17; next run: running now; last outcome: queue host:selftest-badkey.json: selftest #1 a=510dacff37 b=07937793af suites=[Blend surface] runs=1
+- authwatch -- last run: 10-13 23:17; next run: 10-13 23:22; last outcome: -
+- autoverdict -- last run: 10-13 23:17; next run: 10-13 23:32; last outcome: -
 - board -- last run: 10-03 06:50; next run: no timer; last outcome: This tick cleared the one FAIL: `greensize303` is now on the board, and the fleet check no longer reports it.
 - cloud -- last run: 09-29 19:54; next run: no timer; last outcome: finish: #627 moved past needs-audit-2 and carries no claimed:cloud, so an earlier finish already cleared it; this one changed nothing
-- defrag -- last run: 10-13 22:46; next run: 10-13 22:48; last outcome: -
-- devwatch -- last run: 10-13 22:46; next run: 10-13 22:47; last outcome: -
-- driver -- last run: 10-13 22:45; next run: 10-13 22:50; last outcome: -
+- defrag -- last run: 10-13 23:16; next run: 10-13 23:18; last outcome: -
+- devwatch -- last run: 10-13 23:17; next run: 10-13 23:18; last outcome: -
+- driver -- last run: 10-13 23:17; next run: 10-13 23:22; last outcome: -
 - dx -- last run: 10-13 09:23; next run: 10-14 09:23; last outcome: -
-- failintake -- last run: 10-13 22:38; next run: 10-13 22:48; last outcome: -
+- failintake -- last run: 10-13 23:09; next run: 10-13 23:19; last outcome: -
 - fold -- last run: 10-03 08:19; next run: no timer; last outcome: tick: repaired none; folded none; handed back none; waiting none
-- foldqueue -- last run: 10-13 22:28; next run: running now; last outcome: -
-- forge-prsync -- last run: 10-13 22:45; next run: 10-13 22:50; last outcome: -
-- forge-sync -- last run: 10-13 22:46; next run: 10-13 22:47; last outcome: -
-- github-gateway -- last run: 10-13 22:45; next run: 10-13 23:00; last outcome: -
+- foldqueue -- last run: 10-13 23:12; next run: 10-13 23:28; last outcome: -
+- forge-prsync -- last run: 10-13 23:13; next run: 10-13 23:18; last outcome: -
+- forge-sync -- last run: 10-13 23:17; next run: 10-13 23:18; last outcome: -
+- github-gateway -- last run: 10-13 23:15; next run: 10-13 23:30; last outcome: -
 - handback -- last run: 10-03 08:22; next run: no timer; last outcome: nothing handed back (needs-rebase draft-strand-arm draft-strand-runs draft-strand-idle draft-strand-quiet idle-no-pr merged-runs)
-- hostops -- last run: 10-13 22:28; next run: 10-13 22:48; last outcome: Tick complete.
-- hourly -- last run: 10-13 22:45; next run: running now; last outcome: -
-- idlewatch -- last run: 10-13 22:38; next run: 10-13 22:48; last outcome: -
-- issue-mirror -- last run: 10-13 22:45; next run: 10-13 22:55; last outcome: -
+- hostops -- last run: 10-13 23:08; next run: 10-13 23:28; last outcome: Tick complete.
+- hourly -- last run: 10-13 22:45; next run: 10-13 23:45; last outcome: -
+- idlewatch -- last run: 10-13 23:09; next run: 10-13 23:19; last outcome: -
+- issue-mirror -- last run: 10-13 23:16; next run: 10-13 23:26; last outcome: -
 - issue-sweep -- last run: 10-02 07:41; next run: no timer; last outcome: gh returned nothing for the open issue list; this tick is blind and writes nothing
-- issue-sync -- last run: 10-13 22:38; next run: 10-13 22:48; last outcome: -
-- jamcheck -- last run: 10-13 22:40; next run: 10-13 22:50; last outcome: -
-- lanewaker -- last run: 10-13 22:45; next run: 10-13 22:50; last outcome: -
-- local-board -- last run: 10-13 22:40; next run: 10-13 23:00; last outcome: lanes: 0/10 units running; ready 2 (blocked 0, waiting 0); draft-strand 8; other 20; report ~/hakux-work/status/local-board.md
+- issue-sync -- last run: 10-13 23:09; next run: 10-13 23:19; last outcome: -
+- jamcheck -- last run: 10-13 23:10; next run: 10-13 23:20; last outcome: -
+- lanewaker -- last run: 10-13 23:17; next run: 10-13 23:22; last outcome: -
+- local-board -- last run: 10-13 23:01; next run: 10-13 23:22; last outcome: lanes: 0/10 units running; ready 1 (blocked 0, waiting 0); draft-strand 8; other 20; report ~/hakux-work/status/local-board.md
 - local-issue-audit -- last run: 10-13 19:41; next run: 10-14 07:41; last outcome: -
-- manifest -- last run: 10-13 22:45; next run: 10-13 23:00; last outcome: -
+- manifest -- last run: 10-13 23:15; next run: 10-13 23:30; last outcome: -
 - nightly -- last run: 10-13 00:30; next run: 10-14 00:30; last outcome: -
-- ops-shadow -- last run: 10-13 22:45; next run: 10-13 22:50; last outcome: -
-- pathfix -- last run: 10-13 22:45; next run: 10-13 22:50; last outcome: -
+- ops-shadow -- last run: 10-13 23:17; next run: 10-13 23:22; last outcome: -
+- pathfix -- last run: 10-13 23:17; next run: 10-13 23:22; last outcome: -
 - pr-sweep -- last run: 10-02 09:13; next run: no timer; last outcome: gh returned nothing for the open PR list; this tick is blind and repairs nothing
-- prune -- last run: 10-13 17:43; next run: 10-13 23:49; last outcome: -
-- stallwatch -- last run: 10-13 22:38; next run: 10-13 22:48; last outcome: -
+- prune -- last run: 10-13 17:43; next run: 10-13 23:50; last outcome: -
+- stallwatch -- last run: 10-13 23:09; next run: 10-13 23:19; last outcome: -
 - tmpclean -- last run: 10-13 22:37; next run: 10-13 23:37; last outcome: -
-- usage-meter -- last run: 10-13 22:45; next run: 10-13 23:15; last outcome: -
-- xbox-keepalive -- last run: 10-13 22:17; next run: 10-13 23:17; last outcome: -
+- usage-meter -- last run: 10-13 23:16; next run: 10-13 23:46; last outcome: -
+- xbox-keepalive -- last run: 10-13 23:17; next run: 10-14 00:17; last outcome: -
 - fold -- last run: not recorded; next run: no timer; last outcome: a standing board row; it runs when the board dispatches it
 - triage -- last run: not recorded; next run: no timer; last outcome: a standing board row; it runs when the board dispatches it
 
@@ -800,7 +811,7 @@ details
 #### Window budget (the account's five-hour and weekly windows)
 
 - dispatching normally. Lanes and audits start as work allows; expanding is the default.
-- week from 2026-10-08 21:00 PDT (72% elapsed, reserve from 2026-10-14 11:24 PDT), 157 run(s), spend 991.9 of no declared budget, 0 usage-limit hit(s) this week (0 in the reserve).
+- week from 2026-10-08 21:00 PDT (73% elapsed, reserve from 2026-10-14 11:24 PDT), 157 run(s), spend 991.9 of no declared budget, 0 usage-limit hit(s) this week (0 in the reserve).
 - no session has ever been refused by the account's window on this host. That is the only first-hand evidence of a closed window there is: **the remaining five-hour and weekly balance cannot be queried from here**, so the weekly reserve arms on that evidence, or on `WEEK_SPEND_BUDGET` if the owner declares one in `$WORK/limits.env`. Unknown means open, by design.
 
 #### Lane sessions finished (last 24h)
@@ -818,7 +829,7 @@ details
 | 10-13 14:13 | holdinput1013 | sonnet-5 | 243 | 69 | ok | #981 merged | - |
 | 10-13 15:24 | hangstall1013 | sonnet-5 | 77 | 15 | ok |  | Done. `lane/hangstall1013` is pushed and ready for `forge_prsync.py` to open the PR. |
 | 10-13 16:53 | holdinput1013 | sonnet-5 | 190 | 155 | ok | #981 merged | Lane `holdinput1013` is done and pushed. |
-| 10-13 22:20 | statuspage1013 | sonnet-5 | 301 | 116 | MAXTURNS | #985 open |  |
+| 10-13 22:20 | statuspage1013 | sonnet-5 | 301 | 116 | MAXTURNS | #985 merged |  |
 
 _result: ok = ended on its own; MAXTURNS = cut at the turn cap, work kept; ERR = the session errored. A lane that ended without a ready PR is resumed by the board (attempts 1-3 on opus, then fable, then decision-needed)._
 
@@ -854,14 +865,14 @@ last model ticks:
 10-03 06:50 board claude-sonnet-5 turns=31 58s ok This tick cleared the one FAIL: `greensize303` is now on the board, and the flee
 ```
 
-board branch: 2350eb8aae 9 minutes ago -- tracker: #986 MKSM cutscene fps; #984 gains MKSM as the third quiet-speech title
+board branch: 2350eb8aae 40 minutes ago -- tracker: #986 MKSM cutscene fps; #984 gains MKSM as the third quiet-speech title
 
 #### Handhelds and arms
 
 - adb: ee317437(device)
 - dispatcher: active, workers: 1
 - queue: 0 waiting, 0 idle-tier z-\* behind them, 0 running; holds: nova thor
-- dispatcher last line: `10-13 21:18:54 HELD by ~/hakux-work/dispatch/hold/nova; claiming nothing until it is removed`
+- dispatcher last line: `10-13 22:57:39 HELD by ~/hakux-work/dispatch/hold/nova; claiming nothing until it is removed`
 - affinity: lanes serving `desktop` -- an A/B pair queued now is pinned to one of them
 - arms job: 122 pair(s) queued or running and not yet judged; 118 judged; 252 skipped (see `arms.sh list`); watermark 2026-09-18 13:00 PDT (stored as `2026-09-18T20:00:00Z`: arms.sh compares that UTC string to registered_utc, so the file stays UTC and only this rendering is local)
 
@@ -906,11 +917,10 @@ told=2026-10-12T17:24:44Z
 2026-10-03 08:19:11 PDT tick: repaired none; folded none; handed back none; waiting none
 ```
 
-- master: f327d67b8f 5 hours ago -- fold: lane/holdinput1013 (offline) -- pathfind: a drive hold proves its gas, gets a stuck vehi
+- master: 2c06371519 25 minutes ago -- fold: lane/statuspage1013 (offline) -- status page: track 0.6, 1.0 projection chart, drop B
 
 #### Open lane PRs
 
-- #985 `lane/statuspage1013` status page: track 0.6, 1.0 projection chart, drop Benchmarked and C I S B -- labels: none
 - #969 (draft) `lane/x1port1012-halo` x1port1012-halo: #939 ring-world leads (triage in progress) -- labels: none
 - #942 (draft) `lane/routedriver2` routedriver2 session 2: Buffy's menus made robust, the ledge gap diagnosed (#433) -- labels: none
 - #929 (draft) `lane/nfsroute1011` nfsroute1011: NFS Most Wanted -- routes that check the screen, and a saved profile (#433, 0.5) -- labels: none
@@ -930,10 +940,10 @@ none seen.
 #### Host
 
 - checkout `~/hakuX` on master, 0 behind origin/master (jobs run the fetched trunk regardless)
-- timers: arms next -; authwatch next 22:56:03 PDT; autoverdict next 23:02:01 PDT; defrag next 22:52:00 PDT; devwatch next 22:52:30 PDT; driver next 22:56:03 PDT; dx next 09:23:00 PDT; failintake next 22:58:28 PDT; foldqueue next -; forge-prsync next 22:56:20 PDT; forge-sync next 22:51:57 PDT; github-gateway next 23:00:06 PDT; hostops next 23:08:00 PDT; hourly next 23:45:00 PDT; idlewatch next 22:58:28 PDT;
+- timers: arms next -; authwatch next 23:27:08 PDT; autoverdict next 23:32:50 PDT; defrag next 23:24:00 PDT; devwatch next 23:22:30 PDT; driver next 23:27:08 PDT; dx next 09:23:00 PDT; failintake next 23:29:26 PDT; foldqueue next 23:28:16 PDT; forge-prsync next 23:24:00 PDT; forge-sync next 23:22:45 PDT; github-gateway next 23:30:25 PDT; hostops next 23:28:00 PDT; hourly next 23:45:00 PDT; idlewatch next 23
 - attempts: aasample=3 accuracy804=4 adpf=2 affinitybacklog=2 alwaystelemetry=1 armlabel=1 armpin=1 armsflake=1 armsrequeue=1 armsscope=1 armsskip=3 async413=1 async794=1 aufdispatch=1 aufire412=2 aufire412b=2 backlogstate=3 battadmit=2 belowbar1005=1 bf2push656=1 bf2stall433=1 bf2ubosize433=2 blankrule297=2 blendarm50=1 blendrace50=2 blinx2input=2 blinx372=1 blinx372b=1 blinx372c=2 blinx372d=1 blinx372e=2 blit83b=1 blit84=1 blitsafe=2 boardgate=4 boardgateenv1009=1 boardprio=3 boardpushgate=1 boardtreeheal=1 boardwt-checkout-selfheal=1 branchprune=2 brdf315=1 brdf315b=1 buildflags427=1 buildstamp=1 burnoutbrief1012=2 burnoutloop1012=2 burnoutunlock1012=1 ciskip=1 claimrace=2 cloud-audit1-181=1 cloud-audit2-163=1 cloud-audit2-308=2 cloud-issue-10=1 cloud-issue-111=1 cloud-issue-112=1 cloud-issue-13=1 cloud-issue-188=3 cloud-issue-189=1 cloud-issue-200=2 cloud-issue-271=2 cloud-issue-278=1 cloud-issue-279=1 cloud-issue-282=3 cloud-issue-283=1 cloud-issue-284=4 cloud-issue-286=1 cloud-issue-297=1 cloud-issue-34=1 cloud-issue-527=1 cloud190=1 cloudclaim=1 cloudlaneguard=2 cloudtail=1 cloudterritory=1 clrpad164=2 clrsurf91=3 clrvk184=1 clrwb91=4 clrwin88=1 coldstart1010=1 collapse433=1 compatpage1012=1 crashattr=2 cull13=1 cullnf276=2 dash432=2 defecttriage433=1 desktopchannel=2 diagdump77=2 diagsoak77=1 dirtytlb=3 dispatchgate1006=2 dispatchguard=1 displayguard=3 dispsuper=1 dmasurf277=1 doa413=1 doa413b=3 doa413c=1 docsfresh1012=1 dpforce345=2 draftstrand=3 drain474=2 drawrec1010=4 drvab77=1 energymap507=2 escalationparse=1 escitems=1 failgate=3 fanduty507=4 fastpaths1010=1 fgrace1010=1 fgunknown=1 fix311=1 flatlm13=1 fleetabsent=1 fleetflush1010=1 fleetreg=2 fleetstanding=1 flicker801=1 flip474=4 flushstall787=2 fmv303=1 fmv303b=2 fmv303c=1 focusanr=1 fog278=1 foldcancel=1 foldci=3 foldflow=2 foldindex=1 foldregress=2 forgealloc1013=1 forza414=2 forzaclock=1 forzadecay414=2 forzasurf1010=4 fps20786=1 fps382=1 fpsbelow1012=1 fpsshare=1 fpstelemetry1008=4 fpstelemetry1008b=3 framereview=1 frametrace=2 fulldisc50=1 g8b8285=1 gamecheck=1 ghoul311=4 glchannel=1 glerr86=1 gmem474=1 goldencorr287=1 goldens782=1 goldovr287=1 gpl569=3 gpuclock=3 gpunonrender=2 gpupass1010=2 greensize303=1 gta482=4 gtaroutes1011=4 gtasagpu1011=1 gtawedge1012=1 handback=3 handbackbranch=1 handbacklane=1 handbackmerged=1 handbackpark=1 handbackresolved=1 handbackstrand=1 handbackwaiter=1 hangstall1013=1 hangwatch=3 harnessfix1006=3 hddcrash=4 hddperm=3 hddsplit=1 hilodot10=1 hitchcause=1 hitchwatch=1 holdfollow1013=1 holdinput1013=2 holdlease=2 holdtake=1 holdwait=1 ibcache=2 idlehalt=3 idlehaltdefault=3 idlehaltspin=1 indexcheck=1 indexloc=2 inflightpark=1 isoroots=1 issuemirror1012=1 issuemirror1013=1 issuerecon=1 issuesweep=1 jcache425=1 kabukistall=2 lanenobg1010=2 lanepath1009=2 laneshape=1 libfolders=2 linecap13=2 litcompile569=2 localforge=4 localjobs=1 localtime=1 lockwake1011=1 measured05=1 memfast=1 meterfit1010=2 modelpolicy1010=2 nanattr281=1 nanfix281=1 near30=4 nfs30plan1010=2 nfsaudio1011=3 nfsdefault1011=4 nfsframe1010=3 nfsroute1011=2 nightlynotes=3 nightlynotes1009=3 nightlytrunk=1 nightlywrap1010=1 notespath=1 notify488=3 opsrebuild=1 pacing=1 pathclass=1 pathfind=2 pathfindhold1012=1 pathknow=1 pathrules1013=1 pathtele1013=1 perdraw1009=4 perfarch=2 perfbase=1 perfregimen=2 pfifowait1009=3 pilotgate=3 pipeline413=2 playsecs1013=1 pmc188=3 pmucounters=1 postput1010=2 pri432=2 primpv13=4 profileconv1011=3 profileddefault1008=4 profilegate1011=3 pshaniso284=2 pshqueue=3 rankrule=1 regs200=1 relnote=1 relprio432=1 remotechannel=1 rendermode474=1 reportasync1010=1 reqprio=1 restoreleak1009=3 restoreprio1011=4 retreason425=1 ring53=1 ring53impl=3 routedriver=4 routedriver2=3 routefix1002=4 routeprep=1 routerca433=1 savestate1011=4 savestate433=4 scoresplit=1 selfdeps=4 selftest86=1 selftestclean1011=1 selftestshard=2 selftestsplit=2 shade224=1 shadeflat224=4 shaderfb569=2 shaderplan569=1 shaderprebuild569=4 shadetie224=1 shadetie224b=2 slowdown462=3 slowtier2=3 snapdrive=1 snapshot1011=2 soakflake=1 soakvideo1011=2 sphere273fix=1 spheremap273=1 stalecheck=2 stallmeasure569=1 statusdash=1 statusfresh=1 statusguard=1 statuspage=1 statuspage1013=1 statuswindow=1 stopmarker=1 stuckdetect1007=1 suffixpr=1 surfdl1008=3 surfgpu1009=3 surfgpudefault1009=3 surfwatch382=1 sustain507=2 swatchorder50=1 sweepclock=1 sweepcover=2 sweepremote=1 sweeps=1 swizzle87=1 tbchurn424=1 tbflip424=1 tbsize429=1 tcg424flip=4 tcgchurn=2 texscan1010=2 texvol283=1 thermal507=2 thorbottom800=2 thorheat=1 tie282c=1 tiecode282=2 titleplay=1 titleroutes=4 titleroutes2=2 titlerun=3 titles05=3 titlestate=1 tokentier=1 toolsmith=2 tronhang672=1 turncap=1 turnipcost569=1 turnipfork=2 uberdefault569=1 uberspike569=2 usage24h1009=1 usagemode=1 usagerule1010=1 usbdialog=1 vblank65=1 vcpu60=2 vcpuplan=1 vcpuprime428=2 vcpusleep=3 vcpuwait433=4 verdict10min=1 verdict433=2 visual404=1 vklayer34=1 vkpointsize34=4 vol283r=1 vshconst=3 vshcpu345=1 vshnobegin242=2 vshr12280=1 vshsubneg255=1 vtxarr262=1 waitread1006=1 wbuf31fix=3 wbuf31sel=1 wbufclip=2 wbufdepth24=1 windowbudget=2 wparam223=1 wparamclip223=2 wparamcode223=1 wparamff223=1 wparamgeom223=1 x1a7271=1 x1port1012=3 y16bump10=2 yuv10=1 zclamp276=1 zdepth272=1 zetaroutes1012=4 zetaswap275=1 zrtz272=4
 
-_Written by `docs/testing/jobs/status.sh` on the host every job tick and every 30 min; republished when the content changes (at most every 10 min) and at least every 30 min. Every time here is PDT. Next tick due by 2026-10-13 23:17 PDT._
+_Written by `docs/testing/jobs/status.sh` on the host every job tick and every 30 min; republished when the content changes (at most every 10 min) and at least every 30 min. Every time here is PDT. Next tick due by 2026-10-13 23:47 PDT._
 
 ---
 
