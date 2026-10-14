@@ -6,10 +6,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `titledb1014` | claude-sonnet-5 | 5 min |  |
 
 - **Handhelds:** 1 connected.
-  - Nova: free for the queue
+  - Nova: held by `lanelocal-shuffle`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -114,4 +116,4 @@ No branch is being worked right now.
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 - 2026-10-13 x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
 
-_Updated 2026-10-14 08:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 08:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
