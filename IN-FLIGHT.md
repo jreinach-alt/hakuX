@@ -16,10 +16,12 @@ No lane session is running.
 
 ## 0.5 release: Playable titles
 
-**60 titles are confirmed Playable** (8 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**62 titles are confirmed Playable** (10 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-13 | Harry Potter and the Philosopher's Stone | Playable, 10-minute run |
+| 2026-10-13 | Shrek 2 | Playable, 10-minute run, median 29.81 fps |
 | 2026-10-13 | Burnout Revenge | Playable, accepted on review |
 | 2026-10-13 | ATV Quad Power Racing 2 | Playable, 10-minute run, median 59 fps |
 | 2026-10-13 | Rayman 3 Hoodlum Havoc | Playable, 10-minute run |
@@ -81,7 +83,7 @@ No lane session is running.
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-42 of these still await the owner's flicker check.
+44 of these still await the owner's flicker check.
 
 ## Work in progress
 
@@ -89,6 +91,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-13 pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every unstick rung
 - 2026-10-13 hangwatch: catch a frozen title that starves the GPU, spins the vCPU and silences the disc, even with non-flat audio
 - 2026-10-13 compatrefresh1013: the compatibility page and README move to 57 Playable
 - 2026-10-13 statusalloc1013: status.sh no longer opens a status issue the gh shim would refuse (#433, 0.5)
@@ -100,6 +103,5 @@ No branch is being worked right now.
 - 2026-10-13 x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
 - 2026-10-13 issuemirror1013: the issue mirror waits out the gateway lock
 - 2026-10-13 docsrewrite1012: the public docs rewritten for players, each with a Last updated line (#433, 0.5)
-- 2026-10-13 docsfresh1012: a freshness check for the public docs, an hourly alarm and a release step (#433, 0.5)
 
-_Updated 2026-10-13 17:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 18:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
