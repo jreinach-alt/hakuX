@@ -16,10 +16,11 @@ No lane session is running.
 
 ## 0.5 release: Playable titles
 
-**65 titles are confirmed Playable** (13 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**66 titles are confirmed Playable** (14 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-13 | Avatar: The Last Airbender | Playable, 10-minute run, median 59.94 fps |
 | 2026-10-13 | TimeSplitters 2 | Playable, accepted on review |
 | 2026-10-13 | Guilty Gear XX #Reload | Playable, 10-minute run on the Nova |
 | 2026-10-13 | BloodRayne 2 | Playable, 10-minute run on the Nova |
@@ -86,7 +87,7 @@ No lane session is running.
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-47 of these still await the owner's flicker check.
+48 of these still await the owner's flicker check.
 
 ## Work in progress
 
@@ -107,4 +108,4 @@ No branch is being worked right now.
 - 2026-10-13 issuemirror1013: the issue mirror waits out the gateway lock
 - 2026-10-13 docsrewrite1012: the public docs rewritten for players, each with a Last updated line (#433, 0.5)
 
-_Updated 2026-10-13 22:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 22:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
