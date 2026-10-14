@@ -1,14 +1,14 @@
 # hakuX status
 
-_updated 2026-10-14 00:51 PDT_
+_updated 2026-10-14 01:21 PDT_
 
-0.6: Measured 204 / 300 · Playable 68 / 110.
+0.6: Measured 204 / 300 · Playable 67 / 110.
 
 ## How close is 0.6?
 
 Measured **204** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
-Playable **68** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
+Playable **67** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 
 
 ![Titles over time](chart.svg)
@@ -20,10 +20,10 @@ Playable **68** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
 | 0.6 | 300 | 2026-10-22 | 110 | 2026-10-23 |
-| 0.7 | 425 | 2026-11-02 | 185 | 2026-11-08 |
-| 0.8 | 575 | 2026-11-15 | 300 | 2026-12-03 |
-| 0.9 | 725 | 2026-11-29 | 480 | 2027-01-12 |
-| 1.0 | 876 | 2026-12-12 | 789 | 2027-03-20 |
+| 0.7 | 425 | 2026-11-02 | 185 | 2026-11-09 |
+| 0.8 | 575 | 2026-11-15 | 300 | 2026-12-05 |
+| 0.9 | 725 | 2026-11-29 | 480 | 2027-01-15 |
+| 1.0 | 876 | 2026-12-12 | 789 | 2027-03-26 |
 
 Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
@@ -149,7 +149,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Blazing Angels Squadrons of WWII USA Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
 | **BloodRayne 2 USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-08 |
 | **Blowout**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-06 |
-| **Buffy the Vampire Slayer**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
+| **Buffy the Vampire Slayer**<br>review frames for Playable | soak pending | **30.0**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
 | **Conan Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-12 |
 | **Conflict Global Terror USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Family Guy: Video Game!**<br>soak for Playable | soak pending | **30.0**<br>98% at 28.5+<br>Thor · 10-01 · max perf |
@@ -243,8 +243,6 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **The Lord of the Rings: The Fellowship of the Ring**<br>done | 🟢 Playable |  |
 | **Tony Hawk's Underground 2**<br>done | 🟢 Playable |  |
 | **X-Men: The Official Game**<br>done | 🟢 Playable |  |
-| **Dungeons & Dragons: Heroes**<br>reach gameplay | 🟣 inputs ready |  |
-| **Shin Megami Tensei: Nine**<br>reach gameplay | 🟣 inputs ready |  |
 | **Antz Extreme Racing**<br>reach gameplay | 🔵 copied |  |
 | **Aoi Namida**<br>reach gameplay | 🔵 copied |  |
 | **MechAssault**<br>reach gameplay | 🔵 copied |  |
@@ -259,7 +257,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Alter Echo**<br>reach gameplay | ⚪ not copied |  |
 | **America's Army: Rise of a Soldier**<br>reach gameplay | ⚪ not copied |  |
 
-<details><summary>363 more not copied</summary>
+<details><summary>362 more not copied</summary>
 
 | Title and next step | Status | fps |
 |---|---|---|
@@ -522,7 +520,6 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Knight's Apprentice: Memorick's Adventures**<br>reach gameplay | ⚪ not copied |  |
 | **Knights of the Temple II**<br>reach gameplay | ⚪ not copied |  |
 | **Knockout Kings 2002**<br>reach gameplay | ⚪ not copied |  |
-| **KOF: Maximum Impact: Maniax**<br>reach gameplay | ⚪ not copied |  |
 | **Kung Fu Chaos**<br>reach gameplay | ⚪ not copied |  |
 | **Largo Winch: Empire Under Threat**<br>reach gameplay | ⚪ not copied |  |
 | **Legends of Wrestling**<br>reach gameplay | ⚪ not copied |  |
@@ -629,7 +626,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-585 titles: 19 blocked, 68 Playable, 5 soak pending, 12 below 30, 37 inputs ready, 71 copied, 373 not copied.
+582 titles: 19 blocked, 67 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 71 copied, 372 not copied.
 
 ---
 
