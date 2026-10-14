@@ -55,6 +55,14 @@ check "two differently-spelled sources of one title_id fold to one Playable row 
     grep -q '^PASS' "$T/spongebob-falsifier.txt"
 grep -q '^FAIL' "$T/spongebob-falsifier.txt" && sed 's/^/    /' "$T/spongebob-falsifier.txt"
 
+# `title_registry.py check --pages` (#433 Part 4): every public/rendered
+# page's own Playable count must agree with the table's, and a page that
+# stops agreeing must fail the check by name, not just by exit code.
+python3 "$REPO/docs/lanes/titledb1014/fixture/pages_check_falsifier.py" "$REPO" > "$T/pages-check-falsifier.txt" 2>&1
+check "check --pages passes when every page agrees and fails naming the one page a mutant disagreed on" \
+    grep -q '^PASS' "$T/pages-check-falsifier.txt"
+grep -q '^FAIL' "$T/pages-check-falsifier.txt" && sed 's/^/    /' "$T/pages-check-falsifier.txt"
+
 # No Benchmarked header, no C I S B column or its legend, anywhere on the page (#433).
 check "no 'Benchmarked' count and no C I S B pipeline column or legend" python3 -c '
 import re, sys

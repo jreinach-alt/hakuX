@@ -3,7 +3,10 @@
 own records say about it, so nothing that decides a dispatch has to read prose.
 
     title_registry.py build  [--root W] [--out PATH] [--no-forge]
-    title_registry.py check  [--root W] [--registry PATH]      exit 0 fresh, 3 stale/missing
+    title_registry.py check  [--root W] [--registry PATH] [--pages]
+                                                             exit 0 fresh (and, with --pages,
+                                                             every page's Playable count matches
+                                                             the table's); 3 otherwise
     title_registry.py show   [--root W] [--registry PATH] (TITLE_ID | --status S | --all)
     title_registry.py resolve [--root W] NAME                 what a name resolves to, and from where
 
@@ -104,6 +107,12 @@ class Paths:
         self.targets = os.environ.get("TITLE_TARGETS") or os.path.join(HERE, "titles", "targets.toml")
         self.routes = os.path.join(HERE, "titles", "routes")
         self.forge_token = os.path.join(root, "forge", "tokens", FORGE_USER + ".token")
+        # #433 Part 4 (check --pages): every reader of the Playable count, override-able like
+        # self.targets so a selftest fixture never has to touch the real repo or host status dir.
+        self.status_page = os.environ.get("TITLE_STATUS_PAGE") or os.path.join(root, "status", "index.html")
+        self.repo_readme = os.environ.get("TITLE_REPO_README") or os.path.join(HERE, "..", "..", "README.md")
+        self.repo_compat = os.environ.get("TITLE_REPO_COMPAT") or os.path.join(HERE, "..", "..", "docs", "COMPATIBILITY.md")
+        self.wall_synced = os.environ.get("TITLE_WALL_SYNCED") or os.path.join(self.pm, ".wall-synced")
 
     def source_files(self):
         """Every file whose change makes a built registry stale. Sorted."""
@@ -811,6 +820,43 @@ def freshness(p, path=None, now=None):
     return True, "registry built %s, %.0f s old, sources unchanged" % (hdr["generated_utc"], age)
 
 
+def page_playable_counts(p):
+    """{label: int or None} -- the Playable count each public/rendered page
+    states, by regex or row-count against the page's own text. Never joins
+    by name: this is a numbers cross-check (#433 Part 4, "any page's
+    Playable count differs from the table's"), not another source of rows."""
+    out = {}
+    try:
+        html = open(p.status_page, encoding="utf-8", errors="replace").read()
+        m = re.search(r"Playable (?:<b>)?(\d+)(?:</b>)?\s*/\s*\d+", html)
+        out["status page"] = int(m.group(1)) if m else None
+    except OSError:
+        out["status page"] = None
+    try:
+        readme = open(p.repo_readme, encoding="utf-8", errors="replace").read()
+        m1 = re.search(r"\[(\d+) Playable games\]", readme)
+        m2 = re.search(r"(\d+) games rated Playable\.", readme)
+        out["README.md (link)"] = int(m1.group(1)) if m1 else None
+        out["README.md (bullet)"] = int(m2.group(1)) if m2 else None
+    except OSError:
+        out["README.md (link)"] = out["README.md (bullet)"] = None
+    try:
+        compat = open(p.repo_compat, encoding="utf-8", errors="replace").read()
+        m = re.search(r"(\d+) Playable ·", compat)
+        out["COMPATIBILITY.md (header)"] = int(m.group(1)) if m else None
+        sec = re.search(r"(?ms)^## 🟢 Playable\s*\n.*?\n\|---.*?\n(.*?)(?:\n## |\Z)", compat)
+        rows = [l for l in (sec.group(1).splitlines() if sec else []) if l.startswith("| ")]
+        out["COMPATIBILITY.md (table rows)"] = len(rows) if sec else None
+    except OSError:
+        out["COMPATIBILITY.md (header)"] = out["COMPATIBILITY.md (table rows)"] = None
+    try:
+        w = open(p.wall_synced, encoding="utf-8", errors="replace").read().split()
+        out["Wall"] = int(w[0]) if w else None
+    except (OSError, ValueError, IndexError):
+        out["Wall"] = None
+    return out
+
+
 # ---------------------------------------------------------------- CLI
 
 def main(argv=None):
@@ -823,6 +869,7 @@ def main(argv=None):
     ap.add_argument("--no-forge", action="store_true")
     ap.add_argument("--status")
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--pages", action="store_true")
     a = ap.parse_args(argv)
     p = Paths(a.root)
     if a.cmd == "build":
@@ -848,6 +895,21 @@ def main(argv=None):
         for where, name, why_u in (hdr or {}).get("_unresolved") or []:
             print("UNRESOLVED %s: %r -- %s" % (where, name, why_u))
             fail = True
+        if a.pages:
+            if hdr is None:
+                print("PAGES: no registry to compare against")
+                fail = True
+            else:
+                table_playable = sum(1 for r in rows.values() if r.get("status") == "PLAYABLE")
+                for label, n in page_playable_counts(p).items():
+                    if n is None:
+                        print("PAGE %s: Playable count not found" % label)
+                        fail = True
+                    elif n != table_playable:
+                        print("PAGE %s: Playable %d, table %d" % (label, n, table_playable))
+                        fail = True
+                    else:
+                        print("PAGE %s: Playable %d matches the table" % (label, n))
         return 3 if fail else 0
     if a.cmd == "resolve":
         cat = build_catalog(p)
