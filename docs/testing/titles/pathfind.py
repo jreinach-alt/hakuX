@@ -249,6 +249,17 @@ FPS_BAR, FPS_SHARE_OK = 30, 0.60
 FPS_TOL = 0.95   # title_verdict's fps_tolerance (targets.toml): a locked-30 title's 29s are on the bar (AvP, 10-04)
 # a still window in the drive genre: a car against a wall (Forza, 10-03). Reverse while turning, then drive out the
 # other way, alternating sides per still window, before the generic unlock rotation.
+GAS_CANDIDATES = ("RT", "A", "X")
+# the drive genre's gas-confirmation band (10-13, #433 Part A), in the 1280x960 reference space: the bottom ~45%,
+# where a chase-cam's vehicle body and HUD gauges/speedometer sit. A rider's pose, a gauge needle or a dashboard
+# digit changes there whether or not the vehicle moves (ATV Quad Power Racing 2: RT is a jump-preload button, not
+# the gas -- it ping-pongs the rider and fills a gauge, speedometer pinned at 0, for the whole 649-s hold).
+GAS_MOVE_BAND = (0, 528, 1280, 432)
+# measured 10-13 on real probe triplets (docs/lanes/holdinput1013/NOTES.md): parked/not-really-moving readings
+# (ATV's RT 0.0226, Auto Modellista stalled at 0 mph 0.0018) sit well under real travel (Panzer Elite's tank
+# 0.0591, RalliSport Challenge 2's confirmed gas 0.1246, Conflict Desert Storm II's confirmed gas 0.1656).
+GAS_MOVE_BAR = 0.035
+
 HOLD_UNSTICK = {
     "drive": (["LT+left:3", "RT+right:3"], ["LT+right:3", "RT+left:3"]),
     # a gun game that stands still at a wall (Halo 2, 10-03: 31% static in one room): strafe out, firing, the other way
@@ -260,6 +271,11 @@ HOLD_UNSTICK = {
     # name entry): step the aim left and right and throw, no X, B or Y
     "bowl": (["STICK:up:0.5", "A"], ["STICK:down:0.5", "A"]),
 }
+# the drive genre's recovery rung, after both reverse rungs above have failed (#433 Part B: 4x4 Evo 2 drove nose-first
+# into a tree, then fully submerged in a lake, 511 s of stuck_abort with both reverse rungs tried and no recovery
+# ever attempted). Not a HOLD_UNSTICK entry: it needs a model look (for an on-screen reset/respawn prompt, and later
+# to read the pause menu), which stuck_step's static token ladder cannot do -- see Agent.drive_recover.
+DRIVE_RECOVER = ("BACK", "Y")
 # play that drops into a menu right after a loop cycle: a loop button opened it (ToeJam & Earl III, 10-03: the
 # "Presents" inventory in 13 of 19 kept frames). Each such drop sheds the next of these from the loop.
 HOLD_SHED = ("B", "X", "Y", "BACK", "R1", "L1")
@@ -286,6 +302,15 @@ HOLD_GENRES = {
     # menu): aim with the stick, throw with A (press to start the meter, press to release). No B, X or Y here.
     "bowl": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"],
 }
+
+
+def drive_tokens(gas):
+    """Build the drive loop from a confirmed gas candidate (#433 Part A), instead of the hard-coded RT. A digital
+    gas button (A, X) cannot combine with a steer direction in one token -- send()'s "+" syntax is trigger-axis
+    only -- so it steers in a separate step, the same shape as the existing "rally" loop."""
+    if gas in ("RT", "LT"):
+        return [f"{gas}:2", f"{gas}+left:0.8", f"{gas}+right:0.8"]
+    return [gas, "STICK:left:0.6", gas, "STICK:right:0.6"]
 # a period break (a quarter, half, inning, or a bowling frame's scorecard) has its own START/A budget per episode, so a
 # scorecard does not spend the shared CONTINUE budget (lane.local 12:52: each frame's scorecard is a per-frame continue)
 PERIOD_TRIES = 8
@@ -752,6 +777,15 @@ def window_change(a, b):
     """Change between two kept hold frames at the probe's contrast step: did the player or camera move?"""
     ga = grey(a)
     return classify.motion(ga, grey(b), pixel=probe_step(ga))[0]
+
+
+def gas_change(a, b):
+    """Change between two drive-probe frames with the vehicle/HUD band (GAS_MOVE_BAND) masked out too: did the
+    world move past the vehicle, rather than the rider's pose, a gauge needle or a dashboard digit changing in
+    place? Measured 10-13 (#433 Part A) on real probe triplets: a vehicle that is not actually going anywhere
+    reads under GAS_MOVE_BAR here even when the full-frame window_change is well above it."""
+    ga = grey(a)
+    return classify.motion(ga, grey(b), mask_boxes=[GAS_MOVE_BAND], pixel=probe_step(ga))[0]
 
 
 def scene_shift(a, b):
@@ -1647,6 +1681,137 @@ class Agent:
         self.result["probe_frames"] = imgs
         return ok, rec["verdict"]
 
+    def confirm_gas(self, jpg):
+        """Drive genre only (#433 Part A): find the input that actually moves the vehicle, tried in order RT, A, X,
+        then a TITLE_HOLD entry's own "gas" key (the fallback, not the first answer). Each candidate is held
+        alone and judged by gas_change: the band outside the vehicle/HUD must move past GAS_MOVE_BAR, so a rider's
+        pose or a gauge filling (ATV Quad Power Racing 2's RT, a jump preload) does not count as gas. Logged under
+        "gas_try" (not "action"), so the per-cycle hold.jsonl readers that scan for an "action" field never see
+        these pre-loop probes. Returns (gas or None, candidates tried)."""
+        cands = list(GAS_CANDIDATES)
+        title_gas = TITLE_HOLD.get((self.tid or "").upper(), {}).get("gas")
+        if title_gas and title_gas not in cands:
+            cands.append(title_gas)
+        log = os.path.join(self.out, "hold.jsonl")
+        base_png, base_jpg = self.frame("gas-a")
+        tried = []
+        for cand in cands:
+            if not base_png:
+                break
+            tried.append(cand)
+            c_png, c_jpg = self.hold_capture(cand, f"gas-{cand}")
+            if not c_png:
+                break
+            chg = gas_change(base_png, c_png)
+            ok = chg >= GAS_MOVE_BAR
+            self.hold_note(log, {"gas_try": cand, "changed": round(chg, 3), "ok": ok})
+            print(f"hold-play: gas probe {cand}: band change {chg:.3f} ({'confirmed' if ok else 'refused'})",
+                  flush=True)
+            if ok:
+                return cand, tried
+            base_png, base_jpg = c_png, c_jpg
+        return None, tried
+
+    def drive_recover(self, log, jpg):
+        """Drive genre only, after both HOLD_UNSTICK["drive"] reverse rungs have failed to free the vehicle (#433
+        Part B). One model look for an on-screen reset/respawn/recover prompt naming a button, then BACK and Y
+        alone, then -- last, because it risks the main menu -- the pause menu, opened with START and READ before
+        anything in it is pressed, so a wrong guess never quits to the main menu or exits the game. Each candidate
+        is kept only if the scene actually changes (window_change past HOLD_STILL); a kept pause-menu restart
+        counts as still-play, not a Playable-ending state. Logged under "recover_try" (not "action"), same reason
+        confirm_gas uses "gas_try". Returns True once something changes the scene, else False (stuck_abort stands)."""
+        base_png, base_jpg = self.frame("recover-a")
+        if not base_png:
+            return False
+
+        def changed(a_png, b_png):
+            return window_change(a_png, b_png) >= HOLD_STILL
+
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game. The vehicle is stuck and has not moved for a while. Is "
+            "there an on-screen prompt telling the player how to reset, respawn or recover the vehicle (for "
+            'example "press Y to reset" or "press BACK to respawn")? Xbox buttons: A green, B red, X blue, Y '
+            'yellow, plus BACK/START/black/white. Answer JSON only: {"prompt": true|false, "button": '
+            '"<button or none>", "why": "<one line>"}'), "recover-prompt", [base_jpg]) or {}
+        btn = str(ans.get("button", "")).strip().upper()
+        cands = [btn] if ans.get("prompt") and (btn in BUTTONS or btn == "BACK") else []
+        cands += [c for c in DRIVE_RECOVER if c not in cands]
+        for cand in cands:
+            c_png, c_jpg = self.hold_capture(cand, f"recover-{cand}")
+            if not c_png:
+                break
+            ok = changed(base_png, c_png)
+            self.hold_note(log, {"recover_try": cand, "changed": ok})
+            print(f"hold-play: recover {cand}: {'changed' if ok else 'no change'}", flush=True)
+            if ok:
+                return True
+            base_png, base_jpg = c_png, c_jpg
+        # last, and only after a look: the pause menu. Opened with START, then read before anything in it is
+        # pressed -- a restart/reset entry is taken, never a guess that could quit to the main menu or dashboard.
+        m_png, m_jpg = self.hold_capture("START", "recover-pause")
+        if not m_png:
+            return False
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game, possibly a pause menu. Is this a pause menu? If so, is "
+            "there a Restart, Reset or Retry entry, and which single input selects it? Never name an input that "
+            "quits to the main menu, exits to the dashboard, or loads a different save -- answer none for those. "
+            'Xbox buttons: A green, B red, X blue, Y yellow. Answer JSON only: {"pause_menu": true|false, '
+            '"restart_input": "<input or none>", "why": "<one line>"}'), "recover-pause", [m_jpg]) or {}
+        restart = str(ans.get("restart_input", "")).strip()
+        if ans.get("pause_menu") and restart.upper() not in ("", "NONE"):
+            tok = clean_action(restart)
+            if tok:
+                r_png, r_jpg = self.hold_capture(tok[0], "recover-restart")
+                if r_png:
+                    ok = changed(m_png, r_png)
+                    self.hold_note(log, {"recover_try": f"pause:{tok[0]}", "changed": ok})
+                    print(f"hold-play: recover pause {tok[0]}: {'changed' if ok else 'no change'}", flush=True)
+                    if ok:
+                        return True
+        self.hold_capture("B", "recover-pause-back")   # back out without confirming anything in the menu
+        return False
+
+    def prompt_rung(self, log, jpg):
+        """Before the genre's unstick ladder fires on a still window (#433 Part C: Darkwatch, frame 038, "USE X
+        TO MELEE ATTACK THE DOOR LOCK" -- a shooter-genre still window, and HOLD_UNSTICK["shooter"]'s two rungs
+        have no X). One model look for an on-screen instruction naming a button; the caller fires this only once
+        per still window (its own prompt_tried flag), so a prompt this cannot clear in 3 tries falls through to
+        the existing ladder. If the instruction needs the player to face or aim at something first, a stick step
+        is sent before each press. Logged under "prompt_try" (not "action"), same reason confirm_gas uses
+        "gas_try". Returns True once the scene changes, else False."""
+        base_png, base_jpg = self.frame("prompt-a")
+        if not base_png:
+            return False
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game. The screen has not changed for a while. Is there an "
+            'on-screen instruction telling the player to press a button, such as "USE X TO ..." or "PRESS A TO '
+            '...". Xbox buttons: A green, B red, X blue, Y yellow, plus BACK/START/black/white -- the glyph\'s '
+            "colour names the button. If pressing it needs the player to face or aim at something first, name "
+            'which way to turn with a stick. Answer JSON only: {"prompt": true|false, "button": "<button or '
+            'none>", "turn": "<stick:left|stick:right|rstick:left|rstick:right|none>", "why": "<one line>"}'
+        ), "prompt-rung", [base_jpg]) or {}
+        btn = str(ans.get("button", "")).strip().upper()
+        if not ans.get("prompt") or btn not in BUTTONS:
+            return False
+        turn = str(ans.get("turn", "none")).strip().lower()
+        turn_tok = None
+        if turn in ("stick:left", "stick:right", "rstick:left", "rstick:right"):
+            kind, dirn = turn.split(":")
+            turn_tok = f"{kind.upper()}:{dirn}:1"
+        for _ in range(3):
+            if turn_tok:
+                self.send([turn_tok])
+            c_png, c_jpg = self.hold_capture(btn, "prompt-press")
+            if not c_png:
+                return False
+            ok = window_change(base_png, c_png) >= HOLD_STILL
+            self.hold_note(log, {"prompt_try": btn, "turn": turn, "changed": ok})
+            print(f"hold-play: prompt {btn} (turn {turn}): {'changed' if ok else 'no change'}", flush=True)
+            if ok:
+                return True
+            base_png, base_jpg = c_png, c_jpg
+        return False
+
     def team_sport(self):
         """A team sport on a court, field or rink: the run's goal names a period setting or a team select, or the
         title's name is a team-sports league (the claim has no genre look yet; the hold's genre comes after it)."""
@@ -2058,6 +2223,22 @@ class Agent:
         print(f"hold-play: genre {genre}, need {self.hold_s:.0f} s of play", flush=True)
         kept, play_s, navs, nav = [], 0.0, 0, 0
         still, off, reason = 0, False, ""
+        # drive's loop sends whatever candidate actually moved the vehicle, confirmed now, once (#433 Part A): RT
+        # is a jump preload in some titles (ATV Quad Power Racing 2, rider crouching, PRELOAD gauge filling, 0 mph
+        # for the whole hold), so RT is tried first and not trusted on its own. A, then X, then a TITLE_HOLD entry's
+        # own "gas" key, is the fallback (th forces the attack-genre walk loop when truthy, so this only ever runs
+        # with th falsy today; the "gas" key is read straight from TITLE_HOLD so a future title can carry one
+        # without a full walk override needing to exist first). If nothing moves the vehicle the hold ends now,
+        # not after 600 s parked (RACE AGAIN twice).
+        if genre == "drive" and not th:
+            gas, gas_tried = self.confirm_gas(jpg)
+            if gas:
+                tokens = drive_tokens(gas)
+                held["gas"] = gas
+                print(f"hold-play: drive gas confirmed {gas} (tried {gas_tried})", flush=True)
+            else:
+                reason = f"drive gas: no input moved the vehicle (tried {', '.join(gas_tried)})"
+                print(f"hold-play: {reason}", flush=True)
         # position test (10-03): a 30-s window whose kept frames barely differ is not play, however live the HUD
         # looks (Black Stone stood 600 s on one octagon and passed the verdict). Then rotate the inputs: an unlock
         # button and the next genre's loop, until the scene moves again.
@@ -2086,12 +2267,17 @@ class Agent:
         held_ok, last_v, ladder_rounds, ladder_i = False, None, 0, 0   # validity (10-06): the hold ends on a verdict, not on hold_s alone
         charsel_i = 0   # the fighting select's cycle presses on this off-play episode (charsel_press)
         # the stuck detector (10-07, stuckdetect1007): the last STUCK_MIN_SAMPLES kept frames all near-identical = stuck;
-        # an unstick rung per kept frame, then the hold ends with a reason (stuck_abort), not a Playable
-        sd_watch = stuckdetect.StuckWatch(genre, HOLD_SHED_STATES, HOLD_UNSTICK.get(genre), UNLOCK_LADDER[:3]) if stuckdetect else None
-        sd_abort, last_st, sd_rungs = "", "play", 0
+        # an unstick rung per kept frame, then the hold ends with a reason (stuck_abort), not a Playable.
+        # max_rungs must match the genre's own ladder length, not stuck_step's default of 3 (#433 Part E: attack has
+        # 4 rungs -- STICK:right:2+A, STICK:up:2+A, STICK:left:2+A, STICK:down:2+A -- and the default silently
+        # dropped the last one, so Genma Onimusha's run never tried it before stuck_abort).
+        sd_ladder = HOLD_UNSTICK.get(genre)
+        sd_watch = stuckdetect.StuckWatch(genre, HOLD_SHED_STATES, sd_ladder, UNLOCK_LADDER[:3],
+                                           max_rungs=len(sd_ladder) if sd_ladder else 3) if stuckdetect else None
+        sd_abort, last_st, sd_rungs, drive_recovered, prompt_tried = "", "play", 0, False, False
         low_run, flipped, rev_row, reversals = 0, False, 0, 0   # the reverse rule (16:08): looks still in a row, walk turned round
         patrol_looks = 0   # play looks on the shooter loop, for the patrol backstop (patrol_due)
-        while not held_ok and self.el() < self.budget_s:
+        while not held_ok and not reason and self.el() < self.budget_s:
             self.n += 1
             t_cycle = now()
             png, jp = self.frame("hold")
@@ -2297,7 +2483,9 @@ class Agent:
                             rot += 1
                             unstick = HOLD_UNSTICK.get(genre)
                             if unstick and rot <= 2 * len(unstick):
-                                tokens = unstick[(rot - 1) % len(unstick)] + HOLD_GENRES[genre]
+                                # the confirmed gas, not the hard-coded RT loop (#433 Part A requirement 3)
+                                loop = drive_tokens(gas) if genre == "drive" else HOLD_GENRES[genre]
+                                tokens = unstick[(rot - 1) % len(unstick)] + loop
                             else:
                                 tokens = [UNLOCK_LADDER[(rot - 1) % len(UNLOCK_LADDER)]] + \
                                     HOLD_GENRES[order[rot % len(order)]]
@@ -2318,14 +2506,35 @@ class Agent:
                         d = sd_watch.sample(stuckdetect.frame_signature(png), last_st if off else "play")
                         if d.get("stuck"):
                             look["stuck"] = {k: d.get(k) for k in ("menu", "run", "reason", "action", "abort")}
-                            if d["abort"]:
+                            if d["abort"] and genre == "drive" and not th and not drive_recovered:
+                                # both HOLD_UNSTICK["drive"] reverse rungs are exhausted (#433 Part B): one more
+                                # try, a model-led recovery, before the hold ends on a parked/stuck vehicle
+                                drive_recovered = True
+                                print(f"hold-play: stuck ({d['reason']}): drive recovery at {hold_el:.0f} s", flush=True)
+                                if self.drive_recover(log, jpg):
+                                    sd_rungs = 0
+                                else:
+                                    sd_abort = (f"stuck_abort: {d['reason']}; {sd_rungs} unstick rung(s) tried, "
+                                                "drive recovery tried, still stuck")
+                            elif d["abort"]:
                                 sd_abort = f"stuck_abort: {d['reason']}; {sd_rungs} unstick rung(s) tried, still stuck"
                             else:
-                                sd_rungs += 1
-                                print(f"hold-play: stuck ({d['reason']}): unstick {' '.join(d['action'])} at {hold_el:.0f} s", flush=True)
-                                self.send(d["action"])
+                                cleared = False
+                                if not prompt_tried:
+                                    # before the genre's own ladder rung, one model look for an on-screen
+                                    # instruction naming a button (#433 Part C): a still window may be a prompt
+                                    # the ladder's static tokens never cover, not a dead end the ladder must walk
+                                    prompt_tried = True
+                                    print(f"hold-play: stuck ({d['reason']}): prompt look at {hold_el:.0f} s", flush=True)
+                                    cleared = self.prompt_rung(log, jpg)
+                                if cleared:
+                                    sd_rungs = 0
+                                else:
+                                    sd_rungs += 1
+                                    print(f"hold-play: stuck ({d['reason']}): unstick {' '.join(d['action'])} at {hold_el:.0f} s", flush=True)
+                                    self.send(d["action"])
                         else:
-                            sd_rungs = 0
+                            sd_rungs, drive_recovered, prompt_tried = 0, False, False
                     except Exception as e:   # never let the detector end a hold it cannot read
                         sd_watch = None
                         look["stuck_error"] = repr(e)[:120]
