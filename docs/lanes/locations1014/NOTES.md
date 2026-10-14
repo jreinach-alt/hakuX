@@ -95,3 +95,24 @@ Decision: ship `copy_exists_elsewhere(title_id, location, bytes)` in
 `title_locations.py`, fully tested, and name the exact call site and diff
 in PR.md as a follow-up for a pathfind-lane PR (or a board request) to land,
 rather than editing it from here.
+
+## dcandidates returns 0 on the live table -- the gate is working, not broken
+
+A live `build` + `dcandidates` run found 0 D: cleanup candidates even though
+every console title also has an on-disk copy somewhere under D:. Cause:
+`console-inventory-*.csv`'s `size_bytes` is the console's game-folder size
+(filesystem overhead included), which is consistently ~1-1.3 MB off from the
+matching D: XISO's exact byte count, and no console row carries a sha256.
+`copy_exists_elsewhere` requires an exact bytes match or a sha256 match
+before it will name a copy as verified -- it correctly refuses to call
+these two numbers equal, so it reports no backing copy rather than guess.
+This is the gate behaving exactly as specified (never approve a delete on a
+fuzzy match), not a defect. Follow-up named in PR.md: either compute a real
+console-side sha256 (slow: would mean reading every title off the console
+once) or get an owner-approved size-tolerance rule before dcandidates can
+usefully report console-verified matches. Confirmed the host-tools report
+snippet (`title_locations_report.py`) computes the same 0 by mirroring
+`cmd_dcandidates`'s exact filter -- an earlier draft of that snippet used a
+looser "matches any other location" check and wrongly got 94, counting
+D:-to-D: matches that are not real candidates under the brief's own
+console/d-archive restriction.
