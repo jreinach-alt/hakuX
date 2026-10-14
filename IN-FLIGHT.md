@@ -16,10 +16,11 @@ No lane session is running.
 
 ## 0.5 release: Playable titles
 
-**66 titles are confirmed Playable** (14 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**67 titles are confirmed Playable** (15 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-13 | Genma Onimusha | Playable, 10-minute run, median 59.94 fps |
 | 2026-10-13 | Avatar: The Last Airbender | Playable, 10-minute run, median 59.94 fps |
 | 2026-10-13 | TimeSplitters 2 | Playable, accepted on review |
 | 2026-10-13 | Guilty Gear XX #Reload | Playable, 10-minute run on the Nova |
@@ -87,7 +88,7 @@ No lane session is running.
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-48 of these still await the owner's flicker check.
+49 of these still await the owner's flicker check.
 
 ## Work in progress
 
@@ -108,4 +109,4 @@ No branch is being worked right now.
 - 2026-10-13 x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
 - 2026-10-13 issuemirror1013: the issue mirror waits out the gateway lock
 
-_Updated 2026-10-13 23:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 23:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
