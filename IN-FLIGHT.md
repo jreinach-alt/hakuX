@@ -105,6 +105,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-14 A tracked listing of which title is where, keyed by title_id
 - 2026-10-14 savestateconv1014: R3 admits --from-state
 - 2026-10-14 status: Playable is the ledger
 - 2026-10-13 status page: track 0.6, 1.0 projection chart, drop Benchmarked and C I S B
@@ -116,6 +117,5 @@ No branch is being worked right now.
 - 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
 - 2026-10-13 lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
-- 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 
-_Updated 2026-10-14 15:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 15:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
