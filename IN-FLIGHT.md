@@ -16,10 +16,11 @@ No lane session is running.
 
 ## 0.5 release: Playable titles
 
-**59 titles are confirmed Playable** (7 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**60 titles are confirmed Playable** (8 today), toward the 0.5 goal of 50. Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-13 | Burnout Revenge | Playable, accepted on review |
 | 2026-10-13 | ATV Quad Power Racing 2 | Playable, 10-minute run, median 59 fps |
 | 2026-10-13 | Rayman 3 Hoodlum Havoc | Playable, 10-minute run |
 | 2026-10-13 | 25 to Life | Playable, 10-minute run |
@@ -80,7 +81,7 @@ No lane session is running.
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-42 of these still await the owner's flicker check.
+43 of these still await the owner's flicker check.
 
 ## Work in progress
 
@@ -101,4 +102,4 @@ No branch is being worked right now.
 - 2026-10-13 docsrewrite1012: the public docs rewritten for players, each with a Last updated line (#433, 0.5)
 - 2026-10-13 docsfresh1012: a freshness check for the public docs, an hourly alarm and a release step (#433, 0.5)
 
-_Updated 2026-10-13 17:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 17:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
