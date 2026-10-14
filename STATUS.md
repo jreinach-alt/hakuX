@@ -1,12 +1,12 @@
 # hakuX status
 
-_updated 2026-10-14 05:04 PDT_
+_updated 2026-10-14 05:36 PDT_
 
-0.6: Measured 214 / 300 · Playable 71 / 110.
+0.6: Measured 215 / 300 · Playable 71 / 110.
 
 ## How close is 0.6?
 
-Measured **214** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
+Measured **215** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
 Playable **71** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 
@@ -22,8 +22,8 @@ Playable **71** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 | 0.6 | 300 | 2026-10-20 | 110 | 2026-10-22 |
 | 0.7 | 425 | 2026-10-30 | 185 | 2026-11-05 |
 | 0.8 | 575 | 2026-11-11 | 300 | 2026-11-28 |
-| 0.9 | 725 | 2026-11-23 | 480 | 2027-01-03 |
-| 1.0 | 876 | 2026-12-05 | 789 | 2027-03-06 |
+| 0.9 | 725 | 2026-11-22 | 480 | 2027-01-03 |
+| 1.0 | 876 | 2026-12-04 | 789 | 2027-03-06 |
 
 Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
@@ -174,6 +174,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Area 51**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>73% at 28.5+<br>Nova · 10-08 |
 | **Batman Begins**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>95% at 28.5+<br>Nova · 10-06 |
 | **Beyond Good & Evil**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>93% at 28.5+<br>Nova · 10-06 |
+| **Gene Troopers Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>91% at 28.5+<br>Nova · 10-14 |
 | **Grand Theft Auto: San Andreas**<br>soak for Playable | soak pending | **30.0**<br>98% at 28.5+<br>Nova · 10-12 · max perf |
 | **Lord of the Rings The The Fellowship of the Ring USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-07 |
 | **MechAssault 2: Lone Wolf**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>89% at 28.5+<br>Nova · 10-08 · max perf, soak |
@@ -632,7 +633,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-588 titles: 19 blocked, 71 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 77 copied, 368 not copied.
+589 titles: 19 blocked, 71 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 78 copied, 368 not copied.
 
 ---
 
