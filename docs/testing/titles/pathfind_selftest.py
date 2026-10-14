@@ -1033,6 +1033,37 @@ check("ladder", pathfind.HOLD_LADDER[0] == "A" and pathfind.HOLD_LADDER[1] == "S
 # budget: a 600-s hold with a 15-min claim gets 900 + 1050 + 300 s, not the old 900 + 900 + 300
 check("budget", pathfind.hold_budget_s(900, 600) == 900 + 1050 + 300, f"claim + 1.75 x hold + 300: {pathfind.hold_budget_s(900, 600)}")
 
+# R3 admission (#433 Part A, holdfollow1013): r3_refusal is the pure gate main() calls, moved out so it
+# can be tested directly. A --no-record re-hold of a known-path title replays the kept path and records
+# nothing, so R3 (never re-run blind navigation on a title that already ran) has nothing left to refuse.
+# --no-replay/--no-guide drop the kept path (agent.own = None in main()), so paired with --no-record on a
+# known-path title they are refused too. BROKEN (set up at the top of this file) names a real dispatch
+# result of title 00000000; --path-broken's own behaviour is unchanged by this change either way.
+KP_UNKNOWN = {"known": False, "route_name": None, "result_id": None, "source": None}
+KP_KNOWN = {"known": True, "route_name": None, "result_id": None, "source": "pathknow"}
+r3_plain = pathfind.r3_refusal(KP_KNOWN, "00000000", None, False, False, False)
+check("r3", bool(r3_plain) and r3_plain.startswith('a known path exists; pass --path-broken "<result id>" '
+                                                     "naming a run of it that failed") and "--no-record" in r3_plain,
+      f"a known path with no flags is refused, today's text plus a --no-record sentence: {r3_plain!r}")
+check("r3", pathfind.r3_refusal(KP_KNOWN, "00000000", None, True, False, False) is None,
+      "a known path with --no-record alone (a plain re-hold) is admitted")
+check("r3", pathfind.r3_refusal(KP_KNOWN, "00000000", None, True, False, False) is None,
+      "--perflog never reaches r3_refusal (it has no perflog argument: perflog is orthogonal to R3's "
+      "own admission), so --perflog --no-record is the same admitted case as --no-record alone")
+r3_noreplay = pathfind.r3_refusal(KP_KNOWN, "00000000", None, True, True, False)
+r3_noguide = pathfind.r3_refusal(KP_KNOWN, "00000000", None, True, False, True)
+check("r3", bool(r3_noreplay) and bool(r3_noguide),
+      "--no-record --no-replay and --no-record --no-guide drop the kept path (agent.own = None), so "
+      f"neither is admitted: {r3_noreplay!r} {r3_noguide!r}")
+check("r3", pathfind.r3_refusal(KP_UNKNOWN, "00000000", None, False, False, False) is None
+      and pathfind.r3_refusal(KP_UNKNOWN, "00000000", None, True, False, False) is None,
+      "no known path: admitted with no flags, and with --no-record too, as today")
+check("r3", pathfind.r3_refusal(KP_KNOWN, "00000000", BROKEN, False, False, False) is None,
+      "--path-broken naming a real failed run of the title still overrides R3, as today")
+r3_bad_broken = pathfind.r3_refusal(KP_KNOWN, "00000000", "nope-no-such-result", False, False, False)
+check("r3", bool(r3_bad_broken) and "does not name a run on record" in r3_bad_broken,
+      f"--path-broken naming no run on record is refused, as today: {r3_bad_broken!r}")
+
 shutil.rmtree(TMP)
 # football goes last (owner order 10-05 12:35): football titles are refused, every other sport is not, and the env lifts it
 _fb = [("NFL Blitz Pro", "NFL_Blitz_Pro.xiso.iso"), ("ESPN NFL 2K5", "ESPN_NFL_2K5.iso"), ("Madden NFL 2005", "x.iso"),
