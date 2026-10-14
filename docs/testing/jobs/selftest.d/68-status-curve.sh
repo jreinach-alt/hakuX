@@ -80,6 +80,29 @@ series = {"measured": [[now - 86400, 7]], "playable": [[now - 86400, 2]]}
 svg = S._chart1(series, now, 300, 110, None, "0.5")
 sys.exit(0 if "0.5 published" not in svg else 1)' "$HERE"
 
+# The publish date reaches the page through lanes.json. Its datetime was
+# dropped there, so the live chart never drew the line the check above passes.
+check "The release conf survives lanes.json: prior_published reaches the page as its epoch" python3 -c '
+import json, sys; sys.path.insert(0, sys.argv[1]); import status_html as S
+c, _ = S._conf({})
+j = json.loads(json.dumps(S._conf_json(c)))
+ok = j.get("prior_published") == int(c["prior_published"].timestamp()) and j.get("prior_playable_target") == 50
+sys.exit(0 if ok else 1)' "$HERE"
+
+# The owner (10-13): the chart says when 0.5's targets were met. The marker is
+# the later of the two series' first reaching its target, and every rotated
+# label reads down from the top (anchored at its start it ran up, off the chart).
+check "Chart 1 marks when both prior targets were met, its labels inside the chart" python3 -c '
+import re, sys; sys.path.insert(0, sys.argv[1]); import status_html as S
+now = 1790000000
+series = {"measured": [[now - 6 * 86400, 100], [now - 4 * 86400, 150]], "playable": [[now - 5 * 86400, 50]]}
+met = max(S._reached(series["measured"], 145), S._reached(series["playable"], 50))
+svg = S._chart1(series, now, 300, 110, now - 3 * 86400, "0.5", met)
+rot = re.findall(r"<text [^>]*rotate\(-90[^>]*>", svg)
+ok = (met == now - 4 * 86400 and S._reached(series["playable"], 51) is None and "0.5 targets met" in svg
+      and "0.5 published" in svg and len(rot) == 2 and all("text-anchor=\"end\"" in t for t in rot))
+sys.exit(0 if ok else 1)' "$HERE"
+
 # Chart 2: the 0.6-1.0 curve as levels, and a dashed projection line to 1.0
 # when the rate is positive -- never using the all-time rate (a required mutant).
 check "Chart 2 draws the release curve as levels and a 7-day-rate projection to 1.0" python3 -c '
