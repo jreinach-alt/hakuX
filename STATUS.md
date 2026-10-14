@@ -1,12 +1,12 @@
 # hakuX status
 
-_updated 2026-10-14 13:00 PDT_
+_updated 2026-10-14 13:31 PDT_
 
-0.6: Measured 225 / 300 · Playable 76 / 110.
+0.6: Measured 227 / 300 · Playable 76 / 110.
 
 ## How close is 0.6?
 
-Measured **225** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
+Measured **227** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 Playable **76** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
@@ -21,9 +21,9 @@ Playable **76** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 |---|---|---|---|---|
 | 0.6 | 300 | 2026-10-20 | 110 | 2026-10-21 |
 | 0.7 | 425 | 2026-10-30 | 185 | 2026-11-04 |
-| 0.8 | 575 | 2026-11-11 | 300 | 2026-11-27 |
-| 0.9 | 725 | 2026-11-23 | 480 | 2027-01-01 |
-| 1.0 | 876 | 2026-12-05 | 789 | 2027-03-02 |
+| 0.8 | 575 | 2026-11-10 | 300 | 2026-11-27 |
+| 0.9 | 725 | 2026-11-22 | 480 | 2027-01-01 |
+| 1.0 | 876 | 2026-12-04 | 789 | 2027-03-02 |
 
 Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
@@ -65,6 +65,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Manhunt USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 |
 | **Max Payne 2 The Fall of Max Payne USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 |
 | **Max Payne 2: The Fall of Max Payne**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |
+| **Micro Machines Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **MLB SlugFest 2003**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-05 |
 | **NFL Blitz 2002 USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |
 | **Nickelodeon Avatar The Last Airbender USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |
@@ -90,6 +91,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Deathrow**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |
 | **Fantastic 4**<br>reach gameplay | 🔵 copied | **59.9**<br>43% at 28.5+<br>Nova · 10-07 |
 | **Indigo Prophecy USA**<br>reach gameplay | 🔵 copied | **59.9**<br>99% at 28.5+<br>Nova · 10-07 |
+| **Kung Fu Chaos USA Asia En Fr De**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **LEGO Star Wars: The Video Game**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>98% at 28.5+<br>Nova · 10-05 |
 | **Lemony Snicket s A Series of Unfortunate Events USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-12 |
 | **Medal of Honor Frontline USA**<br>reach gameplay | 🔵 copied | **59.9**<br>86% at 28.5+<br>Nova · 10-07 |
@@ -639,7 +641,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-595 titles: 19 blocked, 76 Playable, 6 soak pending, 10 below 30, 36 inputs ready, 84 copied, 364 not copied.
+597 titles: 19 blocked, 76 Playable, 6 soak pending, 10 below 30, 36 inputs ready, 86 copied, 364 not copied.
 
 ---
 
