@@ -2706,3 +2706,9 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/titledb1014/**", "docs/testing/title_registry.py", "docs/testing/dispatch_gate_selftest.py", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/60-status.sh", "docs/testing/jobs/selftest.d/64-status-html.sh", "docs/testing/jobs/selftest.d/65-status-objective.sh", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/testing/jobs/selftest.d/67-status-measured.sh", "docs/testing/jobs/selftest.d/68-status-curve.sh", "docs/lanes/titles05/fixture/synth.py", "README.md", "docs/COMPATIBILITY.md"]
 note = "STARTED lane.local 2026-10-14 ~08:3x PDT (Sonnet, harness; no device): owner 10-14, title status in one table keyed by title_id; the status page, hourly report, Wall sync check, prequeue, README and COMPATIBILITY read it (Playable 72). title_registry.py and dispatch_gate_selftest.py released by [lane.playsecs1013]; status_html.py, selftests 66 and 68 and synth.py released by [lane.statusfix1013]; selftests 60/64/65/67 are inside [free]. Host-only readers (hourly_report.sh, prequeue.py, status_md/page/svg) are not in the repo: the lane puts edited copies under docs/lanes/titledb1014/host-tools/. Brief: briefs/titledb1014.md."
+
+[lane.locations1014]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/locations1014/**", "docs/testing/title_locations.py", "docs/testing/title_locations_selftest.py", "docs/testing/jobs/selftest.d/69-title-locations.sh"]
+note = "STARTED lane.local 2026-10-14 PDT (Sonnet, harness; no device writes): owner 10-14, a tracked listing of which title is where, keyed by title_id, no name matching; SQLite pm/title-registry.db locations table plus pm/title-locations.tsv; deletion gate for drop_failed and D: cleanups. Does not edit title_registry.py (held by [lane.titledb1014]). Host-only copies go under docs/lanes/locations1014/host-tools/. Brief: briefs/locations1014.md."
