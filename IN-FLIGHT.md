@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `savestateconv1014` | claude-sonnet-5 | 45 min | savestateconv1014: R3 admits --from-state; Nova probe of the save-state design (#433) |
+| `savestateconv1014` | claude-sonnet-5 | 1h 0m | savestateconv1014: R3 admits --from-state; Nova probe of the save-state design (#433) |
 
 - **Handhelds:** 1 connected.
   - Nova: free for the queue
@@ -118,4 +118,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 - 2026-10-13 x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
 
-_Updated 2026-10-14 07:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 07:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
