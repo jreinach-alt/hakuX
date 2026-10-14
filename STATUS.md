@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-14 10:53 PDT_
+_updated 2026-10-14 11:24 PDT_
 
 0.6: Measured 220 / 300 · Playable 74 / 110.
 
@@ -20,10 +20,10 @@ Playable **74** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
 | 0.6 | 300 | 2026-10-20 | 110 | 2026-10-21 |
-| 0.7 | 425 | 2026-10-30 | 185 | 2026-11-05 |
-| 0.8 | 575 | 2026-11-11 | 300 | 2026-11-28 |
-| 0.9 | 725 | 2026-11-23 | 480 | 2027-01-03 |
-| 1.0 | 876 | 2026-12-05 | 789 | 2027-03-06 |
+| 0.7 | 425 | 2026-10-31 | 185 | 2026-11-05 |
+| 0.8 | 575 | 2026-11-12 | 300 | 2026-11-28 |
+| 0.9 | 725 | 2026-11-24 | 480 | 2027-01-03 |
+| 1.0 | 876 | 2026-12-06 | 789 | 2027-03-06 |
 
 Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
