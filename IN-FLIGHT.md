@@ -8,10 +8,10 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `titledb1014` | claude-sonnet-5 | 35 min | titledb1014: title_id as the join key, one table, every reader reads it (#433) |
+| `titledb1014` | claude-sonnet-5 | 50 min | titledb1014: title_id as the join key, one table, every reader reads it (#433) |
 
 - **Handhelds:** 1 connected.
-  - Nova: held by `lanelocal-shuffle`
+  - Nova: held by `lane.pathfind`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -101,7 +101,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/titledb1014` | titledb1014: title_id as the join key, one table, every reader reads it (#433) | `26f2c5abb0` | 2026-10-14 08:34 |
+| `lane/titledb1014` | titledb1014: title_id as the join key, one table, every reader reads it (#433) | `a02c2b5f31` | 2026-10-14 08:54 |
 
 ## Recently landed on master
 
@@ -118,4 +118,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 
-_Updated 2026-10-14 08:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 09:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
