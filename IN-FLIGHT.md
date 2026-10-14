@@ -95,6 +95,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-13 status page: track 0.6, 1.0 projection chart, drop Benchmarked and C I S B
 - 2026-10-13 pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every unstick rung
 - 2026-10-13 hangwatch: catch a frozen title that starves the GPU, spins the vCPU and silences the disc, even with non-flat audio
 - 2026-10-13 compatrefresh1013: the compatibility page and README move to 57 Playable
@@ -106,6 +107,5 @@ No branch is being worked right now.
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
 - 2026-10-13 x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
 - 2026-10-13 issuemirror1013: the issue mirror waits out the gateway lock
-- 2026-10-13 docsrewrite1012: the public docs rewritten for players, each with a Last updated line (#433, 0.5)
 
-_Updated 2026-10-13 22:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 23:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
