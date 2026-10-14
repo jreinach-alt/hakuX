@@ -2677,3 +2677,9 @@ retired_utc = "2026-10-13T20:37:22Z"
 standing = false
 files = []
 note = "RETIRED (lane.local 2026-10-13 13:37 PDT): folded as 02ba73b86a (10:38 PDT); no unit. README.rst, ubuntu-win64-cross/** and .github/workflows/build-xemu-win64-toolchain.yml are deleted on master (the workflow file was granted from the inactive [lane.localforge]; nothing to return). Released: docs/ORCHESTRATION-AS-BUILT.md, docs/lanes/rootclean1013/**. Retirement was missed at the fold and is done now. || Was: STARTED lane.local 2026-10-13 08:40 PDT (lane.local by hand, no device): owner 10-13 ~08:05 PDT asked what the stray upstream files are and, if safe, to remove them. Deletes README.rst (QEMU readme), ubuntu-win64-cross/ and build-xemu-win64-toolchain.yml; build.sh win64-cross reads CROSSPREFIX, not the directory. Head fba2c45b8d, PR.md State: ready."
+
+[lane.statuspage1013]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/statuspage1013/**", "docs/testing/jobs/status_html.py", "docs/testing/jobs/status.sh", "docs/testing/release-0.5.toml", "docs/testing/release-0.6.toml", "docs/testing/jobs/selftest.d/60-status.sh", "docs/testing/jobs/selftest.d/64-status-html.sh", "docs/testing/jobs/selftest.d/65-status-objective.sh", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/testing/jobs/selftest.d/67-status-measured.sh", "docs/testing/jobs/selftest.d/68-status-curve.sh"]
+note = "STARTED lane.local 2026-10-13 20:19 PDT (Sonnet, harness; no device): owner 10-13 ~18:00 and ~20:00 PDT: the status page tracks 0.6 on the agreed curve (0.6 300/110 ... 1.0 876 measured / 789 Playable), chart 1 with a 0.5-publish line, chart 2 projecting 1.0 at the rolling 7-day rate, Benchmarked dropped (Measured scores non-Playable titles), the C I S B column dropped, the fps cell's MAX/REST/unrecorded made readable. host-tools status_md.py and status_svg.py change as copies under docs/lanes/statuspage1013/host-tools; lane.local installs. Brief: briefs/statuspage1013.md."
