@@ -8,10 +8,10 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `statuspage1013` | claude-sonnet-5 | 52 min | status page: track 0.6, 1.0 projection chart, drop Benchmarked and C I S B |
+| `statuspage1013` | claude-sonnet-5 | 1h 2m | status page: track 0.6, 1.0 projection chart, drop Benchmarked and C I S B |
 
 - **Handhelds:** 1 connected.
-  - Nova: free for the queue
+  - Nova: held by `lanelocal-ownerplay`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -110,4 +110,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-13 issuemirror1013: the issue mirror waits out the gateway lock
 - 2026-10-13 docsrewrite1012: the public docs rewritten for players, each with a Last updated line (#433, 0.5)
 
-_Updated 2026-10-13 21:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 21:25 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
