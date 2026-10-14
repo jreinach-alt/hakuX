@@ -6255,3 +6255,13 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "Filed by lane.local 2026-10-13 from the owner's hand-played session ownerplay/runs/4D570029-1013-2232-9402 (Nova 22:32-22:35 PDT, debug 0.5.0-1013-08f1fb4a90 = master 08f1fb4a90, Turnip T30 PurpleVK git-62ac221a33). Owner: 'That doesnt clear on FPS and I can tell'; not Playable as-is; the owner saved a state in the cutscene. hakuX-perf: menus and intro movie 59 fps; the Goro's Lair in-engine cutscene's first 12 s 28-44 fps (G 25-34 ms), then 14-23 fps in 15 of 17 windows (G 41-64 ms, frames to 72 ms), D 16.7 ms throughout; no audio starvation after boot. The fight after the cutscene was not reached. OWNER PRIORITY 10-13 ~22:40 PDT: with #984 (quiet speech; this title is its third), top of the list after the Thu 10-15 21:00 PDT usage reset. First step: split a 50 ms guest frame from the save state into vCPU, GPU and wait time."
+
+[issue.989]
+title = "TimeSplitters 2 (4553000A): lighting defect in several hallways (Story, Siberia)"
+suites = []
+no_suites = "A per-title rendering defect in a commercial title's Story levels, not yet isolated, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "AWAITING THE OWNER: the owner reproduces it on the Nova when handheld testing resumes (owner 10-14), and marks the hallways. No frames exist to work from."
+status_note = "Filed by lane.local 2026-10-14 from the owner's 10-13 Story session (Siberia, about 22:00-22:12 PDT, debug 0.5.0-1013-08f1fb4a90, Turnip T30 PurpleVK git-62ac221a33). The title is banked Playable; this is a rendering defect to fix. The owner used Debug Capture twice in the area (about 22:03:26 and 22:03:35 PDT); neither left a diag_session folder (newest under files/rt_dumps on the Nova is 2026-09-11) and the hakuX-diag log tag is not in the logcat watch spec. If the next capture also writes nothing, that is a second defect in Debug Capture and wants its own lane (and hakuX-diag added to LOGCAT_SPEC)."
