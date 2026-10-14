@@ -1,12 +1,12 @@
 # hakuX status
 
-_updated 2026-10-14 01:53 PDT_
+_updated 2026-10-14 02:25 PDT_
 
-0.6: Measured 204 / 300 · Playable 67 / 110.
+0.6: Measured 205 / 300 · Playable 67 / 110.
 
 ## How close is 0.6?
 
-Measured **204** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
+Measured **205** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
 Playable **67** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 
@@ -22,12 +22,12 @@ Playable **67** / 110&nbsp;&nbsp;`▓▓▓▓▓▓░░░░`
 | 0.6 | 300 | 2026-10-22 | 110 | 2026-10-23 |
 | 0.7 | 425 | 2026-11-02 | 185 | 2026-11-09 |
 | 0.8 | 575 | 2026-11-15 | 300 | 2026-12-05 |
-| 0.9 | 725 | 2026-11-29 | 480 | 2027-01-15 |
-| 1.0 | 876 | 2026-12-12 | 789 | 2027-03-26 |
+| 0.9 | 725 | 2026-11-28 | 480 | 2027-01-15 |
+| 1.0 | 876 | 2026-12-11 | 789 | 2027-03-26 |
 
 Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
-Ships when both are met. At the last 48 h rate: about 2026-10-19.
+Ships when both are met. At the last 48 h rate: about 2026-10-18.
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds (#433).
 
@@ -161,6 +161,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Halo: Combat Evolved**<br>done | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-03 · default perf |
 | **Knights of the Temple II Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Marvel Nemesis: Rise of the Imperfects**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>99% at 28.5+<br>Nova · 10-06 |
+| **Mat Hoffman s Pro BMX 2 USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
 | **MTV Music Generator 3 This Is the Remix USA En Es**<br>reach gameplay | 🔵 copied | **30.0**<br>88% at 28.5+<br>Nova · 10-07 |
 | **Prince of Persia: The Sands of Time**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Shadow of Memories Europe**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
@@ -626,7 +627,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-582 titles: 19 blocked, 67 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 71 copied, 372 not copied.
+583 titles: 19 blocked, 67 Playable, 6 soak pending, 12 below 30, 35 inputs ready, 72 copied, 372 not copied.
 
 ---
 
