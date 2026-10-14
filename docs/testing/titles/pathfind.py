@@ -2761,13 +2761,48 @@ class Agent:
         return 0 if self.result["result"] == "gameplay" else 1
 
 
+def r3_refusal(kp, title_id, path_broken, no_record, no_replay, no_guide, from_state=False):
+    """The profile gate's R3 test for a pathfind.py session (#433 Part A): None to admit, else the
+    refusal text. A known-path title (`kp`, titlestate.known_path(..., broad=True)) is blind
+    navigation, refused outright -- UNLESS `no_record` replays the kept path rather than finding a
+    new one: nothing is rewritten, so R3 (never re-run blind navigation on a title that already ran)
+    has nothing to refuse. `no_replay`/`no_guide` drop the kept path (Agent.own = None in main()), so
+    paired with `no_record` on a known-path title they are refused too -- a `--no-record` run would
+    navigate blind with nothing recorded, not replay the path R3 is admitting it for.
+    `--path-broken` overrides R3 either way, same as before this admission existed.
+
+    `from_state` (#433 Part D, savestateconv1014) is a hold started from a captured save state: it
+    does no navigation at all, so it is admitted unconditionally on a known-path title -- there is no
+    path to diverge from and nothing is rewritten, same reasoning as `no_record` but stronger (no
+    replay happens either). A title with NO known path is never refused here either way; --from-state
+    on such a title has nothing to load (a state is only ever taken on a run that already reached
+    gameplay once, so a title with no known path has no state), and that is refused by the state-load
+    check itself (Part D), not by R3."""
+    if not kp["known"]:
+        return None
+    if path_broken:
+        return titlestate._path_broken_bad(path_broken, title_id, kp["route_name"])
+    if from_state:
+        return None
+    if no_record:
+        if no_replay or no_guide:
+            return ("a known path exists; --no-replay/--no-guide drop it, so --no-record here would "
+                     "navigate blind with nothing recorded, not replay it -- drop --no-replay/--no-guide "
+                     "for the re-hold, or pass --path-broken instead")
+        return None
+    return ("a known path exists; pass --path-broken \"<result id>\" naming a run of it that failed, "
+            "or --no-record to re-hold it by replaying the kept path (nothing is rewritten)")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("title")
     ap.add_argument("--device", default="nova", choices=sorted(DEVICES))
     ap.add_argument("--budget-min", type=float, default=15)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--no-record", action="store_true", help="do not write pathknow/paths/<id>.json")
+    ap.add_argument("--no-record", action="store_true",
+                    help="do not write pathknow/paths/<id>.json; a known-path title (R3, #433) runs "
+                         "only with this flag, as a replay of its kept path")
     ap.add_argument("--no-replay", action="store_true", help="ignore this title's own recorded path")
     ap.add_argument("--no-guide", action="store_true",
                     help="use no recorded path at all, own or sibling (a cross-title baseline)")
@@ -2790,7 +2825,8 @@ def main(argv=None):
                     help="one telemetry hold on master's -Pperflog=true build (#433): installs it from "
                          "dispatcher.sh's own cache/build before the run, restores master after. For a "
                          "title that has already shown it will not clear (pair with PATHFIND_BELOW_BAR=1 "
-                         "and a short --hold-s). Never banked: verdict.json/result.json record "
+                         "and a short --hold-s); a known-path title (R3) needs --no-record too, as a "
+                         "replay of its kept path. Never banked: verdict.json/result.json record "
                          "\"build\": \"perflog\", and title_verdict.py voids it.")
     ap.add_argument("--env", action="append", default=[], metavar="K=V",
                     help="with --perflog: an env var for the app, via dispatcher.sh's own apply_env_pref "
@@ -2823,16 +2859,18 @@ def main(argv=None):
     # The profile gate's R3 (#433 addendum 2): a pathfind.py session is blind navigation, same as a
     # queued --find-route request, but its OWN "known path" test is broader (a pathknow success counts
     # too, not just a proven route) -- a session that already reached gameplay once has nothing left to
-    # find blind, even before any route built from it has its own proof soak.
-    if tid:
-        kp = titlestate.known_path(tid, broad=True)
-        if kp["known"]:
-            bad = titlestate._path_broken_bad(a.path_broken, tid, kp["route_name"]) if a.path_broken else (
-                "a known path exists; pass --path-broken \"<result id>\" naming a run of it that failed")
-            if bad:
-                via = f" ({kp['source']}" + (f" via {kp['route_name']}, result {kp['result_id']})" if kp["route_name"]
-                                              else ")")
-                sys.exit(f"pathfind: {name} ({tid}) already has a known path{via}: {bad}")
+    # find blind, even before any route built from it has its own proof soak. A --no-record re-hold that
+    # replays the kept path is admitted (#433 Part A, r3_refusal): see its docstring.
+    kp = titlestate.known_path(tid, broad=True) if tid else {"known": False}
+    if kp["known"]:
+        bad = r3_refusal(kp, tid, a.path_broken, a.no_record, a.no_replay, a.no_guide)
+        if bad:
+            via = f" ({kp['source']}" + (f" via {kp['route_name']}, result {kp['result_id']})" if kp["route_name"]
+                                          else ")")
+            sys.exit(f"pathfind: {name} ({tid}) already has a known path{via}: {bad}")
+        elif a.no_record and not a.path_broken:
+            print(f"pathfind: R3 admits a --no-record re-hold of the known path ({kp['source']}); "
+                  f"replaying it, nothing is rewritten{' (--perflog)' if a.perflog else ''}", flush=True)
     if a.hold_s and dev.label == "thor":
         sys.exit("pathfind: --hold-s is Nova only: the Thor's fan is dead and it stops within 30 s of a claim")
     print(f"pathfind: {name} ({tid}) on {dev.label}: {iso}", flush=True)
