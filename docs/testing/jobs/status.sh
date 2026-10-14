@@ -455,9 +455,24 @@ if [ $have_gh = 1 ]; then
     # text is the owner's, release-0.5.toml's `gate`, which the page reads. A
     # copy here went stale when the owner made the gate the Nova's (2026-10-12),
     # so this writes one only when limits.env overrides it.
-    fact release_name "${STATUS_RELEASE_NAME:-0.5}"
+    # release_name/release_tag default to the active release conf's own `name`
+    # and `candidate_tag_prefix` (docs/testing/release-0.6.toml is the default
+    # conf; STATUS_RELEASE_CONF overrides it), not a literal "0.5": the page
+    # must track whichever release the conf points at (#433), without a
+    # second place to remember to update when the tracked release changes.
+    RCONF_NAME_TAG=$(python3 -c '
+import os, sys
+sys.path.insert(0, sys.argv[1])
+import status_html as S
+c, _ = S._conf(os.environ)
+print(c.get("name") or "0.5")
+print(c.get("candidate_tag_prefix") or "v0.5")
+' "$J" 2>/dev/null)
+    RCONF_NAME=$(printf '%s\n' "$RCONF_NAME_TAG" | sed -n 1p); [ -n "$RCONF_NAME" ] || RCONF_NAME=0.5
+    RCONF_TAG=$(printf '%s\n' "$RCONF_NAME_TAG" | sed -n 2p); [ -n "$RCONF_TAG" ] || RCONF_TAG=v0.5
+    fact release_name "${STATUS_RELEASE_NAME:-$RCONF_NAME}"
     [ -n "${STATUS_RELEASE_GATE:-}" ] && fact release_gate "$STATUS_RELEASE_GATE"
-    rc=$(gh release list --repo "$GH_REPO" --limit 30 --json tagName --jq ".[] | .tagName | select(startswith(\"${STATUS_RELEASE_TAG:-v0.5}\"))" 2>/dev/null | head -1)
+    rc=$(gh release list --repo "$GH_REPO" --limit 30 --json tagName --jq ".[] | .tagName | select(startswith(\"${STATUS_RELEASE_TAG:-$RCONF_TAG}\"))" 2>/dev/null | head -1)
     fact release_candidate "${rc:-none cut yet}"
     # Whether a gate soak ran the candidate is a ref comparison, so the page needs the tag's commit.
     [ -n "$rc" ] && fact release_candidate_sha "$(gh api "repos/$GH_REPO/commits/$rc" --jq .sha 2>/dev/null)"
@@ -468,7 +483,7 @@ if [ $have_gh = 1 ]; then
     fi
     # The 0.5 panel's issues (#432): every open issue carrying the release's
     # label, and the lane on it (its `lane:` label; cloud when claimed there).
-    if ri=$(gh issue list --repo "$GH_REPO" --state open --label "${STATUS_RELEASE_NAME:-0.5}" --limit 50 --json number,title,labels \
+    if ri=$(gh issue list --repo "$GH_REPO" --state open --label "${STATUS_RELEASE_NAME:-$RCONF_NAME}" --limit 50 --json number,title,labels \
             --jq '.[] | "\(.number)\t\([.labels[].name | select(startswith("lane:")) | .[5:]] + [.labels[].name | select(. == "claimed:cloud") | "cloud"] | join(",") | if . == "" then "no lane" else "lane." + . end)\t\(.title)"' 2>/dev/null); then
         echo "r05issues_known"
         printf '%s\n' "$ri" | while IFS=$'\t' read -r rn rl rt; do [ -n "$rn" ] && printf 'r05issue\t%s\t%s\t%s\n' "$rn" "$rl" "$(printf '%s' "$rt" | cut -c1-100)"; done
