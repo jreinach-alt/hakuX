@@ -59,7 +59,9 @@ NOVA_SERIAL = "ee317437"
 NOVA_GAMES_DIR = "/storage/E6C6-D7AA/Games/XBox"
 TID_RE = re.compile(r"^[0-9A-Fa-f]{8}$")
 NAME_PREFIX_RE = re.compile(r"^([0-9A-Fa-f]{8})-")
-XBE_CERT_READ_CAP = 300 * 1024 * 1024  # give up past this many bytes into an image (pathological case)
+XBE_CERT_READ_CAP = 480 * 1024 * 1024  # must clear the second XDVDFS base (0x18300000 = ~387 MiB):
+# confirmed live on AFL Premiership (Australia).7z, which has no root dir at base 0 at all and only
+# resolves via the fallback base -- a lower cap cut this title off before it ever got the chance.
 
 COLUMNS = ["title_id", "location", "path", "bytes", "sha256", "id_source", "seen_utc", "mtime", "stale"]
 LOCATIONS = ("console", "d-archive", "d-xiso", "d-cache", "d-other", "nova", "thor")
