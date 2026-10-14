@@ -6,9 +6,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `holdinput1013` | claude-sonnet-5 | 2h 30m | pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every  |
+No lane session is running.
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lanelocal-ownerplay`
@@ -86,9 +84,7 @@ The harness dashboard is [STATUS.md](STATUS.md).
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/holdinput1013` | pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every unstick ru | `2202cb01cd` | 2026-10-13 14:44 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
@@ -105,4 +101,4 @@ The harness dashboard is [STATUS.md](STATUS.md).
 - 2026-10-13 docsrewrite1012: the public docs rewritten for players, each with a Last updated line (#433, 0.5)
 - 2026-10-13 docsfresh1012: a freshness check for the public docs, an hourly alarm and a release step (#433, 0.5)
 
-_Updated 2026-10-13 16:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-13 17:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
