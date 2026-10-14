@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `titledb1014` | claude-sonnet-5 | 5 min |  |
+| `titledb1014` | claude-sonnet-5 | 20 min | titledb1014: title_id as the join key, one table, every reader reads it (#433) |
 
 - **Handhelds:** 1 connected.
   - Nova: held by `lanelocal-shuffle`
@@ -99,10 +99,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/titledb1014` | titledb1014: title_id as the join key, one table, every reader reads it (#433) | `5bb5200580` | 2026-10-14 08:26 |
 
 ## Recently landed on master
 
+- 2026-10-14 savestateconv1014: R3 admits --from-state
 - 2026-10-14 status: Playable is the ledger
 - 2026-10-13 status page: track 0.6, 1.0 projection chart, drop Benchmarked and C I S B
 - 2026-10-13 pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every unstick rung
@@ -114,6 +117,5 @@ No branch is being worked right now.
 - 2026-10-13 lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 - 2026-10-13 rootclean1013: remove unused upstream files from the repository root (#433)
-- 2026-10-13 x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938)
 
-_Updated 2026-10-14 08:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 08:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
