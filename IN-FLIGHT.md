@@ -16,10 +16,11 @@ No lane session is running.
 
 ## Playable titles
 
-**76 titles are confirmed Playable** (9 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**77 titles are confirmed Playable** (10 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-14 | Manhunt | Playable, accepted on review |
 | 2026-10-14 | Backyard Wrestling 2: There Goes the Neighborhood | Playable, 10-minute run on the Nova, median 40.82 fps |
 | 2026-10-14 | TY the Tasmanian Tiger | Playable, 10-minute run on the Nova, median 29.97 fps |
 | 2026-10-14 | Alias | Playable, 10-minute run on the Nova, median 29.96 fps |
@@ -118,4 +119,4 @@ No branch is being worked right now.
 - 2026-10-13 lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
 - 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 
-_Updated 2026-10-14 21:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 21:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
