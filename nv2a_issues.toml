@@ -6285,3 +6285,13 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "Analysis starts after the Thu 10-15 21:00 PDT usage reset (owner-directed Low mode); the telemetry is saved, so nothing waits on the owner. A second frame dump from a 30 fps room of the same level would give the comparison and needs the owner to play it."
 status_note = "Filed by lane.local 2026-10-14 from the owner's hand-played session ownerplay/runs/5553001D-1014-2057-14415 (Nova 20:57-21:17 PDT, debug 0.5.0-1014-76bef8b162, Turnip T30 PurpleVK git-62ac221a33). Owner: 29 fps locked everywhere except one room with a fog effect. Measured: 457 gfps windows at 25-30 (G median 33.3 ms, Vpf 2.0) against 47 at 19-20 (G median 50.0 ms, Vpf 3.0); CPU share 28% quiet, 34% fog room, so GPU-bound. A live 30-frame frame dump (armed by frame_dump.on, no restart) caught the fog room: 26,724 draws, about 890 per frame, no per-draw GPU time in the records. Durable copies: /mnt/d/hakux-staging/ownerplay-1014/pop-fog/ (dump, 69 MB) and /mnt/d/hakux-staging/ownerplay-1014/5553001D-PrinceOfPersia-1014-2057-14415.tar.gz (148 MB, sha256 beside it). First step: a second dump in a 30 fps room, then diff blend and target mix against the fog dump."
+
+[issue.994]
+title = "Halo 2 (4D530064): title-screen background flicker, audio dropouts and multi-second stalls on the Nova"
+suites = []
+no_suites = "A per-title defect in a commercial title, cause not yet known, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "Analysis starts after the Thu 10-15 21:00 PDT usage reset (owner-directed Low mode); the telemetry is saved, so nothing waits on the owner. The stalls and audio dropouts have no frame dump yet: they come after the title screen, and a dump armed there needs the owner to play it."
+status_note = "Filed by lane.local 2026-10-14 from the owner's hand-played sessions ownerplay/runs/4D530064-1014-2118-21342 (21:18-21:21, past the title screen) and 4D530064-1014-2129-25179 (21:29-21:30, title screen only), Nova, debug 0.5.0-1014-76bef8b162. Owner: continuous flicker of scattered elements in the dark title-screen background; audio dropouts and choppiness; fps to 0 for a few seconds. Title-screen dump (frame_dump.on, 30 frames, 39,781 draws): A-B-A pixel flips on the Forerunner glyph strips (rows about 180, 262, 430), drawn as hundreds of inline_array draws at blend 0x14a whose per-frame counts swing about threefold. Stalls of 5.2 s and 3.9 s in the first run coincide with bursts of pipeline-library compiles (about 100 ms each); audio zero-fill 0.3-0.9%. Durable copies under /mnt/d/hakux-staging/ownerplay-1014/: halo2-flicker/ (dump), and the two run tarballs with sha256 values in the issue body."
