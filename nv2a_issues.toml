@@ -6265,3 +6265,13 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "AWAITING THE OWNER: the owner reproduces it on the Nova when handheld testing resumes (owner 10-14), and marks the hallways. No frames exist to work from."
 status_note = "Filed by lane.local 2026-10-14 from the owner's 10-13 Story session (Siberia, about 22:00-22:12 PDT, debug 0.5.0-1013-08f1fb4a90, Turnip T30 PurpleVK git-62ac221a33). The title is banked Playable; this is a rendering defect to fix. The owner used Debug Capture twice in the area (about 22:03:26 and 22:03:35 PDT); neither left a diag_session folder (newest under files/rt_dumps on the Nova is 2026-09-11) and the hakuX-diag log tag is not in the logcat watch spec. If the next capture also writes nothing, that is a second defect in Debug Capture and wants its own lane (and hakuX-diag added to LOGCAT_SPEC)."
+
+[issue.992]
+title = "Top Spin (4D530035) runs in slow motion on the Nova: fps in the 30s in play, teens in the arena intro"
+suites = []
+no_suites = "A per-title speed problem in a commercial title, cause not yet known, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "Analysis starts after the Thu 10-15 21:00 PDT usage reset (owner 10-14); the telemetry is saved, so nothing waits on the owner."
+status_note = "Filed by lane.local 2026-10-14 from the owner's hand-played session ownerplay/runs/4D530035-1014-1417-23868 (Nova 14:17-14:21 PDT, debug 0.5.0-1014-76bef8b162, Turnip T30 PurpleVK git-62ac221a33). Owner: players move like underwater, fps in the 30s in play and the teens in the arena intro, 'this one does not pass'; the owner saved a state. 119 s of marked play, fps_ok 0.8326 at the 30 bar, worst window 288.5 ms, no crash; the scorer measures guest flip rate, so slow game speed may not show in it. Durable copy: /mnt/d/hakux-staging/ownerplay-1014/4D530035-TopSpin-1014-1417-23868.tar.gz (37 MB, 56 files, sha256 beside it). First step: read hakuX-pace and [rdc] in the same logcat against the 60-flip windows."
