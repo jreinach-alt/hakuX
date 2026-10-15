@@ -16,10 +16,13 @@ No lane session is running.
 
 ## Playable titles
 
-**77 titles are confirmed Playable** (0 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**80 titles are confirmed Playable** (3 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-15 | Ricky Ponting International Cricket 2005 | Playable, 10-minute run, median 59.88 fps |
+| 2026-10-15 | FILA World Tour Tennis | Playable, 10-minute run, median 56.82 fps |
+| 2026-10-15 | David Beckham Soccer | Playable, 10-minute run, median 59.94 fps |
 | 2026-10-14 | Manhunt | Playable, accepted on review |
 | 2026-10-14 | Backyard Wrestling 2: There Goes the Neighborhood | Playable, 10-minute run on the Nova, median 40.82 fps |
 | 2026-10-14 | TY the Tasmanian Tiger | Playable, 10-minute run on the Nova, median 29.97 fps |
@@ -98,7 +101,7 @@ No lane session is running.
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-58 of these still await the owner's flicker check.
+61 of these still await the owner's flicker check.
 
 ## Work in progress
 
@@ -119,4 +122,4 @@ No branch is being worked right now.
 - 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
 - 2026-10-13 lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
 
-_Updated 2026-10-15 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-15 08:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
