@@ -9,7 +9,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 No lane session is running.
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lanelocal-shuffle`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -106,6 +106,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-14 titledb1014: title_id as the join key, one table, every reader reads it (#433)
 - 2026-10-14 A tracked listing of which title is where, keyed by title_id
 - 2026-10-14 savestateconv1014: R3 admits --from-state
 - 2026-10-14 status: Playable is the ledger
@@ -117,6 +118,5 @@ No branch is being worked right now.
 - 2026-10-13 pathrules1013: pathfind no-answer steps never become a path, a hold that can't pass ends early, a perflog run never banks (#433, 0.5)
 - 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
 - 2026-10-13 lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
-- 2026-10-13 driverline1013: the compatibility page and README name the GPU driver the ratings were measured on (#433, 0.5)
 
-_Updated 2026-10-14 22:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-14 23:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
