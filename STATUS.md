@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-14 22:06 PDT_
+_updated 2026-10-14 22:39 PDT_
 
 0.6: Measured 228 / 300 · Playable 77 / 110.
 
@@ -189,7 +189,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **MechAssault 2: Lone Wolf**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>89% at 28.5+<br>Nova · 10-08 · max perf, soak |
 | **Shin Megami Tensei: NINE**<br>soak for Playable | soak pending | **30.0**<br>97% at 28.5+<br>Thor · 09-30 · max perf |
 | **Tork: Prehistoric Punk**<br>done | 🟢 Playable | **30.0**<br>59% at 28.5+<br>Thor · 09-30 · max perf<br>Nova 30.0 |
-| **Battlefield 2: Modern Combat**<br>reach gameplay<br>queued 1-1792030474-foldqueue-2678162 #1; queued 1-1792030479-foldqueue-2678205 #2 | 🟣 inputs ready | **29.9**<br>67% at 28.5+<br>Nova · 10-01 · default perf |
+| **Battlefield 2: Modern Combat**<br>reach gameplay | 🟣 inputs ready | **29.9**<br>67% at 28.5+<br>Nova · 10-01 · default perf |
 | **Cel Damage**<br>reach gameplay | 🔵 copied | **29.9**<br>98% at 28.5+<br>Nova · 10-07 |
 | **Star Wars Knights of the Old Republic II The Sith Lords Europe**<br>reach gameplay | 🔵 copied | **29.9**<br>66% at 28.5+<br>Nova · 10-12 |
 | **BloodRayne**<br>reach gameplay | 🟣 inputs ready | **29.9**<br>88% at 28.5+<br>Nova · 10-14 |
