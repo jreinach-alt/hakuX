@@ -6275,3 +6275,13 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "Analysis starts after the Thu 10-15 21:00 PDT usage reset (owner 10-14); the telemetry is saved, so nothing waits on the owner."
 status_note = "Filed by lane.local 2026-10-14 from the owner's hand-played session ownerplay/runs/4D530035-1014-1417-23868 (Nova 14:17-14:21 PDT, debug 0.5.0-1014-76bef8b162, Turnip T30 PurpleVK git-62ac221a33). Owner: players move like underwater, fps in the 30s in play and the teens in the arena intro, 'this one does not pass'; the owner saved a state. 119 s of marked play, fps_ok 0.8326 at the 30 bar, worst window 288.5 ms, no crash; the scorer measures guest flip rate, so slow game speed may not show in it. Durable copy: /mnt/d/hakux-staging/ownerplay-1014/4D530035-TopSpin-1014-1417-23868.tar.gz (37 MB, 56 files, sha256 beside it). First step: read hakuX-pace and [rdc] in the same logcat against the 60-flip windows."
+
+[issue.993]
+title = "Prince of Persia: The Sands of Time (5553001D) drops from 30 to 19 fps in one fog room on the Nova, GPU-bound"
+suites = []
+no_suites = "A per-title speed problem in a commercial title, cause not yet known, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "Analysis starts after the Thu 10-15 21:00 PDT usage reset (owner-directed Low mode); the telemetry is saved, so nothing waits on the owner. A second frame dump from a 30 fps room of the same level would give the comparison and needs the owner to play it."
+status_note = "Filed by lane.local 2026-10-14 from the owner's hand-played session ownerplay/runs/5553001D-1014-2057-14415 (Nova 20:57-21:17 PDT, debug 0.5.0-1014-76bef8b162, Turnip T30 PurpleVK git-62ac221a33). Owner: 29 fps locked everywhere except one room with a fog effect. Measured: 457 gfps windows at 25-30 (G median 33.3 ms, Vpf 2.0) against 47 at 19-20 (G median 50.0 ms, Vpf 3.0); CPU share 28% quiet, 34% fog room, so GPU-bound. A live 30-frame frame dump (armed by frame_dump.on, no restart) caught the fog room: 26,724 draws, about 890 per frame, no per-draw GPU time in the records. Durable copies: /mnt/d/hakux-staging/ownerplay-1014/pop-fog/ (dump, 69 MB) and /mnt/d/hakux-staging/ownerplay-1014/5553001D-PrinceOfPersia-1014-2057-14415.tar.gz (148 MB, sha256 beside it). First step: a second dump in a 30 fps room, then diff blend and target mix against the fog dump."
