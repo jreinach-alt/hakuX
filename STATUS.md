@@ -1,14 +1,14 @@
 # hakuX status
 
-_updated 2026-10-14 21:02 PDT_
+_updated 2026-10-14 21:35 PDT_
 
-0.6: Measured 227 / 300 · Playable 76 / 110.
+0.6: Measured 228 / 300 · Playable 77 / 110.
 
 ## How close is 0.6?
 
-Measured **227** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
+Measured **228** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
-Playable **76** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
+Playable **77** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 
 
 ![Titles over time](chart.svg)
@@ -20,10 +20,10 @@ Playable **76** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓░░░`
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
 | 0.6 | 300 | 2026-10-21 | 110 | 2026-10-21 |
-| 0.7 | 425 | 2026-11-01 | 185 | 2026-11-06 |
-| 0.8 | 575 | 2026-11-15 | 300 | 2026-11-29 |
-| 0.9 | 725 | 2026-11-29 | 480 | 2027-01-06 |
-| 1.0 | 876 | 2026-12-12 | 789 | 2027-03-10 |
+| 0.7 | 425 | 2026-11-01 | 185 | 2026-11-05 |
+| 0.8 | 575 | 2026-11-14 | 300 | 2026-11-28 |
+| 0.9 | 725 | 2026-11-28 | 480 | 2027-01-03 |
+| 1.0 | 876 | 2026-12-12 | 789 | 2027-03-06 |
 
 Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
@@ -255,6 +255,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Indigo Prophecy**<br>done | 🟢 Playable |  |
 | **Jacked**<br>done | 🟢 Playable |  |
 | **Jet Set Radio Future**<br>done | 🟢 Playable |  |
+| **Manhunt**<br>done | 🟢 Playable |  |
 | **Mat Hoffman's Pro BMX 2**<br>done | 🟢 Playable |  |
 | **Max Payne**<br>done | 🟢 Playable |  |
 | **Mercenaries**<br>done | 🟢 Playable |  |
@@ -280,7 +281,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Alter Echo**<br>reach gameplay | ⚪ not copied |  |
 | **America's Army: Rise of a Soldier**<br>reach gameplay | ⚪ not copied |  |
 
-<details><summary>354 more not copied</summary>
+<details><summary>353 more not copied</summary>
 
 | Title and next step | Status | fps |
 |---|---|---|
@@ -550,7 +551,6 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Madden NFL 08**<br>reach gameplay | ⚪ not copied |  |
 | **Madden NFL 2002**<br>reach gameplay | ⚪ not copied |  |
 | **Magi Death Fight!**<br>reach gameplay | ⚪ not copied |  |
-| **Manhunt**<br>reach gameplay | ⚪ not copied |  |
 | **Mashed: Drive to Survive**<br>reach gameplay | ⚪ not copied |  |
 | **Maximum Chase**<br>reach gameplay | ⚪ not copied |  |
 | **Medal of Honor: European Assault**<br>reach gameplay | ⚪ not copied |  |
@@ -641,7 +641,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-597 titles: 19 blocked, 76 Playable, 6 soak pending, 10 below 30, 36 inputs ready, 86 copied, 364 not copied.
+597 titles: 19 blocked, 77 Playable, 6 soak pending, 10 below 30, 36 inputs ready, 86 copied, 363 not copied.
 
 ---
 
