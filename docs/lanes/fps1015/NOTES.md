@@ -12,7 +12,10 @@ lane.local's overnight chain until ~06:00 PDT 10-16.
 - #992 Brian Lara: a different shape, unexplained. Next step: one perflog run.
 - #995 Batman Begins: partly explained. GPU or wait-bound. The one download a frame serializes the previous
   frame's GPU work against the PFIFO thread. Fill against draw count needs a perflog + `vtx256` run.
-- Next: #993 Prince of Persia.
+- #993 Prince of Persia: reduced to a bound. The fog room's PFIFO-thread frame is 33-36 ms against the 33.4 ms
+  two-vblank budget of a 30-fps title, so every frame takes three vblanks (19 fps). Nine shadow-map `cvt` downloads
+  a frame are in that time; the same lever applies.
+- Next: #994 Halo 2.
 
 Attempt 1 (10-15 22:41 to 23:29 PDT) ended at the 300-turn cap, not on a finding or a block. It had committed
 #986, #992 and #995 and written the #993 pre-read section, uncommitted, with the fog-room dump read under way
@@ -463,3 +466,82 @@ Step 2, the fog pass state from the dump (`dumpstat.py`, `scratch` position read
 
 A full-screen fog layer on the 640x480 target shows as a few large blended quads or strips. A render-to-texture
 fog shows as draws into the 256x256 targets, then a read of each one.
+
+## #993 result: the fog room's frame is ~1-3 ms over two vblanks, and its nine shadow maps each force a download
+
+### The split from the owner run (`winsplit.py`, plain build)
+
+"PFIFO thread busy" = period - `Ri`: the PFIFO thread's CPU plus its off-CPU, not-parked time a frame.
+
+| windows | fps | period ms | vCPU busy ms (share) | PFIFO CPU ms | `Ri` ms | off-CPU, not parked ms | PFIFO thread busy ms | `Df` | `Tq` |
+|---|---|---|---|---|---|---|---|---|---|
+| 21:08:00-21:10:04, light rooms (59 windows; 21:08:49 at 52.0 ms and 21:09:44 at 73.2 ms left out) | 27-29 | 32.9-34.1 | 11.6-18.7 (0.3-0.6) | 5.8-12.6 | 0.8-22.8 | 2.7-20.7 | 10.3-33.3 (median 14.3) | 0-100 | 345-1179 |
+| 21:13:19-21:15:23, the heaviest 29-fps stretch (59 windows; 21:14:58 at 89.3 ms left out) | 26-29 | 33.4-38.3 | 16.7-19.0 (0.4-0.6) | 11.4-12.8 | 3.1-7.3 | 15.1-22.9 | 26.9-34.5 (median 30.0) | 44-60 | 869-874 |
+| 21:15:57-21:17:19, fog room (27 windows; dump window 21:16:40 left out) | 19-21 | 48.1-50.1 | 20.2-23.7 (0.40-0.47) | 16.4-18.1 | 13.5-16.7 | 16.1-19.6 | 33.3-36.4 (median 34.7) | 6-26 | 1153-1262 |
+
+In the fog room 53-60 of every window's 60 flips land on three vblanks (`v3`; 60 in 21 of 27 windows). The title presents every
+second vblank elsewhere (`v2` = 60 at 29 fps), so a frame that misses the second vblank waits for the third.
+
+A FLIP_STALL that is waiting for the vblank parks the PFIFO thread (the puller stalls on `waiting_for_flip`, pfifo.c:1940,
+and the thread parks, pfifo.c:2475), so that wait is in `Ri`, not in the busy time. The busy time is what the PFIFO
+thread has to do between two flips, and over all 510 rendering windows of the session it decides the frame rate:
+
+| PFIFO thread busy a frame | windows | period median ms | windows at >= 40 ms |
+|---|---|---|---|
+| under 26 ms | 373 | 33.4 | 1 |
+| 26-32 ms | 88 | 33.9 | 7 |
+| 32-34 ms | 17 | 49.9 | 12 |
+| 34-38 ms | 29 | 50.0 | 27 |
+| 38 ms and over | 3 | 73.2 | 3 (stall windows) |
+
+Below 32 ms busy, 453 of 461 windows run at 29 fps; from 32 to 38 ms, 39 of 46 run at 19-20. The 412
+29-fps windows (period under 34 ms) peak at 32.6 ms busy (p95 29.9).
+
+- **Not vCPU-bound.** The guest is outside its idle loop for 40-47% of the fog-room frame.
+- **Not the GPU's throughput alone, and not the vblank.** The frame is 50 ms because the PFIFO thread's 33-36 ms
+  of work misses a 33.4 ms budget by 0-3 ms, and the title's two-vblank present interval rounds it up to three. `Ri`
+  (13.5-16.7 ms) is the wait for that third vblank.
+- The busy time splits into PFIFO CPU 16.4-18.1 ms and off-CPU, not parked 16.1-19.6 ms. In MKSM's perflog run,
+  the off-CPU time was the fence wait of the surface downloads.
+
+### What the fog-room frame carries (`dumpstat.py`, `s2tscan.py`, the dump's draw sequence)
+
+The dump `ownerplay-1014/pop-fog` (30 frames, 884-900 draws, 246k vertices, 415-423 blended draws a frame) has
+**12 submits a frame**: nine at the first read of each shadow map (`cvt` downloads), two at draw 876 and one
+between frames.
+
+The nine downloads are projected shadows, one per shadow caster in the room:
+
+1. Draws 450-487 render each caster twice: into the 640x480 colour target with depth test and write, then the same
+   index count into its own 256x256 R5G6B5 surface (depth off, no blend, no texture). There are nine
+   surfaces (0x37e0000-0x38e0000); 0x38e0000 is also drawn at 129-131 and 418-449.
+2. Draws 488-523 then multiply each surface onto the scene (`0 + (1 - src colour)`, depth test, no depth write),
+   sampled as `SZ_R5G6B5`.
+3. Each surface is refused as `cvt` at its first read, and the download submits and waits on the fence. The first of
+   the nine waits for everything submitted before it: frame N-1 and frame N's first 488 draws. Each of the next eight
+   waits for the 1-7 draws since the previous one, and adds its own readback, CPU decode and upload.
+
+The rest of the frame is 195 multiply-blended draws a frame (`0 + src colour`), 126 alpha-blended
+(`sa + 1 - sa`) and 37 `0 + (1 - src colour)` (36 of them the shadow reads), on three 640x480 targets the frames rotate through. No fog pass draws into
+a 16-bit target. With no dump of a 29-fps room, the draw count and the blended work cannot be compared across
+rooms.
+
+### Cause, lever and next step (#993)
+
+**#993 is reduced to a bound, not explained.**
+
+Measured:
+- The fog room is a 33-36 ms PFIFO-thread frame (median 34.7) against a 33.4 ms two-vblank budget. That is not a
+  19-fps workload: it is a 30-fps one that misses by 0-3 ms and pays a whole vblank.
+- The frame carries nine downloads, each a fence wait, at draws 488-521 of ~890.
+
+Not measured: what the nine downloads cost on PoP. Top Spin's fit gives 0.45-0.48 ms of `Fin` per 64x128 download;
+PoP's surfaces have eight times the texels. That is an inference from another title, not a PoP measurement.
+
+**The lever is `HAKUX_S2T_CVT`** (WAITING on vk/texture.c, #986 section). It needs to take 1-4 ms from the PFIFO
+thread's frame to put the fog room's busy time under the 32 ms that every 29-fps window of the session stays below.
+If it does, the fog room runs at the title's 30-fps cap, 19 -> 29 fps. A bound: only the A/B gives the value.
+
+Next step, if the lever stays WAITING: one perflog run in the fog room (`HAKUX_FRAMETRACE=1 HAKUX_GPUXFR=1`, about
+6 minutes of Nova time). A hit for the downloads: `Finish sd` 9 a frame, phase `Fin` at or above the 1-4 ms the
+budget needs.
