@@ -7,11 +7,22 @@ nobody can find has not finished.
 
 ## Your PR is your claim. Open it first, not last
 
-Within your first few actions: `git push -u origin <your branch>` and
-`gh pr create --draft --base master` with this body, filled in, and keep it
-current as your files and prediction change:
+Within your first few actions: `git push -u origin <your branch>` and write
+`docs/lanes/<your lane name>/PR.md` on that branch, then push again. Do not
+run `gh pr create`: it POSTs straight to the forge with no allocator, and can
+take a PR number GitHub has not allocated yet. That leaves the forge ahead of
+GitHub, and blocks every new issue and lane PR until someone runs the
+backfill by hand (#433, lane.forgealloc1013). `forge_prsync.py` reads PR.md
+off your branch and opens the forge PR itself, through the allocator, on its
+next run (about a minute after your push lands on the forge mirror).
+
+`PR.md`'s format:
 
 ```
+# <title>
+
+State: draft
+
 Lane: <name>            Issue: #<n> [#<m>]
 Base: master @ <sha you branched from>
 Files: <comma-separated paths you will edit, or NONE for analysis-only>
@@ -21,8 +32,30 @@ Needs device: yes|no    Needs NDK: yes|no
 <what you found / changed, in a few paragraphs; tables for numbers>
 ```
 
+Keep it current as your files and prediction change: edit PR.md and push
+again, the same way you'd edit a PR body. `State: draft` maps to Forgejo's
+"WIP: " title prefix; `State: ready` drops it -- that's the only switch
+forge_prsync.py reads to tell draft from ready, so a lane with nothing else
+to say still needs that line changed and pushed.
+
 The board reads `Files:` from every open PR to keep two lanes off one file.
 A path you edit that is not on that line is a collision nothing can see.
+
+**Before forge_prsync has run**, there is no PR yet -- `gh pr comment` and
+`gh pr ready` have nothing to act on. That is fine: `handback.sh` reads two
+things, in this order, and either is enough to know a lane is waiting.
+First, the lane's own last session -- literally the final words of this
+session, which the harness captures into `$WORK/logs/lane/<name>.<stamp>.json`
+regardless of whether a PR exists. End a session with
+`[lane.<name>] waiting:` or `blocked:` as close to its last line as you can,
+and that alone gets you resumed correctly with no PR open at all. Second,
+once a PR does exist, the newest `[lane.<name>] ...` comment on it -- a
+stale `waiting:` from before your last resume is superseded by whatever you
+said since. So in the first minutes: write the `waiting:`/`blocked:` line in
+`NOTES.md` for a human reader, end the session saying the same thing, and
+once the PR exists (a later session, or this one if forge_prsync was already
+quick), also post it as a PR comment -- belt and suspenders once there's
+something to comment on.
 
 ## Predictions: register before, commit with the refs, never rebase after
 
@@ -107,19 +140,22 @@ The source is the owner, as project manager, on 2026-09-28:
    the folds.
 4. The prediction, if any, is registered and committed with its refs, or
    the body says `Prediction: none` and why.
-5. Then **mark the PR ready**: `gh pr ready <number>`. A draft is "still
-   working"; a ready PR is what the board audits and folds, and a draft is
-   skipped by `board.sh`, `fleet.py` and `fold.sh` alike. So do not end a
-   session on a finished PR still in draft.
+5. Then **mark the PR ready**: set `State: ready` in `PR.md` and push. A
+   draft is "still working"; a ready PR is what the board audits and folds,
+   and a draft is skipped by `board.sh`, `fleet.py` and `fold.sh` alike. So
+   do not end a session on a finished PR still in draft. `forge_prsync.py`
+   drops the "WIP: " title prefix on its next run; there is no separate
+   `gh pr ready` step, and nothing to run it against before that happens.
 
    **If you are waiting, that is a finished session too -- say so and stop.**
    CI on a head you just pushed is ~10 minutes, a device arm is ~90, an audit
    is a different session entirely, and you have no way to sleep. Do not burn
    turns polling until the turn cap cuts you off; do not end silently either,
    because until 2026-09-19 that left five finished, green PRs in draft with
-   no actor that could ever touch them. Instead: post a PR comment starting
-   `[lane.<name>] waiting:` that names what you are waiting for and what
-   signal will resolve it, write it in `NOTES.md`, and stop.
+   no actor that could ever touch them. Instead: end the session with
+   `[lane.<name>] waiting:` naming what you are waiting for and what signal
+   will resolve it, write the same in `NOTES.md`, and post it as a PR
+   comment once the PR exists to post it on.
 
    `jobs/handback.sh` is the actor for that state. Every fold tick it looks
    for a draft lane PR whose `hakux-lane-<name>` unit is not running, and
@@ -156,8 +192,8 @@ The source is the owner, as project manager, on 2026-09-28:
   check rollup comes back empty, and the fold job cannot fold a head that
   nothing has built -- so the PR waits, silently, until a person pushes over
   it. That is what stalled #101, #123, #129 and #139. `AGENTS.md`'s transition
-  note retired the marker; CI is free on this public repository and now runs
-  on every PR, and it is the gate of record.
+  note retired the marker; CI is the forge's and now runs on a ready PR, and
+  it is the gate of record.
 - **Quote** that marker, in a commit message, for any reason -- including
   explaining this rule. GitHub matches it anywhere in the message, body
   included, so the empty commit pushed to restore a missing run suppressed

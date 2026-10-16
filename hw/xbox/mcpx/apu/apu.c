@@ -112,6 +112,34 @@ static int monitor_num_used_bytes(MCPXAPUState *d)
     return queued_bytes;
 }
 
+#ifdef __ANDROID__
+#include <android/log.h>
+
+/*
+ * HAKUX_APU_PACE keeps the low-watermark pacing below on Android (#433). On
+ * by default since defaulton1011: unset means on, and any value but "1"
+ * (HAKUX_APU_PACE=0) turns it off for an A/B. Without it the VP runs a whole
+ * device period of frames back to back after each drain and then stands
+ * still, so a voice's position moves by ~2048 samples within a few ms of host
+ * time instead of 32 samples every 0.67 ms as on the hardware. Read once, on
+ * the APU thread, and said once in logcat so a run shows the switch reached
+ * it.
+ */
+static bool apu_pace_on(void)
+{
+    static int on = -1;
+
+    if (on < 0) {
+        const char *e = getenv("HAKUX_APU_PACE");
+        on = e ? e[0] == '1' && e[1] == '\0' : 1;
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-audio",
+                            "apu_pace: %s (HAKUX_APU_PACE%s)", on ? "on" : "off",
+                            e ? "" : ", default");
+    }
+    return on;
+}
+#endif
+
 static void throttle(MCPXAPUState *d)
 {
     if (d->ep_frame_div % 8) {
@@ -139,9 +167,11 @@ static void throttle(MCPXAPUState *d)
      * low-watermark pacing below and can make speech sound dragged out.
      * Keep FIFO backpressure, but let the output callback set the pace.
      */
-    d->next_frame_time_us = 0;
-    d->sleep_acc_us += qemu_clock_get_us(QEMU_CLOCK_REALTIME) - start_us;
-    return;
+    if (!apu_pace_on()) {
+        d->next_frame_time_us = 0;
+        d->sleep_acc_us += qemu_clock_get_us(QEMU_CLOCK_REALTIME) - start_us;
+        return;
+    }
 #endif
 
     if (queued_bytes > d->monitor.queued_bytes_low) {
@@ -780,12 +810,16 @@ static void se_frame(MCPXAPUState *d)
          * worth having. */
         apu_level_observe(d->monitor.frame_buf, 256);
 
-        qemu_spin_lock(&d->monitor.fifo_lock);
-        int num_bytes_free = (int)fifo8_num_free(&d->monitor.fifo);
-        assert(num_bytes_free >= sizeof(d->monitor.frame_buf));
-        fifo8_push_all(&d->monitor.fifo, (uint8_t *)d->monitor.frame_buf,
-                       sizeof(d->monitor.frame_buf));
-        qemu_spin_unlock(&d->monitor.fifo_lock);
+        /* No device (monitor_init() failed): nothing drains the FIFO, so
+         * pushing would fill it and trip the assert. */
+        if (d->monitor.fifo_capacity_bytes > 0) {
+            qemu_spin_lock(&d->monitor.fifo_lock);
+            int num_bytes_free = (int)fifo8_num_free(&d->monitor.fifo);
+            assert(num_bytes_free >= sizeof(d->monitor.frame_buf));
+            fifo8_push_all(&d->monitor.fifo, (uint8_t *)d->monitor.frame_buf,
+                           sizeof(d->monitor.frame_buf));
+            qemu_spin_unlock(&d->monitor.fifo_lock);
+        }
         memset(d->monitor.frame_buf, 0, sizeof(d->monitor.frame_buf));
     }
 
@@ -1067,10 +1101,18 @@ static void monitor_init(MCPXAPUState *d)
         .userdata = d,
     };
 
+    /* No audio device is not fatal: the APU keeps running with no output.
+     * fifo_capacity_bytes stays 0, which throttle() and se_frame() read as
+     * "no device". From X1 BOX 55262dde6d. */
     if (SDL_Init(SDL_INIT_AUDIO) < 0)  {
-        fprintf(stderr, "Failed to initialize SDL audio subsystem: %s\n",
-                SDL_GetError());
-        exit(1);
+        fprintf(stderr, "WARNING: Failed to initialize SDL audio subsystem: "
+                "%s; running without audio output\n", SDL_GetError());
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_WARN, "hakuX-audio",
+                            "SDL audio init failed: %s; no audio output",
+                            SDL_GetError());
+#endif
+        return;
     }
 
     SDL_AudioDeviceID sdl_audio_dev;
@@ -1079,10 +1121,14 @@ static void monitor_init(MCPXAPUState *d)
                                         &obtained_audio_spec,
                                         SDL_AUDIO_ALLOW_FORMAT_CHANGE);
     if (sdl_audio_dev == 0) {
-        fprintf(stderr, "SDL_OpenAudioDevice failed: %s\n",
-                SDL_GetError());
-        assert(!"SDL_OpenAudioDevice failed");
-        exit(1);
+        fprintf(stderr, "WARNING: SDL_OpenAudioDevice failed: %s; "
+                "running without audio output\n", SDL_GetError());
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_WARN, "hakuX-audio",
+                            "SDL_OpenAudioDevice failed: %s; no audio output",
+                            SDL_GetError());
+#endif
+        return;
     }
 
     int fifo_frame_bytes = sizeof(d->monitor.frame_buf);
@@ -1179,6 +1225,11 @@ static int mcpx_apu_pre_load(void *opaque)
     MCPXAPUState *d = opaque;
     mcpx_apu_reset(d);
     qemu_mutex_lock(&d->lock);
+    /* #433: what the monitor FIFO still holds was mixed before the load;
+     * played after it, it is a burst of the scene being left. */
+    qemu_spin_lock(&d->monitor.fifo_lock);
+    fifo8_reset(&d->monitor.fifo);
+    qemu_spin_unlock(&d->monitor.fifo_lock);
     return 0;
 }
 

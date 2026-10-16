@@ -796,6 +796,54 @@ def labelled_at(n, label):
 
 FOLD_STUCK_S = 3600
 
+# foldqueue.sh (hakux-foldqueue.timer, OnUnitInactiveSec=15min) folds a `lane/*`
+# branch straight off its own docs/lanes/<lane>/PR.md `State: ready`, with no
+# GitHub label and no `gh` call at all -- so a PR this file sees as READY with
+# no needs-audit-*/fold-ready/folded label may already be FOLDED (the forge/
+# GitHub close just hasn't landed yet), already WAITING/GATE QUEUED/RACED/
+# MOVED/SELFTEST-RETRY (being retried every tick), or already FAILED (routed
+# to hostops-inbox.md and fold-failures.log by foldqueue.sh itself, lane.local's
+# job, not this report's). "Nothing is working on this" is the one state none
+# of those is, and it is the only state the old check actually meant to catch
+# when it fired on #433-era PRs whose own PR.md -> forge PR hop (through
+# forge_prsync.py's allocator, also every 5 min) stacks another tick of normal
+# propagation delay in front of board.sh's own 20-minute poll.
+FOLDQUEUE_LOG = os.path.join(
+    os.environ.get("HAKUX_WORK", "/home/justin/hakux-work"), "offline-git", "foldqueue.log")
+FOLDQUEUE_TICK_S = 900          # the timer's own interval
+FOLDQUEUE_STALE_S = 3 * FOLDQUEUE_TICK_S   # three missed ticks before a non-terminal retry state counts as stuck, not merely not-yet-ticked
+
+
+def foldqueue_status(branch, now=None, path=None):
+    """(verb, age_s) for the newest foldqueue.log line naming `branch`, or None.
+
+    Lines are `<date> <time> <tz> <VERB...> <branch>[:| @]...`. The newest
+    match wins regardless of verb, since the same branch can appear more than
+    once across a FAILED-then-pushed-again or a WAITING-then-FOLDED history.
+    """
+    now = now or datetime.datetime.now()
+    path = path or FOLDQUEUE_LOG
+    if not os.path.exists(path):
+        return None
+    pat = re.compile(r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) \S+ (.+?) '
+                      + re.escape(branch) + r'[: ]')
+    best = None
+    for line in open(path):
+        m = pat.match(line)
+        if not m:
+            continue
+        ts, verb = m.groups()
+        try:
+            when = datetime.datetime.strptime(ts, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            continue
+        if best is None or when > best[1]:
+            best = (verb, when)
+    if best is None:
+        return None
+    verb, when = best
+    return verb, (now - when).total_seconds()
+
 
 def fold_watch(prs, terr, units, now=None):
     """What the fold pipeline is waiting on, from each PR's live state.
@@ -1414,11 +1462,31 @@ def main():
                  ", ".join("#" + n for n, _, _ in unclassified)),
               file=sys.stderr)
         rc = 1
-    if unfolded:
+    # A READY PR with no pipeline label is not always stalled: foldqueue.sh
+    # folds `lane/*` branches off their own PR.md directly, never touching a
+    # GitHub label, so it can already be handling (or have already finished
+    # with) exactly this PR while the label stays empty. Only a PR foldqueue.log
+    # says nothing recent about -- no entry at all, or a non-terminal retry
+    # state stuck past FOLDQUEUE_STALE_S -- is still the board's to label.
+    unaddressed = []
+    for p in unfolded:
+        branch = p.get("headRefName") or "lane/" + p["lane"]
+        fq = foldqueue_status(branch)
+        if fq is None:
+            unaddressed.append(p)
+            continue
+        verb, age = fq
+        if verb in ("FOLDED", "FAILED"):
+            continue   # already folded, or already a refusal routed to lane.local
+        if age < FOLDQUEUE_STALE_S:
+            continue   # an active retry (WAITING/GATE QUEUED/MOVED/RACED/SELFTEST-RETRY), within one tick's grace
+        unaddressed.append(p)
+    if unaddressed:
         print("FAIL: %d lane PR(s) are READY and carry no pipeline label: %s. "
               "A ready PR with no needs-audit-*/needs-remediation/fold-ready/"
-              "folded label is stalled -- nothing else will pick it up."
-              % (len(unfolded), ", ".join("#%d" % p["number"] for p in unfolded)),
+              "folded label, and nothing recent in foldqueue.log either, is "
+              "stalled -- nothing else will pick it up."
+              % (len(unaddressed), ", ".join("#%d" % p["number"] for p in unaddressed)),
               file=sys.stderr)
         rc = 1
     # THE BOARD RELEASES, AND ONLY THE BOARD: territory.toml has one writer.

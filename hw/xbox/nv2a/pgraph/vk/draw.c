@@ -1525,8 +1525,22 @@ static void init_pipeline_cache(PGRAPHState *pg)
         .pInitialData = initial_data,
         .pNext = NULL,
     };
-    VK_CHECK(vkCreatePipelineCache(r->device, &cache_info, NULL,
-                                   &r->vk_pipeline_cache));
+    /* A driver may refuse saved data (a truncated file, or one written by
+     * another driver build) rather than ignore it; start empty instead of
+     * aborting on every launch until the file is deleted. From X1 BOX
+     * 1d10f6cb2a / 67fe8d7b2e. */
+    VkResult cache_result = vkCreatePipelineCache(r->device, &cache_info, NULL,
+                                                  &r->vk_pipeline_cache);
+    if (cache_result != VK_SUCCESS && initial_size > 0) {
+        warn_report("Vulkan rejected the saved pipeline cache (%d); "
+                    "starting with an empty one", cache_result);
+        g_nv2a_stats.shader_stats.pipeline_cache_disk_loaded = 0;
+        cache_info.initialDataSize = 0;
+        cache_info.pInitialData = NULL;
+        cache_result = vkCreatePipelineCache(r->device, &cache_info, NULL,
+                                             &r->vk_pipeline_cache);
+    }
+    VK_CHECK(cache_result);
     g_free(initial_data);
 
     const size_t pipeline_cache_size = 2048;
@@ -3964,6 +3978,18 @@ static void sync_staging_buffer(PGRAPHState *pg, VkCommandBuffer cmd,
         return;
     }
 
+    /*
+     * The staging buffers are persistently mapped with HOST_ACCESS_RANDOM,
+     * which lets VMA pick a HOST_CACHED type that is not HOST_COHERENT.
+     * Make the CPU writes available before the copy reads them, as
+     * flush_memory_buffer() and the texture/surface uploads already do; on a
+     * coherent type VMA returns without doing anything. The submit's
+     * implicit host-write dependency covers the rest, so no HOST barrier.
+     * From X1 BOX 3d3515faad.
+     */
+    VK_CHECK(vmaFlushAllocation(r->allocator, b_src->allocation, 0,
+                                b_src->buffer_offset));
+
     VkBufferCopy copy_region = { .size = b_src->buffer_offset };
     vkCmdCopyBuffer(cmd, b_src->buffer, b_dst->buffer, 1, &copy_region);
 
@@ -3982,8 +4008,10 @@ static void sync_staging_buffer(PGRAPHState *pg, VkCommandBuffer cmd,
         dst_stage_mask = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
         break;
     case BUFFER_UNIFORM:
+        /* Binding 1 of the UBO set is the fragment shader's (shaders.c). */
         dst_access_mask = VK_ACCESS_UNIFORM_READ_BIT;
-        dst_stage_mask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+        dst_stage_mask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
         break;
     default:
         assert(0);
@@ -5399,6 +5427,7 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
         pgraph_vk_flush_all_frames(pg);
         r->num_active_frames = desired_frames;
         r->current_frame = 0;
+        r->frame_rotations++;
         r->command_buffer = r->command_buffers[0];
         r->aux_command_buffer = r->command_buffers[1];
         r->command_buffer_fence = r->frame_fences[0];
@@ -5499,10 +5528,14 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
         nv2a_profile_inc_counter(NV2A_PROF_QUEUE_SUBMIT);
         NV2A_PHASE_TIMER_BEGIN(finish_submit);
 
+        /* VERTEX_BUFFER_DIRTY: only HAKUX_VTX_HAZARD (vk/vertex.c) finishes
+         * for it. The upload after it goes to the next frame's copy, whose
+         * fence the rotation waits; nothing needs this command buffer done. */
         bool deferred = (finish_reason == VK_FINISH_REASON_FLIP_STALL ||
                          finish_reason == VK_FINISH_REASON_PRESENTING ||
                          finish_reason == VK_FINISH_REASON_STALLED ||
-                         finish_reason == VK_FINISH_REASON_SURFACE_DOWN_FLUSH);
+                         finish_reason == VK_FINISH_REASON_SURFACE_DOWN_FLUSH ||
+                         finish_reason == VK_FINISH_REASON_VERTEX_BUFFER_DIRTY);
         if (g_xemu_fast_fences) {
             deferred = deferred ||
                 finish_reason == VK_FINISH_REASON_NEED_BUFFER_SPACE ||
@@ -5828,6 +5861,7 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
             }
 
             r->current_frame = next_frame;
+            r->frame_rotations++;
             r->command_buffer = r->command_buffers[next_frame * 2];
             r->aux_command_buffer = r->command_buffers[next_frame * 2 + 1];
             r->command_buffer_fence = r->frame_fences[next_frame];
@@ -7077,9 +7111,13 @@ static void begin_pre_draw(PGRAPHState *pg)
         drawcensus_pre(pg);
         begin_pre_draw_probe(pg);
         drawcensus_post(pg);
-        return;
+    } else {
+        begin_pre_draw_probe(pg);
     }
-    begin_pre_draw_probe(pg);
+    /* #433 HAKUX_VTX_HAZARD: the draw's vertices are staged; its bytes are
+     * now this command buffer's to protect (again in begin_draw, in case a
+     * finish between here and there moved the draw to the next one). */
+    pgraph_vk_vtxhz_commit(pg->vk_renderer_state);
 }
 
 static void begin_pre_draw_probe(PGRAPHState *pg)
@@ -7447,6 +7485,7 @@ static void begin_draw(PGRAPHState *pg)
     }
 
     r->in_draw = true;
+    pgraph_vk_vtxhz_commit(r);
 }
 
 static void end_draw(PGRAPHState *pg)
@@ -8461,6 +8500,64 @@ static bool vertex_range_gpu_stale(PGRAPHVkState *r, hwaddr addr, hwaddr size,
             } else if (vtx_surface_stale(s)) {
                 return true;
             }
+        }
+    }
+    return false;
+}
+
+/*
+ * #433 HAKUX_VTX_EXACT (lane.fpsbelow1012, docs/lanes/fpsbelow1012/NOTES.md
+ * section 10; off by default). sync_vertex_ram_buffer rounds each range out
+ * to whole pages and merges neighbours before it copies, and it tested
+ * gpu_stale and downloaded surfaces over that rounded, merged range, though
+ * has_dirty_vertex_pages tests the draw's own bytes. A surface sharing a page
+ * with a vertex array but none of its bytes (a render target being drawn,
+ * say) was then downloaded, with a finish, each time anything else in the
+ * range was CPU-dirty or owed. With the switch, gpu_stale, the download and
+ * the generation record cover the parts of the range the draw reads; the
+ * copy still covers the rounded pages. A skipped surface's bytes go into the
+ * buffer stale, where this draw does not read them, and stay unrecorded, so
+ * the first draw that does read them finds gpu_stale over its own range and
+ * re-fetches.
+ */
+static int vtx_exact_state = -1;
+
+static bool vtx_exact_on(void)
+{
+    if (unlikely(vtx_exact_state < 0)) {
+        const char *e = getenv("HAKUX_VTX_EXACT");
+        vtx_exact_state = e && e[0] == '1';
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                            "HAKUX_VTX_EXACT=%d (vertex sync downloads only "
+                            "what the draw reads)", vtx_exact_state);
+#endif
+    }
+    return vtx_exact_state;
+}
+
+enum { VTX_EXACT_TEST, VTX_EXACT_DOWNLOAD, VTX_EXACT_RECORD };
+
+/* op over the parts of [addr, addr + size) inside the draw's exact ranges */
+static bool vtx_exact_pieces(PGRAPHState *pg, const MemorySyncRequirement *ex,
+                             int n, hwaddr addr, hwaddr size, int op)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    for (int i = 0; i < n; i++) {
+        hwaddr lo = MAX(ex[i].addr, addr);
+        hwaddr hi = MIN(ex[i].addr + ex[i].size, addr + size);
+        if (lo >= hi) {
+            continue;
+        }
+        if (op == VTX_EXACT_TEST) {
+            if (vertex_range_gpu_stale(r, lo, hi - lo, false)) {
+                return true;
+            }
+        } else if (op == VTX_EXACT_DOWNLOAD) {
+            pgraph_vk_download_surfaces_in_range_if_dirty(pg, lo, hi - lo);
+        } else {
+            vertex_range_gpu_stale(r, lo, hi - lo, true);
         }
     }
     return false;
@@ -9565,6 +9662,14 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
     vw->calls++;
     vw->reqs += r->num_vertex_ram_buffer_syncs;
 
+    /* HAKUX_VTX_EXACT: the draw's own ranges, before they are rounded */
+    MemorySyncRequirement exact[NV2A_VERTEXSHADER_ATTRIBUTES];
+    int num_exact = 0;
+    if (unlikely(vtx_exact_on())) {
+        num_exact = r->num_vertex_ram_buffer_syncs;
+        memcpy(exact, r->vertex_ram_buffer_syncs, num_exact * sizeof(exact[0]));
+    }
+
     NV2A_VK_DGROUP_BEGIN("Sync vertex RAM buffer");
 
     for (int i = 0; i < r->num_vertex_ram_buffer_syncs; i++) {
@@ -9637,7 +9742,10 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
             unsigned long page = start >> TARGET_PAGE_BITS;
             unsigned long end_page = (start + size) >> TARGET_PAGE_BITS;
             /* #262: GPU writes the bitmap below cannot see */
-            bool gpu_stale = vertex_range_gpu_stale(r, addr, size, false);
+            bool gpu_stale = num_exact ?
+                vtx_exact_pieces(pg, exact, num_exact, addr, size,
+                                 VTX_EXACT_TEST) :
+                vertex_range_gpu_stale(r, addr, size, false);
             bool cpu_dirty = false;
             /* lane.drawrec1010: a page whose walk is owed or just paid */
             bool redo = vtx_owe && drawrec_vtx_redo_any(addr, size);
@@ -9665,10 +9773,20 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
                 }
                 vw->dirty_count++;
                 vw->bytes_copied += size;
+                if (num_exact) {
+                    vtx_exact_pieces(pg, exact, num_exact, addr, size,
+                                     VTX_EXACT_DOWNLOAD);
+                    r->vtx_exact_downloaded = true;
+                }
                 pgraph_vk_update_vertex_ram_buffer(pg, addr,
                                                    d->vram_ptr + addr, size);
                 /* the update downloaded any draw_dirty overlap first */
-                vertex_range_gpu_stale(r, addr, size, true);
+                if (num_exact) {
+                    vtx_exact_pieces(pg, exact, num_exact, addr, size,
+                                     VTX_EXACT_RECORD);
+                } else {
+                    vertex_range_gpu_stale(r, addr, size, true);
+                }
                 if (vtx_owe && (cpu_dirty || redo)) {
                     drawrec_vtx_copied(addr, size, cpu_dirty);
                 }
@@ -10568,6 +10686,10 @@ static void flush_draw_one_pass(NV2AState *d)
         NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
         return;
     }
+
+    /* #433 frame dump schema 7 (`rtt`): reads a consumer draw's target and
+     * depth before any of it is recorded. No-op unless a dump is armed. */
+    pgraph_vk_fdump_pre_draw(d);
 
     if (nullrec) {
         /* begin_pre_draw() would; a buffer-space finish below then submits

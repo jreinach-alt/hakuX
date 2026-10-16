@@ -91,7 +91,7 @@ class PerGameSettingsActivity : AppCompatActivity() {
         addPicker(container, "submit_frames", getString(R.string.settings_submit_frames),
             arrayOf("Use Global", "Single", "Double", "Triple"),
             arrayOf(null, "1", "2", "3"),
-            globalValue("submit_frames", "2", mapOf("1" to "Single", "2" to "Double", "3" to "Triple")))
+            globalValue("submit_frames", "3", mapOf("1" to "Single", "2" to "Double", "3" to "Triple")))
 
         addBoolPicker(container, "frame_skip", getString(R.string.settings_frame_skip), "frame_skip")
         addBoolPicker(container, "unlock_framerate", getString(R.string.settings_unlock_framerate), "unlock_framerate")

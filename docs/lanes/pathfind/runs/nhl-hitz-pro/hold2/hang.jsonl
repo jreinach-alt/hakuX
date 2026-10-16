@@ -1,0 +1,26 @@
+{"event": "probe", "action": ["A"], "since": 27345757.394, "tripped": 27345848.96, "window": {"w": 111, "it": 2064, "idle_us": 0, "busy_us": 2011001, "share": 0.9753, "top": "r:800151ed"}, "at": 1791313449.0}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791313469.6}
+{"event": "probe", "action": ["A"], "since": 27345851.016, "tripped": 27345941.172, "window": {"w": 156, "it": 2048, "idle_us": 0, "busy_us": 2052017, "share": 1.0, "top": "r:800151ed"}, "at": 1791313543.1}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791313565.3}
+{"event": "probe", "action": ["A"], "since": 27345946.172, "tripped": 27346036.231, "window": {"w": 202, "it": 2048, "idle_us": 0, "busy_us": 2048014, "share": 1.0, "top": "r:800151ed"}, "at": 1791313638.6}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791313660.9}
+{"event": "probe", "action": ["A"], "since": 27346040.343, "tripped": 27346131.309, "window": {"w": 249, "it": 2048, "idle_us": 0, "busy_us": 2048010, "share": 1.0, "top": "r:800151ed"}, "at": 1791313740.2}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791313762.4}
+{"event": "probe", "action": ["A"], "since": 27346142.128, "tripped": 27346233.681, "window": {"w": 300, "it": 2064, "idle_us": 0, "busy_us": 2010987, "share": 0.9748, "top": "r:800151ed"}, "at": 1791313839.6}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791313861.8}
+{"event": "probe", "action": ["A"], "since": 27346241.387, "tripped": 27346331.449, "window": {"w": 347, "it": 2064, "idle_us": 0, "busy_us": 2011000, "share": 0.9753, "top": "r:800151ed"}, "at": 1791313942.3}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791313964.5}
+{"event": "probe", "action": ["A"], "since": 27346345.785, "tripped": 27346436.355, "window": {"w": 399, "it": 2048, "idle_us": 0, "busy_us": 2048000, "share": 1.0, "top": "r:800151ed"}, "at": 1791314042.4}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791314064.8}
+{"event": "probe", "action": ["A"], "since": 27346444.479, "tripped": 27346535.061, "window": {"w": 447, "it": 2048, "idle_us": 0, "busy_us": 2047979, "share": 1.0, "top": "r:800151ed"}, "at": 1791314145.2}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791314167.4}
+{"event": "probe", "action": ["A"], "since": 27346547.28, "tripped": 27346638.894, "window": {"w": 498, "it": 2048, "idle_us": 0, "busy_us": 2047990, "share": 1.0, "top": "r:800151ed"}, "at": 1791314244.3}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791314266.6}
+{"event": "probe", "action": ["A"], "since": 27346646.747, "tripped": 27346736.868, "window": {"w": 546, "it": 2048, "idle_us": 0, "busy_us": 2047995, "share": 1.0, "top": "r:800151ed"}, "at": 1791314342.7}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791314365.0}
+{"event": "probe", "action": ["A"], "since": 27346744.745, "tripped": 27346836.359, "window": {"w": 595, "it": 2048, "idle_us": 0, "busy_us": 2048025, "share": 1.0, "top": "r:800151ed"}, "at": 1791314442.1}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791314464.4}
+{"event": "probe", "action": ["A"], "since": 27346844.519, "tripped": 27346936.071, "window": {"w": 644, "it": 2064, "idle_us": 0, "busy_us": 2010911, "share": 0.9753, "top": "r:800151ed"}, "at": 1791314546.1}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791314568.4}
+{"event": "probe", "action": ["A"], "since": 27346948.287, "tripped": 27347039.9, "window": {"w": 695, "it": 2048, "idle_us": 0, "busy_us": 2047993, "share": 1.0, "top": "r:800151ed"}, "at": 1791314645.7}
+{"event": "probe-cleared", "frame_change": 0.0, "at": 1791314668.0}

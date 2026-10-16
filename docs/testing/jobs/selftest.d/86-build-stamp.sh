@@ -19,22 +19,22 @@ GIT_AUTHOR_DATE="2026-07-04T12:00:00" GIT_COMMITTER_DATE="2026-07-04T12:00:00" \
 SHA=$(git -C "$BS" rev-parse --short HEAD)
 
 OUT=$(bash "$VS" "$BS")
-check "  base: 0.4.1-0704-$SHA" [ "$OUT" = "0.4.1-0704-$SHA" ]
+check "  base: 0.5.0-0704-$SHA" [ "$OUT" = "0.5.0-0704-$SHA" ]
 
 OUT=$(bash "$VS" "$BS" perflog)
-check "  +perflog suffix" [ "$OUT" = "0.4.1-0704-$SHA-perflog" ]
+check "  +perflog suffix" [ "$OUT" = "0.5.0-0704-$SHA-perflog" ]
 
 echo two >> "$BS/f"
 OUT=$(bash "$VS" "$BS")
-check "  a tracked edit: +dirty" [ "$OUT" = "0.4.1-0704-$SHA-dirty" ]
+check "  a tracked edit: +dirty" [ "$OUT" = "0.5.0-0704-$SHA-dirty" ]
 
 OUT=$(bash "$VS" "$BS" perflog)
-check "  dirty AND perflog: both suffixes, in order" [ "$OUT" = "0.4.1-0704-$SHA-perflog-dirty" ]
+check "  dirty AND perflog: both suffixes, in order" [ "$OUT" = "0.5.0-0704-$SHA-perflog-dirty" ]
 
 git -C "$BS" checkout -q -- f
 echo untracked > "$BS/scratch"
 OUT=$(bash "$VS" "$BS")
-check "  an untracked file alone is not dirty" [ "$OUT" = "0.4.1-0704-$SHA" ]
+check "  an untracked file alone is not dirty" [ "$OUT" = "0.5.0-0704-$SHA" ]
 
 check "  refuses a non-git tree rather than printing a bogus stamp" \
     bash -c '! bash "$1" "$2"' _ "$VS" "$T"

@@ -614,7 +614,6 @@ list(FILTER XEMU_CORE_SOURCES EXCLUDE REGEX "ui[\\\\/]console-gl\\.c$")
 list(FILTER XEMU_CORE_SOURCES EXCLUDE REGEX "ui[\\\\/]console-vc\\.c$")
 list(FILTER XEMU_CORE_SOURCES EXCLUDE REGEX "ui[\\\\/]shader\\.c$")
 list(FILTER XEMU_CORE_SOURCES EXCLUDE REGEX "ui[\\\\/]vnc.*\\.c$")
-list(FILTER XEMU_CORE_SOURCES EXCLUDE REGEX "ui[\\\\/]xemu-snapshots\\.c$")
 list(FILTER XEMU_CORE_SOURCES EXCLUDE REGEX "ui[\\\\/]xemu-thumbnail\\.cc$")
 list(FILTER XEMU_CORE_SOURCES EXCLUDE REGEX "ui[\\\\/]win32-kbd-hook\\.c$")
 list(FILTER XEMU_CORE_SOURCES EXCLUDE REGEX "ui[\\\\/]input-keymap\\.c$")
@@ -768,6 +767,9 @@ list(APPEND XEMU_CORE_SOURCES
   "${CMAKE_CURRENT_LIST_DIR}/xemu_os_utils_android.c"
   "${CMAKE_CURRENT_LIST_DIR}/qcrypto_random_android.c"
   "${CMAKE_CURRENT_LIST_DIR}/xemu_settings_android.cc"
+  "${CMAKE_CURRENT_LIST_DIR}/savestate/hxs.c"
+  "${CMAKE_CURRENT_LIST_DIR}/savestate/lz4/lz4.c"
+  "${CMAKE_CURRENT_LIST_DIR}/savestate/zstd/zstd.c"
 )
 
 # --- QAPI/Trace generation ---
@@ -1086,6 +1088,7 @@ add_library(xemu SHARED
   vmstate_if_android.c
   xemu_fatx_import.c
   xemu_hdd_tools_jni.c
+  savestate/hxs_jni.cpp
 )
 
 target_compile_definitions(xemu PRIVATE ANDROID __ANDROID__ XBOX CONFIG_SDL CONFIG_OPENGL

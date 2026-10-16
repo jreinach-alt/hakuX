@@ -2796,12 +2796,22 @@ DEF_METHOD(NV097, SET_CONTEXT_DMA_ZETA)
 
 DEF_METHOD(NV097, SET_CONTEXT_DMA_VERTEX_A)
 {
-    pg->dma_vertex_a = parameter;
+    if (pg->dma_vertex_a != parameter) {
+        pg->dma_vertex_a = parameter;
+        /* Renderers resolve each attribute to an address through this DMA
+         * object, so moving it invalidates every cached attribute layout even
+         * though no format or offset register changed. From X1 BOX
+         * b4999f2e97. */
+        pg->vertex_attr_gen++;
+    }
 }
 
 DEF_METHOD(NV097, SET_CONTEXT_DMA_VERTEX_B)
 {
-    pg->dma_vertex_b = parameter;
+    if (pg->dma_vertex_b != parameter) {
+        pg->dma_vertex_b = parameter;
+        pg->vertex_attr_gen++;
+    }
 }
 
 DEF_METHOD(NV097, SET_CONTEXT_DMA_SEMAPHORE)

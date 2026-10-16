@@ -1,149 +1,133 @@
-# hakuX (fork)
+<p align="center"><img src=".github/hakux-logo.svg" alt="hakuX Community Edition: Original Xbox on Android" width="640"></p>
 
-An original Xbox emulator for Android, forked from
-[rfandango/hakuX](https://github.com/rfandango/hakuX).
+# hakuX CE
 
-## State of the project
+_Last updated 2026-10-16, for version 0.5.0._
 
-**Rough.** A handful of games boot; the ones that do have visible graphical
-faults. This is not a daily driver, and it is not trying to be one yet.
+**Original Xbox games on your Android handheld.** hakuX CE is the Community
+Edition: an independent build of the hakuX emulator, tested game by game on
+Snapdragon handhelds.
 
-That assessment is measured rather than impressionistic. The
-[`nxdk_pgraph_tests`](docs/testing/pgraph-harness.md) suite runs against
-framebuffers captured from real NV2A silicon, and on the current build **1,110
-of 2,702 colour tests match the hardware exactly**. The remaining divergences
-are catalogued in the [issue tracker](https://github.com/jreinach-alt/hakuX/issues),
-grouped by likely cause, each carrying the suites affected and the pixel deltas.
+**[Download 0.5.0](https://github.com/jreinach-alt/hakuX/releases/latest)** ·
+[Playable games](docs/COMPATIBILITY.md) ·
+[What's new](docs/releases/v0.5.0.md) ·
+[Sponsor](https://github.com/sponsors/jreinach-alt)
 
-Two things worth understanding before reading that list:
+## Highlights
 
-- **A long issue list is the product of measurement, not decay.** These defects
-  existed before anyone counted them. Counting them is the work. Much of what is
-  filed describes state this fork *inherited* — a QEMU-derived codebase carried
-  through three hands to Android, with a large amount of hand-optimised
-  rendering code that had never been checked against a reference.
-- **Where a defect is fork-introduced, it says so.** Several of the sharpest
-  accuracy problems trace to optimisations added to the Vulkan and texture paths
-  in early 2026 — dated, bounded changes with an upstream reference to diff
-  against. Those are ours, and they are labelled `fork-introduced`.
+- **Games rated Playable.** Each one reached real gameplay on a handheld and
+  held 30 fps (within 5%) for at least 90% of a timed run, with no crash or
+  hang. Among them: Halo: Combat Evolved, Jet Set Radio Future, Panzer Dragoon
+  Orta, Grand Theft Auto III and Vice City, Need for Speed: Most Wanted,
+  Crimson Skies, Max Payne 2, Mercenaries, Call of Duty 3 and The Simpsons
+  Hit & Run. [See them all.](docs/COMPATIBILITY.md)
+- **Save states.** Ten slots per game plus an auto slot, from the pause menu,
+  with undo.
+- **Less stutter.** A new scene draws straight away while its shaders compile,
+  and a game you have played before reuses what it built last time.
+- **Faster.** NBA Live 07 went from 23 to 47 fps, 007: Agent Under Fire from
+  17 to 26, and the Need for Speed: Most Wanted race start from 26.4 to 29.8.
+- **Graphics checked against a real Xbox.** Rendering is compared with frames
+  captured on Xbox hardware, and this release brings fog, texture decoding,
+  blending, clipping and line drawing closer to it.
+- **Launch from ES-DE**, and land back in ES-DE when you quit.
+- **AYN Thor bottom screen.** Games fill it instead of a corner.
+- **Several games folders.** The SD card and internal storage in one library.
+- **Installs alongside the official hakuX.** Nothing is replaced and your
+  saves there are untouched.
 
-Not a criticism of anyone upstream. Getting an Xbox emulator running at playable
-speed on a handheld is the hard part, and that part was already done.
+## Will it run on my device?
 
-## Where this is going
+- Android 13 or newer.
+- A Snapdragon 845-class chip or better (64-bit ARMv8.2). Older designs such
+  as the Snapdragon 835, 660, 665 and 460 are not supported; on them the app
+  says so and exits.
+- Ratings come from a Retroid Pocket Nova and an AYN Thor, both Snapdragon 8
+  Gen 2 (Adreno 740) on Android 13, using the **Turnip Adreno Driver T30
+  (@Mr_Purple_666)** GPU driver, installed under Settings → Graphics → GPU
+  Driver. On a slower chip, expect fewer games at full speed; with another
+  driver, results may differ.
 
-[`ROADMAP.md`](ROADMAP.md) is the plan. In short:
+## What you need
 
-1. **Repeatable builds and releases** — largely done.
-2. **An oracle** — done. Correctness is now measurable against real hardware
-   instead of argued about.
-3. **Video** — the largest body of work. Divergences are filed and scheduled
-   into themed sprints.
-4. **Audio** — the DSP is switched off and nobody has established why.
-5. **Timing** — hardest, deliberately last. A freeze chased through thirteen
-   eliminated hypotheses lives in
-   [`docs/investigations/freeze-analysis.md`](docs/investigations/freeze-analysis.md).
+hakuX includes no Xbox system files and no games. From your own console and
+discs you provide:
 
-The goal is **not** to make every test pass. Most remaining differences are
-precision, invisible in play; a smaller number are catastrophic and worth all
-the attention. `ROADMAP.md` explains that split and the sprint order that
-follows from it.
+- the MCPX boot ROM
+- a flash BIOS
+- an Xbox hard disk image
+- your games, as `.iso`, `.xiso`, `.cso` or `.cci` images
 
-## Contributing, with or without an agent
+## Get started
 
-The repository is set up so a coding agent can be pointed at it and be useful
-without a briefing. [`AGENTS.md`](AGENTS.md) is the canonical brief —
-`CLAUDE.md` points at it so the two cannot drift.
+1. Download the APK from
+   [Releases](https://github.com/jreinach-alt/hakuX/releases/latest) and
+   install it. It appears as **hakuX CE**.
+2. Open it. Setup asks for the boot ROM, the BIOS, the hard disk image and
+   your games folder.
+3. Pick a game from the library.
 
-```bash
-git clone https://github.com/jreinach-alt/hakuX && cd hakuX
+Using ES-DE? It needs [two small config files](docs/es-de/README.md) to find
+this build. Coming from the official hakuX?
+[Moving your saves across](android/MIGRATING.md) is optional.
 
-# Point your agent at the repository and give it this:
-#
-#   Read AGENTS.md, then ROADMAP.md. List the open issues with
-#   `gh issue list`. Pick one labelled `needs-triage`, reproduce its
-#   measurement with the pgraph harness before reading any source, and
-#   report what you find before changing anything.
-```
+## Good to know
 
-Issues carry their evidence — which suites fail, how many tests, median pixel
-delta, and what has already been ruled out — so work can start from a
-reproduction rather than from a guess. `docs/investigations/` records ground
-already covered; read the relevant file before re-deriving it.
+- Not every game works yet. Many start but show graphical faults, and many
+  have not been tried. The [compatibility list](docs/COMPATIBILITY.md) shows
+  what has been tested, including games that run below full speed and games
+  that do not run.
+- Audio effects processing is off by default. If a game sounds thin, turn on
+  Settings → Audio → Real-time DSP processing.
+- No account and no analytics. The app goes online only for box art and for
+  online play, and both are off until you turn them on. See
+  [Privacy](PRIVACY.md).
+- 0.5.0 is this build's own version number, not an official hakuX release.
+  The official line is at 0.3.1.
 
-Two things that will save you an afternoon, both documented in `AGENTS.md`: the
-build needs **meson** and **ninja on `PATH`** beyond the documented toolchain,
-and `adb shell input keyevent` **terminates the emulator** rather than pressing
-a button.
-
-## Lineage
-
-```
-xemu-project/xemu  →  izzy2lost/xemu (X1 BOX)  →  rfandango/hakuX  →  this fork
-```
-
-xemu is a low-level original Xbox emulator built on QEMU. X1 BOX carried it to
-Android. hakuX tuned that port for Adreno devices.
-
-## What this fork changes
-
-- **Launching from an external frontend works.** ES-DE hands over a Storage
-  Access Framework URI carrying a read grant scoped to the receiving activity;
-  it was revoked before the emulator process could open the file, so the
-  machine booted with no disc and asked for one. See
-  [`CHANGELOG.md`](CHANGELOG.md).
-- **Exiting a game returns to the frontend** that launched it, rather than to
-  the in-app library.
-- **It installs alongside an official build.** The fork ships under its own
-  application id, so nothing is uninstalled and no saves are at risk.
-- Smaller download, working crash diagnostics, and a build that configures on
-  a machine other than its author's.
-
-## Installing
-
-Download the APK from [Releases](../../releases). It installs beside an
-official hakuX build and appears as **hakuX (fork)**.
-
-It needs Android 10 or later and a 64-bit ARMv8.2 CPU with LSE atomics
-(Snapdragon 845 / 865 class or newer). Older ARMv8.0 parts such as the
-Snapdragon 835, 660, 665 and 460 are not supported; on them the app shows an
-"Unsupported CPU" message and exits.
-
-To launch it from ES-DE, two configuration files are needed —
-see [`docs/es-de/`](docs/es-de/). Without them ES-DE has no way to find this
-build, since its bundled rules target the official package.
-
-Already using an official build? Nothing is at risk, and moving saves across is
-optional: [`android/MIGRATING.md`](android/MIGRATING.md).
-
-## What you have to provide
-
-The emulator ships no copyrighted content. You supply, from hardware you own:
-
-- MCPX boot ROM
-- Flash ROM / BIOS
-- An Xbox hard disk image
-- Game images from your own discs
-
-## Documentation
+## More
 
 | | |
 |---|---|
-| [`CHANGELOG.md`](CHANGELOG.md) | What changed, per release |
-| [`ROADMAP.md`](ROADMAP.md) | Where this is going, and what is deliberately out of scope |
-| [`AGENTS.md`](AGENTS.md) | Canonical brief for coding agents and new contributors |
-| [Issues](https://github.com/jreinach-alt/hakuX/issues) | Open defects, grouped by cause, with measured evidence |
-| [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) | User-facing behaviour worth knowing before filing a bug |
-| [`docs/investigations/`](docs/investigations/) | Long-form records of bugs chased in depth |
-| [`docs/es-de/`](docs/es-de/) | ES-DE configuration files and instructions |
-| [`docs/testing/pgraph-harness.md`](docs/testing/pgraph-harness.md) | Measuring rendering accuracy against real-hardware captures |
-| [`android/MIGRATING.md`](android/MIGRATING.md) | Moving saves from an official build |
-| [`android/RELEASING.md`](android/RELEASING.md) | Signing and publishing a build |
+| [Compatibility](docs/COMPATIBILITY.md) | Every tested game and how it ran |
+| [Release notes](docs/releases/README.md) | What changed in each version |
+| [Known issues](KNOWN_ISSUES.md) | What to expect before you report a bug |
+| [Roadmap](ROADMAP.md) | What is coming next |
+| [ES-DE setup](docs/es-de/README.md) | Launching games from ES-DE |
+| [Moving from the official build](android/MIGRATING.md) | Bringing your saves across |
+| [Reporting a bug](docs/reporting-bugs.md) | What to include |
+| [Privacy](PRIVACY.md) | What stays on your device |
+| [Building from source](android/README.md) | For developers |
+| [Contributing](CONTRIBUTING.md) | For developers |
+
+## Support the project
+
+hakuX is developed and tested by one person, and paid for out of pocket. If it
+is useful to you, you can
+[sponsor the work on GitHub](https://github.com/sponsors/jreinach-alt). It is
+entirely optional; a good bug report helps just as much.
+
+The emulator underneath is xemu; if you want to support it directly, see the
+Patreon link under Credits.
+
+## Credits
+
+This build stands on the work of:
+
+- **[xemu](https://github.com/xemu-project/xemu)**, the original Xbox
+  emulator by Matt Borgerson and contributors.
+  [Support xemu on Patreon](https://www.patreon.com/mborgerson).
+- **X1 BOX** by izzy2lost, which brought xemu to Android.
+- **[hakuX](https://github.com/rfandango/hakuX)** by rfandango, which tuned it
+  for Adreno GPUs.
+- **[ItsRetroPup/hakuX](https://github.com/ItsRetroPup/hakuX)**, which this
+  repository was forked from.
+- **[abaire](https://github.com/abaire)**, whose
+  [real-hardware captures](https://github.com/abaire/nxdk_pgraph_tests_golden_results)
+  the graphics are measured against.
 
 ## License
 
-Inherits xemu / QEMU / X1 BOX licensing. Emulator code is primarily **GNU GPL
-v2**, with some components under other GPLv2-compatible licences. See
-[`LICENSE`](LICENSE), [`COPYING`](COPYING) and [`COPYING.LIB`](COPYING.LIB).
-
-Not affiliated with Microsoft.
+GNU GPL v2, as inherited from xemu and QEMU; some components use other
+GPLv2-compatible licences. See [LICENSE](LICENSE). Not affiliated with
+Microsoft.

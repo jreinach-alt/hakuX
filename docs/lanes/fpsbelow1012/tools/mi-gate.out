@@ -1,0 +1,2 @@
+4947001F None False {'clause': None, 'refuse': '4947001F has no profile (no golden) and no route-finding; pass --find-route "<why>" to find one blind', 'path': None, 'route_name': None, 'state': None, 'golden': None}
+4947001F survey False {'clause': None, 'refuse': '4947001F has no profile (no golden) and no route-finding; pass --find-route "<why>" to find one blind', 'path': '/home/justin/hakux-work/wt/fpsbelow1012/docs/testing/titles/routes/survey.route', 'route_name': 'survey', 'state': 'any', 'golden': None}

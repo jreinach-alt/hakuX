@@ -1,0 +1,2 @@
+# Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
+- MTV Music Generator 3 This Is the Remix USA En Es (434D0029, nova, pathfind 2026-10-07): gameplay in 21.7 min via publisher_logo START A -> title_screen START -> main_menu A -> submenu A -> submenu B B -> submenu A -> submenu LEFT A -> submenu A -> submenu UP RIGHT A -> submenu LEFT A -> submenu DOWN DOWN DOWN DOWN A -> main_menu A -> submenu A -> main_menu LEFT A -> main_menu A

@@ -3,7 +3,10 @@
 own records say about it, so nothing that decides a dispatch has to read prose.
 
     title_registry.py build  [--root W] [--out PATH] [--no-forge]
-    title_registry.py check  [--root W] [--registry PATH]      exit 0 fresh, 3 stale/missing
+    title_registry.py check  [--root W] [--registry PATH] [--pages]
+                                                             exit 0 fresh (and, with --pages,
+                                                             every page's Playable count matches
+                                                             the table's); 3 otherwise
     title_registry.py show   [--root W] [--registry PATH] (TITLE_ID | --status S | --all)
     title_registry.py resolve [--root W] NAME                 what a name resolves to, and from where
 
@@ -101,9 +104,15 @@ class Paths:
         self.titlepush = os.path.join(root, "hardware", "titlepush")
         self.inventory = sorted(glob.glob(os.path.join(root, "titles", "console-inventory-*.csv")))
         self.xemu = sorted(glob.glob(os.path.join(root, "titles", "xemu-compat-*.csv")))
-        self.targets = os.path.join(HERE, "titles", "targets.toml")
+        self.targets = os.environ.get("TITLE_TARGETS") or os.path.join(HERE, "titles", "targets.toml")
         self.routes = os.path.join(HERE, "titles", "routes")
         self.forge_token = os.path.join(root, "forge", "tokens", FORGE_USER + ".token")
+        # #433 Part 4 (check --pages): every reader of the Playable count, override-able like
+        # self.targets so a selftest fixture never has to touch the real repo or host status dir.
+        self.status_page = os.environ.get("TITLE_STATUS_PAGE") or os.path.join(root, "status", "index.html")
+        self.repo_readme = os.environ.get("TITLE_REPO_README") or os.path.join(HERE, "..", "..", "README.md")
+        self.repo_compat = os.environ.get("TITLE_REPO_COMPAT") or os.path.join(HERE, "..", "..", "docs", "COMPATIBILITY.md")
+        self.wall_synced = os.environ.get("TITLE_WALL_SYNCED") or os.path.join(self.pm, ".wall-synced")
 
     def source_files(self):
         """Every file whose change makes a built registry stale. Sorted."""
@@ -208,16 +217,39 @@ def norm_name(s):
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
+# One display name per title_id, defined in one place (#433). Lower wins.
+# The two hand-curated sources -- the Playable ledger and targets.toml --
+# always outrank a raw identity source: a device listing is a filename with
+# underscores for spaces, and the console inventory's xbe_title_name is
+# whatever fit in the XBE's own title-name field (often ALL CAPS, missing
+# punctuation the box art has -- "NINJA GAIDEN", "PhantomDust"). Before this
+# ordering, whichever non-ledger source build_catalog() happened to read
+# first won and stuck; targets.toml, read last, could never override an
+# inventory spelling it disagreed with.
+_SOURCE_RANK = {"playable-accepted.tsv": 0, "targets.toml": 1}
+
+
+def _name_priority(where):
+    if where in _SOURCE_RANK:
+        return _SOURCE_RANK[where]
+    if where.startswith("listing-"):
+        return 2
+    return 3     # owner-library-done.tsv, console-inventory xbe/xemu names
+
+
 class Catalog:
     """Identity. `canon` maps a regional title_id to xemu's canonical one
     (titles/xemu-compat-*.csv, the key onhand.py's one-copy rule uses), so a
-    USA and a European disc of one game are one registry row. `names` holds a
-    display name per canonical id that has a reason to be a row (on a device
-    listing, in the inventory, the ledger or a run); `by_norm` maps an exact
-    normalised name to {canonical id: [where]}."""
+    USA and a European disc of one game are one registry row. `names` holds
+    THE display name per canonical id -- the highest-priority source that
+    named it (`_name_priority`), never a join on the name itself; `by_norm`
+    maps an exact normalised name to {canonical id: [where]}, every spelling
+    this catalog has ever seen, for `resolve()` to match a bare name against
+    -- an alias, never shown."""
 
     def __init__(self):
         self.names = {}
+        self._name_pri = {}
         self.by_norm = {}
         self.canon = {}
         self.aliases = {}
@@ -232,9 +264,12 @@ class Catalog:
         tid = tid.upper()
         c = self.canonical(tid)
         self.aliases.setdefault(c, set()).add(tid)
-        if row and name and (c not in self.names or where.startswith("listing")):
-            if where.startswith("listing") or c not in self.names:
+        if row and name:
+            pri = _name_priority(where)
+            cur = self._name_pri.get(c)
+            if cur is None or pri < cur:
                 self.names[c] = name
+                self._name_pri[c] = pri
         n = norm_name(name)
         if n:
             self.by_norm.setdefault(n, {}).setdefault(c, []).append(where)
@@ -298,6 +333,19 @@ def build_catalog(p):
             m = re.match(r'name\s*=\s*"(.*)"', line)
             if m and cur:
                 cat.add(cur, m.group(1), "targets.toml")
+    # The Playable ledger last, so a row with no title_id column (resolved
+    # by name against by_norm) sees every other source's aliases -- but its
+    # name still wins the catalog's display spelling, since _name_priority
+    # ranks it above every source already added above (#433). This is the
+    # one place the ledger feeds the catalog; build() and every other
+    # caller of build_catalog() get the resolved name for free, with no
+    # second "ledger wins" rule of their own to drift out of sync.
+    for r in read_tsv(p.ledger):
+        tid = (r.get("title_id") or "").strip().upper()
+        if not TID_RE.match(tid):
+            tid, _ = cat.resolve(r.get("title") or "")
+        if tid:
+            cat.add(tid, r.get("title"), "playable-accepted.tsv")
     return cat
 
 
@@ -585,13 +633,14 @@ def build(p, now=None, use_forge=True, forge_url=FORGE_URL):
             continue
         tid = cat.canonical(tid)
         ledger[tid] = r
-        cat.add(tid, r.get("title"), "playable-accepted.tsv")
+        # cat already has this name at top priority -- build_catalog() loads
+        # the ledger itself (#433) -- so no cat.add() here duplicates that rule.
 
     runs = collect_runs(p, cat, unresolved)
     by_tid = {}
     for r in runs:
         by_tid.setdefault(r.tid, []).append(r)
-        cat.names.setdefault(r.tid, r.name)
+        cat.add(r.tid, r.name, "run")
 
     intake = {}
     for src in (p.intake, p.pool):
@@ -617,7 +666,10 @@ def build(p, now=None, use_forge=True, forge_url=FORGE_URL):
     tids = set(cat.names) | set(ledger) | set(by_tid) | set(intake)
     rows = []
     for tid in sorted(tids):
-        name = (ledger.get(tid) or {}).get("title") or cat.names.get(tid) or ""
+        # The catalog is the one place a display name is decided (#433): the
+        # ledger row above already fed cat.add() at top priority, so this is
+        # never a second, independent "ledger wins" rule -- just the result.
+        name = cat.names.get(tid) or ""
         rs = sorted(by_tid.get(tid, []), key=lambda r: r.t)
         judged = [r for r in rs if r.verdict]
         scored = [r for r in judged if r.detail["fps_ok_share"] is not None and not r.detail["void"]]
@@ -724,7 +776,7 @@ def _b(x):
     return "" if x is None else ("1" if x else "0")
 
 
-def write(p, rows, out=None, now=None, open_issues=None):
+def write(p, rows, out=None, now=None, open_issues=None, unresolved=None):
     now = now or dt.datetime.now(dt.timezone.utc)
     digest, n = sources_digest(p)
     out = out or p.registry
@@ -733,6 +785,11 @@ def write(p, rows, out=None, now=None, open_issues=None):
         f.write("# title-registry v1 generated_utc=%s sources_digest=%s sources=%d forge=%s\n"
                 % (iso_z(now), digest, n, "ok" if open_issues is not None else "unreadable"))
         f.write("# GENERATED by docs/testing/title_registry.py build -- never hand-edit; edit a source and rebuild\n")
+        # Persisted so `check` (which only reads this file, it does not rebuild) can still fail
+        # on a name build() could not resolve to a title_id (#433: "UNRESOLVED ... never becomes a row").
+        for where, name, why in (unresolved or []):
+            f.write("# UNRESOLVED\t%s\t%s\t%s\n" % tuple(
+                (s or "").replace("\t", " ").replace("\n", " ") for s in (where, name, why)))
         f.write("\t".join(COLUMNS) + "\n")
         for r in rows:
             f.write("\t".join(str(r.get(c, "")).replace("\t", " ").replace("\n", " ") for c in COLUMNS) + "\n")
@@ -741,7 +798,17 @@ def write(p, rows, out=None, now=None, open_issues=None):
 
 
 def read_registry(path):
-    """(header dict, {tid: row}) or (None, {}) if missing/unparseable."""
+    """(header dict, {tid: row}) or (None, {}) if missing/unparseable.
+
+    Two extra keys ride in the header dict rather than widen this function's
+    return tuple, which dispatch_gate.py/dispatch_audit.py/
+    dispatch_gate_selftest.py all unpack as a 2-tuple: `_unresolved`, the
+    `# UNRESOLVED` comment lines write() persisted (a list of (where, name,
+    why)); `_duplicate_tids`, any title_id that labelled more than one data
+    row (build() never emits this by construction -- one row per id, from a
+    dict keyed by id -- so a duplicate here means the file was hand-edited or
+    built by something else; the dict below keeps only the last such row,
+    matching the old silent-merge behaviour, while still reporting the fact)."""
     if not os.path.isfile(path):
         return None, {}
     with open(path, encoding="utf-8", errors="replace") as f:
@@ -749,9 +816,16 @@ def read_registry(path):
         if not first.startswith("# title-registry v1 "):
             return None, {}
         hdr = dict(kv.split("=", 1) for kv in first[len("# title-registry v1 "):].split() if "=" in kv)
+        unresolved = []
         rows = {}
+        seen = set()
+        duplicate_tids = []
         cols = None
         for line in f:
+            if line.startswith("# UNRESOLVED\t"):
+                parts = line.rstrip("\n").split("\t")
+                unresolved.append(tuple(parts[1:4]) if len(parts) >= 4 else (parts[1] if len(parts) > 1 else "", "", ""))
+                continue
             if line.startswith("#"):
                 continue
             cells = line.rstrip("\n").split("\t")
@@ -759,7 +833,13 @@ def read_registry(path):
                 cols = cells
                 continue
             r = dict(zip(cols, cells))
-            rows[r["title_id"]] = r
+            tid = r["title_id"]
+            if tid in seen:
+                duplicate_tids.append(tid)
+            seen.add(tid)
+            rows[tid] = r
+        hdr["_unresolved"] = unresolved
+        hdr["_duplicate_tids"] = duplicate_tids
     return hdr, rows
 
 
@@ -783,6 +863,88 @@ def freshness(p, path=None, now=None):
     return True, "registry built %s, %.0f s old, sources unchanged" % (hdr["generated_utc"], age)
 
 
+def page_playable_counts(p):
+    """{label: int or None} -- the Playable count each public/rendered page
+    states, by regex or row-count against the page's own text. Never joins
+    by name: this is a numbers cross-check (#433 Part 4, "any page's
+    Playable count differs from the table's"), not another source of rows."""
+    out = {}
+    try:
+        html = open(p.status_page, encoding="utf-8", errors="replace").read()
+        m = re.search(r"Playable (?:<b>)?(\d+)(?:</b>)?\s*/\s*\d+", html)
+        out["status page"] = int(m.group(1)) if m else None
+    except OSError:
+        out["status page"] = None
+    try:
+        readme = open(p.repo_readme, encoding="utf-8", errors="replace").read()
+        m1 = re.search(r"\[(\d+) Playable games\]", readme)
+        m2 = re.search(r"(\d+) games rated Playable\.", readme)
+        out["README.md (link)"] = int(m1.group(1)) if m1 else None
+        out["README.md (bullet)"] = int(m2.group(1)) if m2 else None
+    except OSError:
+        out["README.md (link)"] = out["README.md (bullet)"] = None
+    try:
+        compat = open(p.repo_compat, encoding="utf-8", errors="replace").read()
+        m = re.search(r"(\d+) Playable ·", compat)
+        out["COMPATIBILITY.md (header)"] = int(m.group(1)) if m else None
+        sec = re.search(r"(?ms)^## 🟢 Playable\s*\n.*?\n\|---.*?\n(.*?)(?:\n## |\Z)", compat)
+        rows = [l for l in (sec.group(1).splitlines() if sec else []) if l.startswith("| ")]
+        out["COMPATIBILITY.md (table rows)"] = len(rows) if sec else None
+    except OSError:
+        out["COMPATIBILITY.md (header)"] = out["COMPATIBILITY.md (table rows)"] = None
+    try:
+        w = open(p.wall_synced, encoding="utf-8", errors="replace").read().split()
+        out["Wall"] = int(w[0]) if w else None
+    except (OSError, ValueError, IndexError):
+        out["Wall"] = None
+    return out
+
+
+def curated_names(p, cat):
+    """{tid: {source: name}} for just the two hand-maintained display
+    sources (#433): the Playable ledger and targets.toml. A title named by
+    both must agree -- these are the only two sources meant to set a
+    display spelling; a device listing or the console's own XBE string is
+    an identity ALIAS, never shown, so it never participates here."""
+    out = {}
+    for r in read_tsv(p.ledger):
+        tid = (r.get("title_id") or "").strip().upper()
+        if not TID_RE.match(tid):
+            tid, _ = cat.resolve(r.get("title") or "")
+        if tid and (r.get("title") or "").strip():
+            tid = cat.canonical(tid)
+            out.setdefault(tid, {})["pm/playable-accepted.tsv"] = r["title"].strip()
+    if os.path.isfile(p.targets):
+        cur = None
+        for line in open(p.targets, encoding="utf-8", errors="replace"):
+            m = re.match(r'\[titles\."([0-9A-Fa-f]{8})"\]', line)
+            if m:
+                cur = m.group(1).upper()
+                continue
+            m = re.match(r'name\s*=\s*"(.*)"', line)
+            if m and cur:
+                tid = cat.canonical(cur)
+                out.setdefault(tid, {})["targets.toml"] = m.group(1)
+    return out
+
+
+def name_drift(p, cat):
+    """[(tid, {source: name})] for every title_id where a curated source (the
+    ledger or targets.toml) disagrees with the catalog's resolved display
+    name -- the one name every reader is supposed to show (#433). Red when
+    any source still disagrees with what gets shown; green once the
+    catalog's priority always resolves to the curated spelling."""
+    out = []
+    for tid, by_src in sorted(curated_names(p, cat).items()):
+        resolved = cat.names.get(tid)
+        vals = dict(by_src)
+        if resolved is not None:
+            vals["catalog (resolved)"] = resolved
+        if len(set(vals.values())) > 1:
+            out.append((tid, vals))
+    return out
+
+
 # ---------------------------------------------------------------- CLI
 
 def main(argv=None):
@@ -795,11 +957,12 @@ def main(argv=None):
     ap.add_argument("--no-forge", action="store_true")
     ap.add_argument("--status")
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--pages", action="store_true")
     a = ap.parse_args(argv)
     p = Paths(a.root)
     if a.cmd == "build":
         rows, unresolved, oi = build(p, use_forge=not a.no_forge)
-        out = write(p, rows, a.out, open_issues=oi)
+        out = write(p, rows, a.out, open_issues=oi, unresolved=unresolved)
         counts = {}
         for r in rows:
             counts[r["status"]] = counts.get(r["status"], 0) + 1
@@ -812,7 +975,35 @@ def main(argv=None):
     if a.cmd == "check":
         ok, why = freshness(p, a.registry)
         print(("FRESH " if ok else "STALE ") + why)
-        return 0 if ok else 3
+        fail = not ok
+        hdr, rows = read_registry(a.registry or p.registry)
+        for tid in sorted(set((hdr or {}).get("_duplicate_tids") or [])):
+            print("DUPLICATE title_id %s: more than one row in the registry (a join, not an error, before #433)" % tid)
+            fail = True
+        for where, name, why_u in (hdr or {}).get("_unresolved") or []:
+            print("UNRESOLVED %s: %r -- %s" % (where, name, why_u))
+            fail = True
+        cat = build_catalog(p)
+        drift = name_drift(p, cat)
+        for tid, by_src in drift:
+            print("NAME DRIFT %s: %s" % (tid, "; ".join("%s=%r" % (s, n) for s, n in sorted(by_src.items()))))
+            fail = True
+        if a.pages:
+            if hdr is None:
+                print("PAGES: no registry to compare against")
+                fail = True
+            else:
+                table_playable = sum(1 for r in rows.values() if r.get("status") == "PLAYABLE")
+                for label, n in page_playable_counts(p).items():
+                    if n is None:
+                        print("PAGE %s: Playable count not found" % label)
+                        fail = True
+                    elif n != table_playable:
+                        print("PAGE %s: Playable %d, table %d" % (label, n, table_playable))
+                        fail = True
+                    else:
+                        print("PAGE %s: Playable %d matches the table" % (label, n))
+        return 3 if fail else 0
     if a.cmd == "resolve":
         cat = build_catalog(p)
         tid, why = cat.resolve(a.arg or "")

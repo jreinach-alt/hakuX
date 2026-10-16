@@ -1,0 +1,83 @@
+{
+ "title_id": "53410002",
+ "name": "Guilty Gear XX Reload The Midnight Carnival",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/53410002-Guilty_Gear_XX_Reload_The_Midnight_Carnival.xiso.iso",
+ "result": "gameplay",
+ "tool": "93e21f1a97",
+ "started": "2026-10-05 09:15:17 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/046-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/046-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/046-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/046-probe-right.jpg"
+ ],
+ "minutes": 7.39,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/045-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/047-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/048-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/049-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/050-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/051-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/052-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/053-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/054-after.jpg"
+ ],
+ "retracted": 1,
+ "reason": "four probes refused",
+ "learned": [
+  "hints/learned-pub-5341.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "A character fights in melee with a sword in a 2D versus-style arena, with health bars, Burst and Tension gauges, and a round timer, which is a fighting game.",
+  "ok": true,
+  "play_s": 608.3,
+  "need_s": 600.0,
+  "hold_s": 773.7,
+  "model_navs": 25,
+  "frames": 22,
+  "still_windows": 0,
+  "shed": [
+   "B"
+  ],
+  "reason": "",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 188,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 187.2,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 306,
+    "median": 59.0,
+    "share": 1.0,
+    "at_s": 305.6,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Guilty Gear XX Reload The Midnight Carnival ? FAIL(menu time: 78.3% of the scored window in `play` (bar 90%; play 606 s, menu 111 s, black 15 s, continue 12 s)) gameplay=774.2s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.0 play_share=0.783 fps_excluded=168.2s"
+ },
+ "model_calls": 66,
+ "calls_by_model": {
+  "claude-sonnet-5": 66
+ },
+ "steps": 39,
+ "seconds": 1261.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/frames/141-hold.jpg",
+ "last_state": "probe",
+ "replayed": 6,
+ "sib_replayed": 0,
+ "guide": [
+  "53410002"
+ ],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/gg-rerun7/strip.jpg"
+}

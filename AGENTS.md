@@ -480,6 +480,32 @@ Text there says what a build or the project IS, not how the harness produced it.
 Issues and PR threads are public too, but they're the work record, and this
 rule doesn't apply to them.
 
+## Public docs
+
+**The public docs** are the files listed in `docs/testing/public_docs.txt` --
+README.md, KNOWN_ISSUES.md, ROADMAP.md and the rest of the set a new
+contributor or player actually reads.
+
+- **Their reader** is someone deciding whether to try this build on an
+  Android handheld, or someone who already has and wants help.
+- **What they leave out** follows the rule above: no process commentary.
+  That means no lane names, run ids, board or harness vocabulary, owner
+  quotes, or investigation narratives.
+- **Style:** concise. Measured numbers only, and only when the source is in
+  the repo.
+- **The date line:** every public doc carries, as the first non-blank line
+  after its H1, `_Last updated YYYY-MM-DD, for version X.Y.Z._`. Bump the
+  date only after reviewing the *whole* doc, not just the section you
+  touched, and set the version to the release it describes.
+- **Same PR:** a change to a feature a public doc describes updates that doc
+  in the same PR. A doc that falls behind the code it describes is a second
+  bug riding the first.
+- **Cadence:** a docs pass on every release (`android/RELEASING.md`'s step
+  before tagging) and at least every 14 days otherwise.
+  `docs/testing/docs_freshness.py` is the check; the hourly report runs it
+  and raises an alarm when a doc goes stale, and lane.local starts a docs
+  pass from that alarm.
+
 ## Non-negotiables
 
 **CI is the forge's, and it is not a self-check.** The only CI until the return
@@ -778,8 +804,8 @@ export PATH="$JAVA_HOME/bin:$ANDROID_SDK_ROOT/cmake/3.30.3/bin:$HOME/.local/bin:
 cd android && ./gradlew --no-daemon assembleDebug
 ```
 
-Debug builds install as `com.jreinach.hakux.debug`, labelled **hakuX (debug)**,
-alongside a release install. They keep separate settings, HDD images and save
+Debug builds install as `com.jreinach.hakux.debug`, labelled
+**hakuX (test builds)**, alongside a release install. They keep separate settings, HDD images and save
 data.
 
 ## Disc images live on D:, never on the Linux disk (owner, 2026-10-09)
@@ -833,6 +859,9 @@ are exempt (arms.sh records a refusal as permanent and pools lanes under one
 name); a caller staging records in a private `DISPATCH_DIR` sets
 `PILOT_DISPATCH_DIR` to the real one so the gate counts the real queue.
 
+> *Superseded again: the Ayn Thor's fan has since failed (owner 2026-09-29)
+> and the device is out of service; titles run on the Nova only.*
+>
 > **LIFTED 2026-09-18. Both devices are online.** The Nova `ee317437` and the
 > Ayn Thor `bdc158a5` are available; both hold files were moved to
 > `$DISPATCH_DIR/hold/lifted/` at 11:08 and the fleet has run over forty arms
@@ -1009,6 +1038,16 @@ stall factor. (That the old capture stops the title advancing at all, rather
 than merely serialising its draws, is measured in
 `docs/lanes/diagdump77/NOTES.md` -- it is the sharpest reason not to hunt an
 intermittent artifact under the button path.)
+
+**A `--title` run is refused unless it meets a kept profile/path, or is
+building one (THE PROFILE GATE, lane.profilegate1011, #433).**
+`titlestate.py admit()`, run by `request.sh` at queue time and again by
+`dispatcher.sh` at claim, refuses: **R1** `first-run` remaking a profile
+already on disk (override `--remake-profile "<why>"`); **R2** `first-run`
+with no `mark profile-saved` on a title with none (make the golden first);
+**R3** finding a route blind (`--find-route`/`pathfind.py`) for a title
+with a proven route (override `--path-broken <result id>`). See
+`titlestate.py`'s "THE PROFILE GATE" docstring for the recipe.
 
 ## Sharing one device between a long sweep and active work
 

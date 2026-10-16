@@ -1,0 +1,74 @@
+{
+ "title_id": null,
+ "name": "AMF Xtreme Bowling",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/AMF_Xtreme_Bowling.xiso.iso",
+ "result": "gameplay",
+ "tool": "1167b6cd91",
+ "started": "2026-10-05 15:55:44 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/016-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/016-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/016-probe-c.jpg"
+ ],
+ "minutes": 2.53,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/015-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/024-after.jpg"
+ ],
+ "learned": [],
+ "hold": {
+  "genre": "bowl",
+  "why": "A bowling lane with ten pins at the far end and the bowler's view from behind, aiming down the lane before throwing.",
+  "ok": true,
+  "play_s": 605.9,
+  "need_s": 600.0,
+  "hold_s": 729.1,
+  "model_navs": 12,
+  "frames": 21,
+  "still_windows": 1,
+  "shed": [],
+  "reason": "",
+  "title_hold": false,
+  "fps_checks": [
+   {
+    "n": 165,
+    "median": 59.0,
+    "share": 0.994,
+    "at_s": 182.9,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 281,
+    "median": 59.0,
+    "share": 0.996,
+    "at_s": 301.5,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT AMF Xtreme Bowling ? FAIL(menu time: 83.2% of the scored window in `play` (bar 90%; play 607 s, menu 68 s, still 37 s, loading 10 s)) gameplay=729.6s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=3/0.269pm worst_ms=238.8 static_frac=0.0 play_share=0.8322 fps_excluded=123.0s"
+ },
+ "model_calls": 43,
+ "calls_by_model": {
+  "claude-sonnet-5": 43
+ },
+ "steps": 16,
+ "seconds": 924.0,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/frames/106-hold.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/amf-xtreme-bowling/hold/strip.jpg"
+}

@@ -1,86 +1,157 @@
-name: Title Issue
-description: Report a specific issue with a title/game in xemu
-title: "Title Name: Short Description"
-labels: [bug, triage]
+name: Title / Compatibility Report
+description: Report how well a specific game runs, or a bug specific to one title
+title: "Title Name: Short description"
+labels: [compatibility, triage]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to fill out this bug report! This template is for reporting specific video, audio, or other types of issues with one or more titles.
+        Use this form to report how a specific game runs, or a bug that only
+        shows up with one title. For a problem that isn't tied to a specific
+        game, use the **Bug Report** form instead.
 
-        Before submitting this bug report, please check the pre-submission checklist:
-        - Have you read the [documentation](https://xemu.app/docs)?
-        - Have you checked the [FAQ](https://xemu.app/docs/faq/)?
-        - Have you checked to see if this issue has already been submitted?
-        - Are you using the latest version of xemu?
-        - Have you tried updating your platform drivers?
-        - Have you ruled out a bad dump of your game disc?
-
-        If you have questions about how to provide the information below, join the Discord server to get help from the community.
-  - type: textarea
+        Please read
+        [docs/reporting-bugs.md](https://github.com/jreinach-alt/hakuX/blob/master/docs/reporting-bugs.md)
+        first for how to find your version, capture a logcat, and use Debug
+        Capture.
+  - type: input
     id: game-title
     attributes:
-      label: Title
-      description: Affected title URL and version information. You can find the title URL by searching for the title by name on [the compatibility tracking system](https://xemu.app/#compatibility).
-      placeholder: |
-        https://xemu.app/titles/4d530004/#Halo-Combat-Evolved
-
-        NTSC MS-004 v1.01
+      label: Game title
+      placeholder: "Halo: Combat Evolved"
+    validations:
+      required: true
+  - type: input
+    id: game-region
+    attributes:
+      label: Region / version
+      placeholder: "NTSC-U, v1.01"
+    validations:
+      required: false
+  - type: input
+    id: title-id
+    attributes:
+      label: Title ID (if known)
+      placeholder: "4d530004"
+    validations:
+      required: false
+  - type: dropdown
+    id: image-format
+    attributes:
+      label: Image format
+      options:
+        - .iso (not yet converted)
+        - .xiso.iso (converted)
+        - Other / not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: compatibility
+    attributes:
+      label: How does it run?
+      options:
+        - Doesn't boot
+        - Boots to menu, doesn't start a game
+        - Starts, but unplayable (crashes / severe glitches)
+        - Playable, with noticeable issues
+        - Playable, no noticeable issues
+    validations:
+      required: true
+  - type: input
+    id: hakux-version
+    attributes:
+      label: hakuX version
+      description: >-
+        Shown in the small label in the corner of the Game Library screen.
+        If you can't find it, check Android Settings > Apps > hakuX > App info.
+      placeholder: "0.5.0-1012-abcdef1"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-type
+    attributes:
+      label: Install type
+      description: >-
+        A test (debug) build installs as a separate app, labelled
+        "hakuX (test builds)", alongside a release install.
+      options:
+        - Release build
+        - Test build (debug)
+    validations:
+      required: true
+  - type: input
+    id: device-model
+    attributes:
+      label: Device make and model
+      placeholder: "Retroid Pocket 5, Samsung Galaxy S23, Ayn Odin 2, ..."
+    validations:
+      required: true
+  - type: input
+    id: device-chip
+    attributes:
+      label: SoC / GPU
+      placeholder: "Snapdragon 8 Gen 2 / Adreno 740"
+    validations:
+      required: true
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+      placeholder: "Android 14"
+    validations:
+      required: true
+  - type: input
+    id: device-ram
+    attributes:
+      label: RAM
+      placeholder: "8 GB"
     validations:
       required: true
   - type: textarea
     id: bug-description
     attributes:
-      label: Bug Description
-      description: |
-        A brief description of the problem, including steps to reproduce the issue and any relevant screenshots of the problem.
-
-        Tip: You can attach images by clicking this area to highlight it and then dragging files in.
-      placeholder: |
-        HUD elements in campaign missions are not visible. See attached screenshot for example.
-
-        Steps to reproduce this issue:
-        1. Launch game
-        2. Select campaign
-        3. Expected HUD elements are not shown
-
-        <Screenshot>
+      label: Bug description (if reporting a specific problem, not just a compatibility rating)
+      description: >-
+        What goes wrong, with steps to reproduce if this is a specific bug
+        rather than a general compatibility report.
     validations:
-      required: true
+      required: false
   - type: textarea
     id: expected-behavior
     attributes:
-      label: Expected Behavior
-      description: A brief description of the expected behavior.
-      placeholder: |
-        When playing campaign missions, HUD elements are expected in all four corners. See attached screenshot for example.
-
-        <Screenshot>
+      label: Expected behavior
     validations:
-      required: true
-  - type: textarea
-    id: xemu-version
+      required: false
+  - type: dropdown
+    id: frequency
     attributes:
-      label: xemu Version
-      description: Affected xemu version. You can find the xemu version within xemu by navigating to <kbd>Help</kbd>&rarr;<kbd>About</kbd>. If known, include the last known-working version of xemu.
-      placeholder: |
-        0.0.0-00-g0000000000
-
-        Last working in: 0.0.0-00-g0000000000
+      label: How often does this happen?
+      options:
+        - Every time
+        - Most of the time
+        - Occasionally
+        - Happened once
+        - Not applicable (compatibility report only)
     validations:
-      required: true
+      required: false
   - type: textarea
-    id: system-information
+    id: settings-changed
     attributes:
-      label: System Information
-      description: Basic information about your system.
-      placeholder: |
-        OS: Windows 10
-        CPU: Intel(R) Core(TM) i7-8850H CPU @ 2.60GHz
-        GPU: NVIDIA Quadro P2000
-        GPU Driver: 3.3.0 NVIDIA 450.119.03
+      label: Settings changed from default
+    validations:
+      required: false
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: >-
+        A logcat excerpt, screenshots/video, or Debug Capture output. See
+        [docs/reporting-bugs.md](https://github.com/jreinach-alt/hakuX/blob/master/docs/reporting-bugs.md).
+    validations:
+      required: false
   - type: textarea
     id: additional-context
     attributes:
-      label: Additional Context
-      description: Any additional information or log output.
+      label: Additional context
+    validations:
+      required: false

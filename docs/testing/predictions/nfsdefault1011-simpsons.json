@@ -1,0 +1,31 @@
+{
+  "registered_utc": "2026-10-11T18:10:00Z",
+  "who": "lane.nfsdefault1011",
+  "issue": "433",
+  "title": "56550015-The_Simpsons_Hit_Run.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "simpsons-hit-run",
+  "perflog": false,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "7002282149",
+  "b_ref": "7002282149",
+  "a_env": [
+    "HAKUX_POSTED_PUT=0",
+    "HAKUX_LOCKFREE_WAKE=0",
+    "HAKUX_SUBMIT_FRAMES=2"
+  ],
+  "b_env": [],
+  "queue_order": "Same binary as step 2's nfsdefault1011-nfs.json (7002282149), same env A/B shape (ON: no --env, app default; OFF: --env forcing the pre-lane shipped values). Postput1010's own PR.md attached a condition to HAKUX_POSTED_PUT going default-on: a plain fps A/B on a GPU-paced title, The Simpsons Hit & Run in free roam -- this is that check. route=simpsons-hit-run (docs/testing/titles/routes/simpsons-hit-run.route, new this lane, copied from lane.frametrace's proven free-roam entry). Four requests of one run each, OFF/ON/ON/OFF interleaved: `request.sh --who nfsdefault1011 --title 56550015-The_Simpsons_Hit_Run.xiso.iso --route simpsons-hit-run --seconds 300 --device nova --ref 7002282149 [--env HAKUX_POSTED_PUT=0 --env HAKUX_LOCKFREE_WAKE=0 --env HAKUX_SUBMIT_FRAMES=2 for OFF, no --env for ON] --issue 433 --expect this file`, HAKUX_RELEASE_PRIO=1. No --frames-every: the route's own `shot` commands already leave >= FROZEN_MIN_FRAMES (3) post-mark route-frames for hitch_report's position check (this route's free-roam loop sheds one `shot play` about every 8.6s, ~16-17 over the window) -- request.sh's own guidance is to ask for frames on the arm that needs pictures, and here both arms already have them without the extra per-second capture cost. (300+90)*4 = 1560s = 26 min, under the 30-minute pilot-always-goes-through bar by itself -- no separate pilot batch needed, and pilots/nfsdefault1011.ok (written for step 2, same requester, same 24h) covers the requester regardless. a_ref == b_ref (one binary, env-only A/B, same as nfsdefault1011-nfs.json): arms.sh's automatic arms job skips a prediction whose two refs match, so this is queued by the lane itself, not left for that job.",
+  "judge": "python3 docs/lanes/nfsdefault1011/simpread.py <OFF1> <ON1> <ON2> <OFF2> --expect docs/testing/predictions/nfsdefault1011-simpsons.json",
+  "baseline": "postput1010's own note: `c2dfca18a1` (#507), an earlier form of the POSTED_PUT store, took this same title from 40.05 to 36.22 fps in free roam and was reverted -- the regression this A/B exists to rule out before the store ships default-on. vcpusleep-simpsons.json's A arm (3ff55c9ac2, master before that store) read 40.03 fps whole-hold / 39.62 in its record window via a host capture script, not this route; that run also used a different hold session's walk pattern, so it is context, not a like-for-like baseline for this route's own OFF arm.",
+  "prediction": "#433 the app's shipped default after this lane's step 1 (fastpaths six + POSTED_PUT=1 + LOCKFREE_WAKE=1 + SUBMIT_FRAMES=3, no --env) against the pre-lane shipped default (POSTED_PUT=0, LOCKFREE_WAKE=0, SUBMIT_FRAMES=2, forced by --env) on Simpsons' free-roam route, same binary. This is the condition postput1010's PR.md attached to the store going default-on, not a re-measurement of a mechanism already proven elsewhere (lockwake1011/coldstart1010 already measured the other two switches plain). Point estimate: both arms land near vcpusleep-simpsons.json's A figure (~40 fps) since this route's walk-and-turn loop is a similar GPU-paced free-roam workload; W (ON >= OFF - 1.0) probability ~75% -- the earlier POSTED_PUT form (c2dfca18a1) regressed this exact title by ~4 fps, and while that form was reverted and this lane's version is lockwake1011/coldstart1010's already-screened implementation (not c2dfca18a1's), the brief's own condition exists because that prior regression was real and on this same title. V (moving player) probability ~95%: the route is lane.frametrace's own proven entry, already confirmed to produce 0.59 motion over a 600s hold. What refutes W: a fps gap > 1.0 with B and V all PASS -- a real regression on this GPU-paced title, which per the brief means dropping POSTED_PUT/LOCKFREE_WAKE from the 'Fast renderer paths' default (keeping SUBMIT_FRAMES=3) after two reruns confirm it.",
+  "expect": {
+    "W_d_max": 1.0
+  },
+  "expect_note": "Named rules read by docs/lanes/nfsdefault1011/simpread.py --expect (legs B, V, W). B: booted, reached_gameplay, no crash, not void, arm read unambiguously from env, each run. V: hitch_report.position_change()'s first/last-frame motion check does not fail as still (menu/pause/load/freeze) -- reused from title_verdict.py's own Playable-verdict machinery, not re-derived. W: ON's mean gfps (title_verdict.judge()'s g_fps_mean_reported_not_judged, meaned across the arm's 2 runs) >= OFF's mean - 1.0, exactly the brief's own bound. If W fails after two reruns, the brief's own fallback is to drop HAKUX_POSTED_PUT/HAKUX_LOCKFREE_WAKE from the 'Fast renderer paths' toggle (keep SUBMIT_FRAMES=3) and report the numbers, not to retry a third time.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}

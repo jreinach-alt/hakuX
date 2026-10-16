@@ -1,0 +1,119 @@
+# The 0.6 release, as the status page states it (status.sh reads this file;
+# STATUS_RELEASE_CONF overrides the path; this file is the default, read by
+# _conf() with no override). Owner decisions only: when the owner sets or
+# changes a target, edit the fields here and nothing in the renderer.
+# Every field is shown with `decided`, its source and date.
+#
+# Added by lane.statuspage1013 (#433), when the owner moved the page from
+# "How close is 0.5?" to a curve toward 1.0. release-0.5.toml stays, as
+# history: 0.5 shipped (v0.5.0, tagged 2026-10-12 21:33 PDT).
+
+name = "0.6"
+tracking_issue = 433
+
+# The target in one sentence, and where it was decided.
+target = "0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds (#433)."
+decided = "owner, 2026-10-13 ~18:00 PDT: track 0.6 next, on a curve toward 1.0 (300/110, then 425/185, 575/300, 725/480, and 876/789 at 1.0): https://github.com/jreinach-alt/hakuX/issues/433"
+
+# The numbers the header's progress bars count against. The release counts
+# measured and playable (the owner, 2026-10-12, restated for 0.6): Measured
+# is the score for a title with no Playable confirmation yet. There is no
+# Benchmarked target or series any more: a benchmarked-length run exists only
+# as the 600 s confirmation that makes a title Playable.
+#   measured:    any gameplay-window fps reading on either handheld, at any
+#                build and mode (the owner, 2026-09-26 21:55 PDT).
+#   playable:    every criterion of title_verdict.py's bar met on the handheld
+#                it was measured on, including the 20-minute soak.
+measured_target = 300
+playable_target = 110
+# How many handhelds a title must be measured on before its fps counts toward
+# the stage scale's "below the bar" / "soak for Playable" rows. One: the
+# owner, 18:10 PDT, #433 comment 5851512534 ("The hardware is identical and we
+# previously ruled only one device needs to be measured"). Unchanged for 0.6.
+benchmark_copies = 1
+# The forecast's window for the "Ships when both are met" line: titles
+# measured (or made Playable) in the last N hours. The 1.0 projection chart
+# uses a separate, fixed 7-day rolling rate (brief #433) -- not this field.
+rate_hours = 48
+
+# The release gate. The page keeps status.sh's measurement (the newest soak per
+# gate handheld whose request names the title, median gfps over 90-240 s from
+# the first perf line) and compares its ref with the candidate's. Unchanged
+# mechanism from 0.5; only the candidate tag prefix moves to 0.6.
+gate = "Ghoulies median >= 25 gfps over 90-240 s on the candidate APK, on the Nova"
+gate_min = 25
+gate_devices = ["nova"]
+candidate_tag_prefix = "v0.6"
+
+# The 0.6 title list: every title on either handheld, every title staged for
+# them, and every title an issue below names.
+test_list = "every title on either handheld (titles/already-on-handhelds.json, lane.xbox's pushes in logs/titlepipe/batch-*.tsv, targets.toml's iso), every staged ISO (the xiso manifest), and every title named in [issues]"
+
+# Parked-by-policy work: one line on the page, with its gate.
+parked_label = "blocked:after-0.6"
+parked_gate = "#433 closes (0.6 ships)"
+
+# Hand-reviewed rows that no verdict.json carries (pass 1 of #397), relative
+# to this file. Unchanged from 0.5: the same rows, never re-reviewed for 0.6.
+backfill = "../lanes/dash432/pass1-backfill.json"
+
+# The performance levers, in the order the owner filed them. Unchanged from 0.5.
+levers = [424, 425, 426, 427, 428, 429]
+
+# The prior release's ship point, for Chart 1's labelled vertical line ("0.5
+# published"). A TOML datetime (RFC 3339, offset-aware): status_html.py reads
+# it straight into an aware datetime, no zoneinfo lookup needed.
+prior_release = "0.5"
+prior_published = 2026-10-12T21:33:00-07:00
+# release-0.5.toml's targets: chart 1 marks when both were met
+prior_measured_target = 145
+prior_playable_target = 50
+
+# Eligible = the titles we hold that are on xemu's Playable+ list, minus those
+# ruled out in the Library Gaps work (system discs, demos and other Skip
+# rows). A plain number, never computed here: lane.local refreshes it when
+# the Library Gaps survey changes.
+eligible = 876
+eligible_source = "xemu Playable+ list (titles we hold) minus Library Gaps Skip rows (system discs, demos); lane.local refreshes this count"
+
+# The issue that stands between each title and the next stage of the scale
+# (its frame rate, or a defect on its way to gameplay), by the title's name on
+# the handhelds (targets.toml `name`). Explicit, never matched from the issue's
+# words. A value may be a list. An open issue here with no lane, no run and no
+# tracker row is a "needs a person" alarm: nothing would ever pick it up.
+[issues]
+"Blinx: The Time Sweeper" = 372
+"007: Agent Under Fire" = 412
+"Dead or Alive 1 Ultimate" = 413
+"Forza Motorsport" = 414
+"50 Cent: Bulletproof" = 382
+"Spikeout: Battle Street" = 303
+"Grabbed by the Ghoulies" = 311
+
+# The curve toward 1.0 (owner, 2026-10-13 ~18:00 and ~20:00 PDT): Chart 2
+# ("How close is 1.0?") draws each of these as a level, and projects the
+# Measured and Playable series to the 1.0 row at the rolling 7-day rate.
+[[curve]]
+release = "0.6"
+measured = 300
+playable = 110
+
+[[curve]]
+release = "0.7"
+measured = 425
+playable = 185
+
+[[curve]]
+release = "0.8"
+measured = 575
+playable = 300
+
+[[curve]]
+release = "0.9"
+measured = 725
+playable = 480
+
+[[curve]]
+release = "1.0"
+measured = 876
+playable = 789

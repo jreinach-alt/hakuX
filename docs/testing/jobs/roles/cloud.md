@@ -76,8 +76,8 @@ no work costs a minute.
   GitHub creates no workflow run at all, the PR's check rollup comes back
   empty, and the fold job cannot fold a head nothing has built -- so the PR
   waits in silence until a person pushes over it (#101, #123, #129, #139).
-  `AGENTS.md`'s transition note retired it; CI is free on this public
-  repository, runs on every PR, and is the gate of record. The "never quote
+  `AGENTS.md`'s transition note retired it; CI is the forge's, runs on a
+  ready PR, and is the gate of record. The "never quote
   it" half is not pedantry: GitHub matches the marker anywhere in the
   message, body included, so an empty commit that explained the problem by
   naming it suppressed the run it was pushed to trigger on 2026-09-18. Name

@@ -36,11 +36,40 @@ fun stampedVersionName(): String {
       .redirectErrorStream(true)
       .start()
     val out = proc.inputStream.bufferedReader().readText().trim()
-    if (proc.waitFor() == 0 && out.isNotEmpty()) out else "0.4.1-unknown"
+    if (proc.waitFor() == 0 && out.isNotEmpty()) out else "0.5.0-unknown"
   } catch (e: Exception) {
-    "0.4.1-unknown"
+    "0.5.0-unknown"
   }
 }
+
+// -PversionedRelease=<X.Y.Z[-suffix]> marks THIS build as the one versioned
+// release artifact, as opposed to a nightly, an owner build or a dispatcher/
+// working debug build -- every one of which runs plain assembleRelease or
+// assembleDebug with this property unset (#433). Unset is the default this
+// whole repo builds under, so unset must mean "Debug Capture is on", not the
+// other way around: a build type can't make this distinction (nightlies and
+// owner builds are both assembleRelease -- docs/testing/nightly_build.sh,
+// docs/testing/owner_build.sh), so it has to be this explicit flag, passed
+// only by docs/testing/release_build.sh.
+//
+// When set: versionName becomes exactly this string (the stamped
+// <base>-<MMDD>-<sha> is for builds nobody tagged) and Debug Capture
+// defaults OFF. When unset: versionName is unchanged and Debug Capture
+// defaults ON (before 0.5.0 it defaulted off in every build, and showed only
+// where Settings > Debug Tools had been switched on). Settings > Debug Tools still overrides
+// either default, so a contributor running a release build can switch it
+// back on.
+val versionedRelease: String? = (project.findProperty("versionedRelease") as String?)?.trim()?.ifEmpty { null }
+if (versionedRelease != null) {
+  val versionPattern = Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(-[A-Za-z0-9.]+)?\$")
+  if (!versionPattern.matches(versionedRelease)) {
+    error(
+      "versionedRelease='$versionedRelease' is not a version (want X.Y.Z or " +
+        "X.Y.Z-suffix); docs/testing/release_build.sh is the normal caller"
+    )
+  }
+}
+val debugToolsDefault = versionedRelease == null
 
 android {
   namespace = "com.rfandango.haku_x"
@@ -50,14 +79,26 @@ android {
 
   defaultConfig {
     applicationId = "com.jreinach.hakux"
-    // 29 is the first API with native ELF TLS; below it every __thread access
-    // (tcg_ctx, current_cpu) is a call to __emutls_get_address. It also sets
-    // ANDROID_PLATFORM, which the glib cross build reads (#427).
-    minSdk = 29
+    // 33 (raised from 29 for the signing-key rotation, #433) is well above the
+    // native-ELF-TLS floor: 29 is the first API with native ELF TLS, below
+    // which every __thread access (tcg_ctx, current_cpu) is a call to
+    // __emutls_get_address, and minSdk also sets ANDROID_PLATFORM, which the
+    // glib cross build reads (#427). The owner confirmed no pre-13 handheld
+    // has the hardware to run this emulator, so the floor can move freely.
+    minSdk = 33
     targetSdk = 36
 
-    versionCode = 8
-    versionName = stampedVersionName()
+    versionCode = 9
+    versionName = versionedRelease ?: stampedVersionName()
+
+    // The checkable marker on the artifact itself: release_build.sh verifies
+    // this resource with aapt2 after the build rather than trusting that the
+    // property it passed in actually took effect. PauseMenuOverlay's "Debug
+    // Capture" button reads debug_tools via MainActivity/SettingsActivity's
+    // `resources.getBoolean(R.bool.debug_tools_default)` default -- a stored
+    // preference always wins, so Settings > Debug Tools still turns this on
+    // in a versioned release.
+    resValue("bool", "debug_tools_default", debugToolsDefault.toString())
 
     ndk {
       abiFilters += listOf("arm64-v8a")

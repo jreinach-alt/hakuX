@@ -206,7 +206,9 @@ sp_soak g-new thor "Grabbed by the Ghoulies (USA).xiso.iso" no "1 hour ago"
 sp_soak x     thor "Blinx (USA).xiso.iso" flat "10 minutes ago"
 sp_verdict() { mkdir -p "$SP/res/$1"; printf '{"name": "%s", "device": "%s", "pass": %s, "rating_candidate": "Playable", "judged_utc": "2026-09-26T10:00:00Z"}\n' "$2" "$3" "$4" > "$SP/res/$1/verdict.json"; }
 sp_verdict v1 A thor true; sp_verdict v2 A nova true; sp_verdict v3 B thor true; sp_verdict v4 B nova false
-python3 "$SH_PY" release05 --titles "$SP/titles" --results "$SP/res" --xiso "$SP/no-xiso" > "$SP/facts.tsv"
+# A conf with no gate_devices: the gate is read on both handhelds.
+printf 'name = "0.5"\n' > "$SP/both.toml"
+STATUS_RELEASE_CONF="$SP/both.toml" python3 "$SH_PY" release05 --titles "$SP/titles" --results "$SP/res" --xiso "$SP/no-xiso" > "$SP/facts.tsv"
 sp_has() { grep -qxF -- "$(printf "$1")" "$SP/facts.tsv"; }
 check "panel: titles on the handhelds are counted from the json" sp_has 'r05\tcopied\t3'
 check "panel: a missing staging manifest is 'no source', naming the file" sp_has 'r05\tstaged\tno source: <xiso dir>/manifest.csv'
@@ -226,6 +228,28 @@ check "panel: ...and names the soak it passed over" grep -qF '1 newer soak logge
 check "panel: the lane on each 0.5 issue" grep -qF '#424 lane.x -- Performance' <<< "$sp_text"
 # #433 (lane.titles05): the gate is one line under the title table.
 check "panel: the page carries the gate's readings" grep -qF 'thor <b>16.5</b> gfps (n=16,' "$SP/i.html"
+# The gate on the handhelds release-0.5.toml names (the owner, 2026-10-12: "0.5
+# can ship on the Nova test results alone"). A Nova soak at 50 on the
+# candidate's ref is MET with the Thor's 16.5 never read, and no line says
+# "both handhelds".
+sp_soak g-nova nova "Grabbed by the Ghoulies (USA).xiso.iso" flat "30 minutes ago"
+printf 'gate_devices = ["nova"]\n' > "$SP/nova.toml"
+STATUS_RELEASE_CONF="$SP/nova.toml" python3 "$SH_PY" release05 --titles "$SP/titles" --results "$SP/res" --xiso "$SP/no-xiso" > "$SP/facts-nova.tsv"
+check "gate on the Nova only: no Thor row" sh_no -P '^r05gate\tthor\t' "$SP/facts-nova.tsv"
+check "...the Nova's newest soak is read" grep -qP '^r05gate\tnova\t50\t16\tg-nova\tabcdef0123\t[0-9]+\t0$' "$SP/facts-nova.tsv"
+printf 'release_name\t0.5\nrelease_candidate\tv0.5.0-rc1\nrelease_candidate_sha\tabcdef0123456789abcdef0123456789abcdef01\n' >> "$SP/facts-nova.tsv"
+python3 "$SH_PY" build --facts "$SP/facts-nova.tsv" --lanes "$SP/lanes.json" --md "$SP/md" --json "$SP/sn.json" --html "$SP/in.html"
+check "...the gate is MET on the candidate" python3 -c '
+import json, sys
+g = json.load(open(sys.argv[1]))["release"]["gate_result"]
+sys.exit(0 if g["met"] and g["verdict"] == "MET on the candidate v0.5.0-rc1" and [d["device"] for d in g["devices"]] == ["nova"] else 1)' "$SP/sn.json"
+sn_text=$(python3 "$SH_PY" panel "$SP/sn.json")
+check "...and the panel names the Nova" grep -qF 'Ghoulies gate (median gfps 90-240 s >= 25, on the Nova): met on these soaks' <<< "$sn_text"
+check "...not both handhelds" sh_no -F 'both handhelds' <<< "$sn_text"
+check "release-0.5.toml measures the gate on the Nova only" python3 -c '
+import sys, tomllib
+c = tomllib.load(open(sys.argv[1], "rb"))
+sys.exit(0 if c.get("gate_devices") == ["nova"] and c.get("gate", "").endswith("on the Nova") else 1)' "$HERE/../release-0.5.toml"
 
 # ---- restore selftest.sh's own shim and state for any later fragment.
 rm -f "$T/bin/pgrep" "$HAKUX_WORK/status/comment-id" "$HAKUX_WORK/status/issue-pointer" "$HAKUX_WORK/status/pages-state"

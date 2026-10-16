@@ -1,0 +1,443 @@
+--- /home/justin/hakux-work/host-tools/issue_mirror_selftest.py	2026-10-12 21:46:45.995692031 -0700
++++ /home/justin/hakux-work/lanes/issuemirror1013/issue_mirror_selftest.py.new	2026-10-13 00:47:07.146153744 -0700
+@@ -15,15 +15,23 @@
+ """
+ import contextlib
+ import copy
++import fcntl
++import importlib.machinery
++import importlib.util
+ import io
+ import os
+ import sys
+ import tempfile
++import time
+ 
+ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+ import issue_mirror as im
+ 
+ 
++def _now_iso():
++    return time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())
++
++
+ # --------------------------------------------------------------------------------------------------------------
+ # Fakes -- same interface as im.GH / im.FG, backed by plain dicts, no I/O at all.
+ # --------------------------------------------------------------------------------------------------------------
+@@ -44,17 +52,40 @@
+         # Round 4 addendum: defaults to "active, far enough out" so every pre-existing backfill test keeps
+         # passing without having to know this check exists. Tests of the check itself set this directly.
+         self.interaction_limits_result = ('active', 100, '2099-01-01T00:00:00Z')
++        # issuemirror1012 gap 2/3: updated_at tracking for changed_issues(), a read counter so a test can
++        # measure "how many GitHub reads did this sync cost", and a settable remaining-budget figure for gap 3's
++        # backfill pre-check. mk_pair() below writes gh.items[n] directly (never through create()), so a
++        # pre-existing pair's updated_at defaults to "never changed" unless a test calls touch() explicitly.
++        self.updated_at = {}
++        self.read_calls = 0
++        self._budget_remaining = 600
+ 
+     def reachable(self):
+         return self._reachable
+ 
++    def touch(self, number):
++        self.updated_at[number] = _now_iso()
++
+     def all_issues(self, **kw):
++        self.read_calls += 1
+         return dict(self.items)
+ 
++    def changed_issues(self, since_iso, **kw):
++        self.read_calls += 1
++        return {n: dict(it) for n, it in self.items.items() if self.updated_at.get(n, '0000') >= since_iso}
++
++    def get_issue(self, number):
++        self.read_calls += 1
++        return dict(self.items[number])
++
++    def budget_remaining(self):
++        return self._budget_remaining
++
+     def comments(self, number):
+         return list(self.comments_store.get(number, []))
+ 
+     def repo_labels(self):
++        self.read_calls += 1
+         return list(self.repo_labels_list)
+ 
+     def interaction_limits(self):
+@@ -90,6 +121,7 @@
+             close_err = 'simulated transient GitHub close failure (the create itself succeeded)'
+         self.items[n] = {'number': n, 'title': title, 'body': body, 'state': actual_state,
+                           'labels': [{'name': l} for l in labels], 'comments': 0}
++        self.touch(n)
+         return n, close_err
+ 
+     def patch(self, number, title=None, body=None, state=None, labels=None):
+@@ -109,6 +141,7 @@
+             it['state'] = state
+         if labels is not None:
+             it['labels'] = [{'name': l} for l in labels]
++        self.touch(number)
+         return True
+ 
+     def comment(self, number, body):
+@@ -121,6 +154,7 @@
+         self.comments_store.setdefault(number, []).append(
+             {'id': cid, 'user': {'login': 'gh-user'}, 'created_at': '2026-10-12T00:00:00Z', 'body': body})
+         self.items[number]['comments'] = self.items[number].get('comments', 0) + 1
++        self.touch(number)
+         return str(cid)
+ 
+ 
+@@ -135,10 +169,24 @@
+         self.force_set_labels_failure_once = False
+         self.create_calls = 0
+         self.write_calls = 0                      # round 3, gap 3/4: every real create/patch/comment/set_labels
++        self.updated_at = {}    # issuemirror1012 gap 2: same contract as FakeGH.updated_at/touch()
++        self.read_calls = 0
++
++    def touch(self, number):
++        self.updated_at[number] = _now_iso()
+ 
+     def all_issues(self, **kw):
++        self.read_calls += 1
+         return dict(self.items)
+ 
++    def changed_issues(self, since_iso, **kw):
++        self.read_calls += 1
++        return {n: dict(it) for n, it in self.items.items() if self.updated_at.get(n, '0000') >= since_iso}
++
++    def get_issue(self, number):
++        self.read_calls += 1
++        return dict(self.items[number])
++
+     def comments(self, number):
+         return list(self.comments_store.get(number, []))
+ 
+@@ -164,6 +212,7 @@
+                               'state': 'open', 'merged': False, 'merge_commit_sha': None,
+                               'head': {'ref': payload.get('head', '?')}, 'labels': labels}
+         self.items[n] = item
++        self.touch(n)
+         return n
+ 
+     def patch(self, number, payload, is_pr=False):
+@@ -195,6 +244,7 @@
+             for k in ('title', 'state', 'merged', 'merge_commit_sha'):
+                 if k in payload:
+                     pd[k] = payload[k]
++        self.touch(number)
+         return True
+ 
+     def set_labels(self, number, names, is_pr=False):
+@@ -208,6 +258,7 @@
+             self.items[number]['labels'] = labels
+         if number in self.pulls:
+             self.pulls[number]['labels'] = labels
++        self.touch(number)
+         return True
+ 
+     def comment(self, number, body):
+@@ -220,6 +271,7 @@
+         self.comments_store.setdefault(number, []).append(
+             {'id': cid, 'user': {'login': 'forge-user'}, 'created_at': '2026-10-12T00:00:00Z', 'body': body})
+         self.items[number]['comments'] = self.items[number].get('comments', 0) + 1
++        self.touch(number)
+         return cid
+ 
+ 
+@@ -770,6 +822,278 @@
+         return 'interaction-limits forbidden (403): REFUSED and 0 spent; --no-interaction-limit overrides and #2 is created'
+ 
+ 
++# --------------------------------------------------------------------------------------------------------------
++# issuemirror1012: gap 1 (one shared lock), gap 2 (incremental sync), gap 3 (budget-true pre-check)
++# --------------------------------------------------------------------------------------------------------------
++
++def test_lock_refuses_concurrent_sync_during_backfill():
++    """issuemirror1012 gap 1, test a: a fake backfill holding .issue-mirror.lock makes a concurrent `sync --yes`
++    refuse (exit 75, 'skipped: another run holds the lock'), with nothing written to state."""
++    import fcntl
++    with isolated():
++        gh, fg = FakeGH(), FakeFG()
++        mk_pair(gh, fg, 1)
++        rc0, out0 = silent(im.cmd_sync, gh, fg, True)
++        assert rc0 == 0, out0
++        before = open(im.STATE, 'rb').read()
++        fd = os.open(im.LOCK, os.O_CREAT | os.O_RDWR, 0o644)
++        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
++        try:
++            rc, out = silent(im.cmd_sync, gh, fg, True)
++            assert rc == 75, out
++            assert 'skipped: another run holds the lock' in out, out
++            after = open(im.STATE, 'rb').read()
++            assert after == before, 'state file was written while a concurrent run held the lock'
++        finally:
++            fcntl.flock(fd, fcntl.LOCK_UN)
++            os.close(fd)
++        rc2, out2 = silent(im.cmd_sync, gh, fg, True)
++        assert rc2 == 0, 'sync did not recover once the lock was released: %s' % out2
++        return 'sync --yes refuses (75, "skipped") while another run holds the lock; recovers once released'
++
++
++def test_sync_cannot_reverse_backfill_cursor_while_locked():
++    """issuemirror1012 gap 1, test b: a sync overlapping a backfill can no longer load a stale copy of the state
++    and save backfill_last_done backwards over the backfill's own progress -- the two now share one lock."""
++    import fcntl
++    with isolated():
++        gh, fg = FakeGH(), FakeFG()
++        mk_pair(gh, fg, 1)
++        fd = os.open(im.LOCK, os.O_CREAT | os.O_RDWR, 0o644)
++        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
++        try:
++            # The backfill's own in-progress state write, made while it holds the lock.
++            st = im.load_state()
++            st['backfill_last_done'] = 5
++            im.save_state(st)
++            rc, out = silent(im.cmd_sync, gh, fg, True)
++            assert rc == 75, out
++            assert im.load_state().get('backfill_last_done') == 5, \
++                'a concurrent sync moved backfill_last_done backwards while the backfill held the lock'
++        finally:
++            fcntl.flock(fd, fcntl.LOCK_UN)
++            os.close(fd)
++        rc2, out2 = silent(im.cmd_sync, gh, fg, True)
++        assert rc2 == 0, out2
++        assert im.load_state().get('backfill_last_done') == 5, \
++            'backfill_last_done was lost once the real sync ran with the lock free'
++        return 'a sync overlapping a backfill cannot move backfill_last_done backwards; preserved once run for real'
++
++
++def test_incremental_sync_steady_state_reads_at_most_two():
++    """issuemirror1012 gap 2: once a full sync has established last_sync_started_utc, an incremental sync with
++    nothing changed costs at most 2 GitHub reads (vs. ~10 for a full paginated listing) -- the brief's explicit
++    target, measured here against the fakes."""
++    with isolated():
++        gh, fg = FakeGH(), FakeFG()
++        for n in range(1, 6):
++            mk_pair(gh, fg, n, title='item %d' % n)
++        rc0, out0 = silent(im.cmd_sync, gh, fg, True, full=True)
++        assert rc0 == 0, out0
++        gh.read_calls = 0
++        rc, out = silent(im.cmd_sync, gh, fg, True, full=False)
++        assert rc == 0, out
++        assert 'sync (incremental)' in out, out
++        assert gh.read_calls <= 2, \
++            'steady-state incremental sync cost %d GitHub read(s), want <= 2: %s' % (gh.read_calls, out)
++        return 'steady-state incremental sync costs %d GitHub read(s) (target <= 2)' % gh.read_calls
++
++
++def test_incremental_sync_applies_changed_forge_pair():
++    """issuemirror1012 gap 2: a forge-only field change, made after the baseline full sync, is picked up and
++    applied to GitHub by the incremental pass -- proving the cheap pass is still correct, not just cheap."""
++    with isolated():
++        gh, fg = FakeGH(), FakeFG()
++        mk_pair(gh, fg, 1, title='original')
++        rc0, out0 = silent(im.cmd_sync, gh, fg, True, full=True)
++        assert rc0 == 0, out0
++        fg.items[1]['title'] = 'changed on the forge'
++        fg.touch(1)
++        rc, out = silent(im.cmd_sync, gh, fg, True, full=False)
++        assert rc == 0, out
++        assert gh.items[1]['title'] == 'changed on the forge', \
++            'incremental sync did not carry the forge-only title change to GitHub: %s' % out
++        return 'incremental sync carries a forge-only field change to GitHub'
++
++
++def test_budget_true_precheck_uses_remaining_not_stale_cap():
++    """issuemirror1012 gap 3: the backfill pre-check now compares against what github_gateway.py budget says is
++    actually left today, not a stale 300/day constant -- a small remaining budget disables the optional
++    per-item race-window re-check even though the old stale default would have allowed it."""
++    with isolated():
++        gh, fg = FakeGH(), FakeFG()
++        mk_pair(gh, fg, 1)
++        for n in range(2, 12):
++            fg.items[n] = {'number': n, 'title': 'new %d' % n, 'body': 'b', 'state': 'open', 'labels': [], 'comments': 0}
++        gh._budget_remaining = 15
++        rc, out = silent(im.cmd_backfill, gh, fg, True, 0, 6000, False)
++        assert rc == 0, out
++        assert 'DISABLED' in out, 'a small remaining budget (15 vs. 10 items) should disable the pre-check: %s' % out
++        assert not hasattr(im, 'GITHUB_READ_BUDGET_DAY'), 'the stale GITHUB_READ_BUDGET_DAY default must be removed'
++
++    with isolated():
++        gh2, fg2 = FakeGH(), FakeFG()
++        mk_pair(gh2, fg2, 1)
++        fg2.items[2] = {'number': 2, 'title': 'new', 'body': 'b', 'state': 'open', 'labels': [], 'comments': 0}
++        gh2._budget_remaining = 600
++        rc2, out2 = silent(im.cmd_backfill, gh2, fg2, True, 0, 6000, False)
++        assert rc2 == 0, out2
++        assert 'pre-check enabled' in out2, 'a healthy remaining budget (600) should enable the pre-check: %s' % out2
++        return ('backfill pre-check reads the gateway\'s remaining budget: DISABLED at 15 remaining for 10 items, '
++                'enabled at 600 remaining for 1 item')
++
++
++class _FakeCompletedProcess:
++    """Same shape as subprocess.CompletedProcess, same as github_gateway_selftest.py's helper of the same name --
++    only stdout/stderr/returncode, since that's all _run_gateway and GH's parsers ever look at."""
++    def __init__(self, stdout='', stderr='', returncode=0):
++        self.stdout = stdout
++        self.stderr = stderr
++        self.returncode = returncode
++
++
++def test_gateway_retry_recovers_from_two_busy_responses():
++    """issuemirror1013 point 1: exit 75 ('another gateway run is in progress') means the gateway command never
++    ran at all -- github_gateway.py's main() takes its flock immediately after checking the subcommand name, and
++    returns 75 before doing anything else -- so it is the one rc safe to retry unconditionally, a write included.
++    A fake gateway that is busy for exactly the first two calls and free on the third must make both a read
++    (GH.budget_remaining, which parses stdout directly -- no --out file for a fake to fail to create) and a
++    write (GH.comment) succeed, with the write actually sent exactly 3 times total (2 busy + 1 that lands),
++    never more."""
++    old_run, old_backoffs = im.subprocess.run, im.GATEWAY_RETRY_BACKOFFS_S
++    im.GATEWAY_RETRY_BACKOFFS_S = (0, 0, 0, 0, 0)   # the retry COUNT is under test, not real wall-clock backoff
++    try:
++        calls = {'n': 0}
++
++        def fake_run(args, capture_output=True, text=True):
++            calls['n'] += 1
++            if calls['n'] <= 2:
++                return _FakeCompletedProcess(stdout='', stderr='another gateway run is in progress\n', returncode=75)
++            if 'budget' in args:
++                return _FakeCompletedProcess(stdout='reads=1/1200 writes=0/96 pushes=0/96\n'
++                                                     'reads_remaining=1199\nwrites_remaining=96\npushes_remaining=96\n',
++                                              returncode=0)
++            return _FakeCompletedProcess(stdout='COMMENTED #1 comment 42\n', returncode=0)
++
++        im.subprocess.run = fake_run
++        gh = im.GH(gateway='/dev/null')
++
++        calls['n'] = 0
++        remaining = gh.budget_remaining()
++        assert remaining == 1199, remaining
++        assert calls['n'] == 3, 'expected 2 busy + 1 success for the read: got %d calls' % calls['n']
++
++        calls['n'] = 0
++        cid = gh.comment(1, 'hello')
++        assert cid == '42', cid
++        assert calls['n'] == 3, 'expected 2 busy + 1 success for the write: got %d calls' % calls['n']
++    finally:
++        im.subprocess.run = old_run
++        im.GATEWAY_RETRY_BACKOFFS_S = old_backoffs
++    return 'gateway busy for 2 calls then free: budget_remaining() and comment() both succeed, each sent 3 times total'
++
++
++def test_gateway_retry_exhausts_bound_and_skips():
++    """issuemirror1013 point 1: once the bound runs out, the WHOLE command gives up with exit 75 and the tick
++    script's existing skip line ('skipped: gateway busy'), the same code hourly_report.sh already excludes from
++    its ALARM (grep for 'want 0 or 75') -- rather than a half-finished sync. The state file must be untouched:
++    cmd_sync's full pass only calls save_state() once, at the very end, so a GatewayBusy raised while just
++    listing issues (the very first gateway call) means that save_state() is never reached at all."""
++    old_run, old_backoffs = im.subprocess.run, im.GATEWAY_RETRY_BACKOFFS_S
++    im.GATEWAY_RETRY_BACKOFFS_S = (0, 0, 0)   # shrink the bound so the test doesn't wait the real ~135s
++    try:
++        with isolated():
++            if os.path.exists(im.STATE):
++                os.unlink(im.STATE)
++            gh, fg = im.GH(gateway='/dev/null'), FakeFG()
++
++            def always_busy(args, capture_output=True, text=True):
++                return _FakeCompletedProcess(stdout='', stderr='another gateway run is in progress\n', returncode=75)
++
++            im.subprocess.run = always_busy
++            rc, out = silent(im.cmd_sync, gh, fg, True)
++            assert rc == 75, (rc, out)
++            assert 'gateway busy' in out, out
++            assert not os.path.exists(im.STATE), 'save_state() must never run when the first gateway call never answers'
++    finally:
++        im.subprocess.run = old_run
++        im.GATEWAY_RETRY_BACKOFFS_S = old_backoffs
++    return 'sync --yes against a gateway that never frees the lock: exits 75 ("skipped: gateway busy"), no state file written'
++
++
++def test_gateway_read_cap_refusal_is_distinct_and_not_retried():
++    """issuemirror1013 point 2: the gateway's day-cap refusal ('REFUSED: N GitHub reads today (cap M)') is a
++    real outcome, not a lock collision -- it must end the command with its own exit code (76, never 0/1/75) and
++    a status line naming the cap, and must never be retried (a retry cannot make today's cap bigger). The fake
++    always returns the cap-refusal text, so if this were retried even once, the call count would show it."""
++    old_run = im.subprocess.run
++    try:
++        calls = {'n': 0}
++
++        def fake_cap_refusal(args, capture_output=True, text=True):
++            calls['n'] += 1
++            return _FakeCompletedProcess(stdout='', stderr='REFUSED: 1200 GitHub reads today (cap 1200)\n', returncode=1)
++
++        im.subprocess.run = fake_cap_refusal
++        gh = im.GH(gateway='/dev/null')
++        try:
++            gh.budget_remaining()
++            assert False, 'expected GatewayCapRefused, got no exception'
++        except im.GatewayCapRefused as e:
++            assert e.cap == 'reads', e.cap
++        assert calls['n'] == 1, 'a cap refusal must never be retried: got %d calls' % calls['n']
++
++        with isolated():
++            if os.path.exists(im.STATE):
++                os.unlink(im.STATE)
++            calls['n'] = 0
++            fg = FakeFG()
++            rc, out = silent(im.cmd_sync, gh, fg, True)
++            assert rc == 76, (rc, out)
++            assert 'reads' in out and '00:00 UTC' in out, out
++            assert calls['n'] == 1, 'cmd_sync must not retry a cap refusal either: got %d calls' % calls['n']
++    finally:
++        im.subprocess.run = old_run
++    return 'a read-cap refusal raises GatewayCapRefused once (no retry) and cmd_sync exits 76 naming the cap and reset time'
++
++
++def test_budget_answered_while_gateway_lock_held():
++    """issuemirror1013 point 3: `budget` reads .gateway-state.json directly and never takes the gateway's own
++    flock (github_gateway.py main(), moved ahead of the lock in the staged copy) -- so issue_mirror.py's
++    pre-check can never collide with the push timer or another gateway run holding that lock for seconds to
++    minutes. Loads the STAGED github_gateway.py.new (this round's fix, not the live file) and points its
++    lock/state/window/log paths at a scratch temp dir -- the live .gateway.lock and .gateway-state.json are
++    never opened."""
++    gw_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'github_gateway.py.new')
++    # spec_from_file_location infers the loader from the file extension, which here is '.new', not '.py' --
++    # pass a SourceFileLoader explicitly so it is loaded as Python source anyway.
++    loader = importlib.machinery.SourceFileLoader('staged_github_gateway_1013', gw_path)
++    spec = importlib.util.spec_from_file_location('staged_github_gateway_1013', gw_path, loader=loader)
++    gw = importlib.util.module_from_spec(spec)
++    spec.loader.exec_module(gw)
++    tmpdir = tempfile.mkdtemp(prefix='gateway-budget-selftest-')
++    gw.H = tmpdir
++    gw.STATE = os.path.join(tmpdir, 'gateway-state.json')
++    gw.WINDOW = os.path.join(tmpdir, 'gateway-window')
++    gw.LOG = os.path.join(tmpdir, 'gateway.log')
++    lock_path = os.path.join(tmpdir, '.gateway.lock')
++    fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o644)
++    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)   # held by THIS process for the whole test -- simulates another run
++    try:
++        old_argv = sys.argv
++        sys.argv = ['github_gateway.py', 'budget']
++        try:
++            rc, out = silent(gw.main)
++        finally:
++            sys.argv = old_argv
++        assert rc == 0, 'budget must succeed even while another run holds the gateway lock: rc=%r out=%s' % (rc, out)
++        assert 'reads_remaining=' in out, out
++    finally:
++        fcntl.flock(fd, fcntl.LOCK_UN)
++        os.close(fd)
++    return 'staged github_gateway.py.new: `budget` answers (rc=0, reads_remaining= present) while .gateway.lock is held'
++
++
+ TESTS = [
+     test_backfill_happy_path,
+     test_pre_create_mismatch_refusal,
+@@ -795,6 +1119,15 @@
+     test_interaction_limit_forbidden_refuses_backfill,
+     test_new_pr_close_failure_queues_and_resume_clears_pending,
+     test_new_issue_truncates_long_body_for_github_only,
++    test_lock_refuses_concurrent_sync_during_backfill,
++    test_sync_cannot_reverse_backfill_cursor_while_locked,
++    test_incremental_sync_steady_state_reads_at_most_two,
++    test_incremental_sync_applies_changed_forge_pair,
++    test_budget_true_precheck_uses_remaining_not_stale_cap,
++    test_gateway_retry_recovers_from_two_busy_responses,
++    test_gateway_retry_exhausts_bound_and_skips,
++    test_gateway_read_cap_refusal_is_distinct_and_not_retried,
++    test_budget_answered_while_gateway_lock_held,
+ ]
+ 
+ 

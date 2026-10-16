@@ -1,0 +1,34 @@
+{
+  "registered_utc": "2026-10-12T17:38:00Z",
+  "who": "lane.zetaroutes1012",
+  "issue": "433",
+  "device": "nova",
+  "a_ref": "76a2c15333",
+  "b_ref": "76a2c15333",
+  "refs_note": "Both arms run the same build; the only difference is --env HAKUX_ZETA_D24=1 on B. `git diff 76a2c15333 origin/master` (755ac97c96) touches only docs/, so this build is master's emulator code.",
+  "runs_per_arm": 1,
+  "arms": {
+    "NinjaGaidenBlack": {
+      "title": "Ninja Gaiden Black.iso",
+      "route": "ninja-gaiden-black.returning",
+      "seconds": 1020,
+      "B": "already run: z-1791823930-lane.zetaroutes1012-3542868, ref 76a2c15333, --env HAKUX_ZETA_D24=1 --env HAKUX_FRAMETRACE=1 (init line: Z24S8 host format 0x81, depth stored as unorm)",
+      "A": "request.sh --ref 76a2c15333 --priority sweep --device nova --title \"Ninja Gaiden Black.iso\" --route ninja-gaiden-black.returning --seconds 1020 --frames-every 30 --env HAKUX_FRAMETRACE=1 --expect docs/testing/predictions/zetaroutes1012-ninja-gaiden-black.json, queued after this file is committed"
+    }
+  },
+  "order": "B already on disk (docs/lanes/zetaroutes1012/NOTES.md sections 12 and 16). A queued after this registration: same route, same seconds, same ref, no HAKUX_ZETA_D24.",
+  "judge": "python3 docs/testing/title_verdict.py <dir> --require confirmation --reviewed-gameplay yes on each arm; read fps_ok (share of the scored window at >= 30 x 0.95 fps, the Playable bar) from the VERDICT line, and own_target_share (the same share at the title's own 60 x 0.95) from title_verdict.judge(). No captures: a soak writes none.",
+  "prediction": "Ninja Gaiden Black (5443000D), Nova, ninja-gaiden-black.returning.route (bb-ngb.route's menu path and genre loop, 15 repeats), 1020 s sweep. B already read PASS: fps_ok=0.9964, own_target_share=0.5307, window median 58.0, gameplay=714.4s, static_frac=0.0292. fpsbelow1012's survey pair (z-1791797927-fpsbelow1012-1778929 off / z-1791797921-fpsbelow1012-1777822 on), scored from its `mark play` with Ryu at the same gorge and cliff walls in both arms, read fps_ok 0.847 -> 0.960 and the share at 57 fps 0.146 -> 0.542. Predicted for A on this gameplay route: fps_ok below the 0.90 bar, at least 0.05 under B's, and its share at the 60 target at least 0.20 under B's. Probability the bar leg F holds: about 0.5. Buffy's pair on this lane's gameplay route read its switch-off arm at 0.997 where its survey read 0.79, so a survey shortfall at the 30 bar need not carry over to gameplay. The share at 60 (leg H) is the leg most likely to hold (about 0.85): the survey's A ran at a 35-46 fps median through its gameplay window, far under 57.",
+  "legs": {
+    "V (validity)": "both arms reach `mark gameplay` within 30 s of each other's route-relative time (route start to mark), >= 600 s gameplay after the mark, no crash or hang; A's logcat shows `Z24S8 host format 0x82` and B's `0x81`; A's static_frac <= 0.20 (moving). A VOID arm scores nothing and the pair is not judged.",
+    "F (share at the Playable bar)": "A's fps_ok < 0.90. FAILS in the world where NG Black's gameplay route is over the 30 bar without the switch, and the switch is not what makes it Playable.",
+    "G (gain at the bar)": "B's fps_ok (0.9964) - A's fps_ok >= 0.05. FAILS in the world where A already sits within 0.05 of B at the 30 bar on this route.",
+    "H (gain at the title's own 60 target)": "B's own_target_share (0.5307) - A's own_target_share >= 0.20. FAILS in the world where the switch's one-tile pass does not raise NG Black's frame rate on gameplay, only on the survey's parked scenes."
+  },
+  "rule": "WIN (the switch carries NG Black over the Playable bar on gameplay) = V, F and G pass. H is judged and reported on its own: F failing with H passing means NG Black is over the 30 bar at master on this route and the switch's gain is towards the 60 target.",
+  "expect": {},
+  "must_not_move": [],
+  "must_not_regress": [],
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. V, F, G and H are read off title_verdict.py on each arm, by hand."
+}

@@ -1,0 +1,59 @@
+# The generic `drive` fallback (#433): no crops, no per-title tuning. Every
+# state comes from pathclass.py's trained classifier (docs/testing/titles/
+# pathclass.py) through classify.py's `classifier = "pathclass"` branch, one
+# `pathclass.py serve` process per `drive` step.
+#
+# This exists to replace a route's blind START/A survey loop (the owner's
+# Simpsons Hit & Run observation, NOTES.md "Restart, attempt 2") with
+# something that presses only once the screen is actually named, on any
+# title, without a hand-made profile.
+#
+# FAIL CLOSED: classify.py raises pathclass.Unavailable the first time the
+# venv/GPU/serve process is missing, and drive.py's run() turns that into
+# `ROUTE FAIL drive generic: pathclass unavailable (<why>)` -- never a blind
+# press, never a model call (ask_model is a no-op without ANTHROPIC_API_KEY,
+# which this host does not set).
+#
+# classifier_confidence 0.85: the #433 step-2 eval (pathknow's 120-frame
+# held-out set, docs/lanes/pathclass/NOTES.md) was 81.7% raw / 3.9% false
+# "gameplay" on non-gameplay -- short of the 90%/2% bar. At this threshold,
+# frames the head actually answers are 100% right with 0% false "gameplay"
+# (39/120 answered; the rest come back `unknown`, which drive.py waits on
+# rather than acting on). No crop or hand tuning can do better for a title
+# this profile has never seen. This floor applies only to a `gameplay`
+# answer (the claim that matters): a false `play` would mark a route done
+# when it is not.
+#
+# classifier_confidence_menu 0.7 (#433 Addendum 6): AvP Extinction's
+# gen-avp-extinction run stalled 91 s at its title screen -- pathclass named
+# it title_screen at 0.8 (OCR's "Press START" confirming the image model),
+# still short of 0.85 -- because every answer shared one floor. A menu-class
+# miscall risks a wrong input on a menu (recoverable: the ladder or the next
+# capture corrects it), never the gameplay claim, so it does not need the
+# same floor. Measured against the held-out set (same 120 frames, full
+# classify() pipeline, context menu_seen=True -- matching mid-route play,
+# where an errant press would actually cost something): at 0.7, answers rise
+# from 43/120 (the old single floor) to 66/120, right 63/66 (95.5%), with
+# ZERO cases where a non-gameplay answer at or above the floor fires a press
+# on a frame whose truth is actually `gameplay` (checked down to 0.3; the one
+# such case in the set, a Buffy `controller_prompt` miscall at 0.65, sits
+# below 0.7) and zero wrong presses on any other non-gameplay truth. Below
+# 0.7 both risks appear (0.6: 1 errant gameplay press; 0.3: 3 errant, 4 wrong
+# -- docs/lanes/pathclass/NOTES.md "Addendum 6" has the full sweep). Frames
+# below even this floor (the AvP run's blinking "Press START" at 0.395 with
+# the prompt hidden) correctly stay `unknown` -- genuinely ambiguous, not a
+# case this floor is meant to rescue.
+
+name = "generic"
+classifier = "pathclass"
+classifier_confidence = 0.85
+classifier_confidence_menu = 0.7
+order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "loading", "cutscene", "play"]
+
+[drive]
+# unknown is the safe, common answer below the confidence floor: give a
+# route more time to resolve one before stall_fail_s/unknown_fail_s end it,
+# rather than inherit a hand-tuned title's tighter numbers.
+stall_fail_s = 40.0
+escape_max = 6
+ladder = ["A"]

@@ -1,49 +1,46 @@
-# xemu Android bootstrap
+# Building the Android app
 
-This directory mirrors Super3's Android setup (AGP, NDK, SDK levels) and wires
-up SDL2 for an Android-native entry point. It currently builds a minimal SDL2
-bootstrap (see `app/src/main/cpp/xemu_android.cpp`) that opens an ES context and
-runs an event loop. The xemu core is not yet wired.
+_Last updated 2026-10-13, for version 0.5.0._
 
-## Toolchain expectations
-- Android SDK 36
-- Build Tools 36.1.0
-- NDK r29+ (configured to 29.0.14206865 in Gradle)
+This folder is the Android app: a Gradle and CMake project that builds the
+xemu core as native libraries, wrapped in a Kotlin app with setup, settings
+and the game library. The [main README](../README.md) describes what the app
+does. This page covers building it.
+
+## Toolchain
+
+- Android SDK 36 and Build Tools 36.1.0
+- NDK 29.0.14206865
 - CMake 3.30.3
-- JDK 21 (**not** 25 — the build targets Java 21 and will not configure on 25)
-- **meson** — the native build compiles glib with it. Without meson the build
-  fails late inside CMake with `meson not found in PATH; required to build glib
-  for Android`, not at configure time.
-- **ninja on `PATH`** — meson needs it. One ships with the SDK at
-  `$ANDROID_SDK_ROOT/cmake/3.30.3/bin/ninja`, but Gradle passes it to CMake via
-  `-DCMAKE_MAKE_PROGRAM` only, so meson cannot see it. Add that directory to
-  `PATH` or the build fails with `Could not detect Ninja v1.8.2 or newer`.
+- JDK 21. JDK 25 does not work.
+- **meson.** The native build uses it to compile glib. Without it the build
+  fails late, with `meson not found in PATH; required to build glib for
+  Android`.
+- **ninja on your `PATH`.** meson needs it. The SDK ships one at
+  `$ANDROID_SDK_ROOT/cmake/3.30.3/bin/ninja`, but Gradle hands it only to
+  CMake. Without it on `PATH` the build fails with
+  `Could not detect Ninja v1.8.2 or newer`.
 
-Both of the last two are installed explicitly by `.github/workflows/android.yml`.
-A clean checkout does not build from the list above alone.
-- Rust toolchain (`cargo`) for ISO->XISO converter
-  - On Windows, this project uses `stable-x86_64-pc-windows-gnu` (to avoid MSVC `link.exe`)
-  - Install once:
-    - `rustup toolchain install stable-x86_64-pc-windows-gnu`
-    - `rustup target add aarch64-linux-android --toolchain stable-x86_64-pc-windows-gnu`
-
-If Rust is not available, configure CMake with `-DXEMU_ENABLE_XISO_CONVERTER=OFF`.
+The ISO-to-XISO converter builds from `android/third_party/extract-xiso` with
+the same toolchain. Leave it out with `-DXEMU_ENABLE_XISO_CONVERTER=OFF`.
 
 ## Build
-From this directory:
 
+From this folder:
+
+```bash
+./gradlew assembleDebug      # installs as "hakuX (test builds)"
+./gradlew assembleRelease    # installs as "hakuX (fork)"
 ```
-./gradlew assembleDebug
-```
+
+A release build has to be signed with the same key every time, or it cannot
+update an existing install. [RELEASING.md](RELEASING.md) explains signing.
 
 ## SDL2
-SDL2 is fetched via CMake (default `release-2.32.10`). To use a local checkout:
 
-```
+CMake fetches SDL2 (`release-2.32.10` by default). To build against your own
+checkout:
+
+```bash
 ./gradlew assembleDebug -Pandroid.experimental.cmake.arguments=-DSDL2_LOCAL_DIR=/path/to/SDL
 ```
-
-## Core integration note
-Mainline xemu moved to SDL3 on 2026-01-21. The last SDL2-based tag is `v0.8.133`.
-If you plan to wire the core into Android with SDL2, start from that tag or
-cherry-pick the SDL2-based frontend changes.

@@ -38,8 +38,13 @@ echo "== route_refs: the queued request carries the crop's exact bytes"
 RR_D="$T/routerefs"; rm -rf "$RR_D"
 rr_rq() {   # <request.sh path> <dispatch dir> -> request.sh's output on the fd
     mkdir -p "$2"/queue "$2"/running "$2"/results "$2"/expect
+    # --find-route: "RouteRefs Selftest.iso" matches no targets.toml iso entry
+    # and no 8-hex prefix, so the profile gate (lane.profilegate1011, #433)
+    # refuses it outright unless the run is finding a route -- this test is
+    # about crop transport, not profile state.
     env DISPATCH_DIR="$2" bash "$1" --who rr --purpose "routerefs selftest" \
-        --no-expect "selftest" --title "RouteRefs Selftest.iso" --seconds 600 --route "$RR_NAME" 2>&1
+        --no-expect "selftest" --title "RouteRefs Selftest.iso" --seconds 600 --route "$RR_NAME" \
+        --find-route "selftest: route_refs crop transport, not a profile check" 2>&1
 }
 out=$(rr_rq "$TESTING/request.sh" "$RR_D")
 if ls "$RR_D/queue/"*.req >/dev/null 2>&1; then

@@ -1294,6 +1294,10 @@ typedef struct PGRAPHVkState {
     VkSemaphore stall_chain_semaphore;
     bool stall_chain_pending;
     int current_frame;
+    /* Every change of current_frame. Draws recorded under one value share a
+     * command buffer and the same vertex RAM staging copy (frame dump
+     * schema 5). */
+    uint64_t frame_rotations;
 
     VkCommandBuffer command_buffer;
     VkFence command_buffer_fence;
@@ -1399,6 +1403,24 @@ typedef struct PGRAPHVkState {
 
     MemorySyncRequirement vertex_ram_buffer_syncs[NV2A_VERTEXSHADER_ATTRIBUTES];
     size_t num_vertex_ram_buffer_syncs;
+    /* #433 HAKUX_VTX_EXACT (vk/draw.c): the sync already downloaded what the
+     * draw reads, so the next pgraph_vk_update_vertex_ram_buffer skips its
+     * download over the rounded range. */
+    bool vtx_exact_downloaded;
+
+    /* #433 HAKUX_VTX_HAZARD (vk/vertex.c): the exact vertex RAM bytes the
+     * draws recorded under vtxhz_rot read ([addr, addr + size), unsorted),
+     * and the bytes the draw being set up reads. */
+    bool vtxhz_on;
+    MemorySyncRequirement *vtxhz_read;
+    size_t vtxhz_n, vtxhz_cap;
+    hwaddr vtxhz_lo, vtxhz_hi;
+    uint64_t vtxhz_rot;
+    MemorySyncRequirement vtxhz_cur[NV2A_VERTEXSHADER_ATTRIBUTES];
+    size_t vtxhz_cur_n;
+    uint64_t vtxhz_cur_rot;
+    uint64_t vtxhz_finishes;
+
     unsigned long *uploaded_bitmap;
     size_t bitmap_size;
 
@@ -1595,6 +1617,15 @@ typedef struct PGRAPHVkState {
     PGRAPHVkDisplayState display;
     PGRAPHVkComputeState compute;
 
+    /* HAKUX_S2T_CVT (surface.c): the decode pipeline and its scratch buffer,
+     * raw surface words then RGBA8 texels; created on first use */
+    struct {
+        VkPipeline pipeline;
+        VkBuffer buffer;
+        VmaAllocation allocation;
+        VkDeviceSize size;
+    } s2t_cvt;
+
 #if OPT_ASYNC_COMPILE
     struct {
         QemuThread thread;
@@ -1701,6 +1732,10 @@ static inline uint32_t pgraph_vk_reg_r(PGRAPHState *pg, unsigned int reg)
 
 // renderer.c
 void pgraph_vk_check_memory_budget(PGRAPHState *pg);
+void pgraph_vk_fdump_vertex_upload(PGRAPHVkState *r, hwaddr offset,
+                                   const uint8_t *old, const uint8_t *data,
+                                   size_t size, bool hazard_finished);
+void pgraph_vk_fdump_pre_draw(NV2AState *d);
 
 // debug.c
 #define RGBA_RED     (float[4]){1,0,0,1}
@@ -1773,6 +1808,7 @@ void pgraph_vk_bind_vertex_attributes(NV2AState *d, unsigned int min_element,
 void pgraph_vk_bind_vertex_attributes_inline(NV2AState *d);
 void pgraph_vk_update_vertex_ram_buffer(PGRAPHState *pg, hwaddr offset, void *data,
                                     VkDeviceSize size);
+void pgraph_vk_vtxhz_commit(PGRAPHVkState *r);
 VkDeviceSize pgraph_vk_update_index_buffer(PGRAPHState *pg, void *data,
                                            VkDeviceSize size);
 VkDeviceSize pgraph_vk_update_vertex_inline_buffer(PGRAPHState *pg, void **data,
@@ -1799,6 +1835,9 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
 void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                               bool zeta_write);
 SurfaceBinding *pgraph_vk_surface_get(NV2AState *d, hwaddr addr);
+bool pgraph_vk_s2t_cvt_on(void);
+void pgraph_vk_s2t_cvt_copy(PGRAPHState *pg, SurfaceBinding *surface,
+                            TextureBinding *texture);
 
 /*
  * "What guest format was this surface last rendered as" -- a colour format

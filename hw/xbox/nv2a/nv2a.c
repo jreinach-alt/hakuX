@@ -25,6 +25,7 @@
 #include "target/i386/cpu.h"
 #include "qemu/main-loop.h"
 #include "ui/xemu-settings.h"
+#include "ui/xemu-snapshots.h"
 
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -1541,19 +1542,153 @@ static int nv2a_pre_load(void *opaque)
 static int nv2a_post_load(void *opaque, int version_id)
 {
     NV2AState *d = opaque;
+    PGRAPHState *pg = &d->pgraph;
+
+    /*
+     * #433: the renderer's caches describe the state before the load, and
+     * it skips rebinding when a generation it last saw is unchanged
+     * (pgraph/vk/draw.c). Move every generation and mark every dirty map,
+     * so that the first draw after the load rebuilds from the loaded state.
+     */
+    pg->compressed_attrs = 0;
+    for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+        VertexAttribute *attr = &pg->vertex_attributes[i];
+        if (attr->format == NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_CMP) {
+            pg->compressed_attrs |= (1 << i);
+        }
+        /* The inline buffer is not saved: a save between BEGIN and END
+         * loses the vertices of that one batch. */
+        attr->inline_buffer_populated = false;
+    }
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        pg->texture_dirty[i] = true;
+    }
+    pg->texture_state_gen++;
+    pg->vertex_attr_gen++;
+    pg->shader_state_gen++;
+    pg->pipeline_state_gen++;
+    pg->any_reg_gen++;
+    pg->non_dynamic_reg_gen++;
+    pg->vsh_program_data_gen++;
+    pg->ring_gen++;
+    pg->program_data_dirty = true;
+    memset(pg->vsh_constants_dirty, 1, sizeof(pg->vsh_constants_dirty));
+    pg->vsh_constants_any_dirty = true;
+    memset(pg->ltctxa_dirty, 1, sizeof(pg->ltctxa_dirty));
+    pg->ltctxa_any_dirty = true;
+    memset(pg->ltctxb_dirty, 1, sizeof(pg->ltctxb_dirty));
+    pg->ltctxb_any_dirty = true;
+    memset(pg->ltc1_dirty, 1, sizeof(pg->ltc1_dirty));
+    pg->ltc1_any_dirty = true;
+    bitmap_fill(pg->regs_dirty, 0x2000 / sizeof(uint32_t));
+
     qatomic_set(&d->pgraph.flush_pending, true);
     nv2a_unlock_fifo(d);
+
+    /* The VBLANK period follows the loaded flat-panel registers. */
+    nv2a_vblank_recalc(d);
     return 0;
 }
 
-const VMStateDescription vmstate_nv2a_pgraph_vertex_attributes = {
+static bool nv2a_subsection_always(void *opaque)
+{
+    return true;
+}
+
+static const VMStateDescription vmstate_nv2a_pgraph_vertex_attribute = {
     .name = "nv2a/pgraph/vertex-attr",
-    .version_id = 1,
-    .minimum_version_id = 1,
-    .fields = (VMStateField[]) {
-        // FIXME
+    .version_id = 2,
+    .minimum_version_id = 2,
+    .fields = (const VMStateField[]) {
+        VMSTATE_BOOL(dma_select, VertexAttribute),
+        VMSTATE_UINT64(offset, VertexAttribute),
+        VMSTATE_UINT32(inline_array_offset, VertexAttribute),
+        VMSTATE_BUFFER_UNSAFE(inline_value, VertexAttribute, 0,
+                              sizeof_field(VertexAttribute, inline_value)),
+        VMSTATE_UINT32(format, VertexAttribute),
+        VMSTATE_UINT32(size, VertexAttribute),
+        VMSTATE_UINT32(count, VertexAttribute),
+        VMSTATE_UINT32(stride, VertexAttribute),
+        VMSTATE_BOOL(needs_conversion, VertexAttribute),
         VMSTATE_END_OF_LIST()
     }
+};
+
+/* A float or float array, stored as its bytes. */
+#define VMSTATE_NV2A_RAW(_field) \
+    VMSTATE_BUFFER_UNSAFE(_field, NV2AState, 0, sizeof_field(NV2AState, _field))
+
+/*
+ * #433: PGRAPH state that methods set outside the register file, which a
+ * load must restore for the scene to come back as it was: the vertex
+ * attribute arrays, the lighting unit's ring (#53) and the radial fog
+ * coordinate (#41), the fixed-function material, light and point
+ * parameters, the 2D objects, and the subchannel cache that goes with the
+ * restored CTX_SWITCH registers. Also the flat-panel timing the VBLANK period
+ * is derived from.
+ */
+static const VMStateDescription vmstate_nv2a_pgraph_state = {
+    .name = "nv2a/pgraph-state",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .needed = nv2a_subsection_always,
+    .fields = (const VMStateField[]) {
+        VMSTATE_STRUCT_ARRAY(pgraph.vertex_attributes, NV2AState,
+                             NV2A_VERTEXSHADER_ATTRIBUTES, 1,
+                             vmstate_nv2a_pgraph_vertex_attribute,
+                             VertexAttribute),
+        VMSTATE_NV2A_RAW(pgraph.ff_lit_ring),
+        VMSTATE_UINT32(pgraph.ring_pos, NV2AState),
+        VMSTATE_NV2A_RAW(pgraph.last_ff_radial_fog_coord),
+        VMSTATE_NV2A_RAW(pgraph.material_alpha),
+        VMSTATE_NV2A_RAW(pgraph.material_alpha_back),
+        VMSTATE_UINT32(pgraph.color_material_back, NV2AState),
+        VMSTATE_NV2A_RAW(pgraph.light_infinite_half_vector),
+        VMSTATE_NV2A_RAW(pgraph.light_infinite_direction),
+        VMSTATE_NV2A_RAW(pgraph.light_local_position),
+        VMSTATE_NV2A_RAW(pgraph.light_local_attenuation),
+        VMSTATE_NV2A_RAW(pgraph.specular_params),
+        VMSTATE_NV2A_RAW(pgraph.specular_params_back),
+        VMSTATE_NV2A_RAW(pgraph.point_params),
+        VMSTATE_BOOL_ARRAY(pgraph.texture_matrix_enable, NV2AState,
+                           NV2A_MAX_TEXTURES),
+        VMSTATE_UINT32(pgraph.line_width, NV2AState),
+        VMSTATE_UINT32_ARRAY(pgraph.stipple_pattern, NV2AState,
+                             NV097_SET_STIPPLE_PATTERN_COUNT),
+        VMSTATE_BOOL(pgraph.zpass_pixel_count_enable, NV2AState),
+        VMSTATE_UINT32(pgraph.draw_arrays_min_start, NV2AState),
+        VMSTATE_BOOL(pgraph.draw_arrays_prevent_connect, NV2AState),
+        VMSTATE_UINT32(pgraph.last_subchannel, NV2AState),
+        VMSTATE_UINT32(pgraph.cached_graphics_class, NV2AState),
+        VMSTATE_UINT64(pgraph.solid_line.object_instance, NV2AState),
+        VMSTATE_UINT64(pgraph.solid_line.context_surfaces, NV2AState),
+        VMSTATE_UINT32(pgraph.solid_line.operation, NV2AState),
+        VMSTATE_UINT32(pgraph.solid_line.color_format, NV2AState),
+        VMSTATE_UINT32(pgraph.solid_line.color_value, NV2AState),
+        VMSTATE_UINT32(pgraph.solid_line.start_x, NV2AState),
+        VMSTATE_UINT32(pgraph.solid_line.start_y, NV2AState),
+        VMSTATE_UINT32(pgraph.solid_line.end_x, NV2AState),
+        VMSTATE_UINT32(pgraph.solid_line.end_y, NV2AState),
+        VMSTATE_UINT64(pgraph.clip_rectangle.object_instance, NV2AState),
+        VMSTATE_UINT32(pgraph.clip_rectangle.x, NV2AState),
+        VMSTATE_UINT32(pgraph.clip_rectangle.y, NV2AState),
+        VMSTATE_UINT32(pgraph.clip_rectangle.width, NV2AState),
+        VMSTATE_UINT32(pgraph.clip_rectangle.height, NV2AState),
+        VMSTATE_BOOL(pgraph.clip_rectangle.size_written, NV2AState),
+        VMSTATE_UINT64(pgraph.beta.object_instance, NV2AState),
+        VMSTATE_UINT32(pgraph.beta.beta, NV2AState),
+        VMSTATE_UINT32(pramdac.general_control, NV2AState),
+        VMSTATE_UINT32(pramdac.fp_vdisplay_end, NV2AState),
+        VMSTATE_UINT32(pramdac.fp_vtotal, NV2AState),
+        VMSTATE_UINT32(pramdac.fp_htotal, NV2AState),
+        VMSTATE_UINT32(pramdac.fp_vcrtc, NV2AState),
+        VMSTATE_UINT32(pramdac.fp_vsync_end, NV2AState),
+        VMSTATE_UINT32(pramdac.fp_vvalid_end, NV2AState),
+        VMSTATE_UINT32(pramdac.fp_hdisplay_end, NV2AState),
+        VMSTATE_UINT32(pramdac.fp_hcrtc, NV2AState),
+        VMSTATE_UINT32(pramdac.fp_hvalid_end, NV2AState),
+        VMSTATE_END_OF_LIST()
+    },
 };
 
 /* A subsection rather than a field in the main list, so that a state saved
@@ -1562,6 +1697,7 @@ static const VMStateDescription vmstate_nv2a_pmc_enable = {
     .name = "nv2a/pmc-enable",
     .version_id = 1,
     .minimum_version_id = 1,
+    .needed = nv2a_subsection_always,
     .fields = (const VMStateField[]) {
         VMSTATE_UINT32(pmc.enable, NV2AState),
         VMSTATE_END_OF_LIST()
@@ -1652,7 +1788,7 @@ static const VMStateDescription vmstate_nv2a = {
         VMSTATE_BOOL_ARRAY(pgraph.ltctxb_dirty, NV2AState, NV2A_LTCTXB_COUNT),
         VMSTATE_UINT32_2DARRAY(pgraph.ltc1, NV2AState, NV2A_LTC1_COUNT, 4),
         VMSTATE_BOOL_ARRAY(pgraph.ltc1_dirty, NV2AState, NV2A_LTC1_COUNT),
-        VMSTATE_STRUCT_ARRAY(pgraph.vertex_attributes, NV2AState, NV2A_VERTEXSHADER_ATTRIBUTES, 1, vmstate_nv2a_pgraph_vertex_attributes, VertexAttribute),
+        /* The vertex attributes are in nv2a/pgraph-state. */
         VMSTATE_UINT32(pgraph.inline_array_length, NV2AState),
         VMSTATE_UINT32_SUB_ARRAY(pgraph.inline_array, NV2AState, 0, NV2A_MAX_BATCH_LENGTH_V2),
         VMSTATE_UINT32_SUB_ARRAY_V(pgraph.inline_array, NV2AState, NV2A_MAX_BATCH_LENGTH_V2, NV2A_MAX_BATCH_LENGTH - NV2A_MAX_BATCH_LENGTH_V2, 3),
@@ -1694,6 +1830,7 @@ static const VMStateDescription vmstate_nv2a = {
     },
     .subsections = (const VMStateDescription * const []) {
         &vmstate_nv2a_pmc_enable,
+        &vmstate_nv2a_pgraph_state,
         NULL
     },
 };
@@ -1739,6 +1876,70 @@ static void nv2a_register(void)
 }
 type_init(nv2a_register);
 
+/*
+ * #433: a fingerprint of the frame being scanned out, for the save-state test
+ * sequence (ui/xemu-snapshots.c): FNV-1a over 32 rows, from a third of the
+ * way down, of the framebuffer at PCRTC_START as RAM holds it. With
+ * `download` the renderer first writes its dirty surfaces back to RAM, as a
+ * save does, so the rows are what the GPU last drew. Main loop, BQL held;
+ * with `download`, the vCPUs stopped too (nv2a_lock_fifo retakes the BQL
+ * while it holds the FIFO lock).
+ */
+uint64_t nv2a_display_region_hash(bool download)
+{
+    NV2AState *d = g_nv2a;
+    uint64_t h = 0xcbf29ce484222325ULL;
+
+    if (!d) {
+        return 0;
+    }
+    if (download) {
+        nv2a_lock_fifo(d);
+        pgraph_pre_savevm_trigger(d);
+        nv2a_unlock_fifo(d);
+        bql_unlock();
+        pgraph_pre_savevm_wait(d);
+        bql_lock();
+    }
+
+    VGADisplayParams params;
+    int width = 0, height = 0;
+    nv2a_get_params(&d->vga, &params);
+    if (d->vga.get_resolution) {
+        d->vga.get_resolution(&d->vga, &width, &height);
+    }
+    int bytes_pp = (nv2a_get_bpp(&d->vga) + 7) / 8;
+    uint64_t pitch = params.line_offset;
+    uint64_t row_bytes = (uint64_t)width * bytes_pp;
+    uint64_t vram_size = memory_region_size(d->vram);
+    uint64_t base = d->pcrtc.start + (uint64_t)(height / 3) * pitch;
+    int rows = MIN(32, height);
+
+    if (row_bytes == 0 || row_bytes > pitch) {
+        return 0;
+    }
+    for (int y = 0; y < rows; y++) {
+        uint64_t off = base + (uint64_t)y * pitch;
+        if (off + row_bytes > vram_size) {
+            break;
+        }
+        const uint8_t *p = d->vram_ptr + off;
+        for (uint64_t i = 0; i < row_bytes; i++) {
+            h ^= p[i];
+            h *= 0x100000001b3ULL;
+        }
+    }
+    return h;
+}
+
+void nv2a_get_wait_flags(bool *flip, bool *nop, bool *context_switch)
+{
+    NV2AState *d = g_nv2a;
+    *flip = d && qatomic_read(&d->pgraph.waiting_for_flip);
+    *nop = d && qatomic_read(&d->pgraph.waiting_for_nop);
+    *context_switch = d && qatomic_read(&d->pgraph.waiting_for_context_switch);
+}
+
 void nv2a_init(PCIBus *bus, int devfn, MemoryRegion *ram)
 {
     PCIDevice *dev = pci_create_simple(bus, devfn, "nv2a");
@@ -1746,4 +1947,5 @@ void nv2a_init(PCIBus *bus, int devfn, MemoryRegion *ram)
     nv2a_init_memory(d, ram);
     nv2a_init_vga(d);
     qemu_add_vm_change_state_handler(nv2a_vm_state_change, d);
+    xemu_snapshots_test_init();
 }

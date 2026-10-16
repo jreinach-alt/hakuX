@@ -1,0 +1,55 @@
+{
+  "registered_utc": "2026-10-12T02:20:38Z",
+  "who": "lane.nfsaudio1011",
+  "issue": "433",
+  "kind": "amendment to nfsaudio1011-fix.json ('other_titles'): the no-harm check on two other Playable titles, env A/B on the same binary, hand-queued title soaks",
+  "amends": "docs/testing/predictions/nfsaudio1011-fix.json",
+  "registered_after": "NFS arms 1 OFF (1-1791771146-lane.nfsaudio1011-2189879) and 2 ON (1-1791771148-lane.nfsaudio1011-2189996) were judged; arms 3 and 4 were not. Nothing in this file was read off a run of these two titles at this ref.",
+  "device": "nova",
+  "seconds": 180,
+  "frames_every": 5,
+  "audio_capture": "40",
+  "pull_glob": "apu_monitor.s16le48k2ch.pcm*",
+  "ref": "9c054c1714",
+  "ref_note": "The scratch commit of nfsaudio1011-fix.json (lane head 39760cebf5 plus docs/lanes/nfsaudio1011/apu.c.patch), already built for the NFS arms.",
+  "titles": [
+    {
+      "iso": "56550015-The_Simpsons_Hit_Run.xiso.iso",
+      "why": "Speech. With no input the game plays its logos and then the intro cinematic, which has character dialogue; first loud audio at 4.56 s in three of today's six Nova runs (8.9 s in the other three) by the hakuX-audio level lines (1-1791743591-nfsdefault1011-430174, 1-1791744548-nfsdefault1011-620739, 1-1791745785-nfsdefault1011-877404). Speech is the class the owner hears the NFS stutter in, and the reason Android skips throttle()'s pacing in the first place was speech sounding dragged out, so this is where the fix's known risk would be heard. A different studio's engine (Radical) from NFS's (EA). Playable on the Nova since 2026-10-04 (pm/playable-accepted.tsv)."
+    },
+    {
+      "iso": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+      "why": "Music. First loud audio at 6.2 s and 8.1 s in today's two Nova runs (1-1791749176-nfsdefault1011-1478599, 1-1791749177-nfsdefault1011-1479231); its route waits 75 s through the intro before any input, so a 180 s soak with no input stays in the intro and title. A third engine (FASA, Microsoft first-party), and a game that paces itself to 30 fps (its route's note) where NFS runs at 59. Playable since 2026-09-30 (pm/playable-accepted.tsv)."
+    }
+  ],
+  "titles_note": "Both titles were loaded on the Nova today (the runs named above). A lane cannot list the device; if a run fails 'not on device' it is void and the next candidate is 187: Ride or Die (55530036, music from 4.25 s) for Crimson Skies or Ratatouille (54510109, from 4.22 s) for Simpsons, registered here before it is queued.",
+  "arms": [
+    {"order": 1, "title": "56550015-The_Simpsons_Hit_Run.xiso.iso", "label": "OFF", "env": ["HAKUX_APU_PACE=0"]},
+    {"order": 2, "title": "56550015-The_Simpsons_Hit_Run.xiso.iso", "label": "ON", "env": ["HAKUX_APU_PACE=1"]},
+    {"order": 3, "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso", "label": "ON", "env": ["HAKUX_APU_PACE=1"]},
+    {"order": 4, "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso", "label": "OFF", "env": ["HAKUX_APU_PACE=0"]}
+  ],
+  "arms_note": "OFF and ON once each per title (the brief), interleaved OFF ON ON OFF across the pair so the last request leaves the shipped value (0) in the device's env_vars pref.",
+  "queue_order": "HAKUX_RELEASE_PRIO=1 request.sh --who lane.nfsaudio1011 --title <iso> --seconds 180 --device nova --ref 9c054c1714 --env HAKUX_APU_PACE=<0|1> --audio-capture 40 --pull 'apu_monitor.s16le48k2ch.pcm*' --frames-every 5 --issue 433 --no-expect <this file, judged by fixjudge.py --other>",
+  "judge": "per title: python3 docs/lanes/nfsaudio1011/tools/fixjudge.py --other --ref <that title's OFF result dir> OFF:<off id> ON:<on id>",
+  "prediction": "HAKUX_APU_PACE=1 does no harm to either title. The pacing changes when the VP reads guest buffers (256 samples per 5.33 ms instead of 2048-4096 back to back after a drain), not what it mixes, so a title whose writer stays ahead of a burst gains nothing and loses nothing; a title with NFS's kind of writer (a fixed lead under a burst) would lose replays, which reads as a decrease and passes. Claim S (P 0.85): ON's lag-2400 share and any-lag share (bit-exact 32-frame windows repeating at 32..24000 frames, which sees a ring of any size) are each no more than 1.0 point above OFF's. Claim T (P 0.75): ON's content slope against the same title's OFF capture over 0-25 s is 1.00 +/- 0.02; if the 0-25 s fit has under 10 inliers, the 12-95 s fit is read instead and the swap is said. Claim L (P 0.7): |ON - OFF| level < 0.5 dB; one run each, so a boot that lands differently in an attract sequence can move it with no fault in the APU; a FAIL is checked against the slope fit's coverage before it is called harm. Claim F (P 0.85): ON gfps median >= OFF - 1.0. Claim Z (P 0.8): ON's worst starvation past the first 30 s window is no higher than OFF's. Reported, not judged: OFF's own any-lag share and top lags (whether either title replays like NFS does in shipped behaviour).",
+  "legs": {
+    "V (switch reached the app, else VOID)": "logcat 'apu_pace: on' in the ON run and 'apu_pace: off' in the OFF run; request.json env matches.",
+    "S (no increase)": "fixjudge.py --other 'S': ON - OFF <= 1.0 point on lag-2400 and on any-lag.",
+    "T (content slope)": "fixjudge.py 'slope 0-25 s' of the ON run with --ref the OFF run: 1.00 +/- 0.02.",
+    "L (level)": "fixjudge.py 'L': |ON - OFF| < 0.5 dB.",
+    "F (frame rate)": "fixjudge.py 'F': ON >= OFF - 1.0 gfps.",
+    "Z (starvation)": "fixjudge.py --other 'Z': ON worst past the first window <= OFF's."
+  },
+  "expect": {
+    "S_max_increase_points": 1.0,
+    "T_slope_tolerance": 0.02,
+    "L_max_abs_db": 0.5,
+    "F_max_gfps_drop": 1.0,
+    "Z_on_not_above_off": true
+  },
+  "expect_note": "EMPTY of captures ON PURPOSE: a soak writes none. Legs are read off the pulled PCM and the logcat.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}

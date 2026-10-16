@@ -1,0 +1,78 @@
+{
+ "title_id": "55530040",
+ "name": "Tork: Prehistoric Punk",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/Tork - Prehistoric Punk (USA).iso",
+ "result": "gameplay",
+ "tool": "44446b2642",
+ "started": "2026-10-05 07:30:12 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/035-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/035-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/035-probe-c.jpg"
+ ],
+ "minutes": 4.11,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/034-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/036-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/037-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/038-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/039-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/040-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/041-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/042-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/043-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5553.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "title hold (TITLE_HOLD): left-stick walk",
+  "ok": false,
+  "play_s": 218.6,
+  "need_s": 600.0,
+  "hold_s": 1208.7,
+  "model_navs": 0,
+  "frames": 25,
+  "still_windows": 21,
+  "shed": [],
+  "reason": "budget 25 min with 219 s of play",
+  "title_hold": true,
+  "fps_checks": [
+   {
+    "n": 101,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 201.0,
+    "floor": 22.0,
+    "stop": false
+   },
+   {
+    "n": 163,
+    "median": 29.0,
+    "share": 1.0,
+    "at_s": 323.9,
+    "floor": 27.0,
+    "stop": false
+   }
+  ],
+  "verdict": "VERDICT Tork: Prehistoric Punk ? FAIL(menu time: 18.1% of the scored window in `play` (bar 90%; still 990 s, play 219 s, no-timeline 0 s)) gameplay=1209.2s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.4441 play_share=0.181 fps_excluded=991.3s"
+ },
+ "model_calls": 25,
+ "calls_by_model": {
+  "claude-sonnet-5": 25
+ },
+ "steps": 35,
+ "seconds": 1496.3,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/frames/096-hold.jpg",
+ "last_state": "probe",
+ "replayed": 11,
+ "sib_replayed": 0,
+ "guide": [
+  "55530040"
+ ],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/tork-rerun4/strip.jpg"
+}

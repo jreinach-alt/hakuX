@@ -82,7 +82,7 @@ SHARD_SECS="
     79-stop-hook-hold:1 80-labels:0 83-blank-rule:9 85-fold-ci:41
     86-fold-regressed:68 86-nightly-notes:7 87-fold-stale-ci:52
     87-nightly-trunk:4 88-sweep-cover:5 88-window-budget:20
-    89-title-verdict:49 90-fold-index:22 90-fold-notes:0 91-fold-transient:37
+    89-sign-rotation:18 89-title-verdict:49 90-fold-index:22 90-fold-notes:0 91-fold-transient:37
     93-backlog-state:4 94-arms-disc-narrow:186 94-arms-idle-tier:250
     94-arms-label-state:164 94-arms-verdict-scope:18 94-arms-withdrawn:21
     95-affinity:6 96-fleet-registry:3 97-board-gate:5 97-board-priority:3

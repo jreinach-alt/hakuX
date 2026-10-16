@@ -1,0 +1,13 @@
+45410012	Buffy	buffy	admit=False	state=first-run	golden=c6b6ec3cb8be	buffy.route is first-run, and 45410012 already has a kept profile (c6b6ec3cb8be); play a returning or any route on it, or pass --remake-profile "<why>" if that profile is lost or rejected
+45410012	Buffy	survey	admit=True	state=any	golden=c6b6ec3cb8be	
+45410012	Buffy	None	admit=True	state=None	golden=c6b6ec3cb8be	
+4D53002D	DOA3	doa3	admit=False	state=first-run	golden=220536a66fe2	doa3.route is first-run, and 4D53002D already has a kept profile (220536a66fe2); play a returning or any route on it, or pass --remake-profile "<why>" if that profile is lost or rejected
+4D53002D	DOA3	survey	admit=True	state=any	golden=220536a66fe2	
+4D53002D	DOA3	None	admit=True	state=None	golden=220536a66fe2	
+5443000D	NG Black	../../../lanes/belowbar1005/routes/bb-ngb	admit=False	state=first-run	golden=ab037a065b15	bb-ngb.route is first-run, and 5443000D already has a kept profile (ab037a065b15); play a returning or any route on it, or pass --remake-profile "<why>" if that profile is lost or rejected
+5443000D	NG Black	survey	admit=True	state=any	golden=ab037a065b15	
+5443000D	NG Black	None	admit=True	state=None	golden=ab037a065b15	
+route on disk: buffy.route ['# state: first-run   (recorded on a disk with no save for the title (notes.md e); lane.savestate433)']
+route on disk: doa3.route ['# state: first-run   (recorded on a disk with no save for the title (notes.md e); lane.savestate433)']
+route on disk: doax.route ['# state: first-run   (recorded on a disk with no save for the title (notes.md e); lane.savestate433)']
+route on disk: gen-doa1-ultimate.route ['# state: any   (classifier-path benchmark opening; #433 step 6c)']

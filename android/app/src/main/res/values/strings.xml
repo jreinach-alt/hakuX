@@ -16,6 +16,7 @@
   <string name="setup_flash_body">Choose the flash ROM / BIOS image.</string>
   <string name="setup_pick_flash">Choose Flash ROM</string>
   <string name="setup_flash_value">Flash ROM: %1$s</string>
+  <string name="setup_flash_invalid_size">%1$s is %2$s, which is not a valid BIOS size. An Xbox flash ROM is 256 KB, 512 KB or 1 MB; this looks like a different file (an eeprom.bin is only 256 bytes).</string>
 
   <string name="setup_hdd_title">Hard Disk</string>
   <string name="setup_hdd_body">Choose your Xbox hard disk image.</string>
@@ -26,6 +27,10 @@
   <string name="setup_disc_body">Pick your games folder using SAF. hakuX will scan it for playable images.</string>
   <string name="setup_pick_disc">Choose Games Folder</string>
   <string name="setup_disc_value">Games Folder: %1$s</string>
+
+  <string name="setup_boxart_title">Box Art</string>
+  <string name="setup_boxart_body">Look up cover art for your games online? Off by default. Turning it on sends a request to raw.githubusercontent.com for each game, naming the game by its cover file — GitHub sees your device\'s address and which titles you look up.</string>
+  <string name="setup_boxart_note">You can change this later in the library.</string>
 
   <string name="library_title">Game Library</string>
   <string name="library_boot_dashboard">Boot Dashboard</string>
@@ -39,6 +44,10 @@
   <string name="library_view_cover_grid">Cover Grid</string>
   <string name="library_search_hint">Search games</string>
   <string name="library_box_art_lookup">Look up box art online</string>
+  <string name="library_box_art_upgrade_title">Box art lookup</string>
+  <string name="library_box_art_upgrade_message">hakuX now asks about box art lookup during setup, and it starts off for anyone new. Your install already had it on — keep looking it up online? Each lookup sends a request to raw.githubusercontent.com naming the game. You can change this later with the switch above.</string>
+  <string name="library_box_art_upgrade_keep_on">Keep it on</string>
+  <string name="library_box_art_upgrade_turn_off">Turn it off</string>
   <string name="library_folder_value">Folder: %1$s</string>
   <string name="library_no_folder">No folder selected</string>
   <string name="library_loading_games">Scanning games...</string>
@@ -84,11 +93,11 @@
   <string name="library_about_link_fork">Forked From (xemu)</string>
   <string name="library_about_link_license">License (LICENSE)</string>
   <string name="library_about_link_disclaimer">License Disclaimer (COPYING)</string>
-  <string name="library_about_url_source" translatable="false">https://github.com/izzy2lost/xemu</string>
-  <string name="library_about_url_privacy" translatable="false">https://www.izzy2lost.com/x1box-privacy</string>
+  <string name="library_about_url_source" translatable="false">https://github.com/jreinach-alt/hakuX</string>
+  <string name="library_about_url_privacy" translatable="false">https://github.com/jreinach-alt/hakuX/blob/master/PRIVACY.md</string>
   <string name="library_about_url_fork" translatable="false">https://github.com/xemu-project/xemu</string>
-  <string name="library_about_url_license" translatable="false">https://github.com/izzy2lost/xemu/blob/master/LICENSE</string>
-  <string name="library_about_url_disclaimer" translatable="false">https://github.com/izzy2lost/xemu/blob/master/COPYING</string>
+  <string name="library_about_url_license" translatable="false">https://github.com/jreinach-alt/hakuX/blob/master/LICENSE</string>
+  <string name="library_about_url_disclaimer" translatable="false">https://github.com/jreinach-alt/hakuX/blob/master/COPYING</string>
 
   <string name="settings_title">Settings</string>
   <string name="settings_back">Back</string>
@@ -205,7 +214,7 @@
   <string name="settings_surfgpu">GPU surface reuse</string>
   <string name="settings_surfgpu_desc">Reuse GPU surfaces across frames instead of recreating them each time, for faster rendering. Turn off only if a game shows stale or flickering images with it on.</string>
   <string name="settings_fastpaths">Fast renderer paths</string>
-  <string name="settings_fastpaths_desc">Use faster code paths for report queries, texture scans, draw recording and shader uniform updates. No change in what is drawn. Turn off only if a game shows problems with it on.</string>
+  <string name="settings_fastpaths_desc">Use faster code paths for report queries, texture scans, draw recording, shader uniform updates, and the hand-off of GPU commands from the emulated CPU. No change in what is drawn. Turn off only if a game shows problems with it on.</string>
 
   <string name="settings_frame_skip">Frame skip</string>
   <string name="settings_frame_skip_desc">Skip rendering when running behind to maintain game speed. May cause visible stuttering.</string>
@@ -419,4 +428,23 @@
   <string name="library_per_game_settings_option">Game Settings</string>
   <string name="per_game_settings_revert">Revert to Global Settings</string>
   <string name="library_game_context_title">%1$s</string>
+
+  <!-- Save states (#433) -->
+  <string name="settings_savestate_title">Save States</string>
+  <string name="settings_index_savestates_desc">Compression, auto-load last state and auto-save on quit for this game.</string>
+  <string name="settings_savestate_desc">Ten slots per game (0 to 9) and an auto slot, saved and loaded from the pause menu. They are files on this device, outside the Xbox hard disk image.</string>
+  <string name="settings_savestate_folder">Folder</string>
+  <string name="settings_savestate_folder_default_note">The default folder is deleted when the app is uninstalled.</string>
+  <string name="settings_savestate_folder_picked_note">A folder you picked stays when the app is uninstalled.</string>
+  <string name="settings_savestate_pick_folder">Choose Folder</string>
+  <string name="settings_savestate_reset_folder">Reset to Default</string>
+  <string name="settings_savestate_folder_reset_done">Save states go to the default folder from the next game.</string>
+  <string name="settings_savestate_folder_set">Save states go to this folder from the next game.</string>
+  <string name="settings_savestate_compression">Save state compression</string>
+  <string name="settings_savestate_compression_desc">On: each state takes about a quarter of the space (about 10 MB instead of 42 MB), the game pauses about 10 ms longer to save, and the file is safely written sooner. Off: states are stored as they are.</string>
+  <string name="settings_savestate_auto_load">Auto-load last state</string>
+  <string name="settings_savestate_auto_load_desc">When a game starts, load its newest state from the auto slot or slots 0 to 9.</string>
+  <string name="settings_savestate_auto_save">Auto-save on quit</string>
+  <string name="settings_savestate_auto_save_desc">Save the auto slot when you exit a game. It also tries when the game leaves the screen, but swiping the app away from recent apps may close it before the save finishes.</string>
+  <string name="settings_savestate_rewind_note">Loading a state also returns the Xbox hard disk to that moment: game saves made after the state was saved are rolled back.</string>
 </resources>

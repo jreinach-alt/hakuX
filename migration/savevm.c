@@ -3505,6 +3505,149 @@ bool delete_snapshot(const char *name, bool has_devices,
     return true;
 }
 
+#ifdef XBOX
+/*
+ * #433: what the device state in a snapshot is made of. Every registered
+ * section contributes its name, instance and version, and a VMState section
+ * the name, size, count, flags, version and type of each field and of each
+ * nested description and subsection; RAM blocks contribute their name and
+ * size. Field offsets are left out, so moving a field within its struct does
+ * not change the result, and sections are sorted, because the loader finds
+ * them by name and a controller bound in a different order writes the same
+ * stream.
+ */
+/*
+ * The test sequence's mutant: the section named here (by its ID string or
+ * its VMState name) is fingerprinted as if
+ * its first field were one byte larger, which is what a build that changed
+ * that field would report. NULL in normal use.
+ */
+static char *schema_mutant_section;
+static char *schema_mutant_field;
+
+void xemu_savevm_schema_test_mutate(const char *section)
+{
+    g_free(schema_mutant_section);
+    schema_mutant_section = g_strdup(section);
+    g_free(schema_mutant_field);
+    schema_mutant_field = NULL;
+}
+
+const char *xemu_savevm_schema_test_mutated_field(void)
+{
+    return schema_mutant_field;
+}
+
+static void schema_add_vmsd(GString *s, const VMStateDescription *vmsd,
+                            int depth, bool mutate)
+{
+    if (!vmsd || depth > 16) {
+        return;
+    }
+    g_string_append_printf(s, "{%s v%d/%d", vmsd->name, vmsd->version_id,
+                           vmsd->minimum_version_id);
+    for (const VMStateField *f = vmsd->fields; f && f->name; f++) {
+        size_t size = f->size;
+        if (mutate) {
+            size++;
+            mutate = false;
+            if (!schema_mutant_field) {
+                schema_mutant_field = g_strdup_printf("%s.%s", vmsd->name,
+                                                      f->name);
+            }
+        }
+        g_string_append_printf(s, " %s:%zu*%d:%x:v%d:%s", f->name, size,
+                               f->num, (unsigned)f->flags, f->version_id,
+                               f->info ? f->info->name : "-");
+        schema_add_vmsd(s, f->vmsd, depth + 1, false);
+    }
+    for (const VMStateDescription * const *sub = vmsd->subsections;
+         sub && *sub; sub++) {
+        schema_add_vmsd(s, *sub, depth + 1, false);
+    }
+    g_string_append_c(s, '}');
+}
+
+static int schema_add_ram_block(RAMBlock *rb, void *opaque)
+{
+    GPtrArray *items = opaque;
+    g_ptr_array_add(items, g_strdup_printf("ram:%s:%" PRIu64,
+                                           qemu_ram_get_idstr(rb),
+                                           (uint64_t)qemu_ram_get_used_length(rb)));
+    return 0;
+}
+
+static gint schema_cmp(gconstpointer a, gconstpointer b)
+{
+    return strcmp(*(const char * const *)a, *(const char * const *)b);
+}
+
+char *xemu_savevm_schema_fingerprint(void)
+{
+    GPtrArray *items = g_ptr_array_new_with_free_func(g_free);
+    SaveStateEntry *se;
+
+    QTAILQ_FOREACH(se, &savevm_state.handlers, entry) {
+        GString *s = g_string_new(NULL);
+        g_string_append_printf(s, "%s/%u v%d ram%d ", se->idstr,
+                               se->instance_id, se->version_id, se->is_ram);
+        schema_add_vmsd(s, se->vmsd, 0,
+                        schema_mutant_section &&
+                            (!strcmp(se->idstr, schema_mutant_section) ||
+                             (se->vmsd && !strcmp(se->vmsd->name,
+                                                  schema_mutant_section))));
+        g_ptr_array_add(items, g_string_free(s, false));
+    }
+    foreach_not_ignored_block(schema_add_ram_block, items);
+    g_ptr_array_sort(items, schema_cmp);
+
+    GChecksum *ck = g_checksum_new(G_CHECKSUM_SHA256);
+    for (guint i = 0; i < items->len; i++) {
+        const char *item = g_ptr_array_index(items, i);
+        g_checksum_update(ck, (const guchar *)item, strlen(item) + 1);
+    }
+    char *digest = g_strdup(g_checksum_get_string(ck));
+    g_checksum_free(ck);
+    g_ptr_array_free(items, true);
+    return digest;
+}
+
+/*
+ * #433 save states as files. The caller has stopped the machine and drained
+ * the block layer; these write and read the same stream save_snapshot and
+ * load_snapshot do, to and from any QEMUFile instead of the qcow2 vmstate
+ * area.
+ */
+bool xemu_savevm_can_save(Error **errp)
+{
+    return migrate_can_snapshot(errp) && !migration_is_blocked(errp) &&
+           bdrv_all_can_snapshot(false, NULL, errp);
+}
+
+int xemu_savevm_write(QEMUFile *f, Error **errp)
+{
+    return qemu_savevm_state(f, errp);
+}
+
+/* Resets the machine and loads f. The caller closes f. */
+int xemu_loadvm_read(QEMUFile *f, Error **errp)
+{
+    MigrationIncomingState *mis = migration_incoming_get_current();
+    int ret;
+
+    qemu_system_reset(SHUTDOWN_CAUSE_SNAPSHOT_LOAD);
+    mis->from_src_file = f;
+    if (!yank_register_instance(MIGRATION_YANK_INSTANCE, errp)) {
+        mis->from_src_file = NULL;
+        return -EINVAL;
+    }
+    ret = qemu_loadvm_state(f, errp);
+    mis->from_src_file = NULL;
+    migration_incoming_state_destroy();
+    return ret;
+}
+#endif
+
 void vmstate_register_ram(MemoryRegion *mr, DeviceState *dev)
 {
     qemu_ram_set_idstr(mr->ram_block,

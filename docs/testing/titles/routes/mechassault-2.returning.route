@@ -1,0 +1,29 @@
+# state: returning   (classifier-path reopen using the kept golden profile; #433 step 6d)
+# MechAssault 2: Lone Wolf (4D53006B): a `returning` variant of
+# mechassault-2.route (first-run) for a disk that already has the kept
+# profile/save. The profile gate refuses a repeat first-run creation (R1:
+# the title already has a kept profile); this route opens with `drive
+# generic` instead of the first-run's blind boot-to-mission-select sequence,
+# replaying the menus with the trained classifier until play is confirmed,
+# then marks. Player control is unchanged from the first-run route: fires
+# (RT), sweeps the aim (RX) and walks (LY).
+drive generic 300 mark
+repeat forever {
+    axis RT max
+    wait 0.3
+    axis RT min
+    wait 0.5
+    axis RX max
+    wait 0.3
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    wait 0.5
+    axis RX min
+    wait 0.3
+    axis RX mid
+    axis LY min
+    wait 1
+    axis LY mid
+}

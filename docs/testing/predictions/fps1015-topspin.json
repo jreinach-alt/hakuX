@@ -1,0 +1,43 @@
+{
+  "registered_utc": "2026-10-16T17:01:42Z",
+  "who": "lane.fps1015",
+  "issue": "992",
+  "title": "4D530035-Top_Spin.xiso.iso",
+  "device": "nova",
+  "seconds": 450,
+  "route": "fps1015-topspin",
+  "route_path": "docs/lanes/fps1015/routes/fps1015-topspin.route",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "f5a67ba52c",
+  "b_ref": "f5a67ba52c",
+  "a_env": [],
+  "b_env": [
+    "HAKUX_S2T_CVT=1"
+  ],
+  "queue_order": "Queued by the lane (an env A/B; arms.sh skips a_ref == b_ref): four requests of one run each. The pilot pair first, on then off; the second pair, on then off, once both pilot runs pass the V leg. Each: env TITLE_ROUTES=<worktree>/docs/lanes/fps1015/routes bash docs/testing/request.sh --who fps1015 --title <title> --route fps1015-topspin --seconds 450 --perflog --device nova --ref f5a67ba52c --issue 992 [--env HAKUX_S2T_CVT=1] --expect this file. The route travels in the request (route text), and the profile gate admits it as `any` on the golden 23b5be4cf466 (promoted by lane.fps1015 2026-10-16T16:54:42Z, Top Spin's first). Off last, so the device is left in the shipped state. Re-registered before any run (first 16:56:44Z at 540 s, both requests withdrawn unrun): the soak is the window the judge reads, the route to the fly-over and ~85 s of match play after mark gameplay (~51 windows at 36 fps against V's 30), per the owner's direction of 2026-10-16 09:57 PDT. The legs are unchanged.",
+  "judge": "python3 docs/lanes/fps1015/tsread.py <on1> <off1> [<on2> <off2>]",
+  "baseline": "Off, from runs that already exist, read on tsread.py's spans with the same pairing (their build predates the s2tc counter): lane.async794's two controls on route async794-topspin, 1791135713-lane.async794-3678571 (master 5e4196fefd) and 1791135717-lane.async794-3678947 (c825e4b24f), 990 s, perflog, first-run disk. Play (mark gameplay to end, 382 and 372 windows): median G 27.3 / 27.7 ms, gfps 36.0 / 35.5, sd 25.3 / 24.3 a frame, phase Fin 12.2 / 12.6 ms, GPU 10.3 / 10.3 ms, X 4.5 / 4.3 ms. Fly-over (shot s20 to s23, 15 windows each): median G 46.8 / 44.8 ms, gfps 20 / 21, sd 48.3 / 47.2 a frame, Fin 23.6 / 23.3 ms, GPU 15.9 / 16.1 ms, X 8.2 / 8.3 ms. Fits over 1791135713 (dlrate.py): G = 0.477 ms x sd/frame + 16.8 (r 0.77), Fin 0.478 (r 0.96).",
+  "prediction": "#992 HAKUX_S2T_CVT=1 in Top Spin, on route fps1015-topspin (async794's fixed route, state any on the golden 23b5be4cf466). Every frame of a live exhibition match downloads 24-25 64x128 swizzled R5G6B5 render targets that #59's guard refuses (cvt), and the stadium fly-over behind the PRESS START banner 47-48: each a SURFACE_DOWN finish and a fence wait on the PFIFO thread (phase Fin 12.2-12.6 ms of a 27.3-27.7 ms play frame; 23.3-23.6 of 44.8-46.8 in the fly-over). With the switch they are decoded on the GPU inline, with no finish. Predicted, on runs against off runs: R, play median sd 1 a frame or less and cvt 0 (off 15 or more); P, play median G down 4-13 ms, point -8 (27.5 to ~19.5 ms: the PFIFO thread's frame without its finishes, floored at 16.7 by the vblank, plus whatever GPU time 25 decodes a frame add); F, play median gfps up 6 or more, point +14 (36 to ~50); I, fly-over (shot s20 to s23) median G down 10 ms or more, point -20 (46 to ~26). A run failing V (too few fly-over or play windows, the arm's signature missing, an on run without [s2tcvt] on, or an off run with either [s2tcvt] line) is void, not a refutation: the route's menu steps were recorded on a disk with no Top Spin save and now meet the data-only golden. R passing with P, F or I failing refutes \"the downloads set Top Spin's frame\": the on runs' GPU and X columns say whether the decodes' own GPU time took their place.",
+  "expect": {
+    "V_min_intro_windows": 10,
+    "V_min_play_windows": 30,
+    "V_sig_fraction": 0.667,
+    "V_sig_cvt_per_window": 600,
+    "R_on_sd_max": 1.0,
+    "R_on_cvt_median": 0,
+    "R_off_sd_min": 15.0,
+    "P_dG_min": -13.0,
+    "P_dG_max": -4.0,
+    "P_dG_point": -8.0,
+    "F_dgfps_min": 6.0,
+    "F_dgfps_point": 14.0,
+    "I_dG_max": -10.0,
+    "I_dG_point": -20.0
+  },
+  "expect_note": "Named rules computed by docs/lanes/fps1015/tsread.py (legs V, R, P, F, I) over pooled windows per arm; a soak writes no captures. V does not require an on run's [s2tcvt] first: MKSM's on2 (1792168743-fps1015-1960988) lost that line from its logcat while its counters carried the decode in every window; the signature (cvt 0, s2tc >= 600 a window) is the proof the path ran.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}

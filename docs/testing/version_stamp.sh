@@ -12,9 +12,9 @@
 #     VARIANT  "perflog" for a `-Pperflog=true` diagnostic build, or empty.
 #
 # Prints <base>-<MMDD>-<shortsha>[-<variant>][-dirty] on stdout, e.g.
-#   0.4.1-1002-59a4b42
-#   0.4.1-1002-59a4b42-perflog
-#   0.4.1-1002-59a4b42-dirty
+#   0.5.0-1012-59a4b42
+#   0.5.0-1012-59a4b42-perflog
+#   0.5.0-1012-59a4b42-dirty
 #
 # MMDD and the sha are both read from the commit at HEAD, not from the day
 # the build happens to run: the point of the stamp is "which commit is this",
@@ -24,7 +24,7 @@
 # will publish (tracked modifications only; an untracked file is not "dirty").
 set -u
 
-BASE_VERSION="0.4.1"
+BASE_VERSION="0.5.0"
 
 TREE="${1:-.}"
 VARIANT="${2:-}"

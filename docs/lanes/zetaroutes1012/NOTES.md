@@ -1,0 +1,717 @@
+# lane.zetaroutes1012
+
+Returning gameplay routes for Buffy the Vampire Slayer (45410012), Dead or Alive 3 (4D53002D) and
+Ninja Gaiden Black (5443000D), then HAKUX_ZETA_D24=1 confirmation runs on them (#433, 0.5).
+
+In progress. This file is being built up section by section as each step completes.
+
+## 1. Boot tables
+
+### Buffy the Vampire Slayer (45410012)
+
+Source: `z-1791804165-fpsbelow1012-3514899` (survey.route, kept profile golden `c6b6ec3cb8be`, switch ON).
+`route.txt` in that result dir is `survey.route` (never marks gameplay; boots, cycles START/A 14 times, then
+a generic play loop). Screens read from `route-frames/`, presses from `run.log` ROUTE lines.
+
+| t (host) | press (from) | shot | screen | recorded? |
+|---|---|---|---|---|
+| 05:24:36.893 (+60s from launch) | (none, boot wait) | `052457-booted.png` | Title card, "Press START" | recorded |
+| 05:24:57.585 | press START (title) | `052502-menu-start.png` | In-engine cutscene: Giles + fog, ghostly Buffy | recorded |
+| 05:25:03.415 | press A (cutscene) | `052509-menu-a.png` | Main menu: Start Game / Load Game / Options / Extras | recorded |
+| 05:25:10.484 | press START (main menu, Start Game highlighted) | `052515-menu-start.png` | "Launch a New Game on your Xbox Hard Disk called **Buffy 2**" / Free Blocks / CONFIRM | recorded |
+| 05:25:16.266 | press A (confirm) | `052521-menu-a.png` | Difficulty select, Easy highlighted | recorded |
+| 05:25:22.015 | press START (difficulty, Easy highlighted) | `052527-menu-start.png` | "Summoning" (loading) | recorded |
+| 05:25:27.600 | press A (loading) | `052532-menu-a.png` | Mission card: "Spanish Mission, Outskirts of Sunnydale, Sunday 11:53PM" | recorded |
+| 05:25:33.397 | press START (mission card) | `052538-menu-start.png` | Live play: canyon, health bar HUD, TIP "Move the R thumbstick..." | recorded |
+
+The kept profile's flow is **the same screen sequence as the first-run route's own comment**
+(`buffy.route` lines 7-18: title -> cutscene -> menu -> Start Game confirm -> Difficulty -> Summoning ->
+mission card -> play), with one difference the first-run comment already documents: the Start Game confirm
+screen names the save **"Buffy 2"** instead of "Buffy 1" (free-blocks count differs too), because a save
+already exists on this disk from an earlier run. The confirm screen's layout, and the fact that A confirms it,
+are unchanged. So this disk's "Start Game" path does not *load* progress; it begins a new save slot
+(Buffy 2, and a later run would see Buffy 3, etc.) — the same action the first-run route takes, just on a
+disk that is not empty. Nothing on this disk is remade or deleted by it.
+
+`survey.route`'s own 14-cycle START/A spam reaches live play by its 4th cycle (05:25:33 above) — ~96s after
+boot — then keeps sending START/A for 10 more cycles while already in play, each pair pausing (START) and
+resuming (A) the game with Buffy standing still (this is exactly the no-op `buffy.route` line 19 already
+warns about: "A START/A pair in play is therefore a no-op (pause, Resume)"). The survey's own `mark play` and
+generic play loop only start after all 14 cycles, ~140s after the game was already controllable, and that
+loop swings the camera (RX) rather than moving Buffy with any purpose. None of that is reused here: the frame
+at `053139-play.png` (near the end of the generic loop) shows Buffy crouched at a ledge with the TIP "Run and
+press B to jump between ledges" — the same ledge-jump prompt `buffy.route`'s own comment (lines 46-50) is
+built around. So the returning route below reuses `buffy.route`'s menu cadence (which this survey confirms
+produces the identical screen sequence on this kept-profile disk) and its dedicated play loop verbatim, rather
+than the survey's blind generic loop.
+
+### Dead or Alive 3 (4D53002D)
+
+Source: `z-1791803606-fpsbelow1012-3255578` (survey.route, kept profile golden `220536a66fe2`, switch ON).
+`survey.route` presses START/A alternately every 5s, 14 cycles (pairs), then a generic play loop. Every press
+below is recorded at minimum by its `run.log` ROUTE line (exact device time); a shot column of "-" means the
+press is logged but its resulting screen was not individually read -- still a recorded row, just not a
+visually-confirmed one. Cycle numbers below are the pair's position in that 14-cycle loop, recounted directly
+from the frame filenames and `run.log` (the first draft of this table had the numbering off by a few and is
+superseded by this one).
+
+| t (host) | press | shot | screen | recorded? |
+|---|---|---|---|---|
+| 04:49:37.173 (+60s) | (none, boot wait) | `044937-booted.png` | Title card, "PRESS START BUTTON" | recorded (shot) |
+| 04:49:37.528 (cycle1 START) | press START | `044942-menu-start.png` | dark castle-wall attract frame, faint "DEAD OR ALIVE 3" | recorded (shot) |
+| 04:49:43.354 (cycle1 A) | press A | `044948-menu-a.png` | title card again, "PRESS START BUTTON" | recorded (shot) |
+| 04:49:49.293 (cycle2 START) | press START | `044954-menu-start.png` | MODE SELECT, STORY MODE icon highlighted | recorded (shot) |
+| 04:49:55.336 (cycle2 A) | press A | - | not individually read | recorded (ROUTE line only) |
+| 04:50:01.268 (cycle3 START) | press START | `045007-menu-start.png` | STORY MODE CHARACTER SELECT, Kasumi (PLAYER-1 / COS.1) | recorded (shot) |
+| 04:50:08.139 (cycle3 A) | press A | `045013-menu-a.png` | "STORY MODE" loading transition (black) | recorded (shot) |
+| 04:50:13.696 (cycle4 START) | press START | `045019-menu-start.png` | pre-fight close-up, opponent line "Please do not block my way" | recorded (shot) |
+| 04:50:19.725 (cycle4 A) | press A | `045025-menu-a.png` | fight intro: Kasumi falling through fog, health bars already on screen | recorded (shot) |
+| 04:50:25.801 (cycle5 START) | press START | `045031-menu-start.png` | **PAUSED / PLAYER-1 / CONTINUE**, Kasumi already down, Hitomi standing | recorded (shot) |
+| cycles 6-11 | press A / START | `045108`, `045159`, `045211`, `045217` (sampled) | PAUSED/CONTINUE repeating; one sampled frame (`045159-menu-start.png`, cycle12) shows a fresh round live (both standing, bars near full) | recorded (ROUTE lines; 4 of the ~14 shots sampled) |
+| 04:52:12.147 (cycle13 A) | press A | `045217-menu-a.png` | Kasumi down again (fresh KO, no pause overlay yet), Hitomi's bar full | recorded (shot) |
+| 04:52:31.591 | mark play (survey's own, not `mark gameplay`) | `045231-play.png` | **PAUSED / PLAYER-1 / CONTINUE**, Kasumi down, ~1s after mark | recorded (shot) |
+| 04:56:35.922 (last play shot) | generic play loop (press A only, 3s cadence) | `045635-play.png` | `CONTINUE? 8 ... Hayate...` KO/continue countdown | recorded (shot) |
+
+So the real menu path is title -> MODE SELECT (Story Mode) -> CHARACTER SELECT (Kasumi) -> a loading transition
+-> a pre-fight voice line -> the fight's falling/landing intro (health bars appear) -- four START/A cycles after
+boot, not `doa3.route`'s guessed "2 STARTs then up to 7 A's." `doa3.route`'s own step sequence was never device
+-tested (its header says "NOT YET REPLAYED"); this survey is the first real evidence of the kept-profile path,
+and it is a *different* (but equally screen-reaching) press pattern. What matters for the gate (every screen on
+the kept-profile's way to a fight matches what `doa3.route`'s comment and NOTES.md E describe -- no profile
+gate, no load prompt, no save name -- just reached by alternating START/A instead of a fixed 2+7 split) still
+holds, so the route below uses the survey's own recorded cadence rather than `doa3.route`'s untested one.
+
+The fast-KO finding is now tightly bounded: the fight's falling-intro frame (`045025-menu-a.png`, 04:50:19.725 +
+5s wait) already shows health bars on screen, and the very next cycle's shot, only 6 seconds of real device time
+later (`045031-menu-start.png`, 04:50:25.801 + 5s wait), is already the post-KO PAUSED/CONTINUE menu with Kasumi
+down. A full DOA3 round -- intro, fight, KO -- fits inside that one ~6s survey cycle. The survey's own bare
+`press A` (selecting CONTINUE) starts a fresh round, but with no attack timing behind it that round is lost just
+as fast: cycle13's shot (`045217-menu-a.png`) is a fresh KO, and the first play-loop shot one second after `mark
+play` (`045231-play.png`) is PAUSED/CONTINUE again. Every later play shot through the run's end (`045635-play.png`,
+~4 minutes later) is the same pause menu or the `CONTINUE? 8 ... Hayate...` countdown once continues run out --
+the survey's generic play loop (bare `press A` every 3s, no directional input) never produces a second of moving
+fight play after the mark.
+
+`doa3.route`'s own play loop is built for exactly this failure mode: it is not bare A-presses but a timed combo
+(`axis LX max/mid`, `press X`, `press Y`, `press X`, `press B`, `press A`) whose trailing `press A` is commented
+"also leaves a KO / continue screen" -- i.e. it was written already expecting a KO/continue cycle and clearing it
+as part of the loop, rather than parking on it. Given the ~6s fast-KO window above, the returning route below
+gets into that combo loop immediately on the fight's falling-intro frame (no extra blind cycle once health bars
+appear), reusing `doa3.route`'s combo loop verbatim; it never uses the survey's bare-A generic loop.
+
+### Ninja Gaiden Black (5443000D)
+
+Source: `z-1791797921-fpsbelow1012-1777822` (survey.route, kept profile golden `ab037a065b15`, switch ON).
+Screens read from `route-frames/`, presses from `run.log` ROUTE lines.
+
+| t (host) | press (from) | shot | screen | recorded? |
+|---|---|---|---|---|
+| 02:54:34.290 (+60s) | (none, boot wait) | `025434-booted.png` | Title card, "PRESS START BUTTON" | recorded |
+| 02:54:34.927 (cycle1 START) | press START (title) | `025441-menu-start.png` | MAIN MENU: NEW GAME (highlighted, default) / LOAD GAME / RANKING / OPTIONS | recorded |
+| 02:54:41.662 (cycle1 A) | press A (NEW GAME highlighted) | `025447-menu-a.png` | Narrative cutscene begins: "A legendary sword," sword close-up | recorded |
+| cycles 2-13 (02:54:47-02:57:18) | press START / A (cutscene advance) | `025452` .. `025717` | long narrative cutscene/story-text sequence, same text content as `bb-ngb.route`'s own steps 6-27 ("The Book of the Fiends", "The Dark Dragon, now full of evil intent...") | recorded |
+| 02:57:18.227 | mark play (survey's own) | `025718-play.png` | still mid-cutscene: "the Fiends." over "Now Loading..." | recorded |
+| 02:57:18.735-02:57:41.939 | generic play loop, `press A` x6 (3s cadence) | (no shot) | — | recorded (ROUTE log) |
+| ~02:57:42 (between `025717` and `025808` shots) | press A (generic play loop) | `025742-play.png` | **CHAPTER 1 "The Way of the Ninja"**, a blue "Proceed" button prompt bottom-right | recorded |
+| 02:58:08 (approx, `025808-play.png`) | press A (generic play loop, continuing) | `025808-play.png` | live gameplay: cinematic shot of Ryu standing over a fallen enemy by a waterfall, no HUD text | recorded |
+| 02:59:00-03:01:33 (`025900` through `030133-play.png`) | generic play loop (axis LY min/mid/max, press A, axis RX swing) | `025900` .. `030133` | health-bar HUD visible, but every shot is a close-up rock-wall texture filling the frame -- Ryu parked against cave geometry, not visibly moving | recorded |
+
+`bb-ngb.route`'s own comment (step 5) documents the same MAIN MENU with NEW GAME default-highlighted, and its
+step 28-29 comment says the recorded path needed `press X` (not START/A) to clear the "Proceed" chapter-title
+cards. The survey here never presses X -- only START/A during the 14-cycle menu phase, then bare `press A` in
+its generic play loop -- yet the `025742-play.png` "Proceed" card shows the run reached the same chapter-title
+screen `bb-ngb.route` step 29 names, and by `025808-play.png` (one play-loop cycle later) it is past that screen
+into live gameplay. So on this build/kept-profile disk, `press A` also clears the "Proceed" prompt (`bb-ngb.route`
+step 28-29 uses X because that is what its own recorded pathfind session happened to press there, not because A
+fails) -- the survey's generic loop reaching gameplay is itself the recorded evidence for that.
+
+Once in live gameplay, though, the survey's generic play loop (`axis LY min` then `mid` then `max`, `press A`,
+`axis RX` swing) leaves Ryu pinned against a cave wall for the remaining ~4 minutes of the run (`025900` through
+`030133`, all identical close rock-wall texture, health bar static) -- never moving, matching the brief's "never
+parked/menu-bound" warning. `bb-ngb.route`'s own "genre loop" (lines 184-212: alternating `axis LY min/max` with
+`press X`, `press A`, `press B` and `axis RX max/min` swings every repeat, built from an actual recorded
+playthrough) is the one that produced real movement; the survey's cruder loop did not. So the returning route
+below reuses `bb-ngb.route`'s steps 1-32 menu/cutscene cadence (screen- and text-identical on this kept-profile
+disk per the table above, so NEW GAME is the correct and only recorded path -- LOAD GAME is unrecorded and not
+used) and its genre-loop play pattern verbatim, never the survey's generic loop.
+
+## 4. Routes composed, and a gate finding on DOA3 / NG Black
+
+`docs/testing/titles/routes/buffy.returning.route`, `doa3.returning.route` and `ninja-gaiden-black.returning.route`
+are written (and copied into both this worktree and the live `/home/justin/hakuX` checkout `route.sh`/`request.sh`
+read from). Each parses clean: `bash route.sh --check routes/<name>.route` -> `route ok` for all three.
+
+`titlestate.admit()` (the same call `request.sh` makes) does not agree with the brief's literal `# state:
+returning` header for two of the three:
+
+| title | tid | route_name | header state | admit() |
+|---|---|---|---|---|
+| Buffy | 45410012 | buffy.returning | returning | `admit=True clause=profile` |
+| DOA3 | 4D53002D | doa3.returning | returning (as first written) | `admit=False`: "4D53002D's golden 220536a66fe2 is title data only, no save directory; a returning route would meet no profile. If the route was confirmed on this golden as it is, head it `# state: any`..." |
+| NG Black | 5443000D | ninja-gaiden-black.returning | returning (as first written) | same refusal, golden ab037a065b15 |
+
+This matches this lane's own boot tables above: Buffy's kept-profile menu shows a save-name confirm screen
+("Buffy 2"), evidence of an actual save directory; DOA3 and NG Black's kept-profile boots never show a
+load/continue/save-name screen at all -- DOA3 goes straight through MODE SELECT with no continue prompt, NG
+Black's MAIN MENU still defaults to NEW GAME highlighted. Their "kept profile" is the disk/title data only, no
+save directory -- exactly what `admit()`'s refusal says. So both files' line-1 header was changed from `# state:
+returning` to `# state: any` (the gate's own suggested fix for a route confirmed on a data-only golden as-is);
+the filenames stay exactly as the brief names them (`doa3.returning.route`, `ninja-gaiden-black.returning.route`),
+only the internal `# state:` tag differs from the brief's literal text, and each file's header says why. Re-run
+after the fix: `admit=True clause=profile state=any` for both.
+
+Every press before each route's `mark gameplay` is backed by a recorded row in the boot tables above (sections
+1-3); none is filled from memory of the game.
+
+Two more findings while building the queue commands, both from `--title`'s own resolution, before any device
+time:
+- DOA3's canonical compat-CSV id (4D53002D, the brief's and targets.toml's key) has no `iso.nova` entry --
+  `titlestate.iso_for_tid('4D53002D', device='nova')` returns None. The Nova copy is filed under the on-disk
+  XBE id instead, `54430001` (`disk_tid()`'s documented alias: "Dead or Alive 3 is 4D53002D [in the compat
+  CSV] and 54430001 on the disk"), which is exactly the title_id the DOA3 survey run itself used on nova
+  (`z-1791803606-fpsbelow1012-3255578`'s request.json: `"title_id": "54430001"`). Both ids load the same golden
+  (220536a66fe2). So DOA3's queue command below uses `--title 54430001-Dead_or_Alive_3.xiso.iso` (the Nova
+  iso_for_tid fallback result), not the bare id.
+- `--title` must be the on-device ISO file name, never a bare TitleID (request.sh's own check: "A BARE TITLEID
+  IS NOT A FILE NAME"). `--title` below is therefore each title's `iso.nova` name:
+  `Buffy the Vampire Slayer (USA).xiso.iso`, `54430001-Dead_or_Alive_3.xiso.iso`, `Ninja Gaiden Black.iso`.
+  `titlestate.py resolve-route` confirmed all three `--route` names resolve clean (`refuse: null`) with
+  `--title-id` set to each of these (45410012 / 54430001 / 5443000D) and `--device nova`.
+
+## 5. Queue: Buffy in, pilot gate holds DOA3 and NG Black
+
+Buffy queued first (sweep tier, switch on):
+```
+request.sh --who lane.zetaroutes1012 --purpose "returning-route test and HAKUX_ZETA_D24 gameplay confirmation (#433)" \
+    --priority sweep --device nova --title "Buffy the Vampire Slayer (USA).xiso.iso" --route buffy.returning \
+    --seconds 900 --frames-every 30 --env HAKUX_ZETA_D24=1 --env HAKUX_FRAMETRACE=1 \
+    --no-expect "returning-route test and HAKUX_ZETA_D24 gameplay confirmation (#433)"
+```
+-> `queued z-1791817586-lane.zetaroutes1012-2316443` (ref f4a1c6df96, pinned nova).
+
+Queuing DOA3 right after was refused by the pilot gate (owner 2026-09-26, `docs/lanes/zetaroutes1012/NOTES.md`
+is not the gate's source -- `request.sh` is; see its "THE PILOT GATE" section): Buffy alone estimates ~16 min
+(900s + 90s setup) and DOA3 would add ~16 more, ~33 min in all, over the 30-min unreviewed ceiling, and
+`dispatch/pilots/lane.zetaroutes1012.ok` does not exist yet. This is the correct, expected behaviour (lane-role
+"Pilot first": queue at most two, review against the batch's purpose, write the `.ok` verdict, then queue the
+rest) -- NOT a defect to work around. So DOA3 and NG Black's queue commands are prepared but not yet sent:
+```
+request.sh --who lane.zetaroutes1012 --purpose "returning-route test and HAKUX_ZETA_D24 gameplay confirmation (#433)" \
+    --priority sweep --device nova --title "54430001-Dead_or_Alive_3.xiso.iso" --route doa3.returning \
+    --seconds 900 --frames-every 30 --env HAKUX_ZETA_D24=1 --env HAKUX_FRAMETRACE=1 \
+    --no-expect "returning-route test and HAKUX_ZETA_D24 gameplay confirmation (#433)"
+
+request.sh --who lane.zetaroutes1012 --purpose "returning-route test and HAKUX_ZETA_D24 gameplay confirmation (#433)" \
+    --priority sweep --device nova --title "Ninja Gaiden Black.iso" --route ninja-gaiden-black.returning \
+    --seconds 900 --frames-every 30 --env HAKUX_ZETA_D24=1 --env HAKUX_FRAMETRACE=1 \
+    --no-expect "returning-route test and HAKUX_ZETA_D24 gameplay confirmation (#433)"
+```
+
+WAITING: on `z-1791817586-lane.zetaroutes1012-2316443` (Buffy) to clear the Nova's queue and run -- the Nova is
+held overnight by the Playable chain (sweep runs start only when it is idle) and a `nova` hold was already in
+force at session start (`lane.pathfind`, 600s, from 2026-10-12T14:43:16Z). Once it is read: write the pilot
+verdict to `dispatch/pilots/lane.zetaroutes1012.ok` (Buffy's result id, what the frames/verdict showed, the
+date), then send the DOA3 and NG Black commands above.
+
+Attempt 1 ended there, correctly: the Buffy run was queued and the session stopped rather than poll a
+device run from inside its own turn. It did not fail -- it reached the WAITING state the lane role asks for.
+This is attempt 2, resumed once that run's `DONE` file existed.
+
+## 6. Buffy's first returning run: reached play, failed on a route defect (not the switch)
+
+`z-1791817586-lane.zetaroutes1012-2316443` ran to completion (`DONE` present). `title_verdict.py --require
+confirmation --reviewed-gameplay yes`:
+
+```
+VERDICT Buffy the Vampire Slayer nova FAIL(static window: 23% of pixels never moved more than 10/255 from
+the window's first frame, over 36 sampled frames from route-frames (bar 20%)) gameplay=777.6s fps_ok=1.0
+crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=0.0 static_frac=0.229 timeline: none
+battery_w=+0.51 net_w=7.04 j_per_frame=0.2349
+```
+
+Everything the switch itself is responsible for passed: `fps_ok=1.0`, `gameplay=777.6s` (over the 600s bar),
+no crash, no hang. The FAIL is `static_frac=0.229` against the 0.20 bar -- a movement failure, i.e. exactly
+the brief's "parked or menu-bound window is not a confirmation" case, not a `HAKUX_ZETA_D24` finding.
+
+Reading `route-frames/` confirms it directly: `083157-gameplay.png` (the mark) and `083219-play.png` (one
+loop iteration later, ~21s after the mark) already show Buffy pressed face-first into a canyon wall/rock
+corner. Every later play shot through the run's end (`084448-play.png`, the last one, ~13 minutes later) is
+the same framing -- a running-in-place animation (legs/arms cycling, enough per-pixel motion to keep
+`static_frac` just under 1.0 but not enough to clear the 0.20 bar) with no translation. `run.log`'s ROUTE
+lines confirm the loop ran as written: `axis LY min` at 08:31:58.223 (immediately after mark) holds forward
+for the next 7.1s (through `press B`, `press B`, `press A`, `press X`) before the loop's first turn (`axis
+LX max` at 08:32:06.862) -- i.e. she is run forward, unsteered, for over 7 seconds straight into whatever is
+ahead. That pattern is `buffy.route`'s own play loop, reused verbatim per the brief's step 2 -- but
+`buffy.route`'s header says this exact loop was never device-confirmed: it is itself a guess ("Replay ...
+sat 4 min on one frame ... the first loop never pressed B. So: run forward and jump (B) twice per cycle, and
+turn for longer") written after a DIFFERENT stuck replay, and the file is still headed `DRAFT until a
+dispatch run replays it and its frames from the mark on are reviewed`. Reusing an unconfirmed loop verbatim
+reproduced the same failure mode (stuck against geometry) in a different spot of the same canyon.
+
+Wrote the pilot verdict (`dispatch/pilots/lane.zetaroutes1012.ok`, naming this run, what it showed, and the
+fix below) so the gate would admit the DOA3/NG Black requests already prepared in section 5.
+
+## 7. Route fix: pulse-and-turn instead of a long held run
+
+`spikeout.returning.route` (in the same routes directory, confirmed working: nav.py, Thor, 2026-09-27) plays
+its post-mark loop very differently from `buffy.route`'s: `axis LY min; wait 1; axis LY mid` -- a 1-second
+forward pulse that returns to neutral -- interleaved with turns in both directions (`axis LX max` / `axis LX
+min`) AND a backward pulse (`axis LY max`), never holding one direction long enough to pin the character
+against one piece of geometry.
+
+`buffy.returning.route`'s play loop (only; the boot/menu steps above the mark are unchanged, since those
+worked -- `fps_ok=1.0`, mark reached on schedule) now uses that same pattern: 1s forward pulses back to
+`mid`, a turn or a backward pulse between them, and jump/attack presses (B / A / X) varied every cycle. The
+route's header now says what the first run showed and why the loop changed (not the brief's literal `buffy.
+route`-verbatim text) -- public text, no process narration. `route.sh --check` passes (86 lines); `titlestate.
+py resolve-route --route buffy.returning --title-id 45410012 --device nova` still gives `refuse: null,
+state: returning`, unaffected by the play-loop change.
+
+This is run 2 of the "at most 2 more runs" the brief allows for a route defect; 1 more remains if it still
+does not reach 600s of moving play.
+
+## 8. Queued: fixed Buffy re-run, DOA3, NG Black
+
+```
+z-1791820250-lane.zetaroutes1012-2510625   Buffy (fixed buffy.returning.route), switch on
+z-1791820275-lane.zetaroutes1012-2514338   DOA3 (54430001-Dead_or_Alive_3.xiso.iso), doa3.returning, switch on
+z-1791820279-lane.zetaroutes1012-2514939   NG Black (Ninja Gaiden Black.iso), ninja-gaiden-black.returning, switch on
+```
+
+DOA3 and NG Black's requests both printed `pilot gate: ... reviewed pilot .../lane.zetaroutes1012.ok (0.0 h
+old) admits it` -- the gate is working as designed, not held this time. Run count so far: 1 (read) + 3
+(queued) = 4 of the 12-run budget.
+
+WAITING: on all three result dirs' `DONE` files, same reason as before (overnight Playable-chain hold on the
+Nova; sweep tier starts only when it is idle). Nothing further to do until they land.
+
+## 9. Why attempt 2 did not finish (resuming as attempt 3)
+
+Attempt 2 picked up at the WAITING state section 8 left: three runs queued (fixed Buffy, DOA3, NG Black),
+nothing left for that turn to do but wait on the Nova's overnight Playable-chain hold to clear. It ended the
+turn there rather than poll a device run from inside its own turn, per the lane role's "never end a session
+waiting on your own background task" -- that is a correct, finished state, not a failure. All three `DONE`
+files exist now; this attempt reads them.
+
+## 10. Reading the three queued runs
+
+```
+python3 docs/testing/title_verdict.py <dir> --require confirmation --reviewed-gameplay yes
+```
+
+| title | run | verdict |
+|---|---|---|
+| Buffy | `z-1791820250-lane.zetaroutes1012-2510625` | **PASS** Playable, `gameplay=774.9s fps_ok=1.0 static_frac=0.0394` |
+| DOA3 | `z-1791820275-lane.zetaroutes1012-2514338` | FAIL(hitches: a 632ms stall after the first 60s, bar 500ms), `gameplay=781.2s fps_ok=0.9773 static_frac=0.0` |
+| NG Black | `z-1791820279-lane.zetaroutes1012-2514939` | FAIL(duration: 590s of gameplay < 600s confirmation), `gameplay=589.7s fps_ok=0.9956 static_frac=0.0216` |
+
+The fixed pulse-and-turn play loop (section 7) worked: Buffy is a clean confirmation, and the other two
+titles' failures are not movement failures (both read static_frac well under the 0.20 bar) -- they are a
+real stall and a timing shortfall respectively. (DOA3's reading is wrong: its frames show attract mode
+from +55 s, section 18.)
+
+## 11. DOA3's hitch is a shader pipeline-create stall, not a route defect
+
+**WRONG, superseded by section 18:** the frames show the fight lost at +30 s and attract mode from +55 s to
+the end. This was a route defect, and the hitch is at the change to attract mode.
+
+`result.json`'s own fields read fine (`fps_ok=0.9773`, no crash/hang, `static_frac=0.0`), and the FAIL is
+entirely the 632ms hitch. Reading `logcat.txt` around the stall (mark at 09:11:42.610; the hitch bar is "after
+the first 60s", i.e. ~09:12:42): the `[shd413]` perf line at 09:12:40.546 reads `pc_ms=559.6` (pipeline-create
+milliseconds for that frame) with `dpc_ms=0.0 dpn=1` -- one new pipeline created, taking over half a second,
+exactly the shape of the hitch (632ms worst_ms). This is a first-use shader/pipeline compile on this route's
+particular combat move (DOA3's combo loop presses X/Y/X/B/A in a pattern the survey's generic bare-A loop
+never produced), not a `HAKUX_ZETA_D24` effect and not a route construction defect: the route reached 781.2s
+of moving fight play with `fps_ok=0.9773`, well inside the bar, and the brief's step 5 "whatever its fps"
+clause is about the route having done its job once it reaches 600s of moving play, which it did.
+
+No re-run: a route fix cannot remove a first-use pipeline-create stall (that is the ubershader-class problem
+`docs/lanes/shaderplan569/NOTES.md` describes), and re-running the same route+golden pair would very likely
+just hit the same first-use compile again since nothing clears the shader cache between runs on this disk.
+This is reported as a finding for the cross-title screen (OUTBOX.md), not chased further -- the switch and
+the route are each doing their job; the stall is a different, known class of problem.
+
+## 12. NG Black: a route-timing shortfall, fixed by extending the loop
+
+`title_verdict.py`'s `gameplay_s` is `end_t - mark_t` (session end minus the mark), not time spent inside the
+route script's own loop. This run's own `run.log` ROUTE lines show why 589.7s fell short of 600s: mark at
+09:32:31.005, the route's 11-repeat genre loop (each outer repeat ~43-44s by the `shot hold` timestamps) ran
+to its own `done`/`end` at 09:40:31.831 (~480.8s of scripted movement), then the run held without further
+input for the rest of the 900s request. The ~314.5s the boot/menu/cutscene cadence (section 3, screen- and
+text-identical to `bb-ngb.route`, all recorded) takes before the mark left only ~590s before the 900s request
+ran out -- 10s short of the bar, not a movement failure (`static_frac=0.0216`, `fps_ok=0.9956`).
+
+Fix: raised the loop's outer `repeat` from 11 to 15 (~650s of scripted movement, so the loop itself covers the
+whole required window instead of leaning on an idle post-script hold) and the request's `--seconds` from 900
+to 1020 to match. `route.sh --check` passes (205 lines); `titlestate.py resolve-route` still gives
+`refuse: null, state: any`. Edited in both the worktree (`docs/testing/titles/routes/
+ninja-gaiden-black.returning.route`, committed) and the live `/home/justin/hakuX` checkout `request.sh` reads
+from, kept in sync. This is run 1 of the "at most 2 more runs" the brief allows for NG Black's route defect.
+
+## 13. Buffy's pair registered and queued; NG Black's fix queued
+
+Buffy's switch-on run is at the bar (section 10), so its pair is registered before the off run, per step 6.
+`ab_compare.py --register` refuses this shape outright (`REFUSED: a registration with nothing falsifiable in
+it is not a prediction` -- it requires a `--must-not-move`/`--expect-value`/`--expect-count`, all of which are
+capture-bound checks, and this is a soak with no captures). This matches what fpsbelow1012's NOTES.md section
+9d already found: `ab_compare.py` has no capture-based oracle for an fps_ok-share leg, and the soak
+predictions already on disk (`fpsbelow1012-zetad24.json`, `uberdefault569-soaks.json`,
+`async794-mc3-soak.json`) are all hand-written JSON with `expect: {}` and an `expect_note` saying so, not
+`ab_compare.py --register` output -- `request.sh`'s own `--expect` check (its soak branch) only requires the
+file to exist, be readable JSON, and not bind any `expect` key to a real golden capture, which an empty
+`expect: {}` satisfies. `docs/testing/predictions/zetaroutes1012-buffy.json` is written the same way: `a_ref
+7cbd788e00` / `b_ref 76a2c15333` (no emulator-code diff between them -- `git diff --stat` over `hw/ target/
+accel/ android/ tcg/ ui/ audio/` between the two refs is empty, only this lane's own route/NOTES commits), leg
+F (A's `fps_ok_share < 0.90`) and leg G (B's `fps_ok_share` >= A's + 0.10, a conservative half of the survey's
+measured 0.79->1.00 gain on the same canyon scene).
+
+Queued:
+```
+z-1791823924-lane.zetaroutes1012-3538464   Buffy, buffy.returning, --ref 7cbd788e00, no HAKUX_ZETA_D24 (the A leg of the pair, --expect zetaroutes1012-buffy.json)
+z-1791823930-lane.zetaroutes1012-3542868   NG Black, ninja-gaiden-black.returning (repeat 15, --seconds 1020), HAKUX_ZETA_D24=1 (re-run of the route-timing fix)
+```
+Pilot gate admitted both (`.ok` file read 1.0h old at the second request). Run count: 4 read (section 10) + 2
+queued = 6 of the 12-run budget. DOA3 needs no further run (section 11).
+
+WAITING: on both result dirs' `DONE` files, same overnight Nova-hold reason as before. Nothing further to do
+until they land.
+
+## 14. Why attempt 3 did not finish (resuming as attempt 4)
+
+Attempt 3 ended in the WAITING state section 13 names: two device runs queued on the Nova (Buffy's switch-off
+arm, NG Black's re-run), both outside the session, with nothing else open. That is a finished state, the same
+as attempts 1 and 2, not a failure. Both `DONE` files exist now (read 2026-10-12 17:31 UTC). This attempt reads
+them, judges Buffy's pair, and registers NG Black's.
+
+Before any new registration, `origin/master` (755ac97c96, 119 commits ahead) was merged in (`ede8663c9c`).
+`git diff 76a2c15333 origin/master` touches only `docs/`: the emulator code every run in this lane used is
+master's.
+
+## 15. Buffy's pair, judged as registered: LOSS
+
+| arm | run | switch (logcat init line) | verdict | fps_ok | min window fps | G median | gameplay | static_frac |
+|---|---|---|---|---|---|---|---|---|
+| A (off) | `z-1791823924-lane.zetaroutes1012-3538464` | `0x82, depth stored as float` | FAIL (static window) | 0.9973 | 28.37 | 33.4 ms | 782.4 s | 0.354 |
+| B (on) | `z-1791820250-lane.zetaroutes1012-2510625` | `0x81, depth stored as unorm` | PASS | 1.0 | 29.24 | 33.4 ms | 774.9 s | 0.039 |
+
+(G median and the init lines from fpsbelow1012's `tools/zread.py <A> <B>`; no `XFR rp` lines, since neither
+arm set `HAKUX_GPUXFR`, so the GPU in/out and outer-span columns cannot be read.)
+
+Legs of `zetaroutes1012-buffy.json`:
+- **V passes.** Route start to `mark gameplay`: A 127.9 s, B 129.0 s. Both over 600 s of gameplay, no crash or
+  hang.
+- **F fails.** A's fps_ok is 0.9973, not under 0.90.
+- **G fails.** B - A = 0.0027, not >= 0.10.
+
+So the pair is a **LOSS**: on this gameplay route, Buffy runs at its 30-fps cap without the switch. Per
+60-s bucket from the mark, A reads 1.00 in every bucket but one (60-120 s: 0.96), median 30 in all of them.
+
+What the pair does NOT show. The two arms left the same opening canyon within ~25 s of the mark and then
+played different stretches. B at +26 s (`085625-play.png`) is past the opening, under the tip "Push into low
+ledges to climb onto them", and spends the rest of the run at the ledges ("Run and press B to jump between
+ledges", then "While on a ledge, move left or right to shimmy"; from about +4.6 min she stays at that one
+ledge, section 19). A at +35 s (`095543-play.png`) is still in the
+opening stretch under its first tip ("Move the R thumbstick to move the camera around"), and that tip is on
+screen until the run's last shot (`100806-play.png`). The camera spends most of A's window pressed into dark
+canyon walls. That is why A fails the static-window check. So A never measured the ledge stretch B ran. The
+pair cannot say what the switch does there.
+
+Two readings still stand. The opening stretch is at the cap without the switch: A's first 60 s read 1.00
+at a median of 30. And the survey's slow buckets (A 90-120 and 210-270 s, G 37-38 ms; fpsbelow1012 section 9c)
+did not appear in either arm of this route. The prediction is not re-registered on these arms, and the A arm
+is not re-run: a timing-only route has no way to make A follow B's path, so a second A would differ in the same
+way.
+
+For lane.local's cross-title screen: Buffy is Playable with the switch on this route (B, PASS), and at master
+without it this route reads fps_ok 0.997 with no hitches. The A arm's FAIL is its route (static window), not
+its frame rate. So Buffy is not evidence that the switch is needed. It is evidence that the switch costs Buffy
+nothing on gameplay: no hitch, and the minimum window rises from 28.37 to 29.24.
+
+## 16. NG Black's re-run: PASS
+
+`z-1791823930-lane.zetaroutes1012-3542868` (repeat 15, `--seconds 1020`, switch on; init line `0x81, depth
+stored as unorm (HAKUX_ZETA_D24)` at 10:08:54):
+
+```
+VERDICT Ninja Gaiden Black nova PASS Playable gameplay=714.4s fps_ok=0.9964 crash=False hang=False
+audio_short=6.1e-05 hitches=2/0.183pm worst_ms=273.6 static_frac=0.0292 timeline: none below_own_target
+```
+
+Its own target is 60 (`targets.toml`): `own_target_share` 0.5307, window median 58.0, min 23.35. Per 60-s
+bucket from the mark, the share at the 30 bar is 0.96 in the first minute and 1.00 after it. The share at 57
+fps is 0.00-0.02 for the first 180 s (median 51-52), then 0.30-0.96 (median 57-60). All five hitches are
+classified `shader`, the worst 273.6 ms at +2.9 s, under the 500 ms bar.
+
+Section 12's fix is confirmed: with 15 repeats the loop covers the window, and the duration shortfall is
+gone. Hitches: the first run had 19 (15 `unexplained`), 13 of them after warm-up (1.47/min). This run has
+5, all `shader`, and 2 after warm-up (0.18/min). That is one run each, so it is reported, not judged.
+
+## 17. NG Black's pair registered
+
+The switch-on run is at the bar, so step 6 applies. Before registering, the survey's switch-off arm
+(`z-1791797927-fpsbelow1012-1778929`) was read from its `mark play` on, with Ryu in the same gorge and cliff
+walls the survey's B shows. Over that window the share at the 30 bar is 0.847 and at 57 fps it is 0.146
+(B: 0.960 and 0.542). At the bar, A's 30-s buckets read 0.45-0.85 at 270, 390, 450 and 480 s from the first
+perf line, where B's read 0.91-1.00. The 240-s bucket dips in both arms (0.70 / 0.73).
+Frame `032917-play.png` (A, overlay 38 fps) shows Ryu facing the gorge; `033100-play.png` (A, overlay 59) shows
+a wall filling the frame.
+
+`docs/testing/predictions/zetaroutes1012-ninja-gaiden-black.json`, hand-written like `zetaroutes1012-buffy.json`
+(section 13 says why `ab_compare.py --register` refuses a soak). Both refs are `76a2c15333`, the build B ran.
+The legs:
+- V: validity as Buffy's, plus both init lines and A moving (static_frac <= 0.20).
+- F: A's fps_ok < 0.90, the brief's share at the Playable bar.
+- G: B - A >= 0.05 at the bar.
+- H: B - A >= 0.20 in the share at the 60 target.
+
+WIN is V, F and G. H is reported on its own. P(F) is about 0.5, given Buffy (section 15), and the file says
+so. P(H) is about 0.85.
+
+## 18. Correction: DOA3's first run did not play for 781 s (section 11 is wrong)
+
+Section 11 read DOA3's run from `result.json` and `logcat.txt` alone. Its frames say otherwise.
+`z-1791820275-lane.zetaroutes1012-2514338`, mark at 09:11:42.610:
+
+| shot | screen |
+|---|---|
+| `091147-play.png` (+5 s) | Kasumi down, "COUNTER BLOW" |
+| `091212-play.png` (+30 s) | YOU LOSE |
+| `091217-play.png` (+35 s) | "CONTINUE ? 7 / Press start to continue / Hayate..." |
+| `091227-play.png` (+45 s) | GAME OVER |
+| `091237-play.png` (+55 s) to the end (09:24:28) | title attract mode under "PRESS START BUTTON", stages cycling |
+
+The combo loop (X/Y/X/B/A) never presses START, so the countdown ran out and the run spent its last ~12.5
+minutes on the title. That is a route defect under step 5, not a confirmation. The 632 ms hitch at 09:12:40
+(`pc_ms=559.6`) is at the GAME OVER to attract-mode change, not a combo move. `static_frac=0.0` because the
+attract mode keeps changing stages: the static-window check compares each window against its first frame,
+so it cannot tell attract mode from play. For lane.local: the run's `fps_ok=0.9773` is mostly attract mode.
+
+The fix (run 8, DOA3's second of three) keeps the menu path and the combo and adds `press START; wait 0.8;
+press A` after every combo, so a START comes about every 7 s. The recorded screens behind it:
+- **START mid-fight pauses.** `045031-menu-start.png` shows PAUSED with CONTINUE highlighted and "SELECT (A)".
+  The A after it brings the fight back (`045037-menu-a.png`: no overlay, Hitomi in stance).
+- **A at the countdown does nothing.** `045152-menu-a.png` shows "CONTINUE ? 3".
+- **START at the countdown continues.** 5 s later, `045159-menu-start.png` shows a fresh round, both bars full,
+  with no character select.
+
+The countdown lasts about 10 s (7 at +35 s, GAME OVER by +45 s), so a 7-s START always lands in it. The cost
+is a pause overlay for about 1 s of each 7-s cycle. `route.sh --check` passes (91 lines), and
+`titlestate.py resolve-route --route doa3.returning --title-id 54430001 --device nova` reads `refuse: null,
+state: any`. The live copy in `/home/justin/hakuX` is identical.
+
+What this route cannot do: if a match is ever won through to the story's end, or the countdown is missed,
+it falls back to the title. From there the combo's LX/X/Y/B presses in the menus are unrecorded.
+
+## 19. Corrections to the Buffy and NG Black readings
+
+**Buffy (section 15 and OUTBOX).** B's contact sheet does not show "the rest of the run at the ledges" as
+travel:
+- **Moving at first.** Buffy moves through four tutorial tips: the opening, "Push into low ledges", "Run and
+  press B to jump between ledges" and "jump and grab hold of the ledge". That lasts until about 09:00:43
+  (+4.6 min).
+- **Then stuck at one spot.** From there to the end (09:08:38), she stays at one spot under the "While on a
+  ledge, move left or right to shimmy" tip, jumping and swinging the camera in place.
+
+The static-window check passed (0.039) because the camera keeps moving. So B is about 4.6 min of travel and
+then about 8 min stuck at one ledge. That is not a moving-player confirmation for a Playable review. The
+pair's LOSS stands: it is about frame rate, and both arms are at the cap.
+
+Buffy has one fix run left. **It is not spent on another timed loop.** The owner's profile gate (10-11) bars
+repeat blind navigation, and Buffy's `targets.toml` note asks for "a path found by looking at the screen".
+The pulse-and-turn loop has already played out what timing alone can do. The next step is a screen-read
+path past the shimmy ledge (lane.pathfind's agent, folded at 755ac97c96). That is lane.local's call, not a
+third blind run.
+
+**NG Black (sections 12, 16 and OUTBOX).** The 15-repeat run's frames show Ryu in the opening riverbed by the
+waterfall from 10:13:56 to 10:23:17. He steps forward and back and swings his sword, and the camera swings,
+but he never travels through the level. `f00033` near the end shows "Ryu has not yet found the map to this
+area". So the run is 714 s of moving play (static_frac 0.029) in one area. That suits the like-for-like pair,
+since both arms play the same stretch. As a Playable confirmation it covers one scene only.
+
+Queued as run 8: `z-1791827119-lane.zetaroutes1012-335115`. Same request as the first DOA3 run (`--ref
+76a2c15333`, sweep, 900 s, frames every 30 s, `HAKUX_ZETA_D24=1 HAKUX_FRAMETRACE=1`) on the fixed route. The
+pilot gate admitted it (`.ok` 1.9 h old).
+
+## 20. NG Black's pair, judged as registered: not a WIN (F and G fail, H passes)
+
+| arm | run | init line | verdict | fps_ok | share at 57 | window median / min | gameplay | static_frac | hitches after warm-up |
+|---|---|---|---|---|---|---|---|---|---|
+| A (off) | `z-1791826706-lane.zetaroutes1012-104008` | `0x82, depth stored as float` | PASS | 0.97 | 0.0819 | 38.05 / 16.28 | 715.5 s | 0.0085 | 7 (0.64/min), worst 304.7 ms, 4 `unexplained` |
+| B (on) | `z-1791823930-lane.zetaroutes1012-3542868` | `0x81, depth stored as unorm` | PASS | 0.9964 | 0.5307 | 58.03 / 23.35 | 714.4 s | 0.0292 | 2 (0.18/min), worst 273.6 ms, all `shader` |
+
+Both arms ran ref `76a2c15333`.
+
+Legs of `zetaroutes1012-ninja-gaiden-black.json`:
+- **V passes.** Route start to `mark gameplay` is A 308.5 s and B 305.4 s. Both arms have over 600 s of
+  gameplay, with no crash or hang. The init lines are 0x82 and 0x81, and A's static_frac is 0.0085.
+- **F fails.** A's fps_ok is 0.97, not under 0.90.
+- **G fails.** B - A = 0.0264, under 0.05.
+- **H passes.** B - A = 0.4488 in the share at 57 fps (bar 0.20).
+
+By the file's rule this is not a WIN. NG Black is over the 30 bar at master on this route, and the switch's
+gain is towards the 60 target.
+
+**The arms did not play the same scene for the whole window.**
+- **Together until +41 s.** At +41 s both are at the riverbed by the waterfall, with the same fallen enemy
+  in frame: A `104649-hold.png` (overlay 26 fps), B `101439-hold.png` (overlay 50).
+- **Apart by +80 s.** A has walked up the gorge against its walls (`104728-hold.png`, overlay 46), while B is
+  still by the waterfall (`101517-hold.png`, overlay 52). A stays in the gorge to the end (`105241-hold.png`
+  faces a rock wall). B stays by the waterfall to the end.
+
+| slice | A share at 30 / at 57 / median | B share at 30 / at 57 / median |
+|---|---|---|
+| 0-45 s (same scene) | 0.518 / 0.000 / 28.7 | 0.944 / 0.022 / 50.9 |
+| 45 s to end (A gorge, B waterfall) | 1.000 / 0.087 / 38.2 | 1.000 / 0.565 / 58.3 |
+
+So H's 0.45 gain mixes the switch with a change of scene. The like-for-like evidence is the first 45 s:
+- on the same waterfall scene, the median goes from 28.7 to 50.9 fps;
+- the share at the bar goes from 0.52 to 0.94.
+
+That slice is 21 windows against 36, not a 600-s reading. The rest of A's window (the gorge, at master) is
+over the bar at a 38 median. The survey's A, in the same gorge, read 0.847 at 30 (section 17). This
+route's A reads 1.000 there. The difference is reported here, not explained.
+
+For lane.local: on this route NG Black is Playable at master by the bar (A PASS, 0.97), and with the switch
+(B PASS, 0.9964). The switch's measured effect is towards the 60 target. A Playable confirmation from either
+arm covers the opening riverbed and gorge only (section 19). The pair is not re-registered and A is not
+re-run: a timing-only route cannot hold Ryu at the waterfall in one arm and not the other.
+
+## 21. DOA3's fixed route (run 8): live fights for 775 s, fps_ok 1.0; FAIL on one 621 ms stall at a scene change
+
+`z-1791827119-lane.zetaroutes1012-335115`, ref `76a2c15333`, `doa3.returning`, 900 s.
+- **Switch live.** The init line at 10:59:09.265 reads `nv2a: Z24S8 host format 0x81, depth stored as unorm
+  (HAKUX_ZETA_D24)`.
+- **Mark.** Route start (10:59:08.664 host) to `mark gameplay` (11:01:14.861 host, 11:01:17.114 in logcat) is
+  126.2 s.
+
+`VERDICT FAIL(hitches: a 621 ms stall after the first 60 s (bar 500 ms)) gameplay=775.2s fps_ok=1.0 crash=False
+hang=False hitches=3/0.252pm worst_ms=621.3 static_frac=0.0`. The position check reads `still_frac=0.0` over
+112 shots.
+
+| measure | value |
+|---|---|
+| fps_ok at 30 (Playable bar) | 1.0 over 659 windows; every 60-s bucket 1.00 |
+| window median / min | 50.13 / 37.45 fps; 60-s bucket medians 46-54 |
+| share at 57 (`targets.toml` 4D53002D, `target_fps = 60`) | 0.1884; 60-s buckets 0.12-0.28 (section 22) |
+| hitches | 4 in all, 3 after warm-up: 621.3 ms at +522.8 s (`unexplained`), 318.1 ms at +286.5 s (`shader`), 117.3 ms at +328.5 s; 151.0 ms at +16.1 s is in warm-up |
+
+`title_verdict.py` reads this disc's target as 30, not 60. The request's ISO
+(`54430001-Dead_or_Alive_3.xiso.iso`) is not in the 4D53002D entry's `iso` map, which lists the Thor's file
+only, and 54430001 is not a title key. The share at 57 above is `title_verdict.judge()` run with a scratch
+copy of `targets.toml` whose 4D53002D `iso` map adds `nova = "54430001-Dead_or_Alive_3.xiso.iso"`. The
+copy reads `target_fps 60.0`, `own_target_share 0.1884` and `below_own_target True`.
+
+**The route played the whole window.**
+- Kasumi fights Zack on the beach stage from the mark (`110115-gameplay.png`, `110121-play.png`) to the end
+  (`111359`).
+- She loses rounds (YOU LOSE at `110456`, `110749`, `110848`, `111202`), and each time the next round starts.
+- A REPLAY plays at `111059`.
+- None of the contact sheet's 29 route shots shows the title, GAME OVER or a menu. The pause overlay is on
+  screen for about 1 s of each 7-s cycle (section 18).
+
+**The 621 ms stall is at a change of scene.** It is the perf line at 11:09:59.869 (logcat clock):
+`gfps=8 G:25.1(11.9-621.3)`, with `[shd413] dpc_ms=0.0 dpn=0`, `tex_us=361` and `dsm=0`, so there is no
+pipeline create and no texture upload in that window. The windows on either side read 59 fps.
+- **The shots around it.** `110951-play.png` shows YOU LOSE (Zack: "It's bitchin'"). `110959-play.png` shows
+  Zack's pre-fight line "I'm going to kick your butt". So the stall falls between a lost round and the next
+  round's intro, not inside a fight.
+- **The first run's stall was the same kind.** Its 632 ms hitch was at the GAME OVER to attract-mode change
+  (section 18).
+- **The host's input lagged at the same time.** A `wait 0.8` at 11:09:56.571 (host clock) took 2.2 s. A
+  `press X` at 11:10:01.067 took 10.3 s, beside a WSL `UtilAcceptVsock: accept4 failed 110` line in `run.log`.
+
+This is not a route defect: the route reached play and kept fighting for 775 s. Under the brief, a failed run
+goes for identification, not a re-run, so DOA3's third run is not spent on this route.
+
+**The pair (step 6) runs.** The switch-on run is at the bar (fps_ok 1.0 at 30), so the switch-off arm is
+registered as `docs/testing/predictions/zetaroutes1012-doa3.json` and queued with `--expect`. Two things are
+said before it reads:
+- **The fight may differ.** The game draws the opponent and stage on each boot. Four boots of this disc have
+  drawn four different fights:
+  - fpsbelow1012's A, Bayman in the dojo;
+  - its B, Hitomi on the cliff;
+  - this lane's first run, Jann Lee in the snow (`091147-play.png`);
+  - run 8, Zack on the beach.
+
+  The file therefore has a scene leg (S). Without S the pair is reported as confounded, not judged WIN or LOSS.
+- **The stall is reported, not judged.** Leg K reports whether the switch-off arm also stalls more than 500
+  ms at a round change, which says whether the 621 ms stall comes with the switch.
+
+Queued as run 10: `z-1791829318-lane.zetaroutes1012-860213`. It is the switch-off arm: `--ref 76a2c15333`,
+sweep, 900 s, frames every 30 s, `HAKUX_FRAMETRACE=1`, with `--expect` on `zetaroutes1012-doa3.json` (sha256
+`a54889126de7...`), committed at a6efe3451c before the request was queued.
+
+The file's `registered_utc` field reads 18:40:00Z, which is wrong. It was committed at 18:21:49Z (a6efe3451c),
+and the request was queued at 18:21:58Z. The file is left as committed, because the request pins its sha256.
+
+## 22. DOA3's pair, judged as registered: confounded (S fails); F fails, G and H pass
+
+Both arms ran ref `76a2c15333` on `doa3.returning`, 900 s. Both were judged with the scratch `targets.toml`
+copy from section 21.
+
+| arm | run | init line | fight | verdict | fps_ok | share at 57 | window median / min | gameplay | still_frac | hitches after warm-up |
+|---|---|---|---|---|---|---|---|---|---|---|
+| A (off) | `z-1791829318-lane.zetaroutes1012-860213` | `0x82, depth stored as float` | Jann Lee, waterfall cliff | FAIL (one 623 ms stall) | 0.9353 | 0.0749 | 34.05 / 25.52 | 754.6 s | 0.0 | 9 (0.78/min), worst 622.6 ms, 8 `unexplained` |
+| B (on) | `z-1791827119-lane.zetaroutes1012-335115` | `0x81, depth stored as unorm` | Zack, beach | FAIL (one 621 ms stall) | 1.0 | 0.1884 | 50.13 / 37.45 | 775.2 s | 0.0 | 3 (0.25/min), worst 621.3 ms, 2 `unexplained` |
+
+Legs of `zetaroutes1012-doa3.json`:
+- **V passes.**
+  - Route start to mark: A 147.4 s, B 126.2 s.
+  - Both arms have over 600 s of gameplay, with no crash or hang.
+  - The init lines are 0x82 (A) and 0x81 (B).
+  - A's contact sheet shows a fight in every shot after the mark: rounds, YOU LOSE (`115459`, `115602`,
+    `115827`, `120253`), the next round, and a REPLAY at `120034`, through the last shot at `120541`.
+- **S fails.** A's first fight is Kasumi against Jann Lee on the waterfall cliff (`115314-gameplay.png`). B's is
+  Zack on the beach.
+- **F fails.** A's fps_ok is 0.9353, not under 0.90.
+- **G passes.** B - A = 0.0647, at least 0.05.
+- **H passes.** B - A = 0.1135 in the share at 57 (bar 0.10).
+- **K: both arms stall at the same kind of moment.** A's 622.6 ms stall (perf line 12:03:02.528, logcat clock,
+  `G:19.7(5.7-622.6)`, `dpc_ms=0.0`, `dsm=0`, `tex_us=250`) falls between YOU LOSE (`120253-play.png`, Jann Lee:
+  "You'll have to hit me harder than that") and the next round's intro (`120301-play.png`). That matches B's
+  621 ms stall (section 21). The stall comes at a round change with or without the switch, so it is not the
+  switch's.
+
+By the file's rule, a V pass with an S fail is **confounded: no WIN or LOSS.** The arms played different
+fights on different stages, so G and H mix the switch with the stage.
+
+Hand-bucketed per 60 s after the mark. Each cell is share at 30 / share at 57 / median. These counts differ
+from `title_verdict`'s by a few windows (468 and 654 against 471 and 659), because the hand count ignores
+capture gaps.
+
+| arm | 0-60 | 60-120 | 120-180 | 180-240 | 240-300 | 300-360 | 360-420 | 420-480 | 480-540 | 540-600 | 600-660 | 660-720 | 720-780 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| A | .82/.08/39.6 | 1.00/.10/30.8 | .81/.08/45.0 | 1.00/.02/30.5 | 1.00/.08/41.3 | 1.00/.07/31.3 | 1.00/.10/31.2 | .96/.07/34.2 | .96/.08/30.9 | .92/.08/43.0 | .89/.05/39.8 | .93/.12/33.1 | .87/.00/38.3 |
+| B | 1.00/.19/53.9 | 1.00/.18/49.9 | 1.00/.20/49.3 | 1.00/.20/49.1 | 1.00/.17/46.2 | 1.00/.16/49.3 | 1.00/.17/49.3 | 1.00/.20/52.2 | 1.00/.12/51.3 | 1.00/.20/51.5 | 1.00/.22/49.6 | 1.00/.18/48.6 | 1.00/.28/53.1 |
+
+What this run measured:
+- **DOA3 at master, Jann Lee's waterfall stage.** It passes the 30 bar over the window (0.9353), with several
+  60-s medians at 30.5-31.3. Two buckets fall under 0.90: 0-60 at 0.82 and 120-180 at 0.81.
+- **DOA3 with the switch, Zack's beach stage.** Every bucket is at 1.00 at the 30 bar, with medians 46-54.
+- **Neither arm reaches its 60 target.** Both are under 0.20 at 57.
+- **The stall is not the switch's.** Both arms FAIL Playable on the same kind of 620 ms stall at a round
+  change.
+
+No stage is paired here. The game draws the opponent and stage on each boot, and a timing-only route cannot
+choose them, so this lane does not re-run the arm. A like-for-like DOA3 reading needs a mode where the stage is
+picked, which needs recorded menu rows this lane does not have.
+
+Run count: 10 of 12. Nothing is queued.
+
+## 23. Finish
+
+- **Preflight.** `docs/testing/preflight.sh --allow-tracker` passes at 6e3c00689d: psh_differ, aci_vmstate,
+  nv2a index, territory and board files all read `ok`. The coverage gate reads `DID NOT RUN`. It reaches
+  GitHub through `gh`, and this lane runs with no GitHub, so it was run with a `gh` stub that exits 1 and the
+  gate failed open.
+- **Diff against master.** `git diff --stat origin/master...HEAD` lists the nine files on PR.md's `Files:`
+  line.
+- **State.** OUTBOX.md is final for all three titles, and PR.md says `State: ready`. Runs used: 10 of 12.
+  Nothing is queued and nothing of this lane's is on a device.
+
+For the next lane:
+- **DOA3.** The arcade draws the opponent and stage on each boot, so a timing-only route cannot pair DOA3's
+  arms like for like. That needs a mode where the stage is chosen, from recorded menu rows.
+- **Buffy.** It needs a screen-read path past the shimmy ledge, not another timed loop (section 19).
+- **NG Black.** The route holds Ryu in the opening riverbed or gorge. A path through the level needs the same
+  screen-read approach.

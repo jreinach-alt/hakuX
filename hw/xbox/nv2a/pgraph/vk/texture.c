@@ -650,9 +650,17 @@ void pgraph_vk_mark_textures_possibly_dirty(NV2AState *d,
 static bool check_texture_dirty(NV2AState *d, hwaddr addr, hwaddr size)
 {
     g_nv2a_stats.pacing.tex_dirty_query_acc++;
-    hwaddr end = TARGET_PAGE_ALIGN(addr + size);
+    /* Clamped to VRAM rather than asserted. create_texture() binds nothing
+     * whose range leaves VRAM, but a range ending on VRAM's last page made
+     * the old `end < size` assert fire on a valid texture. From X1 BOX
+     * 39435acbc7. */
+    hwaddr vram_size = memory_region_size(d->vram);
+    if (size == 0 || addr >= vram_size) {
+        return false;
+    }
+    hwaddr end = MIN(TARGET_PAGE_ALIGN(addr + MIN(size, vram_size - addr)),
+                     vram_size);
     addr &= TARGET_PAGE_MASK;
-    assert(end < memory_region_size(d->vram));
     bool dirty = memory_region_test_and_clear_dirty(d->vram, addr, end - addr,
                                                     DIRTY_MEMORY_NV2A_TEX);
     if (dirty) {
@@ -1285,6 +1293,15 @@ static void copy_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surface,
     trace_nv2a_pgraph_surface_render_to_texture(
         surface->vram_addr, surface->width, surface->height);
 
+    /* HAKUX_S2T_CVT: a 5/6-bit texture from a 2-byte surface, which the
+     * compatibility check passes only with the switch on */
+    if (pgraph_vk_s2t_cvt_on() &&
+        pgraph_texture_format_expands_by_replication(state->color_format)) {
+        pgraph_vk_s2t_cvt_copy(pg, surface, texture);
+        texture->draw_time = surface->draw_time;
+        return;
+    }
+
 #if OPT_SURF_TO_TEX_INLINE
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
 #else
@@ -1481,9 +1498,16 @@ static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
      * in DXT, I8 or YUV is not a thing the hardware can produce, so no
      * surface should ever alias one -- and the must-not-move list on this
      * change is what checks that rather than the reasoning.
+     *
+     * HAKUX_S2T_CVT=1 takes the 5- and 6-bit formats from a 2-byte surface:
+     * copy_surface_to_texture() then decodes its words on the GPU the way
+     * pgraph_convert_texture_data would (vk/surface.c, pgraph_vk_s2t_cvt_copy).
      */
     if (pgraph_texture_format_is_converted(shape->color_format)) {
-        return false;
+        return pgraph_vk_s2t_cvt_on() &&
+               pgraph_texture_format_expands_by_replication(
+                   shape->color_format) &&
+               surface->host_fmt.host_bytes_per_pixel == 2;
     }
 
     VkColorFormatInfo tex_vkf = kelvin_color_format_vk_map[shape->color_format];
@@ -2689,6 +2713,51 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     bool possibly_dirty_checked = false;
     bool surface_to_texture = false;
     r->tex_surface_direct[texture_idx] = false;
+
+    /*
+     * A texture or palette that runs past the end of VRAM binds the dummy
+     * texture. Everything below reads [offset, offset + length) of VRAM --
+     * the dirty bitmap (which asserted), the surface scans, the hash and the
+     * upload (which read past vram_ptr) -- and the descriptor check in
+     * pgraph_is_texture_descriptor_decodable() tests only the start offset.
+     * Hitman 2 reaches it on Vulkan. Returns true: something is bound, and
+     * the slot is re-evaluated when its registers change.
+     * From X1 BOX 71604431d6.
+     */
+    {
+        hwaddr vram_size = memory_region_size(d->vram);
+        bool tex_ok = texture_length > 0 && texture_vram_offset < vram_size &&
+                      texture_length <= vram_size - texture_vram_offset;
+        bool pal_ok = !is_indexed ||
+                      (texture_palette_data_size > 0 &&
+                       texture_palette_vram_offset < vram_size &&
+                       texture_palette_data_size <=
+                           vram_size - texture_palette_vram_offset);
+        if (!tex_ok || !pal_ok) {
+#ifdef __ANDROID__
+            static int logged;
+            if (logged < 4) {
+                logged++;
+                __android_log_print(ANDROID_LOG_WARN, "hakuX",
+                    "texture stage %d: %s 0x%" HWADDR_PRIx "+0x%zx is outside "
+                    "VRAM (0x%" HWADDR_PRIx "); dummy texture bound "
+                    "(fmt 0x%x dim %u levels %u border %d cube %d)",
+                    texture_idx, tex_ok ? "palette" : "texture",
+                    tex_ok ? texture_palette_vram_offset : texture_vram_offset,
+                    tex_ok ? texture_palette_data_size : texture_length,
+                    vram_size, state.color_format, state.dimensionality,
+                    state.levels, state.border, state.cubemap);
+            }
+#endif
+            r->texture_bindings[texture_idx] = &r->dummy_texture;
+            r->tex_binding_cache[texture_idx].key_hash = 0;
+            r->tex_binding_cache[texture_idx].binding = NULL;
+            pgraph_glsl_set_texture_x1a7_readback(texture_idx,
+                                                  PSH_X1A7_READBACK_NONE);
+            NV2A_VK_DGROUP_END();
+            return true;
+        }
+    }
 #if NV2A_PERF_LOG
     /* #461: the reasons that raised possibly_dirty (TXH_*), and the hash's size */
     bool tx_srf = false, tx_rb = false, tx_memo = false, tx_bit = false;

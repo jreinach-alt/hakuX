@@ -71,7 +71,9 @@ class SettingsActivity : AppCompatActivity() {
     "use_dsp" to false,
     "skip_boot_anim" to true,
     "texture_dump_enabled" to false,
-    "texture_replace_enabled" to false
+    "texture_replace_enabled" to false,
+    "savestate_compression" to true, "savestate_auto_load" to false,
+    "savestate_auto_save" to false
   )
   private val intDefaults = mapOf(
     "surface_scale" to 1, "submit_frames" to 3, "tier1_threshold" to 64,
@@ -399,6 +401,25 @@ class SettingsActivity : AppCompatActivity() {
       }
     }
 
+  // #433: the save state folder. The native code reaches it through
+  // SaveStateStore, so it needs read and write for as long as it is set.
+  private val pickSaveStateFolder =
+    registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+      if (uri != null) {
+        try {
+          contentResolver.takePersistableUriPermission(uri,
+            android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+            android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        } catch (e: SecurityException) {
+          Toast.makeText(this, e.message ?: "No access to that folder", Toast.LENGTH_LONG).show()
+          return@registerForActivityResult
+        }
+        prefs.edit().putString(SAVESTATE_TREE_KEY, uri.toString()).apply()
+        updateSaveStateFolder()
+        Toast.makeText(this, R.string.settings_savestate_folder_set, Toast.LENGTH_SHORT).show()
+      }
+    }
+
   private val pickTextureReplaceFolder =
     registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
       if (uri != null) {
@@ -565,7 +586,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     val switchDebugTools = findViewById<MaterialSwitch>(R.id.switch_debug_tools)
-    switchDebugTools.isChecked = prefs.getBoolean("debug_tools", false)
+    switchDebugTools.isChecked = prefs.getBoolean("debug_tools", resources.getBoolean(R.bool.debug_tools_default))
     switchDebugTools.setOnCheckedChangeListener { _, checked ->
       prefs.edit().putBoolean("debug_tools", checked).apply()
     }
@@ -711,6 +732,8 @@ class SettingsActivity : AppCompatActivity() {
 
     refreshDriverStatus()
 
+    setupSaveStatesSection()
+
     // Show only the relevant sections based on the index selection
     val section = intent.getStringExtra("section")
     if (section != null) {
@@ -730,6 +753,7 @@ class SettingsActivity : AppCompatActivity() {
       R.id.section_games_folder,
       R.id.section_system_files,
       R.id.section_hard_disk,
+      R.id.section_save_states,
       R.id.section_display,
       R.id.card_gpu_driver,
       R.id.section_env_vars,
@@ -743,7 +767,11 @@ class SettingsActivity : AppCompatActivity() {
 
     val (title, visibleSections) = when (section) {
       "data" -> getString(R.string.settings_index_data) to
-        setOf(R.id.section_games_folder, R.id.section_system_files, R.id.section_hard_disk)
+        setOf(R.id.section_games_folder, R.id.section_system_files, R.id.section_hard_disk,
+          R.id.section_save_states)
+      // #433: the per-game entry; the "data" section is global only.
+      "savestates" -> getString(R.string.settings_savestate_title) to
+        setOf(R.id.section_save_states)
       "graphics" -> getString(R.string.settings_index_graphics) to
         setOf(R.id.section_display, R.id.card_gpu_driver, R.id.section_env_vars)
       "audio" -> getString(R.string.settings_index_audio) to
@@ -1196,6 +1224,49 @@ class SettingsActivity : AppCompatActivity() {
       .show()
   }
 
+  /** #433: the "Save states" section, placed after the hard disk section. */
+  private fun setupSaveStatesSection() {
+    val hdd = findViewById<View>(R.id.section_hard_disk) ?: return
+    val parent = hdd.parent as? android.view.ViewGroup ?: return
+    val card = layoutInflater.inflate(R.layout.savestate_settings, parent, false)
+    parent.addView(card, parent.indexOfChild(hdd) + 1)
+
+    setupSwitch(R.id.switch_savestate_compression, "savestate_compression", true)
+    setupSwitch(R.id.switch_savestate_auto_load, "savestate_auto_load", false)
+    setupSwitch(R.id.switch_savestate_auto_save, "savestate_auto_save", false)
+    // The folder is global; the switches can be set per game.
+    if (isPerGameMode) {
+      findViewById<View>(R.id.group_savestate_folder)?.visibility = View.GONE
+      return
+    }
+    updateSaveStateFolder()
+    findViewById<MaterialButton>(R.id.btn_savestate_folder).setOnClickListener {
+      pickSaveStateFolder.launch(prefs.getString(SAVESTATE_TREE_KEY, null)?.let { Uri.parse(it) })
+    }
+    findViewById<MaterialButton>(R.id.btn_savestate_folder_reset).setOnClickListener {
+      // The grant stays: the same folder may also be a games folder.
+      prefs.edit().remove(SAVESTATE_TREE_KEY).apply()
+      updateSaveStateFolder()
+      Toast.makeText(this, R.string.settings_savestate_folder_reset_done, Toast.LENGTH_SHORT).show()
+    }
+  }
+
+  private fun updateSaveStateFolder() {
+    val path = findViewById<TextView>(R.id.txt_savestate_folder) ?: return
+    val note = findViewById<TextView>(R.id.txt_savestate_folder_note) ?: return
+    val reset = findViewById<MaterialButton>(R.id.btn_savestate_folder_reset)
+    val tree = prefs.getString(SAVESTATE_TREE_KEY, null)
+    if (tree != null) {
+      path.text = SaveStateStore.describe(tree)
+      note.setText(R.string.settings_savestate_folder_picked_note)
+      reset?.isEnabled = true
+    } else {
+      // The native side uses <external files>/x1box/states (hxs_jni.cpp).
+      path.text = File(getExternalFilesDir(null), "x1box/states").absolutePath
+      note.setText(R.string.settings_savestate_folder_default_note)
+      reset?.isEnabled = false
+    }
+  }
   private fun updateTextureDumpPath() {
     val txtPath = findViewById<TextView>(R.id.txt_texture_dump_path) ?: return
     val uriStr = prefs.getString("textureDumpFolderUri", null)
@@ -1532,6 +1603,8 @@ class SettingsActivity : AppCompatActivity() {
     private const val FATX_MAGIC = 0x46415458 // "FATX" read as big-endian int
     private const val QCOW2_MAGIC = 0x514649fb.toInt() // "QFI\xfb"
     private const val WIPE_SIZE = 1 * 1024 * 1024L
+    /** #433: read by xemu_android.cpp (SyncSetupFiles). */
+    private const val SAVESTATE_TREE_KEY = "savestate_tree_uri"
     private const val PREF_INSIGNIA_SETUP_URI = "setting_insignia_setup_assistant_uri"
     private const val PREF_INSIGNIA_SETUP_NAME = "setting_insignia_setup_assistant_name"
     private const val INSIGNIA_SIGN_UP_URL = "https://insignia.live/"

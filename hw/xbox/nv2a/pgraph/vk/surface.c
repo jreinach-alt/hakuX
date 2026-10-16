@@ -794,6 +794,184 @@ static int surfsplice_record(NV2AState *d, VkCommandBuffer cmd,
     return spliced;
 }
 
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+/*
+ * lane.fpsbelow1012 (#433), HAKUX_RANGELOG=1: what the `range` downloads
+ * download. Each draw_dirty surface the lookup below downloads is counted by
+ * its address and its caller, with the range that reached it, and
+ * sdcall_log() prints one [sdrange] line per surface and caller every 60
+ * guest frames. The vertex RAM sync (caller pgraph_vk_update_vertex_ram_buffer,
+ * by=vtx) passes a draw's ranges rounded out to pages and merged; for it, ex=
+ * counts the downloads where one of the draw's exact byte ranges (vtxhz_cur,
+ * kept while HAKUX_VTX_HAZARD is on, hz=1) overlaps the surface, so n - ex
+ * were reached only through the rounding or the merge. edge= counts the
+ * downloads whose overlap lies inside the range's first or last page. Off by
+ * default; perf builds only.
+ */
+#define SDR_SLOTS 12
+
+typedef struct SdrSlot {
+    hwaddr saddr;
+    intptr_t ra;
+    bool vtx, color, swizzle, bound;
+    unsigned long n, ex, edge;
+    hwaddr lo_min, hi_max;    /* the overlap, as offsets into the surface */
+    hwaddr r_start, r_size;   /* the last range that reached it */
+    unsigned int w, h, pitch;
+    size_t ssize;
+} SdrSlot;
+
+static struct {
+    unsigned long calls_vtx, calls_oth, full, shv, inv;
+    SdrSlot s[SDR_SLOTS];
+} g_sdr;
+
+static int sdr_state = -1;
+
+static bool sdr_on(void)
+{
+    if (sdr_state < 0) {
+        const char *e = getenv("HAKUX_RANGELOG");
+        sdr_state = e && e[0] == '1';
+        if (sdr_state) {
+            SURF92_LOG("[sdrange] on");
+        }
+    }
+    return sdr_state;
+}
+
+static void sdr_note(PGRAPHVkState *r, const SurfaceBinding *s, intptr_t ra,
+                     bool vtx, hwaddr start, hwaddr size)
+{
+    SdrSlot *e = NULL, *empty = NULL;
+    for (int i = 0; i < SDR_SLOTS && !e; i++) {
+        SdrSlot *t = &g_sdr.s[i];
+        if (!t->n) {
+            empty = empty ? empty : t;
+        } else if (t->saddr == s->vram_addr && t->ra == ra) {
+            e = t;
+        }
+    }
+    if (!e) {
+        if (!empty) {
+            g_sdr.full++;
+            return;
+        }
+        e = empty;
+        *e = (SdrSlot){
+            .saddr = s->vram_addr, .ra = ra, .vtx = vtx, .color = s->color,
+            .swizzle = s->swizzle, .lo_min = (hwaddr)-1, .w = s->width,
+            .h = s->height, .pitch = s->pitch, .ssize = s->size,
+        };
+    }
+    hwaddr lo = MAX(start, s->vram_addr);
+    hwaddr hi = MIN(start + size, s->vram_addr + s->size);
+    e->n++;
+    e->lo_min = MIN(e->lo_min, lo - s->vram_addr);
+    e->hi_max = MAX(e->hi_max, hi - s->vram_addr);
+    e->r_start = start;
+    e->r_size = size;
+    e->bound |= s == r->color_binding || s == r->zeta_binding;
+    if (hi <= start + TARGET_PAGE_SIZE ||
+        lo + TARGET_PAGE_SIZE >= start + size) {
+        e->edge++;
+    }
+    if (vtx && r->vtxhz_on) {
+        for (size_t i = 0; i < r->vtxhz_cur_n; i++) {
+            hwaddr a = r->vtxhz_cur[i].addr;
+            hwaddr b = a + r->vtxhz_cur[i].size;
+            if (a < s->vram_addr + s->size && s->vram_addr < b) {
+                e->ex++;
+                break;
+            }
+        }
+    }
+}
+
+static void sdr_log(PGRAPHVkState *r, int frames)
+{
+    if (sdr_state <= 0) {
+        return;
+    }
+    SURF92_LOG("[sdrange] frames=%d calls=vtx%lu/oth%lu shv=%lu inv=%lu "
+               "full=%lu hz=%d", frames, g_sdr.calls_vtx, g_sdr.calls_oth,
+               g_sdr.shv, g_sdr.inv, g_sdr.full, r->vtxhz_on);
+    for (int i = 0; i < SDR_SLOTS; i++) {
+        SdrSlot *e = &g_sdr.s[i];
+        if (!e->n) {
+            continue;
+        }
+        char by[24];
+        if (e->vtx) {
+            snprintf(by, sizeof(by), "vtx");
+        } else {
+            snprintf(by, sizeof(by), "%+ld", (long)e->ra);
+        }
+        SURF92_LOG("[sdrange] s=%08" HWADDR_PRIx " %ux%u p%u sz%zu %s%s%s "
+                   "by=%s n=%lu ex=%lu edge=%lu ovl=%" HWADDR_PRIx "-%"
+                   HWADDR_PRIx " last=%08" HWADDR_PRIx "+%" HWADDR_PRIx,
+                   e->saddr, e->w, e->h, e->pitch, e->ssize,
+                   e->color ? "c" : "z", e->swizzle ? " sw" : "",
+                   e->bound ? " bound" : "", by, e->n, e->ex, e->edge,
+                   e->lo_min, e->hi_max, e->r_start, e->r_size);
+    }
+    memset(&g_sdr, 0, sizeof(g_sdr));
+}
+
+/*
+ * lane.fpsbelow1012 (#433), [sdrfin]: why each `range` completion below
+ * completed its batch. Since forza414 an eviction's downloads wait for the
+ * next finish, and the lookup completes the pending batch when the range
+ * overlaps any surface, draw_dirty or not, or a pending download's
+ * destination. own: this lookup recorded a download of its own. dest: it
+ * recorded none, and the range overlaps a pending destination (the reader
+ * needs those bytes). clean: it recorded none, and the range overlaps no
+ * pending destination, only a surface with nothing to download (a precise
+ * rule would not complete). tscan: pgraph_vk_texscan_complete_range (always
+ * dest). Per class, per 60 guest frames: completions, the downloads they
+ * retired, for own those the lookups recorded, and the wall time of the
+ * whole completion (the fence or finish and the copies into VRAM, so a
+ * little more than [sdcall] range=...ms). Perf builds only, always on.
+ */
+enum { RF_OWN, RF_DEST, RF_CLEAN, RF_TSCAN, RF__COUNT };
+
+static struct {
+    unsigned long n[RF__COUNT], dl[RF__COUNT], rec;
+    int64_t ns[RF__COUNT];
+} g_rfin;
+
+static void rfin_count(int rf, unsigned long dl, int rec, int64_t ns)
+{
+    g_rfin.n[rf]++;
+    g_rfin.dl[rf] += dl;
+    g_rfin.rec += rec;
+    g_rfin.ns[rf] += ns;
+}
+
+static void rfin_log(int frames)
+{
+    static const char *const names[RF__COUNT] = {
+        "own", "dest", "clean", "tscan",
+    };
+    unsigned long any = 0;
+    for (int i = 0; i < RF__COUNT; i++) {
+        any += g_rfin.n[i];
+    }
+    if (any) {
+        char buf[400];
+        int n = snprintf(buf, sizeof(buf), "[sdrfin] frames=%d rec=%lu",
+                         frames, g_rfin.rec);
+        for (int i = 0; i < RF__COUNT && n < (int)sizeof(buf); i++) {
+            n += snprintf(buf + n, sizeof(buf) - n, " %s=n%lu/dl%lu/%.1fms",
+                          names[i], g_rfin.n[i], g_rfin.dl[i],
+                          (double)g_rfin.ns[i] / 1e6);
+        }
+        SURF92_LOG("%s", buf);
+    }
+    memset(&g_rfin, 0, sizeof(g_rfin));
+}
+#endif
+
 bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
                                                    hwaddr start, hwaddr size)
 {
@@ -801,6 +979,24 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
     PGRAPHVkState *r = pg->vk_renderer_state;
     SurfaceBinding *surface;
     bool found_overlap = false;
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+    intptr_t sdr_ra = 0;
+    bool sdr_vtx = false;
+    int rf_rec = 0;
+    if (unlikely(sdr_on())) {
+        /* The caller, as an offset from this function (ASLR moves both). */
+        uintptr_t ra = (uintptr_t)__builtin_return_address(0);
+        uintptr_t vf = (uintptr_t)&pgraph_vk_update_vertex_ram_buffer;
+        sdr_ra = (intptr_t)(ra -
+            (uintptr_t)&pgraph_vk_download_surfaces_in_range_if_dirty);
+        sdr_vtx = ra > vf && ra - vf < 0x400;
+        if (sdr_vtx) {
+            g_sdr.calls_vtx++;
+        } else {
+            g_sdr.calls_oth++;
+        }
+    }
+#endif
 
     /* A batch a previous finish submitted completes only if a new download
      * is recorded below (complete_submitted_downloads) or if it overlaps the
@@ -810,6 +1006,12 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
             found_overlap = true;
             if (surface->draw_dirty) {
                 OPT_STAT_INC(dif_other);
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+                if (unlikely(sdr_state > 0)) {
+                    sdr_note(r, surface, sdr_ra, sdr_vtx, start, size);
+                }
+                rf_rec++;
+#endif
                 download_surface_deferred(d, surface);
             }
         }
@@ -821,6 +1023,10 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
         if (!surface->width || !surface->height) continue;
         if (check_surface_overlaps_range(surface, start, size)) {
             OPT_STAT_INC(sd_shelved_lazy_dl);
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+            g_sdr.shv += sdr_state > 0;
+            rf_rec++;
+#endif
             download_surface_deferred(d, surface);
             surface->shelved_dirty = false;
             found_overlap = true;
@@ -833,6 +1039,10 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
         if (!surface->width || !surface->height) continue;
         if (check_surface_overlaps_range(surface, start, size)) {
             OPT_STAT_INC(sd_shelved_lazy_dl);
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+            g_sdr.inv += sdr_state > 0;
+            rf_rec++;
+#endif
             download_surface_deferred(d, surface);
             found_overlap = true;
         }
@@ -846,7 +1056,17 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
          * now since the caller needs the data in VRAM. That includes ones
          * an earlier surface_update left pending for a surface it evicted,
          * which is shelved clean and so is not found above. */
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+        int rf = rf_rec ? RF_OWN :
+                 deferred_downloads_overlap_range(d, start, size) ? RF_DEST :
+                 RF_CLEAN;
+        unsigned long rf_dl = r->num_deferred_downloads + g_sg_held.n;
+        int64_t rf_t0 = nv2a_clock_ns();
+#endif
         download_surface_complete_deferred(d, SDC_RANGE);
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+        rfin_count(rf, rf_dl, rf_rec, nv2a_clock_ns() - rf_t0);
+#endif
     }
 
     return found_overlap;
@@ -873,7 +1093,14 @@ bool pgraph_vk_texscan_complete_range(PGRAPHState *pg, hwaddr start,
         !deferred_downloads_overlap_range(d, start, size)) {
         return false;
     }
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+    unsigned long rf_dl = r->num_deferred_downloads + g_sg_held.n;
+    int64_t rf_t0 = nv2a_clock_ns();
+#endif
     download_surface_complete_deferred(d, SDC_RANGE);
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+    rfin_count(RF_TSCAN, rf_dl, 0, nv2a_clock_ns() - rf_t0);
+#endif
     return true;
 }
 
@@ -1747,6 +1974,7 @@ static void sdcall_log(PGRAPHState *pg)
                  g_sdcall.spl_dl, g_sdcall.spl_kb, g_sdcall.spl_cmpl);
     }
     SURF92_LOG("%s", buf);
+    rfin_log(frames);
     if (surfgpu_enabled()) {
         SURF92_LOG("[surfgpu] frames=%d detach=%lu nodisp=%lu dedup=%lu "
                    "hold=%lu hwait=%lu hrot=%lu wrap=%lu",
@@ -1754,6 +1982,7 @@ static void sdcall_log(PGRAPHState *pg)
                    g_spl_dedup, g_sdcall.sg_hold, g_sdcall.sg_hwait,
                    g_sdcall.sg_hrot, g_sg_wrap);
     }
+    sdr_log(pg->vk_renderer_state, frames);
     g_spl_dedup = 0;
     g_sg_wrap = 0;
     memset(&g_sdcall, 0, sizeof(g_sdcall));
@@ -5970,6 +6199,335 @@ static bool check_surface_internal_formats_supported(
     return all_supported;
 }
 
+/*
+ * #433, HAKUX_S2T_CVT=1 (off by default): a 16-bit colour surface sampled as
+ * an A1R5G5B5, X1R5G5B5 or R5G6B5 texture is decoded on the GPU into the
+ * texture's RGBA8 image, in place of a download to VRAM and the CPU decode.
+ *
+ * Those texture formats are expanded to RGBA8 by bit replication (#59), so
+ * check_surface_to_texture_compatiblity() refuses them and create_texture()
+ * downloads the surface: a finish and a fence wait on the PFIFO thread for
+ * each such texture. Per frame (docs/lanes/fps1015/NOTES.md): Mortal Kombat
+ * Shaolin Monks 3 (X1R5G5B5, up to 320x240), Top Spin 24-32 (R5G6B5 64x128),
+ * Prince of Persia 9 (R5G6B5 256x256), Batman Begins 1 (R5G6B5 512x512).
+ *
+ * The decode is the CPU's (pgraph/texture.c, the replication branch of the
+ * texture conversion) on the same input. A1R5G5B5_UNORM_PACK16 and
+ * R5G6B5_UNORM_PACK16 hold the guest's bit layout and a download copies the
+ * host words unchanged, so the words read here are the ones VRAM would hold,
+ * and each field is expanded by the TEXTURE format with (v<<3)|(v>>2) and
+ * (v<<2)|(v>>4). A blit cannot stand in for it: UNORM conversion rounds by
+ * the ratio, which differs from replication at 5-bit 3, 7, 24, 28 and 6-bit
+ * 11..15, 48..52. Texture images are TRANSFER_DST and SAMPLED only, so the
+ * words go image -> buffer, the shader writes RGBA8 texels to the same
+ * buffer, and a buffer -> image copy fills the texture, all recorded inline.
+ */
+static int s2t_cvt_state = -1;
+
+#define S2T_CVT_GROUP 64
+
+static const char s2t_cvt_glsl[] =
+    "#version 450\n"
+    "layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;\n"
+    "layout(push_constant) uniform PushConstants {\n"
+    "    uint count, kind, unused0, unused1;\n"
+    "};\n"
+    "layout(set = 0, binding = 0) buffer TexelsOut { uint texels[]; };\n"
+    "layout(set = 0, binding = 2) buffer WordsIn { uint words[]; };\n"
+    "uint rep5(uint v) { return (v << 3) | (v >> 2); }\n"
+    "uint rep6(uint v) { return (v << 2) | (v >> 4); }\n"
+    "void main() {\n"
+    "    uint i = gl_GlobalInvocationID.x;\n"
+    "    if (i >= count) {\n"
+    "        return;\n"
+    "    }\n"
+    "    uint w = (words[i >> 1] >> ((i & 1u) * 16u)) & 0xFFFFu;\n"
+    "    uint r, g, b, a = 255u;\n"
+    "    if (kind == 0u) {\n"
+    "        r = rep5((w >> 11) & 31u);\n"
+    "        g = rep6((w >> 5) & 63u);\n"
+    "        b = rep5(w & 31u);\n"
+    "    } else {\n"
+    "        r = rep5((w >> 10) & 31u);\n"
+    "        g = rep5((w >> 5) & 31u);\n"
+    "        b = rep5(w & 31u);\n"
+    "        if (kind == 2u && (w & 0x8000u) == 0u) {\n"
+    "            a = 0u;\n"
+    "        }\n"
+    "    }\n"
+    "    texels[i] = r | (g << 8) | (b << 16) | (a << 24);\n"
+    "}\n";
+
+bool pgraph_vk_s2t_cvt_on(void)
+{
+    if (s2t_cvt_state < 0) {
+        const char *e = getenv("HAKUX_S2T_CVT");
+        s2t_cvt_state = e && e[0] == '1';
+        if (s2t_cvt_state) {
+            SURF92_LOG("[s2tcvt] on");
+        }
+    }
+    return s2t_cvt_state;
+}
+
+/* 0 R5G6B5, 1 X1R5G5B5, 2 A1R5G5B5: the shader's kind */
+static uint32_t s2t_cvt_kind(unsigned int color_format)
+{
+    switch (color_format) {
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5:
+        return 0;
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5:
+        return 2;
+    default:
+        return 1;
+    }
+}
+
+/*
+ * Room for `size` bytes. A larger buffer replaces the old one only once
+ * nothing recorded or in flight can still read it.
+ */
+static void s2t_cvt_reserve(PGRAPHState *pg, VkDeviceSize size)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (r->s2t_cvt.size >= size) {
+        return;
+    }
+    if (r->s2t_cvt.buffer != VK_NULL_HANDLE) {
+        pgraph_vk_finish(pg, VK_FINISH_REASON_NEED_BUFFER_SPACE);
+        pgraph_vk_flush_all_frames(pg);
+        vmaDestroyBuffer(r->allocator, r->s2t_cvt.buffer,
+                         r->s2t_cvt.allocation);
+        r->s2t_cvt.buffer = VK_NULL_HANDLE;
+        r->s2t_cvt.size = 0;
+    }
+    /* 640x480 words and texels fit the first one */
+    VkDeviceSize alloc = ROUND_UP(MAX(size, (VkDeviceSize)4 << 20), 1 << 20);
+    VkBufferCreateInfo buffer_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = alloc,
+        .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+                 VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    VmaAllocationCreateInfo alloc_info = {
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+    };
+    VK_CHECK(vmaCreateBuffer(r->allocator, &buffer_info, &alloc_info,
+                             &r->s2t_cvt.buffer, &r->s2t_cvt.allocation,
+                             NULL));
+    r->s2t_cvt.size = alloc;
+}
+
+static void s2t_cvt_create_pipeline(PGRAPHVkState *r)
+{
+    ShaderModuleInfo *module = pgraph_vk_create_shader_module_from_glsl(
+        r, VK_SHADER_STAGE_COMPUTE_BIT, s2t_cvt_glsl);
+    assert(module && "s2t_cvt compute shader GLSL compilation failed");
+
+    VkComputePipelineCreateInfo pipeline_info = {
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .layout = r->compute.pipeline_layout,
+        .stage =
+            (VkPipelineShaderStageCreateInfo){
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+                .pName = "main",
+                .module = module->module,
+            },
+    };
+    VK_CHECK(vkCreateComputePipelines(r->device, r->vk_pipeline_cache, 1,
+                                      &pipeline_info, NULL,
+                                      &r->s2t_cvt.pipeline));
+    pgraph_vk_destroy_shader_module(r, module);
+}
+
+static void s2t_cvt_buffer_barrier(VkCommandBuffer cmd, VkBuffer buffer,
+                                   VkDeviceSize offset, VkDeviceSize size,
+                                   VkPipelineStageFlags src_stage,
+                                   VkAccessFlags src_access,
+                                   VkPipelineStageFlags dst_stage,
+                                   VkAccessFlags dst_access)
+{
+    VkBufferMemoryBarrier barrier = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        .srcAccessMask = src_access,
+        .dstAccessMask = dst_access,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .buffer = buffer,
+        .offset = offset,
+        .size = size,
+    };
+    vkCmdPipelineBarrier(cmd, src_stage, dst_stage, 0, 0, NULL, 1, &barrier,
+                         0, NULL);
+}
+
+/*
+ * vk/texture.c, copy_surface_to_texture(): the surface is the texture's
+ * source (check_surface_to_texture_compatiblity()), a 2-byte colour surface
+ * under a format pgraph_texture_format_expands_by_replication() names.
+ */
+void pgraph_vk_s2t_cvt_copy(PGRAPHState *pg, SurfaceBinding *surface,
+                            TextureBinding *texture)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    unsigned int color_format = texture->key.state.color_format;
+    VkFormat tex_format = kelvin_color_format_vk_map[color_format].vk_format;
+
+    assert(surface->color && surface->host_fmt.host_bytes_per_pixel == 2);
+    assert(pgraph_texture_format_expands_by_replication(color_format));
+
+    unsigned int width = surface->width, height = surface->height;
+    pgraph_apply_scaling_factor(pg, &width, &height);
+    uint32_t count = width * height;
+
+    static bool logged_first;
+    if (!logged_first) {
+        logged_first = true;
+        SURF92_LOG("[s2tcvt] first %ux%u fmt 0x%x", width, height,
+                   color_format);
+    }
+
+    VkDeviceSize align = MAX(
+        r->device_props.limits.minStorageBufferOffsetAlignment, 4);
+    VkDeviceSize words_size = ROUND_UP((VkDeviceSize)count * 2, align);
+    VkDeviceSize texels_size = (VkDeviceSize)count * 4;
+
+    s2t_cvt_reserve(pg, words_size + texels_size);
+    if (r->s2t_cvt.pipeline == VK_NULL_HANDLE) {
+        s2t_cvt_create_pipeline(r);
+    }
+    if (pgraph_vk_compute_needs_finish(r)) {
+        pgraph_vk_finish(pg, VK_FINISH_REASON_NEED_BUFFER_SPACE);
+        pgraph_vk_flush_all_frames(pg);
+        pgraph_vk_compute_finish_complete(r);
+    }
+
+#if OPT_SURF_TO_TEX_INLINE
+    VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+#else
+    pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
+    VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
+#endif
+    pgraph_vk_begin_debug_marker(r, cmd, RGBA_GREEN, __func__);
+    int xfr_tok = pgraph_vk_xfr_begin(pg, cmd, "s2t", 6330);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_READ);
+
+    /* An earlier conversion may still read or write the buffer. */
+    s2t_cvt_buffer_barrier(
+        cmd, r->s2t_cvt.buffer, 0, VK_WHOLE_SIZE,
+        VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+
+    pgraph_vk_transition_image_layout(
+        pg, cmd, surface->image, surface->host_fmt.vk_format,
+        surface->image_layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    VkBufferImageCopy words_region = {
+        .bufferOffset = 0,
+        .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .imageSubresource.layerCount = 1,
+        .imageExtent = (VkExtent3D){ width, height, 1 },
+    };
+    vkCmdCopyImageToBuffer(cmd, surface->image,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           r->s2t_cvt.buffer, 1, &words_region);
+    pgraph_vk_transition_image_layout(
+        pg, cmd, surface->image, surface->host_fmt.vk_format,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, surface->image_layout);
+
+    s2t_cvt_buffer_barrier(cmd, r->s2t_cvt.buffer, 0, words_size,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_ACCESS_TRANSFER_WRITE_BIT,
+                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           VK_ACCESS_SHADER_READ_BIT);
+
+    assert(r->compute.descriptor_set_index <
+           (int)ARRAY_SIZE(r->compute.descriptor_sets));
+    VkDescriptorSet set =
+        r->compute.descriptor_sets[r->compute.descriptor_set_index++];
+    VkDescriptorBufferInfo buffers[3] = {
+        { .buffer = r->s2t_cvt.buffer, .offset = words_size,
+          .range = texels_size },
+        { .buffer = r->s2t_cvt.buffer, .offset = words_size,
+          .range = texels_size },
+        { .buffer = r->s2t_cvt.buffer, .offset = 0, .range = words_size },
+    };
+    VkWriteDescriptorSet writes[3];
+    for (int i = 0; i < 3; i++) {
+        writes[i] = (VkWriteDescriptorSet){
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = set,
+            .dstBinding = i,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .pBufferInfo = &buffers[i],
+        };
+    }
+    vkUpdateDescriptorSets(r->device, 3, writes, 0, NULL);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                      r->s2t_cvt.pipeline);
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                            r->compute.pipeline_layout, 0, 1, &set, 0, NULL);
+    uint32_t push_constants[4] = { count, s2t_cvt_kind(color_format), 0, 0 };
+    vkCmdPushConstants(cmd, r->compute.pipeline_layout,
+                       VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(push_constants),
+                       push_constants);
+    vkCmdDispatch(cmd, (count + S2T_CVT_GROUP - 1) / S2T_CVT_GROUP, 1, 1);
+
+    s2t_cvt_buffer_barrier(cmd, r->s2t_cvt.buffer, words_size, texels_size,
+                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           VK_ACCESS_SHADER_WRITE_BIT,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_ACCESS_TRANSFER_READ_BIT);
+
+    pgraph_vk_transition_image_layout(pg, cmd, texture->image, tex_format,
+                                      texture->current_layout,
+                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    texture->current_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    VkBufferImageCopy texels_region = {
+        .bufferOffset = words_size,
+        .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .imageSubresource.layerCount = 1,
+        .imageExtent = (VkExtent3D){ width, height, 1 },
+    };
+    vkCmdCopyBufferToImage(cmd, r->s2t_cvt.buffer, texture->image,
+                           texture->current_layout, 1, &texels_region);
+    pgraph_vk_transition_image_layout(pg, cmd, texture->image, tex_format,
+                                      texture->current_layout,
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    texture->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok);
+    pgraph_vk_end_debug_marker(r, cmd);
+#if OPT_SURF_TO_TEX_INLINE
+    pgraph_vk_end_nondraw_commands(pg, cmd);
+#else
+    pgraph_vk_end_single_time_commands(pg, cmd);
+#endif
+}
+
+static void s2t_cvt_finalize(PGRAPHVkState *r)
+{
+    if (r->s2t_cvt.pipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(r->device, r->s2t_cvt.pipeline, NULL);
+        r->s2t_cvt.pipeline = VK_NULL_HANDLE;
+    }
+    if (r->s2t_cvt.buffer != VK_NULL_HANDLE) {
+        vmaDestroyBuffer(r->allocator, r->s2t_cvt.buffer,
+                         r->s2t_cvt.allocation);
+        r->s2t_cvt.buffer = VK_NULL_HANDLE;
+        r->s2t_cvt.size = 0;
+    }
+}
+
 void pgraph_vk_init_surfaces(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -6006,10 +6564,27 @@ void pgraph_vk_init_surfaces(PGRAPHState *pg)
      *
      * D24_UNORM_S8_UINT remains the fallback for devices without the float
      * format, still writing through the ULP nudge that the unorm scale needs.
+     *
+     * #433, HAKUX_ZETA_D24=1 (off by default) takes the fallback first, for
+     * speed on a tiler (lane.fpsbelow1012, NOTES section 5). Turnip keeps
+     * D32_SFLOAT_S8_UINT's stencil as a separate cpp-1 plane in GMEM, and a
+     * cpp-1 attachment doubles its tile width alignment (96 -> 192 on the
+     * Adreno 740, tu_pass.cc). A 640x480 or 720x480 pass with 4-byte colour
+     * then needs two tiles, and two tiles get no HW binning (tu_util.cc,
+     * binning_useful is tiles > 2), so each tile replays the whole draw
+     * stream. As D24_UNORM_S8_UINT the same pass fits one tile. The cost is
+     * the round trip above: a depth word may come back a unit off.
      */
     r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = zeta_d16;
-    if (check_surface_internal_formats_supported(r, &zeta_d32_sfloat_s8_uint,
-                                                 1)) {
+    const char *zeta_d24_env = getenv("HAKUX_ZETA_D24");
+    bool zeta_d24_first = zeta_d24_env && zeta_d24_env[0] == '1' &&
+        check_surface_internal_formats_supported(r, &zeta_d24_unorm_s8_uint, 1);
+    if (zeta_d24_first) {
+        r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
+            zeta_d24_unorm_s8_uint;
+        pg->zeta_stored_as_float = false;
+    } else if (check_surface_internal_formats_supported(
+                   r, &zeta_d32_sfloat_s8_uint, 1)) {
         r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
             zeta_d32_sfloat_s8_uint;
         /* Every writer and reader of a Z24S8 surface has to know this; see
@@ -6027,10 +6602,11 @@ void pgraph_vk_init_surfaces(PGRAPHState *pg)
         r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
             zeta_d16;
     }
-    fprintf(stderr, "nv2a: Z24S8 host format 0x%x, depth stored as %s\n",
+    fprintf(stderr, "nv2a: Z24S8 host format 0x%x, depth stored as %s%s\n",
             r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8]
                 .vk_format,
-            pg->zeta_stored_as_float ? "float" : "unorm");
+            pg->zeta_stored_as_float ? "float" : "unorm",
+            zeta_d24_first ? " (HAKUX_ZETA_D24)" : "");
 
     QTAILQ_INIT(&r->surfaces);
     QTAILQ_INIT(&r->invalid_surfaces);
@@ -6069,6 +6645,7 @@ void pgraph_vk_finalize_surfaces(PGRAPHState *pg)
         g_hash_table_destroy(r->surface_addr_map);
         r->surface_addr_map = NULL;
     }
+    s2t_cvt_finalize(r);
 }
 
 void pgraph_vk_surface_flush(NV2AState *d)

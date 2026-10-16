@@ -31,10 +31,14 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
      */
     const val EXTRA_FROM_FRONTEND = "from_frontend"
 
-    /** #433: the six switches "Fast renderer paths" sets together. */
+    /** #433: how long a quit waits for the auto slot (a raw save takes ~0.2 s). */
+    const val AUTO_SAVE_WAIT_MS = 10_000L
+
+    /** #433: the eight switches "Fast renderer paths" sets together. */
     val FASTPATHS_VARS = arrayOf(
       "HAKUX_REPORT_ASYNC", "HAKUX_TEXSCAN", "HAKUX_DRAWREC",
-      "HAKUX_UNI_BULK", "HAKUX_UNI_UBERCACHE", "HAKUX_UNI_FOGCACHE"
+      "HAKUX_UNI_BULK", "HAKUX_UNI_UBERCACHE", "HAKUX_UNI_FOGCACHE",
+      "HAKUX_POSTED_PUT", "HAKUX_LOCKFREE_WAKE"
     )
   }
 
@@ -62,6 +66,88 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
   private external fun nativeResumeEmulation(): Unit
   private external fun nativeExitEmulation(): Unit
   private external fun nativeDumpDiagFrames(numFrames: Int): Unit
+  // #433: save states (savestate/hxs_jni.cpp). Each blocks until done; call
+  // them off the UI thread.
+  private external fun nativeSaveStateSave(slot: Int): String
+  private external fun nativeSaveStateLoad(slot: Int): String
+  private external fun nativeSaveStateUndoLoad(): String
+  private external fun nativeSaveStateUndoSave(): String
+  private external fun nativeSaveStateAutoQuit(): String
+  private external fun nativeSaveStateCanUndo(): Int
+  private external fun nativeSaveStateList(): String?
+  private external fun nativeSaveStateAutoLoadMessage(): String?
+
+  private var exiting = false
+
+  private val saveStateActions = object : SaveStateActions {
+    override fun save(slot: Int) = SaveStateResult.parse(nativeSaveStateSave(slot))
+    override fun load(slot: Int) = SaveStateResult.parse(nativeSaveStateLoad(slot))
+    override fun undoLoad() = SaveStateResult.parse(nativeSaveStateUndoLoad())
+    override fun undoSave() = SaveStateResult.parse(nativeSaveStateUndoSave())
+    override fun list() = SaveStateSlot.parseList(nativeSaveStateList())
+    override fun canUndo() = nativeSaveStateCanUndo()
+  }
+
+  /** The game's setting first, then the global one. */
+  private fun saveStateBool(key: String, def: Boolean): Boolean {
+    PerGameSettingsManager.getRuntimeOverride(this, key)?.let { return it == "true" || it == "1" }
+    return prefs.getBoolean(key, def)
+  }
+
+  /**
+   * Saves the auto slot when the setting is on. Blocks until the file is in
+   * place, or [AUTO_SAVE_WAIT_MS] at most, so a quit never hangs on it; a save
+   * cut short leaves the previous auto slot as it was.
+   */
+  private fun autoSaveOnQuit(why: String) {
+    if (!saveStateBool("savestate_auto_save", false)) return
+    val t = Thread {
+      val r = SaveStateResult.parse(nativeSaveStateAutoQuit())
+      android.util.Log.i("hakuX-savestate", "auto-save ($why): ok=${r.ok} reason=${r.reason} " +
+        "pause_ms=${r.pauseMs} total_ms=${r.totalMs}")
+    }
+    t.start()
+    t.join(AUTO_SAVE_WAIT_MS)
+    if (t.isAlive) {
+      android.util.Log.w("hakuX-savestate", "auto-save ($why) not done after $AUTO_SAVE_WAIT_MS ms")
+    }
+  }
+
+  /**
+   * Auto-load runs in the core before the game's first frame; this shows the
+   * player what it did once the core has decided.
+   */
+  private fun watchAutoLoad() {
+    if (!saveStateBool("savestate_auto_load", false)) return
+    val started = System.currentTimeMillis()
+    val poll = object : Runnable {
+      override fun run() {
+        val m = try { nativeSaveStateAutoLoadMessage() } catch (_: Throwable) { null }
+        val f = m?.split('\t').orEmpty()
+        when (f.firstOrNull()) {
+          "ok" -> {
+            val slot = f.getOrNull(1)?.toIntOrNull()
+            val name = if (slot == SaveStateSlot.AUTO) "the auto slot" else "slot $slot"
+            val ms = f.getOrNull(3)?.toDoubleOrNull()?.toLong() ?: 0
+            // The load kept the fresh boot as its undo-load state.
+            android.widget.Toast.makeText(this@MainActivity,
+              "Loaded $name (${SaveStateText.ms(ms)}). Undo load in the pause menu goes back to a fresh boot.",
+              android.widget.Toast.LENGTH_LONG).show()
+            return
+          }
+          "refused" -> {
+            val why = SaveStateText.reason(f.getOrNull(2).orEmpty())
+            android.widget.Toast.makeText(this@MainActivity,
+              "Auto-load skipped: $why", android.widget.Toast.LENGTH_LONG).show()
+            return
+          }
+          "none", "off" -> return
+        }
+        if (System.currentTimeMillis() - started < 120_000) fpsHandler.postDelayed(this, 1000)
+      }
+    }
+    fpsHandler.postDelayed(poll, 1000)
+  }
 
   override fun loadLibraries() {
     // Throws before SDL2 or xemu is loaded; SDLActivity shows the message.
@@ -120,10 +206,11 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
     SDLActivity.nativeSetenv("HAKUX_SURFGPU", if (surfgpuOn) "1" else "0")
     android.util.Log.i("hakuX-build", "surfgpu: ${if (surfgpuOn) "ON" else "OFF"} (#433)")
 
-    // #433: "Fast renderer paths", on by default -- the six opt-in switches
-    // folded by reportasync1010, texscan1010, drawrec1010 and perdrawon1010
-    // (HAKUX_REPORT_ASYNC, HAKUX_TEXSCAN, HAKUX_DRAWREC, HAKUX_UNI_BULK,
-    // HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE), set as one switch. A line for
+    // #433: "Fast renderer paths", on by default -- the eight opt-in switches
+    // folded by reportasync1010, texscan1010, drawrec1010, perdrawon1010,
+    // postput1010 and lockwake1011 (HAKUX_REPORT_ASYNC, HAKUX_TEXSCAN,
+    // HAKUX_DRAWREC, HAKUX_UNI_BULK, HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE,
+    // HAKUX_POSTED_PUT, HAKUX_LOCKFREE_WAKE), set as one switch. A line for
     // any one of them in env_vars is applied after this by xemu_android.cpp,
     // so it still wins for testing.
     val fastpathsOn = fastpathsEnabled(prefs)
@@ -131,7 +218,8 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
     for (v in FASTPATHS_VARS) {
       SDLActivity.nativeSetenv(v, fastpathsVal)
     }
-    android.util.Log.i("hakuX-build", "fastpaths: ${if (fastpathsOn) "ON" else "OFF"} (#433)")
+    android.util.Log.i("hakuX-build",
+      "fastpaths: ${if (fastpathsOn) "ON" else "OFF"} (${FASTPATHS_VARS.joinToString(",")}) (#433)")
 
     // Texture settings: per-game override takes precedence over global
     val texDumpEnabled = prefs.getString(PerGameSettingsManager.runtimeKey("texture_dump_enabled"), null)
@@ -199,9 +287,10 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
   /**
    * Whether this launch sets the "Fast renderer paths" switches
    * (HAKUX_REPORT_ASYNC, HAKUX_TEXSCAN, HAKUX_DRAWREC, HAKUX_UNI_BULK,
-   * HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE), on by default: the per-game
-   * override, then the global setting. A line for any one of them in
-   * env_vars still wins, applied after this by xemu_android.cpp.
+   * HAKUX_UNI_UBERCACHE, HAKUX_UNI_FOGCACHE, HAKUX_POSTED_PUT,
+   * HAKUX_LOCKFREE_WAKE), on by default: the per-game override, then the
+   * global setting. A line for any one of them in env_vars still wins,
+   * applied after this by xemu_android.cpp.
    */
   private fun fastpathsEnabled(prefs: android.content.SharedPreferences): Boolean {
     return prefs.getString(PerGameSettingsManager.runtimeKey("fastpaths"), null)
@@ -427,28 +516,14 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
 
   private fun setupPauseMenu() {
     pauseMenuOverlay = PauseMenuOverlay(this).apply {
+      saveStates = saveStateActions
       onExitEmulation = {
-        if (intent?.getBooleanExtra(EXTRA_FROM_FRONTEND, false) == true) {
-          // An external frontend started this game, so it, not the library, is
-          // where the player expects to end up.  Dropping the task rather than
-          // just finishing leaves nothing of ours behind to return to, so the
-          // frontend comes back to the foreground.
-          finishAndRemoveTask()
-        } else {
-          // Launch the library activity FIRST so the intent is queued
-          // before we do any blocking work or kill the process.
-          val intent = Intent(this@MainActivity, GameLibraryActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-          }
-          startActivity(intent)
-          finish()
-        }
-        // nativeExitEmulation blocks until the display loop exits and
-        // RCU callbacks are drained, so QEMU threads are quiescent
-        // before we kill the process.
+        exiting = true
+        // The auto slot is written before the exit sequence starts: finish()
+        // can take SDL down with the activity.
         Thread {
-          nativeExitEmulation()
-          android.os.Process.killProcess(android.os.Process.myPid())
+          autoSaveOnQuit("exit")
+          runOnUiThread { exitEmulation() }
         }.start()
       }
       onDismiss = {
@@ -458,7 +533,7 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
         nativeDumpDiagFrames(numFrames)
       }
       isDebugToolsEnabled = {
-        prefs.getBoolean("debug_tools", false)
+        prefs.getBoolean("debug_tools", resources.getBoolean(R.bool.debug_tools_default))
       }
     }
     val overlayParams = RelativeLayout.LayoutParams(
@@ -466,6 +541,32 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
       RelativeLayout.LayoutParams.MATCH_PARENT
     )
     mLayout?.addView(pauseMenuOverlay, overlayParams)
+    watchAutoLoad()
+  }
+
+  private fun exitEmulation() {
+    if (intent?.getBooleanExtra(EXTRA_FROM_FRONTEND, false) == true) {
+      // An external frontend started this game, so it, not the library, is
+      // where the player expects to end up.  Dropping the task rather than
+      // just finishing leaves nothing of ours behind to return to, so the
+      // frontend comes back to the foreground.
+      finishAndRemoveTask()
+    } else {
+      // Launch the library activity FIRST so the intent is queued
+      // before we do any blocking work or kill the process.
+      val intent = Intent(this@MainActivity, GameLibraryActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+      }
+      startActivity(intent)
+      finish()
+    }
+    // nativeExitEmulation blocks until the display loop exits and
+    // RCU callbacks are drained, so QEMU threads are quiescent
+    // before we kill the process.
+    Thread {
+      nativeExitEmulation()
+      android.os.Process.killProcess(android.os.Process.myPid())
+    }.start()
   }
 
   private fun setupEdgeSwipe() {
@@ -495,6 +596,11 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
   }
 
   override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
+    // The menu moves its own selection: the game's surface keeps the focus.
+    val overlay = pauseMenuOverlay
+    if (event != null && overlay != null && overlay.isShowing() && overlay.handleKey(event)) {
+      return true
+    }
     if (event?.keyCode == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_DOWN) {
       togglePauseMenu()
       return true
@@ -503,6 +609,15 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
       return true
     }
     return super.dispatchKeyEvent(event)
+  }
+
+  override fun dispatchGenericMotionEvent(ev: MotionEvent?): Boolean {
+    // A d-pad that reports as a hat, and the left stick, move the menu too.
+    val overlay = pauseMenuOverlay
+    if (ev != null && overlay != null && overlay.isShowing() && overlay.handleMotion(ev)) {
+      return true
+    }
+    return super.dispatchGenericMotionEvent(ev)
   }
 
   private fun togglePauseMenu() {
@@ -562,6 +677,17 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
     suspendedByLifecycle = true
     nativePauseEmulation()
     super.onPause()
+  }
+
+  override fun onStop() {
+    // Swiping the game away from recents ends the process with no callback of
+    // its own, and the game has always stopped before that; so the auto slot
+    // is also saved whenever the game leaves the screen. The pause menu's Exit
+    // has saved already.
+    if (!exiting && !isChangingConfigurations) {
+      Thread { autoSaveOnQuit("stop") }.start()
+    }
+    super.onStop()
   }
 
   private fun registerVirtualController() {

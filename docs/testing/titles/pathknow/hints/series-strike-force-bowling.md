@@ -1,0 +1,2 @@
+# Strike Force Bowling
+- Name Entry (after a game, and for a new bowler): a letter WHEEL across the top; the D-pad LEFT/RIGHT turns it (footer "Change Letter"), A types the letter under the ring, B cancels. END and DEL sit just LEFT of A on the wheel. To finish: LEFT until END is under the ring, A; then DOWN to Done in the panel, A. START does nothing here, and A alone only types letters (runs/strike-force-bowling/hold2 frame 092, 10-05: 13 START/A/B presses typed FFAAFFAA and never closed it). Not yet verified on the device.
