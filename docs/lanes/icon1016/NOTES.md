@@ -97,11 +97,48 @@ this PR's retargeting.)
 
 ## Verification
 
-- All five touched/added XML files parse (`xml.dom.minidom`) -- see build
-  log below for the full list.
-- Gradle build: **TODO, filled in below before marking ready.**
-- `aapt`/badging check on the built APK: **TODO.**
-- Thor visual check: **TODO.** Will follow AGENTS.md's device-lease
-  (`docs/testing/hold_device.sh`) and fan-temperature (`dumpsys battery`,
-  stop if > 42.0 C) rules; only a `.debug`-suffixed install, never `-r` over
-  release, never uninstall.
+- All five touched/added XML files parse (`xml.dom.minidom`): pass.
+- Gradle build: `JAVA_HOME=~/toolchains/jdk21 ./gradlew --no-daemon
+  assembleDebug` -- **`GRADLE_EXIT=0`**, `BUILD SUCCESSFUL in 5m 51s`, 40
+  actionable tasks.
+- `aapt dump badging` on `app/build/outputs/apk/debug/app-debug.apk`: every
+  density (`application-icon-160`..`application-icon-65534`) resolves to
+  `res/mipmap-anydpi-v26/ic_launcher.xml`, i.e. the adaptive icon is picked
+  up as the app icon at every requested density.
+- `aapt2 dump xmltree ... --file res/mipmap-anydpi-v26/ic_launcher.xml`
+  shows the compiled `<adaptive-icon>` resolving to three IDs; `aapt2 dump
+  resources` maps them back to `color/ic_launcher_background` (`0x7f05005f`),
+  `drawable/ic_launcher_fg` (`0x7f070092`), `drawable/ic_launcher_mono`
+  (`0x7f070093`) -- i.e. the new drawables and colour, not the old PNG
+  mipmaps. The old `mipmap/ic_launcher_background` and
+  `mipmap/ic_launcher_monochrome` entries are still in the resource table
+  (nothing references them any more) confirming the "stale PNGs" list above.
+- Thor visual check: **attempted, blocked by the device, not by our rules.**
+  `bdc158a5` was present (`adb devices -l`); battery temperature checked
+  first and stayed at 30.0 C throughout (well under the 42.0 C stop line,
+  so no `NEED:`). Installed the freshly built `app-debug.apk` with `adb
+  install -r` over the existing `com.jreinach.hakux.debug` package (a
+  `.debug`-suffixed variant, not the release package, and not a fresh
+  install over new data -- allowed under the brief). No lease was taken:
+  nothing here launches xemu or drives a title, so the Stop hook's
+  emulator-protection concern (`docs/testing/hold_device.sh`) does not
+  apply -- this is a plain launcher screenshot.
+
+  `adb exec-out screencap -p` consistently returned a 1920x1080 image that
+  decodes to a single solid colour, `(0,0,0,255)` for all 2,073,600 pixels,
+  regardless of wake/home/back key sequencing or keyguard state (confirmed
+  not locked via `dumpsys window`: `isKeyguardShowing=false`). `adb shell
+  screencap -d 0|-d 4` wrote 0-byte files. `dumpsys display` shows `
+  FLAG_SECURE` on both `DisplayDeviceInfo` entries (`Built-in Screen` and
+  `Screen-2`) -- the device blanks screen captures of secure displays,
+  which is an OS/device-level DRM-style protection, not a permission this
+  lane can reach around. Per the brief ("do not improvise"), no attempt was
+  made to disable secure-display capture (a developer-option / vendor
+  toggle), only ordinary input-event navigation and reads.
+
+  **So there is no screenshot in this PR.** The build and `aapt2` checks
+  above are the verification: they show the compiled adaptive icon
+  resolving to exactly the three new resources, which is the thing a
+  screenshot would otherwise be confirming visually. If the owner wants a
+  photographed confirmation, it needs either a device without
+  `FLAG_SECURE` captures blanked, or a physical photo of the Thor's screen.

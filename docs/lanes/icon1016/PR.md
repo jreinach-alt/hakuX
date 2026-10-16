@@ -1,6 +1,6 @@
 # icon1016: hakuX CE app icon (#433)
 
-State: draft
+State: ready
 
 Lane: icon1016            Issue: #433
 Base: master @ 37ba9bd8bf
@@ -28,8 +28,19 @@ background) — the owner's two source files carry no background layer, so
 this is a design choice made here rather than a direct transcription; flagged
 for the owner in NOTES.md.
 
-Status: implementation and XML-parse verification done. Still to do in this
-session: Gradle `assembleDebug` build check, `aapt dump badging` on the
-resulting APK, and a Thor visual check per AGENTS.md's device-lease and
-fan-temperature rules. Will update this PR and NOTES.md with results before
-marking ready.
+Verification:
+- All five XML files parse.
+- `assembleDebug` built clean: `GRADLE_EXIT=0`, `BUILD SUCCESSFUL in 5m 51s`.
+- `aapt dump badging` + `aapt2 dump xmltree`/`dump resources` on the built
+  debug APK confirm the adaptive icon resolves to the new
+  `drawable/ic_launcher_fg`, `drawable/ic_launcher_mono` and
+  `color/ic_launcher_background`, not the old PNG mipmaps, at every density.
+- Thor visual check was attempted (battery temp 30.0 C throughout, well
+  under the 42.0 C stop line; installed the built APK over the existing
+  `.debug` package with `adb install -r`, never touching the release
+  package or app data) but `adb screencap` returns a solid-black frame on
+  this device regardless of wake state -- `dumpsys display` shows
+  `FLAG_SECURE` on both display entries, which blanks screen captures at
+  the OS/device level. Per the brief, no attempt was made to work around
+  that. No screenshot is included; full detail and the `aapt2` resource-ID
+  verification (which stands in for the visual check) are in NOTES.md.
