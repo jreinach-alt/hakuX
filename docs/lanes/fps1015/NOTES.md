@@ -14,6 +14,11 @@ lane.local's overnight chain until ~06:00 PDT 10-16.
   frame's GPU work against the PFIFO thread. Fill against draw count needs a perflog + `vtx256` run.
 - Next: #993 Prince of Persia.
 
+Attempt 1 (10-15 22:41 to 23:29 PDT) ended at the 300-turn cap, not on a finding or a block. It had committed
+#986, #992 and #995 and written the #993 pre-read section, uncommitted, with the fog-room dump read under way
+(`scratch_pop_ws.csv`, `scratch_popseq.py`). Attempt 2 (10-16 05:41 PDT) commits that section and continues at
+#993. Too many small tool calls spent the turns; attempt 2 batches its reads into scripts.
+
 ## #986 Mortal Kombat Shaolin Monks: step 1, the offline split (written before the read)
 
 Run `ownerplay/runs/4D570029-1013-2232-9402/logcat.txt` (debug 0.5.0-1013-08f1fb4a90, plain build, no
@@ -433,3 +438,28 @@ What each result looks like:
   census carries the growth.
 - **A miss for both**: a fence wait well under the off-CPU time, which leaves lock waits or preemption. The
   next instrument there is the `probe1010` split (`nd`/`rot`, vk/draw.c:2750).
+
+## #993 Prince of Persia: the fog room (written before the read)
+
+Run `ownerplay/runs/5553001D-1014-2057-14415` (debug 0.5.0-1014-76bef8b162, plain build, 20:57-21:17). There is
+one frame dump, `ownerplay-1014/pop-fog`, taken in the fog room at about 21:16:37 (30 frames). There is no dump of a
+30-fps room. `s2tscan.py` counts 9 refused render-to-texture reads a frame in the fog room, all R5G6B5 256x256
+swizzled, refused as `cvt`.
+
+Step 1, the plain-build split (`winsplit.py`): the fog-room windows against the same session's 29-fps windows.
+
+- **#986 class (serialization on downloads).** A hit: the PFIFO thread off CPU and not parked for most of the
+  frame, `Ri` near 0, the guest idle part of the frame. In the dump, ~10 submits a frame (9 downloads plus the flip).
+- **GPU-bound without serialization.** The off-CPU share is large, but the dump has few finishes a frame. The wait
+  is then the flip's rotation fence or something outside the finishes.
+- **Not GPU or wait (vCPU or PFIFO CPU).** The same outcomes as #986 and #995.
+
+Step 2, the fog pass state from the dump (`dumpstat.py`, `scratch` position read), before any shader. For each
+16-bit target:
+
+- its size and format;
+- the draws into it: count, blend, primitive, and whether depth is tested or written;
+- where its read falls in the frame.
+
+A full-screen fog layer on the 640x480 target shows as a few large blended quads or strips. A render-to-texture
+fog shows as draws into the 256x256 targets, then a read of each one.
