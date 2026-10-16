@@ -8,9 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `frontends1016b` | claude-sonnet-5 | 9 min |  |
-| `selftestclean1011` | claude-sonnet-5 | 50 min | selftestclean1011: selftest.sh removes its fake host when it passes (#433) |
-| `x1port1012` | claude-opus-5-5 | 1h 3m | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
+| `frontends1016b` | claude-sonnet-5 | 23 min | frontends1016b: Pegasus tested, Daijisho integrated or written up (#433) |
+| `selftestclean1011` | claude-sonnet-5 | 1h 5m | selftestclean1011: selftest.sh removes its fake host when it passes (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -118,8 +117,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
+| `lane/frontends1016b` | frontends1016b: Pegasus tested, Daijisho integrated or written up (#433) | `deb99b09e2` | 2026-10-16 14:57 |
 | `lane/selftestclean1011` | selftestclean1011: selftest.sh removes its fake host when it passes (#433) | `a9118cbcd0` | 2026-10-16 11:53 |
-| `lane/x1port1012` | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) | `5dfea123a3` | 2026-10-13 07:18 |
 
 ## Recently landed on master
 
@@ -136,4 +135,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-16 One display name per title_id, and nothing keyed by a name (#433)
 - 2026-10-16 status_html: titles05 crashed on a registry name the catalog spells differently
 
-_Updated 2026-10-16 14:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 15:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
