@@ -730,6 +730,76 @@ cover a burst (their `after` offsets were aimed by the soak clock, which differs
 arm clock), or the per-flip download that images force suppresses (b). Runs 11 (no images) and 12
 (images), both with a video, separate those two.
 
+### Why the 12:50 session did not finish
+
+The session lane.local started at 12:50:33 committed 24bc6b680f at 12:56 (the section above) and was
+replaced at 13:02:43 by the session that wrote what follows. Its log
+(`logs/lane/x1port1012.20261016T195033Z.json`) is empty, so it was stopped, not finished: lane.local
+restarted the lane with the 13:00 and 13:10 addenda. Nothing was lost, because 24bc6b680f had already
+landed.
+
+### Runs 11 and 12: the burst, found and diffed (step 2)
+
+Videos read with `tools/ringtrack.py` (hull crop) and `tools/burstcount.py 37 <tsv>`:
+
+| run | bursts (soak s, back-images) |
+|---|---|
+| 11 (no images) | +38.6 (20), +42.2 (6), +47.0 (16), **+56.2 (18)** |
+| 12 (images) | +37.1 (15), +40.0 (6), +44.8 (16), **+54.0 (18)** |
+
+Per-flip images do not suppress (b): run 12 has the same four bursts with the same counts. (Run 12's
+clock sits about 2 s earlier, by its video offset; the counts match burst for burst.) So runs 9 and 10
+simply missed the bursts.
+
+**The dumps' clock.** Both dumps asked for `after36` and started at soak +50 (run 11: +50..+71, frame
+529 = +68; run 12: +51..+65): the environment's `after` counts from the emulator's startup, about 14 s
+after the soak mark. Each dump therefore holds exactly one burst, the last one in the table, and run 11
+also covers console photo 5's pose (+68, frames 529-558).
+
+**Only one guest value toggles: the hull's texture offset `c[13].w`.** `build-linux/run/hulltoggle.py`
+(scratch) ranks every guest word of the 4362-index draw by its second difference at the burst frames
+against the others. Only c13.w stands out. Everything else is identical between X and Y frames: the
+texture addresses and their content hashes, every register-combiner and final-combiner word, the vertex
+program, the other constants, the pipeline handle, the pre-draw path and the uniform-block hashes. The
+ring's "rotation" is this value: c13 = (48.666672, -0, 0, w), c14 = (0.000009, 0.999693, 0, 1), so
+`oT0.x = 48.67*v4.x + w` is a u-scroll of the base and multipurpose maps. The geometry does not move.
+w rises by 0.00078083 per frame on the hull.
+
+At nine frames per burst the guest writes w **0.0274510 lower** than the smooth series, and the next frame
+is back on it:
+
+| run | frames (gaps) | hull w at the glitch, smooth vs written |
+|---|---|---|
+| 11 | 199, 203, 207, 210, 214, 218, 221, 225, 229 (4,4,3,4,4,3,4,4) | e.g. f199: 0.436465 expected, 0.409795 written |
+| 12 | 106, 110, 114, 117, 121, 125, 128, 132, 136 (same gaps) | f106: 0x3edf7860 0.436465263 (f105), 0x3ed1d0a9 0.409795076 (f106), 0x3ee0450f 0.438026875 (f107) |
+
+- The two runs write the **same values** at the same phase (w from 0.4098 to 0.4332). It is keyed to the
+  animation phase, not to host timing.
+- The offset is the **same on the terrain strip `n4`** (864 indices, same shader, its w rises 8x slower,
+  0.0000977 per frame), at the same frames: n4 f105 0.051126633, f106 0.023773251 (residual
+  -0.027450982), f107 0.051321834. A wrong time would move the two draws by different amounts, 8:1.
+  This is one common additive term, subtracted from both offsets.
+- The residual is -0.02745099 +- 1e-8 on every glitch frame, which is **7/255 = 0.0274509804** to float
+  precision.
+- 9 Y images x 2 recorded frames each = 18, burstcount's count for the burst.
+
+So (b) is the guest's own per-frame draw (H2 holds, H3 is refuted for (b)): hakuX draws exactly what it
+is given. The X/Y difference is the base, detail and multipurpose maps shifted by 0.02745 in u
+(about 28 texels of the 1024-wide base): the panels move, and the t2.r mask moves with them, while the
+cube lookup (oT3) and the lighting stay put. That is the "earlier
+state of the sprite overlay" the owner saw.
+
+What remains for (b) is why the guest computes it. The guest runs on the emulated CPU; on the Nova the
+x87 is emulated by `fp_jit`'s native-double helpers (`target/i386/tcg/fpu_helper.c`, the
+`USE_HARD_FPU && __aarch64__` block: no 80-bit precision, no precision control, plain double
+compares). A phase-keyed, exact, quantised offset is what a branch or an integer conversion flipping on a
+last-bit difference looks like. The desktop build uses softfloat and is the discriminator: if it writes
+the same glitch at the same phase, the emulated FPU is not the cause.
+
+### Lit and dark draws (step 3, from run 11 frames 529-558, soak +68)
+
+(See below; written when read.)
+
 ## End of this session (attempt 3)
 
 All six device runs dispatched this lane are complete: Phase A smoke (runs 1-3, all PASS) and all three
