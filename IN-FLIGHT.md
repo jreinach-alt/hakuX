@@ -8,9 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `audio1016` | claude-opus-5-5 | 57 min | audio1016: quiet speech and movie audio on the Nova (#984, #938) |
-| `fps1015` | claude-opus-5-5 | 16 min | fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2) |
-| `x1port1012` | claude-opus-5-5 | 16 min | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
+| `x1port1012` | claude-opus-5-5 | 31 min | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -118,7 +116,6 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/audio1016` | audio1016: quiet speech and movie audio on the Nova (#984, #938) | `78178ecdd1` | 2026-10-16 10:35 |
 | `lane/x1port1012` | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) | `5dfea123a3` | 2026-10-13 07:18 |
 
 ## Recently landed on master
@@ -136,4 +133,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 statusalloc1013: status.sh no longer opens a status issue the gh shim would refuse (#433, 0.5)
 - 2026-10-13 pathrules1013: pathfind no-answer steps never become a path, a hold that can't pass ends early, a perflog run never banks (#433, 0.5)
 
-_Updated 2026-10-16 11:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 11:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
