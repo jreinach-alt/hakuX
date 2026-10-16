@@ -8,14 +8,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `fps1015` | claude-opus-5-5 | 21 min | fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2) |
-| `frontends1016` | claude-sonnet-5 | 14 min | Wire hakuX into four launchers (ES-DE, Daijisho, Pegasus, stock), tested on the Thor |
-| `titlekey1016` | claude-sonnet-5 | 34 min | One display name per title_id, and nothing keyed by a name (#433) |
+| `frontends1016` | claude-sonnet-5 | 28 min | Wire hakuX into four launchers (ES-DE, Daijisho, Pegasus, stock), tested on the Thor |
+| `sign1016` | claude-sonnet-5 | 2 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lanelocal-ownerplay`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 5 waiting, 0 running.
+- **Device queue:** 9 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -118,9 +117,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/fps1015` | fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2) | `36c77086de` | 2026-10-16 08:14 |
-| `lane/frontends1016` | Wire hakuX into four launchers (ES-DE, Daijisho, Pegasus, stock), tested on the Thor | `906af92bb6` | 2026-10-16 08:02 |
-| `lane/titlekey1016` | One display name per title_id, and nothing keyed by a name (#433) | `4047d922b9` | 2026-10-16 07:58 |
+| `lane/frontends1016` | Wire hakuX into four launchers (ES-DE, Daijisho, Pegasus, stock), tested on the Thor | `9681af2dbe` | 2026-10-16 08:22 |
 
 ## Recently landed on master
 
@@ -137,4 +134,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 pathrules1013: pathfind no-answer steps never become a path, a hold that can't pass ends early, a perflog run never banks (#433, 0.5)
 - 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
 
-_Updated 2026-10-16 08:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 08:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
