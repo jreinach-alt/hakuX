@@ -1727,6 +1727,11 @@ void pgraph_vk_fdump_vertex_upload(PGRAPHVkState *r, hwaddr offset,
                                    const uint8_t *old, const uint8_t *data,
                                    size_t size, bool hazard_finished);
 void pgraph_vk_fdump_pre_draw(NV2AState *d);
+void pgraph_vk_fdump_log_skip(NV2AState *d, const char *why);
+
+// draw.c, for the frame dump's schema 9: the last draw's pre-draw path and
+// create_pipeline outcome (the draw census's DCEN_PATH_* and DCEN_CP_*)
+void pgraph_vk_draw_path(uint8_t *path, uint8_t *cp);
 
 // debug.c
 #define RGBA_RED     (float[4]){1,0,0,1}

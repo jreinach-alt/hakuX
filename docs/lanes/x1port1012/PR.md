@@ -4,12 +4,13 @@ State: draft
 
 Lane: x1port1012          Issue: #939 [#938]
 Base: master @ 4bf47129b1 (merged 10-16; PR #965, `lane/x1port1012`, folded as 3c2338eb2b)
-Files: docs/lanes/x1port1012/PR.md, docs/lanes/x1port1012/NOTES.md, docs/lanes/x1port1012/OUTBOX.md, docs/lanes/x1port1012/tools/ringframes.py, docs/lanes/x1port1012/tools/ringtrack.py, docs/lanes/x1port1012/tools/burstcount.py, docs/lanes/x1port1012/tools/ringreturn.py, docs/lanes/x1port1012/tools/burstseq.py, docs/lanes/x1port1012/tools/ynearest.py, docs/lanes/x1port1012/tools/burstzoom.py, docs/lanes/x1port1012/tools/burstdiff.py, docs/lanes/x1port1012/tools/yclass.py, hw/xbox/nv2a/pgraph/pgraph.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/buffer.c
+Files: docs/lanes/x1port1012/PR.md, docs/lanes/x1port1012/NOTES.md, docs/lanes/x1port1012/OUTBOX.md, docs/lanes/x1port1012/tools/ringframes.py, docs/lanes/x1port1012/tools/ringtrack.py, docs/lanes/x1port1012/tools/burstcount.py, docs/lanes/x1port1012/tools/ringreturn.py, docs/lanes/x1port1012/tools/burstseq.py, docs/lanes/x1port1012/tools/ynearest.py, docs/lanes/x1port1012/tools/burstzoom.py, docs/lanes/x1port1012/tools/burstdiff.py, docs/lanes/x1port1012/tools/yclass.py, docs/lanes/x1port1012/tools/gdread.py, hw/xbox/nv2a/pgraph/pgraph.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/buffer.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/draw.c
 Prediction: none: the leads are default-off diagnostic switches, judged by an owner-reviewed triage video, not an automated A/B against a golden
 Needs device: yes (Nova)    Needs NDK: yes
 
 Release note (none): default-off diagnostic switches for #939 (`HAKUX_XVSS`, `HAKUX_S2TSHELF`) and a
-staging-buffer memory-properties log line; nothing changes at shipped defaults.
+staging-buffer memory-properties log line, and a `gd` token for the opt-in frame dump (`XEMU_FRAME_DUMP`,
+schema 9: per-draw guest state and host pipeline identity); nothing changes at shipped defaults.
 
 This is the second PR for lane.x1port1012 (the suffixed-branch convention: a second "own PR" branches
 `lane/<name>-<suffix>` from the first PR's head rather than restarting CI/audit on #965, which is waiting
@@ -25,6 +26,7 @@ Three Phase B (#939, the Halo ring-world glitch) leads, each a default-off `HAKU
 | `HAKUX_XVSS` | f3acdd0912 | `noskip` runs every `LAUNCH_TRANSFORM_PROGRAM` launch instead of skipping on a v0-hash match (X1 BOX cf92edbbba removed the skip); `audit` logs how often the skip's output would have differed |
 | `HAKUX_S2TSHELF` | 18fb351588 | `0` turns off the shelved-surface lookup in `create_texture` (X1 BOX 0c014f8fe8 removed it); `audit` logs each hit's state |
 | (logging only) | 223f216d7c | one line per per-frame staging buffer at init, saying whether the device gave HOST_COHERENT memory |
+| (logging only) | this push | `XEMU_FRAME_DUMP=...,gd`: frame-dump schema 9. Each draw adds its guest state as deltas (registers, constants, lighting, program, inline attributes), its host identity (pre-draw path, pipeline handle, uber stages, uniform-block hashes) and per-stage guest-texture hashes; a skipped draw writes a `skip` record. Read with `tools/gdread.py` |
 
 All three are gated leads from `batchC.md`/`batchD.md`, not fixes: none is claimed to resolve #939 yet.
 
