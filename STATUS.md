@@ -1,12 +1,12 @@
 # hakuX status
 
-_updated 2026-10-16 09:01 PDT_
+_updated 2026-10-16 09:32 PDT_
 
-0.6: Measured 253 / 300 · Playable 87 / 110.
+0.6: Measured 261 / 300 · Playable 87 / 110.
 
 ## How close is 0.6?
 
-Measured **253** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
+Measured **261** / 300&nbsp;&nbsp;`▓▓▓▓▓▓▓▓▓░`
 
 Playable **87** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
@@ -19,7 +19,7 @@ Playable **87** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
-| 0.6 | 300 | 2026-10-19 | 110 | 2026-10-20 |
+| 0.6 | 300 | 2026-10-18 | 110 | 2026-10-20 |
 | 0.7 | 425 | 2026-10-27 | 185 | 2026-11-01 |
 | 0.8 | 575 | 2026-11-06 | 300 | 2026-11-20 |
 | 0.9 | 725 | 2026-11-16 | 480 | 2026-12-19 |
@@ -36,19 +36,19 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 | Title and next step | Status | fps |
 |---|---|---|
-| **187 Ride or Die**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Nova · 10-11 · max perf |
+| **187: Ride or Die**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Nova · 10-11 · max perf |
 | **25 to Life**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Nova · 10-13<br>Thor 35.7 |
 | **Alien Hominid**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · default perf |
 | **AMF Bowling 2004**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-05 |
 | **ATV Quad Power Racing 2**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Auto Modellista**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |
 | **Bad Boys Miami Takedown USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
-| **Baldur s Gate Dark Alliance**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 09-30 · default perf |
+| **Baldur's Gate: Dark Alliance**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 09-30 · default perf |
 | **Battlestar Galactica USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Black Stone Magic Steel**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-02 · max perf |
-| **Bruce Lee Quest of the Dragon**<br>**blocked: hang: 21.2 s without 60 guest flips after the mark** | 🔴 blocked | **59.9**<br>81% at 28.5+<br>Thor · 09-26 · max perf |
-| **Capcom Classics Collection Vol 2**<br>**blocked: crash: guest exited after 390s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 09-30 · max perf |
-| **Castlevania Curse of Darkness**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Thor · 10-01 · max perf<br>Nova 59.9 |
+| **Black Stone: Magic & Steel**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-02 · max perf |
+| **Bruce Lee: Quest of the Dragon**<br>**blocked: hang: 21.2 s without 60 guest flips after the mark** | 🔴 blocked | **59.9**<br>81% at 28.5+<br>Thor · 09-26 · max perf |
+| **Capcom Classics Collection Vol. 2**<br>**blocked: crash: guest exited after 390s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 09-30 · max perf |
+| **Castlevania: Curse of Darkness**<br>done | 🟢 Playable | **59.9**<br>97% at 28.5+<br>Thor · 10-01 · max perf<br>Nova 59.9 |
 | **Conspiracy Weapons of Mass Destruction Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Crazy Taxi 3 High Roller USA**<br>reach gameplay | 🔵 copied | **59.9**<br>77% at 28.5+<br>Nova · 10-13 |
 | **Dance Dance Revolution Ultramix 3 USA**<br>reach gameplay | 🔵 copied | **59.9**<br>95% at 28.5+<br>Nova · 10-16 |
@@ -56,18 +56,19 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **David Beckham Soccer Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-15 |
 | **ESPN International Winter Sports 2002 USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-16 |
 | **ESPN MLS ExtraTime 2002 USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-16 |
-| **Future Tactics The Uprising**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |
+| **Future Tactics: The Uprising**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |
 | **Genma Onimusha**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Guilty Gear XX Reload The Midnight Carnival**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |
+| **Guilty Gear XX #Reload**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |
 | **Gunvalkyrie**<br>done | 🟢 Playable | **59.9**<br>99% at 28.5+<br>Nova · 10-03 · default perf |
 | **Hello Kitty Roller Rescue Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Kabuki Warriors**<br>done | 🟢 Playable | **59.9**<br>95% at 28.5+<br>Nova · 10-03 · default perf |
-| **KOF Maximum Impact Maniax**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
+| **KOF: Maximum Impact – Maniax**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
 | **Largo Winch Empire Under Threat Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Legends of Wrestling II USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Legends of Wrestling USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Manhunt USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 |
 | **Max Payne 2 The Fall of Max Payne USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-08 |
+| **Max Payne 2: The Fall of Max Payne**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |
 | **Micro Machines Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
 | **MLB SlugFest 2003**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-05 |
 | **Motor Trend Presents Lotus Challenge USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-15 |
@@ -75,17 +76,18 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **NFL Blitz 2002 USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |
 | **Nickelodeon Avatar The Last Airbender USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |
 | **Nickelodeon SpongeBob SquarePants Battle for Bikini Bottom USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |
+| **Ninja Gaiden**<br>**blocked: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked | **59.9**<br>64% at 28.5+<br>Thor · 09-30 · max perf, soak |
 | **Pac-Man World 2**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Petit Copter**<br>reach gameplay | 🔵 copied | **59.9**<br>78% at 28.5+<br>Thor · 10-01 · max perf, screen: 90-240 s only |
 | **Phantom Crash**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-04 · default perf |
 | **Plus Plumb 2**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
 | **RalliSport Challenge**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-04 |
-| **Rayman 3**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
+| **Rayman 3 Hoodlum Havoc**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Rent a Hero No 1 Japan**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-07 |
 | **Scooby Doo Unmasked Europe**<br>reach gameplay | 🔵 copied | **59.9**<br>99% at 28.5+<br>Nova · 10-13 |
 | **Ski Racing 2005 Europe**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-16 |
 | **Sonic Heroes**<br>**blocked: crash: guest exited after 247s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · max perf |
-| **SPIKEOUT Battle Street**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-03 |
+| **Spikeout: Battle Street**<br>done<br>#303 open · nothing in flight | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-03 |
 | **Strike Force Bowling**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-05 |
 | **Tecmo Classic Arcade**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>100% at 28.5+<br>Nova · 10-06 |
 | **TimeSplitters 2**<br>done | 🟢 Playable | **59.9**<br>100% at 28.5+<br>Nova · 10-13 |
@@ -99,16 +101,17 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Fantastic 4**<br>reach gameplay | 🔵 copied | **59.9**<br>43% at 28.5+<br>Nova · 10-07 |
 | **Indigo Prophecy USA**<br>reach gameplay | 🔵 copied | **59.9**<br>99% at 28.5+<br>Nova · 10-07 |
 | **Kung Fu Chaos USA Asia En Fr De**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-14 |
-| **LEGO Star Wars The Video Game**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>98% at 28.5+<br>Nova · 10-05 |
+| **LEGO Star Wars: The Video Game**<br>reach gameplay | 🟣 inputs ready | **59.9**<br>98% at 28.5+<br>Nova · 10-05 |
 | **Lemony Snicket s A Series of Unfortunate Events USA**<br>reach gameplay | 🔵 copied | **59.9**<br>100% at 28.5+<br>Nova · 10-12 |
 | **Medal of Honor Frontline USA**<br>reach gameplay | 🔵 copied | **59.9**<br>86% at 28.5+<br>Nova · 10-07 |
 | **Ricky Ponting International Cricket 2005 Australia**<br>reach gameplay | 🔵 copied | **59.9**<br>98% at 28.5+<br>Nova · 10-15 |
-| **Tony Hawk s Pro Skater 2x**<br>done | 🟢 Playable | **59.8**<br>100% at 28.5+<br>Thor · 10-01 · max perf<br>Nova 59.8 |
-| **Capcom vs SNK 2 EO**<br>done | 🟢 Playable | **59.8**<br>100% at 28.5+<br>Nova · 10-07 |
+| **Tony Hawk's Pro Skater 3**<br>**blocked: crash: guest exited after 205s** | 🔴 blocked | **59.9**<br>100% at 28.5+<br>Thor · 10-01 · max perf, soak |
+| **Tony Hawk's Pro Skater 2x**<br>done | 🟢 Playable | **59.8**<br>100% at 28.5+<br>Thor · 10-01 · max perf<br>Nova 59.8 |
+| **Capcom vs. SNK 2 EO**<br>done | 🟢 Playable | **59.8**<br>100% at 28.5+<br>Nova · 10-07 |
 | **Knockout Kings 2002 USA**<br>reach gameplay | 🔵 copied | **59.8**<br>100% at 28.5+<br>Nova · 10-16 |
 | **Tony Hawk s Underground 2 USA Europe En Fr De**<br>reach gameplay | 🔵 copied | **59.7**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Mortal Kombat Armageddon**<br>done | 🟢 Playable | **59.2**<br>100% at 28.5+<br>Nova · 10-06 |
-| **MLB SlugFest Loaded**<br>done | 🟢 Playable | **58.9**<br>100% at 28.5+<br>Nova · 10-05 |
+| **Mortal Kombat: Armageddon**<br>done | 🟢 Playable | **59.2**<br>100% at 28.5+<br>Nova · 10-06 |
+| **MLB SlugFest - Loaded**<br>done | 🟢 Playable | **58.9**<br>100% at 28.5+<br>Nova · 10-05 |
 | **Rogue Trooper**<br>done | 🟢 Playable | **58.9**<br>100% at 28.5+<br>Nova · 10-06 |
 | **AMF Xtreme Bowling**<br>**blocked: crash: exiting due to SIG_DFL handler for signal 11, ucontext 0x6fcde81e20** | 🔴 blocked | **58.7**<br>100% at 28.5+<br>Nova · 10-05 |
 | **Gui Yi Taiwan**<br>reach gameplay | 🔵 copied | **57.7**<br>94% at 28.5+<br>Nova · 10-07 |
@@ -124,19 +127,19 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Rugby League 2 Europe**<br>reach gameplay | 🔵 copied | **55.1**<br>100% at 28.5+<br>Nova · 10-15 |
 | **Burnout Revenge**<br>done | 🟢 Playable | **54.8**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
 | **Tron 2.0 : Killer App**<br>reach gameplay | 🔵 copied | **54.8**<br>92% at 28.5+<br>Nova · 10-06 · default perf |
-| **Panzer Dragoon ORTA**<br>done | 🟢 Playable | **54.1**<br>100% at 28.5+<br>Nova · 10-03 |
+| **Panzer Dragoon Orta**<br>done | 🟢 Playable | **54.1**<br>100% at 28.5+<br>Nova · 10-03 |
 | **Mercenaries USA Europe**<br>reach gameplay | 🔵 copied | **53.3**<br>100% at 28.5+<br>Nova · 10-12 |
 | **4x4 Evo 2**<br>reach gameplay | 🔵 copied | **53.2**<br>100% at 28.5+<br>Nova · 10-13 |
-| **Disney Pixar Ratatouille**<br>done | 🟢 Playable | **52.8**<br>100% at 28.5+<br>Nova · 10-06 |
+| **Ratatouille**<br>done | 🟢 Playable | **52.8**<br>100% at 28.5+<br>Nova · 10-06 |
 | **Dead or Alive 3**<br>soak for Playable | soak pending | **50.1**<br>100% at 28.5+<br>Nova · 10-12 · max perf<br>Thor 52.2 |
 | **X Men The Official Game Europe**<br>reach gameplay | 🔵 copied | **49.3**<br>100% at 28.5+<br>Nova · 10-12 |
 | **Super Monkey Ball Deluxe**<br>**blocked: crash: guest exited after 250s** | 🔴 blocked | **48.1**<br>100% at 28.5+<br>Thor · 10-01 · max perf |
 | **Ty the Tasmanian Tiger Night of the Quinkan USA Australia**<br>reach gameplay | 🔵 copied | **47.8**<br>79% at 28.5+<br>Nova · 10-07 |
 | **Legacy of Kain Defiance USA**<br>reach gameplay | 🔵 copied | **47.6**<br>97% at 28.5+<br>Nova · 10-07 |
-| **Crash Bandicoot The Wrath of Cortex**<br>reach gameplay | 🟣 inputs ready | **46.9**<br>100% at 28.5+<br>Nova · 10-07 |
+| **Crash Bandicoot: The Wrath of Cortex**<br>reach gameplay | 🟣 inputs ready | **46.9**<br>100% at 28.5+<br>Nova · 10-07 |
 | **Jacked Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **46.1**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Dark Summit**<br>done | 🟢 Playable | **45.9**<br>93% at 28.5+<br>Nova · 10-04 |
-| **Mortal Kombat Shaolin Monks**<br>reach gameplay | 🟣 inputs ready | **45.9**<br>49% at 28.5+<br>Nova · 10-06 |
+| **Mortal Kombat: Shaolin Monks**<br>reach gameplay | 🟣 inputs ready | **45.9**<br>49% at 28.5+<br>Nova · 10-06 |
 | **NFL Blitz 2002**<br>done | 🟢 Playable | **45.0**<br>100% at 28.5+<br>Nova · 10-05 |
 | **Big Mutha Truckers USA**<br>reach gameplay | 🔵 copied | **45.0**<br>89% at 28.5+<br>Nova · 10-14 |
 | **MLB SlugFest 2004**<br>done | 🟢 Playable | **44.4**<br>100% at 28.5+<br>Nova · 10-05 |
@@ -145,17 +148,17 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Fight Club**<br>done | 🟢 Playable | **43.4**<br>94% at 28.5+<br>Nova · 10-06 |
 | **ESPN Major League Baseball USA**<br>reach gameplay | 🔵 copied | **43.2**<br>100% at 28.5+<br>Nova · 10-16 |
 | **NBA 2K3**<br>done | 🟢 Playable | **42.9**<br>96% at 28.5+<br>Nova · 10-06 |
-| **ToeJam & Earl III**<br>done | 🟢 Playable | **42.1**<br>73% at 28.5+<br>Nova · 10-03 |
+| **ToeJam & Earl III: Mission to Earth**<br>done | 🟢 Playable | **42.1**<br>73% at 28.5+<br>Nova · 10-03 |
 | **RalliSport Challenge 2**<br>reach gameplay | 🟣 inputs ready | **41.7**<br>96% at 28.5+<br>Nova · 10-07 |
-| **Harry Potter and the Philosopher s Stone**<br>done | 🟢 Playable | **41.5**<br>95% at 28.5+<br>Nova · 10-13 |
+| **Harry Potter and the Philosopher's Stone**<br>done | 🟢 Playable | **41.5**<br>95% at 28.5+<br>Nova · 10-13 |
 | **Conflict Desert Storm II Back to Baghdad USA**<br>reach gameplay | 🔵 copied | **41.1**<br>93% at 28.5+<br>Nova · 10-13 |
 | **Backyard Wrestling 2 There Goes the Neighborhood USA**<br>reach gameplay | 🔵 copied | **40.8**<br>99% at 28.5+<br>Nova · 10-14 |
 | **Dead or Alive 1 Ultimate**<br>reach gameplay<br>#413 open · nothing in flight | 🟣 inputs ready | **40.4**<br>100% at 28.5+<br>Nova · 10-07 |
-| **007 Nightfire**<br>reach gameplay | 🟣 inputs ready | **40.0**<br>89% at 28.5+<br>Nova · 10-06 |
-| **Mortal Kombat Deadly Alliance**<br>reach gameplay | 🟣 inputs ready | **39.9**<br>100% at 28.5+<br>Nova · 10-06 |
+| **007: Nightfire**<br>reach gameplay | 🟣 inputs ready | **40.0**<br>89% at 28.5+<br>Nova · 10-06 |
+| **Mortal Kombat: Deadly Alliance**<br>reach gameplay | 🟣 inputs ready | **39.9**<br>100% at 28.5+<br>Nova · 10-06 |
 | **Torino 2006 Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **39.1**<br>66% at 28.5+<br>Nova · 10-15 |
-| **NINJA GAIDEN Black**<br>reach gameplay | 🔵 copied | **38.0**<br>97% at 28.5+<br>Nova · 10-12 · max perf |
-| **The Simpsons Hit Run**<br>done | 🟢 Playable | **37.9**<br>100% at 28.5+<br>Nova · 10-04 |
+| **Ninja Gaiden Black**<br>reach gameplay | 🔵 copied | **38.0**<br>97% at 28.5+<br>Nova · 10-12 · max perf |
+| **The Simpsons Hit & Run**<br>done | 🟢 Playable | **37.9**<br>100% at 28.5+<br>Nova · 10-04 |
 | **NHL Hitz Pro**<br>reach gameplay | 🔵 copied | **37.4**<br>75% at 28.5+<br>Nova · 10-05 |
 | **Blood Wake**<br>**blocked: hang: 10.6 s without 60 guest flips after the mark** | 🔴 blocked | **37.4**<br>30% at 28.5+<br>Thor · 09-27 · max perf<br>Nova 59.9 |
 | **NBA Live 2004**<br>done | 🟢 Playable | **35.5**<br>100% at 28.5+<br>Nova · 10-06 |
@@ -165,13 +168,14 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Bistro Cupid**<br>reach gameplay | 🔵 copied | **34.4**<br>87% at 28.5+<br>Thor · 09-30 · max perf, soak |
 | **Top Spin**<br>soak for Playable | soak pending | **32.6**<br>91% at 28.5+<br>Nova · 10-09 · max perf |
 | **NBA Inside Drive 2004 USA**<br>reach gameplay | 🔵 copied | **31.1**<br>70% at 28.5+<br>Nova · 10-16 |
-| **Aliens Versus Predator Extinction**<br>reach gameplay | 🟣 inputs ready | **31.0**<br>100% at 28.5+<br>Nova · 10-05 |
-| **Burnout 3 Takedown**<br>reach gameplay | 🟣 inputs ready | **30.8**<br>85% at 28.5+<br>Nova · 10-14 |
+| **Aliens Versus Predator: Extinction**<br>reach gameplay | 🟣 inputs ready | **31.0**<br>100% at 28.5+<br>Nova · 10-05 |
+| **Burnout 3: Takedown**<br>reach gameplay | 🟣 inputs ready | **30.8**<br>85% at 28.5+<br>Nova · 10-14 |
 | **Fuzion Frenzy**<br>**blocked: hang: 13.4 s without 60 guest flips after the mark** | 🔴 blocked | **30.6**<br>54% at 28.5+<br>Nova · 09-27 · max perf |
 | **Panzer Elite Action Fields of Glory Europe**<br>reach gameplay | 🔵 copied | **30.4**<br>90% at 28.5+<br>Nova · 10-07 |
 | **Big Bumpin USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-15 |
-| **Crimson Skies**<br>done | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 10-13 · default perf<br>Thor **23.4** |
-| **Azurik Rise of Perathia**<br>done | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 09-29 · default perf<br>Thor 30.0 |
+| **Crimson Skies: High Road to Revenge**<br>done<br>running 1-1792157545-lane.audio1016-3902536 on the nova; queued 1-1792157545-lane.audio1016-3902586 #1 | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 10-13 · default perf<br>Thor **23.4** |
+| **50 Cent: Bulletproof**<br>done<br>#382 open · nothing in flight | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 09-30 · default perf, soak |
+| **Azurik: Rise of Perathia**<br>done | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 09-29 · default perf<br>Thor 30.0 |
 | **Blade II**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-07 |
 | **Blazing Angels Squadrons of WWII USA Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
 | **BloodRayne 2 USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-08 |
@@ -180,13 +184,14 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Conan Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-12 |
 | **Conflict Global Terror USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
 | **Family Guy Video Game**<br>done | 🟢 Playable | **30.0**<br>98% at 28.5+<br>Thor · 10-01 · max perf |
+| **GoldenEye: Rogue Agent**<br>**blocked: reached_gameplay: no `mark gameplay` in logcat** | 🔴 blocked | **30.0**<br>94% at 28.5+<br>Nova · 09-27 · max perf, screen: 90-240 s only |
 | **Grabbed by the Ghoulies**<br>done<br>#311 closed | 🟢 Playable | **30.0**<br>98% at 28.5+<br>Nova · 10-12 · max perf<br>Thor 30.0 |
 | **Grand Theft Auto III**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
-| **Grand Theft Auto Vice City**<br>done | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-13 · max perf |
-| **Halo**<br>done | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-03 · default perf |
+| **Grand Theft Auto: Vice City**<br>done | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-13 · max perf |
 | **Halo 2**<br>reach gameplay | 🔵 copied | **30.0**<br>96% at 28.5+<br>Nova · 10-03 · default perf |
+| **Halo: Combat Evolved**<br>done<br>queued 1792166308-x1port1012-1386872 #2 | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-03 · default perf |
 | **Knights of the Temple II Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
-| **Marvel Nemesis Rise of the Imperfects**<br>reach gameplay | 🔵 copied | **30.0**<br>99% at 28.5+<br>Nova · 10-06 |
+| **Marvel Nemesis: Rise of the Imperfects**<br>reach gameplay | 🔵 copied | **30.0**<br>99% at 28.5+<br>Nova · 10-06 |
 | **Mat Hoffman s Pro BMX 2 USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
 | **MTV Music Generator 3 This Is the Remix USA En Es**<br>reach gameplay | 🔵 copied | **30.0**<br>88% at 28.5+<br>Nova · 10-07 |
 | **Prince of Persia: The Sands of Time**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-13 |
@@ -196,14 +201,15 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Alias**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Area 51**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>73% at 28.5+<br>Nova · 10-08 |
 | **Batman Begins**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>95% at 28.5+<br>Nova · 10-06 |
-| **Beyond Good Evil**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>93% at 28.5+<br>Nova · 10-06 |
+| **Beyond Good & Evil**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>93% at 28.5+<br>Nova · 10-06 |
 | **Gene Troopers Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>91% at 28.5+<br>Nova · 10-14 |
-| **Grand Theft Auto San Andreas**<br>soak for Playable | soak pending | **30.0**<br>98% at 28.5+<br>Nova · 10-12 · max perf |
+| **Grand Theft Auto: San Andreas**<br>soak for Playable | soak pending | **30.0**<br>98% at 28.5+<br>Nova · 10-12 · max perf |
 | **Lord of the Rings The The Fellowship of the Ring USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-07 |
-| **Shin Megami Tensei Nine**<br>soak for Playable | soak pending | **30.0**<br>97% at 28.5+<br>Thor · 09-30 · max perf |
-| **Tork**<br>done | 🟢 Playable | **30.0**<br>59% at 28.5+<br>Thor · 09-30 · max perf<br>Nova 30.0 |
+| **MechAssault 2: Lone Wolf**<br>reach gameplay | 🟣 inputs ready | **30.0**<br>89% at 28.5+<br>Nova · 10-08 · max perf, soak |
+| **Shin Megami Tensei: NINE**<br>soak for Playable | soak pending | **30.0**<br>97% at 28.5+<br>Thor · 09-30 · max perf |
+| **Tork: Prehistoric Punk**<br>done | 🟢 Playable | **30.0**<br>59% at 28.5+<br>Thor · 09-30 · max perf<br>Nova 30.0 |
 | **Conflict Vietnam USA**<br>**blocked: hang: 245.2 s without 60 guest flips after the mark** | 🔴 blocked | **29.9**<br>70% at 28.5+<br>Nova · 10-15 |
-| **Battlefield 2 Modern Combat**<br>reach gameplay | 🟣 inputs ready | **29.9**<br>67% at 28.5+<br>Nova · 10-01 · default perf |
+| **Battlefield 2: Modern Combat**<br>reach gameplay | 🟣 inputs ready | **29.9**<br>67% at 28.5+<br>Nova · 10-01 · default perf |
 | **Cel Damage**<br>reach gameplay | 🔵 copied | **29.9**<br>98% at 28.5+<br>Nova · 10-07 |
 | **Star Wars Knights of the Old Republic II The Sith Lords Europe**<br>reach gameplay | 🔵 copied | **29.9**<br>66% at 28.5+<br>Nova · 10-12 |
 | **BloodRayne**<br>reach gameplay | 🟣 inputs ready | **29.9**<br>88% at 28.5+<br>Nova · 10-14 |
@@ -212,32 +218,36 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Shrek 2**<br>done | 🟢 Playable | **29.8**<br>92% at 28.5+<br>Nova · 10-13 |
 | **Call of Duty 3**<br>done | 🟢 Playable | **29.4**<br>100% at 28.5+<br>Nova · 10-06 |
 | **Star Wars The Clone Wars USA**<br>reach gameplay | 🔵 copied | **29.4**<br>61% at 28.5+<br>Nova · 10-08 |
+| **Phantom Dust**<br>reach gameplay | 🔵 copied | **29.4**<br>74% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |
 | **Ultimate Spider Man**<br>reach gameplay | 🔵 copied | **29.4**<br>89% at 28.5+<br>Nova · 10-07 |
-| **Blinx 2 Battle of Time Space Blinx 2 Masters of Time Space**<br>reach gameplay | 🟣 inputs ready | **29.3**<br>57% at 28.5+<br>Nova · 09-27 · max perf<br>Thor **21.7** |
-| **The Incredible Hulk Ultimate Destruction**<br>reach gameplay | 🟣 inputs ready | **29.2**<br>64% at 28.5+<br>Nova · 10-05 |
+| **Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space**<br>reach gameplay | 🟣 inputs ready | **29.3**<br>57% at 28.5+<br>Nova · 09-27 · max perf<br>Thor **21.7** |
+| **The Incredible Hulk: Ultimate Destruction**<br>reach gameplay | 🟣 inputs ready | **29.2**<br>64% at 28.5+<br>Nova · 10-05 |
 | **Dragon Ball Z Sagas**<br>reach gameplay | 🔵 copied | **29.2**<br>57% at 28.5+<br>Nova · 10-07 |
 | **Forza Motorsport**<br>reach gameplay<br>#414 open · nothing in flight | 🔵 copied | **29.0**<br>45% at 28.5+<br>Nova · 09-30 · default perf<br>Thor **16.7** |
 | **Scooby Doo Mystery Mayhem Europe**<br>reach gameplay | 🔵 copied | **29.0**<br>100% at 28.5+<br>Nova · 10-12 |
+| **Legacy of Kain: Defiance**<br>done | 🟢 Playable | **29.0**<br>37% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |
 | **Forgotten Realms Demon Stone USA**<br>reach gameplay | 🔵 copied | **28.9**<br>51% at 28.5+<br>Nova · 10-08 |
-| **Star Wars Episode III Revenge of the Sith**<br>reach gameplay | 🟣 inputs ready | **28.5**<br>47% at 28.5+<br>Nova · 10-06 · default perf |
+| **Midnight Club 3: DUB Edition**<br>below the bar | below 30 | **28.9**<br>40% at 28.5+<br>Nova · 10-12 · max perf, soak |
+| **Star Wars: Episode III: Revenge of the Sith**<br>reach gameplay | 🟣 inputs ready | **28.5**<br>47% at 28.5+<br>Nova · 10-06 · default perf |
 | **Amped 2**<br>reach gameplay | 🔵 copied | **28.4**<br>44% at 28.5+<br>Nova · 10-04 |
-| **Otogi Myth of Demons**<br>reach gameplay | 🟣 inputs ready | **28.1**<br>35% at 28.5+<br>Thor · 09-30 · default perf |
-| **The Lord of the Rings The Return of the King**<br>reach gameplay | 🟣 inputs ready | **27.7**<br>33% at 28.5+<br>Nova · 10-05 |
-| **DINO CRISIS 3**<br>**blocked: hang: 17.3 s without 60 guest flips after the mark** | 🔴 blocked | **27.2**<br>16% at 28.5+<br>Nova · 10-02 · max perf |
+| **Otogi: Myth of Demons**<br>reach gameplay | 🟣 inputs ready | **28.1**<br>35% at 28.5+<br>Thor · 09-30 · default perf |
+| **The Lord of the Rings: The Return of the King**<br>reach gameplay | 🟣 inputs ready | **27.7**<br>33% at 28.5+<br>Nova · 10-05 |
+| **Dino Crisis 3**<br>**blocked: hang: 17.3 s without 60 guest flips after the mark** | 🔴 blocked | **27.2**<br>16% at 28.5+<br>Nova · 10-02 · max perf |
 | **Stranger's Wrath**<br>reach gameplay | 🔵 copied | **27.0**<br>38% at 28.5+<br>Nova · 10-13 |
-| **Spider Man 2**<br>reach gameplay | 🟣 inputs ready | **25.8**<br>29% at 28.5+<br>Nova · 10-05 |
-| **Need for Speed Most Wanted**<br>done | 🟢 Playable | **25.8**<br>19% at 28.5+<br>Nova · 10-05 |
+| **Counter-Strike**<br>below the bar | below 30 | **25.9**<br>0% at 28.5+<br>Nova · 10-03 · max perf, soak |
+| **Spider-Man 2**<br>reach gameplay | 🟣 inputs ready | **25.8**<br>29% at 28.5+<br>Nova · 10-05 |
+| **Need for Speed: Most Wanted**<br>done | 🟢 Playable | **25.8**<br>19% at 28.5+<br>Nova · 10-05 |
 | **Galleon**<br>below the bar | below 30 | **24.7**<br>10% at 28.5+<br>Thor · 09-30 · max perf |
 | **Jet Set Radio Future**<br>done | 🟢 Playable | **24.2**<br>11% at 28.5+<br>Thor · 09-27 · max perf<br>Nova 59.9 |
 | **Tom Clancy s Splinter Cell Double Agent USA**<br>reach gameplay | 🔵 copied | **23.5**<br>3% at 28.5+<br>Nova · 10-12 |
 | **World Snooker Championship 2005 Europe**<br>reach gameplay | 🔵 copied | **23.4**<br>0% at 28.5+<br>Nova · 10-15 |
 | **Pilot Down Behind Enemy Lines Europe**<br>reach gameplay | 🔵 copied | **23.3**<br>23% at 28.5+<br>Nova · 10-07 |
 | **Midnight Club II**<br>reach gameplay | 🟣 inputs ready | **23.1**<br>0% at 28.5+<br>Nova · 10-05 |
-| **007 Agent Under Fire**<br>reach gameplay | 🟣 inputs ready | **22.1**<br>0% at 28.5+<br>Nova · 09-30 · default perf |
+| **007: Agent Under Fire**<br>reach gameplay<br>#412 open · nothing in flight | 🟣 inputs ready | **22.1**<br>0% at 28.5+<br>Nova · 09-30 · default perf |
 | **World Series Baseball USA**<br>reach gameplay | 🔵 copied | **22.0**<br>1% at 28.5+<br>Nova · 10-16 |
 | **Psychonauts**<br>reach gameplay | 🔵 copied | **22.0**<br>0% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |
 | **Arctic Thunder**<br>below the bar | below 30 | **21.4**<br>9% at 28.5+<br>Thor · 09-27 · max perf<br>Nova 30.2 |
-| **Amped Freestyle Snowboarding**<br>reach gameplay | 🟣 inputs ready | **20.6**<br>9% at 28.5+<br>Nova · 10-04 |
+| **Amped: Freestyle Snowboarding**<br>reach gameplay | 🟣 inputs ready | **20.6**<br>9% at 28.5+<br>Nova · 10-04 |
 | **Tiger Woods PGA Tour 2003 USA**<br>reach gameplay | 🔵 copied | **20.3**<br>0% at 28.5+<br>Nova · 10-16 |
 | **Tiger Woods PGA Tour 06 USA**<br>reach gameplay | 🔵 copied | **20.1**<br>0% at 28.5+<br>Nova · 10-16 |
 | **Tiger Woods PGA Tour 07 USA**<br>reach gameplay | 🔵 copied | **20.0**<br>0% at 28.5+<br>Nova · 10-16 |
@@ -245,63 +255,53 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **NBA Live 07**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>1% at 28.5+<br>Nova · 10-06 |
 | **NBA Live 06**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>0% at 28.5+<br>Nova · 10-06 |
 | **NBA Live 2005**<br>reach gameplay | 🟣 inputs ready | **20.0**<br>0% at 28.5+<br>Nova · 10-03 |
+| **Conker: Live & Reloaded**<br>reach gameplay | 🔵 copied | **15.8**<br>16% at 28.5+<br>Nova · 10-03 · max perf, screen: 90-240 s only |
 | **Crash Twinsanity**<br>below the bar | below 30 | **15.7**<br>0% at 28.5+<br>Thor · 09-27 · max perf |
-| **Blinx The Time Sweeper**<br>reach gameplay | 🟣 inputs ready | **14.8**<br>0% at 30+<br>Thor · 09-26 · hand-reviewed |
+| **Blinx: The Time Sweeper**<br>reach gameplay<br>#372 open · nothing in flight | 🟣 inputs ready | **14.8**<br>0% at 30+<br>Thor · 09-26 · hand-reviewed |
 | **Project Gotham Racing**<br>**blocked: hang: 11.6 s without 60 guest flips after the mark** | 🔴 blocked | **14.3**<br>0% at 28.5+<br>Thor · 09-26 · max perf |
+| **Gauntlet: Dark Legacy**<br>reach gameplay | 🟣 inputs ready | **14.2**<br>0% at 28.5+<br>Thor · 09-30 · max perf, screen: 90-240 s only |
 | **Brute Force**<br>below the bar | below 30 | **13.2**<br>0% at 28.5+<br>Thor · 09-27 · max perf |
-| **Dungeons Dragons Heroes**<br>reach gameplay | 🟣 inputs ready | **12.5**<br>0% at 28.5+<br>Nova · 10-06 · default perf |
+| **Dungeons & Dragons Heroes**<br>reach gameplay | 🟣 inputs ready | **12.5**<br>0% at 28.5+<br>Nova · 10-06 · default perf |
 | **Burnout**<br>below the bar | below 30 | **10.8**<br>7% at 28.5+<br>Thor · 09-27 · max perf |
-| **Bloody Roar Extreme**<br>below the bar | below 30 | **9.8**<br>0% at 28.5+<br>Nova · 10-02 · max perf |
+| **Bloody Roar: Extreme**<br>below the bar | below 30 | **9.8**<br>0% at 28.5+<br>Nova · 10-02 · max perf |
 | **Black**<br>below the bar | below 30 | **7.5**<br>0% at 28.5+<br>Thor · 09-26 · max perf |
 | **Mission Impossible Operation Surma USA**<br>**blocked: hang: 10.0 s without 60 guest flips after the mark** | 🔴 blocked | **6.9**<br>0% at 28.5+<br>Nova · 10-12 |
 | **Midtown Madness 3**<br>**blocked: hang: 12.0 s without 60 guest flips after the mark** | 🔴 blocked | **3.1**<br>0% at 28.5+<br>Thor · 09-27 · max perf |
 | **Die Hard Vendetta Europe En Fr Es It**<br>**blocked: booted: the guest never appeared or never flipped 60 frames** | 🔴 blocked |  |
-| **GoldenEye Rogue Agent**<br>**blocked: reached_gameplay: no `mark gameplay` in logcat** | 🔴 blocked |  |
 | **SSX Tricky**<br>**blocked: reached_gameplay: unconfirmed (generic route) -- review the contact sheet, then rerun with --reviewed-gameplay yes\|no** | 🔴 blocked |  |
-| **50 Cent Bulletproof**<br>done | 🟢 Playable |  |
 | **Avatar: The Last Airbender**<br>done | 🟢 Playable |  |
-| **Backyard Wrestling 2 There Goes the Neighborhood**<br>done | 🟢 Playable |  |
-| **Bad Boys Miami Takedown**<br>done | 🟢 Playable |  |
+| **Backyard Wrestling 2: There Goes the Neighborhood**<br>done | 🟢 Playable |  |
+| **Bad Boys: Miami Takedown**<br>done | 🟢 Playable |  |
 | **BloodRayne 2**<br>done | 🟢 Playable |  |
-| **Conan**<br>done | 🟢 Playable |  |
-| **Conspiracy Weapons of Mass Destruction**<br>done | 🟢 Playable |  |
+| **Conan (Europe)**<br>done | 🟢 Playable |  |
+| **Conspiracy: Weapons of Mass Destruction**<br>done | 🟢 Playable |  |
 | **Dance Dance Revolution Ultramix 3**<br>done | 🟢 Playable |  |
 | **David Beckham Soccer**<br>done | 🟢 Playable |  |
 | **ESPN Major League Baseball**<br>done | 🟢 Playable |  |
 | **ESPN MLS ExtraTime 2002**<br>done | 🟢 Playable |  |
 | **FILA World Tour Tennis**<br>done | 🟢 Playable |  |
-| **Hello Kitty Roller Rescue**<br>done | 🟢 Playable |  |
+| **Hello Kitty: Roller Rescue**<br>done | 🟢 Playable |  |
 | **Indigo Prophecy**<br>done | 🟢 Playable |  |
 | **Jacked**<br>done | 🟢 Playable |  |
 | **Knockout Kings 2002**<br>done | 🟢 Playable |  |
-| **Legacy of Kain Defiance**<br>done | 🟢 Playable |  |
 | **Manhunt**<br>done | 🟢 Playable |  |
-| **Mat Hoffman's Pro BMX 2 (USA).7z**<br>done | 🟢 Playable |  |
+| **Mat Hoffman's Pro BMX 2**<br>done | 🟢 Playable |  |
 | **Max Payne**<br>done | 🟢 Playable |  |
-| **Max Payne 2 The Fall of Max Payne**<br>done | 🟢 Playable |  |
-| **Mercenaries**<br>done | 🟢 Playable |  |
+| **Mercenaries: Playground of Destruction**<br>done | 🟢 Playable |  |
 | **MVP Baseball 2003**<br>done | 🟢 Playable |  |
 | **Ricky Ponting International Cricket 2005**<br>done | 🟢 Playable |  |
-| **Scooby Doo Mystery Mayhem**<br>done | 🟢 Playable |  |
-| **Scooby Doo Unmasked**<br>done | 🟢 Playable |  |
-| **Shadow of Memories**<br>done | 🟢 Playable |  |
+| **Scooby-Doo! Mystery Mayhem (Europe)**<br>done | 🟢 Playable |  |
+| **Scooby-Doo! Unmasked (Europe)**<br>done | 🟢 Playable |  |
+| **Shadow of Memories (Europe)**<br>done | 🟢 Playable |  |
 | **Slam Tennis**<br>done | 🟢 Playable |  |
 | **SpongeBob SquarePants: Battle for Bikini Bottom**<br>done | 🟢 Playable |  |
 | **The Lord of the Rings: The Fellowship of the Ring**<br>done | 🟢 Playable |  |
-| **Tony Hawk s Underground 2**<br>done | 🟢 Playable |  |
+| **Tony Hawk's Underground 2**<br>done | 🟢 Playable |  |
 | **TY the Tasmanian Tiger**<br>done | 🟢 Playable |  |
-| **X Men The Official Game**<br>done | 🟢 Playable |  |
-| **Counter Strike**<br>reach gameplay | 🟣 inputs ready |  |
-| **Gauntlet Dark Legacy**<br>reach gameplay | 🟣 inputs ready |  |
-| **MechAssault 2 Lone Wolf**<br>reach gameplay | 🟣 inputs ready |  |
-| **Midnight Club 3 DUB Edition**<br>reach gameplay | 🟣 inputs ready |  |
-| **Tony Hawk s Pro Skater 3**<br>reach gameplay | 🟣 inputs ready |  |
+| **X-Men: The Official Game (Europe)**<br>done | 🟢 Playable |  |
 | **Antz Extreme Racing**<br>reach gameplay | 🔵 copied |  |
 | **Aoi Namida**<br>reach gameplay | 🔵 copied |  |
-| **Conker: Live and Reloaded**<br>reach gameplay | 🔵 copied |  |
 | **MechAssault**<br>reach gameplay | 🔵 copied |  |
-| **NINJA GAIDEN**<br>reach gameplay | 🔵 copied |  |
-| **PhantomDust**<br>reach gameplay | 🔵 copied |  |
 | **AFL Live 2003**<br>reach gameplay | ⚪ not copied |  |
 | **AFL Live 2004**<br>reach gameplay | ⚪ not copied |  |
 | **AFL Live Premiership Edition**<br>reach gameplay | ⚪ not copied |  |
@@ -606,7 +606,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **RollerCoaster Tycoon**<br>reach gameplay | ⚪ not copied |  |
 | **Rugby League 2**<br>reach gameplay | ⚪ not copied |  |
 | **Sega GT 2002**<br>reach gameplay | ⚪ not copied |  |
-| **Sega GT 2002 JSRF Jet Set Radio Future**<br>reach gameplay | ⚪ not copied |  |
+| **Sega GT 2002 + JSRF: Jet Set Radio Future**<br>reach gameplay | ⚪ not copied |  |
 | **Shadow The Hedgehog**<br>reach gameplay | ⚪ not copied |  |
 | **Shrek**<br>reach gameplay | ⚪ not copied |  |
 | **Ski Racing 2005**<br>reach gameplay | ⚪ not copied |  |
@@ -664,7 +664,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 
 </details>
 
-620 titles: 17 blocked, 87 Playable, 5 soak pending, 7 below 30, 37 inputs ready, 113 copied, 354 not copied.
+620 titles: 19 blocked, 87 Playable, 5 soak pending, 9 below 30, 34 inputs ready, 112 copied, 354 not copied.
 
 ---
 
