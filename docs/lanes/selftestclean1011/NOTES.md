@@ -86,6 +86,36 @@ than 3h on the owner's word around 15:4x; this lane stops the leak itself.
    - Ran both by hand first (see "Verification" below) before trusting them
      inside the fragment.
 
+## Attempt 2 (resume, 2026-10-16 ~12:0x PDT)
+
+Attempt 1 (started 2026-10-11 15:5x PDT) never finished: the implementation, the
+new fragment, and both mutant falsifications were all done and verified in
+isolation (see "Verification" below), but the session went idle for 5 days with
+that work sitting uncommitted in this worktree -- no crash, just never came back
+to run the full unsharded `selftest.sh` or open a PR. hostops found it 2026-10-16
+~09:4x PDT, committed the WIP as-is (`bffdbdd8a4`), corrected `PR.md`'s `State:`
+back to `draft` (a checkpoint commit had claimed `ready` while its own message
+said the opposite), and released `docs/testing/jobs/selftest.sh` /
+`selftest.d/89-sign-rotation.sh` from this lane's board row to `[lane.sign1016]`,
+which needs them for its own one-line `SHARD_SECS` entry. That is a territory
+change, not a defect in this lane's diff.
+
+Checked at resume (fetched `origin/board` and `origin/master` fresh): `territory.toml`
+on `origin/board` (`[lane.sign1016]` at line 2762) confirms `docs/testing/jobs/selftest.sh`
+is currently owned by `lane.sign1016`, widened into its row at ~09:4x PDT after its
+ready PR (`40aeba6fa6`) was first refused by foldqueue at 09:39:32 for touching it
+outside that row. But `lane/sign1016` still has not folded: `foldqueue.log` shows a
+second, different stall after the territory fix --
+`10:41:14 WAITING lane/sign1016 @ 40aeba6fa6: no device run built from the head yet`
+followed by `10:41:16 GATE QUEUED lane/sign1016 @ 40aeba6fa6: gate NOT queued /
+restore NOT queued` -- and no further `sign1016` line appears through the latest
+tick in the log (`11:42:59`, several other lanes folding normally in between). So
+`selftest.sh` is not back on this lane's row yet, and per the addendum this lane
+must not touch it until it is. Wrote `docs/lanes/selftestclean1011/WAITING` (`grant
+docs/testing/jobs/selftest.sh: blocked on lane.sign1016's fold`) and is stopping
+here rather than spinning on another lane's fold. Nothing else in this lane's own
+diff changed; the Verification section below still describes the last real run.
+
 ## Verification
 
 Isolated fragment run (`SELFTEST_ONLY=99-tmp-cleanup-selftestclean1011`,
