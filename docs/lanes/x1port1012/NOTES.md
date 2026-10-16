@@ -304,8 +304,37 @@ skipped launch on a scratch copy of the constants (checked in `f3acdd0912`). It 
 their `prog=` and `first_row=`. `skip_stale > 0` in the menu window is the hit. Device runs: 6 used of 24;
 this is 1-2 more.
 
-**WAITING**: `owner: when the Nova is free, resume x1port1012 on Opus for the #939 audit run, per "Owner
-sighting on the Phase A nightly" in NOTES.md.`
+~~**WAITING**: `owner: when the Nova is free, resume x1port1012 on Opus for the #939 audit run, per "Owner
+sighting on the Phase A nightly" in NOTES.md.`~~ Queued, see the next section.
+
+### Audit run queued (lane.xbox, 2026-10-16)
+
+The owner said "Queue it ahead, I'm done with the Nova". lane.xbox queued the audit run as
+`0-1792165273-x1port1012-921745` (`--priority blocker`, ahead of the audio1016 requests), on ref
+`223f216d7c`. The shipped-defaults triage arm already built that ref. Settings:
+`HAKUX_XVSS=audit HAKUX_S2TSHELF=audit`, no route, `--seconds 150`, and a video at
+`--video-after 40 --video-seconds 50` (+40..+90 s, inside the menu window).
+
+The video goes on this run, not on a later noskip run. The owner raised the possibility that the defect
+is mid-frame: visible on screen, but absent from a settled-frame capture. A still taken every few
+seconds cannot tell a half-drawn or stale image from a good one. `screenrecord` on the Nova records
+every frame SurfaceFlinger composites. The triage arm's 8 s clip has 485 frames, about 60 fps. The menu
+draws at 30 Hz, each image held for two vblanks (`v2=60`). So a correct clip advances the ring by one
+constant step every second frame. On frame-by-frame reading, each failure shape points to a different
+cause:
+
+| what a frame-by-frame read shows | points to |
+|---|---|
+| whole frames at a stale angle (rotation goes back, then resumes) | the guest drew it with old transform constants (XVSS); check `[xvss] stale skip` timestamps |
+| a frame split across a horizontal line, new above and old below (or the reverse) | the host presented a buffer the guest was still drawing (mid-frame) |
+| the ring itself correct, but a texture or overlay on it from another frame | texture reuse (S2TSHELF; `[s2tshelf]` hits) |
+| the clip is clean, yet the owner sees jumps in the same run | the defect is past compositing: a capture of the panel itself (phone slow-motion) is the next instrument |
+
+Hit: `skip_stale > 0` during +33..+96 s, or a frame in the clip matching one of the rows above.
+Device runs: 7 used of 24.
+
+**WAITING**: `0-1792165273-x1port1012-921745` lands. Then read the counts and the clip frame by frame,
+and ask the owner whether the clip shows what they saw.
 
 ## End of this session (attempt 3)
 
