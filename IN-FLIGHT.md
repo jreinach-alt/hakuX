@@ -6,12 +6,14 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `fps1015` | claude-opus-5-5 | 3 min | fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2) |
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `lane.xbox-stagecs`
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 6 waiting, 1 running.
+- **Device queue:** 3 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -112,10 +114,13 @@ No lane session is running.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/fps1015` | fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2); HAKUX_S2 | `137d15505c` | 2026-10-16 08:19 |
 
 ## Recently landed on master
 
+- 2026-10-16 One display name per title_id, and nothing keyed by a name (#433)
 - 2026-10-16 status_html: titles05 crashed on a registry name the catalog spells differently
 - 2026-10-14 titledb1014: title_id as the join key, one table, every reader reads it (#433)
 - 2026-10-14 A tracked listing of which title is where, keyed by title_id
@@ -127,6 +132,5 @@ No branch is being worked right now.
 - 2026-10-13 compatrefresh1013: the compatibility page and README move to 57 Playable
 - 2026-10-13 statusalloc1013: status.sh no longer opens a status issue the gh shim would refuse (#433, 0.5)
 - 2026-10-13 pathrules1013: pathfind no-answer steps never become a path, a hold that can't pass ends early, a perflog run never banks (#433, 0.5)
-- 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
 
-_Updated 2026-10-16 09:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 09:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
