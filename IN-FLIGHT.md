@@ -8,8 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `audio1016` | claude-opus-5-5 | 28 min | audio1016: quiet speech and movie audio on the Nova (#984, #938) |
-| `fps1015` | claude-opus-5-5 | 34 min | fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2) |
+| `audio1016` | claude-opus-5-5 | 43 min | audio1016: quiet speech and movie audio on the Nova (#984, #938) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lanelocal-ownerplay`
@@ -116,8 +115,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/audio1016` | audio1016: quiet speech and movie audio on the Nova (#984, #938) | `55293f3939` | 2026-10-16 05:47 |
-| `lane/fps1015` | fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2) | `6cbcb60bc7` | 2026-10-16 06:11 |
+| `lane/audio1016` | audio1016: quiet speech and movie audio on the Nova (#984, #938) | `ad1cabbf6e` | 2026-10-16 06:22 |
 
 ## Recently landed on master
 
@@ -134,4 +132,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
 - 2026-10-13 lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
 
-_Updated 2026-10-16 06:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 06:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
