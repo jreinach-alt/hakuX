@@ -22,12 +22,15 @@ switch (`NV097_SET_TEXTURE_FORMAT_COLOR_{LU_IMAGE,SZ}_{A1R5G5B5,R5G6B5}`). The i
 `python3 docs/testing/nv2a_index.py build --tests /home/justin/nxdk_pgraph_tests --support /home/justin/pbkitplusplus`,
 with the tests checkout no older than the committed index's `provenance.tests_commit`.
 - #986 MKSM: cause found, serialization on 16-bit render-to-texture downloads (3 a frame in the cutscene). Lever
-  `HAKUX_S2T_CVT` built (default off). Pilot pair: the downloads go, and the cutscene's first 1800 guest frames
-  take 33.1 s instead of 62.1 s (54.4 against 29.0 fps). Gameplay median rises from 51 to 59 fps. The
-  confirming pair is running.
-- #992 Top Spin: the same cause, 24-32 downloads a frame. Same lever; its A/B needs an admissible route (no golden
-  profile yet, and `fps786-topspin` is a first-run route without `mark profile-saved`).
-- #992 Brian Lara: a different shape, unexplained. Next step: one perflog run.
+  `HAKUX_S2T_CVT` built (default off). A/B, two runs an arm, PASS on every leg: the downloads go, and the
+  cutscene's first 1800 guest frames take 33.1-33.2 s instead of 62.1-65.5 s (54.2-54.4 against 27.5-29.0 fps).
+  Gameplay median rises from 51 to 59 fps.
+- #992 Top Spin: the same cause, 24-32 downloads a frame. Same lever. Its A/B is registered
+  (`fps1015-topspin.json`) on a route the gate admits: Top Spin's first golden (data-only save 23b5be4cf466) and
+  async794's fixed route headed `any`.
+- #992 Brian Lara: a different shape, unexplained. Next step: one perflog run of a ball in play. It has no route,
+  golden or `targets.toml` entry, so the run first needs a route into a match (pathfind's, per the model table,
+  not this lane's).
 - #995 Batman Begins: partly explained. GPU or wait-bound. The one download a frame serializes the previous
   frame's GPU work against the PFIFO thread. Fill against draw count needs a perflog + `vtx256` run.
 - #993 Prince of Persia: reduced to a bound. The fog room's PFIFO-thread frame is 33-36 ms against the 33.4 ms
@@ -53,7 +56,8 @@ queues it.
 
 Attempt 3 did finish. It registered both predictions (15:16Z), committed and pushed them in 465cfd2f57, queued the
 four requests (15:17-15:18Z) and ended on its `waiting:` line. Handback resumed it as attempt 4 once the four
-results landed. Attempt 4 reads them, queues the confirming pair (on2, off2) and writes "The A/B, results".
+results landed. Attempt 4 reads them, queues the confirming pair (on2, off2) and writes "The A/B, results",
+then judges all four and sets up Top Spin's A/B.
 
 ## #986 Mortal Kombat Shaolin Monks: step 1, the offline split (written before the read)
 
@@ -797,9 +801,40 @@ with no profile, so a desync is more likely than on MKSM: Top Spin's menus inclu
 first because it decides whether removing the downloads moves the frame at all. If its R leg passes and P fails,
 Top Spin's A/B is not worth the route work.
 
-Top Spin's match play also breaks the render pass about 100 times a window for occlusion queries. Its A/B should
-carry `HAKUX_REPORT_ASYNC=1` in both arms (texscan1010's lesson), so that a report wait cannot take the downloads'
-place and hide the gain. MKSM's cutscene breaks for no queries, so its A/B runs the switch alone.
+Top Spin's match play also breaks the render pass about 100 times a window for occlusion queries. That does not
+call for `HAKUX_REPORT_ASYNC=1` in its arms: the control's 1628 finishes are 1568 `sd` and the flip, with no report
+finish (section #992 above), so no report wait sits behind the downloads to take their place. Its A/B runs the
+switch alone, as MKSM's does, which is also the setting that would ship.
+
+### #992 Top Spin's A/B: set up
+
+- Golden: `titlestate.py promote --title-id 4D530035 --save 23b5be4cf466 --by lane.fps1015` (2026-10-16T16:54:42Z).
+  It is Top Spin's first. The save is data-only: `TDATA/4D530035/GlobalOptions` plus the title's meta and image,
+  no game save.
+- Route `docs/lanes/fps1015/routes/fps1015-topspin.route`: async794's `async794-topspin` (no START after step 24),
+  headed `# state: any`, loop cut from 22 frames to 6. The control reached `mark gameplay` 355 s after route start,
+  so the route ends near 525 s; the soak is 540 s. `titlestate.py admit --route fps1015-topspin --route-text-file
+  ...` admits it (clause `profile`, golden 23b5be4cf466).
+- Judge `docs/lanes/fps1015/tsread.py`. It uses s2tread.py's line pairing and clock, with Top Spin's spans:
+  - fly-over: shot s20 to s23, the stadium behind the PRESS START banner. It waits for the route's START, so it
+    lasts the same wall time at any speed.
+  - play: `mark gameplay` to the end.
+- Prediction `docs/testing/predictions/fps1015-topspin.json`, on f5a67ba52c (the build that ran MKSM's arms). The
+  five master commits since are status-page and title-registry tooling, no emulator code. Baseline, async794's two
+  controls on tsread.py's spans:
+
+| control | span | windows | G ms | gfps | sd a frame | Fin ms | GPU ms | X ms |
+|---|---|---|---|---|---|---|---|---|
+| 1791135713 (5e4196fefd) | play | 382 | 27.3 | 36.0 | 25.3 | 12.2 | 10.3 | 4.5 |
+| 1791135717 (c825e4b24f) | play | 372 | 27.7 | 35.5 | 24.3 | 12.6 | 10.3 | 4.3 |
+| 1791135713 | fly-over | 15 | 46.8 | 20 | 48.3 | 23.6 | 15.9 | 8.2 |
+| 1791135717 | fly-over | 15 | 44.8 | 21 | 47.2 | 23.3 | 16.1 | 8.3 |
+
+  Predicted: play median G down 4-13 ms (point -8), gfps up 6 or more (point +14), fly-over G down 10 ms or more
+  (point -20). The play range's low end allows for the decodes' own GPU time: 25 a frame, against MKSM's 9, whose
+  GPU time outside render passes went from 0.3 to 4.2 ms.
+- Risk to V: the route's menu presses were recorded on a disk with no Top Spin save. The golden carries
+  GlobalOptions only, so the menus should not change; shots s10-s19 of the pilot pair show it if they do.
 
 ## The A/B, queued
 
@@ -922,8 +957,46 @@ Two things the pilot shows that the legs do not:
   between two passes (MxG) 3.6 ms against 0. In the cutscene X is the same in both (6.1 and 6.3). Without the
   switch, the downloads run in their own command buffers after a finish, which this timer may not cover (not
   checked). So the decode's own GPU cost in gameplay lies between about 0 and 4 ms a frame. It does not limit
-  MKSM: the frame is 8.6 ms of GPU at 59 fps. Before the switch goes to Top Spin (24-32 a frame) or Prince of Persia
-  (9 at 256x256), `HAKUX_GPUXFR=1` measures it per site (the decode is site 6330, `s2t`).
+  MKSM: the frame is 8.6 ms of GPU at 59 fps. Top Spin (24-32 a frame) and Prince of Persia (9 at 256x256) carry
+  more. Top Spin's A/B reads it from the on runs' GPU and X columns. If its P or I leg fails with R passing,
+  `HAKUX_GPUXFR=1` measures it per site (the decode is site 6330, `s2t`).
 
-The confirming pair, on2 1792168743-fps1015-1960988 and off2 1792168748-fps1015-1962522, is queued with the same
-commands. Judge: `python3 docs/lanes/fps1015/s2tread.py <on1> <off1> <on2> <off2>`.
+### Soak, all four: PASS
+
+`s2tread.py` on1 off1 on2 1792168743-fps1015-1960988 off2 1792168748-fps1015-1962522:
+
+| run | arm | cut windows | signature | play windows | sd/frame | cvt | s2tc | G ms | gfps | Fin | GPU | play gfps |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| on1 | on | 83 | 57 | 124 | 0.00 | 0 | 540 | 16.7 | 59.0 | 2.3 | 8.6 | 59.0 |
+| off1 | off | 53 | 41 | 106 | 3.00 | 180 | 0 | 24.4 | 39.0 | 14.6 | 10.1 | 51.0 |
+| on2 | on | 80 | 72 | 120 | 0.00 | 0 | 540 | 16.8 | 59.0 | 2.6 | 10.8 | 59.0 |
+| off2 | off | 48 | 42 | 108 | 3.00 | 180 | 0 | 33.2 | 29.0 | 17.6 | 12.0 | 51.0 |
+
+on2 is VOID by V as registered: `[s2tcvt] on` at 09:46:45.147 and no `[s2tcvt] first` anywhere in its logcat.
+`pgraph_vk_s2t_cvt_copy()` logs `first` on its first call with no condition (surface.c:6389), and
+`copy_surface_to_texture()` calls it for every replicated format with the switch on (texture.c:1298). on2's
+counters carry the decode from 09:46:49 on, the same shape as on1's (`on`, then `s2tc` nonzero ~4 s later). So
+the line was lost between the app and the capture; logcat shows no loss marker. The verdict of record is over on1,
+off1 and off2:
+
+| leg | registered | measured | |
+|---|---|---|---|
+| R | on sd <= 0.1, cvt 0; off sd >= 2.5 | on 0.00, cvt 0; off 3.00 | PASS |
+| P | median G on - off in [-22, -6], point -10 | 16.7 - 30.3 = -13.6 ms | PASS |
+| F | median gfps on - off >= +5, point +8 | 59.0 - 31.0 = +28.0 | PASS |
+| N | gameplay gfps on >= off - 3 | 59.0 against 51.0 | PASS |
+
+The frame-locked read, the first 1800 guest frames from s13 (on2 computed with the same code, reported):
+
+| run | wall s | fps | median G | Fin | GPU | X |
+|---|---|---|---|---|---|---|
+| on1 | 33.1 | 54.4 | 16.7 | 2.7 | 14.4 | 6.1 |
+| on2 | 33.2 | 54.2 | 16.9 | 2.8 | 14.2 | 5.9 |
+| off1 | 62.1 | 29.0 | 34.3 | 20.5 | 15.2 | 6.3 |
+| off2 | 65.5 | 27.5 | 34.3 | 20.0 | 15.3 | 6.3 |
+
+**#986: resolved by the switch, in the measured scene.** The two on runs agree to 0.1 s over 1800 frames, and the
+two off runs to 3.4 s. The cutscene's frame goes from 34.3 ms to the vblank; the finish wait from 20 to under 3 ms;
+the GPU's frame does not grow. What it does not show: any title but MKSM, any MKSM scene but Goro's Lair, and the
+pixels, whose leg cannot clear until the shadow-comparator regression is fixed (above). The switch stays off by
+default until then.

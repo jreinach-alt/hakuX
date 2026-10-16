@@ -4,8 +4,8 @@ State: draft
 
 Lane: fps1015            Issue: #433 #986 #992 #995 #993 #994
 Base: master @ 0e5fab6bef
-Files: docs/lanes/fps1015/PR.md, docs/lanes/fps1015/NOTES.md, docs/lanes/fps1015/winsplit.py, docs/lanes/fps1015/s2tscan.py, docs/lanes/fps1015/dlrate.py, docs/lanes/fps1015/irqrate.py, docs/lanes/fps1015/dumpstat.py, docs/lanes/fps1015/stallscan.py, docs/lanes/fps1015/cvtcensus.py, docs/lanes/fps1015/s2tread.py, docs/lanes/fps1015/routes/fps1015-mksm.route, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, docs/testing/predictions/fps1015-pixels.json, docs/testing/predictions/fps1015-mksm.json
-Prediction: docs/testing/predictions/fps1015-pixels.json @ 50e23fcbb68a87f6d82b8e8d5600d22672ffd52240ba693290e425fede4fd8f4, docs/testing/predictions/fps1015-mksm.json @ df1ac10a2d8de1ff54be6c2a1e16614310a21867b66c72222813356933be3004
+Files: docs/lanes/fps1015/PR.md, docs/lanes/fps1015/NOTES.md, docs/lanes/fps1015/winsplit.py, docs/lanes/fps1015/s2tscan.py, docs/lanes/fps1015/dlrate.py, docs/lanes/fps1015/irqrate.py, docs/lanes/fps1015/dumpstat.py, docs/lanes/fps1015/stallscan.py, docs/lanes/fps1015/cvtcensus.py, docs/lanes/fps1015/s2tread.py, docs/lanes/fps1015/tsread.py, docs/lanes/fps1015/routes/fps1015-mksm.route, docs/lanes/fps1015/routes/fps1015-topspin.route, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, docs/testing/predictions/fps1015-pixels.json, docs/testing/predictions/fps1015-mksm.json, docs/testing/predictions/fps1015-topspin.json
+Prediction: docs/testing/predictions/fps1015-pixels.json @ 50e23fcbb68a87f6d82b8e8d5600d22672ffd52240ba693290e425fede4fd8f4, docs/testing/predictions/fps1015-mksm.json @ df1ac10a2d8de1ff54be6c2a1e16614310a21867b66c72222813356933be3004, docs/testing/predictions/fps1015-topspin.json @ 95d73f39c923d2ff50cf33016ddca69ca38817aa8df74038803c1c8fe1833809
 Needs device: yes    Needs NDK: yes
 
 Release note (none): HAKUX_S2T_CVT, off by default, decodes 16-bit render targets that a title samples as textures on the GPU instead of downloading them.
@@ -16,8 +16,8 @@ default-off lever for the cause four of the five titles share. Details and every
 
 | issue | title | slow frames | cause | status |
 |---|---|---|---|---|
-| #986 | Mortal Kombat: Shaolin Monks | cutscene 14-23 fps, G 41-64 ms | 3 16-bit render-to-texture downloads a frame (`cvt`), each a finish and a fence wait; median G 43.2 ms with `Fin` 18.5 ms | cause found; with `HAKUX_S2T_CVT=1` the cutscene runs 29.0 to 54.4 fps over the same 1800 frames (pilot pair; confirming pair running) |
-| #992 | Top Spin | match play 26-31 ms frames | the same downloads, 24-32 a frame (59 in the arena intro); bound 11-15 ms of the frame | cause found; A/B needs a route the profile gate admits |
+| #986 | Mortal Kombat: Shaolin Monks | cutscene 14-23 fps, G 41-64 ms | 3 16-bit render-to-texture downloads a frame (`cvt`), each a finish and a fence wait; median G 43.2 ms with `Fin` 18.5 ms | cause found; with `HAKUX_S2T_CVT=1` the cutscene's first 1800 frames run at 54.2-54.4 fps instead of 27.5-29.0 (two runs per arm) |
+| #992 | Top Spin | match play 26-31 ms frames | the same downloads, 24-32 a frame (59 in the arena intro); bound 11-15 ms of the frame | cause found; A/B queued |
 | #992 | Brian Lara Cricket 2005 | ball in play | a different shape | unexplained; needs one perflog run |
 | #995 | Batman Begins | fire/explosion cutscenes 14-23 fps | GPU work outgrows the 30-fps cap; one download a frame stops it overlapping the PFIFO thread | partly explained |
 | #993 | Prince of Persia | fog room 19 fps | PFIFO-thread frame 33-36 ms against the 33.4 ms two-vblank budget; nine shadow-map downloads a frame inside it | reduced to a bound |
@@ -49,6 +49,10 @@ One build, two arms differing only by env (`a_ref` = `b_ref` = f5a67ba52c):
   `docs/lanes/fps1015/s2tread.py`): in the Goro's Lair cutscene, downloads gone (sd 0.1 a frame or less), median G
   down 6-22 ms (point -10: 43 to ~33 ms), median fps up 5 or more (point +8: 22 to ~30); gameplay fps no more
   than 3 below off.
+- Soak leg, #992 (`fps1015-topspin.json`, route `docs/lanes/fps1015/routes/fps1015-topspin.route` on Top Spin's
+  first golden, judge `docs/lanes/fps1015/tsread.py`): in match play, downloads gone (sd 1 a frame or less),
+  median G down 4-13 ms (point -8: 27.5 to ~19.5 ms), median fps up 6 or more (point +14: 36 to ~50); in the
+  stadium fly-over, median G down 10 ms or more (point -20: 46 to ~26).
 
 ### Results
 
@@ -67,10 +71,18 @@ Over the same 1800 guest frames from its first shot (reported, not judged):
 | run | wall s | fps | median G ms | Fin ms | GPU ms |
 |---|---|---|---|---|---|
 | on1 | 33.1 | 54.4 | 16.7 | 2.7 | 14.4 |
+| on2 | 33.2 | 54.2 | 16.9 | 2.8 | 14.2 |
 | off1 | 62.1 | 29.0 | 34.3 | 20.5 | 15.2 |
+| off2 | 65.5 | 27.5 | 34.3 | 20.0 | 15.3 |
 
-The PFIFO thread's finish wait goes and the GPU's work does not grow. A confirming pair (on2
-1792168743-fps1015-1960988, off2 1792168748-fps1015-1962522) is queued.
+The PFIFO thread's finish wait goes and the GPU's work does not grow.
+
+**Soak, all four (on2 1792168743-fps1015-1960988, off2 1792168748-fps1015-1962522 added): PASS on every leg,
+over on1, off1 and off2.** R: on sd 0.00 a frame, cvt 0; off 3.00. P: -13.6 ms (16.7 against 30.3). F: +28 (59
+against 31). N: 59 against 51. on2 is void by the V rule as registered: its logcat has `[s2tcvt] on` and no
+`[s2tcvt] first`. The decode logs that line on its first call, unconditionally, and on2's counters show the decode
+in 72 of its 80 cutscene windows (s2tc 540 a window, cvt 0, sd 0.00), so the line was lost from the log. Its
+numbers are in the table above as reported, not judged.
 
 **Pixel leg (A 1792163881-fps1015-716411, B 1792163875-fps1015-716177): FAIL as registered (10 worse, predicted
 0).** 816 of 881 captures are byte-identical, Blend_surface included, where the switch's decode ran. The 65 that
