@@ -97,6 +97,7 @@ SHARD_SECS="
     99-handback-strand:6 99-hold-take:5 99-iso-roots:1 99-limits-env:12
     99-pilot-gate:3 99-power-per-frame:4 99-score-sweep-flat-split:3
     99-status-escalation-items:1 99-thermal-pause:34 99-title-state:5
+    99-tmp-cleanup-selftestclean1011:2
 "
 shard_frags() {   # <k> <n> -> the basenames of shard k, sorted, one per line
     printf '%s\n' "${frags[@]##*/}" | python3 -c '
@@ -164,7 +165,15 @@ if [ -n "${SELFTEST_SHARD:-}" ]; then
     SHARD_K=${BASH_REMATCH[1]} SHARD_N=${BASH_REMATCH[2]}
     shard_check "$SHARD_N" || exit 2
 fi
-T="${SELFTEST_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/hakux-selftest.XXXXXX")}"
+# T_OWNED: 1 when we made $T ourselves (mktemp), so we may remove it when the
+# run passes. 0 when the caller handed us SELFTEST_DIR: it is theirs, and the
+# ending below never removes it, pass or fail. Nothing sets SELFTEST_DIR today
+# (#433); the contract stays for a future caller that wants to inspect it.
+if [ -n "${SELFTEST_DIR:-}" ]; then
+    T="$SELFTEST_DIR" T_OWNED=0
+else
+    T="$(mktemp -d "${TMPDIR:-/tmp}/hakux-selftest.XXXXXX")" T_OWNED=1
+fi
 export HAKUX_WORK="$T/work" HAKUX_REPO_DIR="$REPO" DISPATCH_DIR="$T/work/dispatch" GOLDENS="$T/goldens" GH_REPO="example/hakux"
 export HOME="${HOME:-$T}"
 mkdir -p "$T/bin" "$HAKUX_WORK"/{arms,logs/arms,logs/lane,logs/board,logs/fold,logs/cloud,status,briefs,attempts} "$DISPATCH_DIR"/{queue,running,results,expect} "$GOLDENS"
@@ -296,5 +305,15 @@ done
 echo
 scope="all ${#frags[@]} fragments"
 [ "${#run[@]}" -eq "${#frags[@]}" ] || scope="PARTIAL: ${#run[@]} of ${#frags[@]} fragments${SELFTEST_SHARD:+, shard $SELFTEST_SHARD}"
-echo "selftest: $pass passed, $fail failed, $scope (fake host in $T)"
+# A pass removes the fake host we made (#433: 256 of these, 27.7 GB, left
+# behind every run). A fail keeps it -- that is the debugging copy -- and so
+# does a dir the caller gave us (T_OWNED=0), pass or fail: it is not ours to
+# remove. A run a signal kills (foldqueue's timeout) never reaches this line
+# and also keeps its dir; that is accepted, not handled.
+if [ "$fail" -eq 0 ] && [ "$T_OWNED" -eq 1 ]; then
+    rm -rf "$T"
+    echo "selftest: $pass passed, $fail failed, $scope (fake host removed, was $T)"
+else
+    echo "selftest: $pass passed, $fail failed, $scope (fake host in $T)"
+fi
 [ "$fail" -eq 0 ]
