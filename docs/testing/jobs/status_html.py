@@ -1472,7 +1472,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             by_tid[tid] = t["name"]
             add(t["name"], tid)
             for d in t["iso"]:
-                where[t["name"]].add(d)
+                where[canon(t["name"], tid)[0]].add(d)
     staged = []
     man = os.path.join(F.E.get("STATUS_XISO_DIR") or F.E.get("HAKUX_XISO_DIR") or "/mnt/d/hakux-staging/xiso", "manifest.csv")
     try:
