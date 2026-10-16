@@ -80,6 +80,55 @@ def frames(res):
     return cs
 
 
+def letterboxed(path):
+    """True when the frame has the cutscene's black bars: rows 60-160 and
+    800-960 of a 1280x960 frame (below the FPS overlay) are near black.
+    Gameplay fills them (HUD, walls, floor)."""
+    from PIL import Image
+    import numpy as np
+    a = np.asarray(Image.open(path).convert("L"), dtype=float)
+    h = a.shape[0]
+    top = a[h * 60 // 960:h * 160 // 960].mean()
+    bot = a[h * 800 // 960:].mean()
+    return top < 8 and bot < 8
+
+
+def speech_span(res):
+    """(first, last) clock of the leading run of letterboxed `cutscene`
+    frames, or None. Added 10-16 attempt 3, before B and D were read and
+    before A's levels were read: the uninterrupted Goro's Lair cutscene is
+    about 60 s, not the 120 s leg V assumed, and after it the `cutscene`
+    shots are idle gameplay."""
+    d = os.path.join(res, "route-frames")
+    run = []
+    for f in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+        m = re.match(r"(\d\d)(\d\d)(\d\d)-(.*)\.png$", f)
+        if not (m and "cutscene" in m.group(4)):
+            continue
+        if letterboxed(os.path.join(d, f)):
+            run.append(secs(*m.groups()[:3]))
+        elif run:
+            break
+    return (run[0], run[-1]) if run else None
+
+
+def voice_table(mix):
+    """Per slot layout over the given apumix rows: [frames, rows, desc,
+    excess L, excess R] under switch v2 (capped), most frames first."""
+    g = {}
+    for t, w, v, n, bins in mix:
+        slots = [tuple(int(y) for y in s.split(":")) for s in bins.split(",")]
+        desc = " ".join(f"{mixlog_read.NAMES.get(b, b)}:{-vol / 64:.1f}"
+                        for b, vol in slots if vol < 4095)
+        gmax, gl, gr = mixlog_read.side_gains(slots, True)
+        e = g.setdefault(desc, [0, 0, desc, 0.0, 0.0])
+        e[0] += n
+        e[1] += 1
+        e[3] = mixlog_read.db(gl) - mixlog_read.db(gmax)
+        e[4] = mixlog_read.db(gr) - mixlog_read.db(gmax)
+    return sorted(g.values(), key=lambda e: -e[0])
+
+
 def mksm(res):
     lc = os.path.join(res, "logcat.txt")
     text = open(lc, errors="replace").read().splitlines()
@@ -92,6 +141,15 @@ def mksm(res):
         r["pre"] = [lv for end, dt, lv in wins if end <= c0 and lv > -50]
     else:
         r["cut"], r["pre"] = [], []
+    sp = speech_span(res)
+    r["speech_span"] = sp
+    if sp:
+        # speech: windows inside the letterboxed frames (+5 s, half a shot gap);
+        # idle: windows from 12 s after the last letterboxed frame to the end.
+        r["speech"] = [lv for end, dt, lv in wins if end - dt >= sp[0] and end <= sp[1] + 5]
+        r["idle"] = [lv for end, dt, lv in wins if end - dt >= sp[1] + 12 and end <= c1]
+    else:
+        r["speech"], r["idle"] = [], []
     r["downmix"] = [m.group(1) for ln in text for m in [DOWNMIX.search(ln)] if m]
     r["use_dsp"] = any(USEDSP.search(ln) for ln in text)
     dsp, mix, starve = [], [], []
@@ -129,6 +187,8 @@ def mksm(res):
         r["gp_cyc"] = statistics.mean(x[2][0] for x in cd)
         r["util"] = statistics.mean(x[3] for x in cd)
         r["util_max"] = max(x[4] for x in cd)
+    sm = [x for x in mix if sp and x[0] - 5 >= sp[0] and x[0] <= sp[1] + 5]
+    r["speech_voices"] = voice_table(sm)
     spread = []
     for t, w, v, n, bins in cm:
         slots = [tuple(int(y) for y in s.split(":")) for s in bins.split(",")]
@@ -171,6 +231,25 @@ def main():
                   f"vp_us {r['vp_us']:.0f} gp_cyc {r['gp_cyc']:.0f} util {r['util']:.2f} "
                   f"(max {r['util_max']:.2f})")
         print(f"  starve over the cutscene: {r['starve']}% of output")
+        print(f"  [frames] letterboxed span {r['speech_span']}; speech windows "
+              f"{len(r['speech'])} median {med(r['speech']):.2f}; idle windows "
+              f"{len(r['idle'])} median {med(r['idle']):.2f}")
+        for e in r["speech_voices"][:6]:
+            print(f"    speech voices: {e[0]:7d} frames {e[1]:3d} rows  v2 excess "
+                  f"{e[3]:+5.1f}/{e[4]:+5.1f}  {e[2]}")
+    # Not registered legs: the same comparisons over the frame-defined speech
+    # and idle-gameplay windows (speech_span). Labelled [frames] wherever printed.
+    if "A" in runs:
+        a = runs["A"]
+        print(f"[frames] A: pre - speech = {med(a['pre']) - med(a['speech']):+.2f} dB; "
+              f"idle - speech = {med(a['idle']) - med(a['speech']):+.2f} dB")
+        for k in ("B", "D"):
+            if k in runs:
+                x = runs[k]
+                print(f"[frames] {k} - A: speech {med(x['speech']) - med(a['speech']):+.2f} dB, "
+                      f"idle {med(x['idle']) - med(a['idle']):+.2f} dB, "
+                      f"pre {med(x['pre']) - med(a['pre']):+.2f} dB; "
+                      f"{k}'s idle - speech {med(x['idle']) - med(x['speech']):+.2f} dB")
     if "A" in runs:
         a = runs["A"]
         q = med(a["pre"]) - med(a["cut"])

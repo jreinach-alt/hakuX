@@ -364,6 +364,22 @@ so its cutscene windows include the cuts between lines. Legs L (per voice) and U
 on matched windows) carry the question. A Q failure on this route is not evidence against the
 cause. The prediction stays as registered.
 
+**Read from run A's frames, before any level in A, B or D was read (17:40 UTC 10-16).** Run A
+(`...2350757`) reached the cutscene at 10:30:07 device clock. Its frames, viewed by eye:
+- 103007-103101: letterboxed, Raiden and Kung Lao speaking, 26-37 fps.
+- 103113 onward: no bars, the LIU KANG health bar is up at 59 fps, and Liu Kang stands idle.
+
+Run without input, the Goro's Lair cutscene lasts about 55-65 s, not the >= 120 s leg V
+assumed. Under the registered rule A's "cutscene" windows are therefore about 60 s of speech
+plus 140 s of idle gameplay. The registered legs are scored as written. Next to them,
+`judge_cutscene.py` prints a reading labelled `[frames]`:
+- `speech` windows: inside the leading run of letterboxed `cutscene` frames, detected from
+  the pixels (rows 60-160 and 800-960 near black), plus 5 s.
+- `idle` windows: from 12 s after the last letterboxed frame to the end.
+
+The rule depends only on the frames, and it was fixed before any level was read. It is not a
+registered leg, and NOTES and PR.md say so wherever they quote it.
+
 ## What the cause covers (#984, #938)
 
 - MKSM: (a) measured offline, about 4-5 dB of the 8-12 dB gap. The rest is open.
