@@ -2,6 +2,11 @@
 
 _Last updated 2026-10-13, for version 0.5.0._
 
+> Verified on real hardware (Thor, Android 13, hakuX 0.4.1): see
+> [`docs/frontends/es-de.md`](../frontends/es-de.md) for the tested writeup,
+> screenshots, and what a successful launch looks like. The steps below were
+> confirmed correct as written; nothing here needed to change.
+
 ES-DE's built-in hakuX entry starts the official app. This build installs
 under its own name so it can sit next to the official one. That means ES-DE
 needs two small files to find it.
