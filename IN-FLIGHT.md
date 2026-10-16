@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `x1port1012` | claude-opus-5-5 | 12 min | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
+| `x1port1012` | claude-opus-5-5 | 27 min | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -120,6 +120,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Recently landed on master
 
+- 2026-10-16 ce1016: display name becomes hakuX CE (Community Edition) -- docs pass
 - 2026-10-16 audio1016: quiet speech and movie audio on the Nova (#984, #938)
 - 2026-10-16 sign1016: rotate release key (lineage), minSdk 33 (#433)
 - 2026-10-16 GitHub Sponsors on the landing page and the Sponsor button (#433)
@@ -128,4 +129,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-16 One display name per title_id, and nothing keyed by a name (#433)
 - 2026-10-16 status_html: titles05 crashed on a registry name the catalog spells differently
 
-_Updated 2026-10-16 13:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 13:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
