@@ -3,7 +3,7 @@
 State: draft
 
 Lane: x1port1012          Issue: #939 [#938]
-Base: master @ dd5e3cb3c6 (stacked on PR #965, `lane/x1port1012`, still open)
+Base: master @ 4bf47129b1 (merged 10-16; PR #965, `lane/x1port1012`, folded as 3c2338eb2b)
 Files: docs/lanes/x1port1012/PR.md, docs/lanes/x1port1012/NOTES.md, docs/lanes/x1port1012/OUTBOX.md, docs/lanes/x1port1012/tools/ringframes.py, docs/lanes/x1port1012/tools/ringtrack.py, docs/lanes/x1port1012/tools/burstcount.py, docs/lanes/x1port1012/tools/ringreturn.py, docs/lanes/x1port1012/tools/burstseq.py, docs/lanes/x1port1012/tools/ynearest.py, docs/lanes/x1port1012/tools/burstzoom.py, docs/lanes/x1port1012/tools/burstdiff.py, docs/lanes/x1port1012/tools/yclass.py, hw/xbox/nv2a/pgraph/pgraph.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/buffer.c
 Prediction: none: the leads are default-off diagnostic switches, judged by an owner-reviewed triage video, not an automated A/B against a golden
 Needs device: yes (Nova)    Needs NDK: yes

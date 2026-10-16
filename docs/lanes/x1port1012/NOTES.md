@@ -3,6 +3,17 @@
 Brief: `/home/justin/hakux-work/briefs/x1port1012.md`. Base `dd5e3cb3c6`. X1 BOX tip `dadced00ce`
 (`refs/remotes/x1box/master`), common base `fce5a8d19f`.
 
+## Attempt 4 resume: why attempt 3 did not finish
+
+Attempt 3 stopped where the brief reserved the next step for an Opus resume: three triage clips waiting
+for the owner to judge them. It had nothing queued. Then lane.xbox (10-16) found the three clips void
+(they recorded the intro movies, not the menu) and ran the audit and fast-paths-off menu runs itself.
+The owner's console check then replaced the "earlier state" picture with two symptoms, (a) and (b).
+lane.xbox recorded all of this in the 10-16 sections below and added "Phase B from 10-16" to the brief.
+So the lane's own last session did finish. The brief changed after it. This attempt (Opus) starts the
+per-draw investigation that the new phase asks for, after merging `origin/master` at 4bf47129b1 (84
+commits, Phase A's fold 3c2338eb2b among them; none of them touch this branch's source files).
+
 ## Attempt 3 resume: why attempt 2 did not finish
 
 Attempt 2 (Sonnet, automatic resume while usage is Low) ended the session with two of this requester's

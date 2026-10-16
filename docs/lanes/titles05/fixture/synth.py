@@ -37,8 +37,13 @@ SYN = [
     # delivery). The file name's title-ID prefix puts them in this row.
     ("Zz Nameless", "5A5A0009", ("thor",), "burnout3", True, [("thor", "screening", 59.0, 0.99, True, True, False),
                                                              ("thor", "confirmation", 58.5, 0.99, True, True, False)], "Playable"),
+    # A passing confirmation whose frames are not yet reviewed: no ledger row,
+    # so not Playable (Buffy, 10-13, read Playable on the page and was not).
+    ("Zz Unreviewed", "5A5A000A", ("nova",), "burnout3", True, [("nova", "screening", 58.0, 0.99, True, True, False),
+                                                               ("nova", "confirmation", 57.0, 0.99, True, True, False)], "soak pending"),
 ]
 NAMELESS = {"5A5A0009"}
+LEDGER = {"5A5A0002", "5A5A0009"}                 # the Playable ledger's rows: accepted after frame review
 GREY = [("Zz Grey %02d" % i, "5A5A01%02d" % i) for i in range(1, 13)]
 
 # The registry the synthetic titles join is the fixture's own copy, not the
@@ -75,6 +80,13 @@ for name, tid, devs, route, save, verdicts, _ in SYN:
                    "rest": {"perf_mode": 0, "fan_mode": 4}}, open(os.path.join(rd, "perf_regimen.json"), "w"))
         for f in ("verdict.json", "perf_regimen.json"):
             os.utime(os.path.join(rd, f), (NOW - 7200 + 60 * k, NOW - 7200 + 60 * k))
+
+os.makedirs(os.path.join(WORK, "pm"), exist_ok=True)
+with open(os.path.join(WORK, "pm", "playable-accepted.tsv"), "w") as fh:
+    fh.write("date_pdt\ttitle\ttitle_id\tresult\taccepted_by\tevidence\n")
+    for name, tid, devs, route, save, verdicts, _ in SYN:
+        if tid in LEDGER:
+            fh.write("2026-09-26 15:00\t%s\t%s\t1790450000-synth-%s-1\tsynth\tframes reviewed\n" % (name, tid, tid.lower()))
 
 with open(os.path.join(OUT, "xiso", "manifest.csv"), "w") as fh:
     fh.write("title_id,name,xemu_rank,xemu_rating,source_path,xiso_bytes,sha256,staged_utc\n")

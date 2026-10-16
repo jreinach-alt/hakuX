@@ -1,0 +1,72 @@
+--- a/idlewatch.py
++++ b/idlewatch.py.new
+@@ -12,6 +12,7 @@
+ A jam that persists is re-alerted every 2 h. State: host-tools/.idlewatch.json. Never acts itself.
+ """
+ import glob, json, os, re, subprocess, time
++import urllib.error, urllib.request
+ 
+ W = '/home/justin/hakux-work'; D = W + '/dispatch'; R = '/home/justin/hakuX'
+ INBOX = W + '/host-tools/hostops-inbox.md'; PMLOG = W + '/pm/lanelocal-log.md'; ST = W + '/host-tools/.idlewatch.json'
+@@ -221,6 +222,61 @@
+     if et >= 3600:
+         jams['stray-driver:' + pid] = 'pid %s has run %d min (%s) with no board/lane row tracking it -- confirm it is still making progress (a fresh line in its chain log in the last 30 min) before assuming it is live; kill by PID if stale' % (pid, et / 60, args.strip())
+ 
++# forge-ahead: a direct-to-forge create -- the retired `gh pr create`/`gh issue create` (refused by the
++# shim since #433 lane.forgealloc1013), or anything else that still POSTs straight to Forgejo -- takes a
++# forge number GitHub has not allocated. issue_mirror.py new (the allocator: forge_prsync.py calls it for
++# PRs, issue_sync.py for issues) checks this fresh on every call and REFUSES with one fixed line: 'REFUSED:
++# forge is ahead of GitHub (forge max #N, GitHub max #M) -- backfill is pending, or something was made
++# directly on the forge. Nothing spent.' Both callers already pay the GitHub read to produce that line;
++# reading their own logs for it costs none here. Found twice, 10-12 and 10-13: four defect issues
++# (#973-976) waited about an hour before anyone noticed, and a backfill got run by hand, unauthorized, to
++# clear it. Model-free: that exact line, in the most recent completed run of either caller, is never not a
++# jam -- a run that resolved it prints a different line (a create succeeding) for the same lane/title
++# instead, so bounding the read to "since the previous run" is enough; no age/timestamp parsing needed.
++FORGE_AHEAD_RE = re.compile(r'forge is ahead of GitHub \(forge max #(\d+), GitHub max #(\d+)\)')
++def _latest_run_lines(path, boundary, fallback=300):
++    if not os.path.exists(path): return []
++    lines = open(path).read().splitlines()
++    idx = [i for i, l in enumerate(lines) if boundary in l]
++    return lines[idx[-2] + 1:] if len(idx) >= 2 else lines[-fallback:]
++def _forge_ahead_in(lines):
++    for l in reversed(lines):
++        m = FORGE_AHEAD_RE.search(l)
++        if m: return int(m.group(1)), int(m.group(2))
++    return None
++fa_hit = (_forge_ahead_in(_latest_run_lines(W + '/logs/forge/prsync.log', 'EXECUTED:'))
++          or _forge_ahead_in(open(W + '/pm/lanelocal-log.md').read().splitlines()[-200:]
++                              if os.path.exists(W + '/pm/lanelocal-log.md') else []))
++if fa_hit:
++    fg_max, gh_max = fa_hit
++    ahead_nums = list(range(gh_max + 1, fg_max + 1))
++    who = []
++    tok_path = W + '/forge/tokens/jobs.token'
++    if os.path.exists(tok_path):
++        tok = open(tok_path).read().strip()
++        for n in ahead_nums[:5]:
++            item, branch = None, None
++            for ep in ('pulls', 'issues'):
++                try:
++                    req = urllib.request.Request(
++                        'http://127.0.0.1:3330/api/v1/repos/jreinach-alt/hakuX/%s/%d' % (ep, n))
++                    req.add_header('Authorization', 'token ' + tok)
++                    item = json.load(urllib.request.urlopen(req, timeout=10))
++                    if ep == 'pulls': branch = (item.get('head') or {}).get('ref')
++                    break
++                except urllib.error.HTTPError as e:
++                    if e.code != 404: break
++                except Exception:
++                    break
++            who.append('#%d (%s%s)' % (n, ((item or {}).get('user') or {}).get('login', '?') if item else '?',
++                                        ', branch ' + branch if branch else ''))
++    jams['forge-ahead'] = (
++        'forge is ahead of GitHub (forge max #%d, GitHub max #%d): %d number(s) unaccounted for -- %s. '
++        'Owner: lane.local -- do NOT run `issue_mirror.py backfill` yourself; tell lane.local, who checks '
++        'nothing else needs the pending numbers first, then runs it.' %
++        (fg_max, gh_max, len(ahead_nums), ', '.join(who) if who else
++         ', '.join('#%d' % n for n in ahead_nums[:5])))
++
+ new = []
+ for k, msg in jams.items():
+     seen = st.get(k)

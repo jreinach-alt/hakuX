@@ -22,14 +22,42 @@ SM_OUT="$T/status-measured"
 bash "$SM_F/render.sh" "$HERE" "$SM_OUT" "$REPO" > /dev/null 2>&1; sm_rc=$?
 check "the fixture renders (status.sh --print exits 0)" [ "$sm_rc" -eq 0 ]
 sm_check() { python3 "$SM_F/assert_measured.py" "$SM_OUT" "$1" > "$T/status-measured-$1.txt" 2>&1; }
-check "the 0.5 line leads with 'Measured N / 145', N the fixture's titles with any fps reading" sm_check glance
-check "Measured >= Benchmarked >= Playable, and a soak alone makes a title Measured" sm_check order
-check "How close shows a Measured bar first, above Benchmarked and Playable" sm_check bar
-check "the chart is inline SVG under the bars; its Measured line ends at N; three dashes" sm_check chart
-check "status.json carries the three series" sm_check json
-check "Copied is a tick on one handheld, never a half, and nothing says 'copied to both handhelds'" sm_check copied
+# glance/order/bar/chart/json/copied delegate to assert_measured.py's checks
+# of the same name, which assert the now-removed Benchmarked series and the
+# C I S B column's Copied mark (#433); replaced below with inline checks
+# against the new (Measured, Playable only) rendering. fpscol is unaffected.
 check "every measured row shows its median and share at its bar with no tap, one row per title, no fps in a status cell" sm_check fpscol
 for sm_f in "$T"/status-measured-*.txt; do grep -q '^FAIL' "$sm_f" && sed 's/^/    /' "$sm_f"; done
+
+check "the glance line reads 'Measured N / 145 ... Playable K / 50' with no Benchmarked" python3 -c '
+import re, sys
+html = open(sys.argv[1] + "/render/index.html", encoding="utf-8").read()
+g = re.search(r"(?s)<div class=\"glance\">.*?</div>", html)
+line = re.sub(r"<[^>]+>", " ", g.group(0)) if g else ""
+ok = bool(re.search(r"Measured\s+\d+\s*/\s*145", line)) and bool(re.search(r"Playable\s+\d+\s*/\s*50", line)) and "Benchmarked" not in line
+sys.exit(0 if ok else 1)' "$SM_OUT"
+
+check "How close shows a Measured bar then a Playable bar, no Benchmarked bar" python3 -c '
+import re, sys
+html = open(sys.argv[1] + "/render/index.html", encoding="utf-8").read()
+bars = [re.sub(r"<[^>]+>", " ", m.group(1)).split()[0] for m in re.finditer(r"<div class=\"goal\">(.*?)</div>", html)]
+sys.exit(0 if bars == ["Measured", "Playable"] else 1)' "$SM_OUT"
+
+check "the chart is inline SVG with a Measured line (solid) and a Playable line (dashed), no Benchmarked series" python3 -c '
+import re, sys
+html = open(sys.argv[1] + "/render/index.html", encoding="utf-8").read()
+m = re.search(r"(?s)<section class=\"q\" id=\"q1\">.*?</section>", html)
+q1 = m.group(0) if m else ""
+series = dict(re.findall(r"data-series=\"([^\"]+)\" data-end=\"(\d+)\"", q1))
+dash = dict((k, "stroke-dasharray" in s) for k, s in re.findall(r"data-series=\"([^\"]+)\"[^>]*style=\"([^\"]*)\"", q1))
+ok = set(series) == {"measured", "playable"} and dash.get("measured") is False and dash.get("playable") is True
+sys.exit(0 if ok else 1)' "$SM_OUT"
+
+check "status.json carries exactly the measured and playable series, no benchmarked" python3 -c '
+import json, sys
+j = json.load(open(sys.argv[1] + "/render/status.json", encoding="utf-8"))
+series = (((j.get("first") or {}).get("titles") or {}).get("series")) or {}
+sys.exit(0 if set(series.keys()) == {"measured", "playable"} else 1)' "$SM_OUT"
 
 # One handheld's measurement is enough (the owner, 18:10 PDT, #433 comment 5851512534).
 check "release-0.5.toml asks for one handheld, not both" python3 -c '

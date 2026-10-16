@@ -49,6 +49,7 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
   actions   clean_action keeps valid tokens and drops the rest (RSTICK too).
 """
 
+import glob
 import json
 import os
 import shutil
@@ -77,6 +78,16 @@ import pathfind  # noqa: E402
 # existing hold legs test the loop, so their check passes; the validity rule itself is tested by the 'validity' legs
 # below (hold_shortfall on fake verdicts), and on the device by every held run's validity lines in hold.jsonl.
 pathfind.Agent.hold_check = lambda self, play_s, log: ("pass", 0.0, "")
+# saved before the monkeypatch below replaces it, so the 'unsalvageable' leg can still call the real
+# arithmetic directly (its own provisional_verdict stubbed in, not the subprocess-calling original)
+REAL_HOLD_UNSALVAGEABLE = pathfind.Agent.hold_unsalvageable
+# Same reason, for the budget-left rule (#433 Part B): hold_unsalvageable calls provisional_verdict, which
+# shells out to title_verdict.py on the sim's (nonexistent) logcat. Unmocked, every long sim hold (holdstuck's
+# ladder rounds run for most of a 3600-s budget) pays a real subprocess every HOLD_VERDICT_S -- harmless
+# (title_verdict reads no route-state lines and returns timeline "none", so hold_unsalvageable's own
+# isinstance(tl, dict) guard already keeps it from firing) but slow. Faked here the same way hold_check is;
+# the rule's arithmetic is tested directly below ('unsalvageable') and confirmed against real run data in NOTES.md.
+pathfind.Agent.hold_unsalvageable = lambda self, play_s, budget_left_s, log: None
 # the selftest's claim budgets are seconds long and run on real time: a 300-s confirm grace would let every
 # budget-ended case wait out its sim. The grace is a production setting; its path is the next real claim's test.
 pathfind.CONFIRM_GRACE_S = 0
@@ -394,8 +405,12 @@ check("hold", len(kept_left) == hold.get("frames"), f"the other hold frames were
 
 # hold stuck: the screen stays a pause and START never gets back to play. The step cap no longer ends the hold while budget
 # remains (10-06 owner order): it runs ladder rounds, and the hold stops only when the ladder has run out and the budget is gone
+# genre attack, not GENRE's drive (#433 Part A): the gas-confirmation probe runs before this loop even starts, and
+# every frame here is the same still "menu" image, so a drive genre would refuse all 3 gas candidates and end the
+# hold before the stuck/off-play behaviour this leg actually tests ever ran.
 rc, res, steps, calls = run("holdstuck", PREFIX + [("menu", 0)] * 30,
-                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE]
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"},
+                             {"genre": "attack", "why": "a fighter"}]
                             + [PAUSED] * 16, ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
 hold = res.get("hold", {})
 check("holdstuck", res["result"] == "gameplay" and hold.get("ok") is False
@@ -407,14 +422,217 @@ check("holdstuck", sum(1 for c in calls if c["purpose"] == "hold-check") > pathf
 # sdstuck: the same stuck pause with the stuck detector on: a few unstick rungs, then the hold ends as stuck_abort
 # with the claim standing, well inside the budget the ladder would otherwise spend
 pathfind.stuckdetect = SD
+# genre attack here too (#433 Part A), for the same reason as holdstuck above
 rc, res, steps, calls = run("sdstuck", PREFIX + [("menu", 0)] * 30,
-                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE]
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"},
+                             {"genre": "attack", "why": "a fighter"}]
                             + [PAUSED] * 16, ["--no-record", "--no-replay", "--hold-s", "200", "--budget-min", "60"])
 pathfind.stuckdetect = None
 hold = res.get("hold", {})
 check("sdstuck", SD is not None and res["result"] == "gameplay" and hold.get("ok") is False
       and hold.get("stuck_abort") is True and hold.get("reason", "").startswith("stuck_abort:"),
       f"the detector ends a stuck hold with a reason: {hold.get('reason', '')[:80]}")
+
+
+# maxrungs (#433 Part E): pathfind.py builds each StuckWatch with max_rungs = len(the genre's own HOLD_UNSTICK
+# ladder) -- not stuck_step's own default of 3, which silently dropped the 4th rung of a 4-rung ladder (Genma
+# Onimusha, 10-13: attack's STICK:down:2 + A never tried before stuck_abort). Exercises stuckdetect directly
+# (stdlib-only synthetic signatures, same shape as stuckdetect.py's own selftest), with no Sim/Agent needed.
+def _sig(v):
+    n = SD.GRID[0] * SD.GRID[1]
+    bucket = min(SD.HIST_BINS - 1, int(v / 256 * SD.HIST_BINS))
+    return SD.Signature(grid=tuple(float(v) for _ in range(n)),
+                         hist=tuple(1.0 if i == bucket else 0.0 for i in range(SD.HIST_BINS)))
+
+
+def walk_ladder(genre, ladder, max_rungs):
+    """Feed one still (near-identical) signature until stuck_abort fires; return the actions sent in order."""
+    watch = SD.StuckWatch(genre, (), ladder, (), max_rungs=max_rungs)
+    sig = _sig(100)
+    actions, d = [], {"abort": False}
+    for _ in range(SD.STUCK_MIN_SAMPLES):
+        d = watch.sample(sig)
+    while not d["abort"]:
+        actions.append(d["action"])
+        d = watch.sample(sig)
+    return actions
+
+
+for genre, ladder in pathfind.HOLD_UNSTICK.items():
+    actions = walk_ladder(genre, ladder, len(ladder))
+    check(f"maxrungs-{genre}", actions == list(ladder),
+          f"{genre}'s full {len(ladder)}-rung ladder is walked in order before stuck_abort: {actions}")
+
+check("maxrungs-attack-4th", pathfind.HOLD_UNSTICK["attack"][3] == ["STICK:down:2", "A"],
+      f"attack's fourth rung is STICK:down:2 + A: {pathfind.HOLD_UNSTICK['attack'][3]}")
+
+# mutant: a StuckWatch built with the old default max_rungs=3 (as if pathfind.py's fix were reverted) drops
+# attack's 4th rung -- this must NOT match the full ladder, or the test above would not have caught the bug
+mutant = walk_ladder("attack", pathfind.HOLD_UNSTICK["attack"], 3)
+check("maxrungs-mutant", mutant == list(pathfind.HOLD_UNSTICK["attack"])[:3]
+      and mutant != list(pathfind.HOLD_UNSTICK["attack"]),
+      f"a mutant max_rungs=3 drops attack's 4th rung, confirming the walk above exercises the real fix: {mutant}")
+
+
+# driverecover (#433 Part B): Agent.drive_recover's own branching, called directly against a minimal duck-typed
+# stub (not a full Sim/Agent run -- the brief's test bar for Part B is the static-ladder replay below plus the
+# pre-existing holdstill regression; this is extra coverage of the model-interaction logic drive_recover adds).
+DR_DIR = os.path.join(TMP, "driverecover")
+os.makedirs(DR_DIR)
+_dr_n = [0]
+
+
+def dr_frame(shift):
+    _dr_n[0] += 1
+    p = os.path.join(DR_DIR, f"{_dr_n[0]:03d}.png")
+    frame(p, "game", shift)
+    return p, p   # (png, jpg): drive_recover never reads the jpg's content, only passes it to model.ask
+
+
+class FakeModel:
+    def __init__(self, answers):
+        self.answers = list(answers)
+        self.purposes = []
+
+    def ask(self, model, prompt, purpose, images=()):
+        self.purposes.append(purpose)
+        return self.answers.pop(0) if self.answers else {}
+
+
+class FakeAgent:
+    def __init__(self, shifts, answers):
+        self.name = "Sim"
+        self._frames = [dr_frame(s) for s in shifts]
+        self.model = FakeModel(answers)
+        self.captured = []
+
+    def frame(self, tag):
+        return self._frames.pop(0) if self._frames else (None, None)
+
+    def hold_capture(self, tok, tag):
+        self.captured.append(tok)
+        return self._frames.pop(0) if self._frames else (None, None)
+
+    def hold_note(self, log, rec):
+        pass
+
+
+# 1. a named on-screen prompt succeeds on the first try: never reaches BACK/Y or the pause menu
+fa = FakeAgent([0, 47], [{"prompt": True, "button": "Y"}])
+ok = pathfind.Agent.drive_recover(fa, [], None)
+check("driverecover-prompt", ok is True and fa.captured == ["Y"],
+      f"a named prompt button is tried first and, once it moves the scene, nothing else is pressed: {fa.captured}")
+
+# 2. no prompt; BACK and Y both fail; the pause menu is opened, READ, and its model-named restart input succeeds
+fa = FakeAgent([0, 0, 0, 0, 47], [{"prompt": False, "button": "none"},
+                                  {"pause_menu": True, "restart_input": "A"}])
+ok = pathfind.Agent.drive_recover(fa, [], None)
+check("driverecover-pause", ok is True and fa.captured == ["BACK", "Y", "START", "A"],
+      f"BACK and Y are tried before the pause menu, which is read before anything in it is pressed: {fa.captured}")
+
+# 3. nothing works: the model explicitly refuses every pause-menu entry as unsafe (restart_input: none) --
+# drive_recover must never press an unconfirmed input, only a plain B to back out
+fa = FakeAgent([0, 0, 0, 0], [{"prompt": False, "button": "none"},
+                              {"pause_menu": True, "restart_input": "none"}])
+ok = pathfind.Agent.drive_recover(fa, [], None)
+check("driverecover-unsafe", ok is False and fa.captured == ["BACK", "Y", "START", "B"],
+      f"with no safe restart input named, only a plain B backs out of the pause menu: {fa.captured}")
+
+
+# driverecover-4x4evo2 (#433 Part B): 4x4 Evo 2's own recorded hold frames (truck noses into a tree, then sinks
+# in a lake, 2026-10-13) replayed through the real HOLD_UNSTICK["drive"] ladder via StuckWatch directly -- the
+# static-ladder mechanism drive_recover is called from once this exhausts, and the brief's explicit "replay 4x4
+# hold frames 050-062 ... showing which rung fires and when" requirement.
+FIX4X4 = os.path.join(HERE, "..", "..", "lanes", "holdinput1013", "fixtures", "4x4evo2")
+f4x4 = sorted(glob.glob(os.path.join(FIX4X4, "*-hold.jpg")))
+if SD and len(f4x4) >= 8:
+    watch4x4 = SD.StuckWatch("drive", (), pathfind.HOLD_UNSTICK["drive"], (), max_rungs=2)
+    seen = []
+    for p in f4x4:
+        d = watch4x4.sample(SD.frame_signature(p))
+        seen.append((os.path.basename(p), d["stuck"], d.get("abort"), tuple(d["action"]) if d.get("action") else None))
+    # frames 047-058: the crash-then-sink sequence is still genuinely changing, not yet "stuck" by
+    # STUCK_MIN_SAMPLES; 060 fires reverse rung 1, 061 fires reverse rung 2, 062 is stuck_abort -- exactly where
+    # drive_recover now gets a try instead of the hold ending on a parked vehicle
+    want = [("047-hold.jpg", False, None, None), ("051-hold.jpg", False, None, None),
+            ("054-hold.jpg", False, None, None), ("056-hold.jpg", False, None, None),
+            ("058-hold.jpg", False, None, None),
+            ("060-hold.jpg", True, False, tuple(pathfind.HOLD_UNSTICK["drive"][0])),
+            ("061-hold.jpg", True, False, tuple(pathfind.HOLD_UNSTICK["drive"][1])),
+            ("062-hold.jpg", True, True, None)]
+    check("driverecover-4x4evo2", seen == want,
+          f"4x4 Evo 2's recorded hold frames walk both reverse rungs before stuck_abort: {seen}")
+else:
+    check("driverecover-4x4evo2", False, f"fixture frames missing or stuckdetect unavailable: {f4x4}")
+
+
+# promptrung (#433 Part C): Agent.prompt_rung's own parsing, called directly (not a full Sim/Agent run -- the
+# brief's test bar is the parser on Darkwatch's real prompt frame plus a no-prompt negative on a real still
+# frame) against the real recorded frames, with a fixture model answer standing in for a real model call.
+class PromptFakeAgent:
+    def __init__(self, frames, answers):
+        self.name = "Sim"
+        self._frames = [(p, p) for p in frames]   # (png, jpg): prompt_rung reads window_change off these paths
+        self.model = FakeModel(answers)
+        self.captured = []
+
+    def frame(self, tag):
+        return self._frames.pop(0) if self._frames else (None, None)
+
+    def hold_capture(self, tok, tag):
+        self.captured.append(tok)
+        return self._frames.pop(0) if self._frames else (None, None)
+
+    def hold_note(self, log, rec):
+        pass
+
+    def send(self, action):
+        self.captured.extend(action)
+
+
+PR_FIX = os.path.join(HERE, "..", "..", "lanes", "holdinput1013", "fixtures", "promptrung")
+DARKWATCH_PROMPT = os.path.join(PR_FIX, "darkwatch-038-hold.jpg")
+# n-4947001F-1011 frame 099: a shooter-genre hold that went still (scene unchanged for 4 samples) and recovered
+# via the ordinary ladder (STICK:left:2 RT:1) with no on-screen prompt anywhere in frame -- the negative case.
+NOPROMPT_STILL = os.path.join(PR_FIX, "n-4947001F-099-hold-noprompt.jpg")
+
+# 1. Darkwatch frame 038's "USE X TO MELEE ATTACK THE DOOR LOCK" (blue X glyph): the rung picks X and presses it
+if os.path.exists(DARKWATCH_PROMPT) and os.path.exists(NOPROMPT_STILL):
+    fa = PromptFakeAgent([DARKWATCH_PROMPT, NOPROMPT_STILL], [{"prompt": True, "button": "X", "turn": "none"}])
+    ok = pathfind.Agent.prompt_rung(fa, [], None)
+    check("promptrung-darkwatch", ok is True and fa.captured == ["X"],
+          f"Darkwatch's melee prompt (hold frame 038) is parsed and X is pressed: {fa.captured}")
+else:
+    check("promptrung-darkwatch", False, f"fixture frame(s) missing: {DARKWATCH_PROMPT}, {NOPROMPT_STILL}")
+
+# 2. a plain still frame with no on-screen prompt never fires the rung: nothing is pressed, falling straight
+# through to the existing ladder (the caller's own fallback, unaffected by this rung)
+if os.path.exists(NOPROMPT_STILL):
+    fa = PromptFakeAgent([NOPROMPT_STILL], [{"prompt": False, "button": "none", "turn": "none"}])
+    ok = pathfind.Agent.prompt_rung(fa, [], None)
+    check("promptrung-noprompt", ok is False and fa.captured == [],
+          f"a still frame with no on-screen prompt presses nothing: {fa.captured}")
+else:
+    check("promptrung-noprompt", False, f"fixture frame missing: {NOPROMPT_STILL}")
+
+# 3. extra coverage: a prompt that needs a target faced first turns (STICK or RSTICK) before each press, rather
+# than pressing blind
+PR_DIR = os.path.join(TMP, "promptrung")
+os.makedirs(PR_DIR)
+_pr_n = [0]
+
+
+def pr_frame(shift):
+    _pr_n[0] += 1
+    p = os.path.join(PR_DIR, f"{_pr_n[0]:03d}.png")
+    frame(p, "game", shift)
+    return p
+
+
+fa = PromptFakeAgent([pr_frame(0), pr_frame(47)], [{"prompt": True, "button": "A", "turn": "rstick:right"}])
+ok = pathfind.Agent.prompt_rung(fa, [], None)
+check("promptrung-turn", ok is True and fa.captured == ["RSTICK:right:1", "A"],
+      f"a prompt needing a target turns with the model's own named stick before the press: {fa.captured}")
 
 # holdrepeat: a cutscene that asks for A (an episode card) is answered once; its A is repeated HOLD_REPEAT times
 # with no model call, then the screen is read again, and the play resumes (Panzer, 10-03: 4 looks per death)
@@ -435,7 +653,9 @@ check("holdrepeat", hold.get("ok") is True, f"play resumed and held: {hold.get('
 # one octagon, verdict PASS). Still windows are not play: the perflog says state=still, the loop is led by an unlock
 # button, and play is credited again only once the kept frames move.
 ROUTE_LOG.clear()
-rc, res, steps, calls = run("holdstill", PREFIX + [("game", 0)] * 60 + PLAY2,
+# one shifted frame up front (#433 Part A) so the drive genre's gas-confirmation probe (RT, before this loop even
+# starts) has real travel to confirm against; the rest stays the identical still scene this leg is testing
+rc, res, steps, calls = run("holdstill", PREFIX + [("game", 0), ("game", 47)] + [("game", 0)] * 58 + PLAY2,
                             [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE]
                             + [PLAYING] * 80, ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
 hold = res.get("hold", {})
@@ -748,12 +968,112 @@ hitch_fail = dict(short_dur, failing="hitch: 3 stalls over 500 ms after warm-up"
 check("validity", pathfind.hold_shortfall(fps_fail, 600)[0] == "stop" and pathfind.hold_shortfall(hitch_fail, 600)[0] == "stop"
       and pathfind.hold_shortfall({"pass": True}, 600)[0] == "pass" and pathfind.hold_shortfall(None, 600)[0] == "stop",
       "an fps fail and a hitch stop the hold at once; a pass ends it; no verdict stops it")
+# unsalvageable (#433 Part B, 10-13): a hold ends early once no amount of budget left could bring off play
+# under the 10% bar -- distinct from the ladder/step-cap rule above, which the 10-06 order keeps from ending
+# a hold while budget remains. hold_bar_unreachable is the cheap trigger (the hold's own numbers: play so far,
+# window so far, budget left); hold_unsalvageable confirms it against a verdict's own timeline before ending.
+# PoP: Sands of Time (5553001D, 10-13d) was off play near hold 400 s of a 2400-s budget (197 s of play by the
+# end, a 0.10ish share throughout) -- the numbers below scale that down.
+check("unsalvageable", pathfind.hold_bar_unreachable(play_s=40, window_s=400, budget_left_s=2000),
+      "PoP-scale: 360 s off of a 400 s window, 2000 s budget left -- 360 > 10% of 2400, already unreachable")
+check("unsalvageable", not pathfind.hold_bar_unreachable(play_s=399.8, window_s=400, budget_left_s=0),
+      "25 to Life (play share 0.9996): 0.2 s off is nowhere near 10% of even a 0-s budget left")
+check("unsalvageable", not pathfind.hold_bar_unreachable(play_s=0, window_s=100, budget_left_s=2000),
+      "early in a hold, budget left dwarfs window so far: 100 s off is not > 10% of 2100 s (210 s)")
+check("unsalvageable", not pathfind.hold_bar_unreachable(play_s=10, window_s=100, budget_left_s=800),
+      "boundary: 90 s off == 10% of 900 s exactly -- not strictly past the bar, so not yet unreachable")
+
+
+class _FakeAgent:
+    def __init__(self, verdict):
+        self._verdict = verdict
+        self.notes = []
+
+    def provisional_verdict(self, play_s, log):
+        return self._verdict
+
+    def hold_note(self, log, look):
+        self.notes.append(look)
+
+
+no_tl = {"pass": False, "timeline": "none"}
+share_tl = {"pass": False, "timeline": {"play_s": 40.0, "scored_s": 400.0}}
+share_tl_ok = {"pass": False, "timeline": {"play_s": 399.8, "scored_s": 400.0}}
+check("unsalvageable", REAL_HOLD_UNSALVAGEABLE(_FakeAgent(None), 40, 2000, "log") is None,
+      "no verdict yet: unknown, not a failure -- the hold keeps going")
+check("unsalvageable", REAL_HOLD_UNSALVAGEABLE(_FakeAgent(no_tl), 40, 2000, "log") is None,
+      "a verdict with timeline \"none\" (no drive step) has nothing to confirm against: unknown, not a failure")
+reason = REAL_HOLD_UNSALVAGEABLE(_FakeAgent(share_tl), 40, 2000, "log")
+check("unsalvageable", reason and "360" in reason and "400" in reason and "2000" in reason,
+      f"confirmed against the verdict's own timeline: reason names off play, window and budget left: {reason!r}")
+check("unsalvageable", REAL_HOLD_UNSALVAGEABLE(_FakeAgent(share_tl_ok), 399.8, 0, "log") is None,
+      "a verdict confirming a healthy play share never ends the hold")
+
+# a hold that went off play (ladder rounds), recovered, and passed: no real example has both a ladder_round
+# entry and hold.ok true (every hold.jsonl with a ladder_round that was found -- crashwoc-1006/-1007,
+# doaultimate-1006b, marvel-1006, n-43430008-1007, n-434D0029-1007, n-46530005-1011, n-53430006-1013,
+# n-5343000C-1013, n-53450004-1013, n-55530009-1007, n-58500001-1007, rehold2-4D570034, rehold2b-4D570034 --
+# ended hold.ok false), so this is a built fixture: a budget large enough that off play during the stuck
+# stretch never crosses the bar (same shape as PoP, scaled up), recovering by t=240 and reaching a genuine
+# 0.9167 play share at the need_s=600 checkpoint.
+RECOVERED = [(60, 10), (120, 20), (180, 35), (240, 130), (600, 550)]
+for window_s, play_s in RECOVERED:
+    v = {"pass": None, "timeline": {"play_s": float(play_s), "scored_s": float(window_s)}}
+    budget_left = 3000 - window_s
+    r = REAL_HOLD_UNSALVAGEABLE(_FakeAgent(v), play_s, budget_left, "log")
+    check("unsalvageable", r is None,
+          f"recovered hold: window {window_s}s, play {play_s}s, budget left {budget_left}s never looks unreachable: {r!r}")
+kind, _ = pathfind.hold_shortfall({"pass": True, "timeline": {"play_s": 550.0, "scored_s": 600.0, "play_share": 550 / 600}}, 600)
+check("unsalvageable", kind == "pass", "the recovered hold's own final checkpoint (0.9167 share) is a real pass")
+
 # the ladder (10-06): off play past the cap runs its rounds, one press per look, cycling A, START, A, A, B, START
 check("ladder", pathfind.HOLD_LADDER[0] == "A" and pathfind.HOLD_LADDER[1] == "START" and "B" in pathfind.HOLD_LADDER
       and pathfind.HOLD_LADDER_ROUNDS >= 1 and pathfind.HOLD_LADDER_ROUNDS * pathfind.HOLD_NAV_MAX >= 60,
       f"A then START on the select, B out of a menu; {pathfind.HOLD_LADDER_ROUNDS} rounds x {pathfind.HOLD_NAV_MAX} steps")
 # budget: a 600-s hold with a 15-min claim gets 900 + 1050 + 300 s, not the old 900 + 900 + 300
 check("budget", pathfind.hold_budget_s(900, 600) == 900 + 1050 + 300, f"claim + 1.75 x hold + 300: {pathfind.hold_budget_s(900, 600)}")
+
+# R3 admission (#433 Part A, holdfollow1013): r3_refusal is the pure gate main() calls, moved out so it
+# can be tested directly. A --no-record re-hold of a known-path title replays the kept path and records
+# nothing, so R3 (never re-run blind navigation on a title that already ran) has nothing left to refuse.
+# --no-replay/--no-guide drop the kept path (agent.own = None in main()), so paired with --no-record on a
+# known-path title they are refused too. BROKEN (set up at the top of this file) names a real dispatch
+# result of title 00000000; --path-broken's own behaviour is unchanged by this change either way.
+KP_UNKNOWN = {"known": False, "route_name": None, "result_id": None, "source": None}
+KP_KNOWN = {"known": True, "route_name": None, "result_id": None, "source": "pathknow"}
+r3_plain = pathfind.r3_refusal(KP_KNOWN, "00000000", None, False, False, False)
+check("r3", bool(r3_plain) and r3_plain.startswith('a known path exists; pass --path-broken "<result id>" '
+                                                     "naming a run of it that failed") and "--no-record" in r3_plain,
+      f"a known path with no flags is refused, today's text plus a --no-record sentence: {r3_plain!r}")
+check("r3", pathfind.r3_refusal(KP_KNOWN, "00000000", None, True, False, False) is None,
+      "a known path with --no-record alone (a plain re-hold) is admitted")
+check("r3", pathfind.r3_refusal(KP_KNOWN, "00000000", None, True, False, False) is None,
+      "--perflog never reaches r3_refusal (it has no perflog argument: perflog is orthogonal to R3's "
+      "own admission), so --perflog --no-record is the same admitted case as --no-record alone")
+r3_noreplay = pathfind.r3_refusal(KP_KNOWN, "00000000", None, True, True, False)
+r3_noguide = pathfind.r3_refusal(KP_KNOWN, "00000000", None, True, False, True)
+check("r3", bool(r3_noreplay) and bool(r3_noguide),
+      "--no-record --no-replay and --no-record --no-guide drop the kept path (agent.own = None), so "
+      f"neither is admitted: {r3_noreplay!r} {r3_noguide!r}")
+check("r3", pathfind.r3_refusal(KP_UNKNOWN, "00000000", None, False, False, False) is None
+      and pathfind.r3_refusal(KP_UNKNOWN, "00000000", None, True, False, False) is None,
+      "no known path: admitted with no flags, and with --no-record too, as today")
+check("r3", pathfind.r3_refusal(KP_KNOWN, "00000000", BROKEN, False, False, False) is None,
+      "--path-broken naming a real failed run of the title still overrides R3, as today")
+r3_bad_broken = pathfind.r3_refusal(KP_KNOWN, "00000000", "nope-no-such-result", False, False, False)
+check("r3", bool(r3_bad_broken) and "does not name a run on record" in r3_bad_broken,
+      f"--path-broken naming no run on record is refused, as today: {r3_bad_broken!r}")
+
+# --from-state (#433 Part D, savestateconv1014): a hold started from a captured save state does no
+# navigation at all, so it is admitted on a known-path title even with none of --no-record/--no-replay/
+# --no-guide set (unlike the --no-record case, which needs --no-record to say nothing is rewritten).
+check("r3", pathfind.r3_refusal(KP_KNOWN, "00000000", None, False, False, False, from_state=True) is None,
+      "a known path with --from-state alone (no other flags) is admitted: nothing is replayed or rewritten")
+check("r3", pathfind.r3_refusal(KP_KNOWN, "00000000", None, False, True, True, from_state=True) is None,
+      "--from-state is admitted even with --no-replay/--no-guide set: there is no path to diverge from")
+check("r3", pathfind.r3_refusal(KP_UNKNOWN, "00000000", None, False, False, False, from_state=True) is None,
+      "no known path with --from-state: not refused by R3 either (a state needs a known path to exist "
+      "at all, which the state-load check itself refuses, not R3)")
 
 shutil.rmtree(TMP)
 # football goes last (owner order 10-05 12:35): football titles are refused, every other sport is not, and the env lifts it
@@ -796,6 +1116,142 @@ _seeded = pathfind.seed_below_bar(_runs, _tsv)
 check("below-bar", len(_seeded) == 1 and _seeded[0]["fps_ok_share"] == "0.9500" and _seeded[0]["cause"] == "slowdown",
       "seeding keeps the latest verdict per title and the cause already recorded on its row")
 shutil.rmtree(_bb)
+
+# --perflog (#433, pathtele1013 Part B): no adb, no dispatcher.sh -- a fake device, and
+# pathfind._dispatcher_call faked to stand in for dispatcher.sh's build_ref/apply_env_pref, prove
+# pathfind.py's OWN orchestration: install order, restore on an exception, the refusal on a
+# leftover perflog APK, and --env pass-through.
+_pl = tempfile.mkdtemp(prefix="pf_perflog_")
+
+
+class _FakeDevice:
+    """Records install_apk/installed_version_name in call order; installed_version_name reflects
+    whichever apk install_apk last 'installed' (no real adb)."""
+
+    def __init__(self, calls, start_version="0.5.0-1012-abc1234"):
+        self.label, self.serial = "nova", "FAKESER"
+        self.calls = calls
+        self.installed = start_version
+
+    def install_apk(self, apk_path):
+        self.calls.append(("install", apk_path))
+        self.installed = ("0.5.0-1013-def5678-perflog" if "-perflog" in os.path.basename(apk_path)
+                          else "0.5.0-1013-def5678")
+        return True
+
+    def installed_version_name(self):
+        self.calls.append(("version", self.installed))
+        return self.installed
+
+
+def _fake_dispatcher_call(calls, fail_fn=None):
+    def _fake(label, serial, fn, args, timeout):
+        calls.append((fn, tuple(args)))
+        if fn == fail_fn:
+            return types.SimpleNamespace(returncode=1, stdout="", stderr=f"{fn}: fake failure")
+        if fn == "build_ref":
+            ref, variant = args
+            apk = os.path.join(_pl, f"{ref}{'-' + variant if variant else ''}.apk")
+            open(apk, "w").close()
+            return types.SimpleNamespace(returncode=0, stdout=apk + "\n", stderr="")
+        if fn == "apply_env_pref":
+            calls.append(("env_pref_json", json.load(open(args[0]))))
+            return types.SimpleNamespace(returncode=0, stdout="", stderr="")
+        return types.SimpleNamespace(returncode=1, stdout="", stderr=f"unknown fn {fn}")
+    return _fake
+
+
+_real_dispatcher_call = pathfind._dispatcher_call
+
+# is_perflog_version: the version_stamp.sh convention, dirty or not
+check("perflog-version", pathfind._is_perflog_version("0.5.0-1013-59a4b42-perflog"), "a plain perflog build")
+check("perflog-version", pathfind._is_perflog_version("0.5.0-1013-59a4b42-perflog-dirty"),
+      "a dirty perflog build still reads as perflog")
+check("perflog-version", not pathfind._is_perflog_version("0.5.0-1013-59a4b42"), "master is not perflog")
+check("perflog-version", not pathfind._is_perflog_version("0.5.0-1013-59a4b42-dirty"), "dirty master is not perflog")
+check("perflog-version", not pathfind._is_perflog_version(""), "an unread versionName is not perflog")
+
+# the refusal on a leftover perflog APK: perflog_start exits without --perflog if the installed
+# build already reads as perflog; --perflog itself is never blocked by it
+_c = []
+try:
+    pathfind.perflog_start(_FakeDevice(_c, start_version="0.5.0-1012-abc1234-perflog"), False)
+    _r = "not refused"
+except SystemExit as e:
+    _r = str(e.code)
+check("perflog-guard", "leftover" in _r or "perflog hold" in _r, f"a leftover perflog build refuses a non-perflog run: {_r[:90]}")
+check("perflog-guard", pathfind.perflog_start(_FakeDevice([], start_version="0.5.0-1012-abc1234"), False) is None,
+      "master installed: no refusal")
+check("perflog-guard", pathfind.perflog_start(_FakeDevice([], start_version="0.5.0-1012-abc1234-perflog"), True) is None,
+      "--perflog itself is never refused by a leftover perflog build")
+
+# install order: build (via build_ref) before install, install before the verify read, verify
+# before --env (apply_env_pref) -- the sequence a telemetry hold's APK and env must land in
+_c = []
+pathfind._dispatcher_call = _fake_dispatcher_call(_c)
+try:
+    _dev = _FakeDevice(_c)
+    pathfind.perflog_setup(_dev, ["HAKUX_GPUXFR=1", "HAKUX_FRAMETRACE=1"])
+finally:
+    pathfind._dispatcher_call = _real_dispatcher_call
+_order = [c[0] for c in _c if c[0] != "env_pref_json"]
+check("perflog-order", _order == ["build_ref", "install", "version", "apply_env_pref"],
+      f"build, install, verify, then env, in that order: {_order}")
+check("perflog-order", "-perflog" in _c[1][1], f"build_ref's apk is installed: {_c[1][1]}")
+check("perflog-order", _dev.installed.endswith("-perflog"), "the installed build reads as perflog after setup")
+_envj = next(c[1] for c in _c if c[0] == "env_pref_json")
+check("perflog-order", _envj == {"env": ["HAKUX_GPUXFR=1", "HAKUX_FRAMETRACE=1"]},
+      f"--env passed through apply_env_pref's own request-shaped JSON unchanged: {_envj}")
+
+# a bad install (build_ref never returns a build that reads as perflog) is refused, not silently run
+_c = []
+pathfind._dispatcher_call = _fake_dispatcher_call(_c, fail_fn="apply_env_pref")
+try:
+    pathfind.perflog_setup(_FakeDevice(_c), ["X=1"])
+    _r = "not refused"
+except SystemExit as e:
+    _r = str(e.code)
+finally:
+    pathfind._dispatcher_call = _real_dispatcher_call
+check("perflog-setup-fail", "could not write --env" in _r, f"apply_env_pref's failure exits, not a silent run: {_r[:90]}")
+
+# restore on an exception: restore_master runs in the caller's own finally even when the hold raised,
+# and it is what the guard above depends on to clear the leftover build on the NEXT run
+_c = []
+pathfind._dispatcher_call = _fake_dispatcher_call(_c)
+_dev = _FakeDevice(_c, start_version="0.5.0-1012-abc1234-perflog")
+_raised = False
+try:
+    try:
+        raise RuntimeError("the hold crashed mid-run")
+    finally:
+        _ok, _msg = pathfind.restore_master(_dev)
+except RuntimeError:
+    _raised = True
+finally:
+    pathfind._dispatcher_call = _real_dispatcher_call
+check("perflog-restore", _raised, "the original exception still propagates past the finally")
+check("perflog-restore", _ok and not _dev.installed.endswith("-perflog"), f"master restored despite the exception: {_msg}")
+check("perflog-restore", pathfind.perflog_start(_FakeDevice([], start_version=_dev.installed), False) is None,
+      "the guard sees a clean (non-perflog) install after restore, so the next ordinary run is not refused")
+
+# hold_verdict's own request.json (#433 Part C): it runs before finish() writes result.json, so a perflog
+# hold's "build"/"env" must reach title_verdict some other way -- hold_verdict writes them into the
+# request.json it already makes just before calling title_verdict.py, the same file title_verdict.py now
+# falls back to when result.json has no "build" of its own (judge()'s req.get("build") fallback).
+_hv_out = os.path.join(TMP, "holdverdict", "out")
+os.makedirs(_hv_out)
+_hv_agent = type("A", (), {})()
+_hv_agent.name, _hv_agent.tid, _hv_agent.iso = "Sim", "00000000", "/sim/00000000-Sim.iso"
+_hv_agent.dev = type("D", (), {"label": "nova"})()
+_hv_agent.out = _hv_out
+_hv_agent.result = {"build": "perflog", "env": ["HAKUX_GPUXFR=1"]}
+pathfind.Agent.hold_verdict(_hv_agent, 12)
+_hv_req = json.load(open(os.path.join(_hv_out, "request.json")))
+check("perflog-holdverdict", _hv_req.get("build") == "perflog" and _hv_req.get("env") == ["HAKUX_GPUXFR=1"],
+      f"hold_verdict's own request.json carries the perflog build/env before result.json exists: {_hv_req}")
+
+shutil.rmtree(_pl)
 
 print("pathfind_selftest: " + ("FAIL " + ", ".join(sorted(set(fails))) if fails else "all ok"))
 sys.exit(1 if fails else 0)

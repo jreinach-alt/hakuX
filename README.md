@@ -1,17 +1,17 @@
 # hakuX (fork)
 
-_Last updated 2026-10-12, for version 0.5.0._
+_Last updated 2026-10-13, for version 0.5.0._
 
 **Original Xbox games on your Android handheld.** An independent build of the
 hakuX emulator, tested game by game on Snapdragon handhelds.
 
 **[Download 0.5.0](https://github.com/jreinach-alt/hakuX/releases/latest)** ·
-[52 Playable games](docs/COMPATIBILITY.md) ·
+[72 Playable games](docs/COMPATIBILITY.md) ·
 [What's new](docs/releases/v0.5.0.md)
 
 ## Highlights
 
-- **52 games rated Playable.** Each one reached real gameplay on a handheld and
+- **72 games rated Playable.** Each one reached real gameplay on a handheld and
   held 30 fps (within 5%) for at least 90% of a timed run, with no crash or
   hang. Among them: Halo: Combat Evolved, Jet Set Radio Future, Panzer Dragoon
   Orta, Grand Theft Auto III and Vice City, Need for Speed: Most Wanted,
@@ -39,7 +39,10 @@ hakuX emulator, tested game by game on Snapdragon handhelds.
   as the Snapdragon 835, 660, 665 and 460 are not supported; on them the app
   says so and exits.
 - Ratings come from a Retroid Pocket Nova and an AYN Thor, both Snapdragon 8
-  Gen 2 class. On a slower chip, expect fewer games at full speed.
+  Gen 2 (Adreno 740) on Android 13, using the **Turnip Adreno Driver T30
+  (@Mr_Purple_666)** GPU driver, installed under Settings → Graphics → GPU
+  Driver. On a slower chip, expect fewer games at full speed; with another
+  driver, results may differ.
 
 ## What you need
 

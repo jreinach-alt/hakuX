@@ -1,0 +1,295 @@
+#!/usr/bin/env python3
+"""idlewatch.py: model-free jam alarm (owner 2026-10-03 07:30 PT: "Nothing was monitoring for jams. We can't have that.").
+
+Every run (hakux-idlewatch.timer, 10 min) checks four jam classes and appends ONE inbox item per new jam to
+host-tools/hostops-inbox.md (which wakes hostops) and a line to pm/lanelocal-log.md (so the PM sees it):
+  idle-with-work   a handheld has run nothing for >= 30 min while a request for it is queued, or lane.local's
+                   title queue (pm/overnight-queue.tsv) has pending lines
+  fold-stuck       a lane branch whose PR.md says ready is not on master >= 30 min after its last foldqueue
+                   attempt (FAILED or WAITING)
+  runner-down      pending queue lines but neither hakux-overnight-queue nor its post-fold waiter is active
+  lane-failed      a hakux-lane-* unit in the failed state
+A jam that persists is re-alerted every 2 h. State: host-tools/.idlewatch.json. Never acts itself.
+"""
+import glob, json, os, re, subprocess, time
+import urllib.error, urllib.request
+
+W = '/home/justin/hakux-work'; D = W + '/dispatch'; R = '/home/justin/hakuX'
+INBOX = W + '/host-tools/hostops-inbox.md'; PMLOG = W + '/pm/lanelocal-log.md'; ST = W + '/host-tools/.idlewatch.json'
+now = time.time()
+def sh(c):
+    return subprocess.run(c, shell=True, capture_output=True, text=True).stdout
+def pdt(t=None):
+    return subprocess.run(['date', '+%F %H:%M %Z'] + ([] if t is None else ['-d', '@%d' % t]), capture_output=True,
+                          text=True, env=dict(os.environ, TZ='America/Los_Angeles')).stdout.strip()
+try: st = json.load(open(ST))
+except Exception: st = {}
+jams = {}
+
+# idle-with-work: last finished/started run per device, from result dirs and running/
+def device_of(path):
+    try: return (json.load(open(path)).get('device') or '').lower()
+    except Exception: return ''
+running = {device_of(f) for f in glob.glob(D + '/running/*.req')}
+queued = {}
+for f in glob.glob(D + '/queue/*.req'):
+    queued.setdefault(device_of(f) or 'any', []).append(os.path.basename(f))
+last = {}
+for d in glob.glob(D + '/results/*/DONE'):
+    rq = os.path.join(os.path.dirname(d), 'request.json'); dev = device_of(rq)
+    last[dev] = max(last.get(dev, 0), os.path.getmtime(d))
+Q = W + '/pm/overnight-queue.tsv'; DONE = W + '/pm/overnight-queue.done'
+pending = []
+if os.path.exists(Q):
+    done = set(open(DONE).read().split()) if os.path.exists(DONE) else set()
+    pending = [l.split('\t')[0] for l in open(Q) if l.strip() and not l.startswith('#') and l.split('\t')[0] not in done]
+for dev in ('nova', 'thor'):
+    if dev in running: continue
+    # A hold means a lane is claiming the device for a direct (non-queue) run, e.g. lane.pathfind's
+    # pathfind.py, which never appears in dispatch/running/*.req -- so without this the device reads
+    # as idle while it is genuinely busy (found 2026-10-13: nova flagged idle 204 min with a live
+    # pathfind.py process running since the hold was taken). devwatch.py separately lifts a stale or
+    # orphaned lane hold, so skipping here while held does not hide a real jam.
+    if os.path.exists(D + '/hold/' + dev): continue
+    idle_min = (now - last.get(dev, 0)) / 60
+    work = queued.get(dev, []) + (queued.get('any', []) if dev == 'nova' else []) + (pending if dev == 'nova' else [])
+    if idle_min >= 30 and work:
+        jams['idle-with-work:' + dev] = '%s idle %d min with work waiting (%s)' % (dev, idle_min, ', '.join(work[:5]))
+
+# runner-down
+active = lambda u: sh('systemctl --user is-active %s' % u).strip() == 'active'
+if pending and not active('hakux-overnight-queue') and not active('hakux-queue-after-savestate'):
+    jams['runner-down'] = 'lane.local title queue has %d pending lines (%s) but no runner or waiter is active' % (len(pending), ', '.join(pending[:4]))
+
+# fold-stuck
+FOLD_HELD = {l.split('#')[0].strip() for l in open(W + '/host-tools/fold-held.txt')} - {''} if os.path.exists(W + '/host-tools/fold-held.txt') else set()
+# a lane whose fold is actively running right now (e.g. a territory-gap retry picked up by the
+# timer mid-window) is not stuck -- its last logged attempt is necessarily the stale FAILED/WAITING
+# one that triggered the retry. Found 2026-10-09 (hostops): a grant unblocked foldqueue's retry at
+# the next timer elapse, the retry was 16+ min into selftest/arms when this check still alarmed on
+# the 31-min-old FAILED line because it never looks at what's running.
+FOLD_INFLIGHT = set(re.findall(r'offline_fold\.py lane/(\S+)', sh('ps -eo args')))
+sh('git -C %s fetch -q origin' % R)
+fql = open(W + '/offline-git/foldqueue.log').read().splitlines() if os.path.exists(W + '/offline-git/foldqueue.log') else []
+for b in sh("git -C %s for-each-ref --format='%%(refname:short)' refs/remotes/origin/lane/" % R).split():
+    if subprocess.run(['git', '-C', R, 'merge-base', '--is-ancestor', b, 'origin/master']).returncode == 0: continue
+    lane = b.split('/', 2)[-1]
+    if lane in FOLD_HELD: continue  # host-tools/fold-held.txt: a retired or superseded lane whose fold is deliberately not wanted
+    if lane in FOLD_INFLIGHT: continue  # a retry is running right now -- see FOLD_INFLIGHT note above
+    pr = 'docs/lanes/%s/PR.md' % lane
+    if not re.search(r'(?im)^State:\s*ready', sh('git -C %s show %s:%s 2>/dev/null' % (R, b, pr))): continue
+    tries = [l for l in fql if ' lane/%s ' % lane in l or ' lane/%s:' % lane in l]
+    if not tries: continue
+    m = re.match(r'(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d)', tries[-1])
+    t = time.mktime(time.strptime(m.group(1), '%Y-%m-%d %H:%M:%S')) if m else now
+    if (now - t) / 60 >= 30 and re.search(r'FAILED|WAITING', tries[-1]):
+        jams['fold-stuck:' + lane] = 'lane/%s is ready but not folded; last foldqueue entry %d min ago: %s' % (lane, (now - t) / 60, tries[-1][24:220])
+
+# parked-overdue: a parked dispatch batch's note names a clock time to re-queue, and nothing did it. Found 2026-10-06:
+# gpunonrender's P2-P sat parked 70+ min past its stated "re-queue at 22:00 PDT" because no mechanism restores a
+# parked batch by wall-clock time -- keepalive-lanes.txt only resumes lane sessions (and only before a deadline, not
+# after one), and the lane's own WAITING condition was a "run" wait on the very request sitting parked. Model-free
+# (hostops 2026-10-06).
+for pd in glob.glob(D + '/parked/*'):
+    if not os.path.isdir(pd): continue
+    reqs = glob.glob(pd + '/*.req')
+    if not reqs: continue
+    notes = ''
+    for fn in ('NOTE.txt', 'README'):
+        p = os.path.join(pd, fn)
+        if os.path.exists(p): notes += open(p).read()
+    m = re.search(r're-?queue(?:d)? at (\d{1,2}):(\d{2})\s*PDT', notes)
+    if not m: continue
+    dm = re.search(r'(20\d{6})', os.path.basename(pd))
+    base = dm.group(1) if dm else time.strftime('%Y%m%d', time.localtime(os.path.getctime(pd)))
+    try:
+        due = int(sh('TZ=America/Los_Angeles date -d "%s-%s-%s %s:%s" +%%s' % (base[:4], base[4:6], base[6:8], m.group(1), m.group(2))).strip())
+    except Exception:
+        continue
+    if now - due >= 600:
+        jams['parked-overdue:' + os.path.basename(pd)] = '%s names "re-queue at %s:%s PDT" (due %d min ago) but still has %d request(s) parked -- restore: bash host-tools/park_requests.sh --restore %s' % (
+            os.path.basename(pd), m.group(1), m.group(2), (now - due) / 60, len(reqs), pd)
+
+# restore-pileup: device_build.py's cmd_restore queues a new dispatch.restore request after EVERY
+# non-master run with no check for one already pending (dispatcher.sh:1180 -> device_build.py:142),
+# and a sustained 1--prefixed critical-path chain can starve dispatch.restore indefinitely (ASCII
+# priority: '1-' always sorts before a plain-epoch request, dispatcher.sh:2376). Found 2026-10-09
+# (hostops): 14 duplicates piled up for nova over 2h18m before anyone noticed. Model-free: >= 3
+# queued dispatch.restore requests for the same device is never legitimate (only one is ever needed).
+restore_q = {}
+for f in glob.glob(D + '/queue/*dispatch.restore*.req'):
+    restore_q.setdefault(device_of(f) or 'unknown', []).append(os.path.basename(f))
+for dev, reqs in restore_q.items():
+    if len(reqs) >= 3:
+        jams['restore-pileup:' + dev] = '%d duplicate dispatch.restore requests queued for %s (%s%s) -- withdraw all but the newest to dispatch/queue/withdrawn/ (running one achieves the same end state as running all), then route the dedup fix to lane.local if not already routed' % (
+            len(reqs), dev, ', '.join(sorted(reqs)[:3]), ', ...' if len(reqs) > 3 else '')
+
+# queue-starved: the restore-pileup check above only catches dispatch.restore DUPLICATES piling up. It missed
+# the single-request case: ANY bare-epoch-id request (foldqueue's own gate-boot-check/restore pair, or a lone
+# dispatch.restore with no duplicates) sits behind EVERY '1-'-prefixed critical-path request forever, because
+# ASCII '-' (0x2D) sorts before every digit, so "1-<anything>" always outranks a plain "<epoch>-..." id
+# regardless of arrival time (dispatcher.sh:2376-2387). A continuous '1-' stream on one device means the bare
+# request's queue position never improves no matter how long it waits -- there is no amount of waiting that
+# clears this, unlike normal serialized throughput. Found 2026-10-10 (hostops): foldqueue's own gate-boot-check
+# and post-gate restore for lane.gpupass1010's ready PR sat 39 min behind a live drawrec1010/reportasync1010
+# '1-' stream on nova, plus an unrelated dispatch.restore stuck 212 min the same way. Model-free: a queued
+# request whose id has neither a '0-' nor '1-' priority prefix, aged >= 20 min, while at least one '1-'-prefixed
+# request is queued for the same device, is starved -- promote it (temp file + rename to a '0-' prefix; see
+# RUNBOOK "Devices and queue" authority) rather than waiting, since waiting longer never helps.
+by_dev = {}
+for f in glob.glob(D + '/queue/*.req'):
+    by_dev.setdefault(device_of(f) or 'unknown', []).append(f)
+for dev, files in by_dev.items():
+    has_prefix_stream = any(os.path.basename(f).startswith('1-') for f in files)
+    if not has_prefix_stream: continue
+    for f in files:
+        base = os.path.basename(f)
+        if base.startswith('0-') or base.startswith('1-') or base.startswith('z-'): continue
+        # 10-11 lane.local: jobs/hold.sh's build gate promotes this on its own refusal now (#433
+        # lane.restoreprio1011, folded 72b4b07b77) -- a bare dispatch.restore is not starved, it is waiting for a
+        # caller who needs it. The restore-pileup check above still covers duplicates piling up.
+        if 'dispatch.restore' in base: continue
+        age_min = (now - os.path.getmtime(f)) / 60
+        if age_min >= 20:
+            jams['queue-starved:' + base] = "%s queued %d min for %s, outranked by a live '1-' critical-path stream (ASCII sort: '1-' always beats a bare epoch id) -- promote it: rename to a '0-' prefix in dispatch/queue/" % (
+                base, age_min, dev)
+
+# tree-lag: the dispatcher tree (hakuX checkout) only auto-updates via dispatcher_update_window.sh's own
+# post-fold trigger (foldqueue.log "opened after a fold"). A commit pushed straight to master (not through
+# offline_fold.py -- e.g. an owner/lane.local doc change released directly) fires no FOLDED line, so nothing
+# ever opens a window for it. Found 2026-10-09 (hostops): AGENTS.md pushed straight to origin/master at
+# 9895b7d629 sat unmerged into /home/justin/hakuX with no window of its own until hostops ran one by hand.
+# Model-free: HEAD this far behind for this long, with no update-window hold currently in progress, is
+# never intended -- the dispatcher should run close to current.
+sh('git -C %s fetch -q origin' % R)
+behind = sh("git -C %s rev-list --count HEAD..origin/master" % R).strip()
+try: behind_n = int(behind)
+except ValueError: behind_n = 0
+if behind_n > 0:
+    oldest = sh("git -C %s log --reverse --format=%%ct HEAD..origin/master" % R).split('\n')[0]
+    try: age_min = (now - int(oldest)) / 60
+    except ValueError: age_min = 0
+    window_running = any('dispatcher_update_window' in open(p).read() for p in glob.glob(D + '/hold/*.why'))
+    if age_min >= 30 and not window_running:
+        jams['tree-lag'] = 'dispatcher tree (%s) is %d commit(s) behind origin/master, oldest %d min old, no update window in progress -- run host-tools/dispatcher_update_window.sh' % (R, behind_n, age_min)
+
+# thor-coldconfirm-down: while hold/thor is held for the fan-dead reason, thor.why itself names
+# hakux-thor-coldconfirm as the runner that lets queued Thor requests <= 480s through with a cold
+# slot + 70 C stop (and hakux-thor-fanwait as the unit that re-takes the hold and flags staged
+# titles for push-under-hold). Neither is in the fixed core-down list below, because both are only
+# required while this specific hold reason is in force. Found 2026-10-10 (hostops): both had been
+# down for 2+ days (since 2026-10-08 ~13:49 UTC, the exact moment of their last logged action) with
+# no alarm anywhere -- harness_health.py only reads thor-coldconfirm.log as a heat-stop diagnosis
+# source, never as a liveness check, and the dispatcher itself is held off the device so nothing
+# else would ever notice a <= 480s Thor request just sitting unscreened forever. Model-free:
+# hold/thor's own reason is lanelocal-fanwait, so these two units not being active is never intended.
+if os.path.exists(D + '/hold/thor') and open(D + '/hold/thor').read().split('\n', 1)[0].strip() == 'lanelocal-fanwait':
+    for u in ('hakux-thor-fanwait', 'hakux-thor-coldconfirm'):
+        if sh('systemctl --user is-active %s' % u).strip() != 'active':
+            jams['thor-fanwait-runner-down:' + u] = (
+                "hold/thor is lanelocal-fanwait but %s is not active -- queued Thor requests <= 480s (or staged "
+                "title push-under-hold flags) will sit unserviced forever, since the dispatcher itself is held "
+                "off the device. Restart: systemd-run --user --unit=%s --description=... "
+                "/usr/bin/bash host-tools/%s.sh (see lanelocal_after_restart.sh's up() calls for the exact "
+                "description text)." % (u, u, u.replace('hakux-', '').replace('-', '_')))
+
+# unit-failed: any hakux-* unit (lanes, timers' services, runners) in the failed state
+for u in sh("systemctl --user list-units 'hakux-*' --state=failed --no-legend --plain").split('\n'):
+    if u.strip(): jams['unit-failed:' + u.split()[0]] = 'unit %s failed (journalctl --user -u %s)' % (u.split()[0], u.split()[0])
+# core services down: the dispatcher, foldqueue's timer, the jam/waker timers themselves
+# Owner 10-12 ~23:50 PDT: the Thor is offline until its replacement hardware arrives. While hold/thor is
+# lanelocal-offline, hakux-thor-suites is stopped on purpose and is not a core unit.
+THOR_OFFLINE = os.path.exists(D + '/hold/thor') and open(D + '/hold/thor').read().split('\n', 1)[0].strip() == 'lanelocal-offline'
+for u in ('hakux-dispatcher.service', 'hakux-foldqueue.timer', 'hakux-lanewaker.timer', 'hakux-hostops.timer', 'hakux-thor-suites.service', 'hakux-ghwatch.service', 'hakux-failintake.timer', 'hakux-issue-sync.timer', 'hakux-stallwatch.timer', 'hakux-driver.timer', 'hakux-hourly-relay.path'):
+    if u == 'hakux-thor-suites.service' and THOR_OFFLINE: continue
+    if sh('systemctl --user is-active %s' % u).strip() not in ('active', 'activating'):
+        jams['core-down:' + u] = '%s is not active' % u
+
+# stray-driver: a scratch batch-driver script (lane.local's ad-hoc chainN-1007.sh title loops) still
+# alive well past when its own work should be done. Not board/lane-tracked, so nothing else watches it.
+# Found 2026-10-07 20:00 PDT: pid 1142578 (scratch/chain12-1007.sh) finished all 3 of its titles and
+# logged "chain12 end" at 18:02:02, then spun forever re-polling -- it had opened the script before an
+# unrelated edit replaced the file on disk, so it kept running a stale in-memory copy missing a CRLF fix
+# ("a long-running process holds its version"). Flag any such process alive >= 60 min; a human/lane.local
+# judges liveness from its own chain log, not this check.
+for line in sh("ps -eo pid,etimes,args --no-headers").split('\n'):
+    parts = line.split(None, 2)
+    if len(parts) < 3: continue
+    pid, etimes, args = parts
+    if not re.search(r'scratch/chain\w*\.sh', args): continue
+    try: et = int(etimes)
+    except ValueError: continue
+    if et >= 3600:
+        jams['stray-driver:' + pid] = 'pid %s has run %d min (%s) with no board/lane row tracking it -- confirm it is still making progress (a fresh line in its chain log in the last 30 min) before assuming it is live; kill by PID if stale' % (pid, et / 60, args.strip())
+
+# forge-ahead: a direct-to-forge create -- the retired `gh pr create`/`gh issue create` (refused by the
+# shim since #433 lane.forgealloc1013), or anything else that still POSTs straight to Forgejo -- takes a
+# forge number GitHub has not allocated. issue_mirror.py new (the allocator: forge_prsync.py calls it for
+# PRs, issue_sync.py for issues) checks this fresh on every call and REFUSES with one fixed line: 'REFUSED:
+# forge is ahead of GitHub (forge max #N, GitHub max #M) -- backfill is pending, or something was made
+# directly on the forge. Nothing spent.' Both callers already pay the GitHub read to produce that line;
+# reading their own logs for it costs none here. Found twice, 10-12 and 10-13: four defect issues
+# (#973-976) waited about an hour before anyone noticed, and a backfill got run by hand, unauthorized, to
+# clear it. Model-free: that exact line, in the most recent completed run of either caller, is never not a
+# jam -- a run that resolved it prints a different line (a create succeeding) for the same lane/title
+# instead, so bounding the read to "since the previous run" is enough; no age/timestamp parsing needed.
+FORGE_AHEAD_RE = re.compile(r'forge is ahead of GitHub \(forge max #(\d+), GitHub max #(\d+)\)')
+def _latest_run_lines(path, boundary, fallback=300):
+    if not os.path.exists(path): return []
+    lines = open(path).read().splitlines()
+    idx = [i for i, l in enumerate(lines) if boundary in l]
+    return lines[idx[-2] + 1:] if len(idx) >= 2 else lines[-fallback:]
+def _forge_ahead_in(lines):
+    for l in reversed(lines):
+        m = FORGE_AHEAD_RE.search(l)
+        if m: return int(m.group(1)), int(m.group(2))
+    return None
+fa_hit = (_forge_ahead_in(_latest_run_lines(W + '/logs/forge/prsync.log', 'EXECUTED:'))
+          or _forge_ahead_in(open(W + '/pm/lanelocal-log.md').read().splitlines()[-200:]
+                              if os.path.exists(W + '/pm/lanelocal-log.md') else []))
+if fa_hit:
+    fg_max, gh_max = fa_hit
+    ahead_nums = list(range(gh_max + 1, fg_max + 1))
+    who = []
+    tok_path = W + '/forge/tokens/jobs.token'
+    if os.path.exists(tok_path):
+        tok = open(tok_path).read().strip()
+        for n in ahead_nums[:5]:
+            item, branch = None, None
+            for ep in ('pulls', 'issues'):
+                try:
+                    req = urllib.request.Request(
+                        'http://127.0.0.1:3330/api/v1/repos/jreinach-alt/hakuX/%s/%d' % (ep, n))
+                    req.add_header('Authorization', 'token ' + tok)
+                    item = json.load(urllib.request.urlopen(req, timeout=10))
+                    if ep == 'pulls': branch = (item.get('head') or {}).get('ref')
+                    break
+                except urllib.error.HTTPError as e:
+                    if e.code != 404: break
+                except Exception:
+                    break
+            who.append('#%d (%s%s)' % (n, ((item or {}).get('user') or {}).get('login', '?') if item else '?',
+                                        ', branch ' + branch if branch else ''))
+    jams['forge-ahead'] = (
+        'forge is ahead of GitHub (forge max #%d, GitHub max #%d): %d number(s) unaccounted for -- %s. '
+        'Owner: lane.local -- do NOT run `issue_mirror.py backfill` yourself; tell lane.local, who checks '
+        'nothing else needs the pending numbers first, then runs it.' %
+        (fg_max, gh_max, len(ahead_nums), ', '.join(who) if who else
+         ', '.join('#%d' % n for n in ahead_nums[:5])))
+
+new = []
+for k, msg in jams.items():
+    seen = st.get(k)
+    if seen is None or now - seen >= 7200:
+        new.append((k, msg)); st[k] = now
+for k in list(st):
+    if k not in jams: del st[k]
+json.dump(st, open(ST, 'w'))
+if new:
+    stamp = pdt()
+    with open(INBOX, 'a') as f:
+        for k, msg in new:
+            f.write('\n## %s: [idlewatch] %s\n%s\nAct: clear it (JAM DUTY in hostops-poll.md), verify, write the DONE line.\n' % (stamp, k, msg))
+    with open(PMLOG, 'a') as f:
+        f.write('\n## %s [idlewatch]\n' % stamp + ''.join('- %s: %s\n' % kv for kv in new))
+print('jams:', len(jams), 'new alerts:', len(new))

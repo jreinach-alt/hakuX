@@ -119,15 +119,32 @@ cat > "$FL/prs.json" <<'EOF'
  {"number":9503,"head":{"ref":"lane/heldlane"},"draft":false,"labels":[{"name":"fold-ready"}],"updated_at":"2026-09-19T06:00:00Z","title":"the fold job has it"},
  {"number":9504,"head":{"ref":"lane/stucklane"},"draft":true,"labels":[{"name":"blocked"}],"updated_at":"2026-09-19T06:00:00Z","title":"waiting on a file"},
  {"number":9505,"head":{"ref":"lane/alive"},"draft":true,"labels":[],"updated_at":"2026-09-19T06:00:00Z","title":"the running lane's own PR"},
- {"number":9506,"head":{"ref":"board/not-a-lane"},"draft":false,"labels":[],"updated_at":"2026-09-19T06:00:00Z","title":"not a lane branch"}]
+ {"number":9506,"head":{"ref":"board/not-a-lane"},"draft":false,"labels":[],"updated_at":"2026-09-19T06:00:00Z","title":"not a lane branch"},
+ {"number":9507,"head":{"ref":"lane/foldedquick"},"draft":false,"labels":[],"updated_at":"2026-09-19T06:00:00Z","title":"foldqueue.sh already folded it, labels never ran"},
+ {"number":9508,"head":{"ref":"lane/activeretry"},"draft":false,"labels":[],"updated_at":"2026-09-19T06:00:00Z","title":"foldqueue.sh is retrying it this tick"},
+ {"number":9509,"head":{"ref":"lane/stuckretry"},"draft":false,"labels":[],"updated_at":"2026-09-19T06:00:00Z","title":"foldqueue.sh has been retrying it for hours"}]
 EOF
+# foldqueue.sh (#433, Task 5): a `lane/*` branch it folds, or is still retrying,
+# never gets a GitHub label -- it never calls `gh` at all -- so fleet.py must
+# read foldqueue.log itself before calling a label-less READY PR stalled.
+# Timestamps relative to "now" so the staleness bound (FOLDQUEUE_STALE_S, three
+# 15-min ticks) is exercised for real, not just string-matched.
+mkdir -p "$HAKUX_WORK/offline-git"
+{
+  echo "$(date '+%F %T') PDT FOLDED lane/foldedquick: 1 lane branches with PR.md; 1 open forge PRs before this run; 0 error(s)"
+  echo "$(date -d '2 minutes ago' '+%F %T') PDT WAITING lane/activeretry @ abc1234567: no device run built from the head yet; retrying each tick"
+  echo "$(date -d '61 minutes ago' '+%F %T') PDT WAITING lane/stuckretry @ abc1234567: no device run built from the head yet; retrying each tick"
+} > "$HAKUX_WORK/offline-git/foldqueue.log"
 fleet_run "$FL/bin" "$FL/prs.txt"
-check "a READY lane PR with no pipeline label FAILs as unfolded" grep -qE '^FAIL: 1 lane PR\(s\) are READY and carry no pipeline label: #9502\.' "$FL/prs.txt"
+check "a READY lane PR with no pipeline label FAILs as unfolded" grep -qE '^FAIL: 2 lane PR\(s\) are READY and carry no pipeline label: #9502, #9509\.' "$FL/prs.txt"
 check "a draft lane PR is not reported as ready" bash -c '! grep -q 9501 "$FL/prs.txt"'
 check "a READY PR a job already holds (fold-ready) is not the board's item" bash -c '! grep -q 9503 "$FL/prs.txt"'
 check "a READY PR that is not on a lane/ branch is nobody's lane" bash -c '! grep -q 9506 "$FL/prs.txt"'
 check "a lane PR labelled blocked FAILs, replacing the orchestrator's waiting_on" grep -qE "^FAIL: 1 lane PR\(s\) labelled .blocked.: #9504\." "$FL/prs.txt"
 check "the running lane's own PR is shown against it in RUNNING" grep -qE '^  alive .*PR #9505 draft' "$FL/prs.txt"
+check "a READY PR foldqueue.log already shows FOLDED does not FAIL as stalled" bash -c '! grep -qE "^FAIL:.*#9507\b" "$FL/prs.txt"'
+check "a READY PR foldqueue.log is actively retrying (inside the grace) does not FAIL" bash -c '! grep -qE "^FAIL:.*#9508\b" "$FL/prs.txt"'
+check "a READY PR stuck past the staleness bound still FAILs as unfolded" grep -qE '^FAIL: .* lane PR\(s\) are READY and carry no pipeline label: .*#9509\b' "$FL/prs.txt"
 
 echo "== lane.sh writes the registry it used to leave to a role that no longer exists"
 # `grep -n fleet docs/testing/lane.sh` returned nothing for the whole life of

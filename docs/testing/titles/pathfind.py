@@ -38,6 +38,13 @@ Inputs go ONLY through perf/pad.sh: `input keyevent` to the app kills the
 emulator (AGENTS.md "Working with a device"). The only keyevents sent are
 KEYCODE_WAKEUP before launch and 223 (sleep) after the force-stop at the end.
 PATHFIND_DRY=1 with --sim <frames dir> touches no device (the selftest).
+
+--perflog (#433): one telemetry hold on master's -Pperflog=true build for a title with no golden
+profile (so request.sh/titlestate.admit() can never route to it). Installs that build from
+dispatcher.sh's own build_ref cache/build (adb install -r only, never a wipe), restores master in a
+finally, and refuses to even start a run without --perflog while a perflog build is still installed.
+--env K=V (repeatable, with --perflog only) goes through dispatcher.sh's own apply_env_pref. Never
+banked: result.json/verdict.json record "build": "perflog" and title_verdict.py voids the run.
 """
 
 import argparse
@@ -48,6 +55,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 
 import numpy as np
@@ -82,6 +90,14 @@ ACT = PKG + "/com.rfandango.haku_x.LauncherActivity"
 LOGCAT_SPEC = ("hakuX-crash:V hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:W "
                "hakuX-route:I hakuX-pace:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W libc:F DEBUG:F *:S")
 VERDICT = os.path.join(HERE, "..", "title_verdict.py")
+# --perflog (#433, pathtele1013 Part B): one telemetry hold on master's -Pperflog=true build, for a
+# title pathfind reaches but request.sh never can (no golden profile, so titlestate.admit() refuses
+# every route). Reuses dispatcher.sh's own build_ref (so the cache key, <sha>-perflog.apk, and the
+# build itself stay the dispatcher's, never a second build path) and its apply_env_pref (--env, the
+# same shared-prefs-XML mechanism request.sh's own --env uses).
+DISPATCHER_SH = os.path.join(HERE, "..", "dispatcher.sh")
+PERFLOG_REF = os.environ.get("PATHFIND_PERFLOG_REF", "master")
+PERFLOG_BUILD_TIMEOUT_S = int(os.environ.get("PATHFIND_PERFLOG_BUILD_TIMEOUT_S", "1200"))
 # Sonnet 5 per step, not Haiku: measured 10-02 on the same ESPN frame with the image inline, Sonnet 5
 # answered in 3.5-3.9 s (70-80 output tokens), Haiku 4.5 in 6.4-9.1 s (430-500, most of it thinking),
 # and Haiku had looped 8 times on a Yes/No dialog in Midnight Club 3.
@@ -194,7 +210,23 @@ def hold_shortfall(v, need_s=600.0):
     off = max(0.0, scored - float(tl.get("play_s") or 0))
     more = off / 0.10 - scored
     return ("share", more) if more > 0 else ("stop", 0.0)
-CONFIRM_GRACE_S = 300                # seconds the claim budget is extended once a gameplay read starts its confirm (10-05)
+
+
+def hold_bar_unreachable(play_s, window_s, budget_left_s, bar=0.10):
+    """Cheap pre-filter, from the hold's own numbers (play so far, window so far = elapsed hold
+    time, budget left): true once off play already cannot drop to `bar` of the scored window even
+    if every second of budget left were spent on play. Never ends a hold by itself -- confirmed
+    against the provisional verdict's own timeline first (Agent.hold_unsalvageable). PoP: Sands of
+    Time (5553001D, 10-13d) was certain to FAIL this way near hold 400 s, 27 min before its 2013-s
+    budget ran out (owner's 10-06 order keeps the step cap from ending a hold while budget remains;
+    this is a different rule -- it ends the hold only once budget remaining cannot buy a pass)."""
+    window_s = max(0.0, window_s)
+    budget_left_s = max(0.0, budget_left_s)
+    off = max(0.0, window_s - play_s)
+    return off > bar * (window_s + budget_left_s)
+
+
+CONFIRM_GRACE_S = 300               # seconds the claim budget is extended once a gameplay read starts its confirm (10-05)
 # live gameplay reads whose probe was refused on a self-moving scene before a --hold-s claim enters the hold (10-06: NFL
 # Blitz Pro read live football from ~610 s, every probe refused on the moving camera, and the claim-live rule only entered
 # the hold at the 25-min budget; the hold's verdict decides either way, so the wait was ~13 min of Nova time)
@@ -217,6 +249,17 @@ FPS_BAR, FPS_SHARE_OK = 30, 0.60
 FPS_TOL = 0.95   # title_verdict's fps_tolerance (targets.toml): a locked-30 title's 29s are on the bar (AvP, 10-04)
 # a still window in the drive genre: a car against a wall (Forza, 10-03). Reverse while turning, then drive out the
 # other way, alternating sides per still window, before the generic unlock rotation.
+GAS_CANDIDATES = ("RT", "A", "X")
+# the drive genre's gas-confirmation band (10-13, #433 Part A), in the 1280x960 reference space: the bottom ~45%,
+# where a chase-cam's vehicle body and HUD gauges/speedometer sit. A rider's pose, a gauge needle or a dashboard
+# digit changes there whether or not the vehicle moves (ATV Quad Power Racing 2: RT is a jump-preload button, not
+# the gas -- it ping-pongs the rider and fills a gauge, speedometer pinned at 0, for the whole 649-s hold).
+GAS_MOVE_BAND = (0, 528, 1280, 432)
+# measured 10-13 on real probe triplets (docs/lanes/holdinput1013/NOTES.md): parked/not-really-moving readings
+# (ATV's RT 0.0226, Auto Modellista stalled at 0 mph 0.0018) sit well under real travel (Panzer Elite's tank
+# 0.0591, RalliSport Challenge 2's confirmed gas 0.1246, Conflict Desert Storm II's confirmed gas 0.1656).
+GAS_MOVE_BAR = 0.035
+
 HOLD_UNSTICK = {
     "drive": (["LT+left:3", "RT+right:3"], ["LT+right:3", "RT+left:3"]),
     # a gun game that stands still at a wall (Halo 2, 10-03: 31% static in one room): strafe out, firing, the other way
@@ -228,6 +271,11 @@ HOLD_UNSTICK = {
     # name entry): step the aim left and right and throw, no X, B or Y
     "bowl": (["STICK:up:0.5", "A"], ["STICK:down:0.5", "A"]),
 }
+# the drive genre's recovery rung, after both reverse rungs above have failed (#433 Part B: 4x4 Evo 2 drove nose-first
+# into a tree, then fully submerged in a lake, 511 s of stuck_abort with both reverse rungs tried and no recovery
+# ever attempted). Not a HOLD_UNSTICK entry: it needs a model look (for an on-screen reset/respawn prompt, and later
+# to read the pause menu), which stuck_step's static token ladder cannot do -- see Agent.drive_recover.
+DRIVE_RECOVER = ("BACK", "Y")
 # play that drops into a menu right after a loop cycle: a loop button opened it (ToeJam & Earl III, 10-03: the
 # "Presents" inventory in 13 of 19 kept frames). Each such drop sheds the next of these from the loop.
 HOLD_SHED = ("B", "X", "Y", "BACK", "R1", "L1")
@@ -254,6 +302,15 @@ HOLD_GENRES = {
     # menu): aim with the stick, throw with A (press to start the meter, press to release). No B, X or Y here.
     "bowl": ["STICK:right:0.6", "A", "A", "STICK:left:0.6", "A", "A"],
 }
+
+
+def drive_tokens(gas):
+    """Build the drive loop from a confirmed gas candidate (#433 Part A), instead of the hard-coded RT. A digital
+    gas button (A, X) cannot combine with a steer direction in one token -- send()'s "+" syntax is trigger-axis
+    only -- so it steers in a separate step, the same shape as the existing "rally" loop."""
+    if gas in ("RT", "LT"):
+        return [f"{gas}:2", f"{gas}+left:0.8", f"{gas}+right:0.8"]
+    return [gas, "STICK:left:0.6", gas, "STICK:right:0.6"]
 # a period break (a quarter, half, inning, or a bowling frame's scorecard) has its own START/A budget per episode, so a
 # scorecard does not spend the shared CONTINUE budget (lane.local 12:52: each frame's scorecard is a per-frame continue)
 PERIOD_TRIES = 8
@@ -415,6 +472,108 @@ def dry():
 
 # ------------------------------------------------------------------ device
 
+def _is_perflog_version(version_name):
+    """True if an installed versionName (version_stamp.sh's <base>-<MMDD>-<sha>[-perflog][-dirty])
+    is a perflog build, dirty or not."""
+    v = (version_name or "").strip()
+    if v.endswith("-dirty"):
+        v = v[: -len("-dirty")]
+    return v.endswith("-perflog")
+
+
+def _dispatcher_call(label, serial, fn, args, timeout):
+    """Call one function from dispatcher.sh (build_ref, apply_env_pref) without going through its
+    serve/worker/status CLI: `source`'s positional parameters apply only for the sourced script's own
+    execution (bash semantics), so `source dispatcher.sh <marker>` never reaches its own `case "$1"`
+    dispatch at the bottom of the file. Everything the two functions need (log, adb_call, $D, $REPO,
+    device_env via devices.sh) is top-level and side-effect-free to source."""
+    script = 'set -u\nsource "$1" __pathfind_source__ >/dev/null 2>&1\nshift\n"$@"\n'
+    env = dict(os.environ, SERIAL=serial, DEVICE_LABEL=label)
+    try:
+        return subprocess.run(["bash", "-c", script, "pathfind-dispatch", DISPATCHER_SH, fn] + list(args),
+                              capture_output=True, text=True, timeout=timeout, env=env)
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess([fn], 124, stdout="", stderr=f"{fn}: timed out after {timeout}s")
+
+
+def build_apk(dev, ref, variant=""):
+    """(apk path, None) from dispatcher.sh's own build_ref -- its cache (<sha>[-perflog].apk) or a
+    build through it, never a second build path -- or (None, error). `variant` is "perflog" or ""."""
+    r = _dispatcher_call(dev.label, dev.serial, "build_ref", [ref, variant], timeout=PERFLOG_BUILD_TIMEOUT_S)
+    apk = (r.stdout or "").strip()
+    if r.returncode != 0 or not apk or not os.path.isfile(apk):
+        return None, ((r.stderr or "").strip()[-400:] or f"build_ref exited {r.returncode}")
+    return apk, None
+
+
+def set_env_pref(dev, env_kvs):
+    """Write --env K=V pairs to the app's shared prefs through dispatcher.sh's own apply_env_pref (the
+    same shared_prefs/x1box_prefs.xml via `run-as` that request.sh's --env uses), by handing it a
+    request-shaped JSON file on disk, same as a dispatched request."""
+    fd, path = tempfile.mkstemp(prefix="pathfind-envreq-", suffix=".json")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump({"env": list(env_kvs)}, f)
+        r = _dispatcher_call(dev.label, dev.serial, "apply_env_pref", [path], timeout=60)
+        return r.returncode == 0, (r.stderr or "").strip()[-400:]
+    finally:
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+
+
+def restore_master(dev):
+    """Put plain master back on the device after a --perflog hold, in a `finally` so a crash during
+    the hold can't leave it installed. Verifies the installed versionName no longer reads as perflog;
+    the guard at the top of main() is the real safety net if this fails (it refuses the NEXT run
+    outright), since pathfind runs are not dispatcher results and the dispatcher's own restore never
+    sees them (#433, pathtele1013 Part B)."""
+    apk, err = build_apk(dev, PERFLOG_REF, variant="")
+    if not apk:
+        return False, f"could not rebuild master: {err}"
+    if not dev.install_apk(apk):
+        return False, "adb install -r of master failed"
+    installed = dev.installed_version_name()
+    if _is_perflog_version(installed):
+        return False, f"installed versionName '{installed}' still reads as perflog after restore"
+    return True, f"master restored, versionName {installed}"
+
+
+def perflog_start(dev, allow_perflog):
+    """The guard (#433): called before anything else on a real device. Without --perflog, refuse to
+    start while a perflog build is installed -- a pathfind run is not a dispatcher result, so the
+    dispatcher's own restore never sees it, and this is what stops a crash between an earlier
+    --perflog's install and its restore from silently poisoning the next scored run."""
+    installed = dev.installed_version_name()
+    if _is_perflog_version(installed) and not allow_perflog:
+        sys.exit(f"pathfind: refusing to start: the installed build ({installed or 'unread'}) reads "
+                 "as a perflog build left over from an earlier --perflog hold; pass --perflog, or "
+                 "restore master first")
+
+
+def perflog_setup(dev, env_kvs):
+    """--perflog's install: master's perflog APK (build_apk, dispatcher.sh's own cache/build),
+    installed and verified, then --env through dispatcher.sh's own apply_env_pref. Exits on any
+    failure, same as the rest of main()'s preflight checks (#433)."""
+    print(f"pathfind: --perflog: building/fetching master's perflog APK ({PERFLOG_REF})...", flush=True)
+    apk, err = build_apk(dev, PERFLOG_REF, variant="perflog")
+    if not apk:
+        sys.exit(f"pathfind: --perflog: could not get a perflog APK: {err}")
+    if not dev.install_apk(apk):
+        sys.exit(f"pathfind: --perflog: adb install -r of {apk} failed")
+    installed = dev.installed_version_name()
+    if not _is_perflog_version(installed):
+        sys.exit(f"pathfind: --perflog: installed versionName '{installed or 'unread'}' does not "
+                 "read as a perflog build after install; refusing to run a telemetry hold on the "
+                 "wrong binary")
+    print(f"pathfind: --perflog: installed {installed}", flush=True)
+    if env_kvs:
+        ok, err = set_env_pref(dev, env_kvs)
+        if not ok:
+            sys.exit(f"pathfind: --perflog: could not write --env {env_kvs} to the app's prefs: {err}")
+
+
 class Device:
     def __init__(self, label):
         self.label = label
@@ -504,6 +663,22 @@ class Device:
             return v / 1000 if v > 200 else v
         except (IndexError, ValueError):
             return None
+
+    def install_apk(self, apk_path):
+        """adb install -r only (--perflog, #433): debug and perflog variants share a signing key, so
+        this never uninstalls and never clears data."""
+        try:
+            r = subprocess.run(["adb", "-s", self.serial, "install", "-r", apk_path],
+                               capture_output=True, text=True, timeout=300)
+            return "Success" in (r.stdout or "")
+        except subprocess.TimeoutExpired:
+            return False
+
+    def installed_version_name(self):
+        """The installed app's versionName (version_stamp.sh's convention), or "" unread."""
+        out = self.sh(f"dumpsys package {PKG} | grep versionName", timeout=20)
+        m = re.search(r"versionName=(\S+)", out)
+        return m.group(1) if m else ""
 
 
 class SimDevice:
@@ -602,6 +777,15 @@ def window_change(a, b):
     """Change between two kept hold frames at the probe's contrast step: did the player or camera move?"""
     ga = grey(a)
     return classify.motion(ga, grey(b), pixel=probe_step(ga))[0]
+
+
+def gas_change(a, b):
+    """Change between two drive-probe frames with the vehicle/HUD band (GAS_MOVE_BAND) masked out too: did the
+    world move past the vehicle, rather than the rider's pose, a gauge needle or a dashboard digit changing in
+    place? Measured 10-13 (#433 Part A) on real probe triplets: a vehicle that is not actually going anywhere
+    reads under GAS_MOVE_BAR here even when the full-frame window_change is well above it."""
+    ga = grey(a)
+    return classify.motion(ga, grey(b), mask_boxes=[GAS_MOVE_BAND], pixel=probe_step(ga))[0]
 
 
 def scene_shift(a, b):
@@ -933,6 +1117,23 @@ def name_words(name):
     return {w for w in norm(name).split() if len(w) >= 3 and w not in STOP and not re.fullmatch(r"[0-9a-f]{8}", w)}
 
 
+def no_answer_step(s):
+    """True for a step recorded when the model gave no answer at all (pathfind.py's own
+    `state="unknown", why="model gave no answer"`, src="none" while live -- but a step loaded back
+    from pathknow/paths/*.json carries no `src` (write_path's `keep` never saves it), so this matches
+    on state+why alone, the only fields a recorded step and a live one share)."""
+    return s.get("state") == "unknown" and s.get("why") == "model gave no answer"
+
+
+def cut_no_answer(steps):
+    """A path's steps, cut before the first the model never answered (#433, lane.pathrules1013 Part
+    A): that step was never a decision, so it is not a screen the next run should wait to match."""
+    for i, s in enumerate(steps):
+        if no_answer_step(s):
+            return steps[:i]
+    return steps
+
+
 def load_paths(tid, name):
     """(own path or None, [sibling paths]) from pathknow/paths/*.json. A
     sibling is a recorded title whose name shares a series hint file with
@@ -946,6 +1147,7 @@ def load_paths(tid, name):
             d = json.load(open(p))
         except (OSError, ValueError):
             continue
+        d["steps"] = cut_no_answer(d.get("steps") or [])
         if tid and d.get("title_id", "").upper() == tid.upper():
             own = d
         elif mine and mine & set(os.path.basename(f) for f in series_files(d.get("name", ""))):
@@ -1479,6 +1681,137 @@ class Agent:
         self.result["probe_frames"] = imgs
         return ok, rec["verdict"]
 
+    def confirm_gas(self, jpg):
+        """Drive genre only (#433 Part A): find the input that actually moves the vehicle, tried in order RT, A, X,
+        then a TITLE_HOLD entry's own "gas" key (the fallback, not the first answer). Each candidate is held
+        alone and judged by gas_change: the band outside the vehicle/HUD must move past GAS_MOVE_BAR, so a rider's
+        pose or a gauge filling (ATV Quad Power Racing 2's RT, a jump preload) does not count as gas. Logged under
+        "gas_try" (not "action"), so the per-cycle hold.jsonl readers that scan for an "action" field never see
+        these pre-loop probes. Returns (gas or None, candidates tried)."""
+        cands = list(GAS_CANDIDATES)
+        title_gas = TITLE_HOLD.get((self.tid or "").upper(), {}).get("gas")
+        if title_gas and title_gas not in cands:
+            cands.append(title_gas)
+        log = os.path.join(self.out, "hold.jsonl")
+        base_png, base_jpg = self.frame("gas-a")
+        tried = []
+        for cand in cands:
+            if not base_png:
+                break
+            tried.append(cand)
+            c_png, c_jpg = self.hold_capture(cand, f"gas-{cand}")
+            if not c_png:
+                break
+            chg = gas_change(base_png, c_png)
+            ok = chg >= GAS_MOVE_BAR
+            self.hold_note(log, {"gas_try": cand, "changed": round(chg, 3), "ok": ok})
+            print(f"hold-play: gas probe {cand}: band change {chg:.3f} ({'confirmed' if ok else 'refused'})",
+                  flush=True)
+            if ok:
+                return cand, tried
+            base_png, base_jpg = c_png, c_jpg
+        return None, tried
+
+    def drive_recover(self, log, jpg):
+        """Drive genre only, after both HOLD_UNSTICK["drive"] reverse rungs have failed to free the vehicle (#433
+        Part B). One model look for an on-screen reset/respawn/recover prompt naming a button, then BACK and Y
+        alone, then -- last, because it risks the main menu -- the pause menu, opened with START and READ before
+        anything in it is pressed, so a wrong guess never quits to the main menu or exits the game. Each candidate
+        is kept only if the scene actually changes (window_change past HOLD_STILL); a kept pause-menu restart
+        counts as still-play, not a Playable-ending state. Logged under "recover_try" (not "action"), same reason
+        confirm_gas uses "gas_try". Returns True once something changes the scene, else False (stuck_abort stands)."""
+        base_png, base_jpg = self.frame("recover-a")
+        if not base_png:
+            return False
+
+        def changed(a_png, b_png):
+            return window_change(a_png, b_png) >= HOLD_STILL
+
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game. The vehicle is stuck and has not moved for a while. Is "
+            "there an on-screen prompt telling the player how to reset, respawn or recover the vehicle (for "
+            'example "press Y to reset" or "press BACK to respawn")? Xbox buttons: A green, B red, X blue, Y '
+            'yellow, plus BACK/START/black/white. Answer JSON only: {"prompt": true|false, "button": '
+            '"<button or none>", "why": "<one line>"}'), "recover-prompt", [base_jpg]) or {}
+        btn = str(ans.get("button", "")).strip().upper()
+        cands = [btn] if ans.get("prompt") and (btn in BUTTONS or btn == "BACK") else []
+        cands += [c for c in DRIVE_RECOVER if c not in cands]
+        for cand in cands:
+            c_png, c_jpg = self.hold_capture(cand, f"recover-{cand}")
+            if not c_png:
+                break
+            ok = changed(base_png, c_png)
+            self.hold_note(log, {"recover_try": cand, "changed": ok})
+            print(f"hold-play: recover {cand}: {'changed' if ok else 'no change'}", flush=True)
+            if ok:
+                return True
+            base_png, base_jpg = c_png, c_jpg
+        # last, and only after a look: the pause menu. Opened with START, then read before anything in it is
+        # pressed -- a restart/reset entry is taken, never a guess that could quit to the main menu or dashboard.
+        m_png, m_jpg = self.hold_capture("START", "recover-pause")
+        if not m_png:
+            return False
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game, possibly a pause menu. Is this a pause menu? If so, is "
+            "there a Restart, Reset or Retry entry, and which single input selects it? Never name an input that "
+            "quits to the main menu, exits to the dashboard, or loads a different save -- answer none for those. "
+            'Xbox buttons: A green, B red, X blue, Y yellow. Answer JSON only: {"pause_menu": true|false, '
+            '"restart_input": "<input or none>", "why": "<one line>"}'), "recover-pause", [m_jpg]) or {}
+        restart = str(ans.get("restart_input", "")).strip()
+        if ans.get("pause_menu") and restart.upper() not in ("", "NONE"):
+            tok = clean_action(restart)
+            if tok:
+                r_png, r_jpg = self.hold_capture(tok[0], "recover-restart")
+                if r_png:
+                    ok = changed(m_png, r_png)
+                    self.hold_note(log, {"recover_try": f"pause:{tok[0]}", "changed": ok})
+                    print(f"hold-play: recover pause {tok[0]}: {'changed' if ok else 'no change'}", flush=True)
+                    if ok:
+                        return True
+        self.hold_capture("B", "recover-pause-back")   # back out without confirming anything in the menu
+        return False
+
+    def prompt_rung(self, log, jpg):
+        """Before the genre's unstick ladder fires on a still window (#433 Part C: Darkwatch, frame 038, "USE X
+        TO MELEE ATTACK THE DOOR LOCK" -- a shooter-genre still window, and HOLD_UNSTICK["shooter"]'s two rungs
+        have no X). One model look for an on-screen instruction naming a button; the caller fires this only once
+        per still window (its own prompt_tried flag), so a prompt this cannot clear in 3 tries falls through to
+        the existing ladder. If the instruction needs the player to face or aim at something first, a stick step
+        is sent before each press. Logged under "prompt_try" (not "action"), same reason confirm_gas uses
+        "gas_try". Returns True once the scene changes, else False."""
+        base_png, base_jpg = self.frame("prompt-a")
+        if not base_png:
+            return False
+        ans = self.model.ask(FAST, (
+            f"Screenshot of {self.name}, an Xbox game. The screen has not changed for a while. Is there an "
+            'on-screen instruction telling the player to press a button, such as "USE X TO ..." or "PRESS A TO '
+            '...". Xbox buttons: A green, B red, X blue, Y yellow, plus BACK/START/black/white -- the glyph\'s '
+            "colour names the button. If pressing it needs the player to face or aim at something first, name "
+            'which way to turn with a stick. Answer JSON only: {"prompt": true|false, "button": "<button or '
+            'none>", "turn": "<stick:left|stick:right|rstick:left|rstick:right|none>", "why": "<one line>"}'
+        ), "prompt-rung", [base_jpg]) or {}
+        btn = str(ans.get("button", "")).strip().upper()
+        if not ans.get("prompt") or btn not in BUTTONS:
+            return False
+        turn = str(ans.get("turn", "none")).strip().lower()
+        turn_tok = None
+        if turn in ("stick:left", "stick:right", "rstick:left", "rstick:right"):
+            kind, dirn = turn.split(":")
+            turn_tok = f"{kind.upper()}:{dirn}:1"
+        for _ in range(3):
+            if turn_tok:
+                self.send([turn_tok])
+            c_png, c_jpg = self.hold_capture(btn, "prompt-press")
+            if not c_png:
+                return False
+            ok = window_change(base_png, c_png) >= HOLD_STILL
+            self.hold_note(log, {"prompt_try": btn, "turn": turn, "changed": ok})
+            print(f"hold-play: prompt {btn} (turn {turn}): {'changed' if ok else 'no change'}", flush=True)
+            if ok:
+                return True
+            base_png, base_jpg = c_png, c_jpg
+        return False
+
     def team_sport(self):
         """A team sport on a court, field or rink: the run's goal names a period setting or a team select, or the
         title's name is a team-sports league (the claim has no genre look yet; the hold's genre comes after it)."""
@@ -1890,6 +2223,22 @@ class Agent:
         print(f"hold-play: genre {genre}, need {self.hold_s:.0f} s of play", flush=True)
         kept, play_s, navs, nav = [], 0.0, 0, 0
         still, off, reason = 0, False, ""
+        # drive's loop sends whatever candidate actually moved the vehicle, confirmed now, once (#433 Part A): RT
+        # is a jump preload in some titles (ATV Quad Power Racing 2, rider crouching, PRELOAD gauge filling, 0 mph
+        # for the whole hold), so RT is tried first and not trusted on its own. A, then X, then a TITLE_HOLD entry's
+        # own "gas" key, is the fallback (th forces the attack-genre walk loop when truthy, so this only ever runs
+        # with th falsy today; the "gas" key is read straight from TITLE_HOLD so a future title can carry one
+        # without a full walk override needing to exist first). If nothing moves the vehicle the hold ends now,
+        # not after 600 s parked (RACE AGAIN twice).
+        if genre == "drive" and not th:
+            gas, gas_tried = self.confirm_gas(jpg)
+            if gas:
+                tokens = drive_tokens(gas)
+                held["gas"] = gas
+                print(f"hold-play: drive gas confirmed {gas} (tried {gas_tried})", flush=True)
+            else:
+                reason = f"drive gas: no input moved the vehicle (tried {', '.join(gas_tried)})"
+                print(f"hold-play: {reason}", flush=True)
         # position test (10-03): a 30-s window whose kept frames barely differ is not play, however live the HUD
         # looks (Black Stone stood 600 s on one octagon and passed the verdict). Then rotate the inputs: an unlock
         # button and the next genre's loop, until the scene moves again.
@@ -1918,12 +2267,17 @@ class Agent:
         held_ok, last_v, ladder_rounds, ladder_i = False, None, 0, 0   # validity (10-06): the hold ends on a verdict, not on hold_s alone
         charsel_i = 0   # the fighting select's cycle presses on this off-play episode (charsel_press)
         # the stuck detector (10-07, stuckdetect1007): the last STUCK_MIN_SAMPLES kept frames all near-identical = stuck;
-        # an unstick rung per kept frame, then the hold ends with a reason (stuck_abort), not a Playable
-        sd_watch = stuckdetect.StuckWatch(genre, HOLD_SHED_STATES, HOLD_UNSTICK.get(genre), UNLOCK_LADDER[:3]) if stuckdetect else None
-        sd_abort, last_st, sd_rungs = "", "play", 0
+        # an unstick rung per kept frame, then the hold ends with a reason (stuck_abort), not a Playable.
+        # max_rungs must match the genre's own ladder length, not stuck_step's default of 3 (#433 Part E: attack has
+        # 4 rungs -- STICK:right:2+A, STICK:up:2+A, STICK:left:2+A, STICK:down:2+A -- and the default silently
+        # dropped the last one, so Genma Onimusha's run never tried it before stuck_abort).
+        sd_ladder = HOLD_UNSTICK.get(genre)
+        sd_watch = stuckdetect.StuckWatch(genre, HOLD_SHED_STATES, sd_ladder, UNLOCK_LADDER[:3],
+                                           max_rungs=len(sd_ladder) if sd_ladder else 3) if stuckdetect else None
+        sd_abort, last_st, sd_rungs, drive_recovered, prompt_tried = "", "play", 0, False, False
         low_run, flipped, rev_row, reversals = 0, False, 0, 0   # the reverse rule (16:08): looks still in a row, walk turned round
         patrol_looks = 0   # play looks on the shooter loop, for the patrol backstop (patrol_due)
-        while not held_ok and self.el() < self.budget_s:
+        while not held_ok and not reason and self.el() < self.budget_s:
             self.n += 1
             t_cycle = now()
             png, jp = self.frame("hold")
@@ -2129,7 +2483,9 @@ class Agent:
                             rot += 1
                             unstick = HOLD_UNSTICK.get(genre)
                             if unstick and rot <= 2 * len(unstick):
-                                tokens = unstick[(rot - 1) % len(unstick)] + HOLD_GENRES[genre]
+                                # the confirmed gas, not the hard-coded RT loop (#433 Part A requirement 3)
+                                loop = drive_tokens(gas) if genre == "drive" else HOLD_GENRES[genre]
+                                tokens = unstick[(rot - 1) % len(unstick)] + loop
                             else:
                                 tokens = [UNLOCK_LADDER[(rot - 1) % len(UNLOCK_LADDER)]] + \
                                     HOLD_GENRES[order[rot % len(order)]]
@@ -2150,14 +2506,35 @@ class Agent:
                         d = sd_watch.sample(stuckdetect.frame_signature(png), last_st if off else "play")
                         if d.get("stuck"):
                             look["stuck"] = {k: d.get(k) for k in ("menu", "run", "reason", "action", "abort")}
-                            if d["abort"]:
+                            if d["abort"] and genre == "drive" and not th and not drive_recovered:
+                                # both HOLD_UNSTICK["drive"] reverse rungs are exhausted (#433 Part B): one more
+                                # try, a model-led recovery, before the hold ends on a parked/stuck vehicle
+                                drive_recovered = True
+                                print(f"hold-play: stuck ({d['reason']}): drive recovery at {hold_el:.0f} s", flush=True)
+                                if self.drive_recover(log, jpg):
+                                    sd_rungs = 0
+                                else:
+                                    sd_abort = (f"stuck_abort: {d['reason']}; {sd_rungs} unstick rung(s) tried, "
+                                                "drive recovery tried, still stuck")
+                            elif d["abort"]:
                                 sd_abort = f"stuck_abort: {d['reason']}; {sd_rungs} unstick rung(s) tried, still stuck"
                             else:
-                                sd_rungs += 1
-                                print(f"hold-play: stuck ({d['reason']}): unstick {' '.join(d['action'])} at {hold_el:.0f} s", flush=True)
-                                self.send(d["action"])
+                                cleared = False
+                                if not prompt_tried:
+                                    # before the genre's own ladder rung, one model look for an on-screen
+                                    # instruction naming a button (#433 Part C): a still window may be a prompt
+                                    # the ladder's static tokens never cover, not a dead end the ladder must walk
+                                    prompt_tried = True
+                                    print(f"hold-play: stuck ({d['reason']}): prompt look at {hold_el:.0f} s", flush=True)
+                                    cleared = self.prompt_rung(log, jpg)
+                                if cleared:
+                                    sd_rungs = 0
+                                else:
+                                    sd_rungs += 1
+                                    print(f"hold-play: stuck ({d['reason']}): unstick {' '.join(d['action'])} at {hold_el:.0f} s", flush=True)
+                                    self.send(d["action"])
                         else:
-                            sd_rungs = 0
+                            sd_rungs, drive_recovered, prompt_tried = 0, False, False
                     except Exception as e:   # never let the detector end a hold it cannot read
                         sd_watch = None
                         look["stuck_error"] = repr(e)[:120]
@@ -2185,6 +2562,18 @@ class Agent:
                 else:
                     print(f"hold-play: verdict short on {kind} by {s:.0f} s; holding on (budget {self.budget_s - self.el():.0f} s left)",
                           flush=True)
+            elif play_s < self.hold_s and (last_v is None or now() - last_v >= HOLD_VERDICT_S) and \
+                    hold_bar_unreachable(play_s, hold_el, self.budget_s - self.el()):
+                # the budget-left rule (#433 Part B, 10-13): off play already too large for the share bar
+                # to pass in the time left, confirmed against the provisional verdict's own timeline. Fills
+                # the gap the check above leaves: hold_check never runs before play_s reaches self.hold_s,
+                # so a hold stuck off play before then got no validity check at all (PoP: Sands of Time,
+                # 5553001D, 10-13d: 27 min of budget spent after the point this rule would have ended it).
+                last_v = now()
+                unreachable = self.hold_unsalvageable(play_s, self.budget_s - self.el(), log)
+                if unreachable:
+                    reason = unreachable
+                    break
             last_png = png
         for p in drop:
             os.remove(p)
@@ -2205,10 +2594,12 @@ class Agent:
             held["verdict"] = self.hold_verdict(now() - t_hold)
         return self.finish(last=kept[-1] if kept else jpg, post=kept)
 
-    def hold_check(self, play_s, log):
-        """The hold's own validity check (10-06): title_verdict.py on the logcat so far, in a provisional folder whose logcat
-        ends with a `soak end` at its last logged time. Returns (kind, seconds, why) from hold_shortfall. The hold's play and
-        the verdict's play are both logged; the verdict's is trusted when they disagree."""
+    def provisional_verdict(self, play_s, log):
+        """title_verdict.py on the hold's logcat so far, in a provisional folder (shared by hold_check and
+        hold_unsalvageable) whose logcat ends with a `soak end` at its last logged time. Returns the verdict
+        dict, or None when title_verdict did not produce one -- an unknown, not a failure. The request.json
+        written here carries a perflog hold's build/env too (#433 Part C): hold_verdict's own request.json
+        is the final judge's, this one the provisional judge's, and both must void a perflog run the same way."""
         pdir = os.path.join(self.out, "provisional")
         os.makedirs(pdir, exist_ok=True)
         try:
@@ -2222,16 +2613,22 @@ class Agent:
                 f.write(f"{stamp} I/hakuX-route(    0): soak end\n")
         with open(os.path.join(pdir, "request.json"), "w") as f:
             json.dump({"title": self.name, "title_id": self.tid, "device": self.dev.label,
-                       "iso": os.path.basename(self.iso or "")}, f)
+                       "iso": os.path.basename(self.iso or ""),
+                       "build": self.result.get("build"), "env": self.result.get("env")}, f)
         with open(os.path.join(pdir, "run.log"), "w") as f:
             f.write(f"held {self.name} for {int(play_s)}s\n")
-        v = None
         try:
             subprocess.run([sys.executable, VERDICT, pdir, "--require", "confirmation"],
                            capture_output=True, text=True, timeout=120)
-            v = json.load(open(os.path.join(pdir, "verdict.json")))
+            return json.load(open(os.path.join(pdir, "verdict.json")))
         except (subprocess.TimeoutExpired, OSError, ValueError):
-            v = None
+            return None
+
+    def hold_check(self, play_s, log):
+        """The hold's own validity check (10-06): the provisional verdict's hold_shortfall read. Returns
+        (kind, seconds, why). The hold's play and the verdict's play are both logged; the verdict's is
+        trusted when they disagree."""
+        v = self.provisional_verdict(play_s, log)
         # no verdict is an unknown, not a failure: the hold checks again at the next interval, and ends at the budget
         kind, s = ("retry", 0.0) if v is None else hold_shortfall(v, self.hold_s)
         tl = (v or {}).get("timeline")
@@ -2247,12 +2644,36 @@ class Agent:
         print(f"hold-play: validity check {kind} {s:.0f} s (hold {play_s:.0f} s of play, verdict {vplay})", flush=True)
         return kind, s, why
 
+    def hold_unsalvageable(self, play_s, budget_left_s, log):
+        """Confirms hold_bar_unreachable's cheap trigger against the provisional verdict's own timeline
+        (play_s, scored_s), read directly -- not through hold_shortfall, which returns 'duration' before the
+        window reaches need_s and so never reaches the share rule this early (#433 Part B: PoP: Sands of
+        Time, 5553001D, 10-13d, certain to FAIL on menu time near hold 400 s, 27 min before its budget ran
+        out). None when there is no verdict yet, or its timeline lacks these fields: an unknown, not a
+        failure, same convention as hold_check -- the hold keeps going and checks again at HOLD_VERDICT_S."""
+        v = self.provisional_verdict(play_s, log)
+        tl = (v or {}).get("timeline")
+        if not isinstance(tl, dict) or tl.get("play_s") is None or tl.get("scored_s") is None:
+            return None
+        scored = float(tl["scored_s"])
+        off = max(0.0, scored - float(tl["play_s"]))
+        if off <= 0.10 * (scored + max(0.0, budget_left_s)):
+            return None
+        reason = (f"off play {off:.0f} s of a {scored:.0f} s scored window cannot drop to 10% with "
+                  f"{budget_left_s:.0f} s of budget left: no amount of further play can pass")
+        self.hold_note(log, {"check": "unsalvageable", "off_s": round(off, 1), "window_s": round(scored, 1),
+                             "budget_left_s": round(budget_left_s, 1)})
+        print(f"hold-play: {reason}", flush=True)
+        return reason
+
     def hold_verdict(self, secs):
         """title_verdict.py on the hold's logcat: its one VERDICT line (verdict.json beside it)."""
-        # title_verdict resolves the title by the ISO's basename (targets.toml `iso` map), not by the display name
+        # title_verdict resolves the title by the ISO's basename (targets.toml `iso` map), not by the display name.
+        # "build"/"env" let title_verdict void a perflog hold even before finish() writes them to result.json (#433).
         with open(os.path.join(self.out, "request.json"), "w") as f:
             json.dump({"title": self.name, "title_id": self.tid, "device": self.dev.label,
-                       "iso": os.path.basename(self.iso or "")}, f)
+                       "iso": os.path.basename(self.iso or ""),
+                       "build": self.result.get("build"), "env": self.result.get("env")}, f)
         # title_verdict reads `held <title> for <n>s` from run.log; append it there (stdout is not run.log)
         with open(os.path.join(self.out, "run.log"), "a") as f:
             f.write(f"held {self.name} for {int(secs)}s\n")
@@ -2290,6 +2711,10 @@ class Agent:
         for s in self.steps:
             if s.get("src") in ("probe", "check"):
                 continue
+            if no_answer_step(s):
+                # a step the model never answered is not a decision: never recorded, and nothing
+                # after it either, the same way the loop cut below never records a repeat (#433)
+                break
             if not complete and s.get("sig") is not None:
                 if any(sig_dist(s["sig"], o) <= SIG_MATCH for o in seen) and s.get("state") not in (
                         "black", "loading"):
@@ -2299,6 +2724,8 @@ class Agent:
             keep.append({"state": s.get("state"), "why": s.get("why", "")[:160], "action": s.get("action", []),
                          "wait_s": s.get("wait_s", 2), "useful": useful or s.get("state") == "gameplay",
                          "sig": [[round(v) for v in row] for row in s["sig"]] if s.get("sig") else None})
+        if not keep:
+            return
         d = {"title_id": self.tid, "name": self.name, "device": self.dev.label,
              "recorded": time.strftime("%Y-%m-%d %H:%M %Z"), "minutes": self.result.get("minutes"),
              "model_calls": self.model.calls, "complete": complete, "result": self.result.get("result"),
@@ -2334,13 +2761,48 @@ class Agent:
         return 0 if self.result["result"] == "gameplay" else 1
 
 
+def r3_refusal(kp, title_id, path_broken, no_record, no_replay, no_guide, from_state=False):
+    """The profile gate's R3 test for a pathfind.py session (#433 Part A): None to admit, else the
+    refusal text. A known-path title (`kp`, titlestate.known_path(..., broad=True)) is blind
+    navigation, refused outright -- UNLESS `no_record` replays the kept path rather than finding a
+    new one: nothing is rewritten, so R3 (never re-run blind navigation on a title that already ran)
+    has nothing to refuse. `no_replay`/`no_guide` drop the kept path (Agent.own = None in main()), so
+    paired with `no_record` on a known-path title they are refused too -- a `--no-record` run would
+    navigate blind with nothing recorded, not replay the path R3 is admitting it for.
+    `--path-broken` overrides R3 either way, same as before this admission existed.
+
+    `from_state` (#433 Part D, savestateconv1014) is a hold started from a captured save state: it
+    does no navigation at all, so it is admitted unconditionally on a known-path title -- there is no
+    path to diverge from and nothing is rewritten, same reasoning as `no_record` but stronger (no
+    replay happens either). A title with NO known path is never refused here either way; --from-state
+    on such a title has nothing to load (a state is only ever taken on a run that already reached
+    gameplay once, so a title with no known path has no state), and that is refused by the state-load
+    check itself (Part D), not by R3."""
+    if not kp["known"]:
+        return None
+    if path_broken:
+        return titlestate._path_broken_bad(path_broken, title_id, kp["route_name"])
+    if from_state:
+        return None
+    if no_record:
+        if no_replay or no_guide:
+            return ("a known path exists; --no-replay/--no-guide drop it, so --no-record here would "
+                     "navigate blind with nothing recorded, not replay it -- drop --no-replay/--no-guide "
+                     "for the re-hold, or pass --path-broken instead")
+        return None
+    return ("a known path exists; pass --path-broken \"<result id>\" naming a run of it that failed, "
+            "or --no-record to re-hold it by replaying the kept path (nothing is rewritten)")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("title")
     ap.add_argument("--device", default="nova", choices=sorted(DEVICES))
     ap.add_argument("--budget-min", type=float, default=15)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--no-record", action="store_true", help="do not write pathknow/paths/<id>.json")
+    ap.add_argument("--no-record", action="store_true",
+                    help="do not write pathknow/paths/<id>.json; a known-path title (R3, #433) runs "
+                         "only with this flag, as a replay of its kept path")
     ap.add_argument("--no-replay", action="store_true", help="ignore this title's own recorded path")
     ap.add_argument("--no-guide", action="store_true",
                     help="use no recorded path at all, own or sibling (a cross-title baseline)")
@@ -2359,15 +2821,31 @@ def main(argv=None):
     ap.add_argument("--path-broken", default=None,
                     help="override the profile gate's R3 (#433): a dispatch/results id naming a run of "
                          "this title's known path that failed")
+    ap.add_argument("--perflog", action="store_true",
+                    help="one telemetry hold on master's -Pperflog=true build (#433): installs it from "
+                         "dispatcher.sh's own cache/build before the run, restores master after. For a "
+                         "title that has already shown it will not clear (pair with PATHFIND_BELOW_BAR=1 "
+                         "and a short --hold-s); a known-path title (R3) needs --no-record too, as a "
+                         "replay of its kept path. Never banked: verdict.json/result.json record "
+                         "\"build\": \"perflog\", and title_verdict.py voids it.")
+    ap.add_argument("--env", action="append", default=[], metavar="K=V",
+                    help="with --perflog: an env var for the app, via dispatcher.sh's own apply_env_pref "
+                         "(repeatable). Telemetry wants HAKUX_GPUXFR=1 and HAKUX_FRAMETRACE=1.")
     a = ap.parse_args(argv)
     os.makedirs(a.out, exist_ok=True)
     a.out = os.path.abspath(a.out)
+    if a.env and not a.perflog:
+        sys.exit("pathfind: --env needs --perflog (it is only wired through the dispatcher's own "
+                 "apply_env_pref during a perflog telemetry hold)")
     if dry():
+        if a.perflog:
+            sys.exit("pathfind: --perflog needs a real device, not PATHFIND_DRY")
         dev = SimDevice(a.device, a.sim)
         model = Model(a.out, sim=json.load(open(a.sim_answers)) if a.sim_answers else [])
     else:
         dev = Device(a.device)
         model = Model(a.out)
+        perflog_start(dev, a.perflog)
     tid, name, iso = resolve(dev, a.title)
     why = blocked(tid, name)
     if why:
@@ -2381,16 +2859,18 @@ def main(argv=None):
     # The profile gate's R3 (#433 addendum 2): a pathfind.py session is blind navigation, same as a
     # queued --find-route request, but its OWN "known path" test is broader (a pathknow success counts
     # too, not just a proven route) -- a session that already reached gameplay once has nothing left to
-    # find blind, even before any route built from it has its own proof soak.
-    if tid:
-        kp = titlestate.known_path(tid, broad=True)
-        if kp["known"]:
-            bad = titlestate._path_broken_bad(a.path_broken, tid, kp["route_name"]) if a.path_broken else (
-                "a known path exists; pass --path-broken \"<result id>\" naming a run of it that failed")
-            if bad:
-                via = f" ({kp['source']}" + (f" via {kp['route_name']}, result {kp['result_id']})" if kp["route_name"]
-                                              else ")")
-                sys.exit(f"pathfind: {name} ({tid}) already has a known path{via}: {bad}")
+    # find blind, even before any route built from it has its own proof soak. A --no-record re-hold that
+    # replays the kept path is admitted (#433 Part A, r3_refusal): see its docstring.
+    kp = titlestate.known_path(tid, broad=True) if tid else {"known": False}
+    if kp["known"]:
+        bad = r3_refusal(kp, tid, a.path_broken, a.no_record, a.no_replay, a.no_guide)
+        if bad:
+            via = f" ({kp['source']}" + (f" via {kp['route_name']}, result {kp['result_id']})" if kp["route_name"]
+                                          else ")")
+            sys.exit(f"pathfind: {name} ({tid}) already has a known path{via}: {bad}")
+        elif a.no_record and not a.path_broken:
+            print(f"pathfind: R3 admits a --no-record re-hold of the known path ({kp['source']}); "
+                  f"replaying it, nothing is rewritten{' (--perflog)' if a.perflog else ''}", flush=True)
     if a.hold_s and dev.label == "thor":
         sys.exit("pathfind: --hold-s is Nova only: the Thor's fan is dead and it stops within 30 s of a claim")
     print(f"pathfind: {name} ({tid}) on {dev.label}: {iso}", flush=True)
@@ -2401,6 +2881,12 @@ def main(argv=None):
         agent.own = None
     if a.no_guide:
         agent.sibs = []
+    if a.perflog:
+        perflog_setup(dev, a.env)
+        # Never banked (#433): a perflog run's fps is pessimistic (~1.2 ms/frame), so it must not read
+        # as a Playable candidate. title_verdict.py voids any run whose result.json carries this.
+        agent.result["build"] = "perflog"
+        agent.result["env"] = list(a.env)
     # The titles disk a dispatched run of the path would boot (lane.savestate433):
     # the path found is only replayable from the state it was found in.
     hdd = None
@@ -2412,6 +2898,9 @@ def main(argv=None):
     finally:
         if hdd:
             titlestate.release(dev.label, hdd.get("run"), log=lambda m: print(m, flush=True))
+        if a.perflog:
+            ok, msg = restore_master(dev)
+            print(f"pathfind: --perflog: restore master: {msg}", flush=True)
 
 
 if __name__ == "__main__":
