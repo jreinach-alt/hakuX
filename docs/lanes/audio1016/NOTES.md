@@ -1,10 +1,16 @@
 # lane.audio1016 NOTES -- quiet speech and movie audio (#984, #938)
 
-Status: 2026-10-16. Offline analysis of saved runs and of the owner's MKSM save state.
-No device time used yet.
+Status: 2026-10-16. Mechanism measured offline on MKSM; fix written behind a switch
+(`vp.c.patch`); five Nova runs on one binary registered in
+`docs/testing/predictions/audio1016-identify.json` and queued.
 
-[lane.audio1016] working: measured a per-voice mechanism on MKSM offline (below); next the
-Shrek 2 / Lemony Snicket check and the MON_VP downmix patch.
+[lane.audio1016] waiting: the five audio1016-identify runs on the Nova (request ids under
+"Runs" below). Resolves when their results are in; then judge the legs and mark ready.
+
+NEED: `hw/xbox/mcpx/apu/vp/vp.c` (lane.x1port1012's file): apply
+`docs/lanes/audio1016/vp.c.patch` (HAKUX_APU_MONVP_DOWNMIX, off by default). It touches only
+the MON_VP block of voice_process() and adds a table after attenuate(); it does not overlap
+x1port1012's changes.
 
 ## The question
 
@@ -173,6 +179,84 @@ that spread, relative to its max slot, is close to the measured loss. For FL + C
 1 + 0.707 + 0.707 in amplitude for a coherent signal, +7.65 dB, against the 7.5 dB measured on
 Shrek 2. This is a prediction from the matrix, not a measurement: there is no Shrek 2 or
 Lemony save state.
+
+## The fix, behind a switch: HAKUX_APU_MONVP_DOWNMIX=1 (vp.c.patch)
+
+MON_VP keeps its "no headroom divisor" rule. Instead of one gain per voice (the largest slot
+volume), it gives each voice one gain per side: the sum over its speaker-bin slots (bins 0-9)
+of the slot gain times the bin's weight to that side. The weights are the direct terms of
+the matrix above: FL, xFL to L and FR, xFR to R at 1; C to both at 0.707; BL, xBL to L and
+BR, xBR to R at 0.707; LFE 0. The crosstalk cross terms are left out (they depend on
+frequency). A voice with no speaker-bin slot (FX sends only) keeps the max. The source
+channel is kept as today (L from channel 0, R from channel 1), so stereo voices keep their
+image. A voice panned to one side now stays on that side; today it plays on both.
+
+For every standard 2D layout (FL/FR, FL/FR/BL/BR, with or without C) this equals the
+title's DSP downmix, except that C takes its own side's channel. For v164 it gives +7.65 dB
+on both sides over today. The DSP program gives +3.6 to +5.2 dB under voice_process's b % 2
+channel rule, and +5.9 to +7.6 under b >> 1. So the flat weights overshoot by 0-4 dB on this
+3D-routed stereo voice. That is the known bias.
+
+Instrument: `HAKUX_APU_MIXLOG=1` (debug.c, my territory, off by default) logs one
+`apumix` line per voice active in each 5 s window: its eight slots (bin:volume) and frame
+count. `tools/mixlog_read.py` turns that into a table with today's gain and the switch's
+per-side gains. **What a hit looks like:** a voice with excess +3 dB or more on both sides is
+one today's mix under-plays relative to single-bin voices. If the quiet voice (movie,
+speech) shows an excess near the measured loss (MKSM ~4-8 dB, Shrek 2 7.5 dB) and the music
+and effects show ~0, (a) explains that title. If the quiet voice shows ~0, (a) is dead for
+that title.
+
+## Runs (Nova, ref a048589ff0, one binary)
+
+Shrek 2 and Lemony Snicket have no profile, and the profile gate refuses both
+(`titlestate.py admit`: "no profile (no golden) and no route-finding"). A blind route-finding run is
+not what that path is for, so neither is in this set. Their layouts need a profile, or the
+owner's save state taken in the movie (as for MKSM), or an apumix line from an owner session
+with `HAKUX_APU_MIXLOG=1` in env_vars.
+
+| run | title | s | env | for |
+|---|---|---|---|---|
+| R1 | MKSM 4D570029 | 180 | MIXLOG | layout of every voice from boot; baseline |
+| R2 | MKSM 4D570029 | 180 | MIXLOG, DOWNMIX | the switch leaves single-bin voices alone |
+| R3 | Halo 4D530004 | 180 | MIXLOG | #938: which Halo voices are multi-bin |
+| R4 | Crimson Skies 4D530021 | 120 | MIXLOG | clipping baseline, loud title |
+| R5 | Crimson Skies 4D530021 | 120 | MIXLOG, DOWNMIX | clipping with the switch |
+
+## What the cause covers (#984, #938)
+
+- MKSM: (a) measured offline, about 4-5 dB of the 8-12 dB gap. The rest is open.
+- Shrek 2: the 7.5 dB loss is measured. (a) predicts +7.65 dB for an FL+C+BL / FR+C+BR
+  layout. That layout is a guess until an apumix line or a save state shows it.
+- Lemony Snicket: no data beyond the owner's report.
+- Halo #938: R3 gives the menu voices. Speech needs gameplay, which a run from boot without a route does not
+  reach. lane.x1port1012's hrtf.h change (normalise each ear, `break` became `continue`) is
+  the other live Halo candidate. Until it landed, a 3D voice whose left ear was already
+  normalised kept an unnormalised right ear.
+- Separate, not chased: for 3D-routed stereo voices, voice_process's `b % channels` sends
+  the left channel to xFL and xFR and the right to xBL and xBR, which makes v164 mono on
+  the DSP path. b >> 1 would keep the sides. Which one the hardware does is unknown.
+
+## Tracker first steps
+
+- [issue.984]: read R1-R2's apumix table; get Shrek 2 and Lemony layouts as above; judge
+  the switch on MKSM's cutscene with the owner (it is past a menu, which no run reaches).
+- [issue.938]: R3's table; the hrtf.h fix in x1port1012; a gameplay route for Halo speech.
+
+## Do not repeat
+
+- The whole-mix gain hunt (September) and the per-voice CFG_FMT_HEADROOM field: done, not the
+  cause.
+- Hypotheses (b) and (d) on MKSM: dead (PCM S16 at -17/-15 dBFS in the ring).
+- The DSP harness needs the save state's own GP/EP program; the matrix for bins 0-9 is the
+  same in two titles, so it is the DirectSound standard image.
+
+## Questions (for the owner; nothing waits on them)
+
+1. Could you take a save state in Shrek 2 during the DreamWorks logo (or the intro movie),
+   and one in Lemony Snicket during a movie? `tools/hxs_voices.py` reads the voice layout from
+   it offline, with no device time.
+2. Once the switch is judged: would you play MKSM's Goro's Lair cutscene once with
+   `HAKUX_APU_MONVP_DOWNMIX=1` and say whether Raiden is now level with the music?
 
 ## Tools (docs/lanes/audio1016/tools/)
 
