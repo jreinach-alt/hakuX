@@ -10,7 +10,9 @@ lane.local's overnight chain until ~06:00 PDT 10-16.
 - #986 MKSM: cause found, serialization on 16-bit render-to-texture downloads. Lever WAITING on vk/texture.c.
 - #992 Top Spin: the same cause, 24-32 downloads a frame.
 - #992 Brian Lara: a different shape, unexplained. Next step: one perflog run.
-- Next: #995 Batman Begins.
+- #995 Batman Begins: partly explained. GPU or wait-bound. The one download a frame serializes the previous
+  frame's GPU work against the PFIFO thread. Fill against draw count needs a perflog + `vtx256` run.
+- Next: #993 Prince of Persia.
 
 ## #986 Mortal Kombat Shaolin Monks: step 1, the offline split (written before the read)
 
@@ -137,8 +139,9 @@ in the same frames (PoP 24 a frame, Batman 8, Halo 2 9) are all bound on the GPU
 cost (`docs/investigations/packed-texel-expansion.md`, "A 565 surface sampled as a texture ... is the expensive one")
 and said no title had been counted. These are the first counts.
 
-Batman takes its one download in the 29-fps baseline dump as well as in the slow rooms, so it does not explain the
-slow windows. The lever still removes one finish a frame there.
+Batman takes its one download in the 29-fps baseline dump as well as in the slow rooms. The download alone does not
+make a window slow. Its wait covers the previous frame's whole GPU work, so in the heavier scenes the GPU's frame
+and the PFIFO thread's frame run one after the other (#995 result below).
 
 WAITING: `hw/xbox/nv2a/pgraph/vk/texture.c` (withheld). The lever's gate (`check_surface_to_texture_compatiblity()`)
 and its call site (`create_texture()`, `copy_surface_to_texture()`) are both in it. The conversion kernel can live in
@@ -283,3 +286,150 @@ perflog run of a ball in play, about 6 minutes of Nova time, which carries three
 3. A frame dump for `s2tscan.py`.
 
 A hit for the callback class is `pnop` plus BQL wait above ~25% of the frame, with `sd` under 5 a frame.
+
+## #995 Batman Begins: what the slow windows are bound by (written before the read)
+
+Runs:
+
+- The owner run `ownerplay/runs/45410389-1014-2139-27899` (debug 0.5.0-1014-76bef8b162, plain build, 21:39-21:51).
+  It has 372 `gfps` windows. Most run at 29 fps with every flip on two vblanks, so the title caps itself at 30. The
+  slow windows run at 14-23 fps.
+- The reload run `-2152-3129` (21:52-21:54, 29 fps throughout). It is the same-title comparison.
+
+What the frame dumps carry: per-draw state, blend, surfaces and vertex ranges (`vr`). They carry no vertex data
+(`vtx: 0`) and no timing (`per_draw_finish: false`). So blended pixel area cannot be computed from them, and neither
+can GPU time per draw.
+
+The first step is the plain-build split, as for #986. What each outcome looks like:
+
+- **vCPU-bound**: the guest busy share rises toward 1.00 in the slow windows from a lower share in the 29-fps windows,
+  and the PFIFO thread is parked (`Ri` > 0) waiting for it. This rules out fill without a GPU instrument.
+- **PFIFO CPU-bound**: PFIFO thread CPU close to the period, `Ri` near 0.
+- **GPU or wait-bound**: PFIFO thread off CPU and not parked for most of the frame, `Ri` near 0, the guest idle part
+  of the frame. Fill is one candidate here. The others are finishes and fence waits. Batman has 1 `cvt` download a
+  frame in all three dumps, the 29-fps baseline included, so downloads alone would not make the slow windows slow.
+
+The dumps then test whether draw count or blended work is what grows. Blended pixel area is not in the dump. The
+proxies that are:
+
+- blended draws a frame and their primitive counts;
+- the blend state (`rs.blend`);
+- the colour target size.
+
+A per-pass GPU split needs `HAKUX_GPUXFR=1` on a device run (per-render-pass GPU time, vk/draw.c:4211), and per-draw
+GPU time has no instrument.
+
+## #995 result: the scene's GPU work outgrows what the 30-fps cap hides, and one download a frame stops it overlapping
+
+### The split from the owner run (`winsplit.py`, plain build)
+
+| windows | fps | period ms | vCPU busy ms (share) | PFIFO CPU ms | `Ri` ms | off-CPU, not parked ms | `Df` | `Tq` |
+|---|---|---|---|---|---|---|---|---|
+| reload run 21:52:38-21:54:04 (`batman-baseline` dump at 21:52:34) | 29 | 33.3-33.4 | 19.2-25.3 (0.58-0.76) | 11.7-12.0 | 19.5-20.5 | 1.0-2.0 | 0 | 850 |
+| 21:42:39-21:43:09, smoke room (`batman-room` dump at 21:43:13) | 26-27 | 37.0-41.2 | 14.3-17.8 (0.37-0.43) | 13.1-14.2 | 4.1-7.0 | 17.5-21.1 | 50-56 | 1124-1188 |
+| 21:50:14-35, fire room (`batman-room2` dump at 21:50:21; its window left out) | 26-29 | 33.7-40.1 | 15.4-31.7 (0.43-0.94) | 13.1-16.8 | 5.9-16.8 | 3.5-18.4 | 5-61 | 973-1403 |
+| 24 of the 30 windows under 24 fps | 14-23 | 35.6-65.6 | 14.0-29.2 (0.37-0.64) | 13.6-22.1 | 0.2-13.1 | 11.1-37.8 | 13-79 | 1074-2100 |
+
+The last row includes the two windows that hold a dump (21:43:14 and 21:50:22). There the dump's own work puts
+PFIFO CPU at 20.7-22.1 ms and `Ri` at 0.2-0.3. It leaves out six windows with shader or pipeline-cache work:
+
+- 21:39:16, 21:39:23, 21:44:26 and 21:45:36 compile shaders (`[shd413]` `dpc_ms` 74-206 in the window).
+- 21:47:07 and 21:47:46 load 10-14 shaders from the cache (0.3-0.4 ms) next to a 217-221 ms `[plc569]` save.
+
+Against the outcomes written above:
+
+- **Not vCPU-bound.** The guest is outside its idle loop for 37-64% of a slow frame, less than in the 29-fps
+  reload windows (58-76%).
+- **Not PFIFO CPU-bound.** The PFIFO thread is on CPU for 13.6-22.1 ms of a 36-66 ms frame. In the smoke room it
+  is 13.1-14.2 ms, against 11.7-12.0 at baseline.
+- **GPU or wait-bound.** Off CPU and not parked goes from 1.0-2.0 ms a frame at baseline to 17.5-21.1 ms in the
+  smoke room, and to 11.1-37.8 ms across the slow windows. `Ri` falls from ~20 ms to 4-7.
+
+### What the PFIFO thread waits on (the dumps and the code)
+
+All three dumps have exactly two submits a frame ("submits frame-to-frame" 2.0 in `dumpstat.py`, min 2, max 2): the
+flip and the one `cvt` download. No other finish runs in any of the three scenes. The two finishes differ:
+
+- The flip's finish (`VK_FINISH_REASON_FLIP_STALL`) is deferred. It submits, signals the stall-chain semaphore and
+  returns (vk/draw.c:5534-5538, 5627-5643).
+- The download's finish (`SURFACE_DOWN`) is not deferred. Its submission waits on that semaphore, and the PFIFO
+  thread waits for the fence (vk/draw.c:5652-5686).
+
+So the download waits for everything submitted before it, the whole of frame N-1 included, wherever in frame N it
+falls. In all three dumps it falls early. The 512x512 R5G6B5 target is drawn at draw 33 and read at draw 41
+(baseline), 53-56 (fire room) or 75 (smoke room), of 687-1005 draws.
+
+Inferred from the code, not measured: per frame, the GPU renders frame N-1 while the PFIFO thread is parked or
+records frame N's first 41-75 draws. The PFIFO thread then waits for the GPU to finish. It records the rest of
+frame N while the GPU has nothing queued. Past the download, the two frames do not overlap.
+
+- **At baseline this costs nothing visible.** `Ri` is 20 ms a frame, the GPU finishes frame N-1 inside it, and
+  the download's wait shows as 1-2 ms of off-CPU time.
+- **In the slow scenes `Ri` falls to 4-7 ms.** The off-CPU, not-parked time is 17.5-21.1 ms in the smoke room.
+  The MKSM perflog run measured that time as the fence wait (#986: ft1 fence wait = the off-CPU share). If it is
+  the same here, the GPU still had at least that much work left when the download came. The frame is then PFIFO
+  CPU plus the GPU's remainder, not the larger of the two.
+
+How much of Batman's off-CPU time is the fence wait has not been measured. The plain build carries no fence counter.
+
+### Draw count against blended work (`dumpstat.py`)
+
+| dump (scene, fps) | draws | vertices | blended draws (inline_array) | blended vertices | alpha (sa, 1-sa) | additive (sa, 1) | off-CPU, not parked ms |
+|---|---|---|---|---|---|---|---|
+| baseline (29) | 687 | 131.8k | 405 (155) | 37.8k | 149 | 183 | 1.0-2.0 |
+| fire room (26-29) | 846 | 144.9k | 432 (219) | 31.6k | 202 | 156 | 3.5-18.4 |
+| smoke room (26-27) | 1003 | 158.2k | 662 (311) | 61.1k | 398 | 185 | 17.5-21.1 |
+
+Every blended draw class is a triangle strip, except 44 `1+1` quads a frame in all three dumps. Of the blended draws,
+354-611 a frame go to the two alternating 640x480 colour targets, and 36 to a 160x120 to 20x15 chain.
+
+- **Smoke room**: 257 more blended draws than baseline, almost all alpha-blended strips (+249). It waits 15.5-20.1 ms
+  more a frame.
+- **Fire room**: 27 more blended draws and fewer blended vertices than baseline. It waits 1.5-17.4 ms more.
+
+If the off-CPU time is GPU time, the GPU's cost does not follow blended draw count or vertex count across the three
+scenes. For the fire room that leaves per-pixel work (fill, overdraw, fragment cost) as the candidate. This is weak
+evidence, for three reasons:
+
+- The off-CPU time is not GPU time. At baseline the GPU's frame hides under `Ri`, so its size is unknown.
+- The fire room's windows vary 3.5-18.4 ms.
+- The dumps carry no positions (`vtx` 0), so blended pixel area is not computed.
+
+### Cause, lever and next step (#995)
+
+**#995 is partly explained.**
+
+Measured:
+- The slow windows are not vCPU-bound or PFIFO CPU-bound.
+- The PFIFO thread is off CPU and not parked for 11-38 ms a frame.
+- The frame's only fence wait is the one `cvt` download, and from the code that wait covers the previous frame's
+  GPU work.
+
+Not measured:
+- what share of the off-CPU time is that wait;
+- what grows the GPU's frame (blended pixel area or draw count).
+
+**The lever is `HAKUX_S2T_CVT`**, WAITING on vk/texture.c (see the #986 section). It removes Batman's only per-frame
+fence wait, so the GPU's frame can overlap the PFIFO thread's.
+
+Bound, not a value:
+- The title caps itself at 30 fps, so the most the lever can do for a slow window is bring its period down to
+  33.4 ms. A window gets there only if its GPU frame and its PFIFO frame each fit in 33.4 ms.
+- Where the off-CPU time is the fence wait, the GPU frame is at least that long. In 21:43:45 (65.6 ms, off-CPU 37.8)
+  that is ~38 ms, above the cap.
+
+**Next step: one perflog run in the smoke room**, about 6 minutes of Nova time, with:
+
+- `HAKUX_FRAMETRACE=1 HAKUX_GPUXFR=1`;
+- a frame dump with `XEMU_FRAME_DUMP` spec `30 noimages vtx256`, plus `afterNN` to reach the scene. `vtx256`
+  covers every particle strip; `images` would add a fence wait a frame.
+
+What each result looks like:
+
+- **Serialization, a hit**: about one ft1 fence wait a frame, close to the off-CPU time (17-21 ms), with the GPU's
+  ms a frame (GPUXFR R + X) at or above it.
+- **Fill, a hit**: GPU ms a frame tracks blended pixel area (covered pixels x layers, recomputed from the `vtx256`
+  dump) across the smoke room, the fire room and a 29-fps scene, not draw count. The 640x480 pass in GPUXFR's
+  census carries the growth.
+- **A miss for both**: a fence wait well under the off-CPU time, which leaves lock waits or preemption. The
+  next instrument there is the `probe1010` split (`nd`/`rot`, vk/draw.c:2750).
