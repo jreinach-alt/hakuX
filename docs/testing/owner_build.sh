@@ -31,6 +31,9 @@
 #   6   `adb install` failed
 #   7   the apk does not verify (apksigner), or apksigner could not be
 #       located; never installed
+#   8   the rotated re-sign (#433, docs/testing/sign_lineage.sh) did not
+#       check out -- the lineage applies but the result doesn't verify, or
+#       its lineage doesn't list both certs; never installed
 #
 # android/key.properties is gitignored, same as local.properties, so
 # `git worktree add` starts $WT without it -- and with no key.properties,
@@ -176,6 +179,22 @@ if [ -z "$APKSIGNER" ]; then
     echo "${0##*/}: no apksigner under ${SDK_DIR:-<no sdk.dir>}/build-tools; cannot confirm $APK is signed (likely cause: no key.properties)" >&2
     exit 7
 fi
+
+# #433: re-sign with the rotated key, v3-only + lineage, but ONLY once
+# ~/keystores/hakux-rotation.lineage exists and key.properties names that
+# keystore -- otherwise this is a no-op and $APK is exactly what Gradle
+# produced, same as before the rotation.
+# shellcheck source=sign_lineage.sh
+. "$HERE/sign_lineage.sh"
+resign_with_rotation "$APK" "$WT/android/key.properties" "$APKSIGNER" || {
+    echo "${0##*/}: $APK's rotated re-sign did not check out; never installed" >&2
+    exit 8
+}
+if [ "$ROTATION_APPLIED" = 1 ] && ! lineage_lists_both_certs "$APK" "$APKSIGNER"; then
+    echo "${0##*/}: $APK was re-signed but its lineage does not list both certs; never installed" >&2
+    exit 8
+fi
+
 if ! "$APKSIGNER" verify "$APK" >>"$BUILD_LOG" 2>&1; then
     echo "${0##*/}: $APK does not verify (apksigner) -- an unsigned apk is never installed (likely cause: no key.properties)" >&2
     exit 7

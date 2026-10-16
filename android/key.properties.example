@@ -6,6 +6,14 @@
 # storeFile is resolved relative to android/app/, not to this directory, so an
 # absolute path to a keystore kept OUTSIDE the repository is strongly
 # preferred: it cannot then be committed by accident.
+#
+# ROTATING THE KEY (#433): point storeFile at the NEW keystore only once you
+# have also built ~/keystores/hakux-rotation.lineage from the previous
+# keystore and this one together (see android/RELEASING.md, "Rotating the
+# key"), and keep the previous keystore forever -- a lineage can only be
+# built while both keystores still exist. docs/testing/release_build.sh,
+# owner_build.sh and nightly_build.sh all check for that lineage and re-sign
+# with it automatically; nothing here needs to change for that to happen.
 
 storeFile=/absolute/path/to/hakux-release.jks
 storePassword=

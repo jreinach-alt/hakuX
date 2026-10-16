@@ -79,6 +79,56 @@ Check the printed certificate digest against the previous release. Identical
 digest means users upgrade in place. A different digest means every user has to
 uninstall — so confirm it *before* publishing, not after.
 
+## Rotating the key (#433)
+
+The key can be rotated — replaced with a new one — without costing users their
+saves, but only if you plan for it before you need it.
+
+**Keep every retired keystore forever.** A `SigningCertificateLineage` is built
+from the *old* keystore and the *new* one together; if the old one is gone,
+there is no way to build a lineage from it later, and rotating becomes exactly
+as destructive as losing a key outright. Back up `~/keystores/` as a whole,
+off this machine, every time you add one.
+
+To rotate:
+
+```bash
+mkdir -p ~/keystores
+keytool -genkeypair -v \
+  -keystore ~/keystores/hakux-release-2.jks \
+  -alias hakux \
+  -keyalg RSA -keysize 4096 \
+  -validity 10000 \
+  -storetype PKCS12
+apksigner rotate --out ~/keystores/hakux-rotation.lineage \
+  --old-signer --ks ~/keystores/hakux-release.jks \
+  --new-signer --ks ~/keystores/hakux-release-2.jks
+```
+
+(Name the new file and the lineage file whatever you like; `docs/testing/
+sign_lineage.sh` only cares that `~/keystores/hakux-rotation.lineage` exists
+and that `android/key.properties` names the keystore the lineage's newest
+signer belongs to.)
+
+Switch `android/key.properties` to the new keystore once the lineage exists.
+From then on, `release_build.sh`, `owner_build.sh` and `nightly_build.sh` all
+re-sign Gradle's output with `apksigner`, v3-only, with the lineage attached —
+that is what lets a device that already has the app, signed with the previous
+key, accept an update signed with the new one. Before the lineage exists, or
+while `key.properties` still names the previous key, every build script is a
+no-op here and nothing changes.
+
+Verify a rotated build by hand with:
+
+```bash
+apksigner verify -v --print-certs app/build/outputs/apk/release/app-release.apk
+apksigner lineage --in app/build/outputs/apk/release/app-release.apk --print-certs -v
+```
+
+The first should show exactly one signer (the new key) verified under scheme
+v3; the second should list two signers in lineage order, the previous key
+first and the new key last.
+
 ## The first signed release
 
 It will not install over an existing build, because those were signed with
