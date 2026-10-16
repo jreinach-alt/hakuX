@@ -1,8 +1,8 @@
 diff --git a/hw/xbox/mcpx/apu/vp/vp.c b/hw/xbox/mcpx/apu/vp/vp.c
-index 0f50963310..7ea88053ae 100644
+index 0f50963310..c082cd55e8 100644
 --- a/hw/xbox/mcpx/apu/vp/vp.c
 +++ b/hw/xbox/mcpx/apu/vp/vp.c
-@@ -453,6 +453,55 @@ static float attenuate(uint16_t vol)
+@@ -453,6 +453,61 @@ static float attenuate(uint16_t vol)
      return (vol == 0xFFF) ? 0.0 : powf(10.0f, vol/(64.0 * -20.0f));
  }
  
@@ -24,6 +24,12 @@ index 0f50963310..7ea88053ae 100644
 + * each, and the DSP program plays it 3.6-5.2 dB above a front-left/right
 + * voice at the same volume; MON_VP played it level with one. The per-side
 + * gain also keeps a voice panned to one side on that side.
++ *
++ * Neither side goes above 1.0, the largest gain MON_VP gives a voice today:
++ * a voice summing above it on its louder side is scaled down on both. So a
++ * voice spread at low volume (the speech) gains, and one already at full
++ * volume in several bins (Crimson Skies' music) does not; uncapped, the
++ * latter took Crimson Skies from 84 clipped samples to 364,669.
 + */
 +#define MONVP_DOWNMIX_BINS 10
 +static const float monvp_downmix[MONVP_DOWNMIX_BINS][2] = {
@@ -58,7 +64,7 @@ index 0f50963310..7ea88053ae 100644
  static uint32_t voice_get_mask(MCPXAPUState *d, uint16_t voice_handle,
                                 hwaddr offset, uint32_t mask)
  {
-@@ -2184,10 +2233,15 @@ static void voice_process(MCPXAPUState *d,
+@@ -2184,10 +2239,15 @@ static void voice_process(MCPXAPUState *d,
          bool debug_isolation =
              g_dbg_voice_monitor >= 0 && g_dbg_voice_monitor == v;
          float g = 0.0f;
@@ -74,16 +80,20 @@ index 0f50963310..7ea88053ae 100644
              /* No headroom divisor on this path. Submix headroom is a
               * pre-attenuation that reserves range in the 24-bit GP mixbuf so
               * that summing voices into one bin cannot overflow, and the scene
-@@ -2207,10 +2261,17 @@ static void voice_process(MCPXAPUState *d,
+@@ -2207,10 +2267,21 @@ static void voice_process(MCPXAPUState *d,
               * than whichever bin happened to have the least headroom. */
              g = fmax(g, attenuate(vol[b]));
          }
 -        g *= ea_value;
 +        float g_out[2] = { g, g };
 +        if (monvp_downmix_on() && (g_side[0] > 0.0f || g_side[1] > 0.0f)) {
-+            /* A voice with no speaker bin (FX sends only) keeps the max. */
-+            g_out[0] = g_side[0];
-+            g_out[1] = g_side[1];
++            /* A voice with no speaker bin (FX sends only) keeps the max.
++             * The louder side is held to 1.0 and the other scaled with it,
++             * keeping the image (monvp_downmix, above). */
++            float top = fmaxf(g_side[0], g_side[1]);
++            float k = top > 1.0f ? 1.0f / top : 1.0f;
++            g_out[0] = g_side[0] * k;
++            g_out[1] = g_side[1] * k;
 +        }
 +        g_out[0] *= ea_value;
 +        g_out[1] *= ea_value;

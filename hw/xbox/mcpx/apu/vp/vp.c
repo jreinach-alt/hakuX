@@ -453,6 +453,61 @@ static float attenuate(uint16_t vol)
     return (vol == 0xFFF) ? 0.0 : powf(10.0f, vol/(64.0 * -20.0f));
 }
 
+/*
+ * HAKUX_APU_MONVP_DOWNMIX=1 (#984, #938; off by default): the MON_VP mix
+ * gives a voice one gain per side, the sum of its speaker-bin volumes
+ * weighted as the title's own DSP program weights those bins on the way to
+ * a stereo output, instead of the single largest volume.
+ *
+ * The weights are the direct terms of the GP/EP gain matrix measured by
+ * running the program from two titles' save states offline (MKSM 4D570029
+ * and Top Spin 4D530035 agree for bins 0-9; docs/lanes/audio1016/NOTES.md):
+ * front and crosstalk-front 0 dB to their side, centre -3 dB to both, back
+ * and crosstalk-back -3 dB to their side, LFE not at all. The crosstalk
+ * bins' cross terms (-8 dB at 1 kHz, falling with frequency) are left out.
+ *
+ * With the max, a voice the title spreads over several bins plays as loud
+ * as one in a single bin. MKSM's cutscene speech uses five bins at -11.2 dB
+ * each, and the DSP program plays it 3.6-5.2 dB above a front-left/right
+ * voice at the same volume; MON_VP played it level with one. The per-side
+ * gain also keeps a voice panned to one side on that side.
+ *
+ * Neither side goes above 1.0, the largest gain MON_VP gives a voice today:
+ * a voice summing above it on its louder side is scaled down on both. So a
+ * voice spread at low volume (the speech) gains, and one already at full
+ * volume in several bins (Crimson Skies' music) does not; uncapped, the
+ * latter took Crimson Skies from 84 clipped samples to 364,669.
+ */
+#define MONVP_DOWNMIX_BINS 10
+static const float monvp_downmix[MONVP_DOWNMIX_BINS][2] = {
+    { 1.0f, 0.0f },             /* 0 FL */
+    { 0.0f, 1.0f },             /* 1 FR */
+    { 0.70711f, 0.70711f },     /* 2 C */
+    { 0.0f, 0.0f },             /* 3 LFE */
+    { 0.70711f, 0.0f },         /* 4 BL */
+    { 0.0f, 0.70711f },         /* 5 BR */
+    { 1.0f, 0.0f },             /* 6 XTLK FL */
+    { 0.0f, 1.0f },             /* 7 XTLK FR */
+    { 0.70711f, 0.0f },         /* 8 XTLK BL */
+    { 0.0f, 0.70711f },         /* 9 XTLK BR */
+};
+
+static bool monvp_downmix_on(void)
+{
+    static int on = -1;
+    if (on < 0) {
+        const char *e = getenv("HAKUX_APU_MONVP_DOWNMIX");
+        on = e && e[0] == '1' && e[1] == '\0';
+#ifdef __ANDROID__
+        __android_log_print(4, "hakuX-audio", "monvp_downmix: %s",
+                            on ? "on" : "off");
+#else
+        fprintf(stderr, "monvp_downmix: %s\n", on ? "on" : "off");
+#endif
+    }
+    return on;
+}
+
 static uint32_t voice_get_mask(MCPXAPUState *d, uint16_t voice_handle,
                                hwaddr offset, uint32_t mask)
 {
@@ -2184,9 +2239,14 @@ static void voice_process(MCPXAPUState *d,
         bool debug_isolation =
             g_dbg_voice_monitor >= 0 && g_dbg_voice_monitor == v;
         float g = 0.0f;
+        float g_side[2] = { 0.0f, 0.0f };
         for (int b = 0; b < 8; b++) {
             if (bin[b] == mp_bin && !debug_isolation) {
                 continue;
+            }
+            if (bin[b] < MONVP_DOWNMIX_BINS) {
+                g_side[0] += attenuate(vol[b]) * monvp_downmix[bin[b]][0];
+                g_side[1] += attenuate(vol[b]) * monvp_downmix[bin[b]][1];
             }
             /* No headroom divisor on this path. Submix headroom is a
              * pre-attenuation that reserves range in the 24-bit GP mixbuf so
@@ -2207,10 +2267,21 @@ static void voice_process(MCPXAPUState *d,
              * than whichever bin happened to have the least headroom. */
             g = fmax(g, attenuate(vol[b]));
         }
-        g *= ea_value;
+        float g_out[2] = { g, g };
+        if (monvp_downmix_on() && (g_side[0] > 0.0f || g_side[1] > 0.0f)) {
+            /* A voice with no speaker bin (FX sends only) keeps the max.
+             * The louder side is held to 1.0 and the other scaled with it,
+             * keeping the image (monvp_downmix, above). */
+            float top = fmaxf(g_side[0], g_side[1]);
+            float k = top > 1.0f ? 1.0f / top : 1.0f;
+            g_out[0] = g_side[0] * k;
+            g_out[1] = g_side[1] * k;
+        }
+        g_out[0] *= ea_value;
+        g_out[1] *= ea_value;
         for (int i = 0; i < NUM_SAMPLES_PER_FRAME; i++) {
-            sample_buf[i][0] += g*samples[i][0];
-            sample_buf[i][1] += g*samples[i][1];
+            sample_buf[i][0] += g_out[0]*samples[i][0];
+            sample_buf[i][1] += g_out[1]*samples[i][1];
         }
     }
 }

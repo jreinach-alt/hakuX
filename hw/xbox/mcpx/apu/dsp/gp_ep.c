@@ -23,15 +23,45 @@
 
 static const int16_t ep_silence[256][2] = { 0 };
 
+#ifdef __ANDROID__
+extern int __android_log_print(int prio, const char *tag, const char *fmt, ...);
+#endif
+
+/*
+ * HAKUX_APU_USE_DSP=1 (#984, #938; off by default): play the title's own
+ * GP/EP program's output, as the "Real-time DSP processing" setting does,
+ * without changing the setting. For an A/B of today's MON_VP mix against
+ * the mix the title asked for, on a device whose settings a run does not
+ * own. Read once.
+ */
+static bool use_dsp_forced(void)
+{
+    static int forced = -1;
+    if (forced < 0) {
+        const char *e = getenv("HAKUX_APU_USE_DSP");
+        forced = e && e[0] == '1' && e[1] == '\0';
+        if (forced) {
+#ifdef __ANDROID__
+            __android_log_print(4, "hakuX-audio",
+                                "use_dsp: forced on (HAKUX_APU_USE_DSP)");
+#else
+            fprintf(stderr, "use_dsp: forced on (HAKUX_APU_USE_DSP)\n");
+#endif
+        }
+    }
+    return forced;
+}
+
 void mcpx_apu_update_dsp_preference(MCPXAPUState *d)
 {
     static int last_known_preference = -1;
+    bool use_dsp = g_config.audio.use_dsp || use_dsp_forced();
 
-    if (last_known_preference == (int)g_config.audio.use_dsp) {
+    if (last_known_preference == (int)use_dsp) {
         return;
     }
 
-    if (g_config.audio.use_dsp) {
+    if (use_dsp) {
         d->monitor.point = MCPX_APU_DEBUG_MON_GP_OR_EP;
         d->gp.realtime = true;
         d->ep.realtime = true;
@@ -41,7 +71,7 @@ void mcpx_apu_update_dsp_preference(MCPXAPUState *d)
         d->ep.realtime = false;
     }
 
-    last_known_preference = g_config.audio.use_dsp;
+    last_known_preference = use_dsp;
 }
 
 static void scatter_gather_rw(MCPXAPUState *d, hwaddr sge_base,
@@ -453,6 +483,7 @@ void mcpx_apu_dsp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_
     /* Run GP */
     if ((d->gp.regs[NV_PAPU_GPRST] & NV_PAPU_GPRST_GPRST) &&
         (d->gp.regs[NV_PAPU_GPRST] & NV_PAPU_GPRST_GPDSPRST)) {
+        int64_t start_time = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
         dsp_start_frame(d->gp.dsp);
         d->gp.dsp->core.is_idle = false;
         d->gp.dsp->core.cycle_count = 0;
@@ -460,6 +491,7 @@ void mcpx_apu_dsp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_
             dsp_run(d->gp.dsp, 1000);
         } while (!d->gp.dsp->core.is_idle && d->gp.realtime);
         g_dbg.gp.cycles = d->gp.dsp->core.cycle_count;
+        g_dbg.gp.time_us = qemu_clock_get_us(QEMU_CLOCK_REALTIME) - start_time;
 
         if ((d->monitor.point == MCPX_APU_DEBUG_MON_GP) ||
             (d->monitor.point == MCPX_APU_DEBUG_MON_GP_OR_EP && !ep_enabled)) {
@@ -478,6 +510,7 @@ void mcpx_apu_dsp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_
     if ((d->ep.regs[NV_PAPU_EPRST] & NV_PAPU_GPRST_GPRST) &&
         (d->ep.regs[NV_PAPU_EPRST] & NV_PAPU_GPRST_GPDSPRST)) {
         if (d->ep_frame_div % 8 == 0) {
+            int64_t start_time = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
             dsp_start_frame(d->ep.dsp);
             d->ep.dsp->core.is_idle = false;
             d->ep.dsp->core.cycle_count = 0;
@@ -485,6 +518,8 @@ void mcpx_apu_dsp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_
                 dsp_run(d->ep.dsp, 1000);
             } while (!d->ep.dsp->core.is_idle && d->ep.realtime);
             g_dbg.ep.cycles = d->ep.dsp->core.cycle_count;
+            g_dbg.ep.time_us =
+                qemu_clock_get_us(QEMU_CLOCK_REALTIME) - start_time;
         }
     }
 }
