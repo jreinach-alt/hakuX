@@ -1,0 +1,2 @@
+10-16 09:22:06.062 I/hakuX-audio(26742): level L: 339.424 s  peak 32042 (-0.19 dBFS)  acrms -25.75 dBFS  dc 0.005 %FS  p5/25/50/75/95 -43.35/-34.85/-30.35/-26.35/-19.85  windows 6477 counted 311 flat  clipped 0  zeros 780661  wrap 0  maxjump 11074
+10-16 09:22:06.062 I/hakuX-audio(26742): level R: 339.424 s  peak 31690 (-0.29 dBFS)  acrms -25.46 dBFS  dc 0.000 %FS  p5/25/50/75/95 -43.35/-35.25/-30.25/-25.85/-19.55  windows 6477 counted 311 flat  clipped 0  zeros 780748  wrap 0  maxjump 12259
