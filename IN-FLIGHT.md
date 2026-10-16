@@ -8,7 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `perflog1016` | claude-opus-5-5 | 12 min | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) |
+| `perflog1016` | claude-opus-5-5 | 27 min | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lanelocal-ownerplay`
@@ -18,10 +18,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Playable titles
 
-**86 titles are confirmed Playable** (6 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**87 titles are confirmed Playable** (7 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-16 | Family Guy Video Game | Playable, accepted on review, median 29.97 fps |
 | 2026-10-16 | ESPN MLS ExtraTime 2002 | Playable, 10-minute run, median 59.94 fps |
 | 2026-10-16 | Dance Dance Revolution Ultramix 3 | Playable, 10-minute run, median 59.94 fps |
 | 2026-10-16 | Slam Tennis | Playable, 10-minute run, median 35.42 fps |
@@ -132,4 +133,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
 - 2026-10-13 lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
 
-_Updated 2026-10-16 07:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 07:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
