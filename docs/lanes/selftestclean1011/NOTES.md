@@ -116,6 +116,23 @@ docs/testing/jobs/selftest.sh: blocked on lane.sign1016's fold`) and is stopping
 here rather than spinning on another lane's fold. Nothing else in this lane's own
 diff changed; the Verification section below still describes the last real run.
 
+## Attempt 3 (resume, 2026-10-16, after attempt 2 stopped on its own WAITING)
+
+Attempt 2 did exactly what it should: confirmed `lane/sign1016` had not yet folded,
+wrote `docs/lanes/selftestclean1011/WAITING` (`grant docs/testing/jobs/selftest.sh:
+blocked on lane.sign1016's fold`), and stopped rather than spin on another lane's
+fold -- that is a finished turn, not an unfinished one. It did not fail or go idle;
+the fold it was waiting on simply hadn't happened yet at 12:0x PDT.
+
+At this resume: confirmed on `origin/board`'s `territory.toml` that `lane.sign1016`
+folded as `56bb989b0c` (12:18:48 PDT) and its row is RETIRED; `docs/testing/jobs/selftest.sh`
+is back in `[lane.selftestclean1011]`'s `files` list (line 967) with a note recording
+the grant. Deleted the satisfied `WAITING` file. Continuing with the addendum's step 2:
+merge `origin/master` (594 commits behind at fetch), confirm the rebase-free merge
+picks up `sign1016`'s one-line `SHARD_SECS` entry with no conflict against this lane's
+`T_OWNED` diff, then run the real unsharded `selftest.sh` and fill in the still-open
+placeholder below.
+
 ## Verification
 
 Isolated fragment run (`SELFTEST_ONLY=99-tmp-cleanup-selftestclean1011`,
