@@ -2796,3 +2796,9 @@ issues = ["433"]
 standing = false
 files = ["android/app/src/main/res/drawable/ic_launcher_fg.xml", "android/app/src/main/res/drawable/ic_launcher_mono.xml", "android/app/src/main/res/values/ic_launcher_background.xml", "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml", "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml", "docs/lanes/icon1016/**"]
 note = "STARTED lane.local 2026-10-16 14:30 PDT (Sonnet, Thor visual check): owner request 10-16 ~14:30 PDT, new hakuX CE app icon from hakux-work/svg/hakux-svg-master.svg and hakux-svg-monochrome.svg as Android vector drawables; rides with 0.5.1. Brief: briefs/icon1016.md."
+
+[lane.frontends1016b]
+issues = ["433"]
+standing = false
+files = ["docs/frontends/**", "docs/lanes/frontends1016b/**"]
+note = "STARTED lane.local 2026-10-16 14:35 PDT (Sonnet, Thor by hand, no dispatcher): owner 10-16 ~14:30 PDT: Pegasus is now installed on the Thor, test it; Daijisho integrated if possible, else step-by-step instructions. Follow-up to lane.frontends1016 (folded 545886f9c0). Brief: briefs/frontends1016b.md."
