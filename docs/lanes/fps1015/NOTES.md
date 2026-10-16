@@ -15,7 +15,10 @@ lane.local's overnight chain until ~06:00 PDT 10-16.
 - #993 Prince of Persia: reduced to a bound. The fog room's PFIFO-thread frame is 33-36 ms against the 33.4 ms
   two-vblank budget of a 30-fps title, so every frame takes three vblanks (19 fps). Nine shadow-map `cvt` downloads
   a frame are in that time; the same lever applies.
-- Next: #994 Halo 2.
+- #994 Halo 2: explained. Every fps-to-0 (5.2, 3.9 and 2.1 s frames) is first-time pipeline compilation on the
+  draw thread: cold monolithic creates while a 3.4-4.6 s ubershader library builds, plus inline fragment libraries.
+  The lever is #569's (vk/compile_worker.c), not this lane's.
+- Next: build `HAKUX_S2T_CVT` (vk/texture.c lent by lane.x1port1012, board 104fac8e98) and its A/B.
 
 Attempt 1 (10-15 22:41 to 23:29 PDT) ended at the 300-turn cap, not on a finding or a block. It had committed
 #986, #992 and #995 and written the #993 pre-read section, uncommitted, with the fog-room dump read under way
@@ -545,3 +548,106 @@ If it does, the fog room runs at the title's 30-fps cap, 19 -> 29 fps. A bound: 
 Next step, if the lever stays WAITING: one perflog run in the fog room (`HAKUX_FRAMETRACE=1 HAKUX_GPUXFR=1`, about
 6 minutes of Nova time). A hit for the downloads: `Finish sd` 9 a frame, phase `Fin` at or above the 1-4 ms the
 budget needs.
+
+## #994 Halo 2: what each stall is (written before the read)
+
+Scope: the multi-second stalls and the fps-to-0 only. The title-screen flicker is #939 (lane.x1port1012).
+Data: the owner's two plain-build runs, `ownerplay/runs/4D530064-1014-2118-21342` (21:18-21:21, past the title
+screen) and `4D530064-1014-2129-25179` (21:29-21:30, title screen only). The tracker row says the 5.2 s and 3.9 s
+stalls of the first run coincide with bursts of pipeline-library compiles. That is a coincidence in time, not a
+cause yet.
+
+Instrument: `winsplit.py` over each run, then every window with gfps under 10 or a period over 100 ms, read
+against the log lines inside it. For each stall:
+
+- **A shader or pipeline compile stall looks like:** `[shd413]`/`[plc569]`/`[gpl569]` compile lines inside the window
+  whose summed compile time is a large part of the stall, on the thread that records draws (the PFIFO thread is on
+  CPU, `Ri` near 0). The vCPU then idles or spins on a fence (busy share low, or a busy-wait at 1.0 with no flips).
+- **A submit-queue stall looks like:** `Tq` or the drain time climbing through the window, with the PFIFO thread off
+  CPU, not parked, and no compile lines.
+- **A storage stall looks like:** `[ide425]` read lines with long latencies in the window, vCPU idle, PFIFO parked
+  (`Ri` near the period).
+- **A vCPU stall looks like:** busy share near 1.0 with the PFIFO thread parked and no compile, IDE or queue lines.
+- **An audio-side stall looks like:** APU or audio-thread lines (zero-fill, underrun) that rise in the window while
+  the graphics columns stay normal. Audio dropouts alone do not stop frames.
+
+A miss is a stall in which none of these rises. Its window is then reported with every column, and the next step
+is a device run with the instrument that column lacks.
+
+## #994 result: every multi-second stall is pipeline compiles on the thread that records draws
+
+Instrument: `stallscan.py` (this directory), which reads the window of every `hakuX-pace` line whose `max=` (longest
+frame) is 200 ms or more. `[gpl569]` and `[uber569]` print running totals, so the script takes deltas; `[shd413]`'s
+`d*` fields are already per window. "PFIFO CPU" is `winsplit.py`'s per-frame PFIFO thread CPU times 60 flips.
+
+Run 1 (`4D530064-1014-2118-21342`, past the title screen), every window with a frame of 400 ms or more:
+
+| window end | window s | longest frame ms | gfps | inline pipeline misses (`dpm`) | create ms on the draw thread (`dpc_ms`) | fragment-stage libraries (new / ms) | cold monolithic creates (`ub_cold`) | GLSL -> module ms | uber library ms (worker) | PFIFO CPU s | longest IDE op ms | audio zero-fill |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 21:18:38 | 5.2 | 3535 | 29 | 12 | 6 | 14 / 6 (all four kinds) | 1 | 439 | 0 | n/a | 6 | 17.5% |
+| 21:19:02 | 8.0 | **5240** | 3 | 48 | 5139 | 22 / 1248 | 14 | 446 | 3382 | 5.4 | 8 | 0.7% |
+| 21:19:47 | 3.3 | 1086 | 47 | 11 | 1500 | 7 / 744 | 2 | 129 | 0 | 2.0 | 9 | 0.0% |
+| 21:20:40 | 8.0 | **3910** | 1 | 54 | 6157 | 26 / 2250 | 11 | 644 | 4082 | 6.7 | 5 | 0.0% |
+| 21:20:43 | 3.5 | 627 | 28 | 9 | 805 | 8 / 805 | 0 | 82 | 4128 | 1.3 | 8 | 0.0% |
+| 21:21:01 | 3.1 | 582 | 37 | 15 | 804 | 8 / 804 | 0 | 102 | 0 | 1.3 | 6 | 0.0% |
+| 21:21:10 | 2.6 | 466 | 29 | 9 | 599 | 7 / 599 | 0 | 92 | 0 | 1.1 | 166 | 0.0% |
+| 21:21:18 | 8.5 | **2088** | 12 | 67 | 4124 | 23 / 2494 | 5 | 587 | 4442 | 5.8 | 7 | 0.9% |
+| 21:21:22 | 4.2 | 1121 | 31 | 26 | 918 | 5 / 611 | 1 | 116 | 4640 | 1.8 | 5 | 0.9% |
+
+Against the outcomes written above:
+
+- **Shader and pipeline compile: a hit in every in-game stall.** In the three fps-to-0 windows (5.2, 3.9 and 2.1 s
+  frames), 4.1-6.2 s of the window is spent inside pipeline creates on the draw thread. The PFIFO thread is on CPU
+  for 5.4-6.7 s of the same window, and the driver's cache hit none of them (`dfbh` 0). The 1.1-s and 0.4-0.6-s
+  frames have the same signature at 0.6-1.5 s of creates.
+- **Storage: no.** The longest single IDE operation in any stall window is 5-9 ms (166 ms once, in a 466-ms window).
+- **Submit queue: no.** `Tq` falls in the two longest stalls (340 at 21:20:40, 2184 at 21:19:02), because the draw
+  thread is compiling, not submitting.
+- **vCPU: no**, except the first window of each run (21:18:38, 3.5 s; 21:29:22, 3.4 s in run 2). That window is the
+  title's boot: there are no creates, the guest is busy (share 0.98) and no flip comes for 3.4-3.5 s. It is a boot load,
+  not an in-game stall.
+- **Audio: no.** Zero-fill is 0-0.9% in the stall windows. The 17.5% is the boot window.
+- Small ones: the 301-ms and 203-ms frames (21:19:34, 21:21:07) coincide with pipeline-cache saves of 353 and 301 ms
+  (`[plc569]`). They do not reach the fps-to-0 threshold.
+
+Run 2 (`4D530064-1014-2129-25179`, title screen only) has no in-game stall: its boot window (3.4 s) and one 431-ms
+frame, in which 90 creates took 349 ms.
+
+### What is compiled, and why on the draw thread (vk/compile_worker.c)
+
+The build runs #569's mode 3 (`[gpl569] mode=3`): an ubershader pre-raster library, plus a specialized fragment
+stage per state.
+
+- **Cold misses.** When a draw's ubershader pre-raster library is not built yet, `pgraph_vk_gpl_uber_create_pipeline()`
+  queues the library to the compile worker and creates a monolithic pipeline inline (compile_worker.c:1201-1209). The
+  create time that is not fragment libraries is 3.9 s in the window of the 5.2-s frame (14 cold creates) and 3.9 s in
+  the window of the 3.9-s frame (11), so 280-380 ms per cold create. That is an upper figure: other inline creates,
+  such as clears, are in the same remainder. The worker meanwhile spends 3.4-4.6 s building each
+  uber library. Every draw keyed to it until then is a cold monolithic create.
+- **Fragment-stage libraries.** `gpl_get_lib()` creates a missing fragment-shader library on the draw thread
+  (draw_path = true, compile_worker.c:448-491), at 57-122 ms each in these windows: 0.6-2.5 s per stall window. The
+  vertex-input and fragment-output parts take under 1 ms in total.
+- Turnip's per-stage feedback over the 5.2-s window: vertex 486 ms, geometry 1661 ms, fragment 2477 ms.
+
+The window is the instrument's resolution. Which of a window's creates fall inside its longest frame is not
+measured; the 5.2-s and 3.9-s frames hold at most the 5.1 and 6.2 s of creates of their windows.
+
+**Cause (#994): explained.** Each fps-to-0 is first-time pipeline compilation on the draw thread. Most of it is cold
+monolithic creates during the 3.4-4.6 s it takes the worker to build a new ubershader pre-raster library; the rest is
+fragment-stage libraries created inline. Not storage, queue, vCPU or audio.
+
+### Lever and next step (#994)
+
+The lever is the #569 work, not a lane.fps1015 file (vk/compile_worker.c). Ranked by expected impact:
+
+1. **No cold monolithic create while an uber library builds.** For example, wait on the queued library when it is
+   already running, or draw with an already-built uber library of the same vertex shader. That removes up to 3.9 s
+   of create time from each of the two longest stall windows; the uber library itself is off the draw thread already. It is bounded by
+   the worker's 3.4-4.6 s per library: the draws keyed to it must still be drawn with something.
+2. **A fragment ubershader.** It removes the 0.6-2.5 s of inline fragment-library compiles per window, and the small
+   stalls (0.4-1.1 s) with them. It is the larger change.
+3. A bigger prebuild list (`[pb569] records=545 jobs=9 unresolved=536` at start) helps a second session of the same
+   build only. Run 2 already shows the driver cache making repeated content cheap.
+
+Next step: hand this to the #569 owner. The measurement needed is already in the logs. A device run is needed only
+for the A/B of whichever of 1-2 is built.
