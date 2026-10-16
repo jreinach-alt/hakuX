@@ -138,17 +138,49 @@ placeholder below.
 Isolated fragment run (`SELFTEST_ONLY=99-tmp-cleanup-selftestclean1011`,
 private `TMPDIR`): 8/8 passed, including both mutant falsifications, and the
 outer run's own fake host was removed afterward (confirmed empty `TMPDIR`
-after exit). `--check-shards 4` still reports all 137 fragments covered
-exactly once (136 existing + this one; `SHARD_SECS` carries its own
-`:2` entry so a stale default doesn't skew balance).
+after exit).
+
+Merged `origin/master` into this branch (594 commits behind at fetch;
+`git merge`, no rebase, no conflicts -- this lane's `T_OWNED` diff and
+`lane.sign1016`'s one-line `SHARD_SECS` entry landed side by side cleanly).
+Re-ran both checks after the merge to make sure the merge itself didn't
+disturb anything: `--check-shards 4` now reports all 146 fragments (up from
+137 pre-merge -- other lanes landed fragments in the meantime) covered
+exactly once; the isolated fragment run above is the post-merge run, still
+8/8.
 
 Full unsharded `bash docs/testing/jobs/selftest.sh` (no shard, no
-`SELFTEST_ONLY`): see the result below -- `docs/lanes/selftestsplit/NOTES.md`
-and `docs/lanes/soakvideo1011/NOTES.md` both note this host is slow enough
-that a single CI shard alone has taken 23-24 minutes real time against a
-5-9 min CI estimate, so the full unsharded run was expected to run well past
-the Bash tool's 10-minute per-call cap; ran it as a tracked
-`run_in_background` call (the harness's own backgrounding, not a
-self-managed `nohup`) and waited for its notification in this same session,
-per the "never end a turn while a job of yours is still running" rule --
-nothing here used a detached/untracked process.
+`SELFTEST_ONLY`): a lane session's own `run_in_background`/Monitor is refused
+outright by this repo's `lane-no-background.py` PreToolUse hook -- a lane is
+a headless `claude -p` process, so anything the harness itself backgrounds
+dies with the turn and never notifies. Per the hook's own suggested
+alternative, started it detached (`setsid nohup ... < /dev/null &`, output to
+a log file) and polled that log in a sequence of foreground `Bash` calls
+(each under the 10-minute cap, checking `kill -0 <pid>`) until it exited, all
+within this turn -- about 80 minutes real time end to end. Result:
+
+    selftest: 3570 passed, 0 failed, all 146 fragments (fake host removed, was /tmp/hakux-selftest.Ij2qfd)
+
+No devwatch FAIL appeared (the brief named one as known-not-mine if seen;
+this run had 0 failures total, so it didn't fire this time). `/tmp/hakux-selftest.Ij2qfd`
+itself is gone, confirming the removal the summary line claims.
+
+**Leak check, and why it isn't a clean `ls -d ... -newer`.** Touched a marker
+file immediately before starting the run, then (per the brief) looked for
+`/tmp/hakux-selftest.*` newer than it. Four turned up (`XH18Xn`, `bPvXoA`,
+`f64jnD`, `TvRyl4`) -- but `ps aux` while they were still around showed two
+*other* `bash docs/testing/jobs/selftest.sh` processes active on this shared
+host during the same window, one of them (`f64jnD`, confirmed via
+`/proc/<pid>/cwd`) running from `offline-git/fold-wt-1851177` -- a
+concurrent foldqueue fold's own selftest.sh, in a different worktree, not
+this lane's process and not this lane's branch. That is exactly the
+multi-actor leak the brief measured (every lane's and every fold's selftest
+leaves one); a raw `-newer` filter can't distinguish "left by my run" from
+"left by someone else's run that happened to be in flight," because the
+whole point of the bug is that any one of those processes could leak. The
+one directory this fix is actually responsible for -- this run's own
+`$T` (`Ij2qfd`) -- is confirmed gone above. 417 pre-existing
+`/tmp/hakux-selftest.*` dirs remain host-wide from before this fix ever ran
+anywhere (lane.local's 2026-10-11 15:4x sweep deleted the 240 oldest of an
+earlier count; this fix only stops *new* ones from a passing run, it does
+not retroactively clean the backlog, which matches the brief's scope).

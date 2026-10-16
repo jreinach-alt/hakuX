@@ -1,22 +1,9 @@
 # selftestclean1011: selftest.sh removes its fake host when it passes (#433)
-State: draft
+State: ready
 
-Lane: selftestclean1011        Issue: none (#433 umbrella, board row `[lane.selftestclean1011]` RETIRED, see below)
-Base: master @ b73d50a070
+Lane: selftestclean1011        Issue: none (#433 umbrella, board row `[lane.selftestclean1011]`)
+Base: master @ beb9daa755d3a869768ce8232ac755b53e15a7c3
 Files: docs/testing/jobs/selftest.sh, docs/testing/jobs/selftest.d/99-tmp-cleanup-selftestclean1011.sh, docs/lanes/selftestclean1011/NOTES.md, docs/lanes/selftestclean1011/PR.md
-
-**Not fold-ready.** The 2026-10-16 09:44 PDT checkpoint commit (bffdbdd8a4) wrote
-this file with `State: ready` while its own commit message said the opposite
-("rerun before reopening a PR from this branch") -- that contradiction is what
-let foldqueue pick this up and fail on a territory check (selftest.sh was
-released to lane.sign1016 the same tick, so this row no longer owns it; see
-origin/board territory.toml note on `[lane.selftestclean1011]`). Corrected here
-(hostops 2026-10-16 10:2x PDT): `State: draft` so foldqueue skips this branch
-(it only attempts `State: ready`). A future lane reopening this needs to (1)
-grant selftest.sh back from whichever lane holds it then, (2) rerun the
-unsharded selftest.sh (never recorded as finished), (3) rebase this diff over
-whatever's landed on selftest.sh since (lane.sign1016's one-line SHARD_SECS
-entry, if folded by then) before setting State back to ready.
 Prediction: none (harness fix, not a pixel-moving change)
 Needs device: no    Needs NDK: no
 
@@ -61,10 +48,18 @@ lane.local deleted the 240 older than 3h on the owner's word around 15:4x; this 
 
 - Isolated fragment (`SELFTEST_ONLY=99-tmp-cleanup-selftestclean1011`, private `TMPDIR`): 8/8 passed,
   including both mutant falsifications; outer run removed its own fake host, confirmed empty `TMPDIR`
-  afterward.
-- `selftest.sh --check-shards 4`: all 137 fragments (136 + this one) covered exactly once.
-- Full unsharded `bash docs/testing/jobs/selftest.sh`: **(filled in below once the run -- in progress,
-  foreground/tracked-background per the "never end a turn on your own untracked background job" rule --
-  finishes; this host has measured 23-24 min for a single CI shard alone, so the unsharded run is long)**.
+  afterward. Re-run after merging `origin/master` in (594 commits, clean merge, no conflicts with
+  `lane.sign1016`'s one-line `SHARD_SECS` entry): still 8/8.
+- `selftest.sh --check-shards 4`: all 146 fragments covered exactly once (post-merge count; 137 pre-merge).
+- Full unsharded `bash docs/testing/jobs/selftest.sh` (detached + polled in foreground, since a lane's own
+  `run_in_background`/Monitor is refused by this repo's hook; ~80 min real time): `3570 passed, 0 failed,
+  all 146 fragments (fake host removed, was /tmp/hakux-selftest.Ij2qfd)`. That path is confirmed gone
+  afterward. No devwatch FAIL appeared. Four other `hakux-selftest.*` dirs appeared in `/tmp` during the
+  run's window; `ps`/`/proc/<pid>/cwd` traced them to two *other* `selftest.sh` processes genuinely running
+  concurrently on this shared host (one from a foldqueue fold in a different worktree) -- not this run's
+  process, not this branch. See NOTES.md "Leak check" for why a plain `-newer` filter can't tell those
+  apart from this run's own leak, and why that's expected rather than a regression. 417 pre-existing
+  `/tmp/hakux-selftest.*` dirs remain host-wide from before this fix existed anywhere; this change stops
+  new leaks from a passing run, it does not retroactively clean the backlog (out of scope per the brief).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
