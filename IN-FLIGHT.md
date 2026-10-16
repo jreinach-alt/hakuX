@@ -8,8 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `perflog1016` | claude-opus-5-5 | 42 min | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) |
-| `titlekey1016` | claude-sonnet-5 | 3 min |  |
+| `fps1015` | claude-opus-5-5 | 6 min | fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2) |
+| `titlekey1016` | claude-sonnet-5 | 18 min | One display name per title_id, and nothing keyed by a name (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lanelocal-ownerplay`
@@ -117,7 +117,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/perflog1016` | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) | `e40443c754` | 2026-10-16 07:41 |
+| `lane/fps1015` | fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2) | `6cbcb60bc7` | 2026-10-16 06:11 |
+| `lane/titlekey1016` | One display name per title_id, and nothing keyed by a name (#433) | `4047d922b9` | 2026-10-16 07:58 |
 
 ## Recently landed on master
 
@@ -134,4 +135,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
 - 2026-10-13 lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
 
-_Updated 2026-10-16 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 08:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
