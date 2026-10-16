@@ -92,14 +92,21 @@ def crash_hang_left_off_reason(row):
     return None
 
 
-def build_playable_rows(ledger_rows, notes_by_title):
+def build_playable_rows(ledger_rows, notes_by_id, registry_by_title=None):
+    """Joined by title_id (#433), never by title text. A ledger row recorded
+    before title_id tracking (today: just NBA 2K3) is resolved once against
+    the already-built registry's own title_id, which is title_id-keyed
+    throughout -- not a second name-keyed join, a one-time bridge for the
+    rows that predate the column."""
     out = []
     missing = []
     for lr in ledger_rows:
-        title = lr["title"]
-        nr = notes_by_title.get(("playable", title))
+        tid = lr["title_id"]
+        if not tid and registry_by_title:
+            tid = registry_by_title.get(lr["title"])
+        nr = notes_by_id.get(tid) if tid else None
         if nr is None:
-            missing.append(title)
+            missing.append("%s (%s)" % (lr["title"], tid or "no title_id"))
             continue
         out.append(nr)
     if missing:
@@ -316,11 +323,13 @@ def main():
     registry_rows = load_registry(args.registry)
     notes = load_notes(args.notes)
 
-    notes_by_title = {("playable", r["title"]): r for r in notes["playable"]}
+    notes_by_id = {r["title_id"]: r for r in notes["playable"] if r["title_id"]}
+    registry_by_title = {r["name"]: r["title_id"] for r in registry_rows if r.get("name") and r.get("title_id")}
 
-    ledger_title_ids = {r["title_id"] for r in ledger_rows if r["title_id"]}
+    ledger_title_ids = {(r["title_id"] or registry_by_title.get(r["title"]))
+                         for r in ledger_rows} - {None}
 
-    playable = build_playable_rows(ledger_rows, notes_by_title)
+    playable = build_playable_rows(ledger_rows, notes_by_id, registry_by_title)
     below_bar = build_below_bar_rows(registry_rows, ledger_title_ids, notes["below_bar"])
     not_playable = build_not_playable_rows(registry_rows, ledger_title_ids, notes["not_playable"])
 
