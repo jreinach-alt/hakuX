@@ -1617,6 +1617,15 @@ typedef struct PGRAPHVkState {
     PGRAPHVkDisplayState display;
     PGRAPHVkComputeState compute;
 
+    /* HAKUX_S2T_CVT (surface.c): the decode pipeline and its scratch buffer,
+     * raw surface words then RGBA8 texels; created on first use */
+    struct {
+        VkPipeline pipeline;
+        VkBuffer buffer;
+        VmaAllocation allocation;
+        VkDeviceSize size;
+    } s2t_cvt;
+
 #if OPT_ASYNC_COMPILE
     struct {
         QemuThread thread;
@@ -1831,6 +1840,9 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
 void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                               bool zeta_write);
 SurfaceBinding *pgraph_vk_surface_get(NV2AState *d, hwaddr addr);
+bool pgraph_vk_s2t_cvt_on(void);
+void pgraph_vk_s2t_cvt_copy(PGRAPHState *pg, SurfaceBinding *surface,
+                            TextureBinding *texture);
 
 /*
  * "What guest format was this surface last rendered as" -- a colour format

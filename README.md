@@ -1,17 +1,21 @@
-# hakuX (fork)
+<p align="center"><img src=".github/hakux-logo.svg" alt="hakuX Community Edition: Original Xbox on Android" width="640"></p>
 
-_Last updated 2026-10-13, for version 0.5.0._
+# hakuX CE
 
-**Original Xbox games on your Android handheld.** An independent build of the
-hakuX emulator, tested game by game on Snapdragon handhelds.
+_Last updated 2026-10-16, for version 0.5.0._
+
+**Original Xbox games on your Android handheld.** hakuX CE is the Community
+Edition: an independent build of the hakuX emulator, tested game by game on
+Snapdragon handhelds.
 
 **[Download 0.5.0](https://github.com/jreinach-alt/hakuX/releases/latest)** ·
-[72 Playable games](docs/COMPATIBILITY.md) ·
-[What's new](docs/releases/v0.5.0.md)
+[Playable games](docs/COMPATIBILITY.md) ·
+[What's new](docs/releases/v0.5.0.md) ·
+[Sponsor](https://github.com/sponsors/jreinach-alt)
 
 ## Highlights
 
-- **72 games rated Playable.** Each one reached real gameplay on a handheld and
+- **Games rated Playable.** Each one reached real gameplay on a handheld and
   held 30 fps (within 5%) for at least 90% of a timed run, with no crash or
   hang. Among them: Halo: Combat Evolved, Jet Set Radio Future, Panzer Dragoon
   Orta, Grand Theft Auto III and Vice City, Need for Speed: Most Wanted,
@@ -34,7 +38,7 @@ hakuX emulator, tested game by game on Snapdragon handhelds.
 
 ## Will it run on my device?
 
-- Android 10 or newer.
+- Android 13 or newer.
 - A Snapdragon 845-class chip or better (64-bit ARMv8.2). Older designs such
   as the Snapdragon 835, 660, 665 and 460 are not supported; on them the app
   says so and exits.
@@ -58,7 +62,7 @@ discs you provide:
 
 1. Download the APK from
    [Releases](https://github.com/jreinach-alt/hakuX/releases/latest) and
-   install it. It appears as **hakuX (fork)**.
+   install it. It appears as **hakuX CE**.
 2. Open it. Setup asks for the boot ROM, the BIOS, the hard disk image and
    your games folder.
 3. Pick a game from the library.
@@ -95,6 +99,16 @@ this build. Coming from the official hakuX?
 | [Privacy](PRIVACY.md) | What stays on your device |
 | [Building from source](android/README.md) | For developers |
 | [Contributing](CONTRIBUTING.md) | For developers |
+
+## Support the project
+
+hakuX is developed and tested by one person, and paid for out of pocket. If it
+is useful to you, you can
+[sponsor the work on GitHub](https://github.com/sponsors/jreinach-alt). It is
+entirely optional; a good bug report helps just as much.
+
+The emulator underneath is xemu; if you want to support it directly, see the
+Patreon link under Credits.
 
 ## Credits
 

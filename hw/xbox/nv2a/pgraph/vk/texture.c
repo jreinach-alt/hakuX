@@ -1293,6 +1293,15 @@ static void copy_surface_to_texture(PGRAPHState *pg, SurfaceBinding *surface,
     trace_nv2a_pgraph_surface_render_to_texture(
         surface->vram_addr, surface->width, surface->height);
 
+    /* HAKUX_S2T_CVT: a 5/6-bit texture from a 2-byte surface, which the
+     * compatibility check passes only with the switch on */
+    if (pgraph_vk_s2t_cvt_on() &&
+        pgraph_texture_format_expands_by_replication(state->color_format)) {
+        pgraph_vk_s2t_cvt_copy(pg, surface, texture);
+        texture->draw_time = surface->draw_time;
+        return;
+    }
+
 #if OPT_SURF_TO_TEX_INLINE
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
 #else
@@ -1489,9 +1498,16 @@ static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
      * in DXT, I8 or YUV is not a thing the hardware can produce, so no
      * surface should ever alias one -- and the must-not-move list on this
      * change is what checks that rather than the reasoning.
+     *
+     * HAKUX_S2T_CVT=1 takes the 5- and 6-bit formats from a 2-byte surface:
+     * copy_surface_to_texture() then decodes its words on the GPU the way
+     * pgraph_convert_texture_data would (vk/surface.c, pgraph_vk_s2t_cvt_copy).
      */
     if (pgraph_texture_format_is_converted(shape->color_format)) {
-        return false;
+        return pgraph_vk_s2t_cvt_on() &&
+               pgraph_texture_format_expands_by_replication(
+                   shape->color_format) &&
+               surface->host_fmt.host_bytes_per_pixel == 2;
     }
 
     VkColorFormatInfo tex_vkf = kelvin_color_format_vk_map[shape->color_format];

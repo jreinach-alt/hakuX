@@ -1,0 +1,41 @@
+{
+  "registered_utc": "2026-10-16T15:16:37Z",
+  "who": "lane.fps1015",
+  "issue": "986",
+  "title": "4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso",
+  "device": "nova",
+  "seconds": 330,
+  "route": "fps1015-mksm",
+  "route_path": "docs/lanes/fps1015/routes/fps1015-mksm.route",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "f5a67ba52c",
+  "b_ref": "f5a67ba52c",
+  "a_env": [],
+  "b_env": [
+    "HAKUX_S2T_CVT=1"
+  ],
+  "queue_order": "Queued by the lane (an env A/B; arms.sh skips a_ref == b_ref): four requests of one run each. The pilot pair first, on then off; the second pair, on then off, once both pilot runs pass the V leg. Each: env TITLE_ROUTES=<worktree>/docs/lanes/fps1015/routes bash docs/testing/request.sh --who fps1015 --title <title> --route fps1015-mksm --seconds 330 --perflog --device nova --ref f5a67ba52c --issue 986 [--env HAKUX_S2T_CVT=1] --expect this file. The route travels in the request (route text), and the profile gate admits it as `any` on the golden 08a35d4fc120. Off last, so the device is left in the shipped state.",
+  "judge": "python3 docs/lanes/fps1015/s2tread.py <on1> <off1> [<on2> <off2>]",
+  "baseline": "Off, from a run that already exists, read with s2tread.py: 1-1791536100-fpstelemetry1008-943216 (4ea49d12e7, perflog, route fps1008-shaolin on a first-run disk, flag absent): 34 cutscene windows (shot s13 to s24), sd 3.00 a frame, txdl cvt 180 a window, s2tc 0, median G 43.2 ms, median gfps 22.0, phase Fin 18.5 ms, GPU 15.2 ms; gameplay (mark gameplay to end) median gfps 52.0 over 514 windows. Fits over the session (dlrate.py): G = 6.57 ms x sd/frame + 16.1 (r 0.68), Fin 5.41 (r 0.86).",
+  "prediction": "#986 HAKUX_S2T_CVT=1 in Mortal Kombat: Shaolin Monks' Goro's Lair opening cutscene. Every frame of the cutscene samples three X1R5G5B5 render targets (320x240, 320x120, 160x120) as LU_IMAGE_X1R5G5B5 textures; #59's guard refuses them (cvt), so create_texture() downloads each one: a SURFACE_DOWN finish and a fence wait, 3 a frame, which serialize the PFIFO thread and the GPU. With the switch the three are decoded on the GPU inline, with no finish. Predicted, cutscene windows of the on runs against the off runs: R, sd 0.1 a frame or less and cvt 0 (s2tc near 180 a window instead); P, median G down 6-22 ms, point -10 (43 to ~33 ms: the frame then fits two vblanks; ~29 ms is the bound if nothing else waits); F, median gfps up 5 or more, point +8 (22 to ~30); N, gameplay median gfps no more than 3 below off. A run that fails V (too few cutscene or gameplay windows, the arm's signature missing, or the [s2tcvt] markers wrong for its arm) is void, not a refutation: the route's menu steps were recorded on a disk with no MKSM profile and now meet the golden. R passing with P or F failing refutes \"the downloads set the cutscene frame\": another wait or the GPU takes their place, and the on runs' phase columns say which.",
+  "expect": {
+    "V_min_cut_windows": 15,
+    "V_sig_fraction": 0.667,
+    "V_min_play_windows": 8,
+    "R_on_sd_max": 0.1,
+    "R_on_cvt_median": 0,
+    "R_off_sd_min": 2.5,
+    "P_dG_min": -22.0,
+    "P_dG_max": -6.0,
+    "P_dG_point": -10.0,
+    "F_dgfps_min": 5.0,
+    "F_dgfps_point": 8.0,
+    "N_dgfps_min": -3.0
+  },
+  "expect_note": "Named rules computed by docs/lanes/fps1015/s2tread.py (legs V, R, P, F, N) over pooled windows per arm; a soak writes no captures.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}

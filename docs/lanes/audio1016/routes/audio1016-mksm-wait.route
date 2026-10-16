@@ -1,0 +1,54 @@
+# state: any
+# audio1016-mksm-wait: fps1015-mksm (docs/lanes/fps1015/routes/fps1015-mksm.route) up to
+# s12, the same logos and menus into the Goro's Lair load, then NO input: the cutscene
+# from s13 plays as the title runs it, so its speech is in the audio capture. fps1015's
+# route presses START through s13-s26, which skips that speech (#984; R1/R2 of
+# audio1016-identify reached only the FMV and attract loop). One frame every 10 s
+# shows where the cutscene was when each window of audio was mixed.
+wait 15.0
+shot s01-publisher_logo
+press A 120
+wait 0.6
+wait 3.3
+shot s02-black
+wait 6.7
+shot s03-publisher_logo
+press A 120
+wait 0.6
+wait 3.5
+shot s04-title_screen
+press START 120
+wait 0.6
+wait 3.3
+shot s05-submenu
+press A 120
+wait 0.6
+wait 3.9
+shot s06-main_menu
+press A 120
+wait 0.6
+wait 7.9
+shot s07-submenu
+press A 120
+wait 0.6
+wait 3.7
+shot s08-unknown
+press A 120
+wait 0.6
+wait 4.4
+shot s09-black
+wait 3.4
+shot s10-black
+wait 3.6
+shot s11-publisher_logo
+press START 120
+wait 0.6
+wait 6.5
+shot s12-loading
+wait 6.9
+# s13 falls ~77 s after route start; from here, no input for 200 s.
+repeat 20 {
+shot cutscene
+wait 10.0
+}
+# the route ends ~277 s after route start (soak --seconds 290)
