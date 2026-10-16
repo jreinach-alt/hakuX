@@ -6,10 +6,18 @@ lane.local's overnight chain until ~06:00 PDT 10-16.
 
 ## Status
 
-[lane.fps1015] waiting: the #992 Top Spin pilot pair on the Nova, 1792170178-fps1015-2310292 (on1,
-`HAKUX_S2T_CVT=1`) and 1792170186-fps1015-2314810 (off1), 450 s each. Judge with
-`python3 docs/lanes/fps1015/tsread.py <on1> <off1>`; if both pass V, write `pilots/fps1015.ok` and queue on2 then
-off2 the same way. #986's A/B is done: PASS over on1, off1 and off2 (see "Soak, all four: PASS").
+[lane.fps1015] blocked: every issue has its measurement, cause or bound, and next step below; the PR is ready.
+The next steps are outside this lane:
+- #993 PoP needs a save at the fog room.
+- #995 Batman needs a golden and a route into the smoke room.
+- Brian Lara needs a route into a match.
+- `HAKUX_S2T_CVT` on by default needs the vk/draw.c regression fixed (the WAITING line below) and one mechanism
+  screen ("#992 Top Spin pilot", "The default").
+
+#986's A/B passed over on1, off1 and off2 ("Soak, all four: PASS"). In Top Spin's pilot pair, the R, P and F legs
+pass in match play. The I leg is REFUTED as registered: its span held match play, not the fly-over. The owner
+played both arms and said "greatly improved" with the switch and "precisely the issue I had reported" without
+it ("#992 Top Spin pilot").
 
 WAITING: the owner of vk/draw.c (withheld from this lane), for a regression on master in
 `Texture_shadow_comparator`. All 288 captures differ from every saved run between 09-12 and 10-10 (e654516849),
@@ -21,18 +29,27 @@ passes every check but `nv2a index`, which counts four new DISPATCH sites in vk/
 switch (`NV097_SET_TEXTURE_FORMAT_COLOR_{LU_IMAGE,SZ}_{A1R5G5B5,R5G6B5}`). The index needs a rebuild at fold:
 `python3 docs/testing/nv2a_index.py build --tests /home/justin/nxdk_pgraph_tests --support /home/justin/pbkitplusplus`,
 with the tests checkout no older than the committed index's `provenance.tests_commit`.
+
 - #986 MKSM: cause found, serialization on 16-bit render-to-texture downloads (3 a frame in the cutscene). Lever
   `HAKUX_S2T_CVT` built (default off). A/B, two runs an arm, PASS on every leg: the downloads go, and the
   cutscene's first 1800 guest frames take 33.1-33.2 s instead of 62.1-65.5 s (54.2-54.4 against 27.5-29.0 fps).
   Gameplay median rises from 51 to 59 fps.
-- #992 Top Spin: the same cause, 24-32 downloads a frame. Same lever. Its A/B is registered
-  (`fps1015-topspin.json`) on a route the gate admits: Top Spin's first golden (data-only save 23b5be4cf466) and
-  async794's fixed route headed `any`.
+- #992 Top Spin: the same cause, 30 downloads a guest frame in match play. Same lever.
+  - In the pilot pair, match play goes from 38 to 59 fps: median G 26.1 to 16.7 ms, finish 12.7 to 0.3 ms.
+  - The owner played both arms by hand and called the switch-on arm "greatly improved".
+  - Replay playback with the switch drops to 14-18 fps. It is bound by the PFIFO thread's CPU, at three times live
+    play's draws; the decode is not what bounds it.
+  - Not queued: the confirming pair; the reasons are in "#992 Top Spin pilot".
 - #992 Brian Lara: a different shape, unexplained. Next step: one perflog run of a ball in play. It has no route,
   golden or `targets.toml` entry, so the run first needs a route into a match (pathfind's, per the model table,
   not this lane's).
 - #995 Batman Begins: partly explained. GPU or wait-bound. The one download a frame serializes the previous
-  frame's GPU work against the PFIFO thread. Fill against draw count needs a perflog + `vtx256` run.
+  frame's GPU work against the PFIFO thread. Fill against draw count needs a perflog + `vtx256` run in the smoke
+  room. No request reaches it:
+  - Batman has no golden. Its three stored saves (a7bbcfa7551b, 7bb6f3e08060, 48aff720cd16, 10-06 to 10-07) are
+    not goldens, and where they stand is not recorded.
+  - Its one route, `gen-batman-begins`, is a generic opening that has never run on a device.
+  - The smoke room is about 3 minutes into the owner's session, the fire room about 11.
 - #993 Prince of Persia: reduced to a bound. The fog room's PFIFO-thread frame is 33-36 ms against the 33.4 ms
   two-vblank budget of a 30-fps title, so every frame takes three vblanks (19 fps). Nine shadow-map `cvt` downloads
   a frame are in that time; the same lever applies. Its A/B is not queued: no golden, route or save reaches the fog
@@ -62,6 +79,11 @@ results landed. Attempt 4 reads them, queues the confirming pair (on2, off2) and
 then judges all four and sets up Top Spin's A/B. It ends waiting on Top Spin's pilot pair (queued 17:02-17:03Z
 behind seven release-tier requests), with #993's A/B written up as not queuable and master merged (49e0775fe7).
 `preflight.sh --allow-tracker` on that merge fails only `nv2a index`, the WAITING line above.
+
+Attempt 4 did finish, too. It ended on its `waiting:` line for Top Spin's pilot pair. Handback resumed it as
+attempt 5 (10-16 10:58 PDT) once both runs had landed (on1 10:42, off1 10:50 PDT). In the meantime the owner had
+relayed hand play on both arms. Attempt 5 judges the pair and reads the replay. It also records the divisor fault
+in the stall block's per-frame figures, and the decisions on the confirming pair, the default and the board row.
 
 ## #986 Mortal Kombat Shaolin Monks: step 1, the offline split (written before the read)
 
@@ -1032,3 +1054,162 @@ two off runs to 3.4 s. The cutscene's frame goes from 34.3 ms to the vblank; the
 the GPU's frame does not grow. What it does not show: any title but MKSM, any MKSM scene but Goro's Lair, and the
 pixels, whose leg cannot clear until the shadow-comparator regression is fixed (above). The switch stays off by
 default until then.
+
+### #992 Top Spin pilot: P, F and R pass in match play; I refuted as registered, its span held match play
+
+`tsread.py` on1 1792170178-fps1015-2310292 (`HAKUX_S2T_CVT=1`), off1 1792170186-fps1015-2314810. One build,
+f5a67ba52c; 450 s each.
+
+The first read gave on1 zero windows. tsread.py takes its line patterns from s2tread.py, and these allowed no space
+inside the pid's brackets. on1's four-digit pid is padded to five columns (`hakuX-perf( 9230):`). The patterns
+now take `\(\s*\d+\)`. That is a parsing fix only: no span, leg or threshold changed. The rows from that read:
+
+| run | arm | intro windows | play windows | signature | sd a frame (judge) | cvt a window | G ms | gfps | Fin | GPU | X | intro G |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| on1 | on | 39 | 70 | 68 | 0.00 | 0 | 16.7 | 59.0 | 0.3 | 7.3 | 6.2 | 16.7 |
+| off1 | off | 26 | 55 | 55 | 24.15 | 1449 | 26.1 | 38.0 | 12.7 | 7.2 | 2.4 | 26.1 |
+
+V passes both runs.
+
+| leg | registered | measured | |
+|---|---|---|---|
+| R | on sd <= 1 a frame, cvt 0; off sd >= 15 | on 0.00, cvt 0; off 24.15 | PASS |
+| P | play median G, on - off, in [-13, -4] ms | 16.7 - 26.1 = -9.4 | PASS |
+| F | play median gfps, on - off, >= +6 | 59.0 - 38.0 = +21.0 | PASS |
+| I | intro median G, on - off, <= -10 ms | 16.7 - 26.1 = -9.4 | FAIL |
+
+**The verdict as registered is REFUTED, on I.** The I span (s20 to s23) was written for async794's control, where
+the stadium fly-over sat behind the PRESS START banner (48 downloads a frame, 45-47 ms frames). In both pilot runs
+the arms split at s15's START (on1 10:38:21, off1 10:46:10), and from there the route's steps land in match play.
+The I span then holds match play in both arms: intro G equals play G in each, and off's downloads run at the
+match's rate. on1 sits at the vblank (16.7 ms), so -9.4 ms was the most this span could show. The span is wrong
+for this route on this golden; the fly-over's own gain is not measured. It is not re-judged on another span after
+the fact.
+
+**The divisor.** One hakuX-stall block is 60 present and flip finishes, not 60 guest frames (vk/draw.c:5416-5418,
+`opt_stats_log_and_reset`). Each guest frame has one flip finish (renderer.c:3637). A present finish comes on top of
+it when the display reads a surface drawn into the open command buffer (display.c:1727-1730). So a block spans
+`flip` guest frames:
+- MKSM: `pres0 flip60` in 278 of 280 off blocks, so its per-frame figures stand.
+- Top Spin: 30-60 flips a block.
+
+Per guest frame in match play (`sd`, `cvt` and `s2tc` over `flip`):
+- off1: 30.0 downloads (the judge's 24.15 divides by `pres + flip`).
+- on1: 29.7 decodes.
+
+The counts match: Top Spin decodes once per download, unlike MKSM's 9 for 3. The judge keeps the registered divisor.
+It reads low on the off arm only, so it moves no leg. Its docstring now says so. async794's baseline figures above
+(25.3 and 24.3 a frame) are the same quantity, about 30 a guest frame.
+
+**Owner input in both arms.** The owner picked up the controller in each run (relayed 10-16 10:44 and 10:48 PDT):
+- on1: a point was played between s23 (10:40:18) and s25, and a replay ran 10:40:43-10:40:55.
+- off1: the owner took the controls briefly.
+
+So neither arm's play span is a clean route window. The two arms agree through the menus (59 fps each) and split
+at the same route step. The split also matches the counters: 30 downloads and a 12.7 ms finish a frame against
+none. It is read as the switch's effect for that reason, not from the play span alone.
+
+**Owner, eyes on.** With the switch, on1: "greatly improved"; the only drop is replay playback, into the teens. On
+shipped defaults, off1: "precisely the issue I had reported ... real hard to play in that condition". That is an A/B by
+the person who filed #992, on the arm that would ship. The slow motion the owner reported fits off1's 38 frames a
+second, if the title steps its simulation once per frame (about 0.63x speed). That fit is an inference; no run
+measured game time against wall time.
+
+**The confirming pair (on2, off2) is not queued.**
+- A second pair would fail I the same way. Its span still holds match play.
+- On P and F a second pair cannot move the on arm: it already sits at the vblank floor.
+- The owner's hand A/B on the two arms covers what a second pair would add.
+- The owner asked at 09:57 that Nova time go to what a reader needs.
+
+What would decide more is the default's screen (below), not this pair.
+
+### #992 Top Spin replay: bound by the PFIFO thread at three times live play's draws
+
+Window: on1 10:40:43-10:40:55, the replay the owner's point produced (`R` bug in s25-gameplay.png). Every phase line
+is a mean over about 60 guest frames. The two lines ending 10:40:51.7 and 10:40:54.8 lie wholly inside the replay.
+The one ending 10:40:48.1 starts it, with a 17.7 ms starve. Live play is on1 10:40:57-10:41:01. Per guest frame:
+
+| | replay (10:40:51) | replay (10:40:54) | live play |
+|---|---|---|---|
+| gfps / G ms / period ms | 18 / 53.1 / 58.8 | 18 / 51.2 / 51.8 | 59 / 16.6 / 16.7 |
+| PFIFO thread CPU (`[rdc]` tcpu / frames) | 39.1 | 35.3 | 10.6-13.4 |
+| Pull (Mth) | 42.5 (35.1) | 40.3 (33.6) | 9.2 (6.8) |
+| Draw | 27.1 | 26.5 | 4.8 |
+| Pipe (Tx) | 16.3 (12.2) | 16.4 (12.7) | 1.9 (0.6) |
+| Surf / Fin | 3.0 / 0.5 | 2.7 / 0.5 | 0.9 / 0.2 |
+| Idle (Fr / St) | 5.5 (5.2 / 0.3) | 6.0 (5.6 / 0.3) | 5.7 (5.6 / 0.1) |
+| GPU (R / X) | 22.8 (6.4 / 16.4) | 22.5 (2.8 / 19.7) | 6.7 (0.7 / 6.1) |
+| texture binds (`bt` / flip) | 1463 | 1252 | 429 |
+| render passes (`RPBreaks` / flip) | 321 | 244 | 101 |
+| surface-to-texture copies (`s2tc` / flip) | 104 | 78 | 32 |
+
+The stall columns come from the block just before each phase line (flips 35 and 30). The 10:40:48 block also had
+44 stall finishes in 33 frames, at the replay's start only. The next blocks had 13, 3 and 0.
+
+The PFIFO thread accounts for the frame. It pulls for 40-42 ms, takes 3 ms on surfaces and 0.5 ms on finishes, and
+is idle for 5.5-6 ms of a 52-59 ms frame. It is on CPU for 35-39 ms of that. Of its idle time, 0.3 ms is starve,
+waiting for the vCPU's push buffer. So:
+- **The vCPU does not hold it.**
+- **The GPU does not hold it**: it finishes in 22.5-22.8 ms.
+- **No finish holds it**: 0.5 ms.
+
+**The replay is bound by the PFIFO thread's work.** That work grows with the scene: 2.9-3.4x the texture binds,
+and 2.4-3.2x the render passes and the copies, of live play. Draw time grows 5.5x (4.8 to 26.5-27.1 ms) and per bind
+doubles (11 to 18-21 µs).
+
+Most of the excess is Pipe Tx (0.6 to 12.2-12.7 ms), the time in `pgraph_vk_bind_textures`. It cannot be read
+as the decode's CPU cost:
+- `copy_surface_to_texture` flushes the reorder window and the draw queue before every copy (vk/texture.c:1280-1287).
+  So Tx also carries the recording of whatever draws were queued when a copy came.
+- In the replay's first 60 frames, Tx was 2.9 ms with 110 copies a frame. In the next 120 it was 12.2-12.7 ms with
+  78-104. Tx does not follow the copy count.
+
+The decode's GPU time shows in X: 16.4-19.7 ms, nearly all after the frame's last render pass (`Post` 16.0-19.3).
+That is 0.16-0.25 ms a copy. In live play, X is 6.2 ms with the switch and 2.4 ms without, about 0.13 ms a decode.
+It is the next bound after the PFIFO thread, not this one.
+
+Not measured:
+- **The replay with the switch off.** off1 has no replay.
+- **What the replay costs there.** At live play's rate of a 12.7 ms finish per 30 downloads, 78-104 downloads a
+  frame would wait longer than the decode costs. That is an inference.
+- **Whether the real console drops in replays.**
+
+**Next step, if the replay is taken on:** split Tx into the queue flush and the decode's recording, in a window
+that has a replay. The decode's share can be timed inside `pgraph_vk_s2t_cvt_copy` (vk/surface.c, this lane's). The
+flush is in vk/texture.c, withheld.
+- A hit for the decode: its recording is most of Tx's 12 ms. Then a cheaper recording pays: one barrier for all the
+  copies a texture bind makes, and no descriptor update per copy.
+- A hit for the flush: Tx is mostly queued draws' recording that moved. Then nothing is saved, and the replay is
+  the general per-draw cost at 3x the draws (perdraw1009, drawrec1010; the draw-recorder thread is not to be built).
+
+No route reaches a replay: the route plays no point. That makes this a held-session read, not a soak.
+
+### The default and the board row
+
+**`HAKUX_S2T_CVT` stays off by default in this PR.** Measured:
+- #986 MKSM cutscene: 27.5-29.0 to 54.2-54.4 fps over 1800 frames, two runs an arm.
+- #992 Top Spin match play: 38 to 59 fps, one run an arm, with the owner's hand A/B.
+
+It is the shared lever of #993 and #995 too, unmeasured there. Two things stand between it and a default:
+
+1. **The pixel leg.** The A/B's 10 worse captures are all in Texture_shadow_comparator, which master broke between
+   e654516849 and 0e5fab6bef (WAITING, vk/draw.c). A cheap step decides whether the switch moved anything there:
+   run that one suite twice on arm A, no env. If A against A moves as A against B did, the 10 are run-to-run in a
+   broken suite, not the switch. If A against A is byte-identical, the switch moves the stale colours. Then the
+   suite is read again once the regression is fixed.
+2. **One mechanism screen** (owner 10-11: one screen for every default-on in flight, sampled where the switch
+   acts). The sample:
+   - the titles where `cvt` fires: `cvtcensus.py`'s Top Spin, MKSM, Fuzion Frenzy, ToeJam & Earl III and
+     NBA Live 07, plus PoP and Batman from their dumps;
+   - each read for the failure the switch could cause: wrong colour or alpha in a render-to-texture effect (frames
+     against the off arm), and GPU time outside render passes (`X`) against the frame;
+   - a small canary set with no `cvt`, where the switch must be inert.
+
+**Board row:** Top Spin stays off the board on shipped defaults. The owner on off1: "precisely the issue I had
+reported". It goes back when the default ships through that screen. The Playable ledger is not this lane's to
+edit; this is the recommendation to whoever holds it.
+
+Do not repeat:
+- Reading a hakuX-stall block as 60 guest frames in a title with present finishes. Divide by `flip`.
+- Judging a span from an old control's shot times on a new golden without the pilot's shots. The I span assumed
+  async794's step timing. On the new golden, the route was in match play from s15, before the span began.

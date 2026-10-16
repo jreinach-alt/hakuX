@@ -1,6 +1,6 @@
 # fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2); HAKUX_S2T_CVT
 
-State: draft
+State: ready
 
 Lane: fps1015            Issue: #433 #986 #992 #995 #993 #994
 Base: master @ 0e5fab6bef
@@ -17,7 +17,7 @@ default-off lever for the cause four of the five titles share. Details and every
 | issue | title | slow frames | cause | status |
 |---|---|---|---|---|
 | #986 | Mortal Kombat: Shaolin Monks | cutscene 14-23 fps, G 41-64 ms | 3 16-bit render-to-texture downloads a frame (`cvt`), each a finish and a fence wait; median G 43.2 ms with `Fin` 18.5 ms | cause found; with `HAKUX_S2T_CVT=1` the cutscene's first 1800 frames run at 54.2-54.4 fps instead of 27.5-29.0 (two runs per arm) |
-| #992 | Top Spin | match play 26-31 ms frames | the same downloads, 24-32 a frame (59 in the arena intro); bound 11-15 ms of the frame | cause found; A/B queued |
+| #992 | Top Spin | match play 26-31 ms frames | the same downloads, 30 a frame in match play; bound 11-15 ms of the frame | cause found; with `HAKUX_S2T_CVT=1` match play runs at 59 fps instead of 38 (median G 16.7 against 26.1 ms, one run per arm). Replays still drop to 14-18 fps, bound by the PFIFO thread at three times live play's draws |
 | #992 | Brian Lara Cricket 2005 | ball in play | a different shape | unexplained; needs one perflog run |
 | #995 | Batman Begins | fire/explosion cutscenes 14-23 fps | GPU work outgrows the 30-fps cap; one download a frame stops it overlapping the PFIFO thread | partly explained |
 | #993 | Prince of Persia | fog room 19 fps | PFIFO-thread frame 33-36 ms against the 33.4 ms two-vblank budget; nine shadow-map downloads a frame inside it | reduced to a bound; the A/B needs a save at the fog room, 17 minutes into a new game |
@@ -93,5 +93,27 @@ The marker triangles keep a colour set for an earlier marker. This is a regressi
 and 0e5fab6bef, in vk/draw.c's super-fast pre-draw path by reading (an inline attribute value that reaches no
 uniform push, the hole #274 closed in create_pipeline only). Details and the candidate commits are in NOTES.md,
 "The A/B, results". The switch stays off by default; this suite cannot clear it until the regression is fixed.
+
+**Soak, #992 Top Spin (on1 1792170178-fps1015-2310292, off1 1792170186-fps1015-2314810): R, P and F pass; I is
+refuted as registered.**
+
+| leg | registered | measured | |
+|---|---|---|---|
+| R | on sd <= 1 a frame, cvt 0; off sd >= 15 | on 0.00, cvt 0; off 24.15 (30.0 a guest frame) | PASS |
+| P | match-play median G on - off in [-13, -4] ms | -9.4 (16.7 against 26.1) | PASS |
+| F | match-play median gfps on - off >= +6 | +21.0 (59 against 38) | PASS |
+| I | stadium fly-over median G on - off <= -10 ms | -9.4 | FAIL |
+
+On this golden the route reaches match play at the fifteenth step in both arms, before the fly-over span begins.
+The span therefore read match play, where the switch-on arm is already at the vblank. Neither run's match play is
+a clean route window, because the arms were also played by hand. The arms agree through the menus and split at
+the same step: 30 downloads and a 12.7 ms finish wait a frame without the switch, none with it.
+
+Replay playback with the switch runs at 14-18 fps. Its frames carry 2.9-3.4 times live play's texture binds and
+2.4-3.2 times its render passes. The PFIFO thread is busy for about 46 ms of a 52-59 ms frame. The GPU takes
+22.5 ms and the finish wait 0.5 ms.
+
+The judge counts a stall block as 60 guest frames. A block is 60 present plus flip finishes, which is `flip` guest
+frames; the judge's docstring now says so. No leg moves.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

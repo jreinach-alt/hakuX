@@ -7,11 +7,15 @@ against docs/testing/predictions/fps1015-mksm.json.
 Each RESULT_DIR is one perflog soak of route fps1015-mksm. Its arm is read
 from request.json: `on` when its env carries HAKUX_S2T_CVT=1, else `off`.
 
-Windows. A perflog build prints one block per 60 guest frames: hakuX-stall
-`Finish:N(... sdS ... presP flipF ...)` and `txr[... dlD/..K ... s2tcC ...]
-txdl[... cvtV ...]`, then hakuX-perf `gfps= G:`, hakuX-pace `ms=` (the
-window's length) and hakuX-phase `Draw: Fin: GPU:`. One window per `gfps`
-line; the other lines are paired to it by timestamp.
+Windows. A perflog build prints one hakuX-stall block per 60 present and
+flip finishes: `Finish:N(... sdS ... presP flipF ...)` and `txr[... dlD/..K
+... s2tcC ...] txdl[... cvtV ...]`. A guest frame has one flip finish, so a
+block spans F guest frames: 60 in MKSM (pres 0), 30-60 in Top Spin. The
+`sd a frame` figure divides by P + F, as registered, so it reads low by
+F / (P + F) where P > 0 (Top Spin's off arm: 24.4 for 30.0 a guest frame).
+Then hakuX-perf `gfps= G:`, hakuX-pace `ms=` (the window's length) and
+hakuX-phase `Draw: Fin: GPU:`. One window per `gfps` line; the other lines
+are paired to it by timestamp.
 
 Spans. The route's inputs are blind and timed, so its shots fall at the same
 offsets from route start in every run. run.log gives each `ROUTE ... shot`
@@ -54,13 +58,14 @@ from datetime import datetime
 
 LEAD = 1.42
 TS = re.compile(r'^(\d\d-\d\d \d\d:\d\d:\d\d\.\d\d\d)\s')
-FINISH = re.compile(r'hakuX-stall\(\d+\): RPBreaks:\d+ Finish:(\d+)\(.*?sd(\d+) .*?'
+# logcat pads the pid to five columns: `hakuX-perf( 9230):` for a four-digit pid.
+FINISH = re.compile(r'hakuX-stall\(\s*\d+\): RPBreaks:\d+ Finish:(\d+)\(.*?sd(\d+) .*?'
                     r'pres(\d+) flip(\d+) ')
 TXR = re.compile(r'txr\[ct\d+ bt\d+/\d+ dl(\d+)/\d+K .*?s2tc(\d+) .*?\] '
                  r'txdl\[.*?cvt(\d+) ')
-PERF = re.compile(r'hakuX-perf\(\d+\): gfps=(\d+) G:([\d.]+)')
-PACE = re.compile(r'hakuX-pace\(\d+\): .*? ms=([\d.]+)')
-PHASE = re.compile(r'hakuX-phase\(\d+\): .*Draw:([\d.]+) .*Fin:([\d.]+)\(Sub:([\d.]+) '
+PERF = re.compile(r'hakuX-perf\(\s*\d+\): gfps=(\d+) G:([\d.]+)')
+PACE = re.compile(r'hakuX-pace\(\s*\d+\): .*? ms=([\d.]+)')
+PHASE = re.compile(r'hakuX-phase\(\s*\d+\): .*Draw:([\d.]+) .*Fin:([\d.]+)\(Sub:([\d.]+) '
                    r'Fen:([\d.]+)\).*Tot:([\d.]+) GPU:([\d.]+)'
                    r'(?:\(R:[\d.]+ X:([\d.]+) .*?MxG:([\d.]+))?')
 CUTN = 30
