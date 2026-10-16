@@ -6,8 +6,10 @@ lane.local's overnight chain until ~06:00 PDT 10-16.
 
 ## Status
 
-[lane.fps1015] waiting: the #986 A/B of `HAKUX_S2T_CVT` (requests listed in "The A/B, queued" at the end), behind
-the owner's hands-on hold on the Nova (`lanelocal-ownerplay`).
+[lane.fps1015] waiting: the #986 A/B of `HAKUX_S2T_CVT` on f5a67ba52c, four Nova requests 1792163875-fps1015-716177
+(pixel B), 1792163881-fps1015-716411 (pixel A), 1792163888-fps1015-716638 (MKSM soak on1) and
+1792163893-fps1015-717142 (MKSM soak off1), behind the owner's hands-on hold on the Nova (`lanelocal-ownerplay`).
+Their four results resolve it; reading them is in "The A/B, queued" at the end.
 - #986 MKSM: cause found, serialization on 16-bit render-to-texture downloads (3 a frame in the cutscene). Lever
   `HAKUX_S2T_CVT` built (default off) and checked by reading; its A/B is registered and queued.
 - #992 Top Spin: the same cause, 24-32 downloads a frame. Same lever; its A/B needs an admissible route (no golden
@@ -781,3 +783,28 @@ Top Spin's A/B is not worth the route work.
 Top Spin's match play also breaks the render pass about 100 times a window for occlusion queries. Its A/B should
 carry `HAKUX_REPORT_ASYNC=1` in both arms (texscan1010's lesson), so that a report wait cannot take the downloads'
 place and hide the gain. MKSM's cutscene breaks for no queries, so its A/B runs the switch alone.
+
+## The A/B, queued
+
+Both predictions name f5a67ba52c (`a_ref` = `b_ref`), the merge of master 0e5fab6bef into this branch. Its diff
+from 36c77086de is `s2tread.py`'s printout, `status_html.py` and another lane's PR.md: no emulator code. Registered 2026-10-16 15:16Z, committed and pushed in 465cfd2f57 before any queue. All four requests
+are pinned to the Nova and queued by the lane (`--who fps1015`, 2 x 150 s + 2 x 420 s = 19 min, under the pilot
+gate's 30). They run in id order, which is the order below; the Nova is held by `lanelocal-ownerplay` until the
+owner says done.
+
+| request | leg | arm |
+|---|---|---|
+| 1792163875-fps1015-716177 | pixel | B, `HAKUX_S2T_CVT=1` |
+| 1792163881-fps1015-716411 | pixel | A, no env |
+| 1792163888-fps1015-716638 | soak, MKSM | on1, `HAKUX_S2T_CVT=1` |
+| 1792163893-fps1015-717142 | soak, MKSM | off1, no env |
+
+Reading them, in this order:
+
+1. Pixel: `python3 docs/testing/ab_compare.py --a <A result> --b <B result> --expect
+   docs/testing/predictions/fps1015-pixels.json --allow-same-binary`, then grep B's logcat for `[s2tcvt] on` and
+   `[s2tcvt] first`. A moved capture stops the soak reading until it is explained region by region.
+2. Soak pilot: `python3 docs/lanes/fps1015/s2tread.py <on1> <off1>` (add `--windows` for the rows). If both runs
+   pass V, queue on2 then off2 with the same two commands (purpose "on2"/"off2"), and judge all four together. If
+   either fails V, read shots s05-s13 of the failing run for where the route diverged; the run is void, and the
+   route is what changes, not the prediction.
