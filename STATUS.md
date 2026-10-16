@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-16 14:50 PDT_
+_updated 2026-10-16 15:21 PDT_
 
 0.6: Measured 261 / 300 · Playable 87 / 110.
 
@@ -223,7 +223,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space**<br>reach gameplay | 🟣 inputs ready | **29.3**<br>57% at 28.5+<br>Nova · 09-27 · max perf<br>Thor **21.7** |
 | **The Incredible Hulk: Ultimate Destruction**<br>reach gameplay | 🟣 inputs ready | **29.2**<br>64% at 28.5+<br>Nova · 10-05 |
 | **Dragon Ball Z Sagas**<br>reach gameplay | 🔵 copied | **29.2**<br>57% at 28.5+<br>Nova · 10-07 |
-| **Forza Motorsport**<br>reach gameplay<br>#414 open · running 1-1792187379-foldqueue-1847866 on the nova; queued 1-1792187381-foldqueue-1848804 #1 | 🔵 copied | **29.0**<br>45% at 28.5+<br>Nova · 09-30 · default perf<br>Thor **16.7** |
+| **Forza Motorsport**<br>reach gameplay<br>#414 open · nothing in flight | 🔵 copied | **29.0**<br>45% at 28.5+<br>Nova · 09-30 · default perf<br>Thor **16.7** |
 | **Scooby Doo Mystery Mayhem Europe**<br>reach gameplay | 🔵 copied | **29.0**<br>100% at 28.5+<br>Nova · 10-12 |
 | **Legacy of Kain: Defiance**<br>done | 🟢 Playable | **29.0**<br>37% at 28.5+<br>Nova · 10-11 · max perf, screen: 90-240 s only |
 | **Forgotten Realms Demon Stone USA**<br>reach gameplay | 🔵 copied | **28.9**<br>51% at 28.5+<br>Nova · 10-08 |
