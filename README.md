@@ -99,7 +99,7 @@ this build. Coming from the official hakuX?
 
 ## Source code
 
-The code is on the [`master` branch](https://github.com/jreinach-alt/hakuX/tree/master). To clone it:
+The code is on the [master branch](https://github.com/jreinach-alt/hakuX/tree/master). To clone it:
 
 ```
 git clone -b master https://github.com/jreinach-alt/hakuX.git

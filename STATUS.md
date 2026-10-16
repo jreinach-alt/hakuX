@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-16 09:32 PDT_
+_updated 2026-10-16 10:04 PDT_
 
 0.6: Measured 261 / 300 · Playable 87 / 110.
 
@@ -19,7 +19,7 @@ Playable **87** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 | release | Measured target | projected date | Playable target | projected date |
 |---|---|---|---|---|
-| 0.6 | 300 | 2026-10-18 | 110 | 2026-10-20 |
+| 0.6 | 300 | 2026-10-19 | 110 | 2026-10-20 |
 | 0.7 | 425 | 2026-10-27 | 185 | 2026-11-01 |
 | 0.8 | 575 | 2026-11-06 | 300 | 2026-11-20 |
 | 0.9 | 725 | 2026-11-16 | 480 | 2026-12-19 |
@@ -139,7 +139,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Crash Bandicoot: The Wrath of Cortex**<br>reach gameplay | 🟣 inputs ready | **46.9**<br>100% at 28.5+<br>Nova · 10-07 |
 | **Jacked Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **46.1**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Dark Summit**<br>done | 🟢 Playable | **45.9**<br>93% at 28.5+<br>Nova · 10-04 |
-| **Mortal Kombat: Shaolin Monks**<br>reach gameplay | 🟣 inputs ready | **45.9**<br>49% at 28.5+<br>Nova · 10-06 |
+| **Mortal Kombat: Shaolin Monks**<br>reach gameplay<br>queued 1-1792170341-lane.audio1016-2350757 #3; queued 1-1792170345-lane.audio1016-2351225 #4; 1 more | 🟣 inputs ready | **45.9**<br>49% at 28.5+<br>Nova · 10-06 |
 | **NFL Blitz 2002**<br>done | 🟢 Playable | **45.0**<br>100% at 28.5+<br>Nova · 10-05 |
 | **Big Mutha Truckers USA**<br>reach gameplay | 🔵 copied | **45.0**<br>89% at 28.5+<br>Nova · 10-14 |
 | **MLB SlugFest 2004**<br>done | 🟢 Playable | **44.4**<br>100% at 28.5+<br>Nova · 10-05 |
@@ -166,14 +166,14 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Yetisports Arctic Adventures Europe**<br>reach gameplay | 🔵 copied | **35.1**<br>97% at 28.5+<br>Nova · 10-16 |
 | **NHL 2K3**<br>reach gameplay | 🔵 copied | **35.0**<br>69% at 28.5+<br>Nova · 10-05 |
 | **Bistro Cupid**<br>reach gameplay | 🔵 copied | **34.4**<br>87% at 28.5+<br>Thor · 09-30 · max perf, soak |
-| **Top Spin**<br>soak for Playable | soak pending | **32.6**<br>91% at 28.5+<br>Nova · 10-09 · max perf |
+| **Top Spin**<br>soak for Playable<br>queued 1792170178-fps1015-2310292 #9; queued 1792170186-fps1015-2314810 #10 | soak pending | **32.6**<br>91% at 28.5+<br>Nova · 10-09 · max perf |
 | **NBA Inside Drive 2004 USA**<br>reach gameplay | 🔵 copied | **31.1**<br>70% at 28.5+<br>Nova · 10-16 |
 | **Aliens Versus Predator: Extinction**<br>reach gameplay | 🟣 inputs ready | **31.0**<br>100% at 28.5+<br>Nova · 10-05 |
 | **Burnout 3: Takedown**<br>reach gameplay | 🟣 inputs ready | **30.8**<br>85% at 28.5+<br>Nova · 10-14 |
 | **Fuzion Frenzy**<br>**blocked: hang: 13.4 s without 60 guest flips after the mark** | 🔴 blocked | **30.6**<br>54% at 28.5+<br>Nova · 09-27 · max perf |
 | **Panzer Elite Action Fields of Glory Europe**<br>reach gameplay | 🔵 copied | **30.4**<br>90% at 28.5+<br>Nova · 10-07 |
 | **Big Bumpin USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-15 |
-| **Crimson Skies: High Road to Revenge**<br>done<br>running 1-1792157545-lane.audio1016-3902536 on the nova; queued 1-1792157545-lane.audio1016-3902586 #1 | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 10-13 · default perf<br>Thor **23.4** |
+| **Crimson Skies: High Road to Revenge**<br>done<br>queued 1-1792170351-lane.audio1016-2352136 #6; queued 1-1792170352-lane.audio1016-2352599 #7 | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 10-13 · default perf<br>Thor **23.4** |
 | **50 Cent: Bulletproof**<br>done<br>#382 open · nothing in flight | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 09-30 · default perf, soak |
 | **Azurik: Rise of Perathia**<br>done | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 09-29 · default perf<br>Thor 30.0 |
 | **Blade II**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-07 |
@@ -187,9 +187,9 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **GoldenEye: Rogue Agent**<br>**blocked: reached_gameplay: no `mark gameplay` in logcat** | 🔴 blocked | **30.0**<br>94% at 28.5+<br>Nova · 09-27 · max perf, screen: 90-240 s only |
 | **Grabbed by the Ghoulies**<br>done<br>#311 closed | 🟢 Playable | **30.0**<br>98% at 28.5+<br>Nova · 10-12 · max perf<br>Thor 30.0 |
 | **Grand Theft Auto III**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-12 · max perf |
-| **Grand Theft Auto: Vice City**<br>done | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-13 · max perf |
+| **Grand Theft Auto: Vice City**<br>done<br>running 1-1792169529-perflog1016-2121153 on the nova; queued 1-1792169535-perflog1016-2121769 #1; 1 more | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-13 · max perf |
 | **Halo 2**<br>reach gameplay | 🔵 copied | **30.0**<br>96% at 28.5+<br>Nova · 10-03 · default perf |
-| **Halo: Combat Evolved**<br>done<br>queued 1792166308-x1port1012-1386872 #2 | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-03 · default perf |
+| **Halo: Combat Evolved**<br>done | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 10-03 · default perf |
 | **Knights of the Temple II Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Marvel Nemesis: Rise of the Imperfects**<br>reach gameplay | 🔵 copied | **30.0**<br>99% at 28.5+<br>Nova · 10-06 |
 | **Mat Hoffman s Pro BMX 2 USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-14 |
