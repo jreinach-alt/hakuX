@@ -217,16 +217,39 @@ def norm_name(s):
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
+# One display name per title_id, defined in one place (#433). Lower wins.
+# The two hand-curated sources -- the Playable ledger and targets.toml --
+# always outrank a raw identity source: a device listing is a filename with
+# underscores for spaces, and the console inventory's xbe_title_name is
+# whatever fit in the XBE's own title-name field (often ALL CAPS, missing
+# punctuation the box art has -- "NINJA GAIDEN", "PhantomDust"). Before this
+# ordering, whichever non-ledger source build_catalog() happened to read
+# first won and stuck; targets.toml, read last, could never override an
+# inventory spelling it disagreed with.
+_SOURCE_RANK = {"playable-accepted.tsv": 0, "targets.toml": 1}
+
+
+def _name_priority(where):
+    if where in _SOURCE_RANK:
+        return _SOURCE_RANK[where]
+    if where.startswith("listing-"):
+        return 2
+    return 3     # owner-library-done.tsv, console-inventory xbe/xemu names
+
+
 class Catalog:
     """Identity. `canon` maps a regional title_id to xemu's canonical one
     (titles/xemu-compat-*.csv, the key onhand.py's one-copy rule uses), so a
-    USA and a European disc of one game are one registry row. `names` holds a
-    display name per canonical id that has a reason to be a row (on a device
-    listing, in the inventory, the ledger or a run); `by_norm` maps an exact
-    normalised name to {canonical id: [where]}."""
+    USA and a European disc of one game are one registry row. `names` holds
+    THE display name per canonical id -- the highest-priority source that
+    named it (`_name_priority`), never a join on the name itself; `by_norm`
+    maps an exact normalised name to {canonical id: [where]}, every spelling
+    this catalog has ever seen, for `resolve()` to match a bare name against
+    -- an alias, never shown."""
 
     def __init__(self):
         self.names = {}
+        self._name_pri = {}
         self.by_norm = {}
         self.canon = {}
         self.aliases = {}
@@ -241,9 +264,12 @@ class Catalog:
         tid = tid.upper()
         c = self.canonical(tid)
         self.aliases.setdefault(c, set()).add(tid)
-        if row and name and (c not in self.names or where.startswith("listing")):
-            if where.startswith("listing") or c not in self.names:
+        if row and name:
+            pri = _name_priority(where)
+            cur = self._name_pri.get(c)
+            if cur is None or pri < cur:
                 self.names[c] = name
+                self._name_pri[c] = pri
         n = norm_name(name)
         if n:
             self.by_norm.setdefault(n, {}).setdefault(c, []).append(where)
@@ -307,6 +333,19 @@ def build_catalog(p):
             m = re.match(r'name\s*=\s*"(.*)"', line)
             if m and cur:
                 cat.add(cur, m.group(1), "targets.toml")
+    # The Playable ledger last, so a row with no title_id column (resolved
+    # by name against by_norm) sees every other source's aliases -- but its
+    # name still wins the catalog's display spelling, since _name_priority
+    # ranks it above every source already added above (#433). This is the
+    # one place the ledger feeds the catalog; build() and every other
+    # caller of build_catalog() get the resolved name for free, with no
+    # second "ledger wins" rule of their own to drift out of sync.
+    for r in read_tsv(p.ledger):
+        tid = (r.get("title_id") or "").strip().upper()
+        if not TID_RE.match(tid):
+            tid, _ = cat.resolve(r.get("title") or "")
+        if tid:
+            cat.add(tid, r.get("title"), "playable-accepted.tsv")
     return cat
 
 
@@ -594,13 +633,14 @@ def build(p, now=None, use_forge=True, forge_url=FORGE_URL):
             continue
         tid = cat.canonical(tid)
         ledger[tid] = r
-        cat.add(tid, r.get("title"), "playable-accepted.tsv")
+        # cat already has this name at top priority -- build_catalog() loads
+        # the ledger itself (#433) -- so no cat.add() here duplicates that rule.
 
     runs = collect_runs(p, cat, unresolved)
     by_tid = {}
     for r in runs:
         by_tid.setdefault(r.tid, []).append(r)
-        cat.names.setdefault(r.tid, r.name)
+        cat.add(r.tid, r.name, "run")
 
     intake = {}
     for src in (p.intake, p.pool):
@@ -626,7 +666,10 @@ def build(p, now=None, use_forge=True, forge_url=FORGE_URL):
     tids = set(cat.names) | set(ledger) | set(by_tid) | set(intake)
     rows = []
     for tid in sorted(tids):
-        name = (ledger.get(tid) or {}).get("title") or cat.names.get(tid) or ""
+        # The catalog is the one place a display name is decided (#433): the
+        # ledger row above already fed cat.add() at top priority, so this is
+        # never a second, independent "ledger wins" rule -- just the result.
+        name = cat.names.get(tid) or ""
         rs = sorted(by_tid.get(tid, []), key=lambda r: r.t)
         judged = [r for r in rs if r.verdict]
         scored = [r for r in judged if r.detail["fps_ok_share"] is not None and not r.detail["void"]]
@@ -857,6 +900,51 @@ def page_playable_counts(p):
     return out
 
 
+def curated_names(p, cat):
+    """{tid: {source: name}} for just the two hand-maintained display
+    sources (#433): the Playable ledger and targets.toml. A title named by
+    both must agree -- these are the only two sources meant to set a
+    display spelling; a device listing or the console's own XBE string is
+    an identity ALIAS, never shown, so it never participates here."""
+    out = {}
+    for r in read_tsv(p.ledger):
+        tid = (r.get("title_id") or "").strip().upper()
+        if not TID_RE.match(tid):
+            tid, _ = cat.resolve(r.get("title") or "")
+        if tid and (r.get("title") or "").strip():
+            tid = cat.canonical(tid)
+            out.setdefault(tid, {})["pm/playable-accepted.tsv"] = r["title"].strip()
+    if os.path.isfile(p.targets):
+        cur = None
+        for line in open(p.targets, encoding="utf-8", errors="replace"):
+            m = re.match(r'\[titles\."([0-9A-Fa-f]{8})"\]', line)
+            if m:
+                cur = m.group(1).upper()
+                continue
+            m = re.match(r'name\s*=\s*"(.*)"', line)
+            if m and cur:
+                tid = cat.canonical(cur)
+                out.setdefault(tid, {})["targets.toml"] = m.group(1)
+    return out
+
+
+def name_drift(p, cat):
+    """[(tid, {source: name})] for every title_id where a curated source (the
+    ledger or targets.toml) disagrees with the catalog's resolved display
+    name -- the one name every reader is supposed to show (#433). Red when
+    any source still disagrees with what gets shown; green once the
+    catalog's priority always resolves to the curated spelling."""
+    out = []
+    for tid, by_src in sorted(curated_names(p, cat).items()):
+        resolved = cat.names.get(tid)
+        vals = dict(by_src)
+        if resolved is not None:
+            vals["catalog (resolved)"] = resolved
+        if len(set(vals.values())) > 1:
+            out.append((tid, vals))
+    return out
+
+
 # ---------------------------------------------------------------- CLI
 
 def main(argv=None):
@@ -894,6 +982,11 @@ def main(argv=None):
             fail = True
         for where, name, why_u in (hdr or {}).get("_unresolved") or []:
             print("UNRESOLVED %s: %r -- %s" % (where, name, why_u))
+            fail = True
+        cat = build_catalog(p)
+        drift = name_drift(p, cat)
+        for tid, by_src in drift:
+            print("NAME DRIFT %s: %s" % (tid, "; ".join("%s=%r" % (s, n) for s, n in sorted(by_src.items()))))
             fail = True
         if a.pages:
             if hdr is None:

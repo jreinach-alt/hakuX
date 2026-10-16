@@ -72,7 +72,7 @@ target_fps = 60
 notes = "A §11 soak title; a 60 fps fighter. Route: PR 2. routes/doa3.route: session 41's version waited 300 s blind (cold-cache timing) and the Thor's runner stopped it at 284 s before the first press (1790801641-titleroutes-1213635, diagnosed as heat but never reviewed against run.log); session 42 re-timed it for a warm cache (START from t~75) and re-queued it (0-0-s-1790805442-titleroutes-2050455). Session 44 read that result in full: it ran 475 of 480s and DID reach mark gameplay (150105-gameplay.png, fps_window_median 52.2, fps_ok_share 0.60 at the 30 bar), then its own route.txt logged 'ROUTE STOPPED: ... not-foreground: com.magneticchen.daijishou (the focused application on display 0 ..., not hakuX)' -- the Thor's Daijishou launcher took display 0 back at 15:06:44, title_verdict.py scores it crash+hang. thermal.jsonl's own xo-therm peaked at 69.9C, under the 70C the dispatcher's .hostops-diagnosed flag claims it hit. So BOTH of DOA3's Thor runs were mis-diagnosed as heat stops by harness_health.py; the real, reproducible failure is Daijishou regaining focus mid-run (reported dispatch/board-requests/titleroutes.md and #397, 2026-09-30 session 44). The screening program's two-heat-stops rule does not cleanly apply since neither stop was heat, but two Thor runs have now failed the same way regardless of label; DOA3 is Thor-only (no Nova copy exists) so a Nova reading needs a copy decision under the amended one-copy-per-title rule (owner 09-29 23:15: copy when work is held up for the title) -- not this lane's call. #431 (09-28; documented, not measured here): Impulse Gamer (2002): \"a consistent 60 frames per second\"; HonestGamers: \"flawless framerates\"; a frame-rate video of the original: youtube.com/watch?v=djgZg-FqeQs (\"Xbox Original | Dead or Alive 3 | Review Gameplay Framerate\"). Session 46 mark audit: the mark frame (0-0-s-1790805442-titleroutes-2050455, 150105) is black (a round fade?); one frame only."
 
 [titles."49470018"]
-name = "JSRF: Jet Set Radio Future"
+name = "Jet Set Radio Future"
 target_fps = 60
 iso = { thor = "JSRF - Jet Set Radio Future (USA).xiso.iso" }
 route = "jsrf"
@@ -485,7 +485,7 @@ target_fps = 60
 notes = "Own target 60 from #431 (comment 5853568091): medium confidence. IGN Xbox review (2002)."
 
 [titles."534E0007"]
-name = "KOF: Maximum Impact - Maniax"
+name = "KOF: Maximum Impact – Maniax"
 iso = { thor = "534E0007-KOF_Maximum_Impact_Maniax.xiso.iso" }
 route = "kof-mi.returning"
 
@@ -513,7 +513,7 @@ iso = { thor = "Psychonauts (USA).iso" }
 notes = "No #431 target; the default 30 applies. Session 44's pass-1 survey (1790822573-titleroutes-2818801, Thor, 300s) never got past the title screen ('Press START to begin', scrolling credits in the background) in 136s and 7 cycles of START-then-A: every route-frame from 194441 to 194548 shows the identical title card. Stopped at 136s by a focus steal to com.android.launcher3 (not Daijishou this time -- a different launcher, display 4), not heat (xo-therm only reached 64.5C; hostops's .hostops-diagnosed note on this result correlates it with a dead-fan heat signature on other thermal zones but calls that unproven). No route drafted: the title screen needs something other than repeated START/A at 5s intervals to advance (a longer hold, a different button, or a wait the survey's generic cadence does not give it), and that needs a held or hand-authored route, not another blind survey. Next: author a route.txt that tries a single longer START press or a different first input before re-surveying. Session 46: the requeue (0-0-s-1790823861-titleroutes-2960863) stopped at 127 s the same way (not-foreground: com.android.launcher3, input focus on display 4) after the title card; 214537-menu-start.png shows the PSYCHONAUTS brain title with the FPS overlay at 1. No heat stop in the runner log (peak xo 67 C). Two runs, neither past the title card: parked here, not retried blind."
 
 [titles."545400B0"]
-name = "Family Guy: Video Game!"
+name = "Family Guy Video Game"
 iso = { thor = "545400B0-Family_Guy_Video_Game.xiso.iso" }
 route = "family-guy"
 notes = "No #431 target; the default 30 applies. routes/family-guy.route (session 46) from the Thor survey 0-0-s-1790823797-titleroutes-2950719 (heat-stopped at 20:45 PDT after 4 min): START -> New Game, A -> Select Auto Save (all Empty), A -> intro clip, START skips, LOADING -> Stewie's nursery with the HUD on the 4th cycle (204142-menu-a.png). The play frames (204357-204448) show Stewie walked from the rug to the changing table under the stick. FPS overlay 29-30. Session 47: replayed clean, no heat stop (0-0-s-1790830432-titleroutes-310926), title_verdict.py reads fps_ok_share 0.9763 over 189.4s. The disk now carries a Family Guy save from this run's own predecessor runs, so the 4th cycle's A landed on 'Are you sure you want to overwrite this save?' instead of an Empty slot: the mark frame (215740-gameplay.png) is that dialog, not Stewie. Real gameplay (Stewie in the nursery, HUD) is confirmed by 215749-play.png, ~9s later, and the 97.6% share is dominated by that real play. Nominated for Nova (#433) on that evidence; the route would be more precise with an explicit press to leave the overwrite dialog rather than relying on the play loop's incidental A press, not done this session."
@@ -618,7 +618,7 @@ route = "gen-counter-strike"
 notes = "No #431 target; the default 30 applies. route = gen-counter-strike: #433 step 6c classifier-path benchmark opening (drive generic), FPS play loop (sweep look, fire), not yet device-proven."
 
 [titles."53410002"]
-name = "Guilty Gear XX #Reload: The Midnight Carnival"
+name = "Guilty Gear XX #Reload"
 iso = { nova = "53410002-Guilty_Gear_XX_Reload_The_Midnight_Carnival.xiso.iso" }
 route = "gen-guilty-gear-xx"
 notes = "No #431 target; the default 30 applies. route = gen-guilty-gear-xx: #433 step 6c classifier-path benchmark opening (drive generic), 2D-fighter play loop (close/attack), not yet device-proven."
