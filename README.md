@@ -1,3 +1,5 @@
+<p align="center"><img src=".github/hakux-logo.svg" alt="hakuX Community Edition: Original Xbox on Android" width="640"></p>
+
 # hakuX CE
 
 _Last updated 2026-10-16, for version 0.5.0._
@@ -7,13 +9,13 @@ Edition: an independent build of the hakuX emulator, tested game by game on
 Snapdragon handhelds.
 
 **[Download 0.5.0](https://github.com/jreinach-alt/hakuX/releases/latest)** ·
-[72 Playable games](docs/COMPATIBILITY.md) ·
+[Playable games](docs/COMPATIBILITY.md) ·
 [What's new](docs/releases/v0.5.0.md) ·
 [Sponsor](https://github.com/sponsors/jreinach-alt)
 
 ## Highlights
 
-- **72 games rated Playable.** Each one reached real gameplay on a handheld and
+- **Games rated Playable.** Each one reached real gameplay on a handheld and
   held 30 fps (within 5%) for at least 90% of a timed run, with no crash or
   hang. Among them: Halo: Combat Evolved, Jet Set Radio Future, Panzer Dragoon
   Orta, Grand Theft Auto III and Vice City, Need for Speed: Most Wanted,
