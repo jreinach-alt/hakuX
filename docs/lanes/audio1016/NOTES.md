@@ -222,6 +222,12 @@ with `HAKUX_APU_MIXLOG=1` in env_vars.
 | R4 | Crimson Skies 4D530021 | 120 | MIXLOG | clipping baseline, loud title |
 | R5 | Crimson Skies 4D530021 | 120 | MIXLOG, DOWNMIX | clipping with the switch |
 
+Queued 2026-10-16, release priority, pinned to the Nova:
+R1 `1-1792157544-lane.audio1016-3902449`, R2 `1-1792157544-lane.audio1016-3902478`,
+R3 `1-1792157545-lane.audio1016-3902507`, R4 `1-1792157545-lane.audio1016-3902536`,
+R5 `1-1792157545-lane.audio1016-3902586`. Judge: `tools/mixlog_read.py` and
+`tools/level_windows.py` on each run's logcat, legs V/M/S/U/H/C as registered.
+
 ## What the cause covers (#984, #938)
 
 - MKSM: (a) measured offline, about 4-5 dB of the 8-12 dB gap. The rest is open.
