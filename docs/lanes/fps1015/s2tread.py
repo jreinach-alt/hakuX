@@ -234,10 +234,10 @@ def main():
     legs.append(('R', r_ok, 'cutscene sd/frame on %s off %s; cvt on %s'
                  % (fmt(med(on_c, 'sd'), 2), fmt(med(off_c, 'sd'), 2), fmt(med(on_c, 'cvt'), 0))))
     dg = med(on_c, 'G') - med(off_c, 'G')
-    legs.append(('P', -22 <= dg <= -6, 'cutscene median G on %.1f off %.1f: %+.1f ms (predicted -14, [-22, -6])'
+    legs.append(('P', -22 <= dg <= -6, 'cutscene median G on %.1f off %.1f: %+.1f ms (predicted -10, [-22, -6])'
                  % (med(on_c, 'G'), med(off_c, 'G'), dg)))
     df = med(on_c, 'gfps') - med(off_c, 'gfps')
-    legs.append(('F', df >= 5, 'cutscene median gfps on %.1f off %.1f: %+.1f (predicted +11, >= +5)'
+    legs.append(('F', df >= 5, 'cutscene median gfps on %.1f off %.1f: %+.1f (predicted +8, >= +5)'
                  % (med(on_c, 'gfps'), med(off_c, 'gfps'), df)))
     dn = med(on_p, 'gfps') - med(off_p, 'gfps')
     legs.append(('N', dn >= -3, 'gameplay median gfps on %.1f off %.1f: %+.1f (>= -3)'
