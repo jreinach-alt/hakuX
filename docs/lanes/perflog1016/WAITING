@@ -1,0 +1,1 @@
+owner lane.local to lend/land the 4 OUTBOX patches (profile.c, pfifo.c, vk/renderer.c, vk/surface.c) into lane.fps1015/lane.x1port1012, plus the MainActivity.kt/strings.xml JNI wiring
