@@ -180,7 +180,59 @@ python3 docs/testing/title_registry.py check --root /home/justin/hakux-work --no
 | README/COMPATIBILITY.md generation | -- | see item 3 below for the Playable count; the per-row title text itself already comes from the registry (title_id keyed) via `compat_page.py` |
 | `docs/testing/compat_page.py` `notes_by_title` | keyed by `(section, title)` tuple, not title_id | flagged below; not converted this session -- said why |
 
-(will fill in `title_locations.py` and finish `compat_page.py` next.)
+### `title_locations.py`
+
+Grepped for `["name"]`, `.names`, `nkey(`, `resolve(`, `where[` -- no
+matches. Already title_id-keyed throughout (it's the output of
+locations1014, the lane immediately before this one). No change needed.
+
+### `compat_page.py`
+
+`build_playable_rows()` joined the ledger to `compat_notes.tsv`'s
+"playable" section by `("playable", title)` text, even though
+`compat_notes.tsv` already HAS a `title_id` column (`NOTES_COLS`) -- just
+unpopulated for 20 of its 57 playable rows. Converted the join to title_id:
+`notes_by_id = {r["title_id"]: r ...}`, `build_playable_rows(ledger_rows,
+notes_by_id, registry_by_title)`. Backfilled the 20 blank `title_id` cells
+in `docs/testing/compat_notes.tsv` first (`playable` section only), looked
+up against the ledger (and, for the one ledger row recorded before
+title_id tracking -- NBA 2K3 -- against the already-built registry, which
+is title_id-keyed throughout). `build_playable_rows()` itself now also
+handles that one row's own empty ledger `title_id` the same way, as a
+one-time bridge, not a second name-keyed join: `registry_by_title` is
+consulted ONLY when `lr["title_id"]` is empty.
+
+Verified behavior-preserving: ran both the pre-fix and this-lane's
+`build_playable_rows()` against the live ledger filtered down to just the
+57 titles `compat_notes.tsv` already covers (`/tmp/compat_playable_compare.py`,
+not committed -- a scratch comparison script). Row-for-row identical
+output, with the sole difference being the now-populated `title_id` field
+(previously blank for 20 of the 57 rows) -- a correctness improvement,
+not a behavior change in which rows are selected or how they render.
+
+**Not regenerating `docs/COMPATIBILITY.md`/`docs/compatibility.csv` in
+this PR.** Confirmed `compat_page.py --check` against the LIVE ledger (87
+Playable rows) fails identically before and after this lane's change: 29
+playable and 4 below_bar titles have ledger/registry rows with no
+`compat_notes.tsv` entry at all (not a missing title_id -- a missing ROW,
+pre-existing, unrelated to this lane). Per `pm/lanelocal-log.md` (10-13
+~11:29, lane.compatrefresh1013), backfilling those rows (device, fps,
+region, a human frame-review note per title) is its own recurring,
+hand-reviewed "compatrefresh" lane -- a data-entry task needing device
+evidence, not a code fix, and far outside this lane's scope. The page is
+currently frozen at the 57 Playable titles from the last compatrefresh;
+regenerating it now would still raise `SystemExit` on the same 33 missing
+rows this lane did not introduce.
+
+Ran the existing `compat_page_selftest.py` (19 tests) against the
+converted join: one failure, `CheckFailsOnStalePage` -- its fixture gave
+the ledger row `title_id = "-"` (none) with an empty registry, the one
+case genuinely unresolvable by title_id (every other fixture in this file
+already carries a real title_id, e.g. `registry_row(title_id="4D57001A",
+...)`). That test is about stale-file detection, not name-matching, so
+fixed the fixture to carry a title_id like its siblings
+(`AAAA0099`) rather than special-casing a textual fallback back into
+`compat_page.py`. All 19 pass now.
 
 ## Blocked
 
