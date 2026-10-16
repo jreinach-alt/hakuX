@@ -1,6 +1,6 @@
 name: Title / Compatibility Report
 description: Report how well a specific game runs, or a bug specific to one title
-title: "Title Name: Short description"
+title: "[Title]: "
 labels: [compatibility, triage]
 body:
   - type: markdown

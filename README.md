@@ -1,3 +1,5 @@
+<p align="center"><img src=".github/hakux-logo.svg" alt="hakuX Community Edition: Original Xbox on Android" width="640"></p>
+
 # hakuX CE
 
 _Last updated 2026-10-16, for version 0.5.0._
