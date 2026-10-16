@@ -8,7 +8,8 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `perflog1016` | claude-opus-5-5 | 27 min | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) |
+| `perflog1016` | claude-opus-5-5 | 42 min | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) |
+| `titlekey1016` | claude-sonnet-5 | 3 min |  |
 
 - **Handhelds:** 2 connected.
   - Nova: held by `lanelocal-ownerplay`
@@ -116,7 +117,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/perflog1016` | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) | `8d8813a873` | 2026-10-16 07:02 |
+| `lane/perflog1016` | perflog1016: a pause-menu switch for the perflog telemetry tier, and a "Mark this moment" button (#433) | `e40443c754` | 2026-10-16 07:41 |
 
 ## Recently landed on master
 
@@ -133,4 +134,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
 - 2026-10-13 lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
 
-_Updated 2026-10-16 07:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 07:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
