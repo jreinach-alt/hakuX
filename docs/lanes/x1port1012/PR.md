@@ -1,10 +1,10 @@
-# x1port1012-halo: #939 ring-world leads (XVSS, S2TSHELF and the fast paths ruled out at the menu); #938, Fable not yet started
+# x1port1012-halo: #939 ring-world leads (XVSS, S2TSHELF and the fast paths ruled out; defect is per-frame surface alternation plus a layer missing on the unlit side); #938, Fable not yet started
 
 State: draft
 
 Lane: x1port1012          Issue: #939 [#938]
 Base: master @ dd5e3cb3c6 (stacked on PR #965, `lane/x1port1012`, still open)
-Files: docs/lanes/x1port1012/PR.md, docs/lanes/x1port1012/NOTES.md, docs/lanes/x1port1012/OUTBOX.md, docs/lanes/x1port1012/tools/ringframes.py, docs/lanes/x1port1012/tools/ringtrack.py, docs/lanes/x1port1012/tools/burstcount.py, docs/lanes/x1port1012/tools/ringreturn.py, hw/xbox/nv2a/pgraph/pgraph.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/buffer.c
+Files: docs/lanes/x1port1012/PR.md, docs/lanes/x1port1012/NOTES.md, docs/lanes/x1port1012/OUTBOX.md, docs/lanes/x1port1012/tools/ringframes.py, docs/lanes/x1port1012/tools/ringtrack.py, docs/lanes/x1port1012/tools/burstcount.py, docs/lanes/x1port1012/tools/ringreturn.py, docs/lanes/x1port1012/tools/burstseq.py, docs/lanes/x1port1012/tools/ynearest.py, docs/lanes/x1port1012/tools/burstzoom.py, docs/lanes/x1port1012/tools/burstdiff.py, docs/lanes/x1port1012/tools/yclass.py, hw/xbox/nv2a/pgraph/pgraph.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/buffer.c
 Prediction: none: the leads are default-off diagnostic switches, judged by an owner-reviewed triage video, not an automated A/B against a golden
 Needs device: yes (Nova)    Needs NDK: yes
 
@@ -35,12 +35,19 @@ All three are gated leads from `batchC.md`/`batchD.md`, not fixes: none is claim
   none of them can show the defect. The defect still reproduces on master with Phase A at shipped
   defaults (nightly `0.5.0-1014-4a7b7e24b7`). An audit run at the menu rules out both leads for Halo:
   the title never launches a transform program, and the shelf lookup never hits. Its video shows the
-  defect as whole frames drawn at an earlier ring rotation, in short bursts. `tools/ringframes.py` and
-  `tools/ringtrack.py` read a clip frame by frame for this. See NOTES.md, "Audit run result".
+  defect in short bursts. `tools/ringframes.py` and `tools/ringtrack.py` read a clip frame by frame for
+  this. See NOTES.md, "Audit run result".
 - A second menu run with all eight fast paths off shows the same bursts at the same points in the
-  menu, with the same image counts. That rules out the fast paths. It also shows the defect repeats
-  exactly on every boot, which points at the guest rather than the host. Whether the real console
-  draws the same frames is not yet known. See NOTES.md, "Fast-paths-off run result".
+  menu, with the same image counts. That rules out the fast paths, and shows the defect repeats
+  exactly on every boot. See NOTES.md, "Fast-paths-off run result".
+- On the real console the ring is smooth. A surface layer covers the whole ring there, including its
+  unlit side. hakuX has two symptoms against that: the layer is missing on the unlit side, and on the
+  lit side the image alternates between two renderings in bursts, one per guest frame (Y X Y X). The
+  ring's outline is the same in both renderings, and only the hull's surface content differs. The odd
+  rendering matches no image anywhere in the clip, so it is not the ring at an earlier rotation.
+  `tools/burstseq.py`, `tools/ynearest.py`, `tools/burstzoom.py`, `tools/burstdiff.py` and
+  `tools/yclass.py` measure this. See NOTES.md, "Owner's console check and frame-level reading". The
+  cause is not identified.
 - Phase C (#938, speech level) and Phase D (Fable, fp_jit) have not started.
 - Phase E (`HAKUX_PATTFENCE`) is explicitly not before Thursday's reset per the brief.
 

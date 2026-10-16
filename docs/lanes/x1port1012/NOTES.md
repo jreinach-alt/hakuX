@@ -352,7 +352,11 @@ The video covers +42..+92 s, 3030 frames.
   same tag does, and the log shows no drops. So Halo issued no transform-program launch in 150 s, and
   the lead is out for this title.
 - **S2TSHELF: zero hits.** Each of the first 32 hits logs a line, and there are none. The lead is out.
-- **The clip shows the defect: whole frames drawn at the wrong point in the ring's rotation.** Normally the
+- **SUPERSEDED (lane.xbox, 2026-10-16): the reading in this bullet is wrong.** The odd images are not the
+  ring at another rotation: they match no normal image anywhere in the clip, and they differ from their
+  neighbours in the hull's surface content, not its outline. See "Owner's console check and frame-level
+  reading" below. Original text, kept for the record:
+  **The clip shows the defect: whole frames drawn at the wrong point in the ring's rotation.** Normally the
   ring's features drift down about 2.7 px per game image. At clip 0.58 s (recorded frame 38) the dome at
   top left jumps about 70 px up, about where it was roughly 25 images (0.9 s) earlier. It holds there for
   a few images, then returns to the smooth path (frame 44 is close to frame 36). Other bursts alternate
@@ -437,7 +441,8 @@ returns the four bursts listed above, so the two runs are counted the same way.
   "bursts in `Tq≈400` vs `Tq=1`" compares two different scenes, so drop it. The bursts start with
   `Tq≈400` (+38.3 s) but end 35 s before it does.
 
-Leads now:
+Leads now (**SUPERSEDED, lane.xbox 2026-10-16**: lead 1 is answered by the owner's console check, and
+lead 2's "wrong rotation" premise is refuted at frame level. See the next section. Kept for the record):
 
 1. **What the title really draws.** If the real console shows the same jumps at the same point in the
    menu, #939 is not an emulator defect. The console is on and has Halo (`F:\Games\Halo`, 4D530004).
@@ -456,8 +461,121 @@ the determinism finding makes unlikely.
 
 Device runs: 8 used of 24 (no new run).
 
-**WAITING**: the owner's look at the Halo menu on the real Xbox (lead 1). If the console is smooth,
-resume on Opus for the guest-constant log (lead 2).
+~~**WAITING**: the owner's look at the Halo menu on the real Xbox (lead 1). If the console is smooth,
+resume on Opus for the guest-constant log (lead 2).~~ Answered, see the next section.
+
+### Owner's console check and frame-level reading (lane.xbox, 2026-10-16)
+
+The owner booted Halo on the real Xbox and watched the menu ring:
+
+> Interesting results from the hardware. There's no jumping around in the ring sprites. It's smooth
+> throughout the animation. What caught my eye though was the sprite that's jumping around in our
+> emulator is actually present and applied across the entire ring, including the dark portions where we
+> do not show the sprite at all.
+
+So #939 is an emulator defect, and it has two symptoms, not one:
+
+- **(a) Missing on the dark side.** The console draws a surface layer over the whole ring, the unlit
+  side included. hakuX does not draw it on the dark side at all.
+- **(b) Toggling on the lit side.** hakuX's lit side switches between two renderings in bursts. This
+  is what was read as "jumps".
+
+The owner's direction for the next step: "I also strongly recommend a deeper investigation of what is
+wrong. It is categorically unlikely that the solution here is easy or a single site fix."
+
+**Frame-level reading of symptom (b).** Clip: fast-paths-off run, `v00001.mp4`, starts at soak +37 s.
+The recording is 60 fps and the guest draws at 30 Hz, so each guest image fills two recorded frames.
+The crop is `0,150,440,300` (hull, lower left).
+
+`tools/burstseq.py <clip> 570 660` prints, for each recorded frame, the MAD to the frames 1-4 back:
+
+| | one guest image back | two guest images back |
+|---|---|---|
+| normal motion (recorded frames 583-586) | 2.1-2.3 | 3.8 |
+| burst (587-596), each new image | 10.4-10.6 | 3.7-4.2 |
+
+From recorded frame 587 (soak +46.8 s), each new image is far from the one before it. It is as close to
+the image two before as normal motion is. So in a burst, two renderings alternate image by image
+(Y X Y X Y X). Each rendering follows the ring's rotation by itself.
+
+Y images in this stretch, by recorded frame:
+
+- 587, 591, 595
+- 609, 613, 617
+- 635, 639, 643
+
+Each group holds three Y images, with an X between each pair. After a group, 6 and then 8 X-only images
+come before the next group. The groups start 11 and then 13 guest images apart. `tools/burstcount.py`
+counts this whole stretch as the one +46.7..+47.7 s burst in the table above.
+
+**Y is not another moment.** `tools/ynearest.py <clip> 587,591,595,609,613,617,635,639,643
+0,150,440,300` searches every non-Y frame of the clip for the closest match to each Y image. The best
+match is always about 28-35 guest images earlier, at MAD 7.9-9.2. One guest image of normal motion is
+2.1-2.3. So no image in the clip is a Y image, and the audit section's "whole frames drawn at an earlier
+ring rotation" is wrong. A ring that spins about its own axis keeps its outline, so the outline alone
+could not settle this. The search does.
+
+**What differs is the surface, not the geometry.** `tools/burstzoom.py <clip> 585,587,589 <x,y,w,h> out.png`
+draws X | Y over X | signed Y-X. The ring's outline is the same in X and Y. On the hull, panel features
+sit in different places, and a curved bright rim shows in one rendering and not the other. Y is darker
+on average:
+
+| crop | X luma | Y luma | next X luma |
+|---|---|---|---|
+| `60,60,300,200` | 36.3 | 31.9 | 36.1 |
+| `40,140,400,260` | 56.1 | 52.9 | 55.9 |
+
+`tools/burstdiff.py <clip> 585 587 589 out.png` shows the same at full frame, with a row and column
+profile of |Y-X|. `tools/yclass.py <clip> 37.0` is a full-frame classifier of X and Y images. It
+undercounts, because the static menu text and HUD dilute a full-frame MAD. Use it for where the change
+sits (lit vs dark pixels, quarter columns), not for counts.
+
+**What is known about the cause:**
+
+- Facts that constrain it:
+  - It is deterministic per boot: same soak times, same image counts, on two runs with different host
+    paths.
+  - The XVSS skip never runs in Halo, and S2TSHELF has zero hits.
+  - Turning all 8 fast paths off leaves it unchanged.
+  - The alternation period is one guest image.
+- Candidate hypotheses. These are untested. None is preferred, and more than one may be true.
+  1. A ping-pong or double-buffered resource alternating per frame. It could be a render target sampled
+     as a texture, a texture, or a vertex buffer, where one of the pair is stale or wrong on the host.
+  2. Texgen modes or texture matrices that the title animates.
+  3. Register-combiner inputs: a layer gated by the lighting, specular or secondary-colour term. This
+     could explain (a) by itself, since a dark-side gate of zero would drop the layer.
+  4. A cube map or reflection lookup.
+  5. A detail or self-illumination map.
+  6. Blend or final-combiner state.
+  7. Vertex-program outputs. Halo issues no transform-program launch (XVSS), but its vertex programs
+     still run.
+  8. A deterministic guest-side value, from the CPU or FPU.
+- One mechanism must explain both (a) and (b), or the notes must name two. Fixing the toggle alone
+  would leave the dark side without the layer, and that is still wrong.
+
+**Instruments that would discriminate:**
+
+- **Per-draw state of the ring's draws.** Capture it for an X image and a Y image in the same burst, and
+  for an image with the dark side in view. For each draw, record:
+  - the texture bound to each stage, with address, format and size, and whether it came from a surface
+    (S2T) or from RAM;
+  - the texgen mode and texture matrix per stage;
+  - the combiner stages and final combiner;
+  - the vertex program or the fixed-function setup, including lighting enables;
+  - the blend state.
+
+  Diff X against Y. If the guest's methods differ between the two (for example a different texture
+  address), the title alternates on purpose, and the question becomes what hakuX holds at that
+  address. If the methods are identical, the host draws the same commands two ways.
+- **The desktop build** (`/home/justin/hakuX/build-desktop/`) runs the same core on another GPU driver.
+  If it shows (a) and (b), the defect is in the core. If not, look at the Android or Vulkan-driver path.
+- **A console reference.** A phone video or photos of the lit section of the ring would decide which
+  rendering, X or Y, matches the console's layer, or whether neither does.
+
+Device runs: 8 used of 24 (no new run).
+
+**WAITING**: nothing external. Resume on Opus for the per-draw investigation above. The console
+reference is requested from the owner, but the work does not wait on it.
 
 ## End of this session (attempt 3)
 
