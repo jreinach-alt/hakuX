@@ -10,6 +10,12 @@ lane.local's overnight chain until ~06:00 PDT 10-16.
 (pixel B), 1792163881-fps1015-716411 (pixel A), 1792163888-fps1015-716638 (MKSM soak on1) and
 1792163893-fps1015-717142 (MKSM soak off1), behind the owner's hands-on hold on the Nova (`lanelocal-ownerplay`).
 Their four results resolve it; reading them is in "The A/B, queued" at the end.
+
+WAITING: `docs/testing/nv2a_index.json` (withheld from this lane). `preflight.sh --allow-tracker` on 1e98ffb5f9
+passes every check but `nv2a index`, which counts four new DISPATCH sites in vk/surface.c, the decode's format
+switch (`NV097_SET_TEXTURE_FORMAT_COLOR_{LU_IMAGE,SZ}_{A1R5G5B5,R5G6B5}`). The index needs a rebuild at fold:
+`python3 docs/testing/nv2a_index.py build --tests /home/justin/nxdk_pgraph_tests --support /home/justin/pbkitplusplus`,
+with the tests checkout no older than the committed index's `provenance.tests_commit`.
 - #986 MKSM: cause found, serialization on 16-bit render-to-texture downloads (3 a frame in the cutscene). Lever
   `HAKUX_S2T_CVT` built (default off) and checked by reading; its A/B is registered and queued.
 - #992 Top Spin: the same cause, 24-32 downloads a frame. Same lever; its A/B needs an admissible route (no golden
