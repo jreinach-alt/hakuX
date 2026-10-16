@@ -6,20 +6,29 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-No lane session is running.
+| Lane | Model | Running for | Working on |
+|---|---|---|---|
+| `audio1016` | claude-opus-5-5 | 3 min | audio1016: quiet speech and movie audio on the Nova (#984, #938) |
+| `fps1015` | claude-opus-5-5 | 9 min | fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2) |
 
 - **Handhelds:** 2 connected.
-  - Nova: held by `lanelocal-nova0600`
+  - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
 
-**80 titles are confirmed Playable** (3 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
+**86 titles are confirmed Playable** (6 today). Each one ran for 10 minutes on a handheld at or above the frame-rate bar, and every kept frame was reviewed.
 
 | Confirmed | Title | Result |
 |---|---|---|
+| 2026-10-16 | ESPN MLS ExtraTime 2002 | Playable, 10-minute run, median 59.94 fps |
+| 2026-10-16 | Dance Dance Revolution Ultramix 3 | Playable, 10-minute run, median 59.94 fps |
+| 2026-10-16 | Slam Tennis | Playable, 10-minute run, median 35.42 fps |
+| 2026-10-16 | ESPN Major League Baseball | Playable, 10-minute run, median 43.2 fps |
+| 2026-10-16 | MVP Baseball 2003 | Playable, 10-minute run, median 59.94 fps |
+| 2026-10-16 | Knockout Kings 2002 | Playable, 10-minute run, median 59.76 fps |
 | 2026-10-15 | Ricky Ponting International Cricket 2005 | Playable, 10-minute run, median 59.88 fps |
 | 2026-10-15 | FILA World Tour Tennis | Playable, 10-minute run, median 56.82 fps |
 | 2026-10-15 | David Beckham Soccer | Playable, 10-minute run, median 59.94 fps |
@@ -101,11 +110,14 @@ No lane session is running.
 | 2026-09-29 | KOF: Maximum Impact – Maniax | Playable, 10-minute run on the Nova |
 | 2026-09-26 | Alien Hominid | Playable, 10-minute run on the Thor |
 
-61 of these still await the owner's flicker check.
+67 of these still await the owner's flicker check.
 
 ## Work in progress
 
-No branch is being worked right now.
+| Branch | Topic | Tip | Last change |
+|---|---|---|---|
+| `lane/audio1016` | audio1016: quiet speech and movie audio on the Nova (#984, #938) | `55293f3939` | 2026-10-16 05:47 |
+| `lane/fps1015` | fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2) | `0a7a8ae189` | 2026-10-16 05:49 |
 
 ## Recently landed on master
 
@@ -122,4 +134,4 @@ No branch is being worked right now.
 - 2026-10-13 pathtele1013: an opt-in perflog telemetry hold for pathfind
 - 2026-10-13 lanes stop opening forge PRs directly, and a forge number ahead of GitHub raises an alarm (#433, 0.5)
 
-_Updated 2026-10-15 09:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 05:50 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
