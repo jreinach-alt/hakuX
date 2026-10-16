@@ -8,8 +8,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `frontends1016b` | claude-sonnet-5 | 23 min | frontends1016b: Pegasus tested, Daijisho integrated or written up (#433) |
-| `selftestclean1011` | claude-sonnet-5 | 1h 5m | selftestclean1011: selftest.sh removes its fake host when it passes (#433) |
+| `selftestclean1011` | claude-sonnet-5 | 1h 20m | selftestclean1011: selftest.sh removes its fake host when it passes (#433) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -117,7 +116,6 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/frontends1016b` | frontends1016b: Pegasus tested, Daijisho integrated or written up (#433) | `deb99b09e2` | 2026-10-16 14:57 |
 | `lane/selftestclean1011` | selftestclean1011: selftest.sh removes its fake host when it passes (#433) | `a9118cbcd0` | 2026-10-16 11:53 |
 
 ## Recently landed on master
@@ -135,4 +133,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-16 One display name per title_id, and nothing keyed by a name (#433)
 - 2026-10-16 status_html: titles05 crashed on a registry name the catalog spells differently
 
-_Updated 2026-10-16 15:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 15:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
