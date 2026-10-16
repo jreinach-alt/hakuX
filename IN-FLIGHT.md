@@ -116,14 +116,12 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-16 audio1016: quiet speech and movie audio on the Nova (#984, #938)
 - 2026-10-16 sign1016: rotate release key (lineage), minSdk 33 (#433)
 - 2026-10-16 GitHub Sponsors on the landing page and the Sponsor button (#433)
 - 2026-10-16 Wire hakuX into four launchers (ES-DE, Daijisho, Pegasus, stock), tested on the Thor
 - 2026-10-16 fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2)
 - 2026-10-16 One display name per title_id, and nothing keyed by a name (#433)
 - 2026-10-16 status_html: titles05 crashed on a registry name the catalog spells differently
-- 2026-10-14 titledb1014: title_id as the join key, one table, every reader reads it (#433)
-- 2026-10-14 A tracked listing of which title is where, keyed by title_id
-- 2026-10-14 savestateconv1014: R3 admits --from-state
 
-_Updated 2026-10-16 12:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 12:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
