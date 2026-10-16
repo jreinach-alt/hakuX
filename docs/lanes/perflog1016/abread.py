@@ -14,6 +14,12 @@ Per run, the median over the window of:
 Per arm, the mean of its runs. The band per reader is the largest of the
 within-arm spreads (max - min over an arm's runs) and the prediction's prior.
 
+Each run's shader-cache state comes from result.json. The dispatcher clears the
+cache when the APK changes and keeps it on a same-APK run, so in A B B A only
+B2 starts warm. When both arms have a cold run, the reader also prints B-A
+over the cold runs only. That line is a cross-check on the warm run; it is not
+one of the prediction's rules.
+
 --judge applies the prediction's rules (see its "prediction" text):
   VOID      a run with no mark gameplay or under M1/rdc_lines_min [rdc] lines
             in the window; a B run with a runtime-tier-ON or [tcg787] line
@@ -91,6 +97,11 @@ def read(d, lo, hi):
             if ri:
                 xs["Ri"].append(float(ri.group(1)))
     s = {k: (statistics.median(v) if v else None) for k, v in xs.items()}
+    try:
+        sc = json.load(open(os.path.join(d, "result.json"))).get("shader_cache", "")
+    except (OSError, ValueError):
+        sc = ""
+    s["cache"] = sc.split(":", 1)[0] or "?"
     s["n_rdc"] = len(xs["tcpu"])
     s["n_gfps"] = len(xs["gfps"])
     s["tier_on_lines"] = tier_on
@@ -137,13 +148,13 @@ def main():
             runs[arm].append((name, s))
 
     print("window: mark gameplay +%g..+%g s" % (lo, hi))
-    print("%-4s %-40s %6s %6s %8s %6s %6s" % ("arm", "run", "n_rdc", "tcpu",
-                                             "gfps", "Ri", "n_gfps"))
+    print("%-4s %-40s %6s %6s %8s %6s %6s %8s" % ("arm", "run", "n_rdc", "tcpu",
+                                                  "gfps", "Ri", "n_gfps", "cache"))
     for arm in ("A", "B"):
         for name, s in runs[arm]:
-            print("%-4s %-40s %6d %6s %8s %6s %6d"
+            print("%-4s %-40s %6d %6s %8s %6s %6d %8s"
                   % (arm, name, s["n_rdc"], fmt(s["tcpu"], 1),
-                     fmt(s["gfps"], 1), fmt(s["Ri"], 2), s["n_gfps"]))
+                     fmt(s["gfps"], 1), fmt(s["Ri"], 2), s["n_gfps"], s["cache"]))
 
     def mean(arm, k):
         v = [s[k] for _, s in runs[arm] if s[k] is not None]
@@ -168,8 +179,23 @@ def main():
                                         fmt(band[k])))
     print("band = max(within-arm spread A, B, prior %s)" % prior)
 
+    cold = {arm: [s for _, s in runs[arm] if s["cache"] == "cleared"]
+            for arm in ("A", "B")}
+    warm = sum(1 for arm in runs for _, s in runs[arm] if s["cache"] != "cleared")
+    if warm and cold["A"] and cold["B"]:
+        parts = []
+        for k in ("tcpu", "gfps", "Ri"):
+            va = [s[k] for s in cold["A"] if s[k] is not None]
+            vb = [s[k] for s in cold["B"] if s[k] is not None]
+            if va and vb:
+                parts.append("%s %+.2f" % (k, statistics.mean(vb) - statistics.mean(va)))
+        print("cold-cache runs only (A %d, B %d; a cross-check, not a rule): B-A %s"
+              % (len(cold["A"]), len(cold["B"]), ", ".join(parts)))
+
     if not a.judge:
-        return 0
+        for v in void:
+            print("VOID: " + v)
+        return 2 if void else 0
     print()
     if void or d["tcpu"] is None or d["Ri"] is None:
         for v in void or ["a reader is missing in one arm"]:

@@ -253,7 +253,39 @@ pinned to the Nova, `--title 5454000F-Grand_Theft_Auto_Vice_City.xiso.iso
 
 Read with `python3 docs/lanes/perflog1016/abread.py --a <A1 dir> --a <A2 dir>
 --b <B1 dir> --b <B2 dir> --judge docs/testing/predictions/perflog1016-defaultpath.json`.
-No result yet; nothing has been read.
+
+**A confound in the design.** I found it after queuing, and wrote this before
+any B result existed (10-16 10:2x PDT; only A1 had finished).
+
+- The dispatcher clears the shader cache when the APK changes and keeps it on a
+  same-APK run (dispatcher.sh:569-586).
+- So in A B B A, B2 is the only run that starts warm. A1's result.json says
+  `cleared`.
+- A warm cache lowers B's mean. Because B2 also widens the band, both effects
+  push the read toward CLEARED. That is the wrong direction for a "does not
+  slow" claim.
+- A1 shows no in-window warm-up. The tcpu medians in 20 s bins run 248-343
+  ms/s with no early-high decay, and no frame is over 81 ms. The 1470 ms stall is
+  before the mark. But a cache could lower steady-state work too, as GTA VC
+  streams the world.
+- The 10-13 run (warm, x1port1012 build) read 259.6 against A1's 312.1 (cold,
+  master). Two variables changed, so that gap is not attributable to the cache.
+
+Reading rule:
+
+1. abread.py now prints each run's cache state. When both arms have a cold run,
+   it also prints B-A over the cold runs only (A1, A2 against B1).
+2. B1 (cold) against B2 (warm) is the same build, so |B1-B2| is the cache effect
+   plus run noise.
+   - If it is within the prior 14 ms/s, the registered verdict stands as read.
+   - If B2 is lower by more than that, report the registered verdict alongside
+     the cold-only B-A, and claim no cost bound until a warm A exists. A warm A
+     means two A runs back to back, the second one warm.
+3. A third A was not queued now. The queue serves ids in ASCII order, so it would
+   sort behind five audio1016 Nova runs on another APK and start cold. Two back
+   to back would pass the 30-min pilot gate only after B1 finishes.
+
+No B result yet; nothing but A1 has been read (the reader's self-check).
 
 ## Next lane: do not repeat
 
