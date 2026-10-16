@@ -31,7 +31,7 @@ needs two small files to find it.
 3. **Restart ES-DE.** It reads these files only at startup. If ES-DE is your
    home screen, force-stop it or reboot.
 4. In ES-DE, open the Xbox system, press the menu button, choose
-   **Alternative emulator**, then choose **hakuX fork (Standalone)**.
+   **Alternative emulator**, then choose **hakuX CE (Standalone)**.
 
 When you quit a game, you return to ES-DE.
 
@@ -54,7 +54,7 @@ menu.
   your own `<path>` and other commands:
 
   ```xml
-  <command label="hakuX fork (Standalone)">%EMULATOR_HAKUX-FORK% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%</command>
+  <command label="hakuX CE (Standalone)">%EMULATOR_HAKUX-FORK% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%</command>
   ```
 
   It also needs the `HAKUX-FORK` block in `es_find_rules.xml`.

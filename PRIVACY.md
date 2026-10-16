@@ -2,7 +2,7 @@
 
 _Last updated 2026-10-13, for version 0.5.0._
 
-hakuX (fork) runs on your device. It has no account, and it collects and sends
+hakuX CE runs on your device. It has no account, and it collects and sends
 no analytics, crash reports or usage data. There is no code in it that does.
 
 ## What stays on your device
