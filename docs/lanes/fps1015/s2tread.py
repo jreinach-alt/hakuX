@@ -33,6 +33,15 @@ Legs (the prediction file states them; this script computes them):
   P  cutscene median G, on - off, in [-22, -6] ms.
   F  cutscene median gfps, on - off, >= +5.
   N  gameplay median gfps, on >= off - 3.
+
+Reported, not judged. The Goro's Lair opening is frame-locked: it lasts the
+same number of guest frames at any speed, so a fast run leaves it before
+s24 and its s13..s24 span takes in gameplay and a pause menu. The `locked`
+lines read the first CUTN windows (CUTN x 60 guest frames) from s13 in
+every run: the same stretch of the cutscene whatever the speed, with its
+wall seconds and frames a second. `X` is the phase line's GPU time outside
+render passes (copies, compute, the gaps between passes), `MxG` its largest
+gap between two passes.
 """
 import argparse
 import glob
@@ -52,7 +61,9 @@ TXR = re.compile(r'txr\[ct\d+ bt\d+/\d+ dl(\d+)/\d+K .*?s2tc(\d+) .*?\] '
 PERF = re.compile(r'hakuX-perf\(\d+\): gfps=(\d+) G:([\d.]+)')
 PACE = re.compile(r'hakuX-pace\(\d+\): .*? ms=([\d.]+)')
 PHASE = re.compile(r'hakuX-phase\(\d+\): .*Draw:([\d.]+) .*Fin:([\d.]+)\(Sub:([\d.]+) '
-                   r'Fen:([\d.]+)\).*Tot:([\d.]+) GPU:([\d.]+)')
+                   r'Fen:([\d.]+)\).*Tot:([\d.]+) GPU:([\d.]+)'
+                   r'(?:\(R:[\d.]+ X:([\d.]+) .*?MxG:([\d.]+))?')
+CUTN = 30
 ROUTE = re.compile(r'^ROUTE (\d\d):(\d\d):(\d\d\.\d+) (start|shot (\S+)|mark gameplay)')
 
 
@@ -109,7 +120,7 @@ def read_run(d):
                 continue
             m = PHASE.search(line)
             if m:
-                phase.append((t, tuple(float(x) for x in m.groups())))
+                phase.append((t, tuple(None if x is None else float(x) for x in m.groups())))
 
     shots, start, mark = {}, None, None
     prev = None
@@ -148,7 +159,8 @@ def read_run(d):
         w = {'t': t, 't0': t - ms / 1000.0, 'gfps': gfps, 'G': g, 'sd': sd,
              'dl': tx[0], 's2tc': tx[1], 'cvt': tx[2],
              'Draw': ph[0] if ph else None, 'Fin': ph[1] if ph else None,
-             'GPU': ph[5] if ph else None}
+             'GPU': ph[5] if ph else None, 'X': ph[6] if ph else None,
+             'MxG': ph[7] if ph else None}
         w['span'] = ('cut' if w['t0'] >= c_lo and t <= c_hi else
                      'play' if w['t0'] >= g_lo else '')
         windows.append(w)
@@ -245,13 +257,28 @@ def main():
     print('reported, not judged: cutscene median Fin on %s off %s ms; GPU on %s off %s ms; Draw on %s off %s ms'
           % (fmt(med(on_c, 'Fin')), fmt(med(off_c, 'Fin')), fmt(med(on_c, 'GPU')), fmt(med(off_c, 'GPU')),
              fmt(med(on_c, 'Draw')), fmt(med(off_c, 'Draw'))))
+    print('reported, not judged: GPU outside render passes (X), median ms: cutscene on %s off %s; '
+          'gameplay on %s off %s; gameplay largest gap (MxG) on %s off %s'
+          % (fmt(med(on_c, 'X')), fmt(med(off_c, 'X')), fmt(med(on_p, 'X')), fmt(med(off_p, 'X')),
+             fmt(med(on_p, 'MxG')), fmt(med(off_p, 'MxG'))))
+    for r in ok:
+        lock = [w for w in r['windows'] if w['t0'] >= r['cut'][0]][:CUTN]
+        secs = lock[-1]['t'] - lock[0]['t0'] if lock else 0
+        print('locked %-48s %-3s first %d windows from s13: %5.1f s, %4.1f fps; median G %s gfps %s '
+              'Fin %s GPU %s X %s'
+              % (os.path.basename(r['dir'].rstrip('/')), r['arm'], len(lock), secs,
+                 60 * len(lock) / secs if secs else 0, fmt(med(lock, 'G')), fmt(med(lock, 'gfps')),
+                 fmt(med(lock, 'Fin')), fmt(med(lock, 'GPU')), fmt(med(lock, 'X'))))
     for name, passed, text in legs:
         print('%s %s  %s' % (name, 'PASS' if passed else 'FAIL', text))
     if all(p for _, p, _ in legs):
         print('VERDICT: PASS')
         return 0
     failed = [n for n, p, _ in legs if not p]
-    if 'R' not in failed and ('P' in failed or 'F' in failed):
+    if failed == ['P'] and dg < -22:
+        print('VERDICT: REFUTED as registered -- the frame gained more than the predicted bound (%+.1f ms < -22)'
+              % dg)
+    elif 'R' not in failed and ('P' in failed or 'F' in failed):
         print('VERDICT: REFUTED -- the downloads are gone but the frame did not follow: '
               'another wait or the GPU takes their place')
     elif 'R' in failed:

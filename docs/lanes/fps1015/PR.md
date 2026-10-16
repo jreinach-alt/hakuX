@@ -16,7 +16,7 @@ default-off lever for the cause four of the five titles share. Details and every
 
 | issue | title | slow frames | cause | status |
 |---|---|---|---|---|
-| #986 | Mortal Kombat: Shaolin Monks | cutscene 14-23 fps, G 41-64 ms | 3 16-bit render-to-texture downloads a frame (`cvt`), each a finish and a fence wait; median G 43.2 ms with `Fin` 18.5 ms | cause found; A/B registered |
+| #986 | Mortal Kombat: Shaolin Monks | cutscene 14-23 fps, G 41-64 ms | 3 16-bit render-to-texture downloads a frame (`cvt`), each a finish and a fence wait; median G 43.2 ms with `Fin` 18.5 ms | cause found; with `HAKUX_S2T_CVT=1` the cutscene runs 29.0 to 54.4 fps over the same 1800 frames (pilot pair; confirming pair running) |
 | #992 | Top Spin | match play 26-31 ms frames | the same downloads, 24-32 a frame (59 in the arena intro); bound 11-15 ms of the frame | cause found; A/B needs a route the profile gate admits |
 | #992 | Brian Lara Cricket 2005 | ball in play | a different shape | unexplained; needs one perflog run |
 | #995 | Batman Begins | fire/explosion cutscenes 14-23 fps | GPU work outgrows the 30-fps cap; one download a frame stops it overlapping the PFIFO thread | partly explained |
@@ -35,7 +35,9 @@ matches the CPU rule on all 65536 words of each format on the host.
 
 Cost: off, one `getenv` at first use. On, per refused texture, one 2-byte buffer copy, one compute dispatch over
 the texels and one 4-byte buffer copy, all on the GPU, plus a scratch buffer of at least 4 MB held until shutdown.
-The GPU time is not measured yet; the soak's `GPU` column reports it.
+In MKSM's gameplay the GPU's time outside render passes is 4.2 ms a frame with it against 0.3 ms without. The
+downloads it replaces may run outside that timer, so the decode's own cost is 0-4 ms a frame; `HAKUX_GPUXFR=1`
+measures it per site.
 
 ## The A/B
 
@@ -47,5 +49,37 @@ One build, two arms differing only by env (`a_ref` = `b_ref` = f5a67ba52c):
   `docs/lanes/fps1015/s2tread.py`): in the Goro's Lair cutscene, downloads gone (sd 0.1 a frame or less), median G
   down 6-22 ms (point -10: 43 to ~33 ms), median fps up 5 or more (point +8: 22 to ~30); gameplay fps no more
   than 3 below off.
+
+### Results
+
+**Soak, pilot pair (on1 1792163888-fps1015-716638, off1 1792163893-fps1015-717142): PASS on every leg.**
+
+| leg | registered | measured |
+|---|---|---|
+| R | on sd <= 0.1 a frame, cvt 0; off sd >= 2.5 | on 0.00, cvt 0; off 3.00 |
+| P | median G on - off in [-22, -6] ms | -7.7 (16.7 against 24.4) |
+| F | median gfps on - off >= +5 | +20.0 (59 against 39) |
+| N | gameplay gfps on >= off - 3 | 59 against 51 |
+
+The cutscene is frame-locked, so a fast run leaves it before the span's last shot and the span takes in gameplay.
+Over the same 1800 guest frames from its first shot (reported, not judged):
+
+| run | wall s | fps | median G ms | Fin ms | GPU ms |
+|---|---|---|---|---|---|
+| on1 | 33.1 | 54.4 | 16.7 | 2.7 | 14.4 |
+| off1 | 62.1 | 29.0 | 34.3 | 20.5 | 15.2 |
+
+The PFIFO thread's finish wait goes and the GPU's work does not grow. A confirming pair (on2
+1792168743-fps1015-1960988, off2 1792168748-fps1015-1962522) is queued.
+
+**Pixel leg (A 1792163881-fps1015-716411, B 1792163875-fps1015-716177): FAIL as registered (10 worse, predicted
+0).** 816 of 881 captures are byte-identical, Blend_surface included, where the switch's decode ran. The 65 that
+move are 64 in Texture_shadow_comparator and the unstable Texture_border/2D_BorderTex_SZ. Texture_shadow_comparator
+samples depth formats only, which the switch does not decode. It is wrong in both arms: all 288 captures differ
+from every saved run between 09-12 and 10-10 (e654516849), and with the switch off this branch runs no new code.
+The marker triangles keep a colour set for an earlier marker. This is a regression on master between e654516849
+and 0e5fab6bef, in vk/draw.c's super-fast pre-draw path by reading (an inline attribute value that reaches no
+uniform push, the hole #274 closed in create_pipeline only). Details and the candidate commits are in NOTES.md,
+"The A/B, results". The switch stays off by default; this suite cannot clear it until the regression is fixed.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

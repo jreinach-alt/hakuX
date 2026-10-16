@@ -6,10 +6,15 @@ lane.local's overnight chain until ~06:00 PDT 10-16.
 
 ## Status
 
-[lane.fps1015] waiting: the #986 A/B of `HAKUX_S2T_CVT` on f5a67ba52c, four Nova requests 1792163875-fps1015-716177
-(pixel B), 1792163881-fps1015-716411 (pixel A), 1792163888-fps1015-716638 (MKSM soak on1) and
-1792163893-fps1015-717142 (MKSM soak off1), behind the owner's hands-on hold on the Nova (`lanelocal-ownerplay`).
-Their four results resolve it; reading them is in "The A/B, queued" at the end.
+[lane.fps1015] waiting: the #986 confirming soak pair on the Nova, 1792168743-fps1015-1960988 (on2,
+`HAKUX_S2T_CVT=1`) and 1792168748-fps1015-1962522 (off2). Judge on1 off1 on2 off2 together with `s2tread.py`. The
+pilot pair passed every leg, and the frame-locked cutscene read is 29.0 to 54.4 fps. See "The A/B, results" at
+the end.
+
+WAITING: the owner of vk/draw.c (withheld from this lane), for a regression on master in
+`Texture_shadow_comparator`. All 288 captures differ from every saved run between 09-12 and 10-10 (e654516849),
+in both arms of this lane's pixel leg, the no-env arm included. The marker triangles keep a stale diffuse colour.
+The reading, the window and the check are in "The A/B, results", pixel leg.
 
 WAITING: `docs/testing/nv2a_index.json` (withheld from this lane). `preflight.sh --allow-tracker` on 1e98ffb5f9
 passes every check but `nv2a index`, which counts four new DISPATCH sites in vk/surface.c, the decode's format
@@ -17,7 +22,9 @@ switch (`NV097_SET_TEXTURE_FORMAT_COLOR_{LU_IMAGE,SZ}_{A1R5G5B5,R5G6B5}`). The i
 `python3 docs/testing/nv2a_index.py build --tests /home/justin/nxdk_pgraph_tests --support /home/justin/pbkitplusplus`,
 with the tests checkout no older than the committed index's `provenance.tests_commit`.
 - #986 MKSM: cause found, serialization on 16-bit render-to-texture downloads (3 a frame in the cutscene). Lever
-  `HAKUX_S2T_CVT` built (default off) and checked by reading; its A/B is registered and queued.
+  `HAKUX_S2T_CVT` built (default off). Pilot pair: the downloads go, and the cutscene's first 1800 guest frames
+  take 33.1 s instead of 62.1 s (54.4 against 29.0 fps). Gameplay median rises from 51 to 59 fps. The
+  confirming pair is running.
 - #992 Top Spin: the same cause, 24-32 downloads a frame. Same lever; its A/B needs an admissible route (no golden
   profile yet, and `fps786-topspin` is a first-run route without `mark profile-saved`).
 - #992 Brian Lara: a different shape, unexplained. Next step: one perflog run.
@@ -43,6 +50,10 @@ fps1008-shaolin run's harvest) so a route headed `any` passes the profile gate, 
 (`cvtcensus.py`) and the A/B route when the cap fell; those were left uncommitted. The turns went on one-line reads
 of texture.c while checking the lever by hand. Attempt 3 (10-16 07:53 PDT) commits them, registers the A/B and
 queues it.
+
+Attempt 3 did finish. It registered both predictions (15:16Z), committed and pushed them in 465cfd2f57, queued the
+four requests (15:17-15:18Z) and ended on its `waiting:` line. Handback resumed it as attempt 4 once the four
+results landed. Attempt 4 reads them, queues the confirming pair (on2, off2) and writes "The A/B, results".
 
 ## #986 Mortal Kombat Shaolin Monks: step 1, the offline split (written before the read)
 
@@ -814,3 +825,105 @@ Reading them, in this order:
    pass V, queue on2 then off2 with the same two commands (purpose "on2"/"off2"), and judge all four together. If
    either fails V, read shots s05-s13 of the failing run for where the route diverged; the run is void, and the
    route is what changes, not the prediction.
+
+## The A/B, results
+
+### Pixel leg: FAIL as registered, in a suite the switch cannot reach
+
+`ab_compare.py --expect fps1015-pixels.json --allow-same-binary`, A 1792163881-fps1015-716411, B
+1792163875-fps1015-716177: 881 captures, 860 same, 11 better, 10 worse. The prediction said 0 worse. The byte
+check moves 65 of 881:
+
+| suite | moved A vs B | what |
+|---|---|---|
+| Texture_shadow_comparator | 64 of 288 | marker triangles' colours, below |
+| Texture_border/2D_BorderTex_SZ | 1 | white-content in both arms, flagged unstable by ab_compare |
+| every other suite | 0 | byte-identical, Blend_surface included |
+
+B logged `[s2tcvt] on` and `[s2tcvt] first 128x128 fmt 0x11` (LU_IMAGE R5G6B5, Blend_surface). Every
+Blend_surface capture is byte-identical between the arms. That is the decode against the CPU decode on the one
+suite known to take it here: no difference.
+
+Texture_shadow_comparator samples depth surfaces only (`2F16`, `2F24`, `2P16`, ... in its test names). The
+switch's gate, `pgraph_texture_format_expands_by_replication()`, names the 5- and 6-bit colour formats only, so the
+decode does not run on that suite's textures. The suite is wrong in **both** arms:
+
+- Every one of its 288 captures differs from texscan1010's run of 10-10 (e654516849): 133,440 pixels in A,
+  133,434 in B, about 460 a capture.
+- Every saved run of the suite from 09-12 to 10-10 matches that run byte for byte on the three captures checked:
+  70-odd runs on the Nova and the Thor, from `depth-agent` to `texscan1010`.
+- So the suite changed between e654516849 and 0e5fab6bef, the master this branch merged. This branch's emulator
+  diff runs nothing with the switch off: `pgraph_vk_s2t_cvt_on()` returns false, and the finalize finds nothing to
+  destroy. Arm A is master's output.
+
+What is wrong (`2F16_10.00-20.00_15.0000_A`, ref | A | B): the reference draws seven markers, each in its own
+colour (three blues, green, yellow, two browns). In A the last four are all green; in B the last five are all the
+third marker's blue. Positions are right. A marker keeps a colour set for an earlier one.
+
+The reading: an attribute set before an inline-buffer draw's first vertex (`SET_DIFFUSE_COLOR*`) becomes a uniform
+attribute (`inline_value`, `pg->uniform_attrs`), which bumps no gen and sets no flag. begin_pre_draw's super-fast
+path (vk/draw.c ~6231-6238) sets `pre_draw_skipped` and returns. begin_draw (~7480) then skips
+`bind_descriptor_sets`, `push_vertex_attr_values` and `push_geom_line_params`, so the new colour never reaches the
+draw. #274 closed the same hole in create_pipeline's early return only (`pgraph_vk_update_shader_uniforms`,
+~2928). The hole is older than the window, so something in the window made the super-fast path hit here. The
+draw-path commits in e654516849..0e5fab6bef are ccb2749973 (HAKUX_VTX_HAZARD on by default), 4f0111232c
+(DMA_VERTEX bumps vertex_attr_gen), d4d292c9ca (staging flush, UBO barrier), 172d94de1f, 67e3fcf745, and the
+default-off switches of perdraw1009 and drawrec1010. Which marker shows which stale colour differs between the
+arms. One run each cannot say whether that is the switch moving where finishes fall (its compute descriptor sets
+and buffer-space finishes) or run-to-run order.
+
+WAITING (vk/draw.c, withheld): the fix's shape is that the super-fast path misses, or refreshes the uniform
+attribute values, when the bound shader has uniform attributes whose inline values changed. The check: the suite
+back to texscan1010's bytes, over 3 runs. Until then the pixel leg cannot clear the switch on this suite, and the
+switch stays off by default.
+
+### Soak pilot: PASS
+
+`s2tread.py` on1 1792163888-fps1015-716638, off1 1792163893-fps1015-717142, one build (f5a67ba52c):
+
+| run | arm | cut windows | signature | play windows | sd/frame | cvt | s2tc | G ms | gfps | Fin | GPU | play gfps |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| on1 | on | 83 | 57 | 124 | 0.00 | 0 | 540 | 16.7 | 59.0 | 2.3 | 8.6 | 59.0 |
+| off1 | off | 53 | 41 | 106 | 3.00 | 180 | 0 | 24.4 | 39.0 | 14.6 | 10.1 | 51.0 |
+
+V passes both: the route reached Goro's Lair in each, and on1 logged `[s2tcvt] on` and `first`.
+
+| leg | registered | measured | |
+|---|---|---|---|
+| R | on sd <= 0.1, cvt 0; off sd >= 2.5 | on 0.00, cvt 0; off 3.00 | PASS |
+| P | median G on - off in [-22, -6], point -10 | 16.7 - 24.4 = -7.7 ms | PASS |
+| F | median gfps on - off >= +5, point +8 | 59.0 - 39.0 = +20.0 | PASS |
+| N | gameplay gfps on >= off - 3 | 59.0 against 51.0 | PASS |
+
+The s13-s24 span is the wrong ruler for a fast run. The Goro's Lair opening is frame-locked, and on1 leaves it
+long before s24, so on1's 83 span windows include gameplay and a pause menu. off1's 53 include gameplay too. Both
+dilute the gain. The fair reading is the first 30 windows (1800 guest frames) from s13, which is the same stretch
+of the cutscene in every run (`locked` lines, reported, not judged):
+
+| run | wall s for 1800 frames | fps | median G | Fin | GPU | X |
+|---|---|---|---|---|---|---|
+| on1 | 33.1 | 54.4 | 16.7 | 2.7 | 14.4 | 6.1 |
+| off1 | 62.1 | 29.0 | 34.3 | 20.5 | 15.2 | 6.3 |
+| fps1008-shaolin (10-08 build, off) | 73.8 | 24.4 | 44.3 | 18.8 | 15.2 | 6.3 |
+
+With the switch, the cutscene runs at the vblank (median G 16.7 ms) and the PFIFO thread's finish wait drops from
+20.5 to 2.7 ms. The GPU's time per frame barely moves (15.2 to 14.4 ms). The waits were the frame; the GPU work was
+not. A bound, not a value: two runs.
+
+Two things the pilot shows that the legs do not:
+
+- **9 decodes a frame where off downloads 3.** `s2tc` counts calls to `copy_surface_to_texture`: 540 a window
+  with the switch, against `cvt` 180 a window without it. The caller already copies only when the surface's
+  `draw_time` differs from the texture node's (vk/texture.c:3157). So 9 means one of two things: more than one
+  texture node over each surface, each copying once, or surfaces drawn again between bindings. A download
+  serves every node over a surface from the one VRAM copy. If it is the nodes, decoding once per surface
+  `draw_time` and copying image to image for the other nodes cuts the decodes to 3.
+- **GPU time outside render passes, gameplay:** X 4.2 ms with the switch against 0.3 without, and the largest gap
+  between two passes (MxG) 3.6 ms against 0. In the cutscene X is the same in both (6.1 and 6.3). Without the
+  switch, the downloads run in their own command buffers after a finish, which this timer may not cover (not
+  checked). So the decode's own GPU cost in gameplay lies between about 0 and 4 ms a frame. It does not limit
+  MKSM: the frame is 8.6 ms of GPU at 59 fps. Before the switch goes to Top Spin (24-32 a frame) or Prince of Persia
+  (9 at 256x256), `HAKUX_GPUXFR=1` measures it per site (the decode is site 6330, `s2t`).
+
+The confirming pair, on2 1792168743-fps1015-1960988 and off2 1792168748-fps1015-1962522, is queued with the same
+commands. Judge: `python3 docs/lanes/fps1015/s2tread.py <on1> <off1> <on2> <off2>`.
