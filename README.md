@@ -1,3 +1,5 @@
+<p align="center"><img src="hakux-logo.svg" alt="hakuX: Original Xbox on Android" width="640"></p>
+
 # hakuX (fork)
 
 _Last updated 2026-10-13, for version 0.5.0._
