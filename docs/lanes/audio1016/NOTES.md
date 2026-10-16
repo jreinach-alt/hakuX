@@ -342,8 +342,25 @@ pull the audio capture (`apu_monitor.s16le48k2ch.pcm`, 60 MB cap), so all three 
 afterwards from the result directories.
 
 Judge: `tools/judge_identify.sh <results> docs/lanes/audio1016/runs/cutscene A=... B=... D=...
-C1=... C0=...`. Windows at or after the first `cutscene` shot's clock in frames/index.tsv
-(device clock) are "cutscene"; earlier windows above -50 dBFS are "pre".
+C1=... C0=...` writes the tables. `tools/judge_cutscene.py <results> A=... B=... D=... C1=...
+C0=...` prints each leg against its registered bound. A level window counts as "cutscene" when it
+starts at or after the first `cutscene` frame and ends within 10 s of the last one. A window
+counts as "pre" when it ends before that frame and is above -50 dBFS.
+
+Clocks: frames are `route-frames/HHMMSS-<shot>.png` on the logcat clock. `cutscene` is the
+shot name the route gives each frame, not a classifier's label, so leg V still needs the frames
+viewed by eye. Starvation is summed over the cutscene from hakuX-audiocap's `starve:` lines,
+which count each 30 s interval on its own; they are not cumulative.
+
+**Read before any result came in (17:13 UTC 10-16, all five still queued): leg Q will probably fail as registered.**
+The judge, run over fps1015's run of the same s01-s12 on master (`1792168743-fps1015-1960988`),
+gives a pre median of -26.59 dBFS (15 windows) and a cutscene median of -28.53 (21 windows), a
+gap of 1.94 dB. This route's "pre" is the logos, title screen, menus and loading, not the intro
+FMV the owner compared against (-17.7 to -22.4 dBFS). The cutscene median is the speech and
+the music together, so Q does not isolate the speech. fps1015 pressed START through the lines,
+so its cutscene windows include the cuts between lines. Legs L (per voice) and U (B against A
+on matched windows) carry the question. A Q failure on this route is not evidence against the
+cause. The prediction stays as registered.
 
 ## What the cause covers (#984, #938)
 
@@ -423,6 +440,7 @@ These are the rows' first steps as of attempt 2. The tracker itself is not edite
 | dsp_route_compare.py | one voice through the DSP program vs MON_VP |
 | mixlog_read.py | apumix lines to a per-voice table; `--summary` per layout, `--cap` models v2 |
 | judge_identify.sh | runs mixlog_read and level_windows over each result, writes runs/<set>/*.tsv |
+| judge_cutscene.py | scores the audio1016-cutscene legs (Q/L/U/S/DL/DC/C) from the five result dirs |
 | routes/audio1016-mksm-wait.route | MKSM to the Goro's Lair cutscene, then no input |
 
 To queue a lane route, copy it into the serving tree's `docs/testing/titles/routes/`, run
