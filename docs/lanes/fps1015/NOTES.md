@@ -59,7 +59,9 @@ queues it.
 Attempt 3 did finish. It registered both predictions (15:16Z), committed and pushed them in 465cfd2f57, queued the
 four requests (15:17-15:18Z) and ended on its `waiting:` line. Handback resumed it as attempt 4 once the four
 results landed. Attempt 4 reads them, queues the confirming pair (on2, off2) and writes "The A/B, results",
-then judges all four and sets up Top Spin's A/B.
+then judges all four and sets up Top Spin's A/B. It ends waiting on Top Spin's pilot pair (queued 17:02-17:03Z
+behind seven release-tier requests), with #993's A/B written up as not queuable and master merged (49e0775fe7).
+`preflight.sh --allow-tracker` on that merge fails only `nv2a index`, the WAITING line above.
 
 ## #986 Mortal Kombat Shaolin Monks: step 1, the offline split (written before the read)
 
