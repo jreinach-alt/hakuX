@@ -48,7 +48,8 @@ def main():
             if t is None:
                 continue
             if 'hakuX-pace' in line and ' f=' in line:
-                pace.append((t, kv(line.split('):', 1)[1])))
+                # brief and threadtime logcat formats both
+                pace.append((t, kv(line.split('hakuX-pace', 1)[1])))
             elif 'hakuX-perf' in line and 'gfps=' in line:
                 m = re.search(r'gfps=(\d+) G:([\d.]+).*Df:(\d+).*Vpf:([\d.]+) '
                               r'Ri:([\d.]+) Tq:(\d+)', line)

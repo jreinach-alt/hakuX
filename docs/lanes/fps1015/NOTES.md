@@ -6,8 +6,11 @@ lane.local's overnight chain until ~06:00 PDT 10-16.
 
 ## Status
 
-[lane.fps1015] working: #986 cause found (serialization on 16-bit render-to-texture downloads; lever WAITING on
-vk/texture.c). Next: #992 Top Spin and Brian Lara.
+[lane.fps1015] working:
+- #986 MKSM: cause found, serialization on 16-bit render-to-texture downloads. Lever WAITING on vk/texture.c.
+- #992 Top Spin: the same cause, 24-32 downloads a frame.
+- #992 Brian Lara: a different shape, unexplained. Next step: one perflog run.
+- Next: #995 Batman Begins.
 
 ## #986 Mortal Kombat Shaolin Monks: step 1, the offline split (written before the read)
 
@@ -141,3 +144,142 @@ WAITING: `hw/xbox/nv2a/pgraph/vk/texture.c` (withheld). The lever's gate (`check
 and its call site (`create_texture()`, `copy_surface_to_texture()`) are both in it. The conversion kernel can live in
 vk/surface.c, which is in this lane's territory. Needed: a grant of vk/texture.c for a default-off `HAKUX_S2T_CVT`
 switch, and its golden arm and A/B.
+
+## #992 Top Spin: what the slow frames wait on (written before the read)
+
+Two runs:
+
+- The owner run `ownerplay/runs/4D530035-1014-1417-23868` (debug 0.5.0-1014-76bef8b162, plain build). It has the
+  winsplit columns but no finish counts.
+- lane.async794's perflog control `dispatch/results/1791135713-lane.async794-3678571` (master 5e4196fefd, 10-04,
+  990 s of a live exhibition match). It carries `Finish`, the phase line, `txw[]` and `cblat`.
+
+The brief's three candidates, and what each looks like:
+
+- **GPU report wait** (the reportasync1010 shape): the `[sdrfin]`/report counters climb in the slow windows, and the
+  PFIFO thread is parked or blocked on a query, not on a surface download.
+- **Vblank**: the guest flips late against a vblank it is waiting for. The PFIFO thread is parked (`Ri` large), the
+  guest is idle in its wait, and the frame quantizes to whole vblanks with no PFIFO or GPU work to fill it.
+- **Submit queue / finishes**: the PFIFO thread is never parked (`Ri` ~0), `Finish` counts are high, phase `Fin`
+  is a large share of the frame, and the frame time tracks the finish count across windows of one session.
+
+The comparison is the same session's windows against each other. `dlrate.py` pairs each 60-frame `Finish` line with
+the nearest `gfps` and phase lines, and fits frame time on downloads per frame.
+
+- A hit: frame time rises with downloads per frame, with a slope near the per-download cost that `txw[]` measures
+  (~0.4 ms).
+- A miss: a flat slope, or slow windows at the play-time download count.
+
+## #992 result, Top Spin: the same serialization as #986, nine times the downloads
+
+### The split from the owner run (`winsplit.py`, plain build)
+
+| windows | fps | period ms | vCPU busy ms (share) | PFIFO CPU ms | `Ri` ms | off-CPU, not parked ms | `Df` | `Tq` |
+|---|---|---|---|---|---|---|---|---|
+| 14:17:50-56, front end | 59 | 16.7 | 16.6-16.7 (1.00) | 0.9-1.1 | 12.7-13.9 | 1.8-3.1 | 0 | 1 |
+| 14:18:21-50, menus | 59 | 16.7 | 16.4-16.7 (0.98-1.00) | 3.6-5.2 | 11.6-13.1 | -0.5-0.9 | 0-1 | 424-516 |
+| 14:19:08-12, arena intro | 14 | 43.6-67.6 | 12.1-18.9 (0.28) | 12.9-19.3 | 0.1 | 30.6-48.2 | 92-115 | 894-933 |
+| 14:19:27-14:21:00, match play (42 of 49 windows) | 26-37 | 26.7-37.8 | 9.7-11.6 (0.29-0.37) | 9.3-12.8 | 0.1 | 17.2-24.9 | 85-120 | 701-814 |
+
+The match-play row leaves out seven windows:
+- 14:19:27, 14:20:33 and 14:20:37: guest busy 13.8-15.4 ms (0.43-0.47).
+- 14:20:35: guest busy 24.4 ms (0.71), `Ri` 13.7.
+- 14:19:44, 14:19:46 and 14:21:00: `Ri` 3.0-6.8.
+
+In the other match-play windows the PFIFO thread is never parked, and the guest is idle 63-71% of the frame. The
+PFIFO thread is off CPU, not parked, for 17-25 ms of a 27-38 ms frame. That is the "submit queue / finishes"
+outcome. Off-CPU in the negative rows is an artefact: the PFIFO thread's 100 us spin before a park counts in both its
+CPU and `Ri`.
+
+The 59-fps rows show the guest busy 98-100% while the PFIFO thread is parked 12-14 ms a frame and every flip lands
+on one vblank. A guest with work to fill exactly 16.7 ms for minutes at a time is not plausible: the title waits for
+the vblank by polling, not in the kernel idle loop. So a busy share near 1.00 does not by itself mean vCPU-bound for
+this title.
+
+### The wait, split (lane.async794's perflog control, same title, live match)
+
+| windows | fps | `sd` finishes a frame | phase `Fin` ms (Sub) | `txw` download ms (count) a frame | GPU ms | `G` ms |
+|---|---|---|---|---|---|---|
+| match play | 31-39 | 24-32 | 11.3-15.0 (10.3-13.8) | 12.1-14.2 (29-35) | 9.8-10.9 | 25.8-31.5 |
+| 18-fps scene, `Tq` 933 (the owner's arena intro has the same `Tq`) | 18 | 58.7 | 27.7-29.0 | (67-80) | 17.0 | 52.8-53.9 |
+
+Of the session's 1628 finishes counted, 1568 are `sd` (surface download) and the rest are the flip. There are no
+report finishes.
+
+**Dose-response across the session (`dlrate.py`).** Each 60-frame `Finish` line is paired with its `gfps` and phase
+lines, and frame time is fitted on downloads per frame:
+
+| fit | slope ms per download a frame | intercept ms | r | windows |
+|---|---|---|---|---|
+| all rendering windows (gfps >= 5), `G` | 0.477 | 16.8 | 0.77 | 763 (0-60.1 a frame) |
+| same, `Fin` | 0.478 | 0.3 | 0.96 | 763 |
+| windows with downloads (>= 2.6 a frame), `G` | 0.661 | 11.6 | 0.68 | 489 |
+| same, `Fin` | 0.451 | 1.1 | 0.81 | 489 |
+
+Frame time rises with downloads at 0.48-0.66 ms per download a frame, which is at or above the 0.45-0.48 ms each one
+spends in `Fin` itself (the `txw` cost was ~0.4 ms). Where `G`'s slope is above `Fin`'s, that fits serialization: a
+finish also stops the GPU and the PFIFO thread from overlapping, beyond its own wait.
+
+**Against the three candidates:**
+
+- **GPU report wait: no.** No report finishes, and the PFIFO thread waits on surface downloads.
+- **Vblank: no.** `Ri` is 0.1 ms in play, and the guest is idle two thirds of the frame. v2/v3 flips are 30-50 ms
+  frames spanning whole vblanks, not a vblank being waited for.
+- **Submit queue / finishes: yes.** It is the #986 mechanism. 24-32 downloads of 64x128 swizzled R5G6B5 render
+  targets a frame (`cvt`, `s2tscan.py` row above) each submit and wait on the fence. The arena intro's 59 a frame
+  takes the frame to 53 ms.
+
+**Cause (#992, Top Spin): serialization on 16-bit render-to-texture downloads.** It is the same cause as #986, so
+it is one lever, `HAKUX_S2T_CVT` (WAITING on vk/texture.c, above).
+
+**Bound, not a value.** The most the lever can take from a match-play frame is its finish time, 11.3-15.0 ms of a
+25.8-31.5 ms frame. In the 18-fps scene it is 27.7-29.0 ms of 53 ms. The fits' intercepts (11.6-16.8 ms at no
+downloads) are extrapolations, not floors. Only the A/B gives the value.
+
+**"Slow motion".** In match play 0-25 of each 60 flips land on one vblank (v1 = 60 - v2 - v3 - v4). So the title
+presents when a frame is ready and targets 60. A game that steps its simulation once a frame then runs at its frame
+rate over 60: 0.4-0.6x at 23-37 fps. This is an inference from the pace line. The owner's report fits it, but nothing
+here measures the simulation step.
+
+## #992 result, Brian Lara (434D004E): a different shape, unexplained
+
+Logcat `/mnt/d/hakux-staging/ownerplay-1015/logcat-434D004E-ownerplay-raw.txt` (plain build, 08:06-08:08 of the
+owner's session). The slow windows come with the ball in play.
+
+| windows | fps | period ms | vCPU busy share | PFIFO CPU ms | `Ri` ms | off-CPU, not parked ms | `Df` | `Tq` | NOP callbacks a frame |
+|---|---|---|---|---|---|---|---|---|---|
+| 08:06:11-16, 08:07:24-27, slow | 27-35 | 26.9-35.2 | 0.93-0.98 | 12.0-14.7 | 4.5-5.7 | 9.5-15.2 | 93-124 | 467-603 | 479-554 |
+| 08:06:43-45, slow | 37 | 26.5-27.5 | 0.98 | 11.8-12.3 | 4.4-4.7 | 10.3-10.5 | 95-99 | 502 | 427 |
+| 08:06:22-28, 08:07:16-22, fast A | 52-60 | 16.6-17.5 | 0.98-0.99 | 7.9-8.0 | 2.6-2.9 | 5.9-6.9 | 59-63 | 370-392 | 253-277 |
+| 08:06:55-58, 08:07:08-14, fast B | 59 | 16.7 | 0.98-1.00 | 3.6-4.3 | 12.9-13.5 | ~0 | 0 | 177-328 | 42-104 |
+
+"NOP callbacks a frame" comes from `irqrate.py`. It counts `[rr425w]` wakes and busy-time interrupts on key
+`33.44`: the NV2A vector with PGRAPH's ERROR bit pending. That is the interrupt `NV097_NO_OPERATION` with a nonzero
+parameter raises (pgraph.c:2567), the guest's push-buffer callback.
+
+- **14,500-16,000 callbacks a second, whatever the frame rate.** 29-32 thousand per 2 s window in every slow and
+  fast-A window, so ~250 a frame at 60 fps and ~500 at 30. lane.flip474 measured 1.7 a frame for Agent Under Fire and
+  14 for Blinx. Each one parks the PFIFO thread until the guest acknowledges it. `Ri` per callback is 9-10.5 us in
+  both slow and fast-A windows, so `Ri` here is almost all callback round trips, not the vblank.
+- **Not vblank.** The guest is idle 2-7% of the frame, and `Ri` is accounted for by the callbacks.
+- **Report wait: not measurable from this log.** The plain build carries no `Finish` counts or report counters.
+- **Submit queue: not decided.** The PFIFO thread is active (CPU plus off-CPU, not parked) for 84% of the frame in
+  both the slow and fast-A windows: 29.5 of 35.2 ms and 14.1 of 16.7 ms. Per second, the slow windows look like
+  fast-A. Per frame, everything doubles: CPU, off-CPU time, callbacks, and 1.5x `Tq` (texture polls a frame). So the
+  slow frame carries more work, but this log cannot say which side sets the frame.
+- **The guest's busy share is not readable as CPU-bound.** Fast B has the guest busy 98-100% while the PFIFO thread
+  is parked 13 ms a frame and every flip lands on one vblank. That is the same polling-wait signature as Top Spin's
+  menus.
+- Off-CPU time tracks the callback count: 20-30 us per callback in the slow and fast-A rows. That is a correlation,
+  not a split. Each callback takes the BQL on the PFIFO thread (pgraph.c:2571), which could account for it. So could
+  the downloads, if Brian Lara has them, and with no frame dump, its `cvt` count is unknown.
+
+**Brian Lara is unexplained.** Ruled out: the vblank. Not measured: finishes and report waits. Next step, one
+perflog run of a ball in play, about 6 minutes of Nova time, which carries three instruments:
+
+1. `cblat` gives the callback params (which callback this is) and the kick-to-dispatch split (`mdraw`, `pnop`,
+   `dl`, `fin`).
+2. `Finish sd` counts per frame; a hit for the Top Spin class looks like 20+ a frame tracking `G`.
+3. A frame dump for `s2tscan.py`.
+
+A hit for the callback class is `pnop` plus BQL wait above ~25% of the frame, with `sd` under 5 a frame.
