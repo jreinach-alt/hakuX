@@ -1,15 +1,17 @@
 # lane.audio1016 NOTES -- quiet speech and movie audio (#984, #938)
 
-Status: 2026-10-16 17:15 UTC, attempt 2.
+Status: 2026-10-16 17:20 UTC, attempt 3.
 - The mechanism is measured offline on MKSM.
 - Switch v1 failed the loud-title leg on the Nova. v2 (capped) is written and passes the same
   tables offline.
 - Five cutscene runs are registered in `docs/testing/predictions/audio1016-cutscene.json`
   and queued on 4d736d2b8c.
 
-[lane.audio1016] waiting: the five audio1016-cutscene runs on the Nova. Request ids are in
-"Cutscene runs" below. This resolves when all five results are in. Then judge legs
-V/Q/L/U/S/DL/DC/C and decide between the switch and the faithful DSP path.
+**Why attempt 2 did not finish.** It ended at 17:15 UTC on `waiting:` for the five cutscene
+runs. At 17:17 all five were still queued behind two perflog1016 arms, and their ref,
+4d736d2b8c, was not built yet. Ending on `waiting:` was correct under the lane role. lane.local
+resumed the lane to wait inside the session instead (`tools/wait_results.sh` polls the result
+dirs), read the five results, and close the PR.
 
 **Why attempt 1 did not finish.** It did not fail: it ended correctly on `waiting:` for the five
 identify runs, R1-R5. Those ran 08:46-09:38 on 10-16, and the lane was resumed for them. Their
