@@ -6199,6 +6199,327 @@ static bool check_surface_internal_formats_supported(
     return all_supported;
 }
 
+/*
+ * #433, HAKUX_S2T_CVT=1 (off by default): a 16-bit colour surface sampled as
+ * an A1R5G5B5, X1R5G5B5 or R5G6B5 texture is decoded on the GPU into the
+ * texture's RGBA8 image, in place of a download to VRAM and the CPU decode.
+ *
+ * Those texture formats are expanded to RGBA8 by bit replication (#59), so
+ * check_surface_to_texture_compatiblity() refuses them and create_texture()
+ * downloads the surface: a finish and a fence wait on the PFIFO thread for
+ * each such texture. Per frame (docs/lanes/fps1015/NOTES.md): Mortal Kombat
+ * Shaolin Monks 3 (X1R5G5B5, up to 320x240), Top Spin 24-32 (R5G6B5 64x128),
+ * Prince of Persia 9 (R5G6B5 256x256), Batman Begins 1 (R5G6B5 512x512).
+ *
+ * The decode is the CPU's (pgraph/texture.c, the replication branch of the
+ * texture conversion) on the same input. A1R5G5B5_UNORM_PACK16 and
+ * R5G6B5_UNORM_PACK16 hold the guest's bit layout and a download copies the
+ * host words unchanged, so the words read here are the ones VRAM would hold,
+ * and each field is expanded by the TEXTURE format with (v<<3)|(v>>2) and
+ * (v<<2)|(v>>4). A blit cannot stand in for it: UNORM conversion rounds by
+ * the ratio, which differs from replication at 5-bit 3, 7, 24, 28 and 6-bit
+ * 11..15, 48..52. Texture images are TRANSFER_DST and SAMPLED only, so the
+ * words go image -> buffer, the shader writes RGBA8 texels to the same
+ * buffer, and a buffer -> image copy fills the texture, all recorded inline.
+ */
+static int s2t_cvt_state = -1;
+
+#define S2T_CVT_GROUP 64
+
+static const char s2t_cvt_glsl[] =
+    "#version 450\n"
+    "layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;\n"
+    "layout(push_constant) uniform PushConstants {\n"
+    "    uint count, kind, unused0, unused1;\n"
+    "};\n"
+    "layout(set = 0, binding = 0) buffer TexelsOut { uint texels[]; };\n"
+    "layout(set = 0, binding = 2) buffer WordsIn { uint words[]; };\n"
+    "uint rep5(uint v) { return (v << 3) | (v >> 2); }\n"
+    "uint rep6(uint v) { return (v << 2) | (v >> 4); }\n"
+    "void main() {\n"
+    "    uint i = gl_GlobalInvocationID.x;\n"
+    "    if (i >= count) {\n"
+    "        return;\n"
+    "    }\n"
+    "    uint w = (words[i >> 1] >> ((i & 1u) * 16u)) & 0xFFFFu;\n"
+    "    uint r, g, b, a = 255u;\n"
+    "    if (kind == 0u) {\n"
+    "        r = rep5((w >> 11) & 31u);\n"
+    "        g = rep6((w >> 5) & 63u);\n"
+    "        b = rep5(w & 31u);\n"
+    "    } else {\n"
+    "        r = rep5((w >> 10) & 31u);\n"
+    "        g = rep5((w >> 5) & 31u);\n"
+    "        b = rep5(w & 31u);\n"
+    "        if (kind == 2u && (w & 0x8000u) == 0u) {\n"
+    "            a = 0u;\n"
+    "        }\n"
+    "    }\n"
+    "    texels[i] = r | (g << 8) | (b << 16) | (a << 24);\n"
+    "}\n";
+
+bool pgraph_vk_s2t_cvt_on(void)
+{
+    if (s2t_cvt_state < 0) {
+        const char *e = getenv("HAKUX_S2T_CVT");
+        s2t_cvt_state = e && e[0] == '1';
+        if (s2t_cvt_state) {
+            SURF92_LOG("[s2tcvt] on");
+        }
+    }
+    return s2t_cvt_state;
+}
+
+/* 0 R5G6B5, 1 X1R5G5B5, 2 A1R5G5B5: the shader's kind */
+static uint32_t s2t_cvt_kind(unsigned int color_format)
+{
+    switch (color_format) {
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5:
+        return 0;
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5:
+        return 2;
+    default:
+        return 1;
+    }
+}
+
+/*
+ * Room for `size` bytes. A larger buffer replaces the old one only once
+ * nothing recorded or in flight can still read it.
+ */
+static void s2t_cvt_reserve(PGRAPHState *pg, VkDeviceSize size)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (r->s2t_cvt.size >= size) {
+        return;
+    }
+    if (r->s2t_cvt.buffer != VK_NULL_HANDLE) {
+        pgraph_vk_finish(pg, VK_FINISH_REASON_NEED_BUFFER_SPACE);
+        pgraph_vk_flush_all_frames(pg);
+        vmaDestroyBuffer(r->allocator, r->s2t_cvt.buffer,
+                         r->s2t_cvt.allocation);
+        r->s2t_cvt.buffer = VK_NULL_HANDLE;
+        r->s2t_cvt.size = 0;
+    }
+    /* 640x480 words and texels fit the first one */
+    VkDeviceSize alloc = ROUND_UP(MAX(size, (VkDeviceSize)4 << 20), 1 << 20);
+    VkBufferCreateInfo buffer_info = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = alloc,
+        .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+                 VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                 VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    VmaAllocationCreateInfo alloc_info = {
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+    };
+    VK_CHECK(vmaCreateBuffer(r->allocator, &buffer_info, &alloc_info,
+                             &r->s2t_cvt.buffer, &r->s2t_cvt.allocation,
+                             NULL));
+    r->s2t_cvt.size = alloc;
+}
+
+static void s2t_cvt_create_pipeline(PGRAPHVkState *r)
+{
+    ShaderModuleInfo *module = pgraph_vk_create_shader_module_from_glsl(
+        r, VK_SHADER_STAGE_COMPUTE_BIT, s2t_cvt_glsl);
+    assert(module && "s2t_cvt compute shader GLSL compilation failed");
+
+    VkComputePipelineCreateInfo pipeline_info = {
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .layout = r->compute.pipeline_layout,
+        .stage =
+            (VkPipelineShaderStageCreateInfo){
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+                .pName = "main",
+                .module = module->module,
+            },
+    };
+    VK_CHECK(vkCreateComputePipelines(r->device, r->vk_pipeline_cache, 1,
+                                      &pipeline_info, NULL,
+                                      &r->s2t_cvt.pipeline));
+    pgraph_vk_destroy_shader_module(r, module);
+}
+
+static void s2t_cvt_buffer_barrier(VkCommandBuffer cmd, VkBuffer buffer,
+                                   VkDeviceSize offset, VkDeviceSize size,
+                                   VkPipelineStageFlags src_stage,
+                                   VkAccessFlags src_access,
+                                   VkPipelineStageFlags dst_stage,
+                                   VkAccessFlags dst_access)
+{
+    VkBufferMemoryBarrier barrier = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        .srcAccessMask = src_access,
+        .dstAccessMask = dst_access,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .buffer = buffer,
+        .offset = offset,
+        .size = size,
+    };
+    vkCmdPipelineBarrier(cmd, src_stage, dst_stage, 0, 0, NULL, 1, &barrier,
+                         0, NULL);
+}
+
+/*
+ * vk/texture.c, copy_surface_to_texture(): the surface is the texture's
+ * source (check_surface_to_texture_compatiblity()), a 2-byte colour surface
+ * under a format pgraph_texture_format_expands_by_replication() names.
+ */
+void pgraph_vk_s2t_cvt_copy(PGRAPHState *pg, SurfaceBinding *surface,
+                            TextureBinding *texture)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    unsigned int color_format = texture->key.state.color_format;
+    VkFormat tex_format = kelvin_color_format_vk_map[color_format].vk_format;
+
+    assert(surface->color && surface->host_fmt.host_bytes_per_pixel == 2);
+    assert(pgraph_texture_format_expands_by_replication(color_format));
+
+    unsigned int width = surface->width, height = surface->height;
+    pgraph_apply_scaling_factor(pg, &width, &height);
+    uint32_t count = width * height;
+    VkDeviceSize align = MAX(
+        r->device_props.limits.minStorageBufferOffsetAlignment, 4);
+    VkDeviceSize words_size = ROUND_UP((VkDeviceSize)count * 2, align);
+    VkDeviceSize texels_size = (VkDeviceSize)count * 4;
+
+    s2t_cvt_reserve(pg, words_size + texels_size);
+    if (r->s2t_cvt.pipeline == VK_NULL_HANDLE) {
+        s2t_cvt_create_pipeline(r);
+    }
+    if (pgraph_vk_compute_needs_finish(r)) {
+        pgraph_vk_finish(pg, VK_FINISH_REASON_NEED_BUFFER_SPACE);
+        pgraph_vk_flush_all_frames(pg);
+        pgraph_vk_compute_finish_complete(r);
+    }
+
+#if OPT_SURF_TO_TEX_INLINE
+    VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+#else
+    pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
+    VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
+#endif
+    pgraph_vk_begin_debug_marker(r, cmd, RGBA_GREEN, __func__);
+    int xfr_tok = pgraph_vk_xfr_begin(pg, cmd, "s2t", 6330);
+    pgraph_vk_xfr_surf(surface, XFR_SURF_READ);
+
+    /* An earlier conversion may still read or write the buffer. */
+    s2t_cvt_buffer_barrier(
+        cmd, r->s2t_cvt.buffer, 0, VK_WHOLE_SIZE,
+        VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+
+    pgraph_vk_transition_image_layout(
+        pg, cmd, surface->image, surface->host_fmt.vk_format,
+        surface->image_layout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    VkBufferImageCopy words_region = {
+        .bufferOffset = 0,
+        .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .imageSubresource.layerCount = 1,
+        .imageExtent = (VkExtent3D){ width, height, 1 },
+    };
+    vkCmdCopyImageToBuffer(cmd, surface->image,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           r->s2t_cvt.buffer, 1, &words_region);
+    pgraph_vk_transition_image_layout(
+        pg, cmd, surface->image, surface->host_fmt.vk_format,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, surface->image_layout);
+
+    s2t_cvt_buffer_barrier(cmd, r->s2t_cvt.buffer, 0, words_size,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_ACCESS_TRANSFER_WRITE_BIT,
+                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           VK_ACCESS_SHADER_READ_BIT);
+
+    assert(r->compute.descriptor_set_index <
+           (int)ARRAY_SIZE(r->compute.descriptor_sets));
+    VkDescriptorSet set =
+        r->compute.descriptor_sets[r->compute.descriptor_set_index++];
+    VkDescriptorBufferInfo buffers[3] = {
+        { .buffer = r->s2t_cvt.buffer, .offset = words_size,
+          .range = texels_size },
+        { .buffer = r->s2t_cvt.buffer, .offset = words_size,
+          .range = texels_size },
+        { .buffer = r->s2t_cvt.buffer, .offset = 0, .range = words_size },
+    };
+    VkWriteDescriptorSet writes[3];
+    for (int i = 0; i < 3; i++) {
+        writes[i] = (VkWriteDescriptorSet){
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = set,
+            .dstBinding = i,
+            .descriptorCount = 1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .pBufferInfo = &buffers[i],
+        };
+    }
+    vkUpdateDescriptorSets(r->device, 3, writes, 0, NULL);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                      r->s2t_cvt.pipeline);
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                            r->compute.pipeline_layout, 0, 1, &set, 0, NULL);
+    uint32_t push_constants[4] = { count, s2t_cvt_kind(color_format), 0, 0 };
+    vkCmdPushConstants(cmd, r->compute.pipeline_layout,
+                       VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(push_constants),
+                       push_constants);
+    vkCmdDispatch(cmd, (count + S2T_CVT_GROUP - 1) / S2T_CVT_GROUP, 1, 1);
+
+    s2t_cvt_buffer_barrier(cmd, r->s2t_cvt.buffer, words_size, texels_size,
+                           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                           VK_ACCESS_SHADER_WRITE_BIT,
+                           VK_PIPELINE_STAGE_TRANSFER_BIT,
+                           VK_ACCESS_TRANSFER_READ_BIT);
+
+    pgraph_vk_transition_image_layout(pg, cmd, texture->image, tex_format,
+                                      texture->current_layout,
+                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    texture->current_layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    VkBufferImageCopy texels_region = {
+        .bufferOffset = words_size,
+        .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+        .imageSubresource.layerCount = 1,
+        .imageExtent = (VkExtent3D){ width, height, 1 },
+    };
+    vkCmdCopyBufferToImage(cmd, r->s2t_cvt.buffer, texture->image,
+                           texture->current_layout, 1, &texels_region);
+    pgraph_vk_transition_image_layout(pg, cmd, texture->image, tex_format,
+                                      texture->current_layout,
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    texture->current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    pgraph_vk_xfr_end(pg, cmd, xfr_tok);
+    pgraph_vk_end_debug_marker(r, cmd);
+#if OPT_SURF_TO_TEX_INLINE
+    pgraph_vk_end_nondraw_commands(pg, cmd);
+#else
+    pgraph_vk_end_single_time_commands(pg, cmd);
+#endif
+}
+
+static void s2t_cvt_finalize(PGRAPHVkState *r)
+{
+    if (r->s2t_cvt.pipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(r->device, r->s2t_cvt.pipeline, NULL);
+        r->s2t_cvt.pipeline = VK_NULL_HANDLE;
+    }
+    if (r->s2t_cvt.buffer != VK_NULL_HANDLE) {
+        vmaDestroyBuffer(r->allocator, r->s2t_cvt.buffer,
+                         r->s2t_cvt.allocation);
+        r->s2t_cvt.buffer = VK_NULL_HANDLE;
+        r->s2t_cvt.size = 0;
+    }
+}
+
 void pgraph_vk_init_surfaces(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -6316,6 +6637,7 @@ void pgraph_vk_finalize_surfaces(PGRAPHState *pg)
         g_hash_table_destroy(r->surface_addr_map);
         r->surface_addr_map = NULL;
     }
+    s2t_cvt_finalize(r);
 }
 
 void pgraph_vk_surface_flush(NV2AState *d)
