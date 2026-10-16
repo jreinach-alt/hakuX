@@ -842,6 +842,16 @@ The faithful fix is what x86_64 already does: round per FPCR.RMode, then convert
 TB, `translate.c` 3423-3429, so the next block re-emits `flcr`). It is in `tcg/aarch64/`, outside this lane's
 territory, so it needs a grant. It does not touch (a): the desktop rounds correctly and still lacks the layer.
 
+### Why the 13:02 session did not finish
+
+It was stopped at 13:42, when lane.local restarted the lane with the 13:20 addendum (desktop crash dumps). Its
+log (`logs/lane/x1port1012.20261016T200243Z.json`) is empty, as for a stopped session. Nothing was lost: its last
+commit, 82e0e26bb3 at 13:38, was already pushed. Two files are still dirty in the worktree, and neither is ever
+committed: `psh.c` (attempt 4's `HAKUX_PSHDBG` term isolation) and `tcg/i386/tcg-target.c.inc` (the dg3
+truncation experiment, kept as a diff in `tools/fisttrunc-desktop-experiment.md`). It had also written
+`build-linux/run/vpemu.py` (scratch), which runs the hull's vertex program on the guest's vertex buffer
+(`dg2/003cfb80.bin`), but had not recorded a result from it.
+
 ### Lit and dark draws (step 3, from run 11 frames 529-558, soak +68)
 
 (See below; written when read.)
