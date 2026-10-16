@@ -1,10 +1,10 @@
-# frontends1016b: Pegasus tested, Daijisho integrated or written up (#433)
+# frontends1016b: Pegasus tested, Daijisho integrated via its Apps tab (#433)
 
-State: draft
+State: ready
 
 Lane: frontends1016b            Issue: #433
-Base: master @ beb9daa755d3a869768ce8232ac755b53e15a7c3
-Files: docs/frontends/pegasus.md, docs/frontends/daijisho.md, docs/frontends/README.md, docs/frontends/images/pegasus-android-collection.png, docs/frontends/images/pegasus-launch-cold.png, docs/frontends/images/pegasus-launch-second.png, docs/lanes/frontends1016b/PR.md, docs/lanes/frontends1016b/NOTES.md
+Base: master @ 8cd408688e5eb0cb129f9439d941326dcf704cac
+Files: docs/frontends/pegasus.md, docs/frontends/daijisho.md, docs/frontends/README.md, docs/frontends/images/pegasus-android-collection.png, docs/frontends/images/pegasus-launch-cold.png, docs/frontends/images/pegasus-launch-second.png, docs/frontends/images/daijisho-apps-tab.png, docs/frontends/images/daijisho-documentsui-glitch.png, docs/frontends/images/daijisho-launch-cold.png, docs/frontends/images/daijisho-launch-second.png, docs/lanes/frontends1016b/PR.md, docs/lanes/frontends1016b/NOTES.md
 Prediction: none: analysis-only
 Needs device: yes (Thor, bdc158a5, by hand)
 
@@ -17,7 +17,27 @@ rewritten in the house style, "blocked" wording removed, with one finding
 recorded: a one-time transient DocumentsUI-recovery glitch on the very first
 post-setup-wizard launch, self-resolved on retry, not reproducible.
 
-Daijisho work (integration attempts, then fallback instructions if none
-land) is in progress — this PR will be updated as that lands.
+Daijisho is now **integrated**, not just written up: it has its own Apps
+tab (a generic installed-app list, the same mechanism as Pegasus's Android
+collection), which lists hakuX CE directly — no custom Platform entry or
+"Default player" field needed, so the first lane's keyboard-hidden
+autocomplete blocker (`docs/lanes/frontends1016/NOTES.md`) never had to be
+solved. Launched the game twice from Daijisho's own UI the same way as
+Pegasus, both confirmed and screenshotted. `daijisho.md` rewritten in the
+house style, "blocked" wording and the NEED: removed; the first lane's
+ruled-out Platform-editor investigation is kept under "What was tried and
+ruled out" for whoever wants a fuller platform-card integration later. One
+finding recorded, shared with Pegasus: across four force-stop/relaunch
+attempts through both frontends, two landed cleanly on the Game Library and
+two instead opened Android's DocumentsUI picker — confirmed via
+`dumpsys activity recents`/`activities` to be hakuX's own `LauncherActivity`
+re-running a games-folder recovery flow, not a frontend problem; always
+self-resolved by backing out and relaunching. No NEED: for either frontend.
+
+`docs/frontends/README.md`'s status table updated: all four frontends now
+read "Tested on the Thor" (Daijisho and Pegasus changed from their prior
+"blocked" status).
+
+Release note (none): docs-only lane, no emulator/app code touched.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
