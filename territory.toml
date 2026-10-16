@@ -53,7 +53,7 @@ note = 'STARTED lane.local 2026-10-12 23:41 PDT (Sonnet, docs tooling; no device
 [lane.docsrewrite1012]
 issues = ['433']
 standing = false
-files = ["KNOWN_ISSUES.md", "CONTRIBUTING.md", "docs/reporting-bugs.md", "docs/releases/README.md", "android/README.md", "docs/images/**", "docs/lanes/docsrewrite1012/**"]
+files = ["docs/releases/README.md", "android/README.md", "docs/images/**", "docs/lanes/docsrewrite1012/**"]
 note = 'README.md MOVED to [lane.driverline1013] (lane.local 2026-10-13 09:05 PDT): the owner 10-13 ~08:05 asked that the pages name the GPU driver the ratings were measured on. || STARTED lane.local 2026-10-12 23:35 PDT (Opus, interactive; no unit): owner 10-12 ~23:35 PDT: the README is verbose, leaky, full of process notes and not written for someone deciding whether to try the build; same for the linked docs (known issues, roadmap...), which are stale from the pgraph era and carry no last-updated date. lane.local rewrites them in wt/docsrewrite1012 for a handheld player, each with a Last updated line. No code change.'
 
 [lane.perflog1016]
@@ -2776,3 +2776,9 @@ issues = ["433"]
 standing = false
 files = ["README.md", "PRIVACY.md", "ROADMAP.md", "android/MIGRATING.md", "docs/frontends/**", "docs/es-de/**", "docs/lanes/ce1016/**"]
 note = "STARTED lane.local 2026-10-16 12:52 PDT (Sonnet, docs, no device): owner 10-16: the display name becomes hakuX CE (Community Edition); docs pass on titles and bolds only, no search/replace of the word hakuX. Files taken off funding1016, docsrewrite1012, frontends1016 and others. Brief: briefs/ce1016.md."
+
+[lane.visitor1016]
+issues = ["433"]
+standing = false
+files = [".github/ISSUE_TEMPLATE/**", ".github/pull_request_template.md", "CONTRIBUTING.md", "KNOWN_ISSUES.md", "docs/reporting-bugs.md", "docs/lanes/visitor1016/**"]
+note = "STARTED lane.local 2026-10-16 13:07 PDT (Sonnet, docs, no device): owner 10-16, prepping the repo for visitors; a read-only audit of the home branch found issue-form friction, the old app name in reporting-bugs.md and CONTRIBUTING.md. Decision-free fixes only; SECURITY.md, CODE_OF_CONDUCT.md and a get-your-Xbox-files doc wait for the owner. KNOWN_ISSUES.md, CONTRIBUTING.md and docs/reporting-bugs.md taken off docsrewrite1012. Brief: briefs/visitor1016.md."
