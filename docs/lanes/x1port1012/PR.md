@@ -1,4 +1,4 @@
-# x1port1012-halo: #939 ring-world leads (triage video to re-record at the menu); #938, Fable not yet started
+# x1port1012-halo: #939 ring-world leads (audit run at the menu next); #938, Fable not yet started
 
 State: draft
 
@@ -32,12 +32,12 @@ All three are gated leads from `batchC.md`/`batchD.md`, not fixes: none is claim
 
 - The triage video (brief Phase B step 1, three arms: shipped defaults, `HAKUX_SURFGPU=0`, fast paths
   off) landed clean on all three arms, but every clip recorded the intro movies, not the ring menu, so
-  none of them can show the defect. A re-record at the menu's time (+45 s to +85 s), with a v0.5.0
-  control arm first, is planned in NOTES.md under "Triage video void".
+  none of them can show the defect. The defect still reproduces on master with Phase A at shipped
+  defaults (nightly `0.5.0-1014-4a7b7e24b7`). The next run audits both leads at the menu; see NOTES.md
+  under "Owner sighting on the Phase A nightly".
 - Phase C (#938, speech level) and Phase D (Fable, fp_jit) have not started.
 - Phase E (`HAKUX_PATTFENCE`) is explicitly not before Thursday's reset per the brief.
 
-This PR stays draft until the re-recorded triage video is judged and at least one lead is confirmed or
-ruled out; see `docs/lanes/x1port1012/NOTES.md` for the plan and the `WAITING` line.
+This PR stays draft until at least one lead is confirmed or ruled out; see `docs/lanes/x1port1012/NOTES.md` for the plan and the `WAITING` line.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

@@ -232,7 +232,7 @@ candidate itself). The re-record therefore needs a control arm:
 
 | arm | ref | env | what a hit looks like |
 |---|---|---|---|
-| control | `v0.5.0` (`6f560dc44e`), before Phase A | none | the glitch the owner saw: the ring's surface texture jumping back to an earlier position while the ring itself keeps rotating smoothly |
+| control | `v0.5.0` (`6f560dc44e`), before Phase A | none | the glitch the owner saw: the ring's surface texture jumping back to an earlier position while the ring itself keeps rotating smoothly (too narrow: the owner's 10-16 sighting is the rotation itself jumping; see the next section) |
 | shipped defaults | `c838d62772` (Phase A) | none | the same, or not; if the control shows it and this does not, Phase A (A7 or A9b) is the candidate fix |
 | `HAKUX_SURFGPU=0` | `c838d62772` | `HAKUX_SURFGPU=0` | |
 | fast paths off | `c838d62772` | the eight `FASTPATHS_VARS` = 0 | |
@@ -246,8 +246,66 @@ last (the `--env` pref outlives the run). Device runs: 6 used of 24; this is up 
 Nova timing: the Nova is under the owner's hands-on hold (10-16), and #984/#986 go first after the
 10-15 reset. Queue behind those.
 
-**WAITING**: `owner: when the Nova is free, resume x1port1012 on Opus to re-record #939 (control first),
-per "Triage video void" in NOTES.md.`
+~~**WAITING**: `owner: when the Nova is free, resume x1port1012 on Opus to re-record #939 (control first),
+per "Triage video void" in NOTES.md.`~~ SUPERSEDED, see the next section.
+
+### Owner sighting on the Phase A nightly (lane.xbox, 2026-10-16)
+
+The owner played Halo on the Nova at 07:57 PDT 10-16 and reported: "The ring rotation still jumps
+around." Build `0.5.0-1014-4a7b7e24b7` (master 10-14), shipped defaults: the build lines say ubershader
+ON, surfgpu ON, all eight fast paths ON, no `--env`. `4f0111232c` (A9b) is an ancestor of `4a7b7e24b7`,
+so **Phase A does not fix #939**. `f3acdd0912` is not, so the build has the v0-hash skip with no switch.
+That answers the "shipped defaults" row above by the owner's own eyes. The control row is only needed
+to show whether Phase A fixed it, so it is no longer needed.
+
+The owner's words this time are about the ring's **rotation** jumping, not only its texture. The "what a
+hit looks like" cell above is therefore too narrow: a hit is the ring (or the camera's view of it) jumping
+to another position, or its surface jumping back, while frame delivery stays smooth.
+
+Capture (attach-only, lane.local's owner-play watcher): `/home/justin/hakux-work/ownerplay/runs/4D530004-1016-0757-23317/`
+(`logcat.txt`, plus 9 screenshots about 6 s apart; `075759`, `075805` and `075811` are the menu). Emulator pid 23317, launch 07:57:30,
+renderer ready 07:57:35, intro movies to 07:57:57, a 1.3 s load, the menu from 07:57:59, then a clean exit at
+07:58:15 (`qemu_main returned 0`).
+
+What the log says about the menu window (07:58:00-07:58:15, seven 2 s windows):
+
+- Delivery is steady. `gfps=29`, `G:33.3-33.5` mean, worst frame in any menu window 38.8 ms, and `hakuX-pace
+  v2=60` every window (each game frame held exactly two vblanks). `vbl` 59.93 Hz, p99 16.85 ms. So the
+  jump is in what a frame draws, not in when frames arrive: no hitch, no skipped or repeated flip.
+- The surface counters are all zero: `[surf92] missed=0 addrchg=0 fbdirty=0`, `held == want` at every
+  sample (double buffer `0x022c4000`/`0x023f0000`), `[surfwatch382] gap_writes=0 lost_writes=0`, `[evict372]
+  overflow=0 handoffs=0 fallbacks=0`, `[clr89] diverged=0`. None of the known surface-staleness paths
+  fired. That says nothing about a path they do not count.
+- `[watch311] shelved=0` at all three samples (07:58:00.6, :05.6, :10.6). That is the list
+  `create_texture`'s shelf lookup walks (`texture.c`, `QTAILQ_FOREACH(shelved, &r->shelved_surfaces,
+  ...)`), so at those instants the S2TSHELF lead had nothing to bind. A 5 s sample is not a hit count:
+  a surface shelved and reused between samples would not show. This weighs against S2TSHELF without
+  ruling it out.
+- `[drawrec] vtx dirty=30 ... walks=30+0` per 60 frames: the menu writes vertex RAM on half the frames.
+  The VTX design says a draw never reads data older than with the switch off. The fast-paths-off arm
+  still tests that.
+- No counter on master sees the XVSS skip. `LAUNCH_TRANSFORM_PROGRAM` (`pgraph.c`) returns early when
+  `v0[0]^v0[1]^v0[2]^v0[3]` matches the last launch of the same program, but the program also reads
+  `vsh_constants`. A launch whose constants changed (a time or angle) with an unchanged `v0` keeps the
+  previous output, an earlier transform. A wrong transform moves geometry, which fits "the rotation
+  jumps" better than a texture lead does. This is reasoning, not a measurement.
+
+Re-record plan, revised. The control and shipped-defaults arms are answered. The next run measures:
+
+| run | ref | env | reads |
+|---|---|---|---|
+| audit | `223f216d7c` (this branch) | `HAKUX_XVSS=audit HAKUX_S2TSHELF=audit` | `[xvss]` and `[s2tshelf]` counts during the menu (+33..+96 s); both are log-only |
+| noskip video | `223f216d7c` | `HAKUX_XVSS=noskip` | only if audit shows the skip's output differing in the menu: the owner watches for the jump |
+
+Shape: no route, `--seconds 150`. The video run uses `--video-after 45 --video-seconds 40`. One run can
+carry both audits. Each switch reads its own variable. XVSS `audit` keeps the skip's output and runs the
+skipped launch on a scratch copy of the constants (checked in `f3acdd0912`). It logs
+`[xvss] launches= skips= skip_v0_differs= skip_stale=` every 5 s, plus the first 16 stale skips with
+their `prog=` and `first_row=`. `skip_stale > 0` in the menu window is the hit. Device runs: 6 used of 24;
+this is 1-2 more.
+
+**WAITING**: `owner: when the Nova is free, resume x1port1012 on Opus for the #939 audit run, per "Owner
+sighting on the Phase A nightly" in NOTES.md.`
 
 ## End of this session (attempt 3)
 
