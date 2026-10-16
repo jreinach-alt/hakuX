@@ -3,8 +3,8 @@
 State: ready
 
 Lane: titlekey1016            Issue: #433
-Base: master @ 15a72e10dc
-Files: docs/testing/title_registry.py, docs/testing/titles/targets.toml, docs/testing/title_registry_selftest.py, docs/testing/compat_page.py, docs/testing/compat_page_selftest.py, docs/testing/compat_notes.tsv, docs/lanes/titlekey1016/NOTES.md, docs/lanes/titlekey1016/PR.md, docs/lanes/titlekey1016/OUTBOX.md, docs/lanes/titlekey1016/host-tools/INSTALL.md, docs/lanes/titlekey1016/host-tools/status_page.py, docs/lanes/titlekey1016/host-tools/status_alarm.py, docs/lanes/titlekey1016/host-tools/status_alarm_selftest.py
+Base: master @ 0e5fab6bef (rebased onto lane/statusfix1016's fold once it landed)
+Files: docs/testing/title_registry.py, docs/testing/titles/targets.toml, docs/testing/title_registry_selftest.py, docs/testing/compat_page.py, docs/testing/compat_page_selftest.py, docs/testing/compat_notes.tsv, docs/testing/jobs/status_html.py, docs/lanes/titlekey1016/NOTES.md, docs/lanes/titlekey1016/PR.md, docs/lanes/titlekey1016/OUTBOX.md, docs/lanes/titlekey1016/host-tools/INSTALL.md, docs/lanes/titlekey1016/host-tools/status_page.py, docs/lanes/titlekey1016/host-tools/status_alarm.py, docs/lanes/titlekey1016/host-tools/status_alarm_selftest.py
 Prediction: none: analysis/data-consistency fix, no device or pixel claim
 Needs device: no    Needs NDK: no
 
@@ -58,12 +58,29 @@ identical output; only the previously-blank `title_id` field changed).
 list is pre-filtered to rows matching the one human-typed query before any
 match runs, is read-only diagnostic output, and exists specifically to find
 pre-title_id runs that carry no title_id at all -- see NOTES.md for the
-full reasoning. `status_html.py`'s `titles05`/`canon`/`resolve`/ledger-load
-(the largest remaining name-keyed site) is **blocked**: the file is held by
-lane.statusfix1016's fold, which has not landed on `origin/master` as of
-this push (checked at session start and end, both times still at
-`15a72e10dc`). `docs/lanes/titlekey1016/OUTBOX.md` carries the `NEED:` line
-for it.
+full reasoning.
+
+`status_html.py`: `lane/statusfix1016`'s fold landed on `origin/master`
+partway through this session (`0e5fab6bef`); rebased cleanly on top of it
+and finished the one site that fold had been holding. `_title_catalog()`
+ran a second, independent "ledger wins" loop on top of `TR.build_catalog()`,
+which already does the same thing (this lane's own item-1 fix) -- collapsed
+to `return TR.build_catalog(p)`. Verified directly against the live repo
+(`status_html.Facts({"WORK": ..., "REPO": ...})` then `_title_catalog(F)`,
+bypassing the forbidden `status.sh`): 954 names loaded, Crimson Skies and
+Conker both resolve to their ledger spellings. `titles05`'s own
+`names`/`where`/`tid_of`/`by_tid` dicts are **left keyed by display name,
+intentionally**: every write already resolves title_id first through the
+shared Catalog (`canon()`, already on master from this lane's earlier
+commit) before the dict key is ever touched, so two spellings of one
+title_id already collapse onto one row -- the literal dict key is a name,
+but the identity decision is title_id. A full key-type rewrite would touch
+in-flight-request matching, soak backfill, the xiso manifest join and
+push-log replay in the same ~220-line function with no end-to-end harness
+to verify it (the only fixture that exercises `titles05`,
+`docs/lanes/dash432/fixtures/run_fixture.sh`, runs `status.sh` itself,
+which the brief forbids) -- judged not worth the regression risk given the
+actual invariant already holds. See NOTES.md for the full reasoning.
 
 **Item 3 -- README Playable count follows the ledger, not STATUS.md.**
 `host-tools/status_page.py`'s `main()` called `home_page.update(home_blobs

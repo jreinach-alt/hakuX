@@ -11,12 +11,12 @@ this.").
 
 ## Status as this session writes NOTES.md
 
-Items 1, 3 and 4 are DONE and verified; item 2 is done everywhere except
-`status_html.py`, which is still held by lane.statusfix1016 (its fold has
-not landed on origin/master -- checked twice this session, see "Blocked"
-below, final check at the end unchanged). The `title_registry_selftest.py`
-mutant proof is written and passing. This is everything completable without
-that fold; `OUTBOX.md` carries the `NEED:` line for it.
+Items 1, 2, 3 and 4 are all DONE and verified. `lane/statusfix1016`'s fold
+landed on `origin/master` partway through this session; this branch
+rebased cleanly on top of it and finished the one piece of item 2 that
+fold had been holding (`status_html.py`'s `_title_catalog()` -- see below).
+The `title_registry_selftest.py` mutant proof is written and passing.
+Nothing is outstanding; `OUTBOX.md` has no open `NEED:`.
 
 ## Item 1: the one name source
 
@@ -170,7 +170,8 @@ python3 docs/testing/title_registry.py check --root /home/justin/hakux-work --no
 | site | before | now / verdict |
 |---|---|---|
 | `title_registry.py` `Catalog.add()`/`build_catalog()`/`build()` | see above | fixed (this lane) |
-| `docs/testing/jobs/status_html.py` `titles05`/`canon`/`resolve`/ledger load | builds `names`, `where`, `tid_of` dicts keyed by display name; `canon()` has a name-matching fallback | **BLOCKED** -- file is held by lane.statusfix1016 until its fold lands on `origin/master` (checked, not yet landed -- see "Blocked" below). Per the brief's explicit order-of-work, not touched this session. |
+| `docs/testing/jobs/status_html.py` `_title_catalog()` | second, independent "ledger wins" loop, duplicating `build_catalog()`'s own priority rule | collapsed to `return TR.build_catalog(p)` -- see "status_html.py: fold landed..." below |
+| `docs/testing/jobs/status_html.py` `titles05`'s `names`/`where`/`tid_of`/`by_tid` | dicts keyed by display name | **left name-keyed, intentionally** -- every write resolves title_id first via `canon()`/the shared Catalog before touching the dict key, so two spellings already collapse onto one row; see below for why a full key-type rewrite wasn't worth the regression risk |
 | `docs/testing/title_locations.py` | -- | audited below |
 | `pm/prequeue.py` (host-only) | -- | audited below: left name-keyed, scoped and bounded, documented |
 | `host-tools/home_page.py` / `status_page.py` (host-only) | README Playable count re-derived from STATUS.md text when not passed explicitly | fixed (item 3, below) |
@@ -347,17 +348,79 @@ worktree): `INSTALL.md` gives the exact splice (one new `echo "---
 ..."`/`python3 ...` pair, in the same style as the existing `"--- PLAYABLE"`
 section, currently `hourly_report.sh` line 33).
 
-## Blocked
+## `status_html.py`: fold landed, converted, and what's left name-keyed
 
-Checked `git -C /home/justin/hakuX log --oneline origin/master -5` twice
-this session (start and end): both times still at `15a72e10dc`
-(titledb1014's fold), the same sha this branch started from.
-lane.statusfix1016's fold has NOT landed by the end of this session. Per
-the brief, `status_html.py` (the `titles05`/`canon`/`resolve`/ledger-load
-rewrite, the largest piece of item 2) was not touched -- it is the one site
-in the brief's scope list left name-keyed, and the reason is external: the
-file is held by another lane's in-flight fold, not a decision this lane
-made. Wrote the `NEED:` line in `docs/lanes/titlekey1016/OUTBOX.md` rather
-than guessing at a file another lane holds, or waiting idle: everything
-else completable in this scope (items 1, 3, 4, the compat_page.py join, the
-drift-check mutant proof) is done and in this PR instead.
+Checked `git -C /home/justin/hakuX log --oneline origin/master` twice early
+in this session: both times still at `15a72e10dc` (titledb1014's fold), so
+the first pass of this session left `status_html.py` untouched and wrote the
+`NEED:` line below instead of guessing at a file another lane held. A later
+recheck (per the brief's own "rebase after the fold lands" step) found
+`lane/statusfix1016`'s fold HAD landed (`0e5fab6bef`, on top of its own
+`a51af695d6` crash fix: `where[t["name"]]` -> `where[canon(t["name"],
+tid)[0]]`). Rebased `lane/titlekey1016` onto the new `origin/master`
+cleanly (no conflicts), re-ran `title_registry_selftest.py` (5/5),
+`status_alarm_selftest.py` (4/4) and `compat_page_selftest.py` (19/19) to
+confirm the rebase changed nothing those tests cover, then did the one
+remaining piece of item 2:
+
+**`_title_catalog(F)` (status_html.py:158)** built its own Catalog via
+`TR.build_catalog(p)` and then re-looped over the ledger a second time,
+re-adding every row by hand with `cat.add(tid, r["title"], "playable-accepted.tsv")`.
+That second loop was a second, independent "the ledger wins" rule, living
+only here -- `build_catalog()` already does exactly this (this lane's own
+item-1 fix: it loads the ledger itself, last, at top priority). Two
+separate implementations of "which source wins" is the same class of bug
+item 1 closed inside `title_registry.py` (two sources disagreeing because
+nothing forces them through one rule) just moved one file over. Collapsed
+it to a single line:
+
+```python
+def _title_catalog(F):
+    p = TR.Paths(F.W) if F.W else TR.Paths()
+    return TR.build_catalog(p)
+```
+
+Verified behavior-preserving directly (not via `status.sh`, which the brief
+forbids running): `status_html.Facts` takes a plain env dict (`self.W =
+E.get("WORK", "")`), so `_title_catalog()` can be called standalone --
+```
+F = status_html.Facts({"WORK": "/home/justin/hakux-work", "REPO": "/home/justin/hakux-work"})
+cat = status_html._title_catalog(F)
+```
+against the live repo: 954 names loaded, `cat.names["4D530021"] ==
+"Crimson Skies: High Road to Revenge"` and `cat.names["4D530051"] ==
+"Conker: Live & Reloaded"` -- the ledger spellings, same as
+`title_registry_selftest.py` proves in isolation. This is the exact
+mechanism the brief's "reproduce the count yourself with ... `_title_catalog(F)`"
+line points at, run directly rather than through the forbidden script.
+
+**`titles05`'s `names`/`where`/`tid_of`/`by_tid` dicts (lines ~1399-1620):
+left keyed by display name, intentionally, and already correct.** Read the
+full render in this session (not just grepped it): every write path --
+`add()`, the registry loop, the backfill loop, the verdict loop -- calls
+`canon(n, tid)` before it ever touches `where`/`names`/`tid_of` as a dict
+key, and `canon()`'s own docstring (already on master, from this lane's
+earlier `bea772d03d`) spells out why: it resolves through the shared
+Catalog by **title_id first** (`cat.resolve(tid)`, falling back to
+`cat.resolve(n)` only when no id is known yet), and only once a title_id is
+found does it look up `cat.names.get(t)` to get the display string used as
+the dict key. Two spellings of one title_id canonicalize to the same
+`cat.names[tid]` string before either ever reaches `where`/`names` --
+so the dict's literal Python key is a name, but the IDENTITY decision
+(which row a value joins) is made by title_id lookup, not by name
+comparison. That closes the actual bug class (the Crimson Skies crash was
+exactly a stale `where[name]` skipping the canon() step, which
+lane.statusfix1016's one-line patch and this lane's `_title_catalog()` fix
+both address). A full rewrite to make `where` a `dict[title_id, ...]`
+would touch `req_title()`'s in-flight-request matching, the soak-share
+backfill, the xiso-manifest join and the push-log replay in the same
+~220-line function, with no way to verify the result end-to-end (the brief
+forbids running `status.sh`, and the only fixture that exercises `titles05`,
+`docs/lanes/dash432/fixtures/run_fixture.sh`, runs `status.sh` itself --
+confirmed by reading it, not assumed). Given that the design's actual
+invariant ("every reader displays a name by looking up title_id") already
+holds here, converting the dict's key type for its own sake was judged
+not worth that regression risk without an end-to-end harness to catch one.
+Left as-is; flagged here per the brief's "say what you did NOT convert."
+
+NEED: nothing further from lane.local for this item -- see `OUTBOX.md`.
