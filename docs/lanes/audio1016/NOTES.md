@@ -1,16 +1,26 @@
 # lane.audio1016 NOTES -- quiet speech and movie audio (#984, #938)
 
-Status: 2026-10-16. Mechanism measured offline on MKSM; fix written behind a switch
-(`vp.c.patch`); five Nova runs on one binary registered in
-`docs/testing/predictions/audio1016-identify.json` and queued.
+Status: 2026-10-16 17:15 UTC, attempt 2.
+- The mechanism is measured offline on MKSM.
+- Switch v1 failed the loud-title leg on the Nova. v2 (capped) is written and passes the same
+  tables offline.
+- Five cutscene runs are registered in `docs/testing/predictions/audio1016-cutscene.json`
+  and queued on 4d736d2b8c.
 
-[lane.audio1016] waiting: the five audio1016-identify runs on the Nova (request ids under
-"Runs" below). Resolves when their results are in; then judge the legs and mark ready.
+[lane.audio1016] waiting: the five audio1016-cutscene runs on the Nova. Request ids are in
+"Cutscene runs" below. This resolves when all five results are in. Then judge legs
+V/Q/L/U/S/DL/DC/C and decide between the switch and the faithful DSP path.
+
+**Why attempt 1 did not finish.** It did not fail: it ended correctly on `waiting:` for the five
+identify runs, R1-R5. Those ran 08:46-09:38 on 10-16, and the lane was resumed for them. Their
+verdicts are below. The MKSM pair never reached the cutscene, and the loud-title leg failed, so
+the brief's "done" (a measured cause with a fix behind evidence) needed a second device batch.
 
 NEED: `hw/xbox/mcpx/apu/vp/vp.c` (lane.x1port1012's file): apply
-`docs/lanes/audio1016/vp.c.patch` (HAKUX_APU_MONVP_DOWNMIX, off by default). It touches only
-the MON_VP block of voice_process() and adds a table after attenuate(); it does not overlap
-x1port1012's changes.
+`docs/lanes/audio1016/vp.c.patch` **v2** (HAKUX_APU_MONVP_DOWNMIX with the unity cap, off by
+default), once the cutscene runs pass U, S and C. It touches only the MON_VP block of
+voice_process() and adds a table after attenuate(); it does not overlap x1port1012's changes.
+Until then the patch is for the record, not for merging.
 
 ## The question
 
@@ -228,14 +238,122 @@ R3 `1-1792157545-lane.audio1016-3902507`, R4 `1-1792157545-lane.audio1016-390253
 R5 `1-1792157545-lane.audio1016-3902586`. Judge: `tools/mixlog_read.py` and
 `tools/level_windows.py` on each run's logcat, legs V/M/S/U/H/C as registered.
 
+### R1-R5 judged (attempt 2)
+
+`tools/judge_identify.sh` wrote one table set per run into `runs/identify/`:
+- `.mix` holds every apumix row;
+- `.sum` and `.cap` hold one row per slot layout, under switch v1 and v2;
+- `.lvl` holds the 5 s meter windows;
+- `.meter` holds the run totals.
+
+| leg | verdict | numbers |
+|---|---|---|
+| V | pass (R1, R2, R4, R5) | one `monvp_downmix:` line each, on in R2/R5; 27-37 apumix windows |
+| M | pass | the intro FMV's long voice is FL/FR only at 0.0 / -9.3 dB, excess 0.0 |
+| S | pass | whole run acrms R1 -19.86 / -20.25, R2 -20.05 / -20.43 dBFS: 0.2 dB apart |
+| U | not reached | every window's top voice is single-bin: the FL/FR music at 0.0 or -9.3. The one +3.0 layout (v48, xFL xFR C at -10.7) plays about 1 s of 5 in windows 9-10, under that music. The cutscene is past the menus |
+| H | void | R3 (Halo): see below |
+| C | **FAIL** | clipped samples R4 84 / 73, R5 364,669 / 362,635; acrms R4 -14.45, R5 -7.41 dBFS (+7.0 dB) |
+
+Leg C's cause is in R4's own table (`R4.sum.tsv`). Crimson Skies' music is voiced at full
+volume in all six 5.1 bins (FL, FR, C, LFE, BL, BR at 0.0 dB). That is 42 voice-windows and
+301,439 voice-frames in a 136 s run: the largest layout by frames.
+Under v1 its left side sums to 1 + 0.707 + 0.707 = 2.414, which is +7.65 dB. The title's own
+DSP program gives the same sum, but there the 6 dB submix headroom (h=1) leaves room for it;
+on MON_VP, which dropped the divisor, it clips.
+
+R3 (Halo) is void, not a measurement. The display was off at the end, soak_title.sh hit a
+broken pipe, and the logcat tail belongs to another PID. It looks like the screen went off
+mid-run. It was not re-run: a Halo run from boot reaches no speech anyway.
+
+The four "all bins at -6 dB" voices run for the whole of every MKSM and Crimson run. These are
+v64-67 in the save state, silent in its rings. Under v1 they get +10.7 dB, yet R1 and R2 stay
+level, so they carry no sound. This is the measurement behind the cap's +6.0 on them being
+harmless.
+
+### Switch v2: hold the louder side to 1.0
+
+If a voice's louder side sums above 1.0, v2 scales both sides down by the same factor, so the
+louder one is exactly 1.0 and the image is kept. 1.0 is the largest gain MON_VP gives any voice
+today, so no voice gets louder than today's loudest. `mixlog_read.py --cap` models it, and
+`.cap.tsv` holds the per-layout result for every identify run:
+
+| layout | title | v1 excess | v2 excess |
+|---|---|---|---|
+| FL FR C LFE BL BR at 0.0 (music) | Crimson | +7.65 | **+0.0** |
+| FL FR at 0.0 / -9.3 (FMV, menus) | MKSM | +0.0 | +0.0 |
+| FL FR BL BR at -1.8 / -7.8 | Crimson | +1.8 | +1.8 |
+| xFL xBL xFR xBR C at -11.2 (v164, cutscene speech; save state) | MKSM | +7.65 | **+7.65** |
+| xFL xFR C at -10.7 | MKSM | +3.0 | +3.0 |
+| all 8 slots at -6.0 (silent) | both | +10.7 | +6.0 |
+
+The cap only acts on a voice that is already loud in several bins. Speech spread at low volume
+keeps its full gain.
+
+### The faithful path: what the title's own DSP program costs
+
+`use_dsp` (Real-time DSP processing) plays the GP/EP output instead of MON_VP. That is what the
+hardware does: the title's matrix, its crosstalk, its I3DL2 reverb, and its submix headroom. It
+is the option that fits the hardware, not an approximation of it. Its costs:
+
+- **CPU.** `dsp_harness` ran MKSM's GP and EP programs on 10 s of input and took 5.79 s of CPU
+  on this x86 host, about 0.58 of a core. A frame is 667 us of audio, so that is about 386 us
+  of DSP time a frame. The Nova's cores are slower per clock than this host's, so the estimate
+  there is 0.6-0.9 of a core, on the APU thread, on top of VP. Run D measures it.
+- **Level.** With h=1, every single-bin voice plays 6 dB below today's MON_VP. The balance is
+  right, and the whole mix is quieter. The player's volume covers that; clipping is not a
+  risk.
+- **Balance.** Offline, v164 plays 3.6-5.2 dB above a single-bin voice. v2 gives +7.65, so on
+  this voice the switch overshoots the title's own mix by about 2.5-4 dB. Run D gives the
+  on-device figure.
+
+Ranking, by probability times the size of the win:
+- **Faithful path:** if the Nova can afford it (P unknown until D, about 0.4 from the estimate
+  above), it fixes the balance for every title and voice layout, including ones never measured
+  (Shrek 2, Lemony, Halo's 3D voices), and adds the reverb MON_VP never plays.
+- **Switch:** P about 0.6 that it closes most of the MKSM gap without clipping (legs U, S, C).
+  The win is limited to layouts the direct weights model, and it overshoots crosstalk-routed
+  voices.
+
+The D run is in the same batch as the switch runs so that neither waits on the other. Because
+the realtime GP loop runs `dsp_run` until the program idles, a Nova that cannot keep up shows it
+as APU thread load near 1 and `starve:` lines, not as wrong samples.
+
+### Cutscene runs (registered, queued)
+
+Prediction: `docs/testing/predictions/audio1016-cutscene.json` (sha256 07a76a1f...67d1), ref
+4d736d2b8c. That ref carries vp.c.patch v2 applied, plus gp_ep.c's `HAKUX_APU_USE_DSP=1` and
+debug.c's `apudsp` cost line; all are off unless set. Route:
+`routes/audio1016-mksm-wait.route`, which is fps1015-mksm's logos and menus up to s12, then no
+input for 200 s from the cutscene's start (about 77 s in). fps1015's route pressed START through
+the cutscene and skipped its speech.
+
+| run | request id | title | s | env | what the owner hears |
+|---|---|---|---|---|---|
+| A | `1-1792170341-lane.audio1016-2350757` | MKSM, wait route | 290 | MIXLOG | **today's mix** (switch off) |
+| B | `1-1792170345-lane.audio1016-2351225` | MKSM, wait route | 290 | MIXLOG, DOWNMIX | **switch on** (v2) |
+| D | `1-1792170348-lane.audio1016-2351533` | MKSM, wait route | 290 | MIXLOG, USE_DSP | **the title's own DSP mix** |
+| C1 | `1-1792170351-lane.audio1016-2352136` | Crimson Skies | 120 | MIXLOG, DOWNMIX | loud title, switch on |
+| C0 | `1-1792170352-lane.audio1016-2352599` | Crimson Skies | 120 | MIXLOG | loud title, switch off |
+
+They are queued in that order, A first. C0 is last on purpose: the dispatcher leaves the last
+request's env on the device until the next request, and C0 sets no mix switch. The MKSM runs
+pull the audio capture (`apu_monitor.s16le48k2ch.pcm`, 60 MB cap), so all three can be heard
+afterwards from the result directories.
+
+Judge: `tools/judge_identify.sh <results> docs/lanes/audio1016/runs/cutscene A=... B=... D=...
+C1=... C0=...`. Windows at or after the first `cutscene` shot's clock in frames/index.tsv
+(device clock) are "cutscene"; earlier windows above -50 dBFS are "pre".
+
 ## What the cause covers (#984, #938)
 
 - MKSM: (a) measured offline, about 4-5 dB of the 8-12 dB gap. The rest is open.
 - Shrek 2: the 7.5 dB loss is measured. (a) predicts +7.65 dB for an FL+C+BL / FR+C+BR
   layout. That layout is a guess until an apumix line or a save state shows it.
 - Lemony Snicket: no data beyond the owner's report.
-- Halo #938: R3 gives the menu voices. Speech needs gameplay, which a run from boot without a route does not
-  reach. lane.x1port1012's hrtf.h change (normalise each ear, `break` became `continue`) is
+- Halo #938: R3 is void (screen off mid-run). Its menu voices would not have answered the
+  question anyway: speech needs gameplay or a cinematic, which a run from boot without a route
+  does not reach. lane.x1port1012's hrtf.h change (normalise each ear, `break` became `continue`) is
   the other live Halo candidate. Until it landed, a 3D voice whose left ear was already
   normalised kept an unnormalised right ear.
 - Separate, not chased: for 3D-routed stereo voices, voice_process's `b % channels` sends
@@ -244,9 +362,22 @@ R5 `1-1792157545-lane.audio1016-3902586`. Judge: `tools/mixlog_read.py` and
 
 ## Tracker first steps
 
-- [issue.984]: read R1-R2's apumix table; get Shrek 2 and Lemony layouts as above; judge
-  the switch on MKSM's cutscene with the owner (it is past a menu, which no run reaches).
-- [issue.938]: R3's table; the hrtf.h fix in x1port1012; a gameplay route for Halo speech.
+These are the rows' first steps as of attempt 2. The tracker itself is not edited from a lane.
+
+- [issue.984]:
+  1. Judge audio1016-cutscene's A/B/D on MKSM's cutscene, with the owner's ears on the three
+     captures.
+  2. If U/S/C pass, the NEED line above takes vp.c.patch v2 into x1port1012's tree, behind its
+     switch.
+  3. If D shows the Nova can run the title's program, the faithful path (use_dsp on) is
+     screened as a default instead.
+  4. Shrek 2 and Lemony need a save state each (question 1) for their layouts.
+- [issue.938]:
+  1. Halo speech needs a run that reaches speech: a cinematic or gameplay route, which R3 from
+     boot did not have.
+  2. The other live cause is lane.x1port1012's hrtf.h per-ear normalisation fix; Halo's speech
+     may be 3D-routed. Once that fix lands, an owner session with `HAKUX_APU_MIXLOG=1` gives the
+     voice layout.
 
 ## Do not repeat
 
@@ -255,14 +386,27 @@ R5 `1-1792157545-lane.audio1016-3902586`. Judge: `tools/mixlog_read.py` and
 - Hypotheses (b) and (d) on MKSM: dead (PCM S16 at -17/-15 dBFS in the ring).
 - The DSP harness needs the save state's own GP/EP program; the matrix for bins 0-9 is the
   same in two titles, so it is the DirectSound standard image.
+- An uncapped per-side sum (switch v1): it clips any title that plays a voice at full volume
+  in several bins (Crimson Skies, 84 to 364,669 clipped samples).
+- An MKSM run from boot, or on fps1015's route, for this question. The first never reaches the
+  cutscene. The second presses START through it and skips the speech. Use
+  `routes/audio1016-mksm-wait.route`.
+- Reading per-window level differences between two runs as the switch's effect without
+  matching content. The same route still drifts a window or two; compare medians over windows
+  set by the frames' clock.
 
 ## Questions (for the owner; nothing waits on them)
 
 1. Could you take a save state in Shrek 2 during the DreamWorks logo (or the intro movie),
    and one in Lemony Snicket during a movie? `tools/hxs_voices.py` reads the voice layout from
    it offline, with no device time.
-2. Once the switch is judged: would you play MKSM's Goro's Lair cutscene once with
-   `HAKUX_APU_MONVP_DOWNMIX=1` and say whether Raiden is now level with the music?
+2. The three MKSM cutscene runs are queued in this order: A first, today's mix; B second,
+   the switch on; D third, the title's own DSP program. Each pulls an audio capture. Is
+   Raiden level with the music in B? In D? Does either sound wrong in another way, such as
+   reverb, image, or level?
+3. In the app's settings, does turning on "Real-time DSP processing" for MKSM sound right to
+   you, and does the game stay smooth? That is the same path as run D. If the Nova can afford
+   it, it is the fix that matches the hardware, for every title at once.
 
 ## Tools (docs/lanes/audio1016/tools/)
 
@@ -277,6 +421,13 @@ R5 `1-1792157545-lane.audio1016-3902586`. Judge: `tools/mixlog_read.py` and
 | dsp_harness.c | runs the title's GP/EP programs on the emulator's own DSP core |
 | dsp_gain_matrix.py | per-bin gain to the EP output |
 | dsp_route_compare.py | one voice through the DSP program vs MON_VP |
+| mixlog_read.py | apumix lines to a per-voice table; `--summary` per layout, `--cap` models v2 |
+| judge_identify.sh | runs mixlog_read and level_windows over each result, writes runs/<set>/*.tsv |
+| routes/audio1016-mksm-wait.route | MKSM to the Goro's Lair cutscene, then no input |
+
+To queue a lane route, copy it into the serving tree's `docs/testing/titles/routes/`, run
+request.sh with `--route <stem>`, then move the copy aside. The route text travels inside the
+request (`"route"`), so the copy is not needed after queueing.
 
 Build the harness (one line):
 
