@@ -53,7 +53,7 @@ note = 'STARTED lane.local 2026-10-12 23:41 PDT (Sonnet, docs tooling; no device
 [lane.docsrewrite1012]
 issues = ['433']
 standing = false
-files = ["KNOWN_ISSUES.md", "ROADMAP.md", "CONTRIBUTING.md", "PRIVACY.md", "docs/reporting-bugs.md", "docs/releases/README.md", "android/README.md", "android/MIGRATING.md", "docs/images/**", "docs/lanes/docsrewrite1012/**"]
+files = ["KNOWN_ISSUES.md", "CONTRIBUTING.md", "docs/reporting-bugs.md", "docs/releases/README.md", "android/README.md", "docs/images/**", "docs/lanes/docsrewrite1012/**"]
 note = 'README.md MOVED to [lane.driverline1013] (lane.local 2026-10-13 09:05 PDT): the owner 10-13 ~08:05 asked that the pages name the GPU driver the ratings were measured on. || STARTED lane.local 2026-10-12 23:35 PDT (Opus, interactive; no unit): owner 10-12 ~23:35 PDT: the README is verbose, leaky, full of process notes and not written for someone deciding whether to try the build; same for the linked docs (known issues, roadmap...), which are stale from the pgraph era and carry no last-updated date. lane.local rewrites them in wt/docsrewrite1012 for a handheld player, each with a Last updated line. No code change.'
 
 [lane.perflog1016]
@@ -2756,7 +2756,7 @@ note = "RELEASED at ready/fold (lane.local 2026-10-16 10:09 PDT): folded as 4bf4
 [lane.frontends1016]
 issues = ["433"]
 standing = false
-files = ["docs/frontends/**", "docs/es-de/**", "docs/lanes/frontends1016/**"]
+files = ["docs/lanes/frontends1016/**"]
 note = "STARTED lane.local 2026-10-16 07:59 PDT (Sonnet, Thor by hand, no dispatcher): owner 10-16 ~08:30 PDT: wire hakuX into ES-DE, Daijisho, Pegasus and the stock launcher, test each on the Thor, post the instructions. docs/es-de/README.md moved from lane.docsrewrite1012. Brief: briefs/frontends1016.md."
 
 [lane.sign1016]
@@ -2768,5 +2768,11 @@ note = "WIDENED (hostops 2026-10-16 ~09:4x PDT): docs/testing/jobs/selftest.sh (
 [lane.funding1016]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/funding1016/**", "README.md", ".github/FUNDING.yml"]
+files = ["docs/lanes/funding1016/**", ".github/FUNDING.yml"]
 note = "STARTED lane.local 2026-10-16 10:09 PDT (by hand, docs only, no device): owner 10-16: GitHub Sponsors profile is up; FUNDING.yml github: jreinach-alt, README Sponsor link + Support section. README.md from lane.titlekey1016 (folded)."
+
+[lane.ce1016]
+issues = ["433"]
+standing = false
+files = ["README.md", "PRIVACY.md", "ROADMAP.md", "android/MIGRATING.md", "docs/frontends/**", "docs/es-de/**", "docs/lanes/ce1016/**"]
+note = "STARTED lane.local 2026-10-16 12:52 PDT (Sonnet, docs, no device): owner 10-16: the display name becomes hakuX CE (Community Edition); docs pass on titles and bolds only, no search/replace of the word hakuX. Files taken off funding1016, docsrewrite1012, frontends1016 and others. Brief: briefs/ce1016.md."
