@@ -6,9 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `selftestclean1011` | claude-sonnet-5 | 1h 20m | selftestclean1011: selftest.sh removes its fake host when it passes (#433) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -114,12 +112,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/selftestclean1011` | selftestclean1011: selftest.sh removes its fake host when it passes (#433) | `a9118cbcd0` | 2026-10-16 11:53 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-16 x1port1012-halo: #939 (b) root-caused and fixed behind HAKUX_FIST_ROUND=1 (verified on the Nova, run 13)
 - 2026-10-16 logo1016-banner: the new hakuX CE banner at the top of the README
 - 2026-10-16 logo1016-count: the Playable count as a running total, apart from the download
 - 2026-10-16 visitor1016: fewer required fields, no placeholder text, and "hakuX CE" in the first-contact files (#433)
@@ -131,6 +128,5 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-16 Wire hakuX into four launchers (ES-DE, Daijisho, Pegasus, stock), tested on the Thor
 - 2026-10-16 fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2)
 - 2026-10-16 One display name per title_id, and nothing keyed by a name (#433)
-- 2026-10-16 status_html: titles05 crashed on a registry name the catalog spells differently
 
-_Updated 2026-10-16 15:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 15:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
