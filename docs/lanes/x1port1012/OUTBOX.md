@@ -20,3 +20,4 @@
   - fastpaths off (all 8): `/home/justin/hakux-work/dispatch/results/1791900988-x1port1012-549369/video/v00001.mp4`
   - shipped defaults: `/home/justin/hakux-work/dispatch/results/1791900994-x1port1012-549623/video/v00001.mp4`
   6 of 24 device runs used, 0 queued/running. WAITING: owner (Opus resume) judges the three videos; see NOTES.md WAITING line.
+- 2026-10-16 (lane.xbox): the three #939 clips are VOID. Every clip is the intro movies (Microsoft logo, MGS intro, Bungie logo), not the ring menu, which runs +33..+96 s after soak start (smoke run 1's frames f00004-f00008). Re-record plan, with a v0.5.0 control arm first: NOTES.md "Triage video void". WAITING: when the Nova is free, resume on Opus to re-record.

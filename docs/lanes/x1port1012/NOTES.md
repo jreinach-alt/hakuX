@@ -46,12 +46,12 @@ is queued next, now that the three leads from step 2 exist as switches to test a
 | 1 | 0-1791876038-x1port1012-2539778 | 310ad08d5b | Phase A smoke: Halo, no route, 180 s, frames 15 | PASS, gfps 59.93 vs 59.98 baseline |
 | 2 | 0-1791876042-x1port1012-2540227 | 310ad08d5b | Phase A smoke: GTA VC, route gta-vc, 420 s | PASS, fps_ok_share 0.9859 vs ledger 0.9872 |
 | 3 | 1791897193-x1port1012-336185 | 310ad08d5b | Phase A smoke: Crimson Skies, route crimson-skies, 300 s | PASS, fps_ok=1.0 vs ledger 0.95 (judged attempt 3) |
-| 4 | 1791897357-x1port1012-341157 | 223f216d7c | #939 triage video 1/3: Halo menu, 8s @ +20s, `HAKUX_SURFGPU=0` | landed clean (no crash/hang); owner-judged, not scored here |
-| 5 | 1791900988-x1port1012-549369 | c838d62772 | #939 triage video 2/3: Halo menu, 8s @ +20s, fastpaths off | queued 2026-10-13, attempt 3 |
-| 6 | 1791900994-x1port1012-549623 | c838d62772 | #939 triage video 3/3: Halo menu, 8s @ +20s, shipped defaults | queued 2026-10-13, attempt 3 |
+| 4 | 1791897357-x1port1012-341157 | 223f216d7c | #939 triage video 1/3: 8s @ +20s, `HAKUX_SURFGPU=0` | landed clean (no crash/hang). **VOID for #939: the clip is the Microsoft logo and the MGS intro movie, not the ring menu** (see "Triage video void" below) |
+| 5 | 1791900988-x1port1012-549369 | c838d62772 | #939 triage video 2/3: 8s @ +20s, fastpaths off | landed clean. **VOID for #939: MGS intro movie and Bungie logo, not the ring menu** |
+| 6 | 1791900994-x1port1012-549623 | c838d62772 | #939 triage video 3/3: 8s @ +20s, shipped defaults | landed clean. **VOID for #939: MGS intro movie and Bungie logo, not the ring menu** |
 
 6 device runs used of the 24 cap. Phase A smoke batch complete (all three PASS). All three #939 triage
-video arms now dispatched; arm 1 has landed, arms 2-3 are in flight.
+video arms landed, and all three missed the ring scene (void; re-record plan under "Triage video void").
 
 ## Phase A -- ports (branch `lane/x1port1012`)
 
@@ -174,7 +174,10 @@ queued by attempt 1 despite the leads existing to test. Queuing it now:
 
 - Halo has no route (confirmed again this session: no `halo-ce.route` under `docs/testing/routes/`), so
   all three arms use the no-route soak, matching Phase A smoke run 1's shape.
-- The ring + HUD-overlay scene the owner described is on screen early: Phase A smoke run 1's captured
+- **SUPERSEDED (lane.xbox, 2026-10-16): this bullet is wrong.** `f00003.png` is the Microsoft Game Studios
+  intro movie (a blue planet with a timecode overlay), not the ring. The menu is frames `f00004`-`f00008`
+  (+33 s to +96 s). All three clips below therefore missed the scene; see "Triage video void" below.
+  Original text, kept for the record: The ring + HUD-overlay scene the owner described is on screen early: Phase A smoke run 1's captured
   frame `f00003.png` (soak start + 17 s) already shows the ring curvature with a clock-style overlay
   (`19:18:18:06`, a circular icon) drawn on top of it -- this is very likely the menu backdrop the owner
   means. `--video-after 20` lands just past that, with margin for the pace lines to have reached steady
@@ -207,15 +210,44 @@ the way to size P before a fix, not just a switch existing). Candidate next queu
 video is judged, same no-route Halo shape, `--env HAKUX_XVSS=audit` / `--env HAKUX_S2TSHELF=audit`
 separately.
 
-**WAITING**: all three triage-video arms have now landed (this session). Judging which arm (if any)
-removes the ring/overlay glitch -- and whether to call a lead confirmed -- is an owner-reviewed call per
-the brief ("Do not call any arm fixed on your own reading of the frames", "the owner judges the
-videos"). That is also the kind of cause call the brief reserves for an Opus resume. This session queues,
-dispatches and documents; it does not judge the videos. `owner resume x1port1012 on Opus: judge #939
-triage video, all three arms landed and listed in OUTBOX.md --
-HAKUX_SURFGPU=0 (1791897357-x1port1012-341157), fastpaths off (1791900988-x1port1012-549369), shipped
-defaults (1791900994-x1port1012-549623) -- and decide whether XVSS/S2TSHELF audit runs or Phase C/D/E
-are worth starting next.`
+~~**WAITING**: owner judges the three triage videos.~~ SUPERSEDED, see the next section.
+
+### Triage video void (lane.xbox, 2026-10-16)
+
+Before sending the owner to the clips, lane.xbox pulled a frame every 2 s from each (`ffmpeg -vf
+fps=1/2,tile=4x1`). **None of the three shows the ring.** Arm 1 (SURFGPU=0) is the Microsoft logo, a white
+fade and the start of the Microsoft Game Studios intro. Arms 2 and 3 are the MGS intro (blue bacteria,
+then a blue planet, with a timecode overlay) and the Bungie logo. The timecode overlay on the planet is
+what the bullet above took for "the ring with a clock-style overlay". Arm 1 was about 8 s behind arms
+2 and 3 at the same `--video-after`, so boot time varies between runs.
+
+Where the ring actually is: Phase A smoke run 1 (`0-1791876038-x1port1012-2539778`, frames every 15 s,
+`frames/index.tsv` is the logcat clock, soak start 00:50:40). The main menu, with the ring rotating behind
+CAMPAIGN / MULTIPLAYER / SETTINGS / GAME DEMOS, is `f00004`-`f00008` (+33 s to +96 s). From `f00009`
+(+112 s) the attract-mode demo plays.
+
+All three arms are built on Phase A (`4f0111232c` is an ancestor of both `223f216d7c` and `c838d62772`),
+so even a clip of the right scene could not show whether the glitch exists before A7/A9b (A9b is a #939
+candidate itself). The re-record therefore needs a control arm:
+
+| arm | ref | env | what a hit looks like |
+|---|---|---|---|
+| control | `v0.5.0` (`6f560dc44e`), before Phase A | none | the glitch the owner saw: the ring's surface texture jumping back to an earlier position while the ring itself keeps rotating smoothly |
+| shipped defaults | `c838d62772` (Phase A) | none | the same, or not; if the control shows it and this does not, Phase A (A7 or A9b) is the candidate fix |
+| `HAKUX_SURFGPU=0` | `c838d62772` | `HAKUX_SURFGPU=0` | |
+| fast paths off | `c838d62772` | the eight `FASTPATHS_VARS` = 0 | |
+
+Shape for every arm: no route, `--seconds 150 --video-after 45 --video-seconds 40` (+45 s to +85 s, inside
+the +33..+96 s menu even with an 8 s boot lag either way). Queue the control first and look at it before
+queuing the rest: if the control does not show the glitch in 40 s, the other three cannot discriminate
+and the owner's recollection of when it appears is the input to ask for, not more runs. Shipped defaults
+last (the `--env` pref outlives the run). Device runs: 6 used of 24; this is up to 4 more.
+
+Nova timing: the Nova is under the owner's hands-on hold (10-16), and #984/#986 go first after the
+10-15 reset. Queue behind those.
+
+**WAITING**: `owner: when the Nova is free, resume x1port1012 on Opus to re-record #939 (control first),
+per "Triage video void" in NOTES.md.`
 
 ## End of this session (attempt 3)
 

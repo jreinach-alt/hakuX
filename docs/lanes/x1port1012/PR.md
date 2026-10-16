@@ -1,4 +1,4 @@
-# x1port1012-halo: #939 ring-world leads (triage video dispatched, all 3 arms); #938, Fable not yet started
+# x1port1012-halo: #939 ring-world leads (triage video to re-record at the menu); #938, Fable not yet started
 
 State: draft
 
@@ -31,13 +31,13 @@ All three are gated leads from `batchC.md`/`batchD.md`, not fixes: none is claim
 ## What is not here
 
 - The triage video (brief Phase B step 1, three arms: shipped defaults, `HAKUX_SURFGPU=0`, fast paths
-  off) is fully dispatched and all three arms have landed (no crash/hang, logcat clean) but are not yet
-  judged -- see NOTES.md and OUTBOX.md, `WAITING`. Judging frame content for #939 is reserved for the
-  owner, not this lane.
+  off) landed clean on all three arms, but every clip recorded the intro movies, not the ring menu, so
+  none of them can show the defect. A re-record at the menu's time (+45 s to +85 s), with a v0.5.0
+  control arm first, is planned in NOTES.md under "Triage video void".
 - Phase C (#938, speech level) and Phase D (Fable, fp_jit) have not started.
 - Phase E (`HAKUX_PATTFENCE`) is explicitly not before Thursday's reset per the brief.
 
-This PR stays draft until the owner judges the triage video and at least one lead is confirmed or ruled
-out; see `docs/lanes/x1port1012/NOTES.md` for the queued runs and the `WAITING` line.
+This PR stays draft until the re-recorded triage video is judged and at least one lead is confirmed or
+ruled out; see `docs/lanes/x1port1012/NOTES.md` for the plan and the `WAITING` line.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
