@@ -262,7 +262,34 @@ stuck mid-dialog.
 `docs/frontends/daijisho.md` documents this as "not yet wired -- blocked",
 not "tested".
 
+## Pegasus: not installable without GitHub -- NEED:, skipped per the brief
+
+Pegasus is not installed on the Thor (confirmed: `pm list packages` has no
+`org.pegasus_frontend`/similar). Per the brief, checked whether
+pegasus-frontend.org itself hosts the Android APK (as opposed to only
+linking to GitHub) before touching GitHub at all.
+
+It does not. Fetched the live homepage HTML and its `js/app.js`: every
+platform's "Downloads" row (Windows, Linux, Android, etc.) is a `loading...`
+placeholder filled in at runtime by client-side JS that calls
+`https://api.github.com/repos/mmatyas/pegasus-frontend/releases/latest` (and
+`.../tags/continuous`) and pulls `browser_download_url` straight out of the
+GitHub API response -- there is no independently-hosted file anywhere on
+pegasus-frontend.org. The site's own fallback text even says so: on API
+failure it prints "See all releases HERE" linking straight to
+`github.com/mmatyas/pegasus-frontend/releases`. The APK's only real source
+is GitHub, full stop.
+
+**NEED:** Pegasus's Android APK cannot be fetched without hitting GitHub,
+which this lane is not permitted to do. Skipping Pegasus entirely per the
+brief ("If the only source is GitHub, write NEED: and carry on with the
+other three; do not hit GitHub"). `docs/frontends/pegasus.md` documents this
+as "not installed -- blocked on APK source", not "tested". If the owner (or
+a lane with GitHub access) can place the APK somewhere else reachable (e.g.
+`/home/justin/hakux-work/release/` or a non-GitHub mirror), this can be
+revisited without re-doing the above check.
+
 ## Still in progress / pending
 
-Pegasus and the stock launcher (AYN odinlauncher) wiring and testing are
-next. This file will be updated as each is done.
+The stock launcher (AYN odinlauncher) wiring and testing is next. This file
+will be updated once it's done.
