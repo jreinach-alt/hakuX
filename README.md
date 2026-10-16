@@ -1,4 +1,4 @@
-<p align="center"><img src="hakux-logo.svg" alt="hakuX: Original Xbox on Android" width="640"></p>
+<p align="center"><img src="hakux-logo.svg" alt="hakuX Community Edition: Original Xbox on Android" width="640"></p>
 
 # hakuX (fork)
 
