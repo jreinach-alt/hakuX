@@ -6,12 +6,12 @@ _Last updated 2026-10-13, for version 0.5.0._
 hakuX emulator, tested game by game on Snapdragon handhelds.
 
 **[Download 0.5.0](https://github.com/jreinach-alt/hakuX/releases/latest)** ·
-[77 Playable games](STATUS.md) ·
+[87 Playable games](STATUS.md) ·
 [What's new](https://github.com/jreinach-alt/hakuX/blob/master/docs/releases/v0.5.0.md)
 
 ## Highlights
 
-- **77 games rated Playable.** Each one reached real gameplay on a handheld and
+- **87 games rated Playable.** Each one reached real gameplay on a handheld and
   held 30 fps (within 5%) for at least 90% of a timed run, with no crash or
   hang. Among them: Halo: Combat Evolved, Jet Set Radio Future, Panzer Dragoon
   Orta, Grand Theft Auto III and Vice City, Need for Speed: Most Wanted,
