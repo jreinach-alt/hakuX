@@ -7,7 +7,8 @@ hakuX emulator, tested game by game on Snapdragon handhelds.
 
 **[Download 0.5.0](https://github.com/jreinach-alt/hakuX/releases/latest)** ·
 [87 Playable games](STATUS.md) ·
-[What's new](https://github.com/jreinach-alt/hakuX/blob/master/docs/releases/v0.5.0.md)
+[What's new](https://github.com/jreinach-alt/hakuX/blob/master/docs/releases/v0.5.0.md) ·
+[Sponsor](https://github.com/sponsors/jreinach-alt)
 
 ## Highlights
 
@@ -96,6 +97,16 @@ this build. Coming from the official hakuX?
 | [Privacy](https://github.com/jreinach-alt/hakuX/blob/master/PRIVACY.md) | What stays on your device |
 | [Building from source](https://github.com/jreinach-alt/hakuX/blob/master/android/README.md) | For developers |
 | [Contributing](https://github.com/jreinach-alt/hakuX/blob/master/CONTRIBUTING.md) | For developers |
+
+## Support the project
+
+hakuX is developed and tested by one person, and paid for out of pocket. If it
+is useful to you, you can
+[sponsor the work on GitHub](https://github.com/sponsors/jreinach-alt). It is
+entirely optional; a good bug report helps just as much.
+
+The emulator underneath is xemu; if you want to support it directly, see the
+Patreon link under Credits.
 
 ## Source code
 
