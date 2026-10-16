@@ -5,7 +5,7 @@ State: draft
 Lane: fps1015            Issue: #433 #986 #992 #995 #993 #994
 Base: master @ 0e5fab6bef
 Files: docs/lanes/fps1015/PR.md, docs/lanes/fps1015/NOTES.md, docs/lanes/fps1015/winsplit.py, docs/lanes/fps1015/s2tscan.py, docs/lanes/fps1015/dlrate.py, docs/lanes/fps1015/irqrate.py, docs/lanes/fps1015/dumpstat.py, docs/lanes/fps1015/stallscan.py, docs/lanes/fps1015/cvtcensus.py, docs/lanes/fps1015/s2tread.py, docs/lanes/fps1015/tsread.py, docs/lanes/fps1015/routes/fps1015-mksm.route, docs/lanes/fps1015/routes/fps1015-topspin.route, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c, docs/testing/predictions/fps1015-pixels.json, docs/testing/predictions/fps1015-mksm.json, docs/testing/predictions/fps1015-topspin.json
-Prediction: docs/testing/predictions/fps1015-pixels.json @ 50e23fcbb68a87f6d82b8e8d5600d22672ffd52240ba693290e425fede4fd8f4, docs/testing/predictions/fps1015-mksm.json @ df1ac10a2d8de1ff54be6c2a1e16614310a21867b66c72222813356933be3004, docs/testing/predictions/fps1015-topspin.json @ 95d73f39c923d2ff50cf33016ddca69ca38817aa8df74038803c1c8fe1833809
+Prediction: docs/testing/predictions/fps1015-pixels.json @ 50e23fcbb68a87f6d82b8e8d5600d22672ffd52240ba693290e425fede4fd8f4, docs/testing/predictions/fps1015-mksm.json @ df1ac10a2d8de1ff54be6c2a1e16614310a21867b66c72222813356933be3004, docs/testing/predictions/fps1015-topspin.json @ aa107cd4c3174da4d7b96ba46a6c2a5675c91f07f2e4774e86fc7c691ec72ee1
 Needs device: yes    Needs NDK: yes
 
 Release note (none): HAKUX_S2T_CVT, off by default, decodes 16-bit render targets that a title samples as textures on the GPU instead of downloading them.

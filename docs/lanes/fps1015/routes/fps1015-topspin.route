@@ -1,7 +1,7 @@
 # state: any
 # Top Spin (4D530035), lane.fps1015: lane.async794's async794-topspin.route (fps20786's
 # fps786-topspin.route without the START after step 24, which paused the match),
-# with a 6-frame loop. Headed any: it runs on the golden 23b5be4cf466, a data-only save
+# with a 3-frame loop: tsread.py reads 30 or more play windows. Headed any: it runs on the golden 23b5be4cf466, a data-only save
 # (TDATA GlobalOptions) harvested after mark gameplay by this route's parent.
 wait 14.0
 shot s01-black
@@ -117,8 +117,8 @@ shot s25-gameplay
 # step 25 [gameplay] Match has loaded; player stands at baseline ready to serve, opponent and court visible, FPS overlay 
 wait 3
 mark gameplay
-# genre loop: 3.1 s, 9 per frame, 6 frames (fps1015: 22 in async794's)
-repeat 6 {
+# genre loop: 3.1 s, 9 per frame, 3 frames (fps1015: 22 in async794's)
+repeat 3 {
 shot hold
 repeat 9 {
 press A 120
@@ -135,4 +135,4 @@ axis LX mid
 wait 0.25
 }
 }
-# route ends ~525 s after start on the Nova (async794's control reached mark gameplay at 355 s)
+# route ends ~440 s after start on the Nova (async794's control reached mark gameplay at 355 s)

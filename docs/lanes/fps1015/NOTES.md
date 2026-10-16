@@ -812,8 +812,12 @@ switch alone, as MKSM's does, which is also the setting that would ship.
   It is Top Spin's first. The save is data-only: `TDATA/4D530035/GlobalOptions` plus the title's meta and image,
   no game save.
 - Route `docs/lanes/fps1015/routes/fps1015-topspin.route`: async794's `async794-topspin` (no START after step 24),
-  headed `# state: any`, loop cut from 22 frames to 6. The control reached `mark gameplay` 355 s after route start,
-  so the route ends near 525 s; the soak is 540 s. `titlestate.py admit --route fps1015-topspin --route-text-file
+  headed `# state: any`, loop cut from 22 frames to 3. The control reached `mark gameplay` 355 s after route start,
+  so the route ends near 440 s; the soak is 450 s. That is the window the judge reads: the route to the fly-over,
+  then ~85 s of match play, ~51 windows at the off arm's 36 fps against V's 30 (the owner, 10-16 09:57 PDT: a soak
+  ends a short margin after the frames its reader needs). A first registration at 540 s (16:56:44Z) was withdrawn
+  unrun and re-registered at 17:01:42Z, legs unchanged, with V no longer requiring an on run's `[s2tcvt] first`
+  (MKSM's on2 lost that line; the counters are the proof). `titlestate.py admit --route fps1015-topspin --route-text-file
   ...` admits it (clause `profile`, golden 23b5be4cf466).
 - Judge `docs/lanes/fps1015/tsread.py`. It uses s2tread.py's line pairing and clock, with Top Spin's spans:
   - fly-over: shot s20 to s23, the stadium behind the PRESS START banner. It waits for the route's START, so it
@@ -994,6 +998,11 @@ The frame-locked read, the first 1800 guest frames from s13 (on2 computed with t
 | on2 | 33.2 | 54.2 | 16.9 | 2.8 | 14.2 | 5.9 |
 | off1 | 62.1 | 29.0 | 34.3 | 20.5 | 15.2 | 6.3 |
 | off2 | 65.5 | 27.5 | 34.3 | 20.0 | 15.3 | 6.3 |
+
+Do not repeat: MKSM's four soaks ran 330 s each, about two minutes past anything the judge reads. The `locked`
+read ends 1800 frames after s13 (~65 s at off's speed), and N needs only 8 gameplay windows. The owner watched
+off2 run around the level for minutes while other requests waited (10-16 09:57 PDT). A soak's `seconds` is the
+reader's window plus a short margin, and the purpose names that window.
 
 **#986: resolved by the switch, in the measured scene.** The two on runs agree to 0.1 s over 1800 frames, and the
 two off runs to 3.4 s. The cutscene's frame goes from 34.3 ms to the vblank; the finish wait from 20 to under 3 ms;
