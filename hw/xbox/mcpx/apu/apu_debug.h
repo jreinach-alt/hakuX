@@ -68,6 +68,7 @@ struct McpxApuDebugVp
 struct McpxApuDebugDsp
 {
     int cycles;
+    int time_us; /* host time of the last run, for HAKUX_APU_MIXLOG */
 };
 
 struct McpxApuDebug

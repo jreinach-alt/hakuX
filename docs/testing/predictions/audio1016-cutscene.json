@@ -1,0 +1,37 @@
+{
+  "registered_utc": "2026-10-16T17:05:00Z",
+  "who": "lane.audio1016",
+  "issue": "433",
+  "issues": ["984", "938"],
+  "kind": "identify (five runs on one binary, switches set by env; not an A/B arm on two refs; the arms job skips it)",
+  "device": "nova",
+  "ref": "4d736d2b8c",
+  "ref_note": "4d736d2b8c is on lane/audio1016: vp.c.patch v2 applied (HAKUX_APU_MONVP_DOWNMIX with the unity cap), gp_ep.c's HAKUX_APU_USE_DSP, debug.c's HAKUX_APU_MIXLOG with the apudsp cost line; all off unless set. The next commit on the branch reverts vp.c (lane.x1port1012's file) and keeps docs/lanes/audio1016/vp.c.patch.",
+  "route": "docs/lanes/audio1016/routes/audio1016-mksm-wait.route: fps1015-mksm's logos and menus to s12, then no input for 200 s from the Goro's Lair cutscene (s13, ~77 s after route start)",
+  "runs": {
+    "A":  {"title": "4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso", "route": "audio1016-mksm-wait", "seconds": 290, "audio_capture_mb": 60, "env": ["HAKUX_APU_MIXLOG=1"], "what": "today's mix"},
+    "B":  {"title": "4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso", "route": "audio1016-mksm-wait", "seconds": 290, "audio_capture_mb": 60, "env": ["HAKUX_APU_MIXLOG=1", "HAKUX_APU_MONVP_DOWNMIX=1"], "what": "capped downmix switch on"},
+    "D":  {"title": "4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso", "route": "audio1016-mksm-wait", "seconds": 290, "audio_capture_mb": 60, "env": ["HAKUX_APU_MIXLOG=1", "HAKUX_APU_USE_DSP=1"], "what": "the title's own GP/EP program"},
+    "C1": {"title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso", "seconds": 120, "env": ["HAKUX_APU_MIXLOG=1", "HAKUX_APU_MONVP_DOWNMIX=1"], "what": "loud title, capped switch on"},
+    "C0": {"title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso", "seconds": 120, "env": ["HAKUX_APU_MIXLOG=1"], "what": "loud title, today's mix; queued last so the device is left without a mix switch"}
+  },
+  "device_time_s": 1560,
+  "judge": "docs/lanes/audio1016/tools/judge_identify.sh <results> docs/lanes/audio1016/runs/cutscene A=<id> B=<id> D=<id> C1=<id> C0=<id>. Windows: level_windows.py's 5 s meter windows; 'cutscene' = windows whose clock is at or after the first 'cutscene' shot in frames/index.tsv (device clock), 'pre' = the windows before s13 with acrms above -50 dBFS. Medians over each set.",
+  "baseline": "Owner logcat 10-14, MKSM: intro FMV -17.7 to -22.4 dBFS, in-engine cutscene -28 to -31. Offline, owner's save state: the cutscene voice v164 is in five bins (xFL, xBL, xFR, xBR, C) at -11.2 dB each; the switch's per-side sum is +7.65 dB over today's gain (under the cap); the title's GP/EP program plays it 3.6-5.2 dB above a front-left/right voice at the same volume, and (submix headroom 1) plays single-bin voices 6.02 dB below today's MON_VP. audio1016-identify R4: Crimson 84/73 clipped samples in 136 s, acrms -14.45 dBFS; R5 (switch v1, no cap) 364,669, -7.41. Offline cap on R4's table: Crimson's dominant layouts +0.0; the 'all bins at -6 dB' group +6.0 (silent in MKSM: R1 vs R2 under v1 stayed level although v1 gave it +10.7).",
+  "prediction": "V: B and C1 log 'monvp_downmix: on', A, D and C0 'off'; D logs 'use_dsp: forced on' and its apudsp lines read rt=11, the others rt=00; each MKSM run has >= 40 apumix windows, and its frames show the cutscene, not gameplay or a menu, for >= 120 s after s12 (else the run is void, not a failure). Q (the defect reproduces): A's cutscene median is >= 6 dB below A's pre median, P 0.7. L: A's cutscene windows hold a voice spread over >= 4 speaker bins at one volume with mixlog_read excess >= +5 dB (v164's layout), P 0.8. U: cutscene median B - A in [+3.0, +8.5] dB, P 0.6. S: pre median |B - A| <= 1.5 dB, P 0.8. DL: pre median D - A in [-8, -4] dB, P 0.6; cutscene median D - A in [-4, +1] dB, P 0.5; so D's cutscene-minus-pre balance is 2-7 dB above A's, P 0.5. DC (can the Nova run the title's program): D's apudsp mean gp_us + mean ep_us / 8 in [250, 700] us per 667 us frame, P 0.6; D's hakuX-audiocap 'starve:' share of output exceeds A's by >= 1 point, P 0.4. C: C1 clipped <= 2 x C0 + 100 per 5 s window, P 0.7; C1 acrms within 1.5 dB of C0, P 0.7.",
+  "legs": {
+    "V": "grep 'monvp_downmix:' and 'use_dsp:'; apudsp rt=; count apumix windows; frames after s12",
+    "Q": "A: cutscene vs pre medians",
+    "L": "mixlog_read.py on A, cutscene windows",
+    "U": "cutscene medians, B vs A",
+    "S": "pre medians, B vs A",
+    "DL": "pre and cutscene medians, D vs A",
+    "DC": "D's apudsp lines and starve: lines vs A's",
+    "C": "level meter clipped counts and acrms, C1 vs C0"
+  },
+  "decides": "U+S+C pass: the capped switch closes the measured gap without clipping a loud title, and is a fix candidate pending the owner's ears. DL measures how far the title's own program moves the same balance; a D balance gain well under B's (B's +7.65 against D's 3.6-5.2 offline) says the switch overshoots on crosstalk bins and wants a weaker crosstalk weight. DC decides whether the faithful path (use_dsp on: the program, its reverb and its levels) can run on the Nova at all, which ranks it against the switch.",
+  "expect_note": "EMPTY of captures ON PURPOSE: soaks write none. Legs are read off logcat; the audio captures are for listening and for per-second checks.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}

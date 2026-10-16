@@ -1,0 +1,33 @@
+{
+  "registered_utc": "2026-10-16T13:40:00Z",
+  "who": "lane.audio1016",
+  "issue": "433",
+  "issues": ["984", "938"],
+  "kind": "identify (five diagnosis runs on one binary, switches set by env; not an A/B arm on two refs; the arms job skips it)",
+  "device": "nova",
+  "ref": "a048589ff0",
+  "ref_note": "a048589ff0 is on lane/audio1016: debug.c's HAKUX_APU_MIXLOG and vp.c's HAKUX_APU_MONVP_DOWNMIX, both off unless set. The next commit on the branch reverts vp.c (lane.x1port1012's file) and carries the same change as docs/lanes/audio1016/vp.c.patch.",
+  "runs": {
+    "R1": {"title": "4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso", "seconds": 180, "env": ["HAKUX_APU_MIXLOG=1"]},
+    "R2": {"title": "4D570029-Mortal_Kombat_Shaolin_Monks.xiso.iso", "seconds": 180, "env": ["HAKUX_APU_MIXLOG=1", "HAKUX_APU_MONVP_DOWNMIX=1"]},
+    "R3": {"title": "Halo Combat Evolved.iso", "seconds": 180, "env": ["HAKUX_APU_MIXLOG=1"]},
+    "R4": {"title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso", "seconds": 120, "env": ["HAKUX_APU_MIXLOG=1"]},
+    "R5": {"title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso", "seconds": 120, "env": ["HAKUX_APU_MIXLOG=1", "HAKUX_APU_MONVP_DOWNMIX=1"]}
+  },
+  "device_time_s": 1230,
+  "judge": "python3 docs/lanes/audio1016/tools/mixlog_read.py <logcat>; python3 docs/lanes/audio1016/tools/level_windows.py <logcat> (the hakuX-audio level meter's 5 s windows)",
+  "baseline": "Offline, from the owner's MKSM save state (NOTES.md): the cutscene voice v164 sits in five speaker bins (xFL, xBL, xFR, xBR, C) at -11.2 dB each; the title's own GP/EP program plays it 3.6-5.2 dB above a front-left/right voice at the same volume, MON_VP plays it level with one. Owner logcat 10-14: MKSM intro FMV -17.7 to -22.4 dBFS, the in-engine cutscene -28 to -31.",
+  "prediction": "V: every run logs 'monvp_downmix: on' (R2, R5) or 'off' (R1, R3, R4) once, and >= 20 windows of apumix lines. M (MKSM layout, R1): the loudest long voice of the intro FMV is a stereo voice in FL/FR only (mixlog_read.py excess 0.0 / 0.0), P 0.6; if it is multi-bin with excess >= 3 dB, (a) does not explain the FMV-to-cutscene gap by balance and the note says so. S (switch leaves single-bin voices alone, R1 vs R2): in windows whose top voice has excess 0, the level meter's acrms differs by <= 1.5 dB between R1 and R2 at matching content, P 0.8. U (switch raises multi-bin voices, R1 vs R2): any window whose top voice has excess >= 3 dB is louder in R2 by excess +/- 3 dB, P 0.6 (no such window from boot without a route is possible; then U is 'not reached', not a failure). H (Halo, R3): report every voice with excess >= 3 dB; P 0.5 that the menu music is single-bin. C (clipping, R4 vs R5): the level meter's clipped-sample count in R5 is within 2x of R4 plus 100 samples per window, P 0.5; a larger rise means the switch needs a trim before it can be default-on, and the note says by how much.",
+  "legs": {
+    "V": "grep 'monvp_downmix:' and count apumix windows per run",
+    "M": "mixlog_read.py on R1, windows during the intro FMV (frames)",
+    "S": "level_windows.py R1 vs R2, windows matched by apumix voice set",
+    "U": "as S, windows whose top voice has excess >= 3 dB",
+    "H": "mixlog_read.py on R3",
+    "C": "level meter clipped counts, R4 vs R5"
+  },
+  "expect_note": "EMPTY of captures ON PURPOSE: soaks write none. Legs are read off logcat.",
+  "expect_counts": {},
+  "must_not_move": [],
+  "must_not_regress": []
+}
