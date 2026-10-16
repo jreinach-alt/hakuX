@@ -16,13 +16,13 @@ search under its display name, same as any installed Android app:
 ![odinlauncher's app drawer with hakuX's three installed variants](images/stock-app-drawer.png)
 
 Searching "hakuX" surfaces all three installed variants — the release build
-("hakuX (fork)"), `.debug`, and `.debug2`. Only the release build
-("hakuX (fork)") was tested here.
+("hakuX CE"), `.debug`, and `.debug2`. Only the release build
+("hakuX CE") was tested here.
 
 ### Steps
 
-1. From the home screen, open Search apps, type "hakuX", tap **hakuX
-   (fork)**. This starts the app's default launcher activity,
+1. From the home screen, open Search apps, type "hakuX", tap **hakuX CE**.
+   This starts the app's default launcher activity,
    `com.jreinach.hakux/com.rfandango.haku_x.GameLibraryActivity` — confirmed
    via `dumpsys activity activities`.
 2. hakuX opens to its own in-app Game Library. Pick a game from the list and

@@ -1,9 +1,10 @@
-# hakuX (fork)
+# hakuX CE
 
-_Last updated 2026-10-13, for version 0.5.0._
+_Last updated 2026-10-16, for version 0.5.0._
 
-**Original Xbox games on your Android handheld.** An independent build of the
-hakuX emulator, tested game by game on Snapdragon handhelds.
+**Original Xbox games on your Android handheld.** hakuX CE is the Community
+Edition: an independent build of the hakuX emulator, tested game by game on
+Snapdragon handhelds.
 
 **[Download 0.5.0](https://github.com/jreinach-alt/hakuX/releases/latest)** ·
 [72 Playable games](docs/COMPATIBILITY.md) ·
@@ -35,7 +36,7 @@ hakuX emulator, tested game by game on Snapdragon handhelds.
 
 ## Will it run on my device?
 
-- Android 10 or newer.
+- Android 13 or newer.
 - A Snapdragon 845-class chip or better (64-bit ARMv8.2). Older designs such
   as the Snapdragon 835, 660, 665 and 460 are not supported; on them the app
   says so and exits.
@@ -59,7 +60,7 @@ discs you provide:
 
 1. Download the APK from
    [Releases](https://github.com/jreinach-alt/hakuX/releases/latest) and
-   install it. It appears as **hakuX (fork)**.
+   install it. It appears as **hakuX CE**.
 2. Open it. Setup asks for the boot ROM, the BIOS, the hard disk image and
    your games folder.
 3. Pick a game from the library.

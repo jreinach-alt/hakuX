@@ -16,10 +16,9 @@ else is a hypothesis or a known blocker, written up as such on its own page.
 
 ## About the app name
 
-The owner may rename "hakuX (fork)" later. The package id
-`com.jreinach.hakux` and the activity
-`com.rfandango.haku_x.LauncherActivity` are not display names and will not
-change on a rename — they're what every config on these pages targets. Every
-place the display name shows up is tracked in
-[`docs/lanes/frontends1016/NOTES.md`](../lanes/frontends1016/NOTES.md) for a
-future one-grep rename.
+The owner renamed the display name from "hakuX (fork)" to **hakuX CE**
+(2026-10-16). The package id `com.jreinach.hakux` and the activity
+`com.rfandango.haku_x.LauncherActivity` are not display names and did not
+change — they're what every config on these pages targets. Every place the
+old display name showed up is listed in
+[`docs/lanes/frontends1016/NOTES.md`](../lanes/frontends1016/NOTES.md).
