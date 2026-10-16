@@ -393,7 +393,71 @@ of the menu text). Ignore `ringframes.py`'s SPLIT flag on this scene: the black 
 fires on every image. Phase-correlation shifts read near 0 here because the static HUD rings dominate the
 peak. The nearest-image lag is the column that finds the bursts.
 
-**WAITING**: `1792166308-x1port1012-1386872` lands; read it with the two tools above, same crops.
+~~**WAITING**: `1792166308-x1port1012-1386872` lands; read it with the two tools above, same crops.~~
+Landed, see the next section.
+
+### Fast-paths-off run result (lane.xbox, 2026-10-16)
+
+Run `1792166308-x1port1012-1386872`, ref `223f216d7c`, 200 s, video +37..+198 s in three segments
+(+37, +97, +158 s). The switches reached the emulator: logcat has `env: HAKUX_*=0` for all 8, plus
+`[perdraw433] bulk=0 ubercache=0 fogcache=0` and `[drawrec1010] drawrec=0`. Bursts were grouped by
+`tools/burstcount.py`. It treats images whose nearest match is older than the previous
+image (`ringtrack.py` lag > 1) as one burst when they are under 1 s apart. On the audit run's tracks it
+returns the four bursts listed above, so the two runs are counted the same way.
+
+| crop | audit run (fast paths on) | this run (all 8 off) |
+|---|---|---|
+| top `120,40,880,190` | (before the clip) | +38.3..+40.6 s, 20 images |
+| | +42.6..+43.5 s, 6 images | +41.9..+42.8 s, 6 images |
+| | +47.4..+48.4 s, 16 images | +46.7..+47.7 s, 16 images |
+| | +56.6..+57.7 s, 18 images | +55.9..+57.0 s, 18 images |
+| low `0,400,440,420` | (before the clip) | +38.3..+40.6 s, 19 images |
+| | +42.7..+43.5 s, 3 images | +42.0..+42.8 s, 3 images |
+| | +47.4..+48.4 s, 17 images | +46.7..+47.7 s, 18 images |
+| | +56.7..+57.7 s, 17 images | +56.0..+57.0 s, 17 images |
+| | +75.6..+76.5 s, 5 images | +74.8..+75.8 s, 5 images |
+
+- **The fast paths are out.** With TEXSCAN, DRAWREC, UNI_BULK, UNI_UBERCACHE, UNI_FOGCACHE,
+  POSTED_PUT, LOCKFREE_WAKE and REPORT_ASYNC all off, every audit burst recurs.
+- **The defect is deterministic per boot.** Each burst lands at the same soak time, about 0.7 s
+  earlier in this run, and that offset is the same for every burst. It also has the same length in
+  images (6, 16, 18 in the top crop in both runs). A race between host threads is unlikely to repeat
+  its image count exactly on two runs with different host paths. So the likeliest source is the guest:
+  either a wrong value it computes, or what the title really draws.
+- **Bursts only in the first part of the menu.** All bursts fall in +38..+76 s. There are none from
+  +76.5 s to the cut at +110.4 s (one image with lag 12 at the cut itself, then the attract demo).
+  This matches the owner's sighting: jumps in the sunny part first, the dark part fine, the return
+  toward the sunny part looking OK.
+- **Time and angle cannot be separated in this clip.** The ring never comes back to a burst-time
+  angle before the cut (`tools/ringreturn.py`). Each probe from +37.5..+79 s has a best
+  match in +80..+111 s that is further off than the same run 1 s later. So "in the first ~40 s of the
+  menu" and "at those ring angles" predict the same video here.
+- **`Tq` is the scene, not a mode.** The `Tq≈400` phase (+38..+111 s here) is the ring menu, and the
+  later `Tq=1` phase is the attract demo (gameplay with a HUD, from about +112 s). The planned contrast
+  "bursts in `Tq≈400` vs `Tq=1`" compares two different scenes, so drop it. The bursts start with
+  `Tq≈400` (+38.3 s) but end 35 s before it does.
+
+Leads now:
+
+1. **What the title really draws.** If the real console shows the same jumps at the same point in the
+   menu, #939 is not an emulator defect. The console is on and has Halo (`F:\Games\Halo`, 4D530004).
+   The check takes the owner about a minute: boot Halo on the Xbox, leave the menu alone, and watch
+   the ring for the first minute after it appears. On hakuX the jumps come about 14-52 s after the
+   menu appears (menu at about +24 s, per the audit run).
+2. **The guest computes the wrong rotation** (lead 2 above), deterministically: e.g. an emulated
+   CPU or FPU operation that returns a wrong value for some inputs. The instrument is a per-frame log
+   of the matrix constants the guest writes during +36..+60 s. If those jump back with the image, the
+   guest made the frame; if they move smoothly while the image jumps, the host drew it from something
+   else. That needs new code, and is only worth writing if the console is smooth.
+
+Lead 1 of the audit section (a host-side cache serving an older copy) is ruled out for the eight
+fast paths. A cache outside them would also have to repeat its exact image count every boot, which
+the determinism finding makes unlikely.
+
+Device runs: 8 used of 24 (no new run).
+
+**WAITING**: the owner's look at the Halo menu on the real Xbox (lead 1). If the console is smooth,
+resume on Opus for the guest-constant log (lead 2).
 
 ## End of this session (attempt 3)
 
