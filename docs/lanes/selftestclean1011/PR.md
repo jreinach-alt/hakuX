@@ -1,9 +1,22 @@
 # selftestclean1011: selftest.sh removes its fake host when it passes (#433)
-State: ready
+State: draft
 
-Lane: selftestclean1011        Issue: none (#433 umbrella, board row `[lane.selftestclean1011]`)
+Lane: selftestclean1011        Issue: none (#433 umbrella, board row `[lane.selftestclean1011]` RETIRED, see below)
 Base: master @ b73d50a070
 Files: docs/testing/jobs/selftest.sh, docs/testing/jobs/selftest.d/99-tmp-cleanup-selftestclean1011.sh, docs/lanes/selftestclean1011/NOTES.md, docs/lanes/selftestclean1011/PR.md
+
+**Not fold-ready.** The 2026-10-16 09:44 PDT checkpoint commit (bffdbdd8a4) wrote
+this file with `State: ready` while its own commit message said the opposite
+("rerun before reopening a PR from this branch") -- that contradiction is what
+let foldqueue pick this up and fail on a territory check (selftest.sh was
+released to lane.sign1016 the same tick, so this row no longer owns it; see
+origin/board territory.toml note on `[lane.selftestclean1011]`). Corrected here
+(hostops 2026-10-16 10:2x PDT): `State: draft` so foldqueue skips this branch
+(it only attempts `State: ready`). A future lane reopening this needs to (1)
+grant selftest.sh back from whichever lane holds it then, (2) rerun the
+unsharded selftest.sh (never recorded as finished), (3) rebase this diff over
+whatever's landed on selftest.sh since (lane.sign1016's one-line SHARD_SECS
+entry, if folded by then) before setting State back to ready.
 Prediction: none (harness fix, not a pixel-moving change)
 Needs device: no    Needs NDK: no
 
