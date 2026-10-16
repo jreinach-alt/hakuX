@@ -77,13 +77,15 @@ def compile_one(entry, root, perf_log, asm_dir=None):
     if not os.path.exists(path):
         return set(), ''
     argv = retarget(entry['command'], entry['file'], root)
-    argv += ['-Werror=unused-variable', '-Werror=unused-but-set-variable']
     if perf_log:
         argv.append('-DNV2A_PERF_LOG=1')
     if asm_dir:
+        # No -Werror here: a file with a pre-existing unused variable (draw.c,
+        # surface.c) would otherwise write no assembly at all.
         argv += ['-S', '-o', os.path.join(asm_dir, rel.replace('/', '_') + '.s')]
     else:
-        argv.append('-fsyntax-only')
+        argv += ['-Werror=unused-variable', '-Werror=unused-but-set-variable',
+                 '-fsyntax-only']
     argv.append(path)
     r = subprocess.run(argv, cwd=entry['directory'], capture_output=True,
                        text=True)
