@@ -1,30 +1,35 @@
-# logo1016: hakuX CE logo at the top of the README
+# logo1016-count: the Playable count as a running total, apart from the download
 
 State: ready
 
 Lane: logo1016          Issue: #433
-Base: master @ 3ceee93982
-Files: README.md, .github/hakux-logo.svg, docs/lanes/logo1016/PR.md
+Base: master @ 3a44935839
+Files: README.md, docs/lanes/logo1016/PR.md
 Prediction: none: analysis-only
 Needs device: no    Needs NDK: no
 
-The owner-approved Community Edition logo goes at the top of README.md,
-centred, 640 px wide: `.github/hakux-logo.svg`, a 400x140 SVG on its own
-dark card so it reads on GitHub's light and dark themes. The owner checked
-it on the preview branch `preview/logo1016` on desktop and mobile, light
-and dark (10-16: "Yes, the CE is what I want. It renders fine.").
+Owner 10-16: release notes keep the count as of the release (52, already in
+docs/releases/v0.5.0.md, the release index and CHANGELOG.md); the READMEs
+show the current count, from one source. The landing page put the live
+count (87) beside "Download 0.5.0" and in the release Highlights, which
+reads as "0.5.0 plays 87 games". 35 of the 87 were accepted after the
+release, on a mix of builds, so the page should not promise that.
 
-README.md also drops its fixed Playable count (72, written at 0.5.0) from
-the link row and the Highlights bullet. The landing page (`home`) already
-replaces that number with the live count from STATUS.md (87 today), so the
-two READMEs showed different numbers; with no number on master they no
-longer disagree.
+README.md: the count leaves the download line and the Highlights bullet
+and becomes its own line, "Games rated Playable so far", linking to
+STATUS.md on the home branch (the one source; master carries no number).
+The Highlights bullet becomes "Rated by play", the rule a Playable rating
+means, with the same named titles.
 
-`host-tools/home_page.py` (already live on the host) keeps a relative
-`src="..."` relative and copies that file into home at the same path, since
-GitHub renders no image from a /blob/ URL, and its two count patterns
-accept the README lines with or without a number. Checked against this
-branch on a scratch clone: home builds, the logo's src stays relative, the
-SVG is in home's tree, and every README rewrite matches exactly once.
+`host-tools/home_page.py` (live on the host) turns that line into
+"**N games rated Playable so far.** [The list, with progress charts.]
+(STATUS.md)" on the landing page, and keeps the old edits for master as it
+is now, so landing builds before and after this fold. Checked on a scratch
+clone against both. The old edits come out after the fold.
+
+Fold: README.md and docs/lanes/ only, so no selftest and no device run.
+
+This branch reuses [lane.logo1016]'s claim on README.md (its first PR,
+the logo, folded as 2c4e054562) and replaces that PR's PR.md.
 
 Release note (other): none -- docs only, no emulator/app code touched.
