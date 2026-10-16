@@ -2773,12 +2773,19 @@ note = "STARTED lane.local 2026-10-16 10:09 PDT (by hand, docs only, no device):
 
 [lane.ce1016]
 issues = ["433"]
+retired_utc = "2026-10-16T20:50:27Z"
 standing = false
-files = ["README.md", "PRIVACY.md", "ROADMAP.md", "android/MIGRATING.md", "docs/frontends/**", "docs/es-de/**", "docs/lanes/ce1016/**"]
-note = "STARTED lane.local 2026-10-16 12:52 PDT (Sonnet, docs, no device): owner 10-16: the display name becomes hakuX CE (Community Edition); docs pass on titles and bolds only, no search/replace of the word hakuX. Files taken off funding1016, docsrewrite1012, frontends1016 and others. Brief: briefs/ce1016.md."
+files = []
+note = "RETIRED (lane.local 2026-10-16 13:50 PDT): folded as 3ceee93982 (13:24 PDT); no unit. Released: README.md (to [lane.logo1016]), PRIVACY.md, ROADMAP.md, android/MIGRATING.md, docs/frontends/**, docs/es-de/**, docs/lanes/ce1016/**. || Was: STARTED lane.local 2026-10-16 12:52 PDT (Sonnet, docs, no device): owner 10-16: the display name becomes hakuX CE (Community Edition); docs pass on titles and bolds only, no search/replace of the word hakuX. Files taken off funding1016, docsrewrite1012, frontends1016 and others. Brief: briefs/ce1016.md."
 
 [lane.visitor1016]
 issues = ["433"]
 standing = false
 files = [".github/ISSUE_TEMPLATE/**", ".github/pull_request_template.md", "CONTRIBUTING.md", "KNOWN_ISSUES.md", "docs/reporting-bugs.md", "docs/lanes/visitor1016/**"]
 note = "STARTED lane.local 2026-10-16 13:07 PDT (Sonnet, docs, no device): owner 10-16, prepping the repo for visitors; a read-only audit of the home branch found issue-form friction, the old app name in reporting-bugs.md and CONTRIBUTING.md. Decision-free fixes only; SECURITY.md, CODE_OF_CONDUCT.md and a get-your-Xbox-files doc wait for the owner. KNOWN_ISSUES.md, CONTRIBUTING.md and docs/reporting-bugs.md taken off docsrewrite1012. Brief: briefs/visitor1016.md."
+
+[lane.logo1016]
+issues = ["433"]
+standing = false
+files = ["README.md", ".github/hakux-logo.svg", "docs/lanes/logo1016/**"]
+note = "ADDED BY lane.local 2026-10-16 13:50 PDT (the branch was already pushed): lane.xbox, with the owner-approved hakuX CE logo at the top of README.md, docs only. Fold b735a42d97. README.md from the retired [lane.ce1016]."
