@@ -176,14 +176,12 @@ def _title_catalog(F):
         if sys.path and sys.path[0] == d:
             sys.path.pop(0)
     p = TR.Paths(F.W) if F.W else TR.Paths()
-    cat = TR.build_catalog(p)
-    for r in TR.read_tsv(p.ledger):
-        tid = (r.get("title_id") or "").strip().upper()
-        if not TR.TID_RE.match(tid):
-            tid, _ = cat.resolve(r.get("title") or "")
-        if tid:
-            cat.add(tid, r.get("title"), "playable-accepted.tsv")
-    return cat
+    # build_catalog() loads the ledger itself now, last, at top priority
+    # (#433) -- this used to be a second, separate "ledger wins" rule, living
+    # only here, that could disagree with build_catalog()'s own callers (the
+    # same bug item 1 found twice over inside title_registry.py). Now there
+    # is one rule, in one place; this function is just the import wrapper.
+    return TR.build_catalog(p)
 
 
 def _soak_read(rdir, lo=90.0, hi=240.0, bar=None):
