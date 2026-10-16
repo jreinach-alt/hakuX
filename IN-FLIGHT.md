@@ -6,9 +6,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Right now
 
-| Lane | Model | Running for | Working on |
-|---|---|---|---|
-| `x1port1012` | claude-opus-5-5 | 1h 16m | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
+No lane session is running.
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
@@ -114,12 +112,11 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Work in progress
 
-| Branch | Topic | Tip | Last change |
-|---|---|---|---|
-| `lane/x1port1012` | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) | `5dfea123a3` | 2026-10-13 07:18 |
+No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-16 sign1016: rotate release key (lineage), minSdk 33 (#433)
 - 2026-10-16 GitHub Sponsors on the landing page and the Sponsor button (#433)
 - 2026-10-16 Wire hakuX into four launchers (ES-DE, Daijisho, Pegasus, stock), tested on the Thor
 - 2026-10-16 fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2)
@@ -129,4 +126,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-14 A tracked listing of which title is where, keyed by title_id
 - 2026-10-14 savestateconv1014: R3 admits --from-state
 
-_Updated 2026-10-16 12:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 12:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
