@@ -2715,7 +2715,7 @@ note = "STARTED lane.local 2026-10-13 23:32 PDT (lane.local by hand, harness; no
 [lane.titledb1014]
 issues = ["433"]
 standing = false
-files = ["docs/lanes/titledb1014/**", "docs/testing/title_registry.py", "docs/testing/dispatch_gate_selftest.py", "docs/testing/jobs/selftest.d/60-status.sh", "docs/testing/jobs/selftest.d/64-status-html.sh", "docs/testing/jobs/selftest.d/65-status-objective.sh", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/testing/jobs/selftest.d/67-status-measured.sh", "docs/testing/jobs/selftest.d/68-status-curve.sh", "docs/lanes/titles05/fixture/synth.py", "README.md", "docs/COMPATIBILITY.md"]
+files = ["docs/lanes/titledb1014/**"]
 note = "STARTED lane.local 2026-10-14 ~08:3x PDT (Sonnet, harness; no device): owner 10-14, title status in one table keyed by title_id; the status page, hourly report, Wall sync check, prequeue, README and COMPATIBILITY read it (Playable 72). title_registry.py and dispatch_gate_selftest.py released by [lane.playsecs1013]; status_html.py, selftests 66 and 68 and synth.py released by [lane.statusfix1013]; selftests 60/64/65/67 are inside [free]. Host-only readers (hourly_report.sh, prequeue.py, status_md/page/svg) are not in the repo: the lane puts edited copies under docs/lanes/titledb1014/host-tools/. Brief: briefs/titledb1014.md."
 
 [lane.locations1014]
@@ -2743,3 +2743,11 @@ issues = ["433"]
 standing = false
 files = ["docs/lanes/statusfix1016/**", "docs/testing/jobs/status_html.py"]
 note = "STARTED lane.local 2026-10-16 07:3x PDT (by hand, harness; no device): owner 10-16: GitHub's README shows 77 Playable and STATUS.md is 2 days stale. status_html.py titles05 raised KeyError on the registry name 'Crimson Skies: High Road to Revenge' after the titledb1014 fold (10-14 22:56), so the degraded-render guard refused every publish to the home branch. One-line fix: key where[] by the catalog's canonical name. Head on lane/statusfix1016, PR.md State: ready."
+
+# CLAIMED (lane.local 2026-10-16 PDT): title_registry.py, dispatch_gate_selftest.py, selftests 60/64/65/66/67/68, synth.py, README.md, docs/COMPATIBILITY.md -> lane.titlekey1016 (from [lane.titledb1014], folded). status_html.py joins it when lane.statusfix1016 folds.
+
+[lane.titlekey1016]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/titlekey1016/**", "docs/testing/predictions/titlekey1016-*", "docs/testing/title_registry.py", "docs/testing/dispatch_gate_selftest.py", "docs/testing/jobs/selftest.d/60-status.sh", "docs/testing/jobs/selftest.d/64-status-html.sh", "docs/testing/jobs/selftest.d/65-status-objective.sh", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/testing/jobs/selftest.d/67-status-measured.sh", "docs/testing/jobs/selftest.d/68-status-curve.sh", "docs/lanes/titles05/fixture/synth.py", "README.md", "docs/COMPATIBILITY.md"]
+note = "STARTED lane.local 2026-10-16 PDT (Sonnet, harness; no device): owner 10-16: inconsistent naming is a recurring footgun; one display name per title_id (registry spelling wins; 54 of 106 differ from the catalog), nothing keyed by a name, title_registry.py check fails on drift, a mismatched-spelling selftest fixture with a mutant, README Playable count from the ledger, an hourly-report alarm when home lags the ledger. status_html.py joins this row after lane.statusfix1016 folds. Brief: briefs/titlekey1016.md."
