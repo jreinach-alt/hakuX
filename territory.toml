@@ -2789,3 +2789,9 @@ issues = ["433"]
 standing = false
 files = ["README.md", ".github/hakux-logo.svg", "docs/lanes/logo1016/**"]
 note = "ADDED BY lane.local 2026-10-16 13:50 PDT (the branch was already pushed): lane.xbox, with the owner-approved hakuX CE logo at the top of README.md, docs only. Fold b735a42d97. README.md from the retired [lane.ce1016]."
+
+[lane.icon1016]
+issues = ["433"]
+standing = false
+files = ["android/app/src/main/res/drawable/ic_launcher_fg.xml", "android/app/src/main/res/drawable/ic_launcher_mono.xml", "android/app/src/main/res/values/ic_launcher_background.xml", "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml", "android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml", "docs/lanes/icon1016/**"]
+note = "STARTED lane.local 2026-10-16 14:30 PDT (Sonnet, Thor visual check): owner request 10-16 ~14:30 PDT, new hakuX CE app icon from hakux-work/svg/hakux-svg-master.svg and hakux-svg-monochrome.svg as Android vector drawables; rides with 0.5.1. Brief: briefs/icon1016.md."
