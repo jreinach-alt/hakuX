@@ -10,7 +10,12 @@ I'd like to be able to capture that without having to restart my run."
   - the run-time switch in `debug.h`;
   - the TCG `[tcg787]` hooks under it (`cputlb.c`, `translate-all.c`);
   - the pause-menu buttons (`PauseMenuOverlay.kt`);
-  - the host selftest: 16+4+2 passes, 11/11 mutants caught;
+  - the host selftest: 16+4+2 passes, 11/11 header mutants caught. It also runs 9
+    static checks that `PauseMenuOverlay.kt` agrees with its other side, 14/14 mutants
+    caught. The other side is: the marker and env names in debug.h; the flip-line tag;
+    the dispatcher's logcat spec; the mark line route.sh writes and hitch_report reads;
+    the literal labels; the launch-time clear, built from `onCreate`; renderer.c's
+    frame-dump marker; and version_stamp's `-perflog` suffix;
   - the NDK compile check.
 - **Blocked on a lend.** The switch's implementation and its one poll site live
   in files lane.fps1015 holds: `pgraph/profile.c` and `vk/renderer.c`. Two more
@@ -19,9 +24,10 @@ I'd like to be able to capture that without having to restart my run."
   in OUTBOX.md. Until `profile.c` and `renderer.c` land, nothing calls
   `nv2a_perflog_poll()`, so the switch stays OFF and the button only writes a
   marker nobody reads.
-- `lend_check.py` (10-16 ~09:50 PDT): all 4 patches apply cleanly on
-  origin/master, origin/lane/fps1015 and origin/lane/x1port1012, and none of
-  those refs carries `NV2A_PERFLOG_RT_IMPLEMENTATION` yet.
+- `lend_check.py` (10-16 10:03 PDT, after a fetch): all 4 patches apply
+  cleanly on origin/master 4bf47129b1, origin/lane/fps1015 c11e7d3db3 and
+  origin/lane/x1port1012 5dfea123a3. None of those refs carries
+  `NV2A_PERFLOG_RT_IMPLEMENTATION` yet.
 - The `MainActivity.kt`/`strings.xml` JNI wiring the brief anticipated is **not
   needed**. The switch is a marker file in the app's external files dir, the
   same dir as `frame_dump.on`, written by `PauseMenuOverlay.kt` (mine). The
@@ -162,6 +168,21 @@ ON (or **Frame dump** for the next 30 frames), resume. The marks, phase lines
 and dump land in the same logcat as the telemetry. Finding which draw flickered
 and why still takes a perflog build or a diag capture replayed at that scene.
 
+**Whether a capture keeps it.** What reaches a file depends on the recorder's
+logcat filter, not on the switch. The ON block prints on seven tags: hakuX-phase,
+hakuX-cpu, xemu-vsync, xemu-surf, xemu-pace, xemu-work and xemu-gpu.
+
+| recorder | keeps | drops |
+|---|---|---|
+| dispatcher.sh:2516 (queued soaks) | flip line (hakuX-perf), marks (hakuX-route), `[tcg787]` (hakuX:W), hakuX-phase, hakuX-cpu, xemu-surf, xemu-work, xemu-gpu | xemu-vsync, xemu-pace |
+| lane.local's `ownerplay.py` (owner sessions; `LOGCAT_SPEC` line 35, read 10-16) | flip line, marks, `[tcg787]` | **all seven ON-block tags** |
+| the 10-12 unit `hakux-ownerplay-perf` (its log has only hakuX-perf/pace/stderr/unhandled/build) | flip line | marks and all seven |
+
+So in an owner session today, the button's flip line, the marks and `[tcg787]`
+are kept, but the phase breakdown is cut. That is a NEED in OUTBOX.md for
+lane.local: seven tags added to `ownerplay.py`'s filter. They print nothing while
+the switch is OFF.
+
 ## The default-path A/B (goal 2's proof)
 
 **What it measures now.** The lane head carries every debug.h-gated site
@@ -217,8 +238,22 @@ so, as with Castlevania, the cost reads in headroom (tcpu, Ri), not fps.
 Reader: `abread.py` in this directory, which states the band it used.
 
 Requests (A = 4bf47129b1 origin/master, B = 644877144a lane head; emulator code
-identical to the commits after it, which are docs only): see the queue record
-below.
+identical to the commits after it, which are docs only).
+
+**Queue record** (10-16; requester `perflog1016`, priority arm, release tier 0.5,
+pinned to the Nova, `--title 5454000F-Grand_Theft_Auto_Vice_City.xiso.iso
+--route gta-vc --seconds 330`, `--expect` the prediction):
+
+| order | arm | ref | request id |
+|---|---|---|---|
+| 1 | A1 | 4bf47129b1 | `1-1792169523-perflog1016-2120339` |
+| 2 | B1 | 644877144a | `1-1792169529-perflog1016-2121153` |
+| 3 | B2 | 644877144a | `1-1792169535-perflog1016-2121769` |
+| 4 | A2 | 4bf47129b1 | `1-1792169541-perflog1016-2122978` |
+
+Read with `python3 docs/lanes/perflog1016/abread.py --a <A1 dir> --a <A2 dir>
+--b <B1 dir> --b <B2 dir> --judge docs/testing/predictions/perflog1016-defaultpath.json`.
+No result yet; nothing has been read.
 
 ## Next lane: do not repeat
 
@@ -239,3 +274,8 @@ below.
    that makes the switch work: 66 and 17 lines, separate hunks. `pfifo.c` and
    `surface.c` add coverage. Can these four be lent to this branch, or landed
    by fps1015?
+2. Owner-play capture: can `ownerplay.py`'s `LOGCAT_SPEC` gain
+   `hakuX-phase:I hakuX-cpu:I xemu-vsync:I xemu-surf:I xemu-pace:I xemu-work:I
+   xemu-gpu:I`? Without them an owner session records that the button was
+   pressed, but not what it turned on. The table is in "Whether a capture keeps
+   it" above, and the NEED is in OUTBOX.md.

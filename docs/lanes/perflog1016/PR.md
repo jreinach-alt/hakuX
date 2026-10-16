@@ -5,7 +5,7 @@ State: draft
 Lane: perflog1016            Issue: #433 (motivating defect #998)
 Base: master @ 15a72e10dc (origin/master 4bf47129b1 merged in, 10-16)
 Files: accel/tcg/cputlb.c, accel/tcg/translate-all.c, android/app/src/main/java/com/rfandango/haku_x/PauseMenuOverlay.kt, hw/xbox/nv2a/debug.h, docs/testing/predictions/perflog1016-defaultpath.json, docs/lanes/perflog1016/PR.md, docs/lanes/perflog1016/NOTES.md, docs/lanes/perflog1016/OUTBOX.md, docs/lanes/perflog1016/WAITING, docs/lanes/perflog1016/abread.py, docs/lanes/perflog1016/lend_check.py, docs/lanes/perflog1016/ndk_check.py, docs/lanes/perflog1016/rt_selftest.c, docs/lanes/perflog1016/scan_soaks.py, docs/lanes/perflog1016/selftest.py, docs/lanes/perflog1016/site_context.py, docs/lanes/perflog1016/write_prediction.py, docs/lanes/perflog1016/pfifo.c.patch, docs/lanes/perflog1016/profile.c.patch, docs/lanes/perflog1016/renderer.c.patch, docs/lanes/perflog1016/surface.c.patch
-Prediction: docs/testing/predictions/perflog1016-defaultpath.json (hand-read soak pair, default path with the switch OFF; judged by abread.py --judge)
+Prediction: docs/testing/predictions/perflog1016-defaultpath.json @ c09fb4303fe2001ae68370ac13f79fe307ddee77ef802d1bd8c25fa62a654a09 (hand-read soak pair, default path with the switch OFF; judged by abread.py --judge)
 Needs device: yes    Needs NDK: yes
 
 Release note (none): an opt-in debug switch, off at every launch; the pause menu's debug section gains Perflog, Mark this moment and Frame dump buttons.
@@ -31,10 +31,11 @@ The owner asked for the perflog telemetry from the pause menu, mid-run, so a def
 | | state |
 |---|---|
 | inventory (NOTES.md) | done |
-| switch in debug.h + TCG + pause menu | done; host selftest 16+4+2 passes, 11/11 mutants caught; NDK compile check |
+| switch in debug.h + TCG + pause menu | done; host selftest 16+4+2 passes, 11/11 header mutants caught; 9 static checks of the pause menu against debug.h, renderer.c, the logcat spec and the mark readers, 14/14 mutants caught; NDK compile check |
 | `profile.c` + `vk/renderer.c` (the implementation and the poll) | **pending a lend from lane.fps1015**: `profile.c.patch`, `renderer.c.patch`, NEED: in OUTBOX.md. Without them the switch cannot turn on |
 | `pfifo.c` + `vk/surface.c` coverage | pending the same lend: `pfifo.c.patch`, `surface.c.patch` |
-| default-path A/B (Nova, GTA VC, A B B A, switch OFF) | queued; ids in NOTES.md |
+| default-path A/B (Nova, GTA VC, A B B A, switch OFF) | queued: A1 `1-1792169523-perflog1016-2120339` (running), B1 `1-1792169529-perflog1016-2121153`, B2 `1-1792169535-perflog1016-2121769`, A2 `1-1792169541-perflog1016-2122978` |
 | ON-path proof (perflog lines in logcat) | pending the lend |
+| owner-play capture keeps the ON lines | no: lane.local's `ownerplay.py` filter drops the seven ON-block tags (it keeps the flip line, marks and `[tcg787]`); NEED in OUTBOX.md |
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
