@@ -719,8 +719,9 @@ measurements that settle it are in the table below.
 | H1a | ...because the cube map's faces are read from the wrong offsets (face stride, mip-chain size or alignment of a 64x64 5-level DXT1 cube) | (a) | 0.25 | decode the cube from guest RAM at the hardware face stride; adjacent faces must be continuous at shared edges | open |
 | H1b | ...because the cube face orientation differs from NV2A (axis sign or face order) | (a) | 0.15 | as H1a: seams; and R visualised against which face the console shows | open |
 | H1c | ...because E or N' is wrong (c4 eye position, c12.w, the CMP normal decode, skinning) | (a), lighting too | 0.15 | the diffuse term would also be wrong; compare the lit/dark boundary with the console photos | open |
-| H2 | (b) is a per-frame difference in the guest's draw (constants, texture address, LOD) | (b) | 0.4 | `gdread diff` of the hull draw between an X and a Y frame in one burst | runs 11/12 |
-| H3 | (b) is the host drawing the same commands two ways | (b) | 0.3 | as H2: identical guest state, different image | runs 11/12 |
+| H2 | (b) is a per-frame difference in the guest's draw (constants, texture address, LOD) | (b) | 0.4 | `gdread diff` of the hull draw between an X and a Y frame in one burst | **holds** (runs 11/12): only c13.w toggles, 7/255 low |
+| H3 | (b) is the host drawing the same commands two ways | (b) | 0.3 | as H2: identical guest state, different image | **refuted** (runs 11/12) |
+| H7 | (b): the guest computes c13.w wrong on the Nova because the aarch64 JIT's inline FIST truncates instead of rounding per RC | (b) | - | desktop with truncating FIST must write the same 7/255 glitch; with correct rounding it must not | **holds** (dg2 clean, dg3 glitches, see "(b) root cause") |
 | H4 | the detail map (t1, double multiply) is the console's layer | (a) | 0.1 | t1 is dark (mean 65) and multiplies a dark base; it cannot make a bright grey layer at any scale | weighs against, by the texture means |
 | H5 | v0.a (= v4.z) is non-zero on hardware, mixing the output toward white | (a) | 0.05 | would wash out the panel lines and lights, which the console shows | weighs against, by photo 5 |
 | H6 | the eight fast paths, XVSS, S2TSHELF | (b) | - | - | ruled out (runs 7, 8) |
@@ -793,8 +794,53 @@ What remains for (b) is why the guest computes it. The guest runs on the emulate
 x87 is emulated by `fp_jit`'s native-double helpers (`target/i386/tcg/fpu_helper.c`, the
 `USE_HARD_FPU && __aarch64__` block: no 80-bit precision, no precision control, plain double
 compares). A phase-keyed, exact, quantised offset is what a branch or an integer conversion flipping on a
-last-bit difference looks like. The desktop build uses softfloat and is the discriminator: if it writes
-the same glitch at the same phase, the emulated FPU is not the cause.
+last-bit difference looks like. The desktop build is the discriminator: if it writes
+the same glitch at the same phase, the emulated FPU is not the cause. (Correction, same day: the desktop
+does not use softfloat here. With fp_jit on, the x86_64 build also runs x87 inline, as SSE ops. What differs
+is how each backend lowers a few ops; see the next section.)
+
+### (b) root cause: the aarch64 JIT's FIST/FISTP ignores the game's rounding mode
+
+**Desktop, correct rounding: no glitch (dg2).** `build-linux/run/deskgd.py 74 600 125` (gd dump, no images, lavapipe)
+covers hull w 0.199..0.668, which includes w 0.437..0.460, where both Nova runs wrote the glitch. Its 600 hull
+offsets and 600 terrain offsets all step smoothly (+0.00078 and +0.0000977 per frame). No frame is 7/255 low.
+
+**Cause found by reading the two backends.** With `fp_jit` on (the default everywhere, `config_spec.yml` perf.fp_jit),
+FIST m32 and FISTP m32/m64 do not call `helper_fist*`, which round per the guest's RC field since #74. They go
+inline (`BISECT_GRP_STORE`, `target/i386/tcg/translate.c` 1998-2008, then `ops_fpu.h` 328-336) to the TCG op
+`cvt64f_i32` / `cvt32f_i32` / `cvt*f_i64`. The two host backends lower that op differently:
+
+| host | lowering | rounding |
+|---|---|---|
+| x86_64 (`tcg/i386/tcg-target.c.inc` 3118-3130) | `CVTSD2SI` / `CVTSS2SI` | MXCSR.RC, which `flcr` loads from the guest's x87 RC before every FP block: same as x87 FIST |
+| aarch64 (`tcg/aarch64/tcg-target.c.inc` 3539-3566) | `FCVTZS` | always toward zero, whatever FPCR.RMode says |
+
+So on the Nova every inline FIST truncates. Code built for the default round-to-nearest gets 2 for 2.7, not 3.
+MSVC's `_ftol` sets RC=truncate first, so it is unaffected, which is why this does not break everything.
+
+**Desktop, aarch64's truncation: the Nova's glitch (dg3).** Local, never-committed experiment
+(`tools/fisttrunc-desktop-experiment.patch`): with `HAKUX_FIST_TRUNC=1` the x86_64 backend emits
+`CVTTSD2SI`/`CVTTSS2SI` (truncate) instead. Same run otherwise (`deskgd.py 74 600 125 dg3 HAKUX_FIST_TRUNC=1`):
+
+| hull frames | written w | smooth line | residual |
+|---|---|---|---|
+| 79-80, 86-87, 94-95, 101-102, 109 | e.g. f79 0.850963 | 0.877713 | -0.027450 = -7/255 |
+
+The steps are -0.02667 into each glitch and +0.02823 out of it, the same as the Nova's (run 12 f106: -0.02667,
+f107: +0.02823). The glitch runs last two frames here, not one, because the desktop's frame pacing differs. Its w
+step also drops to 0.00067 per frame after f214, so w follows game time rather than frame count. The glitch is
+the same value, though: an exact 7/255 subtracted from the offset on ticks the game itself decides.
+
+So (b) is: the game converts a float to an integer with FISTP while RC is round-to-nearest. On the Nova that
+conversion truncates. On the ticks where the fraction is at least one half, the integer comes out one lower, and the
+u-offset it feeds comes out exactly 7/255 lower. Truncating on the desktop is sufficient to reproduce the glitch,
+and the desktop's correct rounding does not show it. The remaining Nova-to-desktop differences (sin/cos through
+host libm, double rather than 80-bit) are not needed to explain it.
+
+The faithful fix is what x86_64 already does: round per FPCR.RMode, then convert. That is
+`FRINTI Vtmp, Vn; FCVTZS Rd, Vtmp`, and `flcr` already sets FPCR.RMode from the guest's RC (FLDCW ends the
+TB, `translate.c` 3423-3429, so the next block re-emits `flcr`). It is in `tcg/aarch64/`, outside this lane's
+territory, so it needs a grant. It does not touch (a): the desktop rounds correctly and still lacks the layer.
 
 ### Lit and dark draws (step 3, from run 11 frames 529-558, soak +68)
 
