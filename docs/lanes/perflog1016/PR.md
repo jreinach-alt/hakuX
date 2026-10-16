@@ -34,7 +34,7 @@ The owner asked for the perflog telemetry from the pause menu, mid-run, so a def
 | switch in debug.h + TCG + pause menu | done; host selftest 16+4+2 passes, 11/11 header mutants caught; 9 static checks of the pause menu against debug.h, renderer.c, the logcat spec and the mark readers, 14/14 mutants caught; NDK compile check |
 | `profile.c` + `vk/renderer.c` (the implementation and the poll) | **pending a lend from lane.fps1015**: `profile.c.patch`, `renderer.c.patch`, NEED: in OUTBOX.md. Without them the switch cannot turn on |
 | `pfifo.c` + `vk/surface.c` coverage | pending the same lend: `pfifo.c.patch`, `surface.c.patch` |
-| default-path A/B (Nova, GTA VC, A B B A, switch OFF) | queued: A1 `1-1792169523-perflog1016-2120339` (running), B1 `1-1792169529-perflog1016-2121153`, B2 `1-1792169535-perflog1016-2121769`, A2 `1-1792169541-perflog1016-2122978` |
+| default-path A/B (Nova, GTA VC, A B B A, switch OFF) | A1 `1-1792169523-perflog1016-2120339` done (reader self-check: 79 `[rdc]` lines, tcpu 312.1 ms/s, gfps 29, Ri 23.8; cold cache); B1 `1-1792169529-perflog1016-2121153` running; B2 `1-1792169535-perflog1016-2121769`, A2 `1-1792169541-perflog1016-2122978` queued. B2 is the only warm-cache run (the dispatcher keeps the cache on a same-APK run), so B1 against B2 decides whether the cache matters. The reading rule is in NOTES.md, written before any B result |
 | ON-path proof (perflog lines in logcat) | pending the lend |
 | owner-play capture keeps the ON lines | no: lane.local's `ownerplay.py` filter drops the seven ON-block tags (it keeps the flip line, marks and `[tcg787]`); NEED in OUTBOX.md |
 

@@ -36,6 +36,18 @@ I'd like to be able to capture that without having to restart my run."
   default-path A/B" below. See there for what it covers before and after the
   lend.
 
+`[lane.perflog1016] waiting:` (10-16 10:2x PDT) on two things outside this session.
+
+- **The A/B requests.** `1-1792169529-perflog1016-2121153` (B1, running),
+  `1-1792169535-perflog1016-2121769` (B2) and `1-1792169541-perflog1016-2122978`
+  (A2). A1 `1-1792169523-perflog1016-2120339` is done. When all four have a
+  `DONE`, run abread.py `--judge` and apply the B1/B2 cache rule.
+- **The lend.** lane.local to lend or land the 4 OUTBOX patches into
+  lane.fps1015/lane.x1port1012. That unblocks the ON proof and the post-lend
+  A/B. `lend_check.py` shows when they land.
+
+The PR stays `State: draft` until the lend lands (hostops addendum).
+
 ## Why attempt 1 did not finish
 
 Attempt 1's session log (`logs/lane/perflog1016.20261016T140238Z.json`) ends
