@@ -1918,6 +1918,97 @@ static bool texscan_on(void)
     return texscan_state;
 }
 
+/*
+ * #939 (lane.x1port1012), HAKUX_S2TSHELF: create_texture's shelf lookup,
+ * which binds a shelved, still draw_dirty surface at the texture's address
+ * when no active surface there is compatible. It runs after an incompatible
+ * active surface at that address was found and downloaded, so an older
+ * shelved image can win over the newer pixels in VRAM (X1 BOX e8cb544c98 is
+ * the same lookup with a draw_dirty that never clears; batchB). Unset or "1"
+ * keeps it; "0" turns it off, so the texture reads VRAM after the range scan
+ * downloads any shelved dirty surface over it; "audit" keeps it and logs each
+ * hit's state (hakuX-perf "[s2tshelf]" lines).
+ */
+static int s2tshelf_state = -1;
+
+#ifdef __ANDROID__
+#define S2TSHELF_LOG(...) \
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-perf", __VA_ARGS__)
+#else
+#define S2TSHELF_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+/* 0 off, 1 on (shipped), 2 on with the audit */
+static int s2tshelf_mode(void)
+{
+    if (s2tshelf_state < 0) {
+        const char *e = getenv("HAKUX_S2TSHELF");
+        s2tshelf_state = !e                   ? 1 :
+                         !strcmp(e, "0")      ? 0 :
+                         !strcmp(e, "audit")  ? 2 : 1;
+        if (s2tshelf_state != 1) {
+            S2TSHELF_LOG("[s2tshelf] mode=%s",
+                         s2tshelf_state ? "audit" : "off");
+        }
+    }
+    return s2tshelf_state;
+}
+
+static struct {
+    uint64_t hits, over_active, older_than_active, vram_newer, clean;
+    int64_t last_log_ms;
+} s2tshelf_audit;
+
+/* A shelf hit: what it bound, and what it bound over. */
+static void s2tshelf_audit_hit(const SurfaceBinding *shelved,
+                               const SurfaceBinding *active,
+                               const TextureShape *state)
+{
+    s2tshelf_audit.hits++;
+    bool older = active && active->draw_time > shelved->draw_time;
+    if (active) {
+        s2tshelf_audit.over_active++;
+    }
+    if (older) {
+        s2tshelf_audit.older_than_active++;
+    }
+    if (shelved->vram_newer) {
+        s2tshelf_audit.vram_newer++;
+    }
+    if (!shelved->shelved_dirty) {
+        s2tshelf_audit.clean++;
+    }
+    /* the first 32 hits, and the first 64 that bound an older image */
+    bool notable = older || shelved->vram_newer;
+    uint64_t notable_n =
+        s2tshelf_audit.older_than_active + s2tshelf_audit.vram_newer;
+    if (s2tshelf_audit.hits <= 32 || (notable && notable_n <= 64)) {
+        S2TSHELF_LOG("[s2tshelf] hit #%" PRIu64 " addr=0x%" HWADDR_PRIx
+                     " %ux%u fmt=%u shelved_dirty=%d vram_newer=%d "
+                     "draw_time=%d active=%d active_draw_time=%d "
+                     "active_fmt=%u tex_fmt=%u",
+                     s2tshelf_audit.hits, shelved->vram_addr,
+                     shelved->width, shelved->height,
+                     (unsigned)shelved->shape.color_format,
+                     shelved->shelved_dirty, shelved->vram_newer,
+                     shelved->draw_time, active != NULL,
+                     active ? active->draw_time : -1,
+                     active ? (unsigned)active->shape.color_format : 0u,
+                     (unsigned)state->color_format);
+    }
+    int64_t now = g_get_monotonic_time() / 1000;
+    if (now - s2tshelf_audit.last_log_ms >= 5000) {
+        s2tshelf_audit.last_log_ms = now;
+        S2TSHELF_LOG("[s2tshelf] hits=%" PRIu64 " over_active=%" PRIu64
+                     " older_than_active=%" PRIu64 " vram_newer=%" PRIu64
+                     " clean=%" PRIu64,
+                     s2tshelf_audit.hits, s2tshelf_audit.over_active,
+                     s2tshelf_audit.older_than_active,
+                     s2tshelf_audit.vram_newer, s2tshelf_audit.clean);
+    }
+}
+
 /* vk/surface.c: complete a recorded download that will write the range */
 bool pgraph_vk_texscan_complete_range(PGRAPHState *pg, hwaddr start,
                                       hwaddr size);
@@ -2830,13 +2921,16 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
      * read directly from a shelved surface's VkImage instead of from
      * stale VRAM data.
      */
-    if (!surface_to_texture && state.levels == 1) {
+    if (!surface_to_texture && state.levels == 1 && s2tshelf_mode() != 0) {
         SurfaceBinding *shelved;
         QTAILQ_FOREACH(shelved, &r->shelved_surfaces, entry) {
             if (shelved->vram_addr == texture_vram_offset) {
                 bool compat = check_surface_to_texture_compatiblity(
                     shelved, &state);
                 if (shelved->draw_dirty && compat) {
+                    if (s2tshelf_mode() == 2) {
+                        s2tshelf_audit_hit(shelved, surface, &state);
+                    }
                     surface = shelved;
                     surface_to_texture = true;
                     break;

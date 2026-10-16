@@ -1864,8 +1864,34 @@ extern char g_vulkan_driver_info[256];
  *    image, no consumer readbacks and no vup records are written, and the dump
  *    closes after NN logged draws. Armed at startup, it records how a texture
  *    made by draws at the title's start was made.
+ * 9: as 8, plus the `gd` token (#939: two renderings of one guest frame
+ *    alternate, and the question is whether the guest's input differs
+ *    between them or the host draws the same input two ways). Each draw
+ *    record gets "gd", two halves:
+ *    - the guest's input, as the words that changed since the previous
+ *      LOGGED draw, each a flat [index, value, ...] list present only when
+ *      something changed: "r" the register file (index is the byte offset,
+ *      as NV_PGRAPH_*), "c" the vertex shader constants (constant*4 +
+ *      component), "la"/"lb"/"l1" the lighting context arrays, "p" the
+ *      transform program, "ff" the fixed-function values kept outside those
+ *      (fdump_gd_ff gives the layout) and "va" the attributes' inline values
+ *      (attribute*4 + component). The first draw after the arm lists every
+ *      non-zero word, so replaying the lists gives each draw's full state.
+ *    - the host's: "path" the pre-draw path (0 super-fast, 1 medium-fast,
+ *      2 full), "cp" what create_pipeline found (DCEN_CP_* in vk/draw.c),
+ *      "ready" the shader binding's, "uv"/"up" whether the binding has the
+ *      #569 uber vertex stage / combiner ubershader, "vkp" the VkPipeline
+ *      handle, "gu" whether that pipeline links the uber vertex stage, "lto"
+ *      a replacement pending, "vu"/"pu" a hash of the vertex/pixel uniform
+ *      block as this draw left it, and "ubo" the two dynamic UBO offsets.
+ *    And each enabled stage in "tex" gets "gh", a hash of the guest's
+ *    texture bytes at the binding's offset and length as of this draw, "th"
+ *    the binding's own content hash, and "key" [width, height, levels,
+ *    color_format, texture_length]. With `gd`, a draw the host skipped
+ *    writes {"t":"skip","f","n","why","shader","pipeline"}, "n" being the
+ *    number the next logged draw takes; a skip takes none.
  */
-#define FDUMP_SCHEMA          8
+#define FDUMP_SCHEMA          9
 
 /* `img_sync` on a frame record: >= 0 is the fence slot the image waited on
  * before the display surface came back clean, and these two are the cases
@@ -1881,6 +1907,10 @@ static char fdump_dir[512] = "";
 
 /* Schema 4's once-per-shader records; see fdump_log_shader. */
 #define FDUMP_MAX_SHADERS     2048
+
+/* Schema 9's "ff" group: the fixed-function values PGRAPHState keeps outside
+ * the register file and the constant arrays; see fdump_gd_ff. */
+#define FDUMP_GD_FF_WORDS     (3 + NV2A_MAX_LIGHTS * 3 * 4 + 6 + 6 + 8)
 
 static struct {
     FILE *fp;
@@ -1916,6 +1946,19 @@ static struct {
     int watch_max;
     int watch_n;
     int watch_in_frame;
+    /* Schema 9's `gd` (#939): per draw, the guest state words that changed
+     * since the previous logged draw, and what the host drew with; see
+     * fdump_log_draw_gd. The shadows are the state as of that draw, zero at
+     * the arm, so the first draw logs every non-zero word. */
+    bool gd;
+    uint32_t gd_regs[0x2000];
+    uint32_t gd_vshc[NV2A_VERTEXSHADER_CONSTANTS * 4];
+    uint32_t gd_lta[NV2A_LTCTXA_COUNT * 4];
+    uint32_t gd_ltb[NV2A_LTCTXB_COUNT * 4];
+    uint32_t gd_lt1[NV2A_LTC1_COUNT * 4];
+    uint32_t gd_prog[NV2A_MAX_TRANSFORM_PROGRAM_LENGTH * VSH_TOKEN_SIZE];
+    uint32_t gd_ff[FDUMP_GD_FF_WORDS];
+    uint32_t gd_va[NV2A_VERTEXSHADER_ATTRIBUTES * 4];
     int frames_remaining;
     int frame_index;
     int draw_index;
@@ -2128,10 +2171,13 @@ static void fdump_clear_previous(const char *dir, const char *keep)
  *               such draw.
  *   watchNN     schema 8: log only draws into a small colour target, until NN
  *               (capped at 4096) are logged; no images. See FDUMP_SCHEMA.
+ *   gd          schema 9: per draw, the guest state that changed since the
+ *               previous logged draw and the host's identity for the draw,
+ *               and a record for each draw the host skipped. See FDUMP_SCHEMA.
  */
 static void fdump_parse_spec(const char *spec, int *frames, bool *images,
                              int *cap_mb, bool *also_diag, int *after_s,
-                             int *vtx_max, bool *rtt, int *watch_max)
+                             int *vtx_max, bool *rtt, int *watch_max, bool *gd)
 {
     char buf[160];
     snprintf(buf, sizeof(buf), "%s", spec ? spec : "");
@@ -2147,6 +2193,8 @@ static void fdump_parse_spec(const char *spec, int *frames, bool *images,
             *also_diag = true;
         } else if (!strcmp(tok, "rtt")) {
             *rtt = true;
+        } else if (!strcmp(tok, "gd")) {
+            *gd = true;
         } else if (!strncmp(tok, "after", 5)) {
             long v = strtol(tok + 5, NULL, 10);
             if (v >= 0 && v <= 3600) {
@@ -2190,8 +2238,9 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     int vtx_max = 0;
     bool rtt = false;
     int watch_max = 0;
+    bool gd = false;
     fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s,
-                     &vtx_max, &rtt, &watch_max);
+                     &vtx_max, &rtt, &watch_max, &gd);
     if (watch_max) {
         images = false;
     }
@@ -2227,6 +2276,15 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     fdump.watch_max = watch_max;
     fdump.watch_n = 0;
     fdump.watch_in_frame = 0;
+    fdump.gd = gd;
+    memset(fdump.gd_regs, 0, sizeof(fdump.gd_regs));
+    memset(fdump.gd_vshc, 0, sizeof(fdump.gd_vshc));
+    memset(fdump.gd_lta, 0, sizeof(fdump.gd_lta));
+    memset(fdump.gd_ltb, 0, sizeof(fdump.gd_ltb));
+    memset(fdump.gd_lt1, 0, sizeof(fdump.gd_lt1));
+    memset(fdump.gd_prog, 0, sizeof(fdump.gd_prog));
+    memset(fdump.gd_ff, 0, sizeof(fdump.gd_ff));
+    memset(fdump.gd_va, 0, sizeof(fdump.gd_va));
 
     char self[64];
     snprintf(self, sizeof(self), "%s%u.jsonl", FDUMP_PREFIX, fdump.session);
@@ -2269,13 +2327,14 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
         fp,
         "{\"t\":\"session\",\"schema\":%d,\"id\":%u,\"armed_by\":\"%s\","
         "\"spec\":\"%s\",\"frames\":%d,\"images\":%s,\"cap_mb\":%d,"
-        "\"after_s\":%d,\"vtx\":%d,\"rtt\":%s,\"watch\":%d,"
+        "\"after_s\":%d,\"vtx\":%d,\"rtt\":%s,\"watch\":%d,\"gd\":%s,"
         "\"wall\":%lld,\"uptime_ms\":%lld,\"draw_merge\":%s,"
         "\"draw_reorder\":%s,\"surface_scale\":%d,\"submit_frames\":%d,"
         "\"per_draw_finish\":%s,\"also_diag\":%s,\"driver\":\"%s\"}\n",
         FDUMP_SCHEMA, fdump.session, armed_by, spec ? spec : "", frames,
         images ? "true" : "false", cap_mb, after_s, vtx_max,
-        rtt ? "true" : "false", watch_max, (long long)time(NULL),
+        rtt ? "true" : "false", watch_max, gd ? "true" : "false",
+        (long long)time(NULL),
         (long long)(qemu_clock_get_ns(QEMU_CLOCK_REALTIME) / 1000000),
         xemu_get_draw_merge() ? "true" : "false",
         xemu_get_draw_reorder() ? "true" : "false",
@@ -2318,8 +2377,9 @@ static void fdump_arm(NV2AState *d, const char *armed_by, const char *spec,
     int vtx_max = 0;
     bool rtt = false;
     int watch_max = 0;
+    bool gd = false;
     fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s,
-                     &vtx_max, &rtt, &watch_max);
+                     &vtx_max, &rtt, &watch_max, &gd);
 
     if (after_s <= 0) {
         fdump_begin(d, armed_by, spec);
@@ -3259,6 +3319,186 @@ fail:
     return false;
 }
 
+/* Schema 9: the "ff" group's layout, in this order. */
+static void fdump_gd_ff(PGRAPHState *pg, uint32_t *w)
+{
+    int k = 0;
+    memcpy(&w[k++], &pg->material_alpha, 4);
+    memcpy(&w[k++], &pg->material_alpha_back, 4);
+    w[k++] = pg->color_material_back;
+    memcpy(&w[k], pg->light_infinite_half_vector, NV2A_MAX_LIGHTS * 12);
+    k += NV2A_MAX_LIGHTS * 3;
+    memcpy(&w[k], pg->light_infinite_direction, NV2A_MAX_LIGHTS * 12);
+    k += NV2A_MAX_LIGHTS * 3;
+    memcpy(&w[k], pg->light_local_position, NV2A_MAX_LIGHTS * 12);
+    k += NV2A_MAX_LIGHTS * 3;
+    memcpy(&w[k], pg->light_local_attenuation, NV2A_MAX_LIGHTS * 12);
+    k += NV2A_MAX_LIGHTS * 3;
+    memcpy(&w[k], pg->specular_params, 6 * 4);
+    k += 6;
+    memcpy(&w[k], pg->specular_params_back, 6 * 4);
+    k += 6;
+    memcpy(&w[k], pg->point_params, 8 * 4);
+    k += 8;
+    assert(k == FDUMP_GD_FF_WORDS);
+}
+
+/* Schema 9: the words of cur that differ from shadow, as ,"key":[i,v,...],
+ * and the shadow brought up to date. Nothing is written when nothing
+ * changed. step skips words (the register file is indexed by byte offset,
+ * every fourth entry used). */
+static bool fdump_put_delta(const char *key, uint32_t *shadow,
+                            const uint32_t *cur, int n, int step)
+{
+    bool open = false;
+    int w;
+
+    for (int i = 0; i < n; i += step) {
+        if (cur[i] == shadow[i]) {
+            continue;
+        }
+        if (open) {
+            w = fprintf(fdump.fp, ",%d,%u", i, cur[i]);
+        } else {
+            w = fprintf(fdump.fp, ",\"%s\":[%d,%u", key, i, cur[i]);
+            open = true;
+        }
+        if (w < 0) {
+            return false;
+        }
+        fdump.bytes_written += w;
+        shadow[i] = cur[i];
+    }
+    if (open) {
+        w = fprintf(fdump.fp, "]");
+        if (w < 0) {
+            return false;
+        }
+        fdump.bytes_written += w;
+    }
+    return true;
+}
+
+/* Schema 9's "gd"; see FDUMP_SCHEMA. */
+static bool fdump_log_draw_gd(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    ShaderBinding *sb = r->shader_binding;
+    PipelineBinding *pb = r->pipeline_binding;
+    uint64_t vu = 0, pu = 0;
+    uint8_t path = 0, cp = 0;
+    int n;
+
+    if (sb && sb->vsh.upload_info) {
+        const ShaderUniformLayout *l = &sb->vsh.upload_info->uniforms;
+        vu = fast_hash(l->allocation, l->total_size);
+    }
+    if (sb && sb->psh.module_info) {
+        const ShaderUniformLayout *l = &sb->psh.module_info->uniforms;
+        pu = fast_hash(l->allocation, l->total_size);
+    }
+    pgraph_vk_draw_path(&path, &cp);
+
+    n = fprintf(fdump.fp,
+                ",\"gd\":{\"path\":%u,\"cp\":%u,\"ready\":%d,\"uv\":%d,"
+                "\"up\":%d,\"vkp\":\"0x%" PRIx64 "\",\"gu\":%d,\"lto\":%d,"
+                "\"vu\":\"%016" PRIx64 "\",\"pu\":\"%016" PRIx64 "\","
+                "\"ubo\":[%zu,%zu]",
+                path, cp, sb ? (int)qatomic_read(&sb->ready) : -1,
+                sb ? (int)(sb->vsh.uber_loc != -1) : -1,
+                sb ? (int)(sb->psh.uber_comb_loc != -1) : -1,
+                pb ? (uint64_t)(uintptr_t)pb->pipeline : 0,
+                pb ? (int)pb->gpl_uber : -1,
+                pb ? (int)pb->gpl_lto_pending : -1, vu, pu,
+                r->uniform_buffer_offsets[0], r->uniform_buffer_offsets[1]);
+    if (n < 0) {
+        goto fail;
+    }
+    fdump.bytes_written += n;
+
+    uint32_t ff[FDUMP_GD_FF_WORDS];
+    uint32_t va[NV2A_VERTEXSHADER_ATTRIBUTES * 4];
+    fdump_gd_ff(pg, ff);
+    for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+        memcpy(&va[i * 4], pg->vertex_attributes[i].inline_value, 16);
+    }
+    if (!fdump_put_delta("r", fdump.gd_regs, pg->regs_, 0x2000, 4) ||
+        !fdump_put_delta("c", fdump.gd_vshc, &pg->vsh_constants[0][0],
+                         NV2A_VERTEXSHADER_CONSTANTS * 4, 1) ||
+        !fdump_put_delta("la", fdump.gd_lta, &pg->ltctxa[0][0],
+                         NV2A_LTCTXA_COUNT * 4, 1) ||
+        !fdump_put_delta("lb", fdump.gd_ltb, &pg->ltctxb[0][0],
+                         NV2A_LTCTXB_COUNT * 4, 1) ||
+        !fdump_put_delta("l1", fdump.gd_lt1, &pg->ltc1[0][0],
+                         NV2A_LTC1_COUNT * 4, 1) ||
+        !fdump_put_delta("p", fdump.gd_prog, &pg->program_data[0][0],
+                         NV2A_MAX_TRANSFORM_PROGRAM_LENGTH * VSH_TOKEN_SIZE,
+                         1) ||
+        !fdump_put_delta("ff", fdump.gd_ff, ff, FDUMP_GD_FF_WORDS, 1) ||
+        !fdump_put_delta("va", fdump.gd_va, va,
+                         NV2A_VERTEXSHADER_ATTRIBUTES * 4, 1)) {
+        goto fail;
+    }
+
+    n = fprintf(fdump.fp, "}");
+    if (n < 0) {
+        goto fail;
+    }
+    fdump.bytes_written += n;
+    return true;
+
+fail:
+    fdump_close("write error");
+    return false;
+}
+
+/* Schema 9's per-stage "gh"/"th"/"key"; see FDUMP_SCHEMA. */
+static int fdump_put_tex_gd(NV2AState *d, const TextureBinding *tb)
+{
+    const TextureKey *k = &tb->key;
+    hwaddr vram_size = memory_region_size(d->vram);
+    uint64_t gh = 0;
+
+    if (k->texture_vram_offset < vram_size) {
+        gh = fast_hash(d->vram_ptr + k->texture_vram_offset,
+                       MIN(k->texture_length,
+                           vram_size - k->texture_vram_offset));
+    }
+    return fprintf(fdump.fp,
+                   ",\"gh\":\"%016" PRIx64 "\",\"th\":\"%016" PRIx64 "\","
+                   "\"key\":[%u,%u,%u,%u,%" PRIu64 "]",
+                   gh, tb->hash, k->state.width, k->state.height,
+                   k->state.levels, k->state.color_format,
+                   (uint64_t)k->texture_length);
+}
+
+/* Schema 9: a draw the host skipped. vk/draw.c calls it only with a dump
+ * armed. */
+void pgraph_vk_fdump_log_skip(NV2AState *d, const char *why)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (!fdump.fp || !fdump.gd || fdump.watch_max) {
+        return;
+    }
+    uint64_t shader_hash = 0;
+    if (r->shader_binding) {
+        shader_hash = fast_hash((const uint8_t *)&r->shader_binding->state,
+                                sizeof(ShaderState));
+    }
+    int n = fprintf(fdump.fp,
+                    "{\"t\":\"skip\",\"f\":%d,\"n\":%d,\"why\":\"%s\","
+                    "\"shader\":\"%016" PRIx64 "\",\"pipeline\":\"%p\"}\n",
+                    fdump.frame_index, fdump.draw_index, why, shader_hash,
+                    (void *)r->pipeline_binding);
+    if (n < 0) {
+        fdump_close("write error");
+        return;
+    }
+    fdump.bytes_written += n;
+}
+
 /* Per draw. One buffered fprintf and, without `rtt`, no Vulkan call and no
  * allocation. */
 static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
@@ -3369,6 +3609,15 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
         }
         fdump.bytes_written += n;
 
+        if (fdump.gd && tb && pgraph_is_texture_enabled(pg, i)) {
+            n = fdump_put_tex_gd(d, tb);
+            if (n < 0) {
+                fdump_close("write error");
+                return;
+            }
+            fdump.bytes_written += n;
+        }
+
         /* Schema 4: the surface at this stage's address, if any, and whether
          * the stage sampled that surface's own image (s2t). A render-to-
          * texture whose texture shows nothing is told apart here: no surface
@@ -3411,6 +3660,10 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
     fdump.bytes_written += n;
 
     if (!fdump_log_draw_vertices(d, pg, type)) {
+        return;
+    }
+
+    if (fdump.gd && !fdump_log_draw_gd(pg)) {
         return;
     }
 
