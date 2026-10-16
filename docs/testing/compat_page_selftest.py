@@ -176,13 +176,13 @@ class CheckFailsOnStalePage(unittest.TestCase):
 
             with open(ledger, "w") as f:
                 f.write("date_pdt\ttitle\ttitle_id\tresult\taccepted_by\tevidence\n")
-                f.write("2026-10-01\tSample Game\t-\tsome-run\towner\tNova run\n")
+                f.write("2026-10-01\tSample Game\tAAAA0099\tsome-run\towner\tNova run\n")
             with open(registry, "w") as f:
                 f.write("# comment\n# comment\n")
                 f.write("\t".join(REGISTRY_HEADER) + "\n")
             with open(notes, "w") as f:
                 f.write("\t".join(cp.NOTES_COLS) + "\n")
-                f.write("playable\t\tSample Game\tUSA\tfilename\tNova\t60\t1.0\t600\t2026-10-01\t\n")
+                f.write("playable\tAAAA0099\tSample Game\tUSA\tfilename\tNova\t60\t1.0\t600\t2026-10-01\t\n")
 
             script = os.path.join(ROOT, "docs", "testing", "compat_page.py")
             common = ["python3", script, "--ledger", ledger, "--registry", registry,
