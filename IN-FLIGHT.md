@@ -116,6 +116,7 @@ No branch is being worked right now.
 
 ## Recently landed on master
 
+- 2026-10-16 selftestclean1011: selftest.sh removes its fake host when it passes (#433)
 - 2026-10-16 icon1016: hakuX CE app icon (#433)
 - 2026-10-16 x1port1012-halo: #939 (b) root-caused and fixed behind HAKUX_FIST_ROUND=1 (verified on the Nova, run 13)
 - 2026-10-16 logo1016-banner: the new hakuX CE banner at the top of the README
@@ -127,6 +128,5 @@ No branch is being worked right now.
 - 2026-10-16 sign1016: rotate release key (lineage), minSdk 33 (#433)
 - 2026-10-16 GitHub Sponsors on the landing page and the Sponsor button (#433)
 - 2026-10-16 Wire hakuX into four launchers (ES-DE, Daijisho, Pegasus, stock), tested on the Thor
-- 2026-10-16 fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2)
 
-_Updated 2026-10-16 16:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 16:15 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
