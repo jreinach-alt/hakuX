@@ -6,10 +6,10 @@ lane.local's overnight chain until ~06:00 PDT 10-16.
 
 ## Status
 
-[lane.fps1015] waiting: the #986 confirming soak pair on the Nova, 1792168743-fps1015-1960988 (on2,
-`HAKUX_S2T_CVT=1`) and 1792168748-fps1015-1962522 (off2). Judge on1 off1 on2 off2 together with `s2tread.py`. The
-pilot pair passed every leg, and the frame-locked cutscene read is 29.0 to 54.4 fps. See "The A/B, results" at
-the end.
+[lane.fps1015] waiting: the #992 Top Spin pilot pair on the Nova, 1792170178-fps1015-2310292 (on1,
+`HAKUX_S2T_CVT=1`) and 1792170186-fps1015-2314810 (off1), 450 s each. Judge with
+`python3 docs/lanes/fps1015/tsread.py <on1> <off1>`; if both pass V, write `pilots/fps1015.ok` and queue on2 then
+off2 the same way. #986's A/B is done: PASS over on1, off1 and off2 (see "Soak, all four: PASS").
 
 WAITING: the owner of vk/draw.c (withheld from this lane), for a regression on master in
 `Texture_shadow_comparator`. All 288 captures differ from every saved run between 09-12 and 10-10 (e654516849),
@@ -35,7 +35,9 @@ with the tests checkout no older than the committed index's `provenance.tests_co
   frame's GPU work against the PFIFO thread. Fill against draw count needs a perflog + `vtx256` run.
 - #993 Prince of Persia: reduced to a bound. The fog room's PFIFO-thread frame is 33-36 ms against the 33.4 ms
   two-vblank budget of a 30-fps title, so every frame takes three vblanks (19 fps). Nine shadow-map `cvt` downloads
-  a frame are in that time; the same lever applies.
+  a frame are in that time; the same lever applies. Its A/B is not queued: no golden, route or save reaches the fog
+  room, about 17 minutes into a new game. Next step: a save at the room as PoP's first golden (see "#993 Prince of
+  Persia's A/B").
 - #994 Halo 2: explained. Every fps-to-0 (5.2, 3.9 and 2.1 s frames) is first-time pipeline compilation on the
   draw thread: cold monolithic creates while a 3.4-4.6 s ubershader library builds, plus inline fragment libraries.
   The lever is #569's (vk/compile_worker.c), not this lane's.
@@ -839,6 +841,25 @@ switch alone, as MKSM's does, which is also the setting that would ship.
   GPU time outside render passes went from 0.3 to 4.2 ms.
 - Risk to V: the route's menu presses were recorded on a disk with no Top Spin save. The golden carries
   GlobalOptions only, so the menus should not change; shots s10-s19 of the pilot pair show it if they do.
+
+### #993 Prince of Persia's A/B: not queued, nothing reaches the fog room
+
+The owner's session started a new game: its frame at 20:59:39 is the opening film, and the fog room (21:16:09, the
+column-jump prompt, FPS 19) comes about 17 minutes of play later. Nothing a request can run gets there:
+
+- PoP has no golden, no route and no known path. `titlestate.py admit --title-id 5553001D --device nova` refuses
+  ("no profile (no golden) and no route-finding"). The store's one PoP save, ed22d69a4f4e (slot `PRINCE_01`, a
+  held Nova session's 10-13 harvest), is not a golden, and where in the game it stands is not recorded.
+- The owner's own progress is on the debug package's disk, which the store does not hold.
+- A save state in the room would not help yet: a request has no step that loads one (`request.sh`'s route state
+  is the profile state, savestate433's, not a save state).
+
+What unblocks it: a game save at or just before the fog room, imported into the store
+(`titlestate.py import-save`), made PoP's first golden, and a short route from it into the room headed `any`. The
+A/B is then one pair sized to the room: about 60 s of fog-room windows past the route, judged on the PFIFO
+thread's busy time a frame (33-36 ms now) against the 32 ms that every 29-fps window of the owner's session stays
+under. A scene nearer the start with shadow casters would carry the same downloads, one a caster, and give their
+cost on PoP as a value. It needs a route into PoP's gameplay too, which pathfind did not find on 10-13.
 
 ## The A/B, queued
 

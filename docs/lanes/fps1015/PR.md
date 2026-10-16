@@ -20,7 +20,7 @@ default-off lever for the cause four of the five titles share. Details and every
 | #992 | Top Spin | match play 26-31 ms frames | the same downloads, 24-32 a frame (59 in the arena intro); bound 11-15 ms of the frame | cause found; A/B queued |
 | #992 | Brian Lara Cricket 2005 | ball in play | a different shape | unexplained; needs one perflog run |
 | #995 | Batman Begins | fire/explosion cutscenes 14-23 fps | GPU work outgrows the 30-fps cap; one download a frame stops it overlapping the PFIFO thread | partly explained |
-| #993 | Prince of Persia | fog room 19 fps | PFIFO-thread frame 33-36 ms against the 33.4 ms two-vblank budget; nine shadow-map downloads a frame inside it | reduced to a bound |
+| #993 | Prince of Persia | fog room 19 fps | PFIFO-thread frame 33-36 ms against the 33.4 ms two-vblank budget; nine shadow-map downloads a frame inside it | reduced to a bound; the A/B needs a save at the fog room, 17 minutes into a new game |
 | #994 | Halo 2 | fps to 0, 2.1-5.2 s frames | first-time pipeline compiles on the draw thread | explained; the lever is #569's |
 
 ## HAKUX_S2T_CVT
