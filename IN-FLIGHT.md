@@ -8,13 +8,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `audio1016` | claude-opus-5-5 | 12 min | audio1016: quiet speech and movie audio on the Nova (#984, #938) |
-| `frontends1016` | claude-sonnet-5 | 18 min | Wire hakuX into four launchers (ES-DE, Daijisho, Pegasus, stock), tested on the Thor |
+| `audio1016` | claude-opus-5-5 | 27 min | audio1016: quiet speech and movie audio on the Nova (#984, #938) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 7 waiting, 1 running.
+- **Device queue:** 6 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -117,8 +116,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Branch | Topic | Tip | Last change |
 |---|---|---|---|
-| `lane/audio1016` | audio1016: quiet speech and movie audio on the Nova (#984, #938) | `27a6b31201` | 2026-10-16 10:18 |
-| `lane/frontends1016` | Wire hakuX into four launchers (ES-DE, Daijisho, Pegasus, stock), tested on the Thor | `9681af2dbe` | 2026-10-16 08:22 |
+| `lane/audio1016` | audio1016: quiet speech and movie audio on the Nova (#984, #938) | `78178ecdd1` | 2026-10-16 10:35 |
 
 ## Recently landed on master
 
@@ -135,4 +133,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-13 statusalloc1013: status.sh no longer opens a status issue the gh shim would refuse (#433, 0.5)
 - 2026-10-13 pathrules1013: pathfind no-answer steps never become a path, a hold that can't pass ends early, a perflog run never banks (#433, 0.5)
 
-_Updated 2026-10-16 10:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 10:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
