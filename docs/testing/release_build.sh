@@ -98,6 +98,25 @@ fi
     exit 5
 }
 
+# #433: re-sign with the rotated key, v3-only + lineage, but ONLY once
+# ~/keystores/hakux-rotation.lineage exists and key.properties names that
+# keystore -- otherwise this is a no-op and $APK is exactly what Gradle
+# produced, same as before the rotation.
+APKSIGNER="$SDK_ROOT/build-tools/36.1.0/apksigner"
+[ -x "$APKSIGNER" ] || APKSIGNER=$(find "$SDK_ROOT/build-tools" -maxdepth 2 -name apksigner -type f 2>/dev/null | sort -V | tail -1)
+if [ -n "$APKSIGNER" ]; then
+    # shellcheck source=sign_lineage.sh
+    . "$HERE/sign_lineage.sh"
+    resign_with_rotation "$APK" "$REPO/android/key.properties" "$APKSIGNER" || {
+        echo "${0##*/}: refusing -- the rotated re-sign of $APK did not check out; nothing published" >&2
+        exit 9
+    }
+    if [ "$ROTATION_APPLIED" = 1 ] && ! lineage_lists_both_certs "$APK" "$APKSIGNER"; then
+        echo "${0##*/}: refusing -- $APK was re-signed but its lineage does not list both certs" >&2
+        exit 9
+    fi
+fi
+
 # `aapt2 dump badging` prints versionName='...' on its "package:" line.
 GOT_VERSION=$("$AAPT2" dump badging "$APK" 2>/dev/null | sed -nE "s/.*versionName='([^']*)'.*/\1/p" | head -1)
 if [ "$GOT_VERSION" != "$VERSION" ]; then
