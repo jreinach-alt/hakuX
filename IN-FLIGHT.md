@@ -8,12 +8,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `x1port1012` | claude-opus-5-5 | 50 min | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
+| `x1port1012` | claude-opus-5-5 | 1h 1m | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 0 waiting, 1 running.
+- **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -129,4 +129,4 @@ The harness dashboard, with each release's targets and the progress charts, is [
 - 2026-10-14 A tracked listing of which title is where, keyed by title_id
 - 2026-10-14 savestateconv1014: R3 admits --from-state
 
-_Updated 2026-10-16 11:49 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 12:00 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
