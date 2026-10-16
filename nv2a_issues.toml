@@ -6305,3 +6305,13 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "Analysis starts after the Thu 10-15 21:00 PDT usage reset (owner-directed Low mode); the telemetry is saved, so nothing waits on the owner. A dump taken during a fire or explosion cutscene would settle the cost model, but those start without a button prompt and are hard to trigger on demand."
 status_note = "Filed by lane.local 2026-10-14 from the owner's hand-played sessions ownerplay/runs/45410389-1014-2139-27899 (21:39-21:51; 372 gfps windows, 30 below 24 fps, lowest 14-15) and 45410389-1014-2152-3129 (21:52-21:54, after a save-state reload: 29 fps, no window below 24), Nova, debug 0.5.0-1014-76bef8b162. Owner: the dips are in the in-engine fire and explosion cutscenes. 24 of the 30 low windows have no shader or pipeline compile; GPU time is high on every frame there, not spiky. Three live dumps (frame_dump.on, 30 frames each): draws per frame 687 (29 fps baseline), 846, 1,003; blended inline_array draws 155, 219, 311 and blend 0x54a draws 158, 218, 415, while vertices per frame rise only 132k to 158k; all draws use the vertex ubershader in all three, baseline included. Reads as fill and overdraw from particle quads on the Adreno 740; not proven, no per-draw GPU time. Durable copies under /mnt/d/hakux-staging/ownerplay-1014/: batman-room/, batman-room2/, batman-baseline/ and the two run tarballs with sha256 values in the issue body."
+
+[issue.998]
+title = "ESPN Major League Baseball (53450028): slight flicker on the Nova while the ball is in play; stays Playable"
+suites = []
+no_suites = "A per-title rendering defect in a commercial title, cause not yet known, so no pgraph suite is known to cover it."
+disposition = "defect"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Filed by lane.local 2026-10-16 from the owner's hand-played session on the Nova. Owner: slight flicker when the ball is in play; worth logging, but it should not take the title off the board. The title stays Playable (banked 2026-10-16 05:40 PDT, pm/playable-accepted.tsv); this issue does not affect that acceptance. Evidence on file is the pathfind held run n-53450028-1015n (630 s hold, 643.3 s play, fps_ok 1.0 over 492 windows, median 43.2 fps, minimum 37.81), whose frames are under wt/pathfind/docs/lanes/pathfind/runs/n-53450028-1015n/. The flicker is not in the fps numbers and the owner's session was not recorded with telemetry, so there is no capture of it yet; which draws or surfaces flicker is not known and no cause is claimed. A hand-played session with frame capture around a ball in play is the next step."
