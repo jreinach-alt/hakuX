@@ -1,5 +1,29 @@
 # frontends1016 -- wiring hakuX into four launchers, tested on the Thor
 
+## Why attempt 2 (and this session's slow restart) did not finish
+
+Attempt 2 ended because a turn sent a backspace-loop keystroke sequence to
+Daijisho's "Default player" field as a backgrounded job, and the session
+ended (headless -- nothing backgrounded survives a turn ending) while that
+job was still in flight. hostops checked the device afterward: no stray adb
+process, no stuck dialog, battery 30.0 C (safe); the screen was just asleep,
+which is normal and not evidence of a stuck dialog. Work up to that point
+was safely committed at `9681af2dbe`. The fix carried into this attempt: run
+everything in the foreground, inside one turn, in chunks that fit -- never
+background a device-input sequence and end the turn.
+
+This attempt (3) then spent a large share of its turn budget re-confirming
+Daijisho's UI (the dual-display `-d 4` input flag was briefly dropped again
+at the very start, producing three byte-identical screenshots before the
+mistake was caught) and searching for a platform-creation entry point other
+than the one already blocked by the "Please select from the list" error --
+see the Daijisho section below for what that search found and why it was
+cut off here rather than continued further.
+
+Also merged `origin/master` in this session (branch was 8 commits behind,
+2 ahead; fast-forward wasn't possible, ordinary merge, no conflicts with any
+file this lane touches).
+
 Device: Thor, serial `bdc158a5`, Android 13 (SDK 33). All work done by hand with
 adb per the hold amendment in `dispatch/hold/thor.why` (2026-10-16T15:02Z);
 never used `request.sh`, never uninstalled anything, never cleared app data.
@@ -181,7 +205,64 @@ later:
   `com.rfandango.haku_x.LauncherActivity` are NOT display names and do not
   change on a rename; left alone everywhere per the brief.
 
+## Daijisho: blocked -- cannot complete custom-platform creation on this build
+
+App: Daijisho (Flutter-based), already installed on the Thor per the owner's
+note. Goal was a custom "Platform" entry pointing its `launch` command at
+`com.jreinach.hakux/com.rfandango.haku_x.LauncherActivity`, same as ES-DE's
+find-rule.
+
+**Automation note**: `uiautomator dump` returns "ERROR: null root node
+returned by UiTestAutomationBridge." against Daijisho every time -- it does
+not expose a standard Android accessibility tree (consistent with it being
+Flutter-rendered, not native views). Screenshot + coordinate tap is the only
+automation method that works here; this is a real exception to the general
+uiautomator-first guidance, not a shortcut taken for convenience.
+
+**Blocker**: Settings > Library > "New platform" opens a dialog with a
+"Default player" autocomplete field (plus "Search additional player to be
+added", CANCEL/SAVE). Typing a value that matches a real option and pressing
+SAVE is rejected: **"Please select from the list."** -- the field requires
+an actual tap-selection from Daijisho's own in-app suggestion dropdown, not
+typed text, however exact. That dropdown is believed to render underneath
+the fullscreen/extracted IME overlay this device uses for text entry on a
+small landscape screen (the field's own anchored suggestion list would
+normally appear right below it, but the whole screen goes black-keyboard
+while typing, and no suggestion list has ever been visible in any
+screenshot taken mid-type). A DPAD/Tab-navigation-into-the-hidden-overlay
+approach was planned (type, then DPAD_DOWN or TAB while still focused, then
+keyevent-select) but not executed before the turn budget ran out.
+
+Spent the rest of this launcher's turn budget looking for a second route to
+platform creation that might avoid the free-text field, with no success:
+- Settings > Library > "Download platforms" opens a 122-item checkbox list
+  of predefined platforms with an IMPORT button -- this is a different flow
+  (bulk-import known platforms, not add-one-custom), and scrolling the list
+  to find an Xbox-like entry was itself slow (short swipes barely moved it;
+  one long 2000 ms swipe didn't move it further and also triggered the
+  screen-sleep bug, requiring a re-wake). Cancelled out of it rather than
+  keep fighting the scroll.
+- Settings > Library > "Inspect platforms" is read-only (lists the 27
+  already-configured platforms, ends at TurboGrafx-CD, no add control).
+- The Library tab's own platform-card carousel (top of the Library screen,
+  showing "platform N of 27") was swiped all the way through on the
+  hypothesis that a trailing "+ Add platform" card might exist past the
+  last real one. It does not: swiping past "TurboGrafx-CD, 27 of 27" wraps
+  back around to "Nintendo 3DS, 1 of 27" with no special card in between.
+
+**NEED:** either a confirmed way to select (not type) a value into
+Daijisho's "Default player" autocomplete field with the suggestion overlay
+hidden behind fullscreen IME on a small landscape screen, or a Daijisho
+config/import file this lane could push directly (bypassing the UI
+autocomplete entirely) to define a custom platform's launch command. Without
+one of those, Daijisho cannot be wired to hakuX by hand in the UI on this
+device. Left Daijisho on its Settings screen, no app data touched, nothing
+stuck mid-dialog.
+
+`docs/frontends/daijisho.md` documents this as "not yet wired -- blocked",
+not "tested".
+
 ## Still in progress / pending
 
-Daijisho, Pegasus, and the stock launcher (AYN odinlauncher) wiring and
-testing are next. This file will be updated as each is done.
+Pegasus and the stock launcher (AYN odinlauncher) wiring and testing are
+next. This file will be updated as each is done.
