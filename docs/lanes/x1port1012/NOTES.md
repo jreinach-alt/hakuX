@@ -3,6 +3,17 @@
 Brief: `/home/justin/hakux-work/briefs/x1port1012.md`. Base `dd5e3cb3c6`. X1 BOX tip `dadced00ce`
 (`refs/remotes/x1box/master`), common base `fce5a8d19f`.
 
+## Final resume (10-16 ~13:00 PDT): why attempt 4 did not finish
+
+Attempt 4 hit the turn cap (301 turns, four compactions) at 12:25 PDT, mid-tool-call. It had committed
+and pushed the `gd` instrument (7a1889054a) but wrote none of its findings here: the hull draw
+description, the desktop term isolation, device rows 7-12, the hypothesis table. lane.xbox saved its
+last compaction summary at `/home/justin/hakux-work/briefs/x1port1012-tools/attempt4-state.md`. This
+session copied those findings into "Per-draw investigation" below first, committing before any new
+work, and corrected two of them against the shader source (the lights are `c23`/`c25`, not fixed
++-z; stage 5 writes `r1.rgb = c1_5 - v0.a*c0_5`). The cause: one session tried to describe the
+draw, isolate the terms on the desktop, and plan runs 11 and 12, all without a commit.
+
 ## Attempt 4 resume: why attempt 3 did not finish
 
 Attempt 3 stopped where the brief reserved the next step for an Opus resume: three triage clips waiting
@@ -61,7 +72,14 @@ is queued next, now that the three leads from step 2 exist as switches to test a
 | 5 | 1791900988-x1port1012-549369 | c838d62772 | #939 triage video 2/3: 8s @ +20s, fastpaths off | landed clean. **VOID for #939: MGS intro movie and Bungie logo, not the ring menu** |
 | 6 | 1791900994-x1port1012-549623 | c838d62772 | #939 triage video 3/3: 8s @ +20s, shipped defaults | landed clean. **VOID for #939: MGS intro movie and Bungie logo, not the ring menu** |
 
-6 device runs used of the 24 cap. Phase A smoke batch complete (all three PASS). All three #939 triage
+| 7 | 0-1792165273-x1port1012-921745 | 223f216d7c | #939 audit (lane.xbox): `HAKUX_XVSS=audit HAKUX_S2TSHELF=audit`, 150 s, video +40..+90 s | XVSS never reached, S2TSHELF 0 hits; video shows the bursts ("Audit run result") |
+| 8 | 1792166308-x1port1012-1386872 | 223f216d7c | #939 all eight fast paths off (lane.xbox), 200 s, video +37..+198 s | bursts recur at the same soak times, same image counts ("Fast-paths-off run result") |
+| 9 | 1792175207-x1port1012-3772591 | 7a1889054a | #939 `XEMU_FRAME_DUMP=420,gd,after66,cap2600`, 140 s, no video | 420 frames + PPMs; no X/Y alternation in the PPMs (`ppmalt.py`), so no burst caught |
+| 10 | 1792175214-x1port1012-3773341 | 7a1889054a | #939 `XEMU_FRAME_DUMP=360,gd,after44,cap2400`, 120 s, no video | 360 frames + PPMs; no alternation in the PPMs either |
+| 11 | 1792177407-x1port1012-231253 | 7a1889054a | #939 `XEMU_FRAME_DUMP=660,gd,noimages,after36,cap2400`, 100 s, video +35..+65 s | read in "Runs 11 and 12" below |
+| 12 | 1792177414-x1port1012-233441 | 7a1889054a | #939 `XEMU_FRAME_DUMP=420,gd,after36,cap2400`, 100 s, video +35..+65 s | read in "Runs 11 and 12" below |
+
+12 device runs used of the 24 cap. Phase A smoke batch complete (all three PASS). All three #939 triage
 video arms landed, and all three missed the ring scene (void; re-record plan under "Triage video void").
 
 ## Phase A -- ports (branch `lane/x1port1012`)
@@ -585,8 +603,132 @@ sits (lit vs dark pixels, quarter columns), not for counts.
 
 Device runs: 8 used of 24 (no new run).
 
-**WAITING**: nothing external. Resume on Opus for the per-draw investigation above. The console
-reference is requested from the owner, but the work does not wait on it.
+~~**WAITING**: nothing external. Resume on Opus for the per-draw investigation above.~~ Done, see the
+next section.
+
+## Per-draw investigation (attempt 4, recovered; and the final session)
+
+### The instrument: `gd` (7a1889054a)
+
+`XEMU_FRAME_DUMP=<N>,gd[,noimages],after<s>,cap<s>` adds frame-dump schema 9. Each draw record carries
+its guest state as deltas against the previous draw (registers, vertex constants, lighting, the vertex
+program, inline attributes), its host identity (pre-draw path, pipeline handle, uber stages, uniform-block
+hashes) and a per-stage hash of the guest texture bytes. A skipped draw writes a `skip` record. Reader:
+`docs/lanes/x1port1012/tools/gdread.py` (`frames`, `draws F`, `draw F N`, `odd F`, `diff F G`; groups
+r c la lb l1 p ff va). `noimages` drops the per-flip display PPM, and with it the forced
+`download_surface_complete_deferred` at each flip that the PPM needs.
+
+### The hull draw (step 1)
+
+In a menu frame the outer hull is one draw, `n5`: `inline_elements`, primitive 6
+(`NV097_SET_BEGIN_END` 6, a triangle strip), 4362 indices, colour target `0x023f0000` (the back buffer of the pair
+`0x022c4000`/`0x023f0000`). Shader hash `ac5a40cb` on the Nova, `48c74844` on the desktop build. It runs a
+vertex program (CSV0_D `0x80040000`), not fixed function. Draws `n4`, `n6` and `n0` are the terrain strip,
+the inner rim and the planet; they are not described here.
+
+Vertex attributes, stride 32, base `0x3cfb80` (Halo CE's compressed model vertex):
+
+| attr | content | format |
+|---|---|---|
+| v0 | position | float x3 |
+| v1 | normal | CMP 11_11_10 |
+| v2 | binormal | CMP 11_11_10 |
+| v3 | tangent | CMP 11_11_10 |
+| v4 | uv | S1 (normalised short) x2, so v4.z = 0 and v4.w = 1 by default |
+| v5 | bone indices | UB_OGL x2 |
+| v6 | bone weight | S1 x1 |
+
+Vertex program (read from the generated GLSL, `build-linux/run/hull_vsh.glsl`, scratch):
+
+- Two-bone skinning: rows `c[A0+60..62]` with A0 = v5.x*c7.w and v5.y*c7.w, weights v6.x and 1-v6.x.
+  R10 = world position, R11 = world normal.
+- E = c4 - R10 (eye vector, not normalised). N' = R11*c12.w.
+- **oT3.xyz = c4.w*(E.N')N' - E**, the reflection vector for the cube map (c4.w = 2). oT3.w stays 1.
+- oD0.xyz = max(N'.-c23, 0)*c24 + max(N'.-c25, 0)*c26 + c27: two directional lights (c23, c25; the
+  `max(..., v4.z)` uses v4.z as a free zero) plus ambient c27. **oD0.w = v4.z = 0.**
+- oD1 = (E^.N')*c15 + c16, all four components: the reflection's fresnel tint (rgb) and brightness (a).
+  c15 = (0.62,0.64,0.38,0.8), c16 = (0.38,0.36,0.62,0.2): white at full brightness facing the eye, a
+  blue tint at 0.2 at grazing angles, **0 where E^.N' <= -0.25** (the varying is clamped to [0,1]).
+- oT0 = oT2 = DPH(v4, c13/c14) (base and multipurpose uv), oT1 = that * c12.xy (detail uv).
+- Constants seen: c24 = white, c26 = (0.60,0.57,0.76), c27 = (0.27,0.28,0.39), c14.z = 0, c4.w = 2.
+
+Textures (`SHADERPROG 0x00018421`: stages 2D, 2D, 2D, cube), decoded from desktop guest RAM:
+
+| stage | address | format | content |
+|---|---|---|---|
+| t0 base | `0x02b34000` | 1024x512 DXT1 | dark green panels with a central hatch (mean RGB 48,56,41) |
+| t1 detail | `0x02be4000` | 128x128 DXT1 | grey cratered rock (mean 65, so `2*t0*t1` darkens the base by half on average) |
+| t2 multipurpose | `0x02b8c000` | 1024x512 DXT1 | R = reflection mask: mottled, cloud-like grey with white panel lines and bright panel lights. G = self-illumination dots and cracks. B = 0 |
+| t3 reflection | `0x02b2c000` | 64x64 DXT1 cube, 5 levels | an environment map of the menu scene: face 0 a bright grey-white planet with a blue rim, faces 1-3 dark space with purple nebula, face 4 grey disc, face 5 blue |
+
+The channel order matches Halo CE's shader_model multipurpose map (R reflection mask, G self-illumination,
+B change colour).
+
+Register combiners (`COMBINECTL 0x00011008`: 8 stages, per-stage constants), from the generated GLSL:
+
+- st0: r0.rgb = t2.g, r1.rgb = t2.r, r0.a = t2.b.
+- st1: v0.rgb = v0 + t2.g*c0_1 (self-illumination added to the diffuse light).
+- st2: r0.rgb = mix(1, c0_2, t2.b) = 1; r1.a = t2.r * v1.a.
+- st4: t3.rgb = t3 * v1.rgb; v0.rgb = v0 * r0.
+- st5: r1.rgb = c1_5 - v0.a*c0_5.
+- st6: t0.rgb = 2*t0*t1 (detail, double multiply).
+- st7: r0.rgb = t0*v0 + t3*r1.a, that is **2*t0*t1*(v0 + t2.g) + cube(R)*v1.rgb*t2.r*v1.a**.
+- Final (SPECFOG0 `0x340f010d`, SPECFOG1 `0x0c111800`): rgb = r1 + mix(c0_8, r0*c0_8.a, 1 - v0.a) =
+  r1 + r0 with v0.a = 0; alpha = t0.a.
+
+So the hull is a diffuse term (base x detail x (light + self-illumination)) plus an **additive
+reflection term that no light gates**: the cube map, tinted and scaled by the fresnel varying, masked by
+t2.r.
+
+### Desktop term isolation (attempt 4)
+
+The desktop build (`build-linux/`, this branch, lavapipe under WSLg) was run with a local, never-committed
+`psh.c` override (`HAKUX_PSHDBG=<mode>` replaces the hull's output with one term), dumping frames at
+desktop +128 s. Sheet: `build-linux/run/pshdbg/s1.png` (scratch).
+
+| mode | term | result |
+|---|---|---|
+| 0 | shipped | darker grey-green hull, panel lines, lights |
+| 3 | `2*t0*t1` | green panels with grey detail |
+| 5 | `cube(R)*v1.rgb*t2.r*v1.a` | nearly black: dark blue-purple, the panel lines just visible |
+| 4, 6, 7 | t3 alone, v0, v1 | segfault at 47-54 s (probably an unused sampler or varying dropped from the SPIR-V interface); not run |
+
+The desktop reproduces (a): its hull at that pose has no grey layer either. It was not run long enough
+to see whether it reproduces (b).
+
+### Console photo 5 against the terms (final session, by eye)
+
+`console-ref-1016/hullzoom5-console-vs-hakux-soak68.5.png`: on the console the outer hull is a bright,
+mottled grey with white panel lines and the panel lights showing through. Of the four textures, only
+t2.r has that structure: mottled cloud-like grey, white panel lines, bright lights. The detail map t1
+is rock-like too, but it is dark (mean 65) and enters only multiplied by the dark green base. And
+`burst-X585-Y587-diff.png` (lane.xbox) shows |Y-X| as a blotchy, cloud-like pattern over the lit hull,
+which is t2.r's texture again.
+
+So the console's layer reads as the **reflection term at a bright cube-map face** (the planet: face 0
+or 4), and hakuX's reflection term reads near black (mode 5: the dark faces 1-3, or v1 at 0). That
+term is the only one that no light gates, which fits the layer covering the console's dark side. In
+hakuX's bursts, it would be the term that differs between X and Y. This is a reading of images. The
+measurements that settle it are in the table below.
+
+### Hypotheses, ranked (P = this session's estimate before the measurement)
+
+| # | hypothesis | explains | P | refuting measurement | result |
+|---|---|---|---|---|---|
+| H1 | The reflection term is wrong in hakuX: R points at the dark faces, or v1 clamps it to 0, where the console's R hits the planet | (a); (b) if R or v1 changes between X and Y | 0.6 | desktop: R and v1 visualised over the hull; the term at full strength with a fixed bright face. If the console's look comes back with the cube term forced to the planet face, H1 holds | open |
+| H1a | ...because the cube map's faces are read from the wrong offsets (face stride, mip-chain size or alignment of a 64x64 5-level DXT1 cube) | (a) | 0.25 | decode the cube from guest RAM at the hardware face stride; adjacent faces must be continuous at shared edges | open |
+| H1b | ...because the cube face orientation differs from NV2A (axis sign or face order) | (a) | 0.15 | as H1a: seams; and R visualised against which face the console shows | open |
+| H1c | ...because E or N' is wrong (c4 eye position, c12.w, the CMP normal decode, skinning) | (a), lighting too | 0.15 | the diffuse term would also be wrong; compare the lit/dark boundary with the console photos | open |
+| H2 | (b) is a per-frame difference in the guest's draw (constants, texture address, LOD) | (b) | 0.4 | `gdread diff` of the hull draw between an X and a Y frame in one burst | runs 11/12 |
+| H3 | (b) is the host drawing the same commands two ways | (b) | 0.3 | as H2: identical guest state, different image | runs 11/12 |
+| H4 | the detail map (t1, double multiply) is the console's layer | (a) | 0.1 | t1 is dark (mean 65) and multiplies a dark base; it cannot make a bright grey layer at any scale | weighs against, by the texture means |
+| H5 | v0.a (= v4.z) is non-zero on hardware, mixing the output toward white | (a) | 0.05 | would wash out the panel lines and lights, which the console shows | weighs against, by photo 5 |
+| H6 | the eight fast paths, XVSS, S2TSHELF | (b) | - | - | ruled out (runs 7, 8) |
+
+Runs 9 and 10 (gd with per-flip images) showed no X/Y alternation in their PPMs. Either they did not
+cover a burst (their `after` offsets were aimed by the soak clock, which differs from the dump's
+arm clock), or the per-flip download that images force suppresses (b). Runs 11 (no images) and 12
+(images), both with a video, separate those two.
 
 ## End of this session (attempt 3)
 
