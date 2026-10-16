@@ -78,9 +78,11 @@ is queued next, now that the three leads from step 2 exist as switches to test a
 | 10 | 1792175214-x1port1012-3773341 | 7a1889054a | #939 `XEMU_FRAME_DUMP=360,gd,after44,cap2400`, 120 s, no video | 360 frames + PPMs; no alternation in the PPMs either |
 | 11 | 1792177407-x1port1012-231253 | 7a1889054a | #939 `XEMU_FRAME_DUMP=660,gd,noimages,after36,cap2400`, 100 s, video +35..+65 s | read in "Runs 11 and 12" below |
 | 12 | 1792177414-x1port1012-233441 | 7a1889054a | #939 `XEMU_FRAME_DUMP=420,gd,after36,cap2400`, 100 s, video +35..+65 s | read in "Runs 11 and 12" below |
+| 13 | 1-1792184446-x1port1012-1339105 | 5d4b689ed9 | #939 (b) remedy: `HAKUX_FIST_ROUND=1` + run 11's dump spec, 110 s, video +37..+97 s | ran 10-16 14:01-14:03 PDT (device clock); prediction `x1port1012-fistround.json` (3710b8bb24). **(b) gone: 0 glitch frames (run 11: 9 hull, 76 terrain), 0 bursts on both crops; (a) unchanged.** Read in "Run 13: the (b) remedy, judged" |
 
-12 device runs used of the 24 cap. Phase A smoke batch complete (all three PASS). All three #939 triage
-video arms landed, and all three missed the ring scene (void; re-record plan under "Triage video void").
+13 device runs used of the 24 cap; none queued or running. Phase A smoke batch complete (all three PASS).
+All three #939 triage video arms landed, and all three missed the ring scene (void; re-record plan under
+"Triage video void").
 
 ## Phase A -- ports (branch `lane/x1port1012`)
 
@@ -716,14 +718,14 @@ measurements that settle it are in the table below.
 | # | hypothesis | explains | P | refuting measurement | result |
 |---|---|---|---|---|---|
 | H1 | The reflection term is wrong in hakuX: R points at the dark faces, or v1 clamps it to 0, where the console's R hits the planet | (a); (b) if R or v1 changes between X and Y | 0.6 | desktop: R and v1 visualised over the hull; the term at full strength with a fixed bright face. If the console's look comes back with the cube term forced to the planet face, H1 holds | open |
-| H1a | ...because the cube map's faces are read from the wrong offsets (face stride, mip-chain size or alignment of a 64x64 5-level DXT1 cube) | (a) | 0.25 | decode the cube from guest RAM at the hardware face stride; adjacent faces must be continuous at shared edges | open |
-| H1b | ...because the cube face orientation differs from NV2A (axis sign or face order) | (a) | 0.15 | as H1a: seams; and R visualised against which face the console shows | open |
-| H1c | ...because E or N' is wrong (c4 eye position, c12.w, the CMP normal decode, skinning) | (a), lighting too | 0.15 | the diffuse term would also be wrong; compare the lit/dark boundary with the console photos | open |
+| H1a | ...because the cube map's faces are read from the wrong offsets (face stride, mip-chain size or alignment of a 64x64 5-level DXT1 cube) | (a) | 0.25 | decode the cube from guest RAM at the hardware face stride; adjacent faces must be continuous at shared edges | **refuted**: continuous only at stride 2816, hakuX's |
+| H1b | ...because the cube face orientation differs from NV2A (axis sign or face order) | (a) | 0.15 | as H1a: seams; and R visualised against which face the console shows | weighs against (seams fit GL orientation); a global mirror is not excluded |
+| H1c | ...because E or N' is wrong (c4 eye position, c12.w, the CMP normal decode, skinning) | (a), lighting too | 0.15 | the diffuse term would also be wrong; compare the lit/dark boundary with the console photos | weighs against: c4 is the projection's eye; normals unit, outward |
 | H2 | (b) is a per-frame difference in the guest's draw (constants, texture address, LOD) | (b) | 0.4 | `gdread diff` of the hull draw between an X and a Y frame in one burst | **holds** (runs 11/12): only c13.w toggles, 7/255 low |
 | H3 | (b) is the host drawing the same commands two ways | (b) | 0.3 | as H2: identical guest state, different image | **refuted** (runs 11/12) |
-| H7 | (b): the guest computes c13.w wrong on the Nova because the aarch64 JIT's inline FIST truncates instead of rounding per RC | (b) | - | desktop with truncating FIST must write the same 7/255 glitch; with correct rounding it must not | **holds** (dg2 clean, dg3 glitches, see "(b) root cause") |
+| H7 | (b): the guest computes c13.w wrong on the Nova because the aarch64 JIT's inline FIST truncates instead of rounding per RC | (b) | - | desktop with truncating FIST must write the same 7/255 glitch; with correct rounding it must not | **holds** (dg2 clean, dg3 glitches, see "(b) root cause"); the Nova with `HAKUX_FIST_ROUND=1` (run 13): 0 glitch frames, 0 bursts |
 | H4 | the detail map (t1, double multiply) is the console's layer | (a) | 0.1 | t1 is dark (mean 65) and multiplies a dark base; it cannot make a bright grey layer at any scale | weighs against, by the texture means |
-| H5 | v0.a (= v4.z) is non-zero on hardware, mixing the output toward white | (a) | 0.05 | would wash out the panel lines and lights, which the console shows | weighs against, by photo 5 |
+| H5 | v0.a (= v4.z) is non-zero on hardware, mixing the output toward white | (a) | 0.05, raised to 0.2 by the final-combiner reading (it also floors both lights) | would wash out the panel lines and lights, which the console shows; a software render with v4.z = k against photo 5 | open: photo 5's lines are faint, not absent |
 | H6 | the eight fast paths, XVSS, S2TSHELF | (b) | - | - | ruled out (runs 7, 8) |
 
 Runs 9 and 10 (gd with per-flip images) showed no X/Y alternation in their PPMs. Either they did not
@@ -852,9 +854,100 @@ truncation experiment, kept as a diff in `tools/fisttrunc-desktop-experiment.md`
 `build-linux/run/vpemu.py` (scratch), which runs the hull's vertex program on the guest's vertex buffer
 (`dg2/003cfb80.bin`), but had not recorded a result from it.
 
-### Lit and dark draws (step 3, from run 11 frames 529-558, soak +68)
+### (b) remedy: `HAKUX_FIST_ROUND=1` (5d4b689ed9)
 
-(See below; written when read.)
+Grant: `tcg/aarch64/tcg-target.c.inc` by lane.local (hakux-0b, 10-16), scope "the cvt{32,64}f_i{32,64} lowering
+and tcg_target_init only", default-off, the device-run gate at fold, default-on the owner's call.
+
+- `tcg_out_fist()` replaces the four bare `tcg_out_fpcvt(..FCVTZS..)` calls. With the switch on it emits
+  `FRINTI Vtmp, Vn` (round to integral per FPCR.RMode) into `TCG_VEC_TMP0` (V31, reserved) and then
+  `FCVTZS Rd, Vtmp`. Off, it is the shipped `FCVTZS` alone.
+- `HAKUX_FIST_ROUND=1` is read once in `tcg_target_init` (as `HAKUX_TCG_TSO` is). It logs
+  `perfarch fist round=ON` and `perfarch fist round emitted n=` at powers of two up to 4096 (tag `hakuX-lane`).
+- Encodings checked against the NDK assembler: `frinti d31,d5` = 0x1e67c0bf, `fcvtzs w3,d31` = 0x1e7803e3
+  (FRINTI S 0x1e27c000, D 0x1e67c000). The file passes `ccheck.py` (NDK clang, arm64 compile_commands).
+- Only inline FIST/FISTP reach these ops (`ops_fpu.h` `gen_fistl_ST0`/`gen_fistll_ST0`). FISTTP goes through
+  `helper_fistt*` and is not touched. RMode is right at the FIST: `gen_flcr` (translate.c 1732-1746) loads it
+  from the guest's RC before the first FP op of every TB and after `gen_flush_fp`, and FLDCW ends the TB.
+
+The numeric judge, `tools/offsetres.py DUMP [COUNTS]`, predicts each frame's c13.w from its +-6 neighbours
+(median slope, the frame left out, wrap mod 1) and counts frames whose residual is a drop of 0.02-0.03.
+Validated on the dumps that already existed:
+
+| dump | FIST | hull (4362) glitch frames | terrain strip (864) | other residuals > 0.002 |
+|---|---|---|---|---|
+| run 11 (Nova) | truncates (shipped) | 9, all exactly 7/255 | 76 (40 exactly 7/255) | 0 |
+| dg2 (desktop) | rounds per RC | 0 | 0 | 0 |
+| dg3 (desktop) | forced to truncate | 9 | 69 | 2 |
+
+Correction to "Runs 11 and 12" above: the terrain strip does not glitch only at the hull's frames. Its drop is
+-0.0255..-0.0275, not always exactly 7/255, and it glitches far more often (76 frames, e.g. 59, 70, 72, 74),
+because its own offset is a different FISTP result. The hull frames are among them.
+
+### Run 13: the (b) remedy, judged
+
+`1-1792184446-x1port1012-1339105`, ref 5d4b689ed9, `HAKUX_FIST_ROUND=1`, run 11's dump spec, 110 s, video
++37.0..+97.0 s (start_wall - mark_wall; the prediction's judge line says offset 35, the clip's real offset
+is 37, which only shifts printed times). Prediction `docs/testing/predictions/x1port1012-fistround.json`,
+committed in 3710b8bb24 before the run.
+
+| leg | prediction | measured | verdict |
+|---|---|---|---|
+| V | switch lines in logcat; >= 500 dump frames; video covers +38..+77 | `perfarch fist round=ON` once; `emitted` n=1..32 (6 lines: 32-63 inline FIST sites translated); 600 frames of each draw; video +37..+97, menu from +38.15 | executed |
+| B1 | offsetres 0 / 0, 0 other (run 11: 9 / 76) | **hull 0, terrain strip 0, other 0.** The dump spans hull w 0.2819..0.7496, the same window as run 11 (identical first and last values; 77 frames in w 0.405..0.465, where run 11 glitched at frames 199-229) | PASS |
+| B2 | no burst on either crop (run 8: 4 top, 5 low) | **top 0 bursts; low 0 bursts**, one singleton at +38.1 s = the Bungie splash to menu cut (video frame 71, d1 198) | PASS |
+| B3 | at the four burst times, no d1 >= 8 with d2 < d1, and d1 <= 3.5 | no d1 >= 8 anywhere in the four windows except the frame-71 cut; run 11 at the same +56 window has its burst rows at d1 10.0-10.2. **But d1 is 3.6-4.1 at +38.6 and 4.8-5.0 at +56.2**, over the registered 3.5. Run 11's own non-burst rows in the same windows are 3.8-3.9 and 4.9-5.0, with d2 = d1 (smooth motion at 30 fps recorded at 60). | alternation clause PASS; the band clause FAILS as written. The band was set below the clip's normal motion at registration; this is reported, not re-scored |
+| A | dark side unchanged (P 0.95) | +68.2 frame (`build-linux/run/r13/r13_68.2.png`): the hull is the same dark green-grey with panel lines as pair5's hakuX half | as predicted: **(a) is not fixed** |
+| R | clean | DONE, no crash line, menu animating to +97 | PASS |
+
+So `HAKUX_FIST_ROUND=1` removes (b) on the Nova: the guest's u-offset steps smoothly and the X/Y bursts are
+gone. **It is not a #939 fix: (a) remains.** Default-on for 0.5.1 is the owner's call after watching
+`dispatch/results/1-1792184446-x1port1012-1339105/video/v00001.mp4`.
+
+The switch changes every inline FIST/FISTP in every title (it makes them what x86 hardware computes), so
+default-on wants the usual device-run gate at fold, which lane.local named in the grant.
+
+### Lit and dark draws (step 3): what is measured on (a)
+
+All from the desktop dump dg2 (same guest state as the Nova's apart from the FIST rounding) and run 11/13's
+dumps near soak +68 (photo 5's pose), with `build-linux/run/vpemu.py` (scratch): it runs the hull's vertex
+program (`hull_vsh.glsl`) on the guest's vertex buffer (`dg2/003cfb80.bin`, 32-byte vertices) with one frame's
+constants and samples the decoded cube map.
+
+- **Cube map faces (H1a refuted).** Decoded at face strides around the 64x64 5-level DXT1 chain size,
+  adjacent faces are continuous at their shared edges only at stride 2816 (2728 rounded up to 128: mean
+  |diff| along the six seams 5.0, against 30-67 at the other strides tried), under GL's face orientation.
+  hakuX reads the faces where the hardware does. H1b (orientation) weighs against for the same reason; a
+  seam test cannot see a global mirror, which would need a second reference.
+- **Eye, normals, skinning (H1c weighs against).** c4 = (1.054, -1.100, -0.6335, 2) is exactly the eye
+  point recovered from the projection rows c0..c3. Every hull vertex uses bone 0 at weight 1 (the second
+  index, 253, reads c[313] at weight 0); c60..c62 is a rotation plus (12.3, -1.8, 15.5). The band is a
+  ribbon of radius 19 about its Y axis, y +-0.61; the CMP-decoded normals are unit length and point outward
+  or toward the rims. c12 = (10, 10, 1, 1), c13 = (48.67, 0, 0, w), c14 = (0.00001, 0.9997, 0, 1),
+  c58 = (320, -240, 16777215, 0), c59 = (320.53, 240.53, 0, 0).
+- **Lights.** c23 = (0, 0, -1) with c24 white; c25 = (0, 0, 1) with c26 = (0.60, 0.57, 0.76); ambient
+  c27 = (0.27, 0.28, 0.39). The two lights are opposite, so every normal gets one of them in proportion to
+  |N.z|, and only normals with N.z near 0 are ambient-only.
+- **The hull's reflection at the photo-5 pose.** At dg2 frame 300, 32 of the 300 on-screen vertices face
+  the eye (E^.N' > 0, mean 0.17: a grazing view). R from those lands on dark texels of faces 1 and 4, and the
+  reflection term there is about 0.003. v1 at E^.N' = 0.17 is (0.49, 0.47, 0.68, 0.34).
+- **The term magnitudes do not reach the console's brightness.** With t0's mean (48, 56, 41)/255 and t1's
+  65/255, `2*t0*t1*v0` is at most about 25/255 at full light and 7.6/255 at ambient alone. The reflection
+  term at grazing incidence is at most `cube*0.49*0.34*t2.r`, about 0.16 of the cube's texel. The console's
+  hull in photo 5 is a light, mottled grey with t2.r's structure. No term computed as hakuX computes it
+  makes that at this pose.
+- **The rest of the frame.** Culling is on (`SETUPRASTER` 0x10400000, back faces culled). n5 (hull) and
+  n4 (terrain) do not blend (0x542); their alpha test is t0.a > 127 (DXT1 punch-through). n6 (510 indices,
+  blend 0x8a: enabled, DST_COLOR x src + 0) is a multiply pass with its own base at 0x02be8000 and the same
+  t1, t2 and cube; it can only darken what n5 wrote. n2/n3 (0x54a) alpha-blend. No draw in the frame adds
+  light to the hull after n5.
+- **The final combiner (read off run 13's dump, frame 540).** c1_5 = c0_5 = 0, so stage 5's r1 = 0, and
+  SPECFOGFACTOR c0_8 = 0xffffffff (white, alpha 1). The output is therefore
+  `rgb = r0 + v0.a*(1 - r0)`: **v0.a whitens the hull.** v0.a is oD0.w = v4.z, and v4.z is also the floor
+  under both lights (`MAX(R9.xy, R8, v4.z)`). v4 is the uv, S1 x2, so hakuX supplies z = 0 (the dump's
+  attribute 4 reads (u, v, 0, 1)). The game's own use of v4.z as a free zero in the `MAX` says it expects 0
+  as well, which is why H5 was ranked low. A non-zero v4.z on hardware would whiten and fully light the
+  hull everywhere at once: the shape of (a). It stays a hypothesis until measured.
 
 ## End of this session (attempt 3)
 
