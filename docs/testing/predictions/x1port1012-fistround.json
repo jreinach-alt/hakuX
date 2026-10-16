@@ -1,0 +1,39 @@
+{
+ "registered_utc": "2026-10-16T21:00:33Z",
+ "who": "lane.x1port1012",
+ "issue": "939",
+ "kind": "identify (one remedy video run, judged against runs 8/11/12 as the baseline; not an A/B arm, the arms job skips it)",
+ "title": "Halo Combat Evolved.iso",
+ "device": "nova",
+ "seconds": 110,
+ "video_after": 35,
+ "video_seconds": 60,
+ "pull_glob": "framedump_*",
+ "ref": "5d4b689ed9",
+ "env": [
+  "HAKUX_FIST_ROUND=1",
+  "XEMU_FRAME_DUMP=660,gd,noimages,after36,cap2400"
+ ],
+ "queue_order": "HAKUX_RELEASE_PRIO=1 docs/testing/request.sh --who x1port1012 --device nova --title 'Halo Combat Evolved.iso' --seconds 110 --ref 5d4b689ed9 --env HAKUX_FIST_ROUND=1 --env XEMU_FRAME_DUMP=660,gd,noimages,after36,cap2400 --pull 'framedump_*' --video-after 35 --video-seconds 60 --issue 939 --no-expect '<this file>' --purpose '...'. Same title, no route, and the same dump spec as run 11 (1792177407-x1port1012-231253, ref 7a1889054a); 5d4b689ed9 is master 3a44935839 merged plus the switch.",
+ "judge": "python3 docs/lanes/x1port1012/tools/offsetres.py <result>/pulled/framedump_*.jsonl; ringtrack.py <clip> 120,40,880,190 top.tsv and 0,400,440,420 low.tsv, then burstcount.py 35 top.tsv / 35 low.tsv; burstseq.py <clip> at the recorded frames of +38.6, +42.2, +47.0, +56.2 s; grep 'perfarch fist round' logcat.txt",
+ "baseline": "Truncating FIST (shipped): run 11 offsetres = hull (4362 indices) 9 glitch frames, all exactly 7/255; terrain strip (864) 76. Desktop dg2 (x86_64, rounds per RC) 0 and 0; desktop dg3 (x86_64 forced to truncate) 9 and 69. Video, run 8 (all fast paths off, same bursts as the audit run): top crop bursts at +38.3 (20 images), +41.9 (6), +46.7 (16), +55.9 (18); low crop the same four plus +74.8 (5). Runs 11 and 12: the same four bursts, same image counts.",
+ "prediction": "With HAKUX_FIST_ROUND=1 inline FIST/FISTP round per the guest's RC, as on x86 hardware and the x86_64 backend. The u-offset c13.w that Halo's menu ring writes then steps smoothly on every frame, and the X/Y flicker bursts of #939 (b) are gone. (a), the surface layer missing on the ring's dark side, is NOT addressed by this switch: the desktop rounds correctly and lacks the layer too. The video is expected to still show the dark side without the console's layer (photo 5).",
+ "legs": {
+  "V (did it execute, else VOID)": "logcat carries 'perfarch fist round=ON' once and at least one 'perfarch fist round emitted n=' line; the dump holds >= 500 frames of both the 4362- and the 864-index draws; the video covers +38..+77 s at the ring menu.",
+  "B1 (numeric, the claim)": "offsetres.py: 0 glitch frames on the hull and 0 on the terrain strip (baseline 9 and 76), and 0 'other' residuals. P 0.9. FAILS if any glitch frame remains: some conversion the switch does not reach (a helper path, or FPCR not holding the guest's RC at the FIST).",
+  "B2 (video)": "burstcount.py over both crops: no burst in +35..+95 s (baseline 4 top, 5 low). P 0.85; a single-row singleton is reported but does not fail the leg.",
+  "B3 (video, structure)": "burstseq.py at the four baseline burst times: d1 stays in the normal-motion band (<= 3.5), no d1 >= 8 with d2 < d1 (the Y X Y X alternation). P 0.85.",
+  "A (reported, not a pass condition)": "The ring's dark side, the frame nearest soak +68 against console photo 5: predicted unchanged, still without the layer. P 0.95. The owner judges it. A #939 fix needs (a) as well.",
+  "R (regression smoke)": "The run lands clean: no crash, no hang, the menu reached and animating through +95 s."
+ },
+ "expect": {
+  "hull_glitch_frames": 0,
+  "terrain_glitch_frames": 0,
+  "bursts_top": 0,
+  "bursts_low": 0
+ },
+ "expect_note": "EMPTY of captures ON PURPOSE: a title run writes none. The legs are read off the pulled dump, the video and logcat.",
+ "expect_counts": {},
+ "must_not_move": [],
+ "must_not_regress": []
+}
