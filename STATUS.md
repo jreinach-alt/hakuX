@@ -1,6 +1,6 @@
 # hakuX status
 
-_updated 2026-10-16 10:35 PDT_
+_updated 2026-10-16 11:38 PDT_
 
 0.6: Measured 261 / 300 · Playable 87 / 110.
 
@@ -27,7 +27,7 @@ Playable **87** / 110&nbsp;&nbsp;`▓▓▓▓▓▓▓▓░░`
 
 Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. Each title is plotted at its first reading (a soak's finish, a verdict, a held run, or the pass-1 review's date). Playable: the Playable ledger, each title at its acceptance (a 600 s held run with every kept frame reviewed). The 1.0 projection uses each series' rolling 7-day rate (titles gained in the last 7 days / 7), not the all-time rate.
 
-Ships when both are met. At the last 48 h rate: about 2026-10-19.
+Ships when both are met. At the last 48 h rate: about 2026-10-20.
 
 Target: 0.6 ships when 300 titles are measured and 110 are Playable on the Thor/Nova handhelds (#433).
 
@@ -139,7 +139,7 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Crash Bandicoot: The Wrath of Cortex**<br>reach gameplay | 🟣 inputs ready | **46.9**<br>100% at 28.5+<br>Nova · 10-07 |
 | **Jacked Europe En Fr De Es It**<br>reach gameplay | 🔵 copied | **46.1**<br>100% at 28.5+<br>Nova · 10-14 |
 | **Dark Summit**<br>done | 🟢 Playable | **45.9**<br>93% at 28.5+<br>Nova · 10-04 |
-| **Mortal Kombat: Shaolin Monks**<br>reach gameplay<br>queued 1-1792170345-lane.audio1016-2351225 #2; queued 1-1792170348-lane.audio1016-2351533 #3 | 🟣 inputs ready | **45.9**<br>49% at 28.5+<br>Nova · 10-06 |
+| **Mortal Kombat: Shaolin Monks**<br>reach gameplay | 🟣 inputs ready | **45.9**<br>49% at 28.5+<br>Nova · 10-06 |
 | **NFL Blitz 2002**<br>done | 🟢 Playable | **45.0**<br>100% at 28.5+<br>Nova · 10-05 |
 | **Big Mutha Truckers USA**<br>reach gameplay | 🔵 copied | **45.0**<br>89% at 28.5+<br>Nova · 10-14 |
 | **MLB SlugFest 2004**<br>done | 🟢 Playable | **44.4**<br>100% at 28.5+<br>Nova · 10-05 |
@@ -166,14 +166,14 @@ Key -- fps cell: handheld, date, then its performance mode when recorded (max pe
 | **Yetisports Arctic Adventures Europe**<br>reach gameplay | 🔵 copied | **35.1**<br>97% at 28.5+<br>Nova · 10-16 |
 | **NHL 2K3**<br>reach gameplay | 🔵 copied | **35.0**<br>69% at 28.5+<br>Nova · 10-05 |
 | **Bistro Cupid**<br>reach gameplay | 🔵 copied | **34.4**<br>87% at 28.5+<br>Thor · 09-30 · max perf, soak |
-| **Top Spin**<br>soak for Playable<br>running 1792170178-fps1015-2310292 on the nova; queued 1792170186-fps1015-2314810 #1 | soak pending | **32.6**<br>91% at 28.5+<br>Nova · 10-09 · max perf |
+| **Top Spin**<br>soak for Playable | soak pending | **32.6**<br>91% at 28.5+<br>Nova · 10-09 · max perf |
 | **NBA Inside Drive 2004 USA**<br>reach gameplay | 🔵 copied | **31.1**<br>70% at 28.5+<br>Nova · 10-16 |
 | **Aliens Versus Predator: Extinction**<br>reach gameplay | 🟣 inputs ready | **31.0**<br>100% at 28.5+<br>Nova · 10-05 |
 | **Burnout 3: Takedown**<br>reach gameplay | 🟣 inputs ready | **30.8**<br>85% at 28.5+<br>Nova · 10-14 |
 | **Fuzion Frenzy**<br>**blocked: hang: 13.4 s without 60 guest flips after the mark** | 🔴 blocked | **30.6**<br>54% at 28.5+<br>Nova · 09-27 · max perf |
 | **Panzer Elite Action Fields of Glory Europe**<br>reach gameplay | 🔵 copied | **30.4**<br>90% at 28.5+<br>Nova · 10-07 |
 | **Big Bumpin USA**<br>reach gameplay | 🔵 copied | **30.0**<br>100% at 28.5+<br>Nova · 10-15 |
-| **Crimson Skies: High Road to Revenge**<br>done<br>queued 1-1792170351-lane.audio1016-2352136 #4; queued 1-1792170352-lane.audio1016-2352599 #5 | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 10-13 · default perf<br>Thor **23.4** |
+| **Crimson Skies: High Road to Revenge**<br>done | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 10-13 · default perf<br>Thor **23.4** |
 | **50 Cent: Bulletproof**<br>done<br>#382 open · nothing in flight | 🟢 Playable | **30.0**<br>99% at 28.5+<br>Nova · 09-30 · default perf, soak |
 | **Azurik: Rise of Perathia**<br>done | 🟢 Playable | **30.0**<br>95% at 28.5+<br>Nova · 09-29 · default perf<br>Thor 30.0 |
 | **Blade II**<br>done | 🟢 Playable | **30.0**<br>100% at 28.5+<br>Nova · 10-07 |
