@@ -4,7 +4,7 @@ State: draft
 
 Lane: fps1015            Issue: #433 #986 #992 #995 #993 #994
 Base: master @ 15a72e10dc
-Files: docs/lanes/fps1015/PR.md, docs/lanes/fps1015/NOTES.md
+Files: docs/lanes/fps1015/PR.md, docs/lanes/fps1015/NOTES.md, docs/lanes/fps1015/winsplit.py, docs/lanes/fps1015/s2tscan.py
 Prediction: none: analysis-only
 Needs device: no    Needs NDK: no
 
