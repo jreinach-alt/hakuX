@@ -1,10 +1,10 @@
-# x1port1012-halo: #939 ring-world leads (audit run at the menu next); #938, Fable not yet started
+# x1port1012-halo: #939 ring-world leads (XVSS and S2TSHELF ruled out at the menu); #938, Fable not yet started
 
 State: draft
 
 Lane: x1port1012          Issue: #939 [#938]
 Base: master @ dd5e3cb3c6 (stacked on PR #965, `lane/x1port1012`, still open)
-Files: docs/lanes/x1port1012/PR.md, docs/lanes/x1port1012/NOTES.md, docs/lanes/x1port1012/OUTBOX.md, hw/xbox/nv2a/pgraph/pgraph.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/buffer.c
+Files: docs/lanes/x1port1012/PR.md, docs/lanes/x1port1012/NOTES.md, docs/lanes/x1port1012/OUTBOX.md, docs/lanes/x1port1012/tools/ringframes.py, docs/lanes/x1port1012/tools/ringtrack.py, hw/xbox/nv2a/pgraph/pgraph.c, hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/vk/buffer.c
 Prediction: none: the leads are default-off diagnostic switches, judged by an owner-reviewed triage video, not an automated A/B against a golden
 Needs device: yes (Nova)    Needs NDK: yes
 
@@ -33,8 +33,10 @@ All three are gated leads from `batchC.md`/`batchD.md`, not fixes: none is claim
 - The triage video (brief Phase B step 1, three arms: shipped defaults, `HAKUX_SURFGPU=0`, fast paths
   off) landed clean on all three arms, but every clip recorded the intro movies, not the ring menu, so
   none of them can show the defect. The defect still reproduces on master with Phase A at shipped
-  defaults (nightly `0.5.0-1014-4a7b7e24b7`). The next run audits both leads at the menu; see NOTES.md
-  under "Owner sighting on the Phase A nightly".
+  defaults (nightly `0.5.0-1014-4a7b7e24b7`). An audit run at the menu rules out both leads for Halo:
+  the title never launches a transform program, and the shelf lookup never hits. Its video shows the
+  defect as whole frames drawn at an earlier ring rotation, in short bursts. `tools/ringframes.py` and
+  `tools/ringtrack.py` read a clip frame by frame for this. See NOTES.md, "Audit run result".
 - Phase C (#938, speech level) and Phase D (Fable, fp_jit) have not started.
 - Phase E (`HAKUX_PATTFENCE`) is explicitly not before Thursday's reset per the brief.
 

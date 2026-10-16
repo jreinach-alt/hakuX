@@ -328,13 +328,72 @@ cause:
 | whole frames at a stale angle (rotation goes back, then resumes) | the guest drew it with old transform constants (XVSS); check `[xvss] stale skip` timestamps |
 | a frame split across a horizontal line, new above and old below (or the reverse) | the host presented a buffer the guest was still drawing (mid-frame) |
 | the ring itself correct, but a texture or overlay on it from another frame | texture reuse (S2TSHELF; `[s2tshelf]` hits) |
+| every image correct, but some shown for one recorded frame and others for three, not two each | presentation cadence (judder) on the host side. The Nova panel runs at 120 Hz (the run log's `PERF: display at start`, `peak_refresh_rate` 120). `hakuX-pace v2=60` measures guest vblanks, not what the panel shows, so it cannot see this |
 | the clip is clean, yet the owner sees jumps in the same run | the defect is past compositing: a capture of the panel itself (phone slow-motion) is the next instrument |
+
+Written before the run landed. The triage arm's intro-movie clip, read the same way
+(`ringframes.py`, lane.xbox scratch), holds 166 of 178 images for two recorded frames, 5 for one,
+6 for three. So the uneven-cadence row is already present at about 6% on a movie. Its rate during the
+menu is part of the reading.
 
 Hit: `skip_stale > 0` during +33..+96 s, or a frame in the clip matching one of the rows above.
 Device runs: 7 used of 24.
 
-**WAITING**: `0-1792165273-x1port1012-921745` lands. Then read the counts and the clip frame by frame,
-and ask the owner whether the clip shows what they saw.
+~~**WAITING**: `0-1792165273-x1port1012-921745` lands. Then read the counts and the clip frame by frame,
+and ask the owner whether the clip shows what they saw.~~ Landed, see the next section.
+
+### Audit run result (lane.xbox, 2026-10-16)
+
+Run `0-1792165273-x1port1012-921745`. The menu came up at about +24 s and held for the rest of the run.
+The video covers +42..+92 s, 3030 frames.
+
+- **XVSS: Halo never reaches it.** `xvss_get_mode()` runs on the first `LAUNCH_TRANSFORM_PROGRAM`, and
+  only then logs `[xvss] mode=audit`. The line never appears, though `[s2tshelf] mode=audit` on the
+  same tag does, and the log shows no drops. So Halo issued no transform-program launch in 150 s, and
+  the lead is out for this title.
+- **S2TSHELF: zero hits.** Each of the first 32 hits logs a line, and there are none. The lead is out.
+- **The clip shows the defect: whole frames drawn at the wrong point in the ring's rotation.** Normally the
+  ring's features drift down about 2.7 px per game image. At clip 0.58 s (recorded frame 38) the dome at
+  top left jumps about 70 px up, about where it was roughly 25 images (0.9 s) earlier. It holds there for
+  a few images, then returns to the smooth path (frame 44 is close to frame 36). Other bursts alternate
+  image by image between two rotations (5.4-6.3 s: f332 and f336 agree, f334 differs). Every image is
+  complete. No frame splits across a line, and the cadence is regular (1463 of 1501 images held for
+  exactly two recorded frames). So this is the "stale angle" row, not the mid-frame or judder rows.
+- **The bursts are confined so far to one menu phase.** Two crops (`ringtrack.py`, ring-only regions)
+  agree on bursts at clip 0.6-1.5 s, 5.4-6.3 s and 14.6-15.7 s, plus 33.6-34.5 s in the lower crop.
+  That is soak +42.6, +47.4, +56.6 and +75.6 s. The texture dirty-query EMA (`Tq`) is 1 from +24 to
+  +36 s, about 400 from +40 to +112 s, and 1 again from +114 s. All four bursts are inside `Tq≈400`,
+  but the clip covered nothing else, so this is not yet a contrast.
+- Frame delivery is steady through every burst (G 32-34 ms). The jump is in what is drawn, not when.
+
+The owner watched this run live: "The jumping about is visible at first in the sunny portion of the
+ring, but, the darkened portion is fine as it comes into view. Then as it rotates back around to the
+sunny portion, that appeared to be OK, but the animation cut before I could confirm with confidence."
+
+Leads now, neither measured:
+
+1. A host-side cache serves an older copy of something the ring is drawn from: a texture (TEXSCAN, or
+   the dirty-bitmap path the `Tq≈400` phase leans on), vertex data (DRAWREC), or uniforms (UNI_*). An
+   older copy fits a jump back to an earlier state followed by a return better than a wrong value does.
+2. The guest computes the wrong rotation itself, e.g. from a clock read that steps back. The fast-path
+   run cannot see this one.
+
+Next run, queued: `1792166308-x1port1012-1386872`, normal priority. All 8 fast paths off, ref
+`223f216d7c`, 200 s, video +35..+195 s, which covers both `Tq` phases. A hit for lead 1: no bursts in
+the `Tq≈400` phase, where the audit run had 4 in 50 s (0 bursts in 70 s by chance would be about
+e^-5.6 ≈ 0.4%). Bursts at the same rate rule the fast paths out. The next instrument would then be a
+per-frame log of the transform constants the guest writes, against what the host uploads, which
+separates lead 1 (the guest sends the right matrix) from lead 2 (the guest sends the wrong one). That
+needs new code. Device runs: 8 used of 24.
+
+Tools: `docs/lanes/x1port1012/tools/ringframes.py <clip>` (cadence, plus per-image step against the
+previous two images) and `tools/ringtrack.py <clip> <x,y,w,h> [out.tsv]` (which of the last 12 images each
+image is closest to). Crops used: `120,40,880,190` (above the logo) and `0,400,440,420` (lower left, clear
+of the menu text). Ignore `ringframes.py`'s SPLIT flag on this scene: the black sky never changes, so it
+fires on every image. Phase-correlation shifts read near 0 here because the static HUD rings dominate the
+peak. The nearest-image lag is the column that finds the bursts.
+
+**WAITING**: `1792166308-x1port1012-1386872` lands; read it with the two tools above, same crops.
 
 ## End of this session (attempt 3)
 
