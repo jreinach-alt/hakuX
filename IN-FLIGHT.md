@@ -8,12 +8,12 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 | Lane | Model | Running for | Working on |
 |---|---|---|---|
-| `x1port1012` | claude-opus-5-5 | 31 min | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
+| `x1port1012` | claude-opus-5-5 | 45 min | x1port1012: X1 BOX fixes we still carry, as 0.5.1 candidates (#939, #938) |
 
 - **Handhelds:** 2 connected.
   - Nova: free for the queue
   - Thor: held by `lanelocal-offline`
-- **Device queue:** 1 waiting, 1 running.
+- **Device queue:** 2 waiting, 1 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
 
 ## Playable titles
@@ -120,17 +120,13 @@ The harness dashboard, with each release's targets and the progress charts, is [
 
 ## Recently landed on master
 
+- 2026-10-16 GitHub Sponsors on the landing page and the Sponsor button (#433)
+- 2026-10-16 Wire hakuX into four launchers (ES-DE, Daijisho, Pegasus, stock), tested on the Thor
+- 2026-10-16 fps1015: measured causes for the owner's FPS defects (MKSM, Top Spin, Batman Begins, Prince of Persia, Halo 2)
 - 2026-10-16 One display name per title_id, and nothing keyed by a name (#433)
 - 2026-10-16 status_html: titles05 crashed on a registry name the catalog spells differently
 - 2026-10-14 titledb1014: title_id as the join key, one table, every reader reads it (#433)
 - 2026-10-14 A tracked listing of which title is where, keyed by title_id
 - 2026-10-14 savestateconv1014: R3 admits --from-state
-- 2026-10-14 status: Playable is the ledger
-- 2026-10-13 status page: track 0.6, 1.0 projection chart, drop Benchmarked and C I S B
-- 2026-10-13 pathfind: a drive hold proves its gas, gets a stuck vehicle out, acts on an on-screen prompt, and tries every unstick rung
-- 2026-10-13 hangwatch: catch a frozen title that starves the GPU, spins the vCPU and silences the disc, even with non-flat audio
-- 2026-10-13 compatrefresh1013: the compatibility page and README move to 57 Playable
-- 2026-10-13 statusalloc1013: status.sh no longer opens a status issue the gh shim would refuse (#433, 0.5)
-- 2026-10-13 pathrules1013: pathfind no-answer steps never become a path, a hold that can't pass ends early, a perflog run never banks (#433, 0.5)
 
-_Updated 2026-10-16 11:30 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 11:45 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
