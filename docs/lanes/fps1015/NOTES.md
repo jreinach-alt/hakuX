@@ -6,9 +6,12 @@ lane.local's overnight chain until ~06:00 PDT 10-16.
 
 ## Status
 
-[lane.fps1015] working:
-- #986 MKSM: cause found, serialization on 16-bit render-to-texture downloads. Lever WAITING on vk/texture.c.
-- #992 Top Spin: the same cause, 24-32 downloads a frame.
+[lane.fps1015] waiting: the #986 A/B of `HAKUX_S2T_CVT` (requests listed in "The A/B, queued" at the end), behind
+the owner's hands-on hold on the Nova (`lanelocal-ownerplay`).
+- #986 MKSM: cause found, serialization on 16-bit render-to-texture downloads (3 a frame in the cutscene). Lever
+  `HAKUX_S2T_CVT` built (default off) and checked by reading; its A/B is registered and queued.
+- #992 Top Spin: the same cause, 24-32 downloads a frame. Same lever; its A/B needs an admissible route (no golden
+  profile yet, and `fps786-topspin` is a first-run route without `mark profile-saved`).
 - #992 Brian Lara: a different shape, unexplained. Next step: one perflog run.
 - #995 Batman Begins: partly explained. GPU or wait-bound. The one download a frame serializes the previous
   frame's GPU work against the PFIFO thread. Fill against draw count needs a perflog + `vtx256` run.
@@ -18,12 +21,20 @@ lane.local's overnight chain until ~06:00 PDT 10-16.
 - #994 Halo 2: explained. Every fps-to-0 (5.2, 3.9 and 2.1 s frames) is first-time pipeline compilation on the
   draw thread: cold monolithic creates while a 3.4-4.6 s ubershader library builds, plus inline fragment libraries.
   The lever is #569's (vk/compile_worker.c), not this lane's.
-- Next: build `HAKUX_S2T_CVT` (vk/texture.c lent by lane.x1port1012, board 104fac8e98) and its A/B.
+- `HAKUX_S2T_CVT`: built in 6cbcb60bc7 (vk/texture.c lent by lane.x1port1012, board 104fac8e98); a one-shot
+  `[s2tcvt] first` log added so a run shows the path fired. Census, checks and the A/B are at the end of this file.
 
 Attempt 1 (10-15 22:41 to 23:29 PDT) ended at the 300-turn cap, not on a finding or a block. It had committed
 #986, #992 and #995 and written the #993 pre-read section, uncommitted, with the fog-room dump read under way
 (`scratch_pop_ws.csv`, `scratch_popseq.py`). Attempt 2 (10-16 05:41 PDT) commits that section and continues at
 #993. Too many small tool calls spent the turns; attempt 2 batches its reads into scripts.
+
+Attempt 2 (10-16 05:41 to 06:26 PDT) also ended at the 300-turn cap, not on a finding or a block. It committed
+#993, #994 and `HAKUX_S2T_CVT` (6cbcb60bc7, 06:11), promoted MKSM's first golden (save 08a35d4fc120, the
+fps1008-shaolin run's harvest) so a route headed `any` passes the profile gate, and was writing the census
+(`cvtcensus.py`) and the A/B route when the cap fell; those were left uncommitted. The turns went on one-line reads
+of texture.c while checking the lever by hand. Attempt 3 (10-16 07:53 PDT) commits them, registers the A/B and
+queues it.
 
 ## #986 Mortal Kombat Shaolin Monks: step 1, the offline split (written before the read)
 
@@ -154,10 +165,8 @@ Batman takes its one download in the 29-fps baseline dump as well as in the slow
 make a window slow. Its wait covers the previous frame's whole GPU work, so in the heavier scenes the GPU's frame
 and the PFIFO thread's frame run one after the other (#995 result below).
 
-WAITING: `hw/xbox/nv2a/pgraph/vk/texture.c` (withheld). The lever's gate (`check_surface_to_texture_compatiblity()`)
-and its call site (`create_texture()`, `copy_surface_to_texture()`) are both in it. The conversion kernel can live in
-vk/surface.c, which is in this lane's territory. Needed: a grant of vk/texture.c for a default-off `HAKUX_S2T_CVT`
-switch, and its golden arm and A/B.
+vk/texture.c was withheld when this was written. lane.x1port1012 lent it (board 104fac8e98) and the switch is built:
+see "`HAKUX_S2T_CVT`: built and checked" at the end of this file.
 
 ## #992 Top Spin: what the slow frames wait on (written before the read)
 
@@ -244,7 +253,7 @@ finish also stops the GPU and the PFIFO thread from overlapping, beyond its own 
   takes the frame to 53 ms.
 
 **Cause (#992, Top Spin): serialization on 16-bit render-to-texture downloads.** It is the same cause as #986, so
-it is one lever, `HAKUX_S2T_CVT` (WAITING on vk/texture.c, above).
+it is one lever, `HAKUX_S2T_CVT` (built; see the end of this file).
 
 **Bound, not a value.** The most the lever can take from a match-play frame is its finish time, 11.3-15.0 ms of a
 25.8-31.5 ms frame. In the 18-fps scene it is 27.7-29.0 ms of 53 ms. The fits' intercepts (11.6-16.8 ms at no
@@ -541,11 +550,11 @@ Measured:
 Not measured: what the nine downloads cost on PoP. Top Spin's fit gives 0.45-0.48 ms of `Fin` per 64x128 download;
 PoP's surfaces have eight times the texels. That is an inference from another title, not a PoP measurement.
 
-**The lever is `HAKUX_S2T_CVT`** (WAITING on vk/texture.c, #986 section). It needs to take 1-4 ms from the PFIFO
+**The lever is `HAKUX_S2T_CVT`** (built; see the end of this file). It needs to take 1-4 ms from the PFIFO
 thread's frame to put the fog room's busy time under the 32 ms that every 29-fps window of the session stays below.
 If it does, the fog room runs at the title's 30-fps cap, 19 -> 29 fps. A bound: only the A/B gives the value.
 
-Next step, if the lever stays WAITING: one perflog run in the fog room (`HAKUX_FRAMETRACE=1 HAKUX_GPUXFR=1`, about
+Next step, before or beside the lever's PoP A/B: one perflog run in the fog room (`HAKUX_FRAMETRACE=1 HAKUX_GPUXFR=1`, about
 6 minutes of Nova time). A hit for the downloads: `Finish sd` 9 a frame, phase `Fin` at or above the 1-4 ms the
 budget needs.
 
@@ -651,3 +660,124 @@ The lever is the #569 work, not a lane.fps1015 file (vk/compile_worker.c). Ranke
 
 Next step: hand this to the #569 owner. The measurement needed is already in the logs. A device run is needed only
 for the A/B of whichever of 1-2 is built.
+
+## `HAKUX_S2T_CVT`: built and checked
+
+The shared lever of #986, #992, #993 and #995. Default off; off, it costs one `getenv` at first use.
+
+With `HAKUX_S2T_CVT=1`, `check_surface_to_texture_compatiblity()` (vk/texture.c) accepts a 5551/565 texture over a
+2-byte colour surface. `copy_surface_to_texture()` then calls `pgraph_vk_s2t_cvt_copy()` (vk/surface.c). That
+function records three steps inline in the frame's command buffer:
+
+1. Copy the surface image to a scratch buffer as 16-bit words.
+2. Run a compute pass that writes one RGBA8 texel per word with #59's replication (`(v << 3) | (v >> 2)`,
+   `(v << 2) | (v >> 4)`), and alpha by format: 1 for X1R5G5B5 and R5G6B5, the stored bit for A1R5G5B5.
+3. Copy the buffer to the texture image.
+
+There is no finish, no download and no CPU decode. The scratch buffer grows to the largest copy (at least 4 MB) and
+is freed at shutdown. The first copy logs `[s2tcvt] first WxH fmt 0xNN` once per process; the switch logs
+`[s2tcvt] on` when read.
+
+Checked by reading and on the host (no device run yet):
+
+- **Decode.** The compute pass matches the CPU rule on all 65536 words in all three formats (glslc, then a host
+  comparison).
+- **Formats.** The surface host formats keep the guest bit layout: X1R5G5B5 maps to `A1R5G5B5_UNORM_PACK16` with the
+  pad alpha, R5G6B5 to `R5G6B5_UNORM_PACK16`. The copy reads the raw words, never the UNORM conversion. The textures
+  are `R8G8B8A8_UNORM` (converted).
+- **Pad alpha.** The override (texture.c ~2980) is computed from `surface_is_texture_source` whatever the
+  compatibility check says, so it is the same in both paths.
+- **Direct bind.** It is never taken for these formats. `surface_view_decodes_as_texture()` compares the surface's
+  16-bit vk format with the texture's RGBA8 one, so the copy path is the only path.
+- **HAKUX_TEXSCAN.** `texscan_shape_ok()` excludes converted formats, so the two switches do not meet.
+- **Extent.** The texture image is scaled by the surface scale (texture.c ~3370), as the copy is. The Nova runs
+  `surface_scale=1`.
+- **Descriptors.** The pass uses the shared compute descriptor pool (4096 sets, reset at each finish), and its layout
+  matches the shader's bindings.
+- **Build.** NDK `-fsyntax-only` with the Android build's flags is clean on surface.c and texture.c.
+
+What it costs when on: per refused texture, one 2-byte buffer copy, one compute dispatch over the texels and one
+4-byte buffer copy, all on the GPU. The GPU time is not measured; the A/B's `GPU` column reports it.
+
+### Which titles take the downloads (`cvtcensus.py`, 169 perflog results on disk)
+
+`txdl cvt` counts the textures refused by #59's guard per 60-frame window, so 60 a window is 1 a frame.
+
+| title | perflog runs | windows with `cvt` | `cvt` a window, median | max |
+|---|---|---|---|---|
+| Top Spin (#992) | 4 | 190-503 of 511-776 | 0 (three menu-heavy runs); 1350 (lane.async794, live match) | 2880-3675 |
+| Fuzion Frenzy | 3 | 219-386 of 565-695 | 0-60 | 120-240 |
+| MKSM (#986) | 1 | 574 of 659 | 180 | 180 |
+| ToeJam & Earl III | 2 | 98-99 of 154-155 | 53-55 | 60 |
+| surfgpu1009's golden suites (Clear, Color zeta overlap, Depth buffer fixed function, Image blit, ...) | 6 | 1-2 of 3-4 | 0-4 | 5-9 |
+| NBA Live 07 | 8 | 7-11 of 217-231 | 0 | 1 |
+
+PoP and Batman have no perflog run. Their counts come from the frame dumps (the #986 table above: 9 and 1 a frame).
+
+## The A/B (written before any run)
+
+Two legs on one build, the pushed head named in each prediction (`a_ref` = `b_ref`). The arms differ only by env:
+A has none, B has `HAKUX_S2T_CVT=1`. The lane queues them, because the arms job skips `a_ref == b_ref`. The arm
+with the shipped setting (A) goes last, because the device keeps a request's env until the next request.
+
+### Pixel leg: `docs/testing/predictions/fps1015-pixels.json`
+
+- **Suites.** texscan1010's 29 texture and surface suites, plus Clear, Color_zeta_overlap,
+  Depth_buffer_fixed_function and Image_blit. Those four are surfgpu1009's, which take `cvt` downloads.
+  `Texture_render_target::RenderTextureLoop` is skipped, as the arms job skips it.
+- **Prediction.** Every capture is the same between the arms or inside the run-to-run band, and B's logcat has
+  `[s2tcvt] on` and `[s2tcvt] first`.
+- **A hit:** B equals A on every capture, with `[s2tcvt] first` in B.
+- **A moved capture** refutes the bit-exact decode, or the pad-alpha reading. It blocks the switch until explained
+  region by region.
+- **No `[s2tcvt] first` in B:** the leg shows the switch inert where it does not fire, but it does not exercise the
+  decode. MKSM's route frames are then the only pixels judged.
+
+### Soak leg, #986: `docs/testing/predictions/fps1015-mksm.json`
+
+- **Setup.** Route `docs/lanes/fps1015/routes/fps1015-mksm.route`: fps1008-shaolin's steps 1-28, then three attack
+  passes. `--seconds 330 --perflog`. Judge: `s2tread.py` (this directory).
+- **Order.** On, off first, as a pilot pair. On, off again once the pair passes the V leg.
+- **Baseline.** `s2tread.py` reads the fps1008-shaolin perflog run (1-1791536100-fpstelemetry1008-943216, flag off)
+  as an off run: 34 cutscene windows, `sd` 3.00 a frame, `cvt` 180 a window, median `G` 43.2 ms, 22.0 fps, phase
+  `Fin` 18.5 ms, `GPU` 15.2 ms. Gameplay median 52.0 fps over 514 windows.
+
+What a hit looks like in the on runs' cutscene windows:
+
+- `sd` 0.1 a frame or less, `cvt` 0, and `s2tc` near 180 a window (R).
+- Median `G` down 6-22 ms (P). Point -10: 43 to ~33 ms, the two-vblank frame. The bound written in the #986 section
+  is ~29 ms if nothing else waits.
+- Median gfps up by 5 or more (F). Point +8: 22 to ~30.
+- Gameplay median gfps no more than 3 below off (N).
+
+Readings of a miss:
+
+- **R fails** (the downloads are still there with the switch on): the copy path was not taken for these surfaces.
+  Read `[s2tcvt] first` and the `txdl[]` reason columns.
+- **R passes, P or F fails:** the downloads are gone but the frame does not follow. The waits were covering GPU time
+  (median 15.2 ms) or PFIFO work (`Draw` 10-14 ms), or another wait takes their place. The on run's phase columns
+  say which.
+- **N fails:** the decode costs gameplay frames. Read the `GPU` column.
+- **V fails:** the run is void, not a refutation. The route's menu steps were recorded on a disk with no MKSM profile.
+  The disk now carries the golden, the same run's harvest from after gameplay. If the title skips its brightness
+  screen or offers to continue a story, the blind presses land elsewhere. Shots s05-s13 show where it diverged, and
+  the pilot pair shows it before the second pair is queued.
+
+### #992 Top Spin's A/B: what it needs
+
+Top Spin has the most downloads (24-32 a frame in match play, 59 in the 18-fps arena intro) and the largest bound
+(11-15 ms of a 26-31 ms frame), so its A/B carries the largest possible gain. It cannot be queued as the title
+stands:
+
+- Top Spin has no golden profile.
+- `fps786-topspin` is a first-run route without `mark profile-saved`, which the profile gate refuses (R2).
+
+The way through is MKSM's: promote the save harvested after `mark gameplay` (23b5be4cf466, from
+1-1791525007-lane.profileddefault1008-4018033) and head a copy of the route `any`. The route was recorded on a disk
+with no profile, so a desync is more likely than on MKSM: Top Spin's menus include profile creation. MKSM's A/B goes
+first because it decides whether removing the downloads moves the frame at all. If its R leg passes and P fails,
+Top Spin's A/B is not worth the route work.
+
+Top Spin's match play also breaks the render pass about 100 times a window for occlusion queries. Its A/B should
+carry `HAKUX_REPORT_ASYNC=1` in both arms (texscan1010's lesson), so that a report wait cannot take the downloads'
+place and hide the gain. MKSM's cutscene breaks for no queries, so its A/B runs the switch alone.

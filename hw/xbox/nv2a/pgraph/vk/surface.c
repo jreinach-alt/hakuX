@@ -6385,6 +6385,14 @@ void pgraph_vk_s2t_cvt_copy(PGRAPHState *pg, SurfaceBinding *surface,
     unsigned int width = surface->width, height = surface->height;
     pgraph_apply_scaling_factor(pg, &width, &height);
     uint32_t count = width * height;
+
+    static bool logged_first;
+    if (!logged_first) {
+        logged_first = true;
+        SURF92_LOG("[s2tcvt] first %ux%u fmt 0x%x", width, height,
+                   color_format);
+    }
+
     VkDeviceSize align = MAX(
         r->device_props.limits.minStorageBufferOffsetAlignment, 4);
     VkDeviceSize words_size = ROUND_UP((VkDeviceSize)count * 2, align);
