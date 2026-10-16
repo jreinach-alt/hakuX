@@ -11,12 +11,12 @@ this.").
 
 ## Status as this session writes NOTES.md
 
-Item 1 (single name source) and the `title_registry.py check` drift
-detector (feeds item 4) are DONE and verified. `status_html.py` is still
-held by lane.statusfix1016 (its fold has not landed on origin/master as of
-this check -- see "Blocked" below), so the `titles05`/`canon`/`resolve`
-rewrite in item 2 has not started. Items 3 and 4's host-tools deliverables
-are in progress.
+Items 1, 3 and 4 are DONE and verified; item 2 is done everywhere except
+`status_html.py`, which is still held by lane.statusfix1016 (its fold has
+not landed on origin/master -- checked twice this session, see "Blocked"
+below, final check at the end unchanged). The `title_registry_selftest.py`
+mutant proof is written and passing. This is everything completable without
+that fold; `OUTBOX.md` carries the `NEED:` line for it.
 
 ## Item 1: the one name source
 
@@ -178,7 +178,7 @@ python3 docs/testing/title_registry.py check --root /home/justin/hakux-work --no
 | `host-tools/status_md.py` (host-only) | generic HTML->Markdown, no name-keyed logic found | no change needed |
 | Wall sync check (`pm/.wall-synced`) | a count, not a name-keyed structure (`page_playable_counts()` already reads it as a row count) | no change needed |
 | README/COMPATIBILITY.md generation | -- | see item 3 below for the Playable count; the per-row title text itself already comes from the registry (title_id keyed) via `compat_page.py` |
-| `docs/testing/compat_page.py` `notes_by_title` | keyed by `(section, title)` tuple, not title_id | flagged below; not converted this session -- said why |
+| `docs/testing/compat_page.py` `build_playable_rows()` | joined the ledger to `compat_notes.tsv` by `("playable", title)` text | converted to title_id; see below |
 
 ### `title_locations.py`
 
@@ -234,11 +234,130 @@ fixed the fixture to carry a title_id like its siblings
 (`AAAA0099`) rather than special-casing a textual fallback back into
 `compat_page.py`. All 19 pass now.
 
+### `pm/prequeue.py` -- left name-keyed, and why
+
+`NAMES = [r["name"].lower()... for r in rows(title-registry.tsv) if hit(r,
+"title_id", "name", "aliases")]` builds a name list, then matches it
+against legacy `verdict.json` directory slugs that predate title_id
+tracking. Left as-is: `NAMES` is pre-filtered to rows that already match
+the CURRENT query `q` (one human-typed title or id per invocation, at
+`prequeue.py`'s own command line) before the slug match ever runs -- it
+can only ever widen or narrow evidence for the one title the human is
+already asking about, never silently merge two different titles' records
+the way the status-page crash's name-keyed dict did. It is also read-only
+diagnostic output (prints evidence for a human to read before queuing), not
+a join two readers could disagree on. Converting it to a pure title_id
+match would also break its whole reason to exist: finding the
+pre-title_id runs that have no title_id in their path at all.
+
+### Mutant proof: `docs/testing/title_registry_selftest.py`
+
+New selftest, using the brief's own two examples (Crimson Skies `4D530021`,
+Conker `4D530051`) in a throwaway fixture tree (a minimal `Paths` pointed at
+a `tempfile.TemporaryDirectory()`, never the live repo) -- not wired into
+`docs/testing/jobs/selftest.d/`: checked first, and neither
+`compat_page_selftest.py` nor `titles/pathfind_selftest.py` (the two
+existing `*_selftest.py` files nearest in shape) are wired into that
+pipeline either -- these are standalone, run directly
+(`python3 docs/testing/title_registry_selftest.py`), and `selftest.d`'s
+fragments are sourced bash sharing one harness ($T/$HERE/$REPO, ok/check),
+a different mechanism. Matching the established convention rather than
+inventing a new wiring.
+
+Five tests (two classes), each real-code assertion paired with a mutant
+that must flip the outcome (a check whose mutant can't flip it is testing
+nothing):
+
+1. `test_real_code_resolves_to_the_ledger_spelling` -- ledger "Crimson
+   Skies: High Road to Revenge" vs targets.toml "Crimson Skies": real
+   `Catalog.add()` resolves to the ledger spelling for both titles.
+2. `test_mutant_first_source_wins_resolves_to_the_wrong_name` -- a mutant
+   `Catalog.add()` with NO priority (first write wins, monkeypatched in via
+   `TR.Catalog.add = mutant_add`, restored after) resolves Crimson Skies to
+   "Crimson Skies" (targets.toml's spelling, added before the ledger in
+   `build_catalog()`'s read order) -- the real code's assertion fails under
+   this mutant, proving the fixture discriminates.
+3. `test_mismatched_targets_toml_is_red` / `test_matching_targets_toml_is_green`
+   -- `name_drift()` flags both title_ids when ledger and targets.toml
+   disagree, and flags neither once a second fixture gives them matching
+   spellings -- the literal red-before/green-after the brief asks for, at
+   fixture level (independent of today's live data, which this lane already
+   fixed -- see "Red before, green after" above).
+4. `test_mutant_drift_check_disabled_cannot_tell_them_apart` -- a mutant
+   `name_drift()` that always returns clean is shown to disagree with the
+   real one on the SAME red fixture, proving test 3 isn't vacuously green.
+
+`python3 docs/testing/title_registry_selftest.py -v`: 5/5 pass. Both
+mutants (first-source-wins `Catalog.add()`, disabled `name_drift()`) are
+caught -- the real-code assertions fail if either mutant is left in place,
+confirming neither "survived."
+
+## Item 3: README Playable count follows the ledger, not STATUS.md
+
+Root cause: `host-tools/home_page.py`'s `update(blobs, playable=None, ...)`
+only re-derives `playable` from the ledger when the CALLER passes nothing;
+if `playable is None`, it regexes `Playable \*\*(\d+)\*\*` out of
+`blobs["STATUS.md"]`. `host-tools/status_page.py`'s `main()` called
+`home_page.update(home_blobs or None)` with no `playable=` argument. When
+`dashboard_blobs()` returns `{}` (a stale or crashed render -- exactly the
+10-14/10-16 incident), `blobs["STATUS.md"]` falls back inside `update()` to
+the EXISTING home-branch blob (whatever was last published), and `playable`
+is re-derived from that same stale text -- so the render crash froze not
+just the dashboard but the public Playable count, even though `main()` had
+already loaded the live ledger into `led` a few lines earlier in the same
+function.
+
+Fix (one line, `host-tools/status_page.py`'s `main()`): `home_page.update(
+home_blobs or None, playable=len(led))`. `home_page.py` itself needs no
+code change -- `update()` already accepts an explicit `playable=` and only
+falls back to parsing STATUS.md's own text when the caller omits it.
+Both host-only files live outside this git worktree; delivered as a full
+modified copy under `docs/lanes/titlekey1016/host-tools/status_page.py`
+(not a diff, matching the `statuspage1013`/`locations1014` precedent), with
+install instructions in `docs/lanes/titlekey1016/host-tools/INSTALL.md`.
+
+## Item 4: hourly alarm on a stale or wrong public Playable count
+
+New script `docs/lanes/titlekey1016/host-tools/status_alarm.py`: reads the
+`home` branch's published `STATUS.md` (`git --git-dir
+offline-git/hakuX.git show home:STATUS.md`) and the live ledger
+(`pm/playable-accepted.tsv`), and prints one `ALARM:` line for each of (a)
+the `_updated ...` stamp more than 2 hours old, (b) the `Playable **N**`
+count differing from the ledger's row count. Exits 0 always (an hourly
+section reports; it does not fail the run).
+
+Verified RED against today's live data (10-16 08:0x PDT, run from this
+lane):
+
+```
+  ALARM: home:STATUS.md is 33.5 h stale (cap 2h, updated 2026-10-14 22:39 PDT)
+  ALARM: home:STATUS.md says Playable 77, ledger has 87
+```
+
+(matches the brief's "red on today's 77 vs 87" exactly; the staleness is
+the same incident, not a separate one -- STATUS.md hasn't been republished
+since the render broke.) `status_alarm_selftest.py` (4 tests, all pass)
+proves: fresh+matching is quiet, a stale-only fixture raises exactly the
+staleness line, a mismatch-only fixture raises exactly the count line, and
+both-wrong raises both -- against a throwaway bare git repo, not the live
+`offline-git` checkout.
+
+Not yet wired into `host-tools/hourly_report.sh` (host-only, outside this
+worktree): `INSTALL.md` gives the exact splice (one new `echo "---
+..."`/`python3 ...` pair, in the same style as the existing `"--- PLAYABLE"`
+section, currently `hourly_report.sh` line 33).
+
 ## Blocked
 
-Checked `git -C /home/justin/hakuX log --oneline origin/master -5`: still
-at `15a72e10dc` (titledb1014's fold), the same sha this branch started
-from. lane.statusfix1016's fold has NOT landed. Per the brief, not editing
-`status_html.py` this session; will recheck before finishing and, if still
-unfolded, this is a `NEED:` line in OUTBOX.md rather than a guess at
-editing a file another lane holds.
+Checked `git -C /home/justin/hakuX log --oneline origin/master -5` twice
+this session (start and end): both times still at `15a72e10dc`
+(titledb1014's fold), the same sha this branch started from.
+lane.statusfix1016's fold has NOT landed by the end of this session. Per
+the brief, `status_html.py` (the `titles05`/`canon`/`resolve`/ledger-load
+rewrite, the largest piece of item 2) was not touched -- it is the one site
+in the brief's scope list left name-keyed, and the reason is external: the
+file is held by another lane's in-flight fold, not a decision this lane
+made. Wrote the `NEED:` line in `docs/lanes/titlekey1016/OUTBOX.md` rather
+than guessing at a file another lane holds, or waiting idle: everything
+else completable in this scope (items 1, 3, 4, the compat_page.py join, the
+drift-check mutant proof) is done and in this PR instead.
