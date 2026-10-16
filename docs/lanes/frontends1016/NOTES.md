@@ -289,7 +289,56 @@ a lane with GitHub access) can place the APK somewhere else reachable (e.g.
 `/home/justin/hakux-work/release/` or a non-GitHub mirror), this can be
 revisited without re-doing the above check.
 
+## Stock launcher (AYN odinlauncher, `com.odin.odinlauncher`): tested -- works, with a known limit
+
+No configuration needed: hakuX's release build ("hakuX (fork)") already
+appears in odinlauncher's app drawer and its Search apps box, same as any
+installed Android app, alongside `.debug` and `.debug2`.
+
+Tapping the icon starts `com.jreinach.hakux/com.rfandango.haku_x.GameLibraryActivity`
+(confirmed via `dumpsys activity activities`), landing on hakuX's own Game
+Library screen -- not a specific game. From there, picking
+`41540002-Shin_Megami_Tensei_Nine` and pressing its play control took focus
+to `MainActivity` and rendered the Atlus splash at 29 FPS. Confirmed twice:
+once cold, once after a full `am force-stop com.jreinach.hakux` and
+re-opening via the same search-and-tap path. Both launches reached the same
+state. Stopped both short (fan-dead rule); battery held at 32.0 C
+(`temperature: 320`) throughout, well under the 42.0 C stop threshold.
+
+**Known limit, not a bug:** a stock Android launcher has no mechanism to
+scan a ROM folder or pass a specific game file as a launch argument (no
+custom-system or find-rule equivalent exists in a generic app drawer) -- it
+can only start an app's default activity. So the stock launcher can only
+ever open hakuX's own in-app Game Library; the user picks the specific game
+from inside hakuX, never from the launcher itself. Documented in
+`docs/frontends/stock-launcher.md`, which also notes the Retroid-launcher
+variant (on the Nova) stays "not yet tested" -- that's lane.local's job
+later, not this lane's.
+
+## Summary table (per the attempt-3 addendum)
+
+| Launcher | Configured | Launched | Failed |
+|---|---|---|---|
+| ES-DE | `es_find_rules.xml` + `es_systems.xml` pushed to `custom_systems/` (already-correct drafts, unchanged) | Yes, twice (cold + after force-stop), reached the game's own loading screen | No |
+| Daijisho | Not completed -- blocked before a platform could be saved | No | "Default player" field rejects any typed selection ("Please select from the list"); no non-UI config path found |
+| Pegasus | Not attempted | No | APK has no source other than GitHub; this lane does not fetch from GitHub |
+| Stock launcher (AYN odinlauncher) | None needed (standard app-drawer entry) | Yes, twice (cold + after force-stop), reached `GameLibraryActivity` then the game's splash | No -- but can only open hakuX's own library, never a specific game directly |
+
+## Deliverables written this session
+
+`docs/frontends/README.md` (index), `es-de.md`, `daijisho.md`, `pegasus.md`,
+`stock-launcher.md`, and five screenshots under `docs/frontends/images/`
+(sourced from this session's and the prior session's `/tmp/frontends1016/`
+captures, not re-shot). Added a pointer from `docs/es-de/README.md` to
+`docs/frontends/es-de.md`. Did not touch the top-level `README.md`
+(titlekey1016 holds it) -- the one-line link for lane.local to add there is
+in `PR.md`.
+
+Restored `svc power stayon false` at the end of the device session (it had
+been set to `true` for this session's work).
+
 ## Still in progress / pending
 
-The stock launcher (AYN odinlauncher) wiring and testing is next. This file
-will be updated once it's done.
+All four frontends have been attempted and written up (two tested, two
+blocked with a NEED:). Nothing further is planned for this lane; see PR.md
+for the ready state and the one-line README.md link request.
