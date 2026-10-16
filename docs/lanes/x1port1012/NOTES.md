@@ -819,7 +819,7 @@ So on the Nova every inline FIST truncates. Code built for the default round-to-
 MSVC's `_ftol` sets RC=truncate first, so it is unaffected, which is why this does not break everything.
 
 **Desktop, aarch64's truncation: the Nova's glitch (dg3).** Local, never-committed experiment
-(`tools/fisttrunc-desktop-experiment.patch`): with `HAKUX_FIST_TRUNC=1` the x86_64 backend emits
+(`tools/fisttrunc-desktop-experiment.md`): with `HAKUX_FIST_TRUNC=1` the x86_64 backend emits
 `CVTTSD2SI`/`CVTTSS2SI` (truncate) instead. Same run otherwise (`deskgd.py 74 600 125 dg3 HAKUX_FIST_TRUNC=1`):
 
 | hull frames | written w | smooth line | residual |
