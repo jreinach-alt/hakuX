@@ -1,13 +1,13 @@
 # Launching hakuX from a frontend
 
 Four frontends were tried against hakuX on a real device (Thor, Android 13,
-hakuX 0.4.1, package `com.jreinach.hakux`). Status of each:
+hakuX CE release build, package `com.jreinach.hakux`). Status of each:
 
 | Frontend | Status | Notes |
 |---|---|---|
 | [ES-DE](es-de.md) | **Tested on the Thor** | Custom system + find rule, confirmed launching a game twice |
-| [Daijisho](daijisho.md) | Not wired — blocked | "Default player" field rejects typed selections; see the NEED: |
-| [Pegasus](pegasus.md) | Not installed — blocked | APK has no source other than GitHub; this lane doesn't fetch from GitHub |
+| [Daijisho](daijisho.md) | **Tested on the Thor** | Its built-in Apps tab lists hakuX CE directly; no custom platform needed, confirmed launching a game twice |
+| [Pegasus](pegasus.md) | **Tested on the Thor** | Its built-in Android collection lists hakuX CE directly; confirmed launching a game twice |
 | [Stock launcher](stock-launcher.md) | **Tested on the Thor** (AYN odinlauncher); Retroid variant **not yet tested** | Launches hakuX's own Game Library; no ROM-passing mechanism, by design of a generic Android launcher |
 
 Never treat an untested step as tested: "tested on the Thor" above means a
