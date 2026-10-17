@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.5.1 — 2026-10-16
+
+This release rotates the app's signing key: it installs as an in-place
+update over an official 0.5.0 build, keeping your saves, rather than
+requiring an uninstall. It raises the minimum to Android 13. The app is
+renamed hakuX CE and gets a new icon, and launching it is now confirmed
+working from ES-DE, Daijisho, Pegasus and the stock Android launcher.
+Halo's menu ring no longer jumps back in bursts: float-to-integer stores
+now round the way the Xbox does. Carried over from X1 BOX: a game with bad audio data no longer closes the
+emulator, a texture pointing outside video memory draws blank instead of
+crashing, out-of-range ADPCM audio plays instead of producing noise, a
+corrupt pipeline cache is discarded instead of crashing at start, a missing
+audio device is no longer fatal, and the setup wizard rejects a BIOS file
+that is not 256 KB, 512 KB or 1 MB.
+
+See [docs/releases/v0.5.1.md](https://github.com/jreinach-alt/hakuX/blob/master/docs/releases/v0.5.1.md).
+
 ## v0.5.0 — 2026-10-12
 
 The first release rated by play rather than by pixel counts alone: 52 titles

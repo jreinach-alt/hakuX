@@ -1,8 +1,8 @@
 # Known issues
 
-_Last updated 2026-10-12, for version 0.5.0._
+_Last updated 2026-10-16, for version 0.5.1._
 
-What to expect from 0.5.0 before you report a bug. How each tested game runs
+What to expect from 0.5.1 before you report a bug. How each tested game runs
 is on the [compatibility page](https://github.com/jreinach-alt/hakuX/blob/master/docs/COMPATIBILITY.md); open bugs are in the
 [issue tracker](https://github.com/jreinach-alt/hakuX/issues).
 
