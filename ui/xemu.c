@@ -1153,8 +1153,16 @@ static void sdl2_display_very_early_init(DisplayOptions *o)
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 #else
     bool use_vulkan = (g_config.display.renderer == CONFIG_DISPLAY_RENDERER_VULKAN);
+    /*
+     * Nothing makes a Vulkan surface of this window (the frame reaches it
+     * through GL either way), and SDL's offscreen driver cannot create a
+     * Vulkan window at all, so a windowed run without a screen (#1045's
+     * present probe) asks for a GL one.
+     */
+    const char *vdrv = SDL_GetCurrentVideoDriver();
+    bool vk_window = use_vulkan && !(vdrv && !strcmp(vdrv, "offscreen"));
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(
-        (use_vulkan ? SDL_WINDOW_VULKAN : SDL_WINDOW_OPENGL) | 
+        (vk_window ? SDL_WINDOW_VULKAN : SDL_WINDOW_OPENGL) |
         SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 #endif
 
