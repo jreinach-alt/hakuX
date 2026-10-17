@@ -9,7 +9,7 @@ The harness dashboard, with each release's targets and the progress charts, is [
 No lane session is running.
 
 - **Handhelds:** 2 connected.
-  - Nova: free for the queue
+  - Nova: held by `owner`
   - Thor: held by `lanelocal-offline`
 - **Device queue:** 0 waiting, 0 running.
 - **Latest nightly:** `nightly-2026-10-12`, build `00fde8afb3`.
@@ -129,4 +129,4 @@ No branch is being worked right now.
 - 2026-10-16 visitor1016: fewer required fields, no placeholder text, and "hakuX CE" in the first-contact files (#433)
 - 2026-10-16 logo1016: hakuX CE logo at the top of the README
 
-_Updated 2026-10-16 21:20 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
+_Updated 2026-10-16 21:31 PDT. Rebuilt on the host every 15 minutes and pushed here at most every 30._
