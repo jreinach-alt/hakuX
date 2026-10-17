@@ -6,7 +6,9 @@ as #939. Branched from master @ 8d260f39fc.
 
 ## Status
 
-Step 0 done (this file, before any code). Next: reproduce on the desktop and count the frames it lasts.
+Step 0 done (this file, before any code). Desktop input works (r2), the cut is located (r2), the light tests
+are identified and count 0 in the steady front shot (r2, r3). Running: r4, every frame across the cut, armed by
+the engine glow. Next: per-frame light tests and images for the first frames after the cut.
 
 ## Step 0: what was searched
 
@@ -135,11 +137,25 @@ the quad's own passing samples: no span or carry (H4's "count = hull + test" is 
 
 So on the desktop, in the steady front shot, the hidden lights count 0 (or a few edge samples), which is right.
 Symptom 4 is "no" for the steady shot; the frames right after the cut were not in r2 (one frame per 2 s).
-r3 dumps every frame from mark+140 s.
+
+| run | head | what | result |
+|---|---|---|---|
+| r3 | 1d1f39671b build | every frame from mark+140 s (300 frames, `gd`, `--zrep`) | **missed the cut**: frame 0 is already the front shot, closer in than r2's last shot 098. The load ran 30-40 s faster than r2's, so mark+140 s here is past r2's mark+170 s content. Aiming by the clock is the mistake the brief names; r4 arms by content (`--on-bright`). What r3 does show (`perframe.py`, 300 frames): **no `{"t":"skip"}` record in any frame**; every frame's light tests run after 59-101 depth-writing draws on the tests' zeta; in the front shot 2-9 of 42-46 tests are nonzero at 1-6 samples each (edge samples) until the camera reaches the bridge window (f170+, sums to 76 at 0x600f0/0x601f0: lights in view there). No crash; C: 57 GB |
+
+**The Nova's own route-frames** (halo1016 request `0-0-x-1792231793-halo1016-2208576`, the kept route on
+a warm shader cache) show the front shot (frame 032100, ~mark+30 s past the cut) with no glow through the hull.
+So on the Nova as well the steady front shot is clean, and the owner's sighting is in the frames just after the
+cut, or on a different cache or settings state from that run's.
+
+**H8 on the default path.** `async_compile` is off by default (`SettingsActivity.kt:69`, C default
+`draw.c:35`), and with it off the PFIFO thread compiles a missing pipeline before the draw instead of skipping it
+(`draw.c:3049`, `shaders.c:1362`). So a default build skips a draw only with no pipeline at all (cache exhausted,
+`draws_skipped_no_pipeline`). r3 saw none. H8 stays live only for a player with async compile on, or a pipeline
+creation that fails; the owner's settings are not known.
 
 ## Crash log (desktop)
 
-None yet (r1: no dump in `wsl-crashes/`; C: 57 GB free after).
+None yet (r1-r3: no dump in `wsl-crashes/`; C: 57 GB free after each).
 
 ## Questions
 
