@@ -12,7 +12,10 @@ Per 60-flip `hakuX-pace` window after the logcat's `mark gameplay`:
     Ri, Tq       hakuX-perf gfps line: PFIFO park ms/flip (EWMA), dirty queries
     pf_cpu       [rdc] tcpu / f        PFIFO thread CPU ms per flip
     pf_blk       period - Ri - pf_cpu  neither parked nor on a CPU
-    drain        fifoskew drain mean ms (submission waiting on the PFIFO thread)
+    drain50      fifoskew drain p50 ms (submission waiting on the PFIFO thread;
+                 51.25 is the overflow bin; the mean is not used: lost-track
+                 outliers of tens of seconds dominate it). '-' when the FIFO
+                 never drained in the window (n=0).
   perflog build (NV2A_PERF_LOG) only
     fin, fin_*   hakuX-stall Finish per 60 frames, by cause (vtx sc sd buf fb
                  pres flip flu stl)
@@ -25,6 +28,9 @@ Per 60-flip `hakuX-pace` window after the logcat's `mark gameplay`:
     fw1          the top fence/submit wait site, ms per frame / count
     gpu50        GPU ms per frame, median
   cblat         fin and mdraw ms per flip (cblat split, always on)
+  hz            HAKUX_VTX_HAZARD finishes per flip (always on: vk/vertex.c prints
+                the running total on I/hakuX at most every 10 s, only after a
+                finish; linear between lines, so 10 s resolution)
 
 Bands by fps (>=28.5, 26-28.5, <26), medians, on stderr. The Turnip check
 (the brief: no run counts without it) is printed first.
@@ -66,6 +72,16 @@ def nearest(lst, t, tol):
     return best[1] if best else {}
 
 
+def interp(series, t):
+    """A running total at time t, linear between its (time, total) points."""
+    if not series or t <= series[0][0]:
+        return series[0][1] if series else None
+    for (t0, n0), (t1, n1) in zip(series, series[1:]):
+        if t0 <= t <= t1:
+            return n0 + (n1 - n0) * (t - t0) / (t1 - t0) if t1 > t0 else n1
+    return None  # past the last line: unknown, not flat
+
+
 def over(lst, w0, w1):
     """Mean of the dicts whose own time falls inside (w0, w1]."""
     sel = [d for (t, d) in lst if w0 < t <= w1]
@@ -98,6 +114,7 @@ def main():
     mark = None
     pace, perf, rdc, fsk, cbl = [], [], [], [], []
     stall, phase, cpu, ft1, txr = [], [], [], [], []
+    hz = []
     for l in lines:
         t = ts(l)
         if t is None:
@@ -117,13 +134,19 @@ def main():
             if m:
                 rdc.append((t, {'f': int(m.group(1)), 'dt': int(m.group(2)),
                                 'tcpu': float(m.group(4))}))
+        elif 'vtx_hazard: ' in l:
+            m = re.search(r'vtx_hazard: (\d+) finishes', l)
+            if m:
+                hz.append((t, int(m.group(1))))
         elif 'fifoskew win=' in l:
             m = re.search(r'drain\(n=(\d+) mean=(\d+) p50=(\d+)', l)
             b = re.search(r'backlog\(mean=(\d+)', l)
             if m:
-                fsk.append((t, {'drain': int(m.group(2)) / 1e6,
-                                'drain50': int(m.group(3)) / 1e6,
-                                'backlog_kb': int(b.group(1)) / 1024 if b else 0}))
+                d = {'backlog_kb': int(b.group(1)) / 1024 if b else 0}
+                if int(m.group(1)):  # n=0: the FIFO never drained; no drain time, not 0
+                    d['drain'] = int(m.group(2)) / 1e6
+                    d['drain50'] = int(m.group(3)) / 1e6
+                fsk.append((t, d))
         elif 'cblat win=' in l:
             m = re.search(r'flips=(\d+)', l)
             s = re.search(r'split\(([^)]*)\)', l)
@@ -172,11 +195,12 @@ def main():
                     ft['fw1_site'] = fm.group(1)
             ft1.append((t, ft))
 
-    print('pid %s, mark gameplay %s, pace windows %d, perflog lines %d, ft1 lines %d'
+    print('pid %s, mark gameplay %s, pace windows %d, perflog lines %d, ft1 lines %d, '
+          'vtx_hazard lines %d'
           % (pid, datetime.fromtimestamp(mark).strftime('%H:%M:%S') if mark else 'NONE',
-             len(pace), len(phase), len(ft1)))
+             len(pace), len(phase), len(ft1), len(hz)))
 
-    cols = ['t', 'fps', 'Ri', 'Tq', 'pf_cpu', 'pf_blk', 'drain', 'backlog_kb', 'cb_fin',
+    cols = ['t', 'fps', 'Ri', 'Tq', 'pf_cpu', 'pf_blk', 'hz', 'drain50', 'backlog_kb', 'cb_fin',
             'cb_mdraw', 'fin', 'fin_sd', 'fin_vtx', 'fin_flip', 'fin_stl', 'fin_sc', 'fin_buf',
             'fin_fb', 'ph_draw', 'ph_fin', 'ph_sub', 'ph_fen', 'ph_idle', 'ph_gpu', 'gpu_r',
             'gpu_x', 'lw', 'prun', 'pblk', 'pidle', 'gpu50', 'fw1_ms', 'fw1_site', 'txdl_n',
@@ -201,6 +225,9 @@ def main():
             r['pf_cpu'] = rd['tcpu'] / rd['f']
             r['pf_blk'] = rd['dt'] / rd['f'] - r.get('Ri', 0) - r['pf_cpu']
         w0 = t - ms / 1e3
+        h0, h1 = interp(hz, w0), interp(hz, t)
+        if h0 is not None and h1 is not None:
+            r['hz'] = (h1 - h0) / nf
         for src in (fsk, cbl, ft1):
             r.update(over(src, w0, t))
         for src in (stall, phase, cpu, txr):

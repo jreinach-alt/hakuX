@@ -1,9 +1,15 @@
 # lane.gta3drive1017 -- GTA III drops into the teens while driving (#433)
 
-Status: Step 0 done (this file, committed before any code). Next: locate the wait the PFIFO thread is blocked in. No
-emulator code touched.
+Status: Step 0 is done (this file, committed before any code), and no emulator code has been touched. Two Nova
+pilots are queued; each is a route proof plus a wait split (section 5, step 3):
+- `1-1792275531-lane.gta3drive1017-343857`: perflog + FRAMETRACE + GPUXFR;
+- `1-1792275540-lane.gta3drive1017-346093`: plain build.
 
-[lane.gta3drive1017] working: locating the wait (section 4).
+The board request for the route (pending proof) is in board-requests/xbox.md, 15:19 PDT.
+
+[lane.gta3drive1017] waiting: Nova pilots 1-1792275531-lane.gta3drive1017-343857 and 1-1792275540-lane.gta3drive1017-346093
+(queued 10-17 15:18 PDT behind lane.local's hold). Their result dirs in dispatch/results resolve the wait;
+`tools/drive_split.py` reads them.
 
 ## 1. What was searched (Step 0)
 
@@ -113,6 +119,24 @@ Further readings of the snapshot (every other tag pid 21488 printed: `fifoskew`,
     to 7-19M samples. What the loop polls was not read in the guest code. It fits reading 3: the guest waits on
     GPU-side progress.
 
+The on-foot baseline, from the Playable run `1-1791792686-lane.local-32437` (Nova, 10-12 build, gta-3.route on foot,
+read with `tools/drive_split.py` after its `mark gameplay`):
+
+| run | windows | at >= 28.5 | fps | Ri | Tq | PFIFO cpu ms/flip | **PFIFO blocked ms/flip** | hazard finishes/flip | backlog KB | drain p50 ms |
+|---|---|---|---|---|---|---|---|---|---|---|
+| on foot (32437) | 325 | 99.7% | 30.0 | 23.3 | 902 | 9.1 | **0.6** | 0.1 | 99 | 51.2 (overflow) |
+| owner, driving dips (<26) | 19 | -- | 21.2 | 1.2 | 1305 | 16.8 | **28.6** | not in the capture | ~95 | 51.2 |
+
+11. **On foot the PFIFO thread is almost never blocked (0.6 ms per flip). In the driving dips it is blocked 28.6.**
+    - The builds differ (10-12 vs 0.5.2-rc1), so this is a direction, not a paired A/B.
+    - Backlog and drain p50 are the same on foot at a steady 30 fps. Reading 8 holds: the frame-ahead pushbuffer is
+      normal for this title and not a symptom.
+12. **The vertex hazard's finishes are always logged.** vk/vertex.c:201 prints `vtx_hazard: N finishes` on I/hakuX at
+    most every 10 s, in every build, and the dispatcher's spec keeps `hakuX:I`.
+    - On foot it is 0.1 finish per flip.
+    - The owner's capture was filtered to W/hakuX, so it is not in it.
+    - The plain pilot gives the driving count without perflog. `drive_split.py` reads it as `hz`.
+
 ## 4. Hypotheses
 
 P is lane.xbox's start, then mine after section 3. Each names its section-2 row.
@@ -145,7 +169,7 @@ What each outcome means, decided before the data:
 
 | the split shows, in the <26 band | reads as | next |
 |---|---|---|
-| fin_vtx carries the extra finishes (>= 2 per frame over the >=28.5 band) | D6, the vertex hazard | arm `HAKUX_VTX_HAZARD=0` (discriminator), then a hazard that does not wait |
+| fin_vtx carries the extra finishes (>= 2 per frame over the >=28.5 band), or `hz` (both runs) >= 1 per flip against 0.1 on foot | D6, the vertex hazard | arm `HAKUX_VTX_HAZARD=0` (discriminator), then a hazard that does not wait |
 | fin_sd / txdl downloads carry them | D6, a render-to-texture read back | the download's reason (cvt, swz, pitch); a remedy like #1018's |
 | few finishes; ph_fen or fw1 is a fence and gpu50 >= 30 ms | D3, the GPU is the limit | arm `TU_DEBUG=sysmem` (discriminator); GPU pass split |
 | lw (Lw / ft1 lw) carries it | D7, the lock | the lock's holder |
