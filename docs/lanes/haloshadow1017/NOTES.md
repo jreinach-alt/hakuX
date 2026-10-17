@@ -357,6 +357,29 @@ L5 = L4's env + Khronos validation 1.3.275 (Ubuntu's `vulkan-validationlayers`, 
 
 H-S drops to 0.03. Section 9 makes it moot: the same command stream draws correctly on Turnip.
 
+### L6 prediction (before the run): core validation
+
+Section 9 shows the stock driver draws the square and two conformant drivers do not. That leaves
+one question about whose defect it is. Does the stock driver mis-execute a valid stream? Or does
+the emulator issue an invalid one that Turnip and lavapipe happen to tolerate? L5 ran with
+`validate_core = false`, so it could not tell. The candidate mechanism is image layouts. Adreno's
+proprietary driver keeps UBWC-compressed images and uses the declared layout to decide when to
+decompress. Lavapipe ignores layouts. A sampled image whose real layout is not the declared one
+could read compressed tiles as a near-uniform, wrong-coloured value on stock. That would match
+symptoms 1 and 2. The custom border sampler was read and is valid: texture.c:3610 passes the
+view's format, so `customBorderColorWithoutFormat` is not needed.
+
+L6 = L5's state, env and spec, with `validate_core = true` (image layout, command buffer and
+object-in-use checks, stateless and object lifetime) and sync off. Settings:
+`build-linux/run/vvl/vk_layer_settings_core.txt`, script `build-linux/run/l6.sh`.
+- Hit: an error on a chain object. That means an image-layout mismatch (`VUID-vkCmdDraw-None-09600`
+  or `UNASSIGNED-CoreValidation-DrawState-InvalidImageLayout`), a usage or view-format error, or a
+  descriptor error, on the projection's stage 0 copy, the 128x128 targets or the cvt pass. Then the
+  square is an emulator spec violation, and fixing it is ours (a new R0).
+- Miss: no error on the chain's objects. Errors elsewhere are recorded but do not move the
+  verdict. Then the stream is valid as far as the layer sees, and "the stock driver mis-executes
+  it" stands.
+
 ## 7. Desktop crash log
 
 `/mnt/c/Users/Justin/AppData/Local/Temp/wsl-crashes/` was empty after every run (L1-L5; deskrun.py
