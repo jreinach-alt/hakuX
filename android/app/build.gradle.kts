@@ -164,7 +164,7 @@ android {
       matchingFallbacks += listOf("debug")
     }
     release {
-      resValue("string", "app_name", "hakuX (fork)")
+      resValue("string", "app_name", "hakuX CE")
       externalNativeBuild {
         cmake {
           arguments += listOf(

@@ -1,6 +1,6 @@
 # Building the Android app
 
-_Last updated 2026-10-13, for version 0.5.0._
+_Last updated 2026-10-16, for version 0.5.1._
 
 This folder is the Android app: a Gradle and CMake project that builds the
 xemu core as native libraries, wrapped in a Kotlin app with setup, settings
@@ -30,7 +30,7 @@ From this folder:
 
 ```bash
 ./gradlew assembleDebug      # installs as "hakuX (test builds)"
-./gradlew assembleRelease    # installs as "hakuX (fork)"
+./gradlew assembleRelease    # installs as "hakuX CE"
 ```
 
 A release build has to be signed with the same key every time, or it cannot

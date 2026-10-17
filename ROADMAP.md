@@ -1,6 +1,6 @@
 # Roadmap
 
-_Last updated 2026-10-12, for version 0.5.0._
+_Last updated 2026-10-16, for version 0.5.1._
 
 Where hakuX CE is heading. Plans change; the
 [release notes](docs/releases/README.md) say what actually shipped.
