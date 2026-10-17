@@ -19,9 +19,10 @@ them) at 160x120, correlated with video frames every vstep seconds, and a line
 fitted to the best matches. On run 13 that does not work: the ring fills most
 of the screen in every frame and its outline changes by 0.2% of the screen per
 frame, so the best and next-best matches 30 frames apart differ in r by under
-0.01. The clock that works is the hull's own scroll (clockfit.py): a first map
-from the dump's wall clock (30 frames to the second), bandfit.py on the hull
-alone with a wide scan, and the frame whose hull c13.w equals the fitted offset.
+0.01. Nor does clockfit.py's first map from the dump's wall clock: 1-2 s off,
+the hull fits noise. The clock that works is three anchors (run13anchors.sh):
+each peaks sharply (r 0.22-0.39, next frame 0.04-0.07 lower) at one dump frame,
+with the fitted scroll within a tick of that frame's c13.w.
 
 The RAM image need not be this run's: the ring's records, strips and textures
 are at the same addresses with the same bytes on every run (M1).

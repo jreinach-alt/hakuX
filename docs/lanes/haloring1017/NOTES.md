@@ -6,7 +6,8 @@ Brief: `/home/justin/hakux-work/briefs/haloring1017.md`.
 The owner's goal is the ring the way the console draws it. Every surface turns with the ring, and the bright mottled
 grey layer covers the whole ring, the unlit side included.
 
-[lane.haloring1017] working: M1 done (the guest turns the inside band at the hull's rate); M2, (c) on screen off the stock driver, next.
+[lane.haloring1017] working: M1 done (the guest turns the inside band at the hull's rate). M2 on the desktop: the band
+turns on screen (slope 0.88 +- 0.02). M2 on Turnip (run 13's video): the clock is found (three anchors), and the fit is running.
 
 ## Step 0: what was searched
 
@@ -93,11 +94,16 @@ The ring does not turn by moving geometry. Every ring draw carries bone 0 only: 
 every vertex, so c60-62 (the ring's model matrix) with weight 1. The second index, 253, is out of range with weight 0.
 The surfaces turn by scrolling texture u: oT0.x = c13.x*u + c13.y*v + c13.w.
 
-| draw | count | shader | what it is | c13.w per frame | du/dtheta (`ringuv.py`) | angular rate |
+| draw | count | shader | what it is | c13.w per frame | du/dtheta (`ringuv.py`, raw u) | angular rate = step / (c13.x du/dtheta) |
 |---|---|---|---|---|---|---|
-| `n5` | 4362 | ac5a40cb | outer hull; s0 green panels, s1 crater grey, s3 cube | +0.00078 | 0.157 /rad (x 2 pi = 0.99: one u wrap per turn) | 0.00497 rad/frame |
-| `n4` | 864 | ac5a40cb (the hull's own shader) | inside terrain band; s0 0x02ad4000, 2048x128 terrain and cloud | +0.0000976 (1/8 of `n5`'s) | 0.0196 /rad (x 2 pi = 0.123: 1/8 wrap per turn) | 0.00498 rad/frame |
+| `n5` | 4362 | ac5a40cb | outer hull; s0 green panels, s1 crater grey, s3 cube | +0.00078085 | 0.157 /rad: s = 48.67 u wraps 48 times per turn | 1.02e-4 rad/frame |
+| `n4` | 864 | ac5a40cb (the hull's own shader) | inside terrain band; s0 0x02ad4000, 2048x128 terrain and cloud | +0.0000976 (exactly 1/8 of `n5`'s) | 0.0196 /rad: s wraps 6 times per turn | 1.02e-4 rad/frame |
 | `n6` | 510 | 1a607806 | inside multiply pass; s0 0x02be8000, 1024x32 white trapezoid, a lit/dark mask | constant (c15 = 48.67, c16) | u 0.0204..0.0409 x 48.67 = one wrap | 0: fixed to the sun, by design |
+
+Correction (after M2): the first version of this table put the angular rate at 0.00497 rad/frame, taking c13.x as 1.
+c13.x is 48.67 on both draws, so the rate is 1.02e-4 rad/frame, one turn in about 34 minutes at 30 frames a second.
+The ratio, the point of the table, is unchanged. On Turnip (run 13, frames 0-599) both scrolls step by one fixed
+amount per frame, sd 0, and `n4` = (`n5` - 0.02745) / 8 exactly (`c13series.py`).
 
 So the guest turns the inside terrain at the hull's angular rate, to three figures. R2b misses. `n6` is meant to stay
 still: it is the day/night mask, not a surface. The rate is measured in the guest's state as hakuX records it, so it
@@ -114,6 +120,73 @@ because nothing on the ring moves by bone. Every vertex reads bone 0.
 (console photo 5, hakuX run 13, then t1 x 10, t2.r, t0, and the full combiner) shows the console's bright mottling
 looks like t1 (the crater grey, 0x02be4000) at full strength with t2.r's structure. hakuX's combiner draws t1 as a
 dim multiplier of t0's green panels.
+
+### M2: (c) on screen, desktop, off the stock driver (`deskrun.py`, `bandfit.py`, `bandsum.py`)
+
+Run m2a, 2026-10-17, on the desktop (lavapipe):
+- the build is 0.5.2-rc1, `xemu_commit 160728983a`, with the release app's environment (`HAKUX_SURFGPU`,
+  `REPORT_ASYNC`, `TEXSCAN`, `DRAWREC`, `UNI_BULK`, `UNI_UBERCACHE`, `UNI_FOGCACHE`, `POSTED_PUT`, `LOCKFREE_WAKE`);
+- `XEMU_FRAME_DUMP=300,gd,images,after74`, with guest RAM saved at +98.5 s, inside the dump window;
+- it exited 0 at 230 s. No crash: `wsl-crashes/` was empty before and after, and C: had 57 GB free.
+
+`bandfit.py` asks whether a surface turns on screen. For each fifth frame and each draw it does three things:
+- runs the hull's vertex program on the draw's records in RAM with that frame's constants;
+- rasterises `n4` and `n5` with a joint z-buffer;
+- scans a texture offset d, correlating the dumped image's luminance with the draw's stage-0 texture at
+  (c13.x u + c13.y v + d, oT0.y).
+
+A surface that turns has its best d* follow c13.w (slope 1). A static one has d* constant (slope 0).
+
+The cull is the dump's own state: SETUPRASTER 0x10400000 (cull back, FRONTFACE clear, so hakuX uses
+VK_FRONT_FACE_CLOCKWISE), which culls area < 0 in the tool's convention. The opposite sign (x1port1012's `swr.py`)
+puts the far band in front of the near hull. With no cull, `n4` has no visible pixel. The overlay
+(`dbg=`) matches the image only with the dump's sign. **Any software render of (a) must use this sign; `swr.py`'s
+may be wrong at some poses.**
+
+| draw | frames | c13.w span | slope d*/c13.w | rms about "turns" | rms about "static" | median r at c13.w / at frame 0's c13.w |
+|---|---|---|---|---|---|---|
+| `n5` hull (control) | 52, f0-f295 | 0.177-0.437 (266 texels, lod 0) | **1.013 +- 0.015** | 8.3 texels | 81.3 texels | 0.183 / 0.047 |
+| `n4` inside band | 24, f35-f170 (`n4` >= 1000 px; 0 px at f0) | 0.0227-0.0377 (3.8 texels, lod 3) | **0.881 +- 0.020** | 0.18 texels | 1.04 texels | 0.253 / 0.190 |
+
+**On the desktop the inside band turns.** Its on-screen texture follows the guest's c13.w at slope 0.88, and static
+(slope 0) is 44 standard errors away. Over this window the band's c13.w is the hull's / 8 - 0.00343 exactly, so it
+turns at the hull's angular rate.
+
+The 12% shortfall is a lag of 0.45 texels at lod 3 over the whole span. It is not (c), which would be slope 0. A
+missed or stale upload cannot produce it either, because that is all or nothing per frame. The likely account is the
+fit itself: the strip is 3-8 px wide at one mip, while the 150k-px hull at lod 0 gives 1.01. A pose with a wide band
+would test that (M2b's anchors, or a desktop window like `pair1`'s).
+
+Why (c) is easy to see as "static" even when it is not: one turn takes about 34 minutes. From this camera, just
+outside the hull at radius 19.7, the band in view is the far side of the ring, about 38 units away. It slides about
+3.4 texels at lod 3 in 4.5 s. The near hull turns at the same angular rate, but its nearest face is about 0.4 units
+away (r max 19.27), so it visibly streams.
+
+Side finding (desktop only): in frames 0-45 the band's per-frame step is irregular (0.0000837-0.000195), and
+`n4` = `n5`/8 + c does not hold there (residual up to 0.004 in `n5` units). Turnip's run 13 has sd 0 over 600
+frames. Frames that take two ticks on the slower desktop explain the doubled steps, but not the sub-tick 0.0000837.
+Not followed; it does not touch (c).
+
+### M2b: (c) on screen, Turnip, run 13's video (`vidmap.py`, `run13anchors.sh`, `run13map.sh`)
+
+Run 13 dumped `gd` without images, so its pixels come from its 60 s video (1280x960 at 59.94 fps). The dump's wall
+clock and the video's disagree by 1-2 s (the host clock steps back), and a pose 1-2 s wrong makes `bandfit.py` fit
+noise. Pass 1 on the wall clock (`clockfit.py`) gave r* 0.04-0.15 with d* scattered.
+
+A ring silhouette cannot set the clock (`vidmap.py`'s docstring). The ring covers 27-58% of the screen in every
+frame, and its outline changes by 0.2% per frame.
+
+What works is an anchor. Take one video frame and every dump frame within 75 of the wall clock's guess. Fit the hull
+with no scroll scan (pad5=0.0) at each frame's own c13.w. Only the true frame has both the pose and the scroll right.
+
+| video t | dump frames scanned | peak frame | r at peak | next best (+-1 frame) | d* - c13.w at peak |
+|---|---|---|---|---|---|
+| 17.4 s | 15-165 | f124 | 0.223 | 0.165 | +0.00009 (under one tick) |
+| 24.4 s | 225-375 | f334 | 0.260 | 0.194 | +0.00009 |
+| 31.4 s | 435-585 | f543 | 0.387 | 0.349 | +0.00047 |
+
+The line through them is t = 13.2513 + 0.0334128 f, which is 29.93 dump frames per video second. The residuals are
+0.006, -0.011 and 0.006 s, all under a third of a game frame.
 
 ## Plan
 
