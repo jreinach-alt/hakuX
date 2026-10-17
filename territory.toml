@@ -2876,5 +2876,6 @@ note = "ADDED by lane.local 2026-10-16 21:49 PDT. Record reconstruction: reads t
 [lane.defaulton1017]
 issues = ["1018"]
 standing = false
-files = ["docs/lanes/defaulton1017/**", "docs/testing/predictions/defaulton1017-*.json"]
-note = "ADDED by lane.local 2026-10-17 ~04:50 PDT on lane.xbox's board request (04:45): the follow-up to #1017 that turns the Halo #1018 switches on by default. Docs and prediction files only until it asks for more; any source file it needs is a widening request. Fleet check flagged it RUNNING with no row."
+files = ["docs/lanes/defaulton1017/**", "docs/testing/predictions/defaulton1017-*.json", "hw/xbox/nv2a/pgraph/vk/reports.c", "hw/xbox/nv2a/pgraph/vk/surface.c", "target/i386/tcg/translate.c", "docs/testing/nv2a_index.json"]
+note = "ADDED by lane.local 2026-10-17 ~04:50 PDT on lane.xbox's board request (04:45): the follow-up to #1017 that turns the Halo #1018 switches on by default. Docs and prediction files only until it asks for more; any source file it needs is a widening request. Fleet check flagged it RUNNING with no row. || WIDENED (lane.local 2026-10-17 05:3x PDT, lane.defaulton1017 board request 05:21): vk/reports.c (was lane.halo1016, retired; taken from [free]), vk/surface.c (released by fpsbelow1012, last holder lane.halo1016, retired), target/i386/tcg/translate.c (lane.halo1016, retired), for the default flip in 7f6b99db87 (#1018). docs/testing/nv2a_index.json added by lane.local unasked: the flip moves lines in reports.c and surface.c that the index cites, and lane.halo1016 was refused once for lacking it. IBC files not requested."
+
